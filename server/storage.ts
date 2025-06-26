@@ -60,8 +60,10 @@ export class MemStorage implements IStorage {
   async saveGameState(insertGameState: InsertGameState): Promise<GameState> {
     const id = this.currentGameStateId++;
     const gameState: GameState = {
-      ...insertGameState,
       id,
+      gameType: insertGameState.gameType,
+      gameData: insertGameState.gameData,
+      userId: insertGameState.userId || null,
       lastPlayed: new Date(),
       isActive: true,
     };
@@ -174,17 +176,21 @@ export class DatabaseStorage implements IStorage {
       .update(gameStates)
       .set({ isActive: false })
       .where(eq(gameStates.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getActiveGameStates(userId?: number): Promise<GameState[]> {
-    let query = db.select().from(gameStates).where(eq(gameStates.isActive, true));
+    const conditions = [eq(gameStates.isActive, true)];
     
     if (userId) {
-      query = query.where(eq(gameStates.userId, userId));
+      conditions.push(eq(gameStates.userId, userId));
     }
     
-    return await query.orderBy(desc(gameStates.lastPlayed));
+    return await db
+      .select()
+      .from(gameStates)
+      .where(and(...conditions))
+      .orderBy(desc(gameStates.lastPlayed));
   }
 
   async getHighScores(gameType: string, limit = 10): Promise<GameScore[]> {

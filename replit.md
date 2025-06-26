@@ -19,10 +19,10 @@ This is a fullstack web application featuring a collection of interactive games 
 - **Production Build**: esbuild for server bundling
 
 ### Data Layer
-- **Database**: PostgreSQL 16 (configured but using in-memory storage currently)
+- **Database**: PostgreSQL 16 with active database connection
 - **ORM**: Drizzle ORM with TypeScript schema definitions
-- **Schema**: Users, game states, and game scores tables
-- **Storage Interface**: Abstract storage interface with in-memory implementation
+- **Schema**: Users, game states, and game scores tables (deployed)
+- **Storage Interface**: Abstract storage interface with PostgreSQL implementation
 
 ## Key Components
 
@@ -119,6 +119,7 @@ PUT /api/game-states/:id - Update existing game state
 ## Changelog
 - June 26, 2025. Initial setup
 - June 26, 2025. Enhanced visual elements for game tiles with improved graphics, animations, and interactive effects
+- June 26, 2025. Added PostgreSQL database integration with Drizzle ORM, replaced in-memory storage with persistent database storage
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
