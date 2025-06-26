@@ -20,6 +20,8 @@ interface GameState {
   currentPlayerIndex: number;
   gameComplete: boolean;
   scenarioHistory: string[];
+  showPassScreen: boolean;
+  passScreenTimer: number;
 }
 
 const PLAYER_NAMES = [
@@ -33,7 +35,9 @@ export default function WouldYouRather() {
     playerChoices: [],
     currentPlayerIndex: 0,
     gameComplete: false,
-    scenarioHistory: []
+    scenarioHistory: [],
+    showPassScreen: false,
+    passScreenTimer: 0
   });
 
   const [setupMode, setSetupMode] = useState(true);
@@ -96,7 +100,9 @@ export default function WouldYouRather() {
       ...gameState,
       playerChoices: newPlayerChoices,
       currentPlayerIndex: nextPlayerIndex,
-      gameComplete
+      gameComplete,
+      showPassScreen: !gameComplete,
+      passScreenTimer: !gameComplete ? 6 : 0
     };
 
     setGameState(newGameState);
@@ -107,6 +113,24 @@ export default function WouldYouRather() {
         title: "Round Complete!",
         description: "See what everyone chose!",
       });
+    } else {
+      // Start the 6-second countdown
+      const timer = setInterval(() => {
+        setGameState(prev => {
+          if (prev.passScreenTimer <= 1) {
+            clearInterval(timer);
+            return {
+              ...prev,
+              showPassScreen: false,
+              passScreenTimer: 0
+            };
+          }
+          return {
+            ...prev,
+            passScreenTimer: prev.passScreenTimer - 1
+          };
+        });
+      }, 1000);
     }
   };
 
@@ -120,7 +144,9 @@ export default function WouldYouRather() {
       playerChoices: [],
       currentPlayerIndex: 0,
       gameComplete: false,
-      scenarioHistory: newHistory
+      scenarioHistory: newHistory,
+      showPassScreen: false,
+      passScreenTimer: 0
     });
     setShowResults(false);
   };
@@ -134,7 +160,9 @@ export default function WouldYouRather() {
       playerChoices: [],
       currentPlayerIndex: 0,
       gameComplete: false,
-      scenarioHistory: [scenario]
+      scenarioHistory: [scenario],
+      showPassScreen: false,
+      passScreenTimer: 0
     };
 
     setGameState(newGameState);
@@ -282,6 +310,32 @@ export default function WouldYouRather() {
                   New Game
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Pass Screen Component
+  if (gameState.showPassScreen) {
+    const nextPlayerName = PLAYER_NAMES[gameState.currentPlayerIndex];
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <GameHeader title="Would You Rather" showSave={false} />
+        
+        <div className="max-w-2xl mx-auto pt-32 px-4">
+          <Card className="shadow-xl bg-green-50 border-green-200">
+            <CardContent className="p-12 text-center">
+              <div className="text-6xl mb-6">✅</div>
+              <h2 className="text-3xl font-bold text-green-800 mb-4">Answer Recorded!</h2>
+              <p className="text-xl text-green-700 mb-6">
+                Pass the device to {nextPlayerName}
+              </p>
+              <div className="text-4xl font-bold text-green-600">
+                {gameState.passScreenTimer}
+              </div>
+              <p className="text-gray-600 mt-2">seconds remaining</p>
             </CardContent>
           </Card>
         </div>
