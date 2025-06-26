@@ -118,6 +118,7 @@ PUT /api/game-states/:id - Update existing game state
 
 ## Changelog
 - June 26, 2025. Initial setup
+- June 26, 2025. Enhanced visual elements for game tiles with improved graphics, animations, and interactive effects
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

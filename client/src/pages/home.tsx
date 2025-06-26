@@ -47,8 +47,9 @@ const GAMES = [
     route: "/mad-libs",
     icon: (
       <div className="text-white text-center">
-        <i className="fas fa-comment-dots text-3xl mb-2"></i>
-        <div className="text-sm">Fill in the blanks!</div>
+        <div className="text-2xl mb-2">📝</div>
+        <div className="text-sm font-semibold">Fill in the blanks!</div>
+        <div className="text-xs opacity-80 mt-1">Need: ADJECTIVE</div>
       </div>
     )
   },
@@ -60,8 +61,9 @@ const GAMES = [
     route: "/would-you-rather",
     icon: (
       <div className="text-white text-center">
-        <i className="fas fa-question-circle text-3xl mb-2"></i>
-        <div className="text-sm">Tough choices!</div>
+        <div className="text-3xl mb-2">🤔</div>
+        <div className="text-sm font-semibold">Option A vs B</div>
+        <div className="text-xs opacity-80 mt-1">Tough choices!</div>
       </div>
     )
   },
@@ -143,8 +145,9 @@ const GAMES = [
     route: "/scorecard",
     icon: (
       <div className="text-white text-center">
-        <i className="fas fa-clipboard-list text-3xl mb-2"></i>
-        <div className="text-sm">Track scores!</div>
+        <div className="text-2xl mb-2">📊</div>
+        <div className="text-sm font-semibold">Track Scores</div>
+        <div className="text-xs opacity-80 mt-1">Player 1: 250pts</div>
       </div>
     )
   },
@@ -212,10 +215,14 @@ const GAMES = [
     color: "bg-gradient-to-br from-amber-400 to-amber-600",
     route: "/shell-game",
     icon: (
-      <div className="flex space-x-2">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="w-6 h-4 bg-amber-800 rounded-t-full"></div>
-        ))}
+      <div className="text-white text-center">
+        <div className="flex justify-center space-x-1 mb-2">
+          <div className="text-2xl">🥥</div>
+          <div className="text-2xl">🥥</div>
+          <div className="text-2xl">🥥</div>
+        </div>
+        <div className="text-xs opacity-80">Find the ball!</div>
+        <div className="text-lg">🔴</div>
       </div>
     )
   }
@@ -293,11 +300,14 @@ export default function Home() {
         {/* Quick Access Section */}
         {activeGames.length > 0 && (
           <section className="mb-8">
-            <Card className="rounded-2xl shadow-xl border-2 border-purple-100">
+            <Card className="rounded-2xl shadow-xl border-2 border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <i className="fas fa-bolt text-secondary mr-2"></i>
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white text-sm">⚡</span>
+                  </div>
                   Continue Playing
+                  <span className="ml-2 text-sm font-normal text-gray-600">({activeGames.length} active)</span>
                 </h2>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
