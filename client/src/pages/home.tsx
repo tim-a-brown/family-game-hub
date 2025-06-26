@@ -124,6 +124,9 @@ const GAMES = [
         <div className="text-lg font-mono mb-1">LPEPINPEA</div>
         <div className="text-xs opacity-80">Unscramble this!</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-indigo-200 text-8xl opacity-30">🔤</div>
     )
   },
   {
@@ -140,6 +143,9 @@ const GAMES = [
           </div>
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-orange-200 text-9xl opacity-30">🎲</div>
     )
   },
   {
@@ -153,6 +159,9 @@ const GAMES = [
         <div className="w-8 h-8 bg-white bg-opacity-30 rounded flex items-center justify-center">⚅</div>
         <div className="w-8 h-8 bg-white bg-opacity-30 rounded flex items-center justify-center">⚁</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-teal-200 text-8xl opacity-35">⚅</div>
     )
   },
   {
@@ -167,6 +176,9 @@ const GAMES = [
         <div className="text-sm font-semibold">Track Scores</div>
         <div className="text-xs opacity-80 mt-1">Player 1: 250pts</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-cyan-200 text-7xl opacity-40">📈</div>
     )
   },
   {
@@ -181,13 +193,16 @@ const GAMES = [
           <span key={i}>{num}</span>
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-violet-200 text-7xl opacity-40">🧩</div>
     )
   },
   {
     title: "Connect 4",
     description: "AI opponent • Two player mode • Classic strategy",
     playerInfo: "1-2 Players",
-    color: "bg-gradient-to-br from-red-400 to-red-600",
+    color: "bg-gradient-to-br from-rose-400 to-rose-600",
     route: "/connect-four",
     icon: (
       <div className="grid grid-cols-4 gap-1">
@@ -203,13 +218,16 @@ const GAMES = [
           />
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-rose-200 text-8xl opacity-30">⭕</div>
     )
   },
   {
     title: "Battleship",
     description: "Ship placement • Strategic gameplay • Hit or miss",
     playerInfo: "Strategy Game",
-    color: "bg-gradient-to-br from-blue-400 to-blue-600",
+    color: "bg-gradient-to-br from-slate-400 to-slate-600",
     route: "/battleship",
     icon: (
       <div className="grid grid-cols-4 gap-1 text-white text-xs">
@@ -224,6 +242,9 @@ const GAMES = [
           />
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-slate-200 text-7xl opacity-40">⚓</div>
     )
   },
   {
@@ -242,6 +263,9 @@ const GAMES = [
         <div className="text-xs opacity-80">Find the ball!</div>
         <div className="text-lg">🔴</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-amber-200 text-8xl opacity-35">🥥</div>
     )
   }
 ];

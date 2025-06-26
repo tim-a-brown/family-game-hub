@@ -26,6 +26,7 @@ interface GameState {
   verticalLines: Line[][];
   boxes: Box[][];
   currentPlayer: number;
+  numPlayers: number;
   scores: number[];
   gameWon: boolean;
   winner: number | null;
@@ -39,6 +40,7 @@ export default function DotsAndBoxes() {
     verticalLines: [],
     boxes: [],
     currentPlayer: 1,
+    numPlayers: 2,
     scores: [0, 0],
     gameWon: false,
     winner: null,
@@ -47,6 +49,7 @@ export default function DotsAndBoxes() {
 
   const [setupMode, setSetupMode] = useState(true);
   const [selectedSize, setSelectedSize] = useState(4);
+  const [selectedPlayers, setSelectedPlayers] = useState(2);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
 
@@ -161,12 +164,20 @@ export default function DotsAndBoxes() {
 
     // Check if game is won
     const totalBoxes = gameState.gridSize * gameState.gridSize;
-    const totalCompletedBoxes = newScores[0] + newScores[1];
+    const totalCompletedBoxes = newScores.reduce((sum, score) => sum + score, 0);
     const gameWon = totalCompletedBoxes === totalBoxes;
-    const winner = gameWon ? (newScores[0] > newScores[1] ? 1 : newScores[1] > newScores[0] ? 2 : null) : null;
+    
+    // Find winner (highest score)
+    let winner = null;
+    if (gameWon) {
+      const maxScore = Math.max(...newScores);
+      const winners = newScores.map((score, index) => score === maxScore ? index + 1 : null).filter(Boolean);
+      winner = winners.length === 1 ? winners[0] : null; // null if tie
+    }
 
-    // Next player (if no boxes completed, switch player)
-    const nextPlayer = completedBoxes > 0 ? gameState.currentPlayer : (gameState.currentPlayer === 1 ? 2 : 1);
+    // Next player (if no boxes completed, switch to next player)
+    const nextPlayer = completedBoxes > 0 ? gameState.currentPlayer : 
+      (gameState.currentPlayer % gameState.numPlayers) + 1;
 
     const newGameState = {
       ...gameState,
@@ -211,7 +222,8 @@ export default function DotsAndBoxes() {
       verticalLines,
       boxes,
       currentPlayer: 1,
-      scores: [0, 0],
+      numPlayers: selectedPlayers,
+      scores: Array(selectedPlayers).fill(0),
       gameWon: false,
       winner: null,
       lastMove: { completedBoxes: 0 }
@@ -246,14 +258,54 @@ export default function DotsAndBoxes() {
               
               <div className="space-y-6">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Number of Players</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[2, 3].map(players => (
+                      <Button
+                        key={players}
+                        variant={selectedPlayers === players ? "default" : "outline"}
+                        onClick={() => setSelectedPlayers(players)}
+                        className="w-full"
+                      >
+                        {players} Players
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">Grid Size</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[3, 4, 5].map(size => (
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {[3, 4, 5, 6].map(size => (
                       <Button
                         key={size}
                         variant={selectedSize === size ? "default" : "outline"}
                         onClick={() => setSelectedSize(size)}
-                        className="w-full"
+                        className="w-full text-xs"
+                      >
+                        {size}×{size}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {[7, 8, 9, 10].map(size => (
+                      <Button
+                        key={size}
+                        variant={selectedSize === size ? "default" : "outline"}
+                        onClick={() => setSelectedSize(size)}
+                        className="w-full text-xs"
+                      >
+                        {size}×{size}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[12, 13, 15].map(size => (
+                      <Button
+                        key={size}
+                        variant={selectedSize === size ? "default" : "outline"}
+                        onClick={() => setSelectedSize(size)}
+                        className="w-full text-xs"
                       >
                         {size}×{size}
                       </Button>
