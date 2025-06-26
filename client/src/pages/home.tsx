@@ -377,7 +377,13 @@ export default function Home() {
             {GAMES.map((game) => (
               <GameCard
                 key={game.title}
-                {...game}
+                title={game.title}
+                description={game.description}
+                playerInfo={game.playerInfo}
+                icon={game.icon}
+                color={game.color}
+                route={game.route}
+                backgroundGraphic={game.backgroundGraphic}
               />
             ))}
           </div>

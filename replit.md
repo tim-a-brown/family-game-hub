@@ -120,6 +120,9 @@ PUT /api/game-states/:id - Update existing game state
 - June 26, 2025. Initial setup
 - June 26, 2025. Enhanced visual elements for game tiles with improved graphics, animations, and interactive effects
 - June 26, 2025. Added PostgreSQL database integration with Drizzle ORM, replaced in-memory storage with persistent database storage
+- June 26, 2025. Removed list view option and "All games" header from home page for cleaner interface
+- June 26, 2025. Added unique faint background graphics to each game tile with variety of colors and 45-degree fade effect
+- June 26, 2025. Enhanced Dots and Boxes to support up to 3 players with grid sizes up to 15x15
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

@@ -347,10 +347,19 @@ export default function DotsAndBoxes() {
                 )}
               </div>
               <div className="flex items-center space-x-4">
-                <div className="text-sm">
-                  <span className="text-blue-600 font-semibold">Player 1: {gameState.scores[0]}</span>
-                  <span className="mx-2">|</span>
-                  <span className="text-red-600 font-semibold">Player 2: {gameState.scores[1]}</span>
+                <div className="text-sm flex items-center space-x-2">
+                  {gameState.scores.map((score, index) => (
+                    <div key={index} className="flex items-center">
+                      {index > 0 && <span className="mx-2 text-gray-400">|</span>}
+                      <span className={`font-semibold ${
+                        index === 0 ? 'text-blue-600' : 
+                        index === 1 ? 'text-red-600' : 
+                        'text-green-600'
+                      }`}>
+                        Player {index + 1}: {score}
+                      </span>
+                    </div>
+                  ))}
                 </div>
                 <Button variant="outline" size="sm" onClick={resetGame}>
                   New Game
