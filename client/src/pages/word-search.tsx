@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GameStorage } from "@/lib/game-storage";
-import { WORD_LISTS, GAME_CATEGORIES, type GameCategory } from "@/lib/game-data";
+import { WORD_LISTS, BONUS_WORDS, WORD_SEARCH_CATEGORIES, type GameCategory, type WordSearchCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
 
 interface Position {
