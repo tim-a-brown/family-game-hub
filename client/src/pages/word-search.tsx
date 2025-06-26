@@ -449,24 +449,7 @@ export default function WordSearch() {
           <div className="lg:col-span-3">
             <Card className="shadow-lg">
               <CardContent className="p-4">
-                {/* Reset Button - appears during selection */}
-                {gameState.selectedCells.length > 0 && (
-                  <div className="flex justify-center mb-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setGameState(prev => ({
-                        ...prev,
-                        selectedCells: [],
-                        isSelecting: false,
-                        startPos: null
-                      }))}
-                      className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                    >
-                      Reset Selection
-                    </Button>
-                  </div>
-                )}
+
 
                 <div 
                   className="grid grid-cols-16 max-w-2xl mx-auto select-none"
@@ -488,19 +471,17 @@ export default function WordSearch() {
                           key={`${rowIndex}-${colIndex}`}
                           className={`
                             w-6 h-6 flex items-center justify-center text-xs font-bold cursor-pointer
-                            relative transition-all duration-150 ease-in-out
-                            ${isFoundWord ? 'bg-green-200 text-green-800' : 'hover:bg-gray-100'}
-                            ${isSelected && !isFoundWord ? 'text-blue-800 font-extrabold' : ''}
+                            relative transition-all duration-200 ease-in-out
+                            ${!isSelected && !isFoundWord ? 'hover:bg-gray-100' : ''}
                           `}
                           style={{
-                            backgroundColor: isSelected && !isFoundWord ? 
-                              `rgba(59, 130, 246, ${0.3 + (selectionIndex * 0.1)})` : 
-                              isFoundWord ? 'rgb(187, 247, 208)' : 'transparent',
-                            borderRadius: isSelected && !isFoundWord ? 
-                              `${Math.min(50, 20 + (selectionIndex * 5))}%` : '0%',
-                            transform: isSelected && !isFoundWord ? 
-                              `scale(${1 + (selectionIndex * 0.05)})` : 'scale(1)',
-                            zIndex: isSelected ? selectionIndex + 10 : 1
+                            backgroundColor: isFoundWord ? 'rgb(34, 197, 94)' : 'transparent',
+                            color: isFoundWord ? 'white' : isSelected ? '#1e40af' : '#374151',
+                            border: isSelected && !isFoundWord ? '2px solid #3b82f6' : isFoundWord ? '2px solid #22c55e' : '1px solid transparent',
+                            borderRadius: isSelected || isFoundWord ? '50%' : '0%',
+                            transform: isSelected || isFoundWord ? 'scale(1.1)' : 'scale(1)',
+                            zIndex: isSelected || isFoundWord ? 10 : 1,
+                            fontWeight: isSelected || isFoundWord ? 'bold' : 'normal'
                           }}
                           onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                           onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
@@ -521,6 +502,25 @@ export default function WordSearch() {
                     })
                   )}
                 </div>
+
+                {/* Reset Button - appears at bottom during selection */}
+                {gameState.selectedCells.length > 0 && (
+                  <div className="flex justify-center mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setGameState(prev => ({
+                        ...prev,
+                        selectedCells: [],
+                        isSelecting: false,
+                        startPos: null
+                      }))}
+                      className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                    >
+                      Reset Selection
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
