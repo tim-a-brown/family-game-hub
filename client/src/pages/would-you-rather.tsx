@@ -401,20 +401,14 @@ export default function WouldYouRather() {
               </Card>
             </div>
 
-            {/* Previous Choices */}
+            {/* Progress Indicator */}
             {gameState.playerChoices.length > 0 && (
               <div className="mt-8 pt-6 border-t">
-                <h3 className="font-semibold mb-4 text-center">Choices Made:</h3>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {gameState.playerChoices.map((choice, index) => (
-                    <Badge 
-                      key={index}
-                      variant="outline"
-                      className={choice.choice === 'A' ? 'border-blue-400' : 'border-pink-400'}
-                    >
-                      {choice.playerName}: Option {choice.choice}
-                    </Badge>
-                  ))}
+                <h3 className="font-semibold mb-4 text-center">Progress:</h3>
+                <div className="text-center">
+                  <Badge variant="outline">
+                    {gameState.playerChoices.length} of {numPlayers} players have answered
+                  </Badge>
                 </div>
               </div>
             )}
