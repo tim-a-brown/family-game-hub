@@ -19,20 +19,61 @@ interface GameState {
   customPuzzle?: string;
 }
 
-// Dynamic hangman drawings based on max wrong guesses
+// Dynamic hangman drawings based on max wrong guesses - always ends with legs
 const generateHangmanDrawings = (maxWrong: number): string[] => {
   const drawings: string[] = [''];
   
-  if (maxWrong >= 1) drawings.push('  +---+\n      |\n      |\n      |\n      |\n=========');
-  if (maxWrong >= 2) drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n=========');
-  if (maxWrong >= 3) drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n=========');
-  if (maxWrong >= 4) drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n=========');
-  if (maxWrong >= 5) drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n=========');
-  if (maxWrong >= 6) drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n=========');
-  if (maxWrong >= 7) drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n=========');
-  if (maxWrong >= 8) drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n=========');
-  if (maxWrong >= 9) drawings.push('  +---+\n  |   |\n  X   |\n /|\\  |\n / \\  |\n=========');
-  if (maxWrong >= 10) drawings.push('  +---+\n  |   |\n  X   |\n /|\\  |\n / \\  |\n====RIP====');
+  if (maxWrong === 6) {
+    // 6 wrong answers: gallows, head, body, left arm, right arm, legs
+    drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n========='); // 1: gallows
+    drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n========='); // 2: head
+    drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n========='); // 3: body
+    drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n========='); // 4: left arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n========='); // 5: right arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n========='); // 6: legs (final)
+  } else if (maxWrong === 7) {
+    // 7 wrong answers: gallows, noose, head, body, left arm, right arm, legs
+    drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n========='); // 1: gallows
+    drawings.push('  +---+\n  |   |\n  |   |\n      |\n      |\n========='); // 2: noose
+    drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n========='); // 3: head
+    drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n========='); // 4: body
+    drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n========='); // 5: left arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n========='); // 6: right arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n========='); // 7: legs (final)
+  } else if (maxWrong === 8) {
+    // 8 wrong answers: gallows, noose, head, body, left arm, right arm, left leg, right leg
+    drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n========='); // 1: gallows
+    drawings.push('  +---+\n  |   |\n  |   |\n      |\n      |\n========='); // 2: noose
+    drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n========='); // 3: head
+    drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n========='); // 4: body
+    drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n========='); // 5: left arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n========='); // 6: right arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n========='); // 7: left leg
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n========='); // 8: right leg (final)
+  } else if (maxWrong === 9) {
+    // 9 wrong answers: base, gallows, noose, head, body, left arm, right arm, left leg, right leg
+    drawings.push('========='); // 1: base
+    drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n========='); // 2: gallows
+    drawings.push('  +---+\n  |   |\n  |   |\n      |\n      |\n========='); // 3: noose
+    drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n========='); // 4: head
+    drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n========='); // 5: body
+    drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n========='); // 6: left arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n========='); // 7: right arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n========='); // 8: left leg
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n========='); // 9: right leg (final)
+  } else if (maxWrong === 10) {
+    // 10 wrong answers: base, gallows, noose, head, body, left arm, right arm, left leg, right leg, face X
+    drawings.push('========='); // 1: base
+    drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n========='); // 2: gallows
+    drawings.push('  +---+\n  |   |\n  |   |\n      |\n      |\n========='); // 3: noose
+    drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n========='); // 4: head
+    drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n========='); // 5: body
+    drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n========='); // 6: left arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n========='); // 7: right arm
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n========='); // 8: left leg
+    drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n========='); // 9: right leg
+    drawings.push('  +---+\n  |   |\n  X   |\n /|\\  |\n / \\  |\n========='); // 10: face X (final)
+  }
   
   return drawings;
 };
@@ -70,7 +111,7 @@ export default function Hangman() {
       .toUpperCase()
       .split('')
       .map(char => {
-        if (char === ' ') return ' ';
+        if (char === ' ') return '   /   ';
         if (gameState.guessedLetters.includes(char)) return char;
         return '_';
       })
