@@ -28,6 +28,7 @@ interface GameState {
   foundWords: string[];
   foundBonusWords: string[];
   category: WordSearchCategory;
+  actualCategory: GameCategory; // The actual category chosen when random is selected
   selectedCells: Position[];
   isSelecting: boolean;
   startPos: Position | null;
@@ -55,6 +56,7 @@ export default function WordSearch() {
     foundWords: [],
     foundBonusWords: [],
     category: 'random',
+    actualCategory: 'animals',
     selectedCells: [],
     isSelecting: false,
     startPos: null,
@@ -171,7 +173,8 @@ export default function WordSearch() {
       grid,
       wordList: mainWords,
       bonusWords: selectedBonusWords,
-      placedWords
+      placedWords,
+      actualCategory
     };
   };
 
@@ -297,6 +300,19 @@ export default function WordSearch() {
   };
 
   const handleCellClick = (row: number, col: number) => {
+    // If clicking the first selected cell, deselect everything
+    if (gameState.isSelecting && gameState.startPos && 
+        gameState.startPos.row === row && gameState.startPos.col === col &&
+        gameState.selectedCells.length === 1) {
+      setGameState(prev => ({
+        ...prev,
+        selectedCells: [],
+        startPos: null,
+        isSelecting: false
+      }));
+      return;
+    }
+
     // Handle letter-by-letter clicking
     if (!gameState.isSelecting) {
       // Start new selection
@@ -341,7 +357,7 @@ export default function WordSearch() {
   };
 
   const startNewGame = () => {
-    const { grid, wordList, bonusWords, placedWords } = generateWordSearch(selectedCategory);
+    const { grid, wordList, bonusWords, placedWords, actualCategory } = generateWordSearch(selectedCategory);
     
     const newGameState: GameState = {
       grid,
@@ -351,6 +367,7 @@ export default function WordSearch() {
       foundWords: [],
       foundBonusWords: [],
       category: selectedCategory,
+      actualCategory,
       selectedCells: [],
       isSelecting: false,
       startPos: null,
@@ -423,7 +440,9 @@ export default function WordSearch() {
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-4">
                 <Badge variant="secondary">
-                  {gameState.category === 'random' ? '🎲 Random' : gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
+                  {gameState.category === 'random' 
+                    ? `🎲 Random (${gameState.actualCategory.charAt(0).toUpperCase() + gameState.actualCategory.slice(1)})` 
+                    : gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
                 </Badge>
                 <span className="text-lg font-semibold">
                   Found: {gameState.foundWords.length} / {gameState.wordList.length}
@@ -444,9 +463,9 @@ export default function WordSearch() {
           </CardContent>
         </Card>
 
-        <div className="grid lg:grid-cols-4 gap-6">
+        <div className="flex gap-6">
           {/* Word Search Grid */}
-          <div className="lg:col-span-3">
+          <div className="flex-1">
             <Card className="shadow-lg">
               <CardContent className="p-4">
 
