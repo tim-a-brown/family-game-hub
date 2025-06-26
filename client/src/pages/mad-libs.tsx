@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GameStorage } from "@/lib/game-storage";
-import { MAD_LIBS_TEMPLATES } from "@/lib/game-data";
+import { MAD_LIBS_TEMPLATES, GAME_CATEGORIES, type GameCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
 
 interface GameState {
+  category: GameCategory;
   templateIndex: number;
   currentPromptIndex: number;
   answers: Record<string, string>;
@@ -17,6 +19,7 @@ interface GameState {
 
 export default function MadLibs() {
   const [gameState, setGameState] = useState<GameState>({
+    category: 'animals',
     templateIndex: 0,
     currentPromptIndex: 0,
     answers: {},
@@ -24,22 +27,41 @@ export default function MadLibs() {
   });
 
   const [setupMode, setSetupMode] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<GameCategory>('animals');
   const [currentAnswer, setCurrentAnswer] = useState('');
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
 
   useEffect(() => {
     const saved = gameStorage.loadGameState('mad-libs');
-    if (saved) {
+    if (saved && saved.category) {
       setGameState(saved);
       setSetupMode(false);
     }
   }, []);
 
-  const currentTemplate = MAD_LIBS_TEMPLATES[gameState.templateIndex];
-  const currentPrompt = currentTemplate.prompts[gameState.currentPromptIndex];
-  const progress = (Object.keys(gameState.answers).length / currentTemplate.prompts.length) * 100;
+  // Get available stories for the current category
+  const getAvailableStories = (category: GameCategory) => {
+    return MAD_LIBS_TEMPLATES[category] || [];
+  };
+
+  // Get random category for random selection
+  const getRandomCategory = (): GameCategory => {
+    return GAME_CATEGORIES[Math.floor(Math.random() * GAME_CATEGORIES.length)];
+  };
+
+  // Get 3 random stories from a category
+  const getRandomStories = (category: GameCategory) => {
+    const stories = getAvailableStories(category);
+    const shuffled = [...stories].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
+  };
+
+  const currentTemplate = gameState.category && MAD_LIBS_TEMPLATES[gameState.category] 
+    ? MAD_LIBS_TEMPLATES[gameState.category][gameState.templateIndex]
+    : null;
+  const currentPrompt = currentTemplate?.prompts[gameState.currentPromptIndex];
+  const progress = currentTemplate ? (Object.keys(gameState.answers).length / currentTemplate.prompts.length) * 100 : 0;
 
   const formatPrompt = (prompt: string) => {
     // Convert camelCase to readable format
@@ -49,58 +71,76 @@ export default function MadLibs() {
       .replace(/\d+$/, match => ` ${match}`);
   };
 
-  const handleAnswerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentAnswer.trim()) return;
-
-    const newAnswers = {
-      ...gameState.answers,
-      [currentPrompt]: currentAnswer.trim()
-    };
-
-    const nextPromptIndex = gameState.currentPromptIndex + 1;
-    const completed = nextPromptIndex >= currentTemplate.prompts.length;
-
-    const newGameState = {
-      ...gameState,
-      answers: newAnswers,
-      currentPromptIndex: completed ? gameState.currentPromptIndex : nextPromptIndex,
-      completed
-    };
-
-    setGameState(newGameState);
-    setCurrentAnswer('');
-
-    if (completed) {
-      toast({
-        title: "Story Complete!",
-        description: "Your Mad Lib is ready to read!",
-      });
-    }
-  };
-
-  const generateStory = () => {
-    let story = currentTemplate.template;
-    
-    // Replace placeholders with answers
-    currentTemplate.prompts.forEach(prompt => {
-      const answer = gameState.answers[prompt] || '[MISSING]';
-      story = story.replace(`{${prompt}}`, answer);
-    });
-
-    return story;
-  };
-
-  const startNewGame = () => {
+  const startNewGame = (category: GameCategory, templateIndex: number) => {
     const newGameState: GameState = {
-      templateIndex: selectedTemplate,
+      category,
+      templateIndex,
       currentPromptIndex: 0,
       answers: {},
       completed: false
     };
-
+    
     setGameState(newGameState);
     setSetupMode(false);
+    setCurrentAnswer('');
+    
+    const template = MAD_LIBS_TEMPLATES[category][templateIndex];
+    toast({
+      title: "Game Started!",
+      description: `Let's create "${template.title}"!`,
+    });
+  };
+
+  const startRandomGame = () => {
+    const randomCategory = getRandomCategory();
+    const stories = getAvailableStories(randomCategory);
+    const randomIndex = Math.floor(Math.random() * stories.length);
+    startNewGame(randomCategory, randomIndex);
+  };
+
+  const handleAnswerSubmit = () => {
+    if (currentAnswer.trim() && currentPrompt) {
+      const newAnswers = {
+        ...gameState.answers,
+        [currentPrompt]: currentAnswer.trim()
+      };
+      
+      const isLastPrompt = gameState.currentPromptIndex === (currentTemplate?.prompts.length || 0) - 1;
+      
+      setGameState(prev => ({
+        ...prev,
+        answers: newAnswers,
+        currentPromptIndex: isLastPrompt ? prev.currentPromptIndex : prev.currentPromptIndex + 1,
+        completed: isLastPrompt
+      }));
+      
+      setCurrentAnswer('');
+      
+      if (isLastPrompt) {
+        toast({
+          title: "Story Complete!",
+          description: "Your Mad Libs story is ready!",
+        });
+      }
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAnswerSubmit();
+    }
+  };
+
+  const resetGame = () => {
+    setSetupMode(true);
+    setGameState({
+      category: 'animals',
+      templateIndex: 0,
+      currentPromptIndex: 0,
+      answers: {},
+      completed: false
+    });
+    setCurrentAnswer('');
   };
 
   const saveGame = () => {
@@ -111,101 +151,113 @@ export default function MadLibs() {
     });
   };
 
-  const resetGame = () => {
-    setSetupMode(true);
-    gameStorage.deleteGameState('mad-libs');
-  };
-
-  const previousPrompt = () => {
-    if (gameState.currentPromptIndex > 0) {
-      setGameState({
-        ...gameState,
-        currentPromptIndex: gameState.currentPromptIndex - 1,
-        completed: false
-      });
-      setCurrentAnswer(gameState.answers[currentTemplate.prompts[gameState.currentPromptIndex - 1]] || '');
+  const renderStory = () => {
+    if (!currentTemplate) return null;
+    
+    let story = currentTemplate.template;
+    
+    // Replace all prompts with answers
+    currentTemplate.prompts.forEach(prompt => {
+      const answer = gameState.answers[prompt];
+      if (answer) {
+        story = story.replace(`{${prompt}}`, `<span class="font-bold text-blue-600">${answer}</span>`);
+      }
+    });
+    
+    // Split by periods and exclamation marks for paragraphs
+    const sentences = story.split(/([.!])/);
+    const paragraphs: string[] = [];
+    let currentParagraph = '';
+    
+    sentences.forEach((sentence, index) => {
+      currentParagraph += sentence;
+      if (sentence === '.' || sentence === '!') {
+        if (index % 6 === 5) { // New paragraph every 3 sentences
+          paragraphs.push(currentParagraph.trim());
+          currentParagraph = '';
+        }
+      }
+    });
+    
+    if (currentParagraph.trim()) {
+      paragraphs.push(currentParagraph.trim());
     }
+    
+    return (
+      <div className="space-y-4">
+        {paragraphs.map((paragraph, index) => (
+          <p 
+            key={index} 
+            className="text-lg leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: paragraph }}
+          />
+        ))}
+      </div>
+    );
   };
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Mad Libs" showSave={false} />
-        
-        <div className="max-w-2xl mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Choose a Story Template</h2>
-              
-              <div className="space-y-4">
-                {MAD_LIBS_TEMPLATES.map((template, index) => (
-                  <Card 
-                    key={index} 
-                    className={`cursor-pointer transition-all ${
-                      selectedTemplate === index ? 'ring-2 ring-primary' : 'hover:shadow-md'
-                    }`}
-                    onClick={() => setSelectedTemplate(index)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-semibold text-lg">{template.title}</h3>
-                          <p className="text-sm text-gray-600">
-                            {template.prompts.length} words needed
-                          </p>
-                        </div>
-                        {selectedTemplate === index && (
-                          <Badge className="bg-primary">Selected</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-6" size="lg">
-                Start Mad Lib
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (gameState.completed) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Mad Libs" onSave={saveGame} />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+        <GameHeader title="Mad Libs" />
         
         <div className="max-w-4xl mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-8">
-              <h2 className="text-3xl font-bold text-center mb-8">{currentTemplate.title}</h2>
-              
-              <div className="bg-yellow-50 p-6 rounded-lg text-lg leading-relaxed">
-                {generateStory().split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4 last:mb-0">
-                    {paragraph}
-                  </p>
-                ))}
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold mb-2">Choose Your Mad Libs Adventure!</h2>
+                <p className="text-gray-600">Pick a category and select from 3 stories, or try a random surprise!</p>
               </div>
 
-              <div className="flex justify-center space-x-4 mt-8">
-                <Button onClick={resetGame} variant="outline">
-                  Create Another Story
-                </Button>
-                <Button 
-                  onClick={() => {
-                    const story = generateStory();
-                    navigator.clipboard.writeText(story);
-                    toast({
-                      title: "Copied!",
-                      description: "Story copied to clipboard",
-                    });
-                  }}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2">Select Category:</label>
+                <Select value={selectedCategory} onValueChange={(value: GameCategory) => setSelectedCategory(value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GAME_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-4 mb-6">
+                <h3 className="font-semibold text-lg">Choose Your Story:</h3>
+                {getRandomStories(selectedCategory).map((template, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="p-4 h-auto text-left justify-start"
+                    onClick={() => {
+                      const allStories = getAvailableStories(selectedCategory);
+                      const actualIndex = allStories.findIndex(t => t.title === template.title);
+                      startNewGame(selectedCategory, actualIndex);
+                    }}
+                  >
+                    <div>
+                      <div className="font-semibold">{template.title}</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {template.prompts.length} words needed
+                      </div>
+                    </div>
+                  </Button>
+                ))}
+                
+                <Button
+                  variant="secondary"
+                  className="p-4 h-auto bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200"
+                  onClick={startRandomGame}
                 >
-                  Copy Story
+                  <div className="text-center w-full">
+                    <div className="font-semibold">🎲 Random Surprise Story!</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Let us pick a story from any category
+                    </div>
+                  </div>
                 </Button>
               </div>
             </CardContent>
@@ -216,85 +268,100 @@ export default function MadLibs() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
       <GameHeader title="Mad Libs" onSave={saveGame} />
       
-      <div className="max-w-2xl mx-auto pt-8 px-4">
-        {/* Progress */}
+      <div className="max-w-4xl mx-auto pt-8 px-4">
+        {/* Game Status */}
         <Card className="mb-6">
           <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">{currentTemplate.title}</span>
-              <span className="text-sm text-gray-600">
-                {Object.keys(gameState.answers).length} / {currentTemplate.prompts.length}
-              </span>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-4">
+                <Badge variant="secondary">
+                  {gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
+                </Badge>
+                <span className="text-lg font-semibold">{currentTemplate?.title}</span>
+                {gameState.completed && (
+                  <Badge className="bg-green-100 text-green-800">Story Complete! 🎉</Badge>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">
+                  Progress: {Math.round(progress)}%
+                </span>
+                <Button variant="outline" size="sm" onClick={resetGame}>
+                  New Story
+                </Button>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            
+            <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-primary h-2 rounded-full transition-all duration-300" 
+                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Current Prompt */}
-        <Card className="shadow-xl">
-          <CardContent className="p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">
-                I need a {formatPrompt(currentPrompt)}
-              </h2>
-              <Badge variant="secondary">
-                Word {gameState.currentPromptIndex + 1} of {currentTemplate.prompts.length}
-              </Badge>
-            </div>
-
-            <form onSubmit={handleAnswerSubmit} className="space-y-6">
-              <Input
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                placeholder={`Enter a ${formatPrompt(currentPrompt).toLowerCase()}...`}
-                className="text-center text-lg p-4 h-14"
-                autoFocus
-              />
-              
-              <div className="flex space-x-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={previousPrompt}
-                  disabled={gameState.currentPromptIndex === 0}
-                  className="flex-1"
-                >
-                  Previous
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={!currentAnswer.trim()}
-                  className="flex-1"
-                >
-                  {gameState.currentPromptIndex === currentTemplate.prompts.length - 1 ? 'Finish Story' : 'Next Word'}
-                </Button>
-              </div>
-            </form>
-
-            {/* Previous Answers */}
-            {Object.keys(gameState.answers).length > 0 && (
-              <div className="mt-8 pt-6 border-t">
-                <h3 className="font-semibold mb-4 text-center">Your Words So Far:</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(gameState.answers).map(([prompt, answer]) => (
-                    <div key={prompt} className="flex justify-between">
-                      <span className="text-gray-600">{formatPrompt(prompt)}:</span>
-                      <span className="font-medium">{answer}</span>
-                    </div>
-                  ))}
+        {!gameState.completed ? (
+          /* Input Section */
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-4">
+                  Enter a {currentPrompt ? formatPrompt(currentPrompt) : 'word'}:
+                </h3>
+                
+                <div className="max-w-md mx-auto mb-4">
+                  <Input
+                    type="text"
+                    value={currentAnswer}
+                    onChange={(e) => setCurrentAnswer(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={`Type your ${currentPrompt ? formatPrompt(currentPrompt).toLowerCase() : 'word'} here...`}
+                    className="text-center text-lg"
+                    autoFocus
+                  />
                 </div>
+                
+                <Button 
+                  onClick={handleAnswerSubmit}
+                  disabled={!currentAnswer.trim()}
+                  className="px-8"
+                >
+                  {gameState.currentPromptIndex === (currentTemplate?.prompts.length || 0) - 1 ? 'Finish Story!' : 'Next Word'}
+                </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Word {gameState.currentPromptIndex + 1} of {currentTemplate?.prompts.length}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Story Display */
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold mb-2">{currentTemplate?.title}</h3>
+                <p className="text-gray-600">Your completed Mad Libs story!</p>
+              </div>
+              
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-lg">
+                {renderStory()}
+              </div>
+              
+              <div className="text-center mt-6">
+                <Button onClick={resetGame} className="px-8">
+                  Create Another Story
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

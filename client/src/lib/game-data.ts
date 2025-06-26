@@ -452,23 +452,332 @@ export const WOULD_YOU_RATHER_SCENARIOS: Record<GameCategory, string[]> = {
   ]
 };
 
-export const MAD_LIBS_TEMPLATES = [
-  {
-    title: "The Amazing Adventure",
-    template: "Once upon a time, there was a {adjective1} {noun1} who lived in a {adjective2} {place}. Every morning, the {noun1} would {verb1} to the {place2} and {verb2} with the {adjective3} {noun2}. One day, something {adjective4} happened! A {noun3} appeared and said '{exclamation}! I need your help to {verb3} the {adjective5} {noun4}!' So they {verb4} together and saved the day!",
-    prompts: ["adjective1", "noun1", "adjective2", "place", "place2", "verb1", "verb2", "adjective3", "noun2", "adjective4", "noun3", "exclamation", "verb3", "adjective5", "noun4", "verb4"]
-  },
-  {
-    title: "The Silly School Day",
-    template: "Today at school was absolutely {adjective1}! In math class, our teacher Mr./Mrs. {name} asked us to {verb1} all the {noun1}. Then in science, we learned about {adjective2} {noun2} and how they {verb2}. At lunch, I ate a {adjective3} {food} sandwich and {number} {noun3}. During recess, we played {game} and I {verb3} so {adverb} that everyone said '{exclamation}!'",
-    prompts: ["adjective1", "name", "verb1", "noun1", "adjective2", "noun2", "verb2", "adjective3", "food", "number", "noun3", "game", "verb3", "adverb", "exclamation"]
-  },
-  {
-    title: "The Magic Pet",
-    template: "I have the most {adjective1} pet in the whole {place}! My pet {animal} can {verb1} and {verb2} better than any other {animal} I know. Every day, we {verb3} to the {place2} and {verb4} for {number} hours. My pet's favorite food is {adjective2} {food} and its favorite toy is a {adjective3} {noun}. The most amazing thing is that my pet can {verb5} and even {verb6}! Everyone who meets my pet says '{exclamation}!'",
-    prompts: ["adjective1", "place", "animal", "verb1", "verb2", "verb3", "place2", "verb4", "number", "adjective2", "food", "adjective3", "noun", "verb5", "verb6", "exclamation"]
-  }
-];
+export const MAD_LIBS_TEMPLATES = {
+  animals: [
+    {
+      title: "The Amazing Zoo Adventure",
+      template: "At the zoo, I saw a {adjective1} {animal1} that could {verb1} with its {body_part}! The zookeeper told us that this {animal1} loves to eat {adjective2} {food} and can {verb2} up to {number} feet high. Suddenly, a {adjective3} {animal2} started to {verb3} loudly, which made all the other animals {verb4}. The funniest part was when a tiny {animal3} {verb5} right onto my {noun}!",
+      prompts: ["adjective1", "animal1", "verb1", "body_part", "adjective2", "food", "verb2", "number", "adjective3", "animal2", "verb3", "verb4", "animal3", "verb5", "noun"]
+    },
+    {
+      title: "My Pet's Crazy Day",
+      template: "My pet {animal} had the most {adjective1} day ever! First, it {verb1} all over the {noun1}, then it {verb2} the {adjective2} {noun2}. When I tried to {verb3} it, my {animal} just {verb4} and made a {adjective3} sound. By the end of the day, there were {number} {noun3} scattered everywhere and my {animal} was sleeping {adverb} in its {noun4}.",
+      prompts: ["animal", "adjective1", "verb1", "noun1", "verb2", "adjective2", "noun2", "verb3", "verb4", "adjective3", "number", "noun3", "adverb", "noun4"]
+    },
+    {
+      title: "Safari Expedition",
+      template: "On our {adjective1} safari, we spotted a {adjective2} elephant {verb1} near the watering hole. Our guide whispered, 'Look! That {animal1} can {verb2} faster than a {vehicle}!' Suddenly, a pack of {adjective3} {animal2} appeared and started {verb3}. We {verb4} quickly back to our {noun} and watched as the {animal1} {verb5} away into the {adjective4} sunset.",
+      prompts: ["adjective1", "adjective2", "verb1", "animal1", "verb2", "vehicle", "adjective3", "animal2", "verb3", "verb4", "noun", "verb5", "adjective4"]
+    },
+    {
+      title: "The Animal Talent Show",
+      template: "Welcome to the most {adjective1} animal talent show! First up, we have a {animal1} that can {verb1} while {verb2}. Next, a {adjective2} {animal2} will {verb3} on one {body_part}. But wait! Here comes a {animal3} riding a {noun1} and {verb4} a {adjective3} {noun2}. The crowd went {adjective4} when all the animals {verb5} together for the grand finale!",
+      prompts: ["adjective1", "animal1", "verb1", "verb2", "adjective2", "animal2", "verb3", "body_part", "animal3", "noun1", "verb4", "adjective3", "noun2", "adjective4", "verb5"]
+    },
+    {
+      title: "Jungle Adventure",
+      template: "Deep in the {adjective1} jungle, I heard a {adjective2} roar. It was a {animal1} {verb1} through the trees! I {verb2} behind a {adjective3} {noun1} and watched as the {animal1} {verb3} down to drink from the {adjective4} river. Suddenly, a {animal2} {verb4} out of nowhere and both animals started {verb5}. It was the most {adjective5} thing I've ever seen!",
+      prompts: ["adjective1", "adjective2", "animal1", "verb1", "verb2", "adjective3", "noun1", "verb3", "adjective4", "animal2", "verb4", "verb5", "adjective5"]
+    }
+  ],
+  sports: [
+    {
+      title: "The Championship Game",
+      template: "It was the most {adjective1} game of the season! Our team was {verb1} against the {adjective2} {team_name}. In the first quarter, our star player {verb2} the {sports_equipment} {number} yards for a touchdown. The crowd was {verb3} so {adverb} that the whole stadium {verb4}. With only {number2} seconds left, we managed to {verb5} and win the {adjective3} championship!",
+      prompts: ["adjective1", "verb1", "adjective2", "team_name", "verb2", "sports_equipment", "number", "verb3", "adverb", "verb4", "number2", "verb5", "adjective3"]
+    },
+    {
+      title: "My First Soccer Practice",
+      template: "Today was my first day playing {sport}! The coach told us to {verb1} around the field {number} times. Then we practiced {verb2} the ball with our {body_part}. I was so {adjective1} that I accidentally {verb3} the ball into the {noun}! Everyone {verb4} and the coach said I was a {adjective2} player. Next week we play against the {adjective3} {team_name}!",
+      prompts: ["sport", "verb1", "number", "verb2", "body_part", "adjective1", "verb3", "noun", "verb4", "adjective2", "adjective3", "team_name"]
+    },
+    {
+      title: "Olympic Dreams",
+      template: "I dream of competing in the {adjective1} Olympics! I would {verb1} in the {sport} competition and {verb2} faster than any {animal}. My secret training involves {verb3} for {number} hours every day and eating {adjective2} {food}. When I win the gold medal, I'll {verb4} on the podium and {verb5} to all my {adjective3} fans!",
+      prompts: ["adjective1", "verb1", "sport", "verb2", "animal", "verb3", "number", "adjective2", "food", "verb4", "verb5", "adjective3"]
+    },
+    {
+      title: "The Baseball Game",
+      template: "Bottom of the ninth inning, bases loaded! The {adjective1} pitcher {verb1} the ball at {number} miles per hour. Our batter {verb2} it high into the {adjective2} sky. The ball {verb3} over the {noun1} and landed in the {noun2}. The crowd {verb4} so loudly that even the {animal} in the parking lot started {verb5}. What a {adjective3} home run!",
+      prompts: ["adjective1", "verb1", "number", "verb2", "adjective2", "verb3", "noun1", "noun2", "verb4", "animal", "verb5", "adjective3"]
+    },
+    {
+      title: "Swimming Championship",
+      template: "At the {adjective1} swimming meet, I was {adjective2} but ready to {verb1}. The pool was {number} feet long and filled with {adjective3} water. When the whistle {verb2}, I {verb3} into the pool and started {verb4} as fast as a {animal}. I could hear my family {verb5} from the {noun} as I touched the wall and won first place!",
+      prompts: ["adjective1", "adjective2", "verb1", "number", "adjective3", "verb2", "verb3", "verb4", "animal", "verb5", "noun"]
+    }
+  ],
+  food: [
+    {
+      title: "The Cooking Disaster",
+      template: "Today I decided to cook a {adjective1} meal for my family. I started by {verb1} {number} {food1} in a {adjective2} pot. Then I added some {adjective3} {food2} and {verb2} it for {number2} minutes. Suddenly, the mixture started to {verb3} and turned {color}! The kitchen filled with {adjective4} smoke, and my {family_member} came running and {verb4}. We ended up ordering {food3} for dinner instead!",
+      prompts: ["adjective1", "verb1", "number", "food1", "adjective2", "adjective3", "food2", "verb2", "number2", "verb3", "color", "adjective4", "family_member", "verb4", "food3"]
+    },
+    {
+      title: "The Great Bake-Off",
+      template: "Welcome to the {adjective1} baking competition! Today's challenge is to make a {adjective2} cake using only {food1}, {food2}, and {adjective3} {food3}. The contestants must {verb1} their ingredients and {verb2} them in a {adjective4} oven for {number} minutes. The winner will receive a {adjective5} {noun} and the title of {adjective6} baker!",
+      prompts: ["adjective1", "adjective2", "food1", "food2", "adjective3", "food3", "verb1", "verb2", "adjective4", "number", "adjective5", "noun", "adjective6"]
+    },
+    {
+      title: "My Favorite Restaurant",
+      template: "My favorite restaurant serves the most {adjective1} {food1} in town! The chef can {verb1} it in {number} different ways. My usual order is {adjective2} {food2} with a side of {food3}. The waiter always {verb2} to our table and says '{exclamation}!' in a {adjective3} voice. The best part is the {adjective4} dessert that makes everyone {verb3} with joy!",
+      prompts: ["adjective1", "food1", "verb1", "number", "adjective2", "food2", "food3", "verb2", "exclamation", "adjective3", "adjective4", "verb3"]
+    },
+    {
+      title: "Grocery Store Adventure",
+      template: "At the {adjective1} grocery store, I needed to buy {number} {food1} for dinner. I {verb1} down the {adjective2} aisle and found some {adjective3} {food2}. Suddenly, I {verb2} and accidentally {verb3} into a display of {food3}. They went {verb4} everywhere! The store manager came over and {verb5} while I {adverb} cleaned up the {adjective4} mess.",
+      prompts: ["adjective1", "number", "food1", "verb1", "adjective2", "adjective3", "food2", "verb2", "verb3", "food3", "verb4", "verb5", "adverb", "adjective4"]
+    },
+    {
+      title: "The Food Truck Festival",
+      template: "The {adjective1} food truck festival was amazing! I tried {adjective2} {food1} from the {color} truck, then {verb1} over to get some {food2} that was {adjective3}. The best vendor was {verb2} {adjective4} {food3} that tasted like {adjective5} {noun}. By the end of the day, I was so {adjective6} that I could barely {verb3} home!",
+      prompts: ["adjective1", "adjective2", "food1", "color", "verb1", "food2", "adjective3", "verb2", "adjective4", "food3", "adjective5", "noun", "adjective6", "verb3"]
+    }
+  ],
+  school: [
+    {
+      title: "The Test Day Surprise",
+      template: "Today we had a {adjective1} test in {subject} class. I studied for {number} hours, but I forgot my {school_supply}! My teacher, {teacher_name}, told us to {verb1} quietly while she {verb2} the test papers. Question number {number2} was about {adjective2} {noun1}, which made me {verb3}. When I finished, I felt so {adjective3} that I {verb4} all the way to {place}!",
+      prompts: ["adjective1", "subject", "number", "school_supply", "teacher_name", "verb1", "verb2", "number2", "adjective2", "noun1", "verb3", "adjective3", "verb4", "place"]
+    },
+    {
+      title: "School Field Trip",
+      template: "Our class went on a {adjective1} field trip to the {place}. We {verb1} on a {adjective2} bus for {number} minutes. When we arrived, the tour guide showed us {adjective3} {noun1} and explained how they {verb2}. My friend {name} accidentally {verb3} into the {noun2}, which made everyone {verb4}. It was the most {adjective4} trip ever!",
+      prompts: ["adjective1", "place", "verb1", "adjective2", "number", "adjective3", "noun1", "verb2", "name", "verb3", "noun2", "verb4", "adjective4"]
+    },
+    {
+      title: "The Science Fair Project",
+      template: "For the science fair, I built a {adjective1} volcano that could {verb1} {color} lava! I mixed {noun1} with {adjective2} {noun2} to create the {adjective3} reaction. When I {verb2} the mixture, it {verb3} everywhere and covered {number} students! The judges were so {adjective4} that they gave me a {adjective5} ribbon. My {family_member} was {verb4} with pride!",
+      prompts: ["adjective1", "verb1", "color", "noun1", "adjective2", "noun2", "adjective3", "verb2", "verb3", "number", "adjective4", "adjective5", "family_member", "verb4"]
+    },
+    {
+      title: "Library Adventure",
+      template: "In the {adjective1} school library, I was looking for a book about {adjective2} {noun1}. The librarian {verb1} me to the {adjective3} section where I found {number} interesting books. I {verb2} one about a {adjective4} {animal} who could {verb3}. While reading, I accidentally {verb4} so loudly that everyone {verb5}. The librarian gave me a {adjective5} look!",
+      prompts: ["adjective1", "adjective2", "noun1", "verb1", "adjective3", "number", "verb2", "adjective4", "animal", "verb3", "verb4", "verb5", "adjective5"]
+    },
+    {
+      title: "Cafeteria Chaos",
+      template: "Lunchtime in the {adjective1} cafeteria is always {adjective2}! Today they served {adjective3} {food1} with a side of {food2}. I was {verb1} to my table when I {verb2} and my {food3} went {verb3} across the room. It landed on {name}'s {noun}, and they {verb4} in surprise. The lunch lady just {verb5} and gave me another {adjective4} helping!",
+      prompts: ["adjective1", "adjective2", "adjective3", "food1", "food2", "verb1", "verb2", "food3", "verb3", "name", "noun", "verb4", "verb5", "adjective4"]
+    }
+  ],
+  "gross out": [
+    {
+      title: "The Sticky Situation",
+      template: "I was {verb1} through the {adjective1} basement when I stepped in something {adjective2}! It was {color} and {adjective3}, and it {verb2} like {adjective4} {food}. When I tried to {verb3} my foot out, it made a {adjective5} squelching sound. My {body_part} was covered in the {adjective6} goo, and I had to {verb4} all the way to the {noun} to clean it off!",
+      prompts: ["verb1", "adjective1", "adjective2", "color", "adjective3", "verb2", "adjective4", "food", "verb3", "adjective5", "body_part", "adjective6", "verb4", "noun"]
+    },
+    {
+      title: "The Mystery Lunch",
+      template: "The cafeteria served a {adjective1} mystery meat today. It was {color} and {verb1} on my plate. When I {verb2} it, it tasted like {adjective2} {noun1} mixed with {adjective3} {liquid}. The texture was so {adjective4} that I almost {verb3}! My friend dared me to eat {number} bites, but I could only {verb4} down {number2} before I had to {verb5} to the bathroom!",
+      prompts: ["adjective1", "color", "verb1", "verb2", "adjective2", "noun1", "adjective3", "liquid", "adjective4", "verb3", "number", "verb4", "number2", "verb5"]
+    },
+    {
+      title: "The Garbage Day Disaster",
+      template: "On {adjective1} garbage day, I had to {verb1} the {adjective2} trash cans to the curb. One bag was {verb2} and smelled like {adjective3} {food}. When I {verb3} it up, the bottom {verb4} open and {adjective4} garbage {verb5} everywhere! There were {noun1} covered in {adjective5} {liquid}, and a {adjective6} {noun2} that made me {verb6}!",
+      prompts: ["adjective1", "verb1", "adjective2", "verb2", "adjective3", "food", "verb3", "verb4", "adjective4", "verb5", "noun1", "adjective5", "liquid", "adjective6", "noun2", "verb6"]
+    },
+    {
+      title: "The Swamp Exploration",
+      template: "Exploring the {adjective1} swamp was {adjective2}! I {verb1} through {adjective3} mud that came up to my {body_part}. Strange {color} bubbles were {verb2} on the surface, and the water smelled like {adjective4} {noun1}. When I {verb3} a stick into the {adjective5} water, something {adjective6} {verb4} out and {verb5} on my {noun2}!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "body_part", "color", "verb2", "adjective4", "noun1", "verb3", "adjective5", "adjective6", "verb4", "verb5", "noun2"]
+    },
+    {
+      title: "The Dirty Laundry",
+      template: "I found some {adjective1} socks under my {noun1} that had been there for {number} weeks! They were {color} and {adjective2}, and when I {verb1} them, they felt {adjective3}. The smell was like {adjective4} {food} mixed with {adjective5} {noun2}. I had to {verb2} them to the washing machine while {verb3} through my {body_part}. Even after washing, they still {verb4}!",
+      prompts: ["adjective1", "noun1", "number", "color", "adjective2", "verb1", "adjective3", "adjective4", "food", "adjective5", "noun2", "verb2", "verb3", "body_part", "verb4"]
+    }
+  ],
+  technology: [
+    {
+      title: "The Robot Helper",
+      template: "My new {adjective1} robot can {verb1} the house and {verb2} my homework! It has {number} {adjective2} buttons and a {color} screen that {verb3} when it's {adjective3}. Today it accidentally {verb4} my {noun1} and started {verb5} around the {noun2}. I had to {verb6} the {adjective4} manual to figure out how to make it {verb7} properly!",
+      prompts: ["adjective1", "verb1", "verb2", "number", "adjective2", "color", "verb3", "adjective3", "verb4", "noun1", "verb5", "noun2", "verb6", "adjective4", "verb7"]
+    },
+    {
+      title: "Video Game Adventure",
+      template: "In my favorite {adjective1} video game, I play as a {adjective2} {character} who can {verb1} through {adjective3} levels. My character has a {adjective4} {weapon} that can {verb2} enemies from {number} feet away. The final boss is a {adjective5} {monster} that {verb3} and {verb4}. To win, I have to {verb5} the {adjective6} {object} and {verb6} it at the monster's {body_part}!",
+      prompts: ["adjective1", "adjective2", "character", "verb1", "adjective3", "adjective4", "weapon", "verb2", "number", "adjective5", "monster", "verb3", "verb4", "verb5", "adjective6", "object", "verb6", "body_part"]
+    },
+    {
+      title: "The Smartphone Malfunction",
+      template: "My {adjective1} smartphone started {verb1} this morning! Every time I tried to {verb2} someone, it would {verb3} and make {adjective2} sounds. The screen turned {color} and showed {number} {adjective3} {noun1}. When I {verb4} the {adjective4} button, it started {verb5} my {adjective5} photos and {verb6} them to {name}!",
+      prompts: ["adjective1", "verb1", "verb2", "verb3", "adjective2", "color", "number", "adjective3", "noun1", "verb4", "adjective4", "verb5", "adjective5", "verb6", "name"]
+    },
+    {
+      title: "Computer Class Chaos",
+      template: "In {adjective1} computer class, we learned how to {verb1} a {adjective2} website. I was {verb2} when my computer started {verb3} and the screen showed {number} {color} {noun1}. The teacher came over and {verb4} the {adjective3} keyboard, but that made it {verb5} even more! Everyone's computers started {verb6} at the same time - it was {adjective4}!",
+      prompts: ["adjective1", "verb1", "adjective2", "verb2", "verb3", "number", "color", "noun1", "verb4", "adjective3", "verb5", "verb6", "adjective4"]
+    },
+    {
+      title: "The Internet Search",
+      template: "I was {verb1} the internet for information about {adjective1} {noun1} when something {adjective2} happened. My browser started {verb2} to {number} different websites about {adjective3} {noun2}. Pop-ups were {verb3} everywhere showing {adjective4} {noun3}. I tried to {verb4} the {adjective5} window, but my computer just {verb5} and played {adjective6} music!",
+      prompts: ["verb1", "adjective1", "noun1", "adjective2", "verb2", "number", "adjective3", "noun2", "verb3", "adjective4", "noun3", "verb4", "adjective5", "verb5", "adjective6"]
+    }
+  ],
+  "kids tv and movies": [
+    {
+      title: "My Favorite Cartoon",
+      template: "My favorite cartoon character is a {adjective1} {animal} named {name} who lives in a {adjective2} {place}. Every episode, {name} has to {verb1} the {adjective3} villain who wants to {verb2} all the {noun1} in the world. {name} uses a {adjective4} {object} to {verb3} and always says '{exclamation}!' when {verb4}. The show teaches kids to be {adjective5} and to always {verb5} others!",
+      prompts: ["adjective1", "animal", "name", "adjective2", "place", "verb1", "adjective3", "verb2", "noun1", "adjective4", "object", "verb3", "exclamation", "verb4", "adjective5", "verb5"]
+    },
+    {
+      title: "The Movie Theater Experience",
+      template: "At the {adjective1} movie theater, we watched a {adjective2} film about a {character} who could {verb1}. I brought {adjective3} {snack} and {liquid} to {verb2} during the movie. The best part was when the {character} {verb3} the {adjective4} {villain} and everyone in the theater {verb4}. The {adjective5} special effects made it feel like {noun} were {verb5} right at us!",
+      prompts: ["adjective1", "adjective2", "character", "verb1", "adjective3", "snack", "liquid", "verb2", "verb3", "adjective4", "villain", "verb4", "adjective5", "noun", "verb5"]
+    },
+    {
+      title: "Saturday Morning Cartoons",
+      template: "Every {day_of_week} morning, I {verb1} up early to watch {adjective1} cartoons. My favorite show is about {number} {adjective2} friends who {verb2} around the {place} solving {adjective3} mysteries. They have a {adjective4} {vehicle} that can {verb3} and a {adjective5} {pet} that always {verb4}. When the show ends, I always {verb5} because I want to {verb6} more episodes!",
+      prompts: ["day_of_week", "verb1", "adjective1", "number", "adjective2", "verb2", "place", "adjective3", "adjective4", "vehicle", "verb3", "adjective5", "pet", "verb4", "verb5", "verb6"]
+    },
+    {
+      title: "The Superhero Movie",
+      template: "The new superhero movie was {adjective1}! The hero could {verb1} faster than a {adjective2} {vehicle} and {verb2} buildings with one {body_part}. The villain was a {adjective3} {character} who wanted to {verb3} the entire {place}. In the final battle, they {verb4} for {number} minutes while {adjective4} {noun} {verb5} everywhere. When the hero won, everyone {verb6} and cheered!",
+      prompts: ["adjective1", "verb1", "adjective2", "vehicle", "verb2", "body_part", "adjective3", "character", "verb3", "place", "verb4", "number", "adjective4", "noun", "verb5", "verb6"]
+    },
+    {
+      title: "The Disney Adventure",
+      template: "At the {adjective1} theme park, I met my favorite {adjective2} character who could {verb1} and {verb2}! We took a {adjective3} photo together and they {verb3} my {noun1}. The best ride was the {adjective4} {ride_name} where we {verb4} through a {adjective5} {place} and saw {number} {adjective6} {noun2}. I was so {adjective7} that I {verb5} all day long!",
+      prompts: ["adjective1", "adjective2", "verb1", "verb2", "adjective3", "verb3", "noun1", "adjective4", "ride_name", "verb4", "adjective5", "place", "number", "adjective6", "noun2", "adjective7", "verb5"]
+    }
+  ],
+  family: [
+    {
+      title: "Family Game Night",
+      template: "Every {day_of_week}, our family has a {adjective1} game night! We play {adjective2} board games and {verb1} until someone {verb2}. My {family_member1} always {verb3} when they lose, and my {family_member2} {verb4} whenever they win. Last week, we played a game where you have to {verb5} {number} {noun1} and {verb6} like a {adjective3} {animal}. Everyone was {verb7} so hard!",
+      prompts: ["day_of_week", "adjective1", "adjective2", "verb1", "verb2", "family_member1", "verb3", "family_member2", "verb4", "verb5", "number", "noun1", "verb6", "adjective3", "animal", "verb7"]
+    },
+    {
+      title: "The Family Vacation",
+      template: "Our {adjective1} family vacation to {place} was {adjective2}! We {verb1} for {number} hours in our {adjective3} {vehicle}. When we arrived, we stayed in a {adjective4} hotel that had a {adjective5} {noun1} and {number2} {noun2}. My favorite part was when we {verb2} at the {adjective6} beach and {verb3} in the {adjective7} water. Dad {verb4} his {noun3} and Mom {verb5} the whole time!",
+      prompts: ["adjective1", "place", "adjective2", "verb1", "number", "adjective3", "vehicle", "adjective4", "adjective5", "noun1", "number2", "noun2", "verb2", "adjective6", "verb3", "adjective7", "verb4", "noun3", "verb5"]
+    },
+    {
+      title: "Thanksgiving Dinner",
+      template: "Thanksgiving dinner at {family_member}'s house was {adjective1}! We had a {adjective2} turkey that weighed {number} pounds and {adjective3} {food1}. Uncle {name} {verb1} so much {food2} that he {verb2} and fell asleep on the {adjective4} {furniture}. Grandma's {adjective5} {dessert} was so {adjective6} that everyone {verb3} for seconds. After dinner, we all {verb4} and {verb5} together!",
+      prompts: ["family_member", "adjective1", "adjective2", "number", "adjective3", "food1", "name", "verb1", "food2", "verb2", "adjective4", "furniture", "adjective5", "dessert", "adjective6", "verb3", "verb4", "verb5"]
+    },
+    {
+      title: "Sibling Rivalry",
+      template: "My {adjective1} sibling is always {verb1} my {noun1}! Yesterday, they {verb2} into my room and {verb3} my {adjective2} {noun2}. When I tried to {verb4} it back, they {verb5} and ran to {family_member}. Mom said we had to {verb6} nicely and share our {adjective3} {noun3}. But I know my sibling will just {verb7} it again when no one is {verb8}!",
+      prompts: ["adjective1", "verb1", "noun1", "verb2", "verb3", "adjective2", "noun2", "verb4", "verb5", "family_member", "verb6", "adjective3", "noun3", "verb7", "verb8"]
+    },
+    {
+      title: "Family Chores",
+      template: "Mom gave everyone {adjective1} chores to do around the house. I had to {verb1} the {adjective2} {room} and {verb2} all the {noun1}. My {family_member} had to {verb3} the {adjective3} {noun2} and {verb4} the {appliance}. Dad's job was to {verb5} the {adjective4} yard and {verb6} the {noun3}. When we finished, Mom made {adjective5} {food} for everyone!",
+      prompts: ["adjective1", "verb1", "adjective2", "room", "verb2", "noun1", "family_member", "verb3", "adjective3", "noun2", "verb4", "appliance", "verb5", "adjective4", "verb6", "noun3", "adjective5", "food"]
+    }
+  ],
+  vehicles: [
+    {
+      title: "The Race Car Adventure",
+      template: "I climbed into the {adjective1} race car and {verb1} the {adjective2} steering wheel. The engine {verb2} as I {verb3} down the {adjective3} track at {number} miles per hour! Other {adjective4} cars were {verb4} past me, but I {verb5} the gas pedal and {verb6} ahead. The crowd was {verb7} as I crossed the {adjective5} finish line and won the {adjective6} trophy!",
+      prompts: ["adjective1", "verb1", "adjective2", "verb2", "verb3", "adjective3", "number", "adjective4", "verb4", "verb5", "verb6", "verb7", "adjective5", "adjective6"]
+    },
+    {
+      title: "The Flying Machine",
+      template: "My {adjective1} invention is a {vehicle} that can {verb1} through the {adjective2} sky! It has {number} {adjective3} wings and a {adjective4} propeller that {verb2} when it {verb3}. To start it, I have to {verb4} the {adjective5} button and {verb5} the {noun}. Yesterday, I {verb6} it to {place} and everyone {verb7} in amazement!",
+      prompts: ["adjective1", "vehicle", "verb1", "adjective2", "number", "adjective3", "adjective4", "verb2", "verb3", "verb4", "adjective5", "verb5", "noun", "verb6", "place", "verb7"]
+    },
+    {
+      title: "The Motorcycle Journey",
+      template: "Riding my {adjective1} motorcycle through the {adjective2} countryside was {adjective3}! The wind was {verb1} through my {noun1} as I {verb2} around {adjective4} curves. I stopped at a {adjective5} gas station where the owner {verb3} me about the {adjective6} road ahead. He warned me about {number} {adjective7} {noun2} that might {verb4} in front of my bike!",
+      prompts: ["adjective1", "adjective2", "adjective3", "verb1", "noun1", "verb2", "adjective4", "adjective5", "verb3", "adjective6", "number", "adjective7", "noun2", "verb4"]
+    },
+    {
+      title: "The Submarine Exploration",
+      template: "Deep underwater in my {adjective1} submarine, I could see {adjective2} fish {verb1} past the {adjective3} windows. The submarine {verb2} down to {number} feet below the surface where {adjective4} {sea_creature} were {verb3}. Suddenly, the {adjective5} sonar started {verb4} and I saw a {adjective6} {noun} on the ocean floor. I {verb5} the controls to {verb6} closer!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "verb2", "number", "adjective4", "sea_creature", "verb3", "adjective5", "verb4", "adjective6", "noun", "verb5", "verb6"]
+    },
+    {
+      title: "The Space Rocket",
+      template: "3, 2, 1, blast off! My {adjective1} rocket {verb1} into the {adjective2} space carrying {number} {adjective3} astronauts. We {verb2} past {adjective4} planets and {adjective5} stars that {verb3} like {adjective6} {noun1}. When we landed on {planet}, we {verb4} out and {verb5} the {adjective7} surface. We collected {number2} samples of {adjective8} {noun2} to bring back to Earth!",
+      prompts: ["adjective1", "verb1", "adjective2", "number", "adjective3", "verb2", "adjective4", "adjective5", "verb3", "adjective6", "noun1", "planet", "verb4", "verb5", "adjective7", "number2", "adjective8", "noun2"]
+    }
+  ],
+  pirates: [
+    {
+      title: "The Treasure Hunt",
+      template: "Ahoy matey! Captain {name} and his {adjective1} crew were {verb1} for the {adjective2} treasure buried on {adjective3} Island. They had a {adjective4} map that showed {number} steps from the {adjective5} {noun1} to where the {adjective6} treasure chest was {verb2}. When they {verb3} it up, it was full of {adjective7} {noun2} and {number2} {adjective8} coins!",
+      prompts: ["name", "adjective1", "verb1", "adjective2", "adjective3", "adjective4", "number", "adjective5", "noun1", "adjective6", "verb2", "verb3", "adjective7", "noun2", "number2", "adjective8"]
+    },
+    {
+      title: "The Pirate Ship Battle",
+      template: "The {adjective1} pirate ship {verb1} across the {adjective2} ocean with its {adjective3} sails {verb2} in the wind. Captain {name} {verb3} through his {adjective4} telescope and spotted {number} enemy ships {verb4} toward them. 'Fire the {adjective5} cannons!' he {verb5}. The crew {verb6} and {adjective6} cannonballs {verb7} through the air!",
+      prompts: ["adjective1", "verb1", "adjective2", "adjective3", "verb2", "name", "verb3", "adjective4", "number", "verb4", "adjective5", "verb5", "verb6", "adjective6", "verb7"]
+    },
+    {
+      title: "Life on a Pirate Ship",
+      template: "Being a {adjective1} pirate is {adjective2}! Every morning, I {verb1} up the {adjective3} mast and {verb2} for {adjective4} ships on the horizon. For breakfast, we eat {adjective5} {food} and drink {adjective6} {liquid}. The ship's {adjective7} parrot can {verb3} and always says '{exclamation}!' When storms come, we {verb4} and {verb5} until the {adjective8} weather passes!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "verb2", "adjective4", "adjective5", "food", "adjective6", "liquid", "adjective7", "verb3", "exclamation", "verb4", "verb5", "adjective8"]
+    },
+    {
+      title: "The Pirate's Pet",
+      template: "My pirate pet is a {adjective1} {animal} named {name} who can {verb1} and {verb2}! Every day, {name} {verb3} around the ship and {verb4} the {adjective2} crew. When we find treasure, {name} always {verb5} and {verb6} with excitement. The best trick {name} can do is {verb7} on one {body_part} while {verb8} like a {adjective3} {noun}!",
+      prompts: ["adjective1", "animal", "name", "verb1", "verb2", "verb3", "verb4", "adjective2", "verb5", "verb6", "verb7", "body_part", "verb8", "adjective3", "noun"]
+    },
+    {
+      title: "The Pirate Code",
+      template: "All {adjective1} pirates must follow the {adjective2} Pirate Code! Rule number one: Always {verb1} your {adjective3} captain. Rule number two: Never {verb2} the {adjective4} treasure map. Rule number three: {verb3} the ship's {adjective5} {noun1} every day. If a pirate breaks these rules, they must {verb4} the plank and {verb5} with the {adjective6} {sea_creature} for {number} days!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "verb2", "adjective4", "verb3", "adjective5", "noun1", "verb4", "verb5", "adjective6", "sea_creature", "number"]
+    }
+  ],
+  holidays: [
+    {
+      title: "Halloween Night",
+      template: "On {adjective1} Halloween night, I dressed up as a {adjective2} {character} and went {verb1} for candy. My costume had {number} {adjective3} {noun1} and a {adjective4} {noun2} that {verb2} when I {verb3}. At each house, I would {verb4} and say '{exclamation}!' The best house gave out {adjective5} {candy} that tasted like {adjective6} {food}!",
+      prompts: ["adjective1", "adjective2", "character", "verb1", "number", "adjective3", "noun1", "adjective4", "noun2", "verb2", "verb3", "verb4", "exclamation", "adjective5", "candy", "adjective6", "food"]
+    },
+    {
+      title: "Christmas Morning",
+      template: "Christmas morning was {adjective1}! I {verb1} downstairs and saw {number} {adjective2} presents under the {adjective3} Christmas tree. The biggest present was {adjective4} and {verb2} when I {verb3} it. Inside was a {adjective5} {toy} that could {verb4} and {verb5}! Mom made {adjective6} {food} for breakfast while Dad {verb6} and {adjective7} Christmas music played!",
+      prompts: ["adjective1", "verb1", "number", "adjective2", "adjective3", "adjective4", "verb2", "verb3", "adjective5", "toy", "verb4", "verb5", "adjective6", "food", "verb6", "adjective7"]
+    },
+    {
+      title: "Fourth of July Celebration",
+      template: "The Fourth of July celebration was {adjective1}! We {verb1} to the {adjective2} park where {number} families were {verb2}. Everyone brought {adjective3} food to share, and we played {adjective4} games like {game}. When it got dark, the {adjective5} fireworks {verb3} in the sky and made {adjective6} sounds. Everyone {verb4} and {verb5} as the {color} lights {verb6} overhead!",
+      prompts: ["adjective1", "verb1", "adjective2", "number", "verb2", "adjective3", "adjective4", "game", "adjective5", "verb3", "adjective6", "verb4", "verb5", "color", "verb6"]
+    },
+    {
+      title: "Easter Egg Hunt",
+      template: "The {adjective1} Easter egg hunt in the {adjective2} backyard was {adjective3}! I {verb1} around looking for {adjective4} eggs hidden behind {noun1} and under {adjective5} {noun2}. I found {number} eggs filled with {adjective6} {candy}. The {adjective7} golden egg was hidden in the {adjective8} {noun3} and had a {adjective9} {prize} inside. Everyone {verb2} when I {verb3} it!",
+      prompts: ["adjective1", "adjective2", "adjective3", "verb1", "adjective4", "noun1", "adjective5", "noun2", "number", "adjective6", "candy", "adjective7", "adjective8", "noun3", "adjective9", "prize", "verb2", "verb3"]
+    },
+    {
+      title: "Thanksgiving Parade",
+      template: "The {adjective1} Thanksgiving parade was {adjective2}! Giant {adjective3} balloons shaped like {character1} and {character2} {verb1} down the street. Marching bands were {verb2} {adjective4} music and {verb3} in {adjective5} uniforms. My favorite float had {number} {adjective6} {noun1} and a {adjective7} {noun2} that {verb4}. Everyone was {verb5} and {verb6} from the {adjective8} sidewalks!",
+      prompts: ["adjective1", "adjective2", "adjective3", "character1", "character2", "verb1", "verb2", "adjective4", "verb3", "adjective5", "number", "adjective6", "noun1", "adjective7", "noun2", "verb4", "verb5", "verb6", "adjective8"]
+    }
+  ],
+  space: [
+    {
+      title: "Mission to Mars",
+      template: "Our {adjective1} mission to Mars was {adjective2}! The rocket {verb1} for {number} days through the {adjective3} space filled with {adjective4} stars. When we landed on the {color} planet, we saw {adjective5} craters and {adjective6} {noun1} everywhere. Our {adjective7} space suits helped us {verb2} on the surface while we {verb3} for signs of {adjective8} life!",
+      prompts: ["adjective1", "adjective2", "verb1", "number", "adjective3", "adjective4", "color", "adjective5", "adjective6", "noun1", "adjective7", "verb2", "verb3", "adjective8"]
+    },
+    {
+      title: "Alien Encounter",
+      template: "I was {verb1} through space when I saw a {adjective1} UFO {verb2} toward my ship! Inside were {number} {adjective2} aliens with {adjective3} {body_part} and {color} skin. They could {verb3} and {verb4} in a {adjective4} language. The aliens showed me their {adjective5} {noun1} and taught me how to {verb5}. When they left, they {verb6} and said '{exclamation}!' in perfect English!",
+      prompts: ["verb1", "adjective1", "verb2", "number", "adjective2", "adjective3", "body_part", "color", "verb3", "verb4", "adjective4", "adjective5", "noun1", "verb5", "verb6", "exclamation"]
+    },
+    {
+      title: "Space Station Life",
+      template: "Living on the {adjective1} space station is {adjective2}! Every morning, I {verb1} in zero gravity and {verb2} my {adjective3} breakfast that {verb3} around the room. The view of {planet} is {adjective4} with {adjective5} clouds and {color} oceans. Today we conducted {number} {adjective6} experiments and {verb4} with the {adjective7} robots that {verb5} around the station!",
+      prompts: ["adjective1", "adjective2", "verb1", "verb2", "adjective3", "verb3", "planet", "adjective4", "adjective5", "color", "number", "adjective6", "verb4", "adjective7", "verb5"]
+    },
+    {
+      title: "The Black Hole Adventure",
+      template: "Our {adjective1} spaceship was {verb1} toward a {adjective2} black hole! The gravity was so {adjective3} that everything started to {verb2} and {verb3}. Time began to {verb4} and I could see {adjective4} lights {verb5} around us. Captain {name} {verb6} the {adjective5} controls and we {verb7} away just in time! The experience was so {adjective6} that we all {verb8}!",
+      prompts: ["adjective1", "verb1", "adjective2", "adjective3", "verb2", "verb3", "verb4", "adjective4", "verb5", "name", "verb6", "adjective5", "verb7", "adjective6", "verb8"]
+    },
+    {
+      title: "Asteroid Mining",
+      template: "Our job was to {verb1} valuable {noun1} from the {adjective1} asteroid belt. We {verb2} our {adjective2} mining ship through {number} floating {adjective3} rocks. Each asteroid contained {adjective4} {mineral} that {verb3} when exposed to {adjective5} light. We collected {number2} tons of {adjective6} materials and {verb4} them back to the {adjective7} space colony where everyone {verb5}!",
+      prompts: ["verb1", "noun1", "adjective1", "verb2", "adjective2", "number", "adjective3", "adjective4", "mineral", "verb3", "adjective5", "number2", "adjective6", "verb4", "adjective7", "verb5"]
+    }
+  ]
+};
 
 export const HANGMAN_PUZZLES = [
   // 1 word puzzles (8-21 letters)
