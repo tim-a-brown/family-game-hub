@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GameStorage } from "@/lib/game-storage";
-import { WORD_LISTS, BONUS_WORDS, WORD_SEARCH_CATEGORIES, type GameCategory, type WordSearchCategory } from "@/lib/game-data";
+import { WORD_LISTS, BONUS_WORDS, WORD_SEARCH_CATEGORIES, GAME_CATEGORIES, type GameCategory, type WordSearchCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
 
 interface Position {
@@ -23,9 +23,11 @@ interface PlacedWord {
 interface GameState {
   grid: string[][];
   wordList: string[];
+  bonusWords: string[];
   placedWords: PlacedWord[];
   foundWords: string[];
-  category: GameCategory;
+  foundBonusWords: string[];
+  category: WordSearchCategory;
   selectedCells: Position[];
   isSelecting: boolean;
   startPos: Position | null;
@@ -48,9 +50,11 @@ export default function WordSearch() {
   const [gameState, setGameState] = useState<GameState>({
     grid: [],
     wordList: [],
+    bonusWords: [],
     placedWords: [],
     foundWords: [],
-    category: 'animals',
+    foundBonusWords: [],
+    category: 'random',
     selectedCells: [],
     isSelecting: false,
     startPos: null,
@@ -121,12 +125,29 @@ export default function WordSearch() {
     }
   };
 
-  const generateWordSearch = (category: GameCategory) => {
-    const words = WORD_LISTS[category].slice(0, 8).map(word => word.toUpperCase());
+  const generateWordSearch = (category: WordSearchCategory) => {
+    // Handle random category selection
+    const actualCategory = category === 'random' 
+      ? GAME_CATEGORIES[Math.floor(Math.random() * GAME_CATEGORIES.length)]
+      : category as GameCategory;
+      
+    // Get main words and bonus words
+    const allWords = WORD_LISTS[actualCategory];
+    const bonusWords = BONUS_WORDS[actualCategory];
+    
+    // Select 8-12 main words and 3 bonus words
+    const mainWordCount = Math.floor(Math.random() * 5) + 8; // 8-12 words
+    const shuffledWords = [...allWords].sort(() => Math.random() - 0.5);
+    const mainWords = shuffledWords.slice(0, mainWordCount).map(word => word.toUpperCase());
+    const selectedBonusWords = bonusWords.slice(0, 3).map(word => word.toUpperCase());
+    
+    // Combine all words for placement
+    const allWordsToPlace = [...mainWords, ...selectedBonusWords];
+    
     const grid = createEmptyGrid();
     const placedWords: PlacedWord[] = [];
 
-    words.forEach(word => {
+    allWordsToPlace.forEach(word => {
       let placed = false;
       let attempts = 0;
       
@@ -148,7 +169,8 @@ export default function WordSearch() {
     
     return {
       grid,
-      wordList: words,
+      wordList: mainWords,
+      bonusWords: selectedBonusWords,
       placedWords
     };
   };
@@ -214,12 +236,18 @@ export default function WordSearch() {
     const selectedWord = getSelectedWord();
     const reversedWord = selectedWord.split('').reverse().join('');
     
-    const foundWord = gameState.wordList.find(word => 
+    // Check main word list
+    const foundMainWord = gameState.wordList.find(word => 
       word === selectedWord || word === reversedWord
     );
     
-    if (foundWord && !gameState.foundWords.includes(foundWord)) {
-      const newFoundWords = [...gameState.foundWords, foundWord];
+    // Check bonus words
+    const foundBonusWord = gameState.bonusWords.find(word => 
+      word === selectedWord || word === reversedWord
+    );
+    
+    if (foundMainWord && !gameState.foundWords.includes(foundMainWord)) {
+      const newFoundWords = [...gameState.foundWords, foundMainWord];
       const gameWon = newFoundWords.length === gameState.wordList.length;
       
       setGameState(prev => ({
@@ -233,7 +261,7 @@ export default function WordSearch() {
       
       toast({
         title: "Word Found!",
-        description: `You found: ${foundWord}`,
+        description: `You found: ${foundMainWord}`,
       });
       
       if (gameWon) {
@@ -241,8 +269,23 @@ export default function WordSearch() {
           title: "Congratulations!",
           description: "You found all the words!",
         });
-        gameStorage.saveScore('word-search', 'Player', newFoundWords.length);
+        gameStorage.saveScore('word-search', 'Player', newFoundWords.length + gameState.foundBonusWords.length);
       }
+    } else if (foundBonusWord && !gameState.foundBonusWords.includes(foundBonusWord)) {
+      const newFoundBonusWords = [...gameState.foundBonusWords, foundBonusWord];
+      
+      setGameState(prev => ({
+        ...prev,
+        foundBonusWords: newFoundBonusWords,
+        isSelecting: false,
+        selectedCells: [],
+        startPos: null
+      }));
+      
+      toast({
+        title: "Bonus Word Found!",
+        description: `You found a bonus word: ${foundBonusWord}`,
+      });
     } else {
       setGameState(prev => ({
         ...prev,
@@ -267,13 +310,15 @@ export default function WordSearch() {
   };
 
   const startNewGame = () => {
-    const { grid, wordList, placedWords } = generateWordSearch(selectedCategory);
+    const { grid, wordList, bonusWords, placedWords } = generateWordSearch(selectedCategory);
     
     const newGameState: GameState = {
       grid,
       wordList,
+      bonusWords,
       placedWords,
       foundWords: [],
+      foundBonusWords: [],
       category: selectedCategory,
       selectedCells: [],
       isSelecting: false,

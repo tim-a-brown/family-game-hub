@@ -357,7 +357,7 @@ export const BONUS_WORDS: Record<GameCategory, string[]> = {
   'kids tv and movies': ['entertainment', 'storytelling', 'animation', 'characters', 'adventure', 'imagination', 'creativity', 'inspiration', 'education', 'childhood']
 };
 
-export const WORD_SEARCH_CATEGORIES = ['random', ...GAME_CATEGORIES.slice().sort()] as const;
+export const WORD_SEARCH_CATEGORIES = ['random', ...[...GAME_CATEGORIES].sort()] as const;
 export type WordSearchCategory = typeof WORD_SEARCH_CATEGORIES[number];
 
 export const WORD_LISTS_WITH_BONUS = GAME_CATEGORIES.reduce((acc, category) => {
