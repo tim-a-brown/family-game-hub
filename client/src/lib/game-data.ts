@@ -750,6 +750,90 @@ export const MAD_LIBS_TEMPLATES = {
       prompts: ["adjective1", "adjective2", "adjective3", "character1", "character2", "verb1", "verb2", "adjective4", "verb3", "adjective5", "number", "adjective6", "noun1", "adjective7", "noun2", "verb4", "verb5", "verb6", "adjective8"]
     }
   ],
+  magical: [
+    {
+      title: "The Magic Spell",
+      template: "In the {adjective1} forest, I found a {adjective2} spell book hidden under a {noun1}. The spell required {number} {adjective3} {ingredient1} and a {adjective4} {ingredient2}. When I {verb1} the spell, {adjective5} {color} smoke {verb2} from the book and a {adjective6} {magical_creature} appeared! It {verb3} around the forest and {verb4} all the {noun2} with its {adjective7} magic!",
+      prompts: ["adjective1", "adjective2", "noun1", "number", "adjective3", "ingredient1", "adjective4", "ingredient2", "verb1", "adjective5", "color", "verb2", "adjective6", "magical_creature", "verb3", "verb4", "noun2", "adjective7"]
+    },
+    {
+      title: "The Flying Carpet",
+      template: "My {adjective1} flying carpet can {verb1} faster than a {vehicle}! It's made of {adjective2} {fabric} and has {number} {adjective3} tassels. Today I {verb2} to the {adjective4} castle where a {adjective5} wizard lives. He taught me how to {verb3} like a {animal} and {verb4} {adjective6} potions. The best part was {verb5} on clouds made of {adjective7} {food}!",
+      prompts: ["adjective1", "verb1", "vehicle", "adjective2", "fabric", "number", "adjective3", "verb2", "adjective4", "adjective5", "verb3", "animal", "verb4", "adjective6", "verb5", "adjective7", "food"]
+    }
+  ],
+  "silly fun": [
+    {
+      title: "The Backwards Day",
+      template: "Today everything was {adjective1} backwards! I {verb1} out of bed and put on my {clothing} {adverb}. For breakfast, I ate {adjective2} {food1} with {adjective3} {liquid}. At school, we {verb2} on the ceiling and {verb3} with our {body_part}. The teacher {verb4} {adjective4} songs while standing on her {noun}. It was the most {adjective5} day ever!",
+      prompts: ["adjective1", "verb1", "clothing", "adverb", "adjective2", "food1", "adjective3", "liquid", "verb2", "verb3", "body_part", "verb4", "adjective4", "noun", "adjective5"]
+    },
+    {
+      title: "The Giggling Contest",
+      template: "The {adjective1} giggling contest was {adjective2}! Everyone had to {verb1} while {verb2} like a {animal}. The first contestant {verb3} so {adverb} that {number} people started {verb4}. When it was my turn, I told a {adjective3} joke about a {noun1} and a {noun2}. Everyone {verb5} for {number2} minutes straight! The winner got a {adjective4} trophy shaped like a {adjective5} {noun3}!",
+      prompts: ["adjective1", "adjective2", "verb1", "verb2", "animal", "verb3", "adverb", "number", "verb4", "adjective3", "noun1", "noun2", "verb5", "number2", "adjective4", "adjective5", "noun3"]
+    }
+  ],
+  superheroes: [
+    {
+      title: "My Superhero Powers",
+      template: "My superhero name is {adjective1} {superhero_name}! My special power is the ability to {verb1} {adjective2} {noun1} with my {body_part}. I wear a {color} cape and {adjective3} boots that help me {verb2} over {adjective4} buildings. My archenemy is {villain_name} who can {verb3} and {verb4} innocent {noun2}. Together with my {adjective5} sidekick, we always {verb5} the day!",
+      prompts: ["adjective1", "superhero_name", "verb1", "adjective2", "noun1", "body_part", "color", "adjective3", "verb2", "adjective4", "villain_name", "verb3", "verb4", "noun2", "adjective5", "verb5"]
+    },
+    {
+      title: "The Hero Academy",
+      template: "At {adjective1} Hero Academy, we learn how to {verb1} evil and {verb2} the world. Our teacher, {teacher_name}, can {verb3} and has {adjective2} {noun1} for hands. In combat class, we practice {verb4} with {adjective3} weapons and {verb5} through {number} {obstacle}. The hardest test is learning to {verb6} while {verb7} a {adjective4} {vehicle}. Only the most {adjective5} students graduate!",
+      prompts: ["adjective1", "verb1", "verb2", "teacher_name", "verb3", "adjective2", "noun1", "verb4", "adjective3", "verb5", "number", "obstacle", "verb6", "verb7", "adjective4", "vehicle", "adjective5"]
+    }
+  ],
+  jobs: [
+    {
+      title: "My Dream Job",
+      template: "When I grow up, I want to be a {adjective1} {job}! Every day, I would {verb1} to work and {verb2} with {adjective2} {noun1}. My {adjective3} office would have {number} {adjective4} {noun2} and a {adjective5} {furniture}. The best part of my job would be {verb3} {adjective6} {noun3} and helping people {verb4}. I would wear {adjective7} {clothing} and earn {number2} dollars per {time_period}!",
+      prompts: ["adjective1", "job", "verb1", "verb2", "adjective2", "noun1", "adjective3", "number", "adjective4", "noun2", "adjective5", "furniture", "verb3", "adjective6", "noun3", "verb4", "adjective7", "clothing", "number2", "time_period"]
+    },
+    {
+      title: "The Busy Workshop",
+      template: "In the {adjective1} workshop, the workers {verb1} all day making {adjective2} {noun1}. The manager, {name}, {verb2} around checking that everyone {verb3} properly. The {adjective3} machines {verb4} and {verb5} while producing {number} {noun2} per hour. At lunch break, everyone eats {adjective4} {food} and {verb6} about their {adjective5} weekend plans. It's {adjective6} work, but very rewarding!",
+      prompts: ["adjective1", "verb1", "adjective2", "noun1", "name", "verb2", "verb3", "adjective3", "verb4", "verb5", "number", "noun2", "adjective4", "food", "verb6", "adjective5", "adjective6"]
+    }
+  ],
+  "food fun": [
+    {
+      title: "The Ice Cream Factory",
+      template: "Working at the {adjective1} ice cream factory is {adjective2}! We make {number} flavors including {adjective3} {food1}, {adjective4} {food2}, and {adjective5} {food3}. The {adjective6} mixing machines {verb1} all day while workers {verb2} the ingredients. My favorite part is {verb3} the {adjective7} toppings like {noun1} and {adjective8} {noun2}. Customers {verb4} from all over to taste our {adjective9} creations!",
+      prompts: ["adjective1", "adjective2", "number", "adjective3", "food1", "adjective4", "food2", "adjective5", "food3", "adjective6", "verb1", "verb2", "verb3", "adjective7", "noun1", "adjective8", "noun2", "verb4", "adjective9"]
+    },
+    {
+      title: "The Pizza Party",
+      template: "The {adjective1} pizza party was {adjective2}! We ordered {number} pizzas with {adjective3} {topping1}, {adjective4} {topping2}, and {adjective5} {topping3}. Everyone {verb1} around the {adjective6} table and {verb2} about their {adjective7} day. The pizza was so {adjective8} that we {verb3} {number2} slices each! For dessert, we had {adjective9} {dessert} that made everyone {verb4} with joy!",
+      prompts: ["adjective1", "adjective2", "number", "adjective3", "topping1", "adjective4", "topping2", "adjective5", "topping3", "verb1", "adjective6", "verb2", "adjective7", "adjective8", "verb3", "number2", "adjective9", "dessert", "verb4"]
+    }
+  ],
+  vacations: [
+    {
+      title: "The Beach Adventure",
+      template: "Our {adjective1} beach vacation was {adjective2}! We {verb1} in the {adjective3} sand and {verb2} in the {adjective4} ocean waves. I built a {adjective5} sandcastle with {number} {noun1} and decorated it with {adjective6} {noun2}. We ate {adjective7} {food} while watching the {adjective8} sunset. The best part was {verb3} for {adjective9} seashells and {verb4} with the {adjective10} dolphins!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "verb2", "adjective4", "adjective5", "number", "noun1", "adjective6", "noun2", "adjective7", "food", "adjective8", "verb3", "adjective9", "verb4", "adjective10"]
+    },
+    {
+      title: "The Mountain Camping Trip",
+      template: "Camping in the {adjective1} mountains was {adjective2}! We {verb1} our {adjective3} tent next to a {adjective4} stream. At night, we {verb2} around the {adjective5} campfire and {verb3} {adjective6} songs. We saw {number} {adjective7} {animal} and heard {adjective8} sounds in the forest. For breakfast, we cooked {adjective9} {food} and drank {adjective10} {liquid} from our {noun} cups!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "adjective4", "verb2", "adjective5", "verb3", "adjective6", "number", "adjective7", "animal", "adjective8", "adjective9", "food", "adjective10", "liquid", "noun"]
+    }
+  ],
+  "cool technology": [
+    {
+      title: "The Time Machine",
+      template: "My {adjective1} time machine can {verb1} to any year from {number1} to {number2}! It's powered by {adjective2} {fuel} and has {number3} {adjective3} buttons. Yesterday, I {verb2} back to the {adjective4} dinosaur age and saw a {adjective5} {dinosaur} {verb3} through the {adjective6} jungle. Then I {verb4} forward to the future where {adjective7} robots {verb5} and people {verb6} on {adjective8} hoverboards!",
+      prompts: ["adjective1", "verb1", "number1", "number2", "adjective2", "fuel", "number3", "adjective3", "verb2", "adjective4", "adjective5", "dinosaur", "verb3", "adjective6", "verb4", "adjective7", "verb5", "verb6", "adjective8"]
+    },
+    {
+      title: "The Hologram Phone",
+      template: "My new {adjective1} hologram phone is {adjective2}! When I {verb1} someone, their {adjective3} image appears and {verb2} in front of me. The phone can also {verb3} {adjective4} pictures and {verb4} {adjective5} videos in mid-air. It has {number} {adjective6} features including the ability to {verb5} and {verb6}. Everyone who sees it {verb7} and says it's the most {adjective7} technology they've ever seen!",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "verb2", "verb3", "adjective4", "verb4", "adjective5", "number", "adjective6", "verb5", "verb6", "verb7", "adjective7"]
+    }
+  ],
   space: [
     {
       title: "Mission to Mars",
