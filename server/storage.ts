@@ -1,4 +1,6 @@
 import { users, gameStates, gameScores, type User, type InsertUser, type GameState, type InsertGameState, type GameScore, type InsertGameScore } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -109,4 +111,101 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getGameState(gameType: string, userId?: number): Promise<GameState | undefined> {
+    const conditions = [eq(gameStates.gameType, gameType)];
+    
+    if (userId) {
+      conditions.push(eq(gameStates.userId, userId));
+    }
+    
+    const [gameState] = await db
+      .select()
+      .from(gameStates)
+      .where(and(...conditions))
+      .orderBy(desc(gameStates.lastPlayed));
+    return gameState || undefined;
+  }
+
+  async saveGameState(insertGameState: InsertGameState): Promise<GameState> {
+    const [gameState] = await db
+      .insert(gameStates)
+      .values({
+        ...insertGameState,
+        lastPlayed: new Date(),
+        isActive: true,
+      })
+      .returning();
+    return gameState;
+  }
+
+  async updateGameState(id: number, gameData: any): Promise<GameState | undefined> {
+    const [gameState] = await db
+      .update(gameStates)
+      .set({ 
+        gameData,
+        lastPlayed: new Date()
+      })
+      .where(eq(gameStates.id, id))
+      .returning();
+    return gameState || undefined;
+  }
+
+  async deleteGameState(id: number): Promise<boolean> {
+    const result = await db
+      .update(gameStates)
+      .set({ isActive: false })
+      .where(eq(gameStates.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getActiveGameStates(userId?: number): Promise<GameState[]> {
+    let query = db.select().from(gameStates).where(eq(gameStates.isActive, true));
+    
+    if (userId) {
+      query = query.where(eq(gameStates.userId, userId));
+    }
+    
+    return await query.orderBy(desc(gameStates.lastPlayed));
+  }
+
+  async getHighScores(gameType: string, limit = 10): Promise<GameScore[]> {
+    return await db
+      .select()
+      .from(gameScores)
+      .where(eq(gameScores.gameType, gameType))
+      .orderBy(desc(gameScores.score))
+      .limit(limit);
+  }
+
+  async saveGameScore(insertGameScore: InsertGameScore): Promise<GameScore> {
+    const [gameScore] = await db
+      .insert(gameScores)
+      .values({
+        ...insertGameScore,
+        completedAt: new Date(),
+      })
+      .returning();
+    return gameScore;
+  }
+}
+
+export const storage = new DatabaseStorage();
