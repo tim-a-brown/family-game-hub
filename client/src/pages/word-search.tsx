@@ -441,7 +441,7 @@ export default function WordSearch() {
               <div className="flex items-center space-x-4">
                 <Badge variant="secondary">
                   {gameState.category === 'random' 
-                    ? `🎲 Random (${gameState.actualCategory.charAt(0).toUpperCase() + gameState.actualCategory.slice(1)})` 
+                    ? `🎲 Random (${gameState.actualCategory?.charAt(0).toUpperCase() + gameState.actualCategory?.slice(1) || 'Loading...'})` 
                     : gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
                 </Badge>
                 <span className="text-lg font-semibold">
@@ -544,17 +544,17 @@ export default function WordSearch() {
             </Card>
           </div>
 
-          {/* Word List */}
-          <div className="lg:col-span-1">
-            <Card className="shadow-lg">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4">Find These Words:</h3>
-                <div className="space-y-2">
+          {/* Word Bank - Right Sidebar */}
+          <div className="w-64 flex-shrink-0">
+            <Card className="shadow-lg h-fit">
+              <CardContent className="p-3">
+                <h3 className="font-semibold mb-3 text-sm">Find These Words:</h3>
+                <div className="space-y-1 max-h-96 overflow-y-auto">
                   {gameState.wordList.map((word, index) => (
                     <div
                       key={index}
                       className={`
-                        p-2 rounded text-sm font-medium
+                        px-2 py-1 rounded text-xs font-medium
                         ${gameState.foundWords.includes(word) 
                           ? 'bg-green-100 text-green-800 line-through' 
                           : 'bg-gray-100 text-gray-800'
@@ -567,29 +567,29 @@ export default function WordSearch() {
                 </div>
 
                 {/* Bonus Words Section */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h4 className="font-semibold mb-3 text-yellow-700">🌟 Bonus Words Found:</h4>
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <h4 className="font-semibold mb-2 text-yellow-700 text-xs">🌟 Bonus Found:</h4>
                   {gameState.foundBonusWords.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {gameState.foundBonusWords.map((word, index) => (
                         <div
                           key={index}
-                          className="p-2 rounded text-sm font-medium bg-yellow-100 text-yellow-800"
+                          className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800"
                         >
                           {word}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 italic">
-                      Find hidden bonus words for extra points!
+                    <p className="text-xs text-gray-500 italic">
+                      Find 3 hidden bonus words!
                     </p>
                   )}
                 </div>
                 
                 {gameState.gameWon && (
-                  <div className="mt-6 text-center">
-                    <Button onClick={resetGame} className="w-full">
+                  <div className="mt-4 text-center">
+                    <Button onClick={resetGame} size="sm" className="w-full text-xs">
                       New Puzzle
                     </Button>
                   </div>
@@ -610,7 +610,7 @@ export default function WordSearch() {
                 <strong>Bonus Challenge:</strong> Find 3 hidden bonus words that aren't in the word list but are related to the theme for extra points!
               </p>
               <p>
-                Selected from {WORD_LISTS[gameState.category === 'random' ? 'animals' : gameState.category as GameCategory]?.length || 250}+ words in this category.
+                Selected from {WORD_LISTS[gameState.actualCategory]?.length || 250}+ words in the {gameState.actualCategory} category.
               </p>
             </div>
           </CardContent>
