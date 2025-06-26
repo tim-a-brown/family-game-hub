@@ -11,9 +11,10 @@ interface GameCardProps {
   route: string;
   progress?: number;
   isActive?: boolean;
+  backgroundGraphic?: React.ReactNode;
 }
 
-export function GameCard({ title, description, playerInfo, icon, color, route, progress, isActive }: GameCardProps) {
+export function GameCard({ title, description, playerInfo, icon, color, route, progress, isActive, backgroundGraphic }: GameCardProps) {
   const [, setLocation] = useLocation();
 
   const handleClick = () => {
@@ -26,10 +27,16 @@ export function GameCard({ title, description, playerInfo, icon, color, route, p
       onClick={handleClick}
     >
       <div className={`aspect-w-16 aspect-h-9 ${color} relative overflow-hidden`}>
+        {/* Unique Background Graphic */}
+        {backgroundGraphic && (
+          <div className="absolute top-0 right-0 opacity-15 transform rotate-45 translate-x-8 -translate-y-8">
+            {backgroundGraphic}
+          </div>
+        )}
+        
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/20 to-transparent"></div>
-          <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-white/5 rounded-full transform rotate-45"></div>
         </div>
         
         {/* Icon Container */}

@@ -24,6 +24,9 @@ const GAMES = [
           </div>
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-blue-200 text-8xl font-bold opacity-30">#</div>
     )
   },
   {
@@ -37,6 +40,9 @@ const GAMES = [
         <div className="text-2xl font-mono">_ A _ I L Y</div>
         <div className="mt-2 text-sm opacity-80">Wrong: E, R, T (3/6)</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-red-200 text-7xl opacity-40">🎯</div>
     )
   },
   {
@@ -51,6 +57,9 @@ const GAMES = [
         <div className="text-sm font-semibold">Fill in the blanks!</div>
         <div className="text-xs opacity-80 mt-1">Need: ADJECTIVE</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-purple-200 text-9xl opacity-25">✏️</div>
     )
   },
   {
@@ -65,6 +74,9 @@ const GAMES = [
         <div className="text-sm font-semibold">Option A vs B</div>
         <div className="text-xs opacity-80 mt-1">Tough choices!</div>
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-pink-200 text-8xl opacity-30">⚖️</div>
     )
   },
   {
@@ -79,12 +91,15 @@ const GAMES = [
           <span key={i}>{letter}</span>
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-green-200 text-7xl opacity-40">🔍</div>
     )
   },
   {
     title: "Dots and Boxes",
-    description: "Classic strategy • Connect the dots • Score points",
-    playerInfo: "2 Players",
+    description: "Classic strategy • Connect the dots • Up to 3 players",
+    playerInfo: "2-3 Players",
     color: "bg-gradient-to-br from-yellow-400 to-yellow-600",
     route: "/dots-and-boxes",
     icon: (
@@ -93,6 +108,9 @@ const GAMES = [
           <div key={i} className="w-2 h-2 bg-white rounded-full"></div>
         ))}
       </div>
+    ),
+    backgroundGraphic: (
+      <div className="text-yellow-200 text-8xl opacity-35">⚬</div>
     )
   },
   {
@@ -230,7 +248,6 @@ const GAMES = [
 
 export default function Home() {
   const [activeGames, setActiveGames] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const gameStorage = GameStorage.getInstance();
 
   useEffect(() => {
@@ -330,37 +347,9 @@ export default function Home() {
           </section>
         )}
 
-        {/* All Games Section */}
+        {/* Games Section */}
         <section>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">All Games</h2>
-            <div className="flex space-x-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="rounded-full"
-              >
-                <Grid3X3 className="w-4 h-4 mr-2" />
-                Grid
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-full"
-              >
-                <List className="w-4 h-4 mr-2" />
-                List
-              </Button>
-            </div>
-          </div>
-
-          <div className={`grid gap-6 ${
-            viewMode === 'grid' 
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-              : 'grid-cols-1'
-          }`}>
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {GAMES.map((game) => (
               <GameCard
                 key={game.title}
