@@ -138,7 +138,12 @@ export default function Battleship() {
         
         if (canPlaceShip(board, ships[i], startRow, startCol, orientation)) {
           const result = placeShip(board, ships[i], startRow, startCol, orientation);
-          Object.assign(board, result.board);
+          // Copy the board correctly
+          for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+              board[r][c] = result.board[r][c];
+            }
+          }
           ships[i].positions = result.positions;
           ships[i].placed = true;
           placed = true;
@@ -256,78 +261,80 @@ export default function Battleship() {
   };
 
   const makeOpponentMove = () => {
-    const availableCells = [];
-    
-    for (let row = 0; row < BOARD_SIZE; row++) {
-      for (let col = 0; col < BOARD_SIZE; col++) {
-        if (gameState.playerBoard[row][col] !== 'hit' && gameState.playerBoard[row][col] !== 'miss') {
-          availableCells.push({ row, col });
-        }
-      }
-    }
-    
-    if (availableCells.length === 0) return;
-    
-    const randomCell = availableCells[Math.floor(Math.random() * availableCells.length)];
-    const newPlayerBoard = gameState.playerBoard.map(r => [...r]);
-    const isHit = newPlayerBoard[randomCell.row][randomCell.col] === 'ship';
-    
-    newPlayerBoard[randomCell.row][randomCell.col] = isHit ? 'hit' : 'miss';
-    
-    let newPlayerShips = [...gameState.playerShips];
-    let newOpponentHits = gameState.opponentHits;
-    
-    if (isHit) {
-      newOpponentHits++;
+    setGameState(currentState => {
+      const availableCells = [];
       
-      // Check if ship is sunk
-      for (let i = 0; i < newPlayerShips.length; i++) {
-        const ship = newPlayerShips[i];
-        if (ship.positions.some(pos => pos.row === randomCell.row && pos.col === randomCell.col)) {
-          const allHit = ship.positions.every(pos => newPlayerBoard[pos.row][pos.col] === 'hit');
-          if (allHit) {
-            newPlayerShips[i] = { ...ship, sunk: true };
-            ship.positions.forEach(pos => {
-              newPlayerBoard[pos.row][pos.col] = 'sunk';
-            });
-            
-            toast({
-              title: "Ship sunk!",
-              description: `Opponent sunk your ${ship.name}!`,
-              variant: "destructive"
-            });
+      for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+          if (currentState.playerBoard[row][col] !== 'hit' && currentState.playerBoard[row][col] !== 'miss') {
+            availableCells.push({ row, col });
           }
-          break;
         }
       }
-    }
-    
-    const allPlayerShipsSunk = newPlayerShips.every(ship => ship.sunk);
-    
-    setGameState(prev => ({
-      ...prev,
-      playerBoard: newPlayerBoard,
-      playerShips: newPlayerShips,
-      opponentHits: newOpponentHits,
-      currentTurn: isHit && !allPlayerShipsSunk ? 'opponent' : 'player',
-      gameWon: allPlayerShipsSunk,
-      winner: allPlayerShipsSunk ? 'opponent' : null
-    }));
-    
-    if (allPlayerShipsSunk) {
-      toast({
-        title: "Defeat!",
-        description: "All your ships have been sunk!",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (isHit) {
-      setTimeout(() => {
-        makeOpponentMove();
-      }, 1000);
-    }
+      
+      if (availableCells.length === 0) return currentState;
+      
+      const randomCell = availableCells[Math.floor(Math.random() * availableCells.length)];
+      const newPlayerBoard = currentState.playerBoard.map(r => [...r]);
+      const isHit = newPlayerBoard[randomCell.row][randomCell.col] === 'ship';
+      
+      newPlayerBoard[randomCell.row][randomCell.col] = isHit ? 'hit' : 'miss';
+      
+      let newPlayerShips = [...currentState.playerShips];
+      let newOpponentHits = currentState.opponentHits;
+      
+      if (isHit) {
+        newOpponentHits++;
+        
+        // Check if ship is sunk
+        for (let i = 0; i < newPlayerShips.length; i++) {
+          const ship = newPlayerShips[i];
+          if (ship.positions.some(pos => pos.row === randomCell.row && pos.col === randomCell.col)) {
+            const allHit = ship.positions.every(pos => newPlayerBoard[pos.row][pos.col] === 'hit');
+            if (allHit) {
+              newPlayerShips[i] = { ...ship, sunk: true };
+              ship.positions.forEach(pos => {
+                newPlayerBoard[pos.row][pos.col] = 'sunk';
+              });
+              
+              toast({
+                title: "Ship sunk!",
+                description: `Opponent sunk your ${ship.name}!`,
+                variant: "destructive"
+              });
+            }
+            break;
+          }
+        }
+      }
+      
+      const allPlayerShipsSunk = newPlayerShips.every(ship => ship.sunk);
+      
+      if (allPlayerShipsSunk) {
+        toast({
+          title: "Defeat!",
+          description: "All your ships have been sunk!",
+          variant: "destructive"
+        });
+      }
+      
+      // Schedule next opponent move if hit and game not over
+      if (isHit && !allPlayerShipsSunk) {
+        setTimeout(() => {
+          makeOpponentMove();
+        }, 1000);
+      }
+      
+      return {
+        ...currentState,
+        playerBoard: newPlayerBoard,
+        playerShips: newPlayerShips,
+        opponentHits: newOpponentHits,
+        currentTurn: isHit && !allPlayerShipsSunk ? 'opponent' : 'player',
+        gameWon: allPlayerShipsSunk,
+        winner: allPlayerShipsSunk ? 'opponent' : null
+      };
+    });
   };
 
   const startBattle = () => {
@@ -336,7 +343,7 @@ export default function Battleship() {
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
-      opponentBoard: opponentBoard.map(row => row.map(cell => cell === 'ship' ? 'empty' : cell)),
+      opponentBoard: opponentBoard, // Keep ships on the board for hit detection
       opponentShips
     }));
     
