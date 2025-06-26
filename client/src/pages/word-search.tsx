@@ -505,6 +505,7 @@ export default function WordSearch() {
                           onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                           onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
                           onMouseUp={handleCellMouseUp}
+                          onClick={() => handleCellClick(rowIndex, colIndex)}
                           onTouchStart={(e) => {
                             e.preventDefault();
                             handleCellMouseDown(rowIndex, colIndex);
