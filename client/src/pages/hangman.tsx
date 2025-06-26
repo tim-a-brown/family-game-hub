@@ -19,18 +19,23 @@ interface GameState {
   customPuzzle?: string;
 }
 
-const HANGMAN_DRAWINGS = [
-  '', // 0 wrong
-  '  +---+\n      |\n      |\n      |\n      |\n=========',
-  '  +---+\n  |   |\n      |\n      |\n      |\n=========',
-  '  +---+\n  |   |\n  O   |\n      |\n      |\n=========',
-  '  +---+\n  |   |\n  O   |\n  |   |\n      |\n=========',
-  '  +---+\n  |   |\n  O   |\n /|   |\n      |\n=========',
-  '  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n=========',
-  '  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n=========',
-  '  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n=========',
-  '  +---+\n  |   |\n  X   |\n /|\\  |\n / \\  |\n========='
-];
+// Dynamic hangman drawings based on max wrong guesses
+const generateHangmanDrawings = (maxWrong: number): string[] => {
+  const drawings: string[] = [''];
+  
+  if (maxWrong >= 1) drawings.push('  +---+\n      |\n      |\n      |\n      |\n=========');
+  if (maxWrong >= 2) drawings.push('  +---+\n  |   |\n      |\n      |\n      |\n=========');
+  if (maxWrong >= 3) drawings.push('  +---+\n  |   |\n  O   |\n      |\n      |\n=========');
+  if (maxWrong >= 4) drawings.push('  +---+\n  |   |\n  O   |\n  |   |\n      |\n=========');
+  if (maxWrong >= 5) drawings.push('  +---+\n  |   |\n  O   |\n /|   |\n      |\n=========');
+  if (maxWrong >= 6) drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n=========');
+  if (maxWrong >= 7) drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n=========');
+  if (maxWrong >= 8) drawings.push('  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n=========');
+  if (maxWrong >= 9) drawings.push('  +---+\n  |   |\n  X   |\n /|\\  |\n / \\  |\n=========');
+  if (maxWrong >= 10) drawings.push('  +---+\n  |   |\n  X   |\n /|\\  |\n / \\  |\n====RIP====');
+  
+  return drawings;
+};
 
 export default function Hangman() {
   const [gameState, setGameState] = useState<GameState>({
@@ -82,7 +87,7 @@ export default function Hangman() {
 
     // Check if won
     const puzzleLetters = gameState.puzzle.toUpperCase().replace(/[^A-Z]/g, '').split('');
-    const uniqueLetters = [...new Set(puzzleLetters)];
+    const uniqueLetters = Array.from(new Set(puzzleLetters));
     const gameWon = uniqueLetters.every(letter => newGuessedLetters.includes(letter));
     
     // Check if lost
@@ -121,17 +126,33 @@ export default function Hangman() {
     }
   };
 
+  const validatePuzzle = (puzzle: string): { valid: boolean; message?: string } => {
+    const trimmed = puzzle.trim();
+    if (!trimmed) return { valid: false, message: "Please enter a puzzle" };
+    
+    const letterCount = trimmed.replace(/[^A-Za-z]/g, '').length;
+    if (letterCount < 8) return { valid: false, message: "Puzzle must have at least 8 letters" };
+    if (letterCount > 21) return { valid: false, message: "Puzzle must have no more than 21 letters" };
+    
+    const wordCount = trimmed.split(/\s+/).length;
+    if (wordCount > 3) return { valid: false, message: "Puzzle must have no more than 3 words" };
+    
+    return { valid: true };
+  };
+
   const startNewGame = () => {
     let puzzle = '';
     
     if (selectedMode === 'single') {
-      puzzle = HANGMAN_PUZZLES[Math.floor(Math.random() * HANGMAN_PUZZLES.length)];
+      const validPuzzles = HANGMAN_PUZZLES.filter(p => validatePuzzle(p).valid);
+      puzzle = validPuzzles[Math.floor(Math.random() * validPuzzles.length)];
     } else {
       puzzle = customPuzzle.trim().toUpperCase();
-      if (!puzzle) {
+      const validation = validatePuzzle(puzzle);
+      if (!validation.valid) {
         toast({
-          title: "Error",
-          description: "Please enter a puzzle",
+          title: "Invalid Puzzle",
+          description: validation.message,
           variant: "destructive"
         });
         return;
@@ -277,7 +298,7 @@ export default function Hangman() {
             <CardContent className="p-6">
               <h3 className="font-semibold mb-4 text-center">Hangman</h3>
               <pre className="text-sm font-mono text-center bg-gray-50 p-4 rounded-lg">
-                {HANGMAN_DRAWINGS[Math.min(gameState.wrongGuesses, HANGMAN_DRAWINGS.length - 1)]}
+                {generateHangmanDrawings(gameState.maxWrongGuesses)[Math.min(gameState.wrongGuesses, gameState.maxWrongGuesses)]}
               </pre>
             </CardContent>
           </Card>
