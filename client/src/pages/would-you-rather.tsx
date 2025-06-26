@@ -190,9 +190,9 @@ export default function WouldYouRather() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      {GAME_CATEGORIES.map(category => (
+                      {GAME_CATEGORIES.sort().map(category => (
                         <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                          {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
                         </SelectItem>
                       ))}
                     </SelectContent>
