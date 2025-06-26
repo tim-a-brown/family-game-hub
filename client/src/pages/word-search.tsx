@@ -62,7 +62,7 @@ export default function WordSearch() {
   });
 
   const [setupMode, setSetupMode] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<GameCategory>('animals');
+  const [selectedCategory, setSelectedCategory] = useState<WordSearchCategory>('random');
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
 
@@ -356,14 +356,14 @@ export default function WordSearch() {
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">Theme</label>
-                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory)}>
+                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as WordSearchCategory)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GAME_CATEGORIES.map(category => (
+                      {WORD_SEARCH_CATEGORIES.map(category => (
                         <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                          {category === 'random' ? '🎲 Random Category' : category.charAt(0).toUpperCase() + category.slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -392,11 +392,16 @@ export default function WordSearch() {
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-4">
                 <Badge variant="secondary">
-                  {gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
+                  {gameState.category === 'random' ? '🎲 Random' : gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
                 </Badge>
                 <span className="text-lg font-semibold">
                   Found: {gameState.foundWords.length} / {gameState.wordList.length}
                 </span>
+                {gameState.foundBonusWords.length > 0 && (
+                  <Badge className="bg-yellow-100 text-yellow-800">
+                    Bonus: {gameState.foundBonusWords.length} / 3
+                  </Badge>
+                )}
                 {gameState.gameWon && (
                   <Badge className="bg-green-100 text-green-800">Completed! 🎉</Badge>
                 )}
@@ -430,6 +435,14 @@ export default function WordSearch() {
                         onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                         onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
                         onMouseUp={handleCellMouseUp}
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          handleCellMouseDown(rowIndex, colIndex);
+                        }}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          handleCellMouseUp();
+                        }}
                       >
                         {cell}
                       </div>
@@ -461,6 +474,27 @@ export default function WordSearch() {
                     </div>
                   ))}
                 </div>
+
+                {/* Bonus Words Section */}
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h4 className="font-semibold mb-3 text-yellow-700">🌟 Bonus Words Found:</h4>
+                  {gameState.foundBonusWords.length > 0 ? (
+                    <div className="space-y-2">
+                      {gameState.foundBonusWords.map((word, index) => (
+                        <div
+                          key={index}
+                          className="p-2 rounded text-sm font-medium bg-yellow-100 text-yellow-800"
+                        >
+                          {word}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">
+                      Find hidden bonus words for extra points!
+                    </p>
+                  )}
+                </div>
                 
                 {gameState.gameWon && (
                   <div className="mt-6 text-center">
@@ -477,9 +511,17 @@ export default function WordSearch() {
         {/* Instructions */}
         <Card className="mt-6">
           <CardContent className="p-4">
-            <p className="text-sm text-gray-600 text-center">
-              Click and drag to select words. Words can be horizontal, vertical, or diagonal in any direction.
-            </p>
+            <div className="text-sm text-gray-600 text-center space-y-2">
+              <p>
+                <strong>How to Play:</strong> Click and drag to select words from the grid. Words can run in any direction: horizontal, vertical, or diagonal (forward or backward).
+              </p>
+              <p>
+                <strong>Bonus Challenge:</strong> Find 3 hidden bonus words that aren't in the word list but are related to the theme for extra points!
+              </p>
+              <p>
+                Selected from {WORD_LISTS[gameState.category === 'random' ? 'animals' : gameState.category as GameCategory]?.length || 250}+ words in this category.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
