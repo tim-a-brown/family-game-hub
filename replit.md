@@ -123,6 +123,7 @@ PUT /api/game-states/:id - Update existing game state
 - June 26, 2025. Removed list view option and "All games" header from home page for cleaner interface
 - June 26, 2025. Added unique faint background graphics to each game tile with variety of colors and 45-degree fade effect
 - June 26, 2025. Enhanced Dots and Boxes to support up to 3 players with grid sizes up to 15x15
+- June 26, 2025. Enhanced Hangman with 260+ puzzles (8-21 letters, 1-3 words), dynamic drawing system that synchronizes with wrong answer limit (6-10 configurable)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
