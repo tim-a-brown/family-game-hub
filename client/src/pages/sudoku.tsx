@@ -74,6 +74,13 @@ export default function Sudoku() {
     return () => clearInterval(interval);
   }, [gameState.isPaused, gameState.isComplete, setupMode]);
 
+  // Auto-save game state when it changes (except initial load)
+  useEffect(() => {
+    if (!setupMode && gameState.grid.length > 0) {
+      gameStorage.saveGameState('sudoku', gameState);
+    }
+  }, [gameState, setupMode]);
+
   const createEmptyGrid = (): number[][] => {
     return Array(9).fill(null).map(() => Array(9).fill(0));
   };

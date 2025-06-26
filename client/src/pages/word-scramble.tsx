@@ -50,7 +50,7 @@ export default function WordScramble() {
 
   const [setupMode, setSetupMode] = useState(true);
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [selectedCategory, setSelectedCategory] = useState<GameCategory>('animals');
+  const [selectedCategory, setSelectedCategory] = useState<GameCategory | 'all'>('animals');
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const { toast } = useToast();
@@ -110,8 +110,16 @@ export default function WordScramble() {
     return scrambled === word ? scrambleWord(word) : scrambled;
   };
 
-  const getRandomWord = (category: GameCategory, difficulty: 'easy' | 'medium' | 'hard'): string => {
-    const words = WORD_LISTS[category];
+  const getRandomWord = (category: GameCategory | 'all', difficulty: 'easy' | 'medium' | 'hard'): string => {
+    let words: string[];
+    
+    if (category === 'all') {
+      // Combine words from all categories
+      words = Object.values(WORD_LISTS).flat();
+    } else {
+      words = WORD_LISTS[category as GameCategory];
+    }
+    
     const settings = DIFFICULTY_SETTINGS[difficulty];
     const filteredWords = words.filter(word => 
       word.length >= settings.wordLength[0] && word.length <= settings.wordLength[1]
@@ -224,7 +232,7 @@ export default function WordScramble() {
       gameWon: false,
       gameLost: false,
       wordsCompleted: 0,
-      category: selectedCategory
+      category: selectedCategory === 'all' ? 'animals' : selectedCategory as GameCategory
     };
 
     setGameState(newGameState);
@@ -286,14 +294,15 @@ export default function WordScramble() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">Category</label>
-                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory)}>
+                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.keys(WORD_LISTS).map(category => (
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {Object.keys(WORD_LISTS).sort().map(category => (
                         <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                          {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
                         </SelectItem>
                       ))}
                     </SelectContent>
