@@ -11,6 +11,7 @@ interface Line {
   end: { row: number; col: number };
   isDrawn: boolean;
   orientation: 'horizontal' | 'vertical';
+  drawnBy: number | null; // Which player drew this line
 }
 
 interface Box {
@@ -71,7 +72,8 @@ export default function DotsAndBoxes() {
           start: { row, col },
           end: { row, col: col + 1 },
           isDrawn: false,
-          orientation: 'horizontal'
+          orientation: 'horizontal',
+          drawnBy: null
         };
       }
     }
@@ -85,7 +87,8 @@ export default function DotsAndBoxes() {
           start: { row, col },
           end: { row: row + 1, col },
           isDrawn: false,
-          orientation: 'vertical'
+          orientation: 'vertical',
+          drawnBy: null
         };
       }
     }
@@ -105,6 +108,15 @@ export default function DotsAndBoxes() {
     }
 
     return { horizontalLines, verticalLines, boxes };
+  };
+
+  const getPlayerColor = (playerNumber: number | null): string => {
+    switch (playerNumber) {
+      case 1: return 'bg-blue-600';
+      case 2: return 'bg-red-600';
+      case 3: return 'bg-green-600';
+      default: return 'bg-gray-800';
+    }
   };
 
   const checkBoxComplete = (boxRow: number, boxCol: number, hLines: Line[][], vLines: Line[][]): boolean => {
@@ -132,6 +144,7 @@ export default function DotsAndBoxes() {
 
     // Draw the line
     currentLine.isDrawn = true;
+    currentLine.drawnBy = gameState.currentPlayer;
 
     // Check for completed boxes
     let completedBoxes = 0;
@@ -409,7 +422,7 @@ export default function DotsAndBoxes() {
                           key={`${row}-${col}`}
                           className={`
                             w-full cursor-pointer transition-colors self-center
-                            ${line?.isDrawn ? 'bg-gray-800' : 'bg-gray-300 hover:bg-gray-500'}
+                            ${line?.isDrawn ? getPlayerColor(line.drawnBy) : 'bg-gray-300 hover:bg-gray-500'}
                           `}
                           style={{ height: '3px', minHeight: '2px', maxHeight: '4px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'horizontal')}
@@ -426,7 +439,7 @@ export default function DotsAndBoxes() {
                           key={`${row}-${col}`}
                           className={`
                             h-full cursor-pointer transition-colors self-center justify-self-center
-                            ${line?.isDrawn ? 'bg-gray-800' : 'bg-gray-300 hover:bg-gray-500'}
+                            ${line?.isDrawn ? getPlayerColor(line.drawnBy) : 'bg-gray-300 hover:bg-gray-500'}
                           `}
                           style={{ width: '3px', minWidth: '2px', maxWidth: '4px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'vertical')}
