@@ -592,7 +592,7 @@ export default function WordSearch() {
                           }}
                         >
                           <span style={{ 
-                            zIndex: 20, 
+                            zIndex: 50, 
                             position: 'relative',
                             textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
                             fontWeight: isFoundWord ? 'bold' : 'normal'
@@ -608,7 +608,7 @@ export default function WordSearch() {
                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
                     viewBox="0 0 100 100"
                     preserveAspectRatio="xMidYMid meet"
-                    style={{ zIndex: 5 }}
+                    style={{ zIndex: 3 }}
                   >
                     {gameState.foundWords.map((word) => {
                       const placedWord = gameState.placedWords.find(pw => pw.word === word);
