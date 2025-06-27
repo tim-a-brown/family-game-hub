@@ -529,7 +529,7 @@ export default function WordSearch() {
                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
                     viewBox="0 0 100 100"
                     preserveAspectRatio="xMidYMid meet"
-                    style={{ zIndex: 1 }}
+                    style={{ zIndex: 5 }}
                   >
                     {gameState.foundWords.map((word) => {
                       const placedWord = gameState.placedWords.find(pw => pw.word === word);
@@ -620,7 +620,7 @@ export default function WordSearch() {
                             border: isSelected && !isFoundWord ? '2px solid #3b82f6' : isFoundWord ? '2px solid #22c55e' : '1px solid transparent',
                             borderRadius: isSelected || isFoundWord ? '50%' : '0%',
                             transform: isSelected || isFoundWord ? 'scale(1.1)' : 'scale(1)',
-                            zIndex: isFoundWord ? 1 : isSelected ? 10 : 1,
+                            zIndex: isFoundWord ? 2 : isSelected ? 10 : 1,
                             position: 'relative',
                             fontWeight: isSelected || isFoundWord ? 'bold' : 'normal'
                           }}
@@ -653,7 +653,7 @@ export default function WordSearch() {
                           <span style={{ 
                             zIndex: 20, 
                             position: 'relative',
-                            textShadow: isFoundWord ? '0 0 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.6)' : 'none',
+                            textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
                             fontWeight: isFoundWord ? 'bold' : 'normal'
                           }}>{cell}</span>
                         </div>
