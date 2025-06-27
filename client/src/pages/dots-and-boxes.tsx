@@ -261,7 +261,7 @@ export default function DotsAndBoxes() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
         <GameHeader title="Dots and Boxes"  />
         
         <div className="max-w-md mx-auto pt-8 px-4">
@@ -338,7 +338,7 @@ export default function DotsAndBoxes() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
       <GameHeader title="Dots and Boxes"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
@@ -385,15 +385,16 @@ export default function DotsAndBoxes() {
         {/* Game Board */}
         <Card className="shadow-xl">
           <CardContent className="p-2 sm:p-4 lg:p-8">
-            <div className="flex justify-center w-full">
+            <div className="flex justify-center w-full overflow-hidden">
               <div 
-                className="w-full max-w-2xl"
+                className="w-full"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: `repeat(${gameState.gridSize * 2 + 1}, 1fr)`,
                   gap: '1px',
                   aspectRatio: '1',
-                  maxHeight: 'calc(100vh - 300px)'
+                  maxWidth: 'min(90vw, 500px)',
+                  maxHeight: 'min(90vw, 500px, calc(100vh - 400px))'
                 }}
               >
                 {/* Render grid */}
@@ -408,7 +409,7 @@ export default function DotsAndBoxes() {
                         <div 
                           key={`${row}-${col}`}
                           className="aspect-square bg-gray-800 rounded-full m-auto"
-                          style={{ width: '8px', height: '8px', minWidth: '4px', minHeight: '4px', maxWidth: '12px', maxHeight: '12px' }}
+                          style={{ width: '4px', height: '4px', minWidth: '2px', minHeight: '2px', maxWidth: '6px', maxHeight: '6px' }}
                         />
                       );
                     } else if (isEvenRow && !isEvenCol) {
@@ -424,7 +425,7 @@ export default function DotsAndBoxes() {
                             w-full cursor-pointer transition-colors self-center
                             ${line?.isDrawn ? getPlayerColor(line.drawnBy) : 'bg-gray-300 hover:bg-gray-500'}
                           `}
-                          style={{ height: '3px', minHeight: '2px', maxHeight: '4px' }}
+                          style={{ height: '2px', minHeight: '1px', maxHeight: '3px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'horizontal')}
                         />
                       );
@@ -441,7 +442,7 @@ export default function DotsAndBoxes() {
                             h-full cursor-pointer transition-colors self-center justify-self-center
                             ${line?.isDrawn ? getPlayerColor(line.drawnBy) : 'bg-gray-300 hover:bg-gray-500'}
                           `}
-                          style={{ width: '3px', minWidth: '2px', maxWidth: '4px' }}
+                          style={{ width: '2px', minWidth: '1px', maxWidth: '3px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'vertical')}
                         />
                       );
