@@ -98,6 +98,7 @@ export default function WordSearch() {
       }
       
       const currentCell = grid[newRow][newCol];
+      // Allow placement if cell is empty OR if it contains the same letter (overlap)
       if (currentCell !== '' && currentCell !== word[i]) {
         return false;
       }
@@ -135,6 +136,65 @@ export default function WordSearch() {
     }
   };
 
+  // Find potential intersection points between a new word and existing words
+  const findIntersectionOpportunities = (grid: string[][], word: string, placedWords: PlacedWord[]) => {
+    const opportunities: Array<{
+      row: number;
+      col: number;
+      direction: { dr: number; dc: number };
+      score: number;
+    }> = [];
+
+    for (const placedWord of placedWords) {
+      // Get all positions of the placed word
+      const placedPositions: Array<{ row: number; col: number; letter: string }> = [];
+      const dr = placedWord.end.row > placedWord.start.row ? 1 : placedWord.end.row < placedWord.start.row ? -1 : 0;
+      const dc = placedWord.end.col > placedWord.start.col ? 1 : placedWord.end.col < placedWord.start.col ? -1 : 0;
+      
+      for (let i = 0; i < placedWord.word.length; i++) {
+        const row = placedWord.start.row + (dr * i);
+        const col = placedWord.start.col + (dc * i);
+        placedPositions.push({ row, col, letter: placedWord.word[i] });
+      }
+
+      // Check each letter in the new word for potential intersections
+      for (let wordIndex = 0; wordIndex < word.length; wordIndex++) {
+        const wordLetter = word[wordIndex];
+        
+        for (const placedPos of placedPositions) {
+          if (placedPos.letter === wordLetter) {
+            // Try each direction for the new word through this intersection
+            for (const direction of DIRECTIONS) {
+              // Calculate starting position for the new word
+              const startRow = placedPos.row - (wordIndex * direction.dr);
+              const startCol = placedPos.col - (wordIndex * direction.dc);
+              
+              // Check if this placement is valid and perpendicular to existing word
+              const existingDir = { dr, dc };
+              const isPerpendicular = (direction.dr === 0 && existingDir.dc === 0) || 
+                                    (direction.dc === 0 && existingDir.dr === 0) ||
+                                    (direction.dr !== 0 && direction.dc !== 0 && existingDir.dr === 0) ||
+                                    (direction.dr !== 0 && direction.dc !== 0 && existingDir.dc === 0) ||
+                                    (direction.dr === 0 && existingDir.dr !== 0 && existingDir.dc !== 0) ||
+                                    (direction.dc === 0 && existingDir.dr !== 0 && existingDir.dc !== 0);
+              
+              if (canPlaceWord(grid, word, startRow, startCol, direction)) {
+                opportunities.push({
+                  row: startRow,
+                  col: startCol,
+                  direction,
+                  score: isPerpendicular ? 10 : 5 // Prefer perpendicular intersections
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return opportunities.sort((a, b) => b.score - a.score);
+  };
+
   const generateWordSearch = (category: WordSearchCategory) => {
     // Handle random category selection
     const actualCategory = category === 'random' 
@@ -151,29 +211,63 @@ export default function WordSearch() {
     const mainWords = shuffledWords.slice(0, mainWordCount).map(word => word.toUpperCase());
     const selectedBonusWords = bonusWords.slice(0, 3).map(word => word.toUpperCase());
     
-    // Combine all words for placement
-    const allWordsToPlace = [...mainWords, ...selectedBonusWords];
+    // Combine all words for placement, sort by length (longer words first)
+    const allWordsToPlace = [...mainWords, ...selectedBonusWords]
+      .sort((a, b) => b.length - a.length);
     
     const grid = createEmptyGrid();
     const placedWords: PlacedWord[] = [];
+    const OVERLAP_CHANCE = 0.7; // 70% chance to try overlapping with existing words
 
-    allWordsToPlace.forEach(word => {
+    for (const word of allWordsToPlace) {
       let placed = false;
       let attempts = 0;
       
-      while (!placed && attempts < 100) {
-        const direction = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
-        const row = Math.floor(Math.random() * GRID_SIZE);
-        const col = Math.floor(Math.random() * GRID_SIZE);
-        
-        if (canPlaceWord(grid, word, row, col, direction)) {
-          const placedWord = placeWord(grid, word, row, col, direction);
-          placedWords.push(placedWord);
-          placed = true;
+      // For the first word, or if no overlap opportunities exist, place randomly
+      if (placedWords.length === 0 || Math.random() > OVERLAP_CHANCE) {
+        // Try random placement
+        while (!placed && attempts < 100) {
+          const direction = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+          const row = Math.floor(Math.random() * GRID_SIZE);
+          const col = Math.floor(Math.random() * GRID_SIZE);
+          
+          if (canPlaceWord(grid, word, row, col, direction)) {
+            const placedWord = placeWord(grid, word, row, col, direction);
+            placedWords.push(placedWord);
+            placed = true;
+          }
+          attempts++;
         }
-        attempts++;
+      } else {
+        // Try to find intersection opportunities first
+        const opportunities = findIntersectionOpportunities(grid, word, placedWords);
+        
+        // Try the best intersection opportunities first
+        for (const opp of opportunities.slice(0, 5)) { // Try top 5 opportunities
+          if (canPlaceWord(grid, word, opp.row, opp.col, opp.direction)) {
+            const placedWord = placeWord(grid, word, opp.row, opp.col, opp.direction);
+            placedWords.push(placedWord);
+            placed = true;
+            break;
+          }
+        }
+        
+        // If no intersection worked, try random placement
+        attempts = 0;
+        while (!placed && attempts < 50) {
+          const direction = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+          const row = Math.floor(Math.random() * GRID_SIZE);
+          const col = Math.floor(Math.random() * GRID_SIZE);
+          
+          if (canPlaceWord(grid, word, row, col, direction)) {
+            const placedWord = placeWord(grid, word, row, col, direction);
+            placedWords.push(placedWord);
+            placed = true;
+          }
+          attempts++;
+        }
       }
-    });
+    }
 
     fillEmptyCells(grid);
     
