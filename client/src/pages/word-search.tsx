@@ -458,6 +458,15 @@ export default function WordSearch() {
     });
   };
 
+  const isCellPartOfFoundBonusWord = (row: number, col: number): boolean => {
+    return gameState.placedWords.some(placedWord => {
+      if (!gameState.foundBonusWords.includes(placedWord.word)) return false;
+      
+      const cells = getCellsInLine(placedWord.start, placedWord.end);
+      return cells.some(pos => pos.row === row && pos.col === col);
+    });
+  };
+
   const startNewGame = () => {
     const { grid, wordList, bonusWords, placedWords, actualCategory } = generateWordSearch(selectedCategory);
     
@@ -635,6 +644,7 @@ export default function WordSearch() {
                     row.map((cell, colIndex) => {
                       const isSelected = isCellSelected(rowIndex, colIndex);
                       const isFoundWord = isCellPartOfFoundWord(rowIndex, colIndex);
+                      const isFoundBonusWord = isCellPartOfFoundBonusWord(rowIndex, colIndex);
                       const selectionIndex = gameState.selectedCells.findIndex(
                         pos => pos.row === rowIndex && pos.col === colIndex
                       );
@@ -651,14 +661,14 @@ export default function WordSearch() {
                           `}
                           style={{
                             backgroundColor: 'transparent',
-                            color: isFoundWord ? 'white' : isSelected ? '#1e40af' : '#374151',
+                            color: isFoundWord || isFoundBonusWord ? 'white' : isSelected ? '#1e40af' : '#374151',
                             border: isSelected && !isFoundWord ? '2px solid #3b82f6' : '1px solid transparent',
                             borderRadius: isSelected ? '50%' : '0%',
                             transform: isSelected ? 'scale(1.1)' : 'scale(1)',
                             zIndex: isSelected ? 10 : 3,
                             position: 'relative',
                             fontWeight: isSelected || isFoundWord ? 'bold' : 'normal',
-                            textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.7)' : 'none'
+                            textShadow: isFoundWord || isFoundBonusWord ? '0 0 2px rgba(0,0,0,0.7)' : 'none'
                           }}
                           onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                           onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
@@ -751,8 +761,8 @@ export default function WordSearch() {
                             cx={centerX}
                             cy={centerY}
                             r="2.5"
-                            fill="rgb(34, 197, 94)"
-                            stroke="rgb(34, 197, 94)"
+                            fill="rgb(251, 191, 36)"
+                            stroke="rgb(251, 191, 36)"
                             strokeWidth="0.2"
                           />
                         );
@@ -789,6 +799,31 @@ export default function WordSearch() {
                           strokeWidth="1.2"
                           strokeLinecap="round"
                           opacity="0.9"
+                        />
+                      );
+                    })}
+                    
+                    {gameState.foundBonusWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Calculate line coordinates as percentages
+                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
+                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
+                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
+                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
+                      
+                      return (
+                        <line
+                          key={`bonus-${word}`}
+                          x1={startX}
+                          y1={startY}
+                          x2={endX}
+                          y2={endY}
+                          stroke="#fbbf24"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          opacity="0.8"
                         />
                       );
                     })}
