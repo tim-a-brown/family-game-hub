@@ -524,6 +524,64 @@ export default function WordSearch() {
             <Card className="shadow-lg">
               <CardContent className="p-2 sm:p-4">
                 <div className="relative w-full max-w-md mx-auto aspect-square">
+                  {/* SVG overlay for drawing lines on found words - positioned behind text */}
+                  <svg 
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="xMidYMid meet"
+                    style={{ zIndex: 1 }}
+                  >
+                    {gameState.foundWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Calculate line coordinates as percentages
+                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
+                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
+                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
+                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
+                      
+                      return (
+                        <line
+                          key={word}
+                          x1={startX}
+                          y1={startY}
+                          x2={endX}
+                          y2={endY}
+                          stroke="#15803d"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          opacity="0.9"
+                        />
+                      );
+                    })}
+                    
+                    {gameState.foundBonusWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Calculate line coordinates as percentages
+                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
+                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
+                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
+                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
+                      
+                      return (
+                        <line
+                          key={`bonus-${word}`}
+                          x1={startX}
+                          y1={startY}
+                          x2={endX}
+                          y2={endY}
+                          stroke="#ca8a04"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          opacity="0.9"
+                        />
+                      );
+                    })}
+                  </svg>
+
                   <div 
                     className="grid aspect-square w-full select-none relative"
                     style={{ 
@@ -532,7 +590,8 @@ export default function WordSearch() {
                       touchAction: 'none',
                       userSelect: 'none',
                       WebkitUserSelect: 'none',
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      zIndex: 10
                     }}
                     onTouchStart={(e) => e.preventDefault()}
                     onTouchMove={(e) => e.preventDefault()}
@@ -591,70 +650,17 @@ export default function WordSearch() {
                             handleCellMouseUp();
                           }}
                         >
-                          <span style={{ zIndex: 20, position: 'relative' }}>{cell}</span>
+                          <span style={{ 
+                            zIndex: 20, 
+                            position: 'relative',
+                            textShadow: isFoundWord ? '0 0 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.6)' : 'none',
+                            fontWeight: isFoundWord ? 'bold' : 'normal'
+                          }}>{cell}</span>
                         </div>
                       );
                     })
                   )}
                   </div>
-
-                  {/* SVG overlay for drawing lines on found words */}
-                  <svg 
-                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ zIndex: 2 }}
-                  >
-                    {gameState.foundWords.map((word) => {
-                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
-                      if (!placedWord) return null;
-                      
-                      // Calculate line coordinates as percentages
-                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
-                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
-                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
-                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
-                      
-                      return (
-                        <line
-                          key={word}
-                          x1={startX}
-                          y1={startY}
-                          x2={endX}
-                          y2={endY}
-                          stroke="#15803d"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                          opacity="0.9"
-                        />
-                      );
-                    })}
-                    
-                    {gameState.foundBonusWords.map((word) => {
-                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
-                      if (!placedWord) return null;
-                      
-                      // Calculate line coordinates as percentages
-                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
-                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
-                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
-                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
-                      
-                      return (
-                        <line
-                          key={`bonus-${word}`}
-                          x1={startX}
-                          y1={startY}
-                          x2={endX}
-                          y2={endY}
-                          stroke="#ca8a04"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                          opacity="0.9"
-                        />
-                      );
-                    })}
-                  </svg>
                 </div>
 
                 {/* Reset Button - appears at bottom during selection */}
