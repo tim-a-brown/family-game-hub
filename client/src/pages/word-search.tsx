@@ -561,7 +561,7 @@ export default function WordSearch() {
                             border: isSelected && !isFoundWord ? '2px solid #3b82f6' : isFoundWord ? '2px solid #22c55e' : '1px solid transparent',
                             borderRadius: isSelected || isFoundWord ? '50%' : '0%',
                             transform: isSelected || isFoundWord ? 'scale(1.1)' : 'scale(1)',
-                            zIndex: isSelected || isFoundWord ? 10 : 1,
+                            zIndex: isFoundWord ? 1 : isSelected ? 10 : 1,
                             fontWeight: isSelected || isFoundWord ? 'bold' : 'normal'
                           }}
                           onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
@@ -590,7 +590,7 @@ export default function WordSearch() {
                             handleCellMouseUp();
                           }}
                         >
-                          {cell}
+                          <span style={{ zIndex: 10, position: 'relative' }}>{cell}</span>
                         </div>
                       );
                     })
@@ -602,6 +602,7 @@ export default function WordSearch() {
                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
                     viewBox="0 0 100 100"
                     preserveAspectRatio="xMidYMid meet"
+                    style={{ zIndex: 5 }}
                   >
                     {gameState.foundWords.map((word) => {
                       const placedWord = gameState.placedWords.find(pw => pw.word === word);
@@ -621,9 +622,9 @@ export default function WordSearch() {
                           x2={endX}
                           y2={endY}
                           stroke="#15803d"
-                          strokeWidth="0.8"
+                          strokeWidth="1.2"
                           strokeLinecap="round"
-                          opacity="0.8"
+                          opacity="0.9"
                         />
                       );
                     })}
@@ -646,9 +647,9 @@ export default function WordSearch() {
                           x2={endX}
                           y2={endY}
                           stroke="#ca8a04"
-                          strokeWidth="0.8"
+                          strokeWidth="1.2"
                           strokeLinecap="round"
-                          opacity="0.8"
+                          opacity="0.9"
                         />
                       );
                     })}
