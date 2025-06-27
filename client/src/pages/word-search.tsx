@@ -556,14 +556,15 @@ export default function WordSearch() {
                             ${!isSelected && !isFoundWord ? 'hover:bg-gray-100' : ''}
                           `}
                           style={{
-                            backgroundColor: isFoundWord ? 'rgb(34, 197, 94)' : 'transparent',
+                            backgroundColor: 'transparent',
                             color: isFoundWord ? 'white' : isSelected ? '#1e40af' : '#374151',
-                            border: isSelected && !isFoundWord ? '2px solid #3b82f6' : isFoundWord ? '2px solid #22c55e' : '1px solid transparent',
-                            borderRadius: isSelected || isFoundWord ? '50%' : '0%',
-                            transform: isSelected || isFoundWord ? 'scale(1.1)' : 'scale(1)',
-                            zIndex: isFoundWord ? 1 : isSelected ? 10 : 1,
+                            border: isSelected && !isFoundWord ? '2px solid #3b82f6' : '1px solid transparent',
+                            borderRadius: isSelected ? '50%' : '0%',
+                            transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                            zIndex: isSelected ? 10 : 1,
                             position: 'relative',
-                            fontWeight: isSelected || isFoundWord ? 'bold' : 'normal'
+                            fontWeight: isSelected || isFoundWord ? 'bold' : 'normal',
+                            textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.7)' : 'none'
                           }}
                           onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                           onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
@@ -591,24 +592,87 @@ export default function WordSearch() {
                             handleCellMouseUp();
                           }}
                         >
-                          <span style={{ 
-                            zIndex: 50, 
-                            position: 'relative',
-                            textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
-                            fontWeight: isFoundWord ? 'bold' : 'normal'
-                          }}>{cell}</span>
+                          {cell}
                         </div>
                       );
                     })
                   )}
                   </div>
 
+                  {/* SVG overlay for green circles behind found words */}
+                  <svg 
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="xMidYMid meet"
+                    style={{ zIndex: 1 }}
+                  >
+                    {gameState.foundWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Create circles for each letter in the found word
+                      const circles = [];
+                      const dr = placedWord.end.row > placedWord.start.row ? 1 : placedWord.end.row < placedWord.start.row ? -1 : 0;
+                      const dc = placedWord.end.col > placedWord.start.col ? 1 : placedWord.end.col < placedWord.start.col ? -1 : 0;
+                      
+                      for (let i = 0; i < word.length; i++) {
+                        const row = placedWord.start.row + (dr * i);
+                        const col = placedWord.start.col + (dc * i);
+                        const centerX = (col + 0.5) / GRID_SIZE * 100;
+                        const centerY = (row + 0.5) / GRID_SIZE * 100;
+                        
+                        circles.push(
+                          <circle
+                            key={`${word}-${i}`}
+                            cx={centerX}
+                            cy={centerY}
+                            r="2.5"
+                            fill="rgb(34, 197, 94)"
+                            stroke="rgb(34, 197, 94)"
+                            strokeWidth="0.2"
+                          />
+                        );
+                      }
+                      return circles;
+                    })}
+                    
+                    {gameState.foundBonusWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Create circles for each letter in the found bonus word
+                      const circles = [];
+                      const dr = placedWord.end.row > placedWord.start.row ? 1 : placedWord.end.row < placedWord.start.row ? -1 : 0;
+                      const dc = placedWord.end.col > placedWord.start.col ? 1 : placedWord.end.col < placedWord.start.col ? -1 : 0;
+                      
+                      for (let i = 0; i < word.length; i++) {
+                        const row = placedWord.start.row + (dr * i);
+                        const col = placedWord.start.col + (dc * i);
+                        const centerX = (col + 0.5) / GRID_SIZE * 100;
+                        const centerY = (row + 0.5) / GRID_SIZE * 100;
+                        
+                        circles.push(
+                          <circle
+                            key={`bonus-${word}-${i}`}
+                            cx={centerX}
+                            cy={centerY}
+                            r="2.5"
+                            fill="rgb(34, 197, 94)"
+                            stroke="rgb(34, 197, 94)"
+                            strokeWidth="0.2"
+                          />
+                        );
+                      }
+                      return circles;
+                    })}
+                  </svg>
+
                   {/* SVG overlay for drawing lines on found words - positioned after grid */}
                   <svg 
                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
                     viewBox="0 0 100 100"
                     preserveAspectRatio="xMidYMid meet"
-                    style={{ zIndex: 3 }}
+                    style={{ zIndex: 2 }}
                   >
                     {gameState.foundWords.map((word) => {
                       const placedWord = gameState.placedWords.find(pw => pw.word === word);
