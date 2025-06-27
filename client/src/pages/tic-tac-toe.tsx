@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
+import { useAutoSave } from "@/hooks/use-auto-save";
 
 type Player = 'X' | 'O' | '△' | null;
 type Board = Player[];
@@ -38,6 +39,13 @@ export default function TicTacToe() {
   const [selectedBoards, setSelectedBoards] = useState<number>(1);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
+  
+  // Auto-save functionality
+  const { saveGame: autoSave } = useAutoSave({
+    gameType: 'tic-tac-toe',
+    gameState,
+    enabled: !setupMode && gameState.boards.some(board => board.some(cell => cell !== null))
+  });
 
   useEffect(() => {
     const saved = gameStorage.loadGameState('tic-tac-toe');
@@ -204,8 +212,8 @@ export default function TicTacToe() {
     setSetupMode(false);
   };
 
-  const saveGame = () => {
-    gameStorage.saveGameState('tic-tac-toe', gameState);
+  const handleManualSave = () => {
+    saveGame();
     toast({
       title: "Game Saved",
       description: "Your progress has been saved!",

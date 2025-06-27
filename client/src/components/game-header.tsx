@@ -14,6 +14,10 @@ export function GameHeader({ title, onSave, onSettings, showSave = true, showSet
   const [, setLocation] = useLocation();
 
   const handleBack = () => {
+    // Auto-save before navigating away
+    if (onSave) {
+      onSave();
+    }
     setLocation("/");
   };
 
