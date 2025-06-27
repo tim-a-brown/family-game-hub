@@ -212,13 +212,7 @@ export default function TicTacToe() {
     setSetupMode(false);
   };
 
-  const handleManualSave = () => {
-    autoSave();
-    toast({
-      title: "Game Saved",
-      description: "Your progress has been saved!",
-    });
-  };
+
 
   const resetGame = () => {
     setSetupMode(true);
@@ -228,7 +222,7 @@ export default function TicTacToe() {
   if (setupMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Tic-Tac-Toe" showSave={false} />
+        <GameHeader title="Tic-Tac-Toe" />
         
         <div className="max-w-md mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -287,7 +281,7 @@ export default function TicTacToe() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Tic-Tac-Toe" onSave={handleManualSave} />
+      <GameHeader title="Tic-Tac-Toe" />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}

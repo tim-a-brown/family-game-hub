@@ -4,20 +4,14 @@ import { useLocation } from "wouter";
 
 interface GameHeaderProps {
   title: string;
-  onSave?: () => void;
   onSettings?: () => void;
-  showSave?: boolean;
   showSettings?: boolean;
 }
 
-export function GameHeader({ title, onSave, onSettings, showSave = true, showSettings = false }: GameHeaderProps) {
+export function GameHeader({ title, onSettings, showSettings = false }: GameHeaderProps) {
   const [, setLocation] = useLocation();
 
   const handleBack = () => {
-    // Auto-save before navigating away
-    if (onSave) {
-      onSave();
-    }
     setLocation("/");
   };
 
@@ -41,17 +35,6 @@ export function GameHeader({ title, onSave, onSettings, showSave = true, showSet
           </div>
           
           <div className="flex items-center space-x-2">
-            {showSave && onSave && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onSave}
-                className="hover:bg-primary hover:text-white hover:border-primary transition-colors"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </Button>
-            )}
             {showSettings && onSettings && (
               <Button
                 variant="outline"
