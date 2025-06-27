@@ -463,18 +463,69 @@ export default function WordSearch() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Word Bank - Top on mobile, right on desktop */}
+          <div className="order-first lg:order-last w-full lg:w-64 flex-shrink-0">
+            <Card className="shadow-lg h-fit">
+              <CardContent className="p-3">
+                <h3 className="font-bold text-sm mb-3 text-center">Words to Find</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1 text-xs">
+                  {gameState.wordList.map((word, index) => {
+                    const isFound = gameState.foundWords.includes(word);
+                    return (
+                      <div
+                        key={index}
+                        className={`p-1 rounded text-center transition-all ${
+                          isFound 
+                            ? 'bg-green-100 text-green-800 line-through' 
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {word}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bonus Words */}
+                {gameState.bonusWords.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-bold text-xs mb-2 text-center text-yellow-700">
+                      Bonus Words ({gameState.foundBonusWords.length}/3)
+                    </h4>
+                    <div className="grid grid-cols-1 gap-1 text-xs">
+                      {gameState.foundBonusWords.map((word, index) => (
+                        <div
+                          key={index}
+                          className="p-1 rounded text-center bg-yellow-100 text-yellow-800"
+                        >
+                          {word}
+                        </div>
+                      ))}
+                      {Array(3 - gameState.foundBonusWords.length).fill(0).map((_, index) => (
+                        <div
+                          key={`hidden-${index}`}
+                          className="p-1 rounded text-center bg-gray-50 text-gray-400"
+                        >
+                          ???
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Word Search Grid */}
-          <div className="flex-1">
+          <div className="flex-1 order-last lg:order-first">
             <Card className="shadow-lg">
-              <CardContent className="p-4">
-
-
+              <CardContent className="p-2 sm:p-4">
                 <div 
-                  className="grid grid-cols-16 max-w-2xl mx-auto select-none"
+                  className="grid aspect-square w-full max-w-md mx-auto select-none"
                   style={{ 
                     gridTemplateColumns: 'repeat(16, 1fr)',
-                    gap: '0',
+                    gap: '1px',
                     touchAction: 'none',
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
@@ -497,7 +548,7 @@ export default function WordSearch() {
                           data-row={rowIndex}
                           data-col={colIndex}
                           className={`
-                            w-6 h-6 flex items-center justify-center text-xs font-bold cursor-pointer
+                            aspect-square flex items-center justify-center text-xs sm:text-sm font-bold cursor-pointer
                             relative transition-all duration-200 ease-in-out
                             ${!isSelected && !isFoundWord ? 'hover:bg-gray-100' : ''}
                           `}
@@ -565,59 +616,7 @@ export default function WordSearch() {
             </Card>
           </div>
 
-          {/* Word Bank - Right Sidebar */}
-          <div className="w-64 flex-shrink-0">
-            <Card className="shadow-lg h-fit">
-              <CardContent className="p-3">
-                <h3 className="font-semibold mb-3 text-sm">Find These Words:</h3>
-                <div className="space-y-1 max-h-96 overflow-y-auto">
-                  {gameState.wordList.map((word, index) => (
-                    <div
-                      key={index}
-                      className={`
-                        px-2 py-1 rounded text-xs font-medium
-                        ${gameState.foundWords.includes(word) 
-                          ? 'bg-green-100 text-green-800 line-through' 
-                          : 'bg-gray-100 text-gray-800'
-                        }
-                      `}
-                    >
-                      {word}
-                    </div>
-                  ))}
-                </div>
 
-                {/* Bonus Words Section */}
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <h4 className="font-semibold mb-2 text-yellow-700 text-xs">🌟 Bonus Found:</h4>
-                  {gameState.foundBonusWords.length > 0 ? (
-                    <div className="space-y-1">
-                      {gameState.foundBonusWords.map((word, index) => (
-                        <div
-                          key={index}
-                          className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800"
-                        >
-                          {word}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500 italic">
-                      Find 3 hidden bonus words!
-                    </p>
-                  )}
-                </div>
-                
-                {gameState.gameWon && (
-                  <div className="mt-4 text-center">
-                    <Button onClick={resetGame} size="sm" className="w-full text-xs">
-                      New Puzzle
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         {/* Instructions */}
