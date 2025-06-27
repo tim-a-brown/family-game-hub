@@ -523,19 +523,20 @@ export default function WordSearch() {
           <div className="flex-1 order-last lg:order-first">
             <Card className="shadow-lg">
               <CardContent className="p-2 sm:p-4">
-                <div 
-                  className="grid aspect-square w-full max-w-md mx-auto select-none"
-                  style={{ 
-                    gridTemplateColumns: 'repeat(16, 1fr)',
-                    gap: '1px',
-                    touchAction: 'none',
-                    userSelect: 'none',
-                    WebkitUserSelect: 'none',
-                    overflow: 'hidden'
-                  }}
-                  onTouchStart={(e) => e.preventDefault()}
-                  onTouchMove={(e) => e.preventDefault()}
-                >
+                <div className="relative w-full max-w-md mx-auto aspect-square">
+                  <div 
+                    className="grid aspect-square w-full select-none relative"
+                    style={{ 
+                      gridTemplateColumns: 'repeat(16, 1fr)',
+                      gap: '1px',
+                      touchAction: 'none',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      overflow: 'hidden'
+                    }}
+                    onTouchStart={(e) => e.preventDefault()}
+                    onTouchMove={(e) => e.preventDefault()}
+                  >
                   {gameState.grid.map((row, rowIndex) =>
                     row.map((cell, colIndex) => {
                       const isSelected = isCellSelected(rowIndex, colIndex);
@@ -594,6 +595,64 @@ export default function WordSearch() {
                       );
                     })
                   )}
+                  </div>
+
+                  {/* SVG overlay for drawing lines on found words */}
+                  <svg 
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="xMidYMid meet"
+                  >
+                    {gameState.foundWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Calculate line coordinates as percentages
+                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
+                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
+                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
+                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
+                      
+                      return (
+                        <line
+                          key={word}
+                          x1={startX}
+                          y1={startY}
+                          x2={endX}
+                          y2={endY}
+                          stroke="#15803d"
+                          strokeWidth="0.8"
+                          strokeLinecap="round"
+                          opacity="0.8"
+                        />
+                      );
+                    })}
+                    
+                    {gameState.foundBonusWords.map((word) => {
+                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                      if (!placedWord) return null;
+                      
+                      // Calculate line coordinates as percentages
+                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
+                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
+                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
+                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
+                      
+                      return (
+                        <line
+                          key={`bonus-${word}`}
+                          x1={startX}
+                          y1={startY}
+                          x2={endX}
+                          y2={endY}
+                          stroke="#ca8a04"
+                          strokeWidth="0.8"
+                          strokeLinecap="round"
+                          opacity="0.8"
+                        />
+                      );
+                    })}
+                  </svg>
                 </div>
 
                 {/* Reset Button - appears at bottom during selection */}
