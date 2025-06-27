@@ -387,15 +387,16 @@ export default function DotsAndBoxes() {
           <CardContent className="p-2 sm:p-4 lg:p-8">
             <div className="flex justify-center w-full overflow-hidden">
               <div 
-                className="w-full"
+                className="w-full aspect-square"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${gameState.gridSize * 2 + 1}, 1fr)`,
-                  gridTemplateRows: `repeat(${gameState.gridSize * 2 + 1}, 1fr)`,
+                  gridTemplateColumns: `repeat(${gameState.gridSize * 2 + 1}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${gameState.gridSize * 2 + 1}, minmax(0, 1fr))`,
                   gap: '1px',
-                  aspectRatio: '1',
                   maxWidth: 'min(90vw, 500px)',
-                  maxHeight: 'min(90vw, 500px, calc(100vh - 400px))'
+                  maxHeight: 'min(90vw, 500px, calc(100vh - 400px))',
+                  width: 'min(90vw, 500px)',
+                  height: 'min(90vw, 500px, calc(100vh - 400px))'
                 }}
               >
                 {/* Render grid */}
@@ -457,7 +458,7 @@ export default function DotsAndBoxes() {
                         <div 
                           key={`${row}-${col}`}
                           className={`
-                            aspect-square flex items-center justify-center text-xs sm:text-sm font-bold
+                            flex items-center justify-center text-xs sm:text-sm font-bold w-full h-full
                             ${box?.isComplete 
                               ? box.owner === 1 
                                 ? 'bg-blue-200 text-blue-800' 
@@ -467,7 +468,6 @@ export default function DotsAndBoxes() {
                               : 'bg-transparent'
                             }
                           `}
-                          style={{ minHeight: '0', height: '100%' }}
                         >
                           {box?.isComplete && box.owner}
                         </div>
