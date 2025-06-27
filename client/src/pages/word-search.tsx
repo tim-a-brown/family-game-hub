@@ -524,7 +524,86 @@ export default function WordSearch() {
             <Card className="shadow-lg">
               <CardContent className="p-2 sm:p-4">
                 <div className="relative w-full max-w-md mx-auto aspect-square">
-                  {/* SVG overlay for drawing lines on found words - positioned behind text */}
+                  <div 
+                    className="grid aspect-square w-full select-none relative"
+                    style={{ 
+                      gridTemplateColumns: 'repeat(16, 1fr)',
+                      gap: '1px',
+                      touchAction: 'none',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      overflow: 'hidden'
+                    }}
+                    onTouchStart={(e) => e.preventDefault()}
+                    onTouchMove={(e) => e.preventDefault()}
+                  >
+                  {gameState.grid.map((row, rowIndex) =>
+                    row.map((cell, colIndex) => {
+                      const isSelected = isCellSelected(rowIndex, colIndex);
+                      const isFoundWord = isCellPartOfFoundWord(rowIndex, colIndex);
+                      const selectionIndex = gameState.selectedCells.findIndex(
+                        pos => pos.row === rowIndex && pos.col === colIndex
+                      );
+                      
+                      return (
+                        <div
+                          key={`${rowIndex}-${colIndex}`}
+                          data-row={rowIndex}
+                          data-col={colIndex}
+                          className={`
+                            aspect-square flex items-center justify-center text-xs sm:text-sm font-bold cursor-pointer
+                            relative transition-all duration-200 ease-in-out
+                            ${!isSelected && !isFoundWord ? 'hover:bg-gray-100' : ''}
+                          `}
+                          style={{
+                            backgroundColor: isFoundWord ? 'rgb(34, 197, 94)' : 'transparent',
+                            color: isFoundWord ? 'white' : isSelected ? '#1e40af' : '#374151',
+                            border: isSelected && !isFoundWord ? '2px solid #3b82f6' : isFoundWord ? '2px solid #22c55e' : '1px solid transparent',
+                            borderRadius: isSelected || isFoundWord ? '50%' : '0%',
+                            transform: isSelected || isFoundWord ? 'scale(1.1)' : 'scale(1)',
+                            zIndex: isFoundWord ? 1 : isSelected ? 10 : 1,
+                            position: 'relative',
+                            fontWeight: isSelected || isFoundWord ? 'bold' : 'normal'
+                          }}
+                          onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
+                          onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
+                          onMouseUp={handleCellMouseUp}
+                          onClick={() => handleCellClick(rowIndex, colIndex)}
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            handleCellMouseDown(rowIndex, colIndex);
+                          }}
+                          onTouchMove={(e) => {
+                            e.preventDefault();
+                            const touch = e.touches[0];
+                            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                            if (element) {
+                              const cellElement = element.closest('[data-row]');
+                              if (cellElement) {
+                                const row = parseInt(cellElement.getAttribute('data-row') || '0');
+                                const col = parseInt(cellElement.getAttribute('data-col') || '0');
+                                handleCellMouseEnter(row, col);
+                              }
+                            }
+                          }}
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            handleCellMouseUp();
+                          }}
+                        >
+                          <span style={{ 
+                            zIndex: 20, 
+                            position: 'relative',
+                            textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
+                            fontWeight: isFoundWord ? 'bold' : 'normal'
+                          }}>{cell}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                  </div>
+
+                  {/* SVG overlay for drawing lines on found words - positioned after grid */}
                   <svg 
                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
                     viewBox="0 0 100 100"
@@ -581,86 +660,6 @@ export default function WordSearch() {
                       );
                     })}
                   </svg>
-
-                  <div 
-                    className="grid aspect-square w-full select-none relative"
-                    style={{ 
-                      gridTemplateColumns: 'repeat(16, 1fr)',
-                      gap: '1px',
-                      touchAction: 'none',
-                      userSelect: 'none',
-                      WebkitUserSelect: 'none',
-                      overflow: 'hidden',
-                      zIndex: 10
-                    }}
-                    onTouchStart={(e) => e.preventDefault()}
-                    onTouchMove={(e) => e.preventDefault()}
-                  >
-                  {gameState.grid.map((row, rowIndex) =>
-                    row.map((cell, colIndex) => {
-                      const isSelected = isCellSelected(rowIndex, colIndex);
-                      const isFoundWord = isCellPartOfFoundWord(rowIndex, colIndex);
-                      const selectionIndex = gameState.selectedCells.findIndex(
-                        pos => pos.row === rowIndex && pos.col === colIndex
-                      );
-                      
-                      return (
-                        <div
-                          key={`${rowIndex}-${colIndex}`}
-                          data-row={rowIndex}
-                          data-col={colIndex}
-                          className={`
-                            aspect-square flex items-center justify-center text-xs sm:text-sm font-bold cursor-pointer
-                            relative transition-all duration-200 ease-in-out
-                            ${!isSelected && !isFoundWord ? 'hover:bg-gray-100' : ''}
-                          `}
-                          style={{
-                            backgroundColor: isFoundWord ? 'rgb(34, 197, 94)' : 'transparent',
-                            color: isFoundWord ? 'white' : isSelected ? '#1e40af' : '#374151',
-                            border: isSelected && !isFoundWord ? '2px solid #3b82f6' : isFoundWord ? '2px solid #22c55e' : '1px solid transparent',
-                            borderRadius: isSelected || isFoundWord ? '50%' : '0%',
-                            transform: isSelected || isFoundWord ? 'scale(1.1)' : 'scale(1)',
-                            zIndex: isFoundWord ? 2 : isSelected ? 10 : 1,
-                            position: 'relative',
-                            fontWeight: isSelected || isFoundWord ? 'bold' : 'normal'
-                          }}
-                          onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
-                          onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
-                          onMouseUp={handleCellMouseUp}
-                          onClick={() => handleCellClick(rowIndex, colIndex)}
-                          onTouchStart={(e) => {
-                            e.preventDefault();
-                            handleCellMouseDown(rowIndex, colIndex);
-                          }}
-                          onTouchMove={(e) => {
-                            e.preventDefault();
-                            const touch = e.touches[0];
-                            const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                            if (element) {
-                              const cellElement = element.closest('[data-row]');
-                              if (cellElement) {
-                                const row = parseInt(cellElement.getAttribute('data-row') || '0');
-                                const col = parseInt(cellElement.getAttribute('data-col') || '0');
-                                handleCellMouseEnter(row, col);
-                              }
-                            }
-                          }}
-                          onTouchEnd={(e) => {
-                            e.preventDefault();
-                            handleCellMouseUp();
-                          }}
-                        >
-                          <span style={{ 
-                            zIndex: 20, 
-                            position: 'relative',
-                            textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
-                            fontWeight: isFoundWord ? 'bold' : 'normal'
-                          }}>{cell}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                  </div>
                 </div>
 
                 {/* Reset Button - appears at bottom during selection */}
