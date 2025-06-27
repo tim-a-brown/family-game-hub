@@ -1,16 +1,16 @@
 export const GAME_CATEGORIES = [
   'animals',
-  'sports',
-  'gross out',
-  'school',
-  'magical',
-  'silly fun',
-  'superheroes',
-  'jobs',
-  'food fun',
-  'vacations',
   'cool technology',
-  'kids tv and movies'
+  'food fun',
+  'gross out',
+  'jobs',
+  'kids tv and movies',
+  'magical',
+  'school',
+  'silly fun',
+  'sports',
+  'superheroes',
+  'vacations'
 ] as const;
 
 export type GameCategory = typeof GAME_CATEGORIES[number];

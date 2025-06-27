@@ -227,25 +227,33 @@ export default function MadLibs() {
 
               <div className="grid gap-4 mb-6">
                 <h3 className="font-semibold text-lg">Choose Your Story:</h3>
-                {getRandomStories(selectedCategory).map((template, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className="p-4 h-auto text-left justify-start"
-                    onClick={() => {
-                      const allStories = getAvailableStories(selectedCategory);
-                      const actualIndex = allStories.findIndex(t => t.title === template.title);
-                      startNewGame(selectedCategory, actualIndex);
-                    }}
-                  >
-                    <div>
-                      <div className="font-semibold">{template.title}</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {template.prompts.length} words needed
+                {getRandomStories(selectedCategory).map((template, index) => {
+                  const backgrounds = [
+                    'bg-gradient-to-r from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 border-blue-300',
+                    'bg-gradient-to-r from-green-100 to-green-200 hover:from-green-200 hover:to-green-300 border-green-300',
+                    'bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 border-purple-300'
+                  ];
+                  
+                  return (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className={`p-4 h-auto text-left justify-start transition-all duration-300 ${backgrounds[index]}`}
+                      onClick={() => {
+                        const allStories = getAvailableStories(selectedCategory);
+                        const actualIndex = allStories.findIndex(t => t.title === template.title);
+                        startNewGame(selectedCategory, actualIndex);
+                      }}
+                    >
+                      <div>
+                        <div className="font-semibold text-gray-800">{template.title}</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {template.prompts.length} words needed
+                        </div>
                       </div>
-                    </div>
-                  </Button>
-                ))}
+                    </Button>
+                  );
+                })}
                 
                 <Button
                   variant="secondary"
