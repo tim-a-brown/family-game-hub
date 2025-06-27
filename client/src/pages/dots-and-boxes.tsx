@@ -371,15 +371,16 @@ export default function DotsAndBoxes() {
 
         {/* Game Board */}
         <Card className="shadow-xl">
-          <CardContent className="p-8">
-            <div className="flex justify-center">
+          <CardContent className="p-2 sm:p-4 lg:p-8">
+            <div className="flex justify-center w-full">
               <div 
-                className="inline-block"
+                className="w-full max-w-2xl"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: `repeat(${gameState.gridSize * 2 + 1}, 1fr)`,
-                  gap: '0',
-                  width: 'fit-content'
+                  gap: '1px',
+                  aspectRatio: '1',
+                  maxHeight: 'calc(100vh - 300px)'
                 }}
               >
                 {/* Render grid */}
@@ -393,7 +394,8 @@ export default function DotsAndBoxes() {
                       return (
                         <div 
                           key={`${row}-${col}`}
-                          className="w-3 h-3 bg-gray-800 rounded-full"
+                          className="aspect-square bg-gray-800 rounded-full m-auto"
+                          style={{ width: '8px', height: '8px', minWidth: '4px', minHeight: '4px', maxWidth: '12px', maxHeight: '12px' }}
                         />
                       );
                     } else if (isEvenRow && !isEvenCol) {
@@ -406,9 +408,10 @@ export default function DotsAndBoxes() {
                         <div 
                           key={`${row}-${col}`}
                           className={`
-                            w-8 h-1 cursor-pointer transition-colors
+                            w-full cursor-pointer transition-colors self-center
                             ${line?.isDrawn ? 'bg-gray-800' : 'bg-gray-300 hover:bg-gray-500'}
                           `}
+                          style={{ height: '3px', minHeight: '2px', maxHeight: '4px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'horizontal')}
                         />
                       );
@@ -422,9 +425,10 @@ export default function DotsAndBoxes() {
                         <div 
                           key={`${row}-${col}`}
                           className={`
-                            w-1 h-8 cursor-pointer transition-colors
+                            h-full cursor-pointer transition-colors self-center justify-self-center
                             ${line?.isDrawn ? 'bg-gray-800' : 'bg-gray-300 hover:bg-gray-500'}
                           `}
+                          style={{ width: '3px', minWidth: '2px', maxWidth: '4px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'vertical')}
                         />
                       );
@@ -438,11 +442,13 @@ export default function DotsAndBoxes() {
                         <div 
                           key={`${row}-${col}`}
                           className={`
-                            w-8 h-8 flex items-center justify-center text-sm font-bold
+                            aspect-square flex items-center justify-center text-xs sm:text-sm font-bold
                             ${box?.isComplete 
                               ? box.owner === 1 
                                 ? 'bg-blue-200 text-blue-800' 
-                                : 'bg-red-200 text-red-800'
+                                : box.owner === 2
+                                ? 'bg-red-200 text-red-800'
+                                : 'bg-green-200 text-green-800'
                               : 'bg-transparent'
                             }
                           `}
