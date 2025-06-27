@@ -322,13 +322,13 @@ export default function TicTacToe() {
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2 w-48 h-48 mx-auto">
+                  <div className="grid grid-cols-3 gap-2 w-48 mx-auto">
                     {board.map((cell, cellIndex) => (
                       <button
                         key={cellIndex}
                         onClick={() => handleCellClick(boardIndex, cellIndex)}
                         disabled={cell !== null || boardWinner !== null || boardFull || gameState.gameWon}
-                        className="w-full h-full bg-white border-2 border-gray-300 rounded-lg text-2xl font-bold hover:bg-gray-50 transition-colors disabled:cursor-not-allowed flex items-center justify-center"
+                        className="aspect-square w-full bg-white border-2 border-gray-300 rounded-lg text-2xl font-bold hover:bg-gray-50 transition-colors disabled:cursor-not-allowed flex items-center justify-center min-h-[60px]"
                       >
                         {cell && (
                           <span className={
