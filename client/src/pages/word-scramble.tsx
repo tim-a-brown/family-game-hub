@@ -264,7 +264,7 @@ export default function WordScramble() {
   if (setupMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Word Scramble" showSave={false} />
+        <GameHeader title="Word Scramble"  />
         
         <div className="max-w-md mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -322,7 +322,7 @@ export default function WordScramble() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Word Scramble" onSave={saveGame} />
+      <GameHeader title="Word Scramble"  />
       
       <div className="max-w-2xl mx-auto pt-8 px-4">
         {/* Game Status */}

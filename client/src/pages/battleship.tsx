@@ -409,7 +409,7 @@ export default function Battleship() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Battleship" onSave={saveGame} />
+      <GameHeader title="Battleship"  />
       
       <div className="max-w-7xl mx-auto pt-8 px-4">
         {/* Game Status */}

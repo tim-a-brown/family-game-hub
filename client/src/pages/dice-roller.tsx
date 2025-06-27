@@ -214,7 +214,7 @@ export default function DiceRoller() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Dice Roller" onSave={saveGame} />
+      <GameHeader title="Dice Roller"  />
       
       <div className="max-w-6xl mx-auto pt-8 px-4">
         {/* Dice Management */}

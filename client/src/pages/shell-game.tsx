@@ -232,7 +232,7 @@ export default function ShellGame() {
   if (setupMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Shell Game" showSave={false} />
+        <GameHeader title="Shell Game"  />
         
         <div className="max-w-md mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -270,7 +270,7 @@ export default function ShellGame() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Shell Game" onSave={saveGame} />
+      <GameHeader title="Shell Game"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}

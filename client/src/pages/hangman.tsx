@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { HANGMAN_PUZZLES } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
+import { useAutoSave } from "@/hooks/use-auto-save";
 
 interface GameState {
   puzzle: string;
@@ -232,7 +233,7 @@ export default function Hangman() {
   if (setupMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Hangman" showSave={false} />
+        <GameHeader title="Hangman"  />
         
         <div className="max-w-md mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -307,7 +308,7 @@ export default function Hangman() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Hangman" onSave={saveGame} />
+      <GameHeader title="Hangman"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}

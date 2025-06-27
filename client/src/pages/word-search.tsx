@@ -386,13 +386,7 @@ export default function WordSearch() {
     setSetupMode(false);
   };
 
-  const handleManualSave = () => {
-    autoSave();
-    toast({
-      title: "Game Saved",
-      description: "Your progress has been saved!",
-    });
-  };
+
 
   const resetGame = () => {
     setSetupMode(true);

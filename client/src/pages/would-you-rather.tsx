@@ -186,7 +186,7 @@ export default function WouldYouRather() {
   if (setupMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Would You Rather" showSave={false} />
+        <GameHeader title="Would You Rather"  />
         
         <div className="max-w-2xl mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -245,7 +245,7 @@ export default function WouldYouRather() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Would You Rather" onSave={saveGame} />
+        <GameHeader title="Would You Rather"  />
         
         <div className="max-w-4xl mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -322,7 +322,7 @@ export default function WouldYouRather() {
     const nextPlayerName = PLAYER_NAMES[gameState.currentPlayerIndex];
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Would You Rather" showSave={false} />
+        <GameHeader title="Would You Rather"  />
         
         <div className="max-w-2xl mx-auto pt-32 px-4">
           <Card className="shadow-xl bg-green-50 border-green-200">
@@ -348,7 +348,7 @@ export default function WouldYouRather() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Would You Rather" onSave={saveGame} />
+      <GameHeader title="Would You Rather"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}

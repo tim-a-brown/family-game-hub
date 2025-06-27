@@ -279,7 +279,7 @@ export default function Scorecard() {
   if (setupMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Scorecard" showSave={false} />
+        <GameHeader title="Scorecard"  />
         
         <div className="max-w-2xl mx-auto pt-8 px-4">
           <Card className="shadow-xl">
@@ -356,7 +356,7 @@ export default function Scorecard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Scorecard" onSave={saveGame} />
+      <GameHeader title="Scorecard"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}

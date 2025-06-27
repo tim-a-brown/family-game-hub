@@ -269,7 +269,7 @@ export default function MadLibs() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
-      <GameHeader title="Mad Libs" onSave={saveGame} />
+      <GameHeader title="Mad Libs"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}
