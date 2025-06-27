@@ -474,8 +474,14 @@ export default function WordSearch() {
                   className="grid grid-cols-16 max-w-2xl mx-auto select-none"
                   style={{ 
                     gridTemplateColumns: 'repeat(16, 1fr)',
-                    gap: '0'
+                    gap: '0',
+                    touchAction: 'none',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    overflow: 'hidden'
                   }}
+                  onTouchStart={(e) => e.preventDefault()}
+                  onTouchMove={(e) => e.preventDefault()}
                 >
                   {gameState.grid.map((row, rowIndex) =>
                     row.map((cell, colIndex) => {
@@ -488,6 +494,8 @@ export default function WordSearch() {
                       return (
                         <div
                           key={`${rowIndex}-${colIndex}`}
+                          data-row={rowIndex}
+                          data-col={colIndex}
                           className={`
                             w-6 h-6 flex items-center justify-center text-xs font-bold cursor-pointer
                             relative transition-all duration-200 ease-in-out
@@ -509,6 +517,19 @@ export default function WordSearch() {
                           onTouchStart={(e) => {
                             e.preventDefault();
                             handleCellMouseDown(rowIndex, colIndex);
+                          }}
+                          onTouchMove={(e) => {
+                            e.preventDefault();
+                            const touch = e.touches[0];
+                            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                            if (element) {
+                              const cellElement = element.closest('[data-row]');
+                              if (cellElement) {
+                                const row = parseInt(cellElement.getAttribute('data-row') || '0');
+                                const col = parseInt(cellElement.getAttribute('data-col') || '0');
+                                handleCellMouseEnter(row, col);
+                              }
+                            }
                           }}
                           onTouchEnd={(e) => {
                             e.preventDefault();
