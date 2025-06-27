@@ -213,7 +213,7 @@ export default function TicTacToe() {
   };
 
   const handleManualSave = () => {
-    saveGame();
+    autoSave();
     toast({
       title: "Game Saved",
       description: "Your progress has been saved!",
@@ -287,7 +287,7 @@ export default function TicTacToe() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Tic-Tac-Toe" onSave={saveGame} />
+      <GameHeader title="Tic-Tac-Toe" onSave={handleManualSave} />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}

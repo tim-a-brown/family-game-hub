@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GameStorage } from "@/lib/game-storage";
 import { WORD_LISTS, BONUS_WORDS, WORD_SEARCH_CATEGORIES, GAME_CATEGORIES, type GameCategory, type WordSearchCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
+import { useAutoSave } from "@/hooks/use-auto-save";
 
 interface Position {
   row: number;
@@ -67,6 +68,13 @@ export default function WordSearch() {
   const [selectedCategory, setSelectedCategory] = useState<WordSearchCategory>('random');
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
+  
+  // Auto-save functionality
+  const { saveGame: autoSave } = useAutoSave({
+    gameType: 'word-search',
+    gameState,
+    enabled: !setupMode && gameState.foundWords.length > 0
+  });
 
   useEffect(() => {
     const saved = gameStorage.loadGameState('word-search');
@@ -378,8 +386,8 @@ export default function WordSearch() {
     setSetupMode(false);
   };
 
-  const saveGame = () => {
-    gameStorage.saveGameState('word-search', gameState);
+  const handleManualSave = () => {
+    autoSave();
     toast({
       title: "Game Saved",
       description: "Your progress has been saved!",
@@ -431,7 +439,7 @@ export default function WordSearch() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <GameHeader title="Word Search" onSave={saveGame} />
+      <GameHeader title="Word Search" onSave={handleManualSave} />
       
       <div className="max-w-6xl mx-auto pt-8 px-4">
         {/* Game Status */}
