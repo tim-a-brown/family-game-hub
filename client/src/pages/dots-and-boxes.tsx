@@ -261,7 +261,7 @@ export default function DotsAndBoxes() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-12">
         <GameHeader title="Dots and Boxes"  />
         
         <div className="max-w-md mx-auto pt-8 px-4">
@@ -338,32 +338,32 @@ export default function DotsAndBoxes() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-12">
       <GameHeader title="Dots and Boxes"  />
       
       <div className="max-w-4xl mx-auto pt-8 px-4">
         {/* Game Status */}
         <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary">{gameState.gridSize}×{gameState.gridSize} Grid</Badge>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <Badge variant="secondary" className="w-fit">{gameState.gridSize}×{gameState.gridSize} Grid</Badge>
                 {!gameState.gameWon && (
-                  <span className="text-lg font-semibold">
+                  <span className="text-base sm:text-lg font-semibold">
                     Player <span className="text-primary">{gameState.currentPlayer}</span>'s Turn
                   </span>
                 )}
                 {gameState.gameWon && (
-                  <span className="text-lg font-bold text-green-600">
+                  <span className="text-base sm:text-lg font-bold text-green-600">
                     {gameState.winner ? `🎉 Player ${gameState.winner} Wins!` : "🤝 It's a Tie!"}
                   </span>
                 )}
               </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-sm flex items-center space-x-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="text-sm flex flex-wrap items-center gap-2">
                   {gameState.scores.map((score, index) => (
                     <div key={index} className="flex items-center">
-                      {index > 0 && <span className="mx-2 text-gray-400">|</span>}
+                      {index > 0 && <span className="mx-1 text-gray-400 hidden sm:inline">|</span>}
                       <span className={`font-semibold ${
                         index === 0 ? 'text-blue-600' : 
                         index === 1 ? 'text-red-600' : 
@@ -374,7 +374,7 @@ export default function DotsAndBoxes() {
                     </div>
                   ))}
                 </div>
-                <Button variant="outline" size="sm" onClick={resetGame}>
+                <Button variant="outline" size="sm" onClick={resetGame} className="w-fit">
                   New Game
                 </Button>
               </div>
@@ -393,10 +393,10 @@ export default function DotsAndBoxes() {
                   gridTemplateColumns: `repeat(${gameState.gridSize * 2 + 1}, minmax(0, 1fr))`,
                   gridTemplateRows: `repeat(${gameState.gridSize * 2 + 1}, minmax(0, 1fr))`,
                   gap: '1px',
-                  maxWidth: 'min(90vw, 500px)',
-                  maxHeight: 'min(90vw, 500px, calc(100vh - 400px))',
-                  width: 'min(90vw, 500px)',
-                  height: 'min(90vw, 500px, calc(100vh - 400px))'
+                  maxWidth: 'min(90vw, 600px)',
+                  maxHeight: 'min(90vw, 600px, calc(100vh - 300px))',
+                  width: 'min(90vw, 600px)',
+                  height: 'min(90vw, 600px, calc(100vh - 300px))'
                 }}
               >
                 {/* Render grid */}
