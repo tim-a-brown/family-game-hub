@@ -391,6 +391,7 @@ export default function DotsAndBoxes() {
                 style={{
                   display: 'grid',
                   gridTemplateColumns: `repeat(${gameState.gridSize * 2 + 1}, 1fr)`,
+                  gridTemplateRows: `repeat(${gameState.gridSize * 2 + 1}, 1fr)`,
                   gap: '1px',
                   aspectRatio: '1',
                   maxWidth: 'min(90vw, 500px)',
@@ -425,7 +426,7 @@ export default function DotsAndBoxes() {
                             w-full cursor-pointer transition-colors self-center
                             ${line?.isDrawn ? getPlayerColor(line.drawnBy) : 'bg-gray-300 hover:bg-gray-500'}
                           `}
-                          style={{ height: '2px', minHeight: '1px', maxHeight: '3px' }}
+                          style={{ height: line?.isDrawn ? '3px' : '2px', minHeight: '1px', maxHeight: '4px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'horizontal')}
                         />
                       );
@@ -442,7 +443,7 @@ export default function DotsAndBoxes() {
                             h-full cursor-pointer transition-colors self-center justify-self-center
                             ${line?.isDrawn ? getPlayerColor(line.drawnBy) : 'bg-gray-300 hover:bg-gray-500'}
                           `}
-                          style={{ width: '2px', minWidth: '1px', maxWidth: '3px' }}
+                          style={{ width: line?.isDrawn ? '3px' : '2px', minWidth: '1px', maxWidth: '4px' }}
                           onClick={() => handleLineClick(lineRow, lineCol, 'vertical')}
                         />
                       );
@@ -466,6 +467,7 @@ export default function DotsAndBoxes() {
                               : 'bg-transparent'
                             }
                           `}
+                          style={{ minHeight: '0', height: '100%' }}
                         >
                           {box?.isComplete && box.owner}
                         </div>
