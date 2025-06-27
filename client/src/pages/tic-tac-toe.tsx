@@ -132,7 +132,9 @@ export default function TicTacToe() {
 
     // Check if overall game is won
     const totalBoards = newBoards.length;
-    const majorityNeeded = Math.ceil(totalBoards / 2);
+    // For multiboard games, need to win majority (more than half)
+    // For 2 boards: need 2 wins, for 3 boards: need 2 wins
+    const majorityNeeded = totalBoards === 1 ? 1 : Math.floor(totalBoards / 2) + 1;
     const overallWinner = Object.entries(newScores).find(([_, score]) => score >= majorityNeeded)?.[0] as Player;
 
     const nextPlayerIndex = (gameState.players.indexOf(gameState.currentPlayer) + 1) % gameState.players.length;
