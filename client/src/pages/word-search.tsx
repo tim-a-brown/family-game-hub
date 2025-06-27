@@ -691,7 +691,7 @@ export default function WordSearch() {
                           y1={startY}
                           x2={endX}
                           y2={endY}
-                          stroke="#15803d"
+                          stroke="#22c55e"
                           strokeWidth="1.2"
                           strokeLinecap="round"
                           opacity="0.9"
