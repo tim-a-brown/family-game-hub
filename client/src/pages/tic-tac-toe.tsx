@@ -130,12 +130,21 @@ export default function TicTacToe() {
       newScores[boardWinner]++;
     }
 
-    // Check if overall game is won
-    const totalBoards = newBoards.length;
-    // For multiboard games, need to win majority (more than half)
-    // For 2 boards: need 2 wins, for 3 boards: need 2 wins
-    const majorityNeeded = totalBoards === 1 ? 1 : Math.floor(totalBoards / 2) + 1;
-    const overallWinner = Object.entries(newScores).find(([_, score]) => score >= majorityNeeded)?.[0] as Player;
+    // Check if all boards are finished (won or drawn)
+    const allBoardsFinished = newBoards.every(board => checkWinner(board) || isBoardFull(board));
+    
+    // Determine overall winner only when all boards are finished
+    let overallWinner: Player | null = null;
+    if (allBoardsFinished) {
+      // Find player with most wins
+      const maxScore = Math.max(...Object.values(newScores));
+      const winners = Object.entries(newScores).filter(([_, score]) => score === maxScore);
+      
+      // Only declare winner if there's no tie
+      if (winners.length === 1) {
+        overallWinner = winners[0][0] as Player;
+      }
+    }
 
     const nextPlayerIndex = (gameState.players.indexOf(gameState.currentPlayer) + 1) % gameState.players.length;
     const nextPlayer = gameState.players[nextPlayerIndex];
@@ -154,7 +163,12 @@ export default function TicTacToe() {
     if (overallWinner) {
       toast({
         title: "Game Over!",
-        description: `Player ${overallWinner} wins!`,
+        description: `Player ${overallWinner} wins with ${newScores[overallWinner]} board wins!`,
+      });
+    } else if (allBoardsFinished && !overallWinner) {
+      toast({
+        title: "Game Over!",
+        description: "It's a tie game! All boards finished with equal scores.",
       });
     } else if (gameState.gameMode === '1-player' && nextPlayer === 'O') {
       // AI move
