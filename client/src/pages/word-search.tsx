@@ -561,7 +561,7 @@ export default function WordSearch() {
                             border: isSelected && !isFoundWord ? '2px solid #3b82f6' : '1px solid transparent',
                             borderRadius: isSelected ? '50%' : '0%',
                             transform: isSelected ? 'scale(1.1)' : 'scale(1)',
-                            zIndex: isSelected ? 10 : 1,
+                            zIndex: isSelected ? 10 : 3,
                             position: 'relative',
                             fontWeight: isSelected || isFoundWord ? 'bold' : 'normal',
                             textShadow: isFoundWord ? '0 0 2px rgba(0,0,0,0.7)' : 'none'
