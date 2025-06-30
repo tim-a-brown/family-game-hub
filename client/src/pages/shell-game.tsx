@@ -26,6 +26,10 @@ interface ShellAnimation {
   targetX: number;
   targetY: number;
   animating: boolean;
+  startX?: number;
+  startY?: number;
+  progress?: number;
+  speed?: number;
 }
 
 const DIFFICULTY_SETTINGS = {
@@ -53,9 +57,9 @@ export default function ShellGame() {
   const [shellPositions, setShellPositions] = useState([0, 1, 2]);
   const [showBall, setShowBall] = useState(false);
   const [shellAnimations, setShellAnimations] = useState<ShellAnimation[]>([
-    { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false },
-    { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false },
-    { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false }
+    { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false, progress: 0, speed: 0.02 },
+    { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false, progress: 0, speed: 0.02 },
+    { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false, progress: 0, speed: 0.02 }
   ]);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
@@ -74,31 +78,47 @@ export default function ShellGame() {
     
     const animate = () => {
       setShellAnimations(prev => prev.map(shell => {
-        if (!shell.animating) return shell;
+        if (!shell.animating || shell.progress === undefined || shell.startX === undefined || shell.startY === undefined) return shell;
         
-        const dx = shell.targetX - shell.x;
-        const dy = shell.targetY - shell.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // S-curve easing with acceleration
+        const baseProgress = shell.progress + (shell.speed || 0.02);
+        const easedProgress = baseProgress < 0.5 
+          ? 2 * baseProgress * baseProgress 
+          : 1 - Math.pow(-2 * baseProgress + 2, 2) / 2;
         
-        if (distance < 2) {
-          // Animation complete
+        // Create curved path (S-curve motion)
+        const midX = (shell.startX + shell.targetX) / 2;
+        const midY = (shell.startY + shell.targetY) / 2 - 40; // Arc height for S-curve
+        
+        let newX, newY;
+        if (easedProgress < 0.5) {
+          // First half: move from start to arc peak
+          const t = easedProgress * 2;
+          newX = shell.startX + (midX - shell.startX) * t;
+          newY = shell.startY + (midY - shell.startY) * t;
+        } else {
+          // Second half: move from arc peak to target
+          const t = (easedProgress - 0.5) * 2;
+          newX = midX + (shell.targetX - midX) * t;
+          newY = midY + (shell.targetY - midY) * t;
+        }
+        
+        if (baseProgress >= 1) {
           return {
             ...shell,
             x: shell.targetX,
             y: shell.targetY,
-            animating: false
+            animating: false,
+            progress: 0
           };
         }
         
-        // Smooth interpolation with easing
-        const speed = 0.15;
-        const newX = shell.x + dx * speed;
-        const newY = shell.y + dy * speed;
-        
-        return {
-          ...shell,
-          x: newX,
-          y: newY
+        return { 
+          ...shell, 
+          x: newX, 
+          y: newY, 
+          progress: baseProgress,
+          speed: Math.min((shell.speed || 0.02) * 1.08, 0.12) // Gradually increase speed
         };
       }));
       
@@ -114,7 +134,7 @@ export default function ShellGame() {
     };
   }, []);
 
-  const animateShellSwap = (shell1Id: number, shell2Id: number): Promise<void> => {
+  const animateShellSwap = (shell1Id: number, shell2Id: number, speedMultiplier: number = 1): Promise<void> => {
     return new Promise((resolve) => {
       setShellAnimations(prev => {
         const shell1 = prev.find(s => s.id === shell1Id);
@@ -131,22 +151,41 @@ export default function ShellGame() {
         const shell2X = shell2.x;
         const shell2Y = shell2.y;
         
-        // Swap target positions
+        // Swap target positions with S-curve parameters
         return prev.map(shell => {
           if (shell.id === shell1Id) {
-            return { ...shell, targetX: shell2X, targetY: shell2Y, animating: true };
+            return { 
+              ...shell, 
+              targetX: shell2X, 
+              targetY: shell2Y, 
+              startX: shell1X,
+              startY: shell1Y,
+              animating: true,
+              progress: 0,
+              speed: 0.02 * speedMultiplier
+            };
           }
           if (shell.id === shell2Id) {
-            return { ...shell, targetX: shell1X, targetY: shell1Y, animating: true };
+            return { 
+              ...shell, 
+              targetX: shell1X, 
+              targetY: shell1Y, 
+              startX: shell2X,
+              startY: shell2Y,
+              animating: true,
+              progress: 0,
+              speed: 0.02 * speedMultiplier
+            };
           }
           return shell;
         });
       });
       
-      // Wait for animation to complete (fixed duration)
+      // Wait for animation to complete based on speed
+      const duration = Math.max(1000 / speedMultiplier, 600);
       setTimeout(() => {
         resolve();
-      }, 600); // Adjust based on animation speed
+      }, duration);
     });
   };
 
@@ -164,7 +203,7 @@ export default function ShellGame() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     setShowBall(false);
     
-    // Perform realistic shell swaps
+    // Perform realistic shell swaps with gradually increasing speed
     const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
     let currentBallShell = gameState.ballPosition;
     
@@ -183,11 +222,15 @@ export default function ShellGame() {
         currentBallShell = shell1;
       }
       
-      // Animate the swap
-      await animateShellSwap(shell1, shell2);
+      // Gradually increase speed (start slow, get faster)
+      const speedMultiplier = 1 + (i / settings.shuffleCount) * 2; // 1x to 3x speed
       
-      // Brief pause between swaps
-      await new Promise(resolve => setTimeout(resolve, Math.max(200, gameState.shuffleSpeed - 300)));
+      // Animate the swap with S-curve
+      await animateShellSwap(shell1, shell2, speedMultiplier);
+      
+      // Brief pause between swaps, gets shorter as speed increases
+      const pauseTime = Math.max(100, (gameState.shuffleSpeed - 200) / speedMultiplier);
+      await new Promise(resolve => setTimeout(resolve, pauseTime));
     }
     
     // Update ball position
@@ -264,9 +307,9 @@ export default function ShellGame() {
     
     // Reset shell positions to original layout
     setShellAnimations([
-      { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false },
-      { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false },
-      { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false }
+      { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false, progress: 0, speed: 0.02 },
+      { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false, progress: 0, speed: 0.02 },
+      { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false, progress: 0, speed: 0.02 }
     ]);
     setShellPositions([0, 1, 2]);
     setShowBall(false);
@@ -329,9 +372,7 @@ export default function ShellGame() {
   };
 
   const getShellEmoji = (shellIndex: number): string => {
-    if (gameState.isShuffling) {
-      return '🔄'; // Spinning during shuffle
-    }
+    // Always show shell graphic, never change based on game state
     return '🥥'; // Coconut shell
   };
 
