@@ -349,9 +349,9 @@ export default function ShellGame() {
     
     // Reset shell animations to starting positions
     setShellAnimations([
-      { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false },
-      { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false },
-      { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false }
+      { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false, progress: 0, speed: 0.02 },
+      { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false, progress: 0, speed: 0.02 },
+      { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false, progress: 0, speed: 0.02 }
     ]);
     setShellPositions([0, 1, 2]);
     setShowBall(false);
