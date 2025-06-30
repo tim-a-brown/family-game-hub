@@ -53,9 +53,9 @@ export default function ShellGame() {
   const [shellPositions, setShellPositions] = useState([0, 1, 2]);
   const [showBall, setShowBall] = useState(false);
   const [shellAnimations, setShellAnimations] = useState<ShellAnimation[]>([
-    { id: 0, x: 0, y: 0, targetX: 0, targetY: 0, animating: false },
-    { id: 1, x: 120, y: 0, targetX: 120, targetY: 0, animating: false },
-    { id: 2, x: 240, y: 0, targetX: 240, targetY: 0, animating: false }
+    { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false },
+    { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false },
+    { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false }
   ]);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
@@ -116,39 +116,37 @@ export default function ShellGame() {
 
   const animateShellSwap = (shell1Id: number, shell2Id: number): Promise<void> => {
     return new Promise((resolve) => {
-      const shell1 = shellAnimations.find(s => s.id === shell1Id);
-      const shell2 = shellAnimations.find(s => s.id === shell2Id);
-      
-      if (!shell1 || !shell2) {
-        resolve();
-        return;
-      }
-      
-      // Swap target positions
-      setShellAnimations(prev => prev.map(shell => {
-        if (shell.id === shell1Id) {
-          return { ...shell, targetX: shell2.x, targetY: shell2.y, animating: true };
-        }
-        if (shell.id === shell2Id) {
-          return { ...shell, targetX: shell1.x, targetY: shell1.y, animating: true };
-        }
-        return shell;
-      }));
-      
-      // Wait for animation to complete
-      const checkComplete = () => {
-        const current = shellAnimations;
-        const shell1Current = current.find(s => s.id === shell1Id);
-        const shell2Current = current.find(s => s.id === shell2Id);
+      setShellAnimations(prev => {
+        const shell1 = prev.find(s => s.id === shell1Id);
+        const shell2 = prev.find(s => s.id === shell2Id);
         
-        if (shell1Current && shell2Current && !shell1Current.animating && !shell2Current.animating) {
+        if (!shell1 || !shell2) {
           resolve();
-        } else {
-          setTimeout(checkComplete, 16); // Check at ~60fps
+          return prev;
         }
-      };
+        
+        // Store current positions for swapping
+        const shell1X = shell1.x;
+        const shell1Y = shell1.y;
+        const shell2X = shell2.x;
+        const shell2Y = shell2.y;
+        
+        // Swap target positions
+        return prev.map(shell => {
+          if (shell.id === shell1Id) {
+            return { ...shell, targetX: shell2X, targetY: shell2Y, animating: true };
+          }
+          if (shell.id === shell2Id) {
+            return { ...shell, targetX: shell1X, targetY: shell1Y, animating: true };
+          }
+          return shell;
+        });
+      });
       
-      setTimeout(checkComplete, 16);
+      // Wait for animation to complete (fixed duration)
+      setTimeout(() => {
+        resolve();
+      }, 600); // Adjust based on animation speed
     });
   };
 
