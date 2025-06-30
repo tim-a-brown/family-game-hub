@@ -19,6 +19,15 @@ interface GameState {
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
+interface ShellAnimation {
+  id: number;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  animating: boolean;
+}
+
 const DIFFICULTY_SETTINGS = {
   easy: { shuffleSpeed: 800, shuffleCount: 5, rounds: 5 },
   medium: { shuffleSpeed: 600, shuffleCount: 8, rounds: 7 },
@@ -43,6 +52,11 @@ export default function ShellGame() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [shellPositions, setShellPositions] = useState([0, 1, 2]);
   const [showBall, setShowBall] = useState(false);
+  const [shellAnimations, setShellAnimations] = useState<ShellAnimation[]>([
+    { id: 0, x: 0, y: 0, targetX: 0, targetY: 0, animating: false },
+    { id: 1, x: 120, y: 0, targetX: 120, targetY: 0, animating: false },
+    { id: 2, x: 240, y: 0, targetX: 240, targetY: 0, animating: false }
+  ]);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
 
@@ -54,13 +68,88 @@ export default function ShellGame() {
     }
   }, []);
 
-  const shuffleArray = (array: number[]): number[] => {
-    const newArray = [...array];
-    for (let i = newArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-    }
-    return newArray;
+  // High-framerate animation loop
+  useEffect(() => {
+    let animationFrame: number;
+    
+    const animate = () => {
+      setShellAnimations(prev => prev.map(shell => {
+        if (!shell.animating) return shell;
+        
+        const dx = shell.targetX - shell.x;
+        const dy = shell.targetY - shell.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 2) {
+          // Animation complete
+          return {
+            ...shell,
+            x: shell.targetX,
+            y: shell.targetY,
+            animating: false
+          };
+        }
+        
+        // Smooth interpolation with easing
+        const speed = 0.15;
+        const newX = shell.x + dx * speed;
+        const newY = shell.y + dy * speed;
+        
+        return {
+          ...shell,
+          x: newX,
+          y: newY
+        };
+      }));
+      
+      animationFrame = requestAnimationFrame(animate);
+    };
+    
+    animationFrame = requestAnimationFrame(animate);
+    
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, []);
+
+  const animateShellSwap = (shell1Id: number, shell2Id: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const shell1 = shellAnimations.find(s => s.id === shell1Id);
+      const shell2 = shellAnimations.find(s => s.id === shell2Id);
+      
+      if (!shell1 || !shell2) {
+        resolve();
+        return;
+      }
+      
+      // Swap target positions
+      setShellAnimations(prev => prev.map(shell => {
+        if (shell.id === shell1Id) {
+          return { ...shell, targetX: shell2.x, targetY: shell2.y, animating: true };
+        }
+        if (shell.id === shell2Id) {
+          return { ...shell, targetX: shell1.x, targetY: shell1.y, animating: true };
+        }
+        return shell;
+      }));
+      
+      // Wait for animation to complete
+      const checkComplete = () => {
+        const current = shellAnimations;
+        const shell1Current = current.find(s => s.id === shell1Id);
+        const shell2Current = current.find(s => s.id === shell2Id);
+        
+        if (shell1Current && shell2Current && !shell1Current.animating && !shell2Current.animating) {
+          resolve();
+        } else {
+          setTimeout(checkComplete, 16); // Check at ~60fps
+        }
+      };
+      
+      setTimeout(checkComplete, 16);
+    });
   };
 
   const startShuffle = async () => {
@@ -74,32 +163,39 @@ export default function ShellGame() {
     setShowBall(true);
     
     // Show ball briefly at start
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     setShowBall(false);
     
-    // Perform shuffles
+    // Perform realistic shell swaps
     const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+    let currentBallShell = gameState.ballPosition;
     
     for (let i = 0; i < settings.shuffleCount; i++) {
-      await new Promise(resolve => setTimeout(resolve, gameState.shuffleSpeed));
-      
-      // Create visual shuffle effect
-      const newPositions = shuffleArray(shellPositions);
-      setShellPositions(newPositions);
-      
-      // Update ball position based on where shell 0 (original position) ended up
-      const ballShellIndex = newPositions.indexOf(gameState.ballPosition);
-      if (ballShellIndex !== -1) {
-        // The ball follows its shell
-        setGameState(prev => ({
-          ...prev,
-          ballPosition: ballShellIndex
-        }));
+      // Pick two random shells to swap
+      const shell1 = Math.floor(Math.random() * 3);
+      let shell2 = Math.floor(Math.random() * 3);
+      while (shell2 === shell1) {
+        shell2 = Math.floor(Math.random() * 3);
       }
+      
+      // Track which shell has the ball
+      if (currentBallShell === shell1) {
+        currentBallShell = shell2;
+      } else if (currentBallShell === shell2) {
+        currentBallShell = shell1;
+      }
+      
+      // Animate the swap
+      await animateShellSwap(shell1, shell2);
+      
+      // Brief pause between swaps
+      await new Promise(resolve => setTimeout(resolve, Math.max(200, gameState.shuffleSpeed - 300)));
     }
     
-    setGameState(prev => ({ 
-      ...prev, 
+    // Update ball position
+    setGameState(prev => ({
+      ...prev,
+      ballPosition: currentBallShell,
       gamePhase: 'guessing',
       isShuffling: false
     }));
@@ -168,6 +264,12 @@ export default function ShellGame() {
       playerGuess: null
     }));
     
+    // Reset shell positions to original layout
+    setShellAnimations([
+      { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false },
+      { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false },
+      { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false }
+    ]);
     setShellPositions([0, 1, 2]);
     setShowBall(false);
   };
@@ -204,6 +306,12 @@ export default function ShellGame() {
       difficulty: selectedDifficulty
     });
     
+    // Reset shell animations to starting positions
+    setShellAnimations([
+      { id: 0, x: 0, y: 50, targetX: 0, targetY: 50, animating: false },
+      { id: 1, x: 120, y: 50, targetX: 120, targetY: 50, animating: false },
+      { id: 2, x: 240, y: 50, targetX: 240, targetY: 50, animating: false }
+    ]);
     setShellPositions([0, 1, 2]);
     setShowBall(false);
     setSetupMode(false);
@@ -346,44 +454,58 @@ export default function ShellGame() {
                 )}
               </div>
 
-              {/* Shells */}
-              <div className="flex justify-center items-end space-x-8 mb-8">
-                {[0, 1, 2].map((shellIndex) => (
-                  <div key={shellIndex} className="relative">
-                    {/* Ball */}
-                    {showBall && gameState.ballPosition === shellIndex && (
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-4 z-10">
-                        <div className="w-6 h-6 bg-red-500 rounded-full animate-bounce">
-                          🔴
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Shell */}
-                    <button
-                      onClick={() => makeGuess(shellIndex)}
-                      disabled={gameState.gamePhase !== 'guessing'}
-                      className={`
-                        relative text-6xl transition-all duration-300 transform hover:scale-110
-                        ${gameState.gamePhase === 'guessing' ? 'cursor-pointer hover:animate-pulse' : 'cursor-not-allowed'}
-                        ${gameState.gamePhase === 'revealed' && gameState.playerGuess === shellIndex 
-                          ? 'ring-4 ring-blue-400 rounded-full' : ''
-                        }
-                        ${gameState.gamePhase === 'revealed' && gameState.ballPosition === shellIndex 
-                          ? 'ring-4 ring-green-400 rounded-full' : ''
-                        }
-                        ${gameState.isShuffling ? 'animate-bounce' : ''}
-                      `}
+              {/* Shells Container */}
+              <div className="relative w-80 h-32 mx-auto mb-8">
+                {shellAnimations.map((shell) => {
+                  const shellIndex = shell.id;
+                  return (
+                    <div 
+                      key={shellIndex} 
+                      className="absolute transition-none"
+                      style={{
+                        left: `${shell.x}px`,
+                        top: `${shell.y}px`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
                     >
-                      {getShellEmoji(shellIndex)}
-                    </button>
-                    
-                    {/* Shell Number */}
-                    <div className="text-center mt-2">
-                      <Badge variant="outline">{shellIndex + 1}</Badge>
+                      {/* Ball */}
+                      {showBall && gameState.ballPosition === shellIndex && (
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-4 z-10">
+                          <div className="w-6 h-6 bg-red-500 rounded-full animate-bounce">
+                            🔴
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Shell */}
+                      <button
+                        onClick={() => makeGuess(shellIndex)}
+                        disabled={gameState.gamePhase !== 'guessing'}
+                        className={`
+                          relative text-6xl transition-all duration-200 transform hover:scale-110
+                          ${gameState.gamePhase === 'guessing' ? 'cursor-pointer hover:animate-pulse' : 'cursor-not-allowed'}
+                          ${gameState.gamePhase === 'revealed' && gameState.playerGuess === shellIndex 
+                            ? 'ring-4 ring-blue-400 rounded-full' : ''
+                          }
+                          ${gameState.gamePhase === 'revealed' && gameState.ballPosition === shellIndex 
+                            ? 'ring-4 ring-green-400 rounded-full' : ''
+                          }
+                          ${shell.animating ? 'scale-110' : ''}
+                        `}
+                        style={{
+                          filter: shell.animating ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' : 'none'
+                        }}
+                      >
+                        {getShellEmoji(shellIndex)}
+                      </button>
+                      
+                      {/* Shell Number */}
+                      <div className="text-center mt-2">
+                        <Badge variant="outline">{shellIndex + 1}</Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Action Button */}
