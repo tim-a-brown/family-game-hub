@@ -498,148 +498,119 @@ export default function WordSearch() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Word Search" />
         
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Choose Category</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Theme</label>
-                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as WordSearchCategory)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WORD_SEARCH_CATEGORIES.map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category === 'random' ? '🎲 Random Category' : category.charAt(0).toUpperCase() + category.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button onClick={startNewGame} className="w-full" size="lg">
-                  Generate Puzzle
-                </Button>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Choose Category</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as WordSearchCategory)}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WORD_SEARCH_CATEGORIES.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category === 'random' ? '🎲 Random' : category.charAt(0).toUpperCase() + category.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
+
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Generate Puzzle
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       <GameHeader title="Word Search" />
       
-      <div className="max-w-6xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary">
-                  {gameState.category === 'random' 
-                    ? `🎲 Random (${gameState.actualCategory?.charAt(0).toUpperCase() + gameState.actualCategory?.slice(1) || 'Loading...'})` 
-                    : gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-1">
+              <Badge variant="secondary" className="text-xs px-1 py-0">
+                {gameState.category === 'random' ? '🎲' : gameState.category.slice(0,6)}
+              </Badge>
+              <span className="text-xs">
+                {gameState.foundWords.length}/{gameState.wordList.length}
+              </span>
+              {gameState.foundBonusWords.length > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800 text-xs px-1 py-0">
+                  +{gameState.foundBonusWords.length}
                 </Badge>
-                <span className="text-lg font-semibold">
-                  Found: {gameState.foundWords.length} / {gameState.wordList.length}
-                </span>
-                {gameState.foundBonusWords.length > 0 && (
-                  <Badge className="bg-yellow-100 text-yellow-800">
-                    Bonus: {gameState.foundBonusWords.length} / 3
-                  </Badge>
-                )}
-                {gameState.gameWon && (
-                  <Badge className="bg-green-100 text-green-800">Completed! 🎉</Badge>
-                )}
-              </div>
-              <Button variant="outline" size="sm" onClick={resetGame}>
-                New Puzzle
-              </Button>
+              )}
+              {gameState.gameWon && <Badge className="bg-green-100 text-green-800 text-xs px-1 py-0">Won! 🎉</Badge>}
             </div>
-          </CardContent>
-        </Card>
+            <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-2 py-1 h-6">
+              New
+            </Button>
+          </div>
+        </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Word Bank - Top on mobile, right on desktop */}
-          <div className="order-first lg:order-last w-full lg:w-64 flex-shrink-0">
-            <Card className="shadow-lg h-fit">
-              <CardContent className="p-3">
-                <h3 className="font-bold text-sm mb-3 text-center">Words to Find</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1 text-xs">
-                  {gameState.wordList.map((word, index) => {
-                    const isFound = gameState.foundWords.includes(word);
-                    return (
-                      <div
-                        key={index}
-                        className={`p-1 rounded text-center transition-all ${
-                          isFound 
-                            ? 'bg-green-100 text-green-800 line-through' 
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {word}
-                      </div>
-                    );
-                  })}
+        {/* Words List */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="text-xs font-medium text-gray-700 mb-1">Words:</div>
+          <div className="grid grid-cols-3 gap-1 text-xs max-h-16 overflow-y-auto">
+            {gameState.wordList.map((word, index) => {
+              const isFound = gameState.foundWords.includes(word);
+              return (
+                <div
+                  key={index}
+                  className={`p-0.5 rounded text-center transition-all text-xs ${
+                    isFound 
+                      ? 'bg-green-100 text-green-800 line-through' 
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {word.slice(0,6)}
                 </div>
-
-                {/* Bonus Words */}
-                {gameState.bonusWords.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-bold text-xs mb-2 text-center text-yellow-700">
-                      Bonus Words ({gameState.foundBonusWords.length}/3)
-                    </h4>
-                    <div className="grid grid-cols-1 gap-1 text-xs">
-                      {gameState.foundBonusWords.map((word, index) => (
-                        <div
-                          key={index}
-                          className="p-1 rounded text-center bg-yellow-100 text-yellow-800"
-                        >
-                          {word}
-                        </div>
-                      ))}
-                      {Array(3 - gameState.foundBonusWords.length).fill(0).map((_, index) => (
-                        <div
-                          key={`hidden-${index}`}
-                          className="p-1 rounded text-center bg-gray-50 text-gray-400"
-                        >
-                          ???
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              );
+            })}
           </div>
 
-          {/* Word Search Grid */}
-          <div className="flex-1 order-last lg:order-first">
-            <Card className="shadow-lg">
-              <CardContent className="p-2 sm:p-4">
-                <div className="relative w-full max-w-md mx-auto aspect-square">
-                  <div 
-                    className="grid aspect-square w-full select-none relative"
-                    style={{ 
-                      gridTemplateColumns: 'repeat(16, 1fr)',
-                      gap: '1px',
-                      touchAction: 'none',
-                      userSelect: 'none',
-                      WebkitUserSelect: 'none',
-                      overflow: 'hidden'
-                    }}
-                    onTouchStart={(e) => e.preventDefault()}
-                    onTouchMove={(e) => e.preventDefault()}
-                  >
+          {gameState.foundBonusWords.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <div className="text-xs font-medium text-yellow-700 mb-1">Bonus:</div>
+              <div className="flex flex-wrap gap-1">
+                {gameState.foundBonusWords.map((word, index) => (
+                  <div key={index} className="text-xs p-1 rounded bg-yellow-100 text-yellow-800">
+                    {word}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Compact Grid */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-2">
+          <div className="relative w-full h-full">
+            <div 
+              className="grid w-full h-full select-none relative"
+              style={{ 
+                gridTemplateColumns: 'repeat(16, 1fr)',
+                gap: '0.5px',
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                overflow: 'hidden'
+              }}
+              onTouchStart={(e) => e.preventDefault()}
+              onTouchMove={(e) => e.preventDefault()}
+            >
                   {gameState.grid.map((row, rowIndex) =>
                     row.map((cell, colIndex) => {
                       const isSelected = isCellSelected(rowIndex, colIndex);
@@ -655,7 +626,7 @@ export default function WordSearch() {
                           data-row={rowIndex}
                           data-col={colIndex}
                           className={`
-                            aspect-square flex items-center justify-center text-xs sm:text-sm font-bold cursor-pointer
+                            aspect-square flex items-center justify-center text-xs font-bold cursor-pointer
                             relative transition-all duration-200 ease-in-out
                             ${!isSelected && !isFoundWord ? 'hover:bg-gray-100' : ''}
                           `}
@@ -701,7 +672,7 @@ export default function WordSearch() {
                       );
                     })
                   )}
-                  </div>
+            </div>
 
                   {/* SVG overlay for green circles behind found words */}
                   <svg 
@@ -873,29 +844,10 @@ export default function WordSearch() {
                     </Button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-
-        </div>
-
-        {/* Instructions */}
-        <Card className="mt-6">
-          <CardContent className="p-4">
-            <div className="text-sm text-gray-600 text-center space-y-2">
-              <p>
-                <strong>How to Play:</strong> Click and drag to select words from the grid. Words can run in any direction: horizontal, vertical, or diagonal (forward or backward).
-              </p>
-              <p>
-                <strong>Bonus Challenge:</strong> Find 3 hidden bonus words that aren't in the word list but are related to the theme for extra points!
-              </p>
-              <p>
-                Selected from {WORD_LISTS[gameState.actualCategory]?.length || 250}+ words in the {gameState.actualCategory} category.
-              </p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

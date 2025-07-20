@@ -185,54 +185,52 @@ export default function WouldYouRather() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Would You Rather"  />
         
-        <div className="max-w-2xl mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Game Setup</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Number of Players</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[2, 3, 4, 5, 6].map(num => (
-                      <Button
-                        key={num}
-                        variant={numPlayers === num ? "default" : "outline"}
-                        onClick={() => setNumPlayers(num)}
-                        className="w-full"
-                      >
-                        {num}
-                      </Button>
-                    ))}
-                  </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Players</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {[2, 3, 4, 5, 6].map(num => (
+                    <Button
+                      key={num}
+                      variant={numPlayers === num ? "default" : "outline"}
+                      onClick={() => setNumPlayers(num)}
+                      className="w-full text-xs h-8"
+                    >
+                      {num}
+                    </Button>
+                  ))}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Category</label>
-                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {[...GAME_CATEGORIES].sort().map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button onClick={startNewGame} className="w-full" size="lg">
-                  Start Game
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {[...GAME_CATEGORIES].sort().map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Start Game
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -321,23 +319,21 @@ export default function WouldYouRather() {
   if (gameState.showPassScreen) {
     const nextPlayerName = PLAYER_NAMES[gameState.currentPlayerIndex];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Would You Rather"  />
         
-        <div className="max-w-2xl mx-auto pt-32 px-4">
-          <Card className="shadow-xl bg-green-50 border-green-200">
-            <CardContent className="p-12 text-center">
-              <div className="text-6xl mb-6">✅</div>
-              <h2 className="text-3xl font-bold text-green-800 mb-4">Answer Recorded!</h2>
-              <p className="text-xl text-green-700 mb-6">
-                Pass the device to {nextPlayerName}
-              </p>
-              <div className="text-4xl font-bold text-green-600">
-                {gameState.passScreenTimer}
-              </div>
-              <p className="text-gray-600 mt-2">seconds remaining</p>
-            </CardContent>
-          </Card>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-green-50 border-green-200 rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
+            <div className="text-4xl mb-4">✅</div>
+            <h2 className="text-lg font-bold text-green-800 mb-3">Answer Recorded!</h2>
+            <p className="text-sm text-green-700 mb-4">
+              Pass to {nextPlayerName}
+            </p>
+            <div className="text-2xl font-bold text-green-600">
+              {gameState.passScreenTimer}
+            </div>
+            <p className="text-xs text-gray-600 mt-1">seconds remaining</p>
+          </div>
         </div>
       </div>
     );
@@ -347,79 +343,68 @@ export default function WouldYouRather() {
   const currentPlayerName = PLAYER_NAMES[gameState.currentPlayerIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       <GameHeader title="Would You Rather"  />
       
-      <div className="max-w-4xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary">
-                  {gameState.category === 'all' ? 'All Categories' : gameState.category}
-                </Badge>
-                <span className="text-lg font-semibold">
-                  {currentPlayerName}'s Turn
-                </span>
-              </div>
-              <div className="text-sm text-gray-600">
-                Player {gameState.currentPlayerIndex + 1} of {numPlayers}
-              </div>
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-1">
+              <Badge variant="secondary" className="text-xs px-1 py-0">
+                {gameState.category === 'all' ? 'All' : gameState.category}
+              </Badge>
+              <span className="text-xs font-semibold">
+                {currentPlayerName}'s Turn
+              </span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-xs text-gray-600">
+              {gameState.currentPlayerIndex + 1}/{numPlayers}
+            </div>
+          </div>
+        </div>
 
-        {/* Main Question */}
-        <Card className="shadow-xl">
-          <CardContent className="p-8">
-            <h2 className="text-3xl font-bold text-center mb-12">Would You Rather...</h2>
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Option A */}
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all border-4 border-blue-200 hover:border-blue-400"
-                onClick={() => makeChoice('A')}
-              >
-                <CardContent className="p-8 text-center">
-                  <div className="text-6xl mb-4">🅰️</div>
-                  <h3 className="text-xl font-bold mb-4 text-blue-600">Option A</h3>
-                  <p className="text-lg leading-relaxed">{optionA}</p>
-                </CardContent>
-              </Card>
-
-              {/* Option B */}
-              <Card 
-                className="cursor-pointer hover:shadow-lg transition-all border-4 border-pink-200 hover:border-pink-400"
-                onClick={() => makeChoice('B')}
-              >
-                <CardContent className="p-8 text-center">
-                  <div className="text-6xl mb-4">🅱️</div>
-                  <h3 className="text-xl font-bold mb-4 text-pink-600">Option B</h3>
-                  <p className="text-lg leading-relaxed">{optionB}</p>
-                </CardContent>
-              </Card>
+        {/* Compact Question */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-3 flex flex-col">
+          <h2 className="text-sm font-bold text-center mb-4">Would You Rather...</h2>
+          
+          <div className="flex-1 flex flex-col gap-3">
+            {/* Option A */}
+            <div 
+              className="flex-1 cursor-pointer transition-all border-2 border-blue-200 hover:border-blue-400 rounded-lg p-3 text-center flex flex-col justify-center bg-blue-50"
+              onClick={() => makeChoice('A')}
+            >
+              <div className="text-2xl mb-2">🅰️</div>
+              <h3 className="text-sm font-bold mb-2 text-blue-600">Option A</h3>
+              <p className="text-xs leading-relaxed">{optionA}</p>
             </div>
 
-            {/* Progress Indicator */}
-            {gameState.playerChoices.length > 0 && (
-              <div className="mt-8 pt-6 border-t">
-                <h3 className="font-semibold mb-4 text-center">Progress:</h3>
-                <div className="text-center">
-                  <Badge variant="outline">
-                    {gameState.playerChoices.length} of {numPlayers} players have answered
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-8 text-center">
-              <Button onClick={resetGame} variant="outline">
-                End Game
-              </Button>
+            {/* Option B */}
+            <div 
+              className="flex-1 cursor-pointer transition-all border-2 border-pink-200 hover:border-pink-400 rounded-lg p-3 text-center flex flex-col justify-center bg-pink-50"
+              onClick={() => makeChoice('B')}
+            >
+              <div className="text-2xl mb-2">🅱️</div>
+              <h3 className="text-sm font-bold mb-2 text-pink-600">Option B</h3>
+              <p className="text-xs leading-relaxed">{optionB}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Progress */}
+          {gameState.playerChoices.length > 0 && (
+            <div className="mt-3 pt-2 border-t text-center">
+              <Badge variant="outline" className="text-xs px-1 py-0">
+                {gameState.playerChoices.length}/{numPlayers} answered
+              </Badge>
+            </div>
+          )}
+
+          <div className="mt-2 text-center">
+            <Button onClick={resetGame} variant="outline" size="sm" className="text-xs px-2 py-1 h-6">
+              End Game
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -356,142 +356,115 @@ export default function ConnectFour() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Connect Four"  />
         
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Game Setup</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Game Mode</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={selectedMode === '1-player' ? "default" : "outline"}
-                      onClick={() => setSelectedMode('1-player')}
-                      className="w-full"
-                    >
-                      vs AI
-                    </Button>
-                    <Button
-                      variant={selectedMode === '2-player' ? "default" : "outline"}
-                      onClick={() => setSelectedMode('2-player')}
-                      className="w-full"
-                    >
-                      2 Players
-                    </Button>
-                  </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={selectedMode === '1-player' ? "default" : "outline"}
+                    onClick={() => setSelectedMode('1-player')}
+                    className="w-full text-xs px-2 py-1 h-8"
+                  >
+                    vs AI
+                  </Button>
+                  <Button
+                    variant={selectedMode === '2-player' ? "default" : "outline"}
+                    onClick={() => setSelectedMode('2-player')}
+                    className="w-full text-xs px-2 py-1 h-8"
+                  >
+                    2 Players
+                  </Button>
                 </div>
-
-                <Button onClick={startNewGame} className="w-full" size="lg">
-                  Start Game
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Start Game
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       <GameHeader title="Connect Four"  />
       
-      <div className="max-w-4xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary">
-                  {gameState.gameMode === '1-player' ? 'vs AI' : '2 Players'}
-                </Badge>
-                {!gameState.gameWon && !gameState.isDraw && (
-                  <span className="text-lg font-semibold">
-                    {gameState.isThinking ? 'AI is thinking...' : 
-                     `Player ${gameState.currentPlayer}'s turn`}
-                  </span>
-                )}
-                {gameState.gameWon && (
-                  <span className="text-lg font-bold text-green-600">
-                    🎉 {gameState.gameMode === '1-player' && gameState.winner === 2 ? 'AI' : `Player ${gameState.winner}`} Wins!
-                  </span>
-                )}
-                {gameState.isDraw && (
-                  <span className="text-lg font-bold text-yellow-600">
-                    🤝 It's a Draw!
-                  </span>
-                )}
-              </div>
-              <Button variant="outline" size="sm" onClick={resetGame}>
-                New Game
-              </Button>
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-xs px-2 py-1">
+                {gameState.gameMode === '1-player' ? 'vs AI' : '2 Players'}
+              </Badge>
+              {!gameState.gameWon && !gameState.isDraw ? (
+                <span className="text-xs font-semibold">
+                  {gameState.isThinking ? 'AI thinking...' : 
+                   `Player ${gameState.currentPlayer}`}
+                </span>
+              ) : gameState.gameWon ? (
+                <span className="text-xs font-bold text-green-600">
+                  🎉 {gameState.gameMode === '1-player' && gameState.winner === 2 ? 'AI' : `P${gameState.winner}`} Wins!
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-yellow-600">🤝 Draw!</span>
+              )}
             </div>
-          </CardContent>
-        </Card>
+            <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-2 py-1 h-6">
+              New
+            </Button>
+          </div>
+        </div>
 
-        {/* Game Board */}
-        <Card className="shadow-xl">
-          <CardContent className="p-8">
-            <div className="bg-blue-600 p-4 rounded-lg inline-block mx-auto">
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: ROWS }, (_, row) =>
-                  Array.from({ length: COLS }, (_, col) => {
-                    const cell = gameState.grid[row][col];
-                    const isWinning = isWinningCell(row, col);
-                    
-                    return (
-                      <div
-                        key={`${row}-${col}`}
-                        className={`
-                          w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all
-                          ${cell === null ? 'bg-white border-gray-300' :
-                            cell === 1 ? 'bg-red-500 border-red-600' : 'bg-yellow-400 border-yellow-500'}
-                          ${isWinning ? 'ring-4 ring-green-400 ring-opacity-75' : ''}
-                        `}
-                      />
-                    );
-                  })
-                )}
-              </div>
-              
-              {/* Column buttons */}
-              <div className="grid grid-cols-7 gap-2 mt-4">
-                {Array.from({ length: COLS }, (_, col) => (
-                  <Button
-                    key={col}
-                    onClick={() => makeMove(col)}
-                    disabled={gameState.gameWon || gameState.isDraw || gameState.isThinking || getLowestAvailableRow(gameState.grid, col) === null}
-                    className="w-16 h-12 text-lg font-bold"
-                    variant="outline"
-                  >
-                    ↓
-                  </Button>
-                ))}
-              </div>
+        {/* Compact Game Board */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-2 flex items-center justify-center">
+          <div className="bg-blue-600 p-2 rounded-lg">
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {Array.from({ length: ROWS }, (_, row) =>
+                Array.from({ length: COLS }, (_, col) => {
+                  const cell = gameState.grid[row][col];
+                  const isWinning = isWinningCell(row, col);
+                  
+                  return (
+                    <div
+                      key={`${row}-${col}`}
+                      className={`
+                        w-8 h-8 rounded-full flex items-center justify-center border transition-all
+                        ${cell === null ? 'bg-white border-gray-300' :
+                          cell === 1 ? 'bg-red-500 border-red-600' : 'bg-yellow-400 border-yellow-500'}
+                        ${isWinning ? 'ring-2 ring-green-400 ring-opacity-75' : ''}
+                      `}
+                    />
+                  );
+                })
+              )}
             </div>
-
-            {/* Instructions */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-600">
-                Click the arrows to drop your piece in that column. Get four in a row to win!
-              </p>
-              <div className="flex justify-center items-center space-x-4 mt-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-red-500 rounded-full"></div>
-                  <span className="text-sm">Player 1</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-yellow-400 rounded-full"></div>
-                  <span className="text-sm">{gameState.gameMode === '1-player' ? 'AI' : 'Player 2'}</span>
-                </div>
-              </div>
+            
+            {/* Compact Column buttons */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: COLS }, (_, col) => (
+                <Button
+                  key={col}
+                  onClick={() => makeMove(col)}
+                  disabled={gameState.gameWon || gameState.isDraw || gameState.isThinking || getLowestAvailableRow(gameState.grid, col) === null}
+                  className="w-8 h-6 text-xs font-bold p-0"
+                  variant="outline"
+                >
+                  ↓
+                </Button>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

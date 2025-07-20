@@ -232,205 +232,168 @@ export default function Hangman() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Hangman"  />
         
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Game Setup</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Game Mode</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={selectedMode === 'single' ? "default" : "outline"}
-                      onClick={() => {
-                        setSelectedMode('single');
-                        setShowCustomInput(false);
-                      }}
-                      className="w-full"
-                    >
-                      Random Puzzle
-                    </Button>
-                    <Button
-                      variant={selectedMode === 'two-player' ? "default" : "outline"}
-                      onClick={() => {
-                        setSelectedMode('two-player');
-                        setShowCustomInput(true);
-                      }}
-                      className="w-full"
-                    >
-                      Custom Puzzle
-                    </Button>
-                  </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={selectedMode === 'single' ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedMode('single');
+                      setShowCustomInput(false);
+                    }}
+                    className="w-full text-xs px-2 py-1 h-8"
+                  >
+                    Random
+                  </Button>
+                  <Button
+                    variant={selectedMode === 'two-player' ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedMode('two-player');
+                      setShowCustomInput(true);
+                    }}
+                    className="w-full text-xs px-2 py-1 h-8"
+                  >
+                    Custom
+                  </Button>
                 </div>
-
-                {showCustomInput && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Enter Puzzle</label>
-                    <Input
-                      value={customPuzzle}
-                      onChange={(e) => setCustomPuzzle(e.target.value)}
-                      placeholder="Enter word or phrase..."
-                      className="w-full"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Wrong Answers Allowed</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[6, 7, 8, 9, 10].map(num => (
-                      <Button
-                        key={num}
-                        variant={maxWrong === num ? "default" : "outline"}
-                        onClick={() => setMaxWrong(num)}
-                        className="w-full"
-                      >
-                        {num}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button onClick={startNewGame} className="w-full" size="lg">
-                  Start Game
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+
+              {showCustomInput && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Puzzle</label>
+                  <Input
+                    value={customPuzzle}
+                    onChange={(e) => setCustomPuzzle(e.target.value)}
+                    placeholder="Enter word or phrase..."
+                    className="w-full text-sm h-8"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Wrong Answers</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {[6, 7, 8, 9, 10].map(num => (
+                    <Button
+                      key={num}
+                      variant={maxWrong === num ? "default" : "outline"}
+                      onClick={() => setMaxWrong(num)}
+                      className="w-full text-xs px-1 py-1 h-8"
+                    >
+                      {num}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Start Game
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       <GameHeader title="Hangman"  />
       
-      <div className="max-w-4xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary">{gameState.gameMode === 'single' ? 'Random Puzzle' : 'Custom Puzzle'}</Badge>
-                <span className="text-sm text-gray-600">
-                  Wrong: {gameState.wrongGuesses}/{gameState.maxWrongGuesses}
-                </span>
-                {gameState.gameWon && (
-                  <Badge className="bg-green-100 text-green-800">You Won! 🎉</Badge>
-                )}
-                {gameState.gameLost && (
-                  <Badge variant="destructive">Game Over</Badge>
-                )}
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-xs px-2 py-1">
+                {gameState.gameMode === 'single' ? 'Random' : 'Custom'}
+              </Badge>
+              <span className="text-xs">
+                Wrong: {gameState.wrongGuesses}/{gameState.maxWrongGuesses}
+              </span>
+              {gameState.gameWon && <Badge className="bg-green-100 text-green-800 text-xs px-1 py-0">Won! 🎉</Badge>}
+              {gameState.gameLost && <Badge variant="destructive" className="text-xs px-1 py-0">Lost</Badge>}
+            </div>
+            <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-2 py-1 h-6">
+              New
+            </Button>
+          </div>
+        </div>
+
+        {/* Hangman Drawing */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <pre className="text-xs font-mono text-center">
+            {generateHangmanDrawings(gameState.maxWrongGuesses)[Math.min(gameState.wrongGuesses, gameState.maxWrongGuesses)]}
+          </pre>
+        </div>
+
+        {/* Word Display */}
+        <div className="bg-white rounded-lg shadow-sm p-3 mb-2">
+          <div className="text-xl font-mono text-center tracking-wider">
+            {getDisplayWord()}
+          </div>
+        </div>
+
+        {/* Guessed Letters */}
+        {gameState.guessedLetters.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+            <div className="text-xs font-medium text-gray-700 mb-1">Guessed:</div>
+            <div className="flex flex-wrap gap-1">
+              {gameState.guessedLetters.map(letter => {
+                const isCorrect = gameState.puzzle.toUpperCase().includes(letter);
+                return (
+                  <Badge 
+                    key={letter}
+                    variant={isCorrect ? "default" : "destructive"}
+                    className="text-xs px-1 py-0"
+                  >
+                    {letter}
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Input and Letter Grid */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-2">
+          {!gameState.gameWon && !gameState.gameLost ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-6 gap-1">
+                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
+                  <Button
+                    key={letter}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => makeGuess(letter)}
+                    disabled={gameState.guessedLetters.includes(letter)}
+                    className="h-8 text-xs p-1"
+                  >
+                    {letter}
+                  </Button>
+                ))}
               </div>
-              <Button variant="outline" size="sm" onClick={resetGame}>
-                New Game
+            </div>
+          ) : (
+            <div className="space-y-2 text-center">
+              {gameState.gameLost && (
+                <div className="text-sm font-semibold text-red-600 mb-2">
+                  Answer: {gameState.puzzle}
+                </div>
+              )}
+              <Button onClick={resetGame} className="w-full text-sm h-8">
+                Play Again
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Hangman Drawing */}
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <h3 className="font-semibold mb-4 text-center">Hangman</h3>
-              <pre className="text-sm font-mono text-center bg-gray-50 p-4 rounded-lg">
-                {generateHangmanDrawings(gameState.maxWrongGuesses)[Math.min(gameState.wrongGuesses, gameState.maxWrongGuesses)]}
-              </pre>
-            </CardContent>
-          </Card>
-
-          {/* Game Play */}
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <h3 className="font-semibold mb-4 text-center">Puzzle</h3>
-              
-              {/* Word Display */}
-              <div className="text-3xl font-mono text-center mb-6 tracking-wider">
-                {getDisplayWord()}
-              </div>
-
-              {/* Guessed Letters */}
-              <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Guessed Letters:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {gameState.guessedLetters.map(letter => {
-                    const isCorrect = gameState.puzzle.toUpperCase().includes(letter);
-                    return (
-                      <Badge 
-                        key={letter}
-                        variant={isCorrect ? "default" : "destructive"}
-                        className="text-sm"
-                      >
-                        {letter}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Guess Input */}
-              {!gameState.gameWon && !gameState.gameLost && (
-                <form onSubmit={handleGuessSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Guess a Letter:
-                    </label>
-                    <Input
-                      value={currentGuess}
-                      onChange={(e) => setCurrentGuess(e.target.value.slice(-1))}
-                      placeholder="Enter letter..."
-                      className="w-full text-center text-lg"
-                      maxLength={1}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={!currentGuess}>
-                    Guess Letter
-                  </Button>
-                </form>
-              )}
-
-              {/* Quick Letter Buttons */}
-              {!gameState.gameWon && !gameState.gameLost && (
-                <div className="mt-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Quick Select:</h4>
-                  <div className="grid grid-cols-6 gap-1 text-sm">
-                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
-                      <Button
-                        key={letter}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => makeGuess(letter)}
-                        disabled={gameState.guessedLetters.includes(letter)}
-                        className="h-8 text-xs"
-                      >
-                        {letter}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Game Over Actions */}
-              {(gameState.gameWon || gameState.gameLost) && (
-                <div className="mt-6 space-y-2">
-                  {gameState.gameLost && (
-                    <div className="text-center text-lg font-semibold text-red-600">
-                      The answer was: {gameState.puzzle}
-                    </div>
-                  )}
-                  <Button onClick={resetGame} className="w-full">
-                    Play Again
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          )}
         </div>
       </div>
     </div>

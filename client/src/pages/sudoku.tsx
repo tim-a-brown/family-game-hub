@@ -308,167 +308,135 @@ export default function Sudoku() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Sudoku"  />
         
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Choose Difficulty</h2>
-              
-              <div className="space-y-4">
-                {(['easy', 'medium', 'hard'] as const).map(difficulty => (
-                  <Button
-                    key={difficulty}
-                    variant={selectedDifficulty === difficulty ? "default" : "outline"}
-                    onClick={() => setSelectedDifficulty(difficulty)}
-                    className="w-full justify-between"
-                  >
-                    <span className="capitalize">{difficulty}</span>
-                    <span className="text-xs">
-                      {DIFFICULTY_SETTINGS[difficulty].maxHints} hints
-                    </span>
-                  </Button>
-                ))}
-                
-                <Button onClick={startNewGame} className="w-full mt-6" size="lg">
-                  Generate Puzzle
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Choose Difficulty</h2>
+            
+            <div className="space-y-3">
+              {(['easy', 'medium', 'hard'] as const).map(difficulty => (
+                <Button
+                  key={difficulty}
+                  variant={selectedDifficulty === difficulty ? "default" : "outline"}
+                  onClick={() => setSelectedDifficulty(difficulty)}
+                  className="w-full justify-between text-xs h-8"
+                >
+                  <span className="capitalize">{difficulty}</span>
+                  <span className="text-xs">
+                    {DIFFICULTY_SETTINGS[difficulty].maxHints} hints
+                  </span>
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
+              ))}
+              
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Generate Puzzle
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       <GameHeader title="Sudoku"  />
       
-      <div className="max-w-4xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary" className="capitalize">{gameState.difficulty}</Badge>
-                <span className="text-lg font-semibold">⏱️ {formatTime(gameState.timeElapsed)}</span>
-                <span className="text-sm text-gray-600">
-                  Hints: {gameState.hintsUsed}/{gameState.maxHints}
-                </span>
-                {gameState.isComplete && (
-                  <Badge className="bg-green-100 text-green-800">Completed! 🎉</Badge>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={togglePause}>
-                  {gameState.isPaused ? 'Resume' : 'Pause'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={resetGame}>
-                  New Puzzle
-                </Button>
-              </div>
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-1">
+              <Badge variant="secondary" className="text-xs px-1 py-0 capitalize">{gameState.difficulty}</Badge>
+              <span className="text-xs">⏱️ {formatTime(gameState.timeElapsed)}</span>
+              <span className="text-xs">💡 {gameState.maxHints - gameState.hintsUsed}</span>
+              {gameState.isComplete && <Badge className="bg-green-100 text-green-800 text-xs px-1 py-0">Won! 🎉</Badge>}
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Sudoku Grid */}
-          <div className="lg:col-span-3">
-            <Card className="shadow-lg">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-9 gap-0 w-fit mx-auto border-4 border-gray-800">
-                  {gameState.grid.map((row, rowIndex) =>
-                    row.map((cell, colIndex) => (
-                      <button
-                        key={`${rowIndex}-${colIndex}`}
-                        onClick={() => selectCell(rowIndex, colIndex)}
-                        disabled={gameState.isPaused || gameState.isComplete}
-                        className={`
-                          w-12 h-12 border border-gray-400 text-lg font-bold flex items-center justify-center transition-all
-                          ${cell.isOriginal ? 'bg-gray-100 text-gray-800 font-black' : 'bg-white text-blue-600'}
-                          ${cell.isHighlighted ? 'bg-blue-100' : ''}
-                          ${cell.isError ? 'bg-red-100 text-red-600' : ''}
-                          ${gameState.selectedCell?.row === rowIndex && gameState.selectedCell?.col === colIndex ? 'bg-yellow-200 ring-2 ring-yellow-400' : ''}
-                          ${colIndex % 3 === 2 && colIndex !== 8 ? 'border-r-2 border-r-gray-800' : ''}
-                          ${rowIndex % 3 === 2 && rowIndex !== 8 ? 'border-b-2 border-b-gray-800' : ''}
-                          hover:bg-blue-50 disabled:cursor-not-allowed
-                        `}
-                      >
-                        {cell.value !== 0 ? cell.value : ''}
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                {gameState.isPaused && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <h3 className="text-2xl font-bold mb-4">Game Paused</h3>
-                        <Button onClick={togglePause}>Resume</Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <div className="flex space-x-1">
+              <Button variant="outline" size="sm" onClick={togglePause} className="text-xs px-1 py-0 h-6">
+                {gameState.isPaused ? '▶' : '⏸'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-1 py-0 h-6">
+                New
+              </Button>
+            </div>
           </div>
+        </div>
 
-          {/* Controls */}
-          <div className="lg:col-span-1">
-            <Card className="shadow-lg mb-4">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4">Numbers</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                    <Button
-                      key={num}
-                      variant="outline"
-                      onClick={() => enterNumber(num)}
-                      disabled={!gameState.selectedCell || gameState.isPaused || gameState.isComplete}
-                      className="w-full h-12 text-lg font-bold"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-                
-                <div className="mt-4 space-y-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => enterNumber(0)}
-                    disabled={!gameState.selectedCell || gameState.isPaused || gameState.isComplete}
-                    className="w-full"
+        {/* Compact Grid */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-2 mb-2 flex items-center justify-center">
+          <div className="relative">
+            <div className="grid grid-cols-9 gap-0 border-2 border-gray-800">
+              {gameState.grid.map((row, rowIndex) =>
+                row.map((cell, colIndex) => (
+                  <button
+                    key={`${rowIndex}-${colIndex}`}
+                    onClick={() => selectCell(rowIndex, colIndex)}
+                    disabled={gameState.isPaused || gameState.isComplete}
+                    className={`
+                      w-6 h-6 border border-gray-400 text-xs font-bold flex items-center justify-center transition-all
+                      ${cell.isOriginal ? 'bg-gray-100 text-gray-800' : 'bg-white text-blue-600'}
+                      ${cell.isHighlighted ? 'bg-blue-100' : ''}
+                      ${cell.isError ? 'bg-red-100 text-red-600' : ''}
+                      ${gameState.selectedCell?.row === rowIndex && gameState.selectedCell?.col === colIndex ? 'bg-yellow-200 ring-1 ring-yellow-400' : ''}
+                      ${colIndex % 3 === 2 && colIndex !== 8 ? 'border-r-2 border-r-gray-800' : ''}
+                      ${rowIndex % 3 === 2 && rowIndex !== 8 ? 'border-b-2 border-b-gray-800' : ''}
+                      hover:bg-blue-50 disabled:cursor-not-allowed
+                    `}
                   >
-                    Clear
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={useHint}
-                    disabled={!gameState.selectedCell || gameState.hintsUsed >= gameState.maxHints || gameState.isPaused || gameState.isComplete}
-                    className="w-full"
-                  >
-                    Hint ({gameState.maxHints - gameState.hintsUsed})
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                    {cell.value !== 0 ? cell.value : ''}
+                  </button>
+                ))
+              )}
+            </div>
 
-            <Card className="shadow-lg">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">How to Play</h3>
-                <div className="text-sm text-gray-600 space-y-2">
-                  <p>• Click a cell to select it</p>
-                  <p>• Click numbers to fill cells</p>
-                  <p>• Each row, column, and 3×3 box must contain digits 1-9</p>
-                  <p>• Red numbers indicate errors</p>
-                  <p>• Use hints if you're stuck!</p>
+            {gameState.isPaused && (
+              <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center rounded">
+                <div className="bg-white p-3 rounded text-center">
+                  <div className="text-sm font-bold mb-2">Paused</div>
+                  <Button onClick={togglePause} size="sm" className="text-xs h-6">Resume</Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Compact Numbers */}
+        <div className="bg-white rounded-lg shadow-sm p-2">
+          <div className="grid grid-cols-5 gap-1 mb-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+              <Button
+                key={num}
+                variant="outline"
+                onClick={() => enterNumber(num)}
+                disabled={!gameState.selectedCell || gameState.isPaused || gameState.isComplete}
+                className="w-full h-8 text-sm font-bold p-0"
+              >
+                {num}
+              </Button>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-1">
+            <Button
+              variant="outline"
+              onClick={() => enterNumber(0)}
+              disabled={!gameState.selectedCell || gameState.isPaused || gameState.isComplete}
+              className="w-full text-xs h-6"
+            >
+              Clear
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={useHint}
+              disabled={!gameState.selectedCell || gameState.hintsUsed >= gameState.maxHints || gameState.isPaused || gameState.isComplete}
+              className="w-full text-xs h-6"
+            >
+              Hint
+            </Button>
           </div>
         </div>
       </div>

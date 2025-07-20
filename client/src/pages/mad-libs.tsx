@@ -198,22 +198,19 @@ export default function MadLibs() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+      <div className="h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex flex-col">
         <GameHeader title="Mad Libs" />
         
-        <div className="max-w-4xl mx-auto pt-8 px-4">
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold mb-2">Choose Your Mad Libs Adventure!</h2>
-                <p className="text-gray-600">Pick a category and select from 3 stories, or try a random surprise!</p>
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium mb-2">Select Category:</label>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Choose Adventure!</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Category:</label>
                 <Select value={selectedCategory} onValueChange={(value: GameCategory) => setSelectedCategory(value)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a category" />
+                  <SelectTrigger className="w-full h-8 text-xs">
+                    <SelectValue placeholder="Choose category" />
                   </SelectTrigger>
                   <SelectContent>
                     {GAME_CATEGORIES.map((category) => (
@@ -225,20 +222,20 @@ export default function MadLibs() {
                 </Select>
               </div>
 
-              <div className="grid gap-4 mb-6">
-                <h3 className="font-semibold text-lg">Choose Your Story:</h3>
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Stories:</h3>
                 {getRandomStories(selectedCategory).map((template, index) => {
                   const backgrounds = [
-                    'bg-gradient-to-r from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 border-blue-300',
-                    'bg-gradient-to-r from-green-100 to-green-200 hover:from-green-200 hover:to-green-300 border-green-300',
-                    'bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 border-purple-300'
+                    'bg-blue-100 hover:bg-blue-200',
+                    'bg-green-100 hover:bg-green-200', 
+                    'bg-purple-100 hover:bg-purple-200'
                   ];
                   
                   return (
                     <Button
                       key={index}
                       variant="outline"
-                      className={`p-4 h-auto text-left justify-start transition-all duration-300 ${backgrounds[index]}`}
+                      className={`p-2 h-auto text-left justify-start w-full ${backgrounds[index]}`}
                       onClick={() => {
                         const allStories = getAvailableStories(selectedCategory);
                         const actualIndex = allStories.findIndex(t => t.title === template.title);
@@ -246,9 +243,9 @@ export default function MadLibs() {
                       }}
                     >
                       <div>
-                        <div className="font-semibold text-gray-800">{template.title}</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {template.prompts.length} words needed
+                        <div className="font-semibold text-xs">{template.title}</div>
+                        <div className="text-xs text-gray-600">
+                          {template.prompts.length} words
                         </div>
                       </div>
                     </Button>
@@ -257,118 +254,100 @@ export default function MadLibs() {
                 
                 <Button
                   variant="secondary"
-                  className="p-4 h-auto bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200"
+                  className="p-2 h-auto w-full bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200"
                   onClick={startRandomGame}
                 >
                   <div className="text-center w-full">
-                    <div className="font-semibold">🎲 Random Surprise Story!</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Let us pick a story from any category
-                    </div>
+                    <div className="font-semibold text-xs">🎲 Random Story!</div>
+                    <div className="text-xs text-gray-600">Any category</div>
                   </div>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+    <div className="h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex flex-col">
       <GameHeader title="Mad Libs"  />
       
-      <div className="max-w-4xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <Badge variant="secondary">
-                  {gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
-                </Badge>
-                <span className="text-lg font-semibold">{currentTemplate?.title}</span>
-                {gameState.completed && (
-                  <Badge className="bg-green-100 text-green-800">Story Complete! 🎉</Badge>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">
-                  Progress: {Math.round(progress)}%
-                </span>
-                <Button variant="outline" size="sm" onClick={resetGame}>
-                  New Story
-                </Button>
-              </div>
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-1">
+              <Badge variant="secondary" className="text-xs px-1 py-0">
+                {gameState.category.charAt(0).toUpperCase() + gameState.category.slice(1)}
+              </Badge>
+              <span className="text-xs font-semibold truncate max-w-32">{currentTemplate?.title}</span>
+              {gameState.completed && <Badge className="bg-green-100 text-green-800 text-xs px-1 py-0">Done! 🎉</Badge>}
             </div>
-            
-            <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+            <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-1 py-0 h-6">
+              New
+            </Button>
+          </div>
+          <div className="mt-1 w-full bg-gray-200 rounded-full h-1">
+            <div 
+              className="bg-purple-600 h-1 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
 
         {!gameState.completed ? (
-          /* Input Section */
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-4">
-                  Enter a {currentPrompt ? formatPrompt(currentPrompt) : 'word'}:
-                </h3>
-                
-                <div className="max-w-md mx-auto mb-4">
-                  <Input
-                    type="text"
-                    value={currentAnswer}
-                    onChange={(e) => setCurrentAnswer(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={`Type your ${currentPrompt ? formatPrompt(currentPrompt).toLowerCase() : 'word'} here...`}
-                    className="text-center text-lg"
-                    autoFocus
-                  />
-                </div>
-                
-                <Button 
-                  onClick={handleAnswerSubmit}
-                  disabled={!currentAnswer.trim()}
-                  className="px-8"
-                >
-                  {gameState.currentPromptIndex === (currentTemplate?.prompts.length || 0) - 1 ? 'Finish Story!' : 'Next Word'}
-                </Button>
+          /* Compact Input */
+          <div className="flex-1 bg-white rounded-lg shadow-sm p-3 flex flex-col justify-center">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">
+                Enter a {currentPrompt ? formatPrompt(currentPrompt) : 'word'}:
+              </h3>
+              
+              <div className="mb-4">
+                <Input
+                  type="text"
+                  value={currentAnswer}
+                  onChange={(e) => setCurrentAnswer(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={`${currentPrompt ? formatPrompt(currentPrompt).toLowerCase() : 'word'}...`}
+                  className="text-center text-base"
+                  autoFocus
+                />
               </div>
               
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Word {gameState.currentPromptIndex + 1} of {currentTemplate?.prompts.length}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              <Button 
+                onClick={handleAnswerSubmit}
+                disabled={!currentAnswer.trim()}
+                className="w-full mb-4"
+              >
+                {gameState.currentPromptIndex === (currentTemplate?.prompts.length || 0) - 1 ? 'Finish Story!' : 'Next Word'}
+              </Button>
+              
+              <p className="text-xs text-gray-600">
+                Word {gameState.currentPromptIndex + 1} of {currentTemplate?.prompts.length}
+              </p>
+            </div>
+          </div>
         ) : (
-          /* Story Display */
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold mb-2">{currentTemplate?.title}</h3>
-                <p className="text-gray-600">Your completed Mad Libs story!</p>
-              </div>
-              
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-lg">
-                {renderStory()}
-              </div>
-              
-              <div className="text-center mt-6">
-                <Button onClick={resetGame} className="px-8">
-                  Create Another Story
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          /* Compact Story Display */
+          <div className="flex-1 bg-white rounded-lg shadow-sm p-2 overflow-y-auto">
+            <div className="text-center mb-2">
+              <h3 className="text-sm font-bold mb-1">{currentTemplate?.title}</h3>
+              <p className="text-xs text-gray-600">Your completed story!</p>
+            </div>
+            
+            <div className="bg-yellow-50 border-l-2 border-yellow-400 p-2 rounded-r text-xs leading-relaxed overflow-y-auto max-h-96">
+              {renderStory()}
+            </div>
+            
+            <div className="text-center mt-2">
+              <Button onClick={resetGame} className="w-full" size="sm">
+                Create Another Story
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>

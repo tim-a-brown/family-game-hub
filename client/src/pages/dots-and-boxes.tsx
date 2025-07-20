@@ -261,126 +261,116 @@ export default function DotsAndBoxes() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-12">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Dots and Boxes"  />
         
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Game Setup</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Number of Players</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[2, 3].map(players => (
-                      <Button
-                        key={players}
-                        variant={selectedPlayers === players ? "default" : "outline"}
-                        onClick={() => setSelectedPlayers(players)}
-                        className="w-full"
-                      >
-                        {players} Players
-                      </Button>
-                    ))}
-                  </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Players</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[2, 3].map(players => (
+                    <Button
+                      key={players}
+                      variant={selectedPlayers === players ? "default" : "outline"}
+                      onClick={() => setSelectedPlayers(players)}
+                      className="w-full text-xs h-8"
+                    >
+                      {players} Players
+                    </Button>
+                  ))}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Grid Size</label>
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    {[3, 4, 5, 6].map(size => (
-                      <Button
-                        key={size}
-                        variant={selectedSize === size ? "default" : "outline"}
-                        onClick={() => setSelectedSize(size)}
-                        className="w-full text-xs"
-                      >
-                        {size}×{size}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    {[7, 8, 9, 10].map(size => (
-                      <Button
-                        key={size}
-                        variant={selectedSize === size ? "default" : "outline"}
-                        onClick={() => setSelectedSize(size)}
-                        className="w-full text-xs"
-                      >
-                        {size}×{size}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[12, 13, 15].map(size => (
-                      <Button
-                        key={size}
-                        variant={selectedSize === size ? "default" : "outline"}
-                        onClick={() => setSelectedSize(size)}
-                        className="w-full text-xs"
-                      >
-                        {size}×{size}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button onClick={startNewGame} className="w-full" size="lg">
-                  Start Game
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Grid Size</label>
+                <div className="grid grid-cols-4 gap-1 mb-1">
+                  {[3, 4, 5, 6].map(size => (
+                    <Button
+                      key={size}
+                      variant={selectedSize === size ? "default" : "outline"}
+                      onClick={() => setSelectedSize(size)}
+                      className="w-full text-xs h-6"
+                    >
+                      {size}×{size}
+                    </Button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-1 mb-1">
+                  {[7, 8, 9, 10].map(size => (
+                    <Button
+                      key={size}
+                      variant={selectedSize === size ? "default" : "outline"}
+                      onClick={() => setSelectedSize(size)}
+                      className="w-full text-xs h-6"
+                    >
+                      {size}×{size}
+                    </Button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {[12, 13, 15].map(size => (
+                    <Button
+                      key={size}
+                      variant={selectedSize === size ? "default" : "outline"}
+                      onClick={() => setSelectedSize(size)}
+                      className="w-full text-xs h-6"
+                    >
+                      {size}×{size}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Start Game
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-12">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       <GameHeader title="Dots and Boxes"  />
       
-      <div className="max-w-4xl mx-auto pt-8 px-4">
-        {/* Game Status */}
-        <Card className="mb-6">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <Badge variant="secondary" className="w-fit">{gameState.gridSize}×{gameState.gridSize} Grid</Badge>
-                {!gameState.gameWon && (
-                  <span className="text-base sm:text-lg font-semibold">
-                    Player <span className="text-primary">{gameState.currentPlayer}</span>'s Turn
-                  </span>
-                )}
-                {gameState.gameWon && (
-                  <span className="text-base sm:text-lg font-bold text-green-600">
-                    {gameState.winner ? `🎉 Player ${gameState.winner} Wins!` : "🤝 It's a Tie!"}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <div className="text-sm flex flex-wrap items-center gap-2">
-                  {gameState.scores.map((score, index) => (
-                    <div key={index} className="flex items-center">
-                      {index > 0 && <span className="mx-1 text-gray-400 hidden sm:inline">|</span>}
-                      <span className={`font-semibold ${
-                        index === 0 ? 'text-blue-600' : 
-                        index === 1 ? 'text-red-600' : 
-                        'text-green-600'
-                      }`}>
-                        Player {index + 1}: {score}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" size="sm" onClick={resetGame} className="w-fit">
-                  New Game
-                </Button>
-              </div>
+      <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
+        {/* Compact Status */}
+        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-1">
+              <Badge variant="secondary" className="text-xs px-1 py-0">{gameState.gridSize}×{gameState.gridSize}</Badge>
+              {!gameState.gameWon ? (
+                <span className="text-xs font-semibold">
+                  Player <span className="text-primary">{gameState.currentPlayer}</span>'s Turn
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-green-600">
+                  {gameState.winner ? `🎉 P${gameState.winner} Wins!` : "🤝 Tie!"}
+                </span>
+              )}
             </div>
-          </CardContent>
-        </Card>
+            <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-1 py-0 h-6">
+              New
+            </Button>
+          </div>
+          <div className="flex items-center justify-center space-x-2 mt-1 text-xs">
+            {gameState.scores.map((score, index) => (
+              <span key={index} className={`font-semibold ${
+                index === 0 ? 'text-blue-600' : 
+                index === 1 ? 'text-red-600' : 
+                'text-green-600'
+              }`}>
+                P{index + 1}: {score}
+              </span>
+            ))}
+          </div>
+        </div>
 
         {/* Game Board */}
         <Card className="shadow-xl">

@@ -263,58 +263,56 @@ export default function WordScramble() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
         <GameHeader title="Word Scramble"  />
         
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Game Setup</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Difficulty</label>
-                  <div className="space-y-2">
-                    {(['easy', 'medium', 'hard'] as const).map(difficulty => (
-                      <Button
-                        key={difficulty}
-                        variant={selectedDifficulty === difficulty ? "default" : "outline"}
-                        onClick={() => setSelectedDifficulty(difficulty)}
-                        className="w-full justify-between"
-                      >
-                        <span className="capitalize">{difficulty}</span>
-                        <span className="text-xs">
-                          {formatTime(DIFFICULTY_SETTINGS[difficulty].timeLimit)} • 
-                          {DIFFICULTY_SETTINGS[difficulty].maxHints} hints
-                        </span>
-                      </Button>
-                    ))}
-                  </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                <div className="space-y-1">
+                  {(['easy', 'medium', 'hard'] as const).map(difficulty => (
+                    <Button
+                      key={difficulty}
+                      variant={selectedDifficulty === difficulty ? "default" : "outline"}
+                      onClick={() => setSelectedDifficulty(difficulty)}
+                      className="w-full justify-between text-xs h-8"
+                    >
+                      <span className="capitalize">{difficulty}</span>
+                      <span className="text-xs">
+                        {formatTime(DIFFICULTY_SETTINGS[difficulty].timeLimit)} • 
+                        {DIFFICULTY_SETTINGS[difficulty].maxHints} hints
+                      </span>
+                    </Button>
+                  ))}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Category</label>
-                  <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {Object.keys(WORD_LISTS).sort().map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button onClick={startNewGame} className="w-full" size="lg">
-                  Start Game
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {Object.keys(WORD_LISTS).sort().map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
+                Start Game
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
