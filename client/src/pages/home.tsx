@@ -181,40 +181,40 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Main bubble */}
       <div
         className={`
-          relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36
+          relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32
           bg-gradient-to-br ${game.color}
-          rounded-full shadow-2xl
+          rounded-full shadow-xl
           flex flex-col items-center justify-center
           transform transition-all duration-300 ease-out
           animate-float
-          ${isHovered ? 'scale-110 shadow-3xl' : 'scale-100'}
+          ${isHovered ? 'scale-110 shadow-2xl' : 'scale-100'}
           ${isClicked ? 'scale-95' : ''}
-          ${isActive ? 'ring-4 ring-white ring-opacity-50 shadow-glow' : ''}
+          ${isActive ? 'ring-2 sm:ring-4 ring-white ring-opacity-50 shadow-glow' : ''}
           hover:shadow-glow
           group-hover:animate-bounce-gentle
         `}
       >
         {/* Progress indicator for active games */}
         {isActive && progress && (
-          <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <div className="text-xs font-bold text-gray-700">{progress}%</div>
+          <div className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+            <div className="text-xs sm:text-xs font-bold text-gray-700">{progress}%</div>
           </div>
         )}
         
         {/* Active game indicator */}
-        {isActive && (
-          <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-            <Zap className="w-3 h-3 text-white" />
+        {isActive && !progress && (
+          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
+            <Zap className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
           </div>
         )}
         
         {/* Game emoji */}
-        <div className="text-4xl sm:text-5xl md:text-6xl mb-1 animate-pulse-gentle">
+        <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-0.5 sm:mb-1">
           {game.emoji}
         </div>
         
         {/* Game title */}
-        <div className="text-white text-center px-2">
+        <div className="text-white text-center px-1 sm:px-2">
           <div className="text-xs sm:text-sm md:text-base font-bold leading-tight">
             {game.title}
           </div>
@@ -284,14 +284,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-400 via-pink-400 to-blue-400 relative overflow-hidden">
-      {/* Animated background elements */}
+    <div className="h-screen bg-gradient-to-br from-violet-400 via-pink-400 to-blue-400 relative overflow-hidden flex flex-col">
+      {/* Animated background elements - fewer for mobile */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Floating shapes */}
-        {[...Array(8)].map((_, i) => (
+        {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="absolute opacity-20 animate-float-slow"
+            className="absolute opacity-15 animate-float-slow"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -299,34 +299,34 @@ export default function Home() {
               animationDuration: `${8 + i}s`
             }}
           >
-            <Star className="w-8 h-8 text-white" />
+            <Star className="w-6 h-6 text-white" />
           </div>
         ))}
       </div>
 
-      {/* Header */}
-      <header className="relative z-40 bg-white bg-opacity-20 backdrop-blur-sm border-b border-white border-opacity-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg animate-bounce-gentle">
-                <Sparkles className="text-white w-6 h-6" />
+      {/* Compact Header */}
+      <header className="relative z-40 bg-white bg-opacity-20 backdrop-blur-sm border-b border-white border-opacity-20 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-12 sm:h-14">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="text-white w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white drop-shadow-lg">
-                  ✨ Magical Game Center ✨
+                <h1 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg">
+                  ✨ Game Center
                 </h1>
-                <p className="text-sm text-white text-opacity-80">Choose your adventure!</p>
+                <p className="text-xs sm:text-sm text-white text-opacity-80 hidden sm:block">Choose your adventure!</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center">
               {activeGames.length > 0 && (
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 py-2 border border-white border-opacity-30">
-                  <div className="flex items-center space-x-2">
-                    <Save className="text-white w-4 h-4" />
-                    <span className="text-sm font-medium text-white">
-                      {activeGames.length} Active
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1 border border-white border-opacity-30">
+                  <div className="flex items-center space-x-1">
+                    <Save className="text-white w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-sm font-medium text-white">
+                      {activeGames.length}
                     </span>
                   </div>
                 </div>
@@ -336,36 +336,36 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Welcome message */}
+      {/* Welcome message - more compact for mobile */}
       {showWelcome && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 animate-fade-in-scale">
-          <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-3xl px-8 py-4 shadow-2xl border-4 border-yellow-300">
+        <div className="absolute top-14 sm:top-16 left-1/2 transform -translate-x-1/2 z-30 animate-fade-in-scale">
+          <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl px-4 py-2 sm:px-6 sm:py-3 shadow-xl border-2 border-yellow-300">
             <div className="text-center">
-              <div className="text-3xl mb-2">🎪</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-1">Welcome to the Magic!</h2>
-              <p className="text-gray-600">Tap any bubble to start your adventure</p>
+              <div className="text-xl sm:text-2xl mb-1">🎪</div>
+              <h2 className="text-sm sm:text-lg font-bold text-gray-800 mb-0.5">Welcome!</h2>
+              <p className="text-xs sm:text-sm text-gray-600">Tap any bubble to play</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main game selection area */}
-      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
+      {/* Main game selection area - flex-1 to take remaining space */}
+      <main className="relative z-10 flex-1 flex flex-col max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 min-h-0">
         
-        {/* Active games section */}
+        {/* Active games section - more compact */}
         {activeGames.length > 0 && (
-          <section className="mb-12">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-white drop-shadow-lg flex items-center justify-center mb-2">
-                <Zap className="w-8 h-8 text-yellow-300 mr-3 animate-pulse" />
-                Continue Your Adventure
-                <Zap className="w-8 h-8 text-yellow-300 ml-3 animate-pulse" />
+          <section className="mb-4 sm:mb-6 flex-shrink-0">
+            <div className="text-center mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg flex items-center justify-center mb-1">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 mr-2 animate-pulse" />
+                Continue Playing
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 ml-2 animate-pulse" />
               </h2>
-              <p className="text-white text-opacity-80">Pick up where you left off!</p>
+              <p className="text-xs sm:text-sm text-white text-opacity-80">Resume your games!</p>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-8 mb-8">
-              {activeGames.slice(0, 6).map((game) => {
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-4">
+              {activeGames.slice(0, 4).map((game) => {
                 const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
                 if (!gameInfo) return null;
                 
@@ -383,41 +383,43 @@ export default function Home() {
           </section>
         )}
 
-        {/* All games section */}
-        <section>
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white drop-shadow-lg mb-4">
+        {/* All games section - scrollable content */}
+        <section className="flex-1 flex flex-col min-h-0">
+          <div className="text-center mb-3 sm:mb-4 flex-shrink-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg mb-1 sm:mb-2">
               🌟 Choose Your Game 🌟
             </h2>
-            <p className="text-xl text-white text-opacity-90 drop-shadow-md">
-              Tap the magical bubbles below!
+            <p className="text-sm sm:text-base text-white text-opacity-90 drop-shadow-md">
+              Tap the magical bubbles!
             </p>
           </div>
           
-          <div className="flex flex-wrap justify-center gap-8 md:gap-12 max-w-5xl mx-auto">
-            {GAMES.map((game, index) => {
-              const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
-              const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
-              
-              return (
-                <GameBubble
-                  key={game.title}
-                  game={game}
-                  index={index}
-                  isActive={isActive}
-                  progress={progress}
-                />
-              );
-            })}
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-6 max-w-5xl mx-auto pb-4">
+              {GAMES.map((game, index) => {
+                const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
+                const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
+                
+                return (
+                  <GameBubble
+                    key={game.title}
+                    game={game}
+                    index={index}
+                    isActive={isActive}
+                    progress={progress}
+                  />
+                );
+              })}
+            </div>
           </div>
         </section>
       </main>
 
-      {/* Footer with magical elements */}
-      <footer className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-10 backdrop-blur-sm border-t border-white border-opacity-20 py-4">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-white text-opacity-80 text-sm">
-            ✨ Made with magic and love for family fun ✨
+      {/* Compact Footer */}
+      <footer className="relative z-10 bg-white bg-opacity-10 backdrop-blur-sm border-t border-white border-opacity-20 py-2 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-3 text-center">
+          <p className="text-white text-opacity-70 text-xs sm:text-sm">
+            ✨ Family Game Fun ✨
           </p>
         </div>
       </footer>

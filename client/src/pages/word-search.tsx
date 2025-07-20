@@ -598,6 +598,7 @@ export default function WordSearch() {
         {/* Compact Grid */}
         <div className="flex-1 bg-white rounded-lg shadow-sm p-2">
           <div className="relative w-full h-full">
+            <>
             <div 
               className="grid w-full h-full select-none relative"
               style={{ 
@@ -611,8 +612,8 @@ export default function WordSearch() {
               onTouchStart={(e) => e.preventDefault()}
               onTouchMove={(e) => e.preventDefault()}
             >
-                  {gameState.grid.map((row, rowIndex) =>
-                    row.map((cell, colIndex) => {
+              {gameState.grid.map((row, rowIndex) =>
+                row.map((cell, colIndex) => {
                       const isSelected = isCellSelected(rowIndex, colIndex);
                       const isFoundWord = isCellPartOfFoundWord(rowIndex, colIndex);
                       const isFoundBonusWord = isCellPartOfFoundBonusWord(rowIndex, colIndex);
@@ -674,13 +675,13 @@ export default function WordSearch() {
                   )}
             </div>
 
-                  {/* SVG overlay for green circles behind found words */}
-                  <svg 
-                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ zIndex: 1 }}
-                  >
+            {/* SVG overlay for green circles behind found words */}
+            <svg 
+              className="absolute top-0 left-0 w-full h-full pointer-events-none"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="xMidYMid meet"
+              style={{ zIndex: 1 }}
+            >
                     {gameState.foundWords.map((word) => {
                       const placedWord = gameState.placedWords.find(pw => pw.word === word);
                       if (!placedWord) return null;
@@ -798,33 +799,7 @@ export default function WordSearch() {
                         />
                       );
                     })}
-                    
-                    {gameState.foundBonusWords.map((word) => {
-                      const placedWord = gameState.placedWords.find(pw => pw.word === word);
-                      if (!placedWord) return null;
-                      
-                      // Calculate line coordinates as percentages
-                      const startX = (placedWord.start.col + 0.5) / GRID_SIZE * 100;
-                      const startY = (placedWord.start.row + 0.5) / GRID_SIZE * 100;
-                      const endX = (placedWord.end.col + 0.5) / GRID_SIZE * 100;
-                      const endY = (placedWord.end.row + 0.5) / GRID_SIZE * 100;
-                      
-                      return (
-                        <line
-                          key={`bonus-${word}`}
-                          x1={startX}
-                          y1={startY}
-                          x2={endX}
-                          y2={endY}
-                          stroke="#ca8a04"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                          opacity="0.9"
-                        />
-                      );
-                    })}
                   </svg>
-                </div>
 
                 {/* Reset Button - appears at bottom during selection */}
                 {gameState.selectedCells.length > 0 && (
@@ -844,8 +819,7 @@ export default function WordSearch() {
                     </Button>
                   </div>
                 )}
-              </div>
-            </div>
+            </>
           </div>
         </div>
       </div>
