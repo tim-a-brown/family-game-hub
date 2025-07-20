@@ -1,289 +1,273 @@
-import { useState, useEffect } from "react";
-import { GameCard } from "@/components/game-card";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
 import { GameStorage } from "@/lib/game-storage";
-import { Gamepad, Save, Grid3X3, List, Shuffle } from "lucide-react";
+import { Gamepad, Save, Sparkles, Star, Zap } from "lucide-react";
 
 const GAMES = [
   {
     title: "Tic-Tac-Toe",
-    description: "1-3 players • Multiple boards • AI opponent",
-    playerInfo: "1-3 Players",
-    color: "bg-gradient-to-br from-blue-400 to-blue-600",
+    description: "Classic strategy game",
+    emoji: "⭕",
+    color: "from-blue-400 to-blue-600",
     route: "/tic-tac-toe",
-    icon: (
-      <div className="grid grid-cols-3 gap-1 w-16 h-16">
-        {[...Array(9)].map((_, i) => (
-          <div key={i} className="bg-white bg-opacity-30 rounded flex items-center justify-center">
-            {i === 0 || i === 4 || i === 8 ? (
-              <span className="text-white font-bold text-lg">X</span>
-            ) : i === 1 || i === 3 ? (
-              <span className="text-white font-bold text-lg">O</span>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-blue-200 text-8xl font-bold opacity-30">#</div>
-    )
+    sparkleColor: "text-blue-300"
   },
   {
     title: "Hangman",
-    description: "Random puzzles • Two player mode • 6-10 wrong answers",
-    playerInfo: "Word Puzzle",
-    color: "bg-gradient-to-br from-red-400 to-red-600",
+    description: "Word guessing puzzle",
+    emoji: "🎯",
+    color: "from-red-400 to-red-600",
     route: "/hangman",
-    icon: (
-      <div className="text-white text-center">
-        <div className="text-2xl font-mono">_ A _ I L Y</div>
-        <div className="mt-2 text-sm opacity-80">Wrong: E, R, T (3/6)</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-red-200 text-7xl opacity-40">🎯</div>
-    )
+    sparkleColor: "text-red-300"
   },
   {
     title: "Mad Libs",
-    description: "Family-friendly templates • Silly story creation",
-    playerInfo: "Creative Fun",
-    color: "bg-gradient-to-br from-purple-400 to-purple-600",
+    description: "Creative story fun",
+    emoji: "📝",
+    color: "from-purple-400 to-purple-600",
     route: "/mad-libs",
-    icon: (
-      <div className="text-white text-center">
-        <div className="text-2xl mb-2">📝</div>
-        <div className="text-sm font-semibold">Fill in the blanks!</div>
-        <div className="text-xs opacity-80 mt-1">Need: ADJECTIVE</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-purple-200 text-9xl opacity-25">✏️</div>
-    )
+    sparkleColor: "text-purple-300"
   },
   {
     title: "Would You Rather",
-    description: "Pass and play • 12 categories • Family scenarios",
-    playerInfo: "Group Game",
-    color: "bg-gradient-to-br from-pink-400 to-pink-600",
+    description: "Tough choices game",
+    emoji: "🤔",
+    color: "from-pink-400 to-pink-600",
     route: "/would-you-rather",
-    icon: (
-      <div className="text-white text-center">
-        <div className="text-3xl mb-2">🤔</div>
-        <div className="text-sm font-semibold">Option A vs B</div>
-        <div className="text-xs opacity-80 mt-1">Tough choices!</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-pink-200 text-8xl opacity-30">⚖️</div>
-    )
+    sparkleColor: "text-pink-300"
   },
   {
     title: "Word Search",
-    description: "16×16 grid • 12 themed categories • All directions",
-    playerInfo: "Find Words",
-    color: "bg-gradient-to-br from-green-400 to-green-600",
+    description: "Find hidden words",
+    emoji: "🔍",
+    color: "from-green-400 to-green-600",
     route: "/word-search",
-    icon: (
-      <div className="grid grid-cols-4 gap-1 text-white text-xs font-mono">
-        {['A','N','I','M','T','I','G','A','C','G','E','L','R','E','R','S'].map((letter, i) => (
-          <span key={i}>{letter}</span>
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-green-200 text-7xl opacity-40">🔍</div>
-    )
+    sparkleColor: "text-green-300"
   },
   {
     title: "Dots and Boxes",
-    description: "Classic strategy • Connect the dots • Up to 3 players",
-    playerInfo: "2-3 Players",
-    color: "bg-gradient-to-br from-yellow-400 to-yellow-600",
+    description: "Connect the dots",
+    emoji: "⚬",
+    color: "from-yellow-400 to-yellow-600",
     route: "/dots-and-boxes",
-    icon: (
-      <div className="grid grid-cols-3 gap-2 text-white">
-        {[...Array(9)].map((_, i) => (
-          <div key={i} className="w-2 h-2 bg-white rounded-full"></div>
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-yellow-200 text-8xl opacity-35">⚬</div>
-    )
+    sparkleColor: "text-yellow-300"
   },
   {
     title: "Word Scramble",
-    description: "Multiple difficulties • Timed challenges • Hints available",
-    playerInfo: "Timed Game",
-    color: "bg-gradient-to-br from-indigo-400 to-indigo-600",
+    description: "Unscramble letters",
+    emoji: "🔤",
+    color: "from-indigo-400 to-indigo-600",
     route: "/word-scramble",
-    icon: (
-      <div className="text-white text-center">
-        <div className="text-lg font-mono mb-1">LPEPINPEA</div>
-        <div className="text-xs opacity-80">Unscramble this!</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-indigo-200 text-8xl opacity-30">🔤</div>
-    )
+    sparkleColor: "text-indigo-300"
   },
   {
     title: "Yahtzee",
-    description: "Classic dice game • Score tracking • 13 rounds",
-    playerInfo: "Dice Game",
-    color: "bg-gradient-to-br from-orange-400 to-orange-600",
+    description: "Dice rolling fun",
+    emoji: "🎲",
+    color: "from-teal-400 to-teal-600",
     route: "/yahtzee",
-    icon: (
-      <div className="flex space-x-1 text-white">
-        {['⚃','⚃','⚃','⚀','⚁'].map((die, i) => (
-          <div key={i} className="w-6 h-6 bg-white bg-opacity-30 rounded flex items-center justify-center text-xs">
-            {die}
-          </div>
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-orange-200 text-9xl opacity-30">🎲</div>
-    )
+    sparkleColor: "text-teal-300"
   },
   {
     title: "Dice Roller",
-    description: "Customizable dice • Multiple dice types • Roll history",
-    playerInfo: "Utility Tool",
-    color: "bg-gradient-to-br from-teal-400 to-teal-600",
+    description: "Custom dice games",
+    emoji: "🎯",
+    color: "from-orange-400 to-orange-600",
     route: "/dice-roller",
-    icon: (
-      <div className="flex space-x-2 text-white">
-        <div className="w-8 h-8 bg-white bg-opacity-30 rounded flex items-center justify-center">⚅</div>
-        <div className="w-8 h-8 bg-white bg-opacity-30 rounded flex items-center justify-center">⚁</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-teal-200 text-8xl opacity-35">⚅</div>
-    )
+    sparkleColor: "text-orange-300"
   },
   {
     title: "Scorecard",
-    description: "Multiplayer scoring • Board games • Custom games",
-    playerInfo: "Score Keeper",
-    color: "bg-gradient-to-br from-cyan-400 to-cyan-600",
+    description: "Track game scores",
+    emoji: "📊",
+    color: "from-cyan-400 to-cyan-600",
     route: "/scorecard",
-    icon: (
-      <div className="text-white text-center">
-        <div className="text-2xl mb-2">📊</div>
-        <div className="text-sm font-semibold">Track Scores</div>
-        <div className="text-xs opacity-80 mt-1">Player 1: 250pts</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-cyan-200 text-7xl opacity-40">📈</div>
-    )
+    sparkleColor: "text-cyan-300"
   },
   {
     title: "Sudoku",
-    description: "Multiple difficulties • Hints available • Timer included",
-    playerInfo: "Logic Puzzle",
-    color: "bg-gradient-to-br from-violet-400 to-violet-600",
+    description: "Number puzzle",
+    emoji: "🔢",
+    color: "from-rose-400 to-rose-600",
     route: "/sudoku",
-    icon: (
-      <div className="grid grid-cols-3 gap-px text-white text-xs font-mono">
-        {['5','3','_','6','_','_','_','9','8'].map((num, i) => (
-          <span key={i}>{num}</span>
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-violet-200 text-7xl opacity-40">🧩</div>
-    )
+    sparkleColor: "text-rose-300"
   },
   {
-    title: "Connect 4",
-    description: "AI opponent • Two player mode • Classic strategy",
-    playerInfo: "1-2 Players",
-    color: "bg-gradient-to-br from-rose-400 to-rose-600",
+    title: "Connect Four",
+    description: "Strategy drop game",
+    emoji: "🔴",
+    color: "from-red-500 to-yellow-500",
     route: "/connect-four",
-    icon: (
-      <div className="grid grid-cols-4 gap-1">
-        {[0,1,2,3,4,5,6,7].map((i) => (
-          <div 
-            key={i} 
-            className={`w-3 h-3 rounded-full ${
-              i < 2 ? 'bg-red-300' : 
-              i === 1 || i === 4 ? 'bg-yellow-300' : 
-              i === 5 || i === 6 ? 'bg-red-300' : 
-              'bg-white bg-opacity-30'
-            }`}
-          />
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-rose-200 text-8xl opacity-30">⭕</div>
-    )
+    sparkleColor: "text-yellow-300"
   },
   {
     title: "Battleship",
-    description: "Ship placement • Strategic gameplay • Hit or miss",
-    playerInfo: "Strategy Game",
-    color: "bg-gradient-to-br from-slate-400 to-slate-600",
+    description: "Naval combat game",
+    emoji: "⚓",
+    color: "from-slate-400 to-slate-600",
     route: "/battleship",
-    icon: (
-      <div className="grid grid-cols-4 gap-1 text-white text-xs">
-        {[0,1,2,3,4,5,6,7].map((i) => (
-          <div 
-            key={i} 
-            className={`w-3 h-3 rounded ${
-              i === 1 ? 'bg-red-400' : 
-              i === 7 ? 'bg-gray-400' : 
-              'bg-white bg-opacity-30'
-            }`}
-          />
-        ))}
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-slate-200 text-7xl opacity-40">⚓</div>
-    )
+    sparkleColor: "text-slate-300"
   },
   {
     title: "Shell Game",
-    description: "Computer driven • Find the ball • Memory challenge",
-    playerInfo: "Memory Game",
-    color: "bg-gradient-to-br from-amber-400 to-amber-600",
+    description: "Find the hidden ball",
+    emoji: "🥥",
+    color: "from-amber-400 to-amber-600",
     route: "/shell-game",
-    icon: (
-      <div className="text-white text-center">
-        <div className="flex justify-center space-x-1 mb-2">
-          <div className="text-2xl">🥥</div>
-          <div className="text-2xl">🥥</div>
-          <div className="text-2xl">🥥</div>
-        </div>
-        <div className="text-xs opacity-80">Find the ball!</div>
-        <div className="text-lg">🔴</div>
-      </div>
-    ),
-    backgroundGraphic: (
-      <div className="text-amber-200 text-8xl opacity-35">🥥</div>
-    )
+    sparkleColor: "text-amber-300"
   }
 ];
 
+// Floating animation helper
+const getFloatingAnimation = (index: number) => {
+  const delay = index * 0.2;
+  const duration = 3 + (index % 3);
+  const amplitude = 10 + (index % 20);
+  
+  return {
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`,
+    '--float-y': `${amplitude}px`
+  } as React.CSSProperties;
+};
+
+// Magic sparkle component
+const MagicSparkles = ({ color }: { color: string }) => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    {[...Array(6)].map((_, i) => (
+      <div
+        key={i}
+        className={`absolute ${color} animate-ping`}
+        style={{
+          left: `${20 + i * 15}%`,
+          top: `${10 + i * 12}%`,
+          animationDelay: `${i * 0.3}s`,
+          animationDuration: '2s'
+        }}
+      >
+        ✨
+      </div>
+    ))}
+  </div>
+);
+
+// Game bubble component
+const GameBubble = ({ game, index, isActive, progress }: {
+  game: typeof GAMES[0];
+  index: number;
+  isActive?: boolean;
+  progress?: number;
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
+  
+  const handleClick = () => {
+    setIsClicked(true);
+    setTimeout(() => {
+      window.location.href = game.route;
+    }, 200);
+  };
+
+  return (
+    <div
+      className="relative group cursor-pointer"
+      style={getFloatingAnimation(index)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={handleClick}
+    >
+      {/* Magic sparkles on hover */}
+      {isHovered && <MagicSparkles color={game.sparkleColor} />}
+      
+      {/* Main bubble */}
+      <div
+        className={`
+          relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36
+          bg-gradient-to-br ${game.color}
+          rounded-full shadow-2xl
+          flex flex-col items-center justify-center
+          transform transition-all duration-300 ease-out
+          animate-float
+          ${isHovered ? 'scale-110 shadow-3xl' : 'scale-100'}
+          ${isClicked ? 'scale-95' : ''}
+          ${isActive ? 'ring-4 ring-white ring-opacity-50 shadow-glow' : ''}
+          hover:shadow-glow
+          group-hover:animate-bounce-gentle
+        `}
+      >
+        {/* Progress indicator for active games */}
+        {isActive && progress && (
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+            <div className="text-xs font-bold text-gray-700">{progress}%</div>
+          </div>
+        )}
+        
+        {/* Active game indicator */}
+        {isActive && (
+          <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
+            <Zap className="w-3 h-3 text-white" />
+          </div>
+        )}
+        
+        {/* Game emoji */}
+        <div className="text-4xl sm:text-5xl md:text-6xl mb-1 animate-pulse-gentle">
+          {game.emoji}
+        </div>
+        
+        {/* Game title */}
+        <div className="text-white text-center px-2">
+          <div className="text-xs sm:text-sm md:text-base font-bold leading-tight">
+            {game.title}
+          </div>
+        </div>
+        
+        {/* Floating particles */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white rounded-full opacity-60 animate-float-particle"
+              style={{
+                left: `${20 + i * 30}%`,
+                top: `${15 + i * 25}%`,
+                animationDelay: `${i * 0.5}s`
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      
+      {/* Hover tooltip */}
+      {isHovered && (
+        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-full px-4 py-2 shadow-xl border-2 border-gray-200">
+            <div className="text-xs font-medium text-gray-800 whitespace-nowrap">
+              {game.description}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Home() {
   const [activeGames, setActiveGames] = useState<any[]>([]);
+  const [showWelcome, setShowWelcome] = useState(true);
   const gameStorage = GameStorage.getInstance();
 
   useEffect(() => {
     const active = gameStorage.getActiveGames();
     setActiveGames(active);
+    
+    // Hide welcome message after 3 seconds
+    const timer = setTimeout(() => setShowWelcome(false), 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   const getGameProgress = (gameType: string) => {
     const activeGame = activeGames.find(game => game.gameType === gameType);
     if (!activeGame) return undefined;
     
-    // Calculate progress based on game type and state
     switch (gameType) {
       case 'tic-tac-toe':
         return activeGame.gameData?.moves?.length * 11 || 10;
@@ -299,108 +283,144 @@ export default function Home() {
     }
   };
 
-  const handleRandomGame = () => {
-    const randomGame = GAMES[Math.floor(Math.random() * GAMES.length)];
-    window.location.href = randomGame.route;
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-violet-400 via-pink-400 to-blue-400 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Floating shapes */}
+        {[...Array(8)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute opacity-20 animate-float-slow"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${i * 0.5}s`,
+              animationDuration: `${8 + i}s`
+            }}
+          >
+            <Star className="w-8 h-8 text-white" />
+          </div>
+        ))}
+      </div>
+
       {/* Header */}
-      <header className="bg-white shadow-lg border-b-4 border-primary sticky top-0 z-50">
+      <header className="relative z-40 bg-white bg-opacity-20 backdrop-blur-sm border-b border-white border-opacity-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-primary to-purple-600 rounded-xl flex items-center justify-center">
-                <Gamepad className="text-white w-5 h-5" />
+              <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg animate-bounce-gentle">
+                <Sparkles className="text-white w-6 h-6" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Family Game Center</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-white drop-shadow-lg">
+                  ✨ Magical Game Center ✨
+                </h1>
+                <p className="text-sm text-white text-opacity-80">Choose your adventure!</p>
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="hidden sm:flex items-center space-x-2 bg-gray-100 rounded-full px-4 py-2">
-                <Save className="text-primary w-4 h-4" />
-                <span className="text-sm font-medium text-gray-700">
-                  {activeGames.length} Active Games
-                </span>
-              </div>
-              
-              <Button 
-                size="sm" 
-                className="rounded-full bg-primary text-white hover:bg-purple-600"
-              >
-                <i className="fas fa-user text-lg"></i>
-              </Button>
+              {activeGames.length > 0 && (
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 py-2 border border-white border-opacity-30">
+                  <div className="flex items-center space-x-2">
+                    <Save className="text-white w-4 h-4" />
+                    <span className="text-sm font-medium text-white">
+                      {activeGames.length} Active
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Welcome message */}
+      {showWelcome && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 animate-fade-in-scale">
+          <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-3xl px-8 py-4 shadow-2xl border-4 border-yellow-300">
+            <div className="text-center">
+              <div className="text-3xl mb-2">🎪</div>
+              <h2 className="text-xl font-bold text-gray-800 mb-1">Welcome to the Magic!</h2>
+              <p className="text-gray-600">Tap any bubble to start your adventure</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main game selection area */}
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
         
-        {/* Quick Access Section */}
+        {/* Active games section */}
         {activeGames.length > 0 && (
-          <section className="mb-8">
-            <Card className="rounded-2xl shadow-xl border-2 border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
-              <CardContent className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white text-sm">⚡</span>
-                  </div>
-                  Continue Playing
-                  <span className="ml-2 text-sm font-normal text-gray-600">({activeGames.length} active)</span>
-                </h2>
+          <section className="mb-12">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-white drop-shadow-lg flex items-center justify-center mb-2">
+                <Zap className="w-8 h-8 text-yellow-300 mr-3 animate-pulse" />
+                Continue Your Adventure
+                <Zap className="w-8 h-8 text-yellow-300 ml-3 animate-pulse" />
+              </h2>
+              <p className="text-white text-opacity-80">Pick up where you left off!</p>
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-8 mb-8">
+              {activeGames.slice(0, 6).map((game) => {
+                const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
+                if (!gameInfo) return null;
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeGames.slice(0, 3).map((game) => {
-                    const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
-                    if (!gameInfo) return null;
-                    
-                    return (
-                      <GameCard
-                        key={game.gameType}
-                        {...gameInfo}
-                        isActive={true}
-                        progress={getGameProgress(game.gameType)}
-                      />
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                return (
+                  <GameBubble
+                    key={game.gameType}
+                    game={gameInfo}
+                    index={Math.floor(Math.random() * 8)}
+                    isActive={true}
+                    progress={getGameProgress(game.gameType)}
+                  />
+                );
+              })}
+            </div>
           </section>
         )}
 
-        {/* Games Section */}
+        {/* All games section */}
         <section>
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {GAMES.map((game) => (
-              <GameCard
-                key={game.title}
-                title={game.title}
-                description={game.description}
-                playerInfo={game.playerInfo}
-                icon={game.icon}
-                color={game.color}
-                route={game.route}
-                backgroundGraphic={game.backgroundGraphic}
-              />
-            ))}
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-white drop-shadow-lg mb-4">
+              🌟 Choose Your Game 🌟
+            </h2>
+            <p className="text-xl text-white text-opacity-90 drop-shadow-md">
+              Tap the magical bubbles below!
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap justify-center gap-8 md:gap-12 max-w-5xl mx-auto">
+            {GAMES.map((game, index) => {
+              const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
+              const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
+              
+              return (
+                <GameBubble
+                  key={game.title}
+                  game={game}
+                  index={index}
+                  isActive={isActive}
+                  progress={progress}
+                />
+              );
+            })}
           </div>
         </section>
-
       </main>
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          size="lg"
-          onClick={handleRandomGame}
-          className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-200 bg-primary hover:bg-purple-600"
-        >
-          <Shuffle className="w-6 h-6" />
-        </Button>
-      </div>
+      {/* Footer with magical elements */}
+      <footer className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-10 backdrop-blur-sm border-t border-white border-opacity-20 py-4">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-white text-opacity-80 text-sm">
+            ✨ Made with magic and love for family fun ✨
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
