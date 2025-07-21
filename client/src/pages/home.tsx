@@ -181,7 +181,7 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Main bubble */}
       <div
         className={`
-          relative w-20 h-20 sm:w-22 sm:h-22 md:w-24 md:h-24
+          relative w-18 h-18 sm:w-20 sm:h-20 md:w-22 md:h-22
           bg-gradient-to-br ${game.color}
           rounded-full shadow-xl
           flex flex-col items-center justify-center
@@ -352,50 +352,52 @@ export default function Home() {
       {/* Main game selection area - flex-1 to take remaining space */}
       <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 min-h-0">
         
-        {/* Active games section - more compact */}
+        {/* Active games section - compact horizontal bar */}
         {activeGames.length > 0 && (
-          <section className="mb-4 sm:mb-6 flex-shrink-0">
-            <div className="text-center mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg flex items-center justify-center mb-1">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 mr-2 animate-pulse" />
-                Continue Playing
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 ml-2 animate-pulse" />
-              </h2>
-              <p className="text-xs sm:text-sm text-white text-opacity-80">Resume your games!</p>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-4 px-3 pt-4">
-              {activeGames.slice(0, 4).map((game) => {
-                const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
-                if (!gameInfo) return null;
-                
-                return (
-                  <GameBubble
-                    key={game.gameType}
-                    game={gameInfo}
-                    index={Math.floor(Math.random() * 8)}
-                    isActive={true}
-                    progress={getGameProgress(game.gameType)}
-                  />
-                );
-              })}
+          <section className="mb-2 flex-shrink-0">
+            <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-full px-4 py-2 mx-4 border border-white border-opacity-20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Zap className="w-3 h-3 text-yellow-300 animate-pulse" />
+                  <span className="text-sm font-semibold text-white">Continue Playing</span>
+                </div>
+                <div className="flex space-x-1">
+                  {activeGames.slice(0, 3).map((game) => {
+                    const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
+                    if (!gameInfo) return null;
+                    
+                    return (
+                      <div 
+                        key={game.gameType}
+                        className="relative w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                        onClick={() => window.location.href = gameInfo.route}
+                        title={`${gameInfo.title} - ${getGameProgress(game.gameType)}%`}
+                      >
+                        <span className="text-xs">{gameInfo.emoji}</span>
+                        {getGameProgress(game.gameType) && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
+                            {getGameProgress(game.gameType)}%
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </section>
         )}
 
         {/* All games section - scrollable content */}
         <section className="flex-1 flex flex-col min-h-0">
-          <div className="text-center mb-3 sm:mb-4 flex-shrink-0">
-            <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg mb-1 sm:mb-2">
+          <div className="text-center mb-2 flex-shrink-0">
+            <h2 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg">
               🌟 Choose Your Game 🌟
             </h2>
-            <p className="text-sm sm:text-base text-white text-opacity-90 drop-shadow-md">
-              Tap the magical bubbles!
-            </p>
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-sm sm:max-w-md mx-auto pb-6 px-3 sm:px-4 pt-6 mt-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-sm sm:max-w-md mx-auto pb-2 px-3 sm:px-4 pt-2">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
