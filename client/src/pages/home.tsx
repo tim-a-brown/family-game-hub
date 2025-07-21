@@ -181,13 +181,13 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Main bubble */}
       <div
         className={`
-          relative w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24
+          relative w-20 h-20 sm:w-22 sm:h-22 md:w-24 md:h-24
           bg-gradient-to-br ${game.color}
           rounded-full shadow-xl
           flex flex-col items-center justify-center
           transform transition-all duration-300 ease-out
           animate-float
-          ${isHovered ? 'scale-105 shadow-2xl' : 'scale-100'}
+          ${isHovered ? 'scale-102 shadow-2xl' : 'scale-100'}
           ${isClicked ? 'scale-95' : ''}
           ${isActive ? 'ring-2 sm:ring-4 ring-white ring-opacity-50 shadow-glow' : ''}
           hover:shadow-glow
@@ -209,13 +209,13 @@ const GameBubble = ({ game, index, isActive, progress }: {
         )}
         
         {/* Game emoji */}
-        <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-0.5">
+        <div className="text-xl sm:text-2xl md:text-3xl mb-0.5 sm:mb-1">
           {game.emoji}
         </div>
         
         {/* Game title */}
-        <div className="text-white text-center px-0.5 sm:px-1">
-          <div className="text-xs sm:text-xs md:text-xs font-bold leading-tight">
+        <div className="text-white text-center px-1 sm:px-2">
+          <div className="text-xs sm:text-sm font-bold leading-tight">
             {game.title}
           </div>
         </div>
@@ -364,7 +364,7 @@ export default function Home() {
               <p className="text-xs sm:text-sm text-white text-opacity-80">Resume your games!</p>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-1 sm:gap-2 mb-4 px-1">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-4 px-3 pt-4">
               {activeGames.slice(0, 4).map((game) => {
                 const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
                 if (!gameInfo) return null;
@@ -395,7 +395,7 @@ export default function Home() {
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-1 sm:gap-2 md:gap-3 max-w-xs sm:max-w-sm md:max-w-md mx-auto pb-4 px-2 sm:px-3 justify-items-center">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-sm sm:max-w-md mx-auto pb-6 px-3 sm:px-4 pt-6 mt-4">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
