@@ -181,7 +181,7 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Main bubble */}
       <div
         className={`
-          relative w-16 h-16 sm:w-18 sm:h-18
+          relative w-20 h-20 sm:w-22 sm:h-22
           bg-gradient-to-br ${game.color}
           rounded-full shadow-xl
           flex flex-col items-center justify-center
@@ -209,14 +209,14 @@ const GameBubble = ({ game, index, isActive, progress }: {
         )}
         
         {/* Game emoji */}
-        <div className="text-lg sm:text-xl mb-0.5">
+        <div className="text-xl sm:text-2xl mb-1">
           {game.emoji}
         </div>
         
         {/* Game title */}
         <div className="text-white text-center px-1">
           <div className="text-xs font-bold leading-tight">
-            {game.title.length > 8 ? game.title.slice(0, 8) + '...' : game.title}
+            {game.title}
           </div>
         </div>
         
@@ -336,18 +336,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Welcome message - more compact for mobile */}
-      {showWelcome && (
-        <div className="absolute top-14 sm:top-16 left-1/2 transform -translate-x-1/2 z-30 animate-fade-in-scale">
-          <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl px-4 py-2 sm:px-6 sm:py-3 shadow-xl border-2 border-yellow-300">
-            <div className="text-center">
-              <div className="text-xl sm:text-2xl mb-1">🎪</div>
-              <h2 className="text-sm sm:text-lg font-bold text-gray-800 mb-0.5">Welcome!</h2>
-              <p className="text-xs sm:text-sm text-gray-600">Tap any bubble to play</p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Main game selection area - flex-1 to take remaining space */}
       <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 min-h-0">
@@ -397,7 +386,7 @@ export default function Home() {
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-xs sm:max-w-sm mx-auto pb-2 px-3 sm:px-4 pt-2 justify-items-center">
+            <div className="grid grid-cols-4 gap-3 sm:gap-4 max-w-sm sm:max-w-md mx-auto pb-4 px-4 sm:px-6 pt-2 justify-items-center">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
