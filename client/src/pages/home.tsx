@@ -181,7 +181,7 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Main bubble */}
       <div
         className={`
-          relative w-18 h-18 sm:w-20 sm:h-20 md:w-22 md:h-22
+          relative w-16 h-16 sm:w-18 sm:h-18
           bg-gradient-to-br ${game.color}
           rounded-full shadow-xl
           flex flex-col items-center justify-center
@@ -196,27 +196,27 @@ const GameBubble = ({ game, index, isActive, progress }: {
       >
         {/* Progress indicator for active games */}
         {isActive && progress && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <div className="text-xs sm:text-xs font-bold text-gray-700">{progress}%</div>
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-lg">
+            <div className="text-xs font-bold text-gray-700">{progress}%</div>
           </div>
         )}
         
         {/* Active game indicator */}
         {isActive && !progress && (
-          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-            <Zap className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
+          <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
+            <Zap className="w-2 h-2 text-white" />
           </div>
         )}
         
         {/* Game emoji */}
-        <div className="text-xl sm:text-2xl md:text-3xl mb-0.5 sm:mb-1">
+        <div className="text-lg sm:text-xl mb-0.5">
           {game.emoji}
         </div>
         
         {/* Game title */}
-        <div className="text-white text-center px-1 sm:px-2">
-          <div className="text-xs sm:text-sm font-bold leading-tight">
-            {game.title}
+        <div className="text-white text-center px-1">
+          <div className="text-xs font-bold leading-tight">
+            {game.title.length > 8 ? game.title.slice(0, 8) + '...' : game.title}
           </div>
         </div>
         
@@ -397,7 +397,7 @@ export default function Home() {
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 max-w-sm sm:max-w-md mx-auto pb-2 px-3 sm:px-4 pt-2">
+            <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-xs sm:max-w-sm mx-auto pb-2 px-3 sm:px-4 pt-2 justify-items-center">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
