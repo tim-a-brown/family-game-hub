@@ -178,71 +178,57 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Magic sparkles on hover */}
       {isHovered && <MagicSparkles color={game.sparkleColor} />}
       
-      {/* Main bubble */}
+      {/* Modern game card */}
       <div
         className={`
-          relative w-20 h-20 sm:w-22 sm:h-22
-          bg-gradient-to-br ${game.color}
-          rounded-full shadow-xl
+          relative w-20 h-20 sm:w-24 sm:h-24
+          bg-white/90 backdrop-blur-sm
+          rounded-2xl shadow-lg border border-gray-200/50
           flex flex-col items-center justify-center
           transform transition-all duration-300 ease-out
-          animate-float
-          ${isHovered ? 'scale-102 shadow-2xl' : 'scale-100'}
+          ${isHovered ? 'scale-105 shadow-xl bg-white' : 'scale-100'}
           ${isClicked ? 'scale-95' : ''}
-          ${isActive ? 'ring-2 sm:ring-4 ring-white ring-opacity-50 shadow-glow' : ''}
-          hover:shadow-glow
+          ${isActive ? 'ring-2 ring-indigo-400 ring-opacity-60' : ''}
+          hover:shadow-xl
           group-hover:animate-bounce-gentle
         `}
       >
         {/* Progress indicator for active games */}
         {isActive && progress && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <div className="text-xs font-bold text-gray-700">{progress}%</div>
+          <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+            <div className="text-xs font-bold text-white">{progress}%</div>
           </div>
         )}
         
         {/* Active game indicator */}
         {isActive && !progress && (
-          <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
             <Zap className="w-2 h-2 text-white" />
           </div>
         )}
         
-        {/* Game emoji */}
-        <div className="text-xl sm:text-2xl mb-1">
-          {game.emoji}
+        {/* Game emoji with color background */}
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-2 shadow-md`}>
+          <div className="text-lg">
+            {game.emoji}
+          </div>
         </div>
         
         {/* Game title */}
-        <div className="text-white text-center px-1">
-          <div className="text-xs font-bold leading-tight">
+        <div className="text-gray-800 text-center px-1">
+          <div className="text-xs font-semibold leading-tight">
             {game.title}
           </div>
         </div>
         
-        {/* Floating particles */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-white rounded-full opacity-60 animate-float-particle"
-              style={{
-                left: `${20 + i * 30}%`,
-                top: `${15 + i * 25}%`,
-                animationDelay: `${i * 0.5}s`
-              }}
-            />
-          ))}
-        </div>
+
       </div>
       
       {/* Hover tooltip */}
       {isHovered && (
-        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-full px-4 py-2 shadow-xl border-2 border-gray-200">
-            <div className="text-xs font-medium text-gray-800 whitespace-nowrap">
-              {game.description}
-            </div>
+        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-gray-800 text-white rounded-lg px-3 py-1.5 shadow-xl text-xs whitespace-nowrap">
+            {game.description}
           </div>
         </div>
       )}
@@ -284,54 +270,32 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-violet-400 via-pink-400 to-blue-400 relative overflow-hidden flex flex-col">
-      {/* Animated background elements - fewer for mobile */}
+    <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 relative overflow-hidden flex flex-col">
+      {/* Clean decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Floating shapes */}
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute opacity-15 animate-float-slow"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${i * 0.5}s`,
-              animationDuration: `${8 + i}s`
-            }}
-          >
-            <Star className="w-6 h-6 text-white" />
-          </div>
-        ))}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-pink-400/20 to-orange-400/20 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Compact Header */}
-      <header className="relative z-40 bg-white bg-opacity-20 backdrop-blur-sm border-b border-white border-opacity-20 flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-12 sm:h-14">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                <Sparkles className="text-white w-4 h-4 sm:w-5 sm:h-5" />
+      {/* Clean Header */}
+      <header className="relative z-40 bg-white/80 backdrop-blur-md border-b border-gray-200/50 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Sparkles className="text-white w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg">
-                  ✨ Game Center
-                </h1>
-                <p className="text-xs sm:text-sm text-white text-opacity-80 hidden sm:block">Choose your adventure!</p>
+                <h1 className="text-xl font-bold text-gray-800">Game Center</h1>
+                <p className="text-sm text-gray-500">15 fun games to play</p>
               </div>
             </div>
             
-            <div className="flex items-center">
-              {activeGames.length > 0 && (
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1 border border-white border-opacity-30">
-                  <div className="flex items-center space-x-1">
-                    <Save className="text-white w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="text-xs sm:text-sm font-medium text-white">
-                      {activeGames.length}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+            {activeGames.length > 0 && (
+              <div className="bg-emerald-100 text-emerald-700 rounded-full px-3 py-1.5 text-sm font-medium">
+                {activeGames.length} games in progress
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -341,16 +305,21 @@ export default function Home() {
       {/* Main game selection area - flex-1 to take remaining space */}
       <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 min-h-0">
         
-        {/* Active games section - compact horizontal bar */}
+        {/* Active games section - clean card style */}
         {activeGames.length > 0 && (
-          <section className="mb-2 flex-shrink-0">
-            <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-full px-4 py-2 mx-4 border border-white border-opacity-20">
+          <section className="mb-6 flex-shrink-0">
+            <div className="bg-white/60 backdrop-blur-md rounded-2xl mx-4 p-4 border border-gray-200/50 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Zap className="w-3 h-3 text-yellow-300 animate-pulse" />
-                  <span className="text-sm font-semibold text-white">Continue Playing</span>
+                  <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-800">Continue Playing</h3>
+                    <p className="text-sm text-gray-500">Pick up where you left off</p>
+                  </div>
                 </div>
-                <div className="flex space-x-1">
+                <div className="flex space-x-2">
                   {activeGames.slice(0, 3).map((game) => {
                     const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
                     if (!gameInfo) return null;
@@ -358,13 +327,13 @@ export default function Home() {
                     return (
                       <div 
                         key={game.gameType}
-                        className="relative w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                        className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-md"
                         onClick={() => window.location.href = gameInfo.route}
                         title={`${gameInfo.title} - ${getGameProgress(game.gameType)}%`}
                       >
-                        <span className="text-xs">{gameInfo.emoji}</span>
+                        <span className="text-lg">{gameInfo.emoji}</span>
                         {getGameProgress(game.gameType) && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-bold text-gray-700">
                             {getGameProgress(game.gameType)}%
                           </div>
                         )}
@@ -377,16 +346,15 @@ export default function Home() {
           </section>
         )}
 
-        {/* All games section - scrollable content */}
+        {/* All games section */}
         <section className="flex-1 flex flex-col min-h-0">
-          <div className="text-center mb-2 flex-shrink-0">
-            <h2 className="text-lg sm:text-xl font-bold text-white drop-shadow-lg">
-              🌟 Choose Your Game 🌟
-            </h2>
+          <div className="text-center mb-4 flex-shrink-0">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">All Games</h2>
+            <p className="text-gray-600">Choose your favorite to start playing</p>
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-4 gap-3 sm:gap-4 max-w-sm sm:max-w-md mx-auto pb-4 px-4 sm:px-6 pt-2 justify-items-center">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 max-w-2xl mx-auto pb-8 px-6">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
