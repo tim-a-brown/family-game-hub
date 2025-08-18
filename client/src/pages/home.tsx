@@ -178,10 +178,10 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Magic sparkles on hover */}
       {isHovered && <MagicSparkles color={game.sparkleColor} />}
       
-      {/* Ultra-modern game card */}
+      {/* Spacious modern game card */}
       <div
         className={`
-          relative w-24 h-32 sm:w-28 sm:h-36
+          relative w-32 h-40 sm:w-36 sm:h-44
           bg-white
           rounded-3xl shadow-sm border border-gray-100
           flex flex-col items-center justify-center
@@ -207,15 +207,15 @@ const GameBubble = ({ game, index, isActive, progress }: {
         )}
         
         {/* Game emoji with modern background */}
-        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-3 shadow-sm`}>
-          <div className="text-2xl">
+        <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-4 shadow-sm`}>
+          <div className="text-3xl">
             {game.emoji}
           </div>
         </div>
         
         {/* Game title */}
-        <div className="text-gray-900 text-center px-2">
-          <div className="text-sm font-medium leading-tight">
+        <div className="text-gray-900 text-center px-3">
+          <div className="text-base font-medium leading-tight">
             {game.title}
           </div>
         </div>
@@ -303,12 +303,12 @@ export default function Home() {
 
 
       {/* Main game selection area - flex-1 to take remaining space */}
-      <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 min-h-0">
+      <main className="relative z-10 flex-1 flex flex-col max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-0">
         
         {/* Continue Playing Section */}
         {activeGames.length > 0 && (
-          <section className="mb-8 flex-shrink-0">
-            <div className="bg-white rounded-3xl mx-6 p-6 border border-gray-100 shadow-sm">
+          <section className="mb-10 flex-shrink-0">
+            <div className="bg-white rounded-3xl mx-2 p-8 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center">
@@ -348,13 +348,13 @@ export default function Home() {
 
         {/* All Games Section */}
         <section className="flex-1 flex flex-col min-h-0">
-          <div className="text-center mb-6 flex-shrink-0 px-6">
-            <h2 className="text-3xl font-semibold text-gray-900 mb-3">All Games</h2>
+          <div className="text-center mb-8 flex-shrink-0 px-4">
+            <h2 className="text-3xl font-semibold text-gray-900 mb-4">All Games</h2>
             <p className="text-gray-500 text-lg">Choose your favorite to start playing</p>
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-3 gap-6 max-w-4xl mx-auto pb-12 px-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 max-w-3xl mx-auto pb-16 px-8">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
