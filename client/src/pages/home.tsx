@@ -277,23 +277,22 @@ export default function Home() {
         <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-indigo-500/5 to-pink-500/5 rounded-full blur-2xl"></div>
       </div>
 
-      {/* Modern Header */}
+      {/* Compact Header */}
       <header className="relative z-40 bg-white border-b border-gray-100 flex-shrink-0">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl flex items-center justify-center shadow-sm">
-                <Sparkles className="text-white w-5 h-5" />
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex justify-between items-center h-12">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-lg flex items-center justify-center">
+                <Sparkles className="text-white w-4 h-4" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Game Center</h1>
-                <p className="text-gray-500 text-sm">15 games to choose from</p>
+                <h1 className="text-lg font-semibold text-gray-900">Game Center</h1>
               </div>
             </div>
             
             {activeGames.length > 0 && (
-              <div className="bg-indigo-50 text-indigo-700 rounded-lg px-3 py-1.5 text-sm font-medium">
-                {activeGames.length} in progress
+              <div className="bg-indigo-50 text-indigo-700 rounded-md px-2 py-1 text-xs font-medium">
+                {activeGames.length} active
               </div>
             )}
           </div>
@@ -303,23 +302,22 @@ export default function Home() {
 
 
       {/* Main game selection area - flex-1 to take remaining space */}
-      <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 min-h-0">
+      <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-4 py-2 min-h-0">
         
-        {/* Continue Playing Section */}
+        {/* Compact Continue Playing Section */}
         {activeGames.length > 0 && (
-          <section className="mb-6 flex-shrink-0">
-            <div className="bg-white rounded-2xl mx-2 p-5 border border-gray-100 shadow-sm">
+          <section className="mb-3 flex-shrink-0">
+            <div className="bg-white rounded-xl mx-2 p-3 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-indigo-600" />
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <Zap className="w-3 h-3 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-gray-900">Continue Playing</h3>
-                    <p className="text-sm text-gray-500">Pick up where you left off</p>
+                    <h3 className="text-sm font-semibold text-gray-900">Continue Playing</h3>
                   </div>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-1">
                   {activeGames.slice(0, 3).map((game) => {
                     const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
                     if (!gameInfo) return null;
@@ -327,13 +325,13 @@ export default function Home() {
                     return (
                       <div 
                         key={game.gameType}
-                        className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
+                        className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-all duration-200 shadow-sm"
                         onClick={() => window.location.href = gameInfo.route}
                         title={`${gameInfo.title} - ${getGameProgress(game.gameType)}%`}
                       >
-                        <span className="text-lg">{gameInfo.emoji}</span>
+                        <span className="text-sm">{gameInfo.emoji}</span>
                         {getGameProgress(game.gameType) && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-semibold text-gray-700 shadow-sm">
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-xs font-semibold text-gray-700 shadow-sm">
                             {getGameProgress(game.gameType)}%
                           </div>
                         )}
@@ -348,9 +346,8 @@ export default function Home() {
 
         {/* All Games Section */}
         <section className="flex-1 flex flex-col min-h-0">
-          <div className="text-center mb-6 flex-shrink-0 px-4">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">All Games</h2>
-            <p className="text-gray-500">Choose your favorite to start playing</p>
+          <div className="text-center mb-3 flex-shrink-0 px-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">All Games</h2>
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
