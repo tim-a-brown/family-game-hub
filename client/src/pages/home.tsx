@@ -178,12 +178,12 @@ const GameBubble = ({ game, index, isActive, progress }: {
       {/* Magic sparkles on hover */}
       {isHovered && <MagicSparkles color={game.sparkleColor} />}
       
-      {/* Spacious modern game card */}
+      {/* Properly sized modern game card */}
       <div
         className={`
-          relative w-32 h-40 sm:w-36 sm:h-44
+          relative w-20 h-28 sm:w-24 sm:h-32
           bg-white
-          rounded-3xl shadow-sm border border-gray-100
+          rounded-2xl shadow-sm border border-gray-100
           flex flex-col items-center justify-center
           transform transition-all duration-300 ease-out
           ${isHovered ? 'scale-105 shadow-lg -translate-y-1' : 'scale-100'}
@@ -194,28 +194,28 @@ const GameBubble = ({ game, index, isActive, progress }: {
       >
         {/* Progress indicator for active games */}
         {isActive && progress && (
-          <div className="absolute -top-2 -right-2 w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center shadow-md">
+          <div className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center shadow-md">
             <div className="text-xs font-semibold text-white">{progress}%</div>
           </div>
         )}
         
         {/* Active game indicator */}
         {isActive && !progress && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center animate-pulse shadow-md">
-            <Zap className="w-3 h-3 text-white" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 rounded-full flex items-center justify-center animate-pulse shadow-md">
+            <Zap className="w-2 h-2 text-white" />
           </div>
         )}
         
         {/* Game emoji with modern background */}
-        <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-4 shadow-sm`}>
-          <div className="text-3xl">
+        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-2 shadow-sm`}>
+          <div className="text-lg sm:text-xl">
             {game.emoji}
           </div>
         </div>
         
         {/* Game title */}
-        <div className="text-gray-900 text-center px-3">
-          <div className="text-base font-medium leading-tight">
+        <div className="text-gray-900 text-center px-1">
+          <div className="text-xs sm:text-sm font-medium leading-tight">
             {game.title}
           </div>
         </div>
@@ -279,20 +279,20 @@ export default function Home() {
 
       {/* Modern Header */}
       <header className="relative z-40 bg-white border-b border-gray-100 flex-shrink-0">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-sm">
-                <Sparkles className="text-white w-6 h-6" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl flex items-center justify-center shadow-sm">
+                <Sparkles className="text-white w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Game Center</h1>
+                <h1 className="text-xl font-semibold text-gray-900">Game Center</h1>
                 <p className="text-gray-500 text-sm">15 games to choose from</p>
               </div>
             </div>
             
             {activeGames.length > 0 && (
-              <div className="bg-indigo-50 text-indigo-700 rounded-xl px-4 py-2 text-sm font-medium">
+              <div className="bg-indigo-50 text-indigo-700 rounded-lg px-3 py-1.5 text-sm font-medium">
                 {activeGames.length} in progress
               </div>
             )}
@@ -303,23 +303,23 @@ export default function Home() {
 
 
       {/* Main game selection area - flex-1 to take remaining space */}
-      <main className="relative z-10 flex-1 flex flex-col max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-0">
+      <main className="relative z-10 flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 min-h-0">
         
         {/* Continue Playing Section */}
         {activeGames.length > 0 && (
-          <section className="mb-10 flex-shrink-0">
-            <div className="bg-white rounded-3xl mx-2 p-8 border border-gray-100 shadow-sm">
+          <section className="mb-6 flex-shrink-0">
+            <div className="bg-white rounded-2xl mx-2 p-5 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-indigo-600" />
+                  <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Continue Playing</h3>
-                    <p className="text-gray-500">Pick up where you left off</p>
+                    <h3 className="text-base font-semibold text-gray-900">Continue Playing</h3>
+                    <p className="text-sm text-gray-500">Pick up where you left off</p>
                   </div>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex space-x-2">
                   {activeGames.slice(0, 3).map((game) => {
                     const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
                     if (!gameInfo) return null;
@@ -327,13 +327,13 @@ export default function Home() {
                     return (
                       <div 
                         key={game.gameType}
-                        className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
+                        className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
                         onClick={() => window.location.href = gameInfo.route}
                         title={`${gameInfo.title} - ${getGameProgress(game.gameType)}%`}
                       >
-                        <span className="text-xl">{gameInfo.emoji}</span>
+                        <span className="text-lg">{gameInfo.emoji}</span>
                         {getGameProgress(game.gameType) && (
-                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-semibold text-gray-700 shadow-sm">
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-semibold text-gray-700 shadow-sm">
                             {getGameProgress(game.gameType)}%
                           </div>
                         )}
@@ -348,13 +348,13 @@ export default function Home() {
 
         {/* All Games Section */}
         <section className="flex-1 flex flex-col min-h-0">
-          <div className="text-center mb-8 flex-shrink-0 px-4">
-            <h2 className="text-3xl font-semibold text-gray-900 mb-4">All Games</h2>
-            <p className="text-gray-500 text-lg">Choose your favorite to start playing</p>
+          <div className="text-center mb-6 flex-shrink-0 px-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">All Games</h2>
+            <p className="text-gray-500">Choose your favorite to start playing</p>
           </div>
           
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 max-w-3xl mx-auto pb-16 px-8">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pb-8 px-4">
               {GAMES.map((game, index) => {
                 const isActive = activeGames.some(active => active.gameType === game.route.replace('/', ''));
                 const progress = isActive ? getGameProgress(game.route.replace('/', '')) : undefined;
