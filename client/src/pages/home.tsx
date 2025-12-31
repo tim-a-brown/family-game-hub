@@ -1,187 +1,30 @@
 import { useState, useEffect } from "react";
 import { GameStorage } from "@/lib/game-storage";
-import { Shuffle, Zap } from "lucide-react";
+import { Shuffle, Zap, Play } from "lucide-react";
 
 const GAMES = [
-  {
-    title: "Tic-Tac-Toe",
-    emoji: "⭕",
-    gradient: "candy-gradient-blue",
-    route: "/tic-tac-toe",
-    category: "versus",
-    tagline: "Classic!"
-  },
-  {
-    title: "Hangman",
-    emoji: "🎯",
-    gradient: "candy-gradient-red",
-    route: "/hangman",
-    category: "brain",
-    tagline: "Guess it!"
-  },
-  {
-    title: "Mad Libs",
-    emoji: "📝",
-    gradient: "candy-gradient-purple",
-    route: "/mad-libs",
-    category: "laughs",
-    tagline: "So silly!"
-  },
-  {
-    title: "Would You Rather",
-    emoji: "🤔",
-    gradient: "candy-gradient-pink",
-    route: "/would-you-rather",
-    category: "laughs",
-    tagline: "Tough pick!"
-  },
-  {
-    title: "Word Search",
-    emoji: "🔍",
-    gradient: "candy-gradient-green",
-    route: "/word-search",
-    category: "brain",
-    tagline: "Find 'em!"
-  },
-  {
-    title: "Dots & Boxes",
-    emoji: "⬜",
-    gradient: "candy-gradient-yellow",
-    route: "/dots-and-boxes",
-    category: "versus",
-    tagline: "Claim it!"
-  },
-  {
-    title: "Word Scramble",
-    emoji: "🔤",
-    gradient: "candy-gradient-purple",
-    route: "/word-scramble",
-    category: "brain",
-    tagline: "Unscramble!"
-  },
-  {
-    title: "Yahtzee",
-    emoji: "🎲",
-    gradient: "candy-gradient-teal",
-    route: "/yahtzee",
-    category: "versus",
-    tagline: "Roll it!"
-  },
-  {
-    title: "Dice Roller",
-    emoji: "🎯",
-    gradient: "candy-gradient-orange",
-    route: "/dice-roller",
-    category: "versus",
-    tagline: "Lucky?"
-  },
-  {
-    title: "Scorecard",
-    emoji: "📊",
-    gradient: "candy-gradient-blue",
-    route: "/scorecard",
-    category: "versus",
-    tagline: "Track it!"
-  },
-  {
-    title: "Sudoku",
-    emoji: "🔢",
-    gradient: "candy-gradient-pink",
-    route: "/sudoku",
-    category: "brain",
-    tagline: "Numbers!"
-  },
-  {
-    title: "Connect Four",
-    emoji: "🔴",
-    gradient: "candy-gradient-red",
-    route: "/connect-four",
-    category: "versus",
-    tagline: "Drop it!"
-  },
-  {
-    title: "Battleship",
-    emoji: "⚓",
-    gradient: "candy-gradient-blue",
-    route: "/battleship",
-    category: "versus",
-    tagline: "Sink 'em!"
-  },
-  {
-    title: "Shell Game",
-    emoji: "🥥",
-    gradient: "candy-gradient-orange",
-    route: "/shell-game",
-    category: "brain",
-    tagline: "Watch it!"
-  }
+  { title: "Tic-Tac-Toe", emoji: "⭕", tile: "tile-blue", route: "/tic-tac-toe", category: "versus" },
+  { title: "Hangman", emoji: "🎯", tile: "tile-red", route: "/hangman", category: "brain" },
+  { title: "Mad Libs", emoji: "📝", tile: "tile-purple", route: "/mad-libs", category: "laughs" },
+  { title: "Would You Rather", emoji: "🤔", tile: "tile-pink", route: "/would-you-rather", category: "laughs" },
+  { title: "Word Search", emoji: "🔍", tile: "tile-green", route: "/word-search", category: "brain" },
+  { title: "Dots & Boxes", emoji: "⬜", tile: "tile-yellow", route: "/dots-and-boxes", category: "versus" },
+  { title: "Word Scramble", emoji: "🔤", tile: "tile-indigo", route: "/word-scramble", category: "brain" },
+  { title: "Yahtzee", emoji: "🎲", tile: "tile-teal", route: "/yahtzee", category: "versus" },
+  { title: "Dice Roller", emoji: "🎯", tile: "tile-orange", route: "/dice-roller", category: "versus" },
+  { title: "Scorecard", emoji: "📊", tile: "tile-blue", route: "/scorecard", category: "versus" },
+  { title: "Sudoku", emoji: "🔢", tile: "tile-pink", route: "/sudoku", category: "brain" },
+  { title: "Connect Four", emoji: "🔴", tile: "tile-red", route: "/connect-four", category: "versus" },
+  { title: "Battleship", emoji: "⚓", tile: "tile-slate", route: "/battleship", category: "versus" },
+  { title: "Shell Game", emoji: "🥥", tile: "tile-orange", route: "/shell-game", category: "brain" }
 ];
 
 const CATEGORIES = [
-  { id: "all", label: "All Games", icon: "🎮", color: "from-purple-500 to-pink-500" },
-  { id: "laughs", label: "Giggles", icon: "😂", color: "from-pink-500 to-orange-400" },
-  { id: "brain", label: "Brain Boost", icon: "🧠", color: "from-blue-500 to-teal-400" },
-  { id: "versus", label: "VS Battle", icon: "⚔️", color: "from-orange-500 to-red-500" }
+  { id: "all", label: "All", icon: "🎮" },
+  { id: "laughs", label: "Fun", icon: "😂" },
+  { id: "brain", label: "Think", icon: "🧠" },
+  { id: "versus", label: "Play", icon: "⚔️" }
 ];
-
-const GameTile = ({ game, index, isActive, progress, onClick }: {
-  game: typeof GAMES[0];
-  index: number;
-  isActive?: boolean;
-  progress?: number;
-  onClick: () => void;
-}) => {
-  const [isPressed, setIsPressed] = useState(false);
-
-  return (
-    <button
-      className={`
-        relative w-full aspect-square rounded-3xl overflow-hidden
-        transform transition-all duration-200 ease-out
-        ${game.gradient}
-        ${isPressed ? 'scale-95' : 'hover:scale-105 active:scale-95'}
-        shadow-playful hover:shadow-playful-lg
-        focus:outline-none focus:ring-4 focus:ring-white/50
-      `}
-      style={{ animationDelay: `${index * 50}ms` }}
-      onClick={onClick}
-      onTouchStart={() => setIsPressed(true)}
-      onTouchEnd={() => setIsPressed(false)}
-      onMouseDown={() => setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      onMouseLeave={() => setIsPressed(false)}
-      data-testid={`game-tile-${game.route.replace('/', '')}`}
-    >
-      {isActive && (
-        <div className="absolute top-1 right-1 z-10">
-          <div className="relative">
-            <div className="absolute inset-0 bg-white rounded-full animate-pulse-ring"></div>
-            <div className="relative bg-white text-xs font-bold px-1.5 py-0.5 rounded-full text-purple-600 shadow-lg">
-              {progress ? `${progress}%` : <Zap className="w-3 h-3" />}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
-        <div className="text-3xl sm:text-4xl mb-1 transform transition-transform duration-200 group-hover:scale-110">
-          {game.emoji}
-        </div>
-        <div className="text-white font-display font-bold text-xs sm:text-sm text-center leading-tight text-shadow-fun px-1">
-          {game.title}
-        </div>
-        <div className="text-white/80 text-[10px] sm:text-xs font-medium mt-0.5">
-          {game.tagline}
-        </div>
-      </div>
-      
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
-      
-      <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
-      <div className="absolute -bottom-5 -left-5 w-16 h-16 bg-white/10 rounded-full blur-lg pointer-events-none"></div>
-    </button>
-  );
-};
 
 export default function Home() {
   const [activeGames, setActiveGames] = useState<any[]>([]);
@@ -189,26 +32,20 @@ export default function Home() {
   const gameStorage = GameStorage.getInstance();
 
   useEffect(() => {
-    const active = gameStorage.getActiveGames();
-    setActiveGames(active);
+    setActiveGames(gameStorage.getActiveGames());
   }, []);
 
   const getGameProgress = (gameType: string) => {
     const activeGame = activeGames.find(game => game.gameType === gameType);
     if (!activeGame) return undefined;
-    
     switch (gameType) {
-      case 'tic-tac-toe':
-        return activeGame.gameData?.moves?.length * 11 || 10;
+      case 'tic-tac-toe': return activeGame.gameData?.moves?.length * 11 || 10;
       case 'word-search':
         const found = activeGame.gameData?.foundWords?.length || 0;
         const total = activeGame.gameData?.totalWords || 8;
         return Math.round((found / total) * 100);
-      case 'yahtzee':
-        const round = activeGame.gameData?.currentRound || 1;
-        return Math.round((round / 13) * 100);
-      default:
-        return 33;
+      case 'yahtzee': return Math.round(((activeGame.gameData?.currentRound || 1) / 13) * 100);
+      default: return 33;
     }
   };
 
@@ -221,42 +58,35 @@ export default function Home() {
     window.location.href = randomGame.route;
   };
 
-  const handleGameClick = (route: string) => {
-    window.location.href = route;
-  };
-
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 bg-blob-1 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-blob-2 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-blob-3 pointer-events-none"></div>
-      
-      <div className="absolute top-[10%] left-[5%] text-4xl opacity-20 animate-float-slow pointer-events-none">🌟</div>
-      <div className="absolute top-[15%] right-[8%] text-3xl opacity-15 animate-float pointer-events-none" style={{ animationDelay: '1s' }}>✨</div>
-      <div className="absolute bottom-[20%] left-[10%] text-2xl opacity-15 animate-float pointer-events-none" style={{ animationDelay: '2s' }}>🎈</div>
-      
-      <header className="relative z-20 px-3 py-2 flex-shrink-0" style={{ maxHeight: '20vh' }}>
-        <div className="max-w-lg mx-auto h-full flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl">🎮</span>
-              <h1 className="font-display font-bold text-base text-purple-800">Family Fun</h1>
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <header className="bg-white border-b border-slate-100 px-4 py-3 flex-shrink-0" style={{ maxHeight: '18vh' }}>
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+                <span className="text-lg">🎮</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-800 leading-tight">Family Games</h1>
+                <p className="text-xs text-slate-500">{GAMES.length} games to play</p>
+              </div>
             </div>
             
             <div className="flex items-center gap-2">
               {activeGames.length > 0 && (
-                <div className="flex gap-1">
+                <div className="flex -space-x-1">
                   {activeGames.slice(0, 3).map((game) => {
                     const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
                     if (!gameInfo) return null;
                     return (
                       <button
                         key={game.gameType}
-                        className={`w-6 h-6 rounded-lg ${gameInfo.gradient} flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform`}
-                        onClick={() => handleGameClick(gameInfo.route)}
+                        className={`w-7 h-7 rounded-lg ${gameInfo.tile} flex items-center justify-center shadow-sm ring-2 ring-white animate-press`}
+                        onClick={() => window.location.href = gameInfo.route}
                         data-testid={`continue-game-${game.gameType}`}
                       >
-                        <span className="text-xs">{gameInfo.emoji}</span>
+                        <span className="text-sm">{gameInfo.emoji}</span>
                       </button>
                     );
                   })}
@@ -265,31 +95,30 @@ export default function Home() {
               
               <button
                 onClick={handleRandomGame}
-                className="flex items-center gap-1 bg-gradient-to-r from-orange-400 to-pink-500 text-white px-2 py-1 rounded-full font-display font-bold text-xs shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95 transition-all"
+                className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-3 py-1.5 rounded-full font-semibold text-xs shadow-md animate-press"
                 data-testid="button-random-game"
               >
-                <Shuffle className="w-3 h-3" />
+                <Shuffle className="w-3.5 h-3.5" />
                 <span>Random</span>
               </button>
             </div>
           </div>
           
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide mt-1">
+          <div className="flex gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`
-                  flex-shrink-0 flex items-center gap-0.5 px-2 py-1 rounded-full font-display font-semibold text-[10px]
-                  transition-all duration-200
+                  flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl font-semibold text-xs transition-all animate-press
                   ${selectedCategory === cat.id 
-                    ? `bg-gradient-to-r ${cat.color} text-white shadow-sm` 
-                    : 'bg-white/70 text-purple-700 hover:bg-white'
+                    ? 'bg-violet-600 text-white shadow-md' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }
                 `}
                 data-testid={`category-${cat.id}`}
               >
-                <span className="text-xs">{cat.icon}</span>
+                <span>{cat.icon}</span>
                 <span>{cat.label}</span>
               </button>
             ))}
@@ -297,8 +126,8 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 overflow-y-auto scrollbar-hide px-4 pt-2 pb-6">
-        <div className="max-w-lg mx-auto">
+      <main className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4">
+        <div className="max-w-md mx-auto">
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {filteredGames.map((game, index) => {
               const gameType = game.route.replace('/', '');
@@ -306,24 +135,43 @@ export default function Home() {
               const progress = isActive ? getGameProgress(gameType) : undefined;
               
               return (
-                <GameTile
+                <button
                   key={game.title}
-                  game={game}
-                  index={index}
-                  isActive={isActive}
-                  progress={progress}
-                  onClick={() => handleGameClick(game.route)}
-                />
+                  onClick={() => window.location.href = game.route}
+                  className={`
+                    relative aspect-square rounded-2xl overflow-hidden
+                    ${game.tile} shadow-card hover:shadow-card-hover
+                    transform transition-all duration-200 animate-press
+                    focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2
+                  `}
+                  style={{ animationDelay: `${index * 30}ms` }}
+                  data-testid={`game-tile-${gameType}`}
+                >
+                  {isActive && (
+                    <div className="absolute top-1.5 right-1.5 z-10">
+                      <div className="bg-white/95 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-violet-600 shadow-sm">
+                        {progress}%
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
+                    <div className="text-2xl sm:text-3xl mb-1">{game.emoji}</div>
+                    <div className="text-white font-bold text-[11px] sm:text-xs text-center leading-tight px-1 drop-shadow-sm">
+                      {game.title}
+                    </div>
+                  </div>
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-white/10 pointer-events-none"></div>
+                </button>
               );
             })}
           </div>
         </div>
       </main>
 
-      <footer className="relative z-10 py-2 text-center flex-shrink-0">
-        <p className="text-purple-600/50 text-xs font-medium">
-          Made with 💜 for family fun
-        </p>
+      <footer className="bg-white border-t border-slate-100 py-2 text-center flex-shrink-0">
+        <p className="text-slate-400 text-xs">Made for family fun 💜</p>
       </footer>
     </div>
   );
