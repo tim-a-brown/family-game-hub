@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameStorage } from "@/lib/game-storage";
-import { Shuffle, Zap, Users, Brain, Laugh, ChevronRight } from "lucide-react";
+import { Shuffle, Zap } from "lucide-react";
 
 const GAMES = [
   {
@@ -235,69 +235,61 @@ export default function Home() {
       <div className="absolute top-[15%] right-[8%] text-3xl opacity-15 animate-float pointer-events-none" style={{ animationDelay: '1s' }}>✨</div>
       <div className="absolute bottom-[20%] left-[10%] text-2xl opacity-15 animate-float pointer-events-none" style={{ animationDelay: '2s' }}>🎈</div>
       
-      <header className="relative z-20 pt-3 pb-2 px-4 flex-shrink-0">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="text-2xl">🎮</div>
-              <div>
-                <h1 className="font-display font-bold text-lg text-purple-800 leading-none">Family Fun</h1>
-                <p className="text-xs text-purple-600/70 font-medium">{GAMES.length} games ready!</p>
-              </div>
+      <header className="relative z-20 px-3 py-2 flex-shrink-0" style={{ maxHeight: '20vh' }}>
+        <div className="max-w-lg mx-auto h-full flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl">🎮</span>
+              <h1 className="font-display font-bold text-base text-purple-800">Family Fun</h1>
             </div>
             
-            <button
-              onClick={handleRandomGame}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-orange-400 to-pink-500 text-white px-3 py-1.5 rounded-full font-display font-bold text-sm shadow-playful hover:shadow-playful-lg transform hover:scale-105 active:scale-95 transition-all"
-              data-testid="button-random-game"
-            >
-              <Shuffle className="w-4 h-4" />
-              <span>Surprise Me!</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {activeGames.length > 0 && (
+                <div className="flex gap-1">
+                  {activeGames.slice(0, 3).map((game) => {
+                    const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
+                    if (!gameInfo) return null;
+                    return (
+                      <button
+                        key={game.gameType}
+                        className={`w-6 h-6 rounded-lg ${gameInfo.gradient} flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform`}
+                        onClick={() => handleGameClick(gameInfo.route)}
+                        data-testid={`continue-game-${game.gameType}`}
+                      >
+                        <span className="text-xs">{gameInfo.emoji}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              
+              <button
+                onClick={handleRandomGame}
+                className="flex items-center gap-1 bg-gradient-to-r from-orange-400 to-pink-500 text-white px-2 py-1 rounded-full font-display font-bold text-xs shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95 transition-all"
+                data-testid="button-random-game"
+              >
+                <Shuffle className="w-3 h-3" />
+                <span>Random</span>
+              </button>
+            </div>
           </div>
           
-          {activeGames.length > 0 && (
-            <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-2xl px-3 py-2 shadow-sm mb-2">
-              <div className="flex items-center gap-1 text-purple-700">
-                <Zap className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold">Continue:</span>
-              </div>
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-                {activeGames.slice(0, 4).map((game) => {
-                  const gameInfo = GAMES.find(g => g.route.includes(game.gameType));
-                  if (!gameInfo) return null;
-                  return (
-                    <button
-                      key={game.gameType}
-                      className={`flex-shrink-0 w-8 h-8 rounded-xl ${gameInfo.gradient} flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-transform`}
-                      onClick={() => handleGameClick(gameInfo.route)}
-                      data-testid={`continue-game-${game.gameType}`}
-                    >
-                      <span className="text-base">{gameInfo.emoji}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <ChevronRight className="w-4 h-4 text-purple-400 ml-auto flex-shrink-0" />
-            </div>
-          )}
-          
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide mt-1">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`
-                  flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full font-display font-semibold text-xs
-                  transition-all duration-200 transform
+                  flex-shrink-0 flex items-center gap-0.5 px-2 py-1 rounded-full font-display font-semibold text-[10px]
+                  transition-all duration-200
                   ${selectedCategory === cat.id 
-                    ? `bg-gradient-to-r ${cat.color} text-white shadow-md scale-105` 
-                    : 'bg-white/70 text-purple-700 hover:bg-white shadow-sm hover:scale-105'
+                    ? `bg-gradient-to-r ${cat.color} text-white shadow-sm` 
+                    : 'bg-white/70 text-purple-700 hover:bg-white'
                   }
                 `}
                 data-testid={`category-${cat.id}`}
               >
-                <span>{cat.icon}</span>
+                <span className="text-xs">{cat.icon}</span>
                 <span>{cat.label}</span>
               </button>
             ))}
