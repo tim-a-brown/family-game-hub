@@ -8,7 +8,7 @@ import wouldYouRatherImg from "@assets/generated_images/would_you_rather_tile_ic
 import wordSearchImg from "@assets/generated_images/word_search_game_tile_icon.png";
 import dotsAndBoxesImg from "@assets/generated_images/dots_and_boxes_tile_icon.png";
 import wordScrambleImg from "@assets/generated_images/word_scramble_tile_icon.png";
-import yahtzeeImg from "@assets/generated_images/yahtzee_five_dice_icon.png";
+import yahtzeeImg from "@assets/generated_images/yahtzee_exactly_5_dice.png";
 import diceRollerImg from "@assets/generated_images/dice_roller_canister_icon.png";
 import scorecardImg from "@assets/generated_images/scorecard_game_tile_icon.png";
 import sudokuImg from "@assets/generated_images/sudoku_game_tile_icon.png";
