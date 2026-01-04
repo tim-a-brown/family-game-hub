@@ -6,6 +6,7 @@ export const GAME_CATEGORIES = [
   'jobs',
   'kids tv and movies',
   'magical',
+  'riddles',
   'school',
   'silly fun',
   'sports',
@@ -338,6 +339,16 @@ export const WORD_LISTS: Record<GameCategory, string[]> = {
     'growing', 'up', 'getting', 'older', 'responsibilities', 'chores', 'allowance', 'money', 'saving', 'spending',
     'environment', 'nature', 'recycling', 'conservation', 'earth', 'day', 'pollution', 'clean', 'green', 'eco',
     'diversity', 'differences', 'cultures', 'languages', 'traditions', 'acceptance', 'inclusion', 'understanding', 'tolerance', 'respect'
+  ],
+  'riddles': [
+    'mystery', 'puzzle', 'clue', 'hint', 'answer', 'guess', 'think', 'solve', 'riddle', 'brain',
+    'teaser', 'trick', 'question', 'secret', 'hidden', 'discover', 'reveal', 'figure', 'out', 'clever',
+    'wise', 'smart', 'tricky', 'confusing', 'surprising', 'unexpected', 'unusual', 'strange', 'curious', 'wonder',
+    'sunrise', 'sunset', 'shadow', 'mirror', 'echo', 'clock', 'candle', 'river', 'mountain', 'ocean',
+    'tree', 'flower', 'rain', 'snow', 'wind', 'fire', 'water', 'earth', 'air', 'sun',
+    'moon', 'star', 'cloud', 'rainbow', 'thunder', 'lightning', 'fog', 'mist', 'frost', 'ice',
+    'egg', 'needle', 'key', 'lock', 'door', 'window', 'stairs', 'bridge', 'road', 'path',
+    'book', 'letter', 'word', 'name', 'silence', 'darkness', 'light', 'time', 'memory', 'dream'
   ]
 };
 
@@ -354,7 +365,8 @@ export const BONUS_WORDS: Record<GameCategory, string[]> = {
   'food fun': ['delicious', 'nutritious', 'appetizing', 'scrumptious', 'flavorful', 'tasty', 'savory', 'cuisine', 'recipe', 'ingredient'],
   'vacations': ['destination', 'excursion', 'expedition', 'getaway', 'retreat', 'journey', 'voyage', 'adventure', 'exploration', 'relaxation'],
   'cool technology': ['innovation', 'advancement', 'breakthrough', 'discovery', 'invention', 'development', 'progress', 'evolution', 'revolution', 'futuristic'],
-  'kids tv and movies': ['entertainment', 'storytelling', 'animation', 'characters', 'adventure', 'imagination', 'creativity', 'inspiration', 'education', 'childhood']
+  'kids tv and movies': ['entertainment', 'storytelling', 'animation', 'characters', 'adventure', 'imagination', 'creativity', 'inspiration', 'education', 'childhood'],
+  'riddles': ['enigma', 'conundrum', 'brainteaser', 'puzzlement', 'mystery', 'question', 'challenge', 'riddle', 'secret', 'answer']
 };
 
 export const WORD_SEARCH_CATEGORIES = ['random', ...[...GAME_CATEGORIES].sort()] as const;
@@ -442,6 +454,13 @@ export const WOULD_YOU_RATHER_SCENARIOS: Record<GameCategory, string[]> = {
     'Would you rather have a smartphone that never breaks or a computer that never gets slow?',
     'Would you rather be able to teleport anywhere or time travel?',
     'Would you rather invent something amazing or discover something incredible?'
+  ],
+  'riddles': [
+    'Would you rather solve the hardest riddle in the world or create an unsolvable one?',
+    'Would you rather always know the answer or never forget a clue?',
+    'Would you rather be a puzzle master or a mystery solver?',
+    'Would you rather have a secret nobody can guess or know everyones secrets?',
+    'Would you rather think fast or think deep?'
   ],
   'kids tv and movies': [
     'Would you rather be in your favorite animated movie or your favorite live-action movie?',
@@ -859,6 +878,254 @@ export const MAD_LIBS_TEMPLATES = {
       title: "Asteroid Mining",
       template: "Our job was to {verb1} valuable {noun1} from the {adjective1} asteroid belt. We {verb2} our {adjective2} mining ship through {number} floating {adjective3} rocks. Each asteroid contained {adjective4} {mineral} that {verb3} when exposed to {adjective5} light. We collected {number2} tons of {adjective6} materials and {verb4} them back to the {adjective7} space colony where everyone {verb5}!",
       prompts: ["verb1", "noun1", "adjective1", "verb2", "adjective2", "number", "adjective3", "adjective4", "mineral", "verb3", "adjective5", "number2", "adjective6", "verb4", "adjective7", "verb5"]
+    }
+  ],
+  riddles: [
+    {
+      title: "The Morning Traveler",
+      template: "I {verb1} in the {adjective1} morning and {verb2} all day. By {adjective2} evening, I have {verb3} far away. I follow your every {noun1}, never making a {adjective3} sound. I can be {adjective4} and tall or {adjective5} on the ground. What am I?",
+      prompts: ["verb1", "adjective1", "verb2", "adjective2", "verb3", "noun1", "adjective3", "adjective4", "adjective5"],
+      answer: "A Shadow"
+    },
+    {
+      title: "The Kitchen Helper",
+      template: "I have a {adjective1} face but no {body_part1}. My {adjective2} hands go round and round, {verb1} without a trace. I {verb2} you when to wake and when to {verb3}. Without batteries, I can still {verb4} and keep. What am I?",
+      prompts: ["adjective1", "body_part1", "adjective2", "verb1", "verb2", "verb3", "verb4"],
+      answer: "A Clock"
+    },
+    {
+      title: "The Silent Friend",
+      template: "I have {adjective1} pages but I'm not a {noun1}. I help you {verb1} places but I don't have {body_part}. I show you {adjective2} roads and {adjective3} lands. I fold up {adverb} when held in your hands. What am I?",
+      prompts: ["adjective1", "noun1", "verb1", "body_part", "adjective2", "adjective3", "adverb"],
+      answer: "A Map"
+    },
+    {
+      title: "The Disappearing Act",
+      template: "The more you {verb1} from me, the {adjective1} I become. I start out {adjective2} but end up quite {adjective3}. I can hold your {adjective4} {noun1} with care. Keep {verb2} and {verb3} - soon I won't be there! What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "adjective4", "noun1", "verb2", "verb3"],
+      answer: "A Hole"
+    },
+    {
+      title: "The Wet Wonder",
+      template: "I {verb1} from the {adjective1} sky but I'm not a {noun1}. I make everything {adjective2} when I {verb2} by. Flowers {verb3} and children {verb4} inside. Puddles {verb5} where I {adverb} hide. What am I?",
+      prompts: ["verb1", "adjective1", "noun1", "adjective2", "verb2", "verb3", "verb4", "verb5", "adverb"],
+      answer: "Rain"
+    },
+    {
+      title: "The Bright Mystery",
+      template: "I {verb1} in the {adjective1} darkness but have no {noun1}. I can be {adjective2}, {adjective3}, or {color}. When you {verb2} a switch, I suddenly {verb3}. Without me, you'd {verb4} into {adjective4} things! What am I?",
+      prompts: ["verb1", "adjective1", "noun1", "adjective2", "adjective3", "color", "verb2", "verb3", "verb4", "adjective4"],
+      answer: "Light"
+    },
+    {
+      title: "The Quiet Keeper",
+      template: "I have {adjective1} teeth but cannot {verb1}. I have a {adjective2} head but cannot {verb2}. I {verb3} and {verb4} to keep things {adjective3}. I'm made of {adjective4} metal and {verb5} quite neat. What am I?",
+      prompts: ["adjective1", "verb1", "adjective2", "verb2", "verb3", "verb4", "adjective3", "adjective4", "verb5"],
+      answer: "A Key"
+    },
+    {
+      title: "The Living Puzzle",
+      template: "I {verb1} without {body_part1}, I {verb2} without {body_part2}. I have no {adjective1} wings but can {verb3} anywhere. I'm {adjective2} and {adjective3} and come from the {noun1}. When I {verb4}, I can make grown-ups {verb5}. What am I?",
+      prompts: ["verb1", "body_part1", "verb2", "body_part2", "adjective1", "verb3", "adjective2", "adjective3", "noun1", "verb4", "verb5"],
+      answer: "Wind"
+    },
+    {
+      title: "The Crunchy Clue",
+      template: "I'm {adjective1} on the outside, {adjective2} on the inside too. I come from a {adjective3} {animal} who goes '{sound}.' I can be {verb1} or {verb2} in a {noun1}. At breakfast time, I {verb3} and bring joy! What am I?",
+      prompts: ["adjective1", "adjective2", "adjective3", "animal", "sound", "verb1", "verb2", "noun1", "verb3"],
+      answer: "An Egg"
+    },
+    {
+      title: "The Patient One",
+      template: "I {verb1} all day in the {adjective1} sun. I drink {adjective2} water but never {verb2}. My {adjective3} arms reach toward the {noun1}. In autumn I {verb3} and {verb4} with a sigh. What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "verb2", "adjective3", "noun1", "verb3", "verb4"],
+      answer: "A Tree"
+    },
+    {
+      title: "The Counting Puzzle",
+      template: "I have {adjective1} eyes but cannot {verb1}. I have {number} legs but cannot {verb2}. People {verb3} on me when they feel {adjective2}. I'm soft and {adjective3} and help you feel {adjective4}. What am I?",
+      prompts: ["adjective1", "verb1", "number", "verb2", "verb3", "adjective2", "adjective3", "adjective4"],
+      answer: "A Chair"
+    },
+    {
+      title: "The Helpful Holder",
+      template: "I have a {adjective1} bottom but hold {adjective2} things. I can be {adjective3} or {adjective4} with {noun1} and strings. Fill me with {noun2} and I won't {verb1}. But turn me over and everything {verb2}! What am I?",
+      prompts: ["adjective1", "adjective2", "adjective3", "adjective4", "noun1", "noun2", "verb1", "verb2"],
+      answer: "A Bag or Basket"
+    },
+    {
+      title: "The Cold Wonder",
+      template: "I {verb1} from the {adjective1} clouds so {adjective2} and {adjective3}. Each one of me is {adverb} unique, no two alike. I make the ground {adjective4} and children {verb2}. Build me into a {noun1} before I {verb3} away! What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "adverb", "adjective4", "verb2", "noun1", "verb3"],
+      answer: "A Snowflake"
+    },
+    {
+      title: "The Reflection Puzzle",
+      template: "I {verb1} exactly what you do. I'm {adjective1} when you're {adjective1}, {adjective2} when you're {adjective2} too. I live inside a {adjective3} {noun1} on the wall. I never {verb2}, I never {verb3}, but I show you all! What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "noun1", "verb2", "verb3"],
+      answer: "Your Reflection"
+    },
+    {
+      title: "The Colorful Arc",
+      template: "I {verb1} after the {adjective1} rain has gone. I have {number} {adjective2} colors from dusk till dawn. You can {verb2} me but never {verb3}. I'm {adjective3} and {adjective4} and bring everyone {noun1}! What am I?",
+      prompts: ["verb1", "adjective1", "number", "adjective2", "verb2", "verb3", "adjective3", "adjective4", "noun1"],
+      answer: "A Rainbow"
+    },
+    {
+      title: "The Nighttime Mystery",
+      template: "I {verb1} in the {adjective1} night sky so {adjective2}. I'm not the {noun1}, but I still shine {adverb}. Millions of me {verb2} from afar. Make a {adjective3} wish upon this {adjective4} star! What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "noun1", "adverb", "verb2", "adjective3", "adjective4"],
+      answer: "A Star"
+    },
+    {
+      title: "The Round Mystery",
+      template: "I'm {adjective1} and {adjective2} and love to {verb1}. I {verb2} and {verb3} but have no {body_part}. Children {verb4} me in the {adjective3} park. I'm best when {adjective4} and full of {noun1}! What am I?",
+      prompts: ["adjective1", "adjective2", "verb1", "verb2", "verb3", "body_part", "verb4", "adjective3", "adjective4", "noun1"],
+      answer: "A Ball"
+    },
+    {
+      title: "The Tall Helper",
+      template: "I have {number} steps but I'm not a {noun1}. I help you {verb1} up {adjective1} and high. Lean me against the {adjective2} {noun2}. Use me {adverb} and you'll reach the {noun3}! What am I?",
+      prompts: ["number", "noun1", "verb1", "adjective1", "adjective2", "noun2", "adverb", "noun3"],
+      answer: "A Ladder"
+    },
+    {
+      title: "The Sharp Thinker",
+      template: "I have a {adjective1} point but I'm not a {noun1}. I {verb1} on {adjective2} paper without a {noun2}. Hold me {adverb} and {verb2} with care. I leave {adjective3} marks everywhere! What am I?",
+      prompts: ["adjective1", "noun1", "verb1", "adjective2", "noun2", "adverb", "verb2", "adjective3"],
+      answer: "A Pencil"
+    },
+    {
+      title: "The Wrinkly Wisdom",
+      template: "I {verb1} a hundred {noun1} on my face. The older I get, the more I {verb2} with grace. I'm {adjective1} and {adjective2} with {adjective3} skin. {verb3} me up to find the {adjective4} {noun2} within! What am I?",
+      prompts: ["verb1", "noun1", "verb2", "adjective1", "adjective2", "adjective3", "verb3", "adjective4", "noun2"],
+      answer: "A Walnut"
+    },
+    {
+      title: "The Tiny Light",
+      template: "I {verb1} and {verb2} in the {adjective1} night. My {adjective2} tail creates a {adjective3} light. I'm a {adjective4} bug that children chase. Catch me {adverb} in a {noun1} with grace! What am I?",
+      prompts: ["verb1", "verb2", "adjective1", "adjective2", "adjective3", "adjective4", "adverb", "noun1"],
+      answer: "A Firefly"
+    },
+    {
+      title: "The Paper Friend",
+      template: "I have {adjective1} pages filled with {noun1}. I take you to {adjective2} places and {adjective3} lands. Open me up and start to {verb1}. Adventures await on every {adjective4} page! What am I?",
+      prompts: ["adjective1", "noun1", "adjective2", "adjective3", "verb1", "adjective4"],
+      answer: "A Book"
+    },
+    {
+      title: "The Kitchen Riddle",
+      template: "I'm {adjective1} when empty, {adjective2} when I'm full. I can be {adjective3} or made of {noun1}. I hold your {adjective4} {noun2} inside. {verb1} me with care or everything will {verb2}! What am I?",
+      prompts: ["adjective1", "adjective2", "adjective3", "noun1", "adjective4", "noun2", "verb1", "verb2"],
+      answer: "A Cup or Glass"
+    },
+    {
+      title: "The Sweet Secret",
+      template: "I'm made by {adjective1} insects that {verb1} and {verb2}. I'm {adjective2}, {adjective3}, and {color} as can be. Pour me on {noun1} for a {adjective4} treat. I'm {adverb} delicious and impossibly {adjective5}! What am I?",
+      prompts: ["adjective1", "verb1", "verb2", "adjective2", "adjective3", "color", "noun1", "adjective4", "adverb", "adjective5"],
+      answer: "Honey"
+    },
+    {
+      title: "The Ocean Mystery",
+      template: "I {verb1} and {verb2} but have no {body_part}. I crash on the {adjective1} shore then {verb3} again. I'm {adjective2} and {adjective3}, always in motion. I'm made of {adjective4} water from the {adjective5} ocean! What am I?",
+      prompts: ["verb1", "verb2", "body_part", "adjective1", "verb3", "adjective2", "adjective3", "adjective4", "adjective5"],
+      answer: "A Wave"
+    },
+    {
+      title: "The Floating Wonder",
+      template: "I {verb1} across the {adjective1} sky so {adjective2}. I can look like a {noun1} or {noun2} nearby. I'm {adjective3} and {adjective4}, made of {noun3}. When I get {adjective5}, I {verb2} down as rain! What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "noun1", "noun2", "adjective3", "adjective4", "noun3", "adjective5", "verb2"],
+      answer: "A Cloud"
+    },
+    {
+      title: "The Daily Visitor",
+      template: "I {verb1} in the {adjective1} east each day. I {verb2} the {adjective2} sky as I make my way. I give you {adjective3} light and {adjective4} warmth. At {noun1}, I {verb3} and disappear up north! What am I?",
+      prompts: ["verb1", "adjective1", "verb2", "adjective2", "adjective3", "adjective4", "noun1", "verb3"],
+      answer: "The Sun"
+    },
+    {
+      title: "The Spinning Helper",
+      template: "I have {adjective1} blades that {verb1} around. I keep you {adjective2} without a sound. I {verb2} on the {noun1} or hang up {adjective3}. Turn me on when the weather is {adjective4} outside! What am I?",
+      prompts: ["adjective1", "verb1", "adjective2", "verb2", "noun1", "adjective3", "adjective4"],
+      answer: "A Fan"
+    },
+    {
+      title: "The Bouncy Puzzle",
+      template: "I'm {adjective1} and {adjective2} and filled with {noun1}. I {verb1} up high when you {verb2} me at all. I can be {color1}, {color2}, or {color3}. Kids {verb3} with me in the {adjective3} fall! What am I?",
+      prompts: ["adjective1", "adjective2", "noun1", "verb1", "verb2", "color1", "color2", "color3", "verb3", "adjective3"],
+      answer: "A Balloon"
+    },
+    {
+      title: "The Growing Puzzle",
+      template: "I start as a {adjective1} {noun1} in the {adjective2} ground. I {verb1} up tall without making a sound. I have {adjective3} petals and {adjective4} leaves. I {verb2} in the garden and dance in the {noun2}! What am I?",
+      prompts: ["adjective1", "noun1", "adjective2", "verb1", "adjective3", "adjective4", "verb2", "noun2"],
+      answer: "A Flower"
+    },
+    {
+      title: "The Buzzy Worker",
+      template: "I'm {adjective1} and {adjective2} with {adjective3} stripes. I {verb1} from {noun1} to {noun2} all day. I make {adjective4} {noun3} that's {adverb} sweet. Don't {verb2} me or you'll feel my {adjective5} {noun4}! What am I?",
+      prompts: ["adjective1", "adjective2", "adjective3", "verb1", "noun1", "noun2", "adjective4", "noun3", "adverb", "verb2", "adjective5", "noun4"],
+      answer: "A Bee"
+    },
+    {
+      title: "The Two-Sided Friend",
+      template: "I have {number} {adjective1} sides but I'm not a {noun1}. You {verb1} me in the air and watch me {verb2}. I can be {adjective2} or {adjective3} in a bet. Call '{noun2}' or '{noun3}' - what did you get? What am I?",
+      prompts: ["number", "adjective1", "noun1", "verb1", "verb2", "adjective2", "adjective3", "noun2", "noun3"],
+      answer: "A Coin"
+    },
+    {
+      title: "The Written Voice",
+      template: "I {verb1} without a {body_part}. I travel {adjective1} distances without {verb2}. I'm {adjective2} and {adjective3} and folded with care. Put a {adjective4} stamp on me and I'll go anywhere! What am I?",
+      prompts: ["verb1", "body_part", "adjective1", "verb2", "adjective2", "adjective3", "adjective4"],
+      answer: "A Letter"
+    },
+    {
+      title: "The Night Watcher",
+      template: "I {verb1} and {verb2} in the {adjective1} dark. I can be a {noun1} or a {adjective2} spark. I'm the earth's {adjective3} companion up above. I change my {adjective4} shape from {noun2} to {noun3}! What am I?",
+      prompts: ["verb1", "verb2", "adjective1", "noun1", "adjective2", "adjective3", "adjective4", "noun2", "noun3"],
+      answer: "The Moon"
+    },
+    {
+      title: "The Slippery One",
+      template: "I'm {adjective1} and {adjective2} and {verb1} really fast. I have {adjective3} scales and {adjective4} {noun1}. I {verb2} in the {adjective5} water all day. I'm a {adjective6} swimmer in every way! What am I?",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "adjective4", "noun1", "verb2", "adjective5", "adjective6"],
+      answer: "A Fish"
+    },
+    {
+      title: "The Classroom Helper",
+      template: "I'm {adjective1} and {adjective2} and have no {noun1}. I help you {verb1} your {adjective3} mistakes. I {verb2} across the {noun2} with ease. Use me {adverb} and {verb3} as you please! What am I?",
+      prompts: ["adjective1", "adjective2", "noun1", "verb1", "adjective3", "verb2", "noun2", "adverb", "verb3"],
+      answer: "An Eraser"
+    },
+    {
+      title: "The Invisible Force",
+      template: "I {verb1} things together without a sound. I'm {adjective1} and {adjective2} and can be found all around. I keep you on the {adjective3} ground below. Without me, you'd {verb2} off and away you'd go! What am I?",
+      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "verb2"],
+      answer: "Gravity"
+    },
+    {
+      title: "The Quiet Room",
+      template: "I have {adjective1} shelves and {adjective2} books galore. People {verb1} me to learn more and more. Inside you must be {adjective3} as a {noun1}. Read and {verb2} but don't make a peep! What am I?",
+      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "noun1", "verb2"],
+      answer: "A Library"
+    },
+    {
+      title: "The Sharp Smile",
+      template: "I have {number} {adjective1} parts in a {adjective2} row. I {verb1} up and down, to and fro. Use me after every {adjective3} meal. I keep your {noun1} {adjective4} and help you feel {adjective5}! What am I?",
+      prompts: ["number", "adjective1", "adjective2", "verb1", "adjective3", "noun1", "adjective4", "adjective5"],
+      answer: "A Toothbrush"
+    },
+    {
+      title: "The Breakfast Puzzle",
+      template: "I'm {adjective1} and {adjective2} and come from {noun1}. I'm {adjective3} on top and {adjective4} below. I {verb1} in a {noun2} with {adjective5} heat. Add {noun3} and {noun4} for a {adjective6} treat! What am I?",
+      prompts: ["adjective1", "adjective2", "noun1", "adjective3", "adjective4", "verb1", "noun2", "adjective5", "noun3", "noun4", "adjective6"],
+      answer: "Pancakes"
+    },
+    {
+      title: "The Pocket Mystery",
+      template: "I have {adjective1} teeth but never {verb1}. I help you {verb2} but never {verb3}. I'm {adjective2} and {adjective3} and made of {noun1}. Open me up and your {noun2} can go through! What am I?",
+      prompts: ["adjective1", "verb1", "verb2", "verb3", "adjective2", "adjective3", "noun1", "noun2"],
+      answer: "A Zipper"
     }
   ]
 };

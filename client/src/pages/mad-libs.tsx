@@ -31,6 +31,7 @@ export default function MadLibs() {
   const [setupMode, setSetupMode] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<GameCategory>('animals');
   const [currentAnswer, setCurrentAnswer] = useState('');
+  const [answerRevealed, setAnswerRevealed] = useState(false);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
 
@@ -143,7 +144,12 @@ export default function MadLibs() {
       completed: false
     });
     setCurrentAnswer('');
+    setAnswerRevealed(false);
   };
+
+  // Check if current template is a riddle (has an answer field)
+  const isRiddle = currentTemplate && 'answer' in currentTemplate;
+  const riddleAnswer = isRiddle ? (currentTemplate as { answer: string }).answer : null;
 
   const saveGame = () => {
     gameStorage.saveGameState('mad-libs', gameState);
@@ -223,11 +229,19 @@ export default function MadLibs() {
           </Select>
         </OptionGroup>
 
-        <OptionGroup label="Choose a Story">
+        <OptionGroup label={selectedCategory === 'riddles' ? 'Choose a Riddle' : 'Choose a Story'}>
           <div className="space-y-2">
+            {selectedCategory === 'riddles' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-2">
+                <p className="text-xs text-purple-700 text-center">
+                  🧩 Fill in the blanks, then try to guess the hidden answer!
+                </p>
+              </div>
+            )}
             {stories.map((template, index) => {
               const allStories = getAvailableStories(selectedCategory);
               const actualIndex = allStories.findIndex(t => t.title === template.title);
+              const hasAnswer = 'answer' in template;
               
               return (
                 <button
@@ -236,7 +250,12 @@ export default function MadLibs() {
                   className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                   data-testid={`button-story-${index}`}
                 >
-                  <div className="font-medium text-sm text-gray-900">{template.title}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-sm text-gray-900">{template.title}</div>
+                    {hasAnswer && (
+                      <Badge className="bg-purple-100 text-purple-700 text-xs">🤔 Riddle</Badge>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-500">{template.prompts.length} words to fill</div>
                 </button>
               );
@@ -312,16 +331,42 @@ export default function MadLibs() {
           <div className="flex-1 bg-white rounded-lg shadow-sm p-2 overflow-y-auto">
             <div className="text-center mb-2">
               <h3 className="text-sm font-bold mb-1">{currentTemplate?.title}</h3>
-              <p className="text-xs text-gray-600">Your completed story!</p>
+              <p className="text-xs text-gray-600">
+                {isRiddle ? 'Can you guess the answer?' : 'Your completed story!'}
+              </p>
             </div>
             
-            <div className="bg-yellow-50 border-l-2 border-yellow-400 p-2 rounded-r text-xs leading-relaxed overflow-y-auto max-h-96">
+            <div className="bg-yellow-50 border-l-2 border-yellow-400 p-2 rounded-r text-xs leading-relaxed overflow-y-auto max-h-64">
               {renderStory()}
             </div>
             
+            {/* Riddle Answer Section */}
+            {isRiddle && (
+              <div className="mt-3 text-center">
+                {!answerRevealed ? (
+                  <Button 
+                    onClick={() => setAnswerRevealed(true)} 
+                    variant="outline"
+                    className="w-full bg-purple-100 hover:bg-purple-200 border-purple-300 text-purple-700"
+                    size="sm"
+                    data-testid="button-reveal-answer"
+                  >
+                    🤔 Reveal the Answer!
+                  </Button>
+                ) : (
+                  <div className="bg-green-100 border-2 border-green-400 rounded-lg p-3 animate-in fade-in duration-500">
+                    <p className="text-xs text-green-600 font-medium mb-1">The answer is...</p>
+                    <p className="text-lg font-bold text-green-800" data-testid="text-riddle-answer">
+                      {riddleAnswer}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="text-center mt-2">
               <Button onClick={resetGame} className="w-full" size="sm">
-                Create Another Story
+                {isRiddle ? 'Try Another Riddle' : 'Create Another Story'}
               </Button>
             </div>
           </div>
