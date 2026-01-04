@@ -932,17 +932,69 @@ export const RIDDLE_STORIES: RiddleStory[] = [
   { id: 41, title: "The Family Portrait", category: "Classic Riddles", question: "A man looks at a painting and says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is in the painting?", answer: "His son!" },
   { id: 42, title: "The Burning Candle", category: "Classic Riddles", question: "What can burn without air, live without breath, and die without living?", answer: "A candle!" },
   
-  // Kids Favorites
-  { id: 43, title: "The Funny Vegetable", category: "Kids Favorites", question: "What vegetable is always looking at you?", answer: "A potato - because it has eyes!" },
-  { id: 44, title: "The Sleepy Bed", category: "Kids Favorites", question: "What goes to bed with its shoes on?", answer: "A horse!" },
-  { id: 45, title: "The Hungry Clock", category: "Kids Favorites", question: "Why did the clock go back four seconds?", answer: "Because it was hungry!" },
-  { id: 46, title: "The Wet Dog", category: "Kids Favorites", question: "What do you call a dog that does magic tricks?", answer: "A Labracadabrador!" },
-  { id: 47, title: "The Ocean's Question", category: "Kids Favorites", question: "Why can't you tell a secret at the beach?", answer: "Because the sea waves and the sand speaks (sea weed & sand spreads)!" },
-  { id: 48, title: "The Cookie's Problem", category: "Kids Favorites", question: "Why was the cookie sad?", answer: "Because its mom was a wafer so long!" },
-  { id: 49, title: "The Moon's Dinner", category: "Kids Favorites", question: "Why didn't the moon eat dinner?", answer: "Because it was full!" },
-  { id: 50, title: "The Banana's Doctor", category: "Kids Favorites", question: "Why did the banana go to the doctor?", answer: "Because it wasn't peeling well!" },
-  { id: 51, title: "The Teddy's Meal", category: "Kids Favorites", question: "Why don't teddy bears ever order dessert?", answer: "Because they're already stuffed!" },
-  { id: 52, title: "The Skeleton's Party", category: "Kids Favorites", question: "Why didn't the skeleton go to the dance?", answer: "Because he had no-body to go with!" }
+  // More Logic Puzzles
+  { id: 43, title: "The Three Hats", category: "Logic Puzzles", question: "Three men are blindfolded and given hats - either black or white. They can see others' hats but not their own. One says 'I don't know my hat color.' The second says the same. The third, who is blind, correctly names his hat color. How?", answer: "If the first two can't tell, it means they each see at least one white hat. The blind man knows his must be white, or the second would have known." },
+  { id: 44, title: "The Counterfeit Coin", category: "Logic Puzzles", question: "You have 12 coins, one is counterfeit and weighs differently. Using a balance scale only 3 times, how do you find the fake coin AND determine if it's heavier or lighter?", answer: "Weigh 4 vs 4. If balanced, the fake is in the remaining 4. If unbalanced, you've narrowed it to 8 coins. Continue subdividing with clever groupings to isolate the fake in 3 weighings." },
+  { id: 45, title: "The Blue Eyes Island", category: "Logic Puzzles", question: "On an island, 100 people have blue eyes. They can see everyone else's eyes but not their own. If anyone figures out their eye color, they must leave at midnight. A visitor says 'I see someone with blue eyes.' When do they leave?", answer: "On the 100th night, all 100 leave together. Each person reasons: if only 1 had blue eyes, they'd leave night 1. If 2, they'd leave night 2, etc." },
+  { id: 46, title: "The Two Hourglasses", category: "Logic Puzzles", question: "You have a 7-minute hourglass and an 11-minute hourglass. How do you time exactly 15 minutes?", answer: "Start both. When 7 finishes, flip it. When 11 finishes, flip it. When 7 finishes again (14 min total), flip 11. It has 4 min of sand, giving you 15 min when it runs out." },
+  { id: 47, title: "The 100 Prisoners", category: "Logic Puzzles", question: "100 prisoners are numbered 1-100. Each enters a room with 100 boxes containing randomly placed numbers 1-100. Each can open 50 boxes. They all must find their number or everyone dies. They can't communicate after starting. What strategy gives them ~30% survival?", answer: "Each prisoner starts with the box matching their number, then follows the chain (open box N, go to box with number found inside). Statistically, this creates loops with ~30% chance all loops are under 50." },
+  
+  // More Lateral Thinking
+  { id: 48, title: "The Coal and Carrot", category: "Lateral Thinking", question: "Five pieces of coal, a carrot, and a scarf are lying on a lawn. Nobody put them there, but there's a perfectly logical reason for them being there. What is it?", answer: "They were used to make a snowman that melted!" },
+  { id: 49, title: "The Window Jumper", category: "Lateral Thinking", question: "A man walks into a bar and asks for a glass of water. The bartender pulls out a gun and points it at him. The man says 'Thank you' and leaves. Why?", answer: "The man had hiccups. The shock of the gun scared them away!" },
+  { id: 50, title: "The Surgeon's Dilemma", category: "Lateral Thinking", question: "A boy and his father are in a car accident. The father dies. The boy is rushed to surgery. The surgeon says 'I can't operate, this is my son!' How is this possible?", answer: "The surgeon is the boy's mother!" },
+  { id: 51, title: "The Locked Car", category: "Lateral Thinking", question: "A woman pushes her car to a hotel and tells the owner she's bankrupt. Why?", answer: "She's playing Monopoly!" },
+  { id: 52, title: "The Music Stopped", category: "Lateral Thinking", question: "The music stopped. She died. Explain.", answer: "She was a blind tightrope walker who used music to know when to stop. When it stopped unexpectedly, she lost her balance." },
+  { id: 53, title: "The Apple Problem", category: "Lateral Thinking", question: "There are 6 apples in a basket. 6 people each take one apple, yet one apple remains in the basket. How?", answer: "The last person took the basket with the apple still in it!" },
+  { id: 54, title: "The Albatross Soup", category: "Lateral Thinking", question: "A man goes to a restaurant, orders albatross soup, takes one bite, and leaves to end his life. Why?", answer: "Years ago, he was shipwrecked. His wife died and his friend claimed to serve 'albatross soup.' The real taste revealed his friend had actually served his wife." },
+  
+  // More Classic Riddles
+  { id: 55, title: "The Ageless Wonder", category: "Classic Riddles", question: "I am not alive, but I grow. I don't have lungs, but I need air. I don't have a mouth, but water kills me. What am I?", answer: "Fire!" },
+  { id: 56, title: "The Quiet Traveler", category: "Classic Riddles", question: "I fly without wings. I cry without eyes. Wherever I go, darkness flies. What am I?", answer: "A cloud!" },
+  { id: 57, title: "The Endless Hunger", category: "Classic Riddles", question: "The more you feed me, the more I grow. Give me water and I will die. What am I?", answer: "Fire!" },
+  { id: 58, title: "The Invisible Prison", category: "Classic Riddles", question: "I build bridges of silver and crowns of gold. Who am I?", answer: "A spider (webs look like silver, dewdrops like crowns)!" },
+  { id: 59, title: "The Timeless Question", category: "Classic Riddles", question: "What is always coming but never arrives?", answer: "Tomorrow!" },
+  { id: 60, title: "The Weightless Wonder", category: "Classic Riddles", question: "I can be cracked, made, told, and played. What am I?", answer: "A joke!" },
+  { id: 61, title: "The Fingerless Grip", category: "Classic Riddles", question: "What has hands but can't clap?", answer: "A clock!" },
+  { id: 62, title: "The Legless Runner", category: "Classic Riddles", question: "What can run but never walks, has a mouth but never talks, has a head but never weeps, has a bed but never sleeps?", answer: "A river!" },
+  { id: 63, title: "The Seeing Darkness", category: "Classic Riddles", question: "I have no voice, yet I answer when called. I have no feet, yet I run away. What am I?", answer: "An echo!" },
+  
+  // More Observation
+  { id: 64, title: "The Deadly Room", category: "Observation", question: "A man is found dead in a room with 53 bicycles. How did he die?", answer: "The 'bicycles' are Bicycle brand playing cards. He was caught cheating (53 cards means an extra) and was killed." },
+  { id: 65, title: "The Twins' Birthday", category: "Observation", question: "Two girls were born on the same day, same year, to the same mother, but they're not twins. How?", answer: "They're triplets (or more)!" },
+  { id: 66, title: "The Hole Problem", category: "Observation", question: "A man digs a hole that is 3 feet deep, 4 feet long, and 2 feet wide. How many cubic feet of dirt are in the hole?", answer: "None! It's a hole - there's no dirt in it." },
+  { id: 67, title: "The Barrel Weight", category: "Observation", question: "What can you add to a barrel to make it lighter?", answer: "A hole!" },
+  { id: 68, title: "The Truck Problem", category: "Observation", question: "A truck driver is going down a one-way street the wrong way. A police officer sees him but doesn't stop him. Why?", answer: "He's walking, not driving!" },
+  { id: 69, title: "The Only Child", category: "Observation", question: "If your uncle's sister is not your aunt, what relation is she to you?", answer: "She's your mother!" },
+  
+  // More Wordplay
+  { id: 70, title: "The Backward Reader", category: "Wordplay", question: "What word becomes shorter when you add letters to it?", answer: "Short!" },
+  { id: 71, title: "The Beginning of Eternity", category: "Wordplay", question: "What is the beginning of eternity, the end of time and space, the beginning of every end, and the end of every race?", answer: "The letter 'E'!" },
+  { id: 72, title: "The Common Bond", category: "Wordplay", question: "What do these words have in common: banana, dresser, grammar, potato, revive, uneven?", answer: "Take the first letter, place it at the end, and spell backwards - you get the same word!" },
+  { id: 73, title: "The Odd One Out", category: "Wordplay", question: "What is unusual about the following words: revive, banana, grammar, voodoo, assess, potato, dresser, uneven?", answer: "If you take the first letter of each word and place it at the end, then spell it backwards, it spells the same word." },
+  { id: 74, title: "The Number Sequence", category: "Wordplay", question: "What comes next: O, T, T, F, F, S, S, E, N, ?", answer: "T (for Ten) - they're the first letters of One, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten." },
+  { id: 75, title: "The Silent Letter", category: "Wordplay", question: "What starts with T, ends with T, and has T in it?", answer: "A teapot!" },
+  
+  // More Nature
+  { id: 76, title: "The Invisible Presence", category: "Nature", question: "You can see me in water, but I never get wet. What am I?", answer: "A reflection!" },
+  { id: 77, title: "The Impossible Catch", category: "Nature", question: "What can you catch but never throw?", answer: "A cold (or your breath)!" },
+  { id: 78, title: "The Broken Promise", category: "Nature", question: "What breaks but never falls, and what falls but never breaks?", answer: "Day breaks, night falls!" },
+  { id: 79, title: "The Living House", category: "Nature", question: "What type of house weighs the least?", answer: "A lighthouse!" },
+  { id: 80, title: "The Hungry Nothing", category: "Nature", question: "The more you have of it, the less you see. What is it?", answer: "Darkness!" },
+  
+  // More Math
+  { id: 81, title: "The Cheating Scale", category: "Math", question: "A shopkeeper has a balance scale and a 40 kg weight that broke into 4 pieces. Amazingly, he can now weigh any weight from 1 to 40 kg. What are the 4 pieces?", answer: "1, 3, 9, and 27 kg. Using both pans, any weight 1-40 can be measured!" },
+  { id: 82, title: "The Missing Dollar", category: "Math", question: "Three friends pay $10 each for a $30 room. The clerk realizes it should be $25 and sends $5 back with the bellboy, who pockets $2 and returns $1 each. Now each paid $9 ($27 total) + $2 the bellboy has = $29. Where's the missing dollar?", answer: "There is no missing dollar - the math is a trick. The $27 includes the bellboy's $2. You should add: $25 (room) + $2 (bellboy) + $3 (refund) = $30." },
+  { id: 83, title: "The Number Mystery", category: "Math", question: "Using only addition, how can you add eight 8s to get 1000?", answer: "888 + 88 + 8 + 8 + 8 = 1000" },
+  { id: 84, title: "The Age Riddle", category: "Math", question: "When asked her age, a woman said: 'In two years I will be twice as old as I was five years ago.' How old is she?", answer: "She is 12. In two years (14) = twice five years ago (7 × 2 = 14)." },
+  { id: 85, title: "The Lily Pad Puzzle", category: "Math", question: "A lily pad doubles in size every day. If it takes 48 days to cover the pond completely, how many days does it take to cover half the pond?", answer: "47 days! If it doubles each day, the day before full coverage it was half covered." },
+  
+  // Kids Favorites (keeping a few, removing joke-heavy ones)
+  { id: 86, title: "The Sneaky Vegetable", category: "Kids Favorites", question: "What vegetable is always looking at you?", answer: "A potato - because it has eyes!" },
+  { id: 87, title: "The Horse's Bedtime", category: "Kids Favorites", question: "What goes to bed with its shoes on?", answer: "A horse!" },
+  { id: 88, title: "The Clever Keys", category: "Kids Favorites", question: "I have keys but no locks. I have space but no room. You can enter but can't go inside. What am I?", answer: "A keyboard!" },
+  { id: 89, title: "The Impossible Stairs", category: "Kids Favorites", question: "What goes up but never comes down?", answer: "Your age!" },
+  { id: 90, title: "The Quiet Mover", category: "Kids Favorites", question: "What can travel around the world while staying in a corner?", answer: "A stamp!" }
 ];
 
 export const HANGMAN_PUZZLES = [
