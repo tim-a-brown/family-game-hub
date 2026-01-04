@@ -863,261 +863,86 @@ export const MAD_LIBS_TEMPLATES = {
   ]
 };
 
-// Separate riddle templates with hidden answers for the Riddle Stories game
-export interface RiddleTemplate {
+// Classic riddles for the Riddle Stories game
+export const RIDDLE_CATEGORIES = ['Logic Puzzles', 'Wordplay', 'Observation', 'Nature', 'Math', 'Lateral Thinking', 'Classic Riddles', 'Kids Favorites'] as const;
+export type RiddleCategory = typeof RIDDLE_CATEGORIES[number];
+
+export interface RiddleStory {
+  id: number;
   title: string;
-  template: string;
-  prompts: string[];
+  category: RiddleCategory;
+  question: string;
   answer: string;
 }
 
-export const RIDDLE_TEMPLATES: RiddleTemplate[] = [
-    {
-      title: "The Morning Traveler",
-      template: "I {verb1} in the {adjective1} morning and {verb2} all day. By {adjective2} evening, I have {verb3} far away. I follow your every {noun1}, never making a {adjective3} sound. I can be {adjective4} and tall or {adjective5} on the ground. What am I?",
-      prompts: ["verb1", "adjective1", "verb2", "adjective2", "verb3", "noun1", "adjective3", "adjective4", "adjective5"],
-      answer: "A Shadow"
-    },
-    {
-      title: "The Kitchen Helper",
-      template: "I have a {adjective1} face but no {body_part1}. My {adjective2} hands go round and round, {verb1} without a trace. I {verb2} you when to wake and when to {verb3}. Without batteries, I can still {verb4} and keep. What am I?",
-      prompts: ["adjective1", "body_part1", "adjective2", "verb1", "verb2", "verb3", "verb4"],
-      answer: "A Clock"
-    },
-    {
-      title: "The Silent Friend",
-      template: "I have {adjective1} pages but I'm not a {noun1}. I help you {verb1} places but I don't have {body_part}. I show you {adjective2} roads and {adjective3} lands. I fold up {adverb} when held in your hands. What am I?",
-      prompts: ["adjective1", "noun1", "verb1", "body_part", "adjective2", "adjective3", "adverb"],
-      answer: "A Map"
-    },
-    {
-      title: "The Disappearing Act",
-      template: "The more you {verb1} from me, the {adjective1} I become. I start out {adjective2} but end up quite {adjective3}. I can hold your {adjective4} {noun1} with care. Keep {verb2} and {verb3} - soon I won't be there! What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "adjective4", "noun1", "verb2", "verb3"],
-      answer: "A Hole"
-    },
-    {
-      title: "The Wet Wonder",
-      template: "I {verb1} from the {adjective1} sky but I'm not a {noun1}. I make everything {adjective2} when I {verb2} by. Flowers {verb3} and children {verb4} inside. Puddles {verb5} where I {adverb} hide. What am I?",
-      prompts: ["verb1", "adjective1", "noun1", "adjective2", "verb2", "verb3", "verb4", "verb5", "adverb"],
-      answer: "Rain"
-    },
-    {
-      title: "The Bright Mystery",
-      template: "I {verb1} in the {adjective1} darkness but have no {noun1}. I can be {adjective2}, {adjective3}, or {color}. When you {verb2} a switch, I suddenly {verb3}. Without me, you'd {verb4} into {adjective4} things! What am I?",
-      prompts: ["verb1", "adjective1", "noun1", "adjective2", "adjective3", "color", "verb2", "verb3", "verb4", "adjective4"],
-      answer: "Light"
-    },
-    {
-      title: "The Quiet Keeper",
-      template: "I have {adjective1} teeth but cannot {verb1}. I have a {adjective2} head but cannot {verb2}. I {verb3} and {verb4} to keep things {adjective3}. I'm made of {adjective4} metal and {verb5} quite neat. What am I?",
-      prompts: ["adjective1", "verb1", "adjective2", "verb2", "verb3", "verb4", "adjective3", "adjective4", "verb5"],
-      answer: "A Key"
-    },
-    {
-      title: "The Living Puzzle",
-      template: "I {verb1} without {body_part1}, I {verb2} without {body_part2}. I have no {adjective1} wings but can {verb3} anywhere. I'm {adjective2} and {adjective3} and come from the {noun1}. When I {verb4}, I can make grown-ups {verb5}. What am I?",
-      prompts: ["verb1", "body_part1", "verb2", "body_part2", "adjective1", "verb3", "adjective2", "adjective3", "noun1", "verb4", "verb5"],
-      answer: "Wind"
-    },
-    {
-      title: "The Crunchy Clue",
-      template: "I'm {adjective1} on the outside, {adjective2} on the inside too. I come from a {adjective3} {animal} who goes '{sound}.' I can be {verb1} or {verb2} in a {noun1}. At breakfast time, I {verb3} and bring joy! What am I?",
-      prompts: ["adjective1", "adjective2", "adjective3", "animal", "sound", "verb1", "verb2", "noun1", "verb3"],
-      answer: "An Egg"
-    },
-    {
-      title: "The Patient One",
-      template: "I {verb1} all day in the {adjective1} sun. I drink {adjective2} water but never {verb2}. My {adjective3} arms reach toward the {noun1}. In autumn I {verb3} and {verb4} with a sigh. What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "verb2", "adjective3", "noun1", "verb3", "verb4"],
-      answer: "A Tree"
-    },
-    {
-      title: "The Counting Puzzle",
-      template: "I have {adjective1} eyes but cannot {verb1}. I have {number} legs but cannot {verb2}. People {verb3} on me when they feel {adjective2}. I'm soft and {adjective3} and help you feel {adjective4}. What am I?",
-      prompts: ["adjective1", "verb1", "number", "verb2", "verb3", "adjective2", "adjective3", "adjective4"],
-      answer: "A Chair"
-    },
-    {
-      title: "The Helpful Holder",
-      template: "I have a {adjective1} bottom but hold {adjective2} things. I can be {adjective3} or {adjective4} with {noun1} and strings. Fill me with {noun2} and I won't {verb1}. But turn me over and everything {verb2}! What am I?",
-      prompts: ["adjective1", "adjective2", "adjective3", "adjective4", "noun1", "noun2", "verb1", "verb2"],
-      answer: "A Bag or Basket"
-    },
-    {
-      title: "The Cold Wonder",
-      template: "I {verb1} from the {adjective1} clouds so {adjective2} and {adjective3}. Each one of me is {adverb} unique, no two alike. I make the ground {adjective4} and children {verb2}. Build me into a {noun1} before I {verb3} away! What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "adverb", "adjective4", "verb2", "noun1", "verb3"],
-      answer: "A Snowflake"
-    },
-    {
-      title: "The Reflection Puzzle",
-      template: "I {verb1} exactly what you do. I'm {adjective1} when you're {adjective1}, {adjective2} when you're {adjective2} too. I live inside a {adjective3} {noun1} on the wall. I never {verb2}, I never {verb3}, but I show you all! What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "noun1", "verb2", "verb3"],
-      answer: "Your Reflection"
-    },
-    {
-      title: "The Colorful Arc",
-      template: "I {verb1} after the {adjective1} rain has gone. I have {number} {adjective2} colors from dusk till dawn. You can {verb2} me but never {verb3}. I'm {adjective3} and {adjective4} and bring everyone {noun1}! What am I?",
-      prompts: ["verb1", "adjective1", "number", "adjective2", "verb2", "verb3", "adjective3", "adjective4", "noun1"],
-      answer: "A Rainbow"
-    },
-    {
-      title: "The Nighttime Mystery",
-      template: "I {verb1} in the {adjective1} night sky so {adjective2}. I'm not the {noun1}, but I still shine {adverb}. Millions of me {verb2} from afar. Make a {adjective3} wish upon this {adjective4} star! What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "noun1", "adverb", "verb2", "adjective3", "adjective4"],
-      answer: "A Star"
-    },
-    {
-      title: "The Round Mystery",
-      template: "I'm {adjective1} and {adjective2} and love to {verb1}. I {verb2} and {verb3} but have no {body_part}. Children {verb4} me in the {adjective3} park. I'm best when {adjective4} and full of {noun1}! What am I?",
-      prompts: ["adjective1", "adjective2", "verb1", "verb2", "verb3", "body_part", "verb4", "adjective3", "adjective4", "noun1"],
-      answer: "A Ball"
-    },
-    {
-      title: "The Tall Helper",
-      template: "I have {number} steps but I'm not a {noun1}. I help you {verb1} up {adjective1} and high. Lean me against the {adjective2} {noun2}. Use me {adverb} and you'll reach the {noun3}! What am I?",
-      prompts: ["number", "noun1", "verb1", "adjective1", "adjective2", "noun2", "adverb", "noun3"],
-      answer: "A Ladder"
-    },
-    {
-      title: "The Sharp Thinker",
-      template: "I have a {adjective1} point but I'm not a {noun1}. I {verb1} on {adjective2} paper without a {noun2}. Hold me {adverb} and {verb2} with care. I leave {adjective3} marks everywhere! What am I?",
-      prompts: ["adjective1", "noun1", "verb1", "adjective2", "noun2", "adverb", "verb2", "adjective3"],
-      answer: "A Pencil"
-    },
-    {
-      title: "The Wrinkly Wisdom",
-      template: "I {verb1} a hundred {noun1} on my face. The older I get, the more I {verb2} with grace. I'm {adjective1} and {adjective2} with {adjective3} skin. {verb3} me up to find the {adjective4} {noun2} within! What am I?",
-      prompts: ["verb1", "noun1", "verb2", "adjective1", "adjective2", "adjective3", "verb3", "adjective4", "noun2"],
-      answer: "A Walnut"
-    },
-    {
-      title: "The Tiny Light",
-      template: "I {verb1} and {verb2} in the {adjective1} night. My {adjective2} tail creates a {adjective3} light. I'm a {adjective4} bug that children chase. Catch me {adverb} in a {noun1} with grace! What am I?",
-      prompts: ["verb1", "verb2", "adjective1", "adjective2", "adjective3", "adjective4", "adverb", "noun1"],
-      answer: "A Firefly"
-    },
-    {
-      title: "The Paper Friend",
-      template: "I have {adjective1} pages filled with {noun1}. I take you to {adjective2} places and {adjective3} lands. Open me up and start to {verb1}. Adventures await on every {adjective4} page! What am I?",
-      prompts: ["adjective1", "noun1", "adjective2", "adjective3", "verb1", "adjective4"],
-      answer: "A Book"
-    },
-    {
-      title: "The Kitchen Riddle",
-      template: "I'm {adjective1} when empty, {adjective2} when I'm full. I can be {adjective3} or made of {noun1}. I hold your {adjective4} {noun2} inside. {verb1} me with care or everything will {verb2}! What am I?",
-      prompts: ["adjective1", "adjective2", "adjective3", "noun1", "adjective4", "noun2", "verb1", "verb2"],
-      answer: "A Cup or Glass"
-    },
-    {
-      title: "The Sweet Secret",
-      template: "I'm made by {adjective1} insects that {verb1} and {verb2}. I'm {adjective2}, {adjective3}, and {color} as can be. Pour me on {noun1} for a {adjective4} treat. I'm {adverb} delicious and impossibly {adjective5}! What am I?",
-      prompts: ["adjective1", "verb1", "verb2", "adjective2", "adjective3", "color", "noun1", "adjective4", "adverb", "adjective5"],
-      answer: "Honey"
-    },
-    {
-      title: "The Ocean Mystery",
-      template: "I {verb1} and {verb2} but have no {body_part}. I crash on the {adjective1} shore then {verb3} again. I'm {adjective2} and {adjective3}, always in motion. I'm made of {adjective4} water from the {adjective5} ocean! What am I?",
-      prompts: ["verb1", "verb2", "body_part", "adjective1", "verb3", "adjective2", "adjective3", "adjective4", "adjective5"],
-      answer: "A Wave"
-    },
-    {
-      title: "The Floating Wonder",
-      template: "I {verb1} across the {adjective1} sky so {adjective2}. I can look like a {noun1} or {noun2} nearby. I'm {adjective3} and {adjective4}, made of {noun3}. When I get {adjective5}, I {verb2} down as rain! What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "noun1", "noun2", "adjective3", "adjective4", "noun3", "adjective5", "verb2"],
-      answer: "A Cloud"
-    },
-    {
-      title: "The Daily Visitor",
-      template: "I {verb1} in the {adjective1} east each day. I {verb2} the {adjective2} sky as I make my way. I give you {adjective3} light and {adjective4} warmth. At {noun1}, I {verb3} and disappear up north! What am I?",
-      prompts: ["verb1", "adjective1", "verb2", "adjective2", "adjective3", "adjective4", "noun1", "verb3"],
-      answer: "The Sun"
-    },
-    {
-      title: "The Spinning Helper",
-      template: "I have {adjective1} blades that {verb1} around. I keep you {adjective2} without a sound. I {verb2} on the {noun1} or hang up {adjective3}. Turn me on when the weather is {adjective4} outside! What am I?",
-      prompts: ["adjective1", "verb1", "adjective2", "verb2", "noun1", "adjective3", "adjective4"],
-      answer: "A Fan"
-    },
-    {
-      title: "The Bouncy Puzzle",
-      template: "I'm {adjective1} and {adjective2} and filled with {noun1}. I {verb1} up high when you {verb2} me at all. I can be {color1}, {color2}, or {color3}. Kids {verb3} with me in the {adjective3} fall! What am I?",
-      prompts: ["adjective1", "adjective2", "noun1", "verb1", "verb2", "color1", "color2", "color3", "verb3", "adjective3"],
-      answer: "A Balloon"
-    },
-    {
-      title: "The Growing Puzzle",
-      template: "I start as a {adjective1} {noun1} in the {adjective2} ground. I {verb1} up tall without making a sound. I have {adjective3} petals and {adjective4} leaves. I {verb2} in the garden and dance in the {noun2}! What am I?",
-      prompts: ["adjective1", "noun1", "adjective2", "verb1", "adjective3", "adjective4", "verb2", "noun2"],
-      answer: "A Flower"
-    },
-    {
-      title: "The Buzzy Worker",
-      template: "I'm {adjective1} and {adjective2} with {adjective3} stripes. I {verb1} from {noun1} to {noun2} all day. I make {adjective4} {noun3} that's {adverb} sweet. Don't {verb2} me or you'll feel my {adjective5} {noun4}! What am I?",
-      prompts: ["adjective1", "adjective2", "adjective3", "verb1", "noun1", "noun2", "adjective4", "noun3", "adverb", "verb2", "adjective5", "noun4"],
-      answer: "A Bee"
-    },
-    {
-      title: "The Two-Sided Friend",
-      template: "I have {number} {adjective1} sides but I'm not a {noun1}. You {verb1} me in the air and watch me {verb2}. I can be {adjective2} or {adjective3} in a bet. Call '{noun2}' or '{noun3}' - what did you get? What am I?",
-      prompts: ["number", "adjective1", "noun1", "verb1", "verb2", "adjective2", "adjective3", "noun2", "noun3"],
-      answer: "A Coin"
-    },
-    {
-      title: "The Written Voice",
-      template: "I {verb1} without a {body_part}. I travel {adjective1} distances without {verb2}. I'm {adjective2} and {adjective3} and folded with care. Put a {adjective4} stamp on me and I'll go anywhere! What am I?",
-      prompts: ["verb1", "body_part", "adjective1", "verb2", "adjective2", "adjective3", "adjective4"],
-      answer: "A Letter"
-    },
-    {
-      title: "The Night Watcher",
-      template: "I {verb1} and {verb2} in the {adjective1} dark. I can be a {noun1} or a {adjective2} spark. I'm the earth's {adjective3} companion up above. I change my {adjective4} shape from {noun2} to {noun3}! What am I?",
-      prompts: ["verb1", "verb2", "adjective1", "noun1", "adjective2", "adjective3", "adjective4", "noun2", "noun3"],
-      answer: "The Moon"
-    },
-    {
-      title: "The Slippery One",
-      template: "I'm {adjective1} and {adjective2} and {verb1} really fast. I have {adjective3} scales and {adjective4} {noun1}. I {verb2} in the {adjective5} water all day. I'm a {adjective6} swimmer in every way! What am I?",
-      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "adjective4", "noun1", "verb2", "adjective5", "adjective6"],
-      answer: "A Fish"
-    },
-    {
-      title: "The Classroom Helper",
-      template: "I'm {adjective1} and {adjective2} and have no {noun1}. I help you {verb1} your {adjective3} mistakes. I {verb2} across the {noun2} with ease. Use me {adverb} and {verb3} as you please! What am I?",
-      prompts: ["adjective1", "adjective2", "noun1", "verb1", "adjective3", "verb2", "noun2", "adverb", "verb3"],
-      answer: "An Eraser"
-    },
-    {
-      title: "The Invisible Force",
-      template: "I {verb1} things together without a sound. I'm {adjective1} and {adjective2} and can be found all around. I keep you on the {adjective3} ground below. Without me, you'd {verb2} off and away you'd go! What am I?",
-      prompts: ["verb1", "adjective1", "adjective2", "adjective3", "verb2"],
-      answer: "Gravity"
-    },
-    {
-      title: "The Quiet Room",
-      template: "I have {adjective1} shelves and {adjective2} books galore. People {verb1} me to learn more and more. Inside you must be {adjective3} as a {noun1}. Read and {verb2} but don't make a peep! What am I?",
-      prompts: ["adjective1", "adjective2", "verb1", "adjective3", "noun1", "verb2"],
-      answer: "A Library"
-    },
-    {
-      title: "The Sharp Smile",
-      template: "I have {number} {adjective1} parts in a {adjective2} row. I {verb1} up and down, to and fro. Use me after every {adjective3} meal. I keep your {noun1} {adjective4} and help you feel {adjective5}! What am I?",
-      prompts: ["number", "adjective1", "adjective2", "verb1", "adjective3", "noun1", "adjective4", "adjective5"],
-      answer: "A Toothbrush"
-    },
-    {
-      title: "The Breakfast Puzzle",
-      template: "I'm {adjective1} and {adjective2} and come from {noun1}. I'm {adjective3} on top and {adjective4} below. I {verb1} in a {noun2} with {adjective5} heat. Add {noun3} and {noun4} for a {adjective6} treat! What am I?",
-      prompts: ["adjective1", "adjective2", "noun1", "adjective3", "adjective4", "verb1", "noun2", "adjective5", "noun3", "noun4", "adjective6"],
-      answer: "Pancakes"
-    },
-    {
-      title: "The Pocket Mystery",
-      template: "I have {adjective1} teeth but never {verb1}. I help you {verb2} but never {verb3}. I'm {adjective2} and {adjective3} and made of {noun1}. Open me up and your {noun2} can go through! What am I?",
-      prompts: ["adjective1", "verb1", "verb2", "verb3", "adjective2", "adjective3", "noun1", "noun2"],
-      answer: "A Zipper"
-    }
+export const RIDDLE_STORIES: RiddleStory[] = [
+  // Logic Puzzles
+  { id: 1, title: "The River Crossing", category: "Logic Puzzles", question: "A farmer needs to get a fox, a hen, and corn across a river, but can only take one at a time. He can't leave the fox with the hen or the hen with the corn! How does he do it?", answer: "He takes the hen first, returns, takes the fox, brings the hen back, takes the corn, returns, and takes the hen last." },
+  { id: 2, title: "The Light Bulb Room", category: "Logic Puzzles", question: "There are three light switches outside a closed room. One controls a light bulb inside. You can flip the switches however you want, but can only enter the room once. How do you figure out which switch controls the bulb?", answer: "Turn on switch 1 for a few minutes, then turn it off. Turn on switch 2 and enter. If the bulb is on, it's switch 2. If it's off but warm, it's switch 1. If it's off and cold, it's switch 3." },
+  { id: 3, title: "The Two Doors", category: "Logic Puzzles", question: "You're in a room with two doors. One leads to freedom, one to doom. Two guards stand by - one always lies, one always tells the truth. You can ask one question to one guard. What do you ask?", answer: "Ask either guard: 'Which door would the other guard say leads to freedom?' Then choose the opposite door." },
+  { id: 4, title: "The Bridge at Night", category: "Logic Puzzles", question: "Four people need to cross a bridge at night with one flashlight. The bridge holds only two people at a time. They take 1, 2, 5, and 10 minutes respectively. When two cross, they go at the slower person's pace. What's the fastest they can all cross?", answer: "17 minutes: 1 & 2 cross (2 min), 1 returns (1 min), 5 & 10 cross (10 min), 2 returns (2 min), 1 & 2 cross (2 min)." },
+  { id: 5, title: "The Poisoned Wine", category: "Logic Puzzles", question: "A king has 1000 bottles of wine and one is poisoned. The poison takes exactly 24 hours to kill. The king has 10 prisoners to test the wine. How can he find the poisoned bottle in just 24 hours?", answer: "Use binary: Assign each bottle a 10-digit binary number. Each prisoner drinks from bottles with a '1' in their digit position. The pattern of deaths reveals the poisoned bottle's number." },
+  
+  // Wordplay
+  { id: 6, title: "The Shorter Word", category: "Wordplay", question: "What five-letter word gets shorter when you add two letters to it?", answer: "Short! (Add 'er' to get 'shorter')" },
+  { id: 7, title: "The Sad Fruit", category: "Wordplay", question: "What fruit can you never cheer up?", answer: "A blueberry!" },
+  { id: 8, title: "The Breakfast Riddle", category: "Wordplay", question: "What can you break without touching it?", answer: "A promise!" },
+  { id: 9, title: "The Calendar Puzzle", category: "Wordplay", question: "What occurs once in a minute, twice in a moment, but never in a thousand years?", answer: "The letter 'M'!" },
+  { id: 10, title: "The Spelling Bee", category: "Wordplay", question: "What starts with 'e' and ends with 'e' but only has one letter in it?", answer: "An envelope!" },
+  { id: 11, title: "The Heavy Question", category: "Wordplay", question: "What weighs more, a pound of feathers or a pound of bricks?", answer: "They weigh the same - both are a pound!" },
+  { id: 12, title: "The Invisible Letters", category: "Wordplay", question: "What word is spelled wrong in every dictionary?", answer: "The word 'wrong'!" },
+  { id: 13, title: "The Growing Word", category: "Wordplay", question: "I have keys but no locks. I have space but no room. You can enter but can't go inside. What am I?", answer: "A keyboard!" },
+  
+  // Observation
+  { id: 14, title: "The Grandfather's Hair", category: "Observation", question: "A grandfather goes for a walk in the rain, gets completely soaked, but not a single hair on his head gets wet. Why?", answer: "He's bald!" },
+  { id: 15, title: "The Electric Train", category: "Observation", question: "An electric train is heading north. The wind is blowing west. Which way does the smoke blow?", answer: "Electric trains don't produce smoke!" },
+  { id: 16, title: "The Doctor's Son", category: "Observation", question: "A father and son are in a car accident. The father dies. The son is rushed to the hospital. The surgeon says, 'I can't operate on this boy, he's my son!' How is this possible?", answer: "The surgeon is the boy's mother!" },
+  { id: 17, title: "The Coin Toss", category: "Observation", question: "If you throw a red stone into a blue sea, what will it become?", answer: "Wet!" },
+  { id: 18, title: "The Rooster's Egg", category: "Observation", question: "A rooster sits on the peak of a roof. Which way does the egg roll?", answer: "Roosters don't lay eggs!" },
+  { id: 19, title: "The Peacock Eggs", category: "Observation", question: "If a peacock lays an egg on the border between two farms, whose egg is it?", answer: "Peacocks don't lay eggs - peahens do!" },
+  
+  // Nature
+  { id: 20, title: "The Echo", category: "Nature", question: "Many have heard it, but no one has seen it. It doesn't talk back until spoken to. What is it?", answer: "An echo!" },
+  { id: 21, title: "The Sun's Shadow", category: "Nature", question: "I follow you all day long, but when the sun goes down, I disappear. What am I?", answer: "Your shadow!" },
+  { id: 22, title: "The Water Riddle", category: "Nature", question: "What can fill a room but takes up no space?", answer: "Light!" },
+  { id: 23, title: "The Snowman's Fate", category: "Nature", question: "What gets bigger the more you take away from it?", answer: "A hole!" },
+  { id: 24, title: "The Mountain Mystery", category: "Nature", question: "What has a head and a tail but no body?", answer: "A coin!" },
+  { id: 25, title: "The River Question", category: "Nature", question: "What has a mouth but never eats, has a bed but never sleeps?", answer: "A river!" },
+  { id: 26, title: "The Wind Riddle", category: "Nature", question: "You can catch me but cannot throw me. What am I?", answer: "A cold!" },
+  
+  // Math
+  { id: 27, title: "The Age Puzzle", category: "Math", question: "If you have a bowl with six apples and you take away four, how many do you have?", answer: "Four - that's how many you took!" },
+  { id: 28, title: "The Dozen Eggs", category: "Math", question: "A clerk at a butcher shop is 5 feet 10 inches tall and wears size 13 sneakers. What does he weigh?", answer: "Meat - he works at a butcher shop!" },
+  { id: 29, title: "The Division Problem", category: "Math", question: "How can you divide 10 apples among 11 people fairly, using math?", answer: "Make applesauce! (Or: cut each apple into 11 pieces)" },
+  { id: 30, title: "The Birthday Puzzle", category: "Math", question: "Two fathers and two sons go fishing. They each catch one fish. They bring home 3 fish. How?", answer: "There are only 3 people: a grandfather, his son, and his grandson!" },
+  { id: 31, title: "The Bus Driver", category: "Math", question: "You're a bus driver. At the first stop, 4 people get on. At the second stop, 8 people get on and 1 gets off. At the third stop, 2 get off and 6 get on. What color are the bus driver's eyes?", answer: "Whatever color YOUR eyes are - you're the bus driver!" },
+  
+  // Lateral Thinking
+  { id: 32, title: "The Man in the Elevator", category: "Lateral Thinking", question: "A man lives on the 10th floor. Every day he takes the elevator down to the lobby. When he returns, he takes the elevator to the 7th floor and walks up 3 flights. Why?", answer: "He's short and can only reach the button for the 7th floor!" },
+  { id: 33, title: "The Cabin in the Woods", category: "Lateral Thinking", question: "A man is found dead in a cabin in the woods. The cabin is perfectly intact. How did he die?", answer: "It's an airplane cabin - the plane crashed!" },
+  { id: 34, title: "The Hanging Man", category: "Lateral Thinking", question: "A man is found hanging in an otherwise empty locked room with a puddle of water under him. How did he do it?", answer: "He stood on a block of ice that melted!" },
+  { id: 35, title: "The Magician's Hat", category: "Lateral Thinking", question: "A magician claims he can throw a ball so that it goes a short distance, comes to a complete stop, then reverses direction and comes back. He doesn't bounce it or tie anything to it. How?", answer: "He throws it straight up in the air!" },
+  { id: 36, title: "The Desert Discovery", category: "Lateral Thinking", question: "A man is found dead in the desert holding a straw. What happened?", answer: "He was in a hot air balloon that was losing altitude. They drew straws to see who would jump to save the others." },
+  
+  // Classic Riddles
+  { id: 37, title: "The Sphinx's Riddle", category: "Classic Riddles", question: "What walks on four legs in the morning, two legs at noon, and three legs in the evening?", answer: "A human! (Crawls as a baby, walks as an adult, uses a cane when elderly)" },
+  { id: 38, title: "The Time Traveler", category: "Classic Riddles", question: "The more you take, the more you leave behind. What am I?", answer: "Footsteps!" },
+  { id: 39, title: "The Silent Room", category: "Classic Riddles", question: "I speak without a mouth and hear without ears. I have no body, but I come alive with the wind. What am I?", answer: "An echo!" },
+  { id: 40, title: "The Endless Road", category: "Classic Riddles", question: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?", answer: "A map!" },
+  { id: 41, title: "The Family Portrait", category: "Classic Riddles", question: "A man looks at a painting and says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is in the painting?", answer: "His son!" },
+  { id: 42, title: "The Burning Candle", category: "Classic Riddles", question: "What can burn without air, live without breath, and die without living?", answer: "A candle!" },
+  
+  // Kids Favorites
+  { id: 43, title: "The Funny Vegetable", category: "Kids Favorites", question: "What vegetable is always looking at you?", answer: "A potato - because it has eyes!" },
+  { id: 44, title: "The Sleepy Bed", category: "Kids Favorites", question: "What goes to bed with its shoes on?", answer: "A horse!" },
+  { id: 45, title: "The Hungry Clock", category: "Kids Favorites", question: "Why did the clock go back four seconds?", answer: "Because it was hungry!" },
+  { id: 46, title: "The Wet Dog", category: "Kids Favorites", question: "What do you call a dog that does magic tricks?", answer: "A Labracadabrador!" },
+  { id: 47, title: "The Ocean's Question", category: "Kids Favorites", question: "Why can't you tell a secret at the beach?", answer: "Because the sea waves and the sand speaks (sea weed & sand spreads)!" },
+  { id: 48, title: "The Cookie's Problem", category: "Kids Favorites", question: "Why was the cookie sad?", answer: "Because its mom was a wafer so long!" },
+  { id: 49, title: "The Moon's Dinner", category: "Kids Favorites", question: "Why didn't the moon eat dinner?", answer: "Because it was full!" },
+  { id: 50, title: "The Banana's Doctor", category: "Kids Favorites", question: "Why did the banana go to the doctor?", answer: "Because it wasn't peeling well!" },
+  { id: 51, title: "The Teddy's Meal", category: "Kids Favorites", question: "Why don't teddy bears ever order dessert?", answer: "Because they're already stuffed!" },
+  { id: 52, title: "The Skeleton's Party", category: "Kids Favorites", question: "Why didn't the skeleton go to the dance?", answer: "Because he had no-body to go with!" }
 ];
 
 export const HANGMAN_PUZZLES = [
