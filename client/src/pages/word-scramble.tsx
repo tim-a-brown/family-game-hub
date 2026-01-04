@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GameStorage } from "@/lib/game-storage";
 import { WORD_LISTS, type GameCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
+import wordScrambleIcon from "@assets/generated_images/word_scramble_tile_icon.png";
 
 interface GameState {
   originalWord: string;
@@ -263,58 +265,35 @@ export default function WordScramble() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Word Scramble"  />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
-                <div className="space-y-1">
-                  {(['easy', 'medium', 'hard'] as const).map(difficulty => (
-                    <Button
-                      key={difficulty}
-                      variant={selectedDifficulty === difficulty ? "default" : "outline"}
-                      onClick={() => setSelectedDifficulty(difficulty)}
-                      className="w-full justify-between text-xs h-8"
-                    >
-                      <span className="capitalize">{difficulty}</span>
-                      <span className="text-xs">
-                        {formatTime(DIFFICULTY_SETTINGS[difficulty].timeLimit)} • 
-                        {DIFFICULTY_SETTINGS[difficulty].maxHints} hints
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
+      <GameSetupLayout title="Word Scramble" icon={wordScrambleIcon} onStart={startNewGame}>
+        <OptionGroup label="Difficulty">
+          <OptionButtons 
+            options={['Easy', 'Medium', 'Hard']} 
+            selected={selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)} 
+            onSelect={(v) => setSelectedDifficulty((v as string).toLowerCase() as 'easy' | 'medium' | 'hard')} 
+            columns={3}
+          />
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            {formatTime(DIFFICULTY_SETTINGS[selectedDifficulty].timeLimit)} • {DIFFICULTY_SETTINGS[selectedDifficulty].maxHints} hints
+          </p>
+        </OptionGroup>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {Object.keys(WORD_LISTS).sort().map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Start Game
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <OptionGroup label="Category">
+          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {Object.keys(WORD_LISTS).sort().map(category => (
+                <SelectItem key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

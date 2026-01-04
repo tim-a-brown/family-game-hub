@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
+import shellGameIcon from "@assets/generated_images/shell_game_tile_icon.png";
 
 interface GameState {
   ballPosition: number;
@@ -378,40 +380,22 @@ export default function ShellGame() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Shell Game"  />
-        
-        <div className="max-w-md mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Choose Difficulty</h2>
-              
-              <div className="space-y-4">
-                {(['easy', 'medium', 'hard'] as const).map(difficulty => {
-                  const settings = DIFFICULTY_SETTINGS[difficulty];
-                  return (
-                    <Button
-                      key={difficulty}
-                      variant={selectedDifficulty === difficulty ? "default" : "outline"}
-                      onClick={() => setSelectedDifficulty(difficulty)}
-                      className="w-full justify-between"
-                    >
-                      <span className="capitalize">{difficulty}</span>
-                      <span className="text-xs">
-                        {settings.rounds} rounds • {settings.shuffleCount} shuffles
-                      </span>
-                    </Button>
-                  );
-                })}
-                
-                <Button onClick={startNewGame} className="w-full mt-6" size="lg">
-                  Start Game
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <GameSetupLayout title="Shell Game" icon={shellGameIcon} onStart={startNewGame}>
+        <OptionGroup label="Difficulty">
+          <OptionButtons
+            options={['Easy', 'Medium', 'Hard']}
+            selected={selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
+            onSelect={(v) => setSelectedDifficulty((v as string).toLowerCase() as 'easy' | 'medium' | 'hard')}
+          />
+        </OptionGroup>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-sm text-gray-500">
+            {selectedDifficulty === 'easy' && 'Easy: 5 rounds, 5 shuffles - Perfect for beginners'}
+            {selectedDifficulty === 'medium' && 'Medium: 7 rounds, 8 shuffles - A fair challenge'}
+            {selectedDifficulty === 'hard' && 'Hard: 10 rounds, 12 shuffles - For sharp eyes only'}
+          </div>
         </div>
-      </div>
+      </GameSetupLayout>
     );
   }
 

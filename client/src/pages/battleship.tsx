@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
+import { GameSetupLayout, OptionGroup } from "@/components/game-setup-layout";
+import battleshipIcon from "@assets/generated_images/battleship_game_tile_icon.png";
 
 type CellState = 'empty' | 'ship' | 'hit' | 'miss' | 'sunk';
 type GamePhase = 'setup' | 'playing' | 'finished';
@@ -42,6 +44,7 @@ const SHIPS = [
 ];
 
 export default function Battleship() {
+  const [setupMode, setSetupMode] = useState(true);
   const [gameState, setGameState] = useState<GameState>({
     phase: 'setup',
     playerBoard: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill('empty')),
@@ -64,6 +67,7 @@ export default function Battleship() {
     const saved = gameStorage.loadGameState('battleship');
     if (saved) {
       setGameState(saved);
+      setSetupMode(false);
     }
   }, []);
 
@@ -376,7 +380,12 @@ export default function Battleship() {
       playerHits: 0,
       opponentHits: 0
     });
+    setSetupMode(true);
     gameStorage.deleteGameState('battleship');
+  };
+
+  const startNewGame = () => {
+    setSetupMode(false);
   };
 
   const getCellClass = (cellState: CellState, isPlayerBoard: boolean, isOpponentBoard: boolean = false): string => {
@@ -406,6 +415,31 @@ export default function Battleship() {
       default: return '';
     }
   };
+
+  if (setupMode) {
+    return (
+      <GameSetupLayout title="Battleship" icon={battleshipIcon} onStart={startNewGame}>
+        <OptionGroup label="How to Play">
+          <div className="text-sm text-gray-600 space-y-2">
+            <p>1. Place your 5 ships on the grid</p>
+            <p>2. Take turns firing at the enemy's grid</p>
+            <p>3. Sink all enemy ships to win!</p>
+          </div>
+        </OptionGroup>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-sm font-medium text-gray-700 mb-2">Your Fleet</div>
+          <div className="space-y-1">
+            {SHIPS.map(ship => (
+              <div key={ship.name} className="flex justify-between text-sm text-gray-500">
+                <span>{ship.name}</span>
+                <span>{ship.size} cells</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </GameSetupLayout>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">

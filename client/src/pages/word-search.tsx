@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { GameStorage } from "@/lib/game-storage";
 import { WORD_LISTS, BONUS_WORDS, WORD_SEARCH_CATEGORIES, GAME_CATEGORIES, type GameCategory, type WordSearchCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
 import { useAutoSave } from "@/hooks/use-auto-save";
+import wordSearchIcon from "@assets/generated_images/word_search_game_tile_icon.png";
 
 interface Position {
   row: number;
@@ -498,37 +500,27 @@ export default function WordSearch() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Word Search" />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Choose Category</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
-                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as WordSearchCategory)}>
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WORD_SEARCH_CATEGORIES.map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category === 'random' ? '🎲 Random' : category.charAt(0).toUpperCase() + category.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Generate Puzzle
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <GameSetupLayout 
+        title="Word Search" 
+        icon={wordSearchIcon}
+        onStart={startNewGame}
+        startLabel="Generate Puzzle"
+      >
+        <OptionGroup label="Theme">
+          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as WordSearchCategory)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {WORD_SEARCH_CATEGORIES.map(category => (
+                <SelectItem key={category} value={category}>
+                  {category === 'random' ? '🎲 Random' : category.charAt(0).toUpperCase() + category.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

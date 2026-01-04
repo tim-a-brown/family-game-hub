@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useAutoSave } from "@/hooks/use-auto-save";
+import ticTacToeIcon from "@assets/generated_images/tic-tac-toe_game_tile_icon.png";
 
 type Player = 'X' | 'O' | '△' | null;
 type Board = Player[];
@@ -16,7 +18,7 @@ interface GameState {
   currentPlayer: Player;
   players: Player[];
   gameMode: GameMode;
-  scores: Record<Player, number>;
+  scores: Record<'X' | 'O' | '△', number>;
   gameWon: boolean;
   winner: Player | null;
 }
@@ -221,59 +223,40 @@ export default function TicTacToe() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Tic-Tac-Toe" />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Players</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map(num => (
-                    <Button
-                      key={num}
-                      variant={selectedPlayers === num ? "default" : "outline"}
-                      onClick={() => setSelectedPlayers(num)}
-                      className="w-full text-xs px-2 py-1 h-8"
-                    >
-                      {num} {num === 1 ? '(AI)' : ''}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+      <GameSetupLayout 
+        title="Tic-Tac-Toe" 
+        icon={ticTacToeIcon}
+        onStart={startNewGame}
+      >
+        <OptionGroup label="Players">
+          <OptionButtons 
+            options={['1 (AI)', '2', '3']} 
+            selected={selectedPlayers === 1 ? '1 (AI)' : String(selectedPlayers)} 
+            onSelect={(v) => setSelectedPlayers(v === '1 (AI)' ? 1 : Number(v))}
+            columns={3}
+          />
+        </OptionGroup>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Boards</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map(num => (
-                    <Button
-                      key={num}
-                      variant={selectedBoards === num ? "default" : "outline"}
-                      onClick={() => setSelectedBoards(num)}
-                      disabled={selectedPlayers === 3 && num === 1}
-                      className="w-full text-xs px-2 py-1 h-8"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-                {selectedPlayers === 3 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    3 players need 2+ boards
-                  </p>
-                )}
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Start Game
-              </Button>
-            </div>
+        <OptionGroup label="Boards">
+          <div className="space-y-2">
+            <OptionButtons 
+              options={[1, 2, 3]} 
+              selected={selectedBoards} 
+              onSelect={(v) => {
+                if (!(selectedPlayers === 3 && v === 1)) {
+                  setSelectedBoards(v as number);
+                }
+              }}
+              columns={3}
+            />
+            {selectedPlayers === 3 && (
+              <p className="text-xs text-gray-500">
+                3 players need 2+ boards
+              </p>
+            )}
           </div>
-        </div>
-      </div>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 
@@ -302,7 +285,7 @@ export default function TicTacToe() {
             </Button>
           </div>
           <div className="text-xs text-gray-600 mt-1">
-            Scores: {gameState.players.map(player => 
+            Scores: {gameState.players.filter((p): p is 'X' | 'O' | '△' => p !== null).map(player => 
               `${player}:${gameState.scores[player]}`
             ).join(' | ')}
           </div>

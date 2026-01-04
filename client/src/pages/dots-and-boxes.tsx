@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
+import dotsBoxesIcon from "@assets/generated_images/dots_and_boxes_tile_icon.png";
 
 interface Line {
   start: { row: number; col: number };
@@ -261,77 +263,38 @@ export default function DotsAndBoxes() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Dots and Boxes"  />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Players</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[2, 3].map(players => (
-                    <Button
-                      key={players}
-                      variant={selectedPlayers === players ? "default" : "outline"}
-                      onClick={() => setSelectedPlayers(players)}
-                      className="w-full text-xs h-8"
-                    >
-                      {players} Players
-                    </Button>
-                  ))}
-                </div>
-              </div>
+      <GameSetupLayout title="Dots and Boxes" icon={dotsBoxesIcon} onStart={startNewGame}>
+        <OptionGroup label="Players">
+          <OptionButtons 
+            options={[2, 3]} 
+            selected={selectedPlayers} 
+            onSelect={(v) => setSelectedPlayers(v as number)} 
+          />
+        </OptionGroup>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Grid Size</label>
-                <div className="grid grid-cols-4 gap-1 mb-1">
-                  {[3, 4, 5, 6].map(size => (
-                    <Button
-                      key={size}
-                      variant={selectedSize === size ? "default" : "outline"}
-                      onClick={() => setSelectedSize(size)}
-                      className="w-full text-xs h-6"
-                    >
-                      {size}×{size}
-                    </Button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-4 gap-1 mb-1">
-                  {[7, 8, 9, 10].map(size => (
-                    <Button
-                      key={size}
-                      variant={selectedSize === size ? "default" : "outline"}
-                      onClick={() => setSelectedSize(size)}
-                      className="w-full text-xs h-6"
-                    >
-                      {size}×{size}
-                    </Button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {[12, 13, 15].map(size => (
-                    <Button
-                      key={size}
-                      variant={selectedSize === size ? "default" : "outline"}
-                      onClick={() => setSelectedSize(size)}
-                      className="w-full text-xs h-6"
-                    >
-                      {size}×{size}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Start Game
-              </Button>
-            </div>
+        <OptionGroup label="Grid Size">
+          <div className="space-y-2">
+            <OptionButtons 
+              options={['3×3', '4×4', '5×5', '6×6']} 
+              selected={`${selectedSize}×${selectedSize}`} 
+              onSelect={(v) => setSelectedSize(parseInt((v as string).split('×')[0]))} 
+              columns={4}
+            />
+            <OptionButtons 
+              options={['7×7', '8×8', '9×9', '10×10']} 
+              selected={`${selectedSize}×${selectedSize}`} 
+              onSelect={(v) => setSelectedSize(parseInt((v as string).split('×')[0]))} 
+              columns={4}
+            />
+            <OptionButtons 
+              options={['12×12', '13×13', '15×15']} 
+              selected={`${selectedSize}×${selectedSize}`} 
+              onSelect={(v) => setSelectedSize(parseInt((v as string).split('×')[0]))} 
+              columns={3}
+            />
           </div>
-        </div>
-      </div>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
+import connectFourIcon from "@assets/generated_images/connect_four_tile_icon.png";
 
 type Player = 1 | 2;
 type Cell = Player | null;
@@ -356,41 +358,20 @@ export default function ConnectFour() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Connect Four"  />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant={selectedMode === '1-player' ? "default" : "outline"}
-                    onClick={() => setSelectedMode('1-player')}
-                    className="w-full text-xs px-2 py-1 h-8"
-                  >
-                    vs AI
-                  </Button>
-                  <Button
-                    variant={selectedMode === '2-player' ? "default" : "outline"}
-                    onClick={() => setSelectedMode('2-player')}
-                    className="w-full text-xs px-2 py-1 h-8"
-                  >
-                    2 Players
-                  </Button>
-                </div>
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Start Game
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <GameSetupLayout 
+        title="Connect Four" 
+        icon={connectFourIcon} 
+        onStart={startNewGame}
+      >
+        <OptionGroup label="Game Mode">
+          <OptionButtons 
+            options={['vs AI', '2 Players']} 
+            selected={selectedMode === '1-player' ? 'vs AI' : '2 Players'} 
+            onSelect={(v) => setSelectedMode(v === 'vs AI' ? '1-player' : '2-player')}
+            columns={3}
+          />
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

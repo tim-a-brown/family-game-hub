@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
+import sudokuIcon from "@assets/generated_images/sudoku_game_tile_icon.png";
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -308,35 +310,23 @@ export default function Sudoku() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Sudoku"  />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Choose Difficulty</h2>
-            
-            <div className="space-y-3">
-              {(['easy', 'medium', 'hard'] as const).map(difficulty => (
-                <Button
-                  key={difficulty}
-                  variant={selectedDifficulty === difficulty ? "default" : "outline"}
-                  onClick={() => setSelectedDifficulty(difficulty)}
-                  className="w-full justify-between text-xs h-8"
-                >
-                  <span className="capitalize">{difficulty}</span>
-                  <span className="text-xs">
-                    {DIFFICULTY_SETTINGS[difficulty].maxHints} hints
-                  </span>
-                </Button>
-              ))}
-              
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Generate Puzzle
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <GameSetupLayout 
+        title="Sudoku" 
+        icon={sudokuIcon} 
+        onStart={startNewGame}
+        startLabel="Generate Puzzle"
+      >
+        <OptionGroup label="Difficulty">
+          <OptionButtons 
+            options={['Easy', 'Medium', 'Hard']} 
+            selected={selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)} 
+            onSelect={(v) => setSelectedDifficulty((v as string).toLowerCase() as Difficulty)}
+          />
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            {DIFFICULTY_SETTINGS[selectedDifficulty].maxHints} hints available
+          </p>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GameStorage } from "@/lib/game-storage";
 import { WOULD_YOU_RATHER_SCENARIOS, GAME_CATEGORIES, type GameCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
+import wouldYouRatherIcon from "@assets/generated_images/would_you_rather_tile_icon.png";
 
 interface PlayerChoice {
   playerName: string;
@@ -185,54 +187,36 @@ export default function WouldYouRather() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Would You Rather"  />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Players</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[2, 3, 4, 5, 6].map(num => (
-                    <Button
-                      key={num}
-                      variant={numPlayers === num ? "default" : "outline"}
-                      onClick={() => setNumPlayers(num)}
-                      className="w-full text-xs h-8"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+      <GameSetupLayout 
+        title="Would You Rather" 
+        icon={wouldYouRatherIcon}
+        onStart={startNewGame}
+      >
+        <OptionGroup label="Players">
+          <OptionButtons 
+            options={[2, 3, 4, 5, 6]} 
+            selected={numPlayers} 
+            onSelect={(v) => setNumPlayers(v as number)}
+            columns={5}
+          />
+        </OptionGroup>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {[...GAME_CATEGORIES].sort().map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Start Game
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <OptionGroup label="Category">
+          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as GameCategory | 'all')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {[...GAME_CATEGORIES].sort().map(category => (
+                <SelectItem key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

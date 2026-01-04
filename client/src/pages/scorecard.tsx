@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { GameStorage } from "@/lib/game-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Minus, RotateCcw, Users, Trophy } from "lucide-react";
+import scorecardIcon from "@assets/generated_images/scorecard_game_tile_icon.png";
 
 interface Player {
   id: string;
@@ -45,7 +47,7 @@ export default function Scorecard() {
       setGameState(saved);
       setSetupMode(false);
       // Initialize score inputs
-      const inputs = saved.players.reduce((acc, player) => {
+      const inputs = saved.players.reduce((acc: Record<string, string>, player: Player) => {
         acc[player.id] = '';
         return acc;
       }, {} as Record<string, string>);
@@ -278,79 +280,60 @@ export default function Scorecard() {
 
   if (setupMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <GameHeader title="Scorecard"  />
-        
-        <div className="max-w-2xl mx-auto pt-8 px-4">
-          <Card className="shadow-xl">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6">Setup Game</h2>
-              
-              <div className="space-y-6">
-                {/* Game Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Game Name</label>
-                  <Input
-                    value={newGameName}
-                    onChange={(e) => setNewGameName(e.target.value)}
-                    placeholder="Enter game name (e.g., Scrabble, Monopoly)"
-                    className="w-full"
-                  />
+      <GameSetupLayout 
+        title="Scorecard" 
+        icon={scorecardIcon} 
+        onStart={startGame}
+        startDisabled={gameState.players.length < 2 || !newGameName.trim()}
+      >
+        <OptionGroup label="Game Name">
+          <Input
+            value={newGameName}
+            onChange={(e) => setNewGameName(e.target.value)}
+            placeholder="Enter game name (e.g., Scrabble, Monopoly)"
+            className="w-full"
+            data-testid="input-game-name"
+          />
+        </OptionGroup>
+
+        <OptionGroup label="Add Players">
+          <div className="flex space-x-2">
+            <Input
+              value={newPlayerName}
+              onChange={(e) => setNewPlayerName(e.target.value)}
+              placeholder="Player name"
+              className="flex-1"
+              onKeyPress={(e) => e.key === 'Enter' && addPlayer()}
+              data-testid="input-player-name"
+            />
+            <Button onClick={addPlayer} data-testid="button-add-player">
+              <Plus className="w-4 h-4 mr-1" />
+              Add
+            </Button>
+          </div>
+        </OptionGroup>
+
+        {gameState.players.length > 0 && (
+          <OptionGroup label={`Players (${gameState.players.length})`}>
+            <div className="space-y-2">
+              {gameState.players.map((player) => (
+                <div key={player.id} className="flex justify-between items-center p-2 bg-gray-100 rounded-lg">
+                  <span className="font-medium text-sm">{player.name}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => removePlayer(player.id)}
+                    className="text-red-600 hover:text-red-800 h-7 w-7 p-0"
+                    data-testid={`button-remove-player-${player.id}`}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
                 </div>
-
-                {/* Add Players */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Add Players</label>
-                  <div className="flex space-x-2">
-                    <Input
-                      value={newPlayerName}
-                      onChange={(e) => setNewPlayerName(e.target.value)}
-                      placeholder="Player name"
-                      className="flex-1"
-                      onKeyPress={(e) => e.key === 'Enter' && addPlayer()}
-                    />
-                    <Button onClick={addPlayer}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Player List */}
-                {gameState.players.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Players ({gameState.players.length})</h3>
-                    <div className="space-y-2">
-                      {gameState.players.map((player) => (
-                        <div key={player.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span className="font-medium">{player.name}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => removePlayer(player.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <Button 
-                  onClick={startGame} 
-                  className="w-full" 
-                  size="lg"
-                  disabled={gameState.players.length < 2 || !newGameName.trim()}
-                >
-                  Start Game
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              ))}
+            </div>
+          </OptionGroup>
+        )}
+      </GameSetupLayout>
     );
   }
 

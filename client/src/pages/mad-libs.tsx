@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GameStorage } from "@/lib/game-storage";
 import { MAD_LIBS_TEMPLATES, GAME_CATEGORIES, type GameCategory } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
+import madLibsIcon from "@assets/generated_images/mad_libs_game_tile_icon.png";
 
 interface GameState {
   category: GameCategory;
@@ -197,76 +199,51 @@ export default function MadLibs() {
   };
 
   if (setupMode) {
+    const stories = getRandomStories(selectedCategory);
+    
     return (
-      <div className="h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex flex-col">
-        <GameHeader title="Mad Libs" />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Choose Adventure!</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Category:</label>
-                <Select value={selectedCategory} onValueChange={(value: GameCategory) => setSelectedCategory(value)}>
-                  <SelectTrigger className="w-full h-8 text-xs">
-                    <SelectValue placeholder="Choose category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GAME_CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <GameSetupLayout 
+        title="Mad Libs" 
+        icon={madLibsIcon} 
+        onStart={startRandomGame}
+        startLabel="🎲 Random Story"
+      >
+        <OptionGroup label="Category">
+          <Select value={selectedCategory} onValueChange={(value: GameCategory) => setSelectedCategory(value)}>
+            <SelectTrigger className="w-full" data-testid="select-category">
+              <SelectValue placeholder="Choose category" />
+            </SelectTrigger>
+            <SelectContent>
+              {GAME_CATEGORIES.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </OptionGroup>
 
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm">Stories:</h3>
-                {getRandomStories(selectedCategory).map((template, index) => {
-                  const backgrounds = [
-                    'bg-blue-100 hover:bg-blue-200',
-                    'bg-green-100 hover:bg-green-200', 
-                    'bg-purple-100 hover:bg-purple-200'
-                  ];
-                  
-                  return (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className={`p-2 h-auto text-left justify-start w-full ${backgrounds[index]}`}
-                      onClick={() => {
-                        const allStories = getAvailableStories(selectedCategory);
-                        const actualIndex = allStories.findIndex(t => t.title === template.title);
-                        startNewGame(selectedCategory, actualIndex);
-                      }}
-                    >
-                      <div>
-                        <div className="font-semibold text-xs">{template.title}</div>
-                        <div className="text-xs text-gray-600">
-                          {template.prompts.length} words
-                        </div>
-                      </div>
-                    </Button>
-                  );
-                })}
-                
-                <Button
-                  variant="secondary"
-                  className="p-2 h-auto w-full bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200"
-                  onClick={startRandomGame}
+        <OptionGroup label="Choose a Story">
+          <div className="space-y-2">
+            {stories.map((template, index) => {
+              const allStories = getAvailableStories(selectedCategory);
+              const actualIndex = allStories.findIndex(t => t.title === template.title);
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => startNewGame(selectedCategory, actualIndex)}
+                  className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  data-testid={`button-story-${index}`}
                 >
-                  <div className="text-center w-full">
-                    <div className="font-semibold text-xs">🎲 Random Story!</div>
-                    <div className="text-xs text-gray-600">Any category</div>
-                  </div>
-                </Button>
-              </div>
-            </div>
+                  <div className="font-medium text-sm text-gray-900">{template.title}</div>
+                  <div className="text-xs text-gray-500">{template.prompts.length} words to fill</div>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 

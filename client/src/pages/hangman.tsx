@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GameHeader } from "@/components/game-header";
+import { GameSetupLayout, OptionGroup, OptionButtons } from "@/components/game-setup-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { GameStorage } from "@/lib/game-storage";
 import { HANGMAN_PUZZLES } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
 import { useAutoSave } from "@/hooks/use-auto-save";
+import hangmanIcon from "@assets/generated_images/hangman_game_tile_icon.png";
 
 interface GameState {
   puzzle: string;
@@ -232,75 +234,48 @@ export default function Hangman() {
 
   if (setupMode) {
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
-        <GameHeader title="Hangman"  />
-        
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-center mb-4">Game Setup</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant={selectedMode === 'single' ? "default" : "outline"}
-                    onClick={() => {
-                      setSelectedMode('single');
-                      setShowCustomInput(false);
-                    }}
-                    className="w-full text-xs px-2 py-1 h-8"
-                  >
-                    Random
-                  </Button>
-                  <Button
-                    variant={selectedMode === 'two-player' ? "default" : "outline"}
-                    onClick={() => {
-                      setSelectedMode('two-player');
-                      setShowCustomInput(true);
-                    }}
-                    className="w-full text-xs px-2 py-1 h-8"
-                  >
-                    Custom
-                  </Button>
-                </div>
-              </div>
+      <GameSetupLayout 
+        title="Hangman" 
+        icon={hangmanIcon}
+        onStart={startNewGame}
+      >
+        <OptionGroup label="Mode">
+          <OptionButtons 
+            options={['Random', 'Custom']} 
+            selected={selectedMode === 'single' ? 'Random' : 'Custom'} 
+            onSelect={(v) => {
+              if (v === 'Random') {
+                setSelectedMode('single');
+                setShowCustomInput(false);
+              } else {
+                setSelectedMode('two-player');
+                setShowCustomInput(true);
+              }
+            }}
+            columns={3}
+          />
+        </OptionGroup>
 
-              {showCustomInput && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Puzzle</label>
-                  <Input
-                    value={customPuzzle}
-                    onChange={(e) => setCustomPuzzle(e.target.value)}
-                    placeholder="Enter word or phrase..."
-                    className="w-full text-sm h-8"
-                  />
-                </div>
-              )}
+        {showCustomInput && (
+          <OptionGroup label="Puzzle">
+            <Input
+              value={customPuzzle}
+              onChange={(e) => setCustomPuzzle(e.target.value)}
+              placeholder="Enter word or phrase..."
+              className="w-full"
+            />
+          </OptionGroup>
+        )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Wrong Answers</label>
-                <div className="grid grid-cols-5 gap-1">
-                  {[6, 7, 8, 9, 10].map(num => (
-                    <Button
-                      key={num}
-                      variant={maxWrong === num ? "default" : "outline"}
-                      onClick={() => setMaxWrong(num)}
-                      className="w-full text-xs px-1 py-1 h-8"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <Button onClick={startNewGame} className="w-full mt-4" size="sm">
-                Start Game
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <OptionGroup label="Wrong Answers">
+          <OptionButtons 
+            options={[6, 7, 8, 9, 10]} 
+            selected={maxWrong} 
+            onSelect={(v) => setMaxWrong(v as number)}
+            columns={5}
+          />
+        </OptionGroup>
+      </GameSetupLayout>
     );
   }
 
