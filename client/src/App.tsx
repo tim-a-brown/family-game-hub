@@ -19,6 +19,7 @@ import Sudoku from "@/pages/sudoku";
 import ConnectFour from "@/pages/connect-four";
 import Battleship from "@/pages/battleship";
 import ShellGame from "@/pages/shell-game";
+import RiddleStories from "@/pages/riddle-stories";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/connect-four" component={ConnectFour} />
       <Route path="/battleship" component={Battleship} />
       <Route path="/shell-game" component={ShellGame} />
+      <Route path="/riddle-stories" component={RiddleStories} />
       <Route component={NotFound} />
     </Switch>
   );

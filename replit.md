@@ -130,7 +130,7 @@ PUT /api/game-states/:id - Update existing game state
 - January 4, 2026. Redesigned home screen to scrollable 3-column grid layout with minimal header (iOS/Android home screen style)
 - January 4, 2026. Created reusable GameSetupLayout component for consistent game setup screens
 - January 4, 2026. Redesigned all 14 game setup screens with minimal aesthetic: gray-100 background, white cards, dark buttons, compact header with game icons
-- January 4, 2026. Added Riddle Stories category to Mad Libs with 40+ riddles featuring hidden answers for family challenge mode
+- January 4, 2026. Added Riddle Stories as a separate standalone game (15th game) with 40+ riddles featuring fill-in-the-blank puzzles and hidden answer reveals
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

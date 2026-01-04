@@ -6,7 +6,6 @@ export const GAME_CATEGORIES = [
   'jobs',
   'kids tv and movies',
   'magical',
-  'riddles',
   'school',
   'silly fun',
   'sports',
@@ -340,16 +339,6 @@ export const WORD_LISTS: Record<GameCategory, string[]> = {
     'environment', 'nature', 'recycling', 'conservation', 'earth', 'day', 'pollution', 'clean', 'green', 'eco',
     'diversity', 'differences', 'cultures', 'languages', 'traditions', 'acceptance', 'inclusion', 'understanding', 'tolerance', 'respect'
   ],
-  'riddles': [
-    'mystery', 'puzzle', 'clue', 'hint', 'answer', 'guess', 'think', 'solve', 'riddle', 'brain',
-    'teaser', 'trick', 'question', 'secret', 'hidden', 'discover', 'reveal', 'figure', 'out', 'clever',
-    'wise', 'smart', 'tricky', 'confusing', 'surprising', 'unexpected', 'unusual', 'strange', 'curious', 'wonder',
-    'sunrise', 'sunset', 'shadow', 'mirror', 'echo', 'clock', 'candle', 'river', 'mountain', 'ocean',
-    'tree', 'flower', 'rain', 'snow', 'wind', 'fire', 'water', 'earth', 'air', 'sun',
-    'moon', 'star', 'cloud', 'rainbow', 'thunder', 'lightning', 'fog', 'mist', 'frost', 'ice',
-    'egg', 'needle', 'key', 'lock', 'door', 'window', 'stairs', 'bridge', 'road', 'path',
-    'book', 'letter', 'word', 'name', 'silence', 'darkness', 'light', 'time', 'memory', 'dream'
-  ]
 };
 
 // Bonus words for each category - these are hidden in the puzzle but not in the word bank
@@ -365,8 +354,7 @@ export const BONUS_WORDS: Record<GameCategory, string[]> = {
   'food fun': ['delicious', 'nutritious', 'appetizing', 'scrumptious', 'flavorful', 'tasty', 'savory', 'cuisine', 'recipe', 'ingredient'],
   'vacations': ['destination', 'excursion', 'expedition', 'getaway', 'retreat', 'journey', 'voyage', 'adventure', 'exploration', 'relaxation'],
   'cool technology': ['innovation', 'advancement', 'breakthrough', 'discovery', 'invention', 'development', 'progress', 'evolution', 'revolution', 'futuristic'],
-  'kids tv and movies': ['entertainment', 'storytelling', 'animation', 'characters', 'adventure', 'imagination', 'creativity', 'inspiration', 'education', 'childhood'],
-  'riddles': ['enigma', 'conundrum', 'brainteaser', 'puzzlement', 'mystery', 'question', 'challenge', 'riddle', 'secret', 'answer']
+  'kids tv and movies': ['entertainment', 'storytelling', 'animation', 'characters', 'adventure', 'imagination', 'creativity', 'inspiration', 'education', 'childhood']
 };
 
 export const WORD_SEARCH_CATEGORIES = ['random', ...[...GAME_CATEGORIES].sort()] as const;
@@ -454,13 +442,6 @@ export const WOULD_YOU_RATHER_SCENARIOS: Record<GameCategory, string[]> = {
     'Would you rather have a smartphone that never breaks or a computer that never gets slow?',
     'Would you rather be able to teleport anywhere or time travel?',
     'Would you rather invent something amazing or discover something incredible?'
-  ],
-  'riddles': [
-    'Would you rather solve the hardest riddle in the world or create an unsolvable one?',
-    'Would you rather always know the answer or never forget a clue?',
-    'Would you rather be a puzzle master or a mystery solver?',
-    'Would you rather have a secret nobody can guess or know everyones secrets?',
-    'Would you rather think fast or think deep?'
   ],
   'kids tv and movies': [
     'Would you rather be in your favorite animated movie or your favorite live-action movie?',
@@ -879,8 +860,18 @@ export const MAD_LIBS_TEMPLATES = {
       template: "Our job was to {verb1} valuable {noun1} from the {adjective1} asteroid belt. We {verb2} our {adjective2} mining ship through {number} floating {adjective3} rocks. Each asteroid contained {adjective4} {mineral} that {verb3} when exposed to {adjective5} light. We collected {number2} tons of {adjective6} materials and {verb4} them back to the {adjective7} space colony where everyone {verb5}!",
       prompts: ["verb1", "noun1", "adjective1", "verb2", "adjective2", "number", "adjective3", "adjective4", "mineral", "verb3", "adjective5", "number2", "adjective6", "verb4", "adjective7", "verb5"]
     }
-  ],
-  riddles: [
+  ]
+};
+
+// Separate riddle templates with hidden answers for the Riddle Stories game
+export interface RiddleTemplate {
+  title: string;
+  template: string;
+  prompts: string[];
+  answer: string;
+}
+
+export const RIDDLE_TEMPLATES: RiddleTemplate[] = [
     {
       title: "The Morning Traveler",
       template: "I {verb1} in the {adjective1} morning and {verb2} all day. By {adjective2} evening, I have {verb3} far away. I follow your every {noun1}, never making a {adjective3} sound. I can be {adjective4} and tall or {adjective5} on the ground. What am I?",
@@ -1127,8 +1118,7 @@ export const MAD_LIBS_TEMPLATES = {
       prompts: ["adjective1", "verb1", "verb2", "verb3", "adjective2", "adjective3", "noun1", "noun2"],
       answer: "A Zipper"
     }
-  ]
-};
+];
 
 export const HANGMAN_PUZZLES = [
   // 1 word puzzles (8-21 letters)

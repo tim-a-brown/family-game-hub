@@ -15,6 +15,7 @@ import sudokuImg from "@assets/generated_images/sudoku_game_tile_icon.png";
 import connectFourImg from "@assets/generated_images/connect_four_tile_icon.png";
 import battleshipImg from "@assets/generated_images/battleship_game_tile_icon.png";
 import shellGameImg from "@assets/generated_images/shell_game_tile_icon.png";
+import riddleStoriesImg from "@assets/generated_images/riddle_stories_game_tile_icon.png";
 
 const GAMES = [
   { title: "Tic-Tac-Toe", image: ticTacToeImg, route: "/tic-tac-toe", slug: "tic-tac-toe" },
@@ -30,7 +31,8 @@ const GAMES = [
   { title: "Sudoku", image: sudokuImg, route: "/sudoku", slug: "sudoku" },
   { title: "Connect Four", image: connectFourImg, route: "/connect-four", slug: "connect-four" },
   { title: "Battleship", image: battleshipImg, route: "/battleship", slug: "battleship" },
-  { title: "Shell Game", image: shellGameImg, route: "/shell-game", slug: "shell-game" }
+  { title: "Shell Game", image: shellGameImg, route: "/shell-game", slug: "shell-game" },
+  { title: "Riddle Stories", image: riddleStoriesImg, route: "/riddle-stories", slug: "riddle-stories" }
 ];
 
 export default function Home() {
