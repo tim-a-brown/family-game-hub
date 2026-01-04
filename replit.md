@@ -126,6 +126,10 @@ PUT /api/game-states/:id - Update existing game state
 - June 26, 2025. Enhanced Hangman with 260+ puzzles (8-21 letters, 1-3 words), dynamic drawing system that synchronizes with wrong answer limit (6-10 configurable)
 - June 26, 2025. Enhanced Would You Rather with hidden choices until game end, 6-second pass screen between players for privacy
 - June 26, 2025. Enhanced Word Search with random category option, alphabetized categories, 250+ words per category, 3 hidden bonus words per puzzle, improved touch/drag selection
+- January 4, 2026. Created custom generated tile images for all 14 games with unique visual identities
+- January 4, 2026. Redesigned home screen to scrollable 3-column grid layout with minimal header (iOS/Android home screen style)
+- January 4, 2026. Created reusable GameSetupLayout component for consistent game setup screens
+- January 4, 2026. Redesigned all 14 game setup screens with minimal aesthetic: gray-100 background, white cards, dark buttons, compact header with game icons
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
