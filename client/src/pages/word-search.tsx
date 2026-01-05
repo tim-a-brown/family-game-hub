@@ -68,6 +68,7 @@ export default function WordSearch() {
 
   const [setupMode, setSetupMode] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<WordSearchCategory>('random');
+  const [showWordList, setShowWordList] = useState(false);
   const { toast } = useToast();
   const gameStorage = GameStorage.getInstance();
   
@@ -547,34 +548,62 @@ export default function WordSearch() {
           </div>
         </div>
 
-        {/* Words List - scrollable horizontally */}
-        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-            <span className="text-xs font-medium text-gray-500 shrink-0">Find:</span>
-            {gameState.wordList.map((word, index) => {
-              const isFound = gameState.foundWords.includes(word);
-              return (
-                <span
-                  key={index}
-                  className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
-                    isFound 
-                      ? 'bg-green-500 text-white line-through opacity-60' 
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {word}
-                </span>
-              );
-            })}
-            {gameState.foundBonusWords.map((word, index) => (
-              <span
-                key={`bonus-${index}`}
-                className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-400 text-yellow-900"
-              >
-                ⭐ {word}
+        {/* Words List - tap to expand */}
+        <div className="bg-white rounded-lg shadow-sm mb-2 overflow-hidden">
+          <button
+            onClick={() => setShowWordList(!showWordList)}
+            className="w-full p-3 flex items-center justify-between text-left"
+            data-testid="button-toggle-words"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                Words to Find
               </span>
-            ))}
-          </div>
+              <span className="text-xs text-gray-400">
+                ({gameState.wordList.length - gameState.foundWords.length} left)
+              </span>
+            </div>
+            <span className="text-gray-400 text-lg">
+              {showWordList ? '▲' : '▼'}
+            </span>
+          </button>
+          
+          {showWordList && (
+            <div className="px-3 pb-3 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                {gameState.wordList.map((word, index) => {
+                  const isFound = gameState.foundWords.includes(word);
+                  return (
+                    <div
+                      key={index}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium text-center transition-all ${
+                        isFound 
+                          ? 'bg-green-100 text-green-700 line-through opacity-60' 
+                          : 'bg-gray-50 text-gray-800'
+                      }`}
+                    >
+                      {word}
+                    </div>
+                  );
+                })}
+              </div>
+              {gameState.foundBonusWords.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-gray-100">
+                  <div className="text-xs font-medium text-yellow-600 mb-2">Bonus Words Found:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {gameState.foundBonusWords.map((word, index) => (
+                      <span
+                        key={`bonus-${index}`}
+                        className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800"
+                      >
+                        ⭐ {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Grid - optimized for touch */}
