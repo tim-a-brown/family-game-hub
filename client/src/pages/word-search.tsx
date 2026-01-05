@@ -405,10 +405,9 @@ export default function WordSearch() {
   };
 
   const handleCellClick = (row: number, col: number) => {
-    // If clicking the first selected cell, deselect everything
+    // If clicking the first selected cell (start position), deselect everything
     if (gameState.isSelecting && gameState.startPos && 
-        gameState.startPos.row === row && gameState.startPos.col === col &&
-        gameState.selectedCells.length === 1) {
+        gameState.startPos.row === row && gameState.startPos.col === col) {
       setGameState(prev => ({
         ...prev,
         selectedCells: [],
