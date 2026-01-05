@@ -530,79 +530,67 @@ export default function WordSearch() {
       
       <div className="flex-1 flex flex-col p-2 max-w-sm mx-auto w-full">
         {/* Compact Status */}
-        <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
-          <div className="flex justify-between items-center text-xs">
-            <div className="flex items-center space-x-1">
-              <Badge variant="secondary" className="text-xs px-1 py-0">
-                {gameState.category === 'random' ? '🎲' : gameState.category.slice(0,6)}
-              </Badge>
-              <span className="text-xs">
-                {gameState.foundWords.length}/{gameState.wordList.length}
+        <div className="bg-white rounded-lg shadow-sm p-3 mb-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                🎯 {gameState.foundWords.length}/{gameState.wordList.length}
               </span>
               {gameState.foundBonusWords.length > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800 text-xs px-1 py-0">
-                  +{gameState.foundBonusWords.length}
-                </Badge>
+                <span className="text-sm text-yellow-600">⭐ +{gameState.foundBonusWords.length}</span>
               )}
-              {gameState.gameWon && <Badge className="bg-green-100 text-green-800 text-xs px-1 py-0">Won! 🎉</Badge>}
+              {gameState.gameWon && <span className="text-sm text-green-600 font-medium">Complete! 🎉</span>}
             </div>
-            <Button variant="outline" size="sm" onClick={resetGame} className="text-xs px-2 py-1 h-6">
+            <Button variant="outline" size="sm" onClick={resetGame} data-testid="button-new-game">
               New
             </Button>
           </div>
         </div>
 
-        {/* Words List */}
+        {/* Words List - scrollable horizontally */}
         <div className="bg-white rounded-lg shadow-sm p-2 mb-2">
-          <div className="text-xs font-medium text-gray-700 mb-1">Words:</div>
-          <div className="grid grid-cols-3 gap-1 text-xs max-h-16 overflow-y-auto">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            <span className="text-xs font-medium text-gray-500 shrink-0">Find:</span>
             {gameState.wordList.map((word, index) => {
               const isFound = gameState.foundWords.includes(word);
               return (
-                <div
+                <span
                   key={index}
-                  className={`p-0.5 rounded text-center transition-all text-xs ${
+                  className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
                     isFound 
-                      ? 'bg-green-100 text-green-800 line-through' 
+                      ? 'bg-green-500 text-white line-through opacity-60' 
                       : 'bg-gray-100 text-gray-700'
                   }`}
                 >
-                  {word.slice(0,6)}
-                </div>
+                  {word}
+                </span>
               );
             })}
+            {gameState.foundBonusWords.map((word, index) => (
+              <span
+                key={`bonus-${index}`}
+                className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-400 text-yellow-900"
+              >
+                ⭐ {word}
+              </span>
+            ))}
           </div>
-
-          {gameState.foundBonusWords.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-200">
-              <div className="text-xs font-medium text-yellow-700 mb-1">Bonus:</div>
-              <div className="flex flex-wrap gap-1">
-                {gameState.foundBonusWords.map((word, index) => (
-                  <div key={index} className="text-xs p-1 rounded bg-yellow-100 text-yellow-800">
-                    {word}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Compact Grid */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm p-2">
-          <div className="relative w-full h-full">
-            <>
+        {/* Grid - optimized for touch */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-1 overflow-hidden">
+          <div className="relative w-full aspect-square max-h-full">
             <div 
-              className="grid w-full h-full select-none relative"
+              className="grid w-full h-full select-none"
               style={{ 
                 gridTemplateColumns: 'repeat(16, 1fr)',
-                gap: '0.5px',
+                gridTemplateRows: 'repeat(16, 1fr)',
+                gap: '1px',
                 touchAction: 'none',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
-                overflow: 'hidden'
+                WebkitTouchCallout: 'none'
               }}
-              onTouchStart={(e) => e.preventDefault()}
-              onTouchMove={(e) => e.preventDefault()}
             >
               {gameState.grid.map((row, rowIndex) =>
                 row.map((cell, colIndex) => {
@@ -793,25 +781,6 @@ export default function WordSearch() {
                     })}
                   </svg>
 
-                {/* Reset Button - appears at bottom during selection */}
-                {gameState.selectedCells.length > 0 && (
-                  <div className="flex justify-center mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setGameState(prev => ({
-                        ...prev,
-                        selectedCells: [],
-                        isSelecting: false,
-                        startPos: null
-                      }))}
-                      className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                    >
-                      Reset Selection
-                    </Button>
-                  </div>
-                )}
-            </>
           </div>
         </div>
       </div>
