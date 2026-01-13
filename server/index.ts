@@ -51,8 +51,9 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
-    const { setupVite } = await import("./vite");
-    await setupVite(app, server);
+    const vitePath = "./vite";
+    const viteModule = await import(/* webpackIgnore: true */ vitePath);
+    await viteModule.setupVite(app, server);
   } else {
     serveStatic(app);
   }
