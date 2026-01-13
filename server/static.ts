@@ -1,4 +1,3 @@
-cat > (server / static.ts) << "EOF";
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
@@ -28,4 +27,3 @@ export function serveStatic(app: Express) {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
-EOF;
