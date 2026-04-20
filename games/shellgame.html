@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Shell Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
+.sg-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
+/* Info bar */
+.sg-info{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
+.sg-stat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 16px;text-align:center;}
+.sg-stat-val{font-family:var(--serif);font-size:1.3rem;font-weight:900;color:var(--gold);line-height:1;}
+.sg-stat-lbl{font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:2px;}
+.sg-level{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:8px 16px;text-align:center;}
+.sg-level-val{font-size:.78rem;font-weight:700;color:var(--gold);}
+/* Table */
+.sg-table-wrap{background:linear-gradient(to bottom,#0a2a10 0%,#071f0b 100%);border:3px solid #5a8a30;border-radius:20px;padding:24px 8px 18px;margin-bottom:14px;position:relative;overflow:visible;}
+.sg-table-felt{position:relative;height:130px;margin:0 auto;}
+/* Ball */
+.sg-ball{position:absolute;border-radius:50%;background:radial-gradient(circle at 38% 32%,#ff8888,#dd1111 55%,#880000);box-shadow:0 3px 10px rgba(0,0,0,.7),inset 0 -3px 6px rgba(0,0,0,.4);pointer-events:none;z-index:1;opacity:0;transition:opacity .15s;bottom:8px;}
+/* Shell wrapper (position controlled by JS) */
+.sg-shell{position:absolute;bottom:0;cursor:default;z-index:2;transition:left .5s cubic-bezier(.4,0,.2,1);}
+.sg-shell.clickable{cursor:pointer;}
+.sg-shell.clickable:hover .sg-cup{filter:brightness(1.15);}
+.sg-shell.clickable:active .sg-cup{filter:brightness(1.3);}
+/* Cup shape */
+.sg-cup{position:relative;transform-origin:bottom center;transition:transform .3s cubic-bezier(.4,0,.2,1),filter .15s;}
+.sg-cup-body{position:absolute;bottom:8px;left:0;right:0;background:linear-gradient(145deg,#c9a227 0%,#9b7a10 30%,#6b5008 65%,#3d2a04 100%);border-radius:50% 50% 25% 25% / 38% 38% 22% 22%;box-shadow:2px 4px 16px rgba(0,0,0,.8),inset 0 2px 4px rgba(255,220,80,.15),inset -2px -3px 6px rgba(0,0,0,.4);}
+.sg-cup-rim{position:absolute;bottom:0;left:-4px;right:-4px;background:linear-gradient(to bottom,#d4a820,#8b6010 60%,#5a3e08);border-radius:50%;box-shadow:0 3px 10px rgba(0,0,0,.6),inset 0 2px 3px rgba(255,200,50,.1);}
+.sg-cup-shine{position:absolute;background:rgba(255,255,255,.2);border-radius:50%;transform:rotate(-25deg);pointer-events:none;}
+/* Result overlay */
+.sg-result{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:17px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:10;}
+.sg-result.show{opacity:1;}
+.sg-result.win{background:rgba(34,197,94,.15);}
+.sg-result.lose{background:rgba(239,68,68,.1);}
+.sg-result-text{font-family:var(--serif);font-size:1.6rem;font-weight:900;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,.5);}
+/* Status */
+.sg-status{text-align:center;font-size:.92rem;font-weight:700;min-height:28px;margin-bottom:10px;color:var(--muted);}
+/* Speed bar */
+.sg-speed-wrap{margin-bottom:14px;}
+.sg-speed-lbl{font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;text-align:center;margin-bottom:5px;}
+.sg-speed-track{height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;}
+.sg-speed-fill{height:100%;border-radius:3px;transition:width .6s ease,background .6s ease;}
+/* Streak */
+.sg-streak{text-align:center;font-size:.85rem;font-weight:700;min-height:24px;margin-bottom:8px;color:var(--gold);}
+@keyframes sg-wobble{0%,100%{transform:rotate(-2deg);}50%{transform:rotate(2deg);}}
+.sg-shell.fast .sg-cup{animation:sg-wobble .18s ease-in-out infinite;}
+@keyframes sg-flash{0%,100%{opacity:1;}50%{opacity:.6;}}
+.sg-shell.flash-correct{animation:sg-flash .4s ease 2;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Shell Game</span></nav>
+<div class="page"><div class="sg-wrap">
+
+<div class="sg-info">
+  <div class="sg-stat"><div class="sg-stat-val" id="sg-wins">0</div><div class="sg-stat-lbl">Wins</div></div>
+  <div class="sg-stat"><div class="sg-stat-val" id="sg-total">0</div><div class="sg-stat-lbl">Rounds</div></div>
+  <div class="sg-stat"><div class="sg-stat-val" id="sg-pct">—</div><div class="sg-stat-lbl">Accuracy</div></div>
+  <div class="sg-level"><div class="sg-level-val" id="sg-rnd">Round 1</div></div>
+</div>
+
+<div class="sg-streak" id="sg-streak"></div>
+
+<div class="sg-speed-wrap">
+  <div class="sg-speed-lbl">Speed</div>
+  <div class="sg-speed-track"><div class="sg-speed-fill" id="sg-speed-fill" style="width:8%;background:#22c55e;"></div></div>
+</div>
+
+<div class="sg-table-wrap">
+  <div class="sg-table-felt" id="sg-table">
+    <div class="sg-ball" id="sg-ball"></div>
+    <div class="sg-shell" id="sg-shell-0"></div>
+    <div class="sg-shell" id="sg-shell-1"></div>
+    <div class="sg-shell" id="sg-shell-2"></div>
+  </div>
+  <div class="sg-result" id="sg-result"><div class="sg-result-text" id="sg-result-text"></div></div>
+</div>
+
+<div class="sg-status" id="sg-status">Find the hidden ball!</div>
+
+<div style="text-align:center;">
+  <button class="btn btn-gold" id="sg-action" style="min-width:160px;">▶ Start Round</button>
+</div>
+
+</div></div>
+<script>
+'use strict';
+// ── Layout ────────────────────────────────────────────────────────────────────
+let SLOT_X=[], SHELL_W=80, BALL_W=22, TABLE_H=130;
+
+function computeLayout(){
+  const table=document.getElementById('sg-table');
+  const W=table.clientWidth||360;
+  SHELL_W=Math.max(68,Math.min(88,Math.floor(W*0.21)));
+  BALL_W=Math.round(SHELL_W*0.28);
+  const slotW=Math.floor(W/3);
+  SLOT_X=[
+    Math.floor((slotW-SHELL_W)/2),
+    Math.floor(slotW+(slotW-SHELL_W)/2),
+    Math.floor(slotW*2+(slotW-SHELL_W)/2)
+  ];
+  // Size the table height
+  TABLE_H=Math.round(SHELL_W*1.35);
+  document.getElementById('sg-table').style.height=TABLE_H+'px';
+  buildShells();
+  buildBall();
+}
+
+function buildShells(){
+  const cupH=Math.round(SHELL_W*1.0);
+  const rimH=Math.round(SHELL_W*0.16);
+  for(let i=0;i<3;i++){
+    const el=document.getElementById('sg-shell-'+i);
+    el.style.width=SHELL_W+'px';
+    el.innerHTML=`<div class="sg-cup" id="sg-cup-${i}" style="width:${SHELL_W}px;height:${cupH}px;">
+      <div class="sg-cup-body" style="height:${Math.round(cupH*0.83)}px;bottom:${rimH}px;"></div>
+      <div class="sg-cup-rim" style="height:${rimH}px;"></div>
+      <div class="sg-cup-shine" style="width:${Math.round(SHELL_W*0.28)}px;height:${Math.round(SHELL_W*0.21)}px;top:${Math.round(cupH*0.1)}px;left:${Math.round(SHELL_W*0.15)}px;"></div>
+    </div>`;
+    el.addEventListener('click',()=>makeGuess(i));
+  }
+}
+
+function buildBall(){
+  const b=document.getElementById('sg-ball');
+  b.style.width=BALL_W+'px';
+  b.style.height=BALL_W+'px';
+  b.style.bottom=Math.round(BALL_W*0.3)+'px';
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ballShell=0;              // which shell (0,1,2) hides the ball
+let shellPos=[0,1,2];         // shellPos[shell] = position index
+let posToShell=[0,1,2];       // posToShell[pos] = shell index at that slot
+let phase='idle';
+let round=1, wins=0, total=0, streak=0;
+
+function getShell(i){return document.getElementById('sg-shell-'+i);}
+function getCup(i){return document.getElementById('sg-cup-'+i);}
+
+// Place shells at their current positions (no transition)
+function snapShells(){
+  for(let i=0;i<3;i++){
+    const el=getShell(i);
+    el.style.transition='none';
+    el.style.left=SLOT_X[shellPos[i]]+'px';
+    // Always put cups back down — resets any leftover lift from previous round
+    getCup(i).style.transition='none';
+    getCup(i).style.transform='translateY(0)';
+    el.offsetWidth; // flush reflow
+    el.style.transition='';
+    getCup(i).style.transition='';
+  }
+  snapBall();
+}
+
+function snapBall(){
+  const b=document.getElementById('sg-ball');
+  b.style.transition='none';
+  const pos=shellPos[ballShell];
+  b.style.left=(SLOT_X[pos]+Math.floor((SHELL_W-BALL_W)/2))+'px';
+  b.offsetWidth;
+  b.style.transition='';
+}
+
+function liftCup(shellIdx,up){
+  const liftH=Math.round(SHELL_W*0.95);
+  getCup(shellIdx).style.transform=up?`translateY(-${liftH}px)`:'translateY(0)';
+}
+
+function setBallVisible(v){
+  const b=document.getElementById('sg-ball');
+  b.style.opacity=v?'1':'0';
+  // z-index stays low (under cups) — only boosted explicitly at final reveal
+}
+
+function resetShellZIndexes(){
+  for(let i=0;i<3;i++) getShell(i).style.zIndex='2';
+}
+
+function setClickable(on){
+  for(let i=0;i<3;i++){
+    const el=getShell(i);
+    el.classList.toggle('clickable',on);
+  }
+}
+
+// ── Game flow ─────────────────────────────────────────────────────────────────
+document.getElementById('sg-action').addEventListener('click',startRound);
+
+function startRound(){
+  document.getElementById('sg-action').style.display='none';
+  document.getElementById('sg-result').className='sg-result';
+  phase='peeking';
+  total++;
+  // Reset positions — randomized each round so you can't memorize
+  ballShell=Math.floor(Math.random()*3);
+  const order=[0,1,2];
+  for(let i=2;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  shellPos=[...order];
+  posToShell=[0,0,0];
+  shellPos.forEach((pos,shell)=>{posToShell[pos]=shell;});
+  setBallVisible(false);   // hide before snap so old position doesn't flash
+  document.getElementById('sg-ball').style.zIndex='1';
+  snapShells();
+  setClickable(false);
+  for(let i=0;i<3;i++){
+    getShell(i).classList.remove('fast','flash-correct');
+  }
+  updateUI();
+
+  // Peek: briefly show which shell has the ball
+  setStatus('Watch closely… 👀');
+  setTimeout(()=>{
+    setBallVisible(true);
+    liftCup(ballShell,true);
+    sPeek();
+    const peekMs=Math.max(600,1100-round*50);
+    setTimeout(()=>{
+      liftCup(ballShell,false);
+      setTimeout(()=>{
+        setBallVisible(false);
+        setTimeout(startShuffling,350);
+      },320);
+    },peekMs);
+  },300);
+}
+
+function startShuffling(){
+  phase='shuffling';
+  const numSwaps=Math.min(3+Math.floor(round*1.4),14);
+  const baseMs=Math.max(160,560-round*38);
+  const swaps=genSwaps(numSwaps);
+  const fast=baseMs<300;
+  if(fast) for(let i=0;i<3;i++) getShell(i).classList.add('fast');
+  setStatus('Shuffling…');
+  runSwaps(swaps,baseMs,0,()=>{
+    for(let i=0;i<3;i++) getShell(i).classList.remove('fast');
+    resetShellZIndexes();  // restore z-index:2 on all shells after swap z-index juggling
+    phase='choosing';
+    setStatus('Which shell hides the ball?');
+    setClickable(true);
+  });
+}
+
+function genSwaps(n){
+  const pairs=[[0,1],[0,2],[1,2],[1,0],[2,0],[2,1]];
+  const swaps=[];
+  let lastPair=-1;
+  for(let i=0;i<n;i++){
+    let idx;
+    do{idx=Math.floor(Math.random()*pairs.length);}
+    while(idx===lastPair||(lastPair>=0&&pairs[idx][0]===pairs[lastPair][1]&&pairs[idx][1]===pairs[lastPair][0]));
+    swaps.push(pairs[idx]);lastPair=idx;
+  }
+  return swaps;
+}
+
+function runSwaps(swaps,dur,idx,done){
+  if(idx>=swaps.length){done();return;}
+  const[p1,p2]=swaps[idx];
+  swapSlots(p1,p2,dur);
+  sSwap(1-idx/swaps.length); // pitch rises as swaps progress
+  const gap=Math.max(dur-20,dur*0.9);
+  setTimeout(()=>runSwaps(swaps,dur,idx+1,done),gap);
+}
+
+function swapSlots(p1,p2,dur){
+  const s1=posToShell[p1],s2=posToShell[p2];
+  const el1=getShell(s1),el2=getShell(s2);
+  // Set transition duration for this swap
+  const easing=`${dur}ms cubic-bezier(.4,0,.2,1)`;
+  el1.style.transition=`left ${easing}`;
+  el2.style.transition=`left ${easing}`;
+  // z-index: shell moving rightward goes in front
+  const x1new=SLOT_X[p2],x2new=SLOT_X[p1];
+  el1.style.zIndex=x1new>SLOT_X[p1]?3:1;
+  el2.style.zIndex=x2new>SLOT_X[p2]?3:1;
+  // Move
+  el1.style.left=x1new+'px';
+  el2.style.left=x2new+'px';
+  // Update state
+  posToShell[p1]=s2;posToShell[p2]=s1;
+  shellPos[s1]=p2;shellPos[s2]=p1;
+}
+
+function makeGuess(shellIdx){
+  if(phase!=='choosing')return;
+  phase='revealing';
+  setClickable(false);
+  const correct=shellIdx===ballShell;
+
+  // Re-sync ball to where ballShell actually is NOW after all the shuffling
+  snapBall();
+
+  liftCup(shellIdx,true);
+  sPeek();
+
+  setTimeout(()=>{
+    // Boost ball above cups only for the final reveal
+    document.getElementById('sg-ball').style.zIndex='5';
+    if(correct){
+      setBallVisible(true);
+      wins++;streak++;
+      getShell(shellIdx).classList.add('flash-correct');
+      showResult(true);
+      sWin();
+    } else {
+      // Only lift the shell that hides the ball — cleaner reveal
+      liftCup(ballShell,true);
+      setBallVisible(true);
+      streak=0;
+      showResult(false);
+      sLose();
+    }
+    updateUI();
+    round++;
+    setTimeout(()=>{
+      document.getElementById('sg-action').textContent='▶ Next Round';
+      document.getElementById('sg-action').style.display='';
+    },900);
+  },350);
+}
+
+function showResult(win){
+  const el=document.getElementById('sg-result');
+  const txt=document.getElementById('sg-result-text');
+  el.className='sg-result show '+(win?'win':'lose');
+  if(win){
+    const msgs=['Nice! 🎉','Got it! ✅','Sharp eyes! 👀','Nailed it! 🔥','You\'re tracking well! ⭐'];
+    txt.style.color='#22c55e';
+    txt.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  } else {
+    const msgs=['Not that one! 😅','Missed! 🙈','Keep watching… 👀','Tricky, right? 😬','So close! 🫣'];
+    txt.style.color='#ef4444';
+    txt.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  }
+}
+
+function setStatus(t){document.getElementById('sg-status').textContent=t;}
+
+function updateUI(){
+  document.getElementById('sg-wins').textContent=wins;
+  document.getElementById('sg-total').textContent=total;
+  document.getElementById('sg-pct').textContent=total?Math.round(wins/total*100)+'%':'—';
+  document.getElementById('sg-rnd').textContent='Round '+round;
+  // Streak
+  const sk=document.getElementById('sg-streak');
+  if(streak>=3) sk.textContent='🔥 '+streak+' in a row!';
+  else if(streak>=2) sk.textContent='✨ '+streak+' in a row';
+  else sk.textContent='';
+  // Speed bar
+  const pct=Math.min(100,Math.round((round-1)/10*100)+8);
+  const fill=document.getElementById('sg-speed-fill');
+  fill.style.width=pct+'%';
+  fill.style.background=pct<30?'#22c55e':pct<60?'#f59e0b':'#ef4444';
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  computeLayout();
+  snapShells();
+  // Show a static ball-under-shell hint at start
+  setBallVisible(true);
+  liftCup(1,true);
+  setTimeout(()=>{liftCup(1,false);setTimeout(()=>setBallVisible(false),300);},1200);
+});
+window.addEventListener('resize',()=>{computeLayout();snapShells();});
+
+// ── Sound ─────────────────────────────────────────────────────────────────────
+let _ac=null;
+function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function sTone(f,s,d,v,type,ramp){const ctx=sac(),t=ctx.currentTime+s,o=ctx.createOscillator(),g=ctx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v||.18,t+.012);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+d+.05);}
+function sNoise(s,d,fc,q,v){const ctx=sac(),t=ctx.currentTime+s,buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*d),ctx.sampleRate),da=buf.getChannelData(0);for(let i=0;i<da.length;i++)da[i]=(Math.random()*2-1)*Math.exp(-i/(da.length*.45));const src=ctx.createBufferSource();src.buffer=buf;const f2=ctx.createBiquadFilter();f2.type='bandpass';f2.frequency.value=fc||1000;f2.Q.value=q||2;const g=ctx.createGain();g.gain.setValueAtTime(v||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+d);src.connect(f2);f2.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+d+.05);}
+
+// Shell lift — soft whoosh
+function sPeek(){
+  sNoise(0,.12,400,1,.18,.35);
+  sTone(220,0,.12,.08,'triangle',350);
+}
+// Swap — quick woody slide; pitch rises as speed increases
+let _swapPitch=300;
+function sSwap(frac){
+  frac=frac===undefined?1:frac;
+  const fc=220+frac*200;
+  sNoise(0,.06,fc,2,.14,.15);
+  sTone(fc*.7,0,.05,.05,'triangle');
+  _swapPitch=fc;
+}
+function sWin(){[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
+function sLose(){[330,247,196].forEach((f,i)=>sTone(f,i*.1,.32,.15,'triangle'));}
+</script>
+</body>
+</html>

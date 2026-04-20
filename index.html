@@ -1,89 +1,612 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Family Games">
+<title>Family Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%); }
+.hero {
+  text-align: center; padding: 40px 20px 28px;
+  background: linear-gradient(to bottom, rgba(245,200,66,0.04), transparent);
+}
+.hero-eyebrow {
+  display: inline-block; background: linear-gradient(135deg,#f5c842,#f0a500);
+  color: #0f2d1a; font-size:.72rem; font-weight:700; letter-spacing:.2em;
+  text-transform:uppercase; border-radius:20px; padding:4px 16px; margin-bottom:12px;
+}
+.hero-title {
+  font-family: var(--serif); font-size:clamp(2.6rem,10vw,4.2rem);
+  font-weight:900; line-height:1; text-shadow:0 2px 30px rgba(0,0,0,0.5);
+}
+.hero-title span { color: var(--gold); }
+.hero-sub { color:var(--muted); font-size:.9rem; margin-top:8px; }
+.hero-count { color:rgba(255,255,255,.25); font-size:.78rem; margin-top:4px; }
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.12.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.12.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.12.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+.section { padding: 0 14px; max-width:900px; margin:0 auto 28px; }
+.section-header {
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:12px; padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.section-icon { font-size:1.3rem; }
+.section-name { font-family:var(--serif); font-size:1.2rem; font-weight:700; }
+.section-count { color:var(--muted); font-size:.75rem; }
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
-    </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+.games-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:9px; }
+@media(max-width:380px){ .games-grid { grid-template-columns:1fr 1fr; gap:8px; } }
+@media(max-width:280px){ .games-grid { grid-template-columns:1fr; } }
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+.game-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:13px; padding:15px 12px;
+  text-decoration:none; color:var(--text);
+  display:flex; flex-direction:column; gap:6px;
+  transition:all .2s; position:relative; overflow:hidden;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+.game-card:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.08); transform:translateY(-2px); }
+.game-card::before { content:''; position:absolute; inset:0; background:var(--accent,transparent); opacity:.06; pointer-events:none; }
+.game-icon { font-size:1.9rem; line-height:1; }
+.game-name { font-weight:700; font-size:.88rem; }
+.game-desc { color:var(--muted); font-size:.72rem; line-height:1.4; }
+.game-tag { align-self:flex-start; font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:4px; padding:2px 6px; color:var(--muted); margin-top:auto; }
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
+/* In-progress indicator */
+.game-card.has-progress { border-color:rgba(245,200,66,.35); }
+.game-card.has-progress::after { content:''; position:absolute; top:8px; right:8px; width:7px; height:7px; border-radius:50%; background:#f5c842; box-shadow:0 0 6px rgba(245,200,66,.8); animation:pip-pulse 2s ease-in-out infinite; }
+@keyframes pip-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.game-progress-label { font-size:.6rem; color:var(--gold,#f5c842); font-weight:700; letter-spacing:.04em; margin-top:auto; display:flex; align-items:center; gap:4px; }
+.game-progress-label::before { content:'▶'; font-size:.55rem; }
+
+/* Arcade leaderboard button */
+.arcade-lb-btn{background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:20px;color:rgba(245,200,66,.8);font-size:.72rem;font-weight:700;padding:4px 12px;cursor:pointer;font-family:var(--font);transition:all .15s;margin-left:auto;}
+.arcade-lb-btn:hover{background:rgba(245,200,66,.2);border-color:rgba(245,200,66,.5);color:var(--gold,#f5c842);}
+/* Arcade leaderboard modal */
+.alb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;}
+.alb-box{background:#1a1f2e;border:1px solid rgba(255,255,255,.12);border-radius:18px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:20px;}
+.alb-title{font-family:var(--serif,Georgia);font-size:1.3rem;font-weight:900;color:var(--gold,#f5c842);text-align:center;margin-bottom:4px;}
+.alb-subtitle{font-size:.72rem;color:rgba(255,255,255,.35);text-align:center;margin-bottom:16px;}
+.alb-game{margin-bottom:16px;border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden;}
+.alb-game-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(255,255,255,.05);}
+.alb-game-name{font-weight:700;font-size:.88rem;}
+.alb-clear-btn{background:none;border:none;color:rgba(255,80,80,.3);font-size:.65rem;cursor:pointer;padding:2px 6px;border-radius:4px;opacity:0;transition:opacity .2s;font-family:var(--font);}
+.alb-game:hover .alb-clear-btn{opacity:1;}
+.alb-clear-btn:hover{color:rgba(255,100,100,.8);background:rgba(255,80,80,.1);}
+.alb-empty{padding:10px 14px;font-size:.75rem;color:rgba(255,255,255,.25);font-style:italic;}
+.alb-row{display:grid;grid-template-columns:28px 1fr auto auto;gap:4px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(255,255,255,.04);}
+.alb-row:last-child{border-bottom:none;}
+.alb-rank{font-size:.7rem;color:rgba(255,255,255,.3);font-weight:700;}
+.alb-name{font-size:.82rem;font-weight:700;}
+.alb-score{font-size:.78rem;font-weight:700;color:var(--gold,#f5c842);text-align:right;}
+.alb-date{font-size:.62rem;color:rgba(255,255,255,.25);text-align:right;}
+.alb-close-row{display:flex;justify-content:center;margin-top:14px;}
+
+.footer { text-align:center; padding:28px 16px; color:rgba(255,255,255,.15); font-size:.75rem; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">Brown Family</div>
+  <h1 class="hero-title">Game<span> Night</span></h1>
+  <p class="hero-sub">Pick a game and let's play</p>
+  <p class="hero-count">38 games &amp; tools</p>
+</div>
+
+<!-- 🃏 Card Games -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-icon">🃏</span>
+    <span class="section-name">Card Games</span>
+    <span class="section-count">15 games</span>
+  </div>
+  <div class="games-grid">
+    <a href="games/flip7.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">7️⃣</div><div class="game-name">Flip 7</div>
+      <div class="game-desc">Race to 200 points</div><div class="game-tag">2–6 players</div>
+    </a>
+    <a href="games/spades.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">♠️</div><div class="game-name">Spades</div>
+      <div class="game-desc">Bid &amp; trick tracking</div><div class="game-tag">4 players</div>
+    </a>
+    <a href="games/hearts.html" class="game-card" style="--accent:#ff6b6b">
+      <div class="game-icon">♥️</div><div class="game-name">Hearts</div>
+      <div class="game-desc">Avoid the Queen of Spades</div><div class="game-tag">4 players</div>
+    </a>
+    <a href="games/gin-rummy.html" class="game-card" style="--accent:#7ed47e">
+      <div class="game-icon">🃏</div><div class="game-name">Gin Rummy</div>
+      <div class="game-desc">Classic rummy scoring</div><div class="game-tag">2–6 players</div>
+    </a>
+    <a href="games/phase10.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">🔟</div><div class="game-name">Phase 10</div>
+      <div class="game-desc">Complete all 10 phases</div>
+      <div class="game-tag">2–6 players</div>
+    </a>
+    <a href="games/five-crowns.html" class="game-card" style="--accent:#f97316">
+      <div class="game-icon">👑</div><div class="game-name">Five Crowns</div>
+      <div class="game-desc">11 rounds, wilds shift each round</div>
+      <div class="game-tag">2–7 players</div>
+    </a>
+    <a href="games/rook.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🐦</div><div class="game-name">Rook</div>
+      <div class="game-desc">Bid &amp; capture 120 points</div>
+      <div class="game-tag">4 players</div>
+    </a>
+    <a href="games/wizard.html" class="game-card" style="--accent:#a855f7">
+      <div class="game-icon">🧙</div><div class="game-name">Wizard</div>
+      <div class="game-desc">Bid your exact tricks</div>
+      <div class="game-tag">3–6 players</div>
+    </a>
+    <a href="games/euchre.html" class="game-card" style="--accent:#22c55e">
+      <div class="game-icon">♣️</div><div class="game-name">Euchre</div>
+      <div class="game-desc">Trump-calling trick scoring</div>
+      <div class="game-tag">4 players</div>
+    </a>
+    <a href="games/blackjack.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🃏</div><div class="game-name">Blackjack</div>
+      <div class="game-desc">Hit 21, beat the dealer</div>
+      <div class="game-tag">1–4 players</div>
+    </a>
+    <a href="games/poker.html" class="game-card" style="--accent:#22c55e">
+      <div class="game-icon">♣️</div><div class="game-name">Poker</div>
+      <div class="game-desc">Video Poker, Hold'em, Omaha</div>
+      <div class="game-tag">1–5 players</div>
+    </a>
+    <a href="games/roulette.html" class="game-card" style="--accent:#ef4444">
+      <div class="game-icon">🎡</div><div class="game-name">Roulette</div>
+      <div class="game-desc">European wheel with animation</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/craps.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🎲</div><div class="game-name">Craps</div>
+      <div class="game-desc">Pass line, place bets, full rules</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/lorcana.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">✨</div><div class="game-name">Lorcana</div>
+      <div class="game-desc">Lore tracker, first to 20</div>
+      <div class="game-tag">2–4 players</div>
+    </a>
+    <a href="games/solitaire.html" class="game-card" style="--accent:#22c55e">
+      <div class="game-icon">🂡</div><div class="game-name">Solitaire</div>
+      <div class="game-desc">Klondike — clear the tableau</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/freecell.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🂠</div><div class="game-name">FreeCell</div>
+      <div class="game-desc">Strategy solitaire with free cells</div>
+      <div class="game-tag">1 player</div>
+    </a>
+  </div>
+</div>
+
+<!-- ♟️ Board & Strategy -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-icon">♟️</span>
+    <span class="section-name">Board &amp; Strategy</span>
+    <span class="section-count">18 games</span>
+  </div>
+  <div class="games-grid">
+    <a href="games/chess.html" class="game-card" style="--accent:#c9a96e">
+      <div class="game-icon">♟️</div><div class="game-name">Chess</div>
+      <div class="game-desc">Full rules, vs AI or 2P</div>
+      <div class="game-tag">1–2 players</div>
+    </a>
+    <a href="games/checkers.html" class="game-card" style="--accent:#ef4444">
+      <div class="game-icon">🔴</div><div class="game-name">Checkers</div>
+      <div class="game-desc">Classic, vs AI or 2P</div>
+      <div class="game-tag">1–2 players</div>
+    </a>
+    <a href="games/othello.html" class="game-card" style="--accent:#22c55e">
+      <div class="game-icon">⚫</div><div class="game-name">Othello</div>
+      <div class="game-desc">Flip &amp; outmaneuver, vs AI</div>
+      <div class="game-tag">1–2 players</div>
+    </a>
+    <a href="games/backgammon.html" class="game-card" style="--accent:#f59e0b">
+      <div class="game-icon">🎰</div><div class="game-name">Backgammon</div>
+      <div class="game-desc">Dice, strategy &amp; rules guide</div>
+      <div class="game-tag">2 players</div>
+    </a>
+    <a href="games/tictactoe.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">⭕</div><div class="game-name">Tic-Tac-Toe</div>
+      <div class="game-desc">Classic, Ultimate &amp; 3-player</div><div class="game-tag">1–3 players</div>
+    </a>
+    <a href="games/connectfour.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🟡</div><div class="game-name">Connect Four</div>
+      <div class="game-desc">Drop to win with animation</div><div class="game-tag">1–2 players</div>
+    </a>
+    <a href="games/dotsboxes.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">🔲</div><div class="game-name">Dots &amp; Boxes</div>
+      <div class="game-desc">Claim the most squares</div><div class="game-tag">2–3 players</div>
+    </a>
+    <a href="games/battleship.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🚢</div><div class="game-name">Battleship</div>
+      <div class="game-desc">Sink the fleet</div><div class="game-tag">1–2 players</div>
+    </a>
+    <a href="games/yahtzee.html" class="game-card" style="--accent:#fb923c">
+      <div class="game-icon">🎳</div><div class="game-name">Yahtzee</div>
+      <div class="game-desc">Roll &amp; score, multiplayer</div><div class="game-tag">1–4 players</div>
+    </a>
+    <a href="games/sudoku.html" class="game-card" style="--accent:#7ed47e">
+      <div class="game-icon">🔢</div><div class="game-name">Sudoku</div>
+      <div class="game-desc">Fill the 9×9 grid</div><div class="game-tag">1 player</div>
+    </a>
+    <a href="games/plinko.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">🎯</div><div class="game-name">Plinko</div>
+      <div class="game-desc">3 drops, highest score wins</div>
+      <div class="game-tag">1–4 players</div>
+    </a>
+    <a href="games/shellgame.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🐚</div><div class="game-name">Shell Game</div>
+      <div class="game-desc">Track the ball as shells shuffle faster</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/2048.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🟰</div><div class="game-name">2048</div>
+      <div class="game-desc">Slide &amp; merge tiles to 2048</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/memorymatch.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🃟</div><div class="game-name">Memory Match</div>
+      <div class="game-desc">Flip &amp; match pairs, 7 themes</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/minesweeper.html" class="game-card" style="--accent:#ef4444">
+      <div class="game-icon">💣</div><div class="game-name">Minesweeper</div>
+      <div class="game-desc">Reveal squares, flag the mines</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/mahjong.html" class="game-card" style="--accent:#f59e0b">
+      <div class="game-icon">🀄</div><div class="game-name">Mahjong</div>
+      <div class="game-desc">Match &amp; clear all 144 tiles</div>
+      <div class="game-tag">1 player</div>
+    </a>
+  </div>
+</div>
+
+<!-- 📝 Word & Puzzle Games -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-icon">📝</span>
+    <span class="section-name">Word &amp; Puzzle Games</span>
+    <span class="section-count">9 games</span>
+  </div>
+  <div class="games-grid">
+    <a href="games/hangman.html" class="game-card" style="--accent:#ff6b6b">
+      <div class="game-icon">🪢</div><div class="game-name">Hangman</div>
+      <div class="game-desc">Guess before it's too late</div><div class="game-tag">1 player</div>
+    </a>
+    <a href="games/wordsearch.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🔍</div><div class="game-name">Word Search</div>
+      <div class="game-desc">Find all hidden words</div><div class="game-tag">1 player</div>
+    </a>
+    <a href="games/wordscramble.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">🔀</div><div class="game-name">Word Scramble</div>
+      <div class="game-desc">60-second timed rounds</div><div class="game-tag">1–4 players</div>
+    </a>
+    <a href="games/madlibs.html" class="game-card" style="--accent:#7ed47e">
+      <div class="game-icon">📖</div><div class="game-name">Mad Libs</div>
+      <div class="game-desc">Fill in the blanks</div><div class="game-tag">2+ players</div>
+    </a>
+    <a href="games/mathpuzzles.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🧮</div><div class="game-name">Math Puzzles</div>
+      <div class="game-desc">Patterns, sequences &amp; algebra</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/wordle.html" class="game-card" style="--accent:#7ed47e">
+      <div class="game-icon">🟩</div><div class="game-name">Wordle</div>
+      <div class="game-desc">Guess the 5-letter word in 6 tries</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/crossword.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">✏️</div><div class="game-name">Mini Crossword</div>
+      <div class="game-desc">7 bite-size 5×5 puzzles</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/boggle.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">🔤</div><div class="game-name">Boggle</div>
+      <div class="game-desc">Find words in the letter grid</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/spellingbee.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🐝</div><div class="game-name">Spelling Bee</div>
+      <div class="game-desc">Make words from 7 letters</div>
+      <div class="game-tag">1 player</div>
+    </a>
+  </div>
+</div>
+
+<!-- 🎉 Party & Social -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-icon">🎉</span>
+    <span class="section-name">Party &amp; Social</span>
+    <span class="section-count">5 games</span>
+  </div>
+  <div class="games-grid">
+    <a href="games/minigolf.html" class="game-card" style="--accent:#22c55e">
+      <div class="game-icon">⛳</div><div class="game-name">Mini Golf</div>
+      <div class="game-desc">Hole-by-hole scorecard</div>
+      <div class="game-tag">1–6 players</div>
+    </a>
+    <a href="games/trivia.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🧠</div><div class="game-name">Trivia</div>
+      <div class="game-desc">America, Colorado, Science &amp; more</div>
+      <div class="game-tag">1–4 players</div>
+    </a>
+    <a href="games/wouldyourather.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🤔</div><div class="game-name">Would You Rather</div>
+      <div class="game-desc">Tough choices for everyone</div><div class="game-tag">2+ players</div>
+    </a>
+    <a href="games/riddlestories.html" class="game-card" style="--accent:#c084fc">
+      <div class="game-icon">🕵️</div><div class="game-name">Riddle Stories</div>
+      <div class="game-desc">Lateral thinking mysteries</div><div class="game-tag">2+ players</div>
+    </a>
+    <a href="games/conversation.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">💬</div><div class="game-name">Conversation Starters</div>
+      <div class="game-desc">250+ prompts across 10 categories</div><div class="game-tag">Any group</div>
+    </a>
+  </div>
+</div>
+
+<!-- 🕹️ Arcade -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-icon">🕹️</span>
+    <span class="section-name">Arcade</span>
+    <button class="arcade-lb-btn" onclick="showArcadeLB()">🏆 Hi Scores</button>
+    <span class="section-count">7 games</span>
+  </div>
+  <div class="games-grid">
+    <a href="games/breakout.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🧱</div><div class="game-name">Breakout</div>
+      <div class="game-desc">20 levels, smash every brick</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/pacman.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">👻</div><div class="game-name">Pac-Man</div>
+      <div class="game-desc">Eat dots, dodge ghosts, 15 levels</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/snake.html" class="game-card" style="--accent:#22c55e">
+      <div class="game-icon">🐍</div><div class="game-name">Snake</div>
+      <div class="game-desc">Eat, grow, don't crash</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/tetris.html" class="game-card" style="--accent:#a855f7">
+      <div class="game-icon">🟦</div><div class="game-name">Tetris</div>
+      <div class="game-desc">Stack &amp; clear lines</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/flappybird.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">🐦</div><div class="game-name">Flappy Bird</div>
+      <div class="game-desc">Tap to flap through pipes</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/asteroids.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🪨</div><div class="game-name">Asteroids</div>
+      <div class="game-desc">Shoot rocks, survive the void</div>
+      <div class="game-tag">1 player</div>
+    </a>
+    <a href="games/peggle.html" class="game-card" style="--accent:#f97316">
+      <div class="game-icon">🏓</div><div class="game-name">Peggle</div>
+      <div class="game-desc">Shoot the ball, clear orange pegs</div>
+      <div class="game-tag">1 player</div>
+    </a>
+  </div>
+</div>
+
+<!-- 🛠️ Tools -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-icon">🛠️</span>
+    <span class="section-name">Tools</span>
+    <span class="section-count">4 tools</span>
+  </div>
+  <div class="games-grid">
+    <a href="games/scorecard.html" class="game-card" style="--accent:#34d399">
+      <div class="game-icon">📋</div><div class="game-name">Scorecard</div>
+      <div class="game-desc">Generic round-by-round or score-target tracking</div>
+      <div class="game-tag">2–6 players</div>
+    </a>
+    <a href="games/dice-roller.html" class="game-card" style="--accent:#fb923c">
+      <div class="game-icon">🎲</div><div class="game-name">Dice Roller</div>
+      <div class="game-desc">d4 to d100, any quantity</div>
+      <div class="game-tag">Tool</div>
+    </a>
+    <a href="games/randomtools.html" class="game-card" style="--accent:#5ac8fa">
+      <div class="game-icon">🔄</div><div class="game-name">Random Tools</div>
+      <div class="game-desc">Number generator &amp; team builder</div>
+      <div class="game-tag">Tool</div>
+    </a>
+    <a href="games/randomtools.html#teams" class="game-card" style="--accent:#7ed47e">
+      <div class="game-icon">👥</div><div class="game-name">Team Generator</div>
+      <div class="game-desc">Randomize names onto teams</div>
+      <div class="game-tag">Tool</div>
+    </a>
+  </div>
+</div>
+
+<div class="footer">games.timbrown.xyz</div>
+
+<script>
+// ── Apple touch icon ──────────────────────────────────────────────────────
+(function(){
+  try{
+    const c=document.createElement('canvas');c.width=180;c.height=180;
+    const x=c.getContext('2d');
+    x.fillStyle='#1a3a1a';x.fillRect(0,0,180,180);
+    x.font='bold 90px serif';x.textAlign='center';x.textBaseline='middle';
+    x.shadowColor='rgba(245,200,66,.6)';x.shadowBlur=20;
+    x.fillText('🎮',90,95);
+    const l=document.createElement('link');
+    l.rel='apple-touch-icon';l.sizes='180x180';l.href=c.toDataURL();
+    document.head.appendChild(l);
+  }catch(e){}
+})();
+
+// ── In-progress game indicators ────────────────────────────────────────────
+(function(){
+  function timeAgo(ts){
+    const s=Math.floor((Date.now()-ts)/1000);
+    if(s<60)return 'just now';
+    if(s<3600)return Math.floor(s/60)+'m ago';
+    if(s<86400)return Math.floor(s/3600)+'h ago';
+    return Math.floor(s/86400)+'d ago';
+  }
+
+  const SESSIONS=[
+    {key:'fc_state',   sel:'a[href*="freecell"]'},
+    {key:'sol_state',  sel:'a[href*="solitaire"]'},
+    {key:'pac_state',  sel:'a[href*="pacman"]'},
+    {key:'pg_state',   sel:'a[href*="peggle"]'},
+    {key:'wd_state',   sel:'a[href*="wordle"]'},
+    {key:'sdk_state',  sel:'a[href*="sudoku"]'},
+    {key:'tv_state',   sel:'a[href*="trivia"]'},
+    {key:'bj_state',   sel:'a[href*="blackjack"]'},
+    {key:'cr_state',   sel:'a[href*="craps"]'},
+    {key:'rl_state',   sel:'a[href*="roulette"]'},
+    {key:'g2048',      sel:'a[href*="2048"]'},
+    {key:'chess',      sel:'a[href*="chess"]'},
+    {key:'checkers',   sel:'a[href*="checkers"]'},
+    {key:'c4',         sel:'a[href*="connectfour"]'},
+    {key:'mm',         sel:'a[href*="memorymatch"]'},
+    {key:'ms',         sel:'a[href*="minesweeper"]'},
+    {key:'othello',    sel:'a[href*="othello"]'},
+    {key:'db',         sel:'a[href*="dotsboxes"]'},
+    {key:'mahjong',    sel:'a[href*="mahjong"]'},
+    {key:'boggle',     sel:'a[href*="boggle"]'},
+    {key:'sbee',       sel:'a[href*="spellingbee"]'},
+    {key:'hangman',    sel:'a[href*="hangman"]'},
+    {key:'yahtzee',    sel:'a[href*="yahtzee"]'},
+    {key:'lorcana',    sel:'a[href*="lorcana"]'},
+    {key:'bg',         sel:'a[href*="backgammon"]'},
+    {key:'cword',      sel:'a[href*="crossword"]'},
+    {key:'poker',      sel:'a[href*="poker"]'},
+    {key:'poker_vp',       sel:'a[href*="poker"]'},
+    {key:'poker_he_cash',  sel:'a[href*="poker"]'},
+    {key:'poker_he_tourn', sel:'a[href*="poker"]'},
+    {key:'poker_om_cash',  sel:'a[href*="poker"]'},
+    {key:'poker_om_tourn', sel:'a[href*="poker"]'},
+    {key:'bs',         sel:'a[href*="battleship"]'},
+    {key:'ttt',        sel:'a[href*="tictactoe"]'},
+    {key:'madlibs',    sel:'a[href*="madlibs"]'},
+    {key:'math',       sel:'a[href*="mathpuzzles"]'},
+    {key:'wscr',       sel:'a[href*="wordscramble"]'},
+    {key:'wsearch',    sel:'a[href*="wordsearch"]'},
+    {key:'riddle',     sel:'a[href*="riddlestories"]'},
+    {key:'plinko2',    sel:'a[href*="plinko"]'},
+    {key:'breakout',   sel:'a[href*="breakout"]'},
+    {key:'cs_f7',      sel:'a[href*="flip7"]'},
+    {key:'cs_sp',      sel:'a[href*="spades"]'},
+    {key:'cs_ht',      sel:'a[href*="hearts"]'},
+    {key:'cs_rm',      sel:'a[href*="rummy"]'},
+    {key:'cs_p10',     sel:'a[href*="phase10"]'},
+    {key:'cs_sc',      sel:'a[href*="scorecard"]'},
+    {key:'cs_eu',        sel:'a[href*="euchre"]'},
+    {key:'cs_fivecrwns', sel:'a[href*="five-crowns"]'},
+    {key:'cs_rook',      sel:'a[href*="rook"]'},
+    {key:'cs_wizard',    sel:'a[href*="wizard"]'},
+  ];
+
+  SESSIONS.forEach(({key,sel})=>{
+    try{
+      const raw=sessionStorage.getItem(key);
+      if(!raw)return;
+      const data=JSON.parse(raw);
+      const card=document.querySelector(sel);
+      if(!card)return;
+      card.classList.add('has-progress');
+      // Replace game-tag with progress label (or append if no tag)
+      const tag=card.querySelector('.game-tag');
+      const lbl=document.createElement('div');
+      lbl.className='game-progress-label';
+      lbl.textContent=data._ts?timeAgo(data._ts):'In progress';
+      if(tag)tag.replaceWith(lbl);else card.appendChild(lbl);
+    }catch(e){}
+  });
+})();
+
+// ── Arcade Hi Scores (combined leaderboard) ────────────────────────────────
+const ARCADE_GAMES=[
+  {key:'pac',    name:'Pac-Man',     icon:'👻'},
+  {key:'snake',  name:'Snake',       icon:'🐍'},
+  {key:'tetris', name:'Tetris',      icon:'🟦'},
+  {key:'breakout',name:'Breakout',   icon:'🧱'},
+  {key:'ast',    name:'Asteroids',   icon:'🪨'},
+  {key:'flappy', name:'Flappy Bird', icon:'🐦'},
+  {key:'peggle', name:'Peggle',      icon:'🏓'},
+];
+const MEDALS=['🥇','🥈','🥉'];
+
+function showArcadeLB(){
+  document.getElementById('alb-modal')?.remove();
+  const overlay=document.createElement('div');
+  overlay.className='alb-overlay';overlay.id='alb-modal';
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+
+  function buildBody(){
+    let html=`<div class="alb-title">🏆 Arcade Hi Scores</div>
+      <div class="alb-subtitle">Top 15 · All games · Click a row to play</div>`;
+    ARCADE_GAMES.forEach(g=>{
+      let scores=[];
+      try{const raw=localStorage.getItem('hi_'+g.key);if(raw)scores=JSON.parse(raw);}catch(e){}
+      html+=`<div class="alb-game">
+        <div class="alb-game-hdr">
+          <span class="alb-game-name">${g.icon} ${g.name}</span>
+          <button class="alb-clear-btn" data-key="${g.key}" data-name="${g.name}">🗑 Clear</button>
+        </div>`;
+      if(!scores.length){
+        html+=`<div class="alb-empty">No scores yet — be the first!</div>`;
+      } else {
+        scores.slice(0,5).forEach((e,i)=>{
+          const medal=MEDALS[i]||`<span style="color:rgba(255,255,255,.25)">${i+1}</span>`;
+          html+=`<div class="alb-row">
+            <div class="alb-rank">${medal}</div>
+            <div class="alb-name">${e.name}</div>
+            <div class="alb-score">${e.score.toLocaleString()}</div>
+            <div class="alb-date">${e.date||''}</div>
+          </div>`;
+        });
+        if(scores.length>5){
+          html+=`<div style="text-align:center;padding:6px;font-size:.65rem;color:rgba(255,255,255,.25)">+${scores.length-5} more</div>`;
         }
-      });
-    </script>
-  </body>
+      }
+      html+=`</div>`;
+    });
+    html+=`<div class="alb-close-row"><button class="btn btn-gold" style="min-width:120px;" id="alb-close-btn">Close</button></div>`;
+    return html;
+  }
+
+  const box=document.createElement('div');
+  box.className='alb-box';
+  box.innerHTML=buildBody();
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  box.addEventListener('click',e=>{
+    const clr=e.target.closest('.alb-clear-btn');
+    if(clr){
+      const key=clr.dataset.key,name=clr.dataset.name;
+      if(confirm(`Clear all ${name} high scores?\n\nThis can't be undone.`)){
+        try{localStorage.removeItem('hi_'+key);}catch(e){}
+        box.innerHTML=buildBody();
+      }
+    }
+    if(e.target.id==='alb-close-btn')overlay.remove();
+  });
+
+  document.addEventListener('keydown',function esc(e){
+    if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',esc);}
+  });
+}
+</script>
+</body>
 </html>

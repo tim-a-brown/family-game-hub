@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Mini Crossword</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
+.cx-wrap{max-width:440px;margin:0 auto;padding:0 8px 60px;}
+/* Puzzle picker */
+.cx-picker{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.cx-puz-btn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.cx-puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.cx-puz-btn.solved{border-color:#22c55e;background:rgba(34,197,94,.12);color:#22c55e;}
+/* Grid */
+.cx-grid-wrap{display:flex;justify-content:center;margin-bottom:14px;}
+.cx-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;width:min(260px,72vw);}
+.cx-cell{aspect-ratio:1;position:relative;}
+.cx-cell-inner{width:100%;height:100%;border:2px solid rgba(255,255,255,.2);border-radius:3px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:clamp(.9rem,4.5vw,1.2rem);font-weight:900;font-family:var(--serif);text-transform:uppercase;color:#fff;cursor:pointer;transition:background .1s,border-color .1s;user-select:none;}
+.cx-cell-inner.black{background:#0d1117;border-color:#0d1117;pointer-events:none;}
+.cx-cell-inner.selected{border-color:var(--gold);background:rgba(245,200,66,.15);}
+.cx-cell-inner.highlighted{border-color:rgba(245,200,66,.4);background:rgba(245,200,66,.07);}
+.cx-cell-inner.correct{background:rgba(34,197,94,.18);border-color:#22c55e;}
+.cx-cell-inner.wrong{background:rgba(239,68,68,.15);border-color:#ef4444;}
+.cx-num{position:absolute;top:2px;left:3px;font-size:clamp(.45rem,.22em,.6rem);font-weight:700;color:var(--muted);line-height:1;pointer-events:none;}
+/* Pop on type */
+@keyframes cx-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
+.cx-cell-inner.popping{animation:cx-pop .08s ease;}
+/* Clues */
+.cx-clues{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.cx-clue-section{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:10px;}
+.cx-clue-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;}
+.cx-clue-item{font-size:.78rem;padding:4px 6px;border-radius:5px;cursor:pointer;transition:background .12s;color:rgba(255,255,255,.7);line-height:1.35;}
+.cx-clue-item:hover{background:rgba(255,255,255,.07);}
+.cx-clue-item.active{background:rgba(245,200,66,.12);color:var(--gold);}
+.cx-clue-item.done{color:rgba(34,197,94,.7);}
+.cx-clue-num{font-weight:700;color:#fff;margin-right:4px;}
+/* Keyboard */
+.cx-kb{display:flex;flex-direction:column;gap:5px;align-items:center;margin-bottom:10px;}
+.cx-kb-row{display:flex;gap:4px;}
+.cx-key{height:40px;min-width:28px;padding:0 5px;border-radius:6px;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:.75rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;touch-action:manipulation;font-family:var(--body);}
+.cx-key.wide{min-width:48px;font-size:.67rem;}
+.cx-key:active{transform:scale(.92);}
+/* Status & result */
+.cx-status{text-align:center;font-size:.82rem;font-weight:700;color:var(--muted);min-height:22px;margin-bottom:6px;}
+.cx-result{display:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center;margin-top:6px;}
+.cx-result.show{display:block;}
+.cx-result-title{font-family:var(--serif);font-size:1.3rem;font-weight:900;color:#22c55e;margin-bottom:4px;}
+.cx-result-sub{font-size:.78rem;color:var(--muted);}
+/* Action buttons */
+.cx-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mini Crossword</span></nav>
+<div class="page"><div class="cx-wrap">
+
+<div class="cx-picker" id="cx-picker"></div>
+
+<div class="cx-grid-wrap"><div class="cx-grid" id="cx-grid"></div></div>
+
+<div class="cx-status" id="cx-status"></div>
+
+<div class="cx-clues" id="cx-clues"></div>
+
+<div class="cx-kb" id="cx-kb">
+  <div class="cx-kb-row" id="cx-kb-r0"></div>
+  <div class="cx-kb-row" id="cx-kb-r1"></div>
+  <div class="cx-kb-row" id="cx-kb-r2"></div>
+</div>
+
+<div class="cx-actions">
+  <button class="btn btn-outline btn-sm" id="cx-check">✓ Check</button>
+  <button class="btn btn-outline btn-sm" id="cx-reveal-cell">💡 Reveal Letter</button>
+  <button class="btn btn-outline btn-sm" id="cx-clear">↺ Clear</button>
+</div>
+
+<div class="cx-result" id="cx-result">
+  <div class="cx-result-title">Puzzle Solved! 🎉</div>
+  <div class="cx-result-sub" id="cx-result-sub"></div>
+</div>
+
+</div></div>
+<script>
+'use strict';
+// ── Puzzle data ─────────────────────────────────────────────────────────────
+// Grid layout for all puzzles (5×5):
+//   Even rows (0,2,4): cols 0,2,4 white; cols 1,3 black
+//   Odd rows (1,3): all cols white (across words)
+// Numbering: (0,0)=1, (0,2)=2, (0,4)=3, (1,0)=4-Across, (3,0)=5-Across
+//
+// Verified intersections for each puzzle:
+//   1A[0]=1D[1], 1A[2]=2D[1], 1A[4]=3D[1]
+//   2A[0]=1D[3], 2A[2]=2D[3], 2A[4]=3D[3]
+
+const PUZZLES=[
+  { title:'Puzzle 1',
+    across:[
+      {n:4,clue:'Across: Sound input/output format',answer:'AUDIO'},
+      {n:5,clue:'Across: More than usual; bonus',  answer:'EXTRA'},
+    ],
+    down:[
+      {n:1,clue:'Down: Ocean swells',             answer:'WAVES'},
+      {n:2,clue:'Down: Makes corrections to text', answer:'EDITS'},
+      {n:3,clue:'Down: Reef-building marine animal; pinkish-orange color', answer:'CORAL'},
+    ]
+  },
+  { title:'Puzzle 2',
+    across:[
+      {n:4,clue:'Across: Striped big cat',          answer:'TIGER'},
+      {n:5,clue:'Across: Synthetic stocking fabric', answer:'NYLON'},
+    ],
+    down:[
+      {n:1,clue:"Down: Rise to one's feet",         answer:'STAND'},
+      {n:2,clue:'Down: Quick and nimble',            answer:'AGILE'},
+      {n:3,clue:'Down: Popular direction; fashion',  answer:'TREND'},
+    ]
+  },
+  { title:'Puzzle 3',
+    across:[
+      {n:4,clue:'Across: Extreme; beyond normal',  answer:'ULTRA'},
+      {n:5,clue:'Across: Love deeply',              answer:'ADORE'},
+    ],
+    down:[
+      {n:1,clue:'Down: Sweet crystalline ingredient', answer:'SUGAR'},
+      {n:2,clue:'Down: Guiding values of a group',   answer:'ETHOS'},
+      {n:3,clue:'Down: One who makes bread or pastries', answer:'BAKER'},
+    ]
+  },
+  { title:'Puzzle 4',
+    across:[
+      {n:4,clue:'Across: Sour yellow citrus fruit', answer:'LEMON'},
+      {n:5,clue:'Across: Short; concise',           answer:'BRIEF'},
+    ],
+    down:[
+      {n:1,clue:'Down: Spherical map of the Earth', answer:'GLOBE'},
+      {n:2,clue:'Down: Range or scope',             answer:'AMBIT'},
+      {n:3,clue:'Down: Sharp cutting utensil',      answer:'KNIFE'},
+    ]
+  },
+  { title:'Puzzle 5',
+    across:[
+      {n:4,clue:'Across: Chaos and destruction',   answer:'HAVOC'},
+      {n:5,clue:'Across: Latin dance; tomato dip', answer:'SALSA'},
+    ],
+    down:[
+      {n:1,clue:'Down: Board game with pawns and kings', answer:'CHESS'},
+      {n:2,clue:'Down: Wicked deeds (plural)',     answer:'EVILS'},
+      {n:3,clue:'Down: Vast body of salt water',   answer:'OCEAN'},
+    ]
+  },
+  { title:'Puzzle 6',
+    across:[
+      {n:4,clue:'Across: Art of organized sound',  answer:'MUSIC'},
+      {n:5,clue:'Across: Impressive; splendid',    answer:'GRAND'},
+    ],
+    down:[
+      {n:1,clue:'Down: Picture; visual likeness',  answer:'IMAGE'},
+      {n:2,clue:'Down: Written composition; formal piece', answer:'ESSAY'},
+      {n:3,clue:'Down: Corrosive compounds (plural)', answer:'ACIDS'},
+    ]
+  },
+  { title:'Puzzle 7',
+    across:[
+      {n:4,clue:'Across: Tidy; free of mess',      answer:'CLEAN'},
+      {n:5,clue:'Across: Courageous; bold',        answer:'BRAVE'},
+    ],
+    down:[
+      {n:1,clue:'Down: Underwater breathing gear', answer:'SCUBA'},
+      {n:2,clue:'Down: Permitted by law; valid',   answer:'LEGAL'},
+      {n:3,clue:"Down: Drop to one's knees",       answer:'KNEEL'},
+    ]
+  },
+];
+
+// ── Grid helpers ──────────────────────────────────────────────────────────────
+// isBlack: even rows, odd cols are black squares
+function isBlack(r,c){return r%2===0&&c%2===1;}
+// Cell number: only certain cells get clue numbers
+function cellNum(r,c){
+  if(r===0&&c===0)return 1;
+  if(r===0&&c===2)return 2;
+  if(r===0&&c===4)return 3;
+  if(r===1&&c===0)return 4;
+  if(r===3&&c===0)return 5;
+  return null;
+}
+// Which cells belong to an entry
+function entryCells(dir,startR,startC){
+  const cells=[];
+  if(dir==='across'){for(let c=startC;c<5;c++){if(!isBlack(startR,c))cells.push([startR,c]);else break;}}
+  else {for(let r=startR;r<5;r++){if(!isBlack(r,startC))cells.push([r,startC]);else break;}}
+  return cells;
+}
+// Entry start positions:
+const ENTRY_STARTS={
+  across:[{n:4,r:1,c:0},{n:5,r:3,c:0}],
+  down:[{n:1,r:0,c:0},{n:2,r:0,c:2},{n:3,r:0,c:4}],
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let puzIdx=0;
+let grid=Array.from({length:5},()=>Array(5).fill(''));
+let solvedPuzzles=new Set();
+let selR=1,selC=0,selDir='across';
+let solved=false;
+
+// Build solution map from current puzzle
+function getSolution(){
+  const sol=Array.from({length:5},()=>Array(5).fill(null));
+  const puz=PUZZLES[puzIdx];
+  // Place across answers
+  puz.across.forEach((entry,i)=>{
+    const {r,c}=ENTRY_STARTS.across[i];
+    [...entry.answer].forEach((ch,j)=>{ sol[r][c+j]=ch; });
+  });
+  // Place down answers (overwrites same cells — they must match due to verified intersections)
+  puz.down.forEach((entry,i)=>{
+    const {r,c}=ENTRY_STARTS.down[i];
+    [...entry.answer].forEach((ch,j)=>{ sol[r+j][c]=ch; });
+  });
+  return sol;
+}
+
+// ── Build UI ──────────────────────────────────────────────────────────────────
+function buildPicker(){
+  const el=document.getElementById('cx-picker');
+  el.innerHTML='';
+  PUZZLES.forEach((_,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cx-puz-btn'+(i===puzIdx?' active':'')+(solvedPuzzles.has(i)?' solved':'');
+    btn.textContent=i+1;
+    btn.addEventListener('click',()=>loadPuzzle(i));
+    el.appendChild(btn);
+  });
+}
+
+function buildGrid(){
+  const el=document.getElementById('cx-grid');
+  el.innerHTML='';
+  for(let r=0;r<5;r++){
+    for(let c=0;c<5;c++){
+      const cell=document.createElement('div');
+      cell.className='cx-cell';cell.dataset.r=r;cell.dataset.c=c;
+      const inner=document.createElement('div');
+      inner.className='cx-cell-inner'+(isBlack(r,c)?' black':'');
+      inner.id=`cx-${r}-${c}`;
+      if(!isBlack(r,c)){
+        const num=cellNum(r,c);
+        if(num){const nEl=document.createElement('span');nEl.className='cx-num';nEl.textContent=num;inner.appendChild(nEl);}
+        inner.addEventListener('click',()=>clickCell(r,c));
+      }
+      cell.appendChild(inner);
+      el.appendChild(cell);
+    }
+  }
+  renderGrid();
+}
+
+function renderGrid(){
+  const sol=getSolution();
+  for(let r=0;r<5;r++){
+    for(let c=0;c<5;c++){
+      if(isBlack(r,c))continue;
+      const inner=document.getElementById(`cx-${r}-${c}`);
+      // Clear state classes
+      inner.classList.remove('selected','highlighted','correct','wrong');
+      // Content: preserve letter above number span
+      const numSpan=inner.querySelector('.cx-num');
+      inner.textContent=grid[r][c];
+      if(numSpan)inner.prepend(numSpan);
+    }
+  }
+  highlightSelection();
+}
+
+function highlightSelection(){
+  if(isBlack(selR,selC))return;
+  const cells=getActiveCells();
+  // First, clear all highlights
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    if(!isBlack(r,c)){const el=document.getElementById(`cx-${r}-${c}`);el.classList.remove('selected','highlighted');}
+  }
+  // Highlight active entry
+  cells.forEach(([r,c])=>{document.getElementById(`cx-${r}-${c}`).classList.add('highlighted');});
+  // Mark selected cell
+  document.getElementById(`cx-${selR}-${selC}`).classList.add('selected');
+  // Update clue highlights
+  highlightActiveClue();
+}
+
+function getActiveCells(){
+  const start=ENTRY_STARTS[selDir].find(e=>{
+    const cells=entryCells(selDir,e.r,e.c);
+    return cells.some(([r,c])=>r===selR&&c===selC);
+  });
+  if(!start)return [];
+  return entryCells(selDir,start.r,start.c);
+}
+
+function getActiveEntry(){
+  return ENTRY_STARTS[selDir].find(e=>{
+    const cells=entryCells(selDir,e.r,e.c);
+    return cells.some(([r,c])=>r===selR&&c===selC);
+  });
+}
+
+function highlightActiveClue(){
+  document.querySelectorAll('.cx-clue-item').forEach(el=>el.classList.remove('active'));
+  const entry=getActiveEntry();
+  if(entry){
+    const el=document.getElementById(`cx-clue-${selDir}-${entry.n}`);
+    if(el){el.classList.add('active');el.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  }
+}
+
+function buildClues(){
+  const puz=PUZZLES[puzIdx];
+  const el=document.getElementById('cx-clues');
+  el.innerHTML='';
+  ['across','down'].forEach(dir=>{
+    const sec=document.createElement('div');sec.className='cx-clue-section';
+    const title=document.createElement('div');title.className='cx-clue-title';
+    title.textContent=dir==='across'?'↔ Across':'↕ Down';
+    sec.appendChild(title);
+    const entries=puz[dir];
+    entries.forEach(entry=>{
+      const item=document.createElement('div');
+      item.className='cx-clue-item';item.id=`cx-clue-${dir}-${entry.n}`;
+      const numEl=document.createElement('span');numEl.className='cx-clue-num';numEl.textContent=entry.n+'.';
+      item.appendChild(numEl);
+      // Strip direction prefix from clue for display
+      item.appendChild(document.createTextNode(entry.clue.replace(/^(Across|Down): ?/,'')));
+      item.addEventListener('click',()=>selectEntry(dir,entry.n));
+      sec.appendChild(item);
+    });
+    el.appendChild(sec);
+  });
+}
+
+function buildKeyboard(){
+  const rows=['QWERTYUIOP','ASDFGHJKL','⌫ZXCVBNM↵'];
+  rows.forEach((row,ri)=>{
+    const el=document.getElementById('cx-kb-r'+ri);
+    el.innerHTML='';
+    row.split('').forEach(k=>{
+      const btn=document.createElement('button');
+      btn.className='cx-key'+(k==='⌫'||k==='↵'?' wide':'');
+      btn.textContent=k;
+      btn.addEventListener('click',()=>handleKey(k));
+      el.appendChild(btn);
+    });
+  });
+}
+
+// ── Interaction ───────────────────────────────────────────────────────────────
+function clickCell(r,c){
+  if(solved)return;
+  if(r===selR&&c===selC){
+    // Toggle direction
+    const otherDir=selDir==='across'?'down':'across';
+    const otherEntry=ENTRY_STARTS[otherDir].find(e=>entryCells(otherDir,e.r,e.c).some(([er,ec])=>er===r&&ec===c));
+    if(otherEntry){selDir=otherDir;}
+  } else {
+    selR=r;selC=c;
+    // Prefer across if cell is in an across entry
+    const inAcross=ENTRY_STARTS.across.some(e=>entryCells('across',e.r,e.c).some(([er,ec])=>er===r&&ec===c));
+    if(!inAcross)selDir='down';
+    else if(selDir==='down'){
+      const inDown=ENTRY_STARTS.down.some(e=>entryCells('down',e.r,e.c).some(([er,ec])=>er===r&&ec===c));
+      if(!inDown)selDir='across';
+    }
+  }
+  highlightSelection();
+  setStatus('');
+}
+
+function selectEntry(dir,n){
+  selDir=dir;
+  const entry=ENTRY_STARTS[dir].find(e=>e.n===n);
+  if(entry){selR=entry.r;selC=entry.c;}
+  highlightSelection();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='Backspace')handleKey('⌫');
+  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();advanceOrSwitch();}
+  else if(e.key==='ArrowRight'){e.preventDefault();selDir='across';highlightSelection();}
+  else if(e.key==='ArrowDown'){e.preventDefault();selDir='down';highlightSelection();}
+  else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toUpperCase());
+});
+
+function handleKey(k){
+  if(solved)return;
+  if(k==='⌫'){doBackspace();}
+  else if(k==='↵'){advanceOrSwitch();}
+  else if(/^[A-Z]$/.test(k)){typeInCell(k);}
+}
+
+function typeInCell(k){
+  grid[selR][selC]=k;
+  const inner=document.getElementById(`cx-${selR}-${selC}`);
+  inner.classList.add('popping');setTimeout(()=>inner.classList.remove('popping'),80);
+  renderGrid();
+  advance();
+}
+
+function doBackspace(){
+  if(grid[selR][selC]!==''){
+    grid[selR][selC]='';renderGrid();
+  } else {
+    retreat();
+    grid[selR][selC]='';renderGrid();
+  }
+}
+
+function advance(){
+  const cells=getActiveCells();
+  const idx=cells.findIndex(([r,c])=>r===selR&&c===selC);
+  if(idx<cells.length-1){[selR,selC]=cells[idx+1];highlightSelection();}
+  else {
+    // Jump to next unfilled cell in entry or next entry
+    const nextEmpty=cells.find(([r,c])=>grid[r][c]==='');
+    if(nextEmpty){[selR,selC]=nextEmpty;highlightSelection();}
+  }
+}
+
+function retreat(){
+  const cells=getActiveCells();
+  const idx=cells.findIndex(([r,c])=>r===selR&&c===selC);
+  if(idx>0){[selR,selC]=cells[idx-1];highlightSelection();}
+}
+
+function advanceOrSwitch(){
+  const cells=getActiveCells();
+  const idx=cells.findIndex(([r,c])=>r===selR&&c===selC);
+  if(idx<cells.length-1){[selR,selC]=cells[idx+1];highlightSelection();}
+  else {
+    // Advance to next entry
+    const allEntries=[...ENTRY_STARTS.across,...ENTRY_STARTS.down];
+    const curEntry=getActiveEntry();
+    const curIdx=allEntries.findIndex(e=>e.n===curEntry?.n&&ENTRY_STARTS[selDir].includes(e));
+    // Find next entry with empty cells
+    for(let i=1;i<allEntries.length;i++){
+      const next=allEntries[(curIdx+i)%allEntries.length];
+      const dir=ENTRY_STARTS.across.includes(next)?'across':'down';
+      const nextCells=entryCells(dir,next.r,next.c);
+      const empty=nextCells.find(([r,c])=>grid[r][c]==='');
+      if(empty){selDir=dir;[selR,selC]=empty;highlightSelection();break;}
+    }
+  }
+}
+
+// ── Check / Reveal / Clear ───────────────────────────────────────────────────
+document.getElementById('cx-check').addEventListener('click',checkAll);
+document.getElementById('cx-reveal-cell').addEventListener('click',revealCell);
+document.getElementById('cx-clear').addEventListener('click',clearGrid);
+
+function checkAll(){
+  const sol=getSolution();
+  let allCorrect=true,allFilled=true;
+  for(let r=0;r<5;r++){
+    for(let c=0;c<5;c++){
+      if(isBlack(r,c))continue;
+      const inner=document.getElementById(`cx-${r}-${c}`);
+      inner.classList.remove('correct','wrong');
+      if(grid[r][c]===''){allFilled=false;allCorrect=false;continue;}
+      if(grid[r][c]===sol[r][c]){inner.classList.add('correct');}
+      else{inner.classList.add('wrong');allCorrect=false;}
+    }
+  }
+  if(!allFilled){setStatus('Fill in all squares first');return;}
+  if(allCorrect){winPuzzle();}
+  else{setStatus('Some letters are wrong — keep trying!');}
+}
+
+function revealCell(){
+  const sol=getSolution();
+  grid[selR][selC]=sol[selR][selC];
+  renderGrid();
+  const inner=document.getElementById(`cx-${selR}-${selC}`);
+  inner.classList.add('correct');
+  setStatus('');
+  advance();
+  // Check if now complete
+  checkSilent();
+}
+
+function checkSilent(){
+  const sol=getSolution();
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){if(!isBlack(r,c)&&grid[r][c]!==sol[r][c])return;}
+  winPuzzle();
+}
+
+function clearGrid(){
+  grid=Array.from({length:5},()=>Array(5).fill(''));
+  document.querySelectorAll('.cx-cell-inner').forEach(el=>el.classList.remove('correct','wrong'));
+  renderGrid();
+  document.getElementById('cx-result').classList.remove('show');
+  solved=false;setStatus('');
+}
+
+function winPuzzle(){
+  solved=true;
+  solvedPuzzles.add(puzIdx);
+  buildPicker();
+  document.getElementById('cx-result').classList.add('show');
+  const unsolved=PUZZLES.findIndex((_,i)=>!solvedPuzzles.has(i));
+  document.getElementById('cx-result-sub').textContent=
+    unsolved>=0?`Puzzle ${puzIdx+1} complete! Try Puzzle ${unsolved+1} next.`:'All 7 puzzles solved — you\'re on fire! 🔥';
+  // Green all cells
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    if(!isBlack(r,c)){document.getElementById(`cx-${r}-${c}`).classList.add('correct');}
+  }
+}
+
+function setStatus(msg){document.getElementById('cx-status').textContent=msg;}
+
+// ── Load puzzle ───────────────────────────────────────────────────────────────
+function loadPuzzle(idx){
+  puzIdx=idx;solved=false;
+  grid=Array.from({length:5},()=>Array(5).fill(''));
+  selR=1;selC=0;selDir='across';
+  buildPicker();
+  buildGrid();
+  buildClues();
+  document.getElementById('cx-result').classList.remove('show');
+  setStatus('');
+  highlightSelection();
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+buildKeyboard();
+loadPuzzle(0);
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_cword(){
+  try{sessionStorage.setItem('cword',JSON.stringify({puzIdx,grid,solvedPuzzles:[...solvedPuzzles],_ts:Date.now()}));}catch(e){}
+}
+function _load_cword(){
+  try{
+    const raw=sessionStorage.getItem('cword');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    puzIdx=s.puzIdx||0;grid=s.grid;solvedPuzzles=new Set(s.solvedPuzzles||[]);
+    renderPuzzle();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_cword);
+
+_load_cword();
+</script>
+</body>
+</html>

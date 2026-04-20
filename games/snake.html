@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Snake</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../arcade-hi.js"></script>
+<style>
+body{background:#060f06;}
+.wrap{max-width:400px;margin:0 auto;padding:0 8px 40px;display:flex;flex-direction:column;align-items:center;}
+.sn-header{display:flex;gap:12px;justify-content:center;margin-bottom:10px;width:100%;}
+.sn-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 16px;text-align:center;}
+.sn-val{font-family:var(--serif);font-size:1.3rem;font-weight:900;color:#22c55e;}
+.sn-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+canvas{border-radius:8px;border:2px solid rgba(34,197,94,.2);display:block;}
+.sn-status{text-align:center;font-size:.88rem;font-weight:700;margin:8px 0;min-height:24px;color:var(--muted);}
+.dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;margin-top:12px;}
+.dp-btn{width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;user-select:none;}
+.dp-btn:active{background:rgba(34,197,94,.3);}
+.dp-center{background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.4);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Snake</span><button onclick="ArcadeHi.show('snake','Snake')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button><button onclick="resetGame&&resetGame()" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button></nav>
+<div class="page"><div class="wrap">
+<div class="sn-header">
+  <div class="sn-stat"><div class="sn-val" id="sn-score">0</div><div class="sn-lbl">Score</div></div>
+  <div class="sn-stat"><div class="sn-val" id="sn-best">0</div><div class="sn-lbl">Best</div></div>
+  <div class="sn-stat"><div class="sn-val" id="sn-level">1</div><div class="sn-lbl">Level</div></div>
+</div>
+<canvas id="cv"></canvas>
+<div class="sn-status" id="sn-status">Tap Start or press any arrow key</div>
+<div style="text-align:center;margin-bottom:8px;">
+  <button class="btn btn-gold" id="sn-start">▶ Start</button>
+</div>
+<div class="dpad">
+  <div></div>
+  <div class="dp-btn" id="dp-up">▲</div>
+  <div></div>
+  <div class="dp-btn" id="dp-left">◀</div>
+  <div class="dp-btn dp-center" id="dp-pause">⏸</div>
+  <div class="dp-btn" id="dp-right">▶</div>
+  <div></div>
+  <div class="dp-btn" id="dp-down">▼</div>
+  <div></div>
+</div>
+</div></div>
+<script>
+'use strict';
+const COLS=20,ROWS=20,CELL=18;
+const cv=document.getElementById('cv');
+cv.width=COLS*CELL;cv.height=ROWS*CELL;
+const ctx=cv.getContext('2d');
+
+let snake,dir,nextDir,food,score,best=parseInt(localStorage.getItem('snakeBest')||'0'),running=false,paused=false,gameLoopId;
+let level=1,speed=150;
+
+function rnd(max){return Math.floor(Math.random()*max);}
+function newFood(){
+  let f;
+  do{f={x:rnd(COLS),y:rnd(ROWS)};}while(snake.some(s=>s.x===f.x&&s.y===f.y));
+  food=f;
+}
+function newGame(){
+  snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir={x:1,y:0};nextDir={x:1,y:0};score=0;level=1;speed=150;
+  newFood();render();
+  document.getElementById('sn-score').textContent=0;
+  document.getElementById('sn-level').textContent=1;
+  document.getElementById('sn-status').textContent='';
+}
+function start(){
+  newGame();running=true;paused=false;
+  clearInterval(gameLoopId);gameLoopId=setInterval(step,speed);
+  document.getElementById('sn-start').textContent='↺ Restart';
+}
+function step(){
+  if(!running||paused)return;
+  dir=nextDir;
+  const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+  if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some(s=>s.x===head.x&&s.y===head.y)){
+    running=false;clearInterval(gameLoopId);
+    if(score>best){best=score;localStorage.setItem('snakeBest',best);document.getElementById('sn-best').textContent=best;}
+    ArcadeHi.check('snake',score,()=>{});
+    document.getElementById('sn-status').innerHTML='<span style="color:#ef4444">Game Over!</span> Press Start to play again.';
+    render();return;
+  }
+  snake.unshift(head);
+  if(head.x===food.x&&head.y===food.y){
+    score+=level*10;
+    document.getElementById('sn-score').textContent=score;
+    if(score>best){best=score;localStorage.setItem('snakeBest',best);document.getElementById('sn-best').textContent=best;}
+    level=Math.floor(score/100)+1;
+    const newSpeed=Math.max(60,150-level*10);
+    if(newSpeed!==speed){speed=newSpeed;clearInterval(gameLoopId);gameLoopId=setInterval(step,speed);}
+    document.getElementById('sn-level').textContent=level;
+    newFood();
+  } else {snake.pop();}
+  render();
+}
+function render(){
+  ctx.fillStyle='#060f06';ctx.fillRect(0,0,cv.width,cv.height);
+  // Grid
+  ctx.strokeStyle='rgba(34,197,94,.05)';ctx.lineWidth=0.5;
+  for(let i=0;i<=COLS;i++){ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,ROWS*CELL);ctx.stroke();}
+  for(let i=0;i<=ROWS;i++){ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(COLS*CELL,i*CELL);ctx.stroke();}
+  // Food
+  ctx.fillStyle='#ef4444';
+  ctx.shadowColor='#ef4444';ctx.shadowBlur=8;
+  ctx.beginPath();ctx.arc(food.x*CELL+CELL/2,food.y*CELL+CELL/2,CELL/2-2,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  // Snake
+  snake.forEach((s,i)=>{
+    const pct=1-i/snake.length;
+    ctx.fillStyle=`rgba(34,${155+Math.round(pct*100)},94,${0.7+pct*0.3})`;
+    if(i===0){ctx.shadowColor='#22c55e';ctx.shadowBlur=6;}
+    ctx.beginPath();ctx.roundRect(s.x*CELL+1,s.y*CELL+1,CELL-2,CELL-2,3);ctx.fill();
+    ctx.shadowBlur=0;
+  });
+  // Game over overlay
+  if(!running&&score>0){
+    ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='#22c55e';ctx.font='bold 22px "Playfair Display",serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('GAME OVER',cv.width/2,cv.height/2-14);
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='bold 14px Inter,sans-serif';
+    ctx.fillText('Score: '+score,cv.width/2,cv.height/2+14);
+  }
+}
+function setDir(dx,dy){if(dx===0&&dir.x===0)return;if(dy===0&&dir.y===0)return;nextDir={x:dx,y:dy};}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft')setDir(-1,0);
+  else if(e.key==='ArrowRight')setDir(1,0);
+  else if(e.key==='ArrowUp')setDir(0,-1);
+  else if(e.key==='ArrowDown')setDir(0,1);
+  else if(e.key===' '){paused=!paused;}
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
+  if(!running&&(e.key.startsWith('Arrow')))start();
+});
+document.getElementById('dp-up').addEventListener('click',()=>{setDir(0,-1);if(!running)start();});
+document.getElementById('dp-down').addEventListener('click',()=>{setDir(0,1);if(!running)start();});
+document.getElementById('dp-left').addEventListener('click',()=>{setDir(-1,0);if(!running)start();});
+document.getElementById('dp-right').addEventListener('click',()=>{setDir(1,0);if(!running)start();});
+document.getElementById('dp-pause').addEventListener('click',()=>{paused=!paused;});
+document.getElementById('sn-start').addEventListener('click',start);
+// Swipe
+let tx=0,ty=0;
+cv.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+cv.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)<20&&Math.abs(dy)<20)return;
+  if(Math.abs(dx)>Math.abs(dy))setDir(dx>0?1:-1,0);else setDir(0,dy>0?1:-1);
+  if(!running)start();
+},{passive:true});
+document.getElementById('sn-best').textContent=best;
+render();
+</script>
+</body>
+</html>

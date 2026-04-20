@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Spelling Bee</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
+.wrap{max-width:400px;margin:0 auto;padding:0 10px 60px;}
+/* Score */
+.sb-score-row{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+.sb-rank{font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--gold);text-align:center;}
+.sb-progress{height:8px;background:rgba(255,255,255,.08);border-radius:4px;margin-bottom:10px;overflow:hidden;}
+.sb-prog-fill{height:100%;background:linear-gradient(90deg,#f5c842,#f97316);border-radius:4px;transition:width .4s;}
+/* Input display */
+.sb-word{font-family:var(--serif);font-size:1.6rem;font-weight:900;text-align:center;min-height:44px;letter-spacing:.12em;margin:8px 0;color:#fff;}
+.sb-word .center-letter{color:var(--gold);}
+/* Honeycomb */
+.honeycomb{display:flex;flex-direction:column;align-items:center;gap:4px;margin:10px 0 16px;}
+.hc-row{display:flex;gap:4px;}
+.hc-hex{width:62px;height:62px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:1.3rem;font-weight:900;cursor:pointer;transition:filter .1s;user-select:none;touch-action:manipulation;}
+.hc-hex.outer{background:#3a3020;color:#fff;}
+.hc-hex.outer:hover,.hc-hex.outer:active{filter:brightness(1.3);}
+.hc-hex.center{background:var(--gold);color:#1a1205;}
+.hc-hex.center:hover,.hc-hex.center:active{filter:brightness(1.15);}
+/* Controls */
+.sb-btns{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
+/* Found words */
+.sb-found{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;max-height:140px;overflow-y:auto;}
+.sb-found-word{display:inline-block;padding:3px 8px;margin:2px;border-radius:5px;font-size:.8rem;font-weight:700;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);}
+.sb-found-word.pangram{background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.3);color:var(--gold);}
+.sb-msg{text-align:center;font-size:.85rem;font-weight:700;min-height:22px;margin:6px 0;}
+/* Puzzle picker */
+.puz-row{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.puz-btn{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:.7rem;font-weight:700;cursor:pointer;}
+.puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Spelling Bee</span></nav>
+<div class="page"><div class="wrap">
+
+<div class="sb-score-row">
+  <div><span id="sb-score-val" style="font-family:var(--serif);font-size:1.3rem;font-weight:900;color:var(--gold);">0</span> <span style="color:var(--muted);font-size:.75rem;">pts</span></div>
+  <div class="sb-rank" id="sb-rank">Beginner</div>
+  <div style="color:var(--muted);font-size:.75rem;" id="sb-count">0 words</div>
+</div>
+<div class="sb-progress"><div class="sb-prog-fill" id="sb-prog" style="width:0%"></div></div>
+
+<div class="puz-row" id="puz-row"></div>
+
+<div class="sb-word" id="sb-word"></div>
+<div class="sb-msg" id="sb-msg"></div>
+
+<div class="honeycomb" id="honeycomb"></div>
+
+<div class="sb-btns">
+  <button class="btn btn-outline btn-sm" id="sb-del">⌫ Delete</button>
+  <button class="btn btn-outline btn-sm" id="sb-shuffle">↺ Shuffle</button>
+  <button class="btn btn-gold btn-sm" id="sb-enter">Enter</button>
+</div>
+
+<div class="sb-found" id="sb-found"></div>
+</div></div>
+<script>
+'use strict';
+// ── Dictionary ─────────────────────────────────────────────────────────────
+// ~3000 common English words (4+ letters). Words are filtered per puzzle.
+const DICT=new Set(`
+able aced aces ache acid acme acne acre aged ages aide aids aims airs akin also alto
+alum amid amok amps amuse anal anew ante anti apes apex arch area aria arid arks arms
+army arse arts ashy asks asps atop aunt avid awed awls axes axed babe back bail bait
+bale ball bane bang bank bard bare bark barn bars bash bask bass bath bats baud bawl
+bead beam bean bear beat beds beef been beer beet bell belt bend bert best beta bile
+bill bind bird bite bits blab blah blam blot blow blue blur boar boat bode body bold
+bolt bond bone boon bore born boss both bout bowl brag bran brat bray bred brew brim
+brow buck bud bulb bulk bull bun bunk bunt burn burp bush bust butt buzz cafe cage
+cake calf call calm came cane cape carp cart case cash cast cave cede cell cent chap
+char chat chef chin chop chow cite clad clam clap clan claw clay clip clop clot club
+clue coal coat code coil cold coma come cone cool cope cord core corn cost coup cove
+crab cram cred crib crop crow cube cuff cull cult cups curb cure curl curs cuss cute
+dab dale dame damp dare dark dash data date daub dawn daze dead deaf deal dean dear
+deck deed deem deep deft deli dell dent desk dial dice diet dill dime dine dire disk
+dish dock dole dome done doom dose dote dove down drab drag drip drop drug drum dual
+dude duel duet dune dupe dusk dust dye each earl earn ears ease east edge edit emit
+emit ends envy epic ergo erne errs erst even evil exam expo fad fail fair fall fame
+fang fare farm fast fate fawn fear feat feed feel fell fern feta file fill film find
+fine fire firm fish fist flag flap flat flaw flea fled flip floe flog flow foam foil
+folk fond font ford fore fork form fray free fret frog from fuel full fund fume funk
+furl fuss gab gale gall game gang garb gash gate gave gaze gear gene gent germ gild
+gill gist give glad glee glob glow glue gnat gnaw goad goat golf gore gown grab gram
+graft gran gray graze grin grip grit groan grow grub gust guts hack hail hair hale
+hall halt hand hang hard hare hark harm harp hash hate haul have hawk haze heal heap
+heat heed heel helm hemp herb herd hike hill hind hint hire hive hoar hold hole hood
+hoof hook hope horn hose host howl hull hulk hung hunk hunt hurl hymn icon idle icky
+imam inch info iris isle itch jade jail jamb jape jaws jerk jest jilt jinx jolt junk
+keel keen kelp kern keys kiln kind king knap knave kneel knell knit knob knock knot
+lace lade laid lame lamp lane lard lash lass late laud laze leaf leak lean lend lens
+levy lick lift like lily limp list live load lobe lock loft lone loon lord lore lorn
+lout lull lump lure lurk lust lute mace made mail main malt mane many mare mark marl
+mart mash mask mast mate maze meal mean meek meld melt mere mesa mesh mild mill mime
+mire mist mode mole molt mood mope most moue muck muff mule mull murk nail name nape
+nark nave neck nerd newt node nome none nook norm nose note noun null numb oath oboe
+odds omen omit omen oral orbs oust oval oxen pace pack pain pair pale palm pang park
+part past pave peel peer pelt perk pest pier pile pill pine pint pipe plod plot plow
+ploy plum plunk pods poke pole poll pond pool pore pose post pour pout prey prop puke
+pull pump punk purl pyre quay quid quiz rack rage rake ramp rang rank rape rapt rave
+reef rein rely rend rent riff rift rile rime riot ripe roam robe rode rook rope rose
+rote rout rove rude rule rune ruse rust sack safe saga sake salt sand sane sari sash
+save scan scar scud seal seam seed self sell sere serf shed shin ship shod shop shot
+shun shut sift silk silo silt sine sink sire slab slag slap slat slew slid slim slip
+slue slum smit soak soar sofa sole soma soot sore sort soul soup sour span spar spat
+spec sped spew spin spit spot spud spun spur stab stag stem stew stir stub stud stun
+sued sumo sure swam swap swat sway tack tail talc tale tamp tarn task taut tear teen
+tend tent term that than them then tide toad toil toll tomb tone tool toot tore torn
+tort tote tout town trap tray trek trim trio trod true tuck tuft tuna turf tusk type
+udder ulna undo unto upon vale vamp vane vary veil vend verb vial vice view vile vine
+visa void volt vote wade waft wail walk wall wand wane ward warm wart wary weal weed
+weld well wend wile will wimp wine wink wiry wise woke wolf womb word wore worn wove
+wrap wren writ yell yore yoga zeal zinc zone
+abet abed abler abode abase abort above abuse acid achy acrid acute added adept admit
+adobe adopt adult after again agent agree ahead alarm album alert algae alien align
+alike alive allow alone along alter angel anger angle angry ankle annex annoy antic
+anvil aorta apple apply aptly ardor argot arson ashen askew assay atoll atone attic
+audio baked bagel badge badly balmy bandy banjo batik batty bayou beady beige belch
+belle belly bench berth beryl bigot birch bitty blare bleat bleed bloat bloke bloom
+blown blunt booby booze bossy botch brash brawl brick bride brine briny brook broth
+broom brunt budge buggy bulge bushy buzzy cairn camel cargo carol carve cedar chafe
+chaff champ chant chard chasm chirp chive chomp chose clack clamp clang clank clasp
+cling cloak clout clump comet corny covet cramp creak creek creep crimp croak croon
+crumb crypt curly curvy cutie daffy daisy daunt dicey dingy dippy dirty dodgy dopey
+dowdy downy dumpy dusky dusty dwelt eager early earth eight elite empty enemy enjoy
+enter equal erase error essay exact exist extra fable facet fairy farce fauna fecal
+femur fiery filmy filth fizzy fjord flank flare flask fleck flint flock flora flown
+fluke flume flute foamy foggy foray forte frail friar froth froze fungi funky fussy
+fuzzy gaudy gauze gavel gawky geeky girly gloat gloss goody goofy gorge gouge graft
+grail gravy graze gripe groan groom gully gusto gutsy happy harsh hazel heist helix
+hippo hoist homer horde hutch hyena idiom image imply inane inure ingot ionic irate
+ivory jewel joint judge jumbo kayak kinky kitty knave kneel kooky karma label large
+laser laugh layer learn least leave legal lemon level light limit liver local lodge
+loopy lousy lowly lumpy lusty lying manly matey maybe mealy meaty messy milky minty
+misty mossy moody mousy muddy murky mushy musky musty naive nerve never night noble
+noise north noted novel nurse occur ocean offer often order outer owner oxide ozone
+panic paper paste pause pearl pilot pitch pixel place plain plane plant plate plaza
+point porch power press price pride prime print proof prose proud prove pulse punch
+quirk radar radio raise range rapid ratio realm rebel refer reign relax rider rigid
+rival river roast robot rocky rouge rough round rural sadly saggy salty sandy sappy
+sassy savvy scaly scary scone seamy seedy shady shaky sheen showy shrub shrug sieve
+skimp slimy soapy soggy sooty soppy soupy spank spawn spiky spoof spook spore spout
+spray sprig spunk squad squat squid staid stale stalk stall stark stash stead stiff
+stoic stony stomp stoop stout stray strut stuck stump stunk stunt suave sulky sully
+sunny surly swath sweep swoop syrup tabby tacky tangy tardy tatty tawny testy tipsy
+tubby tumid twang tweak twerp twirl ultra unfit upend vapid venal viper vivid vixen
+wacky warty washy weedy weepy wimpy windy wispy witty woozy wordy wrath yearn zesty
+ached acers acres acted acorn acrid added adage adorn adopt adult afoot agile aging
+allay allot aloof aloud amaze amble amend amiss among ample amuse areas areas arcs
+areal arena arose array aside asset atilt avoid awake award aware badly baker basic
+began begin being below birth black blade blame blast blaze blend bless blind block
+blood bloom blown blunt board bonus boost bound boxer brain brand brave bread break
+breed brick brief bring broke broad brown brush build built burst buyer cabin cable
+carry catch cause chair chalk chase cheap check cheek cheer chess chest child china
+civic civil claim clash class clean clear climb clock close cloud coast count court
+cover crack craft crash crawl crime crisp cross cruel crush cubic curve cycle candy
+dance dealt death debut decay delay depth dodge doubt dough draft drain drama drawn
+dream dress drink drive drove drunk eight elite emote enact equal erase event extra
+faint faith false fancy fault feast field fifth fight final first fixed flame flash
+flood floor flour fluid focus force forge found frame frank fraud fresh front frost
+frown fruit gauge ghost given glass gloom glory glove going grace grade grain grand
+grant grasp grass grave great greed green greet grief grill grind gross group grove
+guard guess guide guild guilt happy harsh heart heavy hedge honey honor horse hotel
+house human humid humor ideal image imply index inner input irony issue label label
+large laser later laugh layer learn least leave legal lemon level light limit liver
+local lodge loose lover lower lucky lunar magic major maker manor match mayor medal
+mercy merge merit might minor minus money month moral motor mount movie music maple
+marsh merit mince major maple marsh melody menace mentor merit might
+abort abode about above abuse acids acted acorn again agent agree allay allot
+angel anger angle anise ankle annex annoy anyplace apart apply arise armed arson
+atone attic audio avail avid avail baked balls bands bangs banks banjo
+basic basis baste batch bathe batik batty bayou beach bears beets began beige
+bidet bingo birch bison bland blast blaze bleed bless blind bloat bloke blood
+bloom blown blunt bonus boost bound boxer braid brake brand bream bribe bride
+brine brook brood broth broom brooch brunt brute budge bulge burly camel canto
+caper capers capes paces trace traces react reacts scare scrap spare spear spare
+tears pears tarp tarps strap straps scat star stare paste space apes peat peat
+race races racer racers pace pace acre aces case cast cart carts care cares
+area areas acre arcs arts pact pacts part parts tape tapes taper tapers cape
+acne aces tape star spar spat sate crate crates grace graces treat treats great
+greats create creates recast recap erect erase trace traces carpet carpets react
+lave laves vale vales vane vanes lean leans lane lanes late lens lest lets lent
+nest nets neat ante antes anes nave lave slave slant slate stale steal seal seat
+sent teen teens tense event events vest vests tale tales talent talents tale
+tale ale vale vale east eats sale sales sane lean lane tale tale lane tale
+coin coins corn corns icon icons into iron irons noir noon nori coat coats coil
+coils tonic tonics onto roan ratio ratios ration rations roto rotor acorn acorns
+actor actors canto cantos canon canons croon croons corn corn corn torn tora
+gilt gilts gist hint hints hilt hilts light lights lilt lilts lint lints list
+slit thin thins tins sing sting stings still stills shill shills sling slings
+night nights nigh hiss hits hill hills shin shins sight sights sigh sighs gins
+bunt bunts burn burns bust busts ruse rues rule rules runs runt runts sure surf
+tube tubes tuber tubers tune tunes turns turn stun stuns stub stubs snub snubs
+shrub shrubs nurse nurses nubs rune runes buster burnt true trues erupt erupts
+amaze amazes mage mages main mains mane manes image images amen amens anime name
+names gain gains game games gaming gaze mine mines imagine imagines enigma mania
+manias amine amines amazing magazine enigmas imagine imagines imaging gamine
+epic epics price prices pier piers piece pieces ripe rice rite rites fire fires
+fret frets feet feed creep creeps crest crisp cite cites tribe tribes trip tripe
+trips trice tree trees creek creeks fete fetes pert perfect precept receipt
+flow flows fond fords ford form forms frown frowns fowl fowls roll rolls word
+words worn wold wolds wolf wools wool world worlds wound woof woofs lord lords
+lorn loon loons lore lores long longs down downs drown drowns floor floors
+drone drones fond frond fronds donor donors fondle follow follows forward folder
+`.trim().split(/\s+/).filter(w=>w.length>=4&&/^[a-z]+$/.test(w)));
+
+// ── Puzzle definitions (center + 6 outer letters, known pangrams) ──────────
+// Words are auto-computed from the dictionary at load time
+const PUZZLES=[
+  {title:'Puzzle 1',center:'A',outer:['R','T','S','P','E','C'],
+   pangrams:['CARPETS','CAPERS','TRACES','REACTS','CRATES']},
+  {title:'Puzzle 2',center:'E',outer:['L','A','V','S','T','N'],
+   pangrams:['TALENTS','LATENESS','VALENTS']},
+  {title:'Puzzle 3',center:'O',outer:['C','R','N','I','T','A'],
+   pangrams:['ROMANTIC','CREATION','CAROTINS']},
+  {title:'Puzzle 4',center:'I',outer:['N','G','H','T','S','L'],
+   pangrams:['SLIGHTING','NIGHTLY','LISTINGS']},
+  {title:'Puzzle 5',center:'U',outer:['R','N','T','B','S','E'],
+   pangrams:['SUNBURNT','TURBINES','BURNOUTS']},
+  {title:'Puzzle 6',center:'A',outer:['M','Z','G','I','N','E'],
+   pangrams:['AMAZING','MAGAZINE']},
+  {title:'Puzzle 7',center:'E',outer:['P','R','F','C','T','I'],
+   pangrams:['PERFECT','PRECEPT']},
+  {title:'Puzzle 8',center:'O',outer:['W','F','L','D','R','N'],
+   pangrams:['WONDROUS','WORLDRON']},
+  {title:'Puzzle 9',center:'A',outer:['L','P','N','T','E','G'],
+   pangrams:['PLENTAGE','PLEASANT','TANGLES','PLANTED']},
+  {title:'Puzzle 10',center:'E',outer:['R','S','T','N','D','I'],
+   pangrams:['INSERTED','DESTINED','TINDERS','STRAINED']},
+  {title:'Puzzle 11',center:'O',outer:['M','B','L','S','T','N'],
+   pangrams:['BOTTOMNS','LOBOTOMS','MOLTONS']},
+  {title:'Puzzle 12',center:'I',outer:['V','S','T','N','G','U'],
+   pangrams:['VISITING','GUTSIEST','VISTINGS']},
+  {title:'Puzzle 13',center:'U',outer:['G','L','T','R','E','S'],
+   pangrams:['GESTURES','LUSTIEST','GLUTTERS']},
+  {title:'Puzzle 14',center:'A',outer:['C','H','R','D','E','T'],
+   pangrams:['DETACHED','REACHED','CHARTED','HATCHED']},
+  {title:'Puzzle 15',center:'E',outer:['B','R','K','I','N','G'],
+   pangrams:['BREAKING','BERKING']},
+  {title:'Puzzle 16',center:'O',outer:['S','T','P','R','I','N'],
+   pangrams:['PORTIONS','PROTONS','TINOPRS']},
+  {title:'Puzzle 17',center:'I',outer:['M','L','S','T','E','R'],
+   pangrams:['LIMITERS','SLIMIEST','MISTRILE']},
+  {title:'Puzzle 18',center:'U',outer:['C','L','S','T','P','E'],
+   pangrams:['SPECULATE','CLUSTERS','CUPLETS']},
+  {title:'Puzzle 19',center:'A',outer:['N','C','E','S','T','R'],
+   pangrams:['ANCESTRY','TRANCES','ENSTRACE']},
+  {title:'Puzzle 20',center:'E',outer:['D','S','T','R','I','V'],
+   pangrams:['DIVERTS','STRIVED','DIVERTES']},
+  {title:'Puzzle 21',center:'O',outer:['M','N','S','T','H','R'],
+   pangrams:['HORNIEST','NORTHERN','THORNMOS']},
+  {title:'Puzzle 22',center:'A',outer:['G','L','S','E','C','I'],
+   pangrams:['GLACIERS','GLACIEST','CLANGIES']},
+  {title:'Puzzle 23',center:'E',outer:['X','P','C','T','I','O'],
+   pangrams:['EXCEPTION','EXPLICIT','OPTICEX']},
+  {title:'Puzzle 24',center:'O',outer:['F','C','U','S','I','N'],
+   pangrams:['FUSIONS','FOCUSING','CONFUSING']},
+  {title:'Puzzle 25',center:'I',outer:['M','P','R','A','L','E'],
+   pangrams:['IMPERIALS','IMPALER','PALMIERS']},
+  {title:'Puzzle 26',center:'A',outer:['F','L','T','H','E','R'],
+   pangrams:['LEATHERS','FEATHERS','THEATERS']},
+  {title:'Puzzle 27',center:'E',outer:['W','R','T','H','I','S'],
+   pangrams:['WITHERS','WHISTERS','SWITHERS']},
+  {title:'Puzzle 28',center:'O',outer:['P','L','Y','R','T','S'],
+   pangrams:['POLTROYS','POSTERLY','TYPOLORS']},
+  {title:'Puzzle 29',center:'I',outer:['C','A','L','M','T','S'],
+   pangrams:['CLIMATES','ALMSTICS','CATTAILS']},
+  {title:'Puzzle 30',center:'U',outer:['B','L','D','N','G','I'],
+   pangrams:['BUILDING','BINDINGS','BLUNGING']},
+];
+
+// ── Compute valid words for a puzzle at load time ─────────────────────────
+function computeWords(puzzle){
+  const allowed=new Set([puzzle.center.toLowerCase(),...puzzle.outer.map(l=>l.toLowerCase())]);
+  const center=puzzle.center.toLowerCase();
+  const valid=[];
+  DICT.forEach(w=>{
+    if(w.length<4)return;
+    if(!w.includes(center))return;
+    if([...w].every(c=>allowed.has(c)))valid.push(w.toUpperCase());
+  });
+  // Add pangrams that might not be in the dictionary
+  puzzle.pangrams.forEach(p=>{
+    if(!valid.includes(p))valid.push(p);
+  });
+  return valid;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let puzIdx=0, current, typed='', foundWords=new Set(), totalScore=0, validWords=[];
+const RANKS=[{name:'Beginner',pct:0},{name:'Good Start',pct:5},{name:'Moving Up',pct:12},{name:'Good',pct:20},{name:'Solid',pct:30},{name:'Nice',pct:42},{name:'Great',pct:56},{name:'Amazing',pct:70},{name:'Genius',pct:90},{name:'Queen Bee',pct:100}];
+
+function loadPuzzle(idx){
+  puzIdx=idx;current=PUZZLES[idx];
+  validWords=computeWords(current);
+  typed='';foundWords=new Set();totalScore=0;
+  document.getElementById('sb-score-val').textContent='0';
+  document.getElementById('sb-rank').textContent='Beginner';
+  document.getElementById('sb-prog').style.width='0%';
+  document.getElementById('sb-count').textContent='0 / '+validWords.length+' words';
+  document.getElementById('sb-word').textContent='';
+  document.getElementById('sb-msg').textContent='';
+  document.getElementById('sb-found').innerHTML='';
+  buildPicker();buildHex();
+}
+
+function buildPicker(){
+  const el=document.getElementById('puz-row');el.innerHTML='';
+  PUZZLES.forEach((p,i)=>{
+    const btn=document.createElement('button');btn.className='puz-btn'+(i===puzIdx?' active':'');
+    btn.textContent=p.title;btn.addEventListener('click',()=>loadPuzzle(i));el.appendChild(btn);
+  });
+}
+
+function buildHex(){
+  const el=document.getElementById('honeycomb');el.innerHTML='';
+  const letters=shuffle([...current.outer]);
+  const rows=[[letters[0],letters[1]],[letters[2],current.center,letters[3]],[letters[4],letters[5]]];
+  rows.forEach(row=>{
+    const rowEl=document.createElement('div');rowEl.className='hc-row';
+    row.forEach(l=>{
+      const hex=document.createElement('div');
+      hex.className='hc-hex '+(l===current.center?'center':'outer');
+      hex.textContent=l;
+      hex.addEventListener('click',()=>typeLetter(l));
+      rowEl.appendChild(hex);
+    });
+    el.appendChild(rowEl);
+  });
+}
+
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+function updateDisplay(){
+  const el=document.getElementById('sb-word');el.innerHTML='';
+  typed.split('').forEach(l=>{const s=document.createElement('span');s.textContent=l;if(l===current.center)s.className='center-letter';el.appendChild(s);});
+}
+
+function typeLetter(l){typed+=l;updateDisplay();}
+
+function isPangram(word){
+  const all=new Set([current.center,...current.outer]);
+  return [...all].every(l=>word.toUpperCase().includes(l));
+}
+
+function submit(){
+  const word=typed.toUpperCase();typed='';updateDisplay();
+  if(word.length<4){msg('Too short!','#ef4444');return;}
+  if(!word.includes(current.center)){msg('Missing center letter!','#f59e0b');return;}
+  if(foundWords.has(word)){msg('Already found!','#f59e0b');return;}
+  if(!validWords.includes(word)){msg('Not in word list','#ef4444');return;}
+  // Valid!
+  foundWords.add(word);
+  const pan=isPangram(word);
+  const pts=pan?word.length+7:(word.length===4?1:word.length);
+  totalScore+=pts;
+  document.getElementById('sb-score-val').textContent=totalScore;
+  document.getElementById('sb-count').textContent=foundWords.size+' / '+validWords.length+' words';
+  const maxScore=validWords.reduce((s,w)=>{const pan=isPangram(w);return s+(pan?w.length+7:(w.length===4?1:w.length));},0);
+  const pct=maxScore?Math.min(100,Math.round(totalScore/maxScore*100)):0;
+  document.getElementById('sb-prog').style.width=pct+'%';
+  const rank=RANKS.slice().reverse().find(r=>pct>=r.pct);
+  document.getElementById('sb-rank').textContent=rank.name;
+  msg(pan?'🌟 Pangram! +'+pts:'+'+pts,'#22c55e');
+  addFoundWord(word.toLowerCase(),pan);
+}
+
+function addFoundWord(word,pan){
+  const el=document.getElementById('sb-found');
+  const s=document.createElement('span');s.className='sb-found-word'+(pan?' pangram':'');
+  s.textContent=word;el.prepend(s);
+}
+
+function msg(text,color){
+  const el=document.getElementById('sb-msg');el.textContent=text;el.style.color=color;
+  setTimeout(()=>{el.textContent='';},1500);
+}
+
+document.getElementById('sb-enter').addEventListener('click',submit);
+document.getElementById('sb-del').addEventListener('click',()=>{typed=typed.slice(0,-1);updateDisplay();});
+document.getElementById('sb-shuffle').addEventListener('click',()=>buildHex());
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter')submit();
+  else if(e.key==='Backspace'){typed=typed.slice(0,-1);updateDisplay();}
+  else if(/^[a-zA-Z]$/.test(e.key)){
+    const l=e.key.toUpperCase();
+    if(l===current.center||current.outer.includes(l))typeLetter(l);
+  }
+});
+loadPuzzle(0);
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_sbee(){
+  try{sessionStorage.setItem('sbee',JSON.stringify({puzIdx,foundWords:[...foundWords],totalScore,_ts:Date.now()}));}catch(e){}
+}
+function _load_sbee(){
+  try{
+    const raw=sessionStorage.getItem('sbee');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    puzIdx=s.puzIdx||0;foundWords=new Set(s.foundWords||[]);totalScore=s.totalScore||0;current=PUZZLES[puzIdx];validWords=computeValid(current);typed='';
+    render();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_sbee);
+
+_load_sbee();
+</script>
+</body>
+</html>

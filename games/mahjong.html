@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Mahjong</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a0a 0%,#0d1117 70%);}
+.wrap{max-width:480px;margin:0 auto;padding:0 6px 50px;}
+.mj-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.mj-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
+.mj-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
+.mj-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.mj-board{position:relative;overflow:auto;margin:0 auto 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;}
+.mj-tile{position:absolute;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:filter .1s,box-shadow .1s;font-size:1.1rem;line-height:1;background:linear-gradient(145deg,#e8d8c0,#c8b89a);border:1px solid #a08060;box-shadow:2px 2px 0 #6a4020,3px 3px 4px rgba(0,0,0,.4);}
+.mj-tile.selected{background:linear-gradient(145deg,#ffe060,#f5c842);box-shadow:2px 2px 0 #8a6000,3px 3px 8px rgba(245,200,66,.5);}
+.mj-tile.disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
+.mj-tile:not(.disabled):not(.selected):hover{filter:brightness(1.1);}
+@keyframes mj-remove{0%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(.7);}}
+.mj-tile.removing{animation:mj-remove .2s ease forwards;}
+.mj-status{text-align:center;font-size:.85rem;font-weight:700;min-height:24px;margin-bottom:8px;color:var(--muted);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mahjong</span></nav>
+<div class="page"><div class="wrap">
+<div class="mj-header">
+  <div class="mj-stat"><div class="mj-val" id="mj-left">144</div><div class="mj-lbl">Tiles Left</div></div>
+  <div class="mj-stat"><div class="mj-val" id="mj-score">0</div><div class="mj-lbl">Score</div></div>
+  <div class="mj-stat"><div class="mj-val" id="mj-time">0:00</div><div class="mj-lbl">Time</div></div>
+</div>
+<div class="mj-status" id="mj-status">Match pairs of free tiles to clear the board</div>
+<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">
+  <button class="btn btn-gold" id="mj-new">New Game</button>
+  <button class="btn btn-outline" id="mj-hint">💡 Hint</button>
+  <button class="btn btn-outline" id="mj-undo">↩ Undo</button>
+</div>
+<div class="mj-board" id="mj-board"></div>
+</div></div>
+<script>
+'use strict';
+// Tile types (4 of each = 144 total)
+const TILE_TYPES=[
+  // Characters (man)
+  '🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏',
+  // Bamboo
+  '🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘',
+  // Circles
+  '🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡',
+  // Winds & Dragons
+  '🀀','🀁','🀂','🀃','🀄','🀅','🀆',
+].map((t,i)=>({type:t,id:i}));
+// 144 tiles = 36 types × 4 copies
+// Fallback to text if emoji don't render
+const TILE_TEXT=['🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏','🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘','🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡','🀀','🀁','🀂','🀃','🀄','🀅','🀆','🌸','🍂'];
+
+// Classic Shanghai turtle layout: [col, row, layer]
+// Simplified: generate a pyramid layout
+function buildLayout(){
+  const positions=[];
+  // Layer 0: 14×8 grid minus edges
+  const base=[
+    [0,3],[0,4],[0,5],[0,6],
+    [1,2],[1,3],[1,4],[1,5],[1,6],[1,7],
+    [2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],
+    [3,0],[3,1],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8],[3,9],
+    [4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],
+    [5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6],[5,7],[5,8],[5,9],
+    [6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[6,6],[6,7],[6,8],[6,9],
+    [7,0],[7,1],[7,2],[7,3],[7,4],[7,5],[7,6],[7,7],[7,8],[7,9],
+    [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,6],[8,7],[8,8],[8,9],
+    [9,0],[9,1],[9,2],[9,3],[9,4],[9,5],[9,6],[9,7],[9,8],[9,9],
+    [10,1],[10,2],[10,3],[10,4],[10,5],[10,6],[10,7],[10,8],
+    [11,2],[11,3],[11,4],[11,5],[11,6],[11,7],
+    [12,3],[12,4],[12,5],[12,6],
+  ];
+  base.forEach(([c,r])=>positions.push({c,r,z:0}));
+  // Layer 1
+  const layer1=[];
+  for(let c=4;c<=9;c++)for(let r=3;r<=6;r++)layer1.push({c,r,z:1});
+  positions.push(...layer1);
+  // Layer 2
+  for(let c=5;c<=8;c++)for(let r=4;r<=5;r++)positions.push({c,r,z:2});
+  // Layer 3: single center
+  positions.push({c:6,r:4,z:3});
+  // Trim to 144
+  return positions.slice(0,144);
+}
+
+let tiles,sel,score,timer,timerInt,history;
+const TW=26,TH=35,ZOFF=3,COFF=26,ROFF=35;
+
+function newGame(){
+  const layout=buildLayout();
+  // Assign tile types (ensure pairs)
+  const typePool=[];
+  for(let i=0;i<36;i++)for(let j=0;j<4;j++)typePool.push(i);
+  // Shuffle
+  for(let i=typePool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[typePool[i],typePool[j]]=[typePool[j],typePool[i]];}
+  tiles=layout.map((pos,i)=>({...pos,type:typePool[i],removed:false,id:i}));
+  sel=null;score=0;history=[];
+  clearInterval(timerInt);timer=0;
+  timerInt=setInterval(()=>{timer++;document.getElementById('mj-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+  render();
+}
+
+function isFree(tile){
+  const t=tile;
+  // With COFF=TW and ROFF=TH, each layer is shifted ZOFF px right+down.
+  // A tile on layer z+1 at (c',r') overlaps tile at (c,r,z) only when:
+  //   c' ∈ {c-1, c}  (tiles to the right don't overlap due to COFF=TW)
+  //   r' ∈ {r-1, r}  (same logic vertically)
+  const blocked=tiles.some(o=>
+    !o.removed&&o.id!==t.id&&o.z===t.z+1&&
+    o.c>=t.c-1&&o.c<=t.c&&o.r>=t.r-1&&o.r<=t.r);
+  if(blocked)return false;
+  // Blocked left/right: tile on same layer immediately adjacent in same row
+  const hasLeft =tiles.some(o=>!o.removed&&o.id!==t.id&&o.z===t.z&&o.c===t.c-1&&o.r===t.r);
+  const hasRight=tiles.some(o=>!o.removed&&o.id!==t.id&&o.z===t.z&&o.c===t.c+1&&o.r===t.r);
+  return!(hasLeft&&hasRight);
+}
+
+function clickTile(id){
+  const tile=tiles.find(t=>t.id===id);
+  if(!tile||tile.removed||!isFree(tile))return;
+  if(sel===null){sel=id;render();return;}
+  if(sel===id){sel=null;render();return;}
+  const other=tiles.find(t=>t.id===sel);
+  if(tile.type===other.type){
+    // Match!
+    history.push([sel,id]);
+    tile.removed=true;other.removed=true;
+    score+=10;sel=null;
+    render();
+    const left=tiles.filter(t=>!t.removed).length;
+    document.getElementById('mj-left').textContent=left;
+    document.getElementById('mj-score').textContent=score;
+    if(left===0){clearInterval(timerInt);document.getElementById('mj-status').innerHTML='<span style="color:#22c55e">🎉 You cleared the board! Score: '+score+'</span>';}
+    else if(!hasAnyMove()){document.getElementById('mj-status').innerHTML='<span style="color:#f59e0b">No more moves! Try a new game.</span>';}
+  } else {sel=id;render();}
+}
+
+function hasAnyMove(){
+  const free=tiles.filter(t=>!t.removed&&isFree(t));
+  for(let i=0;i<free.length;i++)for(let j=i+1;j<free.length;j++)if(free[i].type===free[j].type)return true;
+  return false;
+}
+
+function hint(){
+  const free=tiles.filter(t=>!t.removed&&isFree(t));
+  for(let i=0;i<free.length;i++)for(let j=i+1;j<free.length;j++){
+    if(free[i].type===free[j].type){sel=free[i].id;render();setTimeout(()=>{sel=free[j].id;render();},600);return;}
+  }
+  document.getElementById('mj-status').textContent='No moves available!';
+}
+
+function undo(){
+  if(!history.length)return;
+  const[a,b]=history.pop();
+  tiles.find(t=>t.id===a).removed=false;
+  tiles.find(t=>t.id===b).removed=false;
+  score=Math.max(0,score-10);sel=null;
+  document.getElementById('mj-left').textContent=tiles.filter(t=>!t.removed).length;
+  document.getElementById('mj-score').textContent=score;
+  render();
+}
+
+function render(){
+  const board=document.getElementById('mj-board');board.innerHTML='';
+  // Calculate board pixel size
+  const maxC=Math.max(...tiles.map(t=>t.c))+1;const maxR=Math.max(...tiles.map(t=>t.r))+1;const maxZ=3;
+  const BW=maxC*COFF+TW+maxZ*ZOFF+10;const BH=maxR*ROFF+TH+maxZ*ZOFF+10;
+  board.style.width=Math.min(BW,window.innerWidth-20)+'px';board.style.height=BH+'px';
+  board.style.minWidth='240px';
+  // Sort by z then col then row for rendering order
+  const sorted=[...tiles].filter(t=>!t.removed).sort((a,b)=>a.z-b.z||a.c-b.c||a.r-b.r);
+  sorted.forEach(tile=>{
+    const el=document.createElement('div');el.className='mj-tile';
+    const free=isFree(tile);
+    if(!free)el.classList.add('disabled');
+    if(sel===tile.id)el.classList.add('selected');
+    const x=tile.c*COFF+tile.z*ZOFF+5;const y=tile.r*ROFF+tile.z*ZOFF+5;
+    el.style.cssText=`left:${x}px;top:${y}px;width:${TW}px;height:${TH}px;z-index:${tile.z*10+tile.c};`;
+    // Use text fallback for reliability
+    el.textContent=TILE_TEXT[tile.type]||'?';
+    el.style.fontSize=Math.max(10,TW-8)+'px';el.style.fontWeight='900';el.style.color='#1a1008';
+    el.addEventListener('click',()=>clickTile(tile.id));
+    board.appendChild(el);
+  });
+}
+
+document.getElementById('mj-new').addEventListener('click',newGame);
+document.getElementById('mj-hint').addEventListener('click',hint);
+document.getElementById('mj-undo').addEventListener('click',undo);
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_mahjong(){
+  try{sessionStorage.setItem('mahjong',JSON.stringify({tiles,score,history,_ts:Date.now()}));}catch(e){}
+}
+function _load_mahjong(){
+  try{
+    const raw=sessionStorage.getItem('mahjong');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    tiles=s.tiles;score=s.score||0;history=s.history||[];sel=null;
+    document.getElementById('mj-left').textContent=tiles.filter(t=>!t.removed).length;document.getElementById('mj-score').textContent=score;render();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_mahjong);
+document.getElementById('mj-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('mahjong');}catch(e){}},true);
+_load_mahjong();
+</script>
+</body>
+</html>

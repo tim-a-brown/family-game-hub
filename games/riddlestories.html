@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Riddle Stories</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 30% 0%,#1a0a2a 0%,#0d1117 65%);}
+.riddle-card{max-width:500px;margin:0 auto;}
+.riddle-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:22px;margin-bottom:16px;}
+.riddle-num{font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
+.riddle-text{font-family:var(--serif);font-size:1.1rem;font-weight:700;line-height:1.55;color:var(--text);}
+.answer-box{background:rgba(192,132,252,.08);border:1px solid rgba(192,132,252,.25);border-radius:14px;padding:18px;margin-bottom:14px;display:none;}
+.answer-label{font-size:.72rem;font-weight:700;color:var(--purple);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
+.answer-text{font-size:.95rem;line-height:1.6;color:var(--text);}
+.clue-q{color:var(--muted);}
+.clue-a{font-weight:700;margin-top:2px;}
+.clue-a.yes{color:var(--green);}
+.clue-a.no{color:var(--red);}
+.clue-a.irr{color:var(--gold);}
+.diff-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.diff-btn{padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;}
+.diff-btn.active{border-color:var(--purple);background:rgba(192,132,252,.12);color:var(--purple);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Riddle Stories</span></nav>
+<div class="page" style="padding-bottom:60px;">
+<p style="text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:12px;">One player reads the mystery. Everyone asks yes/no questions to figure out what happened.</p>
+<div class="diff-row" id="diff-row"></div>
+<div class="riddle-card">
+  <div class="riddle-box">
+    <div class="riddle-num" id="riddle-num">Riddle 1 of 10</div>
+    <div class="riddle-text" id="riddle-text"></div>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
+    <button class="btn btn-outline btn-sm" id="reveal-btn">👁 Reveal Answer</button>
+    <button class="btn btn-sm" style="background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.25);color:var(--purple);" id="next-btn">Next Mystery →</button>
+    <button class="btn btn-outline btn-sm" id="shuffle-btn">🔀 Shuffle</button>
+  </div>
+  <div class="answer-box" id="answer-box">
+    <div class="answer-label">The Answer</div>
+    <div class="answer-text" id="answer-text"></div>
+  </div>
+</div>
+</div>
+<script>
+'use strict';
+const RIDDLES={
+  Classic:[
+    {q:"A man walks into a bar and asks for a glass of water. The bartender pulls out a gun and points it at the man. The man says 'Thank you' and walks out.",a:"The man had hiccups. He needed water to cure them, but the sudden shock of the gun cured his hiccups instead — so he thanked the bartender and left."},
+    {q:"A woman shoots her husband, then holds him underwater for five minutes. A little while later, they go out to dinner together.",a:"She's a photographer. She shot his photo, then developed the film by holding it in developer fluid."},
+    {q:"A man lives on the 30th floor of a building. Every morning he takes the elevator to the ground floor and goes to work. When he returns, he takes the elevator to the 15th floor and walks the rest of the way — unless it's raining.",a:"The man is very short and can only reach the button for the 15th floor. On rainy days he has his umbrella, which he uses to press the 30th floor button."},
+    {q:"A man pushes his car to a hotel and tells the owner he's bankrupt.",a:"The man is playing Monopoly."},
+    {q:"A woman is sitting in her hotel room when she hears a knock on the door. She opens it and finds a man she has never seen before. 'I'm sorry,' he says, 'I thought this was my room.' He leaves and she immediately calls security. Why?",a:"You don't knock on your own hotel room door. The man was clearly not a real guest — he was likely checking which rooms were occupied before trying to break in."},
+    {q:"A man is walking down the street when he sees a sign in a hardware store window that says '2 for $1, 12 for $2, 112 for $3.' A woman comes in and buys 712, spending just $3. What is she buying?",a:"House numbers. Each individual digit costs $1. '7', '1', '2' = three digits = $3."},
+    {q:"A woman walks into a library and asks for books about paranoia. The librarian whispers, 'They're right behind you!'",a:"This is a joke, but the lateral thinking answer is: the librarian was being playful — the books about paranoia were literally shelved on the wall behind the woman."},
+    {q:"A man calls his dog from the opposite side of a river. The dog crosses the river without getting wet and without using a bridge, a boat, or any other vessel. How?",a:"The river was frozen."},
+    {q:"Two fathers and two sons go fishing. They catch exactly three fish. Each person goes home with exactly one fish. How?",a:"There are only three people: a grandfather, his son, and his son's son. The grandfather is both a father and a grandfather. Two fathers and two sons, but only three people."},
+    {q:"A boy is at a carnival and goes to a booth where the man says, 'If I write your exact weight on this piece of paper, you give me $5. If I can't, I pay you $50.' The boy agrees, thinking he can fool the man, and the man wins the $5. How?",a:"The man wrote 'your exact weight' on the paper — the literal phrase, not the number. The boy's exact weight was indeed written on the paper."},
+    {q:"A woman had two sons who were born in the same hour of the same day of the same year, but were not twins. How is this possible?",a:"They were part of a set of triplets (or more)."},
+    {q:"A man shaves several times a day yet still has a beard. How?",a:"He's a barber. He shaves other people, not himself."},
+    {q:"How far can a dog run into the woods?",a:"Halfway. After that, it's running out of the woods."},
+    {q:"A farmer has 17 sheep. All but 9 run away. How many sheep does he have left?",a:"9. 'All but 9' means all except 9 ran away."},
+    {q:"A rooster sits on top of a barn roof. The wind is blowing east. Which way does the egg roll?",a:"Roosters don't lay eggs."},
+    {q:"A cowboy rides into town on Friday, stays for three days, and leaves on Friday. How?",a:"His horse's name is Friday."},
+    {q:"There's a one-story house. The walls are blue, the floor is pink, and the furniture is all purple. What color are the stairs?",a:"There are no stairs — it's a one-story house."},
+  ],
+  Tricky:[
+    {q:"A man is looking at a photograph. Someone asks who is in the photo. The man says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is in the photo?",a:"The man's own son. 'My father's son' with no siblings = himself. So 'that man's father is me.' The photo is of his son."},
+    {q:"A plane crashes exactly on the border between the USA and Canada. Where do you bury the survivors?",a:"You don't bury survivors."},
+    {q:"An electric train is moving north at 100 mph. The wind is blowing east at 50 mph. Which way does the smoke blow?",a:"There is no smoke — it's an electric train."},
+    {q:"You are driving a bus. At the first stop, 4 people get on. At the second, 3 get off and 2 get on. At the third, everyone gets off. What color are the bus driver's eyes?",a:"Whatever color your own eyes are — you're the driver. The question starts 'You are driving a bus.'"},
+    {q:"A man and his son are in a car crash. The father is rushed to a different hospital. When the son arrives at surgery, the surgeon says, 'I can't operate — this is my son.' How is this possible?",a:"The surgeon is the boy's mother."},
+    {q:"A woman shoots her husband and then dines with him an hour later. How?",a:"She photographed him. 'Shooting' is slang for taking a photo."},
+    {q:"You have a 3-gallon jug and a 5-gallon jug. You need to measure exactly 4 gallons of water. How?",a:"Fill the 5-gallon jug. Pour 3 gallons into the 3-gallon jug (leaving 2 gallons in the 5-gallon jug). Empty the 3-gallon jug. Pour the 2 gallons into it. Fill the 5-gallon jug again, then pour 1 gallon into the 3-gallon jug (which already has 2). You now have exactly 4 gallons in the 5-gallon jug."},
+    {q:"What can you hold in your right hand but never in your left hand?",a:"Your left hand."},
+    {q:"A man goes outside in the pouring rain with no hat, no umbrella, and no coat. Not a single hair on his head gets wet. How?",a:"He's bald."},
+    {q:"You have two coins that add up to 30 cents. One is not a nickel. What are the two coins?",a:"A quarter and a nickel. The riddle says 'one is not a nickel' — the other one is."},
+    {q:"If you have a bowl with six apples and you take away four, how many apples do you have?",a:"Four — the ones you took away."},
+    {q:"A man walks into a restaurant and orders albatross soup. He takes one sip, thanks the chef, goes home and immediately calls an old friend who he hasn't spoken to in years.",a:"The man and the friend were once stranded on a deserted island together. A stranger had given them 'albatross soup.' Now, tasting real albatross soup in a restaurant, he realizes the soup on the island tasted completely different — so the island soup must have been something else entirely. He calls his friend to compare notes. (This is the non-morbid version of the classic!)"},
+    {q:"A woman walks into a store and asks for something for the kitchen. The shopkeeper asks if it's for upstairs or downstairs. Why does that matter?",a:"She's buying a lightbulb. Different floors might have different voltage fixtures, or perhaps the shopkeeper is being playful about brightness — but the key is she said 'for the kitchen' without specifying what she needs."},
+    {q:"A man buys a stamp, licks it, and mails a letter. The next day he receives the letter back unopened. Why?",a:"He licked the wrong side of the stamp and it never stuck to the envelope."},
+    {q:"A magician claims he can place a coin in a bottle and seal it, then remove the coin without breaking the bottle or the seal. How?",a:"He puts the coin in a bottle with a cork — not a sealed glass bottle. He just removes the cork to get the coin out."},
+    {q:"A man on the 20th floor watches a window washer fall 20 stories. He's not hurt at all. How?",a:"The window washer was washing windows on the inside of the building — he fell 20 stories inside a building with an open atrium and landed in a foam pit, or simply, he fell off the ladder inside the building onto the carpeted floor one floor below."},
+  ],
+  Easy:[
+    {q:"A rooster lays an egg on a roof. Which way does it roll?",a:"Roosters don't lay eggs."},
+    {q:"A boy throws a ball as hard as he can. It comes back to him without bouncing off anything. How?",a:"He throws it straight up into the air."},
+    {q:"What has a neck but no head, and can still wear a cap?",a:"A bottle."},
+    {q:"A doctor gives you three pills and tells you to take one every half hour. How long will the pills last?",a:"One hour. You take the first pill right away (0 min), the second at 30 minutes, and the third at 60 minutes."},
+    {q:"A 10-foot rope ladder hangs over the side of a boat. The rungs are 1 foot apart. The tide rises 5 feet. How many rungs are now underwater?",a:"None — the boat (and the ladder hanging from it) rises with the tide."},
+    {q:"Johnny's mother has three children. The first child is named April. The second child is named May. What is the name of the third child?",a:"Johnny. The question begins 'Johnny's mother has three children...'"},
+    {q:"Before Mount Everest was discovered, what was the highest mountain in the world?",a:"Mount Everest. It was still the tallest mountain — it just hadn't been discovered yet."},
+    {q:"What's bigger than an elephant but doesn't weigh anything?",a:"An elephant's shadow."},
+    {q:"A truck driver is going down a one-way street the wrong way without lights on. There's no moon out. How does the police officer who sees him know not to pull him over?",a:"The truck driver is walking — he's not in his truck."},
+    {q:"What word is spelled incorrectly in every dictionary?",a:"The word 'incorrectly.'"},
+    {q:"If there are 6 apples and you take away 4, how many apples do YOU have?",a:"4 — the ones you took."},
+    {q:"How much dirt is in a hole that is 3 feet wide, 4 feet long, and 2 feet deep?",a:"None — there's no dirt in a hole."},
+    {q:"What can run but never walks, has a mouth but never talks, has a head but never weeps?",a:"A river."},
+    {q:"I have cities, but no houses live there. I have mountains, but no trees grow there. I have water, but no fish swim there. I have roads, but no cars drive there. What am I?",a:"A map."},
+    {q:"A boy was rushed to the hospital for an emergency. The doctor looked at the patient and said, 'I can't treat this child — he's my son!' But the doctor was not the boy's father. How?",a:"The doctor is the boy's mother."},
+    {q:"If you drop me I'm sure to crack, but give me a smile and I'll always smile back. What am I?",a:"A mirror."},
+    {q:"The more you take, the more you leave behind. What am I?",a:"Footsteps."},
+    {q:"I speak without a mouth and hear without ears. I have no body, but I come alive with the wind. What am I?",a:"An echo."},
+    {q:"What has 13 hearts but no other organs?",a:"A deck of playing cards."},
+    {q:"You see a boat filled with people, yet there isn't a single person on board. How is that possible?",a:"All the people on board are married (not single)."},
+  ],
+  Brain:[
+    {q:"A woman is born in 1975 and dies in 1975, yet she lives to be 70 years old. How?",a:"She was born in Room 1975 in a hospital and died in Room 1975 in a nursing home. The numbers are room numbers, not years."},
+    {q:"A man is pushing his car along a road when he comes to a hotel. He shouts 'I'm bankrupt!' Why?",a:"He's playing Monopoly. The hotel means he has to pay rent he can't afford."},
+    {q:"I have a head, a tail, but no body. What am I?",a:"A coin."},
+    {q:"What comes once in a minute, twice in a moment, but never in a thousand years?",a:"The letter 'M.'"},
+    {q:"A baseball bat and ball together cost $1.10. The bat costs $1.00 more than the ball. How much does the ball cost?",a:"5 cents. If the ball costs 5 cents and the bat costs $1.05, the difference is $1.00 and the total is $1.10. (Most people say 10 cents — that's the trick!)"},
+    {q:"You have a fox, a chicken, and a bag of grain. You must cross a river in a boat that only holds you and one item. If left alone, the fox eats the chicken, or the chicken eats the grain. How do you get all three across?",a:"Take the chicken first. Go back, take the fox. On the way back, bring the chicken. Take the grain across. Return, take the chicken. Done!"},
+    {q:"There are 3 boxes. One says 'Apples,' one says 'Oranges,' one says 'Apples and Oranges.' All three are labeled incorrectly. You may pick one fruit from one box. Which box do you pick from, and how do you figure out all three labels?",a:"Pick from the 'Apples and Oranges' box. Since all labels are wrong, this box has only one type. If you pull an apple, it's the Apples box. The box labeled 'Apples' must then be Oranges, and 'Oranges' must be Apples and Oranges."},
+    {q:"A man looks at a painting and says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is the man in the painting?",a:"His son. 'My father's son' with no siblings = himself. So 'that man's father is me.' The painting shows his son."},
+    {q:"You enter a dark room. You have one match. There is a candle, an oil lantern, and a wood stove in the room. Which do you light first?",a:"The match."},
+    {q:"A snail is at the bottom of a 10-foot well. Each day it climbs 3 feet, but each night it slides back 2 feet. How many days does it take to escape?",a:"8 days. After day 7, the snail is at 7 feet. On day 8 it climbs 3 more feet (10 feet), reaching the top before sliding back."},
+    {q:"There are 100 prisoners in 100 cells. All lights are off. Guard 1 opens every cell. Guard 2 closes every 2nd cell. Guard 3 changes every 3rd cell (open→close or close→open). This continues to Guard 100. Which cells are open at the end?",a:"Cells with perfect square numbers: 1, 4, 9, 16, 25, 36, 49, 64, 81, 100. Only perfect squares have an odd number of factors."},
+    {q:"Two trains are 100 miles apart, moving toward each other at 50 mph each. A fly travels at 75 mph back and forth between the trains until they crash. How far does the fly travel?",a:"75 miles. The trains meet in 1 hour (each going 50 mph). The fly travels at 75 mph for 1 hour = 75 miles total."},
+    {q:"You have 12 balls, one slightly heavier or lighter than the rest. Using a balance scale only 3 times, how do you find the odd ball?",a:"Weigh 4 vs 4. If balanced, the odd ball is in the remaining 4. If unbalanced, you know whether it's heavy or light. Use the remaining 2 weighings to narrow it down. (The full solution takes several branches — the key insight is grouping into thirds.)"},
+    {q:"You can't keep me until you give me. What am I?",a:"A promise."},
+    {q:"What asks questions but never speaks, and can be answered without a sound?",a:"A book — or a survey."},
+    {q:"A man builds a house with all four sides facing south. A bear walks past the window. What color is the bear?",a:"White. The only place you can build a house where all four sides face south is the North Pole — where only polar bears live."},
+    {q:"Three friends each pay $10 for a hotel room ($30 total). The manager later realizes the room costs $25, so he sends a bellhop with $5 change. The bellhop pockets $2 and returns $1 to each friend. Each friend paid $9, so they paid $27 total. The bellhop has $2. Where is the missing dollar?",a:"There is no missing dollar — it's a trick of framing. The friends paid $27 total, $25 went to the hotel and $2 to the bellhop. Adding the $2 to the $27 is the error; you should subtract it: $27 - $2 = $25."},
+  ],
+};
+
+
+const DIFFS=Object.keys(RIDDLES);
+let diff='Classic',riddles=[],ri=0;
+
+DIFFS.forEach(d=>{
+  const b=document.createElement('button');b.className='diff-btn'+(d===diff?' active':'');b.textContent=d;
+  b.addEventListener('click',()=>{diff=d;document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadDiff();});
+  document.getElementById('diff-row').appendChild(b);
+});
+
+function loadDiff(){
+  riddles=[...RIDDLES[diff]].sort(()=>Math.random()-.5);ri=0;loadRiddle();
+}
+
+function loadRiddle(){
+  if(ri>=riddles.length)ri=0;
+  document.getElementById('riddle-text').textContent=riddles[ri].q;
+  document.getElementById('riddle-num').textContent=`Riddle ${ri+1} of ${riddles.length}`;
+  document.getElementById('answer-box').style.display='none';
+  document.getElementById('answer-text').textContent='';
+}
+
+document.getElementById('reveal-btn').addEventListener('click',()=>{
+  document.getElementById('answer-box').style.display='block';
+  document.getElementById('answer-text').textContent=riddles[ri].a;
+});
+document.getElementById('next-btn').addEventListener('click',()=>{ri++;loadRiddle();});
+document.getElementById('shuffle-btn').addEventListener('click',()=>{riddles.sort(()=>Math.random()-.5);ri=0;loadRiddle();});
+
+loadDiff();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_riddle(){
+  try{sessionStorage.setItem('riddle',JSON.stringify({diff,ri,_ts:Date.now()}));}catch(e){}
+}
+function _load_riddle(){
+  try{
+    const raw=sessionStorage.getItem('riddle');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    diff=s.diff||'Classic';ri=s.ri||0;
+    document.querySelectorAll('.diff-btn')&&document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===diff));riddles=[...RIDDLES[diff]||RIDDLES['Classic']];loadRiddle(ri);
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_riddle);
+
+_load_riddle();
+</script>
+</body>
+</html>

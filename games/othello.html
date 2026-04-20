@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Othello</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#051505 0%,#0d1117 70%);}
+.wrap{max-width:420px;margin:0 auto;padding:0 8px 60px;}
+.ot-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.ot-chip{border-radius:12px;padding:8px 16px;text-align:center;border:2px solid transparent;transition:all .2s;}
+.ot-chip.active{transform:scale(1.06);}
+.ot-chip-val{font-family:var(--serif);font-size:1.4rem;font-weight:900;}
+.ot-chip-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;}
+.mode-row{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+.mode-btn{padding:7px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.mode-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.ot-board{display:grid;grid-template-columns:repeat(8,1fr);background:#1a5c1a;border:3px solid #0a3a0a;border-radius:8px;gap:2px;padding:4px;width:min(380px,96vw);margin:0 auto 10px;box-shadow:0 4px 20px rgba(0,0,0,.6);}
+.ot-sq{aspect-ratio:1;background:#1d6b1d;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .1s;}
+.ot-sq:hover{background:#228822;}
+.ot-sq.hint{background:#2a8a2a;}
+.ot-sq.hint::after{content:'';position:absolute;width:28%;height:28%;background:rgba(255,255,255,.25);border-radius:50%;}
+.ot-piece{width:82%;height:82%;border-radius:50%;transition:transform .15s;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.ot-piece.w{background:radial-gradient(circle at 35% 30%,#fff,#ccc 60%,#aaa);}
+.ot-piece.b{background:radial-gradient(circle at 35% 30%,#555,#111 60%,#000);}
+@keyframes ot-flip{0%{transform:scaleX(1);}50%{transform:scaleX(0);}100%{transform:scaleX(1);}}
+.ot-piece.flipping{animation:ot-flip .25s ease;}
+.ot-status{text-align:center;font-size:.88rem;font-weight:700;min-height:26px;margin-bottom:8px;}
+/* Instructions modal */
+.ot-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:16px;}
+.ot-modal.open{display:flex;}
+.ot-modal-box{background:#151c1f;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:22px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto;}
+.ot-modal-box h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold);margin:0 0 14px;}
+.ot-modal-box h3{font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:14px 0 6px;}
+.ot-modal-box p{font-size:.85rem;color:rgba(255,255,255,.75);line-height:1.55;margin:0 0 8px;}
+.ot-modal-box ul{margin:0 0 8px;padding-left:18px;}
+.ot-modal-box li{font-size:.85rem;color:rgba(255,255,255,.75);line-height:1.55;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Othello</span></nav>
+
+<!-- Instructions modal -->
+<div class="ot-modal" id="ot-modal">
+  <div class="ot-modal-box">
+    <h2>How to Play Othello</h2>
+    <h3>The Goal</h3>
+    <p>Have more pieces of your color on the board than your opponent when no more moves are possible. The player with the most pieces wins.</p>
+    <h3>Taking a Turn</h3>
+    <ul>
+      <li>Place your piece on any empty square that <strong>traps</strong> at least one of your opponent's pieces between your new piece and another of your existing pieces.</li>
+      <li>Trapping works in any direction — horizontal, vertical, or diagonal.</li>
+      <li>All of your opponent's pieces that are trapped between your new piece and your existing pieces are <strong>flipped</strong> to your color.</li>
+    </ul>
+    <h3>Valid Moves</h3>
+    <p>You must make a move that flips at least one opponent piece. Valid squares are highlighted with a faint dot. If you have no valid move, your turn is skipped. If neither player can move, the game ends.</p>
+    <h3>Strategy Tips</h3>
+    <ul>
+      <li><strong>Corners are king.</strong> Corner pieces can never be flipped — grab them whenever possible.</li>
+      <li><strong>Avoid the squares next to corners.</strong> Playing there gives your opponent a chance to take the corner.</li>
+      <li><strong>Control the edges.</strong> Edge pieces can only be flipped from one direction, making them more stable.</li>
+      <li><strong>Think ahead.</strong> A big lead early can vanish — the last few moves often flip dozens of pieces at once.</li>
+    </ul>
+    <h3>Winning</h3>
+    <p>The board fills up (or neither player can move) and pieces are counted. Most pieces wins. A full board with 64 pieces means the game went all the way!</p>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-gold" onclick="document.getElementById('ot-modal').classList.remove('open')">Got it!</button>
+    </div>
+  </div>
+</div>
+
+<div class="page"><div class="wrap">
+
+<div class="ot-header">
+  <div class="ot-chip active" id="chip-b" style="background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.3);">
+    <div class="ot-chip-val" id="cnt-b" style="color:#ddd;">2</div>
+    <div class="ot-chip-lbl" style="color:#aaa;">⚫ Black</div>
+  </div>
+  <div class="ot-chip" id="chip-w" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);">
+    <div class="ot-chip-val" id="cnt-w" style="color:#fff;">2</div>
+    <div class="ot-chip-lbl" style="color:#aaa;">⚪ White</div>
+  </div>
+</div>
+<div class="mode-row">
+  <button class="mode-btn active" id="mode-ai">vs Computer</button>
+  <button class="mode-btn" id="mode-2p">2 Players</button>
+  <button class="mode-btn" id="ot-new">New Game</button>
+  <button class="mode-btn" onclick="document.getElementById('ot-modal').classList.add('open')">❓ How to Play</button>
+</div>
+
+<div class="ot-board" id="ot-board"></div>
+<div class="ot-status" id="ot-status">Black to move</div>
+
+</div></div>
+<script>
+'use strict';
+let board=[], turn='b', aiMode=true, gameOver=false;
+const DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+
+function opp(t){return t==='b'?'w':'b';}
+
+function initBoard(){
+  board=Array.from({length:8},()=>Array(8).fill(null));
+  board[3][3]='w';board[3][4]='b';board[4][3]='b';board[4][4]='w';
+}
+
+function getFlips(r,c,t,b=board){
+  if(b[r][c])return[];
+  const flips=[];
+  DIRS.forEach(([dr,dc])=>{
+    const line=[];
+    let nr=r+dr,nc=c+dc;
+    while(nr>=0&&nr<8&&nc>=0&&nc<8&&b[nr][nc]===opp(t)){line.push([nr,nc]);nr+=dr;nc+=dc;}
+    if(line.length&&nr>=0&&nr<8&&nc>=0&&nc<8&&b[nr][nc]===t)flips.push(...line);
+  });
+  return flips;
+}
+
+function getLegal(t,b=board){
+  const moves=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(!b[r][c]&&getFlips(r,c,t,b).length)moves.push([r,c]);
+  return moves;
+}
+
+function playMove(r,c,t=turn){
+  const flips=getFlips(r,c,t);
+  if(!flips.length)return false;
+  board[r][c]=t;
+  flips.forEach(([fr,fc])=>{board[fr][fc]=t;});
+  turn=opp(t);
+  const next=getLegal(turn);
+  if(!next.length){
+    turn=opp(turn);
+    const back=getLegal(turn);
+    if(!back.length){gameOver=true;}
+  }
+  return true;
+}
+
+function countPieces(){
+  let b=0,w=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){if(board[r][c]==='b')b++;if(board[r][c]==='w')w++;}
+  return{b,w};
+}
+
+// Minimax AI with position weights
+const WEIGHTS=[[120,-20,20,5,5,20,-20,120],[-20,-40,-5,-5,-5,-5,-40,-20],[20,-5,15,3,3,15,-5,20],[5,-5,3,3,3,3,-5,5],[5,-5,3,3,3,3,-5,5],[20,-5,15,3,3,15,-5,20],[-20,-40,-5,-5,-5,-5,-40,-20],[120,-20,20,5,5,20,-20,120]];
+
+function evalBoard(b){
+  let s=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    if(b[r][c]==='w')s+=WEIGHTS[r][c];
+    else if(b[r][c]==='b')s-=WEIGHTS[r][c];
+  }
+  s+=getLegal('w',b).length*5-getLegal('b',b).length*5;
+  return s;
+}
+
+function minimax(b,depth,alpha,beta,maxing){
+  const t=maxing?'w':'b';
+  const moves=getLegal(t,b);
+  if(depth===0||!moves.length)return evalBoard(b);
+  if(maxing){
+    let best=-Infinity;
+    for(const[r,c]of moves){
+      const nb=b.map(row=>row.slice());
+      nb[r][c]='w';getFlips(r,c,'w',b).forEach(([fr,fc])=>{nb[fr][fc]='w';});
+      best=Math.max(best,minimax(nb,depth-1,alpha,beta,false));
+      alpha=Math.max(alpha,best);if(beta<=alpha)break;
+    }
+    return best;
+  } else {
+    let best=Infinity;
+    for(const[r,c]of moves){
+      const nb=b.map(row=>row.slice());
+      nb[r][c]='b';getFlips(r,c,'b',b).forEach(([fr,fc])=>{nb[fr][fc]='b';});
+      best=Math.min(best,minimax(nb,depth-1,alpha,beta,true));
+      beta=Math.min(beta,best);if(beta<=alpha)break;
+    }
+    return best;
+  }
+}
+
+function aiMove(){
+  const moves=getLegal('w');
+  if(!moves.length)return;
+  let best=null,bestScore=-Infinity;
+  const depth=moves.length>20?3:4;
+  moves.forEach(([r,c])=>{
+    const nb=board.map(row=>row.slice());
+    nb[r][c]='w';getFlips(r,c,'w',board).forEach(([fr,fc])=>{nb[fr][fc]='w';});
+    const score=minimax(nb,depth,-Infinity,Infinity,false);
+    if(score>bestScore){bestScore=score;best=[r,c];}
+  });
+  if(best)playMove(best[0],best[1],'w');
+  render();
+}
+
+function render(){
+  const el=document.getElementById('ot-board');
+  el.innerHTML='';
+  const legal=!gameOver?getLegal(turn):[];
+  const legalSet=new Set(legal.map(([r,c])=>`${r},${c}`));
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const sq=document.createElement('div');
+      sq.className='ot-sq'+(legalSet.has(`${r},${c}`)?' hint':'');
+      if(board[r][c]){
+        const p=document.createElement('div');
+        p.className='ot-piece '+board[r][c];
+        sq.appendChild(p);
+      }
+      sq.addEventListener('click',()=>{
+        if(gameOver||!legalSet.has(`${r},${c}`))return;
+        if(aiMode&&turn==='w')return;
+        playMove(r,c);
+        render();
+        if(!gameOver&&aiMode&&turn==='w')setTimeout(aiMove,400);
+      });
+      el.appendChild(sq);
+    }
+  }
+  const{b,w}=countPieces();
+  document.getElementById('cnt-b').textContent=b;
+  document.getElementById('cnt-w').textContent=w;
+  document.getElementById('chip-b').classList.toggle('active',turn==='b'&&!gameOver);
+  document.getElementById('chip-w').classList.toggle('active',turn==='w'&&!gameOver);
+  if(gameOver){
+    const msg=b>w?'⚫ Black wins!':w>b?'⚪ White wins!':'Tie!';
+    document.getElementById('ot-status').textContent=`${msg} (${b}–${w})`;
+  } else {
+    document.getElementById('ot-status').textContent=`${turn==='b'?'⚫ Black':'⚪ White'} to move`;
+  }
+}
+
+function newGame(){initBoard();turn='b';gameOver=false;render();}
+document.getElementById('mode-ai').addEventListener('click',()=>{aiMode=true;document.getElementById('mode-ai').classList.add('active');document.getElementById('mode-2p').classList.remove('active');newGame();});
+document.getElementById('mode-2p').addEventListener('click',()=>{aiMode=false;document.getElementById('mode-2p').classList.add('active');document.getElementById('mode-ai').classList.remove('active');newGame();});
+document.getElementById('ot-new').addEventListener('click',newGame);
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_othello(){if(gameOver)return;
+  try{sessionStorage.setItem('othello',JSON.stringify({board,turn,aiMode,gameOver,_ts:Date.now()}));}catch(e){}
+}
+function _load_othello(){
+  try{
+    const raw=sessionStorage.getItem('othello');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    board=s.board;turn=s.turn;aiMode=s.aiMode;gameOver=s.gameOver||false;
+    render();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_othello);
+document.getElementById('ot-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('othello');}catch(e){}},true);
+_load_othello();
+</script>
+</body>
+</html>

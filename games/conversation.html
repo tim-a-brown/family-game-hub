@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Conversation Starters</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
+.wrap{max-width:480px;margin:0 auto;padding:0 12px 60px;}
+/* Category pills */
+.cat-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;}
+.cat-btn{padding:7px 13px;border-radius:20px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .15s;touch-action:manipulation;}
+.cat-btn.active{color:#fff;}
+.cat-btn.all.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+/* Card */
+.cs-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:28px 22px;margin-bottom:14px;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;cursor:pointer;}
+.cs-card::before{content:'';position:absolute;inset:0;background:var(--card-grad,linear-gradient(135deg,rgba(90,200,250,.06),rgba(168,85,247,.06)));border-radius:20px;}
+.cs-cat-label{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.14em;margin-bottom:12px;opacity:.7;position:relative;}
+.cs-question{font-family:var(--serif);font-size:clamp(1.05rem,4vw,1.35rem);font-weight:700;line-height:1.45;color:#fff;position:relative;}
+/* Depth badge */
+.cs-depth{position:absolute;top:14px;right:14px;font-size:.6rem;font-weight:700;padding:3px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.08em;}
+.depth-light{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25);}
+.depth-medium{background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.22);}
+.depth-deep{background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.22);}
+/* Controls */
+.cs-controls{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+/* Stats */
+.cs-stats{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:14px;}
+/* Swipe hint */
+.cs-hint{text-align:center;font-size:.68rem;color:rgba(255,255,255,.2);margin-top:6px;}
+/* Animate */
+@keyframes cs-in{0%{opacity:0;transform:translateY(18px) scale(.97);}100%{opacity:1;transform:translateY(0) scale(1);}}
+.cs-card.animating{animation:cs-in .22s ease;}
+/* Depth filter */
+.depth-row{display:flex;gap:6px;justify-content:center;margin-bottom:10px;}
+.depth-btn{padding:5px 11px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:var(--muted);font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.depth-btn.active{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Conversation Starters</span></nav>
+<div class="page"><div class="wrap">
+
+<div class="cat-row" id="cat-row"></div>
+<div class="depth-row" id="depth-row"></div>
+
+<div class="cs-card" id="cs-card" onclick="nextCard()">
+  <div class="cs-depth" id="cs-depth-badge"></div>
+  <div class="cs-cat-label" id="cs-cat-label"></div>
+  <div class="cs-question" id="cs-question">Tap a category and press Next to begin!</div>
+</div>
+
+<div class="cs-stats" id="cs-stats"></div>
+
+<div class="cs-controls">
+  <button class="btn btn-outline" id="prev-btn" style="min-width:80px;">← Prev</button>
+  <button class="btn btn-gold" id="next-btn" style="min-width:120px;">Next →</button>
+  <button class="btn btn-outline" id="shuffle-btn">🔀 Shuffle</button>
+</div>
+
+<div class="cs-hint">Tap the card or press Next • Deeper questions are marked 🌙</div>
+
+</div></div>
+<script>
+'use strict';
+
+const CATEGORIES={
+  '😂 Fun & Silly':{color:'#f97316',grad:'linear-gradient(135deg,rgba(249,115,22,.08),rgba(245,200,66,.06))',questions:[
+    {q:"If you could only eat one food for the rest of your life, what would it be?",d:'light'},
+    {q:"What's the most embarrassing song you actually love?",d:'light'},
+    {q:"If your pet could talk, what's the first thing they'd say about you?",d:'light'},
+    {q:"Would you rather fight one horse-sized duck or a hundred duck-sized horses?",d:'light'},
+    {q:"What's the weirdest food combination you actually enjoy?",d:'light'},
+    {q:"If you were a kitchen appliance, which one would you be and why?",d:'light'},
+    {q:"What is the most useless talent you have?",d:'light'},
+    {q:"If you could be famous for doing something ridiculous, what would it be?",d:'light'},
+    {q:"What animal best represents your Monday morning energy?",d:'light'},
+    {q:"What's the strangest dream you've ever had?",d:'light'},
+    {q:"If you had to survive a zombie apocalypse with only the items within 10 feet of you right now, how would you do?",d:'light'},
+    {q:"What's a movie you've seen so many times you can quote it word for word?",d:'light'},
+    {q:"If you could add one ridiculous rule to any sport, what would it be?",d:'light'},
+    {q:"What's your go-to karaoke song, even if you'd never admit it?",d:'light'},
+    {q:"If your life had a theme song, what would it be right now?",d:'light'},
+    {q:"What's something you do that you'd be mildly embarrassed if someone saw on a security camera?",d:'light'},
+    {q:"If you could replace all the grass in the world with something else, what would it be?",d:'light'},
+    {q:"What's the silliest thing you believed as a kid?",d:'light'},
+    {q:"If you became invisible for a day, what's the first thing you'd do?",d:'light'},
+    {q:"What's your most ridiculous — but completely real — fear?",d:'light'},
+    {q:"If you had to rename yourself after a household object, what would you be?",d:'light'},
+    {q:"What's the weirdest thing you've ever Googled?",d:'light'},
+    {q:"If animals could vote, which species would run for president?",d:'light'},
+    {q:"What fictional world would you least want to live in?",d:'light'},
+    {q:"If you could swap lives with a cartoon character for a week, who would it be?",d:'light'},
+  ]},
+
+  '🧠 Hypotheticals':{color:'#8b5cf6',grad:'linear-gradient(135deg,rgba(139,92,246,.08),rgba(59,130,246,.06))',questions:[
+    {q:"If you could have dinner with any three people — living, historical, or fictional — who would they be?",d:'medium'},
+    {q:"If you could master any skill instantly, what would you choose?",d:'medium'},
+    {q:"Would you rather be able to see 10 minutes into the future or 10 years into the future?",d:'medium'},
+    {q:"If you could live in any decade other than now, which would you choose and why?",d:'medium'},
+    {q:"If you could solve one world problem with a magic button, what would you fix?",d:'medium'},
+    {q:"Would you rather be able to speak every language or play every instrument?",d:'medium'},
+    {q:"If you could only read one book for the rest of your life, what would it be?",d:'medium'},
+    {q:"If you could spend a day experiencing someone else's life firsthand, whose would you choose?",d:'medium'},
+    {q:"Would you press a button that gives you $1 million but erases one random year of your memory?",d:'deep'},
+    {q:"If you found out you were a character in a simulation, would you want to know who's running it?",d:'deep'},
+    {q:"If you could go back and change one decision in your life, would you?",d:'deep'},
+    {q:"Would you rather live 40 years in perfect health or 100 years with average health?",d:'medium'},
+    {q:"If you could add one hour to every day — but no one else could — how would you use it?",d:'medium'},
+    {q:"If you could send a message to yourself 10 years ago, what would you say?",d:'deep'},
+    {q:"Would you rather be the smartest person in the room or the most liked?",d:'medium'},
+    {q:"If money didn't exist, what would you spend your life doing?",d:'medium'},
+    {q:"If you could be the world's best at one thing, what would you choose?",d:'medium'},
+    {q:"Would you rather know all the answers but be unable to explain them, or not know the answers but be brilliant at explaining things?",d:'medium'},
+    {q:"If you could time travel but only to observe — never to change anything — where would you go?",d:'medium'},
+    {q:"If you had to live on a different continent for a year, which would you choose?",d:'medium'},
+    {q:"Would you rather have the ability to fly or to breathe underwater?",d:'light'},
+    {q:"If you could wake up tomorrow with one new ability, what would be most useful in your actual life?",d:'medium'},
+    {q:"If you could design your ideal home anywhere in the world, what would it look like?",d:'light'},
+    {q:"Would you give up social media forever for $100,000?",d:'medium'},
+    {q:"If you had to teach a class on something, what would you be most qualified to teach?",d:'medium'},
+  ]},
+
+  '🌎 Would You Rather':{color:'#22c55e',grad:'linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.06))',questions:[
+    {q:"Would you rather always speak in rhyme or always speak in questions?",d:'light'},
+    {q:"Would you rather lose your sense of taste or your sense of smell?",d:'light'},
+    {q:"Would you rather be stuck on a deserted island alone or with someone you can't stand?",d:'medium'},
+    {q:"Would you rather be famous for 15 minutes or quietly influential for your whole life?",d:'medium'},
+    {q:"Would you rather be able to see 10 minutes into the future or 10 years into the future?",d:'medium'},
+    {q:"Would you rather always be 10 minutes late or always be 20 minutes early?",d:'light'},
+    {q:"Would you rather have no phone for a week or no shoes for a week?",d:'light'},
+    {q:"Would you rather always know when someone's lying or always know when someone likes you?",d:'medium'},
+    {q:"Would you rather go back to age 5 with everything you know now, or be your current age but know everything that happens in your life from here on?",d:'deep'},
+    {q:"Would you rather be able to talk to animals or speak every human language?",d:'light'},
+    {q:"Would you rather have unlimited free flights anywhere or unlimited free hotel stays?",d:'light'},
+    {q:"Would you rather have the same boring meal every day that you love, or a different meal every day that's just okay?",d:'light'},
+    {q:"Would you rather be able to pause time or rewind it?",d:'medium'},
+    {q:"Would you rather live off the grid completely or be constantly connected everywhere?",d:'medium'},
+    {q:"Would you rather have your dream career but earn average money, or a job you hate that pays extremely well?",d:'medium'},
+    {q:"Would you rather know the truth about every lie ever told to you, or have everyone forget all your most embarrassing moments?",d:'medium'},
+    {q:"Would you rather have perfect memory or the ability to forget anything you choose?",d:'deep'},
+    {q:"Would you rather travel to the past or the future?",d:'light'},
+    {q:"Would you rather never have to sleep or never have to eat?",d:'light'},
+    {q:"Would you rather have one true best friend or many good acquaintances?",d:'medium'},
+    {q:"Would you rather be respected by people who dislike you, or loved by people who underestimate you?",d:'deep'},
+    {q:"Would you rather live in a big city or a small town?",d:'light'},
+    {q:"Would you rather read minds or be completely unreadable yourself?",d:'medium'},
+    {q:"Would you rather have a pause button for your life or a rewind button?",d:'medium'},
+    {q:"Would you rather be the first person to explore a new planet or the last person to leave Earth?",d:'medium'},
+  ]},
+
+  '🤝 Getting to Know You':{color:'#5ac8fa',grad:'linear-gradient(135deg,rgba(90,200,250,.08),rgba(59,130,246,.06))',questions:[
+    {q:"What's something you're surprisingly good at?",d:'light'},
+    {q:"What's the best compliment anyone has ever given you?",d:'medium'},
+    {q:"What's a skill you wish you had started learning earlier?",d:'medium'},
+    {q:"What's something that most people don't know about you?",d:'medium'},
+    {q:"What's your favorite way to spend a free afternoon?",d:'light'},
+    {q:"What's something you love that most people would be surprised by?",d:'light'},
+    {q:"What TV show do you always recommend to people?",d:'light'},
+    {q:"What's the most spontaneous thing you've ever done?",d:'medium'},
+    {q:"What's a place you've visited that genuinely surprised you?",d:'light'},
+    {q:"If someone visited your hometown, what would you make them do first?",d:'light'},
+    {q:"What's something you thought you'd hate but ended up loving?",d:'light'},
+    {q:"What's your earliest clear memory?",d:'medium'},
+    {q:"Who has had the biggest influence on who you are today?",d:'deep'},
+    {q:"What's something you've changed your mind about in the last five years?",d:'medium'},
+    {q:"What's the best piece of advice you've ever received?",d:'medium'},
+    {q:"What's a small thing that consistently makes your day better?",d:'light'},
+    {q:"What topic could you talk about for hours?",d:'light'},
+    {q:"What's something you've done that made you feel brave?",d:'medium'},
+    {q:"What's your favorite thing about where you grew up?",d:'medium'},
+    {q:"If your friends were asked to describe you in three words, what do you think they'd say?",d:'medium'},
+    {q:"What's the most interesting job or volunteer work you've ever done?",d:'medium'},
+    {q:"What's something you do differently from most people you know?",d:'medium'},
+    {q:"What's a tradition from your family that you really love?",d:'medium'},
+    {q:"What's something on your bucket list you actually plan to do in the next few years?",d:'medium'},
+    {q:"What's the most meaningful gift you've ever received?",d:'medium'},
+  ]},
+
+  '💭 Deep & Thoughtful':{color:'#a855f7',grad:'linear-gradient(135deg,rgba(168,85,247,.1),rgba(99,102,241,.07))',questions:[
+    {q:"What's something you think about more than most people would expect?",d:'deep'},
+    {q:"What does success actually mean to you — not the dictionary definition, but yours?",d:'deep'},
+    {q:"Is there something you've been avoiding confronting in your own life?",d:'deep'},
+    {q:"What's something you wish were easier to talk about openly?",d:'deep'},
+    {q:"What do you think the world gets fundamentally wrong?",d:'deep'},
+    {q:"What's the difference between being happy and being fulfilled?",d:'deep'},
+    {q:"What's something you used to believe that you no longer do?",d:'deep'},
+    {q:"What's the most important thing you've learned from a difficult experience?",d:'deep'},
+    {q:"What does your life look like in 10 years if everything goes well?",d:'deep'},
+    {q:"How do you know when you can trust someone?",d:'deep'},
+    {q:"What's something you do for others that you rarely give yourself?",d:'deep'},
+    {q:"What would you do differently if you knew no one would judge you?",d:'deep'},
+    {q:"When do you feel most like yourself?",d:'deep'},
+    {q:"What's a belief you hold that most people around you don't share?",d:'deep'},
+    {q:"What are you most afraid of being wrong about?",d:'deep'},
+    {q:"What parts of your childhood still show up in who you are today?",d:'deep'},
+    {q:"What does home mean to you — is it a place, a feeling, or something else?",d:'deep'},
+    {q:"What's something you're still working on getting better at — as a person?",d:'deep'},
+    {q:"What do you want to be remembered for by the people closest to you?",d:'deep'},
+    {q:"What's the kindest thing a stranger has ever done for you?",d:'medium'},
+    {q:"What do you think the purpose of life is — or is there one?",d:'deep'},
+    {q:"What's something you're still working on becoming?",d:'deep'},
+    {q:"What's one thing you'd want future generations to know about this moment in history?",d:'deep'},
+    {q:"What does it mean to be a good person, in your view?",d:'deep'},
+    {q:"What's something you've accomplished that still surprises you?",d:'medium'},
+  ]},
+
+  '👨‍👩‍👧 Family':{color:'#f59e0b',grad:'linear-gradient(135deg,rgba(245,158,11,.08),rgba(249,115,22,.06))',questions:[
+    {q:"What's your favorite family tradition?",d:'light'},
+    {q:"What's a story from your childhood that gets told at every family gathering?",d:'light'},
+    {q:"What's the best piece of advice a parent or grandparent gave you?",d:'medium'},
+    {q:"If your family had a motto, what would it be?",d:'light'},
+    {q:"What's something you appreciate about your family that you didn't appreciate as a kid?",d:'medium'},
+    {q:"What's the funniest family vacation story you have?",d:'light'},
+    {q:"What's a dish from your childhood that instantly brings back memories?",d:'light'},
+    {q:"Who in your family are you most like, and how do you feel about that?",d:'medium'},
+    {q:"What's something you hope to pass on to the next generation?",d:'deep'},
+    {q:"What's a skill or interest you picked up from a family member?",d:'light'},
+    {q:"What's your favorite memory with a sibling, cousin, or family friend?",d:'light'},
+    {q:"How has your relationship with your parents changed as you've gotten older?",d:'deep'},
+    {q:"What's something a family member did that you've always admired?",d:'medium'},
+    {q:"What family story do you wish you knew more about?",d:'medium'},
+    {q:"What's the most important thing your family taught you without ever saying it out loud?",d:'deep'},
+    {q:"What do you hope people in your family say about you behind your back?",d:'medium'},
+    {q:"What's something your family does that you'd describe as 'a little weird but we love it'?",d:'light'},
+    {q:"What's a game or activity that always brings your family together?",d:'light'},
+    {q:"If you could relive one holiday or family event, which would it be?",d:'medium'},
+    {q:"What's something you do or say that reminds you of one of your parents?",d:'medium'},
+  ]},
+
+  '🌟 Dreams & Goals':{color:'#ec4899',grad:'linear-gradient(135deg,rgba(236,72,153,.08),rgba(168,85,247,.06))',questions:[
+    {q:"What's something you've always wanted to try but haven't yet?",d:'light'},
+    {q:"What would you do if you knew you couldn't fail?",d:'medium'},
+    {q:"What's a goal you've had for so long it's almost part of your identity?",d:'medium'},
+    {q:"What does your ideal day look like — start to finish?",d:'light'},
+    {q:"What's something you want to learn in the next year?",d:'light'},
+    {q:"Where in the world do you most want to visit?",d:'light'},
+    {q:"What's a dream you've given up on — and do you still think about it?",d:'deep'},
+    {q:"What's a small change that would make your daily life significantly better?",d:'medium'},
+    {q:"What version of yourself are you working toward?",d:'deep'},
+    {q:"What would your passion project be if time and money weren't obstacles?",d:'medium'},
+    {q:"What does retirement look like to you — or do you even want to retire?",d:'medium'},
+    {q:"What's one thing you want to be able to say you did by the time you're old?",d:'deep'},
+    {q:"What's something you want to get better at this year?",d:'light'},
+    {q:"What do you want your legacy to be?",d:'deep'},
+    {q:"What's a risk you'd take if you were feeling bolder?",d:'medium'},
+    {q:"What's something you'd pursue if you didn't need anyone else's approval?",d:'deep'},
+    {q:"What does your dream home look like?",d:'light'},
+    {q:"If you could live anywhere in Colorado — or the world — where would you choose?",d:'light'},
+    {q:"What's a creative project you've been meaning to start?",d:'light'},
+    {q:"If you could be known for one thing by the people closest to you, what would you want it to be?",d:'deep'},
+  ]},
+
+  '😄 For Kids':{color:'#10b981',grad:'linear-gradient(135deg,rgba(16,185,129,.08),rgba(34,197,94,.06))',questions:[
+    {q:"If you could have any superpower, what would you choose?",d:'light'},
+    {q:"What's the best part of school?",d:'light'},
+    {q:"If you could invent a new holiday, what would it celebrate?",d:'light'},
+    {q:"What's your favorite thing about your best friend?",d:'light'},
+    {q:"If you could be any animal for a day, which would you pick?",d:'light'},
+    {q:"What's the funniest thing that's ever happened to you?",d:'light'},
+    {q:"If you had $100 right now, what would you do with it?",d:'light'},
+    {q:"What's your favorite book or story and why?",d:'light'},
+    {q:"If you could meet any famous person ever — real or made up — who would it be?",d:'light'},
+    {q:"What three things would you bring to a deserted island?",d:'light'},
+    {q:"If you could change one rule at school, what would it be?",d:'light'},
+    {q:"What's something you're really proud of?",d:'light'},
+    {q:"If your bedroom had a secret door, where would you want it to lead?",d:'light'},
+    {q:"What's the nicest thing you've ever done for someone?",d:'light'},
+    {q:"If you could learn magic, what's the first spell you'd use?",d:'light'},
+    {q:"What's your favorite memory from this year?",d:'light'},
+    {q:"If you were in charge for a day, what's the first thing you'd change?",d:'light'},
+    {q:"What's something you wish adults understood better about being a kid?",d:'medium'},
+    {q:"Would you rather be able to talk to animals or be able to fly?",d:'light'},
+    {q:"If you could add a subject to school that doesn't exist, what would you teach?",d:'light'},
+    {q:"What's something you want to be really good at when you grow up?",d:'light'},
+    {q:"If your stuffed animal or toy could talk, what would it say?",d:'light'},
+    {q:"What's the silliest joke you know?",d:'light'},
+    {q:"What would your superhero name and costume look like?",d:'light'},
+    {q:"If you could live inside any movie or book, which would you pick?",d:'light'},
+  ]},
+
+  '🏔️ Colorado':{color:'#06b6d4',grad:'linear-gradient(135deg,rgba(6,182,212,.08),rgba(59,130,246,.06))',questions:[
+    {q:"What's your favorite thing about Colorado that you'd tell a visitor?",d:'light'},
+    {q:"Have you hiked a fourteener? Which one, and what was it like?",d:'light'},
+    {q:"What's the most beautiful spot in Colorado you've been to?",d:'light'},
+    {q:"Mountains or plains — which Colorado landscape do you prefer?",d:'light'},
+    {q:"What's your favorite Colorado season and why?",d:'light'},
+    {q:"Skiing, snowboarding, or give me anything but snow — which are you?",d:'light'},
+    {q:"What's your favorite Colorado restaurant, hike, or local spot?",d:'light'},
+    {q:"What's something about Colorado that surprised you or that you discovered unexpectedly?",d:'medium'},
+    {q:"What's something you wish people knew about the area you live in?",d:'medium'},
+    {q:"If you could move anywhere in Colorado tomorrow, where would you go?",d:'light'},
+    {q:"What's the best Colorado road trip you've taken or want to take?",d:'light'},
+    {q:"Red Rocks, Pikes Peak, or Mesa Verde — which is your Colorado bucket list?",d:'light'},
+    {q:"What do you think makes Highlands Ranch or Denver unique compared to other places?",d:'medium'},
+    {q:"What do you love most about raising a family in Colorado?",d:'medium'},
+    {q:"What's something on your Colorado outdoor bucket list?",d:'light'},
+  ]},
+
+  '💡 Random':{color:'#f5c842',grad:'linear-gradient(135deg,rgba(245,200,66,.08),rgba(249,115,22,.06))',questions:[
+    {q:"What's the most interesting thing you've read or watched recently?",d:'light'},
+    {q:"What's a skill that's become obsolete in your lifetime?",d:'light'},
+    {q:"What's something technology has made better — and something it's made worse?",d:'medium'},
+    {q:"What do you think will be normal in 20 years that seems weird right now?",d:'medium'},
+    {q:"What's the best movie you've seen in the last year?",d:'light'},
+    {q:"What's a hobby you'd pick up if you had more time?",d:'light'},
+    {q:"What's something you're nostalgic for that most people have forgotten about?",d:'medium'},
+    {q:"What's your unpopular opinion that you'd defend?",d:'medium'},
+    {q:"What's something you've learned in the last year that genuinely changed your perspective?",d:'medium'},
+    {q:"What's a book that has stayed with you years after reading it?",d:'medium'},
+    {q:"What's something you think is underrated and deserves more attention?",d:'light'},
+    {q:"What small invention would make everyday life significantly better?",d:'light'},
+    {q:"What's the best decision you've made in the last five years?",d:'medium'},
+    {q:"What do you think is the most important life skill that isn't taught in school?",d:'medium'},
+    {q:"What's something that used to stress you out that no longer does?",d:'medium'},
+    {q:"What's a topic you know a surprising amount about?",d:'light'},
+    {q:"What's something you were completely wrong about?",d:'medium'},
+    {q:"What do you think makes someone a good friend?",d:'medium'},
+    {q:"What's a word or phrase you use all the time that you think is uniquely yours?",d:'light'},
+    {q:"What's the most interesting conversation you've had recently?",d:'light'},
+    {q:"If your life were a genre of movie, what would it be right now?",d:'light'},
+    {q:"What's something you've gotten better at accepting as you've gotten older?",d:'deep'},
+    {q:"What do you think people misunderstand about you?",d:'deep'},
+    {q:"What's something you've been thinking about a lot lately?",d:'medium'},
+    {q:"What's the most memorable meal you've ever had?",d:'light'},
+  ]},
+};
+
+const CAT_NAMES=Object.keys(CATEGORIES);
+const DEPTH_LABELS={light:'Lighthearted',medium:'Thoughtful',deep:'Deep 🌙'};
+const DEPTH_CLASSES={light:'depth-light',medium:'depth-medium',deep:'depth-deep'};
+
+let activeCat='All', depthFilter='all', pool=[], idx=0, history=[];
+
+function buildUI(){
+  // Category buttons
+  const catRow=document.getElementById('cat-row');
+  const allBtn=document.createElement('button');
+  allBtn.className='cat-btn all active';allBtn.textContent='✨ All';allBtn.style.borderColor='var(--gold)';allBtn.style.background='rgba(245,200,66,.12)';allBtn.style.color='var(--gold)';
+  allBtn.addEventListener('click',()=>setCat('All'));
+  catRow.appendChild(allBtn);
+  CAT_NAMES.forEach(name=>{
+    const btn=document.createElement('button');
+    btn.className='cat-btn';btn.textContent=name;
+    btn.style.setProperty('--c',CATEGORIES[name].color);
+    btn.addEventListener('click',()=>setCat(name));
+    catRow.appendChild(btn);
+  });
+  // Depth filter
+  const dr=document.getElementById('depth-row');
+  [{k:'all',l:'All Depths'},{k:'light',l:'😄 Lighthearted'},{k:'medium',l:'💛 Thoughtful'},{k:'deep',l:'🌙 Deep'}].forEach(({k,l})=>{
+    const btn=document.createElement('button');
+    btn.className='depth-btn'+(k==='all'?' active':'');btn.textContent=l;btn.dataset.k=k;
+    btn.addEventListener('click',()=>{
+      depthFilter=k;
+      document.querySelectorAll('.depth-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      buildPool();showCard();
+    });
+    dr.appendChild(btn);
+  });
+}
+
+function setCat(name){
+  activeCat=name;
+  document.querySelectorAll('.cat-btn').forEach(b=>{
+    b.classList.remove('active');
+    b.style.borderColor='';b.style.background='';b.style.color='';
+  });
+  const all=document.querySelectorAll('.cat-btn');
+  if(name==='All'){
+    all[0].classList.add('active');
+    all[0].style.borderColor='var(--gold)';all[0].style.background='rgba(245,200,66,.12)';all[0].style.color='var(--gold)';
+  } else {
+    all.forEach(b=>{
+      if(b.textContent===name){
+        b.classList.add('active');
+        const c=CATEGORIES[name].color;
+        b.style.borderColor=c;b.style.background=`rgba(${hexToRgb(c)},.12)`;b.style.color=c;
+      }
+    });
+  }
+  buildPool();showCard();
+}
+
+function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`${r},${g},${b}`;}
+
+function buildPool(){
+  pool=[];
+  const cats=activeCat==='All'?CAT_NAMES:[activeCat];
+  cats.forEach(cat=>{
+    CATEGORIES[cat].questions.forEach(q=>{
+      if(depthFilter==='all'||q.d===depthFilter)
+        pool.push({...q,cat});
+    });
+  });
+  // Shuffle
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  idx=0;history=[];
+}
+
+function showCard(animate=true){
+  if(!pool.length){
+    document.getElementById('cs-question').textContent='No questions match that filter. Try a different depth!';
+    document.getElementById('cs-cat-label').textContent='';
+    document.getElementById('cs-depth-badge').textContent='';
+    document.getElementById('cs-stats').textContent='';
+    return;
+  }
+  const item=pool[idx];
+  const catInfo=CATEGORIES[item.cat];
+  const card=document.getElementById('cs-card');
+  card.style.setProperty('--card-grad',catInfo.grad);
+  if(animate){card.classList.remove('animating');void card.offsetWidth;card.classList.add('animating');}
+  document.getElementById('cs-cat-label').textContent=item.cat;
+  document.getElementById('cs-cat-label').style.color=catInfo.color;
+  document.getElementById('cs-question').textContent=item.q;
+  const badge=document.getElementById('cs-depth-badge');
+  badge.textContent=DEPTH_LABELS[item.d];
+  badge.className='cs-depth '+DEPTH_CLASSES[item.d];
+  document.getElementById('cs-stats').textContent=`${idx+1} of ${pool.length} questions`;
+}
+
+function nextCard(){
+  if(!pool.length)return;
+  history.push(idx);
+  idx=(idx+1)%pool.length;
+  showCard();
+}
+
+function prevCard(){
+  if(history.length){idx=history.pop();showCard();}
+}
+
+function shufflePool(){buildPool();showCard();}
+
+document.getElementById('next-btn').addEventListener('click',nextCard);
+document.getElementById('prev-btn').addEventListener('click',prevCard);
+document.getElementById('shuffle-btn').addEventListener('click',shufflePool);
+
+// Swipe support
+let tx=0;
+document.getElementById('cs-card').addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+document.getElementById('cs-card').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>40){if(dx<0)nextCard();else prevCard();}
+},{passive:true});
+
+buildUI();buildPool();showCard(false);
+</script>
+</body>
+</html>

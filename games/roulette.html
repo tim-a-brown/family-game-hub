@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Roulette</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);overflow-x:hidden;;touch-action:pan-y;}
+.rl-wrap{max-width:520px;margin:0 auto;padding:0 0 70px;}
+canvas#wheel{display:block;margin:10px auto 8px;border-radius:50%;box-shadow:0 4px 40px rgba(0,0,0,.7);}
+canvas#table{display:block;width:100%;cursor:crosshair;touch-action:none;}
+.info-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 6px;}
+.info-lbl{font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.info-val{font-family:var(--serif);font-size:1.15rem;font-weight:900;}
+.chip-tray{display:flex;gap:8px;justify-content:center;padding:8px 8px 4px;flex-wrap:wrap;}
+.chip-src{width:44px;height:44px;border-radius:50%;border:2.5px solid;font-size:.7rem;font-weight:700;cursor:grab;touch-action:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s,box-shadow .15s;user-select:none;-webkit-user-select:none;}
+.chip-src.sel{transform:scale(1.2);box-shadow:0 0 16px currentColor;}
+.chip-src:active{cursor:grabbing;transform:scale(1.1);}
+.help-tip{text-align:center;font-size:.7rem;color:var(--muted);padding:3px 8px 6px;}
+.action-row{display:flex;gap:8px;justify-content:center;padding:8px 8px 4px;}
+.result-banner{margin:0 8px 8px;padding:10px 14px;border-radius:10px;text-align:center;font-family:var(--serif);font-size:1.4rem;font-weight:900;display:none;}
+.result-banner.red{background:rgba(180,20,20,.3);border:1px solid rgba(200,40,40,.4);}
+.result-banner.black{background:rgba(10,10,10,.5);border:1px solid rgba(100,100,100,.35);}
+.result-banner.green{background:rgba(0,120,50,.3);border:1px solid rgba(0,150,60,.4);}
+.history-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:4px 8px;min-height:26px;}
+.hist-dot{width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.54rem;font-weight:800;color:#fff;border:1px solid rgba(255,255,255,.18);flex-shrink:0;}
+#ghost{position:fixed;width:42px;height:42px;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;pointer-events:none;z-index:999;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.5);box-shadow:0 4px 18px rgba(0,0,0,.6);font-family:var(--font);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Roulette</span></nav>
+<div class="rl-wrap">
+
+<canvas id="wheel" width="220" height="220" style="width:min(220px,66vw);height:min(220px,66vw);"></canvas>
+
+<div class="info-bar">
+  <div>
+    <div class="info-lbl">Balance</div>
+    <div class="info-val" id="bal" style="color:var(--gold)">$1,000</div>
+  </div>
+  <div style="text-align:center"><div class="info-lbl">Bet</div><div class="info-val" id="tot-bet" style="color:#5ac8fa">$0</div></div>
+  <div style="text-align:right">
+    <div class="info-lbl">Last</div><div class="info-val" id="last-w">—</div>
+  </div>
+</div>
+<div style="text-align:right;margin-bottom:8px;padding:0 2px;">
+  <button id="rl-reset-bal" class="btn btn-outline btn-sm" style="font-size:.68rem;padding:3px 9px;border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.45);" title="Reset balance to $1,000">↺ Reset balance</button>
+</div>
+
+<div class="result-banner" id="banner"></div>
+
+<div class="chip-tray" id="chip-tray"></div>
+<div class="help-tip">Drag chip → table to bet · Tap placed chip to remove</div>
+
+<canvas id="table"></canvas>
+
+<div class="action-row">
+  <button class="btn btn-outline btn-sm" id="clear-btn">Clear All</button>
+  <button class="btn btn-gold" id="spin-btn" style="min-width:110px;">Spin ▶</button>
+  <button class="btn btn-outline btn-sm" id="rebet-btn">Re-Bet</button>
+</div>
+
+<div class="history-row" id="hist"></div>
+</div>
+<div id="ghost"></div>
+
+<script>
+'use strict';
+const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const WO=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const CHIPS=[{v:1,c:'#6b7280'},{v:5,c:'#ef4444'},{v:10,c:'#3b82f6'},{v:25,c:'#22c55e'},{v:50,c:'#f59e0b'},{v:100,c:'#c084fc'}];
+const WN=WO.length, SLICE=2*Math.PI/WN;
+
+let bal=1000,bets={},lastBets={},dragging=null,nearHS=null,hotspots=[],resultNum=null,spinning=false;
+let wAngle=0,bAngle=0,bRad=0;
+let L={};
+
+// ── Table canvas setup ──────────────────────────────────────────────────────
+const tc=document.getElementById('table'),tx=tc.getContext('2d');
+function initTable(){
+  const W=Math.min(520,window.innerWidth);tc.width=W;
+  const P=7,ZW=Math.max(22,Math.floor(W*0.063));
+  const CW=Math.max(18,Math.floor((W-2*P-ZW-Math.floor(W*0.074))/12));
+  const COL_W=W-2*P-ZW-12*CW;
+  const CH=Math.ceil(CW*1.5);
+  const SH=Math.ceil(CH*0.52),DH=Math.ceil(CH*0.58),OH=Math.ceil(CH*0.62);
+  const GX=P+ZW,GY=P;
+  tc.height=P+3*CH+SH+DH+OH+P;
+  L={W,P,ZW,CW,CH,SH,DH,OH,COL_W,GX,GY};
+  buildHS();drawT();
+}
+function nAt(c,r){return c*3+(2-r)+1;}
+function nX(c){return L.GX+c*L.CW+L.CW/2;}
+function nY(r){return L.GY+r*L.CH+L.CH/2;}
+
+// ── Build hotspots ──────────────────────────────────────────────────────────
+function buildHS(){
+  const h=[],{P,ZW,CW,CH,SH,DH,OH,COL_W,GX,GY,W}=L;
+  const key=(...a)=>a.sort((x,y)=>x-y).join('_');
+  // Zero
+  h.push({id:'n0',type:'straight',nums:[0],pay:35,x:P+ZW/2,y:GY+CH*1.5});
+  // 1-36 straight
+  for(let c=0;c<12;c++)for(let r=0;r<3;r++){const n=nAt(c,r);h.push({id:'n'+n,type:'straight',nums:[n],pay:35,x:nX(c),y:nY(r)});}
+  // Horizontal splits (within column, between rows)
+  for(let c=0;c<12;c++)for(let r=0;r<2;r++){const[a,b]=[nAt(c,r),nAt(c,r+1)].sort((x,y)=>x-y);h.push({id:'sh'+key(a,b),type:'split',nums:[a,b],pay:17,x:nX(c),y:GY+(r+1)*CH});}
+  // Vertical splits (within row, between columns)
+  for(let c=0;c<11;c++)for(let r=0;r<3;r++){const[a,b]=[nAt(c,r),nAt(c+1,r)].sort((x,y)=>x-y);h.push({id:'sv'+key(a,b),type:'split',nums:[a,b],pay:17,x:GX+(c+1)*CW,y:nY(r)});}
+  // Street (full column of 3)
+  for(let c=0;c<12;c++){const ns=[nAt(c,0),nAt(c,1),nAt(c,2)].sort((a,b)=>a-b);h.push({id:'st'+ns[0],type:'street',nums:ns,pay:11,x:nX(c),y:GY+3*CH+SH/2});}
+  // Corner (4 at 2×2 intersection)
+  for(let c=0;c<11;c++)for(let r=0;r<2;r++){const ns=[nAt(c,r),nAt(c,r+1),nAt(c+1,r),nAt(c+1,r+1)].sort((a,b)=>a-b);h.push({id:'co'+ns[0],type:'corner',nums:ns,pay:8,x:GX+(c+1)*CW,y:GY+(r+1)*CH});}
+  // Six-line (2 adjacent columns, 6 nums)
+  for(let c=0;c<11;c++){const ns=[nAt(c,0),nAt(c,1),nAt(c,2),nAt(c+1,0),nAt(c+1,1),nAt(c+1,2)].sort((a,b)=>a-b);h.push({id:'sl'+ns[0],type:'sixline',nums:ns,pay:5,x:GX+(c+1)*CW,y:GY+3*CH+SH/2});}
+  // Column bets
+  const CX=GX+12*CW+COL_W/2;
+  h.push({id:'colt',type:'col',nums:[3,6,9,12,15,18,21,24,27,30,33,36],pay:2,x:CX,y:nY(0),lbl:'2:1'});
+  h.push({id:'colm',type:'col',nums:[2,5,8,11,14,17,20,23,26,29,32,35],pay:2,x:CX,y:nY(1),lbl:'2:1'});
+  h.push({id:'colb',type:'col',nums:[1,4,7,10,13,16,19,22,25,28,31,34],pay:2,x:CX,y:nY(2),lbl:'2:1'});
+  // Dozens
+  const DY=GY+3*CH+SH+DH/2,DW=Math.floor(12*CW/3);
+  h.push({id:'d1',type:'dozen',nums:Array.from({length:12},(_,i)=>i+1),pay:2,x:GX+DW*0+DW/2,y:DY,lbl:'1st 12'});
+  h.push({id:'d2',type:'dozen',nums:Array.from({length:12},(_,i)=>i+13),pay:2,x:GX+DW*1+DW/2,y:DY,lbl:'2nd 12'});
+  h.push({id:'d3',type:'dozen',nums:Array.from({length:12},(_,i)=>i+25),pay:2,x:GX+DW*2+DW/2,y:DY,lbl:'3rd 12'});
+  // Outside
+  const OY=GY+3*CH+SH+DH+OH/2,OW=Math.floor(12*CW/6);
+  [{id:'low',t:n=>n>=1&&n<=18,lbl:'1–18'},{id:'even',t:n=>n%2===0&&n>0,lbl:'Even'},
+   {id:'red',t:n=>RED.has(n),lbl:'Red'},{id:'blk',t:n=>n>0&&!RED.has(n),lbl:'Black'},
+   {id:'odd',t:n=>n%2===1,lbl:'Odd'},{id:'hi',t:n=>n>=19,lbl:'19–36'}
+  ].forEach(({id,t,lbl},i)=>h.push({id,type:'outside',test:t,nums:null,pay:1,x:GX+OW*i+OW/2,y:OY,lbl}));
+  hotspots=h;
+}
+
+function findNear(x,y,maxD){
+  maxD=maxD||(Math.max(L.CW,L.CH)*1.35);
+  let best=null,bd=Infinity;
+  hotspots.forEach(h=>{const d=Math.hypot(h.x-x,h.y-y);if(d<maxD&&d<bd){bd=d;best=h;}});
+  return best;
+}
+
+// ── Draw table ──────────────────────────────────────────────────────────────
+function drawT(){
+  const ctx=tx,{P,ZW,CW,CH,SH,DH,OH,COL_W,GX,GY,W}=L,H=tc.height;
+  ctx.clearRect(0,0,W,H);
+  // Felt
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b2a14');g.addColorStop(1,'#081a0c');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // Zero cell
+  ctx.fillStyle='#0e6b34';ctx.fillRect(P,GY,ZW,3*CH);
+  ctx.strokeStyle='#4a7a38';ctx.lineWidth=0.7;ctx.strokeRect(P,GY,ZW,3*CH);
+  ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(ZW*0.5)}px Inter`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('0',P+ZW/2,GY+CH*1.5);
+  // Number cells
+  for(let c=0;c<12;c++)for(let r=0;r<3;r++){
+    const n=nAt(c,r),x=GX+c*CW,y=GY+r*CH,isRes=n===resultNum&&!spinning;
+    ctx.fillStyle=isRes?'#f5c842':RED.has(n)?'#781010':'#151525';
+    ctx.fillRect(x,y,CW,CH);ctx.strokeStyle='#334a28';ctx.lineWidth=0.6;ctx.strokeRect(x,y,CW,CH);
+    ctx.fillStyle=isRes?'#000':'#fff';ctx.font=`bold ${Math.round(CW*0.44)}px Inter`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n,x+CW/2,y+CH/2);
+  }
+  // Street row
+  for(let c=0;c<12;c++){
+    const x=GX+c*CW,y=GY+3*CH,ns=[nAt(c,0),nAt(c,1),nAt(c,2)].sort((a,b)=>a-b);
+    ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(x,y,CW,SH);
+    ctx.strokeStyle='#334a28';ctx.lineWidth=0.5;ctx.strokeRect(x,y,CW,SH);
+    ctx.fillStyle='rgba(255,255,255,.28)';ctx.font=`${Math.round(CW*0.25)}px Inter`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${ns[0]}-${ns[2]}`,x+CW/2,y+SH/2);
+  }
+  // Six-line dividers on street row
+  ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=0.8;
+  for(let c=1;c<12;c++){ctx.beginPath();ctx.moveTo(GX+c*CW,GY+3*CH);ctx.lineTo(GX+c*CW,GY+3*CH+SH);ctx.stroke();}
+  // Column bets
+  for(let r=0;r<3;r++){
+    const x=GX+12*CW,y=GY+r*CH;
+    ctx.fillStyle='rgba(90,200,250,.09)';ctx.fillRect(x,y,COL_W,CH);
+    ctx.strokeStyle='#334a28';ctx.lineWidth=0.6;ctx.strokeRect(x,y,COL_W,CH);
+    ctx.fillStyle='#5ac8fa';ctx.font=`bold ${Math.round(CW*0.3)}px Inter`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('2:1',x+COL_W/2,y+CH/2);
+  }
+  // Dozens
+  const DY=GY+3*CH+SH,DW=Math.floor(12*CW/3);
+  ['1st 12','2nd 12','3rd 12'].forEach((lbl,i)=>{
+    const x=GX+i*DW;ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(x,DY,DW,DH);
+    ctx.strokeStyle='#334a28';ctx.lineWidth=0.5;ctx.strokeRect(x,DY,DW,DH);
+    ctx.fillStyle='#e2e8f0';ctx.font=`bold ${Math.round(CW*0.28)}px Inter`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,x+DW/2,DY+DH/2);
+  });
+  // Outside bets
+  const OY=DY+DH,OW=Math.floor(12*CW/6);
+  [{lbl:'1–18',bg:'rgba(255,255,255,.05)',fc:'#e2e8f0'},{lbl:'Even',bg:'rgba(255,255,255,.05)',fc:'#e2e8f0'},
+   {lbl:'Red',bg:'rgba(130,18,18,.5)',fc:'#fca5a5'},{lbl:'Black',bg:'rgba(0,0,0,.55)',fc:'#94a3b8'},
+   {lbl:'Odd',bg:'rgba(255,255,255,.05)',fc:'#e2e8f0'},{lbl:'19–36',bg:'rgba(255,255,255,.05)',fc:'#e2e8f0'}
+  ].forEach(({lbl,bg,fc},i)=>{
+    const x=GX+i*OW;ctx.fillStyle=bg;ctx.fillRect(x,OY,OW,OH);
+    ctx.strokeStyle='#334a28';ctx.lineWidth=0.5;ctx.strokeRect(x,OY,OW,OH);
+    ctx.fillStyle=fc;ctx.font=`bold ${Math.round(CW*0.27)}px Inter`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,x+OW/2,OY+OH/2);
+  });
+  // Hotspot highlight during drag
+  if(nearHS&&dragging){
+    ctx.save();ctx.shadowColor='#f5c842';ctx.shadowBlur=18;
+    ctx.globalAlpha=0.45;ctx.fillStyle='#f5c842';
+    ctx.beginPath();ctx.arc(nearHS.x,nearHS.y,cR()*1.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  // Placed chips
+  Object.entries(bets).forEach(([id,amt])=>{
+    const hs=hotspots.find(h=>h.id===id);if(hs)drawChip(ctx,hs.x,hs.y,amt);
+  });
+}
+
+function cR(){return Math.max(8,Math.min(L.CW*0.47,14));}
+function drawChip(ctx,x,y,amt){
+  const R=cR();
+  let col='#f5c842';[...CHIPS].reverse().forEach(c=>{if(amt>=c.v)col=c.c;});
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=5;
+  ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1.2;ctx.stroke();
+  ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(R*0.88)}px Inter`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(amt>=1000?Math.round(amt/1000)+'k':amt,x,y);
+  ctx.restore();
+}
+
+// ── Chip tray & drag ────────────────────────────────────────────────────────
+const ghost=document.getElementById('ghost');
+const tray=document.getElementById('chip-tray');
+let selV=5;
+
+CHIPS.forEach(ch=>{
+  const el=document.createElement('div');
+  el.className='chip-src'+(ch.v===selV?' sel':'');
+  el.style.cssText=`border-color:${ch.c};background:${ch.c}22;color:${ch.c};`;
+  el.textContent='$'+ch.v;el.dataset.v=ch.v;
+  el.addEventListener('mousedown',e=>{e.preventDefault();startDrag(ch,e.clientX,e.clientY);});
+  el.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];startDrag(ch,t.clientX,t.clientY);},{passive:false});
+  tray.appendChild(el);
+});
+
+function selUpdate(v){
+  selV=v;
+  tray.querySelectorAll('.chip-src').forEach(el=>el.classList.toggle('sel',+el.dataset.v===v));
+}
+
+function startDrag(ch,cx,cy){
+  if(spinning)return;
+  selUpdate(ch.v);dragging=ch;
+  ghost.style.cssText=`display:flex;background:${ch.c};left:${cx}px;top:${cy}px;border:2px solid rgba(255,255,255,.5);`;
+  ghost.textContent='$'+ch.v;
+  nearHS=c2t(cx,cy)?findNear(...Object.values(c2t(cx,cy))):null;
+  drawT();
+}
+
+document.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
+  const p=c2t(e.clientX,e.clientY);nearHS=p?findNear(p.x,p.y):null;drawT();
+});
+document.addEventListener('mouseup',e=>{if(dragging)drop(e.clientX,e.clientY);});
+document.addEventListener('touchmove',e=>{
+  if(!dragging)return;e.preventDefault();
+  const t=e.touches[0];ghost.style.left=t.clientX+'px';ghost.style.top=t.clientY+'px';
+  const p=c2t(t.clientX,t.clientY);nearHS=p?findNear(p.x,p.y):null;drawT();
+},{passive:false});
+document.addEventListener('touchend',e=>{if(dragging){const t=e.changedTouches[0];drop(t.clientX,t.clientY);}});
+
+function c2t(cx,cy){
+  const r=tc.getBoundingClientRect();
+  if(cx<r.left||cx>r.right||cy<r.top||cy>r.bottom)return null;
+  const sx=tc.width/r.width,sy=tc.height/r.height;
+  return{x:(cx-r.left)*sx,y:(cy-r.top)*sy};
+}
+
+function drop(cx,cy){
+  ghost.style.display='none';
+  const p=c2t(cx,cy);
+  if(p&&nearHS)placeBet(nearHS.id,dragging.v);
+  dragging=null;nearHS=null;drawT();
+}
+
+// Tap existing chip to remove
+tc.addEventListener('click',e=>{
+  if(spinning||dragging)return;
+  const r=tc.getBoundingClientRect(),sx=tc.width/r.width,sy=tc.height/r.height;
+  const x=(e.clientX-r.left)*sx,y=(e.clientY-r.top)*sy;
+  const hs=findNear(x,y,cR()*2.8);
+  if(hs&&bets[hs.id]){bal+=bets[hs.id];delete bets[hs.id];updateUI();drawT();sChip();}
+});
+
+function placeBet(id,v){
+  if(v>bal){sLow();return;}
+  bets[id]=(bets[id]||0)+v;bal-=v;updateUI();sChip();
+}
+function updateUI(){
+  document.getElementById('bal').textContent='$'+bal.toLocaleString();
+  document.getElementById('tot-bet').textContent='$'+Object.values(bets).reduce((a,b)=>a+b,0);
+}
+
+document.getElementById('clear-btn').addEventListener('click',()=>{
+  if(spinning)return;bal+=Object.values(bets).reduce((a,b)=>a+b,0);bets={};updateUI();drawT();
+  document.getElementById('banner').style.display='none';
+});
+document.getElementById('rebet-btn').addEventListener('click',()=>{
+  if(spinning||!Object.keys(lastBets).length)return;
+  const tot=Object.values(lastBets).reduce((a,b)=>a+b,0);
+  if(tot>bal){sLow();return;}
+  bets={...lastBets};bal-=tot;updateUI();drawT();
+  document.getElementById('banner').style.display='none';
+});
+
+// ── Spin & resolve ──────────────────────────────────────────────────────────
+document.getElementById('spin-btn').addEventListener('click',()=>{
+  if(spinning||!Object.keys(bets).length){if(!Object.keys(bets).length)sError();return;}
+  spinning=true;lastBets={...bets};
+  resultNum=WO[Math.floor(Math.random()*WN)];
+  spinW();
+});
+
+function spinW(){
+  const pi=WO.indexOf(resultNum);
+  // Guarantee 8–12 full rotations every time — no short spins
+  const numSpins=8+Math.random()*4;
+  const fa=(-pi*SLICE)-Math.PI/2-(2*Math.PI*numSpins);
+  const sa=wAngle; const TF=400; let f=0,lp=-1,lwSec=-1,ballSettled=false;
+
+  // Pre-compute per-frame speed variation so the path looks organic
+  const bVar=Array.from({length:TF+1},()=>1+(Math.random()-0.5)*0.08);
+
+  // Sum the total backward rotation the ball will travel
+  let totalRot=0;
+  for(let fi=0;fi<=TF;fi++){
+    const t=fi/TF;
+    totalRot+=0.13*Math.max(0,1-Math.pow(t*1.35,2))*bVar[fi];
+  }
+
+  // Set starting angle so ball arrives at the winning pocket with zero snap
+  const pocketTarget=fa+pi*SLICE;
+  bAngle=pocketTarget+totalRot+(2*Math.PI*(2+Math.floor(Math.random()*3)));
+  bRad=R_TRACK;
+
+  function step(){
+    const t=f/TF,e=1-Math.pow(1-t,3);
+    wAngle=sa+(fa-sa)*e;
+    const be=Math.max(0,1-Math.pow(t*1.35,2));
+
+    bAngle-=0.13*be*bVar[f];
+    if(t>0.74)bRad=R_TRACK-(R_TRACK-R_POCKET)*((t-0.74)/0.26);
+
+    const pg=Math.round((((-bAngle%(2*Math.PI))+2*Math.PI)%(2*Math.PI))/SLICE)%WN;
+    if(pg!==lp&&f>5){sPegClick(be);lp=pg;}
+
+    const wSec=Math.floor(((wAngle%(2*Math.PI))+2*Math.PI)%(2*Math.PI)/SLICE)%WN;
+    if(wSec!==lwSec&&f>5){sWheelTick(be);lwSec=wSec;}
+
+    if(!ballSettled&&t>0.76&&bRad<(R_TRACK+R_POCKET)*0.55){ballSettled=true;sBallSettle();}
+
+    drawW();f++;
+    if(f<=TF){
+      requestAnimationFrame(step);
+    } else {
+      bRad=R_POCKET;
+      drawW();
+      // Keep spinning=true through settle() — prevents clicks during payout
+      setTimeout(()=>{ settle(); spinning=false; }, 350);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function settle(){
+  drawW();drawT();
+  const n=resultNum,col=n===0?'green':RED.has(n)?'red':'black';
+  const tb=Object.values(bets).reduce((a,b)=>a+b,0);
+  let tw=0;
+  Object.entries(bets).forEach(([id,amt])=>{
+    const hs=hotspots.find(h=>h.id===id);if(!hs)return;
+    const hit=hs.nums?hs.nums.includes(n):(hs.test&&hs.test(n));
+    if(hit)tw+=amt*(hs.pay+1);
+  });
+  bal+=tw;updateUI();
+  const net=tw-tb;
+  document.getElementById('last-w').textContent=net>=0?'+$'+net:'-$'+Math.abs(net);
+  document.getElementById('last-w').style.color=net>=0?'#22c55e':'#ef4444';
+  const bn=document.getElementById('banner');bn.style.display='block';bn.className='result-banner '+col;
+  bn.innerHTML=`<span style="font-size:1.8rem">${n}</span> · ${col.toUpperCase()} <span style="font-size:1rem;color:${net>=0?'#22c55e':'#ef4444'}">${net>=0?'+':''}$${net}</span>`;
+  tw>0?sWin():sLose();
+  const row=document.getElementById('hist');
+  const d=document.createElement('div');d.className='hist-dot';
+  d.style.background=col==='green'?'#1a7a40':col==='red'?'#9a1515':'#222';d.textContent=n;
+  row.prepend(d);if(row.children.length>14)row.lastChild.remove();
+  bets={};drawT();
+}
+
+// ── Wheel canvas ────────────────────────────────────────────────────────────
+const wc=document.getElementById('wheel'),wx=wc.getContext('2d');
+const WW=wc.width,WH=wc.height,cx=WW/2,cy=WH/2;
+const R_RIM=cx*.97,R_NUM=cx*.86,R_INNER=cx*.53;
+const R_TRACK=cx*.91,R_POCKET=cx*.61;
+
+function drawW(){
+  wx.clearRect(0,0,WW,WH);
+  const g=wx.createRadialGradient(cx,cy,R_NUM,cx,cy,R_RIM);
+  g.addColorStop(0,'#280c00');g.addColorStop(1,'#7a4f10');
+  wx.beginPath();wx.arc(cx,cy,R_RIM,0,Math.PI*2);wx.fillStyle=g;wx.fill();
+  for(let i=0;i<WN;i++){
+    const n=WO[i],m=wAngle+i*SLICE,s=m-SLICE/2,e=m+SLICE/2;
+    const isr=n===resultNum&&!spinning;
+    wx.beginPath();wx.moveTo(cx,cy);wx.arc(cx,cy,R_NUM,s,e);wx.closePath();
+    wx.fillStyle=isr?'#f5c842':n===0?'#1a7a40':RED.has(n)?'#961212':'#0d0d1f';
+    wx.fill();wx.strokeStyle='#7a4f10';wx.lineWidth=0.5;wx.stroke();
+    const tr=(R_NUM+R_INNER)/2;
+    wx.save();wx.translate(cx+tr*Math.cos(m),cy+tr*Math.sin(m));wx.rotate(m+Math.PI/2);
+    wx.fillStyle=isr?'#000':'#fff';wx.font=`bold ${Math.round(WW*0.037)}px Inter`;
+    wx.textAlign='center';wx.textBaseline='middle';wx.fillText(n,0,0);wx.restore();
+  }
+  const ig=wx.createRadialGradient(cx,cy,0,cx,cy,R_INNER);
+  ig.addColorStop(0,'#180800');ig.addColorStop(1,'#0c0400');
+  wx.beginPath();wx.arc(cx,cy,R_INNER,0,Math.PI*2);wx.fillStyle=ig;wx.fill();
+  wx.strokeStyle='#7a4f10';wx.lineWidth=1.5;wx.stroke();
+  wx.beginPath();wx.arc(cx,cy,R_INNER*0.2,0,Math.PI*2);wx.fillStyle='#f5c842';wx.fill();
+  const bx=cx+bRad*Math.cos(bAngle),by=cy+bRad*Math.sin(bAngle);
+  wx.save();wx.shadowColor='rgba(255,255,255,.85)';wx.shadowBlur=7;
+  wx.beginPath();wx.arc(bx,by,WW*0.022,0,Math.PI*2);wx.fillStyle='#f5f5f5';wx.fill();wx.restore();
+}
+
+// ── Sound ────────────────────────────────────────────────────────────────────
+let _ac=null;
+function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function sTone(f,s,d,v,type,ramp){const ctx=sac(),t=ctx.currentTime+s,o=ctx.createOscillator(),g=ctx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v||.18,t+.012);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+d+.05);}
+function sNoise(s,d,fc,q,v){const ctx=sac(),t=ctx.currentTime+s,buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*d),ctx.sampleRate),da=buf.getChannelData(0);for(let i=0;i<da.length;i++)da[i]=(Math.random()*2-1)*Math.exp(-i/(da.length*.4));const src=ctx.createBufferSource();src.buffer=buf;const f2=ctx.createBiquadFilter();f2.type='bandpass';f2.frequency.value=fc||1000;f2.Q.value=q||2;const g=ctx.createGain();g.gain.setValueAtTime(v||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+d);src.connect(f2);f2.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+d+.05);}
+let _lpc=0;
+// Ball ticking against frets — pitch rises with speed
+function sPegClick(speed){
+  speed=speed||0.5;
+  const n=performance.now();if(n-_lpc<Math.max(30,80*(1-speed)))return;_lpc=n;
+  sNoise(0,.022,1400+speed*600,8,.06+speed*.06);
+}
+// Wheel sector click — low woody thump, slows/softens as wheel decelerates
+let _lwt=0;
+function sWheelTick(be){
+  be=be||0;
+  const n=performance.now();if(n-_lwt<40)return;_lwt=n;
+  const vol=0.04+be*0.08, freq=250+be*150;
+  sNoise(0,.03,freq,2,vol,.25);
+  sTone(freq*.7,0,.04,vol*.4,'triangle');
+}
+// Hard clack as ball drops from outer track to pocket level
+function sBallSettle(){
+  sNoise(0,.06,350,2,.28,.2);
+  sTone(160,0,.12,.12,'triangle',80);
+}
+function sChip(){sNoise(0,.03,1900,6,.12);}
+function sWin(){[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
+function sLose(){[330,247,196].forEach((f,i)=>sTone(f,i*.1,.35,.16,'triangle'));}
+function sError(){sTone(200,0,.18,.15,'sawtooth',120);}
+function sLow(){sTone(180,0,.15,.1,'sawtooth');}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+bAngle=Math.PI/4;bRad=R_TRACK;
+initTable();drawW();updateUI();
+window.addEventListener('resize',()=>{initTable();drawW();});
+
+// ── Session persistence ───────────────────────────────────────────────────
+function saveRoulette(){
+  if(bal===1000&&!Object.keys(bets).length)return;
+  try{sessionStorage.setItem('rl_state',JSON.stringify({bal,bets,_ts:Date.now()}));}catch(e){}
+}
+function loadRoulette(){
+  try{
+    const raw=sessionStorage.getItem('rl_state');if(!raw)return;
+    const s=JSON.parse(raw);bal=s.bal;bets=s.bets||{};updateUI();drawT();
+  }catch(e){}
+}
+window.addEventListener('beforeunload',saveRoulette);
+loadRoulette();
+
+// ── Reset balance ──────────────────────────────────────────────────────────
+document.getElementById('rl-reset-bal').addEventListener('click',()=>{
+  if(!confirm('Reset balance to $1,000 and clear all bets?'))return;
+  bal=1000;bets={};lastBets={};
+  updateUI();drawT();
+  try{sessionStorage.removeItem('rl_state');}catch(e){}
+});
+</script>
+</body>
+</html>

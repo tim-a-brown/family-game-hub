@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Mini Golf</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);}
+.felt{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(255,255,255,0.02)'/%3E%3C/svg%3E");}
+.inner{position:relative;z-index:1;}
+.game-header{text-align:center;padding:24px 16px 16px;}
+.game-icon-big{font-size:2.4rem;display:block;margin-bottom:6px;}
+.game-title{font-family:var(--serif);font-size:clamp(1.8rem,7vw,2.8rem);font-weight:900;}
+/* Tabs */
+.game-tabs{display:flex;gap:0;padding:0 16px;margin-bottom:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.game-tab{flex:0 0 auto;padding:10px 18px;border:none;border-bottom:3px solid transparent;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--font);}
+.game-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.game-panel{display:none;padding:16px;}
+.game-panel.active{display:block;}
+.game-tab.has-progress::after{content:'●';font-size:.45rem;color:#22c55e;vertical-align:super;margin-left:3px;}
+
+/* Score display */
+.score-display{display:grid;gap:8px;margin-bottom:14px;}
+.score-card-grid-3{grid-template-columns:repeat(3,1fr);}
+.score-card-grid-2{grid-template-columns:repeat(2,1fr);}
+.score-card-grid-4{grid-template-columns:repeat(4,1fr);}
+.scorer{background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.1);border-radius:13px;padding:13px 10px;text-align:center;transition:all .3s;}
+.scorer.leading{box-shadow:0 4px 20px var(--lc,rgba(245,200,66,0.3));}
+.scorer-name{font-size:.8rem;font-weight:700;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.scorer-pts{font-family:var(--serif);font-size:clamp(1.8rem,6vw,2.6rem);font-weight:900;line-height:1;}
+.scorer-sub{font-size:.68rem;color:var(--muted);margin-top:3px;}
+.pbar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;margin-top:7px;}
+.pbar-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+
+/* round entry */
+.entry-panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;margin-bottom:14px;}
+.entry-row{display:grid;gap:8px;margin-bottom:10px;}
+.entry-cell{text-align:center;}
+.entry-label{font-size:.75rem;font-weight:700;color:var(--gold);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.score-input{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:max(16px,1.1rem);font-weight:700;text-align:center;padding:7px 4px;outline:none;font-family:var(--font);}
+.toggle-row{display:flex;gap:5px;justify-content:center;margin-top:4px;}
+.toggle-btn{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,.5);font-size:.68rem;font-weight:600;padding:4px 2px;cursor:pointer;transition:all .15s;font-family:var(--font);}
+.toggle-btn.on{background:rgba(245,200,66,0.2);border-color:var(--gold);color:var(--gold);}
+.toggle-btn.bust-on{background:rgba(255,107,107,0.2);border-color:var(--red);color:var(--red);}
+
+/* history */
+.hist{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;}
+.hist-head{padding:10px 14px;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.07);}
+.hist-row{display:grid;padding:7px 12px;}
+.hist-row.alt{background:rgba(255,255,255,.015);}
+.hist-row.totals{background:rgba(255,255,255,.06);border-top:1px solid rgba(255,255,255,.1);}
+.hist-num{font-size:.74rem;color:rgba(255,255,255,.3);align-self:center;}
+.hist-val{font-size:.88rem;font-weight:700;text-align:center;color:rgba(255,255,255,.9);}
+.hist-val.neg{color:var(--red);}
+.hist-total{font-size:.95rem;font-weight:800;text-align:center;}
+
+/* spades-specific */
+.bid-input{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:max(16px,1rem);font-weight:700;text-align:center;padding:6px;outline:none;font-family:var(--font);}
+
+/* hearts-specific */
+.moon-toggle{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;margin-bottom:10px;cursor:pointer;}
+.moon-toggle input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+.moon-label{font-size:.88rem;font-weight:600;}
+
+/* rules collapsible */
+.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;}
+.rules-details[open]{border-color:rgba(255,255,255,.18);}
+.rules-summary{padding:11px 14px;font-size:.85rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.75);list-style:none;display:flex;align-items:center;gap:6px;user-select:none;}
+.rules-summary::-webkit-details-marker{display:none;}
+.rules-summary::after{content:'▼';font-size:.65rem;margin-left:auto;opacity:.5;transition:transform .2s;}
+.rules-details[open] .rules-summary::after{transform:rotate(180deg);}
+.rules-body{padding:4px 14px 14px;font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.6);}
+.rules-body p{margin:0 0 7px;}
+.rules-body ul{margin:0 0 7px;padding-left:18px;}
+.rules-body li{margin-bottom:3px;}
+.rules-body strong{color:rgba(255,255,255,.85);}
+
+/* toggle row (bag penalty, etc.) */
+.rules-toggle-row{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:10px 12px;cursor:pointer;}
+.rules-toggle-row input[type=checkbox]{width:16px;height:16px;margin-top:2px;cursor:pointer;flex-shrink:0;}
+.rules-toggle-label{font-size:.85rem;}
+
+/* setup screens */
+.setup-screen{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:20px;}
+.player-setup-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.player-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.winner-banner{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px;}
+.winner-name{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#0f2d1a;}
+.winner-pts{color:#3a2000;font-size:.9rem;font-weight:600;margin-top:4px;}
+
+/* Scorecard / Mini Golf */
+.sc-meta{font-size:.75rem;color:var(--muted);margin-bottom:12px;text-align:center;}
+.sc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;}
+.sc-table{border-collapse:collapse;width:100%;min-width:280px;font-size:.82rem;}
+.sc-table th{background:rgba(255,255,255,.07);padding:6px 8px;text-align:center;font-weight:700;color:var(--muted);font-size:.7rem;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.1);}
+.sc-table th.player-th{color:var(--gold);}
+.sc-table td{padding:5px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05);}
+.sc-table tr:last-child td{border-bottom:none;}
+.sc-table tr.totals-row td{background:rgba(255,255,255,.06);font-weight:800;border-top:1px solid rgba(255,255,255,.12);}
+.sc-table .row-label{text-align:left;color:rgba(255,255,255,.5);font-size:.72rem;white-space:nowrap;padding-left:8px;}
+.sc-table input.sc-cell{width:44px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:5px;color:#fff;font-size:max(16px,.9rem);font-weight:700;text-align:center;padding:4px 2px;outline:none;font-family:var(--font);}
+.sc-table input.sc-cell:focus{border-color:var(--gold);background:rgba(245,200,66,.1);}
+.sc-table .par-cell{color:rgba(255,255,255,.35);font-size:.72rem;}
+.sc-table .vs-par{font-size:.72rem;}
+.vs-par.under{color:#22c55e;}.vs-par.over{color:#ef4444;}.vs-par.even{color:var(--muted);}
+.sc-table td.leading-col{background:rgba(245,200,66,.06);}
+.low-wins-note{font-size:.7rem;color:var(--muted);text-align:center;margin-bottom:6px;}
+.mg-venue-display{text-align:center;margin-bottom:10px;}
+.mg-venue-name{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
+.mg-course-name{font-size:.78rem;color:var(--muted);margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="felt"></div>
+<div class="inner">
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">⛳ Mini Golf</span>
+</nav>
+<div class="page" style="padding:12px 12px 60px;">
+<div id="mg-setup" class="setup-screen mb-16">
+    <div style="font-weight:700;margin-bottom:12px;">⛳ Mini Golf Scorecard</div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Venue / Place</label>
+      <input class="input" id="mg-venue" placeholder="e.g. Adventure Golf at Lakeside" maxlength="40" style="width:100%;font-size:max(16px,.88rem);">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Course Name (optional)</label>
+      <input class="input" id="mg-course" placeholder="e.g. Jungle Course" maxlength="32" style="width:100%;font-size:max(16px,.88rem);">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Holes</label>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-gold btn-sm mg-holes-btn active-dir" data-h="9">9 holes</button>
+        <button class="btn btn-outline btn-sm mg-holes-btn" data-h="18">18 holes</button>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Par per hole</label>
+      <input class="input" id="mg-par" type="number" min="2" max="6" value="3" style="width:64px;font-size:max(16px,.88rem);text-align:center;">
+      <span style="font-size:.75rem;color:var(--muted);margin-left:8px;">default for all holes</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:6px;">Players (1–6)</label>
+      <div id="mg-names"></div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button class="btn btn-outline btn-sm" id="mg-add-player">+ Player</button>
+        <button class="btn btn-outline btn-sm" id="mg-rem-player">− Player</button>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-block" id="mg-start">Start Round</button>
+  </div>
+  <div id="mg-game" class="hidden">
+    <div class="mg-venue-display">
+      <div class="mg-venue-name" id="mg-venue-display"></div>
+      <div class="mg-course-name" id="mg-course-display"></div>
+    </div>
+    <div class="low-wins-note">Lowest score wins · tap a score to edit</div>
+    <div class="sc-table-wrap">
+      <table class="sc-table" id="mg-table"></table>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;">
+      <button class="btn btn-outline btn-sm" id="mg-new-setup">New Round</button>
+    </div>
+    <div id="mg-winner" class="winner-banner hidden mt-16">
+      <div class="winner-name" id="mg-wname"></div>
+      <div class="winner-pts" id="mg-wpts"></div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+'use strict';
+const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c'];
+const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10'];
+
+function showWinner(banner,nameEl,ptsEl,name,pts){
+  banner.classList.remove('hidden');
+  nameEl.textContent=name+' Wins!';
+  ptsEl.textContent=pts+' points';
+  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey){
+    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
+    b.className+=' gh-hist-btn';b.style.marginTop='10px';
+    banner.appendChild(b);
+  }
+}
+function buildScorers(container,names,totals,win,colors,cdark,sub=null){
+  const n=names.length;
+  const cols=n<=3?n:n<=4?2:3;
+  container.style.gridTemplateColumns=`repeat(${cols},1fr)`;
+  container.innerHTML='';
+  names.forEach((nm,i)=>{
+    const leading=totals[i]===Math.max(...totals)&&totals[i]>0;
+    const pct=Math.min(100,(totals[i]/win)*100);
+    const s=document.createElement('div');
+    s.className='scorer'+(leading?' leading':'');
+    s.style.setProperty('--lc',colors[i]+'50');
+    if(leading)s.style.borderColor=colors[i];
+    s.innerHTML=`<div class="scorer-name" style="color:${colors[i]}">${nm}</div>
+      <div class="scorer-pts">${totals[i]}</div>
+      ${sub?`<div class="scorer-sub">${sub[i]}</div>`:''}
+      <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
+      <div style="font-size:.65rem;color:rgba(255,255,255,.3);margin-top:3px;">${win-totals[i]>0?win-totals[i]+' to win':'🏆'}</div>`;
+    container.appendChild(s);
+  });
+}
+function buildHistory(container,rounds,names,totals,colors){
+  if(!rounds.length){container.innerHTML='';return;}
+  const n=names.length;
+  const gtc=`28px repeat(${n},1fr)`;
+  let html=`<div class="hist"><div class="hist-head">Round History</div>
+    <div class="hist-row" style="grid-template-columns:${gtc};border-bottom:1px solid rgba(255,255,255,.07)">
+      <div class="hist-num">#</div>
+      ${names.map((nm,i)=>`<div class="hist-val" style="color:${colors[i]};font-size:.72rem">${nm}</div>`).join('')}
+    </div>`;
+  rounds.forEach((r,ri)=>{
+    html+=`<div class="hist-row ${ri%2===0?'':'alt'}" style="grid-template-columns:${gtc}${ri<rounds.length-1?';border-bottom:1px solid rgba(255,255,255,.04)':''}">
+      <div class="hist-num">${ri+1}</div>
+      ${r.map((v,i)=>`<div class="hist-val ${v<0?'neg':''}">${v===0&&r.bust?'—':v>=0?'+'+v:v}</div>`).join('')}
+    </div>`;
+  });
+  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
+    <div style="color:rgba(255,255,255,.5);font-size:.75rem;font-weight:700;align-self:center">Σ</div>
+    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
+  </div></div>`;
+  container.innerHTML=html;
+}
+// ── MINI GOLF ───────────────────────────────────────────────────────────────
+{
+  let mgVenue='',mgCourse='',mgHoles=9,mgPar=3;
+  let mgNames=['Player 1','Player 2'],mgN=2;
+  let mgScores=[];
+
+  function mgBuildNames(){
+    const c=document.getElementById('mg-names');c.innerHTML='';
+    for(let i=0;i<mgN;i++){
+      const row=document.createElement('div');row.className='player-setup-row';
+      row.innerHTML=`<div class="player-dot" style="background:${COLORS[i]}"></div>
+        <input class="input" id="mgn${i}" value="${mgNames[i]||'Player '+(i+1)}" maxlength="16" style="font-size:max(16px,.88rem);">`;
+      c.appendChild(row);
+    }
+  }
+  document.getElementById('mg-add-player').addEventListener('click',()=>{if(mgN<6){mgN++;mgBuildNames();}});
+  document.getElementById('mg-rem-player').addEventListener('click',()=>{if(mgN>1){mgN--;mgBuildNames();}});
+  document.querySelectorAll('.mg-holes-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.mg-holes-btn').forEach(x=>{x.classList.remove('active-dir','btn-gold');x.classList.add('btn-outline');});
+      b.classList.add('active-dir','btn-gold');b.classList.remove('btn-outline');
+      mgHoles=+b.dataset.h;
+    });
+  });
+  mgBuildNames();
+
+  function mgStart(){
+    mgVenue=document.getElementById('mg-venue').value.trim()||'Mini Golf';
+    mgCourse=document.getElementById('mg-course').value.trim();
+    mgHoles=+document.querySelector('.mg-holes-btn.active-dir')?.dataset.h||9;
+    mgPar=Math.max(2,Math.min(6,parseInt(document.getElementById('mg-par').value)||3));
+    mgNames=Array.from({length:mgN},(_,i)=>document.getElementById('mgn'+i).value.trim()||`Player ${i+1}`);
+    mgScores=Array.from({length:mgHoles},()=>Array(mgN).fill(null));
+    document.getElementById('mg-setup').classList.add('hidden');
+    document.getElementById('mg-game').classList.remove('hidden');
+    document.getElementById('mg-winner').classList.add('hidden');
+    document.getElementById('mg-venue-display').textContent=mgVenue;
+    document.getElementById('mg-course-display').textContent=mgCourse;
+    mgRenderTable();
+  }
+
+  function mgTotals(){return mgNames.map((_,p)=>mgScores.reduce((s,r)=>s+(r[p]!=null?r[p]:0),0));}
+
+  function mgRenderTable(){
+    const tbl=document.getElementById('mg-table');
+    const totals=mgTotals();
+    const totalPar=mgPar*mgHoles;
+    const allFilled=mgScores.every(r=>r.every(v=>v!=null));
+    const best=Math.min(...totals);
+
+    let html=`<thead><tr><th class="row-label">Hole</th><th class="par-cell">Par</th>${mgNames.map((n,i)=>`<th class="player-th" style="color:${COLORS[i]}">${n}</th>`).join('')}</tr></thead><tbody>`;
+    for(let h=0;h<mgHoles;h++){
+      html+=`<tr><td class="row-label">${h+1}</td><td class="par-cell">${mgPar}</td>${mgNames.map((_,p)=>`<td><input class="sc-cell" type="number" data-h="${h}" data-p="${p}" min="1" max="20" value="${mgScores[h][p]!=null?mgScores[h][p]:''}" placeholder="—"></td>`).join('')}</tr>`;
+    }
+    html+=`<tr class="totals-row"><td class="row-label">Total</td><td class="par-cell">${totalPar}</td>${totals.map((t,i)=>{
+      const played=mgScores.filter(r=>r[i]!=null).length;
+      const diff=t-(mgPar*played);
+      const cls=diff<0?'under':diff>0?'over':'even';
+      const diffStr=diff===0?'E':diff>0?'+'+diff:String(diff);
+      return `<td style="color:${COLORS[i]}">${t} <span class="vs-par ${cls}">(${diffStr})</span>${allFilled&&t===best?' 🏆':''}</td>`;
+    }).join('')}</tr>`;
+    html+='</tbody>';
+    tbl.innerHTML=html;
+
+    tbl.querySelectorAll('input.sc-cell').forEach(el=>{
+      el.addEventListener('change',()=>{
+        const h=+el.dataset.h,p=+el.dataset.p,v=el.value.trim();
+        mgScores[h][p]=v===''?null:Math.max(1,parseInt(v)||1);
+        mgSave();mgRenderTable();
+      });
+    });
+
+    if(allFilled){
+      const wi=totals.indexOf(best);
+      const diff=best-(mgPar*mgHoles);
+      const diffStr=diff===0?'Even par':diff>0?`+${diff} over par`:`${Math.abs(diff)} under par`;
+      const wb=document.getElementById('mg-winner');
+      wb.classList.remove('hidden');
+      document.getElementById('mg-wname').textContent=mgNames[wi]+' Wins! ⛳';
+      document.getElementById('mg-wpts').textContent=`${best} strokes · ${diffStr}`;
+      GameHistory.save('mg',{_summary:`${mgVenue}${mgCourse?' · '+mgCourse:''} · ${mgNames[wi]} wins`,_badge:best+' strokes',winner:mgNames[wi],venue:mgVenue,course:mgCourse,holes:mgHoles,par:mgPar,names:mgNames,totals,scores:mgScores});
+      if(!wb.querySelector('.gh-hist-btn')){
+        const b=GameHistory.btn('mg','Mini Golf',e=>{
+          const div=document.createElement('div');
+          const vDiv=document.createElement('div');vDiv.style.cssText='text-align:center;margin-bottom:8px;';
+          vDiv.innerHTML=`<div style="font-weight:700;color:var(--gold)">${e.venue}</div>${e.course?`<div style="font-size:.75rem;color:rgba(255,255,255,.4)">${e.course}</div>`:''}`;
+          div.appendChild(vDiv);
+          div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.totals[e.names.indexOf(e.winner)]+' strokes',lbl:'Score'},{val:e.holes+'H / par '+e.par,lbl:'Course'}]));
+          // Hole-by-hole table
+          const tbl=document.createElement('table');tbl.className='gh-ro-table';
+          let th=`<thead><tr><th class="gh-rl">Hole</th><th style="color:rgba(255,255,255,.3)">Par</th>${e.names.map((n,i)=>`<th style="color:${COLORS[i]}">${n}</th>`).join('')}</tr></thead>`;
+          let tb='<tbody>';
+          for(let h=0;h<e.holes;h++){tb+=`<tr><td class="gh-rl">${h+1}</td><td style="color:rgba(255,255,255,.3)">${e.par}</td>${e.scores[h].map(v=>`<td>${v!=null?v:'—'}</td>`).join('')}</tr>`;}
+          const played=e.scores.filter(r=>r.some(v=>v!=null)).length;
+          tb+=`<tr class="gh-totals"><td class="gh-rl">Total</td><td style="color:rgba(255,255,255,.3)">${e.par*e.holes}</td>${e.totals.map((t,i)=>{const d=t-e.par*played;const ds=d===0?'E':d>0?'+'+d:String(d);return`<td style="color:${COLORS[i]}">${t} (${ds})</td>`;}).join('')}</tr>`;
+          tb+='</tbody>';tbl.innerHTML=th+tb;div.appendChild(tbl);
+          return div;
+        });
+        b.classList.add('gh-hist-btn');b.style.marginTop='10px';wb.appendChild(b);
+      }
+    }
+  }
+
+  function mgSave(){try{sessionStorage.setItem('cs_mg',JSON.stringify({mgVenue,mgCourse,mgHoles,mgPar,mgNames,mgN,mgScores,_ts:Date.now()}));}catch(e){}}
+  function mgLoad(){
+    try{
+      const raw=sessionStorage.getItem('cs_mg');if(!raw)return false;
+      const s=JSON.parse(raw);if(!s.mgNames)return false;
+      mgVenue=s.mgVenue;mgCourse=s.mgCourse;mgHoles=s.mgHoles;mgPar=s.mgPar;
+      mgNames=s.mgNames;mgN=s.mgN||s.mgNames.length;mgScores=s.mgScores;
+      document.getElementById('mg-setup').classList.add('hidden');
+      document.getElementById('mg-game').classList.remove('hidden');
+      document.getElementById('mg-venue-display').textContent=mgVenue;
+      document.getElementById('mg-course-display').textContent=mgCourse;
+      mgRenderTable();return true;
+    }catch(e){return false;}
+  }
+  document.getElementById('mg-start').addEventListener('click',()=>{mgStart();mgSave();});
+  document.getElementById('mg-new-setup').addEventListener('click',()=>{
+    document.getElementById('mg-game').classList.add('hidden');
+    document.getElementById('mg-setup').classList.remove('hidden');
+    try{sessionStorage.removeItem('cs_mg');}catch(e){}
+  });
+  mgLoad();
+}
+</script>
+</body>
+</html>

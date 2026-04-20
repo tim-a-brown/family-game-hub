@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Minesweeper</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
+.wrap{max-width:440px;margin:0 auto;padding:0 8px 50px;}
+.ms-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.ms-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
+.ms-val{font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);}
+.ms-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.mode-row{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+.mode-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.mode-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.ms-board{display:inline-grid;gap:2px;margin:0 auto 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px;}
+.ms-cell{width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:900;cursor:pointer;transition:background .1s;user-select:none;touch-action:manipulation;}
+.ms-cell:hover:not(.revealed){background:rgba(255,255,255,.18);}
+.ms-cell.revealed{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07);cursor:default;}
+.ms-cell.flagged{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);}
+.ms-cell.mine-hit{background:rgba(239,68,68,.4);border-color:#ef4444;}
+.ms-cell.mine-show{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.2);}
+.n1{color:#5ac8fa;}.n2{color:#22c55e;}.n3{color:#ef4444;}.n4{color:#8b5cf6;}
+.n5{color:#f97316;}.n6{color:#06b6d4;}.n7{color:#ec4899;}.n8{color:#aaa;}
+.ms-status{text-align:center;font-size:.88rem;font-weight:700;min-height:26px;margin-bottom:8px;}
+.board-wrap{overflow-x:auto;text-align:center;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Minesweeper</span></nav>
+<div class="page"><div class="wrap">
+<div class="ms-header">
+  <div class="ms-stat"><div class="ms-val" id="ms-mines">0</div><div class="ms-lbl">Mines Left</div></div>
+  <div class="ms-stat"><div class="ms-val" id="ms-time">0</div><div class="ms-lbl">Seconds</div></div>
+  <div class="ms-stat"><div class="ms-val" id="ms-best">—</div><div class="ms-lbl">Best</div></div>
+</div>
+<div class="mode-row">
+  <button class="mode-btn active" data-mode="easy">😊 Easy (9×9, 10)</button>
+  <button class="mode-btn" data-mode="medium">😐 Medium (16×9, 25)</button>
+  <button class="mode-btn" data-mode="hard">😰 Hard (16×16, 50)</button>
+</div>
+<div class="ms-status" id="ms-status">Left-click to reveal · Right-click or long-press to flag</div>
+<div class="board-wrap"><div class="ms-board" id="ms-board"></div></div>
+<div style="text-align:center;margin-top:6px;">
+  <button class="btn btn-gold" id="ms-new">New Game</button>
+</div>
+</div></div>
+<script>
+'use strict';
+const MODES={easy:{cols:9,rows:9,mines:10},medium:{cols:16,rows:9,mines:25},hard:{cols:16,rows:16,mines:50}};
+let mode='easy', cells=[], revealed=[], flagged=[], mineSet=new Set(), firstClick=true, gameOver=false, won=false;
+let timer=0, timerInt=null, bests={easy:null,medium:null,hard:null};
+
+function rc(r,c){return r*MODES[mode].cols+c;}
+function neighbors(r,c){const n=[];const{cols,rows}=MODES[mode];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(dr===0&&dc===0)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols)n.push([nr,nc]);}return n;}
+
+function newGame(){
+  clearInterval(timerInt);timer=0;gameOver=false;won=false;firstClick=true;
+  const{cols,rows,mines}=MODES[mode];
+  cells=Array(rows*cols).fill(0);
+  revealed=Array(rows*cols).fill(false);
+  flagged=Array(rows*cols).fill(false);
+  mineSet=new Set();
+  document.getElementById('ms-time').textContent='0';
+  document.getElementById('ms-mines').textContent=mines;
+  document.getElementById('ms-status').textContent='Left-click to reveal · Long-press or right-click to flag';
+  renderBoard();
+}
+
+function placeMines(safeR,safeC){
+  const{cols,rows,mines}=MODES[mode];
+  const safe=new Set(neighbors(safeR,safeC).map(([r,c])=>rc(r,c)));
+  safe.add(rc(safeR,safeC));
+  while(mineSet.size<mines){const i=Math.floor(Math.random()*rows*cols);if(!safe.has(i))mineSet.add(i);}
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    if(mineSet.has(rc(r,c)))cells[rc(r,c)]=-1;
+    else cells[rc(r,c)]=neighbors(r,c).filter(([nr,nc])=>mineSet.has(rc(nr,nc))).length;
+  }
+}
+
+function reveal(r,c){
+  const{cols,rows}=MODES[mode];const i=rc(r,c);
+  if(revealed[i]||flagged[i])return;
+  revealed[i]=true;
+  if(cells[i]===0)neighbors(r,c).forEach(([nr,nc])=>reveal(nr,nc));
+}
+
+function clickCell(r,c,flag=false){
+  if(gameOver)return;
+  const i=rc(r,c);
+  if(flag){
+    if(revealed[i])return;
+    flagged[i]=!flagged[i];
+    const mines=MODES[mode].mines;
+    const flagCount=flagged.filter(Boolean).length;
+    document.getElementById('ms-mines').textContent=mines-flagCount;
+    renderBoard();return;
+  }
+  if(flagged[i])return;
+  if(firstClick){
+    firstClick=false;placeMines(r,c);
+    timerInt=setInterval(()=>{timer++;document.getElementById('ms-time').textContent=timer;},1000);
+  }
+  if(cells[i]===-1){
+    // Hit a mine
+    gameOver=true;clearInterval(timerInt);
+    revealed[i]=true;
+    mineSet.forEach(mi=>{if(!flagged[mi])revealed[mi]=true;});
+    document.getElementById('ms-status').innerHTML='<span style="color:#ef4444">💥 Boom! Game over.</span>';
+    renderBoard();return;
+  }
+  reveal(r,c);
+  checkWin();renderBoard();
+}
+
+function checkWin(){
+  const{cols,rows,mines}=MODES[mode];
+  const total=rows*cols;
+  if(revealed.filter(Boolean).length===total-mines){
+    won=true;gameOver=true;clearInterval(timerInt);
+    if(!bests[mode]||timer<bests[mode])bests[mode]=timer;
+    document.getElementById('ms-best').textContent=bests[mode]+'s';
+    document.getElementById('ms-status').innerHTML=`<span style="color:#22c55e">🎉 You win! ${timer}s</span>`;
+  }
+}
+
+function renderBoard(){
+  const{cols,rows}=MODES[mode];
+  const el=document.getElementById('ms-board');
+  el.style.gridTemplateColumns=`repeat(${cols},32px)`;
+  el.innerHTML='';
+  const cellSize=Math.min(32,Math.floor((window.innerWidth-40)/cols));
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const i=rc(r,c);const cell=document.createElement('div');
+    cell.className='ms-cell';
+    cell.style.width=cell.style.height=cellSize+'px';
+    cell.style.fontSize=Math.max(10,cellSize-12)+'px';
+    if(revealed[i]){
+      cell.classList.add('revealed');
+      if(cells[i]===-1)cell.textContent='💣';
+      else if(cells[i]>0){cell.textContent=cells[i];cell.classList.add('n'+cells[i]);}
+    } else if(flagged[i]){cell.classList.add('flagged');cell.textContent='🚩';}
+    // Click & long-press
+    let longPress;
+    cell.addEventListener('contextmenu',e=>{e.preventDefault();clickCell(r,c,true);});
+    cell.addEventListener('touchstart',e=>{longPress=setTimeout(()=>{e.preventDefault();clickCell(r,c,true);},400);},{passive:true});
+    cell.addEventListener('touchend',()=>clearTimeout(longPress));
+    cell.addEventListener('touchmove',()=>clearTimeout(longPress));
+    cell.addEventListener('click',()=>clickCell(r,c,false));
+    el.appendChild(cell);
+  }
+}
+
+document.querySelectorAll('.mode-btn[data-mode]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    mode=btn.dataset.mode;
+    document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    newGame();
+  });
+});
+document.getElementById('ms-new').addEventListener('click',newGame);
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_ms(){if(gameOver||won)return;
+  try{sessionStorage.setItem('ms',JSON.stringify({mode,cells,revealed,flagged,mineSet:[...mineSet],firstClick,gameOver,won,timer,_ts:Date.now()}));}catch(e){}
+}
+function _load_ms(){
+  try{
+    const raw=sessionStorage.getItem('ms');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    mode=s.mode||'easy';cells=s.cells;revealed=s.revealed;flagged=s.flagged;mineSet=new Set(s.mineSet||[]);firstClick=s.firstClick;gameOver=s.gameOver||false;won=s.won||false;timer=s.timer||0;
+    render();updateUI();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_ms);
+document.getElementById('ms-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('ms');}catch(e){}},true);
+_load_ms();
+</script>
+</body>
+</html>

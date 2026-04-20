@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Backgammon</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
+.wrap{max-width:500px;margin:0 auto;padding:0 6px 60px;}
+/* Rules toggle */
+.rules-btn{display:block;width:100%;padding:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left;}
+.rules-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:.75rem;line-height:1.6;color:rgba(255,255,255,.7);display:none;}
+.rules-box h4{color:var(--gold);font-size:.82rem;margin:8px 0 4px;}
+/* Board */
+.bg-outer{background:#1a3a1a;border:3px solid #2a5a2a;border-radius:10px;padding:6px;margin-bottom:10px;}
+.bg-board{display:grid;grid-template-rows:auto auto auto;gap:0;background:#8b4513;border-radius:6px;overflow:hidden;position:relative;}
+.bg-row{display:grid;grid-template-columns:repeat(6,1fr) 40px repeat(6,1fr);height:auto;}
+.bg-point{display:flex;flex-direction:column;align-items:center;padding:2px 1px;min-height:120px;position:relative;cursor:pointer;transition:background .15s;}
+.bg-point.top{flex-direction:column;}
+.bg-point.bottom{flex-direction:column-reverse;}
+.bg-point.highlight{background:rgba(245,200,66,.2)!important;}
+.bg-point.selected{background:rgba(245,200,66,.35)!important;}
+/* Triangle */
+.bg-tri{position:absolute;width:100%;top:0;height:110px;clip-path:polygon(50% 90%, 0% 0%, 100% 0%);}
+.bg-point.top .bg-tri{top:0;clip-path:polygon(50% 90%, 0% 0%, 100% 0%);}
+.bg-point.bottom .bg-tri{bottom:0;top:auto;clip-path:polygon(50% 10%, 0% 100%, 100% 100%);}
+.bg-checker{width:88%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.5);margin:1px 0;z-index:1;}
+.bg-checker.w{background:radial-gradient(circle at 38% 32%,#fff,#ddd 55%,#bbb);color:#333;border:1px solid rgba(0,0,0,.2);}
+.bg-checker.b{background:radial-gradient(circle at 38% 32%,#555,#222 55%,#000);color:#aaa;border:1px solid rgba(255,255,255,.1);}
+.bg-bar{background:#5a3010;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px;}
+.bg-middle{background:#5a3010;height:24px;display:flex;align-items:center;justify-content:center;}
+.bg-pointnum{font-size:.52rem;color:rgba(255,255,255,.35);font-weight:700;text-align:center;padding:2px 0;}
+/* Score/info row */
+.bg-info{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+.bg-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px 12px;text-align:center;}
+.bg-chip.active{border-color:var(--gold);background:rgba(245,200,66,.1);}
+.bg-chip-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;}
+.bg-chip-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+/* Dice */
+.dice-row{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+.die{width:44px;height:44px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:all .2s;cursor:default;}
+.die.used{opacity:.35;transform:scale(.88);}
+.die.highlight{box-shadow:0 0 0 2px var(--gold);}
+/* Status */
+.bg-status{text-align:center;font-size:.85rem;font-weight:700;min-height:24px;margin-bottom:8px;color:var(--muted);}
+/* Bear-off */
+.bearoff-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:0 4px;}
+.bearoff{display:flex;flex-wrap:wrap;gap:2px;min-height:18px;align-items:center;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Backgammon</span></nav>
+<div class="page"><div class="wrap">
+
+<button class="rules-btn" id="rules-toggle">📖 How to Play Backgammon ▼</button>
+<div class="rules-box" id="rules-box">
+  <h4>Objective</h4>
+  Be the first to move all 15 of your checkers off the board (bear off).
+  <h4>Setup</h4>
+  White moves from points 24→1, Black moves from points 1→24. Each starts with checkers on points 24(2), 13(5), 8(3), 6(5).
+  <h4>Rolling & Moving</h4>
+  On your turn, roll two dice. Move your checkers that many points toward your home board. You may split the roll between two pieces or use both on one.
+  <h4>Hitting</h4>
+  If you land on a point with exactly one opponent checker (a "blot"), it goes to the bar. A checker on the bar must re-enter before any other moves.
+  <h4>Blocking</h4>
+  Two or more of your checkers on a point create a "prime" — opponents can't land there.
+  <h4>Bearing Off</h4>
+  Once all your checkers are in your home board (points 1–6 for White, 19–24 for Black), you may bear them off. Roll a 3 and remove a checker from point 3.
+  <h4>Doubling Cube</h4>
+  (Not included in this version — play for fun!)
+</div>
+
+<div class="bg-info">
+  <div class="bg-chip" id="chip-w"><div class="bg-chip-val" style="color:#ddd">⬜ White</div><div class="bg-chip-lbl" id="bore-w">0 off</div></div>
+  <div class="bg-chip active" id="chip-b"><div class="bg-chip-val" style="color:#888">⬛ Black</div><div class="bg-chip-lbl" id="bore-b">0 off</div></div>
+</div>
+
+<div class="dice-row" id="dice-row"></div>
+<div class="bg-status" id="bg-status">Roll to start!</div>
+<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">
+  <button class="btn btn-gold" id="roll-btn">🎲 Roll Dice</button>
+  <button class="btn btn-outline" id="new-btn">New Game</button>
+</div>
+
+<div class="bg-outer">
+  <!-- Bear-off area for black (top) -->
+  <div class="bearoff-row"><span style="font-size:.65rem;color:var(--muted);">Black home →</span><div class="bearoff" id="bearoff-b"></div></div>
+  <div class="bg-board" id="bg-board"></div>
+  <!-- Bear-off area for white (bottom) -->
+  <div class="bearoff-row"><span style="font-size:.65rem;color:var(--muted);">← White home</span><div class="bearoff" id="bearoff-w"></div></div>
+</div>
+
+</div></div>
+<script>
+'use strict';
+// Points 1-24, index 0=point1. White moves 24→1, Black moves 1→24.
+// points[i] = {count, color} or null
+let points, bar, bearOff, turn, dice, diceLeft, selected, gameOver;
+
+function newGame(){
+  points=Array.from({length:24},()=>({count:0,color:null}));
+  // Standard backgammon setup
+  const setup=[[0,2,'b'],[5,5,'w'],[7,3,'w'],[11,5,'b'],[12,5,'w'],[16,3,'b'],[18,5,'b'],[23,2,'w']];
+  setup.forEach(([i,n,c])=>{points[i]={count:n,color:c};});
+  bar={w:0,b:0};bearOff={w:0,b:0};
+  turn='w';dice=[];diceLeft=[];selected=null;gameOver=false;
+  document.getElementById('roll-btn').disabled=false;
+  document.getElementById('bg-status').textContent='White rolls first. Roll the dice!';
+  updateChips();renderBoard();renderDice();renderBearOff();
+}
+
+function rollDice(){
+  if(diceLeft.length>0)return;
+  const d1=Math.ceil(Math.random()*6),d2=Math.ceil(Math.random()*6);
+  dice=[d1,d2];
+  diceLeft=d1===d2?[d1,d1,d1,d1]:[d1,d2];
+  document.getElementById('roll-btn').disabled=true;
+  const moves=getLegalMoves();
+  if(!moves.length){
+    document.getElementById('bg-status').textContent=`${turn==='w'?'White':'Black'} rolled ${d1},${d2} — no valid moves. Turn passes.`;
+    setTimeout(endTurn,1200);
+  } else {
+    document.getElementById('bg-status').textContent=`${turn==='w'?'White':'Black'} rolled ${d1} and ${d2}`;
+  }
+  renderDice();renderBoard();
+}
+
+function endTurn(){
+  turn=turn==='w'?'b':'w';
+  diceLeft=[];dice=[];selected=null;
+  document.getElementById('roll-btn').disabled=false;
+  document.getElementById('bg-status').textContent=`${turn==='w'?'White':'Black'}'s turn. Roll the dice!`;
+  updateChips();renderBoard();renderDice();
+}
+
+function pointIdx(displayNum){return displayNum-1;}// 1-based → 0-based
+
+function getDir(t){return t==='w'?-1:1;}// white goes 24→1 (index 23→0), black goes 1→24 (index 0→23)
+
+function isHome(t,i){
+  if(t==='w')return i<=5;// points 1-6
+  return i>=18;// points 19-24
+}
+
+function allHome(t){
+  let total=bearOff[t];
+  for(let i=0;i<24;i++){if(points[i].color===t)total+=points[i].count;}
+  return total+bar[t]===15&&bar[t]===0&&(()=>{
+    for(let i=0;i<24;i++){if(points[i].color===t&&!isHome(t,i))return false;}
+    return true;
+  })();
+}
+
+function getLegalMoves(){
+  const moves=[];
+  if(!diceLeft.length)return moves;
+  // If on bar, must enter first
+  if(bar[turn]>0){
+    const opp=turn==='w'?'b':'w';
+    diceLeft.forEach(d=>{
+      const enterPt=turn==='w'?24-d:d-1;// white enters at 24-d (0-indexed)
+      const pt=points[enterPt];
+      if(pt.color!==opp||pt.count<=1)moves.push({from:-1,to:enterPt,die:d});
+    });
+    return[...new Map(moves.map(m=>[`${m.from},${m.to},${m.die}`,m])).values()];
+  }
+  // Bear off
+  const home=allHome(turn);
+  const dieset=[...new Set(diceLeft)];
+  dieset.forEach(d=>{
+    for(let i=0;i<24;i++){
+      if(points[i].color!==turn||points[i].count===0)continue;
+      const dest=turn==='w'?i-d:i+d;
+      if(dest>=0&&dest<24){
+        const pt=points[dest];
+        const opp=turn==='w'?'b':'w';
+        if(pt.color!==opp||pt.count<=1)moves.push({from:i,to:dest,die:d});
+      } else if(home){
+        // Bearing off
+        if(turn==='w'&&dest<0&&i<=5)moves.push({from:i,to:-2,die:d});
+        if(turn==='b'&&dest>=24&&i>=18)moves.push({from:i,to:-2,die:d});
+        // Can use larger die if no exact
+        if(turn==='w'&&dest<0){const hasExact=points.some((p,j)=>p.color==='w'&&j<i);if(!hasExact)moves.push({from:i,to:-2,die:d});}
+        if(turn==='b'&&dest>=24){const hasExact=points.some((p,j)=>p.color==='b'&&j>i);if(!hasExact)moves.push({from:i,to:-2,die:d});}
+      }
+    }
+  });
+  return[...new Map(moves.map(m=>[`${m.from},${m.to},${m.die}`,m])).values()];
+}
+
+function applyMove(m){
+  const opp=turn==='w'?'b':'w';
+  // Remove from source
+  if(m.from===-1){bar[turn]--;} else {points[m.from].count--;if(points[m.from].count===0)points[m.from].color=null;}
+  // Apply to dest
+  if(m.to===-2){bearOff[turn]++;} else {
+    if(points[m.to].color===opp&&points[m.to].count===1){bar[opp]++;points[m.to]={count:0,color:null};}
+    points[m.to].count++;points[m.to].color=turn;
+  }
+  // Remove die used
+  const di=diceLeft.indexOf(m.die);if(di>=0)diceLeft.splice(di,1);
+  // Check win
+  if(bearOff[turn]===15){gameOver=true;document.getElementById('bg-status').innerHTML=`<span style="color:var(--gold)">${turn==='w'?'White':'Black'} wins! 🎉</span>`;document.getElementById('roll-btn').disabled=true;return;}
+  selected=null;
+  if(!diceLeft.length||!getLegalMoves().length){
+    if(diceLeft.length)document.getElementById('bg-status').textContent='No more legal moves.';
+    setTimeout(endTurn,600);
+  }
+}
+
+function clickPoint(i){
+  if(gameOver)return;
+  if(!diceLeft.length)return;
+  const legal=getLegalMoves();
+  // Check if selecting own piece
+  if(bar[turn]>0){
+    // Must enter from bar
+    const dest=legal.find(m=>m.to===i);
+    if(dest){applyMove(dest);renderBoard();renderDice();renderBearOff();return;}
+    return;
+  }
+  if(selected!==null){
+    const move=legal.find(m=>m.from===selected&&m.to===i);
+    if(move){applyMove(move);renderBoard();renderDice();renderBearOff();return;}
+  }
+  if(points[i].color===turn&&points[i].count>0){selected=i;renderBoard();return;}
+  selected=null;renderBoard();
+}
+
+function clickBearOff(){
+  if(selected===null)return;
+  const legal=getLegalMoves();
+  const move=legal.find(m=>m.from===selected&&m.to===-2);
+  if(move){applyMove(move);renderBoard();renderDice();renderBearOff();}
+}
+
+function renderBoard(){
+  const el=document.getElementById('bg-board');
+  el.innerHTML='';
+  const legal=getLegalMoves();
+  const legalTos=new Set(legal.filter(m=>m.from===selected||(selected===null&&m.from!==selected)).map(m=>m.to));
+  const legalFroms=new Set(legal.map(m=>m.from));
+
+  // Top row: points 13-18 left to right, bar, points 19-24
+  const topRow=document.createElement('div');topRow.className='bg-row';
+  const topPts=[12,13,14,15,16,17,'bar',18,19,20,21,22,23];
+  topPts.forEach(idx=>{
+    if(idx==='bar'){
+      const bar_el=document.createElement('div');bar_el.className='bg-bar';
+      if(bar.b>0){const c=document.createElement('div');c.className='bg-checker b';c.textContent=bar.b>1?bar.b:'';bar_el.appendChild(c);}
+      if(bar.w>0){const c=document.createElement('div');c.className='bg-checker w';c.textContent=bar.w>1?bar.w:'';bar_el.appendChild(c);}
+      topRow.appendChild(bar_el);return;
+    }
+    const pt=document.createElement('div');
+    pt.className='bg-point top';
+    pt.style.background=idx%2===0?'#c8a060':'#8b4513';
+    const tri=document.createElement('div');
+    tri.className='bg-tri';
+    tri.style.background=idx%2===0?'rgba(0,0,0,.3)':'rgba(255,255,255,.15)';
+    pt.appendChild(tri);
+    const isSelected=selected===idx;
+    const isLegalTo=legalTos.has(idx);
+    if(isSelected)pt.classList.add('selected');
+    else if(isLegalTo)pt.classList.add('highlight');
+    const p=points[idx];
+    const MAX_SHOW=5;
+    const count=Math.min(p.count,MAX_SHOW);
+    for(let k=0;k<count;k++){const c=document.createElement('div');c.className='bg-checker '+p.color;if(k===MAX_SHOW-1&&p.count>MAX_SHOW)c.textContent=p.count;pt.appendChild(c);}
+    const num=document.createElement('div');num.className='bg-pointnum';num.textContent=idx+1;pt.appendChild(num);
+    pt.addEventListener('click',()=>clickPoint(idx));
+    topRow.appendChild(pt);
+  });
+
+  const mid=document.createElement('div');mid.className='bg-middle';mid.innerHTML='<span style="color:rgba(255,255,255,.3);font-size:.7rem;font-weight:700;">BACKGAMMON</span>';
+
+  // Bottom row: points 12-7 left to right, bar, points 6-1
+  const botRow=document.createElement('div');botRow.className='bg-row';
+  const botPts=[11,10,9,8,7,6,'bar',5,4,3,2,1,0];
+  botPts.forEach(idx=>{
+    if(idx==='bar'){const b2=document.createElement('div');b2.className='bg-bar';botRow.appendChild(b2);return;}
+    const pt=document.createElement('div');
+    pt.className='bg-point bottom';
+    pt.style.background=idx%2===0?'#c8a060':'#8b4513';
+    const tri=document.createElement('div');
+    tri.className='bg-tri';
+    tri.style.background=idx%2===0?'rgba(0,0,0,.3)':'rgba(255,255,255,.15)';
+    pt.appendChild(tri);
+    const isSelected=selected===idx;
+    const isLegalTo=legalTos.has(idx);
+    if(isSelected)pt.classList.add('selected');
+    else if(isLegalTo)pt.classList.add('highlight');
+    const p=points[idx];
+    const MAX_SHOW=5;
+    const count=Math.min(p.count,MAX_SHOW);
+    for(let k=0;k<count;k++){const c=document.createElement('div');c.className='bg-checker '+p.color;if(k===MAX_SHOW-1&&p.count>MAX_SHOW)c.textContent=p.count;pt.appendChild(c);}
+    const num=document.createElement('div');num.className='bg-pointnum';num.textContent=idx+1;pt.appendChild(num);
+    pt.addEventListener('click',()=>clickPoint(idx));
+    botRow.appendChild(pt);
+  });
+
+  el.appendChild(topRow);el.appendChild(mid);el.appendChild(botRow);
+}
+
+function renderDice(){
+  const el=document.getElementById('dice-row');el.innerHTML='';
+  dice.forEach(d=>{
+    const die=document.createElement('div');
+    die.className='die'+(diceLeft.includes(d)?'':' used');
+    die.textContent=['','⚀','⚁','⚂','⚃','⚄','⚅'][d];
+    el.appendChild(die);
+  });
+  if(!dice.length){const hint=document.createElement('div');hint.style.cssText='font-size:.75rem;color:var(--muted);text-align:center;';hint.textContent='Roll the dice to begin your turn';el.appendChild(hint);}
+}
+
+function renderBearOff(){
+  ['w','b'].forEach(c=>{
+    const el=document.getElementById('bearoff-'+c);
+    el.innerHTML='';
+    for(let i=0;i<bearOff[c];i++){const ch=document.createElement('div');ch.className='bg-checker '+c;ch.style.cssText='width:16px;height:16px;font-size:.5rem;';el.appendChild(ch);}
+    document.getElementById('bore-'+c).textContent=bearOff[c]+' off';
+  });
+  // Bear-off click for white
+  document.getElementById('bearoff-w').onclick=clickBearOff;
+}
+
+function updateChips(){
+  document.getElementById('chip-w').classList.toggle('active',turn==='w');
+  document.getElementById('chip-b').classList.toggle('active',turn==='b');
+}
+
+document.getElementById('roll-btn').addEventListener('click',rollDice);
+document.getElementById('new-btn').addEventListener('click',newGame);
+document.getElementById('rules-toggle').addEventListener('click',()=>{
+  const box=document.getElementById('rules-box');
+  const showing=box.style.display==='block';
+  box.style.display=showing?'none':'block';
+  document.getElementById('rules-toggle').textContent=showing?'📖 How to Play Backgammon ▼':'📖 How to Play Backgammon ▲';
+});
+
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_bg(){if(gameOver)return;
+  try{sessionStorage.setItem('bg',JSON.stringify({points,bar,bearOff,turn,dice,diceLeft,gameOver,_ts:Date.now()}));}catch(e){}
+}
+function _load_bg(){
+  try{
+    const raw=sessionStorage.getItem('bg');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    points=s.points;bar=s.bar;bearOff=s.bearOff;turn=s.turn;dice=s.dice||[];diceLeft=s.diceLeft||[];gameOver=s.gameOver||false;selected=null;
+    render();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_bg);
+document.getElementById('new-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('bg');}catch(e){}},true);
+_load_bg();
+</script>
+</body>
+</html>

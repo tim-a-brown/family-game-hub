@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Lorcana Counter</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 40% 0%,#1a0a2a 0%,#0d1117 65%);}
+.lore-card{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:16px;padding:18px 14px;transition:all .3s;position:relative;overflow:hidden;}
+.lore-card.winner{border-color:var(--gold);box-shadow:0 0 24px rgba(245,200,66,.2);}
+/* How to play */
+.htp-toggle{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--muted);font-size:.82rem;font-weight:600;padding:8px;border-radius:8px;transition:all .15s;touch-action:manipulation;margin-bottom:6px;}
+.htp-toggle:hover{color:var(--text);background:rgba(255,255,255,.05);}
+.htp-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;margin-bottom:14px;font-size:.84rem;line-height:1.65;color:var(--muted);}
+.htp-panel h3{font-size:.82rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin:12px 0 5px;}
+.htp-panel h3:first-child{margin-top:0;}
+.htp-panel strong{color:var(--text);}
+.htp-panel .htp-row{display:flex;gap:8px;margin-bottom:6px;}
+.htp-panel .htp-icon{flex-shrink:0;font-size:1rem;width:22px;text-align:center;}
+.htp-phase{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:5px;}
+.phase-num{width:22px;height:22px;border-radius:50%;background:rgba(192,132,252,.2);border:1px solid rgba(192,132,252,.3);color:#c084fc;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.player-name-btn{background:none;border:none;cursor:pointer;font-weight:700;font-size:.88rem;color:var(--muted);display:block;width:100%;text-align:left;padding:0;margin-bottom:8px;touch-action:manipulation;}
+.lore-val{font-family:var(--serif);font-size:clamp(3rem,12vw,4.5rem);font-weight:900;text-align:center;line-height:1;margin:4px 0;}
+.lore-bar{height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:8px 0;}
+.lore-fill{height:100%;border-radius:4px;transition:width .4s ease;}
+.lore-to-win{text-align:center;font-size:.72rem;color:rgba(255,255,255,.3);margin-bottom:10px;}
+.ctrl-row{display:flex;gap:8px;justify-content:center;}
+.lore-btn{flex:1;height:52px;border-radius:12px;font-size:1.5rem;font-weight:700;cursor:pointer;border:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:all .12s;max-width:70px;}
+.lore-btn:active{transform:scale(.92);}
+.minus-btn{background:rgba(255,255,255,.08);color:var(--text);}
+.plus-btn{color:#0a1020;}
+.big-plus{height:58px;font-size:1.2rem;font-weight:700;border-radius:10px;cursor:pointer;border:none;flex:2;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:all .12s;}
+.big-plus:active{transform:scale(.95);}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:400px;margin:0 auto 12px;}
+.game-grid{display:grid;gap:10px;max-width:500px;margin:0 auto;}
+.winner-banner{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;text-align:center;max-width:340px;margin:0 auto 14px;}
+.winner-banner .wn{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#0f2d1a;}
+.ink-tracker{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08);}
+.ink-label{font-size:.7rem;color:var(--muted);font-weight:600;white-space:nowrap;}
+.ink-dots{display:flex;gap:4px;flex-wrap:wrap;}
+.ink-dot{width:16px;height:16px;border-radius:50%;cursor:pointer;transition:all .15s;touch-action:manipulation;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);}
+.ink-dot.filled{background:var(--color,#5ac8fa);border-color:var(--color,#5ac8fa);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Lorcana Counter</span></nav>
+<div class="page" style="padding-bottom:50px;">
+
+<!-- How to Play -->
+<div class="htp-toggle" id="htp-toggle" onclick="toggleHtp()">
+  <span id="htp-arrow">▶</span> How to Play Lorcana
+</div>
+<div class="htp-panel hidden" id="htp-panel">
+  <h3>🎯 Goal</h3>
+  Be the first player to collect <strong>20 lore</strong>. You gain lore by sending your characters on quests.
+
+  <h3>🔁 Turn Structure</h3>
+  <div class="htp-phase"><div class="phase-num">1</div><div><strong>Ready</strong> — unexert (straighten) all your cards at the start of your turn.</div></div>
+  <div class="htp-phase"><div class="phase-num">2</div><div><strong>Set</strong> — draw a card, then optionally put one card from your hand <em>into your inkwell</em> (it must have the ink symbol). Tap an ink dot below to track.</div></div>
+  <div class="htp-phase"><div class="phase-num">3</div><div><strong>Draw</strong> — play characters, actions, items, and songs by paying their ink cost. Tap ink dots to show how many are spent.</div></div>
+  <div class="htp-phase"><div class="phase-num">4</div><div><strong>Actions</strong> — Quest with characters (they exert; you gain lore equal to their lore value), or Challenge opposing characters. New characters can't act on their first turn (summoning sickness).</div></div>
+
+  <h3>✨ Ink Tracker (dots)</h3>
+  The <strong>7 dots</strong> beneath each player represent their inkwell. Fill in dots as you add ink cards throughout the game — your total dots = ink available each turn. Tap a dot to toggle it used/ready.
+
+  <h3>🃏 Key Terms</h3>
+  <div class="htp-row"><div class="htp-icon">⭐</div><div><strong>Lore</strong> — victory points. Track with the +1 / +3 buttons.</div></div>
+  <div class="htp-row"><div class="htp-icon">💧</div><div><strong>Ink</strong> — your resource to play cards. Grows by one each turn you ink a card (max 7 in starter rules).</div></div>
+  <div class="htp-row"><div class="htp-icon">⚔️</div><div><strong>Challenger</strong> — a keyword that gives bonus strength when challenging.</div></div>
+  <div class="htp-row"><div class="htp-icon">🛡️</div><div><strong>Bodyguard</strong> — must be challenged before other characters.</div></div>
+  <div class="htp-row"><div class="htp-icon">🏃</div><div><strong>Rush</strong> — this character can challenge on the turn it's played.</div></div>
+  <div class="htp-row"><div class="htp-icon">🎵</div><div><strong>Shift</strong> — play on top of a matching character for a discount.</div></div>
+
+  <h3>🏆 Winning</h3>
+  The first player to reach <strong>20 lore</strong> wins immediately — even during your opponent's turn. This counter highlights the winner automatically.
+</div>
+
+<!-- Setup -->
+<div id="setup">
+  <h2 style="font-family:var(--serif);font-size:1.4rem;text-align:center;margin-bottom:14px;">Lorcana — Lore Tracker</h2>
+  <div style="font-weight:700;text-align:center;margin-bottom:10px;">Players</div>
+  <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;" id="cnt-row">
+    <button class="btn btn-outline btn-sm cnt-btn" data-n="2">2</button>
+    <button class="btn btn-gold btn-sm cnt-btn" data-n="3">3</button>
+    <button class="btn btn-outline btn-sm cnt-btn" data-n="4">4</button>
+  </div>
+  <div id="setup-names" class="setup-grid"></div>
+  <div style="max-width:340px;margin:0 auto;">
+    <button class="btn btn-gold btn-block" id="start-btn">Start Game →</button>
+  </div>
+</div>
+
+<!-- Game -->
+<div id="game" class="hidden">
+  <div id="winner-area"></div>
+  <div id="game-grid" class="game-grid"></div>
+  <div style="text-align:center;margin-top:14px;display:flex;gap:8px;justify-content:center;">
+    <button class="btn btn-outline btn-sm" id="reset-btn">Reset Lore</button>
+    <button class="btn btn-outline btn-sm" id="new-btn">New Game</button>
+  </div>
+</div>
+
+</div>
+<script>
+'use strict';
+const COLORS=['#c084fc','#5ac8fa','#f5c842','#7ed47e'];
+const CDARK=['#8b3fc8','#1a88c4','#c49a10','#3a9a3a'];
+const WIN_LORE=20;
+const DEF_NAMES=['Player 1','Player 2','Player 3','Player 4'];
+let numP=3, pNames=[], lore=[], ink=[], editing=[];
+
+let setupN=3;
+document.querySelectorAll('.cnt-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    setupN=+b.dataset.n;
+    document.querySelectorAll('.cnt-btn').forEach(x=>{x.classList.remove('btn-gold');x.classList.add('btn-outline');});
+    b.classList.remove('btn-outline');b.classList.add('btn-gold');
+    buildSetupNames();
+  });
+});
+function buildSetupNames(){
+  const c=document.getElementById('setup-names');c.innerHTML='';
+  for(let i=0;i<setupN;i++){
+    const row=document.createElement('div');
+    row.innerHTML=`<input class="input" id="pn${i}" value="${DEF_NAMES[i]}" maxlength="14" style="border-color:${COLORS[i]}40;">`;
+    c.appendChild(row);
+  }
+}
+buildSetupNames();
+
+document.getElementById('start-btn').addEventListener('click',()=>{
+  numP=setupN;
+  pNames=Array.from({length:numP},(_,i)=>document.getElementById('pn'+i).value.trim()||DEF_NAMES[i]);
+  lore=Array(numP).fill(0);
+  ink=Array.from({length:numP},()=>Array(7).fill(false));
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  render();
+});
+
+function render(){
+  document.getElementById('winner-area').innerHTML='';
+  const winner=lore.findIndex(l=>l>=WIN_LORE);
+  if(winner>=0){
+    document.getElementById('winner-area').innerHTML=`<div class="winner-banner">
+      <div style="font-size:2rem;margin-bottom:6px;">✨</div>
+      <div class="wn">${pNames[winner]} wins!</div>
+      <div style="color:#3a2000;font-size:.88rem;font-weight:600;">${lore[winner]} lore</div>
+    </div>`;
+  }
+
+  const grid=document.getElementById('game-grid');
+  grid.style.gridTemplateColumns=numP<=2?'1fr 1fr':numP===3?'1fr 1fr':'1fr 1fr';
+  grid.innerHTML='';
+
+  lore.forEach((l,i)=>{
+    const card=document.createElement('div');
+    card.className='lore-card'+(l>=WIN_LORE?' winner':'');
+    card.style.borderColor=l>=WIN_LORE?COLORS[i]:'rgba(255,255,255,.12)';
+    const pct=Math.min(100,(l/WIN_LORE)*100);
+
+    card.innerHTML=`
+      <button class="player-name-btn" style="color:${COLORS[i]}" data-i="${i}">${pNames[i]} ✎</button>
+      <div class="lore-val" style="color:${COLORS[i]}">${l}</div>
+      <div class="lore-bar"><div class="lore-fill" style="width:${pct}%;background:linear-gradient(90deg,${CDARK[i]},${COLORS[i]})"></div></div>
+      <div class="lore-to-win">${l>=WIN_LORE?'🎉 Winner!':WIN_LORE-l+' to win'}</div>
+      <div class="ctrl-row">
+        <button class="lore-btn minus-btn" data-i="${i}" data-d="-1">−</button>
+        <button class="lore-btn big-plus" data-i="${i}" data-d="1" style="background:linear-gradient(135deg,${CDARK[i]},${COLORS[i]})">+1 Lore</button>
+        <button class="lore-btn plus-btn" data-i="${i}" data-d="3" style="background:linear-gradient(135deg,${CDARK[i]},${COLORS[i]})">+3</button>
+      </div>
+      <div class="ink-tracker">
+        <span class="ink-label">Ink</span>
+        <div class="ink-dots" id="ink-${i}"></div>
+      </div>`;
+
+    grid.appendChild(card);
+
+    // Ink dots
+    const inkEl=card.querySelector(`#ink-${i}`);
+    for(let j=0;j<7;j++){
+      const dot=document.createElement('div');
+      dot.className='ink-dot'+(ink[i][j]?' filled':'');
+      dot.style.setProperty('--color',COLORS[i]);
+      dot.addEventListener('click',()=>{ink[i][j]=!ink[i][j];dot.classList.toggle('filled');});
+      inkEl.appendChild(dot);
+    }
+  });
+
+  // Lore buttons
+  grid.querySelectorAll('[data-d]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=+btn.dataset.i, d=+btn.dataset.d;
+      const _prev=lore[i];
+      lore[i]=Math.max(0,lore[i]+d);
+      if(lore[i]>_prev){if(lore[i]>=WIN_LORE)sLoreWin();else sLoreUp(d);}else if(lore[i]<_prev)sLoreDown();
+      render();
+    });
+  });
+  // Name edit
+  grid.querySelectorAll('.player-name-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=+btn.dataset.i;
+      const nm=prompt('Player name:',pNames[i]);
+      if(nm&&nm.trim())pNames[i]=nm.trim();
+      render();
+    });
+  });
+}
+
+document.getElementById('reset-btn').addEventListener('click',()=>{lore=Array(numP).fill(0);ink=Array.from({length:numP},()=>Array(7).fill(false));render();});
+document.getElementById('new-btn').addEventListener('click',()=>{
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+});
+function toggleHtp(){
+  const panel=document.getElementById('htp-panel');
+  const arrow=document.getElementById('htp-arrow');
+  const hidden=panel.classList.toggle('hidden');
+  arrow.textContent=hidden?'▶':'▼';
+}
+
+// ── Sound ────────────────────────────────────────────────────────────────────
+let _ac=null,_muted=false;
+function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function sTone(freq,start,dur,vol,type,ramp){
+  const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
+  if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+}
+function sNoise(start,dur,fc,q,vol,decay){
+  const ctx=sac(),t=ctx.currentTime+start;
+  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
+  const src=ctx.createBufferSource();src.buffer=buf;
+  const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
+  const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
+}
+function sWin(){if(_muted)return;[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
+function sLose(){if(_muted)return;[400,320,240].forEach((f,i)=>sTone(f,i*.1,.35,.18,'triangle'));}
+function sClick(pitch){if(_muted)return;sNoise(0,.035,pitch||900,5,.15,.15);}
+function sDing(freq,vol){if(_muted)return;sTone(freq||660,0,.35,vol||.18);}
+
+function sLoreUp(d){if(_muted)return;if(d>=3){[660,830,990].forEach((f,i)=>sTone(f,i*.06,.35,.18));}else{sDing(660,.18);}}
+function sLoreDown(){if(_muted)return;sTone(330,0,.2,.12,'triangle',220);}
+function sLoreWin(){if(_muted)return;[523,659,784,988,1047].forEach((f,i)=>sTone(f,i*.09,.6,.22));sTone(262,0,.7,.1,'triangle');}
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_lorcana(){
+  try{sessionStorage.setItem('lorcana',JSON.stringify({numP,pNames,lore,ink,_ts:Date.now()}));}catch(e){}
+}
+function _load_lorcana(){
+  try{
+    const raw=sessionStorage.getItem('lorcana');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    numP=s.numP;pNames=s.pNames;lore=s.lore;ink=s.ink||[];editing=Array(numP).fill(false);
+    renderPlayers();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_lorcana);
+
+_load_lorcana();
+</script>
+</body>
+</html>

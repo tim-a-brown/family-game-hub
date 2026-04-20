@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Plinko</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a3a 0%,#0d1117 65%);}
+#canvas{display:block;margin:0 auto;touch-action:none;-webkit-tap-highlight-color:transparent;}
+.player-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.player-chip{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;text-align:center;transition:all .2s;min-width:78px;}
+.player-chip.active{transform:scale(1.06);}
+.pc-name{font-size:.72rem;font-weight:700;}
+.pc-scores{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.pc-total{font-family:var(--serif);font-size:1.3rem;font-weight:900;line-height:1;}
+.status-bar{text-align:center;font-size:.9rem;font-weight:700;margin:8px 0;min-height:22px;}
+.drop-zone{display:flex;justify-content:space-around;max-width:min(340px,calc(100vw - 24px));margin:0 auto 6px;}
+.drop-col{flex:1;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.15);font-size:.9rem;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:color .15s;}
+.drop-col:hover{color:rgba(255,255,255,.6);}
+.winner-card{text-align:center;max-width:300px;margin:10px auto;background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;}
+.winner-card .wn{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#0f2d1a;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Plinko</span><button id="pl-newgame" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button></nav>
+<div class="page" style="padding:10px 10px 40px;">
+
+<!-- Setup -->
+<div id="setup" style="max-width:360px;margin:0 auto;">
+  <h2 style="font-family:var(--serif);font-size:1.4rem;text-align:center;margin-bottom:14px;">Plinko</h2>
+  <div style="font-weight:700;text-align:center;margin-bottom:10px;">Players</div>
+  <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;" id="sc-row">
+    <button class="btn btn-outline btn-sm sc-btn" data-n="1">1</button>
+    <button class="btn btn-gold btn-sm sc-btn" data-n="2">2</button>
+    <button class="btn btn-outline btn-sm sc-btn" data-n="3">3</button>
+    <button class="btn btn-outline btn-sm sc-btn" data-n="4">4</button>
+  </div>
+  <div id="setup-names" style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;"></div>
+  <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;margin-bottom:14px;font-size:.82rem;color:var(--muted);">
+    Drop the ball into any column. 3 drops per player. Highest total score wins!<br>
+    <strong style="color:var(--text);">🎯 Center = 5,000 · ⚠️ Slots next to center = 100 (trap!)</strong>
+  </div>
+  <button class="btn btn-gold btn-block" id="start-btn">Start Game →</button>
+</div>
+
+<!-- Game -->
+<div id="gamearea" class="hidden">
+  <div class="player-row" id="player-row"></div>
+  <div class="status-bar" id="status"></div>
+  <div class="drop-zone" id="drop-zone"></div>
+  <canvas id="canvas"></canvas>
+  <div id="winner-area"></div>
+  <div style="text-align:center;margin-top:10px;display:none;" id="action-btns">
+    <button class="btn btn-gold" id="play-again-btn">Play Again</button>
+    <button class="btn btn-outline" id="new-game-btn" style="margin-left:8px;">New Setup</button>
+    <button class="btn btn-outline btn-sm" id="mute-btn" style="margin-left:8px;" title="Toggle sound">🔊</button>
+  </div>
+</div>
+</div>
+
+<script>
+'use strict';
+const P_COLORS=['#f5c842','#5ac8fa','#ff6b6b','#c084fc'];
+const TURNS_PER_PLAYER=3;
+// Score slots (7): 100, 200, 300, 500, 300, 200, 100
+const SLOT_SCORES=[500,1000,100,5000,100,1000,500];
+
+let numP=2, pNames=[], scores=[], turnsLeft=[], curP=0, gameOver=false;
+let ball=null, animFrame=null, dropping=false;
+
+// Board geometry
+const ROWS=9, COLS=7;
+let BW, BH, PEG_R, BALL_R, CELL_W, CELL_H, PAD_X, PAD_TOP;
+
+let setupN=2;
+document.querySelectorAll('.sc-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    setupN=+b.dataset.n;
+    document.querySelectorAll('.sc-btn').forEach(x=>{x.classList.remove('btn-gold');x.classList.add('btn-outline');});
+    b.classList.remove('btn-outline');b.classList.add('btn-gold');
+    buildSetupNames();
+  });
+});
+function buildSetupNames(){
+  const c=document.getElementById('setup-names');c.innerHTML='';
+  for(let i=0;i<setupN;i++){
+    const d=document.createElement('div');d.style.cssText='display:flex;align-items:center;gap:8px;';
+    d.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;background:${P_COLORS[i]};flex-shrink:0;"></div>
+      <input class="input" id="pn${i}" value="Player ${i+1}" maxlength="14">`;
+    c.appendChild(d);
+  }
+}
+buildSetupNames();
+
+document.getElementById('start-btn').addEventListener('click',()=>{
+  numP=setupN;
+  pNames=Array.from({length:numP},(_,i)=>document.getElementById('pn'+i).value.trim()||`Player ${i+1}`);
+  scores=Array.from({length:numP},()=>[]);
+  turnsLeft=Array(numP).fill(TURNS_PER_PLAYER);
+  curP=0;gameOver=false;
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('gamearea').classList.remove('hidden');
+  document.getElementById('action-btns').style.display='none';
+  setupCanvas();renderChips();buildDropZone();setStatus();
+});
+
+function setupCanvas(){
+  const maxW=Math.min(340,window.innerWidth-24);
+  BW=maxW; BH=Math.round(maxW*1.25);
+  CELL_W=BW/COLS; CELL_H=BH/(ROWS+2);
+  PAD_X=CELL_W/2; PAD_TOP=CELL_H*1.2;
+  PEG_R=Math.max(3,Math.round(CELL_W*0.06));
+  BALL_R=Math.max(8,Math.round(CELL_W*0.16));
+  const canvas=document.getElementById('canvas');
+  canvas.width=BW; canvas.height=BH;
+  draw();
+}
+
+// Peg layout: even rows have COLS pegs (one under each drop slot),
+// odd rows have COLS+1 pegs (including near the angled walls).
+function pegs(){
+  const p=[];
+  for(let r=0;r<ROWS;r++){
+    if(r%2===0){
+      // COLS pegs — directly below every drop slot
+      for(let c=0;c<COLS;c++)
+        p.push({x:CELL_W*(c+0.5), y:PAD_TOP+r*CELL_H});
+    } else {
+      // COLS+1 pegs — shifted half a cell, extends into angled wall zones
+      for(let c=0;c<COLS+1;c++)
+        p.push({x:CELL_W*c, y:PAD_TOP+r*CELL_H});
+    }
+  }
+  return p;
+}
+
+function slotY(){return BH-CELL_H*0.7;}
+
+// Angled wall x-positions — walls funnel inward from top to slot level
+function leftWallX(y){
+  const t=Math.max(0,Math.min(1,(y-PAD_TOP)/(slotY()-PAD_TOP)));
+  return CELL_W*0.5*(1-t); // 0.5×CELL_W gap at top → 0 at slot level
+}
+function rightWallX(y){return BW-leftWallX(y);}
+
+function draw(trailBall){
+  const canvas=document.getElementById('canvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,BW,BH);
+
+  // Background
+  ctx.fillStyle='rgba(255,255,255,.02)';
+  ctx.fillRect(0,0,BW,BH);
+
+  // Angled side walls
+  ctx.beginPath();
+  ctx.moveTo(leftWallX(PAD_TOP), PAD_TOP);
+  ctx.lineTo(leftWallX(slotY()), slotY());
+  ctx.strokeStyle='rgba(90,200,250,.35)';ctx.lineWidth=3;ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(rightWallX(PAD_TOP), PAD_TOP);
+  ctx.lineTo(rightWallX(slotY()), slotY());
+  ctx.strokeStyle='rgba(90,200,250,.35)';ctx.lineWidth=3;ctx.stroke();
+  // Wall caps (short horizontal lines at top)
+  ctx.beginPath();
+  ctx.moveTo(0,PAD_TOP);ctx.lineTo(leftWallX(PAD_TOP),PAD_TOP);
+  ctx.strokeStyle='rgba(90,200,250,.2)';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(BW,PAD_TOP);ctx.lineTo(rightWallX(PAD_TOP),PAD_TOP);
+  ctx.strokeStyle='rgba(90,200,250,.2)';ctx.lineWidth=2;ctx.stroke();
+
+  // Pegs — only render those inside the angled walls
+  pegs().forEach(({x,y})=>{
+    if(x-PEG_R < leftWallX(y) || x+PEG_R > rightWallX(y)) return;
+    ctx.beginPath();ctx.arc(x,y,PEG_R,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,.6)';ctx.fill();
+  });
+
+  // Score slots
+  const sy=slotY();
+  SLOT_SCORES.forEach((sc,i)=>{
+    const x=CELL_W*i+CELL_W*0.5;
+    const isJackpot=sc===5000;
+    const isHigh=sc===1000;
+    const isTrap=sc===100;
+    ctx.fillStyle=isJackpot?'rgba(245,200,66,.28)':isTrap?'rgba(255,80,80,.2)':isHigh?'rgba(90,200,250,.15)':'rgba(126,212,126,.15)';
+    ctx.beginPath();
+    ctx.roundRect(x-CELL_W*0.4,sy-CELL_H*0.4,CELL_W*0.8,CELL_H*0.8,4);
+    ctx.fill();
+    ctx.fillStyle=isJackpot?'#f5c842':isTrap?'#ff6b6b':isHigh?'#5ac8fa':'#7ed47e';
+    ctx.font=`bold ${Math.round(CELL_W*0.22)}px Inter,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(sc,x,sy);
+  });
+  // Divider walls between slots
+  ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=3;ctx.lineCap='round';
+  for(let i=1;i<COLS;i++){
+    const wx=CELL_W*i;
+    ctx.beginPath();ctx.moveTo(wx,sy-CELL_H*0.45);ctx.lineTo(wx,BH);ctx.stroke();
+  }
+
+  // Falling ball
+  if(trailBall){
+    const col=P_COLORS[trailBall.player]||'#f5c842';
+    ctx.beginPath();ctx.arc(trailBall.x,trailBall.y,BALL_R,0,Math.PI*2);
+    ctx.fillStyle=col;
+    ctx.shadowColor=col;ctx.shadowBlur=10;
+    ctx.fill();ctx.shadowBlur=0;
+  }
+}
+
+function buildDropZone(){
+  const dz=document.getElementById('drop-zone');
+  dz.style.width=BW+'px';
+  dz.innerHTML='';
+  for(let c=0;c<COLS;c++){
+    const col=document.createElement('div');
+    col.className='drop-col';col.textContent='▼';col.dataset.c=c;
+    col.addEventListener('click',()=>startDrop(c));
+    dz.appendChild(col);
+  }
+}
+
+function startDrop(col){
+  if(dropping||gameOver||turnsLeft[curP]<=0)return;
+  dropping=true;
+  const startX=CELL_W*col+CELL_W*0.5;
+  const startY=PAD_TOP*0.3;
+  ball={x:startX,y:startY,vx:(Math.random()-.5)*0.8,vy:0.6,player:curP,_sf:0,_sy:startY};
+  animate();
+}
+
+function animate(){
+  const GRAV=0.038, BOUNCE_DAMP=0.88, PEG_LIST=pegs().filter(({x,y})=>x-PEG_R>=leftWallX(y)&&x+PEG_R<=rightWallX(y));
+  function step(){
+    ball.vy+=GRAV;
+    ball.x+=ball.vx;
+    ball.y+=ball.vy;
+
+    // Angled wall collision — kick scales up near the bottom where funnel is tightest
+    const lw=leftWallX(ball.y), rw=rightWallX(ball.y);
+    const funnelT=Math.max(0,Math.min(1,(ball.y-PAD_TOP)/(slotY()-PAD_TOP)));
+    const wallKick=1.8+funnelT*1.8;
+    if(ball.x-BALL_R<lw){
+      ball.x=lw+BALL_R+2;
+      ball.vx=wallKick+Math.random()*0.8;
+      ball.vy=Math.abs(ball.vy)*0.7+0.4;
+      if(funnelT>0.7) ball.x=Math.max(ball.x, BW*0.25);
+      playWallBounce();
+    }
+    if(ball.x+BALL_R>rw){
+      ball.x=rw-BALL_R-2;
+      ball.vx=-(wallKick+Math.random()*0.8);
+      ball.vy=Math.abs(ball.vy)*0.7+0.4;
+      if(funnelT>0.7) ball.x=Math.min(ball.x, BW*0.75);
+      playWallBounce();
+    }
+
+    // Peg collision — energetic bounce with strong horizontal randomness
+    PEG_LIST.forEach(({x,y})=>{
+      const dx=ball.x-x, dy=ball.y-y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<PEG_R+BALL_R){
+        const nx=dx/dist, ny=dy/dist;
+        const dot=ball.vx*nx+ball.vy*ny;
+        // Reflect with high energy retention + strong random horizontal kick
+        ball.vx=(ball.vx-2*dot*nx)*BOUNCE_DAMP+(Math.random()-.5)*1.8;
+        ball.vy=(ball.vy-2*dot*ny)*BOUNCE_DAMP+0.25;
+        ball.x=x+nx*(PEG_R+BALL_R+1);
+        ball.y=y+ny*(PEG_R+BALL_R+1);
+        // Clamp: don't let vy go too negative (upward) but allow real bounces
+        ball.vy=Math.max(ball.vy,-2.5);
+        const speed=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+        playPegTick(speed);
+      }
+    });
+
+    // Stuck-ball safety: every 20 frames if y barely moved, kick free
+    ball._sf++;
+    if(ball._sf%20===0){
+      if(ball.y-ball._sy<3){ball.vy=Math.max(ball.vy,1.5);ball.vx=(Math.random()>.5?1:-1)*(0.5+Math.random()*0.75);}
+      ball._sy=ball.y;
+    }
+
+    // Slot divider walls — vertical walls between score buckets from slotY downward
+    const DIVIDER_TOP=slotY()-CELL_H*0.4;
+    if(ball.y+BALL_R>DIVIDER_TOP){
+      // Each divider is at x = CELL_W * i for i=1..COLS-1
+      for(let i=1;i<COLS;i++){
+        const wx=CELL_W*i;
+        const DIVIDER_W=3;
+        if(ball.x+BALL_R>wx-DIVIDER_W/2&&ball.x-BALL_R<wx+DIVIDER_W/2){
+          if(ball.vx>0){ball.x=wx-DIVIDER_W/2-BALL_R;ball.vx=-Math.abs(ball.vx)*0.6;}
+          else{ball.x=wx+DIVIDER_W/2+BALL_R;ball.vx=Math.abs(ball.vx)*0.6;}
+          playWallBounce();
+          break;
+        }
+      }
+    }
+
+    draw(ball);
+
+    // Reached slot zone
+    if(ball.y>=slotY()-BALL_R){
+      const slotIdx=Math.min(COLS-1,Math.max(0,Math.floor(ball.x/CELL_W)));
+      const sc=SLOT_SCORES[slotIdx];
+      ball=null;dropping=false;
+      playScoreSound(sc);
+      recordScore(curP,sc,slotIdx);
+      return;
+    }
+    animFrame=requestAnimationFrame(step);
+  }
+  animFrame=requestAnimationFrame(step);
+}
+
+function recordScore(pi,sc,slotIdx){
+  scores[pi].push(sc);
+  turnsLeft[pi]--;
+
+  // Animate score pop on canvas
+  const canvas=document.getElementById('canvas');
+  const ctx=canvas.getContext('2d');
+  const x=CELL_W*slotIdx+CELL_W*0.5, y=slotY();
+  let alpha=1,dy=0;
+  function popAnim(){
+    draw();
+    dy-=1.5;alpha-=0.05;
+    ctx.globalAlpha=Math.max(0,alpha);
+    ctx.fillStyle=P_COLORS[pi];
+    ctx.font=`bold ${Math.round(CELL_W*0.4)}px "Playfair Display",serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('+'+sc,x,y+dy);
+    ctx.globalAlpha=1;
+    if(alpha>0)requestAnimationFrame(popAnim);
+    else{draw();advanceTurn();}
+  }
+  requestAnimationFrame(popAnim);
+}
+
+function advanceTurn(){
+  // Check if anyone has turns left
+  if(turnsLeft.every(t=>t<=0)){endGame();return;}
+  // Advance to next player with turns (round-robin)
+  for(let i=1;i<=numP;i++){
+    const ni=(curP+i)%numP;
+    if(turnsLeft[ni]>0){curP=ni;break;}
+  }
+  renderChips();  // render AFTER curP is updated so highlight is correct
+  setStatus();
+}
+
+function setStatus(){
+  const remaining=turnsLeft[curP];
+  const s=document.getElementById('status');
+  s.innerHTML=`<span style="color:${P_COLORS[curP]}">${pNames[curP]}</span> — drop the ball! (${remaining} drop${remaining!==1?'s':''} left)`;
+}
+
+function renderChips(){
+  const el=document.getElementById('player-row');el.innerHTML='';
+  pNames.forEach((nm,i)=>{
+    const chip=document.createElement('div');
+    const total=scores[i].reduce((a,b)=>a+b,0);
+    chip.className='player-chip'+(i===curP&&!gameOver?' active':'');
+    chip.style.borderColor=i===curP&&!gameOver?P_COLORS[i]:'rgba(255,255,255,.12)';
+    chip.innerHTML=`<div class="pc-name" style="color:${P_COLORS[i]}">${nm}</div>
+      <div class="pc-total" style="color:${P_COLORS[i]}">${total}</div>
+      <div class="pc-scores">${scores[i].join(' + ')||'—'}</div>
+      <div style="font-size:.7rem;color:var(--muted);">${turnsLeft[i]} left</div>`;
+    el.appendChild(chip);
+  });
+}
+
+function endGame(){
+  gameOver=true;
+  renderChips();  // show final scores for all players including last drop
+  const totals=pNames.map((_,i)=>scores[i].reduce((a,b)=>a+b,0));
+  const max=Math.max(...totals);
+  const winners=totals.map((t,i)=>t===max?i:-1).filter(i=>i>=0);
+  const wa=document.getElementById('winner-area');
+  if(numP===1){
+    wa.innerHTML=`<div class="winner-card"><div style="font-size:1.8rem;margin-bottom:6px;">🎯</div><div class="wn">Score: ${totals[0]}</div></div>`;
+  } else {
+    const wText=winners.length===1?`${pNames[winners[0]]} wins!`:`Tie: ${winners.map(i=>pNames[i]).join(' & ')}`;
+    wa.innerHTML=`<div class="winner-card"><div style="font-size:1.8rem;margin-bottom:6px;">🏆</div><div class="wn">${wText}</div><div style="color:#3a2000;font-size:.88rem;">${max} points</div></div>`;
+  }
+  document.getElementById('status').textContent='';
+  document.getElementById('action-btns').style.display='block';
+}
+
+document.getElementById('play-again-btn').addEventListener('click',()=>{
+  scores=Array.from({length:numP},()=>[]);
+  turnsLeft=Array(numP).fill(TURNS_PER_PLAYER);
+  curP=0;gameOver=false;
+  document.getElementById('winner-area').innerHTML='';
+  document.getElementById('action-btns').style.display='none';
+  renderChips();setStatus();draw();
+});
+document.getElementById('new-game-btn').addEventListener('click',()=>{
+  document.getElementById('gamearea').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+});
+
+// ── Sound system ────────────────────────────────────────────────────────────
+let audioCtx=null, soundOn=true;
+let _lastPegSound=0; // throttle peg ticks so rapid collisions don't stack
+
+function getCtx(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Short band-passed noise burst — feels like a ball tapping a plastic pin
+function playPegTick(speed){
+  if(!soundOn) return;
+  const now=performance.now();
+  if(now-_lastPegSound<45) return; // max ~22 ticks/sec
+  _lastPegSound=now;
+  const ctx=getCtx(), t=ctx.currentTime;
+  const dur=0.045;
+  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.25));
+  const src=ctx.createBufferSource(); src.buffer=buf;
+  const filt=ctx.createBiquadFilter();
+  filt.type='bandpass';
+  filt.frequency.value=700+Math.random()*500+(speed||0)*40;
+  filt.Q.value=4;
+  const gain=ctx.createGain();
+  gain.gain.setValueAtTime(0.18+Math.min((speed||0)*0.015,0.1),t);
+  gain.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+  src.start(t); src.stop(t+dur);
+}
+
+// Slightly lower thunk for wall bounces
+function playWallBounce(){
+  if(!soundOn) return;
+  const ctx=getCtx(), t=ctx.currentTime;
+  const osc=ctx.createOscillator(), gain=ctx.createGain();
+  osc.type='sawtooth';
+  osc.frequency.setValueAtTime(280,t);
+  osc.frequency.exponentialRampToValueAtTime(90,t+0.07);
+  gain.gain.setValueAtTime(0.1,t);
+  gain.gain.exponentialRampToValueAtTime(0.001,t+0.07);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t); osc.stop(t+0.07);
+}
+
+// Score sounds — graded by slot value
+function playScoreSound(value){
+  if(!soundOn) return;
+  const ctx=getCtx(), t=ctx.currentTime;
+  function tone(freq,start,dur,vol,type='sine'){
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t+start);
+    g.gain.linearRampToValueAtTime(vol,t+start+0.015);
+    g.gain.exponentialRampToValueAtTime(0.001,t+start+dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t+start); o.stop(t+start+dur);
+  }
+  if(value===5000){
+    // Jackpot! Rising C-major arpeggio + shimmer
+    [523.25,659.25,783.99,1046.5,1318.5].forEach((f,i)=>tone(f,i*0.08,0.55,0.22));
+    // Add a warm pad underneath
+    tone(261.63,0,0.7,0.08,'triangle');
+  } else if(value===1000){
+    // Two bright dings — major third
+    tone(880,0,0.4,0.2);
+    tone(1108.73,0.07,0.35,0.15);
+  } else if(value===500){
+    // Single warm ding
+    tone(660,0,0.32,0.18);
+    tone(660*1.5,0.01,0.2,0.07,'triangle');
+  } else {
+    // 100 trap — low thud with a slight drop
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='triangle';
+    o.frequency.setValueAtTime(140,t);
+    o.frequency.exponentialRampToValueAtTime(55,t+0.18);
+    g.gain.setValueAtTime(0.28,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t+0.18);
+  }
+}
+
+// Mute toggle
+document.getElementById('mute-btn').addEventListener('click',function(){
+  soundOn=!soundOn;
+  this.textContent=soundOn?'🔊':'🔇';
+});
+
+document.getElementById('pl-newgame')?.addEventListener('click',()=>{if(typeof balls!=='undefined'){balls=[];score=0;ballsDropped=0;if(typeof render==='function')render();}});
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_plinko2(){if(gameOver)return;
+  try{sessionStorage.setItem('plinko2',JSON.stringify({numP,pNames,scores,turnsLeft,curP,gameOver,_ts:Date.now()}));}catch(e){}
+}
+function _load_plinko2(){
+  try{
+    const raw=sessionStorage.getItem('plinko2');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    numP=s.numP;pNames=s.pNames;scores=s.scores;turnsLeft=s.turnsLeft;curP=s.curP;gameOver=s.gameOver||false;
+    document.getElementById('plinko-setup')&&document.getElementById('plinko-setup').classList.add('hidden');document.getElementById('plinko-game')&&document.getElementById('plinko-game').classList.remove('hidden');initPhysics&&initPhysics();renderScores&&renderScores();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_plinko2);
+document.getElementById('new-game-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('plinko2');}catch(e){}},true);
+document.getElementById('pl-newgame')?.addEventListener('click',()=>{try{sessionStorage.removeItem('plinko2');}catch(e){}},true);
+_load_plinko2();
+</script>
+</body>
+</html>

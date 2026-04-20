@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>2048</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
+.wrap{max-width:420px;margin:0 auto;padding:0 12px 60px;}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.title{font-family:var(--serif);font-size:2rem;font-weight:900;color:var(--gold);}
+.scores{display:flex;gap:8px;}
+.score-box{background:rgba(255,255,255,.07);border-radius:8px;padding:6px 12px;text-align:center;min-width:60px;}
+.score-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.score-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
+.board-wrap{background:#1a1205;border-radius:12px;padding:8px;margin-bottom:12px;}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.cell{aspect-ratio:1;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;transition:none;position:relative;}
+.tile{position:absolute;inset:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;transition:none;}
+@keyframes appear{0%{transform:scale(.6);opacity:0;}100%{transform:scale(1);opacity:1;}}
+@keyframes merge{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
+.tile.new{animation:appear .12s ease;}
+.tile.merged{animation:merge .14s ease;}
+.t2{background:#f0e0c0;color:#7a6040;font-size:clamp(1.1rem,7vw,1.8rem);}
+.t4{background:#edd8a0;color:#7a6040;font-size:clamp(1.1rem,7vw,1.8rem);}
+.t8{background:#f5a050;color:#fff;font-size:clamp(1.1rem,7vw,1.8rem);}
+.t16{background:#f08030;color:#fff;font-size:clamp(.95rem,6vw,1.6rem);}
+.t32{background:#e05030;color:#fff;font-size:clamp(.95rem,6vw,1.6rem);}
+.t64{background:#d03020;color:#fff;font-size:clamp(.95rem,6vw,1.6rem);}
+.t128{background:#e0c020;color:#fff;font-size:clamp(.75rem,5vw,1.3rem);}
+.t256{background:#e0b010;color:#fff;font-size:clamp(.75rem,5vw,1.3rem);}
+.t512{background:#d0a000;color:#fff;font-size:clamp(.75rem,5vw,1.3rem);}
+.t1024{background:#c09000;color:#fff;font-size:clamp(.65rem,4vw,1.1rem);}
+.t2048{background:#f5c842;color:#1a1205;font-size:clamp(.65rem,4vw,1.1rem);}
+.thigh{background:#3a2abb;color:#fff;font-size:clamp(.55rem,3.5vw,.95rem);}
+.status{text-align:center;font-size:.88rem;font-weight:700;min-height:28px;margin-bottom:10px;color:var(--muted);}
+.hint{text-align:center;font-size:.7rem;color:var(--muted);opacity:.5;margin-top:6px;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">2048</span></nav>
+<div class="page"><div class="wrap">
+
+<div class="header">
+  <div class="title">2048</div>
+  <div class="scores">
+    <div class="score-box"><div class="score-lbl">Score</div><div class="score-val" id="score">0</div></div>
+    <div class="score-box"><div class="score-lbl">Best</div><div class="score-val" id="best">0</div></div>
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:10px;">
+  <button class="btn btn-gold" id="new-btn" style="flex:1;">New Game</button>
+</div>
+
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+<div class="status" id="status"></div>
+<div class="hint">Arrow keys or swipe to slide tiles</div>
+
+</div></div>
+<script>
+'use strict';
+let grid=[], score=0, best=parseInt(localStorage.getItem('2048best')||'0'), won=false, over=false;
+
+function newGame(){
+  grid=Array.from({length:4},()=>Array(4).fill(0));
+  score=0;won=false;over=false;
+  addRandom();addRandom();
+  render();
+  document.getElementById('status').textContent='';
+}
+
+function addRandom(){
+  const empty=[];
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(!grid[r][c])empty.push([r,c]);
+  if(!empty.length)return;
+  const[r,c]=empty[Math.floor(Math.random()*empty.length)];
+  grid[r][c]=Math.random()<0.9?2:4;
+  return[r,c];
+}
+
+function slide(row){
+  const arr=row.filter(v=>v);
+  const merged=[];
+  let i=0;
+  while(i<arr.length){
+    if(i+1<arr.length&&arr[i]===arr[i+1]){merged.push({val:arr[i]*2,m:true});i+=2;}
+    else{merged.push({val:arr[i],m:false});i++;}
+  }
+  while(merged.length<4)merged.push({val:0,m:false});
+  return merged;
+}
+
+function move(dir){
+  if(over)return false;
+  let moved=false;
+  const newGrid=Array.from({length:4},()=>Array(4).fill(0));
+  const mergedAt=[];
+
+  if(dir==='left'||dir==='right'){
+    for(let r=0;r<4;r++){
+      let row=grid[r].slice();
+      if(dir==='right')row.reverse();
+      const res=slide(row);
+      for(let c=0;c<4;c++){
+        const idx=dir==='right'?3-c:c;
+        const v=res[c].val;
+        newGrid[r][idx]=v;
+        if(v&&v!==grid[r][idx])moved=true;
+        if(res[c].m)mergedAt.push([r,idx]);
+        if(v)score+=res[c].m?v:0;
+      }
+    }
+  } else {
+    for(let c=0;c<4;c++){
+      let col=[grid[0][c],grid[1][c],grid[2][c],grid[3][c]];
+      if(dir==='down')col.reverse();
+      const res=slide(col);
+      for(let r=0;r<4;r++){
+        const idx=dir==='down'?3-r:r;
+        const v=res[r].val;
+        newGrid[idx][c]=v;
+        if(v&&v!==grid[idx][c])moved=true;
+        if(res[r].m)mergedAt.push([idx,c]);
+        if(v)score+=res[r].m?v:0;
+      }
+    }
+  }
+  if(!moved)return false;
+  grid=newGrid;
+  if(score>best){best=score;localStorage.setItem('2048best',best);}
+  const newCell=addRandom();
+  render(newCell,mergedAt);
+  checkEnd();
+  return true;
+}
+
+function checkEnd(){
+  if(grid.flat().includes(2048)&&!won){
+    won=true;
+    document.getElementById('status').innerHTML='<span style="color:var(--gold)">🎉 You reached 2048! Keep going!</span>';
+    return;
+  }
+  // Check moves available
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+    if(!grid[r][c])return;
+    if(c<3&&grid[r][c]===grid[r][c+1])return;
+    if(r<3&&grid[r][c]===grid[r+1][c])return;
+  }
+  over=true;
+  document.getElementById('status').innerHTML='<span style="color:#ef4444">Game over!</span>';
+}
+
+function tileClass(v){
+  if(v<=4)return`t${v}`;
+  if(v<=64)return`t${v}`;
+  if(v<=2048)return`t${v}`;
+  return'thigh';
+}
+
+function render(newCell, mergedAt=[]){
+  const board=document.getElementById('board');
+  board.innerHTML='';
+  for(let r=0;r<4;r++){
+    for(let c=0;c<4;c++){
+      const cell=document.createElement('div');
+      cell.className='cell';
+      const v=grid[r][c];
+      if(v){
+        const tile=document.createElement('div');
+        tile.className='tile '+tileClass(v);
+        tile.textContent=v;
+        const isNew=newCell&&newCell[0]===r&&newCell[1]===c;
+        const isMerged=mergedAt.some(([mr,mc])=>mr===r&&mc===c);
+        if(isNew)tile.classList.add('new');
+        if(isMerged)tile.classList.add('merged');
+        cell.appendChild(tile);
+      }
+      board.appendChild(cell);
+    }
+  }
+  document.getElementById('score').textContent=score;
+  document.getElementById('best').textContent=best;
+}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+  if(map[e.key]){e.preventDefault();move(map[e.key]);}
+});
+
+// Touch swipe
+let tx=0,ty=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;
+  if(Math.abs(dx)>Math.abs(dy))move(dx>0?'right':'left');
+  else move(dy>0?'down':'up');
+},{passive:true});
+
+document.getElementById('new-btn').addEventListener('click',newGame);
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_g2048(){if(over||won)return;
+  try{sessionStorage.setItem('g2048',JSON.stringify({grid,score,won,over,_ts:Date.now()}));}catch(e){}
+}
+function _load_g2048(){
+  try{
+    const raw=sessionStorage.getItem('g2048');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    grid=s.grid;score=s.score;won=s.won||false;over=s.over||false;
+    calcBest();render();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_g2048);
+document.getElementById('new-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('g2048');}catch(e){}},true);
+_load_g2048();
+</script>
+</body>
+</html>

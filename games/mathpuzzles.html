@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Math Puzzles</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#0d1117 65%);}
+.grade-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.grade-btn{padding:7px 12px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;touch-action:manipulation;white-space:nowrap;}
+.grade-btn.active{border-color:var(--green);background:rgba(126,212,126,.12);color:var(--green);}
+.grade-desc{text-align:center;color:var(--muted);font-size:.75rem;margin-bottom:12px;min-height:18px;}
+.puzzle-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:22px 16px;max-width:460px;margin:0 auto 14px;}
+.puzzle-type{font-size:.7rem;font-weight:700;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;margin-bottom:6px;}
+.puzzle-question{font-family:var(--serif);font-size:clamp(1.1rem,5vw,1.5rem);font-weight:700;line-height:1.5;margin-bottom:16px;color:var(--text);}
+.seq-display{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.seq-num{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 14px;font-family:var(--serif);font-size:1.2rem;font-weight:700;min-width:44px;text-align:center;}
+.seq-blank{background:rgba(245,200,66,.1);border:2px solid rgba(245,200,66,.4);border-radius:8px;padding:8px 6px;min-width:52px;text-align:center;font-family:var(--serif);font-size:1.2rem;color:var(--gold);}
+.answer-row{display:flex;gap:8px;align-items:center;max-width:280px;}
+.answer-input{font-family:var(--serif);font-size:1.3rem;font-weight:700;text-align:center;flex:1;}
+.feedback{text-align:center;font-size:1rem;font-weight:700;min-height:26px;margin:10px 0;}
+.feedback.correct{color:var(--green);}
+.feedback.wrong{color:var(--red);}
+.score-strip{display:flex;justify-content:center;gap:16px;margin-bottom:14px;}
+.score-item{text-align:center;}
+.score-item .sv{font-family:var(--serif);font-size:1.6rem;font-weight:900;}
+.score-item .sl{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;}
+.hint-area{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;font-size:.85rem;color:var(--muted);margin-top:8px;display:none;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Math Puzzles</span></nav>
+<div class="page" style="padding-bottom:50px;">
+
+<div class="grade-row" id="grade-row">
+  <button class="grade-btn" data-g="k2">K–2</button>
+  <button class="grade-btn" data-g="g34">3–4</button>
+  <button class="grade-btn active" data-g="g56">5–6</button>
+  <button class="grade-btn" data-g="g78">7–8</button>
+  <button class="grade-btn" data-g="g912">9–12</button>
+  <button class="grade-btn" data-g="seq">Sequences</button>
+</div>
+<div class="grade-desc" id="grade-desc"></div>
+
+<div class="score-strip">
+  <div class="score-item"><div class="sv" id="sc-score" style="color:var(--gold)">0</div><div class="sl">Score</div></div>
+  <div class="score-item"><div class="sv" id="sc-streak" style="color:#5ac8fa">0</div><div class="sl">Streak</div></div>
+  <div class="score-item"><div class="sv" id="sc-solved" style="color:var(--green)">0</div><div class="sl">Solved</div></div>
+</div>
+
+<div class="puzzle-box">
+  <div class="puzzle-type" id="puzzle-type"></div>
+  <div id="puzzle-render"></div>
+  <div class="answer-row" id="answer-row">
+    <input class="input answer-input" type="number" id="answer-input" placeholder="?">
+    <button class="btn btn-gold" id="check-btn">Check ✓</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+  <div class="hint-area" id="hint-area"></div>
+  <div style="display:flex;gap:8px;margin-top:8px;">
+    <button class="btn btn-outline btn-sm" id="hint-btn">💡 Hint</button>
+    <button class="btn btn-outline btn-sm" id="skip-btn">Skip →</button>
+  </div>
+</div>
+
+</div>
+<script>
+'use strict';
+function ri(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+const GRADE_INFO={
+  k2:'Addition, subtraction, and counting patterns',
+  g34:'Multiplication, division, and multi-digit arithmetic',
+  g56:'Fractions, order of operations, and pre-algebra',
+  g78:'Algebra, exponents, geometry, and integers',
+  g912:'Advanced algebra, sequences, combinatorics, and functions',
+  seq:'Classic and competition sequences — Fibonacci, Catalan, Pell, and beyond',
+};
+
+// ── Puzzle generators ──────────────────────────────────────────────────────
+const GENERATORS={
+  k2:[
+    // 1. Counting on
+    ()=>{const s=ri(1,15);return{type:'Counting On',q:null,seq:[s,s+1,s+2,'?'],ans:s+3,hint:`The numbers go up by 1 each time`};},
+    // 2. Simple addition
+    ()=>{const a=ri(1,9),b=ri(1,9);return{type:'Addition',q:`${a} + ${b} = ?`,ans:a+b,hint:`Count up ${b} from ${a}`};},
+    // 3. Simple subtraction
+    ()=>{const b=ri(1,9),a=ri(b,10);return{type:'Subtraction',q:`${a} − ${b} = ?`,ans:a-b,hint:`Start at ${a} and count back ${b}`};},
+    // 4. Skip count by 2
+    ()=>{const s=ri(0,4)*2;return{type:'Skip Counting',q:null,seq:[s,s+2,s+4,s+6,'?'],ans:s+8,hint:`Count by 2s`};},
+    // 5. Skip count by 5
+    ()=>{const n=ri(0,3);return{type:'Skip Counting',q:null,seq:[n*5,(n+1)*5,(n+2)*5,'?'],ans:(n+3)*5,hint:`Count by 5s`};},
+    // 6. Skip count by 10
+    ()=>{const s=ri(1,9);return{type:'Skip Counting',q:null,seq:[s,s+10,s+20,'?'],ans:s+30,hint:`Count by 10s`};},
+    // 7. Missing addend
+    ()=>{const b=ri(1,5),c=ri(b+1,10);return{type:'Missing Number',q:`${c-b} + ? = ${c}`,ans:b,hint:`What do you add to ${c-b} to get ${c}?`};},
+    // 8. Doubles
+    ()=>{const n=ri(1,10);return{type:'Doubles',q:`${n} + ${n} = ?`,ans:n*2,hint:`Same number added to itself`};},
+    // 9. Ten minus
+    ()=>{const n=ri(1,9);return{type:'Subtraction',q:`10 − ${n} = ?`,ans:10-n,hint:`How many more to get from ${n} to 10?`};},
+    // 10. Add to make ten
+    ()=>{const a=ri(1,9);return{type:'Number Bonds',q:`${a} + ? = 10`,ans:10-a,hint:`How many more does ${a} need to reach 10?`};},
+    // 11. Simple number pattern (add same number)
+    ()=>{const s=ri(1,5),step=ri(2,4);return{type:'Number Pattern',q:null,seq:[s,s+step,s+step*2,'?'],ans:s+step*3,hint:`Each number grows by ${step}`};},
+    // 12. Largest/smallest — which comes next in order
+    ()=>{const s=ri(10,90);return{type:'Counting',q:`What number comes after ${s}?`,ans:s+1,hint:`Count up one more from ${s}`};},
+  ],
+
+  g34:[
+    // 1. Times table
+    ()=>{const a=ri(2,9),b=ri(2,9);return{type:'Multiplication',q:`${a} × ${b} = ?`,ans:a*b,hint:`Think: ${a} groups of ${b}`};},
+    // 2. Division
+    ()=>{const b=ri(2,9),a=b*ri(2,9);return{type:'Division',q:`${a} ÷ ${b} = ?`,ans:a/b,hint:`How many ${b}s fit in ${a}?`};},
+    // 3. Multiplication sequence
+    ()=>{const m=ri(2,9),s=ri(1,3);const seq=[s*m,s*m*2,s*m*3];return{type:'Times Table',q:null,seq:[...seq,'?'],ans:s*m*4,hint:`Multiply by ${m} each time`};},
+    // 4. Missing factor
+    ()=>{const b=ri(2,9),c=b*ri(2,9);return{type:'Missing Factor',q:`${c/b} × ? = ${c}`,ans:b,hint:`${c} ÷ ${c/b} = ?`};},
+    // 5. 2-digit + 2-digit
+    ()=>{const a=ri(10,60),b=ri(10,39);return{type:'Addition',q:`${a} + ${b} = ?`,ans:a+b,hint:`Add the ones first, then the tens`};},
+    // 6. 2-digit subtraction
+    ()=>{const b=ri(10,40),a=ri(b+5,90);return{type:'Subtraction',q:`${a} − ${b} = ?`,ans:a-b,hint:`Subtract the tens then the ones`};},
+    // 7. Half of a number
+    ()=>{const n=ri(2,20)*2;return{type:'Halving',q:`Half of ${n} = ?`,ans:n/2,hint:`Divide ${n} by 2`};},
+    // 8. Area of rectangle
+    ()=>{const w=ri(2,9),h=ri(2,9);return{type:'Area',q:`Rectangle: ${w} wide, ${h} tall. Area = ?`,ans:w*h,hint:`Area = width × height = ${w} × ${h}`};},
+    // 9. Perimeter of rectangle
+    ()=>{const w=ri(2,9),h=ri(2,9);return{type:'Perimeter',q:`Rectangle: ${w} wide, ${h} tall. Perimeter = ?`,ans:2*w+2*h,hint:`Perimeter = 2 × (width + height)`};},
+    // 10. Multiplying by 10
+    ()=>{const n=ri(2,15);return{type:'Multiply by 10',q:`${n} × 10 = ?`,ans:n*10,hint:`Add a zero to the end of ${n}`};},
+    // 11. Square numbers
+    ()=>{const n=ri(2,9);return{type:'Square Numbers',q:`${n}² = ${n} × ${n} = ?`,ans:n*n,hint:`Multiply ${n} by itself`};},
+    // 12. Rounding to nearest 10
+    ()=>{const n=ri(12,97);const r=Math.round(n/10)*10;return{type:'Rounding',q:`Round ${n} to the nearest 10`,ans:r,hint:`Is ${n} closer to ${Math.floor(n/10)*10} or ${Math.ceil(n/10)*10}?`};},
+  ],
+
+  g56:[
+    // 1. Fraction of a whole
+    ()=>{const d=pick([2,3,4,5]),whole=d*ri(2,8);const n=ri(1,d-1);return{type:'Fractions',q:`${n}/${d} of ${whole} = ?`,ans:(n*whole)/d,hint:`First find 1/${d} of ${whole} = ${whole/d}, then multiply by ${n}`};},
+    // 2. Order of operations
+    ()=>{const a=ri(1,8),b=ri(2,6),c=ri(2,8);return{type:'Order of Operations',q:`${a} + ${b} × ${c} = ?`,ans:a+b*c,hint:`Multiplication before addition: ${b} × ${c} = ${b*c}, then add ${a}`};},
+    // 3. Negative + positive
+    ()=>{const a=ri(1,10),b=ri(a+1,15);return{type:'Negative Numbers',q:`−${a} + ${b} = ?`,ans:b-a,hint:`Move right ${b} steps from −${a} on the number line`};},
+    // 4. Percent of 100
+    ()=>{const p=pick([10,20,25,50,75]);return{type:'Percentages',q:`${p}% of 100 = ?`,ans:p,hint:`Percent literally means "out of 100"`};},
+    // 5. Percent of non-100
+    ()=>{const p=pick([10,25,50]),n=ri(2,8)*4;return{type:'Percentages',q:`${p}% of ${n} = ?`,ans:p*n/100,hint:`${p}% = ${p}/100, so multiply ${n} × ${p} ÷ 100`};},
+    // 6. Simple equation (ax = b)
+    ()=>{const a=ri(2,9),x=ri(2,9);return{type:'Algebra',q:`${a}x = ${a*x}    Find x`,ans:x,hint:`Divide both sides by ${a}: x = ${a*x} ÷ ${a}`};},
+    // 7. LCM
+    ()=>{const pairs=[[2,3],[2,5],[3,4],[4,6],[3,5],[2,7],[4,5]];const[a,b]=pick(pairs);let l=a;while(l%b!==0)l+=a;return{type:'LCM',q:`LCM(${a}, ${b}) = ?`,ans:l,hint:`List multiples of ${a}: ${a},${a*2},${a*3}… find first one divisible by ${b}`};},
+    // 8. GCF
+    ()=>{const base=pick([2,3,4,5,6]),m1=ri(1,4),m2=ri(1,4);const a=base*m1,b=base*m2;let g=a;while(g>0){const t=b%g;if(t===0)break;g=t;}return{type:'GCF',q:`GCF(${a}, ${b}) = ?`,ans:g,hint:`Find common factors of ${a} and ${b}`};},
+    // 9. Negative subtraction
+    ()=>{const a=ri(1,8),b=ri(a+1,12);return{type:'Negative Numbers',q:`${a} − ${b} = ?`,ans:a-b,hint:`${a} − ${b} = negative because you're taking more than you have`};},
+    // 10. Simple equation (x + a = b)
+    ()=>{const a=ri(3,12),x=ri(2,10);return{type:'Algebra',q:`x + ${a} = ${x+a}    Find x`,ans:x,hint:`Subtract ${a} from both sides`};},
+    // 11. Exponent
+    ()=>{const base=pick([2,3,4,5]),exp=pick([2,3]);return{type:'Exponents',q:`${base}${exp===2?'²':'³'} = ?`,ans:Math.pow(base,exp),hint:`Multiply ${base} by itself ${exp} times`};},
+    // 12. PEMDAS with brackets
+    ()=>{const a=ri(2,8),b=ri(2,6),c=ri(1,5);return{type:'Order of Operations',q:`(${a} + ${b}) × ${c} = ?`,ans:(a+b)*c,hint:`Brackets first: ${a} + ${b} = ${a+b}, then × ${c}`};},
+  ],
+
+  g78:[
+    // 1. Solve two-step equation
+    ()=>{const a=ri(2,6),b=ri(1,8),x=ri(2,8);return{type:'Algebra',q:`${a}x + ${b} = ${a*x+b}    Find x`,ans:x,hint:`Subtract ${b} from both sides, then divide by ${a}`};},
+    // 2. Negative × negative
+    ()=>{const a=ri(2,9),b=ri(2,9);return{type:'Integer Multiplication',q:`(−${a}) × (−${b}) = ?`,ans:a*b,hint:`Negative × Negative = Positive`};},
+    // 3. Negative × positive
+    ()=>{const a=ri(2,9),b=ri(2,9);return{type:'Integer Multiplication',q:`(−${a}) × ${b} = ?`,ans:-a*b,hint:`Negative × Positive = Negative`};},
+    // 4. Exponents (larger)
+    ()=>{const cases=[[2,6],[2,7],[2,8],[3,4],[3,5],[4,4],[5,3]];const[base,exp]=pick(cases);return{type:'Exponents',q:`${base}^${exp} = ?`,ans:Math.pow(base,exp),hint:`Multiply ${base} by itself ${exp} times`};},
+    // 5. Perfect square root
+    ()=>{const n=ri(2,12);return{type:'Square Roots',q:`√${n*n} = ?`,ans:n,hint:`What number times itself equals ${n*n}?`};},
+    // 6. Absolute value
+    ()=>{const n=ri(1,20);return{type:'Absolute Value',q:`|−${n}| = ?`,ans:n,hint:`Absolute value is always non-negative — the distance from zero`};},
+    // 7. Proportion
+    ()=>{const a=ri(2,6),b=ri(2,6),c=a*ri(2,4);return{type:'Proportions',q:`${a}/${b} = ${c}/?    Find ?`,ans:b*c/a,hint:`Cross-multiply: ${b} × ${c} = ${a} × ?`};},
+    // 8. Triangle area
+    ()=>{const b=ri(2,10)*2,h=ri(2,10);return{type:'Geometry',q:`Triangle: base ${b}, height ${h}. Area = ?`,ans:(b*h)/2,hint:`Area = ½ × base × height = ½ × ${b} × ${h}`};},
+    // 9. Distributive property
+    ()=>{const a=ri(2,6),b=ri(2,8),c=ri(2,8);return{type:'Distributive Property',q:`${a}(${b} + ${c}) = ?`,ans:a*b+a*c,hint:`Multiply ${a} by each term: ${a}×${b} + ${a}×${c}`};},
+    // 10. Percent change
+    ()=>{const a=ri(2,9)*10,inc=pick([10,20,25,50]);const b=a+a*inc/100;return{type:'Percent Change',q:`${a} increases by ${inc}%. New value = ?`,ans:b,hint:`Add ${inc}% of ${a} to ${a}: ${a} + ${a*inc/100}`};},
+    // 11. Solve equation with subtraction
+    ()=>{const a=ri(2,6),b=ri(1,8),x=ri(2,8);return{type:'Algebra',q:`${a}x − ${b} = ${a*x-b}    Find x`,ans:x,hint:`Add ${b} to both sides, then divide by ${a}`};},
+    // 12. Negative integer sequence
+    ()=>{const start=-(ri(5,15)),step=ri(2,5);return{type:'Integer Sequence',q:null,seq:[start,start+step,start+step*2,start+step*3,'?'],ans:start+step*4,hint:`Each term increases by ${step}`};},
+    // 13. Fibonacci-style (any two seeds)
+    ()=>{const a=ri(1,4),b=ri(1,5);const t=[a,b,a+b,a+2*b,2*a+3*b];return{type:'Fibonacci-style',q:null,seq:[...t,'?'],ans:3*a+5*b,hint:`Each term = sum of previous two`};},
+    // 14. Quadratic sequence (2nd diff = 2)
+    ()=>{const c=ri(0,5);const s=n=>n*n+c;const terms=[s(1),s(2),s(3),s(4),s(5)];return{type:'Quadratic Sequence',q:null,seq:[...terms,'?'],ans:s(6),hint:`Check 2nd differences: they're constant. Formula: n² + ${c}`};},
+    // 15. Geometric sequence
+    ()=>{const r=pick([2,3]),start=ri(1,4);const terms=Array.from({length:5},(_,i)=>start*Math.pow(r,i));return{type:'Geometric Sequence',q:null,seq:[...terms,'?'],ans:start*Math.pow(r,5),hint:`Each term multiplies by ${r}`};},
+  ],
+
+  g912:[
+    // 1. Factorial
+    ()=>{const n=pick([3,4,5,6]);const f=[1,1,2,6,24,120,720];return{type:'Factorial',q:`${n}! = ?`,ans:f[n],hint:`${n}! = ${Array.from({length:n},(_,i)=>i+1).join(' × ')}`};},
+    // 2. Arithmetic series sum 1 to n
+    ()=>{const n=pick([5,6,7,8,9,10]);return{type:'Series',q:`1 + 2 + 3 + … + ${n} = ?`,ans:n*(n+1)/2,hint:`Formula: n(n+1)/2 = ${n}×${n+1}/2`};},
+    // 3. Geometric series sum
+    ()=>{const r=2,n=pick([4,5,6]);let s=0,cur=1;for(let i=0;i<n;i++){s+=cur;cur*=r;}return{type:'Geometric Series',q:null,seq:[1,2,4,8,...(n>4?[16]:[]),'?'],ans:s,hint:`Sum = 2ⁿ − 1 where n is the number of terms`};},
+    // 4. Function evaluation
+    ()=>{const a=ri(1,4),b=ri(1,8),x=ri(1,6);return{type:'Functions',q:`f(x) = ${a}x + ${b}   Find f(${x})`,ans:a*x+b,hint:`Replace x with ${x}: ${a}×${x} + ${b}`};},
+    // 5. Combination C(n,2)
+    ()=>{const n=ri(4,10);return{type:'Combinations',q:`C(${n}, 2) = ?`,ans:n*(n-1)/2,hint:`C(n,2) = n(n-1)/2 = ${n}×${n-1}/2`};},
+    // 6. Log base 2 (2^? = n)
+    ()=>{const exp=pick([2,3,4,5,6,7,8]);return{type:'Exponents / Logarithms',q:`2^? = ${Math.pow(2,exp)}`,ans:exp,hint:`Count how many times 2 multiplies to give ${Math.pow(2,exp)}`};},
+    // 7. Quadratic x² = n (positive root)
+    ()=>{const x=ri(2,12);return{type:'Quadratic',q:`x² = ${x*x}   Find positive x`,ans:x,hint:`Take the square root of both sides`};},
+    // 8. Arithmetic sequence nth term
+    ()=>{const a=ri(1,8),d=ri(2,6),n=pick([5,6,7,8,9,10]);return{type:'Sequences',q:`Sequence: ${a}, ${a+d}, ${a+d*2}, …   Find the ${n}th term`,ans:a+(n-1)*d,hint:`nth term = ${a} + (n−1)×${d}. Plug in n=${n}`};},
+    // 9. f(x) = x² + c
+    ()=>{const c=ri(1,6),x=ri(1,5);return{type:'Quadratic Functions',q:`f(x) = x² + ${c}   Find f(${x})`,ans:x*x+c,hint:`f(${x}) = ${x}² + ${c} = ${x*x} + ${c}`};},
+    // 10. Sum of first n odd numbers
+    ()=>{const n=ri(3,8);return{type:'Number Theory',q:`1 + 3 + 5 + … (first ${n} odd numbers) = ?`,ans:n*n,hint:`The sum of the first n odd numbers always equals n²`};},
+    // 11. Triangular numbers
+    ()=>{const n=pick([5,6,7,8,9,10]);return{type:'Triangular Numbers',q:`What is the ${n}th triangular number?`,ans:n*(n+1)/2,hint:`T(n) = n(n+1)/2`};},
+    // 12. Power of a power
+    ()=>{const base=pick([2,3]),p1=pick([2,3]),p2=pick([2,3]);return{type:'Exponent Rules',q:`(${base}^${p1})^${p2} = ${base}^? (find the exponent)`,ans:p1*p2,hint:`(a^m)^n = a^(m×n): multiply the exponents`};},
+    // 13. Permutations P(n,2)
+    ()=>{const n=ri(4,9);return{type:'Permutations',q:`P(${n}, 2) = ?`,ans:n*(n-1),hint:`P(n,2) = n×(n−1): ordered pairs from ${n} items`};},
+    // 14. Catalan number
+    ()=>{const cats=[1,1,2,5,14,42,132];const k=pick([3,4,5,6]);return{type:'Catalan Numbers',q:`Catalan sequence: 1, 1, 2, 5, 14, …  What comes next?`,ans:cats[k],hint:`C(n) = C(n−1) × 2(2n−1)/(n+1)`};},
+    // 15. Alternating series
+    ()=>{const a=ri(1,5);const terms=[a,-a*2,a*4,-a*8,a*16];return{type:'Alternating Geometric',q:null,seq:[...terms,'?'],ans:-a*32,hint:`Multiply by −2 each time`};},
+  ],
+
+  seq:[
+    // 1. Fibonacci
+    ()=>{const f=[1,1,2,3,5,8,13,21,34,55];const k=pick([6,7,8]);return{type:'Fibonacci',q:null,seq:[...f.slice(0,k),'?'],ans:f[k],hint:'Each term = sum of the previous two'};},
+    // 2. Lucas numbers
+    ()=>{const L=[2,1,3,4,7,11,18,29,47];const k=pick([5,6,7]);return{type:'Lucas Numbers',q:null,seq:[...L.slice(0,k),'?'],ans:L[k],hint:'Like Fibonacci but starting 2, 1 instead of 1, 1'};},
+    // 3. Triangular numbers T(n) = n(n+1)/2
+    ()=>{const k=pick([5,6,7,8]);const t=n=>n*(n+1)/2;const terms=Array.from({length:k},(_,i)=>t(i+1));return{type:'Triangular Numbers',q:null,seq:[...terms,'?'],ans:t(k+1),hint:`T(n) = n(n+1)/2. Differences go +2, +3, +4, …`};},
+    // 4. Pentagonal numbers P(n) = n(3n-1)/2
+    ()=>{const pent=n=>n*(3*n-1)/2;const k=pick([4,5,6]);const terms=Array.from({length:k},(_,i)=>pent(i+1));return{type:'Pentagonal Numbers',q:null,seq:[...terms,'?'],ans:pent(k+1),hint:`P(n) = n(3n−1)/2. Differences: +4, +7, +10, … (+3 each time)`};},
+    // 5. Oblong (pronic) numbers n(n+1)
+    ()=>{const k=pick([5,6,7]);const ob=n=>n*(n+1);const terms=Array.from({length:k},(_,i)=>ob(i+1));return{type:'Oblong (Pronic) Numbers',q:null,seq:[...terms,'?'],ans:ob(k+1),hint:`P(n) = n(n+1). Each is the product of two consecutive integers`};},
+    // 6. Powers of 2
+    ()=>{const start=ri(0,2);const k=pick([5,6,7]);const terms=Array.from({length:k},(_,i)=>Math.pow(2,start+i));return{type:'Powers of 2',q:null,seq:[...terms,'?'],ans:Math.pow(2,start+k),hint:`Each term doubles (×2)`};},
+    // 7. Powers of 3
+    ()=>{const k=pick([4,5,6]);const terms=Array.from({length:k},(_,i)=>Math.pow(3,i));return{type:'Powers of 3',q:null,seq:[...terms,'?'],ans:Math.pow(3,k),hint:`Each term triples (×3). 3^0=1, 3^1=3, …`};},
+    // 8. Catalan numbers
+    ()=>{const C=[1,1,2,5,14,42,132,429];const k=pick([4,5,6]);return{type:'Catalan Numbers',q:null,seq:[...C.slice(0,k),'?'],ans:C[k],hint:`C(n) = C(n−1)×(2(2n−1))/(n+1). Counts valid bracket arrangements`};},
+    // 9. Pell numbers P(n) = 2P(n-1) + P(n-2)
+    ()=>{const P=[0,1,2,5,12,29,70,169];const k=pick([4,5,6]);return{type:'Pell Numbers',q:null,seq:[...P.slice(0,k),'?'],ans:P[k],hint:`P(n) = 2·P(n−1) + P(n−2). Related to √2 approximations`};},
+    // 10. Lazy caterer — regions from n lines
+    ()=>{const lc=n=>n*(n+1)/2+1;const k=pick([5,6,7]);const terms=Array.from({length:k},(_,i)=>lc(i));return{type:'Lazy Caterer Sequence',q:null,seq:[...terms,'?'],ans:lc(k),hint:`Max regions from n cuts: n(n+1)/2 + 1. Differences: +1, +2, +3, …`};},
+    // 11. Jacobsthal numbers J(n) = J(n-1) + 2·J(n-2)
+    ()=>{const J=[0,1,1,3,5,11,21,43,85];const k=pick([5,6,7]);return{type:'Jacobsthal Numbers',q:null,seq:[...J.slice(0,k),'?'],ans:J[k],hint:`J(n) = J(n−1) + 2·J(n−2). Pattern: 0,1,1,3,5,11,21,…`};},
+    // 12. Centered hexagonal numbers 3n²−3n+1
+    ()=>{const ch=n=>3*n*n-3*n+1;const k=pick([4,5,6]);const terms=Array.from({length:k},(_,i)=>ch(i+1));return{type:'Centered Hexagonal Numbers',q:null,seq:[...terms,'?'],ans:ch(k+1),hint:`H(n)=3n²−3n+1. Differences add 6 each step: +6, +12, +18, …`};},
+    // 13. Primes
+    ()=>{const primes=[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47];const s=ri(0,5);const k=pick([5,6,7]);return{type:'Prime Numbers',q:null,seq:[...primes.slice(s,s+k),'?'],ans:primes[s+k],hint:`List of primes — numbers divisible only by 1 and themselves`};},
+    // 14. Padovan sequence P(n) = P(n-2) + P(n-3)
+    ()=>{const P=[1,1,1,2,2,3,4,5,7,9,12,16,21];const k=pick([7,8,9]);return{type:'Padovan Sequence',q:null,seq:[...P.slice(0,k),'?'],ans:P[k],hint:`P(n) = P(n−2) + P(n−3). Spiral-related like Fibonacci`};},
+    // 15. Bell numbers (set partitions)
+    ()=>{const B=[1,1,2,5,15,52,203];const k=pick([4,5,6]);return{type:'Bell Numbers',q:null,seq:[...B.slice(0,k),'?'],ans:B[k],hint:`B(n) = ways to partition a set of n items. Uses Bell triangle`};},
+    // 16. Alternating Fibonacci signs
+    ()=>{const f=[1,-1,2,-3,5,-8,13,-21,34];const k=pick([5,6,7]);return{type:'Alternating Fibonacci',q:null,seq:[...f.slice(0,k),'?'],ans:f[k],hint:`Fibonacci sequence with alternating signs`};},
+    // 17. Sum of squares 1²+2²+…+n²
+    ()=>{const n=pick([4,5,6,7]);return{type:'Sum of Squares',q:`1² + 2² + 3² + … + ${n}² = ?`,ans:n*(n+1)*(2*n+1)/6,hint:`Formula: n(n+1)(2n+1)/6`};},
+    // 18. Tetrahedral numbers n(n+1)(n+2)/6
+    ()=>{const tet=n=>n*(n+1)*(n+2)/6;const k=pick([4,5,6]);const terms=Array.from({length:k},(_,i)=>tet(i+1));return{type:'Tetrahedral Numbers',q:null,seq:[...terms,'?'],ans:tet(k+1),hint:`T(n) = n(n+1)(n+2)/6. Triangular numbers stacked into a pyramid`};},
+  ],
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let grade='g56', score=0, streak=0, solved=0, hintUsed=false, current=null;
+
+const GRADE_LABELS={k2:'K–2',g34:'3–4',g56:'5–6',g78:'7–8',g912:'9–12'};
+
+// ── Grade buttons ──────────────────────────────────────────────────────────
+document.querySelectorAll('.grade-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    grade=b.dataset.g;
+    document.querySelectorAll('.grade-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('grade-desc').textContent=GRADE_INFO[grade];
+    score=0;streak=0;solved=0;updateStats();loadPuzzle();
+  });
+});
+document.getElementById('grade-desc').textContent=GRADE_INFO[grade];
+
+// ── Load puzzle ────────────────────────────────────────────────────────────
+function loadPuzzle(){
+  const gens=GENERATORS[grade];
+  current=gens[Math.floor(Math.random()*gens.length)]();
+  hintUsed=false;
+  document.getElementById('puzzle-type').textContent=current.type;
+  document.getElementById('hint-area').style.display='none';
+  document.getElementById('hint-area').textContent='';
+  document.getElementById('feedback').textContent='';
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('answer-input').value='';
+
+  const render=document.getElementById('puzzle-render');
+  if(current.seq){
+    render.innerHTML=`<div class="seq-display">${
+      current.seq.map((v,i)=>{
+        if(v==='?')return`<div class="seq-blank">?</div>`;
+        const isLast=i===current.seq.length-2;
+        return`<div class="seq-num">${v}</div>${i<current.seq.length-1?'<span style="color:var(--muted);align-self:center;font-size:.9rem;">→</span>':''}`;
+      }).join('')
+    }</div>`;
+  } else {
+    render.innerHTML=`<div class="puzzle-question">${current.q}</div>`;
+  }
+  document.getElementById('answer-input').focus();
+}
+
+// ── Check answer ───────────────────────────────────────────────────────────
+function check(){
+  const val=parseInt(document.getElementById('answer-input').value);
+  if(isNaN(val))return;
+  const fb=document.getElementById('feedback');
+  if(val===current.ans){
+    const pts=hintUsed?1:2;
+    score+=pts; streak++; solved++;
+    fb.className='feedback correct';
+    fb.textContent=`✓ Correct! +${pts} point${pts>1?'s':''}`;
+    updateStats();
+    setTimeout(loadPuzzle,900);
+  } else {
+    streak=0;
+    fb.className='feedback wrong';
+    fb.textContent=`✗ Not quite — try again!`;
+    document.getElementById('answer-input').value='';
+    updateStats();
+  }
+}
+
+function updateStats(){
+  document.getElementById('sc-score').textContent=score;
+  document.getElementById('sc-streak').textContent=streak;
+  document.getElementById('sc-solved').textContent=solved;
+}
+
+document.getElementById('check-btn').addEventListener('click',check);
+document.getElementById('answer-input').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+document.getElementById('skip-btn').addEventListener('click',()=>{streak=0;updateStats();loadPuzzle();});
+document.getElementById('hint-btn').addEventListener('click',()=>{
+  const ha=document.getElementById('hint-area');
+  ha.style.display='block';ha.textContent='💡 '+current.hint;hintUsed=true;
+});
+
+loadPuzzle();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_math(){
+  try{sessionStorage.setItem('math',JSON.stringify({grade,score,streak,solved,_ts:Date.now()}));}catch(e){}
+}
+function _load_math(){
+  try{
+    const raw=sessionStorage.getItem('math');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    grade=s.grade||'g56';score=s.score||0;streak=s.streak||0;solved=s.solved||0;
+    document.querySelectorAll('.grade-btn').forEach(b=>b.classList.toggle('active',b.dataset.g===grade));document.getElementById('mp-score').textContent=score;document.getElementById('mp-streak').textContent=streak;nextQuestion();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_math);
+
+_load_math();
+</script>
+</body>
+</html>

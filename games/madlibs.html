@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Mad Libs</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a2a0a 0%,#0d1117 65%);}
+.ml-form{max-width:460px;margin:0 auto;}
+.ml-field{margin-bottom:12px;}
+.ml-label-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.ml-label{font-size:.78rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;}
+.ml-hint-btn{background:none;border:1px solid rgba(255,255,255,.15);border-radius:50%;width:18px;height:18px;font-size:.6rem;color:rgba(255,255,255,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;padding:0;line-height:1;}
+.ml-hint-btn:hover,.ml-hint-btn.active{border-color:rgba(245,200,66,.5);color:var(--gold);}
+.ml-hint{font-size:.72rem;color:rgba(245,200,66,.6);margin-bottom:5px;font-style:italic;display:none;}
+.ml-hint.visible{display:block;}
+.ml-input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:#fff;font-size:max(16px,.95rem);padding:9px 14px;outline:none;font-family:var(--font);}
+.ml-input:focus{border-color:var(--gold);}
+.ml-story{max-width:500px;margin:0 auto;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:22px;font-size:.95rem;line-height:1.85;}
+.ml-word{color:var(--gold);font-weight:700;background:rgba(245,200,66,.12);border-radius:4px;padding:0 4px;}
+.story-title{font-family:var(--serif);font-size:1.3rem;font-weight:900;margin-bottom:14px;color:var(--text);}
+.story-select{display:flex;gap:8px;justify-content:flex-start;flex-wrap:wrap;margin-bottom:14px;padding-bottom:4px;}
+.story-btn{padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;}
+.story-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.hints-toggle-row{display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px;max-width:460px;margin-left:auto;margin-right:auto;}
+.hints-toggle-btn{background:none;border:1px solid rgba(255,255,255,.15);border-radius:20px;color:rgba(255,255,255,.4);font-size:.72rem;font-weight:600;padding:4px 10px;cursor:pointer;transition:all .15s;}
+.hints-toggle-btn.active{border-color:rgba(245,200,66,.4);color:rgba(245,200,66,.7);background:rgba(245,200,66,.07);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mad Libs</span></nav>
+<div class="page" style="padding-bottom:60px;">
+<div class="story-select" id="story-select"></div>
+<div id="input-phase">
+  <p style="text-align:center;color:var(--muted);font-size:.88rem;margin-bottom:10px;">Fill in the blanks — don't peek at the story!</p>
+  <div class="hints-toggle-row">
+    <button class="hints-toggle-btn" id="hints-toggle">💡 Show hints</button>
+  </div>
+  <div class="ml-form" id="ml-form"></div>
+  <div style="text-align:center;margin-top:6px;"><button class="btn btn-gold" id="reveal-btn">Reveal Story! 📖</button></div>
+</div>
+<div id="story-phase" class="hidden">
+  <div class="ml-story" id="ml-story"></div>
+  <div style="text-align:center;margin-top:16px;display:flex;gap:8px;justify-content:center;">
+    <button class="btn btn-gold" id="again-btn">Play Again</button>
+    <button class="btn btn-outline" id="new-story-btn">New Story</button>
+  </div>
+</div>
+</div>
+<script>
+'use strict';
+const STORIES=[
+  {
+    title:'The Space Mission',
+    prompts:[
+      {label:'Astronaut name',key:'NAME',type:'proper noun'},
+      {label:'A planet',key:'PLANET',type:'noun'},
+      {label:'Weird food',key:'FOOD',type:'noun'},
+      {label:'Action verb (-ing)',key:'VERB1',type:'verb'},
+      {label:'Animal (plural)',key:'ANIMALS',type:'noun'},
+      {label:'Body part (plural)',key:'BODYPART',type:'noun'},
+      {label:'Silly adjective',key:'ADJ1',type:'adjective'},
+      {label:'Large number',key:'NUMBER',type:'number'},
+      {label:'Emotion',key:'EMOTION',type:'adjective'},
+      {label:'Famous person',key:'FAMOUS',type:'proper noun'},
+    ],
+    template:(w)=>`Captain <span class="ml-word">${w.NAME}</span> had been traveling to <span class="ml-word">${w.PLANET}</span> for <span class="ml-word">${w.NUMBER}</span> days when something very strange happened. The ship's food supply had been replaced entirely with <span class="ml-word">${w.FOOD}</span>. While <span class="ml-word">${w.VERB1}</span> through the cargo bay, the crew discovered <span class="ml-word">${w.NUMBER}</span> tiny <span class="ml-word">${w.ANIMALS}</span> hiding behind the control panel, waving their little <span class="ml-word">${w.BODYPART}</span> in greeting. Mission Control was notified immediately. The voice on the radio said, in a <span class="ml-word">${w.ADJ1}</span> tone, that this was expected behavior this close to the sun. The crew felt <span class="ml-word">${w.EMOTION}</span>. Later that evening, they sent a postcard to <span class="ml-word">${w.FAMOUS}</span> describing the whole adventure.`,
+  },
+  {
+    title:'The School Day',
+    prompts:[
+      {label:'Student name',key:'NAME',type:'proper noun'},
+      {label:'Subject (science, math…)',key:'SUBJECT',type:'noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Verb (past tense)',key:'VERB1',type:'verb'},
+      {label:'Animal',key:'ANIMAL',type:'noun'},
+      {label:'Color',key:'COLOR',type:'adjective'},
+      {label:'Silly sound',key:'SOUND',type:'exclamation'},
+      {label:'Type of food',key:'FOOD',type:'noun'},
+      {label:'Famous place',key:'PLACE',type:'proper noun'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`It was the most <span class="ml-word">${w.ADJ1}</span> day of school for <span class="ml-word">${w.NAME}</span>. During <span class="ml-word">${w.SUBJECT}</span> class, a <span class="ml-word">${w.COLOR}</span> <span class="ml-word">${w.ANIMAL}</span> suddenly <span class="ml-word">${w.VERB1}</span> through the classroom door and yelled "<span class="ml-word">${w.SOUND}</span>!" The teacher dropped her <span class="ml-word">${w.FOOD}</span> and everyone froze. Someone suggested the animal had escaped from <span class="ml-word">${w.PLACE}</span>. The principal called it a "<span class="ml-word">${w.ADJ2}</span> situation" and sent everyone home early. It was the best <span class="ml-word">${w.SUBJECT}</span> lesson anyone had ever had.`,
+  },
+  {
+    title:'The Camping Trip',
+    prompts:[
+      {label:'Camper\'s name',key:'NAME',type:'proper noun'},
+      {label:'Forest creature',key:'CREATURE',type:'noun'},
+      {label:'Cooking verb (-ing)',key:'VERB1',type:'verb'},
+      {label:'Type of food',key:'FOOD',type:'noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Body part',key:'BODYPART',type:'noun'},
+      {label:'Silly noise',key:'SOUND',type:'exclamation'},
+      {label:'Weather condition',key:'WEATHER',type:'noun'},
+      {label:'Number between 1 and 100',key:'NUMBER',type:'number'},
+      {label:'Emotion',key:'EMOTION',type:'adjective'},
+    ],
+    template:(w)=>`<span class="ml-word">${w.NAME}</span> had been <span class="ml-word">${w.VERB1}</span> hot dogs over the campfire for <span class="ml-word">${w.NUMBER}</span> minutes when a <span class="ml-word">${w.ADJ1}</span> <span class="ml-word">${w.CREATURE}</span> emerged from the trees and sat down at the picnic table. It pointed at the <span class="ml-word">${w.FOOD}</span> with its <span class="ml-word">${w.BODYPART}</span> and made a sound like "<span class="ml-word">${w.SOUND}</span>." Despite the <span class="ml-word">${w.WEATHER}</span>, everyone remained completely calm and offered the creature a plate. It ate everything, burped <span class="ml-word">${w.NUMBER}</span> times, and disappeared back into the woods. Everyone felt <span class="ml-word">${w.EMOTION}</span>. They never spoke of it again.`,
+  },
+  {
+    title:'The Recipe',
+    prompts:[
+      {label:'Chef\'s name',key:'NAME',type:'proper noun'},
+      {label:'Disgusting ingredient',key:'ING1',type:'noun'},
+      {label:'Another gross thing',key:'ING2',type:'noun'},
+      {label:'Cooking action verb',key:'VERB1',type:'verb'},
+      {label:'Kitchen tool',key:'TOOL',type:'noun'},
+      {label:'Adjective for texture',key:'ADJ1',type:'adjective'},
+      {label:'Color',key:'COLOR',type:'adjective'},
+      {label:'Number',key:'NUMBER',type:'number'},
+      {label:'Famous person',key:'FAMOUS',type:'proper noun'},
+      {label:'Reaction (e.g., screamed)',key:'REACT',type:'verb'},
+    ],
+    template:(w)=>`Chef <span class="ml-word">${w.NAME}</span>'s award-winning recipe begins with <span class="ml-word">${w.NUMBER}</span> cups of <span class="ml-word">${w.ING1}</span>, lightly <span class="ml-word">${w.VERB1}</span> with a <span class="ml-word">${w.TOOL}</span>. Fold in <span class="ml-word">${w.ING2}</span> until the mixture turns <span class="ml-word">${w.COLOR}</span> and <span class="ml-word">${w.ADJ1}</span>. Bake at <span class="ml-word">${w.NUMBER}</span> degrees. When <span class="ml-word">${w.FAMOUS}</span> tasted this dish at the 2023 Gala, they <span class="ml-word">${w.REACT}</span> and demanded seconds. Critics call it "the most <span class="ml-word">${w.ADJ1}</span> thing we've ever tasted." We couldn't agree more.`,
+  },
+  {
+    title: 'The Birthday Party',
+    prompts: [
+      {label:'Birthday person\'s name',key:'BNAME',type:'proper noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Cake flavor (e.g. pickle, hot dog)',key:'CAKE',type:'noun'},
+      {label:'Ridiculously large number',key:'NUM',type:'number'},
+      {label:'Famous celebrity',key:'CELEB',type:'proper noun'},
+      {label:'Verb ending in -ing',key:'VERB1',type:'verb'},
+      {label:'Animal (plural)',key:'ANIMALS',type:'noun'},
+      {label:'Weird birthday gift',key:'GIFT',type:'noun'},
+      {label:'Exclamation',key:'EXCL',type:'exclamation'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`The <span class="ml-word">${w.ADJ1}</span> birthday party for <span class="ml-word">${w.BNAME}</span> was going perfectly until someone brought out a <span class="ml-word">${w.CAKE}</span>-flavored cake that was <span class="ml-word">${w.NUM}</span> feet tall. A herd of <span class="ml-word">${w.ANIMALS}</span> knocked it over. Then <span class="ml-word">${w.CELEB}</span> crawled out from underneath it, <span class="ml-word">${w.VERB1}</span> wildly, and handed <span class="ml-word">${w.BNAME}</span> a <span class="ml-word">${w.GIFT}</span> wrapped in newspaper. Everyone shouted "<span class="ml-word">${w.EXCL}</span>!" and agreed it was the most <span class="ml-word">${w.ADJ2}</span> birthday in recorded history.`,
+  },
+  {
+    title: 'The Road Trip',
+    prompts: [
+      {label:'Driver\'s name',key:'DRIVER',type:'proper noun'},
+      {label:'Destination (place name)',key:'DEST',type:'proper noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Strange snack food',key:'SNACK',type:'noun'},
+      {label:'Number of hours',key:'HOURS',type:'number'},
+      {label:'Past tense verb',key:'VERB1',type:'verb'},
+      {label:'Animal',key:'ANIMAL',type:'noun'},
+      {label:'Type of music',key:'MUSIC',type:'noun'},
+      {label:'Silly sound',key:'SOUND',type:'exclamation'},
+      {label:'Body part (plural)',key:'BODY',type:'noun'},
+    ],
+    template:(w)=>`<span class="ml-word">${w.DRIVER}</span> had been driving toward <span class="ml-word">${w.DEST}</span> for <span class="ml-word">${w.HOURS}</span> hours with nothing but <span class="ml-word">${w.SNACK}</span> to eat when things got <span class="ml-word">${w.ADJ1}</span>. A <span class="ml-word">${w.ANIMAL}</span> suddenly <span class="ml-word">${w.VERB1}</span> into the middle of the road, blasting <span class="ml-word">${w.MUSIC}</span> from a tiny speaker strapped to its <span class="ml-word">${w.BODY}</span>. It made a sound like "<span class="ml-word">${w.SOUND}</span>" and vanished into the trees. <span class="ml-word">${w.DRIVER}</span> pulled over and stared for a very long time. The rest of the drive was completely uneventful.`,
+  },
+  {
+    title: 'The Job Interview',
+    prompts: [
+      {label:'Applicant\'s name',key:'NAME',type:'proper noun'},
+      {label:'Job title (weird or silly)',key:'JOB',type:'noun'},
+      {label:'Unusual skill or talent',key:'SKILL',type:'noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Famous company name',key:'COMPANY',type:'proper noun'},
+      {label:'Past tense verb',key:'VERB1',type:'verb'},
+      {label:'Animal',key:'ANIMAL',type:'noun'},
+      {label:'Huge number',key:'NUM',type:'number'},
+      {label:'Exclamation',key:'EXCL',type:'exclamation'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`<span class="ml-word">${w.NAME}</span> arrived at <span class="ml-word">${w.COMPANY}</span> for their interview for the role of <span class="ml-word">${w.JOB}</span>. The interviewer asked, "What is your greatest strength?" <span class="ml-word">${w.NAME}</span> smiled and said, "<span class="ml-word">${w.SKILL}</span>." The interviewer <span class="ml-word">${w.VERB1}</span> and wrote something down. "Interesting. Can you work alongside a <span class="ml-word">${w.ANIMAL}</span>?" <span class="ml-word">${w.NAME}</span> replied, "<span class="ml-word">${w.EXCL}</span>! I've worked with <span class="ml-word">${w.NUM}</span> of them." The interviewer described the environment as "famously <span class="ml-word">${w.ADJ1}</span>" and said the benefits were "<span class="ml-word">${w.ADJ2}</span> beyond belief." The offer letter arrived that evening.`,
+  },
+  {
+    title: 'The Superhero',
+    prompts: [
+      {label:'Hero\'s name',key:'HERO',type:'proper noun'},
+      {label:'Superpower (e.g. controlling soup)',key:'POWER',type:'noun'},
+      {label:'Villain\'s name',key:'VILLAIN',type:'proper noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Silly weapon or tool',key:'WEAPON',type:'noun'},
+      {label:'City name',key:'CITY',type:'proper noun'},
+      {label:'Verb ending in -ing',key:'VERB1',type:'verb'},
+      {label:'Animal',key:'ANIMAL',type:'noun'},
+      {label:'Battle cry / exclamation',key:'CRY',type:'exclamation'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`By day, <span class="ml-word">${w.HERO}</span> was an ordinary person in <span class="ml-word">${w.CITY}</span>. By night, they wielded the power of <span class="ml-word">${w.POWER}</span> to battle the <span class="ml-word">${w.ADJ1}</span> villain known as <span class="ml-word">${w.VILLAIN}</span>. Armed with nothing but a <span class="ml-word">${w.WEAPON}</span> and a highly trained <span class="ml-word">${w.ANIMAL}</span>, <span class="ml-word">${w.HERO}</span> was spotted <span class="ml-word">${w.VERB1}</span> across rooftops while shouting "<span class="ml-word">${w.CRY}</span>!" into the night sky. Citizens left thank-you notes on the doorstep every morning, calling their hero "truly <span class="ml-word">${w.ADJ2}</span>."`,
+  },
+  {
+    title: 'The Haunted House',
+    prompts: [
+      {label:'Explorer\'s name',key:'NAME',type:'proper noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Spooky object (noun)',key:'THING',type:'noun'},
+      {label:'Number',key:'NUM',type:'number'},
+      {label:'Past tense verb',key:'VERB1',type:'verb'},
+      {label:'Ghost\'s name',key:'GHOST',type:'proper noun'},
+      {label:'Silly fear (e.g. staplers, sandwiches)',key:'FEAR',type:'noun'},
+      {label:'Exclamation',key:'EXCL',type:'exclamation'},
+      {label:'Food or snack',key:'FOOD',type:'noun'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`<span class="ml-word">${w.NAME}</span> entered the <span class="ml-word">${w.ADJ1}</span> old house at midnight carrying only a flashlight and a bad attitude. The floor creaked. From the shadows appeared a floating <span class="ml-word">${w.THING}</span>. <span class="ml-word">${w.NAME}</span> screamed "<span class="ml-word">${w.EXCL}</span>!" and <span class="ml-word">${w.VERB1}</span> backward into the grandfather clock. A tired voice said, "Relax. I am <span class="ml-word">${w.GHOST}</span>. I have haunted this house for <span class="ml-word">${w.NUM}</span> years because nobody ever brings me <span class="ml-word">${w.FOOD}</span>." It turned out the ghost's deepest fear was <span class="ml-word">${w.FEAR}</span>. They ended up having a surprisingly <span class="ml-word">${w.ADJ2}</span> evening watching old movies together.`,
+  },
+  {
+    title: 'The Olympics',
+    prompts: [
+      {label:'Athlete\'s name',key:'NAME',type:'proper noun'},
+      {label:'Country name',key:'COUNTRY',type:'proper noun'},
+      {label:'Made-up Olympic sport',key:'SPORT',type:'noun'},
+      {label:'Number of years training',key:'NUM',type:'number'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Body part',key:'BODY',type:'noun'},
+      {label:'Past tense verb',key:'VERB1',type:'verb'},
+      {label:'Animal',key:'ANIMAL',type:'noun'},
+      {label:'Exclamation',key:'EXCL',type:'exclamation'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`The stadium fell silent as <span class="ml-word">${w.NAME}</span> of <span class="ml-word">${w.COUNTRY}</span> stepped up to compete in the Olympic <span class="ml-word">${w.SPORT}</span>. This was the moment they had trained <span class="ml-word">${w.NUM}</span> years for. Using their famous <span class="ml-word">${w.ADJ1}</span> <span class="ml-word">${w.BODY}</span>, <span class="ml-word">${w.NAME}</span> <span class="ml-word">${w.VERB1}</span> past every competitor and crossed the finish line while riding a <span class="ml-word">${w.ANIMAL}</span>. The judges leapt to their feet and shouted "<span class="ml-word">${w.EXCL}</span>!" awarding a perfect score. Commentators called it "the most <span class="ml-word">${w.ADJ2}</span> performance in Olympic history." The <span class="ml-word">${w.ANIMAL}</span> also received a medal.`,
+  },
+  {
+    title: 'The Movie Set',
+    prompts: [
+      {label:'Director\'s name',key:'DIR',type:'proper noun'},
+      {label:'Movie title',key:'MOVIE',type:'noun'},
+      {label:'Actor\'s name',key:'ACTOR',type:'proper noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Prop or object',key:'PROP',type:'noun'},
+      {label:'Verb ending in -ing',key:'VERB1',type:'verb'},
+      {label:'Animal',key:'ANIMAL',type:'noun'},
+      {label:'Exclamation',key:'EXCL',type:'exclamation'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+      {label:'Number',key:'NUM',type:'number'},
+    ],
+    template:(w)=>`Day <span class="ml-word">${w.NUM}</span> of filming "<span class="ml-word">${w.MOVIE}</span>" was not going well for director <span class="ml-word">${w.DIR}</span>. The star, <span class="ml-word">${w.ACTOR}</span>, had been asked to look <span class="ml-word">${w.ADJ1}</span> while holding a <span class="ml-word">${w.PROP}</span> — instead they kept <span class="ml-word">${w.VERB1}</span> and shouting "<span class="ml-word">${w.EXCL}</span>!" every single take. On take seven, a <span class="ml-word">${w.ANIMAL}</span> wandered onto set and stole the <span class="ml-word">${w.PROP}</span>. <span class="ml-word">${w.DIR}</span> immediately declared it the most <span class="ml-word">${w.ADJ2}</span> footage they'd ever captured and kept the whole scene in the final cut. Critics agreed it was the best part of the film.`,
+  },
+  {
+    title: 'The Science Fair',
+    prompts: [
+      {label:'Student\'s name',key:'NAME',type:'proper noun'},
+      {label:'Experiment name (silly noun)',key:'PROJ',type:'noun'},
+      {label:'Adjective',key:'ADJ1',type:'adjective'},
+      {label:'Weird ingredient',key:'ING',type:'noun'},
+      {label:'Number',key:'NUM',type:'number'},
+      {label:'Past tense verb',key:'VERB1',type:'verb'},
+      {label:'Color',key:'COLOR',type:'adjective'},
+      {label:'Exclamation',key:'EXCL',type:'exclamation'},
+      {label:'Famous scientist',key:'SCIENTIST',type:'proper noun'},
+      {label:'Adjective',key:'ADJ2',type:'adjective'},
+    ],
+    template:(w)=>`<span class="ml-word">${w.NAME}</span>'s science fair project — titled "The Effects of <span class="ml-word">${w.PROJ}</span> on Everything" — had taken <span class="ml-word">${w.NUM}</span> days to build. The centerpiece was a <span class="ml-word">${w.ADJ1}</span> machine that combined <span class="ml-word">${w.ING}</span> with electricity and a lot of hope. When the judges arrived, <span class="ml-word">${w.NAME}</span> pressed the big red button. The machine <span class="ml-word">${w.VERB1}</span>. Every surface in the gymnasium turned <span class="ml-word">${w.COLOR}</span>. Someone shouted "<span class="ml-word">${w.EXCL}</span>!" <span class="ml-word">${w.SCIENTIST}</span>, who happened to be a guest judge, stood up and called it "the most <span class="ml-word">${w.ADJ2}</span> scientific breakthrough of the century." <span class="ml-word">${w.NAME}</span> won first place and a certificate.`,
+  },
+];
+
+let si=0,vals={};
+
+// Build story selector
+const ss=document.getElementById('story-select');
+STORIES.forEach((s,i)=>{
+  const b=document.createElement('button');b.className='story-btn'+(i===0?' active':'');b.textContent=s.title;b.dataset.i=i;
+  b.addEventListener('click',()=>{
+    si=i;document.querySelectorAll('.story-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    buildForm();
+  });
+  ss.appendChild(b);
+});
+
+// ── Type → display name map ────────────────────────────────────────────────
+function typeLabel(type){
+  const map={'proper noun':'Proper Noun','noun':'Noun','adjective':'Adjective',
+    'verb':'Verb','number':'Number','exclamation':'Exclamation','adverb':'Adverb'};
+  return map[type.toLowerCase()]||type.split(' ').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
+}
+
+// ── Global hints toggle ────────────────────────────────────────────────────
+let hintsVisible=false;
+document.getElementById('hints-toggle').addEventListener('click',()=>{
+  hintsVisible=!hintsVisible;
+  const btn=document.getElementById('hints-toggle');
+  btn.classList.toggle('active',hintsVisible);
+  btn.textContent=hintsVisible?'💡 Hide hints':'💡 Show hints';
+  document.querySelectorAll('.ml-hint').forEach(el=>{
+    el.classList.toggle('visible',hintsVisible);
+  });
+  document.querySelectorAll('.ml-hint-btn').forEach(el=>{
+    el.classList.toggle('active',hintsVisible);
+  });
+});
+
+function buildForm(){
+  vals={};
+  hintsVisible=false;
+  const hintsBtn=document.getElementById('hints-toggle');
+  hintsBtn.classList.remove('active');
+  hintsBtn.textContent='💡 Show hints';
+
+  const form=document.getElementById('ml-form');form.innerHTML='';
+  document.getElementById('input-phase').classList.remove('hidden');
+  document.getElementById('story-phase').classList.add('hidden');
+
+  // Count how many times each type appears so we can number duplicates
+  const story=STORIES[si];
+  const typeCounts={};
+  story.prompts.forEach(p=>{
+    const t=typeLabel(p.type);
+    typeCounts[t]=(typeCounts[t]||0)+1;
+  });
+  const typeIdx={};
+
+  story.prompts.forEach(p=>{
+    const t=typeLabel(p.type);
+    typeIdx[t]=(typeIdx[t]||0)+1;
+    const displayLabel=typeCounts[t]>1?`${t} #${typeIdx[t]}`:t;
+    const hint=p.label; // the specific contextual hint
+    const isHintSameAsLabel=hint.toLowerCase()===t.toLowerCase(); // skip if redundant
+
+    const div=document.createElement('div');div.className='ml-field';
+    div.innerHTML=`
+      <div class="ml-label-row">
+        <span class="ml-label">${displayLabel}</span>
+        ${!isHintSameAsLabel?`<button class="ml-hint-btn" title="Show hint" aria-label="Show hint for ${displayLabel}">💡</button>`:''}
+      </div>
+      ${!isHintSameAsLabel?`<div class="ml-hint">${hint}</div>`:''}
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input class="ml-input" placeholder="Enter a${['a','e','i','o','u'].includes(t[0].toLowerCase())?'n':''} ${t.toLowerCase()}…" data-key="${p.key}" autocorrect="off" spellcheck="false" autocapitalize="off">
+        <button class="ml-next-btn btn btn-outline btn-sm" style="flex-shrink:0;padding:8px 12px;font-size:.78rem;" tabindex="-1">Next →</button>
+      </div>`;
+    form.appendChild(div);
+
+    // Per-field hint button toggle
+    const hintBtn=div.querySelector('.ml-hint-btn');
+    const hintEl=div.querySelector('.ml-hint');
+    if(hintBtn&&hintEl){
+      hintBtn.addEventListener('click',()=>{
+        const showing=hintEl.classList.toggle('visible');
+        hintBtn.classList.toggle('active',showing);
+      });
+    }
+  });
+}
+
+document.getElementById('reveal-btn').addEventListener('click',()=>{
+  const inputs=document.querySelectorAll('.ml-input');
+  let ok=true;
+  inputs.forEach(inp=>{
+    const v=inp.value.trim();
+    if(!v){inp.style.borderColor='var(--red)';ok=false;}
+    else{inp.style.borderColor='';vals[inp.dataset.key]=v;}
+  });
+  if(!ok)return;
+  document.getElementById('input-phase').classList.add('hidden');
+  document.getElementById('story-phase').classList.remove('hidden');
+  const story=document.getElementById('ml-story');
+  story.innerHTML=`<div class="story-title">${STORIES[si].title}</div>${STORIES[si].template(vals)}`;
+});
+
+document.getElementById('again-btn').addEventListener('click',buildForm);
+document.getElementById('new-story-btn').addEventListener('click',()=>{
+  si=(si+1)%STORIES.length;
+  document.querySelectorAll('.story-btn').forEach((b,i)=>{b.classList.toggle('active',i===si);});
+  buildForm();
+});
+
+buildForm();
+
+// ── Enter / Next navigation ────────────────────────────────────────────────
+document.getElementById('ml-form').addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  e.preventDefault();
+  advanceInput(e.target);
+});
+document.getElementById('ml-form').addEventListener('click',e=>{
+  if(!e.target.classList.contains('ml-next-btn'))return;
+  const row=e.target.closest('[style]');
+  const inp=row?row.querySelector('.ml-input'):null;
+  if(inp)advanceInput(inp);
+});
+function advanceInput(currentInput){
+  const inputs=[...document.querySelectorAll('.ml-input')];
+  const idx=inputs.indexOf(currentInput);
+  if(idx===-1)return;
+  if(idx<inputs.length-1){inputs[idx+1].focus();inputs[idx+1].select();}
+  else{document.getElementById('reveal-btn').click();}
+}
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_madlibs(){
+  try{sessionStorage.setItem('madlibs',JSON.stringify({si,vals,_ts:Date.now()}));}catch(e){}
+}
+function _load_madlibs(){
+  try{
+    const raw=sessionStorage.getItem('madlibs');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    si=s.si||0;vals=s.vals||{};
+    document.getElementById('story-select')&&(document.getElementById('story-select').value=si);showStory(si,vals);
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_madlibs);
+
+_load_madlibs();
+</script>
+</body>
+</html>

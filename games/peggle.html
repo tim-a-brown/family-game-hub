@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Peggle</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../arcade-hi.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:#0a0a1a;overflow:hidden;}
+.wrap{max-width:360px;margin:0 auto;padding:0;display:flex;flex-direction:column;align-items:center;}
+.pg-header{display:flex;gap:8px;padding:6px 8px;width:100%;box-sizing:border-box;}
+.pg-stat{background:rgba(255,255,255,.08);border-radius:8px;padding:5px 12px;text-align:center;flex:1;}
+.pg-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
+.pg-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
+canvas{border-radius:4px;display:block;cursor:crosshair;}
+</style>
+</head>
+<body>
+<nav class="site-nav" style="background:rgba(0,0,0,.3);"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Peggle</span><button onclick="ArcadeHi.show('peggle','Peggle')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button><button id="pg-newbtn" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button></nav>
+<div class="page" style="padding:0;"><div class="wrap">
+<div class="pg-header">
+  <div class="pg-stat"><div class="pg-val" id="pg-score">0</div><div class="pg-lbl">Score</div></div>
+  <div class="pg-stat"><div class="pg-val" id="pg-orange">0</div><div class="pg-lbl">Orange Left</div></div>
+  <div class="pg-stat"><div class="pg-val" id="pg-balls">10</div><div class="pg-lbl">Balls</div></div>
+</div>
+<canvas id="cv"></canvas>
+<div id="pg-hist-row" style="display:none;justify-content:center;margin:6px 0;"></div>
+</div></div>
+<script>
+'use strict';
+const W=360,H=Math.min(500,window.innerHeight-110);
+const cv=document.getElementById('cv');cv.width=W;cv.height=H;
+const ctx=cv.getContext('2d');
+const PEG_R=7,BALL_R=8,BUCKET_W=70,BUCKET_H=18;
+
+let pegs,ball,bucket,score,balls,state,hitPegs,aimX,aimY,animId,level;
+let freeBallSplash=0; // countdown frames for FREE BALL splash (>0 = showing)
+const ORANGE_COUNT=25;
+
+// Different peg layouts per level
+function makePegs(lvl){
+  const p=[];
+  const add=(x,y,orange)=>p.push({x,y,r:PEG_R,orange:!!orange,hit:false});
+  const markOrange=(n)=>{
+    const idxs=new Set();
+    while(idxs.size<Math.min(n,p.length))idxs.add(Math.floor(Math.random()*p.length));
+    p.forEach((pg,i)=>pg.orange=idxs.has(i));
+  };
+  const ring=(cx,cy,r,n,startAngle=0)=>{for(let i=0;i<n;i++){const a=startAngle+i*(Math.PI*2/n);add(cx+Math.cos(a)*r,cy+Math.sin(a)*r,false);}};
+  const safe=(x,y)=>x>14&&x<W-14&&y>68&&y<H-52;
+  const safeAdd=(x,y)=>{if(safe(x,y))add(x,y,false);};
+
+  const DESIGNS=[
+
+    // 1: Classic staggered — gentle opener, clearly a proper stagger not a grid
+    ()=>{
+      for(let r=0;r<8;r++){
+        const cols=r%2===0?8:7;
+        const xStart=r%2===0?26:48;
+        for(let c=0;c<cols;c++)add(xStart+c*44,100+r*46,false);
+      }
+      markOrange(22);
+    },
+
+    // 2: Two Arches — twin rainbow bridges
+    ()=>{
+      // Top arch
+      for(let i=0;i<14;i++){
+        const t=i/13,x=30+t*(W-60);
+        const y=130-Math.sin(t*Math.PI)*85;
+        safeAdd(x,y);
+      }
+      // Middle arch (offset, wider)
+      for(let i=0;i<14;i++){
+        const t=i/13,x=20+t*(W-40);
+        const y=260-Math.sin(t*Math.PI)*75;
+        safeAdd(x,y);
+      }
+      // Bottom arch (lower, filled)
+      for(let i=0;i<13;i++){
+        const t=i/12,x=30+t*(W-60);
+        const y=390-Math.sin(t*Math.PI)*55;
+        safeAdd(x,y);
+      }
+      // Pillars holding the arches
+      for(let r=0;r<3;r++)safeAdd(30,130+r*80),safeAdd(W-30,130+r*80);
+      markOrange(22);
+    },
+
+    // 3: Triangle mountain — big downward-pointing triangle
+    ()=>{
+      const apex=[W/2,100],base=420;
+      const rows=9;
+      for(let r=0;r<rows;r++){
+        const y=apex[1]+r*36;
+        const halfW=r*(W/2-30)/(rows-1);
+        const n=Math.round(2+r*1.5);
+        for(let c=0;c<=n;c++){
+          const x=apex[0]-halfW+c*(halfW*2/n);
+          safeAdd(x,y);
+        }
+      }
+      markOrange(22);
+    },
+
+    // 4: Butterfly / Wings — two large mirrored semicircles + body
+    ()=>{
+      const cx=W/2,cy=240;
+      // Left wing — semicircle opening left
+      for(let i=0;i<18;i++){
+        const a=Math.PI*0.5+i*(Math.PI/17);
+        safeAdd(cx-30+Math.cos(a)*100,cy+Math.sin(a)*90);
+      }
+      // Inner left
+      for(let i=0;i<12;i++){
+        const a=Math.PI*0.55+i*(Math.PI*0.9/11);
+        safeAdd(cx-20+Math.cos(a)*55,cy+Math.sin(a)*50);
+      }
+      // Right wing
+      for(let i=0;i<18;i++){
+        const a=-Math.PI*0.5+i*(-Math.PI/17);
+        safeAdd(cx+30+Math.cos(a)*100,cy+Math.sin(a)*90);
+      }
+      for(let i=0;i<12;i++){
+        const a=-Math.PI*0.55+i*(-Math.PI*0.9/11);
+        safeAdd(cx+20+Math.cos(a)*55,cy+Math.sin(a)*50);
+      }
+      // Body — vertical line of pegs
+      for(let i=0;i<7;i++)safeAdd(cx,140+i*44);
+      markOrange(24);
+    },
+
+    // 5: Heart — large, unmistakable
+    ()=>{
+      for(let t=0;t<100;t++){
+        const a=t/100*Math.PI*2;
+        const hx=16*Math.pow(Math.sin(a),3);
+        const hy=-(13*Math.cos(a)-5*Math.cos(2*a)-2*Math.cos(3*a)-Math.cos(4*a));
+        const x=W/2+hx*12.5,y=230+hy*12.5;
+        if(safe(x,y)&&p.every(pg=>Math.hypot(pg.x-x,pg.y-y)>16))add(x,y,false);
+      }
+      // Fill interior
+      for(let r=0;r<3;r++)for(let c=0;c<4;c++)safeAdd(W/2-48+c*32,220+r*36);
+      markOrange(22);
+    },
+
+    // 6: Hourglass — wide top and bottom, pinched waist
+    ()=>{
+      for(let r=0;r<10;r++){
+        const y=90+r*40;
+        // Width narrows to waist at r=5 then widens again
+        const pinch=Math.abs(r-4.5)/4.5;
+        const halfW=25+pinch*130;
+        const n=Math.round(3+pinch*7);
+        for(let c=0;c<=n;c++){
+          const x=W/2-halfW+c*(halfW*2/n);
+          safeAdd(x,y);
+        }
+      }
+      markOrange(25);
+    },
+
+    // 7: Solar system — sun + real spaced concentric rings
+    ()=>{
+      add(W/2,H*0.44,false);        // sun
+      ring(W/2,H*0.44,32,8,0);      // mercury
+      ring(W/2,H*0.44,62,12,0.26);  // venus
+      ring(W/2,H*0.44,95,18,0.14);  // earth
+      ring(W/2,H*0.44,130,24,0);    // mars
+      // Asteroid belt — sparse scatter
+      for(let i=0;i<10;i++){
+        const a=i*0.63,r=115+Math.sin(i*2.1)*10;
+        safeAdd(W/2+Math.cos(a)*r,H*0.44+Math.sin(a)*r*0.7);
+      }
+      markOrange(26);
+    },
+
+    // 8: Big X / Saltire — two fat diagonals crossing center
+    ()=>{
+      const cx=W/2,cy=H*0.45;
+      for(let i=-8;i<=8;i++){
+        const t=i/8;
+        // Diagonal 1 (top-left to bottom-right)
+        safeAdd(cx+t*140,cy+t*160);
+        safeAdd(cx+t*140+20,cy+t*160); // thick
+        // Diagonal 2 (top-right to bottom-left)
+        safeAdd(cx-t*140,cy+t*160);
+        safeAdd(cx-t*140-20,cy+t*160);
+      }
+      // Center cluster
+      ring(cx,cy,20,6,0);
+      markOrange(26);
+    },
+
+    // 9: Pinball bumper park — 4 big rings + channels
+    ()=>{
+      // Four bumper circles
+      [[W/2,140],[100,260],[W-100,260],[W/2,350]].forEach(([bx,by])=>{
+        ring(bx,by,32,12,0);
+        add(bx,by,false); // center peg
+      });
+      // Channel guides left side
+      for(let r=0;r<6;r++)safeAdd(32,180+r*40);
+      // Channel guides right
+      for(let r=0;r<6;r++)safeAdd(W-32,180+r*40);
+      // Top scatter
+      for(let c=0;c<7;c++)safeAdd(40+c*42,88);
+      markOrange(28);
+    },
+
+    // 10: Funnel — V-walls funneling into the bucket zone
+    ()=>{
+      // Ceiling scatter
+      for(let c=0;c<10;c++)safeAdd(22+c*35,90+Math.sin(c*0.9)*18);
+      // Left funnel wall
+      for(let r=0;r<10;r++){
+        const x=20+r*22,y=145+r*28;
+        safeAdd(x,y);
+        if(r<7)safeAdd(x+30,y-10);
+      }
+      // Right funnel wall
+      for(let r=0;r<10;r++){
+        const x=W-20-r*22,y=145+r*28;
+        safeAdd(x,y);
+        if(r<7)safeAdd(x-30,y-10);
+      }
+      // Bottom cluster in narrow zone
+      for(let c=0;c<5;c++)safeAdd(W/2-48+c*24,410);
+      markOrange(24);
+    },
+
+    // 11: Snowflake — 6 arms with branches
+    ()=>{
+      const cx=W/2,cy=H*0.43;
+      for(let arm=0;arm<6;arm++){
+        const baseA=arm*Math.PI/3-Math.PI/2;
+        for(let d=1;d<=5;d++){
+          const x=cx+Math.cos(baseA)*d*34,y=cy+Math.sin(baseA)*d*32;
+          safeAdd(x,y);
+          // Side branches
+          if(d===2||d===4){
+            const ba=baseA+Math.PI/2;
+            safeAdd(x+Math.cos(ba)*22,y+Math.sin(ba)*22);
+            safeAdd(x-Math.cos(ba)*22,y-Math.sin(ba)*22);
+          }
+        }
+      }
+      add(cx,cy,false);
+      ring(cx,cy,18,6,Math.PI/6);
+      markOrange(24);
+    },
+
+    // 12: Spiral — single outward clockwise spiral, clearly readable
+    ()=>{
+      for(let i=0;i<58;i++){
+        const a=i*0.35;
+        const r=14+i*3.4;
+        const x=W/2+Math.cos(a)*r,y=H*0.43+Math.sin(a)*r*0.78;
+        if(safe(x,y)&&p.every(pg=>Math.hypot(pg.x-x,pg.y-y)>14))add(x,y,false);
+      }
+      markOrange(22);
+    },
+
+    // 13: Figure-8 / Infinity — two interlocked rings
+    ()=>{
+      ring(W/2,175,90,20,0);    // top circle
+      ring(W/2,340,90,20,0);    // bottom circle
+      ring(W/2,175,45,12,Math.PI/12);
+      ring(W/2,340,45,12,Math.PI/12);
+      // Intersection pegs
+      for(let c=0;c<5;c++)safeAdd(W/2-40+c*20,255);
+      markOrange(26);
+    },
+
+    // 14: Staircase — big dramatic steps across the whole field
+    ()=>{
+      const steps=5;
+      for(let s=0;s<steps;s++){
+        const x0=20+s*56,y0=100+s*65;
+        // Horizontal step surface
+        for(let c=0;c<7-s;c++)safeAdd(x0+c*28,y0);
+        // Vertical step riser
+        for(let r=1;r<4;r++)safeAdd(x0,y0+r*22);
+      }
+      // Mirror staircase going other way
+      for(let s=0;s<steps;s++){
+        const x0=W-20-s*56,y0=100+s*65;
+        for(let c=0;c<7-s;c++)safeAdd(x0-c*28,y0);
+        for(let r=1;r<4;r++)safeAdd(x0,y0+r*22);
+      }
+      // Scattered center pegs
+      for(let c=0;c<5;c++)safeAdd(W/2-40+c*20,350+Math.sin(c*1.2)*30);
+      markOrange(25);
+    },
+
+    // 15: Grand Finale — castle with towers, battlements, moat ring, keep
+    ()=>{
+      // Outer moat ring
+      ring(W/2,260,140,28,0);
+      // Walls
+      for(let c=0;c<7;c++)safeAdd(W/2-90+c*30,160);
+      for(let c=0;c<7;c++)safeAdd(W/2-90+c*30,370);
+      for(let r=0;r<5;r++)safeAdd(W/2-90,175+r*40),safeAdd(W/2+90,175+r*40);
+      // Towers at corners
+      [[W/2-100,145],[W/2+100,145],[W/2-100,370],[W/2+100,370]].forEach(([tx,ty])=>{
+        ring(tx,ty,18,6,0);
+      });
+      // Keep in center — small ring + cross
+      ring(W/2,260,30,8,0);
+      for(let d=1;d<=2;d++)safeAdd(W/2,260-d*40),safeAdd(W/2,260+d*40),safeAdd(W/2-d*40,260),safeAdd(W/2+d*40,260);
+      add(W/2,260,false);
+      markOrange(30);
+    },
+  ];
+
+  const design=DESIGNS[(lvl-1)%DESIGNS.length];
+  design();
+  return p.filter(pg=>pg.x>14&&pg.x<W-14&&pg.y>68&&pg.y<H-52);
+}
+
+function newLevel(){
+  pegs=makePegs(level);
+  ball=null;bucket={x:W/2-BUCKET_W/2,vx:1.8};
+  state='aim';hitPegs=[];aimX=W/2;aimY=H/2;
+  const hr=document.getElementById('pg-hist-row');if(hr){hr.style.display='none';hr.innerHTML='';}
+  updateUI();render();
+}
+
+function newGame(){
+  score=0;balls=10;level=1;
+  document.getElementById('pg-score').textContent='0';
+  document.getElementById('pg-balls').textContent='10';
+  try{sessionStorage.removeItem('pg_state');}catch(e){}
+  newLevel();
+}
+
+function savePgState(){
+  if(!pegs||state==='won'||state==='lost')return;
+  try{sessionStorage.setItem('pg_state',JSON.stringify({score,balls,level,pegs,_ts:Date.now()}));}catch(e){}
+}
+function loadPgState(){
+  try{
+    const raw=sessionStorage.getItem('pg_state');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s.pegs)return false;
+    score=s.score;balls=s.balls;level=s.level;pegs=s.pegs;
+    ball=null;bucket={x:W/2-BUCKET_W/2,vx:1.8};
+    state='aim';hitPegs=[];aimX=W/2;aimY=H/2;
+    updateUI();render();return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',savePgState);
+
+function updateUI(){
+  document.getElementById('pg-score').textContent=score;
+  document.getElementById('pg-orange').textContent=pegs.filter(p=>p.orange&&!p.hit).length;
+  document.getElementById('pg-balls').textContent=balls;
+}
+
+function shoot(tx,ty){
+  if(state!=='aim'||balls<=0)return;
+  // Full range aim: use actual click position relative to launcher
+  const launchY=25;
+  const dx=tx-W/2, dy=ty-launchY;
+  // Prevent shooting straight up or backwards
+  if(dy<10)return;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  const speed=10;
+  ball={x:W/2,y:launchY,vx:dx/len*speed,vy:dy/len*speed};
+  hitPegs=[];state='shoot';
+  sLaunch();
+  animate();
+}
+
+function animate(){
+  cancelAnimationFrame(animId);
+  animId=requestAnimationFrame(step);
+}
+
+function step(){
+  if(state!=='shoot'){render();return;}
+  // Physics — bouncier: higher damping, more elasticity
+  ball.vy+=0.32;
+  ball.x+=ball.vx;ball.y+=ball.vy;
+  // Wall bounce — elastic
+  if(ball.x-BALL_R<0){ball.x=BALL_R;ball.vx=Math.abs(ball.vx)*0.92;}
+  if(ball.x+BALL_R>W){ball.x=W-BALL_R;ball.vx=-Math.abs(ball.vx)*0.92;}
+  // Peg collision — much bouncier: 0.92 damping instead of 0.85
+  pegs.forEach(p=>{
+    if(p.hit)return;
+    const dx=ball.x-p.x,dy=ball.y-p.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<BALL_R+p.r+0.5){
+      const nx=dx/dist,ny=dy/dist;
+      const dot=ball.vx*nx+ball.vy*ny;
+      ball.vx=(ball.vx-2*dot*nx)*0.92;
+      ball.vy=(ball.vy-2*dot*ny)*0.92;
+      // Minimum bounce speed so ball doesn't die on a peg
+      const spd=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+      if(spd<4){ball.vx*=4/spd;ball.vy*=4/spd;}
+      ball.x=p.x+nx*(BALL_R+p.r+2);ball.y=p.y+ny*(BALL_R+p.r+2);
+      if(!hitPegs.includes(p)){
+        hitPegs.push(p);p.hit=true;p.flash=10;
+        score+=p.orange?500:100;updateUI();
+        sPegHit(p.orange);
+      }
+    }
+  });
+  // Bucket
+  bucket.x+=bucket.vx;
+  if(bucket.x<0||bucket.x+BUCKET_W>W)bucket.vx*=-1;
+  const bucketY=H-BUCKET_H-4;
+  if(ball.y+BALL_R>bucketY&&ball.y+BALL_R<bucketY+BUCKET_H*2&&ball.x>bucket.x&&ball.x<bucket.x+BUCKET_W){
+    balls++;freeBallSplash=80;endBall(true);sFreeBall();return;
+  }
+  if(ball.y>H+50){endBall(false);return;}
+  render();animId=requestAnimationFrame(step);
+}
+
+function showPgHistBtn(){
+  const hr=document.getElementById('pg-hist-row');
+  if(!hr)return;
+  hr.innerHTML='';
+  const b=GameHistory.btn('peggle','Peggle',e=>GameHistory.renderStatGrid([{val:e.score,lbl:'Score'},{val:'Level '+e.level,lbl:e.result==='win'?'Completed':'Reached'},{val:e.balls+' left',lbl:'Balls'}]));
+  b.classList.add('gh-hist-btn');hr.appendChild(b);
+  hr.style.display='flex';
+}
+
+function endBall(caught){
+  if(!caught)sBallLost();
+  balls--;
+  if(balls===1)setTimeout(sLastBall,400); // warn player on last ball
+  ball=null;state='aim';
+  const orangeLeft=pegs.filter(p=>p.orange&&!p.hit).length;
+  if(orangeLeft===0){
+    sOrangeCleared();
+    setTimeout(sLevelWin,300);
+    state='won';render();
+    ArcadeHi.check('peggle',score,()=>{});
+    GameHistory.save('peggle',{_summary:`Level ${level} clear · ${score} pts`,_badge:'Lvl '+level,score,level,balls,result:'win'});
+    showPgHistBtn();
+    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#f5c842';ctx.font='bold 26px "Playfair Display",serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(`LEVEL ${level} CLEAR! 🎉`,W/2,H/2-28);
+    ctx.fillStyle='#fff';ctx.font='bold 16px Inter,sans-serif';
+    ctx.fillText('Score: '+score+'  Balls left: '+balls,W/2,H/2+4);
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='14px Inter,sans-serif';
+    ctx.fillText('Tap for Level '+(level+1),W/2,H/2+36);
+    return;
+  }
+  if(balls<=0){
+    sGameOver();
+    state='lost';render();
+    GameHistory.save('peggle',{_summary:`Level ${level} · out of balls · ${score} pts`,_badge:score+' pts',score,level,balls:0,result:'loss'});
+    showPgHistBtn();
+    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#ef4444';ctx.font='bold 26px "Playfair Display",serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('OUT OF BALLS',W/2,H/2-28);
+    ctx.fillStyle='#fff';ctx.font='bold 16px Inter,sans-serif';
+    ctx.fillText(orangeLeft+' orange peg'+(orangeLeft!==1?'s':'')+' remaining',W/2,H/2+4);
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='14px Inter,sans-serif';
+    ctx.fillText('Tap to try Level '+level+' again',W/2,H/2+36);
+    return;
+  }
+  updateUI();render();
+}
+
+function render(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  // Level label
+  ctx.fillStyle='rgba(255,255,255,.2)';ctx.font='bold 11px Inter,sans-serif';
+  ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillText('LEVEL '+level,8,8);
+  // Launcher
+  ctx.fillStyle='rgba(255,255,255,.15)';
+  ctx.beginPath();ctx.arc(W/2,25,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#f5c842';
+  ctx.beginPath();ctx.arc(W/2,25,8,0,Math.PI*2);ctx.fill();
+  // Aim trajectory — simulates actual ball physics so the preview matches reality
+  if(state==='aim'){
+    const launchY=25;
+    const dx=aimX-W/2,dy=aimY-launchY;
+    if(dy>5){
+      const len=Math.sqrt(dx*dx+dy*dy)||1;
+      const speed=10;
+      let sx=W/2,sy=launchY,svx=dx/len*speed,svy=dy/len*speed;
+      const dots=[];
+      for(let i=0;i<120;i++){
+        svy+=0.32; sx+=svx; sy+=svy;
+        if(sx<BALL_R){sx=BALL_R;svx=Math.abs(svx)*0.92;}
+        if(sx>W-BALL_R){sx=W-BALL_R;svx=-Math.abs(svx)*0.92;}
+        if(sy>H)break;
+        if(i%4===0)dots.push({x:sx,y:sy,i});
+      }
+      dots.forEach(d=>{
+        const a=Math.max(0,(1-d.i/90)*0.65);
+        ctx.fillStyle=`rgba(255,255,255,${a.toFixed(2)})`;
+        ctx.beginPath();ctx.arc(d.x,d.y,2.5,0,Math.PI*2);ctx.fill();
+      });
+    }
+  }
+  // Pegs
+  pegs.forEach(p=>{
+    if(p.flash>0){p.flash--;ctx.shadowColor='#fff';ctx.shadowBlur=14;}
+    if(!p.hit){
+      ctx.fillStyle=p.orange?'#f97316':'#5ac8fa';
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=p.orange?'rgba(255,220,160,.5)':'rgba(200,240,255,.4)';
+      ctx.beginPath();ctx.arc(p.x-p.r*0.3,p.y-p.r*0.3,p.r*0.4,0,Math.PI*2);ctx.fill();
+    }
+    ctx.shadowBlur=0;
+  });
+  // Bucket — gold catcher with label
+  const by=H-BUCKET_H-4;
+  const grad=ctx.createLinearGradient(bucket.x,by,bucket.x,by+BUCKET_H);
+  grad.addColorStop(0,'#f5c842');grad.addColorStop(1,'#c08000');
+  ctx.fillStyle=grad;
+  ctx.beginPath();ctx.roundRect(bucket.x,by,BUCKET_W,BUCKET_H,4);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.25)';ctx.fillRect(bucket.x+4,by+2,BUCKET_W-8,4);
+  // "CATCH" label on bucket
+  ctx.fillStyle='rgba(0,0,0,.55)';ctx.font=`bold ${Math.round(BUCKET_H*0.48)}px Inter,sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('FREE BALL',bucket.x+BUCKET_W/2,by+BUCKET_H/2+1);
+  // Ball
+  if(ball){
+    ctx.shadowColor='rgba(255,255,255,.9)';ctx.shadowBlur=10;
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  // FREE BALL splash
+  if(freeBallSplash>0){
+    freeBallSplash--;
+    const t=freeBallSplash/80; // 1→0 as it fades
+    const phase=freeBallSplash>50?'rise':freeBallSplash>20?'hold':'fade';
+    const progress=freeBallSplash>50?(80-freeBallSplash)/30:freeBallSplash>20?1:freeBallSplash/20;
+    const y=H-PAD_Y_OFF_SPLASH-40+(phase==='rise'?20*(1-progress):phase==='hold'?0:0);
+    const alpha=phase==='fade'?progress:Math.min(1,progress*3);
+    const scale=phase==='rise'?0.6+0.4*progress:1;
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.translate(W/2,y);ctx.scale(scale,scale);
+    // Glow behind text
+    ctx.fillStyle='rgba(245,200,66,.2)';
+    ctx.beginPath();ctx.ellipse(0,0,110,32,0,0,Math.PI*2);ctx.fill();
+    // Text
+    ctx.fillStyle='#f5c842';
+    ctx.font='bold 28px "Playfair Display",serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.shadowColor='rgba(245,200,66,.8)';ctx.shadowBlur=16;
+    ctx.fillText('FREE BALL!',0,0);
+    ctx.shadowBlur=0;
+    // Subtext
+    ctx.fillStyle='rgba(255,255,255,.8)';
+    ctx.font='bold 12px Inter,sans-serif';
+    ctx.fillText('+1 BALL',0,22);
+    ctx.restore();
+    ctx.globalAlpha=1;
+  }
+}
+
+const PAD_Y_OFF_SPLASH=50; // approx distance from bottom for splash position
+
+cv.addEventListener('mousemove',e=>{
+  const r=cv.getBoundingClientRect();aimX=e.clientX-r.left;aimY=e.clientY-r.top;
+  if(state==='aim')render();
+});
+cv.addEventListener('click',e=>{
+  if(state==='won'){level++;balls=Math.min(balls+2,10);newLevel();return;}
+  if(state==='lost'){balls=10;newLevel();return;}
+  const r=cv.getBoundingClientRect();shoot(e.clientX-r.left,e.clientY-r.top);
+});
+cv.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(state==='won'){level++;balls=Math.min(balls+2,10);newLevel();return;}
+  if(state==='lost'){balls=10;newLevel();return;}
+  const r=cv.getBoundingClientRect();
+  shoot(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);
+},{passive:false});
+cv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const r=cv.getBoundingClientRect();
+  aimX=e.touches[0].clientX-r.left;aimY=e.touches[0].clientY-r.top;
+  if(state==='aim')render();
+},{passive:false});
+
+setInterval(()=>{
+  if(state==='aim'){bucket.x+=bucket.vx;if(bucket.x<0||bucket.x+BUCKET_W>W)bucket.vx*=-1;render();}
+},16);
+
+newGame();
+
+function makePegs(){
+  const p=[];
+  // Grid of pegs with some orange
+  const orangeIdxs=new Set();
+  while(orangeIdxs.size<ORANGE_COUNT)orangeIdxs.add(Math.floor(Math.random()*80));
+  let idx=0;
+  for(let row=0;row<8;row++){
+    const cols=row%2===0?9:8;
+    const xOff=row%2===0?20:40;
+    for(let col=0;col<cols;col++){
+      const x=xOff+col*(W-40)/(cols-1||1);
+      const y=90+row*42+Math.random()*10-5;
+      const orange=orangeIdxs.has(idx);
+      p.push({x,y,r:PEG_R,orange,hit:false});
+      idx++;
+    }
+  }
+  return p;
+}
+
+if(!loadPgState())newGame();
+document.getElementById('pg-newbtn').addEventListener('click',()=>{try{sessionStorage.removeItem('pg_state');}catch(e){}newGame();});
+
+// ── Sound System ─────────────────────────────────────────────────────────
+let _ac=null;
+function sac(){
+  if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();
+  if(_ac.state==='suspended')_ac.resume();
+  return _ac;
+}
+
+function sTone(freq,start,dur,vol,type,endFreq){
+  try{
+    const ctx=sac(),t=ctx.currentTime+start;
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type||'sine';
+    o.frequency.setValueAtTime(freq,t);
+    if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,t+dur);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||0.15,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g);g.connect(ctx.destination);
+    o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
+}
+
+function sNoise(start,dur,fc,Q,vol){
+  try{
+    const ctx=sac(),t=ctx.currentTime+start;
+    const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*0.5));
+    const src=ctx.createBufferSource();src.buffer=buf;
+    const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=fc||800;f.Q.value=Q||3;
+    const g=ctx.createGain();g.gain.setValueAtTime(vol||0.1,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    src.connect(f);f.connect(g);g.connect(ctx.destination);
+    src.start(t);src.stop(t+dur+0.05);
+  }catch(e){}
+}
+
+// peg hit counter — tracks hits in current ball flight for pitch progression
+let pegHitCount=0;
+
+function sPegHit(isOrange){
+  // Pitch climbs with each hit for satisfying combo feel
+  const base=isOrange?520:280;
+  const pitch=base+pegHitCount*28;
+  const dur=isOrange?0.18:0.12;
+  const vol=isOrange?0.22:0.12;
+  sTone(pitch,0,dur,vol,'triangle',pitch*(isOrange?1.4:1.25));
+  if(isOrange){
+    // Orange peg extra shimmer
+    sTone(pitch*1.5,0.01,0.14,0.08,'sine');
+  }
+  pegHitCount++;
+}
+
+function sLaunch(){
+  pegHitCount=0; // reset combo pitch counter each shot
+  sNoise(0,0.06,3000,5,0.15);
+  sTone(180,0,0.12,0.08,'sawtooth',90);
+}
+
+function sFreeBall(){
+  // Rising arpeggio — free ball fanfare
+  [523,659,784,1047,1319].forEach((f,i)=>sTone(f,i*0.07,0.2,0.18+(i*0.02),'sine'));
+  sTone(1568,0.38,0.4,0.25,'sine');
+}
+
+function sBallLost(){
+  // Sad descending wah
+  sTone(330,0,0.15,0.15,'sawtooth',220);
+  sTone(220,0.1,0.2,0.12,'sawtooth',150);
+  sTone(150,0.25,0.3,0.1,'sawtooth',100);
+  sNoise(0,0.4,400,2,0.08);
+}
+
+function sLastBall(){
+  // Warning pulse — last ball remaining
+  sTone(440,0,0.1,0.15,'square');
+  sTone(440,0.15,0.1,0.15,'square');
+  sTone(660,0.3,0.15,0.2,'square');
+}
+
+function sLevelWin(){
+  // Ode to Joy-inspired ascending fanfare
+  const notes=[
+    [330,0],[330,0.12],[349,0.24],[392,0.36],
+    [392,0.48],[349,0.6],[330,0.72],[294,0.84],
+    [262,0.96],[262,1.08],[294,1.2],[330,1.32],
+    [330,1.54],[294,1.66],[294,1.88]
+  ];
+  notes.forEach(([f,t])=>sTone(f,t,0.16,0.2,'sine'));
+  // Harmony line
+  notes.forEach(([f,t])=>sTone(f*1.26,t+0.02,0.13,0.08,'sine'));
+  // Final chord swell
+  [392,494,587,784].forEach((f,i)=>sTone(f,2.1+i*0.04,0.7,0.18,'sine'));
+}
+
+function sGameOver(){
+  sTone(220,0,0.3,0.15,'sawtooth',140);
+  sTone(175,0.25,0.3,0.12,'sawtooth',120);
+  sTone(140,0.5,0.5,0.1,'sawtooth',80);
+}
+
+function sOrangeCleared(){
+  // Little sparkle when last orange peg is hit
+  [880,1047,1319,1568,2093].forEach((f,i)=>sTone(f,i*0.05,0.15,0.15,'sine'));
+}
+</script>
+</body>
+</html>

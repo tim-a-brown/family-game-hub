@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Yahtzee</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 60% 0%,#2a1a0a 0%,#0d1117 65%);}
+/* Setup */
+.cnt-row{display:flex;gap:6px;justify-content:center;margin-bottom:14px;}
+.cnt-btn{width:42px;height:42px;border-radius:10px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:1rem;font-weight:700;cursor:pointer;touch-action:manipulation;}
+.cnt-btn.active{border-color:var(--gold);background:rgba(245,200,66,.15);color:var(--gold);}
+/* Dice */
+.dice-row{display:flex;justify-content:center;gap:8px;margin:12px 0;}
+.die{width:clamp(50px,13vw,62px);height:clamp(50px,13vw,62px);background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:clamp(1.5rem,5.5vw,2rem);cursor:pointer;transition:all .2s;user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.die.kept{border-color:var(--gold);background:rgba(245,200,66,.15);}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg) scale(1.1)}75%{transform:rotate(12deg) scale(1.1)}}
+.die.rolling{animation:shake .25s ease-out;}
+/* Player tabs */
+.player-tabs{display:flex;gap:0;overflow-x:auto;border-bottom:2px solid rgba(255,255,255,.08);margin-bottom:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.player-tabs::-webkit-scrollbar{display:none;}
+.ptab{flex:0 0 auto;padding:9px 14px;border:none;border-bottom:3px solid transparent;background:transparent;color:var(--muted);font-size:.82rem;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .15s;margin-bottom:-2px;white-space:nowrap;}
+.ptab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.ptab.done-player{color:var(--green);border-bottom-color:var(--green);}
+/* Turn banner */
+.turn-banner{text-align:center;padding:10px;border-radius:10px;margin-bottom:12px;font-weight:700;font-size:.95rem;}
+/* Scorecard */
+.sc-section-lbl{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 10px;background:rgba(255,255,255,.03);border-radius:5px;margin:5px 0 3px;}
+.sc-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .15s;border:1px solid transparent;min-height:42px;touch-action:manipulation;}
+.sc-row:hover:not(.used):not(.locked){background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);}
+.sc-row.possible{background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.22);}
+.sc-row.used{opacity:.5;cursor:default;}
+.sc-row.locked{cursor:default;}
+.sc-name{flex:1;font-size:.85rem;font-weight:600;}
+.sc-desc{font-size:.68rem;color:var(--muted);}
+.sc-val{font-family:var(--serif);font-size:1.15rem;font-weight:900;min-width:34px;text-align:right;}
+.sc-val.possible{color:var(--gold);}
+.sc-bonus{display:flex;justify-content:space-between;padding:7px 10px;color:var(--muted);font-size:.78rem;}
+.sc-total{display:flex;justify-content:space-between;padding:10px;background:rgba(245,200,66,.09);border:1px solid rgba(245,200,66,.22);border-radius:8px;font-weight:700;margin-top:6px;}
+/* Summary table */
+.summary-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.summary-table th{color:var(--muted);font-size:.7rem;font-weight:700;padding:7px 8px;text-align:left;border-bottom:1px solid var(--border);}
+.summary-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.04);}
+.summary-table tr.total-row td{font-weight:800;color:var(--gold);border-top:1px solid rgba(255,255,255,.12);border-bottom:none;}
+/* End */
+.winner-card{text-align:center;background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:16px;padding:22px;max-width:340px;margin:16px auto;}
+.winner-card .wname{font-family:var(--serif);font-size:1.8rem;font-weight:900;color:#0f2d1a;}
+.winner-card .wsub{color:#3a2000;font-size:.88rem;font-weight:600;margin-top:4px;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Yahtzee</span></nav>
+<div class="page" style="padding-bottom:60px;">
+
+<!-- SETUP -->
+<div id="setup">
+  <h2 style="font-family:var(--serif);font-size:1.5rem;text-align:center;margin-bottom:16px;">Yahtzee</h2>
+  <div style="font-weight:700;margin-bottom:8px;text-align:center;">Number of Players</div>
+  <div class="cnt-row" id="cnt-row">
+    <button class="cnt-btn active" data-n="1">1</button>
+    <button class="cnt-btn" data-n="2">2</button>
+    <button class="cnt-btn" data-n="3">3</button>
+    <button class="cnt-btn" data-n="4">4</button>
+    <button class="cnt-btn" data-n="5">5</button>
+    <button class="cnt-btn" data-n="6">6</button>
+    <button class="cnt-btn" data-n="7">7</button>
+    <button class="cnt-btn" data-n="8">8</button>
+  </div>
+  <div id="name-inputs" style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;max-width:340px;margin-left:auto;margin-right:auto;"></div>
+  <div style="max-width:340px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+      <label class="toggle-switch" style="flex-shrink:0;position:relative;width:44px;height:24px;"><input type="checkbox" id="scorecard-mode-toggle" style="opacity:0;width:0;height:0;"><span style="position:absolute;inset:0;background:rgba(255,255,255,.12);border-radius:12px;cursor:pointer;transition:.2s;"></span><span id="toggle-knob" style="position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;"></span></label>
+      <div>
+        <div style="font-size:.85rem;font-weight:700;">Scorecard Only</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">Track scores for real-world dice rolls — no digital dice</div>
+      </div>
+    </div>
+    <button class="btn btn-gold btn-block" id="start-btn">Start Game →</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="hidden">
+  <div id="player-tabs" class="player-tabs"></div>
+  <div id="turn-banner" class="turn-banner"></div>
+
+  <!-- Dice area (hidden when viewing other players' cards) -->
+  <div id="dice-area">
+    <div class="dice-row" id="dice-row"></div>
+    <button class="btn btn-gold btn-block" id="roll-btn" style="max-width:280px;display:block;margin:0 auto 6px;">🎲 Roll Dice</button>
+    <div style="text-align:center;color:var(--muted);font-size:.82rem;margin-bottom:12px;" id="rolls-left">3 rolls remaining</div>
+  </div>
+
+  <!-- Scorecard for viewed player -->
+  <div id="scorecard"></div>
+</div>
+
+<!-- END -->
+<div id="endscreen" class="hidden">
+  <div id="winner-area"></div>
+  <div class="card" style="max-width:500px;margin:0 auto 16px;">
+    <div class="card-title">Final Scores</div>
+    <div id="final-table"></div>
+  </div>
+  <div style="text-align:center;">
+    <button class="btn btn-gold" id="play-again-btn">Play Again</button>
+    <button class="btn btn-outline" id="new-setup-btn" style="margin-left:8px;">Change Players</button>
+  </div>
+</div>
+
+</div>
+<script>
+'use strict';
+const FACES=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c','#f472b6','#34d399'];
+const P_NAMES_DEF=['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6','Player 7','Player 8'];
+
+const CATS=[
+  {id:'ones',  name:'Ones',  desc:'Sum of 1s', upper:true, calc:d=>d.filter(v=>v===1).reduce((a,b)=>a+b,0)},
+  {id:'twos',  name:'Twos',  desc:'Sum of 2s', upper:true, calc:d=>d.filter(v=>v===2).reduce((a,b)=>a+b,0)},
+  {id:'threes',name:'Threes',desc:'Sum of 3s', upper:true, calc:d=>d.filter(v=>v===3).reduce((a,b)=>a+b,0)},
+  {id:'fours', name:'Fours', desc:'Sum of 4s', upper:true, calc:d=>d.filter(v=>v===4).reduce((a,b)=>a+b,0)},
+  {id:'fives', name:'Fives', desc:'Sum of 5s', upper:true, calc:d=>d.filter(v=>v===5).reduce((a,b)=>a+b,0)},
+  {id:'sixes', name:'Sixes', desc:'Sum of 6s', upper:true, calc:d=>d.filter(v=>v===6).reduce((a,b)=>a+b,0)},
+  {id:'3kind', name:'Three of a Kind', desc:'3 alike → sum all', calc:d=>{const c=cnt(d);return Object.values(c).some(v=>v>=3)?d.reduce((a,b)=>a+b,0):0;}},
+  {id:'4kind', name:'Four of a Kind',  desc:'4 alike → sum all', calc:d=>{const c=cnt(d);return Object.values(c).some(v=>v>=4)?d.reduce((a,b)=>a+b,0):0;}},
+  {id:'fh',    name:'Full House',      desc:'3+2 → 25',          calc:d=>{const c=Object.values(cnt(d)).sort();return JSON.stringify(c)==='[2,3]'?25:0;}},
+  {id:'sm',    name:'Small Straight',  desc:'4 in a row → 30',   calc:d=>{const u=[...new Set(d)].sort((a,b)=>a-b);for(let s=1;s<=3;s++)if(u.includes(s)&&u.includes(s+1)&&u.includes(s+2)&&u.includes(s+3))return 30;return 0;}},
+  {id:'lg',    name:'Large Straight',  desc:'5 in a row → 40',   calc:d=>{const u=[...new Set(d)].sort((a,b)=>a-b);return(JSON.stringify(u)==='[1,2,3,4,5]'||JSON.stringify(u)==='[2,3,4,5,6]')?40:0;}},
+  {id:'yahtzee',name:'Yahtzee!',       desc:'All 5 alike → 50',  calc:d=>Object.values(cnt(d)).some(v=>v===5)?50:0},
+  {id:'chance',name:'Chance',          desc:'Sum of all dice',    calc:d=>d.reduce((a,b)=>a+b,0)},
+];
+function cnt(d){const c={};d.forEach(v=>{c[v]=(c[v]||0)+1;});return c;}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let numP, pNames, pStates; // [{dice,kept,rolls,scored}]
+let curP;          // index of whose turn it is
+let viewP;         // index of whose scorecard we're viewing
+let gameComplete;
+let scorecardMode=false; // no dice, just score entry
+
+function mkPlayerState(){return{dice:[0,0,0,0,0],kept:[false,false,false,false,false],rolls:0,scored:{}};}
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+let setupN=1;
+document.querySelectorAll('.cnt-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    setupN=+b.dataset.n;
+    document.querySelectorAll('.cnt-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    buildNameInputs();
+  });
+});
+
+function buildNameInputs(){
+  const c=document.getElementById('name-inputs');c.innerHTML='';
+  for(let i=0;i<setupN;i++){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;';
+    row.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;background:${COLORS[i]};flex-shrink:0;"></div>
+      <input class="input" placeholder="${P_NAMES_DEF[i]}" id="pname${i}" value="${P_NAMES_DEF[i]}" maxlength="16">`;
+    c.appendChild(row);
+  }
+}
+buildNameInputs();
+
+// Toggle visual feedback
+const togEl=document.getElementById('scorecard-mode-toggle');
+const knob=document.getElementById('toggle-knob');
+togEl.addEventListener('change',()=>{
+  scorecardMode=togEl.checked;
+  knob.style.transform=scorecardMode?'translateX(20px)':'';
+  knob.previousElementSibling.style.background=scorecardMode?'rgba(245,200,66,.4)':'rgba(255,255,255,.12)';
+});
+
+document.getElementById('start-btn').addEventListener('click',()=>{
+  scorecardMode=togEl.checked;
+  numP=setupN;
+  pNames=Array.from({length:numP},(_,i)=>document.getElementById('pname'+i).value.trim()||P_NAMES_DEF[i]);
+  pStates=Array.from({length:numP},mkPlayerState);
+  curP=0;viewP=0;gameComplete=false;
+  show('game');hide('setup');hide('endscreen');
+  startTurn();
+});
+
+// ── Turn management ────────────────────────────────────────────────────────
+function startTurn(){
+  const ps=pStates[curP];
+  ps.dice=[0,0,0,0,0];ps.kept=[false,false,false,false,false];ps.rolls=0;
+  viewP=curP;
+  renderTabs();renderDiceArea();renderScorecard();renderTurnBanner();
+  document.getElementById('roll-btn').disabled=false;
+  document.getElementById('rolls-left').textContent='3 rolls remaining';
+}
+
+function renderTurnBanner(){
+  const el=document.getElementById('turn-banner');
+  const isDone=Object.keys(pStates[curP].scored).length===13;
+  if(gameComplete){el.style.display='none';return;}
+  el.style.display='';
+  if(viewP===curP){
+    el.style.background=`${COLORS[curP]}18`;
+    el.style.border=`1px solid ${COLORS[curP]}44`;
+    el.style.color=COLORS[curP];
+    el.textContent=`${pNames[curP]}'s turn`;
+  } else {
+    el.style.background='rgba(255,255,255,.04)';
+    el.style.border='1px solid rgba(255,255,255,.1)';
+    el.style.color='var(--muted)';
+    el.textContent=`Viewing ${pNames[viewP]}'s scorecard (${pNames[curP]}'s turn)`;
+  }
+}
+
+function renderTabs(){
+  const el=document.getElementById('player-tabs');el.innerHTML='';
+  pNames.forEach((nm,i)=>{
+    const t=document.createElement('button');
+    const isDone=Object.keys(pStates[i].scored).length===13;
+    t.className='ptab'+(i===viewP?' active':'')+(isDone?' done-player':'');
+    t.textContent=nm+(isDone?' ✓':'');
+    t.addEventListener('click',()=>{viewP=i;renderTabs();renderDiceArea();renderScorecard();renderTurnBanner();});
+    el.appendChild(t);
+  });
+  if(numP>1){
+    const scores=document.createElement('button');
+    scores.className='ptab'+(viewP===-1?' active':'');
+    scores.textContent='📊 Scores';
+    scores.addEventListener('click',()=>{viewP=-1;renderTabs();renderDiceArea();renderScorecard();renderTurnBanner();});
+    el.appendChild(scores);
+  }
+}
+
+function renderDiceArea(){
+  const area=document.getElementById('dice-area');
+  area.style.display=(viewP===curP&&!gameComplete&&!scorecardMode)?'block':'none';
+}
+
+// ── Scorecard-only direct score entry ──────────────────────────────────────
+function promptScoreEntry(cat){
+  if(!scorecardMode)return false; // not in scorecard mode
+  const ps=pStates[curP];
+  if(ps.scored[cat.id]!==undefined)return true; // already scored
+  const raw=prompt(`${pNames[curP]}: enter score for ${cat.name}`,'');
+  if(raw===null)return true; // cancelled
+  const val=parseInt(raw);
+  if(isNaN(val)||val<0)return true; // invalid
+  ps.scored[cat.id]=val;
+  advanceTurnIfDone();
+  renderScorecard();renderTabs();renderTurnBanner();
+  return true;
+}
+
+// ── Dice ───────────────────────────────────────────────────────────────────
+function renderDiceRow(){
+  const ps=pStates[curP];
+  const row=document.getElementById('dice-row');row.innerHTML='';
+  ps.dice.forEach((v,i)=>{
+    const d=document.createElement('div');
+    d.className='die'+(ps.kept[i]?' kept':'');
+    d.textContent=v?FACES[v]:'?';
+    if(ps.rolls>0&&v){d.addEventListener('click',()=>{sKeep(); ps.kept[i]=!ps.kept[i];renderDiceRow();});}
+    row.appendChild(d);
+  });
+}
+
+document.getElementById('roll-btn').addEventListener('click',()=>{
+  const ps=pStates[curP];
+  if(ps.rolls>=3)return;
+  sRoll();
+  ps.dice=ps.dice.map((v,i)=>ps.kept[i]?v:Math.ceil(Math.random()*6));
+  ps.rolls++;
+  // Animate rolling dice
+  document.querySelectorAll('.die').forEach((el,i)=>{
+    if(!ps.kept[i]){el.classList.add('rolling');setTimeout(()=>el.classList.remove('rolling'),250);}
+  });
+  setTimeout(()=>{
+    renderDiceRow();renderScorecard();
+    document.getElementById('rolls-left').textContent=ps.rolls>=3?'No rolls left — score a category!':`${3-ps.rolls} roll${3-ps.rolls===1?'':'s'} remaining`;
+    document.getElementById('roll-btn').disabled=ps.rolls>=3;
+  },260);
+});
+
+// ── Scorecard ──────────────────────────────────────────────────────────────
+function calcTotal(pi){
+  const sc=pStates[pi].scored;
+  const upper=CATS.filter(c=>c.upper).reduce((s,c)=>s+(sc[c.id]||0),0);
+  const bonus=upper>=63?35:0;
+  const lower=CATS.filter(c=>!c.upper).reduce((s,c)=>s+(sc[c.id]||0),0);
+  return upper+bonus+lower;
+}
+
+function renderScorecard(){
+  const sc_el=document.getElementById('scorecard');
+
+  if(viewP===-1){
+    // Summary view
+    renderSummary(sc_el);return;
+  }
+
+  const pi=viewP;
+  const ps=pStates[pi];
+  const isActive=pi===curP&&!gameComplete;
+  const dice=isActive&&ps.rolls>0?ps.dice:null;
+  const sc=ps.scored;
+  sc_el.innerHTML='';
+
+  // Upper section
+  const ul=document.createElement('div');ul.className='sc-section-lbl';ul.textContent='Upper Section';sc_el.appendChild(ul);
+  let upperSum=0;
+  CATS.filter(c=>c.upper).forEach(cat=>{
+    if(sc[cat.id]!==undefined)upperSum+=sc[cat.id];
+    sc_el.appendChild(makeScRow(cat,pi,dice,isActive));
+  });
+  const bonus=upperSum>=63?35:0;
+  const bonusDiv=document.createElement('div');bonusDiv.className='sc-bonus';
+  bonusDiv.innerHTML=`<span>Bonus (need 63): ${upperSum}/63</span><span style="color:${bonus?'var(--gold)':'var(--muted)'}">${bonus?'+35':upperSum>0?`need ${63-upperSum} more`:'—'}</span>`;
+  sc_el.appendChild(bonusDiv);
+
+  // Lower section
+  const ll=document.createElement('div');ll.className='sc-section-lbl';ll.textContent='Lower Section';sc_el.appendChild(ll);
+  CATS.filter(c=>!c.upper).forEach(cat=>{
+    sc_el.appendChild(makeScRow(cat,pi,dice,isActive));
+  });
+
+  const total=calcTotal(pi);
+  const tot=document.createElement('div');tot.className='sc-total mt-8';
+  tot.innerHTML=`<span>Total</span><span style="color:var(--gold);font-family:var(--serif);font-size:1.25rem">${total}</span>`;
+  sc_el.appendChild(tot);
+
+  if(isActive)renderDiceRow();
+}
+
+function makeScRow(cat,pi,dice,isActive){
+  const ps=pStates[pi];
+  const sc=ps.scored;
+  const row=document.createElement('div');
+  if(sc[cat.id]!==undefined){
+    row.className='sc-row used';
+    row.innerHTML=`<div><div class="sc-name">${cat.name}</div></div><div class="sc-val">${sc[cat.id]}</div>`;
+  } else {
+    const poss=dice?cat.calc(dice):null;
+    row.className='sc-row'+(poss!==null?' possible':'')+(isActive?'':' locked');
+    row.innerHTML=`<div><div class="sc-name">${cat.name}</div><div class="sc-desc">${cat.desc}</div></div><div class="sc-val ${poss!==null?'possible':''}">${poss!==null?poss:'—'}</div>`;
+    if(isActive){
+      if(poss!==null){
+        row.addEventListener('click',()=>scoreCategory(pi,cat.id,poss));
+      } else if(scorecardMode&&pi===curP){
+        // In scorecard-only mode: clicking unscored row prompts for value
+        row.className='sc-row possible';
+        row.querySelector('.sc-val').textContent='tap';
+        row.querySelector('.sc-val').style.fontSize='.72rem';
+        row.querySelector('.sc-val').style.color='rgba(255,255,255,.4)';
+        row.addEventListener('click',()=>promptScoreEntry(cat));
+      }
+    }
+  }
+  return row;
+}
+
+function advanceTurnIfDone(){
+  const ps=pStates[curP];
+  if(Object.keys(ps.scored).length<13)return; // not done yet
+  let found=false;
+  for(let i=0;i<numP;i++){
+    const ni=(curP+1+i)%numP;
+    if(Object.keys(pStates[ni].scored).length<13){curP=ni;found=true;break;}
+  }
+  if(!found){endGame();}else{startTurn();}
+}
+
+function scoreCategory(pi,id,val){
+  if(val===50&&id==='yahtzee')sYahtzee();else sScore();
+  if(pi!==curP)return;
+  pStates[pi].scored[id]=val;
+  pStates[pi].dice=[0,0,0,0,0];
+  pStates[pi].kept=[false,false,false,false,false];
+  pStates[pi].rolls=0;
+  document.getElementById('roll-btn').disabled=false;
+  document.getElementById('rolls-left').textContent='3 rolls remaining';
+
+  // All 13 categories done for this player?
+  if(Object.keys(pStates[pi].scored).length===13){
+    // Find next player who hasn't finished
+    let next=(curP+1)%numP;
+    let found=false;
+    for(let i=0;i<numP;i++){
+      const ni=(curP+1+i)%numP;
+      if(Object.keys(pStates[ni].scored).length<13){curP=ni;found=true;break;}
+    }
+    if(!found){endGame();return;}
+  } else {
+    curP=(curP+1)%numP;
+    // Wrap to next player who hasn't finished
+    for(let i=0;i<numP;i++){
+      if(Object.keys(pStates[curP].scored).length<13)break;
+      curP=(curP+1)%numP;
+    }
+  }
+  startTurn();
+}
+
+// ── Summary ────────────────────────────────────────────────────────────────
+function renderSummary(el){
+  el.innerHTML='';
+  const tbl=document.createElement('table');tbl.className='summary-table';
+  const hdr=document.createElement('tr');
+  hdr.innerHTML='<th>Category</th>'+pNames.map((n,i)=>`<th style="color:${COLORS[i]}">${n}</th>`).join('');
+  tbl.appendChild(hdr);
+  CATS.forEach(cat=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${cat.name}</td>`+pNames.map((_,i)=>{
+      const v=pStates[i].scored[cat.id];
+      return`<td style="text-align:right">${v!==undefined?v:'—'}</td>`;
+    }).join('');
+    tbl.appendChild(tr);
+  });
+  // Totals
+  const tr=document.createElement('tr');tr.className='total-row';
+  tr.innerHTML=`<td>Total</td>`+pNames.map((_,i)=>`<td style="text-align:right">${calcTotal(i)}</td>`).join('');
+  tbl.appendChild(tr);
+  el.appendChild(tbl);
+}
+
+// ── End game ───────────────────────────────────────────────────────────────
+function endGame(){
+  sWin();
+  gameComplete=true;
+  const totals=pNames.map((_,i)=>calcTotal(i));
+  const maxScore=Math.max(...totals);
+  const winners=totals.map((t,i)=>t===maxScore?i:-1).filter(i=>i>=0);
+  hide('game');show('endscreen');
+
+  const wa=document.getElementById('winner-area');
+  if(numP===1){
+    wa.innerHTML=`<div class="winner-card"><div style="font-size:2rem;margin-bottom:8px;">🎲</div><div class="wname">Score: ${totals[0]}</div><div class="wsub">${totals[0]>=300?'Excellent!':totals[0]>=200?'Great game!':'Keep practicing!'}</div></div>`;
+  } else if(winners.length===1){
+    wa.innerHTML=`<div class="winner-card"><div style="font-size:2rem;margin-bottom:8px;">🏆</div><div class="wname">${pNames[winners[0]]} wins!</div><div class="wsub">${maxScore} points</div></div>`;
+  } else {
+    wa.innerHTML=`<div class="winner-card"><div style="font-size:2rem;margin-bottom:8px;">🤝</div><div class="wname">It's a tie!</div><div class="wsub">${winners.map(i=>pNames[i]).join(' & ')} — ${maxScore} pts each</div></div>`;
+  }
+
+  // Final table
+  const ft=document.getElementById('final-table');
+  const rows=pNames.map((nm,i)=>`<tr><td><span style="color:${COLORS[i]}">${nm}</span></td><td style="text-align:right;font-family:var(--serif);font-size:1.1rem;font-weight:900;color:${COLORS[i]}">${totals[i]}</td><td style="text-align:right;color:var(--muted);font-size:.8rem">${i===winners[0]?'🏆':''}</td></tr>`).join('');
+  ft.innerHTML=`<table class="summary-table"><tr><th>Player</th><th style="text-align:right">Score</th><th></th></tr>${rows}</table>`;
+}
+
+document.getElementById('play-again-btn').addEventListener('click',()=>{
+  pStates=Array.from({length:numP},mkPlayerState);
+  curP=0;viewP=0;gameComplete=false;
+  hide('endscreen');show('game');startTurn();
+});
+document.getElementById('new-setup-btn').addEventListener('click',()=>{
+  hide('endscreen');show('setup');
+});
+
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+
+// ── Sound ────────────────────────────────────────────────────────────────────
+let _ac=null,_muted=false;
+function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function sTone(freq,start,dur,vol,type,ramp){
+  const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
+  if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+}
+function sNoise(start,dur,fc,q,vol,decay){
+  const ctx=sac(),t=ctx.currentTime+start;
+  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
+  const src=ctx.createBufferSource();src.buffer=buf;
+  const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
+  const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
+}
+function sWin(){if(_muted)return;[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
+function sLose(){if(_muted)return;[400,320,240].forEach((f,i)=>sTone(f,i*.1,.35,.18,'triangle'));}
+function sClick(pitch){if(_muted)return;sNoise(0,.035,pitch||900,5,.15,.15);}
+function sDing(freq,vol){if(_muted)return;sTone(freq||660,0,.35,vol||.18);}
+
+function sRoll(){if(_muted)return;sNoise(0,.18,300,1,.25,.3);sNoise(.04,.15,800,3,.15,.2);}
+function sKeep(){if(_muted)return;sClick(1200);}
+function sScore(){if(_muted)return;sDing(880,.16);sDing(1108,.12,.08);}
+function sYahtzee(){if(_muted)return;[523,659,784,1047,1319].forEach((f,i)=>{sTone(f,i*.07,.5,.22);sTone(f*2,i*.07,.5,.08);});}
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_yahtzee(){if(gameComplete)return;
+  try{sessionStorage.setItem('yahtzee',JSON.stringify({numP,pNames,pStates,curP,gameComplete,scorecardMode,_ts:Date.now()}));}catch(e){}
+}
+function _load_yahtzee(){
+  try{
+    const raw=sessionStorage.getItem('yahtzee');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    numP=s.numP;pNames=s.pNames;pStates=s.pStates;curP=s.curP;gameComplete=s.gameComplete||false;scorecardMode=s.scorecardMode||false;viewP=curP;
+    show('game');hide('setup');hide('endscreen');renderTabs();renderDiceArea();renderScorecard();renderTurnBanner();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_yahtzee);
+document.getElementById('new-setup-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('yahtzee');}catch(e){}},true);
+document.getElementById('play-again-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('yahtzee');}catch(e){}},true);
+_load_yahtzee();
+</script>
+</body>
+</html>

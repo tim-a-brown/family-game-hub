@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Breakout</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../arcade-hi.js"></script>
+<style>
+body{background:#050a14;overflow:hidden;touch-action:none;}
+#cv{display:block;margin:0 auto;touch-action:none;}
+.hud{display:flex;justify-content:space-between;align-items:center;padding:4px 10px;max-width:480px;margin:0 auto;}
+.hud-stat{text-align:center;}
+.hud-val{font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);}
+.hud-lbl{font-size:.58rem;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;}
+.life{display:inline-block;width:10px;height:10px;background:#5ac8fa;border-radius:50%;margin:0 2px;box-shadow:0 0 5px #5ac8fa;}
+.dpad-row{display:flex;gap:8px;justify-content:center;padding:6px 0;}
+.dpad-btn{width:72px;height:44px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:rgba(255,255,255,.7);font-size:1.3rem;cursor:pointer;touch-action:manipulation;user-select:none;display:flex;align-items:center;justify-content:center;}
+.dpad-btn:active{background:rgba(255,255,255,.2);}
+</style>
+</head>
+<body>
+<nav class="site-nav" style="background:rgba(0,0,0,.5);">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Breakout</span>
+  <button onclick="ArcadeHi.show('breakout','Breakout')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
+</nav>
+<div class="hud">
+  <div class="hud-stat"><div class="hud-val" id="hud-score">0</div><div class="hud-lbl">Score</div></div>
+  <div class="hud-stat"><div class="hud-val" id="hud-level">1</div><div class="hud-lbl">Level</div></div>
+  <div class="hud-stat" id="hud-lives-wrap"><div class="hud-lbl" style="margin-bottom:2px;">Lives</div><div id="hud-lives"></div></div>
+</div>
+<canvas id="cv"></canvas>
+<div class="dpad-row" id="dpad" style="display:none;">
+  <button class="dpad-btn" id="btn-left">◀</button>
+  <button class="dpad-btn" id="btn-right">▶</button>
+</div>
+<script>
+'use strict';
+// ── Canvas setup ──────────────────────────────────────────────────────────
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+const isMobile=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
+
+function resize(){
+  const maxW=Math.min(480,window.innerWidth);
+  const navH=document.querySelector('.site-nav').offsetHeight;
+  const hudH=document.querySelector('.hud').offsetHeight;
+  const dpadH=isMobile?60:0;
+  const avail=window.innerHeight-navH-hudH-dpadH-8;
+  cv.width=maxW;
+  cv.height=Math.min(Math.round(maxW*1.4),avail);
+  if(isMobile)document.getElementById('dpad').style.display='flex';
+}
+resize();
+window.addEventListener('resize',()=>{resize();if(state!=='play')render();});
+
+// ── Constants ─────────────────────────────────────────────────────────────
+const W=()=>cv.width,H=()=>cv.height;
+const PAD_H=22,PAD_Y_OFF=30;
+const BALL_R=6;
+const BRICK_H=18,BRICK_GAP=3;
+const COLS=10;
+const LIVES_START=3;
+
+// ── Colors ────────────────────────────────────────────────────────────────
+const TIER_COLOR=[
+  null,
+  '#ef4444','#f97316','#f5c842','#22c55e','#5ac8fa',
+  '#818cf8','#c084fc','#ec4899','#ffffff','#f0abfc'
+];
+const TIER_PTS=[0,10,20,30,40,50,60,70,80,100,120];
+
+// ── Level layouts ─────────────────────────────────────────────────────────
+// Each cell: 0=empty, 1-9=tier(color+points), negative=indestructible
+const LEVELS=[
+  // 1 — Simple stripes
+  [
+    [0,0,0,0,0,0,0,0,0,0],
+    [1,1,1,1,1,1,1,1,1,1],
+    [2,2,2,2,2,2,2,2,2,2],
+    [3,3,3,3,3,3,3,3,3,3],
+    [2,2,2,2,2,2,2,2,2,2],
+    [1,1,1,1,1,1,1,1,1,1],
+  ],
+  // 2 — Checkerboard
+  [
+    [1,0,2,0,3,0,3,0,2,0],
+    [0,2,0,3,0,4,0,3,0,1],
+    [1,0,3,0,4,0,4,0,3,0],
+    [0,3,0,4,0,5,0,4,0,2],
+    [2,0,4,0,5,0,5,0,4,0],
+    [0,2,0,3,0,4,0,3,0,1],
+  ],
+  // 3 — Diamond
+  [
+    [0,0,0,0,3,3,0,0,0,0],
+    [0,0,0,3,4,4,3,0,0,0],
+    [0,0,3,4,5,5,4,3,0,0],
+    [0,3,4,5,6,6,5,4,3,0],
+    [0,0,3,4,5,5,4,3,0,0],
+    [0,0,0,3,4,4,3,0,0,0],
+    [0,0,0,0,3,3,0,0,0,0],
+  ],
+  // 4 — Fortress with walls
+  [
+    [-1,3,3,3,3,3,3,3,3,-1],
+    [-1,0,0,0,0,0,0,0,0,-1],
+    [-1,4,4,0,5,5,0,4,4,-1],
+    [-1,4,4,0,5,5,0,4,4,-1],
+    [-1,0,0,0,0,0,0,0,0,-1],
+    [2,2,2,2,2,2,2,2,2,2],
+    [1,1,1,1,1,1,1,1,1,1],
+  ],
+  // 5 — Pyramid
+  [
+    [0,0,0,0,5,5,0,0,0,0],
+    [0,0,0,4,4,4,4,0,0,0],
+    [0,0,3,3,3,3,3,3,0,0],
+    [0,2,2,2,2,2,2,2,2,0],
+    [1,1,1,1,1,1,1,1,1,1],
+    [2,2,2,2,2,2,2,2,2,2],
+  ],
+  // 6 — X pattern
+  [
+    [6,0,0,0,5,5,0,0,0,6],
+    [0,6,0,5,0,0,5,0,6,0],
+    [0,0,6,0,0,0,0,6,0,0],
+    [0,5,0,6,0,0,6,0,5,0],
+    [5,0,0,0,6,6,0,0,0,5],
+    [0,5,0,6,0,0,6,0,5,0],
+    [0,0,6,0,0,0,0,6,0,0],
+    [0,6,0,5,0,0,5,0,6,0],
+  ],
+  // 7 — Arrowhead
+  [
+    [0,0,0,0,7,7,0,0,0,0],
+    [0,0,0,6,7,7,6,0,0,0],
+    [0,0,5,6,7,7,6,5,0,0],
+    [0,4,5,6,0,0,6,5,4,0],
+    [3,4,5,0,0,0,0,5,4,3],
+    [3,4,5,6,0,0,6,5,4,3],
+  ],
+  // 8 — Hourglass
+  [
+    [7,7,7,7,7,7,7,7,7,7],
+    [0,7,7,7,7,7,7,7,7,0],
+    [0,0,6,6,6,6,6,6,0,0],
+    [0,0,0,5,5,5,5,0,0,0],
+    [0,0,0,0,4,4,0,0,0,0],
+    [0,0,0,5,5,5,5,0,0,0],
+    [0,0,6,6,6,6,6,6,0,0],
+    [0,7,7,7,7,7,7,7,7,0],
+    [7,7,7,7,7,7,7,7,7,7],
+  ],
+  // 9 — Invaders
+  [
+    [0,1,0,1,0,0,1,0,1,0],
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,3,1,3,1,1,3,1,3,1],
+    [0,3,3,3,0,0,3,3,3,0],
+    [0,0,3,0,0,0,0,3,0,0],
+    [5,5,5,5,5,5,5,5,5,5],
+  ],
+  // 10 — Spiral inward
+  [
+    [5,5,5,5,5,5,5,5,5,5],
+    [5,0,0,0,0,0,0,0,0,5],
+    [5,0,4,4,4,4,4,4,0,5],
+    [5,0,4,0,0,0,0,4,0,5],
+    [5,0,4,0,3,3,0,4,0,5],
+    [5,0,4,0,0,0,0,4,0,5],
+    [5,0,4,4,4,4,4,4,0,5],
+    [5,0,0,0,0,0,0,0,0,5],
+    [5,5,5,5,5,5,5,5,5,5],
+  ],
+  // 11 — Wave rainbow
+  [
+    [1,1,1,2,2,3,3,4,4,5],
+    [1,1,2,2,3,3,4,4,5,5],
+    [1,2,2,3,3,4,4,5,5,6],
+    [2,2,3,3,4,4,5,5,6,6],
+    [2,3,3,4,4,5,5,6,6,7],
+    [3,3,4,4,5,5,6,6,7,7],
+    [3,4,4,5,5,6,6,7,7,8],
+  ],
+  // 12 — Columns
+  [
+    [8,0,7,0,6,6,0,7,0,8],
+    [8,0,7,0,6,6,0,7,0,8],
+    [8,0,7,0,6,6,0,7,0,8],
+    [7,0,6,0,5,5,0,6,0,7],
+    [7,0,6,0,5,5,0,6,0,7],
+    [6,0,5,0,4,4,0,5,0,6],
+    [6,0,5,0,4,4,0,5,0,6],
+    [5,0,4,0,3,3,0,4,0,5],
+  ],
+  // 13 — Dense with obstacles
+  [
+    [-1,6,6,6,-1,6,6,6,-1,0],
+    [6,6,6,6,6,6,6,6,6,6],
+    [6,7,7,7,7,7,7,7,7,6],
+    [-1,7,8,8,8,8,8,7,-1,0],
+    [6,7,8,9,9,9,8,7,6,0],
+    [6,7,8,9,9,9,8,7,6,0],
+    [-1,7,8,8,8,8,8,7,-1,0],
+    [6,7,7,7,7,7,7,7,7,6],
+  ],
+  // 14 — Staircase
+  [
+    [9,0,0,0,0,0,0,0,0,0],
+    [8,8,0,0,0,0,0,0,0,0],
+    [7,7,7,0,0,0,0,0,0,0],
+    [6,6,6,6,0,0,0,0,0,0],
+    [5,5,5,5,5,0,0,0,0,0],
+    [4,4,4,4,4,4,0,0,0,0],
+    [3,3,3,3,3,3,3,0,0,0],
+    [2,2,2,2,2,2,2,2,0,0],
+    [1,1,1,1,1,1,1,1,1,0],
+  ],
+  // 15 — Bullseye
+  [
+    [0,0,0,0,0,0,0,0,0,0],
+    [3,3,3,3,3,3,3,3,3,3],
+    [3,0,0,0,0,0,0,0,0,3],
+    [3,0,5,5,5,5,5,5,0,3],
+    [3,0,5,0,0,0,0,5,0,3],
+    [3,0,5,0,8,8,0,5,0,3],
+    [3,0,5,0,0,0,0,5,0,3],
+    [3,0,5,5,5,5,5,5,0,3],
+    [3,0,0,0,0,0,0,0,0,3],
+    [3,3,3,3,3,3,3,3,3,3],
+  ],
+  // 16 — Dense wall + gaps
+  [
+    [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+    [8,8,8,8,0,0,8,8,8,8],
+    [7,7,7,0,7,7,0,7,7,7],
+    [6,6,0,6,6,6,6,0,6,6],
+    [5,0,5,5,5,5,5,5,0,5],
+    [4,4,4,4,4,4,4,4,4,4],
+    [3,3,3,3,3,3,3,3,3,3],
+    [2,2,2,2,2,2,2,2,2,2],
+  ],
+  // 17 — Maze-like
+  [
+    [7,7,7,7,0,0,7,7,7,7],
+    [7,0,0,7,0,0,7,0,0,7],
+    [7,0,7,7,7,7,7,7,0,7],
+    [7,0,7,0,0,0,0,7,0,7],
+    [7,0,7,0,8,8,0,7,0,7],
+    [7,0,7,0,0,0,0,7,0,7],
+    [7,0,0,0,0,0,0,0,0,7],
+    [7,7,7,7,7,7,7,7,7,7],
+  ],
+  // 18 — Diagonal waves
+  [
+    [9,8,7,6,5,4,3,2,1,0],
+    [0,9,8,7,6,5,4,3,2,1],
+    [1,0,9,8,7,6,5,4,3,2],
+    [2,1,0,9,8,7,6,5,4,3],
+    [3,2,1,0,9,8,7,6,5,4],
+    [4,3,2,1,0,9,8,7,6,5],
+    [5,4,3,2,1,0,9,8,7,6],
+    [6,5,4,3,2,1,0,9,8,7],
+  ],
+  // 19 — Everything at once, dense
+  [
+    [-1,9,9,9,9,9,9,9,9,-1],
+    [9,8,8,8,8,8,8,8,8,9],
+    [9,8,7,7,7,7,7,7,8,9],
+    [9,8,7,6,6,6,6,7,8,9],
+    [9,8,7,6,5,5,6,7,8,9],
+    [9,8,7,6,5,5,6,7,8,9],
+    [9,8,7,6,6,6,6,7,8,9],
+    [9,8,7,7,7,7,7,7,8,9],
+    [9,8,8,8,8,8,8,8,8,9],
+    [-1,9,9,9,9,9,9,9,9,-1],
+  ],
+  // 20 — Grand finale: everything
+  [
+    [-1,9,8,-1,7,7,-1,8,9,-1],
+    [9,9,8,8,7,7,8,8,9,9],
+    [8,8,7,7,6,6,7,7,8,8],
+    [7,7,6,6,5,5,6,6,7,7],
+    [6,6,5,5,4,4,5,5,6,6],
+    [5,5,4,4,3,3,4,4,5,5],
+    [4,4,3,3,2,2,3,3,4,4],
+    [3,3,2,2,1,1,2,2,3,3],
+    [2,2,1,1,0,0,1,1,2,2],
+    [-1,1,1,1,1,1,1,1,1,-1],
+  ],
+];
+
+// ── State ─────────────────────────────────────────────────────────────────
+let state='idle'; // idle | play | paused | won | dead | gameover
+let level=1, score=0, lives=LIVES_START;
+let bricks=[], ball={}, pad={}, particles=[];
+let animId=null;
+let leftHeld=false, rightHeld=false;
+let touchX=null;
+let launchPending=false;
+
+// ── Build level ───────────────────────────────────────────────────────────
+function buildLevel(lvl){
+  const layout=LEVELS[(lvl-1)%LEVELS.length];
+  const rows=layout.length;
+  const bw=Math.floor((W()-BRICK_GAP*(COLS+1))/COLS);
+  const topPad=Math.round(H()*0.08);
+  bricks=[];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<COLS;c++){
+      const t=layout[r][c];
+      if(t===0)continue;
+      const x=BRICK_GAP+(bw+BRICK_GAP)*c;
+      const y=topPad+r*(BRICK_H+BRICK_GAP);
+      const indestructible=t<0;
+      const tier=indestructible?Math.abs(t):t;
+      bricks.push({x,y,w:bw,h:BRICK_H,tier,indestructible,alive:true,pts:indestructible?0:TIER_PTS[tier]||10});
+    }
+  }
+}
+
+function resetBall(){
+  const padW=getPadW();
+  pad.x=W()/2-padW/2;
+  ball.x=W()/2;
+  ball.y=H()-PAD_Y_OFF-PAD_H-BALL_R-2;
+  const spd=getBallSpeed();
+  ball.vx=spd*(Math.random()>0.5?1:-1)*0.5;
+  ball.vy=-spd;
+  ball.speed=spd;
+  launchPending=true;
+}
+
+function getPadW(){return Math.max(50,Math.round(W()*0.22)-level*1.5);}
+function getBallSpeed(){return Math.min(9,4+level*0.35);}
+
+function startLevel(lvl){
+  level=lvl; buildLevel(lvl); resetBall(); particles=[];
+  updateHud(); state='play'; render();
+}
+
+function initGame(){
+  score=0; lives=LIVES_START; level=1;
+  startLevel(1);
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────
+function updateHud(){
+  document.getElementById('hud-score').textContent=score.toLocaleString();
+  document.getElementById('hud-level').textContent=level+'/'+LEVELS.length;
+  const lv=document.getElementById('hud-lives');
+  lv.innerHTML='';
+  for(let i=0;i<lives;i++){const d=document.createElement('span');d.className='life';lv.appendChild(d);}
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────
+function spawnParticles(x,y,color,n=8){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2;
+    const spd=1.5+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:1,color,r:2+Math.random()*2});
+  }
+}
+
+// ── Physics step ─────────────────────────────────────────────────────────
+function step(){
+  if(state!=='play')return;
+  const padW=getPadW();
+
+  // Paddle movement — track velocity for physics
+  const padSpd=7+level*0.3;
+  const prevPadX=pad.x;
+  if(leftHeld)  pad.x=Math.max(0,pad.x-padSpd);
+  if(rightHeld) pad.x=Math.min(W()-padW,pad.x+padSpd);
+
+  // Touch follow
+  if(touchX!==null){
+    const target=touchX-padW/2;
+    const diff=target-pad.x;
+    pad.x+=diff*0.3;
+    pad.x=Math.max(0,Math.min(W()-padW,pad.x));
+  }
+  const padVx=pad.x-prevPadX; // paddle horizontal velocity this frame
+
+  // Ball stuck to paddle until first touch
+  if(launchPending){
+    ball.x=pad.x+padW/2;
+    return;
+  }
+
+  ball.x+=ball.vx; ball.y+=ball.vy;
+
+  // Wall collisions
+  if(ball.x-BALL_R<0){ball.x=BALL_R;ball.vx=Math.abs(ball.vx);}
+  if(ball.x+BALL_R>W()){ball.x=W()-BALL_R;ball.vx=-Math.abs(ball.vx);}
+  if(ball.y-BALL_R<0){ball.y=BALL_R;ball.vy=Math.abs(ball.vy);}
+
+  // Paddle collision — top, side, and corner hits
+  const padY=H()-PAD_Y_OFF-PAD_H;
+  const padLeft=pad.x, padRight=pad.x+padW;
+  const padTop=padY, padBot=padY+PAD_H;
+  const bx=ball.x, by=ball.y+BALL_R; // bottom of ball
+
+  // Top surface hit: ball moving down, bottom of ball in paddle's top band
+  const onTop=ball.vy>0&&by>padTop&&by<padTop+PAD_H+Math.abs(ball.vy)+2
+              &&bx>=padLeft-BALL_R&&bx<=padRight+BALL_R;
+  // Side hit: ball moving into either side of the paddle
+  const hitLeft= ball.vx>0&&ball.x+BALL_R>padLeft&&ball.x+BALL_R<padLeft+8&&ball.y+BALL_R>padTop&&ball.y-BALL_R<padBot;
+  const hitRight=ball.vx<0&&ball.x-BALL_R<padRight&&ball.x-BALL_R>padRight-8&&ball.y+BALL_R>padTop&&ball.y-BALL_R<padBot;
+
+  if(onTop&&bx>=padLeft-BALL_R&&bx<=padRight+BALL_R){
+    ball.y=padTop-BALL_R;
+    // rel: -1=left edge, 0=center, +1=right edge
+    const rel=(ball.x-(pad.x+padW/2))/(padW/2);
+    const clampedRel=Math.max(-1,Math.min(1,rel));
+    const maxAngle=Math.PI*0.38; // max ~68° from vertical
+    // angle measured from straight UP (0 = straight up, positive = rightward)
+    const angle=clampedRel*maxAngle;
+    const paddleInfluence=padVx*0.18;
+    ball.vx=ball.speed*Math.sin(angle)+paddleInfluence;
+    ball.vy=-ball.speed*Math.cos(angle); // cos(0)=1 → always strongly upward at center
+    // Ensure minimum upward velocity so ball never goes horizontal/down
+    const minVY=ball.speed*0.3;
+    if(ball.vy>-minVY)ball.vy=-minVY;
+    // Re-normalise to maintain constant speed
+    const mag=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+    ball.vx=ball.vx/mag*ball.speed;
+    ball.vy=ball.vy/mag*ball.speed;
+    sBounce(0.6);
+  } else if(hitLeft){
+    ball.x=padLeft-BALL_R;ball.vx=-Math.abs(ball.vx);sBounce(0.4);
+  } else if(hitRight){
+    ball.x=padRight+BALL_R;ball.vx=Math.abs(ball.vx);sBounce(0.4);
+  }
+
+  // Ball out of bounds
+  if(ball.y>H()+20){
+    lives--;
+    updateHud();
+    if(lives<=0){
+      state='gameover';
+      ArcadeHi.check('breakout',score,()=>{});
+    } else {
+      state='dead';
+    }
+    return;
+  }
+
+  // Brick collisions
+  for(const b of bricks){
+    if(!b.alive)continue;
+    if(ball.x+BALL_R<b.x||ball.x-BALL_R>b.x+b.w||ball.y+BALL_R<b.y||ball.y-BALL_R>b.y+b.h)continue;
+    if(!b.indestructible){
+      b.alive=false;
+      score+=b.pts*(level);
+      updateHud();
+      spawnParticles(b.x+b.w/2,b.y+b.h/2,TIER_COLOR[b.tier]||'#fff');
+      sBrick();
+    } else {
+      spawnParticles(b.x+b.w/2,b.y+b.h/2,'rgba(255,255,255,.5)',4);
+      sWall();
+    }
+    // Reflect
+    const overlapL=ball.x+BALL_R-b.x;
+    const overlapR=b.x+b.w-(ball.x-BALL_R);
+    const overlapT=ball.y+BALL_R-b.y;
+    const overlapB=b.y+b.h-(ball.y-BALL_R);
+    const minH=Math.min(overlapL,overlapR);
+    const minV=Math.min(overlapT,overlapB);
+    if(minH<minV){
+      ball.vx*=-1;
+      ball.x+=overlapL<overlapR?-(overlapL-BALL_R*0.1):overlapR-BALL_R*0.1;
+    } else {
+      ball.vy*=-1;
+      ball.y+=overlapT<overlapB?-(overlapT-BALL_R*0.1):overlapB-BALL_R*0.1;
+    }
+    break;
+  }
+
+  // Check win
+  if(bricks.filter(b=>!b.indestructible).every(b=>!b.alive)){
+    score+=1000*level; // level clear bonus
+    updateHud();
+    if(level>=LEVELS.length){
+      state='won';
+      ArcadeHi.check('breakout',score,()=>{});
+    } else {
+      state='levelwin';
+    }
+    return;
+  }
+
+  // Particles
+  particles=particles.filter(p=>p.life>0);
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life-=0.04;p.r*=0.97;});
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function render(){
+  const w=W(),h=H();
+  const padW=getPadW();
+  const padY=h-PAD_Y_OFF-PAD_H;
+
+  // Background gradient
+  const bg=ctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,'#050a14');bg.addColorStop(1,'#0a1628');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+
+  // Bricks
+  bricks.forEach(b=>{
+    if(!b.alive)return;
+    const col=b.indestructible?'#4b5563':TIER_COLOR[b.tier]||'#888';
+    const grad=ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);
+    grad.addColorStop(0,col+'dd');grad.addColorStop(1,col+'88');
+    ctx.fillStyle=grad;
+    ctx.beginPath();ctx.roundRect(b.x,b.y,b.w,b.h,3);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(b.x,b.y,b.w,b.h,3);ctx.stroke();
+    if(b.indestructible){
+      ctx.fillStyle='rgba(255,255,255,.4)';ctx.font='bold 9px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('■',b.x+b.w/2,b.y+b.h/2);
+    }
+  });
+
+  // Particles
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  });
+
+  // Paddle — flat-edged rectangle
+  const padGrad=ctx.createLinearGradient(pad.x,padY,pad.x,padY+PAD_H);
+  padGrad.addColorStop(0,'#93c5fd');padGrad.addColorStop(1,'#3b82f6');
+  ctx.fillStyle=padGrad;
+  ctx.fillRect(pad.x,padY,padW,PAD_H);
+  // Highlight strip
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  ctx.fillRect(pad.x+4,padY+3,padW-8,4);
+
+  // Ball
+  if(state!=='gameover'){
+    ctx.shadowColor='rgba(150,210,255,.9)';ctx.shadowBlur=10;
+    const bGrad=ctx.createRadialGradient(ball.x-1,ball.y-1,1,ball.x,ball.y,BALL_R);
+    bGrad.addColorStop(0,'#fff');bGrad.addColorStop(1,'#93c5fd');
+    ctx.fillStyle=bGrad;
+    ctx.beginPath();ctx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+
+  // Overlays
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  if(state==='idle'){
+    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#f5c842';ctx.font=`bold ${Math.round(w*0.08)}px "Playfair Display",serif`;
+    ctx.fillText('BREAKOUT',w/2,h/2-40);
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font=`bold ${Math.round(w*0.036)}px Inter,sans-serif`;
+    ctx.fillText(isMobile?'Tap to start':'Press Space or click to start',w/2,h/2+4);
+    ctx.fillStyle='rgba(255,255,255,.3)';ctx.font=`${Math.round(w*0.028)}px Inter,sans-serif`;
+    ctx.fillText('20 levels · 3 lives · '+LEVELS.length+' unique layouts',w/2,h/2+36);
+  }
+  if(state==='dead'){
+    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#ef4444';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
+    ctx.fillText('BALL LOST',w/2,h/2-26);
+    ctx.fillStyle='rgba(255,255,255,.6)';ctx.font=`bold ${Math.round(w*0.033)}px Inter,sans-serif`;
+    ctx.fillText(`${lives} ${lives===1?'life':'lives'} remaining`,w/2,h/2+12);
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
+    ctx.fillText(isMobile?'Tap to continue':'Press Space to continue',w/2,h/2+40);
+  }
+  if(state==='paused'){
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
+    ctx.fillText('PAUSED',w/2,h/2-16);
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.029)}px Inter,sans-serif`;
+    ctx.fillText(isMobile?'Tap to resume':'Press Space to resume',w/2,h/2+18);
+  }
+  if(state==='levelwin'){
+    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#f5c842';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
+    ctx.fillText(`LEVEL ${level}!`,w/2,h/2-30);
+    ctx.fillStyle='#22c55e';ctx.font=`bold ${Math.round(w*0.032)}px Inter,sans-serif`;
+    ctx.fillText('+'+((1000*level).toLocaleString())+' bonus',w/2,h/2+4);
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
+    ctx.fillText(isMobile?'Tap for level '+(level+1):'Space for level '+(level+1),w/2,h/2+34);
+  }
+  if(state==='gameover'){
+    ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#ef4444';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
+    ctx.fillText('GAME OVER',w/2,h/2-34);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(w*0.038)}px Inter,sans-serif`;
+    ctx.fillText('Score: '+score.toLocaleString(),w/2,h/2+4);
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
+    ctx.fillText(isMobile?'Tap to play again':'Space to play again',w/2,h/2+36);
+  }
+  if(state==='won'){
+    ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#f5c842';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
+    ctx.fillText('YOU WIN! 🏆',w/2,h/2-34);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(w*0.038)}px Inter,sans-serif`;
+    ctx.fillText('Final: '+score.toLocaleString(),w/2,h/2+4);
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
+    ctx.fillText(isMobile?'Tap to play again':'Space to play again',w/2,h/2+36);
+  }
+
+  // Launch hint
+  if(launchPending&&state==='play'){
+    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
+    ctx.textBaseline='bottom';
+    ctx.fillText(isMobile?'Tap to launch':'Space or click to launch',w/2,padY-10);
+    ctx.textBaseline='middle';
+  }
+}
+
+// ── Game loop ─────────────────────────────────────────────────────────────
+function loop(){
+  step(); render();
+  animId=requestAnimationFrame(loop);
+}
+
+function startLoop(){if(!animId)animId=requestAnimationFrame(loop);}
+function stopLoop(){if(animId){cancelAnimationFrame(animId);animId=null;}}
+
+// ── Input ─────────────────────────────────────────────────────────────────
+function handleAction(){
+  if(state==='idle'){initGame();startLoop();return;}
+  if(state==='dead'){resetBall();state='play';return;}
+  if(state==='gameover'||state==='won'){stopLoop();state='idle';score=0;lives=LIVES_START;render();return;}
+  if(state==='levelwin'){startLevel(level+1);return;}
+  if(state==='paused'){state='play';return;}
+  if(state==='play'&&launchPending){launchPending=false;return;}
+  if(state==='play'&&!launchPending){state='paused';return;}
+}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){leftHeld=true;e.preventDefault();}
+  if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){rightHeld=true;e.preventDefault();}
+  if(e.key===' '||e.key==='Enter'){e.preventDefault();handleAction();}
+  if(e.key==='p'||e.key==='P'){if(state==='play')state='paused';else if(state==='paused')state='play';}
+});
+document.addEventListener('keyup',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A')leftHeld=false;
+  if(e.key==='ArrowRight'||e.key==='d'||e.key==='D')rightHeld=false;
+});
+
+// Mouse
+cv.addEventListener('mousemove',e=>{
+  if(!isMobile){const r=cv.getBoundingClientRect();touchX=e.clientX-r.left;}
+});
+cv.addEventListener('click',e=>{if(!isMobile)handleAction();});
+
+// Touch — canvas
+cv.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const r=cv.getBoundingClientRect();
+  touchX=(e.touches[0].clientX-r.left);
+  handleAction();
+},{passive:false});
+cv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const r=cv.getBoundingClientRect();
+  touchX=(e.touches[0].clientX-r.left);
+},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();},{passive:false});
+
+// D-pad buttons
+document.getElementById('btn-left').addEventListener('touchstart',e=>{e.preventDefault();leftHeld=true;},{passive:false});
+document.getElementById('btn-left').addEventListener('touchend',e=>{e.preventDefault();leftHeld=false;},{passive:false});
+document.getElementById('btn-right').addEventListener('touchstart',e=>{e.preventDefault();rightHeld=true;},{passive:false});
+document.getElementById('btn-right').addEventListener('touchend',e=>{e.preventDefault();rightHeld=false;},{passive:false});
+document.getElementById('btn-left').addEventListener('mousedown',()=>leftHeld=true);
+document.getElementById('btn-left').addEventListener('mouseup',()=>leftHeld=false);
+document.getElementById('btn-right').addEventListener('mousedown',()=>rightHeld=true);
+document.getElementById('btn-right').addEventListener('mouseup',()=>rightHeld=false);
+
+// ── Sound ─────────────────────────────────────────────────────────────────
+let _ac=null;
+function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function sTone(f,s,d,v,type){try{const ctx=sac(),t=ctx.currentTime+s,o=ctx.createOscillator(),g=ctx.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v||.08,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+d+.02);}catch(e){}}
+function sBounce(v){sTone(220,0,.08,v||0.06);}
+function sBrick(){sTone(440,0,.06,.07);sTone(330,.02,.06,.05);}
+function sWall(){sTone(180,0,.06,.04,'sawtooth');}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+// Initialize paddle position for idle screen
+pad={x:W()/2-60,y:0};
+ball={x:W()/2,y:H()-PAD_Y_OFF-PAD_H-BALL_R-2,vx:0,vy:0,speed:5};
+buildLevel(1);
+render(); // show idle screen
+
+// ── Session persistence ────────────────────────────────────────────────────
+window.addEventListener('beforeunload',()=>{
+  if(state==='play'||state==='paused'){
+    try{sessionStorage.setItem('breakout',JSON.stringify({level,score,lives,_ts:Date.now()}));}catch(e){}
+  }
+});
+(function(){
+  try{
+    const raw=sessionStorage.getItem('breakout');if(!raw)return;
+    const s=JSON.parse(raw);if(!s)return;
+    level=s.level||1;score=s.score||0;lives=s.lives||LIVES_START;
+    startLevel(level);startLoop();
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

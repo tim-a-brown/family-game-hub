@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Memory Match</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
+.wrap{max-width:440px;margin:0 auto;padding:0 8px 60px;}
+.mm-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.mm-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
+.mm-stat-val{font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);}
+.mm-stat-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+/* Deck picker */
+.deck-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.deck-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.deck-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+/* Grid */
+.mm-grid{display:grid;gap:8px;margin-bottom:12px;}
+.mm-grid.g4{grid-template-columns:repeat(4,1fr);}
+.mm-grid.g5{grid-template-columns:repeat(5,1fr);}
+.mm-grid.g6{grid-template-columns:repeat(6,1fr);}
+/* Card */
+.mm-card{aspect-ratio:1;perspective:600px;cursor:pointer;}
+.mm-card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .35s cubic-bezier(.4,0,.2,1);}
+.mm-card.flipped .mm-card-inner,.mm-card.matched .mm-card-inner{transform:rotateY(180deg);}
+.mm-front,.mm-back{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.mm-front{background:linear-gradient(135deg,#1a2a4a,#0d1a30);border:2px solid rgba(90,200,250,.2);font-size:1.6rem;}
+.mm-back{background:linear-gradient(135deg,#1e3a5e,#112540);border:2px solid rgba(90,200,250,.35);transform:rotateY(180deg);font-size:clamp(1.2rem,5vw,2rem);}
+.mm-card.matched .mm-back{background:linear-gradient(135deg,#1a4a2a,#0d3020);border-color:rgba(34,197,94,.5);}
+.mm-front::after{content:'?';font-family:var(--serif);font-size:clamp(1.1rem,5vw,1.6rem);font-weight:900;color:rgba(90,200,250,.3);}
+/* Status */
+.mm-status{text-align:center;font-size:.88rem;font-weight:700;min-height:26px;margin-bottom:8px;color:var(--muted);}
+/* Win */
+@keyframes mm-win{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+.mm-card.matched{animation:mm-win .4s ease;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Memory Match</span></nav>
+<div class="page"><div class="wrap">
+
+<div class="mm-header">
+  <div class="mm-stat"><div class="mm-stat-val" id="mm-moves">0</div><div class="mm-stat-lbl">Moves</div></div>
+  <div class="mm-stat"><div class="mm-stat-val" id="mm-pairs">0</div><div class="mm-stat-lbl">Matched</div></div>
+  <div class="mm-stat"><div class="mm-stat-val" id="mm-time">0:00</div><div class="mm-stat-lbl">Time</div></div>
+</div>
+
+<div class="deck-row" id="deck-row"></div>
+
+<div class="mm-grid g4" id="mm-grid"></div>
+<div class="mm-status" id="mm-status">Flip two cards to start!</div>
+<div style="text-align:center;">
+  <button class="btn btn-gold" id="mm-new">New Game</button>
+</div>
+
+</div></div>
+<script>
+'use strict';
+const DECKS={
+  Animals:{emoji:['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐸','🐙','🦋','🦄','🦀','🐠','🦅','🐘'],size:4},
+  Food:   {emoji:['🍕','🍔','🌮','🍣','🍩','🍦','🍇','🍓','🥑','🌽','🍎','🥦','🍰','🧇','🎂','🍟','🥐','🍜','🍿','🥨'],size:4},
+  Sports: {emoji:['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🥏','🏓','🏸','🥊','⛷️','🏊','🚴','🤸','🎿','🏇','🤺','🎯','🥋'],size:4},
+  Space:  {emoji:['🚀','🛸','⭐','🌙','☄️','🪐','🌍','🔭','👨‍🚀','🌌','🌠','🛰️','🌞','💫','🪨','🌑','🌟','🔭','🪁','💥'],size:4},
+  Nature: {emoji:['🌲','🌺','🍀','🌸','🌻','🌿','🍁','🌵','🎋','🌾','🍄','🐚','🌊','🏔️','⚡','🌈','❄️','🔥','💧','🌀'],size:4},
+  Objects:{emoji:['🎸','📚','🔮','💎','🎨','🎭','🎪','🎠','🎡','🎢','🎯','🎲','♟️','🎻','🥁','🎺','🎷','🪗','🎤','🎬'],size:4},
+  Hard:   {emoji:['🥐','🧆','🫕','🫔','🧁','🧃','🥂','🫖','🧋','🥟','🫙','🫗','🧊','🫚','🍱','🥮','🫛','🧇','🥙','🥗'],size:5},
+};
+
+let deckName='Animals', cards=[], flipped=[], matched=new Set(), moves=0, locked=false;
+let timerInt=null, elapsed=0, started=false;
+
+function buildDeckPicker(){
+  const el=document.getElementById('deck-row');
+  el.innerHTML='';
+  Object.keys(DECKS).forEach(name=>{
+    const btn=document.createElement('button');
+    btn.className='deck-btn'+(name===deckName?' active':'');
+    btn.textContent=name;
+    btn.addEventListener('click',()=>{deckName=name;document.querySelectorAll('.deck-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');newGame();});
+    el.appendChild(btn);
+  });
+}
+
+function newGame(){
+  clearInterval(timerInt);elapsed=0;started=false;moves=0;matched=new Set();flipped=[];locked=false;
+  const deck=DECKS[deckName];
+  const sz=deck.size; // 4→16 cards, 5→20 cards
+  const pairs=sz*sz/2;
+  const pool=deck.emoji.slice(0,pairs);
+  cards=[...pool,...pool].sort(()=>Math.random()-.5);
+  // Set grid class
+  const grid=document.getElementById('mm-grid');
+  grid.className='mm-grid g'+sz;
+  renderGrid();
+  document.getElementById('mm-status').textContent='Flip two cards to start!';
+  document.getElementById('mm-moves').textContent='0';
+  document.getElementById('mm-pairs').textContent='0';
+  document.getElementById('mm-time').textContent='0:00';
+}
+
+function renderGrid(){
+  const grid=document.getElementById('mm-grid');
+  grid.innerHTML='';
+  cards.forEach((emoji,i)=>{
+    const card=document.createElement('div');
+    card.className='mm-card'+(flipped.includes(i)||matched.has(i)?' flipped':'')+(matched.has(i)?' matched':'');
+    card.innerHTML=`<div class="mm-card-inner"><div class="mm-front"></div><div class="mm-back">${emoji}</div></div>`;
+    card.addEventListener('click',()=>flipCard(i));
+    grid.appendChild(card);
+  });
+}
+
+function flipCard(i){
+  if(locked||flipped.includes(i)||matched.has(i))return;
+  if(!started){started=true;timerInt=setInterval(()=>{elapsed++;document.getElementById('mm-time').textContent=fmt(elapsed);},1000);}
+  flipped.push(i);
+  renderGrid();
+  if(flipped.length===2){
+    moves++;
+    document.getElementById('mm-moves').textContent=moves;
+    locked=true;
+    setTimeout(()=>{
+      const[a,b]=flipped;
+      if(cards[a]===cards[b]){
+        matched.add(a);matched.add(b);
+        document.getElementById('mm-pairs').textContent=matched.size/2;
+        flipped=[];locked=false;
+        renderGrid();
+        if(matched.size===cards.length){
+          clearInterval(timerInt);
+          document.getElementById('mm-status').innerHTML=`<span style="color:#22c55e">🎉 Solved in ${moves} moves & ${fmt(elapsed)}!</span>`;
+        }
+      } else {
+        flipped=[];locked=false;
+        renderGrid();
+      }
+    },900);
+  }
+}
+
+function fmt(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+
+buildDeckPicker();
+document.getElementById('mm-new').addEventListener('click',newGame);
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_mm(){if(!cards.length)return;
+  try{sessionStorage.setItem('mm',JSON.stringify({deckName,cards,matched:[...matched],moves,elapsed,_ts:Date.now()}));}catch(e){}
+}
+function _load_mm(){
+  try{
+    const raw=sessionStorage.getItem('mm');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    deckName=s.deckName||'Animals';cards=s.cards;matched=new Set(s.matched||[]);moves=s.moves||0;elapsed=s.elapsed||0;flipped=[];locked=false;
+    document.getElementById('mm-moves').textContent=moves;document.getElementById('mm-time').textContent=fmtTime(elapsed);renderGrid();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_mm);
+document.getElementById('mm-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('mm');}catch(e){}},true);
+_load_mm();
+</script>
+</body>
+</html>

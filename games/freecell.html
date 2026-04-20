@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>FreeCell</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);overflow-x:hidden;}
+.wrap{max-width:480px;margin:0 auto;padding:4px 4px 40px;}
+.fc-stats{display:flex;gap:6px;margin-bottom:6px;justify-content:center;align-items:center;}
+.fc-stat{background:rgba(0,0,0,.3);border-radius:6px;padding:4px 10px;text-align:center;}
+.fc-val{font-family:var(--serif);font-size:.95rem;font-weight:900;color:#fff;}
+.fc-lbl{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
+.fc-top{display:flex;gap:3px;margin-bottom:6px;}
+.fc-slot{border-radius:5px;border:2px dashed rgba(255,255,255,.25);background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:.9rem;flex-shrink:0;}
+.fc-tab{display:flex;gap:3px;}
+.fc-col{flex:1;position:relative;min-height:100px;}
+.card{border-radius:5px;background:#fff;border:1px solid rgba(0,0,0,.2);display:flex;flex-direction:column;justify-content:flex-start;padding:2px 3px;font-weight:900;box-shadow:1px 2px 3px rgba(0,0,0,.3);cursor:pointer;user-select:none;flex-shrink:0;}
+.card.face-down{background:repeating-linear-gradient(135deg,#1a3a8a,#1a3a8a 4px,#2a4a9a 4px,#2a4a9a 8px);}
+.card.red{color:#c00;}.card.black{color:#111;}
+.card.selected{outline:2px solid #f5c842;outline-offset:1px;z-index:10;}
+.card.stacked{position:absolute;left:0;right:0;}
+.card-top{font-size:.6rem;line-height:1.1;}
+.card-suit{font-size:.7rem;}
+.fc-empty{border-radius:5px;border:2px dashed rgba(255,255,255,.2);background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:1rem;position:absolute;top:0;left:0;right:0;}
+.fc-slot.valid-target{border-color:rgba(34,197,94,.7)!important;background:rgba(34,197,94,.12)!important;box-shadow:0 0 0 2px rgba(34,197,94,.3);}
+.fc-slot.valid-target .card{box-shadow:0 0 0 2px rgba(34,197,94,.5),1px 2px 3px rgba(0,0,0,.3);}
+.fc-col.valid-target::after{content:'';position:absolute;inset:0;border-radius:5px;border:2px solid rgba(34,197,94,.6);background:rgba(34,197,94,.06);pointer-events:none;z-index:20;}
+.fc-empty.valid-target{border-color:rgba(34,197,94,.7)!important;background:rgba(34,197,94,.1)!important;color:rgba(34,197,94,.7);}
+/* Partial target: only the bottom card of the selection can land here */
+.fc-slot.valid-target-1{border-color:rgba(90,200,250,.6)!important;background:rgba(90,200,250,.08)!important;box-shadow:0 0 0 2px rgba(90,200,250,.25);}
+.fc-slot.valid-target-1 .card{box-shadow:0 0 0 2px rgba(90,200,250,.45),1px 2px 3px rgba(0,0,0,.3);}
+.fc-col.valid-target-1::after{content:'';position:absolute;inset:0;border-radius:5px;border:2px solid rgba(90,200,250,.55);background:rgba(90,200,250,.05);pointer-events:none;z-index:20;}
+.fc-empty.valid-target-1{border-color:rgba(90,200,250,.6)!important;background:rgba(90,200,250,.08)!important;}
+</style>
+</head>
+<body>
+<nav class="site-nav" style="background:rgba(0,40,20,.6);border-bottom:1px solid rgba(255,255,255,.1);">
+  <a class="nav-back" href="../index.html" style="color:rgba(255,255,255,.8);">← Home</a>
+  <span class="nav-title" style="color:#fff;">FreeCell</span>
+</nav>
+<div class="page" style="padding:4px 0 0;"><div class="wrap" id="fc-wrap">
+<div class="fc-stats">
+  <div class="fc-stat"><div class="fc-val" id="fc-moves">0</div><div class="fc-lbl">Moves</div></div>
+  <div class="fc-stat"><div class="fc-val" id="fc-time">0:00</div><div class="fc-lbl">Time</div></div>
+  <button class="btn btn-gold btn-sm" id="fc-new" style="padding:4px 10px;font-size:.72rem;">New</button>
+  <button class="btn btn-outline btn-sm" id="fc-hint" style="padding:4px 10px;font-size:.72rem;">Hint</button>
+</div>
+<div id="fc-game"></div>
+</div></div>
+<script>
+'use strict';
+const SUITS=['♠','♥','♦','♣'];const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const RED=new Set(['♥','♦']);
+function isRed(s){return RED.has(s);}
+function rankVal(r){return RANKS.indexOf(r);}
+
+let freecells,foundations,tableau,moves,timer,timerInt,won;
+let sel=null;
+let animating=false;
+const ANIM_MS=190;
+let CW=52,CH=72,STACK_OFF=16;
+
+function calcSizes(){
+  const w=(document.getElementById('fc-wrap')||document.body).clientWidth-8;
+  CW=Math.floor((w-7*3)/8);CH=Math.round(CW*1.35);STACK_OFF=Math.max(22,Math.round(CW*0.38));
+  document.documentElement.style.setProperty('--cw',CW+'px');
+  document.documentElement.style.setProperty('--ch',CH+'px');
+}
+
+function newDeck(){
+  const d=[];SUITS.forEach(s=>RANKS.forEach(r=>d.push({s,r})));
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function newGame(){
+  calcSizes();const deck=newDeck();
+  freecells=[null,null,null,null];foundations=[[],[],[],[]];
+  tableau=Array.from({length:8},()=>[]);
+  for(let i=0;i<52;i++)tableau[i%8].push({...deck[i],faceUp:true});
+  moves=0;sel=null;won=false;
+  clearInterval(timerInt);timer=0;
+  timerInt=setInterval(()=>{timer++;document.getElementById('fc-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+  try{sessionStorage.removeItem('fc_state');}catch(e){}
+  render();
+}
+
+function canTabStack(card,target){
+  if(!target)return true;// any card can go on empty column
+  return isRed(card.s)!==isRed(target.s)&&rankVal(card.r)===rankVal(target.r)-1;
+}
+function canFoundation(card,pile){
+  if(!pile.length)return card.r==='A';
+  const top=pile[pile.length-1];return card.s===top.s&&rankVal(card.r)===rankVal(top.r)+1;
+}
+// FreeCell: can move multiple cards if enough free cells/cols available
+function maxMovable(toEmpty=false){
+  const freeCells=freecells.filter(c=>!c).length;
+  const emptyCol=tableau.filter(c=>!c.length).length - (toEmpty?1:0);
+  return(freeCells+1)*Math.pow(2,Math.max(0,emptyCol));
+}
+
+function bestSuffix(toFrom,toIdx){
+  if(!sel)return 0;
+  const cards=sel.cards;
+  if(toFrom==='fc'){
+    return(!freecells[toIdx])?1:0;
+  }
+  if(toFrom==='found'){
+    return canFoundation(cards[cards.length-1],foundations[toIdx])?1:0;
+  }
+  if(toFrom==='tab'){
+    if(sel.from==='tab'&&sel.idx===toIdx)return 0;
+    const pile=tableau[toIdx];
+    const target=pile.length?pile[pile.length-1]:null;
+    const toEmpty=pile.length===0;
+    const maxCan=maxMovable(toEmpty);
+    for(let n=Math.min(cards.length,maxCan);n>=1;n--){
+      if(canTabStack(cards[cards.length-n],target))return n;
+    }
+    return 0;
+  }
+  return 0;
+}
+
+function canMoveType(toFrom,toIdx){
+  const n=bestSuffix(toFrom,toIdx);
+  if(!n||!sel)return false;
+  return n===sel.cards.length?'full':'partial';
+}
+function canMoveTo(toFrom,toIdx){return canMoveType(toFrom,toIdx)!==false;}
+
+function tryMove(toFrom,toIdx){
+  if(!sel)return false;
+  const n=bestSuffix(toFrom,toIdx);
+  if(!n)return false;
+  const cards=sel.cards;
+  const isFull=(n===cards.length);
+
+  if(toFrom==='fc'){
+    const card=cards[cards.length-1];
+    if(isFull)removeCards();else tableau[sel.idx].pop();
+    freecells[toIdx]=card;moves++;return true;
+  }
+  if(toFrom==='found'){
+    const card=cards[cards.length-1];
+    if(isFull)removeCards();else tableau[sel.idx].pop();
+    foundations[toIdx].push(card);moves++;checkWin();return true;
+  }
+  if(toFrom==='tab'){
+    const pile=tableau[toIdx];
+    if(isFull){
+      if(cards.length>1&&sel.from==='tab'){animating=true;animateMove([...cards],sel.idx,toIdx);return true;}
+      removeCards();cards.forEach(c=>pile.push(c));moves++;return true;
+    }else{
+      const subCards=cards.slice(cards.length-n);
+      if(n>1&&sel.from==='tab'){animating=true;animateMove([...subCards],sel.idx,toIdx);return true;}
+      tableau[sel.idx].splice(tableau[sel.idx].length-n);
+      subCards.forEach(c=>pile.push(c));moves++;return true;
+    }
+  }
+  return false;
+}
+
+
+function removeCards(){
+  if(!sel)return;
+  if(sel.from==='fc')freecells[sel.idx]=null;
+  else if(sel.from==='tab')tableau[sel.idx].splice(tableau[sel.idx].length-sel.cards.length);
+  else if(sel.from==='found')foundations[sel.idx].pop();
+}
+
+function isValidSeq(pile,start){
+  for(let i=start;i<pile.length-1;i++){
+    if(!canTabStack(pile[i+1],pile[i]))return false;
+  }
+  return true;
+}
+
+// Returns the index where the valid alternating sequence at the bottom of a pile starts
+function bottomSeqStart(col){
+  const pile=tableau[col];
+  if(!pile.length)return -1;
+  let s=pile.length-1;
+  while(s>0&&canTabStack(pile[s],pile[s-1]))s--;
+  return s;
+}
+
+function selectCard(from,colIdx,cardIdx){
+  if(animating)return;
+  if(sel){
+    if(tryMove(from,colIdx)){sel=null;render();return;}
+    sel=null;
+  }
+  if(from==='fc'){
+    if(!freecells[colIdx])return;
+    sel={from,idx:colIdx,cards:[freecells[colIdx]]};
+  } else if(from==='tab'){
+    const pile=tableau[colIdx];if(!pile.length)return;
+    // Always select the maximum movable sequence from the bottom of this column
+    const seqStart=bottomSeqStart(colIdx);
+    const seqLen=pile.length-seqStart;
+    const movable=Math.min(seqLen,maxMovable(false));
+    if(movable<=0)return;
+    const start=pile.length-movable;
+    const cards=pile.slice(start);
+    sel={from,idx:colIdx,cards,startIdx:start};
+  } else if(from==='found'){
+    if(!foundations[colIdx].length)return;
+    sel={from,idx:colIdx,cards:[foundations[colIdx][foundations[colIdx].length-1]]};
+  }
+  render();
+}
+
+function animateMove(cards,srcCol,dstCol){
+  // cards = [topOfSeq, ..., bottomOfSeq] — still in tableau[srcCol] pile
+  const n=cards.length;
+
+  // Collect available individual temp slots (free cells + empty cols, not src/dst)
+  const slots=[];
+  freecells.forEach((c,i)=>{if(!c)slots.push({type:'fc',idx:i});});
+  tableau.forEach((pile,i)=>{if(i!==srcCol&&i!==dstCol&&!pile.length)slots.push({type:'col',idx:i});});
+  const tempSlots=slots.slice(0,n-1);
+
+  // Safety check: if we don't have enough individual slots for step-by-step animation
+  // (can happen when maxMovable formula uses empty cols as recursive staging areas),
+  // fall back to an instant direct move — the move was already validated as legal.
+  if(tempSlots.length<n-1){
+    tableau[srcCol].splice(tableau[srcCol].length-n);
+    cards.forEach(c=>tableau[dstCol].push(c));
+    animating=false;moves++;
+    document.getElementById('fc-moves').textContent=moves;
+    checkWin();render();return;
+  }
+
+  // Build step list:
+  // Park: cards[n-1]→slot[0], cards[n-2]→slot[1], …, cards[1]→slot[n-2]
+  // Move: cards[0] → dstCol
+  // Restore: slot[n-2]→dstCol, …, slot[0]→dstCol
+  const steps=[];
+  for(let i=n-1;i>=1;i--)steps.push({action:'park',slotIdx:n-1-i});
+  steps.push({action:'move'});
+  for(let i=1;i<n;i++)steps.push({action:'restore',slotIdx:n-1-i});
+
+  let si=0;
+  sel=null;
+
+  function runStep(){
+    try{
+      if(si>=steps.length){
+        animating=false;moves++;
+        document.getElementById('fc-moves').textContent=moves;
+        checkWin();render();return;
+      }
+      const s=steps[si++];
+      if(s.action==='park'){
+        const card=tableau[srcCol].pop();
+        const slot=tempSlots[s.slotIdx];
+        if(!slot)throw new Error('No temp slot at '+s.slotIdx);
+        if(slot.type==='fc')freecells[slot.idx]=card;
+        else tableau[slot.idx].push(card);
+      } else if(s.action==='move'){
+        tableau[dstCol].push(tableau[srcCol].pop());
+      } else if(s.action==='restore'){
+        const slot=tempSlots[s.slotIdx];
+        if(!slot)throw new Error('No temp slot at '+s.slotIdx);
+        let card;
+        if(slot.type==='fc'){card=freecells[slot.idx];freecells[slot.idx]=null;}
+        else{card=tableau[slot.idx].pop();}
+        tableau[dstCol].push(card);
+      }
+      render();
+      setTimeout(runStep,ANIM_MS);
+    }catch(err){
+      // Safety net: if anything goes wrong mid-animation, do a direct move and unlock
+      console.warn('animateMove error, falling back to direct move:',err);
+      tableau[srcCol].splice(tableau[srcCol].length-Math.max(0,n-si));
+      cards.slice(0,si>n?n:n-(si-n)).forEach(c=>tableau[dstCol].push(c));
+      // Restore any parked cards
+      tempSlots.forEach(slot=>{
+        if(slot.type==='fc'&&freecells[slot.idx]){tableau[dstCol].push(freecells[slot.idx]);freecells[slot.idx]=null;}
+        else if(slot.type==='col'&&tableau[slot.idx].length){tableau[dstCol].push(tableau[slot.idx].pop());}
+      });
+      animating=false;moves++;
+      document.getElementById('fc-moves').textContent=moves;
+      checkWin();render();
+    }
+  }
+  render();
+  setTimeout(runStep,ANIM_MS);
+}
+
+function autoComplete(){
+  // Move all eligible cards to foundations, repeatedly until no more can go
+  let moved=true;
+  while(moved){
+    moved=false;
+    freecells.forEach((c,i)=>{if(!c)return;for(let f=0;f<4;f++){if(canFoundation(c,foundations[f])){foundations[f].push(c);freecells[i]=null;moved=true;moves++;}}});
+    tableau.forEach((pile)=>{if(!pile.length)return;const top=pile[pile.length-1];for(let f=0;f<4;f++){if(canFoundation(top,foundations[f])){foundations[f].push(pile.pop());moved=true;moves++;}}});
+  }
+  checkWin();render();
+}
+
+function hint(){
+  sel=null;
+  // Priority 1: foundation moves from freecells
+  for(let i=0;i<4;i++){
+    const c=freecells[i];if(!c)continue;
+    for(let f=0;f<4;f++){if(canFoundation(c,foundations[f])){sel={from:'fc',idx:i,cards:[c]};render();return;}}
+  }
+  // Priority 2: foundation moves from tableau top
+  for(let col=0;col<8;col++){
+    const pile=tableau[col];if(!pile.length)continue;
+    const top=pile[pile.length-1];
+    for(let f=0;f<4;f++){if(canFoundation(top,foundations[f])){sel={from:'tab',idx:col,cards:[top],startIdx:pile.length-1};render();return;}}
+  }
+  // Priority 3: freecell card onto tableau
+  for(let i=0;i<4;i++){
+    const c=freecells[i];if(!c)continue;
+    for(let dst=0;dst<8;dst++){
+      const pile=tableau[dst];const target=pile.length?pile[pile.length-1]:null;
+      if(canTabStack(c,target)&&!canFoundation(c,foundations[0])&&!canFoundation(c,foundations[1])&&!canFoundation(c,foundations[2])&&!canFoundation(c,foundations[3])){
+        sel={from:'fc',idx:i,cards:[c]};render();return;
+      }
+    }
+  }
+  // Priority 4: tableau sequence onto tableau (prefer longer sequences)
+  let best=null;
+  for(let src=0;src<8;src++){
+    const pile=tableau[src];if(!pile.length)continue;
+    for(let start=0;start<pile.length;start++){
+      if(!isValidSeq(pile,start))continue;
+      const cards=pile.slice(start);
+      for(let dst=0;dst<8;dst++){
+        if(dst===src)continue;
+        const dPile=tableau[dst];const target=dPile.length?dPile[dPile.length-1]:null;
+        if(target===null&&cards.length===pile.length)continue; // don't move whole col to empty
+        if(canTabStack(cards[0],target)&&cards.length<=maxMovable(dPile.length===0)){
+          if(!best||cards.length>best.cards.length)best={from:'tab',idx:src,cards,startIdx:start};
+        }
+      }
+    }
+  }
+  if(best){sel=best;render();return;}
+  // Priority 5: move top card to free cell
+  const fc=freecells.findIndex(c=>!c);
+  if(fc!==-1){
+    for(let col=0;col<8;col++){
+      const pile=tableau[col];if(!pile.length)continue;
+      sel={from:'tab',idx:col,cards:[pile[pile.length-1]],startIdx:pile.length-1};render();return;
+    }
+  }
+  render(); // no hint found
+}
+
+function checkWin(){
+  if(foundations.every(f=>f.length===13)){won=true;clearInterval(timerInt);
+    GameHistory.save('fc',{_summary:`Solved in ${moves} moves · ${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`,_badge:moves+' moves',moves,time:timer});
+    try{sessionStorage.removeItem('fc_state');}catch(e){}
+    setTimeout(()=>{
+      const msg=document.createElement('div');
+      msg.style.cssText='text-align:center;margin-top:8px;';
+      msg.innerHTML=`<div style="font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);margin-bottom:8px;">🎉 FreeCell solved!<br><span style="font-size:.85rem;color:rgba(255,255,255,.7)">Moves: ${moves} · Time: ${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}</span></div>`;
+      const hb=GameHistory.btn('fc','FreeCell',e=>GameHistory.renderStatGrid([{val:e.moves,lbl:'Moves'},{val:Math.floor(e.time/60)+':'+String(e.time%60).padStart(2,'0'),lbl:'Time'}]));
+      hb.style.display='block';hb.style.margin='0 auto';
+      msg.appendChild(hb);
+      document.getElementById('fc-game').appendChild(msg);
+    },100);
+  }
+}
+
+function cardEl(card){
+  const d=document.createElement('div');
+  d.className='card '+(card.faceUp===false?'face-down':(isRed(card.s)?'red':'black'));
+  if(card.faceUp!==false)d.innerHTML=`<div class="card-top">${card.r}<br>${card.s}</div>`;
+  d.style.width=CW+'px';d.style.height=CH+'px';d.style.fontSize=Math.max(9,CW-10)/14+'rem';
+  return d;
+}
+
+function render(){
+  const game=document.getElementById('fc-game');game.innerHTML='';
+  document.getElementById('fc-moves').textContent=moves;
+  // Top row: freecells + foundations
+  const topRow=document.createElement('div');topRow.className='fc-top';
+  freecells.forEach((c,i)=>{
+    const slot=document.createElement('div');slot.className='fc-slot';slot.style.cssText=`width:${CW}px;height:${CH}px;`;
+    if(c){
+      const ce=cardEl(c);
+      if(sel&&sel.from==='fc'&&sel.idx===i)ce.classList.add('selected');
+      ce.addEventListener('click',()=>{if(animating)return;if(sel){if(tryMove('fc',i)){sel=null;if(!animating)render();}else{selectCard('fc',i);}}else{selectCard('fc',i);}});
+      ce.addEventListener('dblclick',()=>{
+        if(animating)return;
+        for(let f=0;f<4;f++){
+          if(canFoundation(c,foundations[f])){
+            sel={from:'fc',idx:i,cards:[c]};
+            tryMove('found',f);sel=null;render();return;
+          }
+        }
+      });
+      slot.appendChild(ce);
+    }
+    else{slot.textContent='FC';slot.addEventListener('click',()=>{if(animating)return;if(sel&&tryMove('fc',i)){sel=null;render();}});}
+    const _fcmt=canMoveType('fc',i);if(_fcmt)slot.classList.add(_fcmt==='full'?'valid-target':'valid-target-1');
+    topRow.appendChild(slot);
+  });
+  // Spacer
+  const sp=document.createElement('div');sp.style.flex='1';topRow.appendChild(sp);
+  foundations.forEach((f,i)=>{
+    const slot=document.createElement('div');slot.className='fc-slot';slot.style.cssText=`width:${CW}px;height:${CH}px;`;
+    if(f.length){const ce=cardEl(f[f.length-1]);ce.addEventListener('click',()=>{if(animating)return;if(sel&&tryMove('found',i)){sel=null;render();}});slot.appendChild(ce);}
+    else{slot.textContent=['♠','♥','♦','♣'][i];slot.addEventListener('click',()=>{if(animating)return;if(sel&&tryMove('found',i)){sel=null;render();}});}
+    const _fmt=canMoveType('found',i);if(_fmt)slot.classList.add(_fmt==='full'?'valid-target':'valid-target-1');
+    topRow.appendChild(slot);
+  });
+  game.appendChild(topRow);
+  // Tableau
+  const tabEl=document.createElement('div');tabEl.className='fc-tab';
+  tableau.forEach((pile,col)=>{
+    const colEl=document.createElement('div');colEl.className='fc-col';
+    const _tmt=canMoveType('tab',col);if(_tmt)colEl.classList.add(_tmt==='full'?'valid-target':'valid-target-1');
+    // Column background click — try to move if something is selected
+    colEl.addEventListener('click',e=>{
+      if(animating||e.target!==colEl)return;
+      if(sel){if(tryMove('tab',col)){sel=null;if(!animating)render();}else{sel=null;render();}}
+    });
+    if(!pile.length){
+      const e=document.createElement('div');e.className='fc-empty';e.style.height=CH+'px';
+      const _emt=canMoveType('tab',col);if(_emt)e.classList.add(_emt==='full'?'valid-target':'valid-target-1');
+      e.addEventListener('click',()=>{if(animating)return;if(sel){if(tryMove('tab',col)){sel=null;if(!animating)render();}else{sel=null;render();}}});
+      colEl.appendChild(e);
+    }
+    pile.forEach((card,idx)=>{
+      const top=idx===0?0:idx*STACK_OFF;
+      const ce=cardEl(card);ce.classList.add('stacked');ce.style.top=top+'px';
+      colEl.style.minHeight=(top+CH)+'px';
+      // Highlight cards that are part of the current selection
+      if(sel&&sel.from==='tab'&&sel.idx===col&&idx>=sel.startIdx)ce.classList.add('selected');
+      ce.addEventListener('click',e=>{
+        e.stopPropagation();
+        if(animating)return;
+        if(sel){
+          if(sel.from==='tab'&&sel.idx===col){sel=null;render();return;}
+          if(tryMove('tab',col)){sel=null;if(!animating)render();return;}
+          sel=null;selectCard('tab',col);return;
+        }
+        selectCard('tab',col);
+      });
+      ce.addEventListener('dblclick',e=>{
+        e.stopPropagation();
+        if(animating)return;
+        // Double-click anywhere in a column → dispatch the bottom card only
+        // (the actual top of the pile array = most accessible card)
+        // to foundation first, then free cell. Never to tableau.
+        const pile=tableau[col];
+        if(!pile.length)return;
+        const topCard=pile[pile.length-1];
+        const topIdx=pile.length-1;
+        // Try foundation
+        for(let f=0;f<4;f++){
+          if(canFoundation(topCard,foundations[f])){
+            sel={from:'tab',idx:col,cards:[topCard],startIdx:topIdx};
+            tryMove('found',f);sel=null;render();return;
+          }
+        }
+        // Try free cell
+        const fc=freecells.findIndex(c=>!c);
+        if(fc!==-1){
+          sel={from:'tab',idx:col,cards:[topCard],startIdx:topIdx};
+          tryMove('fc',fc);sel=null;render();
+        }
+      });
+      colEl.appendChild(ce);
+    });
+    tabEl.appendChild(colEl);
+  });
+  game.appendChild(tabEl);
+  // Auto button
+  const ab=document.createElement('div');ab.style.cssText='text-align:center;margin-top:8px;';
+  const autoBtn=document.createElement('button');autoBtn.className='btn btn-outline btn-sm';autoBtn.textContent='↑ Auto-Complete';
+  autoBtn.addEventListener('click',autoComplete);ab.appendChild(autoBtn);game.appendChild(ab);
+}
+
+document.getElementById('fc-new').addEventListener('click',newGame);
+document.getElementById('fc-hint').addEventListener('click',hint);
+window.addEventListener('resize',()=>{calcSizes();render();});
+// Persist game state across navigation
+function saveState(){
+  if(won||!tableau)return;
+  try{sessionStorage.setItem('fc_state',JSON.stringify({freecells,foundations,tableau,moves,timer,_ts:Date.now()}));}catch(e){}
+}
+function loadState(){
+  try{
+    const raw=sessionStorage.getItem('fc_state');
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    if(!s.tableau||!s.foundations)return false;
+    calcSizes();
+    freecells=s.freecells;foundations=s.foundations;tableau=s.tableau;moves=s.moves;sel=null;won=false;
+    timer=s.timer||0;
+    timerInt=setInterval(()=>{timer++;document.getElementById('fc-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+    render();return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',saveState);
+if(!loadState())newGame();
+</script>
+</body>
+</html>

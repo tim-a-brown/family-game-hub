@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Would You Rather</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a1a0a 0%,#0d1117 65%);}
+.wrap{max-width:460px;margin:0 auto;padding:0 12px 60px;}
+.cat-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
+.cat-btn{padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;}
+.cat-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.q-counter{text-align:center;color:var(--muted);font-size:.78rem;margin-bottom:10px;}
+.wyr-label{font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;text-align:center;}
+.wyr-or{font-family:var(--serif);font-size:1rem;font-weight:900;color:var(--gold);background:rgba(245,200,66,.15);border:2px solid rgba(245,200,66,.3);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+/* Choice wrapper: button on top, vote area below */
+.choice-wrap{margin-bottom:8px;}
+.choice-btn{width:100%;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:16px 16px 0 0;padding:18px 16px;cursor:pointer;transition:all .18s;text-align:left;font-family:var(--font);color:var(--text);display:block;}
+.choice-btn:hover{background:rgba(255,255,255,.1);}
+.choice-btn.sel-A{background:rgba(90,200,250,.12);border-color:#5ac8fa;border-bottom-color:#5ac8fa;}
+.choice-btn.sel-B{background:rgba(255,107,107,.12);border-color:#ff6b6b;border-bottom-color:#ff6b6b;}
+.choice-btn.plain{border-radius:16px;} /* when no vote row showing */
+.choice-text{font-size:1rem;font-weight:600;line-height:1.4;text-align:left;}
+/* Vote bar sits outside the button, flush below it */
+.vote-area{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.12);border-top:none;border-radius:0 0 16px 16px;padding:10px 14px;display:none;}
+.vote-area.vis-A{border-color:#5ac8fa;}
+.vote-area.vis-B{border-color:#ff6b6b;}
+.vote-inner{display:flex;align-items:center;gap:10px;}
+.v-count{font-family:var(--serif);font-size:1.4rem;font-weight:900;min-width:26px;text-align:center;}
+.v-count-A{color:#5ac8fa;}.v-count-B{color:#ff6b6b;}
+.v-minus{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:var(--muted);font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex-shrink:0;}
+.v-minus:active{background:rgba(255,107,107,.2);color:#ff6b6b;}
+.v-bars{flex:1;}
+.v-bar-track{height:7px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-bottom:4px;}
+.v-bar-fill{height:100%;border-radius:4px;transition:width .35s ease;}
+.v-bar-A{background:#5ac8fa;}.v-bar-B{background:#ff6b6b;}
+.v-pct{font-size:.72rem;font-weight:700;}
+.v-pct-A{color:#5ac8fa;}.v-pct-B{color:#ff6b6b;}
+.ctrl-row{display:flex;gap:8px;justify-content:center;margin-top:14px;}
+@keyframes pop-in{0%{opacity:0;transform:translateY(5px) scale(.97)}100%{opacity:1;transform:none}}
+.pop{animation:pop-in .2s ease;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Would You Rather</span></nav>
+<div class="page" style="padding-top:8px;padding-bottom:60px;">
+<div class="wrap">
+
+<div class="cat-row" id="cats"></div>
+<div class="q-counter" id="q-counter">Question 1</div>
+<div class="wyr-label">Would You Rather…</div>
+
+<div class="choice-wrap">
+  <button class="choice-btn plain" id="btn-A">
+    <div class="choice-text" id="text-A"></div>
+  </button>
+  <div class="vote-area" id="vrow-A">
+    <div class="vote-inner">
+      <span class="v-count v-count-A" id="cnt-A">0</span>
+      <button class="v-minus" id="dec-A">−</button>
+      <div class="v-bars">
+        <div class="v-bar-track"><div class="v-bar-fill v-bar-A" id="fill-A" style="width:50%"></div></div>
+        <div class="v-pct v-pct-A" id="pct-A">50%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wyr-or">OR</div>
+
+<div class="choice-wrap">
+  <button class="choice-btn plain" id="btn-B">
+    <div class="choice-text" id="text-B"></div>
+  </button>
+  <div class="vote-area" id="vrow-B">
+    <div class="vote-inner">
+      <span class="v-count v-count-B" id="cnt-B">0</span>
+      <button class="v-minus" id="dec-B">−</button>
+      <div class="v-bars">
+        <div class="v-bar-track"><div class="v-bar-fill v-bar-B" id="fill-B" style="width:50%"></div></div>
+        <div class="v-pct v-pct-B" id="pct-B">50%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ctrl-row">
+  <button class="btn btn-gold" id="next-btn" style="display:none;">Next Question →</button>
+  <button class="btn btn-outline" id="shuffle-btn">🔀 Shuffle</button>
+</div>
+
+</div></div>
+<script>
+'use strict';
+const QUESTIONS={
+  Fun:[
+    ['Have a pet dinosaur','Have a pet dragon'],
+    ['Always speak in rhyme','Always speak in song'],
+    ['Have unlimited pizza for life','Have unlimited sushi for life'],
+    ['Be able to fly','Be able to breathe underwater'],
+    ['Know every language','Play every instrument'],
+    ['Live in a treehouse','Live in an underground house'],
+    ['Only eat sweet foods forever','Only eat savory foods forever'],
+    ['Be the funniest person in the room','Be the smartest person in the room'],
+    ['Never have to sleep','Never have to eat'],
+    ['Time travel to the past','Time travel to the future'],
+    ['Be invisible for a day','Read minds for a day'],
+    ['Always be 10 minutes late','Always be 20 minutes early'],
+    ['Have a rewind button for your life','Have a pause button for your life'],
+    ['Live without music','Live without movies'],
+    ['Be famous but broke','Be rich but unknown'],
+  ],
+  Family:[
+    ['Have a family game night every week','Have a family movie night every week'],
+    ['Go on a road trip','Take a plane somewhere new'],
+    ['Cook dinner together every night','Order takeout whenever you want'],
+    ['Have a big family reunion','Take a small family vacation'],
+    ['Live close to your parents','Live far away but travel to see them'],
+    ['Have an older sibling','Have a younger sibling'],
+    ['Always win at family games','Never win but always have fun'],
+    ['Take a camping trip with the whole family','Take a cruise with the whole family'],
+    ['Have a dog','Have a cat'],
+    ['Live in the city','Live in the countryside'],
+  ],
+  Hard:[
+    ['Give up your phone for a year','Give up your car for a year'],
+    ['Always tell the truth','Never be able to speak'],
+    ['Lose all your memories','Never be able to make new ones'],
+    ['Be famous for something embarrassing','Be unknown for something great'],
+    ['Give up social media forever','Give up coffee/tea forever'],
+    ['Work a job you hate that pays great','Work a job you love that pays poorly'],
+    ['Have no privacy but always be safe','Have total privacy but less security'],
+    ['Only be able to whisper','Only be able to shout'],
+    ['Age only physically','Age only mentally'],
+    ['Know how every story ends before it starts','Never remember how any story ends'],
+  ],
+  Silly:[
+    ['Have spaghetti for hair','Have meatballs for fingers'],
+    ['Sneeze glitter','Sweat maple syrup'],
+    ['Have a horn honk every time you lie','Bark like a dog when excited'],
+    ['Have T-Rex arms','Have legs as long as a giraffe'],
+    ['Quack like a duck with every step','Moo when you sit down'],
+    ['Have fingers as long as your arms','Have arms as short as your fingers'],
+    ['Always smell like garlic','Always smell like fish'],
+    ['Never be able to whisper','Never be able to be quiet'],
+    ['Have eyes that glow in the dark','Have ears that spin like a helicopter'],
+    ['Talk in third person forever','Narrate everything you do out loud'],
+  ],
+};
+
+let cat='Fun',qi=0,questions=[],cntA=0,cntB=0;
+
+Object.keys(QUESTIONS).forEach(c=>{
+  const b=document.createElement('button');
+  b.className='cat-btn'+(c===cat?' active':'');
+  b.textContent=c;
+  b.addEventListener('click',()=>{
+    cat=c;
+    document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    loadCategory();
+  });
+  document.getElementById('cats').appendChild(b);
+});
+
+function loadCategory(){qi=0;questions=[...QUESTIONS[cat]].sort(()=>Math.random()-.5);loadQ();}
+
+function showVoteRows(show){
+  const vA=document.getElementById('vrow-A'),vB=document.getElementById('vrow-B');
+  const bA=document.getElementById('btn-A'),bB=document.getElementById('btn-B');
+  if(show){
+    vA.style.display='block';vB.style.display='block';
+    bA.classList.remove('plain');bB.classList.remove('plain');
+  } else {
+    vA.style.display='none';vB.style.display='none';
+    bA.classList.add('plain');bB.classList.add('plain');
+  }
+}
+
+function loadQ(){
+  if(qi>=questions.length)qi=0;
+  cntA=0;cntB=0;
+  const[a,b]=questions[qi];
+  document.getElementById('text-A').textContent=a;
+  document.getElementById('text-B').textContent=b;
+  document.getElementById('btn-A').className='choice-btn plain';
+  document.getElementById('btn-B').className='choice-btn plain';
+  document.getElementById('vrow-A').className='vote-area';
+  document.getElementById('vrow-B').className='vote-area';
+  showVoteRows(false);
+  document.getElementById('next-btn').style.display='none';
+  document.getElementById('q-counter').textContent=`Question ${qi+1} of ${questions.length}`;
+}
+
+function updateBars(){
+  const total=(cntA+cntB)||1;
+  const pA=Math.round(cntA/total*100),pB=100-pA;
+  document.getElementById('fill-A').style.width=pA+'%';
+  document.getElementById('fill-B').style.width=pB+'%';
+  document.getElementById('pct-A').textContent=pA+'%';
+  document.getElementById('pct-B').textContent=pB+'%';
+  document.getElementById('cnt-A').textContent=cntA;
+  document.getElementById('cnt-B').textContent=cntB;
+  // Highlight winning side
+  const bA=document.getElementById('btn-A'),bB=document.getElementById('btn-B');
+  const vA=document.getElementById('vrow-A'),vB=document.getElementById('vrow-B');
+  bA.className='choice-btn'+(cntA>0&&cntA>=cntB?' sel-A':'');
+  bB.className='choice-btn'+(cntB>0&&cntB>cntA?' sel-B':'');
+  vA.className='vote-area'+(cntA>0&&cntA>=cntB?' vis-A':'');
+  vB.className='vote-area'+(cntB>0&&cntB>cntA?' vis-B':'');
+  if(cntA+cntB>0){
+    const nb=document.getElementById('next-btn');
+    if(nb.style.display==='none'){nb.style.display='';nb.classList.remove('pop');void nb.offsetWidth;nb.classList.add('pop');}
+  }
+}
+
+document.getElementById('btn-A').addEventListener('click',()=>{
+  cntA++;showVoteRows(true);updateBars();
+});
+document.getElementById('btn-B').addEventListener('click',()=>{
+  cntB++;showVoteRows(true);updateBars();
+});
+document.getElementById('dec-A').addEventListener('click',e=>{
+  e.stopPropagation();if(cntA>0){cntA--;updateBars();}
+});
+document.getElementById('dec-B').addEventListener('click',e=>{
+  e.stopPropagation();if(cntB>0){cntB--;updateBars();}
+});
+document.getElementById('next-btn').addEventListener('click',()=>{qi++;loadQ();});
+document.getElementById('shuffle-btn').addEventListener('click',()=>{questions.sort(()=>Math.random()-.5);qi=0;loadQ();});
+
+loadCategory();
+</script>
+</body>
+</html>

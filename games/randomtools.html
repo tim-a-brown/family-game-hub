@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Random Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a2a 0%,#0d1117 65%);}
+.big-num{font-family:var(--serif);font-size:clamp(3.5rem,16vw,6rem);font-weight:900;color:var(--gold);text-align:center;line-height:1;margin:10px 0;text-shadow:0 0 40px rgba(245,200,66,.3);}
+.range-row{display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:14px;}
+.range-label{font-size:.8rem;color:var(--muted);font-weight:600;width:30px;text-align:right;}
+.range-input{width:90px;text-align:center;}
+.hist-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;}
+.hist-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px 12px;font-size:.85rem;font-weight:600;color:var(--muted);}
+.team-display{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px;}
+.team-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;min-width:120px;max-width:200px;flex:1;}
+.team-name{font-weight:700;margin-bottom:8px;font-size:.88rem;}
+.team-member{padding:4px 0;font-size:.82rem;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);}
+.team-member:last-child{border-bottom:none;}
+textarea.input{resize:vertical;min-height:100px;font-size:max(16px,.9rem)!important;line-height:1.6;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Random Tools</span></nav>
+<div class="page" style="padding-bottom:50px;">
+
+<div class="tabs" style="max-width:400px;margin:0 auto 20px;" id="tabs">
+  <button class="tab active" data-tab="rng">🎲 Number Generator</button>
+  <button class="tab" data-tab="teams">👥 Team Generator</button>
+</div>
+
+<!-- RNG PANEL -->
+<div id="tab-rng" style="max-width:400px;margin:0 auto;">
+  <div class="range-row">
+    <span class="range-label">Min</span>
+    <input class="input range-input" type="number" id="rng-min" value="1">
+    <span style="color:var(--muted);">to</span>
+    <input class="input range-input" type="number" id="rng-max" value="100">
+    <span class="range-label" style="text-align:left;">Max</span>
+  </div>
+  <div style="text-align:center;margin-bottom:8px;">
+    <label style="font-size:.82rem;color:var(--muted);">How many?&nbsp;
+      <select class="input" id="rng-count" style="width:auto;display:inline-block;padding:6px 10px;">
+        <option>1</option><option>2</option><option>3</option><option>5</option><option>10</option>
+      </select>
+    </label>
+  </div>
+  <button class="btn btn-gold btn-block" id="rng-btn">Generate ✦</button>
+  <div id="rng-output"></div>
+  <div class="hist-chips" id="rng-hist"></div>
+</div>
+
+<!-- TEAMS PANEL -->
+<div id="tab-teams" class="hidden" style="max-width:500px;margin:0 auto;">
+  <div class="card">
+    <div class="card-title">Names (one per line)</div>
+    <textarea class="input" id="names-input" placeholder="Alice&#10;Bob&#10;Cameron&#10;Jamie&#10;…" rows="6"></textarea>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;">
+      <label style="font-size:.85rem;color:var(--muted);white-space:nowrap;">Teams:</label>
+      <select class="input" id="team-count" style="width:auto;flex:0 0 auto;">
+        <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+      <button class="btn btn-gold" id="teams-btn" style="flex:1;">Randomize!</button>
+    </div>
+  </div>
+  <div id="teams-output" class="team-display"></div>
+</div>
+
+</div>
+<script>
+'use strict';
+const TEAM_COLORS=['#f5c842','#5ac8fa','#ff6b6b','#7ed47e','#c084fc','#fb923c'];
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    ['rng','teams'].forEach(id=>document.getElementById('tab-'+id).classList.toggle('hidden',id!==t.dataset.tab));
+  });
+});
+
+// ── RNG ────────────────────────────────────────────────────────────────────
+let rngHistory=[];
+document.getElementById('rng-btn').addEventListener('click',()=>{
+  const min=parseInt(document.getElementById('rng-min').value)||1;
+  const max=parseInt(document.getElementById('rng-max').value)||100;
+  const count=parseInt(document.getElementById('rng-count').value)||1;
+  if(min>max){document.getElementById('rng-output').innerHTML='<p style="color:var(--red);text-align:center;font-size:.85rem;">Min must be ≤ max</p>';return;}
+
+  const nums=Array.from({length:count},()=>Math.floor(Math.random()*(max-min+1))+min);
+  const out=document.getElementById('rng-output');
+
+  if(count===1){
+    out.innerHTML=`<div class="big-num">${nums[0]}</div>`;
+    rngHistory.unshift(nums[0]);if(rngHistory.length>20)rngHistory.pop();
+  } else {
+    out.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;">${
+      nums.map(n=>`<div style="background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);border-radius:8px;padding:6px 14px;font-family:var(--serif);font-size:1.4rem;font-weight:900;color:var(--gold);">${n}</div>`).join('')
+    }</div>`;
+    nums.forEach(n=>{rngHistory.unshift(n);});if(rngHistory.length>20)rngHistory.length=20;
+  }
+
+  const hist=document.getElementById('rng-hist');
+  hist.innerHTML=rngHistory.map(n=>`<div class="hist-chip">${n}</div>`).join('');
+});
+
+// ── Team Generator ─────────────────────────────────────────────────────────
+document.getElementById('teams-btn').addEventListener('click',()=>{
+  const raw=document.getElementById('names-input').value;
+  const names=raw.split('\n').map(n=>n.trim()).filter(Boolean);
+  if(names.length<2){document.getElementById('teams-output').innerHTML='<p style="color:var(--red);text-align:center;">Enter at least 2 names.</p>';return;}
+
+  const numTeams=parseInt(document.getElementById('team-count').value);
+  if(numTeams>names.length){document.getElementById('teams-output').innerHTML='<p style="color:var(--red);text-align:center;">More teams than names!</p>';return;}
+
+  // Shuffle
+  const shuffled=[...names];
+  for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+
+  // Distribute
+  const teams=Array.from({length:numTeams},()=>[]);
+  shuffled.forEach((name,i)=>teams[i%numTeams].push(name));
+
+  const out=document.getElementById('teams-output');
+  out.innerHTML=teams.map((members,ti)=>`
+    <div class="team-card" style="border-color:${TEAM_COLORS[ti]}40;">
+      <div class="team-name" style="color:${TEAM_COLORS[ti]};">Team ${ti+1}</div>
+      ${members.map(m=>`<div class="team-member">${m}</div>`).join('')}
+    </div>`).join('');
+});
+</script>
+</body>
+</html>

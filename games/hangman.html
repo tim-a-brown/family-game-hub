@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Hangman</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a0a 0%,#0d1117 65%);}
+.hangman-svg{display:block;margin:0 auto;max-width:200px;}
+.word-display{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:16px 0;row-gap:10px;}
+.letter-blank{width:clamp(22px,6.5vw,32px);border-bottom:3px solid rgba(255,255,255,.4);text-align:center;font-family:var(--serif);font-size:clamp(1.1rem,5vw,1.5rem);font-weight:900;padding-bottom:2px;min-height:36px;}
+.word-gap{width:18px;flex-shrink:0;}
+.keyboard{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:min(380px,calc(100vw - 24px));margin:0 auto;}
+.key-btn{width:clamp(36px,(100vw - 32px)/13,44px);height:clamp(36px,(100vw - 32px)/13,44px);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:7px;color:var(--text);font-size:.88rem;font-weight:700;cursor:pointer;transition:all .15s;touch-action:manipulation;}
+.key-btn:hover:not(:disabled){background:rgba(255,255,255,.15);}
+.key-btn:disabled{opacity:.25;cursor:default;}
+.key-btn.correct{background:rgba(126,212,126,.2);border-color:var(--green);color:var(--green);}
+.key-btn.wrong{background:rgba(255,107,107,.15);border-color:rgba(255,107,107,.3);color:rgba(255,107,107,.5);}
+.status-bar{text-align:center;font-size:1rem;font-weight:700;margin:10px 0;min-height:28px;}
+.hint-btn{display:block;margin:8px auto 0;font-size:.78rem;}
+.cat-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.cat-btn{padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;}
+.cat-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.mode-row{display:flex;gap:6px;justify-content:center;margin-bottom:14px;}
+.mode-btn{padding:8px 16px;border-radius:9px;border:1.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:.82rem;font-weight:700;cursor:pointer;touch-action:manipulation;transition:all .15s;}
+.mode-btn.active{border-color:var(--gold);background:rgba(245,200,66,.13);color:var(--gold);}
+.custom-entry{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:20px 16px;max-width:400px;margin:0 auto 14px;}
+.custom-entry-title{font-weight:700;font-size:.95rem;margin-bottom:4px;}
+.custom-entry-sub{color:var(--muted);font-size:.78rem;margin-bottom:12px;}
+.phrase-input{font-family:var(--font);font-size:max(16px,1rem);letter-spacing:.08em;text-transform:uppercase;}
+.phrase-input::placeholder{text-transform:none;letter-spacing:0;}
+.handoff-overlay{position:fixed;inset:0;background:#0d1117;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+.handoff-icon{font-size:4rem;margin-bottom:16px;}
+.handoff-title{font-family:var(--serif);font-size:2rem;font-weight:900;margin-bottom:10px;}
+.handoff-sub{color:var(--muted);font-size:.9rem;max-width:300px;line-height:1.6;margin-bottom:28px;}
+/* Difficulty selector */
+.diff-screen{max-width:420px;margin:0 auto 16px;padding:0 12px;}
+.diff-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.diff-card{background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 10px;cursor:pointer;text-align:center;transition:all .18s;touch-action:manipulation;}
+.diff-card.selected{border-color:var(--gold);background:rgba(245,200,66,.1);}
+.diff-card:hover{border-color:rgba(255,255,255,.25);}
+.diff-card-name{font-weight:800;font-size:.95rem;margin-bottom:3px;}
+.diff-card-sub{font-size:.7rem;color:var(--muted);margin-bottom:8px;}
+.diff-preview{display:block;margin:0 auto;}
+.wrong-counter{display:flex;justify-content:center;gap:4px;margin-top:8px;}
+.wrong-pip{width:8px;height:8px;border-radius:50%;background:rgba(255,107,107,.3);border:1px solid rgba(255,107,107,.4);}
+.wrong-pip.active{background:#ff6b6b;}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Hangman</span></nav>
+<div class="page">
+
+<!-- Difficulty selector (shown before game starts) -->
+<div id="diff-screen" class="diff-screen">
+  <div style="text-align:center;font-family:var(--serif);font-size:1.3rem;font-weight:900;margin-bottom:14px;">Choose Difficulty</div>
+  <div class="diff-cards">
+    <!-- Easy -->
+    <div class="diff-card selected" id="diff-easy" onclick="selectDiff('easy')">
+      <div class="diff-card-name" style="color:#22c55e;">Easy</div>
+      <div class="diff-card-sub">10 wrong guesses</div>
+      <svg class="diff-preview" viewBox="0 0 80 100" width="80" height="80">
+        <line x1="10" y1="95" x2="70" y2="95" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="30" y1="95" x2="30" y2="10" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="30" y1="10" x2="55" y2="10" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="55" y1="10" x2="55" y2="22" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="55" cy="30" r="8" stroke="#22c55e" stroke-width="2.5" fill="none"/>
+        <line x1="55" y1="38" x2="55" y2="60" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="42" x2="44" y2="50" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="42" x2="66" y2="50" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="60" x2="44" y2="74" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="60" x2="66" y2="74" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="44" y1="74" x2="40" y2="82" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+        <line x1="66" y1="74" x2="70" y2="82" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+        <line x1="44" y1="50" x2="40" y2="58" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+        <line x1="66" y1="50" x2="70" y2="58" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <!-- Hard -->
+    <div class="diff-card" id="diff-hard" onclick="selectDiff('hard')">
+      <div class="diff-card-name" style="color:#ef4444;">Hard</div>
+      <div class="diff-card-sub">6 wrong guesses</div>
+      <svg class="diff-preview" viewBox="0 0 80 100" width="80" height="80">
+        <line x1="10" y1="95" x2="70" y2="95" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="30" y1="95" x2="30" y2="10" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="30" y1="10" x2="55" y2="10" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="55" y1="10" x2="55" y2="22" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="55" cy="30" r="8" stroke="#ef4444" stroke-width="2.5" fill="none"/>
+        <line x1="55" y1="38" x2="55" y2="62" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="44" x2="43" y2="54" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="44" x2="67" y2="54" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="62" x2="43" y2="76" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="55" y1="62" x2="67" y2="76" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+  <button class="btn btn-gold btn-block" id="diff-start">Start Game →</button>
+</div>
+
+<!-- Mode toggle -->
+<div class="mode-row" id="mode-row" style="display:none;">
+  <button class="mode-btn active" id="mode-random">🎲 Random Word</button>
+  <button class="mode-btn" id="mode-custom">✏️ Custom Phrase</button>
+</div>
+
+<!-- Category row (random mode only) -->
+<div class="cat-row" id="cats" style="display:none;"></div>
+
+<!-- Custom phrase entry (hidden by default) -->
+<div class="custom-entry hidden" id="custom-entry">
+  <div class="custom-entry-title">Player 1 — Enter Your Phrase</div>
+  <div class="custom-entry-sub">Letters and spaces only. Player 2 won't see this.</div>
+  <input class="input phrase-input" id="phrase-input" placeholder="Type a word or phrase…" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" style="margin-bottom:10px;">
+  <input class="input" id="hint-custom" placeholder="Optional: add a hint for Player 2" maxlength="60" style="margin-bottom:12px;">
+  <div id="phrase-err" style="color:var(--red);font-size:.8rem;margin-bottom:8px;display:none;"></div>
+  <button class="btn btn-gold btn-block" id="set-phrase-btn">Set Phrase →</button>
+</div>
+
+<!-- Handoff overlay -->
+<div class="handoff-overlay hidden" id="handoff">
+  <div class="handoff-icon">🙈</div>
+  <div class="handoff-title">Phrase Set!</div>
+  <div class="handoff-sub">Hand the device to <strong>Player 2</strong>.<br>Don't peek at the screen!</div>
+  <button class="btn btn-gold" id="ready-btn" style="min-width:200px;">I'm Ready to Guess →</button>
+</div>
+
+<!-- Game area -->
+<svg class="hangman-svg" viewBox="0 0 160 210" id="hsvg" style="display:none;"></svg>
+<!-- Wrong guess pips -->
+<div class="wrong-counter" id="wrong-counter" style="margin-bottom:4px;"></div>
+<div class="status-bar" id="status"></div>
+<div class="word-display" id="word-display"></div>
+<div class="keyboard" id="keyboard"></div>
+<button class="btn btn-outline btn-sm hint-btn" id="hint-btn">💡 Show Hint</button>
+<div style="text-align:center;color:var(--muted);font-size:.8rem;margin-top:6px;min-height:20px;" id="hint-text"></div>
+<div style="text-align:center;margin-top:14px;display:flex;gap:8px;justify-content:center;">
+  <button class="btn btn-outline btn-sm" id="new-word" style="display:none;">New Word</button>
+  <button class="btn btn-outline btn-sm hidden" id="new-phrase-btn">New Phrase</button>
+  <button class="btn btn-outline btn-sm" id="change-diff">Change Difficulty</button>
+</div>
+</div>
+<script>
+'use strict';
+const WORDS={
+  Animals:['ELEPHANT','GIRAFFE','PENGUIN','DOLPHIN','CROCODILE','CHEETAH','KANGAROO','PLATYPUS','CHAMELEON','ARMADILLO',
+    'RHINOCEROS','ORANGUTAN','WOLVERINE','PORCUPINE','FLAMINGO','PELICAN','OCTOPUS','LOBSTER','SCORPION','PIRANHA',
+    'CHIMPANZEE','SALAMANDER','TARANTULA','NARWHAL','MANATEE','WOLVERINE','ALLIGATOR','COCKROACH','DRAGONFLY','FIREFLY',
+    'HAMSTER','HEDGEHOG','LEMUR','MEERKAT','MONGOOSE','OPOSSUM','PEACOCK','TOUCAN','WALRUS','WOMBAT',
+    'BARRACUDA','BISON','BUFFALO','COBRA','CONDOR','COYOTE','FALCON','FERRET','GAZELLE','GECKO',
+    'GORILLA','GRIZZLY','IGUANA','JAGUAR','LEOPARD','MACAW','MANTA','MOOSE','MUSKRAT','OSPREY',
+    'PANTHER','PARROT','PYTHON','RACCOON','SEAHORSE','SPARROW','SQUID','STINGRAY','SWAN','TAPIR',
+    'TERMITE','VULTURE','WARTHOG','WEASEL','WILDCAT','WOLVERINE','WOODPECKER','YAK','ZEBRAFISH','ALBATROSS',
+    'ANACONDA','BABOON','CAPYBARA','CATFISH','DINGO','ECHIDNA','EGRET','EMU','GNU','HYENA',
+    'IBIS','JACKAL','KOMODO','LYNX','MANDRILL','MARLIN','MOLE','OKAPI','ORIOLE','QUOKKA'],
+
+  Food:['SPAGHETTI','AVOCADO','CROISSANT','QUESADILLA','BROCCOLI','PINEAPPLE','CINNAMON','LASAGNA','DUMPLING','ASPARAGUS',
+    'ARTICHOKE','BAGUETTE','BURRITO','CANNOLI','CARAMEL','CHIMICHANGA','COCONUT','EGGPLANT','ENCHILADA','FALAFEL',
+    'GAZPACHO','GUACAMOLE','HUMMUS','JALAPENO','KIMCHI','LENTIL','MOZZARELLA','NOODLE','PAPAYA','PARMESAN',
+    'PERSIMMON','PISTACHIO','POMEGRANATE','PRETZEL','PROSCIUTTO','QUINOA','RAVIOLI','RHUBARB','RISOTTO','ROSEMARY',
+    'RUTABAGA','SAFFRON','SALMON','SAMOSA','SORBET','SPINACH','SRIRACHA','TAHINI','TAMALE','TIRAMISU',
+    'TORTILLA','TRUFFLE','TURMERIC','TURNIP','VANILLA','WAFFLE','WATERCRESS','WATERMELON','ZUCCHINI','ANTIPASTO',
+    'ARUGULA','BASIL','BUTTERNUT','CARDAMOM','CHICKPEA','CHUTNEY','CILANTRO','CLEMENTINE','COUSCOUS','CRANBERRY',
+    'EDAMAME','FENNEL','GNOCCHI','GRAPEFRUIT','HORSERADISH','JALAPEÑO','JICAMA','KIWI','KOHLRABI','KUMQUAT',
+    'LYCHEE','MANGO','MARZIPAN','MERINGUE','MISO','MULBERRY','NECTARINE','OREGANO','PAELLA','PAPRIKA',
+    'PEACH','PESTO','POLENTA','PORTOBELLO','RICOTTA','ROMAINE','SOURDOUGH','TARRAGON','TEMPURA','TZATZIKI'],
+
+  Science:['PHOTOSYNTHESIS','ATMOSPHERE','CHROMOSOME','MAGNETISM','HIBERNATE','MOLECULE','TELESCOPE','EVOLUTION','STALACTITE','VELOCITY',
+    'ACCELERATION','AMPHIBIAN','ANATOMY','ANTIBIOTIC','ASTEROID','BACTERIA','BIODIVERSITY','BIOSPHERE','BOTANY','CALCULUS',
+    'CARNIVORE','CATALYST','CELLULITE','CENTRIFUGE','CHLOROPHYLL','COMBUSTION','CONDENSATION','CONVECTION','DENSITY','DIFFUSION',
+    'EARTHQUAKE','ECOSYSTEM','ELECTRODE','ELECTRON','EMBRYO','ENDURANCE','ENTROPY','ENZYME','EQUILIBRIUM','EROSION',
+    'EVAPORATION','EXTINCTION','FERMENTATION','FOSSIL','FRICTION','FUNGUS','GALAXY','GEOLOGY','GLACIER','GRAVITATION',
+    'GREENHOUSE','HERBIVORE','HORMONE','HYPOTHESIS','IMMUNITY','INERTIA','INVERTEBRATE','ION','ISOTOPE','KINETIC',
+    'LARVA','LATITUDE','LAVA','LONGITUDE','LUMINOSITY','METAMORPHOSIS','METEOR','MICROBE','MIGRATION','MOMENTUM',
+    'NEUTRON','NUCLEUS','OMNIVORE','ORBIT','OSMOSIS','OXIDATION','PARASITE','PARTICLE','PHOTON','PLANKTON',
+    'PLASMA','POLLINATION','PREDATOR','PROTEIN','PROTON','RADIATION','RECEPTOR','REFRACTION','REPRODUCTION','RESPIRATION',
+    'SEDIMENT','SEISMIC','SOLSTICE','SPECIES','SYMBIOSIS','TECTONIC','THERMOMETER','TIDAL','TORNADO','ULTRAVIOLET'],
+
+  Sports:['BASKETBALL','VOLLEYBALL','GYMNASTICS','SKATEBOARD','LACROSSE','BADMINTON','WRESTLING','SNOWBOARD','ARCHERY','FENCING',
+    'ATHLETICS','BIATHLON','BOBSLED','BOXING','CANOE','CRICKET','CURLING','CYCLING','DECATHLON','DISCUS',
+    'EQUESTRIAN','HANDBALL','HEPTATHLON','HURDLES','JAVELIN','JUDO','KAYAK','MARATHON','MOTOCROSS','NETBALL',
+    'PADDLEBOARD','PENTATHLON','POLO','RACQUETBALL','REGATTA','ROWING','RUGBY','SAILING','SHOTPUT','SLALOM',
+    'SOFTBALL','SURFING','SYNCHRONIZED','TAEKWONDO','TRIATHLON','WEIGHTLIFTING','WINDSURFING','POLO','BOCCE','CROQUET',
+    'DRESSAGE','DUATHLON','FOXTROT','FREESTYLE','FRISBEE','GLIDING','GOALBALL','HANDBALL','HURDLING','ICEHOKEY',
+    'JUJITSU','KABADDI','KENDO','KITEBOARDING','LUGE','MOGULS','MOUNTAINBIKE','OBSTACLE','ORIENTEERING','PADDLEBALL',
+    'PARAGLIDING','PARKOUR','PICKLEBALL','POWERLIFTING','RAPPELLING','RINGETTE','ROLLERSKATE','ROUNDERS','SHEEPDOG','SKELETON',
+    'SKIJUMP','SKIINGSLALOM','SPEARFISHING','SQUASH','STEEPLE','SUMO','SURFSKI','TRAMPOLINE','TRAPEZE','WATERPOLO'],
+
+  Geography:['AMAZON','ANTARCTICA','ARCHIPELAGO','ARCTIC','ATMOSPHERE','CANYON','CAPITAL','CONTINENT','DELTA','EQUATOR',
+    'FJORD','GLACIER','HABITAT','HEMISPHERE','HIMALAYA','HURRICANE','ISLAND','ISTHMUS','LAGOON','LATITUDE',
+    'LONGITUDE','MONSOON','MOUNTAIN','PENINSULA','PLATEAU','PRAIRIE','RAINFOREST','SAHARA','SAVANNA','STEPPE',
+    'STRAIT','TUNDRA','TYPHOON','VOLCANO','WATERSHED','WETLAND','MERIDIAN','MANGROVE','OASIS','PERMAFROST',
+    'AUSTRALIA','BANGLADESH','BOTSWANA','BRAZIL','CAMBODIA','CAMEROON','COLOMBIA','CROATIA','CZECHIA','DENMARK',
+    'ECUADOR','ETHIOPIA','FINLAND','GEORGIA','GHANA','GUATEMALA','HONDURAS','HUNGARY','ICELAND','INDONESIA',
+    'JAMAICA','JORDAN','KENYA','LAOS','LEBANON','MADAGASCAR','MALAYSIA','MEXICO','MOROCCO','MOZAMBIQUE',
+    'NAMIBIA','NEPAL','NICARAGUA','NIGERIA','NORWAY','PAKISTAN','PANAMA','PARAGUAY','PERU','PHILIPPINES',
+    'PORTUGAL','ROMANIA','RWANDA','SENEGAL','SERBIA','SINGAPORE','SOMALIA','SURINAME','TANZANIA','THAILAND',
+    'TRINIDAD','TUNISIA','UKRAINE','URUGUAY','UZBEKISTAN','VENEZUELA','VIETNAM','ZAMBIA','ZIMBABWE','AZERBAIJAN'],
+
+  Movies:['ADVENTURE','ANIMATION','CINEMATIC','DOCUMENTARY','FRANCHISE','NARRATIVE','PROTAGONIST','SCREENPLAY','SUSPENSE','THRILLER',
+    'ACADEMY','ACTRESS','BLOCKBUSTER','CAMEO','CLIFFHANGER','COMEDY','CREDITS','CROSSOVER','DIRECTOR','DYSTOPIA',
+    'ENSEMBLE','FANTASY','FILMMAKER','FLASHBACK','FRANCHISE','GHOSTWRITER','HEIST','HORROR','INDIE','MONTAGE',
+    'MUSICAL','MYSTERY','NOIR','PARODY','PREQUEL','PRODUCTION','REBOOT','REMAKE','ROMANCE','SATIRE',
+    'SEQUEL','SERIES','SOUNDTRACK','SPINOFF','STORYBOARD','STUDIO','SUBPLOT','SUPERHERO','TRILOGY','VILLAIN',
+    'WESTERN','WHODUNIT','CLIFFHANGER','ANTICLIMAX','BACKSTORY','CATHARSIS','CINEMATOGRAPHY','CLIMAX','DENOUEMENT','DIALOGUE',
+    'EDITING','EPILOGUE','EXPOSITION','FOREBODING','FORESHADOW','IRONY','JUXTAPOSE','METAPHOR','MOTIF','ODYSSEY',
+    'PARADOX','PATHOS','PERSPECTIVE','PLOTTWIST','PROLOGUE','REDEMPTION','RESOLUTION','REVELATION','SPECTACLE','SYMBOLISM',
+    'ALLEGORY','ANTIHERO','ARCHETYPE','CHARACTER','CONFLICT','DILEMMA','EMPATHY','FLASHFORWARD','FORESHADOWING','HUBRIS',
+    'IMAGERY','INNUENDO','MANIFESTO','MONOLOGUE','NOSTALGIA','PROPAGANDA','SOLILOQUY','STEREOTYPE','SUBTEXT','ZEITGEIST'],
+};
+
+const HINTS={
+  // Animals
+  ELEPHANT:'Largest land animal',GIRAFFE:'Tallest animal, long neck',PENGUIN:'Flightless bird from Antarctica',
+  DOLPHIN:'Intelligent ocean mammal',CROCODILE:'Ancient reptile with strong jaws',CHEETAH:'Fastest land animal',
+  KANGAROO:'Australian marsupial with a pouch',PLATYPUS:'Egg-laying mammal with a duck bill',
+  CHAMELEON:'Lizard that changes color',ARMADILLO:'Has a bony armored shell',
+  RHINOCEROS:'Horned African or Asian megafauna',ORANGUTAN:'Red great ape of Borneo and Sumatra',
+  WOLVERINE:'Fierce weasel-family carnivore',PORCUPINE:'Rodent covered in sharp quills',
+  FLAMINGO:'Pink wading bird on one leg',PELICAN:'Large beak with a throat pouch',
+  OCTOPUS:'Eight-armed sea creature',LOBSTER:'Clawed crustacean, turns red when cooked',
+  SCORPION:'Desert arachnid with a venomous tail',PIRANHA:'Flesh-eating freshwater fish',
+  CHIMPANZEE:'Our closest primate relative',SALAMANDER:'Amphibian that can regrow limbs',
+  TARANTULA:'Large hairy spider',NARWHAL:'Arctic whale with a spiral tusk',
+  MANATEE:'Gentle sea cow of warm coastal waters',ALLIGATOR:'Broad-snouted American reptile',
+  COCKROACH:'Hardy insect survivor',DRAGONFLY:'Agile hovering insect with large eyes',
+  FIREFLY:'Beetle that produces bioluminescent light',HAMSTER:'Small furry rodent with cheek pouches',
+  HEDGEHOG:'Spiny insectivore that rolls into a ball',LEMUR:'Wide-eyed primate from Madagascar',
+  MEERKAT:'Burrowing mongoose that stands guard',MONGOOSE:'Snake-fighting weasel relative',
+  OPOSSUM:'North American marsupial that plays dead',PEACOCK:'Bird famous for its stunning tail display',
+  TOUCAN:'Tropical bird with an oversized colorful beak',WALRUS:'Tusked Arctic marine mammal',
+  WOMBAT:'Stocky Australian marsupial, cube-shaped droppings',BARRACUDA:'Long fast predatory reef fish',
+  BISON:'Shaggy North American grassland giant',BUFFALO:'African bovine, travels in large herds',
+  COBRA:'Hooded venomous snake',CONDOR:'Largest flying bird in the Americas',
+  COYOTE:'Clever canine of North American plains',FALCON:'Fast diving bird of prey',
+  FERRET:'Slender domesticated polecat',GAZELLE:'Slender swift African antelope',
+  GECKO:'Small lizard that can walk on ceilings',GORILLA:'Largest great ape',
+  GRIZZLY:'Large brown bear of North America',IGUANA:'Large tree-dwelling tropical lizard',
+  JAGUAR:'Spotted big cat of the Americas',LEOPARD:'Spotted cat that hauls prey into trees',
+  MACAW:'Colorful large parrot of the tropics',MANTA:'Huge flat ray with wing-like fins',
+  MOOSE:'Largest member of the deer family',MUSKRAT:'Semi-aquatic rodent of North America',
+  OSPREY:'Fish-hunting hawk that dives feet-first',PANTHER:'Black coat phase of leopard or jaguar',
+  PARROT:'Colorful bird that mimics speech',PYTHON:'Large constricting snake',
+  RACCOON:'Masked North American scavenger',SEAHORSE:'Fish with a horse-like head that carries young',
+  SPARROW:'Small common songbird',SQUID:'Ten-armed cephalopod',
+  STINGRAY:'Flat fish with a venomous tail spine',SWAN:'Large graceful white waterfowl',
+  TAPIR:'Pig-like animal with a short prehensile snout',TERMITE:'Wood-eating insect in massive colonies',
+  VULTURE:'Scavenging bird with a bald head',WARTHOG:'Wild pig with curved tusks',
+  WEASEL:'Long slender carnivore',WILDCAT:'Undomesticated small feline',
+  WOODPECKER:'Bird that drums on trees for insects',YAK:'Long-haired Himalayan bovine',
+  ZEBRAFISH:'Striped lab research fish',ALBATROSS:'Giant seabird with the widest wingspan',
+  ANACONDA:'World\'s heaviest snake',BABOON:'Large ground-dwelling monkey',
+  CAPYBARA:'World\'s largest rodent',CATFISH:'Bottom-feeding whiskered fish',
+  DINGO:'Wild dog of Australia',ECHIDNA:'Spiny egg-laying Australian mammal',
+  EGRET:'Tall white wading heron',EMU:'Tall flightless Australian bird',
+  GNU:'Wildebeest of African savanna',HYENA:'Spotted laughing African predator',
+  IBIS:'Long-curved-beak wading bird',JACKAL:'Scavenging African canine',
+  KOMODO:'World\'s largest lizard',LYNX:'Short-tailed tufted-ear wild cat',
+  MANDRILL:'Most colorful primate with bright face',MARLIN:'Large billfish of the open ocean',
+  MOLE:'Small blind burrowing mammal',OKAPI:'Striped-legged relative of the giraffe',
+  ORIOLE:'Bright orange and black songbird',QUOKKA:'Tiny smiling marsupial of Australia',
+  // Food
+  SPAGHETTI:'Long Italian pasta',AVOCADO:'Creamy green fruit',CROISSANT:'Flaky crescent-shaped French pastry',
+  QUESADILLA:'Grilled tortilla with cheese',BROCCOLI:'Green tree-shaped vegetable',
+  PINEAPPLE:'Tropical fruit with spiky leaves',CINNAMON:'Sweet aromatic bark spice',
+  LASAGNA:'Layered Italian pasta dish',DUMPLING:'Dough wrapped around filling',
+  ASPARAGUS:'Long thin spring vegetable',ARTICHOKE:'Thorny flower bud you eat',
+  BAGUETTE:'Long crusty French bread',BURRITO:'Flour tortilla wrapped around fillings',
+  CANNOLI:'Crispy Italian pastry tube with cream filling',CARAMEL:'Sugar cooked until golden',
+  CHIMICHANGA:'Deep-fried Mexican burrito',COCONUT:'Tropical palm fruit with white flesh',
+  EGGPLANT:'Purple teardrop-shaped vegetable',ENCHILADA:'Rolled corn tortilla in chili sauce',
+  FALAFEL:'Fried chickpea balls, Middle Eastern street food',GAZPACHO:'Cold Spanish tomato soup',
+  GUACAMOLE:'Mashed avocado dip',HUMMUS:'Creamy chickpea and tahini dip',
+  JALAPENO:'Spicy green Mexican pepper',KIMCHI:'Fermented Korean spicy cabbage',
+  LENTIL:'Small protein-rich legume',MOZZARELLA:'Stretchy Italian cheese for pizza',
+  NOODLE:'Long strand of pasta or dough',PAPAYA:'Tropical orange-fleshed fruit',
+  PARMESAN:'Hard Italian cheese grated over pasta',PERSIMMON:'Orange autumn fruit',
+  PISTACHIO:'Green nut in a tan shell',POMEGRANATE:'Red fruit packed with jewel-like seeds',
+  PRETZEL:'Twisted baked dough snack',PROSCIUTTO:'Thin Italian dry-cured ham',
+  QUINOA:'Protein-rich South American grain',RAVIOLI:'Stuffed pasta pillows',
+  RHUBARB:'Sour red stalk, often in pies',RISOTTO:'Creamy slow-cooked Italian rice',
+  ROSEMARY:'Fragrant evergreen herb',RUTABAGA:'Large yellow-fleshed root vegetable',
+  SAFFRON:'World\'s most expensive spice, bright yellow',SALMON:'Pink fatty cold-water fish',
+  SAMOSA:'Fried pastry with spiced filling',SORBET:'Dairy-free frozen fruit dessert',
+  SPINACH:'Leafy green Popeye ate',SRIRACHA:'Thai rooster hot sauce',
+  TAHINI:'Sesame seed paste',TAMALE:'Corn dough steamed in a husk',
+  TIRAMISU:'Italian espresso and mascarpone dessert',TORTILLA:'Flat corn or flour bread',
+  TRUFFLE:'Rare underground fungi',TURMERIC:'Golden anti-inflammatory spice',
+  TURNIP:'Round purple-top root vegetable',VANILLA:'Sweet pod from an orchid',
+  WAFFLE:'Grid-patterned breakfast cake',WATERCRESS:'Peppery aquatic leafy green',
+  WATERMELON:'Huge green fruit with pink juicy flesh',ZUCCHINI:'Italian green summer squash',
+  ANTIPASTO:'Italian appetizer platter',ARUGULA:'Peppery salad leaf',
+  BASIL:'Aromatic herb essential to pesto',BUTTERNUT:'Sweet orange-fleshed squash',
+  CARDAMOM:'Aromatic spice in chai and rice dishes',CHICKPEA:'Round legume in hummus and curries',
+  CHUTNEY:'Sweet-spicy fruit condiment',CILANTRO:'Controversial herb — love or hate it',
+  CLEMENTINE:'Small easy-peel orange',COUSCOUS:'Tiny North African semolina pasta',
+  CRANBERRY:'Tart red berry for sauce and juice',EDAMAME:'Young soybeans steamed in the pod',
+  FENNEL:'Anise-flavored bulb vegetable',GNOCCHI:'Soft Italian potato dumplings',
+  GRAPEFRUIT:'Large bitter citrus',HORSERADISH:'Pungent white root used as a condiment',
+  JICAMA:'Crunchy white Mexican root vegetable',KIWI:'Brown fuzzy fruit with green flesh',
+  KOHLRABI:'Alien-looking purple or green stem vegetable',KUMQUAT:'Tiny oval citrus you eat whole',
+  LYCHEE:'Sweet white tropical fruit with bumpy red skin',MANGO:'Juicy tropical stone fruit',
+  MARZIPAN:'Sweet almond paste confection',MERINGUE:'Airy baked egg white sweet',
+  MISO:'Japanese fermented soybean paste',MULBERRY:'Purple berry from a tree',
+  NECTARINE:'Smooth-skinned peach relative',OREGANO:'Pizza herb',
+  PAELLA:'Spanish saffron rice with seafood',PAPRIKA:'Ground red pepper spice',
+  PESTO:'Basil, pine nut and olive oil sauce',POLENTA:'Cornmeal porridge',
+  PORTOBELLO:'Large meaty mushroom cap',RICOTTA:'Soft white Italian cheese',
+  ROMAINE:'Crisp lettuce for Caesar salad',SOURDOUGH:'Tangy bread leavened with wild yeast',
+  TARRAGON:'Anise-flavored French herb',TEMPURA:'Japanese light batter-fried vegetables or shrimp',
+  TZATZIKI:'Greek cucumber and yogurt dip',
+  // Science
+  PHOTOSYNTHESIS:'How plants make food from sunlight',ATMOSPHERE:'Gas layers surrounding Earth',
+  CHROMOSOME:'DNA-carrying structure in cells',MAGNETISM:'Force between magnets',
+  HIBERNATE:'Sleep through winter',MOLECULE:'Smallest unit of a compound',
+  TELESCOPE:'Instrument for viewing distant space objects',EVOLUTION:'Change in species over time',
+  STALACTITE:'Calcite spike hanging from cave ceiling',VELOCITY:'Speed in a specific direction',
+  ACCELERATION:'Rate of change of velocity',AMPHIBIAN:'Cold-blooded creature of land and water',
+  ANATOMY:'Study of body structure',ANTIBIOTIC:'Drug that kills bacterial infections',
+  ASTEROID:'Rocky body orbiting the sun',BACTERIA:'Single-celled microscopic organisms',
+  BIODIVERSITY:'Variety of life in an ecosystem',BIOSPHERE:'All living things on Earth',
+  BOTANY:'Study of plants',CALCULUS:'Branch of math using derivatives and integrals',
+  CARNIVORE:'Animal that eats only meat',CATALYST:'Speeds up a chemical reaction without being consumed',
+  CENTRIFUGE:'Spinning device that separates substances',CHLOROPHYLL:'Green pigment in plants that captures sunlight',
+  COMBUSTION:'Rapid chemical reaction that releases heat and light',CONDENSATION:'Gas turning to liquid',
+  CONVECTION:'Heat transfer through fluid movement',DENSITY:'Mass per unit of volume',
+  DIFFUSION:'Spread of particles from high to low concentration',EARTHQUAKE:'Shaking from tectonic plate movement',
+  ECOSYSTEM:'Community of living things and their environment',ELECTRODE:'Conductor through which electricity enters or leaves',
+  ELECTRON:'Negatively charged subatomic particle',EMBRYO:'Early stage of development in an organism',
+  ENTROPY:'Measure of disorder in a system',ENZYME:'Biological catalyst for chemical reactions',
+  EQUILIBRIUM:'State of balance between forces',EROSION:'Wearing away of rock or soil',
+  EVAPORATION:'Liquid turning to vapor',EXTINCTION:'Complete disappearance of a species',
+  FERMENTATION:'Breakdown of sugars by microorganisms',FOSSIL:'Preserved remains of ancient organisms',
+  FRICTION:'Resistance when surfaces rub together',FUNGUS:'Kingdom that includes mushrooms and molds',
+  GALAXY:'Vast system of stars and interstellar matter',GEOLOGY:'Study of Earth\'s structure and history',
+  GLACIER:'Slow-moving mass of ice',GRAVITATION:'Attractive force between masses',
+  GREENHOUSE:'Effect that warms a planet through trapped radiation',HERBIVORE:'Animal that eats only plants',
+  HORMONE:'Chemical messenger in the bloodstream',HYPOTHESIS:'Testable scientific prediction',
+  IMMUNITY:'Body\'s defense against disease',INERTIA:'Tendency to resist change in motion',
+  INVERTEBRATE:'Animal without a backbone',ION:'Charged atom or molecule',
+  ISOTOPE:'Form of element with different neutron count',KINETIC:'Relating to energy of motion',
+  LARVA:'Young form of an insect before metamorphosis',LATITUDE:'Distance north or south of the equator',
+  LAVA:'Molten rock after it reaches Earth\'s surface',LONGITUDE:'Distance east or west on a globe',
+  LUMINOSITY:'Total brightness of a star',METAMORPHOSIS:'Complete transformation of form',
+  METEOR:'Rock that burns in Earth\'s atmosphere',MICROBE:'Microscopic living organism',
+  MIGRATION:'Seasonal movement of animals to new regions',MOMENTUM:'Mass times velocity',
+  NEUTRON:'Neutral subatomic particle in the nucleus',NUCLEUS:'Control center of a cell or atom',
+  OMNIVORE:'Animal that eats plants and animals',ORBIT:'Curved path of one object around another',
+  OSMOSIS:'Movement of water through a membrane',OXIDATION:'Chemical reaction with oxygen',
+  PARASITE:'Organism that lives at another\'s expense',PARTICLE:'Tiny piece of matter',
+  PHOTON:'Quantum of light',PLANKTON:'Microscopic aquatic organisms',
+  PLASMA:'Fourth state of matter, superheated gas',POLLINATION:'Transfer of pollen to fertilize a plant',
+  PREDATOR:'Animal that hunts other animals',PROTEIN:'Large molecule essential for life',
+  PROTON:'Positively charged particle in nucleus',RADIATION:'Energy transmitted as waves or particles',
+  RECEPTOR:'Cell structure that receives signals',REFRACTION:'Bending of light through a medium',
+  REPRODUCTION:'Biological process of producing offspring',RESPIRATION:'Process cells use to release energy',
+  SEDIMENT:'Solid material deposited by water or wind',SEISMIC:'Relating to earthquakes or tremors',
+  SOLSTICE:'Day with longest or shortest daylight',SPECIES:'Group of organisms that can interbreed',
+  SYMBIOSIS:'Close relationship between two species',TECTONIC:'Relating to Earth\'s crustal plates',
+  THERMOMETER:'Instrument to measure temperature',TIDAL:'Relating to the rise and fall of sea level',
+  TORNADO:'Violent rotating column of air',ULTRAVIOLET:'Light beyond violet in the spectrum',
+  // Sports
+  BASKETBALL:'Sport with hoops and a round ball',VOLLEYBALL:'Sport played over a net',
+  GYMNASTICS:'Sport with acrobatic movements',SKATEBOARD:'Board on four wheels for tricks',
+  LACROSSE:'Sport with a stick and mesh pocket',BADMINTON:'Racket sport with a shuttlecock',
+  WRESTLING:'Combat sport on a mat',SNOWBOARD:'Single board for snow riding',
+  ARCHERY:'Sport of shooting with bow and arrow',FENCING:'Sword fighting sport',
+  ATHLETICS:'Track and field events',BIATHLON:'Cross-country skiing and rifle shooting',
+  BOBSLED:'Ice track racing in a sled',BOXING:'Combat sport with padded gloves',
+  CANOE:'Small paddled watercraft',CRICKET:'Bat and ball sport with an oval pitch',
+  CURLING:'Ice sport sweeping stones to a target',CYCLING:'Competitive bike riding',
+  DECATHLON:'Ten-event athletics competition',DISCUS:'Throwing a heavy disk for distance',
+  EQUESTRIAN:'Competitive horseback riding',HANDBALL:'Team sport throwing a ball into a goal',
+  HEPTATHLON:'Seven-event women\'s athletics',HURDLES:'Sprint race with barriers to clear',
+  JAVELIN:'Throwing a spear for distance',JUDO:'Japanese throwing and grappling martial art',
+  KAYAK:'Small paddled enclosed boat',MARATHON:'42.2 km long-distance foot race',
+  MOTOCROSS:'Off-road dirt bike racing',NETBALL:'Shooting hoops without a backboard',
+  PADDLEBOARD:'Standing on a board and paddling',PENTATHLON:'Five-event Olympic competition',
+  POLO:'Equestrian sport hitting a ball with a mallet',RACQUETBALL:'Court sport with a rubber ball',
+  REGATTA:'Series of boat races',ROWING:'Propelling a boat with oars',
+  RUGBY:'Contact sport with an oval ball, no pads',SAILING:'Racing boats using wind power',
+  SHOTPUT:'Throwing a heavy metal ball for distance',SLALOM:'Timed weaving through gates',
+  SOFTBALL:'Like baseball but with a larger ball',SURFING:'Riding ocean waves on a board',
+  SYNCHRONIZED:'Swimming or diving performed in unison',TAEKWONDO:'Korean kicking martial art',
+  TRIATHLON:'Swim, bike, run race',WEIGHTLIFTING:'Olympic sport of lifting barbells',
+  WINDSURFING:'Surfboard with a sail attached',BOCCE:'Italian lawn bowling game',
+  CROQUET:'Mallet game hitting balls through hoops',DRESSAGE:'Precise horse movement sport',
+  FRISBEE:'Throwing and catching a plastic disc',FREESTYLE:'Swimming stroke with no restriction',
+  KABADDI:'Contact team sport with breath-holding',KENDO:'Japanese sword-fighting with bamboo',
+  LUGE:'Feet-first ice track sliding sport',PARKOUR:'Free-running over urban obstacles',
+  PICKLEBALL:'Fast-growing paddle and wiffle ball sport',POWERLIFTING:'Max weight squat, bench, deadlift',
+  SQUASH:'Racket sport inside a closed court',TRAMPOLINE:'Bouncing gymnastics',
+  WATERPOLO:'Swimming pool team ball sport',SUMO:'Japanese wrestling to push opponent out of ring',
+  SKELETON:'Head-first ice track sliding sport',BIATHLON:'Skiing and rifle shooting combined',
+  DUATHLON:'Run, bike, run race',GLIDING:'Engineless aircraft soaring sport',
+  MOUNTAINBIKE:'Off-road bicycle racing',ORIENTEERING:'Navigation race with map and compass',
+  PARAGLIDING:'Flying with a parachute-like wing',ROLLERSKATE:'Racing or figure skating on four-wheeled boots',
+  RAPPELLING:'Descending a rope on a cliff',ROWING:'Propelling a shell boat with oars',
+  // Geography
+  AMAZON:'World\'s largest river by volume',ANTARCTICA:'Earth\'s southernmost frozen continent',
+  ARCHIPELAGO:'Chain or cluster of islands',ARCTIC:'Frozen ocean at the North Pole',
+  CANYON:'Deep gorge carved by a river',CAPITAL:'A country\'s seat of government',
+  CONTINENT:'Major land mass on Earth',DELTA:'Fan-shaped river mouth deposit',
+  EQUATOR:'Imaginary line around Earth\'s middle',FJORD:'Narrow sea inlet between cliffs',
+  GLACIER:'Slow-moving mass of ice',HEMISPHERE:'Half of the globe',
+  HIMALAYA:'World\'s highest mountain range',HURRICANE:'Tropical cyclone with winds over 74mph',
+  ISLAND:'Land entirely surrounded by water',ISTHMUS:'Narrow strip of land connecting two larger areas',
+  LAGOON:'Shallow coastal water body',LATITUDE:'Horizontal grid lines on a map',
+  LONGITUDE:'Vertical grid lines on a map',MONSOON:'Seasonal reversing wind bringing heavy rain',
+  MOUNTAIN:'Large natural elevation of land',PENINSULA:'Land surrounded by water on three sides',
+  PLATEAU:'Flat elevated landform',PRAIRIE:'Vast treeless grassland',
+  RAINFOREST:'Dense tropical forest with heavy rainfall',SAHARA:'World\'s largest hot desert',
+  SAVANNA:'Tropical grassland with scattered trees',STEPPE:'Vast Eurasian or American grassland',
+  STRAIT:'Narrow waterway between two seas',TUNDRA:'Flat treeless Arctic landscape',
+  TYPHOON:'Pacific tropical cyclone',VOLCANO:'Mountain that erupts molten rock',
+  WATERSHED:'Area of land draining to a river',WETLAND:'Land saturated with water',
+  MERIDIAN:'Line of longitude',MANGROVE:'Coastal salt-tolerant forest',
+  OASIS:'Fertile water source in the desert',PERMAFROST:'Permanently frozen subsoil',
+  AUSTRALIA:'Continent-island nation in the Pacific',BANGLADESH:'Densely populated South Asian delta nation',
+  BOTSWANA:'Landlocked southern African nation known for wildlife',BRAZIL:'Largest country in South America',
+  CAMBODIA:'Southeast Asian nation with Angkor Wat',CAMEROON:'Central African nation',
+  COLOMBIA:'South American nation famed for coffee',CROATIA:'Adriatic coastal European nation',
+  DENMARK:'Scandinavian kingdom connected to mainland Europe',ECUADOR:'Country on the equator in South America',
+  ETHIOPIA:'Highlands nation, origin of coffee',FINLAND:'Nordic nation of lakes and saunas',
+  GHANA:'West African nation',GUATEMALA:'Central American nation with Mayan ruins',
+  HONDURAS:'Central American nation',HUNGARY:'Central European landlocked nation',
+  ICELAND:'Island nation near Arctic Circle',INDONESIA:'Largest archipelago nation',
+  JAMAICA:'Caribbean island nation',JORDAN:'Middle Eastern nation adjacent to Dead Sea',
+  KENYA:'East African nation with Serengeti',LAOS:'Southeast Asian landlocked nation',
+  LEBANON:'Small Mediterranean Middle Eastern nation',MADAGASCAR:'Large island nation off Africa',
+  MALAYSIA:'Southeast Asian peninsula and island nation',MEXICO:'Spanish-speaking North American nation',
+  MOROCCO:'North African kingdom',MOZAMBIQUE:'Eastern African coastal nation',
+  NAMIBIA:'Southwestern African desert nation',NEPAL:'Himalayan landlocked nation',
+  NICARAGUA:'Largest Central American nation',NIGERIA:'Most populous African nation',
+  NORWAY:'Fjord-filled Scandinavian nation',PAKISTAN:'South Asian nation',
+  PANAMA:'Central American nation with a famous canal',PARAGUAY:'Landlocked South American nation',
+  PERU:'South American nation with Machu Picchu',PHILIPPINES:'Southeast Asian archipelago nation',
+  PORTUGAL:'Western Iberian Peninsula nation',ROMANIA:'Eastern European Carpathian nation',
+  RWANDA:'Small densely populated African nation',SENEGAL:'West African coastal nation',
+  SERBIA:'Balkan European nation',SINGAPORE:'Tiny wealthy city-state in Southeast Asia',
+  SOMALIA:'Horn of Africa nation',SURINAME:'Smallest South American nation',
+  TANZANIA:'East African nation with Kilimanjaro',THAILAND:'Southeast Asian kingdom',
+  TRINIDAD:'Caribbean twin-island nation',TUNISIA:'North African Mediterranean nation',
+  UKRAINE:'Largest country entirely in Europe',URUGUAY:'Small stable South American nation',
+  UZBEKISTAN:'Central Asian Silk Road nation',VENEZUELA:'Northern South American nation',
+  VIETNAM:'Southeast Asian peninsula nation',ZAMBIA:'Landlocked southern African nation',
+  ZIMBABWE:'Southern African nation with Victoria Falls',AZERBAIJAN:'Caspian Sea Caucasus nation',
+  // Movies
+  ADVENTURE:'Genre of daring journeys and quests',ANIMATION:'Genre of drawn or computer-generated characters',
+  CINEMATIC:'Relating to the art of film',DOCUMENTARY:'Non-fiction film of real events',
+  FRANCHISE:'Series of films sharing characters and world',NARRATIVE:'The story being told',
+  PROTAGONIST:'Main character of a story',SCREENPLAY:'Written script of a film',
+  SUSPENSE:'Feeling of anticipation and tension',THRILLER:'High-tension genre keeping you on edge',
+  BLOCKBUSTER:'High-budget film with huge audience',CAMEO:'Brief appearance by a famous person',
+  CLIFFHANGER:'Ending that leaves audience in suspense',COMEDY:'Genre intended to make you laugh',
+  CROSSOVER:'Two franchises sharing the same story',DIRECTOR:'Person who guides the cast and crew',
+  DYSTOPIA:'Imagined society where everything has gone wrong',ENSEMBLE:'Large cast of equal importance',
+  FANTASY:'Genre with magic and mythical creatures',FLASHBACK:'Scene from earlier in the story',
+  HEIST:'Film about planning and executing a theft',HORROR:'Genre meant to frighten',
+  MONTAGE:'Sequence of shots shown in quick succession',MUSICAL:'Genre where characters sing their feelings',
+  MYSTERY:'Genre where a puzzle must be solved',NOIR:'Dark crime film with moral ambiguity',
+  PARODY:'Comedy that imitates another work',PREQUEL:'Story set before an existing film',
+  REBOOT:'Fresh reimagining of existing property',REMAKE:'New version of an earlier film',
+  ROMANCE:'Genre focusing on love and relationships',SATIRE:'Uses humor to criticize society',
+  SEQUEL:'Film that continues an earlier story',SOUNDTRACK:'Music accompanying a film',
+  SPINOFF:'New film derived from an existing character',STORYBOARD:'Visual script panel drawings',
+  SUBPLOT:'Secondary storyline within a film',SUPERHERO:'Genre featuring powered beings fighting evil',
+  TRILOGY:'Group of three related films',VILLAIN:'The main antagonist of a story',
+  WESTERN:'Genre set in the American frontier',WHODUNIT:'Mystery where the killer\'s identity is hidden',
+  ANTICLIMAX:'Disappointing end after building tension',BACKSTORY:'Character\'s history before the main story',
+  CATHARSIS:'Emotional release through watching drama',CINEMATOGRAPHY:'Art of photographing a film',
+  CLIMAX:'The peak moment of tension in a story',DENOUEMENT:'Resolution after the climax',
+  DIALOGUE:'Spoken exchange between characters',EPILOGUE:'Section after the main story ends',
+  EXPOSITION:'Background information given to the audience',FORESHADOW:'Early hint of future events',
+  IRONY:'Situation opposite of what is expected',JUXTAPOSE:'Placing contrasting elements side by side',
+  METAPHOR:'Describing something as something else',MOTIF:'Recurring element throughout a story',
+  ODYSSEY:'Long journey filled with adventures',PARADOX:'Statement that contradicts itself but is true',
+  PATHOS:'Quality that evokes sadness or pity',PLOTTWIST:'Unexpected turn in the story',
+  PROLOGUE:'Introductory section before the main story',REDEMPTION:'Saving oneself through good acts',
+  RESOLUTION:'Solving of the central conflict',REVELATION:'Dramatic disclosure of hidden truth',
+  SPECTACLE:'Visually impressive display',SYMBOLISM:'Using objects to represent deeper meanings',
+  ALLEGORY:'Story with a hidden moral meaning',ANTIHERO:'Protagonist lacking traditional heroic qualities',
+  ARCHETYPE:'Universal character pattern',CONFLICT:'Central struggle driving a story',
+  DILEMMA:'Difficult choice between two bad options',EMPATHY:'Ability to feel what characters feel',
+  IMAGERY:'Descriptive language that paints a picture',INNUENDO:'Indirect suggestive hint',
+  MONOLOGUE:'Long speech by a single character',NOSTALGIA:'Sentimental longing for the past',
+  SOLILOQUY:'Character speaking thoughts aloud when alone',STEREOTYPE:'Oversimplified fixed idea about a group',
+  SUBTEXT:'Hidden meaning beneath the surface',ZEITGEIST:'Spirit of the times reflected in art',
+};
+
+// ── Difficulty definitions ─────────────────────────────────────────────────
+// Each array item is an SVG element string revealed on that wrong guess
+const DIFF={
+  easy:{
+    max:10,
+    parts:[
+      // 1: head
+      `<circle id="h-0" cx="110" cy="54" r="14" stroke="#ff6b6b" stroke-width="3" fill="none" opacity="0"/>`,
+      // 2: neck
+      `<line id="h-1" x1="110" y1="68" x2="110" y2="78" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      // 3: body
+      `<line id="h-2" x1="110" y1="78" x2="110" y2="118" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      // 4: left arm
+      `<line id="h-3" x1="110" y1="85" x2="85" y2="108" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      // 5: right arm
+      `<line id="h-4" x1="110" y1="85" x2="135" y2="108" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      // 6: left hand
+      `<line id="h-5" x1="85" y1="108" x2="80" y2="116" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/>`,
+      // 7: right hand
+      `<line id="h-6" x1="135" y1="108" x2="140" y2="116" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/>`,
+      // 8: left leg
+      `<line id="h-7" x1="110" y1="118" x2="86" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      // 9: right leg
+      `<line id="h-8" x1="110" y1="118" x2="134" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      // 10: feet (both)
+      `<line id="h-9a" x1="86" y1="150" x2="78" y2="158" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/><line id="h-9b" x1="134" y1="150" x2="142" y2="158" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/>`,
+    ]
+  },
+  hard:{
+    max:6,
+    parts:[
+      `<circle id="h-0" cx="110" cy="54" r="14" stroke="#ff6b6b" stroke-width="3" fill="none" opacity="0"/>`,
+      `<line id="h-1" x1="110" y1="68" x2="110" y2="118" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      `<line id="h-2" x1="110" y1="82" x2="86" y2="105" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      `<line id="h-3" x1="110" y1="82" x2="134" y2="105" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      `<line id="h-4" x1="110" y1="118" x2="86" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+      `<line id="h-5" x1="110" y1="118" x2="134" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
+    ]
+  }
+};
+
+// ── State ─────────────────────────────────────────────────────────────────
+let word='', guessed=new Set(), wrong=0, cat='Animals', won=false, over=false;
+let customMode=false, customHint='';
+let difficulty='easy'; // 'easy' | 'hard'
+let gameStarted=false;
+
+// ── Difficulty selector ────────────────────────────────────────────────────
+function selectDiff(d){
+  difficulty=d;
+  document.getElementById('diff-easy').classList.toggle('selected',d==='easy');
+  document.getElementById('diff-hard').classList.toggle('selected',d==='hard');
+}
+
+document.getElementById('diff-start').addEventListener('click',()=>{
+  document.getElementById('diff-screen').style.display='none';
+  document.getElementById('mode-row').style.display='flex';
+  document.getElementById('cats').style.display='flex';
+  document.getElementById('hsvg').style.display='block';
+  document.getElementById('new-word').style.display='';
+  document.getElementById('change-diff').style.display='';
+  gameStarted=true;
+  buildGallows();
+  newWord();
+});
+
+document.getElementById('change-diff').addEventListener('click',()=>{
+  document.getElementById('diff-screen').style.display='block';
+  document.getElementById('mode-row').style.display='none';
+  document.getElementById('cats').style.display='none';
+  document.getElementById('hsvg').style.display='none';
+  document.getElementById('word-display').innerHTML='';
+  document.getElementById('keyboard').innerHTML='';
+  document.getElementById('status').textContent='';
+  document.getElementById('wrong-counter').innerHTML='';
+  document.getElementById('hint-text').textContent='';
+  document.getElementById('new-word').style.display='none';
+  gameStarted=false;
+  try{sessionStorage.removeItem('hangman');}catch(e){}
+});
+
+// ── Build gallows + part placeholders ─────────────────────────────────────
+function buildGallows(){
+  const def=DIFF[difficulty];
+  let svg=`
+    <line x1="20" y1="195" x2="140" y2="195" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="60" y1="195" x2="60" y2="20" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="60" y1="20" x2="110" y2="20" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="110" y1="20" x2="110" y2="40" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
+  `;
+  def.parts.forEach(p=>svg+=p);
+  document.getElementById('hsvg').innerHTML=svg;
+}
+
+// ── Wrong counter pips ─────────────────────────────────────────────────────
+function renderPips(){
+  const def=DIFF[difficulty];
+  const c=document.getElementById('wrong-counter');
+  c.innerHTML='';
+  for(let i=0;i<def.max;i++){
+    const pip=document.createElement('div');
+    pip.className='wrong-pip'+(i<wrong?' active':'');
+    c.appendChild(pip);
+  }
+}
+
+// ── Mode switching ─────────────────────────────────────────────────────────
+document.getElementById('mode-random').addEventListener('click',()=>{
+  customMode=false;
+  document.getElementById('mode-random').classList.add('active');
+  document.getElementById('mode-custom').classList.remove('active');
+  document.getElementById('cats').style.display='flex';
+  document.getElementById('custom-entry').classList.add('hidden');
+  document.getElementById('hint-btn').classList.remove('hidden');
+  document.getElementById('new-word').style.display='';
+  document.getElementById('new-phrase-btn').classList.add('hidden');
+  newWord();
+});
+
+document.getElementById('mode-custom').addEventListener('click',()=>{
+  customMode=true;
+  document.getElementById('mode-custom').classList.add('active');
+  document.getElementById('mode-random').classList.remove('active');
+  document.getElementById('cats').style.display='none';
+  document.getElementById('custom-entry').classList.remove('hidden');
+  document.getElementById('hint-btn').classList.add('hidden');
+  document.getElementById('hint-text').textContent='';
+  document.getElementById('new-word').style.display='none';
+  document.getElementById('new-phrase-btn').classList.remove('hidden');
+  document.getElementById('word-display').innerHTML='';
+  document.getElementById('keyboard').innerHTML='';
+  document.getElementById('status').textContent='';
+  document.getElementById('wrong-counter').innerHTML='';
+  document.getElementById('phrase-input').value='';
+  document.getElementById('hint-custom').value='';
+  resetFigure();
+});
+
+// ── Custom phrase entry ────────────────────────────────────────────────────
+document.getElementById('set-phrase-btn').addEventListener('click',()=>{
+  const raw=document.getElementById('phrase-input').value.trim().toUpperCase();
+  const err=document.getElementById('phrase-err');
+  const letters=raw.replace(/ /g,'');
+  if(letters.length<2){err.textContent='Enter at least 2 letters.';err.style.display='block';return;}
+  if(!/^[A-Z ]+$/.test(raw)){err.textContent='Letters and spaces only, please.';err.style.display='block';return;}
+  err.style.display='none';
+  word=raw;
+  customHint=document.getElementById('hint-custom').value.trim();
+  document.getElementById('custom-entry').classList.add('hidden');
+  document.getElementById('handoff').classList.remove('hidden');
+});
+
+document.getElementById('phrase-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter')document.getElementById('set-phrase-btn').click();
+});
+
+document.getElementById('ready-btn').addEventListener('click',()=>{
+  document.getElementById('handoff').classList.add('hidden');
+  startCustomGame();
+});
+
+document.getElementById('new-phrase-btn').addEventListener('click',()=>{
+  document.getElementById('custom-entry').classList.remove('hidden');
+  document.getElementById('hint-btn').classList.add('hidden');
+  document.getElementById('hint-text').textContent='';
+  document.getElementById('word-display').innerHTML='';
+  document.getElementById('keyboard').innerHTML='';
+  document.getElementById('status').textContent='';
+  document.getElementById('wrong-counter').innerHTML='';
+  document.getElementById('phrase-input').value='';
+  document.getElementById('hint-custom').value='';
+  resetFigure();
+});
+
+function startCustomGame(){
+  guessed=new Set(); wrong=0; won=false; over=false;
+  resetFigure();
+  const hb=document.getElementById('hint-btn');
+  if(customHint){hb.classList.remove('hidden');hb.style.display='block';}
+  else{hb.style.display='none';}
+  document.getElementById('hint-text').textContent='';
+  const words=word.trim().split(' ').filter(Boolean);
+  const letterCount=word.replace(/ /g,'').length;
+  document.getElementById('status').textContent=
+    words.length>1?`${words.length} words, ${letterCount} letters`:`${letterCount}-letter word`;
+  renderPips();
+  renderWord();buildKeyboard();
+}
+
+// ── Category buttons ───────────────────────────────────────────────────────
+const catRow=document.getElementById('cats');
+Object.keys(WORDS).forEach(c=>{
+  const b=document.createElement('button');b.className='cat-btn'+(c===cat?' active':'');b.textContent=c;
+  b.addEventListener('click',()=>{
+    cat=c;document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    newWord();
+  });
+  catRow.appendChild(b);
+});
+
+function resetFigure(){
+  const def=DIFF[difficulty];
+  for(let i=0;i<def.max;i++){
+    const el=document.getElementById('h-'+i);if(el)el.style.opacity=0;
+    const ela=document.getElementById('h-'+i+'a');if(ela)ela.style.opacity=0;
+    const elb=document.getElementById('h-'+i+'b');if(elb)elb.style.opacity=0;
+  }
+}
+
+function newWord(){
+  const list=WORDS[cat];
+  word=list[Math.floor(Math.random()*list.length)];
+  guessed=new Set();wrong=0;won=false;over=false;
+  resetFigure();
+  document.getElementById('hint-text').textContent='';
+  document.getElementById('hint-btn').style.display='block';
+  renderPips();
+  renderWord();buildKeyboard();
+  document.getElementById('status').textContent=`${word.length}-letter word`;
+}
+
+// ── Render word ────────────────────────────────────────────────────────────
+function renderWord(){
+  const d=document.getElementById('word-display');d.innerHTML='';
+  word.split('').forEach(l=>{
+    if(l===' '){
+      const gap=document.createElement('div');gap.className='word-gap';d.appendChild(gap);
+    } else {
+      const span=document.createElement('div');span.className='letter-blank';
+      span.textContent=guessed.has(l)?l:' ';
+      span.style.color=guessed.has(l)?'var(--green)':'transparent';
+      span.style.borderBottomColor=guessed.has(l)?'var(--green)':'rgba(255,255,255,.4)';
+      d.appendChild(span);
+    }
+  });
+}
+
+// ── Keyboard ───────────────────────────────────────────────────────────────
+function buildKeyboard(){
+  const kb=document.getElementById('keyboard');kb.innerHTML='';
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l=>{
+    const b=document.createElement('button');b.className='key-btn';b.textContent=l;b.id='k'+l;
+    if(guessed.has(l)){b.disabled=true;b.classList.add(word.includes(l)?'correct':'wrong');}
+    b.addEventListener('click',()=>guess(l));
+    kb.appendChild(b);
+  });
+}
+
+// ── Guess ──────────────────────────────────────────────────────────────────
+function guess(l){
+  if(guessed.has(l)||over)return;
+  guessed.add(l);
+  const kb=document.getElementById('k'+l);
+  const def=DIFF[difficulty];
+  if(word.includes(l)){
+    kb.classList.add('correct');kb.disabled=true;
+    if(word.split('').filter(c=>c!==' ').every(c=>guessed.has(c))){
+      won=true;over=true;
+      document.getElementById('status').innerHTML=`<span style="color:var(--green)">🎉 ${customMode?"Got it!":'You got it!'}</span>`;
+    }
+  } else {
+    kb.classList.add('wrong');kb.disabled=true;wrong++;
+    // Reveal body part for this wrong guess (handle compound parts like feet)
+    const partSvg=def.parts[wrong-1];
+    const el=document.getElementById('h-'+(wrong-1));if(el)el.style.opacity=1;
+    const ela=document.getElementById('h-'+(wrong-1)+'a');if(ela)ela.style.opacity=1;
+    const elb=document.getElementById('h-'+(wrong-1)+'b');if(elb)elb.style.opacity=1;
+    renderPips();
+    if(wrong>=def.max){
+      over=true;
+      document.getElementById('status').innerHTML=
+        `<span style="color:var(--red)">💀 It was: <strong>${word}</strong></span>`;
+      guessed=new Set(word.replace(/ /g,'').split(''));
+    }
+  }
+  if(!over){
+    document.getElementById('status').textContent=`${def.max-wrong} wrong guess${def.max-wrong!==1?'es':''} left`;
+  }
+  renderWord();
+}
+
+// ── Hint ───────────────────────────────────────────────────────────────────
+document.getElementById('hint-btn').addEventListener('click',function(){
+  document.getElementById('hint-text').textContent=customMode?customHint:(HINTS[word]||'No hint available');
+  this.style.display='none';
+});
+
+// ── Keyboard shortcut ──────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(document.activeElement===document.getElementById('phrase-input'))return;
+  if(document.activeElement===document.getElementById('hint-custom'))return;
+  if(!gameStarted)return;
+  if(e.key>='a'&&e.key<='z'||e.key>='A'&&e.key<='Z')guess(e.key.toUpperCase());
+});
+
+document.getElementById('new-word').addEventListener('click',()=>{
+  try{sessionStorage.removeItem('hangman');}catch(e){}
+  newWord();
+});
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_hangman(){if(!gameStarted||(over||won))return;
+  try{sessionStorage.setItem('hangman',JSON.stringify({word,guessed:[...guessed],wrong,cat,won,over,customMode,customHint,difficulty,gameStarted:true,_ts:Date.now()}));}catch(e){}
+}
+function _load_hangman(){
+  try{
+    const raw=sessionStorage.getItem('hangman');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s||!s.gameStarted)return false;
+    word=s.word;guessed=new Set(s.guessed||[]);wrong=s.wrong||0;cat=s.cat||'Animals';
+    won=s.won||false;over=s.over||false;customMode=s.customMode||false;customHint=s.customHint||'';
+    difficulty=s.difficulty||'easy';
+    selectDiff(difficulty);
+    // Start the game immediately
+    document.getElementById('diff-screen').style.display='none';
+    document.getElementById('mode-row').style.display='flex';
+    document.getElementById('cats').style.display=customMode?'none':'flex';
+    document.getElementById('hsvg').style.display='block';
+    document.getElementById('new-word').style.display=customMode?'none':'';
+    document.getElementById('change-diff').style.display='';
+    gameStarted=true;
+    buildGallows();
+    renderPips();
+    renderWord();
+    buildKeyboard();
+    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active',b.textContent===cat));
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_hangman);
+if(!_load_hangman()){
+  // Show difficulty screen (default)
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Dice Roller</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a0a 0%,#0d1117 65%);}
+.die-types{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:16px;}
+.dt-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer;touch-action:manipulation;transition:all .15s;min-width:56px;}
+.dt-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.dt-icon{font-size:1.4rem;}
+.dt-label{font-size:.7rem;font-weight:700;}
+.count-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px;}
+.cnt-ctrl{display:flex;align-items:center;gap:10px;}
+.cnt-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:var(--text);font-size:1.3rem;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;}
+.cnt-val{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:var(--gold);min-width:32px;text-align:center;}
+.results-area{max-width:400px;margin:0 auto 14px;}
+.dice-results{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;min-height:60px;}
+@keyframes die-roll{0%{transform:rotate(0) scale(.5);opacity:0}60%{transform:rotate(720deg) scale(1.15)}100%{transform:rotate(720deg) scale(1);opacity:1}}
+.die-result{width:52px;height:52px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:1.3rem;font-weight:900;color:var(--gold);}
+.die-result.rolling{animation:die-roll .4s cubic-bezier(.34,1.56,.64,1) forwards;}
+.total-display{text-align:center;margin-bottom:14px;}
+.total-label{font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.1em;}
+.total-val{font-family:var(--serif);font-size:2.5rem;font-weight:900;color:var(--gold);}
+.history-list{max-width:400px;margin:0 auto;}
+.hist-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);font-size:.82rem;}
+.hist-item:last-child{border-bottom:none;}
+.hist-dice{color:var(--muted);}
+.hist-total{font-weight:700;color:var(--gold);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Dice Roller</span></nav>
+<div class="page" style="padding-bottom:50px;">
+
+<div class="die-types" id="die-types"></div>
+
+<div class="count-row">
+  <span style="font-size:.85rem;color:var(--muted);font-weight:600;">Number of dice:</span>
+  <div class="cnt-ctrl">
+    <button class="cnt-btn" id="minus-btn">−</button>
+    <div class="cnt-val" id="cnt-val">2</div>
+    <button class="cnt-btn" id="plus-btn">+</button>
+  </div>
+</div>
+
+<button class="btn btn-gold btn-block" id="roll-btn" style="max-width:280px;display:block;margin:0 auto 18px;">🎲 Roll!</button>
+
+<div class="results-area">
+  <div class="dice-results" id="dice-results"></div>
+  <div class="total-display" id="total-display" style="display:none;">
+    <div class="total-label">Total</div>
+    <div class="total-val" id="total-val">0</div>
+  </div>
+</div>
+
+<div class="card" style="max-width:400px;margin:0 auto;" id="history-card" style="display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <span class="card-title" style="margin:0;">Roll History</span>
+    <button class="btn-ghost" id="clear-hist">Clear</button>
+  </div>
+  <div id="history-list" class="history-list"></div>
+</div>
+
+</div>
+<script>
+'use strict';
+const DICE=[
+  {faces:4, icon:'🔷', label:'d4'},
+  {faces:6, icon:'⬜', label:'d6'},
+  {faces:8, icon:'🔸', label:'d8'},
+  {faces:10,icon:'🔟', label:'d10'},
+  {faces:12,icon:'🔹', label:'d12'},
+  {faces:20,icon:'⭐', label:'d20'},
+  {faces:100,icon:'💯',label:'d100'},
+];
+
+let selDie=1; // index (d6 default)
+let dieCount=2;
+let history=[];
+
+// Build die type buttons
+const dtEl=document.getElementById('die-types');
+DICE.forEach((d,i)=>{
+  const b=document.createElement('button');
+  b.className='dt-btn'+(i===selDie?' active':'');
+  b.innerHTML=`<span class="dt-icon">${d.icon}</span><span class="dt-label">${d.label}</span>`;
+  b.addEventListener('click',()=>{
+    selDie=i;
+    document.querySelectorAll('.dt-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+  });
+  dtEl.appendChild(b);
+});
+
+document.getElementById('minus-btn').addEventListener('click',()=>{
+  if(dieCount>1){dieCount--;document.getElementById('cnt-val').textContent=dieCount;}
+});
+document.getElementById('plus-btn').addEventListener('click',()=>{
+  if(dieCount<20){dieCount++;document.getElementById('cnt-val').textContent=dieCount;}
+});
+
+document.getElementById('roll-btn').addEventListener('click',()=>{
+  const faces=DICE[selDie].faces;
+  const rolls=Array.from({length:dieCount},()=>Math.ceil(Math.random()*faces));
+  const total=rolls.reduce((a,b)=>a+b,0);
+
+  // Sound: rattle shake at roll start
+  sRollShake();
+
+  // Render dice with animation
+  const dr=document.getElementById('dice-results');dr.innerHTML='';
+  rolls.forEach((v,i)=>{
+    const d=document.createElement('div');d.className='die-result';
+    d.textContent='?';dr.appendChild(d);
+    setTimeout(()=>{
+      d.classList.add('rolling');d.textContent=v;
+      sDieLand(v,faces); // click as each die lands
+    },i*40);
+  });
+
+  // Special result sounds (after all dice land)
+  const allMax=rolls.every(v=>v===faces), allMin=rolls.every(v=>v===1);
+  setTimeout(()=>{
+    if(allMax) sRollMax();
+    else if(allMin) sRollMin();
+  }, dieCount*40+420);
+
+  // Total
+  const td=document.getElementById('total-display');
+  td.style.display='block';
+  setTimeout(()=>{document.getElementById('total-val').textContent=total;},dieCount*40+200);
+
+  // History
+  history.unshift({dice:DICE[selDie].label,count:dieCount,rolls,total});
+  if(history.length>12)history.pop();
+  document.getElementById('history-card').style.display='';
+  renderHistory();
+});
+
+// ── Sound ────────────────────────────────────────────────────────────────────
+let _ac=null;
+function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function sTone(freq,start,dur,vol,type,ramp){
+  const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
+  if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+}
+function sNoise(start,dur,fc,q,vol,decay){
+  const ctx=sac(),t=ctx.currentTime+start;
+  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
+  const src=ctx.createBufferSource();src.buffer=buf;
+  const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
+  const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
+}
+
+// Dice rattle — tumbling noise burst with a little pitch shimmy
+function sRollShake(){
+  sNoise(0,.12,300,1,.22,.35);        // low wooden rumble
+  sNoise(.04,.10,900,3,.14,.2);       // surface texture
+  sTone(200,.02,.12,.08,'sawtooth',90); // short thud undertone
+}
+
+// Each die landing — sharp click; pitch scales with die value (high roll = brighter)
+function sDieLand(value,faces){
+  const pct=value/faces;             // 0=low, 1=max
+  const freq=500+pct*800;            // 500 Hz low → 1300 Hz high
+  sNoise(0,.04,freq,5,.16,.1);
+  sTone(freq*.6,0,.06,.06,'triangle',freq*.3);
+}
+
+// All max — triumphant ascending fanfare
+function sRollMax(){
+  [523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.22));
+  sTone(262,0,.55,.09,'triangle');
+}
+
+// All min (all 1s) — descending sad trombone
+function sRollMin(){
+  [350,278,220,175].forEach((f,i)=>sTone(f,i*.1,.32,.18,'sawtooth'));
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-list');el.innerHTML='';
+  history.forEach(h=>{
+    const item=document.createElement('div');item.className='hist-item';
+    item.innerHTML=`<span class="hist-dice">${h.count}${h.dice}: [${h.rolls.join(', ')}]</span><span class="hist-total">= ${h.total}</span>`;
+    el.appendChild(item);
+  });
+}
+
+document.getElementById('clear-hist').addEventListener('click',()=>{
+  history=[];document.getElementById('history-list').innerHTML='';
+  document.getElementById('history-card').style.display='none';
+});
+</script>
+</body>
+</html>

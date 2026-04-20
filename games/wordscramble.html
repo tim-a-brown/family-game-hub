@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Word Scramble</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 40% 0%,#1a0a2a 0%,#0d1117 65%);}
+.scramble-word{font-family:var(--serif);font-size:clamp(2rem,8vw,3rem);font-weight:900;letter-spacing:.15em;text-align:center;color:var(--gold);margin:18px 0 8px;}
+.hint-text{text-align:center;color:var(--muted);font-size:.88rem;min-height:22px;margin-bottom:14px;}
+.answer-input{font-family:var(--serif);font-size:max(18px,1.4rem);font-weight:700;text-align:center;letter-spacing:.1em;text-transform:uppercase;}
+.score-row{display:flex;justify-content:center;gap:12px;margin-bottom:14px;}
+.chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 18px;text-align:center;}
+.timer{font-family:var(--serif);font-size:1.4rem;font-weight:900;color:var(--gold);}
+.feedback{text-align:center;font-size:1.1rem;font-weight:700;min-height:28px;margin:10px 0;}
+.cat-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.cat-btn{padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;}
+.cat-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+</style>
+</head>
+<body>
+<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Word Scramble</span></nav>
+<div class="page">
+<div class="cat-row" id="cats"></div>
+<div class="score-row">
+  <div class="chip"><div style="font-size:.72rem;color:var(--muted);font-weight:600">SCORE</div><div class="timer" id="score">0</div></div>
+  <div class="chip"><div style="font-size:.72rem;color:var(--muted);font-weight:600">TIME</div><div class="timer" id="timer">60</div></div>
+  <div class="chip"><div style="font-size:.72rem;color:var(--muted);font-weight:600">STREAK</div><div class="timer" id="streak">0</div></div>
+</div>
+<div class="scramble-word" id="scrambled"></div>
+<div class="hint-text" id="hint"></div>
+<input class="input answer-input" id="answer" placeholder="type your answer…" autocomplete="off" autocorrect="off" spellcheck="false">
+<div class="feedback" id="feedback"></div>
+<div style="display:flex;gap:8px;justify-content:center;margin-top:8px;">
+  <button class="btn btn-gold" id="check-btn">Check ✓</button>
+  <button class="btn btn-outline" id="skip-btn">Skip →</button>
+  <button class="btn btn-outline" id="hint-btn">💡 Hint</button>
+</div>
+<div style="text-align:center;margin-top:16px;">
+  <button class="btn btn-outline btn-sm" id="new-game">New Game</button>
+</div>
+</div>
+<script>
+'use strict';
+const WORDS={
+  Animals:{ELEPHANT:'Largest land animal',GIRAFFE:'Tallest animal',PENGUIN:'Flightless bird',DOLPHIN:'Ocean mammal',CHEETAH:'Fastest land animal',GORILLA:'Great ape',FLAMINGO:'Pink wading bird',WALRUS:'Has long tusks',LEOPARD:'Spotted big cat',HEDGEHOG:'Prickly small mammal'},
+  Geography:{VOLCANO:'Erupts with lava',GLACIER:'Slow-moving ice river',CANYON:'Deep gorge',PLATEAU:'Flat-topped highland',EQUATOR:'Earth\'s middle line',PENINSULA:'Land surrounded by water on 3 sides',ARCHIPELAGO:'Group of islands',SAVANNA:'Tropical grassland',TUNDRA:'Frozen treeless plain',FJORD:'Narrow sea inlet'},
+  Science:{GRAVITY:'Force that pulls objects down',ELECTRON:'Negative particle in atom',NUCLEUS:'Center of atom or cell',PROTEIN:'Building block of life',ECLIPSE:'One body shadowing another',ELEMENT:'Pure substance on periodic table',PHOTON:'Light particle',PROTON:'Positive particle in atom',NEUTRON:'Neutral particle in atom',ENZYME:'Biological catalyst'},
+  Misc:{GUITAR:'6-stringed instrument',COMPASS:'Navigation tool',PYRAMID:'Ancient Egyptian structure',LANTERN:'Light in a case',BLANKET:'Keeps you warm in bed',CAPTAIN:'Ship or team leader',JOURNEY:'Long trip',MYSTERY:'Something unexplained',THUNDER:'Sound of lightning',DIAMOND:'Hardest natural mineral'},
+};
+
+let cat='Animals',words=[],wi=0,score=0,streak=0,timerSec=60,timerInt,gameOver=false;
+let hintUsed=false;
+
+Object.keys(WORDS).forEach(c=>{
+  const b=document.createElement('button');b.className='cat-btn'+(c===cat?' active':'');b.textContent=c;
+  b.addEventListener('click',()=>{cat=c;document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');newGame();});
+  document.getElementById('cats').appendChild(b);
+});
+
+function scramble(w){
+  let s=w.split('');
+  while(s.join('')===w){for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]];}}
+  return s.join('');
+}
+
+function newGame(){
+  clearInterval(timerInt);
+  score=0;streak=0;timerSec=60;gameOver=false;
+  words=Object.entries(WORDS[cat]).map(([w,h])=>({word:w,hint:h}));
+  for(let i=words.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[words[i],words[j]]=[words[j],words[i]];}
+  wi=0;updateScore();
+  document.getElementById('answer').disabled=false;
+  document.getElementById('check-btn').disabled=false;
+  document.getElementById('skip-btn').disabled=false;
+  timerInt=setInterval(()=>{timerSec--;document.getElementById('timer').textContent=timerSec;if(timerSec<=0)endGame();},1000);
+  loadWord();
+}
+
+function loadWord(){
+  if(wi>=words.length){wi=0;words.sort(()=>Math.random()-.5);}
+  hintUsed=false;
+  // Always pre-load the correct hint for this word — button only toggles visibility
+  const hintEl=document.getElementById('hint');
+  hintEl.textContent=words[wi].hint;
+  hintEl.style.visibility='hidden';
+  document.getElementById('feedback').textContent='';
+  document.getElementById('answer').value='';
+  document.getElementById('scrambled').textContent=scramble(words[wi].word);
+  document.getElementById('answer').focus();
+}
+
+function updateScore(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('streak').textContent=streak;
+  document.getElementById('timer').textContent=timerSec;
+}
+
+function check(){
+  if(gameOver)return;
+  const ans=document.getElementById('answer').value.toUpperCase().trim();
+  if(!ans)return;
+  if(ans===words[wi].word){
+    const pts=hintUsed?1:2;score+=pts;streak++;
+    document.getElementById('feedback').innerHTML=`<span style="color:var(--green)">✓ Correct! +${pts} point${pts>1?'s':''}</span>`;
+    updateScore();wi++;setTimeout(loadWord,800);
+  } else {
+    streak=0;
+    document.getElementById('feedback').innerHTML=`<span style="color:var(--red)">✗ Try again!</span>`;
+    updateScore();document.getElementById('answer').value='';
+  }
+}
+
+function skip(){
+  if(gameOver)return;
+  streak=0;
+  document.getElementById('feedback').innerHTML=`<span style="color:var(--muted)">Skipped — answer was: <strong>${words[wi].word}</strong></span>`;
+  updateScore();wi++;setTimeout(loadWord,1200);
+}
+
+function endGame(){
+  clearInterval(timerInt);gameOver=true;
+  document.getElementById('answer').disabled=true;
+  document.getElementById('check-btn').disabled=true;
+  document.getElementById('skip-btn').disabled=true;
+  document.getElementById('scrambled').textContent='🏁';
+  document.getElementById('feedback').innerHTML=`<span style="color:var(--gold)">Game over! Final score: ${score}</span>`;
+  document.getElementById('hint').style.visibility='hidden';
+}
+
+document.getElementById('check-btn').addEventListener('click',check);
+document.getElementById('skip-btn').addEventListener('click',skip);
+document.getElementById('answer').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+document.getElementById('hint-btn').addEventListener('click',()=>{
+  if(gameOver)return;
+  const hintEl=document.getElementById('hint');
+  hintEl.style.visibility='visible';
+  hintUsed=true;
+});
+document.getElementById('new-game').addEventListener('click',newGame);
+newGame();
+
+// ── Session persistence ────────────────────────────────────────────────────
+function _save_wscr(){if(gameOver)return;
+  try{sessionStorage.setItem('wscr',JSON.stringify({cat,wi,score,streak,_ts:Date.now()}));}catch(e){}
+}
+function _load_wscr(){
+  try{
+    const raw=sessionStorage.getItem('wscr');if(!raw)return false;
+    const s=JSON.parse(raw);if(!s)return false;
+    cat=s.cat||'Animals';score=s.score||0;streak=s.streak||0;
+    // Re-build words array properly, then restore position
+    words=Object.entries(WORDS[cat]).map(([w,h])=>({word:w,hint:h}));
+    wi=Math.min(s.wi||0,words.length-1);
+    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active',b.textContent===cat));
+    updateScore();loadWord();
+    return true;
+  }catch(e){return false;}
+}
+window.addEventListener('beforeunload',_save_wscr);
+
+if(!_load_wscr())newGame();
+</script>
+</body>
+</html>
