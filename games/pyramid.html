@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Pyramid Solitaire</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);}
+.pyr-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
+/* Card */
+.pcard{
+  width:44px;height:60px;border-radius:7px;border:1.5px solid rgba(255,255,255,.18);
+  background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;position:absolute;transition:all .15s;user-select:none;
+  box-shadow:1px 2px 6px rgba(0,0,0,.4);
+  font-family:'Playfair Display',serif;font-weight:900;
+}
+.pcard:hover:not(.covered):not(.removed){border-color:#f5c842;box-shadow:0 0 12px rgba(245,200,66,.4),1px 2px 6px rgba(0,0,0,.4);}
+.pcard.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);box-shadow:0 0 14px rgba(245,200,66,.5),1px 2px 6px rgba(0,0,0,.4);}
+.pcard.covered{filter:brightness(.65);cursor:default;}
+.pcard.removed{opacity:0;pointer-events:none;transition:opacity .25s;}
+.pcard.red{color:#c53030;}
+.pcard.black{color:#1a1a1a;}
+.pcard-rank{font-size:.85rem;line-height:1;}
+.pcard-suit{font-size:.75rem;line-height:1;}
+/* Pyramid area */
+.pyr-field{position:relative;margin:0 auto 14px;}
+/* Stock & waste */
+.pyr-bottom{display:flex;gap:12px;justify-content:center;align-items:flex-start;margin-bottom:12px;}
+.pyr-stock-wrap,.pyr-waste-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.pyr-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);}
+.stock-card{
+  width:44px;height:60px;border-radius:7px;border:2px dashed rgba(255,255,255,.2);
+  background:linear-gradient(145deg,#1a3a2e,#0d2218);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:1px 2px 6px rgba(0,0,0,.4);
+  font-size:1.4rem;color:rgba(255,255,255,.25);transition:all .15s;
+}
+.stock-card:hover{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.5);}
+.stock-card.empty{cursor:default;font-size:.65rem;color:rgba(255,255,255,.2);}
+/* Status bar */
+.pyr-status{text-align:center;font-size:.9rem;font-weight:700;min-height:24px;margin-bottom:8px;}
+.pyr-stats{display:flex;justify-content:center;gap:16px;margin-bottom:10px;}
+.pyr-stat{text-align:center;}
+.pyr-stat-val{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:var(--gold);}
+.pyr-stat-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+/* Result */
+.pyr-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.pyr-result-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;}
+/* Rules */
+.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+.rules-summary{padding:9px 14px;font-size:.82rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.6);list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+.rules-summary::-webkit-details-marker{display:none;}
+.rules-body{padding:4px 14px 12px;font-size:.78rem;line-height:1.7;color:rgba(255,255,255,.55);}
+.rules-body p{margin:0 0 5px;}
+.rules-body strong{color:rgba(255,255,255,.85);}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Pyramid Solitaire</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="pyr-wrap">
+
+<details class="rules-details">
+  <summary class="rules-summary">📖 How to Play <span style="font-size:.6rem;opacity:.4;">▼</span></summary>
+  <div class="rules-body">
+    <p><strong>Goal:</strong> Remove all 28 pyramid cards by pairing them to sum to 13.</p>
+    <p><strong>Pairs that make 13:</strong> K alone · Q+A · J+2 · 10+3 · 9+4 · 8+5 · 7+6</p>
+    <p><strong>Available cards:</strong> Any pyramid card with no cards overlapping it from below, plus the top card of the waste pile.</p>
+    <p><strong>Stock:</strong> Click the face-down deck to flip one card to the waste pile. When stock is empty, click to redeal (2 redeals allowed).</p>
+    <p><strong>Selecting:</strong> Click one card to select it (gold border), then click its pair. Kings remove immediately on click.</p>
+    <p><strong>Win:</strong> Clear all 28 pyramid cards — the remaining stock/waste don't need to be cleared.</p>
+  </div>
+</details>
+
+<div class="pyr-stats">
+  <div class="pyr-stat"><div class="pyr-stat-val" id="pyr-left">28</div><div class="pyr-stat-lbl">Remaining</div></div>
+  <div class="pyr-stat"><div class="pyr-stat-val" id="pyr-moves">0</div><div class="pyr-stat-lbl">Pairs removed</div></div>
+  <div class="pyr-stat"><div class="pyr-stat-val" id="pyr-redeals">2</div><div class="pyr-stat-lbl">Redeals left</div></div>
+</div>
+
+<div id="pyr-result-area"></div>
+<div class="pyr-status" id="pyr-status">Select two cards that sum to 13 (K alone)</div>
+
+<div class="pyr-field" id="pyr-field"></div>
+
+<div class="pyr-bottom">
+  <div class="pyr-stock-wrap">
+    <div class="pyr-lbl">Stock</div>
+    <div class="stock-card" id="pyr-stock">🂠</div>
+    <div style="font-size:.65rem;color:rgba(255,255,255,.3);" id="pyr-stock-count"></div>
+  </div>
+  <div class="pyr-waste-wrap">
+    <div class="pyr-lbl">Waste</div>
+    <div id="pyr-waste-slot"></div>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:4px;">
+  <button class="btn btn-gold btn-sm" id="pyr-new">New Game</button>
+  <button class="btn btn-outline btn-sm" id="pyr-undo" style="margin-left:6px;">↩ Undo</button>
+</div>
+</div>
+</div>
+<script>
+'use strict';
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS=['♠','♥','♦','♣'];
+const VALUES={A:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13};
+const RED=new Set(['♥','♦']);
+const CW=44,CH=60,HGAP=50,VGAP=38;
+
+function deck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s,val:VALUES[r]})));
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+// Pyramid: row 0 = top (1 card), row 6 = bottom (7 cards) → 28 cards
+// pyCards[row][col] = card object with .removed, .id
+let pyCards, stock, waste, stockIdx, redeals, sel, moves, undoStack;
+
+function init(){
+  const d=deck();
+  pyCards=[];
+  let idx=0;
+  for(let r=0;r<7;r++){
+    pyCards[r]=[];
+    for(let c=0;c<=r;c++){
+      pyCards[r][c]={...d[idx++],id:`${r}-${c}`,removed:false,inPyramid:true};
+    }
+  }
+  stock=d.slice(28).map((c,i)=>({...c,id:`s-${i}`,removed:false,inPyramid:false}));
+  waste=[]; stockIdx=0; redeals=2; sel=null; moves=0; undoStack=[];
+  renderAll();
+}
+
+function isCovered(r,c){
+  if(r>=6)return false;
+  const below1=pyCards[r+1][c];
+  const below2=pyCards[r+1][c+1];
+  return(!below1.removed)||(!below2.removed);
+}
+
+function isAvailable(card){
+  if(card.removed)return false;
+  if(!card.inPyramid)return true; // stock/waste handled separately
+  const[r,c]=card.id.split('-').map(Number);
+  return!isCovered(r,c);
+}
+
+function wasteTop(){return waste.length?waste[waste.length-1]:null;}
+
+function clickStock(){
+  if(stockIdx<stock.length){
+    const c=stock[stockIdx++];
+    waste.push(c);
+    sel=null;
+    renderAll();
+  } else if(redeals>0){
+    // Redeal: put waste back into stock (reversed)
+    stock=[...waste].reverse().map((c,i)=>({...c,id:`s-${i}`}));
+    waste=[]; stockIdx=0; redeals--;
+    sel=null; renderAll();
+  } else {
+    setStatus('No redeals left!');
+  }
+}
+
+function clickCard(card){
+  if(!isAvailable(card))return;
+  // King: remove alone
+  if(card.val===13){
+    saveUndo();
+    card.removed=true; moves++;
+    sel=null; renderAll(); checkWin(); return;
+  }
+  if(!sel){sel=card;renderAll();return;}
+  if(sel.id===card.id){sel=null;renderAll();return;}
+  if(sel.val+card.val===13){
+    saveUndo();
+    sel.removed=true; card.removed=true; moves++;
+    sel=null; renderAll(); checkWin();
+  } else {
+    sel=card; renderAll();
+  }
+}
+
+function saveUndo(){
+  undoStack.push({
+    pyState:pyCards.map(row=>row.map(c=>({...c}))),
+    waste:[...waste.map(c=>({...c}))],
+    stockIdx, redeals, sel:sel?.id||null, moves
+  });
+  if(undoStack.length>20)undoStack.shift();
+}
+
+function undo(){
+  if(!undoStack.length)return;
+  const s=undoStack.pop();
+  pyCards=s.pyState; waste=s.waste; stockIdx=s.stockIdx; redeals=s.redeals; moves=s.moves;
+  sel=null; renderAll();
+}
+
+function checkWin(){
+  const left=pyCards.flat().filter(c=>!c.removed).length;
+  document.getElementById('pyr-left').textContent=left;
+  document.getElementById('pyr-moves').textContent=moves;
+  if(left===0){
+    document.getElementById('pyr-result-area').innerHTML=
+      `<div class="pyr-result"><div class="pyr-result-title">🎉 You Win!</div><div style="color:#2a1a00;font-size:.88rem;margin-top:4px;">Cleared the pyramid in ${moves} pairs!</div></div>`;
+    try{GameHistory.save('pyramid',{_summary:`Pyramid Solitaire · Won in ${moves} pairs`,_badge:'Win',result:'win',moves});}catch(e){}
+  }
+}
+
+function setStatus(msg){document.getElementById('pyr-status').textContent=msg;}
+
+function renderAll(){
+  const field=document.getElementById('pyr-field');
+  const left=pyCards.flat().filter(c=>!c.removed).length;
+  document.getElementById('pyr-left').textContent=left;
+  document.getElementById('pyr-moves').textContent=moves;
+  document.getElementById('pyr-redeals').textContent=redeals;
+  // Calculate field size
+  const fw=7*HGAP+CW; const fh=7*VGAP+CH;
+  field.style.width=fw+'px'; field.style.height=fh+'px';
+  field.innerHTML='';
+  // Draw pyramid rows
+  for(let r=0;r<7;r++){
+    const rowW=(r+1)*HGAP+(CW-HGAP);
+    const xStart=(fw-rowW)/2;
+    for(let c=0;c<=r;c++){
+      const card=pyCards[r][c];
+      const x=xStart+c*HGAP;
+      const y=r*VGAP;
+      const covered=isCovered(r,c)&&!card.removed;
+      const selected=sel&&sel.id===card.id;
+      const el=document.createElement('div');
+      el.className='pcard'+(RED.has(card.suit)?' red':' black')+(covered?' covered':'')+(card.removed?' removed':'')+(selected?' selected':'');
+      el.style.cssText=`left:${x}px;top:${y}px;z-index:${r*2+(covered?0:10)};`;
+      el.innerHTML=`<div class="pcard-rank">${card.rank}</div><div class="pcard-suit">${card.suit}</div>`;
+      if(!covered&&!card.removed) el.addEventListener('click',()=>clickCard(card));
+      field.appendChild(el);
+    }
+  }
+  // Stock
+  const stockRemaining=stock.length-stockIdx;
+  const stockEl=document.getElementById('pyr-stock');
+  stockEl.className='stock-card'+(stockRemaining===0&&redeals===0?' empty':'');
+  stockEl.textContent=stockRemaining>0?'🂠':redeals>0?'↺':'';
+  stockEl.title=stockRemaining>0?`${stockRemaining} cards left`:redeals>0?`Redeal (${redeals} left)`:'No cards left';
+  document.getElementById('pyr-stock-count').textContent=stockRemaining>0?`${stockRemaining} left`:'';
+  // Waste
+  const wslot=document.getElementById('pyr-waste-slot');
+  const wt=wasteTop();
+  if(wt){
+    const selected=sel&&sel.id===wt.id;
+    wslot.innerHTML=`<div class="pcard ${RED.has(wt.suit)?'red':'black'}${selected?' selected':''}" style="position:relative;cursor:pointer;">
+      <div class="pcard-rank">${wt.rank}</div><div class="pcard-suit">${wt.suit}</div>
+    </div>`;
+    wslot.querySelector('.pcard').addEventListener('click',()=>clickCard(wt));
+  } else {
+    wslot.innerHTML=`<div class="stock-card empty" style="font-size:.6rem;color:rgba(255,255,255,.15);">Empty</div>`;
+  }
+}
+
+document.getElementById('pyr-stock').addEventListener('click',clickStock);
+document.getElementById('pyr-new').addEventListener('click',()=>{document.getElementById('pyr-result-area').innerHTML='';init();});
+document.getElementById('pyr-undo').addEventListener('click',undo);
+
+init();
+</script>
+</body>
+</html>

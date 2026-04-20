@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Wizard — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0618 60%);}
+.wz-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
+.wcard{width:44px;height:62px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;}
+.wcard.red{color:#c53030;}.wcard.black{color:#1a1a1a;}
+.wcard.wiz-card{background:linear-gradient(145deg,#ffd700,#b8860b);color:#2a1a00;border-color:#f5c842;}
+.wcard.jest-card{background:linear-gradient(145deg,#b0e0ff,#4a90d9);color:#0a1a2e;border-color:#5ac8fa;}
+.wcard.playable{cursor:pointer;}.wcard.playable:hover{transform:translateY(-8px);border-color:#a78bfa;}
+.wcard.trump-card{box-shadow:0 0 8px rgba(167,139,250,.4),1px 2px 6px rgba(0,0,0,.4);}
+.wcard.face-down{background:linear-gradient(145deg,#2a1060,#180830);border-color:rgba(255,255,255,.1);cursor:default;}
+.wc-r{font-size:.85rem;line-height:1.1;}.wc-s{font-size:.72rem;line-height:1;}
+/* Table */
+.wz-table{background:linear-gradient(145deg,#12062a,#090318);border:2px solid rgba(255,255,255,.07);
+  border-radius:16px;padding:12px;margin-bottom:10px;}
+.wz-trick{display:flex;gap:8px;justify-content:center;align-items:flex-end;min-height:68px;margin-bottom:6px;}
+.wz-trick-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.wz-trick-name{font-size:.55rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
+/* Score board */
+.wz-scores{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.wz-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px;text-align:center;}
+.wz-score-box.you{border-color:rgba(167,139,250,.35);}
+.wz-score-box.leader{border-color:rgba(34,197,94,.35);}
+.wz-score-name{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.wz-score-total{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;}
+.wz-score-detail{font-size:.58rem;color:rgba(255,255,255,.35);line-height:1.4;}
+/* Bid panel */
+.wz-bid-panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;}
+.wz-bid-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;}
+.wz-bid-btn{width:42px;height:42px;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;
+  background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);color:#a78bfa;transition:all .12s;}
+.wz-bid-btn:hover{background:rgba(167,139,250,.25);}
+/* Trump display */
+.wz-trump{text-align:center;font-size:.78rem;font-weight:700;color:#a78bfa;margin-bottom:6px;}
+/* Status */
+.wz-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
+/* Log */
+.wz-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;
+  font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.wz-log .pts{color:#f5c842;font-weight:700;}
+/* Round summary */
+.wz-round-summary{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px;}
+/* Game over */
+.wz-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.wz-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+/* Choose trump panel */
+.wz-choose-trump{background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Wizard — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="wz-wrap" id="wz-root"></div>
+</div>
+<script>
+'use strict';
+// 4 players: You + 3 AI · 15 rounds (60 cards / 4 players)
+const PNAMES=['You','Sage','Merlin','Oracle'];
+const SUITS=['♠','♥','♦','♣'];
+const SUIT_LABELS={'♠':'Spades','♥':'Hearts','♦':'Diamonds','♣':'Clubs'};
+const RED=new Set(['♥','♦']);
+const RANK_ORD=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+function makeWizDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANK_ORD.forEach(r=>d.push({rank:r,suit:s,special:null})));
+  for(let i=0;i<4;i++) d.push({rank:'W',suit:'★',special:'wizard'});
+  for(let i=0;i<4;i++) d.push({rank:'J',suit:'🃏',special:'jester'});
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function cKey(c){return c.rank+c.suit;}
+function isWiz(c){return c.special==='wizard';}
+function isJest(c){return c.special==='jester';}
+
+let hands,scores,bids,taken,trick,trickLead,trump,trumpCard,phase,log,round,dealer,trickNum,choosingTrump;
+const TOTAL_ROUNDS=15;
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
+function newGame(){scores=[0,0,0,0];log=[];round=0;dealer=3;nextRound();}
+
+function nextRound(){
+  round++;dealer=(dealer+1)%4;
+  const deck=makeWizDeck();
+  const n=round;
+  hands=Array.from({length:4},(_,i)=>deck.slice(i*n,(i+1)*n));
+  trumpCard=deck[4*n]||null;
+  // Determine trump
+  if(!trumpCard||isJest(trumpCard)){trump=null;}
+  else if(isWiz(trumpCard)){
+    trump=null; choosingTrump=true; // dealer chooses
+  } else {
+    trump=trumpCard.suit; choosingTrump=false;
+  }
+  bids=[-1,-1,-1,-1]; taken=[0,0,0,0];
+  trick=[null,null,null,null]; trickLead=(dealer+1)%4; trickNum=0;
+  phase='bid'; choosingTrump=choosingTrump&&dealer===0; // only player chooses
+  if(choosingTrump&&dealer===0){phase='choose-trump';}
+  else if(choosingTrump&&dealer!==0){
+    // AI dealer chooses randomly
+    trump=SUITS[Math.floor(Math.random()*4)];choosingTrump=false;
+  }
+  addLog(`Round ${round} of ${TOTAL_ROUNDS}. ${n} card${n>1?'s':''} each. Trump: ${trump||'none'}.`);
+  render();
+  if(phase==='bid') setTimeout(startBidding,300);
+}
+
+function startBidding(){
+  // AI bids
+  const startBidder=(dealer+1)%4;
+  for(let i=0;i<4;i++){
+    const p=(startBidder+i)%4;
+    if(p!==0) bids[p]=aiBid(p);
+  }
+  addLog(`Bids: ${PNAMES.map((n,i)=>i===0?'You: ?':n+': '+bids[i]).join(' · ')}`);
+  render();
+}
+
+function aiBid(p){
+  const h=hands[p];
+  let est=0;
+  h.forEach(c=>{
+    if(isWiz(c)){est+=1;}
+    else if(isJest(c)){}
+    else if(trump&&c.suit===trump)est+=0.7+(RANK_ORD.indexOf(c.rank)/20);
+    else if(c.rank==='A')est+=0.6;
+    else if(c.rank==='K')est+=0.35;
+    else est+=0.05;
+  });
+  return Math.round(est);
+}
+
+function playerBid(n){
+  if(phase!=='bid') return;
+  bids[0]=n;
+  addLog(`You bid ${n}.`);
+  phase='play';
+  addLog(`All bids: ${PNAMES.map((n2,i)=>n2+': '+bids[i]).join(', ')}`);
+  render();
+  if(trickLead!==0) setTimeout(aiPlayCard,500);
+}
+
+function playerChooseTrump(suit){
+  if(phase!=='choose-trump') return;
+  trump=suit; choosingTrump=false;
+  addLog(`You choose ${trump} as trump.`);
+  phase='bid'; render(); setTimeout(startBidding,300);
+}
+
+// ── Play ─────────────────────────────────────────────────────────────────────
+function cardPower(c,ledSuit){
+  if(isWiz(c)) return 300;
+  if(isJest(c)) return -1;
+  // Find first non-jester in trick to determine if wizard already played
+  if(trump&&c.suit===trump) return 100+RANK_ORD.indexOf(c.rank);
+  if(c.suit===ledSuit) return 50+RANK_ORD.indexOf(c.rank);
+  return RANK_ORD.indexOf(c.rank);
+}
+
+function validPlays(p){
+  const h=hands[p];
+  const led=trick.find(c=>c&&!isJest(c)&&!isWiz(c));
+  if(!led) return h;
+  const follow=h.filter(c=>c.suit===led.suit&&!isWiz(c)&&!isJest(c));
+  return follow.length?follow:h;
+}
+
+function aiPlayCard(){
+  const p=getNext();
+  if(p<0||p===0) return;
+  const valid=validPlays(p);
+  const led=trick.find(c=>c&&!isJest(c)&&!isWiz(c));
+  const ledSuit=led?.suit;
+  // Play wizards to win, jesters to lose, else simple greedy
+  const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
+  const currentBest=played.length?played.reduce((w,x)=>cardPower(x.c,ledSuit)>cardPower(w.c,ledSuit)?x:w,played[0]):null;
+  const needToWin=bids[p]>taken[p];
+  const needToLose=!needToWin&&taken[p]>=bids[p];
+  let card;
+  if(needToWin){
+    const canWin=valid.filter(c=>!currentBest||cardPower(c,ledSuit)>cardPower(currentBest.c,ledSuit));
+    card=canWin.length?canWin.sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0]
+      :valid.sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
+  } else {
+    // Play lowest
+    const nonWiz=valid.filter(c=>!isWiz(c));
+    card=(nonWiz.length?nonWiz:valid).sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
+  }
+  playCard(p,card||valid[0]);
+}
+
+function getNext(){
+  for(let i=0;i<4;i++){const p=(trickLead+i)%4;if(!trick[p])return p;}
+  return -1;
+}
+
+function playerPlay(card){
+  if(phase!=='play'||getNext()!==0) return;
+  if(!validPlays(0).some(c=>cKey(c)===cKey(card))) return;
+  playCard(0,card);
+}
+
+function playCard(p,card){
+  trick[p]=card;
+  hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
+  render();
+  if(trick.filter(c=>c).length===4){
+    // Find winner: first wizard, else highest in led suit/trump, jesters lose
+    const firstPlayed=trick[(trickLead)%4];
+    let winner=trickLead;
+    let ledSuit=null;
+    // Determine led suit (first non-jester)
+    for(let i=0;i<4;i++){const c=trick[(trickLead+i)%4];if(c&&!isJest(c)){ledSuit=c.suit;break;}}
+    for(let i=0;i<4;i++){
+      const p=(trickLead+i)%4;
+      if(isWiz(trick[p])){winner=p;break;} // first wizard wins
+    }
+    if(!trick.slice().some(c=>c&&isWiz(c))){
+      // No wizard: highest trump or led suit wins
+      winner=trick.reduce((wi,c,i)=>{
+        if(!c) return wi;
+        return cardPower(c,ledSuit)>cardPower(trick[wi]||{rank:'2',suit:'x'},ledSuit)?i:wi;
+      },trickLead);
+    }
+    taken[winner]++; trickNum++;
+    addLog(`${PNAMES[winner]} wins trick ${trickNum}.`);
+    render();
+    setTimeout(()=>{
+      trick=[null,null,null,null];trickLead=winner;
+      if(trickNum===round){scoreRound();}
+      else{render();if(winner!==0)setTimeout(aiPlayCard,500);}
+    },900);
+  } else {
+    const next=getNext();
+    if(next>0) setTimeout(aiPlayCard,450);
+  }
+}
+
+function scoreRound(){
+  let msgs=[];
+  for(let p=0;p<4;p++){
+    const diff=Math.abs(bids[p]-taken[p]);
+    let pts=bids[p]===taken[p]?20+bids[p]*10:-10*diff;
+    scores[p]+=pts;
+    msgs.push(`${PNAMES[p]}: bid ${bids[p]}, took ${taken[p]} → ${pts>0?'+':''}${pts}`);
+  }
+  msgs.forEach(m=>addLog(m,'pts'));
+  phase='round-end';
+  if(round===TOTAL_ROUNDS){phase='game-over';endGame();}
+  else render();
+}
+
+function endGame(){
+  const winner=scores.indexOf(Math.max(...scores));
+  const won=winner===0;
+  addLog(`Game over! ${PNAMES[winner]} wins with ${scores[winner]} pts.`,'pts');
+  try{GameHistory.save('wizard',{_summary:`Wizard (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function cardEl(c,cls=''){
+  if(!c) return`<div class="wcard face-down"></div>`;
+  const special=isWiz(c)?'wiz-card':isJest(c)?'jest-card':'';
+  const tr=!isWiz(c)&&!isJest(c)&&trump&&c.suit===trump?'trump-card':'';
+  const col=RED.has(c.suit)?'red':'black';
+  return`<div class="wcard ${special||col} ${tr} ${cls}" data-key="${cKey(c)}">
+    <div class="wc-r">${c.rank}</div>
+    <div class="wc-s">${isWiz(c)||isJest(c)?'':c.suit}</div>
+  </div>`;
+}
+
+function miniCard(c){
+  if(!c)return`<div style="width:30px;height:42px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);"></div>`;
+  const sp=isWiz(c)?'wiz-card':isJest(c)?'jest-card':'';
+  const col=RED.has(c.suit)?'red':'black';
+  return`<div class="wcard ${sp||col} disabled" style="width:30px;height:42px;font-size:.5rem;">
+    <div style="font-size:.65rem">${c.rank}</div><div style="font-size:.55rem">${isWiz(c)||isJest(c)?'':c.suit}</div>
+  </div>`;
+}
+
+function render(){
+  const root=document.getElementById('wz-root');
+  let html='';
+  const maxScore=Math.max(...scores);
+  html+=`<div style="text-align:center;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:6px;">Round ${round} of ${TOTAL_ROUNDS} · First to most points wins</div>`;
+  html+=`<div class="wz-scores">`;
+  PNAMES.forEach((n,i)=>{
+    const bid=bids[i]>=0?`bid ${bids[i]}`:'';
+    const took=phase==='play'||phase==='round-end'?` got ${taken[i]}`:'' ;
+    html+=`<div class="wz-score-box ${i===0?'you':''} ${scores[i]===maxScore&&scores[i]>0?'leader':''}">
+      <div class="wz-score-name" style="${i===0?'color:#a78bfa':''}">${n}</div>
+      <div class="wz-score-total">${scores[i]}</div>
+      <div class="wz-score-detail">${bid}${took}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  if(phase==='game-over'){
+    const w=scores.indexOf(Math.max(...scores));
+    html+=`<div class="wz-game-result">
+      <div class="wz-game-title">${w===0?'🏆 You Win!':PNAMES[w]+' Wins'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PNAMES.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=`<div class="wz-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+  }
+
+  if(phase==='round-end'){
+    html+=`<div class="wz-round-summary">
+      <div style="font-weight:700;margin-bottom:4px;">Round ${round} Complete</div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.55);">${PNAMES.map((n,i)=>`${n}: bid ${bids[i]} took ${taken[i]}`).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
+    html+=`<div class="wz-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',nextRound);return;
+  }
+
+  if(phase==='choose-trump'){
+    html+=`<div class="wz-choose-trump">
+      <div style="font-weight:700;margin-bottom:4px;">A Wizard was turned up — choose trump suit!</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;">
+        ${SUITS.map(s=>`<button class="btn btn-outline btn-sm wz-trump-btn" data-suit="${s}">${s} ${SUIT_LABELS[s]}</button>`).join('')}
+        <button class="btn btn-outline btn-sm wz-trump-btn" data-suit="none">No Trump</button>
+      </div>
+    </div>`;
+  }
+
+  // Trump
+  html+=`<div class="wz-trump">${trump?`Trump: ${trump}`:round>0?'No trump':''}${trumpCard?' · Turn-up: '+trumpCard.rank+trumpCard.suit:''}</div>`;
+
+  // Bid phase
+  if(phase==='bid'&&bids[0]<0){
+    html+=`<div class="wz-bid-panel">
+      <div style="font-weight:700;text-align:center;margin-bottom:4px;">Bid for Round ${round}</div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.5);text-align:center;">You have ${round} card${round>1?'s':''}. Bid exactly how many tricks you'll win.</div>
+      <div class="wz-bid-grid">${Array.from({length:round+1},(_,i)=>`<button class="wz-bid-btn" data-bid="${i}">${i}</button>`).join('')}</div>
+    </div>`;
+  }
+
+  // Table
+  const cur=getNext();
+  html+=`<div class="wz-table">
+    <div class="wz-trick">
+      ${[1,2,3,0].map(p=>`<div class="wz-trick-slot">${miniCard(trick[p])}<div class="wz-trick-name">${PNAMES[p]}</div></div>`).join('')}
+    </div>
+    <div style="text-align:center;font-size:.62rem;color:rgba(255,255,255,.3);">Trick ${trickNum+1} of ${round}</div>
+  </div>`;
+
+  html+=`<div class="wz-status">${phase==='play'?cur===0?'Your turn.':cur>=0?`${PNAMES[cur]} playing…`:'':''}</div>`;
+
+  // Player hand
+  const isPlay=phase==='play'&&cur===0;
+  const valid=isPlay?validPlays(0).map(cKey):[];
+  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${hands[0].length})</div>
+  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
+    ${hands[0].map(c=>cardEl(c,isPlay&&valid.includes(cKey(c))?'playable':'')).join('')}
+  </div>`;
+
+  html+=`<div class="wz-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+  root.innerHTML=html;
+
+  document.querySelectorAll('.wz-bid-btn').forEach(b=>b.addEventListener('click',()=>playerBid(+b.dataset.bid)));
+  document.querySelectorAll('.wz-trump-btn').forEach(b=>b.addEventListener('click',()=>playerChooseTrump(b.dataset.suit==='none'?null:b.dataset.suit)));
+  document.getElementById('player-hand')?.querySelectorAll('.wcard.playable').forEach(el=>{
+    el.addEventListener('click',()=>{const c=hands[0].find(c=>cKey(c)===el.dataset.key);if(c)playerPlay(c);});
+  });
+  if(phase==='play'&&cur>0) setTimeout(aiPlayCard,500);
+}
+
+newGame();
+</script>
+</body>
+</html>

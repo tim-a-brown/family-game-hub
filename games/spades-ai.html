@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Spades — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a2e 0%,#060a18 60%);}
+.sp-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
+/* Card */
+.scard{width:44px;height:60px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.12);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;}
+.scard.red{color:#c53030;}.scard.black{color:#1a1a1a;}
+.scard.playable{cursor:pointer;}.scard.playable:hover{transform:translateY(-8px);border-color:#f5c842;}
+.scard.played-card{opacity:.35;cursor:default;}
+.scard.face-down{background:linear-gradient(145deg,#1a2a4e,#0d1828);border-color:rgba(255,255,255,.1);cursor:default;}
+.scard-r{font-size:.85rem;line-height:1.1;}.scard-s{font-size:.72rem;line-height:1;}
+/* Table */
+.sp-table{background:linear-gradient(145deg,#0a1a30,#060e1a);border:2px solid rgba(255,255,255,.07);
+  border-radius:16px;padding:12px;margin-bottom:10px;}
+/* Players positioned around table */
+.sp-north{text-align:center;margin-bottom:8px;}
+.sp-middle-row{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px;}
+.sp-side{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px;}
+.sp-side-cards{display:flex;flex-direction:column;gap:1px;}
+.sp-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
+.sp-trick{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;width:100px;}
+.sp-trick-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.sp-trick-name{font-size:.5rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
+/* Player name tags */
+.sp-name{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
+.sp-bid-taken{font-size:.6rem;color:rgba(255,255,255,.4);}
+.sp-name.active-turn{color:#f5c842;}
+/* Score board */
+.sp-scores{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.sp-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:8px;text-align:center;}
+.sp-score-box.leading{border-color:rgba(34,197,94,.3);}
+.sp-team-name{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.sp-team-score{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#f5c842;}
+.sp-team-bid{font-size:.65rem;color:rgba(255,255,255,.4);}
+.sp-team-bags{font-size:.6rem;color:rgba(255,255,255,.3);}
+/* Bidding UI */
+.sp-bid-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:12px;}
+.sp-bid-btn{aspect-ratio:1;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;transition:all .12s;}
+.sp-bid-btn:hover{background:rgba(255,255,255,.18);}
+.sp-bid-btn.nil-btn{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.35);color:#fca5a5;}
+/* Status */
+.sp-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
+/* Log */
+.sp-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:72px;overflow-y:auto;
+  font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.sp-log .pts{color:#f5c842;font-weight:700;}
+/* Round end */
+.sp-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px;margin-bottom:10px;}
+/* Game over */
+.sp-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.sp-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Spades — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="sp-wrap" id="sp-root"></div>
+</div>
+<script>
+'use strict';
+// Players: 0=South(You), 1=West(AI), 2=North(AI partner), 3=East(AI)
+// Teams: 0+2 = You+Partner vs 1+3 = Opponents
+const PNAMES=['You','West','North','East'];
+const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+const ORD=Object.fromEntries(RANKS.map((r,i)=>[r,i]));
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function cKey(c){return c.rank+c.suit;}
+function cardPower(c,led){
+  if(c.suit==='♠') return 100+ORD[c.rank];
+  if(c.suit===led) return 50+ORD[c.rank];
+  return ORD[c.rank];
+}
+
+let hands,bids,taken,scores,bags,trick,trickLead,spadesBroken,phase,log,roundNum;
+// scores[2]: team scores, bags[2]: team bags (overtricks)
+// phase: 'bid'|'play'|'trick-end'|'round-end'|'game-over'
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>40)log.shift();}
+
+function newGame(){scores=[0,0];bags=[0,0];roundNum=0;newRound();}
+
+function newRound(){
+  roundNum++;
+  const deck=makeDeck();
+  hands=Array.from({length:4},(_,i)=>deck.slice(i*13,(i+1)*13)
+    .sort((a,b)=>a.suit.localeCompare(b.suit)||ORD[a.rank]-ORD[b.rank]));
+  bids=[-1,-1,-1,-1]; taken=[0,0,0,0];
+  trick=[null,null,null,null]; trickLead=0; spadesBroken=false;
+  phase='bid';
+  addLog(`Round ${roundNum} — Bidding phase.`);
+  render();
+  // AI bids 1-3
+  setTimeout(()=>{
+    [1,2,3].forEach(p=>{
+      const spades=hands[p].filter(c=>c.suit==='♠').length;
+      const aces=hands[p].filter(c=>c.rank==='A').length;
+      const kings=hands[p].filter(c=>c.rank==='K').length;
+      bids[p]=Math.max(1,Math.round((spades*.7+aces*.8+kings*.3)));
+    });
+    addLog(`West bids ${bids[1]}, North bids ${bids[2]}, East bids ${bids[3]}.`);
+    render();
+  },400);
+}
+
+function playerBid(n){
+  if(phase!=='bid') return;
+  bids[0]=n;
+  addLog(`You bid ${n===0?'Nil':n}.`);
+  phase='play';
+  // 2♣ or lowest card leads... actually in Spades player to dealer's left leads
+  // Simple: player with 2♣ leads
+  trickLead=hands.findIndex(h=>h.some(c=>c.rank==='2'&&c.suit==='♣'));
+  if(trickLead<0) trickLead=0;
+  trick=[null,null,null,null];
+  render();
+  if(trickLead!==0) setTimeout(aiPlayTrick,600);
+}
+
+function validPlays(player){
+  const h=hands[player];
+  const led=trick.find(c=>c!==null);
+  if(!led){
+    // Leading: can't lead spades until broken (unless only spades)
+    if(!spadesBroken){
+      const nonSpades=h.filter(c=>c.suit!=='♠');
+      return nonSpades.length>0?nonSpades:h;
+    }
+    return h;
+  }
+  const ledSuit=led.suit;
+  const follow=h.filter(c=>c.suit===ledSuit);
+  return follow.length?follow:h;
+}
+
+function aiPlayCard(player){
+  const valid=validPlays(player);
+  if(valid.length===1) return valid[0];
+  const led=trick.find(c=>c!==null);
+  const isLeading=!led;
+  const isPartner=player===2; // North is partner
+
+  if(isLeading){
+    // Lead: if have Ace of non-spade, lead it
+    const aces=valid.filter(c=>c.rank==='A'&&c.suit!=='♠');
+    if(aces.length) return aces[0];
+    // Else lead lowest non-spade
+    const ns=valid.filter(c=>c.suit!=='♠');
+    if(ns.length) return ns.sort((a,b)=>ORD[a.rank]-ORD[b.rank])[0];
+    return valid.sort((a,b)=>ORD[a.rank]-ORD[b.rank])[0];
+  }
+
+  // Following: determine if partner is currently winning
+  const ledSuit=led.suit;
+  const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
+  const currentWinner=played.reduce((w,x)=>cardPower(x.c,ledSuit)>cardPower(w.c,ledSuit)?x:w,played[0]);
+  const partnerWinning=isPartner&&currentWinner.i===2;
+  const teammateIdx=isPartner?0:2;
+  const teammateWinning=currentWinner.i===teammateIdx;
+
+  // If team is winning, play low
+  if(teammateWinning||partnerWinning){
+    return valid.sort((a,b)=>ORD[a.rank]-ORD[b.rank])[0];
+  }
+  // Try to win with lowest winning card
+  const winners=valid.filter(c=>cardPower(c,ledSuit)>cardPower(currentWinner.c,ledSuit));
+  if(winners.length) return winners.sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
+  // Can't win: play lowest
+  return valid.sort((a,b)=>ORD[a.rank]-ORD[b.rank])[0];
+}
+
+function playCard(player, card){
+  if(card.suit==='♠') spadesBroken=true;
+  trick[player]=card;
+  hands[player]=hands[player].filter(c=>cKey(c)!==cKey(card));
+  render();
+
+  // Check if trick complete
+  const filledSlots=trick.filter(c=>c!==null).length;
+  if(filledSlots===4){
+    const led=trick[trickLead];
+    const winner=trick.reduce((wi,c,i)=>{
+      if(!c) return wi;
+      return cardPower(c,led.suit)>cardPower(trick[wi],led.suit)?i:wi;
+    },trickLead);
+    taken[winner]++;
+    addLog(`${PNAMES[winner]} wins the trick.`);
+    setTimeout(()=>{
+      trick=[null,null,null,null];
+      trickLead=winner;
+      if(hands[0].length===0){
+        finishRound();
+      } else {
+        render();
+        if(winner!==0) setTimeout(aiPlayTrick,500);
+      }
+    },1000);
+  } else {
+    // Next player
+    const next=(player+1)%4;
+    if(next!==0) setTimeout(aiPlayTrick,500);
+  }
+}
+
+function aiPlayTrick(){
+  const current=getNextPlayer();
+  if(current===0||current<0) return;
+  const card=aiPlayCard(current);
+  if(card) playCard(current,card);
+}
+
+function getNextPlayer(){
+  // Find next empty slot starting from trickLead
+  for(let i=0;i<4;i++){
+    const p=(trickLead+i)%4;
+    if(trick[p]===null) return p;
+  }
+  return -1;
+}
+
+function playerPlay(card){
+  if(phase!=='play') return;
+  if(getNextPlayer()!==0) return;
+  if(!validPlays(0).some(c=>cKey(c)===cKey(card))) return;
+  playCard(0,card);
+}
+
+function finishRound(){
+  // Score each team
+  const teamTaken=[taken[0]+taken[2],taken[1]+taken[3]];
+  const teamBids=[bids[0]+bids[2],bids[1]+bids[3]];
+  const msgs=[];
+  for(let t=0;t<2;t++){
+    const bid=teamBids[t], won=teamTaken[t];
+    if(won>=bid){
+      const over=won-bid;
+      const pts=bid*10+over;
+      scores[t]+=pts;
+      bags[t]+=over;
+      if(bags[t]>=10){scores[t]-=100;bags[t]-=10;msgs.push(`Team ${t+1}: BAG penalty -100!`);}
+      msgs.push(`${t===0?'You+North':'West+East'}: bid ${bid}, took ${won} → +${pts} pts${over>0?`, ${over} bag${over>1?'s':''}`:''}`);
+    } else {
+      const pts=bid*10;
+      scores[t]-=pts;
+      msgs.push(`${t===0?'You+North':'West+East'}: bid ${bid}, took ${won} → -${pts} pts (set!)`);
+    }
+  }
+  msgs.forEach(m=>addLog(m,'pts'));
+
+  // Nil bid check
+  [0,1,2,3].forEach(p=>{
+    if(bids[p]===0){
+      const success=taken[p]===0;
+      const team=p%2===0?0:1;
+      if(success){scores[team]+=100;addLog(`${PNAMES[p]}: Nil bid SUCCESS +100!`,'pts');}
+      else{scores[team]-=100;addLog(`${PNAMES[p]}: Nil bid FAILED -100!`,'pts');}
+    }
+  });
+
+  phase='round-end';
+  if(scores[0]>=500||scores[1]>=500){phase='game-over';endGame();}
+  else render();
+}
+
+function endGame(){
+  const won=scores[0]>scores[1];
+  addLog(`Game over! ${won?'You & North win':'West & East win'}. ${scores[0]}–${scores[1]}.`,'pts');
+  try{GameHistory.save('spades',{_summary:`Spades (AI) · ${won?'Win':'Loss'} ${scores[0]}–${scores[1]}`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0],rounds:roundNum});}catch(e){}
+  render();
+}
+
+function cardEl(c,cls=''){
+  if(!c) return`<div class="scard face-down"></div>`;
+  return`<div class="scard ${RED.has(c.suit)?'red':'black'} ${cls}" data-key="${cKey(c)}">
+    <div class="scard-r">${c.rank}</div><div class="scard-s">${c.suit}</div>
+  </div>`;
+}
+
+function miniCard(c){
+  if(!c) return`<div class="scard face-down" style="width:28px;height:40px;font-size:.6rem;"></div>`;
+  return`<div class="scard ${RED.has(c.suit)?'red':'black'} disabled" style="width:28px;height:40px;">
+    <div style="font-size:.6rem;line-height:1.1;">${c.rank}</div><div style="font-size:.55rem;line-height:1;">${c.suit}</div>
+  </div>`;
+}
+
+function render(){
+  const root=document.getElementById('sp-root');
+  let html='';
+
+  // Score board
+  const t0bid=bids[0]>=0&&bids[2]>=0?(bids[0]==='0'?'Nil':bids[0])+'+'+(bids[2]==='0'?'Nil':bids[2]):'—';
+  const t1bid=bids[1]>=0&&bids[3]>=0?bids[1]+'+'+bids[3]:'—';
+  html+=`<div class="sp-scores">
+    <div class="sp-score-box ${scores[0]>=scores[1]?'leading':''}">
+      <div class="sp-team-name" style="color:#60a5fa;">You + North</div>
+      <div class="sp-team-score">${scores[0]}</div>
+      <div class="sp-team-bid">Bid: ${t0bid} · Taken: ${taken[0]+taken[2]}</div>
+      <div class="sp-team-bags">Bags: ${bags[0]}</div>
+    </div>
+    <div class="sp-score-box ${scores[1]>scores[0]?'leading':''}">
+      <div class="sp-team-name" style="color:#f87171;">West + East</div>
+      <div class="sp-team-score">${scores[1]}</div>
+      <div class="sp-team-bid">Bid: ${t1bid} · Taken: ${taken[1]+taken[3]}</div>
+      <div class="sp-team-bags">Bags: ${bags[1]}</div>
+    </div>
+  </div>`;
+
+  if(phase==='game-over'){
+    const won=scores[0]>=500;
+    html+=`<div class="sp-game-result">
+      <div class="sp-game-title">${won?'🏆 You Win!':'Opponents Win'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${scores[0]} – ${scores[1]}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=`<div class="sp-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;
+    document.getElementById('ng-btn')?.addEventListener('click',newGame);
+    return;
+  }
+
+  if(phase==='round-end'){
+    html+=`<div class="sp-round-end">
+      <div style="font-weight:700;margin-bottom:6px;">Round ${roundNum} Complete</div>
+      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">You: ${taken[0]} tricks · North: ${taken[2]} tricks (bid ${bids[0]+bids[2]})<br>West+East: ${taken[1]+taken[3]} tricks (bid ${bids[1]+bids[3]})</div>
+    </div>
+    <div style="text-align:center;margin-bottom:10px;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
+    html+=`<div class="sp-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;
+    document.getElementById('nr-btn')?.addEventListener('click',newRound);
+    return;
+  }
+
+  if(phase==='bid'){
+    const waitingForPlayer=bids[0]<0;
+    if(waitingForPlayer){
+      const spades=hands[0].filter(c=>c.suit==='♠').length;
+      html+=`<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="font-weight:700;margin-bottom:4px;text-align:center;">Your Bid</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.45);text-align:center;margin-bottom:12px;">You have ${spades} spades. Bid how many tricks you'll take.</div>
+        <div class="sp-bid-grid">
+          ${[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(n=>
+            `<button class="sp-bid-btn ${n===0?'nil-btn':''}" data-bid="${n}">${n===0?'Nil':n}</button>`
+          ).join('')}
+        </div>
+      </div>`;
+    } else {
+      html+=`<div class="sp-status">Waiting for AI bids…</div>`;
+    }
+    // Show hand during bidding
+    html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand</div>
+    <div class="gr-hand" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">
+      ${hands[0].map(c=>cardEl(c,'disabled')).join('')}
+    </div>`;
+    root.innerHTML=html;
+    document.querySelectorAll('.sp-bid-btn').forEach(b=>{
+      b.addEventListener('click',()=>playerBid(+b.dataset.bid));
+    });
+    return;
+  }
+
+  // Play phase
+  const current=getNextPlayer();
+  const isYourTurn=current===0;
+
+  // Table with 4 positions
+  // North at top, South(you) at bottom, West left, East right
+  html+=`<div class="sp-table">
+    <!-- North (partner) -->
+    <div class="sp-north">
+      <div class="sp-name ${current===2?'active-turn':''}">North (partner)</div>
+      <div class="sp-bid-taken">${bids[2]>=0?`bid ${bids[2]}, took ${taken[2]}`:''}</div>
+      <div style="display:flex;gap:2px;justify-content:center;">${hands[2].slice(0,8).map(()=>`<div style="width:8px;height:36px;border-radius:3px;background:rgba(90,200,250,.25);"></div>`).join('')}</div>
+    </div>
+    <div class="sp-middle-row">
+      <!-- West -->
+      <div class="sp-side">
+        <div class="sp-name ${current===1?'active-turn':''}">West</div>
+        <div class="sp-bid-taken">${bids[1]>=0?bids[1]+'/'+taken[1]:''}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;">${hands[1].slice(0,7).map(()=>`<div style="width:36px;height:8px;border-radius:3px;background:rgba(248,113,113,.25);"></div>`).join('')}</div>
+      </div>
+      <!-- Trick area -->
+      <div class="sp-center">
+        <div class="sp-trick">
+          <div></div>
+          <div class="sp-trick-slot">${trick[2]?miniCard(trick[2]):`<div style="width:28px;height:40px;border:1px dashed rgba(255,255,255,.1);border-radius:5px;"></div>`}<div class="sp-trick-name">N</div></div>
+          <div class="sp-trick-slot">${trick[1]?miniCard(trick[1]):`<div style="width:28px;height:40px;border:1px dashed rgba(255,255,255,.1);border-radius:5px;"></div>`}<div class="sp-trick-name">W</div></div>
+          <div class="sp-trick-slot">${trick[0]?miniCard(trick[0]):`<div style="width:28px;height:40px;border:1px dashed rgba(255,255,255,.1);border-radius:5px;"></div>`}<div class="sp-trick-name">You</div></div>
+          <div class="sp-trick-slot">${trick[3]?miniCard(trick[3]):`<div style="width:28px;height:40px;border:1px dashed rgba(255,255,255,.1);border-radius:5px;"></div>`}<div class="sp-trick-name">E</div></div>
+          <div></div>
+        </div>
+        <div style="font-size:.65rem;color:rgba(255,255,255,.35);">♠ ${spadesBroken?'broken':'not broken'}</div>
+      </div>
+      <!-- East -->
+      <div class="sp-side">
+        <div class="sp-name ${current===3?'active-turn':''}">East</div>
+        <div class="sp-bid-taken">${bids[3]>=0?bids[3]+'/'+taken[3]:''}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;">${hands[3].slice(0,7).map(()=>`<div style="width:36px;height:8px;border-radius:3px;background:rgba(248,113,113,.25);"></div>`).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+
+  const status=isYourTurn?'Your turn to play.':current>=0?`${PNAMES[current]} playing…`:'';
+  html+=`<div class="sp-status">${status} (bid ${bids[0]>=0?bids[0]:'?'}, took ${taken[0]})</div>`;
+
+  // Player hand
+  const valid=isYourTurn?validPlays(0):[];
+  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand</div>
+  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:64px;" id="player-hand">
+    ${hands[0].map(c=>{
+      const isPlayable=isYourTurn&&valid.some(vc=>cKey(vc)===cKey(c));
+      return cardEl(c,isPlayable?'playable':'');
+    }).join('')}
+  </div>`;
+
+  html+=`<div class="sp-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+
+  root.innerHTML=html;
+
+  // Wire card clicks
+  document.getElementById('player-hand')?.querySelectorAll('.scard.playable').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const c=hands[0].find(c=>cKey(c)===el.dataset.key);
+      if(c) playerPlay(c);
+    });
+  });
+
+  if(current>0&&current>=0) setTimeout(aiPlayTrick,500);
+}
+
+newGame();
+</script>
+</body>
+</html>

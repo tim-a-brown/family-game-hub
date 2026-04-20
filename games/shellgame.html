@@ -5,6 +5,8 @@
 <title>Shell Game</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
 <style>
 body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
 .sg-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
@@ -83,6 +85,16 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
 
 <div style="text-align:center;">
   <button class="btn btn-gold" id="sg-action" style="min-width:160px;">▶ Start Round</button>
+</div>
+
+<!-- Game Over banner -->
+<div id="sg-gameover" class="hidden" style="margin-top:14px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(239,68,68,.05));border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:18px 16px;text-align:center;">
+  <div style="font-family:var(--serif);font-size:1.5rem;font-weight:900;color:#ef4444;margin-bottom:4px;">Game Over!</div>
+  <div style="color:rgba(255,255,255,.6);font-size:.88rem;margin-bottom:14px;">You survived <strong id="sg-gameover-score" style="color:#f5c842;font-size:1.1rem;">0</strong> rounds before missing</div>
+  <div style="display:flex;gap:8px;justify-content:center;">
+    <button class="btn btn-gold" id="sg-play-again">▶ Play Again</button>
+    <button class="btn btn-outline btn-sm" id="sg-view-hist" style="font-size:.78rem;">📊 History</button>
+  </div>
 </div>
 
 </div></div>
@@ -191,6 +203,21 @@ function setClickable(on){
 // ── Game flow ─────────────────────────────────────────────────────────────────
 document.getElementById('sg-action').addEventListener('click',startRound);
 
+document.getElementById('sg-play-again').addEventListener('click',()=>{
+  // Full reset
+  round=1;wins=0;total=0;streak=0;
+  document.getElementById('sg-gameover').classList.add('hidden');
+  document.getElementById('sg-result').className='sg-result';
+  updateUI();
+  document.getElementById('sg-action').textContent='▶ Start Round';
+  document.getElementById('sg-action').style.display='';
+  setStatus('Find the hidden ball!');
+});
+
+document.getElementById('sg-view-hist').addEventListener('click',()=>{
+  try{ GameHistory.open('shellgame','Shell Game'); }catch(e){}
+});
+
 function startRound(){
   document.getElementById('sg-action').style.display='none';
   document.getElementById('sg-result').className='sg-result';
@@ -293,14 +320,11 @@ function makeGuess(shellIdx){
   setClickable(false);
   const correct=shellIdx===ballShell;
 
-  // Re-sync ball to where ballShell actually is NOW after all the shuffling
   snapBall();
-
   liftCup(shellIdx,true);
   sPeek();
 
   setTimeout(()=>{
-    // Boost ball above cups only for the final reveal
     document.getElementById('sg-ball').style.zIndex='5';
     if(correct){
       setBallVisible(true);
@@ -308,20 +332,35 @@ function makeGuess(shellIdx){
       getShell(shellIdx).classList.add('flash-correct');
       showResult(true);
       sWin();
+      updateUI();
+      round++;
+      setTimeout(()=>{
+        document.getElementById('sg-action').textContent='▶ Next Round';
+        document.getElementById('sg-action').style.display='';
+      },900);
     } else {
-      // Only lift the shell that hides the ball — cleaner reveal
+      // Wrong — game over immediately
       liftCup(ballShell,true);
       setBallVisible(true);
       streak=0;
       showResult(false);
       sLose();
+      updateUI();
+      // Save history
+      try{
+        GameHistory.save('shellgame',{
+          _summary:`Shell Game · ${wins} round${wins!==1?'s':''} survived`,
+          _badge:wins+' rounds',
+          rounds:wins,result:'loss'
+        });
+      }catch(e){}
+      // Show game-over banner after short delay
+      setTimeout(()=>{
+        document.getElementById('sg-gameover-score').textContent=wins;
+        document.getElementById('sg-gameover').classList.remove('hidden');
+        document.getElementById('sg-action').style.display='none';
+      },1200);
     }
-    updateUI();
-    round++;
-    setTimeout(()=>{
-      document.getElementById('sg-action').textContent='▶ Next Round';
-      document.getElementById('sg-action').style.display='';
-    },900);
   },350);
 }
 

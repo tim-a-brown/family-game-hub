@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Baccarat</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../casino.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#061410 60%);}
+.bac-wrap{max-width:480px;margin:0 auto;padding:0 12px 60px;}
+/* Table felt */
+.bac-table{background:linear-gradient(145deg,#0d3d28,#082918);border:3px solid #1a5e3a;
+  border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:inset 0 2px 20px rgba(0,0,0,.4);}
+/* Cards */
+.bac-cards{display:flex;justify-content:space-around;gap:10px;margin-bottom:8px;}
+.bac-hand{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.bac-hand-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);}
+.bac-hand-cards{display:flex;gap:5px;min-height:72px;align-items:center;justify-content:center;}
+.bac-hand-score{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#f5c842;}
+.bac-hand.winner .bac-hand-lbl{color:#22c55e;}
+.bac-hand.winner .bac-hand-score{color:#22c55e;}
+/* Cards */
+.bc{width:42px;height:58px;border-radius:7px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:1.5px solid rgba(0,0,0,.15);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;box-shadow:1px 2px 5px rgba(0,0,0,.4);font-family:'Playfair Display',serif;font-weight:900;}
+.bc.red{color:#c53030;}.bc.black{color:#1a1a1a;}
+.bc.face-down{background:linear-gradient(145deg,#1a3a5e,#0d2040);}
+.bc-r{font-size:.85rem;line-height:1.1;}.bc-s{font-size:.72rem;line-height:1;}
+/* Bet panel */
+.bac-bet-panel{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.bac-bet-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.bac-bet-opt{flex:1;min-width:90px;max-width:130px;padding:12px 8px;border-radius:12px;text-align:center;
+  cursor:pointer;border:2px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);}
+.bac-bet-opt:hover{background:rgba(255,255,255,.12);}
+.bac-bet-opt.active{border-color:#f5c842;background:rgba(245,200,66,.12);}
+.bac-bet-opt.player{border-color:rgba(90,200,250,.3);}
+.bac-bet-opt.player.active{border-color:#5ac8fa;background:rgba(90,200,250,.15);}
+.bac-bet-opt.tie{border-color:rgba(34,197,94,.3);}
+.bac-bet-opt.tie.active{border-color:#22c55e;background:rgba(34,197,94,.15);}
+.bac-bet-name{font-size:.8rem;font-weight:700;margin-bottom:2px;}
+.bac-bet-odds{font-size:.65rem;color:rgba(255,255,255,.4);}
+/* Chips */
+.chip-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.chip{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:800;cursor:pointer;border:3px solid rgba(255,255,255,.25);
+  transition:all .12s;user-select:none;}
+.chip:hover{transform:scale(1.1);}
+.chip:active{transform:scale(.95);}
+/* Bankroll bar */
+.bac-bank{display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
+.bac-bank-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
+.bac-bet-amt{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:#fff;}
+/* Result */
+.bac-result{text-align:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;
+  min-height:32px;margin-bottom:8px;}
+.bac-result.win{color:#22c55e;}.bac-result.loss{color:#ef4444;}.bac-result.tie{color:#f5c842;}
+/* Rules */
+.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+.rules-summary{padding:9px 14px;font-size:.82rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.55);list-style:none;display:flex;justify-content:space-between;user-select:none;}
+.rules-summary::-webkit-details-marker{display:none;}
+.rules-body{padding:4px 14px 12px;font-size:.78rem;line-height:1.75;color:rgba(255,255,255,.5);}
+.rules-body p{margin:0 0 5px;}.rules-body strong{color:rgba(255,255,255,.85);}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Baccarat</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="bac-wrap">
+
+<details class="rules-details">
+  <summary class="rules-summary">📖 How to Play <span style="font-size:.6rem;opacity:.4;">▼</span></summary>
+  <div class="rules-body">
+    <p><strong>Goal:</strong> Bet on whether the Player hand, Banker hand, or a Tie will have a score closest to 9.</p>
+    <p><strong>Card values:</strong> Aces = 1, 2–9 = face value, 10/J/Q/K = 0. Only the last digit of the total counts (e.g. 15 = 5).</p>
+    <p><strong>Natural:</strong> If either hand totals 8 or 9 on the first two cards, no more cards are drawn.</p>
+    <p><strong>Third card:</strong> Player draws if total ≤ 5. Banker follows a strict drawing table based on Banker total and Player's third card.</p>
+    <p><strong>Payouts:</strong> Player wins pays 1:1 · Banker wins pays 1:1 minus 5% commission · Tie pays 8:1</p>
+  </div>
+</details>
+
+<div class="bac-bank">
+  <div>
+    <div style="font-size:.62rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;">Balance</div>
+    <div class="bac-bank-num" id="bac-balance">$0</div>
+  </div>
+  <div style="text-align:center;">
+    <div style="font-size:.62rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;">Bet</div>
+    <div class="bac-bet-amt" id="bac-bet-display">$0</div>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <button class="btn btn-outline btn-sm" id="bac-clear-bet">Clear</button>
+    <button class="btn btn-outline btn-sm" id="bac-reset-bank">↺ Reset</button>
+  </div>
+</div>
+
+<!-- Bet options -->
+<div class="bac-bet-panel" id="bac-bet-panel">
+  <div style="text-align:center;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;">Bet on...</div>
+  <div class="bac-bet-row">
+    <div class="bac-bet-opt player" data-bet="player" id="bet-player">
+      <div class="bac-bet-name" style="color:#5ac8fa;">Player</div>
+      <div class="bac-bet-odds">Pays 1:1</div>
+    </div>
+    <div class="bac-bet-opt" data-bet="banker" id="bet-banker">
+      <div class="bac-bet-name">Banker</div>
+      <div class="bac-bet-odds">Pays 1:1 (−5% comm.)</div>
+    </div>
+    <div class="bac-bet-opt tie" data-bet="tie" id="bet-tie">
+      <div class="bac-bet-name" style="color:#22c55e;">Tie</div>
+      <div class="bac-bet-odds">Pays 8:1</div>
+    </div>
+  </div>
+  <div style="text-align:center;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;">Chip value</div>
+  <div class="chip-row">
+    <div class="chip" style="background:#e53e3e;border-color:#fc8181;" data-chip="5">$5</div>
+    <div class="chip" style="background:#2b6cb0;border-color:#63b3ed;" data-chip="10">$10</div>
+    <div class="chip" style="background:#2f855a;border-color:#68d391;" data-chip="25">$25</div>
+    <div class="chip" style="background:#6b46c1;border-color:#b794f4;" data-chip="50">$50</div>
+    <div class="chip" style="background:#c05621;border-color:#fbd38d;" data-chip="100">$100</div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="bac-table" id="bac-table">
+  <div class="bac-cards" id="bac-cards">
+    <div class="bac-hand" id="hand-player">
+      <div class="bac-hand-lbl">Player</div>
+      <div class="bac-hand-cards" id="player-cards"></div>
+      <div class="bac-hand-score" id="player-score"></div>
+    </div>
+    <div class="bac-hand" id="hand-banker">
+      <div class="bac-hand-lbl">Banker</div>
+      <div class="bac-hand-cards" id="banker-cards"></div>
+      <div class="bac-hand-score" id="banker-score"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bac-result" id="bac-result"></div>
+<div style="text-align:center;margin-bottom:12px;" id="bac-action">
+  <button class="btn btn-gold" id="bac-deal-btn" disabled>Deal</button>
+</div>
+
+</div>
+</div>
+<script>
+'use strict';
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+
+let betOn=null, betAmt=0, deck=[], phase='bet';
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function draw(){ if(!deck.length)deck=makeDeck(); return deck.pop(); }
+function bval(c){const v=RANKS.indexOf(c.rank)+1; return v>=10?0:v;}
+function bscore(hand){return hand.reduce((s,c)=>s+bval(c),0)%10;}
+
+function cardEl(c){
+  if(!c)return`<div class="bc face-down"></div>`;
+  return`<div class="bc ${RED.has(c.suit)?'red':'black'}"><div class="bc-r">${c.rank}</div><div class="bc-s">${c.suit}</div></div>`;
+}
+
+function updateBank(){
+  document.getElementById('bac-balance').textContent='$'+Casino.balance().toLocaleString();
+  document.getElementById('bac-bet-display').textContent='$'+betAmt;
+}
+
+function setPhase(p){
+  phase=p;
+  const panel=document.getElementById('bac-bet-panel');
+  const btn=document.getElementById('bac-deal-btn');
+  if(p==='bet'){
+    panel.style.opacity='1';panel.style.pointerEvents='all';
+    btn.textContent='Deal'; btn.disabled=!(betOn&&betAmt>0);
+  } else {
+    panel.style.opacity='.4';panel.style.pointerEvents='none';
+    btn.textContent='New Hand';btn.disabled=false;
+  }
+}
+
+function deal(){
+  if(phase==='result'){betAmt=0;betOn=null;updateBank();setPhase('bet');clearTable();return;}
+  if(!betOn||betAmt<=0)return;
+  if(!Casino.bet(betAmt)){document.getElementById('bac-result').innerHTML='<span style="color:#f87171">Not enough balance!</span>';return;}
+  deck=makeDeck();
+  // Deal: player1,banker1,player2,banker2
+  const ph=[draw(),draw()];
+  const bh=[draw(),draw()];
+  // Third card rules
+  const ps=bscore(ph), bs=bscore(bh);
+  let p3=null,b3=null;
+  if(ps<=7&&bs<=7){ // no natural
+    if(ps<=5){p3=draw();ph.push(p3);}
+    const ps2=bscore(ph);
+    // Banker drawing table
+    const shouldBankerDraw=(()=>{
+      if(bs>=8)return false;
+      if(bs<=2)return true;
+      if(!p3)return bs<=5; // player stood
+      const pv=bval(p3);
+      if(bs===3)return pv!==8;
+      if(bs===4)return pv>=2&&pv<=7;
+      if(bs===5)return pv>=4&&pv<=7;
+      if(bs===6)return pv===6||pv===7;
+      return false;
+    })();
+    if(shouldBankerDraw){b3=draw();bh.push(b3);}
+  }
+  renderCards(ph,bh);
+  const pf=bscore(ph),bf=bscore(bh);
+  let result='',payout=0,resClass='';
+  if(pf>bf){
+    result='Player wins!';
+    if(betOn==='player'){payout=betAmt*2;resClass='win';}
+    else{result+=' You lose.';resClass='loss';}
+  } else if(bf>pf){
+    result='Banker wins!';
+    if(betOn==='banker'){payout=Math.round(betAmt*1.95);resClass='win';}
+    else{result+=' You lose.';resClass='loss';}
+  } else {
+    result="It's a Tie!";
+    if(betOn==='tie'){payout=betAmt*9;resClass='win';}
+    else if(betOn==='banker'){payout=betAmt;result+=' Banker bet returned.';resClass='tie';}
+    else{result+=' You lose.';resClass='loss';}
+  }
+  if(payout>0){Casino.win(payout);result+=(resClass==='win'?` +$${payout-betAmt}`:` $${payout} returned`);}
+  document.getElementById('bac-result').innerHTML=result;
+  document.getElementById('bac-result').className='bac-result '+resClass;
+  updateBank();
+  setPhase('result');
+}
+
+function renderCards(ph,bh){
+  document.getElementById('player-cards').innerHTML=ph.map(c=>cardEl(c)).join('');
+  document.getElementById('banker-cards').innerHTML=bh.map(c=>cardEl(c)).join('');
+  document.getElementById('player-score').textContent=bscore(ph);
+  document.getElementById('banker-score').textContent=bscore(bh);
+  if(bscore(ph)>bscore(bh)) document.getElementById('hand-player').classList.add('winner');
+  else if(bscore(bh)>bscore(ph)) document.getElementById('hand-banker').classList.add('winner');
+}
+
+function clearTable(){
+  ['player-cards','banker-cards'].forEach(id=>document.getElementById(id).innerHTML='');
+  ['player-score','banker-score'].forEach(id=>document.getElementById(id).textContent='');
+  ['hand-player','hand-banker'].forEach(id=>document.getElementById(id).classList.remove('winner'));
+  document.getElementById('bac-result').innerHTML='';
+  document.querySelectorAll('.bac-bet-opt').forEach(el=>el.classList.remove('active'));
+}
+
+// Events
+document.querySelectorAll('.bac-bet-opt').forEach(el=>{
+  el.addEventListener('click',()=>{
+    if(phase!=='bet')return;
+    document.querySelectorAll('.bac-bet-opt').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active'); betOn=el.dataset.bet;
+    document.getElementById('bac-deal-btn').disabled=!(betOn&&betAmt>0);
+  });
+});
+document.querySelectorAll('.chip').forEach(el=>{
+  el.addEventListener('click',()=>{
+    if(phase!=='bet')return;
+    const v=+el.dataset.chip;
+    if(betAmt+v>Casino.balance()){return;}
+    betAmt+=v; updateBank();
+    document.getElementById('bac-deal-btn').disabled=!(betOn&&betAmt>0);
+  });
+});
+document.getElementById('bac-clear-bet').addEventListener('click',()=>{betAmt=0;updateBank();document.getElementById('bac-deal-btn').disabled=true;});
+document.getElementById('bac-reset-bank').addEventListener('click',()=>{if(confirm('Reset bankroll to $1,000?')){Casino.reset();betAmt=0;betOn=null;clearTable();updateBank();setPhase('bet');}});
+document.getElementById('bac-deal-btn').addEventListener('click',deal);
+
+updateBank(); setPhase('bet');
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Poker Squares</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0f2a1a 0%,#060e0a 60%);}
+.ps-wrap{max-width:500px;margin:0 auto;padding:0 8px 60px;}
+/* Current card to place */
+.ps-current{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:12px;}
+.ps-current-lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);}
+.ps-deck-count{font-size:.7rem;color:rgba(255,255,255,.35);text-align:center;}
+/* Grid */
+.ps-grid-wrap{position:relative;margin-bottom:10px;}
+.ps-grid{display:grid;grid-template-columns:repeat(5,1fr) 52px;grid-template-rows:repeat(5,1fr) 28px;gap:3px;}
+.ps-cell{aspect-ratio:.72;border-radius:7px;border:2px dashed rgba(255,255,255,.15);
+  background:rgba(255,255,255,.04);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;position:relative;}
+.ps-cell:hover:not(.has-card){border-color:#f5c842;background:rgba(245,200,66,.08);}
+.ps-cell.has-card{cursor:default;border-style:solid;border-color:rgba(255,255,255,.2);}
+.ps-cell.highlighted{border-color:#f5c842;background:rgba(245,200,66,.05);}
+/* Card in cell */
+.ps-placed{width:100%;height:100%;border-radius:5px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:900;}
+.ps-placed.red{color:#c53030;}.ps-placed.black{color:#1a1a1a;}
+.ps-placed-r{font-size:.8rem;line-height:1.1;}.ps-placed-s{font-size:.65rem;line-height:1;}
+/* Score cells (right column + bottom row) */
+.ps-score-cell{border-radius:7px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;font-size:.62rem;padding:2px;}
+.ps-score-hand{color:rgba(255,255,255,.45);font-size:.55rem;text-align:center;line-height:1.2;}
+.ps-score-pts{font-family:'Playfair Display',serif;font-weight:900;color:#f5c842;font-size:.85rem;line-height:1;}
+.ps-score-pts.zero{color:rgba(255,255,255,.2);}
+/* Corner total */
+.ps-total-cell{border-radius:7px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ps-total-num{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:#f5c842;}
+.ps-total-lbl{font-size:.5rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;}
+/* Current card display */
+.ps-card-big{width:52px;height:72px;border-radius:9px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:2px 3px 10px rgba(0,0,0,.5);}
+.ps-card-big.red{color:#c53030;}.ps-card-big.black{color:#1a1a1a;}
+.ps-card-big-r{font-size:1rem;line-height:1.1;}.ps-card-big-s{font-size:.85rem;line-height:1;}
+/* Score system toggle */
+.ps-system{display:flex;gap:6px;justify-content:center;margin-bottom:10px;}
+.ps-sys-btn{padding:5px 12px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.55);transition:all .15s;}
+.ps-sys-btn.active{background:rgba(245,200,66,.15);border-color:#f5c842;color:#f5c842;}
+/* Pay table */
+.ps-pay{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-bottom:10px;}
+.ps-pay-item{background:rgba(255,255,255,.06);border-radius:6px;padding:3px 8px;font-size:.68rem;color:rgba(255,255,255,.5);}
+.ps-pay-item span{color:#f5c842;font-weight:700;}
+/* Result */
+.ps-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;
+  text-align:center;margin-bottom:12px;}
+.ps-result-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Poker Squares</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="ps-wrap">
+
+<div style="font-size:.8rem;color:rgba(255,255,255,.5);text-align:center;margin-bottom:8px;line-height:1.6;">
+  Place each card into the 5×5 grid. Score all 10 poker hands (5 rows + 5 columns).
+</div>
+
+<div class="ps-system">
+  <div class="ps-sys-btn active" data-sys="american">American</div>
+  <div class="ps-sys-btn" data-sys="british">British</div>
+</div>
+
+<div class="ps-pay" id="ps-pay"></div>
+
+<div id="ps-result-area"></div>
+
+<div class="ps-current">
+  <div>
+    <div class="ps-current-lbl">Current Card</div>
+    <div id="ps-current-card"></div>
+  </div>
+  <div class="ps-deck-count" id="ps-deck-count"></div>
+</div>
+
+<div class="ps-grid-wrap">
+  <div class="ps-grid" id="ps-grid"></div>
+</div>
+
+<div style="text-align:center;margin-top:8px;">
+  <button class="btn btn-gold btn-sm" id="ps-new">New Game</button>
+</div>
+
+</div>
+</div>
+<script>
+'use strict';
+const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+const RV={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13,A:14};
+
+const SCORING={
+  american:{
+    'Royal Flush':100,'Straight Flush':75,'Four of a Kind':50,
+    'Full House':25,'Flush':20,'Straight':15,'Three of a Kind':10,
+    'Two Pair':5,'One Pair':2,'High Card':0
+  },
+  british:{
+    'Royal Flush':30,'Straight Flush':30,'Four of a Kind':16,
+    'Full House':10,'Flush':5,'Straight':12,'Three of a Kind':6,
+    'Two Pair':3,'One Pair':1,'High Card':0
+  }
+};
+
+let system='american', deck=[], grid=[], currentCard=null, cardsPlaced=0;
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function classifyHand(hand){
+  if(hand.some(c=>!c)) return null;
+  const vals=hand.map(c=>RV[c.rank]).sort((a,b)=>a-b);
+  const suits=hand.map(c=>c.suit);
+  const flush=suits.every(s=>s===suits[0]);
+  const straight=(vals[4]-vals[0]===4&&new Set(vals).size===5)||
+    (vals[0]===2&&vals[1]===3&&vals[2]===4&&vals[3]===5&&vals[4]===14);
+  const royal=flush&&vals[0]===10&&vals[4]===14&&straight;
+  const counts={};vals.forEach(v=>counts[v]=(counts[v]||0)+1);
+  const cv=Object.values(counts).sort((a,b)=>b-a);
+  if(royal) return 'Royal Flush';
+  if(flush&&straight) return 'Straight Flush';
+  if(cv[0]===4) return 'Four of a Kind';
+  if(cv[0]===3&&cv[1]===2) return 'Full House';
+  if(flush) return 'Flush';
+  if(straight) return 'Straight';
+  if(cv[0]===3) return 'Three of a Kind';
+  if(cv[0]===2&&cv[1]===2) return 'Two Pair';
+  if(cv[0]===2) return 'One Pair';
+  return 'High Card';
+}
+
+function scoreHand(hand){ const h=classifyHand(hand); return h?SCORING[system][h]:0; }
+function handName(hand){ return classifyHand(hand)||''; }
+
+function getRow(r){ return[grid[r*5],grid[r*5+1],grid[r*5+2],grid[r*5+3],grid[r*5+4]]; }
+function getCol(c){ return[grid[c],grid[c+5],grid[c+10],grid[c+15],grid[c+20]]; }
+
+function initGame(){
+  deck=makeDeck().slice(0,25); // use 25 cards
+  grid=Array(25).fill(null);
+  cardsPlaced=0;
+  currentCard=deck[0];
+  document.getElementById('ps-result-area').innerHTML='';
+  renderPayTable();
+  renderAll();
+}
+
+function placeCard(idx){
+  if(!currentCard||grid[idx])return;
+  grid[idx]=currentCard;
+  cardsPlaced++;
+  if(cardsPlaced<25){
+    currentCard=deck[cardsPlaced];
+  } else {
+    currentCard=null;
+    endGame();
+  }
+  renderAll();
+}
+
+function endGame(){
+  let total=0;
+  for(let i=0;i<5;i++){total+=scoreHand(getRow(i));total+=scoreHand(getCol(i));}
+  const max=system==='american'?500:200;
+  document.getElementById('ps-result-area').innerHTML=
+    `<div class="ps-result">
+      <div class="ps-result-title">Final Score: ${total}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${ratingText(total,max)}</div>
+    </div>`;
+  try{GameHistory.save('pokersquares',{_summary:`Poker Squares · ${total} pts (${system})`,_badge:total+' pts',score:total,system});}catch(e){}
+}
+
+function ratingText(score, max){
+  const pct=score/max;
+  if(pct>=.8)return'🏆 Outstanding!';
+  if(pct>=.6)return'⭐ Great game!';
+  if(pct>=.4)return'👍 Decent!';
+  if(pct>=.2)return'Getting there!';
+  return'Keep practicing!';
+}
+
+function renderPayTable(){
+  const pay=SCORING[system];
+  const items=Object.entries(pay).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('ps-pay').innerHTML=items.map(([h,v])=>
+    `<div class="ps-pay-item">${h} <span>${v}</span></div>`
+  ).join('');
+}
+
+function renderAll(){
+  // Current card
+  const cc=document.getElementById('ps-current-card');
+  if(currentCard){
+    cc.innerHTML=`<div class="ps-card-big ${RED.has(currentCard.suit)?'red':'black'}">
+      <div class="ps-card-big-r">${currentCard.rank}</div>
+      <div class="ps-card-big-s">${currentCard.suit}</div>
+    </div>`;
+  } else {
+    cc.innerHTML=`<div class="ps-card-big" style="background:rgba(255,255,255,.08);border:2px dashed rgba(255,255,255,.2);"></div>`;
+  }
+  document.getElementById('ps-deck-count').textContent=`${25-cardsPlaced} cards remaining`;
+
+  // Grid
+  const g=document.getElementById('ps-grid');
+  let html='';
+  // 5 rows of 5 cells + score cell
+  for(let r=0;r<5;r++){
+    for(let c=0;c<5;c++){
+      const idx=r*5+c;
+      const card=grid[idx];
+      if(card){
+        html+=`<div class="ps-cell has-card">
+          <div class="ps-placed ${RED.has(card.suit)?'red':'black'}">
+            <div class="ps-placed-r">${card.rank}</div>
+            <div class="ps-placed-s">${card.suit}</div>
+          </div>
+        </div>`;
+      } else {
+        html+=`<div class="ps-cell" data-idx="${idx}"></div>`;
+      }
+    }
+    // Row score
+    const rowHand=getRow(r);
+    const rowFull=rowHand.every(c=>c);
+    const rowName=rowFull?handName(rowHand):'';
+    const rowPts=rowFull?scoreHand(rowHand):0;
+    html+=`<div class="ps-score-cell">
+      <div class="ps-score-hand">${rowName}</div>
+      <div class="ps-score-pts ${rowPts===0&&rowFull?'zero':''}">${rowFull?rowPts:''}</div>
+    </div>`;
+  }
+  // Bottom row: col scores
+  for(let c=0;c<5;c++){
+    const colHand=getCol(c);
+    const colFull=colHand.every(x=>x);
+    const colName=colFull?handName(colHand):'';
+    const colPts=colFull?scoreHand(colHand):0;
+    html+=`<div class="ps-score-cell">
+      <div class="ps-score-hand">${colName}</div>
+      <div class="ps-score-pts ${colPts===0&&colFull?'zero':''}">${colFull?colPts:''}</div>
+    </div>`;
+  }
+  // Corner total
+  let total=0;
+  for(let i=0;i<5;i++){total+=scoreHand(getRow(i))+scoreHand(getCol(i));}
+  html+=`<div class="ps-total-cell">
+    <div class="ps-total-num">${total}</div>
+    <div class="ps-total-lbl">Score</div>
+  </div>`;
+
+  g.innerHTML=html;
+
+  // Wire click events
+  g.querySelectorAll('.ps-cell:not(.has-card)').forEach(el=>{
+    el.addEventListener('click',()=>placeCard(+el.dataset.idx));
+  });
+}
+
+// System selector
+document.querySelectorAll('.ps-sys-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.ps-sys-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); system=b.dataset.sys;
+    renderPayTable(); renderAll();
+  });
+});
+
+document.getElementById('ps-new').addEventListener('click',initGame);
+initGame();
+</script>
+</body>
+</html>

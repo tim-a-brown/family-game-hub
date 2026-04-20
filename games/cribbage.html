@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Cribbage</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a2e 0%,#050d18 60%);}
+.cb-wrap{max-width:480px;margin:0 auto;padding:0 10px 60px;}
+
+/* Cribbage board */
+.cb-board{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;margin-bottom:12px;}
+.cb-board-lane{flex:1;display:flex;flex-direction:column;gap:3px;}
+.cb-board-name{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;}
+.cb-score-bar{height:14px;border-radius:7px;background:rgba(255,255,255,.08);overflow:hidden;position:relative;}
+.cb-score-fill{height:100%;border-radius:7px;transition:width .4s ease;}
+.cb-score-num{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;min-width:42px;text-align:right;}
+
+/* Cards */
+.cb-hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:72px;margin-bottom:8px;}
+.ccard{
+  width:46px;height:64px;border-radius:8px;border:2px solid rgba(255,255,255,.2);
+  background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;user-select:none;flex-shrink:0;
+  box-shadow:1px 2px 6px rgba(0,0,0,.5);font-family:'Playfair Display',serif;font-weight:900;
+}
+.ccard.red{color:#c53030;}.ccard.black{color:#1a1a1a;}
+.ccard:hover:not(.disabled):not(.in-crib){border-color:#f5c842;transform:translateY(-4px);}
+.ccard.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);transform:translateY(-8px);
+  box-shadow:0 6px 18px rgba(245,200,66,.35);}
+.ccard.in-crib{opacity:.45;transform:translateY(4px);border-color:rgba(255,255,255,.1);}
+.ccard.disabled{cursor:default;}
+.ccard.played{opacity:.4;cursor:default;}
+.ccard.face-down{background:linear-gradient(145deg,#1a3a5e,#0d2040);border-color:rgba(255,255,255,.15);}
+.ccard-rank{font-size:.9rem;line-height:1.1;}.ccard-suit{font-size:.75rem;line-height:1;}
+
+/* Starter */
+.cb-starter{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cb-starter-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;}
+
+/* Peg play area */
+.cb-play-area{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px;}
+.cb-play-pile{display:flex;flex-wrap:wrap;gap:4px;min-height:68px;margin-bottom:8px;align-items:flex-end;}
+.cb-play-count{text-align:center;font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--gold);line-height:1;}
+.cb-play-lbl{text-align:center;font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+
+/* Log */
+.cb-log{background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px;max-height:90px;overflow-y:auto;
+  font-size:.75rem;line-height:1.7;color:rgba(255,255,255,.55);margin-bottom:10px;}
+.cb-log .pts{color:#f5c842;font-weight:700;}
+.cb-log .you{color:#60a5fa;}.cb-log .ai{color:#f87171;}
+
+/* Status */
+.cb-status{text-align:center;font-size:.9rem;font-weight:700;margin-bottom:8px;min-height:22px;color:rgba(255,255,255,.85);}
+
+/* Phase label */
+.cb-phase{display:inline-block;background:rgba(90,200,250,.15);border:1px solid rgba(90,200,250,.3);
+  border-radius:20px;padding:3px 12px;font-size:.7rem;font-weight:700;color:#5ac8fa;
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+
+/* Section heads */
+.cb-sect{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:rgba(255,255,255,.35);margin-bottom:4px;}
+
+/* Result */
+.cb-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;
+  text-align:center;margin-bottom:12px;}
+.cb-result-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Cribbage</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="cb-wrap" id="cb-root"></div>
+</div>
+<script>
+'use strict';
+
+// ── Card helpers ──────────────────────────────────────────────────────────────
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+function cardVal(r){return Math.min(10,['A','2','3','4','5','6','7','8','9','10','J','Q','K'].indexOf(r)+1);}
+function cardOrd(r){return RANKS.indexOf(r);}
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function cardHTML(c,cls=''){
+  if(!c) return `<div class="ccard face-down disabled"><div class="ccard-rank">🂠</div></div>`;
+  const col=RED.has(c.suit)?'red':'black';
+  return `<div class="ccard ${col} ${cls}"><div class="ccard-rank">${c.rank}</div><div class="ccard-suit">${c.suit}</div></div>`;
+}
+
+// ── Scoring engine ────────────────────────────────────────────────────────────
+function scoreHand(hand, starter, isCrib){
+  // hand: 4 cards, starter: 1 card. Returns {total, breakdown:[]}
+  const all=[...hand, starter];
+  const breakdown=[];
+  let total=0;
+
+  // Fifteens
+  let fif=0;
+  for(let mask=1;mask<(1<<5);mask++){
+    const cards=all.filter((_,i)=>mask>>i&1);
+    if(cards.reduce((s,c)=>s+cardVal(c.rank),0)===15)fif++;
+  }
+  if(fif){breakdown.push(`${fif} fifteen${fif>1?'s':''} = ${fif*2}`);total+=fif*2;}
+
+  // Pairs
+  let pairs=0;
+  for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)
+    if(all[i].rank===all[j].rank){pairs++;total+=2;}
+  if(pairs)breakdown.push(`${pairs} pair${pairs>1?'s':''} = ${pairs*2}`);
+
+  // Runs
+  const ords=all.map(c=>cardOrd(c.rank)).sort((a,b)=>a-b);
+  let bestRun=0;let runCount=0;
+  // find longest run
+  for(let len=5;len>=3;len--){
+    for(let start=0;start<=5-len;start++){
+      const slice=ords.slice(start,start+len);
+      const isRun=slice.every((v,i)=>i===0||v===slice[i-1]+1);
+      if(isRun){
+        // count how many times this run exists (via duplicates)
+        const rankCounts={};
+        slice.forEach(v=>{rankCounts[v]=(rankCounts[v]||0)+1;});
+        // Already handled pairs above; check for double/triple runs
+        // Simple approach: count multiplicity
+        let mult=1;
+        Object.values(rankCounts).forEach(cnt=>{if(cnt>1)mult*=cnt;});
+        if(len>bestRun){bestRun=len;runCount=mult;}
+      }
+    }
+    if(bestRun===len)break;
+  }
+  if(bestRun>=3){
+    const runPts=bestRun*runCount;
+    breakdown.push(`${runCount>1?runCount+'× ':''}run of ${bestRun} = ${runPts}`);
+    total+=runPts;
+  }
+
+  // Flush
+  const handSuits=hand.map(c=>c.suit);
+  if(handSuits.every(s=>s===handSuits[0])){
+    if(starter.suit===handSuits[0]){breakdown.push('5-card flush = 5');total+=5;}
+    else if(!isCrib){breakdown.push('4-card flush = 4');total+=4;}
+  }
+
+  // Nobs: Jack in hand matching starter suit
+  const nob=hand.find(c=>c.rank==='J'&&c.suit===starter.suit);
+  if(nob){breakdown.push('His nobs = 1');total+=1;}
+
+  return{total,breakdown};
+}
+
+function scorePeg(pile, newCard){
+  // pile: cards played so far (newest last), newCard just added
+  const full=[...pile, newCard];
+  const count=full.reduce((s,c)=>s+cardVal(c.rank),0);
+  let pts=0; const msgs=[];
+
+  if(count===15){pts+=2;msgs.push('Fifteen for 2');}
+  if(count===31){pts+=2;msgs.push('Thirty-one for 2');}
+
+  // Pairs/trips/quads from the end
+  const n=full.length;
+  if(n>=2&&full[n-1].rank===full[n-2].rank){
+    if(n>=4&&full[n-1].rank===full[n-4].rank){pts+=12;msgs.push('Double pair royal for 12');}
+    else if(n>=3&&full[n-1].rank===full[n-3].rank){pts+=6;msgs.push('Three of a kind for 6');}
+    else{pts+=2;msgs.push('Pair for 2');}
+  }
+
+  // Run from end
+  for(let len=full.length;len>=3;len--){
+    const slice=full.slice(-len).map(c=>cardOrd(c.rank)).sort((a,b)=>a-b);
+    if(slice.every((v,i)=>i===0||v===slice[i-1]+1)&&new Set(slice).size===len){
+      pts+=len;msgs.push(`Run of ${len} for ${len}`);break;
+    }
+  }
+  return{pts,msgs,count};
+}
+
+// ── AI helpers ────────────────────────────────────────────────────────────────
+function bestDiscard(hand, isDealer){
+  // Try all C(6,2) pairs to discard; keep combination with best expected hand value
+  let best=-99; let bestDisc=null;
+  for(let i=0;i<6;i++) for(let j=i+1;j<6;j++){
+    const disc=[hand[i],hand[j]];
+    const keep=hand.filter((_,k)=>k!==i&&k!==j);
+    // Estimate hand score with average starter
+    let estScore=0;
+    const decoy={rank:'5',suit:'♠'}; // average value starter
+    estScore+=scoreHand(keep,decoy,false).total;
+    // Discard value to crib (if dealer, crib is ours)
+    const cribVal=disc.reduce((s,c)=>s+cardVal(c.rank),0);
+    const bonus=isDealer?cribVal*0.15:-cribVal*0.1;
+    if(estScore+bonus>best){best=estScore+bonus;bestDisc=[i,j];}
+  }
+  return bestDisc;
+}
+
+function aiPegCard(hand, pile, count){
+  // Play lowest safe card that makes 15 or 31 first, else lowest that doesn't bust
+  const playable=hand.filter(c=>cardVal(c.rank)+count<=31);
+  if(!playable.length)return null;
+  // Prefer 15 or 31
+  const magic=playable.find(c=>{const nc=count+cardVal(c.rank);return nc===15||nc===31;});
+  if(magic)return magic;
+  // Else lowest
+  return playable.sort((a,b)=>cardVal(a.rank)-cardVal(b.rank))[0];
+}
+
+// ── Game state ────────────────────────────────────────────────────────────────
+let state; // { phase, deck, hands:[player,ai], crib, starter, scores:[p,ai],
+           //   pegPile, pegCount, pegTurn, humanPlayed, aiPlayed,
+           //   dealer, log, discardSel, roundsPlayed }
+// phases: 'deal'|'discard'|'cut'|'peg'|'score-hands'|'game-over'
+
+function newGame(){
+  const deck=makeDeck();
+  state={
+    phase:'deal', deck, hands:[[],[]], crib:[], starter:null,
+    scores:[0,0], pegPile:[], pegCount:0, pegTurn:0,
+    humanPlayed:[], aiPlayed:[],
+    dealer:0, // 0=player, 1=ai
+    log:[], discardSel:new Set(), roundsPlayed:0
+  };
+  deal();
+}
+
+function deal(){
+  state.deck=makeDeck();
+  // Deal 6 each
+  state.hands[0]=state.deck.splice(0,6);
+  state.hands[1]=state.deck.splice(0,6);
+  state.crib=[];
+  state.starter=null;
+  state.pegPile=[];
+  state.pegCount=0;
+  state.pegTurn=state.dealer===0?0:1; // non-dealer leads pegging
+  // actually non-dealer plays first in pegging
+  state.pegTurn=state.dealer===0?1:0; // non-dealer pegs first
+  state.humanPlayed=[];
+  state.aiPlayed=[];
+  state.discardSel=new Set();
+  state.phase='discard';
+  log(`Round ${state.roundsPlayed+1}. ${state.dealer===0?'You are':'AI is'} the dealer.`);
+  log('Discard 2 cards to the crib.');
+  // AI discards immediately
+  const ai=state.dealer===1;
+  const[i,j]=bestDiscard(state.hands[1],ai);
+  state.crib.push(state.hands[1].splice(i,1)[0]);
+  const j2=j>i?j-1:j;
+  state.crib.push(state.hands[1].splice(j2,1)[0]);
+  render();
+}
+
+function peekStarter(){
+  state.starter=state.deck[Math.floor(Math.random()*state.deck.length)];
+  if(state.starter.rank==='J'){
+    addScore(state.dealer,2);
+    log(`His heels! ${state.dealer===0?'You':'AI'} scores 2 for a Jack starter.`,'pts');
+  }
+  state.phase='peg';
+  // Reset peg
+  state.pegPile=[];
+  state.pegCount=0;
+  state.humanPlayed=[];
+  state.aiPlayed=[];
+  state.pegTurn=state.dealer===0?1:0; // non-dealer first
+  log('Pegging begins. Non-dealer leads.');
+  render();
+  if(state.pegTurn===1) setTimeout(aiPeg,700);
+}
+
+function selectDiscard(idx){
+  if(state.phase!=='discard') return;
+  const sel=state.discardSel;
+  if(sel.has(idx)) sel.delete(idx);
+  else if(sel.size<2) sel.add(idx);
+  if(sel.size===2){
+    const sorted=[...sel].sort((a,b)=>b-a);
+    sorted.forEach(i=>state.crib.push(state.hands[0].splice(i,1)[0]));
+    state.discardSel=new Set();
+    state.phase='cut';
+    log('Cards sent to crib. Cut the deck to reveal the starter.');
+    render();
+  } else render();
+}
+
+// ── Pegging ───────────────────────────────────────────────────────────────────
+function canPlay(hand,played,count){
+  return hand.some(c=>!played.includes(c)&&cardVal(c.rank)+count<=31);
+}
+
+function playCard(card){
+  if(state.phase!=='peg'||state.pegTurn!==0) return;
+  if(state.humanPlayed.includes(card)) return;
+  if(cardVal(card.rank)+state.pegCount>31) return;
+
+  state.humanPlayed.push(card);
+  state.pegPile.push(card);
+  const{pts,msgs,count}=scorePeg(state.pegPile.slice(0,-1),card);
+  state.pegCount=count;
+  if(pts){addScore(0,pts);msgs.forEach(m=>log(`You: ${m}.`,'pts you'));}
+  else log(`You play ${card.rank}${card.suit}. Count: ${count}.`,'you');
+
+  if(count===31){state.pegPile=[];state.pegCount=0;}
+
+  checkPegEnd();
+  if(state.phase==='peg'){
+    state.pegTurn=1;
+    render();
+    setTimeout(aiPeg,700);
+  } else render();
+}
+
+function aiPeg(){
+  if(state.phase!=='peg'||state.pegTurn!==1) return;
+  const card=aiPegCard(state.hands[1].filter(c=>!state.aiPlayed.includes(c)),state.pegPile,state.pegCount);
+  if(!card){
+    if(!canPlay(state.hands[0].filter(c=>!state.humanPlayed.includes(c)),[],state.pegCount)){
+      // Both go — last card point
+      addScore(state.pegTurn===1?1:0,1);
+      log(`Go! ${state.pegTurn===1?'AI':'You'} get 1 for last card.`,'pts');
+      state.pegPile=[];state.pegCount=0;
+    } else {
+      log('AI says "Go!". Your play.');
+    }
+    state.pegTurn=0;
+    checkPegEnd();
+    render();
+    return;
+  }
+  state.aiPlayed.push(card);
+  state.pegPile.push(card);
+  const{pts,msgs,count}=scorePeg(state.pegPile.slice(0,-1),card);
+  state.pegCount=count;
+  if(pts){addScore(1,pts);msgs.forEach(m=>log(`AI: ${m}.`,'pts ai'));}
+  else log(`AI plays ${card.rank}${card.suit}. Count: ${count}.`,'ai');
+
+  if(count===31){state.pegPile=[];state.pegCount=0;}
+
+  checkPegEnd();
+  if(state.phase==='peg'){
+    state.pegTurn=0;
+    render();
+    if(!canPlay(state.hands[0].filter(c=>!state.humanPlayed.includes(c)),[],state.pegCount)){
+      setTimeout(aiPeg,600);
+    }
+  } else render();
+}
+
+function checkPegEnd(){
+  const hDone=state.humanPlayed.length===state.hands[0].length;
+  const aDone=state.aiPlayed.length===state.hands[1].length;
+  if(hDone&&aDone){
+    // Last card if no 31
+    if(state.pegCount>0){
+      const lastPlayer=state.pegTurn===0?1:0;
+      addScore(lastPlayer,1);
+      log(`${lastPlayer===0?'You':'AI'} get 1 for last card.`,'pts');
+    }
+    state.phase='score-hands';
+    setTimeout(scoreShowPhase,800);
+  }
+}
+
+// ── Scoring show ──────────────────────────────────────────────────────────────
+function scoreShowPhase(){
+  // Non-dealer first, then dealer, then crib
+  const nd=state.dealer===0?1:0; // non-dealer
+  const d=state.dealer;
+
+  function scoreOne(who, hand, isCrib){
+    const name=who===0?'Your':'AI\'s';
+    const lbl=isCrib?`${state.dealer===0?'Your':'AI\'s'} crib`:name+' hand';
+    const{total,breakdown}=scoreHand(hand, state.starter, isCrib);
+    addScore(who,total);
+    log(`${lbl}: ${breakdown.join(', ')||'0 points'} = ${total}`,'pts');
+    if(checkWin()) return true;
+    return false;
+  }
+
+  if(scoreOne(nd,state.hands[nd],false)) return;
+  if(scoreOne(d,state.hands[d],false)) return;
+  scoreOne(d,state.crib,true);
+
+  if(checkWin()) return;
+  state.roundsPlayed++;
+  state.dealer=1-state.dealer;
+  log('--- New round ---');
+  setTimeout(deal,1200);
+}
+
+function checkWin(){
+  for(let p=0;p<2;p++){
+    if(state.scores[p]>=121){
+      state.phase='game-over';
+      const won=p===0;
+      log(`${won?'You win':'AI wins'}! ${state.scores[0]}–${state.scores[1]}.`,'pts');
+      try{GameHistory.save('cribbage',{
+        _summary:`Cribbage · ${won?'Win':'Loss'} ${state.scores[0]}–${state.scores[1]}`,
+        _badge:won?'Win':'Loss',result:won?'win':'loss',
+        score:state.scores[0],aiScore:state.scores[1],rounds:state.roundsPlayed
+      });}catch(e){}
+      render(); return true;
+    }
+  }
+  return false;
+}
+
+function addScore(who,pts){
+  state.scores[who]=Math.min(121,state.scores[who]+pts);
+}
+
+function log(msg,cls=''){
+  state.log.push({msg,cls});
+  if(state.log.length>40) state.log.shift();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  const root=document.getElementById('cb-root');
+
+  const pScore=state.scores[0], aScore=state.scores[1];
+  const pPct=Math.min(100,pScore/121*100);
+  const aPct=Math.min(100,aScore/121*100);
+
+  let html='';
+
+  // Board
+  html+=`<div class="cb-board">
+    <div class="cb-board-lane">
+      <div class="cb-board-name" style="color:#60a5fa;">You</div>
+      <div class="cb-score-bar"><div class="cb-score-fill" style="width:${pPct}%;background:#3b82f6;"></div></div>
+    </div>
+    <div class="cb-score-num" style="color:#60a5fa">${pScore}</div>
+    <div style="color:rgba(255,255,255,.2);font-size:1.1rem;font-weight:700;">–</div>
+    <div class="cb-score-num" style="color:#f87171">${aScore}</div>
+    <div class="cb-board-lane">
+      <div class="cb-board-name" style="color:#f87171;text-align:right;">AI</div>
+      <div class="cb-score-bar"><div class="cb-score-fill" style="width:${aPct}%;background:#ef4444;float:right;"></div></div>
+    </div>
+  </div>`;
+
+  html+=`<div style="text-align:center;margin-bottom:8px;">
+    <span class="cb-phase">${phaseLabel()}</span>
+    <span style="font-size:.68rem;color:rgba(255,255,255,.3);margin-left:8px;">Dealer: ${state.dealer===0?'You':'AI'} · First to 121 wins</span>
+  </div>`;
+
+  // Starter
+  if(state.starter){
+    html+=`<div class="cb-starter"><span class="cb-starter-lbl">Starter:</span>${cardHTML(state.starter,'disabled')}</div>`;
+  }
+
+  // AI hand (face down during discard/peg, revealed at scoring)
+  if(state.phase!=='score-hands'&&state.phase!=='game-over'){
+    html+=`<div class="cb-sect">AI's Hand (${state.hands[1].length} cards)</div>
+    <div class="cb-hand">`;
+    state.hands[1].forEach(()=>{ html+=cardHTML(null); });
+    html+=`</div>`;
+  } else {
+    html+=`<div class="cb-sect">AI's Hand</div><div class="cb-hand">`;
+    state.hands[1].forEach(c=>{ html+=cardHTML(c,'disabled'); });
+    html+=`</div>`;
+  }
+
+  // Crib
+  html+=`<div class="cb-sect">Crib (${state.crib.length}/4) — ${state.dealer===0?'Yours':'AI\'s'}</div>
+  <div class="cb-hand" style="min-height:48px;">`;
+  for(let i=0;i<4;i++){
+    if(state.crib[i]) html+=cardHTML(state.crib[i],'disabled');
+    else html+=`<div class="ccard disabled" style="opacity:.2;border-style:dashed;background:none;"></div>`;
+  }
+  html+=`</div>`;
+
+  // Peg area
+  if(state.phase==='peg'||state.phase==='score-hands'||state.phase==='game-over'){
+    html+=`<div class="cb-play-area">
+      <div class="cb-sect">Play Area</div>
+      <div class="cb-play-pile">`;
+    state.pegPile.forEach(c=>html+=cardHTML(c,'disabled'));
+    html+=`</div>
+      <div class="cb-play-count">${state.pegCount||''}</div>
+      <div class="cb-play-lbl">${state.pegCount?'running count':''}</div>
+    </div>`;
+  }
+
+  // Player hand
+  html+=`<div class="cb-sect">Your Hand</div><div class="cb-hand" id="player-hand">`;
+  state.hands[0].forEach((c,i)=>{
+    let cls='';
+    if(state.phase==='discard'){
+      cls=state.discardSel.has(i)?'selected':'';
+    } else if(state.phase==='peg'){
+      if(state.humanPlayed.includes(c)) cls='played';
+      else if(cardVal(c.rank)+state.pegCount>31) cls='disabled';
+    } else {
+      cls='disabled';
+    }
+    html+=`<div class="ccard ${RED.has(c.suit)?'red':'black'} ${cls}" data-idx="${i}">
+      <div class="ccard-rank">${c.rank}</div><div class="ccard-suit">${c.suit}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Status + action
+  if(state.phase==='discard'){
+    const need=2-state.discardSel.size;
+    html+=`<div class="cb-status">Select ${need} card${need!==1?'s':''} to send to the crib.</div>`;
+  } else if(state.phase==='cut'){
+    html+=`<div class="cb-status">Click to cut the deck and reveal the starter card.</div>
+    <div style="text-align:center;margin-bottom:10px;">
+      <button class="btn btn-gold" id="cut-btn">✂️ Cut the Deck</button>
+    </div>`;
+  } else if(state.phase==='peg'){
+    if(state.pegTurn===0) html+=`<div class="cb-status">Your turn to play a card. (Count: ${state.pegCount})</div>`;
+    else html+=`<div class="cb-status">AI is thinking…</div>`;
+  } else if(state.phase==='score-hands'){
+    html+=`<div class="cb-status">Scoring hands…</div>`;
+  } else if(state.phase==='game-over'){
+    const won=state.scores[0]>=121;
+    html+=`<div class="cb-result">
+      <div class="cb-result-title">${won?'🏆 You Win!':'AI Wins'}</div>
+      <div style="color:#2a1a00;font-size:.88rem;margin-top:4px;">${state.scores[0]}–${state.scores[1]} after ${state.roundsPlayed} rounds</div>
+    </div>
+    <div style="text-align:center;margin-bottom:10px;">
+      <button class="btn btn-gold" id="new-btn">New Game</button>
+    </div>`;
+  }
+
+  // Log
+  html+=`<div class="cb-log" id="cb-log">`;
+  [...state.log].reverse().slice(0,12).reverse().forEach(({msg,cls})=>{
+    html+=`<div class="${cls}">${msg}</div>`;
+  });
+  html+=`</div>`;
+
+  if(state.phase!=='game-over'){
+    html+=`<div style="text-align:center;"><button class="btn btn-outline btn-sm" id="new-btn">Abandon & New Game</button></div>`;
+  }
+
+  root.innerHTML=html;
+
+  // Events
+  document.querySelectorAll('#player-hand .ccard').forEach(el=>{
+    const i=+el.dataset.idx;
+    if(state.phase==='discard') el.addEventListener('click',()=>selectDiscard(i));
+    else if(state.phase==='peg'&&state.pegTurn===0&&!el.classList.contains('played')&&!el.classList.contains('disabled'))
+      el.addEventListener('click',()=>playCard(state.hands[0][i]));
+  });
+  document.getElementById('cut-btn')?.addEventListener('click',peekStarter);
+  document.getElementById('new-btn')?.addEventListener('click',newGame);
+
+  // Scroll log to bottom
+  const logEl=document.getElementById('cb-log');
+  if(logEl) logEl.scrollTop=logEl.scrollHeight;
+}
+
+function phaseLabel(){
+  const phases={
+    discard:'Discard Phase',cut:'Cut Phase',
+    peg:'Pegging',
+    'score-hands':'Scoring Hands',
+    'game-over':'Game Over'
+  };
+  return phases[state.phase]||state.phase;
+}
+
+newGame();
+</script>
+</body>
+</html>

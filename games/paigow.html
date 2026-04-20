@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Pai Gow Poker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../casino.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a2e 0%,#0d0618 60%);}
+.pg-wrap{max-width:500px;margin:0 auto;padding:0 12px 60px;}
+.pg-table{background:linear-gradient(145deg,#1a0a3a,#0d0520);border:3px solid #4c1d95;
+  border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:inset 0 2px 20px rgba(0,0,0,.4);}
+/* Hand label */
+.pg-hand-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+  color:rgba(255,255,255,.4);margin-bottom:4px;}
+.pg-hand-sub{font-size:.6rem;color:rgba(255,255,255,.25);margin-bottom:4px;}
+/* Cards in a row */
+.pg-cards{display:flex;gap:4px;flex-wrap:wrap;min-height:64px;align-items:center;margin-bottom:6px;}
+.pgc{width:40px;height:56px;border-radius:7px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;box-shadow:1px 2px 5px rgba(0,0,0,.4);cursor:pointer;
+  font-family:'Playfair Display',serif;font-weight:900;transition:all .12s;flex-shrink:0;}
+.pgc:hover:not(.disabled):not(.down){border-color:#a78bfa;transform:translateY(-3px);}
+.pgc.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);transform:translateY(-6px);}
+.pgc.in-low{border-color:#a78bfa;background:linear-gradient(145deg,#f0ebff,#e4d9ff);}
+.pgc.red{color:#c53030;}.pgc.black{color:#1a1a1a;}
+.pgc.down{background:linear-gradient(145deg,#2a1060,#190840);border-color:rgba(255,255,255,.12);}
+.pgc-r{font-size:.82rem;line-height:1.1;}.pgc-s{font-size:.7rem;line-height:1;}
+/* Divider label */
+.pg-divider{text-align:center;font-size:.7rem;font-weight:700;color:rgba(255,255,255,.35);
+  margin:4px 0;letter-spacing:.08em;text-transform:uppercase;}
+/* Bank */
+.pg-bank{display:flex;justify-content:space-between;align-items:center;
+  background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
+.pg-bank-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
+/* Chips + bet */
+.chip-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.chip{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:800;cursor:pointer;border:3px solid rgba(255,255,255,.25);transition:all .12s;user-select:none;}
+.chip:hover{transform:scale(1.1);}
+.pg-bet-display{text-align:center;font-size:.8rem;margin-bottom:8px;color:rgba(255,255,255,.6);}
+.pg-bet-display span{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:#f5c842;}
+/* Result */
+.pg-result{text-align:center;font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;
+  min-height:28px;margin-bottom:8px;}
+.pg-result.win{color:#22c55e;}.pg-result.loss{color:#ef4444;}.pg-result.push{color:#f5c842;}
+/* Rank label */
+.pg-rank{font-size:.72rem;font-weight:700;color:#a78bfa;min-height:16px;}
+/* Instruction */
+.pg-instr{background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:8px;
+  padding:8px 12px;font-size:.78rem;color:rgba(255,255,255,.6);text-align:center;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Pai Gow Poker</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="pg-wrap">
+
+<div class="pg-bank">
+  <div>
+    <div style="font-size:.62rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;">Balance</div>
+    <div class="pg-bank-num" id="pg-balance"></div>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <button class="btn btn-outline btn-sm" id="pg-reset">↺ Reset Bank</button>
+  </div>
+</div>
+
+<div class="pg-bet-display">Bet: <span id="pg-bet-show">$0</span></div>
+<div class="chip-row">
+  <div class="chip" style="background:#e53e3e;border-color:#fc8181;" data-chip="5">$5</div>
+  <div class="chip" style="background:#2b6cb0;border-color:#63b3ed;" data-chip="10">$10</div>
+  <div class="chip" style="background:#2f855a;border-color:#68d391;" data-chip="25">$25</div>
+  <div class="chip" style="background:#6b46c1;border-color:#b794f4;" data-chip="50">$50</div>
+  <div class="chip" style="background:#c05621;border-color:#fbd38d;" data-chip="100">$100</div>
+</div>
+
+<div class="pg-table">
+  <!-- Dealer hand (revealed at end) -->
+  <div class="pg-hand-lbl">Dealer</div>
+  <div class="pg-hand-sub">High hand (5) · Low hand (2)</div>
+  <div class="pg-cards" id="dealer-cards"></div>
+  <div class="pg-rank" id="dealer-rank"></div>
+
+  <div class="pg-divider">─── vs ───</div>
+
+  <!-- Player hand -->
+  <div class="pg-hand-lbl">Your 7 Cards</div>
+  <div class="pg-hand-sub" id="pg-instr-sub">Set your Low hand (2 cards) and High hand (5 cards)</div>
+  <div id="pg-instr-area"></div>
+  <div class="pg-cards" id="player-cards"></div>
+  <div style="display:flex;gap:12px;margin-top:2px;">
+    <div><div style="font-size:.62rem;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">High (5)</div><div class="pg-rank" id="player-high-rank"></div></div>
+    <div><div style="font-size:.62rem;color:#f5c842;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Low (2)</div><div class="pg-rank" id="player-low-rank"></div></div>
+  </div>
+</div>
+
+<div class="pg-result" id="pg-result"></div>
+<div style="text-align:center;margin-bottom:10px;">
+  <button class="btn btn-gold" id="pg-deal-btn">Deal</button>
+  <button class="btn btn-outline btn-sm" id="pg-auto-set" style="display:none;margin-left:8px;">Auto-Set</button>
+</div>
+</div>
+</div>
+
+<script>
+'use strict';
+const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+const RV={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13,A:14,Joker:15};
+
+let bet=0, phase='bet', playerHand=[], lowSel=[], deck=[];
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  d.push({rank:'Joker',suit:'★'}); // Joker: can be ace, or complete straight/flush
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function jokerAs(hand){
+  // Joker acts as ace unless it completes a straight or flush
+  return hand.map(c=>c.rank==='Joker'?{...c,rank:'A'}:c);
+}
+
+function rank5(hand){
+  const h=jokerAs(hand);
+  const vals=h.map(c=>RV[c.rank]).sort((a,b)=>a-b);
+  const suits=h.map(c=>c.suit);
+  const flush=suits.every(s=>s===suits[0]&&s!=='★');
+  const diffs=vals.every((v,i)=>i===0||v===vals[i-1]+1);
+  const wheel=vals[0]===2&&vals[1]===3&&vals[2]===4&&vals[3]===5&&vals[4]===14;
+  const straight=diffs||wheel;
+  const counts={};vals.forEach(v=>counts[v]=(counts[v]||0)+1);
+  const cv=Object.values(counts).sort((a,b)=>b-a);
+  if(flush&&straight)return{name:'Straight Flush',rank:8};
+  if(cv[0]===4)return{name:'Four of a Kind',rank:7};
+  if(cv[0]===3&&cv[1]===2)return{name:'Full House',rank:6};
+  if(flush)return{name:'Flush',rank:5};
+  if(straight)return{name:'Straight',rank:4};
+  if(cv[0]===3)return{name:'Three of a Kind',rank:3};
+  if(cv[0]===2&&cv[1]===2)return{name:'Two Pair',rank:2};
+  if(cv[0]===2)return{name:'Pair',rank:1};
+  return{name:'High Card',rank:0};
+}
+
+function rank2(hand){
+  const h=jokerAs(hand);
+  const vals=h.map(c=>RV[c.rank]).sort((a,b)=>b-a);
+  if(vals[0]===vals[1])return{name:'Pair',rank:1,vals};
+  return{name:'High '+h.map(c=>c.rank).join('-'),rank:0,vals};
+}
+
+function cmpHands5(a,b){
+  const ra=rank5(a),rb=rank5(b);
+  if(ra.rank!==rb.rank)return ra.rank>rb.rank?1:-1;
+  const va=jokerAs(a).map(c=>RV[c.rank]).sort((a,b)=>b-a);
+  const vb=jokerAs(b).map(c=>RV[c.rank]).sort((a,b)=>b-a);
+  for(let i=0;i<5;i++){if(va[i]!==vb[i])return va[i]>vb[i]?1:-1;}
+  return 0;
+}
+
+function cmpHands2(a,b){
+  const ra=rank2(a),rb=rank2(b);
+  if(ra.rank!==rb.rank)return ra.rank>rb.rank?1:-1;
+  for(let i=0;i<2;i++){if(ra.vals[i]!==rb.vals[i])return ra.vals[i]>rb.vals[i]?1:-1;}
+  return 0;
+}
+
+// Auto-set: house way (simplified)
+function autoSet(hand){
+  // Try all C(7,2) splits and pick the one that maximizes low hand without weakening high too much
+  let best=null, bestScore=-999;
+  for(let i=0;i<7;i++) for(let j=i+1;j<7;j++){
+    const lo=[hand[i],hand[j]];
+    const hi=hand.filter((_,k)=>k!==i&&k!==j);
+    // High must be >= low (house rule)
+    const rhi=rank5(hi),rlo=rank2(lo);
+    // Score: high rank * 100 + low rank bonus
+    const sc=rhi.rank*100+rlo.rank*10;
+    if(sc>bestScore){bestScore=sc;best={lo,hi};}
+  }
+  return best;
+}
+
+function cardEl(c,cls=''){
+  if(!c)return`<div class="pgc down disabled"></div>`;
+  const col=RED.has(c.suit)?'red':'black';
+  const special=c.rank==='Joker'?'black':'';
+  return`<div class="pgc ${col} ${special} ${cls}" data-rank="${c.rank}" data-suit="${c.suit}">
+    <div class="pgc-r">${c.rank==='Joker'?'🃏':c.rank}</div>
+    <div class="pgc-s">${c.rank==='Joker'?'':c.suit}</div>
+  </div>`;
+}
+
+function updateBank(){
+  document.getElementById('pg-balance').textContent='$'+Casino.balance().toLocaleString();
+  document.getElementById('pg-bet-show').textContent='$'+bet;
+}
+
+function renderPlayerHand(){
+  const el=document.getElementById('player-cards');
+  el.innerHTML=playerHand.map((c,i)=>{
+    const inLow=lowSel.includes(i);
+    return`<div class="pgc ${RED.has(c.suit)?'red':'black'} ${inLow?'in-low':''}" data-idx="${i}">
+      <div class="pgc-r">${c.rank==='Joker'?'🃏':c.rank}</div>
+      <div class="pgc-s">${c.rank==='Joker'?'':c.suit}</div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.pgc').forEach(el2=>{
+    el2.addEventListener('click',()=>{
+      if(phase!=='set')return;
+      const i=+el2.dataset.idx;
+      if(lowSel.includes(i)){lowSel=lowSel.filter(x=>x!==i);}
+      else if(lowSel.length<2){lowSel.push(i);}
+      renderPlayerHand();
+      updateRankLabels();
+    });
+  });
+  updateRankLabels();
+}
+
+function updateRankLabels(){
+  const lo=lowSel.map(i=>playerHand[i]);
+  const hi=playerHand.filter((_,i)=>!lowSel.includes(i));
+  document.getElementById('player-high-rank').textContent=hi.length===5?rank5(hi).name:'';
+  document.getElementById('player-low-rank').textContent=lo.length===2?rank2(lo).name:'';
+  document.getElementById('pg-deal-btn').textContent=lowSel.length===2?'Set Hands & Play':'Select 2 for Low Hand';
+  document.getElementById('pg-deal-btn').disabled=lowSel.length!==2&&phase==='set';
+}
+
+function deal(){
+  if(phase==='result'){newHand();return;}
+  if(bet===0){document.getElementById('pg-result').innerHTML='<span style="color:#f87171">Place a bet first!</span>';return;}
+  if(!Casino.bet(bet)){document.getElementById('pg-result').innerHTML='<span style="color:#f87171">Not enough balance!</span>';return;}
+  deck=makeDeck();
+  playerHand=Array.from({length:7},()=>deck.pop());
+  const dealerHandFull=Array.from({length:7},()=>deck.pop());
+  // Store dealer hand for reveal
+  window._pgDealerHand=dealerHandFull;
+  lowSel=[]; phase='set';
+  document.getElementById('dealer-cards').innerHTML=Array(7).fill(null).map(()=>cardEl(null)).join('');
+  document.getElementById('dealer-rank').textContent='';
+  document.getElementById('pg-result').textContent='';
+  document.getElementById('pg-auto-set').style.display='inline-block';
+  document.getElementById('pg-instr-area').innerHTML=`<div class="pg-instr">Tap 2 cards for your Low hand (2-card). Remaining 5 = High hand.<br>Low hand must be weaker than High hand.</div>`;
+  renderPlayerHand();
+  updateRankLabels();
+}
+
+function resolvePaiGow(){
+  if(lowSel.length!==2)return;
+  const pLo=lowSel.map(i=>playerHand[i]);
+  const pHi=playerHand.filter((_,i)=>!lowSel.includes(i));
+  // Check house rule: high must beat or tie low
+  // (simplified: just compare ranks)
+  const dHand=window._pgDealerHand;
+  const dSet=autoSet(dHand);
+  const dHi=dSet.hi, dLo=dSet.lo;
+
+  // Reveal dealer
+  document.getElementById('dealer-cards').innerHTML=[...dHi,...dLo].map(c=>cardEl(c,'disabled')).join('');
+  document.getElementById('dealer-rank').textContent=`${rank5(dHi).name} / ${rank2(dLo).name}`;
+
+  const pWinHi=cmpHands5(pHi,dHi)>0;
+  const pWinLo=cmpHands2(pLo,dLo)>0;
+  const dWinHi=cmpHands5(pHi,dHi)<0;
+  const dWinLo=cmpHands2(pLo,dLo)<0;
+
+  let result='',cls='push';
+  if(pWinHi&&pWinLo){Casino.win(Math.round(bet*1.95));result=`You win both hands! +$${Math.round(bet*.95)}`;cls='win';}
+  else if(dWinHi&&dWinLo){result=`Dealer wins both hands. -$${bet}`;cls='loss';}
+  else{Casino.win(bet);result='Push — bet returned.';cls='push';}
+
+  document.getElementById('pg-result').textContent=result;
+  document.getElementById('pg-result').className='pg-result '+cls;
+  document.getElementById('pg-deal-btn').textContent='New Hand';
+  document.getElementById('pg-deal-btn').disabled=false;
+  document.getElementById('pg-auto-set').style.display='none';
+  updateBank(); phase='result';
+}
+
+function newHand(){
+  bet=0; phase='bet'; lowSel=[]; playerHand=[];
+  document.getElementById('dealer-cards').innerHTML='';
+  document.getElementById('player-cards').innerHTML='';
+  document.getElementById('dealer-rank').textContent='';
+  document.getElementById('player-high-rank').textContent='';
+  document.getElementById('player-low-rank').textContent='';
+  document.getElementById('pg-result').textContent='';
+  document.getElementById('pg-instr-area').innerHTML='';
+  document.getElementById('pg-deal-btn').textContent='Deal';
+  document.getElementById('pg-deal-btn').disabled=false;
+  document.getElementById('pg-auto-set').style.display='none';
+  updateBank();
+}
+
+document.querySelectorAll('.chip').forEach(el=>{
+  el.addEventListener('click',()=>{
+    if(phase!=='bet')return;
+    const v=+el.dataset.chip;
+    if(bet+v>Casino.balance())return;
+    bet+=v; updateBank();
+  });
+});
+document.getElementById('pg-deal-btn').addEventListener('click',()=>{
+  if(phase==='bet')deal();
+  else if(phase==='set'&&lowSel.length===2)resolvePaiGow();
+  else if(phase==='result')newHand();
+});
+document.getElementById('pg-auto-set').addEventListener('click',()=>{
+  if(phase!=='set')return;
+  const s=autoSet(playerHand);
+  lowSel=s.lo.map(lc=>playerHand.findIndex(c=>c.rank===lc.rank&&c.suit===lc.suit));
+  renderPlayerHand(); updateRankLabels();
+});
+document.getElementById('pg-reset').addEventListener('click',()=>{if(confirm('Reset bankroll to $1,000?')){Casino.reset();newHand();}});
+
+updateBank();
+</script>
+</body>
+</html>

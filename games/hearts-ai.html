@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable:no">
+<title>Hearts — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a1a 0%,#0d060d 60%);}
+.hrt-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
+/* Card */
+.hcard{width:44px;height:60px;border-radius:7px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 2px 5px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;}
+.hcard.red{color:#c53030;}.hcard.black{color:#1a1a1a;}
+.hcard.playable{cursor:pointer;}.hcard.playable:hover{transform:translateY(-8px);border-color:#f5c842;}
+.hcard.selected{transform:translateY(-12px);border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);}
+.hcard.passed{opacity:.4;transform:translateY(4px);}
+.hcard.face-down{background:linear-gradient(145deg,#2a1040,#180828);border-color:rgba(255,255,255,.12);}
+.hcard-r{font-size:.85rem;line-height:1.1;}.hcard-s{font-size:.72rem;line-height:1;}
+.hcard.penalty{box-shadow:0 0 8px rgba(239,68,68,.5),1px 2px 5px rgba(0,0,0,.5);}
+/* Table zones */
+.hrt-table{background:linear-gradient(145deg,#1a0a2e,#0d0618);border:2px solid rgba(255,255,255,.08);
+  border-radius:16px;padding:10px;margin-bottom:10px;position:relative;min-height:160px;}
+.hrt-ai-zone{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.hrt-ai-hand{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.hrt-ai-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
+.hrt-ai-cards{display:flex;gap:2px;}
+.hrt-ai-score{font-size:.65rem;color:rgba(255,255,255,.5);font-weight:700;}
+/* Trick area center */
+.hrt-trick{display:flex;gap:6px;justify-content:center;align-items:center;min-height:64px;padding:6px;}
+.hrt-trick-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hrt-trick-name{font-size:.55rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
+/* Player hand */
+.hrt-player-zone{margin-top:4px;}
+.hrt-player-name{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:rgba(255,255,255,.5);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+.hrt-hand{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;}
+/* Pass panel */
+.hrt-pass-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+.hrt-pass-title{font-weight:700;margin-bottom:4px;font-size:.9rem;}
+.hrt-pass-sub{font-size:.75rem;color:rgba(255,255,255,.5);margin-bottom:10px;}
+/* Scoreboard */
+.hrt-scores{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;}
+.hrt-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;padding:6px;text-align:center;}
+.hrt-score-box.leader{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05);}
+.hrt-score-name{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);}
+.hrt-score-total{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;color:#f5c842;}
+.hrt-score-round{font-size:.6rem;color:rgba(255,255,255,.3);}
+/* Status */
+.hrt-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;
+  margin-bottom:8px;color:rgba(255,255,255,.8);}
+/* Trick result popup */
+.hrt-trick-won{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.85);border-radius:10px;padding:8px 14px;font-weight:700;
+  font-size:.85rem;pointer-events:none;z-index:10;animation:fade-out 1.5s ease forwards;}
+@keyframes fade-out{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
+/* Result */
+.hrt-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;
+  text-align:center;margin-bottom:12px;}
+.hrt-result-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Hearts — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="hrt-wrap" id="hrt-root"></div>
+</div>
+<script>
+'use strict';
+const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+const RV=Object.fromEntries(RANKS.map((r,i)=>[r,i+2]));
+const NAMES=['You','West','North','East'];
+
+let hands,tricks,scores,totalScores,leadSuit,heartsBroken,trick,trickLead,
+    phase,roundPasses,passDirection,roundNum,roundScores;
+// phase: 'pass'|'play'|'result'|'game-over'
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function cardKey(c){return c.rank+c.suit;}
+function isPenalty(c){return c.suit==='♥'||(c.rank==='Q'&&c.suit==='♠');}
+function penaltyPts(c){if(c.suit==='♥')return 1;if(c.rank==='Q'&&c.suit==='♠')return 13;return 0;}
+
+function newGame(){
+  totalScores=[0,0,0,0]; roundNum=0;
+  newRound();
+}
+
+function newRound(){
+  roundNum++;
+  const deck=makeDeck();
+  hands=Array.from({length:4},(_,i)=>deck.slice(i*13,(i+1)*13)
+    .sort((a,b)=>a.suit.localeCompare(b.suit)||RV[a.rank]-RV[b.rank]));
+  roundScores=[0,0,0,0];
+  tricks=0; heartsBroken=false; trick=null; trickLead=-1;
+  roundPasses=[null,null,null,null];
+  // Pass direction cycles: left(0), right(1), across(2), no pass(3)
+  const dirs=['left','right','across','none'];
+  passDirection=dirs[(roundNum-1)%4];
+  if(passDirection==='none'){
+    phase='play';
+    trickLead=hands.findIndex(h=>h.some(c=>c.rank==='2'&&c.suit==='♣'));
+    trick=[];
+  } else {
+    phase='pass';
+  }
+  render();
+}
+
+// ── Passing ──────────────────────────────────────────────────────────────────
+let passSel=[];
+
+function aiPassCards(hand){
+  // Pass highest-penalty cards: Q♠, high hearts, high spades (risk Q♠)
+  const sorted=[...hand].sort((a,b)=>{
+    const pa=passScore(a),pb=passScore(b);
+    return pb-pa;
+  });
+  return sorted.slice(0,3);
+}
+
+function passScore(c){
+  if(c.rank==='Q'&&c.suit==='♠') return 100;
+  if(c.rank==='A'&&c.suit==='♠') return 80;
+  if(c.rank==='K'&&c.suit==='♠') return 70;
+  if(c.suit==='♥') return 30+RV[c.rank];
+  return RV[c.rank];
+}
+
+function doPass(){
+  if(passSel.length!==3) return;
+  roundPasses[0]=passSel.map(i=>hands[0][i]);
+  // AI passes
+  for(let p=1;p<4;p++) roundPasses[p]=aiPassCards(hands[p]);
+  // Apply passes
+  const dir={left:[0,1,2,3],right:[0,3,2,1],across:[0,2,1,3]}[passDirection];
+  // dir[p] = who receives from p
+  const received=[null,null,null,null];
+  for(let p=0;p<4;p++){
+    const to=passDirection==='left'?(p+1)%4:passDirection==='right'?(p+3)%4:(p+2)%4;
+    received[to]=roundPasses[p];
+  }
+  for(let p=0;p<4;p++){
+    hands[p]=hands[p].filter(c=>!roundPasses[p].some(pc=>cardKey(pc)===cardKey(c)));
+    hands[p].push(...received[p]);
+    hands[p].sort((a,b)=>a.suit.localeCompare(b.suit)||RV[a.rank]-RV[b.rank]);
+  }
+  passSel=[];
+  phase='play'; trick=[]; trickLead=hands.findIndex(h=>h.some(c=>c.rank==='2'&&c.suit==='♣'));
+  render();
+}
+
+// ── Playing ───────────────────────────────────────────────────────────────────
+function validPlays(player){
+  const h=hands[player];
+  if(trick.length===0){
+    // Lead: must play 2♣ on first trick; can't lead hearts unless broken or only hearts
+    if(tricks===0) return h.filter(c=>c.rank==='2'&&c.suit==='♣');
+    if(!heartsBroken){
+      const noHearts=h.filter(c=>c.suit!=='♥');
+      return noHearts.length>0?noHearts:h;
+    }
+    return h;
+  }
+  // Must follow suit if possible
+  const lead=trick[0].suit;
+  const followSuit=h.filter(c=>c.suit===lead);
+  if(followSuit.length>0) return followSuit;
+  // Can't play penalty on first trick
+  if(tricks===0){
+    const safe=h.filter(c=>!isPenalty(c));
+    return safe.length>0?safe:h;
+  }
+  return h;
+}
+
+function aiPlay(player){
+  const valid=validPlays(player);
+  if(valid.length===1) return valid[0];
+  // Strategy: try to avoid taking trick, especially with hearts/Q♠
+  const isLead=trick.length===0;
+  const lead=trick[0]?.suit;
+  if(isLead){
+    // Lead lowest safe card
+    const safe=valid.filter(c=>!isPenalty(c));
+    const pool=safe.length?safe:valid;
+    return pool.sort((a,b)=>RV[a.rank]-RV[b.rank])[0];
+  }
+  // Following: if can't win, play highest; if will win, play lowest penalty or lowest
+  const trickCards=[...trick,{rank:'2',suit:lead}]; // placeholder
+  const highInLead=trick.filter(c=>c.suit===lead).reduce((mx,c)=>RV[c.rank]>RV[mx.rank]?c:mx,trick[0]||{rank:'2',suit:lead});
+  const wouldWin=c=>c.suit===lead&&RV[c.rank]>RV[highInLead.rank];
+  // Discard: dump Q♠ or high hearts
+  if(!valid.some(c=>c.suit===lead)){
+    return valid.sort((a,b)=>passScore(b)-passScore(a))[0];
+  }
+  // Can follow: avoid winning if possible
+  const losers=valid.filter(c=>!wouldWin(c));
+  if(losers.length) return losers.sort((a,b)=>RV[b.rank]-RV[a.rank])[0]; // highest loser
+  return valid.sort((a,b)=>RV[a.rank]-RV[b.rank])[0]; // lowest winner
+}
+
+function playCard(player, card){
+  if(card.suit==='♥') heartsBroken=true;
+  trick.push({...card,player});
+  hands[player]=hands[player].filter(c=>cardKey(c)!==cardKey(card));
+  if(trick.length===4){
+    // Find winner
+    const leadSuit2=trick[0].suit;
+    const winner=trick.reduce((w,c)=>c.suit===leadSuit2&&RV[c.rank]>RV[trick[w].rank]?trick.indexOf(c):w,0);
+    const winPlayer=trick[winner].player;
+    const pts=trick.reduce((s,c)=>s+penaltyPts(c),0);
+    roundScores[winPlayer]+=pts;
+    tricks++;
+    trickLead=winPlayer;
+    render();
+    setTimeout(()=>{
+      trick=[];
+      if(hands[0].length===0){
+        finishRound();
+      } else {
+        render();
+        if(trickLead!==0) setTimeout(()=>aiTurn(),500);
+      }
+    },1200);
+  } else {
+    render();
+    const next=(player+1)%4;
+    if(next!==0) setTimeout(()=>aiTurn(),450);
+  }
+}
+
+function aiTurn(){
+  const p=trick.length>0?(trick[0].player+trick.length)%4:trickLead;
+  if(p===0) return;
+  const card=aiPlay(p);
+  playCard(p,card);
+}
+
+function playerPlay(card){
+  if(phase!=='play') return;
+  const current=trick.length>0?(trick[0].player+trick.length)%4:trickLead;
+  if(current!==0) return;
+  if(!validPlays(0).some(c=>cardKey(c)===cardKey(card))) return;
+  playCard(0,card);
+}
+
+function finishRound(){
+  // Shoot the moon?
+  const shooter=roundScores.findIndex(s=>s===26);
+  if(shooter>=0){
+    for(let p=0;p<4;p++) roundScores[p]=shooter===p?0:26;
+  }
+  for(let p=0;p<4;p++) totalScores[p]+=roundScores[p];
+  phase='result';
+  if(totalScores.some(s=>s>=100)){
+    phase='game-over';
+    try{
+      const winner=totalScores.indexOf(Math.min(...totalScores));
+      GameHistory.save('hearts',{
+        _summary:`Hearts (AI) · ${NAMES[winner]} wins · You: ${totalScores[0]}`,
+        _badge:'You: '+totalScores[0],
+        winner:NAMES[winner],scores:totalScores,rounds:roundNum
+      });
+    }catch(e){}
+  }
+  render();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function cardEl(c,cls=''){
+  if(!c) return`<div class="hcard face-down disabled"></div>`;
+  return`<div class="hcard ${RED.has(c.suit)?'red':'black'} ${isPenalty(c)?'penalty':''} ${cls}">
+    <div class="hcard-r">${c.rank}</div><div class="hcard-s">${c.suit}</div>
+  </div>`;
+}
+
+function dirLabel(){
+  return{left:'Pass Left →',right:'← Pass Right',across:'Pass Across ↕',none:'No Pass'}[passDirection];
+}
+
+function render(){
+  const root=document.getElementById('hrt-root');
+  let html='';
+
+  // Scoreboard
+  html+=`<div class="hrt-scores">`;
+  NAMES.forEach((n,i)=>{
+    const leading=totalScores[i]===Math.max(...totalScores)&&totalScores[i]>0;
+    html+=`<div class="hrt-score-box ${leading?'leader':''}">
+      <div class="hrt-score-name">${n}</div>
+      <div class="hrt-score-total">${totalScores[i]}</div>
+      <div class="hrt-score-round">${roundScores&&roundScores[i]>0?'+'+roundScores[i]:''}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  if(phase==='game-over'){
+    const winner=totalScores.indexOf(Math.min(...totalScores));
+    html+=`<div class="hrt-result">
+      <div class="hrt-result-title">${winner===0?'🏆 You Win!':NAMES[winner]+' Wins'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${NAMES.map((n,i)=>n+': '+totalScores[i]).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" onclick="newGame()">New Game</button></div>`;
+    root.innerHTML=html; return;
+  }
+
+  if(phase==='result'){
+    const shooter=roundScores&&roundScores.findIndex(s=>s===0&&roundScores.reduce((a,b)=>a+b,0)===78);
+    html+=`<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;">
+      <div style="font-weight:700;margin-bottom:6px;">Round ${roundNum} Complete</div>
+      <div style="font-size:.82rem;color:rgba(255,255,255,.6);">${NAMES.map((n,i)=>n+': +'+roundScores[i]).join(' · ')}</div>
+      ${shooter>=0?`<div style="color:#f5c842;font-weight:700;margin-top:4px;">🌙 ${NAMES[shooter]} shot the moon! (+26 to others)</div>`:''}
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" onclick="newRound()">Next Round</button></div>`;
+    root.innerHTML=html; return;
+  }
+
+  // Pass phase
+  if(phase==='pass'){
+    html+=`<div class="hrt-pass-panel">
+      <div class="hrt-pass-title">${dirLabel()}</div>
+      <div class="hrt-pass-sub">Select 3 cards to pass</div>
+      <div class="hrt-hand" style="justify-content:center;margin-bottom:10px;" id="pass-hand"></div>
+      <button class="btn btn-gold btn-sm" id="pass-btn" disabled>Pass Cards →</button>
+    </div>`;
+    root.innerHTML=html;
+    const passHand=document.getElementById('pass-hand');
+    hands[0].forEach((c,i)=>{
+      const sel=passSel.includes(i);
+      const el=document.createElement('div');
+      el.innerHTML=cardEl(c,sel?'selected':'playable');
+      el.firstChild.addEventListener('click',()=>{
+        if(sel) passSel=passSel.filter(x=>x!==i);
+        else if(passSel.length<3) passSel.push(i);
+        render();
+      });
+      passHand.appendChild(el.firstChild);
+    });
+    const btn=document.getElementById('pass-btn');
+    if(passSel.length===3) btn.disabled=false;
+    btn.addEventListener('click',doPass);
+    return;
+  }
+
+  // Play phase
+  const current=trick.length===4?-1:trick.length>0?(trick[0].player+trick.length)%4:trickLead;
+
+  // AI hands (face-down, show count)
+  html+=`<div class="hrt-table">
+    <div class="hrt-ai-zone">`;
+  // North (player 2)
+  html+=`<div class="hrt-ai-hand">
+    <div class="hrt-ai-name">North (AI)</div>
+    <div class="hrt-ai-cards">${hands[2].slice(0,Math.min(6,hands[2].length)).map(()=>cardEl(null)).join('')}</div>
+    <div class="hrt-ai-score">${hands[2].length} cards · ${roundScores[2]} pts</div>
+  </div>`;
+  html+=`</div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <!-- West -->
+    <div class="hrt-ai-hand">
+      <div class="hrt-ai-name">West</div>
+      <div class="hrt-ai-cards">${hands[1].slice(0,Math.min(4,hands[1].length)).map(()=>cardEl(null)).join('')}</div>
+      <div class="hrt-ai-score">${hands[1].length} · ${roundScores[1]}</div>
+    </div>
+
+    <!-- Trick center -->
+    <div class="hrt-trick">`;
+  // Show trick cards with player labels
+  const trickByPlayer={};
+  trick.forEach(c=>trickByPlayer[c.player]=c);
+  [2,1,0,3].forEach(p=>{
+    const c=trickByPlayer[p];
+    html+=`<div class="hrt-trick-slot">
+      ${c?cardEl(c,'disabled'):`<div style="width:44px;height:60px;border-radius:7px;border:1px dashed rgba(255,255,255,.1);"></div>`}
+      <div class="hrt-trick-name">${NAMES[p]}</div>
+    </div>`;
+  });
+  html+=`</div>
+
+    <!-- East -->
+    <div class="hrt-ai-hand">
+      <div class="hrt-ai-name">East</div>
+      <div class="hrt-ai-cards">${hands[3].slice(0,Math.min(4,hands[3].length)).map(()=>cardEl(null)).join('')}</div>
+      <div class="hrt-ai-score">${hands[3].length} · ${roundScores[3]}</div>
+    </div>
+  </div>
+
+  </div>`; // end table
+
+  // Status
+  const isYourTurn=current===0&&trick.length<4;
+  const statusMsg=isYourTurn?'Your turn to play.':`${current>=0?NAMES[current]+' playing…':''}`;
+  html+=`<div class="hrt-status">${statusMsg}${heartsBroken?' · ♥ Broken':''}</div>`;
+
+  // Player hand
+  const valid=validPlays(0);
+  html+=`<div class="hrt-player-zone">
+    <div class="hrt-player-name">
+      <span>Your Hand</span>
+      <span style="font-size:.65rem;">${roundScores[0]} pts this round</span>
+    </div>
+    <div class="hrt-hand" id="player-hand">`;
+  hands[0].forEach((c,i)=>{
+    const isPlayable=isYourTurn&&valid.some(vc=>cardKey(vc)===cardKey(c));
+    html+=cardEl(c,isPlayable?'playable':'');
+  });
+  html+=`</div></div>`;
+
+  root.innerHTML=html;
+
+  // Wire player hand clicks
+  const playerHand=document.getElementById('player-hand');
+  if(playerHand){
+    playerHand.querySelectorAll('.hcard.playable').forEach((el,i)=>{
+      // Find the actual card by iterating through visible playable positions
+      const playableCards=hands[0].filter(c=>valid.some(vc=>cardKey(vc)===cardKey(c)));
+      // Match by position in the hand
+      const allCards=playerHand.querySelectorAll('.hcard');
+      el.addEventListener('click',()=>{
+        const idx=Array.from(allCards).indexOf(el);
+        if(idx>=0) playerPlay(hands[0][idx]);
+      });
+    });
+  }
+
+  // Start AI if it's their turn
+  if(current>0&&trick.length<4) setTimeout(aiTurn,600);
+}
+
+newGame();
+</script>
+</body>
+</html>

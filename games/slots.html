@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Slots</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../casino.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0818 60%);}
+.slots-wrap{max-width:400px;margin:0 auto;padding:0 12px 60px;}
+/* Machine */
+.machine{background:linear-gradient(145deg,#2a1a4a,#1a0f35);border:3px solid #6b46c1;
+  border-radius:20px;padding:18px;box-shadow:0 8px 32px rgba(107,70,193,.3),inset 0 2px 0 rgba(255,255,255,.08);
+  margin-bottom:14px;}
+/* Reels */
+.reels{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+.reel-wrap{flex:1;max-width:90px;border-radius:12px;background:#0d0818;border:2px solid rgba(107,70,193,.4);
+  overflow:hidden;height:90px;position:relative;box-shadow:inset 0 2px 10px rgba(0,0,0,.6);}
+.reel-track{position:absolute;top:0;left:0;right:0;transition:top .05s linear;}
+.reel-sym{height:90px;display:flex;align-items:center;justify-content:center;font-size:3rem;}
+/* Win line overlay */
+.win-line{position:absolute;top:50%;left:0;right:0;height:3px;background:rgba(245,200,66,.5);
+  transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity .3s;}
+.win-line.show{opacity:1;animation:win-pulse 1s ease-in-out infinite;}
+@keyframes win-pulse{0%,100%{opacity:.3}50%{opacity:1}}
+/* Pay table */
+.pay-table{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;
+  padding:10px 12px;margin-bottom:12px;font-size:.75rem;}
+.pay-row{display:flex;justify-content:space-between;padding:2px 0;color:rgba(255,255,255,.55);}
+.pay-row.jackpot{color:#f5c842;font-weight:700;}
+/* Bankroll */
+.slots-bank{display:flex;justify-content:space-between;align-items:center;
+  background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
+.slots-bank-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
+/* Bet row */
+.bet-row{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px;}
+.bet-adj{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.bet-adj:hover{background:rgba(255,255,255,.2);}
+.bet-val{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;color:#fff;min-width:60px;text-align:center;}
+/* Spin button */
+.spin-btn{width:100%;padding:15px;border-radius:14px;font-size:1.1rem;font-weight:800;cursor:pointer;
+  border:none;font-family:'Inter',sans-serif;letter-spacing:.04em;transition:all .15s;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  box-shadow:0 4px 20px rgba(124,58,237,.4);}
+.spin-btn:hover:not(:disabled){transform:scale(1.02);box-shadow:0 6px 24px rgba(124,58,237,.5);}
+.spin-btn:disabled{opacity:.5;cursor:not-allowed;}
+/* Result */
+.slots-result{text-align:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;
+  min-height:36px;margin-bottom:8px;transition:all .3s;}
+.slots-result.win{color:#22c55e;animation:bounce-in .4s ease both;}
+.slots-result.jackpot{color:#f5c842;animation:jackpot-flash 1.5s ease;}
+.slots-result.loss{color:rgba(255,255,255,.3);}
+@keyframes bounce-in{0%{transform:scale(.6);opacity:0}80%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes jackpot-flash{0%,100%{color:#f5c842}50%{color:#fff;text-shadow:0 0 20px #f5c842;}}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Slots</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="slots-wrap">
+
+<div class="slots-bank">
+  <div>
+    <div style="font-size:.62rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;">Balance</div>
+    <div class="slots-bank-num" id="slots-balance">$0</div>
+  </div>
+  <button class="btn btn-outline btn-sm" id="slots-reset">↺ Reset Bank</button>
+</div>
+
+<div class="machine">
+  <div class="reels" id="reels">
+    <div class="reel-wrap"><div class="reel-track" id="reel-0"></div><div class="win-line" id="wl-0"></div></div>
+    <div class="reel-wrap"><div class="reel-track" id="reel-1"></div><div class="win-line" id="wl-1"></div></div>
+    <div class="reel-wrap"><div class="reel-track" id="reel-2"></div><div class="win-line" id="wl-2"></div></div>
+  </div>
+
+  <div class="bet-row">
+    <div class="bet-adj" id="bet-down">−</div>
+    <div>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.35);text-align:center;letter-spacing:.1em;text-transform:uppercase;">Bet</div>
+      <div class="bet-val" id="bet-val">$10</div>
+    </div>
+    <div class="bet-adj" id="bet-up">+</div>
+  </div>
+
+  <button class="spin-btn" id="spin-btn">🎰 Spin</button>
+</div>
+
+<div class="slots-result" id="slots-result"></div>
+
+<div class="pay-table">
+  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:6px;">Pay Table (multiplier × bet)</div>
+  <div class="pay-row jackpot"><span>🍀🍀🍀</span><span>×250 JACKPOT</span></div>
+  <div class="pay-row jackpot"><span>💎💎💎</span><span>×100</span></div>
+  <div class="pay-row jackpot"><span>7️⃣7️⃣7️⃣</span><span>×50</span></div>
+  <div class="pay-row"><span>⭐⭐⭐</span><span>×20</span></div>
+  <div class="pay-row"><span>🍒🍒🍒</span><span>×10</span></div>
+  <div class="pay-row"><span>🍋🍋🍋</span><span>×6</span></div>
+  <div class="pay-row"><span>🍊🍊🍊</span><span>×4</span></div>
+  <div class="pay-row"><span>🍇🍇🍇</span><span>×3</span></div>
+  <div class="pay-row"><span>Any two 🍒</span><span>×2</span></div>
+  <div class="pay-row"><span>Any two match</span><span>×1.5</span></div>
+</div>
+
+</div>
+</div>
+<script>
+'use strict';
+const SYMS=['🍇','🍊','🍋','🍒','⭐','7️⃣','💎','🍀'];
+const WEIGHTS=[16,14,12,10,8,5,3,2]; // higher index = rarer
+const PAYOUTS={'🍀🍀🍀':250,'💎💎💎':100,'7️⃣7️⃣7️⃣':50,'⭐⭐⭐':20,'🍒🍒🍒':10,'🍋🍋🍋':6,'🍊🍊🍊':4,'🍇🍇🍇':3};
+
+const BETS=[5,10,25,50,100];
+let betIdx=1, spinning=false;
+
+function weightedPick(){
+  const total=WEIGHTS.reduce((s,w)=>s+w,0);
+  let r=Math.random()*total;
+  for(let i=0;i<SYMS.length;i++){r-=WEIGHTS[i];if(r<=0)return SYMS[i];}
+  return SYMS[0];
+}
+
+function buildReel(final){
+  const t=document.getElementById(`reel-${['0','1','2'].indexOf(final)?0:0}`);
+  // Actually build by reel index
+  return Array.from({length:12},(_,i)=>i===11?final:SYMS[Math.floor(Math.random()*SYMS.length)]);
+}
+
+let spinTimeout=null;
+
+function spin(){
+  if(spinning)return;
+  const bet=BETS[betIdx];
+  if(!Casino.bet(bet)){document.getElementById('slots-result').innerHTML='<span style="color:#f87171">Not enough balance!</span>';return;}
+  spinning=true;
+  document.getElementById('spin-btn').disabled=true;
+  document.getElementById('slots-result').textContent='';
+  // Hide win lines
+  [0,1,2].forEach(i=>document.getElementById(`wl-${i}`).classList.remove('show'));
+
+  const results=[weightedPick(),weightedPick(),weightedPick()];
+
+  // Animate reels one by one
+  [0,1,2].forEach((ri,delay)=>{
+    const track=document.getElementById(`reel-${ri}`);
+    // Build a strip of symbols ending with the result
+    const strip=Array.from({length:20},(_,i)=>i===19?results[ri]:SYMS[Math.floor(Math.random()*SYMS.length)]);
+    track.innerHTML=strip.map(s=>`<div class="reel-sym">${s}</div>`).join('');
+    // Animate: scroll down quickly then land
+    let pos=0;
+    const totalScroll=19*90;
+    const dur=800+delay*250;
+    const start=performance.now();
+    track.style.transition='none';
+    track.style.top='0px';
+    function frame(now){
+      const t=Math.min(1,(now-start)/dur);
+      const ease=t<0.8?t/0.8:1-(t-0.8)/0.2*0.05;
+      const y=-(totalScroll*ease);
+      track.style.top=y+'px';
+      if(t<1){requestAnimationFrame(frame);}
+      else{
+        track.style.top=(-totalScroll)+'px';
+        if(delay===2) setTimeout(()=>resolveResult(results,bet),200);
+      }
+    }
+    setTimeout(()=>requestAnimationFrame(frame), delay*100);
+  });
+}
+
+function resolveResult(results, bet){
+  const key=results.join('');
+  let mult=0, msg='', cls='loss';
+
+  if(PAYOUTS[key]){mult=PAYOUTS[key]; cls=mult>=50?'jackpot':'win';}
+  else if(results[0]==='🍒'&&results[1]==='🍒'){mult=2;cls='win';}
+  else if(results[0]==='🍒'&&results[2]==='🍒'){mult=2;cls='win';}
+  else if(results[1]==='🍒'&&results[2]==='🍒'){mult=2;cls='win';}
+  else if(results[0]===results[1]||results[1]===results[2]||results[0]===results[2]){mult=1.5;cls='win';}
+
+  if(mult>0){
+    const payout=Math.round(bet*mult);
+    Casino.win(payout);
+    msg=mult>=250?`🎉 JACKPOT! +$${payout-bet}`:mult>=50?`🔥 Big Win! +$${payout-bet}`:mult>=10?`✨ Win! +$${payout-bet}`:`+$${payout-bet}`;
+    [0,1,2].forEach(i=>document.getElementById(`wl-${i}`).classList.add('show'));
+  } else {
+    msg='No win';
+  }
+
+  document.getElementById('slots-result').textContent=msg;
+  document.getElementById('slots-result').className='slots-result '+cls;
+  updateBank();
+  spinning=false;
+  document.getElementById('spin-btn').disabled=false;
+}
+
+function updateBank(){
+  document.getElementById('slots-balance').textContent='$'+Casino.balance().toLocaleString();
+  document.getElementById('bet-val').textContent='$'+BETS[betIdx];
+}
+
+// Build initial reel displays
+[0,1,2].forEach(ri=>{
+  const track=document.getElementById(`reel-${ri}`);
+  track.innerHTML=Array.from({length:3},()=>`<div class="reel-sym">${SYMS[Math.floor(Math.random()*SYMS.length)]}</div>`).join('');
+  track.style.top='-90px';
+});
+
+document.getElementById('spin-btn').addEventListener('click',spin);
+document.getElementById('bet-up').addEventListener('click',()=>{betIdx=Math.min(BETS.length-1,betIdx+1);updateBank();});
+document.getElementById('bet-down').addEventListener('click',()=>{betIdx=Math.max(0,betIdx-1);updateBank();});
+document.getElementById('slots-reset').addEventListener('click',()=>{if(confirm('Reset bankroll to $1,000?')){Casino.reset();updateBank();}});
+updateBank();
+</script>
+</body>
+</html>

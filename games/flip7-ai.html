@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Flip 7 — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a1a0a 0%,#0d0d06 60%);}
+.f7-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
+/* Flip card */
+.fcard{width:52px;height:72px;border-radius:10px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 3px 8px rgba(0,0,0,.5);transition:all .2s;user-select:none;flex-shrink:0;}
+.fcard.num{background:linear-gradient(145deg,#f8f4e8,#ede8d6);border:2px solid rgba(0,0,0,.1);color:#1a1a1a;}
+.fcard.plus2{background:linear-gradient(145deg,#22c55e,#16a34a);color:#fff;border:2px solid rgba(255,255,255,.2);}
+.fcard.minus2{background:linear-gradient(145deg,#ef4444,#b91c1c);color:#fff;border:2px solid rgba(255,255,255,.2);}
+.fcard.freeze{background:linear-gradient(145deg,#5ac8fa,#0ea5e9);color:#0a1a2e;border:2px solid rgba(255,255,255,.2);}
+.fcard.face-down{background:linear-gradient(145deg,#f5c842,#c8961a);border:2px solid rgba(255,255,255,.15);}
+.fcard .num-val{font-size:1.5rem;line-height:1;}
+.fcard .num-small{font-size:.6rem;color:rgba(26,26,26,.5);line-height:1;}
+.fcard .action-icon{font-size:1.4rem;}.fcard .action-lbl{font-size:.55rem;font-weight:700;line-height:1.2;}
+.fcard.bust-card{opacity:.4;}
+/* Player areas */
+.f7-players{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.f7-player{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:10px;transition:all .2s;}
+.f7-player.active-player{border-color:#f5c842;background:rgba(245,200,66,.06);}
+.f7-player.frozen{border-color:#5ac8fa;background:rgba(90,200,250,.05);opacity:.7;}
+.f7-player.busted{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05);}
+.f7-player-name{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:4px;}
+.f7-player-name.you{color:rgba(245,200,66,.8);}
+.f7-player-score{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;}
+.f7-player-round{font-size:.62rem;color:rgba(255,255,255,.4);}
+.f7-flip-pile{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;min-height:28px;}
+/* Compact mini-card for flip pile */
+.mcard{width:28px;height:38px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:.75rem;font-weight:900;}
+.mcard.num{background:linear-gradient(145deg,#f8f4e8,#ede8d6);color:#1a1a1a;}
+.mcard.plus2{background:#22c55e;color:#fff;font-size:.55rem;}
+.mcard.minus2{background:#ef4444;color:#fff;font-size:.55rem;}
+.mcard.freeze{background:#5ac8fa;color:#0a1a2e;font-size:.55rem;}
+/* Action area */
+.f7-action{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
+/* Deck */
+.f7-deck-area{display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:10px;}
+.f7-deck-card{width:52px;height:72px;border-radius:10px;background:linear-gradient(145deg,#f5c842,#c8961a);
+  border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;cursor:pointer;transition:all .15s;}
+.f7-deck-card:hover{transform:scale(1.05);}
+.f7-deck-card.empty{background:rgba(255,255,255,.04);border-style:dashed;cursor:default;font-size:.7rem;color:rgba(255,255,255,.25);}
+/* Status */
+.f7-status{text-align:center;font-size:.9rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
+/* Score board header */
+.f7-scores{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+.f7-score-chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;
+  padding:4px 12px;font-size:.75rem;font-weight:700;}
+.f7-score-chip.leader{border-color:#f5c842;background:rgba(245,200,66,.12);color:#f5c842;}
+/* Flip 7 badge */
+.flip7-badge{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:8px;padding:3px 8px;
+  font-size:.65rem;font-weight:800;color:#0d1117;display:inline-block;}
+/* Round result */
+.f7-round-result{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+.f7-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.f7-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+/* Freeze target */
+.f7-freeze-panel{background:rgba(90,200,250,.08);border:1px solid rgba(90,200,250,.3);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Flip 7 — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="f7-wrap" id="f7-root"></div>
+</div>
+<script>
+'use strict';
+// Flip 7: push-your-luck. Flip cards from deck. Duplicate number = BUST.
+// Collect 7 unique numbers = Flip 7 (+15 bonus). Stop any time to bank score.
+// Score = sum of numbered cards + action effects. Game to 200.
+const PLAYERS=['You','Sam','Alex','Jess'];
+const F7_WIN=200, FLIP7_BONUS=15;
+
+function makeDeck(){
+  const d=[];
+  // 2 copies of 0-12 + action cards
+  for(let i=0;i<2;i++) for(let n=0;n<=12;n++) d.push({type:'num',val:n});
+  for(let i=0;i<4;i++) d.push({type:'plus2',val:2});
+  for(let i=0;i<4;i++) d.push({type:'minus2',val:-2});
+  for(let i=0;i<3;i++) d.push({type:'freeze',val:0});
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+let deck,pile,scores,roundScores,frozen,busted,stopped,flipped,phase,current,log,freezePending;
+// phase: 'flip'|'choose-freeze'|'round-end'|'game-over'
+
+function cKey(c){return c.type+c.val+Math.random();}
+
+function newGame(){scores=[0,0,0,0];log=[];newRound();}
+function newRound(){
+  deck=makeDeck(); pile=[];
+  roundScores=[0,0,0,0]; frozen=[false,false,false,false];
+  busted=[false,false,false,false]; stopped=[false,false,false,false];
+  flipped=Array.from({length:4},()=>[]);
+  current=0; phase='flip'; freezePending=false;
+  render();
+}
+
+function calcRoundScore(p){
+  let s=0;
+  flipped[p].forEach(c=>{
+    if(c.type==='num') s+=c.val;
+    else if(c.type==='plus2') s+=2;
+    else if(c.type==='minus2') s-=2;
+  });
+  const nums=flipped[p].filter(c=>c.type==='num');
+  const uniqueNums=new Set(nums.map(c=>c.val));
+  const isFlip7=uniqueNums.size>=7;
+  return{score:Math.max(0,s+(isFlip7?FLIP7_BONUS:0)),isFlip7};
+}
+
+function hasDuplicate(p,card){
+  if(card.type!=='num') return false;
+  return flipped[p].some(c=>c.type==='num'&&c.val===card.val);
+}
+
+function doFlip(){
+  if(!deck.length){endRound();return;}
+  const card=deck.pop();
+  pile.push(card);
+  if(hasDuplicate(current,card)){
+    busted[current]=true;
+    flipped[current].push(card);
+    addLog(`${PLAYERS[current]} flipped ${cardStr(card)} — BUST! 💥`);
+    advanceTurn();
+  } else {
+    flipped[current].push(card);
+    if(card.type==='freeze'){
+      // Need to choose who to freeze
+      const targets=[0,1,2,3].filter(p=>p!==current&&!frozen[p]&&!stopped[p]&&!busted[p]);
+      if(targets.length>0){
+        if(current!==0){
+          // AI chooses: freeze a player not on their team or with most cards
+          const target=targets.sort((a,b)=>flipped[b].length-flipped[a].length)[0];
+          frozen[target]=true;
+          addLog(`${PLAYERS[current]} freezes ${PLAYERS[target]}!`);
+          advanceTurn();
+        } else {
+          phase='choose-freeze'; render(); return;
+        }
+      } else advanceTurn();
+    } else {
+      addLog(`${PLAYERS[current]} flips ${cardStr(card)}.`);
+      const{isFlip7}=calcRoundScore(current);
+      if(isFlip7){
+        addLog(`${PLAYERS[current]} has FLIP 7! 🎉 Bonus +${FLIP7_BONUS}`,'pts');
+        stopped[current]=true;
+        roundScores[current]=calcRoundScore(current).score;
+        advanceTurn();
+      } else {
+        render();
+        if(current!==0) setTimeout(aiDecide,600);
+      }
+    }
+  }
+}
+
+function doStop(){
+  if(phase!=='flip'||current!==0) return;
+  stopped[current]=true;
+  roundScores[current]=calcRoundScore(current).score;
+  addLog(`You stop with ${roundScores[current]} pts.`,'pts');
+  advanceTurn();
+}
+
+function playerFreeze(target){
+  if(phase!=='choose-freeze') return;
+  frozen[target]=true;
+  addLog(`You freeze ${PLAYERS[target]}!`);
+  phase='flip'; advanceTurn();
+}
+
+function aiDecide(){
+  if(current===0) return;
+  const{score}=calcRoundScore(current);
+  const nums=flipped[current].filter(c=>c.type==='num');
+  const uniqueNums=new Set(nums.map(c=>c.val)).size;
+  // Remaining numbers in deck
+  const deckNums=deck.filter(c=>c.type==='num');
+  const dupCount=deckNums.filter(c=>flipped[current].some(fc=>fc.type==='num'&&fc.val===c.val)).length;
+  const bustRisk=deckNums.length>0?dupCount/deck.length:0;
+  // Stop if: risk >30%, score >20, or only 1-2 unique numbers away from flip7
+  const shouldStop=score>25&&(bustRisk>0.3||score>50)||(score>12&&bustRisk>0.45);
+  if(shouldStop){
+    stopped[current]=true;
+    roundScores[current]=calcRoundScore(current).score;
+    addLog(`${PLAYERS[current]} stops with ${roundScores[current]} pts.`,'pts');
+    advanceTurn();
+  } else {
+    addLog(`${PLAYERS[current]} flips...`);
+    setTimeout(doFlipFor,400);
+  }
+}
+
+function doFlipFor(){
+  doFlip();
+}
+
+function advanceTurn(){
+  // Find next active player
+  let next=(current+1)%4;
+  let checked=0;
+  while((stopped[next]||busted[next]||frozen[next])&&checked<4){
+    if(frozen[next]) frozen[next]=false; // unfreeze
+    next=(next+1)%4; checked++;
+  }
+  if(checked>=4||deck.length===0){
+    endRound();
+  } else {
+    current=next;
+    if(!stopped[current]&&!busted[current]){
+      render();
+      if(current!==0) setTimeout(aiDecide,700);
+    } else advanceTurn();
+  }
+}
+
+function endRound(){
+  // Score all non-busted players who haven't stopped yet
+  for(let p=0;p<4;p++){
+    if(!busted[p]&&!stopped[p]) roundScores[p]=calcRoundScore(p).score;
+    if(!busted[p]) scores[p]+=roundScores[p];
+  }
+  phase='round-end';
+  for(let p=0;p<4;p++){
+    if(busted[p]) addLog(`${PLAYERS[p]}: BUST (0 pts)`);
+    else addLog(`${PLAYERS[p]}: +${roundScores[p]} → total ${scores[p]}`,'pts');
+  }
+  if(scores.some(s=>s>=F7_WIN)){phase='game-over';endGame();}
+  else render();
+}
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>20)log.shift();}
+
+function endGame(){
+  const winner=scores.indexOf(Math.max(...scores));
+  const won=winner===0;
+  addLog(`${PLAYERS[winner]} wins with ${scores[winner]} pts!`,'pts');
+  try{GameHistory.save('flip7',{_summary:`Flip 7 (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  render();
+}
+
+function cardStr(c){
+  if(c.type==='num') return c.val;
+  if(c.type==='plus2') return '+2';
+  if(c.type==='minus2') return '-2';
+  return '❄️';
+}
+
+function miniCardEl(c){
+  if(!c) return '';
+  const type=c.type;
+  let label='';
+  if(type==='num') label=c.val;
+  else if(type==='plus2') label='+2';
+  else if(type==='minus2') label='-2';
+  else label='❄️';
+  return`<div class="mcard ${type}">${label}</div>`;
+}
+
+function render(){
+  const root=document.getElementById('f7-root');
+  let html='';
+
+  // Scores
+  html+=`<div class="f7-scores">`;
+  const maxScore=Math.max(...scores);
+  PLAYERS.forEach((n,i)=>{
+    html+=`<div class="f7-score-chip ${scores[i]===maxScore&&scores[i]>0?'leader':''}">${n}: ${scores[i]}</div>`;
+  });
+  html+=`</div>`;
+
+  if(phase==='game-over'){
+    const w=scores.indexOf(Math.max(...scores));
+    html+=`<div class="f7-game-result">
+      <div class="f7-game-title">${w===0?'🏆 You Win!':PLAYERS[w]+' Wins!'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PLAYERS.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=renderLog();
+    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+  }
+
+  if(phase==='round-end'){
+    html+=`<div class="f7-round-result">
+      <div style="font-weight:700;margin-bottom:4px;">Round Over!</div>
+      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">${PLAYERS.map((n,i)=>busted[i]?n+' busted':n+': +'+roundScores[i]).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
+    html+=renderLog();
+    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',newRound);return;
+  }
+
+  // Freeze target panel
+  if(phase==='choose-freeze'){
+    const targets=[0,1,2,3].filter(p=>p!==current&&!frozen[p]&&!stopped[p]&&!busted[p]);
+    html+=`<div class="f7-freeze-panel">
+      <div style="font-weight:700;margin-bottom:8px;">❄️ Choose a player to freeze</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        ${targets.map(t=>`<button class="btn btn-outline btn-sm f7-freeze-btn" data-target="${t}">${PLAYERS[t]}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Status
+  const isYourTurn=phase==='flip'&&current===0;
+  html+=`<div class="f7-status">${isYourTurn?'Your turn — Flip or Stop!':phase==='flip'?`${PLAYERS[current]}'s turn…`:''}</div>`;
+
+  // Deck
+  html+=`<div class="f7-deck-area">
+    <div>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px;">DECK (${deck.length})</div>
+      <div class="f7-deck-card${deck.length===0?' empty':''}" id="f7-deck">${deck.length?'7':'empty'}</div>
+    </div>
+    ${pile.length?`<div>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px;">LAST FLIP</div>
+      ${miniCardEl(pile[pile.length-1])}
+    </div>`:''}
+  </div>`;
+
+  // Player panels
+  html+=`<div class="f7-players">`;
+  PLAYERS.forEach((n,i)=>{
+    const isActive=current===i&&phase==='flip';
+    const{score,isFlip7}=calcRoundScore(i);
+    const statusLabel=busted[i]?'💥 BUST':stopped[i]?`✋ Stopped (${roundScores[i]}pts)`:frozen[i]?'❄️ Frozen':isActive?'▶ Active':'';
+    html+=`<div class="f7-player ${isActive?'active-player':''} ${frozen[i]&&!stopped[i]&&!busted[i]?'frozen':''} ${busted[i]?'busted':''}">
+      <div class="f7-player-name ${i===0?'you':''}">${n} ${isFlip7&&!busted[i]?'<span class="flip7-badge">FLIP 7!</span>':''}</div>
+      <div class="f7-player-score">${stopped[i]?roundScores[i]:busted[i]?0:score}</div>
+      <div class="f7-player-round" style="font-size:.58rem;">${statusLabel}</div>
+      <div class="f7-flip-pile">${flipped[i].map(c=>miniCardEl(c)).join('')}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Action buttons for player
+  if(isYourTurn){
+    html+=`<div class="f7-action">
+      <button class="btn btn-gold" id="flip-btn">🎴 Flip</button>
+      <button class="btn btn-outline" id="stop-btn">✋ Stop (bank ${calcRoundScore(0).score} pts)</button>
+    </div>`;
+  }
+
+  html+=renderLog();
+  root.innerHTML=html;
+
+  document.getElementById('f7-deck')?.addEventListener('click',()=>{if(isYourTurn)doFlip();});
+  document.getElementById('flip-btn')?.addEventListener('click',doFlip);
+  document.getElementById('stop-btn')?.addEventListener('click',doStop);
+  document.querySelectorAll('.f7-freeze-btn').forEach(b=>{
+    b.addEventListener('click',()=>playerFreeze(+b.dataset.target));
+  });
+  document.getElementById('ng-btn')?.addEventListener('click',newGame);
+  document.getElementById('nr-btn')?.addEventListener('click',newRound);
+}
+
+function renderLog(){
+  return`<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-top:8px;">${log.slice(-6).map(({msg,cls})=>`<div class="${cls||''}">${msg}</div>`).join('')}</div>`;
+}
+
+newGame();
+</script>
+</body>
+</html>

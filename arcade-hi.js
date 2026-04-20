@@ -11,7 +11,7 @@ const ArcadeHi = (function(){
   const MAX = 15;
 
   function load(key){ try{return JSON.parse(localStorage.getItem('hi_'+key)||'[]');}catch(e){return [];} }
-  function save(key,list){ try{localStorage.setItem('hi_'+key,JSON.stringify(list));if(window.FGHSync)FGHSync.noteWrite('hi_'+key);}catch(e){} }
+  function save(key,list){ try{localStorage.setItem('hi_'+key,JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('hi_'+key);}catch(e){} }
 
   function qualifies(key, score){
     const list = load(key);

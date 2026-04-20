@@ -1,30 +1,26 @@
 // ==== Family Game Hub  sync.js ====
-// Transparent localStorage + Firestore mirror for hi_* (arcade-hi scores)
-// and gh_* (game history) keys. Default behavior = identical to
-// pre-sync app (pure localStorage). When a 4-digit PIN is active
-// (localStorage.fgh_mode === 'pin'), writes ALSO mirror to Firestore
-// pins/{pin}, and sign-in merges the cloud doc into local.
+// Transparent localStorage + Firestore mirror for hi_* and gh_* keys.
+// When a 4-digit PIN is active (localStorage.fgh_mode === 'pin'),
+// writes mirror to Firestore pins/{pin}, and sign-in merges cloud → local.
 //
 // Public API on window.FGHSync:
-//   mode()                    -> 'pin' | 'guest' | null
-//   pin()                     -> '1234' | null
-//   signInWithPin(pin)        -> Promise<void>   (merge cloud -> local, then persist local -> cloud)
-//   signOut()                 -> void            (clears mode; keeps local data)
-//   continueAsGuest()         -> void            (sets mode=guest)
-//   onReady(cb)               -> cb called once initial sync completes (or immediately in guest)
-//
-// Keys we care about:
-//   hi_<game>  (array of [name, score, date])   arcade-hi.js
-//   gh_<game>  (array of snapshot objects)      hist.js
+//   mode()                     -> 'pin' | 'guest' | null
+//   pin()                      -> '1234' | null
+//   label()                    -> 'Brown Family' | null
+//   signInWithPin(pin)         -> Promise<{isNew:bool}>
+//   setLabel(str)              -> void  (saves label + schedules cloud push)
+//   signOut()                  -> void
+//   continueAsGuest()          -> void
+//   onReady(cb)                -> called once sync completes
+//   noteWrite(key)             -> call after any hi_/gh_ localStorage write
 (function(){
   'use strict';
-
   var LS = window.localStorage;
-  var MODE_KEY = 'fgh_mode';
-  var PIN_KEY  = 'fgh_pin';
-  var PIN_RE   = /^[0-9]{4}$/;
+  var MODE_KEY  = 'fgh_mode';
+  var PIN_KEY   = 'fgh_pin';
+  var LABEL_KEY = 'fgh_label';
+  var PIN_RE    = /^[0-9]{4}$/;
 
-  // ---- Public Firebase config (safe to ship; security is in rules) ----
   var firebaseConfig = {
     apiKey: "AIzaSyDmZ4AXZz1MJLiQi1sygbvigrpR5JcWkrQ",
     authDomain: "familygames-da3e5.firebaseapp.com",
@@ -34,14 +30,14 @@
     appId: "1:926415998661:web:f8e56856d36af6ab202aac"
   };
 
-  // ---- Firestore bootstrap (lazy; only when PIN mode) ----
-  var _fb = null; // { app, db }
+  var _fb = null;
   var _readyResolvers = [];
   var _ready = false;
 
-  function mode(){ return LS.getItem(MODE_KEY); }
-  function pin(){ return LS.getItem(PIN_KEY); }
-  function isPin(){ return mode() === 'pin' && PIN_RE.test(pin() || ''); }
+  function mode()  { return LS.getItem(MODE_KEY); }
+  function pin()   { return LS.getItem(PIN_KEY); }
+  function label() { return LS.getItem(LABEL_KEY); }
+  function isPin() { return mode() === 'pin' && PIN_RE.test(pin() || ''); }
 
   function notifyReady(){
     _ready = true;
@@ -50,7 +46,6 @@
   }
   function onReady(cb){ if(_ready) try{cb();}catch(e){} else _readyResolvers.push(cb); }
 
-  // ---- Firebase loader (compat SDK via CDN, no build step) ----
   function loadScript(src){
     return new Promise(function(res, rej){
       var s = document.createElement('script');
@@ -67,32 +62,32 @@
       .then(function(){ return loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-firestore-compat.js'); })
       .then(function(){
         var app = firebase.initializeApp(firebaseConfig);
-        var db = firebase.firestore();
+        var db  = firebase.firestore();
         _fb = { app: app, db: db };
         return _fb;
       });
   }
 
-  // ---- Scan localStorage for our managed keys and build a snapshot ----
+  // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {} };
-    for(var i=0; i<LS.length; i++){
+    var out = { hi: {}, gh: {}, bank: null };
+    for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
       if(k.indexOf('hi_') === 0){
         try{ out.hi[k.slice(3)] = JSON.parse(LS.getItem(k)) || []; }catch(e){}
       } else if(k.indexOf('gh_') === 0){
         try{ out.gh[k.slice(3)] = JSON.parse(LS.getItem(k)) || []; }catch(e){}
+      } else if(k === 'casino_bank'){
+        try{ out.bank = parseInt(LS.getItem(k)) || null; }catch(e){}
       }
     }
     return out;
   }
 
-  // ---- Merge strategies ----
-  // hi: array of [name, score, date]; keep top by score desc, cap 10 (matches existing behavior)
+  // ── Merge strategies ──────────────────────────────────────────────────
   function mergeHi(a, b){
     var all = (a||[]).concat(b||[]);
-    // dedupe by name+score+date
     var seen = {};
     all = all.filter(function(row){
       if(!Array.isArray(row) || row.length < 2) return false;
@@ -100,10 +95,9 @@
       if(seen[k]) return false; seen[k] = 1; return true;
     });
     all.sort(function(x,y){ return (Number(y[1])||0) - (Number(x[1])||0); });
-    return all.slice(0, 10);
+    return all.slice(0, 15);
   }
 
-  // gh: array of snapshot objects; union by timestamp/finishedAt; newest first; cap 50
   function mergeGh(a, b){
     var all = (a||[]).concat(b||[]);
     var seen = {};
@@ -115,20 +109,17 @@
     all.sort(function(x,y){
       var tx = x.finishedAt || x.date || x.ts || 0;
       var ty = y.finishedAt || y.date || y.ts || 0;
-      return (ty > tx ? 1 : (ty < tx ? -1 : 0));
+      return (ty > tx ? 1 : ty < tx ? -1 : 0);
     });
     return all.slice(0, 50);
   }
 
   function mergeSnapshots(local, remote){
     var out = { hi: {}, gh: {} };
-    var keys;
-    // hi
-    keys = {};
+    var keys = {};
     Object.keys(local.hi||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.hi||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(keys).forEach(function(k){ out.hi[k] = mergeHi(local.hi&&local.hi[k], remote.hi&&remote.hi[k]); });
-    // gh
     keys = {};
     Object.keys(local.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.gh||{}).forEach(function(k){ keys[k]=1; });
@@ -143,20 +134,43 @@
     Object.keys(snap.gh||{}).forEach(function(k){
       try{ LS.setItem('gh_'+k, JSON.stringify(snap.gh[k])); }catch(e){}
     });
+    if(snap.bank !== null && snap.bank !== undefined){
+      try{ LS.setItem('casino_bank', String(snap.bank)); }catch(e){}
+    }
   }
 
-  // ---- Firestore IO ----
+  // ── Firestore serialization (no nested arrays) ────────────────────────
+  function hiToFirestore(hiMap){
+    var out = {};
+    Object.keys(hiMap).forEach(function(game){
+      out[game] = (hiMap[game]||[]).map(function(row){
+        return Array.isArray(row) ? {n:row[0], s:row[1], d:row[2]} : row;
+      });
+    });
+    return out;
+  }
+  function hiFromFirestore(hiMap){
+    var out = {};
+    Object.keys(hiMap||{}).forEach(function(game){
+      out[game] = (hiMap[game]||[]).map(function(row){
+        return Array.isArray(row) ? row : [row.n, row.s, row.d];
+      });
+    });
+    return out;
+  }
+
+  // ── Firestore IO ──────────────────────────────────────────────────────
   function cloudRef(){
     if(!isPin() || !_fb) return null;
     return _fb.db.collection('pins').doc(pin());
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{},gh:{}});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, isNew:false});
     return ref.get().then(function(doc){
-      if(!doc.exists) return {hi:{},gh:{}};
+      if(!doc.exists) return {hi:{}, gh:{}, label:null, bank:null, isNew:true};
       var d = doc.data() || {};
-      return { hi: hiFromFirestore(d.hi || {}), gh: d.gh || {} };
+      return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, isNew:false };
     });
   }
 
@@ -174,37 +188,29 @@
     }, 1500);
   }
 
-  // Convert hi arrays [[n,s,d],...] -> [{n,s,d},...] for Firestore (no nested arrays)
-  function hiToFirestore(hiMap){
-    var out = {};
-    Object.keys(hiMap).forEach(function(game){
-      out[game] = (hiMap[game]||[]).map(function(row){
-        return Array.isArray(row) ? {n:row[0],s:row[1],d:row[2]} : row;
-      });
-    });
-    return out;
-  }
-  // Convert [{n,s,d},...] -> [[n,s,d],...] back for localStorage
-  function hiFromFirestore(hiMap){
-    var out = {};
-    Object.keys(hiMap||{}).forEach(function(game){
-      out[game] = (hiMap[game]||[]).map(function(row){
-        return Array.isArray(row) ? row : [row.n, row.s, row.d];
-      });
-    });
-    return out;
-  }
   function pushNow(){
     var ref = cloudRef(); if(!ref) return Promise.resolve();
     var snap = scanLocal();
-    return ref.set({
+    var doc = {
       hi: hiToFirestore(snap.hi),
       gh: snap.gh,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: false });
+    };
+    var lbl = label();
+    if(lbl) doc.label = lbl;
+    if(snap.bank !== null && snap.bank !== undefined) doc.bank = snap.bank;
+    return ref.set(doc, { merge: false });
   }
 
-  // ---- Entry points ----
+  // ── Label ─────────────────────────────────────────────────────────────
+  function setLabel(str){
+    var trimmed = (str||'').trim();
+    if(trimmed) LS.setItem(LABEL_KEY, trimmed);
+    else LS.removeItem(LABEL_KEY);
+    if(isPin()) schedulePush();
+  }
+
+  // ── Entry points ──────────────────────────────────────────────────────
   function continueAsGuest(){
     LS.setItem(MODE_KEY, 'guest');
     LS.removeItem(PIN_KEY);
@@ -218,60 +224,57 @@
     return ensureFirebase()
       .then(pullCloud)
       .then(function(remote){
-        var local = scanLocal();
-        var merged = mergeSnapshots(local, remote);
+        if(remote.label && !label()) LS.setItem(LABEL_KEY, remote.label);
+        if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
+        var local   = scanLocal();
+        var merged  = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged);
-        return pushNow();
+        return pushNow().then(function(){ return {isNew: remote.isNew}; });
       })
-      .then(function(){ notifyReady(); });
+      .then(function(result){ notifyReady(); return result; });
   }
 
   function signOut(){
     LS.removeItem(MODE_KEY);
     LS.removeItem(PIN_KEY);
-    // keep local data as-is
+    LS.removeItem(LABEL_KEY);
   }
 
-  // ---- Hook into localStorage writes transparently ----
-  // We don't monkey-patch globally; instead hist.js and arcade-hi.js will
-  // call FGHSync.noteWrite(key) after their setItem calls. That keeps changes
-  // minimal and explicit.
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0) return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key !== 'casino_bank') return;
     if(isPin()) schedulePush();
   }
 
-  // ---- Bootstrap on page load ----
+  // ── Bootstrap ─────────────────────────────────────────────────────────
   function boot(){
     var m = mode();
     if(m === 'pin' && PIN_RE.test(pin()||'')){
       ensureFirebase()
         .then(pullCloud)
         .then(function(remote){
-          var local = scanLocal();
+          if(remote.label && !label()) LS.setItem(LABEL_KEY, remote.label);
+          if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
+          var local  = scanLocal();
           var merged = mergeSnapshots(local, remote);
           writeSnapshotToLocal(merged);
-          // best-effort push back in case local had newer stuff
           return pushNow();
         })
         .then(notifyReady)
         .catch(function(err){ console.warn('[sync] boot failed; staying local', err); notifyReady(); });
     } else {
-      // guest or unset  ready immediately, no network
       notifyReady();
     }
   }
 
   window.FGHSync = {
-    mode: mode,
-    pin: pin,
+    mode: mode, pin: pin, label: label,
     signInWithPin: signInWithPin,
+    setLabel: setLabel,
     signOut: signOut,
     continueAsGuest: continueAsGuest,
     onReady: onReady,
     noteWrite: noteWrite,
-    // exposed for gate/hub UI
     _scanLocal: scanLocal
   };
 

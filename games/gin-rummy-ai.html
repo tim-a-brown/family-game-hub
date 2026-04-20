@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Gin Rummy — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#060e0a 60%);}
+.gr-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
+/* Card */
+.gcard{width:46px;height:64px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.12);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;cursor:pointer;}
+.gcard.red{color:#c53030;}.gcard.black{color:#1a1a1a;}
+.gcard:hover:not(.disabled):not(.face-down){border-color:#f5c842;transform:translateY(-4px);}
+.gcard.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);transform:translateY(-10px);}
+.gcard.in-meld{border-color:#22c55e;background:linear-gradient(145deg,#f0fff4,#dcfce7);}
+.gcard.deadwood{border-color:#ef4444;opacity:.85;}
+.gcard.face-down{background:linear-gradient(145deg,#1a4a2e,#0d2818);border-color:rgba(255,255,255,.12);cursor:default;}
+.gcard.disabled{cursor:default;}
+.gc-r{font-size:.88rem;line-height:1.1;}.gc-s{font-size:.75rem;line-height:1;}
+/* Hand */
+.gr-hand{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:68px;align-items:flex-end;}
+/* Table */
+.gr-table{background:linear-gradient(145deg,#0a2a1a,#061508);border:2px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:12px;margin-bottom:10px;}
+/* Piles */
+.gr-piles{display:flex;gap:16px;justify-content:center;align-items:flex-start;margin-bottom:8px;}
+.gr-pile-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.gr-pile-lbl{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);}
+.gr-pile-count{font-size:.6rem;color:rgba(255,255,255,.25);}
+.stock-back{width:46px;height:64px;border-radius:8px;background:linear-gradient(145deg,#1a4a2e,#0d2818);
+  border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;font-size:1.2rem;color:rgba(255,255,255,.2);}
+.stock-back:hover{border-color:rgba(255,255,255,.4);}
+/* Score bar */
+.gr-scores{display:flex;justify-content:space-between;align-items:center;
+  background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
+.gr-score-block{text-align:center;}
+.gr-score-name{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);}
+.gr-score-val{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#f5c842;}
+.gr-score-dw{font-size:.65rem;color:rgba(255,255,255,.3);}
+/* Status */
+.gr-status{text-align:center;font-size:.9rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
+/* Phase badge */
+.gr-phase{display:inline-block;background:rgba(90,200,250,.12);border:1px solid rgba(90,200,250,.25);
+  border-radius:20px;padding:3px 12px;font-size:.68rem;font-weight:700;color:#5ac8fa;
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+/* Draw source selection */
+.gr-draw-src{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+/* Knock/gin buttons */
+.gr-actions{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+/* Meld overlay */
+.gr-meld-area{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
+  border-radius:10px;padding:10px;margin-bottom:8px;}
+.gr-meld-group{display:flex;gap:3px;margin-bottom:4px;flex-wrap:wrap;}
+/* Round result */
+.gr-round-result{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
+/* Game over */
+.gr-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;
+  padding:18px;text-align:center;margin-bottom:12px;}
+.gr-game-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;}
+/* Log */
+.gr-log{background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px;max-height:80px;
+  overflow-y:auto;font-size:.75rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.gr-log .pts{color:#f5c842;font-weight:700;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Gin Rummy — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="gr-wrap" id="gr-root"></div>
+</div>
+<script>
+'use strict';
+
+// ── Card helpers ─────────────────────────────────────────────────────────────
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+const ORD=Object.fromEntries(RANKS.map((r,i)=>[r,i]));
+const DW_VAL={A:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:10,Q:10,K:10};
+
+function makeDeck(){
+  const d=[];
+  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function cKey(c){return c.rank+c.suit;}
+function dwVal(c){return DW_VAL[c.rank];}
+
+// ── Meld finding ─────────────────────────────────────────────────────────────
+function findAllMelds(hand){
+  const melds=[];
+  // Sets: same rank, 3-4 cards
+  const byRank={};
+  hand.forEach(c=>{(byRank[c.rank]=byRank[c.rank]||[]).push(c);});
+  Object.values(byRank).forEach(cards=>{
+    if(cards.length>=3) melds.push([...cards.slice(0,3)]);
+    if(cards.length===4) melds.push([...cards]);
+  });
+  // Runs: same suit, consecutive rank, 3+
+  const bySuit={};
+  hand.forEach(c=>{(bySuit[c.suit]=bySuit[c.suit]||[]).push(c);});
+  Object.values(bySuit).forEach(cards=>{
+    const sorted=cards.sort((a,b)=>ORD[a.rank]-ORD[b.rank]);
+    for(let i=0;i<sorted.length;i++){
+      let run=[sorted[i]];
+      for(let j=i+1;j<sorted.length;j++){
+        if(ORD[sorted[j].rank]===ORD[run[run.length-1].rank]+1) run.push(sorted[j]);
+        else break;
+      }
+      if(run.length>=3) for(let len=3;len<=run.length;len++) melds.push(run.slice(0,len));
+    }
+  });
+  return melds;
+}
+
+// Find best meld arrangement (min deadwood) via backtracking
+function bestMelds(hand){
+  const allMelds=findAllMelds(hand);
+  let bestDW=hand.reduce((s,c)=>s+dwVal(c),0);
+  let bestArrangement=[];
+
+  function bt(available,usedMelds,used){
+    const dw=available.filter(c=>!used.has(cKey(c))).reduce((s,c)=>s+dwVal(c),0);
+    if(dw<bestDW){bestDW=dw;bestArrangement=[...usedMelds];}
+    for(const meld of allMelds){
+      if(meld.every(c=>!used.has(cKey(c)))){
+        const newUsed=new Set(used);
+        meld.forEach(c=>newUsed.add(cKey(c)));
+        bt(available,[...usedMelds,meld],newUsed);
+      }
+    }
+  }
+  bt(hand,[],new Set());
+  const meldSet=new Set(bestArrangement.flat().map(cKey));
+  const deadwood=hand.filter(c=>!meldSet.has(cKey(c)));
+  return{melds:bestArrangement,deadwood,dwTotal:bestDW};
+}
+
+// AI lay-off: can the defender add cards to knocker's melds?
+function tryLayoff(defCards, knockerMelds){
+  let remaining=[...defCards];
+  let changed=true;
+  const melds=knockerMelds.map(m=>[...m]);
+  while(changed){
+    changed=false;
+    for(let i=remaining.length-1;i>=0;i--){
+      const c=remaining[i];
+      for(const m of melds){
+        // Try adding to set
+        if(m.length<4&&m.every(mc=>mc.rank===c.rank)){
+          m.push(c);remaining.splice(i,1);changed=true;break;
+        }
+        // Try adding to run
+        const sorted=[...m].sort((a,b)=>ORD[a.rank]-ORD[b.rank]);
+        const lo=ORD[sorted[0].rank],hi=ORD[sorted[sorted.length-1].rank];
+        if(c.suit===sorted[0].suit){
+          if(ORD[c.rank]===lo-1){m.push(c);remaining.splice(i,1);changed=true;break;}
+          if(ORD[c.rank]===hi+1){m.push(c);remaining.splice(i,1);changed=true;break;}
+        }
+      }
+      if(changed) break;
+    }
+  }
+  return{remaining,melds};
+}
+
+// ── AI strategy ──────────────────────────────────────────────────────────────
+function aiDecideDrawSource(hand, discardTop){
+  if(!discardTop) return 'stock';
+  // Would the discard reduce deadwood?
+  const testHand=[...hand,discardTop];
+  // Try all 11-card combos removing each card
+  let minDW=Infinity, bestCard=null;
+  testHand.forEach((c,i)=>{
+    const h=testHand.filter((_,j)=>j!==i);
+    const dw=bestMelds(h).dwTotal;
+    if(dw<minDW){minDW=dw;bestCard=c;}
+  });
+  const currentDW=bestMelds(hand).dwTotal;
+  return minDW<currentDW-1?'discard':'stock';
+}
+
+function aiChooseDiscard(hand){
+  // Find which card to discard to minimize deadwood
+  let minDW=Infinity,bestDiscard=null;
+  hand.forEach((c,i)=>{
+    const h=hand.filter((_,j)=>j!==i);
+    const dw=bestMelds(h).dwTotal;
+    if(dw<minDW){minDW=dw;bestDiscard=c;}
+  });
+  return bestDiscard||hand[hand.length-1];
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let deck,stock,discard,playerHand,aiHand,turn,phase,scores,roundScores;
+let drawn=null,drawnFrom=null,selDiscard=null,log=[];
+// phases: 'draw'|'discard'|'ai-turn'|'round-end'|'game-over'
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
+
+function newGame(){scores=[0,0];roundScores=[0,0];newRound();}
+
+function newRound(){
+  deck=makeDeck();
+  playerHand=deck.splice(0,10);
+  aiHand=deck.splice(0,10);
+  stock=[...deck];
+  discard=[stock.pop()];
+  turn=0; phase='draw'; drawn=null; drawnFrom=null; selDiscard=null;
+  addLog('New round. Draw from stock or discard pile.');
+  render();
+}
+
+function drawFrom(src){
+  if(phase!=='draw'||turn!==0) return;
+  if(src==='stock'){
+    if(!stock.length){addLog('Stock empty — reshuffle discard.');stock=[...discard.slice(0,-1)].reverse();discard=[discard[discard.length-1]];}
+    drawn=stock.pop(); drawnFrom='stock';
+  } else {
+    if(!discard.length) return;
+    drawn=discard.pop(); drawnFrom='discard';
+  }
+  playerHand.push(drawn);
+  phase='discard';
+  addLog(`You drew ${drawn.rank}${drawn.suit} from the ${src}.`);
+  render();
+}
+
+function selectForDiscard(card){
+  if(phase!=='discard'||turn!==0) return;
+  if(selDiscard&&cKey(selDiscard)===cKey(card)){
+    // Confirm discard
+    doDiscard(card);
+  } else {
+    selDiscard=card; render();
+  }
+}
+
+function doDiscard(card){
+  playerHand=playerHand.filter(c=>cKey(c)!==cKey(card));
+  discard.push(card);
+  drawn=null; drawnFrom=null; selDiscard=null;
+  addLog(`You discarded ${card.rank}${card.suit}.`);
+  // Check if player wants to knock
+  const{dwTotal}=bestMelds(playerHand);
+  if(dwTotal===0){
+    addLog('GIN! You have 0 deadwood.','pts');
+    phase='round-end';
+    resolveRound(true,false,true);
+  } else {
+    phase='draw'; turn=1;
+    render();
+    setTimeout(aiTurn,700);
+  }
+}
+
+function playerKnock(){
+  if(phase!=='discard'||turn!==0) return;
+  const{dwTotal}=bestMelds(playerHand);
+  if(dwTotal>10){addLog('Deadwood too high to knock (max 10).');return;}
+  addLog(`You knock with ${dwTotal} deadwood.`,'pts');
+  phase='round-end';
+  resolveRound(false,false,dwTotal===0);
+}
+
+function aiTurn(){
+  if(turn!==1) return;
+  // Draw
+  const src=aiDecideDrawSource(aiHand,discard[discard.length-1]);
+  let drawn2;
+  if(src==='discard'&&discard.length){
+    drawn2=discard.pop(); aiHand.push(drawn2);
+    addLog(`AI draws from discard (${drawn2.rank}${drawn2.suit}).`);
+  } else {
+    if(!stock.length){stock=[...discard.slice(0,-1)].reverse();discard=[discard[discard.length-1]];}
+    drawn2=stock.pop(); aiHand.push(drawn2);
+    addLog('AI draws from stock.');
+  }
+  render();
+  setTimeout(()=>{
+    // Discard
+    const toDiscard=aiChooseDiscard(aiHand);
+    aiHand=aiHand.filter(c=>cKey(c)!==cKey(toDiscard));
+    discard.push(toDiscard);
+    addLog(`AI discards ${toDiscard.rank}${toDiscard.suit}.`);
+    // Check gin/knock
+    const{dwTotal}=bestMelds(aiHand);
+    if(dwTotal===0){
+      addLog('AI has GIN!','pts');
+      phase='round-end';
+      resolveRound(true,true,true);
+    } else if(dwTotal<=5&&stock.length>15){
+      // AI knocks if deadwood ≤ 5 and plenty of stock
+      addLog(`AI knocks with ${dwTotal} deadwood.`,'pts');
+      phase='round-end';
+      resolveRound(false,true,false);
+    } else {
+      turn=0; phase='draw';
+      render();
+    }
+  },900);
+}
+
+function resolveRound(isGin,aiKnocked,playerGin){
+  const knocker=aiKnocked?1:0;
+  const{melds:km,deadwood:kdw,dwTotal:kDW}=bestMelds(knocker===0?playerHand:aiHand);
+  const defHand=knocker===0?aiHand:playerHand;
+  let defDW;
+  if(isGin){
+    // Can't lay off on gin
+    defDW=bestMelds(defHand).dwTotal;
+  } else {
+    const{remaining}=tryLayoff(defHand,km);
+    defDW=remaining.reduce((s,c)=>s+dwVal(c),0);
+  }
+  let pts=0,msg='';
+  if(isGin){pts=defDW+25;msg=`Gin! ${pts} pts (${defDW} deadwood + 25 bonus).`;}
+  else if(defDW<=kDW&&knocker===0){
+    // Undercut: AI gets points
+    pts=kDW-defDW+25;
+    scores[1]+=pts;roundScores[1]+=pts;
+    msg=`Undercut! AI scores ${pts} pts.`;
+    addLog(msg,'pts');
+  } else if(defDW<=kDW&&knocker===1){
+    pts=kDW-defDW+25;scores[0]+=pts;roundScores[0]+=pts;
+    msg=`Undercut! You score ${pts} pts.`;addLog(msg,'pts');
+  } else {
+    pts=defDW-kDW;
+    scores[knocker]+=pts;roundScores[knocker]+=pts;
+    msg=`${knocker===0?'You':'AI'} scores ${pts} pts.`;
+    addLog(msg,'pts');
+  }
+  if(isGin){scores[knocker]+=pts;roundScores[knocker]+=pts;addLog(msg,'pts');}
+  phase='round-end';
+  if(scores[0]>=100||scores[1]>=100){phase='game-over';endGame();}
+  else render();
+}
+
+function endGame(){
+  const won=scores[0]>scores[1];
+  addLog(`Game over! ${won?'You win':'AI wins'}. ${scores[0]}–${scores[1]}.`,'pts');
+  try{GameHistory.save('gin',{_summary:`Gin Rummy · ${scores[0]>scores[1]?'Win':'Loss'} ${scores[0]}–${scores[1]}`,_badge:scores[0]>scores[1]?'Win':'Loss',result:scores[0]>scores[1]?'win':'loss',score:scores[0],aiScore:scores[1]});}catch(e){}
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function cardEl(c,cls='',onClick){
+  if(!c) return`<div class="gcard face-down disabled"></div>`;
+  const col=RED.has(c.suit)?'red':'black';
+  return`<div class="gcard ${col} ${cls}" data-key="${cKey(c)}"${onClick?` data-click="${onClick}"`:''}><div class="gc-r">${c.rank}</div><div class="gc-s">${c.suit}</div></div>`;
+}
+
+function render(){
+  const root=document.getElementById('gr-root');
+  let html='';
+
+  // Scores
+  html+=`<div class="gr-scores">
+    <div class="gr-score-block">
+      <div class="gr-score-name" style="color:#60a5fa;">You</div>
+      <div class="gr-score-val" style="color:#60a5fa;">${scores[0]}</div>
+      <div class="gr-score-dw">Round: ${roundScores[0]}</div>
+    </div>
+    <div style="color:rgba(255,255,255,.2);font-size:1rem;">vs</div>
+    <div class="gr-score-block">
+      <div class="gr-score-name" style="color:#f87171;">AI</div>
+      <div class="gr-score-val" style="color:#f87171;">${scores[1]}</div>
+      <div class="gr-score-dw">Round: ${roundScores[1]}</div>
+    </div>
+  </div>`;
+
+  if(phase==='game-over'){
+    const won=scores[0]>=100;
+    html+=`<div class="gr-game-result">
+      <div class="gr-game-title">${won?'🏆 You Win!':'AI Wins'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">Final: You ${scores[0]} – AI ${scores[1]}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=`<div class="gr-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;
+    document.getElementById('ng-btn')?.addEventListener('click',newGame);
+    return;
+  }
+
+  if(phase==='round-end'){
+    const{melds:pm,deadwood:pdw,dwTotal:pDW}=bestMelds(playerHand);
+    const{melds:am,deadwood:adw,dwTotal:aDW}=bestMelds(aiHand);
+    const meldSet=n=>new Set(n.flat().map(cKey));
+    html+=`<div class="gr-round-result">
+      <div style="font-weight:700;margin-bottom:8px;">Round Complete</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;">
+        <div><div style="color:#60a5fa;font-weight:700;margin-bottom:4px;">Your hand (${pDW} dw)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;">
+            ${playerHand.map(c=>`<div class="gcard disabled ${RED.has(c.suit)?'red':'black'} ${meldSet(pm).has(cKey(c))?'in-meld':'deadwood'}" style="width:30px;height:42px;font-size:.6rem;">
+              <div class="gc-r" style="font-size:.6rem">${c.rank}</div><div class="gc-s" style="font-size:.55rem">${c.suit}</div></div>`).join('')}
+          </div>
+        </div>
+        <div><div style="color:#f87171;font-weight:700;margin-bottom:4px;">AI hand (${aDW} dw)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;">
+            ${aiHand.map(c=>`<div class="gcard disabled ${RED.has(c.suit)?'red':'black'} ${meldSet(am).has(cKey(c))?'in-meld':'deadwood'}" style="width:30px;height:42px;font-size:.6rem;">
+              <div class="gc-r" style="font-size:.6rem">${c.rank}</div><div class="gc-s" style="font-size:.55rem">${c.suit}</div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:6px;">🟢 Green = in meld &nbsp; 🔴 Red = deadwood</div>
+    </div>
+    <div style="text-align:center;margin-bottom:10px;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
+    html+=`<div class="gr-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;
+    document.getElementById('nr-btn')?.addEventListener('click',newRound);
+    return;
+  }
+
+  // Play phase
+  const{melds:pm,deadwood:pdw,dwTotal:pDW}=bestMelds(playerHand);
+  const meldSet=new Set(pm.flat().map(cKey));
+
+  // Phase badge
+  const phaseLabel={draw:'Draw a Card',discard:'Discard a Card','ai-turn':'AI\'s Turn'}[phase]||phase;
+  html+=`<div style="text-align:center;margin-bottom:8px;"><span class="gr-phase">${phaseLabel}</span></div>`;
+
+  // Table
+  html+=`<div class="gr-table">
+    <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;">AI Hand (${aiHand.length} cards)</div>
+    <div class="gr-hand" style="margin-bottom:10px;">${aiHand.map(()=>cardEl(null,'',null)).join('')}</div>
+    <div class="gr-piles">
+      <div class="gr-pile-wrap">
+        <div class="gr-pile-lbl">Stock</div>
+        <div class="stock-back" id="stock-pile">${stock.length?'🂠':''}</div>
+        <div class="gr-pile-count">${stock.length} left</div>
+      </div>
+      <div class="gr-pile-wrap">
+        <div class="gr-pile-lbl">Discard</div>
+        ${discard.length?cardEl(discard[discard.length-1],'',null):'<div class="gcard face-down" style="border-style:dashed;background:none;opacity:.3;"></div>'}
+      </div>
+    </div>
+  </div>`;
+
+  // Status
+  const statusMsg=phase==='draw'?'Draw from stock or discard pile.':
+    phase==='discard'?`Select a card to discard. Deadwood: ${pDW}`:'AI is thinking…';
+  html+=`<div class="gr-status">${statusMsg}</div>`;
+
+  // Player actions
+  if(phase==='discard'&&pDW<=10){
+    html+=`<div class="gr-actions">
+      <button class="btn btn-gold btn-sm" id="knock-btn">${pDW===0?'🎉 Declare Gin!':'✊ Knock'} (${pDW} dw)</button>
+    </div>`;
+  }
+
+  // Player hand
+  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand — Deadwood: ${pDW}</div>
+  <div class="gr-hand" id="player-hand">`;
+  playerHand.forEach(c=>{
+    const inMeld=meldSet.has(cKey(c));
+    const isSel=selDiscard&&cKey(selDiscard)===cKey(c);
+    const isDW=!inMeld;
+    let cls=inMeld?'in-meld':isDW?'deadwood':'';
+    if(isSel) cls='selected';
+    if(phase!=='discard') cls+=' disabled';
+    html+=cardEl(c,cls,phase==='discard'?'discard':null);
+  });
+  html+=`</div>`;
+
+  if(phase==='discard'&&selDiscard){
+    html+=`<div style="text-align:center;font-size:.8rem;color:rgba(255,255,255,.6);margin-top:4px;">Tap again to confirm discard of ${selDiscard.rank}${selDiscard.suit}</div>`;
+  }
+
+  // Log
+  html+=`<div class="gr-log" id="gr-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+
+  root.innerHTML=html;
+
+  // Events
+  document.getElementById('stock-pile')?.addEventListener('click',()=>drawFrom('stock'));
+  if(discard.length){
+    document.querySelectorAll('.gr-table .gcard:not(.face-down)').forEach(el=>{
+      if(el.closest('#stock-pile')) return;
+      el.addEventListener('click',()=>drawFrom('discard'));
+    });
+  }
+  document.getElementById('player-hand')?.querySelectorAll('.gcard:not(.disabled)').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const c=playerHand.find(c=>cKey(c)===el.dataset.key);
+      if(c) selectForDiscard(c);
+    });
+  });
+  document.getElementById('knock-btn')?.addEventListener('click',playerKnock);
+
+  const logEl=document.getElementById('gr-log');
+  if(logEl) logEl.scrollTop=logEl.scrollHeight;
+}
+
+newGame();
+</script>
+</body>
+</html>

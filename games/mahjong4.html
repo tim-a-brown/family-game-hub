@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Mahjong — 4 Player</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#060d08 60%);}
+.mj-wrap{max-width:500px;margin:0 auto;padding:0 8px 70px;}
+/* Tile */
+.mjt{width:38px;height:52px;border-radius:6px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-weight:900;box-shadow:1px 2px 5px rgba(0,0,0,.5);
+  transition:all .12s;user-select:none;flex-shrink:0;cursor:default;
+  background:linear-gradient(145deg,#f0ede0,#e0dcc8);border:1.5px solid rgba(0,0,0,.2);}
+.mjt.m{color:#c53030;}.mjt.p{color:#15803d;}.mjt.s{color:#1d4ed8;}
+.mjt.w{color:#6d28d9;}.mjt.d{color:#92400e;}
+.mjt.playable{cursor:pointer;}.mjt.playable:hover{transform:translateY(-8px);border-color:#f5c842;}
+.mjt.selected{transform:translateY(-12px);border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);}
+.mjt.meld-t{border-color:#22c55e;background:linear-gradient(145deg,#f0fff4,#dcfce7);}
+.mjt.face-down{background:linear-gradient(145deg,#1a4a2e,#0d2818);border-color:rgba(255,255,255,.15);color:transparent;cursor:default;}
+.mjt-n{font-size:.82rem;line-height:1;font-family:'Playfair Display',serif;}
+.mjt-s{font-size:.5rem;font-weight:700;line-height:1;opacity:.65;}
+/* Mini tile for melds/discards */
+.mjt.sm{width:26px;height:36px;border-radius:4px;}.mjt.sm .mjt-n{font-size:.58rem;}.mjt.sm .mjt-s{font-size:.38rem;}
+.mjt.xs{width:18px;height:26px;border-radius:3px;}.mjt.xs .mjt-n{font-size:.42rem;}.mjt.xs .mjt-s{font-size:.28rem;}
+/* Table */
+.mj-table{background:linear-gradient(145deg,#0a2818,#060f0a);border:2px solid rgba(255,255,255,.07);
+  border-radius:16px;padding:10px;margin-bottom:10px;}
+/* Player zones */
+.mj-north{text-align:center;margin-bottom:8px;}
+.mj-mid{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px;}
+.mj-side{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px;}
+.mj-side-tiles{display:flex;flex-direction:column;gap:1px;}
+.mj-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
+/* Discards grid */
+.mj-discards{display:flex;flex-wrap:wrap;gap:2px;max-width:160px;justify-content:center;}
+/* Player name */
+.mj-pname{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.4);}
+.mj-pname.active{color:#f5c842;}.mj-pname.you{color:rgba(90,200,250,.7);}
+.mj-pinfo{font-size:.55rem;color:rgba(255,255,255,.3);}
+/* Melds shown */
+.mj-melds{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:3px;}
+.mj-meld{display:flex;gap:1px;}
+/* Scores */
+.mj-scores{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;}
+.mj-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px;text-align:center;}
+.mj-score-box.you{border-color:rgba(90,200,250,.3);}
+.mj-score-box.leader{border-color:rgba(245,200,66,.4);}
+.mj-score-name{font-size:.55rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.45);}
+.mj-score-val{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:#f5c842;}
+.mj-score-wind{font-size:.55rem;color:rgba(255,255,255,.3);}
+/* Status + actions */
+.mj-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
+.mj-actions{display:flex;gap:8px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
+/* Last discard display */
+.mj-last-discard{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.mj-ld-lbl{font-size:.55rem;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);}
+/* Claim panel */
+.mj-claim-panel{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+.mj-claim-title{font-weight:700;color:#f5c842;margin-bottom:6px;font-size:.88rem;}
+/* Log */
+.mj-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:65px;overflow-y:auto;font-size:.72rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.mj-log .win{color:#f5c842;font-weight:700;}
+/* Round/game result */
+.mj-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
+.mj-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.mj-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Mahjong — 4 Player</span>
+</nav>
+<div class="page" style="padding:10px 0 70px;">
+<div class="mj-wrap" id="mj-root"></div>
+</div>
+<script>
+'use strict';
+// 4-player Mahjong. Players: 0=East(You),1=South(AI),2=West(AI),3=North(AI)
+// Rounds rotate wind. Game = 4 rounds (East→South→West→North).
+// Win: 4 melds + 1 pair (or 7 pairs). Tsumo(self-draw) or Ron(discard).
+
+const PNAMES=['You','South','West','North'];
+const WINDS=['E','S','W','N'];
+const WIND_FULL=['East','South','West','North'];
+const SUITS=['m','p','s']; // characters, circles, bamboo
+const SUIT_LABELS={m:'Man',p:'Pin',s:'Sou',w:'Wind',d:'Dragon'};
+const DRAGON_LABELS={1:'中',2:'發',3:'白'}; // Chun, Hatsu, Haku
+const WIND_LABELS={1:'東',2:'南',3:'西',4:'北'};
+
+function makeDeck(){
+  const d=[];
+  let id=0;
+  SUITS.forEach(s=>{for(let n=1;n<=9;n++) for(let c=0;c<4;c++) d.push({id:id++,suit:s,num:n});});
+  for(let n=1;n<=4;n++) for(let c=0;c<4;c++) d.push({id:id++,suit:'w',num:n});
+  for(let n=1;n<=3;n++) for(let c=0;c<4;c++) d.push({id:id++,suit:'d',num:n});
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function tKey(t){return t.suit+t.num;}
+function sortTiles(a,b){
+  const sOrder={m:0,p:1,s:2,w:3,d:4};
+  if(sOrder[a.suit]!==sOrder[b.suit]) return sOrder[a.suit]-sOrder[b.suit];
+  return a.num-b.num;
+}
+
+// ── Win detection ──────────────────────────────────────────────────────────
+function isWin(hand14){
+  if(hand14.length!==14) return false;
+  const sorted=[...hand14].sort(sortTiles);
+  // 7 pairs
+  const counts={};
+  sorted.forEach(t=>{counts[tKey(t)]=(counts[tKey(t)]||0)+1;});
+  const vals=Object.values(counts);
+  if(vals.length===7&&vals.every(v=>v===2)) return true;
+  // Standard: 4 melds + 1 pair
+  return checkStd(sorted);
+}
+
+function checkStd(sorted){
+  // Try each possible pair
+  const tried=new Set();
+  for(let i=0;i<sorted.length-1;i++){
+    const k=tKey(sorted[i]);
+    if(tried.has(k)) continue;
+    if(i+1<sorted.length&&tKey(sorted[i+1])===k){
+      tried.add(k);
+      const rest=sorted.filter((_,idx)=>idx!==i&&idx!==i+1);
+      if(canMelds(rest)) return true;
+    }
+  }
+  return false;
+}
+
+function canMelds(tiles){
+  if(!tiles.length) return true;
+  const first=tiles[0];
+  // Try triplet
+  const same=tiles.filter(t=>tKey(t)===tKey(first));
+  if(same.length>=3){
+    const used=same.slice(0,3);
+    const rest=tiles.filter(t=>!used.includes(t));
+    if(canMelds(rest)) return true;
+  }
+  // Try sequence (numbered suits only)
+  if(SUITS.includes(first.suit)){
+    const t2=tiles.find(t=>t!==first&&t.suit===first.suit&&t.num===first.num+1);
+    if(t2){
+      const t3=tiles.find(t=>t!==first&&t!==t2&&t.suit===first.suit&&t.num===first.num+2);
+      if(t3){
+        const rest=tiles.filter(t=>t!==first&&t!==t2&&t!==t3);
+        if(canMelds(rest)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ── Shanten number (simplified) ──────────────────────────────────────────────
+function shanten(hand){
+  const h=[...hand].sort(sortTiles);
+  let best=8;
+  const counts={};
+  h.forEach(t=>{counts[tKey(t)]=(counts[tKey(t)]||0)+1;});
+
+  function tryPair(pairKey,remaining){
+    let melds=0,partial=0;
+    const rem=[...remaining].sort(sortTiles);
+    // Count triplets
+    const remCounts={};
+    rem.forEach(t=>{remCounts[tKey(t)]=(remCounts[tKey(t)]||0)+1;});
+    const used=new Set();
+    // Greedy: triplets first
+    const temp=[...rem];
+    for(let i=0;i<temp.length;){
+      if(!used.has(temp[i].id)&&i+2<temp.length&&tKey(temp[i])===tKey(temp[i+1])&&tKey(temp[i])===tKey(temp[i+2])){
+        used.add(temp[i].id);used.add(temp[i+1].id);used.add(temp[i+2].id);melds++;i+=3;
+      } else i++;
+    }
+    // Sequences
+    const leftover=temp.filter(t=>!used.has(t.id));
+    for(let i=0;i<leftover.length;){
+      if(!used.has(leftover[i].id)&&SUITS.includes(leftover[i].suit)){
+        const t2=leftover.find(t=>!used.has(t.id)&&t!==leftover[i]&&t.suit===leftover[i].suit&&t.num===leftover[i].num+1);
+        const t3=t2&&leftover.find(t=>!used.has(t.id)&&t!==leftover[i]&&t!==t2&&t.suit===leftover[i].suit&&t.num===leftover[i].num+2);
+        if(t2&&t3){used.add(leftover[i].id);used.add(t2.id);used.add(t3.id);melds++;i++;}
+        else i++;
+      } else i++;
+    }
+    // Partial: pairs + consecutive pairs
+    const remain2=temp.filter(t=>!used.has(t.id));
+    const rc={};
+    remain2.forEach(t=>{rc[tKey(t)]=(rc[tKey(t)]||0)+1;});
+    Object.values(rc).forEach(c=>{if(c>=2)partial++;});
+    const shn=8-2*melds-partial-(pairKey?1:0);
+    best=Math.min(best,shn);
+  }
+
+  const tried=new Set();
+  for(let i=0;i<h.length;i++){
+    const k=tKey(h[i]);
+    if(tried.has(k)) continue;
+    tried.add(k);
+    const j=h.findIndex((t,idx)=>idx>i&&tKey(t)===k);
+    if(j>=0){
+      const rest=h.filter((_,idx)=>idx!==i&&idx!==j);
+      tryPair(k,rest);
+    }
+  }
+  tryPair(null,h);
+  return Math.max(-1,best);
+}
+
+// ── AI discard logic ─────────────────────────────────────────────────────────
+function aiBestDiscard(hand){
+  // Try removing each tile and compute shanten
+  let bestShn=Infinity,bestTile=null;
+  hand.forEach(t=>{
+    const rest=hand.filter(h=>h!==t);
+    const shn=shanten(rest);
+    if(shn<bestShn||(shn===bestShn&&(!bestTile||isolatedValue(t)>isolatedValue(bestTile)))){
+      bestShn=shn;bestTile=t;
+    }
+  });
+  return bestTile||hand[hand.length-1];
+}
+
+function isolatedValue(t){
+  if(t.suit==='d') return 30;
+  if(t.suit==='w') return 25;
+  return t.num>=9||t.num<=1?15:10; // terminals/honors worth more to discard
+}
+
+function shouldClaimPong(hand,tile){
+  const withPong=[...hand,tile,tile,tile].slice(0,hand.length+2); // already have 2
+  const has2=hand.filter(t=>tKey(t)===tKey(tile)).length>=2;
+  if(!has2) return false;
+  const handWith=hand.filter(t=>tKey(t)!==tKey(tile));
+  const shnBefore=shanten(hand);
+  // After pong: hand becomes 10 tiles
+  const shnAfter=shanten(handWith)-1; // meld formed
+  return shnAfter<=shnBefore-1;
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let deck,hands,melds,discards,scores,phase,current,lastDiscard,lastDiscarder,
+    roundWind,seatWinds,roundNum,claimTimer,log,canClaim;
+// phase: 'draw'|'discard'|'claim-window'|'round-end'|'game-over'
+// melds[p]: [{type:'pong'|'chow', tiles:[]}]
+// discards[p]: []
+// seatWinds[p]: 'E'|'S'|'W'|'N'
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>25)log.shift();}
+
+function newGame(){scores=[0,0,0,0];log=[];roundNum=0;roundWind='E';newRound();}
+
+function newRound(){
+  roundNum++;
+  deck=makeDeck();
+  hands=Array.from({length:4},()=>deck.splice(0,13));
+  // Dealer gets extra tile
+  hands[0].push(deck.pop());
+  melds=[[],[],[],[]];
+  discards=[[],[],[],[]];
+  canClaim=null;
+  seatWinds=[...WINDS]; // 0=East, 1=South, 2=West, 3=North
+  current=0; phase='discard';
+  addLog(`Round ${roundNum}. ${PNAMES[0]} is East (dealer). Draw and discard to form 4 melds + 1 pair.`);
+  render();
+}
+
+// ── Player discard ───────────────────────────────────────────────────────────
+let selTile=null;
+
+function selectTile(t){
+  if(phase!=='discard'||current!==0) return;
+  if(selTile===t){discardTile(t);}
+  else{selTile=t;render();}
+}
+
+function discardTile(t){
+  if(!t) return;
+  hands[0]=hands[0].filter(x=>x!==t);
+  discards[0].push(t);
+  lastDiscard=t;lastDiscarder=0;
+  selTile=null;
+  // Check if anyone can claim
+  openClaimWindow();
+}
+
+// ── Claim window ─────────────────────────────────────────────────────────────
+function openClaimWindow(){
+  phase='claim-window';
+  // Check Ron first (any player can win with this tile)
+  for(let p=1;p<4;p++){
+    const testHand=[...hands[p],lastDiscard];
+    if(isWin(testHand)){
+      // AI always takes Ron
+      setTimeout(()=>claimRon(p),600);
+      return;
+    }
+  }
+  // Check Pong (any player other than discarder)
+  const pongPlayers=[1,2,3].filter(p=>hands[p].filter(t=>tKey(t)===tKey(lastDiscard)).length>=2);
+  if(pongPlayers.length>0){
+    // AI claims if beneficial
+    const claimer=pongPlayers.find(p=>shouldClaimPong(hands[p],lastDiscard));
+    if(claimer!==undefined){setTimeout(()=>claimPong(claimer),700);return;}
+  }
+  // Chow: only player to left of discarder (index 1 from discarder)
+  const chowPlayer=(lastDiscarder+1)%4;
+  if(chowPlayer!==0&&canChow(hands[chowPlayer],lastDiscard)){
+    const doChow=shanten(hands[chowPlayer])>0;
+    if(doChow){setTimeout(()=>claimChow(chowPlayer),700);return;}
+  }
+  // No AI claim: next player draws
+  render();
+  setTimeout(advanceAfterDiscard,500);
+}
+
+function advanceAfterDiscard(){
+  if(phase!=='claim-window') return;
+  const next=(lastDiscarder+1)%4;
+  current=next; phase='draw';
+  render();
+  if(next!==0) setTimeout(aiTurn,600);
+}
+
+function canChow(hand,tile){
+  if(!SUITS.includes(tile.suit)) return false;
+  // Check if hand has two tiles to form a sequence with tile
+  const n=tile.num,s=tile.suit;
+  const hasTile=v=>hand.some(t=>t.suit===s&&t.num===v);
+  return (hasTile(n-2)&&hasTile(n-1))||(hasTile(n-1)&&hasTile(n+1))||(hasTile(n+1)&&hasTile(n+2));
+}
+
+function claimRon(p){
+  addLog(`${PNAMES[p]} wins with RON on ${tileLabel(lastDiscard)}! 🀄`,'win');
+  const pts=calculateScore(p,false);
+  scores[p]+=pts;scores[lastDiscarder]-=pts;
+  addLog(`${PNAMES[p]} +${pts} pts · ${PNAMES[lastDiscarder]} -${pts} pts`,'win');
+  finishRound(p,'ron');
+}
+
+function claimPong(p){
+  const used=hands[p].filter(t=>tKey(t)===tKey(lastDiscard)).slice(0,2);
+  hands[p]=hands[p].filter(t=>!used.includes(t));
+  melds[p].push({type:'pong',tiles:[used[0],used[1],lastDiscard]});
+  addLog(`${PNAMES[p]} Pong ${tileLabel(lastDiscard)}!`);
+  current=p; phase='discard';
+  discards[lastDiscarder].pop(); // tile was claimed
+  render();
+  if(p!==0) setTimeout(()=>{const d=aiBestDiscard(hands[p]);doAiDiscard(p,d);},700);
+}
+
+function claimChow(p){
+  const n=lastDiscard.num,s=lastDiscard.suit;
+  const hasTile=v=>hands[p].find(t=>t.suit===s&&t.num===v);
+  let t1,t2;
+  if(hasTile(n-2)&&hasTile(n-1)){t1=hasTile(n-2);t2=hasTile(n-1);}
+  else if(hasTile(n-1)&&hasTile(n+1)){t1=hasTile(n-1);t2=hasTile(n+1);}
+  else if(hasTile(n+1)&&hasTile(n+2)){t1=hasTile(n+1);t2=hasTile(n+2);}
+  if(!t1||!t2) return advanceAfterDiscard();
+  hands[p]=hands[p].filter(t=>t!==t1&&t!==t2);
+  melds[p].push({type:'chow',tiles:[t1,t2,lastDiscard].sort(sortTiles)});
+  addLog(`${PNAMES[p]} Chow ${tileLabel(lastDiscard)}!`);
+  current=p; phase='discard';
+  discards[lastDiscarder].pop();
+  render();
+  if(p!==0) setTimeout(()=>{const d=aiBestDiscard(hands[p]);doAiDiscard(p,d);},700);
+}
+
+// ── AI turn ──────────────────────────────────────────────────────────────────
+function aiTurn(){
+  const p=current;
+  if(p===0||phase!=='draw') return;
+  if(!deck.length){addLog('Wall exhausted — draw!');finishRound(-1,'draw');return;}
+  const drawn=deck.pop();
+  hands[p].push(drawn);
+  // Check Tsumo
+  if(isWin(hands[p])){
+    addLog(`${PNAMES[p]} wins with TSUMO! 🀄`,'win');
+    const pts=calculateScore(p,true);
+    [0,1,2,3].filter(x=>x!==p).forEach(x=>scores[x]-=Math.ceil(pts/3));
+    scores[p]+=pts;
+    addLog(`${PNAMES[p]} +${pts} pts`,'win');
+    finishRound(p,'tsumo');
+    return;
+  }
+  phase='discard';
+  const d=aiBestDiscard(hands[p]);
+  setTimeout(()=>doAiDiscard(p,d),500);
+}
+
+function doAiDiscard(p,t){
+  if(!t) return;
+  hands[p]=hands[p].filter(x=>x!==t);
+  discards[p].push(t);
+  lastDiscard=t;lastDiscarder=p;
+  addLog(`${PNAMES[p]} discards ${tileLabel(t)}.`);
+  // Check if player 0 can Ron
+  const testHand=[...hands[0],t];
+  if(isWin(testHand)){
+    canClaim={type:'ron',discarder:p,tile:t};
+    phase='claim-window'; render(); return;
+  }
+  // Check if player 0 can Pong
+  if(hands[0].filter(x=>tKey(x)===tKey(t)).length>=2){
+    canClaim={type:'pong',discarder:p,tile:t};
+    phase='claim-window'; render(); return;
+  }
+  // Chow: only if p is to player's right (p=3, chow player = 0)
+  if((p+1)%4===0&&canChow(hands[0],t)){
+    canClaim={type:'chow',discarder:p,tile:t};
+    phase='claim-window'; render(); return;
+  }
+  canClaim=null;
+  phase='claim-window';
+  render();
+  setTimeout(advanceAfterDiscard,400);
+}
+
+// ── Player draw & Tsumo ───────────────────────────────────────────────────────
+function playerDraw(){
+  if(phase!=='draw'||current!==0) return;
+  if(!deck.length){addLog('Wall exhausted — draw!');finishRound(-1,'draw');return;}
+  const drawn=deck.pop();
+  hands[0].push(drawn);
+  phase='discard';
+  selTile=null;
+  addLog(`You drew ${tileLabel(drawn)}.`);
+  // Auto-check Tsumo
+  if(isWin(hands[0])){
+    canClaim={type:'tsumo',tile:drawn};
+    render(); return;
+  }
+  render();
+}
+
+function playerTsumo(){
+  if(!canClaim||canClaim.type!=='tsumo') return;
+  addLog(`You win with TSUMO! 🀄`,'win');
+  const pts=calculateScore(0,true);
+  [1,2,3].forEach(x=>scores[x]-=Math.ceil(pts/3));
+  scores[0]+=pts;
+  finishRound(0,'tsumo');
+}
+
+function playerRon(){
+  if(!canClaim||canClaim.type!=='ron') return;
+  hands[0].push(canClaim.tile);
+  discards[canClaim.discarder].pop();
+  addLog(`You win with RON! 🀄`,'win');
+  const pts=calculateScore(0,false);
+  scores[0]+=pts;scores[canClaim.discarder]-=pts;
+  finishRound(0,'ron');
+}
+
+function playerPong(){
+  if(!canClaim||canClaim.type!=='pong') return;
+  claimPong(0);canClaim=null;
+}
+
+function playerChow(){
+  if(!canClaim||canClaim.type!=='chow') return;
+  claimChow(0);canClaim=null;
+}
+
+function playerPass(){
+  canClaim=null; phase='claim-window';
+  render(); setTimeout(advanceAfterDiscard,300);
+}
+
+// ── Scoring (simplified) ──────────────────────────────────────────────────────
+function calculateScore(winner,tsumo){
+  let base=10;
+  // All triplets bonus
+  if(melds[winner].every(m=>m.type==='pong')) base+=10;
+  // Tsumo bonus
+  if(tsumo) base+=5;
+  // Self-color hand
+  const suit=new Set(hands[winner].map(t=>t.suit));
+  if(suit.size===1) base+=20;
+  return base;
+}
+
+function finishRound(winner,method){
+  phase='round-end';
+  render();
+}
+
+function tileLabel(t){
+  if(!t) return '?';
+  if(t.suit==='d') return DRAGON_LABELS[t.num];
+  if(t.suit==='w') return WIND_LABELS[t.num];
+  return t.num+(t.suit==='m'?'m':t.suit==='p'?'p':'s');
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function tileEl(t,cls='',small=false){
+  if(!t) return `<div class="mjt ${small?'sm':''} face-down"></div>`;
+  const suf=small?'sm':'';
+  const suit=t.suit;
+  let label='',sub='';
+  if(suit==='d'){label=DRAGON_LABELS[t.num];sub='Dragon';}
+  else if(suit==='w'){label=WIND_LABELS[t.num];sub='Wind';}
+  else{label=t.num;sub=suit==='m'?'M':suit==='p'?'P':'S';}
+  return`<div class="mjt ${suit} ${cls} ${suf}"><div class="mjt-n">${label}</div><div class="mjt-s">${sub}</div></div>`;
+}
+
+function faceDownRow(count,size='xs'){
+  return Array(count).fill(0).map(()=>`<div class="mjt face-down ${size}"></div>`).join('');
+}
+
+function render(){
+  const root=document.getElementById('mj-root');
+  let html='';
+
+  // Scores
+  const maxScore=Math.max(...scores);
+  html+=`<div class="mj-scores">`;
+  PNAMES.forEach((n,i)=>{
+    html+=`<div class="mj-score-box ${i===0?'you':''} ${scores[i]===maxScore&&scores[i]>0?'leader':''}">
+      <div class="mj-score-name">${n}</div>
+      <div class="mj-score-val">${scores[i]}</div>
+      <div class="mj-score-wind">${seatWinds?.[i]||WINDS[i]}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Game over
+  if(phase==='game-over'){
+    const w=scores.indexOf(Math.max(...scores));
+    html+=`<div class="mj-game-result">
+      <div class="mj-game-title">${w===0?'🏆 You Win!':PNAMES[w]+' Wins!'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PNAMES.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=`<div class="mj-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls||''}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+  }
+
+  // Round end
+  if(phase==='round-end'){
+    html+=`<div class="mj-round-end">
+      <div style="font-weight:700;margin-bottom:6px;">Round ${roundNum} Complete</div>
+      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">${PNAMES.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
+    </div>`;
+    const continueText=roundNum<4?'Next Round':'Game Over';
+    html+=`<div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">${continueText}</button></div>`;
+    html+=`<div class="mj-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls||''}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;
+    document.getElementById('nr-btn')?.addEventListener('click',()=>{
+      if(roundNum>=4){phase='game-over';render();}
+      else{seatWinds=seatWinds.map((w,i)=>WINDS[(WINDS.indexOf(w)+1)%4]);newRound();}
+    });
+    return;
+  }
+
+  // Claim window for player
+  if(canClaim&&phase==='claim-window'){
+    html+=`<div class="mj-claim-panel">
+      <div class="mj-claim-title">${canClaim.type==='tsumo'?'🀄 Tsumo — Self-draw Win!':canClaim.type==='ron'?`🀄 Ron! ${tileLabel(canClaim.tile)} completes your hand!`:canClaim.type==='pong'?`Pong ${tileLabel(canClaim.tile)}?`:`Chow ${tileLabel(canClaim.tile)}?`}</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        ${canClaim.type==='tsumo'?`<button class="btn btn-gold" id="cm-take">Win!</button>`:''}
+        ${canClaim.type==='ron'?`<button class="btn btn-gold" id="cm-ron">Ron!</button>`:''}
+        ${canClaim.type==='pong'?`<button class="btn btn-gold" id="cm-pong">Pong</button>`:''}
+        ${canClaim.type==='chow'?`<button class="btn btn-gold" id="cm-chow">Chow</button>`:''}
+        <button class="btn btn-outline btn-sm" id="cm-pass">Pass</button>
+      </div>
+    </div>`;
+  }
+
+  // Table
+  // North (player 2 with seat adjustment; show opposite player)
+  const opp=2; // opposite player index
+  html+=`<div class="mj-table">
+    <div class="mj-north">
+      <div class="mj-pname ${current===opp?'active':''}">${PNAMES[opp]} (${seatWinds[opp]}) ${melds[opp].length?'·'+melds[opp].length+' melds':''}</div>
+      <div style="display:flex;gap:1px;justify-content:center;">${faceDownRow(hands[opp].length,'xs')}</div>
+      <div class="mj-melds">${melds[opp].map(m=>`<div class="mj-meld">${m.tiles.map(t=>tileEl(t,'meld-t',true)).join('')}</div>`).join('')}</div>
+    </div>
+
+    <div class="mj-mid">
+      <!-- Left (player 1) -->
+      <div class="mj-side">
+        <div class="mj-pname ${current===1?'active':''}">${PNAMES[1]} (${seatWinds[1]})</div>
+        <div class="mj-side-tiles">${faceDownRow(Math.min(hands[1].length,7),'xs')}</div>
+        <div class="mj-melds">${melds[1].map(m=>`<div class="mj-meld">${m.tiles.map(t=>tileEl(t,'meld-t',true)).join('')}</div>`).join('')}</div>
+      </div>
+
+      <!-- Center: discards + last discard -->
+      <div class="mj-center">
+        <div style="font-size:.55rem;color:rgba(255,255,255,.3);text-align:center;">${deck.length} tiles left</div>
+        <div class="mj-discards">${discards.flat().slice(-12).map(t=>tileEl(t,'',true)).join('')}</div>
+        ${lastDiscard?`<div class="mj-last-discard">
+          <div class="mj-ld-lbl">Last</div>
+          ${tileEl(lastDiscard,'',false)}
+        </div>`:''}
+      </div>
+
+      <!-- Right (player 3) -->
+      <div class="mj-side">
+        <div class="mj-pname ${current===3?'active':''}">${PNAMES[3]} (${seatWinds[3]})</div>
+        <div class="mj-side-tiles">${faceDownRow(Math.min(hands[3].length,7),'xs')}</div>
+        <div class="mj-melds">${melds[3].map(m=>`<div class="mj-meld">${m.tiles.map(t=>tileEl(t,'meld-t',true)).join('')}</div>`).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Status
+  const isYourDraw=phase==='draw'&&current===0;
+  const isYourDiscard=phase==='discard'&&current===0;
+  const shn=shanten(hands[0]);
+  html+=`<div class="mj-status">${
+    isYourDraw?`Click to draw a tile (${deck.length} left)`:
+    isYourDiscard?`Tap a tile twice to discard. Shanten: ${shn}`:
+    phase==='claim-window'?'':
+    current!==0?`${PNAMES[current]}'s turn…`:''
+  }</div>`;
+
+  // Player melds
+  if(melds[0].length){
+    html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;">
+      ${melds[0].map(m=>`<div class="mj-meld">${m.tiles.map(t=>tileEl(t,'meld-t',true)).join('')}</div>`).join('')}
+    </div>`;
+  }
+
+  // Player hand
+  const isPlayable=isYourDiscard||false;
+  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${seatWinds[0]}) — ${hands[0].length} tiles · Shanten: ${shn}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;min-height:56px;" id="player-hand">
+    ${[...hands[0]].sort(sortTiles).map(t=>{
+      const isSel=selTile===t;
+      return tileEl(t,(isPlayable?'playable':'')+(isSel?' selected':''));
+    }).join('')}
+  </div>`;
+
+  // Actions
+  if(isYourDraw){html+=`<div class="mj-actions"><button class="btn btn-gold" id="draw-btn">🀄 Draw Tile</button></div>`;}
+  else if(selTile&&isYourDiscard){
+    html+=`<div class="mj-actions"><button class="btn btn-outline btn-sm" id="discard-btn">Discard ${tileLabel(selTile)}</button></div>`;
+  }
+
+  html+=`<div class="mj-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls||''}">${msg}</div>`).join('')}</div>`;
+  root.innerHTML=html;
+
+  // Wire events
+  document.getElementById('draw-btn')?.addEventListener('click',playerDraw);
+  document.getElementById('discard-btn')?.addEventListener('click',()=>{if(selTile)discardTile(selTile);});
+  document.getElementById('cm-take')?.addEventListener('click',playerTsumo);
+  document.getElementById('cm-ron')?.addEventListener('click',playerRon);
+  document.getElementById('cm-pong')?.addEventListener('click',playerPong);
+  document.getElementById('cm-chow')?.addEventListener('click',playerChow);
+  document.getElementById('cm-pass')?.addEventListener('click',playerPass);
+
+  const sortedHand=[...hands[0]].sort(sortTiles);
+  document.getElementById('player-hand')?.querySelectorAll('.mjt').forEach((el,idx)=>{
+    if(isPlayable) el.addEventListener('click',()=>{
+      const t=sortedHand[idx];
+      if(t) selectTile(t);
+    });
+  });
+
+  if(isYourDraw) document.getElementById('draw-btn')?.addEventListener('click',playerDraw);
+  if(current!==0&&phase==='draw') setTimeout(aiTurn,700);
+}
+
+newGame();
+</script>
+</body>
+</html>

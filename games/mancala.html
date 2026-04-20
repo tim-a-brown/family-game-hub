@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Mancala</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#2a1a0a 0%,#1a0f05 55%,#0d0a07 100%);}
+/* Board */
+.mc-wrap{max-width:480px;margin:0 auto;padding:0 12px;}
+.mc-board{
+  background:linear-gradient(145deg,#5c3a1e,#3d2410);
+  border:3px solid #8b5e2e;border-radius:20px;
+  padding:10px;box-shadow:0 8px 32px rgba(0,0,0,.6),inset 0 2px 0 rgba(255,255,255,.08);
+  position:relative;
+}
+.mc-row{display:flex;align-items:center;gap:6px;}
+/* Mancala stores (large pits on ends) */
+.mc-store{
+  flex:0 0 64px;height:130px;
+  background:linear-gradient(145deg,#3a2010,#251508);
+  border:2px solid #6b4520;border-radius:14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;cursor:default;position:relative;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.5);
+}
+.mc-store.active-store{border-color:#f5c842;box-shadow:inset 0 3px 8px rgba(0,0,0,.5),0 0 12px rgba(245,200,66,.3);}
+/* Regular pits */
+.mc-pits{flex:1;display:grid;grid-template-rows:1fr 1fr;gap:6px;}
+.mc-pit{
+  background:linear-gradient(145deg,#3a2010,#251508);
+  border:2px solid #6b4520;border-radius:12px;
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:2px;padding:6px;cursor:pointer;position:relative;
+  transition:border-color .15s,box-shadow .15s;
+  min-height:54px;
+}
+.mc-pit:hover:not(.disabled){border-color:#f5c842;box-shadow:0 0 10px rgba(245,200,66,.25);}
+.mc-pit.active-pit{border-color:#f5c842;box-shadow:0 0 14px rgba(245,200,66,.4);}
+.mc-pit.disabled{cursor:default;opacity:.7;}
+.mc-pit.last-pit{border-color:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.3);}
+/* Seeds */
+.seed{
+  width:10px;height:10px;border-radius:50%;
+  box-shadow:0 1px 3px rgba(0,0,0,.5);
+  flex-shrink:0;
+}
+/* Count badge */
+.pit-count{
+  position:absolute;bottom:4px;right:6px;
+  font-size:.62rem;font-weight:700;color:rgba(255,255,255,.5);
+  pointer-events:none;
+}
+.store-count{font-family:var(--serif);font-size:2rem;font-weight:900;color:var(--gold);}
+.store-lbl{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);}
+/* Status */
+.mc-status{text-align:center;font-size:.92rem;font-weight:700;margin:12px 0 6px;min-height:26px;}
+.mc-scores{display:flex;justify-content:center;gap:20px;margin-bottom:8px;}
+.mc-score-block{text-align:center;}
+.mc-score-name{font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+.mc-score-val{font-family:var(--serif);font-size:1.8rem;font-weight:900;line-height:1;}
+/* Setup */
+.mc-setup{max-width:380px;margin:0 auto 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;}
+/* Winner */
+.mc-winner{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;text-align:center;margin-bottom:14px;max-width:300px;margin-left:auto;margin-right:auto;}
+.mc-winner-title{font-family:var(--serif);font-size:1.5rem;font-weight:900;color:#0d1117;}
+.mc-winner-sub{font-size:.85rem;font-weight:600;color:#2a1a00;margin-top:4px;}
+/* Seed colors per player */
+.seed-p1{background:radial-gradient(circle at 35% 35%,#7dd3fc,#2563eb);}
+.seed-p2{background:radial-gradient(circle at 35% 35%,#fca5a5,#dc2626);}
+/* Rules */
+.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.rules-summary{padding:10px 14px;font-size:.82rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.6);list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+.rules-summary::-webkit-details-marker{display:none;}
+.rules-body{padding:4px 14px 12px;font-size:.78rem;line-height:1.7;color:rgba(255,255,255,.55);}
+.rules-body p{margin:0 0 6px;}
+.rules-body strong{color:rgba(255,255,255,.85);}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Mancala</span>
+</nav>
+<div class="page" style="padding-bottom:60px;">
+
+<!-- Rules -->
+<details class="rules-details">
+  <summary class="rules-summary">📖 How to Play Mancala <span style="font-size:.6rem;opacity:.4;">▼</span></summary>
+  <div class="rules-body">
+    <p><strong>Goal:</strong> Capture more seeds than your opponent. The player with the most seeds in their store when all of one side's pits are empty wins.</p>
+    <p><strong>Setup:</strong> 6 pits per player, 4 seeds each. Your store is on your right.</p>
+    <p><strong>Your turn:</strong> Pick up all seeds from one of your pits. Drop one seed in each pit going counter-clockwise, including your store — but skip your opponent's store.</p>
+    <p><strong>Extra turn:</strong> If your last seed lands in your own store, you get another turn! 🎉</p>
+    <p><strong>Capture:</strong> If your last seed lands in an empty pit on <em>your</em> side, you capture that seed plus all seeds in the pit directly opposite — they all go into your store.</p>
+    <p><strong>Game end:</strong> When all 6 pits on one player's side are empty, the other player captures all remaining seeds on their side.</p>
+  </div>
+</details>
+
+<!-- Setup -->
+<div class="mc-setup" id="mc-setup">
+  <div style="margin-bottom:10px;font-weight:700;">Player Names</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;flex-shrink:0;"></div>
+      <input class="input" id="mc-p1" value="Player 1" maxlength="16" style="flex:1;">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:#dc2626;flex-shrink:0;"></div>
+      <input class="input" id="mc-p2" value="Player 2" maxlength="16" style="flex:1;">
+    </div>
+  </div>
+  <div style="margin-bottom:10px;font-weight:700;font-size:.88rem;">Seeds per pit</div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <button class="btn btn-outline btn-sm mc-seeds" data-s="3">3</button>
+    <button class="btn btn-gold btn-sm mc-seeds active-seeds" data-s="4">4</button>
+    <button class="btn btn-outline btn-sm mc-seeds" data-s="5">5</button>
+    <button class="btn btn-outline btn-sm mc-seeds" data-s="6">6</button>
+  </div>
+  <button class="btn btn-gold btn-block" id="mc-start">Start Game →</button>
+</div>
+
+<!-- Game -->
+<div id="mc-game" class="hidden mc-wrap">
+  <div id="mc-winner-area"></div>
+  <div class="mc-status" id="mc-status"></div>
+
+  <!-- Main board -->
+  <div class="mc-board" id="mc-board">
+    <!-- Built by JS -->
+  </div>
+
+  <div style="display:flex;gap:8px;justify-content:center;margin-top:14px;">
+    <button class="btn btn-gold btn-sm" id="mc-new-game">New Game</button>
+    <button class="btn btn-outline btn-sm" id="mc-new-setup">New Setup</button>
+  </div>
+</div>
+
+</div>
+<script>
+'use strict';
+
+// ── Seed color palette ─────────────────────────────────────────────────────
+const SEED_COLORS=[
+  ['#7dd3fc','#2563eb'],['#fca5a5','#dc2626'],
+  ['#86efac','#16a34a'],['#fcd34d','#d97706'],
+  ['#c4b5fd','#7c3aed'],['#fdba74','#ea580c'],
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+// Board layout: pits[0..5] = P1 left→right, pits[6] = P1 store,
+//               pits[7..12] = P2 left→right, pits[13] = P2 store
+// P1 plays left-to-right, P2 plays right-to-left
+let board, turn, gameOver, names, seedsPerPit;
+let animating=false;
+
+function initBoard(spd){
+  board=Array(14).fill(0).map((_,i)=>(i===6||i===13)?0:spd);
+}
+
+// P1 pits: indices 0-5 (displayed left→right)
+// P2 pits: indices 12-7 (displayed left→right on screen = right→left for P2)
+// P1 store: 6, P2 store: 13
+
+function nextIdx(i, player){
+  // Go around the board, skip opponent's store
+  let n=(i+1)%14;
+  if(player===0 && n===13) n=0; // skip P2 store
+  if(player===1 && n===6)  n=7; // skip P1 store
+  return n;
+}
+
+// ── Seeds per pit selector ─────────────────────────────────────────────────
+let _seedCount=4;
+document.querySelectorAll('.mc-seeds').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.mc-seeds').forEach(x=>{x.classList.remove('active-seeds','btn-gold');x.classList.add('btn-outline');});
+    b.classList.add('active-seeds','btn-gold');b.classList.remove('btn-outline');
+    _seedCount=+b.dataset.s;
+  });
+});
+
+// ── Start ──────────────────────────────────────────────────────────────────
+document.getElementById('mc-start').addEventListener('click',()=>{
+  names=[
+    document.getElementById('mc-p1').value.trim()||'Player 1',
+    document.getElementById('mc-p2').value.trim()||'Player 2'
+  ];
+  seedsPerPit=_seedCount;
+  initBoard(seedsPerPit);
+  turn=0; gameOver=false; animating=false;
+  document.getElementById('mc-setup').classList.add('hidden');
+  document.getElementById('mc-game').classList.remove('hidden');
+  document.getElementById('mc-winner-area').innerHTML='';
+  render();
+});
+
+document.getElementById('mc-new-game').addEventListener('click',()=>{
+  initBoard(seedsPerPit);
+  turn=0; gameOver=false; animating=false;
+  document.getElementById('mc-winner-area').innerHTML='';
+  render();
+});
+document.getElementById('mc-new-setup').addEventListener('click',()=>{
+  document.getElementById('mc-game').classList.add('hidden');
+  document.getElementById('mc-setup').classList.remove('hidden');
+});
+
+// ── Move logic ─────────────────────────────────────────────────────────────
+function doMove(pitIdx){
+  if(animating || gameOver) return;
+  // Validate it's the current player's pit and has seeds
+  if(turn===0 && (pitIdx<0||pitIdx>5)) return;
+  if(turn===1 && (pitIdx<7||pitIdx>12)) return;
+  if(board[pitIdx]===0) return;
+
+  animating=true;
+  let seeds=board[pitIdx];
+  board[pitIdx]=0;
+  let cur=pitIdx;
+  let extra=false;
+
+  // Sow seeds one by one
+  for(let i=0;i<seeds;i++){
+    cur=nextIdx(cur,turn);
+    board[cur]++;
+  }
+
+  // Check extra turn: last seed in own store
+  const ownStore=turn===0?6:13;
+  if(cur===ownStore){
+    extra=true;
+  }
+
+  // Check capture: last seed in own empty pit (was empty before, now has 1)
+  if(!extra && board[cur]===1){
+    const isOwnPit=(turn===0 && cur>=0 && cur<=5)||(turn===1 && cur>=7 && cur<=12);
+    if(isOwnPit){
+      // Opposite pit index: 5-cur for P1 side; 12-cur+7 = 19-cur for P2 side... 
+      // Actual formula: opposite of pit i is (12-i) for pits 0-5 and 7-12
+      const opp=12-cur;
+      if(board[opp]>0){
+        board[ownStore]+=board[cur]+board[opp];
+        board[cur]=0;
+        board[opp]=0;
+      }
+    }
+  }
+
+  // Check game over: any side all empty
+  const p1Empty=board.slice(0,6).every(v=>v===0);
+  const p2Empty=board.slice(7,13).every(v=>v===0);
+  if(p1Empty||p2Empty){
+    // Collect remaining seeds
+    for(let i=0;i<6;i++) board[6]+=board[i],board[i]=0;
+    for(let i=7;i<13;i++) board[13]+=board[i],board[i]=0;
+    gameOver=true;
+    endGame();
+    animating=false;
+    render();
+    return;
+  }
+
+  if(!extra) turn=1-turn;
+  animating=false;
+  render();
+}
+
+function endGame(){
+  const s1=board[6], s2=board[13];
+  let title, sub;
+  if(s1>s2){ title=names[0]+' Wins! 🏆'; sub=s1+' vs '+s2+' seeds'; }
+  else if(s2>s1){ title=names[1]+' Wins! 🏆'; sub=s2+' vs '+s1+' seeds'; }
+  else { title="It's a Tie! 🤝"; sub=s1+' seeds each'; }
+
+  document.getElementById('mc-winner-area').innerHTML=
+    `<div class="mc-winner">
+      <div class="mc-winner-title">${title}</div>
+      <div class="mc-winner-sub">${sub}</div>
+    </div>`;
+
+  try{
+    const wi=s1>s2?0:s2>s1?1:-1;
+    GameHistory.save('mancala',{
+      _summary:`${wi>=0?names[wi]+' wins':title} · ${s1}–${s2}`,
+      _badge:wi>=0?names[wi]:'Tie',
+      winner:wi>=0?names[wi]:'Tie',
+      p1:names[0],p2:names[1],s1,s2
+    });
+  }catch(e){}
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function seedsHTML(count, playerClass){
+  let html='';
+  for(let i=0;i<Math.min(count,36);i++){
+    const [c1,c2]=SEED_COLORS[i%SEED_COLORS.length];
+    html+=`<div class="seed" style="background:radial-gradient(circle at 35% 35%,${c1},${c2});"></div>`;
+  }
+  if(count>36) html+=`<span style="font-size:.6rem;color:rgba(255,255,255,.5);position:absolute;bottom:2px;right:4px">${count}</span>`;
+  return html;
+}
+
+function render(){
+  const board_el=document.getElementById('mc-board');
+
+  // Status
+  const status_el=document.getElementById('mc-status');
+  if(!gameOver){
+    const c=turn===0?'#60a5fa':'#f87171';
+    status_el.innerHTML=`<span style="color:${c};font-weight:800;">${names[turn]}</span>'s turn`;
+  } else {
+    status_el.textContent='';
+  }
+
+  // Build board HTML
+  // Top row = P2's pits (indices 12 down to 7, displayed left→right on screen)
+  // Bottom row = P1's pits (indices 0 to 5)
+  // Left = P2 store (13), Right = P1 store (6)
+
+  let p2PitsHTML='';
+  for(let i=12;i>=7;i--){
+    const canPlay=!gameOver&&turn===1&&board[i]>0;
+    const isEmpty=board[i]===0;
+    p2PitsHTML+=`<div class="mc-pit${canPlay?' active-pit':''}${!canPlay||isEmpty?' disabled':''}" data-pit="${i}">
+      ${seedsHTML(board[i],'p2')}
+      <span class="pit-count">${board[i]||''}</span>
+    </div>`;
+  }
+
+  let p1PitsHTML='';
+  for(let i=0;i<=5;i++){
+    const canPlay=!gameOver&&turn===0&&board[i]>0;
+    const isEmpty=board[i]===0;
+    p1PitsHTML+=`<div class="mc-pit${canPlay?' active-pit':''}${!canPlay||isEmpty?' disabled':''}" data-pit="${i}">
+      ${seedsHTML(board[i],'p1')}
+      <span class="pit-count">${board[i]||''}</span>
+    </div>`;
+  }
+
+  const p2C='#f87171', p1C='#60a5fa';
+  board_el.innerHTML=`
+    <div style="text-align:center;margin-bottom:4px;font-size:.68rem;font-weight:700;color:${p2C};letter-spacing:.06em;text-transform:uppercase;">${names[1]}</div>
+    <div class="mc-row">
+      <div class="mc-store${!gameOver&&turn===1?' active-store':''}">
+        <div class="store-count" style="color:${p2C}">${board[13]}</div>
+        <div class="store-lbl" style="color:${p2C}">Store</div>
+      </div>
+      <div class="mc-pits">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;">${p2PitsHTML}</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;">${p1PitsHTML}</div>
+      </div>
+      <div class="mc-store${!gameOver&&turn===0?' active-store':''}">
+        <div class="store-count" style="color:${p1C}">${board[6]}</div>
+        <div class="store-lbl" style="color:${p1C}">Store</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:4px;font-size:.68rem;font-weight:700;color:${p1C};letter-spacing:.06em;text-transform:uppercase;">${names[0]}</div>
+  `;
+
+  // Direction arrows (subtle)
+  board_el.querySelectorAll('.mc-pit').forEach(el=>{
+    el.addEventListener('click',()=>doMove(+el.dataset.pit));
+  });
+}
+</script>
+</body>
+</html>

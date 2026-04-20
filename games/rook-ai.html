@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Rook — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a0a 0%,#0d0606 60%);}
+.rk-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
+/* Rook card */
+.rkc{width:46px;height:64px;border-radius:8px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;
+  border:2px solid rgba(0,0,0,.15);}
+.rkc.red{background:linear-gradient(145deg,#fef2f2,#fecaca);color:#c53030;}
+.rkc.yellow{background:linear-gradient(145deg,#fefce8,#fef08a);color:#854d0e;}
+.rkc.green{background:linear-gradient(145deg,#f0fdf4,#bbf7d0);color:#15803d;}
+.rkc.black{background:linear-gradient(145deg,#f1f5f9,#e2e8f0);color:#1e293b;}
+.rkc.rook-bird{background:linear-gradient(145deg,#1e1b4b,#312e81);color:#a5b4fc;border-color:rgba(165,180,252,.3);}
+.rkc.playable{cursor:pointer;}.rkc.playable:hover{transform:translateY(-8px);border-color:#f5c842;}
+.rkc.trump-c{box-shadow:0 0 8px rgba(245,200,66,.4),1px 2px 6px rgba(0,0,0,.4);}
+.rkc.face-down{background:linear-gradient(145deg,#2a0a0a,#180505);border-color:rgba(255,255,255,.1);cursor:default;}
+.rk-r{font-size:.88rem;line-height:1.1;}.rk-s{font-size:.6rem;line-height:1;font-weight:700;opacity:.7;}
+/* Color names */
+.C_Red{color:#ef4444;}.C_Yel{color:#eab308;}.C_Grn{color:#22c55e;}.C_Blk{color:#94a3b8;}
+/* Table */
+.rk-table{background:linear-gradient(145deg,#1a0505,#0d0303);border:2px solid rgba(255,255,255,.07);
+  border-radius:16px;padding:12px;margin-bottom:10px;}
+.rk-trick{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:108px;margin:0 auto;}
+.rk-trick-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.rk-trick-name{font-size:.52rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
+/* Scores */
+.rk-scores{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.rk-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;text-align:center;}
+.rk-score-box.leader{border-color:rgba(34,197,94,.35);}
+.rk-team-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.rk-team-score{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#f5c842;}
+.rk-team-pts{font-size:.62rem;color:rgba(255,255,255,.4);}
+/* Bidding */
+.rk-bid-panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;}
+.rk-bid-grid{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:8px;}
+.rk-bid-btn{padding:7px 12px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;transition:all .12s;}
+.rk-bid-btn:hover{background:rgba(239,68,68,.2);}
+.rk-bid-btn.pass-btn{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.6);}
+/* Trump select */
+.rk-trump-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.rk-trump-btn{padding:8px 14px;border-radius:10px;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .12s;}
+/* Nest */
+.rk-nest{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:10px;}
+.rk-nest-cards{display:flex;gap:4px;justify-content:center;}
+/* Status */
+.rk-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
+/* Log */
+.rk-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.rk-log .pts{color:#f5c842;font-weight:700;}
+/* Round/game results */
+.rk-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
+.rk-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.rk-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Rook — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="rk-wrap" id="rk-root"></div>
+</div>
+<script>
+'use strict';
+// Partners: 0(You)+2(North) vs 1(West)+3(East). First team to 300 wins.
+// 57 cards: Red/Yellow/Green/Black 1-14 + Rook bird. 5-card nest.
+// Counting cards: 5→5pts, 10→10pts, 14→10pts, Rook→20pts = 120 total.
+// Bid to win nest and name trump. Must make your bid.
+const PNAMES=['You','West','North','East'];
+const COLORS=['Red','Yellow','Green','Black'];
+const COLOR_CSS={Red:'red',Yellow:'yellow',Green:'green',Black:'black'};
+const POINT_CARDS={5:5,10:10,14:10};
+
+function makeRookDeck(){
+  const d=[];
+  COLORS.forEach(c=>{for(let n=1;n<=14;n++) d.push({num:n,color:c,pts:POINT_CARDS[n]||0});});
+  d.push({num:0,color:'Rook',pts:20,isRook:true});
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function cKey(c){return c.num+'_'+c.color;}
+
+function cardPower(c,trump,led){
+  if(c.isRook) return 1000;
+  if(trump&&c.color===trump) return 100+c.num;
+  if(led&&c.color===led) return 50+c.num;
+  return c.num;
+}
+function countPts(cards){return cards.reduce((s,c)=>s+(c.pts||0),0);}
+
+let hands,nest,trump,bidWinner,bid,scores,trick,trickLead,taken,phase,bidHistory,currentBidder,log,minBid;
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
+function newGame(){scores=[0,0];log=[];newRound();}
+function newRound(){
+  const deck=makeRookDeck();
+  hands=Array.from({length:4},(_,i)=>deck.slice(i*13,(i+1)*13)
+    .sort((a,b)=>a.color.localeCompare(b.color)||a.num-b.num));
+  nest=deck.slice(52);
+  trump=null;bidWinner=-1;bid=0;
+  taken=[[],[]]; trick=[null,null,null,null];
+  trickLead=0; bidHistory=[-1,-1,-1,-1]; currentBidder=0;
+  minBid=70; phase='bid';
+  addLog('New round. Bidding starts at 70.');
+  render();
+  // Player bids first; if first bidder is not player 0, do AI bids
+  if(currentBidder!==0) setTimeout(aiBid,500);
+}
+
+function estimateBid(player){
+  const h=hands[player];
+  let pts=0;
+  h.forEach(c=>{
+    if(c.isRook) pts+=25;
+    else if(c.num===14) pts+=15;
+    else if(c.num===13) pts+=10;
+    else if(c.num===12) pts+=8;
+    else if(c.num===11) pts+=6;
+    else if(c.num===10||c.num===5) pts+=5;
+    else pts+=2;
+  });
+  return Math.min(120,Math.round(pts/1.5/5)*5+5);
+}
+
+function aiBid(){
+  const p=currentBidder;
+  const est=estimateBid(p);
+  const alreadyPassed=bidHistory.slice(0,p).filter(b=>b===-2).length;
+  if(est>=minBid&&bidHistory[p]===-1){
+    const myBid=Math.max(minBid,Math.round(est/5)*5);
+    bidHistory[p]=myBid; minBid=myBid+5;
+    addLog(`${PNAMES[p]} bids ${myBid}.`);
+    advanceBid();
+  } else {
+    bidHistory[p]=-2;
+    addLog(`${PNAMES[p]} passes.`);
+    advanceBid();
+  }
+}
+
+function playerBid(amount){
+  if(phase!=='bid'||currentBidder!==0) return;
+  if(amount==='pass'){bidHistory[0]=-2;addLog('You pass.');}
+  else{bidHistory[0]=amount;minBid=amount+5;addLog(`You bid ${amount}.`);}
+  advanceBid();
+}
+
+function advanceBid(){
+  const activeBidders=bidHistory.filter(b=>b!==-2).length;
+  const passCount=bidHistory.filter(b=>b===-2).length;
+  // Find next non-passed bidder
+  let next=(currentBidder+1)%4;
+  while(bidHistory[next]===-2&&next!==currentBidder) next=(next+1)%4;
+  if(passCount>=3||(activeBidders<=1&&passCount>=3)){
+    // Bidding over — highest bid wins
+    let winner=0,winBid=70;
+    bidHistory.forEach((b,i)=>{if(b>winBid){winBid=b;winner=i;}});
+    if(bidHistory.filter(b=>b>0).length===0){winner=0;winBid=70;}
+    bidWinner=winner;bid=Math.max(70,winBid);
+    addLog(`${PNAMES[bidWinner]} wins bid at ${bid}!`,'pts');
+    phase='nest';
+    render();
+    if(bidWinner!==0) setTimeout(aiNest,700);
+  } else {
+    currentBidder=next;
+    render();
+    if(currentBidder!==0) setTimeout(aiBid,500);
+  }
+}
+
+function aiNest(){
+  // AI picks up nest and discards 5 weakest non-counting cards
+  const h=[...hands[bidWinner],...nest];
+  h.sort((a,b)=>{
+    if(a.pts!==b.pts) return b.pts-a.pts; // keep point cards
+    return b.num-a.num; // keep high cards
+  });
+  hands[bidWinner]=h.slice(0,13);
+  const discarded=h.slice(13);
+  taken[bidWinner%2===0?0:1].push(...discarded);
+  addLog(`${PNAMES[bidWinner]} picks up nest and discards 5.`);
+  // Choose trump: color with most cards
+  const counts={};
+  hands[bidWinner].forEach(c=>{if(!c.isRook)counts[c.color]=(counts[c.color]||0)+1;});
+  trump=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  addLog(`${PNAMES[bidWinner]} names ${trump} as trump.`);
+  phase='play'; trickLead=(bidWinner+1)%4; trick=[null,null,null,null];
+  render();
+  if(trickLead!==0) setTimeout(aiPlay,600);
+}
+
+function playerNestPick(card){
+  if(phase!=='nest'||bidWinner!==0) return;
+  // add nest to hand
+  if(hands[0].length===13){
+    // First click: add nest to hand (show nest selection)
+    hands[0]=[...hands[0],...nest];
+    render(); return;
+  }
+  // Discard selected card
+  if(hands[0].length>13){
+    taken[0].push(card);
+    hands[0]=hands[0].filter(c=>cKey(c)!==cKey(card));
+    if(hands[0].length===13) render();
+  }
+}
+
+function playerChooseTrump(color){
+  if(phase!=='nest'||bidWinner!==0) return;
+  trump=color;
+  addLog(`You name ${trump} as trump!`);
+  phase='play'; trickLead=1; trick=[null,null,null,null];
+  render();
+  setTimeout(aiPlay,600);
+}
+
+// ── Play ─────────────────────────────────────────────────────────────────────
+function validPlays(p){
+  const h=hands[p];
+  const led=trick.find(c=>c!==null);
+  if(!led) return h;
+  const ledColor=led.color;
+  const follow=h.filter(c=>c.color===ledColor&&!c.isRook);
+  return follow.length?follow:h;
+}
+
+function aiPlay(){
+  const p=getNext();
+  if(p<0||p===0) return;
+  const valid=validPlays(p);
+  const led=trick.find(c=>c!==null);
+  const ledColor=led?.color;
+  const partnerIdx=(p+2)%4;
+  const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
+  const partnerWinning=played.length&&played.reduce((w,x)=>cardPower(x.c,trump,ledColor)>cardPower(w.c,trump,ledColor)?x:w,played[0]).i===partnerIdx;
+
+  let card;
+  if(!led){
+    // Lead: highest trump if have rook/high trump, else highest point card
+    const trumpCards=valid.filter(c=>c.color===trump||c.isRook);
+    if(trumpCards.length>=3) card=trumpCards.sort((a,b)=>cardPower(b,trump,null)-cardPower(a,trump,null))[0];
+    else card=valid.sort((a,b)=>b.pts-a.pts||b.num-a.num)[0];
+  } else if(partnerWinning){
+    card=valid.sort((a,b)=>a.pts-b.pts||a.num-b.num)[0]; // throw low
+  } else {
+    const winners=valid.filter(c=>!played.length||cardPower(c,trump,ledColor)>Math.max(...played.map(x=>cardPower(x.c,trump,ledColor))));
+    card=winners.length?winners.sort((a,b)=>cardPower(a,trump,ledColor)-cardPower(b,trump,ledColor))[0]:valid.sort((a,b)=>a.pts-b.pts||a.num-b.num)[0];
+  }
+  playCard(p,card||valid[0]);
+}
+
+function getNext(){
+  for(let i=0;i<4;i++){const p=(trickLead+i)%4;if(!trick[p])return p;}
+  return -1;
+}
+
+function playerPlay(card){
+  if(phase!=='play'||getNext()!==0) return;
+  if(!validPlays(0).some(c=>cKey(c)===cKey(card))) return;
+  playCard(0,card);
+}
+
+function playCard(p,card){
+  trick[p]=card;
+  hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
+  render();
+  if(trick.filter(c=>c).length===4){
+    const led=trick[trickLead];
+    const ledColor=led.color;
+    const winner=trick.reduce((wi,c,i)=>{
+      if(!c)return wi;
+      return cardPower(c,trump,ledColor)>cardPower(trick[wi],trump,ledColor)?i:wi;
+    },trickLead);
+    const team=winner%2===0?0:1;
+    taken[team].push(...trick.filter(c=>c));
+    const trickPts=countPts(trick.filter(c=>c));
+    addLog(`${PNAMES[winner]} wins trick${trickPts>0?' (+'+trickPts+' pts)':''}.`);
+    render();
+    setTimeout(()=>{
+      trick=[null,null,null,null]; trickLead=winner;
+      if(hands[0].length===0) scoreRound();
+      else{render();if(winner!==0)setTimeout(aiPlay,600);}
+    },1000);
+  } else {
+    const n=getNext(); if(n>0)setTimeout(aiPlay,500);
+  }
+}
+
+function scoreRound(){
+  const pts=[countPts(taken[0]),countPts(taken[1])];
+  const bidTeam=bidWinner%2===0?0:1;
+  const defTeam=1-bidTeam;
+  let msgs=[];
+  if(pts[bidTeam]>=bid){scores[bidTeam]+=pts[bidTeam];msgs.push(`${bidTeam===0?'You+North':'West+East'} made bid! +${pts[bidTeam]} pts`);}
+  else{scores[bidTeam]-=bid;scores[defTeam]+=pts[defTeam];msgs.push(`${bidTeam===0?'You+North':'West+East'} set! -${bid}. Opponents get ${pts[defTeam]}.`);}
+  // Even if set, defenders still score
+  if(pts[bidTeam]>=bid) scores[defTeam]+=pts[defTeam];
+  msgs.forEach(m=>addLog(m,'pts'));
+  phase=scores[0]>=300||scores[1]>=300?'game-over':'round-end';
+  if(phase==='game-over') endGame();
+  else render();
+}
+
+function endGame(){
+  const won=scores[0]>scores[1];
+  addLog(`${won?'You & North win':'West & East win'}! ${scores[0]}–${scores[1]}.`,'pts');
+  try{GameHistory.save('rook',{_summary:`Rook (AI) · ${won?'Win':'Loss'} ${scores[0]}–${scores[1]}`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function cardEl(c,cls=''){
+  if(!c)return`<div class="rkc face-down"></div>`;
+  const col=c.isRook?'rook-bird':COLOR_CSS[c.color];
+  const tr=!c.isRook&&trump&&c.color===trump?'trump-c':'';
+  return`<div class="rkc ${col} ${tr} ${cls}" data-key="${cKey(c)}">
+    <div class="rk-r">${c.isRook?'🦅':c.num}</div>
+    <div class="rk-s">${c.isRook?'ROOK':c.color.slice(0,3).toUpperCase()}</div>
+  </div>`;
+}
+function miniCard(c){
+  if(!c)return`<div style="width:30px;height:42px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);"></div>`;
+  const col=c.isRook?'rook-bird':COLOR_CSS[c.color];
+  return`<div class="rkc ${col} disabled" style="width:30px;height:42px;">
+    <div style="font-size:.65rem;">${c.isRook?'🦅':c.num}</div>
+    <div style="font-size:.5rem;">${c.isRook?'RK':c.color.slice(0,1)}</div>
+  </div>`;
+}
+
+function render(){
+  const root=document.getElementById('rk-root');
+  let html='';
+
+  // Scores
+  html+=`<div class="rk-scores">
+    <div class="rk-score-box ${scores[0]>=scores[1]?'leader':''}">
+      <div class="rk-team-name" style="color:#60a5fa;">You + North</div>
+      <div class="rk-team-score">${scores[0]}</div>
+      <div class="rk-team-pts">${phase==='play'?`${countPts(taken[0])} pts taken`:''}</div>
+    </div>
+    <div class="rk-score-box ${scores[1]>scores[0]?'leader':''}">
+      <div class="rk-team-name" style="color:#f87171;">West + East</div>
+      <div class="rk-team-score">${scores[1]}</div>
+      <div class="rk-team-pts">${phase==='play'?`${countPts(taken[1])} pts taken`:''}</div>
+    </div>
+  </div>`;
+
+  if(phase==='game-over'){
+    const won=scores[0]>=300;
+    html+=`<div class="rk-game-result">
+      <div class="rk-game-title">${won?'🏆 You Win!':'Opponents Win'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${scores[0]} – ${scores[1]} (first to 300)</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=`<div class="rk-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+  }
+
+  if(phase==='round-end'){
+    html+=`<div class="rk-round-end">
+      <div style="font-weight:700;margin-bottom:4px;">Round Complete</div>
+      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">${PNAMES[bidWinner]} bid ${bid} · Trump: ${trump}<br>You+North: ${countPts(taken[0])} pts · West+East: ${countPts(taken[1])} pts</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
+    html+=`<div class="rk-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',newRound);return;
+  }
+
+  // Trump display
+  if(trump) html+=`<div style="text-align:center;margin-bottom:6px;font-size:.78rem;font-weight:700;color:var(--C_${trump.slice(0,3)},#f5c842);">Trump: <span class="C_${trump.slice(0,3)}">${trump}</span> · ${PNAMES[bidWinner]} bid ${bid}</div>`;
+
+  // Bidding
+  if(phase==='bid'&&currentBidder===0){
+    const canPass=bidHistory.filter(b=>b>0).length>0||true;
+    const bids=[];
+    for(let b=minBid;b<=120;b+=5) bids.push(b);
+    html+=`<div class="rk-bid-panel">
+      <div style="font-weight:700;text-align:center;margin-bottom:4px;">Bidding — Minimum: ${minBid}</div>
+      <div style="font-size:.75rem;color:rgba(255,255,255,.5);text-align:center;">Bid how many points your team will capture (out of 120)</div>
+      <div class="rk-bid-grid">
+        ${bids.map(b=>`<button class="rk-bid-btn" data-bid="${b}">${b}</button>`).join('')}
+        <button class="rk-bid-btn pass-btn" data-bid="pass">Pass</button>
+      </div>
+    </div>`;
+  } else if(phase==='bid'){
+    html+=`<div style="text-align:center;margin-bottom:8px;font-size:.85rem;color:rgba(255,255,255,.5);">Bidding… min ${minBid} · ${currentBidder>=0?PNAMES[currentBidder]+' deciding...':''}</div>`;
+  }
+
+  // Nest phase: player picks up nest and chooses trump
+  if(phase==='nest'&&bidWinner===0){
+    if(hands[0].length===13){
+      html+=`<div class="rk-nest">
+        <div style="font-weight:700;margin-bottom:4px;text-align:center;">Pick up the nest — click a card to discard 5</div>
+        <div class="rk-nest-cards">${nest.map(c=>cardEl(c,'playable')).join('')}</div>
+        <button class="btn btn-gold btn-sm" id="add-nest-btn">Add Nest to Hand</button>
+      </div>`;
+    } else if(hands[0].length>13){
+      html+=`<div class="rk-nest">
+        <div style="font-weight:700;margin-bottom:4px;text-align:center;">Discard 5 cards (${hands[0].length-13} more to go)</div>
+      </div>`;
+    }
+    if(hands[0].length===13&&trump===null){
+      html+=`<div style="text-align:center;margin-bottom:10px;">
+        <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:8px;">After discarding, choose trump:</div>
+        <div class="rk-trump-btns">
+          ${COLORS.map(c=>`<button class="rk-trump-btn C_${c.slice(0,3)}" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:inherit;" data-color="${c}">${c}</button>`).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
+  // Table
+  const cur=getNext();
+  html+=`<div class="rk-table">
+    <div style="text-align:center;margin-bottom:6px;">
+      <div style="font-size:.6rem;color:rgba(255,255,255,.4);">North (partner) — ${hands[2].length} cards</div>
+      <div style="display:flex;gap:2px;justify-content:center;">${hands[2].map(()=>`<div style="width:8px;height:36px;border-radius:2px;background:rgba(90,200,250,.2);"></div>`).join('')}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:.6rem;color:rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;gap:2px;">West
+        <div style="display:flex;flex-direction:column;gap:2px;">${hands[1].slice(0,6).map(()=>`<div style="width:36px;height:7px;border-radius:2px;background:rgba(248,113,113,.2);"></div>`).join('')}</div>
+      </div>
+      <div class="rk-trick">
+        <div></div>
+        <div class="rk-trick-slot">${miniCard(trick[2])}<div class="rk-trick-name">N</div></div>
+        <div class="rk-trick-slot">${miniCard(trick[1])}<div class="rk-trick-name">W</div></div>
+        <div class="rk-trick-slot">${miniCard(trick[0])}<div class="rk-trick-name">You</div></div>
+        <div class="rk-trick-slot">${miniCard(trick[3])}<div class="rk-trick-name">E</div></div>
+        <div></div>
+      </div>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;gap:2px;">East
+        <div style="display:flex;flex-direction:column;gap:2px;">${hands[3].slice(0,6).map(()=>`<div style="width:36px;height:7px;border-radius:2px;background:rgba(248,113,113,.2);"></div>`).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+
+  html+=`<div class="rk-status">${cur===0&&phase==='play'?'Your turn.':cur>0&&phase==='play'?`${PNAMES[cur]} playing…`:''}</div>`;
+
+  // Player hand
+  const isYourPlay=phase==='play'&&cur===0;
+  const isNestDiscard=phase==='nest'&&bidWinner===0&&hands[0].length>13;
+  const valid=isYourPlay?validPlays(0).map(cKey):[];
+  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${hands[0].length})</div>
+  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
+    ${hands[0].map(c=>cardEl(c,(isYourPlay&&valid.includes(cKey(c)))||(isNestDiscard)?'playable':'')).join('')}
+  </div>`;
+
+  html+=`<div class="rk-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+  root.innerHTML=html;
+
+  document.querySelectorAll('.rk-bid-btn').forEach(b=>{
+    b.addEventListener('click',()=>playerBid(b.dataset.bid==='pass'?'pass':+b.dataset.bid));
+  });
+  document.querySelectorAll('.rk-trump-btn').forEach(b=>b.addEventListener('click',()=>playerChooseTrump(b.dataset.color)));
+  document.getElementById('add-nest-btn')?.addEventListener('click',()=>{hands[0]=[...hands[0],...nest];render();});
+  document.getElementById('player-hand')?.querySelectorAll('.rkc.playable').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const c=hands[0].find(c=>cKey(c)===el.dataset.key);
+      if(!c) return;
+      if(isNestDiscard) playerNestPick(c);
+      else if(isYourPlay) playerPlay(c);
+    });
+  });
+  if((phase==='bid'&&currentBidder!==0)||(phase==='nest'&&bidWinner!==0)||(phase==='play'&&cur>0&&cur>=0))
+    setTimeout(()=>{
+      if(phase==='bid'&&currentBidder!==0) aiBid();
+      else if(phase==='nest'&&bidWinner!==0) aiNest();
+      else if(phase==='play'&&getNext()>0) aiPlay();
+    },500);
+}
+
+newGame();
+</script>
+</body>
+</html>

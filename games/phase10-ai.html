@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Phase 10 — vs AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0a1a2e 0%,#060a18 60%);}
+.p10-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
+/* Card */
+.p10c{width:44px;height:62px;border-radius:8px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;}
+.p10c.red{background:linear-gradient(145deg,#fef2f2,#fecaca);color:#c53030;border:2px solid rgba(239,68,68,.25);}
+.p10c.blue{background:linear-gradient(145deg,#eff6ff,#bfdbfe);color:#1d4ed8;border:2px solid rgba(59,130,246,.25);}
+.p10c.green{background:linear-gradient(145deg,#f0fdf4,#bbf7d0);color:#15803d;border:2px solid rgba(34,197,94,.25);}
+.p10c.yellow{background:linear-gradient(145deg,#fefce8,#fef08a);color:#854d0e;border:2px solid rgba(234,179,8,.25);}
+.p10c.wild{background:linear-gradient(145deg,#1e1b4b,#312e81);color:#a5b4fc;border:2px solid rgba(165,180,252,.4);}
+.p10c.skip{background:linear-gradient(145deg,#fdf2f8,#f5d0fe);color:#7e22ce;border:2px solid rgba(168,85,247,.3);}
+.p10c.selected{transform:translateY(-10px);border-color:#f5c842 !important;background:linear-gradient(145deg,#fffbe8,#fff3c4) !important;color:#92400e !important;}
+.p10c.in-group{border-color:#22c55e !important;background:linear-gradient(145deg,#f0fff4,#dcfce7) !important;color:#15803d !important;}
+.p10c.playable{cursor:pointer;}.p10c.playable:hover{transform:translateY(-6px);}
+.p10c.face-down{background:linear-gradient(145deg,#1a2a4e,#0d1828);border:2px solid rgba(255,255,255,.1);cursor:default;}
+.p10c-r{font-size:.88rem;line-height:1.1;}.p10c-s{font-size:.5rem;font-weight:700;line-height:1;opacity:.6;}
+/* Phase strip */
+.p10-phase-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.p10-phase-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.62rem;font-weight:800;transition:all .2s;}
+.p10-phase-dot.done{background:#22c55e;color:#fff;}
+.p10-phase-dot.current{background:#f5c842;color:#0d1117;box-shadow:0 0 8px rgba(245,200,66,.5);}
+.p10-phase-dot.future{background:rgba(255,255,255,.1);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.15);}
+/* Player panels */
+.p10-players{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.p10-player-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;text-align:center;}
+.p10-player-box.active-p{border-color:#f5c842;background:rgba(245,200,66,.06);}
+.p10-player-name{font-size:.62rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.5);}
+.p10-player-phase{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;color:#f5c842;}
+.p10-player-score{font-size:.6rem;color:rgba(255,255,255,.4);}
+/* Table layout: laid phases */
+.p10-table{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px;margin-bottom:10px;min-height:80px;}
+.p10-laid-row{margin-bottom:6px;}
+.p10-laid-owner{font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;}
+.p10-laid-cards{display:flex;gap:3px;flex-wrap:wrap;}
+.p10-group-sep{display:inline-flex;align-items:center;margin:0 3px;color:rgba(255,255,255,.3);font-size:.6rem;}
+/* Status */
+.p10-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:6px;color:rgba(255,255,255,.8);}
+/* Phase info */
+.p10-phase-info{text-align:center;background:rgba(90,200,250,.08);border:1px solid rgba(90,200,250,.2);border-radius:8px;padding:6px;font-size:.75rem;color:rgba(90,200,250,.8);margin-bottom:8px;}
+/* Discard + Stock */
+.p10-piles{display:flex;gap:12px;justify-content:center;margin-bottom:8px;}
+.p10-pile{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.p10-pile-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);}
+/* Group selection UI */
+.p10-group-ui{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px;margin-bottom:8px;}
+.p10-group-title{font-size:.75rem;font-weight:700;margin-bottom:6px;color:#4ade80;}
+/* Log */
+.p10-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:65px;overflow-y:auto;font-size:.72rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.p10-log .pts{color:#f5c842;font-weight:700;}
+/* Round/game */
+.p10-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+.p10-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
+.p10-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Phase 10 — vs AI</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="p10-wrap" id="p10-root"></div>
+</div>
+<script>
+'use strict';
+// 3 players: You + 2 AI. First to complete Phase 10 wins. Ties broken by lowest score.
+const PNAMES=['You','Kai','Zoe'];
+const COLORS=['red','blue','green','yellow'];
+
+// 10 phases: [{req:[{type,count}]}]
+// types: set(n)=n of same number, run(n)=n consecutive, color(n)=n of one color
+const PHASES=[
+  {desc:'2 sets of 3',req:[{t:'set',n:3},{t:'set',n:3}]},
+  {desc:'1 set of 3 + 1 run of 4',req:[{t:'set',n:3},{t:'run',n:4}]},
+  {desc:'1 set of 4 + 1 run of 4',req:[{t:'set',n:4},{t:'run',n:4}]},
+  {desc:'Run of 7',req:[{t:'run',n:7}]},
+  {desc:'Run of 8',req:[{t:'run',n:8}]},
+  {desc:'Run of 9',req:[{t:'run',n:9}]},
+  {desc:'2 sets of 4',req:[{t:'set',n:4},{t:'set',n:4}]},
+  {desc:'7 of one color',req:[{t:'color',n:7}]},
+  {desc:'1 set of 5 + 1 set of 2',req:[{t:'set',n:5},{t:'set',n:2}]},
+  {desc:'1 set of 5 + 1 set of 3',req:[{t:'set',n:5},{t:'set',n:3}]},
+];
+
+function makeP10Deck(){
+  const d=[];
+  for(let rep=0;rep<2;rep++) COLORS.forEach(c=>{for(let n=1;n<=12;n++) d.push({num:n,color:c});});
+  for(let i=0;i<8;i++) d.push({num:0,color:'wild',isWild:true});
+  for(let i=0;i<4;i++) d.push({num:0,color:'skip',isSkip:true});
+  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function cKey(c,idx){return c.num+'_'+c.color+'_'+idx;}
+function cardScore(c){if(c.isWild)return 25;if(c.isSkip)return 15;return c.num<=9?5:10;}
+
+// ── Phase checking ───────────────────────────────────────────────────────────
+function findPhaseGroups(hand,phaseIdx){
+  const req=PHASES[phaseIdx].req;
+  const wilds=hand.filter(c=>c.isWild);
+  const nonWilds=hand.filter(c=>!c.isWild&&!c.isSkip);
+
+  function tryReq(reqs,available,wildcards,groups){
+    if(!reqs.length) return groups;
+    const[r,...rest]=reqs;
+    if(r.t==='set'){
+      const byNum={};
+      available.forEach(c=>{(byNum[c.num]=byNum[c.num]||[]).push(c);});
+      for(const [num,cards] of Object.entries(byNum)){
+        for(let w=0;w<=Math.min(wildcards.length,r.n);w++){
+          if(cards.length+w>=r.n){
+            const used=[...cards.slice(0,r.n-w),...wildcards.slice(0,w)];
+            const leftCards=available.filter(c=>!used.slice(0,r.n-w).includes(c));
+            const leftWilds=wildcards.slice(w);
+            const result=tryReq(rest,leftCards,leftWilds,[...groups,used]);
+            if(result) return result;
+          }
+        }
+      }
+    } else if(r.t==='run'){
+      const sorted=available.filter(c=>c.num>=1).sort((a,b)=>a.num-b.num);
+      // Try all starting points
+      for(let start=1;start<=12-r.n+1;start++){
+        let run=[]; let w=[...wildcards];
+        let ok=true;
+        for(let n=start;n<start+r.n;n++){
+          const card=sorted.find(c=>c.num===n&&!run.includes(c));
+          if(card){run.push(card);}
+          else if(w.length){run.push(w.shift());}
+          else{ok=false;break;}
+        }
+        if(ok&&run.length===r.n){
+          const leftCards=available.filter(c=>!run.filter(rc=>!rc.isWild).includes(c));
+          const leftWilds=wildcards.filter(wc=>!run.filter(rc=>rc.isWild).includes(wc));
+          const result=tryReq(rest,leftCards,leftWilds,[...groups,run]);
+          if(result) return result;
+        }
+      }
+    } else if(r.t==='color'){
+      COLORS.forEach(col=>{
+        const cards=available.filter(c=>c.color===col);
+        for(let w=0;w<=Math.min(wildcards.length,r.n);w++){
+          if(cards.length+w>=r.n){
+            const used=[...cards.slice(0,r.n-w),...wildcards.slice(0,w)];
+            const leftCards=available.filter(c=>!used.slice(0,r.n-w).includes(c));
+            const leftWilds=wildcards.slice(w);
+            const result=tryReq(rest,leftCards,leftWilds,[...groups,used]);
+            if(result) return result;
+          }
+        }
+      });
+    }
+    return null;
+  }
+  return tryReq(req,nonWilds,wilds,[]);
+}
+
+function canLayOff(card,groups){
+  for(const grp of groups){
+    // Set: same num
+    const nums=grp.filter(c=>!c.isWild).map(c=>c.num);
+    const uniqNums=new Set(nums);
+    if(uniqNums.size===1&&(card.num===nums[0]||card.isWild)) return true;
+    // Run: extend either end
+    if(grp.length>2){
+      const runNums=grp.filter(c=>!c.isWild).map(c=>c.num).sort((a,b)=>a-b);
+      if(runNums.length&&(card.num===runNums[0]-1||card.num===runNums[runNums.length-1]+1||card.isWild)) return true;
+    }
+    // Color: same color
+    const colors=new Set(grp.filter(c=>!c.isWild).map(c=>c.color));
+    if(colors.size===1&&(card.color===([...colors][0])||card.isWild)) return true;
+  }
+  return false;
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let deck,discard,hands,phases,scores,laid,laidGroups,phase,current,skipped,log,selCards;
+// phase: 'draw'|'play'|'discard'|'round-end'|'game-over'
+// laidGroups: [{player,cards}[]] — all laid groups on table
+
+function addLog(msg,cls=''){log.push({msg,cls});if(log.length>25)log.shift();}
+function newGame(){phases=[0,0,0];scores=[0,0,0];log=[];newRound();}
+function newRound(){
+  deck=makeP10Deck();
+  hands=Array.from({length:3},()=>deck.splice(0,10));
+  discard=[deck.pop()];
+  laid=[false,false,false]; // has player laid their phase this round?
+  laidGroups=[]; // {player,groupIdx,cards}[]
+  skipped=[false,false,false];
+  current=0; phase='draw'; selCards=[];
+  addLog('New round. Draw from stock or discard.');
+  render();
+  if(current!==0) setTimeout(aiTurn,600);
+}
+
+function drawFrom(src){
+  if(phase!=='draw'||current!==0) return;
+  if(skipped[0]){skipped[0]=false;advanceTurn();return;}
+  const card=src==='discard'&&discard.length?discard.pop():deck.length?deck.pop():null;
+  if(!card) return;
+  if(src==='stock'&&!deck.length&&discard.length>1){const top=discard.pop();deck=[...discard].reverse();discard=[top];}
+  hands[0].push(card);
+  phase='play'; selCards=[];
+  addLog(`You draw${src==='discard'?' from discard':''}.`);
+  render();
+}
+
+function toggleSel(card){
+  if(phase!=='play'||current!==0) return;
+  const idx=selCards.findIndex(c=>c===card);
+  if(idx>=0) selCards.splice(idx,1);
+  else selCards.push(card);
+  render();
+}
+
+function tryLayPhase(){
+  if(phase!=='play'||current!==0||laid[0]) return;
+  const phIdx=phases[0];
+  const groups=findPhaseGroups(selCards,phIdx);
+  if(groups&&groups.flat().length===selCards.length){
+    laid[0]=true;
+    const startGrpIdx=laidGroups.length;
+    groups.forEach((grp,gi)=>laidGroups.push({player:0,groupIdx:startGrpIdx+gi,cards:grp}));
+    hands[0]=hands[0].filter(c=>!selCards.includes(c));
+    selCards=[];
+    addLog(`You lay Phase ${phIdx+1}: ${PHASES[phIdx].desc}!`,'pts');
+    render();
+  } else {
+    addLog('That does not complete Phase '+(phIdx+1)+'.');
+  }
+}
+
+function tryLayOff(card){
+  if(!laid[0]) return false;
+  for(let i=0;i<laidGroups.length;i++){
+    const grp=laidGroups[i];
+    if(canLayOff(card,grp.cards)){
+      grp.cards.push(card);
+      hands[0]=hands[0].filter(c=>c!==card);
+      return true;
+    }
+  }
+  return false;
+}
+
+function doDiscard(card){
+  if(phase!=='play'&&phase!=='discard'||current!==0) return;
+  if(card.isSkip){
+    // Choose who to skip
+    phase='choose-skip'; render(); return;
+  }
+  hands[0]=hands[0].filter(c=>c!==card);
+  discard.push(card);
+  selCards=[];
+  if(hands[0].length===0){endRound(0);}
+  else{phase='draw'; advanceTurn();}
+}
+
+function chooseSkipTarget(target){
+  if(phase!=='choose-skip') return;
+  skipped[target]=true;
+  addLog(`You skip ${PNAMES[target]}.`);
+  phase='draw'; advanceTurn();
+}
+
+function advanceTurn(){
+  const next=(current+1)%3;
+  current=next; phase='draw';
+  render();
+  if(current!==0) setTimeout(aiTurn,700);
+}
+
+function aiTurn(){
+  const p=current; if(p===0) return;
+  if(skipped[p]){skipped[p]=false;addLog(`${PNAMES[p]} is skipped.`);advanceTurn();return;}
+  // Draw: take discard if useful for phase
+  const phIdx=phases[p];
+  const top=discard[discard.length-1];
+  let drawSrc='stock';
+  if(top&&!top.isSkip){
+    const testHand=[...hands[p],top];
+    const grps=findPhaseGroups(testHand,phIdx);
+    if(grps) drawSrc='discard';
+  }
+  const card=drawSrc==='discard'&&discard.length?discard.pop():deck.pop();
+  if(!card){endRound(-1);return;}
+  hands[p].push(card);
+  addLog(`${PNAMES[p]} draws.`);
+
+  // Try to lay phase
+  if(!laid[p]){
+    const grps=findPhaseGroups(hands[p],phIdx);
+    if(grps){
+      laid[p]=true;
+      const startIdx=laidGroups.length;
+      grps.forEach((grp,gi)=>laidGroups.push({player:p,groupIdx:startIdx+gi,cards:grp}));
+      grps.flat().forEach(c=>{hands[p]=hands[p].filter(hc=>hc!==c);});
+      addLog(`${PNAMES[p]} lays Phase ${phIdx+1}!`,'pts');
+    }
+  }
+
+  // Lay off
+  if(laid[p]&&laidGroups.length){
+    let changed=true;
+    while(changed){
+      changed=false;
+      for(let i=hands[p].length-1;i>=0;i--){
+        const c=hands[p][i];
+        for(const grp of laidGroups){
+          if(canLayOff(c,grp.cards)){grp.cards.push(c);hands[p].splice(i,1);changed=true;break;}
+        }
+        if(changed)break;
+      }
+    }
+  }
+
+  // Discard: skip card if available and opponent is ahead, else highest value non-useful card
+  let toDiscard=null;
+  const skips=hands[p].filter(c=>c.isSkip);
+  if(skips.length&&!laid[p]){toDiscard=skips[0];}
+  if(!toDiscard){
+    const deadwood=hands[p].filter(c=>!c.isWild&&!c.isSkip);
+    toDiscard=deadwood.length?deadwood.sort((a,b)=>cardScore(b)-cardScore(a))[0]:hands[p][0];
+  }
+  if(toDiscard&&toDiscard.isSkip){
+    const skipTarget=[0,1,2].filter(x=>x!==p).sort((a,b)=>phases[a]-phases[b])[0];
+    skipped[skipTarget]=true;
+    addLog(`${PNAMES[p]} skips ${PNAMES[skipTarget]}!`);
+    toDiscard=hands[p].find(c=>!c.isSkip)||hands[p][0];
+  }
+  if(toDiscard){
+    hands[p]=hands[p].filter(c=>c!==toDiscard);
+    discard.push(toDiscard);
+  }
+
+  if(hands[p].length===0){endRound(p);}
+  else{advanceTurn();}
+}
+
+function endRound(outPlayer){
+  let msgs=[];
+  for(let p=0;p<3;p++){
+    const roundPts=hands[p].reduce((s,c)=>s+cardScore(c),0);
+    scores[p]+=roundPts;
+    if(p!==outPlayer&&laid[p]){phases[p]=Math.min(10,phases[p]+1);}
+    else if(p===outPlayer){phases[p]=Math.min(10,phases[p]+1);}
+    msgs.push(`${PNAMES[p]}: Phase ${phases[p]} · +${roundPts}`);
+  }
+  msgs.forEach(m=>addLog(m,'pts'));
+  phase='round-end';
+  if(phases.some(p=>p>=10)){phase='game-over';endGame();}
+  else render();
+}
+
+function endGame(){
+  const finishers=phases.map((p,i)=>({p,i,s:scores[i]})).filter(x=>x.p>=10);
+  finishers.sort((a,b)=>a.s-b.s);
+  const winner=finishers[0].i;
+  const won=winner===0;
+  addLog(`${PNAMES[winner]} wins Phase 10! Score: ${scores[winner]}.`,'pts');
+  try{GameHistory.save('p10',{_summary:`Phase 10 (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  render();
+}
+
+function cardEl(c,cls='',dataKey=''){
+  const col=c.isWild?'wild':c.isSkip?'skip':c.color;
+  return`<div class="p10c ${col} ${cls}" ${dataKey?`data-key="${dataKey}"`:''}>
+    <div class="p10c-r">${c.isWild?'W':c.isSkip?'⊘':c.num}</div>
+    <div class="p10c-s">${c.isWild?'WILD':c.isSkip?'SKIP':c.color.slice(0,1).toUpperCase()}</div>
+  </div>`;
+}
+
+function render(){
+  const root=document.getElementById('p10-root');
+  let html='';
+
+  // Player status grid
+  html+=`<div class="p10-players">`;
+  PNAMES.forEach((n,i)=>{
+    html+=`<div class="p10-player-box ${current===i?'active-p':''}">
+      <div class="p10-player-name ${i===0?'style="color:#a78bfa"':''}">${n}</div>
+      <div class="p10-player-phase">${phases[i]<10?phases[i]+1:10}<span style="font-size:.6rem;color:rgba(255,255,255,.3);">/10</span></div>
+      <div class="p10-player-score">${scores[i]} pts${laid[i]?' ✓':''}</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // Phase dots
+  html+=`<div class="p10-phase-row">`;
+  for(let i=0;i<10;i++){
+    const cls=phases[0]>i?'done':phases[0]===i?'current':'future';
+    html+=`<div class="p10-phase-dot ${cls}">${i+1}</div>`;
+  }
+  html+=`</div>`;
+
+  // Current phase description
+  if(phases[0]<10){
+    html+=`<div class="p10-phase-info">Phase ${phases[0]+1}: ${PHASES[phases[0]].desc}</div>`;
+  }
+
+  if(phase==='game-over'){
+    const finishers=phases.map((p,i)=>({p,i,s:scores[i]})).filter(x=>x.p>=10);
+    finishers.sort((a,b)=>a.s-b.s);
+    const w=finishers[0].i;
+    html+=`<div class="p10-game-result">
+      <div class="p10-game-title">${w===0?'🏆 You Win!':PNAMES[w]+' Wins!'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PNAMES.map((n,i)=>n+': Phase '+(phases[i]+1)+', '+scores[i]+' pts').join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
+    html+=`<div class="p10-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+  }
+
+  if(phase==='round-end'){
+    html+=`<div class="p10-round-end">
+      <div style="font-weight:700;margin-bottom:4px;">Round Over</div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.6);">${PNAMES.map((n,i)=>`${n}: Ph.${phases[i]+1} · ${scores[i]}pts`).join(' · ')}</div>
+    </div>
+    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
+    html+=`<div class="p10-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',newRound);return;
+  }
+
+  if(phase==='choose-skip'){
+    html+=`<div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:10px;padding:12px;margin-bottom:8px;text-align:center;">
+      <div style="font-weight:700;margin-bottom:8px;">⊘ Choose a player to skip</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        ${[1,2].map(t=>`<button class="btn btn-outline btn-sm p10-skip-btn" data-target="${t}">${PNAMES[t]}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Laid table
+  if(laidGroups.length){
+    html+=`<div class="p10-table">`;
+    [0,1,2].forEach(p=>{
+      const myGroups=laidGroups.filter(g=>g.player===p);
+      if(!myGroups.length)return;
+      html+=`<div class="p10-laid-row">
+        <div class="p10-laid-owner">${PNAMES[p]} Phase ${phases[p]+1}</div>
+        <div class="p10-laid-cards">
+          ${myGroups.map((g,gi)=>`${gi>0?'<span class="p10-group-sep">|</span>':''}${g.cards.map(c=>cardEl(c,'disabled')).join('')}`).join('')}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // Discard + Stock
+  html+=`<div class="p10-piles">
+    <div class="p10-pile"><div class="p10-pile-lbl">Stock (${deck.length})</div>
+      <div class="p10c face-down" id="stock-card" style="cursor:pointer;"></div>
+    </div>
+    <div class="p10-pile"><div class="p10-pile-lbl">Discard</div>
+      ${discard.length?cardEl(discard[discard.length-1],'',cKey(discard[discard.length-1],99)):'<div class="p10c face-down" style="opacity:.2;border-style:dashed;"></div>'}
+    </div>
+  </div>`;
+
+  // Status
+  const isYourDraw=phase==='draw'&&current===0;
+  const isYourPlay=phase==='play'&&current===0;
+  html+=`<div class="p10-status">${isYourDraw?'Draw from stock or discard.':isYourPlay?'Play cards, lay phase, or discard.':current!==0?`${PNAMES[current]}'s turn…`:''}</div>`;
+
+  // Group selection helper
+  if(isYourPlay&&!laid[0]){
+    const phIdx=phases[0];
+    const groups=selCards.length>=3?findPhaseGroups(selCards,phIdx):null;
+    if(selCards.length>0){
+      html+=`<div class="p10-group-ui">
+        <div class="p10-group-title">Selected for Phase ${phIdx+1}: ${PHASES[phIdx].desc}</div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px;">${selCards.map(c=>cardEl(c,'in-group')).join('')}</div>
+        ${groups?`<button class="btn btn-gold btn-sm" id="lay-phase-btn">✓ Lay Phase ${phIdx+1}</button>`:
+          `<div style="font-size:.72rem;color:rgba(255,255,255,.45);">Keep selecting cards for the phase…</div>`}
+        <button class="btn btn-outline btn-sm" style="margin-left:6px;" id="clear-sel-btn">Clear</button>
+      </div>`;
+    }
+  }
+
+  // Player hand
+  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${hands[0].length})</div>
+  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
+    ${hands[0].map((c,i)=>{
+      const inSel=selCards.includes(c);
+      const isPlayable=(isYourDraw&&false)||(isYourPlay);
+      return cardEl(c,`${isPlayable?'playable':''}${inSel?' selected':''}`,cKey(c,i));
+    }).join('')}
+  </div>`;
+
+  if(isYourPlay&&laid[0]){
+    html+=`<div style="text-align:center;font-size:.75rem;color:rgba(255,255,255,.5);margin-top:4px;">Phase laid! Tap cards to lay off, or tap to select then discard.</div>`;
+  }
+
+  html+=`<div class="p10-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+  root.innerHTML=html;
+
+  // Wire events
+  document.getElementById('stock-card')?.addEventListener('click',()=>drawFrom('stock'));
+  document.querySelector('.p10-piles .p10c:not(.face-down)')?.addEventListener('click',()=>drawFrom('discard'));
+  document.getElementById('lay-phase-btn')?.addEventListener('click',tryLayPhase);
+  document.getElementById('clear-sel-btn')?.addEventListener('click',()=>{selCards=[];render();});
+  document.querySelectorAll('.p10-skip-btn').forEach(b=>b.addEventListener('click',()=>chooseSkipTarget(+b.dataset.target)));
+
+  document.getElementById('player-hand')?.querySelectorAll('.p10c.playable').forEach((el,idx)=>{
+    el.addEventListener('click',()=>{
+      const c=hands[0][idx];
+      if(!c) return;
+      if(!laid[0]){
+        toggleSel(c);
+      } else {
+        // Try lay off first, else discard on double-tap
+        if(!tryLayOff(c)){
+          doDiscard(c);
+        } else render();
+      }
+    });
+  });
+
+  // Discard button appears when card is selected and laid, or phase not laid
+  if(isYourPlay&&selCards.length===1&&laid[0]){
+    const discardArea=document.createElement('div');
+    discardArea.style.cssText='text-align:center;margin-top:6px;';
+    discardArea.innerHTML=`<button class="btn btn-outline btn-sm" id="discard-sel-btn">Discard ${selCards[0].isWild?'Wild':selCards[0].isSkip?'Skip':selCards[0].num}</button>`;
+    document.getElementById('player-hand').after(discardArea);
+    document.getElementById('discard-sel-btn')?.addEventListener('click',()=>{if(selCards[0])doDiscard(selCards[0]);});
+  }
+  if(isYourPlay&&!laid[0]&&selCards.length===1){
+    const discardArea=document.createElement('div');
+    discardArea.style.cssText='text-align:center;margin-top:6px;';
+    discardArea.innerHTML=`<button class="btn btn-outline btn-sm" id="discard-sel-btn">Discard selected</button>`;
+    document.getElementById('player-hand').after(discardArea);
+    document.getElementById('discard-sel-btn')?.addEventListener('click',()=>{if(selCards[0])doDiscard(selCards[0]);});
+  }
+
+  if(current!==0&&(phase==='draw'||phase==='play')) setTimeout(aiTurn,600);
+}
+
+newGame();
+</script>
+</body>
+</html>

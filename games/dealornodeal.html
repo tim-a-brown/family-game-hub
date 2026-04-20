@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Deal or No Deal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../hist.js"></script>
+<style>
+body{background:#0a0a1a;}
+.dond-wrap{max-width:500px;margin:0 auto;padding:0 12px 60px;}
+/* Cases grid */
+.cases-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+.case-btn{
+  aspect-ratio:1;border-radius:12px;border:2px solid rgba(255,255,255,.2);
+  background:linear-gradient(145deg,#1a2a5e,#0d1a3a);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;position:relative;
+  font-family:'Inter',sans-serif;
+}
+.case-btn:hover:not(.opened):not(.selected){border-color:#5ac8fa;box-shadow:0 0 12px rgba(90,200,250,.3);transform:scale(1.04);}
+.case-btn.selected{border-color:#f5c842;background:linear-gradient(145deg,#3a2a00,#1a1400);box-shadow:0 0 16px rgba(245,200,66,.4);}
+.case-btn.opened{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);cursor:default;opacity:.55;}
+.case-btn.my-case{border-color:#22c55e;box-shadow:0 0 14px rgba(34,197,94,.35);}
+.case-num{font-size:.7rem;font-weight:700;color:rgba(255,255,255,.5);position:absolute;top:5px;left:0;right:0;text-align:center;}
+.case-icon{font-size:1.6rem;}
+.case-value{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.3);margin-top:1px;}
+/* Dollar board */
+.dollar-board{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:14px;}
+.dollar-row{display:flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:7px;
+  font-size:.78rem;font-weight:700;font-family:'Inter',monospace;transition:all .3s;}
+.dollar-row.low{background:rgba(90,200,250,.1);color:#5ac8fa;border:1px solid rgba(90,200,250,.2);}
+.dollar-row.high{background:rgba(245,200,66,.1);color:#f5c842;border:1px solid rgba(245,200,66,.2);}
+.dollar-row.gone{text-decoration:line-through;opacity:.28;background:rgba(255,255,255,.03);}
+/* Banker panel */
+.banker-panel{background:linear-gradient(135deg,rgba(180,120,20,.12),rgba(100,60,5,.08));
+  border:1px solid rgba(245,200,66,.25);border-radius:16px;padding:18px;text-align:center;margin-bottom:14px;}
+.banker-offer{font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:900;color:#f5c842;line-height:1;}
+.banker-label{font-size:.72rem;color:rgba(255,255,255,.45);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+.banker-msg{font-size:.85rem;color:rgba(255,255,255,.6);margin-top:8px;line-height:1.5;}
+.dond-btns{display:flex;gap:10px;justify-content:center;margin-top:12px;}
+.btn-deal{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:12px;
+  padding:14px 32px;font-size:1.05rem;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;
+  box-shadow:0 4px 20px rgba(34,197,94,.3);transition:all .15s;}
+.btn-deal:hover{transform:scale(1.04);}
+.btn-nodeal{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:12px;
+  padding:14px 32px;font-size:1.05rem;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;
+  box-shadow:0 4px 20px rgba(239,68,68,.3);transition:all .15s;}
+.btn-nodeal:hover{transform:scale(1.04);}
+/* Status */
+.dond-status{text-align:center;font-size:.92rem;font-weight:700;margin-bottom:10px;min-height:24px;color:rgba(255,255,255,.7);}
+.round-badge{display:inline-block;background:rgba(90,200,250,.15);border:1px solid rgba(90,200,250,.3);
+  border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:700;color:#5ac8fa;margin-bottom:8px;}
+/* Result */
+.dond-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:16px;padding:20px;text-align:center;margin-bottom:14px;}
+.result-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#0d1117;}
+.result-sub{font-size:.9rem;font-weight:600;color:#2a1a00;margin-top:6px;}
+/* My case reveal */
+.reveal-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;text-align:center;margin-bottom:14px;}
+/* Opening animation */
+@keyframes pop-in{0%{transform:scale(.5);opacity:0}80%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+.case-btn.just-opened .case-value{animation:pop-in .35s ease both;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Deal or No Deal</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="dond-wrap">
+  <div id="dond-game"></div>
+</div>
+</div>
+<script>
+'use strict';
+
+const VALUES=[0.01,1,5,10,25,50,75,100,200,300,400,500,750,
+              1000,5000,10000,25000,50000,75000,100000,
+              200000,300000,400000,500000,750000,1000000];
+
+const ROUNDS=[6,5,4,3,2,1,1,1,1]; // cases to open each round
+
+function fmt(v){
+  if(v<1)return '1¢';
+  if(v>=1000000)return '$1,000,000';
+  if(v>=1000)return '$'+v.toLocaleString();
+  return '$'+v;
+}
+
+function isHigh(v){ return v>=75000; }
+
+let cases,myCase,remaining,roundIdx,toOpen,phase,dealAmount,myValue;
+// phase: 'pick-my-case' | 'opening' | 'banker' | 'deal' | 'final-swap' | 'over'
+
+function init(){
+  // Shuffle values into 26 cases
+  const vals=[...VALUES].sort(()=>Math.random()-.5);
+  cases=vals.map((v,i)=>({id:i+1,value:v,opened:false}));
+  myCase=null; remaining=26; roundIdx=0; toOpen=0; phase='pick-my-case';
+  dealAmount=null; myValue=null;
+  render();
+}
+
+function expectedValue(){
+  const left=cases.filter(c=>!c.opened&&c.id!==myCase);
+  if(!left.length)return 0;
+  return left.reduce((s,c)=>s+c.value,0)/left.length;
+}
+
+function bankerOffer(){
+  const ev=expectedValue();
+  // Offer rises from ~15% in round 1 to ~90% in round 8
+  const frac=0.12+roundIdx*0.11+Math.random()*0.08;
+  return Math.round(ev*Math.min(frac,1.05)/50)*50||1;
+}
+
+function openCase(id){
+  if(phase==='pick-my-case'){
+    myCase=id;
+    myValue=cases.find(c=>c.id===id).value;
+    toOpen=ROUNDS[roundIdx];
+    phase='opening';
+    render();
+    return;
+  }
+  if(phase!=='opening')return;
+  const c=cases.find(c=>c.id===id);
+  if(!c||c.opened||c.id===myCase)return;
+  c.opened=true; remaining--;
+  toOpen--;
+  render();
+  if(toOpen===0){
+    // Check if any cases left to open
+    const leftCases=cases.filter(c=>!c.opened&&c.id!==myCase);
+    if(leftCases.length===0){
+      // Final — show my case
+      phase='final-swap';
+    } else {
+      phase='banker';
+    }
+    setTimeout(()=>render(),400);
+  }
+}
+
+function takeDeal(offer){
+  dealAmount=offer;
+  phase='over';
+  render();
+  saveHistory('deal',offer);
+}
+
+function noDeal(){
+  roundIdx++;
+  if(roundIdx>=ROUNDS.length){
+    // End — offer final swap
+    phase='final-swap';
+  } else {
+    toOpen=ROUNDS[roundIdx];
+    phase='opening';
+  }
+  render();
+}
+
+function keepMyCase(){
+  phase='over';
+  render();
+  saveHistory('kept',myValue);
+}
+
+function swapCase(){
+  // Take the one remaining case
+  const other=cases.find(c=>!c.opened&&c.id!==myCase);
+  if(other){myValue=other.value;}
+  phase='over';
+  render();
+  saveHistory('swap',myValue);
+}
+
+function saveHistory(how,won){
+  try{
+    GameHistory.save('dond',{
+      _summary:`Deal or No Deal · ${fmt(won)}`,
+      _badge:fmt(won),
+      how,won,myCase,myValue
+    });
+  }catch(e){}
+}
+
+function render(){
+  const el=document.getElementById('dond-game');
+  let html='';
+
+  // Dollar board
+  html+=`<div class="dollar-board">`;
+  VALUES.forEach(v=>{
+    const gone=cases.some(c=>c.opened&&c.value===v)||(phase==='over'&&myCase&&cases.find(c=>c.id===myCase)?.value===v&&dealAmount===null);
+    html+=`<div class="dollar-row ${isHigh(v)?'high':'low'} ${gone?'gone':''}">${fmt(v)}</div>`;
+  });
+  html+=`</div>`;
+
+  // Status
+  if(phase==='pick-my-case'){
+    html+=`<div class="dond-status">Choose <strong>your case</strong> — hold onto it until the end!</div>`;
+  } else if(phase==='opening'){
+    html+=`<div class="round-badge">Round ${roundIdx+1}</div>`;
+    html+=`<div class="dond-status">Open <strong>${toOpen}</strong> more case${toOpen!==1?'s':''}.</div>`;
+  } else if(phase==='banker'){
+    const offer=bankerOffer();
+    const ev=expectedValue();
+    const pct=ev>0?Math.round(offer/ev*100):0;
+    html+=`<div class="banker-panel">
+      <div class="banker-label">📞 The Banker's Offer</div>
+      <div class="banker-offer">${fmt(offer)}</div>
+      <div class="banker-msg">That's ${pct}% of expected value (${fmt(Math.round(ev))}).<br>What do you say?</div>
+      <div class="dond-btns">
+        <button class="btn-deal" onclick="takeDeal(${offer})">DEAL</button>
+        <button class="btn-nodeal" onclick="noDeal()">NO DEAL</button>
+      </div>
+    </div>`;
+  } else if(phase==='final-swap'){
+    const other=cases.find(c=>!c.opened&&c.id!==myCase);
+    html+=`<div class="reveal-panel">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px;">One case remains — swap or keep yours?</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:14px;">Your case: #${myCase} &nbsp;|&nbsp; Other case: #${other?.id||'?'}</div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button class="btn btn-gold" onclick="keepMyCase()">Keep #${myCase}</button>
+        <button class="btn btn-outline" onclick="swapCase()">Swap to #${other?.id||'?'}</button>
+      </div>
+    </div>`;
+  } else if(phase==='over'){
+    const won=dealAmount!==null?dealAmount:myValue;
+    const myOriginal=cases.find(c=>c.id===myCase)?.value;
+    const didBetter=won>=(myOriginal||0);
+    html+=`<div class="dond-result">
+      <div class="result-title">${fmt(won)}</div>
+      <div class="result-sub">${dealAmount!==null?'You took the deal!':`Your case contained ${fmt(myOriginal||0)}!`}</div>
+    </div>`;
+    if(dealAmount!==null){
+      html+=`<div style="text-align:center;color:rgba(255,255,255,.45);font-size:.82rem;margin-bottom:12px;">Your case actually had ${fmt(myOriginal||0)}. ${won>=(myOriginal||0)?'Good deal! 🎉':'You left money on the table! 😬'}</div>`;
+    }
+    html+=`<div style="text-align:center;"><button class="btn btn-gold" onclick="init()">Play Again</button></div>`;
+  }
+
+  // Cases grid
+  html+=`<div class="cases-grid">`;
+  cases.forEach(c=>{
+    const isMine=c.id===myCase;
+    const cls=`case-btn${c.opened?' opened':''}${isMine&&phase!=='pick-my-case'?' my-case':''}`;
+    if(c.opened){
+      html+=`<div class="${cls}">
+        <span class="case-num">#${c.id}</span>
+        <span class="case-value" style="font-size:.72rem;font-weight:800;color:${isHigh(c.value)?'#f5c842':'#5ac8fa'}">${fmt(c.value)}</span>
+      </div>`;
+    } else if(isMine&&phase!=='pick-my-case'){
+      html+=`<div class="${cls}">
+        <span class="case-num">#${c.id}</span>
+        <span class="case-icon">⭐</span>
+        <span style="font-size:.55rem;color:#22c55e;font-weight:700;">YOURS</span>
+      </div>`;
+    } else {
+      const clickable=(phase==='pick-my-case')||(phase==='opening'&&!isMine);
+      html+=`<div class="${cls}" ${clickable?`onclick="openCase(${c.id})" style="cursor:pointer;"`:''}>
+        <span class="case-num">#${c.id}</span>
+        <span class="case-icon">💼</span>
+      </div>`;
+    }
+  });
+  html+=`</div>`;
+
+  el.innerHTML=html;
+}
+
+init();
+</script>
+</body>
+</html>

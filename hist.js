@@ -10,7 +10,7 @@ const GameHistory = (function(){
     const list = load(key);
     list.unshift({ ...entry, _date: Date.now() });
     if(list.length > MAX) list.length = MAX;
-    try{ localStorage.setItem('gh_' + key, JSON.stringify(list)); if(window.FGHSync) FGHSync.noteWrite('gh_' + key); }catch(e){}
+    try{ localStorage.setItem('gh_' + key, JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('gh_'+key); }catch(e){}
   }
 
   function load(key){

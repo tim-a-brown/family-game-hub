@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Bingo Hopper</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#1a0a2e 0%,#0d0618 60%);}
+.bn-wrap{max-width:480px;margin:0 auto;padding:0 10px 60px;}
+/* Current ball */
+.bn-current{display:flex;flex-direction:column;align-items:center;margin-bottom:14px;}
+.bn-ball-big{width:110px;height:110px;border-radius:50%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-family:'Playfair Display',serif;
+  box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.2);
+  transition:all .3s;cursor:pointer;user-select:none;}
+.bn-ball-big:hover{transform:scale(1.05);}
+.bn-ball-big .letter{font-size:1.3rem;font-weight:900;opacity:.85;line-height:1;}
+.bn-ball-big .number{font-size:2.4rem;font-weight:900;line-height:1;}
+.bn-ball-empty{background:rgba(255,255,255,.08);border:3px dashed rgba(255,255,255,.2);
+  color:rgba(255,255,255,.25);font-size:.85rem;font-weight:700;}
+.bn-called-count{font-size:.75rem;color:rgba(255,255,255,.4);margin-top:8px;}
+/* Column colors */
+.col-B{background:linear-gradient(145deg,#1d4ed8,#1e40af);}
+.col-I{background:linear-gradient(145deg,#dc2626,#b91c1c);}
+.col-N{background:linear-gradient(145deg,#15803d,#166534);}
+.col-O{background:linear-gradient(145deg,#ea580c,#c2410c);}
+.col-G{background:linear-gradient(145deg,#7c3aed,#6d28d9);}
+/* Called board */
+.bn-board{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:14px;}
+.bn-col-header{text-align:center;font-size:.9rem;font-weight:900;padding:5px 2px;border-radius:6px;color:#fff;}
+.bn-num{width:100%;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:700;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.4);transition:all .25s;}
+.bn-num.called{color:#fff;font-size:.8rem;}
+.bn-num.called.col-B{background:rgba(29,78,216,.6);border-color:rgba(96,165,250,.4);}
+.bn-num.called.col-I{background:rgba(220,38,38,.6);border-color:rgba(252,165,165,.4);}
+.bn-num.called.col-N{background:rgba(21,128,61,.6);border-color:rgba(134,239,172,.4);}
+.bn-num.called.col-G{background:rgba(124,58,237,.6);border-color:rgba(196,181,253,.4);}
+.bn-num.called.col-O{background:rgba(234,88,12,.6);border-color:rgba(253,186,116,.4);}
+.bn-num.latest{outline:3px solid #f5c842;outline-offset:1px;animation:pop-in .3s ease both;}
+@keyframes pop-in{0%{transform:scale(.5);opacity:0}80%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+/* History */
+.bn-history{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;min-height:28px;}
+.bn-hist-chip{padding:2px 7px;border-radius:12px;font-size:.7rem;font-weight:700;color:#fff;}
+/* Bingo card */
+.bn-card{background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;margin-bottom:12px;}
+.bn-card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;}
+.bn-card-header{text-align:center;font-size:1rem;font-weight:900;padding:6px;border-radius:6px;color:#fff;margin-bottom:3px;}
+.bn-card-cell{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:.82rem;font-weight:700;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.7);cursor:pointer;transition:all .15s;user-select:none;}
+.bn-card-cell:hover:not(.free):not(.marked){background:rgba(255,255,255,.15);}
+.bn-card-cell.marked{color:#fff;font-size:.9rem;}
+.bn-card-cell.marked.col-B{background:rgba(29,78,216,.5);}
+.bn-card-cell.marked.col-I{background:rgba(220,38,38,.5);}
+.bn-card-cell.marked.col-N{background:rgba(21,128,61,.5);}
+.bn-card-cell.marked.col-G{background:rgba(124,58,237,.5);}
+.bn-card-cell.marked.col-O{background:rgba(234,88,12,.5);}
+.bn-card-cell.free{background:linear-gradient(135deg,#f5c842,#f0a500);color:#0d1117;font-size:.65rem;font-weight:900;cursor:default;}
+/* Controls */
+.bn-controls{display:flex;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;}
+/* Tabs */
+.bn-tab{padding:8px 16px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);transition:all .15s;}
+.bn-tab.active{background:rgba(245,200,66,.15);border-color:#f5c842;color:#f5c842;}
+.bn-tabs{display:flex;gap:6px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Bingo Hopper</span>
+</nav>
+<div class="page" style="padding:10px 0 60px;">
+<div class="bn-wrap">
+
+<div class="bn-tabs">
+  <div class="bn-tab active" id="tab-hopper" onclick="showTab('hopper')">🎱 Hopper</div>
+  <div class="bn-tab" id="tab-card" onclick="showTab('card')">🎴 My Card</div>
+</div>
+
+<!-- HOPPER TAB -->
+<div id="view-hopper">
+  <div class="bn-current">
+    <div class="bn-ball-big bn-ball-empty" id="bn-ball" onclick="drawBall()">
+      <span>Click to</span><span>Draw</span>
+    </div>
+    <div class="bn-called-count" id="bn-count">0 of 75 called</div>
+  </div>
+
+  <div class="bn-controls">
+    <button class="btn btn-gold" id="bn-draw">🎱 Draw Ball</button>
+    <button class="btn btn-outline btn-sm" id="bn-reset">Reset Game</button>
+    <button class="btn btn-outline btn-sm" id="bn-new-card">New Card</button>
+  </div>
+
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);margin-bottom:6px;text-align:center;">Last Called</div>
+  <div class="bn-history" id="bn-history"></div>
+
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);margin-bottom:6px;">All Numbers</div>
+  <div class="bn-board" id="bn-board"></div>
+</div>
+
+<!-- CARD TAB -->
+<div id="view-card" style="display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div style="font-size:.8rem;color:rgba(255,255,255,.5);">Tap numbers to mark/unmark. Auto-marks called numbers.</div>
+    <label style="display:flex;align-items:center;gap:4px;font-size:.75rem;color:rgba(255,255,255,.5);cursor:pointer;">
+      <input type="checkbox" id="bn-automark" checked style="accent-color:#f5c842;"> Auto
+    </label>
+  </div>
+  <div class="bn-card">
+    <div class="bn-card-grid" id="bn-card-headers"></div>
+    <div class="bn-card-grid" id="bn-card-grid"></div>
+  </div>
+  <div style="text-align:center;">
+    <button class="btn btn-outline btn-sm" id="bn-card-reset">Clear Marks</button>
+    <button class="btn btn-outline btn-sm" id="bn-new-card2" style="margin-left:6px;">New Card</button>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+'use strict';
+const COLS=['B','I','N','G','O'];
+const COL_RANGE=[[1,15],[16,30],[31,45],[46,60],[61,75]];
+const COL_COLOR={'B':'col-B','I':'col-I','N':'col-N','G':'col-G','O':'col-O'};
+const CHIP_BG={'B':'#1d4ed8','I':'#dc2626','N':'#15803d','G':'#7c3aed','O':'#ea580c'};
+
+let pool=[], called=new Set(), latest=null;
+let cardNums=[]; // 5×5 array (row-major), index 12=FREE
+
+function colFor(n){
+  for(let i=0;i<5;i++) if(n>=COL_RANGE[i][0]&&n<=COL_RANGE[i][1]) return COLS[i];
+}
+
+function initPool(){
+  pool=[];
+  for(let n=1;n<=75;n++) pool.push(n);
+  pool.sort(()=>Math.random()-.5);
+  called=new Set(); latest=null;
+}
+
+function genCard(){
+  cardNums=[];
+  for(let col=0;col<5;col++){
+    const [lo,hi]=COL_RANGE[col];
+    const nums=[];
+    while(nums.length<5){
+      const n=lo+Math.floor(Math.random()*(hi-lo+1));
+      if(!nums.includes(n)) nums.push(n);
+    }
+    // Place col-by-col into row-major: cardNums[row*5+col]
+    for(let row=0;row<5;row++) cardNums[row*5+col]=nums[row];
+  }
+  cardNums[12]='FREE';
+  renderCard();
+}
+
+function drawBall(){
+  if(!pool.length){setStatus('All 75 balls called!');return;}
+  const n=pool.pop();
+  called.add(n); latest=n;
+  renderBall(n);
+  renderBoard();
+  renderHistory();
+  if(document.getElementById('bn-automark').checked) renderCard();
+}
+
+function renderBall(n){
+  const col=colFor(n);
+  const el=document.getElementById('bn-ball');
+  el.className=`bn-ball-big ${COL_COLOR[col]}`;
+  el.innerHTML=`<span class="letter">${col}</span><span class="number">${n}</span>`;
+  document.getElementById('bn-count').textContent=`${called.size} of 75 called`;
+}
+
+function renderBoard(){
+  const board=document.getElementById('bn-board');
+  // Headers
+  let html='';
+  COLS.forEach(c=>{html+=`<div class="bn-col-header ${COL_COLOR[c]}">${c}</div>`;});
+  // Numbers
+  for(let col=0;col<5;col++){
+    const[lo,hi]=COL_RANGE[col];
+    for(let n=lo;n<=hi;n++){
+      const isCalled=called.has(n);
+      const isLatest=n===latest;
+      html+=`<div class="bn-num ${isCalled?COL_COLOR[COLS[col]]+' called':''} ${isLatest?'latest':''}">${n}</div>`;
+    }
+  }
+  board.innerHTML=html;
+}
+
+function renderHistory(){
+  const hist=document.getElementById('bn-history');
+  const recent=[...called].slice(-15).reverse();
+  hist.innerHTML=recent.map(n=>{
+    const c=colFor(n);
+    return`<div class="bn-hist-chip" style="background:${CHIP_BG[c]}">${c}${n}</div>`;
+  }).join('');
+}
+
+function renderCard(){
+  const grid=document.getElementById('bn-card-grid');
+  const auto=document.getElementById('bn-automark')?.checked;
+  if(!cardNums.length){genCard();return;}
+  grid.innerHTML=cardNums.map((v,i)=>{
+    if(v==='FREE') return`<div class="bn-card-cell free">FREE</div>`;
+    const col=colFor(v);
+    const isMarked=(auto&&called.has(v))||(!auto&&grid.children[i]?.classList.contains('marked'));
+    return`<div class="bn-card-cell ${isMarked?COL_COLOR[col]+' marked':''}" data-idx="${i}" onclick="toggleMark(${i})">${v}</div>`;
+  }).join('');
+}
+
+function toggleMark(i){
+  if(cardNums[i]==='FREE')return;
+  const cells=document.querySelectorAll('.bn-card-cell');
+  cells[i].classList.toggle('marked');
+  const v=cardNums[i];
+  const col=colFor(v);
+  if(cells[i].classList.contains('marked')) cells[i].classList.add(COL_COLOR[col]);
+  else cells[i].classList.remove(COL_COLOR[col]);
+}
+
+function showTab(t){
+  document.getElementById('view-hopper').style.display=t==='hopper'?'':'none';
+  document.getElementById('view-card').style.display=t==='card'?'':'none';
+  document.getElementById('tab-hopper').classList.toggle('active',t==='hopper');
+  document.getElementById('tab-card').classList.toggle('active',t==='card');
+  if(t==='card') renderCard();
+}
+
+document.getElementById('bn-draw').addEventListener('click',drawBall);
+document.getElementById('bn-reset').addEventListener('click',()=>{initPool();document.getElementById('bn-ball').className='bn-ball-big bn-ball-empty';document.getElementById('bn-ball').innerHTML='<span>Click to</span><span>Draw</span>';document.getElementById('bn-count').textContent='0 of 75 called';renderBoard();renderHistory();renderCard();});
+document.getElementById('bn-new-card').addEventListener('click',genCard);
+document.getElementById('bn-card-reset')?.addEventListener('click',()=>renderCard());
+document.getElementById('bn-new-card2')?.addEventListener('click',genCard);
+
+// Build empty board headers first
+(function(){
+  const board=document.getElementById('bn-board');
+  let html='';
+  COLS.forEach(c=>{html+=`<div class="bn-col-header ${COL_COLOR[c]}">${c}</div>`;});
+  for(let col=0;col<5;col++){
+    const[lo,hi]=COL_RANGE[col];
+    for(let n=lo;n<=hi;n++) html+=`<div class="bn-num">${n}</div>`;
+  }
+  board.innerHTML=html;
+  // Card headers
+  const headers=document.getElementById('bn-card-headers');
+  headers.innerHTML=COLS.map(c=>`<div class="bn-card-header ${COL_COLOR[c]}">${c}</div>`).join('');
+})();
+
+initPool(); genCard();
+</script>
+</body>
+</html>

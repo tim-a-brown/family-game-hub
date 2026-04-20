@@ -135,9 +135,12 @@ body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117
     </div>
     <div style="margin-bottom:10px;">
       <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Holes</label>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-gold btn-sm mg-holes-btn active-dir" data-h="9">9 holes</button>
-        <button class="btn btn-outline btn-sm mg-holes-btn" data-h="18">18 holes</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-gold btn-sm mg-holes-btn active-dir" data-h="9">9</button>
+        <button class="btn btn-outline btn-sm mg-holes-btn" data-h="18">18</button>
+        <button class="btn btn-outline btn-sm mg-holes-btn" data-h="custom">Custom</button>
+        <input type="number" id="mg-holes-custom" min="1" max="99" value="12"
+          style="display:none;width:60px;font-size:max(16px,.88rem);text-align:center;padding:4px 6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;">
       </div>
     </div>
     <div style="margin-bottom:10px;">
@@ -251,7 +254,15 @@ function buildHistory(container,rounds,names,totals,colors){
     b.addEventListener('click',()=>{
       document.querySelectorAll('.mg-holes-btn').forEach(x=>{x.classList.remove('active-dir','btn-gold');x.classList.add('btn-outline');});
       b.classList.add('active-dir','btn-gold');b.classList.remove('btn-outline');
-      mgHoles=+b.dataset.h;
+      const customInput=document.getElementById('mg-holes-custom');
+      if(b.dataset.h==='custom'){
+        customInput.style.display='inline-block';
+        mgHoles=Math.max(1,Math.min(99,parseInt(customInput.value)||9));
+        customInput.oninput=()=>{mgHoles=Math.max(1,Math.min(99,parseInt(customInput.value)||9));};
+      } else {
+        customInput.style.display='none';
+        mgHoles=+b.dataset.h;
+      }
     });
   });
   mgBuildNames();
@@ -259,7 +270,12 @@ function buildHistory(container,rounds,names,totals,colors){
   function mgStart(){
     mgVenue=document.getElementById('mg-venue').value.trim()||'Mini Golf';
     mgCourse=document.getElementById('mg-course').value.trim();
-    mgHoles=+document.querySelector('.mg-holes-btn.active-dir')?.dataset.h||9;
+    const activeHoleBtn=document.querySelector('.mg-holes-btn.active-dir');
+    if(activeHoleBtn?.dataset.h==='custom'){
+      mgHoles=Math.max(1,Math.min(99,parseInt(document.getElementById('mg-holes-custom').value)||9));
+    } else {
+      mgHoles=+activeHoleBtn?.dataset.h||9;
+    }
     mgPar=Math.max(2,Math.min(6,parseInt(document.getElementById('mg-par').value)||3));
     mgNames=Array.from({length:mgN},(_,i)=>document.getElementById('mgn'+i).value.trim()||`Player ${i+1}`);
     mgScores=Array.from({length:mgHoles},()=>Array(mgN).fill(null));
