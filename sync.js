@@ -156,7 +156,7 @@
     return ref.get().then(function(doc){
       if(!doc.exists) return {hi:{},gh:{}};
       var d = doc.data() || {};
-      return { hi: d.hi || {}, gh: d.gh || {} };
+      return { hi: hiFromFirestore(d.hi || {}), gh: d.gh || {} };
     });
   }
 
@@ -174,11 +174,31 @@
     }, 1500);
   }
 
+  // Convert hi arrays [[n,s,d],...] -> [{n,s,d},...] for Firestore (no nested arrays)
+  function hiToFirestore(hiMap){
+    var out = {};
+    Object.keys(hiMap).forEach(function(game){
+      out[game] = (hiMap[game]||[]).map(function(row){
+        return Array.isArray(row) ? {n:row[0],s:row[1],d:row[2]} : row;
+      });
+    });
+    return out;
+  }
+  // Convert [{n,s,d},...] -> [[n,s,d],...] back for localStorage
+  function hiFromFirestore(hiMap){
+    var out = {};
+    Object.keys(hiMap||{}).forEach(function(game){
+      out[game] = (hiMap[game]||[]).map(function(row){
+        return Array.isArray(row) ? row : [row.n, row.s, row.d];
+      });
+    });
+    return out;
+  }
   function pushNow(){
     var ref = cloudRef(); if(!ref) return Promise.resolve();
     var snap = scanLocal();
     return ref.set({
-      hi: snap.hi,
+      hi: hiToFirestore(snap.hi),
       gh: snap.gh,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: false });
