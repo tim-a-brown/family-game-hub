@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only allow read/write on pins/{pin} where pin is exactly 4 digits.
+    // Payload must have only our known top-level keys and reasonable size.
+    match /pins/{pin} {
+      allow read: if pin.matches('^[0-9]{4}$');
+      allow write: if pin.matches('^[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['hi','gh','updatedAt'])
+        && (!('hi' in request.resource.data) || request.resource.data.hi is map)
+        && (!('gh' in request.resource.data) || request.resource.data.gh is map);
+    }
+    // Deny everything else.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
