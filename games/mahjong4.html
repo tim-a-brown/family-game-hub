@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Mahjong — 4 Player</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
@@ -676,3 +681,72 @@ newGame();
 </script>
 </body>
 </html>
+<script>
+// ── How to play + Tips overlay ─────────────────────────────────────────────
+function showHelp(tab){
+  document.getElementById('mj4-help-overlay')?.remove();
+  const ov=document.createElement('div');
+  ov.id='mj4-help-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;overflow-y:auto;padding:20px 14px;display:flex;align-items:flex-start;justify-content:center;';
+  ov.innerHTML=`
+  <div style="max-width:480px;width:100%;background:#111;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;margin:auto;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button onclick="showHelp('rules')" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,${tab==='rules'?'.4':'0.12'});background:rgba(255,255,255,${tab==='rules'?'.1':'0.04'});color:#fff;font-weight:700;cursor:pointer;font-size:.82rem;">📖 How to Play</button>
+      <button onclick="showHelp('tips')" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,${tab==='tips'?'.4':'0.12'});background:rgba(255,255,255,${tab==='tips'?'.1':'0.04'});color:#fff;font-weight:700;cursor:pointer;font-size:.82rem;">💡 Tips</button>
+    </div>
+    ${tab==='rules'?`
+    <div style="font-size:.82rem;line-height:1.8;color:rgba(255,255,255,.8);">
+      <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:10px;color:#f5c842;">🀄 4-Player Mahjong</div>
+      <b>Goal:</b> Be the first to form a winning hand of 14 tiles: 4 melds + 1 pair.<br><br>
+      <b>Tile suits:</b><br>
+      • <span style="color:#c53030">Man (m)</span> — Characters 1–9<br>
+      • <span style="color:#15803d">Pin (p)</span> — Circles 1–9<br>
+      • <span style="color:#1d4ed8">Sou (s)</span> — Bamboo 1–9<br>
+      • Winds: 東(E) 南(S) 西(W) 北(N)<br>
+      • Dragons: 中(Red) 發(Green) 白(White)<br><br>
+      <b>Your turn:</b><br>
+      1. Click "Draw Tile" to draw from the wall<br>
+      2. Tap any tile twice (or select then discard) to discard<br><br>
+      <b>Claiming discards:</b><br>
+      • <b>Tsumo</b> — Win by drawing the tile yourself (+5 pts bonus)<br>
+      • <b>Ron</b> — Win by claiming another player's discard<br>
+      • <b>Pong</b> — Claim any player's discard to form a triplet (3 same tiles). You must then discard.<br>
+      • <b>Chow</b> — Claim the left player's discard to complete a sequence<br>
+      • <b>Pass</b> — Skip the claim and let play continue<br><br>
+      <b>Winning hand:</b> 4 melds + 1 pair<br>
+      • Meld = triplet (3 identical) OR sequence (3 consecutive, same suit)<br>
+      • Pair = 2 identical tiles<br>
+      • Special: 7 pairs (7 different pairs, 14 tiles)<br><br>
+      <b>Scoring:</b> Base 10 pts + bonuses for all-triplets (+10), same-suit hand (+20), tsumo (+5).<br>
+      Winner scores against the player who dealt the winning tile (Ron) or splits 3 ways (Tsumo).<br><br>
+      <b>Game:</b> 4 rounds rotating East→South→West→North seat winds.
+    </div>` : `
+    <div style="font-size:.82rem;line-height:1.8;color:rgba(255,255,255,.8);">
+      <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:10px;color:#f5c842;">💡 Beginner Tips</div>
+      <div id="mj4-hint-content">${getMahjongTip()}</div>
+      <button onclick="document.getElementById('mj4-hint-content').innerHTML=getMahjongTip()" style="margin-top:12px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(245,200,66,.3);background:rgba(245,200,66,.1);color:#f5c842;font-weight:700;cursor:pointer;">🎲 Another Tip</button>
+    </div>`}
+    <button onclick="document.getElementById('mj4-help-overlay').remove()" style="margin-top:14px;width:100%;padding:10px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-weight:700;cursor:pointer;">Close</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+}
+
+function getMahjongTip(){
+  const tips=[
+    '<b>Watch your Shanten number.</b> It shows how many tiles away you are from winning. 0 = one tile away (Tenpai). Aim to reduce it each turn.',
+    '<b>Prioritise pairs that could become triplets.</b> A pair you already hold is halfway to a Pong claim — keep it unless it\'s blocking other melds.',
+    '<b>Discard honour tiles (winds, dragons) early</b> unless you have a pair of them. They can\'t form sequences and are hard to meld.',
+    '<b>Terminals (1s and 9s) are hard to meld</b> into sequences because they can only extend in one direction. Discard them early.',
+    '<b>Claim Pong strategically.</b> Ponging takes you out of turn order, so only claim if it significantly helps your hand.',
+    '<b>Watch the discard pile.</b> If you see a tile discarded 3 times already, the 4th copy is likely in someone\'s hand — don\'t wait for it.',
+    '<b>Chase sequences in one suit</b> for a cleaner hand. Mixed-suit hands are harder to complete and score lower.',
+    '<b>Tsumo (self-draw win) scores better</b> than Ron — all three opponents each pay you a share of the points.',
+    '<b>Don\'t declare Ron on a risky discard</b> if the tile is clearly dangerous (many discards of adjacent numbers suggest someone is waiting for it).',
+    '<b>Keep your options open early.</b> In the first few draws, discard isolated tiles and honour tiles. Start committing to a strategy around draw 5-7.',
+    '<b>A winning hand with all triplets (no sequences)</b> scores a 10-point bonus — if you\'re getting Pong offers, consider going all-triplet.',
+    '<b>7-pair hands</b> are a great backup if your hand isn\'t shaping into melds — they just need 7 different pairs.',
+  ];
+  return tips[Math.floor(Math.random()*tips.length)];
+}
+</script>

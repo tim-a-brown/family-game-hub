@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Pac-Man</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
@@ -9,15 +14,15 @@
 <script src="../arcade-hi.js"></script>
 <script src="../hist.js"></script>
 <style>
-body{background:#000;overflow:hidden;}
+body{overscroll-behavior:none;background:#000;overflow:hidden;}
 .wrap{max-width:380px;margin:0 auto;display:flex;flex-direction:column;align-items:center;}
 .pm-hdr{display:flex;padding:5px 10px;width:100%;box-sizing:border-box;justify-content:space-between;align-items:center;}
 .pm-score{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
 .pm-lbl{font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
 .pm-lvl{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:#5ac8fa;text-align:right;}
 canvas{display:block;background:#000;}
-.dpad{display:grid;grid-template-columns:repeat(3,52px);gap:4px;margin-top:8px;}
-.db{width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:1.3rem;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;user-select:none;}
+.dpad{display:grid;grid-template-columns:repeat(3,70px);gap:6px;margin-top:10px;justify-content:center;}
+.db{width:70px;height:70px;border-radius:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:1.7rem;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;user-select:none;}
 .db:active{background:rgba(245,200,66,.3);}
 .db.mid{font-size:.6rem;font-weight:800;}
 </style>
@@ -26,9 +31,9 @@ canvas{display:block;background:#000;}
 <nav class="site-nav" style="background:rgba(0,0,0,.8);border-bottom:1px solid rgba(255,255,255,.08);">
   <a class="nav-back" href="../index.html" style="color:rgba(255,255,255,.7);">← Home</a>
   <span class="nav-title" style="color:#fff;">Pac-Man</span>
-  <div style="display:flex;gap:5px;">
+    <div class="nav-actions">
     <button onclick="ArcadeHi.show('pac','Pac-Man')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
-    <button id="pm-newgame" onclick="try{sessionStorage.removeItem('pac_state');}catch(e){}startGame();" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button>
+  <button id="pm-newgame" onclick="try{sessionStorage.removeItem('pac_state');}catch(e){}startGame();" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button>
   </div>
 </nav>
 <div class="page" style="padding:0;background:#000;">
@@ -52,9 +57,11 @@ canvas{display:block;background:#000;}
 <script>
 'use strict';
 const cv=document.getElementById('cv');
-// 19 cols × 21 rows, 18px cells
-const COLS=19,ROWS=21,CS=18;
+// 19 cols × 21 rows, adaptive cell size for mobile
+const COLS=19,ROWS=21;
+const CS=Math.max(18,Math.min(22,Math.floor((Math.min(window.innerWidth,460)-10)/COLS)));
 cv.width=COLS*CS; cv.height=ROWS*CS;
+cv.style.width=cv.width+'px'; cv.style.height=cv.height+'px';
 const ctx=cv.getContext('2d');
 
 // Tile types

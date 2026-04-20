@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Breakout</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../arcade-hi.js"></script>
 <style>
-body{background:#050a14;overflow:hidden;touch-action:none;}
+body{overscroll-behavior:none;background:#050a14;overflow:hidden;touch-action:none;}
 #cv{display:block;margin:0 auto;touch-action:none;}
 .hud{display:flex;justify-content:space-between;align-items:center;padding:4px 10px;max-width:480px;margin:0 auto;}
 .hud-stat{text-align:center;}
@@ -24,7 +29,9 @@ body{background:#050a14;overflow:hidden;touch-action:none;}
 <nav class="site-nav" style="background:rgba(0,0,0,.5);">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Breakout</span>
-  <button onclick="ArcadeHi.show('breakout','Breakout')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
+  <div class="nav-actions">
+    <button onclick="ArcadeHi.show('breakout','Breakout')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
+  </div>
 </nav>
 <div class="hud">
   <div class="hud-stat"><div class="hud-val" id="hud-score">0</div><div class="hud-lbl">Score</div></div>
@@ -655,19 +662,29 @@ cv.addEventListener('mousemove',e=>{
 });
 cv.addEventListener('click',e=>{if(!isMobile)handleAction();});
 
-// Touch — canvas
+// Touch — canvas: quick tap = launch/pause; hold = paddle control
+let _tsTime=0, _tsMoved=false;
 cv.addEventListener('touchstart',e=>{
   e.preventDefault();
+  _tsTime=Date.now(); _tsMoved=false;
   const r=cv.getBoundingClientRect();
   touchX=(e.touches[0].clientX-r.left);
-  handleAction();
 },{passive:false});
 cv.addEventListener('touchmove',e=>{
   e.preventDefault();
+  _tsMoved=true;
   const r=cv.getBoundingClientRect();
   touchX=(e.touches[0].clientX-r.left);
 },{passive:false});
-cv.addEventListener('touchend',e=>{e.preventDefault();},{passive:false});
+cv.addEventListener('touchend',e=>{
+  e.preventDefault();
+  const held=Date.now()-_tsTime;
+  if(!_tsMoved && held<220){
+    // Quick tap — launch or pause
+    handleAction();
+  }
+  touchX=null;
+},{passive:false});
 
 // D-pad buttons
 document.getElementById('btn-left').addEventListener('touchstart',e=>{e.preventDefault();leftHeld=true;},{passive:false});

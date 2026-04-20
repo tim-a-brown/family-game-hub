@@ -90,38 +90,68 @@ const ArcadeHi = (function(){
         <button class="btn btn-gold btn-block" id="ahi-submit" style="max-width:240px;margin:0 auto 10px;display:block;">Submit →</button>
         <button class="btn btn-outline btn-block" id="ahi-skip" style="max-width:240px;margin:0 auto;display:block;font-size:.78rem;">Skip</button>
       </div>`;
+    document.body.style.overflow = 'hidden';
     document.body.appendChild(overlay);
+
+    // Detect mobile
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
     function renderSlots(){
       const container = document.getElementById('ahi-slots');
       container.innerHTML = '';
-      for(let i=0;i<3;i++){
-        const ci = CHARS.indexOf(letters[i]);
-        const slot = document.createElement('div');
-        slot.className = 'ahi-slot';
-        slot.innerHTML = `
-          <div class="ahi-arrows">
-            <button class="ahi-arrow" data-i="${i}" data-dir="1">▲</button>
-          </div>
-          <div class="ahi-letter${i===focusIdx?' active':''}" data-i="${i}">${letters[i]}</div>
-          <div class="ahi-arrows">
-            <button class="ahi-arrow" data-i="${i}" data-dir="-1">▼</button>
+
+      if(isMobile){
+        // Mobile: single text input that brings up keyboard
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'text-align:center;';
+        wrapper.innerHTML = `
+          <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:8px;">Type your 3 initials</div>
+          <input id="ahi-mobile-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+            maxlength="3" placeholder="AAA"
+            style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;text-align:center;letter-spacing:12px;
+            background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);border-radius:12px;
+            color:#fff;width:160px;padding:12px 8px;text-transform:uppercase;outline:none;">
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+            ${letters.map((l,i)=>`<div class="ahi-letter${i===focusIdx?' active':''}" style="pointer-events:none;">${l}</div>`).join('')}
           </div>`;
-        container.appendChild(slot);
-      }
-      // Arrow click handlers
-      container.querySelectorAll('.ahi-arrow').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          const i=+btn.dataset.i, dir=+btn.dataset.dir;
-          focusIdx=i;
-          const ci=(CHARS.indexOf(letters[i])+dir+26)%26;
-          letters[i]=CHARS[ci];
+        container.appendChild(wrapper);
+        const inp = document.getElementById('ahi-mobile-input');
+        setTimeout(()=>{inp.focus();inp.click();},100);
+        inp.addEventListener('input',()=>{
+          const val = inp.value.toUpperCase().replace(/[^A-Z]/g,'');
+          for(let i=0;i<3;i++) letters[i] = val[i]||'A';
+          focusIdx = Math.min(val.length, 2);
           renderSlots();
         });
-      });
-      container.querySelectorAll('.ahi-letter').forEach(el=>{
-        el.addEventListener('click',()=>{focusIdx=+el.dataset.i;renderSlots();});
-      });
+        inp.value = letters.join('').replace(/A+$/,'') || '';
+      } else {
+        // Desktop: arrow slot UI
+        for(let i=0;i<3;i++){
+          const slot = document.createElement('div');
+          slot.className = 'ahi-slot';
+          slot.innerHTML = `
+            <div class="ahi-arrows">
+              <button class="ahi-arrow" data-i="${i}" data-dir="1">▲</button>
+            </div>
+            <div class="ahi-letter${i===focusIdx?' active':''}" data-i="${i}">${letters[i]}</div>
+            <div class="ahi-arrows">
+              <button class="ahi-arrow" data-i="${i}" data-dir="-1">▼</button>
+            </div>`;
+          container.appendChild(slot);
+        }
+        container.querySelectorAll('.ahi-arrow').forEach(btn=>{
+          btn.addEventListener('click',()=>{
+            const i=+btn.dataset.i, dir=+btn.dataset.dir;
+            focusIdx=i;
+            const ci=(CHARS.indexOf(letters[i])+dir+26)%26;
+            letters[i]=CHARS[ci];
+            renderSlots();
+          });
+        });
+        container.querySelectorAll('.ahi-letter').forEach(el=>{
+          el.addEventListener('click',()=>{focusIdx=+el.dataset.i;renderSlots();});
+        });
+      }
     }
     renderSlots();
 
@@ -209,6 +239,7 @@ const ArcadeHi = (function(){
           ${hasScores?`<button class="btn btn-outline btn-sm" id="ahi-clear" style="color:rgba(255,100,100,.7);border-color:rgba(255,100,100,.3);">🗑 Clear scores</button>`:''}
         </div>
       </div>`;
+    document.body.style.overflow = 'hidden';
     document.body.appendChild(overlay);
 
     // Close on backdrop click

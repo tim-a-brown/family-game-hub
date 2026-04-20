@@ -139,7 +139,29 @@
     }
   }
 
-  // ── Firestore serialization (no nested arrays) ────────────────────────
+  // ── Firestore sanitization ────────────────────────────────────────────────
+  // Firestore does not support arrays within arrays. This recursively converts
+  // any array found inside another array into an indexed object: [1,2]→{i0:1,i1:2}
+  function sanitizeForFirestore(val) {
+    if (Array.isArray(val)) {
+      return val.map(function(item) {
+        if (Array.isArray(item)) {
+          var obj = {};
+          item.forEach(function(v, i) { obj['i'+i] = sanitizeForFirestore(v); });
+          return obj;
+        }
+        return sanitizeForFirestore(item);
+      });
+    }
+    if (val !== null && typeof val === 'object') {
+      var out = {};
+      Object.keys(val).forEach(function(k) { out[k] = sanitizeForFirestore(val[k]); });
+      return out;
+    }
+    return val;
+  }
+
+  // ── Firestore hi serialization (no nested arrays) ─────────────────────────
   function hiToFirestore(hiMap){
     var out = {};
     Object.keys(hiMap).forEach(function(game){
@@ -193,7 +215,7 @@
     var snap = scanLocal();
     var doc = {
       hi: hiToFirestore(snap.hi),
-      gh: snap.gh,
+      gh: sanitizeForFirestore(snap.gh),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     var lbl = label();

@@ -3,13 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Wheel of Fortune</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a0a2a 0%,#0d0a1a 65%);}
+body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a2a 0%,#0d0a1a 65%);}
 .wof-wrap{max-width:520px;margin:0 auto;padding:0 10px 60px;}
 canvas#wof-wheel{display:block;margin:0 auto 10px;cursor:pointer;}
 /* Puzzle board */
@@ -66,15 +71,19 @@ canvas#wof-wheel{display:block;margin:0 auto 10px;cursor:pointer;}
 </nav>
 <div class="page" style="padding:10px 0 60px;">
 <div class="wof-wrap">
-  <canvas id="wof-wheel" width="280" height="280"></canvas>
-  <div class="wedge-display" id="wedge-display"></div>
-  <div class="score-board" id="score-board"></div>
   <div class="puzzle-board">
     <div class="puzzle-category" id="puzzle-cat"></div>
     <div class="puzzle-rows" id="puzzle-board"></div>
   </div>
   <div class="wof-status" id="wof-status"></div>
-  <div class="spin-area" id="spin-area"></div>
+  <div class="wof-mid" style="display:flex;gap:10px;align-items:flex-start;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+    <div style="flex:0 0 auto;"><canvas id="wof-wheel" width="220" height="220" style="display:block;"></canvas></div>
+    <div style="flex:1;min-width:140px;max-width:220px;">
+      <div class="wedge-display" id="wedge-display"></div>
+      <div class="score-board" id="score-board"></div>
+      <div class="spin-area" id="spin-area"></div>
+    </div>
+  </div>
   <div class="solve-row" id="solve-row" style="display:none;">
     <input class="solve-input" id="solve-input" placeholder="Solve the puzzle…" autocomplete="off" autocorrect="off" autocapitalize="characters" maxlength="60">
     <button class="btn btn-gold btn-sm" id="solve-btn">Solve!</button>
@@ -138,7 +147,7 @@ const PUZZLES=[
 ];
 
 // ── State ────────────────────────────────────────────────────────────────────
-const PLAYER_NAMES=['You','Vanna','Pat'];
+let PLAYER_NAMES=['You','Vanna','Pat'];
 let puzzle,revealed,usedLetters,round,scores,totalScores,curPlayer,phase,spinResult,freeSpin;
 // phase: 'spin'|'pick-letter'|'ai-turn'|'over'
 
@@ -184,8 +193,8 @@ const ctx=cv.getContext('2d');
 let wheelAngle=0,spinning=false;
 
 function drawWheel(angle){
-  const cx=140,cy=140,r=128;
-  ctx.clearRect(0,0,280,280);
+  const cx=110,cy=110,r=100;
+  ctx.clearRect(0,0,220,220);
   SEGMENTS.forEach((seg,i)=>{
     const start=angle+i*ANG-Math.PI/2;
     const end=start+ANG;
@@ -214,21 +223,74 @@ function spinWheel(){
   if(spinning)return;
   spinning=true;
   document.getElementById('spin-area').innerHTML='';
-  const extra=Math.PI*2*(8+Math.random()*8);
+  const cx=110,cy=110,r=100;
+  const extra=Math.PI*2*(7+Math.random()*6);
   const targetAngle=wheelAngle+extra;
-  const dur=3000+Math.random()*1500;
+  const totalDur=4000+Math.random()*1500;
   const start=performance.now();
   const startAngle=wheelAngle;
+  const N_SEGS=SEGMENTS.length;
+  const ANG_SEG=Math.PI*2/N_SEGS;
+  let lastPegSound=-1;
+
   function frame(now){
-    const t=Math.min(1,(now-start)/dur);
-    const ease=1-Math.pow(1-t,3);
-    wheelAngle=startAngle+extra*ease;
-    drawWheel(wheelAngle);
+    const elapsed=now-start;
+    const t=Math.min(1,elapsed/totalDur);
+
+    // Deceleration curve: fast start, slow peg-by-peg ending
+    // Use cubic ease-out but with "ratchet" effect near end
+    let ease;
+    if(t<0.6){
+      // First 60%: smooth cubic ease
+      const t2=t/0.6;
+      ease=t2*(2-t2)*0.8; // reaches 80% of rotation
+    } else {
+      // Last 40%: slow, peg-by-peg ratchet
+      const t2=(t-0.6)/0.4;
+      // Easing that creates slight back-pull then snap forward
+      const pegsLeft=Math.floor(extra/ANG_SEG*(1-0.8))-Math.floor(extra/ANG_SEG*(1-0.8)*(1-t2));
+      ease=0.8+0.2*(1-Math.pow(1-t2,3));
+    }
+
+    const rawAngle=startAngle+extra*ease;
+
+    // Ratchet: when near end (t>0.7), snap to nearest peg with pull-back
+    let displayAngle=rawAngle;
+    if(t>0.7){
+      const pegSize=ANG_SEG;
+      const angleIntoSeg=(rawAngle/pegSize)%1;
+      // Pull back slightly as we approach a peg, then snap
+      if(angleIntoSeg>0.7&&angleIntoSeg<0.98){
+        // Approaching peg: slight drag backward
+        const drag=(angleIntoSeg-0.7)/0.28;
+        displayAngle=rawAngle-drag*0.06*pegSize;
+      }
+    }
+
+    // Play click sound at each peg transition
+    const pegsRotated=Math.floor(rawAngle/ANG_SEG);
+    if(pegsRotated!==lastPegSound){
+      lastPegSound=pegsRotated;
+      try{
+        const ac=new(window.AudioContext||window.webkitAudioContext)();
+        const o=ac.createOscillator();const g=ac.createGain();
+        o.frequency.value=800+Math.random()*200;o.type='triangle';
+        g.gain.setValueAtTime(.05,ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+0.04);
+        o.connect(g);g.connect(ac.destination);
+        o.start();o.stop(ac.currentTime+0.05);
+      }catch(e){}
+    }
+
+    wheelAngle=displayAngle;
+    drawWheel(displayAngle);
+
     if(t<1){requestAnimationFrame(frame);}
     else{
       wheelAngle=targetAngle%(Math.PI*2);
+      drawWheel(wheelAngle);
       spinning=false;
-      resolveSpin();
+      setTimeout(resolveSpin,200);
     }
   }
   requestAnimationFrame(frame);
@@ -294,9 +356,10 @@ function pickLetter(l){
       setTimeout(()=>{ renderSpinArea(); updateKeyboard(); },800);
     }
   } else {
-    setStatus(`No "${l}" in the puzzle.`);
+    setStatus(`No "${l}" in the puzzle — ${PLAYER_NAMES[curPlayer]}'s turn ends.`);
+    phase='spin'; // lock out further picks during transition
     renderPuzzle();
-    updateKeyboard();
+    updateKeyboard(); // disable keys since phase is now 'spin'
     setTimeout(()=>nextPlayer(),1200);
   }
 }
@@ -311,7 +374,8 @@ function nextPlayer(){
   spinResult=null;
   document.getElementById('wedge-display').innerHTML='';
   renderAll();
-  if(curPlayer!==0){
+  if(curPlayer>=nHumans){
+    // AI turn
     setTimeout(aiTurn,900);
   } else {
     setStatus(`${PLAYER_NAMES[curPlayer]}'s turn! Spin the wheel.`);
@@ -321,7 +385,7 @@ function nextPlayer(){
 }
 
 function aiTurn(){
-  if(curPlayer===0)return;
+  if(curPlayer<nHumans)return;
   setStatus(`${PLAYER_NAMES[curPlayer]} is spinning…`);
   spinWheel();
   // AI letter picking is handled after spin resolves via pickLetter
@@ -411,35 +475,7 @@ function endRound(){
   }catch(e){}
 }
 
-function renderPuzzle(){
-  const board=document.getElementById('puzzle-board');
-  document.getElementById('puzzle-cat').textContent=puzzle.cat;
-  const words=puzzle.text.split(' ');
-  // Split into rows of max 12 tiles
-  const rows=[]; let row=[];
-  words.forEach((word,wi)=>{
-    if(row.length+word.length+(row.length?1:0)>12&&row.length){
-      rows.push([...row]);row=[];
-    }
-    if(row.length)row.push(null); // space
-    word.split('').forEach(c=>row.push(c));
-  });
-  if(row.length)rows.push(row);
-
-  board.innerHTML=rows.map(r=>`<div class="puzzle-row">${
-    r.map((c,i)=>{
-      if(c===null)return`<div class="puzzle-tile space"></div>`;
-      const globalIdx=puzzle.text.indexOf(c); // approximate
-      const isRevealed=revealed.has(puzzle.text.split('').findIndex((pc,pi)=>pc===c&&!Array.from(revealed).some(ri=>ri<pi&&puzzle.text[ri]===c&&r.slice(0,i).filter(x=>x===c).length===0)));
-      // Simpler: track by position in puzzle text
-      const pos=getCharPos(r,i,rows,rows.indexOf(r));
-      const rev=revealed.has(pos);
-      return`<div class="puzzle-tile${rev?' ':' hidden'}">${rev?c:''}</div>`;
-    }).join('')
-  }</div>`).join('');
-  // Rebuild with proper position tracking
-  renderPuzzleClean();
-}
+function renderPuzzle(){ renderPuzzleClean(); }
 
 function renderPuzzleClean(){
   const board=document.getElementById('puzzle-board');
@@ -480,12 +516,12 @@ function renderScores(){
 
 function renderSpinArea(){
   const sa=document.getElementById('spin-area');
-  if(curPlayer===0&&phase==='spin'){
+  if(curPlayer<nHumans&&phase==='spin'){
     sa.innerHTML=`
       <button class="btn btn-gold" onclick="spinWheel()">🎡 Spin the Wheel!</button>
       ${scores[0]>=250?`<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="buyVowel()">Buy Vowel ($250)</button>`:''}
       <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="showSolve()">Solve Puzzle</button>`;
-  } else if(curPlayer===0&&phase==='pick-letter'){
+  } else if(curPlayer<nHumans&&phase==='pick-letter'){
     sa.innerHTML=`<button class="btn btn-outline btn-sm" onclick="showSolve()">Solve Puzzle</button>`;
   } else {
     sa.innerHTML='';
@@ -521,7 +557,62 @@ function renderAll(){
 document.getElementById('solve-btn').addEventListener('click',attemptSolve);
 document.getElementById('solve-input').addEventListener('keydown',e=>{if(e.key==='Enter')attemptSolve();});
 
-initGame();
+// ── Player setup ──────────────────────────────────────────────────────────
+let nHumans = 1; // default
+function showPlayerSetup() {
+  const overlay = document.createElement('div');
+  overlay.id = 'wof-setup';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:#111;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;">
+      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;margin-bottom:6px;">Wheel of Fortune</div>
+      <div style="font-size:.85rem;color:rgba(255,255,255,.55);margin-bottom:18px;">How many players?</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:18px;">
+        ${[1,2,3].map(n=>`<button class="btn ${n===1?'btn-gold':'btn-outline'}" data-n="${n}" style="width:68px;font-size:1.1rem;font-weight:900;" onclick="selectPlayers(${n})">${n}</button>`).join('')}
+      </div>
+      <div id="wof-name-inputs" style="margin-bottom:16px;"></div>
+      <button class="btn btn-gold" style="width:100%;" onclick="startWithPlayers()">▶ Start Game</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  renderNameInputs(1);
+}
+
+function selectPlayers(n) {
+  nHumans = n;
+  document.querySelectorAll('#wof-setup [data-n]').forEach(b => {
+    b.className = 'btn ' + (+b.dataset.n === n ? 'btn-gold' : 'btn-outline');
+    b.style.width = '68px'; b.style.fontSize = '1.1rem'; b.style.fontWeight = '900';
+  });
+  renderNameInputs(n);
+}
+
+function renderNameInputs(n) {
+  const el = document.getElementById('wof-name-inputs');
+  if (!el) return;
+  if (n === 1) { el.innerHTML = ''; return; }
+  el.innerHTML = Array.from({length:n}, (_,i) =>
+    `<input type="text" placeholder="Player ${i+1} name" maxlength="12"
+      style="display:block;width:100%;margin-bottom:8px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#fff;font-size:.9rem;box-sizing:border-box;"
+      id="wof-pname-${i}">`
+  ).join('');
+}
+
+function startWithPlayers() {
+  const names = ['You','Vanna','Pat'];
+  for (let i = 0; i < nHumans; i++) {
+    const el = document.getElementById('wof-pname-' + i);
+    if (el && el.value.trim()) names[i] = el.value.trim();
+    else if (i === 0) names[0] = 'You';
+  }
+  // Fill remaining AI slots
+  PLAYER_NAMES[0] = names[0];
+  PLAYER_NAMES[1] = nHumans >= 2 ? names[1] : 'Vanna';
+  PLAYER_NAMES[2] = nHumans >= 3 ? names[2] : 'Pat';
+  document.getElementById('wof-setup')?.remove();
+  initGame();
+}
+
+showPlayerSetup();
 setStatus(`${PLAYER_NAMES[0]}'s turn — spin the wheel!`);
 </script>
 </body>

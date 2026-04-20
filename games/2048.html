@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>2048</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
@@ -14,7 +19,7 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
 .score-box{background:rgba(255,255,255,.07);border-radius:8px;padding:6px 12px;text-align:center;min-width:60px;}
 .score-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
 .score-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
-.board-wrap{background:#1a1205;border-radius:12px;padding:8px;margin-bottom:12px;}
+.board-wrap{touch-action:none;background:#1a1205;border-radius:12px;padding:8px;margin-bottom:12px;}
 .board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 .cell{aspect-ratio:1;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;transition:none;position:relative;}
 .tile{position:absolute;inset:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;transition:none;}
@@ -39,7 +44,9 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
 </style>
 </head>
 <body>
-<nav class="site-nav"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">2048</span></nav>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">2048</span>
+</nav>
 <div class="page"><div class="wrap">
 
 <div class="header">
@@ -194,7 +201,15 @@ document.addEventListener('keydown',e=>{
 
 // Touch swipe
 let tx=0,ty=0;
-document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchstart',e=>{
+  // Only intercept if touch starts on the game board
+  if(e.target.closest('.board-wrap')||e.target.closest('.g-grid')||e.target.closest('#grid')){
+    tx=e.touches[0].clientX;ty=e.touches[0].clientY;
+  }
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(tx!==null)e.preventDefault(); // prevent scroll while swiping game
+},{passive:false});
 document.addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
   if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;

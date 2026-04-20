@@ -3,28 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Slots</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../casino.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0818 60%);}
+body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0818 60%);}
 .slots-wrap{max-width:400px;margin:0 auto;padding:0 12px 60px;}
 /* Machine */
 .machine{background:linear-gradient(145deg,#2a1a4a,#1a0f35);border:3px solid #6b46c1;
-  border-radius:20px;padding:18px;box-shadow:0 8px 32px rgba(107,70,193,.3),inset 0 2px 0 rgba(255,255,255,.08);
-  margin-bottom:14px;}
-/* Reels */
-.reels{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
-.reel-wrap{flex:1;max-width:90px;border-radius:12px;background:#0d0818;border:2px solid rgba(107,70,193,.4);
-  overflow:hidden;height:90px;position:relative;box-shadow:inset 0 2px 10px rgba(0,0,0,.6);}
-.reel-track{position:absolute;top:0;left:0;right:0;transition:top .05s linear;}
-.reel-sym{height:90px;display:flex;align-items:center;justify-content:center;font-size:3rem;}
-/* Win line overlay */
-.win-line{position:absolute;top:50%;left:0;right:0;height:3px;background:rgba(245,200,66,.5);
-  transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity .3s;}
-.win-line.show{opacity:1;animation:win-pulse 1s ease-in-out infinite;}
-@keyframes win-pulse{0%,100%{opacity:.3}50%{opacity:1}}
+  border-radius:20px;padding:16px;box-shadow:0 8px 32px rgba(107,70,193,.3),inset 0 2px 0 rgba(255,255,255,.08);
+  margin-bottom:14px;position:relative;}
+/* Reels - 3 rows × 3 reels */
+.reels-container{position:relative;margin-bottom:12px;}
+.reels{display:flex;gap:6px;justify-content:center;}
+.reel-wrap{flex:1;max-width:96px;border-radius:10px;background:#0d0818;border:2px solid rgba(107,70,193,.4);
+  overflow:hidden;height:252px;position:relative;box-shadow:inset 0 2px 10px rgba(0,0,0,.6);}
+.reel-track{position:absolute;top:0;left:0;right:0;}
+.reel-sym{height:84px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;}
+/* Row highlight borders */
+.reels-container::before,.reels-container::after{content:'';position:absolute;left:0;right:0;height:2px;background:rgba(255,255,255,.08);pointer-events:none;z-index:5;}
+.reels-container::before{top:84px;}
+.reels-container::after{top:168px;}
+/* Active payline indicators */
+.payline-indicator{position:absolute;left:-8px;right:-8px;height:84px;border:2px solid transparent;
+  border-radius:6px;pointer-events:none;z-index:5;transition:border-color .3s;}
+.payline-indicator.active{border-color:rgba(245,200,66,.5);}
+.pi-0{top:0;}   /* top row */
+.pi-1{top:84px;}  /* center row */
+.pi-2{top:168px;} /* bottom row */
+/* Diagonal overlay canvas */
+#diag-canvas{position:absolute;inset:0;pointer-events:none;z-index:6;}
+/* Payline selector */
+.paylines-row{display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;}
+.pl-btn{padding:5px 12px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);transition:all .15s;}
+.pl-btn.active{background:rgba(124,58,237,.25);border-color:#7c3aed;color:#c4b5fd;}
+/* Win indicators per line */
+.win-line-overlay{position:absolute;left:0;right:0;height:84px;background:rgba(245,200,66,.08);
+  border-top:2px solid rgba(245,200,66,.7);border-bottom:2px solid rgba(245,200,66,.7);
+  pointer-events:none;opacity:0;z-index:7;transition:opacity .3s;}
+.win-line-overlay.show{opacity:1;animation:win-pulse 1s ease-in-out infinite;}
+@keyframes win-pulse{0%,100%{opacity:.4}50%{opacity:1}}
 /* Pay table */
 .pay-table{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;
   padding:10px 12px;margin-bottom:12px;font-size:.75rem;}
@@ -34,21 +59,22 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0818 60%);}
 .slots-bank{display:flex;justify-content:space-between;align-items:center;
   background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
 .slots-bank-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
-/* Bet row */
-.bet-row{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px;}
+/* Bet + lines info */
+.bet-row{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;}
 .bet-adj{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
   color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .bet-adj:hover{background:rgba(255,255,255,.2);}
 .bet-val{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;color:#fff;min-width:60px;text-align:center;}
+.total-bet{font-size:.7rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:10px;}
 /* Spin button */
-.spin-btn{width:100%;padding:15px;border-radius:14px;font-size:1.1rem;font-weight:800;cursor:pointer;
+.spin-btn{width:100%;padding:14px;border-radius:14px;font-size:1.1rem;font-weight:800;cursor:pointer;
   border:none;font-family:'Inter',sans-serif;letter-spacing:.04em;transition:all .15s;
   background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
   box-shadow:0 4px 20px rgba(124,58,237,.4);}
-.spin-btn:hover:not(:disabled){transform:scale(1.02);box-shadow:0 6px 24px rgba(124,58,237,.5);}
+.spin-btn:hover:not(:disabled){transform:scale(1.02);}
 .spin-btn:disabled{opacity:.5;cursor:not-allowed;}
 /* Result */
-.slots-result{text-align:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;
+.slots-result{text-align:center;font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;
   min-height:36px;margin-bottom:8px;transition:all .3s;}
 .slots-result.win{color:#22c55e;animation:bounce-in .4s ease both;}
 .slots-result.jackpot{color:#f5c842;animation:jackpot-flash 1.5s ease;}
@@ -74,20 +100,37 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0818 60%);}
 </div>
 
 <div class="machine">
-  <div class="reels" id="reels">
-    <div class="reel-wrap"><div class="reel-track" id="reel-0"></div><div class="win-line" id="wl-0"></div></div>
-    <div class="reel-wrap"><div class="reel-track" id="reel-1"></div><div class="win-line" id="wl-1"></div></div>
-    <div class="reel-wrap"><div class="reel-track" id="reel-2"></div><div class="win-line" id="wl-2"></div></div>
+  <!-- Payline selectors -->
+  <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);text-align:center;margin-bottom:6px;">Paylines</div>
+  <div class="paylines-row">
+    <button class="pl-btn" data-lines="1">1 Line<br><span style="font-size:.6rem;opacity:.7">Center</span></button>
+    <button class="pl-btn active" data-lines="3">3 Lines<br><span style="font-size:.6rem;opacity:.7">Horizontal</span></button>
+    <button class="pl-btn" data-lines="5">5 Lines<br><span style="font-size:.6rem;opacity:.7">+ Diagonals</span></button>
+  </div>
+
+  <!-- Reels -->
+  <div class="reels-container" id="reels-container">
+    <canvas id="diag-canvas"></canvas>
+    <div class="reels" id="reels">
+      <div class="reel-wrap"><div class="reel-track" id="reel-0"></div></div>
+      <div class="reel-wrap"><div class="reel-track" id="reel-1"></div></div>
+      <div class="reel-wrap"><div class="reel-track" id="reel-2"></div></div>
+    </div>
+    <!-- Row win overlays -->
+    <div class="win-line-overlay" id="wlo-0" style="top:0;"></div>
+    <div class="win-line-overlay" id="wlo-1" style="top:84px;"></div>
+    <div class="win-line-overlay" id="wlo-2" style="top:168px;"></div>
   </div>
 
   <div class="bet-row">
     <div class="bet-adj" id="bet-down">−</div>
     <div>
-      <div style="font-size:.6rem;color:rgba(255,255,255,.35);text-align:center;letter-spacing:.1em;text-transform:uppercase;">Bet</div>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.35);text-align:center;letter-spacing:.1em;text-transform:uppercase;">Bet / Line</div>
       <div class="bet-val" id="bet-val">$10</div>
     </div>
     <div class="bet-adj" id="bet-up">+</div>
   </div>
+  <div class="total-bet" id="total-bet-disp">Total bet: $30 (3 lines × $10)</div>
 
   <button class="spin-btn" id="spin-btn">🎰 Spin</button>
 </div>
@@ -95,128 +138,228 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0818 60%);}
 <div class="slots-result" id="slots-result"></div>
 
 <div class="pay-table">
-  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:6px;">Pay Table (multiplier × bet)</div>
+  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:6px;">Pay Table (multiplier × bet per line)</div>
   <div class="pay-row jackpot"><span>🍀🍀🍀</span><span>×250 JACKPOT</span></div>
   <div class="pay-row jackpot"><span>💎💎💎</span><span>×100</span></div>
-  <div class="pay-row jackpot"><span>7️⃣7️⃣7️⃣</span><span>×50</span></div>
-  <div class="pay-row"><span>⭐⭐⭐</span><span>×20</span></div>
-  <div class="pay-row"><span>🍒🍒🍒</span><span>×10</span></div>
-  <div class="pay-row"><span>🍋🍋🍋</span><span>×6</span></div>
-  <div class="pay-row"><span>🍊🍊🍊</span><span>×4</span></div>
-  <div class="pay-row"><span>🍇🍇🍇</span><span>×3</span></div>
+  <div class="pay-row jackpot"><span>⭐⭐⭐</span><span>×50</span></div>
+  <div class="pay-row"><span>7️⃣7️⃣7️⃣</span><span>×25</span></div>
+  <div class="pay-row"><span>🔔🔔🔔</span><span>×15</span></div>
+  <div class="pay-row"><span>🍇🍇🍇</span><span>×10</span></div>
+  <div class="pay-row"><span>🍊🍊🍊</span><span>×8</span></div>
+  <div class="pay-row"><span>🍋🍋🍋</span><span>×5</span></div>
+  <div class="pay-row"><span>🍒🍒🍒</span><span>×4</span></div>
   <div class="pay-row"><span>Any two 🍒</span><span>×2</span></div>
-  <div class="pay-row"><span>Any two match</span><span>×1.5</span></div>
+  <div class="pay-row"><span>Any two matching</span><span>×1.5</span></div>
 </div>
 
 </div>
 </div>
+
 <script>
 'use strict';
-const SYMS=['🍇','🍊','🍋','🍒','⭐','7️⃣','💎','🍀'];
-const WEIGHTS=[16,14,12,10,8,5,3,2]; // higher index = rarer
-const PAYOUTS={'🍀🍀🍀':250,'💎💎💎':100,'7️⃣7️⃣7️⃣':50,'⭐⭐⭐':20,'🍒🍒🍒':10,'🍋🍋🍋':6,'🍊🍊🍊':4,'🍇🍇🍇':3};
-
+const SYMS=['🍒','🍒','🍒','🍋','🍋','🍊','🍊','🍇','🍇','🔔','🔔','7️⃣','⭐','💎','🍀'];
+const PAYOUTS={'🍀🍀🍀':250,'💎💎💎':100,'⭐⭐⭐':50,'7️⃣7️⃣7️⃣':25,'🔔🔔🔔':15,'🍇🍇🍇':10,'🍊🍊🍊':8,'🍋🍋🍋':5,'🍒🍒🍒':4};
 const BETS=[5,10,25,50,100];
-let betIdx=1, spinning=false;
+let betIdx=1, spinning=false, activelines=3;
 
-function weightedPick(){
-  const total=WEIGHTS.reduce((s,w)=>s+w,0);
-  let r=Math.random()*total;
-  for(let i=0;i<SYMS.length;i++){r-=WEIGHTS[i];if(r<=0)return SYMS[i];}
-  return SYMS[0];
+function weightedPick(){ return SYMS[Math.floor(Math.random()*SYMS.length)]; }
+function updateBank(){ document.getElementById('slots-balance').textContent='$'+Casino.balance().toLocaleString(); }
+function updateBetDisplay(){
+  const bet=BETS[betIdx];
+  document.getElementById('bet-val').textContent='$'+bet;
+  document.getElementById('total-bet-disp').textContent=
+    `Total bet: $${bet*activelines} (${activelines} line${activelines>1?'s':''} × $${bet})`;
 }
 
-function buildReel(final){
-  const t=document.getElementById(`reel-${['0','1','2'].indexOf(final)?0:0}`);
-  // Actually build by reel index
-  return Array.from({length:12},(_,i)=>i===11?final:SYMS[Math.floor(Math.random()*SYMS.length)]);
+// Build 3-row reel strip and get top/middle/bottom results
+function buildStrip(finalRow){
+  // finalRow = [top, mid, bot] for this reel
+  const strip=[];
+  for(let i=0;i<15;i++) strip.push(SYMS[Math.floor(Math.random()*SYMS.length)]);
+  strip.push(finalRow[0],finalRow[1],finalRow[2]); // last 3 = visible result
+  return strip;
 }
-
-let spinTimeout=null;
 
 function spin(){
   if(spinning)return;
   const bet=BETS[betIdx];
-  if(!Casino.bet(bet)){document.getElementById('slots-result').innerHTML='<span style="color:#f87171">Not enough balance!</span>';return;}
+  const totalBet=bet*activelines;
+  if(!Casino.bet(totalBet)){
+    document.getElementById('slots-result').innerHTML='<span style="color:#f87171">Not enough balance!</span>';
+    return;
+  }
   spinning=true;
   document.getElementById('spin-btn').disabled=true;
   document.getElementById('slots-result').textContent='';
-  // Hide win lines
-  [0,1,2].forEach(i=>document.getElementById(`wl-${i}`).classList.remove('show'));
+  [0,1,2].forEach(i=>document.getElementById(`wlo-${i}`).classList.remove('show'));
+  clearDiagonals();
 
-  const results=[weightedPick(),weightedPick(),weightedPick()];
+  // Generate 3 rows of results for each reel
+  const reelResults=[];
+  for(let r=0;r<3;r++){
+    reelResults.push([weightedPick(),weightedPick(),weightedPick()]);
+  }
+  // reelResults[reel][row]
 
-  // Animate reels one by one
   [0,1,2].forEach((ri,delay)=>{
     const track=document.getElementById(`reel-${ri}`);
-    // Build a strip of symbols ending with the result
-    const strip=Array.from({length:20},(_,i)=>i===19?results[ri]:SYMS[Math.floor(Math.random()*SYMS.length)]);
+    const finalCol=[reelResults[ri][0],reelResults[ri][1],reelResults[ri][2]];
+    const strip=buildStrip(finalCol);
     track.innerHTML=strip.map(s=>`<div class="reel-sym">${s}</div>`).join('');
-    // Animate: scroll down quickly then land
-    let pos=0;
-    const totalScroll=19*90;
-    const dur=800+delay*250;
+
+    // Each reel sym = 84px, show last 3 (indices 15,16,17)
+    const visibleStart=15*84;
+    const dur=900+delay*300;
     const start=performance.now();
-    track.style.transition='none';
     track.style.top='0px';
+
     function frame(now){
       const t=Math.min(1,(now-start)/dur);
-      const ease=t<0.8?t/0.8:1-(t-0.8)/0.2*0.05;
-      const y=-(totalScroll*ease);
+      const ease=t<0.75?t/0.75:1-(t-0.75)/0.25*0.04;
+      const y=-(visibleStart*ease);
       track.style.top=y+'px';
       if(t<1){requestAnimationFrame(frame);}
       else{
-        track.style.top=(-totalScroll)+'px';
-        if(delay===2) setTimeout(()=>resolveResult(results,bet),200);
+        track.style.top=(-visibleStart)+'px';
+        if(delay===2) setTimeout(()=>resolveResult(reelResults,bet,totalBet),250);
       }
     }
-    setTimeout(()=>requestAnimationFrame(frame), delay*100);
+    setTimeout(()=>requestAnimationFrame(frame),delay*80);
   });
 }
 
-function resolveResult(results, bet){
-  const key=results.join('');
-  let mult=0, msg='', cls='loss';
+function getRow(reelResults, row){
+  // reelResults[reel][row]
+  return [reelResults[0][row], reelResults[1][row], reelResults[2][row]];
+}
 
-  if(PAYOUTS[key]){mult=PAYOUTS[key]; cls=mult>=50?'jackpot':'win';}
-  else if(results[0]==='🍒'&&results[1]==='🍒'){mult=2;cls='win';}
-  else if(results[0]==='🍒'&&results[2]==='🍒'){mult=2;cls='win';}
-  else if(results[1]==='🍒'&&results[2]==='🍒'){mult=2;cls='win';}
-  else if(results[0]===results[1]||results[1]===results[2]||results[0]===results[2]){mult=1.5;cls='win';}
+function scoreLine(line, bet){
+  const key=line.join('');
+  if(PAYOUTS[key]) return PAYOUTS[key]*bet;
+  if(line[0]==='🍒'&&line[1]==='🍒') return 2*bet;
+  if(line[0]==='🍒'&&line[2]==='🍒') return 2*bet;
+  if(line[1]==='🍒'&&line[2]==='🍒') return 2*bet;
+  if(line[0]===line[1]||line[1]===line[2]||line[0]===line[2]) return Math.floor(1.5*bet);
+  return 0;
+}
 
-  if(mult>0){
-    const payout=Math.round(bet*mult);
-    Casino.win(payout);
-    msg=mult>=250?`🎉 JACKPOT! +$${payout-bet}`:mult>=50?`🔥 Big Win! +$${payout-bet}`:mult>=10?`✨ Win! +$${payout-bet}`:`+$${payout-bet}`;
-    [0,1,2].forEach(i=>document.getElementById(`wl-${i}`).classList.add('show'));
+function resolveResult(reelResults, bet, totalBet){
+  // Check each active payline
+  // Lines: 0=top, 1=center, 2=bottom, 3=diag ↘, 4=diag ↗
+  const lineMap={
+    1:[1],              // center only
+    3:[0,1,2],          // all 3 rows
+    5:[0,1,2,3,4]       // rows + diagonals
+  };
+
+  const lines=lineMap[activelines];
+  let totalWin=0;
+  const winningLines=[];
+
+  lines.forEach(lineIdx=>{
+    let combo;
+    if(lineIdx<=2){
+      combo=getRow(reelResults,lineIdx);
+    } else if(lineIdx===3){
+      // Diagonal top-left to bottom-right
+      combo=[reelResults[0][0],reelResults[1][1],reelResults[2][2]];
+    } else {
+      // Diagonal bottom-left to top-right
+      combo=[reelResults[0][2],reelResults[1][1],reelResults[2][0]];
+    }
+    const w=scoreLine(combo,bet);
+    if(w>0){totalWin+=w;winningLines.push({lineIdx,combo,w});}
+  });
+
+  // Highlight winning lines
+  winningLines.forEach(({lineIdx})=>{
+    if(lineIdx<=2) document.getElementById(`wlo-${lineIdx}`).classList.add('show');
+    else drawDiagonal(lineIdx);
+  });
+
+  const resultEl=document.getElementById('slots-result');
+  if(totalWin>0){
+    Casino.win(totalWin);
+    const net=totalWin-totalBet;
+    const maxMult=Math.max(...winningLines.map(l=>scoreLine(l.combo,bet)/bet));
+    const cls=maxMult>=50?'jackpot':'win';
+    resultEl.textContent=maxMult>=250?`🎉 JACKPOT! +$${net}`:maxMult>=50?`🔥 Big Win! +$${net}`:winningLines.length>1?`✨ ${winningLines.length} wins! +$${net}`:`Win! +$${net}`;
+    resultEl.className='slots-result '+cls;
   } else {
-    msg='No win';
+    resultEl.textContent='No win';
+    resultEl.className='slots-result loss';
   }
 
-  document.getElementById('slots-result').textContent=msg;
-  document.getElementById('slots-result').className='slots-result '+cls;
   updateBank();
   spinning=false;
   document.getElementById('spin-btn').disabled=false;
 }
 
-function updateBank(){
-  document.getElementById('slots-balance').textContent='$'+Casino.balance().toLocaleString();
-  document.getElementById('bet-val').textContent='$'+BETS[betIdx];
+function clearDiagonals(){
+  const c=document.getElementById('diag-canvas');
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
 }
 
-// Build initial reel displays
-[0,1,2].forEach(ri=>{
-  const track=document.getElementById(`reel-${ri}`);
-  track.innerHTML=Array.from({length:3},()=>`<div class="reel-sym">${SYMS[Math.floor(Math.random()*SYMS.length)]}</div>`).join('');
-  track.style.top='-90px';
+function drawDiagonal(lineIdx){
+  const container=document.getElementById('reels-container');
+  const c=document.getElementById('diag-canvas');
+  if(!c) return;
+  c.width=container.offsetWidth;
+  c.height=252;
+  const ctx=c.getContext('2d');
+
+  const reels=document.getElementById('reels');
+  const rwraps=reels.querySelectorAll('.reel-wrap');
+  if(!rwraps.length) return;
+
+  const cRect=c.getBoundingClientRect();
+  const cellH=84;
+  ctx.strokeStyle='rgba(245,200,66,.7)';
+  ctx.lineWidth=3;
+  ctx.setLineDash([8,4]);
+  ctx.lineCap='round';
+
+  const xs=[];
+  rwraps.forEach(w=>{
+    const r=w.getBoundingClientRect();
+    xs.push(r.left-cRect.left+r.width/2);
+  });
+
+  ctx.beginPath();
+  if(lineIdx===3){
+    ctx.moveTo(xs[0],cellH*0+cellH/2);
+    ctx.lineTo(xs[1],cellH*1+cellH/2);
+    ctx.lineTo(xs[2],cellH*2+cellH/2);
+  } else {
+    ctx.moveTo(xs[0],cellH*2+cellH/2);
+    ctx.lineTo(xs[1],cellH*1+cellH/2);
+    ctx.lineTo(xs[2],cellH*0+cellH/2);
+  }
+  ctx.stroke();
+}
+
+// Controls
+document.querySelectorAll('.pl-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.pl-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    activelines=+b.dataset.lines;
+    updateBetDisplay();
+  });
+});
+document.getElementById('bet-down').addEventListener('click',()=>{betIdx=Math.max(0,betIdx-1);updateBetDisplay();});
+document.getElementById('bet-up').addEventListener('click',()=>{betIdx=Math.min(BETS.length-1,betIdx+1);updateBetDisplay();});
+document.getElementById('spin-btn').addEventListener('click',spin);
+document.getElementById('slots-reset').addEventListener('click',()=>{
+  if(confirm('Reset casino bankroll to $1,000?')){
+    try{localStorage.setItem('casino_bank','1000');if(typeof FGHSync!=='undefined')FGHSync.noteWrite('casino_bank');}catch(e){}
+    updateBank();
+  }
 });
 
-document.getElementById('spin-btn').addEventListener('click',spin);
-document.getElementById('bet-up').addEventListener('click',()=>{betIdx=Math.min(BETS.length-1,betIdx+1);updateBank();});
-document.getElementById('bet-down').addEventListener('click',()=>{betIdx=Math.max(0,betIdx-1);updateBank();});
-document.getElementById('slots-reset').addEventListener('click',()=>{if(confirm('Reset bankroll to $1,000?')){Casino.reset();updateBank();}});
 updateBank();
+updateBetDisplay();
 </script>
 </body>
 </html>

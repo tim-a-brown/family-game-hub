@@ -17,12 +17,12 @@
   --font: 'Inter', sans-serif;
   --serif: 'Playfair Display', serif;
 }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; min-height: 100%; background: #0d1117; }
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  min-height: 100vh;
+  min-height: 100%;
   -webkit-tap-highlight-color: transparent;
   line-height: 1.5;
 }
@@ -33,13 +33,15 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ── Nav ──────────────────────────────────────────────────────────────────── */
 .site-nav {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 8px;
   padding: 12px 16px;
   background: rgba(13,17,23,0.95);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 100;
   backdrop-filter: blur(12px);
 }
+.nav-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
 .nav-back {
   display: flex; align-items: center; gap: 6px;
   background: var(--card); border: 1px solid var(--border);
@@ -144,7 +146,28 @@ button, a, input, select, [role=button] { touch-action: manipulation; }
 .btn { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
 .btn-sm { min-height: 38px; padding-top: 8px; padding-bottom: 8px; }
 /* Smooth momentum scroll */
-html { -webkit-overflow-scrolling: touch; -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+/* iOS safe areas */
+.site-nav {
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+.page {
+  padding-bottom: max(60px, calc(40px + env(safe-area-inset-bottom)));
+}
+/* Prevent input zoom on iOS */
+input, textarea, select { font-size: 16px !important; }
+/* Canvas: always block scroll */
+canvas { touch-action: none; -webkit-user-select: none; user-select: none; }
+/* Interactive elements need 44px minimum touch target */
+button, .btn, a.btn { touch-action: manipulation; }
+/* Remove callout on long press for game elements */
+canvas, .game-card, .card, [onclick] { -webkit-touch-callout: none; }
 /* Prevent layout blowout on small phones */
 *, *::before, *::after { min-width: 0; }
 

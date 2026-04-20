@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Pyramid Solitaire</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
@@ -33,6 +38,7 @@ body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117
 /* Stock & waste */
 .pyr-bottom{display:flex;gap:12px;justify-content:center;align-items:flex-start;margin-bottom:12px;}
 .pyr-stock-wrap,.pyr-waste-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.pyr-bottom{position:relative;z-index:50;}
 .pyr-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);}
 .stock-card{
   width:44px;height:60px;border-radius:7px;border:2px dashed rgba(255,255,255,.2);
@@ -181,14 +187,20 @@ function clickCard(card){
   // King: remove alone
   if(card.val===13){
     saveUndo();
-    card.removed=true; moves++;
+    if(card.inPyramid) card.removed=true;
+    else { const wi=waste.lastIndexOf(card); if(wi>=0)waste.splice(wi,1); }
+    moves++;
     sel=null; renderAll(); checkWin(); return;
   }
   if(!sel){sel=card;renderAll();return;}
   if(sel.id===card.id){sel=null;renderAll();return;}
   if(sel.val+card.val===13){
     saveUndo();
-    sel.removed=true; card.removed=true; moves++;
+    if(sel.inPyramid) sel.removed=true;
+    else { const wi=waste.lastIndexOf(sel); if(wi>=0)waste.splice(wi,1); }
+    if(card.inPyramid) card.removed=true;
+    else { const wi=waste.lastIndexOf(card); if(wi>=0)waste.splice(wi,1); }
+    moves++;
     sel=null; renderAll(); checkWin();
   } else {
     sel=card; renderAll();
@@ -261,15 +273,22 @@ function renderAll(){
   document.getElementById('pyr-stock-count').textContent=stockRemaining>0?`${stockRemaining} left`:'';
   // Waste
   const wslot=document.getElementById('pyr-waste-slot');
+  wslot.innerHTML='';
   const wt=wasteTop();
   if(wt){
     const selected=sel&&sel.id===wt.id;
-    wslot.innerHTML=`<div class="pcard ${RED.has(wt.suit)?'red':'black'}${selected?' selected':''}" style="position:relative;cursor:pointer;">
-      <div class="pcard-rank">${wt.rank}</div><div class="pcard-suit">${wt.suit}</div>
-    </div>`;
-    wslot.querySelector('.pcard').addEventListener('click',()=>clickCard(wt));
+    const wcard=document.createElement('div');
+    wcard.className='pcard '+(RED.has(wt.suit)?'red':'black')+(selected?' selected':'');
+    wcard.style.cssText='position:relative;cursor:pointer;z-index:100;';
+    wcard.innerHTML='<div class="pcard-rank">'+wt.rank+'</div><div class="pcard-suit">'+wt.suit+'</div>';
+    wcard.addEventListener('click',function(e){e.stopPropagation();clickCard(wt);});
+    wslot.appendChild(wcard);
   } else {
-    wslot.innerHTML=`<div class="stock-card empty" style="font-size:.6rem;color:rgba(255,255,255,.15);">Empty</div>`;
+    const empty=document.createElement('div');
+    empty.className='stock-card empty';
+    empty.style.cssText='font-size:.6rem;color:rgba(255,255,255,.15);';
+    empty.textContent='Empty';
+    wslot.appendChild(empty);
   }
 }
 

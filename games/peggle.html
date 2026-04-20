@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Game Night">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0d1117">
 <title>Peggle</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
@@ -9,7 +14,7 @@
 <script src="../arcade-hi.js"></script>
 <script src="../hist.js"></script>
 <style>
-body{background:#0a0a1a;overflow:hidden;}
+body{overscroll-behavior:none;background:#0a0a1a;overflow:hidden;}
 .wrap{max-width:360px;margin:0 auto;padding:0;display:flex;flex-direction:column;align-items:center;}
 .pg-header{display:flex;gap:8px;padding:6px 8px;width:100%;box-sizing:border-box;}
 .pg-stat{background:rgba(255,255,255,.08);border-radius:8px;padding:5px 12px;text-align:center;flex:1;}
@@ -19,7 +24,13 @@ canvas{border-radius:4px;display:block;cursor:crosshair;}
 </style>
 </head>
 <body>
-<nav class="site-nav" style="background:rgba(0,0,0,.3);"><a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Peggle</span><button onclick="ArcadeHi.show('peggle','Peggle')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button><button id="pg-newbtn" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button></nav>
+<nav class="site-nav" style="background:rgba(0,0,0,.3);">
+  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Peggle</span>
+  <div class="nav-actions">
+    <button onclick="ArcadeHi.show('peggle','Peggle')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
+  <button id="pg-newbtn" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button>
+  </div>
+</nav>
 <div class="page" style="padding:0;"><div class="wrap">
 <div class="pg-header">
   <div class="pg-stat"><div class="pg-val" id="pg-score">0</div><div class="pg-lbl">Score</div></div>
@@ -575,18 +586,32 @@ cv.addEventListener('click',e=>{
   if(state==='lost'){balls=10;newLevel();return;}
   const r=cv.getBoundingClientRect();shoot(e.clientX-r.left,e.clientY-r.top);
 });
+// Mobile: touchstart/move = aim, touchend = fire
+let _touching=false;
 cv.addEventListener('touchstart',e=>{
   e.preventDefault();
   if(state==='won'){level++;balls=Math.min(balls+2,10);newLevel();return;}
   if(state==='lost'){balls=10;newLevel();return;}
-  const r=cv.getBoundingClientRect();
-  shoot(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);
-},{passive:false});
-cv.addEventListener('touchmove',e=>{
-  e.preventDefault();
+  _touching=true;
   const r=cv.getBoundingClientRect();
   aimX=e.touches[0].clientX-r.left;aimY=e.touches[0].clientY-r.top;
   if(state==='aim')render();
+},{passive:false});
+cv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(!_touching)return;
+  const r=cv.getBoundingClientRect();
+  aimX=e.touches[0].clientX-r.left;aimY=e.touches[0].clientY-r.top;
+  if(state==='aim')render();
+},{passive:false});
+cv.addEventListener('touchend',e=>{
+  e.preventDefault();
+  _touching=false;
+  if(state==='aim'){
+    shoot(aimX,aimY);
+  } else if(state==='shoot'){
+    // tap during flight does nothing (no accidental re-fire)
+  }
 },{passive:false});
 
 setInterval(()=>{
