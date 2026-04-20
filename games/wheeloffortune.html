@@ -25,20 +25,22 @@ canvas#wof-wheel{display:block;margin:0 auto 10px;cursor:pointer;}
 .puzzle-tile{
   width:28px;height:34px;border-radius:4px;display:flex;align-items:center;justify-content:center;
   font-family:'Playfair Display',serif;font-size:.95rem;font-weight:900;
-  background:#2a1a80;border:1px solid #4a3aa0;color:#fff;
+  background:#fff;border:1px solid #cbd5e1;color:#0f172a;
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.08);
 }
-.puzzle-tile.space{background:transparent;border-color:transparent;}
-.puzzle-tile.hidden{color:transparent;}
-.puzzle-tile.solved{background:#16a34a;border-color:#22c55e;animation:tile-pop .25s ease both;}
+.puzzle-tile.space{background:transparent;border-color:transparent;box-shadow:none;}
+.puzzle-tile.hidden{background:#f8fafc;color:transparent;}
+.puzzle-tile.solved{background:#fde68a;border-color:#f59e0b;color:#1f2937;animation:tile-pop .25s ease both;}
 @keyframes tile-pop{0%{transform:scale(.8)}80%{transform:scale(1.1)}100%{transform:scale(1)}}
 /* Score board */
-.score-board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
-.player-card{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;text-align:center;transition:all .2s;}
+.score-board{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.player-card{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 12px;text-align:left;transition:all .2s;
+  display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;}
 .player-card.active{border-color:#f5c842;box-shadow:0 0 12px rgba(245,200,66,.3);}
 .player-card.human{background:rgba(90,200,250,.08);}
-.player-name{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.05em;}
-.player-round{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;line-height:1.1;}
-.player-total{font-size:.65rem;color:rgba(255,255,255,.35);}
+.player-name{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.05em;grid-column:1;grid-row:1;}
+.player-total{font-size:.62rem;color:rgba(255,255,255,.35);grid-column:1;grid-row:2;}
+.player-round{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;line-height:1;grid-column:2;grid-row:1 / span 2;text-align:right;white-space:nowrap;}
 /* Controls */
 .wof-status{text-align:center;font-size:.92rem;font-weight:700;min-height:26px;margin-bottom:8px;color:rgba(255,255,255,.8);}
 .letter-keyboard{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:340px;margin:0 auto 10px;}
@@ -213,10 +215,14 @@ function drawWheel(angle){
   ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);
   ctx.fillStyle='#1a1a2e';ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.stroke();
-  // Pointer at top
-  ctx.beginPath();ctx.moveTo(cx,cy-r-4);
-  ctx.lineTo(cx-8,cy-r+12);ctx.lineTo(cx+8,cy-r+12);
-  ctx.closePath();ctx.fillStyle='#f5c842';ctx.fill();
+  // Pointer at top — tip points INTO the wheel (downward) to indicate the selected slice
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-r+10);        // tip inside wheel edge
+  ctx.lineTo(cx-9,cy-r-6);       // left base above wheel
+  ctx.lineTo(cx+9,cy-r-6);       // right base above wheel
+  ctx.closePath();
+  ctx.fillStyle='#f5c842';ctx.fill();
+  ctx.strokeStyle='#1a1a2e';ctx.lineWidth=1.5;ctx.stroke();
 }
 
 function spinWheel(){
@@ -306,24 +312,25 @@ function resolveSpin(){
   if(seg.val==='bankrupt'){
     scores[curPlayer]=0;freeSpin=false;
     wd.innerHTML=`<span class="wedge-bankrupt">💸 BANKRUPT — ${PLAYER_NAMES[curPlayer]} loses all round winnings!</span>`;
+    renderScores();
     setTimeout(()=>nextPlayer(),1800);
   } else if(seg.val==='lose'){
     freeSpin=false;
     wd.innerHTML=`<span class="wedge-lose">🚫 LOSE A TURN — ${PLAYER_NAMES[curPlayer]} passes!</span>`;
     setTimeout(()=>nextPlayer(),1500);
-  } else if(seg.val==='free'){
-    freeSpin=true;
-    wd.innerHTML=`<span class="wedge-money">🎰 FREE SPIN — ${PLAYER_NAMES[curPlayer]} can use it later!</span>`;
-    phase='pick-letter';
-    setStatus(`${PLAYER_NAMES[curPlayer]}, pick a consonant!`);
-    renderSpinArea();
-    updateKeyboard();
   } else {
-    wd.innerHTML=`<span class="wedge-money">💰 ${seg.label} — Pick a consonant!</span>`;
+    const isFree=seg.val==='free';
+    if(isFree)freeSpin=true;
+    wd.innerHTML=`<span class="wedge-money">${isFree?'🎰 FREE SPIN':('💰 '+seg.label)} — ${curPlayer<nHumans?'Pick a consonant!':PLAYER_NAMES[curPlayer]+' is picking…'}</span>`;
     phase='pick-letter';
-    setStatus(`${PLAYER_NAMES[curPlayer]}, pick a consonant!`);
-    renderSpinArea();
-    updateKeyboard();
+    if(curPlayer>=nHumans){
+      // AI picks a letter
+      setTimeout(()=>aiPickLetter(),800);
+    } else {
+      setStatus(`${PLAYER_NAMES[curPlayer]}, pick a consonant!`);
+      renderSpinArea();
+      updateKeyboard();
+    }
   }
 }
 
@@ -353,7 +360,12 @@ function pickLetter(l){
       setTimeout(endRound,1000);
     } else {
       phase='spin';
-      setTimeout(()=>{ renderSpinArea(); updateKeyboard(); },800);
+      if(curPlayer>=nHumans){
+        // AI keeps spinning after a correct letter
+        setTimeout(()=>aiTurn(),1000);
+      } else {
+        setTimeout(()=>{ renderSpinArea(); updateKeyboard(); },800);
+      }
     }
   } else {
     setStatus(`No "${l}" in the puzzle — ${PLAYER_NAMES[curPlayer]}'s turn ends.`);
@@ -390,38 +402,6 @@ function aiTurn(){
   spinWheel();
   // AI letter picking is handled after spin resolves via pickLetter
   // We need to intercept after phase becomes 'pick-letter'
-}
-
-// Override resolveSpin behavior for AI
-const origResolveSpin=resolveSpin;
-function resolveSpin(){
-  const normalized=(((-wheelAngle+Math.PI/2)%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
-  const segIdx=Math.floor(normalized/ANG)%N;
-  const seg=SEGMENTS[segIdx];
-  spinResult=seg;
-  const wd=document.getElementById('wedge-display');
-  if(seg.val==='bankrupt'){
-    scores[curPlayer]=0;freeSpin=false;
-    wd.innerHTML=`<span class="wedge-bankrupt">💸 BANKRUPT</span>`;
-    setTimeout(()=>nextPlayer(),1500);
-  } else if(seg.val==='lose'){
-    freeSpin=false;
-    wd.innerHTML=`<span class="wedge-lose">🚫 LOSE A TURN</span>`;
-    setTimeout(()=>nextPlayer(),1200);
-  } else {
-    const isFree=seg.val==='free';
-    if(isFree)freeSpin=true;
-    wd.innerHTML=`<span class="wedge-money">${isFree?'🎰 FREE SPIN':seg.label}</span>`;
-    phase='pick-letter';
-    if(curPlayer!==0){
-      // AI picks
-      setTimeout(()=>aiPickLetter(),700);
-    } else {
-      setStatus(`${PLAYER_NAMES[curPlayer]}, pick a consonant!`);
-      renderSpinArea();
-      updateKeyboard();
-    }
-  }
 }
 
 function aiPickLetter(){
