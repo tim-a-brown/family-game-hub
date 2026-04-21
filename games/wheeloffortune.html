@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
 body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a2a 0%,#0d0a1a 65%);}
 .wof-wrap{max-width:520px;margin:0 auto;padding:0 10px 60px;}
@@ -572,9 +573,20 @@ function renderNameInputs(n) {
   if (n === 1) { el.innerHTML = ''; return; }
   el.innerHTML = Array.from({length:n}, (_,i) =>
     `<input type="text" placeholder="Player ${i+1} name" maxlength="12"
-      style="display:block;width:100%;margin-bottom:8px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#fff;font-size:.9rem;box-sizing:border-box;"
+      class="wof-pname-input"
+      style="display:block;width:100%;margin-bottom:4px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#fff;font-size:.9rem;box-sizing:border-box;"
       id="wof-pname-${i}">`
   ).join('');
+  // Wire up the frequent-player picker under each input
+  if (typeof FrequentPlayers !== 'undefined') {
+    for (let i = 0; i < n; i++) {
+      const inp = document.getElementById('wof-pname-' + i);
+      if (inp) FrequentPlayers.attachPicker(inp, {
+        siblingSelector: '.wof-pname-input',
+        managePath: 'players.html'
+      });
+    }
+  }
 }
 
 function startWithPlayers() {

@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
 body{background:radial-gradient(ellipse at 50% 0%,#0a1a2e 0%,#050d18 60%);}
 .cb-wrap{max-width:480px;margin:0 auto;padding:0 10px 60px;}
@@ -90,6 +91,7 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a1a2e 0%,#050d18 60%);}
 <script>
 'use strict';
 
+const MYNAME = (typeof FrequentPlayers!=='undefined' && FrequentPlayers.myName()) || 'You';
 // ── Card helpers ──────────────────────────────────────────────────────────────
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const SUITS=['♠','♥','♦','♣'];
@@ -263,7 +265,7 @@ function deal(){
   state.aiPlayed=[];
   state.discardSel=new Set();
   state.phase='discard';
-  log(`Round ${state.roundsPlayed+1}. ${state.dealer===0?'You are':'AI is'} the dealer.`);
+  log(`Round ${state.roundsPlayed+1}. ${state.dealer===0?MYNAME+' is':'AI is'} the dealer.`);
   log('Discard 2 cards to the crib.');
   // AI discards immediately
   const ai=state.dealer===1;
@@ -278,7 +280,7 @@ function peekStarter(){
   state.starter=state.deck[Math.floor(Math.random()*state.deck.length)];
   if(state.starter.rank==='J'){
     addScore(state.dealer,2);
-    log(`His heels! ${state.dealer===0?'You':'AI'} scores 2 for a Jack starter.`,'pts');
+    log(`His heels! ${state.dealer===0?MYNAME:'AI'} scores 2 for a Jack starter.`,'pts');
   }
   state.phase='peg';
   // Reset peg
@@ -321,8 +323,8 @@ function playCard(card){
   state.pegPile.push(card);
   const{pts,msgs,count}=scorePeg(state.pegPile.slice(0,-1),card);
   state.pegCount=count;
-  if(pts){addScore(0,pts);msgs.forEach(m=>log(`You: ${m}.`,'pts you'));}
-  else log(`You play ${card.rank}${card.suit}. Count: ${count}.`,'you');
+  if(pts){addScore(0,pts);msgs.forEach(m=>log(`${MYNAME}: ${m}.`,'pts you'));}
+  else log(`${MYNAME} plays ${card.rank}${card.suit}. Count: ${count}.`,'you');
 
   if(count===31){state.pegPile=[];state.pegCount=0;}
 
@@ -341,7 +343,7 @@ function aiPeg(){
     if(!canPlay(state.hands[0].filter(c=>!state.humanPlayed.includes(c)),[],state.pegCount)){
       // Both go — last card point
       addScore(state.pegTurn===1?1:0,1);
-      log(`Go! ${state.pegTurn===1?'AI':'You'} get 1 for last card.`,'pts');
+      log(`Go! ${state.pegTurn===1?'AI':MYNAME} get 1 for last card.`,'pts');
       state.pegPile=[];state.pegCount=0;
     } else {
       log('AI says "Go!". Your play.');
@@ -378,7 +380,7 @@ function checkPegEnd(){
     if(state.pegCount>0){
       const lastPlayer=state.pegTurn===0?1:0;
       addScore(lastPlayer,1);
-      log(`${lastPlayer===0?'You':'AI'} get 1 for last card.`,'pts');
+      log(`${lastPlayer===0?MYNAME:'AI'} get 1 for last card.`,'pts');
     }
     state.phase='score-hands';
     setTimeout(scoreShowPhase,800);
@@ -417,7 +419,7 @@ function checkWin(){
     if(state.scores[p]>=121){
       state.phase='game-over';
       const won=p===0;
-      log(`${won?'You win':'AI wins'}! ${state.scores[0]}–${state.scores[1]}.`,'pts');
+      log(`${won?MYNAME+' wins':'AI wins'}! ${state.scores[0]}–${state.scores[1]}.`,'pts');
       try{GameHistory.save('cribbage',{
         _summary:`Cribbage · ${won?'Win':'Loss'} ${state.scores[0]}–${state.scores[1]}`,
         _badge:won?'Win':'Loss',result:won?'win':'loss',
@@ -465,7 +467,7 @@ function render(){
 
   html+=`<div style="text-align:center;margin-bottom:8px;">
     <span class="cb-phase">${phaseLabel()}</span>
-    <span style="font-size:.68rem;color:rgba(255,255,255,.3);margin-left:8px;">Dealer: ${state.dealer===0?'You':'AI'} · First to 121 wins</span>
+    <span style="font-size:.68rem;color:rgba(255,255,255,.3);margin-left:8px;">Dealer: ${state.dealer===0?MYNAME:'AI'} · First to 121 wins</span>
   </div>`;
 
   // Starter
@@ -541,7 +543,7 @@ function render(){
   } else if(state.phase==='game-over'){
     const won=state.scores[0]>=121;
     html+=`<div class="cb-result">
-      <div class="cb-result-title">${won?'🏆 You Win!':'AI Wins'}</div>
+      <div class="cb-result-title">${won?'🏆 '+MYNAME+' Wins!':'AI Wins'}</div>
       <div style="color:#2a1a00;font-size:.88rem;margin-top:4px;">${state.scores[0]}–${state.scores[1]} after ${state.roundsPlayed} rounds</div>
     </div>
     <div style="text-align:center;margin-bottom:10px;">
@@ -589,5 +591,6 @@ function phaseLabel(){
 
 newGame();
 </script>
+<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

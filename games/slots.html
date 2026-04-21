@@ -30,26 +30,17 @@ body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a
 .reels-container::before,.reels-container::after{content:'';position:absolute;left:0;right:0;height:2px;background:rgba(255,255,255,.08);pointer-events:none;z-index:5;}
 .reels-container::before{top:84px;}
 .reels-container::after{top:168px;}
-/* Active payline indicators */
-.payline-indicator{position:absolute;left:-8px;right:-8px;height:84px;border:2px solid transparent;
-  border-radius:6px;pointer-events:none;z-index:5;transition:border-color .3s;}
-.payline-indicator.active{border-color:rgba(245,200,66,.5);}
-.pi-0{top:0;}   /* top row */
-.pi-1{top:84px;}  /* center row */
-.pi-2{top:168px;} /* bottom row */
-/* Diagonal overlay canvas */
-#diag-canvas{position:absolute;inset:0;pointer-events:none;z-index:6;}
+/* Payline canvas — always sits above reels to show active lines */
+#payline-canvas{position:absolute;inset:0;pointer-events:none;z-index:6;}
 /* Payline selector */
-.paylines-row{display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;}
+.paylines-row{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
 .pl-btn{padding:5px 12px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);transition:all .15s;}
 .pl-btn.active{background:rgba(124,58,237,.25);border-color:#7c3aed;color:#c4b5fd;}
-/* Win indicators per line */
-.win-line-overlay{position:absolute;left:0;right:0;height:84px;background:rgba(245,200,66,.08);
-  border-top:2px solid rgba(245,200,66,.7);border-bottom:2px solid rgba(245,200,66,.7);
-  pointer-events:none;opacity:0;z-index:7;transition:opacity .3s;}
-.win-line-overlay.show{opacity:1;animation:win-pulse 1s ease-in-out infinite;}
-@keyframes win-pulse{0%,100%{opacity:.4}50%{opacity:1}}
+/* Payline color dots in the selector */
+.pl-legend{display:flex;gap:8px;justify-content:center;align-items:center;margin:6px 0 10px;font-size:.62rem;color:rgba(255,255,255,.5);flex-wrap:wrap;}
+.pl-legend-item{display:inline-flex;align-items:center;gap:5px;}
+.pl-legend-swatch{width:14px;height:3px;border-radius:2px;}
 /* Pay table */
 .pay-table{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;
   padding:10px 12px;margin-bottom:12px;font-size:.75rem;}
@@ -61,11 +52,31 @@ body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a
 .slots-bank-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
 /* Bet + lines info */
 .bet-row{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;}
-.bet-adj{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
-  color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.bet-adj{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:#fff;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;user-select:none;}
 .bet-adj:hover{background:rgba(255,255,255,.2);}
-.bet-val{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;color:#fff;min-width:60px;text-align:center;}
-.total-bet{font-size:.7rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:10px;}
+.bet-adj:active{transform:scale(.94);}
+.bet-val{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#fff;min-width:76px;text-align:center;line-height:1;}
+/* Prominent total bet display */
+.total-bet-pill{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.06));
+  border:1.5px solid rgba(245,200,66,.45);
+  border-radius:12px;padding:10px 16px;margin:4px 0 12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 2px 10px rgba(245,200,66,.12);
+}
+.total-bet-lbl{
+  font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.15em;
+  color:rgba(245,200,66,.75);line-height:1.1;
+}
+.total-bet-sub{
+  font-size:.62rem;font-weight:600;color:rgba(255,255,255,.5);margin-top:2px;
+}
+.total-bet-amount{
+  font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;
+  color:#f5c842;line-height:1;letter-spacing:.01em;
+  text-shadow:0 2px 10px rgba(245,200,66,.35);
+}
 /* Spin button */
 .spin-btn{width:100%;padding:14px;border-radius:14px;font-size:1.1rem;font-weight:800;cursor:pointer;
   border:none;font-family:'Inter',sans-serif;letter-spacing:.04em;transition:all .15s;
@@ -107,19 +118,16 @@ body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a
     <button class="pl-btn active" data-lines="3">3 Lines<br><span style="font-size:.6rem;opacity:.7">Horizontal</span></button>
     <button class="pl-btn" data-lines="5">5 Lines<br><span style="font-size:.6rem;opacity:.7">+ Diagonals</span></button>
   </div>
+  <div class="pl-legend" id="pl-legend"></div>
 
   <!-- Reels -->
   <div class="reels-container" id="reels-container">
-    <canvas id="diag-canvas"></canvas>
     <div class="reels" id="reels">
       <div class="reel-wrap"><div class="reel-track" id="reel-0"></div></div>
       <div class="reel-wrap"><div class="reel-track" id="reel-1"></div></div>
       <div class="reel-wrap"><div class="reel-track" id="reel-2"></div></div>
     </div>
-    <!-- Row win overlays -->
-    <div class="win-line-overlay" id="wlo-0" style="top:0;"></div>
-    <div class="win-line-overlay" id="wlo-1" style="top:84px;"></div>
-    <div class="win-line-overlay" id="wlo-2" style="top:168px;"></div>
+    <canvas id="payline-canvas"></canvas>
   </div>
 
   <div class="bet-row">
@@ -130,7 +138,14 @@ body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a
     </div>
     <div class="bet-adj" id="bet-up">+</div>
   </div>
-  <div class="total-bet" id="total-bet-disp">Total bet: $30 (3 lines × $10)</div>
+
+  <div class="total-bet-pill">
+    <div>
+      <div class="total-bet-lbl">Total Bet</div>
+      <div class="total-bet-sub" id="total-bet-sub">3 lines × $10</div>
+    </div>
+    <div class="total-bet-amount" id="total-bet-amount">$30</div>
+  </div>
 
   <button class="spin-btn" id="spin-btn">🎰 Spin</button>
 </div>
@@ -162,13 +177,39 @@ const PAYOUTS={'🍀🍀🍀':250,'💎💎💎':100,'⭐⭐⭐':50,'7️⃣7️
 const BETS=[5,10,25,50,100];
 let betIdx=1, spinning=false, activelines=3;
 
+// Payline definitions: each line has a color + the 3 rows it passes through
+// Row 0 = top, row 1 = center, row 2 = bottom
+const PAYLINES = [
+  {idx:0, name:'Top',        color:'#22c55e', rows:[0,0,0]},
+  {idx:1, name:'Center',     color:'#f5c842', rows:[1,1,1]},
+  {idx:2, name:'Bottom',     color:'#ef4444', rows:[2,2,2]},
+  {idx:3, name:'Diagonal ↘', color:'#a855f7', rows:[0,1,2]},
+  {idx:4, name:'Diagonal ↗', color:'#06b6d4', rows:[2,1,0]},
+];
+const LINE_MAP = {1:[1], 3:[0,1,2], 5:[0,1,2,3,4]};
+
 function weightedPick(){ return SYMS[Math.floor(Math.random()*SYMS.length)]; }
 function updateBank(){ document.getElementById('slots-balance').textContent='$'+Casino.balance().toLocaleString(); }
 function updateBetDisplay(){
   const bet=BETS[betIdx];
   document.getElementById('bet-val').textContent='$'+bet;
-  document.getElementById('total-bet-disp').textContent=
-    `Total bet: $${bet*activelines} (${activelines} line${activelines>1?'s':''} × $${bet})`;
+  document.getElementById('total-bet-amount').textContent='$'+(bet*activelines).toLocaleString();
+  document.getElementById('total-bet-sub').textContent=
+    `${activelines} line${activelines>1?'s':''} × $${bet}`;
+  renderLegend();
+  drawPaylines([]);
+}
+
+function renderLegend(){
+  const host = document.getElementById('pl-legend');
+  if(!host) return;
+  const activeIdxs = LINE_MAP[activelines];
+  host.innerHTML = activeIdxs.map(i => {
+    const pl = PAYLINES[i];
+    return `<span class="pl-legend-item">
+      <span class="pl-legend-swatch" style="background:${pl.color}"></span>${pl.name}
+    </span>`;
+  }).join('');
 }
 
 // Build 3-row reel strip and get top/middle/bottom results
@@ -191,8 +232,8 @@ function spin(){
   spinning=true;
   document.getElementById('spin-btn').disabled=true;
   document.getElementById('slots-result').textContent='';
-  [0,1,2].forEach(i=>document.getElementById(`wlo-${i}`).classList.remove('show'));
-  clearDiagonals();
+  // Reset winning highlights (redraw baseline paylines)
+  drawPaylines([]);
 
   // Generate 3 rows of results for each reel
   const reelResults=[];
@@ -271,11 +312,9 @@ function resolveResult(reelResults, bet, totalBet){
     if(w>0){totalWin+=w;winningLines.push({lineIdx,combo,w});}
   });
 
-  // Highlight winning lines
-  winningLines.forEach(({lineIdx})=>{
-    if(lineIdx<=2) document.getElementById(`wlo-${lineIdx}`).classList.add('show');
-    else drawDiagonal(lineIdx);
-  });
+  // Highlight winning lines (draw them prominently on the canvas)
+  const winningIdxs = winningLines.map(l => l.lineIdx);
+  drawPaylines(winningIdxs);
 
   const resultEl=document.getElementById('slots-result');
   if(totalWin>0){
@@ -295,48 +334,140 @@ function resolveResult(reelResults, bet, totalBet){
   document.getElementById('spin-btn').disabled=false;
 }
 
-function clearDiagonals(){
-  const c=document.getElementById('diag-canvas');
-  const ctx=c.getContext('2d');
-  ctx.clearRect(0,0,c.width,c.height);
-}
+// Draw all currently-active paylines. Winners (indices in `winningIdxs`) are
+// rendered thick + glowing; non-winners render as thin guides so the player
+// can always see where the active paylines are before spinning.
+let _winPulsePhase = 0;
+let _winPulseTimer = null;
 
-function drawDiagonal(lineIdx){
-  const container=document.getElementById('reels-container');
-  const c=document.getElementById('diag-canvas');
+function drawPaylines(winningIdxs){
+  const c = document.getElementById('payline-canvas');
   if(!c) return;
-  c.width=container.offsetWidth;
-  c.height=252;
-  const ctx=c.getContext('2d');
+  const container = document.getElementById('reels-container');
+  c.width = container.offsetWidth;
+  c.height = 252;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
 
-  const reels=document.getElementById('reels');
-  const rwraps=reels.querySelectorAll('.reel-wrap');
+  const reels = document.getElementById('reels');
+  const rwraps = reels.querySelectorAll('.reel-wrap');
   if(!rwraps.length) return;
+  const cRect = c.getBoundingClientRect();
+  const xs = [];
+  rwraps.forEach(w => {
+    const r = w.getBoundingClientRect();
+    xs.push(r.left - cRect.left + r.width / 2);
+  });
+  const cellH = 84;
 
-  const cRect=c.getBoundingClientRect();
-  const cellH=84;
-  ctx.strokeStyle='rgba(245,200,66,.7)';
-  ctx.lineWidth=3;
-  ctx.setLineDash([8,4]);
-  ctx.lineCap='round';
+  const activeIdxs = LINE_MAP[activelines];
+  const winSet = new Set(winningIdxs || []);
 
-  const xs=[];
-  rwraps.forEach(w=>{
-    const r=w.getBoundingClientRect();
-    xs.push(r.left-cRect.left+r.width/2);
+  // Draw non-winning active lines first (as background guides)
+  activeIdxs.forEach(idx => {
+    if(winSet.has(idx)) return;
+    drawLine(ctx, PAYLINES[idx], xs, cellH, /*winning*/false);
+  });
+  // Then draw winning lines prominently on top
+  activeIdxs.forEach(idx => {
+    if(!winSet.has(idx)) return;
+    drawLine(ctx, PAYLINES[idx], xs, cellH, /*winning*/true);
   });
 
-  ctx.beginPath();
-  if(lineIdx===3){
-    ctx.moveTo(xs[0],cellH*0+cellH/2);
-    ctx.lineTo(xs[1],cellH*1+cellH/2);
-    ctx.lineTo(xs[2],cellH*2+cellH/2);
-  } else {
-    ctx.moveTo(xs[0],cellH*2+cellH/2);
-    ctx.lineTo(xs[1],cellH*1+cellH/2);
-    ctx.lineTo(xs[2],cellH*0+cellH/2);
+  // Animate the pulse for winning lines
+  if(winningIdxs && winningIdxs.length){
+    if(!_winPulseTimer){
+      _winPulsePhase = 0;
+      _winPulseTimer = setInterval(() => {
+        _winPulsePhase = (_winPulsePhase + 1) % 60;
+        drawPaylinesAnimated(winningIdxs);
+      }, 40);
+    }
+  } else if(_winPulseTimer){
+    clearInterval(_winPulseTimer);
+    _winPulseTimer = null;
   }
-  ctx.stroke();
+}
+
+function drawPaylinesAnimated(winningIdxs){
+  const c = document.getElementById('payline-canvas');
+  if(!c) return;
+  const ctx = c.getContext('2d');
+  const reels = document.getElementById('reels');
+  const rwraps = reels.querySelectorAll('.reel-wrap');
+  if(!rwraps.length) return;
+  const cRect = c.getBoundingClientRect();
+  const xs = [];
+  rwraps.forEach(w => {
+    const r = w.getBoundingClientRect();
+    xs.push(r.left - cRect.left + r.width / 2);
+  });
+  const cellH = 84;
+  ctx.clearRect(0, 0, c.width, c.height);
+  const activeIdxs = LINE_MAP[activelines];
+  const winSet = new Set(winningIdxs || []);
+  const pulse = 0.65 + 0.35 * Math.sin(_winPulsePhase * 0.1);
+  // Non-winners dim
+  activeIdxs.forEach(idx => {
+    if(winSet.has(idx)) return;
+    drawLine(ctx, PAYLINES[idx], xs, cellH, false);
+  });
+  // Winners pulse
+  activeIdxs.forEach(idx => {
+    if(!winSet.has(idx)) return;
+    drawLine(ctx, PAYLINES[idx], xs, cellH, true, pulse);
+  });
+}
+
+function drawLine(ctx, pl, xs, cellH, winning, pulse){
+  ctx.save();
+  ctx.beginPath();
+  pl.rows.forEach((row, i) => {
+    const y = row * cellH + cellH / 2;
+    if(i === 0) ctx.moveTo(xs[i], y);
+    else ctx.lineTo(xs[i], y);
+  });
+  // Extend the line slightly past the outer reels so it's clearly readable
+  const firstY = pl.rows[0] * cellH + cellH / 2;
+  const lastY  = pl.rows[pl.rows.length - 1] * cellH + cellH / 2;
+  // (The ends stay inside the reel area to avoid clipping — the path above
+  // already runs from reel 1 center to reel 3 center, which reads clearly.)
+
+  if(winning){
+    ctx.strokeStyle = pl.color;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = pl.color;
+    ctx.shadowBlur = 14 * (pulse != null ? pulse : 1);
+    ctx.globalAlpha = 0.95 * (pulse != null ? pulse : 1);
+    ctx.stroke();
+    // Second pass for extra glow
+    ctx.globalAlpha = 0.4 * (pulse != null ? pulse : 1);
+    ctx.lineWidth = 10;
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = pl.color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.55;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Draw a small color dot at each reel center for that line
+  pl.rows.forEach((row, i) => {
+    const y = row * cellH + cellH / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(xs[i], y, winning ? 5 : 3, 0, Math.PI * 2);
+    ctx.fillStyle = pl.color;
+    ctx.globalAlpha = winning ? 0.95 * (pulse != null ? pulse : 1) : 0.7;
+    ctx.fill();
+    ctx.restore();
+  });
 }
 
 // Controls
@@ -360,6 +491,10 @@ document.getElementById('slots-reset').addEventListener('click',()=>{
 
 updateBank();
 updateBetDisplay();
+// Ensure the payline canvas paints once layout is ready (fonts/reels measured)
+requestAnimationFrame(() => requestAnimationFrame(() => drawPaylines([])));
+window.addEventListener('resize', () => drawPaylines([]));
+window.addEventListener('load', () => drawPaylines([]));
 </script>
 </body>
 </html>

@@ -157,6 +157,46 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
 .alb-date{font-size:.62rem;color:rgba(255,255,255,.25);text-align:right;}
 .alb-close-row{display:flex;justify-content:center;margin-top:14px;}
 
+/* History pip on game tiles — bottom-right, subtle until hovered */
+.gh-tile-pip{
+  position:absolute;bottom:6px;right:8px;
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);
+  font-size:.78rem;line-height:1;cursor:pointer;z-index:5;
+  opacity:.55;transition:opacity .15s,background .15s,transform .1s;
+}
+.gh-tile-pip:hover{opacity:1;background:rgba(245,200,66,.18);border-color:rgba(245,200,66,.45);transform:scale(1.08);}
+
+/* Mode chooser modal (card games: player count picker) */
+.mc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);
+  z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
+.mc-overlay.show{display:flex;animation:mc-fade .18s ease both;}
+@keyframes mc-fade{from{opacity:0;}to{opacity:1;}}
+.mc-card{width:100%;max-width:340px;background:#161b22;border:1px solid rgba(255,255,255,.15);
+  border-radius:18px;padding:22px 20px 18px;text-align:center;
+  animation:mc-pop .22s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes mc-pop{from{transform:scale(.92);opacity:0;}to{transform:scale(1);opacity:1;}}
+.mc-icon{font-size:2.2rem;line-height:1;margin-bottom:6px;}
+.mc-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#f5c842;margin-bottom:4px;}
+.mc-sub{font-size:.8rem;color:rgba(255,255,255,.55);margin-bottom:16px;}
+.mc-pcount{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;}
+.mc-pbtn{all:unset;cursor:pointer;box-sizing:border-box;
+  min-width:56px;height:56px;padding:0 14px;border-radius:12px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#fff;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:background .15s,border-color .15s,transform .08s;}
+.mc-pbtn:hover{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.5);color:#f5c842;}
+.mc-pbtn:active{transform:scale(.94);}
+.mc-pbtn.solo{background:linear-gradient(135deg,rgba(245,200,66,.08),rgba(245,200,66,.02));border-color:rgba(245,200,66,.3);}
+.mc-pbtn.solo:hover{background:linear-gradient(135deg,rgba(245,200,66,.2),rgba(245,200,66,.08));}
+.mc-hint{font-size:.7rem;color:rgba(255,255,255,.38);line-height:1.45;margin:6px 4px 14px;}
+.mc-cancel{background:none;border:none;color:rgba(255,255,255,.4);
+  font-size:.82rem;cursor:pointer;padding:8px 16px;
+  font-family:Inter,system-ui,sans-serif;}
+.mc-cancel:hover{color:rgba(255,255,255,.8);}
+
 .footer { text-align:center; padding:28px 16px; color:rgba(255,255,255,.15); font-size:.75rem; }
 </style>
 </head>
@@ -169,7 +209,7 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
   <div class="hero-eyebrow" id="hero-eyebrow">Game Night</div>
   <h1 class="hero-title">Game<span> Night</span></h1>
   <p class="hero-sub">Pick a game and let's play</p>
-  <p class="hero-count">69 games &amp; tools</p>
+  <p class="hero-count">70 games &amp; tools</p>
 </div>
 
 <!-- 🃏 Card Games -->
@@ -210,50 +250,50 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
       <div class="game-desc">Place 25 cards, score 10 hands</div>
       <div class="game-tag">1 player</div>
     </a>
-    <a href="games/hearts-ai.html" class="game-card" style="--accent:#ff6b6b">
+    <a href="games/hearts-ai.html" class="game-card" data-modes='{"ai":"games/hearts-ai.html","sc":"games/hearts.html","icon":"♥️","name":"Hearts","min":3,"max":5}' style="--accent:#ff6b6b">
       <div class="game-icon">♥️</div><div class="game-name">Hearts</div>
       <div class="game-desc">Avoid the Queen of Spades</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1–5 players</div>
     </a>
-    <a href="games/spades-ai.html" class="game-card" style="--accent:#5ac8fa">
+    <a href="games/spades-ai.html" class="game-card" data-modes='{"ai":"games/spades-ai.html","sc":"games/spades.html","icon":"♠️","name":"Spades","min":4,"max":4}' style="--accent:#5ac8fa">
       <div class="game-icon">♠️</div><div class="game-name">Spades</div>
       <div class="game-desc">Bid &amp; trick tracking</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1 or 4 players</div>
     </a>
-    <a href="games/gin-rummy-ai.html" class="game-card" style="--accent:#7ed47e">
+    <a href="games/gin-rummy-ai.html" class="game-card" data-modes='{"ai":"games/gin-rummy-ai.html","sc":"games/gin-rummy.html","icon":"🃏","name":"Gin Rummy","min":2,"max":2}' style="--accent:#7ed47e">
       <div class="game-icon">🃏</div><div class="game-name">Gin Rummy</div>
       <div class="game-desc">Classic rummy scoring</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1 or 2 players</div>
     </a>
-    <a href="games/euchre-ai.html" class="game-card" style="--accent:#22c55e">
+    <a href="games/euchre-ai.html" class="game-card" data-modes='{"ai":"games/euchre-ai.html","sc":"games/euchre.html","icon":"♣️","name":"Euchre","min":4,"max":4}' style="--accent:#22c55e">
       <div class="game-icon">♣️</div><div class="game-name">Euchre</div>
       <div class="game-desc">Trump-calling trick scoring</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1 or 4 players</div>
     </a>
-    <a href="games/wizard-ai.html" class="game-card" style="--accent:#a855f7">
+    <a href="games/wizard-ai.html" class="game-card" data-modes='{"ai":"games/wizard-ai.html","sc":"games/wizard.html","icon":"🧙","name":"Wizard","min":3,"max":6}' style="--accent:#a855f7">
       <div class="game-icon">🧙</div><div class="game-name">Wizard</div>
       <div class="game-desc">Bid your exact tricks</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1–6 players</div>
     </a>
-    <a href="games/flip7-ai.html" class="game-card" style="--accent:#f5c842">
+    <a href="games/flip7-ai.html" class="game-card" data-modes='{"ai":"games/flip7-ai.html","sc":"games/flip7.html","icon":"7️⃣","name":"Flip 7","min":2,"max":8}' style="--accent:#f5c842">
       <div class="game-icon">7️⃣</div><div class="game-name">Flip 7</div>
       <div class="game-desc">Race to 200 points</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1–8 players</div>
     </a>
-    <a href="games/fivecrownss-ai.html" class="game-card" style="--accent:#f97316">
+    <a href="games/fivecrownss-ai.html" class="game-card" data-modes='{"ai":"games/fivecrownss-ai.html","sc":"games/five-crowns.html","icon":"👑","name":"Five Crowns","min":2,"max":7}' style="--accent:#f97316">
       <div class="game-icon">👑</div><div class="game-name">Five Crowns</div>
       <div class="game-desc">11 rounds, wilds shift each round</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1–7 players</div>
     </a>
-    <a href="games/rook-ai.html" class="game-card" style="--accent:#5ac8fa">
+    <a href="games/rook-ai.html" class="game-card" data-modes='{"ai":"games/rook-ai.html","sc":"games/rook.html","icon":"🐦","name":"Rook","min":2,"max":6}' style="--accent:#5ac8fa">
       <div class="game-icon">🐦</div><div class="game-name">Rook</div>
       <div class="game-desc">Bid &amp; capture 120 points</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1–6 players</div>
     </a>
-    <a href="games/phase10-ai.html" class="game-card" style="--accent:#c084fc">
+    <a href="games/phase10-ai.html" class="game-card" data-modes='{"ai":"games/phase10-ai.html","sc":"games/phase10.html","icon":"🔟","name":"Phase 10","min":2,"max":6}' style="--accent:#c084fc">
       <div class="game-icon">🔟</div><div class="game-name">Phase 10</div>
       <div class="game-desc">Complete all 10 phases</div>
-      <div class="game-tag">1P · Scorecard</div>
+      <div class="game-tag">1–6 players</div>
     </a>
     <a href="games/mahjong4.html" class="game-card" style="--accent:#f59e0b">
       <div class="game-icon">🀄</div><div class="game-name">Mahjong — 4 Player</div>
@@ -556,7 +596,7 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
   <div class="section-header">
     <span class="section-icon">🛠️</span>
     <span class="section-name">Tools</span>
-    <span class="section-count">5 tools</span>
+    <span class="section-count">6 tools</span>
   </div>
   <div class="games-grid">
     <a href="games/bingo.html" class="game-card" style="--accent:#a78bfa">
@@ -582,6 +622,11 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     <a href="games/randomtools.html#teams" class="game-card" style="--accent:#7ed47e">
       <div class="game-icon">👥</div><div class="game-name">Team Generator</div>
       <div class="game-desc">Randomize names onto teams</div>
+      <div class="game-tag">Tool</div>
+    </a>
+    <a href="games/players.html" class="game-card" style="--accent:#f5c842">
+      <div class="game-icon">⭐</div><div class="game-name">Frequent Players</div>
+      <div class="game-desc">Manage quick-pick names used across games</div>
       <div class="game-tag">Tool</div>
     </a>
   </div>
@@ -706,43 +751,152 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
 
 
 // ── History icons on game tiles ───────────────────────────────────────────
+// Shows a small 📊 icon in the bottom-right of any tile whose game saves
+// to GameHistory and has at least one recorded entry. Clicking opens the
+// game's history drawer without navigating into the game.
 (function(){
-  const GH_KEYS=[
-    {key:'sp',  sel:'a[href*="spades"]'},
-    {key:'ht',  sel:'a[href*="hearts"]'},
-    {key:'rm',  sel:'a[href*="rummy"]'},
-    {key:'p10', sel:'a[href*="phase10"]'},
-    {key:'f7',  sel:'a[href*="flip7"]'},
-    {key:'eu',  sel:'a[href*="euchre"]'},
-    {key:'fc',  sel:'a[href*="five-crowns"]'},
-    {key:'rk',  sel:'a[href*="rook"]'},
-    {key:'wz',  sel:'a[href*="wizard"]'},
-    {key:'peggle', sel:'a[href*="peggle"]'},
-    {key:'pac',    sel:'a[href*="pacman"]'},
-    {key:'snake',  sel:'a[href*="snake"]'},
-    {key:'tetris', sel:'a[href*="tetris"]'},
-    {key:'breakout',sel:'a[href*="breakout"]'},
-    {key:'flappy', sel:'a[href*="flappybird"]'},
-    {key:'ast',    sel:'a[href*="asteroids"]'},
+  // Each entry: tile href marker + ordered list of storage keys to check.
+  // Some games have both an AI version and a scorecard version that wrote
+  // to different keys historically — we check both so existing records
+  // surface on the hub tile that's currently linked.
+  const GH_TILE_MAP=[
+    // Card games
+    {href:'cribbage.html',         keys:['cribbage']},
+    {href:'pyramid.html',          keys:['pyramid']},
+    {href:'solitaire.html',        keys:['sol']},
+    {href:'freecell.html',         keys:['freecell','fc']},
+    {href:'pokersquares.html',     keys:['pokersquares']},
+    {href:'hearts-ai.html',        keys:['hearts','ht']},
+    {href:'spades-ai.html',        keys:['spades','sp']},
+    {href:'gin-rummy-ai.html',     keys:['gin','rm']},
+    {href:'euchre-ai.html',        keys:['euchre','eu']},
+    {href:'wizard-ai.html',        keys:['wizard','wz']},
+    {href:'flip7-ai.html',         keys:['flip7','f7']},
+    {href:'fivecrownss-ai.html',   keys:['fivecrwns']},
+    {href:'rook-ai.html',          keys:['rook','rk']},
+    {href:'phase10-ai.html',       keys:['p10']},
+    // Board & Strategy
+    {href:'sudoku.html',           keys:['sudoku']},
+    // Casino
+    {href:'blackjack.html',        keys:['blackjack']},
+    // Arcade (only ones that actually save to GameHistory)
+    {href:'pacman.html',           keys:['pacman']},
+    {href:'peggle.html',           keys:['peggle']},
+    // Trivia & Words
+    {href:'trivia.html',           keys:['trivia']},
+    {href:'wordle.html',           keys:['wordle']},
+    // Kids & Party
+    {href:'mancala.html',          keys:['mancala']},
+    {href:'minigolf.html',         keys:['mg']},
+    {href:'shellgame.html',        keys:['shellgame']},
+    {href:'dealornodeal.html',     keys:['dond']},
+    {href:'wheeloffortune.html',   keys:['wof']},
   ];
-  GH_KEYS.forEach(({key,sel})=>{
+
+  function firstKeyWithData(keys){
+    for(const k of keys){
+      try{
+        const list=JSON.parse(localStorage.getItem('gh_'+k)||'[]');
+        if(Array.isArray(list)&&list.length) return {key:k,count:list.length};
+      }catch(e){}
+    }
+    return null;
+  }
+
+  GH_TILE_MAP.forEach(({href,keys})=>{
+    const hit=firstKeyWithData(keys);
+    if(!hit)return;
+    const card=document.querySelector('a[href*="'+href+'"]');
+    if(!card)return;
+    const pip=document.createElement('div');
+    pip.className='gh-tile-pip';
+    pip.title='View history ('+hit.count+' game'+(hit.count!==1?'s':'')+')';
+    pip.textContent='📊';
+    pip.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      try{GameHistory.open(hit.key);}catch(err){}
+    });
+    card.style.position='relative';
+    card.appendChild(pip);
+  });
+})();
+
+
+// ── Mode chooser for dual-mode card games ─────────────────────────────────
+// Tiles with a data-modes attribute offer a player-count picker. Choosing
+// 1 routes to the on-device AI version; any higher count routes to the
+// scorecard for tracking an in-person game.
+(function(){
+  let overlay=null;
+
+  // Hydrate the tag text on every dual-mode tile from its data-modes.
+  // Renders as "1–N players" or "1 or N players" when min===max.
+  document.querySelectorAll('.game-card[data-modes]').forEach(card=>{
     try{
-      const list=JSON.parse(localStorage.getItem('gh_'+key)||'[]');
-      if(!list.length)return;
-      const card=document.querySelector(sel);
-      if(!card)return;
-      // Add history pip in top-right (alongside progress pip if present)
-      const pip=document.createElement('div');
-      pip.title='View history ('+list.length+' game'+(list.length!==1?'s':'')+')';
-      pip.style.cssText='position:absolute;top:6px;right:'+(card.classList.contains('has-progress')?'26':'8')+'px;font-size:.75rem;opacity:.7;cursor:pointer;line-height:1;z-index:5;';
-      pip.textContent='📊';
-      pip.addEventListener('click',function(e){
-        e.preventDefault();e.stopPropagation();
-        try{GameHistory.open(key);}catch(err){}
-      });
-      card.style.position='relative';
-      card.appendChild(pip);
+      const modes=JSON.parse(card.getAttribute('data-modes'));
+      const tag=card.querySelector('.game-tag');
+      if(!tag)return;
+      const max=+modes.max, min=+modes.min;
+      tag.textContent = (min===max) ? `1 or ${max} players` : `1–${max} players`;
     }catch(e){}
+  });
+
+  function close(){
+    if(!overlay)return;
+    overlay.classList.remove('show');
+    setTimeout(()=>{if(overlay){overlay.remove();overlay=null;}},200);
+  }
+
+  function validCounts(modes){
+    const min=+modes.min, max=+modes.max;
+    const arr=[1];
+    for(let n=Math.max(min,2); n<=max; n++) arr.push(n);
+    return arr;
+  }
+
+  function open(modes){
+    close();
+    const counts=validCounts(modes);
+    const buttons=counts.map(n=>{
+      const target = n===1 ? modes.ai : modes.sc;
+      const cls = n===1 ? 'mc-pbtn solo' : 'mc-pbtn';
+      return `<a class="${cls}" href="${target}" data-count="${n}">${n}</a>`;
+    }).join('');
+    overlay=document.createElement('div');
+    overlay.className='mc-overlay';
+    overlay.innerHTML=`
+      <div class="mc-card" role="dialog" aria-modal="true">
+        <div class="mc-icon">${modes.icon}</div>
+        <div class="mc-title">${modes.name}</div>
+        <div class="mc-sub">How many players?</div>
+        <div class="mc-pcount">${buttons}</div>
+        <div class="mc-hint">1 player runs on-device with AI opponents<br>2+ opens the scorecard</div>
+        <button type="button" class="mc-cancel">Cancel</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=>overlay.classList.add('show'));
+    overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+    overlay.querySelector('.mc-cancel').addEventListener('click',close);
+    document.addEventListener('keydown',onEsc);
+  }
+
+  function onEsc(e){
+    if(e.key==='Escape'){close();document.removeEventListener('keydown',onEsc);}
+  }
+
+  document.addEventListener('click',function(e){
+    const card=e.target.closest('.game-card[data-modes]');
+    if(!card)return;
+    // Let the history pip through unmolested
+    if(e.target.closest('.gh-tile-pip'))return;
+    e.preventDefault();
+    try{
+      const modes=JSON.parse(card.getAttribute('data-modes'));
+      open(modes);
+    }catch(err){
+      // Fall back to whatever href the anchor had
+      location.href=card.getAttribute('href');
+    }
   });
 })();
 

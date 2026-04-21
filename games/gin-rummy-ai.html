@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
 body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#060e0a 60%);}
 .gr-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
@@ -88,6 +89,9 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#060e0a 60%);}
 </div>
 <script>
 'use strict';
+
+// ── My name (for solo-vs-AI display + history) ───────────────────────────────
+const MYNAME = (typeof FrequentPlayers!=='undefined' && FrequentPlayers.myName()) || 'You';
 
 // ── Card helpers ─────────────────────────────────────────────────────────────
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -342,11 +346,11 @@ function resolveRound(isGin,aiKnocked,playerGin){
     addLog(msg,'pts');
   } else if(defDW<=kDW&&knocker===1){
     pts=kDW-defDW+25;scores[0]+=pts;roundScores[0]+=pts;
-    msg=`Undercut! You score ${pts} pts.`;addLog(msg,'pts');
+    msg=`Undercut! ${MYNAME} scores ${pts} pts.`;addLog(msg,'pts');
   } else {
     pts=defDW-kDW;
     scores[knocker]+=pts;roundScores[knocker]+=pts;
-    msg=`${knocker===0?'You':'AI'} scores ${pts} pts.`;
+    msg=`${knocker===0?MYNAME:'AI'} scores ${pts} pts.`;
     addLog(msg,'pts');
   }
   if(isGin){scores[knocker]+=pts;roundScores[knocker]+=pts;addLog(msg,'pts');}
@@ -357,7 +361,7 @@ function resolveRound(isGin,aiKnocked,playerGin){
 
 function endGame(){
   const won=scores[0]>scores[1];
-  addLog(`Game over! ${won?'You win':'AI wins'}. ${scores[0]}–${scores[1]}.`,'pts');
+  addLog(`Game over! ${won?MYNAME+' wins':'AI wins'}. ${scores[0]}–${scores[1]}.`,'pts');
   try{GameHistory.save('gin',{_summary:`Gin Rummy · ${scores[0]>scores[1]?'Win':'Loss'} ${scores[0]}–${scores[1]}`,_badge:scores[0]>scores[1]?'Win':'Loss',result:scores[0]>scores[1]?'win':'loss',score:scores[0],aiScore:scores[1]});}catch(e){}
   render();
 }
@@ -392,7 +396,7 @@ function render(){
     const won=scores[0]>=100;
     html+=`<div class="gr-game-result">
       <div class="gr-game-title">${won?'🏆 You Win!':'AI Wins'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">Final: You ${scores[0]} – AI ${scores[1]}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">Final: ${MYNAME} ${scores[0]} – AI ${scores[1]}</div>
     </div>
     <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
     html+=`<div class="gr-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
@@ -512,5 +516,6 @@ function render(){
 
 newGame();
 </script>
+<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

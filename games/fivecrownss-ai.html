@@ -3,62 +3,236 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0618">
 <title>Five Crowns — vs AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
 body{background:radial-gradient(ellipse at 50% 0%,#1a0f30 0%,#0d0618 60%);}
-.fc-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
-/* Card */
-.fcc{width:44px;height:62px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
-  border:2px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-family:'Playfair Display',serif;font-weight:900;box-shadow:1px 2px 6px rgba(0,0,0,.5);
-  transition:all .15s;user-select:none;flex-shrink:0;}
-.fcc.red{color:#c53030;}.fcc.black{color:#1a1a1a;}.fcc.star{color:#6d28d9;}
-.fcc.wild-card{background:linear-gradient(145deg,#f5c842,#c8961a);border-color:rgba(255,255,255,.3);color:#2a1a00;}
-.fcc.joker-card{background:linear-gradient(145deg,#a855f7,#7c3aed);color:#fff;border-color:rgba(255,255,255,.3);}
-.fcc.playable{cursor:pointer;}.fcc.playable:hover{transform:translateY(-8px);border-color:#a855f7;}
-.fcc.in-meld{border-color:#22c55e;background:linear-gradient(145deg,#f0fff4,#dcfce7);}
-.fcc.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);transform:translateY(-10px);}
-.fcc.deadwood-c{border-color:#ef4444;opacity:.85;}
-.fcc.face-down{background:linear-gradient(145deg,#2a1060,#180830);border-color:rgba(255,255,255,.1);cursor:default;}
-.fc-r{font-size:.85rem;line-height:1.1;}.fc-s{font-size:.72rem;line-height:1.}
-/* Meld groups */
-.fc-melds{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-.fc-meld-group{display:flex;gap:3px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:4px 6px;}
-/* Layout */
-.fc-table{background:linear-gradient(145deg,#12062a,#080318);border:2px solid rgba(255,255,255,.07);border-radius:16px;padding:12px;margin-bottom:10px;}
-.fc-discard-stock{display:flex;gap:12px;justify-content:center;align-items:flex-start;margin-bottom:10px;}
-.fc-pile{display:flex;flex-direction:column;align-items:center;gap:3px;}
-.fc-pile-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);}
-/* Scores */
-.fc-scores{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
-.fc-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px;text-align:center;}
-.fc-score-box.you{border-color:rgba(167,139,250,.35);}
-.fc-score-box.lowest{border-color:rgba(34,197,94,.35);}
-.fc-score-name{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-.fc-score-total{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
-.fc-score-detail{font-size:.58rem;color:rgba(255,255,255,.35);line-height:1.4;}
-/* Status */
-.fc-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
-/* Phase badge */
-.fc-phase{display:inline-block;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);
-  border-radius:20px;padding:3px 12px;font-size:.68rem;font-weight:700;color:#a78bfa;
-  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
-/* Log */
-.fc-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
+.fc-wrap{max-width:480px;margin:0 auto;padding:0 10px 60px;}
+
+/* ── Round + Wild header ─────────────────────────────────────────────── */
+.fc-header{text-align:center;margin:6px 0 10px;}
+.fc-header .round-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);
+  border-radius:20px;padding:5px 14px;font-size:.72rem;font-weight:700;
+  color:#c4b5fd;letter-spacing:.08em;text-transform:uppercase;
+}
+.fc-header .wild-badge{
+  background:linear-gradient(135deg,#f5c842,#c8961a);color:#2a1a00;
+  border-radius:10px;padding:2px 8px;font-size:.68rem;font-weight:900;letter-spacing:.02em;
+}
+
+/* ── Scores ──────────────────────────────────────────────────────────── */
+.fc-scores{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.fc-score-box{
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:10px 8px;text-align:center;transition:all .2s;
+}
+.fc-score-box.you{border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.06);}
+.fc-score-box.lowest{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08);}
+.fc-score-box.active{box-shadow:0 0 0 1px rgba(245,200,66,.6);}
+.fc-score-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.55);margin-bottom:3px;}
+.fc-score-box.you .fc-score-name{color:#c4b5fd;}
+.fc-score-total{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#f5c842;line-height:1;}
+.fc-score-sub{font-size:.6rem;color:rgba(255,255,255,.4);margin-top:2px;min-height:12px;}
+
+/* ── Table (opponents + piles) ───────────────────────────────────────── */
+.fc-table{
+  background:linear-gradient(145deg,#12082a,#08041a);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;padding:14px 12px;margin-bottom:14px;
+}
+.fc-opp-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;
+}
+.fc-opp-row + .fc-opp-row{border-top:1px solid rgba(255,255,255,.04);margin-top:2px;}
+.fc-opp-name{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.7);}
+.fc-opp-name .tag{font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px;letter-spacing:.05em;text-transform:uppercase;}
+.fc-opp-name .tag.turn{background:rgba(245,200,66,.2);color:#f5c842;}
+.fc-opp-name .tag.out{background:rgba(34,197,94,.2);color:#86efac;}
+.fc-opp-cards{display:flex;gap:2px;}
+.fc-mini-back{
+  width:14px;height:20px;border-radius:3px;
+  background:linear-gradient(145deg,#2a1060,#180830);
+  border:1px solid rgba(255,255,255,.15);
+}
+
+.fc-piles{
+  display:flex;justify-content:center;align-items:flex-start;gap:22px;
+  margin-top:14px;
+}
+.fc-pile{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  position:relative;
+}
+.fc-pile-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);}
+.fc-pile-count{font-size:.62rem;color:rgba(255,255,255,.35);}
+.fc-pile-card{
+  width:58px;height:82px;border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:900;
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 3px 10px rgba(0,0,0,.5);
+  position:relative;
+}
+.fc-pile-card.stock{
+  background:linear-gradient(145deg,#2a1060,#180830);
+  border:2px solid rgba(167,139,250,.35);
+}
+.fc-pile-card.stock::after{
+  content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.08);border-radius:6px;
+}
+.fc-pile-card.stock:hover{border-color:#a78bfa;transform:translateY(-2px);}
+.fc-pile-card.discard{
+  background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.1);color:#1a1a1a;
+}
+.fc-pile-card.discard:hover{border-color:#a78bfa;transform:translateY(-2px);}
+.fc-pile-card.disabled{cursor:default;opacity:.55;}
+.fc-pile-card.disabled:hover{transform:none;border-color:rgba(0,0,0,.1);}
+.fc-pile-card.empty{
+  background:rgba(255,255,255,.03);border:2px dashed rgba(255,255,255,.12);
+  color:rgba(255,255,255,.25);font-size:.65rem;font-weight:600;cursor:default;
+}
+
+/* ── Status ──────────────────────────────────────────────────────────── */
+.fc-status{
+  text-align:center;font-size:.9rem;font-weight:600;
+  padding:10px 14px;margin-bottom:12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;color:rgba(255,255,255,.85);
+  min-height:20px;
+}
+.fc-status.yours{border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.08);color:#c4b5fd;}
+.fc-status .dw-total{color:#f5c842;font-weight:900;font-family:'Playfair Display',serif;font-size:1.05em;}
+
+/* ── Player section ──────────────────────────────────────────────────── */
+.fc-section-label{
+  font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+  color:rgba(255,255,255,.4);margin-bottom:6px;padding-left:4px;
+}
+.fc-hand-section{margin-bottom:12px;}
+.fc-meld-group{
+  display:inline-flex;gap:3px;padding:4px 5px 4px 5px;
+  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.22);
+  border-radius:10px;margin-right:6px;margin-bottom:6px;vertical-align:top;
+  position:relative;
+}
+.fc-meld-group::before{
+  content:attr(data-label);
+  position:absolute;top:-7px;left:8px;
+  font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:#86efac;background:#0f0822;padding:0 4px;border-radius:3px;
+}
+.fc-deadwood-group{
+  display:inline-flex;gap:3px;padding:4px 5px 4px 5px;
+  background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.18);
+  border-radius:10px;vertical-align:top;position:relative;
+}
+.fc-deadwood-group::before{
+  content:attr(data-label);
+  position:absolute;top:-7px;left:8px;
+  font-size:.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:#fca5a5;background:#0f0822;padding:0 4px;border-radius:3px;
+}
+.fc-groups{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start;}
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+.fcc{
+  width:48px;height:68px;border-radius:8px;
+  background:linear-gradient(145deg,#f8f4e8,#ede8d6);
+  border:2px solid rgba(0,0,0,.1);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:900;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+  transition:all .12s;user-select:none;flex-shrink:0;
+  position:relative;
+}
+.fcc .fc-r{font-size:1.05rem;line-height:1;}
+.fcc .fc-s{font-size:.85rem;line-height:1;margin-top:1px;}
+.fcc.red{color:#c53030;}
+.fcc.black{color:#1a1a1a;}
+.fcc.star{color:#7c3aed;}
+.fcc.wild-card{
+  background:linear-gradient(145deg,#fef3c7,#fde68a);
+  border-color:#f5c842;color:#78350f;
+}
+.fcc.wild-card::after{
+  content:"W";position:absolute;top:2px;right:3px;
+  font-size:.5rem;font-weight:900;color:#b45309;letter-spacing:.05em;
+}
+.fcc.joker-card{
+  background:linear-gradient(145deg,#a855f7,#7c3aed);color:#fff;
+  border-color:rgba(255,255,255,.35);
+}
+.fcc.playable{cursor:pointer;}
+.fcc.playable:active{transform:translateY(-2px) scale(.98);}
+.fcc.selected{
+  border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);
+  transform:translateY(-10px);color:#1a1a1a;
+  box-shadow:0 6px 16px rgba(245,200,66,.4);
+}
+.fcc.selected.wild-card{background:linear-gradient(145deg,#fef9c3,#fde047);}
+.fcc.selected.joker-card{background:linear-gradient(145deg,#c084fc,#9333ea);}
+.fcc.face-down{
+  background:linear-gradient(145deg,#2a1060,#180830);
+  border-color:rgba(255,255,255,.12);cursor:default;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────── */
+.fc-actions{
+  display:flex;gap:8px;justify-content:center;margin-top:6px;flex-wrap:wrap;
+}
+.fc-discard-btn{
+  background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;
+  padding:10px 18px;border-radius:10px;font-size:.9rem;font-weight:700;
+  cursor:pointer;font-family:Inter,sans-serif;
+  box-shadow:0 3px 10px rgba(239,68,68,.3);transition:all .12s;
+}
+.fc-discard-btn:hover{filter:brightness(1.1);}
+.fc-discard-btn:active{transform:scale(.97);}
+.fc-goout-btn{
+  background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;
+  padding:10px 18px;border-radius:10px;font-size:.9rem;font-weight:700;
+  cursor:pointer;font-family:Inter,sans-serif;
+  box-shadow:0 3px 10px rgba(34,197,94,.3);transition:all .12s;
+}
+.fc-goout-btn:hover{filter:brightness(1.1);}
+
+/* ── Log ─────────────────────────────────────────────────────────────── */
+.fc-log{
+  background:rgba(0,0,0,.3);border-radius:8px;
+  padding:8px 12px;max-height:84px;overflow-y:auto;
+  font-size:.72rem;line-height:1.65;color:rgba(255,255,255,.55);
+  margin-top:12px;
+}
 .fc-log .pts{color:#f5c842;font-weight:700;}
-/* Round end */
-.fc-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
-.fc-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
-.fc-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+.fc-log .bust{color:#fca5a5;}
+
+/* ── Round/game end panels ──────────────────────────────────────────── */
+.fc-round-end{
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;padding:16px;margin-bottom:12px;text-align:center;
+}
+.fc-game-result{
+  background:linear-gradient(135deg,#f5c842,#f0a500);
+  border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:14px;
+  box-shadow:0 8px 30px rgba(245,200,66,.3);
+}
+.fc-game-title{
+  font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;
+}
 </style>
 </head>
 <body>
@@ -72,347 +246,604 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a0f30 0%,#0d0618 60%);}
 </div>
 <script>
 'use strict';
-// Five Crowns: 11 rounds (3-13 cards). Wild = cards matching round number + Jokers.
-// Form melds (sets/runs). Go out = lay all cards. Others get 1 more turn then score deadwood.
-// Lowest score after 11 rounds wins.
-const PNAMES=['You','Cleo','Thor'];
-const SUITS=['♠','♥','♦','★']; // ★ = stars (Five Crowns 5th suit)
-const RED=new Set(['♥','♦']);
-const RANKS=['3','4','5','6','7','8','9','10','J','Q','K'];
-const RANK_VAL={'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'W':0,'JK':0};
 
-function makeFC_Deck(){
-  const d=[];
-  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
-  // 3 Jokers
-  for(let i=0;i<3;i++) d.push({rank:'JK',suit:'⭐',special:'joker'});
-  // Duplicate deck (Five Crowns uses 2 decks)
-  const d2=[...d,...d.map(c=>({...c}))];
-  for(let i=d2.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d2[i],d2[j]]=[d2[j],d2[i]];}
-  return d2;
+// ═══════════════════════════════════════════════════════════════════════════
+// Five Crowns vs AI — 11 rounds. Cards 3–K in 4 suits plus stars; Jokers and
+// the round-rank are wild. Form sets/runs; discard to minimize deadwood.
+// Go out by having 0 deadwood after your discard. Lowest game total wins.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PNAMES = [
+  (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName()) || 'You',
+  'Cleo', 'Thor'
+];
+const SUITS = ['♠','♥','♦','♣','★'];   // Five Crowns has 5 suits (stars = 5th)
+const RED = new Set(['♥','♦']);
+const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K'];
+const RANK_VAL = {'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'JK':50};
+const RANK_ORD = Object.fromEntries(RANKS.map((r,i) => [r, i+3]));
+
+function makeDeck(){
+  const d = [];
+  SUITS.forEach(s => RANKS.forEach(r => d.push({rank:r, suit:s})));
+  for(let i = 0; i < 3; i++) d.push({rank:'JK', suit:'⭐', special:'joker'});
+  // Five Crowns uses two decks
+  const deck = [...d, ...d.map(c => ({...c}))];
+  for(let i = deck.length - 1; i > 0; i--){
+    const j = 0 | Math.random() * (i + 1);
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
 }
-function cKey(c){return c.rank+c.suit;}
-function isWild(c,wildRank){return c.special==='joker'||c.rank===wildRank;}
-function isRed(c){return RED.has(c.suit);}
-function isStar(c){return c.suit==='★';}
-function cardVal(c){return RANK_VAL[c.rank]||0;}
 
-// ── Meld detection ──────────────────────────────────────────────────────────
-const RANK_ORD=Object.fromEntries(RANKS.map((r,i)=>[r,i+3]));
-RANK_ORD['W']=0; RANK_ORD['JK']=0;
+let _cardIdCounter = 0;
+function tagCard(c){
+  // Each card instance gets a unique id since we have duplicates
+  return {...c, _id: ++_cardIdCounter};
+}
 
+function cKey(c){ return c._id != null ? c._id : (c.rank + c.suit); }
+function isWild(c, wildRank){ return c.special === 'joker' || c.rank === wildRank; }
+function cardVal(c){
+  if(c.special === 'joker') return 50;
+  return RANK_VAL[c.rank] || 0;
+}
+
+// ── Meld finder: returns best arrangement minimizing deadwood ──────────────
 function findBestMelds(hand, wildRank){
-  const naturals=hand.filter(c=>!isWild(c,wildRank));
-  const wilds=hand.filter(c=>isWild(c,wildRank));
-  let bestDW=hand.reduce((s,c)=>s+(isWild(c,wildRank)?0:cardVal(c)),0);
-  let bestMelds=[];
+  const naturals = hand.filter(c => !isWild(c, wildRank));
+  const wilds = hand.filter(c => isWild(c, wildRank));
+  // Deadwood if nothing melded = sum of all naturals (wilds would score big — avoid)
+  let bestDW = hand.reduce((s,c) => s + (isWild(c,wildRank) ? cardVal(c) : cardVal(c)), 0);
+  let bestMelds = [];
 
-  function tryMelds(remaining, wilds2, usedMelds){
-    const dw=remaining.reduce((s,c)=>s+cardVal(c),0);
-    if(dw<bestDW){bestDW=dw;bestMelds=[...usedMelds];}
+  function stateKey(remaining, wildCount, melds){
+    return remaining.map(c => c._id).sort().join(',') + '|w' + wildCount;
+  }
+  const memo = new Set();
 
-    // Try all sets of 3+ same rank from remaining
-    const byRank={};
-    remaining.forEach(c=>{(byRank[c.rank]=byRank[c.rank]||[]).push(c);});
-    Object.entries(byRank).forEach(([rank,cards])=>{
-      for(let len=3;len<=cards.length;len++){
-        const meld=cards.slice(0,len);
-        const left=remaining.filter(c=>!meld.includes(c));
-        tryMelds(left,wilds2,[...usedMelds,meld]);
+  function rec(remaining, wildsLeft, usedMelds){
+    // Current deadwood = sum of remaining + unplayed wilds
+    const dw = remaining.reduce((s,c) => s + cardVal(c), 0)
+             + wildsLeft.reduce((s,c) => s + cardVal(c), 0);
+    if(dw < bestDW){ bestDW = dw; bestMelds = usedMelds.map(g => [...g]); }
+    if(dw === 0) return; // can't do better
+
+    const k = stateKey(remaining, wildsLeft.length);
+    if(memo.has(k)) return;
+    memo.add(k);
+
+    // Try sets (3+ same rank)
+    const byRank = {};
+    remaining.forEach(c => (byRank[c.rank] = byRank[c.rank] || []).push(c));
+    Object.values(byRank).forEach(sameRank => {
+      // Use k natural cards + w wild cards, total 3–8
+      for(let natCount = Math.min(sameRank.length, 8); natCount >= 0; natCount--){
+        for(let wCount = 0; wCount <= wildsLeft.length; wCount++){
+          const total = natCount + wCount;
+          if(total < 3) continue;
+          if(total > 8) continue;
+          if(natCount === 0 && wCount === total) continue; // all-wild meld not allowed
+          const pickedNat = sameRank.slice(0, natCount);
+          const pickedWild = wildsLeft.slice(0, wCount);
+          const newRem = remaining.filter(c => !pickedNat.includes(c));
+          const newWilds = wildsLeft.slice(wCount);
+          rec(newRem, newWilds, [...usedMelds, [...pickedNat, ...pickedWild]]);
+        }
       }
-      // With wilds to fill to 3
-      for(let w=1;w<=Math.min(wilds2.length,2);w++){
-        if(cards.length+w>=3){
-          const meld=[...cards.slice(0,Math.min(cards.length,3-w)),...wilds2.slice(0,w)];
-          if(meld.length>=3){
-            const left=remaining.filter(c=>!cards.slice(0,meld.length-w).includes(c));
-            const remainWilds=wilds2.slice(w);
-            tryMelds(left,remainWilds,[...usedMelds,meld]);
+    });
+
+    // Try runs (same suit, consecutive, 3+)
+    const bySuit = {};
+    remaining.forEach(c => (bySuit[c.suit] = bySuit[c.suit] || []).push(c));
+    Object.values(bySuit).forEach(sameSuit => {
+      const sorted = [...sameSuit].sort((a,b) => RANK_ORD[a.rank] - RANK_ORD[b.rank]);
+      // Try every subset of consecutive runs (with wild filling gaps)
+      for(let startIdx = 0; startIdx < sorted.length; startIdx++){
+        for(let endIdx = startIdx; endIdx < sorted.length; endIdx++){
+          const chosen = sorted.slice(startIdx, endIdx + 1);
+          // Check no duplicate ranks in chosen
+          const ranks = chosen.map(c => c.rank);
+          if(new Set(ranks).size !== ranks.length) continue;
+          const minRank = RANK_ORD[chosen[0].rank];
+          const maxRank = RANK_ORD[chosen[chosen.length - 1].rank];
+          const span = maxRank - minRank + 1;
+          const gaps = span - chosen.length;
+          if(gaps < 0) continue;   // shouldn't happen
+          // Use gaps wilds to fill internal gaps; optionally extend with more wilds
+          for(let extraW = 0; extraW + gaps + chosen.length >= 3 && extraW + gaps <= wildsLeft.length; extraW++){
+            const totalWilds = gaps + extraW;
+            if(totalWilds > wildsLeft.length) break;
+            const totalLen = chosen.length + totalWilds;
+            if(totalLen < 3) continue;
+            if(totalLen > 8) break;
+            // Ensure run extent stays within 3..K range when using extras
+            // (extension can go either direction; simplify by allowing it)
+            const meld = [...chosen, ...wildsLeft.slice(0, totalWilds)];
+            const newRem = remaining.filter(c => !chosen.includes(c));
+            const newWilds = wildsLeft.slice(totalWilds);
+            rec(newRem, newWilds, [...usedMelds, meld]);
           }
         }
       }
     });
-
-    // Try runs: same suit, consecutive
-    const bySuit={};
-    remaining.forEach(c=>{(bySuit[c.suit]=bySuit[c.suit]||[]).push(c);});
-    Object.values(bySuit).forEach(cards=>{
-      const sorted=cards.filter(c=>RANK_ORD[c.rank]).sort((a,b)=>RANK_ORD[a.rank]-RANK_ORD[b.rank]);
-      for(let i=0;i<sorted.length;i++){
-        let run=[sorted[i]];
-        for(let j=i+1;j<sorted.length;j++){
-          if(RANK_ORD[sorted[j].rank]===RANK_ORD[run[run.length-1].rank]+1) run.push(sorted[j]);
-          else break;
-        }
-        if(run.length>=3){
-          const left=remaining.filter(c=>!run.includes(c));
-          tryMelds(left,wilds2,[...usedMelds,run]);
-        }
-      }
-    });
   }
-  tryMelds(naturals,wilds,[]);
-  const usedInMelds=new Set(bestMelds.flat().map(cKey));
-  const deadwood=hand.filter(c=>!usedInMelds.has(cKey(c)));
-  return{melds:bestMelds,deadwood,dwTotal:bestDW};
+
+  rec(naturals, wilds, []);
+  // Flatten deadwood = hand - melded
+  const meldIds = new Set(bestMelds.flat().map(c => c._id));
+  const deadwood = hand.filter(c => !meldIds.has(c._id));
+  const dwTotal = deadwood.reduce((s,c) => s + cardVal(c), 0);
+  return {melds: bestMelds, deadwood, dwTotal};
 }
 
-// ── State ───────────────────────────────────────────────────────────────────
-let deck,discard,hands,scores,roundScores,phase,round,current,goingOut,lastTurn,wildRank,selCard,log;
+// ── State ──────────────────────────────────────────────────────────────────
+let deck, discard, hands, scores, roundScores, phase, round, current, goingOut, lastTurn, wildRank, selCard, log;
 
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>25)log.shift();}
-function newGame(){scores=[0,0,0];log=[];round=0;nextRound();}
+function addLog(msg, cls = ''){ log.push({msg, cls}); if(log.length > 30) log.shift(); }
+
+function newGame(){
+  scores = [0, 0, 0];
+  log = [];
+  round = 0;
+  nextRound();
+}
+
 function nextRound(){
   round++;
-  wildRank=RANKS[round-1]; // round 1: wilds=3, round 11: wilds=K
-  const n=round+2; // round 1: 3 cards, round 11: 13 cards
-  deck=makeFC_Deck();
-  hands=Array.from({length:3},()=>deck.splice(0,n));
-  discard=[deck.pop()];
-  roundScores=[0,0,0]; goingOut=-1; lastTurn=false;
-  current=0; phase='draw'; selCard=null;
-  addLog(`Round ${round}: ${n} cards each. Wild: ${wildRank}s`);
+  wildRank = RANKS[round - 1];   // Round 1: 3s wild, round 11: Ks wild
+  const n = round + 2;           // Round 1: 3 cards, round 11: 13 cards
+  const rawDeck = makeDeck();
+  deck = rawDeck.map(tagCard);   // Attach unique ids
+  hands = Array.from({length: 3}, () => deck.splice(0, n));
+  discard = [deck.pop()];
+  roundScores = [0, 0, 0];
+  goingOut = -1;
+  lastTurn = false;
+  current = 0;
+  phase = 'draw';
+  selCard = null;
+  addLog(`Round ${round}: ${n} cards · Wilds are ${wildRank}s + Jokers`);
   render();
-  if(current!==0) setTimeout(aiTurn,600);
+  if(current !== 0) setTimeout(aiTurn, 700);
 }
 
 function drawFrom(src){
-  if(phase!=='draw'||current!==0) return;
-  const card=src==='discard'?discard.pop():(deck.length?deck.pop():null);
-  if(!card) return;
-  if(src==='stock'&&!deck.length&&discard.length>1){
-    const top=discard.pop();
-    deck=[...discard].reverse();discard=[top];
+  if(phase !== 'draw' || current !== 0) return;
+  let card = null;
+  if(src === 'discard' && discard.length){
+    card = discard.pop();
+  } else if(src === 'stock'){
+    if(!deck.length){
+      if(discard.length > 1){
+        const top = discard.pop();
+        deck = [...discard];
+        discard = [top];
+        for(let i = deck.length - 1; i > 0; i--){
+          const j = 0 | Math.random() * (i + 1);
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        addLog('Stock empty — discards reshuffled.');
+      }
+    }
+    card = deck.pop();
   }
+  if(!card) return;
   hands[0].push(card);
-  phase='discard'; selCard=null;
-  addLog(`You draw from ${src}.`);
+  phase = 'discard';
+  selCard = null;
+  addLog(`You draw from ${src === 'stock' ? 'stock' : 'discard'} → ${cardLbl(card)}.`);
   render();
 }
 
 function selectCard(card){
-  if(phase!=='discard'||current!==0) return;
-  if(selCard&&cKey(selCard)===cKey(card)){
-    // Double-tap to discard
-    doDiscard(card);
-  } else { selCard=card; render(); }
+  if(phase !== 'discard' || current !== 0) return;
+  if(selCard && cKey(selCard) === cKey(card)){
+    // Tap the same card again — UNSELECT (no auto-discard)
+    selCard = null;
+  } else {
+    selCard = card;
+  }
+  render();
 }
 
-function doDiscard(card){
-  hands[0]=hands[0].filter(c=>cKey(c)!==cKey(card));
+function confirmDiscard(){
+  if(phase !== 'discard' || current !== 0 || !selCard) return;
+  const card = selCard;
+  hands[0] = hands[0].filter(c => cKey(c) !== cKey(card));
   discard.push(card);
-  selCard=null;
-  addLog(`You discard ${card.rank}${card.suit}.`);
+  selCard = null;
+  addLog(`You discard ${cardLbl(card)}.`);
   checkGoOut(0);
 }
 
 function checkGoOut(p){
-  const{dwTotal}=findBestMelds(hands[p],wildRank);
-  if(dwTotal===0&&goingOut<0){
-    goingOut=p; roundScores[p]=0;
-    addLog(`${PNAMES[p]} goes out!`,'pts');
-    lastTurn=true;
-    advanceTurn();
-  } else {
-    advanceTurn();
+  const {dwTotal} = findBestMelds(hands[p], wildRank);
+  if(dwTotal === 0 && goingOut < 0){
+    goingOut = p;
+    roundScores[p] = 0;
+    addLog(`${PNAMES[p]} goes out! 🎉`, 'pts');
+    lastTurn = true;
   }
+  advanceTurn();
 }
 
 function advanceTurn(){
-  const next=(current+1)%3;
-  if(lastTurn&&next===goingOut){
-    // All players had their last turn — score
+  const next = (current + 1) % 3;
+  if(lastTurn && next === goingOut){
     scoreRound();
   } else {
-    current=next; phase='draw'; selCard=null;
+    current = next;
+    phase = 'draw';
+    selCard = null;
     render();
-    if(current!==0) setTimeout(aiTurn,600);
+    if(current !== 0) setTimeout(aiTurn, 700);
   }
 }
 
 function aiTurn(){
-  if(current===0) return;
-  const p=current;
-  const{melds,deadwood}=findBestMelds(hands[p],wildRank);
-  // Draw: take discard if it reduces deadwood
-  const discardTop=discard[discard.length-1];
-  let draw='stock';
+  if(current === 0) return;
+  const p = current;
+  const {deadwood: curDW} = findBestMelds(hands[p], wildRank);
+  const curDWSum = curDW.reduce((s,c) => s + cardVal(c), 0);
+
+  // Consider taking discard if it reduces deadwood more than stock might
+  const discardTop = discard[discard.length - 1];
+  let source = 'stock';
   if(discardTop){
-    const testHand=[...hands[p],discardTop];
-    // Try all discards
-    let minDW=Infinity;
-    testHand.forEach((c,i)=>{
-      const h=testHand.filter((_,j)=>j!==i);
-      const dw=findBestMelds(h,wildRank).dwTotal;
-      if(dw<minDW) minDW=dw;
+    const testHand = [...hands[p], discardTop];
+    // Try each possible discard from testHand and see minimum deadwood
+    let bestDW = Infinity;
+    testHand.forEach(c => {
+      const h = testHand.filter(x => cKey(x) !== cKey(c));
+      const dw = findBestMelds(h, wildRank).dwTotal;
+      if(dw < bestDW) bestDW = dw;
     });
-    if(minDW<deadwood.reduce((s,c)=>s+cardVal(c),0)) draw='discard';
+    if(bestDW < curDWSum) source = 'discard';
   }
-  const drawn=draw==='discard'?discard.pop():deck.pop();
-  if(!drawn){scoreRound();return;}
+
+  let drawn = null;
+  if(source === 'discard'){
+    drawn = discard.pop();
+  } else {
+    if(!deck.length && discard.length > 1){
+      const top = discard.pop();
+      deck = [...discard];
+      discard = [top];
+    }
+    drawn = deck.pop();
+  }
+  if(!drawn){ scoreRound(); return; }
   hands[p].push(drawn);
-  addLog(`${PNAMES[p]} draws from ${draw}.`);
-  // Discard worst deadwood card
-  const{deadwood:dw2}=findBestMelds(hands[p],wildRank);
-  const toDiscard=dw2.length?dw2.sort((a,b)=>cardVal(b)-cardVal(a))[0]:
-    hands[p].sort((a,b)=>cardVal(b)-cardVal(a))[0];
-  hands[p]=hands[p].filter(c=>cKey(c)!==cKey(toDiscard));
-  discard.push(toDiscard);
-  addLog(`${PNAMES[p]} discards ${toDiscard.rank}${toDiscard.suit}.`);
+  addLog(`${PNAMES[p]} draws from ${source}.`);
+
+  // Decide discard: pick the card whose removal minimizes deadwood.
+  // Tiebreak: prefer discarding high-value cards (leave wilds in hand).
+  let bestDiscard = null, bestDW = Infinity;
+  hands[p].forEach(c => {
+    const h = hands[p].filter(x => cKey(x) !== cKey(c));
+    const dw = findBestMelds(h, wildRank).dwTotal;
+    if(dw < bestDW || (dw === bestDW && bestDiscard && cardVal(c) > cardVal(bestDiscard))){
+      bestDW = dw;
+      bestDiscard = c;
+    }
+  });
+  // Never discard a wild if avoidable
+  if(bestDiscard && isWild(bestDiscard, wildRank)){
+    const nonWilds = hands[p].filter(c => !isWild(c, wildRank));
+    let altBest = null, altBestDW = Infinity;
+    nonWilds.forEach(c => {
+      const h = hands[p].filter(x => cKey(x) !== cKey(c));
+      const dw = findBestMelds(h, wildRank).dwTotal;
+      if(dw < altBestDW){ altBestDW = dw; altBest = c; }
+    });
+    if(altBest && altBestDW <= bestDW + 5){  // accept small loss to keep wild
+      bestDiscard = altBest;
+      bestDW = altBestDW;
+    }
+  }
+
+  hands[p] = hands[p].filter(c => cKey(c) !== cKey(bestDiscard));
+  discard.push(bestDiscard);
+  addLog(`${PNAMES[p]} discards ${cardLbl(bestDiscard)}.`);
   checkGoOut(p);
 }
 
 function scoreRound(){
-  for(let p=0;p<3;p++){
-    if(p!==goingOut){
-      roundScores[p]=findBestMelds(hands[p],wildRank).dwTotal;
+  for(let p = 0; p < 3; p++){
+    if(p === goingOut){
+      roundScores[p] = 0;
+    } else {
+      roundScores[p] = findBestMelds(hands[p], wildRank).dwTotal;
     }
-    scores[p]+=roundScores[p];
+    scores[p] += roundScores[p];
   }
-  phase='round-end';
-  addLog(PNAMES.map((n,i)=>`${n}: +${roundScores[i]}`).join(', '),'pts');
-  if(round===11){phase='game-over';endGame();}
-  else render();
+  phase = 'round-end';
+  addLog(`Round ${round} scores — ${PNAMES.map((n,i) => n + ': +' + roundScores[i]).join(' · ')}`, 'pts');
+  if(round === 11){
+    phase = 'game-over';
+    endGame();
+  } else {
+    render();
+  }
 }
 
 function endGame(){
-  const minScore=Math.min(...scores);
-  const winner=scores.indexOf(minScore);
-  const won=winner===0;
-  addLog(`${PNAMES[winner]} wins with lowest score: ${minScore}!`,'pts');
-  try{GameHistory.save('fivecrwns',{_summary:`Five Crowns (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  const minScore = Math.min(...scores);
+  const winner = scores.indexOf(minScore);
+  const won = winner === 0;
+  addLog(`🏆 ${PNAMES[winner]} wins with ${minScore} pts!`, 'pts');
+  try{
+    GameHistory.save('fivecrwns', {
+      _summary: `Five Crowns (AI) · ${won ? 'Win' : 'Loss'} ${scores[0]} pts`,
+      _badge: won ? 'Win' : 'Loss',
+      result: won ? 'win' : 'loss',
+      score: scores[0],
+      winner: PNAMES[winner]
+    });
+  }catch(e){}
   render();
 }
 
 function goOutPlayer(){
-  if(phase!=='discard'||current!==0) return;
-  const{dwTotal,melds}=findBestMelds(hands[0],wildRank);
-  if(dwTotal>0){addLog('Still have deadwood — must discard first.');return;}
-  roundScores[0]=0;goingOut=0;lastTurn=true;
-  addLog('You go out with 0 deadwood! 🎉','pts');
-  selCard=null;advanceTurn();
+  if(phase !== 'discard' || current !== 0 || !selCard) return;
+  // Simulate discarding the selected card and see if hand would have 0 DW
+  const testHand = hands[0].filter(c => cKey(c) !== cKey(selCard));
+  const {dwTotal} = findBestMelds(testHand, wildRank);
+  if(dwTotal !== 0){
+    addLog(`Can't go out — ${dwTotal} deadwood would remain.`);
+    return;
+  }
+  // Valid — discard and go out
+  confirmDiscard();
 }
 
-function cardEl(c,cls=''){
-  const isWC=isWild(c,wildRank);
-  const joker=c.special==='joker';
-  const col=joker?'':RED.has(c.suit)?'red':c.suit==='★'?'star':'black';
-  const special=joker?'joker-card':isWC?'wild-card':'';
-  return`<div class="fcc ${col} ${special} ${cls}" data-key="${cKey(c)}">
-    <div class="fc-r">${c.rank}</div>
-    <div class="fc-s">${joker?'★':c.suit}</div>
+// ── Rendering helpers ─────────────────────────────────────────────────────
+function cardLbl(c){
+  if(c.special === 'joker') return 'Joker';
+  return c.rank + c.suit;
+}
+
+function cardEl(c, cls = ''){
+  const isWC = isWild(c, wildRank);
+  const joker = c.special === 'joker';
+  const col = joker ? '' : RED.has(c.suit) ? 'red' : c.suit === '★' ? 'star' : 'black';
+  const special = joker ? 'joker-card' : (isWC && !joker) ? 'wild-card' : '';
+  const rank = joker ? '★' : c.rank;
+  const suit = joker ? '' : c.suit;
+  return `<div class="fcc ${col} ${special} ${cls}" data-id="${c._id}">
+    <div class="fc-r">${rank}</div>
+    ${suit ? `<div class="fc-s">${suit}</div>` : ''}
   </div>`;
+}
+
+// For the meld group preview, compute based on the player's POST-discard hand
+// if a card is currently selected (so the player sees the result of their choice).
+function previewHand(){
+  if(selCard && phase === 'discard'){
+    return hands[0].filter(c => cKey(c) !== cKey(selCard));
+  }
+  return hands[0];
+}
+
+function describeMeld(meld){
+  if(meld.length < 3) return '';
+  // Detect run vs set: same rank = set; consecutive ranks same suit = run
+  const nonWild = meld.filter(c => !isWild(c, wildRank));
+  if(nonWild.length === 0) return 'MELD';
+  const sameRank = nonWild.every(c => c.rank === nonWild[0].rank);
+  if(sameRank) return `SET · ${nonWild[0].rank}s`;
+  return `RUN · ${nonWild[0].suit}`;
 }
 
 function render(){
-  const root=document.getElementById('fc-root');
-  let html='';
-  const minScore=Math.min(...scores);
-  html+=`<div style="text-align:center;margin-bottom:6px;font-size:.72rem;color:rgba(255,255,255,.4);">Round ${round}/11 · Wild: ${wildRank}s · Lowest score wins</div>`;
-  html+=`<div class="fc-scores">`;
-  PNAMES.forEach((n,i)=>{
-    html+=`<div class="fc-score-box ${i===0?'you':''} ${scores[i]===minScore?'lowest':''}">
-      <div class="fc-score-name" style="${i===0?'color:#a78bfa':''}">${n}</div>
+  const root = document.getElementById('fc-root');
+  let html = '';
+  const minScore = Math.min(...scores);
+
+  // ── Round + Wild header ─────────────────────────────────────────────
+  html += `<div class="fc-header">
+    <div class="round-pill">
+      Round ${round}/11
+      <span class="wild-badge">Wilds: ${wildRank}s</span>
+    </div>
+  </div>`;
+
+  // ── Scores ──────────────────────────────────────────────────────────
+  html += `<div class="fc-scores">`;
+  PNAMES.forEach((n, i) => {
+    const cls = [
+      'fc-score-box',
+      i === 0 ? 'you' : '',
+      scores[i] === minScore && scores[i] > 0 ? 'lowest' : '',
+      current === i && phase !== 'round-end' && phase !== 'game-over' ? 'active' : ''
+    ].filter(Boolean).join(' ');
+    html += `<div class="${cls}">
+      <div class="fc-score-name">${n}</div>
       <div class="fc-score-total">${scores[i]}</div>
-      <div class="fc-score-detail">${roundScores[i]>0?'+'+roundScores[i]+' this round':''}</div>
+      <div class="fc-score-sub">${roundScores[i] > 0 ? '+' + roundScores[i] + ' this rd' : i === goingOut ? 'went out' : ''}</div>
     </div>`;
   });
-  html+=`</div>`;
+  html += `</div>`;
 
-  if(phase==='game-over'){
-    const w=scores.indexOf(Math.min(...scores));
-    html+=`<div class="fc-game-result">
-      <div class="fc-game-title">${w===0?'🏆 You Win!':PNAMES[w]+' Wins!'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">Lowest score: ${scores[w]} · ${PNAMES.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
+  // ── Game over ───────────────────────────────────────────────────────
+  if(phase === 'game-over'){
+    const w = scores.indexOf(Math.min(...scores));
+    html += `<div class="fc-game-result">
+      <div class="fc-game-title">${w === 0 ? '🏆 You Win!' : PNAMES[w] + ' Wins!'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:6px;font-weight:600;">Lowest total: ${scores[w]} pts</div>
+      <div style="color:#3a2000;font-size:.75rem;margin-top:2px;">${PNAMES.map((n,i) => n + ': ' + scores[i]).join(' · ')}</div>
     </div>
     <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
-    html+=`<div class="fc-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+    html += renderLog();
+    root.innerHTML = html;
+    document.getElementById('ng-btn')?.addEventListener('click', newGame);
+    return;
   }
 
-  if(phase==='round-end'){
-    html+=`<div class="fc-round-end">
-      <div style="font-weight:700;margin-bottom:4px;">Round ${round} Complete · ${PNAMES[goingOut]} went out!</div>
-      <div style="font-size:.78rem;color:rgba(255,255,255,.6);">${PNAMES.map((n,i)=>n+': +'+roundScores[i]).join(' · ')}</div>
+  // ── Round end ───────────────────────────────────────────────────────
+  if(phase === 'round-end'){
+    html += `<div class="fc-round-end">
+      <div style="font-weight:700;margin-bottom:6px;">Round ${round} · ${PNAMES[goingOut]} went out</div>
+      <div style="font-size:.82rem;color:rgba(255,255,255,.65);">${PNAMES.map((n,i) => busted(i) ? `${n}: <span style="color:#fca5a5">+${roundScores[i]}</span>` : `${n}: +${roundScores[i]}`).join(' · ')}</div>
     </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
-    html+=`<div class="fc-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',nextRound);return;
+    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round →</button></div>`;
+    html += renderLog();
+    root.innerHTML = html;
+    document.getElementById('nr-btn')?.addEventListener('click', nextRound);
+    return;
   }
 
-  // AI hands (face down)
-  html+=`<div class="fc-table">`;
-  [1,2].forEach(i=>{
-    html+=`<div style="margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-      <div class="fc-score-name" style="min-width:40px;color:rgba(255,255,255,.4);">${PNAMES[i]}</div>
-      <div style="display:flex;gap:2px;">${hands[i].map(()=>`<div class="fcc face-down" style="width:20px;height:30px;border-radius:4px;"></div>`).join('')}</div>
-    </div>`;
-  });
-
-  // Discard + stock
-  html+=`<div class="fc-discard-stock">
-    <div class="fc-pile"><div class="fc-pile-lbl">Stock (${deck.length})</div>
-      <div class="fcc face-down" style="cursor:pointer;" id="stock-card"></div>
-    </div>
-    <div class="fc-pile"><div class="fc-pile-lbl">Discard</div>
-      ${discard.length?cardEl(discard[discard.length-1],''):'<div class="fcc face-down" style="opacity:.2;border-style:dashed;"></div>'}
-    </div>
-  </div>`;
-  html+=`</div>`;
-
-  // Status
-  const isYourDraw=phase==='draw'&&current===0;
-  const isYourDiscard=phase==='discard'&&current===0;
-  const{melds:pm,deadwood:pdw,dwTotal:pDW}=findBestMelds(hands[0],wildRank);
-  html+=`<div class="fc-status">${isYourDraw?'Draw from stock or discard.':isYourDiscard?`Discard a card. Deadwood: ${pDW}`:current!==0?`${PNAMES[current]} thinking…`:''}</div>`;
-
-  // Player melds
-  if(pm.length>0){
-    html+=`<div class="fc-melds">${pm.map(g=>`<div class="fc-meld-group">${g.map(c=>cardEl(c,'disabled')).join('')}</div>`).join('')}</div>`;
-  }
-
-  // Player hand
-  const meldSet=new Set(pm.flat().map(cKey));
-  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${hands[0].length} cards · ${pDW} deadwood)</div>
-  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
-    ${hands[0].map(c=>{
-      const inMeld=meldSet.has(cKey(c));
-      const isSel=selCard&&cKey(selCard)===cKey(c);
-      let cls=inMeld?'in-meld':!inMeld&&isYourDiscard?'deadwood-c':'';
-      if(isSel) cls='selected';
-      if(isYourDiscard) cls+=' playable';
-      return cardEl(c,cls);
-    }).join('')}
-  </div>`;
-
-  // Actions
-  if(isYourDiscard){
-    html+=`<div style="display:flex;gap:8px;justify-content:center;margin-top:6px;">
-      ${pDW===0?`<button class="btn btn-gold btn-sm" id="go-out-btn">🎉 Go Out!</button>`:''}
-      ${selCard?`<button class="btn btn-outline btn-sm" id="confirm-discard">Discard ${selCard.rank}${selCard.suit}</button>`:''}
+  // ── Table: opponents + piles ───────────────────────────────────────
+  html += `<div class="fc-table">`;
+  for(let i = 1; i <= 2; i++){
+    const isActive = current === i;
+    const didGoOut = goingOut === i;
+    html += `<div class="fc-opp-row">
+      <div class="fc-opp-name">${PNAMES[i]}
+        ${isActive ? '<span class="tag turn">Turn</span>' : ''}
+        ${didGoOut ? '<span class="tag out">Out</span>' : ''}
+      </div>
+      <div class="fc-opp-cards">${hands[i].map(() => '<div class="fc-mini-back"></div>').join('')}</div>
     </div>`;
   }
 
-  html+=`<div class="fc-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-  root.innerHTML=html;
+  html += `<div class="fc-piles">
+    <div class="fc-pile">
+      <div class="fc-pile-lbl">Stock</div>
+      <div class="fc-pile-card stock ${phase==='draw'&&current===0 ? '' : 'disabled'}" id="stock-card"></div>
+      <div class="fc-pile-count">${deck.length} left</div>
+    </div>
+    <div class="fc-pile">
+      <div class="fc-pile-lbl">Discard</div>
+      ${discard.length
+        ? `<div class="fc-pile-card discard ${phase==='draw'&&current===0 ? '' : 'disabled'}" id="discard-card">
+             <div class="fc-r">${discard[discard.length-1].special==='joker' ? '★' : discard[discard.length-1].rank}</div>
+             ${discard[discard.length-1].special!=='joker' ? `<div class="fc-s">${discard[discard.length-1].suit}</div>` : ''}
+           </div>`
+        : '<div class="fc-pile-card empty">empty</div>'}
+      <div class="fc-pile-count">${discard.length} cards</div>
+    </div>
+  </div>`;
+  html += `</div>`;
 
-  document.getElementById('stock-card')?.addEventListener('click',()=>drawFrom('stock'));
-  document.querySelectorAll('.fc-pile .fcc:not(.face-down)').forEach(el=>{
-    if(discard.length) el.addEventListener('click',()=>drawFrom('discard'));
-  });
-  document.getElementById('player-hand')?.querySelectorAll('.fcc.playable').forEach(el=>{
-    el.addEventListener('click',()=>{
-      const c=hands[0].find(c=>cKey(c)===el.dataset.key);
-      if(c) selectCard(c);
+  // ── Status ──────────────────────────────────────────────────────────
+  const isYourDraw = phase === 'draw' && current === 0;
+  const isYourDiscard = phase === 'discard' && current === 0;
+  const previewHandCards = previewHand();
+  const {melds: previewMelds, deadwood: previewDW, dwTotal: previewDWTotal} = findBestMelds(previewHandCards, wildRank);
+
+  let statusHtml = '';
+  let statusCls = '';
+  if(isYourDraw){
+    statusHtml = `👉 Your turn — tap <b>Stock</b> or <b>Discard</b> to draw`;
+    statusCls = 'yours';
+  } else if(isYourDiscard){
+    if(selCard){
+      statusHtml = `Discard <b>${cardLbl(selCard)}</b>? After discard → <span class="dw-total">${previewDWTotal}</span> deadwood`;
+    } else {
+      statusHtml = `Tap a card to mark it for discard · Current deadwood: <span class="dw-total">${findBestMelds(hands[0], wildRank).dwTotal}</span>`;
+    }
+    statusCls = 'yours';
+  } else if(lastTurn){
+    statusHtml = `${PNAMES[goingOut]} went out — final turns…`;
+  } else {
+    statusHtml = `${PNAMES[current]} is thinking…`;
+  }
+  html += `<div class="fc-status ${statusCls}">${statusHtml}</div>`;
+
+  // ── Player hand, grouped into melds + deadwood ──────────────────────
+  // We always render ALL cards; the one picked for discard is highlighted separately.
+  // Meld preview is based on post-discard hand if a card is selected.
+  const actualHand = hands[0];
+  const meldCardIds = new Set(previewMelds.flat().map(c => c._id));
+  const deadwoodIds = new Set(previewDW.map(c => c._id));
+
+  // Group the player's hand:
+  //   - If a selected card exists: it's shown first as "selected to discard"
+  //   - Then each meld group
+  //   - Then deadwood group
+  html += `<div class="fc-hand-section">`;
+  html += `<div class="fc-section-label">Your Hand · ${actualHand.length} cards${selCard ? ` · selecting <b>${cardLbl(selCard)}</b> for discard` : ''}</div>`;
+  html += `<div class="fc-groups">`;
+
+  // Render selected card first (as its own highlighted group)
+  if(selCard){
+    html += `<div class="fc-deadwood-group" data-label="Discard" style="background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.5);">
+      ${cardEl(selCard, 'selected playable')}
+    </div>`;
+  }
+
+  // Render meld groups
+  previewMelds.forEach((meld, idx) => {
+    const label = describeMeld(meld);
+    html += `<div class="fc-meld-group" data-label="${label}">`;
+    meld.forEach(c => {
+      html += cardEl(c, 'playable');
     });
+    html += `</div>`;
   });
-  document.getElementById('go-out-btn')?.addEventListener('click',goOutPlayer);
-  document.getElementById('confirm-discard')?.addEventListener('click',()=>{if(selCard)doDiscard(selCard);});
-  document.getElementById('ng-btn')?.addEventListener('click',newGame);
-  document.getElementById('nr-btn')?.addEventListener('click',nextRound);
+
+  // Render deadwood group (if any)
+  const dwCards = previewDW;
+  if(dwCards.length){
+    html += `<div class="fc-deadwood-group" data-label="Deadwood · ${previewDWTotal}">`;
+    dwCards.forEach(c => {
+      html += cardEl(c, 'playable');
+    });
+    html += `</div>`;
+  }
+
+  html += `</div></div>`;  // /groups /section
+
+  // ── Actions ─────────────────────────────────────────────────────────
+  if(isYourDiscard){
+    html += `<div class="fc-actions">`;
+    if(selCard){
+      // If discarding this card would leave 0 deadwood, show Go Out button
+      const canGoOut = previewDWTotal === 0;
+      if(canGoOut){
+        html += `<button class="fc-goout-btn" id="goout-btn">🎉 Go Out!</button>`;
+      }
+      html += `<button class="fc-discard-btn" id="discard-btn">Discard ${cardLbl(selCard)}</button>`;
+    }
+    html += `</div>`;
+    if(!selCard){
+      html += `<div style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.4);margin-top:4px;">Tap the same card again to un-select</div>`;
+    }
+  }
+
+  html += renderLog();
+  root.innerHTML = html;
+
+  // Wire events
+  if(isYourDraw){
+    document.getElementById('stock-card')?.addEventListener('click', () => drawFrom('stock'));
+    document.getElementById('discard-card')?.addEventListener('click', () => drawFrom('discard'));
+  }
+  if(isYourDiscard){
+    document.querySelectorAll('.fcc.playable').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = +el.dataset.id;
+        const c = hands[0].find(x => x._id === id);
+        if(c) selectCard(c);
+      });
+    });
+    document.getElementById('discard-btn')?.addEventListener('click', confirmDiscard);
+    document.getElementById('goout-btn')?.addEventListener('click', goOutPlayer);
+  }
+  document.getElementById('ng-btn')?.addEventListener('click', newGame);
+  document.getElementById('nr-btn')?.addEventListener('click', nextRound);
+}
+
+function busted(i){ return false; }  // placeholder for log styling
+
+function renderLog(){
+  return `<div class="fc-log">${log.slice(-6).map(({msg,cls}) => `<div class="${cls || ''}">${msg}</div>`).join('')}</div>`;
 }
 
 newGame();
 </script>
+<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

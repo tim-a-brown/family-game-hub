@@ -1,278 +1,789 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0618">
 <title>Lorcana Counter</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
+<script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 40% 0%,#1a0a2a 0%,#0d1117 65%);}
-.lore-card{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:16px;padding:18px 14px;transition:all .3s;position:relative;overflow:hidden;}
-.lore-card.winner{border-color:var(--gold);box-shadow:0 0 24px rgba(245,200,66,.2);}
-/* How to play */
-.htp-toggle{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--muted);font-size:.82rem;font-weight:600;padding:8px;border-radius:8px;transition:all .15s;touch-action:manipulation;margin-bottom:6px;}
-.htp-toggle:hover{color:var(--text);background:rgba(255,255,255,.05);}
-.htp-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;margin-bottom:14px;font-size:.84rem;line-height:1.65;color:var(--muted);}
-.htp-panel h3{font-size:.82rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin:12px 0 5px;}
+:root{
+  --lc-gold: #e8c16a;
+  --lc-gold-dim: #b69345;
+  --lc-ink: #0a0518;
+  --lc-ink-trans: rgba(10,5,24,.82);
+}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family: 'Inter', system-ui, sans-serif;
+  color:#fff;
+  background:
+    radial-gradient(ellipse 55% 40% at 30% 18%, rgba(255,120,200,.42) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 55% at 82% 14%, rgba(148,110,240,.50) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 45% at 12% 52%, rgba(100,220,230,.28) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 55% at 82% 62%, rgba(120,90,230,.42) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 20% 92%, rgba(210,130,255,.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 96%, rgba(100,200,170,.25) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 90% at 50% 50%, #1e0f38 0%, #0d0820 60%, #05030f 100%);
+  background-attachment: fixed;
+  min-height:100vh;min-height:100dvh;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(1.3px 1.3px at 12% 18%, rgba(255,255,255,.85) 50%, transparent 51%),
+    radial-gradient(1px 1px at 38% 62%, rgba(255,255,255,.75) 50%, transparent 51%),
+    radial-gradient(1.1px 1.1px at 72% 28%, rgba(255,255,255,.85) 50%, transparent 51%),
+    radial-gradient(.9px .9px at 88% 78%, rgba(255,255,255,.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 48% 8%, rgba(255,255,255,.8) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 8% 82%, rgba(255,255,255,.8) 50%, transparent 51%),
+    radial-gradient(.8px .8px at 60% 88%, rgba(255,255,255,.65) 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 42%, rgba(255,255,255,.75) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 26% 44%, rgba(255,255,255,.8) 50%, transparent 51%),
+    radial-gradient(.9px .9px at 82% 16%, rgba(255,255,255,.65) 50%, transparent 51%);
+  opacity:.7;
+}
+
+/* ═══════════════ SETUP SCREEN ═══════════════ */
+#setup{
+  position:relative;z-index:2;
+  min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 20px;overflow-y:auto;
+}
+.setup-card{
+  width:100%;max-width:420px;
+  background:linear-gradient(180deg, rgba(20,12,40,.82), rgba(10,6,26,.92));
+  border:1px solid rgba(232,193,106,.35);
+  border-radius:20px;padding:28px 22px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+  text-align:center;
+}
+.setup-title{
+  font-family:'Cinzel', 'Playfair Display', serif;
+  font-size:1.9rem;font-weight:900;letter-spacing:.06em;
+  color:var(--lc-gold);margin:4px 0 2px;
+  text-shadow:0 2px 10px rgba(232,193,106,.3);
+}
+.setup-sub{color:rgba(255,255,255,.55);font-size:.82rem;margin-bottom:20px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;}
+.pcount-row{display:flex;gap:10px;justify-content:center;margin-bottom:20px;}
+.pcount-btn{
+  all:unset;cursor:pointer;box-sizing:border-box;
+  min-width:64px;height:64px;padding:0 16px;border-radius:14px;
+  background:rgba(232,193,106,.06);border:1px solid rgba(232,193,106,.25);
+  color:#fff;font-family:'Cinzel', serif;font-size:1.6rem;font-weight:900;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.pcount-btn:hover{background:rgba(232,193,106,.15);}
+.pcount-btn.active{background:linear-gradient(135deg, rgba(232,193,106,.3), rgba(232,193,106,.1)); border-color:var(--lc-gold); color:var(--lc-gold); box-shadow:0 0 18px rgba(232,193,106,.35);}
+.name-inputs{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
+.name-inputs .input{
+  width:100%;box-sizing:border-box;padding:11px 14px;border-radius:10px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(232,193,106,.2);
+  color:#fff;font-size:1rem;font-family:Inter,sans-serif;outline:none;
+  text-align:center;letter-spacing:.03em;
+}
+.name-inputs .input:focus{border-color:var(--lc-gold);background:rgba(232,193,106,.08);}
+.setup-start{
+  all:unset;cursor:pointer;box-sizing:border-box;display:block;width:100%;text-align:center;
+  padding:14px 0;border-radius:12px;
+  background:linear-gradient(135deg, #e8c16a, #b69345);color:#1a0f00;
+  font-family:'Cinzel', serif;font-weight:900;font-size:1.05rem;letter-spacing:.12em;
+  text-transform:uppercase;
+  box-shadow:0 6px 18px rgba(232,193,106,.3);
+  transition:transform .08s, filter .15s;
+}
+.setup-start:hover{filter:brightness(1.08);}
+.setup-start:active{transform:scale(.98);}
+.setup-extras{margin-top:16px;display:flex;gap:10px;justify-content:center;align-items:center;}
+.setup-extras a, .setup-extras button{
+  all:unset;cursor:pointer;color:rgba(255,255,255,.45);font-size:.78rem;
+  padding:6px 10px;border-radius:8px;transition:color .15s;
+}
+.setup-extras a:hover, .setup-extras button:hover{color:var(--lc-gold);}
+.htp-panel{
+  margin-top:14px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:14px 16px;font-size:.82rem;line-height:1.55;
+  color:rgba(255,255,255,.65);text-align:left;
+}
+.htp-panel.hidden{display:none;}
+.htp-panel h3{font-size:.74rem;font-weight:700;color:var(--lc-gold);text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px;}
 .htp-panel h3:first-child{margin-top:0;}
-.htp-panel strong{color:var(--text);}
-.htp-panel .htp-row{display:flex;gap:8px;margin-bottom:6px;}
-.htp-panel .htp-icon{flex-shrink:0;font-size:1rem;width:22px;text-align:center;}
-.htp-phase{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:5px;}
-.phase-num{width:22px;height:22px;border-radius:50%;background:rgba(192,132,252,.2);border:1px solid rgba(192,132,252,.3);color:#c084fc;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
-.player-name-btn{background:none;border:none;cursor:pointer;font-weight:700;font-size:.88rem;color:var(--muted);display:block;width:100%;text-align:left;padding:0;margin-bottom:8px;touch-action:manipulation;}
-.lore-val{font-family:var(--serif);font-size:clamp(3rem,12vw,4.5rem);font-weight:900;text-align:center;line-height:1;margin:4px 0;}
-.lore-bar{height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:8px 0;}
-.lore-fill{height:100%;border-radius:4px;transition:width .4s ease;}
-.lore-to-win{text-align:center;font-size:.72rem;color:rgba(255,255,255,.3);margin-bottom:10px;}
-.ctrl-row{display:flex;gap:8px;justify-content:center;}
-.lore-btn{flex:1;height:52px;border-radius:12px;font-size:1.5rem;font-weight:700;cursor:pointer;border:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:all .12s;max-width:70px;}
-.lore-btn:active{transform:scale(.92);}
-.minus-btn{background:rgba(255,255,255,.08);color:var(--text);}
-.plus-btn{color:#0a1020;}
-.big-plus{height:58px;font-size:1.2rem;font-weight:700;border-radius:10px;cursor:pointer;border:none;flex:2;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:all .12s;}
-.big-plus:active{transform:scale(.95);}
-.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:400px;margin:0 auto 12px;}
-.game-grid{display:grid;gap:10px;max-width:500px;margin:0 auto;}
-.winner-banner{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;text-align:center;max-width:340px;margin:0 auto 14px;}
-.winner-banner .wn{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#0f2d1a;}
-.ink-tracker{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08);}
-.ink-label{font-size:.7rem;color:var(--muted);font-weight:600;white-space:nowrap;}
-.ink-dots{display:flex;gap:4px;flex-wrap:wrap;}
-.ink-dot{width:16px;height:16px;border-radius:50%;cursor:pointer;transition:all .15s;touch-action:manipulation;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);}
-.ink-dot.filled{background:var(--color,#5ac8fa);border-color:var(--color,#5ac8fa);}
+.htp-panel strong{color:#fff;}
+
+/* ═══════════════ GAME SCREEN ═══════════════ */
+#game{position:fixed;inset:0;z-index:1;}
+#game.hidden{display:none;}
+
+.lc-frame{position:fixed;inset:8px;pointer-events:none;z-index:15;}
+.lc-corner{position:absolute;width:64px;height:64px;opacity:.85;}
+.lc-corner.tl{top:0;left:0;}
+.lc-corner.tr{top:0;right:0;transform:scaleX(-1);}
+.lc-corner.bl{bottom:0;left:0;transform:scaleY(-1);}
+.lc-corner.br{bottom:0;right:0;transform:scale(-1,-1);}
+
+.lc-grid{
+  position:absolute;inset:0;display:grid;
+  gap:0;padding:28px 14px 68px;
+  box-sizing:border-box;
+}
+.lc-grid.g2{grid-template-rows:1fr 1fr;grid-template-columns:1fr;}
+.lc-grid.g3{grid-template-rows:1fr 1fr;grid-template-columns:1fr 1fr;}
+.lc-grid.g3 > :nth-child(1){grid-column:1 / span 2;}
+.lc-grid.g4{grid-template-rows:1fr 1fr;grid-template-columns:1fr 1fr;}
+
+.lc-cell{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:6px 10px;min-height:0;
+}
+.lc-cell.rotated{transform:rotate(180deg);}
+
+.lc-name{
+  font-family:'Cinzel', serif;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--lc-gold);font-size:clamp(.78rem,2.8vw,1.1rem);
+  text-shadow:0 1px 8px rgba(232,193,106,.35);
+  cursor:pointer;touch-action:manipulation;
+  padding:6px 12px;border-radius:8px;
+  transition:background .15s;
+  max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;
+  margin-top:10px;
+}
+.lc-name:hover{background:rgba(232,193,106,.08);}
+
+.lc-row{
+  display:flex;align-items:center;justify-content:center;gap:min(3vw,16px);
+  width:100%;max-width:560px;
+}
+.lc-btn{
+  all:unset;cursor:pointer;box-sizing:border-box;touch-action:manipulation;
+  width:min(13vw,54px);height:min(13vw,54px);border-radius:50%;
+  background:rgba(10,5,24,.6);border:2px solid rgba(232,193,106,.4);
+  color:var(--lc-gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:min(6vw,1.4rem);font-weight:700;
+  transition:all .12s;
+  box-shadow:0 4px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.lc-btn:hover{background:rgba(232,193,106,.15);}
+.lc-btn:active{transform:scale(.9);background:rgba(232,193,106,.25);}
+.lc-btn.disabled{opacity:.3;pointer-events:none;}
+.lc-step{
+  font-family:'Cinzel', serif;font-weight:700;color:rgba(232,193,106,.55);
+  font-size:clamp(.85rem,3.2vw,1.05rem);min-width:14px;text-align:center;
+  cursor:pointer;touch-action:manipulation;padding:4px 8px;border-radius:6px;
+}
+.lc-step:hover{color:var(--lc-gold);background:rgba(232,193,106,.08);}
+
+.lc-diamond{
+  position:relative;width:min(40vw,170px);aspect-ratio:.82/1;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;touch-action:manipulation;
+  filter:drop-shadow(0 8px 24px rgba(232,193,106,.2));
+}
+.lc-diamond svg{width:100%;height:100%;position:absolute;inset:0;}
+.lc-score{
+  position:relative;z-index:2;
+  font-family:'Cinzel', 'Playfair Display', serif;
+  font-size:clamp(2.8rem,9vw,4.5rem);font-weight:900;
+  color:var(--lc-gold);
+  text-shadow:0 2px 10px rgba(232,193,106,.5);
+  line-height:1;
+}
+.lc-diamond.winner .lc-score{animation:winpulse 1s ease-in-out infinite;}
+@keyframes winpulse{
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.08);filter:brightness(1.2);}
+}
+
+.lc-div-h, .lc-div-v{position:absolute;pointer-events:none;z-index:12;opacity:.7;}
+.lc-div-h{left:14%;right:14%;top:50%;height:1px;
+  background:linear-gradient(90deg, transparent 0%, rgba(232,193,106,.5) 15%, rgba(232,193,106,.85) 50%, rgba(232,193,106,.5) 85%, transparent 100%);
+  transform:translateY(-.5px);}
+.lc-div-v{top:14%;bottom:14%;left:50%;width:1px;
+  background:linear-gradient(180deg, transparent 0%, rgba(232,193,106,.5) 15%, rgba(232,193,106,.85) 50%, rgba(232,193,106,.5) 85%, transparent 100%);
+  transform:translateX(-.5px);}
+.lc-center-orn{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:13;
+  pointer-events:none;
+}
+
+.lc-top-ctrls{
+  position:fixed;top:12px;right:18px;z-index:20;
+  display:flex;gap:10px;
+}
+.lc-ctrl-btn{
+  all:unset;cursor:pointer;box-sizing:border-box;touch-action:manipulation;
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(10,5,24,.65);border:2px solid rgba(232,193,106,.4);
+  color:var(--lc-gold);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+  transition:all .15s;
+}
+.lc-ctrl-btn:hover{background:rgba(232,193,106,.18);transform:scale(1.05);}
+.lc-ctrl-btn:active{transform:scale(.92);}
+.lc-ctrl-btn svg{width:18px;height:18px;}
+
+.lc-bottom-menu{
+  all:unset;box-sizing:border-box;cursor:pointer;touch-action:manipulation;
+  position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:6px 18px;
+  color:var(--lc-gold);font-family:'Cinzel',serif;font-weight:700;letter-spacing:.2em;font-size:.7rem;
+  text-transform:uppercase;
+  transition:transform .15s;
+}
+.lc-bottom-menu:hover{transform:translateX(-50%) translateY(-2px);}
+.lc-bottom-menu .chev{font-size:.9rem;line-height:.5;margin-bottom:1px;}
+.lc-bottom-menu .lbl{text-decoration:underline;text-underline-offset:3px;}
+
+.lc-menu-overlay{
+  position:fixed;inset:0;background:rgba(5,3,15,.88);backdrop-filter:blur(6px);
+  z-index:100;display:none;align-items:center;justify-content:center;padding:20px;
+}
+.lc-menu-overlay.show{display:flex;animation:lcfadein .2s ease both;}
+@keyframes lcfadein{from{opacity:0;}to{opacity:1;}}
+.lc-menu-card{
+  width:100%;max-width:340px;
+  background:linear-gradient(180deg,#1a0f2e,#0d0820);
+  border:1px solid rgba(232,193,106,.4);border-radius:18px;
+  padding:20px 16px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);
+  animation:lcpop .22s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes lcpop{from{transform:scale(.92);opacity:0;}to{transform:scale(1);opacity:1;}}
+.lc-menu-title{font-family:'Cinzel',serif;font-size:1.4rem;font-weight:900;color:var(--lc-gold);margin-bottom:14px;letter-spacing:.1em;text-transform:uppercase;}
+.lc-menu-btn{
+  all:unset;cursor:pointer;box-sizing:border-box;display:block;width:100%;text-align:center;
+  padding:12px 0;border-radius:10px;margin-bottom:8px;
+  background:rgba(232,193,106,.06);border:1px solid rgba(232,193,106,.25);
+  color:#fff;font-family:Inter,sans-serif;font-weight:600;font-size:.94rem;
+  transition:all .15s;
+}
+.lc-menu-btn:hover{background:rgba(232,193,106,.15);border-color:var(--lc-gold);color:var(--lc-gold);}
+.lc-menu-btn.danger{border-color:rgba(255,100,100,.25);color:rgba(255,180,180,.85);}
+.lc-menu-btn.danger:hover{background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.5);}
+.lc-menu-close{
+  background:transparent;border:none;color:rgba(255,255,255,.45);
+  font-size:.82rem;cursor:pointer;padding:8px;margin-top:4px;
+  font-family:Inter,sans-serif;
+}
+
+.lc-winner-banner{
+  position:fixed;top:68px;left:50%;transform:translateX(-50%);z-index:18;
+  background:linear-gradient(135deg,#e8c16a,#b69345);color:#1a0f00;
+  padding:10px 20px;border-radius:999px;
+  font-family:'Cinzel',serif;font-weight:900;font-size:.95rem;letter-spacing:.1em;text-transform:uppercase;
+  box-shadow:0 8px 24px rgba(232,193,106,.4);
+  animation:lcwinslide .4s cubic-bezier(.34,1.56,.64,1) both;
+  white-space:nowrap;
+}
+@keyframes lcwinslide{from{transform:translateX(-50%) translateY(-40px);opacity:0;}to{transform:translateX(-50%) translateY(0);opacity:1;}}
+
+.hidden{display:none!important;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Lorcana Counter</span>
-</nav>
-<div class="page" style="padding-bottom:50px;">
 
-<!-- How to Play -->
-<div class="htp-toggle" id="htp-toggle" onclick="toggleHtp()">
-  <span id="htp-arrow">▶</span> How to Play Lorcana
-</div>
-<div class="htp-panel hidden" id="htp-panel">
-  <h3>🎯 Goal</h3>
-  Be the first player to collect <strong>20 lore</strong>. You gain lore by sending your characters on quests.
-
-  <h3>🔁 Turn Structure</h3>
-  <div class="htp-phase"><div class="phase-num">1</div><div><strong>Ready</strong> — unexert (straighten) all your cards at the start of your turn.</div></div>
-  <div class="htp-phase"><div class="phase-num">2</div><div><strong>Set</strong> — draw a card, then optionally put one card from your hand <em>into your inkwell</em> (it must have the ink symbol). Tap an ink dot below to track.</div></div>
-  <div class="htp-phase"><div class="phase-num">3</div><div><strong>Draw</strong> — play characters, actions, items, and songs by paying their ink cost. Tap ink dots to show how many are spent.</div></div>
-  <div class="htp-phase"><div class="phase-num">4</div><div><strong>Actions</strong> — Quest with characters (they exert; you gain lore equal to their lore value), or Challenge opposing characters. New characters can't act on their first turn (summoning sickness).</div></div>
-
-  <h3>✨ Ink Tracker (dots)</h3>
-  The <strong>7 dots</strong> beneath each player represent their inkwell. Fill in dots as you add ink cards throughout the game — your total dots = ink available each turn. Tap a dot to toggle it used/ready.
-
-  <h3>🃏 Key Terms</h3>
-  <div class="htp-row"><div class="htp-icon">⭐</div><div><strong>Lore</strong> — victory points. Track with the +1 / +3 buttons.</div></div>
-  <div class="htp-row"><div class="htp-icon">💧</div><div><strong>Ink</strong> — your resource to play cards. Grows by one each turn you ink a card (max 7 in starter rules).</div></div>
-  <div class="htp-row"><div class="htp-icon">⚔️</div><div><strong>Challenger</strong> — a keyword that gives bonus strength when challenging.</div></div>
-  <div class="htp-row"><div class="htp-icon">🛡️</div><div><strong>Bodyguard</strong> — must be challenged before other characters.</div></div>
-  <div class="htp-row"><div class="htp-icon">🏃</div><div><strong>Rush</strong> — this character can challenge on the turn it's played.</div></div>
-  <div class="htp-row"><div class="htp-icon">🎵</div><div><strong>Shift</strong> — play on top of a matching character for a discount.</div></div>
-
-  <h3>🏆 Winning</h3>
-  The first player to reach <strong>20 lore</strong> wins immediately — even during your opponent's turn. This counter highlights the winner automatically.
-</div>
-
-<!-- Setup -->
 <div id="setup">
-  <h2 style="font-family:var(--serif);font-size:1.4rem;text-align:center;margin-bottom:14px;">Lorcana — Lore Tracker</h2>
-  <div style="font-weight:700;text-align:center;margin-bottom:10px;">Players</div>
-  <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;" id="cnt-row">
-    <button class="btn btn-outline btn-sm cnt-btn" data-n="2">2</button>
-    <button class="btn btn-gold btn-sm cnt-btn" data-n="3">3</button>
-    <button class="btn btn-outline btn-sm cnt-btn" data-n="4">4</button>
-  </div>
-  <div id="setup-names" class="setup-grid"></div>
-  <div style="max-width:340px;margin:0 auto;">
-    <button class="btn btn-gold btn-block" id="start-btn">Start Game →</button>
+  <div class="setup-card">
+    <div class="setup-title">Lorcana</div>
+    <div class="setup-sub">Lore Tracker</div>
+
+    <div class="pcount-row" id="cnt-row">
+      <button type="button" class="pcount-btn" data-n="2">2</button>
+      <button type="button" class="pcount-btn active" data-n="3">3</button>
+      <button type="button" class="pcount-btn" data-n="4">4</button>
+    </div>
+
+    <div id="setup-names" class="name-inputs"></div>
+
+    <button type="button" class="setup-start" id="start-btn">Start Game</button>
+
+    <div class="setup-extras">
+      <a href="../index.html">← Home</a>
+      <span style="color:rgba(255,255,255,.15)">•</span>
+      <button type="button" id="htp-toggle">How to play</button>
+    </div>
+
+    <div class="htp-panel hidden" id="htp-panel">
+      <h3>Goal</h3>
+      Be the first to <strong>20 lore</strong>. Gain lore by questing with characters.
+      <h3>Turn structure</h3>
+      <strong>Ready</strong> → <strong>Set</strong> (draw, optionally ink) → <strong>Do</strong> (play cards, quest, challenge).
+      <h3>Using this counter</h3>
+      Tap <strong>+</strong> / <strong>−</strong> to adjust lore. Tap the step number to change increment (1 / 2 / 3). Long-press the diamond to set an exact value. Tap a player's name to rename them.
+      <h3>Orientation</h3>
+      Scores across from you appear upside-down so each player reads from their own seat.
+    </div>
   </div>
 </div>
 
-<!-- Game -->
 <div id="game" class="hidden">
-  <div id="winner-area"></div>
-  <div id="game-grid" class="game-grid"></div>
-  <div style="text-align:center;margin-top:14px;display:flex;gap:8px;justify-content:center;">
-    <button class="btn btn-outline btn-sm" id="reset-btn">Reset Lore</button>
-    <button class="btn btn-outline btn-sm" id="new-btn">New Game</button>
+  <div id="lc-winner" class="hidden"></div>
+
+  <div class="lc-frame">
+    <svg class="lc-corner tl" viewBox="0 0 64 64" fill="none">
+      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
+      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
+      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
+      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
+    </svg>
+    <svg class="lc-corner tr" viewBox="0 0 64 64" fill="none">
+      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
+      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
+      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
+      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
+    </svg>
+    <svg class="lc-corner bl" viewBox="0 0 64 64" fill="none">
+      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
+      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
+      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
+      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
+    </svg>
+    <svg class="lc-corner br" viewBox="0 0 64 64" fill="none">
+      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
+      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
+      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
+      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
+    </svg>
+  </div>
+
+  <div id="lc-grid" class="lc-grid"></div>
+  <div id="lc-dividers"></div>
+
+  <div class="lc-top-ctrls">
+    <button type="button" class="lc-ctrl-btn" id="lc-reset-btn" title="Reset lore">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 12,2 L 20,12 L 12,22 L 4,12 Z"/>
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+      </svg>
+    </button>
+    <button type="button" class="lc-ctrl-btn" id="lc-pause-btn" title="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="9" y1="7" x2="9" y2="17"/>
+        <line x1="15" y1="7" x2="15" y2="17"/>
+      </svg>
+    </button>
+  </div>
+
+  <button type="button" class="lc-bottom-menu" id="lc-menu-btn">
+    <span class="chev">⌃</span>
+    <span class="lbl">Menu</span>
+  </button>
+</div>
+
+<div class="lc-menu-overlay" id="lc-menu-overlay">
+  <div class="lc-menu-card">
+    <div class="lc-menu-title">Menu</div>
+    <button type="button" class="lc-menu-btn" data-act="resume">Resume Game</button>
+    <button type="button" class="lc-menu-btn" data-act="reset">Reset Lore</button>
+    <button type="button" class="lc-menu-btn" data-act="rename">Rename Players…</button>
+    <button type="button" class="lc-menu-btn" data-act="newgame">New Game</button>
+    <button type="button" class="lc-menu-btn" data-act="mute" id="mute-btn">🔊 Mute Sound</button>
+    <button type="button" class="lc-menu-btn danger" data-act="home">← Back to Home</button>
+    <button type="button" class="lc-menu-close" data-act="resume">Close</button>
   </div>
 </div>
 
-</div>
 <script>
 'use strict';
-const COLORS=['#c084fc','#5ac8fa','#f5c842','#7ed47e'];
-const CDARK=['#8b3fc8','#1a88c4','#c49a10','#3a9a3a'];
-const WIN_LORE=20;
-const DEF_NAMES=['Player 1','Player 2','Player 3','Player 4'];
-let numP=3, pNames=[], lore=[], ink=[], editing=[];
 
-let setupN=3;
-document.querySelectorAll('.cnt-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    setupN=+b.dataset.n;
-    document.querySelectorAll('.cnt-btn').forEach(x=>{x.classList.remove('btn-gold');x.classList.add('btn-outline');});
-    b.classList.remove('btn-outline');b.classList.add('btn-gold');
-    buildSetupNames();
-  });
-});
+const WIN_LORE = 20;
+const DEF_NAMES = ['Player 1','Player 2','Player 3','Player 4'];
+const STEP_VALUES = [1, 2, 3];
+
+let numP = 3;
+let setupN = 3;
+let pNames = [];
+let lore = [];
+let step = 1;
+let announcedWinner = -1;
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Setup
 function buildSetupNames(){
-  const c=document.getElementById('setup-names');c.innerHTML='';
-  for(let i=0;i<setupN;i++){
-    const row=document.createElement('div');
-    row.innerHTML=`<input class="input" id="pn${i}" value="${DEF_NAMES[i]}" maxlength="14" style="border-color:${COLORS[i]}40;">`;
+  const c = document.getElementById('setup-names');
+  c.innerHTML = '';
+  for(let i = 0; i < setupN; i++){
+    const row = document.createElement('div');
+    row.innerHTML = `<input class="input" id="pn${i}" value="${DEF_NAMES[i]}" maxlength="16" autocomplete="off" autocorrect="off" spellcheck="false">`;
     c.appendChild(row);
+  }
+  if(typeof FrequentPlayers !== 'undefined'){
+    FrequentPlayers.attachPickersByPrefix('pn');
   }
 }
 buildSetupNames();
 
-document.getElementById('start-btn').addEventListener('click',()=>{
-  numP=setupN;
-  pNames=Array.from({length:numP},(_,i)=>document.getElementById('pn'+i).value.trim()||DEF_NAMES[i]);
-  lore=Array(numP).fill(0);
-  ink=Array.from({length:numP},()=>Array(7).fill(false));
+document.querySelectorAll('.pcount-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    setupN = +b.dataset.n;
+    document.querySelectorAll('.pcount-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    buildSetupNames();
+  });
+});
+
+document.getElementById('htp-toggle').addEventListener('click', () => {
+  document.getElementById('htp-panel').classList.toggle('hidden');
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+function startGame(){
+  numP = setupN;
+  pNames = Array.from({length:numP}, (_,i) => {
+    const el = document.getElementById('pn'+i);
+    return (el && el.value.trim()) || DEF_NAMES[i];
+  });
+  lore = Array(numP).fill(0);
+  step = 1;
+  announcedWinner = -1;
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('game').classList.remove('hidden');
+  buildGame();
   render();
-});
+}
 
-function render(){
-  document.getElementById('winner-area').innerHTML='';
-  const winner=lore.findIndex(l=>l>=WIN_LORE);
-  if(winner>=0){
-    document.getElementById('winner-area').innerHTML=`<div class="winner-banner">
-      <div style="font-size:2rem;margin-bottom:6px;">✨</div>
-      <div class="wn">${pNames[winner]} wins!</div>
-      <div style="color:#3a2000;font-size:.88rem;font-weight:600;">${lore[winner]} lore</div>
-    </div>`;
+// Game build
+function buildGame(){
+  const grid = document.getElementById('lc-grid');
+  grid.className = 'lc-grid g' + numP;
+  grid.innerHTML = '';
+
+  // DOM slot order → which player index appears in that slot, and whether rotated.
+  // 2p: [top: p2 rotated, bottom: p1]
+  // 3p: [top (spans): p3 rotated, bottomL: p1, bottomR: p2]
+  // 4p: [topL: p3 rotated, topR: p4 rotated, bottomL: p1, bottomR: p2]
+  const slotOrder = {
+    2: [1, 0],
+    3: [2, 0, 1],
+    4: [2, 3, 0, 1],
+  }[numP];
+  const rotatedCount = numP === 3 ? 1 : (numP === 2 ? 1 : 2);
+
+  slotOrder.forEach((pIdx, slotPos) => {
+    const cell = document.createElement('div');
+    cell.className = 'lc-cell' + (slotPos < rotatedCount ? ' rotated' : '');
+    cell.dataset.p = pIdx;
+    cell.innerHTML = buildCellHTML(pIdx);
+    grid.appendChild(cell);
+  });
+
+  const divs = document.getElementById('lc-dividers');
+  divs.innerHTML = '';
+  const divH = document.createElement('div');
+  divH.className = 'lc-div-h';
+  divs.appendChild(divH);
+
+  if(numP === 4){
+    const divV = document.createElement('div');
+    divV.className = 'lc-div-v';
+    divs.appendChild(divV);
+    const ctr = document.createElement('div');
+    ctr.className = 'lc-center-orn';
+    ctr.style.width = '40px';ctr.style.height = '40px';
+    ctr.innerHTML = `<svg viewBox="0 0 40 40" width="40" height="40">
+      <path d="M 20,4 L 24,20 L 20,36 L 16,20 Z" fill="rgba(232,193,106,.9)"/>
+      <path d="M 4,20 L 20,16 L 36,20 L 20,24 Z" fill="rgba(232,193,106,.9)"/>
+      <circle cx="20" cy="20" r="2" fill="#0d0820"/>
+    </svg>`;
+    divs.appendChild(ctr);
+  } else if(numP === 3){
+    const divV = document.createElement('div');
+    divV.className = 'lc-div-v';
+    divV.style.bottom = '50%';
+    divs.appendChild(divV);
+    const ctr = document.createElement('div');
+    ctr.className = 'lc-center-orn';
+    ctr.style.width = '80px';ctr.style.height = '20px';
+    ctr.innerHTML = `<svg viewBox="0 0 80 20" width="80" height="20">
+      <line x1="10" y1="10" x2="32" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
+      <line x1="48" y1="10" x2="70" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
+      <path d="M 32,10 Q 36,4 40,10 Q 44,16 48,10" stroke="rgba(232,193,106,.9)" fill="none" stroke-width="1.2"/>
+      <circle cx="40" cy="10" r="2" fill="rgba(232,193,106,.9)"/>
+    </svg>`;
+    divs.appendChild(ctr);
+  } else {
+    // 2p center ornament
+    const ctr = document.createElement('div');
+    ctr.className = 'lc-center-orn';
+    ctr.style.width = '80px';ctr.style.height = '20px';
+    ctr.innerHTML = `<svg viewBox="0 0 80 20" width="80" height="20">
+      <line x1="10" y1="10" x2="32" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
+      <line x1="48" y1="10" x2="70" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
+      <path d="M 32,10 Q 36,4 40,10 Q 44,16 48,10" stroke="rgba(232,193,106,.9)" fill="none" stroke-width="1.2"/>
+      <circle cx="40" cy="10" r="2" fill="rgba(232,193,106,.9)"/>
+    </svg>`;
+    divs.appendChild(ctr);
   }
 
-  const grid=document.getElementById('game-grid');
-  grid.style.gridTemplateColumns=numP<=2?'1fr 1fr':numP===3?'1fr 1fr':'1fr 1fr';
-  grid.innerHTML='';
-
-  lore.forEach((l,i)=>{
-    const card=document.createElement('div');
-    card.className='lore-card'+(l>=WIN_LORE?' winner':'');
-    card.style.borderColor=l>=WIN_LORE?COLORS[i]:'rgba(255,255,255,.12)';
-    const pct=Math.min(100,(l/WIN_LORE)*100);
-
-    card.innerHTML=`
-      <button class="player-name-btn" style="color:${COLORS[i]}" data-i="${i}">${pNames[i]} ✎</button>
-      <div class="lore-val" style="color:${COLORS[i]}">${l}</div>
-      <div class="lore-bar"><div class="lore-fill" style="width:${pct}%;background:linear-gradient(90deg,${CDARK[i]},${COLORS[i]})"></div></div>
-      <div class="lore-to-win">${l>=WIN_LORE?'🎉 Winner!':WIN_LORE-l+' to win'}</div>
-      <div class="ctrl-row">
-        <button class="lore-btn minus-btn" data-i="${i}" data-d="-1">−</button>
-        <button class="lore-btn big-plus" data-i="${i}" data-d="1" style="background:linear-gradient(135deg,${CDARK[i]},${COLORS[i]})">+1 Lore</button>
-        <button class="lore-btn plus-btn" data-i="${i}" data-d="3" style="background:linear-gradient(135deg,${CDARK[i]},${COLORS[i]})">+3</button>
-      </div>
-      <div class="ink-tracker">
-        <span class="ink-label">Ink</span>
-        <div class="ink-dots" id="ink-${i}"></div>
-      </div>`;
-
-    grid.appendChild(card);
-
-    // Ink dots
-    const inkEl=card.querySelector(`#ink-${i}`);
-    for(let j=0;j<7;j++){
-      const dot=document.createElement('div');
-      dot.className='ink-dot'+(ink[i][j]?' filled':'');
-      dot.style.setProperty('--color',COLORS[i]);
-      dot.addEventListener('click',()=>{ink[i][j]=!ink[i][j];dot.classList.toggle('filled');});
-      inkEl.appendChild(dot);
-    }
-  });
-
-  // Lore buttons
-  grid.querySelectorAll('[data-d]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const i=+btn.dataset.i, d=+btn.dataset.d;
-      const _prev=lore[i];
-      lore[i]=Math.max(0,lore[i]+d);
-      if(lore[i]>_prev){if(lore[i]>=WIN_LORE)sLoreWin();else sLoreUp(d);}else if(lore[i]<_prev)sLoreDown();
-      render();
-    });
-  });
-  // Name edit
-  grid.querySelectorAll('.player-name-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const i=+btn.dataset.i;
-      const nm=prompt('Player name:',pNames[i]);
-      if(nm&&nm.trim())pNames[i]=nm.trim();
-      render();
-    });
-  });
+  grid.addEventListener('click', onGridClick);
+  attachLongPress(grid);
 }
 
-document.getElementById('reset-btn').addEventListener('click',()=>{lore=Array(numP).fill(0);ink=Array.from({length:numP},()=>Array(7).fill(false));render();});
-document.getElementById('new-btn').addEventListener('click',()=>{
+function buildCellHTML(pIdx){
+  return `
+    <div class="lc-row">
+      <button type="button" class="lc-btn lc-minus" data-p="${pIdx}" data-d="-1" aria-label="Minus">−</button>
+      <span class="lc-step" data-act="step">1</span>
+      <div class="lc-diamond" data-p="${pIdx}">
+        <svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="dgrad${pIdx}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1a0f2e"/>
+              <stop offset="100%" stop-color="#0a0518"/>
+            </linearGradient>
+          </defs>
+          <path d="M 50,4 L 96,70 L 50,136 L 4,70 Z" fill="url(#dgrad${pIdx})" stroke="#e8c16a" stroke-width="3"/>
+          <path d="M 50,14 L 86,70 L 50,126 L 14,70 Z" fill="none" stroke="#e8c16a" stroke-width="1" opacity=".55"/>
+        </svg>
+        <div class="lc-score" data-p="${pIdx}">0</div>
+      </div>
+      <span class="lc-step" data-act="step">1</span>
+      <button type="button" class="lc-btn lc-plus" data-p="${pIdx}" data-d="1" aria-label="Plus">+</button>
+    </div>
+    <div class="lc-name" data-p="${pIdx}" data-act="rename">${escapeHtml(pNames[pIdx])}</div>
+  `;
+}
+
+function render(){
+  document.querySelectorAll('.lc-score').forEach(el => {
+    const p = +el.dataset.p;
+    el.textContent = lore[p];
+    el.parentElement.classList.toggle('winner', lore[p] >= WIN_LORE);
+  });
+  document.querySelectorAll('.lc-step').forEach(el => { el.textContent = step; });
+  document.querySelectorAll('.lc-minus').forEach(el => {
+    const p = +el.dataset.p;
+    el.classList.toggle('disabled', lore[p] <= 0);
+  });
+
+  const w = lore.findIndex(l => l >= WIN_LORE);
+  const banner = document.getElementById('lc-winner');
+  if(w >= 0){
+    banner.className = 'lc-winner-banner';
+    banner.textContent = '✨ ' + pNames[w] + ' wins ✨';
+    if(announcedWinner !== w){
+      sWin();
+      announcedWinner = w;
+    }
+  } else {
+    banner.className = 'hidden';
+    announcedWinner = -1;
+  }
+
+  saveSession();
+}
+
+function onGridClick(e){
+  const stepEl = e.target.closest('.lc-step');
+  if(stepEl){
+    const idx = STEP_VALUES.indexOf(step);
+    step = STEP_VALUES[(idx + 1) % STEP_VALUES.length];
+    render();
+    sClick(600 + step * 120);
+    return;
+  }
+  const btn = e.target.closest('.lc-btn');
+  if(btn){
+    const p = +btn.dataset.p;
+    const d = +btn.dataset.d * step;
+    const prev = lore[p];
+    lore[p] = Math.max(0, lore[p] + d);
+    if(lore[p] !== prev){
+      if(lore[p] > prev){
+        if(lore[p] < WIN_LORE) sLoreUp(step);
+      } else {
+        sLoreDown();
+      }
+    }
+    render();
+    return;
+  }
+  const name = e.target.closest('.lc-name');
+  if(name){
+    const p = +name.dataset.p;
+    renamePlayer(p);
+    return;
+  }
+}
+
+function renamePlayer(p){
+  const cur = pNames[p];
+  const nm = prompt('Player name:', cur);
+  if(nm && nm.trim()){
+    pNames[p] = nm.trim().slice(0, 18);
+    document.querySelectorAll('.lc-name[data-p="'+p+'"]').forEach(el => {
+      el.textContent = pNames[p];
+    });
+    if(typeof FrequentPlayers !== 'undefined') FrequentPlayers.add(pNames[p]);
+    saveSession();
+  }
+}
+
+function attachLongPress(root){
+  let pressTimer = null;
+  let pressedP = -1;
+  function start(e){
+    const dia = e.target.closest('.lc-diamond');
+    if(!dia) return;
+    pressedP = +dia.dataset.p;
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      const v = prompt(pNames[pressedP] + ' — set lore to:', lore[pressedP]);
+      const n = parseInt(v, 10);
+      if(!isNaN(n) && n >= 0 && n <= 99){
+        lore[pressedP] = n;
+        render();
+      }
+    }, 600);
+  }
+  function cancel(){
+    if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+  }
+  root.addEventListener('mousedown', start);
+  root.addEventListener('touchstart', start, {passive:true});
+  root.addEventListener('mouseup', cancel);
+  root.addEventListener('mouseleave', cancel);
+  root.addEventListener('touchend', cancel);
+  root.addEventListener('touchcancel', cancel);
+  root.addEventListener('touchmove', cancel);
+}
+
+// Menu
+const menuOverlay = document.getElementById('lc-menu-overlay');
+function openMenu(){ menuOverlay.classList.add('show'); }
+function closeMenu(){ menuOverlay.classList.remove('show'); }
+
+document.getElementById('lc-menu-btn').addEventListener('click', openMenu);
+document.getElementById('lc-pause-btn').addEventListener('click', openMenu);
+document.getElementById('lc-reset-btn').addEventListener('click', () => {
+  if(confirm('Reset all lore to 0? (Players stay the same.)')){
+    resetLore();
+  }
+});
+
+menuOverlay.addEventListener('click', e => {
+  if(e.target === menuOverlay){ closeMenu(); return; }
+  const btn = e.target.closest('[data-act]');
+  if(!btn) return;
+  const act = btn.dataset.act;
+  if(act === 'resume') closeMenu();
+  else if(act === 'reset'){ resetLore(); closeMenu(); }
+  else if(act === 'rename'){ closeMenu(); renameAllFlow(); }
+  else if(act === 'newgame'){ closeMenu(); newGame(); }
+  else if(act === 'mute'){
+    _muted = !_muted;
+    document.getElementById('mute-btn').textContent = _muted ? '🔇 Sound Off' : '🔊 Mute Sound';
+  }
+  else if(act === 'home'){ location.href = '../index.html'; }
+});
+
+function resetLore(){
+  lore = Array(numP).fill(0);
+  announcedWinner = -1;
+  render();
+}
+
+function newGame(){
+  try{ sessionStorage.removeItem('lorcana'); }catch(e){}
   document.getElementById('game').classList.add('hidden');
   document.getElementById('setup').classList.remove('hidden');
-});
-function toggleHtp(){
-  const panel=document.getElementById('htp-panel');
-  const arrow=document.getElementById('htp-arrow');
-  const hidden=panel.classList.toggle('hidden');
-  arrow.textContent=hidden?'▶':'▼';
 }
 
-// ── Sound ────────────────────────────────────────────────────────────────────
-let _ac=null,_muted=false;
-function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
-function sTone(freq,start,dur,vol,type,ramp){
-  const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
-  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
-  if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
-  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+function renameAllFlow(){
+  for(let i = 0; i < numP; i++){
+    const nm = prompt('Player ' + (i+1) + ' name:', pNames[i]);
+    if(nm === null) return;
+    if(nm.trim()){
+      pNames[i] = nm.trim().slice(0, 18);
+      if(typeof FrequentPlayers !== 'undefined') FrequentPlayers.add(pNames[i]);
+    }
+  }
+  buildGame();
+  render();
 }
-function sNoise(start,dur,fc,q,vol,decay){
-  const ctx=sac(),t=ctx.currentTime+start;
-  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
-  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
-  const src=ctx.createBufferSource();src.buffer=buf;
-  const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
-  const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
-}
-function sWin(){if(_muted)return;[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
-function sLose(){if(_muted)return;[400,320,240].forEach((f,i)=>sTone(f,i*.1,.35,.18,'triangle'));}
-function sClick(pitch){if(_muted)return;sNoise(0,.035,pitch||900,5,.15,.15);}
-function sDing(freq,vol){if(_muted)return;sTone(freq||660,0,.35,vol||.18);}
 
-function sLoreUp(d){if(_muted)return;if(d>=3){[660,830,990].forEach((f,i)=>sTone(f,i*.06,.35,.18));}else{sDing(660,.18);}}
-function sLoreDown(){if(_muted)return;sTone(330,0,.2,.12,'triangle',220);}
-function sLoreWin(){if(_muted)return;[523,659,784,988,1047].forEach((f,i)=>sTone(f,i*.09,.6,.22));sTone(262,0,.7,.1,'triangle');}
-
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_lorcana(){
-  try{sessionStorage.setItem('lorcana',JSON.stringify({numP,pNames,lore,ink,_ts:Date.now()}));}catch(e){}
-}
-function _load_lorcana(){
+// Session persistence
+function saveSession(){
   try{
-    const raw=sessionStorage.getItem('lorcana');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    numP=s.numP;pNames=s.pNames;lore=s.lore;ink=s.ink||[];editing=Array(numP).fill(false);
-    renderPlayers();
-    return true;
-  }catch(e){return false;}
+    sessionStorage.setItem('lorcana', JSON.stringify({
+      numP, pNames, lore, step, _ts: Date.now()
+    }));
+  }catch(e){}
 }
-window.addEventListener('beforeunload',_save_lorcana);
+function loadSession(){
+  try{
+    const raw = sessionStorage.getItem('lorcana');
+    if(!raw) return false;
+    const s = JSON.parse(raw);
+    if(!s || !s.numP) return false;
+    numP = s.numP;
+    pNames = s.pNames;
+    lore = s.lore;
+    step = s.step || 1;
+    announcedWinner = -1;
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('game').classList.remove('hidden');
+    buildGame();
+    render();
+    return true;
+  }catch(e){ return false; }
+}
+window.addEventListener('beforeunload', saveSession);
 
-_load_lorcana();
+// Sound
+let _ac = null, _muted = false;
+function sac(){
+  if(!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if(_ac.state === 'suspended') _ac.resume();
+  return _ac;
+}
+function sTone(freq, start, dur, vol, type, ramp){
+  if(_muted) return;
+  try{
+    const ctx = sac(), t = ctx.currentTime + start;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    if(ramp) o.frequency.exponentialRampToValueAtTime(ramp, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol || .18, t + .012);
+    g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + dur + .05);
+  }catch(e){}
+}
+function sClick(p){ sTone(p || 900, 0, .06, .1, 'triangle'); }
+function sLoreUp(d){
+  if(_muted) return;
+  if(d >= 3){ [660,830,990].forEach((f,i)=>sTone(f, i*.06, .35, .16)); }
+  else if(d >= 2){ [660,830].forEach((f,i)=>sTone(f, i*.06, .3, .16)); }
+  else { sTone(660, 0, .2, .18); }
+}
+function sLoreDown(){ sTone(330, 0, .2, .12, 'triangle', 220); }
+function sWin(){
+  if(_muted) return;
+  [523, 659, 784, 988, 1047].forEach((f,i) => sTone(f, i*.09, .6, .22));
+  sTone(262, 0, .7, .1, 'triangle');
+}
+
+loadSession();
 </script>
 </body>
 </html>

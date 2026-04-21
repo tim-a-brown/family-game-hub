@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="theme-color" content="#0d1117">
+<title>Frequent Players</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
+<script src="../players.js"></script>
+<style>
+body{background:radial-gradient(ellipse at 50% 0%,#0f2d1a 0%,#0d1117 60%);min-height:100vh;}
+.wrap{max-width:520px;margin:0 auto;padding:12px 16px 60px;}
+.hero{text-align:center;margin-bottom:18px;padding:18px 10px 10px;}
+.hero-icon{font-size:2.4rem;line-height:1;margin-bottom:4px;}
+.hero-title{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;color:#f5c842;margin-bottom:4px;}
+.hero-sub{font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.45;}
+
+.add-card{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:14px;margin-bottom:16px;
+}
+.add-label{
+  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:rgba(255,255,255,.5);margin-bottom:8px;
+}
+.add-row{display:flex;gap:8px;}
+.add-input{
+  flex:1;min-width:0;box-sizing:border-box;
+  padding:10px 12px;border-radius:10px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  color:#fff;font-size:.95rem;font-family:Inter,system-ui,sans-serif;outline:none;
+}
+.add-input:focus{border-color:rgba(245,200,66,.5);}
+.add-btn{
+  all:unset;cursor:pointer;box-sizing:border-box;
+  padding:10px 18px;border-radius:10px;
+  background:linear-gradient(135deg,#f5c842,#f0a500);color:#0d1117;
+  font-weight:700;font-size:.92rem;font-family:Inter,system-ui,sans-serif;
+  transition:transform .08s,filter .15s;
+}
+.add-btn:hover{filter:brightness(1.08);}
+.add-btn:active{transform:scale(.96);}
+.add-btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
+
+.list-card{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:6px 6px;
+}
+.list-empty{
+  text-align:center;padding:34px 20px;color:rgba(255,255,255,.35);font-size:.9rem;line-height:1.5;
+}
+.list-empty .empty-icon{font-size:2.2rem;opacity:.4;margin-bottom:10px;}
+
+.player-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 10px;border-radius:10px;
+  transition:background .12s;
+}
+.player-row + .player-row{border-top:1px solid rgba(255,255,255,.06);}
+.player-row:hover{background:rgba(255,255,255,.03);}
+.player-name{
+  flex:1;min-width:0;font-size:1rem;font-weight:500;color:#fff;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.player-edit{
+  flex:1;box-sizing:border-box;padding:7px 10px;border-radius:8px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(245,200,66,.5);
+  color:#fff;font-size:.95rem;font-family:Inter,system-ui,sans-serif;outline:none;
+}
+.row-btn{
+  all:unset;cursor:pointer;box-sizing:border-box;
+  width:32px;height:32px;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:.9rem;color:rgba(255,255,255,.55);
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);
+  transition:all .12s;
+}
+.row-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
+.row-btn.danger:hover{background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.4);}
+.row-btn.primary{background:rgba(245,200,66,.15);color:#f5c842;border-color:rgba(245,200,66,.4);}
+.row-btn.primary:hover{background:rgba(245,200,66,.25);}
+
+.footer-actions{
+  display:flex;justify-content:center;margin-top:22px;
+}
+.footer-actions .row-btn{
+  width:auto;padding:0 14px;font-size:.78rem;font-weight:600;
+}
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:#161b22;border:1px solid rgba(245,200,66,.4);color:#f5c842;
+  font-size:.82rem;font-weight:600;padding:10px 18px;border-radius:24px;
+  box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:50;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Frequent Players</span>
+</nav>
+<div class="page">
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-icon">👥</div>
+    <div class="hero-title">Frequent Players</div>
+    <div class="hero-sub">Names you play with often. These appear as quick-pick chips<br>in any game that asks for player names.</div>
+  </div>
+
+  <div class="add-card">
+    <div class="add-label">Add a player</div>
+    <div class="add-row">
+      <input class="add-input" id="add-input" type="text" maxlength="24"
+             placeholder="e.g. Jamie" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="add-btn" id="add-btn" disabled>Add</button>
+    </div>
+  </div>
+
+  <div class="list-card" id="list-card"></div>
+
+  <div class="footer-actions" id="footer-actions"></div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+const addInput = document.getElementById('add-input');
+const addBtn   = document.getElementById('add-btn');
+const listCard = document.getElementById('list-card');
+const footerA  = document.getElementById('footer-actions');
+
+let editingLower = null; // lowercase name being edited
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function render(){
+  const names = FrequentPlayers.list();
+  listCard.innerHTML = '';
+  footerA.innerHTML = '';
+
+  if(!names.length){
+    listCard.innerHTML = `
+      <div class="list-empty">
+        <div class="empty-icon">👋</div>
+        No frequent players yet.<br>Add someone above to get started.
+      </div>`;
+    return;
+  }
+
+  names.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    const lower = name.toLowerCase();
+
+    if(editingLower === lower){
+      const input = document.createElement('input');
+      input.className = 'player-edit';
+      input.type = 'text';
+      input.maxLength = 24;
+      input.value = name;
+      input.autocomplete = 'off';
+      row.appendChild(input);
+
+      const save = document.createElement('button');
+      save.className = 'row-btn primary';
+      save.title = 'Save';
+      save.textContent = '✓';
+      save.addEventListener('click', () => {
+        const v = input.value.trim();
+        if(v && v.toLowerCase() !== lower){
+          FrequentPlayers.rename(name, v);
+          showToast('Renamed to ' + v);
+        } else if(v && v !== name){
+          // Same name, different casing
+          FrequentPlayers.rename(name, v);
+        }
+        editingLower = null;
+        render();
+      });
+
+      const cancel = document.createElement('button');
+      cancel.className = 'row-btn';
+      cancel.title = 'Cancel';
+      cancel.textContent = '✕';
+      cancel.addEventListener('click', () => {
+        editingLower = null;
+        render();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') save.click();
+        else if(e.key === 'Escape') cancel.click();
+      });
+
+      row.appendChild(save);
+      row.appendChild(cancel);
+      // Focus the input after it's in the DOM
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+    } else {
+      const nm = document.createElement('div');
+      nm.className = 'player-name';
+      nm.textContent = name;
+      row.appendChild(nm);
+
+      const edit = document.createElement('button');
+      edit.className = 'row-btn';
+      edit.title = 'Edit';
+      edit.textContent = '✎';
+      edit.addEventListener('click', () => {
+        editingLower = lower;
+        render();
+      });
+
+      const del = document.createElement('button');
+      del.className = 'row-btn danger';
+      del.title = 'Remove';
+      del.textContent = '×';
+      del.addEventListener('click', () => {
+        if(confirm('Remove "' + name + '" from your frequent players?')){
+          FrequentPlayers.remove(name);
+          showToast('Removed ' + name);
+          render();
+        }
+      });
+
+      row.appendChild(edit);
+      row.appendChild(del);
+    }
+
+    listCard.appendChild(row);
+  });
+
+  // Footer: clear-all when list is non-trivial
+  if(names.length >= 2){
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'row-btn danger';
+    clearBtn.textContent = 'Clear all players';
+    clearBtn.addEventListener('click', () => {
+      if(confirm('Remove all ' + names.length + ' frequent players? This cannot be undone.')){
+        FrequentPlayers.clear();
+        showToast('All players cleared');
+        render();
+      }
+    });
+    footerA.appendChild(clearBtn);
+  }
+}
+
+addInput.addEventListener('input', () => {
+  addBtn.disabled = !addInput.value.trim();
+});
+
+function doAdd(){
+  const v = addInput.value.trim();
+  if(!v) return;
+  FrequentPlayers.add(v);
+  showToast('Added ' + v);
+  addInput.value = '';
+  addBtn.disabled = true;
+  addInput.focus();
+  render();
+}
+
+addBtn.addEventListener('click', doAdd);
+addInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && !addBtn.disabled) doAdd();
+});
+
+render();
+</script>
+</body>
+</html>

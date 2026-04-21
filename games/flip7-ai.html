@@ -3,77 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1117">
 <title>Flip 7 — vs AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
 body{background:radial-gradient(ellipse at 50% 0%,#1a1a0a 0%,#0d0d06 60%);}
 .f7-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
+
 /* Flip card */
 .fcard{width:52px;height:72px;border-radius:10px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
   box-shadow:1px 3px 8px rgba(0,0,0,.5);transition:all .2s;user-select:none;flex-shrink:0;}
+
+/* Mini-card (used in player rows) */
+.mcard{width:28px;height:38px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:.75rem;font-weight:900;line-height:1;flex-shrink:0;}
+.mcard.num{background:linear-gradient(145deg,#f8f4e8,#ede8d6);color:#1a1a1a;}
+.mcard.mod{background:linear-gradient(145deg,#22c55e,#16a34a);color:#fff;font-size:.6rem;}
+.mcard.x2{background:linear-gradient(145deg,#a855f7,#7c3aed);color:#fff;font-size:.65rem;letter-spacing:0;}
+.mcard.freeze{background:linear-gradient(145deg,#5ac8fa,#0ea5e9);color:#0a1a2e;font-size:.7rem;}
+.mcard.flip3{background:linear-gradient(145deg,#fb923c,#ea580c);color:#fff;font-size:.55rem;line-height:1.1;}
+.mcard.sc{background:linear-gradient(145deg,#ec4899,#be185d);color:#fff;font-size:.55rem;line-height:1.1;}
+
+/* Larger flipped-card for the "last flip" display */
 .fcard.num{background:linear-gradient(145deg,#f8f4e8,#ede8d6);border:2px solid rgba(0,0,0,.1);color:#1a1a1a;}
-.fcard.plus2{background:linear-gradient(145deg,#22c55e,#16a34a);color:#fff;border:2px solid rgba(255,255,255,.2);}
-.fcard.minus2{background:linear-gradient(145deg,#ef4444,#b91c1c);color:#fff;border:2px solid rgba(255,255,255,.2);}
+.fcard.mod{background:linear-gradient(145deg,#22c55e,#16a34a);color:#fff;border:2px solid rgba(255,255,255,.2);}
+.fcard.x2{background:linear-gradient(145deg,#a855f7,#7c3aed);color:#fff;border:2px solid rgba(255,255,255,.2);}
 .fcard.freeze{background:linear-gradient(145deg,#5ac8fa,#0ea5e9);color:#0a1a2e;border:2px solid rgba(255,255,255,.2);}
+.fcard.flip3{background:linear-gradient(145deg,#fb923c,#ea580c);color:#fff;border:2px solid rgba(255,255,255,.2);}
+.fcard.sc{background:linear-gradient(145deg,#ec4899,#be185d);color:#fff;border:2px solid rgba(255,255,255,.2);}
 .fcard.face-down{background:linear-gradient(145deg,#f5c842,#c8961a);border:2px solid rgba(255,255,255,.15);}
 .fcard .num-val{font-size:1.5rem;line-height:1;}
-.fcard .num-small{font-size:.6rem;color:rgba(26,26,26,.5);line-height:1;}
-.fcard .action-icon{font-size:1.4rem;}.fcard .action-lbl{font-size:.55rem;font-weight:700;line-height:1.2;}
+.fcard .action-icon{font-size:1.3rem;line-height:1;}
+.fcard .action-lbl{font-size:.55rem;font-weight:700;line-height:1.2;margin-top:2px;}
 .fcard.bust-card{opacity:.4;}
+
 /* Player areas */
 .f7-players{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
 .f7-player{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-  border-radius:12px;padding:10px;transition:all .2s;}
+  border-radius:12px;padding:10px;transition:all .2s;position:relative;}
 .f7-player.active-player{border-color:#f5c842;background:rgba(245,200,66,.06);}
-.f7-player.frozen{border-color:#5ac8fa;background:rgba(90,200,250,.05);opacity:.7;}
-.f7-player.busted{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05);}
-.f7-player-name{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:4px;}
+.f7-player.frozen{border-color:#5ac8fa;background:rgba(90,200,250,.05);opacity:.8;}
+.f7-player.busted{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05);opacity:.7;}
+.f7-player.stopped-card{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.05);opacity:.85;}
+.f7-player-name{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .f7-player-name.you{color:rgba(245,200,66,.8);}
 .f7-player-score{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;}
-.f7-player-round{font-size:.62rem;color:rgba(255,255,255,.4);}
-.f7-flip-pile{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;min-height:28px;}
-/* Compact mini-card for flip pile */
-.mcard{width:28px;height:38px;border-radius:5px;display:flex;align-items:center;justify-content:center;
-  font-family:'Playfair Display',serif;font-size:.75rem;font-weight:900;}
-.mcard.num{background:linear-gradient(145deg,#f8f4e8,#ede8d6);color:#1a1a1a;}
-.mcard.plus2{background:#22c55e;color:#fff;font-size:.55rem;}
-.mcard.minus2{background:#ef4444;color:#fff;font-size:.55rem;}
-.mcard.freeze{background:#5ac8fa;color:#0a1a2e;font-size:.55rem;}
-/* Action area */
-.f7-action{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
-/* Deck */
-.f7-deck-area{display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:10px;}
+.f7-player-round{font-size:.58rem;color:rgba(255,255,255,.4);}
+.f7-nums-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;min-height:28px;}
+.f7-mods-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;min-height:0;}
+
+/* Badges shown above rows */
+.f7-sc-badge{background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;font-size:.58rem;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:.04em;}
+.f7-x2-badge{background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;font-size:.58rem;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:.04em;}
+.flip7-badge{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:4px;padding:2px 6px;
+  font-size:.58rem;font-weight:800;color:#0d1117;letter-spacing:.05em;}
+
+/* Action / deck */
+.f7-action{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+.f7-deck-area{display:flex;justify-content:center;align-items:center;gap:18px;margin-bottom:10px;}
 .f7-deck-card{width:52px;height:72px;border-radius:10px;background:linear-gradient(145deg,#f5c842,#c8961a);
   border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;
-  font-size:1.4rem;cursor:pointer;transition:all .15s;}
+  font-size:1.4rem;font-weight:900;color:#3a2000;cursor:pointer;transition:all .15s;font-family:'Playfair Display',serif;}
 .f7-deck-card:hover{transform:scale(1.05);}
-.f7-deck-card.empty{background:rgba(255,255,255,.04);border-style:dashed;cursor:default;font-size:.7rem;color:rgba(255,255,255,.25);}
+.f7-deck-card.empty{background:rgba(255,255,255,.04);border-style:dashed;cursor:default;font-size:.7rem;color:rgba(255,255,255,.25);font-family:Inter,sans-serif;}
+
 /* Status */
-.f7-status{text-align:center;font-size:.9rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
-/* Score board header */
-.f7-scores{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+.f7-status{text-align:center;font-size:.92rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.85);}
+
+/* Scoreboard */
+.f7-scores{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
 .f7-score-chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;
   padding:4px 12px;font-size:.75rem;font-weight:700;}
-.f7-score-chip.leader{border-color:#f5c842;background:rgba(245,200,66,.12);color:#f5c842;}
-/* Flip 7 badge */
-.flip7-badge{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:8px;padding:3px 8px;
-  font-size:.65rem;font-weight:800;color:#0d1117;display:inline-block;}
-/* Round result */
+.f7-score-chip.leader{border-color:#f5c842;background:rgba(245,200,66,.14);color:#f5c842;}
+
+/* Round/game result panels */
 .f7-round-result{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
   border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
 .f7-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
 .f7-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
-/* Freeze target */
-.f7-freeze-panel{background:rgba(90,200,250,.08);border:1px solid rgba(90,200,250,.3);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+
+/* Target-choice panels (freeze, flip3, sc-pass) */
+.f7-target-panel{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+.f7-target-panel.freeze{background:rgba(90,200,250,.08);border-color:rgba(90,200,250,.3);}
+.f7-target-panel.flip3{background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.3);}
+.f7-target-panel.sc{background:rgba(236,72,153,.08);border-color:rgba(236,72,153,.3);}
+
+/* Log */
+.f7-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:80px;overflow-y:auto;
+  font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.55);margin-top:8px;}
+.f7-log .pts{color:#f5c842;}
+.f7-log .bust{color:#fca5a5;}
+.f7-log .flip7{color:#fff;font-weight:700;}
 </style>
 </head>
 <body>
@@ -87,301 +116,770 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a1a0a 0%,#0d0d06 60%);}
 </div>
 <script>
 'use strict';
-// Flip 7: push-your-luck. Flip cards from deck. Duplicate number = BUST.
-// Collect 7 unique numbers = Flip 7 (+15 bonus). Stop any time to bank score.
-// Score = sum of numbered cards + action effects. Game to 200.
-const PLAYERS=['You','Sam','Alex','Jess'];
-const F7_WIN=200, FLIP7_BONUS=15;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FLIP 7 — rules-accurate AI implementation
+// Deck: 79 number cards (n copies of card n for n=1..12, plus 1 copy of 0)
+//       6 modifier cards (+2,+4,+6,+8,+10,×2)
+//       9 action cards (3 Freeze, 3 Flip Three, 3 Second Chance)
+//       Total: 94 cards
+// Scoring (per round): sum(numbers) → ×2 if present → +flat mods → +15 Flip 7
+// Bust = duplicate number; unless holding Second Chance, which is discarded.
+// Round ends when someone Flip 7's, or all non-busted players stayed.
+// Game ends when any player reaches 200 pts.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PLAYERS = [
+  (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName()) || 'You',
+  'Sam', 'Alex', 'Jess'
+];
+const NUMP = PLAYERS.length;
+const WIN_TOTAL = 200;
+const FLIP7_BONUS = 15;
+const MODS = [2, 4, 6, 8, 10];
+
+// ── Deck ───────────────────────────────────────────────────────────────────
 function makeDeck(){
-  const d=[];
-  // 2 copies of 0-12 + action cards
-  for(let i=0;i<2;i++) for(let n=0;n<=12;n++) d.push({type:'num',val:n});
-  for(let i=0;i<4;i++) d.push({type:'plus2',val:2});
-  for(let i=0;i<4;i++) d.push({type:'minus2',val:-2});
-  for(let i=0;i<3;i++) d.push({type:'freeze',val:0});
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
+  const d = [];
+  // Number cards: 1 zero, then n copies of each n for 1..12
+  d.push({type:'num', val:0});
+  for(let n = 1; n <= 12; n++){
+    for(let i = 0; i < n; i++) d.push({type:'num', val:n});
+  }
+  // Modifiers
+  MODS.forEach(v => d.push({type:'mod', val:v}));
+  d.push({type:'x2'});
+  // Actions
+  for(let i = 0; i < 3; i++) d.push({type:'freeze'});
+  for(let i = 0; i < 3; i++) d.push({type:'flip3'});
+  for(let i = 0; i < 3; i++) d.push({type:'sc'});
+  // Shuffle (Fisher-Yates)
+  for(let i = d.length - 1; i > 0; i--){
+    const j = 0 | Math.random() * (i + 1);
+    [d[i], d[j]] = [d[j], d[i]];
+  }
   return d;
 }
 
-let deck,pile,scores,roundScores,frozen,busted,stopped,flipped,phase,current,log,freezePending;
-// phase: 'flip'|'choose-freeze'|'round-end'|'game-over'
+// ── State ──────────────────────────────────────────────────────────────────
+let deck;            // [card...] main draw pile
+let discard;         // [card...] used cards (reshuffled when deck empty)
+let scores;          // total scores across rounds
+let rounds;          // round counter (for dealer rotation)
+let dealer;          // who deals this round
+let flipped;         // flipped[p] = array of cards in front of player p (excluding SC)
+let hasSC;           // hasSC[p] = whether player p holds a Second Chance
+let frozen;          // frozen via Freeze card (can't take more cards)
+let busted;          // busted this round
+let stopped;         // voluntarily stayed / earned Flip 7 / banked via Freeze
+let roundScore;      // final banked score for each player this round (0 if busted)
+let current;         // whose turn it is
+let phase;           // 'flip' | 'choose-freeze' | 'choose-flip3' | 'choose-sc' | 'round-end' | 'game-over'
+let forceFlips;      // forceFlips[p] = # of remaining forced flips (from flip3)
+let pendingActions;  // queued flip3/freeze resolutions from nested flip3s
+let pendingSC;       // when player receives a 2nd SC, index of who's passing
+let log;
 
-function cKey(c){return c.type+c.val+Math.random();}
+// ── Lifecycle ──────────────────────────────────────────────────────────────
+function newGame(){
+  scores = Array(NUMP).fill(0);
+  rounds = 0;
+  dealer = 0;
+  log = [];
+  newRound();
+}
 
-function newGame(){scores=[0,0,0,0];log=[];newRound();}
 function newRound(){
-  deck=makeDeck(); pile=[];
-  roundScores=[0,0,0,0]; frozen=[false,false,false,false];
-  busted=[false,false,false,false]; stopped=[false,false,false,false];
-  flipped=Array.from({length:4},()=>[]);
-  current=0; phase='flip'; freezePending=false;
+  deck = makeDeck();
+  discard = [];
+  rounds++;
+  flipped = Array.from({length:NUMP}, () => []);
+  hasSC = Array(NUMP).fill(false);
+  frozen = Array(NUMP).fill(false);
+  busted = Array(NUMP).fill(false);
+  stopped = Array(NUMP).fill(false);
+  roundScore = Array(NUMP).fill(0);
+  forceFlips = Array(NUMP).fill(0);
+  pendingActions = [];
+  pendingSC = null;
+  phase = 'flip';
+  // Rotate dealer each round; play starts LEFT of dealer
+  current = (dealer + 1) % NUMP;
+  addLog(`— Round ${rounds} — ${PLAYERS[dealer]} deals. ${PLAYERS[current]} goes first.`);
   render();
+  if(current !== 0) setTimeout(aiDecide, 700);
 }
 
+// ── Scoring ────────────────────────────────────────────────────────────────
 function calcRoundScore(p){
-  let s=0;
-  flipped[p].forEach(c=>{
-    if(c.type==='num') s+=c.val;
-    else if(c.type==='plus2') s+=2;
-    else if(c.type==='minus2') s-=2;
-  });
-  const nums=flipped[p].filter(c=>c.type==='num');
-  const uniqueNums=new Set(nums.map(c=>c.val));
-  const isFlip7=uniqueNums.size>=7;
-  return{score:Math.max(0,s+(isFlip7?FLIP7_BONUS:0)),isFlip7};
+  const cards = flipped[p];
+  const nums = cards.filter(c => c.type === 'num');
+  const uniqueNums = new Set(nums.map(c => c.val));
+  const isFlip7 = uniqueNums.size >= 7;
+  if(busted[p]) return {score: 0, isFlip7: false};
+  const numSum = nums.reduce((s,c) => s + c.val, 0);
+  const hasX2 = cards.some(c => c.type === 'x2');
+  const flatMods = cards.filter(c => c.type === 'mod').reduce((s,c) => s + c.val, 0);
+  let score = numSum;
+  if(hasX2) score *= 2;
+  score += flatMods;
+  if(isFlip7) score += FLIP7_BONUS;
+  return {score: Math.max(0, score), isFlip7};
 }
 
-function hasDuplicate(p,card){
-  if(card.type!=='num') return false;
-  return flipped[p].some(c=>c.type==='num'&&c.val===card.val);
+function hasDuplicate(p, card){
+  if(card.type !== 'num') return false;
+  return flipped[p].some(c => c.type === 'num' && c.val === card.val);
 }
 
-function doFlip(){
-  if(!deck.length){endRound();return;}
-  const card=deck.pop();
-  pile.push(card);
-  if(hasDuplicate(current,card)){
-    busted[current]=true;
-    flipped[current].push(card);
-    addLog(`${PLAYERS[current]} flipped ${cardStr(card)} — BUST! 💥`);
-    advanceTurn();
-  } else {
-    flipped[current].push(card);
-    if(card.type==='freeze'){
-      // Need to choose who to freeze
-      const targets=[0,1,2,3].filter(p=>p!==current&&!frozen[p]&&!stopped[p]&&!busted[p]);
-      if(targets.length>0){
-        if(current!==0){
-          // AI chooses: freeze a player not on their team or with most cards
-          const target=targets.sort((a,b)=>flipped[b].length-flipped[a].length)[0];
-          frozen[target]=true;
-          addLog(`${PLAYERS[current]} freezes ${PLAYERS[target]}!`);
-          advanceTurn();
-        } else {
-          phase='choose-freeze'; render(); return;
-        }
-      } else advanceTurn();
-    } else {
-      addLog(`${PLAYERS[current]} flips ${cardStr(card)}.`);
-      const{isFlip7}=calcRoundScore(current);
-      if(isFlip7){
-        addLog(`${PLAYERS[current]} has FLIP 7! 🎉 Bonus +${FLIP7_BONUS}`,'pts');
-        stopped[current]=true;
-        roundScores[current]=calcRoundScore(current).score;
-        advanceTurn();
-      } else {
-        render();
-        if(current!==0) setTimeout(aiDecide,600);
+function activeCount(){
+  let n = 0;
+  for(let p = 0; p < NUMP; p++){
+    if(!busted[p] && !stopped[p] && !frozen[p]) n++;
+  }
+  return n;
+}
+
+// ── Card drawing (with reshuffle) ──────────────────────────────────────────
+function draw(){
+  if(!deck.length){
+    if(discard.length){
+      // Reshuffle discard into deck
+      deck = discard;
+      discard = [];
+      for(let i = deck.length - 1; i > 0; i--){
+        const j = 0 | Math.random() * (i + 1);
+        [deck[i], deck[j]] = [deck[j], deck[i]];
       }
+      addLog('Deck reshuffled from discards.');
+    } else {
+      return null;
+    }
+  }
+  return deck.pop();
+}
+
+// ── Main flip logic ────────────────────────────────────────────────────────
+// Flips a single card for the current player (or the force-flipped player).
+// Returns true if action resolved synchronously; false if waiting on user input.
+function doFlip(){
+  if(phase !== 'flip') return;
+  const card = draw();
+  if(!card){ endRound(); return; }
+
+  if(card.type === 'num'){
+    if(hasDuplicate(current, card)){
+      // Bust — unless Second Chance
+      if(hasSC[current]){
+        hasSC[current] = false;
+        discard.push(card);
+        addLog(`${PLAYERS[current]} would have busted on ${card.val} — Second Chance used!`, 'pts');
+        render();
+        if(!consumeForceFlip()) continueAfterFlip();
+        return;
+      }
+      flipped[current].push(card);
+      busted[current] = true;
+      addLog(`${PLAYERS[current]} flipped ${card.val} — BUST! 💥`, 'bust');
+      // Forced-flip busts also end any pending flip3 for this player
+      forceFlips[current] = 0;
+      render();
+      advanceTurn();
+      return;
+    }
+    flipped[current].push(card);
+    addLog(`${PLAYERS[current]} flips ${card.val}.`);
+    // Check Flip 7
+    const {isFlip7} = calcRoundScore(current);
+    if(isFlip7){
+      stopped[current] = true;
+      roundScore[current] = calcRoundScore(current).score;
+      addLog(`${PLAYERS[current]} has FLIP 7! 🎉 +${FLIP7_BONUS} bonus. Round ends.`, 'flip7');
+      render();
+      // Flip 7 ends the round immediately
+      setTimeout(endRound, 900);
+      return;
+    }
+    render();
+    if(!consumeForceFlip()) continueAfterFlip();
+    return;
+  }
+
+  if(card.type === 'mod' || card.type === 'x2'){
+    flipped[current].push(card);
+    const lbl = card.type === 'x2' ? '×2' : '+' + card.val;
+    addLog(`${PLAYERS[current]} flips ${lbl}.`);
+    render();
+    if(!consumeForceFlip()) continueAfterFlip();
+    return;
+  }
+
+  if(card.type === 'sc'){
+    if(!hasSC[current]){
+      hasSC[current] = true;
+      addLog(`${PLAYERS[current]} draws Second Chance.`);
+      render();
+      if(!consumeForceFlip()) continueAfterFlip();
+    } else {
+      // Must pass to another active player
+      const targets = validSCTargets();
+      if(!targets.length){
+        // Nobody to give it to; discard
+        discard.push(card);
+        addLog(`${PLAYERS[current]} draws a 2nd Second Chance — discarded (nobody can receive).`);
+        render();
+        if(!consumeForceFlip()) continueAfterFlip();
+      } else if(current !== 0){
+        // AI chooses
+        const target = targets[0 | Math.random() * targets.length];
+        hasSC[target] = true;
+        addLog(`${PLAYERS[current]} passes Second Chance to ${PLAYERS[target]}.`);
+        render();
+        if(!consumeForceFlip()) continueAfterFlip();
+      } else {
+        // Ask the player
+        pendingSC = {targets};
+        phase = 'choose-sc';
+        render();
+      }
+    }
+    return;
+  }
+
+  if(card.type === 'freeze'){
+    discard.push(card);  // Freeze doesn't sit in front
+    addLog(`${PLAYERS[current]} drew Freeze ❄️`);
+    // Choose target (self or any non-frozen/non-busted/non-stopped player)
+    const targets = validFreezeTargets();
+    if(!targets.length){
+      // Nobody to freeze; discard (rare edge)
+      render();
+      if(!consumeForceFlip()) continueAfterFlip();
+      return;
+    }
+    if(current !== 0){
+      // AI freezes the player with the highest current round score (or self if bank-worthy)
+      const target = aiChooseFreezeTarget(targets);
+      applyFreeze(target);
+    } else {
+      phase = 'choose-freeze';
+      render();
+    }
+    return;
+  }
+
+  if(card.type === 'flip3'){
+    discard.push(card);  // The flip3 itself is discarded
+    addLog(`${PLAYERS[current]} drew Flip Three ↻3`);
+    const targets = validFlip3Targets();
+    if(!targets.length){
+      render();
+      if(!consumeForceFlip()) continueAfterFlip();
+      return;
+    }
+    if(current !== 0){
+      const target = aiChooseFlip3Target(targets);
+      applyFlip3(target);
+    } else {
+      phase = 'choose-flip3';
+      render();
+    }
+    return;
+  }
+}
+
+// Called after each flip to continue or prompt AI/player
+function continueAfterFlip(){
+  // If this was a force-flip step that completed, handle queued actions
+  // then advance turn.
+  render();
+  if(current === 0){
+    // It's the human's turn — stay in flip phase for them to decide
+    return;
+  }
+  setTimeout(aiDecide, 600);
+}
+
+// ── Force-flips (from Flip Three) ─────────────────────────────────────────
+function consumeForceFlip(){
+  // Returns true if another forced flip is queued and being scheduled
+  if(forceFlips[current] > 0){
+    forceFlips[current]--;
+    if(busted[current] || stopped[current]){ forceFlips[current] = 0; return false; }
+    setTimeout(() => { if(phase === 'flip') doFlip(); }, 500);
+    return true;
+  }
+  // All force-flips done — process any queued pending actions
+  if(pendingActions.length){
+    const next = pendingActions.shift();
+    setTimeout(() => resumePendingAction(next), 400);
+    return true;
+  }
+  return false;
+}
+
+function resumePendingAction(act){
+  if(act.kind === 'freeze'){
+    const targets = validFreezeTargets();
+    if(!targets.length){ advanceTurn(); return; }
+    addLog(`Resolving queued Freeze from ${PLAYERS[act.from]}…`);
+    if(act.from !== 0){
+      applyFreeze(aiChooseFreezeTarget(targets));
+    } else {
+      // Player is choosing — restore context
+      current = act.from;
+      phase = 'choose-freeze';
+      render();
+    }
+  } else if(act.kind === 'flip3'){
+    const targets = validFlip3Targets();
+    if(!targets.length){ advanceTurn(); return; }
+    addLog(`Resolving queued Flip Three from ${PLAYERS[act.from]}…`);
+    if(act.from !== 0){
+      applyFlip3(aiChooseFlip3Target(targets));
+    } else {
+      current = act.from;
+      phase = 'choose-flip3';
+      render();
     }
   }
 }
 
+// ── Valid target helpers ─────────────────────────────────────────────────
+function validFreezeTargets(){
+  // Anyone active (including self) can be frozen
+  const t = [];
+  for(let p = 0; p < NUMP; p++){
+    if(!busted[p] && !stopped[p] && !frozen[p]) t.push(p);
+  }
+  return t;
+}
+function validFlip3Targets(){ return validFreezeTargets(); }
+function validSCTargets(){
+  // Active players who don't already have an SC
+  const t = [];
+  for(let p = 0; p < NUMP; p++){
+    if(p === current) continue;
+    if(!busted[p] && !stopped[p] && !frozen[p] && !hasSC[p]) t.push(p);
+  }
+  return t;
+}
+
+// ── Apply effects ─────────────────────────────────────────────────────────
+function applyFreeze(target){
+  // Target immediately banks current round points and exits round
+  roundScore[target] = calcRoundScore(target).score;
+  stopped[target] = true;
+  frozen[target] = true;
+  addLog(`${PLAYERS[current]} freezes ${PLAYERS[target]} — banks ${roundScore[target]} pts.`, 'pts');
+  phase = 'flip';
+  render();
+
+  // Check if target's freeze ended the round
+  if(activeCount() === 0){ setTimeout(endRound, 600); return; }
+
+  if(!consumeForceFlip()){
+    advanceTurn();
+  }
+}
+
+function applyFlip3(target){
+  addLog(`${PLAYERS[current]} makes ${PLAYERS[target]} flip 3!`);
+  const was = current;
+  current = target;
+  forceFlips[target] += 3;
+  phase = 'flip';
+  render();
+  // Kick off the first force-flip
+  setTimeout(() => {
+    if(phase === 'flip' && !busted[current] && !stopped[current]){
+      doFlip();
+    }
+  }, 500);
+  // After force-flips complete, the turn passes to the NEXT active player after the original `was`
+  // We track this by setting `_flip3Origin` so advanceTurn uses it after force-flips end.
+  // For simplicity, once force-flips done and no nested actions, advanceTurn() picks up from current (target),
+  // and the normal round loop continues.  The original player's turn is considered over when they drew flip3.
+  // This matches "drew an action card → turn effectively done".
+  _turnOriginator = was;
+}
+let _turnOriginator = -1;
+
+function playerFreeze(target){
+  if(phase !== 'choose-freeze') return;
+  applyFreeze(target);
+}
+function playerFlip3(target){
+  if(phase !== 'choose-flip3') return;
+  applyFlip3(target);
+}
+function playerPassSC(target){
+  if(phase !== 'choose-sc' || !pendingSC) return;
+  hasSC[target] = true;
+  addLog(`You pass Second Chance to ${PLAYERS[target]}.`);
+  pendingSC = null;
+  phase = 'flip';
+  render();
+  if(!consumeForceFlip()) continueAfterFlip();
+}
+
+// ── Stop / Stay ───────────────────────────────────────────────────────────
 function doStop(){
-  if(phase!=='flip'||current!==0) return;
-  stopped[current]=true;
-  roundScores[current]=calcRoundScore(current).score;
-  addLog(`You stop with ${roundScores[current]} pts.`,'pts');
+  if(phase !== 'flip' || current !== 0) return;
+  if(forceFlips[0] > 0){
+    addLog("You can't stop — you're still flipping three!");
+    return;
+  }
+  stopped[0] = true;
+  roundScore[0] = calcRoundScore(0).score;
+  addLog(`You stay with ${roundScore[0]} pts banked.`, 'pts');
+  render();
   advanceTurn();
 }
 
-function playerFreeze(target){
-  if(phase!=='choose-freeze') return;
-  frozen[target]=true;
-  addLog(`You freeze ${PLAYERS[target]}!`);
-  phase='flip'; advanceTurn();
-}
-
-function aiDecide(){
-  if(current===0) return;
-  const{score}=calcRoundScore(current);
-  const nums=flipped[current].filter(c=>c.type==='num');
-  const uniqueNums=new Set(nums.map(c=>c.val)).size;
-  // Remaining numbers in deck
-  const deckNums=deck.filter(c=>c.type==='num');
-  const dupCount=deckNums.filter(c=>flipped[current].some(fc=>fc.type==='num'&&fc.val===c.val)).length;
-  const bustRisk=deckNums.length>0?dupCount/deck.length:0;
-  // Stop if: risk >30%, score >20, or only 1-2 unique numbers away from flip7
-  const shouldStop=score>25&&(bustRisk>0.3||score>50)||(score>12&&bustRisk>0.45);
-  if(shouldStop){
-    stopped[current]=true;
-    roundScores[current]=calcRoundScore(current).score;
-    addLog(`${PLAYERS[current]} stops with ${roundScores[current]} pts.`,'pts');
-    advanceTurn();
-  } else {
-    addLog(`${PLAYERS[current]} flips...`);
-    setTimeout(doFlipFor,400);
-  }
-}
-
-function doFlipFor(){
-  doFlip();
-}
-
+// ── Turn advancement ──────────────────────────────────────────────────────
 function advanceTurn(){
-  // Find next active player
-  let next=(current+1)%4;
-  let checked=0;
-  while((stopped[next]||busted[next]||frozen[next])&&checked<4){
-    if(frozen[next]) frozen[next]=false; // unfreeze
-    next=(next+1)%4; checked++;
+  // If we're in the middle of someone's force-flips, stay on them
+  if(forceFlips[current] > 0 && !busted[current] && !stopped[current]){
+    setTimeout(() => { if(phase === 'flip') doFlip(); }, 400);
+    return;
   }
-  if(checked>=4||deck.length===0){
-    endRound();
+  // After Flip Three completes, turn passes past the originator
+  const fromP = _turnOriginator >= 0 ? _turnOriginator : current;
+  _turnOriginator = -1;
+
+  // Round ends if no active players remain
+  if(activeCount() === 0){ endRound(); return; }
+
+  let next = (fromP + 1) % NUMP;
+  let guard = 0;
+  while((busted[next] || stopped[next] || frozen[next]) && guard < NUMP * 2){
+    next = (next + 1) % NUMP;
+    guard++;
+  }
+  if(guard >= NUMP * 2){ endRound(); return; }
+  current = next;
+  phase = 'flip';
+  render();
+  if(current !== 0) setTimeout(aiDecide, 700);
+}
+
+// ── AI decision ───────────────────────────────────────────────────────────
+function aiDecide(){
+  if(current === 0) return;
+  if(busted[current] || stopped[current] || frozen[current]){ advanceTurn(); return; }
+  // If forced to flip, just do it
+  if(forceFlips[current] > 0){
+    setTimeout(doFlip, 400);
+    return;
+  }
+  const {score, isFlip7} = calcRoundScore(current);
+  const nums = flipped[current].filter(c => c.type === 'num');
+  const uniqueNums = new Set(nums.map(c => c.val)).size;
+  // Bust probability: count cards in deck that would duplicate
+  const deckCards = deck.concat(discard);
+  const totalCards = deckCards.length;
+  if(totalCards === 0){ setTimeout(doFlip, 400); return; }
+  const playerVals = new Set(nums.map(c => c.val));
+  const dupCount = deckCards.filter(c => c.type === 'num' && playerVals.has(c.val)).length;
+  const bustRisk = totalCards > 0 ? dupCount / totalCards : 0;
+
+  // Stop heuristic:
+  //  - Hold SC? Be aggressive (push for Flip 7 / big scores)
+  //  - No SC and bust risk > 35% AND score > 18 → stop
+  //  - Close to Flip 7 (6 unique)? Almost always push
+  //  - Very low score with low risk → push
+  let shouldStop = false;
+  if(uniqueNums >= 6){
+    // 6 unique — one more gets Flip 7. Push unless bust risk is brutal.
+    shouldStop = !hasSC[current] && bustRisk > 0.55;
+  } else if(hasSC[current]){
+    // With SC, push harder
+    shouldStop = score >= 40 && bustRisk > 0.5;
   } else {
-    current=next;
-    if(!stopped[current]&&!busted[current]){
-      render();
-      if(current!==0) setTimeout(aiDecide,700);
-    } else advanceTurn();
+    shouldStop = (score >= 20 && bustRisk > 0.35) || (score >= 35 && bustRisk > 0.22) || score >= 60;
+  }
+
+  // If nobody else is active and I have a positive score, stop
+  const othersActive = [...Array(NUMP).keys()].some(p => p !== current && !busted[p] && !stopped[p] && !frozen[p]);
+  if(!othersActive && score > 0) shouldStop = true;
+
+  if(shouldStop){
+    stopped[current] = true;
+    roundScore[current] = calcRoundScore(current).score;
+    addLog(`${PLAYERS[current]} stays with ${roundScore[current]} pts.`, 'pts');
+    render();
+    setTimeout(advanceTurn, 400);
+  } else {
+    addLog(`${PLAYERS[current]} flips…`);
+    setTimeout(doFlip, 500);
   }
 }
 
+// AI target-choice heuristics
+function aiChooseFreezeTarget(targets){
+  // If I have a decent score, freeze myself (bank it)
+  const {score: myScore} = calcRoundScore(current);
+  const otherTargets = targets.filter(t => t !== current);
+  // Freeze the opponent with the highest round score if it beats mine
+  let bestOpp = -1, bestOppScore = -1;
+  otherTargets.forEach(t => {
+    const s = calcRoundScore(t).score;
+    if(s > bestOppScore){ bestOppScore = s; bestOpp = t; }
+  });
+  if(bestOppScore >= 20 && bestOppScore >= myScore - 10) return bestOpp;
+  if(myScore >= 15 && targets.includes(current)) return current;
+  return bestOpp >= 0 ? bestOpp : targets[0];
+}
+
+function aiChooseFlip3Target(targets){
+  // Target the opponent with the MOST unique numbers (highest bust likelihood)
+  const otherTargets = targets.filter(t => t !== current);
+  if(!otherTargets.length) return targets[0];
+  otherTargets.sort((a,b) => {
+    const ua = new Set(flipped[a].filter(c=>c.type==='num').map(c=>c.val)).size;
+    const ub = new Set(flipped[b].filter(c=>c.type==='num').map(c=>c.val)).size;
+    return ub - ua;
+  });
+  return otherTargets[0];
+}
+
+// ── Round/game end ───────────────────────────────────────────────────────
 function endRound(){
-  // Score all non-busted players who haven't stopped yet
-  for(let p=0;p<4;p++){
-    if(!busted[p]&&!stopped[p]) roundScores[p]=calcRoundScore(p).score;
-    if(!busted[p]) scores[p]+=roundScores[p];
+  // Everyone who isn't busted banks their score (those who already stayed keep it)
+  for(let p = 0; p < NUMP; p++){
+    if(busted[p]){
+      roundScore[p] = 0;
+    } else if(!stopped[p]){
+      roundScore[p] = calcRoundScore(p).score;
+    }
+    scores[p] += roundScore[p];
   }
-  phase='round-end';
-  for(let p=0;p<4;p++){
-    if(busted[p]) addLog(`${PLAYERS[p]}: BUST (0 pts)`);
-    else addLog(`${PLAYERS[p]}: +${roundScores[p]} → total ${scores[p]}`,'pts');
+  // Rotate dealer
+  dealer = (dealer + 1) % NUMP;
+  phase = 'round-end';
+  addLog(`— End of Round ${rounds} —`);
+  for(let p = 0; p < NUMP; p++){
+    if(busted[p]) addLog(`${PLAYERS[p]}: BUST (0 pts) → total ${scores[p]}`, 'bust');
+    else addLog(`${PLAYERS[p]}: +${roundScore[p]} → total ${scores[p]}`, 'pts');
   }
-  if(scores.some(s=>s>=F7_WIN)){phase='game-over';endGame();}
-  else render();
+  if(scores.some(s => s >= WIN_TOTAL)){
+    phase = 'game-over';
+    endGame();
+  } else {
+    render();
+  }
 }
-
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>20)log.shift();}
 
 function endGame(){
-  const winner=scores.indexOf(Math.max(...scores));
-  const won=winner===0;
-  addLog(`${PLAYERS[winner]} wins with ${scores[winner]} pts!`,'pts');
-  try{GameHistory.save('flip7',{_summary:`Flip 7 (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  const winner = scores.indexOf(Math.max(...scores));
+  const won = winner === 0;
+  addLog(`🏆 ${PLAYERS[winner]} wins with ${scores[winner]} pts!`, 'flip7');
+  try{
+    GameHistory.save('flip7', {
+      _summary: `Flip 7 (AI) · ${won ? 'Win' : 'Loss'} ${scores[0]} pts`,
+      _badge: won ? 'Win' : 'Loss',
+      result: won ? 'win' : 'loss',
+      score: scores[0],
+      winner: PLAYERS[winner]
+    });
+  }catch(e){}
   render();
 }
 
-function cardStr(c){
-  if(c.type==='num') return c.val;
-  if(c.type==='plus2') return '+2';
-  if(c.type==='minus2') return '-2';
-  return '❄️';
+function addLog(msg, cls = ''){
+  log.push({msg, cls});
+  if(log.length > 30) log.shift();
 }
 
-function miniCardEl(c){
+// ── Render ────────────────────────────────────────────────────────────────
+function cardMini(c){
   if(!c) return '';
-  const type=c.type;
-  let label='';
-  if(type==='num') label=c.val;
-  else if(type==='plus2') label='+2';
-  else if(type==='minus2') label='-2';
-  else label='❄️';
-  return`<div class="mcard ${type}">${label}</div>`;
+  if(c.type === 'num') return `<div class="mcard num">${c.val}</div>`;
+  if(c.type === 'mod') return `<div class="mcard mod">+${c.val}</div>`;
+  if(c.type === 'x2')  return `<div class="mcard x2">×2</div>`;
+  if(c.type === 'freeze') return `<div class="mcard freeze">❄️</div>`;
+  if(c.type === 'flip3')  return `<div class="mcard flip3">↻3</div>`;
+  if(c.type === 'sc')     return `<div class="mcard sc">2nd</div>`;
+  return '';
+}
+function cardBig(c){
+  if(!c) return '';
+  if(c.type === 'num') return `<div class="fcard num"><div class="num-val">${c.val}</div></div>`;
+  if(c.type === 'mod') return `<div class="fcard mod"><div class="action-icon">+${c.val}</div></div>`;
+  if(c.type === 'x2')  return `<div class="fcard x2"><div class="action-icon">×2</div></div>`;
+  if(c.type === 'freeze') return `<div class="fcard freeze"><div class="action-icon">❄️</div><div class="action-lbl">FREEZE</div></div>`;
+  if(c.type === 'flip3')  return `<div class="fcard flip3"><div class="action-icon">↻3</div><div class="action-lbl">FLIP 3</div></div>`;
+  if(c.type === 'sc')     return `<div class="fcard sc"><div class="action-icon">🛡️</div><div class="action-lbl">2ND CHANCE</div></div>`;
+  return '';
 }
 
 function render(){
-  const root=document.getElementById('f7-root');
-  let html='';
+  const root = document.getElementById('f7-root');
+  let html = '';
 
-  // Scores
-  html+=`<div class="f7-scores">`;
-  const maxScore=Math.max(...scores);
-  PLAYERS.forEach((n,i)=>{
-    html+=`<div class="f7-score-chip ${scores[i]===maxScore&&scores[i]>0?'leader':''}">${n}: ${scores[i]}</div>`;
+  // Scoreboard
+  html += `<div class="f7-scores">`;
+  const maxScore = Math.max(...scores);
+  PLAYERS.forEach((n,i) => {
+    html += `<div class="f7-score-chip ${scores[i] === maxScore && scores[i] > 0 ? 'leader' : ''}">${n}: ${scores[i]}</div>`;
   });
-  html+=`</div>`;
+  html += `</div>`;
 
-  if(phase==='game-over'){
-    const w=scores.indexOf(Math.max(...scores));
-    html+=`<div class="f7-game-result">
-      <div class="f7-game-title">${w===0?'🏆 You Win!':PLAYERS[w]+' Wins!'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PLAYERS.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
+  if(phase === 'game-over'){
+    const w = scores.indexOf(Math.max(...scores));
+    html += `<div class="f7-game-result">
+      <div class="f7-game-title">${w === 0 ? '🏆 You Win!' : PLAYERS[w] + ' Wins!'}</div>
+      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PLAYERS.map((n,i) => n + ': ' + scores[i]).join(' · ')}</div>
+      <div style="color:#3a2000;font-size:.7rem;margin-top:2px;">${rounds} rounds</div>
     </div>
     <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
-    html+=renderLog();
-    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+    html += renderLog();
+    root.innerHTML = html;
+    document.getElementById('ng-btn')?.addEventListener('click', newGame);
+    return;
   }
 
-  if(phase==='round-end'){
-    html+=`<div class="f7-round-result">
-      <div style="font-weight:700;margin-bottom:4px;">Round Over!</div>
-      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">${PLAYERS.map((n,i)=>busted[i]?n+' busted':n+': +'+roundScores[i]).join(' · ')}</div>
+  if(phase === 'round-end'){
+    html += `<div class="f7-round-result">
+      <div style="font-weight:700;margin-bottom:4px;">Round ${rounds} complete</div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.6);">${PLAYERS.map((n,i) => busted[i] ? `<span style="color:#fca5a5">${n} bust</span>` : `${n}: +${roundScore[i]}`).join(' · ')}</div>
     </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
-    html+=renderLog();
-    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',newRound);return;
+    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round →</button></div>`;
+    html += renderLog();
+    root.innerHTML = html;
+    document.getElementById('nr-btn')?.addEventListener('click', newRound);
+    return;
   }
 
-  // Freeze target panel
-  if(phase==='choose-freeze'){
-    const targets=[0,1,2,3].filter(p=>p!==current&&!frozen[p]&&!stopped[p]&&!busted[p]);
-    html+=`<div class="f7-freeze-panel">
-      <div style="font-weight:700;margin-bottom:8px;">❄️ Choose a player to freeze</div>
-      <div style="display:flex;gap:8px;justify-content:center;">
-        ${targets.map(t=>`<button class="btn btn-outline btn-sm f7-freeze-btn" data-target="${t}">${PLAYERS[t]}</button>`).join('')}
+  // Target-choice panels
+  if(phase === 'choose-freeze'){
+    const targets = validFreezeTargets();
+    html += `<div class="f7-target-panel freeze">
+      <div style="font-weight:700;margin-bottom:8px;">❄️ Freeze a player (locks in their score)</div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+        ${targets.map(t => `<button class="btn ${t===current?'btn-gold':'btn-outline'} btn-sm f7-freeze-btn" data-target="${t}">${PLAYERS[t]}${t===current?' (self)':''}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(phase === 'choose-flip3'){
+    const targets = validFlip3Targets();
+    html += `<div class="f7-target-panel flip3">
+      <div style="font-weight:700;margin-bottom:8px;">↻3 Who flips three?</div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+        ${targets.map(t => `<button class="btn ${t===current?'btn-gold':'btn-outline'} btn-sm f7-flip3-btn" data-target="${t}">${PLAYERS[t]}${t===current?' (self)':''}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(phase === 'choose-sc' && pendingSC){
+    html += `<div class="f7-target-panel sc">
+      <div style="font-weight:700;margin-bottom:8px;">🛡️ You already have a Second Chance — pass this one to:</div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+        ${pendingSC.targets.map(t => `<button class="btn btn-outline btn-sm f7-sc-btn" data-target="${t}">${PLAYERS[t]}</button>`).join('')}
       </div>
     </div>`;
   }
 
   // Status
-  const isYourTurn=phase==='flip'&&current===0;
-  html+=`<div class="f7-status">${isYourTurn?'Your turn — Flip or Stop!':phase==='flip'?`${PLAYERS[current]}'s turn…`:''}</div>`;
+  const isYourTurn = phase === 'flip' && current === 0;
+  let status = '';
+  if(phase === 'flip'){
+    if(forceFlips[current] > 0){
+      status = `${current===0?'You':PLAYERS[current]}: Flip Three (${forceFlips[current]} left)…`;
+    } else if(isYourTurn){
+      status = 'Your turn — Flip or Stay';
+    } else {
+      status = `${PLAYERS[current]}'s turn…`;
+    }
+  }
+  html += `<div class="f7-status">${status}</div>`;
 
-  // Deck
-  html+=`<div class="f7-deck-area">
+  // Deck area
+  const lastCard = (discard.length && discard[discard.length - 1]) || null;
+  html += `<div class="f7-deck-area">
     <div>
-      <div style="font-size:.6rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px;">DECK (${deck.length})</div>
-      <div class="f7-deck-card${deck.length===0?' empty':''}" id="f7-deck">${deck.length?'7':'empty'}</div>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px;">DECK · ${deck.length}</div>
+      <div class="f7-deck-card${deck.length === 0 ? ' empty' : ''}" id="f7-deck">${deck.length ? '7' : 'empty'}</div>
     </div>
-    ${pile.length?`<div>
+    ${lastCard ? `<div>
       <div style="font-size:.6rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px;">LAST FLIP</div>
-      ${miniCardEl(pile[pile.length-1])}
-    </div>`:''}
+      ${cardBig(lastCard)}
+    </div>` : ''}
   </div>`;
 
   // Player panels
-  html+=`<div class="f7-players">`;
-  PLAYERS.forEach((n,i)=>{
-    const isActive=current===i&&phase==='flip';
-    const{score,isFlip7}=calcRoundScore(i);
-    const statusLabel=busted[i]?'💥 BUST':stopped[i]?`✋ Stopped (${roundScores[i]}pts)`:frozen[i]?'❄️ Frozen':isActive?'▶ Active':'';
-    html+=`<div class="f7-player ${isActive?'active-player':''} ${frozen[i]&&!stopped[i]&&!busted[i]?'frozen':''} ${busted[i]?'busted':''}">
-      <div class="f7-player-name ${i===0?'you':''}">${n} ${isFlip7&&!busted[i]?'<span class="flip7-badge">FLIP 7!</span>':''}</div>
-      <div class="f7-player-score">${stopped[i]?roundScores[i]:busted[i]?0:score}</div>
-      <div class="f7-player-round" style="font-size:.58rem;">${statusLabel}</div>
-      <div class="f7-flip-pile">${flipped[i].map(c=>miniCardEl(c)).join('')}</div>
+  html += `<div class="f7-players">`;
+  PLAYERS.forEach((n,i) => {
+    const isActive = current === i && phase === 'flip';
+    const {score, isFlip7} = calcRoundScore(i);
+    const displayScore = busted[i] ? 0 : (stopped[i] ? roundScore[i] : score);
+    const cards = flipped[i];
+    const nums = cards.filter(c => c.type === 'num').sort((a,b) => a.val - b.val);
+    const mods = cards.filter(c => c.type === 'mod' || c.type === 'x2');
+    const statusLabel = busted[i] ? '💥 BUST' :
+                        stopped[i] && frozen[i] ? `❄️ Frozen (${roundScore[i]}pts)` :
+                        stopped[i] ? `✋ Stayed (${roundScore[i]}pts)` :
+                        frozen[i] ? `❄️ Frozen` :
+                        isActive ? (forceFlips[i]>0 ? `↻3 x${forceFlips[i]}` : '▶ Active') :
+                        '';
+    const cls = [
+      'f7-player',
+      isActive ? 'active-player' : '',
+      frozen[i] && !busted[i] ? 'frozen' : '',
+      busted[i] ? 'busted' : '',
+      stopped[i] && !busted[i] && !frozen[i] ? 'stopped-card' : ''
+    ].filter(Boolean).join(' ');
+
+    html += `<div class="${cls}">
+      <div class="f7-player-name ${i===0 ? 'you' : ''}">
+        ${n}
+        ${hasSC[i] ? '<span class="f7-sc-badge">2ND</span>' : ''}
+        ${isFlip7 && !busted[i] ? '<span class="flip7-badge">FLIP 7</span>' : ''}
+      </div>
+      <div class="f7-player-score">${displayScore}</div>
+      <div class="f7-player-round">${statusLabel}</div>
+      ${nums.length ? `<div class="f7-nums-row">${nums.map(c => cardMini(c)).join('')}</div>` : ''}
+      ${mods.length ? `<div class="f7-mods-row">${mods.map(c => cardMini(c)).join('')}</div>` : ''}
     </div>`;
   });
-  html+=`</div>`;
+  html += `</div>`;
 
-  // Action buttons for player
-  if(isYourTurn){
-    html+=`<div class="f7-action">
+  // Action buttons
+  if(isYourTurn && forceFlips[0] === 0){
+    html += `<div class="f7-action">
       <button class="btn btn-gold" id="flip-btn">🎴 Flip</button>
-      <button class="btn btn-outline" id="stop-btn">✋ Stop (bank ${calcRoundScore(0).score} pts)</button>
+      <button class="btn btn-outline" id="stop-btn">✋ Stay (bank ${calcRoundScore(0).score} pts)</button>
+    </div>`;
+  } else if(isYourTurn && forceFlips[0] > 0){
+    html += `<div class="f7-action">
+      <button class="btn btn-gold" id="flip-btn">🎴 Forced Flip (${forceFlips[0]} left)</button>
     </div>`;
   }
 
-  html+=renderLog();
-  root.innerHTML=html;
+  html += renderLog();
+  root.innerHTML = html;
 
-  document.getElementById('f7-deck')?.addEventListener('click',()=>{if(isYourTurn)doFlip();});
-  document.getElementById('flip-btn')?.addEventListener('click',doFlip);
-  document.getElementById('stop-btn')?.addEventListener('click',doStop);
-  document.querySelectorAll('.f7-freeze-btn').forEach(b=>{
-    b.addEventListener('click',()=>playerFreeze(+b.dataset.target));
+  // Wire up controls
+  document.getElementById('f7-deck')?.addEventListener('click', () => { if(isYourTurn) doFlip(); });
+  document.getElementById('flip-btn')?.addEventListener('click', doFlip);
+  document.getElementById('stop-btn')?.addEventListener('click', doStop);
+  document.querySelectorAll('.f7-freeze-btn').forEach(b => {
+    b.addEventListener('click', () => playerFreeze(+b.dataset.target));
   });
-  document.getElementById('ng-btn')?.addEventListener('click',newGame);
-  document.getElementById('nr-btn')?.addEventListener('click',newRound);
+  document.querySelectorAll('.f7-flip3-btn').forEach(b => {
+    b.addEventListener('click', () => playerFlip3(+b.dataset.target));
+  });
+  document.querySelectorAll('.f7-sc-btn').forEach(b => {
+    b.addEventListener('click', () => playerPassSC(+b.dataset.target));
+  });
 }
 
 function renderLog(){
-  return`<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-top:8px;">${log.slice(-6).map(({msg,cls})=>`<div class="${cls||''}">${msg}</div>`).join('')}</div>`;
+  return `<div class="f7-log">${log.slice(-7).map(({msg,cls}) => `<div class="${cls || ''}">${msg}</div>`).join('')}</div>`;
 }
 
 newGame();
 </script>
+<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>
