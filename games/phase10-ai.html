@@ -377,7 +377,10 @@ function endGame(){
   const winner=finishers[0].i;
   const won=winner===0;
   addLog(`${PNAMES[winner]} wins Phase 10! Score: ${scores[winner]}.`,'pts');
-  try{GameHistory.save('p10',{_summary:`Phase 10 (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  try{
+    const players=PNAMES.map((n,i)=>({name:n,score:scores[i]}));
+    GameHistory.savePlayerGame('p10','Phase 10 (AI)',players,winner,0,{lowestWins:true});
+  }catch(e){}
   render();
 }
 

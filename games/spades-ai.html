@@ -296,7 +296,13 @@ function finishRound(){
 function endGame(){
   const won=scores[0]>scores[1];
   addLog(`Game over! ${won?'You & North win':'West & East win'}. ${scores[0]}–${scores[1]}.`,'pts');
-  try{GameHistory.save('spades',{_summary:`Spades (AI) · ${won?'Win':'Loss'} ${scores[0]}–${scores[1]}`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0],rounds:roundNum});}catch(e){}
+  try{
+    const players=[
+      {name:PNAMES[0]+' & '+PNAMES[2],score:scores[0]},
+      {name:PNAMES[1]+' & '+PNAMES[3],score:scores[1]}
+    ];
+    GameHistory.savePlayerGame('spades','Spades (AI)',players,won?0:1,0,{rounds:roundNum,teamGame:true});
+  }catch(e){}
   render();
 }
 

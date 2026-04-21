@@ -762,36 +762,36 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
   // surface on the hub tile that's currently linked.
   const GH_TILE_MAP=[
     // Card games
-    {href:'cribbage.html',         keys:['cribbage']},
-    {href:'pyramid.html',          keys:['pyramid']},
-    {href:'solitaire.html',        keys:['sol']},
-    {href:'freecell.html',         keys:['freecell','fc']},
-    {href:'pokersquares.html',     keys:['pokersquares']},
-    {href:'hearts-ai.html',        keys:['hearts','ht']},
-    {href:'spades-ai.html',        keys:['spades','sp']},
-    {href:'gin-rummy-ai.html',     keys:['gin','rm']},
-    {href:'euchre-ai.html',        keys:['euchre','eu']},
-    {href:'wizard-ai.html',        keys:['wizard','wz']},
-    {href:'flip7-ai.html',         keys:['flip7','f7']},
-    {href:'fivecrownss-ai.html',   keys:['fivecrwns']},
-    {href:'rook-ai.html',          keys:['rook','rk']},
-    {href:'phase10-ai.html',       keys:['p10']},
+    {href:'cribbage.html',         keys:['cribbage'],     title:'🃏 Cribbage'},
+    {href:'pyramid.html',          keys:['pyramid'],      title:'🃏 Pyramid'},
+    {href:'solitaire.html',        keys:['sol'],          title:'🃏 Solitaire'},
+    {href:'freecell.html',         keys:['freecell','fc'],title:'🃏 FreeCell'},
+    {href:'pokersquares.html',     keys:['pokersquares'], title:'🃏 Poker Squares'},
+    {href:'hearts-ai.html',        keys:['hearts','ht'],  title:'♥️ Hearts'},
+    {href:'spades-ai.html',        keys:['spades','sp'],  title:'♠️ Spades'},
+    {href:'gin-rummy-ai.html',     keys:['gin','rm'],     title:'🃏 Gin Rummy'},
+    {href:'euchre-ai.html',        keys:['euchre','eu'],  title:'🃏 Euchre'},
+    {href:'wizard-ai.html',        keys:['wizard','wz'],  title:'🧙 Wizard'},
+    {href:'flip7-ai.html',         keys:['flip7','f7'],   title:'🎴 Flip 7'},
+    {href:'fivecrownss-ai.html',   keys:['fivecrwns'],    title:'👑 Five Crowns'},
+    {href:'rook-ai.html',          keys:['rook','rk'],    title:'🐦 Rook'},
+    {href:'phase10-ai.html',       keys:['p10'],          title:'🔟 Phase 10'},
     // Board & Strategy
-    {href:'sudoku.html',           keys:['sudoku']},
+    {href:'sudoku.html',           keys:['sudoku'],       title:'🔢 Sudoku'},
     // Casino
-    {href:'blackjack.html',        keys:['blackjack']},
+    {href:'blackjack.html',        keys:['blackjack'],    title:'🃏 Blackjack'},
     // Arcade (only ones that actually save to GameHistory)
-    {href:'pacman.html',           keys:['pacman']},
-    {href:'peggle.html',           keys:['peggle']},
+    {href:'pacman.html',           keys:['pacman'],       title:'👻 Pac-Man'},
+    {href:'peggle.html',           keys:['peggle'],       title:'🏓 Peggle'},
     // Trivia & Words
-    {href:'trivia.html',           keys:['trivia']},
-    {href:'wordle.html',           keys:['wordle']},
+    {href:'trivia.html',           keys:['trivia'],       title:'💡 Trivia'},
+    {href:'wordle.html',           keys:['wordle'],       title:'🔤 Wordle'},
     // Kids & Party
-    {href:'mancala.html',          keys:['mancala']},
-    {href:'minigolf.html',         keys:['mg']},
-    {href:'shellgame.html',        keys:['shellgame']},
-    {href:'dealornodeal.html',     keys:['dond']},
-    {href:'wheeloffortune.html',   keys:['wof']},
+    {href:'mancala.html',          keys:['mancala'],      title:'🪨 Mancala'},
+    {href:'minigolf.html',         keys:['mg'],           title:'⛳ Mini Golf'},
+    {href:'shellgame.html',        keys:['shellgame'],    title:'🥥 Shell Game'},
+    {href:'dealornodeal.html',     keys:['dond'],         title:'💼 Deal or No Deal'},
+    {href:'wheeloffortune.html',   keys:['wof'],          title:'🎡 Wheel of Fortune'},
   ];
 
   function firstKeyWithData(keys){
@@ -804,7 +804,7 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     return null;
   }
 
-  GH_TILE_MAP.forEach(({href,keys})=>{
+  GH_TILE_MAP.forEach(({href,keys,title})=>{
     const hit=firstKeyWithData(keys);
     if(!hit)return;
     const card=document.querySelector('a[href*="'+href+'"]');
@@ -815,7 +815,18 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     pip.textContent='📊';
     pip.addEventListener('click',function(e){
       e.preventDefault();e.stopPropagation();
-      try{GameHistory.open(hit.key);}catch(err){}
+      try{
+        GameHistory.open(hit.key, title || 'History', function(entry){
+          // If entry has a players array, render it. Otherwise fall back.
+          if(entry && Array.isArray(entry.players) && entry.players.length){
+            return GameHistory.renderPlayerResults(entry.players, entry.winner);
+          }
+          const div=document.createElement('div');
+          div.style.cssText='padding:8px 0;font-size:.82rem;color:rgba(255,255,255,.55);';
+          div.textContent = entry._summary || 'No additional details.';
+          return div;
+        });
+      }catch(err){}
     });
     card.style.position='relative';
     card.appendChild(pip);
@@ -975,6 +986,12 @@ function showArcadeLB(){
     if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',esc);}
   });
 }
+// Expose globally so the inline onclick handler resolves, and also wire a
+// direct listener as a fallback in case the inline handler fails to bind.
+window.showArcadeLB = showArcadeLB;
+document.querySelectorAll('.arcade-lb-btn').forEach(btn => {
+  btn.addEventListener('click', function(e){ e.preventDefault(); showArcadeLB(); });
+});
 </script>
 </body>
 </html>

@@ -276,7 +276,10 @@ function endGame(){
   const winner=scores.indexOf(Math.max(...scores));
   const won=winner===0;
   addLog(`Game over! ${PNAMES[winner]} wins with ${scores[winner]} pts.`,'pts');
-  try{GameHistory.save('wizard',{_summary:`Wizard (AI) · ${won?'Win':'Loss'} ${scores[0]} pts`,_badge:won?'Win':'Loss',result:won?'win':'loss',score:scores[0]});}catch(e){}
+  try{
+    const players=PNAMES.map((n,i)=>({name:n,score:scores[i]}));
+    GameHistory.savePlayerGame('wizard','Wizard (AI)',players,winner,0);
+  }catch(e){}
   render();
 }
 

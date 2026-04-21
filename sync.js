@@ -103,12 +103,13 @@
     var seen = {};
     all = all.filter(function(row){
       if(!row || typeof row !== 'object') return false;
-      var t = row.finishedAt || row.date || row.ts || JSON.stringify(row).slice(0,80);
+      // hist.js uses _date; legacy rows may use finishedAt/date/ts
+      var t = row._date || row.finishedAt || row.date || row.ts || JSON.stringify(row).slice(0,80);
       if(seen[t]) return false; seen[t] = 1; return true;
     });
     all.sort(function(x,y){
-      var tx = x.finishedAt || x.date || x.ts || 0;
-      var ty = y.finishedAt || y.date || y.ts || 0;
+      var tx = x._date || x.finishedAt || x.date || x.ts || 0;
+      var ty = y._date || y.finishedAt || y.date || y.ts || 0;
       return (ty > tx ? 1 : ty < tx ? -1 : 0);
     });
     return all.slice(0, 50);

@@ -676,13 +676,8 @@ function endGame(){
   const won = winner === 0;
   addLog(`🏆 ${PLAYERS[winner]} wins with ${scores[winner]} pts!`, 'flip7');
   try{
-    GameHistory.save('flip7', {
-      _summary: `Flip 7 (AI) · ${won ? 'Win' : 'Loss'} ${scores[0]} pts`,
-      _badge: won ? 'Win' : 'Loss',
-      result: won ? 'win' : 'loss',
-      score: scores[0],
-      winner: PLAYERS[winner]
-    });
+    const players = PLAYERS.map((n,i) => ({name: n, score: scores[i]}));
+    GameHistory.savePlayerGame('flip7', 'Flip 7 (AI)', players, winner, 0, {rounds});
   }catch(e){}
   render();
 }

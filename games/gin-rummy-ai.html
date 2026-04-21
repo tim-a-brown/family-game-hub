@@ -362,7 +362,10 @@ function resolveRound(isGin,aiKnocked,playerGin){
 function endGame(){
   const won=scores[0]>scores[1];
   addLog(`Game over! ${won?MYNAME+' wins':'AI wins'}. ${scores[0]}–${scores[1]}.`,'pts');
-  try{GameHistory.save('gin',{_summary:`Gin Rummy · ${scores[0]>scores[1]?'Win':'Loss'} ${scores[0]}–${scores[1]}`,_badge:scores[0]>scores[1]?'Win':'Loss',result:scores[0]>scores[1]?'win':'loss',score:scores[0],aiScore:scores[1]});}catch(e){}
+  try{
+    const players=[{name:MYNAME,score:scores[0]},{name:'AI',score:scores[1]}];
+    GameHistory.savePlayerGame('gin','Gin Rummy',players,scores[0]>scores[1]?0:1,0);
+  }catch(e){}
   render();
 }
 

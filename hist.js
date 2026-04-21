@@ -231,6 +231,97 @@ const GameHistory = (function(){
     return div;
   }
 
-  return { save, load, open, close, btn, fmt,
-    renderRoundTable, renderStatGrid, renderWordleGrid, renderSudokuGrid };
+  // Render a players-and-scores table that highlights the winner.
+  // scores: array of {name, score, [isYou]} objects, OR parallel arrays.
+  // winner: index of winning player
+  function renderPlayerResults(players, winnerIdx){
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:4px;';
+    players.forEach((p, i) => {
+      const isWinner = i === winnerIdx;
+      const row = document.createElement('div');
+      row.style.cssText = [
+        'display:flex','align-items:center','justify-content:space-between',
+        'padding:8px 12px','border-radius:8px',
+        isWinner ? 'background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.45)'
+                 : 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)'
+      ].join(';');
+      const name = document.createElement('div');
+      name.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:'+(isWinner?'700':'500')+';color:'+(isWinner?'#f5c842':'rgba(255,255,255,.85)')+';';
+      name.innerHTML = (isWinner ? '🏆 ' : '') + (p.isYou ? '<span style="color:#a78bfa">● </span>' : '') + escapeHtml(p.name || 'Player');
+      const score = document.createElement('div');
+      score.style.cssText = 'font-family:var(--serif,Georgia);font-size:1rem;font-weight:900;color:'+(isWinner?'#f5c842':'rgba(255,255,255,.7)')+';';
+      score.textContent = p.score != null ? p.score.toLocaleString() : '';
+      row.appendChild(name); row.appendChild(score);
+      div.appendChild(row);
+    });
+    return div;
+  }
+
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // savePlayerGame: standardized save for multi-player games.
+  // Args:
+  //   key      — storage key (e.g. 'flip7')
+  //   title    — game label for summary prefix (e.g. 'Flip 7 (AI)')
+  //   players  — array of {name, score}
+  //   winnerIdx— index of winning player in `players` array
+  //   youIdx   — index of the human player (typically 0)
+  //   extra    — optional object merged into the saved entry
+  function savePlayerGame(key, title, players, winnerIdx, youIdx, extra){
+    youIdx = youIdx == null ? 0 : youIdx;
+    const you = players[youIdx];
+    const won = winnerIdx === youIdx;
+    const winnerName = (players[winnerIdx] && players[winnerIdx].name) || 'Player '+(winnerIdx+1);
+    // Mark who "you" is so the renderer can highlight
+    const taggedPlayers = players.map((p,i) => ({ ...p, isYou: i === youIdx }));
+    const entry = {
+      _summary: `${title} · ${won ? 'Win' : `${winnerName} wins`} · ${you ? you.score : 0} pts`,
+      _badge: won ? 'Win' : 'Loss',
+      result: won ? 'win' : 'loss',
+      score: you ? you.score : 0,
+      players: taggedPlayers,
+      winner: winnerIdx,
+      ...(extra || {})
+    };
+    save(key, entry);
+  }
+
+  return { save, load, open, close, btn, fmt, savePlayerGame,
+    renderRoundTable, renderStatGrid, renderWordleGrid, renderSudokuGrid, renderPlayerResults };
+})();
+
+// ── One-time cleanup of legacy duplicate entries ──────────────────────────
+// Earlier bugs caused some games to double-save. De-dupe any gh_* keys on
+// load, based on (_date + _summary + score/result) signature. Idempotent.
+(function(){
+  try{
+    const FLAG = 'gh_dedup_v1';
+    if(localStorage.getItem(FLAG)) return;
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(!k || !k.startsWith('gh_')) continue;
+      let arr;
+      try{ arr = JSON.parse(localStorage.getItem(k)); }catch(e){ continue; }
+      if(!Array.isArray(arr) || !arr.length) continue;
+      const seen = new Set();
+      const deduped = [];
+      for(const row of arr){
+        if(!row || typeof row !== 'object') continue;
+        // Signature: timestamp (rounded to second) + summary + score + result
+        const ts = row._date ? Math.floor(row._date / 1000) : 0;
+        const sig = ts + '|' + (row._summary || '') + '|' + (row.score != null ? row.score : '') + '|' + (row.result || '');
+        if(seen.has(sig)) continue;
+        seen.add(sig);
+        deduped.push(row);
+      }
+      if(deduped.length !== arr.length){
+        try{ localStorage.setItem(k, JSON.stringify(deduped)); }catch(e){}
+      }
+    }
+    localStorage.setItem(FLAG, Date.now().toString());
+  }catch(e){}
 })();

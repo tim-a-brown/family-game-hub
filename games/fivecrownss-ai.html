@@ -574,13 +574,8 @@ function endGame(){
   const won = winner === 0;
   addLog(`🏆 ${PNAMES[winner]} wins with ${minScore} pts!`, 'pts');
   try{
-    GameHistory.save('fivecrwns', {
-      _summary: `Five Crowns (AI) · ${won ? 'Win' : 'Loss'} ${scores[0]} pts`,
-      _badge: won ? 'Win' : 'Loss',
-      result: won ? 'win' : 'loss',
-      score: scores[0],
-      winner: PNAMES[winner]
-    });
+    const players = PNAMES.map((n,i) => ({name: n, score: scores[i]}));
+    GameHistory.savePlayerGame('fivecrwns', 'Five Crowns (AI)', players, winner, 0, {lowestWins: true});
   }catch(e){}
   render();
 }
