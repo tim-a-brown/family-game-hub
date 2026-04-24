@@ -1,16 +1,41 @@
 rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Game Night — Firestore security rules
+//
+// Model: a single document per PIN at /pins/{pinId}. Anyone who knows the
+// 4-digit PIN can read and write to it. There is no per-user auth —
+// data is scoped by PIN-as-shared-secret.
+//
+// Allowed fields are explicitly listed below. If you add a new top-level
+// field to the sync schema (see sync.js pushNow), you MUST add it to the
+// `hasOnly(...)` allowlist or writes containing that field will fail with
+// "Missing or insufficient permissions".
+// ═══════════════════════════════════════════════════════════════════════════
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only allow read/write on pins/{pin} where pin is exactly 4 digits.
-    // Payload must have only our known top-level keys and reasonable size.
-    match /pins/{pin} {
-      allow read: if pin.matches('^[0-9]{4}$');
-      allow write: if pin.matches('^[0-9]{4}$')
-        && request.resource.data.keys().hasOnly(['hi','gh','updatedAt'])
-        && (!('hi' in request.resource.data) || request.resource.data.hi is map)
-        && (!('gh' in request.resource.data) || request.resource.data.gh is map);
+
+    match /pins/{pinId} {
+      allow read, write: if
+        // PIN must be exactly 4 digits
+        pinId.matches('^[0-9]{4}$')
+        // Document may contain ONLY these known fields — any unexpected
+        // field blocks the write (safety net against schema drift).
+        && request.resource.data.keys().hasOnly([
+          'hi',         // per-game high scores
+          'gh',         // per-game history records
+          'label',      // human-friendly name for this PIN
+          'bank',       // casino virtual currency
+          'updatedAt',  // server timestamp
+          'rklists',    // saved ranker lists
+          'favs'        // favorited game hrefs
+        ]);
     }
-    // Deny everything else.
-    match /{document=**} { allow read, write: if false; }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
