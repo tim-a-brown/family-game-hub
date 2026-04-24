@@ -66,7 +66,15 @@ document.addEventListener('visibilitychange', function() {
       });
       // Sync status updates
       var syncChip = document.getElementById('sync-chip');
-      syncChip.addEventListener('click', function(){
+      syncChip.addEventListener('click', function(e){
+        if(lpFired){ e.preventDefault(); e.stopImmediatePropagation(); lpFired = false; return; }
+        // If currently in error state, tap should show diagnostics so the
+        // user can see what went wrong — otherwise tapping just re-errors.
+        var st = (typeof FGHSync.syncStatus === 'function') ? FGHSync.syncStatus() : null;
+        if(st && st.state === 'error'){
+          openSyncDiagnostics();
+          return;
+        }
         if(typeof FGHSync.syncNow === 'function') FGHSync.syncNow();
       });
       // Long-press (500ms) or right-click opens sync diagnostics
@@ -89,9 +97,6 @@ document.addEventListener('visibilitychange', function() {
       syncChip.addEventListener('pointercancel', function(){
         if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; }
       });
-      syncChip.addEventListener('click', function(e){
-        if(lpFired){ e.preventDefault(); e.stopImmediatePropagation(); lpFired = false; }
-      }, true);
       if(typeof FGHSync.onStatusChange === 'function'){
         FGHSync.onStatusChange(function(s){
           syncChip.className = 'sync-chip sync-' + s.state;
@@ -1418,8 +1423,19 @@ function openSyncDiagnostics(){
   const pin = (typeof FGHSync !== 'undefined') ? FGHSync.pin() : null;
   document.getElementById('sd-sub').textContent = mode === 'pin' ? ('PIN ' + pin) : 'Guest mode (no cloud sync)';
 
+  // If the last sync attempt errored, surface that message immediately — the
+  // user hit Retry specifically to see this.
+  const syncSt = (typeof FGHSync !== 'undefined' && typeof FGHSync.syncStatus === 'function') ? FGHSync.syncStatus() : null;
+  let errorBanner = '';
+  if(syncSt && syncSt.state === 'error' && syncSt.error){
+    errorBanner = `<div class="sd-section" style="border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.04);">
+      <div class="sd-section-title" style="color:#fca5a5">⚠ Last sync error</div>
+      <div style="font-size:.82rem;color:rgba(255,255,255,.85);word-break:break-word;">${escapeHtml(syncSt.error)}</div>
+    </div>`;
+  }
+
   if(mode !== 'pin'){
-    document.getElementById('sd-content').innerHTML = `
+    document.getElementById('sd-content').innerHTML = errorBanner + `
       <div class="sd-section">
         <div class="sd-section-title">Local</div>
         ${formatCounts(local)}
@@ -1435,13 +1451,13 @@ function openSyncDiagnostics(){
     if(!document.getElementById('sd-modal')) return;
     let content = '';
     if(result.error){
-      content = `<div class="sd-section" style="border-color:rgba(248,113,113,.3);">
+      content = errorBanner + `<div class="sd-section" style="border-color:rgba(248,113,113,.3);">
         <div class="sd-section-title" style="color:#fca5a5">Cloud error</div>
         <div style="font-size:.82rem;color:rgba(255,255,255,.85);">${escapeHtml(result.error)}</div>
       </div>
       <div class="sd-section"><div class="sd-section-title">Local</div>${formatCounts(local)}</div>`;
     } else if(!result.exists){
-      content = `<div class="sd-section" style="border-color:rgba(251,191,36,.3);">
+      content = errorBanner + `<div class="sd-section" style="border-color:rgba(251,191,36,.3);">
         <div class="sd-section-title" style="color:#fbbf24">Cloud</div>
         <div style="font-size:.82rem;color:rgba(255,255,255,.75);">No document exists yet for PIN ${pin}. Use "Push to cloud" to create one.</div>
       </div>
@@ -1451,7 +1467,7 @@ function openSyncDiagnostics(){
       </div>`;
     } else {
       const cloud = countCloud(result.data);
-      content = `<div class="sd-section">
+      content = errorBanner + `<div class="sd-section">
         <div class="sd-section-title">Local vs cloud</div>
         ${compareCounts(local, cloud)}
       </div>

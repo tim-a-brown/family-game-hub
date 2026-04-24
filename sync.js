@@ -195,9 +195,16 @@
   }
 
   // ── Firestore sanitization ────────────────────────────────────────────────
-  // Firestore does not support arrays within arrays. This recursively converts
-  // any array found inside another array into an indexed object: [1,2]→{i0:1,i1:2}
+  // Firestore:
+  //   1. Does not support arrays-within-arrays (must convert inner arrays to objects)
+  //   2. Rejects `undefined` values outright (replace with null or drop)
+  //   3. Rejects NaN, Infinity (replace with null)
+  //   4. Rejects functions / symbols (drop)
+  // This recursive sanitizer handles all of the above.
   function sanitizeForFirestore(val) {
+    if (val === undefined) return null;
+    if (typeof val === 'number' && !isFinite(val)) return null;
+    if (typeof val === 'function' || typeof val === 'symbol') return null;
     if (Array.isArray(val)) {
       return val.map(function(item) {
         if (Array.isArray(item)) {
@@ -210,7 +217,12 @@
     }
     if (val !== null && typeof val === 'object') {
       var out = {};
-      Object.keys(val).forEach(function(k) { out[k] = sanitizeForFirestore(val[k]); });
+      Object.keys(val).forEach(function(k) {
+        var v = sanitizeForFirestore(val[k]);
+        // Skip undefined keys entirely rather than writing null —
+        // Firestore tolerates both, but omitting keeps docs lean.
+        if (v !== undefined) out[k] = v;
+      });
       return out;
     }
     return val;
@@ -289,7 +301,7 @@
     var ref = cloudRef(); if(!ref) return Promise.resolve();
     var snap = scanLocal();
     var doc = {
-      hi: hiToFirestore(snap.hi || {}),
+      hi: sanitizeForFirestore(hiToFirestore(snap.hi || {})),
       gh: sanitizeForFirestore(snap.gh || {}),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -302,9 +314,9 @@
     if(snap.rklists) doc.rklists = sanitizeForFirestore(snap.rklists);
     // Same logic for favs — always include defined arrays (even empty) so
     // unfavoriting everything propagates across devices.
-    if(Array.isArray(snap.favs)) doc.favs = snap.favs;
+    if(Array.isArray(snap.favs)) doc.favs = sanitizeForFirestore(snap.favs);
     console.log('[sync] push', {
-      rklists_count: snap.rklists && snap.rklists.lists ? snap.rklists.lists.length : 0,
+      rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
       hi_keys: Object.keys(snap.hi||{}).length,
       gh_keys: Object.keys(snap.gh||{}).length
@@ -313,7 +325,11 @@
     // This prevents the race where device A has empty local for some field
     // and pushes before device B's newly-saved data lands — merge:false
     // would wipe the cloud field entirely.
-    return ref.set(doc, { merge: true });
+    return ref.set(doc, { merge: true }).catch(function(err){
+      // Log detailed error for diagnostics
+      console.error('[sync] ref.set failed', err && err.code, err && err.message, err);
+      throw err;
+    });
   }
 
   // ── Label ─────────────────────────────────────────────────────────────
