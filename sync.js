@@ -70,7 +70,7 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -86,6 +86,8 @@
         try{ out.rklists = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fav_games'){
         try{ out.favs = JSON.parse(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'fav_games_updated_at'){
+        try{ out.favsAt = parseInt(LS.getItem(k)) || null; }catch(e){}
       }
     }
     return out;
@@ -135,7 +137,7 @@
   }
 
   function mergeSnapshots(local, remote){
-    var out = { hi: {}, gh: {}, rklists: null, favs: null };
+    var out = { hi: {}, gh: {}, rklists: null, favs: null, favsAt: null };
     var keys = {};
     Object.keys(local.hi||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.hi||{}).forEach(function(k){ keys[k]=1; });
@@ -145,11 +147,22 @@
     Object.keys(remote.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(keys).forEach(function(k){ out.gh[k] = mergeGh(local.gh&&local.gh[k], remote.gh&&remote.gh[k]); });
     out.rklists = mergeRkLists(local.rklists, remote.rklists);
-    // Favorites: union local + remote sets (additive merge — losing a favorite
-    // is rare and unfavoriting across devices should happen explicitly anyway)
+    // Favorites: newest favsAt timestamp wins the whole list. This lets
+    // deletions propagate — unfavoriting bumps the local timestamp, and on
+    // next sync that version supersedes any stale cloud copy. Prior behavior
+    // was a union which meant "once favorited, can't unfavorite via sync".
     var localFavs  = asArray(local.favs);
     var remoteFavs = asArray(remote.favs);
-    if(localFavs.length || remoteFavs.length){
+    var lAt = local.favsAt  || 0;
+    var rAt = remote.favsAt || 0;
+    if(lAt || rAt){
+      if(lAt >= rAt){ out.favs = localFavs;  out.favsAt = lAt; }
+      else          { out.favs = remoteFavs; out.favsAt = rAt; }
+    } else if(localFavs.length || remoteFavs.length){
+      // No timestamps on either side — legacy data from before this fix.
+      // Fall back to union one time (so nobody loses favorites on upgrade).
+      // The next write to either side will stamp a timestamp and switch to
+      // timestamp-based merging from then on.
       var seen = {};
       var union = [];
       localFavs.concat(remoteFavs).forEach(function(h){
@@ -191,6 +204,9 @@
     }
     if(snap.favs && Array.isArray(snap.favs)){
       try{ LS.setItem('fav_games', JSON.stringify(snap.favs)); }catch(e){}
+    }
+    if(snap.favsAt){
+      try{ LS.setItem('fav_games_updated_at', String(snap.favsAt)); }catch(e){}
     }
   }
 
@@ -255,17 +271,18 @@
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:false});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, isNew:false});
     return ref.get().then(function(doc){
       if(!doc.exists){
         console.log('[sync] pull: cloud doc empty (first sync)');
-        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:true};
+        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, isNew:false };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
+        favsAt: result.favsAt,
         hi_keys: Object.keys(result.hi||{}).length,
         gh_keys: Object.keys(result.gh||{}).length
       });
@@ -313,8 +330,13 @@
     // with merge:true that preserves the cloud version from other devices.
     if(snap.rklists) doc.rklists = sanitizeForFirestore(snap.rklists);
     // Same logic for favs — always include defined arrays (even empty) so
-    // unfavoriting everything propagates across devices.
-    if(Array.isArray(snap.favs)) doc.favs = sanitizeForFirestore(snap.favs);
+    // unfavoriting everything propagates across devices. Also include
+    // favsAt timestamp so the merge layer can resolve cross-device conflicts
+    // and let deletions win over stale remote copies.
+    if(Array.isArray(snap.favs)){
+      doc.favs = sanitizeForFirestore(snap.favs);
+      doc.favsAt = snap.favsAt || Date.now();
+    }
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',

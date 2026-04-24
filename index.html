@@ -1070,7 +1070,12 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     }catch(e){ return new Set(); }
   }
   function saveFavs(favs){
-    try{ localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); }catch(e){}
+    try{
+      localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
+      // Stamp a per-field timestamp so the sync layer can resolve conflicts
+      // across devices and let deletions propagate (see sync.js mergeSnapshots).
+      localStorage.setItem(FAV_KEY + '_updated_at', String(Date.now()));
+    }catch(e){}
     try{ if(typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite(FAV_KEY); }catch(e){}
   }
 
