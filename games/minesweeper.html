@@ -10,6 +10,7 @@
 <title>Minesweeper</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
+<script src="../sync.js"></script>
 <style>
 body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
 .wrap{max-width:440px;margin:0 auto;padding:0 8px 50px;}
@@ -27,6 +28,20 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
 .ms-cell.flagged{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);}
 .ms-cell.mine-hit{background:rgba(239,68,68,.4);border-color:#ef4444;}
 .ms-cell.mine-show{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.2);}
+/* Wrong flag — shown on game-over when user flagged a cell that wasn't actually a mine */
+.ms-cell.flag-wrong{
+  background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3);
+  position:relative;
+}
+.ms-cell.flag-wrong::before,
+.ms-cell.flag-wrong::after{
+  content:"";position:absolute;left:50%;top:50%;
+  width:70%;height:2px;background:#ef4444;
+  box-shadow:0 0 3px rgba(239,68,68,.6);
+  transform-origin:center;
+}
+.ms-cell.flag-wrong::before{transform:translate(-50%,-50%) rotate(45deg);}
+.ms-cell.flag-wrong::after {transform:translate(-50%,-50%) rotate(-45deg);}
 .n1{color:#5ac8fa;}.n2{color:#22c55e;}.n3{color:#ef4444;}.n4{color:#8b5cf6;}
 .n5{color:#f97316;}.n6{color:#06b6d4;}.n7{color:#ec4899;}.n8{color:#aaa;}
 .ms-status{text-align:center;font-size:.88rem;font-weight:700;min-height:26px;margin-bottom:8px;}
@@ -163,7 +178,18 @@ function renderBoard(){
       cell.classList.add('revealed');
       if(cells[i]===-1)cell.textContent='💣';
       else if(cells[i]>0){cell.textContent=cells[i];cell.classList.add('n'+cells[i]);}
-    } else if(flagged[i]){cell.classList.add('flagged');cell.textContent='🚩';}
+    } else if(flagged[i]){
+      cell.classList.add('flagged');
+      cell.textContent='🚩';
+      // When the game is lost, highlight any flags that weren't actually
+      // on mines — crosses them out so the player can see their mistakes.
+      // Winning is defined by revealing all non-mines, so on win all flagged
+      // cells are necessarily on mines (or the win would have triggered
+      // earlier) — no need to mark wrongs on a win.
+      if(gameOver && !won && cells[i] !== -1){
+        cell.classList.add('flag-wrong');
+      }
+    }
     // Click & long-press
     let longPress;
     cell.addEventListener('contextmenu',e=>{e.preventDefault();clickCell(r,c,true);});

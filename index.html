@@ -5,13 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Family Games">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="/manifest.json">
 <title>Family Games</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
 <script src="./sync.js"></script>
 <script src="./casino.js"></script>
 <script src="./hist.js"></script>
+<script>
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/service-worker.js').catch(function(err) {
+      console.warn('[sw] registration failed', err);
+    });
+  });
+}
+
+// Force a sync when the page becomes visible (returning from a game, etc.)
+// so we pick up changes from other devices without a full reload.
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && typeof FGHSync !== 'undefined' && typeof FGHSync.syncNow === 'function') {
+    FGHSync.syncNow();
+  }
+});
+</script>
 <script>
 // Redirect to gate if not signed in, then build header
 (function(){
@@ -32,11 +52,31 @@
 
     if(m === 'pin'){
       hdr.innerHTML =
+        '<button class="sync-chip" id="sync-chip" title="Sync now">' +
+          '<span class="sync-icon">🔄</span><span class="sync-text">Sync</span>' +
+        '</button>' +
         '<div class="pin-chip">'+(lbl||'PIN '+p)+'</div>'+
         '<button class="signout-btn" id="so-btn">Sign out</button>';
       document.getElementById('so-btn').addEventListener('click', function(){
         FGHSync.signOut(); location.replace('./gate.html');
       });
+      // Sync status updates
+      var syncChip = document.getElementById('sync-chip');
+      syncChip.addEventListener('click', function(){
+        if(typeof FGHSync.syncNow === 'function') FGHSync.syncNow();
+      });
+      if(typeof FGHSync.onStatusChange === 'function'){
+        FGHSync.onStatusChange(function(s){
+          syncChip.className = 'sync-chip sync-' + s.state;
+          var icon = syncChip.querySelector('.sync-icon');
+          var text = syncChip.querySelector('.sync-text');
+          if(s.state === 'syncing'){ icon.textContent = '🔄'; text.textContent = 'Syncing'; }
+          else if(s.state === 'synced'){ icon.textContent = '✓'; text.textContent = 'Synced'; }
+          else if(s.state === 'offline'){ icon.textContent = '📡'; text.textContent = 'Offline'; }
+          else if(s.state === 'error'){ icon.textContent = '⚠'; text.textContent = 'Retry'; }
+          else { icon.textContent = '🔄'; text.textContent = 'Sync'; }
+        });
+      }
     } else {
       hdr.innerHTML =
         '<div class="pin-chip guest-chip">Guest</div>'+
@@ -79,6 +119,22 @@
   transition:all .15s;
 }
 .signout-btn:hover{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);}
+/* Sync status chip */
+.sync-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;color:rgba(255,255,255,.65);font-size:.7rem;font-weight:700;
+  padding:5px 10px;cursor:pointer;font-family:Inter,system-ui,sans-serif;
+  transition:all .15s;letter-spacing:.02em;
+}
+.sync-chip:hover{background:rgba(255,255,255,.12);color:#fff;}
+.sync-chip .sync-icon{display:inline-block;}
+.sync-chip.sync-syncing{color:#f5c842;border-color:rgba(245,200,66,.35);background:rgba(245,200,66,.08);}
+.sync-chip.sync-syncing .sync-icon{animation:sync-spin 1.2s linear infinite;}
+@keyframes sync-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.sync-chip.sync-synced{color:#86efac;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08);}
+.sync-chip.sync-offline{color:rgba(255,255,255,.4);border-style:dashed;}
+.sync-chip.sync-error{color:#fca5a5;border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.08);}
 </style>
 <style>
 body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%); }
@@ -128,10 +184,18 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
 .game-desc { color:var(--muted); font-size:.72rem; line-height:1.4; }
 .game-tag { align-self:flex-start; font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:4px; padding:2px 6px; color:var(--muted); margin-top:auto; }
 
-/* In-progress indicator */
-.game-card.has-progress { border-color:rgba(245,200,66,.35); }
-.game-card.has-progress::after { content:''; position:absolute; top:8px; right:8px; width:7px; height:7px; border-radius:50%; background:#f5c842; box-shadow:0 0 6px rgba(245,200,66,.8); animation:pip-pulse 2s ease-in-out infinite; }
-@keyframes pip-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+/* In-progress indicator — soft animated glow around the card border,
+   plus the gold "▶ In progress" text label near the bottom. No pulsing dot
+   so nothing collides with the favorite star in the top-right. */
+.game-card.has-progress {
+  border-color:rgba(245,200,66,.5);
+  box-shadow:0 0 0 1px rgba(245,200,66,.12), 0 0 10px rgba(245,200,66,.12);
+  animation:progress-glow 2.4s ease-in-out infinite;
+}
+@keyframes progress-glow {
+  0%,100% { box-shadow:0 0 0 1px rgba(245,200,66,.08), 0 0 8px rgba(245,200,66,.08); }
+  50%     { box-shadow:0 0 0 1px rgba(245,200,66,.22), 0 0 16px rgba(245,200,66,.22); }
+}
 .game-progress-label { font-size:.6rem; color:var(--gold,#f5c842); font-weight:700; letter-spacing:.04em; margin-top:auto; display:flex; align-items:center; gap:4px; }
 .game-progress-label::before { content:'▶'; font-size:.55rem; }
 
@@ -168,6 +232,27 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
   opacity:.55;transition:opacity .15s,background .15s,transform .1s;
 }
 .gh-tile-pip:hover{opacity:1;background:rgba(245,200,66,.18);border-color:rgba(245,200,66,.45);transform:scale(1.08);}
+
+/* Favorite star — top-right of each game tile */
+.fav-star{
+  position:absolute;top:6px;right:6px;
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.35);font-size:.82rem;line-height:1;
+  cursor:pointer;z-index:6;
+  opacity:.75;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.fav-star:hover{opacity:1;color:#f5c842;background:rgba(245,200,66,.18);border-color:rgba(245,200,66,.4);transform:scale(1.1);}
+.fav-star.on{
+  opacity:1;color:#f5c842;
+  background:linear-gradient(135deg,rgba(245,200,66,.25),rgba(245,200,66,.1));
+  border-color:rgba(245,200,66,.55);
+  text-shadow:0 0 6px rgba(245,200,66,.5);
+}
+.fav-star.on:hover{background:linear-gradient(135deg,rgba(245,200,66,.35),rgba(245,200,66,.18));}
 
 /* Mode chooser modal (card games: player count picker) */
 .mc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);
@@ -211,6 +296,16 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
   <h1 class="hero-title">Game<span> Night</span></h1>
   <p class="hero-sub">Pick a game and let's play</p>
   <p class="hero-count">71 games &amp; tools</p>
+</div>
+
+<!-- ⭐ Favorites (hidden when empty) -->
+<div class="section" id="favorites-section" style="display:none;">
+  <div class="section-header">
+    <span class="section-icon">⭐</span>
+    <span class="section-name">Favorites</span>
+    <span class="section-count" id="favorites-count">0 favorites</span>
+  </div>
+  <div class="games-grid" id="favorites-grid"></div>
 </div>
 
 <!-- 🃏 Card Games -->
@@ -818,7 +913,7 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     const pip=document.createElement('div');
     pip.className='gh-tile-pip';
     pip.title='View history ('+hit.count+' game'+(hit.count!==1?'s':'')+')';
-    pip.textContent='📊';
+    pip.textContent='🏆';
     pip.addEventListener('click',function(e){
       e.preventDefault();e.stopPropagation();
       try{
@@ -836,6 +931,250 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     });
     card.style.position='relative';
     card.appendChild(pip);
+  });
+})();
+
+
+// ── Favorites + Sort by recency ───────────────────────────────────────────
+// Adds a star toggle to every game tile (top-right). Favorited games appear
+// in a "⭐ Favorites" section at the top of the page. Within every section
+// (including Favorites), tiles are reordered so games with the most recent
+// history record come first; the rest sort alphabetically by name.
+(function(){
+  const FAV_KEY = 'fav_games';
+  // Same GH_TILE_MAP keys as the pip code — rebuild here to look up history
+  // dates. Staying in sync with the other block is important because the
+  // lookup drives "most recent" sort order. Mirror its shape.
+  const GH_MAP = [
+    ['cribbage.html',['cribbage']],
+    ['pyramid.html',['pyramid']],
+    ['solitaire.html',['sol']],
+    ['freecell.html',['freecell','fc']],
+    ['pokersquares.html',['pokersquares']],
+    ['hearts.html',['hearts','ht']],
+    ['hearts-ai.html',['hearts','ht']],
+    ['spades.html',['spades','sp']],
+    ['spades-ai.html',['spades','sp']],
+    ['gin-rummy.html',['gin','rm']],
+    ['gin-rummy-ai.html',['gin','rm']],
+    ['euchre.html',['euchre','eu']],
+    ['euchre-ai.html',['euchre','eu']],
+    ['wizard.html',['wizard','wz']],
+    ['wizard-ai.html',['wizard','wz']],
+    ['flip7.html',['flip7','f7']],
+    ['flip7-ai.html',['flip7','f7']],
+    ['five-crowns.html',['fivecrwns']],
+    ['fivecrownss-ai.html',['fivecrwns']],
+    ['rook.html',['rook','rk']],
+    ['rook-ai.html',['rook','rk']],
+    ['phase10.html',['p10']],
+    ['phase10-ai.html',['p10']],
+    ['sudoku.html',['sudoku']],
+    ['blackjack.html',['blackjack']],
+    ['pacman.html',['pacman']],
+    ['peggle.html',['peggle']],
+    ['trivia.html',['trivia']],
+    ['wordle.html',['wordle']],
+    ['mancala.html',['mancala']],
+    ['minigolf.html',['mg']],
+    ['shellgame.html',['shellgame']],
+    ['dealornodeal.html',['dond']],
+    ['wheeloffortune.html',['wof']],
+  ];
+
+  // ── Recency lookup (cached) ──
+  const _recencyCache = {};
+  function latestHistoryDateFor(href){
+    if(_recencyCache[href] !== undefined) return _recencyCache[href];
+    let best = 0;
+    const hrefLower = href.toLowerCase();
+    for(const [path, keys] of GH_MAP){
+      if(!hrefLower.includes(path)) continue;
+      for(const k of keys){
+        try{
+          const list = JSON.parse(localStorage.getItem('gh_' + k) || '[]');
+          if(!Array.isArray(list)) continue;
+          for(const row of list){
+            const d = (row && (row._date || row.finishedAt || row.date || row.ts)) || 0;
+            if(d > best) best = d;
+          }
+        }catch(e){}
+      }
+      break;
+    }
+    _recencyCache[href] = best;
+    return best;
+  }
+
+  // ── Favorites storage ──
+  function loadFavs(){
+    try{
+      const raw = localStorage.getItem(FAV_KEY);
+      if(!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    }catch(e){ return new Set(); }
+  }
+  function saveFavs(favs){
+    try{ localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); }catch(e){}
+    try{ if(typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite(FAV_KEY); }catch(e){}
+  }
+
+  // ── Star button installation on every game card ──
+  function cardHref(card){
+    return card.getAttribute('href') || '';
+  }
+  function installStarOnCard(card, favs){
+    // Skip if already has one (in case of re-runs)
+    let star = card.querySelector(':scope > .fav-star');
+    if(!star){
+      star = document.createElement('button');
+      star.type = 'button';
+      star.className = 'fav-star';
+      star.setAttribute('aria-label', 'Toggle favorite');
+      star.textContent = '☆';
+      // Click handler: toggle favorite, don't navigate
+      star.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        const href = cardHref(card);
+        const currentFavs = loadFavs();
+        if(currentFavs.has(href)){
+          currentFavs.delete(href);
+        } else {
+          currentFavs.add(href);
+        }
+        saveFavs(currentFavs);
+        // Update visuals + rebuild favorites section + re-sort (favorite status
+        // affects sort tier so grids need to reshuffle)
+        syncStarsAcross(currentFavs);
+        sortAllGrids(currentFavs);
+        rebuildFavoritesSection(currentFavs);
+      });
+      card.appendChild(star);
+    }
+    const href = cardHref(card);
+    const on = favs.has(href);
+    star.classList.toggle('on', on);
+    star.textContent = on ? '★' : '☆';
+    star.title = on ? 'Remove from favorites' : 'Add to favorites';
+    card.classList.toggle('has-fav', on);
+  }
+
+  function syncStarsAcross(favs){
+    document.querySelectorAll('.game-card').forEach(card => {
+      installStarOnCard(card, favs);
+    });
+  }
+
+  // ── Favorites section rebuild ──
+  function rebuildFavoritesSection(favs){
+    const section = document.getElementById('favorites-section');
+    const grid = document.getElementById('favorites-grid');
+    const count = document.getElementById('favorites-count');
+    if(!section || !grid) return;
+    grid.innerHTML = '';
+    if(!favs.size){
+      section.style.display = 'none';
+      return;
+    }
+    // Gather all original cards (excluding ones already inside favorites grid)
+    const allCards = [...document.querySelectorAll('.game-card')].filter(c => !grid.contains(c));
+    const favCards = allCards.filter(c => favs.has(cardHref(c)));
+    // Dedup by href — only one copy per favorited game (a game might appear
+    // in multiple sections in edge cases)
+    const seenHrefs = new Set();
+    const uniqueFavs = [];
+    for(const c of favCards){
+      const h = cardHref(c);
+      if(seenHrefs.has(h)) continue;
+      seenHrefs.add(h);
+      uniqueFavs.push(c);
+    }
+    // Sort by same rules as everywhere else
+    uniqueFavs.sort(makeCompare(favs));
+    // Clone into the favorites grid — the clones still render a star that
+    // correctly toggles (via event delegation when installStarOnCard runs
+    // on them after insertion)
+    uniqueFavs.forEach(c => {
+      const clone = c.cloneNode(true);
+      // Remove the has-progress marker clone may have inherited; keep things
+      // clean so the favorites grid reflects the current state
+      grid.appendChild(clone);
+    });
+    // Install stars on clones so they can be toggled too
+    grid.querySelectorAll('.game-card').forEach(c => installStarOnCard(c, favs));
+    section.style.display = '';
+    count.textContent = favs.size + ' favorite' + (favs.size !== 1 ? 's' : '');
+  }
+
+  // ── Sort comparator ──
+  function getGameName(card){
+    const n = card.querySelector('.game-name');
+    return (n ? n.textContent : '').trim().toLowerCase();
+  }
+  // 4-tier sort order:
+  //   0: favorited + has history (newest first)
+  //   1: favorited + no history (alphabetical)
+  //   2: not favorited + has history (newest first)
+  //   3: not favorited + no history (alphabetical)
+  function tierFor(card, favs){
+    const isFav = favs.has(cardHref(card));
+    const date = latestHistoryDateFor(cardHref(card));
+    if(isFav)  return date > 0 ? 0 : 1;
+    return date > 0 ? 2 : 3;
+  }
+  function makeCompare(favs){
+    return function(a, b){
+      const ta = tierFor(a, favs);
+      const tb = tierFor(b, favs);
+      if(ta !== tb) return ta - tb;
+      // Within a history-having tier (0 or 2), sort by recency desc.
+      if(ta === 0 || ta === 2){
+        const dateA = latestHistoryDateFor(cardHref(a));
+        const dateB = latestHistoryDateFor(cardHref(b));
+        if(dateA !== dateB) return dateB - dateA;
+      }
+      // Alphabetical as tiebreak / primary sort for no-history tiers.
+      return getGameName(a).localeCompare(getGameName(b));
+    };
+  }
+
+  // ── Sort every grid on the page (except the favorites grid — it rebuilds) ──
+  function sortAllGrids(favs){
+    const cmp = makeCompare(favs);
+    document.querySelectorAll('.games-grid').forEach(grid => {
+      if(grid.id === 'favorites-grid') return;
+      const cards = [...grid.querySelectorAll(':scope > .game-card')];
+      if(!cards.length) return;
+      cards.sort(cmp);
+      cards.forEach(c => grid.appendChild(c));
+    });
+  }
+
+  // ── Bootstrap ──
+  function init(){
+    const favs = loadFavs();
+    syncStarsAcross(favs);
+    sortAllGrids(favs);
+    rebuildFavoritesSection(favs);
+  }
+
+  // Run after DOM ready (pip IIFE runs on DOMContentLoaded too)
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Re-run sort + favs when sync pulls new data from cloud
+  document.addEventListener('fghsync:updated', function(){
+    // Clear cache so recency picks up newly synced gh_ records
+    for(const k in _recencyCache) delete _recencyCache[k];
+    const favs = loadFavs();
+    syncStarsAcross(favs);
+    sortAllGrids(favs);
+    rebuildFavoritesSection(favs);
   });
 })();
 

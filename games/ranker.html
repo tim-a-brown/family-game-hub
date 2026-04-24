@@ -7,241 +7,291 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Game Night">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0d1117">
+<meta name="theme-color" content="#0b0b10">
 <title>Ranker</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../shared.css">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="../sync.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#2a1520 0%,#0d0a12 60%);}
-.rk-wrap{max-width:520px;margin:0 auto;padding:0 12px 60px;}
-
-/* Header */
-.rk-header{text-align:center;margin:4px 0 12px;}
-.rk-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#f5c842;letter-spacing:.02em;line-height:1.1;}
-.rk-sub{font-size:.72rem;color:rgba(255,255,255,.5);margin-top:4px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;}
-
-/* Current list banner */
-.rk-current{
-  display:flex;align-items:center;gap:8px;margin-bottom:12px;
-  background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.3);
-  border-radius:10px;padding:8px 12px;
+:root{
+  --rk-bg:#0b0b10;
+  --rk-card:#17161f;
+  --rk-card-border:rgba(255,255,255,.06);
+  --rk-muted:rgba(255,255,255,.45);
+  --rk-fg:rgba(255,255,255,.92);
+  --rk-gold:#f5c842;
+  --rk-gold-deep:#d4a62e;
 }
-.rk-current-name{
-  flex:1;min-width:0;font-weight:700;color:#fff;font-size:.95rem;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  cursor:pointer;padding:2px 4px;border-radius:4px;
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--rk-bg);color:var(--rk-fg);font-family:Inter,system-ui,sans-serif;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}
+body{padding:0 12px 80px;max-width:520px;margin:0 auto;}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.rk-topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 0 6px;
+}
+.rk-nav-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  height:36px;padding:0 14px;border-radius:10px;
+  background:#1a1a22;border:1px solid rgba(255,255,255,.08);
+  color:var(--rk-fg);font-size:.85rem;font-weight:600;font-family:inherit;
+  text-decoration:none;cursor:pointer;transition:all .12s;
+}
+.rk-nav-pill:hover{background:#22222c;border-color:rgba(255,255,255,.16);}
+.rk-nav-pill:active{transform:scale(.97);}
+.rk-nav-pill .chev{font-size:.75rem;opacity:.7;}
+.rk-topbar-spacer{flex:1;}
+.rk-icon-btn{
+  all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:10px;
+  background:#1a1a22;border:1px solid rgba(255,255,255,.08);
+  color:var(--rk-fg);font-size:1.05rem;transition:all .12s;
+}
+.rk-icon-btn:hover{background:#22222c;border-color:rgba(255,255,255,.16);}
+.rk-icon-btn:active{transform:scale(.93);}
+.rk-icon-btn.has-badge::after{
+  content:"";position:absolute;margin-top:-14px;margin-left:12px;
+  width:7px;height:7px;border-radius:50%;background:var(--rk-gold);
+  box-shadow:0 0 6px rgba(245,200,66,.6);
+}
+
+/* ── Title block ──────────────────────────────────────────── */
+.rk-title-block{padding:18px 2px 14px;}
+.rk-title{
+  margin:0;
+  font-family:'Playfair Display',serif;font-style:italic;font-weight:900;
+  font-size:2.1rem;line-height:1.1;color:var(--rk-gold);
+  letter-spacing:-.01em;
+  cursor:text;padding:2px 4px;border-radius:6px;outline:none;
   transition:background .12s;
 }
-.rk-current-name:hover{background:rgba(236,72,153,.15);}
-.rk-current-name[contenteditable]:focus{outline:none;background:rgba(236,72,153,.2);}
-.rk-current-status{
-  font-size:.65rem;color:rgba(255,255,255,.45);flex-shrink:0;
+.rk-title:hover{background:rgba(245,200,66,.06);}
+.rk-title:focus{background:rgba(245,200,66,.08);}
+.rk-subtitle{
+  display:flex;align-items:center;gap:8px;margin-top:8px;
+  font-size:.78rem;color:var(--rk-muted);font-weight:500;letter-spacing:.01em;
 }
-.rk-current-status.unsaved{color:#fbbf24;}
-.rk-current-status.saved{color:#86efac;}
+.rk-status-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(255,255,255,.3);
+  flex-shrink:0;transition:all .2s;
+}
+.rk-status-dot.unsaved{background:var(--rk-gold);box-shadow:0 0 6px rgba(245,200,66,.6);}
+.rk-status-dot.saved{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.45);}
 
-/* Dedupe toggle */
-.rk-dedupe-bar{
-  display:flex;align-items:center;gap:10px;margin-bottom:10px;
-  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
-  border-radius:10px;padding:8px 12px;
-  font-size:.78rem;color:rgba(255,255,255,.7);
-}
-.rk-dedupe-bar .lbl{flex:1;min-width:0;}
-.rk-toggle{
-  position:relative;width:36px;height:20px;border-radius:12px;
-  background:rgba(255,255,255,.15);cursor:pointer;transition:background .18s;
-  flex-shrink:0;
-}
-.rk-toggle.on{background:linear-gradient(135deg,#f5c842,#d4a62e);}
-.rk-toggle::after{
-  content:"";position:absolute;top:2px;left:2px;
-  width:16px;height:16px;border-radius:50%;
-  background:#fff;transition:transform .18s;
-}
-.rk-toggle.on::after{transform:translateX(16px);}
-
-/* Dedupe warning banner */
+/* ── Duplicate banner ─────────────────────────────────────── */
 .rk-dupe-banner{
-  background:linear-gradient(135deg,rgba(251,191,36,.15),rgba(251,146,60,.1));
-  border:1px solid rgba(251,191,36,.4);border-radius:10px;
-  padding:10px 12px;margin-bottom:10px;font-size:.82rem;
-  display:flex;align-items:flex-start;gap:8px;
+  display:flex;align-items:flex-start;gap:9px;
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.28);
+  border-radius:10px;padding:10px 12px;margin:0 0 12px;
+  font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.82);
 }
-.rk-dupe-icon{flex-shrink:0;font-size:1rem;line-height:1.2;}
-.rk-dupe-body{flex:1;min-width:0;line-height:1.45;color:rgba(255,255,255,.85);}
-.rk-dupe-body b{color:#fbbf24;}
+.rk-dupe-icon{flex-shrink:0;font-size:.95rem;}
+.rk-dupe-body{flex:1;min-width:0;}
+.rk-dupe-body b{color:#fbbf24;font-weight:700;}
 .rk-dupe-dismiss{
   all:unset;cursor:pointer;flex-shrink:0;
   color:rgba(255,255,255,.35);font-size:1rem;padding:0 2px;
 }
 .rk-dupe-dismiss:hover{color:#fff;}
 
-/* List */
-.rk-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;position:relative;}
+/* ── List ─────────────────────────────────────────────────── */
+.rk-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
 .rk-row{
-  display:flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-  border-radius:12px;padding:10px 10px 10px 6px;
-  transition:all .18s cubic-bezier(.22,1,.36,1);touch-action:manipulation;
+  display:flex;align-items:center;gap:4px;
+  background:var(--rk-card);border:1px solid var(--rk-card-border);
+  border-radius:12px;padding:12px 12px 12px 8px;
+  position:relative;overflow:hidden;
+  transition:all .18s cubic-bezier(.22,1,.36,1);
+  touch-action:manipulation;
 }
 .rk-row.dragging{
-  background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.5);
-  box-shadow:0 8px 24px rgba(0,0,0,.4);transform:scale(1.02);z-index:10;position:relative;
+  background:#1f1e2a;border-color:rgba(245,200,66,.35);
+  box-shadow:0 8px 24px rgba(0,0,0,.5);transform:scale(1.02);z-index:10;
 }
-.rk-row.drop-target-above{border-top:2px solid #f5c842;}
-.rk-row.drop-target-below{border-bottom:2px solid #f5c842;}
+.rk-row.drop-target-above{border-top:2px solid var(--rk-gold);}
+.rk-row.drop-target-below{border-bottom:2px solid var(--rk-gold);}
 .rk-row.is-duplicate{
-  border-color:rgba(251,191,36,.45);
-  background:rgba(251,191,36,.06);
+  border-color:rgba(251,191,36,.35);
+  background:rgba(251,191,36,.04);
 }
-.rk-handle{
-  flex-shrink:0;width:28px;height:36px;
-  display:flex;align-items:center;justify-content:center;
-  cursor:grab;color:rgba(255,255,255,.35);font-size:1.1rem;line-height:1;user-select:none;touch-action:none;
-}
-.rk-handle:active{cursor:grabbing;color:#f5c842;}
-.rk-handle::before{content:"⋮⋮";letter-spacing:-2px;}
-.rk-rank{
-  flex-shrink:0;width:34px;text-align:right;
-  font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;font-style:italic;
-  color:#f5c842;letter-spacing:-.03em;line-height:1;
-  animation:rankPop .36s cubic-bezier(.22,1,.36,1);
-}
-@keyframes rankPop{
-  0%{transform:translateY(-4px) scale(.8);opacity:.4;}
-  60%{transform:translateY(1px) scale(1.08);opacity:1;}
-  100%{transform:translateY(0) scale(1);opacity:1;}
-}
-.rk-name{
-  flex:1;min-width:0;font-size:.98rem;font-weight:500;color:#fff;line-height:1.3;padding:0 4px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-.rk-name[contenteditable]:focus{outline:none;background:rgba(245,200,66,.08);border-radius:6px;padding:2px 6px;}
-.rk-dupe-badge{
-  flex-shrink:0;background:rgba(251,191,36,.2);color:#fbbf24;
-  font-size:.58rem;font-weight:800;padding:2px 6px;border-radius:4px;
-  letter-spacing:.05em;text-transform:uppercase;
-}
-.rk-arrows{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
-.rk-arrow{
-  all:unset;cursor:pointer;width:24px;height:18px;border-radius:4px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:.7rem;color:rgba(255,255,255,.4);background:rgba(255,255,255,.04);transition:all .12s;
-}
-.rk-arrow:hover{color:#f5c842;background:rgba(245,200,66,.12);}
-.rk-arrow:active{transform:scale(.88);}
-.rk-arrow.disabled{opacity:.25;pointer-events:none;}
-.rk-del{
-  all:unset;cursor:pointer;flex-shrink:0;width:28px;height:28px;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
-  color:rgba(255,255,255,.3);font-size:.95rem;transition:all .12s;
-}
-.rk-del:hover{color:#f87171;background:rgba(248,113,113,.12);}
-
-/* Sub-hint label in dedupe bar */
-.rk-sub-hint{font-size:.65rem;color:rgba(255,255,255,.35);font-weight:400;letter-spacing:0;text-transform:none;margin-left:2px;}
-
-/* Swipe-to-delete affordance */
-.rk-row{position:relative;overflow:hidden;}
 .rk-row.swiping{transition:none;}
-.rk-row-content{
-  display:contents;
-}
 .rk-row-swipe-bg{
   position:absolute;top:0;right:0;bottom:0;
   display:flex;align-items:center;justify-content:flex-end;
-  padding-right:16px;gap:8px;
-  background:linear-gradient(90deg,transparent 0%,rgba(248,113,113,.18) 25%,rgba(248,113,113,.35) 100%);
-  color:#f87171;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  padding-right:18px;
+  background:linear-gradient(90deg,transparent 0%,rgba(248,113,113,.15) 25%,rgba(248,113,113,.32) 100%);
+  color:#f87171;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   pointer-events:none;opacity:0;transition:opacity .12s;
   z-index:0;
 }
 .rk-row.swipe-hint .rk-row-swipe-bg{opacity:1;}
-.rk-row-swipe-bg::before{
-  content:"← Swipe to delete";
-}
+.rk-row-swipe-bg::before{content:"← Swipe to delete";}
 .rk-row.swipe-active .rk-row-swipe-bg{opacity:1;}
-.rk-row.swipe-active .rk-row-swipe-bg::before{
-  content:"🗑 Delete";color:#fca5a5;
-}
+.rk-row.swipe-active .rk-row-swipe-bg::before{content:"🗑 Delete";color:#fca5a5;}
 .rk-row > *:not(.rk-row-swipe-bg){position:relative;z-index:1;}
 
+/* Drag handle — six-dot grip */
+.rk-handle{
+  flex-shrink:0;width:24px;height:38px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:grab;color:rgba(255,255,255,.28);
+  user-select:none;touch-action:none;
+}
+.rk-handle:active{cursor:grabbing;color:rgba(245,200,66,.7);}
+.rk-handle svg{display:block;}
+
+/* Rank number */
+.rk-rank{
+  flex-shrink:0;min-width:28px;text-align:center;
+  font-family:'Playfair Display',serif;font-style:italic;font-weight:700;
+  font-size:1.15rem;color:var(--rk-gold);letter-spacing:-.01em;
+  animation:rankPop .32s cubic-bezier(.22,1,.36,1);
+}
+@keyframes rankPop{
+  0%{transform:scale(.8);opacity:.3;}
+  60%{transform:scale(1.1);opacity:1;}
+  100%{transform:scale(1);opacity:1;}
+}
+
+.rk-name{
+  flex:1;min-width:0;padding:0 8px;
+  font-size:.95rem;font-weight:500;color:#f5f5f7;
+  line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.rk-name[contenteditable]:focus{
+  outline:none;background:rgba(245,200,66,.08);border-radius:6px;padding:2px 6px;
+}
+.rk-dupe-badge{
+  flex-shrink:0;background:rgba(251,191,36,.18);color:#fbbf24;
+  font-size:.58rem;font-weight:800;padding:2px 6px;border-radius:4px;
+  letter-spacing:.06em;text-transform:uppercase;margin-right:4px;
+}
+
+/* Edit-mode affordances — appear only when editMode is on */
+.rk-arrows{display:none;flex-direction:column;gap:2px;flex-shrink:0;margin-right:4px;}
+.rk-row.edit-on .rk-arrows{display:flex;}
+.rk-arrow{
+  all:unset;cursor:pointer;width:24px;height:18px;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;color:rgba(255,255,255,.4);
+  background:rgba(255,255,255,.04);transition:all .12s;
+}
+.rk-arrow:hover{color:var(--rk-gold);background:rgba(245,200,66,.12);}
+.rk-arrow:active{transform:scale(.88);}
+.rk-arrow.disabled{opacity:.25;pointer-events:none;}
+.rk-del{display:none;}
+.rk-row.edit-on .rk-del{
+  display:flex;all:unset;cursor:pointer;flex-shrink:0;
+  width:28px;height:28px;border-radius:6px;
+  align-items:center;justify-content:center;
+  color:rgba(255,255,255,.35);font-size:.9rem;
+  transition:all .12s;
+}
+.rk-row.edit-on .rk-del:hover{color:#f87171;background:rgba(248,113,113,.12);}
+
+/* Empty state */
 .rk-empty{
-  text-align:center;padding:30px 20px;color:rgba(255,255,255,.35);font-size:.88rem;
-  border:1px dashed rgba(255,255,255,.12);border-radius:12px;
+  text-align:center;padding:40px 20px;color:rgba(255,255,255,.35);font-size:.88rem;
+  border:1px dashed rgba(255,255,255,.1);border-radius:12px;
 }
 
-/* Add row */
-.rk-add{display:flex;gap:8px;margin-bottom:12px;}
+/* ── Add row ─────────────────────────────────────────────── */
+.rk-add{
+  display:flex;gap:8px;margin-bottom:10px;
+}
 .rk-add input{
-  flex:1;min-width:0;box-sizing:border-box;padding:11px 14px;border-radius:10px;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
-  color:#fff;font-size:.95rem;font-family:Inter,sans-serif;outline:none;
+  flex:1;min-width:0;
+  padding:12px 14px;border-radius:10px;
+  background:#17161f;border:1px solid rgba(255,255,255,.08);
+  color:var(--rk-fg);font-size:.92rem;font-family:inherit;outline:none;
+  transition:all .12s;
 }
-.rk-add input:focus{border-color:rgba(245,200,66,.5);background:rgba(245,200,66,.05);}
-.rk-add input.warn-dupe{border-color:rgba(251,191,36,.6);background:rgba(251,191,36,.08);}
+.rk-add input::placeholder{color:rgba(255,255,255,.3);}
+.rk-add input:focus{border-color:rgba(245,200,66,.35);background:#1c1b26;}
+.rk-add input.warn-dupe{border-color:rgba(251,191,36,.6);background:rgba(251,191,36,.06);}
 .rk-add button{
-  all:unset;cursor:pointer;flex-shrink:0;padding:11px 18px;border-radius:10px;
-  background:linear-gradient(135deg,#f5c842,#d4a62e);color:#2a1a00;
-  font-weight:800;font-size:.88rem;transition:filter .12s;
+  all:unset;cursor:pointer;flex-shrink:0;
+  padding:0 22px;height:auto;min-height:44px;border-radius:10px;
+  background:#1a1a22;border:1px solid rgba(245,200,66,.4);
+  color:var(--rk-gold);font-weight:700;font-size:.9rem;
+  transition:all .12s;
 }
-.rk-add button:hover{filter:brightness(1.08);}
-.rk-add button:disabled{opacity:.35;cursor:default;filter:grayscale(.4);}
+.rk-add button:hover{background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.65);}
+.rk-add button:active{transform:scale(.96);}
+.rk-add button:disabled{opacity:.35;cursor:default;border-color:rgba(255,255,255,.08);color:rgba(255,255,255,.3);}
 
-/* Input dupe suggestion */
+/* Inline suggestion (dupe detected on input) */
 .rk-input-suggest{
-  background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);
-  border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:rgba(255,255,255,.85);
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.28);
+  border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:.8rem;color:rgba(255,255,255,.85);
   display:flex;align-items:center;gap:8px;
 }
 .rk-input-suggest b{color:#fbbf24;}
 .rk-input-suggest .actions{margin-left:auto;display:flex;gap:6px;flex-shrink:0;}
 .rk-input-suggest button{
-  all:unset;cursor:pointer;padding:4px 10px;border-radius:6px;font-size:.72rem;font-weight:700;
+  all:unset;cursor:pointer;padding:5px 10px;border-radius:6px;font-size:.72rem;font-weight:700;
   transition:all .12s;
 }
-.rk-input-suggest .skip-btn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);}
-.rk-input-suggest .skip-btn:hover{background:rgba(255,255,255,.14);}
-.rk-input-suggest .add-btn{background:rgba(251,191,36,.25);color:#fbbf24;}
-.rk-input-suggest .add-btn:hover{background:rgba(251,191,36,.4);}
+.rk-input-suggest .skip-btn{background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);}
+.rk-input-suggest .skip-btn:hover{background:rgba(255,255,255,.12);}
+.rk-input-suggest .add-btn{background:rgba(251,191,36,.2);color:#fbbf24;}
+.rk-input-suggest .add-btn:hover{background:rgba(251,191,36,.32);}
 
-/* Footer actions */
-.rk-footer{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
-.rk-footer button{
-  all:unset;cursor:pointer;text-align:center;padding:10px 0;border-radius:10px;
-  font-size:.78rem;font-weight:700;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.75);
+/* ── Bottom action bar ───────────────────────────────────── */
+.rk-footer{
+  display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px;
+}
+.rk-save-btn{
+  all:unset;cursor:pointer;text-align:center;
+  padding:14px 0;border-radius:12px;
+  background:linear-gradient(135deg,#f5c842,#d4a62e);color:#2a1a00;
+  font-weight:800;font-size:1rem;letter-spacing:-.01em;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .12s;
+  box-shadow:0 3px 14px rgba(245,200,66,.22);
+}
+.rk-save-btn:hover{filter:brightness(1.06);}
+.rk-save-btn:active{transform:scale(.98);}
+.rk-save-btn.disabled{
+  opacity:.45;pointer-events:none;filter:grayscale(.25);
+}
+.rk-save-btn.saved-flash{
+  background:linear-gradient(135deg,#4ade80,#22c55e);color:#052e16;
+}
+.rk-save-btn svg{width:18px;height:18px;}
+.rk-overflow-btn{
+  all:unset;cursor:pointer;
+  min-height:48px;padding:0 16px;border-radius:12px;
+  background:#1a1a22;border:1px solid rgba(255,255,255,.1);
+  color:var(--rk-fg);font-size:1.15rem;font-weight:700;letter-spacing:2px;
+  display:flex;align-items:center;justify-content:center;
   transition:all .12s;
 }
-.rk-footer button:hover{background:rgba(255,255,255,.12);color:#fff;}
-.rk-footer .primary{
-  background:linear-gradient(135deg,rgba(245,200,66,.2),rgba(245,200,66,.08));
-  border-color:rgba(245,200,66,.4);color:#f5c842;
-}
-.rk-footer .primary:hover{background:linear-gradient(135deg,rgba(245,200,66,.3),rgba(245,200,66,.15));}
+.rk-overflow-btn:hover{background:#22222c;border-color:rgba(255,255,255,.2);}
+.rk-overflow-btn:active{transform:scale(.94);}
 
-/* Modal */
+/* ── Modal scaffolding ───────────────────────────────────── */
 .rk-modal-overlay{
-  position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.82);backdrop-filter:blur(4px);
+  position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;padding:20px;
 }
 .rk-modal-overlay.show{display:flex;}
 .rk-modal{
-  width:100%;max-width:440px;max-height:86vh;overflow:hidden;
+  width:100%;max-width:420px;max-height:86vh;overflow:hidden;
   display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#1c1420,#100a14);
-  border:1px solid rgba(245,200,66,.3);border-radius:16px;
+  background:linear-gradient(180deg,#1a1a24,#111118);
+  border:1px solid rgba(255,255,255,.08);border-radius:16px;
   box-shadow:0 20px 60px rgba(0,0,0,.7);
   animation:popin .22s cubic-bezier(.34,1.56,.64,1) both;
 }
 @keyframes popin{from{transform:scale(.92);opacity:0;}to{transform:scale(1);opacity:1;}}
 .rk-modal-head{
   display:flex;align-items:center;justify-content:space-between;
-  padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08);
+  padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.06);
 }
-.rk-modal-title{font-family:'Playfair Display',serif;font-weight:900;font-size:1.2rem;color:#f5c842;}
+.rk-modal-title{font-family:'Playfair Display',serif;font-style:italic;font-weight:700;font-size:1.2rem;color:var(--rk-gold);}
 .rk-modal-x{
   all:unset;cursor:pointer;width:28px;height:28px;border-radius:50%;
   background:rgba(255,255,255,.08);color:#fff;
@@ -249,43 +299,91 @@ body{background:radial-gradient(ellipse at 50% 0%,#2a1520 0%,#0d0a12 60%);}
 }
 .rk-modal-x:hover{background:rgba(255,255,255,.16);}
 .rk-modal-body{padding:14px 18px;overflow-y:auto;flex:1;}
-.rk-modal-foot{padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px;justify-content:flex-end;}
+.rk-modal-foot{padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px;justify-content:flex-end;}
 .rk-modal-foot button{
   all:unset;cursor:pointer;padding:9px 18px;border-radius:9px;font-size:.88rem;font-weight:700;transition:all .12s;
 }
 .rk-modal-foot .btn-primary{background:linear-gradient(135deg,#f5c842,#d4a62e);color:#2a1a00;}
 .rk-modal-foot .btn-primary:hover{filter:brightness(1.08);}
 .rk-modal-foot .btn-primary.copied{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;}
-.rk-modal-foot .btn-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);}
-.rk-modal-foot .btn-secondary:hover{background:rgba(255,255,255,.14);color:#fff;}
+.rk-modal-foot .btn-secondary{background:rgba(255,255,255,.06);color:rgba(255,255,255,.82);}
+.rk-modal-foot .btn-secondary:hover{background:rgba(255,255,255,.12);color:#fff;}
+
+/* Settings toggle rows */
+.rk-setting{
+  display:flex;align-items:center;gap:12px;padding:10px 0;
+  border-top:1px solid rgba(255,255,255,.05);
+}
+.rk-setting:first-child{border-top:none;}
+.rk-setting-body{flex:1;min-width:0;}
+.rk-setting-title{font-size:.95rem;font-weight:600;color:var(--rk-fg);}
+.rk-setting-desc{font-size:.72rem;color:var(--rk-muted);margin-top:2px;line-height:1.45;}
+.rk-toggle{
+  position:relative;width:40px;height:22px;border-radius:14px;
+  background:rgba(255,255,255,.14);cursor:pointer;transition:background .18s;
+  flex-shrink:0;
+}
+.rk-toggle.on{background:linear-gradient(135deg,#f5c842,#d4a62e);}
+.rk-toggle::after{
+  content:"";position:absolute;top:2px;left:2px;
+  width:18px;height:18px;border-radius:50%;
+  background:#fff;transition:transform .18s;
+}
+.rk-toggle.on::after{transform:translateX(18px);}
+
+/* Overflow menu popover */
+.rk-popover-overlay{
+  position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.4);
+  display:none;
+}
+.rk-popover-overlay.show{display:block;}
+.rk-popover{
+  position:fixed;bottom:84px;right:14px;z-index:95;
+  background:#1a1a22;border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:6px;min-width:200px;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  animation:popoverIn .18s cubic-bezier(.22,1,.36,1);
+}
+@keyframes popoverIn{from{transform:translateY(6px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.rk-popover button{
+  all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;
+  width:100%;padding:9px 12px;border-radius:8px;
+  font-size:.86rem;color:var(--rk-fg);
+  transition:background .12s;
+}
+.rk-popover button:hover{background:rgba(255,255,255,.06);}
+.rk-popover button.danger{color:#fca5a5;}
+.rk-popover button.danger:hover{background:rgba(248,113,113,.1);}
+.rk-popover button .icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
+.rk-popover .sep{border-top:1px solid rgba(255,255,255,.06);margin:4px 0;}
 
 /* Export textarea */
 .rk-export-ta{
-  width:100%;box-sizing:border-box;min-height:200px;max-height:40vh;
+  width:100%;min-height:200px;max-height:40vh;
   padding:12px;border-radius:8px;
-  background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);color:#fff;
+  background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);color:#fff;
   font-family:'SF Mono',Monaco,monospace;font-size:.85rem;resize:vertical;line-height:1.5;
 }
 
-/* Saved lists drawer */
+/* My Lists */
 .rk-lists{display:flex;flex-direction:column;gap:6px;}
 .rk-list-row{
-  display:flex;align-items:center;gap:8px;padding:10px 12px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;
+  display:flex;align-items:center;gap:8px;padding:11px 12px;
+  background:#17161f;border:1px solid rgba(255,255,255,.06);border-radius:10px;
   cursor:pointer;transition:all .12s;
 }
-.rk-list-row:hover{background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
-.rk-list-row.active{background:rgba(236,72,153,.12);border-color:rgba(236,72,153,.4);}
+.rk-list-row:hover{background:#1d1c28;border-color:rgba(245,200,66,.25);}
+.rk-list-row.active{background:rgba(245,200,66,.07);border-color:rgba(245,200,66,.35);}
 .rk-list-info{flex:1;min-width:0;}
-.rk-list-name{font-weight:700;color:#fff;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rk-list-meta{font-size:.68rem;color:rgba(255,255,255,.4);margin-top:2px;}
+.rk-list-name{font-weight:700;color:#fff;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Playfair Display',serif;font-style:italic;color:var(--rk-gold);}
+.rk-list-meta{font-size:.68rem;color:var(--rk-muted);margin-top:2px;}
 .rk-list-actions{display:flex;gap:4px;flex-shrink:0;}
 .rk-list-actions button{
   all:unset;cursor:pointer;width:28px;height:28px;border-radius:6px;
   display:flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.4);font-size:.9rem;transition:all .12s;
 }
-.rk-list-actions button:hover{color:#fff;background:rgba(255,255,255,.1);}
+.rk-list-actions button:hover{color:#fff;background:rgba(255,255,255,.08);}
 .rk-list-actions .del:hover{color:#f87171;background:rgba(248,113,113,.12);}
 .rk-lists-empty{
   text-align:center;padding:28px 12px;color:rgba(255,255,255,.4);font-size:.88rem;line-height:1.5;
@@ -294,87 +392,74 @@ body{background:radial-gradient(ellipse at 50% 0%,#2a1520 0%,#0d0a12 60%);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Ranker</span>
-</nav>
-<div class="page" style="padding:12px 0 60px;">
-<div class="rk-wrap">
-  <div class="rk-header">
-    <div class="rk-title">Ranker</div>
-    <div class="rk-sub">Drag to rank · Tap to edit</div>
-  </div>
 
-  <!-- Current list status bar -->
-  <div class="rk-current" id="rk-current">
-    <div class="rk-current-name" id="rk-current-name">Untitled</div>
-    <div class="rk-current-status" id="rk-current-status">Draft</div>
-  </div>
-
-  <!-- Mode toggles -->
-  <div class="rk-dedupe-bar">
-    <span class="lbl">🔍 Fuzzy duplicate detection</span>
-    <div class="rk-toggle" id="rk-dedupe-toggle" role="switch" tabindex="0" aria-label="Toggle duplicate detection"></div>
-  </div>
-  <div class="rk-dedupe-bar">
-    <span class="lbl">✏️ Edit mode <span class="rk-sub-hint" id="rk-edit-hint">· swipe left or tap × to delete (with confirm)</span></span>
-    <div class="rk-toggle" id="rk-edit-toggle" role="switch" tabindex="0" aria-label="Toggle quick-edit mode"></div>
-  </div>
-
-  <!-- Add row -->
-  <div class="rk-add">
-    <input type="text" id="rk-new" placeholder="Add an item…" maxlength="120" autocomplete="off">
-    <button type="button" id="rk-add-btn" disabled>Add</button>
-  </div>
-
-  <!-- Inline suggestion when input matches an existing item -->
-  <div id="rk-input-suggest-host"></div>
-
-  <!-- Duplicate warning banner shown when list contains dupes -->
-  <div id="rk-dupe-banner-host"></div>
-
-  <!-- The list itself -->
-  <div class="rk-list" id="rk-list"></div>
-
-  <!-- Footer actions -->
-  <div class="rk-footer">
-    <button type="button" id="rk-save-btn" class="primary">💾 Save</button>
-    <button type="button" id="rk-mylists-btn">📚 My Lists</button>
-    <button type="button" id="rk-shuffle-btn">🔀 Shuffle</button>
-    <button type="button" id="rk-export-btn">📋 Export</button>
-  </div>
-</div>
+<!-- ── Top bar ─────────────────────────────────────── -->
+<div class="rk-topbar">
+  <a class="rk-nav-pill" href="../index.html"><span class="chev">‹</span> Home</a>
+  <button class="rk-nav-pill" id="rk-mylists-btn" type="button">My lists</button>
+  <div class="rk-topbar-spacer"></div>
+  <button class="rk-icon-btn" id="rk-settings-btn" type="button" aria-label="Settings">⚙</button>
 </div>
 
-<!-- Modal scaffolding (content swapped per dialog) -->
+<!-- ── Title + status ──────────────────────────────── -->
+<div class="rk-title-block">
+  <h1 class="rk-title" id="rk-title" contenteditable="true" spellcheck="false">Untitled</h1>
+  <div class="rk-subtitle">
+    <span class="rk-status-dot" id="rk-status-dot"></span>
+    <span id="rk-status-text">Draft</span>
+  </div>
+</div>
+
+<!-- ── Dup banner / list / add / footer ──────────────── -->
+<div id="rk-dupe-banner-host"></div>
+<div class="rk-list" id="rk-list"></div>
+
+<div class="rk-add">
+  <input type="text" id="rk-new" placeholder="Add an item…" maxlength="120" autocomplete="off">
+  <button type="button" id="rk-add-btn" disabled>Add</button>
+</div>
+<div id="rk-input-suggest-host"></div>
+
+<div class="rk-footer">
+  <button class="rk-save-btn" id="rk-save-btn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <polyline points="17 21 17 13 7 13 7 21"/>
+      <polyline points="7 3 7 8 15 8"/>
+    </svg>
+    <span id="rk-save-btn-label">Save list</span>
+  </button>
+  <button class="rk-overflow-btn" id="rk-overflow-btn" type="button" aria-label="More actions">⋯</button>
+</div>
+
+<!-- ── Modal scaffolding ─────────────────────────────── -->
 <div class="rk-modal-overlay" id="rk-modal-overlay">
   <div class="rk-modal" id="rk-modal"></div>
 </div>
+
+<!-- ── Overflow popover ──────────────────────────────── -->
+<div class="rk-popover-overlay" id="rk-popover-overlay"></div>
+<div class="rk-popover" id="rk-popover" style="display:none;"></div>
 
 <script>
 'use strict';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Ranker — drag/drop, saved lists (per PIN via rklists), fuzzy dedup.
-//
-// Storage shape:
-//   localStorage.rklists = { lists: [ {id, name, items, _modifiedAt, _createdAt} ] }
-//   localStorage.ranker_current = { id, items, name, unsaved:bool, dedupe:bool }
-// Sync: sync.js now handles `rklists` as a first-class top-level collection,
-// so all saved lists cloud-sync under the active PIN automatically.
+// Ranker — drag/drop, saved lists (per PIN via rklists), fuzzy dedup,
+// edit-mode toggle, swipe-to-delete.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const STORAGE_KEY_LISTS   = 'rklists';
 const STORAGE_KEY_CURRENT = 'ranker_current';
 
 let state = {
-  id: null,           // null = unsaved draft; set when loaded or saved
+  id: null,
   name: 'Untitled',
   items: [],
-  unsaved: false,     // whether draft has unsaved changes vs saved version
-  dedupe: true,       // fuzzy dedup enabled by default
-  editMode: false,    // when on, deletes skip confirm (quick edit mode)
-  dismissedDupes: {}, // { normKey: true } — user-dismissed duplicate warnings
+  unsaved: false,
+  dedupe: true,
+  editMode: false,
+  dismissedDupes: {},
 };
 let nextItemId = 1;
 
@@ -409,25 +494,20 @@ function newId(){ return 'rk_' + Date.now().toString(36) + '_' + Math.random().t
 // ─────────────────────────────────────────────────────────────────────────────
 // Fuzzy duplicate detection
 // ─────────────────────────────────────────────────────────────────────────────
-// Normalize for comparison: lowercase, strip (year), (parenthetical),
-// remove leading articles (the, a, an), collapse whitespace, remove punctuation.
 function normalizeForCompare(s){
   if(!s) return '';
   let out = String(s).toLowerCase();
-  out = out.replace(/\([^)]*\)/g, ' ');            // drop parenthetical
-  out = out.replace(/\[[^\]]*\]/g, ' ');           // drop bracketed
-  out = out.replace(/[^a-z0-9\s]+/g, ' ');         // strip punctuation
+  out = out.replace(/\([^)]*\)/g, ' ');
+  out = out.replace(/\[[^\]]*\]/g, ' ');
+  out = out.replace(/[^a-z0-9\s]+/g, ' ');
   out = out.replace(/\s+/g, ' ').trim();
-  out = out.replace(/^(the|a|an)\s+/, '');         // drop leading article
+  out = out.replace(/^(the|a|an)\s+/, '');
   return out;
 }
-
-// Levenshtein distance (for near-miss matching)
 function editDistance(a, b){
   if(a === b) return 0;
   if(!a.length) return b.length;
   if(!b.length) return a.length;
-  // Space-optimized DP
   let prev = new Array(b.length + 1);
   let cur  = new Array(b.length + 1);
   for(let j = 0; j <= b.length; j++) prev[j] = j;
@@ -441,38 +521,22 @@ function editDistance(a, b){
   }
   return prev[b.length];
 }
-
-// Return a similarity score 0..1 between two strings (higher = more similar).
 function similarity(a, b){
   if(!a.length || !b.length) return 0;
-  const maxLen = Math.max(a.length, b.length);
-  const dist = editDistance(a, b);
-  return 1 - dist / maxLen;
+  return 1 - editDistance(a, b) / Math.max(a.length, b.length);
 }
-
-// Decide whether two normalized strings are "fuzzy duplicates".
-// Strategy:
-//   1. Exact match on normalized form → yes
-//   2. One contains the other as a whole word → yes (e.g. "Matrix" vs "The Matrix (1999)")
-//   3. Edit-distance similarity > 0.85 for longer strings → yes
 function isFuzzyDup(aRaw, bRaw){
   const a = normalizeForCompare(aRaw);
   const b = normalizeForCompare(bRaw);
   if(!a || !b) return false;
   if(a === b) return true;
-  // Substring containment (only accept if shorter is ≥3 chars to avoid false positives)
   if(a.length >= 3 && b.length >= 3){
     if(b.indexOf(a) >= 0 || a.indexOf(b) >= 0) return true;
   }
-  // Edit distance similarity, with length-sensitive threshold
-  // Short strings (<6 chars) need near-exact match; longer strings can tolerate more noise
   const sim = similarity(a, b);
   const threshold = Math.max(a.length, b.length) >= 8 ? 0.82 : 0.90;
   return sim >= threshold;
 }
-
-// Return array of duplicate-group arrays. Each group is [{idx, item}, ...]
-// Only items in groups of 2+ appear.
 function findDuplicateGroups(items){
   const groups = [];
   const assigned = new Array(items.length).fill(-1);
@@ -491,7 +555,6 @@ function findDuplicateGroups(items){
   }
   return groups;
 }
-
 function findMatchAgainstList(newName, items){
   for(let i = 0; i < items.length; i++){
     if(isFuzzyDup(newName, items[i].name)) return items[i];
@@ -503,21 +566,15 @@ function findMatchAgainstList(newName, items){
 // State mutations
 // ─────────────────────────────────────────────────────────────────────────────
 function markDirty(){
-  state.unsaved = !!state.id;   // only mark dirty if tracking a saved list
+  state.unsaved = !!state.id;
   saveCurrent();
-}
-
-function setCurrentName(name){
-  const trimmed = (name||'').trim() || 'Untitled';
-  state.name = trimmed;
-  markDirty();
-  render();
 }
 
 function addItem(name){
   const trimmed = (name||'').trim();
   if(!trimmed) return;
   state.items.push({ id: nextItemId++, name: trimmed });
+  if(!state.id) state.unsaved = true;  // mark draft as dirty too
   markDirty();
   render();
 }
@@ -530,6 +587,7 @@ function deleteItem(id, opts){
     if(!confirm(`Delete "${it.name}"?`)) return;
   }
   state.items = state.items.filter(x => x.id !== id);
+  if(!state.id) state.unsaved = true;
   markDirty();
   render();
 }
@@ -539,6 +597,7 @@ function renameItem(id, newName){
   const it = state.items.find(x => x.id === id);
   if(!it || !trimmed || it.name === trimmed) return;
   it.name = trimmed;
+  if(!state.id) state.unsaved = true;
   markDirty();
   render();
 }
@@ -549,6 +608,7 @@ function moveItem(id, delta){
   const target = idx + delta;
   if(target < 0 || target >= state.items.length) return;
   [state.items[idx], state.items[target]] = [state.items[target], state.items[idx]];
+  if(!state.id) state.unsaved = true;
   markDirty();
   render();
 }
@@ -557,6 +617,7 @@ function reorder(fromIdx, toIdx){
   if(fromIdx === toIdx) return;
   const [moved] = state.items.splice(fromIdx, 1);
   state.items.splice(toIdx, 0, moved);
+  if(!state.id) state.unsaved = true;
   markDirty();
   render();
 }
@@ -566,19 +627,36 @@ function shuffleItems(){
     const j = Math.floor(Math.random() * (i + 1));
     [state.items[i], state.items[j]] = [state.items[j], state.items[i]];
   }
+  if(!state.id) state.unsaved = true;
+  markDirty();
+  render();
+}
+
+function clearAll(){
+  if(!state.items.length) return;
+  if(!confirm('Clear all items from this list?')) return;
+  state.items = [];
+  if(!state.id) state.unsaved = true;
   markDirty();
   render();
 }
 
 function newList(){
-  state = { id:null, name:'Untitled', items:[], unsaved:false, dedupe: state.dedupe, dismissedDupes:{} };
+  state = { id:null, name:'Untitled', items:[], unsaved:false, dedupe: state.dedupe, editMode: state.editMode, dismissedDupes:{} };
   nextItemId = 1;
   saveCurrent();
   render();
 }
 
+function setCurrentName(name){
+  const trimmed = (name||'').trim() || 'Untitled';
+  state.name = trimmed;
+  if(!state.id) state.unsaved = true;
+  markDirty();
+  render();
+}
+
 function saveCurrentList(){
-  // Either update existing (by id) or prompt for a name and create new
   const lists = loadLists();
   if(state.id){
     const existing = lists.find(l => l.id === state.id);
@@ -590,11 +668,11 @@ function saveCurrentList(){
       state.unsaved = false;
       saveCurrent();
       render();
-      flashStatus('Saved ✓');
+      flashSaved();
       return;
     }
   }
-  // New save — prompt for name if still "Untitled"
+  // New save — if still Untitled, prompt
   let name = state.name;
   if(!name || name === 'Untitled'){
     const chosen = prompt('Name this list:', state.items.length ? 'My List' : '');
@@ -616,15 +694,13 @@ function saveCurrentList(){
   state.unsaved = false;
   saveCurrent();
   render();
-  flashStatus('Saved ✓');
+  flashSaved();
 }
 
 function loadList(id){
-  // Before switching, stash current as a draft if it's truly unsaved new work
   const lists = loadLists();
   const list = lists.find(l => l.id === id);
   if(!list) return;
-  // Firestore may return `items` as an object-keyed map; coerce back to array
   let itemsArr = list.items;
   if(!Array.isArray(itemsArr) && itemsArr && typeof itemsArr === 'object'){
     const keys = Object.keys(itemsArr);
@@ -679,17 +755,17 @@ function renameList(id){
   render();
 }
 
-// Brief transient status flash
-let _flashTimer = null;
-function flashStatus(msg){
-  const el = document.getElementById('rk-current-status');
-  if(!el) return;
-  const prev = el.textContent;
-  const prevCls = el.className;
-  el.textContent = msg;
-  el.className = 'rk-current-status saved';
-  if(_flashTimer) clearTimeout(_flashTimer);
-  _flashTimer = setTimeout(() => { render(); }, 1400);
+function flashSaved(){
+  const btn = document.getElementById('rk-save-btn');
+  if(!btn) return;
+  btn.classList.add('saved-flash');
+  const label = document.getElementById('rk-save-btn-label');
+  const prevLabel = label ? label.textContent : null;
+  if(label) label.textContent = 'Saved ✓';
+  setTimeout(() => {
+    btn.classList.remove('saved-flash');
+    render();  // restores correct button label based on state
+  }, 1400);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -701,36 +777,57 @@ function escapeHtml(s){
 }
 
 function render(){
-  // Current list name + status
-  const nameEl = document.getElementById('rk-current-name');
-  nameEl.textContent = state.name || 'Untitled';
-  const statusEl = document.getElementById('rk-current-status');
+  // Title
+  const titleEl = document.getElementById('rk-title');
+  if(titleEl && document.activeElement !== titleEl){
+    titleEl.textContent = state.name || 'Untitled';
+  }
+
+  // Status
+  const dot = document.getElementById('rk-status-dot');
+  const text = document.getElementById('rk-status-text');
+  dot.className = 'rk-status-dot';
+  const hasItems = state.items.length > 0;
+  const baseHint = hasItems ? ' · drag to rank, tap to edit' : '';
   if(state.id){
     if(state.unsaved){
-      statusEl.textContent = 'Unsaved changes';
-      statusEl.className = 'rk-current-status unsaved';
+      dot.classList.add('unsaved');
+      text.textContent = 'Unsaved' + baseHint;
     } else {
-      statusEl.textContent = 'Saved';
-      statusEl.className = 'rk-current-status saved';
+      dot.classList.add('saved');
+      text.textContent = 'Saved' + baseHint;
     }
   } else {
-    statusEl.textContent = 'Draft';
-    statusEl.className = 'rk-current-status';
+    if(state.unsaved || state.items.length){
+      dot.classList.add('unsaved');
+      text.textContent = 'Draft' + baseHint;
+    } else {
+      text.textContent = 'Draft · start by adding items below';
+    }
   }
 
-  // Dedupe toggle state
-  document.getElementById('rk-dedupe-toggle').classList.toggle('on', state.dedupe);
-  // Edit-mode toggle state
-  document.getElementById('rk-edit-toggle').classList.toggle('on', !!state.editMode);
-  // Edit-mode hint text
-  const hintEl = document.getElementById('rk-edit-hint');
-  if(hintEl){
-    hintEl.textContent = state.editMode
-      ? '· quick delete without confirm'
-      : '· swipe left or tap × to delete (with confirm)';
+  // Save button enabled only when there's something worth saving
+  const saveBtn = document.getElementById('rk-save-btn');
+  const saveLbl = document.getElementById('rk-save-btn-label');
+  const hasChanges = state.unsaved || !state.id;
+  const canSave = state.items.length > 0 || state.id;
+  saveBtn.classList.toggle('disabled', !canSave || (!hasChanges && !!state.id));
+  if(state.id){
+    saveLbl.textContent = hasChanges ? 'Save changes' : 'Saved';
+  } else {
+    saveLbl.textContent = 'Save list';
   }
 
-  // Compute duplicate groups if dedupe enabled
+  // Settings gear — add subtle dot when non-default settings are on
+  const gear = document.getElementById('rk-settings-btn');
+  // Default is dedupe ON + editMode OFF. Anything else = "custom"
+  const customSettings = !state.dedupe || state.editMode;
+  gear.style.position = 'relative';
+  gear.innerHTML = customSettings
+    ? '⚙<span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--rk-gold);box-shadow:0 0 4px rgba(245,200,66,.7);"></span>'
+    : '⚙';
+
+  // Duplicate groups
   const dupeGroups = state.dedupe ? findDuplicateGroups(state.items) : [];
   const dupeIdxSet = new Set();
   dupeGroups.forEach(g => g.forEach(m => dupeIdxSet.add(m.idx)));
@@ -738,14 +835,13 @@ function render(){
   // Duplicate banner
   const bannerHost = document.getElementById('rk-dupe-banner-host');
   if(dupeGroups.length && !state.dismissedDupes['_global']){
-    const count = dupeGroups.reduce((s,g) => s + g.length, 0);
     const pairs = dupeGroups.map(g =>
       '"' + escapeHtml(g.map(m => m.item.name).join('" ≈ "')) + '"'
     ).join(', ');
     bannerHost.innerHTML = `<div class="rk-dupe-banner">
       <div class="rk-dupe-icon">⚠️</div>
       <div class="rk-dupe-body">
-        <b>${dupeGroups.length} possible duplicate${dupeGroups.length>1?'s':''} in your list.</b>
+        <b>${dupeGroups.length} possible duplicate${dupeGroups.length>1?'s':''}.</b>
         ${pairs.length > 160 ? pairs.slice(0,160)+'…' : pairs}
       </div>
       <button class="rk-dupe-dismiss" id="rk-dupe-dismiss" title="Dismiss">×</button>
@@ -759,15 +855,21 @@ function render(){
     bannerHost.innerHTML = '';
   }
 
-  // The list
+  // List
   const list = document.getElementById('rk-list');
   if(!state.items.length){
-    list.innerHTML = `<div class="rk-empty">Add items above to start ranking.</div>`;
+    list.innerHTML = `<div class="rk-empty">No items yet.<br><br>Add your first item below to start ranking.</div>`;
   } else {
     list.innerHTML = state.items.map((item, i) => `
-      <div class="rk-row ${dupeIdxSet.has(i)?'is-duplicate':''}" data-id="${item.id}" data-idx="${i}">
+      <div class="rk-row ${dupeIdxSet.has(i)?'is-duplicate':''} ${state.editMode?'edit-on':''}" data-id="${item.id}" data-idx="${i}">
         <div class="rk-row-swipe-bg"></div>
-        <div class="rk-handle" data-role="handle" aria-label="Drag to reorder"></div>
+        <div class="rk-handle" data-role="handle" aria-label="Drag to reorder">
+          <svg viewBox="0 0 16 22" width="12" height="16" fill="currentColor">
+            <circle cx="4" cy="4" r="1.5"/><circle cx="12" cy="4" r="1.5"/>
+            <circle cx="4" cy="11" r="1.5"/><circle cx="12" cy="11" r="1.5"/>
+            <circle cx="4" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/>
+          </svg>
+        </div>
         <div class="rk-rank">${i+1}</div>
         <div class="rk-name" data-role="name" contenteditable="true" spellcheck="false">${escapeHtml(item.name)}</div>
         ${dupeIdxSet.has(i) ? `<div class="rk-dupe-badge" title="Possible duplicate">DUP?</div>` : ''}
@@ -775,7 +877,7 @@ function render(){
           <button type="button" class="rk-arrow ${i===0?'disabled':''}" data-role="up" aria-label="Move up">▲</button>
           <button type="button" class="rk-arrow ${i===state.items.length-1?'disabled':''}" data-role="down" aria-label="Move down">▼</button>
         </div>
-        <button type="button" class="rk-del" data-role="delete" aria-label="Delete">${state.editMode?'✕':'🗑'}</button>
+        <button type="button" class="rk-del" data-role="delete" aria-label="Delete">✕</button>
       </div>
     `).join('');
     wireRows();
@@ -785,9 +887,9 @@ function render(){
 function wireRows(){
   document.querySelectorAll('.rk-row').forEach(row => {
     const id = +row.dataset.id;
-    row.querySelector('[data-role="up"]').addEventListener('click', () => moveItem(id, -1));
-    row.querySelector('[data-role="down"]').addEventListener('click', () => moveItem(id, +1));
-    row.querySelector('[data-role="delete"]').addEventListener('click', () => deleteItem(id));
+    row.querySelector('[data-role="up"]')?.addEventListener('click', () => moveItem(id, -1));
+    row.querySelector('[data-role="down"]')?.addEventListener('click', () => moveItem(id, +1));
+    row.querySelector('[data-role="delete"]')?.addEventListener('click', () => deleteItem(id));
     const name = row.querySelector('[data-role="name"]');
     name.addEventListener('blur', () => renameItem(id, name.textContent.trim()));
     name.addEventListener('keydown', e => {
@@ -800,91 +902,14 @@ function wireRows(){
     });
     const handle = row.querySelector('[data-role="handle"]');
     handle.addEventListener('pointerdown', e => startDrag(e, row, id));
-    // Swipe-to-delete — only when edit mode is OFF (the "gentle" mode).
-    // Swipe threshold triggers the confirm-delete flow via deleteItem().
     attachSwipe(row, id);
   });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Swipe-to-delete (touch + mouse)
-// ─────────────────────────────────────────────────────────────────────────────
-function attachSwipe(row, id){
-  let startX = null, startY = null, currentDX = 0, tracking = false, horizontal = false;
-  const THRESHOLD = 80;     // px — past this, snap open and trigger delete on release
-  const HINT = 30;          // px — past this, show the swipe hint background
-  const nameEl = row.querySelector('[data-role="name"]');
-  const handleEl = row.querySelector('[data-role="handle"]');
-
-  function onStart(e){
-    // Ignore if swipe starts on the drag handle or on the editable name (user is
-    // trying to drag or edit — not swipe). Only allow from rest of row.
-    if(e.target === handleEl || handleEl.contains(e.target)) return;
-    if(e.target === nameEl || nameEl.contains(e.target)) return;
-    if(e.target.closest('.rk-arrow') || e.target.closest('.rk-del')) return;
-    // Only primary pointer / left click
-    if(e.button != null && e.button !== 0) return;
-    startX = e.clientX;
-    startY = e.clientY;
-    currentDX = 0;
-    tracking = true;
-    horizontal = false;
-    row.classList.add('swiping');
-    row.addEventListener('pointermove', onMove);
-    row.addEventListener('pointerup', onEnd);
-    row.addEventListener('pointercancel', onEnd);
-  }
-
-  function onMove(e){
-    if(!tracking || startX == null) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    // Determine axis on first meaningful movement
-    if(!horizontal){
-      if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      if(Math.abs(dy) > Math.abs(dx)){
-        // Vertical intent — abandon swipe (let native scroll / drag take over)
-        tracking = false;
-        row.classList.remove('swiping');
-        row.removeEventListener('pointermove', onMove);
-        row.removeEventListener('pointerup', onEnd);
-        row.removeEventListener('pointercancel', onEnd);
-        return;
-      }
-      horizontal = true;
-      try{ row.setPointerCapture(e.pointerId); }catch(err){}
-    }
-    // Only allow leftward swipes
-    currentDX = Math.min(0, dx);
-    row.style.transform = `translateX(${currentDX}px)`;
-    const absDx = Math.abs(currentDX);
-    row.classList.toggle('swipe-hint', absDx >= HINT && absDx < THRESHOLD);
-    row.classList.toggle('swipe-active', absDx >= THRESHOLD);
-  }
-
-  function onEnd(e){
-    if(!tracking) return;
-    tracking = false;
-    row.classList.remove('swiping');
-    row.removeEventListener('pointermove', onMove);
-    row.removeEventListener('pointerup', onEnd);
-    row.removeEventListener('pointercancel', onEnd);
-    try{ row.releasePointerCapture(e.pointerId); }catch(err){}
-    const triggered = Math.abs(currentDX) >= THRESHOLD;
-    // Reset visual state immediately — the confirm dialog can pop afterwards
-    row.style.transform = '';
-    row.classList.remove('swipe-hint','swipe-active');
-    if(triggered) deleteItem(id);
-  }
-
-  row.addEventListener('pointerdown', onStart);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Drag & drop
 // ─────────────────────────────────────────────────────────────────────────────
 let dragState = null;
-
 function startDrag(e, row, id){
   if(e.button != null && e.button !== 0) return;
   e.preventDefault();
@@ -898,7 +923,6 @@ function startDrag(e, row, id){
   row.addEventListener('pointerup', onDragEnd);
   row.addEventListener('pointercancel', onDragEnd);
 }
-
 function onDragMove(e){
   if(!dragState) return;
   const { row, rows } = dragState;
@@ -926,7 +950,6 @@ function onDragMove(e){
   }
   dragState._pendingTarget = effectiveTarget;
 }
-
 function onDragEnd(e){
   if(!dragState) return;
   const { row, rows, currentIdx } = dragState;
@@ -945,10 +968,71 @@ function onDragEnd(e){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Input: add with dedup check
+// Swipe-to-delete
+// ─────────────────────────────────────────────────────────────────────────────
+function attachSwipe(row, id){
+  let startX = null, startY = null, currentDX = 0, tracking = false, horizontal = false;
+  const THRESHOLD = 80;
+  const HINT = 30;
+  const nameEl = row.querySelector('[data-role="name"]');
+  const handleEl = row.querySelector('[data-role="handle"]');
+
+  function onStart(e){
+    if(e.target === handleEl || handleEl.contains(e.target)) return;
+    if(e.target === nameEl || nameEl.contains(e.target)) return;
+    if(e.target.closest('.rk-arrow') || e.target.closest('.rk-del')) return;
+    if(e.button != null && e.button !== 0) return;
+    startX = e.clientX; startY = e.clientY; currentDX = 0;
+    tracking = true; horizontal = false;
+    row.classList.add('swiping');
+    row.addEventListener('pointermove', onMove);
+    row.addEventListener('pointerup', onEnd);
+    row.addEventListener('pointercancel', onEnd);
+  }
+  function onMove(e){
+    if(!tracking || startX == null) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if(!horizontal){
+      if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if(Math.abs(dy) > Math.abs(dx)){
+        tracking = false;
+        row.classList.remove('swiping');
+        row.removeEventListener('pointermove', onMove);
+        row.removeEventListener('pointerup', onEnd);
+        row.removeEventListener('pointercancel', onEnd);
+        return;
+      }
+      horizontal = true;
+      try{ row.setPointerCapture(e.pointerId); }catch(err){}
+    }
+    currentDX = Math.min(0, dx);
+    row.style.transform = `translateX(${currentDX}px)`;
+    const absDx = Math.abs(currentDX);
+    row.classList.toggle('swipe-hint', absDx >= HINT && absDx < THRESHOLD);
+    row.classList.toggle('swipe-active', absDx >= THRESHOLD);
+  }
+  function onEnd(e){
+    if(!tracking) return;
+    tracking = false;
+    row.classList.remove('swiping');
+    row.removeEventListener('pointermove', onMove);
+    row.removeEventListener('pointerup', onEnd);
+    row.removeEventListener('pointercancel', onEnd);
+    try{ row.releasePointerCapture(e.pointerId); }catch(err){}
+    const triggered = Math.abs(currentDX) >= THRESHOLD;
+    row.style.transform = '';
+    row.classList.remove('swipe-hint','swipe-active');
+    if(triggered) deleteItem(id);
+  }
+  row.addEventListener('pointerdown', onStart);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Input + add
 // ─────────────────────────────────────────────────────────────────────────────
 const addInput = document.getElementById('rk-new');
-const addBtn = document.getElementById('rk-add-btn');
+const addBtn   = document.getElementById('rk-add-btn');
 const suggestHost = document.getElementById('rk-input-suggest-host');
 
 function updateInputUi(){
@@ -961,7 +1045,7 @@ function updateInputUi(){
   if(match){
     addInput.classList.add('warn-dupe');
     suggestHost.innerHTML = `<div class="rk-input-suggest">
-      <div>This looks similar to <b>${escapeHtml(match.name)}</b> already on your list.</div>
+      <div>Similar to <b>${escapeHtml(match.name)}</b> already on your list.</div>
       <div class="actions">
         <button type="button" class="add-btn" id="rk-force-add">Add anyway</button>
         <button type="button" class="skip-btn" id="rk-skip-add">Skip</button>
@@ -980,18 +1064,14 @@ function updateInputUi(){
     });
   }
 }
-
 addInput.addEventListener('input', updateInputUi);
 addInput.addEventListener('keydown', e => {
   if(e.key === 'Enter' && addInput.value.trim()){
-    // On Enter, respect dedupe warning: if match exists, add with confirm flow
     const val = addInput.value.trim();
     if(state.dedupe){
       const match = findMatchAgainstList(val, state.items);
       if(match){
-        if(!confirm(`"${val}" looks like "${match.name}" which is already on your list. Add it anyway?`)){
-          return;
-        }
+        if(!confirm(`"${val}" looks like "${match.name}". Add anyway?`)) return;
       }
     }
     addItem(addInput.value);
@@ -1002,9 +1082,6 @@ addInput.addEventListener('keydown', e => {
 });
 addBtn.addEventListener('click', () => {
   if(!addInput.value.trim()) return;
-  // When Add button clicked, honor the inline suggest UI (which offers its
-  // own "Add anyway" button). If the user clicks Add directly and there's
-  // a warning, still let it through but show the warning banner briefly.
   addItem(addInput.value);
   addInput.value = '';
   updateInputUi();
@@ -1012,61 +1089,27 @@ addBtn.addEventListener('click', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dedupe toggle
+// Title editing
 // ─────────────────────────────────────────────────────────────────────────────
-const toggle = document.getElementById('rk-dedupe-toggle');
-function setDedupe(on){
-  state.dedupe = !!on;
-  saveCurrent();
-  updateInputUi();
-  render();
-}
-toggle.addEventListener('click', () => setDedupe(!state.dedupe));
-toggle.addEventListener('keydown', e => {
-  if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); setDedupe(!state.dedupe); }
-});
-
-// Edit-mode toggle
-const editToggle = document.getElementById('rk-edit-toggle');
-function setEditMode(on){
-  state.editMode = !!on;
-  saveCurrent();
-  render();
-}
-editToggle.addEventListener('click', () => setEditMode(!state.editMode));
-editToggle.addEventListener('keydown', e => {
-  if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); setEditMode(!state.editMode); }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Current-name editing
-// ─────────────────────────────────────────────────────────────────────────────
-const curName = document.getElementById('rk-current-name');
-curName.addEventListener('click', () => {
-  curName.setAttribute('contenteditable', 'true');
-  curName.focus();
+const titleEl = document.getElementById('rk-title');
+titleEl.addEventListener('focus', () => {
   // Select all
   const range = document.createRange();
-  range.selectNodeContents(curName);
+  range.selectNodeContents(titleEl);
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
 });
-curName.addEventListener('blur', () => {
-  curName.removeAttribute('contenteditable');
-  setCurrentName(curName.textContent);
-});
-curName.addEventListener('keydown', e => {
-  if(e.key === 'Enter'){ e.preventDefault(); curName.blur(); }
-  else if(e.key === 'Escape'){ curName.textContent = state.name; curName.blur(); }
+titleEl.addEventListener('blur', () => setCurrentName(titleEl.textContent));
+titleEl.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); titleEl.blur(); }
+  else if(e.key === 'Escape'){ titleEl.textContent = state.name; titleEl.blur(); }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Saved Lists modal
+// Modal / popover plumbing
 // ─────────────────────────────────────────────────────────────────────────────
-function openModal(){
-  document.getElementById('rk-modal-overlay').classList.add('show');
-}
+function openModal(){ document.getElementById('rk-modal-overlay').classList.add('show'); }
 function closeModal(){
   document.getElementById('rk-modal-overlay').classList.remove('show');
   document.getElementById('rk-modal').innerHTML = '';
@@ -1075,18 +1118,65 @@ document.getElementById('rk-modal-overlay').addEventListener('click', e => {
   if(e.target.id === 'rk-modal-overlay') closeModal();
 });
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape') closeModal();
+  if(e.key === 'Escape'){ closeModal(); closePopover(); }
 });
 
+// ── Settings modal ──
+function openSettingsModal(){
+  const modal = document.getElementById('rk-modal');
+  modal.innerHTML = `
+    <div class="rk-modal-head">
+      <div class="rk-modal-title">Settings</div>
+      <button type="button" class="rk-modal-x">×</button>
+    </div>
+    <div class="rk-modal-body">
+      <div class="rk-setting">
+        <div class="rk-setting-body">
+          <div class="rk-setting-title">Fuzzy duplicate detection</div>
+          <div class="rk-setting-desc">Warn when adding an item that looks similar to one already on the list (e.g. "The Matrix (1999)" vs "Matrix").</div>
+        </div>
+        <div class="rk-toggle ${state.dedupe?'on':''}" id="rk-set-dedupe" role="switch" tabindex="0"></div>
+      </div>
+      <div class="rk-setting">
+        <div class="rk-setting-body">
+          <div class="rk-setting-title">Edit mode</div>
+          <div class="rk-setting-desc">Show up/down arrows and delete buttons on every row. When off, delete by swiping left (with confirm).</div>
+        </div>
+        <div class="rk-toggle ${state.editMode?'on':''}" id="rk-set-edit" role="switch" tabindex="0"></div>
+      </div>
+    </div>
+    <div class="rk-modal-foot">
+      <button type="button" class="btn-secondary" id="rk-close-btn">Done</button>
+    </div>
+  `;
+  modal.querySelector('.rk-modal-x').addEventListener('click', closeModal);
+  modal.querySelector('#rk-close-btn').addEventListener('click', closeModal);
+  const dedupeT = modal.querySelector('#rk-set-dedupe');
+  const editT = modal.querySelector('#rk-set-edit');
+  dedupeT.addEventListener('click', () => {
+    state.dedupe = !state.dedupe;
+    dedupeT.classList.toggle('on', state.dedupe);
+    saveCurrent(); updateInputUi(); render();
+  });
+  editT.addEventListener('click', () => {
+    state.editMode = !state.editMode;
+    editT.classList.toggle('on', state.editMode);
+    saveCurrent(); render();
+  });
+  openModal();
+}
+document.getElementById('rk-settings-btn').addEventListener('click', openSettingsModal);
+
+// ── My Lists modal ──
 function renderListsModal(){
   const lists = loadLists();
   lists.sort((a,b) => (b._modifiedAt||0) - (a._modifiedAt||0));
   const modal = document.getElementById('rk-modal');
-  let body = '';
+  let body;
   if(!lists.length){
     body = `<div class="rk-lists-empty">
       No saved lists yet.
-      <div class="hint">Save your current draft with the 💾 button, and it'll show up here.</div>
+      <div class="hint">Save your current list with the button below, and it'll show up here.</div>
     </div>`;
   } else {
     body = `<div class="rk-lists">
@@ -1098,7 +1188,7 @@ function renderListsModal(){
         return `<div class="rk-list-row ${isActive?'active':''}" data-id="${l.id}">
           <div class="rk-list-info" data-role="load">
             <div class="rk-list-name">${escapeHtml(l.name)}</div>
-            <div class="rk-list-meta">${count} item${count!==1?'s':''} · ${dateStr}${isActive ? ' · <span style="color:#ec4899">current</span>' : ''}</div>
+            <div class="rk-list-meta">${count} item${count!==1?'s':''} · ${dateStr}${isActive ? ' · current' : ''}</div>
           </div>
           <div class="rk-list-actions">
             <button type="button" data-role="rename" title="Rename">✏️</button>
@@ -1110,22 +1200,20 @@ function renderListsModal(){
   }
   modal.innerHTML = `
     <div class="rk-modal-head">
-      <div class="rk-modal-title">📚 My Lists</div>
+      <div class="rk-modal-title">My lists</div>
       <button type="button" class="rk-modal-x">×</button>
     </div>
     <div class="rk-modal-body">${body}</div>
     <div class="rk-modal-foot">
-      <button type="button" class="btn-secondary" id="rk-newlist-btn">+ New Blank List</button>
+      <button type="button" class="btn-secondary" id="rk-newlist-btn">+ New blank</button>
       <button type="button" class="btn-secondary" id="rk-close-btn">Close</button>
     </div>
   `;
   modal.querySelector('.rk-modal-x').addEventListener('click', closeModal);
   modal.querySelector('#rk-close-btn').addEventListener('click', closeModal);
   modal.querySelector('#rk-newlist-btn').addEventListener('click', () => {
-    if(state.items.length && state.unsaved){
-      if(!confirm('Start a new blank list? Your current unsaved draft will be lost.')) return;
-    } else if(state.items.length && !state.id){
-      if(!confirm('Start a new blank list? Your current draft will be lost.')) return;
+    if(state.items.length && (state.unsaved || !state.id)){
+      if(!confirm('Start a new blank list? Unsaved changes will be lost.')) return;
     }
     newList();
     closeModal();
@@ -1134,7 +1222,7 @@ function renderListsModal(){
     const id = row.dataset.id;
     row.querySelector('[data-role="load"]').addEventListener('click', () => {
       if(state.unsaved && state.id !== id){
-        if(!confirm('Load another list? Unsaved changes to the current list will be lost.')) return;
+        if(!confirm('Load this list? Unsaved changes to the current list will be lost.')) return;
       }
       loadList(id);
       closeModal();
@@ -1150,16 +1238,15 @@ function renderListsModal(){
   });
   openModal();
 }
+document.getElementById('rk-mylists-btn').addEventListener('click', renderListsModal);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Export modal
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Export modal ──
 function openExport(){
   const text = state.items.map((it, i) => `${i+1}. ${it.name}`).join('\n');
   const modal = document.getElementById('rk-modal');
   modal.innerHTML = `
     <div class="rk-modal-head">
-      <div class="rk-modal-title">📋 Export: ${escapeHtml(state.name)}</div>
+      <div class="rk-modal-title">Export · ${escapeHtml(state.name)}</div>
       <button type="button" class="rk-modal-x">×</button>
     </div>
     <div class="rk-modal-body">
@@ -1167,21 +1254,20 @@ function openExport(){
     </div>
     <div class="rk-modal-foot">
       <button type="button" class="btn-secondary" id="rk-close-btn">Close</button>
-      <button type="button" class="btn-primary" id="rk-copy-btn">Copy to Clipboard</button>
+      <button type="button" class="btn-primary" id="rk-copy-btn">Copy to clipboard</button>
     </div>
   `;
   modal.querySelector('.rk-modal-x').addEventListener('click', closeModal);
   modal.querySelector('#rk-close-btn').addEventListener('click', closeModal);
   modal.querySelector('#rk-copy-btn').addEventListener('click', async () => {
     const ta = document.getElementById('rk-export-ta');
-    try{ await navigator.clipboard.writeText(ta.value); }catch(e){
-      ta.select(); try{ document.execCommand('copy'); }catch(e){}
-    }
+    try{ await navigator.clipboard.writeText(ta.value); }
+    catch(e){ ta.select(); try{ document.execCommand('copy'); }catch(e){} }
     const btn = document.getElementById('rk-copy-btn');
     btn.textContent = '✓ Copied';
     btn.classList.add('copied');
     setTimeout(() => {
-      btn.textContent = 'Copy to Clipboard';
+      btn.textContent = 'Copy to clipboard';
       btn.classList.remove('copied');
     }, 1600);
   });
@@ -1189,18 +1275,49 @@ function openExport(){
   setTimeout(() => document.getElementById('rk-export-ta')?.select(), 60);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Footer wiring
-// ─────────────────────────────────────────────────────────────────────────────
-document.getElementById('rk-save-btn').addEventListener('click', saveCurrentList);
-document.getElementById('rk-mylists-btn').addEventListener('click', renderListsModal);
-document.getElementById('rk-shuffle-btn').addEventListener('click', shuffleItems);
-document.getElementById('rk-export-btn').addEventListener('click', openExport);
+// ── Overflow popover ──
+function openPopover(){
+  const pop = document.getElementById('rk-popover');
+  const ov = document.getElementById('rk-popover-overlay');
+  const hasSavedList = !!state.id;
+  const items = [
+    {icon:'📋', label:'Export as text', action:()=>{closePopover();openExport();}},
+    {icon:'🔀', label:'Shuffle', action:()=>{closePopover();shuffleItems();}},
+    {icon:'🧹', label:'Clear all items', action:()=>{closePopover();clearAll();}, danger:false},
+  ];
+  if(hasSavedList){
+    items.push({sep:true});
+    items.push({icon:'🗑', label:'Delete this list', action:()=>{closePopover();deleteList(state.id);}, danger:true});
+  }
+  pop.innerHTML = items.map(it => {
+    if(it.sep) return '<div class="sep"></div>';
+    return `<button type="button" class="${it.danger?'danger':''}" data-act="${it.label}"><span class="icon">${it.icon}</span>${it.label}</button>`;
+  }).join('');
+  pop.style.display = 'block';
+  ov.classList.add('show');
+  // Wire
+  pop.querySelectorAll('button').forEach((btn, i) => {
+    const realItem = items.filter(x => !x.sep)[i];
+    btn.addEventListener('click', () => realItem.action());
+  });
+}
+function closePopover(){
+  document.getElementById('rk-popover').style.display = 'none';
+  document.getElementById('rk-popover-overlay').classList.remove('show');
+}
+document.getElementById('rk-overflow-btn').addEventListener('click', openPopover);
+document.getElementById('rk-popover-overlay').addEventListener('click', closePopover);
+
+// ── Save button ──
+document.getElementById('rk-save-btn').addEventListener('click', () => {
+  const btn = document.getElementById('rk-save-btn');
+  if(btn.classList.contains('disabled')) return;
+  saveCurrentList();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap
 // ─────────────────────────────────────────────────────────────────────────────
-// Restore current draft if present; otherwise start fresh.
 const restored = loadCurrent();
 if(restored && typeof restored === 'object'){
   state = Object.assign({ id:null, name:'Untitled', items:[], unsaved:false, dedupe:true, editMode:false, dismissedDupes:{} }, restored);
@@ -1209,21 +1326,14 @@ if(restored && typeof restored === 'object'){
 render();
 updateInputUi();
 
-// If sync completes after load (cloud data arrives late), re-render once to
-// reflect any lists pulled down from Firestore. Listen via onReady if available.
 if(window.FGHSync && typeof FGHSync.onReady === 'function'){
   FGHSync.onReady(() => {
-    // If our current list id got updated from cloud, reflect the new data
     if(state.id){
       const cloudList = loadLists().find(l => l.id === state.id);
-      if(cloudList && cloudList._modifiedAt > 0){
-        // Only reload if cloud has strictly newer version than our local draft
-        // (to avoid clobbering in-flight edits)
-        if(!state.unsaved){
-          state.name = cloudList.name;
-          state.items = cloudList.items.map(x => ({id:x.id, name:x.name}));
-          saveCurrent();
-        }
+      if(cloudList && !state.unsaved){
+        state.name = cloudList.name;
+        state.items = cloudList.items.map(x => ({id:x.id, name:x.name}));
+        saveCurrent();
       }
     }
     render();

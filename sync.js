@@ -70,7 +70,7 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -84,6 +84,8 @@
         // Per-PIN saved ranker lists: stored under one key, already scoped to
         // the current user since cloud docs are addressed by PIN.
         try{ out.rklists = JSON.parse(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'fav_games'){
+        try{ out.favs = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       }
     }
     return out;
@@ -133,7 +135,7 @@
   }
 
   function mergeSnapshots(local, remote){
-    var out = { hi: {}, gh: {}, rklists: null };
+    var out = { hi: {}, gh: {}, rklists: null, favs: null };
     var keys = {};
     Object.keys(local.hi||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.hi||{}).forEach(function(k){ keys[k]=1; });
@@ -143,6 +145,19 @@
     Object.keys(remote.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(keys).forEach(function(k){ out.gh[k] = mergeGh(local.gh&&local.gh[k], remote.gh&&remote.gh[k]); });
     out.rklists = mergeRkLists(local.rklists, remote.rklists);
+    // Favorites: union local + remote sets (additive merge — losing a favorite
+    // is rare and unfavoriting across devices should happen explicitly anyway)
+    var localFavs  = asArray(local.favs);
+    var remoteFavs = asArray(remote.favs);
+    if(localFavs.length || remoteFavs.length){
+      var seen = {};
+      var union = [];
+      localFavs.concat(remoteFavs).forEach(function(h){
+        if(typeof h !== 'string' || seen[h]) return;
+        seen[h] = 1; union.push(h);
+      });
+      out.favs = union;
+    }
     return out;
   }
 
@@ -173,6 +188,9 @@
     }
     if(snap.rklists){
       try{ LS.setItem('rklists', JSON.stringify(snap.rklists)); }catch(e){}
+    }
+    if(snap.favs && Array.isArray(snap.favs)){
+      try{ LS.setItem('fav_games', JSON.stringify(snap.favs)); }catch(e){}
     }
   }
 
@@ -225,11 +243,11 @@
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, isNew:false});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:false});
     return ref.get().then(function(doc){
-      if(!doc.exists) return {hi:{}, gh:{}, label:null, bank:null, rklists:null, isNew:true};
+      if(!doc.exists) return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:true};
       var d = doc.data() || {};
-      return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, isNew:false };
+      return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, isNew:false };
     });
   }
 
@@ -243,7 +261,17 @@
       _pushTimer = null;
       if(!_pushPending) return;
       _pushPending = false;
-      pushNow().catch(function(err){ console.warn('[sync] push failed', err); });
+      if(typeof navigator !== 'undefined' && navigator.onLine === false){
+        setStatus('offline');
+        return;
+      }
+      setStatus('syncing');
+      pushNow()
+        .then(function(){ setStatus('synced'); })
+        .catch(function(err){
+          console.warn('[sync] push failed', err);
+          setStatus('error', { error: (err && err.message) || String(err) });
+        });
     }, 1500);
   }
 
@@ -259,6 +287,7 @@
     if(lbl) doc.label = lbl;
     if(snap.bank !== null && snap.bank !== undefined) doc.bank = snap.bank;
     if(snap.rklists) doc.rklists = sanitizeForFirestore(snap.rklists);
+    if(snap.favs && Array.isArray(snap.favs) && snap.favs.length) doc.favs = snap.favs;
     return ref.set(doc, { merge: false });
   }
 
@@ -300,9 +329,54 @@
     LS.removeItem(LABEL_KEY);
   }
 
+  // ── Sync status tracking ──────────────────────────────────────────────
+  var _syncStatus = { state: 'idle', lastSync: null, error: null };
+  var _statusListeners = [];
+  function setStatus(state, extra){
+    _syncStatus.state = state;
+    if(state === 'synced') _syncStatus.lastSync = Date.now();
+    if(extra && extra.error !== undefined) _syncStatus.error = extra.error;
+    _statusListeners.forEach(function(fn){ try{ fn(_syncStatus); }catch(e){} });
+  }
+  function onStatusChange(fn){
+    _statusListeners.push(fn);
+    try{ fn(_syncStatus); }catch(e){}
+  }
+  function syncStatus(){ return _syncStatus; }
+
+  // Force a manual sync. Returns a Promise.
+  function syncNow(){
+    if(!isPin()){ setStatus('idle'); return Promise.resolve({ ok:true, reason:'guest' }); }
+    if(typeof navigator !== 'undefined' && navigator.onLine === false){
+      setStatus('offline');
+      return Promise.resolve({ ok:false, reason:'offline' });
+    }
+    setStatus('syncing');
+    return ensureFirebase()
+      .then(pullCloud)
+      .then(function(remote){
+        if(remote.label && !label()) LS.setItem(LABEL_KEY, remote.label);
+        if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
+        var local  = scanLocal();
+        var merged = mergeSnapshots(local, remote);
+        writeSnapshotToLocal(merged);
+        return pushNow();
+      })
+      .then(function(){
+        setStatus('synced');
+        try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+        return { ok: true };
+      })
+      .catch(function(err){
+        console.warn('[sync] syncNow failed', err);
+        setStatus('error', { error: (err && err.message) || String(err) });
+        return { ok: false, error: err };
+      });
+  }
+
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key !== 'casino_bank' && key !== 'rklists') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()) schedulePush();
   }
 
@@ -310,6 +384,12 @@
   function boot(){
     var m = mode();
     if(m === 'pin' && PIN_RE.test(pin()||'')){
+      if(typeof navigator !== 'undefined' && navigator.onLine === false){
+        setStatus('offline');
+        notifyReady();
+        return;
+      }
+      setStatus('syncing');
       ensureFirebase()
         .then(pullCloud)
         .then(function(remote){
@@ -320,11 +400,32 @@
           writeSnapshotToLocal(merged);
           return pushNow();
         })
-        .then(notifyReady)
-        .catch(function(err){ console.warn('[sync] boot failed; staying local', err); notifyReady(); });
+        .then(function(){
+          setStatus('synced');
+          try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+          notifyReady();
+        })
+        .catch(function(err){
+          console.warn('[sync] boot failed; staying local', err);
+          setStatus('error', { error: (err && err.message) || String(err) });
+          notifyReady();
+        });
     } else {
+      setStatus('idle');
       notifyReady();
     }
+  }
+
+  // Listen for browser online/offline events — auto re-sync on reconnect
+  if(typeof window !== 'undefined'){
+    window.addEventListener('online', function(){
+      if(_syncStatus.state === 'offline' || _syncStatus.state === 'error'){
+        syncNow();
+      }
+    });
+    window.addEventListener('offline', function(){
+      setStatus('offline');
+    });
   }
 
   window.FGHSync = {
@@ -335,6 +436,9 @@
     continueAsGuest: continueAsGuest,
     onReady: onReady,
     noteWrite: noteWrite,
+    syncNow: syncNow,
+    syncStatus: syncStatus,
+    onStatusChange: onStatusChange,
     _scanLocal: scanLocal
   };
 
