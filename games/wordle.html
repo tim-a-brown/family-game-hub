@@ -433,10 +433,20 @@ const EXTRA_GUESSES=[
 const ALLVALID=new Set([...WORDSET,...EXTRA_GUESSES.filter(w=>/^[A-Z]{5}$/.test(w))]);
 
 // ── Daily word ────────────────────────────────────────────────────────────────
+// Note: WORDLIST is alphabetized, so using `day % N` directly would walk
+// sequentially through adjacent words day-to-day. We hash the day number into
+// a pseudo-random index so consecutive days feel uncorrelated, while still
+// being deterministic (everyone who plays Puzzle #N gets the same word).
 function getDailyWord(){
   const epoch=new Date('2024-01-01').getTime();
   const day=Math.floor((Date.now()-epoch)/86400000);
-  const idx=day%WORDLIST.length;
+  // Hash the day number via a Linear Congruential Generator mix to scramble
+  // order while preserving determinism. Constants from Numerical Recipes.
+  let h = day * 1664525 + 1013904223;
+  h = ((h ^ (h >>> 16)) * 2246822507) >>> 0;
+  h = ((h ^ (h >>> 13)) * 3266489909) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  const idx = h % WORDLIST.length;
   return{word:WORDLIST[idx],day:day+1};
 }
 

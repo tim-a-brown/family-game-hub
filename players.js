@@ -125,11 +125,14 @@ const FrequentPlayers = (function(){
         row.appendChild(chip);
       });
       if(opts.showManage !== false){
-        const manage = document.createElement('a');
+        const manage = document.createElement('button');
+        manage.type = 'button';
         manage.className = 'fp-chip fp-manage';
-        manage.href = opts.managePath || '/games/players.html';
         manage.textContent = names.length ? 'Manage' : '+ Add players';
-        manage.target = '_self';
+        manage.addEventListener('click', function(e){
+          e.preventDefault();
+          openManager(function(){ render(); });
+        });
         row.appendChild(manage);
       }
     }
@@ -152,6 +155,7 @@ const FrequentPlayers = (function(){
       document.dispatchEvent(new CustomEvent('fp:update'));
     });
     document.addEventListener('fp:update', render);
+    document.addEventListener('frequentplayers:changed', render);
 
     return { refresh: render, row };
   }
@@ -173,8 +177,229 @@ const FrequentPlayers = (function(){
       .fp-chip:active{transform:scale(.95);}
       .fp-chip.fp-manage{background:transparent;border-style:dashed;color:rgba(255,255,255,.4);}
       .fp-chip.fp-manage:hover{color:#f5c842;border-color:rgba(245,200,66,.5);}
+
+      /* ── Manage Players Dialog ───────────────────────────────────── */
+      .fp-mgr-overlay{
+        position:fixed;inset:0;z-index:9999;
+        background:rgba(0,0,0,.72);backdrop-filter:blur(4px);
+        display:flex;align-items:center;justify-content:center;
+        padding:20px;opacity:0;transition:opacity .18s ease;
+      }
+      .fp-mgr-overlay.show{opacity:1;}
+      .fp-mgr-card{
+        background:linear-gradient(180deg,#1a1a24,#12121a);
+        border:1px solid rgba(255,255,255,.12);border-radius:16px;
+        width:100%;max-width:420px;max-height:86vh;overflow:hidden;
+        display:flex;flex-direction:column;
+        box-shadow:0 20px 60px rgba(0,0,0,.6);
+        transform:scale(.92);transition:transform .2s cubic-bezier(.34,1.56,.64,1);
+        font-family:Inter,system-ui,sans-serif;
+      }
+      .fp-mgr-overlay.show .fp-mgr-card{transform:scale(1);}
+      .fp-mgr-head{
+        display:flex;align-items:center;justify-content:space-between;
+        padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08);
+      }
+      .fp-mgr-title{font-family:Georgia,serif;font-weight:900;font-size:1.1rem;color:#f5c842;letter-spacing:.02em;}
+      .fp-mgr-x{
+        all:unset;cursor:pointer;
+        width:28px;height:28px;border-radius:50%;
+        background:rgba(255,255,255,.08);color:#fff;
+        display:flex;align-items:center;justify-content:center;
+        font-size:1rem;line-height:1;
+      }
+      .fp-mgr-x:hover{background:rgba(255,255,255,.16);}
+      .fp-mgr-body{padding:14px 18px;overflow-y:auto;flex:1;}
+      .fp-mgr-add{
+        display:flex;gap:8px;margin-bottom:14px;
+      }
+      .fp-mgr-add input{
+        flex:1;padding:10px 12px;border-radius:10px;
+        background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);
+        color:#fff;font-size:.95rem;font-family:Inter,system-ui,sans-serif;outline:none;
+      }
+      .fp-mgr-add input:focus{border-color:rgba(245,200,66,.5);background:rgba(245,200,66,.06);}
+      .fp-mgr-add button{
+        all:unset;cursor:pointer;
+        padding:10px 16px;border-radius:10px;
+        background:linear-gradient(135deg,#f5c842,#d4a62e);color:#2a1a00;
+        font-weight:800;font-size:.88rem;
+        transition:filter .12s,transform .08s;
+      }
+      .fp-mgr-add button:hover{filter:brightness(1.08);}
+      .fp-mgr-add button:active{transform:scale(.96);}
+      .fp-mgr-add button:disabled{opacity:.35;cursor:default;filter:grayscale(.4);}
+      .fp-mgr-list{display:flex;flex-direction:column;gap:6px;}
+      .fp-mgr-empty{
+        text-align:center;padding:24px 0;color:rgba(255,255,255,.35);font-size:.85rem;
+      }
+      .fp-mgr-row{
+        display:flex;align-items:center;gap:8px;
+        padding:8px 10px;border-radius:10px;
+        background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+      }
+      .fp-mgr-row input{
+        flex:1;padding:6px 8px;border-radius:6px;
+        background:rgba(0,0,0,.25);border:1px solid transparent;
+        color:#fff;font-size:.92rem;font-family:Inter,system-ui,sans-serif;outline:none;
+      }
+      .fp-mgr-row input:focus{border-color:rgba(245,200,66,.5);background:rgba(245,200,66,.06);}
+      .fp-mgr-row button{
+        all:unset;cursor:pointer;
+        width:30px;height:30px;border-radius:8px;
+        display:flex;align-items:center;justify-content:center;
+        color:rgba(255,255,255,.55);font-size:.9rem;
+        transition:color .12s,background .12s;
+      }
+      .fp-mgr-row button:hover{background:rgba(255,255,255,.08);color:#fff;}
+      .fp-mgr-row button.fp-mgr-del:hover{color:#f87171;background:rgba(248,113,113,.12);}
+      .fp-mgr-foot{
+        padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,.08);
+        display:flex;justify-content:flex-end;
+      }
+      .fp-mgr-foot button{
+        all:unset;cursor:pointer;
+        padding:9px 16px;border-radius:9px;
+        background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);
+        font-size:.85rem;font-weight:600;
+      }
+      .fp-mgr-foot button:hover{background:rgba(255,255,255,.14);color:#fff;}
     `;
     document.head.appendChild(s);
+  }
+
+  // ── Manage Players Dialog ───────────────────────────────────────────────
+  // Opens an in-page overlay to add/rename/remove frequent players. Calls
+  // `onClose` after the user dismisses the dialog so picker rows can re-render.
+  function openManager(onClose){
+    ensureStyle();
+    // Remove any existing instance
+    document.querySelectorAll('.fp-mgr-overlay').forEach(n => n.remove());
+
+    const overlay = document.createElement('div');
+    overlay.className = 'fp-mgr-overlay';
+    overlay.innerHTML = `
+      <div class="fp-mgr-card" role="dialog" aria-modal="true" aria-labelledby="fp-mgr-title">
+        <div class="fp-mgr-head">
+          <div class="fp-mgr-title" id="fp-mgr-title">👥 Frequent Players</div>
+          <button type="button" class="fp-mgr-x" aria-label="Close">×</button>
+        </div>
+        <div class="fp-mgr-body">
+          <div class="fp-mgr-add">
+            <input type="text" placeholder="Add a player…" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+            <button type="button" disabled>Add</button>
+          </div>
+          <div class="fp-mgr-list"></div>
+        </div>
+        <div class="fp-mgr-foot">
+          <button type="button" class="fp-mgr-done">Done</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('show'));
+
+    const card       = overlay.querySelector('.fp-mgr-card');
+    const listHost   = overlay.querySelector('.fp-mgr-list');
+    const addInput   = overlay.querySelector('.fp-mgr-add input');
+    const addBtn     = overlay.querySelector('.fp-mgr-add button');
+    const closeBtn   = overlay.querySelector('.fp-mgr-x');
+    const doneBtn    = overlay.querySelector('.fp-mgr-done');
+
+    function renderList(){
+      const names = list();
+      listHost.innerHTML = '';
+      if(!names.length){
+        const empty = document.createElement('div');
+        empty.className = 'fp-mgr-empty';
+        empty.textContent = 'No frequent players yet. Add one above to get started.';
+        listHost.appendChild(empty);
+        return;
+      }
+      names.forEach(n => {
+        const row = document.createElement('div');
+        row.className = 'fp-mgr-row';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = n;
+        inp.maxLength = 20;
+        inp.dataset.original = n;
+        inp.addEventListener('blur', function(){
+          const val = (inp.value||'').trim();
+          const orig = inp.dataset.original;
+          if(!val){ inp.value = orig; return; }
+          if(val.toLowerCase() === orig.toLowerCase() && val !== orig){
+            // Case change only — rename to update display
+            rename(orig, val);
+          } else if(val !== orig){
+            rename(orig, val);
+          }
+          renderList();
+        });
+        inp.addEventListener('keydown', function(e){
+          if(e.key === 'Enter') inp.blur();
+          else if(e.key === 'Escape'){ inp.value = inp.dataset.original; inp.blur(); }
+        });
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'fp-mgr-del';
+        del.title = 'Remove ' + n;
+        del.innerHTML = '🗑';
+        del.addEventListener('click', function(){
+          if(confirm('Remove "' + n + '" from frequent players?')){
+            remove(n);
+            renderList();
+          }
+        });
+        row.appendChild(inp);
+        row.appendChild(del);
+        listHost.appendChild(row);
+      });
+    }
+
+    function attemptAdd(){
+      const val = (addInput.value||'').trim();
+      if(!val) return;
+      add(val);
+      addInput.value = '';
+      addBtn.disabled = true;
+      renderList();
+      addInput.focus();
+    }
+
+    addInput.addEventListener('input', function(){
+      addBtn.disabled = !(addInput.value||'').trim();
+    });
+    addInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' && (addInput.value||'').trim()) attemptAdd();
+    });
+    addBtn.addEventListener('click', attemptAdd);
+
+    function closeManager(){
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        overlay.remove();
+        // Re-render every picker on the page so new names appear everywhere
+        try{
+          if(typeof onClose === 'function') onClose();
+          document.dispatchEvent(new CustomEvent('frequentplayers:changed'));
+        }catch(e){}
+      }, 200);
+    }
+
+    closeBtn.addEventListener('click', closeManager);
+    doneBtn.addEventListener('click', closeManager);
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) closeManager();
+    });
+    document.addEventListener('keydown', function onEsc(e){
+      if(e.key === 'Escape'){
+        closeManager();
+        document.removeEventListener('keydown', onEsc);
+      }
+    });
+
+    renderList();
+    setTimeout(() => addInput.focus(), 100);
   }
 
   // Convenience: attach a picker to every input whose id starts with `prefix`.
@@ -184,9 +409,83 @@ const FrequentPlayers = (function(){
     const selector = 'input[id^="' + prefix + '"]';
     const inputs = document.querySelectorAll(selector);
     inputs.forEach(inp => attachPicker(inp, Object.assign({siblingSelector:selector}, opts||{})));
+    // Scorecards all call this; piggyback the solo-vs-AI CTA injection here
+    // so every scorecard gets the prominent 1-player button for free.
+    try{ installAiSoloCta(); }catch(e){}
   }
 
-  // ── "My name" for 1P vs-AI games ──────────────────────────────────────────
+  // ── Solo vs AI CTA for scorecards ─────────────────────────────────────
+  // Each scorecard has a .setup-screen and a .ai-link pointing to the AI
+  // version. This helper prepends a prominent "🎮 1 Player (vs AI)" banner
+  // inside the setup screen so the solo flow is discoverable alongside the
+  // 2/3/4+ player picker. Call once per page (auto-runs via installNameChip
+  // if not called explicitly).
+  function installAiSoloCta(){
+    try{
+      if(document.getElementById('fp-ai-solo-cta')) return;
+      const setup = document.querySelector('.setup-screen');
+      const aiLink = document.querySelector('.ai-link');
+      if(!setup || !aiLink) return;
+      const href = aiLink.getAttribute('href');
+      if(!href) return;
+
+      const s = document.createElement('style');
+      s.textContent = `
+        .fp-ai-cta{
+          display:flex;align-items:center;gap:12px;
+          padding:12px 14px;border-radius:12px;margin:0 0 14px;
+          background:linear-gradient(135deg,rgba(167,139,250,.14),rgba(90,200,250,.10));
+          border:1px solid rgba(167,139,250,.35);
+          color:#fff;text-decoration:none;
+          transition:all .14s;cursor:pointer;
+        }
+        .fp-ai-cta:hover{
+          background:linear-gradient(135deg,rgba(167,139,250,.24),rgba(90,200,250,.18));
+          border-color:rgba(167,139,250,.6);
+          transform:translateY(-1px);
+        }
+        .fp-ai-cta:active{transform:translateY(0);}
+        .fp-ai-cta-icon{
+          flex-shrink:0;
+          width:38px;height:38px;border-radius:50%;
+          background:rgba(167,139,250,.2);
+          display:flex;align-items:center;justify-content:center;
+          font-size:1.2rem;
+        }
+        .fp-ai-cta-body{flex:1;min-width:0;}
+        .fp-ai-cta-title{
+          font-weight:700;font-size:.92rem;color:#fff;line-height:1.2;
+          display:flex;align-items:center;gap:6px;
+        }
+        .fp-ai-cta-sub{
+          font-size:.72rem;color:rgba(255,255,255,.55);margin-top:2px;
+        }
+        .fp-ai-cta-arrow{
+          flex-shrink:0;color:rgba(167,139,250,.7);font-size:1.1rem;
+        }
+      `;
+      document.head.appendChild(s);
+
+      const cta = document.createElement('a');
+      cta.id = 'fp-ai-solo-cta';
+      cta.className = 'fp-ai-cta';
+      cta.href = href;
+      cta.innerHTML = `
+        <div class="fp-ai-cta-icon">🎮</div>
+        <div class="fp-ai-cta-body">
+          <div class="fp-ai-cta-title">1 Player (vs AI)</div>
+          <div class="fp-ai-cta-sub">Play solo against computer opponents</div>
+        </div>
+        <div class="fp-ai-cta-arrow">→</div>
+      `;
+      setup.insertBefore(cta, setup.firstChild);
+
+      // Hide the redundant small nav link now that the CTA is in-page
+      aiLink.style.display = 'none';
+    }catch(e){}
+  }
+
+
   // Games that use "You" for the human player read this as the display/history
   // name. Stored globally so all solo games share it.
   const MY_NAME_KEY = 'my_name';
@@ -360,5 +659,5 @@ const FrequentPlayers = (function(){
   }
 
   return { list, add, remove, rename, clear, attachPicker, attachPickersByPrefix,
-           myName, setMyName, installNameChip };
+           myName, setMyName, installNameChip, openManager, installAiSoloCta };
 })();

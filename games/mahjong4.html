@@ -74,6 +74,27 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#060d08 60%);}
 .mj-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
 .mj-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
 .mj-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+/* Situational tip strip */
+.mj-tip{
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(90,200,250,.08));
+  border:1px solid rgba(245,200,66,.28);
+  border-radius:10px;padding:8px 11px;margin-bottom:10px;
+  font-size:.78rem;line-height:1.45;color:rgba(255,255,255,.82);
+}
+.mj-tip-icon{flex-shrink:0;font-size:1rem;line-height:1;}
+.mj-tip-body{flex:1;min-width:0;}
+.mj-tip-body b{color:#f5c842;font-weight:700;}
+.mj-tip-cycle{
+  flex-shrink:0;background:transparent;border:none;cursor:pointer;
+  color:rgba(245,200,66,.55);font-size:.85rem;padding:4px 6px;border-radius:6px;
+  transition:all .12s;touch-action:manipulation;
+}
+.mj-tip-cycle:hover{color:#f5c842;background:rgba(245,200,66,.08);}
+.mj-tip-cycle:active{transform:scale(.9);}
+/* Top-right controls */
+.mj-topbar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:8px;}
+.mj-topbar .btn{padding:4px 10px;font-size:.7rem;border-radius:16px;}
 </style>
 </head>
 <body>
@@ -263,7 +284,7 @@ let deck,hands,melds,discards,scores,phase,current,lastDiscard,lastDiscarder,
 
 function addLog(msg,cls=''){log.push({msg,cls});if(log.length>25)log.shift();}
 
-function newGame(){scores=[0,0,0,0];log=[];roundNum=0;roundWind='E';newRound();}
+function newGame(){clearState();scores=[0,0,0,0];log=[];roundNum=0;roundWind='E';newRound();}
 
 function newRound(){
   roundNum++;
@@ -527,6 +548,21 @@ function render(){
   const root=document.getElementById('mj-root');
   let html='';
 
+  // Top bar: Help button aligned right
+  html+=`<div class="mj-topbar">
+    <button class="btn btn-outline" onclick="showHelp('rules')">📖 How</button>
+    <button class="btn btn-outline" onclick="showHelp('tips')">💡 Tips</button>
+    <button class="btn btn-outline" onclick="if(confirm('Start a new game? Current game will be lost.'))newGame()">↻ New</button>
+  </div>`;
+
+  // Situational tip strip — always visible, adapts to game state
+  const tip = getSituationalTipStable();
+  html+=`<div class="mj-tip">
+    <div class="mj-tip-icon">${tip.icon}</div>
+    <div class="mj-tip-body">${tip.text}</div>
+    <button class="mj-tip-cycle" id="mj-tip-next" title="Next tip">🎲</button>
+  </div>`;
+
   // Scores
   const maxScore=Math.max(...scores);
   html+=`<div class="mj-scores">`;
@@ -675,9 +711,72 @@ function render(){
 
   if(isYourDraw) document.getElementById('draw-btn')?.addEventListener('click',playerDraw);
   if(current!==0&&phase==='draw') setTimeout(aiTurn,700);
+
+  // Tip cycle button — advances rotation and re-renders just the tip
+  document.getElementById('mj-tip-next')?.addEventListener('click',function(e){
+    e.stopPropagation();
+    const t = getSituationalTip();
+    const body = document.querySelector('.mj-tip .mj-tip-body');
+    const icon = document.querySelector('.mj-tip .mj-tip-icon');
+    if(body) body.innerHTML = t.text;
+    if(icon) icon.textContent = t.icon;
+  });
+
+  // Persist state after every render
+  saveState();
 }
 
-newGame();
+// ── State persistence ───────────────────────────────────────────────────────
+// Mahjong state is a lot — hands, melds, discards, scores, round state —
+// serialized to sessionStorage so that navigating home + back restores the
+// in-progress game. Home page reads this key to show "in progress" tag.
+const MJ4_STATE_KEY = 'mj4_state';
+
+function saveState(){
+  try{
+    // Don't save after game is over — let New Game start fresh
+    if(phase==='game-over') return;
+    const s = {
+      deck, hands, melds, discards, scores, phase, current,
+      lastDiscard, lastDiscarder, roundWind, seatWinds, roundNum,
+      log, canClaim, selTile,
+      _ts: Date.now()
+    };
+    sessionStorage.setItem(MJ4_STATE_KEY, JSON.stringify(s));
+  }catch(e){}
+}
+
+function loadState(){
+  try{
+    const raw = sessionStorage.getItem(MJ4_STATE_KEY);
+    if(!raw) return false;
+    const s = JSON.parse(raw);
+    if(!s || !s.hands || !s.hands.length) return false;
+    deck = s.deck;
+    hands = s.hands;
+    melds = s.melds;
+    discards = s.discards;
+    scores = s.scores;
+    phase = s.phase;
+    current = s.current;
+    lastDiscard = s.lastDiscard;
+    lastDiscarder = s.lastDiscarder;
+    roundWind = s.roundWind;
+    seatWinds = s.seatWinds;
+    roundNum = s.roundNum;
+    log = s.log || [];
+    canClaim = s.canClaim;
+    selTile = s.selTile;
+    return true;
+  }catch(e){ return false; }
+}
+
+function clearState(){
+  try{ sessionStorage.removeItem(MJ4_STATE_KEY); }catch(e){}
+}
+
+// On load, try to restore in-progress game first
+if(loadState()){ render(); } else { newGame(); }
 </script>
 </body>
 </html>
@@ -749,4 +848,103 @@ function getMahjongTip(){
   ];
   return tips[Math.floor(Math.random()*tips.length)];
 }
+
+// ── Situational tips ─────────────────────────────────────────────────────────
+// Inspects the current game state and returns a tip paragraph tailored to
+// what the player is about to do. Also tracks a rotation index so "🎲" cycles
+// through candidate tips without immediately re-showing the same one.
+let _tipRotIdx = 0;
+function getSituationalTip(){
+  const pool = buildSituationalTipPool();
+  if(!pool.length) return { icon:'💡', text:getMahjongTip() };
+  _tipRotIdx = (_tipRotIdx + 1) % pool.length;
+  return pool[_tipRotIdx];
+}
+function getSituationalTipStable(){
+  // Same pool as above but without advancing the rotation — used by render()
+  // so the tip persists across re-renders within the same game state.
+  const pool = buildSituationalTipPool();
+  if(!pool.length) return { icon:'💡', text:getMahjongTip() };
+  return pool[_tipRotIdx % pool.length];
+}
+
+function buildSituationalTipPool(){
+  const tips = [];
+  const yourHand = hands[0] || [];
+  const shn = yourHand.length ? shanten(yourHand) : 99;
+  const isYourTurn = current===0 && (phase==='draw' || phase==='discard');
+  const inClaim = phase==='claim-window';
+
+  // Claim window — tailor to what's offered
+  if(inClaim && canClaim){
+    if(canClaim.type==='ron'){
+      tips.push({icon:'🏆', text:`<b>Ron is offered!</b> You can win on ${tileLabel(canClaim.tile)}. Ron scores against the discarder only — accept if you think the hand is worth it.`});
+    } else if(canClaim.type==='tsumo'){
+      tips.push({icon:'🏆', text:'<b>Tsumo!</b> You drew the winning tile yourself. Self-draw wins score against all three opponents — take it!'});
+    } else if(canClaim.type==='pong'){
+      tips.push({icon:'🔔', text:`<b>Pong is offered for ${tileLabel(canClaim.tile)}.</b> Ponging skips turn order and locks you into a triplet — only claim if it moves you meaningfully closer to winning. Sequences are more flexible.`});
+    } else if(canClaim.type==='chow'){
+      tips.push({icon:'🔔', text:`<b>Chow is offered for ${tileLabel(canClaim.tile)}.</b> Chow is the cheapest meld to claim — only costs you two adjacent tiles. Take it if it clears deadwood.`});
+    }
+  }
+
+  // Winning position
+  if(!inClaim && shn===0 && isYourTurn){
+    tips.push({icon:'🎯', text:'<b>Tenpai!</b> You\'re one tile away from winning. Play defensively — avoid discarding tiles adjacent to opponents\' recent discards.'});
+  }
+  if(shn===1 && isYourTurn){
+    tips.push({icon:'🎯', text:'<b>Iishanten.</b> You\'re two tiles away from winning. Focus on keeping flexible shapes — pairs and partial sequences — rather than chasing a specific tile.'});
+  }
+
+  // Honor tiles in hand
+  const honors = yourHand.filter(t => t.suit==='w' || t.suit==='d');
+  const honorPairs = {};
+  honors.forEach(t => { const k=tKey(t); honorPairs[k]=(honorPairs[k]||0)+1; });
+  const isolatedHonors = honors.filter(t => honorPairs[tKey(t)]===1);
+  if(isolatedHonors.length>=2 && isYourDiscardPhase() && shn>1){
+    tips.push({icon:'🎐', text:`<b>You have isolated honour tiles.</b> Winds and dragons can\'t form sequences — if you hold a lone one, discard it early unless you already have a pair.`});
+  }
+
+  // Terminals
+  const terminals = yourHand.filter(t => (t.suit==='m'||t.suit==='p'||t.suit==='s') && (t.num===1 || t.num===9));
+  if(terminals.length>=3 && isYourDiscardPhase() && shn>1){
+    tips.push({icon:'🎋', text:`<b>You hold multiple 1s/9s.</b> Terminals can only extend one direction (1-2-3 or 7-8-9), so they\'re less flexible. Prefer keeping middle tiles (3-7).`});
+  }
+
+  // Deep into the round
+  if(deck && deck.length < 20 && isYourTurn){
+    tips.push({icon:'⏳', text:`<b>Only ${deck.length} tiles left in the wall.</b> Play defensively — if you\'re not close to winning, focus on safe discards (tiles already seen in the pond).`});
+  }
+
+  // Current player is YOU and you must discard
+  if(phase==='discard' && current===0){
+    if(shn<=1){
+      tips.push({icon:'🎯', text:'<b>You\'re close to winning.</b> Discard the tile that keeps the most potential melds intact — check which tile you hold that doesn\'t connect to anything else.'});
+    } else {
+      tips.push({icon:'🀀', text:'<b>Your turn to discard.</b> Look for the most isolated tile in your hand — one that can\'t form a sequence or pair. Tap a tile once to mark it, again to discard.'});
+    }
+  }
+
+  // Draw phase
+  if(phase==='draw' && current===0){
+    tips.push({icon:'🀫', text:'<b>Draw a tile.</b> Tap the "Draw Tile" button to take the next tile from the wall. You\'ll then need to discard to maintain 14 tiles.'});
+  }
+
+  // Early game — explain structure if this is round 1 with few discards
+  if(roundNum===1 && discards && discards.flat().length < 8 && isYourTurn){
+    tips.push({icon:'📖', text:'<b>A winning hand is 4 melds + 1 pair.</b> A meld is either a triplet (3 of a kind) or a sequence (3 in a row, same suit). Build toward that shape.'});
+  }
+
+  // Opponents with many melds exposed
+  const exposedCounts = melds.map((m,i) => i===0 ? 0 : m.length);
+  const maxExposed = Math.max(...exposedCounts);
+  if(maxExposed >= 2 && isYourTurn){
+    const aiIdx = exposedCounts.indexOf(maxExposed);
+    tips.push({icon:'⚠️', text:`<b>${PNAMES[aiIdx]} has ${maxExposed} exposed meld${maxExposed>1?'s':''}.</b> They\'re close to winning — be cautious about discarding anything that could complete a triplet or sequence.`});
+  }
+
+  return tips;
+}
+
+function isYourDiscardPhase(){ return phase==='discard' && current===0; }
 </script>

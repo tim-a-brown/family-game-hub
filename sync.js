@@ -70,7 +70,7 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -80,6 +80,10 @@
         try{ out.gh[k.slice(3)] = JSON.parse(LS.getItem(k)) || []; }catch(e){}
       } else if(k === 'casino_bank'){
         try{ out.bank = parseInt(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'rklists'){
+        // Per-PIN saved ranker lists: stored under one key, already scoped to
+        // the current user since cloud docs are addressed by PIN.
+        try{ out.rklists = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       }
     }
     return out;
@@ -116,7 +120,7 @@
   }
 
   function mergeSnapshots(local, remote){
-    var out = { hi: {}, gh: {} };
+    var out = { hi: {}, gh: {}, rklists: null };
     var keys = {};
     Object.keys(local.hi||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.hi||{}).forEach(function(k){ keys[k]=1; });
@@ -125,7 +129,23 @@
     Object.keys(local.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(keys).forEach(function(k){ out.gh[k] = mergeGh(local.gh&&local.gh[k], remote.gh&&remote.gh[k]); });
+    out.rklists = mergeRkLists(local.rklists, remote.rklists);
     return out;
+  }
+
+  // Ranker lists are a flat collection: each list has its own id and
+  // _modifiedAt timestamp. Merge by id, keeping the newer version of each.
+  function mergeRkLists(a, b){
+    if(!a && !b) return null;
+    var byId = {};
+    (a && a.lists || []).forEach(function(l){ if(l && l.id) byId[l.id] = l; });
+    (b && b.lists || []).forEach(function(l){
+      if(!l || !l.id) return;
+      var ex = byId[l.id];
+      if(!ex || (l._modifiedAt||0) > (ex._modifiedAt||0)){ byId[l.id] = l; }
+    });
+    var lists = Object.keys(byId).map(function(k){ return byId[k]; });
+    return { lists: lists };
   }
 
   function writeSnapshotToLocal(snap){
@@ -137,6 +157,9 @@
     });
     if(snap.bank !== null && snap.bank !== undefined){
       try{ LS.setItem('casino_bank', String(snap.bank)); }catch(e){}
+    }
+    if(snap.rklists){
+      try{ LS.setItem('rklists', JSON.stringify(snap.rklists)); }catch(e){}
     }
   }
 
@@ -189,11 +212,11 @@
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, isNew:false});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, isNew:false});
     return ref.get().then(function(doc){
-      if(!doc.exists) return {hi:{}, gh:{}, label:null, bank:null, isNew:true};
+      if(!doc.exists) return {hi:{}, gh:{}, label:null, bank:null, rklists:null, isNew:true};
       var d = doc.data() || {};
-      return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, isNew:false };
+      return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, isNew:false };
     });
   }
 
@@ -222,6 +245,7 @@
     var lbl = label();
     if(lbl) doc.label = lbl;
     if(snap.bank !== null && snap.bank !== undefined) doc.bank = snap.bank;
+    if(snap.rklists) doc.rklists = sanitizeForFirestore(snap.rklists);
     return ref.set(doc, { merge: false });
   }
 
@@ -265,7 +289,7 @@
 
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key !== 'casino_bank') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key !== 'casino_bank' && key !== 'rklists') return;
     if(isPin()) schedulePush();
   }
 
