@@ -1147,13 +1147,13 @@ body { background: radial-gradient(ellipse at 50% -10%, #1a2a1a 0%, #0d1117 55%)
     }
     // Sort by same rules as everywhere else
     uniqueFavs.sort(makeCompare(favs));
-    // Clone into the favorites grid — the clones still render a star that
-    // correctly toggles (via event delegation when installStarOnCard runs
-    // on them after insertion)
+    // Clone into the favorites grid — cloneNode copies DOM but NOT event
+    // listeners, so the cloned star button has no click handler. Strip it
+    // before inserting; installStarOnCard below will add a fresh one whose
+    // handler correctly toggles the favorite state.
     uniqueFavs.forEach(c => {
       const clone = c.cloneNode(true);
-      // Remove the has-progress marker clone may have inherited; keep things
-      // clean so the favorites grid reflects the current state
+      clone.querySelectorAll(':scope > .fav-star').forEach(s => s.remove());
       grid.appendChild(clone);
     });
     // Install stars on clones so they can be toggled too

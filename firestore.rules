@@ -3,13 +3,16 @@ rules_version = '2';
 // ═══════════════════════════════════════════════════════════════════════════
 // Game Night — Firestore security rules
 //
-// Model: a single document per PIN at /pins/{pinId}. Anyone who knows the
-// 4-digit PIN can read and write to it. There is no per-user auth —
-// data is scoped by PIN-as-shared-secret.
+// Model: single doc per PIN at /pins/{pinId}. Anyone who knows the 4-digit
+// PIN can read/write — data is scoped by PIN-as-shared-secret.
 //
-// Allowed fields are explicitly listed below. If you add a new top-level
-// field to the sync schema (see sync.js pushNow), you MUST add it to the
-// `hasOnly(...)` allowlist or writes containing that field will fail with
+// Reads and writes are gated separately:
+//   - Reads just need the PIN format check. `request.resource.data` does
+//     not exist on reads, so using hasOnly() here would deny every sign-in.
+//   - Writes additionally validate the field allowlist.
+//
+// If you add a new top-level field in sync.js pushNow, also add it to the
+// hasOnly(...) list below, or writes containing it will fail with
 // "Missing or insufficient permissions".
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -17,11 +20,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /pins/{pinId} {
-      // Reads only need the PIN format check — `request.resource.data`
-      // isn't available on reads, so using hasOnly here would break sign-in.
       allow read: if pinId.matches('^[0-9]{4}$');
 
-      // Writes additionally validate the field allowlist.
       allow write: if pinId.matches('^[0-9]{4}$')
         && request.resource.data.keys().hasOnly([
           'hi',         // per-game high scores
@@ -34,7 +34,7 @@ service cloud.firestore {
         ]);
     }
 
-    // Default deny — anything outside /pins/{pinId} is locked.
+    // Default deny — nothing outside /pins/{pinId} is accessible.
     match /{document=**} {
       allow read, write: if false;
     }
