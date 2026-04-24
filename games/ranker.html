@@ -624,15 +624,27 @@ function loadList(id){
   const lists = loadLists();
   const list = lists.find(l => l.id === id);
   if(!list) return;
+  // Firestore may return `items` as an object-keyed map; coerce back to array
+  let itemsArr = list.items;
+  if(!Array.isArray(itemsArr) && itemsArr && typeof itemsArr === 'object'){
+    const keys = Object.keys(itemsArr);
+    if(keys.length && keys.every(k => /^\d+$/.test(k))){
+      itemsArr = keys.sort((a,b)=>+a-+b).map(k => itemsArr[k]);
+    } else {
+      itemsArr = Object.values(itemsArr);
+    }
+  }
+  if(!Array.isArray(itemsArr)) itemsArr = [];
   state = {
     id: list.id,
     name: list.name,
-    items: list.items.map(x => ({id:x.id, name:x.name})),
+    items: itemsArr.filter(x => x && x.name).map(x => ({id:x.id, name:x.name})),
     unsaved: false,
     dedupe: state.dedupe,
+    editMode: state.editMode,
     dismissedDupes: {}
   };
-  nextItemId = Math.max(0, ...state.items.map(x=>x.id)) + 1;
+  nextItemId = Math.max(0, ...state.items.map(x=>x.id||0)) + 1;
   saveCurrent();
   render();
 }

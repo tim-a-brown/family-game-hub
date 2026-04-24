@@ -90,8 +90,21 @@
   }
 
   // ── Merge strategies ──────────────────────────────────────────────────
+  function asArray(v){
+    if(Array.isArray(v)) return v;
+    if(v == null) return [];
+    // Firestore can return array-like objects {0:..., 1:...} — recover those
+    if(typeof v === 'object'){
+      var keys = Object.keys(v);
+      if(keys.length && keys.every(function(k){ return /^\d+$/.test(k); })){
+        return keys.sort(function(a,b){return +a-+b;}).map(function(k){ return v[k]; });
+      }
+    }
+    return [];
+  }
+
   function mergeHi(a, b){
-    var all = (a||[]).concat(b||[]);
+    var all = asArray(a).concat(asArray(b));
     var seen = {};
     all = all.filter(function(row){
       if(!Array.isArray(row) || row.length < 2) return false;
@@ -103,7 +116,7 @@
   }
 
   function mergeGh(a, b){
-    var all = (a||[]).concat(b||[]);
+    var all = asArray(a).concat(asArray(b));
     var seen = {};
     all = all.filter(function(row){
       if(!row || typeof row !== 'object') return false;
@@ -138,8 +151,8 @@
   function mergeRkLists(a, b){
     if(!a && !b) return null;
     var byId = {};
-    (a && a.lists || []).forEach(function(l){ if(l && l.id) byId[l.id] = l; });
-    (b && b.lists || []).forEach(function(l){
+    asArray(a && a.lists).forEach(function(l){ if(l && l.id) byId[l.id] = l; });
+    asArray(b && b.lists).forEach(function(l){
       if(!l || !l.id) return;
       var ex = byId[l.id];
       if(!ex || (l._modifiedAt||0) > (ex._modifiedAt||0)){ byId[l.id] = l; }
