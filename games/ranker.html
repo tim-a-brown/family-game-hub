@@ -1326,19 +1326,52 @@ if(restored && typeof restored === 'object'){
 render();
 updateInputUi();
 
+// Force a cloud sync when the ranker opens so we see the latest lists from
+// other devices. boot() runs automatically, but we also trigger syncNow() on
+// visibility change in case the user backgrounded the tab and returned.
+if(window.FGHSync && typeof FGHSync.syncNow === 'function'){
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') FGHSync.syncNow();
+  });
+}
+
 if(window.FGHSync && typeof FGHSync.onReady === 'function'){
   FGHSync.onReady(() => {
     if(state.id){
       const cloudList = loadLists().find(l => l.id === state.id);
       if(cloudList && !state.unsaved){
-        state.name = cloudList.name;
-        state.items = cloudList.items.map(x => ({id:x.id, name:x.name}));
-        saveCurrent();
+        // Items may arrive as object-shaped array {0:...,1:...} — coerce
+        let itemsArr = cloudList.items;
+        if(!Array.isArray(itemsArr) && itemsArr && typeof itemsArr === 'object'){
+          const keys = Object.keys(itemsArr);
+          itemsArr = keys.every(k => /^\d+$/.test(k))
+            ? keys.sort((a,b)=>+a-+b).map(k => itemsArr[k])
+            : Object.values(itemsArr);
+        }
+        if(Array.isArray(itemsArr)){
+          state.name = cloudList.name;
+          state.items = itemsArr.filter(x => x && x.name).map(x => ({id:x.id, name:x.name}));
+          saveCurrent();
+        }
       }
     }
     render();
   });
 }
+
+// When any sync completes (pull updates localStorage), refresh what's on
+// screen. Both the main UI and any open modal.
+document.addEventListener('fghsync:updated', function(){
+  render();
+  // If the My Lists modal happens to be open right now, re-render it so
+  // freshly-pulled lists appear without requiring the user to close/reopen.
+  const modal = document.getElementById('rk-modal');
+  if(document.getElementById('rk-modal-overlay').classList.contains('show')
+     && modal && modal.querySelector('.rk-modal-title')
+     && modal.querySelector('.rk-modal-title').textContent === 'My lists'){
+    renderListsModal();
+  }
+});
 </script>
 </body>
 </html>

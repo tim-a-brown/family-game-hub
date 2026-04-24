@@ -245,9 +245,19 @@
   function pullCloud(){
     var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:false});
     return ref.get().then(function(doc){
-      if(!doc.exists) return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:true};
+      if(!doc.exists){
+        console.log('[sync] pull: cloud doc empty (first sync)');
+        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, isNew:true};
+      }
       var d = doc.data() || {};
-      return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, isNew:false };
+      console.log('[sync] pull', {
+        rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
+        favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
+        hi_keys: Object.keys(result.hi||{}).length,
+        gh_keys: Object.keys(result.gh||{}).length
+      });
+      return result;
     });
   }
 
@@ -279,16 +289,31 @@
     var ref = cloudRef(); if(!ref) return Promise.resolve();
     var snap = scanLocal();
     var doc = {
-      hi: hiToFirestore(snap.hi),
-      gh: sanitizeForFirestore(snap.gh),
+      hi: hiToFirestore(snap.hi || {}),
+      gh: sanitizeForFirestore(snap.gh || {}),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     var lbl = label();
     if(lbl) doc.label = lbl;
     if(snap.bank !== null && snap.bank !== undefined) doc.bank = snap.bank;
+    // Include rklists when local has it (even empty {lists:[]} to propagate
+    // "user deleted all lists"). Omit only when local never had it at all —
+    // with merge:true that preserves the cloud version from other devices.
     if(snap.rklists) doc.rklists = sanitizeForFirestore(snap.rklists);
-    if(snap.favs && Array.isArray(snap.favs) && snap.favs.length) doc.favs = snap.favs;
-    return ref.set(doc, { merge: false });
+    // Same logic for favs — always include defined arrays (even empty) so
+    // unfavoriting everything propagates across devices.
+    if(Array.isArray(snap.favs)) doc.favs = snap.favs;
+    console.log('[sync] push', {
+      rklists_count: snap.rklists && snap.rklists.lists ? snap.rklists.lists.length : 0,
+      favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
+      hi_keys: Object.keys(snap.hi||{}).length,
+      gh_keys: Object.keys(snap.gh||{}).length
+    });
+    // merge:true means fields not in `doc` are preserved on the cloud side.
+    // This prevents the race where device A has empty local for some field
+    // and pushes before device B's newly-saved data lands — merge:false
+    // would wipe the cloud field entirely.
+    return ref.set(doc, { merge: true });
   }
 
   // ── Label ─────────────────────────────────────────────────────────────
@@ -380,6 +405,76 @@
     if(isPin()) schedulePush();
   }
 
+  // ── Diagnostic APIs ───────────────────────────────────────────────────
+  // Returns the raw Firestore document for the current PIN without merging.
+  function pullCloudRaw(){
+    if(!isPin()) return Promise.resolve({error:'Not signed in with PIN'});
+    return ensureFirebase().then(function(){
+      var ref = cloudRef();
+      if(!ref) return {error:'No cloud ref'};
+      return ref.get().then(function(doc){
+        if(!doc.exists) return {exists:false, data:null};
+        return {exists:true, data:doc.data()};
+      });
+    }).catch(function(err){
+      return {error:(err && err.message) || String(err)};
+    });
+  }
+
+  // Pulls cloud data and writes it directly to local, overwriting
+  // whatever was there (no merge). Useful for "reset local from cloud".
+  function forceOverwriteLocal(){
+    if(!isPin()) return Promise.resolve({ok:false, reason:'Not signed in'});
+    setStatus('syncing');
+    return ensureFirebase()
+      .then(pullCloud)
+      .then(function(remote){
+        // Clear existing hi_/gh_/rklists/fav_games, then write fresh from cloud
+        var keysToRemove = [];
+        for(var i = 0; i < LS.length; i++){
+          var k = LS.key(i);
+          if(k && (k.indexOf('hi_') === 0 || k.indexOf('gh_') === 0 ||
+                   k === 'rklists' || k === 'fav_games' || k === 'casino_bank')){
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(function(k){ LS.removeItem(k); });
+        if(remote.label) LS.setItem(LABEL_KEY, remote.label);
+        writeSnapshotToLocal({
+          hi: remote.hi || {},
+          gh: remote.gh || {},
+          bank: remote.bank,
+          rklists: remote.rklists,
+          favs: remote.favs
+        });
+        setStatus('synced');
+        try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+        return {ok:true};
+      })
+      .catch(function(err){
+        console.warn('[sync] forceOverwriteLocal failed', err);
+        setStatus('error', { error: (err && err.message) || String(err) });
+        return {ok:false, error:err};
+      });
+  }
+
+  // Pushes local state to cloud, overwriting whatever was there.
+  function forceOverwriteCloud(){
+    if(!isPin()) return Promise.resolve({ok:false, reason:'Not signed in'});
+    setStatus('syncing');
+    return ensureFirebase()
+      .then(pushNow)
+      .then(function(){
+        setStatus('synced');
+        return {ok:true};
+      })
+      .catch(function(err){
+        console.warn('[sync] forceOverwriteCloud failed', err);
+        setStatus('error', { error: (err && err.message) || String(err) });
+        return {ok:false, error:err};
+      });
+  }
+
   // ── Bootstrap ─────────────────────────────────────────────────────────
   function boot(){
     var m = mode();
@@ -439,6 +534,9 @@
     syncNow: syncNow,
     syncStatus: syncStatus,
     onStatusChange: onStatusChange,
+    pullCloudRaw: pullCloudRaw,
+    forceOverwriteLocal: forceOverwriteLocal,
+    forceOverwriteCloud: forceOverwriteCloud,
     _scanLocal: scanLocal
   };
 
