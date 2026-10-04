@@ -33,6 +33,8 @@
 .pseat .tag .avatar .ico{width:60%;height:60%;}
 .pseat .stack{padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.92);color:#1d1b2e;font-size:.74rem;font-weight:900;font-variant-numeric:tabular-nums;box-shadow:0 2px 6px rgba(0,0,0,.3);}
 .pseat.me{flex-direction:row;gap:6px;}
+.pseat.top{display:grid;grid-template-columns:auto auto;column-gap:6px;row-gap:3px;align-items:center;justify-items:start;}
+.pseat.top > .cards{grid-row:1 / 3;}
 .pseat.turn .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.6);transform:scale(1.06);}
 .pseat.win .tag{box-shadow:0 0 0 3px var(--green),0 0 20px rgba(61,220,132,.65);}
 .pseat.fold > .cards,.pseat.fold > .tag{opacity:.45;}
@@ -810,6 +812,10 @@
   function finishHand() {
     var H = S.hand, n = N(), lv = live(), i;
     for (i = 0; i < n; i++) { H.pot += H.bet[i]; H.bet[i] = 0; }
+    // An uncalled bet goes straight back to whoever made it
+    var order = H.total.map(function (t, j) { return j; }).sort(function (a, b) { return H.total[b] - H.total[a]; });
+    var extra = H.total[order[0]] - H.total[order[1]];
+    if (extra > 0) { H.total[order[0]] -= extra; S.players[order[0]].stack += extra; H.pot -= extra; H.refund = { i: order[0], amt: extra }; }
     var won = []; for (i = 0; i < n; i++) won.push(0);
     var results = [], scores = {}, five = {};
     var showdown = lv.length > 1;
@@ -1118,7 +1124,7 @@
     var main = done ? (H.results.filter(function (r) { return !r.back; })[0] || H.results[0]) : null;
     S.players.forEach(function (p, i) {
       var pos = POS[lay[i]], me = i === 0;
-      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (/^(l|r|lt|lb|rt|rb)$/.test(lay[i]) ? ' up' : '') });
+      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (/^(l|r|lt|lb|rt|rb)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '') });
       if (p.out) seat.classList.add('out');
       if (H && H.folded[i]) seat.classList.add('fold');
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('turn');
