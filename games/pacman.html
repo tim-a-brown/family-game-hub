@@ -609,8 +609,8 @@ body{display:flex;flex-direction:column;
     if (G.score > G.levelStart || !G.stats.levelPts.length) G.stats.levelPts.push(G.score - G.levelStart);
     var newTop = G.score > 0 && G.score > hiAtStart;
     var hl = [];
-    hl.push('Reached level ' + G.level + (levelsCleared ? ' after clearing ' + levelsCleared + (levelsCleared === 1 ? ' maze' : ' mazes') : ''));
-    if (newTop) hl.push('New high score: ' + G.score.toLocaleString() + ' (old best ' + hiAtStart.toLocaleString() + ')');
+    hl.push(levelsCleared ? 'Cleared ' + levelsCleared + (levelsCleared === 1 ? ' maze' : ' mazes') + ' and reached level ' + G.level : 'Ate ' + G.eaten + ' of the 244 dots on level 1');
+    if (newTop) hl.push('New high score: ' + G.score.toLocaleString() + (hiAtStart ? ' (old best ' + hiAtStart.toLocaleString() + ')' : ''));
     if (G.stats.quad) hl.push(G.stats.quad === 1 ? 'Ate all four ghosts on one power pellet (level ' + G.stats.quadLvl + ')' : 'Ate all four ghosts on one power pellet ' + G.stats.quad + ' times');
     else if (G.stats.ghosts) hl.push('Ate ' + G.stats.ghosts + (G.stats.ghosts === 1 ? ' ghost' : ' ghosts') + (G.stats.maxCombo > 1 ? ', best streak ' + G.stats.maxCombo + ' in a row' : ''));
     if (G.stats.fruit) hl.push('Grabbed ' + G.stats.fruit + (G.stats.fruit === 1 ? ' bonus fruit' : ' bonus fruits') + ' (best: ' + G.stats.bestFruit.n + ', ' + G.stats.bestFruit.p.toLocaleString() + ')');
@@ -819,7 +819,7 @@ body{display:flex;flex-direction:column;
     // Popups
     G.popups.forEach(function (pp) { text(pp.txt, pp.x, pp.y - (pp.ghost ? 0 : (120 - pp.t) * .05), pp.col, 7); });
     if (phase === 'ready') text('READY!', 112, FRUIT_Y, '#ffd84a', 11);
-    if (phase === 'over') text('GAME  OVER', 112, FRUIT_Y, '#ff3d4a', 11);
+    if (phase === 'over' && !overReady) text('GAME  OVER', 112, FRUIT_Y, '#ff3d4a', 11);
   }
   // Title backdrop: ghosts parading and a chomper in the maze
   function renderAttract() {
@@ -837,7 +837,6 @@ body{display:flex;flex-direction:column;
   function renderCut() {
     g.setTransform(SC, 0, 0, SC, 0, 0);
     var t = 420 - G.pt, y = 124;
-    g.fillStyle = 'rgba(80,110,255,.18)'; g.fillRect(0, y + 14, LW, 1); g.fillRect(0, y - 26, LW, 1);
     var wob = Math.floor(frame / 6) % 2;
     if (t < 200) {
       var px = 260 - t * 1.55;

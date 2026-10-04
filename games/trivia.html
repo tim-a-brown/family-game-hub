@@ -15,7 +15,7 @@
 body{overflow-x:hidden;}
 .tv{max-width:620px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 16px);}
 .tv .scores{margin-bottom:2px;}
-.score .mult{display:inline-flex;align-items:center;gap:2px;margin-left:4px;padding:0 5px;border-radius:999px;background:var(--orange);color:#2b1300;font-size:.7rem;font-weight:900;vertical-align:2px;}
+.score .mult{display:inline-flex;align-items:center;gap:2px;padding:0 5px;border-radius:999px;background:var(--orange);color:#2b1300;font-size:.7rem;font-weight:900;vertical-align:2px;}
 .score .mult .ico{width:11px;height:11px;}
 .hud{display:flex;justify-content:center;gap:8px;margin:0 0 8px;flex-wrap:wrap;}
 .pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 11px;border-radius:999px;background:rgba(255,255,255,.07);font-weight:800;font-size:.86rem;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -64,7 +64,7 @@ body{overflow-x:hidden;}
 
 /* Question card */
 .qwrap{perspective:900px;}
-.qcard{position:relative;border-radius:16px;padding:12px 16px 16px;color:#1d1b2e;min-height:128px;
+.qcard{position:relative;border-radius:16px;padding:12px 16px 16px;color:#1d1b2e;min-height:100px;
   background:linear-gradient(180deg,#fffdf6,#f1ead6);box-shadow:0 2px 0 rgba(255,255,255,.7) inset,0 10px 24px rgba(0,0,0,.45);
   transform-origin:50% 0;}
 .qcard.in{animation:cardin .6s var(--spring) both;}
@@ -78,7 +78,7 @@ body{overflow-x:hidden;}
 .qcard .q{font-family:var(--display);font-weight:400;font-size:clamp(1.25rem,5.4vw,1.6rem);line-height:1.18;letter-spacing:.005em;}
 .qcard .q.long{font-size:clamp(1.1rem,4.6vw,1.38rem);}
 /* Category reel before the card flips in */
-.reel{height:128px;border-radius:16px;display:grid;place-items:center;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(255,214,110,.25);overflow:hidden;}
+.reel{height:100px;border-radius:16px;display:grid;place-items:center;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(255,214,110,.25);overflow:hidden;}
 .reel span{font-family:var(--display);font-size:2rem;color:#ffd76a;text-shadow:0 0 18px rgba(255,200,80,.6);}
 .reel span.land{animation:land .5s var(--spring);}
 @keyframes land{0%{transform:scale(1.5);}100%{transform:none;}}
@@ -141,7 +141,7 @@ body{overflow-x:hidden;}
 
 /* Buzzers */
 .buzzers{display:grid;grid-template-columns:repeat(var(--cols,2),1fr);gap:10px;margin-top:12px;}
-.buzz{position:relative;height:66px;border:0;border-radius:999px;color:#1a1033;font-family:var(--display);font-size:1.25rem;
+.buzz{position:relative;height:58px;border:0;border-radius:999px;color:#1a1033;font-family:var(--display);font-size:1.15rem;
   background:radial-gradient(120% 90% at 50% 20%, color-mix(in srgb,var(--c) 55%,#fff) 0%, var(--c) 45%, color-mix(in srgb,var(--c) 55%,#000) 100%);
   box-shadow:0 6px 0 color-mix(in srgb,var(--c) 45%,#000),0 10px 18px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.5);
   transition:transform .06s, box-shadow .06s, opacity .3s, filter .3s;-webkit-tap-highlight-color:transparent;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 14px;}
@@ -149,7 +149,7 @@ body{overflow-x:hidden;}
 .buzz:disabled{filter:grayscale(1) brightness(.55);}
 .buzz.lit{animation:lit .5s ease-in-out infinite alternate;filter:none;}
 @keyframes lit{to{box-shadow:0 6px 0 color-mix(in srgb,var(--c) 45%,#000),0 0 30px var(--c),inset 0 2px 0 rgba(255,255,255,.5);}}
-.buzz .ico{position:absolute;right:16px;top:50%;width:20px;height:20px;margin-top:-10px;}
+.buzz .ico{position:absolute;right:12px;top:50%;width:20px;height:20px;margin-top:-10px;}
 .buzzhint{text-align:center;color:var(--text-3);font-size:.85rem;margin-top:8px;}
 .buzzbar{margin-top:10px;height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;}
 .buzzbar i{display:block;height:100%;background:var(--c,#ffd447);transform-origin:left;}
@@ -185,7 +185,6 @@ body{overflow-x:hidden;}
 @media (min-width:560px){
   .answers{display:grid;grid-template-columns:1fr 1fr;}
   .ans.gone{display:none;}
-  .buzzers{--cols:3 !important;}
 }
 </style>
 </head>
@@ -1361,7 +1360,7 @@ var QB = {
         fresh = 'bad'; snd('buzzer'); Kit.haptic('error');
         var left = S.players.map(function (p, i) { return i; }).filter(function (i) { return c.locked.indexOf(i) < 0; });
         if (!left.length || c.out.length >= 3) { c.done = true; c.ok = false; c.pts = 0; S.log.push({ p: -1, id: q.id, cat: q.cat, ok: false, pts: 0 }); return finishQuestion(true); }
-        Kit.toast(timedOut || k < 0 ? S.players[who].name + ' ran out of time' : 'Wrong! Anyone else?');
+        Kit.callout(k < 0 ? 'Too slow!' : 'Locked out!', '#ff8f8f');
         save(); render(); return;
       }
       c.ok = false; c.done = true; c.pts = 0; c.timeout = !!timedOut;
@@ -1420,8 +1419,9 @@ var QB = {
         var m = mult(S.streak[i] + 1);
         var nm = el('span', { class: 'nm', text: p.name });
         strip.appendChild(el('div', { class: 'score' + (on ? ' on' : '') + (lead > 0 && S.scores[i] === lead ? ' lead' : ''), style: { '--c': Kit.color(i), flex: '1' } }, [
-          nm, el('span', { class: 'pt', html: S.scores[i] + (S.streak[i] >= 2 && S.phase !== 'over' ? '<span class="mult">' + Kit.icon('flame') + '×' + m + '</span>' : '') }),
-          el('span', { class: 'sub', text: S.mode === 'pass' && S.players.some(function (x) { return x.level !== S.players[0].level; }) ? LEVELS[p.level] : S.right[i] + ' right' })
+          nm, el('span', { class: 'pt', text: String(S.scores[i]) }),
+          S.streak[i] >= 2 && S.phase !== 'over' ? el('span', { class: 'sub', html: '<span class="mult">' + Kit.icon('flame') + '×' + m + ' next</span>' })
+            : el('span', { class: 'sub', text: S.mode === 'pass' && S.players.some(function (x) { return x.level !== S.players[0].level; }) ? LEVELS[p.level] : S.right[i] + ' right' })
         ]));
       });
       app.appendChild(strip);
@@ -1540,7 +1540,7 @@ var QB = {
       fresh = null;
     } else if (S.mode === 'buzz') {
       if (fresh === 'bad') { stage.classList.add('flash-bad'); fresh = null; }
-      var bz = el('div', { class: 'buzzers', style: { '--cols': N() > 4 ? 3 : 2 } });
+      var bz = el('div', { class: 'buzzers', style: { '--cols': N() === 2 || N() === 4 ? 2 : 3 } });
       S.players.forEach(function (p, i) {
         var locked = c.locked.indexOf(i) >= 0;
         bz.appendChild(el('button', { type: 'button', class: 'buzz' + (c.buzz === i ? ' lit' : ''), style: { '--c': Kit.color(i) }, disabled: locked || (c.buzz >= 0 && c.buzz !== i),
@@ -1578,7 +1578,7 @@ var QB = {
     // Highlights
     P.forEach(function (p, i) {
       var b = S.best[i];
-      if (b.n >= 3) {
+      if (b.n >= 3 && !(S.asked[i] >= 3 && S.right[i] === S.asked[i] && b.n === S.right[i] && S.cats.length > 1)) {
         var cnt = {}; b.cats.forEach(function (c) { cnt[c] = (cnt[c] || 0) + 1; });
         var top = Object.keys(cnt).sort(function (x, y) { return cnt[y] - cnt[x]; })[0];
         hl.push({ w: b.n, t: p.name + ' got ' + b.n + ' in a row' + (cnt[top] === b.n ? ' on ' + CAT_NAME[top] + ' trivia' : cnt[top] * 2 > b.n ? ', mostly ' + CAT_NAME[top] : '') });
