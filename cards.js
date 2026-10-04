@@ -314,7 +314,7 @@ function Scorepad(host, o) {
   if (!S || !S.sides || S.sides.length !== o.sides.length || S.sides.some(function (s, i) { return s.name !== o.sides[i].name; })) {
     S = { sides: o.sides.map(function (s) { return { name: s.name }; }), rounds: [], over: false, highlights: [], started: Date.now() };
   }
-  function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (!S.over) Kit.resume.set(S.rounds.length ? 'Round ' + (S.rounds.length + 1) : 'Ready'); }
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (!S.over) Kit.resume.set(S.rounds.length ? 'Round ' + (S.rounds.length + 1) : 'Ready', { keys: [SAVE] }); }
   function clear() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function totals() {
     var t = S.sides.map(function () { return 0; });
@@ -403,7 +403,7 @@ function Scorepad(host, o) {
 
   function addRound() {
     openForm(null, function (scores, extra) {
-      Kit.resume.set('Round ' + (S.rounds.length + 2));
+      Kit.resume.set('Round ' + (S.rounds.length + 2), { keys: [SAVE] });
       S.rounds.push({ scores: scores, label: extra.label || '', detail: extra.detail || null, highlights: extra.highlights || [], data: extra.data || null });
       if (extra.callout) Kit.callout(extra.callout);
       Kit.sfx('good'); Kit.haptic('success');

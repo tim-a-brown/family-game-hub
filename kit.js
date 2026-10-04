@@ -20,7 +20,7 @@
 //   Kit.card(rank, suit, {back, cls})          playing-card element
 //   Kit.die(value)                             die element
 //   Kit.color(i)                               player colour for seat i
-//   Kit.resume.set(label) / .clear()           "Continue" rail on home
+//   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -114,6 +114,7 @@
     rows: '<rect x="3" y="4" width="5" height="5" rx="1.5"/><rect x="3" y="15" width="5" height="5" rx="1.5"/><path d="M11.5 6.5H21M11.5 17.5H21"/>',
     star: '<path d="M12 2.5l2.9 5.9 6.6 1-4.8 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.5 9.4l6.6-1z"/>',
     play: '<path d="M7 4v16l13-8z"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>',
     plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
     sparkle: '<path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/>',
     book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
@@ -325,10 +326,11 @@
 
   // ── "Continue" rail data (read by the home screen) ────────────────────────
   var resume = {
-    set: function (label) {
+    set: function (label, o) {
       if (!game) return;
       var all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
       all[game.id] = { ts: Date.now(), label: label || 'In progress', file: pageKey() };
+      if (o && o.keys) all[game.id].keys = o.keys;   // saved-game keys, so home can delete it
       lsSet('gn_resume', JSON.stringify(all));
     },
     clear: function () {

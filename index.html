@@ -172,10 +172,16 @@ document.addEventListener('visibilitychange', function () {
 .sec.favs + .sec{margin-top:28px;}
 
 /* Keep playing: compact overview, 5-6 games visible at once */
+.cont-w{position:relative;min-width:0;border-radius:14px;overflow:hidden;touch-action:pan-y;}
+.cont-w .cont{position:relative;z-index:1;transition:transform .25s var(--ease);will-change:transform;}
+.cont-w.drag .cont{transition:none;}
+.cont-del{position:absolute;top:0;right:0;bottom:0;width:76px;border:0;display:grid;place-items:center;align-content:center;gap:2px;
+  background:var(--red);color:#fff;font:800 .68rem/1 var(--font);cursor:pointer;}
+.cont-del .ico{width:20px;height:20px;}
 .rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 @media (min-width:720px){.rail{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media (min-width:1100px){.rail{grid-template-columns:repeat(4,minmax(0,1fr));}}
-.cont{--c:#ffc83d;position:relative;min-width:0;display:flex;align-items:center;gap:9px;padding:8px 10px 8px 8px;border-radius:14px;
+.cont{--c:#ffc83d;position:relative;min-width:0;width:100%;display:flex;align-items:center;gap:9px;padding:8px 10px 8px 8px;border-radius:14px;
   background:var(--surface);color:var(--text);text-decoration:none;box-shadow:inset 3px 0 0 var(--c);transition:transform .15s var(--spring), background .15s;}
 .cont:hover{background:var(--surface-2);}
 .cont:active{transform:scale(.97);}
@@ -398,6 +404,66 @@ document.addEventListener('visibilitychange', function () {
     }));
     return box;
   }
+  // Swipe a Keep playing tile left to reveal a trash button that deletes the saved game
+  var SAVE_KEYS = {"2048":["2048_state"],"asteroids":["asteroids_state"],"baccarat":["baccarat_state"],"backgammon":["backgammon_state"],"battleship":["battleship_state"],"bingo":["bingo_state"],"blackjack":["blackjack_state"],"boggle":["boggle_state"],"breakout":["breakout_state"],"checkers":["checkers_state"],"chess":["chess_state"],"chinesecheckers":["chinesecheckers_state"],"codebreaker":["codebreaker_state"],"connectfour":["c4_state"],"conversation":["conversation_state"],"craps":["cr_state"],"cribbage":["cribbage_state"],"crossword":["crossword_state"],"cubehopper":["cubehopper_state"],"dealornodeal":["dond_state"],"dice-roller":["diceroller_state"],"dotsboxes":["dotsboxes_state"],"euchre-ai":["euchre_state"],"farkle":["farkle_state"],"fivecrownss-ai":["fivecrowns_state"],"flip7-ai":["flip7_state"],"freecell":["freecell_state"],"gin-rummy-ai":["gin_state"],"hangman":["hangman_state"],"hearts-ai":["hearts_state"],"horserace":["horserace_state"],"jokerrun":["jokerrun_state"],"lorcana":["lorcana_state"],"lrc":["lrc_state"],"madlibs":["madlibs_state"],"mahjong":["mahjong_state"],"mahjong4":["mj4_state"],"mancala":["mancala_state"],"marbles":["marbles_state"],"mathpuzzles":["mathpuzzles_state"],"memorymatch":["memorymatch_state"],"minesweeper":["minesweeper_state"],"minigolf":["mg_state"],"othello":["othello_state"],"pacman":["pacman_state"],"paddleball":["paddleball_state"],"paigow":["paigow_state"],"peggle":["peggle_state"],"phase10-ai":["phase10_state"],"plinko":["plinko_state"],"pokersquares":["pokersquares_state"],"pyramid":["pyramid_state"],"riddlestories":["riddlestories_state"],"rook-ai":["rook_state"],"roulette":["rl_state"],"scorecard":["scorecard_state"],"shellgame":["shellgame_state"],"slidepuzzle":["slidepuzzle_state"],"slots":["slots_state"],"snake":["snake_state"],"solitaire":["solitaire_state"],"spades-ai":["spades_state"],"spellingbee":["spellingbee_state"],"sudoku":["sdk_state","sudoku_state"],"tetris":["tetris_state"],"threecardpoker":["threecardpoker_state"],"tictactoe":["tictactoe_state"],"trivia":["trivia_state"],"wheeloffortune":["wof_state"],"wizard-ai":["wizard_state"],"wordle":["wordle_state"],"wordscramble":["wordscramble_state"],"wordsearch":["wordsearch_state"],"wouldyourather":["wyr_state"],"yahtzee":["yahtzee_state"],"hearts":["pad_ht"],"flip7":["pad_f7"],"rook":["pad_rk"],"spades":["pad_sp"],"euchre":["pad_eu"],"five-crowns":["pad_fc"],"gin-rummy":["pad_rm"],"phase10":["pad_p10"],"wizard":["pad_wz","wizard_pad_bids"]};
+  var openTile = null;
+  function deleteSaved(x) {
+    var file = x.r.file || x.g.play;
+    var keys = (x.r.keys || []).concat(SAVE_KEYS[file] || []);
+    keys.forEach(function (k) { try { LS.removeItem(k); } catch (e) {} });
+    try { var all = JSON.parse(get('gn_resume', '{}')) || {}; delete all[x.g.id]; set('gn_resume', JSON.stringify(all)); } catch (e) {}
+  }
+  function swipeTile(x, tile) {
+    var w = el('div', { class: 'cont-w' });
+    var del = el('button', { type: 'button', class: 'cont-del', 'aria-label': 'Delete ' + x.g.name + ' game in progress', tabindex: '-1' },
+      [el('span', { html: Kit.icon('trash') }), el('span', { text: 'Delete' })]);
+    del.addEventListener('click', function (e) {
+      e.stopPropagation();
+      Kit.confirm('Delete your ' + x.g.name + ' game?', { ok: 'Delete', danger: true, body: (x.r.label || 'In progress') + '. This can’t be undone.' }).then(function (ok) {
+        if (!ok) { close(); return; }
+        deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap'); Kit.toast(x.g.name + ' game deleted');
+        w.style.transition = 'opacity .25s, transform .25s'; w.style.opacity = '0'; w.style.transform = 'scale(.9)';
+        setTimeout(function () { openTile = null; renderRail(); }, 260);
+      });
+    });
+    w.appendChild(del); w.appendChild(tile);
+    var REVEAL = 76, x0 = 0, y0 = 0, dx = 0, base = 0, active = false, horiz = null, moved = false;
+    function setX(v) { tile.style.transform = v ? 'translateX(' + v + 'px)' : ''; }
+    function open() { if (openTile && openTile !== close) openTile(); base = -REVEAL; setX(base); w.classList.add('open'); del.tabIndex = 0; openTile = close; }
+    function close() { base = 0; setX(0); w.classList.remove('open'); del.tabIndex = -1; if (openTile === close) openTile = null; }
+    tile.addEventListener('pointerdown', function (e) {
+      if (e.button) return;
+      active = true; horiz = null; moved = false; x0 = e.clientX; y0 = e.clientY; dx = 0;
+    });
+    tile.addEventListener('pointermove', function (e) {
+      if (!active) return;
+      var mx = e.clientX - x0, my = e.clientY - y0;
+      if (horiz === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) {
+        horiz = Math.abs(mx) > Math.abs(my);
+        if (horiz) { w.classList.add('drag'); try { tile.setPointerCapture(e.pointerId); } catch (er) {} }
+      }
+      if (!horiz) return;
+      moved = true; dx = mx;
+      setX(Math.max(-REVEAL - 30, Math.min(0, base + dx)));
+    });
+    function end() {
+      if (!active) return; active = false; w.classList.remove('drag');
+      if (!horiz) return;
+      if (base + dx < -REVEAL / 2) open(); else close();
+    }
+    tile.addEventListener('pointerup', end);
+    tile.addEventListener('pointercancel', end);
+    // A swipe (or tapping an open tile) shouldn't launch the game
+    tile.addEventListener('click', function (e) {
+      if (moved || w.classList.contains('open')) { e.preventDefault(); if (!moved) close(); moved = false; }
+      else if (openTile) { e.preventDefault(); openTile(); }
+    });
+    // Desktop: right-click offers the same delete
+    tile.addEventListener('contextmenu', function (e) { e.preventDefault(); open(); });
+    return w;
+  }
+  document.addEventListener('pointerdown', function (e) { if (openTile && !e.target.closest('.cont-w.open')) openTile(); }, true);
+
   var railAll = false;
   function renderRail() {
     try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
@@ -408,10 +474,10 @@ document.addEventListener('visibilitychange', function () {
     var rail = $('rail'); rail.innerHTML = '';
     var shown = railAll || items.length <= 6 ? items : items.slice(0, 6);
     shown.forEach(function (x) {
-      rail.appendChild(el('a', { class: 'cont', href: 'games/' + (x.r.file || x.g.play) + '.html', style: { '--c': x.g.color }, title: x.g.name }, [
+      rail.appendChild(swipeTile(x, el('a', { class: 'cont', href: 'games/' + (x.r.file || x.g.play) + '.html', style: { '--c': x.g.color }, title: x.g.name }, [
         el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
         el('span', { class: 'tx' }, [el('div', { class: 'r1' }, [el('div', { class: 't', text: x.g.name }), el('span', { class: 'a', text: ago(x.r.ts, true) })]), el('div', { class: 'd', text: x.r.label || 'In progress' })])
-      ]));
+      ])));
     });
     if (shown.length < items.length) {
       var more = el('button', { class: 'rail-more', type: 'button', text: 'Show all ' + items.length });
