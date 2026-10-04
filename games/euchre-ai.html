@@ -200,7 +200,6 @@
     });
   }
   function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
-  function lbl(c) { return Cards.label(c); }
   function suitHtml(s) { return '<span class="' + (s === 'h' || s === 'd' ? 'red-s' : '') + '">' + GLYPH[s] + '</span>'; }
   function active(p) { return p !== S.out; }
   function nextActive(p) { var q = (p + 1) % 4; if (!active(q)) q = (q + 1) % 4; return q; }
@@ -631,7 +630,7 @@
         p === S.dealer ? el('span', { class: 'dbtn', title: 'Dealer', 'aria-label': 'Dealer', text: 'D' }) : null
       ]);
       var chips = [];
-      if (p === 2) chips.push(el('span', { class: 'chip-s pt', text: 'Partner' }));
+      if (p === 2 && S.out !== 2) chips.push(el('span', { class: 'chip-s pt', text: 'Partner' }));
       if (S.maker === p) chips.push(el('span', { class: 'chip-s mk', html: (S.alone ? 'Alone ' : 'Called ') + suitHtml(S.trump) }));
       if (S.out === p) chips.push(el('span', { class: 'chip-s', text: 'Sitting out' }));
       else if (S.phase === 'play' || S.phase === 'handover') chips.push(el('span', { class: 'chip-s' + (S.lastWin === p && S.phase === 'play' ? ' hot' : ''), text: S.tricks[p] + (S.tricks[p] === 1 ? ' trick' : ' tricks') }));
