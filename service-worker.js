@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v9-2026-10-04-redesign';
+const CACHE_VERSION = 'v10-2026-10-04-icons';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -24,6 +24,7 @@ const PRECACHE_URLS = [
   '/kit.css',
   '/kit.js',
   '/games.js',
+  '/game-icons.js',
   '/diag.js',
   '/data/wordle-words.js',
   '/fonts/lilita-one.woff2',

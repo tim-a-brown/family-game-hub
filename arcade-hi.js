@@ -58,7 +58,11 @@ const ArcadeHi = (function(){
 .ahi-table th{color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);}
 .ahi-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.05);}
 .ahi-table tr.ahi-new td{color:#f5c842;}
-.ahi-table tr.ahi-top td:first-child::before{content:'🏆 ';}
+.ahi-table tr.ahi-top td{color:#f5c842;}
+.ahi-quick{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:-4px 0 16px;}
+.ahi-quick button{font-family:var(--display);font-size:1.15rem;letter-spacing:.08em;padding:8px 14px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.ahi-quick button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.ahi-quick-lbl{text-align:center;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;}
 .ahi-rank{color:rgba(255,255,255,.3);font-size:.72rem;width:24px;}
 .ahi-name{font-family:var(--display);font-size:1.1rem;font-weight:900;letter-spacing:.1em;}
 .ahi-pts{font-family:var(--display);font-size:1.05rem;font-weight:900;text-align:right;}
@@ -79,12 +83,13 @@ const ArcadeHi = (function(){
     overlay.className = 'ahi-overlay';
     overlay.innerHTML = `
       <div class="ahi-box">
-        <div class="ahi-title">🎮 HIGH SCORE!</div>
+        <div class="ahi-title">HIGH SCORE!</div>
         <div class="ahi-sub">You made the top ${MAX}. Enter your initials.</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${score.toLocaleString()}</div>
           <div class="ahi-score-lbl">SCORE</div>
         </div>
+        <div id="ahi-quick-wrap"></div>
         <div class="ahi-slots" id="ahi-slots"></div>
         <div id="ahi-warn" style="display:none;color:#ef4444;font-size:.75rem;text-align:center;margin-bottom:8px;"></div>
         <button class="btn btn-gold btn-block" id="ahi-submit" style="max-width:240px;margin:0 auto 10px;display:block;">Submit →</button>
@@ -156,6 +161,31 @@ const ArcadeHi = (function(){
       }
     }
     renderSlots();
+
+    // One-tap initials for the regulars: initials already on any leaderboard
+    // (these sync across devices) plus names from the family's game history.
+    (function quickPicks(){
+      const count = {};
+      try{
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i); if(!k||k.indexOf('hi_')!==0) continue;
+          (JSON.parse(localStorage.getItem(k)||'[]')||[]).forEach(e=>{ const n=String(e&&e.name||'').trim().toUpperCase(); if(/^[A-Z]{2,3}$/.test(n)) count[n]=(count[n]||0)+1; });
+        }
+      }catch(e){}
+      try{
+        if(window.Kit && Kit.knownNames) Kit.knownNames().forEach((n,i)=>{ const t=String(n).toUpperCase().replace(/[^A-Z]/g,'').slice(0,3); if(t.length>=2) count[t]=(count[t]||0)+20-Math.min(i,19); });
+      }catch(e){}
+      const picks = Object.keys(count).sort((a,b)=>count[b]-count[a]).slice(0,8);
+      if(!picks.length) return;
+      const wrap = document.getElementById('ahi-quick-wrap');
+      wrap.innerHTML = '<div class="ahi-quick-lbl">Tap your initials</div><div class="ahi-quick"></div>';
+      const box = wrap.querySelector('.ahi-quick');
+      picks.forEach(t=>{
+        const b=document.createElement('button'); b.type='button'; b.textContent=t;
+        b.addEventListener('click',()=>{ for(let i=0;i<3;i++) letters[i]=t[i]||' '; dismiss(true); });
+        box.appendChild(b);
+      });
+    })();
 
     // Keyboard support
     function onKey(e){

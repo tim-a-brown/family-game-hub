@@ -9,7 +9,8 @@
 //   (optional) hist.js, players.js, casino.js, arcade-hi.js
 //
 // API (all on window.Kit)
-//   Kit.init({id, rules, menu, onNew, wide})  build the game bar, set accent
+//   Kit.init({id, rules, menu, onNew, undo})  build the game bar, set accent
+//                                              (undo: fn adds "Undo" to the menu)
 //   Kit.setup(root, {...})                     standard "who's playing" screen
 //   Kit.win({...})                             celebration + results card
 //   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}
@@ -353,6 +354,7 @@
       if (opts.confirmNew === false) return opts.onNew();
       confirmSheet('Start a new game?', { ok: 'New game', body: 'The current game will be lost.' }).then(function (ok) { if (ok) opts.onNew(); });
     });
+    if (opts.undo) item('undo', 'Undo', opts.undo);
     (opts.menu || []).forEach(function (m) { item(m.icon || 'sparkle', m.label, m.onClick, m.cls); });
     if (opts.rules) item('book', 'How to play', rules);
     item(soundOn() ? 'sound' : 'mute', soundOn() ? 'Sound: on' : 'Sound: off', function () {
@@ -375,7 +377,8 @@
 
     var bar = el('header', { class: 'gbar' }, [
       el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'All games', html: ICON.back, onclick: goHome }),
-      el('div', { class: 'ttl' }, [
+      el('div', { class: 'ttl' + (game && window.GameIcon ? ' has-ic' : '') }, [
+        game && window.GameIcon ? el('span', { class: 'gi', html: GameIcon(game.id) }) : null,
         el('span', { text: opts.title || (game && game.name) || doc.title })
       ]),
       opts.rules ? el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'How to play', html: ICON.help, onclick: rules }) : null,
@@ -387,6 +390,29 @@
   }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
+
+  // Names of people this household plays with: the Frequent Players list first,
+  // then anyone who appears in saved game history (which syncs across devices).
+  var NOT_NAMES = /^(you|me|computer|cpu|ai|dealer|bank|house|player\s*\d+|p\d|robo|chip|bolt|pixel|sprocket|gizmo|widget|north|south|east|west|team\s*\d+)$/i;
+  function knownNames() {
+    var score = {}, label = {};
+    function add(n, w) {
+      n = String(n || '').trim(); if (!n || n.length > 14 || NOT_NAMES.test(n)) return;
+      var k = n.toLowerCase(); score[k] = (score[k] || 0) + w; if (!label[k]) label[k] = n;
+    }
+    try { if (window.FrequentPlayers) FrequentPlayers.list().forEach(function (n, i) { add(n, 1000 - i); }); } catch (e) {}
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
+        var list = JSON.parse(localStorage.getItem(k) || '[]');
+        if (!Array.isArray(list)) continue;
+        list.forEach(function (e, idx) {
+          (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) { add(p && (p.name || p), 5 - Math.min(4, idx)); });
+        });
+      }
+    } catch (e) {}
+    return Object.keys(score).sort(function (a, b) { return score[b] - score[a]; }).map(function (k) { return label[k]; });
+  }
 
   // ── Setup screen ──────────────────────────────────────────────────────────
   // Kit.setup(rootEl, {
@@ -411,7 +437,7 @@
 
     var wrap = el('div', { class: 'setup' });
     wrap.appendChild(el('div', { class: 'setup-hero' }, [
-      game ? el('div', { class: 'k-cat', html: icon(game.cat) + '<span>' + esc(catName(game.cat)) + '</span>' }) : null,
+      game && window.GameIcon ? el('div', { class: 'k-hero-ic', html: GameIcon(game.id) }) : null,
       el('h1', { text: o.title || (game && game.name) || '' }),
       el('p', { text: o.intro || (game && game.tag) || '' })
     ]));
@@ -489,21 +515,25 @@
           el('span', { class: 'avatar', style: { '--c': c }, html: isCpu ? icon('bot') : String(i + 1) }), inp
         ]));
       }
-      // Quick-pick names from the Frequent Players list
-      var fp = [];
-      try { if (window.FrequentPlayers) fp = FrequentPlayers.list(); } catch (e) {}
-      if (fp.length) {
+      // One-tap names: frequent players plus everyone in past game history
+      var taken = names.slice(0, state.count).map(function (n) { return String(n || '').trim().toLowerCase(); });
+      var pool = knownNames().filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
+      if (pool.length) {
+        seatsBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Tap to add a player' }));
         var quick = el('div', { class: 'quick' });
-        fp.slice(0, 10).forEach(function (n) {
+        pool.slice(0, 12).forEach(function (n) {
           quick.appendChild(el('button', {
-            type: 'button', class: 'chip', text: n,
-            onclick: function () {
-              var target = inputs.filter(function (x) { return !x.disabled && !x.value.trim(); })[0];
-              if (!target) { target = inputs.filter(function (x) { return !x.disabled; })[0]; }
-              if (!target) return;
-              target.value = n; target.dispatchEvent(new Event('input')); sfx('pop'); haptic('light');
+            type: 'button', class: 'chip name', onclick: function () {
+              var cpuNow = cpuFor(), r2 = range(), slot = -1;
+              for (var j = 0; j < state.count; j++) {
+                var isCpuSeat = cpuNow === 'seats' ? j > 0 : (cpuNow && j > 0);
+                if (!isCpuSeat && !String(names[j] || '').trim()) { slot = j; break; }
+              }
+              if (slot < 0 && !cpuNow && state.count < r2[1]) { slot = state.count; state.count++; }
+              if (slot < 0) { Kit.toast('All seats are full'); return; }
+              names[slot] = n; sfx('pop'); haptic('light'); renderSeats();
             }
-          }));
+          }, [el('span', { class: 'avatar sm', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }), el('span', { text: n })]));
         });
         seatsBox.appendChild(quick);
       }
@@ -590,7 +620,7 @@
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, haptic: haptic, card: card, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
-    resume: resume, rules: rules, home: goHome, game: function () { return game; }
+    resume: resume, rules: rules, knownNames: knownNames, home: goHome, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();

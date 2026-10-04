@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
+<script src="../game-icons.js"></script>
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
@@ -93,7 +94,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   // ── Rules ─────────────────────────────────────────────────────────────────
   Kit.init({
     id: 'yahtzee',
-    onNew: function () { clearSave(); showSetup(); },
+    onNew: function () { clearSave(); undoStack = []; showSetup(); },
+    undo: function () { undo(); },
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { openHistory(); } }],
     rules:
       '<p class="goal">Roll five dice to make scoring combos. After 13 rounds, the highest total wins.</p>' +
@@ -174,6 +176,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   }
 
   function start(cfg) {
+    undoStack = []; cpuToken++;
     S = {
       mode: cfg.mode, cur: 0, round: 1, rolls: 0, busy: false,
       dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false],
@@ -209,6 +212,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   function scoreBox(id, val, opts) {
     var p = P();
     if (p.card[id] != null) return;
+    if (!p.cpu) snapshot();
     var wasJokerBonus = S.mode !== 'card' && isYahtzee(S.dice) && p.card.yz === 50;
     p.card[id] = val; lastScored = id;
     if (wasJokerBonus) { p.yb = (p.yb || 0) + 1; Kit.callout('+100 Bonus!'); Kit.confetti({ count: 80 }); }
@@ -294,31 +298,48 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     });
     return { id: best, v: opt[best] };
   }
+  var cpuToken = 0;
   function maybeCpu() {
     if (!S || S.mode === 'card' || !P().cpu) return;
     S.busy = true; render();
-    var p = P(), step = 0;
+    var p = P(), token = ++cpuToken;
+    function alive() { return S && P() === p && token === cpuToken; }
     (function go() {
-      if (!S || P() !== p) return;
-      if (S.rolls === 0 || (step < 2 && S.rolls < 3)) {
+      if (!alive()) return;
+      if (S.rolls < 3) {
         if (S.rolls > 0) {
-          var h = cpuHolds(p, S.dice);
-          var ch = cpuChoose(p, S.dice);
-          if (ch.v >= 40 || (ch.id === 'yz' && ch.v) || (ch.id === 'fh' && ch.v) || h.every(Boolean)) { return finishCpu(); }
+          var h = cpuHolds(p, S.dice), ch = cpuChoose(p, S.dice);
+          // Stop early on a made hand worth keeping
+          if (ch.v >= 40 || (ch.id === 'yz' && ch.v) || (ch.id === 'fh' && ch.v) || h.every(Boolean)) return finishCpu();
           S.held = h; paintDice();
         }
-        step++;
-        setTimeout(function () { roll(); setTimeout(go, 900); }, 500);
+        setTimeout(function () { if (!alive()) return; roll(); setTimeout(go, 1000); }, 600);
       } else finishCpu();
     })();
     function finishCpu() {
+      // Show the chosen box on the card for a moment before moving on
       setTimeout(function () {
+        if (!alive()) return;
         var ch = cpuChoose(p, S.dice);
-        S.busy = false;
-        Kit.toast(p.name + ' takes ' + CAT[ch.id].name + (ch.v ? ' for ' + ch.v : ''));
-        scoreBox(ch.id, ch.v);
-      }, 700);
+        cpuPick = ch.id; render();
+        Kit.toast(p.name + ' scores ' + (ch.v ? ch.v + ' in ' : '0 in ') + CAT[ch.id].name);
+        setTimeout(function () {
+          if (!alive()) return;
+          cpuPick = null; S.busy = false; scoreBox(ch.id, ch.v);
+        }, 1400);
+      }, 500);
     }
+  }
+  var cpuPick = null;
+
+  // ── Undo (takes back your last scoring choice, including any computer turns after it)
+  var undoStack = [];
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    cpuToken++;
+    S = JSON.parse(undoStack.pop()); S.busy = false; cpuPick = null;
+    Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); maybeCpu();
   }
 
   // ── Real-dice scorecard entry ─────────────────────────────────────────────
@@ -434,6 +455,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
           var v = opts[c.id];
           td.textContent = String(v);
           td.classList.add('ghost'); if (v > 0) td.classList.add('good');
+          if (p.cpu && cpuPick === c.id) td.classList.add('tap', 'best');
           if (!p.cpu && !S.busy) {
             td.classList.add('tap'); if (c.id === best) td.classList.add('best');
             td.addEventListener('click', function () {
