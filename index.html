@@ -177,7 +177,7 @@ document.addEventListener('visibilitychange', function () {
 .cont-w.drag .cont{transition:none;}
 .cont-del{position:absolute;top:0;right:0;bottom:0;width:76px;border:0;display:grid;place-items:center;align-content:center;gap:2px;
   background:var(--red);color:#fff;font:800 .68rem/1 var(--font);cursor:pointer;}
-.cont-del .ico{width:20px;height:20px;}
+.cont-del .ico{width:24px;height:24px;}
 .rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 @media (min-width:720px){.rail{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media (min-width:1100px){.rail{grid-template-columns:repeat(4,minmax(0,1fr));}}
@@ -416,10 +416,10 @@ document.addEventListener('visibilitychange', function () {
   function swipeTile(x, tile) {
     var w = el('div', { class: 'cont-w' });
     var del = el('button', { type: 'button', class: 'cont-del', 'aria-label': 'Delete ' + x.g.name + ' game in progress', tabindex: '-1' },
-      [el('span', { html: Kit.icon('trash') }), el('span', { text: 'Delete' })]);
+      [el('span', { html: Kit.icon('trash') })]);
     del.addEventListener('click', function (e) {
       e.stopPropagation();
-      Kit.confirm('Delete your ' + x.g.name + ' game?', { ok: 'Delete', danger: true, body: (x.r.label || 'In progress') + '. This can’t be undone.' }).then(function (ok) {
+      Kit.confirm('Delete this ongoing game?', { ok: 'Delete game', danger: true, body: x.g.name + ' · ' + (x.r.label || 'In progress') + '. Your progress will be lost.' }).then(function (ok) {
         if (!ok) { close(); return; }
         deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap'); Kit.toast(x.g.name + ' game deleted');
         w.style.transition = 'opacity .25s, transform .25s'; w.style.opacity = '0'; w.style.transform = 'scale(.9)';
