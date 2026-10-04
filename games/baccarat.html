@@ -50,7 +50,7 @@
 .discard.has i{opacity:.9;}
 
 /* Player / Banker card zones */
-.zone{position:absolute;top:14%;width:44%;height:26%;display:flex;flex-direction:column;align-items:center;padding-top:1.4cqw;--cw:11.6cqw;pointer-events:none;}
+.zone{position:absolute;top:14%;width:44%;height:26%;display:flex;flex-direction:column;align-items:center;padding-top:1.4cqw;--cw:10.4cqw;pointer-events:none;}
 .zone.p{left:4%;} .zone.b{right:4%;}
 .zone .hd{display:flex;align-items:center;gap:6px;height:7cqw;}
 .zone .nm{font-family:var(--display);font-size:4.6cqw;letter-spacing:.1em;color:rgba(250,224,160,.92);}
@@ -61,12 +61,12 @@
   background:rgba(0,0,0,.45);color:#fff;box-shadow:0 0 0 1.5px rgba(255,255,255,.25);opacity:0;transform:scale(.6);transition:opacity .2s,transform .3s var(--spring),background .3s;}
 .zone .sc.on{opacity:1;transform:none;}
 .zone.win .sc{background:#ffc83d;color:#2b1a00;box-shadow:0 0 0 2px #fff3c0,0 0 16px rgba(255,200,61,.8);}
-.zone .cards{display:flex;align-items:center;justify-content:center;gap:1.2cqw;height:calc(var(--cw) * 1.44);margin-top:1cqw;}
-.zone .say{position:absolute;bottom:-1cqw;left:50%;transform:translateX(-50%);padding:.6cqw 2.4cqw;border-radius:999px;background:#fff;color:#1d1b2e;font-weight:900;font-size:3.2cqw;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.35);animation:pop .3s var(--spring);}
+.zone .cards{display:flex;align-items:center;justify-content:center;gap:1cqw;height:calc(var(--cw) * 1.44);margin-top:1cqw;}
+.zone .say{position:absolute;bottom:-3.5cqw;z-index:5;left:50%;transform:translateX(-50%);padding:.6cqw 2.4cqw;border-radius:999px;background:#fff;color:#1d1b2e;font-weight:900;font-size:3.2cqw;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.35);animation:pop .3s var(--spring);}
 
 /* Cards with a real back and a 3D flip; the third card is dealt sideways */
 .bc{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4);flex:none;perspective:420px;}
-.bc.side{transform:rotate(90deg);margin:0 calc(var(--cw) * .22);}
+.bc.side{transform:rotate(90deg);margin:0 calc(var(--cw) * .2);}
 .bc .in{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.3,.7,.3,1);}
 .bc .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
 .bc .face .pcard{position:absolute;inset:0;}
@@ -101,7 +101,7 @@
 .board{margin:12px 0 0;border-radius:14px;padding:8px 10px 10px;background:linear-gradient(180deg,#1d1730,#161126);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
 .board-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.78rem;font-weight:900;color:var(--text-2);}
 .board-h .seg{flex:none;}
-.board-h .seg>button{min-height:32px;padding:0 10px;font-size:.78rem;}
+.board-h .seg>button{min-height:34px;padding:0 10px;font-size:.78rem;white-space:nowrap;}
 .board-h .cnt{margin-left:auto;display:flex;gap:8px;align-items:center;white-space:nowrap;}
 .board-h .cnt i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;vertical-align:-1px;}
 .road{overflow-x:auto;overflow-y:hidden;border-radius:6px;background:#fbfaf6;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
@@ -168,6 +168,7 @@
   // ── Rules ─────────────────────────────────────────────────────────────────
   Kit.init({
     id: 'baccarat',
+    theme: { back: ['#14244f', '#3b5bb5'] },
     confirmNew: false,
     onNew: function () { cashOut(); },
     undo: function () { undoChip(); },
@@ -271,9 +272,9 @@
     [['pp', 56, 'PLAYER'], ['bp', 344, 'BANKER']].forEach(function (a) {
       s += '<circle class="hit" data-spot="' + a[0] + '" cx="' + a[1] + '" cy="372" r="29"><title>' + SPOTS[a[0]].name + '</title></circle>';
       s += '<circle class="ln" cx="' + a[1] + '" cy="372" r="29"/>';
-      s += '<text class="tx sm" font-size="8.5" x="' + a[1] + '" y="356" text-anchor="middle">' + a[2] + '</text>';
-      s += '<text class="tx" font-size="12" x="' + a[1] + '" y="395" text-anchor="middle">PAIR</text>';
-      s += '<text class="tx sm" font-size="8" x="' + a[1] + '" y="406" text-anchor="middle">11 TO 1</text>';
+      s += '<text class="tx sm" font-size="7.5" x="' + a[1] + '" y="361" text-anchor="middle">' + a[2] + '</text>';
+      s += '<text class="tx" font-size="12" x="' + a[1] + '" y="377" text-anchor="middle">PAIR</text>';
+      s += '<text class="tx sm" font-size="7.5" x="' + a[1] + '" y="389" text-anchor="middle">11 TO 1</text>';
     });
     s += '<text class="tx" font-size="15" x="200" y="378" text-anchor="middle">BACCARAT</text>';
     s += '<text class="tx sm" font-size="8.5" x="200" y="393" text-anchor="middle">PUNTO BANCO · 8 DECKS</text>';
@@ -384,7 +385,7 @@
     dom.clear.disabled = busy || !t;
     if (busy) { dom.deal.disabled = true; dom.deal.textContent = 'Dealing…'; }
     else if (t) { dom.deal.disabled = false; dom.deal.textContent = 'Deal · ' + money(t); }
-    else if (last && last <= bal) { dom.deal.disabled = false; dom.deal.textContent = 'Rebet ' + money(last) + ' & deal'; }
+    else if (last && last <= bal) { dom.deal.disabled = false; dom.deal.textContent = 'Rebet · ' + money(last); }
     else { dom.deal.disabled = true; dom.deal.textContent = 'Deal'; }
     var h = '';
     if (!busy) {
@@ -422,6 +423,7 @@
   }
   function paintRoad() {
     var list = S.roads || [], C = 17, R = 6;
+    if (busy && S.hand && !S.hand.shown) list = list.slice(0, -1);   // don't give the result away mid-deal
     var cnt = { B: 0, P: 0, T: 0 }; list.forEach(function (c) { cnt[c.w]++; });
     dom.cnt.innerHTML = '<span><i style="background:#e0283a"></i>' + cnt.B + '</span><span><i style="background:#2a62d6"></i>' + cnt.P + '</span><span><i style="background:#1f9d55"></i>' + cnt.T + '</span><span style="color:var(--text-3)">Shoe ' + S.shoe.n + '</span>';
     var cols, body = '';
@@ -445,8 +447,8 @@
           body += '<line x1="' + (cx - 6) + '" y1="' + (cy + 6) + '" x2="' + (cx + 6) + '" y2="' + (cy - 6) + '" stroke="#1f9d55" stroke-width="2.2"/>';
           if (c.ties > 1) body += '<text x="' + cx + '" y="' + (cy + 3) + '" font-size="8.5" font-weight="900" fill="#1f9d55" text-anchor="middle" font-family="system-ui,sans-serif">' + c.ties + '</text>';
         }
-        if (c.bp) body += '<circle cx="' + (cx - 5.5) + '" cy="' + (cy - 5.5) + '" r="2.3" fill="#e0283a"/>';
-        if (c.pp) body += '<circle cx="' + (cx + 5.5) + '" cy="' + (cy + 5.5) + '" r="2.3" fill="#2a62d6"/>';
+        if (c.bp) body += '<circle cx="' + (cx - 5.5) + '" cy="' + (cy - 5.5) + '" r="2.6" fill="#e0283a" stroke="#fff" stroke-width="1"/>';
+        if (c.pp) body += '<circle cx="' + (cx + 5.5) + '" cy="' + (cy + 5.5) + '" r="2.6" fill="#2a62d6" stroke="#fff" stroke-width="1"/>';
       });
       if (!br.cells.length && br.leadTies) body += '<line x1="2" y1="14" x2="14" y2="2" stroke="#1f9d55" stroke-width="2.2"/>';
     }
@@ -605,22 +607,28 @@
       Kit.sfx('deal');
       return (window.Cards && Cards.fly) ? Cards.fly(c, dom.shoe, { ms: 340, rot: side ? 60 : -14, endRot: side ? 90 : 0 }) : Promise.resolve();
     }
-    async function reveal(z, i) {
-      var c = els[z][i];
-      if (!q) { c.classList.add('peek'); await wait(380); if (tk !== token) return; c.classList.add('peek2'); await wait(420); if (tk !== token) return; }
-      c.classList.remove('peek', 'peek2'); c.classList.add('up');
-      Kit.sfx('flip');
-      await wait(q ? 260 : 380);
+    // Squeeze: lift the cards, bend a corner to peek, then turn them over
+    async function reveal(z, idx) {
+      var cs = idx.map(function (i) { return els[z][i]; });
+      if (!q) {
+        cs.forEach(function (c) { c.classList.add('peek'); }); await wait(330); if (tk !== token) return;
+        cs.forEach(function (c) { c.classList.add('peek2'); }); await wait(420); if (tk !== token) return;
+      }
+      for (var i = 0; i < cs.length; i++) {
+        cs[i].classList.remove('peek', 'peek2'); cs[i].classList.add('up'); Kit.sfx('flip');
+        if (i < cs.length - 1) await wait(140);
+      }
+      await wait(q ? 280 : 400);
     }
     // P, B, P, B face down
     dealTo('p', h.p[0]); await wait(gap); dealTo('b', h.b[0]); await wait(gap);
     dealTo('p', h.p[1]); await wait(gap); dealTo('b', h.b[1]); await wait(gap + 200);
     if (tk !== token) return;
     // Player's hand is turned first, then Banker's
-    await reveal('p', 0); if (tk !== token) return; await reveal('p', 1); if (tk !== token) return;
+    await reveal('p', [0, 1]); if (tk !== token) return;
     setScore('p', total(h.p.slice(0, 2)));
     await wait(q ? 150 : 300);
-    await reveal('b', 0); if (tk !== token) return; await reveal('b', 1); if (tk !== token) return;
+    await reveal('b', [0, 1]); if (tk !== token) return;
     setScore('b', total(h.b.slice(0, 2)));
     var p2 = total(h.p.slice(0, 2)), b2 = total(h.b.slice(0, 2));
     if (h.nat) {
@@ -632,7 +640,7 @@
       if (h.p.length === 3) {
         say('p', 'Player draws');
         dealTo('p', h.p[2], true); await wait(gap + 260); if (tk !== token) return;
-        await reveal('p', 2); if (tk !== token) return;
+        await reveal('p', [2]); if (tk !== token) return;
         setScore('p', h.pt);
         await wait(q ? 250 : 500);
       } else { say('p', 'Player stands on ' + p2); await wait(q ? 450 : 750); }
@@ -640,7 +648,7 @@
       if (h.b.length === 3) {
         say('b', 'Banker draws');
         dealTo('b', h.b[2], true); await wait(gap + 260); if (tk !== token) return;
-        await reveal('b', 2); if (tk !== token) return;
+        await reveal('b', [2]); if (tk !== token) return;
         setScore('b', h.bt);
         await wait(q ? 250 : 500);
       } else { say('b', 'Banker stands on ' + b2); await wait(q ? 450 : 750); }

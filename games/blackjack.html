@@ -85,7 +85,7 @@
 .stk .ck{position:absolute;left:0;top:0;transform:translateY(calc(var(--i) * var(--u) * -2.6));}
 .stk.dbl{position:absolute;left:58%;top:22%;}
 .stk.pay{position:absolute;left:-30%;top:-22%;}
-.stk.insk{position:absolute;left:-42%;top:-46%;--ck:calc(var(--sp) * .42);}
+.stk.insk{position:absolute;left:-66%;top:4%;--ck:calc(var(--sp) * .42);}
 .tag{display:flex;align-items:center;gap:5px;max-width:var(--tw);padding:3px 9px 3px 3px;border-radius:999px;background:rgba(10,20,15,.6);color:#fff;
   box-shadow:0 2px 8px rgba(0,0,0,.25);transition:box-shadow .2s, transform .3s var(--spring);}
 .tag .avatar{width:calc(var(--u)*24);height:calc(var(--u)*24);font-size:calc(var(--u)*11);}
@@ -746,7 +746,7 @@
     Kit.win({
       title: title, sub: hands + ' hands · bank now ' + money(rawBank()), rank: single ? null : rank,
       lose: single ? n0 < 0 : rank[0].n <= 0, icon: single ? (n0 >= 0 ? 'trophy' : 'meh') : 'trophy',
-      againLabel: 'New session, same seats',
+      againLabel: 'New session',
       again: function () {
         startSession(seats.map(function (s) { return { name: s.name, cpu: s.cpu }; }), prev.mode === 'solo' ? 'cpu' : prev.mode,
           { decks: prev.opt.decks, soft17: prev.opt.h17 ? 'h17' : 's17', surr: prev.opt.surr ? 'late' : 'off', coach: prev.opt.coach });
@@ -953,7 +953,8 @@
     wrap.appendChild(spot);
     if (r) {
       var lab = { bj: 'BLACKJACK', even: 'EVEN MONEY', win: 'WIN', push: 'PUSH', lose: 'LOSE', bust: 'BUST', surr: 'SURRENDER' }[r];
-      wrap.appendChild(el('span', { class: 'res ' + r, text: lab }));
+      if (r === 'lose' && h.insPaid) lab = 'INSURANCE PAID';
+      wrap.appendChild(el('span', { class: 'res ' + (r === 'lose' && h.insPaid ? 'push' : r), text: lab }));
     }
     return wrap;
   }
