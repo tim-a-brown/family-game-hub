@@ -13,9 +13,15 @@
 <script src="../players.js"></script>
 <style>
 :root{--manila-a:#efdcaa;--manila-b:#dcc286;--manila-ink:#3a2a14;--typed:"American Typewriter","Courier Prime",Georgia,"Times New Roman",serif;}
-.stage{padding-bottom:calc(var(--safe-b) + 150px);}
-.scores{margin-bottom:2px;}
-.score .sub{text-transform:uppercase;letter-spacing:.08em;font-size:.64rem;}
+.stage{padding-bottom:calc(var(--safe-b) + 168px);}
+.strip{position:sticky;top:calc(var(--safe-t) + 58px);z-index:20;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 6px;padding:6px 16px;}
+.strip::-webkit-scrollbar{display:none;}
+.pill{--c:var(--p1);flex:none;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 12px 0 5px;border-radius:999px;background:rgba(255,255,255,.07);border:2px solid transparent;font-weight:800;font-size:.9rem;color:var(--text-2);}
+.pill .avatar{width:26px;height:26px;font-size:.75rem;}
+.pill .avatar .ico{width:15px;height:15px;}
+.pill b{font-weight:900;font-size:1.05rem;color:var(--text);font-variant-numeric:tabular-nums;}
+.pill.reader{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--text);}
+.pill.lead b{color:var(--yellow);}
 .caseline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 10px;font-weight:800;color:var(--text-2);font-size:.92rem;}
 .caseline b{font-family:var(--display);font-weight:400;font-size:1.2rem;color:var(--text);letter-spacing:.02em;}
 .stars{display:inline-flex;align-items:center;gap:2px;}
@@ -384,11 +390,11 @@
     // Scoreboard
     if (S.mode === 'group') {
       var lead = Math.max.apply(null, S.players.map(function (p) { return p.score; }));
-      var sc = el('div', { class: 'scores' });
+      var sc = el('div', { class: 'strip k-stick' });
       S.players.forEach(function (p, i) {
-        sc.appendChild(el('div', { class: 'score' + (i === ri ? ' on' : '') + (lead > 0 && p.score === lead ? ' lead' : ''), style: { '--c': p.color } }, [
-          el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(p.score) }),
-          el('span', { class: 'sub', text: i === ri ? 'Reader' : 'Detective' })
+        sc.appendChild(el('div', { class: 'pill' + (i === ri ? ' reader' : '') + (lead > 0 && p.score === lead ? ' lead' : ''), style: { '--c': p.color }, title: i === ri ? p.name + ' is reading' : p.name }, [
+          el('span', { class: 'avatar', style: { '--c': p.color }, html: i === ri ? Kit.icon('book') : esc(p.name.charAt(0).toUpperCase()) }),
+          el('span', { text: p.name }), el('b', { text: String(p.score) })
         ]));
       });
       app.appendChild(sc);

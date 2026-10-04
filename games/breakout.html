@@ -285,6 +285,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.speedMul < 1.3) G.speedMul += 0.0025;
     // Power-up capsule
     if (k.ch !== 's' && caps.length < 2 && balls.length < 6 && Math.random() < 0.12) dropCapsule(k.x + k.w / 2, k.y + k.h / 2);
+    if (G.stats.bricks % 8 === 0) save();
     Kit.haptic('tick');
   }
   function dropCapsule(x, y) {
@@ -345,6 +346,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     sClear(); Kit.haptic('success');
     var p = loadProg(); if (G.level < NL && G.level + 1 > p.reached) { p.reached = G.level + 1; saveProg(p); }
     if (G.level >= NL) { p.beat = true; saveProg(p); }
+    save();
   }
   function startLevel(n) {
     G.level = n; bricks = buildBricks(n); caps = []; bolts = []; G.pw = { W: 0, S: 0, L: 0 }; G.speedMul = 1; G.gotLife = false;
@@ -745,7 +747,6 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var P = POWERS[c.t];
       g.save(); g.translate(c.x, c.y);
       var sq = Math.abs(Math.cos(c.rot)) * 0.25 + 0.75;
-      g.scale(1, 1);
       var gr = g.createLinearGradient(0, -7, 0, 7); gr.addColorStop(0, shade(P.c, 0.5)); gr.addColorStop(0.5, P.c); gr.addColorStop(1, shade(P.c, -0.4));
       g.fillStyle = gr; g.shadowColor = P.c; g.shadowBlur = 8;
       rr(g, -15, -7 * sq, 30, 14 * sq, 7 * sq); g.fill(); g.shadowBlur = 0;
