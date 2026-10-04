@@ -63,13 +63,13 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
 .sct tfoot th,.sct tfoot td{border-top:2px solid #c8102e;height:54px;background:rgba(200,16,46,.05);}
 .sct tfoot td{font-size:1.8rem;position:relative;}
 .sct tfoot td span{position:relative;z-index:1;}
-.sct tfoot td.lead::before{content:"";position:absolute;left:8%;right:8%;top:28%;bottom:22%;border-radius:4px 10px 4px 12px;background:rgba(255,214,40,.62);transform:skew(-8deg) rotate(-2deg);transform-origin:left;animation:hl .45s ease-out both;}
+.sct tfoot td.lead::before{content:"";position:absolute;left:calc(50% - min(42%,48px));right:calc(50% - min(42%,48px));top:28%;bottom:22%;border-radius:4px 10px 4px 12px;background:rgba(255,214,40,.62);transform:skew(-8deg) rotate(-2deg);transform-origin:left;animation:hl .45s ease-out both;}
 @keyframes hl{from{transform:skew(-8deg) rotate(-2deg) scaleX(0);}}
 .sct tfoot tr.togo th,.sct tfoot tr.togo td{height:34px;border-top:1px solid rgba(200,16,46,.25);background:transparent;}
 .sct tfoot tr.togo td{font-size:1.05rem;color:#6a6a80;}
 .sct tfoot tr.togo th{font-size:.6rem;}
 .sct.n6 thead th{font-size:1rem;}.sct.n6 td{font-size:1.25rem;}.sct.n6 tfoot td{font-size:1.45rem;}
-.sct.n7 thead th,.sct.n8 thead th{font-size:.92rem;}
+.sct.n7 thead th,.sct.n8 thead th{font-size:.9rem;line-height:1;white-space:normal;overflow-wrap:anywhere;padding:0 1px 4px;}
 .sct.n7 td,.sct.n8 td{font-size:1.1rem;}
 .sct.n7 tfoot td,.sct.n8 tfoot td{font-size:1.2rem;}
 .sct.n7 th.rn,.sct.n8 th.rn{width:38px;font-size:.56rem;letter-spacing:0;}
@@ -79,7 +79,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
 
 /* Sticky action bar */
 .sc-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:10px;padding:14px 0 calc(var(--safe-b) + 10px);background:linear-gradient(rgba(20,16,41,0),var(--bg) 40%);}
-.sc-bar .btn-lg{flex:1;}
+.sc-bar .btn-lg{flex:1;min-width:0;white-space:nowrap;}
 .sc-bar .btn-end{flex:none;min-height:60px;padding:0 18px;border-radius:var(--r-lg);}
 
 /* ── Round entry sheet ────────────────────────────────────────────────── */
@@ -436,8 +436,9 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
     var bar = el('div', { class: 'sc-bar' });
     if (!S.over) {
       var last = S.end === 'rounds' && S.rows.length === S.rounds - 1;
-      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>' + (last ? 'Final round' : 'Add round ' + (S.rows.length + 1)) + '</span>', onclick: function () { openEntry(null); } }));
-      if (S.rows.length && (S.end === 'open' || S.sides.length === 1)) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', html: Kit.icon('check') + '<span>End game</span>', onclick: function () { endGame(); } }));
+      var showEnd = S.rows.length && (S.end === 'open' || S.sides.length === 1);
+      bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>' + (last ? 'Final round' : 'Add round' + (showEnd ? '' : ' ' + (S.rows.length + 1))) + '</span>', onclick: function () { openEntry(null); } }));
+      if (showEnd) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', html: Kit.icon('check') + '<span>End game</span>', onclick: function () { endGame(); } }));
     } else {
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('sparkle') + '<span>Play again</span>', onclick: playAgain }));
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-end', text: 'New game', onclick: function () { endState(); showSetup(); window.scrollTo(0, 0); } }));
