@@ -1,0 +1,27 @@
+# Mirrors main into Dropbox (Apps/Webapp - Family Game Hub) on every push.
+# One-time setup: repo secrets DROPBOX_APP_KEY, DROPBOX_APP_SECRET and
+# DROPBOX_REFRESH_TOKEN for the "Webapp - Family Game Hub" Dropbox app.
+# Optional repo variable DROPBOX_PATH if the app has full-Dropbox access
+# (e.g. "/Apps/Webapp - Family Game Hub"); leave unset for an App-folder app.
+name: Sync to Dropbox
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: dropbox-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/scripts/dropbox_sync.py
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          DROPBOX_PATH: ${{ vars.DROPBOX_PATH }}
