@@ -51,7 +51,6 @@
 .brk b{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);padding:0 6px;border-radius:999px;background:var(--bc);color:#0b2318;font-size:.6rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;line-height:14px;white-space:nowrap;}
 .cbar{flex-wrap:wrap;gap:8px;}
 .cbar .btn{min-height:48px;}
-.cbar .sortb{width:48px;padding:0;}
 .cbar .hint{font-size:.92rem;text-align:center;}
 /* Knock reveal */
 .rv{border-radius:20px;padding:12px 10px 14px;color:#fff;}
@@ -117,7 +116,7 @@
       '<h3>End of the game</h3><ul><li>If only 2 cards are left in the stock and nobody has knocked, the hand is a draw and the same dealer deals again.</li>' +
       '<li>The deal takes turns each hand.</li>' +
       '<li>When someone reaches the target, they get a <b>100 game bonus</b>, and each player gets a <b>25 line bonus</b> for every hand they won.</li></ul>' +
-      '<h3>Arranging your hand</h3><p>Your melds are found for you and grouped with a coloured bracket. Drag cards to move them around, or tap <b>Sort</b> to tidy up.</p>'
+      '<h3>Arranging your hand</h3><p>Your melds are found for you and grouped with a coloured bracket. Drag cards to move them around. The switch above your hand sorts it by <b>Melds</b>, <b>Suit</b> or <b>Rank</b> (tap it again to tidy up after dragging).</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -249,6 +248,18 @@
     b.dead.slice().sort(suitRank).forEach(function (c) { out.push(c.id); });
     return out;
   }
+  // Your hand's display order for the current sort mode (ids)
+  var sortT = Cards.sortToggle(null, {
+    key: 'gin_sort', modes: ['melds', 'suit', 'rank'], value: 'melds', retap: true,
+    flip: function () { return handEl; },
+    onChange: function () { if (!S || !S.hands || !handEl) return; S.order = orderFor(S.hands[0]); S.manual = false; save(); paintHand(); }
+  });
+  function orderFor(h) {
+    var m = sortT.get();
+    if (m === 'melds') return arrange(h);
+    return h.slice().sort(m === 'rank' ? function (a, b) { return RV[a.r] - RV[b.r] || SUIT_ORDER.indexOf(a.s) - SUIT_ORDER.indexOf(b.s); } : suitRank)
+      .map(function (c) { return c.id; });
+  }
 
   // ── Dealing ───────────────────────────────────────────────────────────────
   function newHand() {
@@ -262,7 +273,7 @@
     S.stock = d;
     S.turn = nd; S.phase = 'upcard'; S.upStep = 0; S.took = null; S.stockOnly = false; S.turnNo = 0;
     S.pubTook = [[], []]; S.disBy = [[], []];
-    S.order = arrange(S.hands[0]); S.manual = false; S.sel = null; S.newId = null; S.res = null;
+    S.order = orderFor(S.hands[0]); S.manual = false; S.sel = null; S.newId = null; S.res = null;
     S.msg = (S.dealer === 0 ? 'You dealt. ' : S.players[1].name + ' dealt. ') + (nd === 0 ? 'Want the upcard?' : '');
     S.dealAnim = true;
     clearUndo(); save(); render(); Kit.sfx('deal');
@@ -319,7 +330,7 @@
     S.took = null; S.turnNo++;
     if (p === 0) {
       S.order = S.order.filter(function (x) { return x !== id; }); S.sel = null; S.newId = null;
-      if (!S.manual) S.order = arrange(S.hands[0]);
+      if (!S.manual) S.order = orderFor(S.hands[0]);
     }
     Kit.sfx('flip');
     if (knock) { S.msg = ''; save(); paint(); landDiscard(fromRect); endHand(p); return; }
@@ -572,7 +583,6 @@
     if (S.sel === id) { snapshot(); discardCard(0, id, false); return; }
     S.sel = id; Kit.sfx('tap'); Kit.haptic('light'); paintHand(); paintBar(); paintSeats();
   }
-  function doSort() { S.order = arrange(S.hands[0]); S.manual = false; Kit.sfx('flip'); Kit.haptic('light'); save(); paintHand(); }
 
   // ── Render ────────────────────────────────────────────────────────────────
   var seatEls = [], handEl, barEl, msgEl, stockEl, discEl, feltEl;
@@ -588,6 +598,7 @@
     msgEl = el('div', { class: 'cmsg' });
     feltEl.appendChild(seatEls[1]); feltEl.appendChild(piles); feltEl.appendChild(msgEl); feltEl.appendChild(seatEls[0]);
     table.appendChild(feltEl); app.appendChild(table);
+    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
     bindDrag();
@@ -656,9 +667,17 @@
     h.forEach(function (c) { if (S.order.indexOf(c.id) < 0) S.order.push(c.id); });
     var b = best(h), grp = {};
     b.melds.forEach(function (m, gi) { m.forEach(function (c) { grp[c.id] = gi; }); });
+    // Brackets and gaps only for melds that sit together (3+ cards in a row);
+    // in Suit or Rank order a set's cards can be spread out.
+    var gs = S.order.map(function (id) { return grp[id] != null ? grp[id] : -1; });
+    for (var a0 = 0; a0 < gs.length;) {
+      var a1 = a0; while (a1 + 1 < gs.length && gs[a1 + 1] === gs[a0]) a1++;
+      if (gs[a0] >= 0 && a1 - a0 < 2) for (var q = a0; q <= a1; q++) gs[q] = -1;
+      a0 = a1 + 1;
+    }
     var prevG = null, canTap = myTurn('discard');
     S.order.forEach(function (id, i) {
-      var c = byId(h, id), g = grp[id] != null ? grp[id] : -1;
+      var c = byId(h, id), g = gs[i];
       var n = Cards.el(c);
       n.dataset.g = String(g);
       n.style.setProperty('--i', String(i));
@@ -701,7 +720,6 @@
   function paintBar() {
     barEl.innerHTML = '';
     if (S.phase === 'reveal' || S.phase === 'over') return;
-    var sortB = el('button', { type: 'button', class: 'btn btn-soft sortb', 'aria-label': 'Sort your hand', html: Kit.icon('shuffle'), onclick: doSort });
     if (myTurn('upcard')) {
       var top = S.discard[S.discard.length - 1];
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take the ' + lab(top), onclick: function () { snapshot(); takeUp(0); } }));
@@ -709,12 +727,10 @@
       return;
     }
     if (myTurn('draw')) {
-      barEl.appendChild(sortB);
       barEl.appendChild(el('span', { class: 'hint', text: S.stockOnly ? 'Draw from the stock' : 'Draw: tap the stock or the discard' }));
       return;
     }
     if (myTurn('discard')) {
-      barEl.appendChild(sortB);
       if (!S.sel) {
         var any = S.hands[0].some(function (c) { return c.id !== S.took && canKnockWith(c.id) <= 10; });
         var g = S.hands[0].some(function (c) { return c.id !== S.took && canKnockWith(c.id) === 0; });
@@ -726,7 +742,6 @@
       if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock · ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(0, id, true); } }));
       return;
     }
-    barEl.appendChild(sortB);
     barEl.appendChild(el('span', { class: 'hint', text: S.turn === 1 ? S.players[1].name + ' is thinking…' : '' }));
   }
   function say(p, t) {

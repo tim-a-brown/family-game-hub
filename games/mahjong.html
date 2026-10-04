@@ -57,6 +57,14 @@ body{overflow:hidden;}
 .sbar .st b{font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;}
 .sbar .st small{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
 .sbar .st.warn b{color:var(--orange);}
+/* Phone on its side: controls move to a column on the right so the tiles get the height */
+@media (orientation:landscape) and (max-height:540px){
+  .gbar{padding-top:calc(var(--safe-t) + 3px);padding-bottom:3px;}
+  .mjw{flex-direction:row;gap:6px;height:calc(100dvh - var(--safe-t) - 48px);padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));}
+  .mtab{padding:5px;}
+  .sbar{flex-direction:column;height:auto;width:62px;padding:0 0 4px;justify-content:space-between;}
+  .sbar .stats{flex-direction:column;gap:6px;justify-content:center;}
+}
 .rules .mrow{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0;}
 .rules .mt{position:relative;width:28px;height:37px;border-radius:4px;background:linear-gradient(160deg,#fffef8,#ece2c8);box-shadow:inset 0 0 0 1px rgba(120,95,50,.25), -2px 2px 0 var(--tb);}
 .rules .mt svg{position:absolute;inset:6% 8%;width:84%;height:88%;}
@@ -91,7 +99,7 @@ body{overflow:hidden;}
     if (s === 4) return ['Red', 'Green', 'White'][k - 31] + ' Dragon';
     return k < 38 ? FLOWER[k - 34][1] + ' (Flower)' : SEASON[k - 38][1] + ' (Season)';
   }
-  function gname(k) { var g = group(k); return g === 34 ? 'Flowers' : g === 38 ? 'Seasons' : kname(k) + 's'; }
+  function gname(k) { var g = group(k); return g === 34 ? 'two Flowers' : g === 38 ? 'two Seasons' : kname(k); }
   // Flowers and seasons: a small blossom or emblem, the character, and its number
   function bonusSVG(k) {
     var fl = k < 38, d = fl ? FLOWER[k - 34] : SEASON[k - 38], c = d[2], i = (k - 34) % 4, b = '';
@@ -296,7 +304,7 @@ body{overflow:hidden;}
       players: { min: 1, max: 1, names: true, label: 'Who is playing?' },
       options: [{ id: 'layout', label: 'Layout', value: 'turtle', choices: [['turtle', 'Turtle'], ['pyramid', 'Pyramid'], ['castle', 'Castle'], ['mini', 'Mini']] }],
       start: 'Deal the tiles',
-      onStart: function (cfg) { newGame(cfg.options.layout, (cfg.players[0] && cfg.players[0].name) || 'You'); }
+      onStart: function (cfg) { var n = (cfg.players[0] && cfg.players[0].name) || 'You'; newGame(cfg.options.layout, /^Player \d+$/.test(n) ? 'You' : n); }
     });
     var lab = app.querySelector('.setup .stack .label');
     if (lab) lab.after(el('div', { class: 'dim', style: { 'font-size': '.82rem', 'margin-top': '6px' }, text: 'Turtle 144 tiles (the classic) · Pyramid 120 · Castle 88 · Mini 44 (quick, bigger tiles)' }));
@@ -516,10 +524,10 @@ body{overflow:hidden;}
     var W = vp.clientWidth, H = vp.clientHeight;
     var mx = 0, my = 0, mz = 0;
     POS.forEach(function (p) { mx = Math.max(mx, p.x + 2); my = Math.max(my, p.y + 2); mz = Math.max(mz, p.z); });
-    var E = .14, pad = 12;
+    var E = .15, pad = 8;
     var tw = Math.min((W - pad * 2) / (mx / 2 + (mz + 1) * E), (H - pad * 2) / (my / 2 * 4 / 3 + (mz + 1) * E), 76);
     tw = Math.max(16, Math.floor(tw));
-    var th = Math.round(tw * 4 / 3), e = Math.max(3, Math.round(tw * E));
+    var th = Math.round(tw * 4 / 3), e = Math.max(4, Math.round(tw * E));
     var bw = mx / 2 * tw + (mz + 1) * e, bh = my / 2 * th + (mz + 1) * e;
     G = { tw: tw, th: th, e: e, bw: bw, bh: bh, ox: Math.round((W - bw) / 2), oy: Math.round((H - bh) / 2) };
     bd.style.setProperty('--tw', tw + 'px'); bd.style.setProperty('--th', th + 'px'); bd.style.setProperty('--e', e + 'px');
@@ -563,10 +571,8 @@ body{overflow:hidden;}
     var W = vp.clientWidth, H = vp.clientHeight, s = Z.s;
     var cw = G.bw * s, ch = G.bh * s;
     // keep the board covering the view when zoomed in; centred otherwise
-    var minX = Math.min(G.ox, W - cw - 8), maxX = Math.max(G.ox, 8) , minY = Math.min(G.oy, H - ch - 8), maxY = Math.max(G.oy, 8);
     if (cw <= W) { Z.x = (W - cw) / 2; } else Z.x = Math.max(W - cw - 8, Math.min(8, Z.x));
     if (ch <= H) { Z.y = (H - ch) / 2; } else Z.y = Math.max(H - ch - 8, Math.min(8, Z.y));
-    void minX; void maxX; void minY; void maxY;
     bd.style.transform = 'translate(' + Z.x + 'px,' + Z.y + 'px) scale(' + s + ')';
     if (fitBtn) fitBtn.classList.toggle('on', s > 1.02);
   }

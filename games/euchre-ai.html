@@ -200,6 +200,15 @@
     });
   }
   function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
+  // Your hand on screen (display only). Suit: euchre grouping (trump and both
+  // bowers first once trump is set). Rank: A K Q J 10 9, suits in table order.
+  var sortT = Cards.sortToggle(null, { key: 'euchre_sort', value: 'suit', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); } });
+  function view(h) {
+    var t = S.trump, a = h.slice();
+    if (sortT.get() !== 'rank') return sortHand(a, t);
+    var order = suitOrder(t);
+    return Cards.sortBy(a, 'rank', { rank: function (x, y) { return RV[y.r] - RV[x.r] || order.indexOf(eff(x, t)) - order.indexOf(eff(y, t)); } });
+  }
   function suitHtml(s) { return '<span class="' + (s === 'h' || s === 'd' ? 'red-s' : '') + '">' + GLYPH[s] + '</span>'; }
   function active(p) { return p !== S.out; }
   function nextActive(p) { var q = (p + 1) % 4; if (!active(q)) q = (q + 1) % 4; return q; }
@@ -609,6 +618,7 @@
     [trickEl, kittyEl, msgEl, trumpEl, scoreEl].forEach(function (n) { felt.appendChild(n); });
     table.appendChild(felt);
     app.appendChild(table);
+    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'chand' });
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
@@ -680,7 +690,7 @@
     var mine = S.hands ? S.hands[0] : [];
     var sitting = S.out === 0;
     var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
-    mine.forEach(function (c) {
+    view(mine).forEach(function (c) {
       var n = Cards.el(c);
       if (sitting) n.classList.add('dim');
       else if (S.phase === 'discard') {

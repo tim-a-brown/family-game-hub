@@ -85,6 +85,9 @@
   function isQS(c) { return c.s === 's' && c.r === 'Q'; }
   function sortHand(h) { Cards.sort(h, { suits: ['c', 'd', 's', 'h'] }); }
   function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
+  // Your hand on screen: suit groups or rank order (display only, state keeps suit order)
+  var sortT = Cards.sortToggle(null, { key: 'hearts_sort', value: 'suit', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); } });
+  function view(h) { return Cards.sort(h.slice(), { suits: ['c', 'd', 's', 'h'], by: sortT.get() }); }
 
   function legal(p) {
     var h = S.hands[p];
@@ -308,6 +311,7 @@
     felt.appendChild(trickEl); felt.appendChild(msgEl);
     table.appendChild(felt);
     app.appendChild(table);
+    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'chand' });
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
@@ -343,7 +347,7 @@
     handEl.innerHTML = '';
     var mine = S.hands ? S.hands[0] : [];
     var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
-    mine.forEach(function (c) {
+    view(mine).forEach(function (c) {
       var n = Cards.el(c);
       if (S.phase === 'pass') {
         n.classList.add('play'); if (S.passSel.indexOf(c.id) >= 0) n.classList.add('sel');

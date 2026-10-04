@@ -15,6 +15,11 @@
 body{overflow-x:hidden;}
 .ms{max-width:620px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 12px);}
 .ms.wide{max-width:1180px;}
+.ms.play::before{content:"";flex:1 1 0;max-height:48px;}
+.ms.play::after{content:"";flex:2 1 0;}
+.ms.play{display:flex;flex-direction:column;justify-content:flex-start;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 70px);padding-bottom:calc(var(--safe-b) + 3vh);}
+.ms.play > *{width:100%;}
+.ms.play > .frame{width:max-content;}
 .ms.quake{animation:quake .5s cubic-bezier(.36,.07,.19,.97) both;}
 @keyframes quake{10%,90%{transform:translate(-2px,1px);}20%,80%{transform:translate(4px,-2px);}30%,50%,70%{transform:translate(-7px,3px);}40%,60%{transform:translate(7px,-3px);}}
 
@@ -33,7 +38,7 @@ body{overflow-x:hidden;}
 .frame.tense{animation:tense 1s ease-in-out infinite;}
 @keyframes tense{50%{box-shadow:inset 0 2px 0 rgba(255,255,255,.18), inset 0 -4px 0 rgba(0,0,0,.25), 0 14px 30px rgba(0,0,0,.45), 0 0 0 3px rgba(255,70,70,.35), 0 0 28px rgba(255,60,60,.35);}}
 .scroller{max-width:100%;overflow:auto;border-radius:8px;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
-.field{--cs:30px;position:relative;display:grid;background:#2a3140;border-radius:6px;overflow:hidden;
+.field{--cs:30px;position:relative;display:grid;width:max-content;background:#2a3140;border-radius:6px;overflow:hidden;
   box-shadow:inset 0 3px 8px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .cell{position:relative;width:var(--cs);height:var(--cs);display:grid;place-items:center;container-type:size;cursor:pointer;-webkit-touch-callout:none;}
 /* Raised tile */
@@ -321,10 +326,10 @@ body{overflow-x:hidden;}
       markWrong(); Kit.sfx('bad');
       field.classList.add('dark');
     }, end);
-    setTimeout(function () { if (my !== token) return; loseSheet(); }, end + 900);
+    setTimeout(function () { if (my !== token) return; loseSheet(); }, end + 1600);
   }
   function loseSheet() {
-    var left = safeLeft(), total = S.rows * S.cols - L().mines, pct = Math.round(100 * (total - left) / total);
+    var left = safeLeft(), total = S.rows * S.cols - L().mines, pct = Math.floor(100 * (total - left) / total);
     Kit.win({
       lose: true, icon: 'meh', title: 'Boom!', sub: L().name + ' · ' + pct + '% cleared' + (left <= 5 ? ' · only ' + left + ' safe ' + (left === 1 ? 'square' : 'squares') + ' left!' : ''),
       againLabel: 'Try again', again: function () { recordLoss(); start(S.diff); },
@@ -335,7 +340,7 @@ body{overflow-x:hidden;}
   function recordLoss() {
     if (!S || !S.pendingLoss || S.recorded) return;
     S.pendingLoss = false; S.recorded = true;
-    var total = S.rows * S.cols - L().mines, left = safeLeft(), pct = Math.round(100 * (total - left) / total);
+    var total = S.rows * S.cols - L().mines, left = safeLeft(), pct = Math.floor(100 * (total - left) / total);
     if (pct < 25 && left > 5) return; // quick early booms are not worth remembering
     var hl = ['Hit a mine with ' + left + ' safe ' + (left === 1 ? 'square' : 'squares') + ' left', 'Cleared ' + pct + '% of the ' + L().name + ' field in ' + fmt(S.ms)];
     var good = S.mine ? S.flag.filter(function (f, k) { return f && S.mine[k]; }).length : 0;
@@ -418,7 +423,7 @@ body{overflow-x:hidden;}
   // ── Drawing ───────────────────────────────────────────────────────────────
   var cellEls = [], field = null, frame = null, scroller = null, transposed = false, hud = {};
   function build() {
-    app.innerHTML = ''; app.className = 'ms' + (S.cols > 16 ? ' wide' : '');
+    app.innerHTML = ''; app.className = 'ms play' + (S.cols > 16 ? ' wide' : '');
     var h = el('div', { class: 'hud' });
     hud.mines = el('b'); hud.time = el('b'); hud.best = el('b');
     h.appendChild(el('div', { class: 'cnt' }, [el('span', { html: MINE }), el('span', { class: 'tx' }, [el('small', { text: 'Mines' }), hud.mines])]));
@@ -440,7 +445,7 @@ body{overflow-x:hidden;}
     ]);
     tools.appendChild(hud.zoom);
     app.appendChild(tools);
-    app.appendChild(el('div', { class: 'hintline', text: TOUCH ? 'Tap to dig · press and hold to flag · tap a number to quick-clear' : 'Click to dig · right-click to flag · click a number to quick-clear' }));
+    app.appendChild(hud.hint = el('div', { class: 'hintline', text: TOUCH ? 'Tap to dig · press and hold to flag · tap a number to quick-clear' : 'Click to dig · right-click to flag · click a number to quick-clear' }));
     layout(true);
     bindField();
     setTool(tool); updHud(); updTime(); tension();
@@ -453,8 +458,9 @@ body{overflow-x:hidden;}
     var tr = S.cols > S.rows && portrait;
     var vc = tr ? S.rows : S.cols, vr = tr ? S.cols : S.rows;
     var availW = Math.min(vw - 24, S.cols > 16 ? 1180 : 620) - 16 - 2;
-    var top = frame.getBoundingClientRect().top + window.scrollY;
-    var availH = window.innerHeight - top - 16 - 110;
+    var big = vr > 16;
+    if (hud.hint) hud.hint.style.display = big ? 'none' : '';
+    var availH = window.innerHeight - 58 - 64 - 68 - (big ? 0 : 44) - 22;
     baseCs = Math.max(14, Math.floor(Math.min(44, availW / vc, Math.max(availH, vr * 16) / vr)));
     var cs = Math.round(baseCs * zoom);
     field.style.setProperty('--cs', cs + 'px');

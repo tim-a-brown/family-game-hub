@@ -298,9 +298,8 @@
   function render() {
     app.innerHTML = '';
     if (S.mode === 'race') { stripEl = el('div', { class: 'scores' }); app.appendChild(stripEl); paintStrip(); }
-    hudEl = el('div', { class: 'hud' }); app.appendChild(hudEl);
-    clockEl = el('div', { class: 'clock' }, [el('i')]);
-    if (S.time) app.appendChild(clockEl);
+    hudEl = el('div', { class: 'hud' }); clockEl = el('div', { class: 'clock' }, [el('i')]);
+    if (S.phase === 'play') { app.appendChild(hudEl); if (S.time) app.appendChild(clockEl); }
     feltEl = el('div', { class: 'felt felt-in' });
     app.appendChild(el('div', { class: 'table wood' }, [feltEl]));
     var tools = el('div', { class: 'tools' });
@@ -327,7 +326,7 @@
     S.players.forEach(function (p, i) {
       var on = i === S.turn % S.players.length && S.phase !== 'over';
       stripEl.appendChild(el('div', { class: 'score' + (on ? ' on' : ''), style: { '--c': Kit.color(i) } }, [
-        el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(S.scores[i] + (on && S.T ? S.T.score : 0)) }),
+        el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(S.scores[i] + (on && S.T && S.phase === 'play' ? S.T.score : 0)) }),
         el('span', { class: 'sub', text: S.rounds > 1 ? 'Round ' + Math.min(S.rounds, curRound() + 1) : on ? 'Playing' : '' })
       ]));
     });
@@ -604,7 +603,7 @@
   }
   function coverReady() {
     var p = curP(), c = el('div', { class: 'cover' });
-    c.appendChild(el('p', { text: S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds : 'Pass the phone to' }));
+    c.appendChild(el('p', { text: (S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds + ' · ' : '') + (S.mode === 'race' ? 'Pass the phone to' : 'Ready?') }));
     c.appendChild(el('h2', { text: p.name === 'You' ? 'Your turn' : p.name }));
     c.appendChild(el('p', { text: (S.time ? TIMES[S.time] + ' on the clock' : RELAXED_WORDS + ' words') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] }));
     c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Start my turn', onclick: beginTurn }));

@@ -24,6 +24,7 @@ body{overflow-x:hidden;}
 .st .who b{display:block;font-family:var(--display);font-weight:400;font-size:1.25rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .st .who small{display:block;font-size:.78rem;font-weight:800;color:var(--text-3);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .st .who > div{min-width:0;}
+.st .who .rd{font-family:var(--font);font-style:normal;font-size:.75rem;font-weight:800;color:var(--text-3);margin-left:8px;letter-spacing:.03em;vertical-align:middle;}
 .glass{display:flex;align-items:center;gap:6px;padding:4px 12px 4px 6px;border-radius:999px;background:rgba(0,0,0,.25);}
 .glass svg{width:30px;height:44px;transition:transform .7s var(--spring);}
 .glass.flip svg{animation:flip .7s var(--ease);}
@@ -32,7 +33,7 @@ body{overflow-x:hidden;}
 .glass.low .t{color:var(--red);animation:lowp 1s ease infinite;}
 @keyframes lowp{50%{opacity:.5;}}
 .glass.off{opacity:.55;}
-.done-btn{min-height:40px;padding:0 14px;}
+.done-btn{align-self:center;min-height:40px;}
 
 /* Table and plastic tray */
 .tbl{border-radius:26px;padding:8px;}
@@ -114,8 +115,6 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
 .sumrow b{display:block;font-size:1.35rem;font-weight:900;}
 .sumrow span{font-size:.7rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;}
 .between{display:flex;flex-direction:column;gap:10px;}
-.tot{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
-.tot .score{min-width:70px;flex:0 1 auto;}
 @media (min-width:900px){
   .bg.play{max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto auto 1fr;column-gap:20px;align-content:start;}
   .bg.play .st{grid-column:1/-1;}
@@ -326,12 +325,9 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     var who = el('div', { class: 'who' });
     if (showP) {
       who.appendChild(el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }));
-      who.appendChild(el('div', null, [el('b', { text: p.name }), el('small', { text: (multi ? 'Round ' + S.round + ' of ' + S.rounds + ' · ' : '') + S.words[S.turn].length + ' words · ' + S.words[S.turn].reduce(function (s, w) { return s + pts(w); }, 0) + ' pts' })]));
+      who.appendChild(el('div', null, [el('b', null, [document.createTextNode(p.name), multi ? el('i', { class: 'rd', text: 'Round ' + S.round + '/' + S.rounds }) : null]), el('small', { text: statLine() })]));
     } else who.appendChild(el('div', null, [el('b', { text: multi ? 'Round ' + S.round + ' of ' + S.rounds : 'Round over' }), el('small', { text: S.size === 5 ? 'Big Boggle' : 'Boggle' })]));
     st.appendChild(who);
-    if (S.phase === 'play') st.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm done-btn', text: 'Done', onclick: function () {
-      Kit.confirm('Stop now?', { ok: "I'm done", body: S.time ? 'The rest of your time will be skipped.' : 'Your word list will be locked in.' }).then(function (ok) { if (ok && S.phase === 'play') endTurn('done'); });
-    } }));
     st.appendChild(el('div', { class: 'glass' }, [el('span', { class: 'sv' }), el('span', { class: 't' })]));
     app.appendChild(st);
 
@@ -358,9 +354,13 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     ]));
     foundEl = el('div', { class: 'found' });
     side.appendChild(foundEl);
+    if (S.phase === 'play') side.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm done-btn', html: Kit.icon('check') + '<span>' + (S.time ? "I'm done early" : "I'm done") + '</span>', onclick: function () {
+      Kit.confirm('Stop now?', { ok: "I'm done", body: S.time ? 'The rest of your time will be skipped.' : 'Your word list will be locked in.' }).then(function (ok) { if (ok && S.phase === 'play') endTurn('done'); });
+    } }));
     app.appendChild(side);
     paintFound(); paintCur(); paintClock(); bindTray();
   }
+  function statLine() { var m = S.words[S.turn]; return m.length + (m.length === 1 ? ' word · ' : ' words · ') + m.reduce(function (s, x) { return s + pts(x); }, 0) + ' pts'; }
   function lid() {
     var L = el('div', { class: 'lid' }), p = me(), multi = S.players.length > 1;
     if (S.phase === 'ready') {
@@ -526,7 +526,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     else { Kit.sfx('good'); Kit.haptic('light'); }
     save(); paintFound(w);
     var sm = app.querySelector('.st .who small');
-    if (sm) sm.textContent = (S.players.length > 1 ? 'Round ' + S.round + ' of ' + S.rounds + ' · ' : '') + mine.length + ' words · ' + mine.reduce(function (s, x) { return s + pts(x); }, 0) + ' pts';
+    if (sm) sm.textContent = statLine();
     after();
   }
   function after() { setTimeout(function () { selected = []; typedStr = ''; paintSel(); }, 200); }

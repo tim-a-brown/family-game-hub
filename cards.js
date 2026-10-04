@@ -228,7 +228,7 @@ var Cards = (function () {
     '.cbar{display:flex;gap:10px;justify-content:center;align-items:center;min-height:52px;margin:6px 0 4px;}',
     '.cbar .hint{color:var(--text-2);font-weight:800;}',
     // Sort toggle: a small pill sitting just above the hand, right-aligned
-    '.csort-row{display:flex;justify-content:flex-end;align-items:center;min-height:32px;padding:0 4px;margin:0 0 -6px;position:relative;}',
+    '.csort-row{display:flex;justify-content:flex-end;align-items:center;min-height:32px;padding:0 4px;margin:0 0 -2px;position:relative;}',
     '.csort-row[hidden]{display:none;}',
     '.csort{display:inline-flex;align-items:stretch;height:32px;border-radius:999px;background:rgba(0,0,0,.26);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);}',
     '.csort button{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:44px;height:32px;padding:0 11px;border:0;border-radius:999px;background:none;color:var(--text-3,#8f88b0);font:inherit;font-weight:800;font-size:.74rem;letter-spacing:.02em;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:color .2s;}',
