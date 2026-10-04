@@ -11,7 +11,7 @@
 <script src="../hist.js"></script>
 <style>
 /* Tabs: scrollable pill chips */
-.game-tabs{display:flex;gap:8px;padding:2px max(16px,var(--safe-l)) 4px;margin:0 auto;max-width:720px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;}
+.game-tabs{display:flex;gap:8px;padding:2px max(16px,var(--safe-l)) 4px;margin:0 auto;max-width:720px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scroll-padding-inline:16px;}
 .game-tabs::-webkit-scrollbar{display:none;}
 .game-tab{flex:0 0 auto;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);
   color:var(--text-2);font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;scroll-snap-align:start;transition:background .15s,color .15s,border-color .15s;}
@@ -88,13 +88,14 @@
 .setup-lbl{font-size:.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin:0 0 8px;display:block;}
 .cnt-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;}
 .cnt-row .btn{padding:0;}
+.btn.btn-outline.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);border-color:transparent;}
 .seg-row{display:flex;gap:8px;margin-bottom:12px;}
 .seg-row .btn{flex:1;padding:0 10px;}
 .player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .player-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
 .field{margin-bottom:16px;}
 .inline-field{display:flex;align-items:center;gap:10px;}
-.inline-field .input{width:96px;text-align:center;}
+.inline-field input[type=number].input{width:96px;flex:none;text-align:center;}
 .inline-field span{font-size:.9rem;color:var(--text-2);}
 
 /* Winner */
@@ -675,7 +676,7 @@ function buildHistory(container,rounds,names,totals,colors,cols){
     document.getElementById('f7-undo').style.display=f7rounds.length?'':'none';
 
     // Entry inputs
-    const ec=f7n<=3?f7n:f7n<=4?2:Math.ceil(f7n/2);
+    const ec=f7n<=2?f7n:(window.innerWidth>=600?3:2);
     const inp=document.getElementById('f7-inputs');
     inp.style.gridTemplateColumns=`repeat(${ec},1fr)`;inp.innerHTML='';
     f7names.forEach((nm,i)=>{
@@ -741,7 +742,7 @@ function buildHistory(container,rounds,names,totals,colors,cols){
     try{sessionStorage.setItem('cs_f7',JSON.stringify({f7n,f7names,f7rounds,f7cur,_ts:Date.now()}));}catch(e){}
   });
   document.getElementById('f7-undo').addEventListener('click',()=>{
-    if(f7rounds.length)f7rounds.pop();f7render();
+    if(f7rounds.length)f7rounds.pop();document.getElementById('f7-winner').classList.add('hidden');f7render();
     try{sessionStorage.setItem('cs_f7',JSON.stringify({f7n,f7names,f7rounds,f7cur,_ts:Date.now()}));}catch(e){}
   });
   document.getElementById('f7-again').addEventListener('click',()=>{
@@ -803,7 +804,7 @@ function buildHistory(container,rounds,names,totals,colors,cols){
     const totals=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+r[i],0));
     const bags=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+(r.bags?r.bags[i]:0),0));
     const bagLabels=spBagPenalty
-      ? bags.map(b=>{const rem=10-(b%10||10);return `${b} bags${rem<=3?' ⚠️ '+rem+' to penalty':''}`; })
+      ? bags.map(b=>{const rem=10-(b%10);return `${b} bags${rem<=3?' ⚠️ '+rem+' to penalty':''}`; })
       : bags.map(b=>`${b} bags`);
     buildScorers(document.getElementById('sp-scores'),spNames,totals,spWin,spColors,['#1a88c4','#c49a10'],bagLabels);
     document.getElementById('sp-scores').style.gridTemplateColumns='1fr 1fr';
@@ -863,7 +864,7 @@ function buildHistory(container,rounds,names,totals,colors,cols){
     document.getElementById('sp-nil1').checked=false;document.getElementById('sp-nil2').checked=false;
     spRender();
   });
-  document.getElementById('sp-undo').addEventListener('click',()=>{if(spRounds.length)spRounds.pop();spRender();try{sessionStorage.setItem('cs_sp',JSON.stringify({spNames,spRounds,spWin,spBagPenalty,_ts:Date.now()}));}catch(e){}});
+  document.getElementById('sp-undo').addEventListener('click',()=>{if(spRounds.length)spRounds.pop();document.getElementById('sp-winner').classList.add('hidden');spRender();try{sessionStorage.setItem('cs_sp',JSON.stringify({spNames,spRounds,spWin,spBagPenalty,_ts:Date.now()}));}catch(e){}});
   document.getElementById('sp-again').addEventListener('click',()=>{spRounds=[];document.getElementById('sp-winner').classList.add('hidden');spRender();try{sessionStorage.removeItem('cs_sp');}catch(e){}});
   document.getElementById('sp-newsetup').addEventListener('click',()=>{document.getElementById('sp-game').classList.add('hidden');document.getElementById('sp-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_sp');}catch(e){}});
   document.getElementById('sp-reset-setup').addEventListener('click',()=>{document.getElementById('sp-game').classList.add('hidden');document.getElementById('sp-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_sp');}catch(e){}});
@@ -964,7 +965,7 @@ function buildHistory(container,rounds,names,totals,colors,cols){
     document.getElementById('ht-moon-picker').style.display='none';
     htRender();
   });
-  document.getElementById('ht-undo').addEventListener('click',()=>{if(htRounds.length)htRounds.pop();htRender();try{sessionStorage.setItem('cs_ht',JSON.stringify({htNames,htRounds,htWin,_ts:Date.now()}));}catch(e){}});
+  document.getElementById('ht-undo').addEventListener('click',()=>{if(htRounds.length)htRounds.pop();document.getElementById('ht-winner').classList.add('hidden');htRender();try{sessionStorage.setItem('cs_ht',JSON.stringify({htNames,htRounds,htWin,_ts:Date.now()}));}catch(e){}});
   document.getElementById('ht-again').addEventListener('click',()=>{htRounds=[];document.getElementById('ht-winner').classList.add('hidden');htRender();try{sessionStorage.removeItem('cs_ht');}catch(e){}});
   document.getElementById('ht-newsetup').addEventListener('click',()=>{document.getElementById('ht-game').classList.add('hidden');document.getElementById('ht-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_ht');}catch(e){}});
   document.getElementById('ht-reset-setup').addEventListener('click',()=>{document.getElementById('ht-game').classList.add('hidden');document.getElementById('ht-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_ht');}catch(e){}});
@@ -1045,7 +1046,7 @@ function buildHistory(container,rounds,names,totals,colors,cols){
     }
     rmRender();
   });
-  document.getElementById('rm-undo').addEventListener('click',()=>{if(rmRounds.length)rmRounds.pop();rmRender();try{sessionStorage.setItem('cs_rm',JSON.stringify({rmN,rmNames,rmRounds,rmWin,_ts:Date.now()}));}catch(e){}});
+  document.getElementById('rm-undo').addEventListener('click',()=>{if(rmRounds.length)rmRounds.pop();document.getElementById('rm-winner').classList.add('hidden');rmRender();try{sessionStorage.setItem('cs_rm',JSON.stringify({rmN,rmNames,rmRounds,rmWin,_ts:Date.now()}));}catch(e){}});
   document.getElementById('rm-again').addEventListener('click',()=>{rmRounds=[];document.getElementById('rm-winner').classList.add('hidden');rmRender();try{sessionStorage.removeItem('cs_rm');}catch(e){}});
   document.getElementById('rm-newsetup').addEventListener('click',()=>{document.getElementById('rm-game').classList.add('hidden');document.getElementById('rm-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_rm');}catch(e){}});
   document.getElementById('rm-reset-setup').addEventListener('click',()=>{document.getElementById('rm-game').classList.add('hidden');document.getElementById('rm-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_rm');}catch(e){}});
@@ -1129,7 +1130,7 @@ function p10Render(){
     div.className='p10-player';
     div.innerHTML=`<div class="p10-player-top"><div class="p10-name" style="color:${COLORS[i]}">${nm}</div><div class="p10-phase">Phase ${Math.min(p10Phases[i],10)} · ${P10_PHASES[Math.min(p10Phases[i],10)-1]}</div></div>
       <div class="p10-player-bot">
-        <label class="p10-done"><input type="checkbox" class="chk" id="p10cp${i}"> Completed phase</label>
+        <label class="p10-done"><input type="checkbox" class="chk" id="p10cp${i}"> Phase done</label>
         <input type="number" inputmode="numeric" class="score-input" id="p10pt${i}" placeholder="pts" min="0">
       </div>`;
     inp.appendChild(div);
@@ -1261,12 +1262,12 @@ try{const raw=sessionStorage.getItem('cs_p10');if(raw){const s=JSON.parse(raw);i
     const tbl=document.getElementById('sc-table');
     const totals=scTotals();
     const w=scCheckWinner();
-    let html=`<thead><tr><th class="row-label">#</th>${scNames.map((n,i)=>`<th class="player-th" style="color:${COLORS[i]}">${n}</th>`).join('')}${scEndMode==='target'?`<th style="font-size:.6rem;color:rgba(255,255,255,.3)">→${scTarget}</th>`:''}</tr></thead><tbody>`;
+    let html=`<thead><tr><th class="row-label">#</th>${scNames.map((n,i)=>`<th class="player-th" style="color:${COLORS[i]}">${n}</th>`).join('')}${scEndMode==='target'?`<th style="font-size:.75rem;color:var(--text-3)">→${scTarget}</th>`:''}</tr></thead><tbody>`;
     for(let r=0;r<scScores.length;r++){
-      html+=`<tr><td class="row-label">${r+1}</td>${scNames.map((_,p)=>`<td><input class="sc-cell" type="number" data-r="${r}" data-p="${p}" value="${scScores[r][p]!=null?scScores[r][p]:''}" placeholder="—"></td>`).join('')}${scEndMode==='target'?'<td></td>':''}</tr>`;
+      html+=`<tr><td class="row-label">${r+1}</td>${scNames.map((_,p)=>`<td><input class="sc-cell" type="number" inputmode="decimal" data-r="${r}" data-p="${p}" value="${scScores[r][p]!=null?scScores[r][p]:''}" placeholder="—"></td>`).join('')}${scEndMode==='target'?'<td></td>':''}</tr>`;
     }
     if(scEndMode==='target'){
-      html+=`<tr class="totals-row"><td class="row-label">Σ</td>${totals.map((t,i)=>{const pct=Math.min(100,Math.round(t/scTarget*100));return `<td style="color:${COLORS[i]}">${t}${w&&totals[i]===w.best?' 🏆':''}<div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${pct}%;background:${COLORS[i]};border-radius:2px"></div></div></td>`;}).join('')}<td style="font-size:.65rem;color:rgba(255,255,255,.3);text-align:center;vertical-align:middle">${Math.round(Math.max(...totals)/scTarget*100)}%</td></tr>`;
+      html+=`<tr class="totals-row"><td class="row-label">Σ</td>${totals.map((t,i)=>{const pct=Math.min(100,Math.round(t/scTarget*100));return `<td style="color:${COLORS[i]}">${t}${w&&totals[i]===w.best?' 🏆':''}<div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${pct}%;background:${COLORS[i]};border-radius:2px"></div></div></td>`;}).join('')}<td style="font-size:.75rem;color:var(--text-3);text-align:center;vertical-align:middle">${Math.round(Math.max(...totals)/scTarget*100)}%</td></tr>`;
     } else {
       html+=`<tr class="totals-row"><td class="row-label">Total</td>${totals.map((t,i)=>`<td style="color:${COLORS[i]};${w&&totals[i]===w.best?'font-size:1rem':''}">${t}${w&&totals[i]===w.best?' 🏆':''}</td>`).join('')}</tr>`;
     }
@@ -1283,7 +1284,7 @@ try{const raw=sessionStorage.getItem('cs_p10');if(raw){const s=JSON.parse(raw);i
         scSave();scRenderTable();
       });
     });
-    if(!w)scSavedSig=null;
+    if(!w){scSavedSig=null;document.getElementById('sc-winner').classList.add('hidden');}
     if(w){
       const wb=document.getElementById('sc-winner');
       wb.classList.remove('hidden');
@@ -1374,7 +1375,7 @@ try{const raw=sessionStorage.getItem('cs_p10');if(raw){const s=JSON.parse(raw);i
 
     let html=`<thead><tr><th class="row-label">Hole</th><th class="par-cell">Par</th>${mgNames.map((n,i)=>`<th class="player-th" style="color:${COLORS[i]}">${n}</th>`).join('')}</tr></thead><tbody>`;
     for(let h=0;h<mgHoles;h++){
-      html+=`<tr><td class="row-label">${h+1}</td><td class="par-cell">${mgPar}</td>${mgNames.map((_,p)=>`<td><input class="sc-cell" type="number" data-h="${h}" data-p="${p}" min="1" max="20" value="${mgScores[h][p]!=null?mgScores[h][p]:''}" placeholder="—"></td>`).join('')}</tr>`;
+      html+=`<tr><td class="row-label">${h+1}</td><td class="par-cell">${mgPar}</td>${mgNames.map((_,p)=>`<td><input class="sc-cell" type="number" inputmode="decimal" data-h="${h}" data-p="${p}" min="1" max="20" value="${mgScores[h][p]!=null?mgScores[h][p]:''}" placeholder="—"></td>`).join('')}</tr>`;
     }
     html+=`<tr class="totals-row"><td class="row-label">Total</td><td class="par-cell">${totalPar}</td>${totals.map((t,i)=>{
       const played=mgScores.filter(r=>r[i]!=null).length;
@@ -1394,7 +1395,7 @@ try{const raw=sessionStorage.getItem('cs_p10');if(raw){const s=JSON.parse(raw);i
       });
     });
 
-    if(!allFilled)mgSavedSig=null;
+    if(!allFilled){mgSavedSig=null;document.getElementById('mg-winner').classList.add('hidden');}
     if(allFilled){
       const wi=totals.indexOf(best);
       const diff=best-(mgPar*mgHoles);

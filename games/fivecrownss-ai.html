@@ -29,7 +29,7 @@
 .g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
 .g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
 .g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
-.g-status{display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;padding:8px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
+.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
 .g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
 .g-status b{color:var(--text);}
 .g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
@@ -67,6 +67,8 @@
 .g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
 .g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
 .fp-nc-label{max-width:64px !important;}
+.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
+@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
 @media (min-width:700px){.page.g-page{max-width:620px;}}
 /* ai-base:end */
 
@@ -101,7 +103,7 @@
 .fc-opp-cards{display:flex;align-items:center;}
 .fc-mini-back{width:13px;height:20px;border-radius:3px;margin-left:-4px;background:linear-gradient(150deg,#4c2a9a,#2a1060);border:1px solid rgba(255,255,255,.25);box-shadow:-1px 0 2px rgba(0,0,0,.3);}
 .fc-opp-count{font-size:.78rem;color:rgba(255,255,255,.65);margin-left:8px;font-variant-numeric:tabular-nums;}
-.fc-piles{display:flex;justify-content:center;align-items:flex-start;gap:26px;margin-top:14px;}
+.fc-piles{display:flex;justify-content:center;align-items:flex-start;gap:26px;}
 .fc-pile{display:flex;flex-direction:column;align-items:center;gap:6px;}
 .fc-pile-lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.65);}
 .fc-pile-count{font-size:.75rem;color:rgba(255,255,255,.55);}
@@ -114,6 +116,10 @@
 @keyframes fc-glow{0%,100%{outline:0 solid rgba(245,200,66,0);}50%{outline:4px solid rgba(245,200,66,.35);}}
 .fc-empty{--cw:58px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.2);display:grid;place-items:center;font-size:.75rem;color:rgba(255,255,255,.5);}
 /* Hand groups */
+.fc-groups.compact .fcc{--cw:clamp(36px,10.2vw,46px);}
+.fc-groups.compact .fcc .fc-r{font-size:1rem;}
+.fc-groups.compact{gap:13px 6px;}
+.fc-groups.compact .fc-grp{padding:11px 5px 5px;gap:3px;}
 .fc-groups{display:flex;flex-wrap:wrap;gap:14px 8px;align-items:flex-start;justify-content:center;padding-top:8px;}
 .fc-grp{display:inline-flex;flex-wrap:wrap;gap:4px;padding:12px 6px 6px;border-radius:14px;position:relative;}
 .fc-grp::before{content:attr(data-label);position:absolute;top:-9px;left:10px;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap;}
@@ -124,6 +130,7 @@
 .fc-grp.pick{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.45);}
 .fc-grp.pick::before{background:#3a2e0a;color:var(--gold);border:1px solid rgba(245,200,66,.45);}
 .fc-grp.pick .fcc.selected{transform:none;}
+.fc-grp.pick{min-width:84px;justify-content:center;}
 .dw-total{color:var(--gold);font-family:var(--display);font-weight:800;}
 .btn-go{background:linear-gradient(135deg,#4ade80,#16a34a);color:#052e16;box-shadow:0 8px 22px rgba(22,163,74,.3);}
 </style>
@@ -589,7 +596,7 @@ function render(){
     html += `<div class="${cls}">
       <div class="g-seat-name">${esc(n)}</div>
       <div class="g-seat-score">${scores[i]}</div>
-      <div class="g-seat-sub">${i === goingOut ? 'went out' : current === i ? (i === 0 ? 'your turn' : 'thinking…') : scores[i] === minScore && scores[i] > 0 ? 'leading' : ' '}</div>
+      <div class="g-seat-sub">${i === goingOut ? '✓ went out' : current === i ? (i === 0 ? 'your turn' : 'thinking…') : i === 0 ? 'you' : hands[i].length + ' cards'}</div>
     </div>`;
   });
   html += `</div>`;
@@ -598,15 +605,6 @@ function render(){
   const isYourDraw = phase === 'draw' && current === 0;
   const isYourDiscard = phase === 'discard' && current === 0;
   html += `<div class="felt g-table">`;
-  for(let i = 1; i <= 2; i++){
-    html += `<div class="fc-opp-row">
-      <div class="fc-opp-name">${esc(PNAMES[i])}
-        ${current === i ? '<span class="fc-tag turn">Turn</span>' : ''}
-        ${goingOut === i ? '<span class="fc-tag out">Out</span>' : ''}
-      </div>
-      <div class="fc-opp-cards">${hands[i].slice(0, 14).map(() => '<div class="fc-mini-back"></div>').join('')}<span class="fc-opp-count">${hands[i].length}</span></div>
-    </div>`;
-  }
   const top = discard[discard.length-1];
   html += `<div class="fc-piles">
     <div class="fc-pile">
@@ -650,7 +648,7 @@ function render(){
   // Meld preview is based on post-discard hand if a card is selected.
   const actualHand = hands[0];
   html += `<div class="g-label"><span>Your hand · ${actualHand.length}</span><span>${isYourDiscard ? 'tap again to unselect' : ''}</span></div>`;
-  html += `<div class="fc-groups">`;
+  html += `<div class="fc-groups ${actualHand.length >= 9 ? 'compact' : ''}">`;
   const tap = isYourDiscard ? 'playable' : '';
   if(selCard){
     html += `<div class="fc-grp pick" data-label="Discard">${cardEl(selCard, 'selected ' + tap)}</div>`;

@@ -2,79 +2,137 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Wizard — vs AI</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a0a30 0%,#0d0618 60%);}
-.wz-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
-.wcard{width:44px;height:62px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
-  border:2px solid rgba(0,0,0,.1);display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
-  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;}
+/* ai-base:start — shared table layout for the vs-AI card games */
+.page.g-page{max-width:560px;padding-top:12px;padding-bottom:calc(112px + var(--safe-b));}
+.g-hud{display:grid;gap:8px;margin-bottom:10px;}
+.g-seat{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:9px 8px 8px;min-width:0;text-align:center;transition:border-color .25s,box-shadow .25s,background .25s;}
+.g-seat.turn{border-color:rgba(245,200,66,.6);background:linear-gradient(180deg,rgba(245,200,66,.1),var(--surface) 70%);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
+.g-seat.lead::after{content:'👑';position:absolute;top:5px;right:7px;font-size:.72rem;}
+.g-seat-name{font-size:.78rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.g-seat.you .g-seat-name{color:var(--gold);}
+.g-seat-score{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.g-seat-sub{font-size:.72rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.1em;}
+.g-meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
+.g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
+.g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
+.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
+.g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
+.g-status b{color:var(--text);}
+.g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
+.g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
+.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;animation:gn-fade .2s ease both;}
+.g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
+.g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
+.g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
+.g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.g-choices .btn{min-height:44px;}
+.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);animation:gn-fade .2s ease both;}
+.g-bar:empty{display:none;}
+.g-bar .btn{flex:1;max-width:280px;}
+.g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.g-log summary{list-style:none;cursor:pointer;min-height:44px;padding:0 14px;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;color:var(--text-2);}
+.g-log summary::-webkit-details-marker{display:none;}
+.g-log summary .last{flex:1;min-width:0;font-weight:500;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
+.g-log summary::after{content:'';flex:none;width:7px;height:7px;border-right:2px solid var(--text-3);border-bottom:2px solid var(--text-3);transform:rotate(45deg);margin:-3px 2px 0 0;transition:transform .2s;}
+.g-log[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
+.g-log-body{padding:2px 14px 12px;font-size:.84rem;line-height:1.6;color:var(--text-2);max-height:200px;overflow-y:auto;}
+.g-log-body .pts{color:var(--gold);font-weight:600;}
+.g-log-body .bust{color:var(--red);}
+.g-log-body .flip7{color:var(--text);font-weight:700;}
+.g-result{text-align:center;padding:22px 16px 16px;border-radius:var(--r-lg);margin-bottom:12px;background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.04));border:1px solid rgba(245,200,66,.35);animation:gn-pop .4s var(--spring) both;}
+.g-result.plain{background:var(--surface);border-color:var(--line-2);}
+.g-result-icon{font-size:2.6rem;line-height:1;margin-bottom:6px;}
+.g-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);line-height:1.15;}
+.g-result.plain .g-result-title{color:var(--text);font-size:1.45rem;}
+.g-result-sub{color:var(--text-2);font-size:.92rem;margin-top:4px;}
+.g-rows{margin-top:14px;display:grid;gap:6px;text-align:left;}
+.g-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:.92rem;}
+.g-row > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.g-row.you > span:first-child{color:var(--gold);font-weight:700;}
+.g-row .r{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--text-3);font-size:.84rem;}
+.g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
+.g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
+.fp-nc-label{max-width:64px !important;}
+.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
+@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
+@media (min-width:700px){.page.g-page{max-width:620px;}}
+/* ai-base:end */
+
+/* ── Wizard ───────────────────────────────────────────────────────────── */
+.wz-hud{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.wz-hud .g-seat{padding:8px 4px 7px;}
+.wz-hud .g-seat-score{font-size:1.3rem;}
+.wz-bidline{font-size:.72rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.wz-bidline.hit{color:var(--green);} .wz-bidline.over{color:var(--red);}
+.wcard{--cw:clamp(42px,12.2vw,56px);width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;
+  background:linear-gradient(160deg,#fbf7ea,#ebe4cf);border:1px solid rgba(0,0,0,.12);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:800;box-shadow:0 3px 8px rgba(0,0,0,.35);
+  transition:transform .14s var(--ease),opacity .2s,box-shadow .2s;user-select:none;flex-shrink:0;position:relative;}
 .wcard.red{color:#c53030;}.wcard.black{color:#1a1a1a;}
-.wcard.wiz-card{background:linear-gradient(145deg,#ffd700,#b8860b);color:#2a1a00;border-color:#f5c842;}
-.wcard.jest-card{background:linear-gradient(145deg,#b0e0ff,#4a90d9);color:#0a1a2e;border-color:#5ac8fa;}
-.wcard.playable{cursor:pointer;}.wcard.playable:hover{transform:translateY(-8px);border-color:#a78bfa;}
-.wcard.trump-card{box-shadow:0 0 8px rgba(167,139,250,.4),1px 2px 6px rgba(0,0,0,.4);}
-.wcard.face-down{background:linear-gradient(145deg,#2a1060,#180830);border-color:rgba(255,255,255,.1);cursor:default;}
-.wc-r{font-size:.85rem;line-height:1.1;}.wc-s{font-size:.72rem;line-height:1;}
-/* Table */
-.wz-table{background:linear-gradient(145deg,#12062a,#090318);border:2px solid rgba(255,255,255,.07);
-  border-radius:16px;padding:12px;margin-bottom:10px;}
-.wz-trick{display:flex;gap:8px;justify-content:center;align-items:flex-end;min-height:68px;margin-bottom:6px;}
-.wz-trick-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.wz-trick-name{font-size:.55rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
-/* Score board */
-.wz-scores{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
-.wz-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px;text-align:center;}
-.wz-score-box.you{border-color:rgba(167,139,250,.35);}
-.wz-score-box.leader{border-color:rgba(34,197,94,.35);}
-.wz-score-name{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-.wz-score-total{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:#f5c842;}
-.wz-score-detail{font-size:.58rem;color:rgba(255,255,255,.35);line-height:1.4;}
-/* Bid panel */
-.wz-bid-panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;}
-.wz-bid-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;}
-.wz-bid-btn{width:42px;height:42px;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;
-  background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);color:#a78bfa;transition:all .12s;}
-.wz-bid-btn:hover{background:rgba(167,139,250,.25);}
-/* Trump display */
-.wz-trump{text-align:center;font-size:.78rem;font-weight:700;color:#a78bfa;margin-bottom:6px;}
-/* Status */
-.wz-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
-/* Log */
-.wz-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;
-  font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
-.wz-log .pts{color:#f5c842;font-weight:700;}
-/* Round summary */
-.wz-round-summary{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px;}
-/* Game over */
-.wz-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
-.wz-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
-/* Choose trump panel */
-.wz-choose-trump{background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+.wcard.wiz-card{background:linear-gradient(160deg,#fde68a,#d97706);color:#3b1d00;border-color:#f5c842;}
+.wcard.jest-card{background:linear-gradient(160deg,#bae6fd,#3b82f6);color:#082040;border-color:#93c5fd;}
+.wc-r{font-size:1.12rem;line-height:1;}
+.wc-s{font-size:.95rem;line-height:1;margin-top:2px;}
+.wcard .wc-tag{font-family:var(--font);font-size:.5rem;font-weight:800;letter-spacing:.04em;margin-top:3px;}
+.wcard.trump-card{box-shadow:0 0 0 2px rgba(192,132,252,.85),0 3px 8px rgba(0,0,0,.35);}
+.wcard.playable{cursor:pointer;}
+.wcard.playable:active{transform:translateY(-6px) scale(.97);}
+.wcard.unplayable{opacity:.4;filter:saturate(.6);}
+.wcard.sm{--cw:46px;}
+.wcard.win{box-shadow:0 0 0 3px var(--gold),0 8px 18px rgba(245,200,66,.35);}
+.wcard.drop{animation:wz-drop .28s var(--spring) both;}
+@keyframes wz-drop{from{transform:translateY(14px) scale(.9);opacity:0;}to{transform:none;opacity:1;}}
+.wz-hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:66px;}
+/* Trick table (compass layout) */
+.wz-trick{display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto auto;align-items:center;justify-items:center;gap:6px 8px;}
+.wz-slot{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.wz-slot-name{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.75);max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wz-slot.turn .wz-slot-name{color:var(--gold);}
+.wz-slot.lead .wz-slot-name::after{content:' · led';color:rgba(255,255,255,.5);font-weight:600;}
+.wz-empty{--cw:46px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.18);}
+.wz-slot.turn .wz-empty{border-color:rgba(245,200,66,.7);animation:wz-pulse 1.3s ease-in-out infinite;}
+@keyframes wz-pulse{50%{border-color:rgba(245,200,66,.25);}}
+.wz-n{grid-column:2;grid-row:1;} .wz-w{grid-column:1;grid-row:2;justify-self:end;} .wz-e{grid-column:3;grid-row:2;justify-self:start;} .wz-s{grid-column:2;grid-row:3;}
+.wz-center{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:72px;}
+.wz-trump-big{font-size:1.9rem;line-height:1;}
+.wz-trump-big.red{color:#fca5a5;} .wz-trump-big.black{color:#f2f4f8;}
+.wz-center-lbl{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.wz-trickno{font-size:.75rem;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;}
+/* Bids */
+.wz-bid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:8px;}
+.wz-bid-btn{min-height:48px;border-radius:12px;font-family:var(--display);font-size:1.15rem;font-weight:800;cursor:pointer;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text);transition:transform .1s,background .15s;}
+.wz-bid-btn:active{transform:scale(.94);background:var(--surface-3);}
+.wz-bid-hint{font-size:.8rem;color:var(--text-3);margin-top:10px;}
+.wz-trumps{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.wz-trumps .btn{min-height:48px;}
+.wz-trumps .full{grid-column:1/-1;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Wizard</span>
-  <a class="nav-back scorecard-link" href="wizard.html" style="margin-left:auto;font-size:.7rem;opacity:.55;">📋 Scorecard</a>
+  <a class="icon-btn scorecard-link" href="wizard.html" aria-label="Scorecard" title="Scorecard for in-person play">📋</a>
 </nav>
-<div class="page" style="padding:10px 0 60px;">
-<div class="wz-wrap" id="wz-root"></div>
+<div class="page g-page">
+<div id="wz-root"></div>
 </div>
+<div class="g-bar" id="g-bar"></div>
 <script>
 'use strict';
 // 4 players: You + 3 AI · 15 rounds (60 cards / 4 players)
@@ -84,29 +142,40 @@ const SUIT_LABELS={'♠':'Spades','♥':'Hearts','♦':'Diamonds','♣':'Clubs'}
 const RED=new Set(['♥','♦']);
 const RANK_ORD=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
+
 function makeWizDeck(){
   const d=[];
   SUITS.forEach(s=>RANK_ORD.forEach(r=>d.push({rank:r,suit:s,special:null})));
   for(let i=0;i<4;i++) d.push({rank:'W',suit:'★',special:'wizard'});
   for(let i=0;i<4;i++) d.push({rank:'J',suit:'🃏',special:'jester'});
+  // Every card gets a unique id — the 4 Wizards / 4 Jesters are otherwise identical,
+  // and removing "W★" from a hand used to remove all of them at once.
+  d.forEach((c,i)=>{c.id=i;});
   for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
   return d;
 }
-function cKey(c){return c.rank+c.suit;}
+function cKey(c){return c.rank+c.suit+'#'+c.id;}
 function isWiz(c){return c.special==='wizard';}
 function isJest(c){return c.special==='jester';}
 
 let hands,scores,bids,taken,trick,trickLead,trump,trumpCard,phase,log,round,dealer,trickNum,choosingTrump;
+let trickWinner=-1, roundPts=[0,0,0,0], lastPlayKey=null;
 const TOTAL_ROUNDS=15;
 
+// One AI timer at a time (render() used to schedule extra AI moves on every redraw).
+let aiTimer=null;
+function scheduleAI(ms){clearTimeout(aiTimer);aiTimer=setTimeout(aiPlayCard,ms);}
+
 function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
-function newGame(){scores=[0,0,0,0];log=[];round=0;dealer=3;nextRound();}
+function newGame(){clearTimeout(aiTimer);scores=[0,0,0,0];log=[];round=0;dealer=3;nextRound();}
 
 function nextRound(){
   round++;dealer=(dealer+1)%4;
   const deck=makeWizDeck();
   const n=round;
-  hands=Array.from({length:4},(_,i)=>deck.slice(i*n,(i+1)*n));
+  hands=Array.from({length:4},(_,i)=>sortHand(deck.slice(i*n,(i+1)*n)));
   trumpCard=deck[4*n]||null;
   // Determine trump
   if(!trumpCard||isJest(trumpCard)){trump=null;}
@@ -115,17 +184,23 @@ function nextRound(){
   } else {
     trump=trumpCard.suit; choosingTrump=false;
   }
-  bids=[-1,-1,-1,-1]; taken=[0,0,0,0];
-  trick=[null,null,null,null]; trickLead=(dealer+1)%4; trickNum=0;
+  bids=[-1,-1,-1,-1]; taken=[0,0,0,0]; roundPts=[0,0,0,0];
+  trick=[null,null,null,null]; trickLead=(dealer+1)%4; trickNum=0; trickWinner=-1;
   phase='bid'; choosingTrump=choosingTrump&&dealer===0; // only player chooses
   if(choosingTrump&&dealer===0){phase='choose-trump';}
-  else if(choosingTrump&&dealer!==0){
+  else if(isWiz(trumpCard||{})&&dealer!==0){
     // AI dealer chooses randomly
     trump=SUITS[Math.floor(Math.random()*4)];choosingTrump=false;
   }
   addLog(`Round ${round} of ${TOTAL_ROUNDS}. ${n} card${n>1?'s':''} each. Trump: ${trump||'none'}.`);
   render();
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
   if(phase==='bid') setTimeout(startBidding,300);
+}
+// Display order only: suits grouped, trump first, then rank.
+function sortHand(h){
+  const so=c=>isWiz(c)?-2:isJest(c)?9:SUITS.indexOf(c.suit);
+  return h.sort((a,b)=>so(a)-so(b)||RANK_ORD.indexOf(b.rank)-RANK_ORD.indexOf(a.rank));
 }
 
 function startBidding(){
@@ -154,19 +229,21 @@ function aiBid(p){
 }
 
 function playerBid(n){
-  if(phase!=='bid') return;
+  if(phase!=='bid'||bids.slice(1).some(b=>b<0)) return;
   bids[0]=n;
+  haptic('select');
   addLog(`You bid ${n}.`);
   phase='play';
   addLog(`All bids: ${PNAMES.map((n2,i)=>n2+': '+bids[i]).join(', ')}`);
   render();
-  if(trickLead!==0) setTimeout(aiPlayCard,500);
+  if(trickLead!==0) scheduleAI(600);
 }
 
 function playerChooseTrump(suit){
   if(phase!=='choose-trump') return;
   trump=suit; choosingTrump=false;
-  addLog(`You choose ${trump} as trump.`);
+  haptic('select');
+  addLog(`You choose ${trump||'no trump'}${trump?' as trump':''}.`);
   phase='bid'; render(); setTimeout(startBidding,300);
 }
 
@@ -174,7 +251,6 @@ function playerChooseTrump(suit){
 function cardPower(c,ledSuit){
   if(isWiz(c)) return 300;
   if(isJest(c)) return -1;
-  // Find first non-jester in trick to determine if wizard already played
   if(trump&&c.suit===trump) return 100+RANK_ORD.indexOf(c.rank);
   if(c.suit===ledSuit) return 50+RANK_ORD.indexOf(c.rank);
   return RANK_ORD.indexOf(c.rank);
@@ -189,6 +265,7 @@ function validPlays(p){
 }
 
 function aiPlayCard(){
+  if(phase!=='play') return;
   const p=getNext();
   if(p<0||p===0) return;
   const valid=validPlays(p);
@@ -198,38 +275,39 @@ function aiPlayCard(){
   const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
   const currentBest=played.length?played.reduce((w,x)=>cardPower(x.c,ledSuit)>cardPower(w.c,ledSuit)?x:w,played[0]):null;
   const needToWin=bids[p]>taken[p];
-  const needToLose=!needToWin&&taken[p]>=bids[p];
   let card;
   if(needToWin){
     const canWin=valid.filter(c=>!currentBest||cardPower(c,ledSuit)>cardPower(currentBest.c,ledSuit));
-    card=canWin.length?canWin.sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0]
-      :valid.sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
+    card=canWin.length?[...canWin].sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0]
+      :[...valid].sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
   } else {
     // Play lowest
     const nonWiz=valid.filter(c=>!isWiz(c));
-    card=(nonWiz.length?nonWiz:valid).sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
+    card=[...(nonWiz.length?nonWiz:valid)].sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
   }
   playCard(p,card||valid[0]);
 }
 
 function getNext(){
+  if(trick.filter(c=>c).length===4) return -1;
   for(let i=0;i<4;i++){const p=(trickLead+i)%4;if(!trick[p])return p;}
   return -1;
 }
 
 function playerPlay(card){
   if(phase!=='play'||getNext()!==0) return;
-  if(!validPlays(0).some(c=>cKey(c)===cKey(card))) return;
+  if(!validPlays(0).some(c=>cKey(c)===cKey(card))){ haptic('error'); if(window.GN) GN.toast('You must follow the led suit'); return; }
+  haptic('light');
   playCard(0,card);
 }
 
 function playCard(p,card){
   trick[p]=card;
+  lastPlayKey=cKey(card);
   hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
   render();
   if(trick.filter(c=>c).length===4){
     // Find winner: first wizard, else highest in led suit/trump, jesters lose
-    const firstPlayed=trick[(trickLead)%4];
     let winner=trickLead;
     let ledSuit=null;
     // Determine led suit (first non-jester)
@@ -245,17 +323,18 @@ function playCard(p,card){
         return cardPower(c,ledSuit)>cardPower(trick[wi]||{rank:'2',suit:'x'},ledSuit)?i:wi;
       },trickLead);
     }
-    taken[winner]++; trickNum++;
+    taken[winner]++; trickNum++; trickWinner=winner;
     addLog(`${PNAMES[winner]} wins trick ${trickNum}.`);
+    if(winner===0) haptic('medium');
     render();
     setTimeout(()=>{
-      trick=[null,null,null,null];trickLead=winner;
+      trick=[null,null,null,null];trickLead=winner;trickWinner=-1;
       if(trickNum===round){scoreRound();}
-      else{render();if(winner!==0)setTimeout(aiPlayCard,500);}
-    },900);
+      else{render();if(winner!==0)scheduleAI(500);}
+    },1100);
   } else {
     const next=getNext();
-    if(next>0) setTimeout(aiPlayCard,450);
+    if(next>0) scheduleAI(550);
   }
 }
 
@@ -264,11 +343,12 @@ function scoreRound(){
   for(let p=0;p<4;p++){
     const diff=Math.abs(bids[p]-taken[p]);
     let pts=bids[p]===taken[p]?20+bids[p]*10:-10*diff;
-    scores[p]+=pts;
+    scores[p]+=pts; roundPts[p]=pts;
     msgs.push(`${PNAMES[p]}: bid ${bids[p]}, took ${taken[p]} → ${pts>0?'+':''}${pts}`);
   }
   msgs.forEach(m=>addLog(m,'pts'));
   phase='round-end';
+  haptic(roundPts[0]>0?'success':'light');
   if(round===TOTAL_ROUNDS){phase='game-over';endGame();}
   else render();
 }
@@ -281,118 +361,132 @@ function endGame(){
     const players=PNAMES.map((n,i)=>({name:n,score:scores[i]}));
     GameHistory.savePlayerGame('wizard','Wizard (AI)',players,winner,0);
   }catch(e){}
+  haptic(won?'success':'heavy');
   render();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function cardEl(c,cls=''){
-  if(!c) return`<div class="wcard face-down"></div>`;
+  if(!c) return`<div class="wz-empty"></div>`;
   const special=isWiz(c)?'wiz-card':isJest(c)?'jest-card':'';
   const tr=!isWiz(c)&&!isJest(c)&&trump&&c.suit===trump?'trump-card':'';
   const col=RED.has(c.suit)?'red':'black';
-  return`<div class="wcard ${special||col} ${tr} ${cls}" data-key="${cKey(c)}">
-    <div class="wc-r">${c.rank}</div>
-    <div class="wc-s">${isWiz(c)||isJest(c)?'':c.suit}</div>
-  </div>`;
+  const face=isWiz(c)?`<div class="wc-r">🧙</div><div class="wc-tag">WIZARD</div>`:isJest(c)?`<div class="wc-r">🃏</div><div class="wc-tag">JESTER</div>`:`<div class="wc-r">${c.rank}</div><div class="wc-s">${c.suit}</div>`;
+  return`<div class="wcard ${special||col} ${tr} ${cls}" data-key="${cKey(c)}">${face}</div>`;
 }
 
-function miniCard(c){
-  if(!c)return`<div style="width:30px;height:42px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);"></div>`;
-  const sp=isWiz(c)?'wiz-card':isJest(c)?'jest-card':'';
-  const col=RED.has(c.suit)?'red':'black';
-  return`<div class="wcard ${sp||col} disabled" style="width:30px;height:42px;font-size:.5rem;">
-    <div style="font-size:.65rem">${c.rank}</div><div style="font-size:.55rem">${isWiz(c)||isJest(c)?'':c.suit}</div>
-  </div>`;
+let logOpen=false;
+function renderLog(){
+  const last=log.length?log[log.length-1].msg:'';
+  return `<details class="g-log" id="g-log" ${logOpen?'open':''}><summary>Game log<span class="last">${esc(last)}</span></summary>
+    <div class="g-log-body">${log.slice(-14).map(({msg,cls})=>`<div class="${cls||''}">${esc(msg)}</div>`).join('')}</div></details>`;
 }
+function wireLog(){
+  const d=document.getElementById('g-log');
+  if(!d) return;
+  d.addEventListener('toggle',()=>{logOpen=d.open;});
+  const b=d.querySelector('.g-log-body'); if(b) b.scrollTop=b.scrollHeight;
+}
+function setBar(html){document.getElementById('g-bar').innerHTML=html||'';}
 
 function render(){
   const root=document.getElementById('wz-root');
   let html='';
   const maxScore=Math.max(...scores);
-  html+=`<div style="text-align:center;font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:6px;">Round ${round} of ${TOTAL_ROUNDS} · First to most points wins</div>`;
-  html+=`<div class="wz-scores">`;
+  const trumpLbl=trump?`${trump} ${SUIT_LABELS[trump]}`:(phase==='choose-trump'?'choosing…':'No trump');
+  html+=`<div class="g-meta"><span class="g-pill">Round ${round} of ${TOTAL_ROUNDS}</span><span class="g-pill gold">Trump: ${trumpLbl}</span></div>`;
+
+  if(phase==='game-over'||phase==='round-end'){
+    const over=phase==='game-over';
+    const w=scores.indexOf(maxScore);
+    const order=PNAMES.map((n,i)=>i).sort((a,b)=>scores[b]-scores[a]);
+    html+=`<div class="g-result ${over&&w===0?'':'plain'}">
+      <div class="g-result-icon">${over?(w===0?'🏆':'🧙'):(bids[0]===taken[0]?'🎯':'🃏')}</div>
+      <div class="g-result-title">${over?(w===0?'You win!':esc(PNAMES[w])+' wins'):(bids[0]===taken[0]?'Nailed your bid!':'Round '+round+' complete')}</div>
+      <div class="g-result-sub">${over?`${scores[w]} points after ${TOTAL_ROUNDS} rounds`:`You bid ${bids[0]} and took ${taken[0]}`}</div>
+      <div class="g-rows">${order.map(i=>`<div class="g-row ${i===0?'you':''}"><span>${esc(PNAMES[i])}</span>
+        <span class="r">${bids[i]}/${taken[i]} <span class="${roundPts[i]>=0?'pos':'neg'}">${roundPts[i]>0?'+':''}${roundPts[i]}</span><b>${scores[i]}</b></span></div>`).join('')}</div>
+    </div>`;
+    html+=renderLog();
+    root.innerHTML=html;wireLog();
+    setBar(over?`<button class="btn btn-gold" id="ng-btn">New Game</button>`:`<button class="btn btn-gold" id="nr-btn">Next Round</button>`);
+    document.getElementById('ng-btn')?.addEventListener('click',()=>{haptic('light');newGame();});
+    document.getElementById('nr-btn')?.addEventListener('click',()=>{haptic('light');nextRound();});
+    return;
+  }
+
+  const cur=getNext();
+  // Scores
+  html+=`<div class="g-hud wz-hud">`;
   PNAMES.forEach((n,i)=>{
-    const bid=bids[i]>=0?`bid ${bids[i]}`:'';
-    const took=phase==='play'||phase==='round-end'?` got ${taken[i]}`:'' ;
-    html+=`<div class="wz-score-box ${i===0?'you':''} ${scores[i]===maxScore&&scores[i]>0?'leader':''}">
-      <div class="wz-score-name" style="${i===0?'color:#a78bfa':''}">${n}</div>
-      <div class="wz-score-total">${scores[i]}</div>
-      <div class="wz-score-detail">${bid}${took}</div>
+    const hasBid=bids[i]>=0;
+    const bl=hasBid?`${phase==='play'?taken[i]+'/':'bid '}${bids[i]}`:(i===0&&phase==='bid'?'bidding…':'—');
+    const st=phase==='play'&&hasBid?(taken[i]===bids[i]?'hit':taken[i]>bids[i]?'over':''):'';
+    html+=`<div class="g-seat ${i===0?'you':''} ${phase==='play'&&cur===i?'turn':''} ${scores[i]===maxScore&&scores[i]>0?'lead':''}">
+      <div class="g-seat-name">${esc(n)}</div>
+      <div class="g-seat-score">${scores[i]}</div>
+      <div class="wz-bidline ${st}">${bl}</div>
     </div>`;
   });
   html+=`</div>`;
 
-  if(phase==='game-over'){
-    const w=scores.indexOf(Math.max(...scores));
-    html+=`<div class="wz-game-result">
-      <div class="wz-game-title">${w===0?'🏆 You Win!':PNAMES[w]+' Wins'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${PNAMES.map((n,i)=>n+': '+scores[i]).join(' · ')}</div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
-    html+=`<div class="wz-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
-  }
+  // Table — compass layout: 0 You (S), 1 Sage (W), 2 Merlin (N), 3 Oracle (E)
+  const pos=['wz-s','wz-w','wz-n','wz-e'];
+  const slot=p=>`<div class="wz-slot ${pos[p]} ${phase==='play'&&cur===p?'turn':''} ${trick.some(c=>c)&&p===trickLead?'lead':''}">
+      ${trick[p]?cardEl(trick[p],'sm'+(trickWinner===p?' win':'')+(lastPlayKey===cKey(trick[p])?' drop':'')):'<div class="wz-empty"></div>'}
+      <div class="wz-slot-name">${p===0?'You':esc(PNAMES[p])}</div></div>`;
+  const tsym=trump?`<div class="wz-trump-big ${RED.has(trump)?'red':'black'}">${trump}</div>`:`<div class="wz-trump-big" style="font-size:1.2rem;color:rgba(255,255,255,.7)">—</div>`;
+  html+=`<div class="felt g-table"><div class="wz-trick">
+    ${slot(2)}${slot(1)}
+    <div class="wz-center">${tsym}<div class="wz-center-lbl">${trump?'Trump':'No trump'}</div><div class="wz-trickno">Trick ${Math.min(trickNum+1,round)}/${round}</div></div>
+    ${slot(3)}${slot(0)}
+  </div></div>`;
+  lastPlayKey=null;
 
-  if(phase==='round-end'){
-    html+=`<div class="wz-round-summary">
-      <div style="font-weight:700;margin-bottom:4px;">Round ${round} Complete</div>
-      <div style="font-size:.78rem;color:rgba(255,255,255,.55);">${PNAMES.map((n,i)=>`${n}: bid ${bids[i]} took ${taken[i]}`).join(' · ')}</div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
-    html+=`<div class="wz-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',nextRound);return;
-  }
-
+  // Choose trump
   if(phase==='choose-trump'){
-    html+=`<div class="wz-choose-trump">
-      <div style="font-weight:700;margin-bottom:4px;">A Wizard was turned up — choose trump suit!</div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;">
-        ${SUITS.map(s=>`<button class="btn btn-outline btn-sm wz-trump-btn" data-suit="${s}">${s} ${SUIT_LABELS[s]}</button>`).join('')}
-        <button class="btn btn-outline btn-sm wz-trump-btn" data-suit="none">No Trump</button>
-      </div>
-    </div>`;
+    html+=`<div class="g-panel accent"><div class="g-panel-title">A Wizard was turned up</div>
+      <div class="g-panel-sub">You're the dealer — pick the trump suit for this round.</div>
+      <div class="wz-trumps">${SUITS.map(s=>`<button class="btn btn-outline wz-trump-btn" data-suit="${s}"><span style="color:${RED.has(s)?'#fca5a5':'inherit'}">${s}</span> ${SUIT_LABELS[s]}</button>`).join('')}
+      <button class="btn btn-outline wz-trump-btn full" data-suit="none">No Trump</button></div></div>`;
   }
 
-  // Trump
-  html+=`<div class="wz-trump">${trump?`Trump: ${trump}`:round>0?'No trump':''}${trumpCard?' · Turn-up: '+trumpCard.rank+trumpCard.suit:''}</div>`;
+  // Status
+  let status='',scls='';
+  if(phase==='bid'&&bids[0]<0){status=bids.slice(1).some(b=>b<0)?'Opponents are bidding…':`How many tricks will you win?`;scls='yours';}
+  else if(phase==='play'){
+    if(trickWinner>=0) status=`${trickWinner===0?'You win':esc(PNAMES[trickWinner])+' wins'} the trick`;
+    else if(cur===0){status=trick.some(c=>c)?'Your turn — follow suit if you can':'Your lead — play any card';scls='yours';}
+    else if(cur>0) status=`${esc(PNAMES[cur])} is playing…`;
+  } else if(phase==='choose-trump'){status='Choose trump to start bidding';scls='yours';}
+  if(status) html+=`<div class="g-status ${scls}">${status}</div>`;
 
-  // Bid phase
-  if(phase==='bid'&&bids[0]<0){
-    html+=`<div class="wz-bid-panel">
-      <div style="font-weight:700;text-align:center;margin-bottom:4px;">Bid for Round ${round}</div>
-      <div style="font-size:.75rem;color:rgba(255,255,255,.5);text-align:center;">You have ${round} card${round>1?'s':''}. Bid exactly how many tricks you'll win.</div>
+  // Bid panel
+  if(phase==='bid'&&bids[0]<0&&!bids.slice(1).some(b=>b<0)){
+    const others=bids.slice(1).reduce((a,b)=>a+b,0);
+    html+=`<div class="g-panel accent"><div class="g-panel-title">Your bid · ${round} card${round>1?'s':''}</div>
+      <div class="g-panel-sub">Bid exactly how many tricks you'll win.</div>
       <div class="wz-bid-grid">${Array.from({length:round+1},(_,i)=>`<button class="wz-bid-btn" data-bid="${i}">${i}</button>`).join('')}</div>
-    </div>`;
+      <div class="wz-bid-hint">Opponents bid ${others} total · ${round} trick${round>1?'s':''} available</div></div>`;
   }
-
-  // Table
-  const cur=getNext();
-  html+=`<div class="wz-table">
-    <div class="wz-trick">
-      ${[1,2,3,0].map(p=>`<div class="wz-trick-slot">${miniCard(trick[p])}<div class="wz-trick-name">${PNAMES[p]}</div></div>`).join('')}
-    </div>
-    <div style="text-align:center;font-size:.62rem;color:rgba(255,255,255,.3);">Trick ${trickNum+1} of ${round}</div>
-  </div>`;
-
-  html+=`<div class="wz-status">${phase==='play'?cur===0?'Your turn.':cur>=0?`${PNAMES[cur]} playing…`:'':''}</div>`;
 
   // Player hand
-  const isPlay=phase==='play'&&cur===0;
+  const isPlay=phase==='play'&&cur===0&&trickWinner<0;
   const valid=isPlay?validPlays(0).map(cKey):[];
-  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${hands[0].length})</div>
-  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
-    ${hands[0].map(c=>cardEl(c,isPlay&&valid.includes(cKey(c))?'playable':'')).join('')}
+  html+=`<div class="g-label"><span>Your hand · ${hands[0].length}</span><span>${isPlay?'tap a card to play':''}</span></div>
+  <div class="wz-hand" id="player-hand">
+    ${hands[0].map(c=>cardEl(c,isPlay?(valid.includes(cKey(c))?'playable':'unplayable'):'')).join('')}
   </div>`;
 
-  html+=`<div class="wz-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-  root.innerHTML=html;
+  html+=renderLog();
+  root.innerHTML=html;wireLog();
+  setBar('');
 
   document.querySelectorAll('.wz-bid-btn').forEach(b=>b.addEventListener('click',()=>playerBid(+b.dataset.bid)));
   document.querySelectorAll('.wz-trump-btn').forEach(b=>b.addEventListener('click',()=>playerChooseTrump(b.dataset.suit==='none'?null:b.dataset.suit)));
-  document.getElementById('player-hand')?.querySelectorAll('.wcard.playable').forEach(el=>{
-    el.addEventListener('click',()=>{const c=hands[0].find(c=>cKey(c)===el.dataset.key);if(c)playerPlay(c);});
+  document.getElementById('player-hand')?.querySelectorAll('.wcard').forEach(el=>{
+    el.addEventListener('click',()=>{const c=hands[0].find(c=>cKey(c)===el.dataset.key);if(c&&isPlay)playerPlay(c);});
   });
-  if(phase==='play'&&cur>0) setTimeout(aiPlayCard,500);
 }
 
 newGame();

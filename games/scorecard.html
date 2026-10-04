@@ -5,158 +5,174 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Scorecard</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);}
-.felt{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(255,255,255,0.02)'/%3E%3C/svg%3E");}
-.inner{position:relative;z-index:1;}
-.game-header{text-align:center;padding:24px 16px 16px;}
-.game-icon-big{font-size:2.4rem;display:block;margin-bottom:6px;}
-.game-title{font-family:var(--serif);font-size:clamp(1.8rem,7vw,2.8rem);font-weight:900;}
-/* Tabs */
-.game-tabs{display:flex;gap:0;padding:0 16px;margin-bottom:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.game-tab{flex:0 0 auto;padding:10px 18px;border:none;border-bottom:3px solid transparent;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--font);}
-.game-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
-.game-panel{display:none;padding:16px;}
-.game-panel.active{display:block;}
-.game-tab.has-progress::after{content:'●';font-size:.45rem;color:#22c55e;vertical-align:super;margin-left:3px;}
+/* Tabs: scrollable pill chips */
+.game-tabs{display:flex;gap:8px;padding:2px max(16px,var(--safe-l)) 4px;margin:0 auto;max-width:720px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scroll-padding-inline:16px;}
+.game-tabs::-webkit-scrollbar{display:none;}
+.game-tab{flex:0 0 auto;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);
+  color:var(--text-2);font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;scroll-snap-align:start;transition:background .15s,color .15s,border-color .15s;}
+.game-tab.active{background:rgba(245,200,66,.14);border-color:rgba(245,200,66,.5);color:var(--gold);}
+.game-tab.has-progress::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-left:6px;vertical-align:2px;}
+.game-panel{display:none;padding:14px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));max-width:720px;margin:0 auto;}
+.game-panel.active{display:block;animation:gn-fade .2s ease both;}
+.cs-page{padding:12px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));max-width:720px;margin:0 auto;}
 
 /* Score display */
 .score-display{display:grid;gap:8px;margin-bottom:14px;}
 .score-card-grid-3{grid-template-columns:repeat(3,1fr);}
 .score-card-grid-2{grid-template-columns:repeat(2,1fr);}
 .score-card-grid-4{grid-template-columns:repeat(4,1fr);}
-.scorer{background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.1);border-radius:13px;padding:13px 10px;text-align:center;transition:all .3s;}
-.scorer.leading{box-shadow:0 4px 20px var(--lc,rgba(245,200,66,0.3));}
-.scorer-name{font-size:.8rem;font-weight:700;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.scorer-pts{font-family:var(--serif);font-size:clamp(1.8rem,6vw,2.6rem);font-weight:900;line-height:1;}
-.scorer-sub{font-size:.68rem;color:var(--muted);margin-top:3px;}
-.pbar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;margin-top:7px;}
+.scorer{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius);padding:12px 8px 10px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
+.scorer.leading{box-shadow:0 6px 22px var(--lc,rgba(245,200,66,0.25));}
+.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.scorer-pts{font-family:var(--display);font-size:clamp(1.7rem,7vw,2.4rem);font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;}
+.score-card-grid-4 .scorer-pts{font-size:clamp(1.35rem,5.5vw,2rem);}
+.scorer-sub{font-size:.75rem;color:var(--text-2);margin-top:3px;}
+.scorer-togo{font-size:.75rem;color:var(--text-3);margin-top:4px;}
+.pbar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;margin-top:8px;}
 .pbar-fill{height:100%;border-radius:2px;transition:width .4s ease;}
 
-/* round entry */
-.entry-panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;margin-bottom:14px;}
-.entry-row{display:grid;gap:8px;margin-bottom:10px;}
-.entry-cell{text-align:center;}
-.entry-label{font-size:.75rem;font-weight:700;color:var(--gold);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.score-input{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:max(16px,1.1rem);font-weight:700;text-align:center;padding:7px 4px;outline:none;font-family:var(--font);}
-.toggle-row{display:flex;gap:5px;justify-content:center;margin-top:4px;}
-.toggle-btn{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,.5);font-size:.68rem;font-weight:600;padding:4px 2px;cursor:pointer;transition:all .15s;font-family:var(--font);}
-.toggle-btn.on{background:rgba(245,200,66,0.2);border-color:var(--gold);color:var(--gold);}
-.toggle-btn.bust-on{background:rgba(255,107,107,0.2);border-color:var(--red);color:var(--red);}
+/* Round entry */
+.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+.entry-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:var(--display);font-weight:700;font-size:1.08rem;}
+.entry-row{display:grid;gap:10px;margin-bottom:12px;}
+.entry-cell{text-align:center;min-width:0;}
+.entry-label{font-size:.82rem;font-weight:700;color:var(--gold);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.score-input,.bid-input{width:100%;min-height:48px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);
+  font-size:max(16px,1.1rem)!important;font-weight:700;text-align:center;padding:8px 4px;outline:none;font-family:var(--font);transition:border-color .15s,box-shadow .15s;}
+.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 3px rgba(245,200,66,.12);}
+.score-input:disabled{opacity:.4;}
+.mini-lbl{font-size:.75rem;color:var(--text-3);margin-bottom:4px;font-weight:600;}
+.toggle-row{display:flex;gap:6px;justify-content:center;margin-top:6px;}
+.toggle-btn{flex:1;min-height:36px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;color:var(--text-2);font-size:.78rem;font-weight:600;padding:0 4px;cursor:pointer;transition:all .15s;font-family:var(--font);white-space:nowrap;}
+.toggle-btn.on{background:rgba(245,200,66,0.16);border-color:var(--gold);color:var(--gold);}
+.toggle-btn.bust-on{background:rgba(248,113,113,0.16);border-color:var(--red);color:var(--red);}
+.toggle-btn:disabled{opacity:.35;}
+.err-msg{color:var(--red);font-size:.86rem;text-align:center;margin-bottom:10px;display:none;}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;}
+.btn-row .btn{flex:1;max-width:220px;}
 
-/* history */
-.hist{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;}
-.hist-head{padding:10px 14px;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.07);}
-.hist-row{display:grid;padding:7px 12px;}
-.hist-row.alt{background:rgba(255,255,255,.015);}
-.hist-row.totals{background:rgba(255,255,255,.06);border-top:1px solid rgba(255,255,255,.1);}
-.hist-num{font-size:.74rem;color:rgba(255,255,255,.3);align-self:center;}
-.hist-val{font-size:.88rem;font-weight:700;text-align:center;color:rgba(255,255,255,.9);}
+/* History */
+.hist{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.hist-head{padding:12px 14px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
+.hist-row{display:grid;padding:8px 12px;align-items:center;}
+.hist-row.alt{background:rgba(255,255,255,.02);}
+.hist-row.totals{background:var(--surface-2);border-top:1px solid var(--line-2);}
+.hist-num{font-size:.8rem;color:var(--text-3);}
+.hist-val{font-size:.92rem;font-weight:700;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hist-val.neg{color:var(--red);}
-.hist-total{font-size:.95rem;font-weight:800;text-align:center;}
+.hist-total{font-family:var(--display);font-size:1.05rem;font-weight:800;text-align:center;}
 
-/* spades-specific */
-.bid-input{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:max(16px,1rem);font-weight:700;text-align:center;padding:6px;outline:none;font-family:var(--font);}
+/* Toggles */
+.moon-toggle,.rules-toggle-row{display:flex;align-items:center;gap:12px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;margin-bottom:12px;cursor:pointer;min-height:48px;}
+.moon-toggle input[type=checkbox],.rules-toggle-row input[type=checkbox],.chk{width:20px;height:20px;cursor:pointer;flex-shrink:0;accent-color:var(--gold);}
+.moon-label{font-size:.92rem;font-weight:600;}
+.rules-toggle-label{font-size:.92rem;}
+.rules-toggle-label .sub{color:var(--text-2);font-size:.8rem;display:block;margin-top:1px;}
+.nil-row{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--text-2);cursor:pointer;min-height:36px;margin:0;font-weight:500;}
+.moon-picker{display:none;margin-bottom:12px;padding:12px;background:var(--surface-2);border-radius:12px;}
 
-/* hearts-specific */
-.moon-toggle{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;margin-bottom:10px;cursor:pointer;}
-.moon-toggle input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
-.moon-label{font-size:.88rem;font-weight:600;}
+/* Rules */
+.rules-body p{margin:0 0 8px;}
+.rules-body ul{margin:0 0 8px;padding-left:18px;}
+.rules-body li{margin-bottom:4px;}
+.rules-body strong{color:var(--text);}
 
-/* rules collapsible */
-.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;}
-.rules-details[open]{border-color:rgba(255,255,255,.18);}
-.rules-summary{padding:11px 14px;font-size:.85rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.75);list-style:none;display:flex;align-items:center;gap:6px;user-select:none;}
-.rules-summary::-webkit-details-marker{display:none;}
-.rules-summary::after{content:'▼';font-size:.65rem;margin-left:auto;opacity:.5;transition:transform .2s;}
-.rules-details[open] .rules-summary::after{transform:rotate(180deg);}
-.rules-body{padding:4px 14px 14px;font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.6);}
-.rules-body p{margin:0 0 7px;}
-.rules-body ul{margin:0 0 7px;padding-left:18px;}
-.rules-body li{margin-bottom:3px;}
-.rules-body strong{color:rgba(255,255,255,.85);}
+/* Setup */
+.setup-screen{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 18px;}
+.setup-title{font-family:var(--display);font-weight:700;font-size:1.15rem;margin-bottom:14px;}
+.setup-lbl{font-size:.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin:0 0 8px;display:block;}
+.cnt-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;}
+.cnt-row .btn{padding:0;}
+.btn.btn-outline.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);border-color:transparent;}
+.seg-row{display:flex;gap:8px;margin-bottom:12px;}
+.seg-row .btn{flex:1;padding:0 10px;}
+.player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.player-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.field{margin-bottom:16px;}
+.inline-field{display:flex;align-items:center;gap:10px;}
+.inline-field input[type=number].input{width:96px;flex:none;text-align:center;}
+.inline-field span{font-size:.9rem;color:var(--text-2);}
 
-/* toggle row (bag penalty, etc.) */
-.rules-toggle-row{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:10px 12px;cursor:pointer;}
-.rules-toggle-row input[type=checkbox]{width:16px;height:16px;margin-top:2px;cursor:pointer;flex-shrink:0;}
-.rules-toggle-label{font-size:.85rem;}
+/* Winner */
+.winner-banner .btn-row{margin-top:16px;}
+.gh-hist-btn{min-height:40px!important;padding:0 16px!important;font-size:.86rem!important;margin-top:12px;}
 
-/* setup screens */
-.setup-screen{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:20px;}
-.player-setup-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.player-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.winner-banner{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px;}
-.winner-name{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#0f2d1a;}
-.winner-pts{color:#3a2000;font-size:.9rem;font-weight:600;margin-top:4px;}
+/* Phase 10 */
+.p10-tracker{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:14px;overflow-x:auto;}
+.p10-grid{display:grid;gap:4px 6px;font-size:.8rem;min-width:0;}
+.p10-player{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
+.p10-player-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.p10-name{font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.p10-phase{font-size:.75rem;color:var(--text-2);white-space:nowrap;}
+.p10-player-bot{display:flex;gap:8px;align-items:center;}
+.p10-done{flex:1;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);font-size:.86rem;font-weight:600;color:var(--text-2);cursor:pointer;margin:0;}
+.p10-done:has(input:checked){border-color:rgba(74,222,128,.55);background:rgba(74,222,128,.1);color:var(--green);}
+.p10-player-bot .score-input{width:96px;flex:none;}
 
 /* Scorecard / Mini Golf */
-.sc-meta{font-size:.75rem;color:var(--muted);margin-bottom:12px;text-align:center;}
-.sc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;}
-.sc-table{border-collapse:collapse;width:100%;min-width:280px;font-size:.82rem;}
-.sc-table th{background:rgba(255,255,255,.07);padding:6px 8px;text-align:center;font-weight:700;color:var(--muted);font-size:.7rem;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.1);}
+.sc-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);}
+.sc-table{border-collapse:collapse;width:100%;min-width:260px;font-size:.9rem;font-variant-numeric:tabular-nums;}
+.sc-table th{background:var(--surface-2);padding:10px 6px;text-align:center;font-weight:700;color:var(--text-2);font-size:.8rem;white-space:nowrap;border-bottom:1px solid var(--line-2);max-width:90px;overflow:hidden;text-overflow:ellipsis;}
 .sc-table th.player-th{color:var(--gold);}
-.sc-table td{padding:5px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05);}
+.sc-table td{padding:5px 4px;text-align:center;border-bottom:1px solid var(--line);}
 .sc-table tr:last-child td{border-bottom:none;}
-.sc-table tr.totals-row td{background:rgba(255,255,255,.06);font-weight:800;border-top:1px solid rgba(255,255,255,.12);}
-.sc-table .row-label{text-align:left;color:rgba(255,255,255,.5);font-size:.72rem;white-space:nowrap;padding-left:8px;}
-.sc-table input.sc-cell{width:44px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:5px;color:#fff;font-size:max(16px,.9rem);font-weight:700;text-align:center;padding:4px 2px;outline:none;font-family:var(--font);}
+.sc-table tr.totals-row td{background:var(--surface-2);font-weight:800;border-top:1px solid var(--line-2);font-size:1rem;padding:10px 4px;}
+.sc-table .row-label{text-align:left;color:var(--text-3);font-size:.8rem;white-space:nowrap;padding-left:12px;}
+.sc-table input.sc-cell{width:100%;max-width:64px;min-width:44px;min-height:40px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;color:var(--text);font-size:max(16px,.95rem)!important;font-weight:700;text-align:center;padding:4px 2px;outline:none;font-family:var(--font);}
 .sc-table input.sc-cell:focus{border-color:var(--gold);background:rgba(245,200,66,.1);}
-.sc-table .par-cell{color:rgba(255,255,255,.35);font-size:.72rem;}
-.sc-table .vs-par{font-size:.72rem;}
-.vs-par.under{color:#22c55e;}.vs-par.over{color:#ef4444;}.vs-par.even{color:var(--muted);}
-.sc-table td.leading-col{background:rgba(245,200,66,.06);}
-.low-wins-note{font-size:.7rem;color:var(--muted);text-align:center;margin-bottom:6px;}
-.mg-venue-display{text-align:center;margin-bottom:10px;}
-.mg-venue-name{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
-.mg-course-name{font-size:.78rem;color:var(--muted);margin-top:2px;}
+.sc-table .par-cell{color:var(--text-3);font-size:.8rem;}
+.sc-table .vs-par{font-size:.78rem;font-weight:700;}
+.vs-par.under{color:var(--green);}.vs-par.over{color:var(--red);}.vs-par.even{color:var(--text-3);}
+.low-wins-note{font-size:.8rem;color:var(--text-3);text-align:center;margin-bottom:10px;}
+.mg-venue-display{text-align:center;margin-bottom:12px;}
+.mg-venue-name{font-family:var(--display);font-size:1.3rem;font-weight:800;color:var(--gold);}
+.mg-course-name{font-size:.86rem;color:var(--text-2);margin-top:2px;}
 </style>
 </head>
 <body>
-<div class="felt"></div>
-<div class="inner">
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Scorecard</span>
 </nav>
-<div class="page" style="padding:12px 12px 60px;">
+<div class="cs-page">
 <div id="sc-setup" class="setup-screen mb-16">
-    <div style="font-weight:700;margin-bottom:12px;">Generic Scorecard</div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Game / Event Name (optional)</label>
-      <input class="input" id="sc-game-name" placeholder="e.g. Yahtzee Night" maxlength="32" style="width:100%;font-size:max(16px,.88rem);">
+    <div class="setup-title">New scorecard</div>
+    <div class="field">
+      <label class="setup-lbl">Game / Event Name (optional)</label>
+      <input class="input" id="sc-game-name" placeholder="e.g. Yahtzee Night" maxlength="32">
     </div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:6px;">End Condition</label>
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
+    <div class="field">
+      <label class="setup-lbl">End Condition</label>
+      <div class="seg-row">
         <button class="btn btn-gold btn-sm sc-end-mode active-end" data-end="rounds">📋 Fixed rounds</button>
         <button class="btn btn-outline btn-sm sc-end-mode" data-end="target">🎯 Score target</button>
       </div>
-      <div id="sc-end-rounds" style="display:flex;align-items:center;gap:8px;">
-        <input class="input" id="sc-rounds" type="number" min="1" max="99" value="10" style="width:70px;font-size:max(16px,.88rem);text-align:center;">
-        <span style="font-size:.8rem;color:var(--muted);">rounds</span>
+      <div id="sc-end-rounds" class="inline-field" style="display:flex;">
+        <input class="input" id="sc-rounds" type="number" min="1" max="99" value="10">
+        <span>rounds</span>
       </div>
-      <div id="sc-end-target" style="display:none;align-items:center;gap:8px;">
-        <input class="input" id="sc-target" type="number" min="1" value="500" style="width:90px;font-size:max(16px,.88rem);text-align:center;">
-        <span style="font-size:.8rem;color:var(--muted);">points to win</span>
+      <div id="sc-end-target" class="inline-field" style="display:none;">
+        <input class="input" id="sc-target" type="number" min="1" value="500">
+        <span>points to win</span>
       </div>
     </div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px;">Winner</label>
-      <div style="display:flex;gap:8px;">
+    <div class="field">
+      <label class="setup-lbl">Winner</label>
+      <div class="seg-row">
         <button class="btn btn-gold btn-sm sc-win-dir active-dir" data-dir="high">⬆ High score</button>
         <button class="btn btn-outline btn-sm sc-win-dir" data-dir="low">⬇ Low score</button>
       </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:6px;">Players (2–6)</label>
+    <div class="field">
+      <label class="setup-lbl">Players (2–6)</label>
       <div id="sc-names"></div>
-      <div style="display:flex;gap:6px;margin-top:6px;">
+      <div class="seg-row" style="margin-top:4px">
         <button class="btn btn-outline btn-sm" id="sc-add-player">+ Player</button>
         <button class="btn btn-outline btn-sm" id="sc-rem-player">− Player</button>
       </div>
@@ -170,16 +186,15 @@ body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117
     <div class="sc-table-wrap">
       <table class="sc-table" id="sc-table"></table>
     </div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;">
+    <div class="btn-row">
       <button class="btn btn-outline btn-sm" id="sc-undo">↩ Undo</button>
       <button class="btn btn-outline btn-sm" id="sc-new-setup">New Game</button>
     </div>
-    <div id="sc-winner" class="winner-banner hidden mt-16">
+    <div id="sc-winner" class="winner-banner hidden" style="margin-top:16px">
       <div class="winner-name" id="sc-wname"></div>
       <div class="winner-pts" id="sc-wpts"></div>
     </div>
   </div>
-</div>
 </div>
 <script>
 'use strict';
@@ -212,7 +227,7 @@ function buildScorers(container,names,totals,win,colors,cdark,sub=null){
       <div class="scorer-pts">${totals[i]}</div>
       ${sub?`<div class="scorer-sub">${sub[i]}</div>`:''}
       <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div style="font-size:.65rem;color:rgba(255,255,255,.3);margin-top:3px;">${win-totals[i]>0?win-totals[i]+' to win':'🏆'}</div>`;
+      <div class="scorer-togo">${win-totals[i]>0?win-totals[i]+' to win':'🏆'}</div>`;
     container.appendChild(s);
   });
 }
@@ -243,16 +258,17 @@ function buildHistory(container,rounds,names,totals,colors){
   let scScores=[]; // [round][player] = value|null
   let scN=2;
   let scEndMode='rounds', scTarget=500;
+  let scSavedSig=null; // signature of the last finished card saved to history (avoids duplicate saves on re-render)
 
   function scBuildNames(){
     const c=document.getElementById('sc-names');c.innerHTML='';
     for(let i=0;i<scN;i++){
       const row=document.createElement('div');row.className='player-setup-row';
       row.innerHTML=`<div class="player-dot" style="background:${COLORS[i]}"></div>
-        <input class="input" id="scn${i}" value="${scNames[i]||'Player '+(i+1)}" maxlength="16" style="font-size:max(16px,.88rem);">`;
+        <input class="input" id="scn${i}" value="${scNames[i]||'Player '+(i+1)}" maxlength="16">`;
       c.appendChild(row);
-    if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("scn");
     }
+    if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("scn");
   }
   document.getElementById('sc-add-player').addEventListener('click',()=>{if(scN<6){scN++;scBuildNames();}});
   document.getElementById('sc-rem-player').addEventListener('click',()=>{if(scN>2){scN--;scBuildNames();}});
@@ -314,12 +330,12 @@ function buildHistory(container,rounds,names,totals,colors){
     const tbl=document.getElementById('sc-table');
     const totals=scTotals();
     const w=scCheckWinner();
-    let html=`<thead><tr><th class="row-label">#</th>${scNames.map((n,i)=>`<th class="player-th" style="color:${COLORS[i]}">${n}</th>`).join('')}${scEndMode==='target'?`<th style="font-size:.6rem;color:rgba(255,255,255,.3)">→${scTarget}</th>`:''}</tr></thead><tbody>`;
+    let html=`<thead><tr><th class="row-label">#</th>${scNames.map((n,i)=>`<th class="player-th" style="color:${COLORS[i]}">${n}</th>`).join('')}${scEndMode==='target'?`<th style="font-size:.75rem;color:var(--text-3)">→${scTarget}</th>`:''}</tr></thead><tbody>`;
     for(let r=0;r<scScores.length;r++){
-      html+=`<tr><td class="row-label">${r+1}</td>${scNames.map((_,p)=>`<td><input class="sc-cell" type="number" data-r="${r}" data-p="${p}" value="${scScores[r][p]!=null?scScores[r][p]:''}" placeholder="—"></td>`).join('')}${scEndMode==='target'?'<td></td>':''}</tr>`;
+      html+=`<tr><td class="row-label">${r+1}</td>${scNames.map((_,p)=>`<td><input class="sc-cell" type="number" inputmode="decimal" data-r="${r}" data-p="${p}" value="${scScores[r][p]!=null?scScores[r][p]:''}" placeholder="—"></td>`).join('')}${scEndMode==='target'?'<td></td>':''}</tr>`;
     }
     if(scEndMode==='target'){
-      html+=`<tr class="totals-row"><td class="row-label">Σ</td>${totals.map((t,i)=>{const pct=Math.min(100,Math.round(t/scTarget*100));return `<td style="color:${COLORS[i]}">${t}${w&&totals[i]===w.best?' 🏆':''}<div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${pct}%;background:${COLORS[i]};border-radius:2px"></div></div></td>`;}).join('')}<td style="font-size:.65rem;color:rgba(255,255,255,.3);text-align:center;vertical-align:middle">${Math.round(Math.max(...totals)/scTarget*100)}%</td></tr>`;
+      html+=`<tr class="totals-row"><td class="row-label">Σ</td>${totals.map((t,i)=>{const pct=Math.min(100,Math.round(t/scTarget*100));return `<td style="color:${COLORS[i]}">${t}${w&&totals[i]===w.best?' 🏆':''}<div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${pct}%;background:${COLORS[i]};border-radius:2px"></div></div></td>`;}).join('')}<td style="font-size:.75rem;color:var(--text-3);text-align:center;vertical-align:middle">${Math.round(Math.max(...totals)/scTarget*100)}%</td></tr>`;
     } else {
       html+=`<tr class="totals-row"><td class="row-label">Total</td>${totals.map((t,i)=>`<td style="color:${COLORS[i]};${w&&totals[i]===w.best?'font-size:1rem':''}">${t}${w&&totals[i]===w.best?' 🏆':''}</td>`).join('')}</tr>`;
     }
@@ -336,12 +352,14 @@ function buildHistory(container,rounds,names,totals,colors){
         scSave();scRenderTable();
       });
     });
+    if(!w){scSavedSig=null;document.getElementById('sc-winner').classList.add('hidden');}
     if(w){
       const wb=document.getElementById('sc-winner');
       wb.classList.remove('hidden');
       document.getElementById('sc-wname').textContent=scNames[w.wi]+' Wins! 🏆';
       document.getElementById('sc-wpts').textContent=`${scEndMode==='target'?'First to '+scTarget+' · ':''}${scDir==='high'?'Highest':'Lowest'} score: ${w.best}`;
-      GameHistory.save('sc',{_summary:`${scGameName||'Scorecard'} · ${scNames[w.wi]} wins`,_badge:w.best+'pts',winner:scNames[w.wi],gameName:scGameName,names:scNames,rounds:scScores.length,dir:scDir,totals:w.totals,scores:scScores});
+      const sig=JSON.stringify(scScores);
+      if(scSavedSig!==sig){ if(scSavedSig!=='loaded')GameHistory.save('sc',{_summary:`${scGameName||'Scorecard'} · ${scNames[w.wi]} wins`,_badge:w.best+'pts',winner:scNames[w.wi],gameName:scGameName,names:scNames,rounds:scScores.length,dir:scDir,totals:w.totals,scores:scScores}); scSavedSig=sig; }
       const wi=w.wi;if(!wb.querySelector('.gh-hist-btn')){const b=GameHistory.btn('sc','Scorecard',e=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.gameName||'Scorecard',lbl:'Game'},{val:e.winner,lbl:'Winner'},{val:e.totals[wi]+'pts',lbl:e.dir==='high'?'High Score':'Low Score'}]));div.appendChild(GameHistory.renderRoundTable(e.names,e.scores,e.totals,COLORS));return div;});b.classList.add('gh-hist-btn');b.style.marginTop='10px';wb.appendChild(b);}
     }
   }
@@ -356,6 +374,7 @@ function buildHistory(container,rounds,names,totals,colors){
       document.getElementById('sc-setup').classList.add('hidden');
       document.getElementById('sc-game').classList.remove('hidden');
       document.getElementById('sc-title-display').textContent=scGameName||'Scorecard';
+      scSavedSig='loaded'; // a finished card restored from session was already saved
       scRenderTable();return true;
     }catch(e){return false;}
   }
