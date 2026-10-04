@@ -19,6 +19,7 @@
 .mj .score .nm{max-width:100%;font-size:.76rem;}
 .mj .score .pt{font-size:1.2rem;}
 .mj .score .sub{font-size:.68rem;white-space:nowrap;}
+.mj .score .dlr{display:inline-block;width:7px;height:7px;margin-left:4px;border-radius:50%;background:#ff6b5e;box-shadow:0 0 0 2px rgba(255,107,94,.3);vertical-align:1px;}
 .mj .score .wd{font-family:var(--cjk);font-weight:700;}
 /* Tiles: ivory face on a coloured back */
 .mt{--tw:40px;position:relative;flex:none;width:var(--tw);height:calc(var(--tw) * 1.34);border-radius:calc(var(--tw) * .13);
@@ -95,6 +96,7 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  function innerW() { var cs = getComputedStyle(app); return (app.clientWidth || 390) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); }
   var SAVE = 'mj4_state', KEY = 'mj4';
   var WIND_CH = ['東', '南', '西', '北'], WIND_EN = ['East', 'South', 'West', 'North'];
   var NUM_CH = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
@@ -689,7 +691,7 @@
   // seat on screen: 0 you (bottom), 1 right, 2 top, 3 left
   function render(ev) {
     if (!S || !S.hands) return;
-    var W = Math.min(app.clientWidth || 358, 560), P = S.players;
+    var W = Math.min(innerW(), 560), P = S.players;
     app.innerHTML = '';
     var wrap = el('div', { class: 'mj' });
 
@@ -701,7 +703,7 @@
       strip.appendChild(el('div', { class: 'score' + (on ? ' on' : ''), style: { '--c': q === 0 ? 'var(--yellow)' : '#9fd8ff' } }, [
         el('span', { class: 'nm', text: P[q].name }),
         el('span', { class: 'pt', text: String(S.scores[q]) }),
-        el('span', { class: 'sub', html: '<span class="wd">' + WIND_CH[sw] + '</span> ' + WIND_EN[sw] })
+        el('span', { class: 'sub', html: '<span class="wd">' + WIND_CH[sw] + '</span> ' + WIND_EN[sw] + (sw === 0 ? '<i class="dlr" title="Dealer"></i>' : '') })
       ]));
     });
     wrap.appendChild(strip);
