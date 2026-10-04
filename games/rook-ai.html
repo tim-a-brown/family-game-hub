@@ -2,84 +2,146 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Rook — vs AI</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a0a0a 0%,#0d0606 60%);}
-.rk-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
-/* Rook card */
-.rkc{width:46px;height:64px;border-radius:8px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
-  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;
-  border:2px solid rgba(0,0,0,.15);}
-.rkc.red{background:linear-gradient(145deg,#fef2f2,#fecaca);color:#c53030;}
-.rkc.yellow{background:linear-gradient(145deg,#fefce8,#fef08a);color:#854d0e;}
-.rkc.green{background:linear-gradient(145deg,#f0fdf4,#bbf7d0);color:#15803d;}
-.rkc.black{background:linear-gradient(145deg,#f1f5f9,#e2e8f0);color:#1e293b;}
-.rkc.rook-bird{background:linear-gradient(145deg,#1e1b4b,#312e81);color:#a5b4fc;border-color:rgba(165,180,252,.3);}
-.rkc.playable{cursor:pointer;}.rkc.playable:hover{transform:translateY(-8px);border-color:#f5c842;}
-.rkc.trump-c{box-shadow:0 0 8px rgba(245,200,66,.4),1px 2px 6px rgba(0,0,0,.4);}
-.rkc.face-down{background:linear-gradient(145deg,#2a0a0a,#180505);border-color:rgba(255,255,255,.1);cursor:default;}
-.rk-r{font-size:.88rem;line-height:1.1;}.rk-s{font-size:.6rem;line-height:1;font-weight:700;opacity:.7;}
-/* Color names */
-.C_Red{color:#ef4444;}.C_Yel{color:#eab308;}.C_Grn{color:#22c55e;}.C_Blk{color:#94a3b8;}
+/* ai-base:start — shared table layout for the vs-AI card games */
+.page.g-page{max-width:560px;padding-top:12px;padding-bottom:calc(112px + var(--safe-b));}
+.g-hud{display:grid;gap:8px;margin-bottom:10px;}
+.g-seat{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:9px 8px 8px;min-width:0;text-align:center;transition:border-color .25s,box-shadow .25s,background .25s;}
+.g-seat.turn{border-color:rgba(245,200,66,.6);background:linear-gradient(180deg,rgba(245,200,66,.1),var(--surface) 70%);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
+.g-seat.lead::after{content:'👑';position:absolute;top:5px;right:7px;font-size:.72rem;}
+.g-seat-name{font-size:.78rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.g-seat.you .g-seat-name{color:var(--gold);}
+.g-seat-score{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.g-seat-sub{font-size:.72rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.1em;}
+.g-meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
+.g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
+.g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
+.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
+.g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
+.g-status b{color:var(--text);}
+.g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
+.g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
+.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;animation:gn-fade .2s ease both;}
+.g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
+.g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
+.g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
+.g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.g-choices .btn{min-height:44px;}
+.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);animation:gn-fade .2s ease both;}
+.g-bar:empty{display:none;}
+.g-bar .btn{flex:1;max-width:280px;}
+.g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.g-log summary{list-style:none;cursor:pointer;min-height:44px;padding:0 14px;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;color:var(--text-2);}
+.g-log summary::-webkit-details-marker{display:none;}
+.g-log summary .last{flex:1;min-width:0;font-weight:500;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
+.g-log summary::after{content:'';flex:none;width:7px;height:7px;border-right:2px solid var(--text-3);border-bottom:2px solid var(--text-3);transform:rotate(45deg);margin:-3px 2px 0 0;transition:transform .2s;}
+.g-log[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
+.g-log-body{padding:2px 14px 12px;font-size:.84rem;line-height:1.6;color:var(--text-2);max-height:200px;overflow-y:auto;}
+.g-log-body .pts{color:var(--gold);font-weight:600;}
+.g-log-body .bust{color:var(--red);}
+.g-log-body .flip7{color:var(--text);font-weight:700;}
+.g-result{text-align:center;padding:22px 16px 16px;border-radius:var(--r-lg);margin-bottom:12px;background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.04));border:1px solid rgba(245,200,66,.35);animation:gn-pop .4s var(--spring) both;}
+.g-result.plain{background:var(--surface);border-color:var(--line-2);}
+.g-result-icon{font-size:2.6rem;line-height:1;margin-bottom:6px;}
+.g-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);line-height:1.15;}
+.g-result.plain .g-result-title{color:var(--text);font-size:1.45rem;}
+.g-result-sub{color:var(--text-2);font-size:.92rem;margin-top:4px;}
+.g-rows{margin-top:14px;display:grid;gap:6px;text-align:left;}
+.g-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:.92rem;}
+.g-row > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.g-row.you > span:first-child{color:var(--gold);font-weight:700;}
+.g-row .r{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--text-3);font-size:.84rem;}
+.g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
+.g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
+.fp-nc-label{max-width:64px !important;}
+.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
+@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
+@media (min-width:700px){.page.g-page{max-width:620px;}}
+/* ai-base:end */
+
+/* ── Rook ─────────────────────────────────────────────────────────────── */
+.rk-hud{grid-template-columns:1fr 1fr;}
+.rk-hud .g-seat{padding:10px 10px 9px;}
+.rk-hud .g-seat-name{font-size:.8rem;}
+.rk-hud .us .g-seat-name{color:#7dd3fc;}
+.rk-hud .them .g-seat-name{color:#fca5a5;}
+.rk-hud .g-seat-score{font-size:1.75rem;}
+.rkc{--cw:clamp(40px,11.6vw,52px);width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:var(--display);font-weight:800;position:relative;
+  box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .14s var(--ease),opacity .2s,box-shadow .2s;user-select:none;flex-shrink:0;
+  border:1px solid rgba(0,0,0,.14);}
+.rkc.red{background:linear-gradient(160deg,#fff1f1,#fecaca);color:#b91c1c;}
+.rkc.yellow{background:linear-gradient(160deg,#fffbe6,#fde68a);color:#854d0e;}
+.rkc.green{background:linear-gradient(160deg,#effdf4,#bbf7d0);color:#15803d;}
+.rkc.black{background:linear-gradient(160deg,#f5f7fa,#d9dee6);color:#1e293b;}
+.rkc.rook-bird{background:linear-gradient(160deg,#4338ca,#1e1b4b);color:#c7d2fe;border-color:rgba(165,180,252,.4);}
+.rk-r{font-size:1.15rem;line-height:1;}
+.rk-s{font-family:var(--font);font-size:.56rem;font-weight:800;letter-spacing:.04em;line-height:1;margin-top:4px;opacity:.75;}
+.rkc .pts{position:absolute;top:3px;right:4px;font-family:var(--font);font-size:.52rem;font-weight:800;opacity:.7;}
+.rkc.playable{cursor:pointer;}
+.rkc.playable:active{transform:translateY(-6px) scale(.97);}
+.rkc.unplayable{opacity:.4;filter:saturate(.6);}
+.rkc.trump-c{box-shadow:0 0 0 2px rgba(245,200,66,.85),0 3px 8px rgba(0,0,0,.35);}
+.rkc.picked{transform:translateY(-8px);box-shadow:0 0 0 3px var(--red),0 8px 18px rgba(248,113,113,.35);}
+.rkc.sm{--cw:44px;}
+.rkc.win{box-shadow:0 0 0 3px var(--gold),0 8px 18px rgba(245,200,66,.35);}
+.rkc.drop{animation:rk-drop .28s var(--spring) both;}
+@keyframes rk-drop{from{transform:translateY(14px) scale(.9);opacity:0;}to{transform:none;opacity:1;}}
+.rk-hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:66px;}
+.C_Red{color:#f87171;}.C_Yel{color:#facc15;}.C_Grn{color:#4ade80;}.C_Blk{color:#cbd5e1;}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:0;}
+.dot.Red{background:#ef4444;}.dot.Yellow{background:#eab308;}.dot.Green{background:#22c55e;}.dot.Black{background:#475569;box-shadow:0 0 0 1px #94a3b8;}
 /* Table */
-.rk-table{background:linear-gradient(145deg,#1a0505,#0d0303);border:2px solid rgba(255,255,255,.07);
-  border-radius:16px;padding:12px;margin-bottom:10px;}
-.rk-trick{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:108px;margin:0 auto;}
-.rk-trick-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.rk-trick-name{font-size:.52rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
-/* Scores */
-.rk-scores{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.rk-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;text-align:center;}
-.rk-score-box.leader{border-color:rgba(34,197,94,.35);}
-.rk-team-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-.rk-team-score{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#f5c842;}
-.rk-team-pts{font-size:.62rem;color:rgba(255,255,255,.4);}
+.rk-trick{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;gap:6px 8px;}
+.rk-slot{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.rk-slot-name{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.78);white-space:nowrap;}
+.rk-slot-name small{font-weight:600;color:rgba(255,255,255,.5);font-size:.68rem;}
+.rk-slot.turn .rk-slot-name{color:var(--gold);}
+.rk-empty{--cw:44px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.18);}
+.rk-slot.turn .rk-empty{border-color:rgba(245,200,66,.7);animation:rk-pulse 1.3s ease-in-out infinite;}
+@keyframes rk-pulse{50%{border-color:rgba(245,200,66,.25);}}
+.rk-n{grid-column:2;grid-row:1;} .rk-w{grid-column:1;grid-row:2;justify-self:end;} .rk-e{grid-column:3;grid-row:2;justify-self:start;} .rk-s{grid-column:2;grid-row:3;}
+.rk-center{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:76px;text-align:center;}
+.rk-center-lbl{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.rk-center-val{font-family:var(--display);font-weight:800;font-size:1.05rem;}
+.rk-center-sub{font-size:.72rem;color:rgba(255,255,255,.7);}
 /* Bidding */
-.rk-bid-panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;}
-.rk-bid-grid{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:8px;}
-.rk-bid-btn{padding:7px 12px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;
-  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;transition:all .12s;}
-.rk-bid-btn:hover{background:rgba(239,68,68,.2);}
-.rk-bid-btn.pass-btn{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.6);}
-/* Trump select */
-.rk-trump-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-.rk-trump-btn{padding:8px 14px;border-radius:10px;font-size:.82rem;font-weight:800;cursor:pointer;transition:all .12s;}
-/* Nest */
-.rk-nest{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:10px;}
-.rk-nest-cards{display:flex;gap:4px;justify-content:center;}
-/* Status */
-.rk-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
-/* Log */
-.rk-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
-.rk-log .pts{color:#f5c842;font-weight:700;}
-/* Round/game results */
-.rk-round-end{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
-.rk-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
-.rk-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
+.rk-bid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px;}
+.rk-bid-btn{min-height:46px;border-radius:12px;font-family:var(--display);font-size:1.05rem;font-weight:800;cursor:pointer;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text);transition:transform .1s,background .15s;}
+.rk-bid-btn:active{transform:scale(.94);background:var(--surface-3);}
+.rk-bid-btn.pass-btn{grid-column:1/-1;font-family:var(--font);font-size:.95rem;color:var(--text-2);}
+.rk-bidders{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.rk-bidders span{font-size:.8rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);}
+.rk-bidders span.passed{opacity:.5;text-decoration:line-through;}
+.rk-bidders span.high{color:var(--gold);border-color:rgba(245,200,66,.4);}
+.rk-nest{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
+.rk-trumps{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rk-trumps .btn{min-height:48px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Rook</span>
-  <a class="nav-back scorecard-link" href="rook.html" style="margin-left:auto;font-size:.7rem;opacity:.55;">📋 Scorecard</a>
+  <a class="icon-btn scorecard-link" href="rook.html" aria-label="Scorecard" title="Scorecard for in-person play">📋</a>
 </nav>
-<div class="page" style="padding:10px 0 60px;">
-<div class="rk-wrap" id="rk-root"></div>
+<div class="page g-page">
+<div id="rk-root"></div>
 </div>
+<div class="g-bar" id="g-bar"></div>
 <script>
 'use strict';
 // Partners: 0(You)+2(North) vs 1(West)+3(East). First team to 300 wins.
@@ -90,6 +152,10 @@ const PNAMES=[(typeof FrequentPlayers!=='undefined'&&FrequentPlayers.myName())||
 const COLORS=['Red','Yellow','Green','Black'];
 const COLOR_CSS={Red:'red',Yellow:'yellow',Green:'green',Black:'black'};
 const POINT_CARDS={5:5,10:10,14:10};
+const WIN_SCORE=300;
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
 
 function makeRookDeck(){
   const d=[];
@@ -99,6 +165,7 @@ function makeRookDeck(){
   return d;
 }
 function cKey(c){return c.num+'_'+c.color;}
+function sortHand(h){return h.sort((a,b)=>a.color.localeCompare(b.color)||a.num-b.num);}
 
 function cardPower(c,trump,led){
   if(c.isRook) return 1000;
@@ -109,22 +176,29 @@ function cardPower(c,trump,led){
 function countPts(cards){return cards.reduce((s,c)=>s+(c.pts||0),0);}
 
 let hands,nest,trump,bidWinner,bid,scores,trick,trickLead,taken,phase,bidHistory,currentBidder,log,minBid;
+let nestTaken=false, nestPicks=[], trickWinner=-1, lastDelta=[0,0], lastPlayKey=null;
+
+// A single AI timer: render() used to schedule a duplicate AI move on every redraw,
+// which could make an AI bid twice or pick up the nest twice.
+let aiTimer=null;
+function later(fn,ms){clearTimeout(aiTimer);aiTimer=setTimeout(fn,ms);}
 
 function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
-function newGame(){scores=[0,0];log=[];newRound();}
+function newGame(){clearTimeout(aiTimer);scores=[0,0];log=[];newRound();}
 function newRound(){
   const deck=makeRookDeck();
-  hands=Array.from({length:4},(_,i)=>deck.slice(i*13,(i+1)*13)
-    .sort((a,b)=>a.color.localeCompare(b.color)||a.num-b.num));
+  hands=Array.from({length:4},(_,i)=>sortHand(deck.slice(i*13,(i+1)*13)));
   nest=deck.slice(52);
   trump=null;bidWinner=-1;bid=0;
   taken=[[],[]]; trick=[null,null,null,null];
   trickLead=0; bidHistory=[-1,-1,-1,-1]; currentBidder=0;
+  nestTaken=false; nestPicks=[]; trickWinner=-1;
   minBid=70; phase='bid';
   addLog('New round. Bidding starts at 70.');
   render();
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
   // Player bids first; if first bidder is not player 0, do AI bids
-  if(currentBidder!==0) setTimeout(aiBid,500);
+  if(currentBidder!==0) later(aiBid,500);
 }
 
 function estimateBid(player){
@@ -143,9 +217,9 @@ function estimateBid(player){
 }
 
 function aiBid(){
+  if(phase!=='bid'||currentBidder===0) return;
   const p=currentBidder;
   const est=estimateBid(p);
-  const alreadyPassed=bidHistory.slice(0,p).filter(b=>b===-2).length;
   if(est>=minBid&&bidHistory[p]===-1){
     const myBid=Math.max(minBid,Math.round(est/5)*5);
     bidHistory[p]=myBid; minBid=myBid+5;
@@ -160,6 +234,7 @@ function aiBid(){
 
 function playerBid(amount){
   if(phase!=='bid'||currentBidder!==0) return;
+  haptic('select');
   if(amount==='pass'){bidHistory[0]=-2;addLog('You pass.');}
   else{bidHistory[0]=amount;minBid=amount+5;addLog(`You bid ${amount}.`);}
   advanceBid();
@@ -179,23 +254,25 @@ function advanceBid(){
     bidWinner=winner;bid=Math.max(70,winBid);
     addLog(`${PNAMES[bidWinner]} wins bid at ${bid}!`,'pts');
     phase='nest';
+    if(bidWinner===0) haptic('success');
     render();
-    if(bidWinner!==0) setTimeout(aiNest,700);
+    if(bidWinner!==0) later(aiNest,700);
   } else {
     currentBidder=next;
     render();
-    if(currentBidder!==0) setTimeout(aiBid,500);
+    if(currentBidder!==0) later(aiBid,550);
   }
 }
 
 function aiNest(){
+  if(phase!=='nest'||bidWinner===0||trump) return;
   // AI picks up nest and discards 5 weakest non-counting cards
   const h=[...hands[bidWinner],...nest];
   h.sort((a,b)=>{
     if(a.pts!==b.pts) return b.pts-a.pts; // keep point cards
     return b.num-a.num; // keep high cards
   });
-  hands[bidWinner]=h.slice(0,13);
+  hands[bidWinner]=sortHand(h.slice(0,13));
   const discarded=h.slice(13);
   taken[bidWinner%2===0?0:1].push(...discarded);
   addLog(`${PNAMES[bidWinner]} picks up nest and discards 5.`);
@@ -206,38 +283,51 @@ function aiNest(){
   addLog(`${PNAMES[bidWinner]} names ${trump} as trump.`);
   phase='play'; trickLead=(bidWinner+1)%4; trick=[null,null,null,null];
   render();
-  if(trickLead!==0) setTimeout(aiPlay,600);
+  if(trickLead!==0) later(aiPlay,700);
 }
 
-function playerNestPick(card){
-  if(phase!=='nest'||bidWinner!==0) return;
-  // add nest to hand
-  if(hands[0].length===13){
-    // First click: add nest to hand (show nest selection)
-    hands[0]=[...hands[0],...nest];
-    render(); return;
-  }
-  // Discard selected card
-  if(hands[0].length>13){
-    taken[0].push(card);
-    hands[0]=hands[0].filter(c=>cKey(c)!==cKey(card));
-    if(hands[0].length===13) render();
-  }
+function playerTakeNest(){
+  if(phase!=='nest'||bidWinner!==0||nestTaken) return;
+  nestTaken=true; nestPicks=[];
+  hands[0]=sortHand([...hands[0],...nest]);
+  haptic('light');
+  render();
+}
+function playerToggleNestPick(card){
+  if(phase!=='nest'||bidWinner!==0||!nestTaken||hands[0].length<=13) return;
+  const k=cKey(card), need=hands[0].length-13;
+  const i=nestPicks.indexOf(k);
+  if(i>=0) nestPicks.splice(i,1);
+  else if(nestPicks.length<need) nestPicks.push(k);
+  else { haptic('error'); if(window.GN) GN.toast(`Pick exactly ${need} cards`); return; }
+  haptic('select');
+  render();
+}
+function playerConfirmNestDiscard(){
+  if(phase!=='nest'||bidWinner!==0||hands[0].length-13!==nestPicks.length) return;
+  const out=hands[0].filter(c=>nestPicks.includes(cKey(c)));
+  taken[0].push(...out);
+  hands[0]=hands[0].filter(c=>!nestPicks.includes(cKey(c)));
+  nestPicks=[];
+  addLog(`You bury ${out.length} cards (${countPts(out)} pts kept for your team).`);
+  haptic('light');
+  render();
 }
 
 function playerChooseTrump(color){
-  if(phase!=='nest'||bidWinner!==0) return;
+  if(phase!=='nest'||bidWinner!==0||!nestTaken||hands[0].length!==13) return;
   trump=color;
+  haptic('select');
   addLog(`You name ${trump} as trump!`);
   phase='play'; trickLead=1; trick=[null,null,null,null];
   render();
-  setTimeout(aiPlay,600);
+  later(aiPlay,700);
 }
 
 // ── Play ─────────────────────────────────────────────────────────────────────
 function validPlays(p){
   const h=hands[p];
-  const led=trick.find(c=>c!==null);
+  const led=trick[trickLead];
   if(!led) return h;
   const ledColor=led.color;
   const follow=h.filter(c=>c.color===ledColor&&!c.isRook);
@@ -245,10 +335,11 @@ function validPlays(p){
 }
 
 function aiPlay(){
+  if(phase!=='play') return;
   const p=getNext();
   if(p<0||p===0) return;
-  const valid=validPlays(p);
-  const led=trick.find(c=>c!==null);
+  const valid=[...validPlays(p)];
+  const led=trick[trickLead];
   const ledColor=led?.color;
   const partnerIdx=(p+2)%4;
   const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
@@ -270,18 +361,21 @@ function aiPlay(){
 }
 
 function getNext(){
+  if(trick.filter(c=>c).length===4) return -1;
   for(let i=0;i<4;i++){const p=(trickLead+i)%4;if(!trick[p])return p;}
   return -1;
 }
 
 function playerPlay(card){
   if(phase!=='play'||getNext()!==0) return;
-  if(!validPlays(0).some(c=>cKey(c)===cKey(card))) return;
+  if(!validPlays(0).some(c=>cKey(c)===cKey(card))){haptic('error');if(window.GN)GN.toast('Follow the led color if you can');return;}
+  haptic('light');
   playCard(0,card);
 }
 
 function playCard(p,card){
   trick[p]=card;
+  lastPlayKey=cKey(card);
   hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
   render();
   if(trick.filter(c=>c).length===4){
@@ -295,19 +389,22 @@ function playCard(p,card){
     taken[team].push(...trick.filter(c=>c));
     const trickPts=countPts(trick.filter(c=>c));
     addLog(`${PNAMES[winner]} wins trick${trickPts>0?' (+'+trickPts+' pts)':''}.`);
+    trickWinner=winner;
+    if(team===0) haptic('medium');
     render();
     setTimeout(()=>{
-      trick=[null,null,null,null]; trickLead=winner;
+      trick=[null,null,null,null]; trickLead=winner; trickWinner=-1;
       if(hands[0].length===0) scoreRound();
-      else{render();if(winner!==0)setTimeout(aiPlay,600);}
-    },1000);
+      else{render();if(winner!==0)later(aiPlay,600);}
+    },1100);
   } else {
-    const n=getNext(); if(n>0)setTimeout(aiPlay,500);
+    const n=getNext(); if(n>0)later(aiPlay,550);
   }
 }
 
 function scoreRound(){
   const pts=[countPts(taken[0]),countPts(taken[1])];
+  const before=scores.slice();
   const bidTeam=bidWinner%2===0?0:1;
   const defTeam=1-bidTeam;
   let msgs=[];
@@ -315,10 +412,11 @@ function scoreRound(){
   else{scores[bidTeam]-=bid;scores[defTeam]+=pts[defTeam];msgs.push(`${bidTeam===0?'You+North':'West+East'} set! -${bid}. Opponents get ${pts[defTeam]}.`);}
   // Even if set, defenders still score
   if(pts[bidTeam]>=bid) scores[defTeam]+=pts[defTeam];
+  lastDelta=[scores[0]-before[0],scores[1]-before[1]];
   msgs.forEach(m=>addLog(m,'pts'));
-  phase=scores[0]>=300||scores[1]>=300?'game-over':'round-end';
+  phase=scores[0]>=WIN_SCORE||scores[1]>=WIN_SCORE?'game-over':'round-end';
   if(phase==='game-over') endGame();
-  else render();
+  else{haptic(lastDelta[0]>lastDelta[1]?'success':'light');render();}
 }
 
 function endGame(){
@@ -331,168 +429,168 @@ function endGame(){
     ];
     GameHistory.savePlayerGame('rook','Rook (AI)',players,won?0:1,0,{teamGame:true});
   }catch(e){}
+  haptic(won?'success':'heavy');
   render();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function cardEl(c,cls=''){
-  if(!c)return`<div class="rkc face-down"></div>`;
+  if(!c)return`<div class="rk-empty"></div>`;
   const col=c.isRook?'rook-bird':COLOR_CSS[c.color];
   const tr=!c.isRook&&trump&&c.color===trump?'trump-c':'';
   return`<div class="rkc ${col} ${tr} ${cls}" data-key="${cKey(c)}">
-    <div class="rk-r">${c.isRook?'🦅':c.num}</div>
-    <div class="rk-s">${c.isRook?'ROOK':c.color.slice(0,3).toUpperCase()}</div>
+    ${c.pts?`<span class="pts">${c.pts}</span>`:''}
+    <div class="rk-r">${c.isRook?'🐦':c.num}</div>
+    <div class="rk-s">${c.isRook?'ROOK':c.color.toUpperCase()}</div>
   </div>`;
 }
-function miniCard(c){
-  if(!c)return`<div style="width:30px;height:42px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);"></div>`;
-  const col=c.isRook?'rook-bird':COLOR_CSS[c.color];
-  return`<div class="rkc ${col} disabled" style="width:30px;height:42px;">
-    <div style="font-size:.65rem;">${c.isRook?'🦅':c.num}</div>
-    <div style="font-size:.5rem;">${c.isRook?'RK':c.color.slice(0,1)}</div>
-  </div>`;
+let logOpen=false;
+function renderLog(){
+  const last=log.length?log[log.length-1].msg:'';
+  return `<details class="g-log" id="g-log" ${logOpen?'open':''}><summary>Game log<span class="last">${esc(last)}</span></summary>
+    <div class="g-log-body">${log.slice(-14).map(({msg,cls})=>`<div class="${cls||''}">${esc(msg)}</div>`).join('')}</div></details>`;
 }
+function wireLog(){
+  const d=document.getElementById('g-log');
+  if(!d) return;
+  d.addEventListener('toggle',()=>{logOpen=d.open;});
+  const b=d.querySelector('.g-log-body'); if(b) b.scrollTop=b.scrollHeight;
+}
+function setBar(html){document.getElementById('g-bar').innerHTML=html||'';}
+const US=()=>esc(PNAMES[0])+' + North', THEM='West + East';
 
 function render(){
   const root=document.getElementById('rk-root');
   let html='';
+  const bidTeam=bidWinner<0?-1:bidWinner%2===0?0:1;
+
+  // Meta
+  html+=`<div class="g-meta"><span class="g-pill">First to ${WIN_SCORE}</span>${trump?`<span class="g-pill gold"><span class="dot ${trump}"></span>Trump: ${trump}</span>`:''}${bidWinner>=0?`<span class="g-pill">${bidWinner===0?'You':esc(PNAMES[bidWinner])} bid ${bid}</span>`:''}</div>`;
+
+  if(phase==='game-over'||phase==='round-end'){
+    const over=phase==='game-over';
+    const won=scores[0]>scores[1];
+    const made=countPts(taken[bidTeam])>=bid;
+    html+=`<div class="g-result ${over&&won?'':'plain'}">
+      <div class="g-result-icon">${over?(won?'🏆':'🐦'):(made?'✅':'💥')}</div>
+      <div class="g-result-title">${over?(won?'You & North win!':'West & East win'):(bidTeam===0?(made?'You made your bid!':'Your team was set'):(made?'Opponents made it':'Opponents were set!'))}</div>
+      <div class="g-result-sub">${over?`${scores[0]} – ${scores[1]} · first to ${WIN_SCORE}`:`${bidWinner===0?'You':esc(PNAMES[bidWinner])} bid ${bid} · trump ${trump}`}</div>
+      <div class="g-rows">
+        <div class="g-row you"><span>${US()}</span><span class="r">${countPts(taken[0])} pts <span class="${lastDelta[0]>=0?'pos':'neg'}">${lastDelta[0]>=0?'+':''}${lastDelta[0]}</span><b>${scores[0]}</b></span></div>
+        <div class="g-row"><span>${THEM}</span><span class="r">${countPts(taken[1])} pts <span class="${lastDelta[1]>=0?'pos':'neg'}">${lastDelta[1]>=0?'+':''}${lastDelta[1]}</span><b>${scores[1]}</b></span></div>
+      </div>
+    </div>`;
+    html+=renderLog();
+    root.innerHTML=html;wireLog();
+    setBar(over?`<button class="btn btn-gold" id="ng-btn">New Game</button>`:`<button class="btn btn-gold" id="nr-btn">Next Hand</button>`);
+    document.getElementById('ng-btn')?.addEventListener('click',()=>{haptic('light');newGame();});
+    document.getElementById('nr-btn')?.addEventListener('click',()=>{haptic('light');newRound();});
+    return;
+  }
 
   // Scores
-  html+=`<div class="rk-scores">
-    <div class="rk-score-box ${scores[0]>=scores[1]?'leader':''}">
-      <div class="rk-team-name" style="color:#60a5fa;">You + North</div>
-      <div class="rk-team-score">${scores[0]}</div>
-      <div class="rk-team-pts">${phase==='play'?`${countPts(taken[0])} pts taken`:''}</div>
+  html+=`<div class="g-hud rk-hud">
+    <div class="g-seat us ${scores[0]>scores[1]?'lead':''}">
+      <div class="g-seat-name">${US()}</div>
+      <div class="g-seat-score">${scores[0]}</div>
+      <div class="g-seat-sub">${phase==='play'?`${countPts(taken[0])} pts this hand${bidTeam===0?' · need '+bid:''}`:bidTeam===0?'won the bid':' '}</div>
     </div>
-    <div class="rk-score-box ${scores[1]>scores[0]?'leader':''}">
-      <div class="rk-team-name" style="color:#f87171;">West + East</div>
-      <div class="rk-team-score">${scores[1]}</div>
-      <div class="rk-team-pts">${phase==='play'?`${countPts(taken[1])} pts taken`:''}</div>
+    <div class="g-seat them ${scores[1]>scores[0]?'lead':''}">
+      <div class="g-seat-name">${THEM}</div>
+      <div class="g-seat-score">${scores[1]}</div>
+      <div class="g-seat-sub">${phase==='play'?`${countPts(taken[1])} pts this hand${bidTeam===1?' · need '+bid:''}`:bidTeam===1?'won the bid':' '}</div>
     </div>
   </div>`;
 
-  if(phase==='game-over'){
-    const won=scores[0]>=300;
-    html+=`<div class="rk-game-result">
-      <div class="rk-game-title">${won?'🏆 You Win!':'Opponents Win'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${scores[0]} – ${scores[1]} (first to 300)</div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
-    html+=`<div class="rk-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
+  // Table — compass: 0 You (S), 1 West, 2 North (partner), 3 East
+  const cur=phase==='play'?getNext():-1;
+  const pos=['rk-s','rk-w','rk-n','rk-e'];
+  const nm=['You','West','North','East'];
+  const slot=p=>{
+    const turnNow=(phase==='play'&&cur===p&&trickWinner<0)||(phase==='bid'&&currentBidder===p);
+    let inner;
+    if(phase==='bid'){
+      const b=bidHistory[p];
+      inner=`<div class="rk-empty" style="display:grid;place-items:center;font-family:var(--display);font-weight:800;color:${b===-2?'rgba(255,255,255,.45)':'#fff'};font-size:${b>0?'1rem':'.72rem'}">${b>0?b:b===-2?'PASS':''}</div>`;
+    } else inner=trick[p]?cardEl(trick[p],'sm'+(trickWinner===p?' win':'')+(lastPlayKey===cKey(trick[p])?' drop':'')):'<div class="rk-empty"></div>';
+    return `<div class="rk-slot ${pos[p]} ${turnNow?'turn':''}">${inner}<div class="rk-slot-name">${nm[p]}${p===2?' <small>partner</small>':''}${p!==0?` <small>· ${hands[p].length}</small>`:''}</div></div>`;
+  };
+  let center;
+  if(phase==='bid') center=`<div class="rk-center-lbl">High bid</div><div class="rk-center-val">${minBid>70||bidHistory.some(b=>b>0)?minBid-5:'—'}</div><div class="rk-center-sub">min next ${minBid}</div>`;
+  else if(phase==='nest') center=`<div class="rk-center-lbl">Nest</div><div class="rk-center-val">🪺</div><div class="rk-center-sub">${bidWinner===0?'yours':esc(PNAMES[bidWinner])}</div>`;
+  else center=`<div class="rk-center-lbl">Trump</div><div class="rk-center-val C_${trump.slice(0,3)}">${trump}</div><div class="rk-center-sub">Trick ${Math.max(1,Math.min(13,14-Math.max(...hands.map(h=>h.length))-(trickWinner>=0?1:0)))}/13</div>`;
+  html+=`<div class="felt g-table"><div class="rk-trick">${slot(2)}${slot(1)}<div class="rk-center">${center}</div>${slot(3)}${slot(0)}</div></div>`;
+  lastPlayKey=null;
+
+  // Status
+  let status='',scls='';
+  if(phase==='bid') {status=currentBidder===0?'Your bid — or pass':`${esc(PNAMES[currentBidder])} is bidding…`;scls=currentBidder===0?'yours':'';}
+  else if(phase==='nest'){
+    if(bidWinner!==0) status=`${esc(PNAMES[bidWinner])} is taking the nest…`;
+    else if(!nestTaken){status='You won the bid! Take the nest';scls='yours';}
+    else if(hands[0].length>13){status=`Choose ${hands[0].length-13} cards to bury · ${nestPicks.length} picked`;scls='yours';}
+    else {status='Name your trump color';scls='yours';}
+  } else if(phase==='play'){
+    if(trickWinner>=0) status=`${trickWinner===0?'You win':esc(PNAMES[trickWinner])+' wins'} the trick`;
+    else if(cur===0){status=trick.some(c=>c)?'Your turn — follow the led color':'Your lead';scls='yours';}
+    else if(cur>0) status=`${esc(PNAMES[cur])} is playing…`;
   }
+  if(status) html+=`<div class="g-status ${scls}">${status}</div>`;
 
-  if(phase==='round-end'){
-    html+=`<div class="rk-round-end">
-      <div style="font-weight:700;margin-bottom:4px;">Round Complete</div>
-      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">${PNAMES[bidWinner]} bid ${bid} · Trump: ${trump}<br>You+North: ${countPts(taken[0])} pts · West+East: ${countPts(taken[1])} pts</div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
-    html+=`<div class="rk-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',newRound);return;
-  }
-
-  // Trump display
-  if(trump) html+=`<div style="text-align:center;margin-bottom:6px;font-size:.78rem;font-weight:700;color:var(--C_${trump.slice(0,3)},#f5c842);">Trump: <span class="C_${trump.slice(0,3)}">${trump}</span> · ${PNAMES[bidWinner]} bid ${bid}</div>`;
-
-  // Bidding
+  // Bidding panel
   if(phase==='bid'&&currentBidder===0){
-    const canPass=bidHistory.filter(b=>b>0).length>0||true;
     const bids=[];
     for(let b=minBid;b<=120;b+=5) bids.push(b);
-    html+=`<div class="rk-bid-panel">
-      <div style="font-weight:700;text-align:center;margin-bottom:4px;">Bidding — Minimum: ${minBid}</div>
-      <div style="font-size:.75rem;color:rgba(255,255,255,.5);text-align:center;">Bid how many points your team will capture (out of 120)</div>
-      <div class="rk-bid-grid">
-        ${bids.map(b=>`<button class="rk-bid-btn" data-bid="${b}">${b}</button>`).join('')}
-        <button class="rk-bid-btn pass-btn" data-bid="pass">Pass</button>
-      </div>
-    </div>`;
-  } else if(phase==='bid'){
-    html+=`<div style="text-align:center;margin-bottom:8px;font-size:.85rem;color:rgba(255,255,255,.5);">Bidding… min ${minBid} · ${currentBidder>=0?PNAMES[currentBidder]+' deciding...':''}</div>`;
+    html+=`<div class="g-panel accent"><div class="g-panel-title">Your bid</div>
+      <div class="g-panel-sub">Points your team will capture (of 120). Minimum ${minBid}.</div>
+      <div class="rk-bid-grid">${bids.map(b=>`<button class="rk-bid-btn" data-bid="${b}">${b}</button>`).join('')}
+        <button class="rk-bid-btn pass-btn" data-bid="pass">Pass</button></div></div>`;
   }
 
   // Nest phase: player picks up nest and chooses trump
   if(phase==='nest'&&bidWinner===0){
-    if(hands[0].length===13){
-      html+=`<div class="rk-nest">
-        <div style="font-weight:700;margin-bottom:4px;text-align:center;">Pick up the nest — click a card to discard 5</div>
-        <div class="rk-nest-cards">${nest.map(c=>cardEl(c,'playable')).join('')}</div>
-        <button class="btn btn-gold btn-sm" id="add-nest-btn">Add Nest to Hand</button>
-      </div>`;
-    } else if(hands[0].length>13){
-      html+=`<div class="rk-nest">
-        <div style="font-weight:700;margin-bottom:4px;text-align:center;">Discard 5 cards (${hands[0].length-13} more to go)</div>
-      </div>`;
-    }
-    if(hands[0].length===13&&trump===null){
-      html+=`<div style="text-align:center;margin-bottom:10px;">
-        <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:8px;">After discarding, choose trump:</div>
-        <div class="rk-trump-btns">
-          ${COLORS.map(c=>`<button class="rk-trump-btn C_${c.slice(0,3)}" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:inherit;" data-color="${c}">${c}</button>`).join('')}
-        </div>
-      </div>`;
+    if(!nestTaken){
+      html+=`<div class="g-panel accent"><div class="g-panel-title">The nest</div>
+        <div class="g-panel-sub">Add these 5 cards to your hand, then bury 5.</div>
+        <div class="rk-nest">${nest.map(c=>cardEl(c,'sm')).join('')}</div></div>`;
+    } else if(hands[0].length===13&&trump===null){
+      html+=`<div class="g-panel accent"><div class="g-panel-title">Name trump</div>
+        <div class="g-panel-sub">The Rook bird is always the highest trump.</div>
+        <div class="rk-trumps">${COLORS.map(c=>`<button class="btn btn-outline rk-trump-btn" data-color="${c}"><span class="dot ${c}"></span>${c} · ${hands[0].filter(x=>x.color===c).length}</button>`).join('')}</div></div>`;
     }
   }
 
-  // Table
-  const cur=getNext();
-  html+=`<div class="rk-table">
-    <div style="text-align:center;margin-bottom:6px;">
-      <div style="font-size:.6rem;color:rgba(255,255,255,.4);">North (partner) — ${hands[2].length} cards</div>
-      <div style="display:flex;gap:2px;justify-content:center;">${hands[2].map(()=>`<div style="width:8px;height:36px;border-radius:2px;background:rgba(90,200,250,.2);"></div>`).join('')}</div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-size:.6rem;color:rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;gap:2px;">West
-        <div style="display:flex;flex-direction:column;gap:2px;">${hands[1].slice(0,6).map(()=>`<div style="width:36px;height:7px;border-radius:2px;background:rgba(248,113,113,.2);"></div>`).join('')}</div>
-      </div>
-      <div class="rk-trick">
-        <div></div>
-        <div class="rk-trick-slot">${miniCard(trick[2])}<div class="rk-trick-name">N</div></div>
-        <div class="rk-trick-slot">${miniCard(trick[1])}<div class="rk-trick-name">W</div></div>
-        <div class="rk-trick-slot">${miniCard(trick[0])}<div class="rk-trick-name">You</div></div>
-        <div class="rk-trick-slot">${miniCard(trick[3])}<div class="rk-trick-name">E</div></div>
-        <div></div>
-      </div>
-      <div style="font-size:.6rem;color:rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;gap:2px;">East
-        <div style="display:flex;flex-direction:column;gap:2px;">${hands[3].slice(0,6).map(()=>`<div style="width:36px;height:7px;border-radius:2px;background:rgba(248,113,113,.2);"></div>`).join('')}</div>
-      </div>
-    </div>
-  </div>`;
-
-  html+=`<div class="rk-status">${cur===0&&phase==='play'?'Your turn.':cur>0&&phase==='play'?`${PNAMES[cur]} playing…`:''}</div>`;
-
   // Player hand
-  const isYourPlay=phase==='play'&&cur===0;
-  const isNestDiscard=phase==='nest'&&bidWinner===0&&hands[0].length>13;
+  const isYourPlay=phase==='play'&&cur===0&&trickWinner<0;
+  const isNestDiscard=phase==='nest'&&bidWinner===0&&nestTaken&&hands[0].length>13;
   const valid=isYourPlay?validPlays(0).map(cKey):[];
-  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand (${hands[0].length})</div>
-  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
-    ${hands[0].map(c=>cardEl(c,(isYourPlay&&valid.includes(cKey(c)))||(isNestDiscard)?'playable':'')).join('')}
+  html+=`<div class="g-label"><span>Your hand · ${hands[0].length}</span><span>${isYourPlay?'tap a card to play':isNestDiscard?'tap to bury':''}</span></div>
+  <div class="rk-hand" id="player-hand">
+    ${hands[0].map(c=>cardEl(c,isNestDiscard?('playable'+(nestPicks.includes(cKey(c))?' picked':'')):isYourPlay?(valid.includes(cKey(c))?'playable':'unplayable'):'')).join('')}
   </div>`;
 
-  html+=`<div class="rk-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-  root.innerHTML=html;
+  html+=renderLog();
+  root.innerHTML=html;wireLog();
+
+  // Action bar
+  if(phase==='nest'&&bidWinner===0&&!nestTaken) setBar(`<button class="btn btn-gold" id="add-nest-btn">Take the Nest</button>`);
+  else if(isNestDiscard){const need=hands[0].length-13;setBar(`<button class="btn btn-gold" id="bury-btn" ${nestPicks.length===need?'':'disabled'}>Bury ${nestPicks.length}/${need}</button>`);}
+  else setBar('');
 
   document.querySelectorAll('.rk-bid-btn').forEach(b=>{
     b.addEventListener('click',()=>playerBid(b.dataset.bid==='pass'?'pass':+b.dataset.bid));
   });
   document.querySelectorAll('.rk-trump-btn').forEach(b=>b.addEventListener('click',()=>playerChooseTrump(b.dataset.color)));
-  document.getElementById('add-nest-btn')?.addEventListener('click',()=>{hands[0]=[...hands[0],...nest];render();});
-  document.getElementById('player-hand')?.querySelectorAll('.rkc.playable').forEach(el=>{
+  document.getElementById('add-nest-btn')?.addEventListener('click',playerTakeNest);
+  document.getElementById('bury-btn')?.addEventListener('click',playerConfirmNestDiscard);
+  document.getElementById('player-hand')?.querySelectorAll('.rkc').forEach(el=>{
     el.addEventListener('click',()=>{
       const c=hands[0].find(c=>cKey(c)===el.dataset.key);
       if(!c) return;
-      if(isNestDiscard) playerNestPick(c);
+      if(isNestDiscard) playerToggleNestPick(c);
       else if(isYourPlay) playerPlay(c);
     });
   });
-  if((phase==='bid'&&currentBidder!==0)||(phase==='nest'&&bidWinner!==0)||(phase==='play'&&cur>0&&cur>=0))
-    setTimeout(()=>{
-      if(phase==='bid'&&currentBidder!==0) aiBid();
-      else if(phase==='nest'&&bidWinner!==0) aiNest();
-      else if(phase==='play'&&getNext()>0) aiPlay();
-    },500);
 }
 
 newGame();
