@@ -44,6 +44,9 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
+- **Subtle per-game identity:** layout and controls stay standard; each game
+  gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
+  wood). Keep it understated: colour and material, never mascots or emoji.
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.

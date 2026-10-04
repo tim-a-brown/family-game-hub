@@ -372,13 +372,50 @@
     s = sheet({ title: game ? game.name : 'Menu', node: list });
   }
 
+
+  // ── Per-game table themes ─────────────────────────────────────────────────
+  // Each game keeps the same layout and controls but gets its own "box":
+  // felt colour, card backs and wood. Subtle on purpose. Values: felt
+  // [centre, mid, edge], back [from, to], wood [top, bottom] (all optional).
+  var THEMES = {
+    hearts:        { felt: ['#6e1f33', '#4a1222', '#360b18'], back: ['#a0183a', '#e04a6a'] },
+    spades:        { felt: ['#24407a', '#152a55', '#0e1d3f'], back: ['#1c2c5c', '#4b63b8'], wood: ['#5b4636', '#3a2b20'] },
+    euchre:        { back: ['#1d6b45', '#3fa36b'] },
+    cribbage:      { wood: ['#b07a42', '#7d4f24'], back: ['#7a4b20', '#c08a4a'] },
+    'gin-rummy':   { felt: ['#147a74', '#0b524e', '#073c39'], back: ['#0f5f5b', '#d0a24a'] },
+    wizard:        { felt: ['#43297a', '#2a1752', '#1c0f3a'], back: ['#2a1752', '#7a52d1'], wood: ['#4a3a5e', '#2c2240'] },
+    flip7:         { felt: ['#1a6f8a', '#0e4a60', '#093646'], back: ['#ff7a29', '#ffb52e'] },
+    'five-crowns': { felt: ['#2558b0', '#163a7a', '#0f295a'], back: ['#163a7a', '#e2a400'] },
+    rook:          { felt: ['#33473d', '#1f2d26', '#151f1a'], back: ['#d9561c', '#ff9a3d'], wood: ['#3a2f28', '#231b16'] },
+    phase10:       { felt: ['#1c66b0', '#0f4378', '#0a2f57'], back: ['#d8253a', '#2f6fe0'] },
+    freecell:      { felt: ['#1f6b86', '#11475c', '#0b3446'] },
+    pyramid:       { felt: ['#6f6a34', '#4a461f', '#353215'], back: ['#b8862a', '#e9c46a'], wood: ['#a07a4a', '#6e5030'] },
+    pokersquares:  { felt: ['#7a1f2a', '#521219', '#3c0c12'] },
+    lorcana:       {},
+    blackjack:     { felt: ['#156b45', '#0c4a2f', '#083721'] },
+    baccarat:      { felt: ['#7a1f2a', '#521219', '#3c0c12'] },
+    roulette:      { felt: ['#156b45', '#0c4a2f', '#083721'] },
+    craps:         { felt: ['#156b45', '#0c4a2f', '#083721'] },
+    poker:         { felt: ['#24407a', '#152a55', '#0e1d3f'] },
+    threecardpoker:{ felt: ['#0f6a6a', '#094848', '#063434'] },
+    paigow:        { felt: ['#7a1f2a', '#521219', '#3c0c12'], back: ['#7a1f2a', '#e2a400'] }
+  };
+  function applyTheme(id) {
+    var t = THEMES[id]; if (!t) return;
+    function set(k, v) { if (v) root.style.setProperty(k, v); }
+    if (t.felt) { set('--felt-a', t.felt[0]); set('--felt-b', t.felt[1]); set('--felt-c', t.felt[2]); }
+    if (t.back) { set('--back-a', t.back[0]); set('--back-b', t.back[1]); set('--back-edge', t.back[2]); }
+    if (t.wood) { set('--wood-a', t.wood[0]); set('--wood-b', t.wood[1]); }
+  }
+
   function init(o) {
     opts = o || {};
     game = findGameSafe(opts.id || pageKey());
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
-    if (game) doc.title = game.name + ' · Game Night';
+    if (game) { doc.title = game.name + ' · Game Night'; applyTheme(game.id); }
+    if (opts.theme) { THEMES._custom = opts.theme; applyTheme('_custom'); }
 
     var bar = el('header', { class: 'gbar' }, [
       el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'All games', html: ICON.back, onclick: goHome }),
