@@ -359,6 +359,14 @@
     save(); render(); proceed();
   }
   function sortHand(h) { h.sort(function (a, b) { return ord(a) - ord(b) || 'shdc'.indexOf(a.s) - 'shdc'.indexOf(b.s); }); }
+  // Your hand on screen: rank order (the cribbage default) or suit groups. Display only.
+  var sortT = Cards.sortToggle(null, { key: 'cribbage_sort', value: 'rank', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); } });
+  function view(h) {
+    return Cards.sortBy(h.slice(), sortT.get(), {
+      suit: function (a, b) { return 'shdc'.indexOf(a.s) - 'shdc'.indexOf(b.s) || ord(a) - ord(b); },
+      rank: function (a, b) { return ord(a) - ord(b) || 'shdc'.indexOf(a.s) - 'shdc'.indexOf(b.s); }
+    });
+  }
   function tossCards(p, ids) {
     var out = S.hands[p].filter(function (c) { return ids.indexOf(c.id) >= 0; });
     S.tossed[p] = out; S.crib = S.crib.concat(out);
@@ -759,7 +767,7 @@
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
-  var tableEl, feltEl, seatEls = {}, pileEl, handEl, barEl;
+  var tableEl, feltEl, seatEls = {}, pileEl, handEl, barEl, sortRow;
   function render() {
     if (!boardEl) createBoard();
     app.innerHTML = '';
@@ -768,6 +776,7 @@
     feltEl = el('div', { class: 'felt-in' });
     tableEl.appendChild(feltEl);
     app.appendChild(tableEl);
+    sortRow = el('div', { class: 'csort-row' }, [sortT.el]); app.appendChild(sortRow);
     handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
     handEl.hidden = S.phase === 'show';
@@ -861,13 +870,15 @@
   function paintHand() {
     handEl.innerHTML = '';
     handEl.hidden = S.phase === 'show' || S.phase === 'cutdeal' || S.phase === 'over';
+    if (sortRow) sortRow.hidden = handEl.hidden;
     if (handEl.hidden) return;
     var bot = bottomSeat(), cover = needCover() || (S.mode === 'pass' && S.phase === 'cut');
+    if (sortRow) sortRow.style.visibility = cover ? 'hidden' : '';
     var mine = S.phase === 'peg' ? S.peg.hand[bot] : S.phase === 'discard' ? (S.keep[bot] || S.hands[bot]) : (S.keep[bot] || []);
     var a = actor();
     var canTapDiscard = S.phase === 'discard' && a === bot && !isCpu(bot) && !cover;
     var canTapPlay = S.phase === 'peg' && a === bot && !isCpu(bot) && !cover && !S.peg.reset;
-    mine.forEach(function (c) {
+    view(mine).forEach(function (c) {
       var n = cover ? Kit.card('', '', { back: true, cls: 'cover' }) : Cards.el(c);
       if (canTapDiscard) {
         n.classList.add('play'); if (S.sel.indexOf(c.id) >= 0) n.classList.add('sel');

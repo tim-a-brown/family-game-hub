@@ -184,6 +184,18 @@
     h.sort(function (a, b) { return key(a) - key(b) || (V[a.r] || 0) - (V[b.r] || 0); });
   }
   function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
+  // Your hand on screen (display only). Suit: Wizards, trump, other suits,
+  // Jesters. Rank: Jesters, 2 up to Ace (trump first on ties), Wizards.
+  var sortT = Cards.sortToggle(null, { key: 'wizard_sort', value: 'suit', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); } });
+  function view(h) {
+    var order = ['s', 'h', 'c', 'd'];
+    if (S.trump) { order = order.filter(function (s) { return s !== S.trump; }); order.unshift(S.trump); }
+    function so(c) { return order.indexOf(c.s); }
+    return Cards.sortBy(h.slice(), sortT.get(), {
+      suit: function (a, b) { var ka = isW(a) ? -1 : isJ(a) ? 9 : so(a), kb = isW(b) ? -1 : isJ(b) ? 9 : so(b); return ka - kb || (V[a.r] || 0) - (V[b.r] || 0); },
+      rank: function (a, b) { var ra = isJ(a) ? 0 : isW(a) ? 99 : V[a.r], rb = isJ(b) ? 0 : isW(b) ? 99 : V[b.r]; return ra - rb || (a.k ? 0 : so(a)) - (b.k ? 0 : so(b)); }
+    });
+  }
 
   // Suit that must be followed: the first normal card, unless a Wizard came first.
   function ledSuit(trick) {
@@ -510,6 +522,7 @@
     [trickEl, msgEl, trumpEl, roundEl].forEach(function (x) { felt.appendChild(x); });
     table.appendChild(felt);
     app.appendChild(table);
+    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'hands' });
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
@@ -568,7 +581,7 @@
   }
   function paintHand() {
     handEl.innerHTML = '';
-    var mine = S.hands ? S.hands[0] : [];
+    var mine = S.hands ? view(S.hands[0]) : [];
     var ok = S.phase === 'play' && S.turn === 0 && S.trick.length < N() ? legal(0).map(function (c) { return c.id; }) : null;
     var rows = mine.length > 12 ? [mine.slice(0, Math.ceil(mine.length / 2)), mine.slice(Math.ceil(mine.length / 2))] : [mine];
     var deal = S.dealt; S.dealt = false;
