@@ -40,19 +40,19 @@
 
 /* iPad: bigger sheet in portrait; landscape puts scores and status beside it */
 @media (min-width:700px) and (orientation:portrait){
-  #app.stage{max-width:760px;}
+  #app.stage.ipl{max-width:760px;}
   .desk{max-width:min(712px,calc(100dvh - 400px));margin-left:auto;margin-right:auto;}
   .score .nm{max-width:220px;font-size:.9rem;}
 }
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage{max-width:none;display:grid;grid-template-columns:auto minmax(240px,300px);grid-template-rows:auto auto auto 1fr;
+  #app.stage.ipl{max-width:none;display:grid;grid-template-columns:auto minmax(240px,300px);grid-template-rows:auto auto auto 1fr;
     column-gap:32px;justify-content:center;align-content:start;padding-bottom:calc(var(--safe-b) + 12px);}
-  #app>.desk{grid-column:1;grid-row:1 / span 4;margin:0;width:min(calc(100dvh - 120px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));}
-  #app>.scores{grid-column:2;flex-direction:column;overflow:visible;margin-top:4px;}
-  #app>.scores .score .nm{max-width:220px;font-size:.9rem;}
-  #app>.turn{grid-column:2;justify-self:start;}
-  #app>.below{grid-column:2;align-items:flex-start;margin-top:6px;}
-  #app>.below .note{text-align:left;}
+  #app.ipl>.desk{grid-column:1;grid-row:1 / span 4;margin:0;width:min(calc(100dvh - 120px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));}
+  #app.ipl>.scores{grid-column:2;flex-direction:column;overflow:visible;margin-top:4px;}
+  #app.ipl>.scores .score .nm{max-width:220px;font-size:.9rem;}
+  #app.ipl>.turn{grid-column:2;justify-self:start;}
+  #app.ipl>.below{grid-column:2;align-items:flex-start;margin-top:6px;}
+  #app.ipl>.below .note{text-align:left;}
 }
 </style>
 </head>
@@ -94,6 +94,7 @@
 
   function showSetup() {
     S = null; token++; undoStack = [];
+    app.classList.remove('ipl');
     Kit.setup(app, {
       modes: [
         { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against one or two computers' },
@@ -358,7 +359,7 @@
   }
   var svgEl, stripEl, turnEl, noteEl;
   function render() {
-    app.innerHTML = '';
+    app.innerHTML = ''; app.classList.add('ipl');
     stripEl = el('div', { class: 'scores' }); app.appendChild(stripEl);
     turnEl = el('div', { class: 'turn' }); app.appendChild(turnEl);
     var n = S.n, W = n * U + PAD * 2, s = '';

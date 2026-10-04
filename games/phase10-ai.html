@@ -129,6 +129,59 @@
 .sum tr.lead td:first-child{color:var(--yellow);}
 .skiplist{display:flex;flex-direction:column;gap:8px;}
 .skiplist .btn{justify-content:flex-start;}
+/* iPad portrait: a bigger table, bigger cards */
+@media (min-width:700px) and (min-height:900px){
+  .stage{max-width:720px;}
+  .ctable .felt-in.p10f{min-height:clamp(380px,40dvh,480px);justify-content:space-between;gap:12px;padding:14px 12px;}
+  .p10f .cseat .tag{font-size:.95rem;}
+  .p10f .cseat .tag .avatar{width:30px;height:30px;}
+  .p10f .cseat .tag .nm{max-width:130px;}
+  .p10f .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
+  .opps.many .cseat .tag{font-size:.85rem;}
+  .opps.many .cseat .tag .nm{max-width:100px;}
+  .opps.many .cseat .chip-s{font-size:.74rem;}
+  .pile{--cw:84px;}
+  .pile .cap{font-size:.76rem;}
+  .mid{gap:30px;}
+  .tablemsg{font-size:1rem;}
+  .melds{gap:8px;}
+  .mrow{padding:5px 10px;gap:10px;}
+  .mrow .who{width:76px;font-size:.82rem;}
+  .mrow .who small{font-size:.72rem;}
+  .melds .none{font-size:.9rem;}
+  .grp{--cw:40px;}
+  .grp .pcard+.pcard{margin-left:-21px;}
+  .pcard.p10.mini .ix{font-size:17px;}
+  .pcard.p10.mini .ov b{font-size:20px;}
+  .pcard.p10.mini.wild .ov b{font-size:8px;}
+  .phstrip{padding:10px 14px;}
+  .phstrip .gl b{font-size:1.25rem;}
+  .phstrip .gl span{font-size:1.35rem;}
+  .dots{grid-template-columns:repeat(5,22px);gap:4px;}
+  .dots i{width:22px;height:22px;font-size:.7rem;}
+  .mat .mc{--cw:44px;min-height:62px;}
+  .mat .mc .pcard+.pcard{margin-left:-18px;}
+  .mat .mt,.mat .ms{font-size:.8rem;}
+  .bhead{font-size:.95rem;}
+  .chand{--cw:86px;}
+  .cbar .btn{min-height:52px;font-size:1.02rem;}
+  .cbar .hint{font-size:1rem;}
+}
+/* Landscape tablets and desktops: table on the left, your phase card and hand on the right */
+@media (min-width:1000px) and (orientation:landscape){
+  .stage.p10-play{max-width:1120px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto auto 1fr;column-gap:22px;align-items:start;}
+  .p10-play > .ctable{grid-column:1;grid-row:1 / -1;margin:0;}
+  .p10-play > :not(.ctable){grid-column:2;}
+  .p10-play .ctable .felt-in.p10f{min-height:clamp(320px,calc(100dvh - 88px - var(--safe-b)),640px);justify-content:space-between;gap:12px;padding:12px 10px;}
+  .p10-play .pile{--cw:76px;}
+  .p10-play .grp{--cw:36px;}
+  .p10-play .grp .pcard+.pcard{margin-left:-19px;}
+  .p10-play .pcard.p10.mini .ix{font-size:15px;}
+  .p10-play .pcard.p10.mini .ov b{font-size:18px;}
+  .p10-play .mrow .who{width:70px;font-size:.78rem;}
+  .p10-play > .phstrip{margin-top:2px;}
+  .p10-play .chand{--cw:76px;}
+}
 </style>
 </head>
 <body>
@@ -336,6 +389,7 @@
 
   function showSetup() {
     S = null; token++; app.innerHTML = '';
+    app.classList.remove('p10-play');
     Kit.setup(app, {
       players: { min: 2, max: 6, count: 3, cpu: 'seats', label: 'Players (you + computers)' },
       options: [{ id: 'last', label: 'Game length', value: 10, choices: [[10, 'All 10 phases', 'The full game: the first to finish phase 10 wins.'], [5, 'Quick · phases 1–5', 'A shorter game: the first to finish phase 5 wins.']] }],
@@ -762,6 +816,7 @@
   var feltEl, seatEls = [], handEl, barEl, goalEl, builderEl, msgT = null, msgText = '';
   function render() {
     app.innerHTML = '';
+    app.classList.add('p10-play');
     var table = el('div', { class: 'ctable wood' });
     feltEl = el('div', { class: 'felt-in p10f' });
     table.appendChild(feltEl);

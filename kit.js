@@ -784,7 +784,7 @@
         }
 
     var startBtn = el('button', {
-      type: 'button', class: 'btn btn-primary btn-lg btn-block', text: o.start || "Let's play!",
+      type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
       onclick: function () {
         var cpu = cpuFor(), players = [], picked = [];
         if (P) {

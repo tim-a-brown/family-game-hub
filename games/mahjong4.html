@@ -90,10 +90,10 @@
 :root{--cjk:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Noto Serif CJK SC","Source Han Sans SC","WenQuanYi Zen Hei","Microsoft YaHei",serif;}
 
 /* iPad: wider stage in portrait; landscape puts scores, status, rack and buttons beside the table */
-@media (min-width:700px) and (orientation:portrait){ #app.stage{max-width:760px;} .mj .scores,.acts{max-width:700px;} }
+@media (min-width:700px) and (orientation:portrait){ #app.stage.ipl{max-width:760px;} .mj .scores,.acts{max-width:700px;} }
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
-  .mj.side{display:grid;grid-template-columns:auto 360px;grid-template-rows:auto auto auto auto auto 1fr;column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
+  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
+  .mj.side{display:grid;grid-template-columns:auto 360px;grid-template-rows:repeat(5,max-content) 1fr;column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
   .mj.side>*{grid-column:2;}
   .mj.side>.mtable{grid-column:1;grid-row:1 / span 6;}
   .mj.side>.rack{justify-self:center;}
@@ -344,6 +344,7 @@
 
   function showSetup() {
     S = null; app.innerHTML = '';
+    app.classList.remove('ipl');
     Kit.setup(app, {
       intro: 'Four-player Mahjong, Hong Kong style, against three computer players',
       options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands', 'Four hands, one deal each. A quick taste of the game.'], ['east', 'East round', 'Play until every player has been dealer once in the East wind round.'], ['full', 'Full game', 'All four wind rounds: East, South, West and North. This takes a while.']] }],
@@ -704,10 +705,11 @@
   function render(ev) {
     if (!S || !S.hands) return;
     // iPad: a bigger table (k scales the tile caps); landscape puts scores, rack and buttons beside it
+    app.classList.add('ipl');
     var side = window.matchMedia && matchMedia(LAND_MQ).matches, vh = window.innerHeight || 800;
     var W = Math.floor(side ? Math.min(innerW() - 384, (vh - 104) / 0.82, 760) : Math.min(innerW(), (window.innerWidth || 0) >= 700 ? 700 : 560));
     var KZ = Math.max(1, W / 560), RW = side ? 360 : W, P = S.players;
-    app.innerHTML = '';
+    app.innerHTML = ''; app.classList.add('ipl');
     var wrap = el('div', { class: 'mj' + (side ? ' side' : '') });
 
     // score pills, laid out left / across / right / you

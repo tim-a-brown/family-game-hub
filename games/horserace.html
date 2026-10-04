@@ -155,6 +155,17 @@
 /* Phases: show the right panels */
 .ph-race .bet-only,.ph-result .bet-only,.ph-bet .race-only,.ph-result .race-only:not(.keep),.ph-bet .res-only,.ph-race .res-only{display:none!important;}
 @media (min-width:700px){ .tray .c3{--cs:56px;} }
+
+.hcol{display:contents;}
+/* ── Wide landscape (iPad, laptop): track and bets on the left, program / results on the right ── */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .stage.hr.ph-bet,.stage.hr.ph-result{max-width:1160px;display:flex;align-items:flex-start;gap:24px;}
+  .stage.hr.ph-bet .hcol,.stage.hr.ph-result .hcol{display:block;flex:1 1 0;min-width:0;}
+  .stage.hr.ph-bet .hcol.b,.stage.hr.ph-result .hcol.b{flex:0 1 460px;}
+  .stage.hr.ph-bet .hz{min-height:52px;padding-top:5px;padding-bottom:5px;}
+  .stage.hr.ph-bet .prog{margin-bottom:10px;}
+  .rail-in{max-width:760px;}
+}
 </style>
 </head>
 <body>
@@ -1122,6 +1133,10 @@
     R.hud = el('div', { class: 'hud bet-only' });
     R.strip = el('div', { class: 'pstrip race-only keep' });
     var twIn = el('div', { class: 'tw-in' }, [RV.el, R.hud]);
+    // Two columns on wide landscape screens (display:contents everywhere else)
+    var app0 = app, colA = el('div', { class: 'hcol a' }), colB = el('div', { class: 'hcol b' });
+    app0.appendChild(colA); app0.appendChild(colB);
+    app = colA;
     app.appendChild(el('div', { class: 'tw wood' }, [twIn, R.strip]));
     R.callP = el('p', { text: '' });
     R.call = el('div', { class: 'call race-only keep' }, [el('span', { html: Kit.icon('sound') }), R.callP]);
@@ -1136,11 +1151,12 @@
     R.info = el('div', { class: 'pinfo bet-only' });
     R.prog = el('div', { class: 'prog bet-only' });
     R.slip = el('div', { class: 'slip bet-only' });
-    app.appendChild(R.types); app.appendChild(R.info); app.appendChild(R.prog); app.appendChild(R.slip);
+    app.appendChild(R.types); app.appendChild(R.info); colB.appendChild(R.prog); colB.appendChild(R.slip);
     // Results panels
     R.tote = el('div', { class: 'tote wood res-only' });
     R.mytk = el('div', { class: 'mytk res-only' });
-    app.appendChild(R.tote); app.appendChild(R.mytk);
+    colB.appendChild(R.tote); colB.appendChild(R.mytk);
+    app = app0;
 
     RV.setField(S.field, S.race);
     var h = S.phase === 'bet' ? 200 : S.phase === 'result' ? 230 : raceHeight();
@@ -1150,7 +1166,8 @@
     else if (S.phase === 'race') { rail('race'); runRace(); }
     else { var xs = RV.showFinal(); paintStrip(RV.ranksAt(xs)); setCall(finalLine()); paintResults(false); rail('result'); }
   }
-  function raceHeight() { return Math.round(clamp(window.innerHeight * 0.44, 220, 380)); }
+  // Phones top out at 380px; an iPad in portrait gets a taller track
+  function raceHeight() { return Math.round(clamp(window.innerHeight * 0.44, 220, Math.max(380, Math.min(window.innerWidth * 0.72, window.innerHeight * 0.5)))); }
   function paintHud() {
     var F = S.field;
     R.hud.innerHTML = '';

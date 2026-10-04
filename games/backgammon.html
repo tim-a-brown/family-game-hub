@@ -94,8 +94,8 @@
 
 /* Landscape iPad: player bars, hint and buttons in a column beside the board (sized in geometry()) */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
-  .bgw{display:grid;grid-template-columns:auto minmax(260px,320px);grid-template-rows:auto auto auto 1fr auto;
+  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
+  .bgw{display:grid;grid-template-columns:auto minmax(260px,320px);grid-template-rows:max-content max-content max-content 1fr max-content;
     grid-template-areas:"b t" "b h" "b c" "b ." "b p";height:var(--bh);column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
   .bgw>.bboard{grid-area:b;}
   .bgw>.btag:nth-child(1){grid-area:t;}
@@ -104,7 +104,7 @@
   .bgw>.ctrl{grid-area:c;flex-direction:column;align-items:stretch;}
   .bgw>.ctrl .btn{max-width:none;flex:none;}
 }
-@media (min-width:700px) and (orientation:portrait){ #app.stage{max-width:760px;} .btag,.ctrl{max-width:680px;} }
+@media (min-width:700px) and (orientation:portrait){ #app.stage.ipl{max-width:760px;} .btag,.ctrl{max-width:680px;} }
 </style>
 </head>
 <body>
@@ -151,6 +151,7 @@
 
   function showSetup() {
     S = null; app.innerHTML = '';
+    app.classList.remove('ipl');
     Kit.setup(app, {
       modes: [
         { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You play White against the computer' },
@@ -667,6 +668,7 @@
   var boardEl;
   function render(diceRoll, anim) {
     if (!S) return;
+    app.classList.add('ipl');
     G = geometry();
     var s = S.cur, me = curP(), q = S.pos, P = S.players;
     var human = !me.cpu && S.phase === 'move' && !rolling;
@@ -674,7 +676,7 @@
     var froms = {}, dests = {};
     lm.forEach(function (m) { froms[m.from] = 1; if (sel != null && m.from === sel) dests[m.to] = 1; });
 
-    app.innerHTML = '';
+    app.innerHTML = ''; app.classList.add('ipl');
     var wrap = el('div', { class: 'bgw', style: { '--bh': G.H + 'px' } });
     wrap.appendChild(tag(1));
     boardEl = el('div', { class: 'bboard', style: { width: G.W + 'px', height: G.H + 'px', '--cd': G.cd + 'px' } });
