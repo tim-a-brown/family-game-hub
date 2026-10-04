@@ -35,7 +35,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .mast b{font-size:1.05rem;letter-spacing:.04em;font-weight:700;font-variant:small-caps;}
 .mast span{font-size:.8rem;font-style:italic;color:var(--np-dim);white-space:nowrap;}
 .gwrap{display:flex;justify-content:center;}
-.grid{--n:5;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);width:min(100%,var(--gw,360px));aspect-ratio:1;border:2.5px solid var(--np-ink);background:var(--np-ink);gap:1px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+.grid{--n:5;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);width:min(100%,var(--gw,360px),calc(100dvh - var(--safe-t) - var(--safe-b) - 500px));min-width:250px;aspect-ratio:1;border:2.5px solid var(--np-ink);background:var(--np-ink);gap:1px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
 .sq{position:relative;background:#fffdf7;display:grid;place-items:center;cursor:pointer;}
 .sq.blk{background:var(--np-ink);cursor:default;}
 .sq .n{position:absolute;left:5%;top:3%;font-family:var(--np-serif);font-size:calc(var(--cell) * .24);line-height:1;color:var(--np-ink);}
@@ -95,6 +95,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 
 @media (max-height:740px){.key{height:42px;}.cbar{min-height:48px;}.kb{gap:5px;}}
 @media (min-width:860px){
+  .grid{width:min(100%,var(--gw,360px));}
   .cw{max-width:1040px;}
   .main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:24px;align-items:start;}
   .paper{padding:16px 16px 0;}
@@ -139,7 +140,31 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   // ── Puzzles ───────────────────────────────────────────────────────────────
   // grid: rows of letters, '#' = black square. clues: answer -> clue.
   // Numbering is worked out from the grid, like a newspaper puzzle.
-  var PUZZLES = /*PUZZLES*/[];
+  var PUZZLES = /*PUZZLES*/[
+    {"id": "c1", "title": "Mini 1", "size": "mini", "grid": ["w#e#c", "audio", "v#i#r", "extra", "s#s#l"], "clues": {"audio": "Sound you can hear from a speaker", "extra": "More than needed; a bonus", "waves": "Ocean swells", "edits": "Makes corrections to writing", "coral": "Reef-building sea animal; also a pinkish-orange colour"}},
+    {"id": "c2", "title": "Mini 2", "size": "mini", "grid": ["s#a#t", "tiger", "a#i#e", "nylon", "d#e#d"], "clues": {"tiger": "Big striped cat", "nylon": "Stretchy fabric used for tights", "stand": "Rise to one's feet", "agile": "Quick and nimble", "trend": "Popular style right now"}},
+    {"id": "c3", "title": "Mini 3", "size": "mini", "grid": ["s#e#b", "ultra", "g#h#k", "adore", "r#s#r"], "clues": {"ultra": "Extreme; beyond normal", "adore": "Love deeply", "sugar": "Sweet stuff in cookies", "ethos": "Guiding beliefs of a group", "baker": "One who makes bread and cakes"}},
+    {"id": "c4", "title": "Mini 4", "size": "mini", "grid": ["g#a#k", "lemon", "o#b#i", "brief", "e#t#e"], "clues": {"lemon": "Sour yellow fruit", "brief": "Short and to the point", "globe": "Round map of the Earth", "ambit": "Range or reach", "knife": "Butter spreader at dinner"}},
+    {"id": "c5", "title": "Mini 5", "size": "mini", "grid": ["c#e#o", "havoc", "e#i#e", "salsa", "s#s#n"], "clues": {"havoc": "Chaos and mess", "salsa": "Tomato dip; also a Latin dance", "chess": "Board game with kings and pawns", "evils": "Wicked things", "ocean": "Huge body of salt water"}},
+    {"id": "c6", "title": "Mini 6", "size": "mini", "grid": ["i#e#a", "music", "a#s#i", "grand", "e#y#s"], "clues": {"music": "Songs and melodies", "grand": "Big and impressive; a kind of piano", "image": "Picture", "essay": "Short piece of school writing", "acids": "Lemon juice and vinegar are weak ones"}},
+    {"id": "c7", "title": "Mini 7", "size": "mini", "grid": ["s#l#k", "clean", "u#g#e", "brave", "a#l#l"], "clues": {"clean": "Not dirty", "brave": "Courageous", "scuba": "Underwater breathing gear", "legal": "Allowed by law", "kneel": "Get down on one's knees"}},
+    {"id": "m1", "title": "Mini 8", "size": "mini", "grid": ["each#", "allow", "stole", "tends", "#rest"], "clues": {"each": "Per person, as in \"two cookies ___\"", "allow": "Let happen; permit", "stole": "Took without asking", "tends": "Takes care of, like a garden", "rest": "Take a break", "east": "Where the sun rises", "alter": "Change, as a pair of pants", "clone": "An exact copy", "holds": "Grips tightly", "west": "Where the sun sets"}},
+    {"id": "m2", "title": "Mini 9", "size": "mini", "grid": ["#more", "dozen", "avoid", "rings", "keen#"], "clues": {"more": "Opposite of less", "dozen": "Twelve eggs make one", "avoid": "Stay away from", "rings": "Saturn has beautiful ones", "keen": "Very eager", "dark": "Without any light", "movie": "Film at the cinema", "ozone": "Gas layer that shields Earth from the sun's rays", "reign": "Rule as a king or queen", "ends": "Finishes"}},
+    {"id": "m3", "title": "Mini 10", "size": "mini", "grid": ["all##", "coin#", "tones", "#peak", "##dry"], "clues": {"all": "Every single one", "coin": "Penny, nickel or dime", "tones": "Musical sounds", "peak": "Top of a mountain", "dry": "Not wet", "act": "Perform in a play", "loop": "Roller coaster upside-down circle", "lined": "Like notebook paper", "near": "Close by", "sky": "Where clouds float"}},
+    {"id": "m4", "title": "Mini 11", "size": "mini", "grid": ["##you", "#beds", "blade", "ours#", "yes##"], "clues": {"you": "\"Not me, it was ___!\"", "beds": "Bunk ___ (sleepers stacked up)", "blade": "Sharp part of an ice skate", "ours": "Belonging to us", "yes": "Opposite of no", "boy": "A young lad", "blue": "Colour of a clear sky", "years": "A decade is ten of these", "odds": "Chances, as in \"the ___ are good\"", "use": "Put to work"}},
+    {"id": "m5", "title": "Mini 12", "size": "mini", "grid": ["off##", "lies#", "dream", "#edge", "##sat"], "clues": {"off": "Opposite of on", "lies": "Fibs", "dream": "What you do while you sleep", "edge": "Rim or border", "sat": "Took a seat", "old": "Not new", "fire": "Campfire's flames", "feeds": "Gives food to", "saga": "A long adventure story", "met": "Was introduced to"}},
+    {"id": "m6", "title": "Mini 13", "size": "mini", "grid": ["care#", "alarm", "metro", "prior", "#tore"], "clues": {"care": "Look after", "alarm": "Wake-up beeper", "metro": "City subway train", "prior": "Coming before", "tore": "Ripped", "camp": "Sleep in a tent outdoors", "alert": "Wide awake and watchful", "ratio": "Comparison like 2 to 1", "error": "Mistake", "more": "Extra; additional"}},
+    {"id": "m7", "title": "Mini 14", "size": "mini", "grid": ["##are", "#play", "alone", "rent#", "tag##"], "clues": {"are": "\"We ___ family\"", "play": "Have fun with toys", "alone": "By yourself", "rent": "Money paid to live in an apartment", "tag": "Chasing game where someone is \"it\"", "art": "Painting or drawing", "plea": "Begging request", "along": "Sing ___ (join in)", "rant": "Long angry speech", "eye": "What you see with"}},
+    {"id": "m8", "title": "Mini 15", "size": "mini", "grid": ["##for", "#bone", "world", "army#", "yes##"], "clues": {"for": "\"This present is ___ you\"", "bone": "A dog loves to chew one", "world": "The whole Earth", "army": "Large group of soldiers", "yes": "Thumbs-up answer", "way": "Path or direction", "bore": "Make someone yawn", "forms": "Papers to fill out", "only": "Just one; sole", "red": "Colour of a stop sign"}},
+    {"id": "m9", "title": "Mini 16", "size": "mini", "grid": ["#bad#", "money", "eagle", "treat", "#dry#"], "clues": {"bad": "Not good", "money": "Dollars and cents", "eagle": "Bald ___, big American bird", "treat": "Snack reward for a good dog", "dry": "Like a desert", "met": "Got together with", "board": "Chess or checkers surface", "anger": "Feeling of being mad", "delay": "Make late; hold up", "yet": "So far; until now"}},
+    {"id": "m10", "title": "Mini 17", "size": "mini", "grid": ["##she", "#open", "tread", "want#", "old##"], "clues": {"she": "Her, as the subject of a sentence", "open": "Not shut", "tread": "Bumpy pattern on a tyre", "want": "Wish for", "old": "Like an antique", "two": "A pair", "oral": "Spoken out loud, like a test", "spend": "Use money", "heat": "Warmth", "end": "Finish line"}},
+    {"id": "m11", "title": "Mini 18", "size": "mini", "grid": ["who##", "each#", "trees", "#dare", "##not"], "clues": {"who": "\"___'s there?\" (knock-knock joke)", "each": "Every one", "trees": "Forest plants", "dare": "Truth or ___", "not": "\"Do ___ disturb\" (door sign)", "wet": "Soaked", "hard": "Not easy", "ocean": "Pacific or Atlantic", "hero": "Superman, for one", "set": "Put down; place"}},
+    {"id": "m12", "title": "Mini 19", "size": "mini", "grid": ["#plan", "chose", "horse", "ended", "west#"], "clues": {"plan": "Map out ahead", "chose": "Picked", "horse": "Animal that neighs", "ended": "Finished", "west": "Cowboy country, the Wild ___", "chew": "Use your teeth on food", "phone": "You call people with it", "lords": "Nobles in a castle", "asset": "Something valuable", "need": "Must have"}},
+    {"id": "m13", "title": "Mini 20", "size": "mini", "grid": ["##but", "#case", "taken", "aged#", "bed##"], "clues": {"but": "However", "case": "Pencil ___", "taken": "Grabbed; no longer free", "aged": "Grown older, like cheese", "bed": "Place to sleep", "tab": "Key on a keyboard", "cage": "Hamster's home", "baked": "Cooked in an oven, like cookies", "used": "Secondhand", "ten": "Number of toes"}},
+    {"id": "m14", "title": "Mini 21", "size": "mini", "grid": ["#man#", "pilot", "unite", "token", "#red#"], "clues": {"man": "Snow___ (winter figure)", "pilot": "Flies a plane", "unite": "Join together", "token": "Arcade game coin", "red": "Colour of a ruby", "put": "Place", "minor": "Small, not major", "alike": "Very similar", "noted": "Wrote down", "ten": "Perfect score in gymnastics"}},
+    {"id": "m15", "title": "Mini 22", "size": "mini", "grid": ["#fast", "honor", "argue", "scene", "held#"], "clues": {"fast": "Speedy", "honor": "Respect, as in \"guest of ___\"", "argue": "Disagree loudly", "scene": "Part of a play or movie", "held": "Carried in your arms", "hash": "___ browns (breakfast potatoes)", "force": "Push hard", "angel": "Halo wearer", "sound": "Noise", "tree": "Oak or maple"}},
+    {"id": "m16", "title": "Mini 23", "size": "mini", "grid": ["##may", "#take", "merit", "earn#", "try##"], "clues": {"may": "Month after April", "take": "Grab", "merit": "Worth, as in \"a badge of ___\"", "earn": "Get paid for work", "try": "Give it a go", "met": "Saw for the first time", "tear": "Drop from a crying eye", "marry": "Wed", "akin": "Related; similar", "yet": "\"Are we there ___?\""}}
+  ]/*END*/;
 
   Kit.init({
     id: 'crossword',
@@ -208,7 +233,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     var a = all(), st = a.prog && a.prog[p.id];
     if (st && !st.solved && st.fill && st.fill.length === Z.n) S = st;
     else S = { id: p.id, fill: Z.sol.map(function (r) { return r.map(function (ch) { return ch === '#' ? '#' : ''; }); }), marks: {}, r: 0, c: 0, dir: 'a', secs: 0, started: Date.now(), checks: 0, reveals: 0, solved: false };
-    if (Z.sol[S.r][S.c] === '#') { var w0 = Z.words[0]; S.r = w0.cells[0][0]; S.c = w0.cells[0][1]; S.dir = w0.dir; }
+    if (!st || st !== S || Z.sol[S.r][S.c] === '#') { var w0 = Z.words[0]; S.r = w0.cells[0][0]; S.c = w0.cells[0][1]; S.dir = w0.dir; }
     undoStack = []; paused = false;
     Kit.gameStart();
     save(); build(); startClock();
@@ -289,7 +314,8 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     }
     // Clue bar + lists
     var other = (Z.at[S.r + '_' + S.c] || {})[S.dir === 'a' ? 'd' : 'a'];
-    $('ct').innerHTML = w ? '<b>' + w.n + (w.dir === 'a' ? 'A' : 'D') + '</b><span>' + Kit.esc(w.clue) + '</span>' : '';
+    if (S.solved) $('ct').innerHTML = '<b>' + Kit.icon('check') + '</b><span>Solved' + (S.secs ? ' in ' + fmt(S.secs) : '') + '. Nice work!</span>';
+    else $('ct').innerHTML = w ? '<b>' + w.n + (w.dir === 'a' ? 'A' : 'D') + '</b><span>' + Kit.esc(w.clue) + '</span>' : '';
     Z.words.forEach(function (x, i) {
       var e = $('cl' + i); if (!e) return;
       e.classList.toggle('on', i === wi); e.classList.toggle('x', i === other);
@@ -328,12 +354,11 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     return -1;
   }
   function advance() {
+    // next square in this word; at the end of a word, jump to the next word with a gap
     var wi = curWord(), w = Z.words[wi], idx = w.cells.findIndex(function (q) { return q[0] === S.r && q[1] === S.c; });
-    // next empty square later in this word, else next word with a gap
-    for (var k = idx + 1; k < w.cells.length; k++) { var q = w.cells[k]; if (!S.fill[q[0]][q[1]]) { S.r = q[0]; S.c = q[1]; return; } }
-    for (k = 0; k < idx; k++) { q = w.cells[k]; if (!S.fill[q[0]][q[1]]) { S.r = q[0]; S.c = q[1]; return; } }
+    if (idx < w.cells.length - 1) { S.r = w.cells[idx + 1][0]; S.c = w.cells[idx + 1][1]; return; }
+    for (var k = 0; k < idx; k++) { var q = w.cells[k]; if (!S.fill[q[0]][q[1]]) { S.r = q[0]; S.c = q[1]; return; } }
     var nx = nextWordWithGap(wi); if (nx >= 0) goWord(nx);
-    else if (idx < w.cells.length - 1) { S.r = w.cells[idx + 1][0]; S.c = w.cells[idx + 1][1]; }
   }
   function locked(r, c) { var m = S.marks[r + '_' + c]; return m === 'ok' || m === 'rev'; }
 
@@ -481,7 +506,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     if (revealedCells && !gaveUp) hl.push('Revealed ' + revealedCells + (revealedCells === 1 ? ' square' : ' squares'));
     if (S.checks && !gaveUp) hl.push('Used check ' + S.checks + (S.checks === 1 ? ' time' : ' times'));
     var longest = Z.words.slice().sort(function (a, b) { return b.ans.length - a.ans.length; })[0];
-    hl.push('Longest answer: ' + longest.ans);
+    if (longest.ans.length >= 6) hl.push('Longest answer: ' + longest.ans);
     Kit.record(KEY, {
       started: S.started, mode: Z.p.title, summary: (gaveUp ? 'Revealed' : 'Solved in ' + fmt(S.secs)) + ' · ' + Z.p.title, badge: gaveUp ? '' : fmt(S.secs),
       highlights: hl, meta: { pid: S.id, secs: gaveUp ? null : S.secs, checks: S.checks, reveals: S.reveals, clean: clean }

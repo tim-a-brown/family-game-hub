@@ -207,7 +207,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
       });
     }
     paint();
-    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Category (two players: for "pick one for me")' }), box]), st.el.querySelector('.btn-lg'));
+    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Category' }), box]), st.el.querySelector('.btn-lg'));
   }
   function start(cfg, cat) {
     S = { mode: cfg.mode, diff: cfg.options.diff || 'easy', theme: cfg.options.theme || 'classic', cat: cat || 'Animals',
@@ -460,7 +460,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
     var max = maxMiss(), left = max - W.misses;
     slate.appendChild(el('div', { class: 'topline' }, [
       el('span', { text: W.cat ? catName(W.cat) : 'Secret word' }),
-      el('span', { class: 'miss', text: W.missed.length ? W.missed.join(' ') : (left + ' misses left') })
+      el('span', { class: 'miss', style: W.missed.length ? null : { color: 'rgba(244,241,230,.6)', 'letter-spacing': '0' }, text: W.missed.length ? W.missed.join(' ') : (left + ' misses allowed') })
     ]));
     var pic = el('div', { class: 'pic', html: picture() });
     slate.appendChild(pic);
@@ -571,6 +571,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
     var err = el('div', { class: 'err' });
     var picked = null;
     box.appendChild(inp); box.appendChild(clue); box.appendChild(err);
+    inp.addEventListener('input', function () { err.textContent = ''; });
     var picks = el('div', { class: 'picks' });
     function pickOne() {
       var p = pool(), o = p[rnd(p.length)]; picked = o;
@@ -580,6 +581,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
     box.appendChild(picks);
     box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Hide it and pass the phone', onclick: function () {
       var v = inp.value.toUpperCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
+      if (!v) { err.textContent = 'Type a secret word first, or tap "Pick one for me".'; Kit.sfx('bad'); return; }
       if (!/^[A-Z ]+$/.test(v)) { err.textContent = 'Letters and spaces only, please.'; Kit.sfx('bad'); return; }
       if (v.replace(/ /g, '').length < 2) { err.textContent = 'Use at least 2 letters.'; Kit.sfx('bad'); return; }
       if (v.split(' ').some(function (w) { return w.length > 13; })) { err.textContent = 'That word is too long to fit. Try 13 letters or fewer.'; Kit.sfx('bad'); return; }

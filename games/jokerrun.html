@@ -190,6 +190,7 @@ html,body{background:#0a0614;}
 .money-big{font-family:var(--display);font-size:1.5rem;color:#ffc83d;padding:2px 12px;border-radius:12px;background:rgba(0,0,0,.35);}
 .shelf{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:8px 4px 10px;border-radius:14px;background:rgba(0,0,0,.2);box-shadow:inset 0 2px 8px rgba(0,0,0,.3);}
 .shelf .gap{width:6px;}
+.shelf.five{gap:6px;--jw:min(58px,calc((100vw - 90px) / 5));}
 .sit{display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;}
 .sit .price{padding:0 8px;border-radius:999px;background:#ffc83d;color:#2b1a00;font-weight:900;font-size:.78rem;line-height:1.5;}
 .sit .price.no{background:rgba(255,255,255,.18);color:rgba(255,255,255,.6);}
@@ -257,8 +258,25 @@ html,body{background:#0a0614;}
   .tbl .felt-in{min-height:330px;padding:14px;}
   .cm .bx{min-width:120px;font-size:2.1rem;}
   .acts{max-width:640px;width:100%;justify-self:center;}
+  .shelf.five{--jw:76px;}
 }
 @media (prefers-reduced-motion:reduce){.tbl.shake{animation:none;}}
+@media (max-width:899px) and (max-height:760px){
+  .jr{--jw:min(54px,calc((100vw - 48px) / 5));--pw:40px;gap:6px;}
+  .tbl .felt-in{min-height:0;padding:6px 8px;}
+  .hud{padding:6px 8px;gap:4px 8px;}
+  .hb-blind .tok{width:36px;height:36px;font-size:.95rem;}
+  .hb-blind .sm{display:none;}
+  .hb-score b{font-size:1.4rem;}
+  .st{padding:2px 3px 1px;} .st b{font-size:1rem;} .st small{font-size:.52rem;}
+  .ph-line{min-height:30px;} .ibtn{width:34px;height:34px;}
+  .cm{margin:4px 0 2px;} .cm .bx{font-size:1.3rem;min-width:72px;padding:2px 10px;}
+  .total{height:24px;line-height:24px;font-size:1.3rem;}
+  .played{padding-top:8px;min-height:calc(var(--pw) * 1.4 + 10px);}
+  .bossbar{font-size:.72rem;padding:3px 8px;}
+  .jhand.chand{padding-top:18px;}
+  .acts .btn{min-height:48px;}
+}
 </style>
 </head>
 <body>
@@ -381,7 +399,7 @@ html,body{background:#0a0614;}
     var seed = 0; for (var i = 0; i < id.length; i++) seed = (seed * 31 + id.charCodeAt(i)) >>> 0;
     function r() { seed = (seed * 1103515245 + 12345) >>> 0; return (seed >>> 8) / 16777216; }
     var n = 4 + Math.floor(r() * 3), pts = [];
-    for (var k = 0; k < n; k++) pts.push([6 + r() * 28, 5 + r() * 30]);
+    for (var k = 0; k < n; k++) pts.push([5 + k * 30 / (n - 1) + (r() - 0.5) * 4, 6 + r() * 28]);
     var path = 'M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join('L');
     return '<path class="kl" style="stroke-width:1.3;opacity:.7" d="' + path + '"/>' + pts.map(function (p, i) { return '<circle class="a" cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (i === 0 ? 2.6 : 1.7) + '"/>'; }).join('');
   }
@@ -1448,7 +1466,7 @@ html,body{background:#0a0614;}
   function paintPack() {
     var f = R.felt, p = S.pack, P = PACKS[p.kind];
     f.appendChild(el('div', { class: 'pk-head' }, [el('b', { text: (p.mega ? 'Mega ' : '') + P.n }), el('small', { text: 'Pick 1 of ' + p.choices.length })]));
-    var shelf = el('div', { class: 'shelf' });
+    var shelf = el('div', { class: 'shelf' + (p.choices.length > 4 ? ' five' : '') });
     if (packSel >= p.choices.length) packSel = 0;
     p.choices.forEach(function (it, i) {
       var box = el('div', { class: 'sit' + (i === packSel ? ' on' : '') });
@@ -1526,9 +1544,9 @@ html,body{background:#0a0614;}
     hl.push(won ? 'Beat all 8 antes' + (S.diff === 'relaxed' ? ' on Relaxed' : '') + '!' : 'Reached ante ' + S.ante + (S.endless && S.ante > 8 ? ' in endless mode' : ''));
     if (st.best) hl.push('Biggest hand: ' + fmt(st.best) + ' with a' + (/^[AEIOU]/.test(HMAP[st.bestHand].n) ? 'n ' : ' ') + HMAP[st.bestHand].n);
     var bj = null; Object.keys(st.jt).forEach(function (k) { if (!bj || st.jt[k] > st.jt[bj]) bj = k; });
-    if (bj) hl.push('Best joker: ' + JK[bj].n + ' (fired ' + st.jt[bj] + ' times)');
+    if (bj) hl.push('Best joker: ' + JK[bj].n + ' (fired ' + st.jt[bj] + (st.jt[bj] === 1 ? ' time)' : ' times)'));
     var mp = null; Object.keys(S.plays).forEach(function (k) { if (!mp || S.plays[k] > S.plays[mp]) mp = k; });
-    if (mp) hl.push('Favorite hand: ' + HMAP[mp].n + ', played ' + S.plays[mp] + ' times');
+    if (mp) hl.push('Favorite hand: ' + HMAP[mp].n + ', played ' + S.plays[mp] + (S.plays[mp] === 1 ? ' time' : ' times'));
     if (!won && st.lostTo) hl.push('Stopped by ' + st.lostTo.name + ': ' + fmt(st.lostTo.score) + ' of ' + fmt(st.lostTo.target));
     else if (st.bosses.length) hl.push('Bosses beaten: ' + st.bosses.slice(-3).join(', '));
     if (st.earned >= 40) hl.push('Earned $' + st.earned + ' along the way');
