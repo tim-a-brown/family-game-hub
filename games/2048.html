@@ -1,279 +1,409 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>2048</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.wrap{max-width:460px;margin:0 auto;}
-.page{padding-top:14px;}
-.header{display:flex;align-items:stretch;gap:8px;margin-bottom:14px;}
-.score-box{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;text-align:center;position:relative;}
-.score-lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);}
-.score-val{font-family:var(--display);font-size:1.55rem;font-weight:800;color:var(--text);line-height:1.15;font-variant-numeric:tabular-nums;}
-.score-box.best .score-val{color:var(--gold);}
-.score-add{position:absolute;left:0;right:0;top:4px;font-family:var(--display);font-weight:800;color:var(--gold);font-size:1rem;pointer-events:none;animation:add-up .7s var(--ease) forwards;}
-@keyframes add-up{0%{opacity:0;transform:translateY(14px);}25%{opacity:1;}100%{opacity:0;transform:translateY(-18px);}}
-#new-btn{flex:0 0 auto;min-height:auto;padding:0 18px;border-radius:14px;}
-.board-wrap{position:relative;touch-action:none;-webkit-user-select:none;user-select:none;background:#3a3122;border-radius:18px;padding:10px;margin:0 auto 12px;width:100%;max-width:min(460px,calc(100dvh - 250px));min-width:min(100%,290px);box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);}
-.board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.cell{aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.07);position:relative;container-type:inline-size;}
-.tile{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:44cqw;box-shadow:0 2px 0 rgba(0,0,0,.18);}
-@keyframes appear{0%{transform:scale(.4);opacity:0;}100%{transform:scale(1);opacity:1;}}
-@keyframes merge{0%{transform:scale(1);}45%{transform:scale(1.16);}100%{transform:scale(1);}}
-.tile.new{animation:appear .18s var(--ease) .06s both;}
-.tile.merged{animation:merge .18s var(--spring);z-index:1;}
-.t2{background:#eee4da;color:#776e65;}
-.t4{background:#ede0c8;color:#776e65;}
-.t8{background:#f2b179;color:#fff;}
-.t16{background:#f59563;color:#fff;}
-.t32{background:#f67c5f;color:#fff;}
-.t64{background:#f65e3b;color:#fff;}
-.t128,.t256,.t512{font-size:36cqw;}
-.t1024,.t2048{font-size:29cqw;}
-.t128{background:#edcf72;color:#fff;box-shadow:0 0 18px rgba(237,207,114,.35);}
-.t256{background:#edcc61;color:#fff;box-shadow:0 0 20px rgba(237,204,97,.4);}
-.t512{background:#edc850;color:#fff;box-shadow:0 0 22px rgba(237,200,80,.45);}
-.t1024{background:#edc53f;color:#fff;box-shadow:0 0 26px rgba(237,197,63,.5);}
-.t2048{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);box-shadow:0 0 30px rgba(245,200,66,.6);}
-.thigh{background:#3c3a32;color:#fff;font-size:26cqw;}
-.overlay{position:absolute;inset:0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:20px;background:rgba(11,13,18,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:gn-fade .35s ease both;z-index:5;}
-.overlay.win{background:rgba(245,200,66,.28);}
-.ov-title{font-family:var(--display);font-size:2.4rem;font-weight:800;letter-spacing:-.03em;line-height:1;}
-.overlay.win .ov-title{color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.35);}
-.ov-sub{color:var(--text-2);font-weight:600;margin-bottom:12px;}
-.overlay.win .ov-sub{color:#fff;}
-.ov-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
-.status{display:none;}
-.hint{text-align:center;font-size:.82rem;color:var(--text-3);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;}
+body{overflow-x:hidden;}
+.g48{max-width:480px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;}
+.g48 > *{width:min(100%, 460px, calc(100dvh - var(--safe-t) - var(--safe-b) - 220px));min-width:min(100%,290px);}
+
+/* Brass score plaques on a wooden ledge */
+.hud{display:flex;gap:8px;align-items:stretch;margin:2px 0 12px;}
+.plaque{flex:1;min-width:0;position:relative;border-radius:12px;padding:6px 10px 7px;text-align:center;
+  background:linear-gradient(180deg,#f6e7b8,#d9b968 55%,#c39a42);color:#4a3205;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -2px 0 rgba(0,0,0,.18), 0 3px 0 #8a6420, 0 8px 16px rgba(0,0,0,.35);}
+.plaque::before,.plaque::after{content:"";position:absolute;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff6d0,#8a6420);box-shadow:0 1px 0 rgba(255,255,255,.4);}
+.plaque::before{left:6px;}.plaque::after{right:6px;}
+.plaque small{display:block;font-size:.66rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.75;}
+.plaque b{display:block;font-family:var(--display);font-weight:400;font-size:1.55rem;line-height:1.05;font-variant-numeric:tabular-nums;text-shadow:0 1px 0 rgba(255,255,255,.5);}
+.plaque .add{position:absolute;left:0;right:0;top:-4px;font-family:var(--display);font-size:1.15rem;color:#ffe08a;text-shadow:0 2px 0 rgba(0,0,0,.4);pointer-events:none;animation:addup .8s var(--ease) forwards;}
+@keyframes addup{0%{opacity:0;transform:translateY(10px);}20%{opacity:1;}100%{opacity:0;transform:translateY(-26px);}}
+.hud .icon-btn{width:52px;height:auto;border-radius:12px;background:rgba(255,255,255,.08);flex:none;display:flex;flex-direction:column;gap:1px;font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);}
+.hud .icon-btn .ico{width:22px;height:22px;}
+.hud .icon-btn:disabled{opacity:.35;}
+
+/* The tray: wooden box with a carved well */
+.tray{border-radius:22px;padding:10px;touch-action:none;-webkit-user-select:none;user-select:none;position:relative;}
+.well{--g:clamp(7px,2.4vw,11px);position:relative;border-radius:14px;padding:var(--g);aspect-ratio:1;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 2px, transparent 2px 11px),
+    linear-gradient(180deg,#3a2414,#2a180b);
+  box-shadow:inset 0 6px 14px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.08), 0 1px 0 rgba(255,255,255,.15);}
+.slots,.tiles{position:absolute;inset:var(--g);}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:var(--g);}
+.slots i{border-radius:10%;background:linear-gradient(180deg,rgba(0,0,0,.32),rgba(0,0,0,.18));box-shadow:inset 0 3px 6px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.07);}
+.tile{position:absolute;left:0;top:0;width:calc((100% - 3 * var(--g)) / 4);height:calc((100% - 3 * var(--g)) / 4);
+  transform:translate(calc(var(--x) * (100% + var(--g))), calc(var(--y) * (100% + var(--g))));
+  transition:transform .13s cubic-bezier(.3,.9,.35,1.12);will-change:transform;z-index:1;}
+.tile.gone{z-index:0;}
+.tile.top{z-index:2;}
+/* Glazed ceramic tile: rounded body, bevel, thickness underneath */
+.face{position:absolute;inset:0;border-radius:12%;display:grid;place-items:center;container-type:size;
+  --a:#f7f1e3;--b:#e9dcc0;--e:#bfae8a;--k:#6b5a43;
+  background:
+    radial-gradient(120% 70% at 30% 8%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%),
+    linear-gradient(180deg,var(--a),var(--b));
+  color:var(--k);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.65), inset 0 -3px 0 rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.06), 0 4px 0 var(--e), 0 6px 10px rgba(0,0,0,.45);
+  transform:translateY(-3px);}
+.face span{font-family:var(--display);font-weight:400;line-height:1;font-size:50cqw;letter-spacing:-.01em;text-shadow:0 1px 0 rgba(255,255,255,.35);}
+.face.d3 span{font-size:40cqw;}.face.d4 span{font-size:31cqw;}.face.d5 span{font-size:25cqw;}.face.d6 span{font-size:21cqw;}
+.face.lt span{text-shadow:0 2px 0 rgba(0,0,0,.18);}
+.v4{--a:#f5e8c6;--b:#e8d4a2;--e:#bea36a;}
+.v8{--a:#f8c28c;--b:#ee9d58;--e:#b4672a;--k:#fff;}
+.v16{--a:#f8a56c;--b:#ea7b3a;--e:#a9511b;--k:#fff;}
+.v32{--a:#f78f70;--b:#e5603f;--e:#a03b22;--k:#fff;}
+.v64{--a:#f36d4f;--b:#d43e22;--e:#8f2410;--k:#fff;}
+.v128{--a:#f7e19a;--b:#ead06a;--e:#b09232;--k:#6a4700;}
+.v256{--a:#f6da80;--b:#e7c64c;--e:#a98824;--k:#634100;}
+.v512{--a:#f5d264;--b:#e2b931;--e:#9f7c15;--k:#5c3b00;}
+.v1024{--a:#f4c84a;--b:#dca81a;--e:#94700a;--k:#553500;}
+.v2048{--a:#ffe066;--b:#f2a900;--e:#a86a00;--k:#fff;}
+.v2048{box-shadow:inset 0 2px 0 rgba(255,255,255,.75), inset 0 0 0 1px rgba(0,0,0,.06), 0 4px 0 var(--e), 0 6px 10px rgba(0,0,0,.45), 0 0 26px rgba(255,200,40,.55);}
+.v2048 span{text-shadow:0 2px 0 rgba(120,60,0,.45);}
+.vbig{--a:#4a4670;--b:#24223d;--e:#100f1f;--k:#ffd34d;}
+.vbig span{text-shadow:0 2px 0 rgba(0,0,0,.5);}
+.vbig.v8192{--a:#2f6b5c;--b:#173f35;--e:#0a221c;}
+.vbig.v16384{--a:#6b2f4a;--b:#3f1729;--e:#220a15;}
+.face.pop{animation:mpop .22s cubic-bezier(.3,1.6,.5,1);}
+@keyframes mpop{0%{transform:translateY(-3px) scale(1);}45%{transform:translateY(-5px) scale(1.17);}100%{transform:translateY(-3px) scale(1);}}
+.face.spawn{animation:spawn .24s var(--ease) both;}
+@keyframes spawn{0%{transform:translateY(-14px) scale(.55);opacity:0;}70%{opacity:1;}100%{transform:translateY(-3px) scale(1);opacity:1;}}
+.tray.bump{animation:bump .16s ease-out;}
+@keyframes bump{50%{transform:translate(var(--bx,0),var(--by,0));}}
+.tip{margin-top:12px;text-align:center;font-size:.85rem;font-weight:700;color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:6px;}
+.tip .ico{width:16px;height:16px;}
+.over{position:absolute;inset:10px;border-radius:14px;display:grid;place-items:center;background:rgba(20,12,4,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);z-index:5;animation:fade .4s both;}
+.over b{font-family:var(--display);font-weight:400;font-size:2.2rem;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.4);}
+@keyframes fade{from{opacity:0;}}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">2048</span>
-</nav>
-<div class="page"><div class="wrap">
-
-<div class="header">
-  <div class="score-box"><div class="score-lbl">Score</div><div class="score-val" id="score">0</div></div>
-  <div class="score-box best"><div class="score-lbl">Best</div><div class="score-val" id="best">0</div></div>
-  <button class="btn btn-gold" id="new-btn">New</button>
-</div>
-
-<div class="board-wrap" id="board-wrap">
-  <div class="board" id="board"></div>
-</div>
-<div class="status" id="status"></div>
-<div class="hint">Swipe the board or use arrow keys</div>
-
-</div></div>
+<main class="g48" id="app">
+  <div class="hud">
+    <div class="plaque" id="pScore"><small>Score</small><b id="score">0</b></div>
+    <div class="plaque"><small>Best</small><b id="best">0</b></div>
+    <button class="icon-btn" id="undoBtn" type="button" aria-label="Undo last move"></button>
+  </div>
+  <div class="tray wood" id="tray">
+    <div class="well" id="well"><div class="slots" id="slots"></div><div class="tiles" id="tiles"></div></div>
+  </div>
+  <div class="tip" id="tip"></div>
+</main>
 <script>
-'use strict';
-let grid=[], score=0, best=parseInt(localStorage.getItem('2048best')||'0'), won=false, over=false;
+(function () {
+  'use strict';
+  var el = Kit.el, $ = function (id) { return document.getElementById(id); };
+  var SAVE = '2048_state', BEST = '2048best', HKEY = '2048';
 
-function newGame(){
-  grid=Array.from({length:4},()=>Array(4).fill(0));
-  score=0;won=false;over=false;
-  addRandom();addRandom();
-  render();
-  document.getElementById('status').textContent='';
-  hideOverlay();
-}
+  Kit.init({
+    id: '2048',
+    theme: { wood: ['#7d4a24', '#4f2c12'] },
+    onNew: function () { abandon(); start(); },
+    undo: function () { undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: '2048: past games', extra: miniBoard }); } }],
+    rules:
+      '<p class="goal">Slide the tiles to join matching numbers. Make a <b>2048</b> tile to win, then keep going as far as you can.</p>' +
+      '<h3>How it works</h3><ul>' +
+      '<li><b>Swipe</b> up, down, left or right (or use the <b>arrow keys</b>). Every tile slides as far as it can that way.</li>' +
+      '<li>Two tiles with the <b>same number</b> that bump into each other join into one: 2 + 2 = 4, 4 + 4 = 8, and so on.</li>' +
+      '<li>A tile can only join once per move. If three match in a row, the two nearest the wall join first.</li>' +
+      '<li>After every move a new <b>2</b> (sometimes a <b>4</b>) appears in an empty space.</li></ul>' +
+      '<h3>Score</h3><p>Each join adds the new tile\'s number to your score. Make 64 from two 32s and you get 64 points.</p>' +
+      '<h3>Game over</h3><p>When the board is full and nothing can join, the game ends. You can <b>undo</b> your last move once if you slip.</p>' +
+      '<h3>Tips</h3><ul><li>Keep your biggest tile in a corner.</li><li>Try to use only two or three directions.</li></ul>'
+  });
 
-function addRandom(){
-  const empty=[];
-  for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(!grid[r][c])empty.push([r,c]);
-  if(!empty.length)return;
-  const[r,c]=empty[Math.floor(Math.random()*empty.length)];
-  grid[r][c]=Math.random()<0.9?2:4;
-  return[r,c];
-}
-
-function slide(row){
-  const arr=row.filter(v=>v);
-  const merged=[];
-  let i=0;
-  while(i<arr.length){
-    if(i+1<arr.length&&arr[i]===arr[i+1]){merged.push({val:arr[i]*2,m:true});i+=2;}
-    else{merged.push({val:arr[i],m:false});i++;}
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S.cells[16] = {id, v} or null, row by row
+  var S = null, U = null, busy = null, nextId = 1;
+  function bestStored() {
+    var b = parseInt(localStorage.getItem(BEST) || '0', 10) || 0;
+    try { GameHistory.load(HKEY).forEach(function (e) { if (e && typeof e.score === 'number' && e.score > b) b = e.score; }); } catch (e) {}
+    return b;
   }
-  while(merged.length<4)merged.push({val:0,m:false});
-  return merged;
-}
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U })); } catch (e) {}
+    if (!S.over && S.moves) Kit.resume.set(S.score.toLocaleString() + ' points · ' + maxTile() + ' tile'); else Kit.resume.clear();
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function maxTile() { var m = 0; S.cells.forEach(function (c) { if (c && c.v > m) m = c.v; }); return m; }
+  function empties() { var a = []; S.cells.forEach(function (c, i) { if (!c) a.push(i); }); return a; }
+  function spawn() {
+    var e = empties(); if (!e.length) return null;
+    var i = e[Math.floor(Math.random() * e.length)];
+    S.cells[i] = { id: nextId++, v: Math.random() < 0.9 ? 2 : 4 };
+    return i;
+  }
 
-function move(dir){
-  if(over)return false;
-  let moved=false;
-  const newGrid=Array.from({length:4},()=>Array(4).fill(0));
-  const mergedAt=[];
+  function start() {
+    S = { cells: [], score: 0, moves: 0, undos: 0, won: false, wonAt: 0, over: false, started: Date.now(), marks: {}, biggestMerge: 0, best0: bestStored() };
+    for (var i = 0; i < 16; i++) S.cells.push(null);
+    U = null; spawn(); spawn();
+    Kit.gameStart();
+    paint(true); save();
+  }
 
-  if(dir==='left'||dir==='right'){
-    for(let r=0;r<4;r++){
-      let row=grid[r].slice();
-      if(dir==='right')row.reverse();
-      const res=slide(row);
-      for(let c=0;c<4;c++){
-        const idx=dir==='right'?3-c:c;
-        const v=res[c].val;
-        newGrid[r][idx]=v;
-        if(v&&v!==grid[r][idx])moved=true;
-        if(res[c].m)mergedAt.push([r,idx]);
-        if(v)score+=res[c].m?v:0;
+  // ── Moving ────────────────────────────────────────────────────────────────
+  // Lines are read from the wall the tiles move toward.
+  function lines(dir) {
+    var L = [];
+    for (var a = 0; a < 4; a++) {
+      var line = [];
+      for (var b = 0; b < 4; b++) {
+        var r, c;
+        if (dir === 'left') { r = a; c = b; }
+        else if (dir === 'right') { r = a; c = 3 - b; }
+        else if (dir === 'up') { r = b; c = a; }
+        else { r = 3 - b; c = a; }
+        line.push(r * 4 + c);
       }
+      L.push(line);
     }
-  } else {
-    for(let c=0;c<4;c++){
-      let col=[grid[0][c],grid[1][c],grid[2][c],grid[3][c]];
-      if(dir==='down')col.reverse();
-      const res=slide(col);
-      for(let r=0;r<4;r++){
-        const idx=dir==='down'?3-r:r;
-        const v=res[r].val;
-        newGrid[idx][c]=v;
-        if(v&&v!==grid[idx][c])moved=true;
-        if(res[r].m)mergedAt.push([idx,c]);
-        if(v)score+=res[r].m?v:0;
-      }
+    return L;
+  }
+  function canMove() {
+    if (empties().length) return true;
+    for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) {
+      var v = S.cells[r * 4 + c].v;
+      if (c < 3 && S.cells[r * 4 + c + 1].v === v) return true;
+      if (r < 3 && S.cells[(r + 1) * 4 + c].v === v) return true;
     }
+    return false;
   }
-  if(!moved)return false;
-  const gained=mergedAt.reduce((t,[r,c])=>t+newGrid[r][c],0);
-  grid=newGrid;
-  GN.haptic(mergedAt.length?'medium':'light');
-  if(gained)showAdd(gained);
-  if(score>best){best=score;localStorage.setItem('2048best',best);}
-  const newCell=addRandom();
-  render(newCell,mergedAt);
-  checkEnd();
-  return true;
-}
-
-function checkEnd(){
-  if(grid.flat().includes(2048)&&!won){
-    won=true;
-    document.getElementById('status').textContent='You reached 2048! Keep going!';
-    GN.haptic('success');
-    showOverlay('win','You win!','You reached 2048 · '+score+' pts',[
-      {label:'Keep going',cls:'btn-gold',fn:hideOverlay},
-      {label:'New game',cls:'btn-outline',fn:startNew}]);
-    return;
+  function move(dir) {
+    if (!S || S.over || document.querySelector('.k-scrim,.k-win')) return;
+    flush();
+    var before = JSON.stringify(S), cells = S.cells.slice(), out = [], moved = false, gained = 0, merges = [], gone = [];
+    for (var i = 0; i < 16; i++) out.push(null);
+    lines(dir).forEach(function (line) {
+      var k = 0, last = null; // last = target index holding a tile that can still merge
+      line.forEach(function (idx) {
+        var t = cells[idx]; if (!t) return;
+        if (last !== null && out[last].v === t.v && !out[last].m) {
+          var nv = t.v * 2;
+          gone.push({ id: t.id, to: last });
+          out[last] = { id: out[last].id, v: nv, m: true, from: out[last].from };
+          merges.push(last); gained += nv; moved = true;
+          last = null;
+        } else {
+          var to = line[k++];
+          out[to] = { id: t.id, v: t.v, from: idx };
+          if (to !== idx) moved = true;
+          last = to;
+        }
+      });
+    });
+    if (!moved) { nudge(dir); return; }
+    U = before;
+    S.cells = out.map(function (t) { return t ? { id: t.id, v: t.v } : null; });
+    S.score += gained; S.moves++;
+    merges.forEach(function (i) { if (S.cells[i].v > S.biggestMerge) S.biggestMerge = S.cells[i].v; });
+    var born = spawn();
+    animate(gone, merges, born);
+    Kit.sfx(merges.length ? 'pop' : 'tap'); Kit.haptic(merges.length ? 'medium' : 'tick');
+    if (gained) floatAdd(gained);
+    afterMove();
   }
-  // Check moves available
-  for(let r=0;r<4;r++)for(let c=0;c<4;c++){
-    if(!grid[r][c])return;
-    if(c<3&&grid[r][c]===grid[r][c+1])return;
-    if(r<3&&grid[r][c]===grid[r+1][c])return;
+  function afterMove() {
+    var m = maxTile();
+    [512, 1024].forEach(function (v) { if (m >= v && !S.marks[v]) { S.marks[v] = S.moves; Kit.callout(String(v) + '!'); Kit.sfx('good'); } });
+    if (m >= 2048 && !S.won) { S.won = true; S.wonAt = S.moves; S.marks[2048] = S.moves; setTimeout(reached2048, 380); }
+    [4096, 8192, 16384, 32768].forEach(function (v) { if (m >= v && !S.marks[v]) { S.marks[v] = S.moves; Kit.callout(String(v) + '!'); Kit.sfx('win'); Kit.confetti(); } });
+    if (S.score > (parseInt(localStorage.getItem(BEST) || '0', 10) || 0)) try { localStorage.setItem(BEST, String(S.score)); } catch (e) {}
+    if (!canMove()) { S.over = true; save(); setTimeout(gameOver, 650); }
+    else save();
+    updHud();
   }
-  over=true;
-  document.getElementById('status').textContent='Game over!';
-  GN.haptic('error');
-  showOverlay('lose','Game over',`Score ${score}${score>=best&&score>0?' · New best!':''}`,[
-    {label:'Try again',cls:'btn-gold',fn:startNew}]);
-}
-
-function tileClass(v){
-  if(v<=4)return`t${v}`;
-  if(v<=64)return`t${v}`;
-  if(v<=2048)return`t${v}`;
-  return'thigh';
-}
-
-function render(newCell, mergedAt=[]){
-  const board=document.getElementById('board');
-  board.innerHTML='';
-  for(let r=0;r<4;r++){
-    for(let c=0;c<4;c++){
-      const cell=document.createElement('div');
-      cell.className='cell';
-      const v=grid[r][c];
-      if(v){
-        const tile=document.createElement('div');
-        tile.className='tile '+tileClass(v);
-        tile.textContent=v;
-        const isNew=newCell&&newCell[0]===r&&newCell[1]===c;
-        const isMerged=mergedAt.some(([mr,mc])=>mr===r&&mc===c);
-        if(isNew)tile.classList.add('new');
-        if(isMerged)tile.classList.add('merged');
-        cell.appendChild(tile);
-      }
-      board.appendChild(cell);
-    }
+  function nudge(dir) {
+    var t = $('tray'), d = 5;
+    t.style.setProperty('--bx', (dir === 'left' ? -d : dir === 'right' ? d : 0) + 'px');
+    t.style.setProperty('--by', (dir === 'up' ? -d : dir === 'down' ? d : 0) + 'px');
+    t.classList.remove('bump'); void t.offsetWidth; t.classList.add('bump');
   }
-  document.getElementById('score').textContent=score;
-  document.getElementById('best').textContent=best;
-}
+  function undo() {
+    if (!U) { Kit.toast(S && S.moves ? 'You can only undo one move' : 'Nothing to undo'); return; }
+    flush();
+    var undos = S.undos + 1, keep = S.marks;
+    S = JSON.parse(U); U = null; S.undos = undos;
+    Object.keys(keep).forEach(function (k) { if (S.marks[k] == null && maxTile() >= +k) S.marks[k] = keep[k]; });
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    var o = $('tiles').querySelector('.over'); if (o) o.remove();
+    paint(true); save();
+  }
 
-function showAdd(n){
-  const box=document.getElementById('score').parentElement;
-  const el=document.createElement('div');el.className='score-add';el.textContent='+'+n;
-  box.appendChild(el);setTimeout(()=>el.remove(),700);
-}
-function hideOverlay(){document.querySelector('#board-wrap .overlay')?.remove();}
-function showOverlay(kind,title,sub,acts){
-  hideOverlay();
-  const ov=document.createElement('div');ov.className='overlay '+kind;
-  ov.innerHTML=`<div class="ov-title">${title}</div><div class="ov-sub">${sub}</div><div class="ov-acts"></div>`;
-  acts.forEach(a=>{const b=document.createElement('button');b.className='btn '+a.cls;b.textContent=a.label;
-    b.addEventListener('click',a.fn);ov.querySelector('.ov-acts').appendChild(b);});
-  document.getElementById('board-wrap').appendChild(ov);
-}
-function startNew(){try{sessionStorage.removeItem('g2048');}catch(e){}newGame();}
+  // ── Endings & history ─────────────────────────────────────────────────────
+  function reached2048() {
+    Kit.callout('2048!');
+    Kit.win({
+      title: 'You made 2048!', sub: 'On move ' + S.wonAt + ' with ' + S.score.toLocaleString() + ' points. Keep going for 4096?',
+      againLabel: 'Keep going', again: function () {},
+      extra: [{ label: 'New game', onClick: function () { abandon(); start(); } }],
+      closeLabel: 'Keep going later', onClose: function () {}
+    });
+    save();
+  }
+  function highlights(ended) {
+    var m = maxTile(), hl = [];
+    if (m >= 4096) hl.push('Reached the ' + m + ' tile');
+    else if (m >= 2048) hl.push('Made the 2048 tile on move ' + S.wonAt);
+    else hl.push('Biggest tile: ' + m);
+    if (S.score > S.best0 && S.best0 > 0) hl.push('New best score: ' + S.score.toLocaleString() + ' (old best ' + S.best0.toLocaleString() + ')');
+    else if (S.score > S.best0) hl.push('First game on the board: ' + S.score.toLocaleString() + ' points');
+    if (S.marks[1024] && m < 2048) hl.push('Built a 1024 on move ' + S.marks[1024]);
+    if (S.won && S.moves > S.wonAt) hl.push('Kept going ' + (S.moves - S.wonAt) + ' moves past 2048');
+    hl.push(S.moves + ' moves' + (S.undos ? ', ' + S.undos + (S.undos === 1 ? ' undo' : ' undos') : ', no undos'));
+    if (ended === 'quit') hl.push('Started a new game before the board filled up');
+    return hl.slice(0, 6);
+  }
+  function record(ended) {
+    var m = maxTile();
+    Kit.record(HKEY, {
+      started: S.started, mode: m >= 2048 ? 'Made 2048' : 'Best tile ' + m,
+      players: [{ name: 'You', score: S.score }], winner: m >= 2048 ? 'You' : null,
+      summary: S.score.toLocaleString() + ' points · ' + m + ' tile', badge: String(m),
+      highlights: highlights(ended),
+      meta: { score: S.score, maxTile: m, moves: S.moves, undos: S.undos, cells: S.cells.map(function (c) { return c ? c.v : 0; }) }
+    });
+  }
+  function abandon() {
+    if (S && !S.over && S.moves >= 25) record('quit');
+    clearSave();
+  }
+  function gameOver() {
+    var m = maxTile(), newBest = S.score > S.best0 && S.best0 > 0;
+    record('over'); clearSave();
+    var ov = el('div', { class: 'over' }, [el('b', { text: 'No more moves' })]);
+    $('tiles').appendChild(ov);
+    setTimeout(function () {
+      Kit.win({
+        icon: m >= 2048 || newBest ? 'trophy' : 'star', lose: !(m >= 2048 || newBest),
+        title: newBest ? 'New best score!' : m >= 2048 ? 'What a run!' : 'Game over',
+        sub: S.score.toLocaleString() + ' points · biggest tile ' + m + (newBest ? ' (old best ' + S.best0.toLocaleString() + ')' : ''),
+        againLabel: 'New game', again: start,
+        extra: [{ label: 'Past games', onClick: function () { Kit.history(HKEY, { title: '2048: past games', extra: miniBoard }); } }]
+      });
+    }, 900);
+  }
+  function miniBoard(e) {
+    if (!e || !Array.isArray(e.cells)) return null;
+    var g = el('div', { style: { display: 'grid', 'grid-template-columns': 'repeat(4,34px)', gap: '4px', padding: '6px', 'border-radius': '10px', background: '#2a180b', width: 'max-content' } });
+    e.cells.forEach(function (v) {
+      var f = el('div', { class: 'face' + (v ? ' ' + vcls(v) : ''), style: { position: 'relative', width: '34px', height: '34px', transform: 'none', 'box-shadow': v ? '0 2px 0 var(--e)' : 'inset 0 2px 4px rgba(0,0,0,.5)', background: v ? '' : 'rgba(0,0,0,.25)' } });
+      if (v) f.appendChild(el('span', { text: String(v) }));
+      g.appendChild(f);
+    });
+    return g;
+  }
 
-// Keyboard
-document.addEventListener('keydown',e=>{
-  const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
-  if(map[e.key]){e.preventDefault();move(map[e.key]);}
-});
+  // ── Drawing ───────────────────────────────────────────────────────────────
+  var els = {}; // id -> tile element
+  function vcls(v) { var d = String(v).length; return 'v' + v + (v > 2048 ? ' vbig' : '') + (d > 2 ? ' d' + d : '') + (v >= 8 ? ' lt' : ''); }
+  function tileEl(t, i) {
+    var n = el('div', { class: 'tile' }), f = el('div', { class: 'face ' + vcls(t.v) }, [el('span', { text: String(t.v) })]);
+    n.appendChild(f); pos(n, i); $('tiles').appendChild(n); els[t.id] = n; return n;
+  }
+  function pos(n, i) { n.style.setProperty('--x', i % 4); n.style.setProperty('--y', Math.floor(i / 4)); }
+  function setVal(n, v) { var f = n.firstChild; f.className = 'face ' + vcls(v); f.firstChild.textContent = String(v); }
+  function paint(instant) {
+    var box = $('tiles'); box.innerHTML = ''; els = {};
+    S.cells.forEach(function (t, i) { if (t) tileEl(t, i); });
+    updHud();
+  }
+  // Slide every tile to its new home, then merge and drop in the new tile.
+  function animate(gone, merges, born) {
+    var live = {};
+    S.cells.forEach(function (t, i) {
+      if (!t) return; live[t.id] = true;
+      if (els[t.id] && i !== born) { pos(els[t.id], i); els[t.id].classList.remove('top'); }
+    });
+    gone.forEach(function (g) { var n = els[g.id]; if (n) { n.classList.add('gone'); pos(n, g.to); delete els[g.id]; n._dead = true; } });
+    merges.forEach(function (i) { var n = els[S.cells[i].id]; if (n) n.classList.add('top'); });
+    busy = function () {
+      busy = null;
+      $('tiles').querySelectorAll('.tile').forEach(function (n) { if (n._dead) n.remove(); });
+      merges.forEach(function (i) {
+        var t = S.cells[i], n = els[t.id]; if (!n) return;
+        setVal(n, t.v); var f = n.firstChild; f.classList.remove('pop'); void f.offsetWidth; f.classList.add('pop');
+      });
+      if (born != null && S.cells[born]) { var b = tileEl(S.cells[born], born); b.firstChild.classList.add('spawn'); }
+    };
+    busy.t = setTimeout(function () { if (busy) busy(); }, 125);
+  }
+  function flush() { if (busy) { clearTimeout(busy.t); busy(); } }
+  function updHud() {
+    $('score').textContent = S.score.toLocaleString();
+    $('best').textContent = Math.max(S.score, S.best0).toLocaleString();
+    $('undoBtn').disabled = !U;
+  }
+  function floatAdd(n) {
+    var a = el('span', { class: 'add', text: '+' + n }); $('pScore').appendChild(a);
+    setTimeout(function () { a.remove(); }, 800);
+  }
 
-// Swipe (pointer events — works for touch, pen and mouse drags on the board)
-const bw=document.getElementById('board-wrap');
-let sx=null,sy=null,sid=null;
-bw.addEventListener('pointerdown',e=>{
-  if(e.target.closest('.overlay'))return;
-  sx=e.clientX;sy=e.clientY;sid=e.pointerId;
-});
-function endSwipe(e){
-  if(sid===null||e.pointerId!==sid)return;
-  const dx=e.clientX-sx,dy=e.clientY-sy;sid=null;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
-  if(Math.abs(dx)>Math.abs(dy))move(dx>0?'right':'left');
-  else move(dy>0?'down':'up');
-}
-bw.addEventListener('pointerup',endSwipe);
-bw.addEventListener('pointercancel',()=>{sid=null;});
-// Stop the page from scrolling/bouncing while swiping on the board (iOS)
-bw.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+  // ── Input ─────────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) { if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); } return; }
+    var map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down' };
+    if (map[e.key]) { e.preventDefault(); move(map[e.key]); }
+    else if (e.key === 'u' || e.key === 'Backspace') undo();
+  });
+  var tray = $('tray'), sx = 0, sy = 0, sid = null, fired = false;
+  tray.addEventListener('pointerdown', function (e) { sid = e.pointerId; sx = e.clientX; sy = e.clientY; fired = false; });
+  // Fire as soon as the swipe is clear, so it feels immediate
+  tray.addEventListener('pointermove', function (e) {
+    if (sid !== e.pointerId || fired) return;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 28) return;
+    fired = true; move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+  function endSwipe(e) {
+    if (sid !== e.pointerId) return;
+    sid = null; if (fired) return;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  }
+  tray.addEventListener('pointerup', endSwipe);
+  tray.addEventListener('pointercancel', function () { sid = null; });
+  tray.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+  $('undoBtn').innerHTML = Kit.icon('undo') + '<span>Undo</span>';
+  $('undoBtn').addEventListener('click', undo);
+  $('tip').innerHTML = (matchMedia('(pointer:coarse)').matches ? Kit.icon('hand') + '<span>Swipe the tray to slide the tiles</span>' : '<span>Use the arrow keys or drag the tray</span>');
+  var slots = $('slots'); for (var i = 0; i < 16; i++) slots.appendChild(document.createElement('i'));
 
-document.getElementById('new-btn').addEventListener('click',()=>{
-  if(!over&&score>0)GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New game'}).then(ok=>{if(ok)startNew();});
-  else startNew();
-});
+  // Test hook: set the board from 16 numbers (0 = empty)
+  window.__g2048 = {
+    get: function () { return S; },
+    set: function (vals, score) { flush(); vals.forEach(function (v, i) { S.cells[i] = v ? { id: nextId++, v: v } : null; }); if (score != null) S.score = score; U = null; paint(true); save(); }
+  };
 
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_g2048(){if(over){try{sessionStorage.removeItem('g2048');}catch(e){}return;}
-  try{sessionStorage.setItem('g2048',JSON.stringify({grid,score,won,over,_ts:Date.now()}));}catch(e){}
-}
-function _load_g2048(){
-  try{
-    const raw=sessionStorage.getItem('g2048');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    grid=s.grid;score=s.score;won=s.won||false;over=s.over||false;
-    if(!Array.isArray(grid)||grid.length!==4)return false;
-    render();
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_g2048);
-window.addEventListener('pagehide',_save_g2048);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')_save_g2048();});
-if(!_load_g2048())newGame();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (!saved) { // one-time pick-up from the old version's session save
+    try { var old = JSON.parse(sessionStorage.getItem('g2048')); if (old && old.grid && !old.over) {
+      var cells = []; old.grid.forEach(function (row) { row.forEach(function (v) { cells.push(v ? { id: 0, v: v } : null); }); });
+      saved = { S: { cells: cells, score: old.score || 0, moves: 1, undos: 0, won: !!old.won, wonAt: 0, over: false, started: Date.now(), marks: old.won ? { 2048: 0 } : {}, biggestMerge: 0, best0: bestStored() }, U: null };
+      sessionStorage.removeItem('g2048');
+    } } catch (e) {}
+  }
+  if (saved && saved.S && Array.isArray(saved.S.cells) && saved.S.cells.length === 16 && !saved.S.over) {
+    S = saved.S; U = saved.U || null;
+    S.cells.forEach(function (c) { if (c) c.id = nextId++; });
+    if (U) { var u = JSON.parse(U); u.cells.forEach(function (c) { if (c) c.id = nextId++; }); U = JSON.stringify(u); }
+    paint(true); save();
+  } else start();
+})();
 </script>
 </body>
 </html>
