@@ -20,6 +20,9 @@ html.ar-on body{display:flex;flex-direction:column;
 html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 10px);display:flex;}
 .pm-view{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
 .pm-view[hidden]{display:none;}
+.pm-view{touch-action:none;}
+.pm-view.nopad{justify-content:flex-start;padding-top:4px;}
+.pm-view.nopad .hint{display:block;margin-top:auto;padding-bottom:6px;}
 .hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
 .plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
   background:linear-gradient(180deg,#1d1838,#100c22);box-shadow:inset 0 0 0 1.5px rgba(255,214,90,.28),0 6px 14px rgba(0,0,0,.35);}
@@ -882,7 +885,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
         choices: [[3, '3 lives', 'Same as the real arcade game.'], [5, '5 lives', 'Two extra tries, good for learning the maze.']], value: 3 }
     ];
     if (TOUCH) opts.push({ id: 'pad', label: 'Controls', help: 'You can always swipe on the maze to steer.',
-      choices: [['pad', 'Swipe + pad', 'A round joystick pad under the maze, too.'], ['swipe', 'Swipe only', 'No pad, so the maze is a bit bigger.']], value: 'pad' });
+      choices: [['pad', 'Swipe + pad', 'A round joystick pad under the maze, too.'], ['swipe', 'Swipe only', 'No pad. Swipe anywhere on the screen.']], value: 'pad' });
     Kit.setup($('app'), {
       intro: 'Eat every dot, dodge Blinky, Pinky, Inky and Clyde',
       options: opts,
@@ -907,6 +910,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     document.documentElement.classList.add('ar-on');
     v.hidden = false; app.appendChild(v);
     $('pad').parentNode.style.display = G.pad ? '' : 'none';
+    v.classList.toggle('nopad', !G.pad);
+    v.querySelector('.hint').textContent = TOUCH ? 'Swipe anywhere to steer' : 'Arrow keys or WASD to steer · P to pause';
     fit();
   }
   function startGame(cfg, saved) {
@@ -946,20 +951,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // Swipe on the maze: turn as soon as the finger has moved far enough, then
   // keep tracking from there so a long drag can make several turns.
   var sw = null;
-  scr.addEventListener('pointerdown', function (e) {
-    if (e.target.closest('.ov')) return;
+  var viewEl = $('view');
+  viewEl.addEventListener('pointerdown', function (e) {
+    if (e.target.closest('.ov, .pad, button')) return;
     if (G && phase === 'cut') { G.pt = 1; return; }
     sw = { id: e.pointerId, x: e.clientX, y: e.clientY };
   });
-  scr.addEventListener('pointermove', function (e) {
+  viewEl.addEventListener('pointermove', function (e) {
     if (!sw || sw.id !== e.pointerId) return;
     var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
     if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
     steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 3 : 1) : (dy > 0 ? 2 : 0));
     sw.x = e.clientX; sw.y = e.clientY;
   });
-  ['pointerup', 'pointercancel'].forEach(function (t) { scr.addEventListener(t, function () { sw = null; }); });
-  scr.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+  ['pointerup', 'pointercancel'].forEach(function (t) { viewEl.addEventListener(t, function () { sw = null; }); });
+  viewEl.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
   // Pad: works like a 4-way joystick; touch or drag toward a direction.
   var pad = $('pad'), nub = $('nub'), padId = null;
   function padAt(e) {
@@ -1014,7 +1020,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     rules:
       '<p class="goal">Eat every dot in the maze without getting caught by a ghost. Clear the maze to go to the next level.</p>' +
       '<p>You start with 3 lives (or 5 if you pick that before the game). A ghost touching you costs one life.</p>' +
-      '<h3>Moving</h3><ul><li><b>Swipe</b> on the maze, or drag the round pad, to steer. You can swipe a little <b>before</b> a corner: Pac-Man turns as soon as the path opens.</li>' +
+      '<h3>Moving</h3><ul><li><b>Swipe</b> on the screen, or drag the round pad, to steer. You can swipe a little <b>before</b> a corner: Pac-Man turns as soon as the path opens.</li>' +
       '<li>On a computer, use the <b>arrow keys</b> or <b>WASD</b>. <b>P</b> pauses.</li>' +
       '<li>The tunnels on the left and right sides take you to the other side. Ghosts slow down in them.</li></ul>' +
       '<h3>Points</h3><ul><li>Dot: <b>10</b>. Power pellet: <b>50</b>.</li><li>After a power pellet the ghosts turn blue and run away. Eat them for <b>200, 400, 800</b> and <b>1,600</b> points. They flash when they are about to turn back.</li>' +

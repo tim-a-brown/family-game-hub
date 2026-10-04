@@ -79,7 +79,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var FW = 360, FH = 430;
   // Cube geometry (isometric): top diamond half-width HW, half-height TH, side height SH
   var W = 44, HW = 22, TH = 12, SH = 26, DY = TH + SH, AX = FW / 2, AY = 100;
-  var ROWS = 7, NCUBES = 28;
+  var ROWS = 7, NCUBES = 28, CS = 1.2; // CS: creature scale
   var TICK = 1 / 120;
   var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var DIRS = { ul: [-1, -1], ur: [-1, 0], dl: [1, 0], dr: [1, 1] };
@@ -230,7 +230,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     enemies = []; G.lure = null; G.freeze = 0; G.spawnT = 2.2 * pace(); G.spawned = 0; G.greens = 0;
     G.roundDeaths = 0; G.roundStart = G.score;
     placeQ(0, 0);
-    q.y -= 90; startHop(q, 0, 0, 0.45, 0); q.hop.fr = 0; q.hop.fc = 0;
+    q.y -= 90; startHop(q, 0, 0, 0.45, 0); q.hop.fr = 0; q.hop.fc = 0; q.hop.drop = true;
     G.phase = 'play';
     var R = rule();
     if (G.round === 1 || fresh) fx.banner = { text: 'LEVEL ' + G.level, sub: G.round === 1 ? R.hint : 'Round ' + G.round, c: '#ffb347', life: 2.6, max: 2.6 };
@@ -290,7 +290,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var ri = G.ri, opts = [];
     var cap = Math.min(5, 3 + Math.floor((ri - 1) / 4));
     if (count(['red', 'purple', 'egg', 'coily', 'green', 'slick', 'sam', 'ugg', 'wrong']) >= cap) return;
-    if (!count(['purple', 'egg', 'coily']) && G.spawned >= 1) opts.push(['purple', 3]);
+    if (!count(['purple', 'egg', 'coily']) && G.spawned >= 1) opts.push(['purple', G.sinceCoily >= 2 ? 50 : 3]);
     if (count(['red']) < Math.min(3, 1 + Math.floor(ri / 3))) opts.push(['red', 4]);
     if (ri >= 2 && !count(['green']) && G.greens < 2) opts.push(['green', 1]);
     if (ri >= 3 && !count(['slick', 'sam'])) opts.push([Math.random() < 0.5 ? 'slick' : 'sam', 1.6]);
@@ -315,6 +315,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (e.kind === 'top') e.drop = { t: 0, y0: p.y - 190, dur: 0.5 };
     else e.drop = { t: 0, fade: true, dur: 0.45, x0: p.x + (e.type === 'ugg' ? 50 : -50) };
     if (e.type === 'green') G.greens++;
+    if (e.type === 'purple') G.sinceCoily = 0; else G.sinceCoily = (G.sinceCoily || 0) + 1;
     if (e.type === 'ugg' || e.type === 'wrong') G.stats.uggSeen = true;
     G.spawned++;
     enemies.push(e);
@@ -421,11 +422,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!tryHop(dir)) { if (q.hop && q.hop.t > 0.2) q.buf = dir; }
   }
   function landQ() {
-    var r = q.hop.tr, c = q.hop.tc;
+    var r = q.hop.tr, c = q.hop.tc, dropIn = q.hop.drop;
     q.hop = null; q.r = r; q.c = c; q.squash = 1;
     if (onBoard(r, c)) {
       q.lastOn = { r: r, c: c }; q.cool = 0.05;
-      paint(r, c);
+      if (!dropIn) paint(r, c);
       return;
     }
     var d = discAt(r, c);
@@ -524,7 +525,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.lives <= 0) { G.phase = 'over'; G.overT = 0; save(); return; }
     var h = q.home || { r: 0, c: 0 };
     placeQ(h.r, h.c); q.lastOn = { r: h.r, c: h.c };
-    q.y -= 120; startHop(q, h.r, h.c, 0.4, 0); q.hop.fr = h.r; q.hop.fc = h.c;
+    q.y -= 120; startHop(q, h.r, h.c, 0.4, 0); q.hop.fr = h.r; q.hop.fc = h.c; q.hop.drop = true;
     q.grace = 1.4;
     G.phase = 'play'; G.spawnT = 2.0 * pace();
     save();
@@ -702,7 +703,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     wrapEl.addEventListener('pointermove', function (e) {
       if (!sw || sw.id !== e.pointerId) return;
       var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
-      if (Math.abs(dx) < 16 || Math.abs(dy) < 10) { if (Math.hypot(dx, dy) < 26) return; }
+      if (Math.hypot(dx, dy) < (sw.fired ? 44 : 22)) return;
       input((dy < 0 ? 'u' : 'd') + (dx < 0 ? 'l' : 'r'));
       sw.x = e.clientX; sw.y = e.clientY; sw.fired = true;
     });
@@ -821,7 +822,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       Kit.win({
         lose: !best, icon: best ? 'trophy' : 'meh',
         title: best ? 'New high score!' : 'Game over',
-        sub: fmt(sc) + ' points · reached level ' + lvl + ', round ' + rd,
+        sub: fmt(sc) + ' points · level ' + lvl + ', round ' + rd,
         again: function () { startGame({ who: who, startLevel: sl, pace: pc }); }, againLabel: 'Play again',
         extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show('cubehopper', 'Q*bert'); showSetup(); } }, { label: 'Change settings', onClick: showSetup }]
       });
@@ -936,7 +937,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function drawQbert(x, y, face, squash, alpha) {
     var flip = face === 'dl' || face === 'ul', back = face[0] === 'u';
     g.save(); g.translate(x, y); g.globalAlpha = alpha == null ? 1 : alpha;
-    if (flip) g.scale(-1, 1);
+    g.scale(CS, CS); if (flip) g.scale(-1, 1);
     g.scale(1 + squash * 0.14, 1 - squash * 0.18);
     // legs and shoes
     g.lineCap = 'round'; g.strokeStyle = '#d9620f'; g.lineWidth = 3.4;
@@ -971,7 +972,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.restore();
   }
   function ball(x, y, col, r, squash, glow) {
-    g.save(); g.translate(x, y); g.scale(1 + squash * 0.18, 1 - squash * 0.22);
+    g.save(); g.translate(x, y); g.scale(CS, CS); g.scale(1 + squash * 0.18, 1 - squash * 0.22);
     if (glow) { g.shadowColor = col; g.shadowBlur = glow; }
     var gr = g.createRadialGradient(-r * 0.35, -r - r * 0.4, r * 0.15, 0, -r, r);
     gr.addColorStop(0, shade(col, 0.6)); gr.addColorStop(0.5, col); gr.addColorStop(1, shade(col, -0.5));
@@ -982,7 +983,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function drawCoily(e) {
     var lookR = q && q.x > e.x ? 1 : -1;
-    g.save(); g.translate(e.x, e.y); g.scale(1 + e.squash * 0.1, 1 - e.squash * 0.25);
+    g.save(); g.translate(e.x, e.y); g.scale(CS, CS); g.scale(1 + e.squash * 0.1, 1 - e.squash * 0.25);
     var P = '#a24fe0', D = '#5c1f8a';
     [[0, -4, 9.5, 4.6], [0.6, -10.5, 8.6, 4.3], [-0.4, -16.5, 7.6, 4]].forEach(function (s) {
       g.fillStyle = D; g.beginPath(); g.ellipse(s[0], s[1] + 1.2, s[2], s[3], 0, 0, Math.PI * 2); g.fill();
@@ -1004,7 +1005,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function drawGremlin(e) {
     var flip = e.face === 'dl' || e.face === 'ul';
-    g.save(); g.translate(e.x, e.y); if (flip) g.scale(-1, 1); g.scale(1 + e.squash * 0.12, 1 - e.squash * 0.2);
+    g.save(); g.translate(e.x, e.y); g.scale(CS, CS); if (flip) g.scale(-1, 1); g.scale(1 + e.squash * 0.12, 1 - e.squash * 0.2);
     g.strokeStyle = '#2e8f2e'; g.lineWidth = 2.6; g.lineCap = 'round';
     g.beginPath(); g.moveTo(-3, -6); g.lineTo(-4, -1.5); g.moveTo(3, -6); g.lineTo(4, -1.5); g.stroke();
     g.fillStyle = '#1d5a1d'; g.beginPath(); g.ellipse(-4.2, -1.2, 3.2, 1.7, 0, 0, Math.PI * 2); g.ellipse(4.8, -1.2, 3.2, 1.7, 0, 0, Math.PI * 2); g.fill();
@@ -1028,7 +1029,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // Ugg and Wrongway hug the side faces, so they're drawn sideways
   function drawSider(e) {
     var isUgg = e.type === 'ugg';
-    g.save(); g.translate(e.x, e.y);
+    g.save(); g.translate(e.x, e.y); g.scale(CS, CS);
     g.rotate(isUgg ? Math.PI / 2 - 0.5 : -Math.PI / 2 + 0.5);
     g.scale(1 + e.squash * 0.1, 1 - e.squash * 0.18);
     var P = isUgg ? '#8e3fc9' : '#b05ae8';

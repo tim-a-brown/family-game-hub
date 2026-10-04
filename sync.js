@@ -139,7 +139,7 @@
       var ty = y._date || y.finishedAt || y.date || y.ts || 0;
       return (ty > tx ? 1 : ty < tx ? -1 : 0);
     });
-    return all.slice(0, 50);
+    return all.slice(0, 300);
   }
 
   function mergeSnapshots(local, remote){

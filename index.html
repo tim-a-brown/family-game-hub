@@ -16,6 +16,7 @@
 <script src="kit.js"></script>
 <script src="players.js"></script>
 <script src="hist.js"></script>
+<script src="casino.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
@@ -98,7 +99,9 @@ document.addEventListener('visibilitychange', function () {
 .sec-h .ico{width:22px;height:22px;color:var(--text-3);}
 .sec-h .n{font-weight:800;color:var(--text-3);font-size:.9rem;}
 .sec-h .bank{margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:900;color:var(--green);}
-.sec-h .bank button{border:0;background:rgba(255,255,255,.08);color:var(--text-2);border-radius:999px;padding:4px 10px;font-weight:800;font-size:.8rem;}
+.sec-h .bank .bank-amt{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--green);font:inherit;font-weight:900;padding:4px 2px;cursor:pointer;}
+.sec-h .bank .bank-amt .ico{width:16px;height:16px;}
+.sec-h .bank button:not(.bank-amt){border:0;background:rgba(255,255,255,.08);color:var(--text-2);border-radius:999px;padding:4px 10px;font-weight:800;font-size:.8rem;}
 
 /* Game rows: name first, easy to scan */
 .list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}
@@ -380,20 +383,21 @@ document.addEventListener('visibilitychange', function () {
     return s;
   }
   function bankBadge() {
-    var b = parseInt(get('casino_bank', '1000'), 10); if (isNaN(b)) b = 1000;
-    var box = el('span', { class: 'bank', text: '$' + b.toLocaleString() });
+    var b = Casino.balance();
+    var box = el('span', { class: 'bank' }, [
+      el('button', { type: 'button', class: 'bank-amt', 'aria-label': 'Bankroll history', onclick: function () { Kit.sfx('pop'); Casino.showHistory(); } },
+        [el('span', { html: Kit.icon('chart') }), el('span', { text: '$' + b.toLocaleString() })])
+    ]);
     if (b !== 1000) box.appendChild(el('button', {
       type: 'button', text: 'Reset', onclick: function () {
-        Kit.confirm('Reset your casino bankroll to $1,000?', { ok: 'Reset' }).then(function (ok) {
+        Kit.confirm('Reset your casino bankroll to $1,000?', { ok: 'Reset', body: 'The reset is kept in your bankroll history.' }).then(function (ok) {
           if (!ok) return;
-          set('casino_bank', '1000'); try { if (window.FGHSync) FGHSync.noteWrite('casino_bank'); } catch (e) {}
-          render();
+          Casino.reset(); render();
         });
       }
     }));
     return box;
   }
-
   var railAll = false;
   function renderRail() {
     try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}

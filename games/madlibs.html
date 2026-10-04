@@ -1,471 +1,598 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mad Libs</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.ml-page{max-width:560px;padding-top:12px;padding-bottom:calc(110px + var(--safe-b));}
-/* Story chips */
-.story-select{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 16px;padding:2px 16px;}
-.story-select::-webkit-scrollbar{display:none;}
-.story-btn{flex:none;min-height:38px;padding:0 16px;border-radius:999px;font-size:.9rem;font-weight:600;cursor:pointer;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);white-space:nowrap;transition:background .15s,border-color .15s,color .15s;}
-.story-btn.active{border-color:rgba(245,200,66,.6);background:rgba(245,200,66,.14);color:var(--gold);}
-.story-btn.dice{color:var(--text);}
-/* Form */
-.ml-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:6px;}
-.ml-title{font-family:var(--display);font-size:1.6rem;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
-.ml-sub{color:var(--text-2);font-size:.92rem;margin-bottom:12px;}
-.ml-progress{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;margin-bottom:16px;}
-.ml-progress div{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .3s var(--ease);}
-.hints-toggle-btn{flex:none;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);font-size:.85rem;font-weight:600;cursor:pointer;}
-.hints-toggle-btn.active{border-color:rgba(245,200,66,.5);color:var(--gold);background:rgba(245,200,66,.1);}
-.ml-form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:6px 14px;}
-.ml-field{padding:12px 0;border-bottom:1px solid var(--line);}
-.ml-field:last-child{border-bottom:0;}
-.ml-label-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
-.ml-label{font-size:.8rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;}
-.ml-hint-btn{background:none;border:0;color:var(--text-3);font-size:.82rem;font-weight:600;cursor:pointer;min-height:32px;padding:0 4px;}
-.ml-hint-btn.active{color:var(--gold);}
-.ml-hint{font-size:.88rem;color:var(--text-2);margin:-2px 0 8px;display:none;}
-.ml-hint.visible{display:block;}
-.ml-input.input{min-height:48px;}
-.ml-input.filled{border-color:rgba(74,222,128,.35);}
-.ml-input.missing{border-color:var(--red);box-shadow:0 0 0 4px rgba(248,113,113,.12);}
-/* Bottom action bar */
-.ml-bar{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px max(16px,var(--safe-r)) calc(12px + var(--safe-b)) max(16px,var(--safe-l));background:linear-gradient(to top,var(--bg) 65%,rgba(11,13,18,0));}
-.ml-bar-inner{max-width:528px;margin:0 auto;display:flex;gap:10px;}
-.ml-bar .btn{flex:1;}
-/* Story */
-.ml-story{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--line-2);border-radius:var(--r-lg);padding:22px 20px;font-size:1.08rem;line-height:1.8;color:var(--text);animation:gn-pop .35s var(--spring) both;}
-.ml-word{color:var(--gold);font-weight:700;background:rgba(245,200,66,.13);border-radius:6px;padding:1px 5px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
-.story-title{font-family:var(--display);font-size:1.6rem;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:14px;color:var(--text);}
-.story-kicker{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;}
+body{overflow-x:hidden;}
+.ml{max-width:620px;margin:0 auto;padding:4px 12px calc(var(--safe-b) + 20px);}
+
+/* Legal pad */
+.pad{position:relative;margin-top:16px;border-radius:6px 6px 10px 10px;padding:34px 18px 22px 46px;color:#2a2a3a;min-height:420px;
+  background:
+    linear-gradient(90deg,transparent 0 33px,rgba(220,60,70,.55) 33px 34px,transparent 34px 36px,rgba(220,60,70,.4) 36px 37px,transparent 37px),
+    repeating-linear-gradient(180deg,transparent 0 31px,rgba(60,90,170,.28) 31px 32px),
+    linear-gradient(180deg,#fff7c9,#fbefae);
+  background-position:0 0,0 22px,0 0;
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 0 0 1px rgba(0,0,0,.05),0 16px 34px rgba(0,0,0,.45);}
+.pad::before{content:"";position:absolute;left:-2px;right:-2px;top:-14px;height:24px;border-radius:6px 6px 3px 3px;
+  background:linear-gradient(180deg,#c43b3b,#9c2424);box-shadow:inset 0 2px 0 rgba(255,255,255,.25),0 3px 6px rgba(0,0,0,.35);}
+.pad::after{content:"";position:absolute;left:10px;right:10px;bottom:-6px;height:8px;border-radius:0 0 8px 8px;background:#ece0a0;z-index:-1;box-shadow:0 4px 8px rgba(0,0,0,.3);}
+.pad .kick{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:900;font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;color:#9a7b2c;margin-bottom:6px;}
+.pad h2{font-family:var(--display);font-weight:400;font-size:clamp(1.6rem,7vw,2.1rem);line-height:1.05;color:#2a2a3a;margin-bottom:10px;}
+.pad .ink{font-family:var(--hand);color:var(--ink);}
+.pad p.note{font-family:var(--hand);font-size:1.25rem;line-height:32px;color:#5b5a6e;}
+
+/* Story picker */
+.pick{display:flex;flex-direction:column;gap:12px;}
+.shelf{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.st{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:9px 10px 8px;border:0;border-radius:6px;text-align:left;color:#2a2a3a;
+  background:linear-gradient(180deg,#fffdf4,#f4ecd2);box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 2px 4px rgba(0,0,0,.18);transition:transform .12s;}
+.st:nth-child(odd){transform:rotate(-.6deg);}
+.st:nth-child(even){transform:rotate(.5deg);}
+.st:active{transform:scale(.97);}
+.st b{font-family:var(--display);font-weight:400;font-size:1.02rem;line-height:1.1;}
+.st small{font-size:.72rem;font-weight:800;color:#8d846a;display:flex;align-items:center;gap:4px;}
+.st small .ico{width:12px;height:12px;}
+.st.done small{color:#3f8a52;}
+.st .fav{position:absolute;right:6px;top:6px;width:14px;height:14px;color:#e0a21a;}
+.st .fav .ico{width:14px;height:14px;fill:currentColor;}
+
+/* Fill-in */
+.fill{display:flex;flex-direction:column;gap:6px;}
+.prog{display:flex;gap:4px;margin-bottom:6px;}
+.prog i{flex:1;height:6px;border-radius:3px;background:rgba(0,0,0,.1);}
+.prog i.on{background:var(--c,#e2584a);}
+.prog i.now{background:#2a2a3a;}
+.who{display:flex;align-items:center;gap:8px;font-weight:900;color:#5b5a6e;font-size:.92rem;}
+.who .avatar{width:26px;height:26px;font-size:.75rem;}
+.wtype{font-family:var(--display);font-weight:400;font-size:clamp(2rem,9.5vw,2.7rem);line-height:1;color:#c43b3b;letter-spacing:.01em;margin-top:6px;}
+.wtype.pop{animation:pop .45s var(--spring);}
+@keyframes pop{from{transform:scale(.6);opacity:0;}}
+.hintline{font-weight:800;color:#5b5a6e;font-size:.95rem;}
+.explain{font-size:.98rem;line-height:1.35;color:#3b3a4e;background:rgba(255,255,255,.55);border-radius:10px;padding:8px 10px;margin-top:4px;}
+.explain b{color:#2a2a3a;}
+.ex{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.ex button{min-height:36px;padding:0 12px;border:1px dashed rgba(42,42,58,.35);border-radius:999px;background:transparent;color:#3b3a4e;font-family:var(--hand);font-size:1.15rem;}
+.ex button:active{background:rgba(0,0,0,.06);}
+.ex .lbl{align-self:center;font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#9a7b2c;margin-right:2px;}
+.wline{position:relative;margin-top:10px;}
+.wline input{width:100%;height:56px;border:0;border-bottom:3px solid #2a2a3a;background:transparent;padding:0 4px;font-family:var(--hand);font-size:1.9rem;color:var(--ink);outline:none;border-radius:0;}
+.wline input::placeholder{color:rgba(42,42,58,.3);}
+.wline input:focus{border-bottom-color:#c43b3b;}
+.wline.bad input{animation:shake .4s;border-bottom-color:#c43b3b;}
+@keyframes shake{20%{transform:translateX(-6px);}40%{transform:translateX(5px);}60%{transform:translateX(-3px);}}
+.fillacts{display:flex;gap:10px;margin-top:16px;}
+.fillacts .btn{flex:1;}
+.fillacts .sq{flex:0 0 auto;padding:0 16px;background:rgba(42,42,58,.12);color:#2a2a3a;box-shadow:none;}
+
+/* Pass cover */
+.cover{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:10px 0 4px;}
+.cover .spot{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:2.6rem;color:#1a1033;
+  background:radial-gradient(circle at 40% 35%,color-mix(in srgb,var(--c) 70%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 60%,#000));box-shadow:0 6px 16px rgba(0,0,0,.25);animation:pop .5s var(--spring) both;}
+.cover h3{font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.05;}
+.cover p{font-family:var(--hand);font-size:1.3rem;color:#5b5a6e;line-height:1.3;max-width:300px;}
+.cover .btn{min-width:230px;margin-top:4px;}
+.folded{width:100%;height:58px;border-radius:6px;background:repeating-linear-gradient(180deg,#e9dc99 0 6px,#f3e7aa 6px 12px);box-shadow:inset 0 2px 6px rgba(0,0,0,.15);
+  display:grid;place-items:center;font-weight:900;color:#9a7b2c;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;}
+
+/* Reveal */
+.story{font-family:var(--hand);font-size:1.38rem;line-height:32px;color:#2a2a3a;white-space:pre-wrap;min-height:200px;}
+.story .w{font-weight:700;color:var(--ink);padding:0 3px;border-radius:3px;
+  background:linear-gradient(180deg,transparent 0 30%,color-mix(in srgb,var(--c,#ffd447) 55%,#fff59a) 30% 92%,transparent 92%);
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;}
+.story .w.new{animation:mark .5s ease-out;}
+@keyframes mark{from{background-size:0 100%;background-repeat:no-repeat;}to{background-size:100% 100%;}}
+.story .caret{display:inline-block;width:2px;height:1.1em;background:#2a2a3a;vertical-align:-3px;animation:blink .8s steps(2) infinite;}
+@keyframes blink{50%{opacity:0;}}
+.story.speaking .w.say{outline:2px solid rgba(196,59,59,.6);}
+.byline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:14px;font-weight:800;font-size:.82rem;color:#7a7460;}
+.byline span.p{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 3px;border-radius:999px;background:rgba(255,255,255,.6);color:#2a2a3a;}
+.byline .avatar{width:20px;height:20px;font-size:.62rem;}
+.revacts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.revacts .wide{grid-column:1/-1;}
+.revacts .btn .ico{width:18px;height:18px;}
+.revacts .btn.on{background:#ffd447;color:#2b1a00;}
+.revacts .btn.on .ico{fill:currentColor;}
+.skipbtn{position:absolute;right:14px;bottom:10px;}
+
+/* History extra */
+.hxs{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff7c9;color:#2a2a3a;font-family:var(--hand);font-size:1.12rem;line-height:1.4;white-space:pre-wrap;}
+.hxs b{color:var(--ink);background:rgba(255,212,71,.55);border-radius:3px;padding:0 2px;}
+.hxs h4{font-family:var(--display);font-weight:400;font-size:1.1rem;margin-bottom:4px;}
+.favlist{display:flex;flex-direction:column;gap:10px;}
+
+@media (min-width:640px){
+  .shelf{grid-template-columns:1fr 1fr 1fr;}
+  .pad{padding:40px 30px 26px 60px;background-position:0 0,0 28px,0 0;
+    background-image:linear-gradient(90deg,transparent 0 45px,rgba(220,60,70,.55) 45px 46px,transparent 46px 48px,rgba(220,60,70,.4) 48px 49px,transparent 49px),repeating-linear-gradient(180deg,transparent 0 31px,rgba(60,90,170,.28) 31px 32px),linear-gradient(180deg,#fff7c9,#fbefae);}
+}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mad Libs</span>
-</nav>
-<div class="page ml-page">
-<div class="story-select" id="story-select"></div>
-<div id="input-phase">
-  <div class="ml-head">
-    <div class="ml-title" id="ml-title"></div>
-    <button class="hints-toggle-btn" id="hints-toggle">💡 Hints</button>
-  </div>
-  <div class="ml-sub" id="ml-sub">Fill in the blanks — don’t peek at the story!</div>
-  <div class="ml-progress"><div id="ml-prog"></div></div>
-  <div class="ml-form" id="ml-form"></div>
-</div>
-<div id="story-phase" class="hidden">
-  <div class="ml-story" id="ml-story"></div>
-</div>
-</div>
-<div class="ml-bar">
-  <div class="ml-bar-inner" id="bar-input"><button class="btn btn-gold" id="reveal-btn">Reveal story 📖</button></div>
-  <div class="ml-bar-inner hidden" id="bar-story">
-    <button class="btn btn-outline" id="again-btn">Play again</button>
-    <button class="btn btn-gold" id="new-story-btn">New story</button>
-  </div>
-</div>
+<main class="ml" id="app"></main>
 <script>
-'use strict';
-const STORIES=[
-  {
-    title:'The Space Mission',
-    prompts:[
-      {label:'Astronaut name',key:'NAME',type:'proper noun'},
-      {label:'A planet',key:'PLANET',type:'noun'},
-      {label:'Weird food',key:'FOOD',type:'noun'},
-      {label:'Action verb (-ing)',key:'VERB1',type:'verb'},
-      {label:'Animal (plural)',key:'ANIMALS',type:'noun'},
-      {label:'Body part (plural)',key:'BODYPART',type:'noun'},
-      {label:'Silly adjective',key:'ADJ1',type:'adjective'},
-      {label:'Large number',key:'NUMBER',type:'number'},
-      {label:'Emotion',key:'EMOTION',type:'adjective'},
-      {label:'Famous person',key:'FAMOUS',type:'proper noun'},
-    ],
-    template:(w)=>`Captain <span class="ml-word">${w.NAME}</span> had been traveling to <span class="ml-word">${w.PLANET}</span> for <span class="ml-word">${w.NUMBER}</span> days when something very strange happened. The ship's food supply had been replaced entirely with <span class="ml-word">${w.FOOD}</span>. While <span class="ml-word">${w.VERB1}</span> through the cargo bay, the crew discovered <span class="ml-word">${w.NUMBER}</span> tiny <span class="ml-word">${w.ANIMALS}</span> hiding behind the control panel, waving their little <span class="ml-word">${w.BODYPART}</span> in greeting. Mission Control was notified immediately. The voice on the radio said, in a <span class="ml-word">${w.ADJ1}</span> tone, that this was expected behavior this close to the sun. The crew felt <span class="ml-word">${w.EMOTION}</span>. Later that evening, they sent a postcard to <span class="ml-word">${w.FAMOUS}</span> describing the whole adventure.`,
-  },
-  {
-    title:'The School Day',
-    prompts:[
-      {label:'Student name',key:'NAME',type:'proper noun'},
-      {label:'Subject (science, math…)',key:'SUBJECT',type:'noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Verb (past tense)',key:'VERB1',type:'verb'},
-      {label:'Animal',key:'ANIMAL',type:'noun'},
-      {label:'Color',key:'COLOR',type:'adjective'},
-      {label:'Silly sound',key:'SOUND',type:'exclamation'},
-      {label:'Type of food',key:'FOOD',type:'noun'},
-      {label:'Famous place',key:'PLACE',type:'proper noun'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`It was the most <span class="ml-word">${w.ADJ1}</span> day of school for <span class="ml-word">${w.NAME}</span>. During <span class="ml-word">${w.SUBJECT}</span> class, a <span class="ml-word">${w.COLOR}</span> <span class="ml-word">${w.ANIMAL}</span> suddenly <span class="ml-word">${w.VERB1}</span> through the classroom door and yelled "<span class="ml-word">${w.SOUND}</span>!" The teacher dropped her <span class="ml-word">${w.FOOD}</span> and everyone froze. Someone suggested the animal had escaped from <span class="ml-word">${w.PLACE}</span>. The principal called it a "<span class="ml-word">${w.ADJ2}</span> situation" and sent everyone home early. It was the best <span class="ml-word">${w.SUBJECT}</span> lesson anyone had ever had.`,
-  },
-  {
-    title:'The Camping Trip',
-    prompts:[
-      {label:'Camper\'s name',key:'NAME',type:'proper noun'},
-      {label:'Forest creature',key:'CREATURE',type:'noun'},
-      {label:'Cooking verb (-ing)',key:'VERB1',type:'verb'},
-      {label:'Type of food',key:'FOOD',type:'noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Body part',key:'BODYPART',type:'noun'},
-      {label:'Silly noise',key:'SOUND',type:'exclamation'},
-      {label:'Weather condition',key:'WEATHER',type:'noun'},
-      {label:'Number between 1 and 100',key:'NUMBER',type:'number'},
-      {label:'Emotion',key:'EMOTION',type:'adjective'},
-    ],
-    template:(w)=>`<span class="ml-word">${w.NAME}</span> had been <span class="ml-word">${w.VERB1}</span> hot dogs over the campfire for <span class="ml-word">${w.NUMBER}</span> minutes when a <span class="ml-word">${w.ADJ1}</span> <span class="ml-word">${w.CREATURE}</span> emerged from the trees and sat down at the picnic table. It pointed at the <span class="ml-word">${w.FOOD}</span> with its <span class="ml-word">${w.BODYPART}</span> and made a sound like "<span class="ml-word">${w.SOUND}</span>." Despite the <span class="ml-word">${w.WEATHER}</span>, everyone remained completely calm and offered the creature a plate. It ate everything, burped <span class="ml-word">${w.NUMBER}</span> times, and disappeared back into the woods. Everyone felt <span class="ml-word">${w.EMOTION}</span>. They never spoke of it again.`,
-  },
-  {
-    title:'The Recipe',
-    prompts:[
-      {label:'Chef\'s name',key:'NAME',type:'proper noun'},
-      {label:'Disgusting ingredient',key:'ING1',type:'noun'},
-      {label:'Another gross thing',key:'ING2',type:'noun'},
-      {label:'Cooking action verb',key:'VERB1',type:'verb'},
-      {label:'Kitchen tool',key:'TOOL',type:'noun'},
-      {label:'Adjective for texture',key:'ADJ1',type:'adjective'},
-      {label:'Color',key:'COLOR',type:'adjective'},
-      {label:'Number',key:'NUMBER',type:'number'},
-      {label:'Famous person',key:'FAMOUS',type:'proper noun'},
-      {label:'Reaction (e.g., screamed)',key:'REACT',type:'verb'},
-    ],
-    template:(w)=>`Chef <span class="ml-word">${w.NAME}</span>'s award-winning recipe begins with <span class="ml-word">${w.NUMBER}</span> cups of <span class="ml-word">${w.ING1}</span>, lightly <span class="ml-word">${w.VERB1}</span> with a <span class="ml-word">${w.TOOL}</span>. Fold in <span class="ml-word">${w.ING2}</span> until the mixture turns <span class="ml-word">${w.COLOR}</span> and <span class="ml-word">${w.ADJ1}</span>. Bake at <span class="ml-word">${w.NUMBER}</span> degrees. When <span class="ml-word">${w.FAMOUS}</span> tasted this dish at the 2023 Gala, they <span class="ml-word">${w.REACT}</span> and demanded seconds. Critics call it "the most <span class="ml-word">${w.ADJ1}</span> thing we've ever tasted." We couldn't agree more.`,
-  },
-  {
-    title: 'The Birthday Party',
-    prompts: [
-      {label:'Birthday person\'s name',key:'BNAME',type:'proper noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Cake flavor (e.g. pickle, hot dog)',key:'CAKE',type:'noun'},
-      {label:'Ridiculously large number',key:'NUM',type:'number'},
-      {label:'Famous celebrity',key:'CELEB',type:'proper noun'},
-      {label:'Verb ending in -ing',key:'VERB1',type:'verb'},
-      {label:'Animal (plural)',key:'ANIMALS',type:'noun'},
-      {label:'Weird birthday gift',key:'GIFT',type:'noun'},
-      {label:'Exclamation',key:'EXCL',type:'exclamation'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`The <span class="ml-word">${w.ADJ1}</span> birthday party for <span class="ml-word">${w.BNAME}</span> was going perfectly until someone brought out a <span class="ml-word">${w.CAKE}</span>-flavored cake that was <span class="ml-word">${w.NUM}</span> feet tall. A herd of <span class="ml-word">${w.ANIMALS}</span> knocked it over. Then <span class="ml-word">${w.CELEB}</span> crawled out from underneath it, <span class="ml-word">${w.VERB1}</span> wildly, and handed <span class="ml-word">${w.BNAME}</span> a <span class="ml-word">${w.GIFT}</span> wrapped in newspaper. Everyone shouted "<span class="ml-word">${w.EXCL}</span>!" and agreed it was the most <span class="ml-word">${w.ADJ2}</span> birthday in recorded history.`,
-  },
-  {
-    title: 'The Road Trip',
-    prompts: [
-      {label:'Driver\'s name',key:'DRIVER',type:'proper noun'},
-      {label:'Destination (place name)',key:'DEST',type:'proper noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Strange snack food',key:'SNACK',type:'noun'},
-      {label:'Number of hours',key:'HOURS',type:'number'},
-      {label:'Past tense verb',key:'VERB1',type:'verb'},
-      {label:'Animal',key:'ANIMAL',type:'noun'},
-      {label:'Type of music',key:'MUSIC',type:'noun'},
-      {label:'Silly sound',key:'SOUND',type:'exclamation'},
-      {label:'Body part (plural)',key:'BODY',type:'noun'},
-    ],
-    template:(w)=>`<span class="ml-word">${w.DRIVER}</span> had been driving toward <span class="ml-word">${w.DEST}</span> for <span class="ml-word">${w.HOURS}</span> hours with nothing but <span class="ml-word">${w.SNACK}</span> to eat when things got <span class="ml-word">${w.ADJ1}</span>. A <span class="ml-word">${w.ANIMAL}</span> suddenly <span class="ml-word">${w.VERB1}</span> into the middle of the road, blasting <span class="ml-word">${w.MUSIC}</span> from a tiny speaker strapped to its <span class="ml-word">${w.BODY}</span>. It made a sound like "<span class="ml-word">${w.SOUND}</span>" and vanished into the trees. <span class="ml-word">${w.DRIVER}</span> pulled over and stared for a very long time. The rest of the drive was completely uneventful.`,
-  },
-  {
-    title: 'The Job Interview',
-    prompts: [
-      {label:'Applicant\'s name',key:'NAME',type:'proper noun'},
-      {label:'Job title (weird or silly)',key:'JOB',type:'noun'},
-      {label:'Unusual skill or talent',key:'SKILL',type:'noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Famous company name',key:'COMPANY',type:'proper noun'},
-      {label:'Past tense verb',key:'VERB1',type:'verb'},
-      {label:'Animal',key:'ANIMAL',type:'noun'},
-      {label:'Huge number',key:'NUM',type:'number'},
-      {label:'Exclamation',key:'EXCL',type:'exclamation'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`<span class="ml-word">${w.NAME}</span> arrived at <span class="ml-word">${w.COMPANY}</span> for their interview for the role of <span class="ml-word">${w.JOB}</span>. The interviewer asked, "What is your greatest strength?" <span class="ml-word">${w.NAME}</span> smiled and said, "<span class="ml-word">${w.SKILL}</span>." The interviewer <span class="ml-word">${w.VERB1}</span> and wrote something down. "Interesting. Can you work alongside a <span class="ml-word">${w.ANIMAL}</span>?" <span class="ml-word">${w.NAME}</span> replied, "<span class="ml-word">${w.EXCL}</span>! I've worked with <span class="ml-word">${w.NUM}</span> of them." The interviewer described the environment as "famously <span class="ml-word">${w.ADJ1}</span>" and said the benefits were "<span class="ml-word">${w.ADJ2}</span> beyond belief." The offer letter arrived that evening.`,
-  },
-  {
-    title: 'The Superhero',
-    prompts: [
-      {label:'Hero\'s name',key:'HERO',type:'proper noun'},
-      {label:'Superpower (e.g. controlling soup)',key:'POWER',type:'noun'},
-      {label:'Villain\'s name',key:'VILLAIN',type:'proper noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Silly weapon or tool',key:'WEAPON',type:'noun'},
-      {label:'City name',key:'CITY',type:'proper noun'},
-      {label:'Verb ending in -ing',key:'VERB1',type:'verb'},
-      {label:'Animal',key:'ANIMAL',type:'noun'},
-      {label:'Battle cry / exclamation',key:'CRY',type:'exclamation'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`By day, <span class="ml-word">${w.HERO}</span> was an ordinary person in <span class="ml-word">${w.CITY}</span>. By night, they wielded the power of <span class="ml-word">${w.POWER}</span> to battle the <span class="ml-word">${w.ADJ1}</span> villain known as <span class="ml-word">${w.VILLAIN}</span>. Armed with nothing but a <span class="ml-word">${w.WEAPON}</span> and a highly trained <span class="ml-word">${w.ANIMAL}</span>, <span class="ml-word">${w.HERO}</span> was spotted <span class="ml-word">${w.VERB1}</span> across rooftops while shouting "<span class="ml-word">${w.CRY}</span>!" into the night sky. Citizens left thank-you notes on the doorstep every morning, calling their hero "truly <span class="ml-word">${w.ADJ2}</span>."`,
-  },
-  {
-    title: 'The Haunted House',
-    prompts: [
-      {label:'Explorer\'s name',key:'NAME',type:'proper noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Spooky object (noun)',key:'THING',type:'noun'},
-      {label:'Number',key:'NUM',type:'number'},
-      {label:'Past tense verb',key:'VERB1',type:'verb'},
-      {label:'Ghost\'s name',key:'GHOST',type:'proper noun'},
-      {label:'Silly fear (e.g. staplers, sandwiches)',key:'FEAR',type:'noun'},
-      {label:'Exclamation',key:'EXCL',type:'exclamation'},
-      {label:'Food or snack',key:'FOOD',type:'noun'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`<span class="ml-word">${w.NAME}</span> entered the <span class="ml-word">${w.ADJ1}</span> old house at midnight carrying only a flashlight and a bad attitude. The floor creaked. From the shadows appeared a floating <span class="ml-word">${w.THING}</span>. <span class="ml-word">${w.NAME}</span> screamed "<span class="ml-word">${w.EXCL}</span>!" and <span class="ml-word">${w.VERB1}</span> backward into the grandfather clock. A tired voice said, "Relax. I am <span class="ml-word">${w.GHOST}</span>. I have haunted this house for <span class="ml-word">${w.NUM}</span> years because nobody ever brings me <span class="ml-word">${w.FOOD}</span>." It turned out the ghost's deepest fear was <span class="ml-word">${w.FEAR}</span>. They ended up having a surprisingly <span class="ml-word">${w.ADJ2}</span> evening watching old movies together.`,
-  },
-  {
-    title: 'The Olympics',
-    prompts: [
-      {label:'Athlete\'s name',key:'NAME',type:'proper noun'},
-      {label:'Country name',key:'COUNTRY',type:'proper noun'},
-      {label:'Made-up Olympic sport',key:'SPORT',type:'noun'},
-      {label:'Number of years training',key:'NUM',type:'number'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Body part',key:'BODY',type:'noun'},
-      {label:'Past tense verb',key:'VERB1',type:'verb'},
-      {label:'Animal',key:'ANIMAL',type:'noun'},
-      {label:'Exclamation',key:'EXCL',type:'exclamation'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`The stadium fell silent as <span class="ml-word">${w.NAME}</span> of <span class="ml-word">${w.COUNTRY}</span> stepped up to compete in the Olympic <span class="ml-word">${w.SPORT}</span>. This was the moment they had trained <span class="ml-word">${w.NUM}</span> years for. Using their famous <span class="ml-word">${w.ADJ1}</span> <span class="ml-word">${w.BODY}</span>, <span class="ml-word">${w.NAME}</span> <span class="ml-word">${w.VERB1}</span> past every competitor and crossed the finish line while riding a <span class="ml-word">${w.ANIMAL}</span>. The judges leapt to their feet and shouted "<span class="ml-word">${w.EXCL}</span>!" awarding a perfect score. Commentators called it "the most <span class="ml-word">${w.ADJ2}</span> performance in Olympic history." The <span class="ml-word">${w.ANIMAL}</span> also received a medal.`,
-  },
-  {
-    title: 'The Movie Set',
-    prompts: [
-      {label:'Director\'s name',key:'DIR',type:'proper noun'},
-      {label:'Movie title',key:'MOVIE',type:'noun'},
-      {label:'Actor\'s name',key:'ACTOR',type:'proper noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Prop or object',key:'PROP',type:'noun'},
-      {label:'Verb ending in -ing',key:'VERB1',type:'verb'},
-      {label:'Animal',key:'ANIMAL',type:'noun'},
-      {label:'Exclamation',key:'EXCL',type:'exclamation'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-      {label:'Number',key:'NUM',type:'number'},
-    ],
-    template:(w)=>`Day <span class="ml-word">${w.NUM}</span> of filming "<span class="ml-word">${w.MOVIE}</span>" was not going well for director <span class="ml-word">${w.DIR}</span>. The star, <span class="ml-word">${w.ACTOR}</span>, had been asked to look <span class="ml-word">${w.ADJ1}</span> while holding a <span class="ml-word">${w.PROP}</span> — instead they kept <span class="ml-word">${w.VERB1}</span> and shouting "<span class="ml-word">${w.EXCL}</span>!" every single take. On take seven, a <span class="ml-word">${w.ANIMAL}</span> wandered onto set and stole the <span class="ml-word">${w.PROP}</span>. <span class="ml-word">${w.DIR}</span> immediately declared it the most <span class="ml-word">${w.ADJ2}</span> footage they'd ever captured and kept the whole scene in the final cut. Critics agreed it was the best part of the film.`,
-  },
-  {
-    title: 'The Science Fair',
-    prompts: [
-      {label:'Student\'s name',key:'NAME',type:'proper noun'},
-      {label:'Experiment name (silly noun)',key:'PROJ',type:'noun'},
-      {label:'Adjective',key:'ADJ1',type:'adjective'},
-      {label:'Weird ingredient',key:'ING',type:'noun'},
-      {label:'Number',key:'NUM',type:'number'},
-      {label:'Past tense verb',key:'VERB1',type:'verb'},
-      {label:'Color',key:'COLOR',type:'adjective'},
-      {label:'Exclamation',key:'EXCL',type:'exclamation'},
-      {label:'Famous scientist',key:'SCIENTIST',type:'proper noun'},
-      {label:'Adjective',key:'ADJ2',type:'adjective'},
-    ],
-    template:(w)=>`<span class="ml-word">${w.NAME}</span>'s science fair project — titled "The Effects of <span class="ml-word">${w.PROJ}</span> on Everything" — had taken <span class="ml-word">${w.NUM}</span> days to build. The centerpiece was a <span class="ml-word">${w.ADJ1}</span> machine that combined <span class="ml-word">${w.ING}</span> with electricity and a lot of hope. When the judges arrived, <span class="ml-word">${w.NAME}</span> pressed the big red button. The machine <span class="ml-word">${w.VERB1}</span>. Every surface in the gymnasium turned <span class="ml-word">${w.COLOR}</span>. Someone shouted "<span class="ml-word">${w.EXCL}</span>!" <span class="ml-word">${w.SCIENTIST}</span>, who happened to be a guest judge, stood up and called it "the most <span class="ml-word">${w.ADJ2}</span> scientific breakthrough of the century." <span class="ml-word">${w.NAME}</span> won first place and a certificate.`,
-  },
-];
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var KEY = 'madlibs', SAVE = 'madlibs_state', PLAYED = 'madlibs_played';
 
-let si=0,vals={};
-const $=id=>document.getElementById(id);
-const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // ── Word types: kid-friendly explanations and examples ────────────────────
+  var T = {
+    noun: ['Noun', 'A <b>person, place or thing</b>. If you can say "a ___" or "the ___", it works.', ['sock', 'castle', 'pickle', 'trampoline', 'toaster', 'balloon']],
+    plural: ['Plural noun', 'More than one thing. It usually ends in <b>s</b>.', ['socks', 'robots', 'pancakes', 'marshmallows', 'shoes', 'cupcakes']],
+    verb: ['Verb', 'An <b>action word</b>. Something you can do.', ['jump', 'sing', 'wiggle', 'sneeze', 'dance', 'tickle']],
+    verbing: ['Verb ending in -ing', 'An action word with <b>-ing</b> on the end.', ['dancing', 'sneezing', 'cartwheeling', 'burping', 'skipping', 'giggling']],
+    verbed: ['Verb, past tense', 'An action that <b>already happened</b>. It often ends in <b>-ed</b>.', ['jumped', 'sneezed', 'tiptoed', 'wobbled', 'galloped', 'flopped']],
+    adj: ['Adjective', 'A <b>describing word</b>. It tells what something is like.', ['sparkly', 'stinky', 'enormous', 'fuzzy', 'grumpy', 'slimy']],
+    adv: ['Adverb', 'Tells <b>how</b> something is done. It often ends in <b>-ly</b>.', ['quickly', 'loudly', 'sleepily', 'wildly', 'politely', 'sneakily']],
+    number: ['Number', 'Any number at all. Big, small or silly.', ['7', '42', '1,000', 'a million', '3', '99']],
+    name: ['Person\'s name', 'Anyone! Someone in the room, a friend, or a made-up name.', ['Grandma', 'Bob', 'Captain Fluffy', 'Aunt Jo', 'Mr. Wiggles']],
+    famous: ['Famous person', 'Someone almost everyone has heard of. Real or a character.', ['Taylor Swift', 'Abraham Lincoln', 'SpongeBob', 'Mario', 'Peyton Manning']],
+    place: ['Place', 'Any place, real or pretend.', ['Denver', 'the moon', 'the bathroom', 'Walmart', 'Hawaii']],
+    animal: ['Animal', 'Any kind of animal.', ['llama', 'hamster', 'octopus', 'giraffe', 'penguin']],
+    animals: ['Animals (plural)', 'More than one animal. Usually ends in <b>s</b>.', ['llamas', 'kittens', 'squirrels', 'sharks', 'chickens']],
+    food: ['Food', 'Anything you can eat. The weirder the better.', ['spaghetti', 'broccoli', 'tacos', 'pickles', 'meatloaf']],
+    color: ['Color', 'Any color.', ['purple', 'neon green', 'polka-dot', 'gold', 'hot pink']],
+    body: ['Body part', 'A part of your body.', ['elbow', 'nose', 'belly button', 'pinky toe', 'eyebrow']],
+    bodies: ['Body parts (plural)', 'More than one body part.', ['elbows', 'knees', 'nostrils', 'toes', 'ears']],
+    exclaim: ['Exclamation', 'A word you <b>shout</b> when surprised or excited.', ['Wow', 'Yikes', 'Holy guacamole', 'Oh no', 'Hooray']],
+    sound: ['Silly sound', 'A noise word. Make it funny.', ['boing', 'splat', 'honk', 'kaboom', 'bloop']],
+    feeling: ['Feeling', 'A word for how someone feels.', ['grumpy', 'excited', 'nervous', 'silly', 'sleepy']],
+    clothing: ['Clothing', 'Something you wear.', ['pajamas', 'tutu', 'cowboy boots', 'swim goggles', 'mittens']],
+    liquid: ['Liquid', 'Something wet you can pour.', ['ketchup', 'chocolate milk', 'pickle juice', 'lemonade', 'syrup']],
+    silly: ['Silly word', 'Any made-up or funny word.', ['bazooka', 'snickerdoodle', 'flibbertigibbet', 'kerfuffle', 'noodle']],
+    vehicle: ['Vehicle', 'Something you ride or drive.', ['skateboard', 'school bus', 'tractor', 'hot air balloon', 'unicycle']],
+    job: ['Job', 'Work someone does.', ['firefighter', 'dentist', 'astronaut', 'chef', 'zookeeper']],
+    game: ['Sport or game', 'Something you play.', ['soccer', 'chess', 'tag', 'Uno', 'dodgeball']],
+    room: ['Room in a house', 'A room you might find at home.', ['kitchen', 'garage', 'bathroom', 'attic', 'closet']],
+    thing: ['Silly object', 'Any object. Funny ones are best.', ['rubber duck', 'toilet plunger', 'banana peel', 'trophy', 'whoopee cushion']],
+    country: ['Country', 'Any country in the world.', ['Canada', 'Japan', 'Mexico', 'Italy', 'Brazil']],
+    city: ['City', 'Any city or town.', ['Denver', 'New York', 'Paris', 'Boulder', 'Tokyo']]
+  };
 
-// Build story selector (with a "surprise me" chip first)
-const ss=$('story-select');
-function pickRandom(){
-  let n=si;
-  if(STORIES.length>1)while(n===si)n=Math.floor(Math.random()*STORIES.length);
-  selectStory(n);
-}
-const dice=document.createElement('button');dice.className='story-btn dice';dice.textContent='🎲 Surprise me';
-dice.addEventListener('click',pickRandom);ss.appendChild(dice);
-STORIES.forEach((s,i)=>{
-  const b=document.createElement('button');b.className='story-btn'+(i===0?' active':'');b.textContent=s.title;b.dataset.i=i;
-  b.addEventListener('click',()=>selectStory(i));
-  ss.appendChild(b);
-});
-async function selectStory(i){
-  if(i===si&&!$('input-phase').classList.contains('hidden'))return;
-  const typed=[...document.querySelectorAll('.ml-input')].some(x=>x.value.trim());
-  if(typed&&!$('input-phase').classList.contains('hidden')){
-    const ok=await GN.confirm('Switch stories?',{title:'Switch stories?',body:'The words you’ve typed will be cleared.',ok:'Switch'});
-    if(!ok)return;
-  }
-  si=i;markStory();buildForm();window.scrollTo({top:0,behavior:'smooth'});haptic('select');
-}
-function markStory(){
-  document.querySelectorAll('.story-btn[data-i]').forEach(b=>b.classList.toggle('active',+b.dataset.i===si));
-  const a=document.querySelector('.story-btn.active');
-  if(a)ss.scrollTo({left:a.offsetLeft-ss.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});
-}
+  // ── Stories: blanks [key, type, hint] and text with {KEY} ─────────────────
+  var STORIES = [
+    { id: 'space', t: 'The Space Mission', b: [['NAME', 'name', 'An astronaut'], ['PLANET', 'place', 'A planet or faraway place'], ['FOOD', 'food', 'Something weird to eat'], ['VERB1', 'verbing', ''], ['ANIMALS', 'animals', ''], ['BODYPART', 'bodies', ''], ['ADJ1', 'adj', 'Make it silly'], ['NUMBER', 'number', 'A big one'], ['EMOTION', 'feeling', ''], ['FAMOUS', 'famous', '']],
+      s: "Captain {NAME} had been traveling to {PLANET} for {NUMBER} days when something very strange happened. The ship's food supply had been replaced entirely with {FOOD}. While {VERB1} through the cargo bay, the crew discovered {NUMBER} tiny {ANIMALS} hiding behind the control panel, waving their little {BODYPART} in greeting. Mission Control was told right away. The voice on the radio said, in a {ADJ1} tone, that this was normal behavior this close to the sun. The crew felt {EMOTION}. Later that evening, they sent a postcard to {FAMOUS} describing the whole adventure." },
+    { id: 'school', t: 'The School Day', b: [['NAME', 'name', 'A student'], ['SUBJECT', 'noun', 'A school subject, like science or math'], ['ADJ1', 'adj', ''], ['VERB1', 'verbed', ''], ['ANIMAL', 'animal', ''], ['COLOR', 'color', ''], ['SOUND', 'sound', ''], ['FOOD', 'food', ''], ['PLACE', 'place', 'A famous place'], ['ADJ2', 'adj', '']],
+      s: "It was the most {ADJ1} day of school for {NAME}. During {SUBJECT} class, a {COLOR} {ANIMAL} suddenly {VERB1} through the classroom door and yelled \"{SOUND}!\" The teacher dropped her {FOOD} and everyone froze. Someone said the animal had escaped from {PLACE}. The principal called it a \"{ADJ2} situation\" and sent everyone home early. It was the best {SUBJECT} lesson anyone had ever had." },
+    { id: 'camping', t: 'The Camping Trip', b: [['NAME', 'name', 'A camper'], ['CREATURE', 'animal', 'A forest creature'], ['VERB1', 'verbing', 'A cooking word works great'], ['FOOD', 'food', ''], ['ADJ1', 'adj', ''], ['BODYPART', 'body', ''], ['SOUND', 'sound', ''], ['WEATHER', 'noun', 'A kind of weather'], ['NUMBER', 'number', 'Between 1 and 100'], ['EMOTION', 'feeling', '']],
+      s: "{NAME} had been {VERB1} hot dogs over the campfire for {NUMBER} minutes when a {ADJ1} {CREATURE} came out of the trees and sat down at the picnic table. It pointed at the {FOOD} with its {BODYPART} and made a sound like \"{SOUND}.\" Even with all the {WEATHER}, everyone stayed calm and offered the creature a plate. It ate everything, burped {NUMBER} times, and disappeared back into the woods. Everyone felt {EMOTION}. They never spoke of it again." },
+    { id: 'recipe', t: 'The Recipe', b: [['NAME', 'name', 'A chef'], ['ING1', 'food', 'Something gross'], ['ING2', 'noun', 'Another gross thing'], ['VERB1', 'verbed', 'A cooking action'], ['TOOL', 'noun', 'A kitchen tool'], ['ADJ1', 'adj', 'How something feels, like squishy'], ['COLOR', 'color', ''], ['NUMBER', 'number', ''], ['FAMOUS', 'famous', ''], ['REACT', 'verbed', 'Like screamed or giggled']],
+      s: "Chef {NAME}'s award-winning recipe begins with {NUMBER} cups of {ING1}, lightly {VERB1} with a {TOOL}. Fold in the {ING2} until the mixture turns {COLOR} and {ADJ1}. Bake at {NUMBER} degrees. When {FAMOUS} tasted this dish at the Big Food Gala, they {REACT} and asked for seconds. Critics call it \"the most {ADJ1} thing we have ever tasted.\" We could not agree more." },
+    { id: 'birthday', t: 'The Birthday Party', b: [['BNAME', 'name', 'The birthday person'], ['ADJ1', 'adj', ''], ['CAKE', 'food', 'A cake flavor, like pickle'], ['NUM', 'number', 'Make it ridiculous'], ['CELEB', 'famous', ''], ['VERB1', 'verbing', ''], ['ANIMALS', 'animals', ''], ['GIFT', 'thing', 'A weird present'], ['EXCL', 'exclaim', ''], ['ADJ2', 'adj', '']],
+      s: "The {ADJ1} birthday party for {BNAME} was going perfectly until someone brought out a {CAKE}-flavored cake that was {NUM} feet tall. A herd of {ANIMALS} knocked it over. Then {CELEB} crawled out from underneath it, {VERB1} wildly, and handed {BNAME} a {GIFT} wrapped in newspaper. Everyone shouted \"{EXCL}!\" and agreed it was the most {ADJ2} birthday in history." },
+    { id: 'roadtrip', t: 'The Road Trip', b: [['DRIVER', 'name', 'The driver'], ['DEST', 'place', 'Where you are going'], ['ADJ1', 'adj', ''], ['SNACK', 'food', 'A strange snack'], ['HOURS', 'number', ''], ['VERB1', 'verbed', ''], ['ANIMAL', 'animal', ''], ['MUSIC', 'noun', 'A kind of music'], ['SOUND', 'sound', ''], ['BODY', 'bodies', '']],
+      s: "{DRIVER} had been driving toward {DEST} for {HOURS} hours with nothing but {SNACK} to eat when things got {ADJ1}. A {ANIMAL} suddenly {VERB1} into the middle of the road, blasting {MUSIC} from a tiny speaker strapped to its {BODY}. It made a sound like \"{SOUND}\" and vanished into the trees. {DRIVER} pulled over and stared for a very long time. The rest of the drive was completely normal." },
+    { id: 'interview', t: 'The Job Interview', b: [['NAME', 'name', 'The person looking for a job'], ['JOB', 'job', 'Make it weird or silly'], ['SKILL', 'noun', 'An unusual talent'], ['ADJ1', 'adj', ''], ['COMPANY', 'place', 'A famous company or store'], ['VERB1', 'verbed', ''], ['ANIMAL', 'animal', ''], ['NUM', 'number', 'A huge number'], ['EXCL', 'exclaim', ''], ['ADJ2', 'adj', '']],
+      s: "{NAME} arrived at {COMPANY} for an interview for the job of {JOB}. The interviewer asked, \"What is your greatest strength?\" {NAME} smiled and said, \"{SKILL}.\" The interviewer {VERB1} and wrote something down. \"Interesting. Can you work next to a {ANIMAL}?\" {NAME} replied, \"{EXCL}! I have worked with {NUM} of them.\" The interviewer said the office was \"famously {ADJ1}\" and the snacks were \"{ADJ2} beyond belief.\" The job offer arrived that evening." },
+    { id: 'superhero', t: 'The Superhero', b: [['HERO', 'name', 'The hero'], ['POWER', 'noun', 'A superpower, like controlling soup'], ['VILLAIN', 'name', 'The villain'], ['ADJ1', 'adj', ''], ['WEAPON', 'thing', 'A silly gadget'], ['CITY', 'city', ''], ['VERB1', 'verbing', ''], ['ANIMAL', 'animal', ''], ['CRY', 'exclaim', 'A battle cry'], ['ADJ2', 'adj', '']],
+      s: "By day, {HERO} was an ordinary person in {CITY}. By night, they used the power of {POWER} to battle the {ADJ1} villain known as {VILLAIN}. Armed with nothing but a {WEAPON} and a highly trained {ANIMAL}, {HERO} was spotted {VERB1} across rooftops while shouting \"{CRY}!\" into the night sky. People left thank-you notes on the doorstep every morning, calling their hero \"truly {ADJ2}.\"" },
+    { id: 'haunted', t: 'The Haunted House', b: [['NAME', 'name', 'An explorer'], ['ADJ1', 'adj', ''], ['THING', 'thing', 'A spooky object'], ['NUM', 'number', ''], ['VERB1', 'verbed', ''], ['GHOST', 'name', 'A ghost'], ['FEAR', 'plural', 'Silly things to be scared of, like staplers'], ['EXCL', 'exclaim', ''], ['FOOD', 'food', ''], ['ADJ2', 'adj', '']],
+      s: "{NAME} entered the {ADJ1} old house at midnight carrying only a flashlight and a granola bar. The floor creaked. From the shadows floated a {THING}. {NAME} screamed \"{EXCL}!\" and {VERB1} backward into the grandfather clock. A tired voice said, \"Relax. I am {GHOST}. I have haunted this house for {NUM} years because nobody ever brings me {FOOD}.\" It turned out the ghost was terrified of {FEAR}. They ended up having a surprisingly {ADJ2} evening watching old movies together." },
+    { id: 'olympics', t: 'The Olympics', b: [['NAME', 'name', 'An athlete'], ['COUNTRY', 'country', ''], ['SPORT', 'noun', 'A made-up Olympic sport'], ['NUM', 'number', 'Years of training'], ['ADJ1', 'adj', ''], ['BODY', 'body', ''], ['VERB1', 'verbed', ''], ['ANIMAL', 'animal', ''], ['EXCL', 'exclaim', ''], ['ADJ2', 'adj', '']],
+      s: "The stadium fell silent as {NAME} of {COUNTRY} stepped up to compete in the Olympic {SPORT}. This was the moment they had trained {NUM} years for. Using their famous {ADJ1} {BODY}, {NAME} {VERB1} past every competitor and crossed the finish line riding a {ANIMAL}. The judges leapt to their feet, shouted \"{EXCL}!\" and gave a perfect score. Announcers called it \"the most {ADJ2} performance in Olympic history.\" The {ANIMAL} got a medal too." },
+    { id: 'movieset', t: 'The Movie Set', b: [['DIR', 'name', 'A movie director'], ['MOVIE', 'noun', 'A movie title'], ['ACTOR', 'famous', 'An actor'], ['ADJ1', 'adj', ''], ['PROP', 'thing', ''], ['VERB1', 'verbing', ''], ['ANIMAL', 'animal', ''], ['EXCL', 'exclaim', ''], ['ADJ2', 'adj', ''], ['NUM', 'number', '']],
+      s: "Day {NUM} of filming \"{MOVIE}\" was not going well for director {DIR}. The star, {ACTOR}, was supposed to look {ADJ1} while holding a {PROP}. Instead they kept {VERB1} and shouting \"{EXCL}!\" every single take. On take seven, a {ANIMAL} wandered onto the set and stole the {PROP}. {DIR} declared it the most {ADJ2} scene ever filmed and kept it in the movie. Critics agreed it was the best part." },
+    { id: 'sciencefair', t: 'The Science Fair', b: [['NAME', 'name', 'A student'], ['PROJ', 'plural', 'Something silly to test'], ['ADJ1', 'adj', ''], ['ING', 'liquid', 'A weird ingredient'], ['NUM', 'number', ''], ['VERB1', 'verbed', ''], ['COLOR', 'color', ''], ['EXCL', 'exclaim', ''], ['SCIENTIST', 'famous', 'A famous scientist works great'], ['ADJ2', 'adj', '']],
+      s: "{NAME}'s science fair project, \"The Effects of {PROJ} on Everything,\" had taken {NUM} days to build. The centerpiece was a {ADJ1} machine that mixed {ING} with electricity and a lot of hope. When the judges arrived, {NAME} pressed the big red button. The machine {VERB1}. Every wall in the gym turned {COLOR}. Someone shouted \"{EXCL}!\" {SCIENTIST}, who happened to be a guest judge, stood up and called it \"the most {ADJ2} discovery of the century.\" {NAME} won first place." },
+    { id: 'zoo', t: 'A Day at the Zoo', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['ANIMAL1', 'animal', ''], ['VERBING', 'verbing', ''], ['FOOD', 'food', ''], ['ANIMAL2', 'animal', ''], ['CLOTH', 'clothing', ''], ['NUM', 'number', ''], ['SOUND', 'sound', ''], ['FEEL', 'feeling', '']],
+      s: "On Saturday, {NAME} went to the zoo. The first stop was the {ADJ1} {ANIMAL1} exhibit, where the {ANIMAL1} was {VERBING} on top of a rock. A sign said \"Please do not feed the animals {FOOD}.\" Next door, a {ANIMAL2} wearing a tiny {CLOTH} was juggling {NUM} bananas. When it dropped one, the whole crowd went \"{SOUND}!\" {NAME} felt very {FEEL} and decided to come back every single weekend." },
+    { id: 'pirate', t: 'The Pirate Ship', b: [['CAPT', 'name', 'The pirate captain'], ['ADJ1', 'adj', ''], ['SHIP', 'noun', 'A name for the ship'], ['ANIMAL', 'animal', 'The ship pet'], ['PLURAL', 'plural', 'Treasure (but not gold)'], ['VERBED', 'verbed', ''], ['BODY', 'body', ''], ['EXCL', 'exclaim', ''], ['NUM', 'number', ''], ['PLACE', 'place', 'An island name']],
+      s: "Captain {CAPT} was the most {ADJ1} pirate on the seven seas. The ship, the Mighty {SHIP}, had a pet {ANIMAL} that sat on the captain's shoulder and shouted \"{EXCL}!\" at every passing seagull. One morning they found a map leading to {PLACE}, where {NUM} chests of {PLURAL} were buried. The crew dug all day. When they opened the last chest, a crab jumped out and {VERBED} the captain right on the {BODY}. It was still the best treasure hunt ever." },
+    { id: 'dragon', t: 'My Pet Dragon', b: [['DRAGON', 'name', 'Your dragon\'s name'], ['COLOR', 'color', ''], ['ADJ1', 'adj', ''], ['FOOD', 'food', ''], ['ROOM', 'room', ''], ['VERB', 'verb', ''], ['NOUN', 'thing', ''], ['NUM', 'number', ''], ['ADV', 'adv', ''], ['FEEL', 'feeling', '']],
+      s: "My pet dragon is named {DRAGON}. He is {COLOR} and very {ADJ1}. Every morning he eats {NUM} bowls of {FOOD} and then sleeps in the {ROOM}. When he sneezes, he sets the {NOUN} on fire, so Mom says he has to {VERB} outside. Yesterday he flew {ADV} around the neighborhood and everyone waved. Having a dragon makes me feel {FEEL}. I just wish he would stop eating my homework." },
+    { id: 'snowday', t: 'The Snow Day', b: [['NAME', 'name', ''], ['NUM', 'number', 'Inches of snow'], ['ADJ1', 'adj', ''], ['CLOTH', 'clothing', ''], ['NOUN', 'noun', ''], ['VERBED', 'verbed', ''], ['LIQ', 'liquid', 'A hot drink, or not'], ['ANIMAL', 'animal', ''], ['EXCL', 'exclaim', ''], ['ADJ2', 'adj', '']],
+      s: "When {NAME} woke up, there were {NUM} inches of snow outside. School was canceled! {NAME} put on a {ADJ1} {CLOTH} and ran into the yard. First they built a snowman with a {NOUN} for a nose. Then they {VERBED} down the big hill on a sled shaped like a {ANIMAL}. \"{EXCL}!\" they yelled at the bottom. Afterward, they warmed up with a big mug of hot {LIQ}. It was the most {ADJ2} snow day ever." },
+    { id: 'museum', t: 'The Dinosaur Museum', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['DINO', 'silly', 'Make up a dinosaur name'], ['NUM', 'number', 'Feet tall'], ['FOOD', 'food', ''], ['VERBED', 'verbed', ''], ['BODY', 'body', ''], ['SOUND', 'sound', ''], ['JOB', 'job', ''], ['ADV', 'adv', '']],
+      s: "On the class trip to the dinosaur museum, {NAME} found a {ADJ1} skeleton labeled {DINO}-saurus. The sign said it was {NUM} feet tall and ate mostly {FOOD}. When nobody was looking, {NAME} touched its {BODY}. The skeleton {VERBED}! It let out a giant \"{SOUND}\" and walked {ADV} toward the gift shop. The museum {JOB} said this happens every Tuesday and it always comes back for lunch." },
+    { id: 'lemonade', t: 'The Lemonade Stand', b: [['NAME', 'name', ''], ['LIQ', 'liquid', 'A strange drink flavor'], ['NUM1', 'number', 'A price in cents'], ['ADJ1', 'adj', ''], ['FAMOUS', 'famous', ''], ['VERBED', 'verbed', ''], ['PLURAL', 'plural', ''], ['NUM2', 'number', ''], ['FEEL', 'feeling', ''], ['NOUN', 'noun', 'Something to buy']],
+      s: "{NAME} opened a lemonade stand, but instead of lemonade, the sign said \"{LIQ}, only {NUM1} cents!\" The first customer said it tasted {ADJ1}. Then {FAMOUS} drove by, took one sip, and {VERBED} with joy. Soon the line stretched down the block. People paid with coins, dollars and even {PLURAL}. By sunset {NAME} had sold {NUM2} cups and felt {FEEL}. With the money, {NAME} bought a brand-new {NOUN}." },
+    { id: 'reunion', t: 'The Family Reunion', b: [['RELATIVE', 'name', 'A relative, like Uncle Ted'], ['ADJ1', 'adj', ''], ['FOOD', 'food', ''], ['GAME', 'game', ''], ['VERBING', 'verbing', ''], ['ANIMAL', 'animal', ''], ['NUM', 'number', ''], ['CLOTH', 'clothing', ''], ['EXCL', 'exclaim', ''], ['ADJ2', 'adj', '']],
+      s: "Every summer the whole family gets together at the park. This year {RELATIVE} brought a {ADJ1} casserole made of {FOOD}. Nobody ate it except the dog. After lunch the cousins played {GAME} while Grandpa was {VERBING} in his lawn chair. Then a {ANIMAL} ran off with {NUM} hot dogs and Aunt Sue's favorite {CLOTH}. \"{EXCL}!\" everyone cried. It was a {ADJ2} day, and we are already planning next year." },
+    { id: 'soccer', t: 'The Big Game', b: [['NAME', 'name', 'A player'], ['TEAM', 'plural', 'A team name, like the Pickles'], ['ADJ1', 'adj', ''], ['NUM1', 'number', ''], ['BODY', 'body', ''], ['VERBED', 'verbed', ''], ['ANIMAL', 'animal', ''], ['NUM2', 'number', ''], ['EXCL', 'exclaim', ''], ['FOOD', 'food', '']],
+      s: "It was the championship game, and the {TEAM} were losing by {NUM1} points. The crowd was {ADJ1}. With ten seconds left, {NAME} got the ball, bounced it off their {BODY}, and {VERBED} past three defenders. Then a {ANIMAL} ran onto the field and the ball flew right into the net. The final score was {NUM2} to {NUM1}. \"{EXCL}!\" shouted the coach. After the game, the whole team went out for {FOOD}." },
+    { id: 'robot', t: 'The Robot Butler', b: [['ROBOT', 'silly', 'The robot\'s name'], ['ADJ1', 'adj', ''], ['VERB', 'verb', ''], ['PLURAL', 'plural', ''], ['ROOM', 'room', ''], ['LIQ', 'liquid', ''], ['SOUND', 'sound', ''], ['NUM', 'number', ''], ['CLOTH', 'clothing', ''], ['ADV', 'adv', '']],
+      s: "Our family bought a robot butler named {ROBOT}. It was shiny and {ADJ1}. On the first day, we asked it to {VERB} the dishes. Instead it stacked all our {PLURAL} in the {ROOM} and poured {LIQ} on them. When Dad asked what happened, it just said \"{SOUND}\" {NUM} times. Now it wears Mom's {CLOTH} and dances {ADV} every night at dinner. We decided to keep it." },
+    { id: 'wizard', t: 'Wizard School', b: [['NAME', 'name', 'A young wizard'], ['ADJ1', 'adj', ''], ['ANIMAL', 'animal', ''], ['SPELL', 'silly', 'A magic word'], ['NOUN', 'thing', ''], ['COLOR', 'color', ''], ['VERBED', 'verbed', ''], ['TEACHER', 'name', 'A teacher'], ['FOOD', 'food', ''], ['FEEL', 'feeling', '']],
+      s: "On the first day of wizard school, {NAME} got a {ADJ1} wand and a pet {ANIMAL}. In Spells class, {TEACHER} said, \"Point your wand at the {NOUN} and say {SPELL}!\" {NAME} tried it. The {NOUN} turned {COLOR}, sprouted wings and {VERBED} out the window. The whole class gasped. {TEACHER} gave {NAME} extra points and a slice of magic {FOOD}. {NAME} felt {FEEL} all the way home." },
+    { id: 'camp', t: 'A Letter From Camp', b: [['PARENT', 'name', 'Someone at home'], ['ADJ1', 'adj', ''], ['NUM', 'number', ''], ['FOOD', 'food', ''], ['ANIMAL', 'animals', ''], ['VERBED', 'verbed', ''], ['BODY', 'body', ''], ['CLOTH', 'clothing', ''], ['ADJ2', 'adj', ''], ['NAME', 'name', 'Your name']],
+      s: "Dear {PARENT},\nCamp is very {ADJ1}. We sleep in cabins with {NUM} bunk beds. For dinner every night they serve {FOOD}. Yesterday a bunch of {ANIMAL} got into our cabin and {VERBED} all over my sleeping bag. Then I fell in the lake and hurt my {BODY}, but I am fine. Please send a new {CLOTH} because mine floated away. Camp is {ADJ2}. Love,\n{NAME}" },
+    { id: 'hike', t: 'The Mountain Hike', b: [['NAME', 'name', ''], ['MOUNTAIN', 'silly', 'Name a mountain'], ['NUM', 'number', 'Feet high'], ['ADJ1', 'adj', ''], ['SNACK', 'food', ''], ['ANIMAL', 'animal', ''], ['VERBING', 'verbing', ''], ['EXCL', 'exclaim', ''], ['BODIES', 'bodies', ''], ['FEEL', 'feeling', '']],
+      s: "{NAME} decided to climb Mount {MOUNTAIN}, which is {NUM} feet high. The trail was rocky and {ADJ1}. Halfway up, {NAME} stopped to eat some {SNACK}, and a curious {ANIMAL} came over to share. At the top, the wind was so strong it sent {NAME}'s hat {VERBING} down the mountain. \"{EXCL}!\" said {NAME}. The view was amazing, but by the time they got back to the car, their {BODIES} hurt and they felt {FEEL}." },
+    { id: 'talent', t: 'The Talent Show', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['VERBING', 'verbing', ''], ['NUM', 'number', ''], ['PLURAL', 'plural', ''], ['CLOTH', 'clothing', ''], ['SOUND', 'sound', ''], ['FAMOUS', 'famous', ''], ['ADV', 'adv', ''], ['EXCL', 'exclaim', '']],
+      s: "At the school talent show, {NAME} walked on stage wearing a {ADJ1} {CLOTH}. The act was {VERBING} while juggling {NUM} {PLURAL}. The audience went \"{SOUND}!\" when one landed on the principal. Then {NAME} bowed {ADV}. The surprise judge, {FAMOUS}, stood up and yelled, \"{EXCL}! That is the best act I have ever seen!\" {NAME} won the golden trophy." },
+    { id: 'thanksgiving', t: 'The Holiday Dinner', b: [['NAME', 'name', 'Who cooked'], ['NUM', 'number', ''], ['ADJ1', 'adj', ''], ['FOOD1', 'food', ''], ['FOOD2', 'food', ''], ['LIQ', 'liquid', ''], ['RELATIVE', 'name', 'A relative'], ['VERBED', 'verbed', ''], ['ANIMAL', 'animal', ''], ['FEEL', 'feeling', '']],
+      s: "This year {NAME} cooked the whole holiday dinner. There were {NUM} guests around the table. The turkey was {ADJ1}, the mashed potatoes tasted like {FOOD1}, and dessert was {FOOD2} pie with {LIQ} on top. {RELATIVE} took one bite and {VERBED} out of the chair. Then the family {ANIMAL} jumped on the table and ate the leftovers. Everybody laughed until they cried, and {NAME} felt {FEEL}." },
+    { id: 'tooth', t: 'The Lost Tooth', b: [['NAME', 'name', ''], ['FOOD', 'food', 'Something chewy'], ['ADJ1', 'adj', ''], ['NOUN', 'noun', ''], ['NUM', 'number', ''], ['VERBED', 'verbed', ''], ['THING', 'thing', ''], ['COLOR', 'color', ''], ['EXCL', 'exclaim', ''], ['ADV', 'adv', '']],
+      s: "{NAME} was eating {FOOD} when a tooth fell out! It was small and {ADJ1}. That night {NAME} put it under the {NOUN} and went to sleep. At midnight, the Tooth Fairy {VERBED} through the window wearing {COLOR} wings. She left {NUM} gold coins and a {THING}. In the morning {NAME} shouted \"{EXCL}!\" and ran {ADV} to show everyone. Now {NAME} is wiggling another tooth." },
+    { id: 'timemachine', t: 'The Time Machine', b: [['NAME', 'name', ''], ['VEHICLE', 'vehicle', 'Something to build it from'], ['NUM', 'number', 'A year'], ['ADJ1', 'adj', ''], ['ANIMAL', 'animal', ''], ['FAMOUS', 'famous', 'Someone from history'], ['VERBING', 'verbing', ''], ['NOUN', 'thing', ''], ['SOUND', 'sound', ''], ['FEEL', 'feeling', '']],
+      s: "{NAME} built a time machine out of an old {VEHICLE}. With a loud \"{SOUND}\" it zoomed to the year {NUM}. Everything looked {ADJ1}. A {ANIMAL} was running the town, and {FAMOUS} was {VERBING} in the town square. {NAME} traded a {NOUN} for a souvenir and zoomed home just in time for dinner. Nobody believed the story, and {NAME} felt {FEEL} about it." },
+    { id: 'underwater', t: 'The Underwater Kingdom', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['FISH', 'animal', 'A sea creature'], ['COLOR', 'color', ''], ['PLURAL', 'plural', ''], ['VERB', 'verb', ''], ['FOOD', 'food', ''], ['NUM', 'number', ''], ['BODY', 'body', ''], ['EXCL', 'exclaim', '']],
+      s: "While snorkeling, {NAME} found a {ADJ1} door on the ocean floor. Inside was an underwater kingdom ruled by a {FISH} with a {COLOR} crown. The castle was made of {PLURAL}. The {FISH} said, \"Welcome! Here we {VERB} all day and eat {FOOD} for every meal.\" {NAME} stayed for {NUM} hours, until a jellyfish tickled their {BODY}. \"{EXCL}!\" said {NAME}, and swam back to the beach." },
+    { id: 'weather', t: 'The Weather Report', b: [['NAME', 'name', 'The weather reporter'], ['CITY', 'city', ''], ['ADJ1', 'adj', ''], ['PLURAL', 'plural', ''], ['NUM', 'number', ''], ['LIQ', 'liquid', ''], ['CLOTH', 'clothing', ''], ['ANIMALS', 'animals', ''], ['ADV', 'adv', ''], ['EXCL', 'exclaim', '']],
+      s: "Good evening, this is {NAME} with your weather. Tomorrow in {CITY} will be very {ADJ1}. In the morning, expect a light shower of {PLURAL}. By lunchtime the temperature will reach {NUM} degrees, and it might rain {LIQ}. Be sure to wear your {CLOTH}. In the evening, watch out for flying {ANIMALS} moving {ADV} from the north. {EXCL}! Back to you in the studio." },
+    { id: 'grocery', t: 'The Grocery Store', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['NUM', 'number', ''], ['FOOD1', 'food', ''], ['FOOD2', 'plural', 'Something on a grocery list'], ['VERBED', 'verbed', ''], ['THING', 'thing', ''], ['ANIMAL', 'animal', ''], ['SOUND', 'sound', ''], ['FEEL', 'feeling', '']],
+      s: "Mom sent {NAME} to the store with a list: {NUM} cans of {FOOD1} and a bag of {FOOD2}. The store was extra {ADJ1} that day. In aisle 5, the cart wheel squeaked \"{SOUND}\" and the cart {VERBED} straight into a pyramid of cereal boxes. A store worker riding a {ANIMAL} helped clean up and gave {NAME} a free {THING}. {NAME} got home feeling {FEEL}, but forgot the milk." },
+    { id: 'puppy', t: 'The New Puppy', b: [['PUPPY', 'name', 'Name the puppy'], ['ADJ1', 'adj', ''], ['COLOR', 'color', ''], ['NUM', 'number', ''], ['CLOTH', 'clothing', ''], ['VERBED', 'verbed', ''], ['ROOM', 'room', ''], ['FOOD', 'food', ''], ['VERBING', 'verbing', ''], ['FEEL', 'feeling', '']],
+      s: "Our family got a new puppy named {PUPPY}. She is {ADJ1} and {COLOR}, with {NUM} spots on her tail. On the first day she chewed up Dad's {CLOTH} and {VERBED} all over the {ROOM}. She only wants to eat {FOOD}. At night she sleeps at the end of my bed, {VERBING} in her dreams. I feel {FEEL} every time I look at her." },
+    { id: 'knight', t: 'The Knight and the Dragon', b: [['KNIGHT', 'name', 'A brave knight'], ['ADJ1', 'adj', ''], ['VEHICLE', 'animal', 'Something to ride'], ['THING', 'thing', 'A weapon, but silly'], ['ADJ2', 'adj', ''], ['FOOD', 'food', ''], ['VERBED', 'verbed', ''], ['NUM', 'number', ''], ['EXCL', 'exclaim', ''], ['PLACE', 'place', '']],
+      s: "Long ago, Sir {KNIGHT} rode a {ADJ1} {VEHICLE} into the dragon's cave, armed only with a {THING}. The dragon was {ADJ2} and very hungry. \"{EXCL}!\" cried Sir {KNIGHT}. \"Wait! Would you like some {FOOD} instead?\" The dragon took a bite, {VERBED} happily, and promised never to bother the village again. The king threw a party in {PLACE} that lasted {NUM} days." },
+    { id: 'alien', t: 'The Alien Visitor', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['NUM', 'number', 'How many eyes'], ['COLOR', 'color', ''], ['SILLY', 'silly', 'The alien\'s name'], ['FOOD', 'food', ''], ['VERBING', 'verbing', ''], ['THING', 'thing', ''], ['PLACE', 'place', 'Where it came from'], ['SOUND', 'sound', '']],
+      s: "Late one night, a {ADJ1} spaceship landed in {NAME}'s backyard. Out climbed an alien with {NUM} eyes and {COLOR} skin. \"Greetings, I am {SILLY} from {PLACE},\" it said. \"Take me to your {FOOD}.\" {NAME} gave it a snack, and the alien started {VERBING} with joy. Before flying home, it gave {NAME} a glowing {THING}. Every night since, {NAME} hears a faint \"{SOUND}\" from the stars." },
+    { id: 'videogame', t: 'Inside the Video Game', b: [['NAME', 'name', ''], ['GAME', 'silly', 'A video game title'], ['ADJ1', 'adj', ''], ['PLURAL', 'plural', 'Things to collect'], ['ANIMAL', 'animal', 'The final boss'], ['NUM', 'number', ''], ['VERBED', 'verbed', ''], ['THING', 'thing', ''], ['EXCL', 'exclaim', ''], ['FEEL', 'feeling', '']],
+      s: "While playing {GAME}, {NAME} got sucked right into the screen! The world was {ADJ1} and blocky. To win, {NAME} had to collect {NUM} {PLURAL} and beat the final boss, a giant {ANIMAL}. {NAME} {VERBED} over lava and used a {THING} as a shield. \"{EXCL}!\" Level complete! {NAME} popped back out onto the couch feeling {FEEL}, and Mom said it was time for dinner." },
+    { id: 'treasure', t: 'The Treasure Map', b: [['NAME', 'name', ''], ['ROOM', 'room', ''], ['ADJ1', 'adj', ''], ['NUM', 'number', 'Steps'], ['NOUN', 'noun', ''], ['VERBED', 'verbed', ''], ['ANIMAL', 'animal', ''], ['PLURAL', 'plural', ''], ['EXCL', 'exclaim', ''], ['FEEL', 'feeling', '']],
+      s: "{NAME} found an old map in the {ROOM}. It was {ADJ1} and smelled like cheese. It said: \"Walk {NUM} steps past the {NOUN}, then dig.\" {NAME} followed the map and {VERBED} all the way to the backyard. A {ANIMAL} watched from the fence. After digging for an hour, {NAME} found a box full of {PLURAL}. \"{EXCL}!\" said {NAME}, feeling {FEEL}. It was Grandpa's old collection." },
+    { id: 'teeth', t: 'How to Brush Your Teeth', b: [['ADJ1', 'adj', ''], ['LIQ', 'liquid', ''], ['NUM', 'number', ''], ['VERB', 'verb', ''], ['ANIMAL', 'animal', ''], ['BODY', 'body', ''], ['SOUND', 'sound', ''], ['FOOD', 'food', 'A toothpaste flavor'], ['ADV', 'adv', ''], ['FAMOUS', 'famous', '']],
+      s: "Step 1: Grab your {ADJ1} toothbrush.\nStep 2: Squeeze on some {FOOD}-flavored toothpaste.\nStep 3: Brush {ADV} for {NUM} seconds while you {VERB}.\nStep 4: Do not forget to brush your {BODY}.\nStep 5: Rinse with {LIQ} and say \"{SOUND}!\"\nIf you do this every day, you will have a smile like a {ANIMAL}, and maybe even like {FAMOUS}." },
+    { id: 'sleepover', t: 'The Sleepover', b: [['FRIEND', 'name', 'A friend'], ['NUM', 'number', ''], ['ADJ1', 'adj', ''], ['MOVIE', 'noun', 'A made-up movie title'], ['FOOD', 'food', ''], ['VERBING', 'verbing', ''], ['CLOTH', 'clothing', ''], ['SOUND', 'sound', ''], ['ROOM', 'room', ''], ['FEEL', 'feeling', '']],
+      s: "{FRIEND} came over for a sleepover. We built a fort out of {NUM} blankets and watched a {ADJ1} movie called \"{MOVIE}.\" We ate so much {FOOD} that our bellies hurt. Then we had a contest to see who could keep {VERBING} the longest while wearing a {CLOTH}. At midnight we heard a spooky \"{SOUND}\" from the {ROOM}. It was just Dad getting a snack. We felt {FEEL} and fell asleep at 2 a.m." },
+    { id: 'rodeo', t: 'The Rodeo', b: [['NAME', 'name', 'A cowboy or cowgirl'], ['ADJ1', 'adj', ''], ['ANIMAL', 'animal', 'Something to ride'], ['NUM', 'number', 'Seconds'], ['CLOTH', 'clothing', ''], ['VERBED', 'verbed', ''], ['EXCL', 'exclaim', ''], ['FOOD', 'food', ''], ['BODY', 'body', ''], ['ADV', 'adv', '']],
+      s: "At the rodeo, {NAME} climbed onto a {ADJ1} {ANIMAL}. The gate opened and the {ANIMAL} bucked {ADV}. {NAME} held on for {NUM} seconds with one hand on the reins and one on a {CLOTH}. Then {NAME} {VERBED} into the air and landed on their {BODY}. The crowd yelled \"{EXCL}!\" {NAME} won a shiny belt buckle and a free plate of {FOOD}. Yee-haw!" },
+    { id: 'icecream', t: 'The Ice Cream Truck', b: [['NAME', 'name', ''], ['SONG', 'noun', 'A song title'], ['ADJ1', 'adj', ''], ['FOOD', 'food', 'A strange flavor'], ['NUM', 'number', 'Scoops'], ['COLOR', 'color', ''], ['VERBED', 'verbed', ''], ['ANIMAL', 'animal', ''], ['EXCL', 'exclaim', ''], ['FEEL', 'feeling', '']],
+      s: "On a hot day, {NAME} heard the ice cream truck playing \"{SONG}.\" The driver was {ADJ1} and wore a {COLOR} hat. Today's special flavor was {FOOD} swirl. {NAME} ordered {NUM} scoops on one cone. As {NAME} walked away, the tower wobbled and {VERBED} right onto a passing {ANIMAL}. \"{EXCL}!\" said {NAME}. The {ANIMAL} looked {FEEL} and licked it all up." },
+    { id: 'fieldtrip', t: 'The Field Trip', b: [['TEACHER', 'name', 'A teacher'], ['PLACE', 'place', ''], ['ADJ1', 'adj', ''], ['VEHICLE', 'vehicle', ''], ['NUM', 'number', ''], ['PLURAL', 'plural', ''], ['VERBING', 'verbing', ''], ['ANIMAL', 'animal', ''], ['FOOD', 'food', ''], ['EXCL', 'exclaim', '']],
+      s: "Our class went on a field trip to {PLACE} with {TEACHER}. We rode there in a {ADJ1} {VEHICLE}. It took {NUM} hours because the driver kept stopping to look at {PLURAL}. When we arrived, a {ANIMAL} was {VERBING} by the front door. We ate {FOOD} sandwiches for lunch. On the way home, {TEACHER} said \"{EXCL}!\" and counted us twice. Somehow we came back with one extra kid." },
+    { id: 'news', t: 'Breaking News', b: [['NAME', 'name', 'A news anchor'], ['CITY', 'city', ''], ['ADJ1', 'adj', ''], ['ANIMAL', 'animal', ''], ['THING', 'thing', ''], ['VERBED', 'verbed', ''], ['NUM', 'number', ''], ['FAMOUS', 'famous', ''], ['EXCL', 'exclaim', ''], ['ADV', 'adv', '']],
+      s: "This just in, I'm {NAME} with breaking news from {CITY}. Earlier today, a {ADJ1} {ANIMAL} walked into the library and checked out a {THING}. Witnesses say it {VERBED} out the door and was last seen heading north at {NUM} miles per hour. {FAMOUS} has offered a reward. One neighbor told us, \"{EXCL}! I have never seen anything like it.\" Police ask everyone to stay {ADV} calm. Back to you." },
+    { id: 'garden', t: 'The Magic Garden', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['PLURAL', 'plural', 'Something to plant'], ['LIQ', 'liquid', ''], ['NUM', 'number', ''], ['COLOR', 'color', ''], ['VERBING', 'verbing', ''], ['ANIMAL', 'animals', ''], ['FOOD', 'food', ''], ['EXCL', 'exclaim', '']],
+      s: "{NAME} planted a {ADJ1} garden in the backyard. Instead of seeds, {NAME} planted {PLURAL} and watered them with {LIQ}. The next morning, there were {NUM} {COLOR} plants that were {VERBING} in the breeze. By lunch, a family of {ANIMAL} had moved in. By dinner, the plants were growing {FOOD}. \"{EXCL}!\" said the neighbors. {NAME} is now the most famous gardener in town." },
+    { id: 'fairytale', t: 'Once Upon a Time', b: [['PRINCESS', 'name', 'A princess'], ['ADJ1', 'adj', ''], ['PLACE', 'place', ''], ['ANIMAL', 'animal', ''], ['NOUN', 'thing', 'A magic object'], ['VERBED', 'verbed', ''], ['FOOD', 'food', ''], ['NUM', 'number', ''], ['SILLY', 'silly', 'A magic word'], ['ADV', 'adv', '']],
+      s: "Once upon a time, a {ADJ1} princess named {PRINCESS} lived in {PLACE}. One day a talking {ANIMAL} gave her a magic {NOUN}. \"Say {SILLY} three times,\" it whispered, \"and your wish will come true.\" She wished for a mountain of {FOOD}. It appeared and {VERBED} all over the castle. It took {NUM} knights a whole week to clean up. And they all lived {ADV} ever after." },
+    { id: 'vacation', t: 'The Beach Vacation', b: [['NAME', 'name', ''], ['ADJ1', 'adj', ''], ['CLOTH', 'clothing', ''], ['NUM', 'number', ''], ['ANIMAL', 'animal', 'A sea animal'], ['VERBED', 'verbed', ''], ['FOOD', 'food', ''], ['BODY', 'body', ''], ['EXCL', 'exclaim', ''], ['FEEL', 'feeling', '']],
+      s: "The family drove to the beach for vacation. The sand was {ADJ1} and the water was perfect. {NAME} put on a {CLOTH} and built a sandcastle {NUM} feet tall. Suddenly a {ANIMAL} {VERBED} out of the waves and moved into the castle. A seagull stole {NAME}'s {FOOD}, and a crab pinched {NAME}'s {BODY}. \"{EXCL}!\" Even so, everybody felt {FEEL} and did not want to go home." },
+    { id: 'chores', t: 'Chore Day', b: [['NAME', 'name', ''], ['NUM', 'number', ''], ['ROOM', 'room', ''], ['ADJ1', 'adj', ''], ['PLURAL', 'plural', ''], ['VERBED', 'verbed', ''], ['ANIMAL', 'animal', ''], ['LIQ', 'liquid', ''], ['THING', 'thing', ''], ['FEEL', 'feeling', '']],
+      s: "Saturday was chore day. {NAME} had {NUM} chores, starting with the {ROOM}. It was so {ADJ1} that there were {PLURAL} on the ceiling. {NAME} {VERBED} through the mess with a mop while the family {ANIMAL} supervised. Then {NAME} spilled a bucket of {LIQ} on the floor, which actually made it cleaner. As a reward, {NAME} got a {THING} and felt {FEEL} the rest of the day." }
+  ];
+  var BYID = {}; STORIES.forEach(function (s) { BYID[s.id] = s; });
 
-// ── Type → display name map ────────────────────────────────────────────────
-function typeLabel(type){
-  const map={'proper noun':'Proper Noun','noun':'Noun','adjective':'Adjective',
-    'verb':'Verb','number':'Number','exclamation':'Exclamation','adverb':'Adverb'};
-  return map[type.toLowerCase()]||type.split(' ').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
-}
-
-// ── Global hints toggle ────────────────────────────────────────────────────
-let hintsVisible=false;
-function setHints(on){
-  hintsVisible=on;
-  const btn=$('hints-toggle');
-  btn.classList.toggle('active',on);
-  btn.textContent=on?'💡 Hide hints':'💡 Hints';
-  document.querySelectorAll('.ml-hint').forEach(el=>el.classList.toggle('visible',on));
-  document.querySelectorAll('.ml-hint-btn').forEach(el=>{el.classList.toggle('active',on);el.textContent=on?'Hide hint':'Hint';});
-}
-$('hints-toggle').addEventListener('click',()=>{setHints(!hintsVisible);haptic('light');});
-
-function showPhase(story){
-  $('input-phase').classList.toggle('hidden',story);
-  $('story-phase').classList.toggle('hidden',!story);
-  $('bar-input').classList.toggle('hidden',story);
-  $('bar-story').classList.toggle('hidden',!story);
-}
-
-function updateProgress(){
-  const inputs=[...document.querySelectorAll('.ml-input')];
-  const n=inputs.filter(i=>i.value.trim()).length;
-  $('ml-prog').style.width=(inputs.length?n/inputs.length*100:0)+'%';
-  $('ml-sub').textContent=n===inputs.length?'All set — reveal your story!':`${n} of ${inputs.length} filled · don’t peek at the story!`;
-}
-
-function buildForm(prefill){
-  vals={};
-  setHints(false);
-  const form=$('ml-form');form.innerHTML='';
-  showPhase(false);
-  const story=STORIES[si];
-  $('ml-title').textContent=story.title;
-
-  // Count how many times each type appears so we can number duplicates
-  const typeCounts={};
-  story.prompts.forEach(p=>{
-    const t=typeLabel(p.type);
-    typeCounts[t]=(typeCounts[t]||0)+1;
+  // ── Shell ─────────────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'madlibs',
+    onNew: function () { showSetup(); },
+    confirmNew: true,
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'star', label: 'Favorite stories', onClick: showFavs },
+      { icon: 'history', label: 'Past stories', onClick: function () { Kit.history(KEY, { title: 'Mad Libs: past stories', extra: histExtra }); } }
+    ],
+    rules:
+      '<p class="goal">Fill in the blanks without seeing the story. Then read it out loud and laugh.</p>' +
+      '<h3>How it works</h3><ul><li>Pick a story, or tap <b>Surprise me</b>.</li><li>The pad asks for words, like a <b>noun</b> or a <b>verb</b>. You do not get to see the story yet. That is the fun part!</li>' +
+      '<li>Not sure what a word type means? Read the note under it, or tap an example.</li></ul>' +
+      '<h3>Word types</h3><ul><li><b>Noun</b>: a person, place or thing (sock, castle).</li><li><b>Verb</b>: an action word (jump, sing).</li><li><b>Adjective</b>: a describing word (sparkly, stinky).</li><li><b>Adverb</b>: how something is done (quickly, loudly).</li><li><b>Plural</b>: more than one (socks, robots).</li></ul>' +
+      '<h3>Pass the phone</h3><p>With more than one player, the blanks take turns around the group. When it says <b>Pass to Cam</b>, hand over the phone. Nobody sees anyone else’s words until the reveal.</p>' +
+      '<h3>The reveal</h3><p>The story types itself out with your words highlighted. Tap <b>Read aloud</b> to have the phone read it. Tap the <b>star</b> to keep a story in your favorites.</p>'
   });
-  const typeIdx={};
 
-  story.prompts.forEach((p,pi)=>{
-    const t=typeLabel(p.type);
-    typeIdx[t]=(typeIdx[t]||0)+1;
-    const displayLabel=typeCounts[t]>1?`${t} #${typeIdx[t]}`:t;
-    const hint=p.label; // the specific contextual hint
-    const isHintSameAsLabel=hint.toLowerCase()===t.toLowerCase(); // skip if redundant
-    const last=pi===story.prompts.length-1;
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, typing = null, speaking = false;
+  function N() { return S.players.length; }
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function save() {
+    lsSet(SAVE, S);
+    if (!S) return;
+    var st = S.story ? BYID[S.story] : null;
+    if (S.phase === 'fill' || S.phase === 'cover') Kit.resume.set((st ? st.t : 'Mad Libs') + ' · blank ' + (S.i + 1) + ' of ' + st.b.length);
+    else Kit.resume.clear();
+  }
+  function story() { return BYID[S.story]; }
+  function owner(i) { return N() > 1 ? i % N() : 0; }
+  function played() { var a = lsGet(PLAYED, []); return Array.isArray(a) ? a : []; }
 
-    const div=document.createElement('div');div.className='ml-field';
-    div.innerHTML=`
-      <div class="ml-label-row">
-        <label class="ml-label" for="ml-in-${pi}" style="margin:0">${displayLabel}</label>
-        ${!isHintSameAsLabel?`<button class="ml-hint-btn" type="button" aria-label="Show hint for ${displayLabel}">Hint</button>`:''}
-      </div>
-      ${!isHintSameAsLabel?`<div class="ml-hint">💡 ${esc(hint)}</div>`:''}
-      <input class="input ml-input" id="ml-in-${pi}" placeholder="Enter a${['a','e','i','o','u'].includes(t[0].toLowerCase())?'n':''} ${t.toLowerCase()}…" data-key="${p.key}"
-        autocorrect="off" spellcheck="false" autocapitalize="${p.type==='proper noun'?'words':'off'}" autocomplete="off"
-        enterkeyhint="${last?'done':'next'}" ${p.type==='number'?'inputmode="numeric"':''} maxlength="40">`;
-    form.appendChild(div);
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopAll(); S = null; lsSet(SAVE, null); Kit.resume.clear(); app.innerHTML = ''; window.scrollTo(0, 0);
+    Kit.setup(app, {
+      intro: STORIES.length + ' silly stories. Fill the blanks, then read it out loud.',
+      players: { min: 1, max: 8, count: 2, label: 'Who is filling in words?' },
+      options: [
+        { id: 'tips', label: 'Word helpers', value: 'on', help: 'Show what each word type means, with examples to tap.', choices: [['on', 'Show', 'Great for kids still learning nouns and verbs.'], ['off', 'Hide', 'Just the word type, like the paper books.']] },
+        { id: 'voice', label: 'Read aloud', value: 'ask', help: 'The phone can read the finished story out loud.', choices: [['ask', 'When I tap it', 'A Read aloud button shows on the finished story.'], ['auto', 'Automatically', 'The phone starts reading as soon as the story is done.']] }
+      ],
+      start: 'Pick a story',
+      onStart: function (cfg) {
+        S = { players: cfg.players.map(function (p) { return { name: p.name, color: p.color }; }), tips: cfg.options.tips !== 'off', voice: cfg.options.voice || 'ask', phase: 'pick', story: null, words: {}, i: 0, made: 0 };
+        save(); render();
+      }
+    });
+  }
 
-    const hintBtn=div.querySelector('.ml-hint-btn');
-    const hintEl=div.querySelector('.ml-hint');
-    if(hintBtn&&hintEl){
-      hintBtn.addEventListener('click',()=>{
-        const showing=hintEl.classList.toggle('visible');
-        hintBtn.classList.toggle('active',showing);
-        hintBtn.textContent=showing?'Hide hint':'Hint';
-      });
+  function startStory(id) {
+    var st = BYID[id];
+    S.story = id; S.words = {}; S.i = 0; S.started = Date.now(); S.fav = false; S.rid = null;
+    S.phase = N() > 1 ? 'cover' : 'fill';
+    Kit.gameStart(); Kit.sfx('flip');
+    save(); render();
+  }
+  function surprise() {
+    var pl = played(), fresh = STORIES.filter(function (s) { return pl.indexOf(s.id) < 0; });
+    var pool = fresh.length ? fresh : STORIES.slice().sort(function (a, b) { return pl.indexOf(a.id) - pl.indexOf(b.id); }).slice(0, 15);
+    startStory(pool[Math.floor(Math.random() * pool.length)].id);
+  }
+
+  function setWord(v) {
+    var st = story(), k = st.b[S.i][0];
+    S.words[S.i] = v;
+    S.i++;
+    Kit.sfx('pop'); Kit.haptic('light');
+    if (S.i >= st.b.length) return finishFill();
+    S.phase = N() > 1 && owner(S.i) !== owner(S.i - 1) ? 'cover' : 'fill';
+    save(); render();
+  }
+  function undo() {
+    if (!S) return Kit.toast('Nothing to undo');
+    if (S.phase === 'fill' || S.phase === 'cover') {
+      if (S.i === 0) return Kit.toast('Nothing to undo');
+      S.i--; S.phase = 'fill'; Kit.sfx('whoosh'); Kit.toast('Back one word'); save(); render(); return;
     }
-    const inp=div.querySelector('input');
-    if(prefill&&prefill[p.key]){inp.value=prefill[p.key];inp.classList.add('filled');}
-  });
-  updateProgress();
-}
-
-// Keep the in-progress answers in `vals` so they survive a reload
-$('ml-form').addEventListener('input',e=>{
-  const inp=e.target.closest('.ml-input');if(!inp)return;
-  const v=inp.value.trim();
-  if(v)vals[inp.dataset.key]=v;else delete vals[inp.dataset.key];
-  inp.classList.toggle('filled',!!v);inp.classList.remove('missing');
-  updateProgress();
-});
-
-function reveal(){
-  const inputs=document.querySelectorAll('.ml-input');
-  let first=null;
-  inputs.forEach(inp=>{
-    const v=inp.value.trim();
-    if(!v){inp.classList.add('missing');if(!first)first=inp;}
-    else{inp.classList.remove('missing');vals[inp.dataset.key]=v;}
-  });
-  if(first){
-    const n=[...inputs].filter(i=>!i.value.trim()).length;
-    GN.toast(`${n} blank${n>1?'s':''} left to fill`);haptic('error');
-    first.scrollIntoView({block:'center',behavior:'smooth'});
-    return;
+    Kit.toast('Nothing to undo');
   }
-  document.activeElement&&document.activeElement.blur();
-  const safe={};Object.keys(vals).forEach(k=>safe[k]=esc(vals[k]));
-  showPhase(true);
-  $('ml-story').innerHTML=`<div class="story-kicker">Your story</div><div class="story-title">${STORIES[si].title}</div>${STORIES[si].template(safe)}`;
-  window.scrollTo({top:0,behavior:'smooth'});
-  haptic('success');
-}
-$('reveal-btn').addEventListener('click',reveal);
 
-$('again-btn').addEventListener('click',()=>{buildForm();window.scrollTo({top:0});});
-$('new-story-btn').addEventListener('click',()=>{
-  si=(si+1)%STORIES.length;
-  markStory();
-  buildForm();window.scrollTo({top:0});
-});
+  // ── Fill text into the story ──────────────────────────────────────────────
+  // Returns pieces: [{t:'text'} | {w:'word', p:playerIndex}]
+  function pieces(st, words) {
+    var idx = {}; st.b.forEach(function (b, i) { idx[b[0]] = i; });
+    var out = [], re = /\{([A-Z0-9_]+)\}/g, last = 0, m;
+    while ((m = re.exec(st.s))) {
+      if (m.index > last) out.push({ t: st.s.slice(last, m.index) });
+      var i = idx[m[1]];
+      out.push({ w: i != null ? (words[i] || '___') : m[0], p: i != null ? owner(i) : 0 });
+      last = re.lastIndex;
+    }
+    if (last < st.s.length) out.push({ t: st.s.slice(last) });
+    return out;
+  }
+  function plain(ps) { return ps.map(function (x) { return x.t != null ? x.t : x.w; }).join(''); }
 
-// ── Enter / Next navigation ────────────────────────────────────────────────
-$('ml-form').addEventListener('keydown',e=>{
-  if(e.key!=='Enter')return;
-  e.preventDefault();
-  advanceInput(e.target);
-});
-function advanceInput(currentInput){
-  const inputs=[...document.querySelectorAll('.ml-input')];
-  const idx=inputs.indexOf(currentInput);
-  if(idx===-1)return;
-  if(idx<inputs.length-1){inputs[idx+1].focus();inputs[idx+1].select();}
-  else{currentInput.blur();reveal();}
-}
+  function finishFill() {
+    var st = story(), ps = pieces(st, S.words), text = plain(ps);
+    S.phase = 'reveal'; S.fresh = true; S.made++;
+    var pl = played().filter(function (x) { return x !== st.id; }); pl.push(st.id); lsSet(PLAYED, pl);
+    // Highlights: the funniest-looking lines (sentences with the most filled-in words)
+    var sentences = [], cur = '', cnt = 0;
+    ps.forEach(function (x) {
+      if (x.t != null) {
+        var parts = x.t.split(/(?<=[.!?]["”]?)\s+|\n/);
+        parts.forEach(function (pt, k) {
+          if (k > 0) { if (cur.trim()) sentences.push({ s: cur.trim(), n: cnt }); cur = ''; cnt = 0; }
+          cur += pt;
+        });
+      } else { cur += x.w; cnt++; }
+    });
+    if (cur.trim()) sentences.push({ s: cur.trim(), n: cnt });
+    var best = sentences.slice().sort(function (a, b) { return b.n - a.n; }).filter(function (x) { return x.n >= 2 && x.s.length < 160; }).slice(0, 3);
+    best.sort(function (a, b) { return sentences.indexOf(a) - sentences.indexOf(b); });
+    var hl = best.map(function (x) { return x.s; });
+    if (N() > 1) {
+      var by = S.players.map(function (p, i) { var c = st.b.filter(function (b, k) { return owner(k) === i; }).length; return p.name + ' (' + c + (c === 1 ? ' word)' : ' words)'); });
+      hl.push('Words by ' + by.slice(0, -1).join(', ') + ' and ' + by[by.length - 1]);
+    }
+    var entry = Kit.record(KEY, {
+      started: S.started, mode: N() > 1 ? 'Pass the phone' : 'Solo',
+      players: S.players.map(function (p) { return { name: p.name }; }),
+      winner: null,
+      summary: st.t + ' · ' + S.players.map(function (p) { return p.name; }).join(', '),
+      highlights: hl,
+      meta: { story: st.id, title: st.t, words: st.b.map(function (b, i) { return S.words[i] || ''; }), by: st.b.map(function (b, i) { return owner(i); }), fav: false }
+    });
+    S.rid = entry && entry._date ? entry._date : null;
+    if (!S.rid) { try { var l = GameHistory.load(KEY); S.rid = l.length ? l[0]._date : null; } catch (e) {} }
+    save(); render();
+  }
 
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_madlibs(){
-  try{sessionStorage.setItem('madlibs',JSON.stringify({si,vals,_ts:Date.now()}));}catch(e){}
-}
-function _load_madlibs(){
-  try{
-    const raw=sessionStorage.getItem('madlibs');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    si=Math.min(STORIES.length-1,Math.max(0,s.si||0));
-    const saved=s.vals||{};
-    markStory();
-    buildForm(saved);
-    Object.keys(saved).forEach(k=>{if(STORIES[si].prompts.some(p=>p.key===k))vals[k]=saved[k];});
-    // Every blank filled → they had revealed the story; show it again
-    if(STORIES[si].prompts.every(p=>saved[p.key]))reveal();
+  // Favorites live on the synced history entry (fav flag), so they follow you between devices.
+  function histList() { try { return GameHistory.load(KEY) || []; } catch (e) { return []; } }
+  function setFav(rid, on) {
+    var list = histList(), hit = false;
+    list.forEach(function (e) { if (e && e._date === rid) { e.fav = on; hit = true; } });
+    if (!hit) return false;
+    try { localStorage.setItem('gh_' + KEY, JSON.stringify(list)); if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('gh_' + KEY); } catch (e) {}
     return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_madlibs);
-window.addEventListener('pagehide',_save_madlibs);
+  }
+  function entryText(e) {
+    var st = BYID[e.story]; if (!st || !Array.isArray(e.words)) return null;
+    var idx = {}; st.b.forEach(function (b, i) { idx[b[0]] = i; });
+    return st.s.replace(/\{([A-Z0-9_]+)\}/g, function (m, k) { return '\u0001' + (e.words[idx[k]] || '___') + '\u0002'; });
+  }
+  function storyNode(e, title) {
+    var txt = entryText(e); if (txt == null) return null;
+    var html = esc(txt).replace(/\u0001/g, '<b>').replace(/\u0002/g, '</b>');
+    return el('div', { class: 'hxs', html: (title ? '<h4>' + esc(e.title || '') + '</h4>' : '') + html });
+  }
+  function histExtra(e) { return storyNode(e, false); }
+  function showFavs() {
+    var favs = histList().filter(function (e) { return e && e.fav && e.story; });
+    var box = el('div', { class: 'favlist' });
+    if (!favs.length) box.appendChild(el('p', { class: 'muted', text: 'No favorites yet. Tap the star on a finished story to keep it here.' }));
+    favs.forEach(function (e) {
+      var n = storyNode(e, true); if (!n) return;
+      n.appendChild(el('div', { style: { 'font-family': 'var(--font)', 'font-size': '.75rem', 'font-weight': '800', color: '#8d846a', 'margin-top': '6px' }, text: Kit.fmtDate(e._date) + ' · ' + (e.players || []).map(function (p) { return p.name; }).join(', ') }));
+      box.appendChild(n);
+    });
+    Kit.sheet({ title: 'Favorite stories', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
 
-if(!_load_madlibs())buildForm();
+  // ── Render ────────────────────────────────────────────────────────────────
+  function stopAll() {
+    if (typing) { clearTimeout(typing); typing = null; }
+    if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {}
+    speaking = false;
+  }
+  function render() {
+    stopAll();
+    if (!S) return showSetup();
+    app.innerHTML = '';
+    var pad = el('div', { class: 'pad' });
+    app.appendChild(pad);
+    if (S.phase === 'pick') return renderPick(pad);
+    if (S.phase === 'cover') return renderCover(pad);
+    if (S.phase === 'fill') return renderFill(pad);
+    if (S.phase === 'reveal') return renderReveal(pad);
+  }
+  function renderPick(pad) {
+    var pl = played(), favIds = {};
+    histList().forEach(function (e) { if (e && e.fav && e.story) favIds[e.story] = 1; });
+    pad.appendChild(el('div', { class: 'kick' }, [el('span', { text: S.made ? S.made + (S.made === 1 ? ' story so far' : ' stories so far') : 'Story pad' }), el('span', { text: STORIES.length + ' stories' })]));
+    pad.appendChild(el('h2', { text: 'Pick a story' }));
+    var box = el('div', { class: 'pick' });
+    box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('shuffle') + '<span>Surprise me</span>', onclick: surprise }));
+    var shelf = el('div', { class: 'shelf' });
+    STORIES.forEach(function (s) {
+      var done = pl.indexOf(s.id) >= 0;
+      shelf.appendChild(el('button', { type: 'button', class: 'st' + (done ? ' done' : ''), onclick: function () { startStory(s.id); } }, [
+        favIds[s.id] ? el('span', { class: 'fav', html: Kit.icon('star') }) : null,
+        el('b', { text: s.t }),
+        el('small', { html: (done ? Kit.icon('check') + 'Played · ' : '') + s.b.length + ' blanks' })
+      ]));
+    });
+    box.appendChild(shelf);
+    pad.appendChild(box);
+  }
+  function renderCover(pad) {
+    var st = story(), k = owner(S.i), p = S.players[k];
+    var mine = st.b.filter(function (b, i) { return i >= S.i && owner(i) === k; }).length;
+    pad.appendChild(el('div', { class: 'kick' }, [el('span', { text: st.t }), el('span', { text: 'Blank ' + (S.i + 1) + ' of ' + st.b.length })]));
+    pad.appendChild(el('div', { class: 'cover' }, [
+      el('div', { class: 'spot', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }),
+      el('h3', { text: S.i === 0 ? p.name + ' starts' : 'Pass to ' + p.name }),
+      el('div', { class: 'folded', text: S.i ? 'Words so far are folded away' : 'The story is hidden' }),
+      el('p', { text: 'Your next word' + (N() > 1 && mine > 1 ? 's' : '') + ' are top secret. No peeking, everyone else!' }),
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: "I'm " + p.name + ', ready', onclick: function () { Kit.sfx('pop'); S.phase = 'fill'; save(); render(); } })
+    ]));
+  }
+  function renderFill(pad) {
+    var st = story(), b = st.b[S.i], ty = T[b[1]] || T.noun, k = owner(S.i), p = S.players[k];
+    pad.appendChild(el('div', { class: 'kick' }, [el('span', { text: st.t }), el('span', { text: (S.i + 1) + ' of ' + st.b.length })]));
+    var prog = el('div', { class: 'prog' });
+    st.b.forEach(function (x, i) { prog.appendChild(el('i', { class: i < S.i ? 'on' : i === S.i ? 'now' : '', style: { '--c': S.players[owner(i)].color } })); });
+    var box = el('div', { class: 'fill' }, [prog]);
+    if (N() > 1) box.appendChild(el('div', { class: 'who' }, [el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }), el('span', { text: Kit.poss(p.name) + ' word' })]));
+    box.appendChild(el('div', { class: 'wtype pop', text: ty[0] }));
+    if (b[2]) box.appendChild(el('div', { class: 'hintline', text: b[2] }));
+    var inp = el('input', { type: 'text', maxlength: 32, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', autocapitalize: (b[1] === 'name' || b[1] === 'famous' || b[1] === 'city' || b[1] === 'country') ? 'words' : 'off',
+      enterkeyhint: S.i === st.b.length - 1 ? 'done' : 'next', inputmode: b[1] === 'number' ? 'text' : 'text', placeholder: 'write it here', 'aria-label': ty[0], value: S.words[S.i] || '' });
+    var line = el('div', { class: 'wline' }, [inp]);
+    if (S.tips) {
+      box.appendChild(el('div', { class: 'explain', html: ty[1] }));
+      var ex = el('div', { class: 'ex' }, [el('span', { class: 'lbl', text: 'Ideas' })]);
+      var picks = ty[2].slice().sort(function () { return Math.random() - 0.5; }).slice(0, 3);
+      picks.forEach(function (w) { ex.appendChild(el('button', { type: 'button', text: w, onclick: function () { inp.value = w; Kit.sfx('tap'); inp.focus(); } })); });
+      box.appendChild(ex);
+    }
+    box.appendChild(line);
+    function go() {
+      var v = inp.value.trim().replace(/\s+/g, ' ');
+      if (!v) { line.classList.remove('bad'); void line.offsetWidth; line.classList.add('bad'); Kit.haptic('error'); Kit.toast('Write a word first'); inp.focus(); return; }
+      setWord(v);
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    var last = S.i === st.b.length - 1;
+    box.appendChild(el('div', { class: 'fillacts' }, [
+      S.i > 0 && owner(S.i - 1) === k ? el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Previous word', html: Kit.icon('back'), onclick: function () { undo(); } }) : null,
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: last ? 'Reveal the story!' : 'Next word', onclick: go })
+    ]));
+    pad.appendChild(box);
+    setTimeout(function () { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 60);
+  }
+
+  function renderReveal(pad) {
+    var st = story(), ps = pieces(st, S.words);
+    pad.appendChild(el('div', { class: 'kick' }, [el('span', { text: 'Your story' }), el('span', { text: S.players.map(function (p) { return p.name; }).join(' + ') })]));
+    pad.appendChild(el('h2', { text: st.t }));
+    var box = el('div', { class: 'story' });
+    pad.appendChild(box);
+    var by = el('div', { class: 'byline' }, [el('span', { text: 'Words by' })]);
+    S.players.forEach(function (p, i) { if (st.b.some(function (b, k) { return owner(k) === i; })) by.appendChild(el('span', { class: 'p' }, [el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }), el('span', { text: p.name })])); });
+
+    var canSpeak = !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+    var speakBtn = canSpeak ? el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('sound') + '<span>Read aloud</span>', onclick: function () { toggleSpeak(); } }) : null;
+    var favBtn = el('button', { type: 'button', class: 'btn btn-soft' + (S.fav ? ' on' : ''), html: Kit.icon('star') + '<span>' + (S.fav ? 'Saved' : 'Favorite') + '</span>', onclick: function () {
+      var on = !S.fav;
+      if (S.rid == null || !setFav(S.rid, on)) return Kit.toast('Could not save that one');
+      S.fav = on; save();
+      favBtn.classList.toggle('on', on); favBtn.innerHTML = Kit.icon('star') + '<span>' + (on ? 'Saved' : 'Favorite') + '</span>';
+      Kit.sfx(on ? 'good' : 'tap'); Kit.haptic('light'); Kit.toast(on ? 'Saved to favorites' : 'Removed from favorites');
+    } });
+    var acts = el('div', { class: 'revacts' }, [
+      speakBtn || el('span'), favBtn,
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg wide', text: 'Another story', onclick: function () { stopAll(); S.phase = 'pick'; S.story = null; save(); render(); window.scrollTo(0, 0); } })
+    ]);
+    if (!speakBtn) acts.firstChild.remove(), favBtn.classList.add('wide');
+
+    function toggleSpeak() {
+      if (speaking) { stopAll(); speakBtn.innerHTML = Kit.icon('sound') + '<span>Read aloud</span>'; return; }
+      try {
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(st.t + '. ' + plain(ps).replace(/\n/g, ' '));
+        u.rate = 0.95; u.pitch = 1.05; u.lang = 'en-US';
+        u.onend = u.onerror = function () { speaking = false; if (speakBtn) speakBtn.innerHTML = Kit.icon('sound') + '<span>Read aloud</span>'; };
+        speechSynthesis.speak(u); speaking = true;
+        speakBtn.innerHTML = Kit.icon('mute') + '<span>Stop reading</span>';
+      } catch (e) { Kit.toast('Reading aloud is not available here'); }
+    }
+    function done() {
+      box.innerHTML = '';
+      ps.forEach(function (x) {
+        if (x.t != null) box.appendChild(document.createTextNode(x.t));
+        else box.appendChild(el('span', { class: 'w', style: { '--c': S.players[x.p].color }, text: x.w }));
+      });
+      pad.appendChild(by);
+      if (!app.contains(acts)) app.appendChild(acts);
+    }
+    if (!S.fresh) { done(); return; }
+    // Dramatic typewriter reveal
+    S.fresh = false; save();
+    var skip = el('button', { type: 'button', class: 'btn btn-ghost btn-sm skipbtn', text: 'Skip', onclick: function () { if (typing) { clearTimeout(typing); typing = null; } finishType(); } });
+    pad.appendChild(skip);
+    Kit.sfx('whoosh');
+    var pi = 0, ci = 0, caret = el('span', { class: 'caret' }), node = null;
+    box.appendChild(caret);
+    function step() {
+      if (pi >= ps.length) return finishType();
+      var x = ps[pi];
+      if (x.t != null) {
+        if (!node) { node = document.createTextNode(''); box.insertBefore(node, caret); }
+        var n = Math.min(x.t.length - ci, 2);
+        node.data += x.t.substr(ci, n); ci += n;
+        if (ci >= x.t.length) { pi++; ci = 0; node = null; }
+        typing = setTimeout(step, 22);
+      } else {
+        box.insertBefore(el('span', { class: 'w new', style: { '--c': S.players[x.p].color }, text: x.w }), caret);
+        Kit.sfx('pop'); Kit.haptic('light');
+        pi++; node = null;
+        typing = setTimeout(step, 260);
+      }
+    }
+    function finishType() {
+      typing = null; skip.remove(); done();
+      Kit.sfx('win'); Kit.confetti({ count: 70 });
+      if (S.voice === 'auto' && speakBtn) setTimeout(function () { if (!speaking && app.contains(acts)) toggleSpeak(); }, 400);
+    }
+    typing = setTimeout(step, 500);
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = lsGet(SAVE, null);
+  if (saved && saved.players && saved.phase && (saved.phase === 'pick' || BYID[saved.story])) {
+    S = saved;
+    if (S.phase === 'fill' && N() > 1) S.phase = 'cover';   // hand it back to the same player
+    S.fresh = false;
+    render();
+  } else showSetup();
+  window.__ml = { state: function () { return S; }, stories: STORIES, types: T };
+})();
 </script>
 </body>
 </html>

@@ -382,6 +382,7 @@
     (opts.menu || []).forEach(function (m) { item(m.icon || 'sparkle', typeof m.label === 'function' ? m.label() : m.label, m.onClick, m.cls); });
     if (opts.rules) item('book', 'How to play', rules);
     item('users', 'Frequent players', function () { managePlayers(); });
+    if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item('chart', 'Bankroll history', function () { Casino.showHistory(); });
     item(soundOn() ? 'sound' : 'mute', soundOn() ? 'Sound: on' : 'Sound: off', function () {
       lsSet('gn_sound', soundOn() ? '0' : '1'); toast(soundOn() ? 'Sound on' : 'Sound off'); sfx('good');
     });

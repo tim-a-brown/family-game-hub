@@ -57,7 +57,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .tapme{background:rgba(10,20,40,.35);border-radius:50%;}
 .pilot{font-weight:900;font-size:.9rem;color:#fff;padding:6px 14px;border-radius:999px;background:rgba(10,20,40,.45);}
 /* Scorecard */
-.sc-wrap{background:rgba(8,14,30,.28);}
+.sc-wrap{background:rgba(8,14,30,.38);}
 .sc-wrap h2{margin-bottom:12px;animation:fb-drop .45s var(--spring) both;}
 @keyframes fb-drop{from{transform:translateY(-30px);opacity:0}to{transform:none;opacity:1}}
 .card{width:100%;max-width:300px;border-radius:20px;padding:14px 14px 12px;
@@ -87,6 +87,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .acts{width:100%;max-width:300px;margin-top:14px;display:flex;flex-direction:column;gap:8px;animation:fb-up .5s var(--spring) .25s both;}
 .acts .row2{display:flex;gap:8px;}
 .acts .row2 .btn{flex:1;min-height:42px;padding:0 10px;font-size:.9rem;}
+.acts .btn-soft{background:rgba(12,18,38,.86);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14),0 4px 0 rgba(0,0,0,.35);}
+.acts .btn-ghost{align-self:center;min-height:40px;padding:0 16px;border-radius:999px;font-size:.88rem;background:rgba(12,18,38,.62);color:#fff;}
 .pausecard{background:rgba(8,14,30,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
 .pausecard .btn{min-width:200px;margin-top:14px;}
 .count{font-family:var(--display);font-size:5rem;color:#fff;-webkit-text-stroke:3px #3a2410;paint-order:stroke fill;text-shadow:0 5px 0 #3a2410;animation:pop .45s var(--spring);}
@@ -521,6 +523,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function loop(ts) {
     if (!last) last = ts;
     acc += Math.min(.1, (ts - last) / 1000); last = ts;
+    if (!live || !bird) { acc = 0; requestAnimationFrame(loop); return; }
     while (acc >= DT) { acc -= DT; if (!paused) update(); }
     render();
     requestAnimationFrame(loop);
