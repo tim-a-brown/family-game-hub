@@ -2,367 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Flip 7</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flip 7 Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ── Scorecard layout (shared look: Flip 7 · Five Crowns · Wizard · Rook · Phase 10) ── */
-.page{max-width:640px;}
-.sc-card,.setup-screen,.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 16px;margin-bottom:14px;}
-.sc-label{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 10px;}
-.cnt-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(40px,1fr));gap:4px;padding:4px;margin-bottom:20px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;}
-.cnt-row .btn{min-height:42px;padding:0;border-radius:11px;background:transparent;border-color:transparent;color:var(--text-2);box-shadow:none;font-size:1rem;font-weight:700;}
-.cnt-row .btn.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);box-shadow:0 4px 14px rgba(240,165,0,.25);}
-.names-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-.player-setup-row{display:flex;align-items:flex-start;gap:12px;}
-.player-setup-row .player-dot{width:12px;height:12px;margin-top:19px;box-shadow:0 0 0 3px rgba(255,255,255,.05);}
-.name-field{flex:1;min-width:0;}
-.fp-ai-cta{border-radius:16px !important;margin-bottom:18px !important;}
-
-/* Scoreboard tiles */
-.score-display{display:grid;gap:8px;margin-bottom:12px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 10px 10px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 24px -6px var(--lc,rgba(245,200,66,.3));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.7rem,7vw,2.3rem);font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub,.scorer-foot{font-size:.75rem;color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer .crown{position:absolute;top:8px;right:9px;font-size:.8rem;}
-.pbar{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:8px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-
-/* Round entry */
-.entry-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
-.entry-title{font-family:var(--display);font-size:1.2rem;font-weight:700;letter-spacing:-.01em;}
-.entry-meta{font-size:.8rem;font-weight:700;color:var(--gold);background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:999px;padding:4px 10px;white-space:nowrap;}
-.entry-meta.muted{color:var(--text-2);background:var(--surface-2);border-color:var(--line);}
-.entry-list{margin-bottom:14px;}
-.erow{display:grid;grid-template-columns:minmax(0,1fr) 96px;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
-.erow:first-child{border-top:0;}
-.erow-name{display:flex;align-items:center;gap:9px;font-weight:600;font-size:.95rem;min-width:0;}
-.erow-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.erow-sub{font-size:.75rem;color:var(--text-3);font-weight:500;}
-.score-input,.bid-input{width:100%;min-height:46px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font-weight:700;text-align:center;padding:8px 4px;outline:none;font-variant-numeric:tabular-nums;transition:border-color .15s,box-shadow .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:500;}
-.score-input:disabled{opacity:.3;}
-.toggle-row{display:flex;gap:6px;}
-.toggle-btn{flex:1;min-height:38px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:11px;color:var(--text-2);font-size:.8rem;font-weight:700;padding:0 8px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-.toggle-btn:active{transform:scale(.96);}
-.toggle-btn.on{background:rgba(245,200,66,.16);border-color:rgba(245,200,66,.6);color:var(--gold);}
-.toggle-btn.bust-on{background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.55);color:var(--red);}
-.toggle-btn:disabled{opacity:.35;cursor:not-allowed;}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;}
-.seg .toggle-btn{border-color:transparent;background:transparent;min-height:40px;}
-.seg .toggle-btn.on,.seg .toggle-btn.bust-on{background:var(--surface-3);box-shadow:0 1px 3px rgba(0,0,0,.35);}
-.form-err{color:var(--red);font-size:.88rem;font-weight:600;text-align:center;margin:0 0 12px;}
-.preview{font-size:.85rem;color:var(--text-2);text-align:center;margin:0 0 12px;min-height:20px;line-height:1.5;}
-
-/* Round history */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;}
-.hist-head{padding:13px 14px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:9px 12px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.alt{background:rgba(255,255,255,.018);}
-.hist-row.names .hist-val{font-size:.75rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.hist-row.totals{background:var(--surface-2);border-top:1px solid var(--line-2);}
-.hist-num{font-size:.78rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.92rem;font-weight:600;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;}
-.hist-val.neg{color:var(--red);}
-.hist-total{font-family:var(--display);font-size:1.08rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-
-/* Footer actions + winner */
-.sc-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-.winner-trophy{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.winner-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
-.winner-actions .btn{flex:1 1 140px;max-width:220px;}
-.winner-banner .gh-hist-btn{font-size:.85rem !important;padding:0 16px !important;margin-top:12px !important;}
-
-/* Rules */
-.rules-body p{margin:0 0 8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-/* Flip 7 entry rows: name · score · Bust / Flip 7 */
-.erow.f7{grid-template-columns:minmax(0,1fr) 60px auto;gap:8px;}
-.erow.f7 .toggle-btn{flex:none;padding:0 9px;font-size:.76rem;}
-.erow.f7 .toggle-row{gap:5px;}
+.f7p{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;border-radius:var(--r);background:rgba(255,255,255,.05);}
+.f7p .rrow{padding:0;background:none;}
+.f7p .rrow .num{width:72px;}
+.f7p .sub{font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:2px 0 0 38px;}
+.f7p .helpers{display:flex;flex-wrap:wrap;gap:5px;margin-left:38px;}
+.f7p .helpers button{min-width:40px;min-height:40px;padding:0 10px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text-2);font-weight:900;font-size:.88rem;font-variant-numeric:tabular-nums;transition:transform .15s var(--spring), background .15s;}
+.f7p .helpers button:active{transform:scale(.92);}
+.f7p .helpers button.on{background:#ff8a00;color:#2b1a00;}
+.f7p .helpers button.x2.on{background:#9b7bff;color:#fff;}
+.f7p .helpers button.f7.on{background:var(--yellow);color:#2b1a00;}
+.f7p .helpers button.bust.on{background:var(--red);color:#fff;}
+.f7p .helpers button:disabled{opacity:.3;}
+.f7p .res{display:flex;justify-content:space-between;align-items:baseline;margin-left:38px;font-weight:800;color:var(--text-2);font-size:.85rem;}
+.f7p .res b{font-size:1.25rem;color:var(--text);font-variant-numeric:tabular-nums;}
+.f7p.busted .rrow{opacity:.4;}
+.f7p.busted .res b{color:var(--red);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Flip 7</span>
-  <a class="icon-btn ai-link" href="flip7-ai.html" aria-label="Play vs AI" title="Play vs AI">🎮</a>
-</nav>
-<div class="page">
-  <div id="f7-setup" class="setup-screen">
-    <div class="sc-label">Number of players</div>
-    <div class="cnt-row">
-      <button class="btn btn-outline btn-sm f7-cnt active-cnt" data-n="2">2</button>
-      <button class="btn btn-outline btn-sm f7-cnt" data-n="3">3</button>
-      <button class="btn btn-outline btn-sm f7-cnt" data-n="4">4</button>
-      <button class="btn btn-outline btn-sm f7-cnt" data-n="5">5</button>
-      <button class="btn btn-outline btn-sm f7-cnt" data-n="6">6</button>
-    </div>
-    <div class="sc-label">Players</div>
-    <div id="f7-names" class="names-list"></div>
-    <button class="btn btn-gold btn-block" id="f7-start">Start Game</button>
-  </div>
-
-  <div id="f7-game" class="hidden">
-    <div id="f7-winner" class="winner-banner hidden">
-      <div class="winner-trophy">🏆</div>
-      <div class="winner-name" id="f7-wname"></div>
-      <div class="winner-pts" id="f7-wpts"></div>
-      <div class="winner-actions">
-        <button class="btn btn-gold" id="f7-again">Play Again</button>
-        <button class="btn btn-outline" id="f7-newsetup">New Setup</button>
-      </div>
-    </div>
-    <div id="f7-scores" class="score-display"></div>
-    <div id="f7-entry" class="entry-panel">
-      <div class="entry-head">
-        <span class="entry-title" id="f7-round-label">Round 1</span>
-        <button class="btn-ghost" id="f7-undo">↩ Undo</button>
-      </div>
-      <div id="f7-inputs" class="entry-list"></div>
-      <div id="f7-err" class="form-err" style="display:none;"></div>
-      <button class="btn btn-gold btn-block" id="f7-submit">Add Round</button>
-    </div>
-    <div id="f7-hist-wrap"></div>
-    <div class="sc-foot">
-      <button class="btn btn-ghost" id="f7-reset-setup">New Setup</button>
-      <button class="btn btn-ghost" id="f7-reset-scores">Reset Scores</button>
-    </div>
-  </div>
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c','#f472b6'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10','#be185d'];
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-function ask(msg,opts){return (window.GN&&GN.confirm)?GN.confirm(msg,opts):Promise.resolve(true);}
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
+  var SETUP = 'flip7_pad_setup', MODS = [2, 4, 6, 8, 10], BONUS = 15;
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' Wins!';
-  ptsEl.textContent=typeof pts==='number'?pts+' points':pts;
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey&&typeof GameHistory!=='undefined'){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
-  }
-  haptic('success');
-  setTimeout(()=>{try{banner.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
-}
-// opts: {lowWins, target:false, sub:[...]}
-function buildScorers(container,names,totals,win,colors,cdark,opts={}){
-  const n=names.length;
-  const cols=n<=3?n:n<=4?2:3;
-  container.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
-  container.innerHTML='';
-  const best=opts.lowWins?Math.min(...totals):Math.max(...totals);
-  names.forEach((nm,i)=>{
-    const leading=opts.lowWins?(totals[i]===best&&totals[i]!==0):(totals[i]===best&&totals[i]>0);
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'66');
-    if(leading)s.style.borderColor=colors[i];
-    let foot='';
-    if(opts.target!==false){
-      const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-      foot=`<div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-foot">${win-totals[i]>0?(win-totals[i])+' to win':'🏆 Reached '+win}</div>`;
-    }
-    s.innerHTML=`${leading?'<span class="crown">👑</span>':''}<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      ${opts.sub?`<div class="scorer-sub">${opts.sub[i]}</div>`:''}${foot}`;
-    container.appendChild(s);
+  Kit.init({
+    id: 'flip7', title: 'Flip 7 score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('f7', { keys: ['flip7'], title: 'Flip 7: past games' }); } }],
+    rules:
+      '<p class="goal">Play Flip 7 with the real cards and keep score here. First to <b>200</b> at the end of a round wins.</p>' +
+      '<h3>After each round</h3><ul><li>Add up each player\'s <b>number cards</b> and enter the total.</li>' +
+      '<li>Tap <b>&times;2</b> if they have it (it doubles the number cards only), and any <b>+2 to +10</b> cards they have.</li>' +
+      '<li>Tap <b>Flip 7</b> for the player who got 7 different numbers. They get <b>15 bonus points</b>.</li>' +
+      '<li>Tap <b>Bust</b> for anyone who flipped a duplicate number. They score 0 this round.</li></ul>' +
+      '<h3>Quick rules</h3><ul><li>On your turn, flip a card or stay.</li><li>A duplicate number busts you, unless you have a Second Chance.</li>' +
+      '<li><b>Freeze</b> makes a player stop and keep their points. <b>Flip Three</b> makes a player flip 3 cards.</li>' +
+      '<li>Don\'t shuffle between rounds. Shuffle the discards only when the deck runs out.</li></ul>' +
+      '<p>If two players tie for the lead at the end, play another round.</p>'
   });
-}
-function buildHistory(container,rounds,names,totals,colors,title='Round History'){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`26px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">${title}</div>
-    <div class="hist-row names" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-val" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row ${ri%2?'alt':''}" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val ${v<0?'neg':''}">${v>0?'+'+v:v}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-function nameRow(prefix,i,value,max=16){
-  return `<div class="player-dot" style="background:${COLORS[i]}"></div>
-    <div class="name-field"><input class="input" id="${prefix}${i}" value="${esc(value)}" maxlength="${max}" autocomplete="off"></div>`;
-}
-// ── FLIP 7 ─────────────────────────────────────────────────────────────────
-const F7_WIN=200, F7_BONUS=15;
-function mkRound(n){return Array.from({length:n},()=>({score:'',bust:false,flip7:false}));}
-{
-  let f7n=3, f7names=[], f7rounds=[], f7cur=[], f7winner=null;
-  const DFLT=['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6','Player 7','Player 8'];
 
-  function f7buildNamesUI(){
-    const c=document.getElementById('f7-names');c.innerHTML='';
-    for(let i=0;i<f7n;i++){
-      const row=document.createElement('div');row.className='player-setup-row';
-      row.innerHTML=nameRow('f7n',i,DFLT[i]||'Player '+(i+1));
-      c.appendChild(row);
-    }
-    if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("f7n");
-  }
-  document.querySelectorAll('.f7-cnt').forEach(b=>{
-    b.addEventListener('click',()=>{
-      document.querySelectorAll('.f7-cnt').forEach(x=>x.classList.remove('active-cnt','btn-gold'));
-      b.classList.add('active-cnt','btn-gold');
-      f7n=parseInt(b.dataset.n);f7buildNamesUI();haptic('select');
-    });
-  });
-  document.querySelectorAll('.f7-cnt').forEach(x=>x.classList.remove('active-cnt'));
-  document.querySelector('.f7-cnt[data-n="3"]').classList.add('btn-gold','active-cnt');
-  f7buildNamesUI();
-
-  function save(){try{sessionStorage.setItem('cs_f7',JSON.stringify({f7n,f7names,f7rounds,f7cur,_ts:Date.now()}));}catch(e){}}
-  function totalsNow(){return f7names.map((_,i)=>f7rounds.reduce((s,r)=>s+r[i],0));}
-  function gameOver(){return totalsNow().some(t=>t>=F7_WIN);}
-
-  function f7start(){
-    f7names=Array.from({length:f7n},(_,i)=>document.getElementById('f7n'+i).value.trim()||'Player '+(i+1));
-    f7rounds=[];f7cur=mkRound(f7n);f7winner=null;
-    document.getElementById('f7-setup').classList.add('hidden');
-    document.getElementById('f7-game').classList.remove('hidden');
-    document.getElementById('f7-winner').classList.add('hidden');
-    f7render();window.scrollTo(0,0);
-  }
-
-  function f7render(){
-    const totals=totalsNow();
-    buildScorers(document.getElementById('f7-scores'),f7names,totals,F7_WIN,COLORS,CDARK);
-    document.getElementById('f7-round-label').textContent=`Round ${f7rounds.length+1}`;
-    document.getElementById('f7-undo').style.visibility=f7rounds.length?'visible':'hidden';
-    document.getElementById('f7-entry').classList.toggle('hidden',gameOver());
-
-    // Entry rows
-    const inp=document.getElementById('f7-inputs');inp.innerHTML='';
-    f7names.forEach((nm,i)=>{
-      const p=f7cur[i];
-      const row=document.createElement('div');row.className='erow f7';
-      row.innerHTML=`<div class="erow-name"><span class="player-dot" style="background:${COLORS[i]}"></span><span>${esc(nm)}</span></div>
-        <input type="number" inputmode="numeric" class="score-input" placeholder="pts" value="${p.score}" ${p.bust?'disabled':''} data-i="${i}">
-        <div class="toggle-row">
-          <button class="toggle-btn ${p.bust?'bust-on':''}" data-bust="${i}">Bust</button>
-          <button class="toggle-btn ${p.flip7?'on':''}" data-flip="${i}" ${p.bust?'disabled':''}>Flip 7</button>
-        </div>`;
-      inp.appendChild(row);
-    });
-    inp.querySelectorAll('input[data-i]').forEach(el=>{
-      el.addEventListener('input',e=>{f7cur[+e.target.dataset.i].score=e.target.value;});
-    });
-    inp.querySelectorAll('[data-bust]').forEach(el=>{
-      el.addEventListener('click',e=>{
-        const i=+e.currentTarget.dataset.bust;
-        f7cur[i].bust=!f7cur[i].bust;
-        if(f7cur[i].bust){f7cur[i].score='';f7cur[i].flip7=false;haptic('medium');}
-        f7render();
-      });
-    });
-    inp.querySelectorAll('[data-flip]').forEach(el=>{
-      el.addEventListener('click',e=>{
-        const i=+e.currentTarget.dataset.flip;
-        if(!f7cur[i].bust)f7cur[i].flip7=!f7cur[i].flip7;
-        haptic('select');f7render();
-      });
-    });
-    buildHistory(document.getElementById('f7-hist-wrap'),f7rounds,f7names,totals,COLORS);
-  }
-
-  document.getElementById('f7-start').addEventListener('click',()=>{haptic('light');f7start();});
-  document.getElementById('f7-submit').addEventListener('click',()=>{
-    const err=document.getElementById('f7-err');
-    for(let i=0;i<f7n;i++){
-      if(!f7cur[i].bust&&f7cur[i].score===''){
-        err.textContent=`Enter a score for ${f7names[i]}, or mark Bust.`;err.style.display='block';haptic('error');return;
+  function showSetup() {
+    Kit.setup(app, {
+      players: { min: 2, max: 8, count: 4 },
+      options: [{ id: 'target', label: 'Play to', value: 200, choices: [[200, '200 · standard'], [100, '100 · quick']] }],
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        localStorage.setItem(SETUP, JSON.stringify({ names: cfg.players.map(function (p) { return p.name; }), target: +cfg.options.target || 200 }));
+        startPad();
       }
-    }
-    err.style.display='none';
-    const rs=f7cur.map(p=>p.bust?0:parseInt(p.score||0)+(p.flip7?F7_BONUS:0));
-    f7rounds.push(rs);
-    const totals=totalsNow();
-    f7cur=mkRound(f7n);
-    if(totals.some(t=>t>=F7_WIN)){
-      const wi=totals.indexOf(Math.max(...totals));
-      const banner=document.getElementById('f7-winner');
-      banner._histKey='f7';banner._histTitle='Flip 7';
-      banner._histRender=(e)=>{
-        const div=document.createElement('div');
-        div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds,lbl:'Rounds'},{val:e.totals[wi]+'pts',lbl:'Winning Score'}]));
-        div.appendChild(GameHistory.renderRoundTable(e.names,e.roundData,e.totals,COLORS));
-        return div;
-      };
-      GameHistory.save('f7',{_summary:`${f7names[wi]} wins · ${f7rounds.length} rounds`,_badge:totals[wi]+'pts',winner:f7names[wi],names:f7names,rounds:f7rounds.length,totals,roundData:f7rounds});
-      f7render();
-      showWinner(banner,document.getElementById('f7-wname'),document.getElementById('f7-wpts'),f7names[wi],totals[wi]);
-    } else {
-      haptic('light');f7render();
-    }
-    save();
-  });
-  document.getElementById('f7-undo').addEventListener('click',()=>{
-    if(f7rounds.length)f7rounds.pop();
-    document.getElementById('f7-winner').classList.add('hidden');
-    haptic('light');f7render();save();
-  });
-  function resetScores(){
-    f7rounds=[];f7cur=mkRound(f7n);document.getElementById('f7-winner').classList.add('hidden');f7render();
-    try{sessionStorage.removeItem('cs_f7');}catch(e){}
+    });
   }
-  function toSetup(){
-    document.getElementById('f7-game').classList.add('hidden');
-    document.getElementById('f7-setup').classList.remove('hidden');
-    try{sessionStorage.removeItem('cs_f7');}catch(e){}
-    window.scrollTo(0,0);
+
+  function top(t) {
+    var m = Math.max.apply(null, t), who = [];
+    t.forEach(function (v, i) { if (v === m) who.push(i); });
+    return { max: m, who: who };
   }
-  document.getElementById('f7-again').addEventListener('click',resetScores);
-  document.getElementById('f7-newsetup').addEventListener('click',toSetup);
-  document.getElementById('f7-reset-setup').addEventListener('click',async()=>{
-    if(f7rounds.length&&!gameOver()&&!(await ask('Start a new setup?',{title:'New setup?',body:'This clears the current scores.',ok:'New Setup',danger:true})))return;
-    toSetup();
-  });
-  document.getElementById('f7-reset-scores').addEventListener('click',async()=>{
-    if(f7rounds.length&&!(await ask('Reset all scores?',{title:'Reset scores?',body:'Players stay the same; every round is cleared.',ok:'Reset',danger:true})))return;
-    resetScores();
-  });
-  // Restore
-  try{
-    const raw=sessionStorage.getItem('cs_f7');
-    if(raw){const s=JSON.parse(raw);if(s.f7names&&s.f7rounds.length){
-      f7n=s.f7n;f7names=s.f7names;f7rounds=s.f7rounds;f7cur=s.f7cur||mkRound(f7n);
-      if(!Array.isArray(f7cur)||f7cur.length!==f7n)f7cur=mkRound(f7n);
-      document.getElementById('f7-setup').classList.add('hidden');
-      document.getElementById('f7-game').classList.remove('hidden');
-      f7render();
-      const t=totalsNow();
-      if(t.some(x=>x>=F7_WIN)){const wi=t.indexOf(Math.max(...t));const b=document.getElementById('f7-winner');b.classList.remove('hidden');document.getElementById('f7-wname').textContent=f7names[wi]+' Wins!';document.getElementById('f7-wpts').textContent=t[wi]+' points';}
-    }}
-  }catch(e){}
-} // end f7 block
+  // Rebuild the helpers from a saved round: detail looks like "×2 +4+10 F7" or "bust"
+  function parse(score, detail) {
+    var d = String(detail || ''), o = { bust: /bust/i.test(d), x2: /×2/.test(d), f7: /F7/.test(d), mods: [] };
+    var m, re = /\+(\d+)/g; while ((m = re.exec(d))) o.mods.push(+m[1]);
+    var rest = (Number(score) || 0) - o.mods.reduce(function (a, b) { return a + b; }, 0) - (o.f7 ? BONUS : 0);
+    o.nums = o.bust ? 0 : Math.max(0, Math.round(o.x2 ? rest / 2 : rest));
+    return o;
+  }
+
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP));
+    pad = Scorepad(app, {
+      key: 'f7', title: 'Flip 7', mode: 'Scorekeeper', target: cfg.target,
+      sides: cfg.names.map(function (n) { return { name: n }; }),
+      goal: 'First to ' + cfg.target + ' at the end of a round wins',
+      isOver: function (t) { var tp = top(t); return tp.max >= cfg.target && tp.who.length === 1; },
+      winner: function (t) { var tp = top(t); return tp.who.length === 1 ? tp.who[0] : -1; },
+      form: function (ctx) {
+        var n = ctx.sides.length;
+        var st = ctx.sides.map(function (s, i) {
+          return ctx.prev ? parse(ctx.prev.scores[i], ctx.prev.detail && ctx.prev.detail[i]) : { bust: false, x2: false, f7: false, mods: [], nums: 0 };
+        });
+        var blocks = ctx.sides.map(function (s, i) {
+          var box = el('div', { class: 'f7p' });
+          var row = ctx.number(i, { min: 0, max: 78, neg: false, value: st[i].nums });
+          row.input.addEventListener('input', refresh);
+          box.appendChild(row);
+          box.appendChild(el('div', { class: 'sub', text: 'Number cards total, then tap extras' }));
+          var hb = el('div', { class: 'helpers' }), btns = {};
+          function tog(key, label, cls, fn) {
+            var b = el('button', { type: 'button', class: cls || '', text: label, onclick: function () { fn(); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } });
+            btns[key] = b; hb.appendChild(b);
+          }
+          tog('x2', '×2', 'x2', function () { st[i].x2 = !st[i].x2; });
+          MODS.forEach(function (v) {
+            tog('m' + v, '+' + v, '', function () {
+              var k = st[i].mods.indexOf(v);
+              if (k >= 0) st[i].mods.splice(k, 1); else st[i].mods.push(v);
+            });
+          });
+          tog('f7', 'Flip 7', 'f7', function () { st[i].f7 = !st[i].f7; if (st[i].f7) st[i].bust = false; });
+          tog('bust', 'Bust', 'bust', function () { st[i].bust = !st[i].bust; if (st[i].bust) st[i].f7 = false; });
+          box.appendChild(hb);
+          var res = el('div', { class: 'res' }, [el('span', { class: 'tl' }), el('b')]);
+          box.appendChild(res);
+          ctx.node.appendChild(box);
+          return { box: box, row: row, btns: btns, res: res };
+        });
+        var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
+        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this round' });
+        ctx.node.appendChild(btn);
+
+        function score(i) {
+          var s = st[i]; if (s.bust) return 0;
+          var nums = Math.max(0, blocks[i].row.value());
+          return (s.x2 ? nums * 2 : nums) + s.mods.reduce(function (a, b) { return a + b; }, 0) + (s.f7 ? BONUS : 0);
+        }
+        function problems() {
+          var out = [], f7s = st.filter(function (s) { return s.f7; }).length;
+          if (f7s > 1) out.push('Only one player can Flip 7 (the round ends right away).');
+          var x2s = st.filter(function (s) { return s.x2 && !s.bust; }).length;
+          if (x2s > 1) out.push('There is only one ×2 card.');
+          MODS.forEach(function (v) {
+            if (st.filter(function (s) { return !s.bust && s.mods.indexOf(v) >= 0; }).length > 1) out.push('There is only one +' + v + ' card.');
+          });
+          st.forEach(function (s, i) {
+            var nums = blocks[i].row.value();
+            if (s.bust) return;
+            if (nums > 63) out.push(ctx.sides[i].name + ': 7 numbers add up to 63 at most.');
+            else if (s.f7 && nums < 21) out.push(ctx.sides[i].name + ': a Flip 7 is at least 21 (0 to 6).');
+          });
+          return out;
+        }
+        function refresh() {
+          st.forEach(function (s, i) {
+            var b = blocks[i];
+            b.box.classList.toggle('busted', s.bust);
+            b.btns.x2.classList.toggle('on', s.x2);
+            MODS.forEach(function (v) { b.btns['m' + v].classList.toggle('on', s.mods.indexOf(v) >= 0); });
+            b.btns.f7.classList.toggle('on', s.f7);
+            b.btns.bust.classList.toggle('on', s.bust);
+            Object.keys(b.btns).forEach(function (k) { if (k !== 'bust') b.btns[k].disabled = s.bust; });
+            b.row.input.disabled = s.bust;
+            var v = score(i);
+            b.res.firstChild.textContent = s.bust ? 'Bust: 0 this round' : 'Total after: ' + (ctx.totals[i] - (ctx.prev ? Number(ctx.prev.scores[i]) || 0 : 0) + v);
+            b.res.lastChild.textContent = s.bust ? '0' : '+' + v;
+          });
+          var p = problems();
+          note.className = 'rnote' + (p.length ? ' bad' : '');
+          note.textContent = p.length ? p[0] : 'Looks right';
+          btn.disabled = !!p.length;
+          return !p.length;
+        }
+        btn.addEventListener('click', function () {
+          if (!refresh()) return;
+          var scores = st.map(function (s, i) { return score(i); });
+          var detail = st.map(function (s) {
+            if (s.bust) return 'bust';
+            var d = (s.x2 ? '×2 ' : '') + s.mods.slice().sort(function (a, b) { return a - b; }).map(function (v) { return '+' + v; }).join('') + (s.f7 ? ' F7' : '');
+            return d.trim();
+          });
+          var extra = { detail: detail, highlights: [] }, r = ctx.round;
+          st.forEach(function (s, i) {
+            var nm = ctx.sides[i].name;
+            if (s.f7) { extra.highlights.push(nm + ' flipped 7 in round ' + r + ' for +' + BONUS + ' (' + scores[i] + ' points)'); extra.callout = 'Flip 7!'; }
+            else if (scores[i] >= 50) extra.highlights.push(nm + ' scored ' + scores[i] + ' in round ' + r + (s.x2 ? ' with the ×2' : ''));
+          });
+          var alive = st.map(function (s, i) { return s.bust ? -1 : i; }).filter(function (i) { return i >= 0; });
+          if (n >= 3 && alive.length === 1) extra.highlights.push('Everyone but ' + ctx.sides[alive[0]].name + ' busted in round ' + r);
+          if (n >= 2 && !alive.length) extra.highlights.push('Everybody busted in round ' + r);
+          if (extra.callout && !ctx.prev) Kit.confetti({ count: 70 });
+          if (ctx.prev) extra.highlights = [];
+          ctx.done(scores, extra);
+        });
+        refresh();
+      }
+    });
+  }
+
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

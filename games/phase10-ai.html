@@ -381,17 +381,18 @@
       paint();
       setTimeout(function () {
         if (t !== token) return;
-        S.skipNext[p] = false;
+        S.skipNext[p] = false; S.step = 'skipped';
+        save(); paint();
         say(p, 'Skipped!'); Kit.sfx('bad');
         if (p === 0) { Kit.callout('You were skipped'); Kit.haptic('error'); }
-        save();
-        setTimeout(function () { if (t === token) advance(); }, 900);
+        setTimeout(function () { if (t === token) advance(); }, 1000);
       }, 500);
       return;
     }
+    if (S.step === 'skipped') { paint(); setTimeout(function () { if (t === token) advance(); }, 700); return; }
     paint();
     if (S.players[p].cpu) setTimeout(function () { if (t === token && S && S.stage === 'play' && S.turn === p) cpuStep(p); }, S.step === 'draw' ? 750 : 650);
-    else if (S.step === 'draw') Kit.haptic('light');
+    else if (S.step === 'draw' && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) Kit.haptic('light');
   }
   function advance() {
     S.turn = (S.turn + 1) % N(); S.step = 'draw'; S.sel = null; S.building = false; S.build = null; S.lastHit = null;
@@ -551,7 +552,7 @@
   // ── You ───────────────────────────────────────────────────────────────────
   function find(id) { var h = S.hands[0]; for (var i = 0; i < h.length; i++) if (h[i].id === id) return h[i]; return null; }
   function youDraw(fromDiscard) {
-    if (!me() || S.step !== 'draw') return;
+    if (!me() || S.step !== 'draw' || S.skipNext[0]) return;
     var top = S.discard[S.discard.length - 1];
     if (fromDiscard) {
       if (!top) return;
@@ -564,6 +565,7 @@
     if (!S || S.stage !== 'play') return;
     if (S.turn !== 0) { Kit.toast('Wait for your turn'); return; }
     if (S.step === 'draw') { Kit.toast('Draw a card first'); Kit.haptic('error'); return; }
+    if (S.step !== 'play') return;
     if (S.building) {
       S.build[S.bActive].push(c.id);
       var a = analyze(PH[S.players[0].ph - 1].req[S.bActive], ids(S.build[S.bActive]));
@@ -690,7 +692,7 @@
     clearSave();
     Kit.win({
       title: w < 0 ? "It's a tie!" : w === 0 ? 'You win!' : S.players[w].name + ' wins',
-      sub: w >= 0 ? (w === 0 ? 'You' : S.players[w].name) + ' finished phase ' + S.last + ' in ' + S.hand + ' hands' : 'Tied on points after phase ' + S.last,
+      sub: w >= 0 ? (w === 0 ? 'You' : S.players[w].name) + ' finished phase ' + S.last + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands') : 'Tied on points after phase ' + S.last,
       rank: rank, lose: w !== 0 && w >= 0, icon: w === 0 ? 'trophy' : w < 0 ? 'trophy' : 'bot',
       again: function () {
         S = freshGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.last);
@@ -701,7 +703,9 @@
   }
   function highlights(w) {
     var st = S.stats, out = [], names = S.players.map(function (p) { return p.name; });
-    if (w >= 0) out.push(names[w] + ' laid down Phase ' + S.last + ' first');
+    var fin = S.players.map(function (p, i) { return i; }).filter(function (i) { return S.players[i].done; });
+    if (fin.length > 1) out.push(fin.map(function (i) { return names[i]; }).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' all finished Phase ' + S.last + ' in the same hand' + (w >= 0 ? ', and ' + names[w] + ' won on points' : ''));
+    else if (w >= 0) out.push(names[w] + ' laid down Phase ' + S.last + ' first, in hand ' + S.hand);
     if (st.stuck && st.stuck.n >= 2) out.push(names[st.stuck.p] + ' was stuck on phase ' + st.stuck.ph + ' for ' + st.stuck.n + ' hands');
     var sk = null;
     st.skips.forEach(function (row, a) { row.forEach(function (v, b) { if (v && (!sk || v > sk.v)) sk = { a: a, b: b, v: v }; }); });
@@ -899,12 +903,13 @@
     if (S.stage !== 'play') { barEl.appendChild(el('span', { class: 'hint', text: S.stage === 'ending' ? 'Hand over!' : '' })); return; }
     var p = S.turn;
     if (p !== 0) {
-      barEl.appendChild(el('span', { class: 'hint', text: S.skipNext[p] && S.step === 'draw' ? S.players[p].name + ' is skipped' : S.players[p].name + ' is playing…' }));
+      barEl.appendChild(el('span', { class: 'hint', text: (S.skipNext[p] && S.step === 'draw') || S.step === 'skipped' ? S.players[p].name + ' loses this turn' : S.players[p].name + ' is playing…' }));
       return;
     }
+    if (S.step === 'skipped') { barEl.appendChild(el('span', { class: 'hint', text: 'You lose this turn' })); return; }
     if (S.step === 'draw') {
       var top = S.discard[S.discard.length - 1];
-      if (S.skipNext[0]) { barEl.appendChild(el('span', { class: 'hint', text: 'You are skipped' })); return; }
+      if (S.skipNext[0]) { barEl.appendChild(el('span', { class: 'hint', text: 'You lose this turn' })); return; }
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('cards') + '<span>Draw</span>', onclick: function () { youDraw(false); } }));
       var tb = el('button', { type: 'button', class: 'btn btn-soft', text: top ? (isS(top) ? "Can't take Skip" : 'Take ' + cname(top)) : 'Discard empty', onclick: function () { youDraw(true); } });
       tb.disabled = !top || isS(top);
