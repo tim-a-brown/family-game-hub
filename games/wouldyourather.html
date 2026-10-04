@@ -1,304 +1,876 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Would You Rather</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.page{padding-top:12px;padding-bottom:calc(100px + var(--safe-b));}
-.wrap{max-width:600px;margin:0 auto;}
-.cat-row{margin-bottom:12px;}
-.cat-row .tab{flex:1 1 0;}
-.q-meta{display:flex;align-items:center;justify-content:space-between;margin:0 4px 10px;}
-.q-counter{color:var(--text-3);font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;}
-.wyr-label{font-family:var(--display);font-size:1.05rem;font-weight:800;letter-spacing:-.01em;color:var(--text-2);}
-.deck{position:relative;touch-action:pan-y;}
-.deck.enter{animation:wyr-in .35s var(--ease) both;}
-.deck.leave{animation:wyr-out .22s ease-in both;}
-@keyframes wyr-in{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:none;}}
-@keyframes wyr-out{to{opacity:0;transform:translateX(-40px);}}
-.choice-wrap{position:relative;border-radius:24px;overflow:hidden;margin-bottom:10px;border:2px solid transparent;transition:border-color .2s,box-shadow .2s,transform .12s var(--ease);}
-.choice-wrap.A{background:linear-gradient(150deg,#1d3b66,#13213d);}
-.choice-wrap.B{background:linear-gradient(150deg,#5a1f2c,#30121b);}
-.choice-wrap:has(.choice-btn:active){transform:scale(.985);}
-.choice-wrap.win.A{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(96,165,250,.15),0 14px 34px rgba(0,0,0,.35);}
-.choice-wrap.win.B{border-color:#f87171;box-shadow:0 0 0 4px rgba(248,113,113,.15),0 14px 34px rgba(0,0,0,.35);}
-.choice-btn{width:100%;background:transparent;border:0;padding:22px 20px;cursor:pointer;text-align:left;font-family:var(--font);color:var(--text);display:flex;align-items:center;min-height:clamp(120px,22dvh,190px);-webkit-tap-highlight-color:transparent;}
-.choice-text{font-family:var(--display);font-size:clamp(1.3rem,5.6vw,1.75rem);font-weight:700;line-height:1.25;letter-spacing:-.015em;text-align:left;}
-.choice-tag{position:absolute;top:12px;right:14px;font-size:.72rem;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.4);pointer-events:none;}
-.wyr-or{position:relative;z-index:2;font-family:var(--display);font-size:.95rem;font-weight:800;color:var(--gold-ink);background:linear-gradient(135deg,var(--gold),var(--gold2));border:4px solid var(--bg);border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;margin:-31px auto -21px;}
-/* Votes */
-.vote-area{padding:0 16px 14px;display:none;}
-.vote-inner{display:flex;align-items:center;gap:12px;}
-.v-count{font-family:var(--display);font-size:1.6rem;font-weight:800;min-width:30px;text-align:center;font-variant-numeric:tabular-nums;}
-.v-count-A{color:#93c5fd;}.v-count-B{color:#fca5a5;}
-.v-minus{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--text-2);font-size:1.2rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex-shrink:0;}
-.v-minus:active{background:rgba(0,0,0,.4);}
-.v-bars{flex:1;}
-.v-bar-track{height:8px;background:rgba(0,0,0,.25);border-radius:99px;overflow:hidden;margin-bottom:4px;}
-.v-bar-fill{height:100%;border-radius:99px;transition:width .35s var(--ease);}
-.v-bar-A{background:#60a5fa;}.v-bar-B{background:#f87171;}
-.v-pct{font-size:.8rem;font-weight:700;}
-.v-pct-A{color:#93c5fd;}.v-pct-B{color:#fca5a5;}
-.tap-hint{text-align:center;color:var(--text-3);font-size:.85rem;margin-top:12px;}
-.ctrl-row{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px max(16px,var(--safe-r)) calc(12px + var(--safe-b)) max(16px,var(--safe-l));background:linear-gradient(180deg,transparent,rgba(11,13,18,.92) 30%);}
-.ctrl-row .btn{display:flex;width:100%;max-width:600px;margin:0 auto;min-height:54px;font-size:1.05rem;}
-@keyframes pop-in{0%{opacity:0;transform:translateY(5px) scale(.97)}100%{opacity:1;transform:none}}
-.pop{animation:pop-in .2s ease;}
+body{overflow-x:hidden;}
+.wy{max-width:760px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 18px);}
+.wy .scores{margin-bottom:2px;}
+
+/* Table */
+.table{border-radius:24px;padding:8px;}
+.table .felt-in{position:relative;border-radius:18px;padding:12px 12px 14px;overflow:hidden;}
+.ttl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 10px;}
+.ttl h2{font-family:var(--display);font-weight:400;font-size:1.45rem;line-height:1;color:#ffe08a;text-shadow:0 2px 0 rgba(0,0,0,.35);white-space:nowrap;}
+.ttl .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.tag{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 9px;border-radius:999px;background:rgba(0,0,0,.28);color:rgba(255,255,255,.85);font-size:.74rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+.tag .ico{width:13px;height:13px;}
+.tag.cat{background:var(--cc);color:#fff;}
+.prompt{text-align:center;font-weight:900;color:#fff;font-size:1.02rem;margin:-2px 0 10px;min-height:1.3em;}
+.prompt b{color:var(--c,#ffe08a);}
+
+/* The two big choice cards */
+.cards{position:relative;display:grid;grid-template-columns:1fr;gap:14px;}
+.wcard{--a:#2f8fe0;--b:#1b5aa8;position:relative;display:flex;flex-direction:column;min-height:158px;border-radius:18px;overflow:hidden;text-align:center;color:#fff;
+  background:radial-gradient(120% 90% at 20% 0%,rgba(255,255,255,.22),transparent 60%),linear-gradient(160deg,var(--a),var(--b));
+  box-shadow:inset 0 0 0 5px rgba(255,255,255,.9),inset 0 0 0 7px rgba(0,0,0,.12),0 10px 22px rgba(0,0,0,.45);
+  transition:transform .15s var(--ease),filter .35s,box-shadow .35s,opacity .35s;-webkit-tap-highlight-color:transparent;}
+.wcard.b{--a:#f0606a;--b:#b42740;}
+.wcard::before{content:attr(data-l);position:absolute;right:14px;top:6px;font-family:var(--display);font-size:3.2rem;line-height:1;color:rgba(255,255,255,.16);pointer-events:none;}
+.wcard .txt{flex:1;display:flex;align-items:center;justify-content:center;padding:20px 22px 14px;font-family:var(--display);font-weight:400;
+  font-size:clamp(1.3rem,5.8vw,1.75rem);line-height:1.15;letter-spacing:.005em;text-wrap:balance;text-shadow:0 2px 0 rgba(0,0,0,.18);}
+.wcard.tap{cursor:pointer;}
+.wcard.tap:active{transform:scale(.975);}
+@media (hover:hover){.wcard.tap:hover{filter:brightness(1.07);}}
+.wcard.in-a{animation:slideA .55s var(--spring) both;}
+.wcard.in-b{animation:slideB .55s var(--spring) both;animation-delay:.08s;}
+@keyframes slideA{from{transform:translateX(-115%) rotate(-6deg);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes slideB{from{transform:translateX(115%) rotate(6deg);opacity:0;}to{transform:none;opacity:1;}}
+.cards.out .wcard{animation:slideOut .32s cubic-bezier(.5,0,.75,0) forwards;}
+.cards.out .wcard.b{animation-delay:.05s;}
+@keyframes slideOut{to{transform:translateX(-120%) rotate(-8deg);opacity:0;}}
+.wcard.picked{transform:scale(1.03);box-shadow:inset 0 0 0 5px #fff,0 0 0 4px #ffd447,0 14px 30px rgba(0,0,0,.5);}
+.wcard.dimmed{filter:saturate(.35) brightness(.7);}
+.wcard.win{box-shadow:inset 0 0 0 5px #fff,0 0 0 4px #ffd447,0 0 34px rgba(255,212,71,.55),0 14px 30px rgba(0,0,0,.5);}
+.wcard.lose{filter:saturate(.6) brightness(.82);}
+.or{position:absolute;left:50%;top:50%;z-index:3;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--display);font-size:1.15rem;color:#5a3a00;letter-spacing:.02em;
+  background:radial-gradient(circle at 35% 30%,#fff3b8,#ffd447 45%,#d99a12);box-shadow:0 0 0 4px rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.18);
+  animation:orin .5s var(--spring) .25s both;}
+@keyframes orin{from{transform:scale(0) rotate(-90deg);}}
+.cards.out .or{opacity:0;transition:opacity .2s;}
+
+/* Voter chips inside a card */
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:0 12px 14px;}
+.vchip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px 0 5px;border-radius:999px;border:0;font-weight:900;font-size:.9rem;
+  background:rgba(0,0,0,.2);color:rgba(255,255,255,.75);transition:transform .15s var(--spring),background .15s,color .15s;-webkit-tap-highlight-color:transparent;}
+.vchip .avatar{width:30px;height:30px;font-size:.82rem;}
+.vchip.on{background:#fff;color:#1d1835;transform:scale(1.06);box-shadow:0 3px 8px rgba(0,0,0,.3);}
+.vchip:active{transform:scale(.95);}
+.vchip.drop{animation:drop .45s var(--spring) both;}
+@keyframes drop{from{transform:translateY(-22px) scale(.6);opacity:0;}}
+
+/* Result on a revealed card */
+.res{padding:0 16px 14px;}
+.res .row1{display:flex;align-items:baseline;justify-content:center;gap:8px;}
+.res .pct{font-family:var(--display);font-size:2.3rem;line-height:1;text-shadow:0 2px 0 rgba(0,0,0,.25);font-variant-numeric:tabular-nums;}
+.res .cnt{font-weight:900;font-size:.9rem;color:rgba(255,255,255,.85);}
+.bar{height:12px;border-radius:999px;background:rgba(0,0,0,.28);overflow:hidden;margin:6px 0 10px;box-shadow:inset 0 1px 2px rgba(0,0,0,.35);}
+.bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(180deg,#fff,#e9e4ff);transition:width 1.1s var(--ease);}
+.res .chips{padding:0;}
+.res .vchip{background:#fff;color:#1d1835;min-height:34px;font-size:.84rem;}
+.res .vchip .avatar{width:26px;height:26px;}
+.res .none{font-weight:800;font-size:.85rem;color:rgba(255,255,255,.7);}
+
+/* Pass-the-phone cover */
+.cover{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:26px 8px 18px;}
+.cover .spot{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:2.6rem;color:#1a1033;
+  background:radial-gradient(circle at 40% 35%,color-mix(in srgb,var(--c) 70%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 60%,#000));
+  box-shadow:0 0 0 6px rgba(255,255,255,.1),0 0 50px color-mix(in srgb,var(--c) 50%,transparent);animation:pop .5s var(--spring) both;}
+@keyframes pop{from{transform:scale(.6);opacity:0;}}
+.cover h3{font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.05;color:#fff;}
+.cover p{color:rgba(255,255,255,.75);max-width:300px;font-weight:700;}
+.cover .done{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.cover .done span{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px 0 4px;border-radius:999px;background:rgba(0,0,0,.25);color:rgba(255,255,255,.8);font-size:.8rem;font-weight:800;}
+.cover .done .avatar{width:22px;height:22px;font-size:.7rem;}
+.cover .done .ico{width:14px;height:14px;color:#7ee2a8;}
+.cover .btn{min-width:230px;margin-top:6px;}
+.cover .back{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(260px,70vw);margin:4px 0 2px;}
+.cover .back i{height:70px;border-radius:12px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 5px,transparent 5px 12px),linear-gradient(160deg,#2f8fe0,#1b5aa8);box-shadow:inset 0 0 0 4px rgba(255,255,255,.85);}
+.cover .back i+i{background:repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 5px,transparent 5px 12px),linear-gradient(160deg,#f0606a,#b42740);}
+
+/* Controls under the table */
+.acts{display:flex;gap:10px;margin-top:12px;}
+.acts .btn{flex:1;}
+.acts .btn.sq{flex:0 0 auto;padding:0 18px;}
+.hint{text-align:center;color:var(--text-3);font-size:.85rem;font-weight:700;margin-top:8px;}
+
+/* End screen */
+.sum{display:flex;flex-direction:column;gap:8px;}
+.sum h3{font-family:var(--display);font-weight:400;font-size:1.6rem;color:#ffe08a;text-align:center;margin:4px 0 2px;}
+.sum .q{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.25);color:#fff;font-weight:800;font-size:.88rem;line-height:1.25;}
+.sum .q .t{flex:1;min-width:0;}
+.sum .q .t s{text-decoration:none;color:rgba(255,255,255,.55);font-weight:700;}
+.sum .q .n{flex:none;font-family:var(--display);font-size:1rem;color:#ffe08a;white-space:nowrap;}
+
+/* Setup categories */
+.cats{display:flex;flex-wrap:wrap;gap:6px;}
+.cats .chip{min-height:40px;}
+.cats .chip .ico{width:16px;height:16px;}
+.cats .chip.on{background:var(--cc,var(--accent));color:#fff;}
+.cats .chip .n{opacity:.7;font-size:.78rem;}
+
+/* History extra */
+.hx{display:flex;flex-direction:column;gap:5px;margin-top:10px;}
+.hx div{padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.04);font-size:.84rem;font-weight:700;color:var(--text-2);line-height:1.3;}
+.hx b{color:var(--text);}
+.hx em{font-style:normal;color:var(--text-3);}
+
+@media (min-width:700px){
+  .cards{grid-template-columns:1fr 1fr;gap:22px;}
+  .wcard{min-height:240px;}
+  .wcard .txt{font-size:1.75rem;}
+  .ttl h2{font-size:1.8rem;}
+}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Would You Rather</span>
-  <button class="icon-btn" id="shuffle-btn" aria-label="Shuffle questions" title="Shuffle">🔀</button>
-</nav>
-<div class="page">
-<div class="wrap">
-
-<div class="tabs cat-row" id="cats"></div>
-<div class="q-meta"><div class="wyr-label">Would you rather…</div><div class="q-counter" id="q-counter">Question 1</div></div>
-
-<div class="deck" id="deck">
-<div class="choice-wrap A">
-  <span class="choice-tag">A</span>
-  <button class="choice-btn plain" id="btn-A">
-    <div class="choice-text" id="text-A"></div>
-  </button>
-  <div class="vote-area" id="vrow-A">
-    <div class="vote-inner">
-      <span class="v-count v-count-A" id="cnt-A">0</span>
-      <div class="v-bars">
-        <div class="v-bar-track"><div class="v-bar-fill v-bar-A" id="fill-A" style="width:50%"></div></div>
-        <div class="v-pct v-pct-A" id="pct-A">50%</div>
-      </div>
-      <button class="v-minus" id="dec-A" aria-label="Remove a vote for A">−</button>
-    </div>
-  </div>
-</div>
-
-<div class="wyr-or">OR</div>
-
-<div class="choice-wrap B">
-  <span class="choice-tag">B</span>
-  <button class="choice-btn plain" id="btn-B">
-    <div class="choice-text" id="text-B"></div>
-  </button>
-  <div class="vote-area" id="vrow-B">
-    <div class="vote-inner">
-      <span class="v-count v-count-B" id="cnt-B">0</span>
-      <div class="v-bars">
-        <div class="v-bar-track"><div class="v-bar-fill v-bar-B" id="fill-B" style="width:50%"></div></div>
-        <div class="v-pct v-pct-B" id="pct-B">50%</div>
-      </div>
-      <button class="v-minus" id="dec-B" aria-label="Remove a vote for B">−</button>
-    </div>
-  </div>
-</div>
-</div>
-<div class="tap-hint" id="tap-hint">Tap a side to vote — one tap per person · swipe for next</div>
-
-<div class="ctrl-row">
-  <button class="btn btn-gold" id="next-btn">Next question →</button>
-</div>
-
-</div></div>
+<main class="wy" id="app"></main>
 <script>
-'use strict';
-const QUESTIONS={
-  Fun:[
-    ['Have a pet dinosaur','Have a pet dragon'],
-    ['Always speak in rhyme','Always speak in song'],
-    ['Have unlimited pizza for life','Have unlimited sushi for life'],
-    ['Be able to fly','Be able to breathe underwater'],
-    ['Know every language','Play every instrument'],
-    ['Live in a treehouse','Live in an underground house'],
-    ['Only eat sweet foods forever','Only eat savory foods forever'],
-    ['Be the funniest person in the room','Be the smartest person in the room'],
-    ['Never have to sleep','Never have to eat'],
-    ['Time travel to the past','Time travel to the future'],
-    ['Be invisible for a day','Read minds for a day'],
-    ['Always be 10 minutes late','Always be 20 minutes early'],
-    ['Have a rewind button for your life','Have a pause button for your life'],
-    ['Live without music','Live without movies'],
-    ['Be famous but broke','Be rich but unknown'],
-    ['Be able to talk to animals','Be able to speak every human language'],
-    ['Have a magic carpet that flies','Have a bicycle that can go 200 mph'],
-    ['Always win at board games','Always win at video games'],
-    ['Be able to pause time for 10 minutes a day','Be able to rewind time 10 minutes once a day'],
-    ['Have a personal robot assistant','Have a personal teleporter'],
-    ['Never feel cold','Never feel hot'],
-    ['Have free food at every restaurant forever','Have free flights anywhere forever'],
-    ['Be able to remember every dream','Be able to control your dreams'],
-    ['Have hiccups for a month','Have a runny nose for a month'],
-    ['Always have to whisper','Always have to shout'],
-    ['Have a tail like a dog','Have ears like a dog'],
-    ['Be able to run as fast as a car','Be able to jump as high as a three-story building'],
-    ['Eat the same meal every day but love it','Eat a different meal every day but just like it'],
-    ['Have an extra hour every day','Have an extra day every week'],
-    ['Live in a lighthouse by the ocean','Live in a cabin in the mountains'],
-    ['Only be able to eat hot food','Only be able to eat cold food'],
-    ['Have a photographic memory','Have perfect future vision for 5 seconds per day'],
-  ],
-  Family:[
-    ['Have a family game night every week','Have a family movie night every week'],
-    ['Go on a road trip','Take a plane somewhere new'],
-    ['Cook dinner together every night','Order takeout whenever you want'],
-    ['Have a big family reunion','Take a small family vacation'],
-    ['Live close to your parents','Live far away but travel to see them'],
-    ['Have an older sibling','Have a younger sibling'],
-    ['Always win at family games','Never win but always have fun'],
-    ['Take a camping trip with the whole family','Take a cruise with the whole family'],
-    ['Have a dog','Have a cat'],
-    ['Live in the city','Live in the countryside'],
-  ],
-  Hard:[
-    ['Give up your phone for a year','Give up your car for a year'],
-    ['Always tell the truth','Never be able to speak'],
-    ['Lose all your memories','Never be able to make new ones'],
-    ['Be famous for something embarrassing','Be unknown for something great'],
-    ['Give up social media forever','Give up coffee/tea forever'],
-    ['Work a job you hate that pays great','Work a job you love that pays poorly'],
-    ['Have no privacy but always be safe','Have total privacy but less security'],
-    ['Only be able to whisper','Only be able to shout'],
-    ['Age only physically','Age only mentally'],
-    ['Know how every story ends before it starts','Never remember how any story ends'],
-  ],
-  Silly:[
-    ['Have spaghetti for hair','Have meatballs for fingers'],
-    ['Sneeze glitter','Sweat maple syrup'],
-    ['Have a horn honk every time you lie','Bark like a dog when excited'],
-    ['Have T-Rex arms','Have legs as long as a giraffe'],
-    ['Quack like a duck with every step','Moo when you sit down'],
-    ['Have fingers as long as your arms','Have arms as short as your fingers'],
-    ['Always smell like garlic','Always smell like fish'],
-    ['Never be able to whisper','Never be able to be quiet'],
-    ['Have eyes that glow in the dark','Have ears that spin like a helicopter'],
-    ['Talk in third person forever','Narrate everything you do out loud'],
-    ['Know the exact date you will die but not how','Know how you will die but not when'],
-    ['Be famous for something embarrassing','Be unknown but successful'],
-    ['Have the ability to see 10 years into your future once','Never age past 30 but everyone you know still ages'],
-    ['Lose all your memories from the last 5 years','Lose all your money and have to start over'],
-    ['Have one true friend who is always honest','Have many friends who only tell you what you want to hear'],
-    ['Be able to end one type of pollution forever','Cure one disease forever'],
-    ['Give up social media forever','Give up watching TV and movies forever'],
-    ['Always know when someone is lying to you','Be impossible to lie to without knowing it'],
-    ['Have your thoughts visible to everyone near you','Have your past searchable by anyone online'],
-    ['Be the best in the world at something nobody cares about','Be average at something everyone values'],
-  ],
-};
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var KEY = 'wouldyourather', SAVE = 'wyr_state', SEEN = 'wyr_seen', CATKEY = 'wyr_cats';
 
-let cat='Fun',qi=0,questions=[],cntA=0,cntB=0;
-
-Object.keys(QUESTIONS).forEach(c=>{
-  const b=document.createElement('button');
-  b.className='tab cat-btn'+(c===cat?' active':'');
-  b.textContent=c;
-  b.addEventListener('click',()=>{
-    if(c===cat)return;
-    cat=c;GN.haptic('select');
-    document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    loadCategory();
+  // ── Prompts ───────────────────────────────────────────────────────────────
+  var CATS = [
+    { id: 'fun', name: 'Fun', color: '#e0457b', icon: 'party' },
+    { id: 'silly', name: 'Silly', color: '#e39b12', icon: 'sparkle' },
+    { id: 'food', name: 'Food', color: '#d9622b', icon: 'flame' },
+    { id: 'animals', name: 'Animals', color: '#2f9e5a', icon: 'hand' },
+    { id: 'powers', name: 'Superpowers', color: '#7b5bd6', icon: 'star' },
+    { id: 'adventure', name: 'Adventure', color: '#1f8fb0', icon: 'play' },
+    { id: 'family', name: 'Family', color: '#e8833a', icon: 'users' },
+    { id: 'everyday', name: 'Everyday', color: '#3d7fd6', icon: 'calendar' },
+    { id: 'tough', name: 'Tough choices', color: '#8a4bbd', icon: 'lightbulb' }
+  ];
+  var DATA = {
+    fun: [
+      ['Have a pet dinosaur', 'Have a pet dragon'],
+      ['Always speak in rhyme', 'Always speak in song'],
+      ['Have unlimited pizza for life', 'Have unlimited sushi for life'],
+      ['Be able to fly', 'Be able to breathe underwater'],
+      ['Know every language', 'Play every instrument'],
+      ['Live in a treehouse', 'Live in an underground house'],
+      ['Only eat sweet foods forever', 'Only eat salty foods forever'],
+      ['Be the funniest person in the room', 'Be the smartest person in the room'],
+      ['Never have to sleep', 'Never have to eat'],
+      ['Time travel to the past', 'Time travel to the future'],
+      ['Be invisible for a day', 'Read minds for a day'],
+      ['Always be 10 minutes late', 'Always be 20 minutes early'],
+      ['Have a rewind button for your life', 'Have a pause button for your life'],
+      ['Live without music', 'Live without movies'],
+      ['Be famous but broke', 'Be rich but unknown'],
+      ['Be able to talk to animals', 'Be able to speak every human language'],
+      ['Have a magic carpet that flies', 'Have a bicycle that can go 200 mph'],
+      ['Always win at board games', 'Always win at video games'],
+      ['Pause time for 10 minutes a day', 'Rewind time 10 minutes once a day'],
+      ['Have a personal robot assistant', 'Have a personal teleporter'],
+      ['Never feel cold', 'Never feel hot'],
+      ['Have free food at every restaurant forever', 'Have free flights anywhere forever'],
+      ['Remember every dream', 'Control your dreams'],
+      ['Have hiccups for a month', 'Have a runny nose for a month'],
+      ['Always have to whisper', 'Always have to shout'],
+      ['Have a tail like a dog', 'Have ears like a dog'],
+      ['Run as fast as a car', 'Jump as high as a three-story building'],
+      ['Eat the same meal every day but love it', 'Eat a different meal every day but just like it'],
+      ['Have an extra hour every day', 'Have an extra day every week'],
+      ['Live in a lighthouse by the ocean', 'Live in a cabin in the mountains'],
+      ['Only be able to eat hot food', 'Only be able to eat cold food'],
+      ['Have a photographic memory', 'See 5 seconds into the future once a day'],
+      ['Have a slide instead of stairs at home', 'Have a trampoline floor in your bedroom'],
+      ['Ride a roller coaster every day', 'Never ride one again'],
+      ['Be a famous YouTuber', 'Be a famous movie star'],
+      ['Have a snow day every Monday', 'Have a pizza party every Friday'],
+      ['Have your own swimming pool', 'Have your own movie theater'],
+      ['Spend a week at Disney World', 'Spend a week at the beach'],
+      ['Live in a giant castle', 'Live in a spaceship'],
+      ['Have a secret passage in your house', 'Have a secret room only you can open']
+    ],
+    silly: [
+      ['Have spaghetti for hair', 'Have meatballs for fingers'],
+      ['Sneeze glitter', 'Sweat maple syrup'],
+      ['Honk like a horn every time you fib', 'Bark like a dog when you get excited'],
+      ['Have T. rex arms', 'Have legs as long as a giraffe'],
+      ['Quack like a duck with every step', 'Moo every time you sit down'],
+      ['Have fingers as long as your arms', 'Have arms as short as your fingers'],
+      ['Always smell like garlic', 'Always smell like fish'],
+      ['Never be able to whisper', 'Never be able to be quiet'],
+      ['Have eyes that glow in the dark', 'Have ears that spin like a helicopter'],
+      ['Talk about yourself in the third person forever', 'Narrate everything you do out loud'],
+      ['Wear clown shoes every day', 'Wear a giant top hat every day'],
+      ['Have a voice like a chipmunk', 'Have a voice like Darth Vader'],
+      ['Walk like a penguin forever', 'Hop like a bunny forever'],
+      ['Have a pet rock that talks', 'Have a goldfish that sings'],
+      ['Sneeze every time someone says your name', 'Burp every time you laugh'],
+      ['Have hair that changes color with your mood', 'Glow when you are happy'],
+      ['Live in a house made of candy', 'Live in a house made of LEGO'],
+      ['Have a mustache you can never shave', 'Have eyebrows that reach your chin'],
+      ['Hear a drumroll every time you stand up', 'Hear a squeaky toy every time you sit down'],
+      ['Speak only in questions', 'Speak only in movie quotes'],
+      ['Wear pajamas to every fancy party', 'Wear a tuxedo to bed every night'],
+      ['Be a giant hamster', 'Be a tiny elephant'],
+      ['Have a nose that honks when you laugh', 'Have hiccups that blow bubbles'],
+      ['Have a belly button that plays music', 'Have toes that wiggle on their own'],
+      ['Only be able to dance when you are nervous', 'Only be able to sing when you are hungry'],
+      ['Have a laugh that sounds like a goat', 'Have a sneeze that sounds like a trumpet'],
+      ['Wear socks on your hands forever', 'Wear mittens on your feet forever']
+    ],
+    food: [
+      ['Eat pizza for every meal', 'Never eat pizza again'],
+      ['Have ice cream for dinner every night', 'Have pancakes for dinner every night'],
+      ['Give up candy for a year', 'Give up chips for a year'],
+      ['Only drink water forever', 'Only drink milk forever'],
+      ['Eat a broccoli ice cream cone', 'Eat a pickle-flavored lollipop'],
+      ['Have tacos every Tuesday forever', 'Have breakfast for dinner every Friday'],
+      ['Have a chocolate fountain at home', 'Have a popcorn bowl that never runs out'],
+      ['Eat only spicy food', 'Eat only plain food'],
+      ['Be a world-famous chef', 'Be a world-famous food critic'],
+      ['Eat a whole lemon', 'Eat a spoonful of hot sauce'],
+      ['Give up dessert', 'Give up french fries'],
+      ['Eat cereal with orange juice', 'Eat a peanut butter and pickle sandwich'],
+      ['Only eat green foods', 'Only eat orange foods'],
+      ['Eat soup with a fork', 'Eat ice cream with chopsticks'],
+      ['Live next to a bakery', 'Live next to an ice cream shop'],
+      ['Have every meal be a picnic', 'Have every meal be a fancy dinner'],
+      ['Never eat cheese again', 'Never eat chocolate again'],
+      ['Have a lifetime supply of cookies', 'Have a lifetime supply of donuts'],
+      ['Drink a smoothie made of every vegetable', 'Eat a sandwich with every sauce in the fridge'],
+      ['Grow all your own food', 'Have a robot that cooks everything for you'],
+      ['Eat one gummy bear the size of your head', 'Eat 100 tiny gummy bears'],
+      ['Have everything taste like chocolate', 'Have everything taste like bacon'],
+      ['Only eat breakfast foods forever', 'Only eat dinner foods forever'],
+      ['Make the world\'s biggest pizza', 'Make the world\'s tallest cake'],
+      ['Eat your veggies first every meal', 'Eat dessert first and veggies last'],
+      ['Have a hot dog with whipped cream', 'Have a cupcake with ketchup']
+    ],
+    animals: [
+      ['Be a dolphin for a day', 'Be an eagle for a day'],
+      ['Ride an elephant', 'Ride a camel'],
+      ['Have a pet penguin', 'Have a pet panda'],
+      ['See in the dark like an owl', 'Smell like a bloodhound'],
+      ['Swim with sharks in a cage', 'Hold a giant snake'],
+      ['Have a cheetah\'s speed', 'Have a gorilla\'s strength'],
+      ['Be a cat', 'Be a dog'],
+      ['Have a pet octopus', 'Have a parrot that talks'],
+      ['Live with penguins in Antarctica', 'Live with monkeys in the rainforest'],
+      ['Turn into any bird', 'Turn into any fish'],
+      ['Ride a horse to school', 'Have a llama carry your backpack'],
+      ['Change color like a chameleon', 'Have a neck like a giraffe'],
+      ['Meet a real T. rex (safely)', 'Meet a real woolly mammoth'],
+      ['Be an ant that can lift 50 times its weight', 'Be a whale that can sing for miles'],
+      ['Have a kangaroo pouch', 'Have a turtle shell'],
+      ['Wake up to a rooster every morning', 'Wake up to a lion\'s roar every morning'],
+      ['Have a pet unicorn', 'Have a pet griffin'],
+      ['Be chased by a swarm of bees', 'Be chased by a flock of angry geese'],
+      ['Have a sloth as a best friend', 'Have a hummingbird as a best friend'],
+      ['Repeat everything like a parrot', 'Sleep upside down like a bat'],
+      ['Have a bear as a neighbor', 'Have a skunk as a roommate'],
+      ['Be a firefly that glows', 'Be a cricket that sings'],
+      ['Visit a zoo every week', 'Go on one big safari'],
+      ['Have webbed feet', 'Have a monkey\'s tail'],
+      ['Adopt 10 cats', 'Adopt 1 really big dog'],
+      ['Be the fastest animal in the sea', 'Be the fastest animal in the sky']
+    ],
+    powers: [
+      ['Have super strength', 'Have super speed'],
+      ['Teleport anywhere', 'Shrink to the size of an ant'],
+      ['Control the weather', 'Talk to plants'],
+      ['Have X-ray vision', 'Have super hearing'],
+      ['Stop time', 'See one minute into the future'],
+      ['Turn into any animal', 'Turn into any object'],
+      ['Be stretchy like rubber', 'Be made of metal'],
+      ['Breathe fire', 'Shoot ice from your hands'],
+      ['Never get sick', 'Never get tired'],
+      ['Fly, but only 3 feet off the ground', 'Run 100 mph, but only backward'],
+      ['Bring anything you draw to life', 'Jump inside any book you read'],
+      ['Jump over buildings', 'Walk on water'],
+      ['Be invisible, but your clothes still show', 'Fly, but only when nobody is watching'],
+      ['Glow in the dark whenever you want', 'Have magnetic hands'],
+      ['Control gravity', 'Control electricity'],
+      ['Have a robot sidekick', 'Have a dragon sidekick'],
+      ['Clone yourself to do chores', 'Have a magic wand that only cleans'],
+      ['Have a perfect memory', 'Have amazing luck'],
+      ['Freeze time to finish homework', 'Fast-forward through boring parts of the day'],
+      ['Heal any scrape or cut', 'Make plants grow instantly'],
+      ['Walk through walls', 'Climb walls like a spider'],
+      ['See in the dark', 'Never get lost'],
+      ['Read any book in one second', 'Learn any skill in one day'],
+      ['Be a superhero with a cape', 'Be a superhero with a gadget belt'],
+      ['Talk to computers', 'Talk to the ocean']
+    ],
+    adventure: [
+      ['Explore outer space', 'Explore the deep ocean'],
+      ['Visit every country on Earth', 'Visit every planet in our solar system'],
+      ['Climb Mount Everest', 'Dive to see a shipwreck'],
+      ['Go on a safari in Africa', 'See the pyramids in Egypt'],
+      ['Spend a night in a castle', 'Spend a night in an igloo'],
+      ['Ride in a hot air balloon', 'Ride in a submarine'],
+      ['Camp in the mountains', 'Camp on the beach'],
+      ['Sail around the world', 'Drive across the whole country'],
+      ['Live on a boat', 'Live in an RV'],
+      ['Spend a week in Paris', 'Spend a week in Tokyo'],
+      ['Go to the North Pole', 'Go to the Amazon rainforest'],
+      ['Find buried treasure', 'Find a dinosaur fossil'],
+      ['Be a pirate', 'Be a knight'],
+      ['Explore a jungle', 'Explore a cave'],
+      ['Ride a camel in the desert', 'Ride a dogsled in the snow'],
+      ['Go to space camp', 'Go to wizard school'],
+      ['Visit the Grand Canyon', 'Visit Niagara Falls'],
+      ['Stay in a treehouse hotel', 'Stay in an underwater hotel'],
+      ['Walk on the Moon', 'Fly past Saturn\'s rings'],
+      ['Take a train across the country', 'Take a cruise to Alaska'],
+      ['Discover a new kind of animal', 'Discover a new planet'],
+      ['Spend a day in ancient Egypt', 'Spend a day with the dinosaurs'],
+      ['Ski down a huge mountain', 'Surf a huge wave'],
+      ['Zipline through a rainforest', 'Go white-water rafting'],
+      ['Go on a road trip with no plan', 'Plan every minute of a vacation']
+    ],
+    family: [
+      ['Have a family game night every week', 'Have a family movie night every week'],
+      ['Go on a road trip', 'Take a plane somewhere new'],
+      ['Cook dinner together every night', 'Order takeout whenever you want'],
+      ['Have a big family reunion', 'Take a small family vacation'],
+      ['Live close to your parents when you grow up', 'Live far away but visit a lot'],
+      ['Have an older sibling', 'Have a younger sibling'],
+      ['Always win at family games', 'Never win but always have fun'],
+      ['Take a camping trip with the whole family', 'Take a cruise with the whole family'],
+      ['Have a dog', 'Have a cat'],
+      ['Live in the city', 'Live in the countryside'],
+      ['Have breakfast in bed', 'Have dessert first at dinner'],
+      ['Build a pillow fort for the night', 'Camp out in the backyard'],
+      ['Have your parents as your teachers', 'Have your parents as your coaches'],
+      ['Decorate for every holiday', 'Have one giant birthday party'],
+      ['Plan the family vacation', 'Plan the family dinners for a week'],
+      ['Go to a theme park as a family', 'Go to a water park as a family'],
+      ['Start a family band', 'Start a family sports team'],
+      ['Have your grandparents live with you', 'Have your grandparents live next door'],
+      ['Cook dinner for the whole family', 'Clean up after dinner'],
+      ['Swap places with a parent for a day', 'Swap places with a cousin for a day'],
+      ['Have a family talent show', 'Have a family cook-off'],
+      ['Bake cookies together', 'Build a giant puzzle together'],
+      ['Have a family pet that talks', 'Have a family robot that does chores'],
+      ['Take a family photo in the same spot every year', 'Make a family video every year'],
+      ['Have a big holiday with all the relatives', 'Have a quiet holiday at home']
+    ],
+    everyday: [
+      ['Have homework every night', 'Have school on Saturdays'],
+      ['Have recess all day', 'Have lunch twice a day'],
+      ['Be the teacher for a day', 'Be the principal for a day'],
+      ['Take the bus to school', 'Ride a bike to school'],
+      ['Have a robot do your homework', 'Have a robot clean your room'],
+      ['Always get picked first', 'Always get to pick the teams'],
+      ['No homework but longer school days', 'Shorter school days but more homework'],
+      ['Be the best reader in class', 'Be the best at math in class'],
+      ['Learn to play guitar', 'Learn to play piano'],
+      ['Wake up early and have a slow morning', 'Sleep in and rush out the door'],
+      ['Have a messy room you never clean', 'Have a spotless room you clean every day'],
+      ['Be the class clown', 'Be the class president'],
+      ['Get a new bike', 'Get a new video game'],
+      ['Play outside all day', 'Play video games all day'],
+      ['Write a book', 'Make a movie'],
+      ['Sleep over at a friend\'s house', 'Have friends sleep over at your house'],
+      ['Only wear sneakers', 'Only wear rain boots'],
+      ['Have summer all year', 'Have snow every day of winter'],
+      ['Be great at one sport', 'Be pretty good at every sport'],
+      ['Have a library of every book', 'Have an arcade of every game'],
+      ['Walk to school with friends', 'Get a ride with music blasting']
+    ],
+    tough: [
+      ['Give up your phone for a year', 'Give up the car for a year'],
+      ['Always have to tell the truth', 'Never be able to speak'],
+      ['Lose all your memories', 'Never be able to make new ones'],
+      ['Be famous for something embarrassing', 'Be unknown for something great'],
+      ['Give up social media forever', 'Give up coffee or tea forever'],
+      ['Work a job you hate that pays great', 'Work a job you love that pays poorly'],
+      ['Have no privacy but always be safe', 'Have total privacy but less security'],
+      ['Age only in your body', 'Age only in your mind'],
+      ['Know how every story ends before it starts', 'Never remember how any story ends'],
+      ['Know the date you will die but not how', 'Know how you will die but not when'],
+      ['See 10 years into your future once', 'Never look older than 30 while everyone else ages'],
+      ['Lose your memories of the last 5 years', 'Lose all your money and start over'],
+      ['Have one true friend who is always honest', 'Have many friends who only say what you want to hear'],
+      ['End one kind of pollution forever', 'Cure one disease forever'],
+      ['Give up social media forever', 'Give up TV and movies forever'],
+      ['Always know when someone is lying to you', 'Never be fooled without knowing it'],
+      ['Have your thoughts shown to everyone near you', 'Have your whole past searchable online'],
+      ['Be the best in the world at something nobody cares about', 'Be average at something everyone values'],
+      ['Be really smart', 'Be really kind'],
+      ['Have more time', 'Have more money']
+    ]
+  };
+  function hid(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+  var CAT = {}, ALL = {};
+  CATS.forEach(function (c) {
+    CAT[c.id] = c;
+    DATA[c.id].forEach(function (p) { var id = hid(p[0] + '|' + p[1]); ALL[id] = { id: id, c: c.id, a: p[0], b: p[1] }; });
   });
-  document.getElementById('cats').appendChild(b);
-});
+  var TOTAL = Object.keys(ALL).length;
 
-function loadCategory(){qi=0;questions=[...QUESTIONS[cat]].sort(()=>Math.random()-.5);loadQ();}
+  // ── Storage helpers ───────────────────────────────────────────────────────
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function seenList() { var a = lsGet(SEEN, []); return Array.isArray(a) ? a : []; }
+  function markSeen(id) { var a = seenList().filter(function (x) { return x !== id; }); a.push(id); if (a.length > 220) a = a.slice(a.length - 220); lsSet(SEEN, a); }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
-function showVoteRows(show){
-  const vA=document.getElementById('vrow-A'),vB=document.getElementById('vrow-B');
-  const bA=document.getElementById('btn-A'),bB=document.getElementById('btn-B');
-  if(show){
-    vA.style.display='block';vB.style.display='block';
-    bA.classList.remove('plain');bB.classList.remove('plain');
-  } else {
-    vA.style.display='none';vB.style.display='none';
-    bA.classList.add('plain');bB.classList.add('plain');
+  // ── Shell ─────────────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'wouldyourather',
+    theme: { felt: ['#6a2a5c', '#4a1a40', '#33102c'], wood: ['#7d4a2e', '#52301c'] },
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'check', label: 'Finish and see results', onClick: function () { if (S && S.phase !== 'over') { if (S.log.length) finish(); else Kit.toast('Vote on a question first'); } } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Would You Rather: past games', extra: histExtra }); } }
+    ],
+    rules:
+      '<p class="goal">Pick one of two choices. Then see how the family voted, and argue about it.</p>' +
+      '<h3>Quick vote</h3><ul><li>Read both choices out loud.</li><li>Everyone says their pick, then tap each name on the side they chose.</li><li>Tap <b>Reveal</b> to see the results.</li></ul>' +
+      '<h3>Secret vote</h3><ul><li>Pass the phone around. When it says <b>Pass to Cam</b>, hand it to Cam.</li><li>Cam taps the card they would rather do. Nobody else sees it.</li><li>When everyone has voted, the results show up for all.</li></ul>' +
+      '<h3>Points (optional)</h3><ul><li><b>Agree to score</b>: you get a point when you pick the side most people picked.</li><li><b>Be different</b>: you get a point when you pick the side fewer people picked.</li><li>A tie means nobody scores.</li></ul>' +
+      '<h3>Tips</h3><p>Anyone who stands alone has to explain why. <b>Skip</b> any question you do not like. Choose <b>Finish</b> in the menu to end early.</p>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, undoStack = [], anim = null, busy = false;
+  function N() { return S.players.length; }
+  function save() {
+    lsSet(SAVE, S);
+    if (S && S.phase !== 'over') Kit.resume.set('Question ' + (S.log.length + 1) + (S.rounds ? ' of ' + S.rounds : ''));
   }
-}
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (!S || !undoStack.length) return Kit.toast('Nothing to undo');
+    if (S.phase === 'over') return Kit.toast('The game is over');
+    S = JSON.parse(undoStack.pop()); anim = null; busy = false;
+    Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render();
+  }
+  function cur() { return ALL[S.deck[S.qi]]; }
 
-function loadQ(){
-  if(qi>=questions.length)qi=0;
-  cntA=0;cntB=0;
-  const[a,b]=questions[qi];
-  document.getElementById('text-A').textContent=a;
-  document.getElementById('text-B').textContent=b;
-  document.getElementById('btn-A').className='choice-btn plain';
-  document.getElementById('btn-B').className='choice-btn plain';
-  document.getElementById('vrow-A').className='vote-area';
-  document.getElementById('vrow-B').className='vote-area';
-  showVoteRows(false);
-  document.querySelectorAll('.choice-wrap').forEach(w=>w.classList.remove('win'));
-  document.getElementById('next-btn').textContent='Skip →';
-  document.getElementById('next-btn').className='btn btn-outline';
-  document.getElementById('tap-hint').style.visibility='';
-  document.getElementById('q-counter').textContent=`${qi+1} / ${questions.length}`;
-  const d=document.getElementById('deck');d.classList.remove('enter','leave');void d.offsetWidth;d.classList.add('enter');
-}
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function savedCats() {
+    var c = lsGet(CATKEY, null);
+    c = Array.isArray(c) ? c.filter(function (x) { return CAT[x]; }) : [];
+    return c.length ? c : CATS.map(function (x) { return x.id; });
+  }
+  function showSetup() {
+    S = null; busy = false; clearSave(); app.innerHTML = ''; window.scrollTo(0, 0);
+    var chosen = savedCats();
+    var st = Kit.setup(app, {
+      intro: TOTAL + ' tough choices. Vote, reveal, then debate.',
+      modes: [
+        { id: 'tally', icon: 'users', title: 'Quick vote', desc: 'Everyone says it out loud. Tap names onto a side' },
+        { id: 'pass', icon: 'phone', title: 'Secret vote', desc: 'Pass the phone. No peeking until the big reveal' }
+      ],
+      players: { min: 2, max: 8, count: 3, label: "Who's voting?" },
+      options: [
+        { id: 'rounds', label: 'Questions', value: 10, help: 'How many questions before the results.', choices: [[10, '10'], [20, '20'], [0, 'Endless', 'Keep going until you pick Finish in the menu.']] },
+        { id: 'score', label: 'Points', value: 'none', help: 'Play just for fun, or keep score.', choices: [['none', 'Just for fun', 'No points. Just see how everyone votes.'], ['crowd', 'Agree to score', 'Get a point when you pick what most people picked.'], ['rebel', 'Be different', 'Get a point when you pick the side fewer people picked.']] }
+      ],
+      start: 'Deal the first question',
+      onStart: function (cfg) { start(cfg, chosen.slice()); }
+    });
+    var box = el('div', { class: 'cats' });
+    function paint() {
+      box.innerHTML = '';
+      var all = chosen.length === CATS.length;
+      box.appendChild(el('button', { type: 'button', class: 'chip' + (all ? ' on' : ''), html: Kit.icon('shuffle') + '<span>Everything</span>', onclick: function () {
+        chosen = all ? [] : CATS.map(function (x) { return x.id; }); if (!chosen.length) chosen = [CATS[0].id]; persist(); Kit.sfx('tap'); paint();
+      } }));
+      CATS.forEach(function (c) {
+        var on = !all && chosen.indexOf(c.id) >= 0;
+        var b = el('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), html: Kit.icon(c.icon) + '<span>' + esc(c.name) + '</span> <span class="n">' + DATA[c.id].length + '</span>', onclick: function () {
+          if (all) chosen = [c.id];
+          else if (on) chosen = chosen.filter(function (x) { return x !== c.id; });
+          else chosen.push(c.id);
+          if (!chosen.length) chosen = CATS.map(function (x) { return x.id; });
+          persist(); Kit.sfx('tap'); paint();
+        } });
+        b.style.setProperty('--cc', c.color);
+        box.appendChild(b);
+      });
+    }
+    function persist() { lsSet(CATKEY, chosen); }
+    paint();
+    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Categories' }), box]), st.el.querySelector('.btn-lg'));
+  }
 
-function updateBars(){
-  const total=(cntA+cntB)||1;
-  const pA=Math.round(cntA/total*100),pB=100-pA;
-  document.getElementById('fill-A').style.width=pA+'%';
-  document.getElementById('fill-B').style.width=pB+'%';
-  document.getElementById('pct-A').textContent=pA+'%';
-  document.getElementById('pct-B').textContent=pB+'%';
-  document.getElementById('cnt-A').textContent=cntA;
-  document.getElementById('cnt-B').textContent=cntB;
-  // Highlight winning side
-  const bA=document.getElementById('btn-A'),bB=document.getElementById('btn-B');
-  const vA=document.getElementById('vrow-A'),vB=document.getElementById('vrow-B');
-  bA.className='choice-btn'+(cntA>0&&cntA>=cntB?' sel-A':'');
-  bB.className='choice-btn'+(cntB>0&&cntB>cntA?' sel-B':'');
-  vA.className='vote-area'+(cntA>0&&cntA>=cntB?' vis-A':'');
-  vB.className='vote-area'+(cntB>0&&cntB>cntA?' vis-B':'');
-  bA.closest('.choice-wrap').classList.toggle('win',cntA>0&&cntA>=cntB);
-  bB.closest('.choice-wrap').classList.toggle('win',cntB>0&&cntB>cntA);
-  const nb=document.getElementById('next-btn');
-  if(cntA+cntB>0){
-    if(!nb.classList.contains('btn-gold')){nb.className='btn btn-gold pop';nb.textContent='Next question →';}
-    document.getElementById('tap-hint').style.visibility='hidden';
-  } else {nb.className='btn btn-outline';nb.textContent='Skip →';}
-}
+  function buildDeck(cats, avoid) {
+    var seen = seenList(), at = {}; seen.forEach(function (id, i) { at[id] = i + 1; });
+    var pool = Object.keys(ALL).filter(function (id) { return cats.indexOf(ALL[id].c) >= 0 && !(avoid && avoid[id]); });
+    if (!pool.length) pool = Object.keys(ALL).filter(function (id) { return cats.indexOf(ALL[id].c) >= 0; });
+    var fresh = shuffle(pool.filter(function (id) { return !at[id]; }));
+    var old = pool.filter(function (id) { return at[id]; }).sort(function (a, b) { return at[a] - at[b]; });
+    return fresh.concat(old);
+  }
+  function start(cfg, cats) {
+    undoStack = [];
+    S = {
+      mode: cfg.mode === 'pass' ? 'pass' : 'tally', cats: cats,
+      rounds: Number(cfg.options.rounds) || 0, score: String(cfg.options.score || 'none'),
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color }; }),
+      scores: cfg.players.map(function () { return 0; }),
+      deck: [], qi: 0, votes: [], turn: 0, phase: 'vote', log: [], started: Date.now()
+    };
+    S.deck = buildDeck(cats);
+    S.votes = S.players.map(function () { return null; });
+    if (S.mode === 'pass') S.phase = 'cover';
+    Kit.gameStart();
+    anim = 'in'; save(); render();
+  }
 
-document.getElementById('btn-A').addEventListener('click',()=>{
-  cntA++;GN.haptic('light');showVoteRows(true);updateBars();
-});
-document.getElementById('btn-B').addEventListener('click',()=>{
-  cntB++;GN.haptic('light');showVoteRows(true);updateBars();
-});
-document.getElementById('dec-A').addEventListener('click',e=>{
-  e.stopPropagation();if(cntA>0){cntA--;updateBars();}
-});
-document.getElementById('dec-B').addEventListener('click',e=>{
-  e.stopPropagation();if(cntB>0){cntB--;updateBars();}
-});
-function nextQ(){
-  const d=document.getElementById('deck');
-  d.classList.remove('enter');d.classList.add('leave');
-  GN.haptic('select');
-  setTimeout(()=>{qi++;loadQ();window.scrollTo({top:0,behavior:'smooth'});},200);
-}
-document.getElementById('next-btn').addEventListener('click',nextQ);
-document.getElementById('shuffle-btn').addEventListener('click',()=>{questions.sort(()=>Math.random()-.5);qi=0;loadQ();GN.toast('Shuffled');});
-// Swipe left on the cards for the next question
-(function(){
-  const d=document.getElementById('deck');let sx=null,sy=null;
-  d.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
-  d.addEventListener('touchend',e=>{
-    if(sx===null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;
-    if(dx<-60&&Math.abs(dx)>Math.abs(dy)*1.5)nextQ();
-  },{passive:true});
+  // ── Actions ───────────────────────────────────────────────────────────────
+  function toggleVote(i, side) {
+    if (S.phase !== 'vote' || busy) return;
+    snapshot();
+    S.votes[i] = S.votes[i] === side ? null : side;
+    Kit.sfx(S.votes[i] ? 'pop' : 'tap'); Kit.haptic('light');
+    save(); render();
+  }
+  function passVote(side) {
+    if (S.phase !== 'vote' || busy) return;
+    snapshot();
+    busy = true;
+    S.votes[S.turn] = side;
+    Kit.sfx('pop'); Kit.haptic('medium');
+    var cards = app.querySelectorAll('.wcard');
+    cards.forEach(function (c) { c.classList.add(c.dataset.side === side ? 'picked' : 'dimmed'); });
+    setTimeout(function () {
+      busy = false;
+      var next = nextVoter();
+      if (next < 0) return reveal(true);
+      S.turn = next; S.phase = 'cover'; save(); render();
+    }, 650);
+  }
+  function nextVoter() { for (var i = 0; i < N(); i++) if (!S.votes[i]) return i; return -1; }
+  function tally() {
+    var a = [], b = [];
+    S.votes.forEach(function (v, i) { if (v === 'a') a.push(i); else if (v === 'b') b.push(i); });
+    return { a: a, b: b };
+  }
+  function reveal(noSnap) {
+    var t = tally();
+    if (!t.a.length && !t.b.length) return Kit.toast('Tap names onto a side first');
+    if (!noSnap) snapshot();
+    var p = cur(), pts = S.players.map(function () { return 0; });
+    var win = t.a.length > t.b.length ? 'a' : t.b.length > t.a.length ? 'b' : null;
+    if (S.score !== 'none' && win && t.a.length && t.b.length) {
+      var lose = win === 'a' ? 'b' : 'a';
+      (S.score === 'crowd' ? t[win] : t[lose]).forEach(function (i) { pts[i] = 1; S.scores[i]++; });
+    } else if (S.score === 'crowd' && win && (!t.a.length || !t.b.length) && t[win].length > 1) {
+      t[win].forEach(function (i) { pts[i] = 1; S.scores[i]++; });   // everyone agreed: everyone is with the crowd
+    }
+    S.log.push({ id: p.id, v: S.votes.slice(), pts: pts });
+    markSeen(p.id);
+    S.phase = 'reveal'; anim = 'reveal';
+    save(); render();
+    // Fun moment
+    var total = t.a.length + t.b.length;
+    setTimeout(function () {
+      if (!S || S.phase !== 'reveal') return;
+      if (total > 1 && (!t.a.length || !t.b.length)) { Kit.callout('Everyone agrees!'); Kit.sfx('win'); Kit.haptic('success'); }
+      else if (t.a.length === t.b.length) { Kit.callout('Split decision!'); Kit.sfx('bad'); Kit.haptic('medium'); }
+      else {
+        var lone = t.a.length === 1 ? t.a[0] : t.b.length === 1 ? t.b[0] : -1;
+        if (lone >= 0 && total > 2) { Kit.callout(S.players[lone].name + ' stands alone!', S.players[lone].color); Kit.sfx('good'); }
+        else { Kit.sfx('good'); }
+        Kit.haptic('light');
+      }
+    }, 950);
+  }
+  function next() {
+    if (busy) return;
+    snapshot();
+    if (S.rounds && S.log.length >= S.rounds) return finish();
+    busy = true;
+    var box = app.querySelector('.cards');
+    if (box) box.classList.add('out');
+    Kit.sfx('whoosh');
+    setTimeout(function () {
+      busy = false;
+      advance();
+      S.phase = S.mode === 'pass' ? 'cover' : 'vote';
+      anim = 'in'; save(); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 340);
+  }
+  function advance() {
+    S.qi++; S.votes = S.players.map(function () { return null; }); S.turn = 0;
+    if (S.qi >= S.deck.length) {
+      var used = {}; S.log.forEach(function (l) { used[l.id] = 1; });
+      S.deck = buildDeck(S.cats, used); S.qi = 0;
+    }
+  }
+  function skip() {
+    if (busy) return;
+    snapshot();
+    busy = true;
+    var box = app.querySelector('.cards'); if (box) box.classList.add('out');
+    Kit.sfx('whoosh');
+    setTimeout(function () { busy = false; markSeen(cur().id); advance(); S.phase = S.mode === 'pass' ? 'cover' : 'vote'; anim = 'in'; save(); render(); }, 340);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render() {
+    if (!S) return;
+    app.innerHTML = '';
+    if (S.score !== 'none') {
+      var strip = el('div', { class: 'scores' }), lead = Math.max.apply(null, S.scores);
+      S.players.forEach(function (p, i) {
+        var on = S.mode === 'pass' && (S.phase === 'vote' || S.phase === 'cover') && S.turn === i;
+        strip.appendChild(el('div', { class: 'score' + (on ? ' on' : '') + (lead > 0 && S.scores[i] === lead ? ' lead' : ''), style: { '--c': p.color, flex: '1' } }, [
+          el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(S.scores[i]) }), el('span', { class: 'sub', text: S.score === 'crowd' ? 'with the crowd' : 'different' })
+        ]));
+      });
+      app.appendChild(strip);
+    }
+    var felt = el('div', { class: 'felt-in' });
+    app.appendChild(el('div', { class: 'table wood' }, [felt]));
+    if (S.phase === 'over') return renderOver(felt);
+    var p = cur(), c = CAT[p.c];
+    felt.appendChild(el('div', { class: 'ttl' }, [
+      el('h2', { text: 'Would you rather…' }),
+      el('div', { class: 'meta' }, [
+        el('span', { class: 'tag cat', style: { '--cc': c.color }, html: Kit.icon(c.icon) + '<span>' + esc(c.name) + '</span>' }),
+        el('span', { class: 'tag', text: (S.log.length + (S.phase === 'reveal' ? 0 : 1)) + (S.rounds ? ' / ' + S.rounds : '') })
+      ])
+    ]));
+    if (S.phase === 'cover') return renderCover(felt);
+    if (S.mode === 'pass' && S.phase === 'vote') {
+      var pl = S.players[S.turn];
+      felt.appendChild(el('div', { class: 'prompt', style: { '--c': pl.color }, html: '<b>' + esc(pl.name) + '</b>, tap your pick' }));
+    }
+    var cards = el('div', { class: 'cards' });
+    var A = card('a', p.a), B = card('b', p.b);
+    cards.appendChild(A); cards.appendChild(el('div', { class: 'or', text: 'OR' })); cards.appendChild(B);
+    felt.appendChild(cards);
+    if (anim === 'in') { A.classList.add('in-a'); B.classList.add('in-b'); Kit.sfx('deal'); }
+    var wasAnim = anim; anim = null;
+
+    var acts = el('div', { class: 'acts' });
+    if (S.phase === 'vote') {
+      if (S.mode === 'tally') {
+        var t = tally(), n = t.a.length + t.b.length;
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft sq', html: Kit.icon('right') + '<span>Skip</span>', onclick: skip }));
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', disabled: !n, text: n === N() ? 'Reveal!' : n ? 'Reveal (' + n + ' of ' + N() + ' voted)' : 'Tap names to vote', onclick: function () { reveal(); } }));
+        app.appendChild(acts);
+        app.appendChild(el('div', { class: 'hint', text: 'Everyone say your pick, then tap your name on that side.' }));
+      } else {
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost', html: Kit.icon('right') + '<span>Skip this question</span>', onclick: skip }));
+        app.appendChild(acts);
+      }
+    } else if (S.phase === 'reveal') {
+      var last = S.rounds && S.log.length >= S.rounds;
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: last ? 'See the results' : 'Next question', onclick: next }));
+      app.appendChild(acts);
+      if (!last) app.appendChild(el('div', { class: 'hint', text: 'Swipe the cards left for the next one.' }));
+      swipe(cards, next);
+      if (wasAnim === 'reveal') animateReveal(cards);
+      else cards.querySelectorAll('.bar i').forEach(function (b) { b.style.width = b.dataset.w; });
+    }
+  }
+  function card(side, text) {
+    var w = el('div', { class: 'wcard ' + side, 'data-l': side.toUpperCase(), 'data-side': side }, [el('div', { class: 'txt', text: text })]);
+    if (S.phase === 'vote' && S.mode === 'pass') {
+      w.classList.add('tap'); w.setAttribute('role', 'button'); w.setAttribute('aria-label', 'Pick ' + side.toUpperCase() + ': ' + text);
+      w.addEventListener('click', function () { passVote(side); });
+    }
+    if (S.phase === 'vote' && S.mode === 'tally') {
+      var chips = el('div', { class: 'chips' });
+      S.players.forEach(function (p, i) {
+        var on = S.votes[i] === side;
+        chips.appendChild(el('button', { type: 'button', class: 'vchip' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': p.name + ' picks ' + side.toUpperCase(), onclick: function () { toggleVote(i, side); } },
+          [el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }), el('span', { text: p.name })]));
+      });
+      w.appendChild(chips);
+    }
+    if (S.phase === 'reveal') {
+      var t = tally(), mine = t[side], other = t[side === 'a' ? 'b' : 'a'], tot = mine.length + other.length;
+      var pct = tot ? Math.round(mine.length / tot * 100) : 0;
+      if (mine.length > other.length) w.classList.add('win'); else if (mine.length < other.length) w.classList.add('lose');
+      var res = el('div', { class: 'res' });
+      res.appendChild(el('div', { class: 'row1' }, [el('span', { class: 'pct', 'data-p': pct, text: pct + '%' }), el('span', { class: 'cnt', text: mine.length + (mine.length === 1 ? ' vote' : ' votes') })]));
+      res.appendChild(el('div', { class: 'bar' }, [el('i', { 'data-w': pct + '%' })]));
+      var chips2 = el('div', { class: 'chips' });
+      mine.forEach(function (i) {
+        var p = S.players[i];
+        chips2.appendChild(el('span', { class: 'vchip' }, [el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }), el('span', { text: p.name })]));
+      });
+      if (!mine.length) chips2.appendChild(el('span', { class: 'none', text: 'Nobody' }));
+      res.appendChild(chips2);
+      w.appendChild(res);
+    }
+    return w;
+  }
+  function animateReveal(cards) {
+    var pcts = cards.querySelectorAll('.pct'), chips = cards.querySelectorAll('.res .vchip');
+    pcts.forEach(function (n) { n.textContent = '0%'; });
+    chips.forEach(function (c, k) { c.style.visibility = 'hidden'; });
+    Kit.sfx('flip');
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      cards.querySelectorAll('.bar i').forEach(function (b) { b.style.width = b.dataset.w; });
+      var t0 = performance.now(), lastTick = 0;
+      (function count(now) {
+        var k = Math.min(1, (now - t0) / 1000), e = 1 - Math.pow(1 - k, 3);
+        pcts.forEach(function (n) { n.textContent = Math.round(+n.dataset.p * e) + '%'; });
+        if (now - lastTick > 90 && k < 1) { lastTick = now; Kit.sfx('tick'); }
+        if (k < 1 && document.body.contains(cards)) requestAnimationFrame(count);
+      })(t0);
+      chips.forEach(function (c, k) { setTimeout(function () { c.style.visibility = ''; c.classList.add('drop'); }, 500 + k * 110); });
+    }); });
+  }
+  function swipe(node, fn) {
+    var sx = null, sy = 0;
+    node.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    node.addEventListener('touchend', function (e) {
+      if (sx == null) return; var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
+      if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.5) fn();
+    }, { passive: true });
+  }
+  function renderCover(felt) {
+    var i = S.mode === 'pass' ? S.turn : 0, p = S.players[i];
+    var done = el('div', { class: 'done' });
+    S.players.forEach(function (q, k) {
+      if (S.votes[k]) done.appendChild(el('span', { html: '<span class="avatar" style="--c:' + q.color + '">' + esc(q.name.charAt(0).toUpperCase()) + '</span>' + Kit.icon('check') + '<span>' + esc(q.name) + '</span>' }));
+    });
+    var voted = S.votes.filter(Boolean).length;
+    felt.appendChild(el('div', { class: 'cover' }, [
+      el('div', { class: 'spot', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }),
+      el('h3', { text: 'Pass to ' + p.name }),
+      el('div', { class: 'back' }, [el('i'), el('i')]),
+      el('p', { text: voted ? voted + ' of ' + N() + ' have voted. No peeking!' : 'Secret vote. Everyone else, look away!' }),
+      voted ? done : null,
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: "I'm " + p.name + ', show me', onclick: function () { Kit.sfx('pop'); S.phase = 'vote'; anim = 'in'; save(); render(); } })
+    ]));
+    if (!voted) app.appendChild(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'btn btn-ghost', html: Kit.icon('right') + '<span>Skip this question</span>', onclick: skip })]));
+  }
+
+  // ── Stats and the end ─────────────────────────────────────────────────────
+  function stats() {
+    var P = S.players, n = P.length, agree = [], lone = P.map(function () { return 0; }), unan = [], splits = [];
+    for (var i = 0; i < n; i++) { agree.push([]); for (var j = 0; j < n; j++) agree[i].push([0, 0]); }
+    S.log.forEach(function (l) {
+      var a = [], b = [];
+      l.v.forEach(function (v, i) { if (v === 'a') a.push(i); else if (v === 'b') b.push(i); });
+      for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) if (l.v[i] && l.v[j]) { agree[i][j][1]++; if (l.v[i] === l.v[j]) agree[i][j][0]++; }
+      var tot = a.length + b.length;
+      if (tot > 2 && a.length === 1) lone[a[0]]++;
+      if (tot > 2 && b.length === 1) lone[b[0]]++;
+      if (tot > 1 && (!a.length || !b.length)) unan.push({ l: l, side: a.length ? 'a' : 'b' });
+      if (tot > 1 && a.length === b.length) splits.push({ l: l, a: a.length, b: b.length });
+    });
+    return { agree: agree, lone: lone, unan: unan, splits: splits };
+  }
+  function short(s) { return s.length > 48 ? s.slice(0, 46) + '…' : s; }
+  function lc(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
+  function finish() {
+    if (!S || !S.log.length) return;
+    S.phase = 'over'; busy = false;
+    var P = S.players, n = N(), st = stats(), hl = [];
+    // Best and worst matched pair
+    var pairs = [];
+    for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) { var x = st.agree[i][j]; if (x[1] >= 3) pairs.push({ i: i, j: j, k: x[0], of: x[1], r: x[0] / x[1] }); }
+    pairs.sort(function (a, b) { return b.r - a.r || b.of - a.of; });
+    if (pairs.length) {
+      var best = pairs[0];
+      hl.push({ w: 6, t: P[best.i].name + ' and ' + P[best.j].name + ' agreed on ' + best.k + ' of ' + best.of + ' questions' });
+      var worst = pairs[pairs.length - 1];
+      if (pairs.length > 1 && worst.r < 0.5) hl.push({ w: 5, t: P[worst.i].name + ' and ' + P[worst.j].name + ' only agreed ' + worst.k + (worst.k === 1 ? ' time' : ' times') + ' out of ' + worst.of });
+    }
+    var mx = Math.max.apply(null, st.lone);
+    if (mx >= 2) { var r = st.lone.indexOf(mx); hl.push({ w: 5, t: 'Most independent thinker: ' + P[r].name + ', who stood alone ' + mx + ' times' }); }
+    if (st.unan.length) {
+      var u = st.unan[Math.floor(Math.random() * st.unan.length)], q = ALL[u.l.id];
+      if (q) hl.push({ w: 4, t: 'Everyone would rather ' + lc(short(u.side === 'a' ? q.a : q.b)) + ' than ' + lc(short(u.side === 'a' ? q.b : q.a)) });
+      if (st.unan.length >= 3) hl.push({ w: 2, t: 'Everyone agreed on ' + st.unan.length + ' of ' + S.log.length + ' questions' });
+    }
+    if (st.splits.length) {
+      var s = st.splits[0], q2 = ALL[s.l.id];
+      if (q2) hl.push({ w: 3, t: 'Split decision ' + s.a + '–' + s.b + ': ' + short(q2.a) + ' or ' + lc(short(q2.b)) });
+    }
+    var ord = P.map(function (p, i) { return i; }).sort(function (a, b) { return S.scores[b] - S.scores[a]; });
+    var scored = S.score !== 'none';
+    var top = scored && n > 1 && S.scores[ord[0]] > S.scores[ord[1]] ? P[ord[0]].name : null;
+    if (top) hl.push({ w: 7, t: top + ' won with ' + S.scores[ord[0]] + (S.score === 'crowd' ? ' votes with the crowd' : ' votes against the crowd') });
+    hl.sort(function (a, b) { return b.w - a.w; });
+    var qs = S.log.slice(0, 40).map(function (l) {
+      var q = ALL[l.id] || { a: '?', b: '?' }, va = l.v.filter(function (v) { return v === 'a'; }).length, vb = l.v.filter(function (v) { return v === 'b'; }).length;
+      return { a: q.a, b: q.b, va: va, vb: vb, who: l.v.map(function (v) { return v || ''; }).join('') };
+    });
+    Kit.record(KEY, {
+      started: S.started,
+      mode: (S.mode === 'pass' ? 'Secret vote' : 'Quick vote') + (scored ? ' · ' + (S.score === 'crowd' ? 'Agree to score' : 'Be different') : ''),
+      players: P.map(function (p, i) { return scored ? { name: p.name, score: S.scores[i] } : { name: p.name }; }),
+      winner: top,
+      summary: scored ? undefined : S.log.length + ' questions · ' + st.unan.length + ' agreed by all',
+      rounds: scored ? { labels: S.log.map(function (l, k) { return 'Q' + (k + 1); }), scores: S.log.map(function (l) { return l.pts; }) } : undefined,
+      highlights: hl.slice(0, 6).map(function (h) { return h.t; }),
+      meta: { qs: qs }
+    });
+    clearSave(); undoStack = [];
+    render();
+    setTimeout(function () {
+      if (!S || S.phase !== 'over') return;
+      Kit.win({
+        icon: scored ? 'trophy' : 'swap',
+        title: scored ? (top ? top + ' wins!' : "It's a tie!") : "That's a wrap!",
+        sub: S.log.length + ' questions · ' + st.unan.length + ' agreed by everyone',
+        rank: scored ? ord.map(function (i) { return { name: P[i].name, score: S.scores[i], color: P[i].color }; }) : null,
+        againLabel: 'Play again', again: again,
+        extra: [{ label: 'Change settings', onClick: showSetup }],
+        closeLabel: 'See the results', onClose: function () {}
+      });
+    }, 500);
+  }
+  function renderOver(felt) {
+    var box = el('div', { class: 'sum' }, [el('h3', { text: 'How everyone voted' })]);
+    S.log.forEach(function (l) {
+      var q = ALL[l.id]; if (!q) return;
+      var va = l.v.filter(function (v) { return v === 'a'; }).length, vb = l.v.filter(function (v) { return v === 'b'; }).length;
+      var aw = va >= vb;
+      box.appendChild(el('div', { class: 'q' }, [el('span', { class: 't', html: (aw ? esc(q.a) + ' <s>over ' + esc(lc(q.b)) + '</s>' : esc(q.b) + ' <s>over ' + esc(lc(q.a)) + '</s>') }), el('span', { class: 'n', text: Math.max(va, vb) + '–' + Math.min(va, vb) })]));
+    });
+    felt.appendChild(box);
+    app.appendChild(el('div', { class: 'acts', style: { 'flex-direction': 'column' } }, [
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Play again', onclick: again }),
+      el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Change settings', onclick: showSetup }),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: Kit.icon('history') + '<span>Past games</span>', onclick: function () { Kit.history(KEY, { title: 'Would You Rather: past games', extra: histExtra }); } })
+    ]));
+  }
+  function again() {
+    var o = S;
+    start({ mode: o.mode, players: o.players, options: { rounds: o.rounds, score: o.score } }, o.cats);
+  }
+  function histExtra(e) {
+    if (!e || !Array.isArray(e.qs) || !e.qs.length) return null;
+    var box = el('div', { class: 'hx' });
+    e.qs.slice(0, 12).forEach(function (q) {
+      var aw = q.va >= q.vb;
+      box.appendChild(el('div', { html: '<b>' + esc(aw ? q.a : q.b) + '</b> <em>over</em> ' + esc(lc(aw ? q.b : q.a)) + ' <em>(' + Math.max(q.va, q.vb) + '–' + Math.min(q.va, q.vb) + ')</em>' }));
+    });
+    if (e.qs.length > 12) box.appendChild(el('div', { html: '<em>…and ' + (e.qs.length - 12) + ' more</em>' }));
+    return box;
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = lsGet(SAVE, null);
+  if (saved && saved.players && saved.deck && saved.phase && saved.phase !== 'over' && ALL[saved.deck[saved.qi]]) {
+    S = saved;
+    if (S.mode === 'pass' && S.phase === 'vote') S.phase = 'cover';   // keep the next vote secret
+    anim = 'in'; render();
+  } else showSetup();
+  window.__wy = { state: function () { return S; }, all: ALL, total: TOTAL };
 })();
-
-loadCategory();
 </script>
 </body>
 </html>

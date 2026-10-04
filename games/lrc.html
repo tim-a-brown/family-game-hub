@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Left Right Center</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+.turnline{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;min-height:30px;font-family:var(--display);font-size:1.25rem;color:var(--c,var(--yellow));text-align:center;}
+.turnline .dot{width:11px;height:11px;flex:none;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 25%,transparent);}
+.turnline span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Oval table */
+.oval{position:relative;margin:0 auto;width:100%;max-width:540px;height:clamp(420px,calc(100svh - 280px),600px);border-radius:50%;padding:12px;}
+.oval > .felt-in{position:relative;width:100%;height:100%;border-radius:50%;}
+.mid{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(56%,220px);}
+
+/* LRC dice */
+.dice{display:flex;justify-content:center;gap:10px;min-height:50px;}
+.die.ldie{--ds:clamp(40px,11.5vw,48px);}
+.ldie .f{grid-area:1/1/4/4;place-self:center;font-family:var(--display);font-size:calc(var(--ds) * .62);line-height:1;color:#1f2a6b;}
+.ldie[data-f="C"] .f{color:#c8102e;}
+.ldie .f.pip{width:calc(var(--ds) * .3);height:calc(var(--ds) * .3);border-radius:50%;background:radial-gradient(circle at 35% 30%,#4a4660 0%,#15132a 70%);box-shadow:inset 0 1px 1px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.7);}
+.ldie.act{transform:translateY(-6px) scale(1.12);box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.6),0 10px 14px rgba(0,0,0,.45);}
+.ldie.done{filter:brightness(.78);}
+.ldie.keep{box-shadow:0 0 0 3px var(--green),0 0 16px rgba(61,220,132,.55),0 8px 12px rgba(0,0,0,.4);}
+
+/* Pot */
+.pot{position:relative;width:100%;aspect-ratio:1.7;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.34),rgba(0,0,0,.18) 80%,rgba(0,0,0,0));box-shadow:inset 0 0 0 2px rgba(255,255,255,.08);}
+.pot .lbl{position:absolute;left:0;right:0;bottom:-24px;text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;}
+.pot .lbl b{color:#fff;font-size:1.05rem;letter-spacing:.02em;margin-left:4px;}
+.pot .chip{position:absolute;transform:translate(-50%,-50%);}
+
+/* Chips */
+.chip{--cc:#d8263a;--cs:24px;width:var(--cs);height:var(--cs);border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,var(--cc) 0 40%,rgba(255,255,255,.85) 41% 45%,var(--cc) 46% 60%,transparent 61%),repeating-conic-gradient(#fff 0 13deg,var(--cc) 13deg 45deg);
+  box-shadow:0 2px 0 color-mix(in srgb,var(--cc) 55%,#000),0 3px 4px rgba(0,0,0,.45);}
+.chip.c1{--cc:#2456c9;}.chip.c2{--cc:#1f9a55;}.chip.c3{--cc:#e3a823;}
+.chip.fly{position:fixed;z-index:60;margin:0;left:0;top:0;}
+
+/* Seats */
+.seat{position:absolute;width:78px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2;}
+.seat .stack{position:relative;width:34px;height:46px;}
+.seat .stack .chip{position:absolute;left:5px;}
+.seat .stack.empty::after{content:"";position:absolute;left:5px;bottom:0;width:24px;height:24px;border-radius:50%;border:2px dashed rgba(255,255,255,.28);box-sizing:border-box;}
+.seat .tag{display:flex;align-items:center;gap:5px;max-width:78px;padding:3px 4px 3px 8px;border-radius:999px;background:rgba(12,10,28,.82);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent),0 3px 8px rgba(0,0,0,.35);font-size:.74rem;font-weight:800;color:#fff;transition:box-shadow .2s;}
+.seat .tag .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.seat .tag b{flex:none;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--c);color:#14122a;font-size:.78rem;font-weight:900;}
+.seat.on .tag{box-shadow:inset 0 0 0 2px var(--c),0 0 0 3px var(--c),0 0 18px color-mix(in srgb,var(--c) 70%,transparent);}
+.seat.out .tag{opacity:.6;}
+.seat.out .tag b{background:rgba(255,255,255,.2);color:#fff;}
+.seat.bump .tag b{animation:bump .45s var(--spring);}
+@keyframes bump{40%{transform:scale(1.45);}}
+.seat .say{position:absolute;bottom:calc(100% - 6px);left:50%;transform:translateX(-50%);white-space:nowrap;padding:4px 10px;border-radius:12px;background:#fff;color:#14122a;font-size:.78rem;font-weight:900;box-shadow:0 4px 10px rgba(0,0,0,.35);animation:pop .3s var(--spring);z-index:3;}
+
+/* Controls */
+.rollbtn{margin-top:14px;min-height:56px;}
+.ctrls{display:flex;gap:10px;align-items:center;margin-top:12px;}
+.ctrls .seg{flex:1;}
+.ctrls .seg > button{min-height:40px;font-size:.85rem;}
+.auto{display:flex;align-items:center;gap:7px;min-height:48px;padding:0 14px;border:0;border-radius:var(--r);background:rgba(0,0,0,.25);color:var(--text-2);font:inherit;font-weight:800;font-size:.85rem;}
+.auto .box{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;box-shadow:inset 0 0 0 2px var(--text-3);}
+.auto .box .ico{width:14px;height:14px;opacity:0;}
+.auto[aria-pressed="true"]{color:var(--text);}
+.auto[aria-pressed="true"] .box{background:var(--green);box-shadow:none;color:#063;}
+.auto[aria-pressed="true"] .box .ico{opacity:1;}
+.stakeline{margin-top:10px;text-align:center;font-size:.76rem;font-weight:800;color:var(--text-3);}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var KEY = 'lrc', SAVE = 'lrc_state', PREFS = 'lrc_prefs';
+  var FACES = ['L', 'R', 'C', '.', '.', '.'];
+  var SPEEDS = { slow: 1.6, normal: 1, fast: 0.45 };
+
+  var S = null, view = null, busy = false, token = 0, testSpd = null;
+  var prefs = { auto: false, speed: 'normal' };
+  try { var pr = JSON.parse(localStorage.getItem(PREFS)); if (pr) { prefs.auto = !!pr.auto; if (SPEEDS[pr.speed]) prefs.speed = pr.speed; } } catch (e) {}
+  function savePrefs() { try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch (e) {} }
+  function spd() { return testSpd != null ? testSpd : SPEEDS[prefs.speed]; }
+  function later(fn, ms) { var t = token; setTimeout(function () { if (t === token) fn(); }, Math.max(0, ms * spd())); }
+  function money(chips) {
+    if (!S || !S.stake) return '';
+    var v = chips * S.stake;
+    return v < 1 ? Math.round(v * 100) + '¢' : '$' + (v % 1 ? v.toFixed(2) : String(v));
+  }
+  function stakeName(st) { return st < 1 ? Math.round(st * 100) + '¢' : '$' + st; }
+
+  Kit.init({
+    id: KEY,
+    theme: { felt: ['#17727a', '#0e4f56', '#09393e'], wood: ['#8a5530', '#5a3418'] },
+    onNew: function () { token++; busy = false; clearSave(); showSetup(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Left Right Center: past games' }); } }],
+    rules:
+      '<p class="goal">Be the last player with chips left. The winner takes the whole pot in the middle!</p>' +
+      '<h3>Getting ready</h3><p>Everyone starts with <b>3 chips</b>. Play goes around the table to the left.</p>' +
+      '<h3>Your turn</h3><p>Roll one die for each chip you have, but never more than 3 dice. Then do what each die says:</p>' +
+      '<ul><li><b>L</b>: pass one chip to the player on your <b>left</b>.</li>' +
+      '<li><b>R</b>: pass one chip to the player on your <b>right</b>.</li>' +
+      '<li><b>C</b>: put one chip in the <b>center</b> pot. It stays there.</li>' +
+      '<li><b>Dot</b>: you keep that chip.</li></ul>' +
+      '<h3>Out of chips?</h3><p>You are still in the game! You just skip your turn. If a neighbor rolls an L or R your way, you get chips back and roll again.</p>' +
+      '<h3>Winning</h3><p>When only one player still has chips, that player wins and takes everything in the center pot.</p>' +
+      '<h3>Handy buttons</h3><p><b>Auto-roll</b> rolls for everyone so you can just watch. <b>Speed</b> makes the dice and chips move faster or slower.</p>'
+  });
+
+  // ── Save / load ──────────────────────────────────────────────────────────
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    Kit.resume.set('Round ' + S.round + ' · pot ' + S.pot);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function load() { try { return JSON.parse(localStorage.getItem(SAVE)); } catch (e) { return null; } }
+
+  // ── Setup ────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; view = null;
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You and computer players' },
+        { id: 'pass', icon: 'users', title: 'Pass & play', desc: 'Everyone plays on this phone' }
+      ],
+      players: {
+        range: function () { return [2, 10]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : false; },
+        count: 4
+      },
+      options: [
+        { id: 'stake', label: 'Chip value', help: 'A pretend money value for each chip, just for fun. Nobody really pays anything.',
+          choices: [[0, 'None', 'Chips are just chips.'], [0.25, '25¢', 'Each chip is worth a quarter, so the pot shows money too.'], [1, '$1', 'Each chip is worth one dollar.'], [5, '$5', 'High rollers: each chip is worth five dollars.']], value: 0 }
+      ],
+      onStart: function (cfg) { start(cfg); }
+    });
+  }
+
+  function start(cfg) {
+    token++; busy = false;
+    var n = cfg.players.length;
+    S = {
+      mode: cfg.mode, stake: Number((cfg.options || {}).stake) || 0,
+      players: cfg.players.map(function (p) {
+        return { name: p.name, cpu: p.cpu, color: p.color, chips: 3, st: { zero: 0, peak: 3, peakR: 1, tripleC: 0, tripleDot: 0, rolls: 0 } };
+      }),
+      cur: 0, round: 1, pot: 0, maxPot: 0, turns: 0, last: null, winner: null, ev: [],
+      rounds: [cfg.players.map(function () { return 3; }), cfg.players.map(function () { return 0; })],
+      started: Date.now()
+    };
+    void n;
+    Kit.gameStart();
+    save(); view = snapshotView(); render(); next();
+  }
+
+  function snapshotView() { return { chips: S.players.map(function (p) { return p.chips; }), pot: S.pot }; }
+  function left(i) { return (i + 1) % S.players.length; }
+  function right(i) { return (i - 1 + S.players.length) % S.players.length; }
+  function alive() { return S.players.filter(function (p) { return p.chips > 0; }); }
+  function note(text) { S.ev.push({ t: text, r: S.round }); }
+
+  // ── Turn flow ────────────────────────────────────────────────────────────
+  // Decide what happens on the current turn: skip (no chips), wait for a tap, or roll.
+  function next() {
+    if (!S || busy) return;
+    if (S.winner != null) return finish();
+    var p = S.players[S.cur];
+    render();
+    if (p.chips === 0) {
+      busy = true;
+      say(S.cur, 'No chips: skip');
+      later(function () { busy = false; advance(); save(); render(); next(); }, 1000);
+      return;
+    }
+    if (p.cpu || prefs.auto) later(function () { if (S && !busy && S.players[S.cur] === p) roll(true); }, 700);
+  }
+  function advance() {
+    S.cur = left(S.cur);
+    if (S.cur === 0) { S.round++; S.rounds.push(S.players.map(function () { return 0; })); }
+  }
+
+  function roll(auto) {
+    if (!S || busy || S.winner != null) return;
+    var who = S.cur, p = S.players[who];
+    if (!auto && p.cpu) return;
+    if (p.chips === 0) return;
+    var n = Math.min(3, p.chips), faces = [];
+    var rig = window.__lrc && window.__lrc.rig; if (rig) window.__lrc.rig = null;
+    for (var i = 0; i < n; i++) faces.push(rig && rig[i] ? rig[i] : FACES[Math.floor(Math.random() * 6)]);
+
+    // Apply the result to the saved state right away; the animation then catches the view up.
+    view = snapshotView();
+    var row = S.rounds[S.rounds.length - 1], moves = [];
+    faces.forEach(function (f) {
+      if (f === '.') { moves.push({ f: f }); return; }
+      var to = f === 'L' ? left(who) : f === 'R' ? right(who) : -1;
+      p.chips--; row[who]--;
+      if (to < 0) S.pot++; else { S.players[to].chips++; row[to]++; }
+      moves.push({ f: f, to: to });
+    });
+    p.st.rolls++; S.turns++;
+    var cs = faces.filter(function (f) { return f === 'C'; }).length, dots = faces.filter(function (f) { return f === '.'; }).length;
+    if (n === 3 && cs === 3) { p.st.tripleC++; note(p.name + ' rolled C-C-C and put 3 chips in the pot (round ' + S.round + ')'); }
+    if (n === 3 && dots === 3) p.st.tripleDot++;
+    if (p.chips === 0) p.st.zero++;
+    S.players.forEach(function (q) { if (q.chips > q.st.peak) { q.st.peak = q.chips; q.st.peakR = S.round; } });
+    if (S.pot > S.maxPot) S.maxPot = S.pot;
+    S.last = { who: who, faces: faces };
+    var al = alive();
+    if (al.length === 1) S.winner = S.players.indexOf(al[0]);
+    else advance();
+    save();
+
+    // Show it
+    busy = true;
+    var t = token;
+    render(true);
+    Kit.sfx('roll'); Kit.haptic('medium');
+    tumble(who);
+    var dieEls = app.querySelectorAll('.dice .ldie');
+    var k = 0;
+    later(step, 760);
+    function step() {
+      if (t !== token) return;
+      if (k > 0 && dieEls[k - 1]) { dieEls[k - 1].classList.remove('act'); if (!dieEls[k - 1].classList.contains('keep')) dieEls[k - 1].classList.add('done'); }
+      if (k >= moves.length) {
+        later(function () {
+          busy = false; view = null;
+          if (S.winner != null) return finish();
+          render(); next();
+        }, 420);
+        return;
+      }
+      var m = moves[k], d = dieEls[k]; k++;
+      if (d) d.classList.add('act');
+      if (m.f === '.') {
+        if (d) d.classList.add('keep');
+        Kit.sfx('tick');
+        later(step, 420);
+        return;
+      }
+      flyChip(who, m.to, function () { later(step, 120); });
+    }
+  }
+
+  // Dice tumble out from the roller's seat into the middle of the table
+  function tumble(who) {
+    var seat = app.querySelector('.seat[data-i="' + who + '"] .stack'), dice = app.querySelectorAll('.dice .ldie');
+    if (!seat) return;
+    var a = seat.getBoundingClientRect();
+    dice.forEach(function (d, i) {
+      var b = d.getBoundingClientRect();
+      var dx = a.left + a.width / 2 - (b.left + b.width / 2), dy = a.top + a.height / 2 - (b.top + b.height / 2);
+      var spin = (Math.random() > .5 ? 1 : -1) * (300 + Math.random() * 300);
+      if (d.animate) d.animate([
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + spin + 'deg) scale(.4)', opacity: 0 },
+        { offset: .2, opacity: 1 },
+        { offset: .65, transform: 'translate(' + (-dx * .06) + 'px,' + (-dy * .06) + 'px) rotate(' + (-spin * .05) + 'deg) scale(1.06)' },
+        { offset: .85, transform: 'translateY(-4px) rotate(3deg)' },
+        { transform: 'none', opacity: 1 }
+      ], { duration: Math.max(10, (620 + i * 60) * spd()), easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
+    });
+  }
+
+  // One chip slides from a seat to another seat (to >= 0) or into the pot (to = -1)
+  function flyChip(from, to, done) {
+    var src = topChipRect(from), fromCount = view.chips[from];
+    view.chips[from]--;
+    var dst;
+    if (to < 0) { dst = potSpotRect(view.pot); }
+    else dst = topChipRect(to, 1);
+    paintSeat(from);
+    var col = chipColor(Math.max(0, fromCount - 1));
+    var c = el('div', { class: 'chip fly ' + col });
+    document.body.appendChild(c);
+    var cs = c.offsetWidth || 24;
+    var x0 = src.x - cs / 2, y0 = src.y - cs / 2, x1 = dst.x - cs / 2, y1 = dst.y - cs / 2;
+    var arc = -Math.min(60, 20 + Math.hypot(x1 - x0, y1 - y0) * .18);
+    Kit.sfx('chip');
+    var anim = c.animate ? c.animate([
+      { transform: 'translate(' + x0 + 'px,' + y0 + 'px) scale(1)' },
+      { offset: .5, transform: 'translate(' + ((x0 + x1) / 2) + 'px,' + ((y0 + y1) / 2 + arc) + 'px) scale(1.25) rotate(160deg)' },
+      { transform: 'translate(' + x1 + 'px,' + y1 + 'px) scale(1) rotate(320deg)' }
+    ], { duration: Math.max(10, 520 * spd()), easing: 'cubic-bezier(.45,0,.35,1)', fill: 'forwards' }) : null;
+    var t = token;
+    function land() {
+      c.remove();
+      if (t !== token || !view) return;
+      if (to < 0) { view.pot++; paintPot(); } else { view.chips[to]++; paintSeat(to, true); }
+      Kit.sfx('chip'); setTimeout(function () { Kit.sfx('tick'); }, 60); Kit.haptic('tick');
+      done();
+    }
+    if (anim) anim.onfinish = land; else land();
+  }
+  function chipColor(i) { return ['c0', 'c1', 'c2', 'c3'][i % 4]; }
+  function topChipRect(i, plusOne) {
+    var st = app.querySelector('.seat[data-i="' + i + '"] .stack');
+    if (!st) return { x: innerWidth / 2, y: innerHeight / 2 };
+    var r = st.getBoundingClientRect(), n = Math.min(STACK_MAX, view.chips[i] + (plusOne ? 0 : -1));
+    n = Math.max(0, n);
+    return { x: r.left + r.width / 2, y: r.bottom - 12 - n * 3.2 };
+  }
+  function potSpotRect(idx) {
+    var pot = app.querySelector('.pot');
+    if (!pot) return { x: innerWidth / 2, y: innerHeight / 2 };
+    var r = pot.getBoundingClientRect(), p = potPos(idx);
+    return { x: r.left + p[0] / 100 * r.width, y: r.top + p[1] / 100 * r.height };
+  }
+  // A loose pile in the pot: golden-angle spiral, so chips never jump around between renders
+  function potPos(i) {
+    var a = i * 2.39996, rr = Math.sqrt((i % 36 + .6) / 36) * .78;
+    return [50 + Math.cos(a) * rr * 40, 46 + Math.sin(a) * rr * 36 - Math.floor(i / 36) * 4];
+  }
+
+  function say(i, text, ms) {
+    var seat = app.querySelector('.seat[data-i="' + i + '"]'); if (!seat) return;
+    var old = seat.querySelector('.say'); if (old) old.remove();
+    var b = el('div', { class: 'say', text: text });
+    seat.appendChild(b);
+    setTimeout(function () { b.remove(); }, (ms || 1100) * Math.max(.6, spd()));
+  }
+
+  // ── End of game ──────────────────────────────────────────────────────────
+  function finish() {
+    if (!S || S.done) return;
+    S.done = true;
+    var w = S.players[S.winner], pot = S.pot, total = pot + w.chips;
+    busy = true;
+    render();
+    // Highlights
+    var hl = [];
+    hl.push(w.name + ' won the pot of ' + pot + ' chip' + (pot === 1 ? '' : 's') + (S.stake ? ' (' + money(pot) + ')' : '') + ' after ' + S.round + ' round' + (S.round === 1 ? '' : 's'));
+    if (w.st.zero) hl.push(w.name + ' ran out of chips ' + (w.st.zero === 1 ? 'once' : w.st.zero + ' times') + ' and still won');
+    S.ev.slice(0, 2).forEach(function (e) { hl.push(e.t); });
+    var big = null; S.players.forEach(function (q) { if (q.st.peak > 3 && (!big || q.st.peak > big.st.peak)) big = q; });
+    if (big) hl.push(big.name + ' built the tallest stack: ' + big.st.peak + ' chips in round ' + big.st.peakR);
+    var lucky = null; S.players.forEach(function (q) { if (q.st.tripleDot && (!lucky || q.st.tripleDot > lucky.st.tripleDot)) lucky = q; });
+    if (lucky && hl.length < 6) hl.push(lucky.name + ' rolled three dots ' + (lucky.st.tripleDot === 1 ? 'once' : lucky.st.tripleDot + ' times') + ' and kept every chip');
+    var broke = null; S.players.forEach(function (q) { if (q !== w && (!broke || q.st.zero > broke.st.zero)) broke = q; });
+    if (broke && broke.st.zero >= 3 && hl.length < 6) hl.push(broke.name + ' went broke ' + broke.st.zero + ' times');
+    var modeTxt = (S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + (S.stake ? ' · ' + stakeName(S.stake) + ' chips' : '');
+    Kit.record(KEY, {
+      started: S.started, mode: modeTxt,
+      players: S.players.map(function (q) { return { name: q.name, score: q.chips, cpu: q.cpu }; }),
+      winner: w.name,
+      rounds: { labels: S.rounds.map(function (r, i) { return i === 0 ? 'Start' : String(i); }), scores: S.rounds },
+      highlights: hl.slice(0, 6),
+      summary: w.name + ' won the pot · ' + pot + ' chips' + (S.stake ? ' · ' + money(pot) : ''),
+      meta: { pot: pot, stake: S.stake }
+    });
+    clearSave();
+    var last = S, t = token;
+    // Celebration: the whole pot slides over to the winner, chip by chip
+    Kit.callout(w.name === 'You' ? 'You win the pot!' : w.name + ' wins!');
+    Kit.sfx('good'); Kit.haptic('success');
+    view = snapshotView(); view.chips[S.winner] = w.chips;
+    var seatSt = topChipRect(S.winner, 1), potEl = app.querySelector('.pot'), n = Math.min(pot, 24);
+    for (var i = 0; i < n; i++) (function (i) {
+      setTimeout(function () {
+        if (t !== token) return;
+        var src = potSpotRect(pot - 1 - i);
+        view.pot = Math.max(0, pot - 1 - i); paintPot();
+        var c = el('div', { class: 'chip fly ' + chipColor(i) }); document.body.appendChild(c);
+        var a = c.animate ? c.animate([
+          { transform: 'translate(' + (src.x - 12) + 'px,' + (src.y - 12) + 'px)' },
+          { offset: .5, transform: 'translate(' + ((src.x + seatSt.x) / 2 - 12) + 'px,' + ((src.y + seatSt.y) / 2 - 70) + 'px) scale(1.3) rotate(180deg)' },
+          { transform: 'translate(' + (seatSt.x - 12) + 'px,' + (seatSt.y - 12) + 'px) rotate(360deg)' }
+        ], { duration: 600, easing: 'cubic-bezier(.45,0,.35,1)', fill: 'forwards' }) : null;
+        var done = function () { c.remove(); Kit.sfx('chip'); if (t === token && view) { view.chips[last.winner]++; paintSeat(last.winner, true); } };
+        if (a) a.onfinish = done; else done();
+      }, i * 70);
+    })(i);
+    if (pot > n && potEl) setTimeout(function () { if (t === token && view) { view.pot = 0; paintPot(); } }, n * 70);
+    setTimeout(function () { if (t === token) Kit.confetti({ count: 120 }); }, n * 70 + 300);
+    setTimeout(function () {
+      if (t !== token) return;
+      busy = false;
+      var youLost = last.mode === 'cpu' && w.cpu;
+      Kit.win({
+        title: w.name === 'You' ? 'You win!' : w.name + ' wins!',
+        sub: 'Took the pot: ' + pot + ' chip' + (pot === 1 ? '' : 's') + (last.stake ? ' · ' + money(pot) : '') + (w.chips ? ' (plus ' + w.chips + ' in hand)' : '') + ' · ' + last.round + ' rounds',
+        lose: youLost,
+        again: function () { start({ mode: last.mode, players: last.players, options: { stake: last.stake } }); },
+        extra: [{ label: 'Change players', onClick: showSetup }]
+      });
+    }, n * 70 + 1500);
+    void total;
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  var STACK_MAX = 9;
+  function stackEl(n) {
+    var st = el('div', { class: 'stack' + (n ? '' : ' empty') });
+    fillStack(st, n);
+    return st;
+  }
+  function fillStack(st, n) {
+    st.innerHTML = ''; st.classList.toggle('empty', !n);
+    for (var k = 0; k < Math.min(n, STACK_MAX); k++) {
+      var c = el('div', { class: 'chip ' + chipColor(k) });
+      c.style.bottom = (k * 3.2) + 'px';
+      c.style.left = (5 + ((k * 7) % 3) - 1) + 'px';
+      st.appendChild(c);
+    }
+  }
+  function shown(i) { return view ? view.chips[i] : S.players[i].chips; }
+  function shownPot() { return view ? view.pot : S.pot; }
+
+  function paintSeat(i, bump) {
+    var seat = app.querySelector('.seat[data-i="' + i + '"]'); if (!seat) return;
+    var n = shown(i);
+    fillStack(seat.querySelector('.stack'), n);
+    seat.querySelector('.tag b').textContent = String(n);
+    seat.classList.toggle('out', n === 0);
+    if (bump) { seat.classList.remove('bump'); void seat.offsetWidth; seat.classList.add('bump'); }
+  }
+  function paintPot() {
+    var pot = app.querySelector('.pot'); if (!pot) return;
+    var n = shownPot();
+    pot.querySelectorAll('.chip').forEach(function (c) { c.remove(); });
+    for (var k = 0; k < Math.min(n, 60); k++) {
+      var pp = potPos(k);
+      pot.appendChild(el('div', { class: 'chip ' + chipColor(k * 3 + 1), style: { left: pp[0] + '%', top: pp[1] + '%' } }));
+    }
+    pot.querySelector('.lbl').innerHTML = 'Pot<b>' + n + '</b>' + (S.stake ? '<b style="color:var(--yellow)">' + money(n) + '</b>' : '');
+  }
+
+  // Seats sit around the oval at equal distances along its edge, starting at the bottom
+  // and going clockwise (to the player's left).
+  function seatSpots(n, aspect) {
+    var rx = 1, ry = aspect, N = 720, pts = [], len = [0];
+    for (var k = 0; k <= N; k++) {
+      var a = Math.PI / 2 + k / N * Math.PI * 2;
+      pts.push([Math.cos(a), Math.sin(a)]);
+      if (k) len.push(len[k - 1] + Math.hypot((pts[k][0] - pts[k - 1][0]) * rx, (pts[k][1] - pts[k - 1][1]) * ry));
+    }
+    var tot = len[N], out = [], j = 0;
+    for (var i = 0; i < n; i++) {
+      var want = tot * i / n;
+      while (j < N && len[j + 1] < want) j++;
+      out.push(pts[j]);
+    }
+    return out;
+  }
+
+  function render(rolling) {
+    if (!S) return;
+    app.innerHTML = '';
+    var cur = S.players[S.cur], n = S.players.length;
+    var rollerIdx = rolling && S.last ? S.last.who : S.cur;
+    var roller = S.players[rollerIdx];
+    var line;
+    if (S.winner != null && !rolling) line = Kit.poss(S.players[S.winner].name) + ' pot!';
+    else if (rolling) line = roller.name + (roller.name === 'You' ? ' roll' : ' rolls') + ' ' + S.last.faces.length + (S.last.faces.length === 1 ? ' die' : ' dice');
+    else if (cur.chips === 0) line = cur.name + (cur.name === 'You' ? ' have' : ' has') + ' no chips: skip';
+    else if (cur.cpu) line = cur.name + ' is rolling…';
+    else line = n > 1 && (S.mode === 'pass' || cur.name !== 'You') ? Kit.poss(cur.name) + ' roll' : 'Your roll';
+    app.appendChild(el('div', { class: 'turnline', style: { '--c': roller.color } }, [el('span', { class: 'dot' }), el('span', { text: line })]));
+
+    var oval = el('div', { class: 'oval wood' });
+    var felt = el('div', { class: 'felt-in' });
+    var mid = el('div', { class: 'mid' });
+    var dice = el('div', { class: 'dice' });
+    var faces = S.last ? S.last.faces : [];
+    faces.forEach(function (f) {
+      var d = el('div', { class: 'die ldie' + (rolling ? '' : ' done'), 'data-f': f, 'aria-label': f === 'L' ? 'L: pass left' : f === 'R' ? 'R: pass right' : f === 'C' ? 'C: center pot' : 'Dot: keep' });
+      d.appendChild(el('span', { class: 'f' + (f === '.' ? ' pip' : ''), text: f === '.' ? '' : f }));
+      dice.appendChild(d);
+    });
+    mid.appendChild(dice);
+    var pot = el('div', { class: 'pot' }, [el('div', { class: 'lbl' })]);
+    mid.appendChild(pot);
+    felt.appendChild(mid);
+    oval.appendChild(felt);
+
+    var vw = Math.min(document.documentElement.clientWidth - 32, 540), vh = Math.min(600, Math.max(420, window.innerHeight - 280));
+    var aspect = Math.max(.8, Math.min(2, (vh - 24) / Math.max(200, vw - 24)));
+    var spots = seatSpots(n, aspect);
+    S.players.forEach(function (q, i) {
+      var sp = spots[i], c = shown(i);
+      var seat = el('div', {
+        class: 'seat' + (i === (rolling ? rollerIdx : S.cur) && S.winner == null ? ' on' : '') + (i === S.winner && !rolling ? ' on' : '') + (c === 0 ? ' out' : ''),
+        'data-i': i, style: { '--c': q.color, left: 'calc(50% + ' + sp[0].toFixed(4) + ' * (50% - 46px))', top: 'calc(50% + ' + sp[1].toFixed(4) + ' * (50% - 44px))' }
+      }, [stackEl(c), el('div', { class: 'tag' }, [el('span', { class: 'nm', text: q.name }), el('b', { text: String(c) })])]);
+      seat.setAttribute('aria-label', q.name + ': ' + c + ' chips');
+      oval.appendChild(seat);
+    });
+    app.appendChild(oval);
+    paintPot();
+
+    // Roll button + pace controls
+    var canTap = S.winner == null && !busy && !cur.cpu && cur.chips > 0 && !prefs.auto;
+    var nd = Math.min(3, cur.chips);
+    var rb = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block rollbtn', onclick: function () { roll(false); } },
+      [el('span', { text: S.winner != null ? 'Game over' : busy || cur.cpu || cur.chips === 0 ? 'Rolling…' : prefs.auto ? 'Auto-rolling…' : 'Roll ' + nd + (nd === 1 ? ' die' : ' dice') })]);
+    rb.disabled = !canTap;
+    app.appendChild(rb);
+
+    var auto = el('button', { type: 'button', class: 'auto', 'aria-pressed': String(prefs.auto), onclick: function () {
+      prefs.auto = !prefs.auto; savePrefs(); Kit.sfx('tap'); Kit.haptic('light');
+      if (!busy) { render(); if (prefs.auto) next(); } else auto.setAttribute('aria-pressed', String(prefs.auto));
+    } }, [el('span', { class: 'box', html: Kit.icon('check') }), el('span', { text: 'Auto-roll' })]);
+    var seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Speed' });
+    [['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']].forEach(function (s) {
+      seg.appendChild(el('button', { type: 'button', class: prefs.speed === s[0] ? 'on' : '', text: s[1], onclick: function () {
+        prefs.speed = s[0]; savePrefs(); Kit.sfx('tap');
+        seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.textContent === s[1]); });
+      } }));
+    });
+    app.appendChild(el('div', { class: 'ctrls' }, [auto, seg]));
+    var tot = n * 3;
+    app.appendChild(el('div', { class: 'stakeline', text: tot + ' chips in play' + (S.stake ? ' · ' + stakeName(S.stake) + ' each · ' + money(tot) + ' on the table' : '') + ' · round ' + S.round }));
+  }
+
+  // Test hooks
+  window.__lrc = { state: function () { return S; }, busy: function () { return busy; }, speed: function (x) { testSpd = x; } };
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  var saved = load();
+  if (saved && saved.players && saved.players.length && !saved.done) {
+    S = saved; busy = false; view = null;
+    if (S.winner != null) { render(); finish(); } else next();
+  } else showSetup();
+})();
+</script>
+</body>
+</html>
