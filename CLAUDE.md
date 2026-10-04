@@ -44,6 +44,9 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
+- Player setup goes through `Kit.setup` (name picker, regulars, robot names for
+  computer players). Every game passes `undo` to `Kit.init` when moves can be
+  taken back. The game menu always has Manage players.
 
 ## Rules for every change
 

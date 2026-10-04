@@ -357,6 +357,7 @@
     if (opts.undo) item('undo', 'Undo', opts.undo);
     (opts.menu || []).forEach(function (m) { item(m.icon || 'sparkle', m.label, m.onClick, m.cls); });
     if (opts.rules) item('book', 'How to play', rules);
+    item('users', 'Manage players', function () { managePlayers(); });
     item(soundOn() ? 'sound' : 'mute', soundOn() ? 'Sound: on' : 'Sound: off', function () {
       lsSet('gn_sound', soundOn() ? '0' : '1'); toast(soundOn() ? 'Sound on' : 'Sound off'); sfx('good');
     });
@@ -393,25 +394,121 @@
 
   // Names of people this household plays with: the Frequent Players list first,
   // then anyone who appears in saved game history (which syncs across devices).
+  // Computer opponents get a random famous robot / AI / alien name.
+  var CPU_NAMES = ['HAL 9000', 'Linguo', 'Johnny 5', 'WALL-E', 'EVE', 'Optimus Prime', 'Bender', 'C-3PO', 'R2-D2',
+    'Rocky', 'BB-8', 'K-2SO', 'Baymax', 'Data', 'Marvin', 'KITT', 'Rosie', 'Iron Giant', 'Robby', 'T-800',
+    'Sonny', 'Stitch', 'E.T.', 'ALF', 'Groot', 'Bumblebee', 'Megatron', 'Gort', 'Number 5', 'Dewey', 'Huey',
+    'Wheatley', 'Bishop', 'Ash', 'JARVIS', 'Ultron', 'Vision', 'Chappie', 'Mother', 'Klaatu'];
+  function cpuNames(n, avoid) {
+    var pool = CPU_NAMES.filter(function (x) { return (avoid || []).indexOf(x) < 0; }), out = [];
+    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    return out;
+  }
   var NOT_NAMES = /^(you|me|computer|cpu|ai|dealer|bank|house|player\s*\d+|p\d|robo|chip|bolt|pixel|sprocket|gizmo|widget|north|south|east|west|team\s*\d+)$/i;
+  function isPersonName(n) {
+    n = String(n || '').trim();
+    if (!n || n.length > 14 || NOT_NAMES.test(n)) return false;
+    var l = n.toLowerCase();
+    return !CPU_NAMES.some(function (c) { return c.toLowerCase() === l; });
+  }
+  function hiddenNames() { try { return JSON.parse(lsGet('gn_hidden_names', '[]')) || []; } catch (e) { return []; } }
+  function nameCounts() { try { return JSON.parse(lsGet('gn_name_counts', '{}')) || {}; } catch (e) { return {}; } }
+  function countPlays(list) {
+    var c = nameCounts();
+    list.forEach(function (n) { var k = n.toLowerCase(); c[k] = (c[k] || 0) + 1; });
+    lsSet('gn_name_counts', JSON.stringify(c));
+  }
+  // People this household plays with, most-played first. Sources: names
+  // picked in setup screens on this device, the Frequent Players list, and
+  // everyone in saved game history (history syncs across devices).
   function knownNames() {
-    var score = {}, label = {};
+    var score = {}, label = {}, hidden = hiddenNames().map(function (x) { return x.toLowerCase(); });
     function add(n, w) {
-      n = String(n || '').trim(); if (!n || n.length > 14 || NOT_NAMES.test(n)) return;
-      var k = n.toLowerCase(); score[k] = (score[k] || 0) + w; if (!label[k]) label[k] = n;
+      if (!isPersonName(n)) return;
+      n = String(n).trim(); var k = n.toLowerCase();
+      if (hidden.indexOf(k) >= 0) return;
+      score[k] = (score[k] || 0) + w; if (!label[k]) label[k] = n;
     }
-    try { if (window.FrequentPlayers) FrequentPlayers.list().forEach(function (n, i) { add(n, 1000 - i); }); } catch (e) {}
+    try { if (window.FrequentPlayers) FrequentPlayers.list().forEach(function (n, i) { add(n, 3 + Math.max(0, 1 - i * 0.05)); }); } catch (e) {}
+    var counts = nameCounts();
+    Object.keys(counts).forEach(function (k) { if (label[k]) score[k] += counts[k] * 4; });
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
         var list = JSON.parse(localStorage.getItem(k) || '[]');
         if (!Array.isArray(list)) continue;
-        list.forEach(function (e, idx) {
-          (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) { add(p && (p.name || p), 5 - Math.min(4, idx)); });
+        list.forEach(function (e) {
+          (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) { add(p && (p.name || p), 2); });
         });
       }
     } catch (e) {}
     return Object.keys(score).sort(function (a, b) { return score[b] - score[a]; }).map(function (k) { return label[k]; });
+  }
+
+  // Sheet: pick one of the regulars (most played on top), or type a new name.
+  function pickName(onPick, o) {
+    o = o || {};
+    var taken = (o.taken || []).map(function (x) { return String(x || '').toLowerCase(); });
+    var box = el('div', { class: 'k-names' }), s;
+    var names = knownNames();
+    if (!names.length) box.appendChild(el('p', { class: 'muted', text: 'No regulars yet. Type a name below and it will show up here next time.' }));
+    names.forEach(function (n) {
+      var used = taken.indexOf(n.toLowerCase()) >= 0;
+      box.appendChild(el('button', { type: 'button', class: 'k-name' + (used ? ' used' : ''), disabled: used, onclick: function () { s.close(); sfx('pop'); haptic('light'); onPick(n); } }, [
+        el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }),
+        el('span', { class: 'grow', text: n }),
+        used ? el('span', { class: 'dim', text: 'playing' }) : null
+      ]));
+    });
+    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'New name', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
+    function addNew() {
+      var v = inp.value.trim(); if (!v) return;
+      try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {}
+      unhide(v); s.close(); sfx('pop'); onPick(v);
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addNew(); });
+    var foot = el('div', { class: 'row', style: { 'margin-top': '14px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: addNew })]);
+    var node = el('div', null, [box, foot, el('button', { type: 'button', class: 'btn btn-ghost btn-block', style: { 'margin-top': '8px' }, html: icon('users') + '<span>Manage players</span>', onclick: function () { s.close(); managePlayers(); } })]);
+    s = sheet({ title: o.title || 'Who is it?', node: node });
+  }
+  function unhide(n) {
+    var h = hiddenNames().filter(function (x) { return x.toLowerCase() !== String(n).toLowerCase(); });
+    lsSet('gn_hidden_names', JSON.stringify(h));
+  }
+  // Sheet: add or remove the household's regular players.
+  function managePlayers(onDone) {
+    var list = el('div', { class: 'k-names' }), s;
+    function paint() {
+      list.innerHTML = '';
+      var names = knownNames();
+      if (!names.length) list.appendChild(el('p', { class: 'muted', text: 'No players yet. Add the people you play with.' }));
+      names.forEach(function (n) {
+        list.appendChild(el('div', { class: 'k-name' }, [
+          el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }),
+          el('span', { class: 'grow', text: n }),
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + n, html: icon('close'), onclick: function () {
+            try { if (window.FrequentPlayers) FrequentPlayers.remove(n); } catch (e) {}
+            var h = hiddenNames(); if (h.indexOf(n) < 0) h.push(n); lsSet('gn_hidden_names', JSON.stringify(h));
+            sfx('tap'); paint();
+          } })
+        ]));
+      });
+    }
+    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Add a player', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
+    function add() {
+      var v = inp.value.trim(); if (!v) return;
+      try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {}
+      var c = nameCounts(); var k = v.toLowerCase(); if (!c[k]) { c[k] = 0; lsSet('gn_name_counts', JSON.stringify(c)); }
+      unhide(v); inp.value = ''; sfx('pop'); paint();
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') add(); });
+    paint();
+    s = sheet({
+      title: 'Players', node: el('div', null, [el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'These names show up when you set up a game, most played first.' }), list,
+        el('div', { class: 'row', style: { 'margin-top': '14px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: add })])]),
+      actions: [{ label: 'Done', cls: 'btn-soft' }],
+      onClose: function () { if (onDone) onDone(); }
+    });
   }
 
   // ── Setup screen ──────────────────────────────────────────────────────────
@@ -433,7 +530,8 @@
     try { saved = JSON.parse(lsGet('gn_setup_' + (game ? game.id : pageKey()), '{}')) || {}; } catch (e) {}
     if (saved.mode && o.modes && o.modes.some(function (m) { return m.id === saved.mode; })) state.mode = saved.mode;
     (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
-    var names = (saved.names || []).slice();
+    var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
+    var bots = cpuNames(8);
 
     var wrap = el('div', { class: 'setup' });
     wrap.appendChild(el('div', { class: 'setup-hero' }, [
@@ -501,27 +599,39 @@
       if (P.names === false) return;
       var inputs = [];
       for (var i = 0; i < state.count; i++) {
-        var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
-        var c = playerColor(i);
-        var inp = el('input', {
-          class: 'input', type: 'text', maxlength: 14, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
-          placeholder: isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1)),
-          value: isCpu ? '' : (names[i] || '')
-        });
-        if (isCpu) { inp.disabled = true; inp.value = (P.cpuNames && P.cpuNames[i - 1]) || ['Robo', 'Chip', 'Bolt', 'Pixel', 'Sprocket', 'Gizmo', 'Widget'][(i - 1) % 7]; }
-        (function (idx) { inp.addEventListener('input', function () { names[idx] = inp.value; }); })(i);
-        inputs.push(inp);
-        seatsBox.appendChild(el('div', { class: 'seat' }, [
-          el('span', { class: 'avatar', style: { '--c': c }, html: isCpu ? icon('bot') : String(i + 1) }), inp
-        ]));
+        (function (i) {
+          var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
+          var c = playerColor(i);
+          var inp = el('input', {
+            class: 'input', type: 'text', maxlength: 14, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
+            placeholder: i === 0 && cpu ? 'Your name' : 'Player ' + (i + 1),
+            value: isCpu ? bots[i - 1] : (names[i] || '')
+          });
+          inputs.push(inp);
+          var row = el('div', { class: 'seat' + (isCpu ? ' cpu' : '') }, [el('span', { class: 'avatar', style: { '--c': c }, html: isCpu ? icon('bot') : String(i + 1) })]);
+          var field = el('div', { class: 'seat-field' }, [inp]);
+          if (isCpu) {
+            inp.readOnly = true; inp.setAttribute('aria-label', 'Computer player');
+            field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'New computer name', html: icon('shuffle'), onclick: function () {
+              bots[i - 1] = cpuNames(1, bots)[0] || bots[i - 1]; inp.value = bots[i - 1]; sfx('pop'); haptic('light');
+            } }));
+          } else {
+            inp.addEventListener('input', function () { names[i] = inp.value; });
+            field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'Choose a player', html: icon('users'), onclick: function () {
+              pickName(function (n) { names[i] = n; renderSeats(); }, { taken: names.slice(0, state.count).filter(function (x, j) { return j !== i; }), title: 'Seat ' + (i + 1) });
+            } }));
+          }
+          row.appendChild(field);
+          seatsBox.appendChild(row);
+        })(i);
       }
       // One-tap names: frequent players plus everyone in past game history
       var taken = names.slice(0, state.count).map(function (n) { return String(n || '').trim().toLowerCase(); });
       var pool = knownNames().filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
       if (pool.length) {
-        seatsBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Tap to add a player' }));
+        seatsBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Regulars' }));
         var quick = el('div', { class: 'quick' });
-        pool.slice(0, 12).forEach(function (n) {
+        pool.slice(0, 4).forEach(function (n) {
           quick.appendChild(el('button', {
             type: 'button', class: 'chip name', onclick: function () {
               var cpuNow = cpuFor(), r2 = range(), slot = -1;
@@ -542,17 +652,18 @@
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block', text: o.start || "Let's play!",
       onclick: function () {
-        var cpu = cpuFor(), players = [];
+        var cpu = cpuFor(), players = [], picked = [];
         if (P) {
           var inputs = seatsBox.querySelectorAll('input');
           for (var i = 0; i < state.count; i++) {
             var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
             var v = inputs[i] ? inputs[i].value.trim() : '';
             players.push({ name: v || (isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1))), cpu: !!isCpu, color: playerColor(i), seat: i });
-            if (!isCpu && v) { try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {} }
+            if (!isCpu && isPersonName(v)) { picked.push(v); try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {} }
           }
         }
-        lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names }));
+        if (picked.length) countPlays(picked);
+        lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }) }));
         sfx('pop'); haptic('medium');
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
       }
@@ -620,7 +731,7 @@
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, haptic: haptic, card: card, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
-    resume: resume, rules: rules, knownNames: knownNames, home: goHome, game: function () { return game; }
+    resume: resume, rules: rules, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, cpuNames: cpuNames, home: goHome, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();
