@@ -6,7 +6,11 @@ const Casino = (function(){
   const KEY = 'casino_bank';
   const DEFAULT = 1000;
 
-  function balance(){ try{ return parseInt(localStorage.getItem(KEY)) || DEFAULT; } catch(e){ return DEFAULT; } }
+  // A missing bankroll starts at $1,000; a real $0 stays $0 (not reset).
+  function balance(){
+    try{ var v = localStorage.getItem(KEY); if(v === null || v === '') return DEFAULT; var n = parseInt(v, 10); return isNaN(n) ? DEFAULT : Math.max(0, n); }
+    catch(e){ return DEFAULT; }
+  }
   function save(n){
     try{
       localStorage.setItem(KEY, Math.max(0, Math.round(n)));
