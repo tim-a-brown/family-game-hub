@@ -36,7 +36,7 @@
 .stk .tag{position:absolute;left:50%;top:calc(100% + 1px);transform:translateX(-50%);font:900 .52rem/1 var(--font);letter-spacing:.06em;color:#fff;background:rgba(0,0,0,.65);padding:2px 4px;border-radius:4px;white-space:nowrap;}
 .stk.won .c3:last-child{box-shadow:0 0 0 3px #ffd54a, 0 0 14px rgba(255,213,74,.9);}
 .stk.lost{opacity:0;transform:translate(-50%,-220%) scale(.7);}
-.paybub{position:absolute;z-index:9;transform:translate(-50%,-100%);white-space:nowrap;padding:2px 7px;border-radius:999px;pointer-events:none;
+.paybub{position:absolute;z-index:9;transform:translate(-50%,-50%);white-space:nowrap;padding:2px 7px;border-radius:999px;pointer-events:none;
   background:#ffd54a;color:#3a2600;font:900 .74rem/1.25 var(--font);box-shadow:0 2px 6px rgba(0,0,0,.4);animation:paybub 1.8s var(--ease) forwards;}
 @keyframes paybub{0%{opacity:0;margin-top:6px;}15%{opacity:1;margin-top:0;}80%{opacity:1;}100%{opacity:0;margin-top:-14px;}}
 
@@ -655,11 +655,15 @@
       var a = R.anchors[w.id] || R.anchors[w.id.replace(/Odds/, '')]; if (!a) return;
       var r = a.getBoundingClientRect(), f = R.felt.getBoundingClientRect();
       var b = el('div', { class: 'paybub', text: '+' + money(w.pr) });
-      b.style.left = (r.left - f.left) + 'px'; b.style.top = (r.top - f.top - 14) + 'px';
+      b.style.left = (r.left - f.left) + 'px'; b.style.top = (r.top - f.top - 18) + 'px';
       R.felt.appendChild(b); setTimeout(function () { b.remove(); }, 1900);
     });
     res.won.forEach(function (w) { var z = zoneFor(w.id); if (z) { z.classList.add('lit'); setTimeout(function () { z.classList.remove('lit'); }, 900); } });
-    paintAll();
+    // Losing chips get swept away, then the table is redrawn
+    var swept = 0;
+    res.lost.forEach(function (id) { var a = R.anchors[id], st = a && a.firstChild; if (st && !instant) { st.classList.add('lost'); swept++; } });
+    paintBank(); paintPuck(); paintState();
+    if (swept) setTimeout(function () { if (!busy) paintStacks(); }, 480); else paintStacks();
     var net = res.net;
     var line = '<b>' + res.d[0] + ' + ' + res.d[1] + ' = ' + res.t + '</b> · ' + res.head;
     if (res.won.length || res.lost.length) line += ' · ' + (net > 0 ? 'won ' + money(net) : net < 0 ? 'lost ' + money(-net) : 'even');

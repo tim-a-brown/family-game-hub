@@ -351,10 +351,11 @@
 
   function paint() {
     if (!S || !dom.bank) return;
-    var net = S.st.returned - S.st.wagered - (busy && S.hand ? S.hand.ret - S.hand.wager : 0);
+    var net = S.st.returned - S.st.wagered - (busy && S.hand ? S.hand.back - S.hand.wager : 0);
     var bal = busy && S.hand ? S.hand.bankBefore : Casino.balance();
     dom.bank.innerHTML = '<span>' + Kit.esc(S.name) + ' · <b>' + money(bal) + '</b></span><span>Session <b class="' + (net > 0.004 ? 'up' : net < -0.004 ? 'down' : '') + '">' + signed(net) + '</b></span>';
-    ORDER.forEach(function (k) { paintStack(k, S.bets[k] || 0); });
+    var showBets = busy && S.hand ? S.hand.bets : S.bets;
+    ORDER.forEach(function (k) { paintStack(k, showBets[k] || 0); });
     dom.felt.classList.toggle('betting', !busy);
     paintTray(); paintButtons(); paintShoe(); paintRoad();
   }
@@ -541,14 +542,11 @@
     if (whole) Casino.win(whole);
 
     var hand = { p: p, b: b, pt: pt, bt: bt, w: w, nat: nat, pp: pp, bp: bp, bets: bets, ret: ret, wager: wager, back: back, bankBefore: bankBefore, lastHand: lastHand, n: S.st.hands + 1 };
-    hand.retTotal = back; hand.ret = ret;
     tally(hand);
     S.roads.push({ w: w, pp: pp, bp: bp, nat: nat });
     S.last = JSON.parse(JSON.stringify(bets));
     S.bets = {}; S.placed = [];
     S.hand = hand; hand.shown = false;
-    hand.ret = ret; hand.wager = wager;
-    S.hand.retSum = back;
     save();
     Kit.haptic('medium');
     playHand(hand);
