@@ -47,7 +47,8 @@
     var mf = doc.createElement('link'); mf.rel = 'manifest'; mf.href = '/manifest.json'; doc.head.appendChild(mf);
   }
   if (!doc.querySelector('link[rel="icon"]')) {
-    var ic = doc.createElement('link'); ic.rel = 'icon'; ic.href = '/icon-192.png'; doc.head.appendChild(ic);
+    var ic = doc.createElement('link'); ic.rel = 'icon'; ic.href = '/favicon.png'; doc.head.appendChild(ic);
+    var at = doc.createElement('link'); at.rel = 'apple-touch-icon'; at.href = '/apple-touch-icon.png'; doc.head.appendChild(at);
   }
   ['gesturestart', 'gesturechange'].forEach(function (t) {
     doc.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });

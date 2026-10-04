@@ -315,7 +315,7 @@ function Scorepad(host, o) {
     clear();
     setTimeout(function () {
       Kit.win({
-        title: w >= 0 ? S.sides[w].name + ' wins!' : "It's a tie!", sub: 'Final scores', rank: order,
+        title: w >= 0 ? S.sides[w].name + (/ & | and /.test(S.sides[w].name) ? ' win!' : ' wins!') : "It's a tie!", sub: 'Final scores', rank: order,
         again: function () { reset(); }, againLabel: 'New game with same players',
         extra: [{ label: 'View score sheet', onClick: function () {} }]
       });

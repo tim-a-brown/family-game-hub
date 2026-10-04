@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v12-2026-10-04-fresh';
+const CACHE_VERSION = 'v13-2026-10-04-cards';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -38,6 +38,8 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/apple-touch-icon.png',
+  '/favicon.png',
   // Every game
   '/games/2048.html',
   '/games/asteroids.html',
