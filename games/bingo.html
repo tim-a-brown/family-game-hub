@@ -25,7 +25,7 @@
 .cagewrap{position:relative;width:var(--cw2);}
 .machine{--cw2:min(42vw,176px);}
 #cage{display:block;width:var(--cw2);height:calc(var(--cw2) * 1.1);}
-.cagecount{position:absolute;left:0;right:0;bottom:-2px;text-align:center;font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);}
+.cagecount{margin-top:4px;text-align:center;font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);}
 .tray{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;}
 .callline{font-family:var(--display);font-size:clamp(1.5rem,7vw,2.1rem);line-height:1;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.35);letter-spacing:.02em;min-height:1em;}
 .callline small{display:block;text-align:center;font-family:var(--font);font-size:.72rem;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.55);text-transform:uppercase;margin-top:6px;text-shadow:none;}
@@ -64,16 +64,14 @@
 .ctl .sq .ico{width:24px;height:24px;}
 .autobtn{position:relative;}
 .autobtn.on{--b:var(--green);--b-ink:#03290f;--b-lip:#1d8a4f;}
-.autobtn .ring{position:absolute;inset:-5px;border-radius:calc(var(--r) + 5px);pointer-events:none;
-  background:conic-gradient(var(--green) calc(var(--p,0) * 1turn), transparent 0);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:none;opacity:0;}
-.autobtn.on .ring{opacity:0;}
 .autobar{height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;margin:-4px 0 10px;opacity:0;transition:opacity .2s;}
 .autobar.on{opacity:1;}
 .autobar i{display:block;height:100%;width:calc(var(--p,0) * 100%);background:var(--green);border-radius:inherit;}
 .opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
 .opts .chip{flex:1;justify-content:center;min-height:44px;padding:0 10px;}
-.opts .chip .ico{width:18px;height:18px;}
+.opts .chip .ico{width:18px;height:18px;flex:none;}
+.opts .chip{gap:6px;}
+.patbtn .ico{flex:none;}
 .opts .chip.checkbtn{background:var(--accent);color:var(--accent-ink);}
 
 /* ── Called board (flashboard) ───────────────────────────────────────── */
@@ -298,10 +296,9 @@
       c.classList.toggle('last', n === lastN);
       if (fresh === n) { c.classList.remove('hit'); void c.offsetWidth; c.classList.add('hit'); }
     }
-    var counts = L.map(function (x, i) { return S.called.filter(function (n) { return Math.floor((n - 1) / 15) === i; }).length; });
     R.foot.innerHTML = '';
     R.foot.appendChild(el('span', { text: S.called.length + ' called · ' + S.pool.length + ' left' }));
-    R.foot.appendChild(el('span', { text: L.map(function (x, i) { return x + ' ' + counts[i]; }).join('  ') }));
+    if (lastN) R.foot.appendChild(el('span', { text: 'Last call ' + call(lastN) }));
   }
   function paintButtons() {
     var done = !S.pool.length;
@@ -445,7 +442,7 @@
     if (wasAuto) Kit.toast('Auto draw paused');
     var nums = [], free = S.pattern === 'x' || S.pattern === 'blackout', typed = '';
     var box = el('div');
-    box.appendChild(el('p', { class: 'ck-pat', text: 'Pattern: ' + PAT[S.pattern].long + '. Type each number the player reads out.' }));
+    box.appendChild(el('p', { class: 'ck-pat', text: PAT[S.pattern].long + '. Type in each number the player reads out.' }));
     var list = el('div', { class: 'ck-nums' });
     box.appendChild(list);
     var tv = el('div', { class: 'v' });
