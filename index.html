@@ -172,12 +172,31 @@ document.addEventListener('visibilitychange', function () {
 .sec.favs + .sec{margin-top:28px;}
 
 /* Keep playing: compact overview, 5-6 games visible at once */
-.cont-w{position:relative;min-width:0;border-radius:14px;overflow:hidden;touch-action:pan-y;}
-.cont-w .cont{position:relative;z-index:1;transition:transform .25s var(--ease);will-change:transform;}
+.cont-w{position:relative;min-width:0;display:flex;align-items:stretch;touch-action:pan-y;--rv:0;}
+/* The tile narrows (it doesn't slide off) so its icon and name stay put and tidy */
+.cont-w .cont{position:relative;z-index:1;flex:none;touch-action:pan-y;-webkit-user-drag:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;width:calc(100% - var(--rv) * 1px);
+  transition:width .32s var(--spring), box-shadow .25s;will-change:width;}
 .cont-w.drag .cont{transition:none;}
-.cont-del{position:absolute;top:0;right:0;bottom:0;width:76px;border:0;display:grid;place-items:center;align-content:center;gap:2px;
-  background:var(--red);color:#fff;font:800 .68rem/1 var(--font);cursor:pointer;}
-.cont-del .ico{width:24px;height:24px;}
+.cont-w.open .cont{box-shadow:inset 3px 0 0 var(--c), 0 0 0 1px rgba(255,255,255,.08);}
+.cont-w .cont .a{transition:opacity .2s;}
+/* Opening: the icon tucks away and the name gets the room, so nothing is squeezed */
+.cont-w .cont .gicon{transition:width .32s var(--spring), margin .32s var(--spring), opacity .2s;}
+.cont-w.open .cont{gap:0;padding-left:12px;}
+.cont-w.open .cont .gicon{width:0;opacity:0;margin-right:0;}
+.cont-w.open .cont .r1 .t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:.88rem;line-height:1.15;}
+.cont-w.open .cont .d{display:none;}
+.cont-w.open .cont .a{display:none;}
+.cont-w.open .cont .a,.cont-w.drag .cont .a{opacity:0;}
+/* Trash: a rounded red button that grows into the freed space */
+.cont-del{position:absolute;top:0;right:0;bottom:0;width:52px;border:0;border-radius:14px;padding:0;display:grid;place-items:center;
+  background:linear-gradient(180deg,#ff5a6b,#e0243c);color:#fff;cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -6px rgba(224,36,60,.7);
+  opacity:min(1, calc(var(--rv) / 40));transform:scale(calc(.55 + .45 * min(1, var(--rv) / 60)));transform-origin:right center;
+  transition:opacity .25s, transform .32s var(--spring);pointer-events:none;}
+.cont-w.drag .cont-del{transition:none;}
+.cont-w.open .cont-del{pointer-events:auto;}
+.cont-del:active{transform:scale(.92);}
+.cont-del .ico{width:22px;height:22px;}
 .rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 @media (min-width:720px){.rail{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media (min-width:1100px){.rail{grid-template-columns:repeat(4,minmax(0,1fr));}}
@@ -415,6 +434,7 @@ document.addEventListener('visibilitychange', function () {
   }
   function swipeTile(x, tile) {
     var w = el('div', { class: 'cont-w' });
+    tile.draggable = false; tile.addEventListener('dragstart', function (e) { e.preventDefault(); });
     var del = el('button', { type: 'button', class: 'cont-del', 'aria-label': 'Delete ' + x.g.name + ' game in progress', tabindex: '-1' },
       [el('span', { html: Kit.icon('trash') })]);
     del.addEventListener('click', function (e) {
@@ -427,8 +447,8 @@ document.addEventListener('visibilitychange', function () {
       });
     });
     w.appendChild(del); w.appendChild(tile);
-    var REVEAL = 76, x0 = 0, y0 = 0, dx = 0, base = 0, active = false, horiz = null, moved = false;
-    function setX(v) { tile.style.transform = v ? 'translateX(' + v + 'px)' : ''; }
+    var REVEAL = 60, x0 = 0, y0 = 0, dx = 0, base = 0, active = false, horiz = null, moved = false;
+    function setX(v) { w.style.setProperty('--rv', String(Math.round(-v))); }
     function open() { if (openTile && openTile !== close) openTile(); base = -REVEAL; setX(base); w.classList.add('open'); del.tabIndex = 0; openTile = close; }
     function close() { base = 0; setX(0); w.classList.remove('open'); del.tabIndex = -1; if (openTile === close) openTile = null; }
     tile.addEventListener('pointerdown', function (e) {
@@ -444,7 +464,7 @@ document.addEventListener('visibilitychange', function () {
       }
       if (!horiz) return;
       moved = true; dx = mx;
-      setX(Math.max(-REVEAL - 30, Math.min(0, base + dx)));
+      var v = base + dx; if (v < -REVEAL) v = -REVEAL - (-REVEAL - v) * .25; setX(Math.min(0, v));
     });
     function end() {
       if (!active) return; active = false; w.classList.remove('drag');
