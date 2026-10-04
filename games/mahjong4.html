@@ -2,969 +2,902 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
-<title>Mahjong — 4 Player</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mahjong</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.mj-wrap{width:100%;max-width:560px;margin:0 auto;padding:10px max(10px,var(--safe-r)) calc(28px + var(--safe-b)) max(10px,var(--safe-l));}
-/* Tile */
-.mjt{--w:44px;width:var(--w);height:calc(var(--w)*1.32);border-radius:calc(var(--w)*.16);display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:1px;font-weight:800;user-select:none;flex-shrink:0;cursor:default;position:relative;
-  background:linear-gradient(160deg,#fffdf6 0%,#f1ead8 70%,#e4dac2 100%);border:1px solid rgba(70,50,20,.35);
-  box-shadow:0 calc(var(--w)*.07) 0 #c9b48c,0 calc(var(--w)*.09) 0 #8c7350,0 4px 10px rgba(0,0,0,.35);
-  transition:transform .14s var(--ease),box-shadow .14s;}
-.mjt.m{color:#c62828;}.mjt.p{color:#15803d;}.mjt.s{color:#1d4ed8;}
-.mjt.w{color:#5b21b6;}.mjt.d{color:#9a3412;}
-.mjt-n{font-family:var(--display);font-size:calc(var(--w)*.48);line-height:1;}
-.mjt.w .mjt-n,.mjt.d .mjt-n{font-family:'Hiragino Sans','Noto Sans CJK SC','PingFang SC',var(--font);font-size:calc(var(--w)*.5);}
-.mjt-s{font-size:max(10px,calc(var(--w)*.22));font-weight:700;line-height:1;opacity:.75;letter-spacing:.01em;}
-.mjt.playable{cursor:pointer;}
-.mjt.selected{transform:translateY(-10px);box-shadow:0 0 0 2.5px var(--gold),0 calc(var(--w)*.09) 0 #8c7350,0 12px 20px rgba(0,0,0,.45);}
-.mjt.meld-t{background:linear-gradient(160deg,#f3fff6,#d7f5e1);}
-.mjt.last{box-shadow:0 0 0 2px rgba(245,200,66,.7),0 calc(var(--w)*.09) 0 #8c7350,0 6px 14px rgba(0,0,0,.4);}
-.mjt.face-down{background:linear-gradient(160deg,#2f8a5b,#17583a);border-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18),0 1px 2px rgba(0,0,0,.4);}
-.mjt.sm{--w:28px;box-shadow:0 2px 0 #b9a47d,0 2px 5px rgba(0,0,0,.3);}
-.mjt.sm .mjt-s{display:none;}
-.mjt.sm .mjt-n{font-size:15px;}
-.mjt.xs{--w:16px;border-radius:3px;}
-.mjt.side{width:30px;height:11px;border-radius:3px;}
-/* Score strip */
-.mj-scores{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
-.mj-score-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 4px;text-align:center;transition:border-color .2s,background .2s;}
-.mj-score-box.you{border-color:rgba(96,165,250,.4);}
-.mj-score-box.leader .mj-score-val{color:var(--gold);}
-.mj-score-box.turn{background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.55);}
-.mj-score-name{font-size:.75rem;font-weight:700;color:var(--text-2);display:flex;justify-content:center;gap:5px;}
-.mj-score-name span{color:var(--text-3);}
-.mj-score-val{font-family:var(--display);font-size:1.3rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;}
+:root{--tback:#1f5ea8;--tback-2:#2d7bd0;}
+.mj{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.mj .scores{width:100%;max-width:560px;margin:0;padding-top:2px;}
+.mj .score{min-width:0;flex:1 1 0;padding:6px 6px 7px;}
+.mj .score .nm{max-width:100%;font-size:.76rem;}
+.mj .score .pt{font-size:1.2rem;}
+.mj .score .sub{font-size:.68rem;white-space:nowrap;}
+.mj .score .wd{font-family:var(--cjk);font-weight:700;}
+/* Tiles: ivory face on a coloured back */
+.mt{--tw:40px;position:relative;flex:none;width:var(--tw);height:calc(var(--tw) * 1.34);border-radius:calc(var(--tw) * .13);
+  background:linear-gradient(165deg,#fffef8 0%,#f7f0de 55%,#ebe1c6 100%);
+  box-shadow:inset 0 0 0 1px rgba(120,95,50,.25), inset 0 -2px 0 rgba(0,0,0,.06), 0 calc(var(--tw) * .085) 0 var(--tback), 0 calc(var(--tw) * .085 + 1px) 0 rgba(0,0,0,.35), 0 calc(var(--tw) * .1 + 2px) 5px rgba(0,0,0,.35);
+  margin-bottom:calc(var(--tw) * .085);transition:transform .2s var(--spring), box-shadow .2s;}
+.mt svg{position:absolute;inset:5% 7%;width:86%;height:90%;overflow:visible;}
+.mt.back{background:linear-gradient(160deg,var(--tback-2),var(--tback));box-shadow:inset 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.3), 0 calc(var(--tw) * .085) 0 #e9dfc4, 0 calc(var(--tw) * .085 + 1px) 0 rgba(0,0,0,.35), 0 calc(var(--tw) * .1 + 2px) 4px rgba(0,0,0,.35);}
+.mt.back svg{display:none;}
+.mt.edge{border-radius:2px;margin:0;background:linear-gradient(90deg,#e9dfc4 0 30%,var(--tback-2) 30%,var(--tback));box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.mt.edge.r{background:linear-gradient(270deg,#e9dfc4 0 30%,var(--tback-2) 30%,var(--tback));}
+.mt.hot{box-shadow:inset 0 0 0 1px rgba(120,95,50,.25), 0 0 0 2px #ffd84a, 0 0 10px rgba(255,216,74,.8), 0 calc(var(--tw) * .085) 0 var(--tback);}
+.mt.dim{filter:brightness(.8) saturate(.7);}
+.mt.side{margin:0;}
 /* Table */
-.mj-table{padding:10px 8px 12px;margin-bottom:10px;}
-.mj-north{text-align:center;margin-bottom:10px;}
-.mj-north-tiles{display:flex;gap:2px;justify-content:center;margin-top:4px;}
-.mj-mid{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;}
-.mj-side{display:flex;flex-direction:column;align-items:center;gap:4px;width:64px;flex:none;}
-.mj-side-tiles{display:flex;flex-direction:column;gap:2px;}
-.mj-center{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px;}
-.mj-wall{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.6);background:rgba(0,0,0,.25);border-radius:999px;padding:3px 10px;}
-.mj-discards{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:220px;}
-.mj-pname{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.7);white-space:nowrap;}
-.mj-pname span{color:rgba(255,255,255,.4);}
-.mj-pname.active{color:var(--gold);}
-.mj-pname.active::before{content:'● ';font-size:.6rem;vertical-align:2px;}
-.mj-pinfo{font-size:.72rem;color:rgba(255,255,255,.45);}
-.mj-melds{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
-.mj-melds.col{flex-direction:column;align-items:center;gap:4px;}
-.mj-side .mjt.sm{--w:20px;border-radius:4px;}
-.mj-side .mjt.sm .mjt-n{font-size:12px;}
-.mj-melds.mine{margin:0 0 10px;}
-.mj-meld{display:flex;gap:2px;}
-.mj-last-discard{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.mj-ld-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.55);}
-/* Status + hand */
-.mj-status{text-align:center;font-size:.95rem;font-weight:700;min-height:24px;margin:2px 0 8px;color:var(--text);}
-.mj-status.muted{color:var(--text-2);font-weight:600;}
-.mj-hand-head{display:flex;justify-content:space-between;font-size:.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin:0 2px 8px;}
-.mj-hand-head b{color:var(--green);}
-.mj-hand{display:grid;grid-template-columns:repeat(7,1fr);gap:12px 5px;justify-items:center;padding:12px 0 6px;min-height:80px;}
-.mj-hand .mjt{--w:min(48px,calc((100vw - 60px) / 7));}
-.mj-actions{margin:12px 0;}
-.mj-actions:empty{display:none;}
-/* Claim panel */
-.mj-claim-panel{background:linear-gradient(135deg,rgba(245,200,66,.16),rgba(245,200,66,.05));border:1px solid rgba(245,200,66,.45);border-radius:var(--radius);padding:14px;margin-bottom:10px;text-align:center;animation:gn-pop .3s var(--spring) both;}
-.mj-claim-title{font-family:var(--display);font-weight:800;color:var(--gold);margin-bottom:10px;font-size:1.05rem;}
-.mj-claim-btns{display:flex;gap:8px;}
-.mj-claim-btns .btn{flex:1;}
-/* Tip */
-.mj-tip{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
-  border-radius:14px;padding:10px 6px 10px 12px;margin-bottom:10px;font-size:.84rem;line-height:1.45;color:var(--text-2);}
-.mj-tip-icon{flex-shrink:0;font-size:1.1rem;line-height:1;}
-.mj-tip-body{flex:1;min-width:0;}
-.mj-tip-body b{color:var(--gold);font-weight:700;}
-.mj-tip-cycle{flex-shrink:0;width:40px;height:40px;border-radius:50%;background:transparent;border:0;cursor:pointer;font-size:1.05rem;}
-.mj-tip-cycle:active{background:var(--surface-2);}
-/* Log */
-.mj-log{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-top:6px;}
-.mj-log summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:.85rem;font-weight:600;color:var(--text-2);min-height:44px;display:flex;align-items:center;}
-.mj-log summary::-webkit-details-marker{display:none;}
-.mj-log > div{padding:0 14px 12px;font-size:.84rem;line-height:1.7;color:var(--text-2);max-height:220px;overflow:auto;}
-.mj-log .win{color:var(--gold);font-weight:700;}
-/* Round end */
-.mj-round-end{text-align:center;}
-.mj-sub{color:var(--text-2);font-size:.9rem;margin-bottom:10px;}
-.mj-win-hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;}
-.mj-win-hand .mj-meld{flex-wrap:wrap;justify-content:center;}
-/* Help sheet */
-.mj-help{text-align:left;font-size:.9rem;line-height:1.6;color:var(--text-2);}
-.mj-help p{margin-bottom:10px;}
-.mj-help b{color:var(--text);}
+.mtable{position:relative;border-radius:26px;padding:9px;}
+.mtable .felt-in{position:absolute;inset:9px;border-radius:19px;overflow:hidden;}
+.lay{position:absolute;}
+.backs{position:absolute;display:flex;gap:1px;}
+.backs.col{flex-direction:column;}
+.melds{position:absolute;display:flex;gap:5px;align-items:flex-end;}
+.melds.col{flex-direction:column;align-items:center;}
+.meld{display:flex;gap:1px;}
+.melds.col .meld{flex-direction:column;}
+.wall{position:absolute;}
+.wall i{position:absolute;border-radius:2px;background:linear-gradient(160deg,var(--tback-2),var(--tback));box-shadow:inset 0 0 0 1px rgba(0,0,0,.25), 0 1px 0 rgba(0,0,0,.4);}
+.wall i.one{opacity:.6;}
+.pond{position:absolute;display:flex;flex-wrap:wrap;gap:1px;align-content:flex-start;transform-origin:50% 0;}
+.pond .mt{margin-bottom:2px;}
+.center{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:12px;background:rgba(0,0,0,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);color:rgba(255,255,255,.8);text-align:center;}
+.center .rw{font-family:var(--cjk);font-size:1.7rem;line-height:1;color:#ffe9b0;text-shadow:0 2px 0 rgba(0,0,0,.4);}
+.center small{font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.center b{font-family:var(--display);font-weight:400;font-size:1.05rem;}
+.lblT{position:absolute;font-size:.68rem;font-weight:900;color:rgba(255,255,255,.75);white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.lblT.on{color:#ffd84a;}
+.say{position:absolute;z-index:20;padding:5px 12px;border-radius:12px;background:#fff;color:#1d1b2e;font-weight:900;font-size:.9rem;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.35);animation:pop .35s var(--spring);pointer-events:none;transform:translate(-50%,-50%);}
+/* Your rack */
+.status{min-height:24px;text-align:center;font-weight:800;font-size:.95rem;color:var(--text-2);}
+.status b{color:var(--yellow);}
+.rack{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 3px;padding:10px 8px 14px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(0,0,0,.0),rgba(0,0,0,.0)), repeating-linear-gradient(92deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px), linear-gradient(180deg,#8a5428,#5e3517);
+  box-shadow:inset 0 2px 0 rgba(255,220,180,.25), inset 0 -3px 0 rgba(0,0,0,.3), 0 10px 20px rgba(0,0,0,.4);}
+.rack .mt{cursor:pointer;border:0;padding:0;}
+.rack .mt.sel{transform:translateY(-12px);box-shadow:inset 0 0 0 1px rgba(120,95,50,.25), 0 0 0 3px #ffd84a, 0 calc(var(--tw) * .085) 0 var(--tback), 0 14px 16px rgba(0,0,0,.4);}
+.rack .mt.new{margin-left:10px;}
+.rack .mt.wait{box-shadow:inset 0 0 0 1px rgba(120,95,50,.25), 0 0 0 2px rgba(61,220,132,.9), 0 calc(var(--tw) * .085) 0 var(--tback);}
+.rack .gap{width:100%;height:0;}
+.acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%;max-width:560px;min-height:52px;}
+.acts .btn{flex:1 1 0;min-width:0;padding:0 12px;}
+.acts .btn .mt{--tw:16px;margin:0 1px 2px;}
+.claim{display:flex;align-items:center;gap:12px;width:100%;max-width:560px;padding:10px 12px;border-radius:18px;background:rgba(255,200,61,.1);border:2px solid rgba(255,200,61,.5);animation:pop .3s var(--spring);}
+.claim .tx{flex:1;min-width:0;font-weight:800;line-height:1.25;}
+.claim .tx small{display:block;color:var(--text-2);font-weight:700;font-size:.82rem;}
+.waits{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;color:var(--green);font-weight:900;font-size:.82rem;}
+.waits .mt{--tw:16px;}
+/* Hand-end sheet */
+.res .hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 12px;padding:10px;border-radius:14px;background:radial-gradient(120% 90% at 50% 35%,#188a5c,#0d5c3c);}
+.res .grp{display:flex;gap:1px;}
+.res .mt{--tw:23px;}
+.res table{width:100%;border-collapse:collapse;font-weight:700;}
+.res td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.07);}
+.res td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:900;}
+.res .pos{color:var(--green);} .res .neg{color:var(--red);}
+.res h4{margin:12px 0 4px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+:root{--cjk:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Noto Serif CJK SC","Source Han Sans SC","WenQuanYi Zen Hei","Microsoft YaHei",serif;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Mahjong 4P</span>
-  <button class="icon-btn" id="mj-help-btn" aria-label="How to play" title="How to play"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5h.01"/></svg></button>
-  <button class="icon-btn" id="mj-new-btn" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="mj-wrap" id="mj-root"></div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-// 4-player Mahjong. Players: 0=East(You),1=South(AI),2=West(AI),3=North(AI)
-// Rounds rotate wind. Game = 4 rounds (East→South→West→North).
-// Win: 4 melds + 1 pair (or 7 pairs). Tsumo(self-draw) or Ron(discard).
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'mj4_state', KEY = 'mj4';
+  var WIND_CH = ['東', '南', '西', '北'], WIND_EN = ['East', 'South', 'West', 'North'];
+  var NUM_CH = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  var PTS = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128];
 
-const PNAMES=['You','South','West','North'];
-const WINDS=['E','S','W','N'];
-const WIND_FULL=['East','South','West','North'];
-const SUITS=['m','p','s']; // characters, circles, bamboo
-const SUIT_LABELS={m:'Man',p:'Pin',s:'Sou',w:'Wind',d:'Dragon'};
-const DRAGON_LABELS={1:'中',2:'發',3:'白'}; // Chun, Hatsu, Haku
-const WIND_LABELS={1:'東',2:'南',3:'西',4:'北'};
+  Kit.init({
+    id: 'mahjong4',
+    onNew: function () { tok++; clearSave(); undoStack = []; showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint: what to discard', onClick: function () { hint(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mahjong: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Be the first to make a <b>complete hand</b>: four sets plus one pair (14 tiles). You play against three computer players.</p>' +
+      '<h3>The tiles</h3><ul><li><b>Dots</b>, <b>Bamboo</b> and <b>Characters</b> (萬), numbered 1 to 9. Characters show the Chinese number (一 1, 二 2, 三 3 … 九 9) with a small number in the corner.</li>' +
+      '<li><b>Winds</b>: 東 East, 南 South, 西 West, 北 North. <b>Dragons</b>: 中 Red, 發 Green, and the blue-framed White.</li><li>There are four of every tile (136 in all, no flower tiles).</li></ul>' +
+      '<h3>Sets</h3><ul><li><b>Chow</b>: three in a row in one suit (4-5-6 Dots).</li><li><b>Pung</b>: three of the same tile. <b>Kong</b>: all four of the same tile (draw an extra tile after).</li><li><b>Pair</b>: two of the same tile.</li></ul>' +
+      '<h3>A turn</h3><ul><li>You draw a tile from the wall (automatically), then <b>discard</b> one: tap it, then tap it again.</li><li>Play goes counter-clockwise: you, then the player on your right, across, and on your left.</li></ul>' +
+      '<h3>Claiming a discard</h3><ul><li><b>Pung</b> or <b>Kong</b>: anyone can take a discard to finish three or four of a kind.</li><li><b>Chow</b>: only the next player (the one after the discarder) can take it for a run.</li>' +
+      '<li><b>Mahjong</b>: anyone can take a discard that finishes their hand. A win beats a pung or kong, which beats a chow. Claimed sets are laid face up.</li></ul>' +
+      '<h3>Winning hands</h3><ul><li>Four sets and a pair, or <b>Seven Pairs</b> (seven different pairs), or <b>Thirteen Orphans</b> (one of each 1, 9, wind and dragon, plus one extra).</li><li>No minimum: any complete hand can win. If the wall runs out, the hand is a draw.</li></ul>' +
+      '<h3>Scoring (Hong Kong style)</h3><ul><li>Hands earn <b>faan</b>: Self-drawn 1, Concealed hand 1, All Chows 1, each Dragon pung 1, your Seat wind or the Round wind pung 1, Last tile 1, Win after a kong 1, All Pungs 3, Mixed One Suit 3, Seven Pairs 4, Small Three Dragons 5, Small Four Winds 6, Pure One Suit 7, Big Three Dragons 8, All Honors / Big Four Winds / Thirteen Orphans 10 (the limit).</li>' +
+      '<li>Points: 0 faan 1, 1 → 2, 2 → 4, 3 → 8, 4 → 16, 5 → 24, 6 → 32, 7 → 48, 8 → 64, 9 → 96, 10+ → 128.</li>' +
+      '<li>Win on a discard: the discarder pays <b>double</b>. Self-drawn win: <b>each</b> other player pays.</li></ul>' +
+      '<h3>Dealer and rounds</h3><p>East is the dealer and starts with 14 tiles. In a full game the dealer stays on after winning or a draw; otherwise the deal passes to the right. The game ends after the chosen number of rounds; highest score wins.</p>'
+  });
 
-function makeDeck(){
-  const d=[];
-  let id=0;
-  SUITS.forEach(s=>{for(let n=1;n<=9;n++) for(let c=0;c<4;c++) d.push({id:id++,suit:s,num:n});});
-  for(let n=1;n<=4;n++) for(let c=0;c<4;c++) d.push({id:id++,suit:'w',num:n});
-  for(let n=1;n<=3;n++) for(let c=0;c<4;c++) d.push({id:id++,suit:'d',num:n});
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
+  // ── Tiles ─────────────────────────────────────────────────────────────────
+  // Tile id 0..135, kind = id >> 2. Kinds: 0-8 Characters, 9-17 Dots, 18-26 Bamboo, 27-30 Winds ESWN, 31-33 Dragons red/green/white.
+  function kindOf(id) { return id >> 2; }
+  function suit(k) { return k < 9 ? 0 : k < 18 ? 1 : k < 27 ? 2 : k < 31 ? 3 : 4; }
+  function num(k) { return k % 9 + 1; }
+  function kname(k) {
+    var s = suit(k);
+    if (s < 3) return num(k) + ' ' + ['Characters', 'Dots', 'Bamboo'][s];
+    if (s === 3) return WIND_EN[k - 27] + ' Wind';
+    return ['Red', 'Green', 'White'][k - 31] + ' Dragon';
+  }
+  var B = '#1d4fa5', G = '#12804a', R = '#c8282b', INK = '#1b2552';
+  function dot(x, y, r, c) {
+    return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><circle cx="' + x + '" cy="' + y + '" r="' + (r * .66) + '" fill="#fffdf4"/><circle cx="' + x + '" cy="' + y + '" r="' + (r * .46) + '" fill="' + c + '"/><circle cx="' + (x - r * .15) + '" cy="' + (y - r * .15) + '" r="' + (r * .14) + '" fill="#fffdf4"/>';
+  }
+  function stick(x, y, h, c, w) {
+    w = w || 4;
+    var s = '<rect x="' + (x - w / 2) + '" y="' + (y - h / 2) + '" width="' + w + '" height="' + h + '" rx="' + (w / 2) + '" fill="' + c + '"/>';
+    s += '<rect x="' + (x - w / 2 - .4) + '" y="' + (y - .7) + '" width="' + (w + .8) + '" height="1.4" rx=".7" fill="' + c + '" stroke="#fffdf4" stroke-width=".5"/>';
+    s += '<rect x="' + (x - .5) + '" y="' + (y - h / 2 + 1.5) + '" width="1" height="' + (h - 3) + '" fill="rgba(255,255,255,.45)"/>';
+    return s;
+  }
+  var SVG = {};
+  function faceSVG(k) {
+    if (SVG[k]) return SVG[k];
+    var s = suit(k), n = num(k), b = '';
+    var font = 'font-family=\'PingFang SC,Hiragino Sans GB,Noto Sans CJK SC,Noto Serif CJK SC,WenQuanYi Zen Hei,Microsoft YaHei,serif\' font-weight=\'700\' text-anchor=\'middle\'';
+    if (s === 0) {
+      b += '<text x="15" y="17.5" font-size="15" fill="' + INK + '" ' + font + '>' + NUM_CH[n - 1] + '</text>';
+      b += '<text x="15" y="36" font-size="15" fill="' + R + '" ' + font + '>萬</text>';
+      b += '<text x="2.6" y="7" font-size="7" fill="' + INK + '" font-family="system-ui,sans-serif" font-weight="800">' + n + '</text>';
+    } else if (s === 1) {
+      var L = {
+        1: [[15, 20, 11, 'x']],
+        2: [[15, 10.5, 6, G], [15, 29.5, 6, B]],
+        3: [[7.5, 8, 5.2, B], [15, 20, 5.2, R], [22.5, 32, 5.2, G]],
+        4: [[8.5, 10.5, 5.6, B], [21.5, 10.5, 5.6, G], [8.5, 29.5, 5.6, G], [21.5, 29.5, 5.6, B]],
+        5: [[8, 8.5, 5, B], [22, 8.5, 5, G], [15, 20, 5, R], [8, 31.5, 5, G], [22, 31.5, 5, B]],
+        6: [[9, 7.5, 4.6, G], [21, 7.5, 4.6, G], [9, 20, 4.6, R], [21, 20, 4.6, R], [9, 32.5, 4.6, R], [21, 32.5, 4.6, R]],
+        7: [[6.5, 6, 3.9, G], [15, 10, 3.9, G], [23.5, 14, 3.9, G], [9, 24, 4.1, R], [21, 24, 4.1, R], [9, 33.5, 4.1, R], [21, 33.5, 4.1, R]],
+        8: [[9, 5.5, 3.9, B], [21, 5.5, 3.9, B], [9, 15.2, 3.9, B], [21, 15.2, 3.9, B], [9, 24.8, 3.9, B], [21, 24.8, 3.9, B], [9, 34.5, 3.9, B], [21, 34.5, 3.9, B]],
+        9: [[7, 7, 4, B], [15, 7, 4, B], [23, 7, 4, B], [7, 20, 4, R], [15, 20, 4, R], [23, 20, 4, R], [7, 33, 4, G], [15, 33, 4, G], [23, 33, 4, G]]
+      }[n];
+      L.forEach(function (d) {
+        if (d[3] === 'x') {
+          b += '<circle cx="15" cy="20" r="12" fill="' + G + '"/><circle cx="15" cy="20" r="10" fill="#fffdf4"/><circle cx="15" cy="20" r="8.6" fill="' + B + '"/><circle cx="15" cy="20" r="6.2" fill="#fffdf4"/><circle cx="15" cy="20" r="4.6" fill="' + R + '"/><circle cx="15" cy="20" r="1.8" fill="#fffdf4"/>';
+          for (var a = 0; a < 8; a++) { var t = a * Math.PI / 4; b += '<circle cx="' + (15 + Math.cos(t) * 7.4).toFixed(2) + '" cy="' + (20 + Math.sin(t) * 7.4).toFixed(2) + '" r=".9" fill="' + G + '"/>'; }
+        } else b += dot(d[0], d[1], d[2], d[3]);
+      });
+    } else if (s === 2) {
+      var P = {
+        2: [[15, 11, 15, G], [15, 29, 15, B]],
+        3: [[15, 11, 15, G], [9, 29, 15, B], [21, 29, 15, B]],
+        4: [[9, 11, 15, G], [21, 11, 15, B], [9, 29, 15, B], [21, 29, 15, G]],
+        5: [[7, 11, 15, G], [23, 11, 15, B], [15, 20, 15, R], [7, 29, 15, B], [23, 29, 15, G]],
+        6: [[7, 11, 15, G], [15, 11, 15, G], [23, 11, 15, G], [7, 29, 15, B], [15, 29, 15, B], [23, 29, 15, B]],
+        7: [[15, 7, 10, R], [7, 20, 10, G], [15, 20, 10, G], [23, 20, 10, G], [7, 33, 10, B], [15, 33, 10, B], [23, 33, 10, B]],
+        8: [[5.5, 11, 15, G], [12, 11, 15, G], [18, 11, 15, G], [24.5, 11, 15, G], [5.5, 29, 15, B], [12, 29, 15, B], [18, 29, 15, B], [24.5, 29, 15, B]],
+        9: [[7, 7, 10, G], [15, 7, 10, R], [23, 7, 10, B], [7, 20, 10, G], [15, 20, 10, R], [23, 20, 10, B], [7, 33, 10, G], [15, 33, 10, R], [23, 33, 10, B]]
+      }[n];
+      if (n === 1) {
+        b += stick(15, 21, 28, G, 6) + '<path d="M15 9 C9 6 6 8 4 12 C9 12 12 11 15 9z" fill="' + G + '"/><path d="M15 9 C21 6 24 8 26 12 C21 12 18 11 15 9z" fill="' + G + '"/><circle cx="15" cy="7" r="2.6" fill="' + R + '"/>';
+      } else P.forEach(function (p) { b += stick(p[0], p[1], p[2], p[3], n === 8 ? 3.4 : 4); });
+    } else if (s === 3) {
+      b += '<text x="15" y="29" font-size="22" fill="' + INK + '" ' + font + '>' + WIND_CH[k - 27] + '</text>';
+      b += '<text x="2.6" y="7" font-size="7" fill="' + INK + '" font-family="system-ui,sans-serif" font-weight="800">' + 'ESWN'[k - 27] + '</text>';
+    } else {
+      if (k === 31) b += '<text x="15" y="29.5" font-size="24" fill="' + R + '" ' + font + '>中</text>';
+      else if (k === 32) b += '<text x="15" y="29.5" font-size="23" fill="' + G + '" ' + font + '>發</text>';
+      else b += '<rect x="6" y="6" width="18" height="28" rx="2" fill="none" stroke="' + B + '" stroke-width="2.2"/><rect x="9" y="9" width="12" height="22" rx="1" fill="none" stroke="' + B + '" stroke-width=".9"/>';
+    }
+    SVG[k] = '<svg viewBox="0 0 30 40" aria-hidden="true">' + b + '</svg>';
+    return SVG[k];
+  }
+  function tile(id, tw, cls, tag) {
+    var k = kindOf(id), t = el(tag || 'div', { class: 'mt' + (cls ? ' ' + cls : ''), html: faceSVG(k), 'aria-label': kname(k) });
+    if (tw) t.style.setProperty('--tw', tw + 'px');
+    if (tag === 'button') t.type = 'button';
+    return t;
+  }
+  function backTile(tw, cls) { var t = el('div', { class: 'mt back' + (cls ? ' ' + cls : '') }); t.style.setProperty('--tw', tw + 'px'); return t; }
 
-function tKey(t){return t.suit+t.num;}
-function sortTiles(a,b){
-  const sOrder={m:0,p:1,s:2,w:3,d:4};
-  if(sOrder[a.suit]!==sOrder[b.suit]) return sOrder[a.suit]-sOrder[b.suit];
-  return a.num-b.num;
-}
+  // ── Hand analysis ─────────────────────────────────────────────────────────
+  function counts(ids) { var c = []; for (var i = 0; i < 34; i++) c.push(0); ids.forEach(function (id) { c[kindOf(id)]++; }); return c; }
+  var ORPH = [0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33];
+  function isOrphans(c) { var pair = false; for (var i = 0; i < 34; i++) { var o = ORPH.indexOf(i) >= 0; if (!o && c[i]) return false; if (o && !c[i]) return false; if (c[i] === 2) pair = true; } return pair; }
+  function isSevenPairs(c) { var p = 0; for (var i = 0; i < 34; i++) { if (c[i] === 2) p++; else if (c[i]) return false; } return p === 7; }
+  // All ways to split concealed counts into `need` sets + one pair
+  function decompose(c, need) {
+    var out = [];
+    for (var pk = 0; pk < 34; pk++) {
+      if (c[pk] < 2) continue;
+      c[pk] -= 2;
+      (function rec(sets) {
+        var i = 0; while (i < 34 && !c[i]) i++;
+        if (i === 34) { if (sets.length === need) out.push({ pair: pk, sets: sets.slice() }); return; }
+        if (sets.length >= need) return;
+        if (c[i] >= 3) { c[i] -= 3; sets.push({ t: 'pung', k: i }); rec(sets); sets.pop(); c[i] += 3; }
+        if (i < 27 && i % 9 <= 6 && c[i + 1] && c[i + 2]) { c[i]--; c[i + 1]--; c[i + 2]--; sets.push({ t: 'chow', k: i }); rec(sets); sets.pop(); c[i]++; c[i + 1]++; c[i + 2]++; }
+      })([]);
+      c[pk] += 2;
+    }
+    return out;
+  }
+  function canWin(ids, nMelds) {
+    var c = counts(ids);
+    if (ids.length + nMelds * 3 !== 14) return false;
+    if (nMelds === 0 && (isSevenPairs(c) || isOrphans(c))) return true;
+    return decompose(c, 4 - nMelds).length > 0;
+  }
+  // Shanten: tiles away from ready (-1 = complete)
+  function shantenStd(c, m) {
+    var best = 8;
+    (function calc(i, sets, part, pair) {
+      while (i < 34 && !c[i]) i++;
+      if (i === 34) {
+        var s = sets + m, p = Math.min(part, 4 - s);
+        var v = 8 - 2 * s - p - pair; if (v < best) best = v; return;
+      }
+      if (c[i] >= 3) { c[i] -= 3; calc(i, sets + 1, part, pair); c[i] += 3; }
+      if (i < 27 && i % 9 <= 6 && c[i + 1] && c[i + 2]) { c[i]--; c[i + 1]--; c[i + 2]--; calc(i, sets + 1, part, pair); c[i]++; c[i + 1]++; c[i + 2]++; }
+      if (c[i] >= 2) {
+        c[i] -= 2;
+        if (!pair) calc(i, sets, part, 1);
+        calc(i, sets, part + 1, pair);
+        c[i] += 2;
+      }
+      if (i < 27 && i % 9 <= 7 && c[i + 1]) { c[i]--; c[i + 1]--; calc(i, sets, part + 1, pair); c[i]++; c[i + 1]++; }
+      if (i < 27 && i % 9 <= 6 && c[i + 2]) { c[i]--; c[i + 2]--; calc(i, sets, part + 1, pair); c[i]++; c[i + 2]++; }
+      c[i]--; calc(i, sets, part, pair); c[i]++;
+    })(0, 0, 0, 0);
+    return best;
+  }
+  function shantenPairs(c) { var p = 0, k = 0; for (var i = 0; i < 34; i++) { if (c[i] >= 2) p++; if (c[i]) k++; } return 6 - p + Math.max(0, 7 - k); }
+  function shanten(c, m) { var s = shantenStd(c, m); if (m === 0) s = Math.min(s, shantenPairs(c)); return s; }
+  function waits(ids, nMelds) {
+    var out = [], c = counts(ids);
+    for (var k = 0; k < 34; k++) {
+      if (c[k] >= 4) continue;
+      var fake = ids.concat([k * 4 + 3 - Math.min(3, c[k])]);
+      if (canWin(fake, nMelds)) out.push(k);
+    }
+    return out;
+  }
 
-// ── Win detection ──────────────────────────────────────────────────────────
-function isWin(hand14){
-  if(hand14.length!==14) return false;
-  const sorted=[...hand14].sort(sortTiles);
-  // 7 pairs
-  const counts={};
-  sorted.forEach(t=>{counts[tKey(t)]=(counts[tKey(t)]||0)+1;});
-  const vals=Object.values(counts);
-  if(vals.length===7&&vals.every(v=>v===2)) return true;
-  // Standard: 4 melds + 1 pair
-  return checkStd(sorted);
-}
+  // ── Scoring (Hong Kong style faan) ────────────────────────────────────────
+  function seatWind(p) { return (p - S.dealer + 4) % 4; }
+  function score(p, selfDrawn, extra) {
+    var hand = S.hands[p], melds = S.melds[p], c = counts(hand), m = melds.length;
+    var concealed = melds.every(function (x) { return x.conc; });
+    var sw = 27 + seatWind(p), rw = 27 + S.wind;
+    var allKinds = hand.map(kindOf); melds.forEach(function (x) { x.ids.forEach(function (id) { allKinds.push(kindOf(id)); }); });
+    var suits = {}; allKinds.forEach(function (k) { suits[suit(k)] = 1; });
+    var numSuits = [0, 1, 2].filter(function (s) { return suits[s]; }).length, honors = suits[3] || suits[4];
+    function common(list) {
+      if (selfDrawn) list.push(['Self-drawn', 1]);
+      if (extra.lastTile) list.push([selfDrawn ? 'Last tile from the wall' : 'Last discard', 1]);
+      if (extra.kong) list.push(['Win after a kong', 1]);
+      if (!honors && numSuits === 1) list.push(['Pure One Suit', 7]);
+      else if (honors && numSuits === 1) list.push(['Mixed One Suit', 3]);
+      else if (honors && numSuits === 0) list.push(['All Honors', 10]);
+      return list;
+    }
+    function total(list) { return Math.min(10, list.reduce(function (a, x) { return a + x[1]; }, 0)); }
+    var best = null;
+    if (m === 0 && isOrphans(c)) best = [['Thirteen Orphans', 10]];
+    if (!best && m === 0 && isSevenPairs(c)) {
+      var l7 = common([['Seven Pairs', 4]]);
+      best = l7;
+    }
+    decompose(c, 4 - m).forEach(function (d) {
+      var sets = d.sets.map(function (x) { return { t: x.t, k: x.k }; }).concat(melds.map(function (x) { return { t: x.t === 'chow' ? 'chow' : 'pung', k: kindOf(x.ids[0]) === kindOf(x.ids[1]) ? kindOf(x.ids[0]) : Math.min.apply(null, x.ids.map(kindOf)) }; }));
+      var list = [];
+      if (concealed && !selfDrawn) list.push(['Concealed hand', 1]);
+      if (concealed && selfDrawn) list.push(['Concealed hand', 1]);
+      var pungs = sets.filter(function (x) { return x.t === 'pung'; }), chows = sets.filter(function (x) { return x.t === 'chow'; });
+      var dragonP = pungs.filter(function (x) { return x.k >= 31; }).length, windP = pungs.filter(function (x) { return x.k >= 27 && x.k <= 30; }).length;
+      var pairDragon = d.pair >= 31, pairWind = d.pair >= 27 && d.pair <= 30;
+      if (pungs.length === 4) list.push(['All Pungs', 3]);
+      if (chows.length === 4 && d.pair !== sw && d.pair !== rw && !pairDragon) list.push(['All Chows', 1]);
+      if (dragonP === 3) list.push(['Big Three Dragons', 8]);
+      else if (dragonP === 2 && pairDragon) list.push(['Small Three Dragons', 5]);
+      else pungs.forEach(function (x) { if (x.k >= 31) list.push([['Red', 'Green', 'White'][x.k - 31] + ' Dragon pung', 1]); });
+      if (windP === 4) list.push(['Big Four Winds', 10]);
+      else if (windP === 3 && pairWind) list.push(['Small Four Winds', 6]);
+      else pungs.forEach(function (x) {
+        if (x.k === sw) list.push(['Seat wind (' + WIND_EN[x.k - 27] + ')', 1]);
+        if (x.k === rw) list.push(['Round wind (' + WIND_EN[x.k - 27] + ')', 1]);
+      });
+      common(list);
+      if (!best || total(list) > total(best)) best = list;
+    });
+    if (!best) best = [];
+    var faan = total(best);
+    return { list: best, faan: faan, pts: PTS[faan] };
+  }
 
-function checkStd(sorted){
-  // Try each possible pair
-  const tried=new Set();
-  for(let i=0;i<sorted.length-1;i++){
-    const k=tKey(sorted[i]);
-    if(tried.has(k)) continue;
-    if(i+1<sorted.length&&tKey(sorted[i+1])===k){
-      tried.add(k);
-      const rest=sorted.filter((_,idx)=>idx!==i&&idx!==i+1);
-      if(canMelds(rest)) return true;
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, undoStack = [], tok = 0, sel = null, busy = false;
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set(WIND_EN[S.wind] + ' round · hand ' + S.handNo + ' · you ' + S.scores[0]);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  function showSetup() {
+    S = null; app.innerHTML = '';
+    Kit.setup(app, {
+      intro: 'Four-player Mahjong, Hong Kong style, against three computer players',
+      options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands'], ['east', 'East round'], ['full', 'Full game']] }],
+      players: { min: 4, max: 4, cpu: 'seats', label: 'At the table' },
+      onStart: function (cfg) {
+        S = {
+          len: cfg.options.len || 'quick',
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
+          scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(),
+          stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] }
+        };
+        startHand();
+      }
+    });
+  }
+
+  function startHand() {
+    tok++; undoStack = []; sel = null; busy = false;
+    var order = []; for (var i = 0; i < 136; i++) order.push(i);
+    for (i = order.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }
+    S.order = order; S.front = 0; S.back = 0;
+    S.hands = [[], [], [], []]; S.melds = [[], [], [], []]; S.ponds = [[], [], [], []];
+    for (var r = 0; r < 13; r++) for (var k = 0; k < 4; k++) S.hands[(S.dealer + k) % 4].push(S.order[S.front++]);
+    S.handNo++; S.cur = S.dealer; S.last = null; S.kongDraw = false; S.drawn = null; S.claim = null; S.result = null;
+    S.phase = 'draw';
+    save(); render();
+    setTimeout(function () { Kit.callout(WIND_EN[S.wind] + ' round · Hand ' + S.handNo); }, 200);
+    flow(900);
+  }
+  function wallLeft() { return 136 - S.front - S.back; }
+
+  // Schedules whatever happens next
+  function flow(delay) {
+    var t = ++tok;
+    setTimeout(function () {
+      if (t !== tok || !S) return;
+      if (S.phase === 'draw') draw(S.cur, false);
+      else if (S.phase === 'discard' && S.players[S.cur].cpu) cpuTurn(S.cur);
+      else if (S.phase === 'claim' && !S.claim) afterDiscard();
+    }, delay == null ? 500 : delay);
+  }
+
+  function draw(p, replacement) {
+    if (wallLeft() <= 0) { endHand(null); return; }
+    var id = replacement ? S.order[136 - 1 - S.back++] : S.order[S.front++];
+    S.hands[p].push(id); S.drawn = id; S.kongDraw = !!replacement; S.phase = 'discard'; sel = null;
+    Kit.sfx('deal');
+    save(); render({ drew: p });
+    if (S.players[p].cpu) flow(650);
+    else {
+      Kit.haptic('light');
+      if (canWin(S.hands[0], S.melds[0].length)) { Kit.sfx('good'); Kit.haptic('success'); }
     }
   }
-  return false;
-}
 
-function canMelds(tiles){
-  if(!tiles.length) return true;
-  const first=tiles[0];
-  // Try triplet
-  const same=tiles.filter(t=>tKey(t)===tKey(first));
-  if(same.length>=3){
-    const used=same.slice(0,3);
-    const rest=tiles.filter(t=>!used.includes(t));
-    if(canMelds(rest)) return true;
+  function discard(p, id) {
+    var h = S.hands[p], i = h.indexOf(id); if (i < 0) return;
+    h.splice(i, 1); S.ponds[p].push(id);
+    S.last = { id: id, from: p }; S.drawn = null; S.kongDraw = false; sel = null;
+    S.phase = 'claim'; S.claim = null;
+    Kit.sfx('flip'); Kit.haptic('light');
+    save(); render({ discard: p });
+    afterDiscard();
   }
-  // Try sequence (numbered suits only)
-  if(SUITS.includes(first.suit)){
-    const t2=tiles.find(t=>t!==first&&t.suit===first.suit&&t.num===first.num+1);
-    if(t2){
-      const t3=tiles.find(t=>t!==first&&t!==t2&&t.suit===first.suit&&t.num===first.num+2);
-      if(t3){
-        const rest=tiles.filter(t=>t!==first&&t!==t2&&t!==t3);
-        if(canMelds(rest)) return true;
+
+  // Who wants the discard? Win > pung/kong > chow; ties for a win go to the player next in turn.
+  function claimOptions(q, id, from) {
+    var k = kindOf(id), h = S.hands[q], c = counts(h), o = { win: false, pung: false, kong: false, chows: [] };
+    o.win = canWin(h.concat([id]), S.melds[q].length);
+    if (c[k] >= 2) o.pung = true;
+    if (c[k] >= 3 && wallLeft() > 0) o.kong = true;
+    if (q === (from + 1) % 4 && k < 27) {
+      var n = k % 9;
+      [[-2, -1], [-1, 1], [1, 2]].forEach(function (d) {
+        var a = k + d[0], b = k + d[1];
+        if (n + d[0] >= 0 && n + d[1] <= 8 && c[a] && c[b]) o.chows.push([a, b]);
+      });
+    }
+    return o;
+  }
+  function afterDiscard() {
+    var L = S.last, from = L.from, k = kindOf(L.id), cpuBest = null, human = null;
+    var lastDiscard = wallLeft() === 0;
+    for (var d = 1; d <= 3; d++) {
+      var q = (from + d) % 4, o = claimOptions(q, L.id, from);
+      if (!S.players[q].cpu) { if (o.win || o.pung || o.kong || o.chows.length) human = { q: q, o: o, d: d }; continue; }
+      var want = null;
+      if (o.win) want = { t: 'win', rank: 3 };
+      else if (!lastDiscard && o.kong && cpuWantsSet(q, k, 'kong')) want = { t: 'kong', rank: 2 };
+      else if (!lastDiscard && o.pung && cpuWantsSet(q, k, 'pung')) want = { t: 'pung', rank: 2 };
+      else if (!lastDiscard && o.chows.length) { var ch = cpuWantsChow(q, o.chows); if (ch) want = { t: 'chow', rank: 1, pair: ch }; }
+      if (want) { want.q = q; want.d = d; if (!cpuBest || want.rank > cpuBest.rank || (want.rank === cpuBest.rank && want.d < cpuBest.d)) cpuBest = want; }
+    }
+    var ask = false;
+    if (human) {
+      var hr = human.o.win ? 3 : (human.o.pung || human.o.kong) && !lastDiscard ? 2 : human.o.chows.length && !lastDiscard ? 1 : 0;
+      if (!human.o.win && lastDiscard) hr = 0;
+      if (hr && (!cpuBest || hr > cpuBest.rank || (hr === cpuBest.rank && human.d < cpuBest.d))) ask = true;
+    }
+    if (ask) {
+      var ho = human.o;
+      if (lastDiscard) { ho.pung = ho.kong = false; ho.chows = []; }
+      S.claim = { opts: ho, cpu: cpuBest };
+      S.phase = 'claim'; save(); render();
+      Kit.sfx('pop'); Kit.haptic('medium');
+      return;
+    }
+    if (cpuBest) { var t = ++tok; setTimeout(function () { if (t === tok) execClaim(cpuBest.q, cpuBest.t, cpuBest.pair); }, 700); return; }
+    S.claim = null;
+    if (lastDiscard) { var t2 = ++tok; setTimeout(function () { if (t2 === tok) endHand(null); }, 700); return; }
+    S.cur = (from + 1) % 4; S.phase = 'draw'; save();
+    flow(S.players[S.cur].cpu ? 650 : 550);
+  }
+  function execClaim(q, type, pair) {
+    var L = S.last, from = L.from, id = L.id, k = kindOf(id), h = S.hands[q];
+    S.ponds[from].pop(); S.claim = null;
+    S.stats.claims[q]++;
+    var who = S.players[q].name;
+    if (type === 'win') { h.push(id); endHand({ winner: q, from: from, self: false }); return; }
+    function take(kind, n) { var got = []; for (var i = h.length - 1; i >= 0 && got.length < n; i--) if (kindOf(h[i]) === kind) got.push(h.splice(i, 1)[0]); return got; }
+    var ids;
+    if (type === 'chow') { ids = take(pair[0], 1).concat(take(pair[1], 1), [id]).sort(function (a, b) { return kindOf(a) - kindOf(b); }); }
+    else ids = take(k, type === 'kong' ? 3 : 2).concat([id]);
+    S.melds[q].push({ t: type, ids: ids, from: from, conc: false });
+    if (type === 'kong') S.stats.kongs[q]++;
+    S.cur = q; S.last = null;
+    say(q, type === 'chow' ? 'Chow!' : type === 'pung' ? 'Pung!' : 'Kong!');
+    Kit.sfx('chip'); Kit.haptic('medium');
+    if (type === 'kong') { save(); render(); var t = ++tok; setTimeout(function () { if (t === tok) draw(q, true); }, 650); return; }
+    S.phase = 'discard'; S.drawn = null; sel = null;
+    save(); render();
+    if (S.players[q].cpu) flow(800);
+    void who;
+  }
+  function selfKong(p, k) {
+    var h = S.hands[p], m = S.melds[p].filter(function (x) { return x.t === 'pung' && kindOf(x.ids[0]) === k; })[0];
+    if (m) { var i = h.findIndex(function (id) { return kindOf(id) === k; }); m.ids.push(h.splice(i, 1)[0]); m.t = 'kong'; }
+    else {
+      var ids = []; for (var j = h.length - 1; j >= 0; j--) if (kindOf(h[j]) === k) ids.push(h.splice(j, 1)[0]);
+      S.melds[p].push({ t: 'kong', ids: ids, from: -1, conc: true });
+    }
+    S.stats.kongs[p]++;
+    say(p, 'Kong!'); Kit.sfx('chip'); Kit.haptic('medium');
+    S.drawn = null; save(); render();
+    var t = ++tok; setTimeout(function () { if (t === tok) draw(p, true); }, 650);
+  }
+  function kongChoices(p) {
+    var c = counts(S.hands[p]), out = [];
+    if (wallLeft() <= 0) return out;
+    for (var k = 0; k < 34; k++) if (c[k] === 4) out.push(k);
+    S.melds[p].forEach(function (m) { var k2 = kindOf(m.ids[0]); if (m.t === 'pung' && c[k2]) out.push(k2); });
+    return out;
+  }
+
+  // ── Computer players (only look at their own tiles and what's face up) ───
+  function visibleLeft(p) {
+    var seen = counts(S.hands[p]);
+    for (var q = 0; q < 4; q++) { S.ponds[q].forEach(function (id) { seen[kindOf(id)]++; }); S.melds[q].forEach(function (m) { m.ids.forEach(function (id) { seen[kindOf(id)]++; }); }); }
+    return seen.map(function (s) { return Math.max(0, 4 - s); });
+  }
+  function bestDiscard(p) {
+    var h = S.hands[p], c = counts(h), m = S.melds[p].length, left = visibleLeft(p), seen = {};
+    var cand = [], bestS = 99;
+    h.forEach(function (id) {
+      var k = kindOf(id); if (seen[k]) return; seen[k] = 1;
+      c[k]--; var s = shanten(c, m); c[k]++;
+      cand.push({ k: k, s: s }); if (s < bestS) bestS = s;
+    });
+    cand = cand.filter(function (x) { return x.s === bestS; });
+    var sw = 27 + seatWind(p), rw = 27 + S.wind, discarded = counts([].concat.apply([], S.ponds));
+    cand.forEach(function (x) {
+      c[x.k]--;
+      var u = 0;
+      for (var t = 0; t < 34; t++) { if (!left[t]) continue; c[t]++; if (shanten(c, m) < bestS) u += left[t]; c[t]--; }
+      c[x.k]++;
+      var v = u;
+      if (x.k >= 27) v += (x.k === sw || x.k === rw || x.k >= 31) ? 0.5 : 1.5;     // lone honors go early, value honors a bit later
+      else if (num(x.k) === 1 || num(x.k) === 9) v += 0.8;
+      v += Math.min(discarded[x.k], 3) * 0.4;                                   // tiles others threw are safer
+      v += Math.random() * 0.6;
+      x.v = v;
+    });
+    cand.sort(function (a, b) { return b.v - a.v; });
+    var k = cand[0].k, pick = null;
+    for (var i = h.length - 1; i >= 0; i--) if (kindOf(h[i]) === k) { pick = h[i]; break; }
+    return pick;
+  }
+  function minAfterDiscard(c, m) { var b = 99; for (var k = 0; k < 34; k++) { if (!c[k]) continue; c[k]--; var s = shanten(c, m); c[k]++; if (s < b) b = s; } return b; }
+  function valueHonor(p, k) { return k >= 31 || k === 27 + seatWind(p) || k === 27 + S.wind; }
+  function cpuWantsSet(q, k, type) {
+    var c = counts(S.hands[q]), m = S.melds[q].length, s0 = shanten(c, m);
+    if (m === 0 && shantenPairs(c) < shantenStd(c, 0) && shantenPairs(c) <= 2) return false;   // chasing seven pairs
+    c[k] -= type === 'kong' ? 3 : 2;
+    var s1 = type === 'kong' ? shanten(c, m + 1) : minAfterDiscard(c, m + 1);
+    return s1 < s0 || (s1 === s0 && (valueHonor(q, k) || type === 'kong'));
+  }
+  function cpuWantsChow(q, chows) {
+    var c = counts(S.hands[q]), m = S.melds[q].length, s0 = shanten(c, m), best = null, bs = s0;
+    if (m === 0 && s0 >= 3) return null;      // stay concealed early on
+    if (m === 0 && shantenPairs(c) < shantenStd(c, 0)) return null;
+    chows.forEach(function (pr) { c[pr[0]]--; c[pr[1]]--; var s = minAfterDiscard(c, m + 1); c[pr[0]]++; c[pr[1]]++; if (s < bs) { bs = s; best = pr; } });
+    return best;
+  }
+  function cpuTurn(p) {
+    if (S.phase !== 'discard' || S.cur !== p) return;
+    var h = S.hands[p], m = S.melds[p].length;
+    if (S.drawn != null && canWin(h, m)) { endHand({ winner: p, self: true }); return; }
+    var kc = kongChoices(p);
+    for (var i = 0; i < kc.length; i++) {
+      var k = kc[i], c = counts(h), isAdded = S.melds[p].some(function (x) { return x.t === 'pung' && kindOf(x.ids[0]) === k; });
+      if (isAdded) { selfKong(p, k); return; }
+      var now = minAfterDiscard(c.slice(), m); c[k] -= 4;
+      if (shanten(c, m + 1) <= now) { selfKong(p, k); return; }
+    }
+    discard(p, bestDiscard(p));
+  }
+
+  // ── Human actions ─────────────────────────────────────────────────────────
+  function myTurn() { return S && S.phase === 'discard' && S.cur === 0 && !S.players[0].cpu; }
+  function tapTile(id) {
+    if (!myTurn()) { if (S && S.phase === 'claim' && S.claim) Kit.toast('Choose a claim or Pass first'); return; }
+    if (sel === id) { snapshot(); discard(0, id); return; }
+    sel = id; Kit.sfx('tap'); Kit.haptic('light'); render();
+  }
+  function declareWin() {
+    if (!myTurn() || !canWin(S.hands[0], S.melds[0].length)) return;
+    snapshot(); endHand({ winner: 0, self: true });
+  }
+  function humanKong(k) { if (!myTurn()) return; snapshot(); selfKong(0, k); }
+  function humanClaim(type, pair) {
+    if (!S.claim) return;
+    snapshot();
+    var cl = S.claim;
+    if (type === 'pass') {
+      S.claim = null;
+      if (cl.cpu) { var t = ++tok; setTimeout(function () { if (t === tok) execClaim(cl.cpu.q, cl.cpu.t, cl.cpu.pair); }, 300); render(); return; }
+      if (wallLeft() === 0) { endHand(null); return; }
+      S.cur = (S.last.from + 1) % 4; S.phase = 'draw'; save(); render(); flow(400); return;
+    }
+    execClaim(0, type, pair);
+  }
+  function hint() {
+    if (!myTurn()) return Kit.toast('Hints are for your turn to discard');
+    if (canWin(S.hands[0], S.melds[0].length)) return Kit.toast('You can win! Tap Mahjong');
+    sel = bestDiscard(0); render();
+    Kit.toast('Try discarding the ' + kname(kindOf(sel)));
+  }
+
+  // ── Undo ──────────────────────────────────────────────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (!S || !undoStack.length || S.phase === 'over') return Kit.toast('Nothing to undo');
+    tok++; S = JSON.parse(undoStack.pop()); sel = null;
+    closeSheet();
+    Kit.sfx('whoosh'); Kit.toast('Taken back');
+    save(); render(); resumeFlow();
+  }
+
+  // ── End of a hand ─────────────────────────────────────────────────────────
+  var openSheet = null;
+  function closeSheet() { if (openSheet) { openSheet.close(); openSheet = null; } }
+  function endHand(res) {
+    tok++;
+    var P = S.players, deltas = [0, 0, 0, 0], sc = null;
+    if (res) {
+      var p = res.winner;
+      sc = score(p, res.self, { lastTile: wallLeft() === 0, kong: res.self && S.kongDraw });
+      if (res.self) { for (var q = 0; q < 4; q++) if (q !== p) { deltas[q] -= sc.pts; deltas[p] += sc.pts; } }
+      else { deltas[res.from] -= sc.pts * 2; deltas[p] += sc.pts * 2; }
+      for (q = 0; q < 4; q++) S.scores[q] += deltas[q];
+      Kit.callout(P[p].name === 'You' ? 'Mahjong!' : P[p].name + ': Mahjong!');
+      if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
+    } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
+    var label = 'ESWN'[S.wind] + S.handNo;
+    S.log.push({ label: label, winner: res ? res.winner : -1, from: res ? (res.self ? -1 : res.from) : -1, self: res ? res.self : false, faan: sc ? sc.faan : 0, pts: sc ? sc.pts : 0, list: sc ? sc.list.map(function (x) { return x[0]; }) : [], deltas: deltas });
+    S.result = { res: res, sc: sc, deltas: deltas };
+    // dealer and round wind
+    var dealerWon = res && res.winner === S.dealer;
+    if (S.len === 'quick' || !(dealerWon || !res)) {
+      S.dealer = (S.dealer + 1) % 4;
+      if (S.dealer === S.startDealer) S.wind++;
+    }
+    var over = S.len === 'quick' ? S.handNo >= 4 : S.len === 'east' ? (S.wind >= 1 || S.handNo >= 12) : (S.wind >= 4 || S.handNo >= 32);
+    S.phase = over ? 'over' : 'end';
+    save(); render();
+    setTimeout(function () { showResult(over); }, res ? 1300 : 900);
+  }
+  function handTiles(p) {
+    var box = el('div', { class: 'hand' });
+    S.melds[p].forEach(function (m) { var g = el('div', { class: 'grp' }); m.ids.forEach(function (id, i) { g.appendChild(m.conc && (i === 0 || i === 3) ? backTile(23) : tile(id, 23)); }); box.appendChild(g); });
+    var g2 = el('div', { class: 'grp' });
+    S.hands[p].slice().sort(function (a, b) { return a - b; }).forEach(function (id) { g2.appendChild(tile(id, 23, id === (S.last && S.last.id) ? 'hot' : '')); });
+    box.appendChild(g2);
+    return box;
+  }
+  function showResult(over) {
+    var r = S.result, P = S.players, node = el('div', { class: 'res' });
+    if (r.res) {
+      var p = r.res.winner;
+      node.appendChild(el('p', { class: 'muted', text: r.res.self ? 'Self-drawn win' : 'Won on ' + (P[r.res.from].name === 'You' ? 'your' : P[r.res.from].name + '\'s') + ' discard' }));
+      node.appendChild(handTiles(p));
+      var t = el('table');
+      (r.sc.list.length ? r.sc.list : [['Chicken hand (no bonuses)', 0]]).forEach(function (x) { t.appendChild(el('tr', null, [el('td', { text: x[0] }), el('td', { text: x[1] + ' faan' })])); });
+      t.appendChild(el('tr', null, [el('td', { html: '<b>Total</b>' }), el('td', { text: r.sc.faan + (r.sc.faan >= 10 ? ' (limit)' : '') + ' faan = ' + r.sc.pts + ' pts' })]));
+      node.appendChild(t);
+    } else node.appendChild(el('p', { class: 'muted', text: 'The wall ran out with no winner. No points change hands.' }));
+    node.appendChild(el('h4', { text: 'Scores' }));
+    var t2 = el('table');
+    [0, 1, 2, 3].forEach(function (q) {
+      var d = r.deltas[q];
+      t2.appendChild(el('tr', null, [el('td', { text: P[q].name }), el('td', { html: (d ? '<span class="' + (d > 0 ? 'pos' : 'neg') + '">' + (d > 0 ? '+' : '') + d + '</span> · ' : '') + S.scores[q] })]));
+    });
+    node.appendChild(t2);
+    var title = !r.res ? 'Draw' : P[r.res.winner].name === 'You' ? 'You win the hand!' : P[r.res.winner].name + ' wins the hand';
+    openSheet = Kit.sheet({
+      title: title, node: node, dismissible: false,
+      actions: [{ label: over ? 'Final results' : 'Next hand', primary: true, onClick: function () { openSheet = null; if (over) finish(); else startHand(); } }]
+    });
+  }
+  function finish() {
+    var P = S.players, rank = P.map(function (p, i) { return { name: p.name, score: S.scores[i], color: Kit.color(i), cpu: p.cpu, i: i }; }).sort(function (a, b) { return b.score - a.score; });
+    var top = rank[0], tie = rank[1].score === top.score, hl = [];
+    var wins = [0, 0, 0, 0]; S.log.forEach(function (h) { if (h.winner >= 0) wins[h.winner]++; });
+    var big = S.log.filter(function (h) { return h.winner >= 0; }).sort(function (a, b) { return b.faan - a.faan; })[0];
+    if (big) hl.push('Biggest hand: ' + P[big.winner].name + ', ' + big.faan + ' faan' + (big.list.length ? ' (' + big.list.slice(0, 2).join(', ') + ')' : '') + ' in hand ' + big.label);
+    var mw = Math.max.apply(null, wins);
+    if (mw >= 2) hl.push('Most hands won: ' + P[wins.indexOf(mw)].name + ' with ' + mw);
+    S.log.forEach(function (h) {
+      if (h.list.indexOf('Seven Pairs') >= 0) hl.push(P[h.winner].name + ' won with Seven Pairs in hand ' + h.label);
+      if (h.list.indexOf('Pure One Suit') >= 0) hl.push(P[h.winner].name + ' made a Pure One Suit hand in ' + h.label);
+      if (h.list.indexOf('Thirteen Orphans') >= 0) hl.push(P[h.winner].name + ' pulled off Thirteen Orphans!');
+    });
+    var selfs = S.log.filter(function (h) { return h.self; }).length; if (selfs >= 2) hl.push(selfs + ' hands won on a self-drawn tile');
+    var kg = S.stats.kongs.reduce(function (a, b) { return a + b; }, 0); if (kg) hl.push(kg + ' kong' + (kg === 1 ? '' : 's') + ' declared');
+    var draws = S.log.filter(function (h) { return h.winner < 0; }).length; if (draws) hl.push(draws + ' hand' + (draws === 1 ? '' : 's') + ' ended in a draw');
+    Kit.record(KEY, {
+      started: S.started, mode: { quick: 'Quick game', east: 'East round', full: 'Full game' }[S.len] + ' vs Computer',
+      players: P.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: p.cpu }; }),
+      winner: tie ? null : top.name,
+      rounds: { labels: S.log.map(function (h) { return h.label; }), scores: S.log.map(function (h) { return h.deltas; }) },
+      highlights: hl.slice(0, 6)
+    });
+    clearSave();
+    var lose = top.cpu || tie && rank.filter(function (x) { return x.score === top.score; }).every(function (x) { return x.cpu; });
+    Kit.win({
+      icon: lose ? 'bot' : 'trophy', title: tie ? 'A tie at the top!' : top.name === 'You' ? 'You win!' : top.name + ' wins!',
+      sub: S.log.length + ' hands played', rank: rank, lose: !!lose,
+      again: function () { var keep = S; S = { len: keep.len, players: keep.players, scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } }; startHand(); },
+      extra: [{ label: 'Look at the table', onClick: function () { render(); } }, { label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var bubbles = [];
+  function say(p, text) { bubbles.push({ p: p, text: text, t: Date.now() }); }
+  // seat on screen: 0 you (bottom), 1 right, 2 top, 3 left
+  function render(ev) {
+    if (!S || !S.hands) return;
+    var W = Math.min(app.clientWidth || 358, 560), P = S.players;
+    app.innerHTML = '';
+    var wrap = el('div', { class: 'mj' });
+
+    // score pills, laid out left / across / right / you
+    var strip = el('div', { class: 'scores' });
+    [3, 2, 1, 0].forEach(function (q) {
+      var on = S.cur === q && (S.phase === 'discard' || S.phase === 'draw');
+      var sw = seatWind(q);
+      strip.appendChild(el('div', { class: 'score' + (on ? ' on' : ''), style: { '--c': q === 0 ? 'var(--yellow)' : '#9fd8ff' } }, [
+        el('span', { class: 'nm', text: P[q].name }),
+        el('span', { class: 'pt', text: String(S.scores[q]) }),
+        el('span', { class: 'sub', html: '<span class="wd">' + WIND_CH[sw] + '</span> ' + WIND_EN[sw] + (sw === 0 ? ' · dealer' : '') })
+      ]));
+    });
+    wrap.appendChild(strip);
+
+    // the table
+    var TW = W, rim = 9, FW = TW - 2 * rim, SB = Math.round(Math.max(34, FW * 0.105)), TB = Math.round(SB * 1.1), BB = Math.round(SB * 1.1);
+    var L = Math.min(FW - 2 * SB - 6, 330), FH = TB + L + BB + 6, TH = FH + 2 * rim;
+    var table = el('div', { class: 'mtable wood', style: { width: TW + 'px', height: TH + 'px' } });
+    var felt = el('div', { class: 'felt-in' });
+    table.appendChild(felt);
+    var ox = (FW - L) / 2, oy = TB + 3, cx = ox + L / 2, cy = oy + L / 2;
+
+    // wall: 68 stacks of two around the square, drawn from the front, replacements from the back
+    var ring = Math.max(8, Math.round(L * 0.036)), wall = el('div', { class: 'wall', style: { left: ox + 'px', top: oy + 'px', width: L + 'px', height: L + 'px' } });
+    var seg = (L - ring) / 17, startStack = ((S.dealer * 17) + 7) % 68;
+    for (var st = 0; st < 68; st++) {
+      var j0 = st * 2, present = (j0 >= S.front && j0 < 136 - S.back ? 1 : 0) + (j0 + 1 >= S.front && j0 + 1 < 136 - S.back ? 1 : 0);
+      if (!present) continue;
+      var pos = (st + startStack) % 68, side = Math.floor(pos / 17), a = pos % 17, x, y, w, h;
+      if (side === 0) { x = L - ring - (a + 1) * seg; y = L - ring; w = seg - 1; h = ring; }          // bottom, right→left
+      else if (side === 1) { x = 0; y = L - ring - (a + 1) * seg; w = ring; h = seg - 1; }            // left, bottom→top
+      else if (side === 2) { x = ring + a * seg; y = 0; w = seg - 1; h = ring; }                      // top, left→right
+      else { x = L - ring; y = ring + a * seg; w = ring; h = seg - 1; }                              // right, top→bottom
+      wall.appendChild(el('i', { class: present === 1 ? 'one' : '', style: { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' } }));
+    }
+    felt.appendChild(wall);
+
+    // ponds
+    var inner = L - 2 * ring - 6, ptw = Math.floor(Math.min(20, (inner * 0.43) / 6.3)), pondW = ptw * 6 + 5, depth = Math.round(ptw * 1.42 * 3 + 8);
+    var cbox = Math.max(pondW, inner - 2 * depth);
+    var half = cbox / 2;
+    var center = el('div', { class: 'center', style: { left: (cx - half + 6) + 'px', top: (cy - half + 6) + 'px', width: (cbox - 12) + 'px', height: (cbox - 12) + 'px' } }, [
+      el('span', { class: 'rw', text: WIND_CH[S.wind] }), el('small', { text: WIND_EN[S.wind] + ' round' }), el('b', { text: String(wallLeft()) }), el('small', { text: 'in the wall' })
+    ]);
+    felt.appendChild(center);
+    var rot = [0, -90, 180, 90], pondEls = [];
+    [0, 1, 2, 3].forEach(function (q) {
+      var r = rot[q], px, py;
+      if (q === 0) { px = cx; py = cy + half; } else if (q === 1) { px = cx + half; py = cy; } else if (q === 2) { px = cx; py = cy - half; } else { px = cx - half; py = cy; }
+      var pond = el('div', { class: 'pond', style: { left: (px - pondW / 2) + 'px', top: py + 'px', width: pondW + 'px', transform: 'rotate(' + r + 'deg)' } });
+      S.ponds[q].forEach(function (id, i) {
+        var isLast = S.last && S.last.id === id && i === S.ponds[q].length - 1;
+        pond.appendChild(tile(id, ptw, isLast ? 'hot' : ''));
+      });
+      pondEls[q] = pond;
+      felt.appendChild(pond);
+    });
+
+    // opponents: concealed tiles and face-up melds
+    var btw = Math.max(10, Math.min(16, Math.floor((L - 10) / 15.5)));
+    var mtw = Math.max(12, Math.min(17, Math.floor(SB * 0.42)));
+    // across (2)
+    var nb = S.hands[2].length, rowB = el('div', { class: 'backs', style: { left: (ox + 2) + 'px', top: '6px' } });
+    for (var i = 0; i < nb; i++) rowB.appendChild(backTile(btw, 'side'));
+    felt.appendChild(rowB);
+    var md2 = el('div', { class: 'melds', style: { right: (ox + 2) + 'px', top: '6px', 'flex-direction': 'row-reverse' } });
+    S.melds[2].forEach(function (m) { md2.appendChild(meldEl(m, mtw, 180)); });
+    felt.appendChild(md2);
+    // sides (1 right, 3 left): tile edges + rotated melds
+    [1, 3].forEach(function (q) {
+      var n = S.hands[q].length, eh = Math.max(8, Math.min(14, Math.floor((L * 0.55) / 13))), ew = Math.round(SB * 0.32);
+      var col = el('div', { class: 'backs col', style: { top: (oy + 2) + 'px' } });
+      col.style[q === 1 ? 'right' : 'left'] = '5px';
+      for (var k = 0; k < n; k++) { var e = el('div', { class: 'mt edge' + (q === 1 ? ' r' : ''), style: { width: ew + 'px', height: (eh - 1) + 'px' } }); col.appendChild(e); }
+      felt.appendChild(col);
+      var mc = el('div', { class: 'melds col', style: { bottom: (BB + 4) + 'px' } });
+      mc.style[q === 1 ? 'right' : 'left'] = (ew + 8) + 'px';
+      S.melds[q].forEach(function (m) { mc.appendChild(meldEl(m, mtw, q === 1 ? -90 : 90)); });
+      felt.appendChild(mc);
+    });
+    // your melds along the bottom edge
+    var my = S.melds[0];
+    if (my.length) {
+      var nT = my.reduce(function (a, m) { return a + m.ids.length; }, 0), ytw = Math.min(24, Math.floor((FW - 16 - my.length * 6) / nT));
+      var md0 = el('div', { class: 'melds', style: { left: '0', right: '0', 'justify-content': 'center', bottom: '4px' } });
+      my.forEach(function (m) { md0.appendChild(meldEl(m, ytw, 0)); });
+      felt.appendChild(md0);
+    }
+    // bubbles (Pung!, Chow!)
+    var now = Date.now();
+    bubbles = bubbles.filter(function (b) { return now - b.t < 1500; });
+    bubbles.forEach(function (b) {
+      var bx = [cx, ox + L - 30, cx, ox + 30][b.p], by = [cy + L / 2 - 30, cy, oy + 30, cy][b.p];
+      felt.appendChild(el('div', { class: 'say', text: b.text, style: { left: bx + 'px', top: by + 'px' } }));
+    });
+    wrap.appendChild(table);
+
+    // status, claim bar, rack, actions
+    var me = S.hands[0], mine = myTurn();
+    var st2 = el('div', { class: 'status' });
+    if (S.phase === 'claim' && S.claim) st2.textContent = '';
+    else if (mine) st2.innerHTML = sel != null ? 'Tap the raised tile again to <b>discard</b> it' : canWin(me, S.melds[0].length) ? '<b>You can win!</b> Tap Mahjong' : 'Your turn: tap a tile to discard';
+    else if (S.phase === 'end' || S.phase === 'over') st2.textContent = S.result && S.result.res ? (P[S.result.res.winner].name + ' won the hand') : 'Hand over';
+    else st2.textContent = P[S.cur].cpu ? P[S.cur].name + (S.phase === 'draw' ? ' is drawing…' : ' is thinking…') : '';
+    wrap.appendChild(st2);
+
+    if (S.phase === 'claim' && S.claim) wrap.appendChild(claimBar());
+
+    var rtw = Math.floor(Math.min(48, (W - 40) / 7.4));
+    var rack = el('div', { class: 'rack', style: { width: Math.min(W, rtw * 7 + 3 * 6 + 16 + 12) + 'px' } });
+    var sorted = me.slice().sort(function (a, b) { return a - b; });
+    if (S.drawn != null && S.cur === 0 && me.indexOf(S.drawn) >= 0) { sorted.splice(sorted.indexOf(S.drawn), 1); sorted.push(S.drawn); }
+    var wt = S.phase !== 'discard' || S.cur !== 0 ? waits(me, S.melds[0].length) : [];
+    sorted.forEach(function (id, i) {
+      var cls = (sel === id ? 'sel' : '') + (S.drawn === id && S.cur === 0 && i === sorted.length - 1 && sorted.length > 1 && i % 7 !== 0 ? ' new' : '');
+      var t = tile(id, rtw, cls, 'button');
+      t.addEventListener('click', function () { tapTile(id); });
+      if (ev && ev.drew === 0 && id === S.drawn) t.classList.add('pop');
+      rack.appendChild(t);
+    });
+    wrap.appendChild(rack);
+    if (wt.length) {
+      var wbox = el('div', { class: 'waits' }, [el('span', { text: 'Ready! Waiting on' })]);
+      wt.forEach(function (k) { wbox.appendChild(tile(k * 4, 16)); });
+      wrap.appendChild(wbox);
+    }
+    wrap.appendChild(actions());
+    app.appendChild(wrap);
+
+    // discard flies from the player's spot into their pond
+    if (ev && ev.discard != null) {
+      var pd = pondEls[ev.discard], last = pd && pd.lastElementChild;
+      if (last) {
+        var tr = table.getBoundingClientRect(), lr = last.getBoundingClientRect();
+        var fx = [tr.left + tr.width / 2, tr.right - 20, tr.left + tr.width / 2, tr.left + 20][ev.discard], fy = [tr.bottom + 40, tr.top + tr.height / 2, tr.top + 10, tr.top + tr.height / 2][ev.discard];
+        var dx = fx - (lr.left + lr.width / 2), dy = fy - (lr.top + lr.height / 2), th = -rot[ev.discard] * Math.PI / 180;
+        var lx = dx * Math.cos(th) - dy * Math.sin(th), ly = dx * Math.sin(th) + dy * Math.cos(th);
+        last.style.transition = 'none'; last.style.transform = 'translate(' + lx + 'px,' + ly + 'px) scale(1.6)';
+        void last.offsetWidth;
+        last.style.transition = 'transform .38s cubic-bezier(.2,.8,.25,1)'; last.style.transform = '';
       }
     }
   }
-  return false;
-}
-
-// ── Shanten number (simplified) ──────────────────────────────────────────────
-function shanten(hand){
-  const h=[...hand].sort(sortTiles);
-  let best=8;
-  const counts={};
-  h.forEach(t=>{counts[tKey(t)]=(counts[tKey(t)]||0)+1;});
-
-  function tryPair(pairKey,remaining){
-    let melds=0,partial=0;
-    const rem=[...remaining].sort(sortTiles);
-    // Count triplets
-    const remCounts={};
-    rem.forEach(t=>{remCounts[tKey(t)]=(remCounts[tKey(t)]||0)+1;});
-    const used=new Set();
-    // Greedy: triplets first
-    const temp=[...rem];
-    for(let i=0;i<temp.length;){
-      if(!used.has(temp[i].id)&&i+2<temp.length&&tKey(temp[i])===tKey(temp[i+1])&&tKey(temp[i])===tKey(temp[i+2])){
-        used.add(temp[i].id);used.add(temp[i+1].id);used.add(temp[i+2].id);melds++;i+=3;
-      } else i++;
-    }
-    // Sequences
-    const leftover=temp.filter(t=>!used.has(t.id));
-    for(let i=0;i<leftover.length;){
-      if(!used.has(leftover[i].id)&&SUITS.includes(leftover[i].suit)){
-        const t2=leftover.find(t=>!used.has(t.id)&&t!==leftover[i]&&t.suit===leftover[i].suit&&t.num===leftover[i].num+1);
-        const t3=t2&&leftover.find(t=>!used.has(t.id)&&t!==leftover[i]&&t!==t2&&t.suit===leftover[i].suit&&t.num===leftover[i].num+2);
-        if(t2&&t3){used.add(leftover[i].id);used.add(t2.id);used.add(t3.id);melds++;i++;}
-        else i++;
-      } else i++;
-    }
-    // Partial: pairs + consecutive pairs
-    const remain2=temp.filter(t=>!used.has(t.id));
-    const rc={};
-    remain2.forEach(t=>{rc[tKey(t)]=(rc[tKey(t)]||0)+1;});
-    Object.values(rc).forEach(c=>{if(c>=2)partial++;});
-    const shn=8-2*melds-partial-(pairKey?1:0);
-    best=Math.min(best,shn);
-  }
-
-  const tried=new Set();
-  for(let i=0;i<h.length;i++){
-    const k=tKey(h[i]);
-    if(tried.has(k)) continue;
-    tried.add(k);
-    const j=h.findIndex((t,idx)=>idx>i&&tKey(t)===k);
-    if(j>=0){
-      const rest=h.filter((_,idx)=>idx!==i&&idx!==j);
-      tryPair(k,rest);
-    }
-  }
-  tryPair(null,h);
-  return Math.max(-1,best);
-}
-
-// ── AI discard logic ─────────────────────────────────────────────────────────
-function aiBestDiscard(hand){
-  // Try removing each tile and compute shanten
-  let bestShn=Infinity,bestTile=null;
-  hand.forEach(t=>{
-    const rest=hand.filter(h=>h!==t);
-    const shn=shanten(rest);
-    if(shn<bestShn||(shn===bestShn&&(!bestTile||isolatedValue(t)>isolatedValue(bestTile)))){
-      bestShn=shn;bestTile=t;
-    }
-  });
-  return bestTile||hand[hand.length-1];
-}
-
-function isolatedValue(t){
-  if(t.suit==='d') return 30;
-  if(t.suit==='w') return 25;
-  return t.num>=9||t.num<=1?15:10; // terminals/honors worth more to discard
-}
-
-function shouldClaimPong(hand,tile){
-  const withPong=[...hand,tile,tile,tile].slice(0,hand.length+2); // already have 2
-  const has2=hand.filter(t=>tKey(t)===tKey(tile)).length>=2;
-  if(!has2) return false;
-  const handWith=hand.filter(t=>tKey(t)!==tKey(tile));
-  const shnBefore=shanten(hand);
-  // After pong: hand becomes 10 tiles
-  const shnAfter=shanten(handWith)-1; // meld formed
-  return shnAfter<=shnBefore-1;
-}
-
-// ── State ────────────────────────────────────────────────────────────────────
-let deck,hands,melds,discards,scores,phase,current,lastDiscard,lastDiscarder,
-    roundWind,seatWinds,roundNum,claimTimer,log,canClaim;
-// phase: 'draw'|'discard'|'claim-window'|'round-end'|'game-over'
-// melds[p]: [{type:'pong'|'chow', tiles:[]}]
-// discards[p]: []
-// seatWinds[p]: 'E'|'S'|'W'|'N'
-
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>25)log.shift();}
-
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-function newGame(){clearState();lastWin=null;selTile=null;scores=[0,0,0,0];log=[];roundNum=0;roundWind='E';newRound();}
-
-function newRound(){
-  roundNum++;
-  deck=makeDeck();
-  hands=Array.from({length:4},()=>deck.splice(0,13));
-  // Dealer gets extra tile
-  hands[0].push(deck.pop());
-  melds=[[],[],[],[]];
-  discards=[[],[],[],[]];
-  canClaim=null;
-  seatWinds=[...WINDS]; // 0=East, 1=South, 2=West, 3=North
-  current=0; phase='discard';
-  addLog(`Round ${roundNum}. ${PNAMES[0]} is East (dealer). Draw and discard to form 4 melds + 1 pair.`);
-  render();
-}
-
-// ── Player discard ───────────────────────────────────────────────────────────
-let selTile=null;
-
-function selectTile(t){
-  if(phase!=='discard'||current!==0) return;
-  if(selTile===t){discardTile(t);}
-  else{selTile=t;hap('select');render();}
-}
-
-function discardTile(t){
-  if(!t) return;
-  hands[0]=hands[0].filter(x=>x!==t);
-  discards[0].push(t);
-  lastDiscard=t;lastDiscarder=0;
-  selTile=null;canClaim=null;
-  hap('light');
-  // Check if anyone can claim
-  openClaimWindow();
-}
-
-// ── Claim window ─────────────────────────────────────────────────────────────
-function openClaimWindow(){
-  phase='claim-window';
-  // Check Ron first (any player can win with this tile)
-  for(let p=1;p<4;p++){
-    const testHand=[...hands[p],lastDiscard];
-    if(isWin(testHand)){
-      // AI always takes Ron
-      setTimeout(()=>claimRon(p),600);
-      return;
-    }
-  }
-  // Check Pong (any player other than discarder)
-  const pongPlayers=[1,2,3].filter(p=>hands[p].filter(t=>tKey(t)===tKey(lastDiscard)).length>=2);
-  if(pongPlayers.length>0){
-    // AI claims if beneficial
-    const claimer=pongPlayers.find(p=>shouldClaimPong(hands[p],lastDiscard));
-    if(claimer!==undefined){setTimeout(()=>claimPong(claimer),700);return;}
-  }
-  // Chow: only player to left of discarder (index 1 from discarder)
-  const chowPlayer=(lastDiscarder+1)%4;
-  if(chowPlayer!==0&&canChow(hands[chowPlayer],lastDiscard)){
-    const doChow=shanten(hands[chowPlayer])>0;
-    if(doChow){setTimeout(()=>claimChow(chowPlayer),700);return;}
-  }
-  // No AI claim: next player draws
-  render();
-  setTimeout(advanceAfterDiscard,500);
-}
-
-function advanceAfterDiscard(){
-  if(phase!=='claim-window') return;
-  const next=(lastDiscarder+1)%4;
-  current=next; phase='draw';
-  render();
-  if(next!==0) setTimeout(aiTurn,600);
-}
-
-function canChow(hand,tile){
-  if(!SUITS.includes(tile.suit)) return false;
-  // Check if hand has two tiles to form a sequence with tile
-  const n=tile.num,s=tile.suit;
-  const hasTile=v=>hand.some(t=>t.suit===s&&t.num===v);
-  return (hasTile(n-2)&&hasTile(n-1))||(hasTile(n-1)&&hasTile(n+1))||(hasTile(n+1)&&hasTile(n+2));
-}
-
-function claimRon(p){
-  addLog(`${PNAMES[p]} wins with RON on ${tileLabel(lastDiscard)}! 🀄`,'win');
-  const pts=calculateScore(p,false);
-  scores[p]+=pts;scores[lastDiscarder]-=pts;
-  addLog(`${PNAMES[p]} +${pts} pts · ${PNAMES[lastDiscarder]} -${pts} pts`,'win');
-  finishRound(p,'ron');
-}
-
-function claimPong(p){
-  const used=hands[p].filter(t=>tKey(t)===tKey(lastDiscard)).slice(0,2);
-  hands[p]=hands[p].filter(t=>!used.includes(t));
-  melds[p].push({type:'pong',tiles:[used[0],used[1],lastDiscard]});
-  addLog(`${PNAMES[p]} Pong ${tileLabel(lastDiscard)}!`);
-  current=p; phase='discard';
-  discards[lastDiscarder].pop(); // tile was claimed
-  render();
-  if(p!==0) setTimeout(()=>{const d=aiBestDiscard(hands[p]);doAiDiscard(p,d);},700);
-}
-
-function claimChow(p){
-  const n=lastDiscard.num,s=lastDiscard.suit;
-  const hasTile=v=>hands[p].find(t=>t.suit===s&&t.num===v);
-  let t1,t2;
-  if(hasTile(n-2)&&hasTile(n-1)){t1=hasTile(n-2);t2=hasTile(n-1);}
-  else if(hasTile(n-1)&&hasTile(n+1)){t1=hasTile(n-1);t2=hasTile(n+1);}
-  else if(hasTile(n+1)&&hasTile(n+2)){t1=hasTile(n+1);t2=hasTile(n+2);}
-  if(!t1||!t2) return advanceAfterDiscard();
-  hands[p]=hands[p].filter(t=>t!==t1&&t!==t2);
-  melds[p].push({type:'chow',tiles:[t1,t2,lastDiscard].sort(sortTiles)});
-  addLog(`${PNAMES[p]} Chow ${tileLabel(lastDiscard)}!`);
-  current=p; phase='discard';
-  discards[lastDiscarder].pop();
-  render();
-  if(p!==0) setTimeout(()=>{const d=aiBestDiscard(hands[p]);doAiDiscard(p,d);},700);
-}
-
-// ── AI turn ──────────────────────────────────────────────────────────────────
-function aiTurn(){
-  const p=current;
-  if(p===0||phase!=='draw') return;
-  if(!deck.length){addLog('Wall exhausted — draw!');finishRound(-1,'draw');return;}
-  const drawn=deck.pop();
-  hands[p].push(drawn);
-  // Check Tsumo
-  if(isWin(hands[p])){
-    addLog(`${PNAMES[p]} wins with TSUMO! 🀄`,'win');
-    const pts=calculateScore(p,true);
-    [0,1,2,3].filter(x=>x!==p).forEach(x=>scores[x]-=Math.ceil(pts/3));
-    scores[p]+=pts;
-    addLog(`${PNAMES[p]} +${pts} pts`,'win');
-    finishRound(p,'tsumo');
-    return;
-  }
-  phase='discard';
-  const d=aiBestDiscard(hands[p]);
-  setTimeout(()=>doAiDiscard(p,d),500);
-}
-
-function doAiDiscard(p,t){
-  if(!t) return;
-  hands[p]=hands[p].filter(x=>x!==t);
-  discards[p].push(t);
-  lastDiscard=t;lastDiscarder=p;
-  addLog(`${PNAMES[p]} discards ${tileLabel(t)}.`);
-  // Check if player 0 can Ron
-  const testHand=[...hands[0],t];
-  if(isWin(testHand)){
-    canClaim={type:'ron',discarder:p,tile:t};
-    phase='claim-window'; render(); return;
-  }
-  // Check if player 0 can Pong
-  if(hands[0].filter(x=>tKey(x)===tKey(t)).length>=2){
-    canClaim={type:'pong',discarder:p,tile:t};
-    phase='claim-window'; render(); return;
-  }
-  // Chow: only if p is to player's right (p=3, chow player = 0)
-  if((p+1)%4===0&&canChow(hands[0],t)){
-    canClaim={type:'chow',discarder:p,tile:t};
-    phase='claim-window'; render(); return;
-  }
-  canClaim=null;
-  phase='claim-window';
-  render();
-  setTimeout(advanceAfterDiscard,400);
-}
-
-// ── Player draw & Tsumo ───────────────────────────────────────────────────────
-function playerDraw(){
-  if(phase!=='draw'||current!==0) return;
-  if(!deck.length){addLog('Wall exhausted — draw!');finishRound(-1,'draw');return;}
-  const drawn=deck.pop();
-  hands[0].push(drawn);
-  phase='discard';
-  selTile=null;
-  addLog(`You drew ${tileLabel(drawn)}.`);
-  // Auto-check Tsumo
-  if(isWin(hands[0])){
-    canClaim={type:'tsumo',tile:drawn};
-    render(); return;
-  }
-  render();
-}
-
-function playerTsumo(){
-  if(!canClaim||canClaim.type!=='tsumo') return;
-  addLog(`You win with TSUMO! 🀄`,'win');
-  const pts=calculateScore(0,true);
-  [1,2,3].forEach(x=>scores[x]-=Math.ceil(pts/3));
-  scores[0]+=pts;
-  finishRound(0,'tsumo');
-}
-
-function playerRon(){
-  if(!canClaim||canClaim.type!=='ron') return;
-  hands[0].push(canClaim.tile);
-  discards[canClaim.discarder].pop();
-  addLog(`You win with RON! 🀄`,'win');
-  const pts=calculateScore(0,false);
-  scores[0]+=pts;scores[canClaim.discarder]-=pts;
-  finishRound(0,'ron');
-}
-
-function playerPong(){
-  if(!canClaim||canClaim.type!=='pong') return;
-  claimPong(0);canClaim=null;
-}
-
-function playerChow(){
-  if(!canClaim||canClaim.type!=='chow') return;
-  claimChow(0);canClaim=null;
-}
-
-function playerPass(){
-  // Passing on a self-drawn win just means you keep playing and discard
-  if(canClaim&&canClaim.type==='tsumo'){canClaim=null;render();return;}
-  canClaim=null; phase='claim-window';
-  render(); setTimeout(advanceAfterDiscard,300);
-}
-
-// ── Scoring (simplified) ──────────────────────────────────────────────────────
-function calculateScore(winner,tsumo){
-  let base=10;
-  // All triplets bonus
-  if(melds[winner].every(m=>m.type==='pong')) base+=10;
-  // Tsumo bonus
-  if(tsumo) base+=5;
-  // Self-color hand
-  const suit=new Set(hands[winner].map(t=>t.suit));
-  if(suit.size===1) base+=20;
-  return base;
-}
-
-let lastWin=null; // {winner, method} for the round-end screen
-function finishRound(winner,method){
-  phase='round-end';
-  canClaim=null;selTile=null;
-  lastWin={winner,method};
-  hap(winner===0?'success':winner<0?'medium':'error');
-  render();
-}
-
-function tileLabel(t){
-  if(!t) return '?';
-  if(t.suit==='d') return DRAGON_LABELS[t.num];
-  if(t.suit==='w') return WIND_LABELS[t.num];
-  return t.num+(t.suit==='m'?'m':t.suit==='p'?'p':'s');
-}
-
-// ── Render ─────────────────────────────────────────────────────────────────────
-const DRAGON_NAMES={1:'Red',2:'Green',3:'White'};
-const WIND_NAMES={1:'East',2:'South',3:'West',4:'North'};
-function tileEl(t,cls='',small=false){
-  if(!t) return `<div class="mjt ${small?'sm':''} face-down"></div>`;
-  const suf=small?'sm':'';
-  const suit=t.suit;
-  let label='',sub='';
-  if(suit==='d'){label=DRAGON_LABELS[t.num];sub=DRAGON_NAMES[t.num];}
-  else if(suit==='w'){label=WIND_LABELS[t.num];sub=WIND_NAMES[t.num];}
-  else{label=t.num;sub=suit==='m'?'Man':suit==='p'?'Pin':'Sou';}
-  return`<div class="mjt ${suit} ${cls} ${suf}" aria-label="${sub} ${label}"><div class="mjt-n">${label}</div><div class="mjt-s">${sub}</div></div>`;
-}
-
-function faceDownRow(count,size='xs'){
-  return Array(count).fill(0).map(()=>`<div class="mjt face-down ${size}"></div>`).join('');
-}
-
-function scoreStrip(){
-  const maxScore=Math.max(...scores);
-  return `<div class="mj-scores">${PNAMES.map((n,i)=>`
-    <div class="mj-score-box ${i===0?'you':''} ${current===i&&(phase==='draw'||phase==='discard')?'turn':''} ${scores[i]===maxScore&&scores[i]>0?'leader':''}">
-      <div class="mj-score-name">${n}<span>${seatWinds?.[i]||WINDS[i]}</span></div>
-      <div class="mj-score-val">${scores[i]}</div>
-    </div>`).join('')}</div>`;
-}
-function logHTML(n){
-  return `<details class="mj-log"><summary>Game log</summary><div>${log.slice(-n).reverse().map(({msg,cls})=>`<div class="${cls||''}">${msg}</div>`).join('')}</div></details>`;
-}
-function meldsHTML(p){
-  return melds[p].map(m=>`<div class="mj-meld">${m.tiles.map(t=>tileEl(t,'meld-t',true)).join('')}</div>`).join('');
-}
-
-function render(){
-  const root=document.getElementById('mj-root');
-  let html='';
-
-  html+=scoreStrip();
-
-  // Game over
-  if(phase==='game-over'){
-    const best=Math.max(...scores);
-    const w=scores.indexOf(best);
-    html+=`<div class="winner-banner">
-      <div style="font-size:2.2rem">${w===0?'🏆':'🀄'}</div>
-      <div class="winner-name">${w===0?'You win the game!':PNAMES[w]+' wins the game'}</div>
-      <div class="winner-pts">${PNAMES.map((n,i)=>n+' '+scores[i]).join(' · ')}</div>
-      <button class="btn btn-gold btn-block" id="ng-btn" style="margin-top:16px">New Game</button>
-    </div>`;
-    html+=logHTML(8);
-    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);
-    saveState();return;
-  }
-
-  // Round end
-  if(phase==='round-end'){
-    const lw=lastWin;
-    const title=!lw?`Round ${roundNum} complete`:lw.winner<0?'Wall exhausted — no winner':lw.winner===0?`You win round ${roundNum}!`:`${PNAMES[lw.winner]} wins round ${roundNum}`;
-    const how=!lw||lw.winner<0?'':lw.method==='tsumo'?'Self-drawn win (Tsumo)':`Won on ${PNAMES[lastDiscarder]==='You'?'your':PNAMES[lastDiscarder]+"'s"} discard (Ron)`;
-    html+=`<div class="card mj-round-end">
-      <div class="card-title" style="margin-bottom:2px">${title}</div>
-      ${how?`<div class="mj-sub">${how}</div>`:''}
-      ${lw&&lw.winner>=0?`<div class="mj-win-hand">${meldsHTML(lw.winner)}<div class="mj-meld">${[...hands[lw.winner]].sort(sortTiles).map(t=>tileEl(t,'',true)).join('')}</div></div>`:''}
-      <button class="btn btn-gold btn-block" id="nr-btn" style="margin-top:14px">${roundNum<4?`Start round ${roundNum+1}`:'See final results'}</button>
-    </div>`;
-    html+=logHTML(8);
-    root.innerHTML=html;
-    document.getElementById('nr-btn')?.addEventListener('click',()=>{
-      if(roundNum>=4){phase='game-over';hap('success');render();}
-      else{seatWinds=seatWinds.map((w,i)=>WINDS[(WINDS.indexOf(w)+1)%4]);newRound();}
+  function meldEl(m, tw, r) {
+    var g = el('div', { class: 'meld' });
+    m.ids.forEach(function (id, i) {
+      var t = m.conc && (i === 0 || i === 3) ? backTile(tw) : tile(id, tw);
+      t.style.marginBottom = '0';
+      if (r) { var holder = el('div', { style: { width: (r % 180 ? tw * 1.34 : tw) + 'px', height: (r % 180 ? tw : tw * 1.34) + 'px', display: 'grid', 'place-items': 'center' } }); t.style.transform = 'rotate(' + r + 'deg)'; holder.appendChild(t); g.appendChild(holder); }
+      else g.appendChild(t);
     });
-    saveState();return;
+    return g;
   }
-
-  // Situational tip strip — adapts to game state
-  const tip = getSituationalTipStable();
-  html+=`<div class="mj-tip">
-    <div class="mj-tip-icon">${tip.icon}</div>
-    <div class="mj-tip-body">${tip.text}</div>
-    <button class="mj-tip-cycle" id="mj-tip-next" aria-label="Next tip">🎲</button>
-  </div>`;
-
-  // Table: opposite (West) on top, South on the left, North on the right
-  const opp=2;
-  const sideHTML=p=>`<div class="mj-side">
-      <div class="mj-pname ${current===p?'active':''}">${PNAMES[p]} <span>${seatWinds[p]}</span></div>
-      <div class="mj-side-tiles">${faceDownRow(Math.min(hands[p].length,7),'side')}</div>
-      <div class="mj-pinfo">${hands[p].length} tiles</div>
-      ${melds[p].length?`<div class="mj-melds col">${meldsHTML(p)}</div>`:''}
-    </div>`;
-  html+=`<div class="felt mj-table">
-    <div class="mj-north">
-      <div class="mj-pname ${current===opp?'active':''}">${PNAMES[opp]} <span>${seatWinds[opp]}</span></div>
-      <div class="mj-north-tiles">${faceDownRow(hands[opp].length,'xs')}</div>
-      ${melds[opp].length?`<div class="mj-melds">${meldsHTML(opp)}</div>`:''}
-    </div>
-    <div class="mj-mid">
-      ${sideHTML(1)}
-      <div class="mj-center">
-        <div class="mj-wall">🀫 ${deck.length} in wall</div>
-        ${lastDiscard?`<div class="mj-last-discard">
-          <div class="mj-ld-lbl">Last discard${lastDiscarder!=null?' · '+PNAMES[lastDiscarder]:''}</div>
-          ${tileEl(lastDiscard,'last',false)}
-        </div>`:''}
-        <div class="mj-discards">${discards.flat().slice(-12).map(t=>tileEl(t,'',true)).join('')}</div>
-      </div>
-      ${sideHTML(3)}
-    </div>
-  </div>`;
-
-  // Claim offer for the player
-  const showClaim=canClaim&&(phase==='claim-window'||canClaim.type==='tsumo');
-  if(showClaim){
-    html+=`<div class="mj-claim-panel">
-      <div class="mj-claim-title">${canClaim.type==='tsumo'?'🀄 Tsumo — you drew a winning hand!':canClaim.type==='ron'?`🀄 Ron! ${tileLabel(canClaim.tile)} completes your hand`:canClaim.type==='pong'?`Pong the ${tileLabel(canClaim.tile)}?`:`Chow the ${tileLabel(canClaim.tile)}?`}</div>
-      <div class="mj-claim-btns">
-        ${canClaim.type==='tsumo'?`<button class="btn btn-gold" id="cm-take">Declare Win</button>`:''}
-        ${canClaim.type==='ron'?`<button class="btn btn-gold" id="cm-ron">Ron!</button>`:''}
-        ${canClaim.type==='pong'?`<button class="btn btn-gold" id="cm-pong">Pong</button>`:''}
-        ${canClaim.type==='chow'?`<button class="btn btn-gold" id="cm-chow">Chow</button>`:''}
-        <button class="btn btn-outline" id="cm-pass">Pass</button>
-      </div>
-    </div>`;
+  function claimBar() {
+    var c = S.claim, o = c.opts, L = S.last, P = S.players;
+    var bar = el('div', { class: 'claim' }, [tile(L.id, 38), el('div', { class: 'tx' }, [
+      el('span', { text: P[L.from].name + ' discarded the ' + kname(kindOf(L.id)) }),
+      el('small', { text: o.win ? 'It completes your hand!' : 'You can claim it' })
+    ])]);
+    return bar;
   }
-
-  // Status
-  const isYourDraw=phase==='draw'&&current===0;
-  const isYourDiscard=phase==='discard'&&current===0;
-  const shn=shanten(hands[0]);
-  const status=isYourDraw?`Your turn — draw a tile`:
-    isYourDiscard?(selTile?`Tap ${tileLabel(selTile)} again to discard it`:'Tap a tile to discard'):
-    phase==='claim-window'&&!showClaim?'':
-    current!==0?`${PNAMES[current]} is thinking…`:'';
-  html+=`<div class="mj-status ${current!==0?'muted':''}">${status}</div>`;
-
-  // Player melds
-  if(melds[0].length){
-    html+=`<div class="mj-melds mine">${meldsHTML(0)}</div>`;
-  }
-
-  // Player hand
-  const isPlayable=isYourDiscard||false;
-  html+=`<div class="mj-hand-head"><span>Your hand · ${seatWinds[0]}</span><span>${hands[0].length} tiles · ${shn<=0?'<b>Ready!</b>':'Shanten '+shn}</span></div>
-  <div class="mj-hand ${isPlayable?'playable-hand':''}" id="player-hand">
-    ${[...hands[0]].sort(sortTiles).map(t=>{
-      const isSel=selTile===t;
-      return tileEl(t,(isPlayable?'playable':'')+(isSel?' selected':''));
-    }).join('')}
-  </div>`;
-
-  // Actions
-  html+=`<div class="mj-actions">`;
-  if(isYourDraw){html+=`<button class="btn btn-gold btn-block" id="draw-btn">🀫 Draw Tile</button>`;}
-  else if(isYourDiscard){
-    html+=`<button class="btn btn-gold btn-block" id="discard-btn" ${selTile?'':'disabled'}>${selTile?`Discard ${tileLabel(selTile)}`:'Select a tile to discard'}</button>`;
-  }
-  html+=`</div>`;
-
-  html+=logHTML(6);
-  root.innerHTML=html;
-
-  // Wire events
-  document.getElementById('draw-btn')?.addEventListener('click',playerDraw);
-  document.getElementById('discard-btn')?.addEventListener('click',()=>{if(selTile)discardTile(selTile);});
-  document.getElementById('cm-take')?.addEventListener('click',playerTsumo);
-  document.getElementById('cm-ron')?.addEventListener('click',playerRon);
-  document.getElementById('cm-pong')?.addEventListener('click',playerPong);
-  document.getElementById('cm-chow')?.addEventListener('click',playerChow);
-  document.getElementById('cm-pass')?.addEventListener('click',playerPass);
-
-  const sortedHand=[...hands[0]].sort(sortTiles);
-  document.getElementById('player-hand')?.querySelectorAll('.mjt').forEach((el,idx)=>{
-    if(isPlayable) el.addEventListener('click',()=>{
-      const t=sortedHand[idx];
-      if(t) selectTile(t);
-    });
-  });
-
-  if(current!==0&&phase==='draw') setTimeout(aiTurn,700);
-
-  // Tip cycle button — advances rotation and re-renders just the tip
-  document.getElementById('mj-tip-next')?.addEventListener('click',function(e){
-    e.stopPropagation();
-    const t = getSituationalTip();
-    const body = document.querySelector('.mj-tip .mj-tip-body');
-    const icon = document.querySelector('.mj-tip .mj-tip-icon');
-    if(body) body.innerHTML = t.text;
-    if(icon) icon.textContent = t.icon;
-  });
-
-  // Bring a fresh claim offer into view so it can't be missed on short screens
-  const claimKey=showClaim?canClaim.type+':'+(canClaim.tile&&canClaim.tile.id):'';
-  if(claimKey&&claimKey!==_lastClaimKey){
-    hap('medium');
-    const cp=document.querySelector('.mj-claim-panel');
-    if(cp){const r=cp.getBoundingClientRect();if(r.bottom>window.innerHeight-8||r.top<60)cp.scrollIntoView({block:'center',behavior:'smooth'});}
-  }
-  _lastClaimKey=claimKey;
-
-  // Persist state after every render
-  saveState();
-}
-let _lastClaimKey='';
-
-// ── State persistence ───────────────────────────────────────────────────────
-// Mahjong state is a lot — hands, melds, discards, scores, round state —
-// serialized to sessionStorage so that navigating home + back restores the
-// in-progress game. Home page reads this key to show "in progress" tag.
-const MJ4_STATE_KEY = 'mj4_state';
-
-function saveState(){
-  try{
-    // Don't save after game is over — let New Game start fresh
-    if(phase==='game-over'){ clearState(); return; }
-    const s = {
-      deck, hands, melds, discards, scores, phase, current,
-      lastDiscard, lastDiscarder, roundWind, seatWinds, roundNum,
-      log, canClaim, selTile,
-      _ts: Date.now()
-    };
-    sessionStorage.setItem(MJ4_STATE_KEY, JSON.stringify(s));
-  }catch(e){}
-}
-
-function loadState(){
-  try{
-    const raw = sessionStorage.getItem(MJ4_STATE_KEY);
-    if(!raw) return false;
-    const s = JSON.parse(raw);
-    if(!s || !s.hands || !s.hands.length) return false;
-    deck = s.deck;
-    hands = s.hands;
-    melds = s.melds;
-    discards = s.discards;
-    scores = s.scores;
-    phase = s.phase;
-    current = s.current;
-    lastDiscard = s.lastDiscard;
-    lastDiscarder = s.lastDiscarder;
-    roundWind = s.roundWind;
-    seatWinds = s.seatWinds;
-    roundNum = s.roundNum;
-    log = s.log || [];
-    canClaim = s.canClaim;
-    // Re-link the selected tile to the restored hand (JSON copies aren't the same objects)
-    selTile = (s.selTile && hands[0].find(t=>t.id===s.selTile.id)) || null;
-    return true;
-  }catch(e){ return false; }
-}
-
-function clearState(){
-  try{ sessionStorage.removeItem(MJ4_STATE_KEY); }catch(e){}
-}
-
-// ── How to play + Tips sheet ───────────────────────────────────────────────
-const RULES_HTML=`<div class="mj-help">
-  <p><b>Goal:</b> Be the first to form a winning hand of 14 tiles: 4 melds + 1 pair.</p>
-  <p><b>Tile suits</b><br>
-  • <span style="color:#f87171">Man</span> — Characters 1–9<br>
-  • <span style="color:#4ade80">Pin</span> — Circles 1–9<br>
-  • <span style="color:#60a5fa">Sou</span> — Bamboo 1–9<br>
-  • Winds: 東 East · 南 South · 西 West · 北 North<br>
-  • Dragons: 中 Red · 發 Green · 白 White</p>
-  <p><b>Your turn</b><br>1. Tap “Draw Tile” to draw from the wall.<br>2. Tap a tile to select it, tap it again (or the Discard button) to discard.</p>
-  <p><b>Claiming discards</b><br>
-  • <b>Tsumo</b> — Win by drawing the tile yourself (+5 pts bonus)<br>
-  • <b>Ron</b> — Win by claiming another player's discard<br>
-  • <b>Pong</b> — Claim any player's discard to form a triplet. You must then discard.<br>
-  • <b>Chow</b> — Claim the left player's discard to complete a sequence<br>
-  • <b>Pass</b> — Skip the claim and let play continue</p>
-  <p><b>Winning hand:</b> 4 melds + 1 pair. A meld is a triplet (3 identical) or a sequence (3 consecutive, same suit). Special: 7 different pairs.</p>
-  <p><b>Scoring:</b> Base 10 pts + all-triplets (+10), same-suit hand (+20), tsumo (+5). Ron is paid by the discarder; tsumo is split 3 ways.</p>
-  <p><b>Game:</b> 4 rounds rotating East→South→West→North seat winds.</p>
-</div>`;
-function showHelp(tab){
-  if(tab==='tips'){
-    const body=document.createElement('div');body.className='mj-help';
-    const tipEl=document.createElement('p');tipEl.innerHTML=getMahjongTip();body.appendChild(tipEl);
-    GN.sheet({title:'💡 Beginner tips',body,actions:[
-      {label:'🎲 Another tip',primary:true,onClick:()=>showHelp('tips')},
-      {label:'How to play',onClick:()=>showHelp('rules')},
-      {label:'Close'}]});
-    return;
-  }
-  GN.sheet({title:'🀄 How to play',body:RULES_HTML,actions:[
-    {label:'Got it',primary:true},
-    {label:'💡 Tips',onClick:()=>showHelp('tips')}]});
-}
-async function confirmNewGame(){
-  const ok=await GN.confirm('The current game will be lost.',{title:'Start a new game?',ok:'New Game'});
-  if(ok)newGame();
-}
-
-function getMahjongTip(){
-  const tips=[
-    '<b>Watch your Shanten number.</b> It shows how many tiles away you are from winning. 0 = one tile away (Tenpai). Aim to reduce it each turn.',
-    '<b>Prioritise pairs that could become triplets.</b> A pair you already hold is halfway to a Pong claim — keep it unless it\'s blocking other melds.',
-    '<b>Discard honour tiles (winds, dragons) early</b> unless you have a pair of them. They can\'t form sequences and are hard to meld.',
-    '<b>Terminals (1s and 9s) are hard to meld</b> into sequences because they can only extend in one direction. Discard them early.',
-    '<b>Claim Pong strategically.</b> Ponging takes you out of turn order, so only claim if it significantly helps your hand.',
-    '<b>Watch the discard pile.</b> If you see a tile discarded 3 times already, the 4th copy is likely in someone\'s hand — don\'t wait for it.',
-    '<b>Chase sequences in one suit</b> for a cleaner hand. Mixed-suit hands are harder to complete and score lower.',
-    '<b>Tsumo (self-draw win) scores better</b> than Ron — all three opponents each pay you a share of the points.',
-    '<b>Don\'t declare Ron on a risky discard</b> if the tile is clearly dangerous (many discards of adjacent numbers suggest someone is waiting for it).',
-    '<b>Keep your options open early.</b> In the first few draws, discard isolated tiles and honour tiles. Start committing to a strategy around draw 5-7.',
-    '<b>A winning hand with all triplets (no sequences)</b> scores a 10-point bonus — if you\'re getting Pong offers, consider going all-triplet.',
-    '<b>7-pair hands</b> are a great backup if your hand isn\'t shaping into melds — they just need 7 different pairs.',
-  ];
-  return tips[Math.floor(Math.random()*tips.length)];
-}
-
-// ── Situational tips ─────────────────────────────────────────────────────────
-// Inspects the current game state and returns a tip paragraph tailored to
-// what the player is about to do. Also tracks a rotation index so "🎲" cycles
-// through candidate tips without immediately re-showing the same one.
-let _tipRotIdx = 0;
-function getSituationalTip(){
-  const pool = buildSituationalTipPool();
-  if(!pool.length) return { icon:'💡', text:getMahjongTip() };
-  _tipRotIdx = (_tipRotIdx + 1) % pool.length;
-  return pool[_tipRotIdx];
-}
-function getSituationalTipStable(){
-  // Same pool as above but without advancing the rotation — used by render()
-  // so the tip persists across re-renders within the same game state.
-  const pool = buildSituationalTipPool();
-  if(!pool.length) return { icon:'💡', text:getMahjongTip() };
-  return pool[_tipRotIdx % pool.length];
-}
-
-function buildSituationalTipPool(){
-  const tips = [];
-  const yourHand = hands[0] || [];
-  const shn = yourHand.length ? shanten(yourHand) : 99;
-  const isYourTurn = current===0 && (phase==='draw' || phase==='discard');
-  const inClaim = phase==='claim-window';
-
-  // Claim window — tailor to what's offered
-  if(inClaim && canClaim){
-    if(canClaim.type==='ron'){
-      tips.push({icon:'🏆', text:`<b>Ron is offered!</b> You can win on ${tileLabel(canClaim.tile)}. Ron scores against the discarder only — accept if you think the hand is worth it.`});
-    } else if(canClaim.type==='tsumo'){
-      tips.push({icon:'🏆', text:'<b>Tsumo!</b> You drew the winning tile yourself. Self-draw wins score against all three opponents — take it!'});
-    } else if(canClaim.type==='pong'){
-      tips.push({icon:'🔔', text:`<b>Pong is offered for ${tileLabel(canClaim.tile)}.</b> Ponging skips turn order and locks you into a triplet — only claim if it moves you meaningfully closer to winning. Sequences are more flexible.`});
-    } else if(canClaim.type==='chow'){
-      tips.push({icon:'🔔', text:`<b>Chow is offered for ${tileLabel(canClaim.tile)}.</b> Chow is the cheapest meld to claim — only costs you two adjacent tiles. Take it if it clears deadwood.`});
+  function actions() {
+    var a = el('div', { class: 'acts' });
+    if (S.phase === 'claim' && S.claim) {
+      var o = S.claim.opts;
+      if (o.win) a.appendChild(el('button', { type: 'button', class: 'btn btn-green', text: 'Mahjong!', onclick: function () { humanClaim('win'); } }));
+      if (o.kong) a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Kong', onclick: function () { humanClaim('kong'); } }));
+      if (o.pung) a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Pung', onclick: function () { humanClaim('pung'); } }));
+      o.chows.forEach(function (pr) {
+        var b = el('button', { type: 'button', class: 'btn btn-primary' }, [el('span', { text: 'Chow' })]);
+        if (o.chows.length > 1) { var ks = [pr[0], pr[1], kindOf(S.last.id)].sort(function (x, y) { return x - y; }); var sp = el('span', { style: { display: 'flex' } }); ks.forEach(function (k) { sp.appendChild(tile(k * 4, 16)); }); b.appendChild(sp); }
+        b.addEventListener('click', function () { humanClaim('chow', pr); });
+        a.appendChild(b);
+      });
+      a.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { humanClaim('pass'); } }));
+      return a;
     }
-  }
-
-  // Winning position
-  if(!inClaim && shn===0 && isYourTurn){
-    tips.push({icon:'🎯', text:'<b>Tenpai!</b> You\'re one tile away from winning. Play defensively — avoid discarding tiles adjacent to opponents\' recent discards.'});
-  }
-  if(shn===1 && isYourTurn){
-    tips.push({icon:'🎯', text:'<b>Iishanten.</b> You\'re two tiles away from winning. Focus on keeping flexible shapes — pairs and partial sequences — rather than chasing a specific tile.'});
-  }
-
-  // Honor tiles in hand
-  const honors = yourHand.filter(t => t.suit==='w' || t.suit==='d');
-  const honorPairs = {};
-  honors.forEach(t => { const k=tKey(t); honorPairs[k]=(honorPairs[k]||0)+1; });
-  const isolatedHonors = honors.filter(t => honorPairs[tKey(t)]===1);
-  if(isolatedHonors.length>=2 && isYourDiscardPhase() && shn>1){
-    tips.push({icon:'🎐', text:`<b>You have isolated honour tiles.</b> Winds and dragons can\'t form sequences — if you hold a lone one, discard it early unless you already have a pair.`});
-  }
-
-  // Terminals
-  const terminals = yourHand.filter(t => (t.suit==='m'||t.suit==='p'||t.suit==='s') && (t.num===1 || t.num===9));
-  if(terminals.length>=3 && isYourDiscardPhase() && shn>1){
-    tips.push({icon:'🎋', text:`<b>You hold multiple 1s/9s.</b> Terminals can only extend one direction (1-2-3 or 7-8-9), so they\'re less flexible. Prefer keeping middle tiles (3-7).`});
-  }
-
-  // Deep into the round
-  if(deck && deck.length < 20 && isYourTurn){
-    tips.push({icon:'⏳', text:`<b>Only ${deck.length} tiles left in the wall.</b> Play defensively — if you\'re not close to winning, focus on safe discards (tiles already seen in the pond).`});
-  }
-
-  // Current player is YOU and you must discard
-  if(phase==='discard' && current===0){
-    if(shn<=1){
-      tips.push({icon:'🎯', text:'<b>You\'re close to winning.</b> Discard the tile that keeps the most potential melds intact — check which tile you hold that doesn\'t connect to anything else.'});
-    } else {
-      tips.push({icon:'🀀', text:'<b>Your turn to discard.</b> Look for the most isolated tile in your hand — one that can\'t form a sequence or pair. Tap a tile once to mark it, again to discard.'});
+    if (myTurn()) {
+      if (canWin(S.hands[0], S.melds[0].length)) a.appendChild(el('button', { type: 'button', class: 'btn btn-green', text: 'Mahjong!', onclick: declareWin }));
+      kongChoices(0).forEach(function (k) {
+        var b = el('button', { type: 'button', class: 'btn btn-soft' }, [el('span', { text: 'Kong' }), tile(k * 4, 16)]);
+        b.addEventListener('click', function () { humanKong(k); });
+        a.appendChild(b);
+      });
+      a.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('lightbulb') + '<span>Hint</span>', onclick: hint }));
+      var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { snapshot(); discard(0, sel); } } });
+      d.disabled = sel == null; a.appendChild(d);
+    } else if (S.phase === 'end') {
+      a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Hand result', onclick: function () { showResult(false); } }));
+    } else if (S.phase === 'over') {
+      a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Final results', onclick: finish }));
     }
+    return a;
   }
 
-  // Draw phase
-  if(phase==='draw' && current===0){
-    tips.push({icon:'🀫', text:'<b>Draw a tile.</b> Tap the "Draw Tile" button to take the next tile from the wall. You\'ll then need to discard to maintain 14 tiles.'});
+  // ── Resume ────────────────────────────────────────────────────────────────
+  function resumeFlow() {
+    if (!S) return;
+    if (S.phase === 'end') { showResult(false); return; }
+    if (S.phase === 'over') { showResult(true); return; }
+    if (S.phase === 'claim') { if (!S.claim) afterDiscard(); return; }
+    flow(600);
   }
+  var rT = null;
+  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && S.hands) render(); }, 150); });
 
-  // Early game — explain structure if this is round 1 with few discards
-  if(roundNum===1 && discards && discards.flat().length < 8 && isYourTurn){
-    tips.push({icon:'📖', text:'<b>A winning hand is 4 melds + 1 pair.</b> A meld is either a triplet (3 of a kind) or a sequence (3 in a row, same suit). Build toward that shape.'});
-  }
-
-  // Opponents with many melds exposed
-  const exposedCounts = melds.map((m,i) => i===0 ? 0 : m.length);
-  const maxExposed = Math.max(...exposedCounts);
-  if(maxExposed >= 2 && isYourTurn){
-    const aiIdx = exposedCounts.indexOf(maxExposed);
-    tips.push({icon:'⚠️', text:`<b>${PNAMES[aiIdx]} has ${maxExposed} exposed meld${maxExposed>1?'s':''}.</b> They\'re close to winning — be cautious about discarding anything that could complete a triplet or sequence.`});
-  }
-
-  return tips;
-}
-
-function isYourDiscardPhase(){ return phase==='discard' && current===0; }
-
-// On load, try to restore in-progress game first
-if(loadState()){
-  render();
-  // Resume whatever the table was waiting on when we left
-  if(phase==='claim-window'&&!canClaim) setTimeout(advanceAfterDiscard,500);
-  else if(phase==='discard'&&current!==0){ const p=current; setTimeout(()=>{ if(phase==='discard'&&current===p){ doAiDiscard(p,aiBestDiscard(hands[p])); } },600); }
-} else { newGame(); }
-document.getElementById('mj-help-btn').addEventListener('click',()=>showHelp('rules'));
-document.getElementById('mj-new-btn').addEventListener('click',confirmNewGame);
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.hands && saved.players && saved.players.length === 4) { S = saved; render(); resumeFlow(); }
+  else { try { localStorage.removeItem(SAVE); } catch (e) {} showSetup(); }
+})();
 </script>
 </body>
 </html>
