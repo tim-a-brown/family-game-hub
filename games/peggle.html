@@ -79,6 +79,15 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   text-shadow:0 1px 0 rgba(255,255,255,.5);touch-action:manipulation;}
 .pg-fire:active:not(:disabled){transform:translateY(4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 1px 0 #7a4c08;}
 .pg-fire:disabled{filter:saturate(.3) brightness(.65);}
+/* Tablet landscape: aim buttons in the lower-left corner, FIRE in the lower-right, under the thumbs; the board gets the full height */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
+  html.pg-on #app{position:relative;}
+  .pg-ctl{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 18px);width:auto!important;justify-content:flex-start;gap:14px;padding:0 24px;pointer-events:none;}
+  .pg-ctl > *{pointer-events:auto;}
+  .pg-nudge{width:72px;height:72px;order:1;} .pg-nudge .ico{width:30px;height:30px;}
+  .pg-nudge + .pg-fire + .pg-nudge{order:2;}
+  .pg-fire{order:3;margin-left:auto;flex:none;width:200px;max-width:none;height:84px;border-radius:42px;font-size:1.9rem;}
+}
 .pg-pause{position:absolute;inset:5px;border-radius:14px;display:none;align-items:center;justify-content:center;z-index:4;
   background:rgba(8,6,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 .pg-pause.show{display:flex;}
@@ -747,7 +756,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function fit() {
     if (!wrapEl) return;
     var cs = getComputedStyle(app), aw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    var ah = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - hudEl.offsetHeight - 6 - ctlEl.offsetHeight;
+    var ctlH = getComputedStyle(ctlEl).position === 'absolute' ? 0 : ctlEl.offsetHeight;
+    var ah = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - hudEl.offsetHeight - 6 - ctlH;
     var s = Math.min((aw - 10) / CW, (ah - 10) / CH, 1.75); s = Math.max(0.3, s);
     var w = Math.round(CW * s), h = Math.round(CH * s);
     if (w === cssW && canvas.width) return;

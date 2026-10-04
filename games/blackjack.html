@@ -58,7 +58,7 @@
 .tot.t21{background:#13853f;}
 .dealer .tot{margin-left:calc(var(--u)*8);}
 /* seats */
-.seat{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*7);z-index:4;}
+.bjfelt .seat{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*7);z-index:4;}
 .hands{display:flex;align-items:flex-end;}
 .hand{position:relative;display:flex;flex-direction:column;align-items:center;width:var(--hw);gap:calc(var(--u)*6);}
 .cards{position:relative;width:var(--hw);}
@@ -97,8 +97,8 @@
 .tight .tag{gap:3px;padding:2px 7px 2px 2px;}
 .tight .tag .avatar{width:calc(var(--u)*18);height:calc(var(--u)*18);font-size:calc(var(--u)*9);}
 .tight .tag .nm b{font-size:calc(var(--u)*11);letter-spacing:-.01em;}
-.seat.turn .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.55);transform:scale(1.05);}
-.seat .say{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;padding:4px 10px;border-radius:12px;background:#fff;color:#1d1b2e;
+.bjfelt .seat.turn .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.55);transform:scale(1.05);}
+.bjfelt .seat .say{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;padding:4px 10px;border-radius:12px;background:#fff;color:#1d1b2e;
   font-weight:900;font-size:.8rem;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.3);animation:pop .35s var(--spring);z-index:9;}
 .bjmsg{position:absolute;left:50%;top:calc(var(--u)*150);transform:translateX(-50%);z-index:8;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;
   font-weight:900;font-size:calc(var(--u)*13);white-space:nowrap;animation:pop .35s var(--spring);}
@@ -148,6 +148,14 @@
 .sess th,.sess td{padding:8px 6px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08);}
 .sess th:first-child,.sess td:first-child{text-align:left;}
 .sess td.up{color:var(--green);font-weight:900;} .sess td.down{color:#ff8a8a;font-weight:900;}
+/* ── iPad / tablet ── */
+@media (min-width:700px) and (orientation:portrait){ .ctrl{max-width:560px;} }
+/* Wide landscape (iPad, laptop): table on the left, controls beside it, all in one screen */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .stage:has(> .bjwrap){max-width:1180px;display:flex;align-items:center;justify-content:center;gap:clamp(20px,3vw,40px);min-height:calc(100dvh - 70px);padding-top:0;padding-bottom:8px;}
+  .stage > .bjwrap{flex:none;width:min(calc((100dvh - 92px) * .7234 + 18px),62vw);max-width:none;margin:0;}
+  .stage > .ctrl{flex:0 1 420px;min-width:320px;margin:0;justify-content:center;}
+}
 </style>
 </head>
 <body>
@@ -851,7 +859,7 @@
     if (S.opt.coach === 'count') felt.appendChild(el('div', { class: 'count', html: 'Count <b>' + (S.rc > 0 ? '+' : '') + S.rc + '</b> · True <b>' + fmtTc(trueCount()) + '</b>' }));
 
     // Dealer's hand
-    var dcw = Math.min(62 * u, 64);
+    var dcw = Math.min(62 * u, 92);
     var dealer = el('div', { class: 'dealer' }); dealer.style.setProperty('--dcw', dcw + 'px');
     if (!S.dealer.length) { for (var k = 0; k < 2; k++) { var sl = el('div', { class: 'cd slot' }); sl.appendChild(Kit.card('', '', {})); dealer.appendChild(sl); } }
     S.dealer.forEach(function (c, i) {
@@ -868,7 +876,7 @@
     // Seats along the curved edge. Seat 1 is "first base", the dealer's left.
     var n = S.seats.length, counts = S.seats.map(function (s, i) { return Math.max(1, seatHands(i).length); });
     var units = counts.reduce(function (a, b) { return a + b; }, 0), gap = 6 * u;
-    var cw = Math.min(58 * u, 66, (W * .94 - gap * (n - 1)) / (units * 1.45));
+    var cw = Math.min(58 * u, 92, (W * .94 - gap * (n - 1)) / (units * 1.45));
     var hw = cw * 1.45, sp = Math.min(cw * .95, 50 * u), ck = sp * .7;
     var widths = counts.map(function (c) { return c * hw; });
     var pos = seatPositions(n, widths, W, gap, u);

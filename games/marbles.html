@@ -76,6 +76,24 @@
 .think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
 @keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
 .rulechip{text-align:center;font-size:.76rem;font-weight:800;color:var(--text-3);}
+
+/* iPad: bigger board in portrait; landscape puts the players, die tray and rules beside the board */
+@media (min-width:700px) and (orientation:portrait){
+  #app.stage{max-width:760px;}
+  .mcol{max-width:min(712px,calc(100dvh - 340px));}
+  .cup{width:88px;height:88px;}
+  .cup .die{--ds:56px;}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.stage{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
+  .mcol{max-width:none;display:grid;grid-template-columns:auto minmax(280px,340px);grid-template-rows:auto auto auto 1fr;
+    grid-template-areas:"b c" "b t" "b r" "b .";column-gap:28px;row-gap:12px;justify-content:center;align-items:start;}
+  .mcol>.chips{grid-area:c;grid-template-columns:1fr;}
+  .mcol>.board{grid-area:b;width:auto;height:min(calc(100dvh - 80px - var(--safe-t) - var(--safe-b)),calc((100vw - 420px) / var(--ar,1)));}
+  .mcol>.tray{grid-area:t;}
+  .mcol>.rulechip{grid-area:r;text-align:left;}
+  .tray-in{flex-wrap:wrap;}
+}
 </style>
 </head>
 <body>
@@ -600,7 +618,7 @@
     var g = G(), col = el('div', { class: 'mcol' });
     chipsEl = el('div', { class: 'chips' });
     col.appendChild(chipsEl);
-    boardEl = el('div', { class: 'board', style: { 'aspect-ratio': g.W.toFixed(3) + ' / ' + g.H.toFixed(3), '--ms': (g.ms / g.W * 100).toFixed(3) + '%' } });
+    boardEl = el('div', { class: 'board', style: { 'aspect-ratio': g.W.toFixed(3) + ' / ' + g.H.toFixed(3), '--ar': (g.W / g.H).toFixed(4), '--ms': (g.ms / g.W * 100).toFixed(3) + '%' } });
     boardEl.innerHTML = boardSVG();
     layerEl = el('div', { class: 'layer' });
     boardEl.appendChild(layerEl);

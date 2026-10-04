@@ -282,6 +282,11 @@
   .bank-top .dnd{margin-top:0;}
   .mv{--mvh:23px;--mvf:15px;}
 }
+@media (min-width:700px) and (max-width:759px) and (orientation:portrait) and (min-height:1000px){
+  .floor{--colw:112px;gap:10px;}
+  .mv{--mvh:31px;--mvf:15px;}
+  .col{gap:6px;}
+}
 @media (max-width:360px){.floor{--colw:70px;}.mv{--mvf:11.5px;}}
 </style>
 </head>
@@ -875,10 +880,13 @@
     var box = document.getElementById('cases'); if (!box) return;
     var g = G(), w = box.clientWidth;
     var wide = w >= 400, rows = wide ? [6, 7, 6, 7] : [3, 4, 4, 4, 4, 4, 3];
-    var per = Math.max.apply(null, rows), gap = wide ? 10 : 4;
-    var cs = Math.min(wide ? 76 : 64, Math.floor((w - (per - 1) * gap) / per));
+    // Tall tablet portrait: six risers of bigger cases fill the height
+    var tall = wide && window.innerHeight > window.innerWidth * 1.25 && window.innerWidth >= 700;
+    if (tall) rows = [4, 5, 4, 4, 5, 4];
+    var per = Math.max.apply(null, rows), gap = wide ? (tall ? 14 : 10) : 4;
+    var cs = Math.min(tall ? 92 : wide ? 76 : 64, Math.floor((w - (per - 1) * gap) / per));
     box.style.setProperty('--cg', gap + 'px');
-    box.style.setProperty('--rg', (wide ? 10 : 5) + 'px');
+    box.style.setProperty('--rg', (tall ? 16 : wide ? 10 : 5) + 'px');
     var h = '', n = 0;
     rows.forEach(function (cnt) {
       h += '<div class="crow">';

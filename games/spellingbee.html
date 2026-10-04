@@ -107,6 +107,30 @@ body{overflow-x:hidden;}
 .twol span.z{opacity:.3;text-decoration:line-through;}
 @media (max-height:700px){.sb-entry{height:70px;}.hive{--W:min(92px,24vw);}}
 @media (min-width:700px){.sb{padding-top:6px;}}
+/* Tablet portrait: a bigger hive on a bigger board */
+@media (min-width:700px) and (min-height:900px){
+  .sb{max-width:620px;gap:14px;}
+  .sb-board{max-height:820px;}
+  .hive{--W:150px;}
+  .sb-entry{height:100px;}
+  .sb-word{font-size:2.6rem;}
+  .sb-ctrls .btn{min-height:58px;padding:0 28px;font-size:1.1rem;}
+  .sb-ctrls .btn.ic{width:58px;}
+}
+/* Tablet / desktop landscape: word list beside the board */
+@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
+  .sb{max-width:1060px;height:calc(100dvh - var(--safe-t) - 58px);min-height:0;display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);column-gap:26px;row-gap:12px;}
+  .sb-modes,.sb-rank,.sb-found{grid-column:1;}
+  .sb-modes .seg{max-width:none;}
+  .sb-board{grid-column:2;grid-row:1 / span 3;max-height:none;min-height:0;}
+  .sb-rank .nm{min-width:0;}
+  .sb-track{margin-right:14px;}
+  .sb-found{flex-wrap:wrap;align-content:flex-start;align-items:center;padding:12px 14px;min-height:0;overflow:hidden;}
+  .sb-found .cnt{flex:1;}
+  .sb-found .strip{order:3;flex:0 0 100%;white-space:normal;columns:2;column-gap:14px;margin-top:8px;-webkit-mask-image:linear-gradient(180deg,#000 85%,transparent);mask-image:linear-gradient(180deg,#000 85%,transparent);max-height:100%;}
+  .sb-found .strip span{display:block;margin:0;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+  .hive{--W:min(124px,calc((100dvh - 330px) / 3));}
+}
 </style>
 </head>
 <body>
@@ -383,13 +407,15 @@ body{overflow-x:hidden;}
     var q = el('div', { class: 'sb-dot end' + (ri === 9 ? ' on' : ''), style: { left: 'calc(100% + 20px)' } });
     tr.appendChild(q);
   }
+  var WIDE = window.matchMedia('(orientation:landscape) and (min-width:1000px) and (min-height:600px)');
+  if (WIDE.addEventListener) WIDE.addEventListener('change', function () { if (S) paintFound(); });
   function paintFound(newest) {
     var f = $('found'); f.innerHTML = '';
     var n = S.found.length;
     f.appendChild(el('span', { class: 'cnt', text: n ? n + (n === 1 ? ' word' : ' words') : 'Your words' }));
     var strip = el('span', { class: 'strip' });
     if (!n) { strip.textContent = 'Tap letters to spell a word'; strip.style.textTransform = 'none'; }
-    S.found.slice().reverse().slice(0, 12).forEach(function (w) { strip.appendChild(el('span', { class: isPan(w, S.letters) ? 'pg' : '', text: w })); strip.appendChild(document.createTextNode(' ')); });
+    S.found.slice().reverse().slice(0, WIDE.matches ? 60 : 12).forEach(function (w) { strip.appendChild(el('span', { class: isPan(w, S.letters) ? 'pg' : '', text: w })); strip.appendChild(document.createTextNode(' ')); });
     f.appendChild(strip);
     f.appendChild(el('span', { class: 'chev', html: Kit.icon('down') }));
   }

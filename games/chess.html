@@ -84,6 +84,30 @@
 .promo button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
 .promo button svg{width:80%;height:80%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.45));}
 .promo .lb{font-size:.75rem;font-weight:800;color:var(--text-2);text-align:center;margin-top:4px;}
+
+/* iPad / large screens: bigger board; landscape puts bars, moves and buttons beside the board */
+@media (min-width:700px) and (orientation:portrait){
+  #app.stage{max-width:none;}
+  .cb-col{max-width:min(712px,calc(100dvh - 400px));}
+  .frame{--rim:22px;}
+  .coord{font-size:12px;}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.stage{max-width:none;padding-bottom:calc(var(--safe-b) + 14px);}
+  .cb-col{--bsz:min(calc(100dvh - 76px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));max-width:none;height:var(--bsz);
+    display:grid;grid-template-columns:var(--bsz) minmax(280px,320px);grid-template-rows:auto auto minmax(0,1fr) auto auto;
+    grid-template-areas:"b t" "b s" "b m" "b a" "b p";column-gap:24px;row-gap:10px;justify-content:center;}
+  .cb-col>.frame{grid-area:b;--rim:clamp(18px,2.6vh,24px);}
+  .cb-col>.pbar:nth-child(1){grid-area:t;}
+  .cb-col>.pbar:nth-child(3){grid-area:p;}
+  .cb-col>.turn{grid-area:s;justify-self:start;}
+  .cb-col>.moves{grid-area:m;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;overflow-y:auto;overflow-x:hidden;padding:10px;border-radius:14px;background:rgba(0,0,0,.18);}
+  .cb-col>.moves .mp{justify-content:flex-start;}
+  .cb-col>.moves .empty{grid-column:1/-1;margin:6px auto;}
+  .cb-col>.acts{grid-area:a;}
+  .coord{font-size:12px;}
+  .tray{max-width:50%;}
+}
 </style>
 </head>
 <body>
@@ -744,7 +768,7 @@
       var now = i >= S.moves.length - 2;
       movesEl.appendChild(el('span', { class: 'mp' + (now ? ' now' : '') }, [el('i', { text: (i / 2 + 1) + '.' }), el('span', { text: S.moves[i] }), S.moves[i + 1] ? el('span', { text: S.moves[i + 1] }) : null]));
     }
-    requestAnimationFrame(function () { movesEl.scrollLeft = movesEl.scrollWidth; });
+    requestAnimationFrame(function () { movesEl.scrollLeft = movesEl.scrollWidth; movesEl.scrollTop = movesEl.scrollHeight; });
   }
 
   // ── Input: tap a piece then a square, or drag ────────────────────────────

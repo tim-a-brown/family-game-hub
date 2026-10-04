@@ -15,6 +15,7 @@
 <style>
 /* ── Table ──────────────────────────────────────────────────────────────── */
 .stage.play{max-width:780px;display:flex;flex-direction:column;padding:0 8px calc(var(--safe-b) + 4px);min-height:460px;}
+@media (orientation:landscape) and (min-width:980px) and (min-height:600px){.stage.play{max-width:1060px;}}
 .stable{flex:1;min-height:0;display:flex;border-radius:22px;padding:6px;}
 .stable .felt-in{flex:1;position:relative;isolation:isolate;border-radius:16px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 /* Cards sit on the felt at absolute positions and glide between piles */
@@ -426,12 +427,29 @@
     var small = W < 520, pad = small ? 6 : 14, g = small ? 4 : 10;
     var cw = Math.min(96, Math.floor((W - 2 * pad - 6 * g) / 7));
     var step = .54;
+    // Wide, roomy screens (tablet/desktop landscape): stock, waste and done
+    // sit in a column beside the pyramid so the cards can be bigger.
+    if (W >= 700 && W > H * 1.3) {
+      var cwS = Math.min(112, Math.floor((H - 2 * pad) / (1.4 * (6 * step + 1))), Math.floor((W - 2 * pad - 6 * g - 48) / 8.6));
+      cwS = Math.min(cwS, Math.floor((H - 2 * pad - 3 * 30 - 2 * 16) / (3 * 1.4)));
+      if (cwS > cw) {
+        var chS = Math.round(cwS * 1.4), rowHS = Math.round(chS * step), pyrHS = 6 * rowHS + chS;
+        var pyrW = 7 * cwS + 6 * g, sg = Math.max(48, Math.round(cwS * .6)), left = Math.round((W - (pyrW + sg + cwS)) / 2);
+        var colH = 3 * (chS + 30) + 2 * 16, cy = Math.round((H - colH) / 2), sx = left + pyrW + sg;
+        G = { W: W, H: H, pad: pad, g: g, cw: cwS, ch: chS, rowH: rowHS, y0: Math.round((H - pyrHS) / 2), cx: left + pyrW / 2, side: true,
+          bot: { stock: [sx, cy], waste: [sx, cy + chS + 46], disc: [sx, cy + 2 * (chS + 46)] } };
+        G.botY = G.bot.waste[1];
+        felt.style.setProperty('--cw', cwS + 'px');
+        return;
+      }
+    }
     // height needed: pyramid (6 steps + 1 card) + gap + bottom row + labels
     cw = Math.max(30, Math.min(cw, Math.floor((H - 2 * pad - 110) / (1.4 * (6 * step + 2)))));
     var ch = Math.round(cw * 1.4), rowH = Math.round(ch * step);
     var pyrH = 6 * rowH + ch, gap = Math.max(46, Math.round(ch * .55)), total = pyrH + gap + ch + 34;
     var y0 = Math.max(pad, Math.round((H - total) * .42));
     G = { W: W, H: H, pad: pad, g: g, cw: cw, ch: ch, rowH: rowH, y0: y0, botY: y0 + pyrH + gap, cx: W / 2 };
+    var bx = bottomXs(); G.bot = { stock: [bx.stock, G.botY], waste: [bx.waste, G.botY], disc: [bx.disc, G.botY] };
     felt.style.setProperty('--cw', cw + 'px');
   }
   function pyrXY(i) {
@@ -464,9 +482,8 @@
   function place(instant) {
     if (!S || !felt) return;
     if (instant) for (var id in cardEls) cardEls[id].classList.add('nt');
-    var bx = bottomXs(), by = G.botY;
-    setXY(slots.stock, bx.stock, by); setXY(slots.waste, bx.waste, by); setXY(slots.disc, bx.disc, by);
-    setXY(lbl.stock, bx.stock, by + G.ch + 6); setXY(lbl.waste, bx.waste, by + G.ch + 6); setXY(lbl.disc, bx.disc, by + G.ch + 6);
+    var B = G.bot;
+    ['stock', 'waste', 'disc'].forEach(function (k) { setXY(slots[k], B[k][0], B[k][1]); setXY(lbl[k], B[k][0], B[k][1] + G.ch + 6); });
     slots.stock.innerHTML = !S.stock.length && S.waste.length && S.pass < PASSES ? Kit.icon('sync') : '';
     passEl.innerHTML = '';
     for (var p = 1; p <= PASSES; p++) passEl.appendChild(el('i', { class: p < S.pass || (p === S.pass && !S.stock.length) ? 'used' : '' }));
@@ -476,22 +493,23 @@
       put(c, xy[0], xy[1], 10 + i, true);
       cardEls[c].classList.toggle('cov', cov);
     });
-    S.stock.forEach(function (c, k) { put(c, bx.stock, by, 10 + k, false, 0, k < S.stock.length - 1); cardEls[c].classList.remove('cov'); });
-    S.waste.forEach(function (c, k) { put(c, bx.waste, by, 10 + k, true, 0, k < S.waste.length - 1); cardEls[c].classList.remove('cov'); });
-    S.disc.forEach(function (c, k) { put(c, bx.disc, by, 10 + k, true, 0, k < S.disc.length - 1); cardEls[c].classList.remove('cov'); });
+    S.stock.forEach(function (c, k) { put(c, B.stock[0], B.stock[1], 10 + k, false, 0, k < S.stock.length - 1); cardEls[c].classList.remove('cov'); });
+    S.waste.forEach(function (c, k) { put(c, B.waste[0], B.waste[1], 10 + k, true, 0, k < S.waste.length - 1); cardEls[c].classList.remove('cov'); });
+    S.disc.forEach(function (c, k) { put(c, B.disc[0], B.disc[1], 10 + k, true, 0, k < S.disc.length - 1); cardEls[c].classList.remove('cov'); });
     badge.hidden = !S.stock.length; badge.textContent = S.stock.length;
-    setXY(badge, bx.stock + G.cw / 2 - 14, by + G.ch - 22);
+    setXY(badge, B.stock[0] + G.cw / 2 - 14, B.stock[1] + G.ch - 22);
     for (id in cardEls) cardEls[id].classList.toggle('pick', id === S.sel);
     // "Find a 6" helper under the pyramid
-    needEl.style.transform = 'translateY(' + (G.botY - Math.round(G.ch * .55) + 6) + 'px)';
+    if (G.side) { needEl.style.left = (B.stock[0] - 70) + 'px'; needEl.style.right = 'auto'; needEl.style.width = (G.cw + 140) + 'px'; needEl.style.transform = 'translateY(' + Math.max(4, B.stock[1] - 40) + 'px)'; }
+    else { needEl.style.left = needEl.style.right = needEl.style.width = ''; needEl.style.transform = 'translateY(' + (G.botY - Math.round(G.ch * .55) + 6) + 'px)'; }
     if (S.sel) { var need = 13 - rv(S.sel); needEl.innerHTML = 'Find ' + (need === 1 || need === 8 ? 'an ' : 'a ') + '<b>' + NAME[need] + '</b>'; needEl.style.opacity = 1; }
     else needEl.style.opacity = 0;
     if (instant) { void felt.offsetWidth; for (id in cardEls) cardEls[id].classList.remove('nt'); }
   }
   function dealAnim() {
     fit();
-    var bx = bottomXs(), n = 0;
-    for (var id in cardEls) { var c = cardEls[id]; c.classList.add('nt', 'back'); c._up = false; setXY(c, bx.stock, G.botY); c._x = bx.stock; c._y = G.botY; c.style.visibility = ''; c.classList.remove('cov', 'pick'); }
+    var sp = G.bot.stock, n = 0;
+    for (var id in cardEls) { var c = cardEls[id]; c.classList.add('nt', 'back'); c._up = false; setXY(c, sp[0], sp[1]); c._x = sp[0]; c._y = sp[1]; c.style.visibility = ''; c.classList.remove('cov', 'pick'); }
     void felt.offsetWidth;
     for (id in cardEls) cardEls[id].classList.remove('nt');
     S.pyr.forEach(function (c, i) { var xy = pyrXY(i); put(c, xy[0], xy[1], 10 + i, true, 100 + n++ * 30); cardEls[c].classList.toggle('cov', covered(i)); });
@@ -555,7 +573,7 @@
     var best = null, bestA = 0;
     (p.dests || []).forEach(function (d) {
       var x, y;
-      if (d === 'disc') { x = bottomXs().disc; y = G.botY; } else { x = cardEls[d]._x; y = cardEls[d]._y; }
+      if (d === 'disc') { x = G.bot.disc[0]; y = G.bot.disc[1]; } else { x = cardEls[d]._x; y = cardEls[d]._y; }
       var ov = Math.max(0, Math.min(a.r, x + G.cw) - Math.max(a.l, x)) * Math.max(0, Math.min(a.b, y + G.ch) - Math.max(a.t, y));
       if (ov > bestA) { bestA = ov; best = d; }
     });

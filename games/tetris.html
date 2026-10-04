@@ -56,6 +56,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-key{height:50px;} .ar-plate b{font-size:1.2rem;} }
 @media (min-height:800px) and (max-width:600px){ .ar-key{height:64px;} }
+/* Tablet landscape: controls split into the two lower corners, where thumbs rest; the board gets the full height */
+.ar-grp{display:contents;}
+.ar-grp .k-hold{order:-1;}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
+  html.ar-on #app{position:relative;}
+  .ar-ctl{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 18px);max-width:none!important;justify-content:space-between;padding:0 22px;pointer-events:none;}
+  .ar-grp{display:flex;gap:10px;align-items:flex-end;pointer-events:auto;}
+  .ar-grp .k-hold{order:0;}
+  .ar-key{flex:none;width:78px;max-width:none;height:78px;border-radius:22px;}
+  .ar-key .ico{width:30px;height:30px;}
+  .ar-key.hot{width:96px;height:96px;border-radius:26px;}
+}
 </style>
 </head>
 <body>
@@ -439,10 +451,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var DROP = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 10 6 6 6-6"/><path d="M5 21h14"/></svg>';
     var ROT = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
     function key(html, label, cls) { return el('button', { type: 'button', class: 'ar-key ' + (cls || ''), 'aria-label': label, html: html }); }
-    var kHold = key('<span style="font-size:.78rem">Hold</span>', 'Hold');
+    var kHold = key('<span style="font-size:.78rem">Hold</span>', 'Hold', 'k-hold');
     var kL = key(I('back'), 'Move left'), kR = key(I('right'), 'Move right'), kD = key(I('down'), 'Soft drop');
     var kRot = key(ROT, 'Rotate'), kDrop = key(DROP + '<span>Drop</span>', 'Hard drop', 'hot');
-    ctlEl = el('div', { class: 'ar-ctl ar-touch' }, [kHold, kL, kD, kR, kRot, kDrop]);
+    ctlEl = el('div', { class: 'ar-ctl ar-touch' }, [el('div', { class: 'ar-grp' }, [kL, kD, kR]), el('div', { class: 'ar-grp' }, [kHold, kRot, kDrop])]);
     hintEl = el('div', { class: 'ar-hint ar-desk', text: 'Arrows move · Up turns · Space drops · C holds · P pauses' });
     app.appendChild(wrapEl); app.appendChild(ctlEl); app.appendChild(hintEl);
     press(kHold, function () { doHold(); });

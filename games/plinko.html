@@ -109,6 +109,21 @@ body{background:
 .pk-hl .up .ico{transform:rotate(180deg);}
 .pk-earn .skip{margin-top:10px;}
 .pk-earn .next{margin-top:2px;}
+/* iPad / desktop landscape: scoreboard beside the board so the board gets the full height */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app:has(.pk-frame){max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:28px;align-items:start;padding-top:8px;}
+  #app:has(.pk-frame) .pk-show,#app:has(.pk-frame) .pk-strip,#app:has(.pk-frame) .pk-hint{grid-column:1;width:100%;max-width:320px;justify-self:end;}
+  #app:has(.pk-frame) .pk-show{grid-row:1;margin-top:14px;flex-wrap:wrap;padding:14px 16px;}
+  #app:has(.pk-frame) .pk-strip{grid-row:2;flex-direction:column;}
+  #app:has(.pk-frame) .pk-hint{grid-row:3;white-space:normal;text-align:left;justify-content:flex-start;}
+  #app:has(.pk-frame) .pk-frame{grid-column:2;grid-row:1 / span 4;margin:0;}
+  #app:has(.pk-frame) .pk-pip{width:22px;height:22px;}
+  #app:has(.pk-frame) .pk-tot b{font-size:2.6rem;}
+  #app:has(.pk-frame) .pk-who .nm{font-size:1.2rem;}
+}
+@media (min-width:700px) and (orientation:portrait){
+  .stage{max-width:640px;}
+}
 </style>
 </head>
 <body>
@@ -497,9 +512,10 @@ body{background:
   function layout() {
     if (!cv || !cv.isConnected) return;
     var cs = getComputedStyle(app), inner = (app.clientWidth || 390) - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
-    var maxW = Math.min(inner, 560) - 26;
+    var side = getComputedStyle(dom.frame).gridColumnStart === '2';
+    var maxW = Math.min(inner, side ? 760 : 620) - 26;
     var top = dom.frame.getBoundingClientRect().top + (window.scrollY || 0);
-    var avail = (window.innerHeight || 800) - top - 26 - 40 - 10;
+    var avail = (window.innerHeight || 800) - top - 26 - (side ? 14 : 64);
     var w = Math.max(220, Math.min(maxW, avail * WU / HU));
     cssW = Math.floor(w); scale = cssW / WU; cssH = Math.round(HU * scale);
     dpr = Math.min(3, window.devicePixelRatio || 1);

@@ -138,6 +138,45 @@ button.hole{cursor:pointer;}
 .rules .kx{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin:0 2px;}
 .rules .kx.b{background:#e0242f;box-shadow:0 0 0 1px #888;}
 .rules .kx.w{background:#f2eee4;box-shadow:0 0 0 1px #888;}
+
+/* iPad: bigger pegs and board; landscape puts scores, status and the peg tray beside the board */
+@media (min-width:700px) and (orientation:portrait){
+  #app.stage{max-width:720px;}
+  .cb{--pg:46px;--rh:56px;max-width:600px;gap:10px;}
+  .cb.p5{--pg:42px;--rh:52px;}
+  .lane{grid-template-columns:28px 1fr 46px;}
+  .num{font-size:.95rem;}
+  .keys{grid-template-columns:repeat(2,15px);grid-auto-rows:15px;gap:4px;}
+  .keys.k5{grid-template-columns:repeat(3,13px);grid-auto-rows:13px;}
+  .shield{left:34px;right:52px;}
+  .pal{gap:8px;}
+  .pal .tp{--pg:46px;flex:0 1 58px;height:58px;}
+  .pal .tp::before{width:52px;height:52px;}
+  .cb.c9 .pal .tp{--pg:40px;}
+  .cb.c9 .pal .tp::before{width:46px;height:46px;}
+  .acts .btn{min-height:52px;}
+  .score .col .nm{max-width:220px;}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.stage{max-width:none;}
+  .cb{--pg:42px;--rh:50px;max-width:none;display:grid;grid-template-columns:minmax(0,540px) minmax(300px,380px);
+    grid-template-areas:"b s" "b t" "b y" "b .";grid-template-rows:auto auto auto 1fr;column-gap:28px;row-gap:12px;justify-content:center;align-items:start;}
+  .cb.p5{--pg:38px;--rh:46px;}
+  .cb>.scores{grid-area:s;flex-direction:column;}
+  .cb>.top{grid-area:t;}
+  .cb>.bd{grid-area:b;}
+  .cb>.tray{grid-area:y;}
+  .lane{grid-template-columns:26px 1fr 44px;}
+  .num{font-size:.9rem;}
+  .keys{grid-template-columns:repeat(2,14px);grid-auto-rows:14px;gap:4px;}
+  .keys.k5{grid-template-columns:repeat(3,12px);grid-auto-rows:12px;}
+  .shield{left:32px;right:50px;}
+  .pal{flex-wrap:wrap;gap:6px;}
+  .pal .tp{--pg:44px;flex:0 0 52px;height:52px;}
+  .pal .tp::before{width:50px;height:50px;}
+  .acts .btn{min-height:52px;}
+  .score .col .nm{max-width:220px;}
+}
 </style>
 </head>
 <body>
@@ -765,7 +804,9 @@ button.hole{cursor:pointer;}
     requestAnimationFrame(function () {
       if (!rows.isConnected) return;
       var top = rows.getBoundingClientRect().top + window.scrollY;
-      var below = tray.offsetHeight + 8 /* gap */ + 10 /* board padding */ + 12;
+      // Landscape iPad: the tray sits beside the board, not under it
+      var beside = tray.getBoundingClientRect().left >= rows.getBoundingClientRect().right;
+      var below = (beside ? 0 : tray.offsetHeight + 8 /* gap */) + 10 /* board padding */ + 12;
       var safe = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
       var avail = window.innerHeight - top - below - safe;
       rows.style.maxHeight = Math.max(4 * rows.firstChild.offsetHeight, avail) + 'px';

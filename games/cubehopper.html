@@ -67,6 +67,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:hover) and (pointer:fine){ .qb-padwrap{display:none!important;} .ar-wrap{flex:1;min-height:0;} html.ar-on #app{justify-content:center;} }
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-plate b{font-size:1.2rem;} }
+/* Tablet landscape: the pyramid takes the full height and the hop pad sits in the lower-left corner, under the left thumb */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
+  html.ar-on #app{position:relative;}
+  .qb-padwrap{position:absolute;left:24px;bottom:calc(var(--safe-b) + 18px);width:auto;}
+}
 </style>
 </head>
 <body>
@@ -650,12 +655,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
-    var padOn = padWrap && getComputedStyle(padWrap).display !== 'none';
+    var pcs = padWrap && getComputedStyle(padWrap), padOn = pcs && pcs.display !== 'none', padSide = padOn && pcs.position === 'absolute';
     var aw = app.clientWidth - 16 - 14;
-    var ah = app.clientHeight - hudEl.offsetHeight - 8 - 14 - (padOn ? 196 : 30) - 10;
+    var ah = app.clientHeight - hudEl.offsetHeight - 8 - 14 - (padOn && !padSide ? 196 : 30) - 10;
     var s = Math.min(aw / FW, ah / FH, 1.8); s = Math.max(0.4, s);
     var w = Math.round(FW * s), h = Math.round(FH * s);
-    if (padOn) {
+    if (padSide) {
+      // beside the pyramid (tablet landscape): as big as the side margin allows
+      padEl.style.setProperty('--pd', clamp((app.clientWidth - w - 14) / 2 - 44, 150, 240) + 'px');
+    } else if (padOn) {
       var left = app.clientHeight - hudEl.offsetHeight - h - 14 - 26;
       padEl.style.setProperty('--pd', clamp(left, 150, 230) + 'px');
     }

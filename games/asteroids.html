@@ -82,6 +82,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-plate b{font-size:1.2rem;} .deck{height:122px;} .stick{width:116px;height:116px;} .stick .nub{width:46px;height:46px;margin:-23px 0 0 -23px;}
   .fire{width:88px;height:88px;} .right{height:116px;} .btns{grid-template-columns:54px 54px;grid-template-rows:54px 54px;} }
+/* Tablet landscape: steering in the lower-left corner, fire in the lower-right, under the thumbs; the field sits between them */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
+  html.ar-on #app{position:relative;}
+  .ar-wrap{padding:0 196px;}
+  .deck{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 16px);max-width:none;height:auto;align-items:flex-end;padding:0 20px;pointer-events:none;}
+  .deck > *{pointer-events:auto;}
+  .stick{width:164px;height:164px;} .stick .nub{width:62px;height:62px;margin:-31px 0 0 -31px;} .stick .lab{font-size:.62rem;top:9px;}
+  .btns{grid-template-columns:72px 72px;grid-template-rows:72px 72px;gap:10px;}
+  .right{width:170px;height:180px;}
+  .fire{width:120px;height:120px;font-size:1.25rem;}
+  .hyper{width:62px;height:62px;}
+}
 </style>
 </head>
 <body>
@@ -281,7 +293,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
-    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14;
+    var ws = getComputedStyle(wrapEl), padX = (parseFloat(ws.paddingLeft) || 0) + (parseFloat(ws.paddingRight) || 0);
+    var aw = wrapEl.clientWidth - padX - 14, ah = wrapEl.clientHeight - 14;
     if (aw < 50 || ah < 50) return;
     if (!G || G.phase === 'new') { var wd = worldFor(aw, ah); WW = wd[0]; WH = wd[1]; }
     var s = Math.min(aw / WW, ah / WH), w = Math.floor(WW * s), h = Math.floor(WH * s);

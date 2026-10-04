@@ -80,6 +80,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 @media (hover:hover) and (pointer:fine){ .padwrap{display:none;} }
 @media (hover:none),(pointer:coarse){ .hint{display:none;} }
 @media (max-height:720px){ .pad{width:150px;height:150px;} .pad i{width:46px;height:46px;} .pad i.u{left:52px;top:4px;} .pad i.d{left:52px;bottom:4px;} .pad i.l{left:4px;top:52px;} .pad i.r{right:4px;top:52px;} .pad .nub{width:50px;height:50px;margin:-25px 0 0 -25px;} }
+/* Tablet landscape: the maze takes the full height and the pad sits in the lower-left corner, under the left thumb */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
+  html.ar-on #app{max-width:none;position:relative;}
+  .padwrap{position:absolute;left:26px;bottom:calc(var(--safe-b) + 22px);width:auto;}
+  .pad{width:200px;height:200px;} .pad i{width:60px;height:60px;} .pad i.u{left:70px;top:8px;} .pad i.d{left:70px;bottom:8px;} .pad i.l{left:8px;top:70px;} .pad i.r{right:8px;top:70px;}
+  .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;}
+}
 </style>
 </head>
 <body>
@@ -282,7 +289,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var view = $('view'), used = 0, n = 0;
     if (view.hidden || !view.clientHeight) return;
     Array.prototype.forEach.call(view.children, function (ch) {
-      if (ch === cab || getComputedStyle(ch).display === 'none') return;
+      var cs = getComputedStyle(ch);
+      if (ch === cab || cs.display === 'none' || cs.position === 'absolute') return;
       n++; used += ch.classList.contains('padwrap') ? $('pad').offsetHeight + 12 : ch.offsetHeight;
     });
     var avH = view.clientHeight - used - n * 8 - 14;
@@ -293,6 +301,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     scr.style.width = w + 'px'; scr.style.height = h + 'px';
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+    // HUD and lives strip line up with the maze when it is narrower than the screen (tablet landscape)
+    view.querySelector('.hud').style.maxWidth = Math.max(w + 14, 360) + 'px';
+    view.querySelector('.strip').style.maxWidth = (w + 14) + 'px';
     SC = cv.width / LW;
     wallImg = buildWalls('#5470ff', 'rgba(40,60,190,.2)', 'rgba(80,120,255,.85)');
     wallFlash = buildWalls('#ffffff', 'rgba(255,255,255,.18)', 'rgba(255,255,255,.9)');
