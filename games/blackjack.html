@@ -92,6 +92,9 @@
 .tag .nm{display:flex;flex-direction:column;min-width:0;line-height:1.1;}
 .tag .nm b{font-size:calc(var(--u)*11.5);font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tag .nm small{font-size:calc(var(--u)*10);font-weight:800;color:#bfe9cf;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.tight .tag{gap:3px;padding:2px 7px 2px 2px;}
+.tight .tag .avatar{width:calc(var(--u)*18);height:calc(var(--u)*18);font-size:calc(var(--u)*9);}
+.tight .tag .nm b{font-size:calc(var(--u)*11);letter-spacing:-.01em;}
 .seat.turn .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.55);transform:scale(1.05);}
 .seat .say{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;padding:4px 10px;border-radius:12px;background:#fff;color:#1d1b2e;
   font-weight:900;font-size:.8rem;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.3);animation:pop .35s var(--spring);z-index:9;}
@@ -113,7 +116,7 @@
 .ck[data-v="500"]{--c:#6b2fa3;--e:#f4cf5d;}
 .ck b{position:absolute;inset:0;display:grid;place-items:center;font:900 calc(var(--ck) * .32)/1 var(--font);color:var(--t);letter-spacing:-.03em;}
 /* ── Controls under the table ─────────────────────────────────────────── */
-.ctrl{display:flex;flex-direction:column;gap:10px;margin-top:12px;min-height:178px;}
+.ctrl{display:flex;flex-direction:column;gap:10px;margin:12px auto 0;min-height:178px;max-width:480px;}
 .st{display:flex;align-items:center;gap:10px;min-height:32px;font-weight:800;}
 .st .grow{display:flex;align-items:center;gap:8px;min-width:0;}
 .st .grow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -461,7 +464,7 @@
   function canSurr(h) { return S.opt.surr && h.cards.length === 2 && !h.split && !h.dbl && seatHands(h.seat).length === 1; }
   function turnStart() {
     var h = curHand(); if (!h) return;
-    if (S.seats[h.seat].cpu) { after(cpuAct, 800); return; }
+    if (S.seats[h.seat].cpu) { after(cpuAct, 650); return; }
     if (S.mode === 'pass' && lastTurnSeat !== h.seat && humans().length > 1) Kit.toast(Kit.poss(S.seats[h.seat].name) + ' turn');
     lastTurnSeat = h.seat;
   }
@@ -505,7 +508,7 @@
       Kit.sfx('whoosh'); seatSay(h.seat, 'Surrender');
     }
     save(); render();
-    if (h.done) after(advance, 450); else turnStart();
+    if (h.done) after(advance, 380); else turnStart();
   }
   function bust(h) {
     h.res = 'bust'; h.done = true;
@@ -869,7 +872,7 @@
     var pos = seatPositions(n, widths, W, gap, u);
     var curH = curHand();
     S.seats.forEach(function (s, i) {
-      var seat = el('div', { class: 'seat', 'data-seat': i });
+      var seat = el('div', { class: 'seat' + (n >= 3 ? ' tight' : ''), 'data-seat': i });
       seat.style.left = pos[i].x + 'px'; seat.style.bottom = pos[i].b + 'px';
       seat.style.setProperty('--hw', hw + 'px'); seat.style.setProperty('--cw', cw + 'px');
       seat.style.setProperty('--sp', sp + 'px'); seat.style.setProperty('--ck', ck + 'px');
