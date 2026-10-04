@@ -27,7 +27,7 @@
 .ptable > .felt-in::after{content:"";position:absolute;inset:13% 11%;border-radius:50% / 34%;border:2px solid rgba(255,255,255,.09);pointer-events:none;}
 .pa{position:absolute;transform:translate(-50%,-50%);}
 .pseat{z-index:4;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:70px;transition:opacity .3s;}
-.pseat .tag{display:flex;align-items:center;gap:5px;max-width:100px;padding:3px 9px 3px 3px;border-radius:999px;background:rgba(8,10,26,.82);color:#fff;font-weight:800;font-size:.8rem;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:box-shadow .2s, transform .3s var(--spring);}
+.pseat .tag{display:flex;align-items:center;gap:4px;max-width:120px;padding:3px 8px 3px 3px;border-radius:999px;background:rgba(8,10,26,.82);color:#fff;font-weight:800;font-size:.8rem;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:box-shadow .2s, transform .3s var(--spring);}
 .pseat .tag > span:last-child{overflow:hidden;text-overflow:ellipsis;}
 .pseat .tag .avatar{width:24px;height:24px;font-size:.72rem;flex:none;}
 .pseat .tag .avatar .ico{width:60%;height:60%;}
@@ -61,6 +61,8 @@
 .stk .col i:last-child{height:9px;background:radial-gradient(ellipse at 50% 45%,var(--c) 0 42%,rgba(255,255,255,.85) 44% 52%,var(--c) 54%),var(--c);}
 .stk .col i.lt{box-shadow:inset 0 -1.5px 0 rgba(0,0,0,.25),0 0 0 .5px rgba(0,0,0,.35),0 1px 1px rgba(0,0,0,.35);}
 .pbet{z-index:2;display:flex;align-items:flex-end;gap:4px;}
+.pa.bl{transform:translate(0,-50%);}
+.pa.br{transform:translate(-100%,-50%);flex-direction:row-reverse;}
 .pbet .amt{font-weight:900;font-size:.76rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pbet.won .amt{color:var(--yellow);font-size:.86rem;}
 .ppot{z-index:2;display:flex;flex-direction:column;align-items:center;gap:4px;}
@@ -91,8 +93,10 @@
 .pbar .btn small{display:block;font-size:.72rem;opacity:.8;}
 .pbar .btn .two{display:flex;flex-direction:column;line-height:1.1;}
 .pbar .hint{color:var(--text-2);font-weight:800;text-align:center;}
-.praise{border-radius:var(--r);background:var(--surface);padding:12px;margin-bottom:10px;box-shadow:var(--shadow-sm);}
-.praise .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.praise{border-radius:var(--r);background:var(--surface);padding:8px 12px 10px;margin-bottom:8px;box-shadow:var(--shadow-sm);}
+.stage.raising .ptable{height:clamp(360px,44dvh,480px);}
+.stage.raising .phand{--cw:clamp(48px,13vw,62px);}
+.praise .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px;}
 .praise .top b{font-family:var(--display);font-weight:400;font-size:1.5rem;color:var(--yellow);font-variant-numeric:tabular-nums;}
 .praise input[type=range]{width:100%;height:36px;accent-color:var(--yellow);}
 .praise .pre{display:flex;gap:6px;margin-top:6px;}
@@ -107,7 +111,7 @@
 .vp-sub{text-align:center;font-size:.64rem;font-weight:900;letter-spacing:.22em;color:rgba(255,220,150,.75);text-transform:uppercase;margin:1px 0 8px;}
 .vp-pay{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;background:#0b1c8f;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 2px #e2bf45;font-size:.7rem;font-weight:900;text-transform:uppercase;color:#ffe14d;}
 .vp-pay td{padding:2.5px 4px;text-align:right;font-variant-numeric:tabular-nums;border-left:1px solid rgba(255,225,77,.22);white-space:nowrap;}
-.vp-pay td:first-child{text-align:left;width:35%;border-left:0;padding-left:9px;overflow:hidden;text-overflow:ellipsis;}
+.vp-pay td:first-child{text-align:left;width:39%;border-left:0;padding-left:8px;font-size:.66rem;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;}
 .vp-pay tr:first-child td{padding-top:5px;} .vp-pay tr:last-child td{padding-bottom:5px;}
 .vp-pay td.on{background:#b3122b;color:#fff;}
 .vp-pay tr.dealt td:first-child{color:#fff;}
@@ -319,6 +323,7 @@
 
   // ── Money / chips ──────────────────────────────────────────────────────────
   function usd(n) { n = Math.round(n); return (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString(); }
+  function signed(n) { return (n > 0 ? '+' : '') + usd(n); }
   function amt(n) { return S && S.tourn ? Math.round(n).toLocaleString() : usd(n); }
   var DEN = [[5000, '#e8742a'], [1000, '#e9c02a'], [500, '#7b3fc4'], [100, '#24242a'], [25, '#1f9a4a'], [5, '#d42a2a'], [1, '#f2eee4']];
   function chipStack(v, maxCols) {
@@ -362,7 +367,7 @@
 
   // ── Setup ──────────────────────────────────────────────────────────────────
   function showSetup() {
-    stop(); S = null; undoStack = [];
+    stop(); S = null; undoStack = []; raiseUI = null; app.classList.remove('raising');
     Kit.setup(app, {
       modes: [
         { id: 'he', icon: 'cards', title: 'Texas Hold\'em', desc: '2 cards each, 5 shared. Against computer players.' },
@@ -529,6 +534,7 @@
 
   function renderVP(o) {
     o = o || {};
+    app.classList.remove('raising');
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
     cab.appendChild(el('div', { class: 'vp-title', text: 'Jacks or Better' }));
@@ -982,7 +988,7 @@
       icon: net >= 0 ? 'trophy' : 'meh', lose: net < 0,
       title: net > 0 ? 'You won ' + usd(net) + '!' : net === 0 ? 'You broke even' : 'You lost ' + usd(-net),
       sub: st.st.rows.length + ' hands · bank ' + usd(Casino.balance()),
-      rank: st.players.map(function (p, i) { return { name: i === 0 ? p.name : p.name, score: (p.stack - p.buyin >= 0 ? '+' : '−') + usd(Math.abs(p.stack - p.buyin)).replace('−', ''), v: p.stack - p.buyin, color: Kit.color(i) }; }).sort(function (a, b) { return b.v - a.v; }),
+      rank: st.players.map(function (p, i) { return { name: i === 0 ? p.name : p.name, score: signed(p.stack - p.buyin), v: p.stack - p.buyin, color: Kit.color(i) }; }).sort(function (a, b) { return b.v - a.v; }),
       againLabel: 'Sit down again',
       again: function () { replay(st); },
       extra: [{ label: 'Change game', onClick: showSetup }]
@@ -1048,7 +1054,8 @@
       var facingRaise = H.curBet > bb;
       var limpers = live().filter(function (j) { return j !== i && H.bet[j] === bb && H.acted[j]; }).length;
       if (toCall === 0) return rel >= st.raise - 0.2 && R < st.aggr ? raise(S.limit ? 0 : 3.5 * bb + limpers * bb) : { t: 'check' };
-      var need = st.play + (facingRaise ? st.vsRaise : 0) + Math.min(0.6, toCall / Math.max(1, stackAll)) * 0.9;
+      var big = toCall / Math.max(1, stackAll);
+      var need = st.play + (facingRaise ? st.vsRaise : 0) + Math.min(0.6, big) * 0.9 + (big > 0.25 ? 0.4 * big : 0);
       if (rel >= st.raise + (facingRaise ? 0.35 : 0) && R < st.aggr) return raise(facingRaise ? 3 * H.curBet : 3 * bb + limpers * bb);
       if (rel >= need) return { t: 'call' };
       if (toCall <= bb / 2 && rel >= need - 0.3) return { t: 'call' };          // complete the small blind
@@ -1063,7 +1070,7 @@
     }
     var potOdds = toCall / (pot + toCall);
     if (rel >= st.value + 0.45 && R < st.aggr) return raise(S.limit ? 0 : H.curBet * 2.5 + pot * 0.4);
-    if (eq >= potOdds + st.callAdj) return { t: 'call' };
+    if (eq >= potOdds + st.callAdj + 0.15 * Math.min(1, toCall / Math.max(1, stackAll))) return { t: 'call' };
     if (toCall < pot * 0.35 && R < st.bluff * 0.6) return { t: 'call' };
     return passive();
   }
@@ -1086,8 +1093,8 @@
     S.players.forEach(function (p, i) {
       box.appendChild(el('div', { class: 'row' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
-        el('span', { class: 'grow' }, [el('b', { text: i === 0 ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out · ' + ordinal(p.place) : p.cpu ? STYLES[p.style].label : 'You' })]),
-        el('span', { class: 's', text: S.tourn ? p.stack.toLocaleString() : (p.stack - p.buyin >= 0 ? '+' : '−') + usd(Math.abs(p.stack - p.buyin)).replace('−', '') })
+        el('span', { class: 'grow' }, [el('b', { text: i === 0 && p.name !== 'You' ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out · ' + ordinal(p.place) : p.cpu ? STYLES[p.style].label : 'Your seat' })]),
+        el('span', { class: 's', text: S.tourn ? p.stack.toLocaleString() : signed(p.stack - p.buyin) })
       ]));
     });
     var head = S.tourn ? 'Chips' : 'Up or down this session';
@@ -1095,7 +1102,7 @@
   }
 
   // ── Rendering the table ────────────────────────────────────────────────────
-  var POS = { b: [50, 94], lb: [12, 71], lt: [12, 29], t: [50, 8.5], rt: [88, 29], rb: [88, 71], l: [11, 47], r: [89, 47] };
+  var POS = { b: [50, 94], lb: [14, 71], lt: [14, 29], t: [50, 8.5], rt: [86, 29], rb: [86, 71], l: [13, 47], r: [87, 47] };
   var LAY = { 2: ['b', 't'], 3: ['b', 'lt', 'rt'], 4: ['b', 'l', 't', 'r'], 5: ['b', 'lb', 'lt', 'rt', 'rb'], 6: ['b', 'lb', 'lt', 't', 'rt', 'rb'] };
   var CEN = [50, 50];
   function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
@@ -1124,7 +1131,7 @@
     var main = done ? (H.results.filter(function (r) { return !r.back; })[0] || H.results[0]) : null;
     S.players.forEach(function (p, i) {
       var pos = POS[lay[i]], me = i === 0;
-      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (/^(l|r|lt|lb|rt|rb)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '') });
+      var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '') });
       if (p.out) seat.classList.add('out');
       if (H && H.folded[i]) seat.classList.add('fold');
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('turn');
@@ -1161,14 +1168,16 @@
       tb.appendChild(at(seat, pos));
       seatEls[i] = seat;
       // Chips in front of the seat
-      var bp = lerp(pos, CEN, me ? 0.36 : 0.42);
+      var bp = lerp(pos, CEN, me ? 0.36 : 0.42), side = pos[0] < 40 ? 'l' : pos[0] > 60 ? 'r' : '';
+      if (side) bp = [side === 'l' ? 25 : 75, pos[1] + (pos[1] < 40 ? 8 : pos[1] > 60 ? -7 : 9)];
+      function atBet(node) { at(node, bp); if (side) node.classList.add('b' + side); return node; }
       if (H && H.bet[i] > 0) {
         var be = el('div', { class: 'pbet' }, [chipStack(H.bet[i]), el('span', { class: 'amt', text: amt(H.bet[i]) })]);
-        tb.appendChild(at(be, bp)); betEls[i] = be;
+        tb.appendChild(atBet(be)); betEls[i] = be;
       } else if (done && H.won[i] > 0) {
         var gain = H.won[i];
         var we = el('div', { class: 'pbet won' }, [chipStack(gain), el('span', { class: 'amt', text: '+' + amt(gain) })]);
-        tb.appendChild(at(we, bp)); betEls[i] = we;
+        tb.appendChild(atBet(we)); betEls[i] = we;
       }
       if (H && H.button === i) {
         var dp = lerp(pos, CEN, me ? 0.3 : 0.24);
@@ -1225,6 +1234,7 @@
     else app.appendChild(el('div', { class: 'plabel' + (dim ? ' dim' : ''), text: label }));
 
     // Controls
+    app.classList.toggle('raising', !!(raiseUI && !final));
     if (!final) paintControls();
 
     // Animations: hole cards dealt, chips pushed in
@@ -1283,7 +1293,7 @@
       Array.prototype.forEach.call(bets, function (b) {
         var r = b.getBoundingClientRect();
         b.style.transition = 'transform .38s cubic-bezier(.5,0,.3,1), opacity .38s';
-        b.style.transform = 'translate(calc(-50% + ' + (tr.left + tr.width / 2 - r.left - r.width / 2) + 'px), calc(-50% + ' + (tr.top + tr.height / 2 - r.top - r.height / 2) + 'px)) scale(.8)';
+        b.style.transform = getComputedStyle(b).transform.replace('none', '') + ' translate(' + (tr.left + tr.width / 2 - r.left - r.width / 2) + 'px,' + (tr.top + tr.height / 2 - r.top - r.height / 2) + 'px) scale(.8)';
         b.style.opacity = '.2';
       });
       Kit.sfx('chip');
