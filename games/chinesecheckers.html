@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chinese Checkers</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+.cc-col{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+
+/* Player chips: one per seat, marble colour, marbles home, turn ring */
+.chips{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:6px;}
+.pchip{--c:#fff;display:flex;align-items:center;gap:7px;min-width:0;min-height:44px;padding:4px 8px;border-radius:13px;background:rgba(255,255,255,.05);border:2px solid transparent;transition:border-color .2s, background .2s;}
+.pchip.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);}
+.pchip.done{opacity:.85;}
+.pchip .mm{position:relative;width:20px;height:20px;flex:none;}
+.pchip .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
+.pchip .nm{font-weight:800;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;}
+.pchip .nm .ico{width:13px;height:13px;flex:none;color:var(--text-3);}
+.pchip .nm span{overflow:hidden;text-overflow:ellipsis;}
+.pchip .sub{font-size:.7rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pchip.on .sub{color:var(--c);}
+.pchip .sub .ico{width:12px;height:12px;vertical-align:-2px;}
+.think i{display:inline-block;width:4px;height:4px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The board: lacquered wooden hexagon with a drilled star. .spin turns it. */
+.bwrap{position:relative;width:min(100%, 540px, calc((100svh - var(--chrome, 330px)) * 0.8663));margin:2px auto 0;aspect-ratio:14 / 16.16;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer;}
+.spin{position:absolute;inset:0;transform:rotate(var(--rot,0deg));transition:transform .7s cubic-bezier(.45,0,.2,1);}
+.bsvg,.hsvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.bsvg{filter:drop-shadow(0 14px 22px rgba(0,0,0,.5));}
+.hsvg{pointer-events:none;}
+.mlayer{position:absolute;inset:0;pointer-events:none;}
+
+/* Glass marbles: colour core, bright highlight, refracted glow opposite the light */
+.mb{position:absolute;width:5.3%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;}
+.mb i{position:absolute;inset:0;border-radius:50%;transform:rotate(calc(-1 * var(--rot,0deg)));transition:transform .7s cubic-bezier(.45,0,.2,1);
+  background:
+    radial-gradient(circle at 33% 27%, rgba(255,255,255,.97) 0 8%, rgba(255,255,255,.45) 13%, rgba(255,255,255,0) 24%),
+    radial-gradient(circle at 63% 74%, var(--m1) 0, rgba(255,255,255,0) 38%),
+    radial-gradient(circle at 48% 44%, var(--m2) 0%, var(--m2) 30%, var(--m3) 100%);
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), inset 0 0 0 .5px rgba(0,0,0,.25), 0 1.6px 1.8px rgba(0,0,0,.55);}
+.mb.sel i{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), 0 0 0 2px #ffe08a, 0 0 10px 3px rgba(255,214,90,.7), 0 4px 5px rgba(0,0,0,.5);}
+.mb.sel{transform:translate(-50%,-50%) scale(1.14);transition:transform .15s var(--spring);}
+.mb.fly{z-index:5;}
+.mb.fly i{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), 0 6px 7px rgba(0,0,0,.45);}
+.mb.can i{animation:can 1.6s ease-in-out infinite;}
+@keyframes can{50%{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), 0 0 0 1.5px rgba(255,255,255,.55), 0 1.6px 1.8px rgba(0,0,0,.55);}}
+.mm .mb{width:100%;left:50%;top:50%;}
+.mm .mb i{transform:none;}
+.c-red{--m1:#ff8a7a;--m2:#e0242c;--m3:#5e0207;}
+.c-blue{--m1:#9cc8ff;--m2:#2463e6;--m3:#081c5e;}
+.c-green{--m1:#8ef0a8;--m2:#1aa54c;--m3:#043d1b;}
+.c-yellow{--m1:#fff6b0;--m2:#f5bd0a;--m3:#7a4c00;}
+.c-purple{--m1:#c3a6f0;--m2:#53308a;--m3:#12071f;}
+.c-white{--m1:#ffffff;--m2:#efede6;--m3:#9a968a;}
+
+.turn{margin:0;min-height:34px;font-size:1rem;}
+.acts{display:flex;gap:10px;justify-content:center;}
+.acts .btn{flex:1;max-width:190px;}
+@media (min-width:700px){ .cc-col{max-width:600px;} .bwrap{width:min(100%, 600px, calc((100svh - var(--chrome, 330px)) * 0.8663));} }
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'chinesecheckers_state', KEY = 'chinesecheckers';
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Engine. Pure functions, no DOM: also runs inside a Web Worker (toString).
+  // 121 holes in cube coords (x,y,z), x+y+z=0: the union of two big triangles.
+  // Board b: 121 ints, 0 = empty, p+1 = player p's marble.
+  // Points 0..5 go clockwise on screen from the bottom; point k faces k+3.
+  // ═════════════════════════════════════════════════════════════════════════
+  function CCEngine() {
+    var C = [], IDX = {}, NB = [], PX = [], PY = [], PT = [], PTOF = [], TIP = [], DIST = [], N, i, k;
+    var D6 = [[1, -1, 0], [1, 0, -1], [0, 1, -1], [-1, 1, 0], [-1, 0, 1], [0, -1, 1]];
+    for (var z = -8; z <= 8; z++) for (var x = -8; x <= 8; x++) {
+      var y = -x - z; if (y < -8 || y > 8) continue;
+      if (!(x <= 4 && y <= 4 && z <= 4) && !(x >= -4 && y >= -4 && z >= -4)) continue;
+      IDX[x + ',' + z] = C.length; C.push([x, y, z]);
+    }
+    N = C.length;
+    var H3 = Math.sqrt(3) / 2;
+    for (i = 0; i < N; i++) {
+      var c = C[i];
+      NB[i] = D6.map(function (d) { var j = IDX[(c[0] + d[0]) + ',' + (c[2] + d[2])]; return j == null ? -1 : j; });
+      PX[i] = c[0] + c[2] / 2; PY[i] = c[2] * H3;
+    }
+    function hd(a, b) { var A = C[a], B = C[b]; return (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2])) / 2; }
+    // Six points, sorted clockwise on screen starting from the bottom one
+    var regs = [];
+    [[0, 1], [0, -1], [1, 1], [1, -1], [2, 1], [2, -1]].forEach(function (r) {
+      var cells = []; for (var i = 0; i < N; i++) if (C[i][r[0]] * r[1] > 4) cells.push(i);
+      var sx = 0, sy = 0; cells.forEach(function (j) { sx += PX[j]; sy += PY[j]; });
+      var ang = Math.atan2(sy, sx) * 180 / Math.PI; regs.push({ cells: cells, a: ((ang - 90) % 360 + 360) % 360 });
+    });
+    regs.sort(function (a, b) { return a.a - b.a; });
+    for (i = 0; i < N; i++) PTOF[i] = -1;
+    regs.forEach(function (r, k) {
+      PT[k] = r.cells; r.cells.forEach(function (j) { PTOF[j] = k; });
+      TIP[k] = r.cells.filter(function (j) { return Math.max(Math.abs(C[j][0]), Math.abs(C[j][1]), Math.abs(C[j][2])) === 8; })[0];
+    });
+    for (k = 0; k < 6; k++) { DIST[k] = []; for (i = 0; i < N; i++) DIST[k][i] = hd(i, TIP[k]); }
+    var SEATS = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5] };
+    function tgtOf(pts, p) { return (pts[p] + 3) % 6; }
+    function start(n) {
+      var b = []; for (var i = 0; i < N; i++) b.push(0);
+      SEATS[n].forEach(function (pt, p) { PT[pt].forEach(function (j) { b[j] = p + 1; }); });
+      return { b: b, pts: SEATS[n].slice() };
+    }
+    // Every legal move for the marble on cell i: steps, and hop chains (BFS, shortest route kept)
+    function movesFrom(b, i, pts, nostay) {
+      var p = b[i] - 1, home = pts[p], tgt = (home + 3) % 6, out = [], step = {}, inT = PTOF[i] === tgt;
+      function ok(t) { var q = PTOF[t]; if (inT && q !== tgt) return false; if (nostay && q >= 0 && q !== home && q !== tgt) return false; return true; }
+      var d, n, m, j;
+      for (d = 0; d < 6; d++) { n = NB[i][d]; if (n >= 0 && !b[n]) { step[n] = 1; if (ok(n)) out.push({ f: i, t: n, path: [i, n], h: 0 }); } }
+      var par = {}, q = [i], qi = 0; par[i] = -1;
+      while (qi < q.length) {
+        var cc = q[qi++];
+        for (d = 0; d < 6; d++) {
+          m = NB[cc][d]; if (m < 0 || m === i || !b[m]) continue;
+          j = NB[m][d]; if (j < 0 || (b[j] && j !== i) || par[j] !== undefined) continue;
+          par[j] = cc; q.push(j);
+        }
+      }
+      for (var a = 1; a < q.length; a++) {
+        j = q[a]; if (step[j] || !ok(j)) continue;
+        var path = [j]; while (par[path[0]] !== -1) path.unshift(par[path[0]]);
+        out.push({ f: i, t: j, path: path, h: path.length - 1 });
+      }
+      return out;
+    }
+    function allMoves(b, p, pts, nostay) {
+      var out = [];
+      for (var i = 0; i < N; i++) if (b[i] === p + 1) { var ms = movesFrom(b, i, pts, nostay); for (var k = 0; k < ms.length; k++) out.push(ms[k]); }
+      return out;
+    }
+    // Won when every hole of the goal point is filled and at least one is yours
+    // (anti-spoiling: other players' marbles parked there don't block you)
+    function isWin(b, p, pts) {
+      var T = PT[tgtOf(pts, p)], own = 0;
+      for (var i = 0; i < T.length; i++) { if (!b[T[i]]) return false; if (b[T[i]] === p + 1) own++; }
+      return own > 0;
+    }
+    function homeCount(b, p, pts) { var T = PT[tgtOf(pts, p)], n = 0; for (var i = 0; i < T.length; i++) if (b[T[i]] === p + 1) n++; return n; }
+    // Remaining distance to go (sum of hex steps to the goal tip, minus the packed minimum of 20)
+    function togo(b, p, pts) { var D = DIST[tgtOf(pts, p)], s = 0; for (var i = 0; i < N; i++) if (b[i] === p + 1) s += D[i]; return s - 20; }
+    function key(b, p) { var s = []; for (var i = 0; i < N; i++) if (b[i] === p + 1) s.push(i); return s.join('.'); }
+
+    // ── Computer: greedy + own-move lookahead over the distance field ─────
+    function best(g, p, o) {
+      o = o || {};
+      var b = g.b.slice(), pts = g.pts, ns = !!g.nostay, tgt = tgtOf(pts, p), me = p + 1, D = DIST[tgt], T = PT[tgt];
+      var pos = []; for (var i = 0; i < N; i++) if (b[i] === me) pos.push(i);
+      var depth = o.depth || 1, beam = o.beam || 10, noise = o.noise || 0, rec = o.recent || {}, GAMMA = 0.72;
+      function gen() { var out = []; for (var k = 0; k < pos.length; k++) { var ms = movesFrom(b, pos[k], pts, ns); for (var j = 0; j < ms.length; j++) out.push(ms[j]); } return out; }
+      function ev() {
+        var s = 0, k, d, empties = [];
+        for (k = 0; k < T.length; k++) if (!b[T[k]]) empties.push(T[k]);
+        for (k = 0; k < pos.length; k++) {
+          var c = pos[k]; d = D[c]; s += d + 0.07 * d * d;
+          if (PTOF[c] !== tgt && empties.length) {
+            var mn = 99; for (var e = 0; e < empties.length; e++) { var h = hd(c, empties[e]); if (h < mn) mn = h; }
+            s += 0.3 * mn;
+          }
+        }
+        return s;
+      }
+      function apply(m) { b[m.f] = 0; b[m.t] = me; pos[pos.indexOf(m.f)] = m.t; }
+      function undo(m) { b[m.t] = 0; b[m.f] = me; pos[pos.indexOf(m.t)] = m.f; }
+      function look(d) {
+        var ms = gen(); if (!ms.length) return ev() + 3;
+        var sc = [];
+        for (var k = 0; k < ms.length; k++) { apply(ms[k]); var v = ev(); if (isWin(b, p, pts)) v -= 1000; undo(ms[k]); sc.push({ v: v, m: ms[k] }); }
+        sc.sort(function (a, b) { return a.v - b.v; });
+        if (d <= 1 || sc[0].v < -500) return sc[0].v;
+        var bestV = Infinity, lim = Math.min(sc.length, Math.max(3, beam >> 1));
+        for (k = 0; k < lim; k++) { apply(sc[k].m); var f = look(d - 1); undo(sc[k].m); var val = sc[k].v + GAMMA * (f - sc[k].v); if (val < bestV) bestV = val; }
+        return bestV;
+      }
+      var root = gen(); if (!root.length) return null;
+      var list = [];
+      for (var k = 0; k < root.length; k++) {
+        var m = root[k]; apply(m);
+        if (isWin(b, p, pts)) { undo(m); return { f: m.f, t: m.t, path: m.path, h: m.h }; }
+        var v = ev(), kk = pos.slice().sort(function (a, b) { return a - b; }).join('.');
+        if (rec[kk]) v += 2.5 * rec[kk];
+        undo(m);
+        list.push({ v: v, m: m, n: (Math.random() * 2 - 1) * noise });
+      }
+      list.forEach(function (x) { x.s = x.v + x.n; });
+      list.sort(function (a, b) { return a.s - b.s; });
+      if (depth > 1) {
+        var top = list.slice(0, Math.min(list.length, beam));
+        top.forEach(function (x) { apply(x.m); var f = look(depth - 1); undo(x.m); x.s = x.v + GAMMA * (f - x.v) + x.n; });
+        top.sort(function (a, b) { return a.s - b.s; });
+        list = top;
+      }
+      var pick = list[0];
+      if (o.wild && Math.random() < o.wild) pick = list[Math.floor(Math.random() * Math.min(list.length, 5))];
+      return { f: pick.m.f, t: pick.m.t, path: pick.m.path, h: pick.m.h };
+    }
+    return { N: N, C: C, NB: NB, PX: PX, PY: PY, PT: PT, PTOF: PTOF, TIP: TIP, DIST: DIST, SEATS: SEATS, hd: hd, start: start, movesFrom: movesFrom, allMoves: allMoves, isWin: isWin, homeCount: homeCount, togo: togo, key: key, best: best, tgtOf: tgtOf };
+  }
+  var E = CCEngine();
+
+  // ── Worker: the computer thinks off the main thread ──────────────────────
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var src = 'var E=(' + CCEngine.toString() + ')();onmessage=function(e){var d=e.data;postMessage({id:d.id,res:E.best(d.g,d.p,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(E.best(p.g, p.p, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(g, p, o, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, g: g, p: p, o: o };
+    if (w) w.postMessage({ id: id, g: g, p: p, o: o });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(E.best(g, p, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+
+  // ── Look ─────────────────────────────────────────────────────────────────
+  var COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'white'];
+  var CNAME = { red: 'Red', blue: 'Blue', green: 'Green', yellow: 'Yellow', purple: 'Purple', white: 'White' };
+  var CHEX = { red: '#ff5a5f', blue: '#5b9bff', green: '#3fd27a', yellow: '#ffd23f', purple: '#b18cff', white: '#f4f1e8' };
+  var TINT = { red: '#e0242c', blue: '#2a6ae8', green: '#1fae52', yellow: '#f5c20a', purple: '#6a3fa8', white: '#f4f1e8' };
+  var VB = { x: -7, y: -8.08, w: 14, h: 16.16 };
+  function L(i) { return ((E.PX[i] - VB.x) / VB.w * 100) + '%'; }
+  function T(i) { return ((E.PY[i] - VB.y) / VB.h * 100) + '%'; }
+  function f2(v) { return Math.round(v * 1000) / 1000; }
+
+  // ── Game state ───────────────────────────────────────────────────────────
+  // S = {mode, level, places, nostay, spin, players:[{name,cpu,col}], pts:[home point], b:[121],
+  //      turn, round, cnt:[moves each], fin:[player idx in finish order], last:{p,path},
+  //      st:{chains:[best hop chain each], big:[{p,h,gain,round}]}, rk:{p:{key:n}}, hist, over, started, rot}
+  var S = null, sel = -1, selMoves = [], animating = false;
+  var LEVELS = { easy: { depth: 1, noise: 2.2, wild: 0.2 }, normal: { depth: 2, beam: 10, noise: 0.35 }, hard: { depth: 3, beam: 14, noise: 0.05 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  function hasCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function cur() { return S.players[S.turn]; }
+  function g() { return { b: S.b, pts: S.pts, nostay: S.nostay }; }
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set('Turn ' + S.round);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function ord(n) { return n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'); }
+
+  Kit.init({
+    id: 'chinesecheckers', mark: false,
+    onNew: function () { cancelThink(); clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Chinese Checkers: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Be the first to move all 10 of your marbles across the star into the point straight opposite where they start.</p>' +
+      '<h3>On your turn</h3><ul>' +
+      '<li>Move one marble. Either <b>step</b> it into an empty hole right next to it, or <b>hop</b>.</li>' +
+      '<li>A <b>hop</b> jumps over one marble right next to yours (any colour, even your own) into the empty hole just behind it, in a straight line.</li>' +
+      '<li>After a hop you can keep hopping from where you landed, in any direction, as many times as you can. Stop whenever you like.</li>' +
+      '<li>You can\'t step and hop in the same turn. Nothing is captured: hopped marbles stay where they are.</li>' +
+      '<li>Once a marble reaches your goal point it can move around inside it, but it can\'t leave.</li></ul>' +
+      '<h3>Who sits where</h3><ul>' +
+      '<li>2 players start opposite each other. 3 players use every other point. 4 players use two pairs of opposite points. With 5, one point stays empty. 6 fills the board.</li>' +
+      '<li>Play goes clockwise around the board.</li></ul>' +
+      '<h3>Winning</h3><ul>' +
+      '<li>Fill every hole of your goal point first to win.</li>' +
+      '<li><b>No blocking:</b> if someone else\'s marble is still sitting in your goal point, it doesn\'t stop you. You win as soon as every other hole there holds one of your marbles.</li>' +
+      '<li><b>Play for all places</b> (setup option): keep going after the winner to decide 2nd, 3rd and so on.</li>' +
+      '<li><b>Pass through only</b> (setup option): you may hop through other points, but you can only stop in your own start and goal points.</li></ul>' +
+      '<h3>Playing here</h3><ul>' +
+      '<li>Tap one of your marbles to see every hole it can reach. Lines show the hop routes. Tap a hole to move there.</li>' +
+      '<li>If you have no move at all, your turn is skipped.</li>' +
+      '<li>In pass &amp; play the board can turn so the player whose turn it is sits at the bottom.</li></ul>'
+  });
+
+  function showSetup() {
+    S = null; sel = -1; selMoves = [];
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 5 computer players' },
+        { id: 'pp', icon: 'users', title: 'Pass & play', desc: '1 to 6 people on one device' },
+        { id: 'mix', icon: 'sparkle', title: 'People + computers', desc: 'Friends and robots at one table' }
+      ],
+      options: [
+        { id: 'cpus', label: 'Computer players', value: 1, choices: [[1, '1'], [2, '2'], [3, '3'], [4, '4']], when: function (m) { return m === 'mix'; } },
+        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], when: function (m) { return m !== 'pp'; } },
+        { id: 'places', label: 'Play for', value: 'win', choices: [['win', 'The winner'], ['all', 'All places']] },
+        { id: 'nostay', label: 'Other players’ points', value: 'stop', choices: [['stop', 'Can stop there'], ['pass', 'Pass through only']] },
+        { id: 'spin', label: 'Board', value: 'turn', choices: [['turn', 'Turns to each player'], ['fixed', 'Stays put']], when: function (m) { return m !== 'cpu'; } }
+      ],
+      players: {
+        min: 1, max: 6,
+        range: function (m) { return m === 'cpu' ? [2, 6] : m === 'mix' ? [2, 5] : [1, 6]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : false; }
+      },
+      onStart: function (cfg) {
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+        if (cfg.mode === 'mix') {
+          var want = Math.min(+cfg.options.cpus || 1, 6 - players.length);
+          if (want < (+cfg.options.cpus || 1)) Kit.toast('The board seats 6, so ' + want + (want === 1 ? ' computer joins' : ' computers join'));
+          var avoid = players.map(function (p) { return p.name; });
+          Kit.cpuNames(want, avoid, 8).forEach(function (n) { players.push({ name: n, cpu: true }); });
+        }
+        players.forEach(function (p, i) { p.col = COLORS[i]; });
+        newGame({
+          mode: cfg.mode, level: cfg.options.level || 'normal', players: players,
+          places: cfg.options.places === 'all' && players.length > 2, nostay: cfg.options.nostay === 'pass',
+          spin: cfg.mode !== 'cpu' && cfg.options.spin !== 'fixed'
+        });
+      }
+    });
+  }
+  function newGame(cfg) {
+    cancelThink(); animating = false;
+    var st = E.start(cfg.players.length);
+    S = {
+      mode: cfg.mode, level: cfg.level, places: !!cfg.places, nostay: !!cfg.nostay, spin: !!cfg.spin,
+      players: cfg.players, pts: st.pts, b: st.b, turn: 0, round: 1,
+      cnt: cfg.players.map(function () { return 0; }), fin: [], last: null,
+      st: { chains: cfg.players.map(function () { return 0; }), big: [] }, rk: {}, hist: [], over: false, started: Date.now(), rot: 0
+    };
+    sel = -1; selMoves = [];
+    S.rot = wantRot(0);
+    Kit.gameStart(); save(); render(); maybeCpu();
+  }
+  function again() {
+    if (!S) return showSetup();
+    // Next game: the seat after this game's first player starts (rotate the seating)
+    var ps = S.players.slice(1).concat([S.players[0]]);
+    ps.forEach(function (p, i) { p.col = COLORS[i]; });
+    newGame({ mode: S.mode, level: S.level, players: ps, places: S.places, nostay: S.nostay, spin: S.spin });
+  }
+
+  // ── Turns ────────────────────────────────────────────────────────────────
+  function active(p) { return S.fin.indexOf(p) < 0; }
+  function wantRot(p) {
+    // Turn the board so this player's start point is at the bottom (human turns only)
+    if (!S.spin || S.players[p].cpu || humans() < 2) return S.rot || 0;
+    var target = -60 * S.pts[p], r = S.rot || 0;
+    while (target - r > 180) target -= 360;
+    while (target - r < -180) target += 360;
+    return target;
+  }
+  function commit(mv, byCpu) {
+    if (!S || S.over) return;
+    var p = S.turn;
+    var legal = E.movesFrom(S.b, mv.f, S.pts, S.nostay).filter(function (m) { return m.t === mv.t; })[0];
+    if (!legal || S.b[mv.f] !== p + 1) return;
+    var path = mv.path && mv.path[0] === legal.f && mv.path[mv.path.length - 1] === legal.t ? mv.path : legal.path;
+    var h = legal.h ? path.length - 1 : 0;
+    S.hist.push({ b: S.b.join(''), turn: S.turn, round: S.round, cnt: S.cnt.slice(), fin: S.fin.slice(), last: S.last, st: JSON.stringify(S.st), rot: S.rot, cpu: !!byCpu });
+    if (S.hist.length > 400) S.hist.shift();
+    var D = E.DIST[E.tgtOf(S.pts, p)], gain = D[legal.f] - D[legal.t];
+    S.b = S.b.slice(); S.b[legal.f] = 0; S.b[legal.t] = p + 1;
+    S.cnt[p]++; S.last = { p: p, path: path };
+    if (h > S.st.chains[p]) S.st.chains[p] = h;
+    if (h >= 4) S.st.big.push({ p: p, h: h, gain: gain, round: S.round });
+    var rk = S.rk[p] || (S.rk[p] = {}), kk = E.key(S.b, p); rk[kk] = (rk[kk] || 0) + 1;
+    var won = E.isWin(S.b, p, S.pts), place = 0;
+    if (won) { S.fin.push(p); place = S.fin.length; }
+    var left = S.players.map(function (x, i) { return i; }).filter(active);
+    if (won && (!S.places || left.length <= 1)) {
+      if (S.places) left.forEach(function (i) { S.fin.push(i); });
+      S.over = true;
+    }
+    var skipped = [];
+    if (!S.over) skipped = advance();
+    sel = -1; selMoves = [];
+    animating = true;
+    save(); render();
+    Kit.haptic(h ? 'medium' : 'light');
+    var node = layerNode(legal.t);
+    animPath(node, path, h > 0).then(function () {
+      animating = false;
+      if (!S) return;
+      if (h >= 3) Kit.callout(h + ' hops!', CHEX[S.players[p].col]);
+      if (won) {
+        Kit.sfx('good');
+        if (!S.over) Kit.callout((S.players[p].name === 'You' ? 'You finished ' : S.players[p].name + ' finished ') + ord(place) + '!', CHEX[S.players[p].col]);
+      }
+      if (S.over) { finish(); return; }
+      skipped.forEach(function (i, k) { setTimeout(function () { Kit.toast(S.players[i].name + ' has no move, so the turn passes'); }, k * 1900); });
+      var r = wantRot(S.turn);
+      if (r !== S.rot) { S.rot = r; save(); paintRot(); setTimeout(function () { paintAll(); maybeCpu(); }, 650); }
+      else { paintAll(); maybeCpu(); }
+    });
+  }
+  // Pass to the next player still racing; skip anyone with no legal move
+  function advance() {
+    var n = S.players.length, skipped = [];
+    for (var tries = 0; tries < n * 2; tries++) {
+      var nx = S.turn;
+      do { nx = (nx + 1) % n; if (nx === 0) S.round++; } while (!active(nx));
+      S.turn = nx;
+      if (E.allMoves(S.b, nx, S.pts, S.nostay).length) return skipped;
+      skipped.push(nx);
+    }
+    return skipped;
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.over) return Kit.toast('The game is over');
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false; animating = false;
+    var snap;
+    while (S.hist.length) { snap = S.hist.pop(); if (!snap.cpu) break; }
+    S.b = snap.b.split('').map(Number); S.turn = snap.turn; S.round = snap.round; S.cnt = snap.cnt; S.fin = snap.fin;
+    S.last = snap.last; S.st = JSON.parse(snap.st); S.rot = snap.rot;
+    sel = -1; selMoves = [];
+    Kit.sfx('whoosh'); save(); render(); maybeCpu();
+  }
+
+  // ── Computer ─────────────────────────────────────────────────────────────
+  var fast = false; // test hook: skip delays and animations
+  function maybeCpu() {
+    if (!S || S.over || animating || S.busy || !cur().cpu) return;
+    S.busy = true; paintChips(); paintTurn();
+    var t0 = Date.now(), myB = S.b, p = S.turn, lv = LEVELS[S.level] || LEVELS.normal;
+    var o = { depth: lv.depth, beam: lv.beam, noise: lv.noise, wild: lv.wild, recent: S.rk[p] || {} };
+    think(g(), p, o, function (res) {
+      if (!S || S.b !== myB) return;
+      setTimeout(function () {
+        if (!S || S.b !== myB) return;
+        S.busy = false;
+        if (res) commit(res, true);
+        else { var sk = advance(); save(); paintAll(); maybeCpu(); if (!sk) return; }
+      }, fast ? 0 : Math.max(0, 600 + Math.random() * 250 - (Date.now() - t0)));
+    });
+  }
+
+  // ── Finish ───────────────────────────────────────────────────────────────
+  function finish() {
+    S.over = true; sel = -1; save(); clearSave(); paintAll();
+    var n = S.players.length, w = S.fin[0], W = S.players[w];
+    var order = S.fin.slice();
+    S.players.forEach(function (x, i) { if (order.indexOf(i) < 0) order.push(i); });
+    // Unplaced players ranked by marbles home, then by distance left
+    var tail = order.slice(S.fin.length).sort(function (a, b) {
+      return E.homeCount(S.b, b, S.pts) - E.homeCount(S.b, a, S.pts) || E.togo(S.b, a, S.pts) - E.togo(S.b, b, S.pts);
+    });
+    order = S.fin.slice().concat(tail);
+    var hl = [];
+    var moves = S.cnt[w];
+    hl.push((W.name === 'You' ? 'You' : W.name) + ' finished in ' + moves + ' moves' + (n > 1 ? ', ' + S.round + (S.round === 1 ? ' turn' : ' turns') + ' into the game' : ''));
+    var bestP = -1, bestH = 0;
+    S.st.chains.forEach(function (h, i) { if (h > bestH) { bestH = h; bestP = i; } });
+    var big = S.st.big.slice().sort(function (a, b) { return b.h - a.h || b.gain - a.gain; })[0];
+    if (big && big.h >= 5) hl.push(S.players[big.p].name + ' chained a ' + big.h + '-hop jump' + (big.gain >= 7 ? ' across the board' : '') + ' on turn ' + big.round);
+    if (bestP >= 0) hl.push('Longest hop chain: ' + bestH + (bestH === 1 ? ' hop' : ' hops') + ' (' + S.players[bestP].name + ')');
+    if (S.places && S.fin.length > 1) hl.push('Places: ' + S.fin.map(function (i, k) { return ord(k + 1) + ' ' + S.players[i].name; }).join(', '));
+    else if (n > 1) {
+      var ru = order[1], hc = E.homeCount(S.b, ru, S.pts);
+      hl.push(S.players[ru].name + ' came closest with ' + hc + ' of 10 marbles home');
+    }
+    if (S.nostay) hl.push('Played with pass-through-only points');
+    if (hasCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    var modeName = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : S.mode === 'mix' ? 'People + computers (' + LEVEL_NAME[S.level] + ')' : n === 1 ? 'Solo' : 'Pass & play';
+    Kit.record(KEY, {
+      started: S.started, mode: modeName + (n > 1 ? ' · ' + n + ' players' : ''),
+      players: order.map(function (i) { var x = S.players[i]; return { name: x.name, score: E.homeCount(S.b, i, S.pts), cpu: x.cpu }; }),
+      winner: W.name,
+      summary: W.name + ' won in ' + moves + ' moves',
+      highlights: hl, meta: { rounds: S.round, places: S.fin.map(function (i) { return S.players[i].name; }), colors: S.players.map(function (x) { return x.col; }) }
+    });
+    var lose = W.cpu && humans() > 0 && S.mode !== 'pp';
+    Kit.callout(W.name === 'You' ? 'You win!' : W.name + ' wins!', CHEX[W.col]);
+    setTimeout(function () {
+      Kit.win({
+        icon: lose ? 'bot' : 'trophy',
+        title: n === 1 ? 'Solved in ' + moves + ' moves!' : W.name === 'You' ? 'You win!' : W.name + (lose ? ' wins this one' : ' wins!'),
+        sub: n === 1 ? 'All 10 marbles across the star' : 'Filled the ' + CNAME[W.col].toLowerCase() + ' goal point in ' + moves + ' moves',
+        lose: lose,
+        rank: n > 1 ? order.map(function (i, k) {
+          var x = S.players[i], done = S.fin.indexOf(i) >= 0 && (k === 0 || S.places);
+          return { name: x.name, score: done && k < S.fin.length && E.isWin(S.b, i, S.pts) ? S.cnt[i] + ' moves' : E.homeCount(S.b, i, S.pts) + '/10 home', color: CHEX[x.col] };
+        }) : null,
+        again: again, againLabel: 'Play again',
+        extra: [{ label: 'View the board', onClick: function () {} }],
+        closeLabel: 'Back to games'
+      });
+    }, 900);
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  var chipsEl, wrapEl, spinEl, hsvgEl, layerEl, turnEl, actsEl;
+  function boardSvg() {
+    var R = 7.62, hex = [];
+    for (var k = 0; k < 6; k++) { var a = (90 + 60 * k) * Math.PI / 180; hex.push(f2(R * Math.cos(a)) + ',' + f2(R * Math.sin(a))); }
+    var poly = hex.join(' ');
+    var s = '<svg class="bsvg" viewBox="' + VB.x + ' ' + VB.y + ' ' + VB.w + ' ' + VB.h + '" aria-hidden="true"><defs>' +
+      '<linearGradient id="ccwd" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#9a5a2c"/><stop offset=".45" stop-color="#7a4220"/><stop offset="1" stop-color="#4f2810"/></linearGradient>' +
+      '<filter id="ccgr" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".07 1.1" numOctaves="3" seed="11"/>' +
+      '<feColorMatrix values="0 0 0 0 .12  0 0 0 0 .05  0 0 0 0 .01  0 0 0 1.1 -.35"/><feComposite in2="SourceGraphic" operator="in"/></filter>' +
+      '<radialGradient id="cchole" cx=".5" cy=".58" r=".6"><stop offset="0" stop-color="#2a160a"/><stop offset=".55" stop-color="#170a04"/><stop offset="1" stop-color="#050201"/></radialGradient>' +
+      '<radialGradient id="ccsh" cx=".28" cy=".18" r=".95"><stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset=".55" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></radialGradient>' +
+      '</defs>' +
+      '<polygon points="' + poly + '" fill="url(#ccwd)" stroke="url(#ccwd)" stroke-width=".8" stroke-linejoin="round"/>' +
+      '<polygon points="' + poly + '" fill="#000" stroke="#000" stroke-width=".8" stroke-linejoin="round" filter="url(#ccgr)"/>' +
+      '<polygon points="' + poly + '" fill="url(#ccsh)" stroke="none"/>' +
+      '<polygon points="' + poly + '" fill="none" stroke="rgba(0,0,0,.45)" stroke-width=".06" stroke-linejoin="round" transform="scale(1.05)"/>' +
+      '<polygon points="' + poly + '" fill="none" stroke="rgba(255,226,180,.16)" stroke-width=".05" stroke-linejoin="round" transform="scale(.96)"/>';
+    // Each start point tinted lightly in its owner's colour
+    S.players.forEach(function (pl, p) {
+      var cells = E.PT[S.pts[p]], tip = E.TIP[S.pts[p]], far = cells.filter(function (c) { return E.hd(c, tip) === 3; });
+      var a = far[0], b2 = far[far.length - 1];
+      var cx = (E.PX[tip] + E.PX[a] + E.PX[b2]) / 3, cy = (E.PY[tip] + E.PY[a] + E.PY[b2]) / 3, kx = 1.46;
+      var pts = [tip, a, b2].map(function (c) { return f2(cx + (E.PX[c] - cx) * kx) + ',' + f2(cy + (E.PY[c] - cy) * kx); }).join(' ');
+      s += '<polygon points="' + pts + '" fill="' + TINT[pl.col] + '" fill-opacity="' + (pl.col === 'white' ? .2 : .3) + '" stroke="' + TINT[pl.col] + '" stroke-opacity=".55" stroke-width=".07" stroke-linejoin="round"/>';
+    });
+    // Drilled holes: lit lower lip, dark bore
+    for (var i = 0; i < E.N; i++) {
+      var x = f2(E.PX[i]), y = f2(E.PY[i]);
+      s += '<circle cx="' + x + '" cy="' + f2(E.PY[i] + .035) + '" r=".3" fill="rgba(255,214,160,.22)"/><circle cx="' + x + '" cy="' + y + '" r=".285" fill="url(#cchole)"/>';
+    }
+    return s + '</svg>';
+  }
+  function render() {
+    if (!S || !S.b) return;
+    app.innerHTML = '';
+    var col = el('div', { class: 'cc-col' });
+    chipsEl = el('div', { class: 'chips' });
+    var n = S.players.length;
+    chipsEl.style.setProperty('--cols', n >= 5 ? 3 : n === 1 ? 1 : 2);
+    col.appendChild(chipsEl);
+    wrapEl = el('div', { class: 'bwrap', role: 'application', 'aria-label': 'Chinese checkers board' });
+    wrapEl.style.setProperty('--chrome', (n > 2 ? 380 : 330) + 'px');
+    spinEl = el('div', { class: 'spin', html: boardSvg() });
+    hsvgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    hsvgEl.setAttribute('class', 'hsvg'); hsvgEl.setAttribute('viewBox', VB.x + ' ' + VB.y + ' ' + VB.w + ' ' + VB.h);
+    spinEl.appendChild(hsvgEl);
+    layerEl = el('div', { class: 'mlayer' });
+    spinEl.appendChild(layerEl);
+    wrapEl.appendChild(spinEl);
+    col.appendChild(wrapEl);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
+    app.appendChild(col);
+    paintRot(true);
+    paintMarbles(); paintAll();
+    bindInput();
+  }
+  function paintAll() { if (!S || !layerEl) return; paintHints(); paintChips(); paintTurn(); paintActs(); paintCan(); }
+  function paintRot(now) {
+    if (!spinEl) return;
+    if (now) { spinEl.style.transition = 'none'; spinEl.style.setProperty('--rot', S.rot + 'deg'); void spinEl.offsetWidth; spinEl.style.transition = ''; }
+    else spinEl.style.setProperty('--rot', S.rot + 'deg');
+  }
+  function marble(colr) { return el('div', { class: 'mb c-' + colr, html: '<i></i>' }); }
+  function paintMarbles() {
+    layerEl.innerHTML = '';
+    for (var i = 0; i < E.N; i++) {
+      if (!S.b[i]) continue;
+      var m = marble(S.players[S.b[i] - 1].col); m.dataset.c = i;
+      m.style.left = L(i); m.style.top = T(i);
+      layerEl.appendChild(m);
+    }
+  }
+  function layerNode(c) { return layerEl && layerEl.querySelector('.mb[data-c="' + c + '"]'); }
+  function animPath(node, path, hop) {
+    return new Promise(function (res) {
+      if (!node || !node.animate || fast) { res(); return; }
+      node.classList.add('fly');
+      var k = 0;
+      function seg() {
+        if (k >= path.length - 1 || !node.isConnected) { node.classList.remove('fly'); res(); return; }
+        var a = path[k], b = path[k + 1]; k++;
+        var mx = ((E.PX[a] + E.PX[b]) / 2 - VB.x) / VB.w * 100 + '%', my = ((E.PY[a] + E.PY[b]) / 2 - VB.y) / VB.h * 100 + '%';
+        var an = node.animate([
+          { left: L(a), top: T(a), transform: 'translate(-50%,-50%) scale(1)' },
+          { left: mx, top: my, transform: 'translate(-50%,-50%) scale(' + (hop ? 1.34 : 1.06) + ')', offset: .5 },
+          { left: L(b), top: T(b), transform: 'translate(-50%,-50%) scale(1)' }
+        ], { duration: hop ? 250 : 210, easing: 'ease-in-out' });
+        an.onfinish = function () { Kit.sfx(hop ? 'tick' : 'tap'); if (hop) Kit.haptic('tick'); seg(); };
+        an.oncancel = function () { node.classList.remove('fly'); res(); };
+      }
+      // Start at the origin while the first frame is set up
+      node.style.left = L(path[0]); node.style.top = T(path[0]);
+      requestAnimationFrame(function () { node.style.left = L(path[path.length - 1]); node.style.top = T(path[path.length - 1]); seg(); });
+    });
+  }
+  function svgEl(tag, attrs) { var n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  function paintHints() {
+    hsvgEl.innerHTML = '';
+    // Last move trail
+    var lm = S.last;
+    if (lm && lm.path && !(sel >= 0)) {
+      var c = TINT[S.players[lm.p].col], ptsStr = lm.path.map(function (x) { return f2(E.PX[x]) + ',' + f2(E.PY[x]); }).join(' ');
+      hsvgEl.appendChild(svgEl('polyline', { points: ptsStr, fill: 'none', stroke: S.players[lm.p].col === 'purple' ? '#b18cff' : c, 'stroke-opacity': '.75', 'stroke-width': '.11', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': '.05 .2' }));
+      hsvgEl.appendChild(svgEl('circle', { cx: f2(E.PX[lm.path[0]]), cy: f2(E.PY[lm.path[0]]), r: '.36', fill: 'none', stroke: 'rgba(255,230,170,.75)', 'stroke-width': '.06' }));
+      lm.path.slice(1, -1).forEach(function (x) { hsvgEl.appendChild(svgEl('circle', { cx: f2(E.PX[x]), cy: f2(E.PY[x]), r: '.09', fill: 'rgba(255,230,170,.7)' })); });
+    }
+    if (sel < 0) return;
+    // Hop routes for the selected marble, then destination markers
+    var seen = {};
+    selMoves.forEach(function (m) {
+      for (var k = 0; k < m.path.length - 1; k++) {
+        var a = m.path[k], b = m.path[k + 1], id = a + '-' + b; if (seen[id]) continue; seen[id] = 1;
+        hsvgEl.appendChild(svgEl('line', { x1: f2(E.PX[a]), y1: f2(E.PY[a]), x2: f2(E.PX[b]), y2: f2(E.PY[b]), stroke: 'rgba(255,226,140,.6)', 'stroke-width': '.075', 'stroke-linecap': 'round', 'stroke-dasharray': m.h ? '.16 .12' : 'none' }));
+      }
+    });
+    selMoves.forEach(function (m) {
+      var x = f2(E.PX[m.t]), y = f2(E.PY[m.t]);
+      if (m.h) hsvgEl.appendChild(svgEl('circle', { cx: x, cy: y, r: '.25', fill: 'rgba(255,214,90,.28)', stroke: '#ffd65a', 'stroke-width': '.07' }));
+      else hsvgEl.appendChild(svgEl('circle', { cx: x, cy: y, r: '.16', fill: '#ffe08a' }));
+    });
+    var sm = layerNode(sel); if (sm) sm.classList.add('sel');
+  }
+  function paintCan() {
+    // A soft pulse on your marbles at the start of your turn, until you pick one
+    Array.prototype.forEach.call(layerEl.querySelectorAll('.mb.can'), function (x) { x.classList.remove('can'); });
+    if (!canAct() || sel >= 0 || S.cnt[S.turn] > 1) return;
+    Array.prototype.forEach.call(layerEl.querySelectorAll('.mb'), function (x) { if (S.b[+x.dataset.c] === S.turn + 1) x.classList.add('can'); });
+  }
+  function paintChips() {
+    if (!chipsEl) return;
+    chipsEl.innerHTML = '';
+    S.players.forEach(function (pl, i) {
+      var on = !S.over && S.turn === i, pi = S.fin.indexOf(i), hc = E.homeCount(S.b, i, S.pts);
+      var sub = on && pl.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>'
+        : pi >= 0 && (S.places || pi === 0) && E.isWin(S.b, i, S.pts) ? Kit.icon('trophy') + ' ' + ord(pi + 1) + (S.over ? '' : ' place')
+        : hc + '/10 home' + (on ? ' · to move' : '');
+      var chip = el('div', { class: 'pchip' + (on ? ' on' : '') + (pi >= 0 ? ' done' : '') }, [
+        el('span', { class: 'mm' }, [marble(pl.col)]),
+        el('div', { class: 'who' }, [
+          el('span', { class: 'nm', html: (pl.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(pl.name) + '</span>' }),
+          el('span', { class: 'sub', html: sub })
+        ])
+      ]);
+      chip.style.setProperty('--c', CHEX[pl.col]);
+      chipsEl.appendChild(chip);
+    });
+  }
+  function paintTurn() {
+    if (!turnEl) return;
+    turnEl.innerHTML = '';
+    if (S.over) {
+      var w = S.players[S.fin[0]];
+      turnEl.style.setProperty('--c', CHEX[w.col]);
+      turnEl.appendChild(el('span', { text: (w.name === 'You' ? 'You win' : w.name + ' wins') + ' in ' + S.cnt[S.fin[0]] + ' moves' }));
+      return;
+    }
+    var p = cur();
+    turnEl.style.setProperty('--c', CHEX[p.col]);
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt = p.cpu ? p.name + ' is thinking…' : S.players.length === 1 ? 'Move ' + (S.cnt[0] + 1) + ': tap a marble' : Kit.poss(p.name) + ' turn' + (S.cnt[S.turn] === 0 ? ': tap a marble' : '');
+    turnEl.appendChild(el('span', { text: txt }));
+  }
+  function paintActs() {
+    actsEl.innerHTML = '';
+    if (S.over) {
+      actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: again }));
+      actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('history') + '<span>Past games</span>', onclick: function () { Kit.history(KEY, { title: 'Chinese Checkers: past games' }); } }));
+      return;
+    }
+    actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
+  }
+
+  // ── Input: tap a marble, then a hole. Nearest-hole tapping, rotation aware ─
+  function canAct() { return S && !S.over && !S.busy && !animating && !cur().cpu; }
+  function cellAt(x, y) {
+    var r = wrapEl.getBoundingClientRect(), dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+    var th = -(S.rot || 0) * Math.PI / 180, ux = dx * Math.cos(th) - dy * Math.sin(th), uy = dx * Math.sin(th) + dy * Math.cos(th);
+    var sc = r.width / VB.w, vx = ux / sc + (VB.x + VB.w / 2), vy = uy / sc + (VB.y + VB.h / 2);
+    var best = -1, bd = 0.8 * 0.8;
+    for (var i = 0; i < E.N; i++) { var ddx = E.PX[i] - vx, ddy = E.PY[i] - vy, d = ddx * ddx + ddy * ddy; if (d < bd) { bd = d; best = i; } }
+    return best;
+  }
+  function select(c) {
+    if (sel >= 0) { var o = layerNode(sel); if (o) o.classList.remove('sel'); }
+    sel = c; selMoves = c < 0 ? [] : E.movesFrom(S.b, c, S.pts, S.nostay);
+    paintHints(); paintCan();
+  }
+  function bindInput() {
+    wrapEl.addEventListener('click', function (e) {
+      if (!canAct()) {
+        if (S && !S.over && cur().cpu) Kit.toast(cur().name + ' is moving');
+        return;
+      }
+      var c = cellAt(e.clientX, e.clientY); if (c < 0) { if (sel >= 0) select(-1); return; }
+      if (sel >= 0) {
+        var m = selMoves.filter(function (x) { return x.t === c; })[0];
+        if (m) { commit(m); return; }
+      }
+      var v = S.b[c];
+      if (v === S.turn + 1) {
+        if (sel === c) { select(-1); return; }
+        select(c); Kit.sfx('tick'); Kit.haptic('tick');
+        if (!selMoves.length) Kit.toast('That marble is boxed in');
+        return;
+      }
+      if (v && sel < 0) { Kit.haptic('error'); Kit.toast((S.players.length > 1 && humans() > 1 ? Kit.poss(cur().name) + ' turn: ' : '') + 'your marbles are ' + CNAME[cur().col].toLowerCase()); return; }
+      if (sel >= 0) select(-1);
+    });
+  }
+
+  // ── Test hook (used by automated checks; harmless otherwise) ─────────────
+  window.__cc = {
+    E: E, state: function () { return S; },
+    fast: function (on) { fast = !!on; },
+    start: function (cfg) { newGame(cfg); },
+    set: function (b, turn) { if (!S) return; cancelThink(); S.busy = false; animating = false; S.b = b.slice(); S.turn = turn || 0; S.hist = []; S.last = null; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
+    move: function (f, t) { var m = E.movesFrom(S.b, f, S.pts, S.nostay).filter(function (x) { return x.t === t; })[0]; if (m) commit(m); return !!m; },
+    cellXY: function (c) {
+      var r = wrapEl.getBoundingClientRect(), sc = r.width / VB.w, th = (S.rot || 0) * Math.PI / 180;
+      var ux = E.PX[c] * sc, uy = E.PY[c] * sc;
+      return { x: r.left + r.width / 2 + ux * Math.cos(th) - uy * Math.sin(th), y: r.top + r.height / 2 + ux * Math.sin(th) + uy * Math.cos(th) };
+    }
+  };
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; render(); maybeCpu(); }
+  else showSetup();
+})();
+</script>
+</body>
+</html>

@@ -765,7 +765,11 @@
   }
   var rsT = 0;
   window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(layoutStage, 120); });
-  function setCam(c) { ui.cam = c; if (shell) shell.studio.setAttribute('data-cam', c); }
+  function setCam(c) {
+    ui.cam = c; if (!shell) return;
+    shell.studio.setAttribute('data-cam', c);
+    if (c === 'wide' && !mq.matches) shell.readout.classList.remove('go');
+  }
 
   // ── Painting ──────────────────────────────────────────────────────────────
   function paintBoard() {
@@ -821,7 +825,7 @@
         if (S.wedge.t === 'free') return 'Free Play! Consonants pay <b>$500</b> each, vowels are free, and a miss costs nothing.';
         return p.cpu ? n + ' is calling a letter for <b>' + money(S.wedge.v) + '</b>.' : 'Call a consonant for <b>' + money(S.wedge.v) + '</b> each.';
       case 'tossup': return 'Toss-up for <b>' + money(S.tu.prize) + '</b>. Buzz in when you know it!';
-      case 'roundEnd': return S.lastWin ? vb(S.players[S.lastWin.p].name, 'wins', 'win') + ' round ' + S.round + ' and banks <b>' + money(S.lastWin.amt) + '</b>!' : '';
+      case 'roundEnd': return S.lastWin ? vb(S.players[S.lastWin.p].name, 'wins', 'win') + ' round ' + S.round + (S.players[S.lastWin.p].name === 'You' ? ' and bank <b>' : ' and banks <b>') + money(S.lastWin.amt) + '</b>!' : '';
       case 'bonusIntro': return vb(p.name, 'is', 'are') + ' in the Bonus Round! Spin for a prize envelope.';
       case 'bonusPick': return 'R, S, T, L, N and E are free. ' + (p.cpu ? n + ' is choosing letters…' : 'Pick 3 more consonants and 1 vowel.');
       case 'bonusReady': return p.cpu ? n + ' has ' + S.opts.clock + ' seconds…' : ui.clock ? 'Tap <b>Solve!</b> the moment you know it.' : 'You get <b>' + S.opts.clock + ' seconds</b>. Ready?';
@@ -1195,7 +1199,7 @@
     if (info.hidden.length) await revealWave(info.hidden);
     snd('solve'); Kit.callout('SOLVED!');
     if (!p.cpu) { Kit.confetti({ count: 90 }); Kit.haptic('success'); }
-    host(vb(p.name, 'wins', 'win') + ' round ' + S.round + ' and banks <b>' + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
+    host(vb(p.name, 'wins', 'win') + ' round ' + S.round + (p.name === 'You' ? ' and bank <b>' : ' and banks <b>') + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
     await wait(800);
     tweenMoney(me, 'bank', info.amt, 400);
     await wait(500);
