@@ -612,7 +612,10 @@
   //   modes:   [{id, icon, title, desc}]       icon = a Kit.icon name           optional mode cards
   //   mode:    default mode id
   //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats', seatLabel}
-  //   options: [{id, label, choices:[[value,label],...], value}]  segmented pickers
+  //   options: [{id, label, choices:[[value,label],...], value, help}]  segmented pickers
+  //            help: plain-language explanation shown by a tappable "?" next to
+  //            the label. A choice can carry its own note as a third item,
+  //            [value, label, help]; the note for the chosen value shows too.
   //   intro:   short line under the title
   //   start:   button label
   //   onStart: function(cfg)   cfg = {mode, players:[{name,cpu,color}], options:{}}
@@ -628,6 +631,7 @@
     (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
     var bots = cpuNames(8);
+    var openHelp = {};
 
     var wrap = el('div', { class: 'setup' });
     wrap.appendChild(el('div', { class: 'setup-hero' }, [
@@ -673,7 +677,17 @@
             onclick: function () { state.options[op.id] = c[0]; sfx('tap'); renderOptions(); }
           }));
         });
-        optsBox.appendChild(el('div', null, [el('div', { class: 'label', text: op.label }), seg]));
+        var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]);
+        var cur = op.choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
+        var note = [op.help, cur && cur[2]].filter(Boolean).join(' ');
+        var hasHelp = op.help || op.choices.some(function (c) { return c[2]; });
+        var box = el('div', { class: 'k-opt' + (openHelp[op.id] ? ' help-on' : '') }, [lab, seg]);
+        if (hasHelp) {
+          lab.appendChild(el('button', { type: 'button', class: 'k-q', 'aria-label': 'What does ' + op.label + ' mean?', 'aria-expanded': String(!!openHelp[op.id]), text: '?',
+            onclick: function () { openHelp[op.id] = !openHelp[op.id]; sfx('tap'); renderOptions(); } }));
+          box.appendChild(el('p', { class: 'k-help', text: note || '' }));
+        }
+        optsBox.appendChild(box);
       });
     }
     function renderSeats() {
@@ -714,7 +728,15 @@
               bots[i - 1] = cpuNames(1, bots, state.count >= 4 ? 8 : 0)[0] || bots[i - 1]; inp.value = bots[i - 1]; sfx('pop'); haptic('light');
             } }));
           } else {
-            inp.addEventListener('input', function () { names[i] = inp.value; });
+            inp.addEventListener('input', function () { names[i] = inp.value; clr.hidden = !inp.value; });
+            // Re-offer the frequent-player chips once a typed name is settled or cleared
+            inp.addEventListener('change', function () { renderSeats(); });
+            var clr = el('button', { type: 'button', class: 'seat-clear', 'aria-label': 'Clear name', html: icon('close'), onclick: function () {
+              names[i] = ''; sfx('tap'); haptic('light'); renderSeats();
+              var again = seatsBox.querySelectorAll('input')[i]; if (again) again.focus();
+            } });
+            clr.hidden = !inp.value;
+            field.appendChild(clr);
             field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'Choose a player', html: icon('users'), onclick: function () {
               pickName(function (n) { names[i] = n; renderSeats(); }, { taken: names.slice(0, state.count).filter(function (x, j) { return j !== i; }), title: 'Seat ' + (i + 1) });
             } }));
