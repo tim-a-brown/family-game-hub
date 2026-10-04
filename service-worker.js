@@ -84,6 +84,7 @@ const PRECACHE_URLS = [
   '/games/minigolf.html',
   '/games/othello.html',
   '/games/chinesecheckers.html',
+  '/data/words-en.js',
   '/games/marbles.html',
   '/games/jokerrun.html',
   '/games/pacman.html',

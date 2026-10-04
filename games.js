@@ -78,7 +78,7 @@ var GAMES = [
   // ── Words ────────────────────────────────────────────────────────────────
   { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'words', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
   { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'words', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
-  { id: 'crossword',   name: 'Mini Crossword', color: '#2563eb', cat: 'words', min: 1, max: 1, tag: 'Quick 5×5 crosswords', play: 'crossword' },
+  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'words', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword' },
   { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'words', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle' },
   { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'words', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
   { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'words', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
