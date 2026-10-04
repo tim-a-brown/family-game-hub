@@ -233,8 +233,29 @@ body{overflow:hidden;}
         gone[a] = gone[b] = true; left -= 2; order.push([a, b]);
       }
       if (ok) return order;
+      if (tries === 40 && idx.length <= 28) return exhaustive(idx, LK, n);
     }
     return null;
+  }
+  // Small leftovers: search every way to take them off, so we only give up
+  // when the tiles really cannot all be removed.
+  function exhaustive(idx, LK, n) {
+    var gone = []; for (var i = 0; i < n; i++) gone.push(true);
+    idx.forEach(function (i) { gone[i] = false; });
+    var dead = {}, order = [];
+    function rec(left) {
+      if (!left) return true;
+      var key = idx.filter(function (i) { return !gone[i]; }).join(',');
+      if (dead[key]) return false;
+      var free = idx.filter(function (i) { return isFree(i, gone, LK); });
+      for (var a = 0; a < free.length; a++) for (var b = a + 1; b < free.length; b++) {
+        gone[free[a]] = gone[free[b]] = true; order.push([free[a], free[b]]);
+        if (rec(left - 2)) return true;
+        order.pop(); gone[free[a]] = gone[free[b]] = false;
+      }
+      dead[key] = true; return false;
+    }
+    return rec(idx.length) ? shuffle(order.slice()).length && order : null;
   }
   function wpick(arr, w) {
     var tot = w.reduce(function (s, x) { return s + x; }, 0), r = Math.random() * tot;

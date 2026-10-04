@@ -3,11 +3,37 @@
 //
 //   Cards.deck({suits, ranks, decks})   -> [{r,s,id}]  standard 52 by default
 //   Cards.shuffle(arr)                   -> arr (in place, Fisher–Yates)
-//   Cards.sort(hand, {suits, ranks, trump})  sort for display
+//   Cards.sort(hand, {suits, ranks, trump, by})  sort for display (in place)
+//       by: 'suit' (default: suit groups, trump first, then rank)
+//           'rank' (rank order, then suit order; trump still first on ties)
+//   Cards.sortBy(hand, mode, {suit: cmp, rank: cmp, …})  sort in place with
+//       the comparator for `mode` (falls back to the first one). For decks
+//       with their own card types (Rook colours, Phase 10 wilds/skips, Five
+//       Crowns jokers, Wizard wizards/jesters). Ties keep their old order.
 //   Cards.el(card, opts)                 -> Kit.card element for {r,s}
 //   Cards.fan(container)                 squeeze overlap so a hand fits its width
 //   Cards.fly(node, fromEl, opts)        animate node from fromEl's position
+//   Cards.flip(root, mutate, {ms})       FLIP: note where every [data-id] card
+//       in root is, run mutate() (re-sort + repaint), then slide each card
+//       from its old spot to its new one. root may be a function returning
+//       the element (if mutate rebuilds it).
 //   Cards.wait(ms)                       -> Promise
+//
+//   Sort toggle (the "Suit | Rank" pill above your hand):
+//   Cards.sortToggle(host, {key, modes, value, onChange, flip, retap})
+//       -> {el, get(), set(mode)}
+//       key:      localStorage key that remembers the choice (e.g. 'hearts_sort')
+//       modes:    ['suit','rank'] (default). Presets: 'suit', 'rank', 'melds',
+//                 'groups', 'color'. Or objects {id, label, glyph} (glyph is
+//                 HTML; omitted fields come from the preset with the same id).
+//       value:    default mode when nothing is remembered yet
+//       onChange: fn(mode) after a tap that changes the mode
+//       flip:     element (or fn returning it) to FLIP-animate around onChange
+//       retap:    true = tapping the current mode calls onChange again
+//                 (e.g. tidy up after dragging cards around)
+//       host may be null: append toggle.el yourself, usually inside a
+//       <div class="csort-row"> placed right above the hand (right-aligned).
+//   Cards.sortMode(key, def, ids)        -> remembered mode (or def)
 //
 //   Scorepad(host, opts)                 paper scorepad for "keep score" games
 //     (see the comment above Scorepad for options)
