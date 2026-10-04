@@ -51,7 +51,7 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
   of the app keep serving cached files until it changes. Format:
   `v<N>-<YYYY-MM-DD>-<short-slug>`.
 - **New or renamed game file**: update `PRECACHE_URLS` in `service-worker.js` and
-  the game lists in `index.html` and `hub.html`.
+  the catalog in `games.js`.
 - **`firestore.rules` changed**: the Action deploys hosting only. Deploy rules
   separately with the service account
   (`npx firebase-tools deploy --only firestore:rules --project familygames-da3e5`)
