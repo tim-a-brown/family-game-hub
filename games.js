@@ -58,7 +58,7 @@ var GAMES = [
   { id: 'yahtzee',     name: 'Yahtzee',      color: '#ef4444', cat: 'dice', min: 1, max: 8, tag: 'Roll for the best combos', play: 'yahtzee' },
   { id: 'plinko',      name: 'Plinko',       color: '#eab308', cat: 'dice', min: 1, max: 4, tag: 'Drop the chip, hope for the big slot', play: 'plinko' },
   { id: 'wheeloffortune', name: 'Wheel of Fortune', color: '#7c3aed', cat: 'dice', min: 1, max: 3, tag: 'Spin, guess, solve the puzzle', play: 'wheeloffortune' },
-  { id: 'dealornodeal',name: 'Deal or No Deal', color: '#ca8a04', cat: 'dice', min: 1, max: 1, tag: 'Take the offer or risk it all', play: 'dealornodeal' },
+  { id: 'dealornodeal',name: 'Deal or No Deal', color: '#ca8a04', cat: 'dice', min: 1, max: 4, tag: 'Take the offer or risk it all', play: 'dealornodeal' },
   { id: 'shellgame',   name: 'Shell Game',   color: '#0d9488', cat: 'dice', min: 1, max: 4, tag: 'Keep your eye on the ball', play: 'shellgame' },
 
   // ── Puzzles ──────────────────────────────────────────────────────────────

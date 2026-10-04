@@ -60,7 +60,7 @@
 .sq.hov::before{background:rgba(255,255,255,.28);}
 .layer{position:absolute;inset:0;pointer-events:none;}
 .pc{position:absolute;width:12.5%;height:12.5%;display:grid;place-items:center;}
-.pc svg{width:92%;height:92%;filter:drop-shadow(0 2px 1.2px rgba(0,0,0,.5));overflow:visible;}
+.pc svg{width:100%;height:100%;filter:drop-shadow(0 2px 1.2px rgba(0,0,0,.5));overflow:visible;}
 .pc.lift svg{transform:translateY(-6%) scale(1.08);filter:drop-shadow(0 6px 4px rgba(0,0,0,.45));transition:transform .15s var(--spring);}
 .pc.drag{opacity:.25;}
 .pc.gone{animation:gone .35s ease-out forwards;}
@@ -424,7 +424,7 @@
     var w = code > 0, sh = SHAPES[Math.abs(code)];
     var stroke = w ? '#3b2a1a' : '#050302', det = w ? '#3b2a1a' : '#d9cba9';
     var d = sh.d.replace(/class="fd"/g, 'fill="' + det + '" stroke="none"');
-    return '<svg viewBox="0 0 100 100" aria-hidden="true"><g fill="url(#' + (w ? 'gw' : 'gb') + ')" stroke="' + stroke + '" stroke-width="3" stroke-linejoin="round">' + sh.m + '</g>' +
+    return '<svg viewBox="7 3 86 88" aria-hidden="true"><g fill="url(#' + (w ? 'gw' : 'gb') + ')" stroke="' + stroke + '" stroke-width="3" stroke-linejoin="round">' + sh.m + '</g>' +
       (d ? '<g fill="none" stroke="' + det + '" stroke-width="2.6" stroke-linecap="round">' + d + '</g>' : '') + '</svg>';
   }
 
@@ -565,19 +565,19 @@
     if (res.type === 'mate') {
       var lastPiece = Math.abs(S.pos.b[S.last.t]);
       var forkMate = S.events.some(function (e) { return e.type === 'fork' && e.side === res.winner; });
-      hl.push(winner.name + ' checkmated ' + loser.name + ' in ' + moves + ' moves with a ' + PNAME[lastPiece] + (forkMate && lastPiece === 2 ? ' after a knight fork' : ''));
+      hl.push(winner.name + ' checkmated ' + loser.name + ' in ' + moves + (moves === 1 ? ' move' : ' moves') + ' with a ' + PNAME[lastPiece] + (forkMate && lastPiece === 2 ? ' after a knight fork' : ''));
     } else if (res.type === 'resign') hl.push(loser.name + ' resigned after ' + moves + ' moves');
     else hl.push(DRAW_TEXT[res.type] + ' after ' + moves + ' moves');
     var evs = S.events.filter(function (e) { return e.type !== 'castle'; });
     evs.slice(-4).forEach(function (e) { hl.push(e.text); });
     var mat = [1, -1].map(function (s) { return S.caps[s].reduce(function (a, v) { return a + [0, 1, 3, 3, 5, 9][v]; }, 0); });
-    if (S.caps['1'].length + S.caps['-1'].length) hl.push('Captured: ' + pl(1).name + ' ' + S.caps['1'].length + ' pieces (' + mat[0] + ' points), ' + pl(-1).name + ' ' + S.caps['-1'].length + ' (' + mat[1] + ' points)');
+    if (S.caps['1'].length + S.caps['-1'].length) hl.push('Pieces captured: ' + pl(1).name + ' ' + S.caps['1'].length + ' (worth ' + mat[0] + '), ' + pl(-1).name + ' ' + S.caps['-1'].length + ' (worth ' + mat[1] + ')');
     if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     Kit.record(KEY, {
       started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
       players: S.players.map(function (p) { return { name: p.name + ' (' + sideName(p.side) + ')', score: winner ? (p === winner ? 1 : 0) : 0.5, cpu: p.cpu }; }),
       winner: winner ? winner.name + ' (' + sideName(winner.side) + ')' : null,
-      summary: winner ? winner.name + ' won in ' + moves + ' moves' : DRAW_TEXT[res.type] || 'Draw',
+      summary: winner ? winner.name + ' won in ' + moves + (moves === 1 ? ' move' : ' moves') : DRAW_TEXT[res.type] || 'Draw',
       highlights: hl, meta: { moves: S.moves.slice(), result: res.type }
     });
     if (res.type === 'mate') { Kit.callout('Checkmate!'); }
@@ -586,7 +586,7 @@
       Kit.win({
         icon: !winner ? 'users' : lose ? 'bot' : 'trophy',
         title: !winner ? (res.type === 'stalemate' ? "Stalemate: it's a draw" : "It's a draw") : lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
-        sub: res.type === 'mate' ? 'Checkmate in ' + moves + ' moves' : res.type === 'resign' ? loser.name + ' resigned' : DRAW_TEXT[res.type],
+        sub: res.type === 'mate' ? 'Checkmate in ' + moves + (moves === 1 ? ' move' : ' moves') : res.type === 'resign' ? loser.name + ' resigned' : DRAW_TEXT[res.type],
         lose: !!lose, againLabel: 'Play again',
         again: function () { newGame(true); },
         extra: [{ label: 'View the board', onClick: function () {} }],
@@ -658,7 +658,7 @@
     turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
     movesEl = el('div', { class: 'moves' }); col.appendChild(movesEl);
     var acts = el('div', { class: 'acts' }, [
-      el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }),
+      S.over ? null : el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }),
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('swap') + '<span>Flip</span>', onclick: function () { S.flip = !S.flip; Kit.sfx('tap'); save(); render(); } })
     ]);
     if (S.over) acts.insertBefore(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } }), acts.firstChild);
@@ -715,7 +715,7 @@
     var tray = el('div', { class: 'tray' }), prev = 0;
     caps.forEach(function (v) { if (prev && v !== prev) tray.appendChild(el('span', { class: 'gap' })); prev = v; tray.insertAdjacentHTML('beforeend', pieceSvg(v * -side)); });
     if (adv > 0) tray.appendChild(el('span', { class: 'adv', text: '+' + adv }));
-    var sub = on ? (p.cpu ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : (E.inCheck(S.pos, side) ? 'In check!' : Kit.poss(p.name) + ' move')) : sideName(side);
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : sideName(side) + (on ? (E.inCheck(S.pos, side) ? ' · in check!' : ' · to move') : '');
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok', html: pieceSvg(6 * side) }));
     node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
@@ -734,7 +734,7 @@
       return;
     }
     turnEl.appendChild(el('span', { class: 'dot' }));
-    turnEl.appendChild(el('span', { text: (chk ? 'Check! ' : '') + (p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' move (' + sideName(pos.turn) + ')') }));
+    turnEl.appendChild(el('span', { text: (chk ? 'Check! ' : '') + (p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' move') }));
   }
   function paintMoves() {
     movesEl.innerHTML = '';
@@ -828,7 +828,7 @@
   // ── Test hook (used by automated checks; harmless otherwise) ─────────────
   window.__chess = {
     E: E, state: function () { return S; },
-    fen: function (fen) { if (!S) return; cancelThink(); S.busy = false; S.pos = fromFen(fen); S.keys = [E.key(S.pos)]; S.hist = []; S.moves = []; S.last = null; S.over = false; S.result = null; S.caps = { '1': [], '-1': [] }; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
+    fen: function (fen) { if (!S) return; cancelThink(); S.busy = false; S.pos = fromFen(fen); S.keys = [E.key(S.pos)]; S.hist = []; S.moves = []; S.events = []; S.last = null; S.over = false; S.result = null; S.caps = { '1': [], '-1': [] }; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
     move: function (from, to, promo) { var f = (8 - +from[1]) * 8 + FILES.indexOf(from[0]), t = (8 - +to[1]) * 8 + FILES.indexOf(to[0]); commit({ f: f, t: t, promo: promo || 0 }); },
     legalSan: function () { var l = E.legal(S.pos); return l.map(function (m) { return san(S.pos, m, l); }); },
     fromFen: fromFen

@@ -1,318 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Othello</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-:root{--bs:clamp(260px,min(100vw - 32px,100vh - 340px),520px);}
-@supports (height:100dvh){:root{--bs:clamp(260px,min(100vw - 32px,100dvh - 340px),520px);}}
-.site-nav button.icon-btn{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;display:inline-grid;place-items:center;}
-.icon-btn svg{width:18px;height:18px;}
-.gk{width:var(--bs);max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
-.gk .tabs{margin:0;}
+.cb-col{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.pbar{--c:var(--accent);display:flex;align-items:center;gap:10px;min-height:46px;padding:5px 12px 5px 10px;border-radius:14px;background:rgba(255,255,255,.05);border:2px solid transparent;transition:border-color .2s, background .2s;}
+.pbar.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);}
+.pbar.on .sub{color:var(--c);}
+.pbar .cnt{font-size:1.6rem;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;min-width:2ch;text-align:right;}
+.pbar .cnt.bump{animation:pop .45s var(--spring);}
+.tok{width:28px;height:28px;border-radius:50%;flex:none;}
+.tok.b{background:radial-gradient(circle at 40% 32%,#5c5c64,#18181b 62%,#050506);box-shadow:0 2px 0 #000,0 3px 5px rgba(0,0,0,.5);}
+.tok.w{background:radial-gradient(circle at 40% 32%,#ffffff,#e9e7e1 60%,#bdb9b0);box-shadow:0 2px 0 #8f8b82,0 3px 5px rgba(0,0,0,.5);}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
 
-.players{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.ot-chip{display:flex;align-items:center;gap:8px;min-height:56px;padding:8px 10px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:border-color .25s var(--ease),background .25s,box-shadow .25s;}
-.ot-chip.active{border-color:rgba(245,200,66,.5);background:linear-gradient(180deg,rgba(245,200,66,.1),rgba(245,200,66,.02)),var(--surface);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
-.ot-chip .disc{width:24px;height:24px;border-radius:50%;flex:none;}
-.disc.b{background:radial-gradient(circle at 35% 30%,#5a5f68,#16181c 60%,#000);box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
-.disc.w{background:radial-gradient(circle at 35% 30%,#fff,#e4e4e4 55%,#b9b9b9);box-shadow:0 2px 4px rgba(0,0,0,.5);}
-.ot-chip .who{flex:1;min-width:0;}
-.ot-chip .nm{font-weight:700;font-size:.9rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ot-chip .sub{font-size:.74rem;color:var(--text-3);font-weight:600;}
-.ot-chip.active .sub{color:var(--gold);}
-.ot-chip-val{font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1;font-variant-numeric:tabular-nums;}
-
-.board-frame{position:relative;padding:7px;border-radius:16px;background:linear-gradient(145deg,#2b2f37,#14161b);box-shadow:0 18px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);}
-.ot-board{position:relative;display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;border-radius:9px;overflow:hidden;background:radial-gradient(120% 100% at 50% 0%,#1f8a4c,#126b37 60%,#0d5a2d);}
-.ot-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.45);transform:translate(-50%,-50%);pointer-events:none;z-index:1;}
-.ot-sq{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 0 0 .5px rgba(0,0,0,.35);}
-.ot-sq.hint::after{content:'';position:absolute;width:26%;height:26%;border-radius:50%;background:rgba(255,255,255,.28);transition:transform .15s var(--spring);}
-.ot-sq.hint:active::after{transform:scale(1.4);}
-.ot-piece{width:82%;height:82%;border-radius:50%;position:relative;z-index:2;transition:transform .15s;}
-.ot-piece.w{background:radial-gradient(circle at 35% 30%,#fff,#ececec 55%,#bdbdbd);box-shadow:0 3px 0 #9a9a9a,0 5px 8px rgba(0,0,0,.4);}
-.ot-piece.b{background:radial-gradient(circle at 35% 30%,#5a5f68,#16181c 60%,#000);box-shadow:0 3px 0 #000,0 5px 8px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08);}
-.ot-piece.last::after{content:'';position:absolute;left:50%;top:50%;width:20%;height:20%;border-radius:50%;background:#ff5a4f;transform:translate(-50%,-50%);box-shadow:0 0 0 2px rgba(0,0,0,.15);}
-@keyframes ot-flip{0%{transform:scaleX(1);}50%{transform:scaleX(0);}100%{transform:scaleX(1);}}
-.ot-piece.flipping{animation:ot-flip .32s ease;}
-@keyframes ot-drop{from{transform:scale(1.25);opacity:.4;}to{transform:scale(1);opacity:1;}}
-.ot-piece.drop{animation:ot-drop .22s var(--ease);}
-.ot-status{text-align:center;font-size:.92rem;font-weight:600;color:var(--text-2);min-height:24px;}
-.ot-status b{color:var(--text);}
-.rules{text-align:left;}
-.rules h4{font-family:var(--display);font-size:.95rem;color:var(--text);margin:14px 0 4px;}
-.rules h4:first-child{margin-top:0;}
-.rules ul{padding-left:18px;}
-.rules li{margin-bottom:4px;}
+/* Board: green felt in a dark wooden frame */
+.frame{--rim:clamp(10px,3vw,14px);position:relative;padding:var(--rim);border-radius:14px;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,transparent 2px 7px),
+    repeating-linear-gradient(88deg,rgba(0,0,0,.1) 0 1px,transparent 1px 11px),
+    linear-gradient(180deg,#4b2f1c,#2e1b0f);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.14),inset 0 -3px 0 rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);}
+.bd{position:relative;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
+  border-radius:3px;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+.sq{position:relative;box-shadow:inset 0 0 0 .75px rgba(0,0,0,.5);cursor:pointer;}
+.sq.hint::after{content:"";position:absolute;left:38%;top:38%;width:24%;height:24%;border-radius:50%;opacity:.5;transition:transform .15s var(--spring);}
+.sq.hint.hb::after{background:#111;}
+.sq.hint.hw::after{background:#f4f2ec;}
+.sq.hint:active::after{transform:scale(1.5);}
+.sq.last::before{content:"";position:absolute;inset:0;background:rgba(255,220,90,.22);}
+.star{position:absolute;width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.6);transform:translate(-50%,-50%);pointer-events:none;z-index:1;}
+.layer{position:absolute;inset:0;pointer-events:none;z-index:2;}
+.dk{position:absolute;width:12.5%;height:12.5%;display:grid;place-items:center;perspective:300px;}
+.dk .sh{position:absolute;width:78%;height:78%;border-radius:50%;background:rgba(0,0,0,.45);filter:blur(2px);transform:translateY(7%);}
+.coin{position:relative;width:82%;height:82%;transform-style:preserve-3d;}
+.face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.face.bk{transform:rotateY(180deg);}
+.face.cb{background:radial-gradient(circle at 50% 38%,#5d5d66,#1b1b1f 60%,#060607);box-shadow:inset 0 -2px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.06);}
+.face.cw{background:radial-gradient(circle at 50% 38%,#ffffff,#eeece6 58%,#c4c0b6);box-shadow:inset 0 -2px 0 rgba(0,0,0,.12),inset 0 0 0 1px rgba(0,0,0,.08);}
+.dk.new .coin{animation:drop .32s cubic-bezier(.3,1.4,.5,1);}
+@keyframes drop{from{transform:translateY(-35%) scale(1.3);opacity:.4;}to{transform:none;opacity:1;}}
+.dk.lastm .coin::after{content:"";position:absolute;left:42%;top:42%;width:16%;height:16%;border-radius:50%;background:#ff5a4f;transform:translateZ(1px);box-shadow:0 0 0 1.5px rgba(0,0,0,.2);}
+.bd.shake{animation:shake .4s;}
+.turn{margin:2px 0 0;min-height:34px;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.acts .btn{flex:1;max-width:180px;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Othello</span>
-  <button class="icon-btn" id="help-btn" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.6"/><path d="M12 17.2h.01"/></svg></button>
-  <button class="icon-btn" id="ot-new" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-
-<template id="rules-tpl">
-  <div class="rules">
-    <h4>The goal</h4>
-    <p>Have more discs of your color on the board when neither player can move.</p>
-    <h4>Taking a turn</h4>
-    <ul>
-      <li>Place a disc so it <strong>traps</strong> one or more opponent discs in a straight line (across, down or diagonal) between it and another of your discs.</li>
-      <li>Every trapped disc is <strong>flipped</strong> to your color.</li>
-      <li>Legal squares show a faint dot. No legal move? Your turn is skipped.</li>
-    </ul>
-    <h4>Strategy tips</h4>
-    <ul>
-      <li><strong>Corners are king</strong> — they can never be flipped.</li>
-      <li>Avoid squares next to an empty corner.</li>
-      <li>Edges are stable; a big early lead can vanish late.</li>
-    </ul>
-  </div>
-</template>
-
-<div class="page">
-<div class="gk">
-  <div class="tabs" role="tablist">
-    <button class="tab active" id="mode-ai">vs Computer</button>
-    <button class="tab" id="mode-2p">2 Players</button>
-  </div>
-  <div class="players">
-    <div class="ot-chip active" id="chip-b"><span class="disc b"></span><div class="who"><div class="nm" id="nm-b">You</div><div class="sub" id="sub-b">Black</div></div><div class="ot-chip-val" id="cnt-b">2</div></div>
-    <div class="ot-chip" id="chip-w"><span class="disc w"></span><div class="who"><div class="nm" id="nm-w">Computer</div><div class="sub" id="sub-w">White</div></div><div class="ot-chip-val" id="cnt-w">2</div></div>
-  </div>
-  <div class="board-frame"><div class="ot-board" id="ot-board"></div></div>
-  <div class="ot-status" id="ot-status">Black to move</div>
-</div>
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-window.GN=window.GN||{haptic(){},toast(){},sheet(){return{close(){},el:document.createElement('div')};},confirm:()=>Promise.resolve(true)};
-let board=[], turn='b', aiMode=true, gameOver=false;
-let lastPlaced=null, justFlipped=new Set(), aiTimer=null, movesMade=0;
-const DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'othello_state', KEY = 'othello';
+  var BLACK = 1, WHITE = -1;
 
-function opp(t){return t==='b'?'w':'b';}
-
-function initBoard(){
-  board=Array.from({length:8},()=>Array(8).fill(null));
-  board[3][3]='w';board[3][4]='b';board[4][3]='b';board[4][4]='w';
-}
-
-function getFlips(r,c,t,b=board){
-  if(b[r][c])return[];
-  const flips=[];
-  DIRS.forEach(([dr,dc])=>{
-    const line=[];
-    let nr=r+dr,nc=c+dc;
-    while(nr>=0&&nr<8&&nc>=0&&nc<8&&b[nr][nc]===opp(t)){line.push([nr,nc]);nr+=dr;nc+=dc;}
-    if(line.length&&nr>=0&&nr<8&&nc>=0&&nc<8&&b[nr][nc]===t)flips.push(...line);
-  });
-  return flips;
-}
-
-function getLegal(t,b=board){
-  const moves=[];
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(!b[r][c]&&getFlips(r,c,t,b).length)moves.push([r,c]);
-  return moves;
-}
-
-function name(t){return aiMode?(t==='b'?'You':'Computer'):(t==='b'?'Black':'White');}
-
-function playMove(r,c,t=turn){
-  const flips=getFlips(r,c,t);
-  if(!flips.length)return false;
-  board[r][c]=t;
-  flips.forEach(([fr,fc])=>{board[fr][fc]=t;});
-  lastPlaced=[r,c];justFlipped=new Set(flips.map(([a,b])=>a*8+b));movesMade++;
-  GN.haptic(flips.length>=4?'medium':'light');
-  turn=opp(t);
-  const next=getLegal(turn);
-  if(!next.length){
-    const skipped=turn;
-    turn=opp(turn);
-    const back=getLegal(turn);
-    if(!back.length){gameOver=true;}
-    else setTimeout(()=>GN.toast(aiMode?(skipped==='b'?'You have no moves — pass':'Computer has no moves — your turn again'):`${skipped==='b'?'Black':'White'} has no moves — pass`),350);
-  }
-  return true;
-}
-
-function countPieces(){
-  let b=0,w=0;
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){if(board[r][c]==='b')b++;if(board[r][c]==='w')w++;}
-  return{b,w};
-}
-
-// Minimax AI with position weights
-const WEIGHTS=[[120,-20,20,5,5,20,-20,120],[-20,-40,-5,-5,-5,-5,-40,-20],[20,-5,15,3,3,15,-5,20],[5,-5,3,3,3,3,-5,5],[5,-5,3,3,3,3,-5,5],[20,-5,15,3,3,15,-5,20],[-20,-40,-5,-5,-5,-5,-40,-20],[120,-20,20,5,5,20,-20,120]];
-
-function evalBoard(b){
-  let s=0;
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    if(b[r][c]==='w')s+=WEIGHTS[r][c];
-    else if(b[r][c]==='b')s-=WEIGHTS[r][c];
-  }
-  s+=getLegal('w',b).length*5-getLegal('b',b).length*5;
-  return s;
-}
-
-function minimax(b,depth,alpha,beta,maxing){
-  const t=maxing?'w':'b';
-  const moves=getLegal(t,b);
-  if(depth===0||!moves.length)return evalBoard(b);
-  if(maxing){
-    let best=-Infinity;
-    for(const[r,c]of moves){
-      const nb=b.map(row=>row.slice());
-      nb[r][c]='w';getFlips(r,c,'w',b).forEach(([fr,fc])=>{nb[fr][fc]='w';});
-      best=Math.max(best,minimax(nb,depth-1,alpha,beta,false));
-      alpha=Math.max(alpha,best);if(beta<=alpha)break;
-    }
-    return best;
-  } else {
-    let best=Infinity;
-    for(const[r,c]of moves){
-      const nb=b.map(row=>row.slice());
-      nb[r][c]='b';getFlips(r,c,'b',b).forEach(([fr,fc])=>{nb[fr][fc]='b';});
-      best=Math.min(best,minimax(nb,depth-1,alpha,beta,true));
-      beta=Math.min(beta,best);if(beta<=alpha)break;
-    }
-    return best;
-  }
-}
-
-function aiMove(){
-  if(gameOver||!aiMode||turn!=='w')return;
-  const moves=getLegal('w');
-  if(!moves.length)return;
-  let best=null,bestScore=-Infinity;
-  const depth=moves.length>20?3:4;
-  moves.forEach(([r,c])=>{
-    const nb=board.map(row=>row.slice());
-    nb[r][c]='w';getFlips(r,c,'w',board).forEach(([fr,fc])=>{nb[fr][fc]='w';});
-    const score=minimax(nb,depth,-Infinity,Infinity,false);
-    if(score>bestScore){bestScore=score;best=[r,c];}
-  });
-  if(best)playMove(best[0],best[1],'w');
-  afterTurn();
-}
-
-// After any move: render, then hand over to the AI (it may move again if Black had to pass)
-function afterTurn(){
-  render();
-  if(gameOver){showResult();return;}
-  if(aiMode&&turn==='w'){clearTimeout(aiTimer);aiTimer=setTimeout(aiMove,520);}
-}
-
-function showResult(){
-  const{b,w}=countPieces();
-  const winner=b>w?'b':w>b?'w':null;
-  let title;
-  if(!winner)title="It's a tie!";
-  else if(aiMode)title=winner==='b'?'You win! 🏆':'Computer wins';
-  else title=`${winner==='b'?'Black':'White'} wins! 🏆`;
-  GN.haptic(aiMode&&winner==='w'?'error':'success');
-  setTimeout(()=>GN.sheet({title,body:`Final score <b style="color:var(--text)">${b} – ${w}</b>`,actions:[
-    {label:'Play again',primary:true,onClick:freshGame},{label:'View board'}]}),600);
-}
-
-const boardEl=document.getElementById('ot-board');
-function render(){
-  boardEl.innerHTML='';
-  const legal=!gameOver&&!(aiMode&&turn==='w')?getLegal(turn):[];
-  const legalSet=new Set(legal.map(([r,c])=>`${r},${c}`));
-  for(let r=0;r<8;r++){
-    for(let c=0;c<8;c++){
-      const sq=document.createElement('div');
-      sq.className='ot-sq'+(legalSet.has(`${r},${c}`)?' hint':'');
-      if(board[r][c]){
-        const p=document.createElement('div');
-        p.className='ot-piece '+board[r][c];
-        if(lastPlaced&&lastPlaced[0]===r&&lastPlaced[1]===c)p.classList.add('last','drop');
-        else if(justFlipped.has(r*8+c))p.classList.add('flipping');
-        sq.appendChild(p);
+  // ═════════════════════════════════════════════════════════════════════════
+  // Engine (pure; also runs in a Web Worker). Board: 64 ints, 1 black, -1 white.
+  // ═════════════════════════════════════════════════════════════════════════
+  function OthelloEngine() {
+    var DIRS = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    function flips(b, s, side) {
+      if (b[s]) return [];
+      var out = [], r0 = s >> 3, c0 = s & 7;
+      for (var d = 0; d < 8; d++) {
+        var r = r0 + DIRS[d][0], c = c0 + DIRS[d][1], line = [];
+        while (r >= 0 && r < 8 && c >= 0 && c < 8 && b[r * 8 + c] === -side) { line.push(r * 8 + c); r += DIRS[d][0]; c += DIRS[d][1]; }
+        if (line.length && r >= 0 && r < 8 && c >= 0 && c < 8 && b[r * 8 + c] === side) for (var i = 0; i < line.length; i++) out.push(line[i]);
       }
-      sq.addEventListener('click',()=>{
-        if(gameOver)return;
-        if(aiMode&&turn==='w')return;
-        if(!legalSet.has(`${r},${c}`)){if(!board[r][c])GN.haptic('error');return;}
-        playMove(r,c);
-        afterTurn();
-      });
-      boardEl.appendChild(sq);
+      return out;
     }
+    function moves(b, side) {
+      var out = [];
+      for (var s = 0; s < 64; s++) if (!b[s]) { var f = flips(b, s, side); if (f.length) out.push({ s: s, f: f }); }
+      return out;
+    }
+    function apply(b, m, side) { var nb = b.slice(); nb[m.s] = side; for (var i = 0; i < m.f.length; i++) nb[m.f[i]] = side; return nb; }
+    var W = [100, -20, 10, 5, 5, 10, -20, 100, -20, -50, -2, -2, -2, -2, -50, -20, 10, -2, 1, 1, 1, 1, -2, 10, 5, -2, 1, 0, 0, 1, -2, 5,
+      5, -2, 1, 0, 0, 1, -2, 5, 10, -2, 1, 1, 1, 1, -2, 10, -20, -50, -2, -2, -2, -2, -50, -20, 100, -20, 10, 5, 5, 10, -20, 100];
+    var CORNER_X = [[0, 9, 1, 8], [7, 14, 6, 15], [56, 49, 57, 48], [63, 54, 62, 55]];
+    function evaluate(b, side) {
+      var pos = 0, discs = 0, empt = 0, s, w = W.slice();
+      // Squares next to a corner stop being dangerous once the corner is taken
+      for (var k = 0; k < 4; k++) if (b[CORNER_X[k][0]]) { w[CORNER_X[k][1]] = 5; w[CORNER_X[k][2]] = 8; w[CORNER_X[k][3]] = 8; }
+      for (s = 0; s < 64; s++) { var v = b[s]; if (!v) { empt++; continue; } pos += v * w[s]; discs += v; }
+      var mob = moves(b, 1).length - moves(b, -1).length;
+      var sc = pos + mob * 8 + (empt < 14 ? discs * (14 - empt) : 0);
+      return sc * side;
+    }
+    var WIN = 100000, STOP = {};
+    function search(b, side, o) {
+      o = o || {};
+      var t0 = Date.now(), limit = o.time || 1000, maxD = o.depth || 4, nodes = 0;
+      var empties = 0; for (var i = 0; i < 64; i++) if (!b[i]) empties++;
+      var exact = empties <= (o.exact || 0);
+      function tick() { if ((++nodes & 511) === 0 && Date.now() - t0 > limit) throw STOP; }
+      function final(bd, sd) { var d = 0; for (var i = 0; i < 64; i++) d += bd[i]; d *= sd; return d > 0 ? WIN + d : d < 0 ? -WIN + d : 0; }
+      function ab(bd, sd, depth, alpha, beta, passed) {
+        tick();
+        var ms = moves(bd, sd);
+        if (!ms.length) {
+          if (passed) return final(bd, sd);
+          return -ab(bd, -sd, depth, -beta, -alpha, true);
+        }
+        if (depth <= 0) return evaluate(bd, sd);
+        ms.sort(function (a, c) { return W[c.s] - W[a.s]; });
+        var best = -Infinity;
+        for (var i = 0; i < ms.length; i++) {
+          var v = -ab(apply(bd, ms[i], sd), -sd, depth - 1, -beta, -alpha, false);
+          if (v > best) best = v;
+          if (v > alpha) alpha = v;
+          if (alpha >= beta) break;
+        }
+        return best;
+      }
+      var root = moves(b, side);
+      if (!root.length) return null;
+      if (root.length === 1) return { move: root[0], score: 0, depth: 0 };
+      var noise = o.noise || 0;
+      root.forEach(function (m) { m.n = (Math.random() * 2 - 1) * noise; });
+      var best = root[0], bestS = 0, done = 0;
+      var start = exact ? empties : 1, top = exact ? empties : maxD;
+      for (var d = start; d <= top; d++) {
+        try {
+          var cur = null, curS = -Infinity;
+          root.sort(function (a, c) { return (c === best ? 1e9 : typeof c.v === 'number' ? c.v : W[c.s]) - (a === best ? 1e9 : typeof a.v === 'number' ? a.v : W[a.s]); });
+          for (var j = 0; j < root.length; j++) {
+            var m = root[j];
+            var v = -ab(apply(b, m, side), -side, d - 1, -Infinity, -(cur ? curS - 2 * noise - 1 : -Infinity), false);
+            m.v = v;
+            var vn = v + (exact ? 0 : m.n);
+            if (!cur || vn > curS) { cur = m; curS = vn; }
+          }
+          best = cur; bestS = curS; done = d;
+          if (Date.now() - t0 > limit * 0.5) break;
+        } catch (e) {
+          if (e !== STOP) throw e;
+          // Ran out of time on an exact solve: fall back to a normal search
+          if (exact && !done) { exact = false; t0 = Date.now(); limit = limit / 2; d = 0; top = maxD; continue; }
+          break;
+        }
+      }
+      return { move: { s: best.s, f: best.f }, score: bestS, depth: done, nodes: nodes };
+    }
+    return { flips: flips, moves: moves, apply: apply, search: search, evaluate: evaluate };
   }
-  // star points
-  [[2,2],[2,6],[6,2],[6,6]].forEach(([r,c])=>{const d=document.createElement('span');d.className='ot-dot';d.style.left=(c/8*100)+'%';d.style.top=(r/8*100)+'%';boardEl.appendChild(d);});
-  justFlipped=new Set();
-  const{b,w}=countPieces();
-  document.getElementById('cnt-b').textContent=b;
-  document.getElementById('cnt-w').textContent=w;
-  document.getElementById('nm-b').textContent=name('b');
-  document.getElementById('nm-w').textContent=name('w');
-  document.getElementById('chip-b').classList.toggle('active',turn==='b'&&!gameOver);
-  document.getElementById('chip-w').classList.toggle('active',turn==='w'&&!gameOver);
-  document.getElementById('sub-b').textContent=turn==='b'&&!gameOver?(aiMode?'Your turn':'Black · to move'):'Black';
-  document.getElementById('sub-w').textContent=turn==='w'&&!gameOver?(aiMode?'Thinking…':'White · to move'):'White';
-  const st=document.getElementById('ot-status');
-  if(gameOver){
-    const msg=b>w?`${name('b')} win${aiMode?'':'s'}!`:w>b?`${name('w')} wins!`:'Tie game!';
-    st.innerHTML=`<b>${msg}</b> ${b}–${w}`;
-  } else if(aiMode&&turn==='w'){
-    st.textContent='Computer is thinking…';
-  } else {
-    st.innerHTML=aiMode?`<b>Your move</b> · ${legal.length} option${legal.length===1?'':'s'}`:`<b>${turn==='b'?'Black':'White'}</b> to move`;
+  var E = OthelloEngine();
+
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var src = 'var E=(' + OthelloEngine.toString() + ')();onmessage=function(e){var d=e.data;postMessage({id:d.id,res:E.search(d.b,d.side,d.opts)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(E.search(p.b, p.side, p.opts)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
   }
-}
+  function think(b, side, opts, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, b: b, side: side, opts: opts };
+    if (w) w.postMessage({ id: id, b: b, side: side, opts: opts });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(E.search(b, side, opts)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
 
-function newGame(){clearTimeout(aiTimer);initBoard();turn='b';gameOver=false;lastPlaced=null;justFlipped=new Set();movesMade=0;render();}
-function freshGame(){try{sessionStorage.removeItem('othello');}catch(e){}newGame();}
-function syncTabs(){
-  document.getElementById('mode-ai').classList.toggle('active',aiMode);
-  document.getElementById('mode-2p').classList.toggle('active',!aiMode);
-}
-async function setMode(ai){
-  if(ai===aiMode)return;
-  if(!gameOver&&movesMade>0&&!(await GN.confirm('Switching modes starts a new game.',{title:'Start a new game?',ok:'New game'})))return;
-  aiMode=ai;syncTabs();freshGame();
-}
-document.getElementById('mode-ai').addEventListener('click',()=>setMode(true));
-document.getElementById('mode-2p').addEventListener('click',()=>setMode(false));
-document.getElementById('ot-new').addEventListener('click',async()=>{
-  if(!gameOver&&movesMade>0&&!(await GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New game',danger:true})))return;
-  freshGame();
-});
-document.getElementById('help-btn').addEventListener('click',()=>{
-  GN.sheet({title:'How to play Othello',body:document.getElementById('rules-tpl').content.cloneNode(true).firstElementChild,actions:[{label:'Got it',primary:true}]});
-});
-newGame();
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = {mode, level, players:[{name,cpu,side}], b, turn, last, n, passes:{'1':0,'-1':0},
+  //      best:{'1':{n,move},'-1':..}, hist:[], over, started}
+  var S = null;
+  var LEVELS = { easy: { depth: 1, time: 300, noise: 40, exact: 0 }, normal: { depth: 4, time: 1200, noise: 6, exact: 8 }, hard: { depth: 8, time: 2500, noise: 0, exact: 14 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function colorName(side) { return side === BLACK ? 'Black' : 'White'; }
+  function count(side) { var n = 0; S.b.forEach(function (v) { if (v === side) n++; }); return n; }
 
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_othello(){if(gameOver)return;
-  try{sessionStorage.setItem('othello',JSON.stringify({board,turn,aiMode,gameOver,_ts:Date.now()}));}catch(e){}
-}
-function _load_othello(){
-  try{
-    const raw=sessionStorage.getItem('othello');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s||!Array.isArray(s.board))return false;
-    board=s.board;turn=s.turn;aiMode=s.aiMode!==false;gameOver=s.gameOver||false;
-    syncTabs();afterTurn();
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_othello);
-window.addEventListener('pagehide',_save_othello);
-_load_othello();
+  Kit.init({
+    id: 'othello', mark: false,
+    onNew: function () { cancelThink(); clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Othello: past games' }); } }],
+    rules:
+      '<p class="goal">Have <b>more discs of your colour</b> on the board than the other player when the game ends.</p>' +
+      '<h3>Your turn</h3><ul><li><b>Black goes first.</b> The board starts with two black and two white discs in the middle.</li>' +
+      '<li>Place a disc so that one or more of the other player\'s discs are <b>trapped in a straight line</b> (across, up and down, or diagonally) between your new disc and another of yours.</li>' +
+      '<li>Every trapped disc <b>flips</b> to your colour. A move that would flip nothing isn\'t allowed.</li>' +
+      '<li>The dots show where you can play.</li></ul>' +
+      '<h3>Passing and the end</h3><ul><li>If you have no move that flips something, you <b>pass</b> and the other player goes again.</li>' +
+      '<li>The game ends when neither player can move (usually when the board is full). Most discs wins.</li></ul>' +
+      '<h3>Tips</h3><ul><li><b>Corners</b> can never be flipped. Grab them!</li><li>Be careful with the squares right next to an empty corner: they often give the corner away.</li><li>Flipping lots of discs early isn\'t always best. Having more moves to choose from matters more.</li></ul>'
+  });
+
+  function showSetup() {
+    S = null;
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
+        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one device' }
+      ],
+      options: [
+        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], when: function (m) { return m === 'cpu'; } },
+        { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black (first)'], ['w', 'White']], when: function (m) { return m === 'cpu'; } }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK;
+        S = { mode: cfg.mode, level: cfg.options.level || 'normal', players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : -hs }; }) };
+        newGame();
+      }
+    });
+  }
+  function newGame(swap) {
+    cancelThink();
+    if (swap && !vsCpu()) S.players.forEach(function (p) { p.side = -p.side; });
+    S.b = []; for (var i = 0; i < 64; i++) S.b.push(0);
+    S.b[27] = WHITE; S.b[28] = BLACK; S.b[35] = BLACK; S.b[36] = WHITE;
+    S.turn = BLACK; S.last = null; S.n = 0; S.passes = { '1': 0, '-1': 0 }; S.best = { '1': null, '-1': null };
+    S.hist = []; S.over = false; S.started = Date.now(); S.busy = false; S.passNote = null;
+    Kit.gameStart(); save(); render(); maybeCpu();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function play(s, byCpu) {
+    if (!S || S.over) return;
+    var side = S.turn, f = E.flips(S.b, s, side);
+    if (!f.length) return;
+    S.hist.push({ b: S.b.slice(), turn: side, last: S.last, n: S.n, passes: { '1': S.passes['1'], '-1': S.passes['-1'] }, best: JSON.parse(JSON.stringify(S.best)), cpu: !!byCpu });
+    S.b = E.apply(S.b, { s: s, f: f }, side); S.n++;
+    S.last = { s: s, f: f, side: side };
+    if (!S.best[side] || f.length > S.best[side].n) S.best[side] = { n: f.length, move: S.n };
+    S.passNote = null;
+    var next = -side, ended = false;
+    if (!E.moves(S.b, next).length) {
+      if (!E.moves(S.b, side).length) ended = true;
+      else { S.passes[next]++; S.passNote = next; next = side; }
+    }
+    S.turn = next;
+    render({ s: s, f: f, side: side });
+    Kit.sfx('tap'); Kit.haptic(f.length >= 5 ? 'medium' : 'light');
+    var flipT = 380 + f.length * 60;
+    setTimeout(function () { Kit.sfx('flip'); }, 120);
+    if (f.length >= 6) setTimeout(function () { Kit.callout(f.length + ' flipped!'); Kit.sfx('good'); }, flipT - 200);
+    if (ended) { S.over = true; save(); setTimeout(finish, flipT + 500); return; }
+    if (S.passNote) {
+      var passer = pl(-next);
+      setTimeout(function () { Kit.callout((passer.name === 'You' ? 'You have' : passer.name + ' has') + ' to pass'); Kit.sfx('bad'); }, flipT);
+    }
+    save();
+    setTimeout(maybeCpu, flipT + (S.passNote ? 900 : 100));
+  }
+  function finish() {
+    S.over = true; save(); clearSave(); render();
+    var nb = count(BLACK), nw = count(WHITE);
+    var winSide = nb > nw ? BLACK : nw > nb ? WHITE : 0, winner = winSide ? pl(winSide) : null, loser = winSide ? pl(-winSide) : null;
+    var hl = [];
+    if (winner) hl.push(winner.name + ' won ' + Math.max(nb, nw) + '–' + Math.min(nb, nw) + (count(-winSide) === 0 ? ': a total wipeout!' : ''));
+    else hl.push('A perfect tie, ' + nb + '–' + nw);
+    [BLACK, WHITE].map(function (sd) { return { p: pl(sd), b: S.best[sd] }; }).filter(function (x) { return x.b; })
+      .sort(function (a, c) { return c.b.n - a.b.n; }).slice(0, 1).forEach(function (x) { if (x.b.n >= 3) hl.push(x.p.name + ' flipped ' + x.b.n + ' discs in one move (move ' + x.b.move + ')'); });
+    var corners = {}; [0, 7, 56, 63].forEach(function (s) { if (S.b[s]) corners[S.b[s]] = (corners[S.b[s]] || 0) + 1; });
+    [BLACK, WHITE].forEach(function (sd) { if (corners[sd] >= 3) hl.push(pl(sd).name + ' held ' + (corners[sd] === 4 ? 'all four corners' : '3 of the 4 corners')); });
+    [BLACK, WHITE].forEach(function (sd) { var k = S.passes[sd]; if (k) hl.push(pl(sd).name + ' had to pass ' + (k === 1 ? 'once' : k === 2 ? 'twice' : k + ' times')); });
+    var empt = 64 - nb - nw; if (empt) hl.push('Game ended with ' + empt + ' empty square' + (empt === 1 ? '' : 's') + ': nobody could move');
+    if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: count(p.side), cpu: p.cpu }; }),
+      winner: winner ? winner.name + ' (' + colorName(winner.side) + ')' : null,
+      highlights: hl
+    });
+    setTimeout(function () {
+      var lose = winner && winner.cpu;
+      Kit.win({
+        icon: !winner ? 'users' : lose ? 'bot' : 'trophy',
+        title: !winner ? "It's a tie!" : lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
+        sub: 'Black ' + nb + ' – ' + nw + ' White',
+        rank: S.players.slice().sort(function (a, c) { return count(c.side) - count(a.side); }).map(function (p) { return { name: p.name, score: count(p.side), color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
+        lose: !!lose, againLabel: 'Play again',
+        again: function () { newGame(true); },
+        extra: [{ label: 'View the board', onClick: function () {} }],
+        closeLabel: 'Back to games'
+      });
+    }, 300);
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var snap;
+    while (S.hist.length) { snap = S.hist.pop(); if (!cpu || !snap.cpu) break; }
+    S.b = snap.b; S.turn = snap.turn; S.last = snap.last; S.n = snap.n; S.passes = snap.passes; S.best = snap.best; S.passNote = null;
+    Kit.sfx('whoosh'); save(); render(); maybeCpu();
+  }
+  function maybeCpu() {
+    if (!S || S.over || !pl(S.turn).cpu || S.busy) return;
+    S.busy = true; paintStatus();
+    var t0 = Date.now(), myN = S.n;
+    think(S.b, S.turn, LEVELS[S.level] || LEVELS.normal, function (res) {
+      if (!S || S.n !== myN) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN) return;
+        S.busy = false;
+        if (res && res.move) play(res.move.s, true);
+      }, Math.max(0, 650 - (Date.now() - t0)));
+    });
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  var bdEl, layerEl, topBar, botBar, turnEl;
+  function bottomSide() { return vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : BLACK; }
+  function render(anim) {
+    if (!S || !S.b) return;
+    app.innerHTML = '';
+    var col = el('div', { class: 'cb-col' });
+    topBar = el('div', { class: 'pbar' }); botBar = el('div', { class: 'pbar' });
+    var frame = el('div', { class: 'frame' });
+    bdEl = el('div', { class: 'bd felt-in', role: 'grid', 'aria-label': 'Othello board' });
+    var human = !S.over && !pl(S.turn).cpu, hints = {};
+    if (human) E.moves(S.b, S.turn).forEach(function (m) { hints[m.s] = 1; });
+    for (var s = 0; s < 64; s++) {
+      (function (s) {
+        var q = el('div', { class: 'sq' + (hints[s] ? ' hint ' + (S.turn === BLACK ? 'hb' : 'hw') : ''), 'data-s': s, role: 'gridcell', 'aria-label': 'abcdefgh'[s & 7] + (8 - (s >> 3)) });
+        q.addEventListener('click', function () { tap(s); });
+        bdEl.appendChild(q);
+      })(s);
+    }
+    [[2, 2], [2, 6], [6, 2], [6, 6]].forEach(function (rc) { bdEl.appendChild(el('span', { class: 'star', style: { left: rc[1] * 12.5 + '%', top: rc[0] * 12.5 + '%' } })); });
+    layerEl = el('div', { class: 'layer' }); bdEl.appendChild(layerEl);
+    frame.appendChild(bdEl);
+    col.appendChild(topBar); col.appendChild(frame); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    var acts = el('div', { class: 'acts' });
+    if (S.over) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } }));
+    else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
+    col.appendChild(acts);
+    app.appendChild(col);
+    paintDiscs(anim); paintStatus(anim);
+  }
+  function disc(color, s) {
+    var n = el('div', { class: 'dk', 'data-s': s }, [el('span', { class: 'sh' }), el('div', { class: 'coin' }, [el('span', { class: 'face ' + (color === BLACK ? 'cb' : 'cw') }), el('span', { class: 'face bk ' + (color === BLACK ? 'cw' : 'cb') })])]);
+    n.style.left = (s & 7) * 12.5 + '%'; n.style.top = (s >> 3) * 12.5 + '%';
+    return n;
+  }
+  function paintDiscs(anim) {
+    layerEl.innerHTML = '';
+    var flipping = {};
+    if (anim) anim.f.forEach(function (s) { flipping[s] = 1; });
+    for (var s = 0; s < 64; s++) {
+      var v = S.b[s]; if (!v) continue;
+      var d = disc(flipping[s] ? -v : v, s);
+      if (S.last && S.last.s === s) d.classList.add('lastm');
+      if (anim && anim.s === s) d.classList.add('new');
+      layerEl.appendChild(d);
+    }
+    if (!anim) return;
+    // Flip each trapped disc over, rolling away from the new disc, one after another
+    var r0 = anim.s >> 3, c0 = anim.s & 7;
+    anim.f.forEach(function (s) {
+      var d = layerEl.querySelector('.dk[data-s="' + s + '"]'), coin = d.querySelector('.coin');
+      var dr = (s >> 3) - r0, dc = (s & 7) - c0, dist = Math.max(Math.abs(dr), Math.abs(dc));
+      var ax = -Math.sign(dr), ay = Math.sign(dc);
+      var done = function () {
+        var f = coin.children; f[0].className = 'face ' + (anim.side === BLACK ? 'cb' : 'cw'); f[1].className = 'face bk ' + (anim.side === BLACK ? 'cw' : 'cb');
+        if (a) a.cancel();
+      };
+      var a = null;
+      if (!coin.animate) { done(); return; }
+      a = coin.animate([
+        { transform: 'rotate3d(' + ax + ',' + ay + ',0,0deg)' },
+        { transform: 'translateZ(18px) rotate3d(' + ax + ',' + ay + ',0,90deg)', offset: .5 },
+        { transform: 'rotate3d(' + ax + ',' + ay + ',0,180deg)' }
+      ], { duration: 420, delay: 140 + (dist - 1) * 90, easing: 'ease-in-out', fill: 'forwards' });
+      a.onfinish = done;
+    });
+  }
+  function bar(node, side) {
+    var p = pl(side), on = !S.over && S.turn === side;
+    node.className = 'pbar' + (on ? ' on' : '');
+    node.style.setProperty('--c', side === BLACK ? '#a9a9b3' : '#f4f1e8');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : colorName(side) + (on ? ' · to move' : '');
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'tok ' + (side === BLACK ? 'b' : 'w') }));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    node.appendChild(el('span', { class: 'cnt', text: String(count(side)) }));
+  }
+  function paintStatus() {
+    if (!turnEl) return;
+    var bs = bottomSide(); bar(topBar, -bs); bar(botBar, bs);
+    var p = pl(S.turn);
+    turnEl.innerHTML = ''; turnEl.style.setProperty('--c', S.turn === BLACK ? '#b9b9c4' : '#f4f1e8');
+    if (S.over) {
+      var nb = count(BLACK), nw = count(WHITE), w = nb > nw ? pl(BLACK) : nw > nb ? pl(WHITE) : null;
+      turnEl.appendChild(el('span', { text: w ? (w.name === 'You' ? 'You win ' : w.name + ' wins ') + Math.max(nb, nw) + '–' + Math.min(nb, nw) : "It's a tie" }));
+      return;
+    }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt = p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' turn';
+    if (S.passNote) txt = (pl(S.passNote).name === 'You' ? 'You pass. ' : pl(S.passNote).name + ' passed. ') + (p.cpu ? p.name + ' goes again' : Kit.poss(p.name) + ' turn again');
+    turnEl.appendChild(el('span', { text: txt }));
+  }
+  function tap(s) {
+    if (!S || S.over || S.busy || pl(S.turn).cpu) return;
+    if (!E.flips(S.b, s, S.turn).length) {
+      if (!S.b[s]) { Kit.haptic('error'); Kit.toast('That move doesn\'t flip anything'); }
+      return;
+    }
+    play(s);
+  }
+
+  window.__othello = {
+    E: E, state: function () { return S; },
+    set: function (b, turn) { cancelThink(); S.busy = false; S.b = b.slice(); S.turn = turn; S.hist = []; S.last = null; S.over = false; S.n = 0; S.passNote = null; save(); render(); maybeCpu(); },
+    tap: tap
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; render(); maybeCpu(); }
+  else showSetup();
+})();
 </script>
 </body>
 </html>
