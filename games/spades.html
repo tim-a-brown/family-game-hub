@@ -76,6 +76,14 @@
   // in = {bid, tricks, nil: -1|0|1 (which partner), blind, nilTook}; prevBags = bags carried in
   function score(inp, prevBags, bagRule) {
     var r = { pts: 0, bags: 0, penalty: 0, set: false, made: false, nilOk: null };
+    if (inp.nil === 2) { // both partners bid Nil: each Nil scores on its own, every trick is a bag
+      var v2 = inp.blind ? 200 : 100;
+      [inp.nilTook, inp.nilTook2].forEach(function (t) { r.pts += t === 0 ? v2 : -v2; });
+      r.nilOk = inp.nilTook === 0 && inp.nilTook2 === 0;
+      r.pts += inp.tricks; r.bags += inp.tricks;
+      if (bagRule) { var tb = prevBags + r.bags; r.penalty = Math.floor(tb / 10) - Math.floor(prevBags / 10); r.pts -= 100 * r.penalty; }
+      return r;
+    }
     var forBid = inp.tricks - (inp.nil >= 0 ? inp.nilTook : 0);
     if (inp.bid > 0) {
       if (forBid >= inp.bid) { r.made = true; r.pts += 10 * inp.bid + (forBid - inp.bid); r.bags += forBid - inp.bid; }
@@ -93,7 +101,8 @@
   // Each round's per-team note doubles as the record of what was entered.
   function detail(inp, r, names) {
     var parts = [];
-    if (inp.nil >= 0) parts.push(names[inp.nil] + (inp.blind ? ' blind nil' : ' nil') + (inp.nilTook ? ' took ' + inp.nilTook : ' made'));
+    if (inp.nil === 2) parts.push('both' + (inp.blind ? ' blind' : '') + ' nil ' + inp.nilTook + '/' + inp.nilTook2);
+    else if (inp.nil >= 0) parts.push(names[inp.nil] + (inp.blind ? ' blind nil' : ' nil') + (inp.nilTook ? ' took ' + inp.nilTook : ' made'));
     parts.push(inp.bid + ' bid, ' + inp.tricks + ' won');
     if (r.bags) parts.push('+' + r.bags + ' bag' + (r.bags === 1 ? '' : 's'));
     if (r.penalty) parts.push('bag penalty');
@@ -104,6 +113,8 @@
     if (!d) return null;
     var m = /(\d+) bid, (\d+) won/.exec(d); if (!m) return null;
     inp.bid = +m[1]; inp.tricks = +m[2];
+    var both = /^both( blind)? nil (\d+)\/(\d+)/.exec(d);
+    if (both) { inp.nil = 2; inp.blind = !!both[1]; inp.nilTook = +both[2]; inp.nilTook2 = +both[3]; return inp; }
     names.forEach(function (n, j) {
       var k = d.indexOf(n + ' blind nil') === 0 ? 'b' : d.indexOf(n + ' nil') === 0 ? 'n' : '';
       if (k && inp.nil < 0) { inp.nil = j; inp.blind = k === 'b'; var t = /nil took (\d+)/.exec(d); inp.nilTook = t ? +t[1] : 0; }
@@ -161,7 +172,7 @@
       var box = el('div', { class: 'tblock', style: { '--c': Kit.color(i) } }, [el('h3', { text: ctx.sides[i].name })]);
       box.appendChild(el('div', { class: 'label', text: 'Did anyone bid Nil?' }));
       var nilSeg = el('div', { class: 'seg' });
-      [['No', -1], [names[0], 0], [names[1], 1]].forEach(function (o) {
+      [['No', -1], [names[0], 0], [names[1], 1], ['Both', 2]].forEach(function (o) {
         nilSeg.appendChild(el('button', { type: 'button', text: o[0], class: st.nil === o[1] ? 'on' : '', onclick: function () { st.nil = o[1]; Kit.sfx('tap'); sync(); } }));
       });
       box.appendChild(nilSeg);
@@ -172,11 +183,13 @@
       box.appendChild(kindSeg);
       var nilRow = ctx.number(i, { min: 0, max: 13, neg: false, value: p ? p.nilTook : 0, label: 'Nil took' });
       box.appendChild(nilRow);
+      var nilRow2 = ctx.number(i, { min: 0, max: 13, neg: false, value: p && p.nil === 2 ? p.nilTook2 : 0, label: names[1] + ' took' });
+      box.appendChild(nilRow2);
       var bidRow = ctx.number(i, { min: 0, max: 13, neg: false, value: p ? p.bid : '', placeholder: '–', label: 'Bid' });
       var trRow = ctx.number(i, { min: 0, max: 13, neg: false, value: p ? p.tricks : '', placeholder: '–', label: 'Tricks' });
       box.appendChild(bidRow); box.appendChild(trRow);
       var res = el('div', { class: 'res' }); box.appendChild(res);
-      [nilRow, bidRow].forEach(function (r) { r.input.addEventListener('input', check); });
+      [nilRow, nilRow2, bidRow].forEach(function (r) { r.input.addEventListener('input', check); });
       trRow.input.addEventListener('input', function () {
         touched[i] = true;
         var o = blocks[1 - i]; // fill in the other team's tricks so they add up to 13
@@ -185,17 +198,20 @@
       });
       ctx.node.appendChild(box);
       function sync() {
-        Array.prototype.forEach.call(nilSeg.children, function (b, j) { b.classList.toggle('on', [-1, 0, 1][j] === st.nil); });
+        Array.prototype.forEach.call(nilSeg.children, function (b, j) { b.classList.toggle('on', [-1, 0, 1, 2][j] === st.nil); });
         Array.prototype.forEach.call(kindSeg.children, function (b, j) { b.classList.toggle('on', [false, true][j] === st.blind); });
         kindSeg.hidden = st.nil < 0; nilRow.hidden = st.nil < 0;
-        if (st.nil >= 0) nilRow.querySelector('.nm').textContent = names[st.nil] + ' took';
-        bidRow.querySelector('.nm').textContent = st.nil >= 0 ? names[1 - st.nil] + ' bid' : 'Team bid';
+        nilRow2.hidden = st.nil !== 2; bidRow.hidden = st.nil === 2;
+        if (st.nil >= 0) nilRow.querySelector('.nm').textContent = (st.nil === 2 ? names[0] : names[st.nil]) + ' took';
+        if (st.nil === 2) bidRow.input.value = '0';
+        bidRow.querySelector('.nm').textContent = st.nil >= 0 && st.nil < 2 ? names[1 - st.nil] + ' bid' : 'Team bid';
         check();
       }
       function input() {
         var bidTxt = String(bidRow.input.value).trim(), trTxt = String(trRow.input.value).trim();
         return { bid: Math.max(0, Math.min(13, bidRow.value())), tricks: Math.max(0, Math.min(13, trRow.value())), nil: st.nil, blind: st.nil >= 0 && st.blind,
-          nilTook: st.nil >= 0 ? Math.max(0, Math.min(13, nilRow.value())) : 0, empty: bidTxt === '' || trTxt === '' };
+          nilTook: st.nil >= 0 ? Math.max(0, Math.min(13, nilRow.value())) : 0, nilTook2: st.nil === 2 ? Math.max(0, Math.min(13, nilRow2.value())) : 0,
+          empty: (st.nil !== 2 && bidTxt === '') || trTxt === '' };
       }
       var api = { box: box, trRow: trRow, res: res, input: input, sync: sync };
       setTimeout(sync, 0);
@@ -213,7 +229,8 @@
       });
       if (ins.some(function (x) { return x.empty; })) { ok = false; msg = 'Enter each team\'s bid and tricks won'; }
       else if (ins[0].tricks + ins[1].tricks !== 13) { ok = false; msg = 'Tricks add up to ' + (ins[0].tricks + ins[1].tricks) + '. There are 13.'; }
-      else if (ins.some(function (x) { return x.nil >= 0 && x.nilTook > x.tricks; })) { ok = false; msg = 'The Nil player can\'t take more tricks than their team'; }
+      else if (ins.some(function (x) { return x.nil === 2 && x.nilTook + x.nilTook2 !== x.tricks; })) { ok = false; msg = 'With both on Nil, their tricks must add up to the team\'s tricks'; }
+      else if (ins.some(function (x) { return x.nil >= 0 && x.nil < 2 && x.nilTook > x.tricks; })) { ok = false; msg = 'The Nil player can\'t take more tricks than their team'; }
       else if (ins.some(function (x) { return x.nil < 0 && x.bid < 1; })) { ok = false; msg = 'A team bid of 0 needs a Nil. Pick who bid Nil.'; }
       else msg = 'Looks right';
       note.className = 'rnote' + (ok ? '' : ' bad'); note.textContent = msg;
@@ -230,8 +247,12 @@
       res.forEach(function (r, i) {
         var team = ctx.sides[i].name, inp = ins[i];
         if (r.set) { extra.highlights.push(team + ' went set bidding ' + inp.bid + ' in round ' + n); callout = callout || 'Set!'; }
-        else if (r.made && inp.bid >= 9 && !pad.state().highlights.some(function (h) { return h.indexOf(team + ' made a big bid') === 0; })) extra.highlights.push(team + ' made a big bid of ' + inp.bid + ' in round ' + n);
-        if (inp.nil >= 0) {
+        else if (r.made && inp.bid >= 9 && !pad.state().rounds.some(function (rr) { return (rr.highlights || []).some(function (h) { return h.indexOf(team + ' made a big bid') === 0; }); })) extra.highlights.push(team + ' made a big bid of ' + inp.bid + ' in round ' + n);
+        if (inp.nil === 2) {
+          var k2 = inp.blind ? 'Blind Nil' : 'Nil';
+          extra.highlights.push(ctx.sides[i].name + ' both bid ' + k2 + ' in round ' + n + (r.nilOk ? ' and both made it!' : ''));
+          if (r.nilOk) callout = 'Double ' + k2 + '!';
+        } else if (inp.nil >= 0) {
           var who = cfg.teams[i][inp.nil], kind = inp.blind ? 'Blind Nil' : 'Nil';
           if (r.nilOk) { extra.highlights.push(who + ' made ' + kind + ' in round ' + n); callout = kind + ' made!'; }
           else extra.highlights.push(Kit.poss(who) + ' ' + kind + ' was broken in round ' + n);
@@ -240,7 +261,6 @@
         if (inp.tricks === 13) extra.highlights.push(team + ' took all 13 tricks in round ' + n);
       });
       if (!ctx.prev && callout) extra.callout = callout;
-      if (ctx.prev) extra.highlights = [];
       ctx.done(res.map(function (r) { return r.pts; }), extra);
     });
     setTimeout(check, 0);

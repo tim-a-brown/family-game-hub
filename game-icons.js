@@ -168,7 +168,7 @@ var GameIcon = (function () {
     return '#' + ((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1);
   }
 
-  return function (id, opts) {
+  function render(id, opts) {
     opts = opts || {};
     var g = (typeof findGame === 'function' && findGame(id)) || { id: id, cat: 'tools', color: '#8b55ff' };
     var c = g.color, gid = 'gi' + (++uid);
@@ -179,5 +179,13 @@ var GameIcon = (function () {
       '<rect width="48" height="48" rx="13" fill="url(#' + gid + ')"/>' +
       '<rect x="1" y="1" width="46" height="46" rx="12" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>' +
       base[0] + '<g transform="' + base[1] + '">' + mark + '</g></svg>';
+  }
+  // Just the game's mark, as a standalone 24×24 SVG (used as a faint
+  // silhouette in the middle of the game table).
+  render.mark = function (id) {
+    var g = (typeof findGame === 'function' && findGame(id)) || null;
+    if (!g || !MARK[g.id]) return '';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' + MARK[g.id](g.color) + '</svg>';
   };
+  return render;
 })();

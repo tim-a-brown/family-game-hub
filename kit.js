@@ -415,6 +415,11 @@
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
     if (game) { doc.title = game.name + ' · Game Night'; applyTheme(game.id); }
+    // Faint silhouette of the game's mark in the middle of the table
+    if (game && window.GameIcon && GameIcon.mark && opts.mark !== false) {
+      var mk = GameIcon.mark(game.id);
+      if (mk) root.style.setProperty('--felt-mark', 'url("data:image/svg+xml,' + encodeURIComponent(mk) + '")');
+    }
     if (opts.theme) { THEMES._custom = opts.theme; applyTheme('_custom'); }
 
     var bar = el('header', { class: 'gbar' }, [
@@ -440,8 +445,8 @@
     'Rocky', 'BB-8', 'K-2SO', 'Baymax', 'Data', 'Marvin', 'KITT', 'Rosie', 'Iron Giant', 'Robby', 'T-800',
     'Sonny', 'Stitch', 'E.T.', 'ALF', 'Groot', 'Bumblebee', 'Megatron', 'Gort', 'Number 5', 'Dewey', 'Huey',
     'Wheatley', 'Bishop', 'Ash', 'JARVIS', 'Ultron', 'Vision', 'Chappie', 'Mother', 'Klaatu'];
-  function cpuNames(n, avoid) {
-    var pool = CPU_NAMES.filter(function (x) { return (avoid || []).indexOf(x) < 0; }), out = [];
+  function cpuNames(n, avoid, maxLen) {
+    var pool = CPU_NAMES.filter(function (x) { return (avoid || []).indexOf(x) < 0 && (!maxLen || x.length <= maxLen); }), out = [];
     while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     return out;
   }
@@ -669,6 +674,8 @@
       seatsBox.appendChild(head);
       if (P.names === false) return;
       var inputs = [];
+      // Crowded tables: keep robot names short so seat labels fit
+      if (state.count >= 4) bots.forEach(function (b, k) { if (b.length > 8) bots[k] = cpuNames(1, bots, 8)[0] || b; });
       for (var i = 0; i < state.count; i++) {
         (function (i) {
           var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
@@ -684,7 +691,7 @@
           if (isCpu) {
             inp.readOnly = true; inp.setAttribute('aria-label', 'Computer player');
             field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'New computer name', html: icon('shuffle'), onclick: function () {
-              bots[i - 1] = cpuNames(1, bots)[0] || bots[i - 1]; inp.value = bots[i - 1]; sfx('pop'); haptic('light');
+              bots[i - 1] = cpuNames(1, bots, state.count >= 4 ? 8 : 0)[0] || bots[i - 1]; inp.value = bots[i - 1]; sfx('pop'); haptic('light');
             } }));
           } else {
             inp.addEventListener('input', function () { names[i] = inp.value; });

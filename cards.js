@@ -168,7 +168,8 @@ var Cards = (function () {
 //   winner(totals, rounds) -> index   custom winner rule (optional)
 //   form(ctx)  builds the round-entry UI. ctx = {sides, round, totals, prev,
 //              number(i, opts) -> input row, done(scores, extra), node}
-//              extra = {label, detail:[...per side text], highlights:[..]}
+//              extra = {label, detail:[...per side text], highlights:[..], data:{any}}
+//   onChange(state) called after any round is added, fixed or deleted
 //              Omit form for a plain "points per player" entry.
 //   onEnd(result)  optional hook after the game ends
 //   mode:     text recorded in history (e.g. 'Scorekeeper')
@@ -273,8 +274,7 @@ function Scorepad(host, o) {
   function addRound() {
     openForm(null, function (scores, extra) {
       Kit.resume.set('Round ' + (S.rounds.length + 2));
-      S.rounds.push({ scores: scores, label: extra.label || '', detail: extra.detail || null });
-      (extra.highlights || []).forEach(function (h) { S.highlights.push(h); });
+      S.rounds.push({ scores: scores, label: extra.label || '', detail: extra.detail || null, highlights: extra.highlights || [], data: extra.data || null });
       if (extra.callout) Kit.callout(extra.callout);
       Kit.sfx('good'); Kit.haptic('success');
       afterChange(true);
@@ -287,7 +287,7 @@ function Scorepad(host, o) {
       actions: [
         { label: 'Fix this round', primary: true, onClick: function () {
           openForm({ index: ri, round: r }, function (scores, extra) {
-            S.rounds[ri] = { scores: scores, label: extra.label || r.label || '', detail: extra.detail || null };
+            S.rounds[ri] = { scores: scores, label: extra.label || r.label || '', detail: extra.detail || null, highlights: extra.highlights || [], data: extra.data || null };
             S.over = false; afterChange();
           }, 'Fix round ' + (ri + 1));
         } },
@@ -297,6 +297,7 @@ function Scorepad(host, o) {
     });
   }
   function afterChange(added) {
+    if (o.onChange) try { o.onChange(S); } catch (e) {}
     var t = totals();
     if (!S.over && isOver(t)) { S.over = true; save(); render(added); finish(t); return; }
     save(); render(added);
@@ -310,7 +311,8 @@ function Scorepad(host, o) {
       players: S.sides.map(function (s, i) { return { name: s.name, score: t[i] }; }),
       winner: w >= 0 ? S.sides[w].name : null,
       rounds: { labels: S.rounds.map(function (r, i) { return r.label || String(i + 1); }), scores: S.rounds.map(function (r) { return r.scores; }) },
-      highlights: S.highlights.concat([S.rounds.filter(function (r) { return !/^bonus/i.test(r.label || ''); }).length + ' rounds played'])
+      // Highlights live on each round, so fixing or deleting a round updates them
+      highlights: (S.highlights || []).concat([].concat.apply([], S.rounds.map(function (r) { return r.highlights || []; }))).concat([S.rounds.filter(function (r) { return !/^bonus/i.test(r.label || ''); }).length + ' rounds played'])
     });
     clear();
     setTimeout(function () {
