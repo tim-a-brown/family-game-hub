@@ -71,7 +71,7 @@ body{
     radial-gradient(120% 60% at 50% -10%, #3a2a7a 0%, rgba(58,42,122,0) 60%),
     radial-gradient(80% 40% at 100% 0%, rgba(255,92,154,.18) 0%, rgba(255,92,154,0) 70%),
     var(--bg);
-  background-attachment:fixed;
+  background-attachment:scroll;
   -webkit-font-smoothing:antialiased;
   -webkit-tap-highlight-color:transparent;
   overscroll-behavior-y:none;
@@ -327,8 +327,24 @@ p{margin:0;}
   position:sticky;top:0;z-index:50;
   display:flex;align-items:center;gap:8px;
   padding:calc(var(--safe-t) + 8px) 12px 8px;
-  background:linear-gradient(var(--bg) 60%, rgba(20,16,41,0));
+  background:transparent;transition:background-color .2s, box-shadow .2s;
 }
+/* Sticky bars: clear over the page glow at rest, frosted once content scrolls
+   under them, so there is never a dark band or a hard gradient edge. */
+.gbar.stuck,.k-stick.stuck{
+  background:rgba(20,16,41,.82);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+  box-shadow:0 1px 0 rgba(255,255,255,.06), 0 8px 20px -12px rgba(0,0,0,.6);
+}
+/* Status-bar shield (iPhone notch / Dynamic Island): content scrolling up
+   behind the clock and battery gets the same frosted material. */
+html::after{
+  content:"";position:fixed;left:0;right:0;top:0;height:var(--safe-t);z-index:60;pointer-events:none;
+  background:rgba(20,16,41,.82);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+  opacity:0;transition:opacity .2s;
+}
+html.k-scrolled::after{opacity:1;}
 .gbar .ttl{flex:1;min-width:0;display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.2rem;padding-left:2px;}
 .gbar .ttl::before{content:"";flex:none;width:4px;height:22px;border-radius:2px;background:var(--accent);}
 .gbar .ttl.has-ic::before{display:none;}

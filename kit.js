@@ -55,6 +55,23 @@
   });
   doc.addEventListener('touchstart', function () {}, { passive: true }); // enables :active on iOS
 
+  // Frosted status-bar shield and sticky bars (.gbar, .k-stick) once content
+  // scrolls under them (see kit.css). Bars are clear at rest.
+  var stickRaf = 0;
+  function onStick() {
+    stickRaf = 0;
+    var y = window.scrollY || root.scrollTop || 0;
+    var bars = doc.querySelectorAll('.gbar, .k-stick'), stuck = false;
+    for (var i = 0; i < bars.length; i++) {
+      var on = y > 2 && bars[i].getBoundingClientRect().top <= 1;
+      bars[i].classList.toggle('stuck', on); stuck = stuck || on;
+    }
+    // A stuck bar already covers the status bar; the shield is for the gap before it sticks.
+    root.classList.toggle('k-scrolled', y > 2 && !stuck);
+  }
+  window.addEventListener('scroll', function () { if (!stickRaf) stickRaf = requestAnimationFrame(onStick); }, { passive: true });
+  window.addEventListener('resize', onStick);
+
   var wake = null;
   function requestWake() {
     if (!('wakeLock' in navigator) || doc.visibilityState !== 'visible') return;
