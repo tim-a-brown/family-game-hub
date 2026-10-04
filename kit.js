@@ -412,6 +412,7 @@
   function isPersonName(n) {
     n = String(n || '').trim();
     if (!n || n.length > 14 || NOT_NAMES.test(n)) return false;
+    if (/&|\/|\+| and /i.test(n)) return false;   // team names like "Tim & Jamie"
     var l = n.toLowerCase();
     return !CPU_NAMES.some(function (c) { return c.toLowerCase() === l; });
   }
