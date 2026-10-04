@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v11-2026-10-04-players';
+const CACHE_VERSION = 'v12-2026-10-04-fresh';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -175,22 +175,42 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Fonts and CDN files never change: cache first.
+  if (url.origin !== self.location.origin) {
+    event.respondWith(
+      caches.match(req).then((cached) => cached || fetch(req).then((resp) => {
+        if (resp && (resp.status === 200 || resp.type === 'opaque')) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone).catch(() => {}));
+        }
+        return resp;
+      }))
+    );
+    return;
+  }
+
+  // Our own pages and code: network first so releases show up immediately,
+  // falling back to the cached copy when offline or the network is slow.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      // Stale-while-revalidate: serve cached instantly, refresh in background.
-      const networkFetch = fetch(req)
+    new Promise((resolve) => {
+      let settled = false;
+      const fromCache = () => caches.match(req, { ignoreSearch: true }).then((c) => c);
+      const timer = setTimeout(() => {
+        fromCache().then((c) => { if (c && !settled) { settled = true; resolve(c); } });
+      }, 3500);
+      fetch(req)
         .then((resp) => {
           if (resp && resp.status === 200 && resp.type !== 'opaqueredirect') {
             const clone = resp.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(req, clone).catch(() => {});
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone).catch(() => {}));
           }
-          return resp;
+          clearTimeout(timer);
+          if (!settled) { settled = true; resolve(resp); }
         })
-        .catch(() => cached || Response.error());
-
-      return cached || networkFetch;
+        .catch(() => {
+          clearTimeout(timer);
+          fromCache().then((c) => { if (!settled) { settled = true; resolve(c || Response.error()); } });
+        });
     })
   );
 });

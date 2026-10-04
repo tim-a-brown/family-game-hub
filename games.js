@@ -111,7 +111,7 @@ var GAMES = [
   { id: 'randomtools', name: 'Random Tools',      color: '#14b8a6', cat: 'tools', min: 1, max: 0, tag: 'Random numbers, coin flips, teams', play: 'randomtools' },
   { id: 'bingo',       name: 'Bingo Caller', color: '#e11d48', cat: 'tools', min: 1, max: 0, tag: 'Draw balls and call BINGO', play: 'bingo' },
   { id: 'ranker',      name: 'Ranker',       color: '#eab308', cat: 'tools', min: 1, max: 0, tag: 'Rank anything, settle debates', play: 'ranker' },
-  { id: 'players',     name: 'Players',      color: '#6366f1', cat: 'tools', min: 1, max: 0, tag: 'The names you play with most', play: 'players' }
+  { id: 'players',     name: 'Frequent Players',      color: '#6366f1', cat: 'tools', min: 1, max: 0, tag: 'The names you play with most', play: 'players' }
 ];
 
 // Lookup by game id or by any of its files (hearts-ai → hearts).

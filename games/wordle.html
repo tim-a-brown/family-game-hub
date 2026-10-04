@@ -16,7 +16,11 @@
 body{overflow:hidden;}
 .wd{display:flex;flex-direction:column;height:calc(100dvh - var(--safe-t) - 58px);max-width:500px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 8px);}
 .modes{display:flex;justify-content:center;margin:2px 0 8px;}
+.modes{align-items:center;gap:8px;}
 .modes .seg{width:100%;max-width:340px;}
+.hardpill{flex:none;display:none;align-items:center;gap:4px;padding:0 10px;height:30px;border-radius:999px;border:0;background:color-mix(in srgb,var(--orange) 22%,transparent);color:var(--orange);font-weight:900;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;}
+.hardpill.on{display:inline-flex;}
+.hardpill .ico{width:14px;height:14px;}
 .modes .seg > button{min-height:38px;font-size:.88rem;}
 .gridwrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;}
 .grid{display:grid;gap:6px;width:min(100%, 340px, calc((100dvh - var(--safe-t) - 58px - 290px - var(--safe-b)) * .82));}
@@ -59,7 +63,7 @@ body{overflow:hidden;}
 </head>
 <body>
 <div class="wd" id="app">
-  <div class="modes"><div class="seg" id="modes"></div></div>
+  <div class="modes"><div class="seg" id="modes"></div><button class="hardpill" id="hardpill" type="button" aria-label="Hard mode is on. Tap to change."></button></div>
   <div class="gridwrap"><div class="grid" id="grid"></div></div>
   <div class="kb" id="kb"></div>
 </div>
@@ -77,7 +81,7 @@ body{overflow:hidden;}
     onNew: function () { start(true); },
     menu: [
       { icon: 'chart', label: 'Stats', onClick: function () { showStats(); } },
-      { icon: 'flame', label: 'Hard mode', onClick: function () { toggleHard(); } },
+      { icon: 'flame', label: function () { return 'Hard mode: ' + (hard ? 'on' : 'off'); }, onClick: function () { toggleHard(); } },
       { icon: 'history', label: 'Past games', onClick: function () { GameHistory.open('wordle', 'Wordle', function (e) { return GameHistory.renderWordleGrid(e.guesses, e.results, e.answer); }); } }
     ],
     rules:
@@ -299,9 +303,13 @@ body{overflow:hidden;}
   }
   function toggleHard() {
     if (S.guesses.length && !S.over && !hard) return Kit.toast('Turn on hard mode before your first guess');
-    hard = !hard; localStorage.setItem('wordle_hard', hard ? '1' : '0');
+    hard = !hard; localStorage.setItem('wordle_hard', hard ? '1' : '0'); paintHard();
     Kit.toast(hard ? 'Hard mode on' : 'Hard mode off');
   }
+
+  function paintHard() { var b = $('hardpill'); b.innerHTML = Kit.icon('flame') + '<span>Hard</span>'; b.classList.toggle('on', hard); }
+  $('hardpill').addEventListener('click', function () { Kit.confirm('Turn hard mode off?', { ok: 'Turn off', body: 'Hard mode makes you reuse every green and yellow letter you find.' }).then(function (ok) { if (ok) toggleHard(); }); });
+  paintHard();
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

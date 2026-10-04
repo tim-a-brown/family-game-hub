@@ -101,7 +101,7 @@ const GameHistory = (function(){
     drawer.innerHTML = `
       <div id="gh-drawer-handle">
         <div id="gh-drawer-handle-bar"></div>
-        <span id="gh-drawer-title">📜 Past Games</span>
+        <span id="gh-drawer-title">Past games</span>
         <button id="gh-drawer-close" onclick="GameHistory.close()">×</button>
       </div>
       <div id="gh-drawer-body"></div>`;
@@ -110,7 +110,7 @@ const GameHistory = (function(){
 
   function open(key, title, renderFn){
     ensureDrawer();
-    document.getElementById('gh-drawer-title').textContent = '📜 ' + title;
+    document.getElementById('gh-drawer-title').textContent = title + ': past games';
     const body = document.getElementById('gh-drawer-body');
     const entries = load(key);
     if(!entries.length){
@@ -152,7 +152,7 @@ const GameHistory = (function(){
   }
 
   // Build a History button element
-  function btn(key, title, renderFn, label='📜 History'){
+  function btn(key, title, renderFn, label='History'){
     ensureDrawer();
     const b = document.createElement('button');
     b.className = 'btn btn-outline btn-sm';
@@ -237,7 +237,7 @@ const GameHistory = (function(){
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:4px;';
     players.forEach((p, i) => {
-      const isWinner = i === winnerIdx;
+      const isWinner = i === winnerIdx || (typeof winnerIdx === 'string' && (p.name || '') === winnerIdx);
       const row = document.createElement('div');
       row.style.cssText = [
         'display:flex','align-items:center','justify-content:space-between',
@@ -247,7 +247,7 @@ const GameHistory = (function(){
       ].join(';');
       const name = document.createElement('div');
       name.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:'+(isWinner?'700':'500')+';color:'+(isWinner?'#f5c842':'rgba(255,255,255,.85)')+';';
-      name.innerHTML = (isWinner ? '🏆 ' : '') + (p.isYou ? '<span style="color:#a78bfa">● </span>' : '') + escapeHtml(p.name || 'Player');
+      name.innerHTML = (p.isYou ? '<span style="color:#a78bfa">● </span>' : '') + escapeHtml(p.name || 'Player');
       const score = document.createElement('div');
       score.style.cssText = 'font-family:var(--serif,Georgia);font-size:1rem;font-weight:900;color:'+(isWinner?'#f5c842':'rgba(255,255,255,.7)')+';';
       score.textContent = p.score != null ? p.score.toLocaleString() : '';

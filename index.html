@@ -14,6 +14,7 @@
 <script src="game-icons.js"></script>
 <script src="kit.js"></script>
 <script src="players.js"></script>
+<script src="hist.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
@@ -138,6 +139,17 @@ document.addEventListener('visibilitychange', function () {
 .pick-h .gicon{width:64px;height:64px;flex:none;}
 .pick-h b{display:block;font-family:var(--display);font-weight:400;font-size:1.6rem;}
 .pick-h span{color:var(--text-2);font-size:.92rem;}
+
+/* Recent games */
+.recent{display:flex;flex-direction:column;gap:6px;}
+.rg{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:0;border-radius:var(--r);background:rgba(255,255,255,.06);color:var(--text);text-align:left;}
+.rg:active{transform:scale(.98);}
+.rg .gicon{width:42px;height:42px;flex:none;}
+.rg .grow{display:flex;flex-direction:column;min-width:0;}
+.rg b{font-weight:900;}
+.rg .w{font-size:.9rem;font-weight:700;color:var(--yellow);}
+.rg small{font-size:.78rem;color:var(--text-3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rg .when{flex:none;font-size:.78rem;font-weight:800;color:var(--text-3);}
 
 /* Account sheet */
 .acct{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
@@ -452,7 +464,8 @@ document.addEventListener('visibilitychange', function () {
     }
     var list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
     function item(ic, t, fn, cls) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t })])); }
-    item('users', 'Manage players', function () { Kit.managePlayers(); });
+    item('history', 'Recent games', recentGames);
+    item('users', 'Frequent players', function () { Kit.managePlayers(); });
     item(get('gn_sound', '1') === '1' ? 'sound' : 'mute', 'Sound: ' + (get('gn_sound', '1') === '1' ? 'on' : 'off'), function () {
       set('gn_sound', get('gn_sound', '1') === '1' ? '0' : '1'); Kit.sfx('good');
     });
@@ -466,6 +479,48 @@ document.addEventListener('visibilitychange', function () {
     node.appendChild(list);
     s = Kit.sheet({ node: node, actions: [{ label: 'Done', cls: 'btn-ghost' }] });
   });
+
+  // ── Recent games: the last 10 finished games across every game ───────────
+  // History keys (gh_<key>) that don't match a game id directly.
+  var GH_GAME = { sol: 'solitaire', fc: 'freecell', ht: 'hearts', sp: 'spades', gin: 'gin-rummy', rm: 'gin-rummy', eu: 'euchre',
+    wz: 'wizard', f7: 'flip7', fivecrwns: 'five-crowns', rk: 'rook', p10: 'phase10', mg: 'minigolf', dond: 'dealornodeal',
+    wof: 'wheeloffortune', c4: 'connectfour', cs_sc: 'scorecard', mj4: 'mahjong4' };
+  function recentGames() {
+    var rows = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
+        var key = k.slice(3), g = findGame(GH_GAME[key] || key);
+        var list = JSON.parse(localStorage.getItem(k) || '[]');
+        if (!Array.isArray(list)) continue;
+        list.forEach(function (e) { if (e && e._date) rows.push({ key: key, g: g, e: e }); });
+      }
+    } catch (e) {}
+    rows.sort(function (a, b) { return b.e._date - a.e._date; });
+    rows = rows.slice(0, 10);
+    var box = el('div', { class: 'recent' }), s;
+    if (!rows.length) box.appendChild(el('p', { class: 'muted', text: 'No finished games yet. Results show up here after each game.' }));
+    rows.forEach(function (r) {
+      var e = r.e, g = r.g, name = g ? g.name : r.key;
+      var line = e.winner ? e.winner + ' won' : (e._summary || 'Finished');
+      var who = Array.isArray(e.players) ? e.players.map(function (p) { return (p.name || p) + (p.score != null ? ' ' + p.score : ''); }).join(' · ') : '';
+      var b = el('button', { type: 'button', class: 'rg' }, [
+        el('span', { html: g ? GameIcon(g.id) : '', style: { display: 'contents' } }),
+        el('span', { class: 'grow' }, [el('b', { text: name }), el('span', { class: 'w', text: line }), who && who !== line ? el('small', { text: who }) : null]),
+        el('span', { class: 'when', text: ago(e._date) })
+      ]);
+      b.addEventListener('click', function () {
+        s.close();
+        try {
+          GameHistory.open(r.key, name, function (x) {
+            return x && Array.isArray(x.players) && x.players.length ? GameHistory.renderPlayerResults(x.players, x.winner) : el('div', { class: 'muted', text: x._summary || '' });
+          });
+        } catch (err) {}
+      });
+      box.appendChild(b);
+    });
+    s = Kit.sheet({ title: 'Recent games', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
 
   document.addEventListener('fghsync:updated', function () { render(); });
   window.addEventListener('pageshow', function (e) { if (e.persisted) render(); });

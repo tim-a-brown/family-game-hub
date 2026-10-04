@@ -122,6 +122,7 @@
     hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     lightbulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
+    meh: '<circle cx="12" cy="12" r="9.5"/><path d="M8 15h8"/><path d="M9 9.5h.01"/><path d="M15 9.5h.01"/>',
     coins: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/>',
     // Category marks
     cards: '<rect x="8" y="2" width="13" height="17" rx="2"/><path d="M5.5 6.2 3.6 6.8a2 2 0 0 0-1.3 2.4l3 10.6a2 2 0 0 0 2.5 1.4l5.4-1.6"/>',
@@ -355,9 +356,9 @@
       confirmSheet('Start a new game?', { ok: 'New game', body: 'The current game will be lost.' }).then(function (ok) { if (ok) opts.onNew(); });
     });
     if (opts.undo) item('undo', 'Undo', opts.undo);
-    (opts.menu || []).forEach(function (m) { item(m.icon || 'sparkle', m.label, m.onClick, m.cls); });
+    (opts.menu || []).forEach(function (m) { item(m.icon || 'sparkle', typeof m.label === 'function' ? m.label() : m.label, m.onClick, m.cls); });
     if (opts.rules) item('book', 'How to play', rules);
-    item('users', 'Manage players', function () { managePlayers(); });
+    item('users', 'Frequent players', function () { managePlayers(); });
     item(soundOn() ? 'sound' : 'mute', soundOn() ? 'Sound: on' : 'Sound: off', function () {
       lsSet('gn_sound', soundOn() ? '0' : '1'); toast(soundOn() ? 'Sound on' : 'Sound off'); sfx('good');
     });
@@ -418,32 +419,44 @@
     list.forEach(function (n) { var k = n.toLowerCase(); c[k] = (c[k] || 0) + 1; });
     lsSet('gn_name_counts', JSON.stringify(c));
   }
-  // People this household plays with, most-played first. Sources: names
-  // picked in setup screens on this device, the Frequent Players list, and
-  // everyone in saved game history (history syncs across devices).
-  function knownNames() {
-    var score = {}, label = {}, hidden = hiddenNames().map(function (x) { return x.toLowerCase(); });
-    function add(n, w) {
-      if (!isPersonName(n)) return;
-      n = String(n).trim(); var k = n.toLowerCase();
-      if (hidden.indexOf(k) >= 0) return;
-      score[k] = (score[k] || 0) + w; if (!label[k]) label[k] = n;
-    }
-    try { if (window.FrequentPlayers) FrequentPlayers.list().forEach(function (n, i) { add(n, 3 + Math.max(0, 1 - i * 0.05)); }); } catch (e) {}
-    var counts = nameCounts();
-    Object.keys(counts).forEach(function (k) { if (label[k]) score[k] += counts[k] * 4; });
+  // Frequent players: the one list of people this household plays with.
+  // Stored in 'frequent_players' (players.js). Names that appear in saved game
+  // history (which syncs across devices) are added to it automatically unless
+  // someone removed them. Ordered by how often each person has played.
+  function fpRead() { try { var a = JSON.parse(lsGet('frequent_players', '[]')); return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string' && x.trim(); }) : []; } catch (e) { return []; } }
+  function fpWrite(a) { lsSet('frequent_players', JSON.stringify(a)); }
+  function historyNames() {
+    var seen = {};
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
         var list = JSON.parse(localStorage.getItem(k) || '[]');
         if (!Array.isArray(list)) continue;
         list.forEach(function (e) {
-          (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) { add(p && (p.name || p), 2); });
+          (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) {
+            var n = String((p && (p.name || p)) || '').trim();
+            if (isPersonName(n)) { var key = n.toLowerCase(); seen[key] = seen[key] || { n: n, c: 0 }; seen[key].c++; }
+          });
         });
       }
     } catch (e) {}
-    return Object.keys(score).sort(function (a, b) { return score[b] - score[a]; }).map(function (k) { return label[k]; });
+    return seen;
   }
+  function knownNames() {
+    var hidden = hiddenNames().map(function (x) { return x.toLowerCase(); });
+    var fp = fpRead(), have = {}, hist = historyNames(), changed = false;
+    fp.forEach(function (n) { have[n.toLowerCase()] = true; });
+    Object.keys(hist).forEach(function (k) {
+      if (!have[k] && hidden.indexOf(k) < 0) { fp.push(hist[k].n); have[k] = true; changed = true; }
+    });
+    if (changed) fpWrite(fp);
+    var counts = nameCounts();
+    var list = fp.filter(function (n) { return isPersonName(n) && hidden.indexOf(n.toLowerCase()) < 0; });
+    var order = {}; list.forEach(function (n, i) { order[n.toLowerCase()] = i; });
+    function plays(n) { var k = n.toLowerCase(); return (counts[k] || 0) + (hist[k] ? hist[k].c : 0); }
+    return list.sort(function (a, b) { return plays(b) - plays(a) || order[a.toLowerCase()] - order[b.toLowerCase()]; });
+  }
+  function playsOf(n) { var k = String(n).toLowerCase(), h = historyNames(); return (nameCounts()[k] || 0) + (h[k] ? h[k].c : 0); }
 
   // Sheet: pick one of the regulars (most played on top), or type a new name.
   function pickName(onPick, o) {
@@ -451,7 +464,7 @@
     var taken = (o.taken || []).map(function (x) { return String(x || '').toLowerCase(); });
     var box = el('div', { class: 'k-names' }), s;
     var names = knownNames();
-    if (!names.length) box.appendChild(el('p', { class: 'muted', text: 'No regulars yet. Type a name below and it will show up here next time.' }));
+    if (!names.length) box.appendChild(el('p', { class: 'muted', text: 'No frequent players yet. Type a name below and it will be saved for next time.' }));
     names.forEach(function (n) {
       var used = taken.indexOf(n.toLowerCase()) >= 0;
       box.appendChild(el('button', { type: 'button', class: 'k-name' + (used ? ' used' : ''), disabled: used, onclick: function () { s.close(); sfx('pop'); haptic('light'); onPick(n); } }, [
@@ -463,33 +476,50 @@
     var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'New name', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
     function addNew() {
       var v = inp.value.trim(); if (!v) return;
-      try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {}
+      if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v]));
       unhide(v); s.close(); sfx('pop'); onPick(v);
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addNew(); });
     var foot = el('div', { class: 'row', style: { 'margin-top': '14px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: addNew })]);
-    var node = el('div', null, [box, foot, el('button', { type: 'button', class: 'btn btn-ghost btn-block', style: { 'margin-top': '8px' }, html: icon('users') + '<span>Manage players</span>', onclick: function () { s.close(); managePlayers(); } })]);
+    var node = el('div', null, [box, foot, el('button', { type: 'button', class: 'btn btn-ghost btn-block', style: { 'margin-top': '8px' }, html: icon('pencil') + '<span>Edit frequent players</span>', onclick: function () { s.close(); managePlayers(); } })]);
     s = sheet({ title: o.title || 'Who is it?', node: node });
   }
   function unhide(n) {
     var h = hiddenNames().filter(function (x) { return x.toLowerCase() !== String(n).toLowerCase(); });
     lsSet('gn_hidden_names', JSON.stringify(h));
   }
-  // Sheet: add or remove the household's regular players.
-  function managePlayers(onDone) {
-    var list = el('div', { class: 'k-names' }), s;
+  // Frequent players editor: add, rename, remove. Used in a sheet (game menu,
+  // home menu, name picker) and full-page on games/players.html.
+  function playersPanel() {
+    var wrap = el('div'), list = el('div', { class: 'k-names' });
     function paint() {
       list.innerHTML = '';
       var names = knownNames();
-      if (!names.length) list.appendChild(el('p', { class: 'muted', text: 'No players yet. Add the people you play with.' }));
+      if (!names.length) list.appendChild(el('p', { class: 'muted', text: 'No frequent players yet. Add the people you play with.' }));
       names.forEach(function (n) {
+        var p = playsOf(n);
         list.appendChild(el('div', { class: 'k-name' }, [
           el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }),
-          el('span', { class: 'grow', text: n }),
+          el('span', { class: 'grow' }, [el('span', { text: n }), p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null]),
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + n, html: icon('pencil'), onclick: function () {
+            var inp = el('input', { class: 'input', maxlength: 14, value: n, autocomplete: 'off' }), s2;
+            function go() {
+              var v = inp.value.trim(); s2.close(); if (!v || v === n) return;
+              var fp = fpRead().map(function (x) { return x.toLowerCase() === n.toLowerCase() ? v : x; });
+              fpWrite(fp);
+              var c = nameCounts(), ok = n.toLowerCase(), nk = v.toLowerCase();
+              if (c[ok]) { c[nk] = (c[nk] || 0) + c[ok]; delete c[ok]; lsSet('gn_name_counts', JSON.stringify(c)); }
+              var h = hiddenNames(); if (h.indexOf(n) < 0) h.push(n); lsSet('gn_hidden_names', JSON.stringify(h)); unhide(v);
+              sfx('good'); paint();
+            }
+            inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+            s2 = sheet({ title: 'Rename ' + n, node: inp, actions: [{ label: 'Save', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+            setTimeout(function () { inp.focus(); inp.select(); }, 350);
+          } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + n, html: icon('close'), onclick: function () {
-            try { if (window.FrequentPlayers) FrequentPlayers.remove(n); } catch (e) {}
+            fpWrite(fpRead().filter(function (x) { return x.toLowerCase() !== n.toLowerCase(); }));
             var h = hiddenNames(); if (h.indexOf(n) < 0) h.push(n); lsSet('gn_hidden_names', JSON.stringify(h));
-            sfx('tap'); paint();
+            sfx('tap'); toast(n + ' removed'); paint();
           } })
         ]));
       });
@@ -497,18 +527,18 @@
     var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Add a player', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
     function add() {
       var v = inp.value.trim(); if (!v) return;
-      try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {}
-      var c = nameCounts(); var k = v.toLowerCase(); if (!c[k]) { c[k] = 0; lsSet('gn_name_counts', JSON.stringify(c)); }
+      if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v]));
       unhide(v); inp.value = ''; sfx('pop'); paint();
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') add(); });
+    wrap.appendChild(el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'These names are offered whenever a game asks who’s playing, most played first.' }));
+    wrap.appendChild(list);
+    wrap.appendChild(el('div', { class: 'row', style: { 'margin-top': '14px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: add })]));
     paint();
-    s = sheet({
-      title: 'Players', node: el('div', null, [el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'These names show up when you set up a game, most played first.' }), list,
-        el('div', { class: 'row', style: { 'margin-top': '14px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: add })])]),
-      actions: [{ label: 'Done', cls: 'btn-soft' }],
-      onClose: function () { if (onDone) onDone(); }
-    });
+    return wrap;
+  }
+  function managePlayers(onDone) {
+    sheet({ title: 'Frequent players', node: playersPanel(), actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { if (onDone) onDone(); } });
   }
 
   // ── Setup screen ──────────────────────────────────────────────────────────
@@ -629,7 +659,7 @@
       var taken = names.slice(0, state.count).map(function (n) { return String(n || '').trim().toLowerCase(); });
       var pool = knownNames().filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
       if (pool.length) {
-        seatsBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Regulars' }));
+        seatsBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Frequent players' }));
         var quick = el('div', { class: 'quick' });
         pool.slice(0, 4).forEach(function (n) {
           quick.appendChild(el('button', {
@@ -659,7 +689,7 @@
             var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
             var v = inputs[i] ? inputs[i].value.trim() : '';
             players.push({ name: v || (isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1))), cpu: !!isCpu, color: playerColor(i), seat: i });
-            if (!isCpu && isPersonName(v)) { picked.push(v); try { if (window.FrequentPlayers) FrequentPlayers.add(v); } catch (e) {} }
+            if (!isCpu && isPersonName(v)) { picked.push(v); unhide(v); if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v])); }
           }
         }
         if (picked.length) countPlays(picked);
@@ -681,7 +711,7 @@
   function win(o) {
     o = o || {};
     var card = el('div', { class: 'card' });
-    card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'bot' : 'trophy')) }));
+    card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'meh' : 'trophy')) }));
     card.appendChild(el('h2', { text: o.title || (o.lose ? 'So close!' : 'You win!') }));
     if (o.sub) card.appendChild(el('div', { class: 'sub', text: o.sub }));
     if (o.rank && o.rank.length) {
@@ -731,7 +761,7 @@
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, haptic: haptic, card: card, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
-    resume: resume, rules: rules, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, cpuNames: cpuNames, home: goHome, game: function () { return game; }
+    resume: resume, rules: rules, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();
