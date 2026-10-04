@@ -34,13 +34,13 @@
 .g-status b{color:var(--text);}
 .g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
 .g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
-.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;animation:gn-fade .2s ease both;}
+.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;}
 .g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
 .g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
 .g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
 .g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
 .g-choices .btn{min-height:44px;}
-.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);animation:gn-fade .2s ease both;}
+.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
 .g-bar:empty{display:none;}
 .g-bar .btn{flex:1;max-width:280px;}
 .g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
@@ -113,7 +113,10 @@
 @keyframes p10-glow{0%,100%{outline:0 solid rgba(245,200,66,0);}50%{outline:4px solid rgba(245,200,66,.35);}}
 .p10-empty{--cw:54px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.2);}
 .p10-laid{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);display:grid;gap:8px;}
-.p10-laid-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.p10-laid-row{display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:8px;}
+.p10-laid-grps{display:flex;flex-wrap:wrap;gap:6px;}
+.p10-hud .g-seat .cnt{position:absolute;top:7px;right:8px;display:flex;align-items:center;gap:3px;font-size:.72rem;font-weight:700;color:var(--text-3);}
+.p10-hud .g-seat .cnt i{width:8px;height:11px;border-radius:2px;background:linear-gradient(150deg,#3b5bdb,#1e3a8a);border:1px solid rgba(255,255,255,.3);}
 .p10-laid-owner{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.75);min-width:56px;}
 .p10-grp{display:inline-flex;gap:2px;padding:4px;border-radius:9px;background:rgba(0,0,0,.2);flex-wrap:wrap;}
 .p10-grp.target{box-shadow:0 0 0 2px rgba(74,222,128,.7);}
@@ -557,9 +560,10 @@ function render(){
   html+=`<div class="g-hud p10-hud">`;
   PNAMES.forEach((n,i)=>{
     html+=`<div class="g-seat ${i===0?'you':''} ${current===i?'turn':''}">
+      ${i?`<span class="cnt"><i></i>${hands[i].length}</span>`:''}
       <div class="g-seat-name">${esc(n)}</div>
       <div class="g-seat-score"><small>PH </small>${phLabel(i)}</div>
-      <div class="g-seat-sub">${laid[i]?'✓ laid · ':''}${scores[i]} pts${i?' · '+hands[i].length+' cards':''}${skipped[i]?' · ⊘':''}</div>
+      <div class="g-seat-sub">${skipped[i]?'⊘ skipped · ':laid[i]?'✓ laid · ':''}${scores[i]} pts</div>
     </div>`;
   });
   html+=`</div>`;
@@ -585,7 +589,7 @@ function render(){
       const mine=laidGroups.filter(g=>g.player===p);
       if(!mine.length)return;
       html+=`<div class="p10-laid-row"><span class="p10-laid-owner">${p===0?'You':esc(PNAMES[p])}</span>
-        ${mine.map(g=>`<span class="p10-grp ${sel1&&canLayOff(sel1,g)?'target':''}">${g.cards.map(c=>cardEl(c,'xs')).join('')}</span>`).join('')}</div>`;
+        <span class="p10-laid-grps">${mine.map(g=>`<span class="p10-grp ${sel1&&canLayOff(sel1,g)?'target':''}">${g.cards.map(c=>cardEl(c,'xs')).join('')}</span>`).join('')}</span></div>`;
     });
     html+=`</div>`;
   }
