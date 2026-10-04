@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Code Breaker</title>
+<title>Mastermind</title>
 <link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
@@ -13,8 +13,8 @@
 <script src="../players.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
-.cb{--pg:30px;--rh:40px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;-webkit-user-select:none;user-select:none;}
-.cb.p5{--pg:28px;--rh:38px;}
+.cb{--pg:34px;--rh:43px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;-webkit-user-select:none;user-select:none;}
+.cb.p5{--pg:30px;--rh:38px;}
 .top{display:flex;align-items:center;gap:8px;min-height:38px;}
 .top .turn{flex:1;margin:0;min-height:38px;font-size:1rem;line-height:1.15;text-align:center;}
 .top .turn small{display:block;font-size:.74rem;font-weight:800;color:var(--text-3);}
@@ -46,7 +46,7 @@
 .shield span{font-family:var(--display);font-size:1rem;letter-spacing:.32em;color:rgba(255,255,255,.18);text-shadow:0 -1px 0 rgba(0,0,0,.6);padding-left:.32em;}
 .shield::before{content:"";position:absolute;left:8%;right:8%;top:4px;height:6px;border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,.18),transparent);}
 .shield.smoked{background:linear-gradient(180deg,rgba(60,68,84,.55),rgba(25,28,36,.6));}
-.shield.smoked span{color:rgba(255,255,255,.35);}
+.shield.smoked span{display:none;}
 .shield.open{transform:perspective(420px) rotateX(-84deg) translateY(-6px);opacity:.92;}
 .shield.flip{animation:flipup .9s cubic-bezier(.3,1.3,.5,1) both;}
 @keyframes flipup{0%{transform:none;}35%{transform:perspective(420px) rotateX(12deg);}100%{transform:perspective(420px) rotateX(-84deg) translateY(-6px);}}
@@ -56,12 +56,12 @@
 /* Guess rows */
 .rows{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;border-radius:12px;scroll-behavior:smooth;}
 .rows::-webkit-scrollbar{display:none;}
-.row{height:var(--rh);position:relative;border-radius:12px;transition:background .25s;}
-.row + .row{margin-top:1px;}
-.row::after{content:"";position:absolute;left:30px;right:46px;bottom:-1px;height:1px;background:rgba(0,0,0,.22);box-shadow:0 1px 0 rgba(255,255,255,.05);}
-.row.cur{background:rgba(255,230,170,.13);box-shadow:inset 0 0 0 2px rgba(255,214,120,.45);}
-.row.cur .num{color:#ffd88a;}
-.row.fut .hole{opacity:.6;}
+.grw{height:var(--rh);position:relative;border-radius:12px;transition:background .25s;}
+.grw + .grw{margin-top:1px;}
+.grw::after{content:"";position:absolute;left:30px;right:46px;bottom:-1px;height:1px;background:rgba(0,0,0,.22);box-shadow:0 1px 0 rgba(255,255,255,.05);}
+.grw.cur{background:rgba(255,230,170,.13);box-shadow:inset 0 0 0 2px rgba(255,214,120,.45);}
+.grw.cur .num{color:#ffd88a;}
+.grw.fut .hole{opacity:.6;}
 .hole{position:relative;width:var(--pg);height:var(--pg);flex:none;border-radius:50%;display:grid;place-items:center;border:0;padding:0;background:none;}
 .hole::before{content:"";width:42%;height:42%;border-radius:50%;background:radial-gradient(circle at 50% 35%,#0c0805,#1d130c);box-shadow:inset 0 2px 3px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.14);}
 button.hole{cursor:pointer;}
@@ -93,7 +93,7 @@ button.hole{cursor:pointer;}
 .kp.w{background:radial-gradient(circle at 35% 30%,#fff 0 12%,#eeeae0 40%,#a9a294 100%);box-shadow:0 1px 2px rgba(0,0,0,.7);}
 .kp.pop{animation:kpop .28s var(--spring);}
 @keyframes kpop{0%{transform:scale(2.2);opacity:0;}100%{transform:none;opacity:1;}}
-.row.solved{background:rgba(120,255,170,.12);box-shadow:inset 0 0 0 2px rgba(120,255,170,.45);}
+.grw.solved{background:rgba(120,255,170,.12);box-shadow:inset 0 0 0 2px rgba(120,255,170,.45);}
 
 /* ── Tray ──────────────────────────────────────────────────────────── */
 .tray{border-radius:20px;padding:7px;}
@@ -174,7 +174,7 @@ button.hole{cursor:pointer;}
     undo: function () { undo(); },
     menu: [
       { icon: 'eye', label: function () { return symOn() ? 'Colour shapes: on' : 'Colour shapes: off'; }, onClick: function () { setSym(!symOn()); Kit.toast(symOn() ? 'Shapes on every peg' : 'Shapes hidden'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Code Breaker: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mastermind: past games' }); } }
     ],
     rules:
       '<p class="goal">Crack the secret colour code in as few guesses as you can.</p>' +
@@ -400,7 +400,7 @@ button.hole{cursor:pointer;}
   }
   function tapHole(i) {
     if (!myTurn()) return;
-    if (S.act !== i) { S.act = i; Kit.sfx('tick'); render(); if (S.cur[i] != null) return; return; }
+    if (S.act !== i) { S.act = i; Kit.sfx('tick'); render(); return; }
     // Tapping the glowing hole again changes its colour
     var c = S.cur[i] == null ? -1 : S.cur[i];
     for (var k = 1; k <= S.K; k++) { var nc = (c + k) % S.K; if (S.dup || !rowUses(nc, i)) { S.stack.push({ i: i, prev: S.cur[i] }); S.cur[i] = nc; flash = i; Kit.sfx('tap'); Kit.haptic('light'); save(); render(); return; } }
@@ -457,7 +457,7 @@ button.hole{cursor:pointer;}
     // Key pegs pop in one by one
     for (var k = 0; k < n; k++) (function (k) {
       later(function () {
-        var holes = document.querySelectorAll('.row[data-r="' + row + '"] .kh');
+        var holes = document.querySelectorAll('.grw[data-r="' + row + '"] .kh');
         if (holes[k]) holes[k].appendChild(el('i', { class: 'kp pop ' + (k < f[0] ? 'b' : 'w') }));
         Kit.sfx('tick'); Kit.haptic('tick');
       }, 260 + k * 190);
@@ -479,7 +479,6 @@ button.hole{cursor:pointer;}
     S.log.push({ maker: S.maker, breaker: S.breaker, n: r.n, cracked: r.cracked, pts: pts, code: S.code.slice() });
     shieldAnim = 'flip';
     var last = S.log.length >= S.total;
-    if (last) S.phase = 'over';
     save(); render();
     Kit.sfx('whoosh');
     if (r.cracked) {
@@ -500,6 +499,7 @@ button.hole{cursor:pointer;}
 
   function finish() {
     var hl = [], ps = S.players;
+    S.phase = 'over'; save(); render();
     if (S.mode === 'solo') {
       var L = S.log[0], me = ps[0], pb = personalBest();
       if (L.cracked) {
@@ -526,7 +526,7 @@ button.hole{cursor:pointer;}
     }
     if (S.mode === 'watch') {
       var W = S.log[0], bot = ps[1], hu = ps[0];
-      hl.push(W.cracked ? 'The computer needed ' + W.n + ' guesses for ' + hu.name + "'s code" : hu.name + "'s code beat the computer!");
+      hl.push(W.cracked ? bot.name + ' needed ' + W.n + ' guesses for ' + hu.name + "'s code" : hu.name + "'s code beat the computer!");
       hl.push(hu.name + ' hid ' + codeName(W.code));
       if (W.n >= 6 && W.cracked) hl.push('A tough one: ' + bot.name + ' had to think hard');
       Kit.record(KEY, {
@@ -538,8 +538,8 @@ button.hole{cursor:pointer;}
       });
       Kit.win({
         icon: 'bot', lose: W.cracked,
-        title: W.cracked ? bot.name + ' cracked it' : 'Your code held!',
-        sub: W.cracked ? 'in ' + W.n + ' guesses. Your code scored ' + S.scores[0] + ' point' + (S.scores[0] === 1 ? '' : 's') + '.' : 'The computer ran out of guesses.',
+        title: W.cracked ? bot.name + ' cracked it in ' + W.n : 'Your code held!',
+        sub: W.cracked ? 'Your code scored ' + S.scores[0] + ' point' + (S.scores[0] === 1 ? '' : 's') : bot.name + ' ran out of guesses',
         againLabel: 'Set another code', again: function () { S.log = []; S.scores = [0, 0]; S.started = Date.now(); Kit.gameStart(); startRound(); },
         extra: [{ label: 'Look at the board', onClick: function () {} }]
       });
@@ -554,7 +554,11 @@ button.hole{cursor:pointer;}
       if (!tough || l.pts > tough.pts) tough = l;
       if (l.cracked && (!fast || l.n < fast.n)) fast = l;
     });
-    if (hl.length > 4) hl = hl.slice(0, 2);
+    if (hl.length > 4) {
+      var cracks = S.log.filter(function (l) { return l.cracked; }).length;
+      hl = hl.filter(function (h) { return /never cracked/.test(h); });
+      hl.unshift(cracks + ' of ' + S.log.length + ' codes were cracked');
+    }
     if (tough && S.log.length > 2) hl.push('Toughest code: ' + ps[tough.maker].name + "'s, worth " + tough.pts + ' points');
     if (fast && S.log.length > 2) hl.push('Quickest crack: ' + ps[fast.breaker].name + ', ' + fast.n + ' guesses');
     var lead = S.scores[0] === S.scores[1] ? -1 : S.scores[0] > S.scores[1] ? 0 : 1;
@@ -628,11 +632,12 @@ button.hole{cursor:pointer;}
       holes.appendChild(h);
     })(i);
     lane.appendChild(holes);
-    lane.appendChild(el('span', { class: 'lock', html: Kit.icon(making ? 'pencil' : 'eye') }));
+    lane.appendChild(el('span', { class: 'lock', html: making ? Kit.icon('pencil') : '' }));
     cr.appendChild(lane);
     var sh = el('div', { class: 'shield' + (S.mode === 'watch' && S.phase === 'break' ? ' smoked' : '') }, [el('span', { text: 'CODE' })]);
     var open = S.phase === 'make' || S.phase === 'reveal' || S.phase === 'over';
-    if (shieldAnim === 'flip') sh.classList.add('flip');
+    if (shieldAnim === 'open') requestAnimationFrame(function () { requestAnimationFrame(function () { sh.classList.add('open'); }); });
+    else if (shieldAnim === 'flip') sh.classList.add('flip');
     else if (shieldAnim === 'shut') sh.classList.add('shut');
     else if (open) sh.classList.add('open');
     shieldAnim = '';
@@ -643,7 +648,7 @@ button.hole{cursor:pointer;}
     var curRow = S.phase === 'break' ? S.guesses.length : -1;
     for (var r = S.R - 1; r >= 0; r--) (function (r) {
       var gr = S.guesses[r], isCur = r === curRow;
-      var row = el('div', { class: 'row' + (isCur ? ' cur' : '') + (r > curRow && !gr && curRow >= 0 ? ' fut' : '') + (gr && gr.b === S.P ? ' solved' : ''), 'data-r': r });
+      var row = el('div', { class: 'grw' + (isCur ? ' cur' : '') + (r > curRow && !gr && curRow >= 0 ? ' fut' : '') + (gr && gr.b === S.P ? ' solved' : ''), 'data-r': r });
       var ln = el('div', { class: 'lane' }), hs = el('div', { class: 'holes' });
       ln.style.height = '100%';
       ln.appendChild(el('span', { class: 'num', text: String(r + 1) }));
@@ -728,6 +733,7 @@ button.hole{cursor:pointer;}
       var mk = ps[S.maker].name, br = ps[S.breaker].name, pts = r.n + (r.cracked ? 0 : 1);
       msg = r.cracked ? br + ' cracked it in ' + r.n : br + ' could not crack it';
       small = mk + ' scores ' + pts + ' point' + (pts === 1 ? '' : 's') + (r.cracked ? '' : ' (with the bonus)');
+      if (S.phase === 'reveal') small += '. Next, ' + br + ' makes the code.';
     } else if (S.mode === 'watch') {
       msg = r.cracked ? ps[1].name + ' cracked it in ' + r.n : 'Your code beat the computer!';
       small = 'Your code scored ' + S.scores[0] + ' points';
@@ -737,7 +743,7 @@ button.hole{cursor:pointer;}
     }
     box.appendChild(el('div', { class: 'msg' }, [document.createTextNode(msg), el('small', { text: small })]));
     if (S.phase === 'reveal' && S.mode === '2p') {
-      box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('swap') + '<span>Next round: ' + Kit.esc(ps[(S.round + 1) % 2].name) + ' makes the code</span>', onclick: function () { Kit.sfx('pop'); nextRound(); } }));
+      box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('swap') + '<span>Next round</span>', onclick: function () { Kit.sfx('pop'); nextRound(); } }));
     } else if (S.phase === 'over') {
       box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('sparkle') + '<span>New game</span>', onclick: function () { clearSave(); showSetup(); } }));
     }
@@ -766,7 +772,7 @@ button.hole{cursor:pointer;}
       rows.style.scrollBehavior = 'auto';
       if (st != null) rows.scrollTop = st;
       rows.style.scrollBehavior = '';
-      var cur = rows.querySelector('.row.cur') || rows.querySelector('.row[data-r="' + Math.max(0, S.guesses.length - 1) + '"]');
+      var cur = rows.querySelector('.grw.cur') || rows.querySelector('.grw[data-r="' + Math.max(0, S.guesses.length - 1) + '"]');
       if (cur) {
         var rt = cur.offsetTop - rows.offsetTop, h = cur.offsetHeight;
         if (rt < rows.scrollTop + 4 || rt + h > rows.scrollTop + rows.clientHeight - 4) rows.scrollTop = Math.max(0, rt - rows.clientHeight + h * 2);
@@ -818,17 +824,17 @@ button.hole{cursor:pointer;}
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.phase && saved.phase !== 'over') {
     S = saved; busy = false;
-    if (S.phase === 'reveal') { S.phase = 'break'; S.guesses.length && (S.result = null); }
-    // A round that ended mid-animation: settle it now
-    if (S.phase === 'break' && S.guesses.length) {
-      var lg = S.guesses[S.guesses.length - 1];
-      if (lg.b === S.P || S.guesses.length >= S.R) {
-        S.phase = 'reveal'; S.result = { cracked: lg.b === S.P, n: S.guesses.length };
-        if (S.log.length < S.round + 1) { render(); endRound(); }
-        else { if (S.log.length >= S.total) S.phase = 'over'; render(); }
-      } else { render(); cpuTurn(); }
-    } else { if (S.phase === 'make') shieldAnim = 'open'; render(); cpuTurn(); }
-    if (S.phase !== 'over') save();
+    var lg = S.guesses && S.guesses[S.guesses.length - 1];
+    // Saved just after the final guess: settle the round now
+    if (S.phase === 'break' && lg && (lg.b === S.P || S.guesses.length >= S.R)) { S.phase = 'reveal'; S.result = { cracked: lg.b === S.P, n: S.guesses.length }; }
+    if (S.phase === 'reveal') {
+      render();
+      if (S.log.length < S.round + 1) endRound();
+      else if (S.log.length >= S.total) finish();
+    } else {
+      if (S.phase === 'make' && !S.pass) shieldAnim = 'open';
+      save(); render(); cpuTurn();
+    }
   } else showSetup();
 })();
 </script>

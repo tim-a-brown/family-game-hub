@@ -187,8 +187,8 @@ var GameIcon = (function () {
     var mark = MARK[g.id] ? MARK[g.id](c) : txt(g.name.charAt(0), 18, c, 12.5);
     return '<svg class="gicon' + (opts.cls ? ' ' + opts.cls : '') + '" viewBox="0 0 48 48" role="img" aria-label="' + g.name + '">' +
       '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + lighten(c, .18) + '"/><stop offset="1" stop-color="' + lighten(c, -.18) + '"/></linearGradient></defs>' +
-      '<rect width="48" height="48" rx="13" fill="url(#' + gid + ')"/>' +
-      '<rect x="1" y="1" width="46" height="46" rx="12" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>' +
+      (opts.bare ? '' : '<rect width="48" height="48" rx="13" fill="url(#' + gid + ')"/>' +
+      '<rect x="1" y="1" width="46" height="46" rx="12" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>') +
       base[0] + '<g transform="' + base[1] + '">' + mark + '</g></svg>';
   }
   // Just the game's mark, as a standalone 24×24 SVG (used as a faint

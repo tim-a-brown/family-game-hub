@@ -119,22 +119,39 @@ document.addEventListener('visibilitychange', function () {
 @media (min-width:720px){.list.tiles{grid-template-columns:repeat(5,minmax(0,1fr));}}
 @media (min-width:1000px){.list.tiles{grid-template-columns:repeat(6,minmax(0,1fr));}}
 @media (min-width:1200px){.list.tiles{grid-template-columns:repeat(7,minmax(0,1fr));}}
-.tiles .g{flex-direction:column;border-radius:18px;
-  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 16%,var(--surface)) 0%,var(--surface) 70%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 4px 0 rgba(0,0,0,.25);}
-.tiles .g:hover{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 24%,var(--surface-2)) 0%,var(--surface-2) 70%);}
-.tiles .g .go{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 10px 11px;border-radius:18px;height:100%;}
-.tiles .g .gicon{width:52px;height:52px;}
-.tiles .g .txt{width:100%;display:flex;flex-direction:column;flex:1;}
-.tiles .g .txt b{font-size:.92rem;line-height:1.15;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.3em;}
+.tiles .g{display:block;aspect-ratio:1/1;border-radius:18px;overflow:hidden;isolation:isolate;
+  background:radial-gradient(120% 90% at 50% 20%,color-mix(in srgb,var(--c) 78%,#fff) 0%,var(--c) 55%,color-mix(in srgb,var(--c) 65%,#000) 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14), 0 4px 0 rgba(0,0,0,.28), 0 10px 22px -10px rgba(0,0,0,.6);}
+.tiles .g:hover{filter:brightness(1.07);}
+.tiles .g .go{position:absolute;inset:0;display:block;padding:0;border-radius:18px;}
+/* The game icon fills the whole tile: art sits high, the name sits on a fade at the bottom */
+.tiles .g .gicon{position:absolute;left:17%;top:-3%;width:66%;height:66%;z-index:-1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25));transition:transform .35s var(--spring);}
+@media (max-width:559px){.tiles .g .gicon{left:20%;top:-5%;width:60%;height:60%;}}
+.tiles .g:hover .gicon{transform:scale(1.04) rotate(-1.5deg);}
+.tiles .g .go:active .gicon{transform:scale(.96);}
+.tiles .g .go::after{content:"";position:absolute;inset:auto 0 0 0;height:50%;z-index:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(14,10,30,0) 0%,rgba(14,10,30,.5) 45%,rgba(14,10,30,.85) 100%);}
+.tiles .g .txt{position:absolute;left:10px;right:8px;bottom:8px;z-index:1;display:flex;flex-direction:column;gap:3px;}
+.tiles .g .txt b{font-size:.92rem;line-height:1.12;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);}
 .tiles .g .txt small{display:none;}
-.tiles .g .txt b.long{font-size:.74rem;letter-spacing:-.01em;}
-.tiles .g .meta,.tiles .g .live{margin-top:auto;}
-.tiles .g .live{font-size:.62rem;padding:2px 7px;align-self:flex-start;}
-.tiles .g .fav{position:absolute;top:4px;right:2px;width:40px;height:40px;border-radius:50%;}
-.tiles .g .fav .ico{width:18px;height:18px;}
-.tiles .g .fav:not(.on){opacity:.55;}
+.tiles .g .txt b.long{font-size:.8rem;letter-spacing:-.01em;}
+.tiles .g .txt b.two{font-size:.84rem;}
+.tiles .g .meta{color:rgba(255,255,255,.78);font-size:.74rem;}
+.tiles .g .meta .ico{width:13px;height:13px;}
+.tiles .g .live{font-size:.6rem;padding:2px 7px;align-self:flex-start;}
+.tiles .g .fav{position:absolute;top:2px;right:2px;z-index:2;width:40px;height:40px;border-radius:50%;color:#fff;}
+.tiles .g .fav .ico{width:18px;height:18px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.tiles .g .fav:not(.on){opacity:.6;}
+.tiles .g .fav.on{color:var(--yellow);}
 .tiles .g.spot{transform:scale(1.04);}
+
+/* Favorites: its own shelf, set apart from the category sections */
+.sec.favs{margin-top:18px;padding:14px 12px 14px;border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,200,61,.12),rgba(255,200,61,.03));
+  box-shadow:inset 0 0 0 1px rgba(255,200,61,.28);}
+.sec.favs .sec-h h2{color:var(--yellow);}
+.sec.favs .sec-h .ico{color:var(--yellow);fill:var(--yellow);}
+.sec.favs + .sec{margin-top:28px;}
 
 /* Keep playing: compact overview, 5-6 games visible at once */
 .rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
@@ -281,8 +298,8 @@ document.addEventListener('visibilitychange', function () {
     var fav = isFav(g);
     var r = el('div', { class: 'g', 'data-id': g.id, style: { '--c': g.color } });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + players(g) + ' players' }, [
-      el('span', { html: GameIcon(g.id), style: { display: 'contents' } }),
-      el('span', { class: 'txt' }, [el('b', { text: g.name, class: /\S{10,}/.test(g.name) ? 'long' : '' }), el('small', { text: g.tag })].concat(tiles ? [badge(g)] : [])),
+      el('span', { html: GameIcon(g.id, { bare: tiles }), style: { display: 'contents' } }),
+      el('span', { class: 'txt' }, [el('b', { text: g.name, class: /\S{10,}/.test(g.name) ? 'long' : g.name.length > 11 ? 'two' : '' }), el('small', { text: g.tag })].concat(tiles ? [badge(g)] : [])),
     ].concat(tiles ? [] : [badge(g)]));
     go.addEventListener('click', function () { launch(g); });
     var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
@@ -400,7 +417,7 @@ document.addEventListener('visibilitychange', function () {
     var vis = visibleGames();
     if (state.cat === 'all') {
       var favs = vis.filter(isFav);
-      if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs));
+      if (favs.length && !state.q) { var fs = section('Favorites', 'star', favs); fs.classList.add('favs'); list.appendChild(fs); }
       GAME_CATS.forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
         if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : null));

@@ -17,8 +17,8 @@
 html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
 body{display:flex;flex-direction:column;
   background:radial-gradient(90% 45% at 50% 0%, rgba(255,214,60,.10) 0%, rgba(255,214,60,0) 70%),var(--bg);}
-#app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;align-items:center;
-  padding:0 10px calc(var(--safe-b) + 10px);gap:8px;}
+#app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:0 8px calc(var(--safe-b) + 10px);gap:8px;}
 .hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
 .plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
   background:linear-gradient(180deg,#1d1838,#100c22);box-shadow:inset 0 0 0 1.5px rgba(255,214,90,.28),0 6px 14px rgba(0,0,0,.35);}
@@ -31,7 +31,7 @@ body{display:flex;flex-direction:column;
 .pbtn:active{transform:scale(.94);}
 .pbtn svg{width:22px;height:22px;}
 /* Cabinet: wooden bezel around a dark glass screen */
-.cab{flex:1 1 0;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.cab{flex:none;width:100%;display:flex;align-items:center;justify-content:center;}
 .bezel{position:relative;padding:7px;border-radius:20px;}
 .scr{position:relative;border-radius:13px;overflow:hidden;background:#04030c;
   box-shadow:inset 0 0 0 2px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);}
@@ -64,7 +64,7 @@ body{display:flex;flex-direction:column;
 .who .avatar{width:28px;height:28px;font-size:.8rem;}
 .who .ico{width:15px;height:15px;color:var(--text-3);}
 /* Touch pad: drag or tap in a direction (also swipe on the maze) */
-.padwrap{flex:none;display:flex;align-items:center;justify-content:center;width:100%;}
+.padwrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;width:100%;}
 .pad{position:relative;width:184px;height:184px;border-radius:50%;touch-action:none;-webkit-user-select:none;user-select:none;
   background:radial-gradient(circle at 50% 40%,#2b2450 0%,#191433 60%,#0f0b22 100%);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.1),inset 0 -6px 14px rgba(0,0,0,.45),0 0 0 6px rgba(0,0,0,.25),0 14px 28px rgba(0,0,0,.45);}
@@ -277,15 +277,21 @@ body{display:flex;flex-direction:column;
   var cv = $('cv'), g = cv.getContext('2d'), scr = $('scr'), cab = $('cab');
   var DPR = 1, SC = 1, wallImg = null, wallFlash = null;
   function fit() {
-    var r = cab.getBoundingClientRect();
-    var s = Math.max(.5, Math.min((r.width - 14) / LW, (r.height - 14) / LH));
+    var app = $('app'), cs = getComputedStyle(app), used = 0, n = 0;
+    Array.prototype.forEach.call(app.children, function (ch) {
+      if (ch === cab || getComputedStyle(ch).display === 'none') return;
+      n++; used += ch.classList.contains('padwrap') ? $('pad').offsetHeight + 12 : ch.offsetHeight;
+    });
+    var avH = app.clientHeight - parseFloat(cs.paddingBottom) - used - n * 8 - 14;
+    var avW = app.clientWidth - parseFloat(cs.paddingLeft) * 2 - 14;
+    var s = Math.max(.5, Math.min(avW / LW, avH / LH));
     var w = Math.floor(LW * s), h = Math.floor(LH * s);
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     scr.style.width = w + 'px'; scr.style.height = h + 'px';
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
     SC = cv.width / LW;
-    wallImg = buildWalls('#4f6bff', 'rgba(40,60,190,.28)', 'rgba(80,120,255,.85)');
+    wallImg = buildWalls('#5470ff', 'rgba(40,60,190,.2)', 'rgba(80,120,255,.85)');
     wallFlash = buildWalls('#ffffff', 'rgba(255,255,255,.18)', 'rgba(255,255,255,.9)');
     drawStrip();
     render();
@@ -567,6 +573,7 @@ body{display:flex;flex-direction:column;
         setPhase('eat', 60);
         return;
       } else {
+        if (window.__pac && window.__pac.god) continue;
         G.stats.deaths.push({ by: gh.def.label, lvl: G.level });
         Snd.loop(null); Kit.haptic('error');
         setPhase('die1', 60);
@@ -1011,10 +1018,11 @@ body{display:flex;flex-direction:column;
   window.__pac = {
     G: function () { return G; }, phase: function () { return phase; },
     eatAllBut: function (n) { if (!G) return; for (var i = 0; i < G.dots.length && G.left > n; i++) if (G.dots[i]) { G.dots[i] = 0; G.left--; G.eaten++; } },
-    lives: function (n) { if (G) { G.lives = n; drawStrip(); } }
+    lives: function (n) { if (G) { G.lives = n; drawStrip(); } },
+    steer: function (d) { steer(d); }, god: false, MAP: MAP
   };
 
-  new ResizeObserver(function () { fit(); }).observe(cab);
+  new ResizeObserver(function () { fit(); }).observe($('app'));
   phase = 'title';
   fit(); hud(); syncOverlay();
   requestAnimationFrame(loop);
