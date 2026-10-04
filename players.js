@@ -556,6 +556,7 @@ const FrequentPlayers = (function(){
         transition:background .15s,transform .1s;
       }
       .fp-name-chip.in-nav{position:static;}
+      @media(max-width:374px){.fp-name-chip.in-nav .fp-nc-label{display:none;}.fp-name-chip.in-nav{width:36px;padding:0;justify-content:center;}}
       .fp-name-chip:active{transform:scale(.95);}
       .fp-nc-icon{font-size:.85rem;line-height:1;}
       .fp-nc-label{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
