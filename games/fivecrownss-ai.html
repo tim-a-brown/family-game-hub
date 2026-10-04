@@ -117,6 +117,38 @@
 .fc-sr .mini .g.d{box-shadow:0 0 0 1.5px rgba(255,138,61,.7);}
 .fc-sum .note{color:var(--text-2);font-size:.92rem;}
 .fly-ghost{position:fixed;z-index:60;pointer-events:none;transition:transform .42s cubic-bezier(.2,.8,.25,1), opacity .42s;}
+/* iPad portrait: a bigger table, bigger cards */
+@media (min-width:700px) and (min-height:900px){
+  .stage{max-width:720px;}
+  .ctable .felt-in{height:clamp(360px,40dvh,480px);}
+  .ctable .felt-in.big{height:clamp(400px,40dvh,480px);}
+  .fc-piles{--cw:84px;gap:18px;}
+  .fc-seat .tag{font-size:.92rem;}
+  .fc-seat .tag .nm{max-width:110px;}
+  .fc-seat .tag small{font-size:.76rem;}
+  .fc-seat .tag .avatar{width:28px;height:28px;}
+  .fc-seat .backs{--cw:17px;}
+  .fc-seat .backs .pcard+.pcard{margin-left:-11px;}
+  .fc-seat.low{margin-top:14px;}
+  .felt-in.big .fc-center{margin-top:34px;}
+  .fc-round{font-size:.78rem;}
+  .fc-me .who{font-size:1.1rem;}
+  .fc-hand{--cw:80px;gap:14px 12px;}
+  .fc-grp .gl{font-size:.74rem;}
+}
+/* Landscape tablets and desktops: table on the left, your hand on the right */
+@media (min-width:1000px) and (orientation:landscape){
+  .stage.fc-play{max-width:1120px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:auto auto auto 1fr;column-gap:22px;align-items:start;}
+  .fc-play > .ctable{grid-column:1;grid-row:1 / -1;margin:0;}
+  .fc-play > .fc-me,.fc-play > .fc-sortrow,.fc-play > .fc-hand,.fc-play > .cbar{grid-column:2;}
+  .fc-play > .fc-me{grid-row:1;margin-top:4px;}
+  .fc-play > .fc-sortrow{grid-row:2;}
+  .fc-play > .fc-hand{grid-row:3;--cw:78px;}
+  .fc-play > .cbar{grid-row:4;align-self:start;}
+  .fc-play .ctable .felt-in,.fc-play .ctable .felt-in.big{height:clamp(320px,calc(100dvh - 88px - var(--safe-b)),640px);}
+  .fc-play .fc-piles{--cw:76px;}
+  .fc-play .fc-seat .tag .nm{max-width:100px;}
+}
 </style>
 </head>
 <body>
@@ -322,6 +354,7 @@
 
   function showSetup() {
     S = null; token++; undoStack = [];
+    app.classList.remove('fc-play');
     Kit.setup(app, {
       players: { min: 2, max: 7, count: 3, cpu: 'seats', label: 'Players (you + computers)' },
       options: [{ id: 'len', label: 'Game length', value: 11, choices: [[11, 'Full · 11 rounds', 'The full game: 3 cards in the first round up to 13 in the last.'], [6, 'Quick · 6 rounds', 'Stops after the 8-card round.']] }],
@@ -634,6 +667,7 @@
   var seatEls = [], centerEl, handEl, barEl, meEl, feltEl;
   function render() {
     app.innerHTML = '';
+    app.classList.add('fc-play');
     var table = el('div', { class: 'ctable wood' });
     feltEl = el('div', { class: 'felt-in' });
     var n = S.players.length, spots = SPOTS[n - 1];
@@ -642,7 +676,7 @@
       var sp = spots[p - 1];
       var st = { top: sp[1] + 'px' };
       if (sp[2] === 'c') { st.left = sp[0] + '%'; st.transform = 'translateX(-50%)'; }
-      var s = el('div', { class: 'fc-seat ' + sp[2], style: st });
+      var s = el('div', { class: 'fc-seat ' + sp[2] + (sp[1] > 8 ? ' low' : ''), style: st });
       feltEl.appendChild(s); seatEls.push(s);
     }
     if (n >= 5) feltEl.classList.add('big');
@@ -758,7 +792,7 @@
     } else if (mode === 'rank') {
       // 3 up to King, wild cards last, in as few even rows as fit
       var rk = shown.slice().sort(function (x, y) { return isW(x, w) - isW(y, w) || (x.r === 'JK') - (y.r === 'JK') || rn(x) - rn(y) || SUITS.indexOf(x.s) - SUITS.indexOf(y.s); });
-      var cw = Math.min(64, Math.max(50, window.innerWidth * .136)), cap = Math.max(3, Math.floor((handEl.clientWidth - 6 - cw) / (cw * .5)) + 1);
+      var cw = handCW(), cap = Math.max(3, Math.floor((handEl.clientWidth - 6 - cw) / (cw * .5)) + 1);
       var rows = Math.ceil(rk.length / cap), per = Math.ceil(rk.length / Math.max(1, rows));
       for (var ri = 0; ri < rk.length; ri += per) add(rk.slice(ri, ri + per), '', '');
     } else {
@@ -796,6 +830,16 @@
       barEl.appendChild(el('span', { class: 'hint', text: last + (canOut ? 'You can go out! Tap a glowing card.' : 'Tap a card to discard') }));
     }
   }
+  // Card width the hand is drawn at (it changes with screen size)
+  function handCW() {
+    var pr = el('div', { style: { width: 'var(--cw)', position: 'absolute', visibility: 'hidden' } });
+    handEl.appendChild(pr); var w = pr.offsetWidth || 64; pr.remove(); return w;
+  }
+  var rzT = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(rzT);
+    rzT = setTimeout(function () { if (S && handEl && handEl.isConnected && sortT.get() === 'rank') paintHand(); }, 120);
+  });
   function pileEl(which) { return centerEl ? centerEl.querySelector('[data-pile="' + which + '"]') : null; }
   function discardTopEl() { var d = pileEl('discard'); return d ? d.lastElementChild : null; }
 

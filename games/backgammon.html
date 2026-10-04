@@ -91,6 +91,20 @@
 .ctrl .btn{flex:1;max-width:240px;}
 .ctrl .btn .ico{width:20px;height:20px;}
 .hint{text-align:center;color:var(--text-2);font-weight:700;font-size:.92rem;min-height:22px;}
+
+/* Landscape iPad: player bars, hint and buttons in a column beside the board (sized in geometry()) */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.stage{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
+  .bgw{display:grid;grid-template-columns:auto minmax(260px,320px);grid-template-rows:auto auto auto 1fr auto;
+    grid-template-areas:"b t" "b h" "b c" "b ." "b p";height:var(--bh);column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
+  .bgw>.bboard{grid-area:b;}
+  .bgw>.btag:nth-child(1){grid-area:t;}
+  .bgw>.btag:nth-child(3){grid-area:p;}
+  .bgw>.hint{grid-area:h;text-align:left;}
+  .bgw>.ctrl{grid-area:c;flex-direction:column;align-items:stretch;}
+  .bgw>.ctrl .btn{max-width:none;flex:none;}
+}
+@media (min-width:700px) and (orientation:portrait){ #app.stage{max-width:760px;} .btag,.ctrl{max-width:680px;} }
 </style>
 </head>
 <body>
@@ -102,6 +116,7 @@
   function innerW() { var cs = getComputedStyle(app); return (app.clientWidth || 390) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); }
   var SAVE = 'backgammon_state', KEY = 'backgammon';
   var BAR = -1, OFF = -2;
+  var LAND_MQ = '(orientation:landscape) and (min-width:900px) and (min-height:600px)';
 
   Kit.init({
     id: 'backgammon',
@@ -613,10 +628,12 @@
   // ── Geometry ──────────────────────────────────────────────────────────────
   var G = null;
   function geometry() {
-    var W = Math.min(innerW(), 600);
+    // Landscape iPad: player bars and buttons sit beside the board, so the board takes the full height
+    var side = window.matchMedia && matchMedia(LAND_MQ).matches, vh = window.innerHeight || 800;
+    var W = side ? Math.min(innerW() - 340, (vh - 84) / 0.82, 820) : Math.min(innerW(), (window.innerWidth || 0) >= 700 ? 712 : 600);
     var fw = Math.round(Math.max(8, W * 0.025)), bw = Math.round(W * 0.07), tw = Math.round(W * 0.085), dv = 3;
     var pw = (W - 2 * fw - bw - tw - dv) / 12, cd = Math.floor(pw * 0.96);
-    var avail = (window.innerHeight || 800) - 58 - 2 * 56 - 26 - 62 - 34;
+    var avail = side ? vh - 84 : vh - 58 - 2 * 56 - 26 - 62 - 34;
     var mg = Math.round(Math.max(cd * 1.9, 44)), pad = 3;
     var th = Math.round(Math.max(cd * 5, Math.min(cd * 6.2, (avail - 2 * fw - 2 * pad - mg) / 2)));
     var H = 2 * fw + 2 * pad + 2 * th + mg;
@@ -658,7 +675,7 @@
     lm.forEach(function (m) { froms[m.from] = 1; if (sel != null && m.from === sel) dests[m.to] = 1; });
 
     app.innerHTML = '';
-    var wrap = el('div', { class: 'bgw' });
+    var wrap = el('div', { class: 'bgw', style: { '--bh': G.H + 'px' } });
     wrap.appendChild(tag(1));
     boardEl = el('div', { class: 'bboard', style: { width: G.W + 'px', height: G.H + 'px', '--cd': G.cd + 'px' } });
     // felt halves, bar, tray

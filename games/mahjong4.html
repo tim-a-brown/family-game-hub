@@ -88,6 +88,17 @@
 .res .pos{color:var(--green);} .res .neg{color:var(--red);}
 .res h4{margin:12px 0 4px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
 :root{--cjk:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Noto Serif CJK SC","Source Han Sans SC","WenQuanYi Zen Hei","Microsoft YaHei",serif;}
+
+/* iPad: wider stage in portrait; landscape puts scores, status, rack and buttons beside the table */
+@media (min-width:700px) and (orientation:portrait){ #app.stage{max-width:760px;} .mj .scores,.acts{max-width:700px;} }
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.stage{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
+  .mj.side{display:grid;grid-template-columns:auto 360px;grid-template-rows:auto auto auto auto auto 1fr;column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
+  .mj.side>*{grid-column:2;}
+  .mj.side>.mtable{grid-column:1;grid-row:1 / span 6;}
+  .mj.side>.rack{justify-self:center;}
+  .mj.side .score .nm{font-size:.82rem;}
+}
 </style>
 </head>
 <body>
@@ -96,6 +107,7 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  var LAND_MQ = '(orientation:landscape) and (min-width:900px) and (min-height:600px)';
   function innerW() { var cs = getComputedStyle(app); return (app.clientWidth || 390) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); }
   var SAVE = 'mj4_state', KEY = 'mj4';
   var WIND_CH = ['東', '南', '西', '北'], WIND_EN = ['East', 'South', 'West', 'North'];
@@ -691,9 +703,12 @@
   // seat on screen: 0 you (bottom), 1 right, 2 top, 3 left
   function render(ev) {
     if (!S || !S.hands) return;
-    var W = Math.min(innerW(), 560), P = S.players;
+    // iPad: a bigger table (k scales the tile caps); landscape puts scores, rack and buttons beside it
+    var side = window.matchMedia && matchMedia(LAND_MQ).matches, vh = window.innerHeight || 800;
+    var W = Math.floor(side ? Math.min(innerW() - 384, (vh - 104) / 0.82, 760) : Math.min(innerW(), (window.innerWidth || 0) >= 700 ? 700 : 560));
+    var KZ = Math.max(1, W / 560), RW = side ? 360 : W, P = S.players;
     app.innerHTML = '';
-    var wrap = el('div', { class: 'mj' });
+    var wrap = el('div', { class: 'mj' + (side ? ' side' : '') });
 
     // score pills, laid out left / across / right / you
     var strip = el('div', { class: 'scores' });
@@ -710,8 +725,9 @@
 
     // the table
     var TW = W, rim = 9, FW = TW - 2 * rim, SB = Math.round(Math.max(34, FW * 0.105)), TB = Math.round(SB * 1.1), BB = Math.round(SB * 1.1);
-    var L = Math.min(FW - 2 * SB - 6, 330), FH = TB + L + BB + 6, TH = FH + 2 * rim;
+    var L = Math.min(FW - 2 * SB - 6, Math.round(330 * KZ)), FH = TB + L + BB + 6, TH = FH + 2 * rim;
     var table = el('div', { class: 'mtable wood', style: { width: TW + 'px', height: TH + 'px' } });
+    if (side) wrap.style.height = TH + 'px';
     var felt = el('div', { class: 'felt-in' });
     table.appendChild(felt);
     var ox = (FW - L) / 2, oy = TB + 3, cx = ox + L / 2, cy = oy + L / 2;
@@ -732,7 +748,7 @@
     felt.appendChild(wall);
 
     // ponds
-    var inner = L - 2 * ring - 6, ptw = Math.floor(Math.min(22, (inner * 0.46) / 6.3)), pondW = ptw * 6 + 5, depth = Math.round(ptw * 1.42 * 3 + 8);
+    var inner = L - 2 * ring - 6, ptw = Math.floor(Math.min(22 * KZ, (inner * 0.46) / 6.3)), pondW = ptw * 6 + 5, depth = Math.round(ptw * 1.42 * 3 + 8);
     var cbox = Math.max(pondW, inner - 2 * depth);
     var half = cbox / 2;
     var center = el('div', { class: 'center', style: { left: (cx - half + 6) + 'px', top: (cy - half + 6) + 'px', width: (cbox - 12) + 'px', height: (cbox - 12) + 'px' } }, [
@@ -753,8 +769,8 @@
     });
 
     // opponents: concealed tiles and face-up melds
-    var btw = Math.max(10, Math.min(16, Math.floor((L - 10) / 15.5)));
-    var mtw = Math.max(12, Math.min(17, Math.floor(SB * 0.42)));
+    var btw = Math.max(10, Math.min(Math.round(16 * KZ), Math.floor((L - 10) / 15.5)));
+    var mtw = Math.max(12, Math.min(Math.round(17 * KZ), Math.floor(SB * 0.42)));
     // across (2)
     var nb = S.hands[2].length, rowB = el('div', { class: 'backs', style: { left: (ox + 2) + 'px', top: '6px' } });
     for (var i = 0; i < nb; i++) rowB.appendChild(backTile(btw, 'side'));
@@ -764,7 +780,7 @@
     felt.appendChild(md2);
     // sides (1 right, 3 left): tile edges + rotated melds
     [1, 3].forEach(function (q) {
-      var n = S.hands[q].length, eh = Math.max(8, Math.min(14, Math.floor((L * 0.55) / 13))), ew = Math.round(SB * 0.32);
+      var n = S.hands[q].length, eh = Math.max(8, Math.min(Math.round(14 * KZ), Math.floor((L * 0.55) / 13))), ew = Math.round(SB * 0.32);
       var col = el('div', { class: 'backs col', style: { top: (oy + 2) + 'px' } });
       col.style[q === 1 ? 'right' : 'left'] = '5px';
       for (var k = 0; k < n; k++) { var e = el('div', { class: 'mt edge' + (q === 1 ? ' r' : ''), style: { width: ew + 'px', height: (eh - 1) + 'px' } }); col.appendChild(e); }
@@ -777,7 +793,7 @@
     // your melds along the bottom edge
     var my = S.melds[0];
     if (my.length) {
-      var nT = my.reduce(function (a, m) { return a + m.ids.length; }, 0), ytw = Math.min(24, Math.floor((FW - 16 - my.length * 6) / nT));
+      var nT = my.reduce(function (a, m) { return a + m.ids.length; }, 0), ytw = Math.min(Math.round(24 * KZ), Math.floor((FW - 16 - my.length * 6) / nT));
       var md0 = el('div', { class: 'melds', style: { left: '0', right: '0', 'justify-content': 'center', bottom: '4px' } });
       my.forEach(function (m) { md0.appendChild(meldEl(m, ytw, 0)); });
       felt.appendChild(md0);
@@ -802,8 +818,8 @@
 
     if (S.phase === 'claim' && S.claim) table.appendChild(claimBar());
 
-    var rtw = Math.floor(Math.min(48, (W - 40) / 7.4));
-    var rack = el('div', { class: 'rack', style: { width: Math.min(W, rtw * 7 + 3 * 6 + 16 + 12) + 'px' } });
+    var rtw = Math.floor(Math.min(side ? 48 : Math.round(48 * Math.min(KZ, 1.15)), (RW - 40) / 7.4));
+    var rack = el('div', { class: 'rack', style: { width: Math.min(RW, rtw * 7 + 3 * 6 + 16 + 12) + 'px' } });
     var sorted = me.slice().sort(function (a, b) { return a - b; });
     if (S.drawn != null && S.cur === 0 && me.indexOf(S.drawn) >= 0) { sorted.splice(sorted.indexOf(S.drawn), 1); sorted.push(S.drawn); }
     var wt = S.phase !== 'discard' || S.cur !== 0 ? waits(me, S.melds[0].length) : [];

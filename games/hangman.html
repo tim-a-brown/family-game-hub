@@ -81,6 +81,35 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
 .key.miss::after{content:"";position:absolute;left:22%;right:22%;top:50%;height:2px;background:#ff6b6b;transform:rotate(-30deg);border-radius:2px;}
 .key:disabled{cursor:default;}
 @media (max-height:720px){.key{height:44px;}.pic{min-height:120px;}}
+/* Tablets: bigger slate drawing, chalk and keys */
+@media (min-width:700px) and (min-height:700px){
+  .hm{max-width:760px;}
+  .topline{font-size:1.35rem;}
+  .clue{font-size:1.4rem;}
+  .banner{font-size:3rem;}
+  .banner small{font-size:1.4rem;}
+  .acts .btn{min-height:46px;font-size:1.02rem;}
+  .kb{gap:8px;}
+  .kb .r{gap:7px;}
+  .key{max-width:58px;height:60px;font-size:1.3rem;border-radius:11px;}
+}
+@media (min-width:700px) and (min-height:900px){
+  .pic svg{max-height:520px;}
+  .key{height:66px;}
+}
+/* Tablet / desktop landscape: slate on the left, keyboard on the right */
+@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
+  .hm:has(> .frame){max-width:1080px;height:calc(100dvh - var(--safe-t) - 58px);min-height:0;display:grid;
+    grid-template-columns:minmax(0,1fr) 500px;grid-template-rows:auto auto 1fr auto auto auto 1fr;column-gap:26px;}
+  .hm:has(> .frame) > *{grid-column:1 / -1;}
+  .hm:has(> .frame) > .scores{grid-row:1;}
+  .hm:has(> .frame) > .hud{grid-row:2;}
+  .hm:has(> .frame) > .frame{grid-column:1;grid-row:3 / -1;}
+  .hm:has(> .frame) > .acts{grid-column:2;grid-row:4;margin-top:0;}
+  .hm:has(> .frame) > .kb{grid-column:2;grid-row:5;}
+  .hm:has(> .frame) > .next{grid-column:2;grid-row:4 / 7;align-self:center;}
+  .pic svg{max-height:420px;}
+}
 .next{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
 /* Hand-off and secret word screens */
 .cover{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px 10px;}
@@ -490,12 +519,19 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
     }
     afterPaint();
   }
+  // Letter size from the room available; tablets get bigger chalk letters.
+  function sizeWord(wrap) {
+    var longest = +wrap.dataset.longest || 6, big = window.innerWidth >= 700 && window.innerHeight >= 700;
+    var side = window.innerWidth >= 1000 && window.innerHeight >= 600 && window.innerWidth > window.innerHeight ? 526 : 0; // keyboard column
+    var avail = Math.min(window.innerWidth - side, big ? 720 : 560) - 64;
+    var lw = Math.max(16, Math.min(big ? 46 : 32, Math.floor((avail - (longest - 1) * 5) / longest)));
+    wrap.style.setProperty('--lw', lw + 'px');
+  }
+  window.addEventListener('resize', function () { var w = app && app.querySelector('.word'); if (w) sizeWord(w); });
   function wordEl() {
     var W = S.W, wrap = el('div', { class: 'word' }), words = W.word.split(' ');
-    var longest = Math.max.apply(null, words.map(function (w) { return w.length; }).concat([6]));
-    var avail = Math.min(window.innerWidth, 560) - 64;
-    var lw = Math.max(16, Math.min(32, Math.floor((avail - (longest - 1) * 5) / longest)));
-    wrap.style.setProperty('--lw', lw + 'px');
+    wrap.dataset.longest = Math.max.apply(null, words.map(function (w) { return w.length; }).concat([6]));
+    sizeWord(wrap);
     var reveal = W.over && !W.won, k = 0;
     words.forEach(function (w) {
       var g = el('div', { class: 'wd' });

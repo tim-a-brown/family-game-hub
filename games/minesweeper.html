@@ -15,6 +15,7 @@
 body{overflow-x:hidden;}
 .ms{max-width:620px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 12px);}
 .ms.wide{max-width:1180px;}
+@media (min-width:700px) and (min-height:700px){ .ms:not(.wide){max-width:780px;} .hud,.tools{max-width:640px;} }
 .ms.play::before{content:"";flex:1 1 0;max-height:48px;}
 .ms.play::after{content:"";flex:2 1 0;}
 .ms.play{display:flex;flex-direction:column;justify-content:flex-start;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 70px);padding-bottom:calc(var(--safe-b) + 3vh);}
@@ -457,11 +458,12 @@ body{overflow-x:hidden;}
     var portrait = window.innerHeight > vw;
     var tr = S.cols > S.rows && portrait;
     var vc = tr ? S.rows : S.cols, vr = tr ? S.cols : S.rows;
-    var availW = Math.min(vw - 24, S.cols > 16 ? 1180 : 620) - 16 - 2;
+    var tab = vw >= 700 && window.innerHeight >= 700;  // iPad-sized: let cells grow past phone size
+    var availW = Math.min(vw - 24, S.cols > 16 ? 1180 : tab ? 780 : 620) - 16 - 2;
     var big = vr > 16;
     if (hud.hint) hud.hint.style.display = big ? 'none' : '';
     var availH = window.innerHeight - 58 - 64 - 68 - (big ? 0 : 44) - 22;
-    baseCs = Math.max(14, Math.floor(Math.min(44, availW / vc, Math.max(availH, vr * 16) / vr)));
+    baseCs = Math.max(14, Math.floor(Math.min(tab ? 72 : 44, availW / vc, Math.max(availH, vr * 16) / vr)));
     var cs = Math.round(baseCs * zoom);
     field.style.setProperty('--cs', cs + 'px');
     field.style.gridTemplateColumns = 'repeat(' + vc + ', var(--cs))';

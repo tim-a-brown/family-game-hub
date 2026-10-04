@@ -267,6 +267,8 @@ var Cards = (function () {
     '.spad-empty{padding:26px 16px;text-align:center;font-family:var(--hand);font-size:1.25rem;color:#8a8796;}',
     '.spad-acts{display:flex;gap:10px;margin-top:14px;}',
     '.spad-acts .btn:first-child{flex:1;}',
+    // Tablets: a bigger score sheet
+    '@media (min-width:700px){.spad th,.spad td{height:52px;}.spad td{font-size:1.7rem;}.spad thead th{font-size:1.35rem;}.spad th.rn{width:56px;font-size:.85rem;}.spad tfoot td,.spad tfoot th{height:64px;}.spad tfoot td{font-size:2.2rem;}.spad-h h2{font-size:1.9rem;}.spad-h small,.spad .goal{font-size:1.25rem;}}',
     // Round entry form
     '.rform{display:flex;flex-direction:column;gap:10px;}',
     '.rrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);background:rgba(255,255,255,.06);}',

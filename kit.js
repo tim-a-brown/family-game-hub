@@ -623,6 +623,9 @@
   //   start:   button label
   //   onStart: function(cfg)   cfg = {mode, players:[{name,cpu,color}], options:{}}
   // })
+  // "Phone" in setup text reads oddly on an iPad: say what the device is
+  var bigScreen = Math.min(screen.width || 0, screen.height || 0) >= 700;
+  function devWord(t) { return bigScreen && typeof t === 'string' ? t.replace(/\b(the|this|one|a) phone\b/gi, function (m, a) { return a + ' iPad'; }) : t; }
   function setup(host, o) {
     o = o || {};
     host.innerHTML = '';
@@ -666,7 +669,7 @@
         modesBox.appendChild(el('button', {
           type: 'button', class: 'mode' + (state.mode === m.id ? ' on' : ''),
           onclick: function () { state.mode = m.id; sfx('tap'); haptic('light'); renderModes(); renderSeats(); }
-        }, [el('span', { class: 'e', html: icon(m.icon || 'sparkle') }), el('span', { class: 'tx' }, [el('span', { class: 't', text: m.title }), el('span', { class: 'd', text: m.desc || '' })]), el('span', { class: 'ok', html: icon('check') })]));
+        }, [el('span', { class: 'e', html: icon(m.icon || 'sparkle') }), el('span', { class: 'tx' }, [el('span', { class: 't', text: m.title }), el('span', { class: 'd', text: devWord(m.desc || '') })]), el('span', { class: 'ok', html: icon('check') })]));
       });
     }
     function renderOptions() {
@@ -682,7 +685,7 @@
         });
         var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]);
         var cur = op.choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
-        var note = [op.help, cur && cur[2]].filter(Boolean).join(' ');
+        var note = devWord([op.help, cur && cur[2]].filter(Boolean).join(' '));
         var hasHelp = op.help || op.choices.some(function (c) { return c[2]; });
         var box = el('div', { class: 'k-opt' + (openHelp[op.id] ? ' help-on' : '') }, [lab, seg]);
         if (hasHelp) {

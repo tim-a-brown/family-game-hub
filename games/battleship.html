@@ -121,6 +121,22 @@
 .privacy h2{font-family:var(--display);font-weight:400;font-size:2rem;}
 .privacy p{color:var(--text-2);max-width:300px;line-height:1.4;}
 .privacy .btn{min-width:240px;}
+
+/* Landscape iPad: the main grid on the left, everything else in a column beside it */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.bs-place,#app.bs-battle{max-width:none;display:grid;grid-template-columns:auto minmax(300px,360px);column-gap:32px;
+    justify-content:center;align-content:start;align-items:start;padding-bottom:calc(var(--safe-b) + 12px);}
+  #app.bs-place>*,#app.bs-battle>*{grid-column:2;}
+  #app.bs-place>.case,#app.bs-battle>.case{grid-column:1;grid-row:1 / span 8;width:min(calc(100dvh - 104px - var(--safe-t) - var(--safe-b)),calc(100vw - 440px));}
+  #app.bs-place>.turn,#app.bs-battle>.turn{justify-self:start;}
+  #app.bs-place>.phint{text-align:left;margin-top:0;}
+  #app.bs-place>.dock{margin-top:4px;}
+  #app.bs-battle>.lower{grid-template-columns:1fr;margin-top:8px;}
+  #app.bs-battle>.lastshot{text-align:left;}
+}
+@media (min-width:700px) and (orientation:portrait){
+  #app.bs-battle>.case{max-width:min(100%,calc(100dvh - 570px));margin:0 auto;}
+}
 </style>
 </head>
 <body>
@@ -566,8 +582,11 @@
   }
   function render() {
     app.innerHTML = '';
+    app.classList.remove('bs-place', 'bs-battle');
     if (!S) return;
     if (S.pass && S.phase !== 'over') { renderPrivacy(); return; }
+    app.classList.toggle('bs-place', S.phase === 'place');
+    app.classList.toggle('bs-battle', S.phase !== 'place');
     if (S.phase === 'place') renderPlace(); else renderBattle();
   }
   function renderPrivacy() {

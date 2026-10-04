@@ -123,6 +123,22 @@
 .acts .icon-only{width:52px;padding:0;}
 .acts .icon-only .ico{width:22px;height:22px;}
 .hint{text-align:center;font-size:.82rem;font-weight:800;color:var(--text-2);min-height:20px;margin:-2px 0 6px;}
+
+/* ── iPad portrait: a bigger table ── */
+@media (min-width:700px) and (orientation:portrait){
+  .stage{max-width:620px;}
+  .board-h{font-size:.88rem;} .board-h .seg>button{font-size:.88rem;min-height:38px;}
+  .hint{font-size:1rem;}
+  .acts .btn{min-height:58px;font-size:1.08rem;} .acts .icon-only{width:58px;}
+}
+/* ── Wide landscape (iPad, laptop): table on the left; scoreboard, chips and buttons beside it ── */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .stage{max-width:1080px;display:grid;grid-template-columns:auto minmax(320px,420px);grid-template-rows:auto auto 1fr;column-gap:28px;justify-content:center;align-items:start;}
+  .stage > .tbl{grid-column:1;grid-row:1 / span 3;width:calc((100dvh - 96px) * .93);max-width:calc((100dvh - 96px) * .93);margin:6px 0 0;}
+  .stage > .bankrow{grid-column:2;grid-row:1;margin-top:10px;}
+  .stage > .board{grid-column:2;grid-row:2;margin-top:4px;}
+  .stage > .dock{grid-column:2;grid-row:3;position:static;margin:14px 0 0;padding:0;background:none;}
+}
 </style>
 </head>
 <body>
@@ -424,13 +440,14 @@
   }
   function paintRoad() {
     var list = S.roads || [], C = 17, R = 6;
+    var rw = dom.road.clientWidth || 0, k = rw >= 560 ? 1.35 : 1, fit = Math.floor(rw / (C * k));   // bigger cells on iPad; grid always fills the strip
     if (busy && S.hand && !S.hand.shown) list = list.slice(0, -1);   // don't give the result away mid-deal
     var cnt = { B: 0, P: 0, T: 0 }; list.forEach(function (c) { cnt[c.w]++; });
     dom.cnt.innerHTML = '<span><i style="background:#e0283a"></i>' + cnt.B + '</span><span><i style="background:#2a62d6"></i>' + cnt.P + '</span><span><i style="background:#1f9d55"></i>' + cnt.T + '</span><span style="color:var(--text-3)">Shoe ' + S.shoe.n + '</span>';
     var cols, body = '';
     var col = { B: '#e0283a', P: '#2a62d6', T: '#1f9d55' };
     if (dom.roadView() === 'bead') {
-      cols = Math.max(Math.ceil(list.length / R) + 1, 18);
+      cols = Math.max(Math.ceil(list.length / R) + 1, 18, fit);
       list.forEach(function (c, i) {
         var cx = Math.floor(i / R) * C + C / 2, cy = (i % R) * C + C / 2;
         body += '<circle cx="' + cx + '" cy="' + cy + '" r="7" fill="' + col[c.w] + '"/>' +
@@ -440,7 +457,7 @@
       });
     } else {
       var br = bigRoad(list), maxX = br.cells.reduce(function (m, c) { return Math.max(m, c.x); }, -1);
-      cols = Math.max(maxX + 3, 18);
+      cols = Math.max(maxX + 3, 18, fit);
       br.cells.forEach(function (c, i) {
         var cx = c.x * C + C / 2, cy = c.y * C + C / 2, isLast = i === br.cells.length - 1;
         body += '<circle cx="' + cx + '" cy="' + cy + '" r="6" fill="none" stroke="' + col[c.w] + '" stroke-width="2.6"' + (isLast ? ' class="lastc"' : '') + '/>';
@@ -456,9 +473,11 @@
     var W = cols * C, H = R * C, grid = '';
     for (var i = 0; i <= cols; i++) grid += '<line x1="' + (i * C) + '" y1="0" x2="' + (i * C) + '" y2="' + H + '" stroke="#e3dfd3" stroke-width="1"/>';
     for (var j = 0; j <= R; j++) grid += '<line x1="0" y1="' + (j * C) + '" x2="' + W + '" y2="' + (j * C) + '" stroke="#e3dfd3" stroke-width="1"/>';
-    dom.road.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Scoreboard">' + grid + body + '</svg>';
+    dom.road.innerHTML = '<svg width="' + (W * k) + '" height="' + (H * k) + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Scoreboard">' + grid + body + '</svg>';
     dom.road.scrollLeft = dom.road.scrollWidth;
   }
+  var roadT = null;
+  window.addEventListener('resize', function () { clearTimeout(roadT); roadT = setTimeout(function () { if (S && dom.road && document.body.contains(dom.road)) paintRoad(); }, 150); });
 
   // ── Betting ───────────────────────────────────────────────────────────────
   function clearTableIfDone() {

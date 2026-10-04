@@ -14,6 +14,7 @@
 <style>
 body{overflow:hidden;}
 .mm{display:flex;flex-direction:column;height:calc(100dvh - var(--safe-t) - 58px);max-width:820px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 6px);}
+@media (orientation:landscape) and (min-width:900px){ .mm{max-width:1120px;} }
 .mm .scores{flex:none;margin:0;padding:2px 2px 8px;}
 .mm .score{min-width:0;flex:1 1 0;padding:6px 8px 7px;flex-direction:row;gap:8px;justify-content:center;align-items:center;}
 .mm .score .who{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
@@ -31,7 +32,7 @@ body{overflow:hidden;}
 .stats .st b{font-size:1.3rem;font-weight:900;font-variant-numeric:tabular-nums;}
 .stats .st small{font-size:.64rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);}
 .mtab{flex:1;min-height:0;display:flex;border-radius:22px;padding:7px;}
-.mtab .felt-in{flex:1;position:relative;border-radius:16px;overflow:hidden;display:grid;place-items:center;}
+.mtab .felt-in{flex:1;min-height:0;position:relative;border-radius:16px;overflow:hidden;display:grid;place-items:center;}
 .grid{display:grid;gap:var(--gap);}
 /* Cards with a real 3D flip */
 .mc{position:relative;width:var(--w);height:var(--h);perspective:900px;border:0;padding:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
@@ -477,7 +478,7 @@ body{overflow:hidden;}
       return c;
     });
     feltEl.addEventListener('click', function (e) { if (!e.target.closest('.mc') && S && S.up.length === 2) hurry(); });
-    fit(); paintBar();
+    fit(); requestAnimationFrame(fit); paintBar();
     if (S.up.length === 2) missT = setTimeout(hurry, 900);
     else if (S.up.length === 1) { /* keep the single face-up card */ }
   }
@@ -487,9 +488,17 @@ body{overflow:hidden;}
     function size(cols, rows) {
       var gap = Math.max(5, Math.min(12, W / cols * .1));
       var w = Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) / 1.32);
-      return { w: Math.floor(Math.min(w, 120)), cols: cols, rows: rows, gap: gap };
+      return { w: Math.floor(Math.min(w, W > 600 && H > 500 ? 150 : 120)), cols: cols, rows: rows, gap: gap };
     }
     var a = size(d[0], d[1]), b = size(d[1], d[0]), g = a.w >= b.w ? a : b;
+    // Wide tables (tablet landscape): also try longer, flatter layouts of the same cards
+    if (W > H * 1.2) {
+      var n = d[0] * d[1];
+      for (var c = Math.max(d[0], d[1]) + 1; c <= 12; c++) {
+        if (n % c || n / c < 2) continue;
+        var t = size(c, n / c); if (t.w > g.w + 4) g = t;
+      }
+    }
     gridEl.style.gridTemplateColumns = 'repeat(' + g.cols + ', auto)';
     gridEl.style.setProperty('--gap', Math.round(g.gap) + 'px');
     gridEl.style.setProperty('--w', g.w + 'px');

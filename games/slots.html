@@ -124,6 +124,26 @@
 .coins i::after{content:"";position:absolute;inset:7px;border-radius:50%;border:2px solid rgba(150,98,6,.5);}
 @keyframes coinfall{to{transform:translateY(calc(100vh + 90px)) rotateY(900deg);}}
 .cell .blank{display:block;}
+
+/* ── iPad portrait: a bigger machine ── */
+@media (min-width:700px) and (orientation:portrait){
+  .stage{max-width:620px;}
+  .marquee h2{font-size:2rem;}
+  .pr{height:26px;font-size:.88rem;} .pr .sy{width:22px;height:22px;} .pr b{font-size:.95rem;}
+  .pays5 td{height:26px;font-size:.9rem;} .pays5 td .sy{width:22px;height:22px;}
+  .msg{height:34px;font-size:.95rem;}
+  .meter b{font-size:1.35rem;}
+  .step button{width:48px;height:48px;}
+  .mbtn{min-height:66px;}
+}
+/* ── Wide landscape (iPad, laptop): controls on the left, reels on the right ── */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .stage{max-width:1060px;}
+  .cab-in{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);column-gap:18px;align-items:start;padding:12px 14px 14px;}
+  .cab-in > *{grid-column:1;}
+  .cab-in > .window{grid-column:2;grid-row:1 / span 6;margin:0;align-self:center;}
+  .below{max-width:560px;margin:12px auto 0;}
+}
 </style>
 </head>
 <body>
@@ -513,10 +533,13 @@
   }
 
   // Cell size follows the reel width so the window always fits the phone
+  var SIDE = window.matchMedia('(orientation: landscape) and (min-width: 900px) and (min-height: 560px)');
   function layout() {
     if (!R.length) return;
     var w = R[0].el.clientWidth || 90, n = R.length;
-    var cell = Math.round(Math.min(n === 3 ? w * 0.8 : w * 1.02, 92));
+    // Phones cap at 92px; iPad portrait gets bigger symbols; wide landscape sizes the reels to the screen height
+    var cap = SIDE.matches ? Math.max(92, Math.min(170, (window.innerHeight - 250) / 3)) : window.innerWidth >= 700 ? 124 : 92;
+    var cell = Math.round(Math.min(n === 3 ? w * 0.8 : w * 1.02, cap));
     dom.reels.style.setProperty('--cell', cell + 'px');
     var rw = dom.reels.clientWidth;
     G = { cell: cell, w: rw + 44, h: cell * 3, x: R.map(function (r) { return 22 + r.el.offsetLeft + r.el.offsetWidth / 2; }), tabY: {} };

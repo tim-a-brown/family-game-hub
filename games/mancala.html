@@ -56,6 +56,15 @@
 .stone.up{transition:transform .26s cubic-bezier(.3,1.4,.5,1);box-shadow:0 10px 12px rgba(0,0,0,.45);}
 .ctrls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
 @media (min-width:640px){.mc{gap:14px;padding-top:12px;}}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  #app.stage{max-width:1000px;}
+  .mc{gap:28px;padding-top:0;min-height:calc(100dvh - 110px - var(--safe-t) - var(--safe-b));justify-content:center;}
+  .mtag{min-height:52px;padding:6px 18px 6px 7px;}
+  .mtag .avatar{width:40px;height:40px;}
+  .mtag .nm{font-size:1.1rem;max-width:220px;}
+  .lbl{font-size:1.25rem;} .lbl.big{font-size:1.8rem;}
+}
+@media (min-width:700px) and (orientation:portrait){ .lbl{font-size:1.2rem;} }
 </style>
 </head>
 <body>
@@ -314,10 +323,12 @@
   function geometry() {
     var aw = Math.min(innerW(), 940);
     var vertical = aw < 600;
+    // iPad / desktop: bigger pits (landscape gets a wider stage, so the board lies flat like a real one)
+    var big = (window.innerWidth || 0) >= 700 && (window.innerHeight || 0) >= 600;
     var g = { v: vertical, r: {} }, i;
     if (vertical) {
       var ah = (window.innerHeight || 800) - 58 - 2 * 54 - 44;
-      var D = Math.max(44, Math.min(80, ah / 9.7, (aw - 70) / 2.3));
+      var D = Math.max(44, Math.min(big ? 96 : 80, (big ? ah - 30 : ah) / 9.7, (aw - 70) / 2.3));
       var gap = Math.round(D * 0.1), rim = Math.round(D * 0.42), cg = Math.round(D * 0.22);
       var W = rim * 2 + D * 2 + cg, SH = D * 1.25, pad = Math.round(D * 0.22);
       var H = pad * 2 + SH * 2 + gap * 2 + 6 * D + 5 * gap;
@@ -332,7 +343,7 @@
       g.lbl = function (p) { var r = g.r[p]; if (p === 6 || p === 13) return null; return { x: p <= 5 ? rim / 2 : W - rim / 2, y: r.y + r.h / 2 }; };
       g.ss = Math.round(D * 0.25);
     } else {
-      var D2 = Math.min(84, (aw - 60) / 8.6), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
+      var D2 = Math.min(big ? 104 : 84, (aw - 60) / 8.6), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
       var SW = D2 * 1.15, pad2 = Math.round(D2 * 0.24);
       var W2 = pad2 * 2 + SW * 2 + gap2 * 2 + 6 * D2 + 5 * gap2, H2 = rim2 * 2 + D2 * 2 + Math.round(D2 * 0.25);
       g.W = W2; g.H = H2; g.D = D2;

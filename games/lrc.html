@@ -17,7 +17,7 @@
 .turnline span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* Oval table */
-.oval{position:relative;margin:0 auto;width:100%;max-width:540px;height:clamp(420px,calc(100svh - 280px),600px);border-radius:50%;padding:12px;}
+.oval{position:relative;margin:0 auto;width:100%;max-width:540px;height:clamp(420px,calc(100svh - 282px),600px);border-radius:50%;padding:12px;}
 .oval > .felt-in{position:relative;width:100%;height:100%;border-radius:50%;}
 .mid{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(56%,220px);}
 
@@ -70,6 +70,15 @@
 .auto[aria-pressed="true"]{color:var(--text);}
 .auto[aria-pressed="true"] .box{background:var(--green);box-shadow:none;color:#063;}
 .auto[aria-pressed="true"] .box .ico{opacity:1;}
+/* Tall tablet: bigger table and dice */
+@media (min-width:700px) and (min-height:900px){
+  .oval{max-width:680px;height:clamp(420px,calc(100svh - 300px),780px);}
+  .mid{width:min(56%,290px);}
+  .die.ldie{--ds:60px;}
+  .dice{gap:14px;min-height:62px;}
+  .seat .tag{font-size:1rem;}
+  .pot .lbl{font-size:.82rem;bottom:-28px;}
+}
 .stakeline{margin-top:10px;text-align:center;font-size:.76rem;font-weight:800;color:var(--text-3);}
 </style>
 </head>
@@ -455,6 +464,9 @@
     return out;
   }
 
+  // Rotation / resize: re-seat the table when nothing is mid-animation
+  var rzT = 0;
+  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && !busy && app.querySelector('.oval')) render(); }, 150); });
   function render(rolling) {
     if (!S) return;
     app.innerHTML = '';
@@ -485,7 +497,8 @@
     felt.appendChild(mid);
     oval.appendChild(felt);
 
-    var vw = Math.min(document.documentElement.clientWidth - 32, 540), vh = Math.min(600, Math.max(420, window.innerHeight - 280));
+    var big = window.innerWidth >= 700 && window.innerHeight >= 900;
+    var vw = Math.min(document.documentElement.clientWidth - 32, big ? 680 : 540), vh = Math.min(big ? 780 : 600, Math.max(420, window.innerHeight - (big ? 300 : 282)));
     var aspect = Math.max(.8, Math.min(2, (vh - 24) / Math.max(200, vw - 24)));
     var spots = seatSpots(n, aspect);
     S.players.forEach(function (q, i) {
