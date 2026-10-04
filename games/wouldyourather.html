@@ -8,43 +8,48 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Would You Rather</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a1a0a 0%,#0d1117 65%);}
-.wrap{max-width:460px;margin:0 auto;padding:0 12px 60px;}
-.cat-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
-.cat-btn{padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;}
-.cat-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
-.q-counter{text-align:center;color:var(--muted);font-size:.78rem;margin-bottom:10px;}
-.wyr-label{font-size:.75rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;text-align:center;}
-.wyr-or{font-family:var(--serif);font-size:1rem;font-weight:900;color:var(--gold);background:rgba(245,200,66,.15);border:2px solid rgba(245,200,66,.3);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
-/* Choice wrapper: button on top, vote area below */
-.choice-wrap{margin-bottom:8px;}
-.choice-btn{width:100%;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:16px 16px 0 0;padding:18px 16px;cursor:pointer;transition:all .18s;text-align:left;font-family:var(--font);color:var(--text);display:block;}
-.choice-btn:hover{background:rgba(255,255,255,.1);}
-.choice-btn.sel-A{background:rgba(90,200,250,.12);border-color:#5ac8fa;border-bottom-color:#5ac8fa;}
-.choice-btn.sel-B{background:rgba(255,107,107,.12);border-color:#ff6b6b;border-bottom-color:#ff6b6b;}
-.choice-btn.plain{border-radius:16px;} /* when no vote row showing */
-.choice-text{font-size:1rem;font-weight:600;line-height:1.4;text-align:left;}
-/* Vote bar sits outside the button, flush below it */
-.vote-area{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.12);border-top:none;border-radius:0 0 16px 16px;padding:10px 14px;display:none;}
-.vote-area.vis-A{border-color:#5ac8fa;}
-.vote-area.vis-B{border-color:#ff6b6b;}
-.vote-inner{display:flex;align-items:center;gap:10px;}
-.v-count{font-family:var(--serif);font-size:1.4rem;font-weight:900;min-width:26px;text-align:center;}
-.v-count-A{color:#5ac8fa;}.v-count-B{color:#ff6b6b;}
-.v-minus{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:var(--muted);font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex-shrink:0;}
-.v-minus:active{background:rgba(255,107,107,.2);color:#ff6b6b;}
+.page{padding-top:12px;padding-bottom:calc(100px + var(--safe-b));}
+.wrap{max-width:600px;margin:0 auto;}
+.cat-row{margin-bottom:12px;}
+.cat-row .tab{flex:1 1 0;}
+.q-meta{display:flex;align-items:center;justify-content:space-between;margin:0 4px 10px;}
+.q-counter{color:var(--text-3);font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums;}
+.wyr-label{font-family:var(--display);font-size:1.05rem;font-weight:800;letter-spacing:-.01em;color:var(--text-2);}
+.deck{position:relative;touch-action:pan-y;}
+.deck.enter{animation:wyr-in .35s var(--ease) both;}
+.deck.leave{animation:wyr-out .22s ease-in both;}
+@keyframes wyr-in{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:none;}}
+@keyframes wyr-out{to{opacity:0;transform:translateX(-40px);}}
+.choice-wrap{position:relative;border-radius:24px;overflow:hidden;margin-bottom:10px;border:2px solid transparent;transition:border-color .2s,box-shadow .2s,transform .12s var(--ease);}
+.choice-wrap.A{background:linear-gradient(150deg,#1d3b66,#13213d);}
+.choice-wrap.B{background:linear-gradient(150deg,#5a1f2c,#30121b);}
+.choice-wrap:has(.choice-btn:active){transform:scale(.985);}
+.choice-wrap.win.A{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(96,165,250,.15),0 14px 34px rgba(0,0,0,.35);}
+.choice-wrap.win.B{border-color:#f87171;box-shadow:0 0 0 4px rgba(248,113,113,.15),0 14px 34px rgba(0,0,0,.35);}
+.choice-btn{width:100%;background:transparent;border:0;padding:22px 20px;cursor:pointer;text-align:left;font-family:var(--font);color:var(--text);display:flex;align-items:center;min-height:clamp(120px,22dvh,190px);-webkit-tap-highlight-color:transparent;}
+.choice-text{font-family:var(--display);font-size:clamp(1.3rem,5.6vw,1.75rem);font-weight:700;line-height:1.25;letter-spacing:-.015em;text-align:left;}
+.choice-tag{position:absolute;top:12px;right:14px;font-size:.72rem;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.4);pointer-events:none;}
+.wyr-or{position:relative;z-index:2;font-family:var(--display);font-size:.95rem;font-weight:800;color:var(--gold-ink);background:linear-gradient(135deg,var(--gold),var(--gold2));border:4px solid var(--bg);border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;margin:-31px auto -21px;}
+/* Votes */
+.vote-area{padding:0 16px 14px;display:none;}
+.vote-inner{display:flex;align-items:center;gap:12px;}
+.v-count{font-family:var(--display);font-size:1.6rem;font-weight:800;min-width:30px;text-align:center;font-variant-numeric:tabular-nums;}
+.v-count-A{color:#93c5fd;}.v-count-B{color:#fca5a5;}
+.v-minus{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--text-2);font-size:1.2rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex-shrink:0;}
+.v-minus:active{background:rgba(0,0,0,.4);}
 .v-bars{flex:1;}
-.v-bar-track{height:7px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-bottom:4px;}
-.v-bar-fill{height:100%;border-radius:4px;transition:width .35s ease;}
-.v-bar-A{background:#5ac8fa;}.v-bar-B{background:#ff6b6b;}
-.v-pct{font-size:.72rem;font-weight:700;}
-.v-pct-A{color:#5ac8fa;}.v-pct-B{color:#ff6b6b;}
-.ctrl-row{display:flex;gap:8px;justify-content:center;margin-top:14px;}
+.v-bar-track{height:8px;background:rgba(0,0,0,.25);border-radius:99px;overflow:hidden;margin-bottom:4px;}
+.v-bar-fill{height:100%;border-radius:99px;transition:width .35s var(--ease);}
+.v-bar-A{background:#60a5fa;}.v-bar-B{background:#f87171;}
+.v-pct{font-size:.8rem;font-weight:700;}
+.v-pct-A{color:#93c5fd;}.v-pct-B{color:#fca5a5;}
+.tap-hint{text-align:center;color:var(--text-3);font-size:.85rem;margin-top:12px;}
+.ctrl-row{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px max(16px,var(--safe-r)) calc(12px + var(--safe-b)) max(16px,var(--safe-l));background:linear-gradient(180deg,transparent,rgba(11,13,18,.92) 30%);}
+.ctrl-row .btn{display:flex;width:100%;max-width:600px;margin:0 auto;min-height:54px;font-size:1.05rem;}
 @keyframes pop-in{0%{opacity:0;transform:translateY(5px) scale(.97)}100%{opacity:1;transform:none}}
 .pop{animation:pop-in .2s ease;}
 </style>
@@ -52,51 +57,55 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a1a0a 0%,#0d1117 65%);}
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Would You Rather</span>
+  <button class="icon-btn" id="shuffle-btn" aria-label="Shuffle questions" title="Shuffle">🔀</button>
 </nav>
-<div class="page" style="padding-top:8px;padding-bottom:60px;">
+<div class="page">
 <div class="wrap">
 
-<div class="cat-row" id="cats"></div>
-<div class="q-counter" id="q-counter">Question 1</div>
-<div class="wyr-label">Would You Rather…</div>
+<div class="tabs cat-row" id="cats"></div>
+<div class="q-meta"><div class="wyr-label">Would you rather…</div><div class="q-counter" id="q-counter">Question 1</div></div>
 
-<div class="choice-wrap">
+<div class="deck" id="deck">
+<div class="choice-wrap A">
+  <span class="choice-tag">A</span>
   <button class="choice-btn plain" id="btn-A">
     <div class="choice-text" id="text-A"></div>
   </button>
   <div class="vote-area" id="vrow-A">
     <div class="vote-inner">
       <span class="v-count v-count-A" id="cnt-A">0</span>
-      <button class="v-minus" id="dec-A">−</button>
       <div class="v-bars">
         <div class="v-bar-track"><div class="v-bar-fill v-bar-A" id="fill-A" style="width:50%"></div></div>
         <div class="v-pct v-pct-A" id="pct-A">50%</div>
       </div>
+      <button class="v-minus" id="dec-A" aria-label="Remove a vote for A">−</button>
     </div>
   </div>
 </div>
 
 <div class="wyr-or">OR</div>
 
-<div class="choice-wrap">
+<div class="choice-wrap B">
+  <span class="choice-tag">B</span>
   <button class="choice-btn plain" id="btn-B">
     <div class="choice-text" id="text-B"></div>
   </button>
   <div class="vote-area" id="vrow-B">
     <div class="vote-inner">
       <span class="v-count v-count-B" id="cnt-B">0</span>
-      <button class="v-minus" id="dec-B">−</button>
       <div class="v-bars">
         <div class="v-bar-track"><div class="v-bar-fill v-bar-B" id="fill-B" style="width:50%"></div></div>
         <div class="v-pct v-pct-B" id="pct-B">50%</div>
       </div>
+      <button class="v-minus" id="dec-B" aria-label="Remove a vote for B">−</button>
     </div>
   </div>
 </div>
+</div>
+<div class="tap-hint" id="tap-hint">Tap a side to vote — one tap per person · swipe for next</div>
 
 <div class="ctrl-row">
-  <button class="btn btn-gold" id="next-btn" style="display:none;">Next Question →</button>
-  <button class="btn btn-outline" id="shuffle-btn">🔀 Shuffle</button>
+  <button class="btn btn-gold" id="next-btn">Next question →</button>
 </div>
 
 </div></div>
@@ -189,10 +198,11 @@ let cat='Fun',qi=0,questions=[],cntA=0,cntB=0;
 
 Object.keys(QUESTIONS).forEach(c=>{
   const b=document.createElement('button');
-  b.className='cat-btn'+(c===cat?' active':'');
+  b.className='tab cat-btn'+(c===cat?' active':'');
   b.textContent=c;
   b.addEventListener('click',()=>{
-    cat=c;
+    if(c===cat)return;
+    cat=c;GN.haptic('select');
     document.querySelectorAll('.cat-btn').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     loadCategory();
@@ -225,8 +235,12 @@ function loadQ(){
   document.getElementById('vrow-A').className='vote-area';
   document.getElementById('vrow-B').className='vote-area';
   showVoteRows(false);
-  document.getElementById('next-btn').style.display='none';
-  document.getElementById('q-counter').textContent=`Question ${qi+1} of ${questions.length}`;
+  document.querySelectorAll('.choice-wrap').forEach(w=>w.classList.remove('win'));
+  document.getElementById('next-btn').textContent='Skip →';
+  document.getElementById('next-btn').className='btn btn-outline';
+  document.getElementById('tap-hint').style.visibility='';
+  document.getElementById('q-counter').textContent=`${qi+1} / ${questions.length}`;
+  const d=document.getElementById('deck');d.classList.remove('enter','leave');void d.offsetWidth;d.classList.add('enter');
 }
 
 function updateBars(){
@@ -245,17 +259,20 @@ function updateBars(){
   bB.className='choice-btn'+(cntB>0&&cntB>cntA?' sel-B':'');
   vA.className='vote-area'+(cntA>0&&cntA>=cntB?' vis-A':'');
   vB.className='vote-area'+(cntB>0&&cntB>cntA?' vis-B':'');
+  bA.closest('.choice-wrap').classList.toggle('win',cntA>0&&cntA>=cntB);
+  bB.closest('.choice-wrap').classList.toggle('win',cntB>0&&cntB>cntA);
+  const nb=document.getElementById('next-btn');
   if(cntA+cntB>0){
-    const nb=document.getElementById('next-btn');
-    if(nb.style.display==='none'){nb.style.display='';nb.classList.remove('pop');void nb.offsetWidth;nb.classList.add('pop');}
-  }
+    if(!nb.classList.contains('btn-gold')){nb.className='btn btn-gold pop';nb.textContent='Next question →';}
+    document.getElementById('tap-hint').style.visibility='hidden';
+  } else {nb.className='btn btn-outline';nb.textContent='Skip →';}
 }
 
 document.getElementById('btn-A').addEventListener('click',()=>{
-  cntA++;showVoteRows(true);updateBars();
+  cntA++;GN.haptic('light');showVoteRows(true);updateBars();
 });
 document.getElementById('btn-B').addEventListener('click',()=>{
-  cntB++;showVoteRows(true);updateBars();
+  cntB++;GN.haptic('light');showVoteRows(true);updateBars();
 });
 document.getElementById('dec-A').addEventListener('click',e=>{
   e.stopPropagation();if(cntA>0){cntA--;updateBars();}
@@ -263,8 +280,23 @@ document.getElementById('dec-A').addEventListener('click',e=>{
 document.getElementById('dec-B').addEventListener('click',e=>{
   e.stopPropagation();if(cntB>0){cntB--;updateBars();}
 });
-document.getElementById('next-btn').addEventListener('click',()=>{qi++;loadQ();});
-document.getElementById('shuffle-btn').addEventListener('click',()=>{questions.sort(()=>Math.random()-.5);qi=0;loadQ();});
+function nextQ(){
+  const d=document.getElementById('deck');
+  d.classList.remove('enter');d.classList.add('leave');
+  GN.haptic('select');
+  setTimeout(()=>{qi++;loadQ();window.scrollTo({top:0,behavior:'smooth'});},200);
+}
+document.getElementById('next-btn').addEventListener('click',nextQ);
+document.getElementById('shuffle-btn').addEventListener('click',()=>{questions.sort(()=>Math.random()-.5);qi=0;loadQ();GN.toast('Shuffled');});
+// Swipe left on the cards for the next question
+(function(){
+  const d=document.getElementById('deck');let sx=null,sy=null;
+  d.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  d.addEventListener('touchend',e=>{
+    if(sx===null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;
+    if(dx<-60&&Math.abs(dx)>Math.abs(dy)*1.5)nextQ();
+  },{passive:true});
+})();
 
 loadCategory();
 </script>

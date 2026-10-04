@@ -12,7 +12,77 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/*@@SCKIT@@*/
+/*SCKIT-START*/
+/* ── Scorecard kit (Spades · Hearts · Euchre · Gin Rummy scorecards) ── */
+.sc{max-width:560px;margin:0 auto;padding:14px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));}
+.sc-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;text-decoration:none;color:#fff;transition:transform .12s var(--ease);}
+.sc-cta:active{transform:scale(.98);}
+.sc-cta-ico{width:44px;height:44px;border-radius:13px;background:rgba(0,0,0,.25);display:grid;place-items:center;font-size:1.35rem;flex:none;}
+.sc-cta-body{flex:1;min-width:0;}
+.sc-cta-t{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em;}
+.sc-cta-s{font-size:.82rem;color:rgba(255,255,255,.75);}
+.sc-cta svg{width:20px;height:20px;flex:none;opacity:.8;}
+.setup-screen{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;}
+.sc-h{font-family:var(--display);font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
+.sc-hsub{font-size:.88rem;color:var(--text-2);margin-bottom:6px;}
+.form-lbl{font-size:.75rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px;}
+.player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.player-setup-row .input{flex:1;}
+.player-dot{width:12px;height:12px;border-radius:50%;flex:none;}
+.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+.seg .btn{min-height:44px;padding:0;}
+.toggle-line{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;margin:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;cursor:pointer;color:var(--text);font-size:.92rem;font-weight:600;letter-spacing:0;}
+.toggle-line .tl-body{flex:1;min-width:0;}
+.toggle-line .tl-sub{display:block;font-size:.8rem;font-weight:500;color:var(--text-2);margin-top:1px;}
+.switch{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);position:relative;cursor:pointer;transition:background .2s;margin:0;}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .22s var(--ease);}
+.switch:checked{background:var(--green);border-color:transparent;}
+.switch:checked::after{transform:translateX(20px);}
+.sc-start{margin-top:18px;}
+/* Live scores */
+.score-display{display:grid;gap:10px;margin-bottom:14px;}
+.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
+.scorer.leading{box-shadow:0 8px 26px var(--lc,rgba(245,200,66,.2));}
+.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scorer-pts{font-family:var(--display);font-size:clamp(1.9rem,8.5vw,2.6rem);font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+.scorer-sub{font-size:.75rem;color:var(--text-2);margin-top:5px;}
+.scorer-to{font-size:.75rem;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums;}
+.pbar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:10px;}
+.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
+/* Round entry */
+.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px;}
+.entry-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-family:var(--display);font-size:1.2rem;font-weight:800;letter-spacing:-.015em;margin-bottom:14px;}
+.entry-head small,.entry-head span{font-family:var(--font);font-size:.75rem;font-weight:600;color:var(--text-3);letter-spacing:0;}
+.entry-row{display:grid;gap:10px;margin-bottom:12px;}
+.entry-cell{text-align:center;min-width:0;}
+.entry-label{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mini-lbl{font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.score-input,.bid-input{width:100%;min-height:52px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;color:var(--text);font-size:1.25rem !important;font-weight:700;text-align:center;padding:8px 4px;outline:none;font-family:var(--display);transition:border-color .15s,box-shadow .15s,background .15s;}
+.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);background:var(--surface-3);}
+.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:600;}
+.sc-err{color:var(--red);font-size:.86rem;font-weight:600;text-align:center;margin-bottom:10px;}
+/* History */
+.hist{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
+.hist-head{padding:12px 16px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
+.hist-row{display:grid;gap:4px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--line);}
+.hist-row:last-child{border-bottom:0;}
+.hist-row.totals{background:var(--surface-2);}
+.hist-num{font-size:.8rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.hist-val{font-size:.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--text);}
+.hist-val.neg{color:var(--red);}
+.hist-name{font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-total{font-family:var(--display);font-size:1.1rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
+.sc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.wb-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;}
+.winner-banner .gh-hist-btn{margin-top:10px;}
+.rules-body p{margin-bottom:8px;}
+.rules-body ul{margin:0 0 8px;padding-left:18px;}
+.rules-body li{margin-bottom:4px;}
+.rules-body strong{color:var(--text);}
+.nav-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap;}
+.nav-pill:active{transform:scale(.95);}
+.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
+/*SCKIT-END*/
 /* Hearts-specific */
 #ht-moon-picker{margin:-2px 0 14px;padding:12px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;}
 #ht-moon-picker .mini-lbl{margin-bottom:8px;}

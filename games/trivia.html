@@ -8,41 +8,58 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Trivia</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
-.wrap{max-width:480px;margin:0 auto;padding:0 10px 60px;}
-.tv-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
-.tv-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
-.tv-stat-val{font-family:var(--serif);font-size:1.3rem;font-weight:900;color:var(--gold);}
-.tv-stat-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
-/* Topic picker */
-.topic-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
-.topic-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:.73rem;font-weight:700;cursor:pointer;transition:all .15s;}
+.page{padding-top:12px;padding-bottom:calc(110px + var(--safe-b));}
+.wrap{max-width:600px;margin:0 auto;}
+.tv-header{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+.tv-stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 8px;text-align:center;}
+.tv-stat-val{font-family:var(--display);font-size:1.35rem;font-weight:800;color:var(--text);line-height:1.2;font-variant-numeric:tabular-nums;}
+.tv-stat:first-child .tv-stat-val{color:var(--gold);}
+.tv-stat-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);}
+.streak-bar{height:5px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:12px;}
+.streak-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--red));border-radius:99px;transition:width .4s var(--ease);}
+/* Topic picker — scrolling chips */
+.topic-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:2px 16px;}
+.topic-row::-webkit-scrollbar{display:none;}
+.topic-btn{flex:none;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
 .topic-btn.active{color:#fff;}
 /* Card */
-.tv-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px 16px;margin-bottom:12px;}
-.tv-topic{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px;}
-.tv-q{font-family:var(--serif);font-size:1.1rem;font-weight:700;line-height:1.45;margin-bottom:16px;color:#fff;min-height:52px;}
-.tv-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.tv-choice{padding:11px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;line-height:1.3;touch-action:manipulation;}
-.tv-choice:active{transform:scale(.97);}
-.tv-choice.correct{background:rgba(34,197,94,.25);border-color:#22c55e;color:#22c55e;}
-.tv-choice.wrong{background:rgba(239,68,68,.2);border-color:#ef4444;color:#ef4444;}
-.tv-choice.reveal{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:rgba(34,197,94,.7);}
-.tv-result{text-align:center;font-size:.85rem;font-weight:700;min-height:24px;margin:10px 0 4px;}
-.tv-explain{font-size:.78rem;color:var(--muted);text-align:center;min-height:18px;margin-bottom:10px;}
-.streak-bar{height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;margin-bottom:10px;}
-.streak-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#ef4444);border-radius:2px;transition:width .4s ease;}
+.tv-card{position:relative;background:linear-gradient(160deg,var(--surface-2),var(--surface));border:1px solid var(--line-2);border-radius:24px;padding:20px 18px 18px;margin-bottom:12px;box-shadow:0 18px 40px rgba(0,0,0,.3);overflow:hidden;}
+.tv-card::before{content:'';position:absolute;inset:0 0 auto 0;height:4px;background:var(--tc,var(--gold));}
+.tv-card.enter{animation:tv-in .35s var(--ease) both;}
+@keyframes tv-in{from{opacity:0;transform:translateY(12px) scale(.98);}to{opacity:1;transform:none;}}
+.tv-topic{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--tc,var(--text-3));margin-bottom:10px;}
+.tv-q{font-family:var(--display);font-size:clamp(1.35rem,5.6vw,1.75rem);font-weight:700;line-height:1.28;letter-spacing:-.015em;margin-bottom:18px;color:var(--text);min-height:2.6em;}
+.tv-choices{display:flex;flex-direction:column;gap:9px;}
+.tv-choice{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;border-radius:16px;border:1px solid var(--line-2);background:var(--surface-3);color:var(--text);font-size:1rem;font-weight:600;cursor:pointer;transition:transform .12s var(--ease),background .15s,border-color .15s,color .15s;text-align:left;line-height:1.3;touch-action:manipulation;}
+.tv-choice::before{content:attr(data-k);flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:.85rem;font-weight:800;color:var(--text-2);}
+.tv-choice:active{transform:scale(.98);}
+@media (hover:hover){.tv-choice:not(:disabled):hover{background:#2b3142;}}
+.tv-choice:disabled{cursor:default;}
+.tv-choices.done .tv-choice:not(.correct):not(.wrong):not(.reveal){opacity:.45;}
+.tv-choice.correct{background:rgba(74,222,128,.18);border-color:var(--green);color:#bbf7d0;}
+.tv-choice.correct::before{content:'✓';background:var(--green);color:#052e16;}
+.tv-choice.wrong{background:rgba(248,113,113,.16);border-color:var(--red);color:#fecaca;animation:tv-shake .35s ease;}
+.tv-choice.wrong::before{content:'✗';background:var(--red);color:#450a0a;}
+.tv-choice.reveal{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.45);color:#bbf7d0;}
+.tv-choice.reveal::before{content:'✓';background:rgba(74,222,128,.3);color:#bbf7d0;}
+@keyframes tv-shake{0%,100%{translate:0;}25%{translate:-5px;}75%{translate:5px;}}
+.tv-feedback{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:12px;animation:gn-pop .3s var(--spring) both;}
+.tv-feedback:has(#tv-result:empty){display:none;}
+.tv-result{font-family:var(--display);font-size:1.15rem;font-weight:800;margin-bottom:4px;}
+.tv-explain{font-size:.95rem;color:var(--text-2);line-height:1.5;}
+.next-bar{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px max(16px,var(--safe-r)) calc(12px + var(--safe-b)) max(16px,var(--safe-l));background:linear-gradient(180deg,transparent,rgba(11,13,18,.92) 30%);pointer-events:none;}
+.next-bar .btn{pointer-events:auto;display:flex;width:100%;max-width:600px;margin:0 auto;min-height:54px;font-size:1.05rem;animation:gn-sheet .3s var(--ease) both;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Trivia</span>
+  <span id="tv-hist-slot"></span>
 </nav>
 <div class="page"><div class="wrap">
 
@@ -61,10 +78,12 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
   <div class="tv-q" id="tv-q">Loading…</div>
   <div class="tv-choices" id="tv-choices"></div>
 </div>
-<div class="tv-result" id="tv-result"></div>
-<div class="tv-explain" id="tv-explain"></div>
-<div style="text-align:center;">
-  <button class="btn btn-gold" id="tv-next" style="min-width:160px;display:none;">Next Question →</button>
+<div class="tv-feedback">
+  <div class="tv-result" id="tv-result"></div>
+  <div class="tv-explain" id="tv-explain"></div>
+</div>
+<div class="next-bar">
+  <button class="btn btn-gold" id="tv-next" style="display:none;">Next question →</button>
 </div>
 
 </div></div>
@@ -722,11 +741,11 @@ function buildTopics(){
     const btn=document.createElement('button');
     btn.className='topic-btn'+(t===curTopic?' active':'');
     btn.textContent=t.charAt(0).toUpperCase()+t.slice(1);
-    btn.style.borderColor=t===curTopic?TOPIC_COLORS[t]:'rgba(255,255,255,.14)';
-    if(t===curTopic)btn.style.background=`rgba(${hexToRgb(TOPIC_COLORS[t])},.15)`;
-    btn.addEventListener('click',()=>{curTopic=t;buildTopics();loadQ();});
+    if(t===curTopic){btn.style.borderColor=TOPIC_COLORS[t];btn.style.background=`rgba(${hexToRgb(TOPIC_COLORS[t])},.22)`;}
+    btn.addEventListener('click',()=>{if(t===curTopic)return;curTopic=t;GN.haptic('select');buildTopics();loadQ();});
     el.appendChild(btn);
   });
+  el.querySelector('.active')?.scrollIntoView({block:'nearest',inline:'center'});
 }
 
 function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`${r},${g},${b}`;}
@@ -744,13 +763,16 @@ function loadQ(){
   used.push(idx);usedIdx.set(curTopic,used);
   const q=pool[idx];
   document.getElementById('tv-topic').textContent=curTopic.charAt(0).toUpperCase()+curTopic.slice(1);
+  const card=document.getElementById('tv-card');
+  card.style.setProperty('--tc',TOPIC_COLORS[curTopic]);
+  card.classList.remove('enter');void card.offsetWidth;card.classList.add('enter');
   document.getElementById('tv-q').textContent=q.q;
   // Shuffle choices
   const choices=[q.c,...q.w].sort(()=>Math.random()-.5);
-  const el=document.getElementById('tv-choices');el.innerHTML='';
-  choices.forEach(ch=>{
+  const el=document.getElementById('tv-choices');el.innerHTML='';el.classList.remove('done');
+  choices.forEach((ch,ci)=>{
     const btn=document.createElement('button');
-    btn.className='tv-choice';btn.textContent=ch;
+    btn.className='tv-choice';btn.textContent=ch;btn.dataset.k='ABCD'[ci];
     btn.addEventListener('click',()=>answer(btn,ch,q.c,q.e));
     el.appendChild(btn);
   });
@@ -759,8 +781,8 @@ function loadQ(){
 function answer(btn,chosen,correct,explain){
   if(answered)return;answered=true;total++;
   const right=chosen===correct;
-  if(right){score+=10+streak*2;streak++;correct_count++;document.getElementById('tv-result').innerHTML='<span style="color:#22c55e">✓ Correct! +'+(10+(streak-1)*2)+'pts</span>';}
-  else{streak=0;document.getElementById('tv-result').innerHTML='<span style="color:#ef4444">✗ Incorrect</span>';}
+  if(right){score+=10+streak*2;streak++;correct_count++;document.getElementById('tv-result').innerHTML='<span style="color:var(--green)">✓ Correct! +'+(10+(streak-1)*2)+' pts</span>';GN.haptic('success');}
+  else{streak=0;document.getElementById('tv-result').innerHTML='<span style="color:var(--red)">✗ Not quite</span>';GN.haptic('error');}
   document.getElementById('tv-explain').textContent=explain;
   document.getElementById('tv-score').textContent=score;
   document.getElementById('tv-streak').textContent=streak;
@@ -768,14 +790,22 @@ function answer(btn,chosen,correct,explain){
   const sf=Math.min(100,streak*12);
   document.getElementById('streak-fill').style.width=sf+'%';
   // Color all choices
+  document.getElementById('tv-choices').classList.add('done');
   document.querySelectorAll('.tv-choice').forEach(b=>{
+    b.disabled=true;
     if(b.textContent===correct)b.classList.add(right&&b===btn?'correct':'reveal');
     else if(b===btn)b.classList.add('wrong');
   });
   document.getElementById('tv-next').style.display='';
 }
+function updateStats(){
+  document.getElementById('tv-score').textContent=score;
+  document.getElementById('tv-streak').textContent=streak;
+  document.getElementById('tv-pct').textContent=total?Math.round(correct_count/total*100)+'%':'—';
+  document.getElementById('streak-fill').style.width=Math.min(100,streak*12)+'%';
+}
 
-document.getElementById('tv-next').addEventListener('click',loadQ);
+document.getElementById('tv-next').addEventListener('click',()=>{loadQ();window.scrollTo({top:0,behavior:'smooth'});});
 
 function tvHistRender(e){
   return GameHistory.renderStatGrid([
@@ -788,8 +818,8 @@ function tvHistRender(e){
 // Add persistent History button to the stats bar
 (function(){
   const hb=GameHistory.btn('trivia','Trivia',tvHistRender,'📜');
-  hb.title='Session History';hb.style.cssText='padding:3px 8px;font-size:.7rem;';
-  document.querySelector('.tv-stats')?.appendChild(hb);
+  hb.title='Session History';hb.setAttribute('aria-label','History');hb.className='icon-btn';
+  const slot=document.getElementById('tv-hist-slot');slot.replaceWith(hb);
 })();
 
 let bestStreak=0;
@@ -812,7 +842,9 @@ function loadTvState(){
     const s=JSON.parse(raw);if(!s.usedIdx)return false;
     curTopic=s.curTopic||'america';score=s.score||0;total=s.total||0;correct_count=s.correct_count||0;streak=s.streak||0;
     usedIdx=new Map(Object.entries(s.usedIdx));
-    buildTopics();loadQ();return true;
+    TOPICS.forEach(t=>{if(!usedIdx.has(t))usedIdx.set(t,[]);});
+    if(!QUESTIONS[curTopic])curTopic='america';
+    updateStats();buildTopics();loadQ();return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',()=>{saveTvState();saveTvHistory();});

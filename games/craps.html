@@ -333,19 +333,19 @@ function doRoll(){
 }
 
 // ── Resolution ─────────────────────────────────────────────────────────────
-let rollNet=0, notes=[];
+let rollNet=0, notes=[], settled=0;
 function payout(id,num,den,label){
   if(!bets[id])return 0;
   const amt=bets[id], profit=Math.floor(amt*num/(den||1));
   delete bets[id];
-  Casino.win(profit);rollNet+=profit;notes.push(`${label||nameOf(id)} +${CZ.money(profit)}`);flash(id);
+  Casino.win(profit);rollNet+=profit;settled++;notes.push(`${label||nameOf(id)} +${CZ.money(profit)}`);flash(id);
   return amt+profit;
 }
 function lose(id,label){
   if(!bets[id])return;
   const amt=bets[id];delete bets[id];
   if(!Casino.bet(amt))Casino.win(-Math.min(amt,Casino.balance()));
-  rollNet-=amt;notes.push(`${label||nameOf(id)} −${CZ.money(amt)}`);
+  rollNet-=amt;settled++;notes.push(`${label||nameOf(id)} −${CZ.money(amt)}`);
 }
 function refund(id){if(bets[id]){delete bets[id];notes.push(`${nameOf(id)} push`);}}
 function moveBet(from,to){bets[to]=(bets[to]||0)+bets[from];delete bets[from];}
@@ -366,7 +366,7 @@ function flash(id){
 function resolveRoll(d1,d2,total){
   let msg='';
   const hard=d1===d2;
-  rollNet=0;notes=[];
+  rollNet=0;notes=[];settled=0;
   const wasPoint=point;
 
   // Come / Don't Come bets already sitting on a number
@@ -439,8 +439,8 @@ function resolveRoll(d1,d2,total){
   $('roll-result').textContent=`${d1} + ${d2} = ${total}`+(hard&&total!==2&&total!==12?' (hard)':'');
   const resolved=notes.length>0;
   const kind=rollNet>0?'win':rollNet<0?'lose':'push';
-  CZ.result(kind,msg,resolved?notes.join(' · '):(point&&!wasPoint?'Pass Line now needs a '+point+' before a 7':'No bets settled'),resolved?CZ.signed(rollNet):null);
-  $('cr-last').textContent=resolved?CZ.signed(rollNet):String(total);
+  CZ.result(kind,msg,resolved?notes.join(' · '):(point&&!wasPoint?'Pass Line now needs a '+point+' before a 7':'No bets settled'),settled?CZ.signed(rollNet):null);
+  $('cr-last').textContent=settled?CZ.signed(rollNet):'$0';
   $('cr-last').className='cz-stat-val '+(rollNet>0?'cz-pos':rollNet<0?'cz-neg':'');
   if(rollNet>0){sWin();CZ.hap('success');}
   else if(rollNet<0){sLose();CZ.hap('error');}

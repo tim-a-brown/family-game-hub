@@ -62,6 +62,8 @@
 .mj-pinfo{font-size:.72rem;color:rgba(255,255,255,.45);}
 .mj-melds{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
 .mj-melds.col{flex-direction:column;align-items:center;gap:4px;}
+.mj-side .mjt.sm{--w:20px;border-radius:4px;}
+.mj-side .mjt.sm .mjt-n{font-size:12px;}
 .mj-melds.mine{margin:0 0 10px;}
 .mj-meld{display:flex;gap:2px;}
 .mj-last-discard{display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -734,9 +736,19 @@ function render(){
     if(icon) icon.textContent = t.icon;
   });
 
+  // Bring a fresh claim offer into view so it can't be missed on short screens
+  const claimKey=showClaim?canClaim.type+':'+(canClaim.tile&&canClaim.tile.id):'';
+  if(claimKey&&claimKey!==_lastClaimKey){
+    hap('medium');
+    const cp=document.querySelector('.mj-claim-panel');
+    if(cp){const r=cp.getBoundingClientRect();if(r.bottom>window.innerHeight-8||r.top<60)cp.scrollIntoView({block:'center',behavior:'smooth'});}
+  }
+  _lastClaimKey=claimKey;
+
   // Persist state after every render
   saveState();
 }
+let _lastClaimKey='';
 
 // ── State persistence ───────────────────────────────────────────────────────
 // Mahjong state is a lot — hands, melds, discards, scores, round state —
