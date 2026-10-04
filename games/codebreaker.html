@@ -247,7 +247,7 @@ button.hole{cursor:pointer;}
         S = {
           mode: cfg.mode, diff: cfg.options.diff in DIFF ? cfg.options.diff : 'classic', blanks: blanks,
           P: d.pegs, C: d.colors, K: d.colors + (blanks ? 1 : 0), dup: d.dup, R: d.rows,
-          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
+          players: cfg.players.map(function (p) { return { name: cfg.mode === 'solo' && p.name === 'Player 1' ? 'You' : p.name, cpu: p.cpu }; }),
           total: cfg.mode === '2p' ? (+cfg.options.rounds || 2) : 1,
           round: 0, scores: [0, 0], log: [], started: Date.now()
         };
@@ -465,7 +465,7 @@ button.hole{cursor:pointer;}
     later(function () {
       keyAnim = -1; busy = false;
       if (out) return endRound();
-      if (n === 0) Kit.toast('None of those colours are in the code');
+      if (n === 0) Kit.toast('No colour matches');
       render();
       if (S.players[S.breaker] && S.players[S.breaker].cpu) cpuTurn();
     }, 300 + n * 190 + 200);
@@ -721,7 +721,7 @@ button.hole{cursor:pointer;}
     } else {
       var r = S.result || {};
       txt = r.cracked ? 'Cracked in ' + r.n + '!' : 'Code unbroken';
-      sub = S.mode === '2p' ? 'Round ' + (S.round + 1) + ' of ' + S.total : DIFF[S.diff].label;
+      sub = S.mode === '2p' ? 'Round ' + (S.round + 1) + ' of ' + S.total : DIFF[S.diff].label + (S.blanks ? ' with blanks' : '');
     }
     t.style.setProperty('--c', c);
     if (S.phase !== 'reveal' && S.phase !== 'over') t.appendChild(el('span', { class: 'dot' }));
@@ -739,7 +739,7 @@ button.hole{cursor:pointer;}
       small = 'Your code scored ' + S.scores[0] + ' points';
     } else {
       msg = r.cracked ? 'You cracked it in ' + r.n + '!' : 'Out of guesses';
-      small = r.cracked ? 'Nice code breaking' : 'The secret code is under the shield';
+      small = r.cracked ? 'Nice code breaking' : 'There is the secret code, up top';
     }
     box.appendChild(el('div', { class: 'msg' }, [document.createTextNode(msg), el('small', { text: small })]));
     if (S.phase === 'reveal' && S.mode === '2p') {

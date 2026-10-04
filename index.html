@@ -63,13 +63,28 @@ document.addEventListener('visibilitychange', function () {
 /* Search + filters (sticky) */
 .filters{position:sticky;top:0;z-index:20;margin:calc(10px - var(--safe-t)) -16px 0;pointer-events:none;padding:calc(var(--safe-t) + 8px) 16px 10px;background:transparent;transition:background-color .2s, box-shadow .2s;}
 @media (min-width:1272px){.filters{border-radius:0 0 20px 20px;}}
+/* On phones all the category chips wrap into several rows; too tall to pin, so they scroll with the page */
+@media (max-width:719px){.filters{position:relative;}}
 .filters>*{pointer-events:auto;}
 .search{position:relative;}
 .search svg{position:absolute;left:16px;top:50%;width:20px;height:20px;transform:translateY(-50%);color:var(--text-3);pointer-events:none;}
 .search .input{padding-left:46px;padding-right:44px;min-height:48px;border-radius:999px;}
 .search .x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.1);color:var(--text-2);font-weight:900;display:none;}
 .search.has-q .x{display:block;}
-.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:10px -16px 0;padding:0 16px 2px;scroll-padding:16px;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;padding:0 0 2px;}
+.chips .chip{--cc:var(--text-2);min-height:32px;padding:0 11px 0 9px;gap:6px;font-size:.84rem;
+  background:color-mix(in srgb,var(--cc) 18%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc) 35%,transparent);}
+.chips .chip .ico{width:15px;height:15px;color:var(--cc);}
+.chips .chip.on{background:var(--cc);color:#fff;box-shadow:none;}
+.chips .chip.on .ico{color:#fff;}
+.chips .chip.on .n{opacity:.8;}
+.chips .chip.all{--cc:#ffffff;}
+.chips .chip.all.on{color:var(--bg);}
+.chips .chip.all.on .ico{color:var(--bg);}
+.chips .chip.fav{--cc:var(--yellow);}
+.chips .chip.fav.on{color:#2b1a00;}
+.chips .chip.fav.on .ico{color:#2b1a00;}
+.chips .chip.who{--cc:var(--blue);}
 .chips::-webkit-scrollbar{display:none;}
 .chip .ico{width:16px;height:16px;}
 .chip.who{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--text);}
@@ -334,26 +349,24 @@ document.addEventListener('visibilitychange', function () {
   // ── Render ────────────────────────────────────────────────────────────────
   function renderChips() {
     var vis = visibleGames(), favCount = vis.filter(isFav).length;
-    var items = [{ id: 'all', label: 'All', n: vis.length }];
-    if (favCount) items.push({ id: 'fav', label: 'Favorites', n: favCount });
+    var items = [{ id: 'all', label: 'All', n: vis.length, ic: 'tiles', cls: 'all' }];
+    if (favCount) items.push({ id: 'fav', label: 'Favorites', n: favCount, ic: 'star', cls: 'fav' });
     GAME_CATS.forEach(function (c) {
       var n = vis.filter(function (g) { return g.cat === c.id; }).length;
-      if (n) items.push({ id: c.id, label: c.name, n: n });
+      if (n) items.push({ id: c.id, label: c.name, n: n, ic: c.id, color: c.color });
     });
     if (!items.some(function (i) { return i.id === state.cat; })) state.cat = 'all';
     var box = $('chips'); box.innerHTML = '';
     box.appendChild(whoChip());
-    box.appendChild(el('span', { class: 'sep' }));
     items.forEach(function (i) {
-      var b = el('button', { type: 'button', class: 'chip' + (i.id === state.cat ? ' on' : ''), role: 'tab', 'aria-selected': String(i.id === state.cat) },
-        [el('span', { text: i.label }), el('span', { class: 'n', text: String(i.n) })]);
+      var b = el('button', { type: 'button', class: 'chip' + (i.cls ? ' ' + i.cls : '') + (i.id === state.cat ? ' on' : ''), role: 'tab', 'aria-selected': String(i.id === state.cat), style: i.color ? { '--cc': i.color } : null },
+        [el('span', { html: Kit.icon(i.ic) }), el('span', { text: i.label }), el('span', { class: 'n', text: String(i.n) })]);
       b.addEventListener('click', function () {
         state.cat = i.id; set('gn_home_cat', i.id); Kit.sfx('tap'); render();
         var f = $('filters'); if (window.scrollY > f.offsetTop) window.scrollTo({ top: f.offsetTop, behavior: 'smooth' });
       });
       box.appendChild(b);
     });
-    var on = box.querySelector('.on'); if (on) on.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   }
 
   function section(title, ic, games, extra) {
