@@ -1,567 +1,661 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Boggle</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../data/words-en.js"></script>
 <style>
-.wrap{max-width:460px;margin:0 auto;}
-.bl-page{padding-top:12px;}
-.bg-stats{margin-bottom:10px;}
-.bg-stats .stat{max-width:none;}
-#bl-timer{color:var(--gold);}
-#bl-timer.low{color:var(--red);animation:bl-pulse 1s ease infinite;}
-@keyframes bl-pulse{50%{opacity:.55;}}
-/* Timer */
-.timer-bar{height:6px;background:var(--surface-2);border-radius:3px;margin-bottom:14px;overflow:hidden;}
-.timer-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold2));border-radius:3px;transition:width .9s linear;}
-/* Grid */
-.bl-board{position:relative;width:min(100%,400px);margin:0 auto 12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);touch-action:none;}
-.bl-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;touch-action:none;user-select:none;-webkit-user-select:none;}
-.bl-cell{
-  aspect-ratio:1;border-radius:16px;position:relative;z-index:1;
-  background:linear-gradient(180deg,#f4f1e8,#dcd6c6);color:#1b1d24;
-  box-shadow:0 3px 0 #a9a290,0 6px 14px rgba(0,0,0,.35);
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--display);font-size:clamp(1.7rem,9vw,2.3rem);font-weight:800;
-  cursor:pointer;transition:transform .1s var(--ease),background .12s,box-shadow .12s;touch-action:none;
+body{overflow-x:hidden;}
+.bg{max-width:520px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 14px);}
+.bg.play{display:flex;flex-direction:column;gap:10px;min-height:calc(100dvh - var(--safe-t) - 58px);}
+
+/* Status row: player, score, sand timer */
+.st{display:flex;align-items:center;gap:10px;min-height:56px;}
+.st .who{flex:1;min-width:0;display:flex;align-items:center;gap:10px;}
+.st .who .avatar{width:36px;height:36px;}
+.st .who b{display:block;font-family:var(--display);font-weight:400;font-size:1.25rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st .who small{display:block;font-size:.78rem;font-weight:800;color:var(--text-3);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st .who > div{min-width:0;}
+.glass{display:flex;align-items:center;gap:6px;padding:4px 12px 4px 6px;border-radius:999px;background:rgba(0,0,0,.25);}
+.glass svg{width:30px;height:44px;transition:transform .7s var(--spring);}
+.glass.flip svg{animation:flip .7s var(--ease);}
+@keyframes flip{from{transform:rotate(-180deg);}to{transform:none;}}
+.glass .t{font-family:var(--display);font-size:1.45rem;min-width:52px;text-align:right;font-variant-numeric:tabular-nums;}
+.glass.low .t{color:var(--red);animation:lowp 1s ease infinite;}
+@keyframes lowp{50%{opacity:.5;}}
+.glass.off{opacity:.55;}
+.done-btn{min-height:40px;padding:0 14px;}
+
+/* Table and plastic tray */
+.tbl{border-radius:26px;padding:8px;}
+.tbl .felt-in{position:relative;border-radius:20px;padding:14px;}
+.tray{--n:4;position:relative;margin:0 auto;width:min(100%,440px);aspect-ratio:1;border-radius:22px;padding:5%;
+  background:
+    radial-gradient(120% 70% at 30% 10%, rgba(255,255,255,.35), rgba(255,255,255,0) 45%),
+    linear-gradient(160deg,#ff9a3d 0%,#f06a12 55%,#c94f05 100%);
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.45), inset 0 -6px 0 rgba(0,0,0,.25), 0 10px 0 #8f3a04, 0 18px 30px rgba(0,0,0,.5);
+  touch-action:none;user-select:none;-webkit-user-select:none;}
+.grid{position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);gap:4%;width:100%;height:100%;}
+.well{position:relative;border-radius:16%;background:rgba(110,40,0,.45);box-shadow:inset 0 4px 8px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.3);}
+.cube{position:absolute;inset:3%;border-radius:16%;display:grid;place-items:center;
+  background:radial-gradient(110% 110% at 30% 22%, #ffffff 0%, #f7f2e6 45%, #ddd3bc 100%);
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), inset 0 2px 1px rgba(255,255,255,.95), 0 4px 0 #b8ab8e, 0 7px 10px rgba(0,0,0,.4);
+  transition:transform .12s var(--spring), background .15s;}
+.cube b{font-family:"Arial Black","Helvetica Neue",var(--display);font-weight:900;font-size:calc(min(100vw - 72px, 440px) / var(--n) * .46);color:#1b1a24;line-height:1;transform:rotate(var(--rot,0deg));letter-spacing:-.02em;}
+.cube b.qu{font-size:calc(min(100vw - 72px, 440px) / var(--n) * .36);}
+.cube.path{background:radial-gradient(110% 110% at 30% 22%, #fff8d6 0%, #ffe07a 50%, #f5bf2a 100%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), 0 4px 0 #b88a12, 0 7px 10px rgba(0,0,0,.4);transform:translateY(2px);}
+.cube.last{background:radial-gradient(110% 110% at 30% 22%, #fff3c0 0%, #ffc93d 50%, #ef9d00 100%);transform:translateY(3px) scale(.97);}
+.cube.good{background:radial-gradient(110% 110% at 30% 22%, #eafff0 0%, #7ee2a2 55%, #2fbf6a 100%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), 0 4px 0 #1d8a4f, 0 7px 10px rgba(0,0,0,.4);}
+.cube.bad{background:radial-gradient(110% 110% at 30% 22%, #fff0f0 0%, #ff9aa3 55%, #e5485a 100%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), 0 4px 0 #a8202e, 0 7px 10px rgba(0,0,0,.4);animation:shake .35s;}
+.cube.dup{background:radial-gradient(110% 110% at 30% 22%, #f2f6ff 0%, #a9c6ff 55%, #5d8ee8 100%);}
+.cube.tumble{animation:tumble .16s linear infinite alternate;}
+@keyframes tumble{from{transform:translate(var(--tx,-6px),var(--ty,4px)) rotate(var(--tr,-12deg));}to{transform:translate(calc(var(--tx,-6px) * -1),calc(var(--ty,4px) * -1)) rotate(calc(var(--tr,-12deg) * -1));}}
+.cube.settle{animation:settle .45s var(--spring);}
+@keyframes settle{0%{transform:translateY(-10px) scale(1.06);}60%{transform:translateY(2px) scale(.98);}100%{transform:none;}}
+svg.trace{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;overflow:visible;}
+svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;stroke-linejoin:round;}
+.pop{position:absolute;left:50%;top:40%;z-index:6;pointer-events:none;font-family:var(--display);font-size:2.2rem;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.4);animation:popup .9s var(--ease) forwards;}
+@keyframes popup{0%{opacity:0;transform:translate(-50%,10px) scale(.6);}25%{opacity:1;transform:translate(-50%,0) scale(1.1);}100%{opacity:0;transform:translate(-50%,-50px) scale(1);}}
+
+/* Lid: covers the board between players */
+.lid{position:absolute;inset:-2px;z-index:8;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;
+  background:
+    radial-gradient(120% 70% at 30% 10%, rgba(255,255,255,.28), rgba(255,255,255,0) 45%),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px),
+    linear-gradient(160deg,#2a5bd7,#173a99);
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.35), inset 0 -6px 0 rgba(0,0,0,.3);transition:transform .5s var(--ease), opacity .4s;}
+.lid.up{transform:translateY(-110%) rotate(-6deg);opacity:0;pointer-events:none;}
+.lid h2{font-family:var(--display);font-weight:400;font-size:clamp(1.6rem,7vw,2.2rem);color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.3);}
+.lid p{color:rgba(255,255,255,.85);font-weight:700;max-width:280px;}
+.lid .logo{font-family:var(--display);font-size:clamp(2rem,10vw,3rem);letter-spacing:.06em;color:#ffd23d;text-shadow:0 4px 0 #9a3c00;}
+.lid .btn{min-width:220px;}
+
+/* Word line and found words */
+.wordrow{display:flex;align-items:center;gap:8px;}
+.cur{flex:1;min-width:0;height:52px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:rgba(0,0,0,.25);
+  font-family:var(--display);font-size:1.6rem;letter-spacing:.1em;color:var(--yellow);white-space:nowrap;overflow:hidden;}
+.cur.empty{font-family:var(--font);font-size:.92rem;font-weight:700;letter-spacing:0;color:var(--text-3);}
+.cur.no{color:var(--text-3);}
+.wordrow .btn{min-height:52px;}
+.wordrow .icon-btn{width:52px;height:52px;border-radius:14px;}
+.found{flex:1;min-height:90px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:10px;border-radius:16px;background:rgba(255,255,255,.04);overflow:auto;}
+.found .none{color:var(--text-3);font-size:.9rem;font-weight:700;}
+.fw{display:inline-flex;align-items:baseline;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-weight:800;font-size:.9rem;text-transform:uppercase;letter-spacing:.03em;}
+.fw small{font-size:.72rem;color:var(--text-3);}
+.fw.l5{background:rgba(77,163,255,.18);}
+.fw.l6{background:rgba(61,220,132,.18);}
+.fw.l7{background:rgba(255,200,61,.22);}
+.fw.l8{background:rgba(255,92,154,.24);}
+.fw.new{animation:pop .4s var(--spring);}
+.fw.x{text-decoration:line-through;text-decoration-thickness:2px;opacity:.55;}
+.fw.x small{display:none;}
+
+/* Results sheet */
+.res{display:flex;flex-direction:column;gap:10px;}
+.rp{border-radius:16px;background:rgba(255,255,255,.05);padding:10px 12px;}
+.rp .h{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.rp .h b{flex:1;font-weight:900;}
+.rp .h .sc{font-family:var(--display);font-size:1.4rem;}
+.rp .ws{display:flex;flex-wrap:wrap;gap:5px;}
+.rp .ws .fw{font-size:.82rem;padding:4px 8px;}
+.allw{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.allw .fw{font-size:.8rem;padding:4px 8px;background:rgba(255,255,255,.05);color:var(--text-3);}
+.allw .fw.got{background:rgba(61,220,132,.16);color:var(--text);}
+.sumrow{display:flex;gap:8px;margin:4px 0 6px;}
+.sumrow div{flex:1;text-align:center;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.05);}
+.sumrow b{display:block;font-size:1.35rem;font-weight:900;}
+.sumrow span{font-size:.7rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;}
+.between{display:flex;flex-direction:column;gap:10px;}
+.tot{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.tot .score{min-width:70px;flex:0 1 auto;}
+@media (min-width:900px){
+  .bg.play{max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto auto 1fr;column-gap:20px;align-content:start;}
+  .bg.play .st{grid-column:1/-1;}
+  .bg.play .tbl{grid-column:1;grid-row:2/4;}
+  .bg.play .side{grid-column:2;grid-row:2/4;display:flex;flex-direction:column;gap:10px;min-height:0;}
+  .found{max-height:none;}
 }
-.bl-cell.qu{font-size:clamp(1.3rem,7vw,1.8rem);}
-.bl-cell.path{background:linear-gradient(180deg,#ffe58a,#f5c842);box-shadow:0 3px 0 #b8901a,0 6px 14px rgba(0,0,0,.35);}
-.bl-cell.selected{background:linear-gradient(180deg,#ffd75e,#f0a500);transform:scale(1.04);box-shadow:0 3px 0 #a87300,0 0 0 3px rgba(245,200,66,.45);}
-.bl-cell.wrong{background:linear-gradient(180deg,#fecaca,#f87171);box-shadow:0 3px 0 #b91c1c;animation:bl-shake .35s ease;}
-.bl-cell.good{background:linear-gradient(180deg,#bbf7d0,#4ade80);box-shadow:0 3px 0 #15803d;}
-@keyframes bl-shake{20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
-.bl-grid.over .bl-cell{opacity:.45;cursor:default;}
-#bl-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;}
-#bl-svg polyline{fill:none;stroke:rgba(240,165,0,.75);stroke-linecap:round;stroke-linejoin:round;}
-/* Current word */
-.bl-word-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-.bl-word{flex:1;height:52px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--surface);border:1px solid var(--line-2);font-family:var(--display);font-size:1.5rem;font-weight:800;letter-spacing:.12em;color:var(--gold);overflow:hidden;white-space:nowrap;}
-.bl-word:empty::before{content:'Drag or tap letters';font-family:var(--font);font-size:.92rem;font-weight:500;letter-spacing:0;color:var(--text-3);}
-.bl-word.bad{color:var(--red);}
-.bl-word-row .btn{min-height:52px;height:52px;}
-#bl-clear{width:52px;padding:0;}
-#bl-clear svg{width:22px;height:22px;}
-/* Found words */
-.found-title{display:flex;justify-content:space-between;align-items:baseline;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
-.found-words{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;min-height:64px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;}
-.found-words:empty::before{content:'Words you find will appear here.';color:var(--text-3);font-size:.9rem;}
-.fw{padding:5px 10px;border-radius:999px;font-size:.88rem;font-weight:700;border:1px solid;text-transform:uppercase;letter-spacing:.03em;}
-.fw small{font-size:.75rem;opacity:.75;margin-left:3px;}
-.fw.len3{background:var(--surface-2);border-color:var(--line-2);color:var(--text-2);}
-.fw.len4{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3);color:var(--blue);}
-.fw.len5{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:var(--green);}
-.fw.len6{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.3);color:var(--gold);}
-.fw.len7{background:rgba(192,132,252,.12);border-color:rgba(192,132,252,.3);color:var(--purple);}
-.fw.len8p{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.3);color:var(--red);}
-/* Score popup */
-@keyframes bl-pop{0%{opacity:0;transform:translate(-50%,6px) scale(.8);}20%{opacity:1;transform:translate(-50%,0) scale(1.1);}100%{opacity:0;transform:translate(-50%,-34px) scale(1);}}
-.bl-popup{position:absolute;left:50%;top:-6px;pointer-events:none;font-family:var(--display);font-size:1.6rem;font-weight:800;color:var(--green);animation:bl-pop .9s ease forwards;z-index:5;text-shadow:0 2px 10px rgba(0,0,0,.5);}
-/* Result sheet */
-.bl-result{position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
-.bl-result.show{display:flex;animation:gn-fade .2s ease both;}
-.bl-sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));text-align:center;animation:gn-sheet .32s var(--ease) both;max-height:90dvh;overflow:auto;}
-@media (min-width:600px){.bl-result{align-items:center;}.bl-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
-.bl-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 16px;}
-.bl-res-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.bl-res-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
-.bl-res-sub{color:var(--text-2);font-size:.95rem;margin-bottom:16px;}
-.bl-res-words{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:18px;max-height:140px;overflow:auto;}
-.nav-icon{width:36px;height:36px;padding:0!important;display:inline-grid;place-items:center;border-radius:50%!important;border:1px solid var(--line-2);background:var(--surface);color:var(--text);cursor:pointer;}
-.nav-icon svg{width:18px;height:18px;}
+.side{display:contents;}
+@media (min-width:900px){.side{display:flex;}}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Boggle</span>
-  <button class="nav-icon" id="bl-new" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></button>
-</nav>
-<div class="page bl-page"><div class="wrap">
-
-<div class="stat-row bg-stats">
-  <div class="stat"><div class="stat-val" id="bl-score">0</div><div class="stat-lbl">Score</div></div>
-  <div class="stat"><div class="stat-val" id="bl-words">0</div><div class="stat-lbl">Words</div></div>
-  <div class="stat"><div class="stat-val" id="bl-timer">3:00</div><div class="stat-lbl">Time</div></div>
-</div>
-
-<div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
-
-<div class="bl-board" id="bl-board"><div class="bl-grid" id="bl-grid"></div></div>
-<div class="bl-word-row">
-  <button class="btn btn-outline" id="bl-clear" aria-label="Clear selection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-  <div class="bl-word" id="bl-word"></div>
-  <button class="btn btn-gold" id="bl-submit">Enter</button>
-</div>
-
-<div class="found-title"><span>Found words</span><span id="bl-found-count"></span></div>
-<div class="found-words" id="found-words"></div>
-
-</div></div>
-
-<div class="bl-result" id="bl-result">
-  <div class="bl-sheet" role="dialog" aria-modal="true">
-    <div class="bl-grab"></div>
-    <div class="bl-res-emoji">⏰</div>
-    <div class="bl-res-title">Time’s up!</div>
-    <div class="bl-res-sub" id="bl-res-sub"></div>
-    <div class="stat-row" id="bl-res-stats"></div>
-    <div class="bl-res-words" id="bl-res-words"></div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <button class="btn btn-gold btn-block" id="bl-again">New game</button>
-      <button class="btn btn-ghost btn-block" id="bl-close">Review board</button>
-    </div>
-  </div>
-</div>
+<main class="bg" id="app"></main>
 <script>
-'use strict';
-// ── Dictionary ─────────────────────────────────────────────────────────────
-// Comprehensive word list: 3+ letter words
-const WORD_LIST=`
-aback abaft abase abash abate abbey abbot abhor abide able ably abet abode aboard abort
-above abuzz ace aces ache aches acid acme acne acre acrid acted acts adapt adds
-adit aged ages ague aide aids aims airs ajar akin alar alas alb alder ales
-alga aloe also alto alum ammo amps amid amok amuse anal anew ankh anon ante
-anus apex aqua arch arcs area aria arid arks arms arson arts arty ash asks
-asps atop aunt avid avow awed awes awry axle baba babe babs back bade bags
-bait bale balk ball balm bane bang bank bare bark barn bars bash bask bass
-bath bats baud bawl bays bead beak beam bean bear beat beds beef been beep
-beer bees beet beige bell belt bene berg berm beset best beta bias bibs bike
-bile bill bind bird bite bits bled blew blob blot blow blue blur boar boat
-bode body bogs bold bolt bond bone boon boor bore born boss both bout brag
-bran brat brew brim brow browse bruin brunt bucks buds buff bulb bulk bull bump
-bunk bunt burl burn burp burr bush bust byte cabal cage cake calf call calm
-came camp cane cape carp cart case cash cast cave cell cent chap char chat
-chew chic chin chip chop clad clam clan clap claw clay clef clew clip clod
-clog club clue coal coat coax code coil coin cola cold colt come cone coni
-cool cope cord core cork corn cost cove cowl cozy crab cram craw crew crib
-crop crow cube cubs curl curr curb cure cuss cute dabs damp dare dark darn
-dart dash data daze dead deaf deal dean dear deck deft deli demo dent deny
-dew dice diet digs dire disc dish disk dive dock dodged doff dole dome done
-door dote drab drag dram draw drew drip drop drug drum dubs duel dug duke
-duly dumb dunk dupe dust dusk dyes each earl earn ease edge edgy emit envy
-epic even ever evil fad face fact fade fags fail fame fang farm fast fate
-fawn faze feat feed feel feet fell felt fend fern feud fide fife fig file
-fill film find fine fire fish fist five fled flesh flew flip flit floe flog
-flop flow flue flux fly foam foil folk fond font ford fore form fort foul
-four foyer fray frog from frown fuel full fund gab gag gal gale gang garb
-gate gave gaze gear gent gets gibe gild gill gilt gist give glad glee glen
-glide glib glob gloom glow glut gnaw goad goal goat gods gold golf goof gore
-gory grab graft grain gram grail grant grave grin grip grit groan grope grout grow
-gruel gruff gust guys hack haft haiku hale halt hang hard harm harp hash haste
-hate have hawk heap hear heel heed heft helm help hemp herd here hilt hint
-hire hoax hobby hock hoed hokey hole home hood hook hoop hope hops horn host
-howl huge hull hulk hump hung hunt hurt hustle ibis idea idle idol ills imp
-inch inky iris jack jade jail jape jars java jaws jazz jean jeer jest jig
-jink jive jolt jowl jugs jump just keen kept kern kilt kink knack knap kneel
-knit knob know koss lace lack lade land lane lark lash last late lath laud
-lava lawn lazy lead leaf lean leap left lend lens levy lieu ling lisp list
-live loan loch loft lore lorn lout love luge lurid lure lust lyre mace malt
-mama mane many mare mark mars mast mate math maul maze mead meal mean meet
-meld memo mend mere mesh mice mild milk mink mint mire mist mode mold mole
-molt monk mope more moss most moth moue muck mugs mull murk muse musk mute
-nadir name nape nave nerd nest nice node nods noir none noon note numb oafs
-oboe odds odes ohms omen once opus orbs ores oval oven owns pace page pail
-pair pale pall palm pane pang papa park part past pave pawn peck peek peel
-peer pend perk pest phon pick pier pile pill pine pink pint pipe pixy plod
-plot plow ploy plus pods pole poll pond pore pork pout prey prod prop prove
-prude puff pulp punk puns pure purse push puss puts quay quit quiz race rack
-raft rage rags rail rain rake ramp rang rank rape rasp rate rave rays real
-reap reed reef reel rein rely rend rent rest rice rick ride rife rift ring
-riot ripe risk road roam roar robe rods role roll roof rook room rope rose
-rote rout rove rude rued ruff ruin rule rump rung ruse rush rust sack safe
-sage said sail sake sale salt same sand sane sank save scam scar scot scow
-scud seam seep self send sewn shag shed shin ship shire shoe shook shore shot
-shun shut sill silt sire skid skis slab slag slap slash slate slew slim slip
-slit sloe slop slot slow slub smew smug snag snap snob snod snot snow snub
-snug soak soar sobs sock soil sold sole soma some sore sort soul soup sour
-sown spam span spar spat spit spot spud spur stab stag star stew stir stob
-stub stud suck sulk sump surf svelte swam swap swear sweat swim swot tack tall
-tame tang tans tape tare task taut teal team tear teem tent term test thaw
-them thin tier till tint tire toil tome tone tong tore torn tote tout tree
-trim trip trod true tube tuck tuft tuna tune turk turn tusk type ugly under
-unit unto urge used vain vale vamp vane vary vast veer veil vend vent verb
-vest vied view vile vine viol void vole waft waif wail wain wake wale walk
-wall wane ward ware warn warp wart wary wave weal wean wear weave week weld
-wend west were what whet whew wide wife wild wile will wilt wimp wind wine
-wing wink wire wiry wise wish wisp with woke wolf wont wood woof word wore
-work worm worn wove wren writ yack yam yaps yard yarn yell yelp yoga yoke
-yore yowl zeal zero zinc zone bred cleat deep drawn dyne gone gulf hide jilt
-lurk much rise shop slam abled abler abuse ached achier added adept admit adopt adult
-after agile aging agree ahead aided aimed aimer airy aisle aloft along aloof alter ample
-anger angry angst ankle annex antic apart apply apron aptly arcane ardor arena argue arise
-armor arose array arrow aside aspen atone attic azure baked baker bandy barmy baron based
-batch beach bench bevel bland blaze bleat bleed blend bless blind blink bliss bloom blown
-blunt blurb board boggy bolts bonus boozy bored bound boxer brain brand brash brave brawn
-bread break breed briar bribe bride brief brine brisk broth brows brown buddy bully bunch
-bushy cabin candy canny cargo carry catch cause cedar chain chair chase cheap cheer chief
-child civil claim clamp clang clash class clear cleft climb cling clock close cloth cloud
-clown comet comic conga coral count court covet coward cramp crane creak cream crest crimp
-crisp cross crowd crown cruel crumb crush crust cubic curve cutie daily dairy daisy dance
-dandy dealt decay delta dense depot depth derby dirty ditty dizzy dodge doing dolly doubt
-dowdy dowry draft drain drama dread dream dress dried drift drink drool droop drove drown
-drunk dryer dusty early earth easel edged eight elbow elder ember empty ended enjoy ensue
-enter equal erode evoke evict every exact exist extra exude fable faced facet faint fairy
-faith false fancy fatal favored feast fetch field fifth fifty filly filmy final first fishy
-fixed fizzy flame flank flare flash flat flaw fling float flood floor floss flout foamy
-folly force forge forgo found frame frank freak freed fresh front froze frugal fully funny
-gaudy gauze gavel gawky giddy given giver gizmo glare gloss glove gnarl grabs grade graze
-greed greet grief gripe groom grove growl grump grunge guest guide guile guild gulch gusto
-habit happy harsh hasty hatch haunt haven hefty herbs heron hilly hoist holly horse hotel
-hotly hound hovel hover howdy hunky humid humor hurly ideal image imbue impel inane indie
-inner inure jaggy jazzy jewel jiffy jived jibing joust juice juicy jumbo knave knife knelt
-knock knotty kudos label lance lapel lapis large laser latch later lathe laxer layer leafy
-leapt leery lemon lemur lethal levee libel light liked lithe liver livid llama lobby lodge
-lofty loner loose lover lucid lucky lunar lusty lushed maker manor maple march marge marsh
-match mayor mealy merit merge merry messy metal metro milky minim minor misty mitre moody
-moose morph muddy mulch murky musty nasty natty naval needy nerve newsy nicer night nippy
-noisy north notch novel nudge nurse nutty nylon oaken occur ocean ochre offer often olive
-other otter outer overdo ovine owing owner oxide paddy paint panel party pasty patchy paved
-payee peach penal penny petal petty pewit phony piano piney piped pique pitch pixel plaid
-plain plane plank plant plasm plumb plume plunk plush pokey polka poppy potty pouch pouchy
-pouty power pride prime primo prince privy prize prong prose proud prowl prune psalm pucky
-pudgy pulse pupil purge pygmy query queue quill quirk quota quote rabid radar radio raise
-rally ranch raven rainy rangy rapid raspy ratty reach rebel regal reign relax relay repay
-repel reset risky ritzy rival rivet rocky romeo roomy roost royal ruddy rugby ruled ruler
-runny rupee rusty sadly saint scald scant scare scary scene scent scoop scope scout scram
-scrap scrub seedy shall shale shame shank shape share shark sharp sheen sheep sheer shelf
-shell shift shiny shirt shiver shock shone shown showy shrub shrug shuck siege silky since
-sinew sixty skimp skulk skunk slain slang slant sleet slope slosh sloth slump slung slunk
-slyly smart smash smear smell smile smite smoky snail snake snare sneak snide snobbish snoop
-snore snort soggy solar solid solve soapy spank spell spend spice spill spine spire spite
-spook spool spoon sport spout spray spree squad squat squawk squib squid staid stain stake
-stale stamp stand stark start starve stash state stave steadfast steep steer stiff still sting
-stink stomp stony stood store stout straw stray strip strove study style sugar suite sunny
-super surge sushi swath sweet swift swill swine swipe swirl swoop tabby tangy taunt tawny
-tailor tasty terse thank those three threw thrice thick thief thigh thorn thrill throb throw
-thud tiger tight timid tippy tipsy tired tizzy toady today token tonal topaz touch tough
-towel tower trace track trade trail train trait tramp trash trawl tread treat trend triad
-trick tripe trite troll tromp troop troth trout truce truly trump trunk truss truth tuber
-tulip tumor tuner tweak tweed twill twine twirl twist twofer typed udder ultra uncut undue
-unfit unify union until unzip upend utter valor value valve vapor vault vaunt vegan vicar
-vigor viral visit visor vocal vodka voila vomit voter vowed vowel wacky waded wader waged
-waist waltz warty waste watch water weary wedge weedy weigh weird wells wick wider widen
-witch witty woody wordy wormy worsy worst wrath wring wrote yucky yummy zappy zesty abridge
-absurd accent access accord basic before being brake bring broke brought broom civic ditzy aware
-began brink chord chose clerk codes cords cores corns dares debug duels eagle eased edges
-evade event fades fears feats feels fence filth fired fires fixes flaws flock folks forms
-franc fudge funds fused fuses gain gains games geeks genes goals grace grate guess heaps
-hears heavy hinge holes hooks hours hunts hurts ideas keeps kinds knows lakes lately leans
-learns least leave lends level liars links lists loads lobes lodes logic looks lords loses
-lunge manes marks means meats meets minds mines modes molts molds money month moods mores
-mouths mutes naked names notes oaths opens pairs pales palms parks paths pause peaks pears
-pests picks piles pilot pipes plans plates plods plots plows pokes poles ponce pools pores
-ports posts probe prods prone pucks pulps pumps puree queens rails raked rakes rangs ranks
-rated rates reads realm reals reams reaps reeds reels rends ripen risks roads robes rocks
-roles roots ropes routs rules rusts safer sages sandy scone score seals seams seems seeks
-sends seeps serve shade shoal shrank shrunk siren sixth sized sizes skins slabs slags slaps
-sleds slews slink slogs slops slots slows smews snaps snobs snods snots snubs soaks soars
-soles sorbs sorts souls soups sours spads spans spars spats spits spots stabs stags stays
-stirs stobs stubs studs sucks sulks surfs swaps teams tears tents terms trees trims trips
-turfs types veins vents verbs vests views vines voids walks walls wanes wards wares warns
-weals weans weeks welds wends wilds wiles wills wilts winds wines wings wisps words works
-worms yells zones wears wort
-`.trim().split(/\s+/).map(w=>w.toLowerCase()).filter(w=>w.length>=3&&/^[a-z]+$/.test(w));
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'boggle_state', KEY = 'boggle';
 
-// Build Trie for fast prefix lookup
-class Trie{
-  constructor(){this.root={};}
-  add(word){let n=this.root;for(const c of word){if(!n[c])n[c]={};n=n[c];}n['$']=1;}
-  hasPrefix(p){let n=this.root;for(const c of p){if(!n[c])return false;n=n[c];}return true;}
-  has(w){let n=this.root;for(const c of w){if(!n[c])return false;n=n[c];}return!!n['$'];}
-}
-const DICT=new Trie();
-WORD_LIST.forEach(w=>DICT.add(w));
+  // ── Real Boggle cubes ─────────────────────────────────────────────────────
+  // 16 cubes of the current Boggle; 25 cubes of Big Boggle. Q reads "Qu".
+  var CUBES4 = ['AAEEGN', 'ABBJOO', 'ACHOPS', 'AFFKPS', 'AOOTTW', 'CIMOTU', 'DEILRX', 'DELRVY',
+    'DISTTY', 'EEGHNW', 'EEINSU', 'EHRTVW', 'EIOSST', 'ELRTTY', 'HIMNQU', 'HLNNRZ'];
+  var CUBES5 = ['AAAFRS', 'AAEEEE', 'AAFIRS', 'ADENNN', 'AEEEEM', 'AEEGMU', 'AEGMNN', 'AFIRSY', 'BJKQXZ',
+    'CCNSTW', 'CEIILT', 'CEILPT', 'CEIPST', 'DDLNOR', 'DHHLOR', 'DHHNOT', 'DHLNOR', 'EIIITT', 'EMOTTT',
+    'ENSSSU', 'FIPRSY', 'GORRVW', 'HIPRRY', 'NOOTUW', 'OOOTTU'];
+  var PTS = [0, 0, 0, 1, 1, 2, 3, 5, 11];
+  function pts(w) { return PTS[Math.min(w.length, 8)]; }
 
-// ── Boggle letter distribution ────────────────────────────────────────────
-const FREQ='AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTTUUUUVVWWXYYZ'.split('');
-
-let grid=[], selected=[], path=[], foundWords=new Set(), score=0, timerSecs=180, timerInt=null, gameOver=false;
-const $=id=>document.getElementById(id);
-const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const PTS=[0,0,0,1,1,2,3,5,11]; // scoring: 3=1,4=1,5=2,6=3,7=5,8+=11
-const ptsFor=w=>PTS[Math.min(w.length,8)];
-const tile=i=>{const[r,c]=cellRC(i);return grid[r][c]==='Q'?'QU':grid[r][c];}; // the Q die reads "Qu"
-
-function newGame(){
-  clearInterval(timerInt);
-  // Generate 4x4 grid
-  grid=Array.from({length:4},()=>Array.from({length:4},()=>{
-    // Pick random letter with distribution bias
-    return FREQ[Math.floor(Math.random()*FREQ.length)];
-  }));
-  selected=[];path=[];foundWords=new Set();score=0;timerSecs=180;gameOver=false;
-  hideResult();
-  buildGrid();
-  renderStats();renderFound();updateWordDisplay();
-  startTimer();
-}
-
-function fmt(t){const m=Math.floor(t/60), s=t%60;return `${m}:${String(s).padStart(2,'0')}`;}
-function renderTimer(){
-  $('bl-timer').textContent=fmt(Math.max(0,timerSecs));
-  $('bl-timer').classList.toggle('low',timerSecs<=15&&!gameOver);
-  $('timer-fill').style.width=(Math.max(0,timerSecs)/180*100)+'%';
-}
-function startTimer(){
-  clearInterval(timerInt);
-  renderTimer();
-  timerInt=setInterval(()=>{
-    if(document.hidden)return;           // pause while the app is in the background
-    timerSecs--;
-    renderTimer();
-    if(timerSecs<=0){endGame();}
-  },1000);
-}
-function endGame(){
-  clearInterval(timerInt);gameOver=true;
-  selected=[];renderSel();updateWordDisplay();
-  $('bl-grid').classList.add('over');
-  renderTimer();
-  haptic('heavy');
-  try{sessionStorage.removeItem('boggle');}catch(e){}
-  showResult();
-}
-
-function cellIdx(r,c){return r*4+c;}
-function cellRC(i){return[Math.floor(i/4),i%4];}
-function adjacent(i1,i2){
-  const[r1,c1]=cellRC(i1),[r2,c2]=cellRC(i2);
-  return Math.abs(r1-r2)<=1&&Math.abs(c1-c2)<=1&&i1!==i2;
-}
-
-// Tap selection: tap adjacent tiles to extend, tap the last tile to undo it
-function clickCell(i){
-  if(gameOver)return;
-  if(selected.includes(i)){
-    if(selected[selected.length-1]===i){selected.pop();renderSel();updateWordDisplay();haptic('select');return;}
-    // tapping an earlier tile trims back to it
-    selected=selected.slice(0,selected.indexOf(i)+1);renderSel();updateWordDisplay();haptic('select');return;
+  // ── Dictionary (sorted array, binary search for prefixes) ─────────────────
+  var COMMON = Words.common(), DICT = COMMON.concat(Words.extra()).sort();
+  var COMMON_SET = new Set(COMMON), DICT_SET = new Set(DICT);
+  function hasPrefix(p) {
+    var lo = 0, hi = DICT.length;
+    while (lo < hi) { var mid = (lo + hi) >> 1; if (DICT[mid] < p) lo = mid + 1; else hi = mid; }
+    return lo < DICT.length && DICT[lo].lastIndexOf(p, 0) === 0;
   }
-  if(selected.length>0&&!adjacent(selected[selected.length-1],i)){selected=[];}
-  selected.push(i);
-  haptic('select');
-  renderSel();
-  updateWordDisplay();
-}
 
-function currentWord(){return selected.map(tile).join('');}
-function updateWordDisplay(){
-  const el=$('bl-word');el.classList.remove('bad');
-  el.textContent=currentWord();
-}
-
-function submitWord(){
-  if(gameOver||!selected.length)return;
-  const word=currentWord().toLowerCase();
-  if(word.length<3){reject('Too short');return;}
-  if(foundWords.has(word)){reject('Already found');return;}
-  if(!DICT.has(word)){reject('Not in word list');return;}
-  // Valid!
-  foundWords.add(word);
-  const pts=ptsFor(word);
-  score+=pts;
-  renderStats();
-  addFoundWord(word,pts,true);
-  showPopup(`+${pts}`);
-  flashCells('good');
-  haptic('success');
-  selected=[];
-  setTimeout(()=>{renderSel();updateWordDisplay();},260);
-  _save_boggle();
-}
-function reject(msg){
-  if(window.GN)GN.toast(msg,1300);
-  haptic('error');
-  $('bl-word').classList.add('bad');
-  flashCells('wrong');
-  const keep=selected.slice();
-  setTimeout(()=>{if(selected.join()===keep.join()){selected=[];renderSel();updateWordDisplay();}},380);
-}
-
-function renderStats(){
-  $('bl-score').textContent=score;
-  $('bl-words').textContent=foundWords.size;
-  $('bl-found-count').textContent=foundWords.size?`${foundWords.size} · ${score} pts`:'';
-}
-function fwChip(word,pts){
-  const span=document.createElement('span');
-  const n=word.length;
-  span.className='fw '+(n<=3?'len3':n===4?'len4':n===5?'len5':n===6?'len6':n===7?'len7':'len8p');
-  span.textContent=word;
-  if(pts>1){const sm=document.createElement('small');sm.textContent='+'+pts;span.appendChild(sm);}
-  return span;
-}
-function addFoundWord(word,pts,anim){
-  const span=fwChip(word,pts);
-  if(anim)span.style.animation='gn-pop .3s var(--spring) both';
-  $('found-words').prepend(span);
-}
-function renderFound(){
-  $('found-words').innerHTML='';
-  [...foundWords].forEach(w=>addFoundWord(w,ptsFor(w),false));
-}
-
-function showPopup(txt){
-  const pop=document.createElement('div');
-  pop.className='bl-popup';pop.textContent=txt;
-  $('bl-board').appendChild(pop);
-  setTimeout(()=>pop.remove(),900);
-}
-
-function flashCells(cls){
-  selected.forEach(i=>{
-    const el=$('bl-cell-'+i);
-    if(el){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),450);}
+  Kit.init({
+    id: 'boggle',
+    theme: { felt: ['#2a4f8a', '#1a3566', '#11244a'] },
+    onNew: function () { clearSave(); showSetup(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Boggle: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Find as many words as you can in the letter grid before the sand runs out.</p>' +
+      '<h3>Making words</h3><ul><li><b>Swipe</b> across touching letters to spell a word, then let go. Letters can touch sideways, up and down, or <b>diagonally</b>.</li>' +
+      '<li>You can\'t use the same cube twice in one word.</li><li>Words must be at least <b>3 letters</b> (4 letters on the 5×5 Big Boggle board).</li>' +
+      '<li>No names, no abbreviations. Plurals and other forms (like JUMPS, JUMPED) count as different words.</li>' +
+      '<li><b>Qu</b> is one cube and counts as two letters.</li><li>You can also tap letters one at a time and press Enter, or type on a keyboard.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>3 or 4 letters: <b>1 point</b></li><li>5 letters: <b>2 points</b></li><li>6 letters: <b>3 points</b></li><li>7 letters: <b>5 points</b></li><li>8 or more: <b>11 points</b></li></ul>' +
+      '<h3>Playing together</h3><p>Each player gets the <b>same board</b> in turn, with their own timer, and passes the phone on. When everyone has played, lists are compared. In the standard rules, a word found by <b>two or more players is crossed out</b> and nobody scores it, so hunt for the words nobody else will spot.</p>' +
+      '<p>At the end of each round you can see every word that was hiding in the grid.</p>'
   });
-}
 
-function clearSel(){selected=[];renderSel();updateWordDisplay();}
+  var S = null, cells = [], selected = [], typedStr = '', timerT = null, lastTick = 0;
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set((S.players.length > 1 ? 'Round ' + S.round + ' of ' + S.rounds + ' · ' : '') + (S.size === 5 ? 'Big Boggle' : 'Boggle'));
+  }
+  function clearSave() { stopTimer(); try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function load() { try { return JSON.parse(localStorage.getItem(SAVE)); } catch (e) { return null; } }
 
-// Build tiles once per board; selection only toggles classes (never rebuilds
-// the DOM mid-gesture, which used to kill touch drags on iOS).
-function buildGrid(){
-  const el=$('bl-grid');el.innerHTML='';
-  el.classList.toggle('over',gameOver);
-  for(let r=0;r<4;r++){
-    for(let c=0;c<4;c++){
-      const i=cellIdx(r,c);
-      const cell=document.createElement('div');
-      cell.className='bl-cell'+(grid[r][c]==='Q'?' qu':'');
-      cell.id='bl-cell-'+i;cell.dataset.i=i;
-      cell.textContent=grid[r][c]==='Q'?'Qu':grid[r][c];
-      el.appendChild(cell);
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopTimer(); S = null; app.className = 'bg';
+    Kit.setup(app, {
+      intro: 'Find hidden words before the sand runs out.',
+      modes: [
+        { id: 'solo', icon: 'user', title: 'Solo', desc: 'One player, beat your best score' },
+        { id: 'party', icon: 'users', title: 'Pass and play', desc: '2 to 4 players take turns on the same board' }
+      ],
+      players: { range: function (m) { return m === 'party' ? [2, 4] : [1, 1]; }, count: 2, names: true },
+      options: [
+        { id: 'size', label: 'Board', choices: [['4', '4×4 Classic'], ['5', '5×5 Big Boggle']], value: '4' },
+        { id: 'time', label: 'Sand timer', choices: [['180', '3 min'], ['120', '2 min'], ['0', 'No timer']], value: '180' },
+        { id: 'rounds', label: 'Rounds', choices: [['1', '1'], ['3', '3'], ['5', '5']], value: '3', when: function (m) { return m === 'party'; } },
+        { id: 'rule', label: 'Words more than one player found', choices: [['cross', 'Cross out (standard)'], ['keep', 'Everyone scores']], value: 'cross', when: function (m) { return m === 'party'; } }
+      ],
+      start: 'Shake the cubes',
+      onStart: function (cfg) {
+        var party = cfg.mode === 'party';
+        S = {
+          size: +cfg.options.size, time: +cfg.options.time, rounds: party ? +cfg.options.rounds : 1, rule: party ? cfg.options.rule : 'keep',
+          players: cfg.players.map(function (p) { return { name: p.name, color: p.color }; }),
+          round: 0, turn: 0, phase: 'ready', board: null, words: [], left: 0, log: [], started: Date.now(), shook: false
+        };
+        Kit.gameStart();
+        newRound();
+      }
+    });
+  }
+
+  // ── Rounds and turns ──────────────────────────────────────────────────────
+  function roll() {
+    var set = (S.size === 5 ? CUBES5 : CUBES4).slice();
+    for (var i = set.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = set[i]; set[i] = set[j]; set[j] = t; }
+    return set.map(function (c) { var f = c[Math.floor(Math.random() * 6)]; return f === 'Q' ? 'QU' : f; });
+  }
+  function newRound() {
+    S.round++; S.turn = 0; S.board = roll(); S.words = S.players.map(function () { return []; });
+    S.left = S.time; S.phase = 'ready'; S.shook = false; S.all = null;
+    save(); render();
+  }
+  function minLen() { return S.size === 5 ? 4 : 3; }
+  function startTurn() {
+    S.phase = 'play'; if (!S.left && S.time) S.left = S.time;
+    save(); render();
+    var lid = app.querySelector('.lid');
+    if (!S.shook) { S.shook = true; shake(function () { if (lid) lid.classList.add('up'); beginClock(); }); if (lid) lid.classList.add('up'); }
+    else { if (lid) lid.classList.add('up'); Kit.sfx('whoosh'); beginClock(); }
+  }
+  function beginClock() {
+    var g = app.querySelector('.glass'); if (g) { g.classList.remove('flip'); void g.offsetWidth; g.classList.add('flip'); }
+    startTimer();
+  }
+  function endTurn(reason) {
+    stopTimer(); clearSel();
+    if (reason === 'time') { Kit.callout("Time's up!"); Kit.sfx('bad'); Kit.haptic('heavy'); }
+    if (S.turn < S.players.length - 1) {
+      S.turn++; S.left = S.time; S.phase = 'ready'; save();
+      setTimeout(render, reason === 'time' ? 1100 : 200);
+    } else {
+      S.phase = 'roundEnd'; scoreRound(); save();
+      setTimeout(function () { render(); showRoundResults(); }, reason === 'time' ? 1200 : 250);
     }
   }
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.id='bl-svg';
-  el.appendChild(svg);
-  renderSel();
-}
-function renderGrid(){buildGrid();}
-function renderSel(){
-  document.querySelectorAll('.bl-cell').forEach(el=>{
-    const i=+el.dataset.i;
-    el.classList.toggle('selected',selected.length>0&&selected[selected.length-1]===i);
-    el.classList.toggle('path',selected.includes(i)&&selected[selected.length-1]!==i);
-  });
-  const svg=$('bl-svg');if(!svg)return;
-  svg.innerHTML='';
-  if(selected.length>1){
-    const g=$('bl-grid').getBoundingClientRect();
-    const pts=selected.map(i=>{const b=$('bl-cell-'+i).getBoundingClientRect();return `${b.left-g.left+b.width/2},${b.top-g.top+b.height/2}`;}).join(' ');
-    svg.setAttribute('viewBox',`0 0 ${g.width} ${g.height}`);
-    const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-    pl.setAttribute('points',pts);pl.setAttribute('stroke-width',Math.max(8,g.width/34));
-    svg.appendChild(pl);
-  }
-}
 
-// ── Pointer drag (touch, mouse, pen) ────────────────────────────────────────
-let dragging=false,dragMoved=false,downIdx=-1;
-function tileAt(x,y,strict){
-  for(const el of document.querySelectorAll('.bl-cell')){
-    const b=el.getBoundingClientRect();
-    // Use an inner hit-zone so diagonal drags don't clip neighbouring tiles
-    const pad=strict?b.width*.18:0;
-    if(x>=b.left+pad&&x<=b.right-pad&&y>=b.top+pad&&y<=b.bottom-pad)return +el.dataset.i;
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  function startTimer() {
+    stopTimer(); if (!S.time) { paintClock(); return; }
+    lastTick = performance.now();
+    timerT = setInterval(function () {
+      if (document.hidden || S.phase !== 'play') { lastTick = performance.now(); return; }
+      var now = performance.now(), before = Math.ceil(S.left);
+      S.left = Math.max(0, S.left - (now - lastTick) / 1000); lastTick = now;
+      var after = Math.ceil(S.left);
+      if (after !== before) { if (after <= 10 && after > 0) Kit.sfx('tick'); if (after % 5 === 0) save(); }
+      paintClock();
+      if (S.left <= 0) endTurn('time');
+    }, 200);
   }
-  return -1;
-}
-const board=$('bl-board');
-board.addEventListener('pointerdown',e=>{
-  if(gameOver||e.button>0)return;
-  const i=tileAt(e.clientX,e.clientY,false);if(i<0)return;
-  e.preventDefault();
-  try{board.setPointerCapture(e.pointerId);}catch(_){}
-  dragging=true;dragMoved=false;downIdx=i;
-  clickCell(i);
-});
-board.addEventListener('pointermove',e=>{
-  if(!dragging||gameOver)return;
-  const i=tileAt(e.clientX,e.clientY,true);if(i<0)return;
-  const last=selected[selected.length-1];
-  if(i===last)return;
-  // dragging back onto the previous tile undoes the last step
-  if(selected.length>1&&selected[selected.length-2]===i){selected.pop();dragMoved=true;renderSel();updateWordDisplay();haptic('select');return;}
-  if(!selected.includes(i)&&selected.length>0&&adjacent(last,i)){
-    selected.push(i);dragMoved=true;renderSel();updateWordDisplay();haptic('select');
+  function stopTimer() { clearInterval(timerT); timerT = null; }
+  document.addEventListener('visibilitychange', function () { if (document.hidden && S) save(); });
+  window.addEventListener('pagehide', function () { if (S) save(); });
+  function fmt(t) { t = Math.ceil(t); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+  function glassSvg(f) {
+    // f = share of sand still in the top bulb (0..1)
+    var top = 4 + 16 * (1 - f), bot = 40 - 16 * (1 - f);
+    return '<svg viewBox="0 0 30 44" aria-hidden="true">' +
+      '<defs><clipPath id="gt"><path d="M6 4h18c0 9-7 12-8 18 1 6 8 9 8 18H6c0-9 7-12 8-18-1-6-8-9-8-18z"/></clipPath></defs>' +
+      '<rect x="3" y="1" width="24" height="3" rx="1.5" fill="#b07a42"/><rect x="3" y="40" width="24" height="3" rx="1.5" fill="#b07a42"/>' +
+      '<g clip-path="url(#gt)"><rect x="0" y="' + top.toFixed(1) + '" width="30" height="' + (22 - top).toFixed(1) + '" fill="#f2c66d"/>' +
+      '<rect x="0" y="' + bot.toFixed(1) + '" width="30" height="' + (44 - bot).toFixed(1) + '" fill="#f2c66d"/>' +
+      (f > 0 && f < 1 ? '<rect x="14.4" y="21" width="1.2" height="' + (bot - 21).toFixed(1) + '" fill="#f2c66d"/>' : '') + '</g>' +
+      '<path d="M6 4h18c0 9-7 12-8 18 1 6 8 9 8 18H6c0-9 7-12 8-18-1-6-8-9-8-18z" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.7)" stroke-width="1.3"/></svg>';
   }
-});
-function endDrag(){
-  if(!dragging)return;dragging=false;
-  if(dragMoved&&selected.length>=2)submitWord();   // drag & release submits, like the real thing
-}
-board.addEventListener('pointerup',endDrag);
-board.addEventListener('pointercancel',()=>{dragging=false;});
-window.addEventListener('resize',()=>renderSel());
+  function paintClock() {
+    var g = app.querySelector('.glass'); if (!g) return;
+    if (!S.time) { g.classList.add('off'); g.querySelector('.t').textContent = '--:--'; return; }
+    var f = Math.max(0, Math.min(1, S.left / S.time));
+    g.querySelector('.sv').innerHTML = glassSvg(f);
+    g.querySelector('.t').textContent = fmt(S.left);
+    g.classList.toggle('low', S.phase === 'play' && S.left <= 15);
+  }
 
-// ── Results ────────────────────────────────────────────────────────────────
-function showResult(){
-  const words=[...foundWords].sort((a,b)=>b.length-a.length||a.localeCompare(b));
-  $('bl-res-sub').textContent=words.length?`Longest word: ${words[0].toUpperCase()}`:'No words this round — try again!';
-  $('bl-res-stats').innerHTML=
-    `<div class="stat"><div class="stat-val" style="color:var(--gold)">${score}</div><div class="stat-lbl">Score</div></div>`+
-    `<div class="stat"><div class="stat-val">${foundWords.size}</div><div class="stat-lbl">Words</div></div>`;
-  const box=$('bl-res-words');box.innerHTML='';
-  words.forEach(w=>box.appendChild(fwChip(w,ptsFor(w))));
-  $('bl-result').classList.add('show');
-}
-function hideResult(){$('bl-result').classList.remove('show');}
-$('bl-again').addEventListener('click',()=>{try{sessionStorage.removeItem('boggle');}catch(e){}newGame();});
-$('bl-close').addEventListener('click',hideResult);
-$('bl-result').addEventListener('click',e=>{if(e.target.id==='bl-result')hideResult();});
-
-$('bl-submit').addEventListener('click',submitWord);
-$('bl-clear').addEventListener('click',()=>{clearSel();haptic('light');});
-$('bl-new').addEventListener('click',async()=>{
-  if(!gameOver&&foundWords.size){
-    const ok=await GN.confirm('Start a new game?',{title:'Start a new game?',body:'Your current board and score will be lost.',ok:'New game',danger:true});
-    if(!ok)return;
+  // ── Shake: cubes tumble, then settle one by one ───────────────────────────
+  function shake(done) {
+    var cs = app.querySelectorAll('.cube'), letters = 'ABCDEFGHIJKLMNOPRSTUVWY';
+    Kit.sfx('roll'); Kit.haptic('heavy');
+    var spin = setInterval(function () {
+      cs.forEach(function (c) { if (c.classList.contains('tumble')) c.querySelector('b').textContent = letters[Math.floor(Math.random() * letters.length)]; });
+    }, 70);
+    cs.forEach(function (c) {
+      c.style.setProperty('--tx', (Math.random() * 12 - 6).toFixed(1) + 'px');
+      c.style.setProperty('--ty', (Math.random() * 10 - 5).toFixed(1) + 'px');
+      c.style.setProperty('--tr', (Math.random() * 30 - 15).toFixed(0) + 'deg');
+      c.classList.add('tumble');
+    });
+    setTimeout(function () { Kit.sfx('roll'); }, 350);
+    var order = Array.from(cs.keys()).sort(function () { return Math.random() - .5; });
+    order.forEach(function (i, k) {
+      setTimeout(function () {
+        var c = cs[i]; c.classList.remove('tumble'); paintCube(c, i); c.classList.add('settle');
+        if (k % 4 === 0) Kit.sfx('tap');
+        setTimeout(function () { c.classList.remove('settle'); }, 500);
+        if (k === order.length - 1) { clearInterval(spin); Kit.haptic('medium'); setTimeout(done, 250); }
+      }, 700 + k * 45);
+    });
   }
-  try{sessionStorage.removeItem('boggle');}catch(e){}
-  newGame();
-});
-// Physical keyboard: Enter submits, Esc/Backspace edit, letters pick an adjacent matching tile
-document.addEventListener('keydown',e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey||gameOver)return;
-  if(e.key==='Enter'){e.preventDefault();submitWord();}
-  else if(e.key==='Escape')clearSel();
-  else if(e.key==='Backspace'){e.preventDefault();selected.pop();renderSel();updateWordDisplay();}
-  else if(/^[a-zA-Z]$/.test(e.key)){
-    const L=e.key.toUpperCase();
-    if(L==='U'&&selected.length&&tile(selected[selected.length-1])==='QU')return; // "Qu" already includes the U
-    const last=selected[selected.length-1];
-    for(let i=0;i<16;i++){
-      if(tile(i)[0]===L&&!selected.includes(i)&&(last===undefined||adjacent(last,i))){clickCell(i);return;}
+  function paintCube(c, i) {
+    var f = S.board[i], b = c.querySelector('b');
+    b.textContent = f === 'QU' ? 'Qu' : f;
+    b.className = (f === 'QU' ? 'qu' : '');
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var curEl, foundEl, gridEl, trayEl;
+  function me() { return S.players[S.turn]; }
+  function render() {
+    if (!S) return showSetup();
+    app.innerHTML = ''; app.className = 'bg play';
+    var multi = S.players.length > 1, p = me();
+    var showP = S.phase === 'roundEnd' || S.phase === 'over' ? null : p;
+    // Status row
+    var st = el('div', { class: 'st' });
+    var who = el('div', { class: 'who' });
+    if (showP) {
+      who.appendChild(el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }));
+      who.appendChild(el('div', null, [el('b', { text: p.name }), el('small', { text: (multi ? 'Round ' + S.round + ' of ' + S.rounds + ' · ' : '') + S.words[S.turn].length + ' words · ' + S.words[S.turn].reduce(function (s, w) { return s + pts(w); }, 0) + ' pts' })]));
+    } else who.appendChild(el('div', null, [el('b', { text: multi ? 'Round ' + S.round + ' of ' + S.rounds : 'Round over' }), el('small', { text: S.size === 5 ? 'Big Boggle' : 'Boggle' })]));
+    st.appendChild(who);
+    if (S.phase === 'play') st.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm done-btn', text: 'Done', onclick: function () {
+      Kit.confirm('Stop now?', { ok: "I'm done", body: S.time ? 'The rest of your time will be skipped.' : 'Your word list will be locked in.' }).then(function (ok) { if (ok && S.phase === 'play') endTurn('done'); });
+    } }));
+    st.appendChild(el('div', { class: 'glass' }, [el('span', { class: 'sv' }), el('span', { class: 't' })]));
+    app.appendChild(st);
+
+    // Table, tray, cubes
+    var tbl = el('section', { class: 'tbl wood' }), felt = el('div', { class: 'felt-in' });
+    trayEl = el('div', { class: 'tray', style: { '--n': S.size } });
+    gridEl = el('div', { class: 'grid' }); cells = [];
+    for (var i = 0; i < S.size * S.size; i++) {
+      var w = el('div', { class: 'well' }), c = el('div', { class: 'cube', 'data-i': i }, [el('b')]);
+      paintCube(c, i); w.appendChild(c); gridEl.appendChild(w); cells.push(c);
     }
-    haptic('error');
-  }
-});
+    gridEl.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'svg')).setAttribute('class', 'trace');
+    trayEl.appendChild(gridEl);
+    if (S.phase !== 'play') trayEl.appendChild(lid());
+    felt.appendChild(trayEl); tbl.appendChild(felt); app.appendChild(tbl);
 
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_boggle(){if(gameOver)return;
-  try{sessionStorage.setItem('boggle',JSON.stringify({grid,foundWords:[...foundWords],score,timerSecs,gameOver,_ts:Date.now()}));}catch(e){}
-}
-function _load_boggle(){
-  try{
-    const raw=sessionStorage.getItem('boggle');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s||!Array.isArray(s.grid))return false;
-    grid=s.grid;foundWords=new Set(s.foundWords||[]);score=s.score||0;timerSecs=s.timerSecs||180;gameOver=s.gameOver||false;selected=[];path=[];
-    buildGrid();renderFound();renderStats();updateWordDisplay();
-    if(!gameOver&&timerSecs>0)startTimer();else renderTimer();
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_boggle);
-window.addEventListener('pagehide',_save_boggle);
-if(!_load_boggle())newGame();
+    var side = el('div', { class: 'side' });
+    // Word line
+    curEl = el('div', { class: 'cur empty' });
+    side.appendChild(el('div', { class: 'wordrow' }, [
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Clear', html: Kit.icon('close'), onclick: function () { clearSel(); Kit.sfx('tap'); } }),
+      curEl,
+      el('button', { type: 'button', class: 'btn btn-primary', text: 'Enter', onclick: function () { submit(); } })
+    ]));
+    foundEl = el('div', { class: 'found' });
+    side.appendChild(foundEl);
+    app.appendChild(side);
+    paintFound(); paintCur(); paintClock(); bindTray();
+  }
+  function lid() {
+    var L = el('div', { class: 'lid' }), p = me(), multi = S.players.length > 1;
+    if (S.phase === 'ready') {
+      if (!S.shook) L.appendChild(el('div', { class: 'logo', text: 'BOGGLE' }));
+      if (multi) {
+        L.appendChild(el('h2', { text: S.turn === 0 && !S.shook ? p.name + ' goes first' : 'Pass to ' + p.name }));
+        L.appendChild(el('p', { text: S.shook ? 'Same board as the others. No peeking until it\'s your turn!' : 'Round ' + S.round + ' of ' + S.rounds + '. Everyone gets this same board in turn.' }));
+      } else if (S.shook && S.left < S.time) {
+        L.appendChild(el('h2', { text: 'Paused' }));
+        L.appendChild(el('p', { text: fmt(S.left) + ' left on the timer.' }));
+      } else L.appendChild(el('p', { text: S.time ? 'You have ' + fmt(S.time) + ' to find as many words as you can.' : 'No timer. Press Done when you run out of words.' }));
+      var resumed = S.shook && S.left < S.time && S.words[S.turn].length;
+      L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: !S.shook ? 'Shake and start' : resumed ? 'Keep going' : 'Start my turn', onclick: function () { Kit.sfx('pop'); startTurn(); } }));
+    } else if (S.phase === 'roundEnd') {
+      L.appendChild(el('h2', { text: S.players.length > 1 ? 'Round ' + S.round + ' done' : "Time's up" }));
+      L.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'See results', onclick: function () { showRoundResults(); } }));
+      L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: S.round < S.rounds ? 'Next round' : 'Final scores', onclick: function () { nextFromResults(); } }));
+    } else if (S.phase === 'over') {
+      L.appendChild(el('h2', { text: 'Game over' }));
+      L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'New game', onclick: function () { clearSave(); showSetup(); } }));
+      L.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Last round results', onclick: function () { showRoundResults(); } }));
+    }
+    return L;
+  }
+  function paintFound(fresh) {
+    if (!foundEl) return;
+    foundEl.innerHTML = '';
+    var list = S.phase === 'play' || (S.phase === 'ready' && S.players.length === 1) ? S.words[S.turn] : [];
+    if (!list.length) {
+      foundEl.appendChild(el('span', { class: 'none', text: S.phase === 'play' ? 'Swipe across touching letters to make words of ' + minLen() + '+ letters.' : S.phase === 'ready' && S.players.length > 1 ? 'Your words stay hidden from the other players.' : '' }));
+      return;
+    }
+    list.slice().reverse().forEach(function (w) { foundEl.appendChild(chip(w, w === fresh)); });
+  }
+  function chip(w, fresh, x) {
+    var n = w.length;
+    return el('span', { class: 'fw' + (n >= 8 ? ' l8' : n === 7 ? ' l7' : n === 6 ? ' l6' : n === 5 ? ' l5' : '') + (fresh ? ' new' : '') + (x ? ' x' : '') }, [document.createTextNode(w), el('small', { text: '+' + pts(w) })]);
+  }
+
+  // ── Selection: swipe, tap or type ─────────────────────────────────────────
+  function adj(a, b) { var n = S.size, r1 = Math.floor(a / n), c1 = a % n, r2 = Math.floor(b / n), c2 = b % n; return a !== b && Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1; }
+  function word() { return selected.map(function (i) { return S.board[i]; }).join('').toLowerCase(); }
+  function paintSel() {
+    cells.forEach(function (c, i) { var k = selected.indexOf(i); c.classList.toggle('path', k >= 0 && k < selected.length - 1); c.classList.toggle('last', k >= 0 && k === selected.length - 1); });
+    var svg = gridEl && gridEl.querySelector('svg.trace'); if (!svg) return;
+    svg.innerHTML = '';
+    if (selected.length > 1) {
+      var g = gridEl.getBoundingClientRect();
+      var ptsStr = selected.map(function (i) { var b = cells[i].getBoundingClientRect(); return (b.left - g.left + b.width / 2).toFixed(1) + ',' + (b.top - g.top + b.height / 2).toFixed(1); }).join(' ');
+      svg.setAttribute('viewBox', '0 0 ' + g.width + ' ' + g.height);
+      var pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      pl.setAttribute('points', ptsStr); pl.setAttribute('stroke-width', Math.max(8, g.width / (S.size * 7)));
+      svg.appendChild(pl);
+    }
+    paintCur();
+  }
+  function paintCur() {
+    if (!curEl) return;
+    var w = selected.length ? word() : typedStr;
+    curEl.className = 'cur' + (w ? '' : ' empty') + (typedStr && !selected.length ? ' no' : '');
+    curEl.textContent = w ? w.toUpperCase() : S.phase === 'play' ? 'Swipe or tap letters' : '';
+  }
+  function clearSel() { selected = []; typedStr = ''; paintSel(); }
+  function tapCell(i) {
+    if (S.phase !== 'play') return;
+    typedStr = '';
+    var k = selected.indexOf(i);
+    if (k >= 0) { selected = selected.slice(0, k + (k === selected.length - 1 ? 0 : 1)); }
+    else if (selected.length && !adj(selected[selected.length - 1], i)) selected = [i];
+    else selected.push(i);
+    Kit.sfx('tap'); Kit.haptic('tick'); paintSel();
+  }
+  var drag = null;
+  function cellAt(x, y, inner) {
+    for (var i = 0; i < cells.length; i++) {
+      var b = cells[i].getBoundingClientRect(), pad = inner ? b.width * .2 : 0;
+      if (x >= b.left + pad && x <= b.right - pad && y >= b.top + pad && y <= b.bottom - pad) return i;
+    }
+    return -1;
+  }
+  function bindTray() {
+    trayEl.addEventListener('pointerdown', function (e) {
+      if (S.phase !== 'play' || e.button > 0) return;
+      var i = cellAt(e.clientX, e.clientY, false); if (i < 0) return;
+      e.preventDefault();
+      try { trayEl.setPointerCapture(e.pointerId); } catch (_) {}
+      drag = { moved: false, start: i, had: selected.slice() };
+      if (selected.length && selected[selected.length - 1] !== i && selected.indexOf(i) < 0 && adj(selected[selected.length - 1], i)) { selected.push(i); }
+      else if (selected.indexOf(i) < 0) selected = [i];
+      else drag.tapOn = i;
+      typedStr = ''; Kit.sfx('tap'); Kit.haptic('tick'); paintSel();
+    });
+    trayEl.addEventListener('pointermove', function (e) {
+      if (!drag || S.phase !== 'play') return;
+      var i = cellAt(e.clientX, e.clientY, true); if (i < 0) return;
+      var last = selected[selected.length - 1];
+      if (i === last) return;
+      if (selected.length > 1 && selected[selected.length - 2] === i) { selected.pop(); drag.moved = true; paintSel(); Kit.haptic('tick'); return; }
+      if (selected.indexOf(i) < 0 && adj(last, i)) {
+        if (drag.tapOn != null) { selected = selected.slice(0, selected.indexOf(drag.tapOn) + 1); drag.tapOn = null; }
+        selected.push(i); drag.moved = true; Kit.sfx('tap'); Kit.haptic('tick'); paintSel();
+      }
+    });
+    function up() {
+      if (!drag) return;
+      var d = drag; drag = null;
+      if (d.moved && selected.length >= 2) { submit(); return; }
+      // a plain tap on a selected cube trims back to it (tap the last one again to drop it)
+      if (d.tapOn != null) {
+        var k = selected.indexOf(d.tapOn);
+        selected = k === selected.length - 1 ? selected.slice(0, k) : selected.slice(0, k + 1);
+        paintSel();
+      }
+    }
+    trayEl.addEventListener('pointerup', up);
+    trayEl.addEventListener('pointercancel', function () { drag = null; });
+  }
+  window.addEventListener('resize', function () { if (S && S.phase === 'play') paintSel(); });
+
+  // Typing: find any path on the board that spells what was typed
+  function findPath(str) {
+    var n = S.board.length, s = str.toUpperCase();
+    function go(i, pos, used) {
+      var f = S.board[i];
+      if (s.substr(pos, f.length) !== f) return null;
+      var np = pos + f.length; used.push(i);
+      if (np === s.length) return used.slice();
+      for (var j = 0; j < n; j++) if (used.indexOf(j) < 0 && adj(i, j)) { var r = go(j, np, used); if (r) return r; }
+      used.pop(); return null;
+    }
+    for (var i = 0; i < n; i++) { var r = go(i, 0, []); if (r) return r; }
+    return null;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!S || S.phase !== 'play' || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.k-scrim,.k-win')) return;
+    if (e.key === 'Enter') { e.preventDefault(); submit(); return; }
+    if (e.key === 'Escape') { clearSel(); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); typedStr = (selected.length ? word() : typedStr).slice(0, -1); }
+    else if (/^[a-z]$/i.test(e.key)) typedStr = (selected.length && !typedStr ? word() : typedStr) + e.key.toLowerCase();
+    else return;
+    var p = typedStr ? findPath(typedStr) : null;
+    selected = p || []; paintSel();
+    if (!p && typedStr) { curEl.textContent = typedStr.toUpperCase(); curEl.className = 'cur no'; }
+  });
+
+  // ── Submitting words ──────────────────────────────────────────────────────
+  function flash(cls) {
+    var s = selected.slice();
+    s.forEach(function (i) { cells[i].classList.remove('good', 'bad', 'dup'); void cells[i].offsetWidth; cells[i].classList.add(cls); });
+    setTimeout(function () { s.forEach(function (i) { cells[i].classList.remove(cls); }); }, 450);
+  }
+  function popText(t) { var p = el('div', { class: 'pop', text: t }); trayEl.appendChild(p); setTimeout(function () { p.remove(); }, 900); }
+  function submit() {
+    if (S.phase !== 'play') return;
+    if (!selected.length) { if (typedStr) { reject('Not on the board'); typedStr = ''; paintCur(); } return; }
+    var w = word(), mine = S.words[S.turn];
+    if (w.length < minLen()) return reject('Too short: ' + minLen() + '+ letters');
+    if (mine.indexOf(w) >= 0) { flash('dup'); Kit.toast('Already found'); Kit.sfx('bad'); return after(); }
+    if (!DICT_SET.has(w)) return reject('Not in the word list');
+    mine.push(w);
+    flash('good'); popText('+' + pts(w));
+    if (w.length >= 7) { Kit.callout(w.toUpperCase()); Kit.sfx('win'); Kit.haptic('success'); }
+    else { Kit.sfx('good'); Kit.haptic('light'); }
+    save(); paintFound(w);
+    var sm = app.querySelector('.st .who small');
+    if (sm) sm.textContent = (S.players.length > 1 ? 'Round ' + S.round + ' of ' + S.rounds + ' · ' : '') + mine.length + ' words · ' + mine.reduce(function (s, x) { return s + pts(x); }, 0) + ' pts';
+    after();
+  }
+  function after() { setTimeout(function () { selected = []; typedStr = ''; paintSel(); }, 200); }
+  function reject(msg) { flash('bad'); Kit.toast(msg); Kit.sfx('bad'); Kit.haptic('error'); after(); }
+
+  // ── Solver: every word hiding in the grid ─────────────────────────────────
+  function solve() {
+    var n = S.board.length, out = new Set(), ml = minLen();
+    function go(i, pre, used) {
+      var s = pre + S.board[i].toLowerCase();
+      if (!hasPrefix(s)) return;
+      used[i] = 1;
+      if (s.length >= ml && DICT_SET.has(s)) out.add(s);
+      for (var j = 0; j < n; j++) if (!used[j] && adj(i, j)) go(j, s, used);
+      used[i] = 0;
+    }
+    for (var i = 0; i < n; i++) go(i, '', []);
+    return Array.from(out).sort(function (a, b) { return b.length - a.length || (a < b ? -1 : 1); });
+  }
+
+  // ── Scoring a round (standard: shared words are crossed out) ──────────────
+  function scoreRound() {
+    var count = {};
+    S.words.forEach(function (ws) { ws.forEach(function (w) { count[w] = (count[w] || 0) + 1; }); });
+    var cross = S.rule === 'cross' && S.players.length > 1;
+    var scores = S.words.map(function (ws) { return ws.reduce(function (s, w) { return s + (cross && count[w] > 1 ? 0 : pts(w)); }, 0); });
+    S.all = solve();
+    S.log.push({ board: S.board.slice(), words: S.words.map(function (w) { return w.slice(); }), scores: scores, crossed: cross ? Object.keys(count).filter(function (w) { return count[w] > 1; }) : [], possible: S.all.length });
+  }
+  function totals() { return S.players.map(function (p, i) { return S.log.reduce(function (s, r) { return s + r.scores[i]; }, 0); }); }
+  function showRoundResults() {
+    var r = S.log[S.log.length - 1]; if (!r) return;
+    var box = el('div', { class: 'res' }), multi = S.players.length > 1;
+    var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return r.scores[b] - r.scores[a]; });
+    order.forEach(function (i) {
+      var p = S.players[i], ws = r.words[i].slice().sort(function (a, b) { return b.length - a.length || (a < b ? -1 : 1); });
+      var card = el('div', { class: 'rp' }, [el('div', { class: 'h' }, [
+        el('span', { class: 'avatar sm', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }),
+        el('b', { text: p.name + ' · ' + ws.length + (ws.length === 1 ? ' word' : ' words') }),
+        el('span', { class: 'sc', text: String(r.scores[i]) })
+      ])]);
+      var wl = el('div', { class: 'ws' });
+      if (!ws.length) wl.appendChild(el('span', { class: 'dim', text: 'No words this time.' }));
+      ws.forEach(function (w) { wl.appendChild(chip(w, false, r.crossed.indexOf(w) >= 0)); });
+      card.appendChild(wl);
+      box.appendChild(card);
+    });
+    if (multi && S.rule === 'cross') box.appendChild(el('p', { class: 'dim', text: r.crossed.length ? r.crossed.length + ' word' + (r.crossed.length === 1 ? ' was' : 's were') + ' found by more than one player and crossed out.' : 'Nobody found the same word, so every word counts.' }));
+    // Every word in the grid
+    var all = S.all || solve(), got = {};
+    r.words.forEach(function (ws) { ws.forEach(function (w) { got[w] = 1; }); });
+    var common = all.filter(function (w) { return COMMON_SET.has(w) || got[w]; }), rare = all.length - common.length;
+    var maxPts = all.reduce(function (s, w) { return s + pts(w); }, 0);
+    box.appendChild(el('div', { class: 'label', style: { margin: '10px 0 0' }, text: 'Every word in this grid' }));
+    box.appendChild(el('div', { class: 'sumrow', html: '<div><b>' + all.length + '</b><span>Words</span></div><div><b>' + maxPts + '</b><span>Points</span></div><div><b>' + Object.keys(got).length + '</b><span>Found</span></div>' }));
+    var aw = el('div', { class: 'allw' });
+    common.forEach(function (w) { var c = el('span', { class: 'fw' + (got[w] ? ' got' : ''), text: w }); aw.appendChild(c); });
+    box.appendChild(aw);
+    if (rare) box.appendChild(el('p', { class: 'dim', style: { 'margin-top': '6px', 'font-size': '.85rem' }, text: 'Plus ' + rare + ' rarer dictionary word' + (rare === 1 ? '' : 's') + ' not shown.' }));
+    var last = S.round >= S.rounds;
+    Kit.sheet({ title: multi ? 'Round ' + S.round + ' results' : 'Your words', node: box, actions: S.phase === 'over' ? [{ label: 'Close', cls: 'btn-soft' }] : [
+      { label: last ? (multi ? 'Final scores' : 'Finish') : 'Next round', primary: true, onClick: nextFromResults },
+      { label: 'Look at the board', cls: 'btn-ghost' }
+    ] });
+  }
+  function nextFromResults() {
+    if (S.phase !== 'roundEnd') return;
+    if (S.round < S.rounds) { newRound(); return; }
+    finishGame();
+  }
+
+  // ── Game end ──────────────────────────────────────────────────────────────
+  function finishGame() {
+    S.phase = 'over';
+    var tot = totals(), multi = S.players.length > 1;
+    var best = null, mostWords = null, missed = null;
+    S.log.forEach(function (r, ri) {
+      r.words.forEach(function (ws, pi) {
+        ws.forEach(function (w) {
+          if (r.crossed.indexOf(w) >= 0) return;
+          if (!best || w.length > best.w.length || (w.length === best.w.length && w < best.w)) best = { w: w, p: pi };
+        });
+        if (!mostWords || ws.length > mostWords.n) mostWords = { n: ws.length, p: pi, r: ri };
+      });
+    });
+    var hl = [];
+    if (best) hl.push((multi ? S.players[best.p].name + "'s longest" : 'Longest') + ' Boggle word: ' + best.w.toUpperCase() + ' (' + pts(best.w) + (pts(best.w) === 1 ? ' pt)' : ' pts)'));
+    if (multi && mostWords && mostWords.n) hl.push('Most words in a round: ' + S.players[mostWords.p].name + ', ' + mostWords.n + (S.rounds > 1 ? ' in round ' + (mostWords.r + 1) : ''));
+    var crossed = S.log.reduce(function (s, r) { return s + r.crossed.length; }, 0);
+    if (multi && S.rule === 'cross' && crossed) hl.push(crossed + ' shared word' + (crossed === 1 ? ' was' : 's were') + ' crossed out');
+    var lastAll = S.all || [], gotAll = {};
+    S.log[S.log.length - 1].words.forEach(function (ws) { ws.forEach(function (w) { gotAll[w] = 1; }); });
+    var bigMiss = lastAll.filter(function (w) { return !gotAll[w] && COMMON_SET.has(w); })[0];
+    if (bigMiss && bigMiss.length >= 6) hl.push('Nobody spotted ' + bigMiss.toUpperCase() + (S.rounds > 1 ? ' in the last round' : ''));
+    if (!multi) {
+      var prev = 0; try { GameHistory.load(KEY).forEach(function (e) { if (e.players && e.players.length === 1 && e.size === S.size && e.players[0].score > prev) prev = e.players[0].score; }); } catch (e) {}
+      if (tot[0] > prev && prev > 0) hl.push('New personal best (old best ' + prev + ')');
+      hl.push('Found ' + S.log[0].words[0].length + ' of ' + S.log[0].possible + ' words in the grid');
+    }
+    Kit.record(KEY, {
+      started: S.started, mode: (S.size === 5 ? 'Big Boggle 5×5' : 'Boggle 4×4') + (multi ? ' · ' + S.rounds + (S.rounds === 1 ? ' round' : ' rounds') : ''),
+      players: S.players.map(function (p, i) { return { name: p.name, score: tot[i] }; }),
+      rounds: multi && S.rounds > 1 ? { labels: S.log.map(function (r, i) { return 'R' + (i + 1); }), scores: S.log.map(function (r) { return r.scores; }) } : null,
+      highlights: hl, summary: multi ? null : tot[0] + ' pts · ' + S.log[0].words[0].length + ' words',
+      meta: { size: S.size, rule: S.rule, boards: S.log.map(function (r) { return r.board.join(','); }) }
+    });
+    Kit.resume.clear();
+    save(); render();
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: tot[i], color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
+    var tie = multi && rank[0].score === rank[1].score;
+    Kit.win({
+      title: multi ? (tie ? "It's a tie!" : rank[0].name + ' wins!') : tot[0] + ' points',
+      sub: multi ? (best ? 'Longest word: ' + best.w.toUpperCase() : '') : (best ? 'Longest word: ' + best.w.toUpperCase() + ' · ' : '') + S.log[0].words[0].length + ' words',
+      rank: multi ? rank : null,
+      again: function () { var cfg = { size: S.size, time: S.time, rounds: S.rounds, rule: S.rule, players: S.players }; S = { size: cfg.size, time: cfg.time, rounds: cfg.rounds, rule: cfg.rule, players: cfg.players, round: 0, turn: 0, phase: 'ready', board: null, words: [], left: 0, log: [], started: Date.now(), shook: false }; Kit.gameStart(); newRound(); },
+      againLabel: 'Play again', extra: [{ label: 'See every word', onClick: function () { showRoundResults(); } }],
+      closeLabel: 'Close', onClose: function () {}
+    });
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = load();
+  if (saved && saved.players && saved.board && saved.phase !== 'over') {
+    S = saved;
+    if (S.phase === 'play') S.phase = 'ready';   // pause on reload; the lid shows time left
+    render();
+  } else showSetup();
+  window.__bg = { get S() { return S; }, solve: function () { return solve(); }, findPath: function (s) { return findPath(s); } };
+})();
 </script>
 </body>
 </html>
