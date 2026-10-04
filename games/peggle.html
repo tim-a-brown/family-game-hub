@@ -106,7 +106,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Playfield geometry & physics constants (logical units) ═══════════════
   var FW = 360, FH = 640, RAIL = 34, CW = FW + RAIL * 2, CH = FH;
   var BR = 7, PR = 9, KR = 5;                    // ball, peg, brick half-thickness
-  var GRAV = 400, V0 = 440, E_PEG = 0.8, E_WALL = 0.86, VMAX = 1100;
+  var GRAV = 460, V0 = 455, E_PEG = 0.75, E_WALL = 0.86, VMAX = 1100;
   var LX = 180, LY = 26, BARREL = 30;            // launcher pivot and barrel length
   var TICK = 1 / 240;                            // fixed physics step
   var BUCKET_Y = 604, FEVER_VALUES = [10000, 50000, 100000, 50000, 10000];
@@ -282,7 +282,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var LEVELS = [
     { name: 'First Light', bg: 'dawn', build: function (B) {
       for (var r = 0; r < 9; r++) { var odd = r % 2; B.row(118 + r * 40, odd ? 60 : 40, odd ? 300 : 320, 40); }
-      B.arcBricks(180, 700, 230, 1.34 * PI, 1.66 * PI, 6); B.arcBricks(40, 640, 110, 1.62 * PI, 1.9 * PI, 2); B.arcBricks(320, 640, 110, 1.1 * PI, 1.38 * PI, 2);
+      B.arcBricks(180, 700, 230, 1.34 * PI, 1.66 * PI, 6); B.lineBricks(16, 524, 92, 556, 2); B.lineBricks(344, 524, 268, 556, 2);
     } },
     { name: 'Rainbow Arches', bg: 'sea', build: function (B) {
       B.arc(180, 330, 150, PI, TAU, 15); B.arc(180, 330, 112, PI * 1.08, PI * 1.92, 10); B.arcBricks(180, 330, 74, PI, TAU, 5);
@@ -1302,6 +1302,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var sx = shake ? (Math.random() - 0.5) * shake : 0, sy = shake ? (Math.random() - 0.5) * shake : 0;
     var z = zoom.z, k = (z - 1) / 1.1;
     var cx = FW / 2 + (zoom.fx - FW / 2) * clamp(k, 0, 1), cy = FH / 2 + (zoom.fy - FH / 2) * clamp(k, 0, 1);
+    var hw = FW / (2 * z), hh = FH / (2 * z);   // keep the view inside the board
+    cx = clamp(cx, hw, FW - hw); cy = clamp(cy, hh, FH - hh);
     g.translate(FW / 2 + sx, FH / 2 + sy); g.scale(z, z); g.translate(-cx, -cy);
     if (!bgCanvas) bgCanvas = makeBackdrop();
     g.drawImage(bgCanvas, 0, 0, FW, FH);

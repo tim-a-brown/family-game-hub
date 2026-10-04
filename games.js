@@ -67,6 +67,8 @@ var GAMES = [
   { id: 'wheeloffortune', name: 'Wheel of Fortune', color: '#7c3aed', cat: 'dice', min: 1, max: 3, tag: 'Spin, guess, solve the puzzle', play: 'wheeloffortune' },
   { id: 'dealornodeal',name: 'Deal or No Deal', color: '#ca8a04', cat: 'dice', min: 1, max: 4, tag: 'Take the offer or risk it all', play: 'dealornodeal' },
   { id: 'shellgame',   name: 'Shell Game',   color: '#0d9488', cat: 'dice', min: 1, max: 4, tag: 'Keep your eye on the ball', play: 'shellgame' },
+  { id: 'farkle',      name: 'Farkle',       color: '#000', cat: 'dice', min: 1, max: 6, tag: 'Push your luck to 10,000', play: 'farkle' },
+  { id: 'lrc',         name: 'Left Right Center', color: '#000', cat: 'dice', min: 2, max: 10, tag: 'Roll and pass the chips', play: 'lrc' },
 
   // ── Puzzles ──────────────────────────────────────────────────────────────
   { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048' },
@@ -113,6 +115,8 @@ var GAMES = [
   { id: 'flappybird',  name: 'Flappy Bird',       color: '#38bdf8', cat: 'arcade', min: 1, max: 1, tag: 'Tap to fly through the pipes', play: 'flappybird' },
   { id: 'asteroids',   name: 'Asteroids',    color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
   { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle' },
+  { id: 'cubehopper',  name: 'Cube Hopper',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },
+  { id: 'paddleball',  name: 'Paddle Ball',  color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
 
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },
