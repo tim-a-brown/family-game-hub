@@ -2,601 +2,729 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Rook — vs AI</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rook</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ai-base:start — shared table layout for the vs-AI card games */
-.page.g-page{max-width:560px;padding-top:12px;padding-bottom:calc(112px + var(--safe-b));}
-.g-hud{display:grid;gap:8px;margin-bottom:10px;}
-.g-seat{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:9px 8px 8px;min-width:0;text-align:center;transition:border-color .25s,box-shadow .25s,background .25s;}
-.g-seat.turn{border-color:rgba(245,200,66,.6);background:linear-gradient(180deg,rgba(245,200,66,.1),var(--surface) 70%);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
-.g-seat.lead::after{content:'👑';position:absolute;top:5px;right:7px;font-size:.75rem;}
-.g-seat-name{font-size:.78rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.g-seat.you .g-seat-name{color:var(--gold);}
-.g-seat-score{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-.g-seat-sub{font-size:.75rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.1em;}
-.g-meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
-.g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
-.g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
-.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
-.g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
-.g-status b{color:var(--text);}
-.g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
-.g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
-.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;}
-.g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
-.g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
-.g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
-.g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
-.g-choices .btn{min-height:44px;}
-.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
-.g-bar:empty{display:none;}
-.g-bar .btn{flex:1;max-width:280px;}
-.g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-.g-log summary{list-style:none;cursor:pointer;min-height:44px;padding:0 14px;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;color:var(--text-2);}
-.g-log summary::-webkit-details-marker{display:none;}
-.g-log summary .last{flex:1;min-width:0;font-weight:500;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
-.g-log summary::after{content:'';flex:none;width:7px;height:7px;border-right:2px solid var(--text-3);border-bottom:2px solid var(--text-3);transform:rotate(45deg);margin:-3px 2px 0 0;transition:transform .2s;}
-.g-log[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
-.g-log-body{padding:2px 14px 12px;font-size:.84rem;line-height:1.6;color:var(--text-2);max-height:200px;overflow-y:auto;}
-.g-log-body .pts{color:var(--gold);font-weight:600;}
-.g-log-body .bust{color:var(--red);}
-.g-log-body .flip7{color:var(--text);font-weight:700;}
-.g-result{text-align:center;padding:22px 16px 16px;border-radius:var(--r-lg);margin-bottom:12px;background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.04));border:1px solid rgba(245,200,66,.35);animation:gn-pop .4s var(--spring) both;}
-.g-result.plain{background:var(--surface);border-color:var(--line-2);}
-.g-result-icon{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.g-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);line-height:1.15;}
-.g-result.plain .g-result-title{color:var(--text);font-size:1.45rem;}
-.g-result-sub{color:var(--text-2);font-size:.92rem;margin-top:4px;}
-.g-rows{margin-top:14px;display:grid;gap:6px;text-align:left;}
-.g-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:.92rem;}
-.g-row > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.g-row.you > span:first-child{color:var(--gold);font-weight:700;}
-.g-row .r{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--text-3);font-size:.84rem;}
-.g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
-.g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
-.fp-nc-label{max-width:64px !important;}
-.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
-@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
-@media (min-width:700px){.page.g-page{max-width:620px;}}
-/* ai-base:end */
-
-/* ── Rook ─────────────────────────────────────────────────────────────── */
-.rk-hud{grid-template-columns:1fr 1fr;}
-.rk-hud .g-seat{padding:10px 10px 9px;}
-.rk-hud .g-seat-name{font-size:.8rem;}
-.rk-hud .us .g-seat-name{color:#7dd3fc;}
-.rk-hud .them .g-seat-name{color:#fca5a5;}
-.rk-hud .g-seat-score{font-size:1.75rem;}
-.rkc{--cw:clamp(40px,11.6vw,52px);width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:var(--display);font-weight:800;position:relative;
-  box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .14s var(--ease),opacity .2s,box-shadow .2s;user-select:none;flex-shrink:0;
-  border:1px solid rgba(0,0,0,.14);}
-.rkc.red{background:linear-gradient(160deg,#fff1f1,#fecaca);color:#b91c1c;}
-.rkc.yellow{background:linear-gradient(160deg,#fffbe6,#fde68a);color:#854d0e;}
-.rkc.green{background:linear-gradient(160deg,#effdf4,#bbf7d0);color:#15803d;}
-.rkc.black{background:linear-gradient(160deg,#f5f7fa,#d9dee6);color:#1e293b;}
-.rkc.rook-bird{background:linear-gradient(160deg,#4338ca,#1e1b4b);color:#c7d2fe;border-color:rgba(165,180,252,.4);}
-.rk-r{font-size:1.15rem;line-height:1;}
-.rk-s{font-family:var(--font);font-size:.6rem;font-weight:800;letter-spacing:.04em;line-height:1;margin-top:4px;opacity:.75;}
-.rkc .pts{position:absolute;top:3px;right:4px;font-family:var(--font);font-size:.6rem;font-weight:800;opacity:.7;}
-.rkc.playable{cursor:pointer;}
-.rkc.playable:active{transform:translateY(-6px) scale(.97);}
-.rkc.unplayable{opacity:.4;filter:saturate(.6);}
-.rkc.trump-c{box-shadow:0 0 0 2px rgba(245,200,66,.85),0 3px 8px rgba(0,0,0,.35);}
-.rkc.picked{transform:translateY(-8px);box-shadow:0 0 0 3px var(--red),0 8px 18px rgba(248,113,113,.35);}
-.rkc.sm{--cw:42px;}
-.rkc.win{box-shadow:0 0 0 3px var(--gold),0 8px 18px rgba(245,200,66,.35);}
-.rkc.drop{animation:rk-drop .28s var(--spring) both;}
-@keyframes rk-drop{from{transform:translateY(14px) scale(.9);opacity:0;}to{transform:none;opacity:1;}}
-.rk-hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:66px;}
-.C_Red{color:#f87171;}.C_Yel{color:#facc15;}.C_Grn{color:#4ade80;}.C_Blk{color:#cbd5e1;}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:0;}
-.dot.Red{background:#ef4444;}.dot.Yellow{background:#eab308;}.dot.Green{background:#22c55e;}.dot.Black{background:#475569;box-shadow:0 0 0 1px #94a3b8;}
-/* Table */
-.rk-trick{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;gap:0 8px;}
-.rk-w,.rk-e{margin:-6px 0;}
-.rk-slot{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.rk-slot-name{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.78);white-space:nowrap;}
-.rk-slot-name small{font-weight:600;color:rgba(255,255,255,.5);font-size:.74rem;}
-.rk-slot.turn .rk-slot-name{color:var(--gold);}
-.rk-empty{--cw:42px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.18);}
-.rk-slot.turn .rk-empty{border-color:rgba(245,200,66,.7);animation:rk-pulse 1.3s ease-in-out infinite;}
-@keyframes rk-pulse{50%{border-color:rgba(245,200,66,.25);}}
-.rk-n{grid-column:2;grid-row:1;} .rk-w{grid-column:1;grid-row:2;justify-self:end;} .rk-e{grid-column:3;grid-row:2;justify-self:start;} .rk-s{grid-column:2;grid-row:3;}
-.rk-center{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:76px;text-align:center;}
-.rk-center-lbl{font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
-.rk-center-val{font-family:var(--display);font-weight:800;font-size:1.05rem;}
-.rk-center-sub{font-size:.75rem;color:rgba(255,255,255,.7);}
-/* Bidding */
-.rk-bid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px;}
-.rk-bid-btn{min-height:46px;border-radius:12px;font-family:var(--display);font-size:1.05rem;font-weight:800;cursor:pointer;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text);transition:transform .1s,background .15s;}
-.rk-bid-btn:active{transform:scale(.94);background:var(--surface-3);}
-.rk-bid-btn.pass-btn{grid-column:1/-1;font-family:var(--font);font-size:.95rem;color:var(--text-2);}
-.rk-bidders{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-.rk-bidders span{font-size:.8rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);}
-.rk-bidders span.passed{opacity:.5;text-decoration:line-through;}
-.rk-bidders span.high{color:var(--gold);border-color:rgba(245,200,66,.4);}
-.rk-nest{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
-.rk-trumps{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.rk-trumps .btn{min-height:48px;}
+.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+/* Scoreboard strip: two paper score cards and the trump/bid marker */
+.rk-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:stretch;margin:2px 0 8px;}
+.rk-team{position:relative;border-radius:10px;padding:5px 10px 4px;min-width:0;background:linear-gradient(180deg,#fffaf0,#f1e8d2);color:#2a2a3a;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 6px 14px rgba(0,0,0,.35);}
+.rk-team .nm{display:block;font-size:.72rem;font-weight:900;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#6a6a80;}
+.rk-team .tot{font-family:var(--hand);font-size:1.7rem;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;}
+.rk-team .now{position:absolute;right:8px;bottom:6px;font-family:var(--hand);font-size:1.05rem;color:#3a7d4a;}
+.rk-team.us{border-left:5px solid var(--p1);}
+.rk-team.them{border-left:5px solid var(--p2);}
+.rk-team.bidding::after{content:'BID';position:absolute;top:5px;right:7px;font-size:.6rem;font-weight:900;letter-spacing:.08em;color:#c8102e;}
+.rk-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:84px;padding:4px 8px;border-radius:10px;background:rgba(0,0,0,.25);}
+.rk-mid .k{font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.rk-mid .v{display:flex;align-items:center;gap:5px;font-weight:900;font-size:.9rem;white-space:nowrap;}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.7);}
+/* Rook cards */
+.pcard.rk{background:linear-gradient(160deg,#ffffff 0%,#fbf8f0 55%,color-mix(in srgb,var(--ink) 14%,#f4eedf) 100%);}
+.pcard.rk::before{content:'';position:absolute;inset:17% 20%;border-radius:50%;background:color-mix(in srgb,var(--ink) 11%,transparent);}
+.pcard.rk .big{font-size:calc(var(--cw) * .52);}
+.pcard.rk .lbl{bottom:6%;font-size:calc(var(--cw) * .13);opacity:.8;}
+.pcard.rk.trump{box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 0 0 2px var(--yellow),0 6px 14px rgba(0,0,0,.3);}
+.pcard.rook{background:linear-gradient(160deg,#fdfbf6,#e9e3d3);}
+.pcard.rook::before{content:'';position:absolute;inset:8% 10%;border-radius:calc(var(--cw) * .07);background:radial-gradient(circle at 50% 45%,#ffb340 0,#f07c1c 70%,#c9560c 100%);box-shadow:inset 0 0 0 calc(var(--cw) * .025) #1d1b2e;}
+.pcard.rook .big{inset:6% 8% 18%;}
+.pcard.rook .big svg{width:78%;height:auto;}
+.pcard.rook .lbl{color:#fff;bottom:11%;font-size:calc(var(--cw) * .15);letter-spacing:.12em;text-shadow:0 1px 0 rgba(0,0,0,.4);}
+.pcard.rook.trump{box-shadow:0 0 0 2px var(--yellow),0 6px 14px rgba(0,0,0,.3);}
+.chand .pcard.new{box-shadow:0 0 0 3px var(--green),0 8px 18px rgba(0,0,0,.35);}
+/* Nest in the middle of the table */
+.nest{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.nest .stack{position:relative;--cw:44px;width:calc(var(--cw) + 16px);height:calc(var(--cw) * 1.4);}
+.nest .stack .pcard{position:absolute;top:0;}
+.nest .cap{font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+.cseat .say.bid{animation:none;}
+.cseat .say.pass{color:#8a8796;}
+.cseat .chip-s.bidder{background:#c8102e;color:#fff;}
+.cseat .chip-s.mate{background:rgba(255,255,255,.25);color:#fff;}
+/* Bid bar */
+.bidbar{display:flex;align-items:center;gap:8px;width:100%;max-width:420px;}
+.bidbar .amt{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;border-radius:var(--r);background:rgba(0,0,0,.25);}
+.bidbar .amt output{min-width:52px;text-align:center;font-family:var(--display);font-size:1.6rem;}
+.bidbar .amt button{width:42px;height:42px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text);font-weight:900;font-size:1.3rem;}
+.bidbar .amt button:disabled{opacity:.3;}
+.trumps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:420px;}
+.trumps button{min-height:52px;border:0;border-radius:var(--r);color:#fff;font-weight:900;font-size:.95rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;box-shadow:0 4px 0 rgba(0,0,0,.35);}
+.trumps button small{font-size:.72rem;opacity:.85;font-weight:800;}
+.trumps button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.sum{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
+.sum th,.sum td{padding:8px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);}
+.sum th:first-child,.sum td:first-child{text-align:left;}
+.sum th{font-size:.75rem;color:var(--text-3);font-weight:800;}
+.sum td.big{font-weight:900;font-size:1.15rem;}
+.sum td.neg{color:var(--red);}
+.sum td.pos{color:var(--green);}
+.verdict{font-weight:800;font-size:1.02rem;margin:2px 0 4px;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Rook</span>
-  <a class="icon-btn scorecard-link" href="rook.html" aria-label="Scorecard" title="Scorecard for in-person play">📋</a>
-</nav>
-<div class="page g-page">
-<div id="rk-root"></div>
-</div>
-<div class="g-bar" id="g-bar"></div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-// Partners: 0(You)+2(North) vs 1(West)+3(East). First team to 300 wins.
-// 57 cards: Red/Yellow/Green/Black 1-14 + Rook bird. 5-card nest.
-// Counting cards: 5→5pts, 10→10pts, 14→10pts, Rook→20pts = 120 total.
-// Bid to win nest and name trump. Must make your bid.
-const PNAMES=[(typeof FrequentPlayers!=='undefined'&&FrequentPlayers.myName())||'You','West','North','East'];
-const COLORS=['Red','Yellow','Green','Black'];
-const COLOR_CSS={Red:'red',Yellow:'yellow',Green:'green',Black:'black'};
-const POINT_CARDS={5:5,10:10,14:10};
-const WIN_SCORE=300;
-const SHORT={Red:'RED',Yellow:'YEL',Green:'GRN',Black:'BLK'};
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'rook_state', KEY = 'rook', PAD_KEY = 'rk', SEATS = ['s', 'w', 'n', 'e'];
+  var COLS = ['r', 'y', 'g', 'b'];
+  var CNAME = { r: 'Red', y: 'Yellow', g: 'Green', b: 'Black' };
+  var CHEX = { r: '#d42a3c', y: '#d99a00', g: '#1d9a52', b: '#22202f' };
+  var RANKS = [1, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5];       // 2s, 3s and 4s are out
+  var MIN_BID = 100, MAX_BID = 180, TOTAL = 180;
+  var BIRD = '<svg viewBox="0 0 64 64" aria-hidden="true"><g fill="#1d1b2e">' +
+    '<path d="M4 44 L20 36 L22 41 L8 50 Z"/>' +                                         // tail
+    '<path d="M16 38 C18 28 28 23 38 24 C40 18 44 14 50 15 C54 16 56 19 56 21 L62 23 L56 25 C55 30 52 33 48 35 C46 42 38 47 28 47 C22 47 18 44 16 38 Z"/>' + // body + head
+    '<path d="M27 47 L25 57 M25 57 L21 58 M25 57 L28 59 M35 46 L36 56 M36 56 L32 58 M36 56 L40 57" stroke="#1d1b2e" stroke-width="2.4" stroke-linecap="round" fill="none"/>' +
+    '</g><path d="M22 36 C28 30 36 30 42 33 C36 34 30 37 26 41 Z" fill="#4a4660"/>' +    // wing
+    '<circle cx="50" cy="20" r="2" fill="#fff"/><circle cx="50.4" cy="20" r="1" fill="#1d1b2e"/></svg>';
 
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-
-function makeRookDeck(){
-  const d=[];
-  COLORS.forEach(c=>{for(let n=1;n<=14;n++) d.push({num:n,color:c,pts:POINT_CARDS[n]||0});});
-  d.push({num:0,color:'Rook',pts:20,isRook:true});
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
-function cKey(c){return c.num+'_'+c.color;}
-function sortHand(h){return h.sort((a,b)=>a.color.localeCompare(b.color)||a.num-b.num);}
-
-function cardPower(c,trump,led){
-  if(c.isRook) return 1000;
-  if(trump&&c.color===trump) return 100+c.num;
-  if(led&&c.color===led) return 50+c.num;
-  return c.num;
-}
-function countPts(cards){return cards.reduce((s,c)=>s+(c.pts||0),0);}
-
-let hands,nest,trump,bidWinner,bid,scores,trick,trickLead,taken,phase,bidHistory,currentBidder,log,minBid;
-let nestTaken=false, nestPicks=[], trickWinner=-1, lastDelta=[0,0], lastPlayKey=null;
-
-// A single AI timer: render() used to schedule a duplicate AI move on every redraw,
-// which could make an AI bid twice or pick up the nest twice.
-let aiTimer=null;
-function later(fn,ms){clearTimeout(aiTimer);aiTimer=setTimeout(fn,ms);}
-
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
-function newGame(){clearTimeout(aiTimer);scores=[0,0];log=[];newRound();}
-function newRound(){
-  const deck=makeRookDeck();
-  hands=Array.from({length:4},(_,i)=>sortHand(deck.slice(i*13,(i+1)*13)));
-  nest=deck.slice(52);
-  trump=null;bidWinner=-1;bid=0;
-  taken=[[],[]]; trick=[null,null,null,null];
-  trickLead=0; bidHistory=[-1,-1,-1,-1]; currentBidder=0;
-  nestTaken=false; nestPicks=[]; trickWinner=-1;
-  minBid=70; phase='bid';
-  addLog('New round. Bidding starts at 70.');
-  render();
-  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
-  // Player bids first; if first bidder is not player 0, do AI bids
-  if(currentBidder!==0) later(aiBid,500);
-}
-
-function estimateBid(player){
-  const h=hands[player];
-  let pts=0;
-  h.forEach(c=>{
-    if(c.isRook) pts+=25;
-    else if(c.num===14) pts+=15;
-    else if(c.num===13) pts+=10;
-    else if(c.num===12) pts+=8;
-    else if(c.num===11) pts+=6;
-    else if(c.num===10||c.num===5) pts+=5;
-    else pts+=2;
+  Kit.init({
+    id: 'rook',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(false); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [PAD_KEY], title: 'Rook: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">You and your partner (sitting across from you) team up against the other two. Win the bid, pick trump, and capture the point cards. <b>First team to 500 wins.</b></p>' +
+      '<h3>The cards</h3><p>Four colors (red, yellow, green, black) numbered 1 and 5 to 14 (the 2s, 3s and 4s are taken out), plus the <b>Rook</b> bird card. In each color the <b>1 is highest</b>, then 14, 13 and so on down to 5.</p>' +
+      '<h3>Point cards</h3><ul><li><b>Rook:</b> 20</li><li><b>1s:</b> 15 each</li><li><b>14s and 10s:</b> 10 each</li><li><b>5s:</b> 5 each</li></ul><p>That is 180 points in every hand.</p>' +
+      '<h3>Dealing and bidding</h3><ul><li>Everyone gets 10 cards. Five cards go face down in the middle: the <b>nest</b>.</li>' +
+      '<li>Starting left of the dealer, each player bids how many points their team will capture, or passes. Bids start at <b>100</b> and go up by 5 (up to 180). Once you pass, you are out of the bidding.</li>' +
+      '<li>If everyone passes, the cards are dealt again.</li></ul>' +
+      '<h3>The nest and trump</h3><p>The high bidder picks up the nest, puts any 5 cards back face down, and then names the <b>trump color</b>. The <b>Rook is the highest trump</b>, even above the trump 1.</p>' +
+      '<h3>Playing</h3><ul><li>The player left of the dealer leads the first trick. The winner of each trick leads the next.</li>' +
+      '<li>You must <b>follow the color that was led</b> if you can. The Rook counts as a trump card, so you play it when trump is led or when you cannot follow.</li>' +
+      '<li>If you cannot follow, play anything, including trump.</li>' +
+      '<li>The highest trump wins the trick. If no trump was played, the highest card of the led color wins.</li>' +
+      '<li>Whoever wins the <b>last trick</b> also gets the 5 cards in the nest, with any points in it.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>If the bidding team captures at least its bid, it scores every point it took.</li>' +
+      '<li>If not, it is <b>set</b>: the bid is subtracted from its score.</li>' +
+      '<li>The other team always scores the points it took.</li></ul>'
   });
-  return Math.min(120,Math.round(pts/1.5/5)*5+5);
-}
 
-function aiBid(){
-  if(phase!=='bid'||currentBidder===0) return;
-  const p=currentBidder;
-  const est=estimateBid(p);
-  if(est>=minBid&&bidHistory[p]===-1){
-    const myBid=Math.max(minBid,Math.round(est/5)*5);
-    bidHistory[p]=myBid; minBid=myBid+5;
-    addLog(`${PNAMES[p]} bids ${myBid}.`);
-    advanceBid();
-  } else {
-    bidHistory[p]=-2;
-    addLog(`${PNAMES[p]} passes.`);
-    advanceBid();
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [];
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · ' + S.scores[0] + ' to ' + S.scores[1]);
   }
-}
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
-function playerBid(amount){
-  if(phase!=='bid'||currentBidder!==0) return;
-  haptic('select');
-  if(amount==='pass'){bidHistory[0]=-2;addLog('You pass.');}
-  else{bidHistory[0]=amount;minBid=amount+5;addLog(`You bid ${amount}.`);}
-  advanceBid();
-}
-
-function advanceBid(){
-  const activeBidders=bidHistory.filter(b=>b!==-2).length;
-  const passCount=bidHistory.filter(b=>b===-2).length;
-  // Find next non-passed bidder
-  let next=(currentBidder+1)%4;
-  while(bidHistory[next]===-2&&next!==currentBidder) next=(next+1)%4;
-  if(passCount>=3||(activeBidders<=1&&passCount>=3)){
-    // Bidding over — highest bid wins
-    let winner=0,winBid=70;
-    bidHistory.forEach((b,i)=>{if(b>winBid){winBid=b;winner=i;}});
-    if(bidHistory.filter(b=>b>0).length===0){winner=0;winBid=70;}
-    bidWinner=winner;bid=Math.max(70,winBid);
-    addLog(`${PNAMES[bidWinner]} wins bid at ${bid}!`,'pts');
-    phase='nest';
-    if(bidWinner===0) haptic('success');
-    render();
-    if(bidWinner!==0) later(aiNest,700);
-  } else {
-    currentBidder=next;
-    render();
-    if(currentBidder!==0) later(aiBid,550);
+  function showSetup() {
+    S = null; token++;
+    Kit.setup(app, {
+      players: { min: 4, max: 4, cpu: 'seats', label: 'Players (player 3 is your partner)' },
+      intro: 'You and a computer partner against two computers',
+      options: [{ id: 'target', label: 'Play to', value: 500, choices: [[300, '300 · quick'], [500, '500 · standard']] }],
+      onStart: function (cfg) {
+        S = freshGame(+cfg.options.target || 500, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }));
+        undoStack = []; newHand();
+      }
+    });
   }
-}
-
-function aiNest(){
-  if(phase!=='nest'||bidWinner===0||trump) return;
-  // AI picks up nest and discards 5 weakest non-counting cards
-  const h=[...hands[bidWinner],...nest];
-  h.sort((a,b)=>{
-    if(a.pts!==b.pts) return b.pts-a.pts; // keep point cards
-    return b.num-a.num; // keep high cards
-  });
-  hands[bidWinner]=sortHand(h.slice(0,13));
-  const discarded=h.slice(13);
-  taken[bidWinner%2===0?0:1].push(...discarded);
-  addLog(`${PNAMES[bidWinner]} picks up nest and discards 5.`);
-  // Choose trump: color with most cards
-  const counts={};
-  hands[bidWinner].forEach(c=>{if(!c.isRook)counts[c.color]=(counts[c.color]||0)+1;});
-  trump=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
-  addLog(`${PNAMES[bidWinner]} names ${trump} as trump.`);
-  phase='play'; trickLead=(bidWinner+1)%4; trick=[null,null,null,null];
-  render();
-  if(trickLead!==0) later(aiPlay,700);
-}
-
-function playerTakeNest(){
-  if(phase!=='nest'||bidWinner!==0||nestTaken) return;
-  nestTaken=true; nestPicks=[];
-  hands[0]=sortHand([...hands[0],...nest]);
-  haptic('light');
-  render();
-}
-function playerToggleNestPick(card){
-  if(phase!=='nest'||bidWinner!==0||!nestTaken||hands[0].length<=13) return;
-  const k=cKey(card), need=hands[0].length-13;
-  const i=nestPicks.indexOf(k);
-  if(i>=0) nestPicks.splice(i,1);
-  else if(nestPicks.length<need) nestPicks.push(k);
-  else { haptic('error'); if(window.GN) GN.toast(`Pick exactly ${need} cards`); return; }
-  haptic('select');
-  render();
-}
-function playerConfirmNestDiscard(){
-  if(phase!=='nest'||bidWinner!==0||hands[0].length-13!==nestPicks.length) return;
-  const out=hands[0].filter(c=>nestPicks.includes(cKey(c)));
-  taken[0].push(...out);
-  hands[0]=hands[0].filter(c=>!nestPicks.includes(cKey(c)));
-  nestPicks=[];
-  addLog(`You bury ${out.length} cards (${countPts(out)} pts kept for your team).`);
-  haptic('light');
-  render();
-}
-
-function playerChooseTrump(color){
-  if(phase!=='nest'||bidWinner!==0||!nestTaken||hands[0].length!==13) return;
-  trump=color;
-  haptic('select');
-  addLog(`You name ${trump} as trump!`);
-  phase='play'; trickLead=1; trick=[null,null,null,null];
-  render();
-  later(aiPlay,700);
-}
-
-// ── Play ─────────────────────────────────────────────────────────────────────
-function validPlays(p){
-  const h=hands[p];
-  const led=trick[trickLead];
-  if(!led) return h;
-  const ledColor=led.color;
-  const follow=h.filter(c=>c.color===ledColor&&!c.isRook);
-  return follow.length?follow:h;
-}
-
-function aiPlay(){
-  if(phase!=='play') return;
-  const p=getNext();
-  if(p<0||p===0) return;
-  const valid=[...validPlays(p)];
-  const led=trick[trickLead];
-  const ledColor=led?.color;
-  const partnerIdx=(p+2)%4;
-  const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
-  const partnerWinning=played.length&&played.reduce((w,x)=>cardPower(x.c,trump,ledColor)>cardPower(w.c,trump,ledColor)?x:w,played[0]).i===partnerIdx;
-
-  let card;
-  if(!led){
-    // Lead: highest trump if have rook/high trump, else highest point card
-    const trumpCards=valid.filter(c=>c.color===trump||c.isRook);
-    if(trumpCards.length>=3) card=trumpCards.sort((a,b)=>cardPower(b,trump,null)-cardPower(a,trump,null))[0];
-    else card=valid.sort((a,b)=>b.pts-a.pts||b.num-a.num)[0];
-  } else if(partnerWinning){
-    card=valid.sort((a,b)=>a.pts-b.pts||a.num-b.num)[0]; // throw low
-  } else {
-    const winners=valid.filter(c=>!played.length||cardPower(c,trump,ledColor)>Math.max(...played.map(x=>cardPower(x.c,trump,ledColor))));
-    card=winners.length?winners.sort((a,b)=>cardPower(a,trump,ledColor)-cardPower(b,trump,ledColor))[0]:valid.sort((a,b)=>a.pts-b.pts||a.num-b.num)[0];
+  function freshGame(target, players) {
+    return {
+      target: target, players: players, scores: [0, 0], round: 0, rounds: [], dealer: 3, started: Date.now(),
+      events: [], rookCaps: [0, 0, 0, 0], made: [0, 0], set: [0, 0], bestMade: null
+    };
   }
-  playCard(p,card||valid[0]);
-}
+  function teamName(t) { return S.players[t].name + ' & ' + S.players[t + 2].name; }
+  function teamAnd(t) { return S.players[t].name + ' and ' + S.players[t + 2].name; }
+  function shortName(p) { return p === 0 ? 'You' : S.players[p].name; }
 
-function getNext(){
-  if(trick.filter(c=>c).length===4) return -1;
-  for(let i=0;i<4;i++){const p=(trickLead+i)%4;if(!trick[p])return p;}
-  return -1;
-}
-
-function playerPlay(card){
-  if(phase!=='play'||getNext()!==0) return;
-  if(!validPlays(0).some(c=>cKey(c)===cKey(card))){haptic('error');if(window.GN)GN.toast('Follow the led color if you can');return;}
-  haptic('light');
-  playCard(0,card);
-}
-
-function playCard(p,card){
-  trick[p]=card;
-  lastPlayKey=cKey(card);
-  hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
-  render();
-  if(trick.filter(c=>c).length===4){
-    const led=trick[trickLead];
-    const ledColor=led.color;
-    const winner=trick.reduce((wi,c,i)=>{
-      if(!c)return wi;
-      return cardPower(c,trump,ledColor)>cardPower(trick[wi],trump,ledColor)?i:wi;
-    },trickLead);
-    const team=winner%2===0?0:1;
-    taken[team].push(...trick.filter(c=>c));
-    const trickPts=countPts(trick.filter(c=>c));
-    addLog(`${PNAMES[winner]} wins trick${trickPts>0?' (+'+trickPts+' pts)':''}.`);
-    trickWinner=winner;
-    if(team===0) haptic('medium');
-    render();
-    setTimeout(()=>{
-      trick=[null,null,null,null]; trickLead=winner; trickWinner=-1;
-      if(hands[0].length===0) scoreRound();
-      else{render();if(winner!==0)later(aiPlay,600);}
-    },1100);
-  } else {
-    const n=getNext(); if(n>0)later(aiPlay,550);
+  // ── Cards ─────────────────────────────────────────────────────────────────
+  function deck() {
+    var d = [];
+    COLS.forEach(function (c) { RANKS.forEach(function (r) { d.push({ id: c + r, c: c, r: r }); }); });
+    d.push({ id: 'rook', c: 'x', r: 0, rook: true });
+    return d;
   }
-}
-
-function scoreRound(){
-  const pts=[countPts(taken[0]),countPts(taken[1])];
-  const before=scores.slice();
-  const bidTeam=bidWinner%2===0?0:1;
-  const defTeam=1-bidTeam;
-  let msgs=[];
-  if(pts[bidTeam]>=bid){scores[bidTeam]+=pts[bidTeam];msgs.push(`${bidTeam===0?'You+North':'West+East'} made bid! +${pts[bidTeam]} pts`);}
-  else{scores[bidTeam]-=bid;scores[defTeam]+=pts[defTeam];msgs.push(`${bidTeam===0?'You+North':'West+East'} set! -${bid}. Opponents get ${pts[defTeam]}.`);}
-  // Even if set, defenders still score
-  if(pts[bidTeam]>=bid) scores[defTeam]+=pts[defTeam];
-  lastDelta=[scores[0]-before[0],scores[1]-before[1]];
-  msgs.forEach(m=>addLog(m,'pts'));
-  phase=scores[0]>=WIN_SCORE||scores[1]>=WIN_SCORE?'game-over':'round-end';
-  if(phase==='game-over') endGame();
-  else{haptic(lastDelta[0]>lastDelta[1]?'success':'light');render();}
-}
-
-function endGame(){
-  const won=scores[0]>scores[1];
-  addLog(`${won?'You & North win':'West & East win'}! ${scores[0]}–${scores[1]}.`,'pts');
-  try{
-    const players=[
-      {name:PNAMES[0]+' & '+PNAMES[2],score:scores[0]},
-      {name:PNAMES[1]+' & '+PNAMES[3],score:scores[1]}
-    ];
-    GameHistory.savePlayerGame('rook','Rook (AI)',players,won?0:1,0,{teamGame:true});
-  }catch(e){}
-  haptic(won?'success':'heavy');
-  render();
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-function cardEl(c,cls=''){
-  if(!c)return`<div class="rk-empty"></div>`;
-  const col=c.isRook?'rook-bird':COLOR_CSS[c.color];
-  const tr=!c.isRook&&trump&&c.color===trump?'trump-c':'';
-  return`<div class="rkc ${col} ${tr} ${cls}" data-key="${cKey(c)}">
-    ${c.pts?`<span class="pts">${c.pts}</span>`:''}
-    <div class="rk-r">${c.isRook?'🐦':c.num}</div>
-    <div class="rk-s">${c.isRook?'ROOK':SHORT[c.color]}</div>
-  </div>`;
-}
-let logOpen=false;
-function renderLog(){
-  const last=log.length?log[log.length-1].msg:'';
-  return `<details class="g-log" id="g-log" ${logOpen?'open':''}><summary>Game log<span class="last">${esc(last)}</span></summary>
-    <div class="g-log-body">${log.slice(-14).map(({msg,cls})=>`<div class="${cls||''}">${esc(msg)}</div>`).join('')}</div></details>`;
-}
-function wireLog(){
-  const d=document.getElementById('g-log');
-  if(!d) return;
-  d.addEventListener('toggle',()=>{logOpen=d.open;});
-  const b=d.querySelector('.g-log-body'); if(b) b.scrollTop=b.scrollHeight;
-}
-function setBar(html){document.getElementById('g-bar').innerHTML=html||'';}
-const US=()=>esc(PNAMES[0])+' + North', THEM='West + East';
-
-function render(){
-  const root=document.getElementById('rk-root');
-  let html='';
-  const bidTeam=bidWinner<0?-1:bidWinner%2===0?0:1;
-
-  // Meta
-  html+=`<div class="g-meta"><span class="g-pill">First to ${WIN_SCORE}</span>${trump?`<span class="g-pill gold"><span class="dot ${trump}"></span>Trump: ${trump}</span>`:''}${bidWinner>=0?`<span class="g-pill">${bidWinner===0?'You':esc(PNAMES[bidWinner])} bid ${bid}</span>`:''}</div>`;
-
-  if(phase==='game-over'||phase==='round-end'){
-    const over=phase==='game-over';
-    const won=scores[0]>scores[1];
-    const made=countPts(taken[bidTeam])>=bid;
-    html+=`<div class="g-result ${over&&won?'':'plain'}">
-      <div class="g-result-icon">${over?(won?'🏆':'🐦'):(made?'✅':'💥')}</div>
-      <div class="g-result-title">${over?(won?'You & North win!':'West & East win'):(bidTeam===0?(made?'You made your bid!':'Your team was set'):(made?'Opponents made it':'Opponents were set!'))}</div>
-      <div class="g-result-sub">${over?`${scores[0]} – ${scores[1]} · first to ${WIN_SCORE}`:`${bidWinner===0?'You':esc(PNAMES[bidWinner])} bid ${bid} · trump ${trump}`}</div>
-      <div class="g-rows">
-        <div class="g-row you"><span>${US()}</span><span class="r">${countPts(taken[0])} pts <span class="${lastDelta[0]>=0?'pos':'neg'}">${lastDelta[0]>=0?'+':''}${lastDelta[0]}</span><b>${scores[0]}</b></span></div>
-        <div class="g-row"><span>${THEM}</span><span class="r">${countPts(taken[1])} pts <span class="${lastDelta[1]>=0?'pos':'neg'}">${lastDelta[1]>=0?'+':''}${lastDelta[1]}</span><b>${scores[1]}</b></span></div>
-      </div>
-    </div>`;
-    html+=renderLog();
-    root.innerHTML=html;wireLog();
-    setBar(over?`<button class="btn btn-gold" id="ng-btn">New Game</button>`:`<button class="btn btn-gold" id="nr-btn">Next Hand</button>`);
-    document.getElementById('ng-btn')?.addEventListener('click',()=>{haptic('light');newGame();});
-    document.getElementById('nr-btn')?.addEventListener('click',()=>{haptic('light');newRound();});
-    return;
+  var ALL = deck();
+  function pts(c) { return c.rook ? 20 : c.r === 1 ? 15 : (c.r === 14 || c.r === 10) ? 10 : c.r === 5 ? 5 : 0; }
+  function rv(c) { return c.rook ? 16 : c.r === 1 ? 15 : c.r; }
+  function eff(c) { return c.rook ? S.trump : c.c; }               // the Rook belongs to trump
+  function power(c, led) { return c.rook ? 200 : c.c === S.trump ? 100 + rv(c) : c.c === led ? rv(c) : 0; }
+  function sumPts(a) { return a.reduce(function (s, c) { return s + pts(c); }, 0); }
+  function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
+  function team(p) { return p % 2; }
+  function sortHand(h) {
+    var order = COLS.slice();
+    if (S && S.trump) { order = order.filter(function (c) { return c !== S.trump; }); order.unshift(S.trump); }
+    // alternate dark/light colours so neighbours never look alike
+    return h.sort(function (a, b) {
+      var ca = a.rook ? (S && S.trump ? S.trump : 'z') : a.c, cb = b.rook ? (S && S.trump ? S.trump : 'z') : b.c;
+      var ia = ca === 'z' ? 9 : order.indexOf(ca), ib = cb === 'z' ? 9 : order.indexOf(cb);
+      return ia - ib || rv(b) - rv(a);
+    });
+  }
+  function cardEl(c, o) {
+    o = o || {};
+    var n;
+    if (c.rook) n = Kit.cardFace({ html: BIRD, label: 'Rook', cls: 'rook', aria: 'The Rook, 20 points' });
+    else n = Kit.cardFace({ rank: String(c.r), color: CHEX[c.c], label: pts(c) ? pts(c) + ' pts' : '', cls: 'rk', aria: CNAME[c.c] + ' ' + c.r + (pts(c) ? ', ' + pts(c) + ' points' : '') });
+    if (S && S.trump && (c.rook || c.c === S.trump) && o.trumpRing !== false) n.classList.add('trump');
+    if (o.cls) o.cls.split(' ').forEach(function (k) { if (k) n.classList.add(k); });
+    n.dataset.id = c.id;
+    return n;
   }
 
-  // Scores
-  html+=`<div class="g-hud rk-hud">
-    <div class="g-seat us ${scores[0]>scores[1]?'lead':''}">
-      <div class="g-seat-name">${US()}</div>
-      <div class="g-seat-score">${scores[0]}</div>
-      <div class="g-seat-sub">${phase==='play'?`${countPts(taken[0])} pts this hand${bidTeam===0?' · need '+bid:''}`:bidTeam===0?'won the bid':' '}</div>
-    </div>
-    <div class="g-seat them ${scores[1]>scores[0]?'lead':''}">
-      <div class="g-seat-name">${THEM}</div>
-      <div class="g-seat-score">${scores[1]}</div>
-      <div class="g-seat-sub">${phase==='play'?`${countPts(taken[1])} pts this hand${bidTeam===1?' · need '+bid:''}`:bidTeam===1?'won the bid':' '}</div>
-    </div>
-  </div>`;
-
-  // Table — compass: 0 You (S), 1 West, 2 North (partner), 3 East
-  const cur=phase==='play'?getNext():-1;
-  const pos=['rk-s','rk-w','rk-n','rk-e'];
-  const nm=['You','West','North','East'];
-  const slot=p=>{
-    const turnNow=(phase==='play'&&cur===p&&trickWinner<0)||(phase==='bid'&&currentBidder===p);
-    let inner;
-    if(phase==='bid'){
-      const b=bidHistory[p];
-      inner=`<div class="rk-empty" style="display:grid;place-items:center;font-family:var(--display);font-weight:800;color:${b===-2?'rgba(255,255,255,.45)':'#fff'};font-size:${b>0?'1rem':'.72rem'}">${b>0?b:b===-2?'PASS':''}</div>`;
-    } else inner=trick[p]?cardEl(trick[p],'sm'+(trickWinner===p?' win':'')+(lastPlayKey===cKey(trick[p])?' drop':'')):'<div class="rk-empty"></div>';
-    return `<div class="rk-slot ${pos[p]} ${turnNow?'turn':''}">${inner}<div class="rk-slot-name">${nm[p]}${p===2?' <small>partner</small>':''}${p!==0?` <small>· ${hands[p].length}</small>`:''}</div></div>`;
-  };
-  let center;
-  if(phase==='bid') center=`<div class="rk-center-lbl">High bid</div><div class="rk-center-val">${minBid>70||bidHistory.some(b=>b>0)?minBid-5:'—'}</div><div class="rk-center-sub">min next ${minBid}</div>`;
-  else if(phase==='nest') center=`<div class="rk-center-lbl">Nest</div><div class="rk-center-val">🪺</div><div class="rk-center-sub">${bidWinner===0?'yours':esc(PNAMES[bidWinner])}</div>`;
-  else center=`<div class="rk-center-lbl">Trump</div><div class="rk-center-val C_${trump.slice(0,3)}">${trump}</div><div class="rk-center-sub">Trick ${Math.max(1,Math.min(13,14-Math.max(...hands.map(h=>h.length))-(trickWinner>=0?1:0)))}/13</div>`;
-  html+=`<div class="felt g-table"><div class="rk-trick">${slot(2)}${slot(1)}<div class="rk-center">${center}</div>${slot(3)}${slot(0)}</div></div>`;
-  lastPlayKey=null;
-
-  // Status
-  let status='',scls='';
-  if(phase==='bid') {status=currentBidder===0?'Your bid — or pass':`${esc(PNAMES[currentBidder])} is bidding…`;scls=currentBidder===0?'yours':'';}
-  else if(phase==='nest'){
-    if(bidWinner!==0) status=`${esc(PNAMES[bidWinner])} is taking the nest…`;
-    else if(!nestTaken){status='You won the bid! Take the nest';scls='yours';}
-    else if(hands[0].length>13){status=`Choose ${hands[0].length-13} cards to bury · ${nestPicks.length} picked`;scls='yours';}
-    else {status='Name your trump color';scls='yours';}
-  } else if(phase==='play'){
-    if(trickWinner>=0) status=`${trickWinner===0?'You win':esc(PNAMES[trickWinner])+' wins'} the trick`;
-    else if(cur===0){status=trick.some(c=>c)?'Your turn — follow the led color':'Your lead';scls='yours';}
-    else if(cur>0) status=`${esc(PNAMES[cur])} is playing…`;
-  }
-  if(status) html+=`<div class="g-status ${scls}">${status}</div>`;
-
-  // Bidding panel
-  if(phase==='bid'&&currentBidder===0){
-    const bids=[];
-    for(let b=minBid;b<=120;b+=5) bids.push(b);
-    html+=`<div class="g-panel accent"><div class="g-panel-title">Your bid</div>
-      <div class="g-panel-sub">Points your team will capture (of 120). Minimum ${minBid}.</div>
-      <div class="rk-bid-grid">${bids.map(b=>`<button class="rk-bid-btn" data-bid="${b}">${b}</button>`).join('')}
-        <button class="rk-bid-btn pass-btn" data-bid="pass">Pass</button></div></div>`;
+  // ── Dealing ───────────────────────────────────────────────────────────────
+  function newHand() {
+    S.round++;
+    S.dealer = (S.dealer + 1) % 4;
+    var d = Cards.shuffle(deck());
+    S.hands = [[], [], [], []];
+    for (var i = 0; i < 40; i++) S.hands[i % 4].push(d[i]);
+    S.nest = d.slice(40);
+    S.trump = null; S.bidder = -1; S.bid = 0; S.high = 0;
+    S.bids = [null, null, null, null];              // null = not yet, 0 = passed, n = last bid
+    S.taken = [[], []]; S.tricks = [0, 0, 0, 0]; S.trick = []; S.trickNo = 0; S.played = []; S.discards = [];
+    S.sel = []; S.fromNest = [];
+    S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
+    S.hands.forEach(sortHand);
+    S.phase = 'bid';
+    clearUndo(); save(); render(); Kit.sfx('deal');
+    step();
   }
 
-  // Nest phase: player picks up nest and chooses trump
-  if(phase==='nest'&&bidWinner===0){
-    if(!nestTaken){
-      html+=`<div class="g-panel accent"><div class="g-panel-title">The nest</div>
-        <div class="g-panel-sub">Add these 5 cards to your hand, then bury 5.</div>
-        <div class="rk-nest">${nest.map(c=>cardEl(c,'sm')).join('')}</div></div>`;
-    } else if(hands[0].length===13&&trump===null){
-      html+=`<div class="g-panel accent"><div class="g-panel-title">Name trump</div>
-        <div class="g-panel-sub">The Rook bird is always the highest trump.</div>
-        <div class="rk-trumps">${COLORS.map(c=>`<button class="btn btn-outline rk-trump-btn" data-color="${c}"><span class="dot ${c}"></span>${c} · ${hands[0].filter(x=>x.color===c).length}</button>`).join('')}</div></div>`;
+  // ── Main loop: schedule whatever the computer needs to do next ────────────
+  function step() {
+    if (!S) return;
+    paintAll();
+    var t = token;
+    function later(fn, ms) { setTimeout(function () { if (t === token && S) fn(); }, ms); }
+    if (S.phase === 'bid' && S.players[S.turn].cpu) later(function () { if (S.phase === 'bid' && S.players[S.turn].cpu) placeBid(S.turn, cpuBid(S.turn)); }, 750);
+    else if (S.phase === 'nest' && S.players[S.bidder].cpu) later(cpuNest, 900);
+    else if (S.phase === 'play' && S.turn >= 0 && S.players[S.turn].cpu) later(function () { if (S.phase === 'play' && S.turn >= 0 && S.players[S.turn].cpu) play(S.turn, cpuChoose(S.turn)); }, 700);
+  }
+
+  // ── Bidding ───────────────────────────────────────────────────────────────
+  function nextBid() { return S.high ? S.high + 5 : MIN_BID; }
+  function placeBid(p, amt) {
+    if (S.phase !== 'bid' || S.turn !== p) return;
+    if (amt && (amt < nextBid() || amt > MAX_BID)) amt = 0;
+    S.bids[p] = amt;
+    if (amt) { S.high = amt; S.bidder = p; Kit.sfx('chip'); }
+    else Kit.sfx('tap');
+    seatSay(p, amt ? String(amt) : 'Pass', !amt);
+    var active = [0, 1, 2, 3].filter(function (q) { return S.bids[q] !== 0; });
+    if (!active.length) {                            // everyone passed
+      Kit.toast('Everyone passed. New deal.');
+      save(); var t = token;
+      setTimeout(function () { if (t === token) { S.round--; newHand(); } }, 1300);
+      return;
+    }
+    if (active.length === 1 && S.bids[active[0]] > 0 || S.high === MAX_BID) {
+      S.bid = S.high; S.phase = 'nest'; S.turn = -1;
+      Kit.callout(shortName(S.bidder) + ' ' + (S.bidder === 0 ? 'win' : 'wins') + ' the bid: ' + S.bid);
+      if (team(S.bidder) === 0) Kit.haptic('success');
+      save();
+      var t2 = token;
+      setTimeout(function () { if (t2 !== token) return; if (S.bidder === 0) takeNest(); else step(); }, 900);
+      return;
+    }
+    var q = p;
+    do { q = (q + 1) % 4; } while (S.bids[q] === 0);
+    S.turn = q;
+    save(); step();
+  }
+  // How high is this hand worth bidding? Counts sure winners and trump length.
+  function handValue(h) {
+    var best = 0, bestCol = 'r';
+    COLS.forEach(function (c) {
+      var cs = h.filter(function (x) { return x.c === c; });
+      var v = cs.length * 9 + cs.reduce(function (s, x) { return s + (x.r === 1 ? 8 : x.r >= 13 ? 4 : x.r >= 11 ? 2 : 0); }, 0);
+      if (v > best) { best = v; bestCol = c; }
+    });
+    var s = 0;
+    h.forEach(function (x) {
+      if (x.rook) s += 18;
+      else if (x.r === 1) s += 12;
+      else if (x.r === 14) s += x.c === bestCol ? 8 : 5;
+      else if (x.r === 13) s += x.c === bestCol ? 5 : 2;
+    });
+    var len = h.filter(function (x) { return x.c === bestCol; }).length;
+    s += Math.max(0, len - 2) * 8;
+    return { score: s, col: bestCol };
+  }
+  function cpuBid(p) {
+    var v = handValue(S.hands[p]).score;
+    var limit = Math.round((38 + v * 1.55 + (Math.random() * 10 - 5)) / 5) * 5;
+    limit = Math.min(MAX_BID - 15, limit);
+    var mate = (p + 2) % 4, need = nextBid();
+    if (S.bidder === mate) limit -= 20;               // don't fight your partner without a reason
+    if (need > limit) return 0;
+    if (S.high && S.bidder !== mate && Math.random() < 0.15 && need + 5 <= limit) return need + 5;
+    return need;
+  }
+
+  // ── The nest ──────────────────────────────────────────────────────────────
+  function takeNest() {
+    var r = nestEl && !nestEl.hidden ? nestEl.getBoundingClientRect() : null;
+    S.fromNest = S.nest.map(function (c) { return c.id; });
+    S.hands[0] = S.hands[0].concat(S.nest);
+    S.nest = []; S.sel = [];
+    sortHand(S.hands[0]);
+    Kit.sfx('deal'); save(); render(); step();
+    if (r) requestAnimationFrame(function () {
+      S.fromNest.forEach(function (id, i) {
+        var n = handEl.querySelector('[data-id="' + id + '"]');
+        if (n) setTimeout(function () { Cards.fly(n, { getBoundingClientRect: function () { return r; } }, { ms: 450 }); }, i * 70);
+      });
+    });
+  }
+  function toggleBury(c) {
+    var i = S.sel.indexOf(c.id);
+    if (i >= 0) S.sel.splice(i, 1);
+    else if (S.sel.length < 5) S.sel.push(c.id);
+    else { Kit.toast('Pick just 5 cards'); Kit.haptic('error'); return; }
+    Kit.sfx('tap'); Kit.haptic('light'); save(); paintHand();
+  }
+  function bury() {
+    if (S.sel.length !== 5) return;
+    snapshot();
+    S.discards = S.hands[0].filter(function (c) { return S.sel.indexOf(c.id) >= 0; });
+    S.hands[0] = S.hands[0].filter(function (c) { return S.sel.indexOf(c.id) < 0; });
+    S.sel = []; S.fromNest = []; S.phase = 'trump';
+    Kit.sfx('whoosh'); save(); render(); step();
+  }
+  function nameTrump(col) {
+    snapshot();
+    S.trump = col; startPlay();
+  }
+  function cpuNest() {
+    var p = S.bidder, h = S.hands[p].concat(S.nest);
+    S.nest = [];
+    var col = handValue(h).col;
+    var count = {}; COLS.forEach(function (c) { count[c] = h.filter(function (x) { return x.c === c; }).length; });
+    var keep = h.map(function (c) {
+      var v;
+      if (c.rook) v = 1000;
+      else if (c.c === col) v = 200 + rv(c);
+      else {
+        v = rv(c) + pts(c) * 1.3 + (c.r === 1 ? 25 : 0);
+        if (count[c.c] <= 2 && c.r !== 1) v -= 10;    // try to make a void
+      }
+      return { c: c, v: v + Math.random() };
+    }).sort(function (a, b) { return a.v - b.v; });
+    S.discards = keep.slice(0, 5).map(function (x) { return x.c; });
+    S.hands[p] = keep.slice(5).map(function (x) { return x.c; });
+    var dest = seatEls[p].querySelector('.tag').getBoundingClientRect(), box = nestEl.getBoundingClientRect();
+    nestEl.style.transition = 'transform .45s ease-in, opacity .45s ease-in';
+    nestEl.style.transform = 'translate(calc(-50% + ' + (dest.left + dest.width / 2 - box.left - box.width / 2) + 'px), calc(-50% + ' + (dest.top - box.top - box.height / 2) + 'px)) scale(.5)';
+    nestEl.style.opacity = '0';
+    seatSay(p, 'Takes the nest');
+    Kit.sfx('deal');
+    var t = token;
+    setTimeout(function () { if (t !== token) return; S.trump = col; startPlay(); }, 900);
+  }
+  function startPlay() {
+    S.phase = 'play';
+    S.hands.forEach(sortHand);
+    S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
+    Kit.callout(CNAME[S.trump] + ' is trump', CHEX[S.trump] === '#22202f' ? '#fff' : CHEX[S.trump]);
+    Kit.sfx('good');
+    save(); render(); step();
+  }
+
+  // ── Play ──────────────────────────────────────────────────────────────────
+  function legal(p) {
+    var h = S.hands[p];
+    if (!S.trick.length) return h.slice();
+    var led = eff(S.trick[0].c), follow = h.filter(function (c) { return eff(c) === led; });
+    return follow.length ? follow : h.slice();
+  }
+  function winning() {
+    var led = eff(S.trick[0].c), w = S.trick[0];
+    S.trick.forEach(function (t) { if (power(t.c, led) > power(w.c, led)) w = t; });
+    return w;
+  }
+  // Is c the highest card left in its colour, judging only by what p can see?
+  function isBoss(p, c) {
+    var col = eff(c), mine = S.hands[p], seen = {};
+    S.played.forEach(function (id) { seen[id] = 1; });
+    mine.forEach(function (x) { seen[x.id] = 1; });
+    if (p === S.bidder) S.discards.forEach(function (x) { seen[x.id] = 1; });
+    return !ALL.some(function (x) { return !seen[x.id] && eff(x) === col && power(x, col) > power(c, col); });
+  }
+  function unseenTrumps(p) {
+    var seen = {};
+    S.played.forEach(function (id) { seen[id] = 1; });
+    S.hands[p].forEach(function (x) { seen[x.id] = 1; });
+    if (p === S.bidder) S.discards.forEach(function (x) { seen[x.id] = 1; });
+    return ALL.filter(function (x) { return !seen[x.id] && eff(x) === S.trump; }).length;
+  }
+  function lowest(a) {
+    return a.slice().sort(function (x, y) {
+      var tx = eff(x) === S.trump ? 1 : 0, ty = eff(y) === S.trump ? 1 : 0;
+      return pts(x) - pts(y) || tx - ty || rv(x) - rv(y);
+    })[0];
+  }
+  function cpuChoose(p) {
+    var opts = legal(p), mate = (p + 2) % 4;
+    var trumpOpts = opts.filter(function (c) { return eff(c) === S.trump; });
+    if (!S.trick.length) {
+      var weBid = team(p) === team(S.bidder);
+      if (weBid && trumpOpts.length && unseenTrumps(p) > 0) {
+        var bossT = trumpOpts.filter(function (c) { return isBoss(p, c); });
+        if (bossT.length) return bossT.sort(function (a, b) { return rv(a) - rv(b); })[0];
+        if (trumpOpts.length >= 3) return lowest(trumpOpts);
+      }
+      var bosses = opts.filter(function (c) { return eff(c) !== S.trump && isBoss(p, c); });
+      if (bosses.length) return bosses.sort(function (a, b) { return pts(b) - pts(a); })[0];
+      var plain = opts.filter(function (c) { return eff(c) !== S.trump && !pts(c); });
+      if (plain.length) return lowest(plain);
+      return lowest(opts);
+    }
+    var led = eff(S.trick[0].c), w = winning(), last = S.trick.length === 3;
+    var trickPts = sumPts(S.trick.map(function (t) { return t.c; }));
+    var beats = opts.filter(function (c) { return power(c, led) > power(w.c, led); })
+      .sort(function (a, b) { return power(a, led) - power(b, led); });
+    if (w.p === mate) {
+      var safe = last || isBoss(p, w.c) && (power(w.c, led) >= 100 || S.trick.length === 2);
+      if (safe) {
+        var smear = opts.filter(function (c) { return eff(c) !== S.trump && pts(c); }).sort(function (a, b) { return pts(b) - pts(a); });
+        if (smear.length) return smear[0];
+      }
+      return lowest(opts);
+    }
+    if (beats.length) {
+      if (last) return trickPts || eff(beats[0]) !== S.trump || power(beats[0], led) < 110 ? beats[0] : lowest(opts);
+      var sure = beats.filter(function (c) { return isBoss(p, c); });
+      if (sure.length) return sure[0];
+      if (trickPts >= 10) return beats[beats.length - 1];
+    }
+    return lowest(opts);
+  }
+
+  function play(p, card) {
+    if (!S || S.phase !== 'play' || S.turn !== p) return;
+    var i = find(S.hands[p], card.id); if (i < 0) return;
+    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    S.hands[p].splice(i, 1);
+    S.trick.push({ p: p, c: card });
+    S.played.push(card.id);
+    if (card.rook) { Kit.sfx('pop'); Kit.haptic('medium'); } else Kit.sfx('flip');
+    if (S.trick.length > 1 && eff(card) === S.trump && eff(S.trick[0].c) !== S.trump) flash(shortName(p) + (p === 0 ? ' trump it!' : ' trumps it!'));
+    var node = cardEl(card, { cls: 'p-' + SEATS[p] });
+    trickEl.appendChild(node);
+    Cards.fly(node, from, { ms: 340 });
+    if (p === 0) paintHand();
+    if (S.trick.length === 4) { S.turn = -1; save(); paintSeats(); paintBar(); setTimeout(resolveTrick, 900); }
+    else { S.turn = (p + 1) % 4; save(); step(); }
+  }
+  function resolveTrick() {
+    var t = token;
+    if (!S || S.trick.length !== 4) return;
+    var w = winning(), cards = S.trick.map(function (x) { return x.c; });
+    var lastTrick = S.trickNo === 9;
+    var got = cards.slice();
+    if (lastTrick) got = got.concat(S.discards);
+    var gotPts = sumPts(got);
+    S.taken[team(w.p)] = S.taken[team(w.p)].concat(got);
+    S.tricks[w.p]++;
+    var rook = cards.some(function (c) { return c.rook; });
+    if (rook) {
+      S.rookCaps[w.p]++;
+      if (lastTrick) S.events.push({ pr: 6, t: 'The Rook was captured in the last trick by ' + S.players[w.p].name + ' (hand ' + S.round + ')' });
+    }
+    var winNode = trickEl.querySelector('[data-id="' + w.c.id + '"]'); if (winNode) winNode.classList.add('win');
+    if (gotPts) seatSay(w.p, '+' + gotPts + (lastTrick && sumPts(S.discards) ? ' with nest' : ''));
+    if (rook) Kit.callout(shortName(w.p) + (w.p === 0 ? ' catch' : ' catches') + ' the Rook!');
+    if (team(w.p) === 0 && gotPts) Kit.haptic('light');
+    if (lastTrick && S.discards.length) flash((w.p === 0 ? 'You take' : S.players[w.p].name + ' takes') + ' the nest');
+    setTimeout(function () {
+      if (t !== token) return;
+      var dest = seatEls[w.p].querySelector('.tag').getBoundingClientRect(), box = trickEl.getBoundingClientRect();
+      Array.prototype.forEach.call(trickEl.children, function (n) {
+        n.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+        n.style.transform = 'translate(' + (dest.left - box.left - 30) + 'px,' + (dest.top - box.top - 30) + 'px) scale(.4)';
+        n.style.opacity = '0';
+      });
+      Kit.sfx('whoosh');
+      setTimeout(function () {
+        if (t !== token) return;
+        trickEl.innerHTML = '';
+        S.trick = []; S.trickNo++; S.leader = w.p; S.turn = w.p;
+        if (S.trickNo === 10) endHand(); else { save(); step(); }
+      }, 380);
+    }, lastTrick ? 1100 : 750);
+  }
+
+  // ── Scoring ───────────────────────────────────────────────────────────────
+  function endHand() {
+    var bt = team(S.bidder), dt = 1 - bt;
+    var cap = [sumPts(S.taken[0]), sumPts(S.taken[1])];
+    var made = cap[bt] >= S.bid, delta = [0, 0];
+    delta[bt] = made ? cap[bt] : -S.bid;
+    delta[dt] = cap[dt];
+    S.scores[0] += delta[0]; S.scores[1] += delta[1];
+    S.rounds.push(delta.slice());
+    var who = teamAnd(bt);
+    if (made) {
+      S.made[bt]++;
+      if (!S.bestMade || S.bid > S.bestMade.bid) S.bestMade = { bid: S.bid, t: who + ' bid ' + S.bid + ' and made it' + (cap[bt] > S.bid ? ' with ' + cap[bt] : '') };
+      if (cap[bt] === TOTAL) S.events.push({ pr: 10, t: who + ' took all 180 points in hand ' + S.round });
+      else if (S.bid >= 140) S.events.push({ pr: 5 + S.bid / 100, t: who + ' bid ' + S.bid + ' and made it in hand ' + S.round });
+    } else {
+      S.set[bt]++;
+      S.events.push({ pr: 6 + S.bid / 100, t: who + ' went set on a bid of ' + S.bid + ' in hand ' + S.round + ' (took ' + cap[bt] + ')' });
+    }
+    S.last = { bt: bt, cap: cap, delta: delta, made: made, bid: S.bid, bidder: S.bidder, trump: S.trump, nest: sumPts(S.discards) };
+    S.phase = 'handover';
+    clearUndo(); save();
+    if (made) { Kit.sfx(bt === 0 ? 'good' : 'tick'); } else { Kit.sfx(bt === 0 ? 'bad' : 'good'); }
+    var over = (S.scores[0] >= S.target || S.scores[1] >= S.target) && S.scores[0] !== S.scores[1];
+    setTimeout(function () { over ? finish() : showScores(true); }, 500);
+  }
+  function showScores(between) {
+    var L = S.last, t = el('table', { class: 'sum' });
+    t.appendChild(el('tr', null, [el('th', { text: 'Team' }), between ? el('th', { text: 'Took' }) : null, between ? el('th', { text: 'Score' }) : null, el('th', { text: 'Total' })]));
+    [0, 1].forEach(function (k) {
+      var d = between ? L.delta[k] : 0;
+      t.appendChild(el('tr', null, [
+        el('td', { text: teamName(k) }),
+        between ? el('td', { text: String(L.cap[k]) }) : null,
+        between ? el('td', { class: d < 0 ? 'neg' : 'pos', text: (d > 0 ? '+' : '') + d }) : null,
+        el('td', { class: 'big', text: String(S.scores[k]) })
+      ]));
+    });
+    var node = el('div');
+    if (between) {
+      var bt = L.bt, ours = bt === 0;
+      var v = L.made ? (ours ? 'Your team bid ' + L.bid + ' and made it!' : teamAnd(bt) + ' bid ' + L.bid + ' and made it.')
+        : (ours ? 'Your team bid ' + L.bid + ' and went set.' : teamAnd(bt) + ' bid ' + L.bid + ' and went set!');
+      node.appendChild(el('p', { class: 'verdict', text: v }));
+      node.appendChild(el('p', { class: 'muted', text: 'Trump was ' + CNAME[L.trump] + '. The nest held ' + L.nest + ' points.' }));
+    }
+    node.appendChild(t);
+    node.appendChild(el('p', { class: 'muted', style: { 'margin-top': '10px' }, text: 'First team to ' + S.target + ' wins.' }));
+    Kit.sheet({
+      title: between ? 'Hand ' + S.round + ' done' : 'Scores', node: node, dismissible: !between,
+      actions: between ? [{ label: 'Deal next hand', primary: true, onClick: function () { newHand(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
+    });
+  }
+  function finish() {
+    S.phase = 'over';
+    var w = S.scores[0] > S.scores[1] ? 0 : 1;
+    var hl = S.events.slice().sort(function (a, b) { return b.pr - a.pr; }).map(function (e) { return e.t; });
+    if (S.bestMade && hl.indexOf(S.bestMade.t) < 0) hl.unshift(S.bestMade.t);
+    hl = hl.slice(0, 4);
+    var rc = S.rookCaps.indexOf(Math.max.apply(null, S.rookCaps));
+    if (S.rookCaps[rc] > 1) hl.push(S.players[rc].name + ' caught the Rook ' + S.rookCaps[rc] + ' times');
+    hl.push(S.rounds.length + ' hands, played to ' + S.target);
+    var teams = [0, 1].map(function (k) { return { name: teamName(k), score: S.scores[k], cpu: k === 1 }; });
+    Kit.record(KEY, {
+      started: S.started, mode: 'vs Computer',
+      players: teams, winner: teams[w].name,
+      rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
+      highlights: hl,
+      meta: { teams: [[S.players[0].name, S.players[2].name], [S.players[1].name, S.players[3].name]] }
+    });
+    clearSave();
+    Kit.win({
+      title: w === 0 ? 'Your team wins!' : teamAnd(1) + ' win',
+      sub: S.scores[0] + ' to ' + S.scores[1],
+      rank: [w, 1 - w].map(function (k) { return { name: teamName(k), score: S.scores[k], color: Kit.color(k) }; }),
+      lose: w !== 0, icon: w === 0 ? 'trophy' : 'bot',
+      again: function () { S = freshGame(S.target, S.players); undoStack = []; newHand(); },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Undo (your last bid, bury, trump call or card) ────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function clearUndo() { undoStack = []; }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
+    token++; S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); step();
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var seatEls = [], trickEl, handEl, barEl, msgEl, topEl, nestEl;
+  function render() {
+    app.innerHTML = '';
+    topEl = el('div', { class: 'rk-top' });
+    app.appendChild(topEl);
+    var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
+    seatEls = SEATS.map(function (pos) { var s = el('div', { class: 'cseat ' + pos }); felt.appendChild(s); return s; });
+    trickEl = el('div', { class: 'ctrick' });
+    nestEl = el('div', { class: 'nest' });
+    msgEl = el('div', { class: 'cmsg', hidden: true });
+    felt.appendChild(nestEl); felt.appendChild(trickEl); felt.appendChild(msgEl);
+    table.appendChild(felt);
+    app.appendChild(table);
+    handEl = el('div', { class: 'chand' });
+    app.appendChild(handEl);
+    barEl = el('div', { class: 'cbar' });
+    app.appendChild(barEl);
+    S.trick.forEach(function (t) { trickEl.appendChild(cardEl(t.c, { cls: 'p-' + SEATS[t.p] })); });
+    paintAll();
+    if (S.phase === 'handover') setTimeout(function () { showScores(true); }, 200);
+  }
+  function paintAll() { paintTop(); paintSeats(); paintNest(); paintHand(); paintMsg(); }
+  function paintTop() {
+    topEl.innerHTML = '';
+    var live = S.phase === 'play' || S.phase === 'handover';
+    [0, 1].forEach(function (k) {
+      var card = el('div', { class: 'rk-team ' + (k === 0 ? 'us' : 'them') + (S.bidder >= 0 && team(S.bidder) === k && S.phase !== 'bid' ? ' bidding' : '') }, [
+        el('span', { class: 'nm', text: k === 0 ? 'You & ' + S.players[2].name : S.players[1].name + ' & ' + S.players[3].name }),
+        el('span', { class: 'tot', text: String(S.scores[k]) }),
+        live ? el('span', { class: 'now', text: '+' + sumPts(S.taken[k]) }) : null
+      ]);
+      topEl.appendChild(card);
+      if (k === 0) {
+        var mid = el('div', { class: 'rk-mid' });
+        if (S.trump) {
+          mid.appendChild(el('span', { class: 'k', text: 'Trump' }));
+          mid.appendChild(el('span', { class: 'v', html: '<i class="dot" style="background:' + CHEX[S.trump] + '"></i>' + CNAME[S.trump] }));
+          mid.appendChild(el('span', { class: 'k', text: 'Bid ' + S.bid }));
+        } else if (S.phase === 'bid') {
+          mid.appendChild(el('span', { class: 'k', text: 'High bid' }));
+          mid.appendChild(el('span', { class: 'v', text: S.high ? S.high + ' · ' + shortName(S.bidder) : 'none yet' }));
+        } else {
+          mid.appendChild(el('span', { class: 'k', text: 'Bid' }));
+          mid.appendChild(el('span', { class: 'v', text: S.bid + ' · ' + shortName(S.bidder) }));
+        }
+        topEl.appendChild(mid);
+      }
+    });
+  }
+  function paintSeats() {
+    S.players.forEach(function (pl, p) {
+      var s = seatEls[p]; s.innerHTML = '';
+      var turn = (S.phase === 'play' || S.phase === 'bid') && S.turn === p;
+      s.classList.toggle('turn', turn);
+      var tag = el('div', { class: 'tag' }, [
+        el('span', { class: 'avatar', style: { '--c': Kit.color(team(p)) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        el('span', { text: shortName(p) })
+      ]);
+      var chips = [];
+      if (p === 2) chips.push(el('span', { class: 'chip-s mate', text: 'Partner' }));
+      if (S.phase === 'bid' && S.bids[p] != null) chips.push(el('span', { class: 'chip-s' + (S.bids[p] ? ' hot' : ''), text: S.bids[p] ? 'Bid ' + S.bids[p] : 'Pass' }));
+      if (S.phase !== 'bid' && S.bidder === p) chips.push(el('span', { class: 'chip-s bidder', text: 'Bid ' + S.bid }));
+      if ((S.phase === 'play' || S.phase === 'handover') && S.tricks[p]) chips.push(el('span', { class: 'chip-s', text: S.tricks[p] + (S.tricks[p] === 1 ? ' trick' : ' tricks') }));
+      var info = el('div', { class: 'info' }, chips);
+      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      else {
+        s.appendChild(tag); s.appendChild(info);
+        var n = S.hands[p].length;
+        if (n) {
+          var backs = el('div', { class: 'backs' });
+          for (var k = 0; k < Math.min(n, 6); k++) backs.appendChild(Kit.card('', '', { back: true }));
+          s.appendChild(backs);
+        }
+      }
+    });
+  }
+  function paintNest() {
+    nestEl.innerHTML = '';
+    var n = S.phase === 'bid' || (S.phase === 'nest' && S.nest.length) ? 5 : 0;
+    nestEl.hidden = !n;
+    if (!n) return;
+    var st = el('div', { class: 'stack' });
+    for (var i = 0; i < n; i++) { var b = Kit.card('', '', { back: true }); b.style.left = (i * 4) + 'px'; b.style.transform = 'rotate(' + ((i - 2) * 3) + 'deg)'; st.appendChild(b); }
+    nestEl.appendChild(st);
+    nestEl.appendChild(el('span', { class: 'cap', text: 'Nest' }));
+  }
+  function paintHand() {
+    handEl.innerHTML = '';
+    var mine = S.hands[0];
+    var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
+    mine.forEach(function (c) {
+      var n = cardEl(c);
+      if (S.phase === 'nest' && S.bidder === 0) {
+        n.classList.add('play');
+        if (S.sel.indexOf(c.id) >= 0) n.classList.add('sel');
+        else if (S.fromNest.indexOf(c.id) >= 0) n.classList.add('new');
+        n.addEventListener('click', function () { toggleBury(c); });
+      } else if (ok) {
+        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); play(0, c); }); }
+        else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot(c)); }); }
+      }
+      handEl.appendChild(n);
+    });
+    requestAnimationFrame(function () { Cards.fan(handEl); });
+    paintBar();
+  }
+  function whyNot(c) {
+    var led = eff(S.trick[0].c);
+    if (c.rook && led !== S.trump) return 'The Rook is a trump. Follow ' + CNAME[led] + ' first';
+    return 'You have to follow ' + (led === S.trump ? 'trump (' + CNAME[led] + ')' : CNAME[led]);
+  }
+  function paintBar() {
+    barEl.innerHTML = '';
+    if (S.phase === 'bid' && S.turn === 0) {
+      var amt = nextBid(), lo = amt;
+      var out = el('output', { text: String(amt) });
+      var minus = el('button', { type: 'button', 'aria-label': 'Lower bid', text: '−' });
+      var plus = el('button', { type: 'button', 'aria-label': 'Raise bid', text: '+' });
+      var go = el('button', { type: 'button', class: 'btn btn-primary', text: 'Bid' });
+      function upd() { out.textContent = String(amt); minus.disabled = amt <= lo; plus.disabled = amt >= MAX_BID; }
+      minus.addEventListener('click', function () { amt = Math.max(lo, amt - 5); Kit.sfx('tick'); upd(); });
+      plus.addEventListener('click', function () { amt = Math.min(MAX_BID, amt + 5); Kit.sfx('tick'); upd(); });
+      go.addEventListener('click', function () { snapshot(); Kit.haptic('medium'); placeBid(0, amt); });
+      var pass = el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); placeBid(0, 0); } });
+      barEl.appendChild(el('div', { class: 'bidbar' }, [pass, el('div', { class: 'amt' }, [minus, out, plus]), go]));
+      upd();
+    } else if (S.phase === 'nest' && S.bidder === 0) {
+      var b = el('button', { type: 'button', class: 'btn btn-primary', text: S.sel.length === 5 ? 'Bury these 5' : 'Pick 5 to bury (' + S.sel.length + '/5)', onclick: bury });
+      b.disabled = S.sel.length !== 5;
+      barEl.appendChild(b);
+    } else if (S.phase === 'trump' && S.bidder === 0) {
+      var tr = el('div', { class: 'trumps' });
+      COLS.forEach(function (c) {
+        var n = S.hands[0].filter(function (x) { return x.c === c; }).length;
+        tr.appendChild(el('button', { type: 'button', style: { background: CHEX[c] }, onclick: function () { Kit.haptic('medium'); nameTrump(c); } },
+          [el('span', { text: CNAME[c] }), el('small', { text: n + (n === 1 ? ' card' : ' cards') })]));
+      });
+      barEl.appendChild(tr);
+    } else {
+      var txt = '';
+      if (S.phase === 'bid') txt = S.players[S.turn].name + ' is bidding…';
+      else if (S.phase === 'nest' || S.phase === 'trump') txt = S.players[S.bidder].name + ' is looking at the nest…';
+      else if (S.phase === 'play') txt = S.turn === 0 ? (S.trick.length ? 'Your turn: follow ' + CNAME[eff(S.trick[0].c)] + ' if you can' : 'Your lead: play any card') : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '';
+      barEl.appendChild(el('span', { class: 'hint', text: txt }));
     }
   }
+  function paintMsg() {
+    var m = '';
+    if (S.phase === 'bid' && S.turn === 0) m = S.high ? 'Beat ' + S.high + ' or pass' : 'Open the bidding at 100+';
+    else if (S.phase === 'nest' && S.bidder === 0) m = 'Nest cards are outlined in green';
+    else if (S.phase === 'trump' && S.bidder === 0) m = 'Name trump';
+    msgEl.hidden = !m; msgEl.textContent = m;
+  }
+  function flash(t) { msgEl.hidden = false; msgEl.textContent = t; setTimeout(function () { paintMsg(); }, 1500); }
+  function seatSay(p, t, dim) {
+    if (!seatEls[p]) return;
+    var b = el('div', { class: 'say' + (dim ? ' pass' : ''), text: t }); seatEls[p].appendChild(b);
+    setTimeout(function () { b.remove(); }, 1400);
+  }
+  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
 
-  // Player hand
-  const isYourPlay=phase==='play'&&cur===0&&trickWinner<0;
-  const isNestDiscard=phase==='nest'&&bidWinner===0&&nestTaken&&hands[0].length>13;
-  const valid=isYourPlay?validPlays(0).map(cKey):[];
-  html+=`<div class="g-label"><span>Your hand · ${hands[0].length}</span><span>${isYourPlay?'tap a card to play':isNestDiscard?'tap to bury':''}</span></div>
-  <div class="rk-hand" id="player-hand">
-    ${hands[0].map(c=>cardEl(c,isNestDiscard?('playable'+(nestPicks.includes(cKey(c))?' picked':'')):isYourPlay?(valid.includes(cKey(c))?'playable':'unplayable'):'')).join('')}
-  </div>`;
-
-  html+=renderLog();
-  root.innerHTML=html;wireLog();
-
-  // Action bar
-  if(phase==='nest'&&bidWinner===0&&!nestTaken) setBar(`<button class="btn btn-gold" id="add-nest-btn">Take the Nest</button>`);
-  else if(isNestDiscard){const need=hands[0].length-13;setBar(`<button class="btn btn-gold" id="bury-btn" ${nestPicks.length===need?'':'disabled'}>Bury ${nestPicks.length}/${need}</button>`);}
-  else setBar('');
-
-  document.querySelectorAll('.rk-bid-btn').forEach(b=>{
-    b.addEventListener('click',()=>playerBid(b.dataset.bid==='pass'?'pass':+b.dataset.bid));
-  });
-  document.querySelectorAll('.rk-trump-btn').forEach(b=>b.addEventListener('click',()=>playerChooseTrump(b.dataset.color)));
-  document.getElementById('add-nest-btn')?.addEventListener('click',playerTakeNest);
-  document.getElementById('bury-btn')?.addEventListener('click',playerConfirmNestDiscard);
-  document.getElementById('player-hand')?.querySelectorAll('.rkc').forEach(el=>{
-    el.addEventListener('click',()=>{
-      const c=hands[0].find(c=>cKey(c)===el.dataset.key);
-      if(!c) return;
-      if(isNestDiscard) playerToggleNestPick(c);
-      else if(isYourPlay) playerPlay(c);
-    });
-  });
-}
-
-newGame();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.hands && saved.phase !== 'over') {
+    S = saved; Kit.gameStart();
+    render();
+    if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
+    else if (S.phase === 'nest' && S.players[S.bidder].cpu && S.nest.length === 0) { var t0 = token; setTimeout(function () { if (t0 === token && S.phase === 'nest') { S.trump = handValue(S.hands[S.bidder]).col; startPlay(); } }, 600); }
+    else if (S.phase === 'nest' && S.bidder === 0 && !S.fromNest.length && S.nest.length) takeNest();
+    else step();
+  } else showSetup();
+})();
 </script>
-<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

@@ -2,299 +2,513 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Poker Squares</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.ps-wrap{width:100%;max-width:560px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(28px + var(--safe-b)) max(8px,var(--safe-l));}
-.ps-sys{margin-bottom:10px;}
-/* Header: current card + count + total */
-.ps-head{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:10px;}
-.ps-head-txt{flex:1;min-width:0;}
-.ps-head-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.6);}
-.ps-head-hint{font-size:.9rem;color:rgba(255,255,255,.88);font-weight:600;margin-top:2px;}
-.ps-total{text-align:center;padding:6px 12px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(245,200,66,.35);min-width:76px;}
-.ps-total-num{font-family:var(--display);font-size:1.6rem;font-weight:800;color:var(--gold);line-height:1.05;font-variant-numeric:tabular-nums;}
-.ps-total-lbl{font-size:.7rem;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em;}
-/* Grid */
-.ps-board{padding:8px;margin:0 auto 12px;max-width:max(330px,calc((100dvh - 300px) * .86));}
-.ps-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(58px,.95fr);gap:5px;}
-.ps-cell{aspect-ratio:.72;border-radius:9px;border:1.5px dashed rgba(255,255,255,.22);background:rgba(0,0,0,.14);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s,transform .1s;position:relative;}
-.ps-cell:not(.has-card):active{transform:scale(.95);background:rgba(245,200,66,.16);}
-@media (hover:hover){.ps-cell:not(.has-card):hover{border-color:var(--gold);background:rgba(245,200,66,.1);}}
-.ps-cell.has-card{cursor:default;border:0;background:none;}
-/* Card */
-.pc{width:100%;height:100%;border-radius:8px;background:linear-gradient(180deg,#fff 0%,#f3f1ea 100%);
-  border:1px solid rgba(0,0,0,.22);box-shadow:0 1px 2px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.18);
-  color:#1b1e26;font-family:var(--display);font-weight:800;position:relative;container-type:inline-size;}
-.pc.red{color:#d0262f;}
-.pc .ix{position:absolute;top:5%;left:9%;display:flex;align-items:baseline;gap:1px;font-size:max(13px,36cqw);line-height:1;letter-spacing:-.05em;}
-.pc .ix i{font-style:normal;font-size:.75em;letter-spacing:0;}
-.pc .pip{position:absolute;right:9%;bottom:4%;font-size:52cqw;line-height:1;}
-.pc.new{animation:ps-drop .28s var(--spring);}
-@keyframes ps-drop{from{transform:scale(.7);opacity:.3;}to{transform:none;opacity:1;}}
-.ps-current{width:58px;height:81px;flex:none;}
-.ps-current .pc{box-shadow:0 0 0 2px var(--gold),0 8px 18px rgba(0,0,0,.45);}
-.ps-current .pc .ix{font-size:21px;}
-.ps-current .pc .pip{font-size:30px;}
-.ps-current .empty{width:100%;height:100%;border-radius:8px;border:1.5px dashed rgba(255,255,255,.25);}
+.stage{padding-bottom:calc(var(--safe-b) + 12px);}
+.ps-line{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 8px;font-weight:900;color:var(--text-2);font-size:.95rem;}
+.ps-line .sys{padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+
+/* Table */
+.ps-table{border-radius:26px;padding:9px;}
+.ps-table .felt-in{border-radius:19px;padding:10px 8px 12px;position:relative;}
+.ps{--cw:min(64px, calc((min(100vw, 620px) - 136px) / 5));--sw:calc(var(--cw) + 4px);}
+
+/* Draw strip: deck pile, current card, running total */
+.ps-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:0 2px 10px;min-height:calc(var(--cw) * 1.4 * 1.18 + 4px);}
+.ps-pile{position:relative;justify-self:start;--cw:calc(var(--sw) * .78);width:calc(var(--cw) + 8px);height:calc(var(--cw) * 1.4 + 6px);}
+.ps-pile .pcard{position:absolute;left:0;top:0;}
+.ps-pile .pcard:nth-child(2){left:3px;top:2px;}
+.ps-pile .pcard:nth-child(3){left:6px;top:4px;}
+.ps-pile .cnt{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);z-index:3;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-weight:900;font-size:.72rem;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.ps-pile.empty .pcard{opacity:.15;}
+.ps-cur{--cw:calc(var(--sw) * 1.18);display:flex;flex-direction:column;align-items:center;gap:4px;}
+.ps-cur .pcard{box-shadow:0 0 0 3px var(--yellow), 0 0 22px rgba(255,200,61,.45), 0 10px 18px rgba(0,0,0,.4);}
+.ps-cur .pcard.flipin{animation:flipin .42s var(--ease) both;}
+@keyframes flipin{0%{transform:translateX(calc(var(--cw) * -1.1)) rotateY(90deg) scale(.8);}60%{transform:rotateY(-8deg);}100%{transform:none;}}
+.ps-cur .none{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);border:2px dashed rgba(255,255,255,.18);}
+.ps-tot{justify-self:end;text-align:center;padding:6px 12px 5px;border-radius:14px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(255,200,61,.3);min-width:72px;}
+.ps-tot b{display:block;font-family:var(--display);font-weight:400;font-size:2rem;line-height:1;color:var(--yellow);font-variant-numeric:tabular-nums;text-shadow:0 2px 0 rgba(0,0,0,.3);}
+.ps-tot small{display:block;font-size:.66rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.ps-tot.bump b{animation:bump .3s var(--spring);}
+@keyframes bump{50%{transform:scale(1.25);}}
+
+/* Grid: 5 card columns + score column, 5 rows + score row */
+.ps-grid{display:grid;grid-template-columns:repeat(5, var(--cw)) minmax(var(--sw), 1fr);gap:4px;justify-content:center;}
+.ps-grid .pcard .face{inset:27% 22% 20%;}
+.ps-grid .pcard .face span{font-size:calc(var(--cw) * .36);}
+.ps-grid .pcard .face i{display:none;}
+.ps-grid .pcard{transition:transform .3s var(--spring), box-shadow .3s, filter .3s;}
+.ps-slot{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);border:0;padding:0;
+  background:rgba(0,0,0,.16);box-shadow:inset 0 0 0 2px rgba(255,255,255,.16);transition:background .15s, box-shadow .15s, transform .12s;}
+.ps-slot.open{cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.28);}
+.ps-slot.open:active{transform:scale(.93);background:rgba(255,200,61,.2);}
+@media (hover:hover){.ps-slot.open:hover{background:rgba(255,200,61,.14);box-shadow:inset 0 0 0 2px rgba(255,200,61,.7);}}
+.ps-grid .pcard.lit{transform:translateY(-4px) scale(1.04);box-shadow:0 0 0 3px var(--yellow), 0 0 18px rgba(255,200,61,.7), 0 10px 16px rgba(0,0,0,.4);z-index:2;}
+.ps-grid .pcard.dimmed{filter:brightness(.6) saturate(.7);}
+.ps-grid .pcard.landed{animation:land .32s var(--spring);}
+@keyframes land{0%{transform:scale(1.12);}100%{transform:none;}}
+
 /* Score cells */
-.ps-score-cell{border-radius:9px;background:rgba(0,0,0,.22);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:2px;padding:4px 2px;min-height:46px;text-align:center;}
-.ps-score-cell.scored{background:rgba(245,200,66,.12);}
-.ps-score-hand{color:rgba(255,255,255,.72);font-size:.72rem;font-weight:600;line-height:1.15;}
-.ps-score-pts{font-family:var(--display);font-weight:800;color:var(--gold);font-size:1.15rem;line-height:1;}
-.ps-score-pts.zero{color:rgba(255,255,255,.35);}
-.ps-total-cell{border-radius:9px;background:rgba(245,200,66,.16);border:1px solid rgba(245,200,66,.4);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;}
-.ps-total-cell .ps-total-num{font-size:1.2rem;}
-/* Pay table */
-.ps-pay{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:.88rem;}
-.ps-pay span:nth-child(even){color:var(--gold);font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
-.ps-actions{display:flex;justify-content:center;margin-bottom:14px;}
+.lsc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:3px 2px;border-radius:10px;text-align:center;min-width:0;
+  background:rgba(0,0,0,.2);color:rgba(255,255,255,.75);line-height:1.05;overflow:hidden;}
+.lsc.col{min-height:54px;}
+.lsc b{font-family:var(--display);font-weight:400;font-size:1.2rem;line-height:1;color:rgba(255,255,255,.45);font-variant-numeric:tabular-nums;}
+.lsc span{font-size:.62rem;font-weight:900;letter-spacing:.01em;}
+.lsc i{font-style:normal;font-size:.58rem;font-weight:900;padding:1px 5px;border-radius:999px;background:rgba(255,255,255,.12);color:#ffe9a8;white-space:nowrap;}
+.lsc i.s{background:rgba(77,163,255,.25);color:#cfe6ff;}
+.lsc.done{background:rgba(255,250,240,.92);color:#3a3a50;box-shadow:0 2px 0 rgba(0,0,0,.2);}
+.lsc.done b{color:var(--ink);font-family:var(--hand);font-size:1.45rem;}
+.lsc.done.zero b{color:rgba(200,16,46,.6);}
+.lsc.done.big{background:linear-gradient(160deg,#fff4c2,#ffd25a);}
+.lsc.done.big b{color:#8a1020;}
+.lsc.reveal{animation:pop .45s var(--spring);}
+.lsc.hide{background:rgba(0,0,0,.2)!important;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)!important;}
+.lsc.hide b,.lsc.hide span,.lsc.hide i{visibility:hidden;}
+.lsc.sum{background:linear-gradient(160deg,#ffd76a,#e9a91c);color:#3a2600;box-shadow:0 2px 0 rgba(0,0,0,.25);}
+.lsc.sum b{color:#3a2600;font-size:1.35rem;}
+
+.ps-bar{display:flex;gap:10px;justify-content:center;align-items:center;min-height:56px;margin:10px 0 4px;text-align:center;}
+.ps-bar .hint{color:var(--text-2);font-weight:800;}
+.ps-bar .hint .c{display:inline-block;padding:0 6px;border-radius:6px;background:#fffaf0;color:#1d1b2e;font-weight:900;}
+.ps-bar .hint .c.red{color:#d81e3a;}
+.ps-bar .btn{flex:1;max-width:260px;}
+
+/* Pay tables + high scores (sheets) */
+.pay{width:100%;border-collapse:collapse;margin:6px 0 4px;font-variant-numeric:tabular-nums;}
+.pay th,.pay td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:right;}
+.pay th:first-child,.pay td:first-child{text-align:left;}
+.pay thead th{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.pay td{color:var(--text);font-weight:800;}
+.pay td:first-child{color:var(--text-2);font-weight:700;}
+.hs{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.hs div{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);background:rgba(255,255,255,.05);font-weight:800;}
+.hs div:first-child{background:color-mix(in srgb,var(--yellow) 18%,transparent);}
+.hs .pl{width:20px;text-align:center;color:var(--text-3);}
+.hs .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hs .dt{color:var(--text-3);font-size:.8rem;font-weight:700;}
+.hs .sc{font-family:var(--display);font-weight:400;font-size:1.3rem;color:var(--yellow);min-width:44px;text-align:right;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Poker Squares</span>
-  <button class="icon-btn" id="ps-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="ps-wrap">
-
-<div class="tabs ps-sys" role="tablist">
-  <button class="tab active ps-sys-btn" data-sys="american">American scoring</button>
-  <button class="tab ps-sys-btn" data-sys="british">British scoring</button>
-</div>
-
-<div id="ps-result-area"></div>
-
-<div class="felt ps-head" id="ps-head">
-  <div class="ps-current" id="ps-current-card"></div>
-  <div class="ps-head-txt">
-    <div class="ps-head-lbl" id="ps-deck-count">25 cards left</div>
-    <div class="ps-head-hint" id="ps-head-hint">Tap an empty square to place this card</div>
-  </div>
-  <div class="ps-total"><div class="ps-total-num" id="ps-total">0</div><div class="ps-total-lbl">Score</div></div>
-</div>
-
-<div class="felt ps-board">
-  <div class="ps-grid" id="ps-grid"></div>
-</div>
-
-<details class="rules-details">
-  <summary class="rules-summary">How to play &amp; scoring</summary>
-  <div class="rules-body">
-    <p style="margin-bottom:10px">Place each card into the 5×5 grid. Every row and column is scored as a poker hand — 10 hands in all.</p>
-    <div class="ps-pay" id="ps-pay"></div>
-  </div>
-</details>
-
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-const SUITS=['♠','♥','♦','♣'];
-const RED=new Set(['♥','♦']);
-const RV={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13,A:14};
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'pokersquares_state', HKEY = 'pokersquares';
+  var HI = { american: 'hi_pokersquares', british: 'hi_pokersquares_uk' };
+  var RV = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
+  var GLYPH = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  var SUITNAME = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
 
-const SCORING={
-  american:{
-    'Royal Flush':100,'Straight Flush':75,'Four of a Kind':50,
-    'Full House':25,'Flush':20,'Straight':15,'Three of a Kind':10,
-    'Two Pair':5,'One Pair':2,'High Card':0
-  },
-  british:{
-    'Royal Flush':30,'Straight Flush':30,'Four of a Kind':16,
-    'Full House':10,'Flush':5,'Straight':12,'Three of a Kind':6,
-    'Two Pair':3,'One Pair':1,'High Card':0
+  // Hands best to worst, with both point systems
+  var HANDS = [
+    { id: 'royal', name: 'Royal flush', short: 'Royal', us: 100, uk: 30 },
+    { id: 'sf', name: 'Straight flush', short: 'Str. flush', us: 75, uk: 30 },
+    { id: 'quads', name: 'Four of a kind', short: '4 of a kind', us: 50, uk: 16 },
+    { id: 'full', name: 'Full house', short: 'Full house', us: 25, uk: 10 },
+    { id: 'flush', name: 'Flush', short: 'Flush', us: 20, uk: 5 },
+    { id: 'straight', name: 'Straight', short: 'Straight', us: 15, uk: 12 },
+    { id: 'trips', name: 'Three of a kind', short: '3 of a kind', us: 10, uk: 6 },
+    { id: 'two', name: 'Two pair', short: 'Two pair', us: 5, uk: 3 },
+    { id: 'pair', name: 'One pair', short: 'Pair', us: 2, uk: 1 },
+    { id: 'none', name: 'Nothing', short: 'Nothing', us: 0, uk: 0 }
+  ];
+  var H = {}; HANDS.forEach(function (h, i) { h.rank = i; H[h.id] = h; });
+  function hap(k) { var u = navigator.userActivation; if (!u || u.hasBeenActive) Kit.haptic(k); }
+  function pts(id, sys) { return H[id][sys === 'british' ? 'uk' : 'us']; }
+  function sysName(sys) { return sys === 'british' ? 'British scoring' : 'American scoring'; }
+
+  function payTable() {
+    return '<table class="pay"><thead><tr><th>Hand</th><th>American</th><th>British</th></tr></thead><tbody>' +
+      HANDS.slice(0, 9).map(function (h) { return '<tr><td>' + h.name + '</td><td>' + h.us + '</td><td>' + h.uk + '</td></tr>'; }).join('') + '</tbody></table>';
   }
-};
-// Compact labels for the narrow score cells
-const SHORT={'Royal Flush':'Royal','Straight Flush':'Str. flush','Four of a Kind':'4 of a kind','Full House':'Full house',
-  'Flush':'Flush','Straight':'Straight','Three of a Kind':'3 of a kind','Two Pair':'Two pair','One Pair':'Pair','High Card':'No hand'};
 
-let system='american', deck=[], grid=[], currentCard=null, cardsPlaced=0, lastPlaced=-1, finalTotal=null;
+  Kit.init({
+    id: 'pokersquares',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'trophy', label: 'High scores', onClick: function () { showHigh(S ? S.system : 'american'); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Poker Squares: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Deal 25 cards one at a time onto a 5×5 grid. When the grid is full, every <b>row</b> and every <b>column</b> is a poker hand. Make the best hands you can for the highest score.</p>' +
+      '<h3>Your turn</h3><ul><li>Look at the card on top of the deck.</li><li>Tap any empty square to put it there.</li>' +
+      '<li>Once a card is down it <b>stays put</b>. No moving cards!</li></ul>' +
+      '<h3>Scoring</h3><p>You get 10 hands: 5 rows across and 5 columns down. Each card counts in one row and one column.</p>' + payTable() +
+      '<p><b>Straight</b> = five ranks in a row (A-2-3-4-5 and 10-J-Q-K-A count, but Q-K-A-2-3 does not). <b>Flush</b> = five of one suit. <b>Royal flush</b> = 10-J-Q-K-A of one suit.</p>' +
+      '<h3>American or British?</h3><p>American is the classic scoring. British scoring makes <b>straights worth more than flushes</b> (because in a grid, flushes are easier to build) so it changes how you play.</p>' +
+      '<h3>Tips</h3><ul><li>Save one column for each suit to build flushes going down.</li><li>Use the rows to collect pairs, three of a kind and full houses.</li>' +
+      '<li>The score boxes show what each line has so far, and if a flush or straight is still possible.</li></ul>'
+  });
 
-function makeDeck(){
-  const d=[];
-  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
-
-function classifyHand(hand){
-  if(hand.some(c=>!c)) return null;
-  const vals=hand.map(c=>RV[c.rank]).sort((a,b)=>a-b);
-  const suits=hand.map(c=>c.suit);
-  const flush=suits.every(s=>s===suits[0]);
-  const straight=(vals[4]-vals[0]===4&&new Set(vals).size===5)||
-    (vals[0]===2&&vals[1]===3&&vals[2]===4&&vals[3]===5&&vals[4]===14);
-  const royal=flush&&vals[0]===10&&vals[4]===14&&straight;
-  const counts={};vals.forEach(v=>counts[v]=(counts[v]||0)+1);
-  const cv=Object.values(counts).sort((a,b)=>b-a);
-  if(royal) return 'Royal Flush';
-  if(flush&&straight) return 'Straight Flush';
-  if(cv[0]===4) return 'Four of a Kind';
-  if(cv[0]===3&&cv[1]===2) return 'Full House';
-  if(flush) return 'Flush';
-  if(straight) return 'Straight';
-  if(cv[0]===3) return 'Three of a Kind';
-  if(cv[0]===2&&cv[1]===2) return 'Two Pair';
-  if(cv[0]===2) return 'One Pair';
-  return 'High Card';
-}
-
-function scoreHand(hand){ const h=classifyHand(hand); return h?SCORING[system][h]:0; }
-function handName(hand){ return classifyHand(hand)||''; }
-
-function getRow(r){ return[grid[r*5],grid[r*5+1],grid[r*5+2],grid[r*5+3],grid[r*5+4]]; }
-function getCol(c){ return[grid[c],grid[c+5],grid[c+10],grid[c+15],grid[c+20]]; }
-function totalScore(){let t=0;for(let i=0;i<5;i++){t+=scoreHand(getRow(i))+scoreHand(getCol(i));}return t;}
-
-function initGame(){
-  deck=makeDeck().slice(0,25); // use 25 cards
-  grid=Array(25).fill(null);
-  cardsPlaced=0;lastPlaced=-1;finalTotal=null;
-  currentCard=deck[0];
-  renderResult();
-  renderPayTable();
-  renderAll();
-}
-async function confirmNew(){
-  if(cardsPlaced>0&&cardsPlaced<25&&window.GN){
-    const ok=await GN.confirm('Your current grid will be lost.',{title:'Start a new game?',ok:'New Game'});
-    if(!ok)return;
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, undoStack = [], revealing = false, revealToken = 0;
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase === 'play') Kit.resume.set('Card ' + Math.min(25, S.n + 1) + ' of 25');
   }
-  initGame();
-}
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
-function placeCard(idx){
-  if(!currentCard||grid[idx])return;
-  grid[idx]=currentCard;
-  cardsPlaced++;lastPlaced=idx;
-  hap('light');
-  if(cardsPlaced<25){
-    currentCard=deck[cardsPlaced];
-  } else {
-    currentCard=null;
-    endGame();
+  function showSetup() {
+    S = null; undoStack = []; revealToken++; revealing = false;
+    var best = bestScore('american');
+    Kit.setup(app, {
+      players: { min: 1, max: 1, label: "Who's playing?" },
+      options: [{ id: 'system', label: 'Scoring', value: 'american', choices: [['american', 'American'], ['british', 'British']] }],
+      intro: 'Build ten poker hands on a 5×5 grid.' + (best ? ' Best score so far: ' + best + '.' : ''),
+      start: 'Deal the cards',
+      onStart: function (cfg) { start(cfg.players[0].name, cfg.options.system); }
+    });
   }
-  renderAll();
-}
+  function start(name, system) {
+    var deck = Cards.shuffle(Cards.deck()).slice(0, 25);
+    S = { name: name || 'You', system: system === 'british' ? 'british' : 'american', deck: deck, grid: [], n: 0, phase: 'play', started: Date.now() };
+    for (var i = 0; i < 25; i++) S.grid.push(null);
+    undoStack = []; Kit.gameStart();
+    save(); render({ deal: true });
+    Kit.sfx('deal');
+  }
 
-function endGame(){
-  const total=totalScore();
-  finalTotal=total;
-  renderResult(true);
-  try{GameHistory.save('pokersquares',{_summary:`Poker Squares · ${total} pts (${system})`,_badge:total+' pts',score:total,system});}catch(e){}
-  hap('success');
-  setTimeout(()=>{
-    const max=system==='american'?500:200;
-    const sh=GN.sheet({title:`${total} points`,body:`<div style="font-size:2.2rem;margin-bottom:4px">${total/max>=.4?'🏆':'🃏'}</div>${ratingText(total,max)} <span style="color:var(--text-3)">· ${system==='american'?'American':'British'} scoring</span>`,
-      actions:[{label:'Play Again',primary:true,onClick:initGame},{label:'Review grid'}]});
-    const hb=GameHistory.btn('pokersquares','Poker Squares',e=>GameHistory.renderStatGrid([{val:e.score,lbl:'Points'},{val:e.system==='british'?'British':'American',lbl:'Scoring'}]));
-    hb.style.cssText='';hb.className='btn btn-outline btn-block';hb.textContent='📜 Past games';
-    const acts=sh.el.querySelector('.gn-actions');acts.insertBefore(hb,acts.lastChild);
-  },450);
-}
-function renderResult(){
-  document.getElementById('ps-head').style.display=finalTotal==null?'':'none';
-  if(finalTotal==null){document.getElementById('ps-result-area').innerHTML='';return;}
-  const total=totalScore();
-  const max=system==='american'?500:200;
-  document.getElementById('ps-result-area').innerHTML=
-    `<div class="winner-banner">
-      <div class="winner-name">Final score: ${total}</div>
-      <div class="winner-pts">${ratingText(total,max)}</div>
-      <button class="btn btn-gold" style="margin-top:14px" onclick="initGame()">Play Again</button>
-    </div>`;
-}
-
-function ratingText(score, max){
-  const pct=score/max;
-  if(pct>=.8)return'🏆 Outstanding!';
-  if(pct>=.6)return'⭐ Great game!';
-  if(pct>=.4)return'👍 Decent!';
-  if(pct>=.2)return'Getting there!';
-  return'Keep practicing!';
-}
-
-function renderPayTable(){
-  const pay=SCORING[system];
-  const items=Object.entries(pay).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('ps-pay').innerHTML=items.map(([h,v])=>`<span>${h}</span><span>${v}</span>`).join('');
-}
-
-function cardHTML(card,cls=''){
-  return `<div class="pc ${RED.has(card.suit)?'red':'black'} ${cls}" aria-label="${card.rank}${card.suit}"><div class="ix">${card.rank}<i>${card.suit}</i></div><div class="pip">${card.suit}</div></div>`;
-}
-function scoreCell(hand){
-  const full=hand.every(c=>c);
-  const name=full?handName(hand):'';
-  const pts=full?scoreHand(hand):0;
-  return `<div class="ps-score-cell ${full&&pts>0?'scored':''}">
-    ${full?`<div class="ps-score-pts ${pts===0?'zero':''}">${pts}</div><div class="ps-score-hand">${SHORT[name]||name}</div>`:''}
-  </div>`;
-}
-
-function renderAll(){
-  // Current card
-  const cc=document.getElementById('ps-current-card');
-  cc.innerHTML=currentCard?cardHTML(currentCard,'new'):`<div class="empty"></div>`;
-  const left=25-cardsPlaced;
-  document.getElementById('ps-deck-count').textContent=left?`${left} card${left===1?'':'s'} left`:'Grid complete';
-  document.getElementById('ps-head-hint').textContent=currentCard?'Tap an empty square to place this card':'All 10 hands scored';
-
-  // Grid
-  const g=document.getElementById('ps-grid');
-  let html='';
-  for(let r=0;r<5;r++){
-    for(let c=0;c<5;c++){
-      const idx=r*5+c;
-      const card=grid[idx];
-      if(card){
-        html+=`<div class="ps-cell has-card">${cardHTML(card,idx===lastPlaced?'new':'')}</div>`;
-      } else {
-        html+=`<div class="ps-cell" data-idx="${idx}" role="button" aria-label="Place card in row ${r+1}, column ${c+1}"></div>`;
+  // ── Hand evaluation ───────────────────────────────────────────────────────
+  function lineIdx(L) { var a = []; for (var k = 0; k < 5; k++) a.push(L < 5 ? L * 5 + k : k * 5 + (L - 5)); return a; }
+  function lineCards(L) { return lineIdx(L).map(function (i) { return S.grid[i]; }); }
+  function lineName(L) { return L < 5 ? 'row ' + (L + 1) : 'column ' + (L - 4); }
+  function counts(cards) { var c = {}; cards.forEach(function (x) { c[RV[x.r]] = (c[RV[x.r]] || 0) + 1; }); return Object.keys(c).map(function (k) { return c[k]; }).sort(function (a, b) { return b - a; }); }
+  function straightVals(vals) {
+    if (vals.length !== 5) return false;
+    var v = vals.slice().sort(function (a, b) { return a - b; });
+    for (var i = 1; i < 5; i++) if (v[i] === v[i - 1]) return false;
+    return v[4] - v[0] === 4 || (v[4] === 14 && v[0] === 2 && v[3] === 5);
+  }
+  function classify(cards) {
+    var vals = cards.map(function (c) { return RV[c.r]; });
+    var flush = cards.every(function (c) { return c.s === cards[0].s; });
+    var straight = straightVals(vals), cv = counts(cards);
+    if (flush && straight) return Math.min.apply(null, vals) === 10 ? 'royal' : 'sf';
+    if (cv[0] === 4) return 'quads';
+    if (cv[0] === 3 && cv[1] === 2) return 'full';
+    if (flush) return 'flush';
+    if (straight) return 'straight';
+    if (cv[0] === 3) return 'trips';
+    if (cv[0] === 2 && cv[1] === 2) return 'two';
+    if (cv[0] === 2) return 'pair';
+    return 'none';
+  }
+  // Partial line: what's made so far, and which draws are still possible with
+  // cards nobody has seen yet (the cards still in the deck could be any of them).
+  function unseen() {
+    var seen = {};
+    S.grid.forEach(function (c) { if (c) seen[c.r + c.s] = 1; });
+    var cur = S.deck[S.n]; if (cur) delete seen[cur.r + cur.s];   // the card in hand is still placeable
+    var out = [];
+    Cards.deck().forEach(function (c) { if (!seen[c.r + c.s]) out.push(c); });
+    return out;
+  }
+  function have(pool, r, s) { return pool.some(function (c) { return RV[c.r] === r && (!s || c.s === s); }); }
+  function analyze(L, pool) {
+    var cards = lineCards(L), placed = cards.filter(Boolean);
+    if (placed.length === 5) { var id = classify(placed); return { done: true, id: id, pts: pts(id, S.system) }; }
+    var r = { done: false, made: 'none', draw: null, n: placed.length };
+    var cv = counts(placed);
+    if (cv[0] === 4) r.made = 'quads';
+    else if (cv[0] === 3 && cv[1] === 2) r.made = 'full';
+    else if (cv[0] === 3) r.made = 'trips';
+    else if (cv[0] === 2 && cv[1] === 2) r.made = 'two';
+    else if (cv[0] === 2) r.made = 'pair';
+    r.pts = pts(r.made, S.system);
+    if (placed.length < 2) return r;
+    var need = 5 - placed.length, suit = placed[0].s;
+    var flushLive = placed.every(function (c) { return c.s === suit; }) && pool.filter(function (c) { return c.s === suit; }).length >= need;
+    // straight windows (low = 1 means A-2-3-4-5)
+    var vals = placed.map(function (c) { return RV[c.r]; }), sfLive = false, royalLive = false, stLive = false;
+    if (cv[0] === 1) {
+      for (var lo = 1; lo <= 10; lo++) {
+        var win = [lo, lo + 1, lo + 2, lo + 3, lo + 4].map(function (v) { return v === 1 ? 14 : v; });
+        if (!vals.every(function (v) { return win.indexOf(v) >= 0; })) continue;
+        var miss = win.filter(function (v) { return vals.indexOf(v) < 0; });
+        if (miss.every(function (v) { return have(pool, v); })) stLive = true;
+        if (flushLive && miss.every(function (v) { return have(pool, v, suit); })) { sfLive = true; if (lo === 10) royalLive = true; }
       }
     }
-    html+=scoreCell(getRow(r));
+    r.draw = royalLive ? 'Royal?' : sfLive ? 'Str. flush?' : flushLive ? 'Flush?' : stLive ? 'Straight?' : null;
+    r.drawSuit = flushLive ? suit : null;
+    return r;
   }
-  for(let c=0;c<5;c++)html+=scoreCell(getCol(c));
-  const total=totalScore();
-  html+=`<div class="ps-total-cell"><div class="ps-total-num">${total}</div><div class="ps-total-lbl">Total</div></div>`;
-  g.innerHTML=html;
-  document.getElementById('ps-total').textContent=total;
+  function totals() {
+    var t = 0, lines = [];
+    for (var L = 0; L < 10; L++) {
+      var c = lineCards(L);
+      if (c.every(Boolean)) { var id = classify(c); lines.push({ L: L, id: id, pts: pts(id, S.system) }); t += pts(id, S.system); }
+      else lines.push(null);
+    }
+    return { total: t, lines: lines };
+  }
 
-  g.querySelectorAll('.ps-cell:not(.has-card)').forEach(el=>{
-    el.addEventListener('click',()=>placeCard(+el.dataset.idx));
-  });
-  lastPlaced=-1;
-}
+  // ── Play ──────────────────────────────────────────────────────────────────
+  function place(i) {
+    if (!S || S.phase !== 'play' || S.grid[i] || revealing) return;
+    var card = S.deck[S.n]; if (!card) return;
+    var from = curEl ? curEl.getBoundingClientRect() : null;
+    undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift();
+    S.grid[i] = card; S.n++;
+    Kit.sfx('flip'); Kit.haptic('light');
+    // Did this card finish a line with something good?
+    var r = Math.floor(i / 5), c = i % 5, made = [];
+    [r, 5 + c].forEach(function (L) {
+      var lc = lineCards(L);
+      if (lc.every(Boolean)) { var id = classify(lc); if (H[id].rank <= H.straight.rank) made.push(H[id].name); }
+    });
+    if (S.n >= 25) S.phase = 'scoring';
+    save();
+    render({ landed: i, from: from });
+    if (made.length) setTimeout(function () { Kit.callout(made[0] + '!'); Kit.sfx('good'); }, 260);
+    if (S.phase === 'scoring') setTimeout(reveal, 650);
+  }
+  function undo() {
+    if (revealing || (S && S.phase !== 'play')) return Kit.toast('The game is already scored');
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Card taken back'); save(); render();
+  }
 
-// System selector
-document.querySelectorAll('.ps-sys-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.ps-sys-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); system=b.dataset.sys;
-    hap('select');
-    renderPayTable(); renderAll(); renderResult();
-  });
-});
+  // ── Final scoring: walk the 10 hands one by one ───────────────────────────
+  function reveal() {
+    if (!S) return;
+    revealing = true;
+    var tok = ++revealToken, run = 0, L = 0;
+    var t = totals();
+    render({ hideScores: true });
+    setBar('skip');
+    function step() {
+      if (tok !== revealToken) return;
+      if (L > 0) lineIdx(L - 1).forEach(function (i) { var n = gridEls[i]; if (n) n.classList.remove('lit'); });
+      if (L >= 10) { Object.keys(gridEls).forEach(function (k) { gridEls[k].classList.remove('dimmed'); }); setTimeout(function () { if (tok === revealToken) finish(); }, 500); return; }
+      var ln = t.lines[L];
+      Object.keys(gridEls).forEach(function (k) { gridEls[k].classList.add('dimmed'); });
+      lineIdx(L).forEach(function (i) { var n = gridEls[i]; if (n) { n.classList.remove('dimmed'); n.classList.add('lit'); } });
+      var cell = scoreEls[L]; cell.classList.remove('hide'); cell.classList.add('reveal');
+      run += ln.pts; setTotal(run, true);
+      var big = H[ln.id].rank <= H.full.rank;
+      if (ln.pts) { Kit.sfx(big ? 'win' : 'chip'); hap(big ? 'success' : 'light'); } else Kit.sfx('tick');
+      if (big) Kit.callout(H[ln.id].name + '!');
+      L++;
+      setTimeout(step, big ? 1150 : ln.pts ? 620 : 420);
+    }
+    setTimeout(step, 300);
+  }
+  function skipReveal() { revealToken++; finish(); }
 
-document.getElementById('ps-new').addEventListener('click',confirmNew);
-initGame();
+  function finish() {
+    revealing = false;
+    if (!S || S.phase === 'over') return;
+    var t = totals(), sys = S.system, total = t.total;
+    var prevBest = bestScore(sys), isBest = total > prevBest;
+    var hl = [];
+    // Big hands, best first
+    t.lines.slice().sort(function (a, b) { return H[a.id].rank - H[b.id].rank; }).forEach(function (ln) {
+      if (H[ln.id].rank <= H.full.rank && hl.length < 3) { hl.push(H[ln.id].name + ' in ' + lineName(ln.L) + '!'); ln.told = true; }
+    });
+    var scored = t.lines.filter(function (ln) { return ln.pts > 0; }).length;
+    var tally = {}; t.lines.forEach(function (ln) { if (ln.pts && !ln.told) tally[ln.id] = (tally[ln.id] || 0) + 1; });
+    var parts = HANDS.filter(function (h) { return tally[h.id]; }).map(function (h) {
+      var n = tally[h.id]; return n + ' ' + (n === 1 ? h.short.toLowerCase() : plural(h));
+    });
+    if (!hl.length) {
+      var top = t.lines.slice().sort(function (a, b) { return H[a.id].rank - H[b.id].rank; })[0];
+      if (top && top.pts) hl.push('Best hand: ' + H[top.id].name.toLowerCase() + ' in ' + lineName(top.L));
+    }
+    if (parts.length) hl.push((hl.length ? 'Also made ' : 'Made ') + parts.join(', '));
+    hl.push(scored === 10 ? 'Every one of the 10 hands scored!' : scored + ' of 10 hands scored');
+    if (isBest && prevBest) hl.push('Best score ever: ' + total + ' (old best ' + prevBest + ')');
+    else if (isBest && total) hl.push('Best score ever: ' + total);
+    Kit.record(HKEY, {
+      started: S.started, mode: sysName(sys),
+      players: [{ name: S.name, score: total }], winner: null,
+      summary: total + ' points · ' + S.name, badge: total + ' pts',
+      rounds: { labels: ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Col 1', 'Col 2', 'Col 3', 'Col 4', 'Col 5'], scores: t.lines.map(function (ln) { return [ln.pts]; }) },
+      highlights: hl, meta: { score: total, system: sys }
+    });
+    addHigh(sys, S.name, total);
+    S.phase = 'over'; clearSave(); undoStack = [];
+    render(); setBar('over');
+    if (isBest && total) setTimeout(function () { Kit.callout('New high score!'); }, 200);
+    setTimeout(function () {
+      Kit.win({
+        icon: 'trophy', title: total + ' points!',
+        sub: rating(total, sys) + ' · ' + sysName(sys) + (isBest ? ' · New best!' : prevBest ? ' · Best: ' + prevBest : ''),
+        againLabel: 'Deal again', again: function () { start(S.name, S.system); },
+        extra: [{ label: 'Look at my grid', onClick: function () {} }, { label: 'High scores', onClick: function () { showHigh(sys); } }]
+      });
+    }, isBest ? 900 : 350);
+  }
+  function plural(h) { return { royal: 'royal flushes', sf: 'straight flushes', quads: 'fours of a kind', full: 'full houses', flush: 'flushes', straight: 'straights', trips: 'three of a kinds', two: 'two pairs', pair: 'pairs' }[h.id] || h.short.toLowerCase() + 's'; }
+  function rating(t, sys) {
+    var s = sys === 'british' ? [70, 50, 35, 20] : [200, 150, 100, 60];
+    return t >= s[0] ? 'Outstanding!' : t >= s[1] ? 'Great game!' : t >= s[2] ? 'Nice work!' : t >= s[3] ? 'Not bad!' : 'Keep practicing!';
+  }
+
+  // ── High scores (hi_* rows are [name, score, date]) ───────────────────────
+  function loadHigh(sys) {
+    try { var a = JSON.parse(localStorage.getItem(HI[sys]) || '[]'); return Array.isArray(a) ? a.filter(Array.isArray) : []; } catch (e) { return []; }
+  }
+  function bestScore(sys) {
+    var b = 0;
+    loadHigh(sys).forEach(function (r) { b = Math.max(b, Number(r[1]) || 0); });
+    // older games saved only in history
+    try { GameHistory.load(HKEY).forEach(function (e) { if ((e.system || 'american') === sys && typeof e.score === 'number') b = Math.max(b, e.score); }); } catch (e) {}
+    return b;
+  }
+  function addHigh(sys, name, score) {
+    var list = loadHigh(sys); list.push([name, score, Date.now()]);
+    list.sort(function (a, b) { return b[1] - a[1]; }); list = list.slice(0, 15);
+    try { localStorage.setItem(HI[sys], JSON.stringify(list)); if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(HI[sys]); } catch (e) {}
+  }
+  function showHigh(sys) {
+    var box = el('div'), list = el('div', { class: 'hs' }), seg = el('div', { class: 'seg' });
+    function paint() {
+      seg.innerHTML = ''; list.innerHTML = '';
+      ['american', 'british'].forEach(function (k) {
+        seg.appendChild(el('button', { type: 'button', class: k === sys ? 'on' : '', text: k === 'british' ? 'British' : 'American', onclick: function () { sys = k; Kit.sfx('tap'); paint(); } }));
+      });
+      var rows = loadHigh(sys).map(function (r) { return { name: r[0], score: r[1], date: r[2] }; });
+      // fold in old history-only games
+      try { GameHistory.load(HKEY).forEach(function (e) { if (!e.players && typeof e.score === 'number' && (e.system || 'american') === sys) rows.push({ name: '', score: e.score, date: e._date }); }); } catch (e) {}
+      rows.sort(function (a, b) { return b.score - a.score; });
+      if (!rows.length) list.appendChild(el('p', { class: 'muted', text: 'No games yet with ' + sysName(sys).toLowerCase() + '.' }));
+      rows.slice(0, 10).forEach(function (r, i) {
+        list.appendChild(el('div', null, [el('span', { class: 'pl', text: String(i + 1) }), el('span', { class: 'nm', text: r.name || 'Player' }),
+          el('span', { class: 'dt', text: r.date ? new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' }) : '' }),
+          el('span', { class: 'sc', text: String(r.score) })]));
+      });
+    }
+    box.appendChild(seg); box.appendChild(list); paint();
+    Kit.sheet({ title: 'High scores', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var gridEls = {}, scoreEls = [], curEl = null, totEl = null, barEl = null;
+  function render(o) {
+    o = o || {};
+    if (!S) return;
+    app.innerHTML = '';
+    var left = 25 - S.n;
+    app.appendChild(el('div', { class: 'ps-line' }, [
+      el('span', { text: S.phase === 'play' ? 'Card ' + (S.n + 1) + ' of 25' : S.phase === 'scoring' ? 'Scoring the hands…' : 'Final grid' }),
+      el('span', { class: 'sys', text: S.system === 'british' ? 'British' : 'American' })
+    ]));
+    var table = el('div', { class: 'ps-table wood ps' }), felt = el('div', { class: 'felt-in' });
+
+    // Draw strip
+    var top = el('div', { class: 'ps-top' });
+    var pile = el('div', { class: 'ps-pile' + (left > 1 ? '' : ' empty') });
+    for (var k = 0; k < 3; k++) pile.appendChild(Kit.card('', '', { back: true }));
+    pile.appendChild(el('span', { class: 'cnt', text: Math.max(0, left - 1) + ' left' }));
+    top.appendChild(pile);
+    var cur = el('div', { class: 'ps-cur' }), card = S.phase === 'play' ? S.deck[S.n] : null;
+    if (card) { curEl = Cards.el(card, { cls: o.landed != null || o.deal ? 'flipin' : '' }); cur.appendChild(curEl); }
+    else { curEl = null; cur.appendChild(el('div', { class: 'none' })); }
+    top.appendChild(cur);
+    totEl = el('div', { class: 'ps-tot' }, [el('b', { text: '0' }), el('small', { text: S.phase === 'play' ? 'So far' : 'Total' })]);
+    top.appendChild(totEl);
+    felt.appendChild(top);
+
+    // Grid
+    var grid = el('div', { class: 'ps-grid' }), pool = S.phase === 'play' ? unseen() : null;
+    gridEls = {}; scoreEls = [];
+    function scoreCell(L, isCol) {
+      var a = analyze(L, pool || []), cell;
+      if (a.done) {
+        cell = el('div', { class: 'lsc done' + (isCol ? ' col' : '') + (a.pts ? '' : ' zero') + (H[a.id].rank <= H.full.rank ? ' big' : '') + (o.hideScores ? ' hide' : '') }, [
+          el('b', { text: String(a.pts) }), el('span', { text: H[a.id].short })
+        ]);
+      } else {
+        cell = el('div', { class: 'lsc' + (isCol ? ' col' : '') }, [
+          el('b', { text: a.n ? String(a.pts) : '' }), el('span', { text: a.made !== 'none' ? H[a.made].short : '' })
+        ]);
+        if (a.draw) cell.appendChild(el('i', { class: a.draw === 'Straight?' ? 's' : '', text: a.draw }));
+      }
+      cell.setAttribute('aria-label', (L < 5 ? 'Row ' + (L + 1) : 'Column ' + (L - 4)) + ': ' + (a.done ? H[a.id].name + ', ' + a.pts + ' points' : (a.made !== 'none' ? H[a.made].name + ' so far' : 'in progress') + (a.draw ? ', ' + a.draw.replace('?', '') + ' still possible' : '')));
+      scoreEls[L] = cell;
+      return cell;
+    }
+    for (var r = 0; r < 5; r++) {
+      for (var c = 0; c < 5; c++) {
+        (function (i) {
+          var cd = S.grid[i];
+          if (cd) {
+            var n = Cards.el(cd); gridEls[i] = n; grid.appendChild(n);
+          } else {
+            var open = S.phase === 'play';
+            grid.appendChild(el('button', { type: 'button', class: 'ps-slot' + (open ? ' open' : ''), 'aria-label': 'Place card in row ' + (Math.floor(i / 5) + 1) + ', column ' + (i % 5 + 1), onclick: function () { place(i); } }));
+          }
+        })(r * 5 + c);
+      }
+      grid.appendChild(scoreCell(r, false));
+    }
+    for (var cc = 0; cc < 5; cc++) grid.appendChild(scoreCell(5 + cc, true));
+    var t = totals();
+    grid.appendChild(el('div', { class: 'lsc col sum' }, [el('b', { text: o.hideScores ? '' : String(t.total) }), el('span', { text: 'Total' })]));
+    felt.appendChild(grid);
+    table.appendChild(felt);
+    app.appendChild(table);
+    barEl = el('div', { class: 'ps-bar' });
+    app.appendChild(barEl);
+    setTotal(o.hideScores ? 0 : t.total);
+    setBar(S.phase === 'over' ? 'over' : S.phase === 'scoring' ? 'skip' : 'play');
+
+    if (o.landed != null && gridEls[o.landed]) {
+      var n = gridEls[o.landed];
+      if (o.from) flyFrom(n, o.from); else n.classList.add('landed');
+    }
+  }
+  function flyFrom(node, a) {
+    var b = node.getBoundingClientRect();
+    var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+    var sc = a.width / (b.width || 1);
+    node.style.transition = 'none'; node.style.zIndex = 20;
+    node.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')';
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      node.style.transition = 'transform .34s cubic-bezier(.2,.8,.25,1)'; node.style.transform = '';
+      setTimeout(function () { node.style.zIndex = ''; node.style.transition = ''; node.classList.add('landed'); }, 360);
+    }); });
+  }
+  function setTotal(v, bump) {
+    if (!totEl) return;
+    totEl.querySelector('b').textContent = String(v);
+    if (bump) { totEl.classList.remove('bump'); void totEl.offsetWidth; totEl.classList.add('bump'); }
+  }
+  function setBar(kind) {
+    if (!barEl) return;
+    barEl.innerHTML = '';
+    if (kind === 'play') {
+      var c = S.deck[S.n];
+      barEl.appendChild(el('span', { class: 'hint', html: 'Tap a square for the <span class="c' + (c.s === 'h' || c.s === 'd' ? ' red' : '') + '">' + Kit.esc(c.r + GLYPH[c.s]) + '</span>' }));
+    } else if (kind === 'skip') {
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Skip to the total', onclick: skipReveal }));
+    } else if (kind === 'over') {
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('shuffle') + '<span>Deal again</span>', onclick: function () { start(S.name, S.system); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('trophy') + '<span>High scores</span>', onclick: function () { showHigh(S.system); } }));
+    }
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.deck && saved.grid && saved.phase !== 'over') {
+    S = saved; Kit.gameStart();
+    if (S.phase === 'scoring') { render(); setTimeout(reveal, 400); }
+    else render();
+  } else showSetup();
+})();
 </script>
 </body>
 </html>

@@ -2,497 +2,646 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Wizard — vs AI</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wizard</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ai-base:start — shared table layout for the vs-AI card games */
-.page.g-page{max-width:560px;padding-top:12px;padding-bottom:calc(112px + var(--safe-b));}
-.g-hud{display:grid;gap:8px;margin-bottom:10px;}
-.g-seat{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:9px 8px 8px;min-width:0;text-align:center;transition:border-color .25s,box-shadow .25s,background .25s;}
-.g-seat.turn{border-color:rgba(245,200,66,.6);background:linear-gradient(180deg,rgba(245,200,66,.1),var(--surface) 70%);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
-.g-seat.lead::after{content:'👑';position:absolute;top:5px;right:7px;font-size:.75rem;}
-.g-seat-name{font-size:.78rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.g-seat.you .g-seat-name{color:var(--gold);}
-.g-seat-score{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-.g-seat-sub{font-size:.75rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.1em;}
-.g-meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
-.g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
-.g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
-.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
-.g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
-.g-status b{color:var(--text);}
-.g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
-.g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
-.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;}
-.g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
-.g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
-.g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
-.g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
-.g-choices .btn{min-height:44px;}
-.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
-.g-bar:empty{display:none;}
-.g-bar .btn{flex:1;max-width:280px;}
-.g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-.g-log summary{list-style:none;cursor:pointer;min-height:44px;padding:0 14px;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;color:var(--text-2);}
-.g-log summary::-webkit-details-marker{display:none;}
-.g-log summary .last{flex:1;min-width:0;font-weight:500;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
-.g-log summary::after{content:'';flex:none;width:7px;height:7px;border-right:2px solid var(--text-3);border-bottom:2px solid var(--text-3);transform:rotate(45deg);margin:-3px 2px 0 0;transition:transform .2s;}
-.g-log[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
-.g-log-body{padding:2px 14px 12px;font-size:.84rem;line-height:1.6;color:var(--text-2);max-height:200px;overflow-y:auto;}
-.g-log-body .pts{color:var(--gold);font-weight:600;}
-.g-log-body .bust{color:var(--red);}
-.g-log-body .flip7{color:var(--text);font-weight:700;}
-.g-result{text-align:center;padding:22px 16px 16px;border-radius:var(--r-lg);margin-bottom:12px;background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.04));border:1px solid rgba(245,200,66,.35);animation:gn-pop .4s var(--spring) both;}
-.g-result.plain{background:var(--surface);border-color:var(--line-2);}
-.g-result-icon{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.g-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);line-height:1.15;}
-.g-result.plain .g-result-title{color:var(--text);font-size:1.45rem;}
-.g-result-sub{color:var(--text-2);font-size:.92rem;margin-top:4px;}
-.g-rows{margin-top:14px;display:grid;gap:6px;text-align:left;}
-.g-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:.92rem;}
-.g-row > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.g-row.you > span:first-child{color:var(--gold);font-weight:700;}
-.g-row .r{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--text-3);font-size:.84rem;}
-.g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
-.g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
-.fp-nc-label{max-width:64px !important;}
-.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
-@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
-@media (min-width:700px){.page.g-page{max-width:620px;}}
-/* ai-base:end */
-
-/* ── Wizard ───────────────────────────────────────────────────────────── */
-.wz-hud{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
-.wz-hud .g-seat{padding:8px 4px 7px;}
-.wz-hud .g-seat-score{font-size:1.3rem;}
-.wz-bidline{font-size:.75rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
-.wz-bidline.hit{color:var(--green);} .wz-bidline.over{color:var(--red);}
-.wcard{--cw:clamp(42px,12.2vw,56px);width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;
-  background:linear-gradient(160deg,#fbf7ea,#ebe4cf);border:1px solid rgba(0,0,0,.12);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-family:var(--display);font-weight:800;box-shadow:0 3px 8px rgba(0,0,0,.35);
-  transition:transform .14s var(--ease),opacity .2s,box-shadow .2s;user-select:none;flex-shrink:0;position:relative;}
-.wcard.red{color:#c53030;}.wcard.black{color:#1a1a1a;}
-.wcard.wiz-card{background:linear-gradient(160deg,#fde68a,#d97706);color:#3b1d00;border-color:#f5c842;}
-.wcard.jest-card{background:linear-gradient(160deg,#bae6fd,#3b82f6);color:#082040;border-color:#93c5fd;}
-.wc-r{font-size:1.12rem;line-height:1;}
-.wc-s{font-size:.95rem;line-height:1;margin-top:2px;}
-.wcard .wc-tag{font-family:var(--font);font-size:.6rem;font-weight:800;letter-spacing:.04em;margin-top:3px;}
-.wcard.trump-card{box-shadow:0 0 0 2px rgba(192,132,252,.85),0 3px 8px rgba(0,0,0,.35);}
-.wcard.playable{cursor:pointer;}
-.wcard.playable:active{transform:translateY(-6px) scale(.97);}
-.wcard.unplayable{opacity:.4;filter:saturate(.6);}
-.wcard.sm{--cw:46px;}
-.wcard.win{box-shadow:0 0 0 3px var(--gold),0 8px 18px rgba(245,200,66,.35);}
-.wcard.drop{animation:wz-drop .28s var(--spring) both;}
-@keyframes wz-drop{from{transform:translateY(14px) scale(.9);opacity:0;}to{transform:none;opacity:1;}}
-.wz-hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:66px;}
-/* Trick table (compass layout) */
-.wz-trick{display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto auto;align-items:center;justify-items:center;gap:0 8px;}
-.wz-w,.wz-e{margin:-6px 0;}
-.wz-slot{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.wz-slot-name{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.75);max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wz-slot.turn .wz-slot-name{color:var(--gold);}
-.wz-slot.lead .wz-slot-name::after{content:' · led';color:rgba(255,255,255,.5);font-weight:600;}
-.wz-empty{--cw:46px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.18);}
-.wz-slot.turn .wz-empty{border-color:rgba(245,200,66,.7);animation:wz-pulse 1.3s ease-in-out infinite;}
-@keyframes wz-pulse{50%{border-color:rgba(245,200,66,.25);}}
-.wz-n{grid-column:2;grid-row:1;} .wz-w{grid-column:1;grid-row:2;justify-self:end;} .wz-e{grid-column:3;grid-row:2;justify-self:start;} .wz-s{grid-column:2;grid-row:3;}
-.wz-center{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:72px;}
-.wz-trump-big{font-size:1.9rem;line-height:1;}
-.wz-trump-big.red{color:#fca5a5;} .wz-trump-big.black{color:#f2f4f8;}
-.wz-center-lbl{font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
-.wz-trickno{font-size:.75rem;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;}
-/* Bids */
-.wz-bid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:8px;}
-.wz-bid-btn{min-height:48px;border-radius:12px;font-family:var(--display);font-size:1.15rem;font-weight:800;cursor:pointer;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text);transition:transform .1s,background .15s;}
-.wz-bid-btn:active{transform:scale(.94);background:var(--surface-3);}
-.wz-bid-hint{font-size:.8rem;color:var(--text-3);margin-top:10px;}
-.wz-trumps{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-.wz-trumps .btn{min-height:48px;}
-.wz-trumps .full{grid-column:1/-1;}
+.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+.ctable .felt-in{height:clamp(290px,47dvh,440px);}
+/* Seats for 3, 5 and 6 players (kit has n/s/e/w) */
+.cseat.nw,.cseat.ne{top:8px;transform:translateX(-50%);}
+.cseat .tag{max-width:112px;}
+.cseat .tag > span:last-child{overflow:hidden;text-overflow:ellipsis;}
+.many .cseat{min-width:0;}
+.many .cseat .tag{max-width:96px;font-size:.76rem;padding-right:8px;}
+.many .cseat .tag .avatar{width:22px;height:22px;}
+.cseat .backs{--cw:18px;}
+.cseat .backs .pcard+.pcard{margin-left:-13px;}
+.cseat.dealer .tag::after{content:'D';display:grid;place-items:center;width:17px;height:17px;margin-left:2px;border-radius:50%;background:#fff;color:#1d1b2e;font-size:.66rem;font-weight:900;flex:none;}
+.cseat .chip-s.made{background:var(--green);color:#06301a;}
+.cseat .chip-s.over{background:#ffb3bb;color:#7a0f1d;}
+.cseat .chip-s.tot{background:rgba(0,0,0,.45);color:#fff;}
+/* Trick: cards land toward whoever played them */
+.ctrick .pcard{margin:calc(var(--cw) * -.7) 0 0 calc(var(--cw) * -.5);}
+.ctrick .pcard.win{box-shadow:0 0 0 3px var(--yellow), 0 0 22px rgba(255,200,61,.75);}
+/* Trump corner + round corner on the felt */
+.trumpbox{position:absolute;left:10px;bottom:10px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:3px;--cw:40px;}
+.trumpbox .lbl2{font-size:.66rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);}
+.trumpbox .suit{font-size:.9rem;font-weight:900;color:#fff;background:rgba(0,0,0,.35);border-radius:999px;padding:1px 8px;white-space:nowrap;}
+.trumpbox .suit.red{color:#ff9aa8;}
+.trumpbox .none{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:5px;border:2px dashed rgba(255,255,255,.3);}
+.roundbox{position:absolute;right:10px;bottom:12px;z-index:2;text-align:right;color:#fff;line-height:1.15;}
+.roundbox b{display:block;font-family:var(--display);font-weight:400;font-size:1.25rem;letter-spacing:.02em;}
+.roundbox small{font-size:.72rem;font-weight:800;color:rgba(255,255,255,.7);}
+/* Wizard and Jester cards */
+.pcard.wz-wiz{background:radial-gradient(circle at 50% 38%,#5d47d6 0%,#2a1f6e 70%,#1a1248 100%);box-shadow:inset 0 0 0 calc(var(--cw) * .045) #e8c35a, 0 0 0 1px rgba(0,0,0,.2), 0 2px 0 rgba(0,0,0,.15), 0 6px 14px rgba(0,0,0,.3);}
+.pcard.wz-wiz .ix,.pcard.wz-wiz .lbl{color:#ffd76a !important;}
+.pcard.wz-jest{background:linear-gradient(160deg,#f2fff9 0%,#c9f1e4 100%);}
+.pcard.wz-jest .ix,.pcard.wz-jest .lbl{color:#0b6e5c;}
+.pcard.custom .big svg{width:calc(var(--cw) * .66);height:calc(var(--cw) * .66);margin-top:calc(var(--cw) * -.12);}
+.pcard.custom .ix{font-family:var(--display);font-weight:400;}
+.pcard.trump:not(.custom){box-shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 0 0 2px #e8c35a, 0 6px 14px rgba(0,0,0,.3);}
+/* Hand: two rows when you hold lots of cards */
+.hands{position:relative;}
+.hands .chand.top{padding-bottom:0;min-height:0;}
+.hands .chand.bottom{margin-top:calc(var(--cw) * -.75);padding-top:0;}
+.chand .pcard.deal{animation:dealin .45s var(--spring) both;}
+@keyframes dealin{from{transform:translateY(-120px) scale(.6) rotate(-10deg);opacity:0;}to{transform:none;opacity:1;}}
+/* Bid + trump pickers */
+.cbar{flex-direction:column;gap:8px;}
+.picker{width:100%;text-align:center;}
+.picker .q{font-weight:900;margin-bottom:2px;}
+.picker .sub{color:var(--text-3);font-size:.82rem;font-weight:700;margin-bottom:8px;}
+.bids{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;}
+.bids button{width:44px;height:44px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text);font-family:var(--display);font-size:1.3rem;box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.bids button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.bids button.sug{background:var(--accent);color:var(--accent-ink);}
+.bids button:disabled{opacity:.3;text-decoration:line-through;}
+.suits{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.suits button{height:56px;border:0;border-radius:14px;background:#fffaf0;color:#1d1b2e;font-size:1.8rem;font-weight:900;box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.suits button.red{color:#d81e3a;}
+/* Score summary */
+.sum{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
+.sum th,.sum td{padding:8px 4px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);}
+.sum th{font-size:.75rem;color:var(--text-3);font-weight:800;}
+.sum th:first-child,.sum td:first-child{text-align:left;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sum td.big{font-weight:900;font-size:1.15rem;}
+.sum td.pos{color:var(--green);font-weight:900;}
+.sum td.neg{color:var(--red);font-weight:900;}
+.sum tr.lead td:first-child,.sum tr.lead td.big{color:var(--yellow);}
+.grid{overflow-x:auto;margin-top:8px;}
+.grid table{border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.85rem;min-width:100%;}
+.grid th,.grid td{padding:6px 5px;text-align:center;border-bottom:1px solid rgba(255,255,255,.07);white-space:nowrap;}
+.grid td small{display:block;font-size:.7rem;color:var(--text-3);}
+.grid td.hit{color:var(--green);font-weight:900;}
+.grid td.miss{color:var(--red);font-weight:900;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Wizard</span>
-  <a class="icon-btn scorecard-link" href="wizard.html" aria-label="Scorecard" title="Scorecard for in-person play">📋</a>
-</nav>
-<div class="page g-page">
-<div id="wz-root"></div>
-</div>
-<div class="g-bar" id="g-bar"></div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-// 4 players: You + 3 AI · 15 rounds (60 cards / 4 players)
-const PNAMES=[(typeof FrequentPlayers!=='undefined'&&FrequentPlayers.myName())||'You','Sage','Merlin','Oracle'];
-const SUITS=['♠','♥','♦','♣'];
-const SUIT_LABELS={'♠':'Spades','♥':'Hearts','♦':'Diamonds','♣':'Clubs'};
-const RED=new Set(['♥','♦']);
-const RANK_ORD=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'wizard_state', KEY = 'wizard', PAD_KEY = 'wz';
+  var V = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
+  var SUITN = { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' };
+  var LAYOUT = { 3: ['s', 'nw', 'ne'], 4: ['s', 'w', 'n', 'e'], 5: ['s', 'w', 'nw', 'ne', 'e'], 6: ['s', 'w', 'nw', 'n', 'ne', 'e'] };
+  var TOPX = { 3: { nw: 27, ne: 73 }, 5: { nw: 30, ne: 70 }, 6: { nw: 19, ne: 81 } };
+  var VEC = { s: [0, 1, 3], w: [-1, 0, -8], e: [1, 0, 7], n: [0, -1, -4], nw: [-.72, -.78, -12], ne: [.72, -.78, 11] };
+  var WIZ_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 29.5 30h-19z" fill="#ffd76a"/><path d="M20 3 29.5 30h-6z" fill="#e0a92e"/><ellipse cx="20" cy="31" rx="16" ry="3.6" fill="#ffd76a"/><path d="m18 13 1.1 2.3 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z" fill="#2a1f6e"/><circle cx="22.5" cy="23" r="1.4" fill="#2a1f6e"/><path d="m33 7 .9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z" fill="#ffd76a"/><path d="m7 12 .6 1.4 1.4.6-1.4.6L7 16l-.6-1.4L5 14l1.4-.6z" fill="#ffd76a"/></svg>';
+  var JEST_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 29 5 11c5 2 8 6 10 11z" fill="#e5263f"/><path d="M31 29 35 11c-5 2-8 6-10 11z" fill="#e5263f"/><path d="M12 29 20 5l8 24z" fill="#0f9a80"/><rect x="8" y="27" width="24" height="6" rx="2" fill="#f2b230"/><circle cx="5" cy="10.5" r="2.6" fill="#f2b230"/><circle cx="35" cy="10.5" r="2.6" fill="#f2b230"/><circle cx="20" cy="4.5" r="2.6" fill="#f2b230"/><circle cx="14" cy="30" r="1.2" fill="#fff"/><circle cx="20" cy="30" r="1.2" fill="#fff"/><circle cx="26" cy="30" r="1.2" fill="#fff"/></svg>';
 
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-
-function makeWizDeck(){
-  const d=[];
-  SUITS.forEach(s=>RANK_ORD.forEach(r=>d.push({rank:r,suit:s,special:null})));
-  for(let i=0;i<4;i++) d.push({rank:'W',suit:'★',special:'wizard'});
-  for(let i=0;i<4;i++) d.push({rank:'J',suit:'🃏',special:'jester'});
-  // Every card gets a unique id — the 4 Wizards / 4 Jesters are otherwise identical,
-  // and removing "W★" from a hand used to remove all of them at once.
-  d.forEach((c,i)=>{c.id=i;});
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
-function cKey(c){return c.rank+c.suit+'#'+c.id;}
-function isWiz(c){return c.special==='wizard';}
-function isJest(c){return c.special==='jester';}
-
-let hands,scores,bids,taken,trick,trickLead,trump,trumpCard,phase,log,round,dealer,trickNum,choosingTrump;
-let trickWinner=-1, roundPts=[0,0,0,0], lastPlayKey=null;
-const TOTAL_ROUNDS=15;
-
-// One AI timer at a time (render() used to schedule extra AI moves on every redraw).
-let aiTimer=null;
-function scheduleAI(ms){clearTimeout(aiTimer);aiTimer=setTimeout(aiPlayCard,ms);}
-
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
-function newGame(){clearTimeout(aiTimer);scores=[0,0,0,0];log=[];round=0;dealer=3;nextRound();}
-
-function nextRound(){
-  round++;dealer=(dealer+1)%4;
-  const deck=makeWizDeck();
-  const n=round;
-  hands=Array.from({length:4},(_,i)=>sortHand(deck.slice(i*n,(i+1)*n)));
-  trumpCard=deck[4*n]||null;
-  // Determine trump
-  if(!trumpCard||isJest(trumpCard)){trump=null;}
-  else if(isWiz(trumpCard)){
-    trump=null; choosingTrump=true; // dealer chooses
-  } else {
-    trump=trumpCard.suit; choosingTrump=false;
-  }
-  bids=[-1,-1,-1,-1]; taken=[0,0,0,0]; roundPts=[0,0,0,0];
-  trick=[null,null,null,null]; trickLead=(dealer+1)%4; trickNum=0; trickWinner=-1;
-  phase='bid'; choosingTrump=choosingTrump&&dealer===0; // only player chooses
-  if(choosingTrump&&dealer===0){phase='choose-trump';}
-  else if(isWiz(trumpCard||{})&&dealer!==0){
-    // AI dealer chooses randomly
-    trump=SUITS[Math.floor(Math.random()*4)];choosingTrump=false;
-  }
-  addLog(`Round ${round} of ${TOTAL_ROUNDS}. ${n} card${n>1?'s':''} each. Trump: ${trump||'none'}.`);
-  render();
-  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
-  if(phase==='bid') setTimeout(startBidding,300);
-}
-// Display order only: suits grouped, trump first, then rank.
-function sortHand(h){
-  const so=c=>isWiz(c)?-2:isJest(c)?9:SUITS.indexOf(c.suit);
-  return h.sort((a,b)=>so(a)-so(b)||RANK_ORD.indexOf(b.rank)-RANK_ORD.indexOf(a.rank));
-}
-
-function startBidding(){
-  // AI bids
-  const startBidder=(dealer+1)%4;
-  for(let i=0;i<4;i++){
-    const p=(startBidder+i)%4;
-    if(p!==0) bids[p]=aiBid(p);
-  }
-  addLog(`Bids: ${PNAMES.map((n,i)=>i===0?'You: ?':n+': '+bids[i]).join(' · ')}`);
-  render();
-}
-
-function aiBid(p){
-  const h=hands[p];
-  let est=0;
-  h.forEach(c=>{
-    if(isWiz(c)){est+=1;}
-    else if(isJest(c)){}
-    else if(trump&&c.suit===trump)est+=0.7+(RANK_ORD.indexOf(c.rank)/20);
-    else if(c.rank==='A')est+=0.6;
-    else if(c.rank==='K')est+=0.35;
-    else est+=0.05;
+  Kit.init({
+    id: 'wizard',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(false); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [PAD_KEY], title: 'Wizard: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Guess <b>exactly</b> how many tricks you will win each round. Get it right and you score big. Highest score at the end wins.</p>' +
+      '<h3>The cards</h3><ul><li>A normal deck (2 is low, Ace is high) plus <b>4 Wizards</b> and <b>4 Jesters</b>: 60 cards.</li>' +
+      '<li><b>Wizard</b> always wins the trick. If two are played, the first one wins.</li>' +
+      '<li><b>Jester</b> always loses. If every card in the trick is a Jester, the first one wins.</li></ul>' +
+      '<h3>Rounds</h3><ul><li>Round 1 deals 1 card each, round 2 deals 2, and so on. You play 60 ÷ players rounds (15 rounds with 4 players).</li>' +
+      '<li>After dealing, the next card is turned over to pick <b>trump</b>. A Wizard means the dealer chooses trump. A Jester (or no card left in the last round) means no trump.</li></ul>' +
+      '<h3>Bidding</h3><p>Starting left of the dealer, everyone says how many tricks they think they will win.</p>' +
+      '<h3>Playing</h3><ul><li>The player left of the dealer leads first. Then the winner of each trick leads the next.</li>' +
+      '<li>You must <b>follow the suit</b> that was led if you can. A Wizard or Jester can be played any time, even if you could follow suit.</li>' +
+      '<li>If a Wizard is led, anyone can play anything. If a Jester is led, the next normal card sets the suit.</li>' +
+      '<li>The trick goes to the first Wizard, otherwise the highest trump, otherwise the highest card of the suit led.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>Hit your bid exactly: <b>20 points + 10 per trick</b>. (Bid 0 and take 0 = 20.)</li>' +
+      '<li>Miss: <b>lose 10 points for each trick</b> you were off, over or under.</li></ul>' +
+      '<p>On the table, a chip like <b>1 of 2</b> means that player has won 1 trick and bid 2.</p>'
   });
-  return Math.round(est);
-}
 
-function playerBid(n){
-  if(phase!=='bid'||bids.slice(1).some(b=>b<0)) return;
-  bids[0]=n;
-  haptic('select');
-  addLog(`You bid ${n}.`);
-  phase='play';
-  addLog(`All bids: ${PNAMES.map((n2,i)=>n2+': '+bids[i]).join(', ')}`);
-  render();
-  if(trickLead!==0) scheduleAI(600);
-}
-
-function playerChooseTrump(suit){
-  if(phase!=='choose-trump') return;
-  trump=suit; choosingTrump=false;
-  haptic('select');
-  addLog(`You choose ${trump||'no trump'}${trump?' as trump':''}.`);
-  phase='bid'; render(); setTimeout(startBidding,300);
-}
-
-// ── Play ─────────────────────────────────────────────────────────────────────
-function cardPower(c,ledSuit){
-  if(isWiz(c)) return 300;
-  if(isJest(c)) return -1;
-  if(trump&&c.suit===trump) return 100+RANK_ORD.indexOf(c.rank);
-  if(c.suit===ledSuit) return 50+RANK_ORD.indexOf(c.rank);
-  return RANK_ORD.indexOf(c.rank);
-}
-
-function validPlays(p){
-  const h=hands[p];
-  const led=trick.find(c=>c&&!isJest(c)&&!isWiz(c));
-  if(!led) return h;
-  const follow=h.filter(c=>c.suit===led.suit&&!isWiz(c)&&!isJest(c));
-  // Wizards and Jesters may always be played, even when you could follow suit.
-  return follow.length?h.filter(c=>follow.includes(c)||isWiz(c)||isJest(c)):h;
-}
-
-function aiPlayCard(){
-  if(phase!=='play') return;
-  const p=getNext();
-  if(p<0||p===0) return;
-  const valid=validPlays(p);
-  const led=trick.find(c=>c&&!isJest(c)&&!isWiz(c));
-  const ledSuit=led?.suit;
-  // Play wizards to win, jesters to lose, else simple greedy
-  const played=trick.map((c,i)=>c?{c,i}:null).filter(Boolean);
-  const currentBest=played.length?played.reduce((w,x)=>cardPower(x.c,ledSuit)>cardPower(w.c,ledSuit)?x:w,played[0]):null;
-  const needToWin=bids[p]>taken[p];
-  let card;
-  if(needToWin){
-    const canWin=valid.filter(c=>!currentBest||cardPower(c,ledSuit)>cardPower(currentBest.c,ledSuit));
-    card=canWin.length?[...canWin].sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0]
-      :[...valid].sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
-  } else {
-    // Play lowest
-    const nonWiz=valid.filter(c=>!isWiz(c));
-    card=[...(nonWiz.length?nonWiz:valid)].sort((a,b)=>cardPower(a,ledSuit)-cardPower(b,ledSuit))[0];
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [];
+  function N() { return S.players.length; }
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set('Round ' + S.round + ' of ' + S.nRounds + ' · you have ' + S.players[0].total);
   }
-  playCard(p,card||valid[0]);
-}
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
-function getNext(){
-  if(trick.filter(c=>c).length===4) return -1;
-  for(let i=0;i<4;i++){const p=(trickLead+i)%4;if(!trick[p])return p;}
-  return -1;
-}
+  function showSetup() {
+    S = null; token++; undoStack = [];
+    Kit.setup(app, {
+      players: { min: 3, max: 6, count: 4, cpu: 'seats', label: 'Players (you + computers)' },
+      options: [
+        { id: 'len', label: 'Game length', value: 'full', choices: [['full', 'Full · 60 ÷ players'], ['half', 'Half']] },
+        { id: 'hook', label: 'Total bids', value: 'any', choices: [['any', 'Any total (standard)'], ['no', "Can't equal tricks"]] }
+      ],
+      onStart: function (cfg) { newGame(cfg.players, cfg.options); }
+    });
+  }
+  function newGame(players, options) {
+    var n = players.length, full = Math.floor(60 / n);
+    S = {
+      opts: { len: options.len || 'full', hook: options.hook || 'any' },
+      nRounds: options.len === 'half' ? Math.ceil(full / 2) : full,
+      round: 0, dealer: Math.floor(Math.random() * n), rounds: [], detail: [], highlights: [], started: Date.now(),
+      wizPlayed: players.map(function () { return 0; }),
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; })
+    };
+    S.dealer = (S.dealer + n - 1) % n; // newRound moves it on one
+    undoStack = []; Kit.gameStart(); newRound();
+  }
 
-function playerPlay(card){
-  if(phase!=='play'||getNext()!==0) return;
-  if(!validPlays(0).some(c=>cKey(c)===cKey(card))){ haptic('error'); if(window.GN) GN.toast('You must follow the led suit'); return; }
-  haptic('light');
-  playCard(0,card);
-}
+  // ── Cards ─────────────────────────────────────────────────────────────────
+  function makeDeck() {
+    var d = Cards.deck();
+    for (var i = 0; i < 4; i++) { d.push({ r: 'W', s: 'W', k: 'w', id: 'w' + i }); d.push({ r: 'J', s: 'X', k: 'j', id: 'j' + i }); }
+    return Cards.shuffle(d);
+  }
+  function isW(c) { return c && c.k === 'w'; }
+  function isJ(c) { return c && c.k === 'j'; }
+  function cardEl(c, cls) {
+    var n;
+    if (isW(c)) n = Kit.cardFace({ rank: 'W', label: 'Wizard', html: WIZ_SVG, cls: 'wz-wiz' + (cls ? ' ' + cls : ''), aria: 'Wizard' });
+    else if (isJ(c)) n = Kit.cardFace({ rank: 'J', label: 'Jester', html: JEST_SVG, cls: 'wz-jest' + (cls ? ' ' + cls : ''), aria: 'Jester' });
+    else { n = Cards.el(c, { cls: (cls || '') + (S && S.trump && c.s === S.trump ? ' trump' : '') }); }
+    n.dataset.id = c.id;
+    return n;
+  }
+  function cardName(c) { return isW(c) ? 'Wizard' : isJ(c) ? 'Jester' : Cards.label(c); }
+  function sortHand(h) {
+    var order = ['s', 'h', 'c', 'd'];
+    if (S.trump) { order = order.filter(function (s) { return s !== S.trump; }); order.unshift(S.trump); }
+    function key(c) { return isW(c) ? -1 : isJ(c) ? 9 : order.indexOf(c.s); }
+    h.sort(function (a, b) { return key(a) - key(b) || (V[a.r] || 0) - (V[b.r] || 0); });
+  }
+  function find(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return i; return -1; }
 
-function playCard(p,card){
-  trick[p]=card;
-  lastPlayKey=cKey(card);
-  hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
-  render();
-  if(trick.filter(c=>c).length===4){
-    // Find winner: first wizard, else highest in led suit/trump, jesters lose
-    let winner=trickLead;
-    let ledSuit=null;
-    // Determine led suit (first non-jester)
-    for(let i=0;i<4;i++){const c=trick[(trickLead+i)%4];if(c&&!isJest(c)){ledSuit=c.suit;break;}}
-    for(let i=0;i<4;i++){
-      const p=(trickLead+i)%4;
-      if(isWiz(trick[p])){winner=p;break;} // first wizard wins
+  // Suit that must be followed: the first normal card, unless a Wizard came first.
+  function ledSuit(trick) {
+    for (var i = 0; i < trick.length; i++) { var c = trick[i].c; if (isW(c)) return null; if (!isJ(c)) return c.s; }
+    return null;
+  }
+  function legal(p) {
+    var h = S.hands[p], led = ledSuit(S.trick);
+    if (!led) return h.slice();
+    var follow = h.filter(function (c) { return !c.k && c.s === led; });
+    if (!follow.length) return h.slice();
+    return h.filter(function (c) { return c.k || c.s === led; });
+  }
+  // Index (into trick) of the card that wins it
+  function winnerIdx(trick) {
+    var i;
+    for (i = 0; i < trick.length; i++) if (isW(trick[i].c)) return i;
+    var led = ledSuit(trick), best = -1, bv = -1;
+    for (i = 0; i < trick.length; i++) {
+      var c = trick[i].c; if (c.k) continue;
+      var v = c.s === S.trump ? 100 + V[c.r] : c.s === led ? 50 + V[c.r] : 0;
+      if (v > bv) { bv = v; best = i; }
     }
-    if(!trick.slice().some(c=>c&&isWiz(c))){
-      // No wizard: highest trump or led suit wins
-      winner=trick.reduce((wi,c,i)=>{
-        if(!c) return wi;
-        return cardPower(c,ledSuit)>cardPower(trick[wi]||{rank:'2',suit:'x'},ledSuit)?i:wi;
-      },trickLead);
+    return best < 0 ? 0 : best;
+  }
+
+  // ── Round flow ────────────────────────────────────────────────────────────
+  function newRound() {
+    var n = N();
+    S.round++; S.dealer = (S.dealer + 1) % n;
+    var d = makeDeck(), k = S.round;
+    S.hands = [];
+    for (var p = 0; p < n; p++) S.hands.push(d.slice(p * k, (p + 1) * k));
+    S.trumpCard = d[n * k] || null;
+    S.trump = S.trumpCard && !S.trumpCard.k ? S.trumpCard.s : null;
+    S.bids = S.players.map(function () { return null; });
+    S.taken = S.players.map(function () { return 0; });
+    S.trick = []; S.trickNo = 0; S.lastWin = -1;
+    S.turn = (S.dealer + 1) % n; S.leader = S.turn;
+    S.phase = isW(S.trumpCard) ? 'trump' : 'bid';
+    S.hands.forEach(sortHand);
+    S.dealt = true;
+    clearUndo(); save(); render();
+    Kit.sfx('deal'); setTimeout(function () { Kit.sfx('flip'); }, 420);
+    if (isW(S.trumpCard)) flash(S.dealer === 0 ? 'A Wizard! You pick trump' : 'A Wizard! ' + S.players[S.dealer].name + ' picks trump', 2000);
+    else if (isJ(S.trumpCard)) flash('A Jester: no trump this round', 1800);
+    else if (!S.trumpCard) flash('Last round: no trump', 1800);
+    var t = token;
+    setTimeout(function () { if (t === token) next(); }, 700);
+  }
+
+  function next() {
+    if (!S) return;
+    paintSeats(); paintHand(); paintMsg();
+    var p = S.turn, t = token;
+    if (S.phase === 'trump') {
+      if (S.players[S.dealer].cpu) setTimeout(function () { if (t === token && S.phase === 'trump') chooseTrump(cpuTrump(S.dealer)); }, 900);
+    } else if (S.phase === 'bid') {
+      if (S.players[p].cpu) setTimeout(function () { if (t === token && S.phase === 'bid' && S.turn === p) makeBid(p, cpuBid(p)); }, 650 + Math.random() * 300);
+    } else if (S.phase === 'play') {
+      if (S.players[p].cpu && S.trick.length < N()) setTimeout(function () { if (t === token && S.phase === 'play' && S.turn === p) play(p, cpuPlay(p)); }, 560 + Math.random() * 300);
     }
-    taken[winner]++; trickNum++; trickWinner=winner;
-    addLog(`${PNAMES[winner]} wins trick ${trickNum}.`);
-    if(winner===0) haptic('medium');
+  }
+
+  function chooseTrump(suit) {
+    S.trump = suit; S.phase = 'bid'; S.hands.forEach(sortHand);
+    Kit.sfx('pop');
+    seatSay(S.dealer, 'Trump: ' + Cards.GLYPH[suit]);
+    save(); paintTrump(); next();
+  }
+  function forbiddenBid(p) {
+    if (S.opts.hook !== 'no' || p !== S.dealer) return -1;
+    var sum = 0; S.bids.forEach(function (b, i) { if (i !== p && b != null) sum += b; });
+    var f = S.round - sum; return f >= 0 ? f : -1;
+  }
+  function makeBid(p, b) {
+    S.bids[p] = b;
+    seatSay(p, 'Bid ' + b);
+    Kit.sfx('chip');
+    if (S.bids.every(function (x) { return x != null; })) {
+      S.phase = 'play'; S.turn = (S.dealer + 1) % N(); S.leader = S.turn;
+      var tot = S.bids.reduce(function (a, x) { return a + x; }, 0);
+      flash(tot === S.round ? 'Bids add up exactly: ' + tot : tot > S.round ? tot + ' bid for ' + S.round + ' tricks: overbid' : tot + ' bid for ' + S.round + ' tricks: underbid', 1800);
+    } else S.turn = (p + 1) % N();
+    save(); next();
+  }
+
+  function play(p, card) {
+    if (!S || S.phase !== 'play' || S.turn !== p) return;
+    var i = find(S.hands[p], card.id); if (i < 0) return;
+    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    S.hands[p].splice(i, 1);
+    S.trick.push({ p: p, c: card });
+    if (isW(card)) { Kit.sfx('pop'); S.wizPlayed[p]++; } else Kit.sfx('flip');
+    var node = trickCard(S.trick.length - 1);
+    trickEl.appendChild(node);
+    Cards.fly(node, from, { ms: 340, endRot: VEC[pos(p)][2] });
+    if (p === 0) paintHand();
+    if (S.trick.length === N()) { S.turn = -1; save(); paintSeats(); paintBar(); var t = token; setTimeout(function () { if (t === token) resolveTrick(); }, 850); }
+    else { S.turn = (p + 1) % N(); save(); next(); }
+  }
+  function resolveTrick() {
+    var t = token;
+    var wi = winnerIdx(S.trick), win = S.trick[wi];
+    S.taken[win.p]++;
+    var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
+    if (win.p === 0) { Kit.haptic('medium'); Kit.sfx('good'); }
+    var b = S.bids[win.p];
+    seatSay(win.p, S.taken[win.p] === b ? 'Got ' + b + '!' : S.taken[win.p] > b ? 'One too many' : '+1 trick');
+    paintSeats();
+    setTimeout(function () {
+      if (t !== token) return;
+      var dest = seatEls[win.p].querySelector('.tag').getBoundingClientRect(), box = trickEl.getBoundingClientRect();
+      Array.prototype.forEach.call(trickEl.children, function (n) {
+        n.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+        n.style.transform = 'translate(' + (dest.left - box.left) + 'px,' + (dest.top - box.top) + 'px) scale(.35)';
+        n.style.opacity = '0';
+      });
+      Kit.sfx('whoosh');
+      setTimeout(function () {
+        if (t !== token) return;
+        trickEl.innerHTML = '';
+        S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
+        if (S.trickNo === S.round) endRound(); else { save(); next(); }
+      }, 380);
+    }, 750);
+  }
+
+  function score(bid, took) { return bid === took ? 20 + 10 * bid : -10 * Math.abs(bid - took); }
+  function endRound() {
+    var pts = S.players.map(function (pl, i) { return score(S.bids[i], S.taken[i]); });
+    pts.forEach(function (v, i) { S.players[i].total += v; });
+    S.rounds.push(pts);
+    S.detail.push({ bids: S.bids.slice(), took: S.taken.slice() });
+    S.phase = 'roundover';
+    clearUndo(); save();
+    paintSeats(); paintBar();
+    if (pts[0] > 0) { Kit.callout(S.bids[0] >= 3 ? 'Nailed ' + S.bids[0] + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
+    else { Kit.sfx('bad'); Kit.haptic('error'); }
+    var t = token;
+    setTimeout(function () { if (t === token) { S.round >= S.nRounds ? finish() : showScores(true); } }, 1100);
+  }
+
+  // ── Score sheets ──────────────────────────────────────────────────────────
+  function showScores(between) {
+    var node = el('div');
+    var hi = Math.max.apply(null, S.players.map(function (p) { return p.total; }));
+    if (S.rounds.length) {
+      var last = S.detail[S.detail.length - 1], lastPts = S.rounds[S.rounds.length - 1];
+      var t = el('table', { class: 'sum' });
+      t.appendChild(el('tr', null, ['', 'Bid', 'Took', 'Round', 'Total'].map(function (h) { return el('th', { text: h }); })));
+      S.players.forEach(function (p, i) {
+        t.appendChild(el('tr', { class: p.total === hi ? 'lead' : '' }, [
+          el('td', { text: p.name }), el('td', { text: String(last.bids[i]) }), el('td', { text: String(last.took[i]) }),
+          el('td', { class: lastPts[i] > 0 ? 'pos' : 'neg', text: (lastPts[i] > 0 ? '+' : '') + lastPts[i] }),
+          el('td', { class: 'big', text: String(p.total) })
+        ]));
+      });
+      node.appendChild(el('p', { class: 'muted', text: between ? 'Next: round ' + (S.round + 1) + ' of ' + S.nRounds + ', ' + (S.round + 1) + ' cards each.' : 'Round ' + S.rounds.length + ' of ' + S.nRounds + ' (last round shown).' }));
+      node.appendChild(t);
+      if (!between && S.rounds.length > 1) node.appendChild(roundGrid());
+    } else node.appendChild(el('p', { class: 'muted', text: 'No rounds finished yet.' }));
+    Kit.sheet({
+      title: between ? 'Round ' + S.round + ' done' : 'Scores', node: node, dismissible: !between,
+      actions: between ? [{ label: 'Deal round ' + (S.round + 1), primary: true, onClick: function () { newRound(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
+    });
+  }
+  function roundGrid() {
+    var t = el('table'), hr = el('tr', null, [el('th', { text: '' })]);
+    S.players.forEach(function (p, i) { hr.appendChild(el('th', { text: p.name.length > 8 ? p.name.slice(0, 7) + '…' : p.name, style: { color: Kit.color(i) } })); });
+    t.appendChild(hr);
+    S.detail.forEach(function (d, ri) {
+      var tr = el('tr', null, [el('th', { text: String(ri + 1) })]);
+      d.bids.forEach(function (b, i) {
+        var v = S.rounds[ri][i];
+        tr.appendChild(el('td', { class: v > 0 ? 'hit' : 'miss', html: (v > 0 ? '+' : '') + v + '<small>' + b + ' / ' + d.took[i] + '</small>' }));
+      });
+      t.appendChild(tr);
+    });
+    return el('div', { class: 'grid' }, [el('div', { class: 'muted', style: { 'font-size': '.8rem' }, text: 'Each round: points, then bid / took' }), t]);
+  }
+
+  // ── Game end + highlights ─────────────────────────────────────────────────
+  function buildHighlights() {
+    var out = [], P = S.players, D = S.detail, n = P.length;
+    function nm(i) { return P[i].name; }
+    // Longest run of exact bids
+    var best = { len: 0 };
+    for (var i = 0; i < n; i++) {
+      var run = 0;
+      D.forEach(function (d, ri) { run = d.bids[i] === d.took[i] ? run + 1 : 0; if (run > best.len) best = { len: run, i: i, end: ri + 1 }; });
+    }
+    if (best.len >= 3) out.push(nm(best.i) + ' nailed ' + best.len + ' bids in a row' + (best.end === D.length ? ' to finish the game' : ''));
+    // Biggest miss
+    var miss = { d: 0 };
+    D.forEach(function (d, ri) { d.bids.forEach(function (b, j) { var x = Math.abs(b - d.took[j]); if (x > miss.d || (x === miss.d && b > miss.b)) miss = { d: x, i: j, b: b, t: d.took[j], r: ri + 1 }; }); });
+    if (miss.d >= 2) out.push(nm(miss.i) + ' bid ' + miss.b + ' and took ' + miss.t + ' in round ' + miss.r);
+    // Biggest bid made exactly
+    var made = { b: 0 };
+    D.forEach(function (d, ri) { d.bids.forEach(function (b, j) { if (b === d.took[j] && b > made.b) made = { b: b, i: j, r: ri + 1 }; }); });
+    if (made.b >= 3) out.push(nm(made.i) + ' bid ' + made.b + ' and got exactly ' + made.b + ' in round ' + made.r + ' (+' + score(made.b, made.b) + ')');
+    // Most rounds hit
+    var hits = P.map(function (p, j) { return D.filter(function (d) { return d.bids[j] === d.took[j]; }).length; });
+    var top = hits.indexOf(Math.max.apply(null, hits));
+    if (D.length >= 3) out.push(nm(top) + ' hit their bid in ' + hits[top] + ' of ' + D.length + ' rounds');
+    // Zero bids that worked late in the game
+    var zero = null;
+    D.forEach(function (d, ri) { d.bids.forEach(function (b, j) { if (b === 0 && d.took[j] === 0 && ri + 1 >= 5 && (!zero || ri + 1 > zero.r)) zero = { i: j, r: ri + 1 }; }); });
+    if (zero && out.length < 5) out.push(nm(zero.i) + ' bid zero with ' + zero.r + ' cards and dodged every trick');
+    var wz = S.wizPlayed.indexOf(Math.max.apply(null, S.wizPlayed));
+    if (S.wizPlayed[wz] >= 4 && out.length < 5) out.push(nm(wz) + ' played ' + S.wizPlayed[wz] + ' Wizards');
+    return out.concat(S.highlights);
+  }
+  function finish() {
+    S.phase = 'over';
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.score - a.score; });
+    var tie = rank[1].score === rank[0].score;
+    var youWin = rank[0].score === S.players[0].total;
+    Kit.record(KEY, {
+      started: S.started, mode: 'vs Computer',
+      players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+      winner: tie ? null : rank[0].name,
+      rounds: { labels: S.rounds.map(function (r, i) { return 'R' + (i + 1); }), scores: S.rounds },
+      highlights: buildHighlights().concat([S.rounds.length + ' rounds with ' + S.players.length + ' players' + (S.opts.hook === 'no' ? ", bids couldn't equal tricks" : '')])
+    });
+    clearSave();
+    Kit.win({
+      title: tie ? (youWin ? 'Tied for the win!' : "It's a tie!") : rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
+      sub: 'After ' + S.rounds.length + ' rounds', rank: rank, lose: !youWin, icon: youWin ? 'trophy' : 'bot',
+      again: function () {
+        newGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.opts);
+      },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Computer players (they only look at their own hand and the table) ─────
+  function cpuTrump(p) {
+    var w = { s: 0, h: 0, d: 0, c: 0 };
+    S.hands[p].forEach(function (c) { if (!c.k) w[c.s] += 1 + V[c.r] / 14; });
+    return Object.keys(w).sort(function (a, b) { return w[b] - w[a] || Math.random() - .5; })[0];
+  }
+  function cpuBid(p) {
+    var h = S.hands[p], n = N(), k = h.length, est = 0;
+    var crowd = Math.sqrt(4 / n), trumps = h.filter(function (c) { return !c.k && c.s === S.trump; }).length;
+    h.forEach(function (c) {
+      if (isW(c)) est += 0.95;
+      else if (isJ(c)) est += 0;
+      else if (S.trump && c.s === S.trump) est += Math.max(0.12, (V[c.r] - 5) / 9.5) + (trumps >= 3 ? 0.1 : 0);
+      else if (c.r === 'A') est += (S.trump ? 0.62 : 0.8) * crowd * (k > 6 ? 0.9 : 1);
+      else if (c.r === 'K') est += (S.trump ? 0.32 : 0.5) * crowd * (k > 6 ? 0.85 : 1);
+      else if (c.r === 'Q' && !S.trump) est += 0.2 * crowd;
+    });
+    var b = Math.round(est + (Math.random() - .5) * 0.6);
+    b = Math.max(0, Math.min(k, b));
+    var f = forbiddenBid(p);
+    if (b === f) b = est > b || b === 0 ? b + 1 : b - 1;
+    return Math.max(0, Math.min(k, b));
+  }
+  function strength(c, led) { return isW(c) ? 200 : isJ(c) ? 0 : c.s === S.trump ? 100 + V[c.r] : c.s === led ? 50 + V[c.r] : V[c.r]; }
+  function cpuPlay(p) {
+    var opts = legal(p), need = S.bids[p] - S.taken[p], led = ledSuit(S.trick);
+    function by(a, f) { return a.slice().sort(function (x, y) { return f(x) - f(y); }); }
+    function st(c) { return strength(c, led || c.s); }
+    if (!S.trick.length) {
+      var normal = opts.filter(function (c) { return !c.k; });
+      if (need > 0) {
+        var wz = opts.filter(isW); if (wz.length && need >= wz.length) return wz[0];
+        var strong = normal.filter(function (c) { return (c.s === S.trump && V[c.r] >= 12) || (!S.trump || c.s !== S.trump) && c.r === 'A'; });
+        if (strong.length) return by(strong, st).pop();
+        if (wz.length) return wz[0];
+        return normal.length ? by(normal, st)[0] : opts[0];
+      }
+      var jest = opts.filter(isJ); if (jest.length) return jest[0];
+      var safe = normal.filter(function (c) { return c.s !== S.trump; });
+      return by(safe.length ? safe : (normal.length ? normal : opts), st)[0];
+    }
+    var wins = [], loses = [];
+    opts.forEach(function (c) { (winnerIdx(S.trick.concat([{ p: p, c: c }])) === S.trick.length ? wins : loses).push(c); });
+    var last = S.trick.length === N() - 1;
+    if (need > 0) {
+      if (wins.length) {
+        var w = by(wins, st);
+        // Not last to play: a middling winner can still be beaten, so lean on stronger cards
+        if (!last && w.length > 1 && st(w[0]) < 60 && Math.random() < .6) return w[w.length - 1].k === 'w' && w.length > 1 ? w[w.length - 2] : w[w.length - 1];
+        return w[0];
+      }
+      return by(loses, st)[0];
+    }
+    if (loses.length) {
+      var real = loses.filter(function (c) { return !c.k; });
+      return real.length ? by(real, st).pop() : loses[0];
+    }
+    return by(wins, st).pop();
+  }
+
+  // ── Undo (your last bid, trump pick or card this round) ───────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function clearUndo() { undoStack = []; }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to undo this round');
+    token++; S = JSON.parse(undoStack.pop()); S.dealt = false;
+    Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var seatEls = [], trickEl, handEl, barEl, msgEl, trumpEl, roundEl;
+  function pos(p) { return LAYOUT[N()][p]; }
+  function render() {
+    app.innerHTML = '';
+    var n = N();
+    var table = el('div', { class: 'ctable wood' + (n >= 5 ? ' many' : '') }), felt = el('div', { class: 'felt-in' });
+    seatEls = S.players.map(function (pl, p) {
+      var ps = pos(p), s = el('div', { class: 'cseat ' + ps });
+      if (TOPX[n] && TOPX[n][ps] != null) s.style.left = TOPX[n][ps] + '%';
+      if (n === 6 && (ps === 'w' || ps === 'e')) s.style.top = '50%';
+      felt.appendChild(s); return s;
+    });
+    trickEl = el('div', { class: 'ctrick' });
+    msgEl = el('div', { class: 'cmsg', hidden: true });
+    trumpEl = el('div', { class: 'trumpbox' });
+    roundEl = el('div', { class: 'roundbox' });
+    [trickEl, msgEl, trumpEl, roundEl].forEach(function (x) { felt.appendChild(x); });
+    table.appendChild(felt);
+    app.appendChild(table);
+    handEl = el('div', { class: 'hands' });
+    app.appendChild(handEl);
+    barEl = el('div', { class: 'cbar' });
+    app.appendChild(barEl);
+    S.trick.forEach(function (t, i) { trickEl.appendChild(trickCard(i)); });
+    paintTrump(); paintSeats(); paintHand(); paintMsg();
+    if (S.phase === 'roundover') setTimeout(function () { S.round >= S.nRounds ? finish() : showScores(true); }, 250);
+  }
+  function trickCard(i) {
+    var t = S.trick[i], v = VEC[pos(t.p)], n = cardEl(t.c);
+    n.style.left = (v[0] * 50) + 'px'; n.style.top = (v[1] * 42) + 'px';
+    n.style.transform = 'rotate(' + v[2] + 'deg)'; n.style.zIndex = String(i + 1);
+    return n;
+  }
+  function paintTrump() {
+    trumpEl.innerHTML = '';
+    trumpEl.appendChild(el('span', { class: 'lbl2', text: 'Trump' }));
+    trumpEl.appendChild(S.trumpCard ? cardEl(S.trumpCard) : el('div', { class: 'none' }));
+    var red = S.trump === 'h' || S.trump === 'd';
+    trumpEl.appendChild(el('span', { class: 'suit' + (red ? ' red' : ''), text: S.trump ? Cards.GLYPH[S.trump] + ' ' + SUITN[S.trump] : S.phase === 'trump' ? 'Choosing…' : 'None' }));
+    roundEl.innerHTML = '';
+    roundEl.appendChild(el('small', { text: 'Round' }));
+    roundEl.appendChild(el('b', { text: S.round + ' / ' + S.nRounds }));
+    roundEl.appendChild(el('small', { text: S.phase === 'play' ? 'Trick ' + Math.min(S.trickNo + 1, S.round) + ' of ' + S.round : S.round + (S.round === 1 ? ' card' : ' cards') }));
+  }
+  function paintSeats() {
+    var n = N();
+    S.players.forEach(function (pl, p) {
+      var s = seatEls[p]; s.innerHTML = '';
+      s.classList.toggle('turn', (S.phase === 'play' || S.phase === 'bid') && S.turn === p || S.phase === 'trump' && S.dealer === p);
+      s.classList.toggle('dealer', S.dealer === p);
+      var tag = el('div', { class: 'tag' }, [
+        el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        el('span', { text: p === 0 ? 'You' : pl.name })
+      ]);
+      var b = S.bids[p], tk = S.taken[p], bidTxt, cls = 'chip-s';
+      if (b == null) bidTxt = S.phase === 'bid' && S.turn === p ? 'bidding' : 'no bid';
+      else if (S.phase === 'bid') bidTxt = 'bid ' + b;
+      else { bidTxt = tk + ' of ' + b; cls += tk === b ? ' made' : tk > b ? ' over' : ''; }
+      var info = el('div', { class: 'info' }, [el('span', { class: cls, text: bidTxt }), el('span', { class: 'chip-s tot', text: String(pl.total) })]);
+      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      else {
+        s.appendChild(tag); s.appendChild(info);
+        if (S.hands && S.hands[p].length) {
+          var backs = el('div', { class: 'backs' });
+          for (var k = 0; k < Math.min(S.hands[p].length, n >= 5 ? 4 : 6); k++) backs.appendChild(Kit.card('', '', { back: true }));
+          s.appendChild(backs);
+        }
+      }
+    });
+    if (roundEl) paintRoundOnly();
+  }
+  function paintRoundOnly() {
+    var sm = roundEl.querySelectorAll('small')[1];
+    if (sm) sm.textContent = S.phase === 'play' ? 'Trick ' + Math.min(S.trickNo + 1, S.round) + ' of ' + S.round : S.round + (S.round === 1 ? ' card' : ' cards');
+  }
+  function paintHand() {
+    handEl.innerHTML = '';
+    var mine = S.hands ? S.hands[0] : [];
+    var ok = S.phase === 'play' && S.turn === 0 && S.trick.length < N() ? legal(0).map(function (c) { return c.id; }) : null;
+    var rows = mine.length > 12 ? [mine.slice(0, Math.ceil(mine.length / 2)), mine.slice(Math.ceil(mine.length / 2))] : [mine];
+    var deal = S.dealt; S.dealt = false;
+    rows.forEach(function (row, ri) {
+      var h = el('div', { class: 'chand' + (rows.length > 1 ? (ri ? ' bottom' : ' top') : '') });
+      row.forEach(function (c, ci) {
+        var nd = cardEl(c, deal ? 'deal' : '');
+        if (deal) nd.style.animationDelay = (ci * 45 + ri * 120) + 'ms';
+        if (ok) {
+          if (ok.indexOf(c.id) >= 0) { nd.classList.add('play'); nd.addEventListener('click', function () { snapshot(); play(0, c); }); }
+          else { nd.classList.add('dim'); nd.addEventListener('click', function () { Kit.haptic('error'); Kit.toast('Follow suit: play ' + SUITN[ledSuit(S.trick)].toLowerCase() + ', a Wizard or a Jester'); }); }
+        }
+        h.appendChild(nd);
+      });
+      handEl.appendChild(h);
+    });
+    requestAnimationFrame(fanAll);
+    paintBar();
+  }
+  function fanAll() { if (handEl) Array.prototype.forEach.call(handEl.querySelectorAll('.chand'), function (h) { Cards.fan(h); }); }
+  function paintBar() {
+    barEl.innerHTML = '';
+    if (!S) return;
+    if (S.phase === 'trump' && S.dealer === 0) {
+      var box = el('div', { class: 'picker' }, [el('div', { class: 'q', text: 'You turned up a Wizard. Pick trump:' }), el('div', { class: 'sub', text: 'Choose the suit you have the most good cards in.' })]);
+      var g = el('div', { class: 'suits' });
+      ['s', 'h', 'd', 'c'].forEach(function (s) {
+        g.appendChild(el('button', { type: 'button', class: s === 'h' || s === 'd' ? 'red' : '', 'aria-label': SUITN[s], text: Cards.GLYPH[s], onclick: function () { snapshot(); Kit.haptic('light'); chooseTrump(s); } }));
+      });
+      box.appendChild(g); barEl.appendChild(box);
+    } else if (S.phase === 'bid' && S.turn === 0) {
+      var sum = 0, cnt = 0; S.bids.forEach(function (b) { if (b != null) { sum += b; cnt++; } });
+      var f = forbiddenBid(0);
+      var pk = el('div', { class: 'picker' }, [
+        el('div', { class: 'q', text: 'How many tricks will you win?' }),
+        el('div', { class: 'sub', text: (cnt ? 'Others bid ' + sum + ' so far · ' : '') + S.round + (S.round === 1 ? ' trick' : ' tricks') + ' this round' + (f >= 0 ? ' · dealer can\'t bid ' + f : '') })
+      ]);
+      var bids = el('div', { class: 'bids' });
+      for (var i = 0; i <= S.round; i++) (function (i) {
+        var bt = el('button', { type: 'button', text: String(i), onclick: function () { snapshot(); Kit.haptic('light'); makeBid(0, i); } });
+        if (i === f) bt.disabled = true;
+        bids.appendChild(bt);
+      })(i);
+      pk.appendChild(bids); barEl.appendChild(pk);
+    } else if (S.phase === 'play') {
+      barEl.appendChild(el('span', { class: 'hint', text: S.turn === 0 ? (S.trick.length ? 'Your turn: follow suit if you can' : 'Your lead: play any card') : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '' }));
+    } else if (S.phase === 'bid') {
+      barEl.appendChild(el('span', { class: 'hint', text: S.players[S.turn].name + ' is bidding…' }));
+    } else if (S.phase === 'trump') {
+      barEl.appendChild(el('span', { class: 'hint', text: S.players[S.dealer].name + ' is picking trump…' }));
+    }
+  }
+  var flashT = null, flashMsg = '';
+  function paintMsg() {
+    var m = flashMsg;
+    if (!m && S.phase === 'bid' && S.turn === 0) m = 'Your bid';
+    msgEl.hidden = !m; msgEl.textContent = m;
+    paintRoundOnly();
+  }
+  function flash(t, ms) { flashMsg = t; clearTimeout(flashT); if (msgEl) paintMsg(); flashT = setTimeout(function () { flashMsg = ''; if (msgEl) paintMsg(); }, ms || 1600); }
+  function seatSay(p, t) {
+    var s = seatEls[p]; if (!s) return;
+    var old = s.querySelector('.say'); if (old) old.remove();
+    var b = el('div', { class: 'say', text: t }); s.appendChild(b);
+    setTimeout(function () { b.remove(); }, 1400);
+  }
+  window.addEventListener('resize', fanAll);
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.hands && saved.phase !== 'over') {
+    S = saved; S.dealt = false;
     render();
-    setTimeout(()=>{
-      trick=[null,null,null,null];trickLead=winner;trickWinner=-1;
-      if(trickNum===round){scoreRound();}
-      else{render();if(winner!==0)scheduleAI(500);}
-    },1100);
-  } else {
-    const next=getNext();
-    if(next>0) scheduleAI(550);
-  }
-}
-
-function scoreRound(){
-  let msgs=[];
-  for(let p=0;p<4;p++){
-    const diff=Math.abs(bids[p]-taken[p]);
-    let pts=bids[p]===taken[p]?20+bids[p]*10:-10*diff;
-    scores[p]+=pts; roundPts[p]=pts;
-    msgs.push(`${PNAMES[p]}: bid ${bids[p]}, took ${taken[p]} → ${pts>0?'+':''}${pts}`);
-  }
-  msgs.forEach(m=>addLog(m,'pts'));
-  phase='round-end';
-  haptic(roundPts[0]>0?'success':'light');
-  if(round===TOTAL_ROUNDS){phase='game-over';endGame();}
-  else render();
-}
-
-function endGame(){
-  const winner=scores.indexOf(Math.max(...scores));
-  const won=winner===0;
-  addLog(`Game over! ${PNAMES[winner]} wins with ${scores[winner]} pts.`,'pts');
-  try{
-    const players=PNAMES.map((n,i)=>({name:n,score:scores[i]}));
-    GameHistory.savePlayerGame('wizard','Wizard (AI)',players,winner,0);
-  }catch(e){}
-  haptic(won?'success':'heavy');
-  render();
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-function cardEl(c,cls=''){
-  if(!c) return`<div class="wz-empty"></div>`;
-  const special=isWiz(c)?'wiz-card':isJest(c)?'jest-card':'';
-  const tr=!isWiz(c)&&!isJest(c)&&trump&&c.suit===trump?'trump-card':'';
-  const col=RED.has(c.suit)?'red':'black';
-  const face=isWiz(c)?`<div class="wc-r">🧙</div><div class="wc-tag">WIZARD</div>`:isJest(c)?`<div class="wc-r">🃏</div><div class="wc-tag">JESTER</div>`:`<div class="wc-r">${c.rank}</div><div class="wc-s">${c.suit}</div>`;
-  return`<div class="wcard ${special||col} ${tr} ${cls}" data-key="${cKey(c)}">${face}</div>`;
-}
-
-let logOpen=false;
-function renderLog(){
-  const last=log.length?log[log.length-1].msg:'';
-  return `<details class="g-log" id="g-log" ${logOpen?'open':''}><summary>Game log<span class="last">${esc(last)}</span></summary>
-    <div class="g-log-body">${log.slice(-14).map(({msg,cls})=>`<div class="${cls||''}">${esc(msg)}</div>`).join('')}</div></details>`;
-}
-function wireLog(){
-  const d=document.getElementById('g-log');
-  if(!d) return;
-  d.addEventListener('toggle',()=>{logOpen=d.open;});
-  const b=d.querySelector('.g-log-body'); if(b) b.scrollTop=b.scrollHeight;
-}
-function setBar(html){document.getElementById('g-bar').innerHTML=html||'';}
-
-function render(){
-  const root=document.getElementById('wz-root');
-  let html='';
-  const maxScore=Math.max(...scores);
-  const trumpLbl=trump?`${trump} ${SUIT_LABELS[trump]}`:(phase==='choose-trump'?'choosing…':'No trump');
-  html+=`<div class="g-meta"><span class="g-pill">Round ${round} of ${TOTAL_ROUNDS}</span><span class="g-pill gold">Trump: ${trumpLbl}</span></div>`;
-
-  if(phase==='game-over'||phase==='round-end'){
-    const over=phase==='game-over';
-    const w=scores.indexOf(maxScore);
-    const order=PNAMES.map((n,i)=>i).sort((a,b)=>scores[b]-scores[a]);
-    html+=`<div class="g-result ${over&&w===0?'':'plain'}">
-      <div class="g-result-icon">${over?(w===0?'🏆':'🧙'):(bids[0]===taken[0]?'🎯':'🃏')}</div>
-      <div class="g-result-title">${over?(w===0?'You win!':esc(PNAMES[w])+' wins'):(bids[0]===taken[0]?'Nailed your bid!':'Round '+round+' complete')}</div>
-      <div class="g-result-sub">${over?`${scores[w]} points after ${TOTAL_ROUNDS} rounds`:`You bid ${bids[0]} and took ${taken[0]}`}</div>
-      <div class="g-rows">${order.map(i=>`<div class="g-row ${i===0?'you':''}"><span>${esc(PNAMES[i])}</span>
-        <span class="r">${bids[i]}/${taken[i]} <span class="${roundPts[i]>=0?'pos':'neg'}">${roundPts[i]>0?'+':''}${roundPts[i]}</span><b>${scores[i]}</b></span></div>`).join('')}</div>
-    </div>`;
-    html+=renderLog();
-    root.innerHTML=html;wireLog();
-    setBar(over?`<button class="btn btn-gold" id="ng-btn">New Game</button>`:`<button class="btn btn-gold" id="nr-btn">Next Round</button>`);
-    document.getElementById('ng-btn')?.addEventListener('click',()=>{haptic('light');newGame();});
-    document.getElementById('nr-btn')?.addEventListener('click',()=>{haptic('light');nextRound();});
-    return;
-  }
-
-  const cur=getNext();
-  // Scores
-  html+=`<div class="g-hud wz-hud">`;
-  PNAMES.forEach((n,i)=>{
-    const hasBid=bids[i]>=0;
-    const bl=hasBid?(phase==='play'?`${taken[i]} of ${bids[i]}`:`bid ${bids[i]}`):(i===0&&phase==='bid'?'bidding…':'—');
-    const st=phase==='play'&&hasBid?(taken[i]===bids[i]?'hit':taken[i]>bids[i]?'over':''):'';
-    html+=`<div class="g-seat ${i===0?'you':''} ${phase==='play'&&cur===i?'turn':''} ${scores[i]===maxScore&&scores[i]>0?'lead':''}">
-      <div class="g-seat-name">${esc(n)}</div>
-      <div class="g-seat-score">${scores[i]}</div>
-      <div class="wz-bidline ${st}">${bl}</div>
-    </div>`;
-  });
-  html+=`</div>`;
-
-  // Table — compass layout: 0 You (S), 1 Sage (W), 2 Merlin (N), 3 Oracle (E)
-  const pos=['wz-s','wz-w','wz-n','wz-e'];
-  const slot=p=>`<div class="wz-slot ${pos[p]} ${phase==='play'&&cur===p?'turn':''} ${trick.some(c=>c)&&p===trickLead?'lead':''}">
-      ${trick[p]?cardEl(trick[p],'sm'+(trickWinner===p?' win':'')+(lastPlayKey===cKey(trick[p])?' drop':'')):'<div class="wz-empty"></div>'}
-      <div class="wz-slot-name">${p===0?'You':esc(PNAMES[p])}</div></div>`;
-  const tsym=trump?`<div class="wz-trump-big ${RED.has(trump)?'red':'black'}">${trump}</div>`:`<div class="wz-trump-big" style="font-size:1.2rem;color:rgba(255,255,255,.7)">—</div>`;
-  html+=`<div class="felt g-table"><div class="wz-trick">
-    ${slot(2)}${slot(1)}
-    <div class="wz-center">${tsym}<div class="wz-center-lbl">${trump?'Trump':'No trump'}</div><div class="wz-trickno">Trick ${Math.min(trickNum+1,round)}/${round}</div></div>
-    ${slot(3)}${slot(0)}
-  </div></div>`;
-  lastPlayKey=null;
-
-  // Choose trump
-  if(phase==='choose-trump'){
-    html+=`<div class="g-panel accent"><div class="g-panel-title">A Wizard was turned up</div>
-      <div class="g-panel-sub">You're the dealer — pick the trump suit for this round.</div>
-      <div class="wz-trumps">${SUITS.map(s=>`<button class="btn btn-outline wz-trump-btn" data-suit="${s}"><span style="color:${RED.has(s)?'#fca5a5':'inherit'}">${s}</span> ${SUIT_LABELS[s]}</button>`).join('')}
-      <button class="btn btn-outline wz-trump-btn full" data-suit="none">No Trump</button></div></div>`;
-  }
-
-  // Status
-  let status='',scls='';
-  if(phase==='bid'&&bids[0]<0){status=bids.slice(1).some(b=>b<0)?'Opponents are bidding…':`How many tricks will you win?`;scls='yours';}
-  else if(phase==='play'){
-    if(trickWinner>=0) status=`${trickWinner===0?'You win':esc(PNAMES[trickWinner])+' wins'} the trick`;
-    else if(cur===0){status=trick.some(c=>c)?'Your turn — follow suit if you can':'Your lead — play any card';scls='yours';}
-    else if(cur>0) status=`${esc(PNAMES[cur])} is playing…`;
-  } else if(phase==='choose-trump'){status='Choose trump to start bidding';scls='yours';}
-  if(status) html+=`<div class="g-status ${scls}">${status}</div>`;
-
-  // Bid panel
-  if(phase==='bid'&&bids[0]<0&&!bids.slice(1).some(b=>b<0)){
-    const others=bids.slice(1).reduce((a,b)=>a+b,0);
-    html+=`<div class="g-panel accent"><div class="g-panel-title">Your bid · ${round} card${round>1?'s':''}</div>
-      <div class="g-panel-sub">Bid exactly how many tricks you'll win.</div>
-      <div class="wz-bid-grid">${Array.from({length:round+1},(_,i)=>`<button class="wz-bid-btn" data-bid="${i}">${i}</button>`).join('')}</div>
-      <div class="wz-bid-hint">Opponents bid ${others} total · ${round} trick${round>1?'s':''} available</div></div>`;
-  }
-
-  // Player hand
-  const isPlay=phase==='play'&&cur===0&&trickWinner<0;
-  const valid=isPlay?validPlays(0).map(cKey):[];
-  html+=`<div class="g-label"><span>Your hand · ${hands[0].length}</span><span>${isPlay?'tap a card to play':''}</span></div>
-  <div class="wz-hand" id="player-hand">
-    ${hands[0].map(c=>cardEl(c,isPlay?(valid.includes(cKey(c))?'playable':'unplayable'):'')).join('')}
-  </div>`;
-
-  html+=renderLog();
-  root.innerHTML=html;wireLog();
-  setBar('');
-
-  document.querySelectorAll('.wz-bid-btn').forEach(b=>b.addEventListener('click',()=>playerBid(+b.dataset.bid)));
-  document.querySelectorAll('.wz-trump-btn').forEach(b=>b.addEventListener('click',()=>playerChooseTrump(b.dataset.suit==='none'?null:b.dataset.suit)));
-  document.getElementById('player-hand')?.querySelectorAll('.wcard').forEach(el=>{
-    el.addEventListener('click',()=>{const c=hands[0].find(c=>cKey(c)===el.dataset.key);if(c&&isPlay)playerPlay(c);});
-  });
-}
-
-newGame();
+    if (S.phase === 'play' && S.trick.length === N()) setTimeout(resolveTrick, 600);
+    else next();
+  } else showSetup();
+})();
 </script>
-<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

@@ -2,604 +2,790 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Gin Rummy — vs AI</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gin Rummy</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/*KIT-START*/
-/* ── Card-table kit (same look across Spades · Hearts · Euchre · Gin · Cribbage) ── */
-.ck{max-width:560px;margin:0 auto;padding:10px max(12px,var(--safe-r)) calc(28px + var(--safe-b)) max(12px,var(--safe-l));}
-.ck-board{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:18px;}
-.ck-side{min-width:0;display:flex;flex-direction:column;gap:1px;}
-.ck-side.r{align-items:flex-end;text-align:right;}
-.ck-lbl{display:flex;align-items:center;gap:6px;max-width:100%;font-size:.75rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ck-dot{width:8px;height:8px;border-radius:50%;flex:none;}
-.ck-pts{font-family:var(--display);font-size:1.85rem;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.ck-sub{font-size:.75rem;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
-.ck-mid{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.72rem;color:var(--text-3);font-weight:600;text-align:center;white-space:nowrap;}
-.ck-mid b{font-family:var(--display);font-size:1rem;color:var(--text-2);}
-.ck-lead{color:var(--gold);}
-/* Felt table + seats */
-.ck-table{position:relative;padding:12px 10px 14px;margin-bottom:10px;}
-.tbl4{display:grid;grid-template-columns:68px minmax(0,1fr) 68px;grid-template-areas:". n ." "w c e";align-items:center;gap:6px 2px;}
-.tbl4 .a-n{grid-area:n;justify-self:center;}
-.tbl4 .a-w{grid-area:w;}
-.tbl4 .a-e{grid-area:e;}
-.tbl4 .a-c{grid-area:c;}
-.seat{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
-.seat-row{flex-direction:row;gap:8px;}
-.seat-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;font-family:var(--display);font-weight:800;font-size:1rem;color:#fff;background:rgba(0,0,0,.28);border:2px solid rgba(255,255,255,.16);transition:border-color .2s,box-shadow .2s;}
-.seat.turn .seat-av{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,200,66,.22);}
-.seat-name{font-size:.78rem;font-weight:700;color:#fff;max-width:76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.seat-meta{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.78);background:rgba(0,0,0,.28);border-radius:999px;padding:2px 8px;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.seat-meta.hot{color:var(--gold-ink);background:var(--gold);}
-.seat-col{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
-/* Playing cards */
-.pc{--w:var(--cw,56px);position:relative;flex:none;width:var(--w);height:calc(var(--w)*1.4);border-radius:calc(var(--w)*.13);background:linear-gradient(165deg,#fff,#f2eee4);border:1px solid rgba(0,0,0,.22);box-shadow:0 2px 6px rgba(0,0,0,.35);color:#1b1d22;font-family:var(--display);font-weight:800;transition:transform .18s var(--ease),box-shadow .18s,filter .18s,opacity .18s;-webkit-user-select:none;user-select:none;}
-.pc.red{color:#d42a2a;}
-.pc .ix{position:absolute;top:calc(var(--w)*.06);left:calc(var(--w)*.07);display:flex;flex-direction:column;align-items:center;line-height:.95;font-size:calc(var(--w)*.31);letter-spacing:-.05em;}
-.pc .ix i{font-style:normal;font-size:calc(var(--w)*.26);letter-spacing:0;}
-.pc .pip{position:absolute;right:calc(var(--w)*.08);bottom:calc(var(--w)*.04);font-size:calc(var(--w)*.5);line-height:1;}
-.pc.back{background:radial-gradient(circle at 50% 50%,rgba(245,200,66,.4) 0 16%,transparent 17%),repeating-linear-gradient(45deg,#2b3555 0 4px,#1e2640 4px 8px);border:2px solid #ebe6da;}
-.pc.slot{background:rgba(0,0,0,.14);border:1.5px dashed rgba(255,255,255,.22);box-shadow:none;}
-.pc.play{cursor:pointer;}
-.pc.dim{filter:brightness(.55) saturate(.6);}
-.pc.sel{transform:translateY(-14px);box-shadow:0 0 0 2.5px var(--gold),0 10px 22px rgba(0,0,0,.45);}
-.pc.glow{box-shadow:0 0 0 3px var(--gold),0 6px 16px rgba(0,0,0,.45);}
-.pc.new{animation:ck-in .24s var(--ease) both;}
-@keyframes ck-in{from{opacity:0;scale:.82;}to{opacity:1;scale:1;}}
-@media (hover:hover){.pc.play:not(.sel):hover{transform:translateY(-8px);}}
-.pc.play:active{filter:brightness(.92);}
-/* Hand: fans out / overlaps automatically to fit the available width */
-.hand{--cw:clamp(50px,15vw,66px);display:flex;justify-content:center;padding:18px 0 2px;min-height:calc(var(--cw)*1.4 + 20px);}
-.hand>.pc+.pc{margin-left:min(6px,calc((100% - var(--n,10) * var(--cw)) / (var(--n,10) - 1)));}
-.mini-backs{display:flex;justify-content:center;}
-.mini-backs .pc{--w:20px;border-width:1.5px;box-shadow:0 1px 3px rgba(0,0,0,.4);}
-.mini-backs .pc+.pc{margin-left:-13px;}
-/* Trick area */
-.trick{--tw:clamp(44px,12.6vw,58px);position:relative;width:calc(var(--tw)*3 + 10px);height:calc(var(--tw)*2.8 + 6px);margin:0 auto;}
-.trick .pc{--w:var(--tw);position:absolute;}
-.trick .t-n{left:calc(50% - var(--tw)/2);top:0;}
-.trick .t-s{left:calc(50% - var(--tw)/2);bottom:0;}
-.trick .t-w{left:0;top:calc(50% - var(--tw)*.7);rotate:-5deg;}
-.trick .t-e{right:0;top:calc(50% - var(--tw)*.7);rotate:5deg;}
-/* Status, chips, panels */
-.ck-status{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 8px;font-weight:700;font-size:.98rem;text-align:center;color:var(--text);}
-.ck-status.you{color:var(--gold);}
-.ck-status .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--text-2);animation:ck-spin .8s linear infinite;}
-@keyframes ck-spin{to{transform:rotate(360deg);}}
-.ck-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
-.ck-chip{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 11px;border-radius:999px;font-size:.78rem;font-weight:700;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text-2);white-space:nowrap;}
-.ck-chip.gold{color:var(--gold);border-color:rgba(245,200,66,.35);background:rgba(245,200,66,.1);}
-.ck-chip .s-red{color:#ff6b6b;}
-.ck-panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:10px;}
-.ck-panel h3{font-size:1.2rem;font-weight:800;text-align:center;margin-bottom:4px;}
-.ck-panel p.sub{font-size:.88rem;color:var(--text-2);text-align:center;margin-bottom:14px;}
-.ck-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:.92rem;}
-.ck-row:last-child{border-bottom:0;}
-.ck-row .nm{display:flex;align-items:center;gap:8px;font-weight:700;min-width:0;}
-.ck-row .dt{color:var(--text-2);font-size:.82rem;}
-.ck-row .v{font-family:var(--display);font-weight:800;font-size:1.15rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.v.pos{color:var(--green);}.v.neg{color:var(--red);}
-.ck-notes{margin-top:10px;font-size:.84rem;color:var(--text-2);line-height:1.55;text-align:center;}
-.ck-notes .pts{color:var(--gold);font-weight:700;}
-.ck-log{margin-top:8px;padding:0 4px;font-size:.8rem;line-height:1.55;color:var(--text-3);text-align:center;}
-.ck-log .pts{color:var(--gold);font-weight:600;}
-.ck-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
-.nav-ico{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);text-decoration:none;}
-.nav-ico svg{width:18px;height:18px;}
-.nav-ico:active{transform:scale(.92);}
-/* During play the hand docks to the bottom of the screen, like a native card app */
-.ck.playing{display:flex;flex-direction:column;min-height:calc(100dvh - var(--nav-h) - var(--safe-t));}
-.ck-dock{margin-top:auto;padding-top:6px;}
-.ck-row .nm .dt{font-weight:500;}
-.seat-row .seat-name{max-width:none;}
-.ck.playing .ck-table{flex:1 1 auto;display:flex;align-items:center;justify-content:center;max-height:460px;}
-.ck.playing .ck-table>*{width:100%;}
-.pc .ix.t{letter-spacing:-.13em;margin-left:calc(var(--w)*-.03);}
-/* 4-player individual scoreboard */
-.ck-board.b4{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:10px 6px;}
-.ck-side.c{align-items:center;text-align:center;}
-.ck-board.b4 .ck-pts{font-size:1.5rem;}
-.ck-board.b4 .ck-lbl{font-size:.72rem;justify-content:center;}
-/* Narrow phones: the name chip shrinks to its icon so the nav title never collides */
-@media (max-width:374px){.site-nav .fp-nc-label{display:none;}.site-nav .fp-name-chip{width:36px;padding:0;justify-content:center;}}
-/*KIT-END*/
-/* Gin-specific */
-.ck.playing .ck-table{max-height:360px;}
-.gr-felt{display:flex;flex-direction:column;align-items:center;justify-content:space-around;gap:14px;}
-.gr-ai{display:flex;align-items:center;gap:10px;}
-.gr-ai .mini-backs .pc{--w:24px;}
-.gr-ai .mini-backs .pc+.pc{margin-left:-15px;}
-.gr-piles{display:flex;gap:clamp(18px,8vw,40px);justify-content:center;align-items:flex-start;}
-.gr-pile{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:default;}
-.gr-pile .pc{--w:clamp(58px,17vw,72px);}
-.gr-pile.can{cursor:pointer;}
-.gr-pile.can .pc{box-shadow:0 0 0 3px rgba(245,200,66,.85),0 8px 18px rgba(0,0,0,.4);}
-.gr-pile.can:active .pc{transform:scale(.95);}
-.gr-pile-lbl{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.75);}
-.gr-pile-count{font-size:.75rem;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums;}
-.stack{position:relative;}
-.stack::before,.stack::after{content:'';position:absolute;inset:0;border-radius:calc(var(--w,60px)*.13);background:#e9e4d8;border:1px solid rgba(0,0,0,.25);}
-.stack::before{transform:translate(3px,3px);}
-.stack::after{transform:translate(1.5px,1.5px);}
-.stack .pc{position:relative;z-index:1;}
-.pc.meld::before{content:'';position:absolute;left:18%;right:18%;bottom:5px;height:4px;border-radius:2px;background:#22c55e;}
-.pc.drawn{box-shadow:0 0 0 2px #60a5fa,0 2px 6px rgba(0,0,0,.35);}
-.gr-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
-.gr-actions.one{grid-template-columns:1fr;}
-.legend{display:flex;gap:14px;justify-content:center;font-size:.75rem;color:var(--text-3);margin-top:4px;}
-.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:5px;}
-.rs-hand{margin-bottom:6px;}
-.rs-hand .hand{--cw:clamp(40px,11.5vw,50px);padding-top:6px;min-height:0;}
-.rs-title{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:.9rem;margin-top:8px;}
-.rs-title span{font-size:.8rem;color:var(--text-2);font-weight:600;}
+.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+.ctable .felt-in{height:clamp(300px,50dvh,450px);}
+/* Stock and discard piles in the middle of the felt */
+.gpiles{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);display:flex;gap:clamp(22px,8vw,40px);align-items:flex-start;z-index:2;--cw:clamp(62px,18vw,78px);}
+.gpile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;color:#fff;font:inherit;}
+.gpile .slotwrap{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4);}
+.gpile .slotwrap > .pcard{position:absolute;left:0;top:0;}
+.gpile .under{transform:rotate(-7deg) translate(-3px,2px);filter:brightness(.9);}
+.gpile .stk1{transform:translate(3px,3px);}
+.gpile .stk2{transform:translate(1.5px,1.5px);}
+.gpile .lbl{font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.7);white-space:nowrap;}
+.gpile.can{cursor:pointer;}
+.gpile.can .top{box-shadow:0 0 0 3px var(--yellow),0 0 22px rgba(255,200,61,.55),0 8px 16px rgba(0,0,0,.35);animation:breathe 1.6s ease-in-out infinite;}
+.gpile.can:active .top{transform:scale(.95);}
+@keyframes breathe{50%{box-shadow:0 0 0 3px var(--yellow),0 0 8px rgba(255,200,61,.25),0 8px 16px rgba(0,0,0,.35);}}
+.gpile .top.landed{animation:none;}
+.cseat .backs{--cw:24px;}
+.cseat .backs .pcard+.pcard{margin-left:-17px;}
+.cseat.n{top:10px;}
+.cseat .chip-s.dw{background:rgba(255,255,255,.88);}
+.cseat .chip-s.dw.ok{background:var(--green);color:#03290f;}
+.cseat .chip-s.dw.gin{background:var(--yellow);}
+.cmsg{bottom:auto;left:0;right:0;margin:0 auto;width:fit-content;transform:none;top:calc(47% + clamp(62px,18vw,78px) * .7 + 26px);font-size:.84rem;max-width:88%;white-space:normal;text-align:center;}
+.cmsg:empty{display:none;}
+.dealer{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff;color:#1d1b2e;font-size:.65rem;font-weight:900;margin-left:2px;}
+/* Your hand: melds grouped, with a coloured bracket under each meld */
+.chand{--cw:clamp(54px,15.4vw,74px);touch-action:none;padding-bottom:20px;min-height:calc(var(--cw) * 1.4 + 42px);}
+.chand > .pcard + .pcard.gap{margin-left:calc(var(--overlap,-24px) + var(--gapw,10px));}
+.chand .pcard{touch-action:none;}
+.chand .pcard.new{box-shadow:0 0 0 3px #7fd3ff,0 8px 18px rgba(0,0,0,.35);}
+.chand .pcard.sel{transform:translateY(-18px);}
+.chand .pcard.drag{z-index:40;transition:none;box-shadow:0 0 0 3px var(--yellow),0 18px 30px rgba(0,0,0,.5);}
+.chand.deal .pcard{animation:dealin .38s var(--spring) both;animation-delay:calc(var(--i) * 45ms);}
+@keyframes dealin{from{transform:translateY(-120px) rotate(-8deg);opacity:0;}to{transform:none;opacity:1;}}
+.brk{position:absolute;bottom:5px;height:12px;border:3px solid var(--bc);border-top:0;border-radius:0 0 8px 8px;pointer-events:none;}
+.brk b{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);padding:0 6px;border-radius:999px;background:var(--bc);color:#0b2318;font-size:.6rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;line-height:14px;white-space:nowrap;}
+.cbar{flex-wrap:wrap;gap:8px;}
+.cbar .btn{min-height:48px;}
+.cbar .sortb{width:48px;padding:0;}
+.cbar .hint{font-size:.92rem;text-align:center;}
+/* Knock reveal */
+.rv{border-radius:20px;padding:12px 10px 14px;color:#fff;}
+.rv-p{margin-bottom:12px;}
+.rv-h{display:flex;align-items:center;gap:8px;font-weight:900;font-size:.95rem;margin:0 2px 6px;}
+.rv-h .avatar{width:26px;height:26px;font-size:.75rem;}
+.rv-h .avatar .ico{width:60%;height:60%;}
+.rv-h .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rv-h .dwv{padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.9);color:#1d1b2e;font-size:.75rem;white-space:nowrap;}
+.rv-g{display:flex;flex-wrap:wrap;gap:10px 12px;--cw:36px;}
+.rv-m{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.rv-m .cs{display:flex;}
+.rv-m .cs .pcard+.pcard{margin-left:-15px;}
+.rv-m small{font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.rv-m.dead small{color:#ffb3bb;}
+.rv-m.dead .pcard{filter:saturate(.7) brightness(.9);}
+.rv .pcard{animation:pop .4s var(--spring) both;animation-delay:calc(var(--i,0) * 50ms);}
+.rv .pcard.lay{box-shadow:0 0 0 3px var(--green),0 4px 10px rgba(0,0,0,.35);}
+.rv-res{margin-top:4px;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.3);text-align:center;}
+.rv-res .big{font-size:1.5rem;line-height:1.15;color:var(--yellow);}
+.rv-res small{display:block;margin-top:2px;color:rgba(255,255,255,.75);font-weight:700;font-size:.82rem;}
+.sum{width:100%;border-collapse:collapse;margin-top:10px;font-variant-numeric:tabular-nums;}
+.sum th,.sum td{padding:7px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);}
+.sum th:first-child,.sum td:first-child{text-align:left;}
+.sum td.big{font-weight:900;font-size:1.15rem;}
+.sum tr.lead td{color:var(--yellow);}
+.goalline{color:var(--text-3);font-weight:700;font-size:.8rem;text-align:center;margin-top:6px;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Gin Rummy</span>
-  <a class="nav-ico scorecard-link" href="gin-rummy.html" aria-label="Open the Gin Rummy scorecard" title="Scorecard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></a>
-</nav>
-<main class="ck" id="gr-root"></main>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'gin_state', KEY = 'gin', PAD_KEY = 'rm';
+  var RV = { A: 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13 };
+  var SUIT_ORDER = ['s', 'h', 'c', 'd'];
+  var MELD_COLORS = ['#3ddc84', '#ffc83d', '#7fd3ff', '#ff9ad5'];
 
-// ── My name (for solo-vs-AI display + history) ───────────────────────────────
-const MYNAME = (typeof FrequentPlayers!=='undefined' && FrequentPlayers.myName()) || 'You';
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const toast=m=>{try{window.GN&&GN.toast(m);}catch(e){}};
-
-// ── Card helpers ─────────────────────────────────────────────────────────────
-const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-const SUITS=['♠','♥','♦','♣'];
-const RED=new Set(['♥','♦']);
-const ORD=Object.fromEntries(RANKS.map((r,i)=>[r,i]));
-const DW_VAL={A:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:10,Q:10,K:10};
-
-function makeDeck(){
-  const d=[];
-  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s})));
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
-function cKey(c){return c.rank+c.suit;}
-function dwVal(c){return DW_VAL[c.rank];}
-
-// ── Meld finding ─────────────────────────────────────────────────────────────
-function findAllMelds(hand){
-  const melds=[];
-  // Sets: same rank, 3-4 cards
-  const byRank={};
-  hand.forEach(c=>{(byRank[c.rank]=byRank[c.rank]||[]).push(c);});
-  Object.values(byRank).forEach(cards=>{
-    if(cards.length>=3) melds.push([...cards.slice(0,3)]);
-    if(cards.length===4) melds.push([...cards]);
+  Kit.init({
+    id: 'gin-rummy',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [PAD_KEY], title: 'Gin Rummy: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Make sets and runs with your 10 cards, then <b>knock</b> to end the hand. First to <b>100 points</b> wins the game.</p>' +
+      '<h3>Melds</h3><ul><li><b>Set:</b> 3 or 4 cards of the same rank, like 8♠ 8♥ 8♦.</li>' +
+      '<li><b>Run:</b> 3 or more cards in a row of the same suit, like 4♥ 5♥ 6♥. Ace is low only (A-2-3 is a run, Q-K-A is not).</li>' +
+      '<li>A card can only be in one meld at a time.</li></ul>' +
+      '<h3>Deadwood</h3><p>Cards that are not in a meld are <b>deadwood</b>. They count against you: Ace = 1, number cards = their number, J, Q, K = 10. Your hand shows your melds and deadwood count all the time.</p>' +
+      '<h3>Your turn</h3><ul><li><b>Draw</b> one card: the top of the face-down <b>stock</b>, or the top card of the <b>discard pile</b>.</li>' +
+      '<li><b>Discard</b> one card face up. You can\'t throw back a card you just picked up from the discard pile.</li>' +
+      '<li>First turn: the player who didn\'t deal may take the first upcard. If they pass, the dealer may take it. If both pass, the non-dealer draws from the stock.</li></ul>' +
+      '<h3>Knocking</h3><ul><li>If your deadwood is <b>10 or less</b> after you discard, you can <b>knock</b>. Both hands are shown.</li>' +
+      '<li>The other player can <b>lay off</b> their deadwood onto your melds (add a 9 to your 6-7-8 run, for example).</li>' +
+      '<li>You score the difference between the two deadwood counts.</li>' +
+      '<li><b>Undercut:</b> if the other player ends with the same or less deadwood than you, they score the difference <b>plus 25</b>.</li></ul>' +
+      '<h3>Gin</h3><p>Knock with <b>zero deadwood</b> and you have gin: you score the other player\'s deadwood <b>plus 25</b>, and they can\'t lay off.</p>' +
+      '<h3>End of the game</h3><ul><li>If only 2 cards are left in the stock and nobody has knocked, the hand is a draw and the same dealer deals again.</li>' +
+      '<li>The deal takes turns each hand.</li>' +
+      '<li>When someone reaches the target, they get a <b>100 game bonus</b>, and each player gets a <b>25 line bonus</b> for every hand they won.</li></ul>' +
+      '<h3>Arranging your hand</h3><p>Your melds are found for you and grouped with a coloured bracket. Drag cards to move them around, or tap <b>Sort</b> to tidy up.</p>'
   });
-  // Runs: same suit, consecutive rank, 3+
-  const bySuit={};
-  hand.forEach(c=>{(bySuit[c.suit]=bySuit[c.suit]||[]).push(c);});
-  Object.values(bySuit).forEach(cards=>{
-    const sorted=cards.sort((a,b)=>ORD[a.rank]-ORD[b.rank]);
-    for(let i=0;i<sorted.length;i++){
-      let run=[sorted[i]];
-      for(let j=i+1;j<sorted.length;j++){
-        if(ORD[sorted[j].rank]===ORD[run[run.length-1].rank]+1) run.push(sorted[j]);
-        else break;
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [];
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.hand + ' · ' + S.players[0].total + ' to ' + S.players[1].total);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  function showSetup() {
+    S = null; token++;
+    Kit.setup(app, {
+      players: { min: 2, max: 2, cpu: 'seats', label: 'You vs the computer' },
+      options: [{ id: 'target', label: 'Play to', value: 100, choices: [[100, '100 · standard'], [50, '50 · quick']] }],
+      onStart: function (cfg) {
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.target || 100);
+        undoStack = []; Kit.gameStart(); newHand();
       }
-      if(run.length>=3) for(let len=3;len<=run.length;len++) melds.push(run.slice(0,len));
-    }
-  });
-  return melds;
-}
-
-// Find best meld arrangement (min deadwood) via backtracking
-function bestMelds(hand){
-  const allMelds=findAllMelds(hand);
-  let bestDW=hand.reduce((s,c)=>s+dwVal(c),0);
-  let bestArrangement=[];
-
-  function bt(available,usedMelds,used){
-    const dw=available.filter(c=>!used.has(cKey(c))).reduce((s,c)=>s+dwVal(c),0);
-    if(dw<bestDW){bestDW=dw;bestArrangement=[...usedMelds];}
-    for(const meld of allMelds){
-      if(meld.every(c=>!used.has(cKey(c)))){
-        const newUsed=new Set(used);
-        meld.forEach(c=>newUsed.add(cKey(c)));
-        bt(available,[...usedMelds,meld],newUsed);
-      }
-    }
-  }
-  bt(hand,[],new Set());
-  const meldSet=new Set(bestArrangement.flat().map(cKey));
-  const deadwood=hand.filter(c=>!meldSet.has(cKey(c)));
-  return{melds:bestArrangement,deadwood,dwTotal:bestDW};
-}
-
-// AI lay-off: can the defender add cards to knocker's melds?
-function tryLayoff(defCards, knockerMelds){
-  let remaining=[...defCards];
-  let changed=true;
-  const melds=knockerMelds.map(m=>[...m]);
-  while(changed){
-    changed=false;
-    for(let i=remaining.length-1;i>=0;i--){
-      const c=remaining[i];
-      for(const m of melds){
-        // Try adding to set
-        if(m.length<4&&m.every(mc=>mc.rank===c.rank)){
-          m.push(c);remaining.splice(i,1);changed=true;break;
-        }
-        // Try adding to run
-        const sorted=[...m].sort((a,b)=>ORD[a.rank]-ORD[b.rank]);
-        const lo=ORD[sorted[0].rank],hi=ORD[sorted[sorted.length-1].rank];
-        if(c.suit===sorted[0].suit&&sorted.every(mc=>mc.suit===c.suit)){
-          if(ORD[c.rank]===lo-1){m.push(c);remaining.splice(i,1);changed=true;break;}
-          if(ORD[c.rank]===hi+1){m.push(c);remaining.splice(i,1);changed=true;break;}
-        }
-      }
-      if(changed) break;
-    }
-  }
-  return{remaining,melds};
-}
-
-// ── AI strategy ──────────────────────────────────────────────────────────────
-function aiDecideDrawSource(hand, discardTop){
-  if(!discardTop) return 'stock';
-  // Would the discard reduce deadwood?
-  const testHand=[...hand,discardTop];
-  // Try all 11-card combos removing each card
-  let minDW=Infinity, bestCard=null;
-  testHand.forEach((c,i)=>{
-    const h=testHand.filter((_,j)=>j!==i);
-    const dw=bestMelds(h).dwTotal;
-    if(dw<minDW){minDW=dw;bestCard=c;}
-  });
-  const currentDW=bestMelds(hand).dwTotal;
-  return minDW<currentDW-1?'discard':'stock';
-}
-
-function aiChooseDiscard(hand){
-  // Find which card to discard to minimize deadwood
-  let minDW=Infinity,bestDiscard=null;
-  hand.forEach((c,i)=>{
-    const h=hand.filter((_,j)=>j!==i);
-    const dw=bestMelds(h).dwTotal;
-    if(dw<minDW){minDW=dw;bestDiscard=c;}
-  });
-  return bestDiscard||hand[hand.length-1];
-}
-
-// ── State ────────────────────────────────────────────────────────────────────
-let deck,stock,discard,playerHand,aiHand,turn,phase,scores,roundScores;
-let drawn=null,drawnFrom=null,selDiscard=null,log=[];
-let roundMsg='',roundNum=0,knockCache={key:'',val:null};
-// phases: 'draw'|'discard'|'round-end'|'game-over'  (turn: 0=you, 1=AI)
-
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
-
-function newGame(){scores=[0,0];roundScores=[0,0];roundNum=0;log=[];newRound();}
-
-function newRound(){
-  roundNum++;
-  deck=makeDeck();
-  playerHand=deck.splice(0,10);
-  aiHand=deck.splice(0,10);
-  stock=[...deck];
-  discard=[stock.pop()];
-  turn=0; phase='draw'; drawn=null; drawnFrom=null; selDiscard=null; roundMsg='';
-  addLog('New round. Draw from the stock or the discard pile.');
-  render();
-}
-
-function drawFrom(src){
-  if(phase!=='draw'||turn!==0) return;
-  if(src==='stock'){
-    if(!stock.length){addLog('Stock empty — reshuffle discard.');stock=[...discard.slice(0,-1)].reverse();discard=[discard[discard.length-1]];}
-    drawn=stock.pop(); drawnFrom='stock';
-  } else {
-    if(!discard.length) return;
-    drawn=discard.pop(); drawnFrom='discard';
-  }
-  hap('light');
-  playerHand.push(drawn);
-  phase='discard';
-  addLog(`You drew ${drawn.rank}${drawn.suit} from the ${src}.`);
-  render();
-}
-
-function selectForDiscard(card){
-  if(phase!=='discard'||turn!==0) return;
-  if(selDiscard&&cKey(selDiscard)===cKey(card)){
-    // Second tap confirms
-    doDiscard(card);
-  } else {
-    hap('select');
-    selDiscard=card; render();
-  }
-}
-
-function doDiscard(card){
-  hap('light');
-  playerHand=playerHand.filter(c=>cKey(c)!==cKey(card));
-  discard.push(card);
-  drawn=null; drawnFrom=null; selDiscard=null;
-  addLog(`You discarded ${card.rank}${card.suit}.`);
-  const{dwTotal}=bestMelds(playerHand);
-  if(dwTotal===0){
-    addLog('GIN! You have 0 deadwood.','pts');
-    phase='round-end';
-    resolveRound(true,false,true);
-  } else {
-    phase='draw'; turn=1;
-    render();
-    setTimeout(aiTurn,700);
-  }
-}
-
-// Knocking: you discard one card and lay down a 10-card hand with ≤10 deadwood.
-// Uses the selected card when that works, otherwise the best possible discard.
-function knockOption(){
-  const key=playerHand.map(cKey).join(',');
-  if(knockCache.key!==key){
-    let best=null;
-    playerHand.forEach(c=>{
-      const dw=bestMelds(playerHand.filter(x=>x!==c)).dwTotal;
-      if(!best||dw<best.dw||(dw===best.dw&&dwVal(c)>dwVal(best.card))) best={card:c,dw};
     });
-    knockCache={key,val:best};
   }
-  return knockCache.val;
-}
+  function freshGame(players, target) {
+    return {
+      target: target, hand: 0, dealer: Math.random() < 0.5 ? 0 : 1, sameDealer: true, rounds: [], labels: [], log: [], highlights: [], started: Date.now(),
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0, wins: 0 }; })
+    };
+  }
 
-function playerKnock(){
-  if(phase!=='discard'||turn!==0) return;
-  let opt=knockOption();
-  if(selDiscard){
-    const dw=bestMelds(playerHand.filter(c=>cKey(c)!==cKey(selDiscard))).dwTotal;
-    if(dw<=10) opt={card:selDiscard,dw};
-  }
-  if(!opt||opt.dw>10){hap('error');toast('Deadwood too high to knock (max 10)');addLog('Deadwood too high to knock (max 10).');return;}
-  playerHand=playerHand.filter(c=>cKey(c)!==cKey(opt.card));
-  discard.push(opt.card);
-  drawn=null; drawnFrom=null; selDiscard=null;
-  if(opt.dw===0){
-    addLog(`You discard ${opt.card.rank}${opt.card.suit} and go GIN!`,'pts');
-    phase='round-end';
-    resolveRound(true,false,true);
-  } else {
-    addLog(`You discard ${opt.card.rank}${opt.card.suit} and knock with ${opt.dw} deadwood.`,'pts');
-    phase='round-end';
-    resolveRound(false,false,false);
-  }
-}
+  // ── Card helpers ──────────────────────────────────────────────────────────
+  function val(c) { return Math.min(10, RV[c.r]); }
+  function lab(c) { return Cards.label(c); }
+  function sum(a) { return a.reduce(function (t, c) { return t + val(c); }, 0); }
+  function byId(h, id) { for (var i = 0; i < h.length; i++) if (h[i].id === id) return h[i]; return null; }
+  function suitRank(a, b) { return SUIT_ORDER.indexOf(a.s) - SUIT_ORDER.indexOf(b.s) || RV[a.r] - RV[b.r]; }
+  function isSet(m) { return m.every(function (c) { return c.r === m[0].r; }); }
 
-function aiTurn(){
-  if(turn!==1||phase!=='draw') return;
-  // Draw
-  const src=aiDecideDrawSource(aiHand,discard[discard.length-1]);
-  let drawn2;
-  if(src==='discard'&&discard.length){
-    drawn2=discard.pop(); aiHand.push(drawn2);
-    addLog(`AI takes ${drawn2.rank}${drawn2.suit} from the discard pile.`);
-  } else {
-    if(!stock.length){stock=[...discard.slice(0,-1)].reverse();discard=[discard[discard.length-1]];}
-    drawn2=stock.pop(); aiHand.push(drawn2);
-    addLog('AI draws from the stock.');
+  // Every possible meld in a hand, as arrays of indices
+  function allMelds(h) {
+    var out = [], byR = {}, byS = {};
+    h.forEach(function (c, i) { (byR[c.r] = byR[c.r] || []).push(i); (byS[c.s] = byS[c.s] || []).push(i); });
+    Object.keys(byR).forEach(function (r) {
+      var g = byR[r];
+      if (g.length >= 3) out.push(g.slice());
+      if (g.length === 4) for (var k = 0; k < 4; k++) out.push(g.filter(function (x, j) { return j !== k; }));
+    });
+    Object.keys(byS).forEach(function (s) {
+      var g = byS[s].slice().sort(function (a, b) { return RV[h[a].r] - RV[h[b].r]; });
+      for (var i = 0; i < g.length; i++) {
+        for (var j = i + 1; j < g.length && RV[h[g[j]].r] === RV[h[g[j - 1]].r] + 1; j++) {
+          if (j - i >= 2) out.push(g.slice(i, j + 1));
+        }
+      }
+    });
+    return out;
   }
-  render();
-  setTimeout(()=>{
-    // Discard
-    const toDiscard=aiChooseDiscard(aiHand);
-    aiHand=aiHand.filter(c=>cKey(c)!==cKey(toDiscard));
-    discard.push(toDiscard);
-    addLog(`AI discards ${toDiscard.rank}${toDiscard.suit}.`);
-    // Check gin/knock
-    const{dwTotal}=bestMelds(aiHand);
-    if(dwTotal===0){
-      addLog('AI has GIN!','pts');
-      phase='round-end';
-      resolveRound(true,true,true);
-    } else if(dwTotal<=5&&stock.length>15){
-      // AI knocks if deadwood ≤ 5 and plenty of stock
-      addLog(`AI knocks with ${dwTotal} deadwood.`,'pts');
-      phase='round-end';
-      resolveRound(false,true,false);
+  // Lowest-deadwood arrangement: {melds:[[cards]], dead:[cards], dw}
+  function best(h) {
+    var melds = allMelds(h), n = h.length, top = { dw: Infinity, ms: [] }, cur = [];
+    var has = melds.map(function (m) { var o = {}; m.forEach(function (i) { o[i] = 1; }); return o; });
+    function go(i, used, dw) {
+      if (dw >= top.dw) return;
+      while (i < n && used[i]) i++;
+      if (i >= n) { top = { dw: dw, ms: cur.slice() }; return; }
+      for (var k = 0; k < melds.length; k++) {
+        if (!has[k][i]) continue;
+        var m = melds[k], ok = true;
+        for (var q = 0; q < m.length; q++) if (used[m[q]]) { ok = false; break; }
+        if (!ok) continue;
+        var u2 = used.slice(); m.forEach(function (x) { u2[x] = 1; });
+        cur.push(k); go(i + 1, u2, dw); cur.pop();
+      }
+      var u3 = used.slice(); u3[i] = 1; go(i + 1, u3, dw + val(h[i]));
+    }
+    go(0, [], 0);
+    var inMeld = {}, ms = top.ms.map(function (k) { return melds[k].map(function (i) { inMeld[i] = 1; return h[i]; }); });
+    return { melds: ms, dead: h.filter(function (c, i) { return !inMeld[i]; }), dw: top.dw === Infinity ? sum(h) : top.dw };
+  }
+  // Every way the defender can arrange their own melds (deadwood allowed anywhere)
+  function arrangements(h) {
+    var melds = allMelds(h), n = h.length, out = [], cur = [];
+    function go(i, used) {
+      while (i < n && used[i]) i++;
+      if (i >= n) { out.push(cur.slice()); return; }
+      melds.forEach(function (m) {
+        if (m.indexOf(i) < 0 || m.some(function (x) { return used[x]; })) return;
+        var u2 = used.slice(); m.forEach(function (x) { u2[x] = 1; });
+        cur.push(m); go(i + 1, u2); cur.pop();
+      });
+      var u3 = used.slice(); u3[i] = 1; go(i + 1, u3);
+    }
+    go(0, []);
+    return out.map(function (a) {
+      var inM = {}; a.forEach(function (m) { m.forEach(function (i) { inM[i] = 1; }); });
+      return { melds: a.map(function (m) { return m.map(function (i) { return h[i]; }); }), dead: h.filter(function (c, i) { return !inM[i]; }) };
+    });
+  }
+  // Lay off deadwood onto the knocker's melds. Returns {melds, lays:[{c,m}], dead, dw}
+  function layoff(defHand, kMelds) {
+    var top = null;
+    arrangements(defHand).forEach(function (a) {
+      var ms = kMelds.map(function (m) { return m.slice(); }), dead = a.dead.slice(), lays = [], moved = true;
+      while (moved) {
+        moved = false;
+        for (var i = 0; i < dead.length && !moved; i++) {
+          var c = dead[i];
+          for (var k = 0; k < ms.length; k++) {
+            var m = ms[k], fits = false;
+            if (isSet(m)) fits = m.length < 4 && c.r === m[0].r;
+            else if (c.s === m[0].s) {
+              var lo = Math.min.apply(null, m.map(function (x) { return RV[x.r]; })), hi = Math.max.apply(null, m.map(function (x) { return RV[x.r]; }));
+              fits = RV[c.r] === lo - 1 || RV[c.r] === hi + 1;
+            }
+            if (fits) { m.push(c); lays.push({ c: c, m: k }); dead.splice(i, 1); moved = true; break; }
+          }
+        }
+      }
+      var dw = sum(dead);
+      if (!top || dw < top.dw || (dw === top.dw && a.melds.length > top.melds.length)) top = { melds: a.melds, lays: lays, dead: dead, dw: dw };
+    });
+    return top;
+  }
+  // Display order for a hand: melds first (runs, then sets), then deadwood by suit
+  function arrange(h) {
+    var b = best(h);
+    var ms = b.melds.map(function (m) { return m.slice().sort(function (x, y) { return RV[x.r] - RV[y.r] || suitRank(x, y); }); })
+      .sort(function (x, y) { return (isSet(x) ? 1 : 0) - (isSet(y) ? 1 : 0) || suitRank(x[0], y[0]); });
+    var out = [];
+    ms.forEach(function (m) { m.forEach(function (c) { out.push(c.id); }); });
+    b.dead.slice().sort(suitRank).forEach(function (c) { out.push(c.id); });
+    return out;
+  }
+
+  // ── Dealing ───────────────────────────────────────────────────────────────
+  function newHand() {
+    S.hand++;
+    if (!S.sameDealer) S.dealer = 1 - S.dealer;
+    S.sameDealer = false;
+    var d = Cards.shuffle(Cards.deck()), nd = 1 - S.dealer;
+    S.hands = [[], []];
+    for (var i = 0; i < 20; i++) S.hands[i % 2 === 0 ? nd : S.dealer].push(d.pop());
+    S.discard = [d.pop()];
+    S.stock = d;
+    S.turn = nd; S.phase = 'upcard'; S.upStep = 0; S.took = null; S.stockOnly = false; S.turnNo = 0;
+    S.pubTook = [[], []]; S.disBy = [[], []];
+    S.order = arrange(S.hands[0]); S.manual = false; S.sel = null; S.newId = null; S.res = null;
+    S.msg = (S.dealer === 0 ? 'You dealt. ' : S.players[1].name + ' dealt. ') + (nd === 0 ? 'Want the upcard?' : '');
+    S.dealAnim = true;
+    clearUndo(); save(); render(); Kit.sfx('deal');
+    next();
+  }
+
+  // ── Turn flow ─────────────────────────────────────────────────────────────
+  function next() {
+    if (!S || ['upcard', 'draw', 'discard'].indexOf(S.phase) < 0) return;
+    paint();
+    if (S.turn === 1) {
+      var t = token;
+      setTimeout(function () { if (t === token && S && S.turn === 1) aiStep(); }, S.phase === 'discard' ? 750 : 650);
+    }
+  }
+  function nm(p) { return p === 0 ? 'You' : S.players[p].name; }
+
+  function takeUp(p) { draw(p, 'discard'); }
+  function passUp(p) {
+    S.upStep++;
+    say(p, 'Pass');
+    if (S.upStep >= 2) { S.phase = 'draw'; S.turn = 1 - S.dealer; S.stockOnly = true; S.msg = 'Both passed. ' + (S.turn === 0 ? 'Draw from the stock.' : ''); }
+    else { S.turn = S.dealer; S.msg = nm(p) + (p === 0 ? ' pass' : ' passes') + ' on the upcard.' + (S.turn === 0 ? ' Want it?' : ''); }
+    Kit.sfx('tap'); save(); next();
+  }
+  function draw(p, src) {
+    var fromEl = src === 'discard' ? pileTop(discEl) : pileTop(stockEl), fromRect = fromEl ? fromEl.getBoundingClientRect() : null;
+    var c = src === 'discard' ? S.discard.pop() : S.stock.pop();
+    S.hands[p].push(c);
+    if (src === 'discard') { S.took = c.id; S.pubTook[p].push(c.id); } else S.took = null;
+    S.stockOnly = false; S.phase = 'discard';
+    if (p === 0) {
+      S.order.push(c.id); S.newId = c.id; S.sel = null;
+      S.msg = src === 'discard' ? 'You took the ' + lab(c) + '. Now discard.' : 'You drew the ' + lab(c) + '. Now discard.';
     } else {
-      turn=0; phase='draw';
-      render();
+      S.msg = src === 'discard' ? S.players[1].name + ' took the ' + lab(c) + '.' : S.players[1].name + ' drew from the stock.';
+      say(1, src === 'discard' ? 'Takes ' + lab(c) : 'Draws');
     }
-  },900);
-}
-
-function resolveRound(isGin,aiKnocked,playerGin){
-  const knocker=aiKnocked?1:0;
-  const{melds:km,deadwood:kdw,dwTotal:kDW}=bestMelds(knocker===0?playerHand:aiHand);
-  const defHand=knocker===0?aiHand:playerHand;
-  let defDW;
-  if(isGin){
-    // Can't lay off on gin
-    defDW=bestMelds(defHand).dwTotal;
-  } else {
-    // Defender keeps their own melds, then lays off deadwood on the knocker's melds
-    const{deadwood:defDead}=bestMelds(defHand);
-    const{remaining}=tryLayoff(defDead,km);
-    defDW=remaining.reduce((s,c)=>s+dwVal(c),0);
+    Kit.sfx('flip'); save(); paint();
+    if (fromRect) {
+      if (p === 0) { var node = handEl.querySelector('[data-id="' + c.id + '"]'); if (node) Cards.fly(node, rectEl(fromRect), { ms: 380 }); }
+      else flyTemp(fromRect, seatEls[1].querySelector('.backs') || seatEls[1], src === 'discard' ? Cards.el(c) : Kit.card('', '', { back: true }));
+    }
+    next();
   }
-  let pts=0,msg='';
-  if(isGin){pts=defDW+25;msg=`${knocker===0?'Gin! You score':'AI goes gin and scores'} ${pts} (${defDW} deadwood + 25 bonus)`;}
-  else if(defDW<=kDW&&knocker===0){
-    // Undercut: AI gets points
-    pts=kDW-defDW+25;
-    scores[1]+=pts;roundScores[1]+=pts;
-    msg=`Undercut! AI scores ${pts}`;
-    addLog(msg,'pts');
-  } else if(defDW<=kDW&&knocker===1){
-    pts=kDW-defDW+25;scores[0]+=pts;roundScores[0]+=pts;
-    msg=`Undercut! You score ${pts}`;addLog(msg,'pts');
-  } else {
-    pts=defDW-kDW;
-    scores[knocker]+=pts;roundScores[knocker]+=pts;
-    msg=`${knocker===0?'You knock and score':'AI knocks and scores'} ${pts} (${defDW} vs ${kDW} deadwood)`;
-    addLog(msg,'pts');
+  function discardCard(p, id, knock) {
+    var h = S.hands[p], c = byId(h, id); if (!c) return;
+    var fromRect = null;
+    if (p === 0) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n) fromRect = n.getBoundingClientRect(); }
+    else { var b = seatEls[1].querySelector('.backs') || seatEls[1]; fromRect = b.getBoundingClientRect(); }
+    S.hands[p] = h.filter(function (x) { return x.id !== id; });
+    S.discard.push(c); S.disBy[p].push(c);
+    S.pubTook[p] = S.pubTook[p].filter(function (x) { return x !== id; });
+    S.took = null; S.turnNo++;
+    if (p === 0) {
+      S.order = S.order.filter(function (x) { return x !== id; }); S.sel = null; S.newId = null;
+      if (!S.manual) S.order = arrange(S.hands[0]);
+    }
+    Kit.sfx('flip');
+    if (knock) { S.msg = ''; save(); paint(); landDiscard(fromRect); endHand(p); return; }
+    if (S.stock.length <= 2) { save(); paint(); landDiscard(fromRect); deadHand(); return; }
+    S.turn = 1 - p; S.phase = 'draw';
+    S.msg = p === 0 ? '' : S.players[1].name + ' threw the ' + lab(c) + '.';
+    save(); paint(); landDiscard(fromRect);
+    next();
   }
-  if(isGin){scores[knocker]+=pts;roundScores[knocker]+=pts;addLog(msg,'pts');}
-  roundMsg=msg;
-  phase='round-end';
-  if(scores[0]>=100||scores[1]>=100){phase='game-over';endGame();}
-  else {hap(/You score|You knock/.test(msg)?'success':'medium');render();}
-}
-
-function endGame(){
-  const won=scores[0]>scores[1];
-  addLog(`Game over! ${won?MYNAME+' wins':'AI wins'}. ${scores[0]}–${scores[1]}.`,'pts');
-  try{
-    const players=[{name:MYNAME,score:scores[0]},{name:'AI',score:scores[1]}];
-    GameHistory.savePlayerGame('gin','Gin Rummy',players,scores[0]>scores[1]?0:1,0);
-  }catch(e){}
-  hap(won?'success':'heavy');
-  render();
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-function pc(c,cls='',attrs=''){
-  if(!c) return `<div class="pc back ${cls}"></div>`;
-  return `<div class="pc ${RED.has(c.suit)?'red':''} ${cls}" ${attrs}><span class="ix${c.rank==='10'?' t':''}">${c.rank}<i>${c.suit}</i></span><span class="pip">${c.suit}</span></div>`;
-}
-// Display order: meld groups first, then deadwood by suit/rank (display only)
-function arrange(hand){
-  const{melds,deadwood,dwTotal}=bestMelds(hand);
-  const so=(a,b)=>a.suit.localeCompare(b.suit)||ORD[a.rank]-ORD[b.rank];
-  const ordered=[...melds.map(m=>[...m].sort(so)).flat(),...[...deadwood].sort(so)];
-  return{ordered,meldKeys:new Set(melds.flat().map(cKey)),dwTotal};
-}
-
-function boardHTML(dw){
-  return `<div class="ck-board">
-    <div class="ck-side">
-      <div class="ck-lbl"><span class="ck-dot" style="background:var(--blue)"></span>${esc(MYNAME)}</div>
-      <div class="ck-pts ${scores[0]>scores[1]?'ck-lead':''}">${scores[0]}</div>
-      <div class="ck-sub">${phase==='draw'||phase==='discard'?`${playerHand.length} cards`:'&nbsp;'}</div>
-    </div>
-    <div class="ck-mid">Round<b>${roundNum}</b>to 100</div>
-    <div class="ck-side r">
-      <div class="ck-lbl">AI<span class="ck-dot" style="background:var(--red)"></span></div>
-      <div class="ck-pts ${scores[1]>scores[0]?'ck-lead':''}">${scores[1]}</div>
-      <div class="ck-sub">${phase==='draw'||phase==='discard'?`${aiHand.length} cards`:'&nbsp;'}</div>
-    </div>
-  </div>`;
-}
-
-function render(){
-  const root=document.getElementById('gr-root');
-  root.className='ck';
-
-  if(phase==='game-over'||phase==='round-end'){
-    const over=phase==='game-over';
-    const won=scores[0]>scores[1];
-    let html=boardHTML(null);
-    if(over) html+=`<div class="winner-banner">
-      <div style="font-size:2.2rem;line-height:1;margin-bottom:6px">${won?'🏆':'🃏'}</div>
-      <div class="winner-name">${won?'You win!':'AI wins'}</div>
-      <div class="winner-pts">${esc(MYNAME)} ${scores[0]} – AI ${scores[1]}</div>
-    </div>`;
-    const P=arrange(playerHand), A=arrange(aiHand);
-    const handRow=(X)=>`<div class="rs-hand"><div class="hand" style="--n:${X.ordered.length}">${X.ordered.map(c=>pc(c,X.meldKeys.has(cKey(c))?'meld':'dim')).join('')}</div></div>`;
-    html+=`<div class="ck-panel">
-      <h3>${over?'Final round':`Round ${roundNum} complete`}</h3>
-      <div class="ck-notes" style="margin:0 0 4px"><span class="pts">${esc(roundMsg)}</span></div>
-      <div class="rs-title">${esc(MYNAME)}<span>${P.dwTotal} deadwood</span></div>${handRow(P)}
-      <div class="rs-title">AI<span>${A.dwTotal} deadwood</span></div>${handRow(A)}
-      <div class="legend"><span><i></i>In a meld</span><span>Dimmed = deadwood</span></div>
-    </div>
-    <div class="ck-actions"><button class="btn btn-gold btn-block" id="next-btn">${over?'Play again':'Next round'}</button></div>`;
-    root.innerHTML=html;
-    document.getElementById('next-btn').addEventListener('click',()=>{hap('light');over?newGame():newRound();});
-    return;
+  function landDiscard(fromRect) {
+    var t = pileTop(discEl);
+    if (t && fromRect) { t.classList.add('landed'); Cards.fly(t, rectEl(fromRect), { ms: 340, rot: -6 }); }
   }
 
-  // Play phase
-  const P=arrange(playerHand);
-  const yourDraw=phase==='draw'&&turn===0;
-  const yourDiscard=phase==='discard'&&turn===0;
-  let html=boardHTML(yourDiscard?null:P.dwTotal);
-
-  const top=discard[discard.length-1];
-  html+=`<div class="ck-table felt"><div class="gr-felt">
-    <div class="gr-ai seat ${turn===1?'turn':''}" style="flex-direction:row">
-      <div class="seat-av" style="background:rgba(248,113,113,.2)">AI</div>
-      <div class="mini-backs">${aiHand.map(()=>'<div class="pc back"></div>').join('')}</div>
-    </div>
-    <div class="gr-piles">
-      <button class="gr-pile ${yourDraw&&stock.length?'can':''}" id="stock-pile" aria-label="Draw from stock" ${yourDraw?'':'tabindex="-1"'}>
-        <span class="gr-pile-lbl">Stock</span>
-        <div class="stack" style="--w:clamp(58px,17vw,72px)">${pc(null)}</div>
-        <span class="gr-pile-count">${stock.length} left</span>
-      </button>
-      <button class="gr-pile ${yourDraw&&top?'can':''}" id="discard-pile" aria-label="Take the discard" ${yourDraw?'':'tabindex="-1"'}>
-        <span class="gr-pile-lbl">Discard</span>
-        ${top?pc(top,'new'):'<div class="pc slot"></div>'}
-        <span class="gr-pile-count">${discard.length} card${discard.length===1?'':'s'}</span>
-      </button>
-    </div>
-  </div></div>`;
-
-  // Status + actions
-  let dock='';
-  if(turn===1) dock+=`<div class="ck-status"><span class="spin"></span>AI is thinking…</div>`;
-  else if(yourDraw) dock+=`<div class="ck-status you">Your turn · draw a card</div>`;
-  else if(yourDiscard){
-    const k=knockOption();
-    dock+=`<div class="ck-status you">${selDiscard?`Tap ${selDiscard.rank}${selDiscard.suit} again to discard`:'Tap a card to discard'}</div>`;
-    const canKnock=k&&k.dw<=10;
-    dock+=`<div class="gr-actions ${selDiscard&&canKnock?'':'one'}">
-      ${selDiscard?`<button class="btn btn-outline" id="discard-btn">Discard ${selDiscard.rank}${selDiscard.suit}</button>`:''}
-      ${canKnock?`<button class="btn btn-gold" id="knock-btn">${k.dw===0?'Go Gin!':`Knock · ${k.dw}`}</button>`:''}
-    </div>`;
+  // ── Computer player (uses only what it can see) ───────────────────────────
+  function seen() {
+    var o = {};
+    S.hands[1].forEach(function (c) { o[c.r + c.s] = 1; });
+    S.discard.forEach(function (c) { o[c.r + c.s] = 1; });
+    S.pubTook[0].forEach(function (id) { var c = byId(S.hands[0], id); if (c) o[c.r + c.s] = 1; });
+    return o;
   }
-
-  dock+=`<div class="hand" id="player-hand" style="--n:${P.ordered.length}">${P.ordered.map(c=>{
-    const k=cKey(c);
-    let cls=P.meldKeys.has(k)?'meld':'';
-    if(selDiscard&&cKey(selDiscard)===k) cls+=' sel';
-    if(drawn&&cKey(drawn)===k&&!(selDiscard&&cKey(selDiscard)===k)) cls+=' drawn';
-    if(yourDiscard) cls+=' play';
-    return pc(c,cls,`data-key="${k}"`);
-  }).join('')}</div>
-  <div class="legend"><span><i></i>Melded cards</span><span>Deadwood ${P.dwTotal}</span></div>
-  <div class="ck-log">${log.slice(-2).map(({msg,cls})=>`<div class="${cls}">${esc(msg)}</div>`).join('')}</div>`;
-  html+=`<div class="ck-dock">${dock}</div>`;
-  root.className='ck playing';
-  root.innerHTML=html;
-
-  // Events
-  document.getElementById('stock-pile').addEventListener('click',()=>drawFrom('stock'));
-  document.getElementById('discard-pile').addEventListener('click',()=>drawFrom('discard'));
-  document.querySelectorAll('#player-hand .pc').forEach(el=>{
-    el.addEventListener('click',()=>{
-      if(!yourDiscard) return;
-      const c=playerHand.find(c=>cKey(c)===el.dataset.key);
-      if(c) selectForDiscard(c);
+  var RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  // How many unseen cards would turn deadwood into melds
+  function outs(dead, vis) {
+    var o = {};
+    function live(r, s) { if (r && !vis[r + s]) o[r + s] = 1; }
+    for (var i = 0; i < dead.length; i++) for (var j = i + 1; j < dead.length; j++) {
+      var a = dead[i], b = dead[j];
+      if (a.r === b.r) ['s', 'h', 'c', 'd'].forEach(function (s) { if (s !== a.s && s !== b.s) live(a.r, s); });
+      else if (a.s === b.s) {
+        var lo = Math.min(RV[a.r], RV[b.r]), hi = Math.max(RV[a.r], RV[b.r]);
+        if (hi - lo === 1) { live(RANKS[lo - 2], a.s); live(RANKS[hi], a.s); }
+        else if (hi - lo === 2) live(RANKS[lo], a.s);
+      }
+    }
+    return Object.keys(o).length;
+  }
+  function handValue(h, vis) {
+    var b = best(h), w = 0.4 + 1.2 * Math.min(1, S.stock.length / 31);
+    return b.dw - w * outs(b.dead, vis);
+  }
+  function danger(c) {
+    var d = 0;
+    S.pubTook[0].forEach(function (id) {
+      var t = byId(S.hands[0], id); if (!t) return;
+      if (t.r === c.r) d += 4;
+      else if (t.s === c.s && Math.abs(RV[t.r] - RV[c.r]) <= 2) d += 3;
     });
-  });
-  document.getElementById('knock-btn')?.addEventListener('click',playerKnock);
-  document.getElementById('discard-btn')?.addEventListener('click',()=>selDiscard&&doDiscard(selDiscard));
-}
+    S.disBy[0].forEach(function (t) {
+      if (t.r === c.r) d -= 1.5;
+      else if (t.s === c.s && Math.abs(RV[t.r] - RV[c.r]) === 1) d -= 0.8;
+    });
+    return d * (S.turnNo > 6 ? 1 : 0.6);
+  }
+  function aiPickDiscard(h, vis) {
+    var bestC = null, bestV = Infinity;
+    h.forEach(function (c) {
+      if (c.id === S.took) return;
+      var rest = h.filter(function (x) { return x !== c; });
+      var v = handValue(rest, vis) + danger(c) + Math.random() * 0.6;
+      if (v < bestV) { bestV = v; bestC = c; }
+    });
+    return bestC;
+  }
+  function aiWantsTop() {
+    var top = S.discard[S.discard.length - 1]; if (!top || S.stockOnly) return false;
+    var h = S.hands[1], vis = seen(), withTop = h.concat([top]);
+    var b = best(withTop);
+    var inMeld = b.melds.some(function (m) { return m.indexOf(top) >= 0; });
+    if (inMeld) return true;
+    // Otherwise only if it clearly improves things (a low card that cuts deadwood)
+    var bestAfter = Infinity;
+    h.forEach(function (c) { var v = best(withTop.filter(function (x) { return x !== c; })).dw; if (v < bestAfter) bestAfter = v; });
+    return val(top) <= 3 && best(h).dw - bestAfter >= 6;
+  }
+  function aiStep() {
+    if (S.phase === 'upcard') { if (aiWantsTop()) takeUp(1); else passUp(1); return; }
+    if (S.phase === 'draw') { draw(1, aiWantsTop() ? 'discard' : 'stock'); return; }
+    if (S.phase === 'discard') {
+      var vis = seen(), c = aiPickDiscard(S.hands[1], vis);
+      var rest = S.hands[1].filter(function (x) { return x !== c; }), dw = best(rest).dw;
+      var limit = S.turnNo < 8 ? 10 : S.turnNo < 16 ? 7 : 4;
+      if (S.pubTook[0].length >= 2) limit -= 2;
+      if (S.stock.length <= 6) limit = 10;
+      var knock = dw === 0 || (dw <= 10 && dw <= limit);
+      // Holding out for gin now and then when very close early on
+      if (knock && dw > 0 && dw <= 2 && S.turnNo < 10 && Math.random() < 0.3) knock = false;
+      discardCard(1, c.id, knock);
+    }
+  }
 
-newGame();
+  // ── End of a hand ─────────────────────────────────────────────────────────
+  function endHand(kn) {
+    var df = 1 - kn, kb = best(S.hands[kn]), gin = kb.dw === 0, res;
+    var lo = gin ? { melds: best(S.hands[df]).melds, lays: [], dead: best(S.hands[df]).dead, dw: best(S.hands[df]).dw } : layoff(S.hands[df], kb.melds);
+    res = { kn: kn, df: df, gin: gin, kMelds: kb.melds, kDead: kb.dead, kDw: kb.dw, dMelds: lo.melds, dLays: lo.lays, dDead: lo.dead, dDw: lo.dw };
+    if (gin) { res.winner = kn; res.pts = lo.dw + 25; }
+    else if (lo.dw <= kb.dw) { res.undercut = true; res.winner = df; res.pts = kb.dw - lo.dw + 25; }
+    else { res.winner = kn; res.pts = lo.dw - kb.dw; }
+    var row = [0, 0]; row[res.winner] = res.pts;
+    S.players[res.winner].total += res.pts; S.players[res.winner].wins++;
+    S.rounds.push(row); S.labels.push('H' + S.hand);
+    var K = S.players[kn].name, D = S.players[df].name;
+    if (gin) S.highlights.push(K + ' went gin in hand ' + S.hand + (lo.dw >= 30 ? ', catching ' + D + ' with ' + lo.dw + ' deadwood' : ''));
+    else if (res.undercut) S.highlights.push('Undercut! ' + D + ' caught ' + K + ' knocking with ' + kb.dw + ' in hand ' + S.hand);
+    S.log.push({ hand: S.hand, kn: kn, gin: gin, undercut: !!res.undercut, kDw: kb.dw, dDw: lo.dw, winner: res.winner, pts: res.pts, lays: lo.lays.length });
+    S.res = res; S.phase = 'reveal'; S.turn = -1;
+    clearUndo(); save(); paint();
+    var mine = res.winner === 0;
+    Kit.callout(gin ? 'Gin!' : res.undercut ? 'Undercut!' : 'Knock!');
+    Kit.sfx(gin || res.undercut ? (mine ? 'win' : 'bad') : (mine ? 'good' : 'bad'));
+    Kit.haptic(mine ? 'success' : 'error');
+    if (gin && kn === 0) Kit.confetti({ count: 90 });
+    setTimeout(function () { if (S && S.phase === 'reveal') showReveal(); }, 1000);
+  }
+  function deadHand() {
+    S.rounds.push([0, 0]); S.labels.push('H' + S.hand);
+    S.log.push({ hand: S.hand, dead: true });
+    S.res = { dead: true }; S.phase = 'reveal'; S.turn = -1; S.sameDealer = true;
+    clearUndo(); save(); paint();
+    Kit.sfx('whoosh'); Kit.callout('No winner');
+    setTimeout(function () { if (S && S.phase === 'reveal') showReveal(); }, 900);
+  }
+  function gameOver() { return S.players.some(function (p) { return p.total >= S.target; }); }
+
+  function cardsRow(cards, cls, startI) {
+    var cs = el('div', { class: 'cs' });
+    cards.forEach(function (c, i) { var n = Cards.el(c, { cls: (cls && cls(c)) || '' }); n.style.setProperty('--i', String((startI || 0) + i)); cs.appendChild(n); });
+    return cs;
+  }
+  function revealNode() {
+    var r = S.res, box = el('div', { class: 'rv felt-in' });
+    if (r.dead) {
+      box.appendChild(el('div', { class: 'rv-res' }, [el('div', { class: 'big display', text: 'Hand ' + S.hand + ' is a draw' }), el('small', { text: 'The stock ran down to 2 cards and nobody knocked. ' + (S.dealer === 0 ? 'You deal' : S.players[1].name + ' deals') + ' again.' })]));
+      return box;
+    }
+    function head(p, text, dw) {
+      return el('div', { class: 'rv-h' }, [
+        el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: S.players[p].cpu ? Kit.icon('bot') : Kit.esc(S.players[p].name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'grow', text: text }),
+        el('span', { class: 'dwv', text: dw === 0 ? 'no deadwood' : 'deadwood ' + dw })
+      ]);
+    }
+    var layIds = {}; r.dLays.forEach(function (l) { layIds[l.c.id] = 1; });
+    var kMelds = r.kMelds.map(function (m) { return m.slice(); });
+    r.dLays.forEach(function (l) { kMelds[l.m].push(l.c); });
+    var i0 = 0;
+    function group(cards, label, dead) {
+      var sorted = cards.slice().sort(function (a, b) { return RV[a.r] - RV[b.r] || suitRank(a, b); });
+      var g = el('div', { class: 'rv-m' + (dead ? ' dead' : '') }, [cardsRow(sorted, function (c) { return layIds[c.id] ? 'lay' : ''; }, i0), el('small', { text: label })]);
+      i0 += cards.length; return g;
+    }
+    var kp = el('div', { class: 'rv-p' }, [head(r.kn, nm(r.kn) + (r.gin ? ' went gin' : ' knocked'), r.kDw)]), kg = el('div', { class: 'rv-g' });
+    kMelds.forEach(function (m) { kg.appendChild(group(m, isSet(m) ? 'set' : 'run')); });
+    if (r.kDead.length) kg.appendChild(group(r.kDead, 'deadwood', true));
+    kp.appendChild(kg); box.appendChild(kp);
+    var dp = el('div', { class: 'rv-p' }, [head(r.df, nm(r.df) + (r.dLays.length ? ' laid off ' + r.dLays.length : r.gin ? ' (no lay offs on gin)' : ''), r.dDw)]), dg = el('div', { class: 'rv-g' });
+    r.dMelds.forEach(function (m) { dg.appendChild(group(m, isSet(m) ? 'set' : 'run')); });
+    if (r.dDead.length) dg.appendChild(group(r.dDead, 'deadwood', true));
+    dp.appendChild(dg); box.appendChild(dp);
+    var who = r.winner === 0 ? 'You score ' : S.players[r.winner].name + ' scores ';
+    var how = r.gin ? r.dDw + ' deadwood + 25 gin bonus' : r.undercut ? (r.kDw + ' − ' + r.dDw + ' + 25 undercut bonus') : (r.dDw + ' − ' + r.kDw + ' deadwood');
+    box.appendChild(el('div', { class: 'rv-res' }, [el('div', { class: 'big display', text: who + r.pts }), el('small', { text: how })]));
+    return box;
+  }
+  function totalsTable(hand) {
+    var t = el('table', { class: 'sum' });
+    t.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: hand ? 'This hand' : 'Hands won' }), el('th', { text: 'Total' })]));
+    var hi = Math.max(S.players[0].total, S.players[1].total);
+    S.players.forEach(function (p, i) {
+      t.appendChild(el('tr', { class: p.total === hi && hi > 0 ? 'lead' : '' }, [
+        el('td', { text: i === 0 ? 'You' : p.name }), el('td', { text: hand ? (hand[i] ? '+' + hand[i] : '0') : String(p.wins) }), el('td', { class: 'big', text: String(p.total) })
+      ]));
+    });
+    return t;
+  }
+  function showReveal() {
+    var r = S.res, over = !r.dead && gameOver();
+    var node = el('div', null, [revealNode(), totalsTable(S.rounds[S.rounds.length - 1]), el('div', { class: 'goalline', text: 'First to ' + S.target + ' wins' })]);
+    var title = r.dead ? 'No winner' : r.gin ? (r.kn === 0 ? 'Gin!' : S.players[r.kn].name + ' went gin') : r.undercut ? 'Undercut!' : (r.kn === 0 ? 'You knocked' : S.players[r.kn].name + ' knocked');
+    Kit.sheet({
+      title: title + ' · hand ' + S.hand, node: node, dismissible: false,
+      actions: [{ label: over ? 'See the result' : 'Deal next hand', primary: true, onClick: function () { over ? finish() : newHand(); } }]
+    });
+  }
+  function showScores() {
+    Kit.sheet({ title: 'Scores · hand ' + S.hand, node: el('div', null, [totalsTable(null), el('div', { class: 'goalline', text: 'First to ' + S.target + ' · 25 per hand won · 100 game bonus' })]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  function finish() {
+    S.phase = 'over';
+    var P = S.players, w = P[0].total >= P[1].total ? 0 : 1, l = 1 - w;
+    var bonus = P.map(function (p, i) { return p.wins * 25 + (i === w ? 100 : 0); });
+    var fin = P.map(function (p, i) { return p.total + bonus[i]; });
+    var hl = S.highlights.slice();
+    var big = null; S.log.forEach(function (x) { if (!x.dead && (!big || x.pts > big.pts)) big = x; });
+    if (big && big.pts >= 20) hl.push('Biggest hand: ' + P[big.winner].name + ' scored ' + big.pts + ' in hand ' + big.hand);
+    var run = 0, runP = -1, bestRun = 0, bestP = -1;
+    S.log.forEach(function (x) { if (x.dead) return; if (x.winner === runP) run++; else { runP = x.winner; run = 1; } if (run > bestRun) { bestRun = run; bestP = runP; } });
+    if (bestRun >= 3) hl.push('Longest winning streak: ' + P[bestP].name + ', ' + bestRun + ' hands');
+    if (!P[l].wins) hl.push(P[w].name + ' won every hand: a shutout');
+    hl = hl.slice(0, 5);
+    hl.push(P[w].name + ' won ' + P[w].wins + ' hands to ' + P[l].wins + ' (' + S.rounds.length + ' dealt)');
+    Kit.record(KEY, {
+      started: S.started, mode: 'vs Computer',
+      players: P.map(function (p, i) { return { name: p.name, score: fin[i], cpu: p.cpu }; }),
+      winner: P[w].name,
+      rounds: { labels: S.labels.concat(['Bonus']), scores: S.rounds.concat([bonus]) },
+      highlights: hl
+    });
+    clearSave();
+    var rank = [w, l].map(function (i) { return { name: P[i].name, score: fin[i], color: Kit.color(i) }; });
+    Kit.win({
+      title: w === 0 ? 'You win!' : P[w].name + ' wins', icon: w === 0 ? 'trophy' : 'bot', lose: w !== 0,
+      sub: 'Hands ' + P[w].total + ' + game bonus 100 + ' + P[w].wins + ' × 25 line bonus', rank: rank,
+      again: function () { S = freshGame(S.players, S.target); undoStack = []; Kit.gameStart(); newHand(); },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Undo ──────────────────────────────────────────────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function clearUndo() { undoStack = []; }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
+    token++; S = JSON.parse(undoStack.pop()); S.dealAnim = false; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+  }
+
+  // ── Human actions ─────────────────────────────────────────────────────────
+  function myTurn(ph) { return S && S.turn === 0 && S.phase === ph; }
+  function tapStock() {
+    if (myTurn('draw')) { snapshot(); draw(0, 'stock'); }
+    else if (myTurn('upcard')) Kit.toast('Take the upcard or pass first');
+    else if (S.turn === 1) Kit.toast('Wait for ' + S.players[1].name);
+  }
+  function tapDiscard() {
+    if (myTurn('upcard')) { snapshot(); takeUp(0); }
+    else if (myTurn('draw')) { if (S.stockOnly) { Kit.haptic('error'); Kit.toast('Both passed, so draw from the stock'); return; } snapshot(); draw(0, 'discard'); }
+  }
+  function canKnockWith(id) {
+    var rest = S.hands[0].filter(function (c) { return c.id !== id; });
+    return best(rest).dw;
+  }
+  function tapCard(id) {
+    if (!myTurn('discard')) { if (S.turn === 0 && S.phase === 'draw') Kit.toast('Draw a card first'); return; }
+    if (id === S.took) { Kit.haptic('error'); Kit.toast("You just picked that up. Keep it this turn."); return; }
+    if (S.sel === id) { snapshot(); discardCard(0, id, false); return; }
+    S.sel = id; Kit.sfx('tap'); Kit.haptic('light'); paintHand(); paintBar(); paintSeats();
+  }
+  function doSort() { S.order = arrange(S.hands[0]); S.manual = false; Kit.sfx('flip'); Kit.haptic('light'); save(); paintHand(); }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var seatEls = [], handEl, barEl, msgEl, stockEl, discEl, feltEl;
+  function render() {
+    app.innerHTML = '';
+    var table = el('div', { class: 'ctable wood' });
+    feltEl = el('div', { class: 'felt-in' });
+    seatEls = [el('div', { class: 'cseat s' }), el('div', { class: 'cseat n' })];
+    var piles = el('div', { class: 'gpiles' });
+    stockEl = el('button', { type: 'button', class: 'gpile', 'aria-label': 'Draw from the stock', onclick: tapStock });
+    discEl = el('button', { type: 'button', class: 'gpile', 'aria-label': 'Take from the discard pile', onclick: tapDiscard });
+    piles.appendChild(stockEl); piles.appendChild(discEl);
+    msgEl = el('div', { class: 'cmsg' });
+    feltEl.appendChild(seatEls[1]); feltEl.appendChild(piles); feltEl.appendChild(msgEl); feltEl.appendChild(seatEls[0]);
+    table.appendChild(feltEl); app.appendChild(table);
+    handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
+    barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
+    bindDrag();
+    paint();
+    if (S.phase === 'reveal') setTimeout(showReveal, 200);
+  }
+  function paint() { paintSeats(); paintPiles(); paintHand(); paintBar(); msgEl.textContent = S.msg || ''; }
+  function pileTop(p) { return p ? p.querySelector('.top') : null; }
+  function paintPiles() {
+    stockEl.innerHTML = ''; discEl.innerHTML = '';
+    var sw = el('div', { class: 'slotwrap' });
+    if (S.stock.length) {
+      if (S.stock.length > 2) sw.appendChild(Kit.card('', '', { back: true, cls: 'stk1' }));
+      if (S.stock.length > 1) sw.appendChild(Kit.card('', '', { back: true, cls: 'stk2' }));
+      sw.appendChild(Kit.card('', '', { back: true, cls: 'top' }));
+    } else sw.appendChild(Kit.card('', '', { cls: 'slot' }));
+    stockEl.appendChild(sw); stockEl.appendChild(el('span', { class: 'lbl', text: 'Stock · ' + S.stock.length }));
+    var dw = el('div', { class: 'slotwrap' });
+    var d = S.discard;
+    if (d.length > 1) dw.appendChild(Cards.el(d[d.length - 2], { cls: 'under' }));
+    if (d.length) dw.appendChild(Cards.el(d[d.length - 1], { cls: 'top' }));
+    else dw.appendChild(Kit.card('', '', { cls: 'slot' }));
+    discEl.appendChild(dw); discEl.appendChild(el('span', { class: 'lbl', text: S.phase === 'upcard' ? 'Upcard' : 'Discard' }));
+    stockEl.classList.toggle('can', myTurn('draw'));
+    discEl.classList.toggle('can', (myTurn('draw') && !S.stockOnly && d.length > 0) || myTurn('upcard'));
+  }
+  function paintSeats() {
+    [0, 1].forEach(function (p) {
+      var pl = S.players[p], s = seatEls[p]; s.innerHTML = '';
+      s.classList.toggle('turn', S.turn === p && S.phase !== 'reveal');
+      var tag = el('div', { class: 'tag' }, [
+        el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        el('span', { text: p === 0 ? 'You' : pl.name }),
+        S.dealer === p ? el('span', { class: 'dealer', title: 'Dealer', text: 'D' }) : null
+      ]);
+      var info = el('div', { class: 'info' }, [el('span', { class: 'chip-s', text: pl.total + ' pts' })]);
+      if (p === 0 && S.hands) {
+        var dwv = liveDeadwood();
+        info.appendChild(el('span', { class: 'chip-s dw' + (dwv === 0 ? ' gin' : dwv <= 10 ? ' ok' : ''), text: 'Deadwood ' + dwv }));
+      }
+      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      else {
+        s.appendChild(tag); s.appendChild(info);
+        if (S.hands && S.phase !== 'reveal') {
+          var backs = el('div', { class: 'backs' });
+          for (var k = 0; k < S.hands[1].length; k++) backs.appendChild(Kit.card('', '', { back: true }));
+          s.appendChild(backs);
+        }
+      }
+    });
+  }
+  // Deadwood shown for your hand: with 11 cards, what's left after the best (or selected) discard
+  function liveDeadwood() {
+    var h = S.hands[0];
+    if (h.length <= 10) return best(h).dw;
+    if (S.sel) return canKnockWith(S.sel);
+    var m = Infinity; h.forEach(function (c) { if (c.id !== S.took) m = Math.min(m, canKnockWith(c.id)); });
+    return m;
+  }
+  function paintHand() {
+    handEl.innerHTML = '';
+    var h = S.hands[0];
+    // keep order in sync with the hand
+    var have = {}; h.forEach(function (c) { have[c.id] = 1; });
+    S.order = S.order.filter(function (id) { return have[id]; });
+    h.forEach(function (c) { if (S.order.indexOf(c.id) < 0) S.order.push(c.id); });
+    var b = best(h), grp = {};
+    b.melds.forEach(function (m, gi) { m.forEach(function (c) { grp[c.id] = gi; }); });
+    var prevG = null, canTap = myTurn('discard');
+    S.order.forEach(function (id, i) {
+      var c = byId(h, id), g = grp[id] != null ? grp[id] : -1;
+      var n = Cards.el(c);
+      n.dataset.g = String(g);
+      n.style.setProperty('--i', String(i));
+      if (i > 0 && g !== prevG && (g >= 0 || prevG >= 0)) n.classList.add('gap');
+      prevG = g;
+      if (canTap) n.classList.add('play');
+      if (S.sel === id) n.classList.add('sel');
+      if (S.newId === id) n.classList.add('new');
+      handEl.appendChild(n);
+    });
+    handEl.classList.toggle('deal', !!S.dealAnim);
+    if (S.dealAnim) { S.dealAnim = false; setTimeout(function () { if (handEl) handEl.classList.remove('deal'); }, 1100); }
+    requestAnimationFrame(function () { fanHand(); brackets(b); });
+  }
+  function fanHand() {
+    var cards = handEl.querySelectorAll('.pcard'); if (!cards.length) return;
+    var gaps = handEl.querySelectorAll('.pcard.gap').length, gw = 10;
+    var w = handEl.clientWidth - 16, cw = cards[0].offsetWidth || 60, n = cards.length;
+    var ov = n > 1 ? Math.min(4, (w - cw - gaps * gw) / (n - 1) - cw) : 0;
+    if (ov < -cw * .72) { gw = 4; ov = Math.min(4, (w - cw - gaps * gw) / (n - 1) - cw); }
+    ov = Math.max(ov, -cw * .78);
+    handEl.style.setProperty('--overlap', ov + 'px');
+    handEl.style.setProperty('--gapw', gw + 'px');
+  }
+  function brackets(b) {
+    handEl.querySelectorAll('.brk').forEach(function (x) { x.remove(); });
+    var cards = Array.prototype.slice.call(handEl.querySelectorAll('.pcard')), hb = handEl.getBoundingClientRect();
+    var i = 0;
+    while (i < cards.length) {
+      var g = +cards[i].dataset.g, j = i;
+      while (j + 1 < cards.length && +cards[j + 1].dataset.g === g) j++;
+      if (g >= 0) {
+        var a = cards[i].getBoundingClientRect(), z = cards[j].getBoundingClientRect(), m = b.melds[g];
+        var br = el('div', { class: 'brk', style: { left: (a.left - hb.left + 3) + 'px', width: (z.right - a.left - 6) + 'px', '--bc': MELD_COLORS[g % MELD_COLORS.length] } }, [el('b', { text: m && isSet(m) ? 'set' : 'run' })]);
+        handEl.appendChild(br);
+      }
+      i = j + 1;
+    }
+  }
+  function paintBar() {
+    barEl.innerHTML = '';
+    if (S.phase === 'reveal' || S.phase === 'over') return;
+    var sortB = el('button', { type: 'button', class: 'btn btn-soft sortb', 'aria-label': 'Sort your hand', html: Kit.icon('shuffle'), onclick: doSort });
+    if (myTurn('upcard')) {
+      var top = S.discard[S.discard.length - 1];
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take the ' + lab(top), onclick: function () { snapshot(); takeUp(0); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); passUp(0); } }));
+      return;
+    }
+    if (myTurn('draw')) {
+      barEl.appendChild(sortB);
+      barEl.appendChild(el('span', { class: 'hint', text: S.stockOnly ? 'Draw from the stock' : 'Draw: tap the stock or the discard' }));
+      return;
+    }
+    if (myTurn('discard')) {
+      barEl.appendChild(sortB);
+      if (!S.sel) {
+        var any = S.hands[0].some(function (c) { return c.id !== S.took && canKnockWith(c.id) <= 10; });
+        var g = S.hands[0].some(function (c) { return c.id !== S.took && canKnockWith(c.id) === 0; });
+        barEl.appendChild(el('span', { class: 'hint', text: g ? 'You have gin! Pick the card to throw' : any ? 'You can knock! Pick a card to throw' : 'Tap a card to discard' }));
+        return;
+      }
+      var c = byId(S.hands[0], S.sel), dw = canKnockWith(S.sel);
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Discard ' + lab(c), onclick: function () { snapshot(); discardCard(0, S.sel, false); } }));
+      if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock · ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(0, id, true); } }));
+      return;
+    }
+    barEl.appendChild(sortB);
+    barEl.appendChild(el('span', { class: 'hint', text: S.turn === 1 ? S.players[1].name + ' is thinking…' : '' }));
+  }
+  function say(p, t) {
+    if (!seatEls[p]) return;
+    var b = el('div', { class: 'say', text: t }); seatEls[p].appendChild(b);
+    setTimeout(function () { b.remove(); }, 1400);
+  }
+  function rectEl(r) { return { getBoundingClientRect: function () { return r; } }; }
+  function flyTemp(fromRect, toEl, node) {
+    var r = toEl.getBoundingClientRect();
+    node.style.cssText = 'position:fixed;left:' + (r.left + r.width / 2 - 20) + 'px;top:' + (r.top + r.height / 2 - 28) + 'px;--cw:40px;z-index:50;pointer-events:none;';
+    document.body.appendChild(node);
+    Cards.fly(node, rectEl(fromRect), { ms: 420 }).then(function () { node.style.opacity = '0'; setTimeout(function () { node.remove(); }, 200); });
+  }
+
+  // ── Drag to rearrange your hand ───────────────────────────────────────────
+  function bindDrag() {
+    var d = null;
+    handEl.addEventListener('pointerdown', function (e) {
+      var n = e.target.closest('.pcard'); if (!n || !S || !S.hands) return;
+      d = { n: n, id: n.dataset.id, x: e.clientX, y: e.clientY, on: false, pid: e.pointerId };
+    });
+    handEl.addEventListener('pointermove', function (e) {
+      if (!d || e.pointerId !== d.pid) return;
+      var dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (!d.on) {
+        if (Math.abs(dx) < 9 && Math.abs(dy) < 9) return;
+        d.on = true; d.n.classList.add('drag'); d.n.classList.remove('sel');
+        try { handEl.setPointerCapture(e.pointerId); } catch (er) {}
+        handEl.querySelectorAll('.brk').forEach(function (x) { x.remove(); });
+      }
+      var others = Array.prototype.filter.call(handEl.querySelectorAll('.pcard'), function (x) { return x !== d.n; });
+      var idx = 0;
+      others.forEach(function (o, i) { var r = o.getBoundingClientRect(); if (r.left + r.width / 2 < e.clientX) idx = i + 1; });
+      var ref = others[idx] || null;
+      if (d.n.nextElementSibling !== ref || (ref === null && handEl.querySelector('.pcard:last-of-type') !== d.n)) handEl.insertBefore(d.n, ref);
+      d.n.style.transform = 'none';
+      var r0 = d.n.getBoundingClientRect();
+      d.n.style.transform = 'translate(' + (e.clientX - (r0.left + r0.width / 2)) + 'px,' + Math.min(0, dy) + 'px) rotate(3deg)';
+    });
+    function end(e) {
+      if (!d || (e && e.pointerId !== d.pid)) return;
+      var was = d; d = null;
+      if (was.on) {
+        S.order = Array.prototype.map.call(handEl.querySelectorAll('.pcard'), function (x) { return x.dataset.id; });
+        S.manual = true; was.n.style.transform = ''; was.n.classList.remove('drag');
+        Kit.sfx('tap'); save(); paintHand();
+      } else if (e && e.type === 'pointerup') tapCard(was.id);
+    }
+    handEl.addEventListener('pointerup', end);
+    handEl.addEventListener('pointercancel', function (e) { if (d && d.on) end(e); else d = null; });
+  }
+  window.addEventListener('resize', function () { if (handEl && S && S.hands) { fanHand(); brackets(best(S.hands[0])); } });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.hands && saved.phase !== 'over') {
+    S = saved; S.dealAnim = false; Kit.gameStart();
+    render(); next();
+  } else showSetup();
+})();
 </script>
-<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>
