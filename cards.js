@@ -62,9 +62,96 @@ var Cards = (function () {
     o = o || {};
     var suits = (o.suits || ['s', 'h', 'c', 'd']).slice(), ranks = o.ranks || RANKS;
     if (o.trump) { suits = suits.filter(function (s) { return s !== o.trump; }); suits.unshift(o.trump); }
+    if (o.by === 'rank') return hand.sort(function (a, b) {
+      return rankIndex(a.r, ranks) - rankIndex(b.r, ranks) || suits.indexOf(a.s) - suits.indexOf(b.s);
+    });
     return hand.sort(function (a, b) {
       return suits.indexOf(a.s) - suits.indexOf(b.s) || rankIndex(a.r, ranks) - rankIndex(b.r, ranks);
     });
+  }
+  // Sort with a game's own comparator per mode (stable: ties keep their order)
+  function sortBy(hand, mode, cmps) {
+    var cmp = cmps[mode] || cmps[Object.keys(cmps)[0]];
+    var idx = new Map(); hand.forEach(function (c, i) { idx.set(c, i); });
+    return hand.sort(function (a, b) { return cmp(a, b) || idx.get(a) - idx.get(b); });
+  }
+
+  // ── FLIP: slide cards to their new places after a re-sort ─────────────────
+  var canTranslate = !!(window.CSS && CSS.supports && CSS.supports('translate', '1px 1px'));
+  function flip(root, mutate, o) {
+    o = o || {};
+    var get = typeof root === 'function' ? root : function () { return root; };
+    var r0 = get(), before = {};
+    if (r0) Array.prototype.forEach.call(r0.querySelectorAll('.pcard[data-id]'), function (n) { before[n.dataset.id] = n.getBoundingClientRect(); });
+    mutate();
+    // Measure after the game's own fan/layout pass (queued in rAF), before paint
+    requestAnimationFrame(function () {
+      var r1 = get(); if (!r1) return;
+      Array.prototype.forEach.call(r1.querySelectorAll('.pcard[data-id]'), function (n) {
+        var a = before[n.dataset.id]; if (!a || !n.animate) return;
+        var b = n.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        var from = dx + 'px ' + dy + 'px';
+        try {
+          n.animate(canTranslate ? [{ translate: from }, { translate: '0px 0px' }] : [{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }],
+            { duration: o.ms || 320, easing: 'cubic-bezier(.2,.8,.25,1)' });
+        } catch (e) {}
+      });
+    });
+  }
+
+  // ── Sort toggle: small "Suit | Rank" pill ─────────────────────────────────
+  var SVGO = '<svg viewBox="0 0 16 16" aria-hidden="true">';
+  var SORT_PRESET = {
+    suit: { label: 'Suit', glyph: '<span class="csg-s">♠︎<i>♥︎</i></span>' },
+    rank: { label: 'Rank', glyph: SVGO + '<rect x="1.5" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="6" width="3" height="8" rx="1"/><rect x="11.5" y="2.5" width="3" height="11.5" rx="1"/></svg>' },
+    melds: { label: 'Melds', glyph: SVGO + '<rect x="1" y="2" width="5" height="8" rx="1.2"/><rect x="4" y="3" width="5" height="8" rx="1.2" fill-opacity=".75"/><rect x="10" y="2" width="5" height="8" rx="1.2" fill-opacity=".55"/><path d="M1.5 12.5v1.5h13v-1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' },
+    color: { label: 'Color', glyph: '<span class="csg-c"><i style="background:#e0253a"></i><i style="background:#1e6fdc"></i><i style="background:#169a4c"></i><i style="background:#f0b000"></i></span>' }
+  };
+  SORT_PRESET.groups = { label: 'Groups', glyph: SORT_PRESET.melds.glyph };
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function sortMode(key, def, ids) {
+    var v = key ? lsGet(key) : null;
+    if (v && (!ids || ids.indexOf(v) >= 0)) return v;
+    return def != null ? def : (ids ? ids[0] : 'suit');
+  }
+  function sortToggle(host, o) {
+    o = o || {};
+    var modes = (o.modes || ['suit', 'rank']).map(function (m) {
+      var x = typeof m === 'string' ? { id: m } : m, p = SORT_PRESET[x.id] || {};
+      return { id: x.id, label: x.label || p.label || x.id, glyph: x.glyph != null ? x.glyph : (p.glyph || '') };
+    });
+    var ids = modes.map(function (m) { return m.id; });
+    var cur = sortMode(o.key, o.value != null ? o.value : ids[0], ids);
+    var wrap = document.createElement('div');
+    wrap.className = 'csort';
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', 'Sort your hand');
+    var btns = modes.map(function (m) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = (m.glyph ? '<span class="csg">' + m.glyph + '</span>' : '') + '<span>' + m.label + '</span>';
+      b.setAttribute('aria-label', 'Sort by ' + m.label.toLowerCase());
+      b.addEventListener('click', function () {
+        if (m.id === cur && !o.retap) return;
+        set(m.id, true);
+      });
+      wrap.appendChild(b);
+      return b;
+    });
+    function paint() { btns.forEach(function (b, i) { b.setAttribute('aria-pressed', ids[i] === cur ? 'true' : 'false'); }); }
+    function set(id, user) {
+      if (ids.indexOf(id) < 0) return;
+      cur = id; if (o.key) lsSet(o.key, id); paint();
+      if (!user) return;
+      if (window.Kit) { try { Kit.sfx('tap'); Kit.haptic('light'); } catch (e) {} }
+      var run = function () { if (o.onChange) o.onChange(id); };
+      if (o.flip) flip(o.flip, run); else run();
+    }
+    paint();
+    if (host) host.appendChild(wrap);
+    return { el: wrap, get: function () { return cur; }, set: function (id) { set(id, false); } };
   }
   function el(c, o) { o = o || {}; var n = Kit.card(c.r, c.s, o); n.dataset.id = c.id || (c.r + c.s); return n; }
   function label(c) { return (c.r === '10' ? '10' : c.r) + GLYPH[c.s]; }
@@ -140,6 +227,23 @@ var Cards = (function () {
     '.chand .pcard.play{box-shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 0 0 1px rgba(0,0,0,.08), 0 6px 14px rgba(0,0,0,.3);}',
     '.cbar{display:flex;gap:10px;justify-content:center;align-items:center;min-height:52px;margin:6px 0 4px;}',
     '.cbar .hint{color:var(--text-2);font-weight:800;}',
+    // Sort toggle: a small pill sitting just above the hand, right-aligned
+    '.csort-row{display:flex;justify-content:flex-end;align-items:center;min-height:32px;padding:0 4px;margin:0 0 -6px;position:relative;}',
+    '.csort-row[hidden]{display:none;}',
+    '.csort{display:inline-flex;align-items:stretch;height:32px;border-radius:999px;background:rgba(0,0,0,.26);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);}',
+    '.csort button{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:44px;height:32px;padding:0 11px;border:0;border-radius:999px;background:none;color:var(--text-3,#8f88b0);font:inherit;font-weight:800;font-size:.74rem;letter-spacing:.02em;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:color .2s;}',
+    '.csort button::before{content:"";position:absolute;inset:3px;z-index:-1;border-radius:999px;background:transparent;transition:background .2s, box-shadow .2s;}',
+    '.csort button[aria-pressed="true"]{color:var(--text);}',
+    '.csort button[aria-pressed="true"]::before{background:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 1px 3px rgba(0,0,0,.3);}',
+    '.csort button:active::before{background:rgba(255,255,255,.2);}',
+    '.csort button:focus-visible{outline:2px solid var(--yellow);outline-offset:-2px;}',
+    '.csort .csg{display:inline-flex;align-items:center;opacity:.8;}',
+    '.csort button[aria-pressed="true"] .csg{opacity:1;}',
+    '.csort .csg svg{width:12px;height:12px;fill:currentColor;}',
+    '.csort .csg-s{font-size:.8rem;line-height:1;letter-spacing:-.04em;}',
+    '.csort .csg-s i{font-style:normal;color:#ff6b80;}',
+    '.csort .csg-c{display:grid;grid-template-columns:5px 5px;gap:2px;}',
+    '.csort .csg-c i{width:5px;height:5px;border-radius:50%;}',
     // Scorepad (paper)
     '.spad{border-radius:6px 6px 14px 14px;overflow:hidden;background:linear-gradient(180deg,#fffaf0,#f6eedb);color:#2a2a3a;box-shadow:0 16px 34px rgba(0,0,0,.45);}',
     '.spad-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:14px 14px 8px;border-bottom:3px double #c8102e;}',
@@ -176,7 +280,7 @@ var Cards = (function () {
   ].join('\n');
   document.head.appendChild(css);
 
-  return { RANKS: RANKS, SUITS: SUITS, GLYPH: GLYPH, deck: deck, shuffle: shuffle, sort: sort, el: el, label: label, fan: fan, fly: fly, wait: wait, rankIndex: rankIndex };
+  return { RANKS: RANKS, SUITS: SUITS, GLYPH: GLYPH, deck: deck, shuffle: shuffle, sort: sort, sortBy: sortBy, el: el, label: label, fan: fan, fly: fly, flip: flip, wait: wait, rankIndex: rankIndex, sortToggle: sortToggle, sortMode: sortMode };
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════

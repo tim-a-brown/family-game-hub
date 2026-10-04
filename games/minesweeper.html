@@ -318,7 +318,7 @@ body{overflow-x:hidden;}
     var end = 650 + rest.length * gap + 200;
     setTimeout(function () {
       if (my !== token) return;
-      S.flag.forEach(function (f, k) { if (f && !S.mine[k]) paintCell(k); });
+      markWrong(); Kit.sfx('bad');
       field.classList.add('dark');
     }, end);
     setTimeout(function () { if (my !== token) return; loseSheet(); }, end + 900);
@@ -493,7 +493,6 @@ body{overflow-x:hidden;}
       if (S.flag[i]) { cls = 'cell up'; html = FLAG(); }
     } else if (S.flag[i]) {
       cls += ' up'; html = FLAG(o.plant ? 'plant' : '');
-      if (S.over && !S.won && S.mine && !S.mine[i] && S.hit >= 0 && field.classList.contains('dark') === false && o.final !== false) {}
       if (o.delay != null) n.style.setProperty('--fd', o.delay + 'ms');
     } else cls += ' up';
     // After a boom, cross out wrong flags
@@ -570,9 +569,7 @@ body{overflow-x:hidden;}
   }
 
   // Wrong flags get crossed out once the chain reaction is over
-  var _dark = Object.getOwnPropertyDescriptor(DOMTokenList.prototype, 'add');
   function markWrong() { S.flag.forEach(function (f, k) { if (f && S.mine && !S.mine[k]) { cellEls[k]._wrongReady = true; paintCell(k); } }); }
-  var origExplodeEnd = null;
 
   // Test hook: lay a known field
   window.__ms = {
@@ -581,7 +578,6 @@ body{overflow-x:hidden;}
       S.adj = S.mine.map(function (m, k) { return nbrs(k).filter(function (x) { return S.mine[x]; }).length; }); startClock(); save(); },
     cell: function (i) { return cellEls[i]; }
   };
-  window.__msMarkWrong = markWrong;
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
