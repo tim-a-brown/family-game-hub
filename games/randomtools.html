@@ -2,203 +2,545 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Random Tools</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-body{background:radial-gradient(700px 460px at 50% -8%, rgba(96,165,250,.13), transparent 62%), var(--bg);}
-.wrap{max-width:520px;margin:0 auto;}
-.tabs{display:grid;grid-template-columns:1fr 1fr;}
-.tab{min-height:40px;font-size:.92rem;}
-.sec-lbl{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:0 4px 8px;}
-/* Hero result */
-.hero{min-height:170px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line);margin-bottom:16px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 14px;text-align:center;}
-.hero-empty{color:var(--text-3);font-size:.95rem;font-weight:600;}
-.hero-empty b{display:block;font-size:2.2rem;margin-bottom:4px;}
-.big-num{font-family:var(--display);font-size:clamp(4rem,22vw,6.5rem);font-weight:800;color:var(--gold);line-height:1;letter-spacing:-.04em;
-  text-shadow:0 0 40px rgba(245,200,66,.3);font-variant-numeric:tabular-nums;}
-.big-num.spin{opacity:.55;filter:blur(.5px);}
-.big-num.pop,.num-chip.pop{animation:gn-pop .38s var(--spring) both;}
-.hero-sub{font-size:.85rem;color:var(--text-3);margin-top:6px;}
-.num-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
-.num-chip{min-width:64px;height:56px;padding:0 14px;border-radius:16px;display:flex;align-items:center;justify-content:center;
-  background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);font-family:var(--display);font-size:1.6rem;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;}
-/* Grouped inset form */
-.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;}
-.row{margin:0;color:var(--text);letter-spacing:0;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:6px 8px 6px 16px;border-bottom:1px solid var(--line);}
-.row:last-child{border-bottom:0;}
-.row-lbl{font-size:1rem;font-weight:600;flex:none;}
-.row input.input{width:130px;flex:none;min-height:44px;text-align:right;background:transparent;border-color:transparent;padding:8px 10px;font-weight:600;}
-.row input.input:focus{background:var(--surface-2);border-color:rgba(245,200,66,.5);box-shadow:none;}
-.seg{display:flex;gap:4px;padding:3px;background:var(--surface-2);border-radius:12px;}
-.seg button{min-width:34px;padding:0 6px;height:38px;border:0;border-radius:9px;background:transparent;color:var(--text-2);font-weight:700;font-size:.95rem;cursor:pointer;font-variant-numeric:tabular-nums;}
-.seg button.on{background:var(--surface-3);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.35);}
-.btn-xl{min-height:54px;font-size:1.05rem;}
-/* History */
-.hist-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px;}
-.hist-chip{min-width:40px;height:34px;padding:0 12px;border-radius:999px;display:flex;align-items:center;justify-content:center;
-  background:var(--surface);border:1px solid var(--line);font-size:.9rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;}
-/* Teams */
-textarea.input{resize:vertical;min-height:150px;line-height:1.6;border-radius:0;border:0;background:transparent;padding:14px 16px;}
-textarea.input:focus{box-shadow:none;background:transparent;}
-.names-meta{display:flex;justify-content:space-between;align-items:center;padding:0 16px 10px;font-size:.82rem;color:var(--text-3);}
-.team-display{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:16px;}
-.team-card{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--tc);border-radius:var(--radius);padding:12px 14px;
-  animation:gn-pop .35s var(--spring) both;}
-.team-name{display:flex;justify-content:space-between;align-items:center;font-family:var(--display);font-weight:800;margin-bottom:6px;font-size:1.05rem;color:var(--tc);}
-.team-name span{font-family:var(--font);font-size:.78rem;font-weight:700;color:var(--text-3);}
-.team-member{padding:7px 0;font-size:.95rem;color:var(--text);border-bottom:1px solid var(--line);}
-.team-member:last-child{border-bottom:none;}
-.err{color:var(--red);text-align:center;font-size:.9rem;font-weight:600;grid-column:1/-1;}
+.tabs{margin:2px 0 12px;}
+.tabs > button{min-height:44px;padding:0 2px;font-size:.88rem;}
+.pane[hidden]{display:none!important;}
+
+/* Table */
+.tray{border-radius:26px;padding:9px;margin-bottom:12px;}
+.tray .felt-in{position:relative;border-radius:19px;min-height:clamp(230px,34vh,330px);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.tray .empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-family:var(--display);font-size:1.25rem;color:rgba(255,255,255,.5);pointer-events:none;}
+.act{margin-bottom:18px;}
+.act .ico{width:22px;height:22px;}
+
+.panel{padding:6px 16px;margin-bottom:14px;}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;border-bottom:1px solid var(--line);}
+.prow:last-child{border-bottom:0;}
+.prow > span{font-weight:800;}
+.prow small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
+.prow .input{width:120px;min-height:46px;text-align:center;font-size:1.15rem;font-weight:900;}
+.prow .seg{flex:none;}
+.prow .seg > button{min-width:42px;min-height:40px;}
+.label{margin-top:4px;}
+
+/* Lottery balls */
+.balls{display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:10px;padding:20px 12px;width:100%;}
+.ball{--c:#e5484d;--bs:64px;width:var(--bs);height:var(--bs);flex:none;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 34% 28%, color-mix(in srgb,var(--c) 45%,#fff) 0%, var(--c) 45%, color-mix(in srgb,var(--c) 60%,#000) 100%);
+  box-shadow:0 calc(var(--bs) * .12) calc(var(--bs) * .16) rgba(0,0,0,.45);animation:drop .9s cubic-bezier(.3,0,.3,1) both;}
+.ball span{display:grid;place-items:center;width:64%;height:64%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#ece6d8);color:#1d1b2e;
+  font-family:var(--display);font-size:calc(var(--bs) * .3);line-height:1;box-shadow:inset 0 -2px 3px rgba(0,0,0,.15);}
+.ball.long span{font-size:calc(var(--bs) * .22);}
+.ball.xl span{font-size:calc(var(--bs) * .17);}
+@keyframes drop{
+  0%{transform:translateY(-300px) rotate(-220deg);}
+  50%{transform:translateY(0) rotate(-20deg);}
+  64%{transform:translateY(calc(var(--bs) * -.45)) rotate(-6deg);}
+  78%{transform:translateY(0) rotate(0);}
+  88%{transform:translateY(calc(var(--bs) * -.12));}
+  100%{transform:none;}
+}
+.recent{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 18px;}
+.recent span{min-width:38px;height:32px;padding:0 10px;border-radius:999px;display:grid;place-items:center;background:rgba(255,255,255,.07);font-weight:800;color:var(--text-2);font-variant-numeric:tabular-nums;}
+
+/* Coin */
+.coinwrap{position:relative;width:170px;height:240px;display:flex;align-items:flex-end;justify-content:center;perspective:900px;}
+.coin-shadow{position:absolute;bottom:22px;left:50%;width:150px;height:30px;margin-left:-75px;border-radius:50%;background:radial-gradient(rgba(0,0,0,.5),rgba(0,0,0,0) 70%);transition:transform .7s ease, opacity .7s ease;}
+.toss{position:relative;width:150px;height:150px;margin-bottom:30px;transform-style:preserve-3d;}
+.toss.go{animation:toss 1.5s cubic-bezier(.33,0,.4,1) both;}
+@keyframes toss{0%{transform:translateY(0) scale(1);}45%{transform:translateY(-92px) scale(1.3);animation-timing-function:cubic-bezier(.6,0,.8,.6);}
+  85%{transform:translateY(0) scale(1);}92%{transform:translateY(-14px);}100%{transform:none;}}
+.coinwrap.up .coin-shadow{animation:shad 1.5s cubic-bezier(.33,0,.4,1) both;}
+@keyframes shad{45%{transform:scale(.5);opacity:.35;}85%,100%{transform:none;opacity:1;}}
+.coin{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--rx,0deg));}
+.coin.spin{transition:transform 1.3s cubic-bezier(.2,.6,.3,1);}
+.coin .face,.coin .edge{position:absolute;inset:0;border-radius:50%;}
+.coin .face{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  background:radial-gradient(circle at 35% 30%,#fff3b0 0%,#f2c94c 30%,#d9a21b 70%,#a8740c 100%);
+  box-shadow:inset 0 0 0 7px #c48f14, inset 0 0 0 9px #f7d774, inset 0 0 0 13px rgba(140,90,0,.35), inset 0 0 22px rgba(120,70,0,.5);
+  color:#8a5a00;text-shadow:0 1px 0 rgba(255,240,180,.8), 0 -1px 0 rgba(90,50,0,.35);}
+.coin .face .ico{width:58px;height:58px;stroke-width:1.6;}
+.coin .face b{font-family:var(--display);font-weight:400;font-size:1.05rem;letter-spacing:.18em;}
+.coin .face.heads{transform:translateZ(6px);}
+.coin .face.tails{transform:rotateX(180deg) translateZ(6px);}
+.coin .face.tails .big{font-family:var(--display);font-size:3.4rem;line-height:1;}
+.coin .edge{background:#a8740c;}
+.coinres{position:absolute;top:14px;left:0;right:0;text-align:center;font-family:var(--display);font-size:2rem;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.35);opacity:0;transform:scale(.6);transition:opacity .2s, transform .35s var(--spring);}
+.coinres.show{opacity:1;transform:none;}
+.tally{display:flex;gap:10px;margin-bottom:14px;}
+.tally > div{flex:1;padding:10px 12px;border-radius:var(--r);background:rgba(255,255,255,.06);text-align:center;}
+.tally b{display:block;font-family:var(--display);font-weight:400;font-size:1.8rem;line-height:1.1;}
+.tally small{font-weight:800;color:var(--text-3);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;}
+.flips{display:flex;flex-wrap:wrap;gap:5px;margin:-4px 0 18px;}
+.flips i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:.8rem;color:#7a4f00;
+  background:radial-gradient(circle at 35% 30%,#fff3b0,#e2b33a 60%,#b07b10);}
+
+/* Wheel */
+.wheelbox{position:relative;width:min(74vw,280px);aspect-ratio:1;margin:22px 0 14px;}
+#sBox{flex-direction:column;}
+.wheel{width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 8px #3b2414, 0 0 0 11px #c9a227, 0 14px 30px rgba(0,0,0,.5);will-change:transform;}
+.wheel text{font-family:var(--font);font-weight:900;fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:3px;}
+.pointer{position:absolute;top:-14px;left:50%;width:34px;height:42px;margin-left:-17px;z-index:2;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));}
+.hub{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;z-index:2;
+  background:radial-gradient(circle at 35% 30%,#fff3b0,#d9a21b 60%,#8a5a00);box-shadow:0 3px 6px rgba(0,0,0,.45);}
+.winner{min-height:1.9rem;margin:-4px 0 10px;text-align:center;font-family:var(--display);font-size:1.5rem;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.4);opacity:0;transition:opacity .3s;}
+.winner.show{opacity:1;}
+
+/* Names picker */
+.names{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.names .chip{min-height:44px;padding:0 16px 0 6px;color:var(--text-2);background:rgba(255,255,255,.06);}
+.names .chip .avatar{width:32px;height:32px;font-size:.85rem;background:rgba(255,255,255,.12);color:var(--text-2);}
+.names .chip.on{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text);box-shadow:inset 0 0 0 2px var(--accent);}
+.names .chip.on .avatar{background:var(--accent);color:var(--accent-ink);}
+.names .chip .x{display:grid;place-items:center;margin-left:2px;margin-right:-8px;width:28px;height:28px;border-radius:50%;color:var(--text-3);}
+.names .chip .x .ico{width:14px;height:14px;}
+.addname{display:flex;gap:8px;margin-bottom:8px;}
+.addname .input{min-height:48px;}
+.addname .btn{min-height:48px;flex:none;}
+.namesmeta{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;color:var(--text-3);font-weight:700;font-size:.88rem;}
+.namesmeta .btn-ghost{min-height:36px;padding:0 8px;font-size:.88rem;}
+
+/* Teams + order: paper slips dealt onto the table */
+.teams{display:grid;gap:10px;width:100%;padding:14px;align-self:stretch;align-content:start;}
+.team{border-radius:14px;padding:8px 8px 10px;background:rgba(0,0,0,.18);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent);}
+.team h3{display:flex;align-items:center;justify-content:space-between;font-family:var(--display);font-weight:400;font-size:1.15rem;color:var(--c);margin:0 4px 6px;text-shadow:0 2px 0 rgba(0,0,0,.3);}
+.team h3 small{font-family:var(--font);font-weight:900;font-size:.75rem;color:rgba(255,255,255,.6);}
+.slip{display:flex;align-items:center;gap:8px;min-height:38px;padding:4px 10px;margin-top:6px;border-radius:6px;background:linear-gradient(180deg,#fffaf0,#f3ead6);color:#2a2a3a;
+  font-family:var(--hand);font-size:1.3rem;line-height:1.1;box-shadow:0 3px 6px rgba(0,0,0,.35);animation:deal .45s var(--ease) both;overflow:hidden;}
+.slip .n{flex:none;font-family:var(--display);font-size:1rem;color:var(--ink);min-width:22px;}
+.slip.first .n{color:#c8102e;}
+.slip .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@keyframes deal{from{transform:translate(var(--fx,0),-180px) rotate(-14deg);opacity:0;}60%{opacity:1;}to{transform:rotate(var(--rot,0deg));opacity:1;}}
+.teams.c3{padding:10px;gap:7px;}
+.teams.c3 .team{padding:6px 5px 8px;}
+.teams.c3 .team h3{font-size:1rem;margin:0 3px 4px;}
+.teams.c3 .slip{font-size:1.12rem;padding:4px 6px;}
+.teams.c3 .slip .nm{white-space:normal;overflow-wrap:anywhere;}
+.order{display:flex;flex-direction:column;width:100%;max-width:340px;padding:14px;align-self:stretch;justify-content:center;}
+.order .slip{min-height:46px;font-size:1.45rem;}
+.order .slip .n{font-size:1.25rem;min-width:30px;}
+.order .slip.first{background:linear-gradient(180deg,#fff6c9,#f5e2a0);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Random Tools</span>
-</nav>
-<div class="page"><div class="wrap">
+<main class="stage" id="app">
+  <div class="seg tabs" id="tabs" role="tablist">
+    <button type="button" data-t="number">Number</button>
+    <button type="button" data-t="coin">Coin</button>
+    <button type="button" data-t="spin">Spinner</button>
+    <button type="button" data-t="teams">Teams</button>
+    <button type="button" data-t="order">Order</button>
+  </div>
 
-<div class="tabs" id="tabs">
-  <button class="tab active" data-tab="rng">🎲 Numbers</button>
-  <button class="tab" data-tab="teams">👥 Teams</button>
-</div>
-
-<!-- RNG PANEL -->
-<div id="tab-rng">
-  <div class="hero" id="rng-output"><div class="hero-empty"><b>✦</b>Pick a range and tap Generate</div></div>
-  <div class="group">
-    <label class="row" for="rng-min"><span class="row-lbl">From</span><input class="input" type="number" inputmode="numeric" id="rng-min" value="1"></label>
-    <label class="row" for="rng-max"><span class="row-lbl">To</span><input class="input" type="number" inputmode="numeric" id="rng-max" value="100"></label>
-    <div class="row"><span class="row-lbl">How many</span>
-      <div class="seg" data-target="rng-count"><button class="on">1</button><button>2</button><button>3</button><button>5</button><button>10</button></div>
-      <input type="hidden" id="rng-count" value="1">
+  <!-- Number picker -->
+  <section class="pane" data-p="number">
+    <div class="tray wood"><div class="felt-in" id="nBox"><div class="balls" id="balls"></div><div class="empty" id="nEmpty">Pick a range,<br>then tap Pick</div></div></div>
+    <button class="btn btn-primary btn-lg btn-block act" id="nGo" type="button"></button>
+    <div class="recent" id="nRecent"></div>
+    <div class="panel">
+      <div class="prow"><span>From</span><input class="input" id="nMin" type="number" inputmode="numeric"></div>
+      <div class="prow"><span>To</span><input class="input" id="nMax" type="number" inputmode="numeric"></div>
+      <div class="prow"><span>How many</span><div class="seg" id="nCount"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">5</button><button type="button">10</button></div></div>
+      <div class="prow"><span>No repeats<small>Each number at most once</small></span><label class="switch"><input type="checkbox" id="nUnique"><i></i></label></div>
     </div>
-  </div>
-  <button class="btn btn-gold btn-block btn-xl" id="rng-btn">Generate</button>
-  <div class="hist-chips" id="rng-hist"></div>
-</div>
+  </section>
 
-<!-- TEAMS PANEL -->
-<div id="tab-teams" class="hidden">
-  <div class="sec-lbl">Names · one per line</div>
-  <div class="group">
-    <textarea class="input" id="names-input" placeholder="Alice&#10;Bob&#10;Cameron&#10;Jamie&#10;…" rows="6"></textarea>
-    <div class="names-meta"><span id="names-count">0 names</span><button class="btn-ghost" id="names-clear" style="min-height:36px">Clear</button></div>
-  </div>
-  <div class="group">
-    <div class="row"><span class="row-lbl">Teams</span>
-      <div class="seg" data-target="team-count"><button>2</button><button class="on">3</button><button>4</button><button>5</button><button>6</button></div>
-      <input type="hidden" id="team-count" value="3">
-    </div>
-  </div>
-  <button class="btn btn-gold btn-block btn-xl" id="teams-btn">Randomize teams</button>
-  <div id="teams-output" class="team-display"></div>
-</div>
+  <!-- Coin flip -->
+  <section class="pane" data-p="coin" hidden>
+    <div class="tray wood"><div class="felt-in" id="cBox">
+      <div class="coinres" id="cRes"></div>
+      <div class="coinwrap" id="cWrap">
+        <div class="coin-shadow"></div>
+        <div class="toss" id="cToss"><div class="coin" id="coin"></div></div>
+      </div>
+    </div></div>
+    <button class="btn btn-primary btn-lg btn-block act" id="cGo" type="button"></button>
+    <div class="tally"><div><b id="cH">0</b><small>Heads</small></div><div><b id="cT">0</b><small>Tails</small></div><div><b id="cS">0</b><small>Streak</small></div></div>
+    <div class="flips" id="cFlips"></div>
+    <div class="sect" style="text-align:center"><button class="btn btn-ghost" id="cReset" type="button">Reset count</button></div>
+  </section>
 
-</div></div>
+  <!-- Spinner -->
+  <section class="pane" data-p="spin" hidden>
+    <div class="tray wood"><div class="felt-in" id="sBox">
+      <div class="wheelbox" id="wheelbox">
+        <svg class="pointer" viewBox="0 0 34 42"><path d="M17 41 2 8a15 15 0 0 1 30 0z" fill="#fff8e1" stroke="#8a5a00" stroke-width="2.5" stroke-linejoin="round"/><circle cx="17" cy="11" r="4.5" fill="#c8102e"/></svg>
+        <svg class="wheel" id="wheel" viewBox="-150 -150 300 300"></svg>
+        <div class="hub"></div>
+      </div>
+      <div class="empty" id="sEmpty" hidden>Pick at least two<br>players below</div>
+    </div></div>
+    <button class="btn btn-primary btn-lg btn-block act" id="sGo" type="button"></button>
+    <div class="names-slot"></div>
+  </section>
+
+  <!-- Teams -->
+  <section class="pane" data-p="teams" hidden>
+    <div class="tray wood"><div class="felt-in" id="tBox"><div class="teams" id="teams"></div><div class="empty" id="tEmpty">Pick the players,<br>then tap Make teams</div></div></div>
+    <button class="btn btn-primary btn-lg btn-block act" id="tGo" type="button"></button>
+    <div class="panel"><div class="prow"><span>Teams</span><div class="seg" id="tCount"><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button><button type="button">6</button></div></div></div>
+    <div class="names-slot"></div>
+  </section>
+
+  <!-- Random order -->
+  <section class="pane" data-p="order" hidden>
+    <div class="tray wood"><div class="felt-in" id="oBox"><div class="order" id="order"></div><div class="empty" id="oEmpty">Pick the players,<br>then tap Shuffle</div></div></div>
+    <button class="btn btn-primary btn-lg btn-block act" id="oGo" type="button"></button>
+    <div class="names-slot"></div>
+  </section>
+
+  <!-- Shared "who's playing" picker (moved into the open tab) -->
+  <div id="namesPanel">
+    <div class="label">Who's playing</div>
+    <div class="names" id="names"></div>
+    <div class="addname"><input class="input" id="addIn" type="text" maxlength="20" placeholder="Add a name" autocomplete="off" enterkeyhint="done"><button class="btn btn-soft" id="addBtn" type="button">Add</button></div>
+    <div class="namesmeta"><span id="namesN"></span><span><button class="btn btn-ghost" id="allOn" type="button">All</button><button class="btn btn-ghost" id="allOff" type="button">None</button></span></div>
+  </div>
+</main>
+
 <script>
-'use strict';
-const TEAM_COLORS=['#f5c842','#5ac8fa','#ff6b6b','#7ed47e','#c084fc','#fb923c'];
-const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const toast=m=>{ if(window.GN)GN.toast(m); };
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, $ = function (id) { return document.getElementById(id); };
+  var KEY = 'randomtools_settings';
+  var TABS = ['number', 'coin', 'spin', 'teams', 'order'];
+  var ALIAS = { numbers: 'number', rng: 'number', flip: 'coin', spinner: 'spin', wheel: 'spin', first: 'spin', team: 'teams', shuffle: 'order' };
 
-// Tabs
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');haptic('select');
-    ['rng','teams'].forEach(id=>document.getElementById('tab-'+id).classList.toggle('hidden',id!==t.dataset.tab));
+  Kit.init({
+    id: 'randomtools',
+    theme: { felt: ['#1d6b78', '#124954', '#0c343d'] },
+    menu: [{ icon: 'users', label: 'Clear who\'s playing', onClick: function () { cfg.sel = []; cfg.extra = []; save(); renderNames(); refreshAll(); } }],
+    rules:
+      '<p class="goal">Quick, fair ways to decide things: pick a number, flip a coin, spin to see who goes first, make teams, or shuffle the order.</p>' +
+      '<h3>Number</h3><p>Choose a range (like 1 to 100) and how many numbers you want. Turn on <b>No repeats</b> for raffles, so a number can\'t come up twice.</p>' +
+      '<h3>Coin</h3><p>Tap <b>Flip</b>. Heads has the star, tails has the 1. The count keeps track of every flip and the longest streak.</p>' +
+      '<h3>Spinner</h3><p>Tap the people playing, then spin. Whoever the pointer lands on goes first. Everyone gets an equal slice.</p>' +
+      '<h3>Teams</h3><p>Pick the players and the number of teams. Names are shuffled and dealt out one at a time, so teams are as even as they can be.</p>' +
+      '<h3>Order</h3><p>Shuffles everyone into a random turn order, 1st to last.</p>' +
+      '<h3>Names</h3><p>Names come from your <b>Frequent players</b> (in the menu). Add a guest with <b>Add a name</b>.</p>'
   });
-});
-// Segmented pickers write into their hidden input
-document.querySelectorAll('.seg').forEach(seg=>{
-  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');haptic('select');
-    document.getElementById(seg.dataset.target).value=b.textContent;
-  }));
-});
 
-// ── RNG ────────────────────────────────────────────────────────────────────
-let rngHistory=[];
-let spinning=false;
-document.getElementById('rng-btn').addEventListener('click',()=>{
-  if(spinning)return;
-  const min=parseInt(document.getElementById('rng-min').value)||1;
-  const max=parseInt(document.getElementById('rng-max').value)||100;
-  const count=parseInt(document.getElementById('rng-count').value)||1;
-  if(min>max){toast('“From” must be less than or equal to “To”');haptic('error');return;}
-  document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
+  // ── Settings ─────────────────────────────────────────────────────────────
+  var cfg = { tab: 'number', min: 1, max: 100, count: 1, unique: false, teams: 2, sel: null, extra: [], lastTeams: null, lastOrder: null };
+  try { var sv = JSON.parse(localStorage.getItem(KEY)); if (sv) for (var k in sv) cfg[k] = sv[k]; } catch (e) {}
+  function save() { if (cfg.sel && cfg.sel.length) cfg.touched = true; try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} }
 
-  const nums=Array.from({length:count},()=>Math.floor(Math.random()*(max-min+1))+min);
-  const out=document.getElementById('rng-output');
-  const rnd=()=>Math.floor(Math.random()*(max-min+1))+min;
-
-  // Slot-machine spin, then land on the result
-  spinning=true;haptic('light');
-  if(count===1){
-    out.innerHTML=`<div class="big-num spin">${rnd()}</div><div class="hero-sub">${min} – ${max}</div>`;
-  } else {
-    out.innerHTML=`<div class="num-grid">${nums.map(()=>`<div class="num-chip">${rnd()}</div>`).join('')}</div><div class="hero-sub">${count} numbers · ${min} – ${max}</div>`;
+  function rint(n) {
+    try { var a = new Uint32Array(1), lim = Math.floor(4294967296 / n) * n, x; do { crypto.getRandomValues(a); x = a[0]; } while (x >= lim); return x % n; }
+    catch (e) { return Math.floor(Math.random() * n); }
   }
-  const t0=performance.now();
-  const iv=setInterval(()=>{
-    if(count===1)out.querySelector('.big-num').textContent=rnd();
-    else out.querySelectorAll('.num-chip').forEach(c=>c.textContent=rnd());
-    if(performance.now()-t0>480){
-      clearInterval(iv);spinning=false;
-      if(count===1){const b=out.querySelector('.big-num');b.textContent=nums[0];b.classList.remove('spin');b.classList.add('pop');}
-      else out.querySelectorAll('.num-chip').forEach((c,i)=>{c.textContent=nums[i];c.classList.add('pop');c.style.animationDelay=(i*40)+'ms';});
-      haptic('medium');
-      if(count===1){rngHistory.unshift(nums[0]);if(rngHistory.length>20)rngHistory.pop();}
-      else{nums.forEach(n=>{rngHistory.unshift(n);});if(rngHistory.length>20)rngHistory.length=20;}
-      const hist=document.getElementById('rng-hist');
-      hist.innerHTML=rngHistory.map(n=>`<div class="hist-chip">${n}</div>`).join('');
-    }
-  },55);
-});
+  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = rint(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
-// ── Team Generator ─────────────────────────────────────────────────────────
-const namesEl=document.getElementById('names-input');
-function countNames(){const n=namesEl.value.split('\n').map(x=>x.trim()).filter(Boolean).length;document.getElementById('names-count').textContent=n+(n===1?' name':' names');}
-namesEl.addEventListener('input',countNames);
-document.getElementById('names-clear').addEventListener('click',()=>{namesEl.value='';countNames();document.getElementById('teams-output').innerHTML='';});
-function escapeHTML(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  // ── Tabs (the hash picks the tab: randomtools.html#teams) ────────────────
+  var tab = null;
+  function tabFromHash() { var h = location.hash.replace('#', '').toLowerCase(); h = ALIAS[h] || h; return TABS.indexOf(h) >= 0 ? h : null; }
+  function show(t, fromUser) {
+    if (spinning && t !== 'spin') return;
+    tab = t; cfg.tab = t; save();
+    document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-t') === t); b.setAttribute('aria-selected', b.getAttribute('data-t') === t); });
+    document.querySelectorAll('.pane').forEach(function (p) { p.hidden = p.getAttribute('data-p') !== t; });
+    var slot = document.querySelector('.pane[data-p="' + t + '"] .names-slot');
+    var np = $('namesPanel');
+    if (slot) { slot.appendChild(np); np.hidden = false; } else np.hidden = true;
+    if (fromUser) { try { history.replaceState(null, '', '#' + t); } catch (e) {} }
+    if (t === 'spin') drawWheel();
+  }
+  document.querySelectorAll('#tabs button').forEach(function (b) {
+    b.addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); show(b.getAttribute('data-t'), true); });
+  });
+  window.addEventListener('hashchange', function () { var t = tabFromHash(); if (t) show(t); });
 
-document.getElementById('teams-btn').addEventListener('click',()=>{
-  const raw=namesEl.value;
-  const names=raw.split('\n').map(n=>n.trim()).filter(Boolean);
-  if(names.length<2){toast('Enter at least 2 names');haptic('error');return;}
+  function segPick(id, values, get, set) {
+    var seg = $(id);
+    function paint() { seg.querySelectorAll('button').forEach(function (b, i) { b.classList.toggle('on', values[i] === get()); }); }
+    seg.querySelectorAll('button').forEach(function (b, i) { b.addEventListener('click', function () { set(values[i]); Kit.sfx('tap'); Kit.haptic('light'); paint(); save(); }); });
+    paint();
+    return paint;
+  }
 
-  const numTeams=parseInt(document.getElementById('team-count').value);
-  if(numTeams>names.length){toast('More teams than names!');haptic('error');return;}
-  namesEl.blur();
+  // ── Number picker ────────────────────────────────────────────────────────
+  var BALL = ['#e5484d', '#3b82f6', '#f5a623', '#10b981', '#8b5cf6', '#ec4899', '#0ea5e9', '#f97316'];
+  var nRecent = [];
+  $('nMin').value = cfg.min; $('nMax').value = cfg.max; $('nUnique').checked = !!cfg.unique;
+  segPick('nCount', [1, 2, 3, 5, 10], function () { return cfg.count; }, function (v) { cfg.count = v; setBtns(); });
+  function readRange() {
+    var a = parseInt($('nMin').value, 10), b = parseInt($('nMax').value, 10);
+    if (isNaN(a)) a = 1; if (isNaN(b)) b = 100;
+    a = Math.max(-999999, Math.min(999999, a)); b = Math.max(-999999, Math.min(999999, b));
+    return [a, b];
+  }
+  ['nMin', 'nMax'].forEach(function (id) {
+    $(id).addEventListener('change', function () { var r = readRange(); cfg.min = r[0]; cfg.max = r[1]; save(); setBtns(); });
+    $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.target.blur(); } });
+  });
+  $('nUnique').addEventListener('change', function () { cfg.unique = $('nUnique').checked; Kit.sfx('tap'); save(); });
+  function pickNumbers() {
+    var r = readRange(), lo = Math.min(r[0], r[1]), hi = Math.max(r[0], r[1]), span = hi - lo + 1, n = cfg.count;
+    $('nMin').value = lo; $('nMax').value = hi; cfg.min = lo; cfg.max = hi; save();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (cfg.unique && n > span) { Kit.toast('Only ' + span + ' number' + (span === 1 ? '' : 's') + ' in that range'); Kit.haptic('error'); return; }
+    var out = [];
+    while (out.length < n) { var v = lo + rint(span); if (cfg.unique && out.indexOf(v) >= 0) continue; out.push(v); }
+    var box = $('balls'); box.innerHTML = ''; $('nEmpty').hidden = true;
+    var bs = n === 1 ? 130 : n <= 3 ? 92 : n <= 5 ? 74 : 58;
+    out.forEach(function (v, i) {
+      var s = String(v), b = el('div', { class: 'ball' + (s.length >= 5 ? ' xl' : s.length >= 3 ? ' long' : ''), html: '<span>' + s + '</span>' });
+      b.style.setProperty('--bs', bs + 'px'); b.style.setProperty('--c', BALL[rint(BALL.length)]);
+      b.style.animationDelay = (i * 0.14) + 's';
+      box.appendChild(b);
+      setTimeout(function () { Kit.sfx('tick'); Kit.haptic('tick'); }, i * 140 + 450);
+    });
+    Kit.sfx('whoosh');
+    setTimeout(function () { Kit.sfx('pop'); Kit.haptic('light'); }, (n - 1) * 140 + 700);
+    nRecent = out.concat(nRecent).slice(0, 24);
+    setTimeout(paintRecent, (n - 1) * 140 + 700);
+  }
+  function paintRecent() { $('nRecent').innerHTML = nRecent.map(function (v) { return '<span>' + v + '</span>'; }).join(''); }
+  $('nGo').addEventListener('click', pickNumbers);
 
-  // Shuffle
-  const shuffled=[...names];
-  for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+  // ── Coin ─────────────────────────────────────────────────────────────────
+  var coin = $('coin'), rx = 0, flipping = false, tally = { h: 0, t: 0, streak: 0, best: 0, lastSide: null, list: [] };
+  (function buildCoin() {
+    var html = '';
+    for (var i = -5; i <= 5; i++) html += '<div class="edge" style="transform:translateZ(' + i + 'px);filter:brightness(' + (0.75 + Math.abs(i) * 0.03) + ')"></div>';
+    html += '<div class="face heads">' + Kit.icon('star') + '<b>HEADS</b></div>';
+    html += '<div class="face tails"><span class="big">1</span><b>TAILS</b></div>';
+    coin.innerHTML = html;
+  })();
+  function paintTally() {
+    $('cH').textContent = tally.h; $('cT').textContent = tally.t; $('cS').textContent = tally.streak;
+    $('cFlips').innerHTML = tally.list.slice(0, 30).map(function (s) { return '<i>' + s + '</i>'; }).join('');
+  }
+  function flip() {
+    if (flipping) return;
+    flipping = true; setBtns();
+    var heads = rint(2) === 0;
+    var cur = ((rx % 360) + 360) % 360;
+    rx = rx - cur + 360 * (5 + rint(3)) + (heads ? 0 : 180);
+    $('cRes').classList.remove('show');
+    var toss = $('cToss'), wrap = $('cWrap');
+    toss.classList.remove('go'); wrap.classList.remove('up'); void toss.offsetWidth;
+    toss.classList.add('go'); wrap.classList.add('up');
+    coin.classList.add('spin');
+    coin.style.setProperty('--rx', rx + 'deg');
+    Kit.sfx('chip'); Kit.haptic('light');
+    setTimeout(function () { Kit.sfx('tick'); Kit.haptic('medium'); }, 1270);
+    setTimeout(function () { Kit.sfx('tick'); }, 1400);
+    setTimeout(function () {
+      flipping = false;
+      var side = heads ? 'H' : 'T';
+      if (heads) tally.h++; else tally.t++;
+      tally.streak = tally.lastSide === side ? tally.streak + 1 : 1; tally.lastSide = side;
+      tally.list.unshift(side);
+      $('cRes').textContent = heads ? 'Heads!' : 'Tails!'; $('cRes').classList.add('show');
+      Kit.sfx('good');
+      if (tally.streak >= 5) Kit.callout(tally.streak + ' ' + (heads ? 'heads' : 'tails') + ' in a row!');
+      paintTally(); setBtns();
+    }, 1500);
+  }
+  $('cGo').addEventListener('click', flip);
+  $('cBox').addEventListener('click', function (e) { flip(); });
+  $('cReset').addEventListener('click', function () { tally = { h: 0, t: 0, streak: 0, best: 0, lastSide: null, list: [] }; Kit.sfx('tap'); paintTally(); $('cRes').classList.remove('show'); });
 
-  // Distribute
-  const teams=Array.from({length:numTeams},()=>[]);
-  shuffled.forEach((name,i)=>teams[i%numTeams].push(name));
+  // ── Names (shared by Spinner, Teams, Order) ──────────────────────────────
+  function allNames() {
+    var known = Kit.knownNames(), out = known.slice();
+    (cfg.extra || []).forEach(function (n) { if (!out.some(function (x) { return x.toLowerCase() === n.toLowerCase(); })) out.push(n); });
+    return out;
+  }
+  if (!Array.isArray(cfg.sel) || (!cfg.sel.length && !cfg.touched)) cfg.sel = Kit.knownNames().slice(0, 6);
+  function selected() {
+    var all = allNames().map(function (n) { return n.toLowerCase(); });
+    return cfg.sel.filter(function (n) { return all.indexOf(n.toLowerCase()) >= 0; });
+  }
+  function isSel(n) { return cfg.sel.some(function (x) { return x.toLowerCase() === n.toLowerCase(); }); }
+  function renderNames() {
+    var box = $('names'); box.innerHTML = '';
+    var all = allNames();
+    all.forEach(function (n) {
+      var extra = (cfg.extra || []).indexOf(n) >= 0, on = isSel(n);
+      var b = el('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', onclick: function () {
+        if (spinning) return;
+        if (isSel(n)) cfg.sel = cfg.sel.filter(function (x) { return x.toLowerCase() !== n.toLowerCase(); }); else cfg.sel.push(n);
+        Kit.sfx('tap'); Kit.haptic('light'); save(); renderNames(); refreshAll();
+      } }, [el('span', { class: 'avatar', text: n.charAt(0).toUpperCase() }), el('span', { text: n })]);
+      if (extra) b.appendChild(el('span', { class: 'x', role: 'button', 'aria-label': 'Remove ' + n, html: Kit.icon('close'), onclick: function (e) {
+        e.stopPropagation(); if (spinning) return;
+        cfg.extra = cfg.extra.filter(function (x) { return x !== n; }); cfg.sel = cfg.sel.filter(function (x) { return x.toLowerCase() !== n.toLowerCase(); });
+        save(); renderNames(); refreshAll();
+      } }));
+      box.appendChild(b);
+    });
+    if (!all.length) box.appendChild(el('div', { class: 'dim', style: { 'font-weight': '700' }, text: 'No names yet. Add the people playing below.' }));
+    var c = selected().length;
+    $('namesN').textContent = c + ' of ' + all.length + ' picked';
+  }
+  function addName() {
+    var v = $('addIn').value.trim().replace(/\s+/g, ' ');
+    if (!v) { $('addIn').focus(); return; }
+    if (!allNames().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) cfg.extra.push(v);
+    if (!isSel(v)) cfg.sel.push(v);
+    $('addIn').value = ''; Kit.sfx('pop'); Kit.haptic('light'); save(); renderNames(); refreshAll();
+  }
+  $('addBtn').addEventListener('click', addName);
+  $('addIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addName(); } });
+  $('allOn').addEventListener('click', function () { if (spinning) return; cfg.sel = allNames(); Kit.sfx('tap'); save(); renderNames(); refreshAll(); });
+  $('allOff').addEventListener('click', function () { if (spinning) return; cfg.sel = []; Kit.sfx('tap'); save(); renderNames(); refreshAll(); });
 
-  const out=document.getElementById('teams-output');
-  out.innerHTML=teams.map((members,ti)=>`
-    <div class="team-card" style="--tc:${TEAM_COLORS[ti]};animation-delay:${ti*60}ms">
-      <div class="team-name">Team ${ti+1}<span>${members.length}</span></div>
-      ${members.map(m=>`<div class="team-member">${escapeHTML(m)}</div>`).join('')}
-    </div>`).join('');
-  haptic('success');
-  setTimeout(()=>out.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
-});
+  // ── Spinner ──────────────────────────────────────────────────────────────
+  var wheel = $('wheel'), angle = 0, spinning = false, wheelNames = [];
+  function colorAt(i, n) {
+    var c = Kit.color(i);
+    if (n % 8 === 1 && i === n - 1 && n > 1) c = Kit.color(i + 1);   // never two same colours side by side
+    return c;
+  }
+  function drawWheel() {
+    wheelNames = selected();
+    var n = wheelNames.length;
+    $('sEmpty').hidden = n >= 2; $('wheelbox').style.visibility = n >= 2 ? '' : 'hidden';
+    if (n < 2) { wheel.innerHTML = ''; return; }
+    var R = 150, a = 360 / n, svg = '';
+    var fs = n <= 4 ? 20 : n <= 6 ? 17 : n <= 9 ? 14 : 11;
+    wheelNames.forEach(function (nm, i) {
+      var a0 = (i * a - 90) * Math.PI / 180, a1 = ((i + 1) * a - 90) * Math.PI / 180;
+      var x0 = R * Math.cos(a0), y0 = R * Math.sin(a0), x1 = R * Math.cos(a1), y1 = R * Math.sin(a1);
+      svg += '<path d="M0 0L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + 'A' + R + ' ' + R + ' 0 ' + (a > 180 ? 1 : 0) + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + 'Z" fill="' + colorAt(i, n) + '" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>';
+      var mid = i * a + a / 2 - 90, label = nm.length > 11 ? nm.slice(0, 10) + '…' : nm;
+      svg += '<text transform="rotate(' + mid.toFixed(2) + ') translate(' + (R - 16) + ' 0)" text-anchor="end" dominant-baseline="central" font-size="' + fs + '">' + esc(label) + '</text>';
+    });
+    // pegs round the rim
+    for (var i = 0; i < n; i++) { var pa = (i * a - 90) * Math.PI / 180; svg += '<circle cx="' + (R - 5) * Math.cos(pa) + '" cy="' + (R - 5) * Math.sin(pa) + '" r="3.5" fill="#f7d774" stroke="#8a5a00" stroke-width="1"/>'; }
+    wheel.innerHTML = svg;
+    wheel.style.transform = 'rotate(' + angle + 'deg)';
+  }
+  function spin() {
+    if (spinning) return;
+    var names = selected();
+    if (names.length < 2) { Kit.toast('Pick at least two players'); Kit.haptic('error'); return; }
+    drawWheel();
+    spinning = true; setBtns();
+    $('winner').classList.remove('show');
+    var n = wheelNames.length, a = 360 / n, win = rint(n), off = a * (0.15 + Math.random() * 0.7);
+    var start = angle, base = start - (((start % 360) + 360) % 360);
+    var target = base + 360 * (5 + rint(3)) + (360 - (win * a + off));
+    if (target - start < 360 * 4) target += 360;
+    var dur = 4200 + Math.random() * 1200, t0 = performance.now(), lastSeg = Math.floor(((360 - (((start % 360) + 360) % 360)) % 360) / a);
+    Kit.sfx('whoosh'); Kit.haptic('medium');
+    (function frame(now) {
+      var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
+      angle = start + (target - start) * e;
+      wheel.style.transform = 'rotate(' + angle + 'deg)';
+      var under = ((360 - (((angle % 360) + 360) % 360)) % 360), seg = Math.floor(under / a);
+      if (seg !== lastSeg) { lastSeg = seg; Kit.sfx('tick'); Kit.haptic('tick'); }
+      if (p < 1) return requestAnimationFrame(frame);
+      spinning = false; setBtns();
+      var who = wheelNames[win];
+      $('winner').textContent = who + (who === 'You' ? ' go first!' : ' goes first!'); $('winner').classList.add('show');
+      Kit.callout(who + '!'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti();
+    })(t0);
+  }
+  $('sBox').appendChild(el('div', { class: 'winner', id: 'winner' }));
+  $('sGo').addEventListener('click', spin);
+  $('wheelbox').addEventListener('click', spin);
+
+  // ── Teams ────────────────────────────────────────────────────────────────
+  var TEAM = [['Red', '#ff4d5e'], ['Blue', '#4da3ff'], ['Green', '#3ddc84'], ['Gold', '#ffc83d'], ['Purple', '#9b7bff'], ['Orange', '#ff8a3d']];
+  var paintTeamSeg = segPick('tCount', [2, 3, 4, 5, 6], function () { return cfg.teams; }, function (v) { cfg.teams = v; setBtns(); });
+  function makeTeams() {
+    var names = selected(), k = cfg.teams;
+    if (names.length < 2) { Kit.toast('Pick at least two players'); Kit.haptic('error'); return; }
+    if (k > names.length) { Kit.toast('Not enough players for ' + k + ' teams'); Kit.haptic('error'); return; }
+    var order = shuffle(names), firstTeam = rint(k), teams = [];
+    for (var i = 0; i < k; i++) teams.push([]);
+    order.forEach(function (n, i) { teams[(firstTeam + i) % k].push(n); });
+    cfg.lastTeams = teams; save();
+    paintTeams(teams, true);
+    Kit.sfx('whoosh');
+  }
+  function paintTeams(teams, animate) {
+    var box = $('teams'); box.innerHTML = '';
+    $('tEmpty').hidden = !!teams;
+    if (!teams) return;
+    var cols = teams.length === 4 ? 2 : Math.min(3, teams.length);
+    box.style.gridTemplateColumns = 'repeat(' + cols + ',minmax(0,1fr))'; box.classList.toggle('c3', cols === 3);
+    var order = [], maxLen = Math.max.apply(null, teams.map(function (t) { return t.length; }));
+    for (var r = 0; r < maxLen; r++) teams.forEach(function (t, ti) { if (t[r] != null) order.push([ti, r]); });
+    var slips = {};
+    teams.forEach(function (t, ti) {
+      var col = el('div', { class: 'team' }, [el('h3', { html: esc(TEAM[ti][0]) + ' <small>' + t.length + '</small>' })]);
+      col.style.setProperty('--c', TEAM[ti][1]);
+      t.forEach(function (n, r) {
+        var s = el('div', { class: 'slip', html: '<span class="nm">' + esc(n) + '</span>' });
+        s.style.setProperty('--rot', (Math.random() * 3 - 1.5).toFixed(1) + 'deg');
+        slips[ti + ':' + r] = s; col.appendChild(s);
+      });
+      box.appendChild(col);
+    });
+    order.forEach(function (o, i) {
+      var s = slips[o[0] + ':' + o[1]];
+      if (!animate) { s.style.animation = 'none'; return; }
+      s.style.animationDelay = (i * 0.16) + 's';
+      setTimeout(function () { Kit.sfx('deal'); Kit.haptic('tick'); }, i * 160 + 150);
+    });
+    if (animate) setTimeout(function () { Kit.sfx('good'); Kit.haptic('success'); }, order.length * 160 + 350);
+  }
+  $('tGo').addEventListener('click', makeTeams);
+
+  // ── Random order ─────────────────────────────────────────────────────────
+  function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+  function makeOrder() {
+    var names = selected();
+    if (names.length < 2) { Kit.toast('Pick at least two players'); Kit.haptic('error'); return; }
+    cfg.lastOrder = shuffle(names); save();
+    paintOrder(cfg.lastOrder, true);
+    Kit.sfx('whoosh');
+  }
+  function paintOrder(list, animate) {
+    var box = $('order'); box.innerHTML = '';
+    $('oEmpty').hidden = !!list;
+    if (!list) return;
+    list.forEach(function (n, i) {
+      var s = el('div', { class: 'slip' + (i === 0 ? ' first' : ''), html: '<span class="n">' + ordinal(i + 1) + '</span><span class="nm">' + esc(n) + '</span>' });
+      s.style.setProperty('--rot', (Math.random() * 2.4 - 1.2).toFixed(1) + 'deg');
+      if (animate) { s.style.animationDelay = (i * 0.2) + 's'; setTimeout(function () { Kit.sfx('deal'); Kit.haptic('tick'); }, i * 200 + 150); }
+      else s.style.animation = 'none';
+      box.appendChild(s);
+    });
+    if (animate) setTimeout(function () { Kit.callout(list[0] + ' first!'); Kit.sfx('good'); Kit.haptic('success'); }, list.length * 200 + 300);
+  }
+  $('oGo').addEventListener('click', makeOrder);
+
+  // ── Buttons ──────────────────────────────────────────────────────────────
+  function setBtns() {
+    $('nGo').innerHTML = Kit.icon('sparkle') + '<span>' + (cfg.count === 1 ? 'Pick a number' : 'Pick ' + cfg.count + ' numbers') + '</span>';
+    $('cGo').innerHTML = Kit.icon('coins') + '<span>' + (flipping ? 'Flipping…' : 'Flip the coin') + '</span>'; $('cGo').disabled = flipping;
+    $('sGo').innerHTML = Kit.icon('sync') + '<span>' + (spinning ? 'Spinning…' : 'Spin') + '</span>'; $('sGo').disabled = spinning;
+    $('tGo').innerHTML = Kit.icon('users') + '<span>Make ' + cfg.teams + ' teams</span>';
+    $('oGo').innerHTML = Kit.icon('shuffle') + '<span>Shuffle the order</span>';
+  }
+  function refreshAll() {
+    if (tab === 'spin' && !spinning) drawWheel();
+    var c = selected().length;
+    // Old results no longer match the picked names: keep them, they are still what was drawn
+    $('tGo').disabled = c < 2; $('oGo').disabled = c < 2; $('sGo').disabled = spinning || c < 2;
+  }
+
+  // ── Start ────────────────────────────────────────────────────────────────
+  setBtns(); renderNames(); paintTally();
+  paintTeams(cfg.lastTeams, false); paintOrder(cfg.lastOrder, false);
+  show(tabFromHash() || (TABS.indexOf(cfg.tab) >= 0 ? cfg.tab : 'number'));
+  refreshAll();
+})();
 </script>
 </body>
 </html>

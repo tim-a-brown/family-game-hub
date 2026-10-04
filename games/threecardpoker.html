@@ -81,10 +81,10 @@
 .chp[data-v="25"]{--c:#15803d;}
 .chp[data-v="100"]{--c:#1c1b22;--e:#e8e2d0;}
 .chp[data-v="500"]{--c:#6b2fa8;}
-.stack{position:relative;width:var(--s,40px);--s:40px;pointer-events:none;}
-.stack .chp{position:absolute;left:0;--s:40px;}
-.spot .stack{margin-top:-10px;}
-.spot.pp .stack{position:relative;}
+.cstack{position:relative;width:var(--s,40px);--s:40px;pointer-events:none;}
+.cstack .chp{position:absolute;left:0;--s:40px;}
+.spot .cstack{margin-top:-10px;}
+.spot.pp .cstack{position:relative;}
 /* ── Controls (chrome) ── */
 .ctl{display:flex;flex-direction:column;gap:10px;}
 .status{text-align:center;font-weight:800;color:var(--text-2);min-height:22px;font-size:.95rem;}
@@ -97,7 +97,7 @@
 .rack .chp:active:not(:disabled){transform:translateY(-3px) scale(.94);}
 .rack .chp:disabled{opacity:.28;cursor:default;filter:saturate(.5);}
 .acts{display:flex;gap:10px;}
-.acts .btn{flex:1;padding:0 12px;}
+.acts .btn{flex:1;padding:0 12px;white-space:nowrap;}
 .acts .btn.main{flex:1.5;}
 .flying{position:fixed;z-index:60;pointer-events:none;margin:0;}
 /* payouts sheet */
@@ -152,7 +152,7 @@
     return out;
   }
   function stackEl(amt) {
-    var list = breakdown(amt), shown = list.slice(0, 9), st = el('div', { class: 'stack' });
+    var list = breakdown(amt), shown = list.slice(0, 9), st = el('div', { class: 'cstack' });
     st.style.height = (40 + (shown.length - 1) * 5) + 'px';
     shown.forEach(function (v, i) { var c = chip(v); c.style.bottom = (i * 5) + 'px'; c.style.zIndex = i + 1; st.appendChild(c); });
     return st;
@@ -274,7 +274,7 @@
     if (!S || S.phase !== 'bet' || busy) return;
     if (v > room(S.target)) { Kit.toast(S.target === 'ante' ? 'Keep enough back for your Play bet' : 'Not enough chips'); Kit.haptic('error'); return; }
     snapshot(); S.bets[S.target] += v; Kit.sfx('chip'); Kit.haptic('light'); save(); render();
-    var spot = app.querySelector('.spot[data-k="' + S.target + '"] .stack');
+    var spot = app.querySelector('.spot[data-k="' + S.target + '"] .cstack');
     if (spot && fromEl) { var top = spot.lastElementChild; if (top) Cards.fly(top, fromEl, { ms: 300 }); }
   }
   function clearBets() { if (!S.bets.ante && !S.bets.pp) return; snapshot(); S.bets.ante = 0; S.bets.pp = 0; Kit.sfx('whoosh'); save(); render(); }
@@ -456,8 +456,8 @@
     var res = S.phase === 'result' ? S.res : null, revealing = !!anim.reveal;
     // bankroll strip
     var ss = el('div', { class: 'ss' }, [
-      el('span', { class: S.net > 0 ? 'pos' : S.net < 0 ? 'neg' : '', text: S.hand ? (S.net ? signed(S.net) : 'Even') : 'New session' }),
-      document.createTextNode(S.hand ? 'Session · ' + S.hand + ' hand' + (S.hand === 1 ? '' : 's') : 'Good luck, ' + S.name)
+      el('span', { class: S.net > 0 ? 'pos' : S.net < 0 ? 'neg' : '', text: S.log.length ? (S.net ? signed(S.net) : 'Even') : 'New session' }),
+      document.createTextNode(S.log.length ? 'Session · ' + S.log.length + ' hand' + (S.log.length === 1 ? '' : 's') : 'Good luck, ' + S.name)
     ]);
     app.appendChild(el('div', { class: 'bankbar' }, [
       el('div', { class: 'bk', html: Kit.icon('coins') + '<b id="bankv">' + money(bank() - pending()) + '</b>' }), ss,
@@ -577,14 +577,14 @@
     // Show the bets as they were while the dealer turns over
     ['ante', 'pp', 'play'].forEach(function (k) {
       var sp = app.querySelector('.spot[data-k="' + k + '"]'); if (!sp) return;
-      var old = sp.querySelector('.stack'); if (old) old.remove();
+      var old = sp.querySelector('.cstack'); if (old) old.remove();
       var amtEl = sp.parentNode.querySelector('.amt');
       if (spotsBefore[k]) { sp.classList.add('has'); sp.appendChild(stackEl(spotsBefore[k])); amtEl.textContent = money(spotsBefore[k]); }
       else { sp.classList.remove('has'); amtEl.textContent = ''; }
       var r = sp.querySelector('.res'); if (r) r.classList.remove('show');
     });
     if (!res.folded && spotsBefore.play) {
-      var ps = app.querySelector('.spot[data-k="play"] .stack .chp:last-child'), rackFrom = app.querySelector('.acts');
+      var ps = app.querySelector('.spot[data-k="play"] .cstack .chp:last-child'), rackFrom = app.querySelector('.acts');
       if (ps && rackFrom) Cards.fly(ps.parentNode, rackFrom, { ms: 320 });
     }
     await wait(350);
@@ -603,7 +603,7 @@
       var sp = app.querySelector('.spot[data-k="' + k + '"]'), amtEl = sp.parentNode.querySelector('.amt');
       var badge = sp.querySelector('.res');
       if (r.o === 'lose') {
-        var stk = sp.querySelector('.stack');
+        var stk = sp.querySelector('.cstack');
         if (stk) { var aRect = stk.getBoundingClientRect(), bRect = dealerZone.getBoundingClientRect();
           stk.style.transition = 'transform .4s cubic-bezier(.4,0,.6,1), opacity .4s'; stk.style.transform = 'translate(' + (bRect.left + bRect.width / 2 - aRect.left - aRect.width / 2) + 'px,' + (bRect.top + bRect.height / 2 - aRect.top) + 'px) scale(.6)'; stk.style.opacity = '0'; }
         Kit.sfx('whoosh'); await wait(380);
@@ -612,7 +612,7 @@
         var paid = r.amt - spotsBefore[k];
         await flyChips(paid, dealerZone, sp, 420);
         if (my !== token) return;
-        var o = sp.querySelector('.stack'); if (o) o.remove();
+        var o = sp.querySelector('.cstack'); if (o) o.remove();
         sp.appendChild(stackEl(r.amt)); amtEl.textContent = money(r.amt); Kit.sfx('chip');
       }
       if (badge) badge.classList.add('show');
