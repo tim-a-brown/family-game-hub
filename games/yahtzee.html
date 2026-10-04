@@ -180,7 +180,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     S = {
       mode: cfg.mode, cur: 0, round: 1, rolls: 0, busy: false,
       dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false],
-      players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color, card: {}, yb: 0 }; })
+      players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color, card: {}, yb: 0 }; }),
+      started: Date.now()
     };
     save(); render(); maybeCpu();
   }
@@ -215,6 +216,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     if (!p.cpu) snapshot();
     var wasJokerBonus = S.mode !== 'card' && isYahtzee(S.dice) && p.card.yz === 50;
     p.card[id] = val; lastScored = id;
+    (p.log = p.log || []).push({ r: S.round, id: id, v: val, y: S.mode !== 'card' && isYahtzee(S.dice) });
     if (wasJokerBonus) { p.yb = (p.yb || 0) + 1; Kit.callout('+100 Bonus!'); Kit.confetti({ count: 80 }); }
     var u = upperSum(p);
     if (CAT[id].up && u >= 63 && u - val < 63) setTimeout(function () { Kit.callout('+35 Bonus!'); Kit.sfx('win'); }, 200);
@@ -238,12 +240,32 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     var rank = S.players.map(function (p) { return { name: p.name, score: total(p), color: p.color, cpu: p.cpu }; })
       .sort(function (a, b) { return b.score - a.score; });
     var top = rank[0], tie = rank.length > 1 && rank[1].score === top.score;
-    try {
-      GameHistory.save('yahtzee', {
-        players: rank.map(function (r) { return { name: r.name, score: r.score }; }),
-        winner: tie ? null : top.name, _summary: rank.map(function (r) { return r.name + ' ' + r.score; }).join(' · ')
-      });
-    } catch (e) {}
+    // Round-by-round points and highlights for the history
+    var byRound = [];
+    for (var r = 1; r <= 13; r++) byRound.push(S.players.map(function (p) {
+      return (p.log || []).filter(function (x) { return x.r === r; }).reduce(function (a, x) { return a + x.v; }, 0);
+    }));
+    var hl = [];
+    S.players.forEach(function (p) {
+      var yz = (p.log || []).filter(function (x) { return x.y; }).length;
+      if (yz > 1) hl.push(p.name + ' rolled ' + yz + ' Yahtzees');
+      else if (p.card.yz === 50) hl.push(p.name + ' rolled a Yahtzee');
+      if (upperSum(p) >= 63) hl.push(p.name + ' earned the upper bonus (' + upperSum(p) + ')');
+      if (p.card.ls === 40 && p.card.ss === 30 && p.card.fh === 25) hl.push(p.name + ' filled every straight and the full house');
+      var zeros = CATS.filter(function (c) { return p.card[c.id] === 0; }).map(function (c) { return c.name; });
+      if (zeros.length >= 3) hl.push(p.name + ' scratched ' + zeros.length + ' boxes');
+    });
+    var best = { v: 0 };
+    S.players.forEach(function (p) { (p.log || []).forEach(function (x) { if (x.v > best.v && x.id !== 'yz') best = { v: x.v, who: p.name, id: x.id, r: x.r }; }); });
+    if (best.who && rank.length > 1) hl.push('Best single turn: ' + best.who + ', ' + best.v + ' in ' + CAT[best.id].name + ' (round ' + best.r + ')');
+    if (rank.length === 1) hl.push(top.score >= 300 ? 'A 300+ game!' : top.score >= 250 ? 'Over 250 points' : 'Final score ' + top.score);
+    Kit.record('yahtzee', {
+      started: S.started, mode: S.mode === 'cpu' ? 'vs Computer' : S.mode === 'card' ? 'Real dice' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name, score: total(p), cpu: p.cpu }; }),
+      winner: tie ? null : top.name,
+      rounds: S.mode === 'card' ? null : { labels: byRound.map(function (x, i) { return String(i + 1); }), scores: byRound },
+      highlights: hl
+    });
     clearSave();
     var youLost = S.mode === 'cpu' && top.cpu;
     Kit.win({
@@ -501,9 +523,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   }
   function openHistory() {
     try {
-      GameHistory.open('yahtzee', 'Yahtzee', function (e) {
-        return e && e.players ? GameHistory.renderPlayerResults(e.players, e.winner) : document.createTextNode(e._summary || '');
-      });
+      Kit.history('yahtzee', { title: 'Yahtzee: past games' });
     } catch (e) { Kit.toast('No past games yet'); }
   }
 

@@ -811,7 +811,7 @@
   function historyDetail(e, o) {
     o = o || {};
     var n = normalize(e), box = el('div', { class: 'k-hd' });
-    var meta = o.inList ? [] : [fmtDate(n.date)]; if (n.duration && !o.inList) meta.push(fmtDur(n.duration)); if (n.mode) meta.push(n.mode);
+    var meta = o.inList ? [] : [fmtDate(n.date)]; if (n.duration && !o.inList) meta.push(fmtDur(n.duration)); if (n.mode && !o.inList) meta.push(n.mode);
     if (meta.length) box.appendChild(el('div', { class: 'k-hd-meta', text: meta.join(' · ') }));
     if (n.players.length) {
       var ps = n.players.map(function (p, i) { return { p: p, i: i }; });

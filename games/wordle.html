@@ -48,6 +48,9 @@ body{overflow:hidden;}
 .key.miss{background:#2a2348;color:#7d74a6;}
 .sw{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;font-weight:900;font-size:.9rem;vertical-align:middle;margin-right:4px;}
 .sw.hit{background:var(--hit);color:#05290f;}.sw.near{background:var(--near);color:#2b1a00;}.sw.miss{background:var(--miss);color:#d9d2f5;}
+.mini{display:flex;flex-direction:column;gap:4px;align-items:flex-start;}
+.mrow{display:flex;gap:4px;}
+.mrow .sw{margin:0;}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:6px 0 14px;}
 .stats div{text-align:center;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.05);}
 .stats b{display:block;font-size:1.5rem;font-weight:900;}
@@ -82,7 +85,7 @@ body{overflow:hidden;}
     menu: [
       { icon: 'chart', label: 'Stats', onClick: function () { showStats(); } },
       { icon: 'flame', label: function () { return 'Hard mode: ' + (hard ? 'on' : 'off'); }, onClick: function () { toggleHard(); } },
-      { icon: 'history', label: 'Past games', onClick: function () { GameHistory.open('wordle', 'Wordle', function (e) { return GameHistory.renderWordleGrid(e.guesses, e.results, e.answer); }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history('wordle', { title: 'Wordle: past games', extra: miniGrid }); } }
     ],
     rules:
       '<p class="goal">Guess the secret <b>five-letter word</b> in six tries.</p>' +
@@ -115,7 +118,7 @@ body{overflow:hidden;}
   function start(random) {
     var t = today();
     if (!random && playedToday()) { random = true; Kit.toast("You've done today's word. Here's a practice one!"); }
-    S = { answer: random ? ANSWERS[Math.floor(Math.random() * ANSWERS.length)] : t.word, guesses: [], cur: '', over: false, won: false, random: !!random, day: t.day };
+    S = { answer: random ? ANSWERS[Math.floor(Math.random() * ANSWERS.length)] : t.word, guesses: [], cur: '', over: false, won: false, random: !!random, day: t.day, started: Date.now() };
     Kit.resume.clear(); save(); build();
   }
 
@@ -184,16 +187,39 @@ body{overflow:hidden;}
     else if (/^[a-z]$/i.test(e.key)) type(e.key.toUpperCase());
   });
 
+  // Small coloured grid of a finished puzzle, for Past games
+  function miniGrid(e) {
+    if (!e || !e.guesses || !e.guesses.length) return null;
+    var map = { hit: 'hit', correct: 'hit', near: 'near', present: 'near', miss: 'miss', absent: 'miss' };
+    var box = Kit.el('div', { class: 'mini' });
+    e.guesses.forEach(function (g, i) {
+      var res = (e.results && e.results[i]) || check(g, e.answer);
+      var row = Kit.el('div', { class: 'mrow' });
+      g.split('').forEach(function (ch, j) { row.appendChild(Kit.el('span', { class: 'sw ' + (map[res[j]] || 'miss'), text: ch })); });
+      box.appendChild(row);
+    });
+    return box;
+  }
+
   // ── Endings ───────────────────────────────────────────────────────────────
   var CHEERS = ['Genius!', 'Magnificent!', 'Impressive!', 'Splendid!', 'Great!', 'Phew!'];
   function record() {
     S.over = true;
-    try {
-      GameHistory.save('wordle', {
-        _summary: (S.won ? 'Solved in ' + S.guesses.length + '/6' : 'Failed') + ' · ' + S.answer, _badge: S.won ? S.guesses.length + '/6' : '❌',
-        answer: S.answer, guesses: S.guesses, results: S.guesses.map(function (g) { return check(g, S.answer); }), won: S.won, dayNum: S.day, randomMode: S.random
-      });
-    } catch (e) {}
+    var hist = GameHistory.load('wordle'), streak = 0;
+    for (var i = 0; i < hist.length; i++) { if (hist[i].won) streak++; else break; }
+    if (S.won) streak++;
+    var hl = [];
+    if (!S.won) hl.push('The word ' + S.answer + ' got away');
+    else if (S.guesses.length <= 2) hl.push(CHEERS[S.guesses.length - 1] + ' Solved in ' + S.guesses.length);
+    if (hard) hl.push('Played in hard mode');
+    if (S.won && streak > 1) hl.push('Win streak: ' + streak);
+    if (S.guesses.length) hl.push('Opened with ' + S.guesses[0]);
+    Kit.record('wordle', {
+      started: S.started, mode: (S.random ? 'Practice' : 'Daily #' + S.day) + (hard ? ' · Hard' : ''),
+      summary: (S.won ? 'Solved in ' + S.guesses.length + '/6' : 'Missed') + ' · ' + S.answer, badge: S.won ? S.guesses.length + '/6' : 'X',
+      highlights: hl,
+      meta: { answer: S.answer, guesses: S.guesses, results: S.guesses.map(function (g) { return check(g, S.answer); }), won: S.won, dayNum: S.day, randomMode: S.random, hard: hard }
+    });
     Kit.resume.clear();
   }
   function win() {

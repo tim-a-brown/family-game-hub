@@ -54,6 +54,7 @@
     id: 'connectfour',
     onNew: function () { clearSave(); showSetup(); },
     undo: function () { undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('c4', { title: 'Connect Four: past games' }); } }],
     rules:
       '<p class="goal">Be the first to line up <b>four of your discs</b> in a row: across, up and down, or diagonally.</p>' +
       '<h3>How it works</h3><ul><li>Players take turns dropping one disc into any column. It falls to the lowest empty spot.</li>' +
@@ -86,7 +87,7 @@
 
   function newRound() {
     S.grid = []; for (var r = 0; r < ROWS; r++) S.grid.push([0, 0, 0, 0, 0, 0, 0]);
-    S.cur = S.first; S.moves = []; S.over = false; S.line = null;
+    S.cur = S.first; S.moves = []; S.over = false; S.line = null; S.started = Date.now();
     save(); render(); maybeCpu();
   }
 
@@ -213,7 +214,18 @@
   function endGame(winner) {
     render();
     var p = winner >= 0 ? S.players[winner] : null;
-    try { GameHistory.save('c4', { players: S.players.map(function (q, i) { return { name: q.name, score: S.wins[i] }; }), winner: p ? p.name : null, _summary: p ? p.name + ' won' : 'Draw' }); } catch (e) {}
+    var hl = [], vsCpu = S.players.some(function (q) { return q.cpu; });
+    if (p && S.line) {
+      var a = S.line[0], b = S.line[1], dir = a[0] === b[0] ? 'across' : a[1] === b[1] ? 'up and down' : 'diagonally';
+      hl.push(p.name + ' connected four ' + dir + ' in ' + S.moves.length + ' moves');
+    } else if (!p) hl.push('The board filled up: a draw after 42 moves');
+    if (vsCpu) hl.push('Computer skill: ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard' }[S.level] || S.level));
+    hl.push('Series so far: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name);
+    Kit.record('c4', {
+      started: S.started, mode: vsCpu ? 'vs Computer' : 'Two players',
+      players: S.players.map(function (q, i) { return { name: q.name, score: i === winner ? 1 : 0, cpu: q.cpu }; }),
+      winner: p ? p.name : null, summary: p ? p.name + ' won in ' + S.moves.length + ' moves' : 'Draw', highlights: hl
+    });
     var lose = p && p.cpu;
     Kit.win({
       icon: !p ? 'users' : lose ? 'bot' : 'trophy',
