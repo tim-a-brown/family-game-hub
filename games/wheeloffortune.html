@@ -124,7 +124,7 @@
 .acts > *{flex:1 1 0;min-width:0;}
 .acts .btn{min-height:52px;padding:0 8px;font-size:1rem;}
 .acts .grow2{flex-grow:1.8;}
-.btn .two{display:flex;flex-direction:column;line-height:1.05;}
+.btn .two{display:flex;flex-direction:column;line-height:1.05;white-space:nowrap;font-size:.95rem;}
 .btn .two small{font-size:.74rem;font-weight:800;opacity:.75;}
 .spinbtn{overflow:hidden;font-family:var(--display);font-weight:400;font-size:1.35rem!important;letter-spacing:.04em;}
 .spinbtn .pw{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.15),rgba(255,255,255,.55));transform-origin:left;transform:scaleX(0);}
@@ -807,6 +807,8 @@
   }
   function host(html) { if (shell) shell.host.innerHTML = '<span>' + (html || '') + '</span>'; }
   function nm(i) { return esc(S.players[i].name); }
+  // "Sam spins" but "You spin"
+  function vb(name, s3, s2) { return name === 'You' ? 'You ' + s2 : esc(name) + ' ' + s3; }
   function hostText() {
     var p = S.players[S.cur], n = p ? esc(p.name) : '';
     switch (S.phase) {
@@ -819,8 +821,8 @@
         if (S.wedge.t === 'free') return 'Free Play! Consonants pay <b>$500</b> each, vowels are free, and a miss costs nothing.';
         return p.cpu ? n + ' is calling a letter for <b>' + money(S.wedge.v) + '</b>.' : 'Call a consonant for <b>' + money(S.wedge.v) + '</b> each.';
       case 'tossup': return 'Toss-up for <b>' + money(S.tu.prize) + '</b>. Buzz in when you know it!';
-      case 'roundEnd': return S.lastWin ? nm(S.lastWin.p) + ' wins round ' + S.round + ' and banks <b>' + money(S.lastWin.amt) + '</b>!' : '';
-      case 'bonusIntro': return n + ' is in the Bonus Round! Spin for a prize envelope.';
+      case 'roundEnd': return S.lastWin ? vb(S.players[S.lastWin.p].name, 'wins', 'win') + ' round ' + S.round + ' and banks <b>' + money(S.lastWin.amt) + '</b>!' : '';
+      case 'bonusIntro': return vb(p.name, 'is', 'are') + ' in the Bonus Round! Spin for a prize envelope.';
       case 'bonusPick': return 'R, S, T, L, N and E are free. ' + (p.cpu ? n + ' is choosing letters…' : 'Pick 3 more consonants and 1 vowel.');
       case 'bonusReady': return p.cpu ? n + ' has ' + S.opts.clock + ' seconds…' : ui.clock ? 'Tap <b>Solve!</b> the moment you know it.' : 'You get <b>' + S.opts.clock + ' seconds</b>. Ready?';
       case 'over': return 'Thanks for playing!';
@@ -1091,7 +1093,7 @@
   async function doSpin(power, w0) {
     var me = S.cur, p = S.players[me];
     ui.busy = true; ui.vowel = false; paintDeck();
-    setCam('wheel'); host(esc(p.name) + ' spins…');
+    setCam('wheel'); host(vb(p.name, 'spins…', 'spin…'));
     if (!p.cpu) Kit.haptic('medium');
     await wait(p.cpu ? 650 : 200);
     var idx = await Wheel.spin(w0 || 6 + 3.4 * power);
@@ -1105,7 +1107,7 @@
       S.phase = 'call'; save();
       if (w.t === 'free') { band('free', 'FREE PLAY'); snd('chime'); host('Free Play!'); }
       else {
-        readout(money(w.v)); snd('pop'); host(esc(p.name) + ' lands on <b>' + money(w.v) + '</b>.');
+        readout(money(w.v)); snd('pop'); host(vb(p.name, 'lands', 'land') + ' on <b>' + money(w.v) + '</b>.');
         if (w.top) { snd('chime'); setTimeout(function () { Kit.callout(money(w.v) + '!'); }, 250); }
       }
       await wait(w.t === 'free' ? 1800 : 1300);
@@ -1115,12 +1117,12 @@
       p.bank = 0; nextPlayer(); save();
       band('bk', 'BANKRUPT'); snd('bankrupt'); fx(shell.studio, 'shake', 500); fx(shell.studio, 'flash', 950); fx(shell.pods[me].root, 'bk', 1600);
       if (!p.cpu) Kit.haptic('error');
-      host(lost ? esc(p.name) + ' loses <b>' + money(lost) + '</b>!' : esc(p.name) + ' hits BANKRUPT.');
+      host(lost ? vb(p.name, 'loses', 'lose') + ' <b>' + money(lost) + '</b>!' : vb(p.name, 'hits', 'hit') + ' BANKRUPT.');
       await wait(450); tweenMoney(me, 'bank', 0, 1000);
       await wait(1900);
     } else {
       nextPlayer(); save();
-      band('lose', 'LOSE A TURN'); snd('lose'); host(esc(p.name) + ' loses a turn.');
+      band('lose', 'LOSE A TURN'); snd('lose'); host(vb(p.name, 'loses', 'lose') + ' a turn.');
       if (!p.cpu) Kit.haptic('error');
       await wait(2000);
     }
@@ -1193,7 +1195,7 @@
     if (info.hidden.length) await revealWave(info.hidden);
     snd('solve'); Kit.callout('SOLVED!');
     if (!p.cpu) { Kit.confetti({ count: 90 }); Kit.haptic('success'); }
-    host(nm(me) + ' wins round ' + S.round + ' and banks <b>' + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
+    host(vb(p.name, 'wins', 'win') + ' round ' + S.round + ' and banks <b>' + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
     await wait(800);
     tweenMoney(me, 'bank', info.amt, 400);
     await wait(500);
@@ -1345,7 +1347,7 @@
   }
   async function cpuBuzz(i, sure) {
     ui.busy = true; S.cur = i;
-    snd('buzzin'); say(i, 'Buzz!'); host(nm(i) + ' buzzes in…');
+    snd('buzzin'); say(i, 'Buzz!'); host(vb(S.players[i].name, 'buzzes', 'buzz') + ' in…');
     paintPodiums(); paintDeck();
     await wait(1200);
     var ok = sure || Math.random() < clamp(0.35 + knownFrac() * 0.7, 0, 0.97);
@@ -1363,7 +1365,7 @@
     if (ok) return tossupWon(i);
     ui.busy = true; paintDeck();
     if (s) await showWrong(s);
-    snd('buzz'); host("No, that's not it. " + nm(i) + ' is out of this toss-up.');
+    snd('buzz'); host("No, that's not it. " + vb(S.players[i].name, 'is', 'are') + ' out of this toss-up.');
     S.tu.locked.push(i); S.cur = -1; save();
     renderAll(); ui.busy = true; paintDeck();
     await wait(1300);
@@ -1384,7 +1386,7 @@
     ui.busy = true; paintPodiums(); paintDeck();
     await revealWave(hidden);
     snd('solve'); say(i, 'Got it!'); Kit.callout(money(tu.prize));
-    host(nm(i) + ' wins the toss-up: <b>' + money(tu.prize) + '</b>!');
+    host(vb(p.name, 'wins', 'win') + ' the toss-up: <b>' + money(tu.prize) + '</b>!');
     tweenMoney(i, 'total', p.total, 1000);
     if (!p.cpu) { Kit.confetti({ count: 60 }); Kit.haptic('success'); }
     await wait(2400);
@@ -1425,7 +1427,7 @@
   }
   async function bonusSpin(power, w0) {
     ui.busy = true; paintDeck(); setCam('wheel');
-    host(nm(S.cur) + ' spins for an envelope…');
+    host(vb(S.players[S.cur].name, 'spins', 'spin') + ' for an envelope…');
     await wait(300);
     await Wheel.spin(w0 || 6 + 3.4 * power);
     S.angle = Wheel.angle();
@@ -1517,7 +1519,7 @@
     paintDeck(); paintPodiums();
     if (!ok) { snd('horn'); host("Time's up!"); }
     await revealWave(hidden);
-    if (ok) { snd('solve'); Kit.callout('SOLVED!'); host(nm(b.who) + ' solves the Bonus Round!'); }
+    if (ok) { snd('solve'); Kit.callout('SOLVED!'); host(vb(p.name, 'solves', 'solve') + ' the Bonus Round!'); }
     else host('The answer was <b>' + esc(S.pz.text) + '</b>.');
     await wait(1000);
     await openEnvelope(b.env, ok, p);
