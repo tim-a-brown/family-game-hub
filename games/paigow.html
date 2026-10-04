@@ -44,7 +44,7 @@
 .dset .grp{display:flex;flex-direction:column;align-items:center;gap:3px;}
 .dset .cs{display:flex;}
 .dset .cs > .pcard + .pcard{margin-left:-12px;}
-.dset .gl{font-size:.6rem;}
+.dset .gl{font-size:.62rem;white-space:nowrap;}
 .dset .grp.win .cs .pcard{box-shadow:0 0 0 2px var(--yellow),0 0 12px rgba(255,200,61,.5);}
 /* betting circle */
 .spot{position:relative;flex:none;width:clamp(78px,22vw,92px);aspect-ratio:1;border-radius:50%;padding:0;border:2px solid rgba(255,222,150,.6);background:rgba(0,0,0,.12);
@@ -70,7 +70,8 @@
 .pz .zh .print{font-size:.72rem;}
 .pz .zh .hn{font-weight:800;font-size:.8rem;color:#fff;padding:1px 9px;border-radius:999px;background:rgba(0,0,0,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .pz .zh .hn:empty{display:none;}
-.pz .res{top:-11px;}
+.pz .res{top:-11px;left:auto;right:10px;transform:scale(.6);}
+.pz .res.show{transform:scale(1);}
 .prow{display:flex;justify-content:center;width:100%;--cw:clamp(50px,14.6vw,62px);min-height:calc(var(--cw) * 1.4);}
 .prow > .pcard + .pcard{margin-left:var(--overlap,5px);}
 .prow .pcard.tap{cursor:pointer;}
@@ -90,12 +91,13 @@
 .chp[data-v="25"]{--c:#15803d;}
 .chp[data-v="100"]{--c:#1c1b22;--e:#e8e2d0;}
 .chp[data-v="500"]{--c:#6b2fa8;}
-.cstack{position:relative;width:var(--s,40px);--s:40px;pointer-events:none;}
+.cstack{position:relative;z-index:1;width:var(--s,40px);--s:40px;pointer-events:none;}
 .cstack .chp{position:absolute;left:0;--s:40px;}
 /* ── Controls (chrome) ── */
 .ctl{display:flex;flex-direction:column;gap:10px;}
 .status{text-align:center;font-weight:800;color:var(--text-2);min-height:22px;font-size:.95rem;}
 .status b{color:var(--text);}
+.status .ico{width:18px;height:18px;vertical-align:-3px;}
 .status .big{display:block;font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.1;color:var(--text);}
 .status .tip{display:block;font-size:.8rem;color:var(--text-3);font-weight:700;margin-top:2px;}
 .status .bad{color:#ff8a8a;}
@@ -154,7 +156,7 @@
     return out;
   }
   function stackEl(amt) {
-    var list = breakdown(amt), shown = list.slice(0, 9), st = el('div', { class: 'cstack' });
+    var list = breakdown(amt), shown = list.slice(0, 7), st = el('div', { class: 'cstack' });
     st.style.height = (40 + (shown.length - 1) * 5) + 'px';
     shown.forEach(function (v, i) { var c = chip(v); c.style.bottom = (i * 5) + 'px'; c.style.zIndex = i + 1; st.appendChild(c); });
     return st;
@@ -578,7 +580,7 @@
     felt.appendChild(el('div', { class: 'shoe', 'aria-hidden': 'true' }, [cardEl(null, true)]));
     // Dealer
     var dz = el('div', { class: 'zone' });
-    dz.appendChild(whoTag('Dealer', showD ? res.dhn + ' / ' + res.dln : '', 'dtag'));
+    dz.appendChild(whoTag('Dealer', '', 'dtag'));
     dz.appendChild(dealerCards(showD));
     felt.appendChild(dz);
     felt.appendChild(el('div', { class: 'print rule', text: 'Dealer wins copies · 5% commission' }));
@@ -668,7 +670,7 @@
       var cs = el('div', { class: 'cs' }); cards.forEach(function (c) { cs.appendChild(cardEl(c)); });
       return el('div', { class: 'grp' + (won ? ' win' : '') }, [cs, el('span', { class: 'print gl', text: label })]);
     }
-    return el('div', { class: 'dset', id: 'dset' }, [grp(ds.hi, 'High', !res.hiW), grp(ds.lo, 'Low', !res.loW)]);
+    return el('div', { class: 'dset', id: 'dset' }, [grp(ds.hi, 'High: ' + res.dhn, !res.hiW), grp(ds.lo, 'Low: ' + res.dln, !res.loW)]);
   }
   function paintResult(status, res, hidden) {
     if (hidden) { status.innerHTML = '<span class="big">&nbsp;</span>&nbsp;'; return; }
@@ -719,7 +721,6 @@
     var set = dealerCards(true); drow.replaceWith(set);
     set.querySelectorAll('.pcard').forEach(function (n) { var r = rects[n.dataset.id]; if (r) Cards.fly(n, { getBoundingClientRect: function () { return r; } }, { ms: 380 }); });
     Kit.sfx('whoosh');
-    document.getElementById('dtag').querySelector('.hn').textContent = res.dhn + ' / ' + res.dln;
     await wait(700);
     // Compare: low, then high
     var pairs = [['.pz.lo', res.loW], ['.pz.hi', res.hiW]];
