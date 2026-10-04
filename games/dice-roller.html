@@ -2,310 +2,963 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dice Roller</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-body{background:radial-gradient(700px 460px at 50% -8%, rgba(239,68,68,.12), transparent 62%), var(--bg);}
-.page{padding-bottom:calc(110px + var(--safe-b));}
-.sec-lbl{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:0 4px 8px;}
-/* Die type picker */
-.die-types{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px;}
-.dt-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:66px;padding:6px 0;border-radius:14px;
-  border:1px solid var(--line);background:var(--surface);color:var(--text-2);cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-.dt-btn:active{transform:scale(.94);}
-.dt-btn.active{border-color:rgba(245,200,66,.6);background:rgba(245,200,66,.12);color:var(--gold);}
-.dt-icon svg{width:26px;height:26px;display:block;}
-.dt-label{font-size:.8rem;font-weight:800;}
-/* Grouped inset row */
-.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;}
-.row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:8px 10px 8px 16px;}
-.row-lbl{font-size:1rem;font-weight:600;}
-.row-sub{font-size:.82rem;color:var(--text-3);}
-.stepper{display:flex;align-items:center;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;overflow:hidden;}
-.cnt-btn{width:48px;height:44px;border:0;background:transparent;color:var(--text);font-size:1.4rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.cnt-btn:active{background:var(--surface-3);}
-.cnt-btn:disabled{opacity:.3;}
-.cnt-val{font-family:var(--display);font-size:1.3rem;font-weight:800;min-width:40px;text-align:center;font-variant-numeric:tabular-nums;border-left:1px solid var(--line);border-right:1px solid var(--line);line-height:44px;}
-/* Tray */
-.tray{position:relative;min-height:220px;padding:22px 14px;margin-bottom:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;}
-.dice-results{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;perspective:600px;}
-.tray-empty{color:rgba(255,255,255,.55);font-weight:600;font-size:.95rem;text-align:center;}
-.tray-empty b{display:block;font-size:2.4rem;margin-bottom:6px;}
-@keyframes die-tumble{0%{transform:translateY(-60px) rotateX(260deg) rotateZ(-140deg) scale(.6);opacity:0}
-  55%{transform:translateY(6px) rotateX(-10deg) rotateZ(14deg) scale(1.06);opacity:1}
-  75%{transform:translateY(-4px) rotateZ(-5deg)}100%{transform:none;opacity:1}}
-@keyframes die-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg) translateY(-2px)}75%{transform:rotate(8deg) translateY(2px)}}
-.die-result{width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;position:relative;
-  background:linear-gradient(145deg,#fdfdfd,#d9dbe3);color:#15161c;font-family:var(--display);font-size:1.5rem;font-weight:800;
-  box-shadow:0 8px 18px rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.12),inset 0 2px 0 #fff;}
-.die-result.poly{background:linear-gradient(145deg,#fbbf24,#ea580c);color:#1a0f02;box-shadow:0 8px 18px rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.5);}
-.die-result.poly.d4{clip-path:polygon(50% 2%,98% 92%,2% 92%);border-radius:0;padding-top:16px;}
-.die-result.poly.d8{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);border-radius:0;}
-.die-result.poly.d10{clip-path:polygon(50% 0,100% 40%,82% 100%,18% 100%,0 40%);border-radius:0;padding-top:8px;}
-.die-result.poly.d12{clip-path:polygon(50% 0,98% 35%,80% 98%,20% 98%,2% 35%);border-radius:0;padding-top:6px;}
-.die-result.poly.d20{clip-path:polygon(50% 0,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%);border-radius:0;}
-.die-result.poly.d100{border-radius:50%;font-size:1.2rem;}
-.die-result.shaking{animation:die-shake .12s linear infinite;}
-.die-result.rolling{animation:die-tumble .55s cubic-bezier(.22,.68,0,1) both;}
-.die-result.max{box-shadow:0 0 0 3px var(--gold),0 8px 22px rgba(245,200,66,.45);}
-.pips{display:grid;grid-template-columns:repeat(3,10px);grid-template-rows:repeat(3,10px);gap:4px;}
-.pips i{width:10px;height:10px;border-radius:50%;background:#15161c;visibility:hidden;}
-.pips i.on{visibility:visible;}
-.d6-1 .pips i.on{background:#dc2626;}
-.total-display{text-align:center;margin-top:18px;}
-.total-label{font-size:.75rem;color:rgba(255,255,255,.6);font-weight:700;text-transform:uppercase;letter-spacing:.1em;}
-.total-val{font-family:var(--display);font-size:3rem;font-weight:800;color:var(--gold);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.total-val.pop{animation:gn-pop .35s var(--spring) both;}
-/* History */
-.hist-head{display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px;}
-.hist-head .sec-lbl{margin:0;}
-.history-list .hist-item{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:52px;padding:8px 16px;border-bottom:1px solid var(--line);}
-.hist-item:last-child{border-bottom:none;}
-.hist-dice{display:flex;flex-direction:column;min-width:0;}
-.hist-dice b{font-size:.95rem;font-weight:700;}
-.hist-dice span{font-size:.82rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hist-total{font-family:var(--display);font-size:1.3rem;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;}
-/* Docked action bar */
-.bar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;
-  padding:12px max(16px,var(--safe-r)) calc(12px + var(--safe-b)) max(16px,var(--safe-l));
-  background:rgba(11,13,18,.82);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
-.bar .btn{width:100%;max-width:688px;min-height:54px;font-size:1.08rem;}
+/* Dice tray: felt inside a wooden box */
+.tray{border-radius:26px;padding:9px;margin:2px 0 12px;}
+.tray .felt-in{position:relative;border-radius:19px;height:clamp(230px,36vh,380px);overflow:hidden;cursor:pointer;touch-action:manipulation;}
+.tray canvas{position:absolute;inset:0;width:100%;height:100%;}
+.tray .hint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;font-family:var(--display);font-size:1.25rem;color:rgba(255,255,255,.5);pointer-events:none;}
+
+/* Read-out plaque under the tray */
+.readout{display:flex;align-items:center;gap:12px;min-height:84px;padding:10px 14px;border-radius:20px;background:rgba(0,0,0,.28);margin-bottom:12px;}
+.readout .rl{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.readout .expr{font-weight:900;font-size:.82rem;letter-spacing:.06em;color:var(--text-3);line-height:1.25;}
+.readout .parts{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:28px;}
+.readout .wait{color:var(--text-2);font-weight:700;font-size:.95rem;}
+.readout .tot{flex:none;min-width:72px;text-align:right;font-family:var(--display);font-size:3.1rem;line-height:1;color:var(--accent);text-shadow:0 3px 0 rgba(0,0,0,.35);font-variant-numeric:tabular-nums;}
+.readout .tot.dim{color:rgba(255,255,255,.2);}
+.readout .tot.pop{animation:bounce .5s var(--spring);}
+.pv{--c:#888;--k:#fff;display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 6px;border-radius:8px;background:var(--c);color:var(--k);
+  font-family:var(--display);font-size:1rem;line-height:1;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.35);}
+.pv.max{box-shadow:0 0 0 2px var(--yellow), inset 0 -2px 0 rgba(0,0,0,.25);}
+.pv.min{opacity:.75;}
+.readout .die{--ds:28px;padding:4px;pointer-events:none;}
+.readout .die.max{box-shadow:0 0 0 2px var(--yellow), 0 2px 4px rgba(0,0,0,.4);}
+.pmod{font-family:var(--display);font-size:1.05rem;color:var(--text-2);padding:0 2px;}
+
+.rollrow{display:flex;gap:10px;margin-bottom:20px;}
+.rollrow .btn-primary{flex:1;}
+.rollrow .shake{width:60px;padding:0;flex:none;}
+.rollrow .shake.on{--b:color-mix(in srgb,var(--accent) 30%,var(--surface-3));}
+.rollrow .shake .ico{width:24px;height:24px;}
+
+/* Dice picker */
+.picker{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px;}
+.pick{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:68px;padding:6px 0 5px;border:0;border-radius:16px;
+  background:rgba(255,255,255,.06);color:var(--text);font-weight:900;font-size:.85rem;transition:transform .15s var(--spring), background .15s;}
+.pick:active{transform:scale(.9);background:rgba(255,255,255,.12);}
+.pick svg{width:30px;height:30px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));}
+.pick .n{position:absolute;top:-5px;right:-3px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;background:var(--accent);color:var(--accent-ink);font-size:.78rem;display:grid;place-items:center;box-shadow:0 2px 4px rgba(0,0,0,.35);}
+.pick .n:empty{display:none;}
+.pick.has{background:color-mix(in srgb,var(--accent) 14%,rgba(255,255,255,.04));}
+
+.poolrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:44px;margin-bottom:8px;}
+.poolrow .chip{min-height:40px;padding:0 10px 0 14px;color:var(--text);background:rgba(255,255,255,.09);}
+.poolrow .chip .ico{width:16px;height:16px;opacity:.7;}
+.poolrow .empty{color:var(--text-3);font-weight:700;font-size:.92rem;}
+.poolrow .clear{margin-left:auto;background:transparent;color:var(--text-2);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12);padding:0 16px;}
+.modrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 6px 6px 16px;border-radius:var(--r);background:rgba(255,255,255,.05);margin-bottom:22px;}
+.modrow b{display:block;font-weight:900;}
+.modrow small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
+.modrow output{min-width:52px;}
+
+.sect{display:flex;align-items:center;justify-content:space-between;margin:0 2px 8px;}
+.sect .label{margin:0;}
+.sect .btn-ghost{min-height:36px;padding:0 10px;font-size:.88rem;}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;}
+.preset{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:52px;padding:6px 14px;border:0;border-radius:16px;
+  background:rgba(255,255,255,.07);color:var(--text);text-align:left;transition:transform .15s var(--spring), background .15s;}
+.preset:active{transform:scale(.95);}
+.preset b{font-weight:900;font-size:1rem;line-height:1.1;}
+.preset small{font-weight:700;font-size:.75rem;color:var(--text-3);}
+.preset.add{font-weight:800;flex-direction:row;align-items:center;gap:6px;color:var(--text-2);background:transparent;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12);}
+.preset.add .ico{width:18px;height:18px;}
+.preset .x{position:absolute;top:-7px;right:-7px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--red);color:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4);}
+.preset .x .ico{width:14px;height:14px;}
+.presets:not(.editing) .preset .x{display:none;}
+.presets.editing .preset:not(.add){animation:wiggle .3s ease-in-out infinite alternate;}
+@keyframes wiggle{from{transform:rotate(-1.2deg);}to{transform:rotate(1.2deg);}}
+
+.hist{display:flex;flex-direction:column;gap:6px;}
+.hrow{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:8px 14px;border:0;border-radius:16px;background:rgba(255,255,255,.05);color:var(--text);text-align:left;animation:rise .4s var(--ease) both;}
+.hrow:active{background:rgba(255,255,255,.1);}
+.hrow .hl{flex:1;min-width:0;}
+.hrow .hl b{display:block;font-weight:900;font-size:.95rem;}
+.hrow .hl small{display:block;color:var(--text-3);font-weight:700;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hrow .ht{font-family:var(--display);font-size:1.7rem;color:var(--accent);font-variant-numeric:tabular-nums;}
+.hempty{color:var(--text-3);font-weight:700;font-size:.92rem;padding:4px 2px 12px;}
+.savebox .input{margin-top:8px;}
+.savebox p{color:var(--text-2);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Dice Roller</span>
-</nav>
-<div class="page">
-
-<div class="sec-lbl">Die</div>
-<div class="die-types" id="die-types"></div>
-
-<div class="group">
-  <div class="row">
-    <div><div class="row-lbl">Number of dice</div><div class="row-sub" id="cnt-sub">2d6</div></div>
-    <div class="stepper">
-      <button class="cnt-btn" id="minus-btn" aria-label="Fewer dice">−</button>
-      <div class="cnt-val" id="cnt-val">2</div>
-      <button class="cnt-btn" id="plus-btn" aria-label="More dice">+</button>
+<main class="stage" id="app">
+  <div class="tray wood">
+    <div class="felt-in" id="felt" role="button" aria-label="Roll the dice">
+      <canvas id="cv"></canvas>
+      <div class="hint" id="hint" hidden>Tap a die below<br>to put it in the tray</div>
     </div>
   </div>
-</div>
 
-<div class="tray felt" id="tray" role="button" aria-label="Roll">
-  <div class="dice-results" id="dice-results"><div class="tray-empty"><b>🎲</b>Tap Roll — or tap the table</div></div>
-  <div class="total-display" id="total-display" style="display:none;">
-    <div class="total-label">Total</div>
-    <div class="total-val" id="total-val">0</div>
+  <div class="readout" aria-live="polite">
+    <div class="rl">
+      <div class="expr" id="expr">2d6</div>
+      <div class="parts" id="parts"></div>
+    </div>
+    <div class="tot dim" id="tot">–</div>
   </div>
-</div>
 
-<div id="history-card" style="display:none;">
-  <div class="hist-head">
-    <span class="sec-lbl">Roll history</span>
-    <button class="btn-ghost" id="clear-hist">Clear</button>
+  <div class="rollrow">
+    <button class="btn btn-primary btn-lg" id="roll" type="button"></button>
+    <button class="btn btn-soft btn-lg shake" id="shake" type="button" aria-label="Shake to roll" hidden></button>
   </div>
-  <div class="group"><div id="history-list" class="history-list"></div></div>
-</div>
 
-</div>
-<div class="bar"><button class="btn btn-gold" id="roll-btn">Roll 2d6</button></div>
+  <div class="label">Dice</div>
+  <div class="picker" id="picker"></div>
+  <div class="poolrow" id="pool"></div>
+  <div class="modrow">
+    <div><b>Add or subtract</b><small>A bonus on the total</small></div>
+    <div class="stepper"><button type="button" id="modm" aria-label="Subtract one">−</button><output id="modv">0</output><button type="button" id="modp" aria-label="Add one">+</button></div>
+  </div>
+
+  <div class="sect"><div class="label">Quick picks</div><button class="btn btn-ghost" id="editp" type="button">Edit</button></div>
+  <div class="presets" id="presets"></div>
+
+  <div class="sect"><div class="label">Rolls this session</div><button class="btn btn-ghost" id="clearh" type="button" hidden>Clear</button></div>
+  <div class="hist" id="hist"></div>
+</main>
+
 <script>
-'use strict';
-const ICONS={
-  4:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 21.5 20h-19z"/></svg>',
-  6:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/></svg>',
-  8:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 22 12 12 22 2 12z"/><path d="M2 12h20"/></svg>',
-  10:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 22 10 18 21H6L2 10z"/></svg>',
-  12:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 21.5 9 18 21H6L2.5 9z"/><path d="M12 7 16 10 14.5 15h-5L8 10z"/></svg>',
-  20:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 21 7v10l-9 5-9-5V7z"/><path d="M12 7 17 15H7z"/></svg>',
-  100:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><text x="12" y="15.5" text-anchor="middle" font-size="9" font-weight="800" fill="currentColor" stroke="none" font-family="Inter,system-ui">%</text></svg>',
-};
-const DICE=[
-  {faces:4, label:'d4'},
-  {faces:6, label:'d6'},
-  {faces:8, label:'d8'},
-  {faces:10,label:'d10'},
-  {faces:12,label:'d12'},
-  {faces:20,label:'d20'},
-  {faces:100,label:'d100'},
-];
-const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc;
+  var KEY = 'diceroller_state', HKEY = 'diceroller_hist';
+  var SIDES = [4, 6, 8, 10, 12, 20, 100];
+  var MAX_DICE = 30;
 
-let selDie=1; // index (d6 default)
-let dieCount=2;
-let history=[];
-let rolling=false;
-
-// Build die type buttons
-const dtEl=document.getElementById('die-types');
-DICE.forEach((d,i)=>{
-  const b=document.createElement('button');
-  b.className='dt-btn'+(i===selDie?' active':'');
-  b.innerHTML=`<span class="dt-icon">${ICONS[d.faces]}</span><span class="dt-label">${d.label}</span>`;
-  b.addEventListener('click',()=>{
-    selDie=i;haptic('select');
-    document.querySelectorAll('.dt-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    syncLabels();
+  Kit.init({
+    id: 'dice-roller',
+    theme: { felt: ['#8a2a36', '#5e1823', '#430f18'], wood: ['#7a4a2a', '#4e2c16'] },
+    menu: [
+      { icon: 'history', label: 'Clear roll history', onClick: function () { clearHistory(); } },
+      { icon: 'phone', label: function () { return shakeOn ? 'Shake to roll: on' : 'Shake to roll: off'; }, onClick: function () { toggleShake(); } }
+    ],
+    rules:
+      '<p class="goal">Pick your dice, tap Roll, and watch them tumble. The total is added up for you.</p>' +
+      '<h3>Choosing dice</h3><ul><li>Tap a die (d4, d6, d8, d10, d12, d20, d100) to drop one into the tray. Tap it again for more.</li>' +
+      '<li>Tap a chip like <b>2d6</b> to take one of those dice back out.</li>' +
+      '<li><b>Add or subtract</b> puts a bonus on the total, like <b>1d20 + 3</b>.</li></ul>' +
+      '<h3>What the letters mean</h3><p><b>2d6</b> means "roll two six-sided dice". The number after the d is how many sides the die has.</p>' +
+      '<h3>Special dice</h3><ul><li><b>d4</b>: the pyramid die. Read the number at the <b>top point</b>.</li>' +
+      '<li><b>d10</b>: numbered 1 to 10.</li>' +
+      '<li><b>d100</b>: two dice. One shows tens (00 to 90), the other ones (0 to 9). Add them: 40 and 7 is 47. 00 and 0 is 100.</li></ul>' +
+      '<h3>Rolling</h3><ul><li>Tap <b>Roll</b>, tap the tray, or press Space.</li><li>On a phone, turn on <b>Shake to roll</b> and give your phone a shake.</li>' +
+      '<li><b>Quick picks</b> load a set of dice in one tap. Save your own with <b>Save current</b>.</li>' +
+      '<li>Tap a roll in the history to load those dice again.</li></ul>'
   });
-  dtEl.appendChild(b);
-});
 
-function syncLabels(){
-  const lbl=dieCount+DICE[selDie].label;
-  document.getElementById('cnt-val').textContent=dieCount;
-  document.getElementById('cnt-sub').textContent=lbl;
-  document.getElementById('roll-btn').textContent='Roll '+lbl;
-  document.getElementById('minus-btn').disabled=dieCount<=1;
-  document.getElementById('plus-btn').disabled=dieCount>=20;
-}
-document.getElementById('minus-btn').addEventListener('click',()=>{
-  if(dieCount>1){dieCount--;haptic('select');syncLabels();}
-});
-document.getElementById('plus-btn').addEventListener('click',()=>{
-  if(dieCount<20){dieCount++;haptic('select');syncLabels();}
-});
+  // ── Saved settings ───────────────────────────────────────────────────────
+  var DEFAULT_PRESETS = [
+    { name: '2d6', pool: { 6: 2 }, mod: 0 },
+    { name: '1d20', pool: { 20: 1 }, mod: 0 },
+    { name: '1d20 + 3', pool: { 20: 1 }, mod: 3 },
+    { name: 'Yahtzee', pool: { 6: 5 }, mod: 0 },
+    { name: '4d6', pool: { 6: 4 }, mod: 0 },
+    { name: 'Percent', pool: { 100: 1 }, mod: 0 }
+  ];
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function ssGet(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch (e) { return null; } }
+  function ssSet(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
-const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-function faceHTML(v,faces){
-  if(faces===6){let h='<div class="pips">';for(let k=0;k<9;k++)h+=`<i class="${PIPS[v].includes(k)?'on':''}"></i>`;return h+'</div>';}
-  return String(v);
-}
-function setFace(d,v,faces){
-  d.innerHTML=faceHTML(v,faces);
-  d.classList.toggle('d6-1',faces===6&&v===1);
-}
+  var saved = lsGet(KEY) || {};
+  var pool = emptyPool(); var mod = 0;
+  if (saved.pool) SIDES.forEach(function (s) { pool[s] = Math.max(0, Math.min(20, saved.pool[s] | 0)); }); else pool[6] = 2;
+  if (typeof saved.mod === 'number') mod = Math.max(-99, Math.min(99, saved.mod | 0));
+  var presets = Array.isArray(saved.presets) ? saved.presets : DEFAULT_PRESETS.slice();
+  var shakeOn = !!saved.shake;
+  var history = ssGet(HKEY) || [];
+  var last = saved.last || null;   // {label, mod, total, dice:[{k,v,fx,fy,q}]}
 
-function roll(){
-  if(rolling)return;
-  rolling=true;
-  const faces=DICE[selDie].faces;
-  const rolls=Array.from({length:dieCount},()=>Math.ceil(Math.random()*faces));
-  const total=rolls.reduce((a,b)=>a+b,0);
+  function emptyPool() { var p = {}; SIDES.forEach(function (s) { p[s] = 0; }); return p; }
+  function persist() { lsSet(KEY, { pool: pool, mod: mod, presets: presets, shake: shakeOn, last: last }); }
+  function poolCount(p) { var n = 0; SIDES.forEach(function (s) { n += (p[s] || 0) * (s === 100 ? 2 : 1); }); return n; }
+  function exprOf(p, m) {
+    var bits = [];
+    SIDES.forEach(function (s) { if (p[s]) bits.push(p[s] + 'd' + s); });
+    var t = bits.join(' + ') || 'No dice';
+    if (m) t += (m > 0 ? ' + ' : ' − ') + Math.abs(m);
+    return t;
+  }
 
-  // Sound: rattle shake at roll start
-  try{sRollShake();}catch(e){}
-  haptic('medium');
+  // ── Fair randomness ──────────────────────────────────────────────────────
+  function rint(n) {   // 0..n-1
+    try { var a = new Uint32Array(1), lim = Math.floor(4294967296 / n) * n, x; do { crypto.getRandomValues(a); x = a[0]; } while (x >= lim); return x % n; }
+    catch (e) { return Math.floor(Math.random() * n); }
+  }
+  function rnd(a, b) { return a + Math.random() * (b - a); }
 
-  // Render dice: shake with flickering faces, then tumble onto the table
-  const dr=document.getElementById('dice-results');dr.innerHTML='';
-  const els=rolls.map(()=>{
-    const d=document.createElement('div');
-    d.className='die-result shaking'+(faces===6?'':' poly d'+faces);
-    setFace(d,Math.ceil(Math.random()*faces),faces);
-    dr.appendChild(d);return d;
-  });
-  const flick=setInterval(()=>els.forEach(d=>{ if(d.classList.contains('shaking'))setFace(d,Math.ceil(Math.random()*faces),faces); }),70);
-  const td=document.getElementById('total-display');
-  td.style.display='block';
-  document.getElementById('total-val').textContent='…';
-  els.forEach((d,i)=>{
-    setTimeout(()=>{
-      d.classList.remove('shaking');
-      setFace(d,rolls[i],faces);
-      void d.offsetWidth;
-      d.classList.add('rolling');
-      if(rolls[i]===faces&&faces>2)d.classList.add('max');
-      try{sDieLand(rolls[i],faces);}catch(e){} // click as each die lands
-    },280+i*60);
-  });
-  const done=280+dieCount*60+260;
-  setTimeout(()=>clearInterval(flick),280+dieCount*60);
+  // ── Vector / quaternion math ─────────────────────────────────────────────
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function scl(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function len(a) { return Math.sqrt(dot(a, a)); }
+  function norm(a) { var l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+  function qmul(a, b) {
+    return [a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+      a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+      a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+      a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]];
+  }
+  function qconj(q) { return [q[0], -q[1], -q[2], -q[3]]; }
+  function qnorm(q) { var l = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]) || 1; return [q[0] / l, q[1] / l, q[2] / l, q[3] / l]; }
+  function qrot(q, v) { var r = qmul(qmul(q, [0, v[0], v[1], v[2]]), qconj(q)); return [r[1], r[2], r[3]]; }
+  function qaxis(ax, an) { ax = norm(ax); var s = Math.sin(an / 2); return [Math.cos(an / 2), ax[0] * s, ax[1] * s, ax[2] * s]; }
+  function qfromto(a, b) {
+    a = norm(a); b = norm(b); var d = dot(a, b);
+    if (d < -0.99999) { var ax = cross([1, 0, 0], a); if (len(ax) < 1e-3) ax = cross([0, 1, 0], a); return qaxis(ax, Math.PI); }
+    var c = cross(a, b); return qnorm([1 + d, c[0], c[1], c[2]]);
+  }
+  function qslerp(a, b, t) {
+    var d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+    if (d < 0) { b = [-b[0], -b[1], -b[2], -b[3]]; d = -d; }
+    if (d > 0.9995) return qnorm([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t]);
+    var th = Math.acos(d), s = Math.sin(th), w1 = Math.sin((1 - t) * th) / s, w2 = Math.sin(t * th) / s;
+    return [a[0] * w1 + b[0] * w2, a[1] * w1 + b[1] * w2, a[2] * w1 + b[2] * w2, a[3] * w1 + b[3] * w2];
+  }
+  function qrand() { var u = Math.random(), v = Math.random(), w = Math.random();
+    return [Math.sqrt(1 - u) * Math.sin(2 * Math.PI * v), Math.sqrt(1 - u) * Math.cos(2 * Math.PI * v), Math.sqrt(u) * Math.sin(2 * Math.PI * w), Math.sqrt(u) * Math.cos(2 * Math.PI * w)]; }
 
-  // Special result sounds (after all dice land)
-  const allMax=rolls.every(v=>v===faces), allMin=rolls.every(v=>v===1);
-  setTimeout(()=>{
-    if(allMax){try{sRollMax();}catch(e){}haptic('success');}
-    else if(allMin){try{sRollMin();}catch(e){}haptic('error');}
-    else haptic('light');
-  }, done+160);
+  // ── Dice shapes (real polyhedra) ─────────────────────────────────────────
+  var PHI = (1 + Math.sqrt(5)) / 2, IP = 1 / PHI;
+  function signs(list) { // expand ± combos
+    var out = [];
+    list.forEach(function (v) {
+      var sx = v[0] ? [1, -1] : [1], sy = v[1] ? [1, -1] : [1], sz = v[2] ? [1, -1] : [1];
+      sx.forEach(function (a) { sy.forEach(function (b) { sz.forEach(function (c) { out.push([v[0] * a, v[1] * b, v[2] * c]); }); }); });
+    });
+    return out;
+  }
+  var CUBE_V = signs([[1, 1, 1]]);
+  var OCTA_V = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  var ICO_V = signs([[0, 1, PHI], [1, PHI, 0], [PHI, 0, 1]]);
+  var DOD_V = signs([[1, 1, 1], [0, IP, PHI], [IP, PHI, 0], [PHI, 0, IP]]);
+  var TET_V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
 
-  // Total
-  setTimeout(()=>{
-    const tv=document.getElementById('total-val');
-    tv.textContent=total;tv.classList.remove('pop');void tv.offsetWidth;tv.classList.add('pop');
-    rolling=false;
-    // History
-    history.unshift({dice:DICE[selDie].label,count:dieCount,rolls,total});
-    if(history.length>12)history.pop();
-    document.getElementById('history-card').style.display='';
+  function facesFromNormals(verts, normals) {
+    return normals.map(function (n) {
+      n = norm(n);
+      var ds = verts.map(function (v) { return dot(v, n); }), m = Math.max.apply(null, ds), idx = [];
+      ds.forEach(function (d, i) { if (d > m - 1e-3) idx.push(i); });
+      return orderFace(verts, idx, n);
+    });
+  }
+  function centroid(verts, idx) { var c = [0, 0, 0]; idx.forEach(function (i) { c = add(c, verts[i]); }); return scl(c, 1 / idx.length); }
+  function orderFace(verts, idx, n) {
+    var c = centroid(verts, idx), e1 = norm(sub(verts[idx[0]], c)), e2 = cross(n, e1);
+    return idx.slice().sort(function (a, b) {
+      var pa = sub(verts[a], c), pb = sub(verts[b], c);
+      return Math.atan2(dot(pa, e2), dot(pa, e1)) - Math.atan2(dot(pb, e2), dot(pb, e1));
+    });
+  }
+  function d10Geo() {
+    var h = 1, z0 = h * (1 - Math.cos(Math.PI / 5)) / (1 + Math.cos(Math.PI / 5)), v = [[0, 0, h], [0, 0, -h]], U = [], B = [];
+    for (var k = 0; k < 5; k++) {
+      var a = k * 2 * Math.PI / 5, b = a + Math.PI / 5;
+      U.push(v.length); v.push([Math.cos(a), Math.sin(a), z0]);
+      B.push(v.length); v.push([Math.cos(b), Math.sin(b), -z0]);
+    }
+    var faces = [];
+    for (k = 0; k < 5; k++) faces.push([0, U[k], B[k], U[(k + 1) % 5]]);           // upper kites, apex first
+    for (k = 0; k < 5; k++) faces.push([1, B[(k + 4) % 5], U[k], B[k]]);           // lower kites, apex first
+    return { verts: v, faces: faces };
+  }
+
+  // Build a die geometry: verts normalised, faces with normal, centre, label frame
+  function makeGeo(verts, faces, o) {
+    var R = Math.max.apply(null, verts.map(len));
+    verts = verts.map(function (p) { return scl(p, 1 / R); });
+    var F = faces.map(function (idx) {
+      var c = centroid(verts, idx);
+      var n = norm(cross(sub(verts[idx[1]], verts[idx[0]]), sub(verts[idx[2]], verts[idx[0]])));
+      if (dot(n, c) < 0) n = scl(n, -1);
+      var inr = Infinity;
+      for (var i = 0; i < idx.length; i++) {
+        var a = verts[idx[i]], b = verts[idx[(i + 1) % idx.length]];
+        inr = Math.min(inr, len(cross(sub(c, a), sub(b, a))) / len(sub(b, a)));
+      }
+      var up;
+      if (o.up === 'edge') up = norm(sub(scl(add(verts[idx[0]], verts[idx[1]]), 0.5), c));
+      else up = norm(sub(verts[idx[0]], c));   // apex / first vertex
+      var right = norm(cross(n, up));
+      return { idx: idx, n: n, c: c, inr: inr, up: up, right: right, rest: dot(c, n) };
+    });
+    var rest = Math.min.apply(null, F.map(function (f) { return f.rest; }));
+    // Opposite faces add up to N+1 (like real dice)
+    if (!o.noPairs) {
+      var used = {}, pairs = [];
+      F.forEach(function (f, i) {
+        if (used[i]) return;
+        var best = -1, bd = 2;
+        F.forEach(function (g, j) { if (j !== i && !used[j]) { var d = dot(f.n, g.n); if (d < bd) { bd = d; best = j; } } });
+        used[i] = used[best] = true; pairs.push([i, best]);
+      });
+      var N = F.length;
+      pairs.forEach(function (p, k) { F[p[0]].num = k + 1; F[p[1]].num = N - k; });
+    } else F.forEach(function (f, i) { f.num = i + 1; });
+    var byNum = {}; F.forEach(function (f) { byNum[f.num] = f; });
+    return { verts: verts, faces: F, rest: rest, scale: o.scale || 1, byNum: byNum, font: o.font || 1.15 };
+  }
+
+  var GEO = {};
+  GEO.d4 = (function () {
+    var g = makeGeo(TET_V, facesFromNormals(TET_V.map(norm), TET_V.map(function (v) { return scl(v, -1); })), { noPairs: true, scale: 1.18 });
+    g.vnum = [1, 2, 3, 4];  // the number at each point; you read the top point
+    return g;
+  })();
+  GEO.d6 = makeGeo(CUBE_V, facesFromNormals(CUBE_V.map(norm), OCTA_V), { up: 'edge', scale: 0.93 });
+  GEO.d8 = makeGeo(OCTA_V, facesFromNormals(OCTA_V, CUBE_V), { scale: 0.98, font: 1.05 });
+  GEO.d10 = (function () { var t = d10Geo(); return makeGeo(t.verts, t.faces, { scale: 0.98, font: 0.95 }); })();
+  GEO.d12 = makeGeo(DOD_V, facesFromNormals(DOD_V.map(norm), signs([[0, PHI, 1], [PHI, 1, 0], [1, 0, PHI]])), { scale: 0.98, font: 1.0 });
+  GEO.d20 = makeGeo(ICO_V, facesFromNormals(ICO_V.map(norm), signs([[1, 1, 1], [0, PHI, IP], [PHI, IP, 0], [IP, 0, PHI]])), { scale: 1.0, font: 1.3 });
+
+  // Each physical die kind: geometry, colours, labels, value read
+  var KIND = {
+    d4: { geo: 'd4', sides: 4, col: [229, 72, 77], ink: '#fff', badge: '#e5484d' },
+    d6: { geo: 'd6', sides: 6, col: [248, 243, 232], ink: '#1d1b2e', badge: '#f3eee2', bink: '#1d1b2e' },
+    d8: { geo: 'd8', sides: 8, col: [59, 130, 246], ink: '#fff', badge: '#3b82f6' },
+    d10: { geo: 'd10', sides: 10, col: [139, 92, 246], ink: '#fff', badge: '#8b5cf6' },
+    d12: { geo: 'd12', sides: 12, col: [16, 185, 129], ink: '#fff', badge: '#10b981' },
+    d20: { geo: 'd20', sides: 20, col: [245, 166, 35], ink: '#2b1a00', badge: '#f5a623', bink: '#2b1a00' },
+    pt: { geo: 'd10', sides: 10, col: [14, 165, 233], ink: '#fff', badge: '#0ea5e9' },
+    pu: { geo: 'd10', sides: 10, col: [236, 241, 247], ink: '#0b4a6f', badge: '#e6edf5', bink: '#0b4a6f' }
+  };
+  function faceLabel(kind, num) {
+    if (kind === 'pt') return ((num % 10) * 10 === 0 ? '00' : String((num % 10) * 10));
+    if (kind === 'pu') return String(num % 10);
+    return String(num);
+  }
+  function kindsFor(p) {
+    var out = [];
+    SIDES.forEach(function (s) { for (var i = 0; i < (p[s] || 0); i++) { if (s === 100) { out.push('pt', 'pu'); } else out.push('d' + s); } });
+    return out;
+  }
+
+  // ── Tray canvas ──────────────────────────────────────────────────────────
+  var felt = document.getElementById('felt'), cv = document.getElementById('cv'), cx = cv.getContext('2d');
+  var W = 300, H = 240, DPR = 1, S = 30;
+  var TILT = 0.36, CT = Math.cos(TILT), ST = Math.sin(TILT);
+  var LIGHT = norm([-0.35, -0.6, 0.75]);
+  var dice = [];       // {id, kind, num (face up / point up), x, y, z, q, glow}
+  var anims = [];      // running animations
+  var idSeq = 1;
+  var rolling = false;
+
+  function sizeFor(n) {
+    var a = (W * H) / Math.max(1, n);
+    return Math.max(15, Math.min(42, Math.sqrt(a) * 0.27, W / 8.5));
+  }
+  function resize() {
+    var r = felt.getBoundingClientRect(), ow = W, oh = H;
+    W = Math.max(100, r.width); H = Math.max(100, r.height); DPR = Math.min(3, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    dice.forEach(function (d) { d.x = d.x * W / ow; d.y = d.y * H / oh; });
+    S = sizeFor(dice.length);
+    clampAll();
+    draw();
+  }
+  function bounds(d) { var r = S * 0.95; return { x0: r, x1: W - r, y0: r * 1.15, y1: H - r * 0.85 }; }
+  function clampAll() { dice.forEach(function (d) { var b = bounds(d); d.x = Math.max(b.x0, Math.min(b.x1, d.x)); d.y = Math.max(b.y0, Math.min(b.y1, d.y)); }); }
+
+  function shade(col, k) {
+    var r = col[0] * k, g = col[1] * k, b = col[2] * k;
+    if (k > 1) { var w = (k - 1) * 255 * 1.4; r = col[0] + w; g = col[1] + w; b = col[2] + w; }
+    return 'rgb(' + Math.min(255, r | 0) + ',' + Math.min(255, g | 0) + ',' + Math.min(255, b | 0) + ')';
+  }
+
+  function drawShadow(d) {
+    var g = GEO[KIND[d.kind].geo], s = S * g.scale, z = d.z;
+    var rx = s * 1.0 * (1 + z / 260), a = 0.42 * Math.max(0.12, 1 - z / 220);
+    var x = d.x + z * 0.18, y = d.y + s * 0.25 + z * 0.12;
+    cx.save(); cx.setTransform(DPR, 0, 0, DPR * 0.62, DPR * x, DPR * y);
+    var gr = cx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    gr.addColorStop(0, 'rgba(0,0,0,' + a + ')'); gr.addColorStop(0.6, 'rgba(0,0,0,' + a * 0.55 + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    cx.fillStyle = gr; cx.beginPath(); cx.arc(0, 0, rx, 0, Math.PI * 2); cx.fill();
+    if (d.glow) {
+      var gg = cx.createRadialGradient(0, -s * 0.3, s * 0.3, 0, -s * 0.3, s * 1.9);
+      gg.addColorStop(0, 'rgba(255,214,90,.75)'); gg.addColorStop(1, 'rgba(255,214,90,0)');
+      cx.fillStyle = gg; cx.beginPath(); cx.arc(0, -s * 0.3, s * 1.9, 0, Math.PI * 2); cx.fill();
+    }
+    cx.restore();
+  }
+
+  function drawDie(d) {
+    var K = KIND[d.kind], g = GEO[K.geo], s = S * g.scale * (1 + d.z / 520);
+    var ox = d.x, oy = d.y - (g.rest * s + d.z) * ST - g.rest * s * (1 - CT) * 0;
+    var q = d.q;
+    var P = g.verts.map(function (v) { var p = qrot(q, v); return [ox + p[0] * s, oy + (p[1] * CT - p[2] * ST) * s]; });
+    var vis = [];
+    g.faces.forEach(function (f) {
+      var n = qrot(q, f.n), depth = n[1] * ST + n[2] * CT;
+      if (depth > 0.001) vis.push({ f: f, n: n, depth: depth });
+    });
+    // faces
+    vis.forEach(function (o) {
+      var k = 0.6 + 0.5 * Math.max(0, dot(o.n, LIGHT)) + 0.06 * o.depth;
+      o.fill = shade(K.col, k);
+      cx.beginPath();
+      o.f.idx.forEach(function (i, j) { var p = P[i]; if (j) cx.lineTo(p[0], p[1]); else cx.moveTo(p[0], p[1]); });
+      cx.closePath();
+      cx.fillStyle = o.fill; cx.strokeStyle = o.fill; cx.lineWidth = Math.max(1.5, s * 0.07); cx.lineJoin = 'round';
+      cx.fill(); cx.stroke();
+    });
+    // soft edges
+    cx.lineWidth = 1; cx.strokeStyle = 'rgba(0,0,0,.14)';
+    vis.forEach(function (o) {
+      cx.beginPath();
+      o.f.idx.forEach(function (i, j) { var p = P[i]; if (j) cx.lineTo(p[0], p[1]); else cx.moveTo(p[0], p[1]); });
+      cx.closePath(); cx.stroke();
+    });
+    // labels (drawn in each face's own plane, so they foreshorten like the real thing)
+    vis.forEach(function (o) {
+      if (o.depth < 0.12) return;
+      var f = o.f, alpha = Math.min(1, (o.depth - 0.12) * 4);
+      var frame = function (center, up) {
+        var r = qrot(q, norm(cross(f.n, up))), dn = qrot(q, scl(up, -1)), c = qrot(q, center), u = s / 100;
+        cx.setTransform(DPR * r[0] * u, DPR * (r[1] * CT - r[2] * ST) * u, DPR * dn[0] * u, DPR * (dn[1] * CT - dn[2] * ST) * u,
+          DPR * (ox + c[0] * s), DPR * (oy + (c[1] * CT - c[2] * ST) * s));
+      };
+      cx.save(); cx.globalAlpha = alpha;
+      if (K.geo === 'd6') {
+        frame(f.c, f.up);
+        var h = f.inr * 100, pr = h * 0.2, off = h * 0.52;
+        var L = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] }[f.num];
+        L.forEach(function (p) {
+          var big = f.num === 1 ? 1.45 : 1;
+          var gr = cx.createRadialGradient(p[0] * off - pr * 0.3, p[1] * off - pr * 0.3, 0, p[0] * off, p[1] * off, pr * big);
+          if (f.num === 1) { gr.addColorStop(0, '#ff6b7a'); gr.addColorStop(1, '#c8102e'); } else { gr.addColorStop(0, '#4a4660'); gr.addColorStop(1, '#15132a'); }
+          cx.fillStyle = gr; cx.beginPath(); cx.arc(p[0] * off, p[1] * off, pr * big, 0, Math.PI * 2); cx.fill();
+        });
+      } else if (K.geo === 'd4') {
+        f.idx.forEach(function (vi) {
+          var vp = g.verts[vi], pos = add(f.c, scl(sub(vp, f.c), 0.5)), up = norm(sub(vp, f.c));
+          frame(pos, up);
+          text(String(g.vnum[vi]), f.inr * 100 * 0.78, K.ink, f.inr * 100 * 0.9);
+        });
+      } else {
+        var c = f.c;
+        if (K.geo === 'd10') c = add(f.c, scl(f.up, -f.inr * 0.18));
+        frame(c, f.up);
+        var lbl = faceLabel(d.kind, f.num);
+        text(lbl, f.inr * 100 * g.font, K.ink, f.inr * 100 * (K.geo === 'd10' ? 1.45 : 1.75), (lbl === '6' || lbl === '9') && g.faces.length > 6);
+      }
+      cx.restore();
+    });
+    cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  function text(t, size, ink, maxW, underline) {
+    cx.font = size.toFixed(1) + 'px "Lilita One", ' + 'system-ui, sans-serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    var w = cx.measureText(t).width, sx = w > maxW ? maxW / w : 1;
+    if (sx < 1) cx.scale(sx, 1);
+    cx.fillStyle = ink === '#fff' ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.55)';
+    cx.fillText(t, 0, size * 0.06 + 0.8);
+    cx.fillStyle = ink; cx.fillText(t, 0, size * 0.04);
+    if (underline) { cx.fillRect(-w * 0.32, size * 0.44, w * 0.64, size * 0.08); }
+  }
+
+  function draw() {
+    cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cx.clearRect(0, 0, W, H);
+    dice.forEach(drawShadow);
+    dice.slice().sort(function (a, b) { return (a.y + a.z * 0.2) - (b.y + b.z * 0.2); }).forEach(drawDie);
+    document.getElementById('hint').hidden = dice.length > 0;
+  }
+
+  // Which way is "up" in the die's own frame for a given result
+  function upDirFor(kind, num) {
+    var g = GEO[KIND[kind].geo];
+    if (g.vnum) return norm(g.verts[g.vnum.indexOf(num)]);   // d4: that point on top
+    return g.byNum[num].n;
+  }
+  // Rest orientation for a die showing num, with a random spin about the vertical
+  function restQ(kind, num) {
+    var q = qfromto(upDirFor(kind, num), [0, 0, 1]);
+    return qmul(uprightYaw(q, kind, num), q);
+  }
+  // Turn a resting die about the vertical so its top number reads (roughly) upright
+  function uprightYaw(q, kind, num) {
+    var g = GEO[KIND[kind].geo];
+    if (g.vnum || kind === 'd6') return qaxis([0, 0, 1], rnd(-0.6, 0.6));
+    var u = qrot(q, g.byNum[num].up), cur = Math.atan2(u[1], u[0]), want = -Math.PI / 2 + rnd(-0.3, 0.3);
+    return qaxis([0, 0, 1], want - cur);
+  }
+
+  // ── Physics: pre-simulate, then steer the tumble so it lands on the chosen face ──
+  var DT = 1 / 120;
+  function simulate(movers, statics, mode) {
+    var G = 2600, st = movers.map(function (d) {
+      var s = { d: d, x: d.x, y: d.y, z: d.z, vx: 0, vy: 0, vz: 0, w: [0, 0, 0], Q: [1, 0, 0, 0], fr: [] };
+      var sp = (mode === 'drop' ? rnd(40, 140) : rnd(420, 760)) * Math.max(0.8, W / 360), an = rnd(0, Math.PI * 2);
+      if (mode === 'roll') { an = Math.atan2(H / 2 - d.y, W / 2 - d.x) + rnd(-1.6, 1.6); s.vz = rnd(520, 760); }
+      s.vx = Math.cos(an) * sp; s.vy = Math.sin(an) * sp;
+      var ax = norm([rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)]);
+      s.w = scl(ax, mode === 'drop' ? rnd(8, 14) : rnd(16, 26));
+      return s;
+    });
+    var events = [], t = 0, maxT = mode === 'drop' ? 1.4 : 2.6, rr = S * 0.95;
+    while (true) {
+      st.forEach(function (s) {
+        var b = bounds(s.d);
+        s.vz -= G * DT; s.z += s.vz * DT;
+        if (s.z <= 0) {
+          s.z = 0;
+          if (s.vz < -110) {
+            events.push({ t: t, k: 'land', v: -s.vz });
+            s.vz = -s.vz * 0.36;
+            s.vx += rnd(-60, 60); s.vy += rnd(-60, 60);
+            s.w = add(s.w, [rnd(-6, 6), rnd(-6, 6), rnd(-6, 6)]);
+          } else s.vz = 0;
+        }
+        var grounded = s.z <= 0 && s.vz === 0, sp = Math.hypot(s.vx, s.vy);
+        if (grounded) {
+          var ns = Math.max(0, sp - 700 * DT - sp * 2.2 * DT);
+          if (sp > 0) { s.vx *= ns / sp; s.vy *= ns / sp; }
+          var tw = scl([-s.vy, s.vx, 0], 1 / rr), k = Math.min(1, 12 * DT);
+          s.w = add(scl(s.w, 1 - k), scl(tw, k));
+        } else s.w = scl(s.w, 1 - 0.15 * DT);
+        s.x += s.vx * DT; s.y += s.vy * DT;
+        if (s.x < b.x0) { s.x = b.x0; if (s.vx < 0) { if (s.vx < -60) events.push({ t: t, k: 'wall', v: -s.vx }); s.vx = -s.vx * 0.55; s.w = add(s.w, [rnd(-5, 5), rnd(-5, 5), rnd(-5, 5)]); } }
+        if (s.x > b.x1) { s.x = b.x1; if (s.vx > 0) { if (s.vx > 60) events.push({ t: t, k: 'wall', v: s.vx }); s.vx = -s.vx * 0.55; s.w = add(s.w, [rnd(-5, 5), rnd(-5, 5), rnd(-5, 5)]); } }
+        if (s.y < b.y0) { s.y = b.y0; if (s.vy < 0) { if (s.vy < -60) events.push({ t: t, k: 'wall', v: -s.vy }); s.vy = -s.vy * 0.55; s.w = add(s.w, [rnd(-5, 5), rnd(-5, 5), rnd(-5, 5)]); } }
+        if (s.y > b.y1) { s.y = b.y1; if (s.vy > 0) { if (s.vy > 60) events.push({ t: t, k: 'wall', v: s.vy }); s.vy = -s.vy * 0.55; s.w = add(s.w, [rnd(-5, 5), rnd(-5, 5), rnd(-5, 5)]); } }
+        // integrate orientation (world-frame spin)
+        var wq = [0, s.w[0], s.w[1], s.w[2]], dq = qmul(wq, s.Q);
+        s.Q = qnorm([s.Q[0] + 0.5 * DT * dq[0], s.Q[1] + 0.5 * DT * dq[1], s.Q[2] + 0.5 * DT * dq[2], s.Q[3] + 0.5 * DT * dq[3]]);
+      });
+      // knock into each other
+      var minD = S * 1.75;
+      for (var i = 0; i < st.length; i++) {
+        var a = st[i];
+        for (var j = i + 1; j < st.length; j++) {
+          var c = st[j], dx = c.x - a.x, dy = c.y - a.y, dd = Math.hypot(dx, dy);
+          if (dd < minD && dd > 0.001) {
+            var nx = dx / dd, ny = dy / dd, ov = (minD - dd) / 2;
+            a.x -= nx * ov; a.y -= ny * ov; c.x += nx * ov; c.y += ny * ov;
+            var rv = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
+            if (rv < 0) {
+              var jj = -(1 + 0.6) * rv / 2;
+              a.vx -= jj * nx; a.vy -= jj * ny; c.vx += jj * nx; c.vy += jj * ny;
+              if (-rv > 80) events.push({ t: t, k: 'hit', v: -rv });
+            }
+          }
+        }
+        statics.forEach(function (o) {
+          var dx = a.x - o.x, dy = a.y - o.y, dd = Math.hypot(dx, dy);
+          if (dd < minD && dd > 0.001) {
+            var nx = dx / dd, ny = dy / dd;
+            a.x = o.x + nx * minD; a.y = o.y + ny * minD;
+            var rv = a.vx * nx + a.vy * ny;
+            if (rv < 0) { a.vx -= 1.5 * rv * nx; a.vy -= 1.5 * rv * ny; if (-rv > 80) events.push({ t: t, k: 'hit', v: -rv }); }
+          }
+        });
+      }
+      st.forEach(function (s) { var b = bounds(s.d); s.x = Math.max(b.x0, Math.min(b.x1, s.x)); s.y = Math.max(b.y0, Math.min(b.y1, s.y)); s.fr.push([s.x, s.y, s.z, s.Q]); });
+      t += DT;
+      var calm = st.every(function (s) { return s.z <= 0 && s.vz === 0 && Math.hypot(s.vx, s.vy) < 6 && len(s.w) < 1.2; });
+      if ((t > 0.7 && calm) || t > maxT) break;
+    }
+    // steer: pick the correction that makes the chosen face finish exactly on top
+    st.forEach(function (s) {
+      var Qe = s.fr[s.fr.length - 1][3], q0 = s.d.q;
+      var endUp = qrot(qmul(Qe, q0), upDirFor(s.d.kind, s.d.target));
+      var C = qfromto(endUp, [0, 0, 1]);
+      C = qmul(uprightYaw(qmul(C, qmul(Qe, q0)), s.d.kind, s.d.target), C);
+      s.X = qmul(qmul(qconj(Qe), C), Qe);
+      s.q0 = q0;
+    });
+    return { st: st, T: t, events: events, start: 0, mode: mode };
+  }
+  function frameAt(a, s, t) {
+    var i = Math.min(s.fr.length - 1, Math.floor(t / DT)), f = s.fr[i];
+    var e = Math.min(1, t / Math.max(0.25, a.T * 0.55)); e = e * e * (3 - 2 * e);
+    return { x: f[0], y: f[1], z: f[2], q: qmul(qmul(f[3], qslerp([1, 0, 0, 0], s.X, e)), s.q0) };
+  }
+
+  // ── Sound: dice clacks (synth, follows the kit's sound setting) ──────────
+  var ac = null, lastClack = 0;
+  function soundOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
+  function clack(v, kind) {
+    if (!soundOn()) return;
+    var now = performance.now(); if (now - lastClack < 28) return; lastClack = now;
+    try {
+      if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return; ac = new C(); }
+      if (ac.state === 'suspended') ac.resume();
+      var vol = Math.min(0.22, 0.04 + v / 5000), t0 = ac.currentTime, dur = kind === 'land' ? 0.05 : 0.035;
+      var n = Math.floor(ac.sampleRate * dur), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+      var src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      f.type = 'bandpass'; f.frequency.value = (kind === 'land' ? 900 : kind === 'wall' ? 600 : 2200) + Math.random() * 500; f.Q.value = 2.5;
+      g.gain.value = vol; src.buffer = b; src.connect(f); f.connect(g); g.connect(ac.destination); src.start(t0);
+    } catch (e) {}
+  }
+
+  // ── Animation loop ───────────────────────────────────────────────────────
+  var raf = 0;
+  function loop(now) {
+    raf = 0;
+    anims.slice().forEach(function (a) {
+      if (!a.start) a.start = now;
+      var t = (now - a.start) / 1000;
+      while (a.ei < a.events.length && a.events[a.ei].t <= t) {
+        var ev = a.events[a.ei++]; clack(ev.v, ev.k);
+        if (ev.k !== 'land' || ev.v > 500) Kit.haptic('tick');
+      }
+      a.st.forEach(function (s) {
+        if (dice.indexOf(s.d) < 0) return;
+        var f = frameAt(a, s, Math.min(t, a.T));
+        s.d.x = f.x; s.d.y = f.y; s.d.z = f.z; s.d.q = f.q;
+      });
+      if (t >= a.T) finishAnim(a);
+    });
+    draw();
+    if (anims.length) raf = requestAnimationFrame(loop);
+  }
+  function kick() { if (!raf) raf = requestAnimationFrame(loop); }
+  function startAnim(a) { a.ei = 0; anims.push(a); kick(); }
+  function finishAnim(a) {
+    var i = anims.indexOf(a); if (i < 0) return;
+    anims.splice(i, 1);
+    a.st.forEach(function (s) {
+      var f = frameAt(a, s, a.T);
+      s.d.x = f.x; s.d.y = f.y; s.d.z = 0; s.d.q = f.q; s.d.num = s.d.target;
+    });
+    if (a.done) a.done();
+  }
+  function finishAll() { anims.slice().forEach(finishAnim); }
+
+  // ── Tray contents follow the chosen dice ─────────────────────────────────
+  function freeSpot() {
+    var best = null, bd = -1;
+    for (var k = 0; k < 24; k++) {
+      var x = rnd(S, W - S), y = rnd(S * 1.2, H - S), m = Infinity;
+      dice.forEach(function (d) { m = Math.min(m, Math.hypot(d.x - x, d.y - y)); });
+      if (m > bd) { bd = m; best = [x, y]; }
+    }
+    return best;
+  }
+  function syncTray(animate) {
+    finishAll();
+    var want = kindsFor(pool), have = dice.slice(), keep = [], added = [];
+    want.forEach(function (k) {
+      var i = -1;
+      for (var j = 0; j < have.length; j++) if (have[j] && have[j].kind === k) { i = j; break; }
+      if (i >= 0) { keep.push(have[i]); have[i] = null; }
+      else { var d = { id: idSeq++, kind: k, x: 0, y: 0, z: 0, num: 1 }; keep.push(d); added.push(d); }
+    });
+    dice = keep;
+    S = sizeFor(dice.length);
+    clampAll();
+    added.forEach(function (d) {
+      var p = freeSpot(); d.x = p[0]; d.y = p[1];
+      d.num = 1 + rint(KIND[d.kind].sides); d.target = d.num;
+      d.q = qrand();
+      d.z = animate ? rnd(150, 230) : 0;
+      if (!animate) d.q = restQ(d.kind, d.num);
+    });
+    if (animate && added.length) {
+      var statics = dice.filter(function (d) { return added.indexOf(d) < 0; });
+      var a = simulate(added, statics, 'drop');
+      startAnim(a);
+    } else draw();
+  }
+
+  // ── Rolling ──────────────────────────────────────────────────────────────
+  var readout = null;  // {label, total, parts:[{kind,val,max,min}], mod}
+  function valueOf(kind, num) { if (kind === 'pt') return (num % 10) * 10; if (kind === 'pu') return num % 10; return num; }
+  function roll(how) {
+    if (rolling) return;
+    if (!dice.length) { Kit.toast('Add some dice first'); Kit.haptic('error'); return; }
+    finishAll();
+    rolling = true; setRollBtn();
+    dice.forEach(function (d) { d.target = 1 + rint(KIND[d.kind].sides); d.glow = false; });
+    var a = simulate(dice.slice(), [], 'roll');
+    a.done = function () { rolling = false; settle(); };
+    Kit.sfx('roll'); Kit.haptic(how === 'shake' ? 'heavy' : 'medium');
+    showRolling();
+    startAnim(a);
+  }
+  function settle() {
+    // Group the dice back into what was asked for (d100 = tens + ones)
+    var parts = [], total = 0, sides = [];
+    for (var i = 0; i < dice.length; i++) {
+      var d = dice[i], v;
+      if (d.kind === 'pt') {
+        var u = dice[i + 1]; v = valueOf('pt', d.num) + valueOf('pu', u.num); if (v === 0) v = 100;
+        parts.push({ s: 100, v: v, dice: [d, u] }); i++;
+      } else { v = d.num; parts.push({ s: KIND[d.kind].sides, v: v, dice: [d] }); }
+      total += v;
+    }
+    total += mod;
+    parts.forEach(function (p) { if (p.v === p.s && p.s >= 4 && (p.s === 20 || parts.length === 1)) p.dice.forEach(function (d) { d.glow = true; }); });
+    readout = { label: exprOf(pool, mod), total: total, parts: parts.map(function (p) { return { s: p.s, v: p.v }; }), mod: mod };
+    showReadout(true);
+    draw();
+    // Remember the table as it lies
+    last = { label: readout.label, total: total, mod: mod, parts: readout.parts,
+      dice: dice.map(function (d) { return { k: d.kind, n: d.num, fx: d.x / W, fy: d.y / H, q: d.q }; }) };
+    persist();
+    history.unshift({ t: Date.now(), label: readout.label, pool: JSON.parse(JSON.stringify(pool)), mod: mod, parts: readout.parts, total: total });
+    if (history.length > 60) history.length = 60;
+    ssSet(HKEY, history);
     renderHistory();
-  },done);
-}
-document.getElementById('roll-btn').addEventListener('click',roll);
-document.getElementById('tray').addEventListener('click',roll);
-document.addEventListener('keydown',e=>{ if((e.key===' '||e.key==='Enter')&&e.target===document.body){e.preventDefault();roll();} });
+    celebrate(parts);
+    setRollBtn();
+  }
+  function celebrate(parts) {
+    var d6 = parts.filter(function (p) { return p.s === 6; }), only6 = d6.length === parts.length;
+    var d20 = parts.filter(function (p) { return p.s === 20; });
+    if (only6 && d6.length >= 2 && d6.every(function (p) { return p.v === d6[0].v; })) {
+      var n = d6.length;
+      if (n === 5) { Kit.callout('Yahtzee!'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti(); return; }
+      Kit.callout(n === 2 ? 'Doubles!' : n === 3 ? 'Triples!' : 'All ' + d6[0].v + 's!'); Kit.sfx('good'); Kit.haptic('success'); return;
+    }
+    if (d20.length === 1) {
+      if (d20[0].v === 20) { Kit.callout('Natural 20!'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti(); return; }
+      if (d20[0].v === 1) { Kit.callout('Natural 1', '#ff7b88'); Kit.sfx('bad'); Kit.haptic('error'); return; }
+    }
+    if (parts.length >= 2 && parts.every(function (p) { return p.v === p.s; })) { Kit.callout('Max roll!'); Kit.sfx('good'); Kit.haptic('success'); return; }
+    if (parts.length === 1 && parts[0].s === 100 && parts[0].v === 100) { Kit.callout('100!'); Kit.sfx('good'); }
+  }
 
-// ── Sound ────────────────────────────────────────────────────────────────────
-let _ac=null;
-function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
-function sTone(freq,start,dur,vol,type,ramp){
-  const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
-  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
-  if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
-  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
-}
-function sNoise(start,dur,fc,q,vol,decay){
-  const ctx=sac(),t=ctx.currentTime+start;
-  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
-  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
-  const src=ctx.createBufferSource();src.buffer=buf;
-  const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
-  const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
-}
+  // ── Read-out ─────────────────────────────────────────────────────────────
+  var exprEl = document.getElementById('expr'), partsEl = document.getElementById('parts'), totEl = document.getElementById('tot');
+  function badge(p) {
+    if (p.s === 6) { var d = Kit.die(p.v); d.tabIndex = -1; if (p.v === 6) d.classList.add('max'); return d; }
+    var K = KIND[p.s === 100 ? 'pt' : 'd' + p.s];
+    var b = el('span', { class: 'pv' + (p.v === p.s ? ' max' : p.v === 1 ? ' min' : ''), text: String(p.v), 'aria-label': 'd' + p.s + ' rolled ' + p.v });
+    b.style.setProperty('--c', K.badge); b.style.setProperty('--k', K.bink || '#fff');
+    return b;
+  }
+  function showReadout(pop) {
+    if (!readout) {
+      exprEl.textContent = exprOf(pool, mod);
+      partsEl.innerHTML = '<span class="wait">' + (dice.length ? 'Ready to roll' : 'Pick some dice') + '</span>';
+      totEl.textContent = '–'; totEl.classList.add('dim'); return;
+    }
+    exprEl.textContent = readout.label;
+    partsEl.innerHTML = '';
+    readout.parts.forEach(function (p) { partsEl.appendChild(badge(p)); });
+    if (readout.mod) partsEl.appendChild(el('span', { class: 'pmod', text: (readout.mod > 0 ? '+ ' : '− ') + Math.abs(readout.mod) }));
+    totEl.textContent = String(readout.total); totEl.classList.remove('dim');
+    if (pop) { totEl.classList.remove('pop'); void totEl.offsetWidth; totEl.classList.add('pop'); }
+  }
+  function showRolling() {
+    exprEl.textContent = exprOf(pool, mod);
+    partsEl.innerHTML = '<span class="wait">Rolling…</span>';
+    totEl.textContent = '?'; totEl.classList.add('dim');
+  }
+  function poolChanged() {
+    readout = null; last = null;
+    dice.forEach(function (d) { d.glow = false; });
+    persist(); renderPicker(); renderPool(); setRollBtn(); showReadout();
+  }
 
-// Dice rattle — tumbling noise burst with a little pitch shimmy
-function sRollShake(){
-  sNoise(0,.12,300,1,.22,.35);        // low wooden rumble
-  sNoise(.04,.10,900,3,.14,.2);       // surface texture
-  sTone(200,.02,.12,.08,'sawtooth',90); // short thud undertone
-}
-
-// Each die landing — sharp click; pitch scales with die value (high roll = brighter)
-function sDieLand(value,faces){
-  const pct=value/faces;             // 0=low, 1=max
-  const freq=500+pct*800;            // 500 Hz low → 1300 Hz high
-  sNoise(0,.04,freq,5,.16,.1);
-  sTone(freq*.6,0,.06,.06,'triangle',freq*.3);
-}
-
-// All max — triumphant ascending fanfare
-function sRollMax(){
-  [523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.22));
-  sTone(262,0,.55,.09,'triangle');
-}
-
-// All min (all 1s) — descending sad trombone
-function sRollMin(){
-  [350,278,220,175].forEach((f,i)=>sTone(f,i*.1,.32,.18,'sawtooth'));
-}
-
-function renderHistory(){
-  const el=document.getElementById('history-list');el.innerHTML='';
-  history.forEach(h=>{
-    const item=document.createElement('div');item.className='hist-item';
-    item.innerHTML=`<span class="hist-dice"><b>${h.count}${h.dice}</b><span>${h.rolls.join(' · ')}</span></span><span class="hist-total">${h.total}</span>`;
-    el.appendChild(item);
+  // ── Controls ─────────────────────────────────────────────────────────────
+  var rollBtn = document.getElementById('roll');
+  function setRollBtn() {
+    rollBtn.innerHTML = Kit.icon('dice') + '<span>' + (rolling ? 'Rolling…' : !dice.length ? 'Roll' : exprOf(pool, mod).length <= 14 ? 'Roll ' + esc(exprOf(pool, mod)) : 'Roll ' + dice.length + ' dice') + '</span>';
+    rollBtn.disabled = rolling || !dice.length;
+  }
+  rollBtn.addEventListener('click', function () { askMotion(); roll(); });
+  felt.addEventListener('click', function () { askMotion(); if (dice.length) roll(); });
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === ' ' || e.key === 'Enter') && (e.target === document.body || e.target === felt)) { e.preventDefault(); roll(); }
   });
-}
 
-document.getElementById('clear-hist').addEventListener('click',()=>{
-  history=[];document.getElementById('history-list').innerHTML='';
-  document.getElementById('history-card').style.display='none';
-});
-syncLabels();
+  var SHAPE = {
+    4: '<path d="M16 3 29 27H3z"/><path d="M16 3v24" opacity=".35"/>',
+    6: '<rect x="5" y="5" width="22" height="22" rx="5"/><circle cx="11" cy="11" r="2" fill="#1d1b2e" stroke="none"/><circle cx="16" cy="16" r="2" fill="#1d1b2e" stroke="none"/><circle cx="21" cy="21" r="2" fill="#1d1b2e" stroke="none"/>',
+    8: '<path d="M16 2 29 16 16 30 3 16z"/><path d="M3 16h26" opacity=".35"/>',
+    10: '<path d="M16 2 29 13 16 30 3 13z"/><path d="M3 13l13 5 13-5M16 18v12" opacity=".35"/>',
+    12: '<path d="M16 2 29 11.5 24 27H8L3 11.5z"/><path d="M16 8l6 4.5-2.3 7h-7.4L10 12.5z" opacity=".35"/>',
+    20: '<path d="M16 2 28.5 9v14L16 30 3.5 23V9z"/><path d="M16 9l7 11H9z" opacity=".35"/>',
+    100: '<path d="M11 4 20 12 11 26 2 12z"/><path d="M21 6 30 14 21 28 12 14z"/>'
+  };
+  function shapeSvg(s) {
+    var K = KIND[s === 100 ? 'pt' : 'd' + s];
+    return '<svg viewBox="0 0 32 32" fill="' + K.badge + '" stroke="rgba(0,0,0,.35)" stroke-width="1.4" stroke-linejoin="round">' + SHAPE[s] + '</svg>';
+  }
+  var picker = document.getElementById('picker');
+  SIDES.forEach(function (s) {
+    picker.appendChild(el('button', { type: 'button', class: 'pick', 'data-s': s, 'aria-label': 'Add a d' + s, html: shapeSvg(s) + '<span>d' + s + '</span><span class="n"></span>',
+      onclick: function () {
+        if (rolling) return;
+        if (poolCount(pool) + (s === 100 ? 2 : 1) > MAX_DICE || pool[s] >= 20) { Kit.toast('The tray is full'); Kit.haptic('error'); return; }
+        pool[s]++; Kit.sfx('pop'); Kit.haptic('light');
+        syncTray(true); poolChanged();
+      } }));
+  });
+  function renderPicker() {
+    picker.querySelectorAll('.pick').forEach(function (b) {
+      var n = pool[b.getAttribute('data-s')];
+      b.querySelector('.n').textContent = n ? String(n) : '';
+      b.classList.toggle('has', n > 0);
+    });
+  }
+  var poolEl = document.getElementById('pool');
+  function renderPool() {
+    poolEl.innerHTML = '';
+    var any = false;
+    SIDES.forEach(function (s) {
+      if (!pool[s]) return; any = true;
+      poolEl.appendChild(el('button', { type: 'button', class: 'chip', 'aria-label': 'Remove one d' + s, html: '<span>' + pool[s] + 'd' + s + '</span>' + Kit.icon('close'),
+        onclick: function () { if (rolling) return; pool[s]--; Kit.sfx('tap'); Kit.haptic('light'); syncTray(true); poolChanged(); } }));
+    });
+    if (!any) poolEl.appendChild(el('span', { class: 'empty', text: 'Tap a die above to add it' }));
+    else poolEl.appendChild(el('button', { type: 'button', class: 'chip clear', text: 'Clear all',
+      onclick: function () { if (rolling) return; pool = emptyPool(); Kit.sfx('tap'); syncTray(false); poolChanged(); } }));
+    document.getElementById('modv').textContent = (mod > 0 ? '+' : '') + mod;
+    document.getElementById('modm').disabled = mod <= -99;
+    document.getElementById('modp').disabled = mod >= 99;
+  }
+  function showTray() { if (felt.getBoundingClientRect().top < 40) window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function setMod(v) { if (rolling) return; mod = Math.max(-99, Math.min(99, v)); Kit.sfx('tap'); Kit.haptic('light'); poolChanged(); }
+  document.getElementById('modm').addEventListener('click', function () { setMod(mod - 1); });
+  document.getElementById('modp').addEventListener('click', function () { setMod(mod + 1); });
+
+  // ── Quick picks ──────────────────────────────────────────────────────────
+  var presetsEl = document.getElementById('presets'), editing = false;
+  function renderPresets() {
+    presetsEl.innerHTML = '';
+    presetsEl.classList.toggle('editing', editing);
+    presets.forEach(function (p, i) {
+      var ex = exprOf(p.pool, p.mod || 0);
+      var b = el('button', { type: 'button', class: 'preset', onclick: function () {
+        if (editing) return;
+        if (rolling) return;
+        pool = emptyPool(); SIDES.forEach(function (s) { pool[s] = p.pool[s] || 0; }); mod = p.mod || 0;
+        Kit.sfx('pop'); Kit.haptic('light'); syncTray(true); poolChanged(); showTray();
+      } }, [el('b', { text: p.name }), p.name.replace(/\s/g, '') !== ex.replace(/\s/g, '') ? el('small', { text: ex }) : null]);
+      b.appendChild(el('span', { class: 'x', role: 'button', 'aria-label': 'Remove ' + p.name, html: Kit.icon('close'), onclick: function (e) {
+        e.stopPropagation(); presets.splice(i, 1); persist(); Kit.sfx('tap'); renderPresets();
+      } }));
+      presetsEl.appendChild(b);
+    });
+    if (!editing) presetsEl.appendChild(el('button', { type: 'button', class: 'preset add', html: Kit.icon('plus') + '<span>Save current</span>', onclick: savePreset }));
+    var eb = document.getElementById('editp');
+    eb.textContent = editing ? 'Done' : 'Edit';
+    eb.hidden = !presets.length && !editing;
+  }
+  document.getElementById('editp').addEventListener('click', function () { editing = !editing; Kit.sfx('tap'); renderPresets(); });
+  function savePreset() {
+    if (!poolCount(pool)) { Kit.toast('Add some dice first'); return; }
+    var ex = exprOf(pool, mod);
+    var inp = el('input', { class: 'input', type: 'text', maxlength: '24', placeholder: ex, value: '', 'aria-label': 'Name' });
+    var box = el('div', { class: 'savebox' }, [el('p', { html: 'Save <b>' + esc(ex) + '</b> as a quick pick. Give it a name, or leave it blank.' }), inp]);
+    function go() {
+      var nm = inp.value.trim() || ex;
+      presets.push({ name: nm, pool: JSON.parse(JSON.stringify(pool)), mod: mod }); persist(); renderPresets();
+      Kit.toast('Saved'); Kit.haptic('success');
+    }
+    var sh = Kit.sheet({ title: 'Save quick pick', node: box, actions: [{ label: 'Save', primary: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { sh.close(); go(); } });
+    setTimeout(function () { inp.focus(); }, 350);
+  }
+
+  // ── Session history ──────────────────────────────────────────────────────
+  var histEl = document.getElementById('hist');
+  function timeAgo(t) {
+    var s = Math.round((Date.now() - t) / 1000);
+    if (s < 45) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago';
+    return new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+  function renderHistory() {
+    histEl.innerHTML = '';
+    document.getElementById('clearh').hidden = !history.length;
+    if (!history.length) { histEl.appendChild(el('div', { class: 'hempty', text: 'Your rolls will show up here.' })); return; }
+    history.forEach(function (h, i) {
+      var vals = h.parts.map(function (p) { return p.v; }).join(', ') + (h.mod ? (h.mod > 0 ? ' + ' : ' − ') + Math.abs(h.mod) : '');
+      histEl.appendChild(el('button', { type: 'button', class: 'hrow', style: i ? { 'animation-delay': '0s', animation: 'none' } : null, 'aria-label': 'Load ' + h.label, onclick: function () {
+        if (rolling) return;
+        pool = emptyPool(); SIDES.forEach(function (s) { pool[s] = h.pool[s] || 0; }); mod = h.mod || 0;
+        Kit.sfx('pop'); syncTray(true); poolChanged(); showTray();
+      } }, [
+        el('div', { class: 'hl' }, [el('b', { text: h.label }), el('small', { text: vals + ' · ' + timeAgo(h.t) })]),
+        el('div', { class: 'ht', text: String(h.total) })
+      ]));
+    });
+  }
+  function clearHistory() { history = []; ssSet(HKEY, history); renderHistory(); Kit.toast('History cleared'); }
+  document.getElementById('clearh').addEventListener('click', function () { Kit.sfx('tap'); clearHistory(); });
+  setInterval(function () { if (history.length) renderHistory(); }, 60000);
+
+  // ── Shake to roll ────────────────────────────────────────────────────────
+  var shakeBtn = document.getElementById('shake'), motionOn = false, needsPerm = false, hits = 0, hitT = 0, lastShake = 0;
+  var hasMotion = 'DeviceMotionEvent' in window && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  if (hasMotion) {
+    needsPerm = typeof DeviceMotionEvent.requestPermission === 'function';
+    shakeBtn.hidden = false;
+  }
+  function onMotion(e) {
+    var a = e.accelerationIncludingGravity || e.acceleration; if (!a) return;
+    var m = Math.sqrt((a.x || 0) * (a.x || 0) + (a.y || 0) * (a.y || 0) + (a.z || 0) * (a.z || 0));
+    if (m < 21) return;
+    var now = Date.now();
+    hits = now - hitT < 450 ? hits + 1 : 1; hitT = now;
+    if (hits >= 3 && !rolling && now - lastShake > 1500 && dice.length) { hits = 0; lastShake = now; roll('shake'); }
+  }
+  function listen(on) {
+    if (on && !motionOn) window.addEventListener('devicemotion', onMotion);
+    if (!on && motionOn) window.removeEventListener('devicemotion', onMotion);
+    motionOn = on;
+  }
+  function paintShake() {
+    shakeBtn.classList.toggle('on', shakeOn);
+    shakeBtn.innerHTML = Kit.icon('phone');
+    shakeBtn.setAttribute('aria-pressed', shakeOn ? 'true' : 'false');
+  }
+  function enableShake(quiet) {
+    function ok() { shakeOn = true; persist(); listen(true); paintShake(); if (!quiet) { Kit.toast('Shake your phone to roll'); Kit.haptic('success'); } }
+    if (needsPerm) {
+      DeviceMotionEvent.requestPermission().then(function (r) {
+        if (r === 'granted') ok(); else if (!quiet) Kit.toast('Motion access was not allowed');
+      }).catch(function () { if (!quiet) Kit.toast('Motion access was not allowed'); });
+    } else ok();
+  }
+  function toggleShake() {
+    if (!hasMotion) { Kit.toast('Shake needs a phone or tablet'); return; }
+    if (shakeOn) { shakeOn = false; persist(); listen(false); paintShake(); Kit.toast('Shake to roll is off'); }
+    else enableShake(false);
+  }
+  // iPhone asks for motion permission on every visit; ask on the first tap if shake is turned on
+  var asked = false;
+  function askMotion() { if (asked || !shakeOn || !needsPerm || motionOn) return; asked = true; enableShake(true); }
+  shakeBtn.addEventListener('click', function () { Kit.sfx('tap'); asked = true; toggleShake(); });
+  if (hasMotion && shakeOn && !needsPerm) listen(true);
+  paintShake();
+
+  // ── Start ────────────────────────────────────────────────────────────────
+  function restore() {
+    resize();
+    var kinds = kindsFor(pool);
+    if (last && last.dice && last.dice.length === kinds.length && last.dice.every(function (d, i) { return d.k === kinds[i]; })) {
+      dice = last.dice.map(function (d) { return { id: idSeq++, kind: d.k, num: d.n, target: d.n, x: d.fx * W, y: d.fy * H, z: 0, q: d.q }; });
+      S = sizeFor(dice.length); clampAll();
+      readout = { label: last.label, total: last.total, parts: last.parts || [], mod: last.mod || 0 };
+      draw();
+    } else { last = null; syncTray(false); }
+    renderPicker(); renderPool(); renderPresets(); renderHistory(); setRollBtn(); showReadout();
+  }
+  if (window.ResizeObserver) new ResizeObserver(function () { resize(); }).observe(felt);
+  else window.addEventListener('resize', resize);
+  restore();
+  if (document.fonts && document.fonts.load) document.fonts.load('40px "Lilita One"').then(function () { draw(); }).catch(function () {});
+
+  // test hook
+  window.__dice = { roll: roll, get dice() { return dice; }, get readout() { return readout; }, GEO: GEO };
+})();
 </script>
 </body>
 </html>
