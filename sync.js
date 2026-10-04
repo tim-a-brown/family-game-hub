@@ -107,15 +107,21 @@
     return [];
   }
 
+  // High-score rows come in two shapes: [name, score, date] (older games,
+  // Poker Squares) and {name, score, date} (arcade-hi.js). Keep both.
+  function hiName(r){ return Array.isArray(r) ? r[0] : r.name; }
+  function hiScore(r){ return Number(Array.isArray(r) ? r[1] : r.score) || 0; }
+  function hiDate(r){ return Array.isArray(r) ? r[2] : r.date; }
   function mergeHi(a, b){
     var all = asArray(a).concat(asArray(b));
     var seen = {};
     all = all.filter(function(row){
-      if(!Array.isArray(row) || row.length < 2) return false;
-      var k = (row[0]||'')+'|'+row[1]+'|'+(row[2]||'');
+      if(Array.isArray(row)){ if(row.length < 2) return false; }
+      else if(!row || typeof row !== 'object' || row.score == null) return false;
+      var k = (hiName(row)||'')+'|'+hiScore(row)+'|'+(hiDate(row)||'');
       if(seen[k]) return false; seen[k] = 1; return true;
     });
-    all.sort(function(x,y){ return (Number(y[1])||0) - (Number(x[1])||0); });
+    all.sort(function(x,y){ return hiScore(y) - hiScore(x); });
     return all.slice(0, 15);
   }
 

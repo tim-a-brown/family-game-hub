@@ -15,6 +15,8 @@
 <style>
 .deal{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:12px 14px;border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-sm);}
 .deal .num{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-size:1.7rem;line-height:1;}
+.deal .num small{display:block;font-family:var(--font);font-size:.55rem;font-weight:900;letter-spacing:.08em;margin-bottom:-1px;}
+.deal .num{grid-auto-flow:row;align-content:center;justify-items:center;}
 .deal .tx{min-width:0;flex:1;}
 .deal b{display:block;font-size:1rem;}
 .deal small{display:block;color:var(--text-2);font-weight:700;font-size:.84rem;}
@@ -55,8 +57,8 @@
       '<p class="goal">Play Wizard with real cards and keep score here. Guess exactly how many tricks you will win. Highest score after the last round wins.</p>' +
       '<h3>Each round</h3><ol><li>Deal the round number of cards (1 in round 1, 2 in round 2…). The dealer moves left each round.</li>' +
       '<li>Turn the next card over for trump. A Wizard: the dealer picks trump. A Jester, or no cards left: no trump.</li>' +
-      '<li>Starting left of the dealer, everyone bids. Tap <b>Enter bids</b>, set each bid, and tap <b>Save bids</b>.</li>' +
-      '<li>Play the tricks, then tap <b>Enter tricks</b> and set how many each player won.</li></ol>' +
+      '<li>Starting left of the dealer, everyone bids. Tap <b>Add round</b>, set each bid, and tap <b>Save bids</b>. The bids show at the top while you play.</li>' +
+      '<li>After the last trick, tap <b>Add round</b> again, set how many tricks each player <b>took</b>, and tap <b>Score round</b>.</li></ol>' +
       '<h3>Playing</h3><ul><li>Follow the suit led if you can. A Wizard or Jester can always be played.</li>' +
       '<li>The first Wizard wins the trick. Otherwise the highest trump, otherwise the highest card of the suit led. Jesters always lose (all Jesters: the first one wins).</li></ul>' +
       '<h3>Scoring (done for you)</h3><ul><li>Hit your bid exactly: <b>20 + 10 per trick</b>.</li><li>Miss: <b>−10 for each trick</b> you were off.</li></ul>' +
@@ -125,10 +127,10 @@
       if (!st || st.over || r > cfg.rounds) { strip.hidden = true; return; }
       strip.hidden = false; strip.innerHTML = '';
       var dealer = (r - 1) % n, first = r % n, dr = getDraft();
-      var kids = [el('b', { text: 'Round ' + r + ' of ' + cfg.rounds + ': deal ' + r + (r === 1 ? ' card' : ' cards') + ' each' }),
-        el('small', { text: cfg.names[dealer] + ' deals · ' + cfg.names[first] + ' bids and leads first' + (r === cfg.rounds ? ' · no trump' : '') })];
+      var kids = [el('b', { text: 'Deal ' + r + (r === 1 ? ' card' : ' cards') + ' each' + (r === cfg.rounds ? ' · last round, no trump' : '') }),
+        el('small', { text: cfg.names[dealer] + ' deals · ' + cfg.names[first] + ' goes first' })];
       if (dr && dr.round === r) kids.push(el('small', { class: 'bl', text: 'Bids: ' + cfg.names.map(function (nm, i) { return nm + ' ' + dr.bids[i]; }).join(' · ') }));
-      strip.appendChild(el('div', { class: 'num', text: String(r) }));
+      strip.appendChild(el('div', { class: 'num', html: '<small>RND</small>' + r }));
       strip.appendChild(el('div', { class: 'tx' }, kids));
     }
     new MutationObserver(paintStrip).observe(host, { childList: true });
@@ -170,7 +172,7 @@
         var saveB = el('button', { type: 'button', class: 'btn btn-soft', text: 'Save bids', onclick: function () {
           if (bids.some(function (b) { return b == null; })) { Kit.toast('Set a bid for everyone'); Kit.haptic('error'); return; }
           localStorage.setItem(DRAFT, JSON.stringify({ round: R, bids: bids.slice() }));
-          Kit.sfx('chip'); Kit.toast('Bids saved. Play the round!'); ctx.close(); paintStrip();
+          Kit.sfx('chip'); Kit.haptic('light'); ctx.close(); paintStrip();
         } });
         var go = el('button', { type: 'button', class: 'btn btn-primary', text: ctx.prev ? 'Save changes' : 'Score round ' + R });
         ctx.node.appendChild(ctx.prev ? go : el('div', { class: 'acts2' }, [saveB, go]));

@@ -14,7 +14,7 @@
 <script src="../players.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 8px);}
-.ctable .felt-in{height:clamp(300px,50dvh,450px);}
+.ctable .felt-in{height:clamp(300px,53dvh,480px);}
 /* Stock and discard piles in the middle of the felt */
 .gpiles{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);display:flex;gap:clamp(22px,8vw,40px);align-items:flex-start;z-index:2;--cw:clamp(62px,18vw,78px);}
 .gpile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;color:#fff;font:inherit;}
@@ -266,13 +266,13 @@
     S.msg = (S.dealer === 0 ? 'You dealt. ' : S.players[1].name + ' dealt. ') + (nd === 0 ? 'Want the upcard?' : '');
     S.dealAnim = true;
     clearUndo(); save(); render(); Kit.sfx('deal');
-    next();
+    next(true);
   }
 
   // ── Turn flow ─────────────────────────────────────────────────────────────
-  function next() {
+  function next(painted) {
     if (!S || ['upcard', 'draw', 'discard'].indexOf(S.phase) < 0) return;
-    paint();
+    if (!painted) paint();
     if (S.turn === 1) {
       var t = token;
       setTimeout(function () { if (t === token && S && S.turn === 1) aiStep(); }, S.phase === 'discard' ? 750 : 650);
@@ -306,7 +306,7 @@
       if (p === 0) { var node = handEl.querySelector('[data-id="' + c.id + '"]'); if (node) Cards.fly(node, rectEl(fromRect), { ms: 380 }); }
       else flyTemp(fromRect, seatEls[1].querySelector('.backs') || seatEls[1], src === 'discard' ? Cards.el(c) : Kit.card('', '', { back: true }));
     }
-    next();
+    next(true);
   }
   function discardCard(p, id, knock) {
     var h = S.hands[p], c = byId(h, id); if (!c) return;
@@ -327,7 +327,7 @@
     S.turn = 1 - p; S.phase = 'draw';
     S.msg = p === 0 ? '' : S.players[1].name + ' threw the ' + lab(c) + '.';
     save(); paint(); landDiscard(fromRect);
-    next();
+    next(true);
   }
   function landDiscard(fromRect) {
     var t = pileTop(discEl);
@@ -520,6 +520,8 @@
     if (big && big.pts >= 20) hl.push('Biggest hand: ' + P[big.winner].name + ' scored ' + big.pts + ' in hand ' + big.hand);
     var run = 0, runP = -1, bestRun = 0, bestP = -1;
     S.log.forEach(function (x) { if (x.dead) return; if (x.winner === runP) run++; else { runP = x.winner; run = 1; } if (run > bestRun) { bestRun = run; bestP = runP; } });
+    var low = null; S.log.forEach(function (x) { if (!x.dead && !x.gin && !x.undercut && x.kDw <= 3 && (!low || x.kDw < low.kDw)) low = x; });
+    if (low) hl.push(P[low.kn].name + ' knocked with just ' + low.kDw + ' deadwood in hand ' + low.hand);
     if (bestRun >= 3) hl.push('Longest winning streak: ' + P[bestP].name + ', ' + bestRun + ' hands');
     if (!P[l].wins) hl.push(P[w].name + ' won every hand: a shutout');
     hl = hl.slice(0, 5);
@@ -546,7 +548,7 @@
   function clearUndo() { undoStack = []; }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
-    token++; S = JSON.parse(undoStack.pop()); S.dealAnim = false; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+    token++; S = JSON.parse(undoStack.pop()); S.dealAnim = false; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next(true);
   }
 
   // ── Human actions ─────────────────────────────────────────────────────────
@@ -746,14 +748,15 @@
     handEl.addEventListener('pointerdown', function (e) {
       var n = e.target.closest('.pcard'); if (!n || !S || !S.hands) return;
       d = { n: n, id: n.dataset.id, x: e.clientX, y: e.clientY, on: false, pid: e.pointerId };
+      try { handEl.setPointerCapture(e.pointerId); } catch (er) {}
     });
     handEl.addEventListener('pointermove', function (e) {
       if (!d || e.pointerId !== d.pid) return;
+      if (d.n.parentNode !== handEl) { d = null; return; }   // the hand was redrawn under us
       var dx = e.clientX - d.x, dy = e.clientY - d.y;
       if (!d.on) {
         if (Math.abs(dx) < 9 && Math.abs(dy) < 9) return;
         d.on = true; d.n.classList.add('drag'); d.n.classList.remove('sel');
-        try { handEl.setPointerCapture(e.pointerId); } catch (er) {}
         handEl.querySelectorAll('.brk').forEach(function (x) { x.remove(); });
       }
       var others = Array.prototype.filter.call(handEl.querySelectorAll('.pcard'), function (x) { return x !== d.n; });
@@ -768,6 +771,7 @@
     function end(e) {
       if (!d || (e && e.pointerId !== d.pid)) return;
       var was = d; d = null;
+      if (was.n.parentNode !== handEl) return;
       if (was.on) {
         S.order = Array.prototype.map.call(handEl.querySelectorAll('.pcard'), function (x) { return x.dataset.id; });
         S.manual = true; was.n.style.transform = ''; was.n.classList.remove('drag');
@@ -783,7 +787,7 @@
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
     S = saved; S.dealAnim = false; Kit.gameStart();
-    render(); next();
+    render(); next(true);
   } else showSetup();
 })();
 </script>

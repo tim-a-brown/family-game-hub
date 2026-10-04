@@ -146,6 +146,8 @@
   // ── Haptics ───────────────────────────────────────────────────────────────
   var HAPTIC = { light: 8, medium: 16, heavy: 30, success: [12, 60, 18], error: [30, 40, 30], tick: 4 };
   function haptic(kind) {
+    // Browsers ignore (and warn about) vibration before the first tap
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     try { if (navigator.vibrate) navigator.vibrate(HAPTIC[kind] || HAPTIC.light); } catch (e) {}
   }
 
@@ -786,7 +788,7 @@
     var players = e.players;
     if (!players && Array.isArray(e.names)) players = e.names.map(function (n, i) { return { name: n, score: e.totals ? e.totals[i] : undefined }; });
     return { players: Array.isArray(players) ? players.map(function (p) { return typeof p === 'string' ? { name: p } : p; }) : [],
-      winner: e.winner, rounds: e.rounds && e.rounds.scores ? e.rounds : null, highlights: e.highlights || [], mode: e.mode || '',
+      winner: typeof e.winner === 'number' && Array.isArray(players) && players[e.winner] ? (players[e.winner].name || players[e.winner]) : e.winner, rounds: e.rounds && e.rounds.scores ? e.rounds : null, highlights: e.highlights || [], mode: e.mode || '',
       duration: e.duration, date: e._date, summary: e._summary || '', lowWins: !!e.lowWins };
   }
   function raceChart(n, names) {

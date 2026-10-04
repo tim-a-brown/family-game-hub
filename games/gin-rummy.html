@@ -2,315 +2,221 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Gin Rummy</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gin Rummy Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/*SCKIT-START*/
-/* ── Scorecard kit (Spades · Hearts · Euchre · Gin Rummy scorecards) ── */
-.sc{max-width:560px;margin:0 auto;padding:14px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));}
-.sc-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;text-decoration:none;color:#fff;transition:transform .12s var(--ease);}
-.sc-cta:active{transform:scale(.98);}
-.sc-cta-ico{width:44px;height:44px;border-radius:13px;background:rgba(0,0,0,.25);display:grid;place-items:center;font-size:1.35rem;flex:none;}
-.sc-cta-body{flex:1;min-width:0;}
-.sc-cta-t{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em;}
-.sc-cta-s{font-size:.82rem;color:rgba(255,255,255,.75);}
-.sc-cta svg{width:20px;height:20px;flex:none;opacity:.8;}
-.setup-screen{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;}
-.sc-h{font-family:var(--display);font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
-.sc-hsub{font-size:.88rem;color:var(--text-2);margin-bottom:6px;}
-.form-lbl{font-size:.75rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px;}
-.player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.player-setup-row .input{flex:1;}
-.player-dot{width:12px;height:12px;border-radius:50%;flex:none;}
-.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-.seg .btn{min-height:44px;padding:0;}
-.toggle-line{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;margin:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;cursor:pointer;color:var(--text);font-size:.92rem;font-weight:600;letter-spacing:0;}
-.toggle-line .tl-body{flex:1;min-width:0;}
-.toggle-line .tl-sub{display:block;font-size:.8rem;font-weight:500;color:var(--text-2);margin-top:1px;}
-.switch{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);position:relative;cursor:pointer;transition:background .2s;margin:0;}
-.switch::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .22s var(--ease);}
-.switch:checked{background:var(--green);border-color:transparent;}
-.switch:checked::after{transform:translateX(20px);}
-.sc-start{margin-top:18px;}
-/* Live scores */
-.score-display{display:grid;gap:10px;margin-bottom:14px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 26px var(--lc,rgba(245,200,66,.2));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.9rem,8.5vw,2.6rem);font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub{font-size:.75rem;color:var(--text-2);margin-top:5px;}
-.scorer-to{font-size:.75rem;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums;}
-.pbar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:10px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-/* Round entry */
-.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px;}
-.entry-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-family:var(--display);font-size:1.2rem;font-weight:800;letter-spacing:-.015em;margin-bottom:14px;}
-.entry-head small,.entry-head span{font-family:var(--font);font-size:.75rem;font-weight:600;color:var(--text-3);letter-spacing:0;}
-.entry-row{display:grid;gap:10px;margin-bottom:12px;}
-.entry-cell{text-align:center;min-width:0;}
-.entry-label{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mini-lbl{font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
-.score-input,.bid-input{width:100%;min-height:52px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;color:var(--text);font-size:1.25rem !important;font-weight:700;text-align:center;padding:8px 4px;outline:none;font-family:var(--display);transition:border-color .15s,box-shadow .15s,background .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);background:var(--surface-3);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:600;}
-.sc-err{color:var(--red);font-size:.86rem;font-weight:600;text-align:center;margin-bottom:10px;}
-/* History */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
-.hist-head{padding:12px 16px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.totals{background:var(--surface-2);}
-.hist-num{font-size:.8rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--text);}
-.hist-val.neg{color:var(--red);}
-.hist-name{font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hist-total{font-family:var(--display);font-size:1.1rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-.sc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
-.wb-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;}
-.winner-banner .gh-hist-btn{margin-top:10px;}
-.rules-body p{margin-bottom:8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-.nav-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap;}
-.nav-pill:active{transform:scale(.95);}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-/*SCKIT-END*/
+.spad th.rn{width:54px;letter-spacing:.02em;}
+.rform [hidden]{display:none !important;}
+.rform .seg{flex-wrap:wrap;}
+.rform .seg > button{min-height:44px;}
+.rform .label{margin:6px 0 -2px;}
+.rrow.off{opacity:.45;}
+.rrow .sub{display:block;font-size:.72rem;font-weight:700;color:var(--text-3);}
+.res{padding:12px;border-radius:var(--r);background:rgba(255,255,255,.06);text-align:center;}
+.res .big{font-size:1.45rem;color:var(--yellow);line-height:1.15;}
+.res small{display:block;margin-top:2px;color:var(--text-2);font-weight:700;}
+.res.bad .big{color:var(--red);font-size:1.05rem;font-family:var(--font);font-weight:800;}
+.bon{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+.bon th,.bon td{padding:8px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);}
+.bon th:first-child,.bon td:first-child{text-align:left;}
+.bon td.big{font-weight:900;font-size:1.15rem;color:var(--yellow);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Gin Rummy</span>
-  <a class="nav-pill ai-link" href="gin-rummy-ai.html">🎮 vs AI</a>
-</nav>
-<main class="sc">
-  <details class="rules-details">
-    <summary class="rules-summary">📖 How to play Gin Rummy</summary>
-    <div class="rules-body">
-      <p><strong>Goal:</strong> First player to reach the target score (default 500) wins.</p>
-      <p><strong>Hands:</strong> Each player gets 10 cards. Draw from the deck or discard pile; discard one card per turn. Build sets (3+ of a kind) and runs (3+ consecutive same suit).</p>
-      <p><strong>Going out:</strong></p>
-      <ul>
-        <li><strong>Knock:</strong> When your unmatched cards (deadwood) total 10 or less, lay down your melds and knock. The opponent lays off cards if possible. Knocker scores the difference in deadwood values.</li>
-        <li><strong>Gin:</strong> If you have zero deadwood, call Gin for a <strong>25-point bonus</strong> on top of opponent's deadwood.</li>
-        <li><strong>Undercut:</strong> If your opponent knocks but you have equal or less deadwood, you win and score the difference <strong>+25</strong>.</li>
-      </ul>
-      <p><strong>Card values:</strong> Aces = 1, face cards = 10, others = face value. Enter each round as the points scored by the winner of that hand.</p>
-    </div>
-  </details>
-
-  <div id="rm-setup" class="setup-screen">
-    <a id="fp-ai-solo-cta" class="sc-cta felt" href="gin-rummy-ai.html">
-      <div class="sc-cta-ico">🎮</div>
-      <div class="sc-cta-body"><div class="sc-cta-t">1 player vs AI</div><div class="sc-cta-s">Play a head-to-head game against the computer</div></div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    </a>
-    <div class="sc-h">New scorecard</div>
-    <div class="sc-hsub">Keep score for an in-person game.</div>
-    <div class="form-lbl">Number of players</div>
-    <div class="seg">
-      <button class="btn btn-outline btn-sm rm-cnt active-cnt" data-n="2">2</button>
-      <button class="btn btn-outline btn-sm rm-cnt" data-n="3">3</button>
-      <button class="btn btn-outline btn-sm rm-cnt" data-n="4">4</button>
-      <button class="btn btn-outline btn-sm rm-cnt" data-n="5">5</button>
-      <button class="btn btn-outline btn-sm rm-cnt" data-n="6">6</button>
-    </div>
-    <div class="form-lbl">Players</div>
-    <div id="rm-names"></div>
-    <div class="form-lbl">Winning score</div>
-    <input class="input" id="rm-win" type="number" inputmode="numeric" value="500" min="100" max="2000" aria-label="Winning score">
-    <button class="btn btn-gold btn-block sc-start" id="rm-start">Start game</button>
-  </div>
-
-  <div id="rm-game" class="hidden">
-    <div id="rm-winner" class="winner-banner hidden">
-      <div style="font-size:2.2rem;line-height:1;margin-bottom:6px;">🏆</div>
-      <div class="winner-name" id="rm-wname"></div>
-      <div class="winner-pts" id="rm-wpts"></div>
-      <div class="wb-actions">
-        <button class="btn btn-gold" id="rm-again">Play again</button>
-        <button class="btn btn-outline" id="rm-newsetup">New setup</button>
-      </div>
-    </div>
-    <div id="rm-scores" class="score-display"></div>
-    <div class="entry-panel">
-      <div class="entry-head" id="rm-round-label">Round 1</div>
-      <div id="rm-inputs" class="entry-row"></div>
-      <div id="rm-err" class="sc-err" style="display:none;"></div>
-      <button class="btn btn-gold btn-block" id="rm-submit">Add round</button>
-    </div>
-    <div id="rm-hist-wrap"></div>
-    <div class="sc-actions">
-      <button class="btn btn-outline" id="rm-reset-setup">New setup</button>
-      <button class="btn btn-outline" id="rm-undo">↩ Undo</button>
-    </div>
-  </div>
-</main>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10'];
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
+  var SETUP = 'gin_pad_setup', KEY = 'rm', AI_KEY = 'gin';
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' wins!';
-  ptsEl.textContent=pts+' points';
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
+  Kit.init({
+    id: 'gin-rummy', title: 'Gin score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(AI_KEY, { keys: [KEY], title: 'Gin Rummy: past games' }); } }],
+    rules:
+      '<p class="goal">Play Gin Rummy with a real deck and keep score here. First to <b>100</b> wins the game.</p>' +
+      '<h3>The game</h3><ul><li>Deal 10 cards each. Turn the next card face up to start the discard pile. The rest is the stock.</li>' +
+      '<li>The non-dealer may take the first upcard. If they pass, the dealer may. If both pass, the non-dealer draws from the stock.</li>' +
+      '<li>On your turn, draw from the stock or the discard pile, then discard one card. You can\'t throw back a card you just picked up.</li>' +
+      '<li>Make <b>sets</b> (3 or 4 of a rank) and <b>runs</b> (3+ in a row, same suit, ace low). Cards not in a meld are <b>deadwood</b>: Ace 1, number cards face value, J Q K 10.</li></ul>' +
+      '<h3>Knocking</h3><ul><li>When your deadwood is <b>10 or less</b>, you may knock: discard, then lay down your hand.</li>' +
+      '<li>The other player lays down their melds and <b>lays off</b> deadwood on the knocker\'s melds.</li>' +
+      '<li>The knocker scores the difference in deadwood.</li>' +
+      '<li><b>Undercut:</b> if the other player has the same or less deadwood, they score the difference <b>+ 25</b>.</li>' +
+      '<li><b>Gin:</b> knock with no deadwood at all. You score their deadwood <b>+ 25</b> and they can\'t lay off.</li>' +
+      '<li>If the stock is down to 2 cards and nobody has knocked, the hand is a draw.</li></ul>' +
+      '<h3>Using this scorepad</h3><p>After each hand, tap <b>Add round</b>, say how it ended and who went out, and enter each player\'s deadwood (the other player\'s count is <b>after</b> laying off). The points are worked out for you.</p>' +
+      '<h3>End of the game</h3><p>When someone reaches the target, each player gets a <b>25 line bonus</b> for every hand they won, and the winner gets a <b>100 game bonus</b>.</p>'
+  });
+
+  function showSetup() {
+    Kit.setup(app, {
+      players: { min: 2, max: 2, count: 2 },
+      options: [{ id: 'target', label: 'Play to', value: 100, choices: [[100, '100 · standard'], [50, '50 · quick']] }],
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        localStorage.setItem(SETUP, JSON.stringify({ names: cfg.players.map(function (p) { return p.name; }), target: +cfg.options.target || 100 }));
+        startPad();
+      }
+    });
   }
-  hap('success');
-  banner.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function buildScorers(container,names,totals,win,colors,cdark,sub=null){
-  container.innerHTML='';
-  names.forEach((nm,i)=>{
-    const leading=totals[i]===Math.max(...totals)&&totals[i]>0;
-    const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'40');
-    if(leading)s.style.borderColor=colors[i];
-    s.innerHTML=`<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      ${sub?`<div class="scorer-sub">${sub[i]}</div>`:''}
-      <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-to">${win-totals[i]>0?(win-totals[i])+' to win':'🏆 Winner'}</div>`;
-    container.appendChild(s);
-  });
-}
-function buildHistory(container,rounds,names,totals,colors){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`28px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">Round history</div>
-    <div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-name" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val ${v<0?'neg':''}" style="${v===0?'color:var(--text-3)':''}">${v>0?'+'+v:v<0?'−'+Math.abs(v):'–'}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-// ── RUMMY ──────────────────────────────────────────────────────────────────
-{
-  let rmN=2,rmNames=[],rmRounds=[],rmWin=500;
-  const DFLT=['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6'];
-  function rmSave(){try{sessionStorage.setItem('cs_rm',JSON.stringify({rmN,rmNames,rmRounds,rmWin,_ts:Date.now()}));}catch(e){}}
-  function showSetup(){document.getElementById('rm-game').classList.add('hidden');document.getElementById('rm-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_rm');}catch(e){}}
 
-  function rmBuildSetup(){
-    const c=document.getElementById('rm-names');
-    const prev=[...c.querySelectorAll('input')].map(i=>i.value);
-    c.innerHTML='';
-    for(let i=0;i<rmN;i++){
-      const row=document.createElement('div');row.className='player-setup-row';
-      row.innerHTML=`<div class="player-dot" style="background:${COLORS[i]}"></div>
-        <input class="input" id="rmn${i}" value="${esc(prev[i]||DFLT[i])}" maxlength="16" aria-label="Player ${i+1} name">`;
-      c.appendChild(row);
+  function handRounds() { return pad ? pad.state().rounds.filter(function (r) { return r.label !== 'Bonus'; }) : []; }
+  function handTotals(rounds) {
+    var t = [0, 0];
+    rounds.forEach(function (r) { if (r.label !== 'Bonus') r.scores.forEach(function (v, i) { t[i] += Number(v) || 0; }); });
+    return t;
+  }
+  function wins(rounds) {
+    var w = [0, 0];
+    rounds.forEach(function (r) { if (r.label === 'Bonus') return; r.scores.forEach(function (v, i) { if (v > 0) w[i]++; }); });
+    return w;
+  }
+
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP));
+    var target = cfg.target;
+    function reached() { var t = handTotals(handRounds()); return t[0] >= target || t[1] >= target; }
+    pad = Scorepad(app, {
+      key: KEY, title: 'Gin Rummy', mode: 'Scorekeeper', target: target,
+      sides: cfg.names.map(function (n) { return { name: n }; }),
+      goal: 'First to ' + target + ' · 25 per hand won · 100 game bonus',
+      isOver: function (t, rounds) { return rounds.length > 0 && rounds[rounds.length - 1].label === 'Bonus'; },
+      winner: function (t, rounds) { var h = handTotals(rounds); return h[0] === h[1] ? -1 : h[0] > h[1] ? 0 : 1; },
+      form: function (ctx) {
+        if ((ctx.prev && ctx.prev.label === 'Bonus') || (!ctx.prev && reached())) bonusForm(ctx);
+        else handForm(ctx);
+      }
+    });
+
+    // ── One hand: how it ended, who went out, deadwood counts ──
+    function handForm(ctx) {
+      var names = ctx.sides.map(function (s) { return s.name; });
+      var how = 'knock', out = -1, pre = null;
+      if (ctx.prev) {
+        var d = ctx.prev.detail || [], sc = ctx.prev.scores;
+        var wi = sc[0] > 0 ? 0 : sc[1] > 0 ? 1 : -1;
+        if (d[0] === 'draw' || wi < 0) how = 'draw';
+        else if (d[wi] === 'gin') { how = 'gin'; out = wi; pre = [0, 0]; pre[1 - wi] = sc[wi] - 25; }
+        else if (d[wi] === 'undercut') { how = 'knock'; out = 1 - wi; pre = [0, 0]; pre[out] = sc[wi] - 25; }
+        else { how = 'knock'; out = wi; pre = [0, 0]; pre[1 - wi] = sc[wi]; }
+      }
+      ctx.node.appendChild(el('div', { class: 'label', text: 'How did the hand end?' }));
+      var segHow = el('div', { class: 'seg' });
+      [['knock', 'Knock'], ['gin', 'Gin'], ['draw', 'No winner']].forEach(function (c) {
+        segHow.appendChild(el('button', { type: 'button', text: c[1], class: how === c[0] ? 'on' : '', onclick: function () {
+          how = c[0]; Array.prototype.forEach.call(segHow.children, function (b) { b.classList.toggle('on', b.textContent === c[1]); }); Kit.sfx('tap'); update();
+        } }));
+      });
+      ctx.node.appendChild(segHow);
+      var outLbl = el('div', { class: 'label', text: 'Who went out?' });
+      var segOut = el('div', { class: 'seg' });
+      names.forEach(function (n, i) {
+        segOut.appendChild(el('button', { type: 'button', text: n, class: i === out ? 'on' : '', onclick: function () {
+          out = i; Array.prototype.forEach.call(segOut.children, function (b, j) { b.classList.toggle('on', j === i); }); Kit.sfx('tap'); update();
+        } }));
+      });
+      ctx.node.appendChild(outLbl); ctx.node.appendChild(segOut);
+      var dwLbl = el('div', { class: 'label', text: 'Deadwood' });
+      ctx.node.appendChild(dwLbl);
+      var rows = names.map(function (n, i) {
+        var r = ctx.number(i, { min: 0, max: 100, neg: false, value: pre ? pre[i] : '' });
+        r.input.addEventListener('input', update);
+        r.querySelectorAll('.pm button').forEach(function (b) { b.addEventListener('click', function () { setTimeout(update, 0); }); });
+        ctx.node.appendChild(r); return r;
+      });
+      var res = el('div', { class: 'res' }); ctx.node.appendChild(res);
+      var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
+      ctx.node.appendChild(btn);
+
+      function calc() {
+        if (how === 'draw') return { ok: true, scores: [0, 0], detail: ['draw', 'draw'], big: 'No score', small: 'The stock ran out. Same dealer deals again.' };
+        if (out < 0) return { ok: false, msg: 'Pick who went out' };
+        var df = 1 - out, k = rows[out].value(), dv = rows[df].value();
+        if (how === 'gin') k = 0;
+        if (k < 0 || dv < 0) return { ok: false, msg: 'Deadwood can\'t be negative' };
+        if (how === 'knock' && k > 10) return { ok: false, msg: 'A knock needs 10 or less deadwood. ' + names[out] + ' has ' + k + '.' };
+        if (how === 'knock' && k === 0) return { ok: false, msg: 'No deadwood is gin. Pick Gin above.' };
+        if (dv > 98) return { ok: false, msg: 'That deadwood count is too high' };
+        var s = [0, 0], det = ['', ''], hl = [];
+        if (how === 'gin') {
+          s[out] = dv + 25; det[out] = 'gin';
+          hl.push(names[out] + ' went gin in hand ' + ctx.round + (dv >= 30 ? ', catching ' + names[df] + ' with ' + dv + ' deadwood' : ''));
+          return { ok: true, scores: s, detail: det, hl: hl, gin: true, big: names[out] + ' scores ' + s[out], small: dv + ' deadwood + 25 gin bonus' };
+        }
+        if (dv <= k) {
+          s[df] = k - dv + 25; det[df] = 'undercut';
+          hl.push('Undercut! ' + names[df] + ' caught ' + names[out] + ' knocking with ' + k + ' in hand ' + ctx.round);
+          return { ok: true, scores: s, detail: det, hl: hl, under: true, big: 'Undercut! ' + names[df] + ' scores ' + s[df], small: k + ' − ' + dv + ' + 25 undercut bonus' };
+        }
+        s[out] = dv - k; det[out] = 'knock';
+        if (k <= 2) hl.push(names[out] + ' knocked with just ' + k + ' deadwood in hand ' + ctx.round);
+        return { ok: true, scores: s, detail: det, hl: hl, big: names[out] + ' scores ' + s[out], small: dv + ' − ' + k + ' deadwood' };
+      }
+      function update() {
+        var draw = how === 'draw';
+        outLbl.hidden = draw; segOut.hidden = draw; dwLbl.hidden = draw;
+        rows.forEach(function (r, i) {
+          r.hidden = draw;
+          var ginK = how === 'gin' && i === out;
+          r.classList.toggle('off', ginK); r.input.disabled = ginK;
+          if (ginK) r.input.value = '0';
+          var nmEl = r.querySelector('.nm');
+          nmEl.innerHTML = Kit.esc(names[i]) + (out < 0 ? '' : '<span class="sub">' + (i === out ? (how === 'gin' ? 'went gin' : 'knocked') : how === 'gin' ? 'all cards count' : 'after laying off') + '</span>');
+        });
+        var c = calc();
+        res.className = 'res' + (c.ok ? '' : ' bad');
+        res.innerHTML = c.ok ? '<div class="big display">' + Kit.esc(c.big) + '</div><small>' + Kit.esc(c.small) + '</small>' : '<div class="big">' + Kit.esc(c.msg) + '</div>';
+        btn.disabled = !c.ok;
+        return c;
+      }
+      btn.addEventListener('click', function () {
+        var c = update(); if (!c.ok) return;
+        var extra = { detail: c.detail, highlights: ctx.prev ? [] : (c.hl || []) };
+        if (c.gin) { extra.callout = 'Gin!'; Kit.confetti({ count: 80 }); }
+        else if (c.under) extra.callout = 'Undercut!';
+        ctx.done(c.scores, extra);
+        if (!ctx.prev && reached()) setTimeout(function () { Kit.callout('Game!'); setTimeout(function () { pad.addRound(); }, 900); }, 500);
+      });
+      update();
     }
-    if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("rmn");
-  }
-  document.querySelectorAll('.rm-cnt').forEach(b=>{
-    b.addEventListener('click',()=>{
-      hap('select');
-      document.querySelectorAll('.rm-cnt').forEach(x=>{x.classList.remove('active-cnt','btn-gold');x.classList.add('btn-outline');});
-      b.classList.add('active-cnt','btn-gold');b.classList.remove('btn-outline');
-      rmN=parseInt(b.dataset.n);rmBuildSetup();
-    });
-  });
-  rmBuildSetup();
 
-  function rmStart(){
-    rmNames=Array.from({length:rmN},(_,i)=>document.getElementById('rmn'+i).value.trim()||`Player ${i+1}`);
-    rmRounds=[];rmWin=parseInt(document.getElementById('rm-win').value)||500;
-    hap('medium');
-    document.getElementById('rm-setup').classList.add('hidden');
-    document.getElementById('rm-game').classList.remove('hidden');
-    document.getElementById('rm-winner').classList.add('hidden');
-    rmRender();
-  }
-
-  function rmRender(){
-    const totals=rmNames.map((_,i)=>rmRounds.reduce((s,r)=>s+r[i],0));
-    const cols=rmN<=3?rmN:rmN<=4?2:3;
-    buildScorers(document.getElementById('rm-scores'),rmNames,totals,rmWin,COLORS,CDARK);
-    document.getElementById('rm-scores').style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
-    document.getElementById('rm-round-label').textContent=`Round ${rmRounds.length+1}`;
-
-    const colsE=rmN<=3?rmN:rmN<=4?2:3;
-    const inp=document.getElementById('rm-inputs');
-    inp.style.gridTemplateColumns=`repeat(${colsE},minmax(0,1fr))`;inp.innerHTML='';
-    rmNames.forEach((nm,i)=>{
-      const cell=document.createElement('div');cell.className='entry-cell';
-      cell.innerHTML=`<div class="entry-label" style="color:${COLORS[i]}">${esc(nm)}</div>
-        <input type="number" inputmode="numeric" class="score-input" placeholder="0" min="0" data-i="${i}" aria-label="${esc(nm)} points">`;
-      inp.appendChild(cell);
-    });
-    buildHistory(document.getElementById('rm-hist-wrap'),rmRounds,rmNames,totals,COLORS);
-  }
-
-  document.getElementById('rm-start').addEventListener('click',rmStart);
-  document.getElementById('rm-submit').addEventListener('click',()=>{
-    const err=document.getElementById('rm-err');
-    const scores=Array.from({length:rmN},(_,i)=>{
-      const v=parseInt(document.querySelector(`#rm-inputs input[data-i="${i}"]`)?.value);
-      return isNaN(v)?null:v;
-    });
-    if(scores.some(v=>v===null)){err.textContent='Enter points for every player (0 if none).';err.style.display='block';hap('error');return;}
-    err.style.display='none';
-    rmRounds.push(scores);
-    hap('light');
-    const totals=rmNames.map((_,i)=>rmRounds.reduce((s,r)=>s+r[i],0));
-    if(totals.some(t=>t>=rmWin)){
-      const wi=totals.indexOf(Math.max(...totals));
-      const banner=document.getElementById('rm-winner');
-      banner._histKey='rm';banner._histTitle='Rummy';
-      banner._histRender=(e)=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds,lbl:'Rounds'},{val:e.totals[wi]+'pts',lbl:'Score'}]));div.appendChild(GameHistory.renderRoundTable(e.names,e.roundData,e.totals,COLORS));return div;};
-      GameHistory.save('rm',{_summary:`${rmNames[wi]} wins · ${rmRounds.length} rounds`,_badge:totals[wi]+'pts',winner:rmNames[wi],names:rmNames,rounds:rmRounds.length,totals,roundData:rmRounds});
-      showWinner(banner,document.getElementById('rm-wname'),document.getElementById('rm-wpts'),rmNames[wi],totals[wi]);
+    // ── End of game: line bonuses and game bonus ──
+    function bonusForm(ctx) {
+      var rounds = handRounds(), t = handTotals(rounds), w = wins(rounds), names = ctx.sides.map(function (s) { return s.name; });
+      var win = t[0] === t[1] ? -1 : t[0] > t[1] ? 0 : 1;
+      var bonus = [0, 1].map(function (i) { return w[i] * 25 + (i === win ? 100 : 0); });
+      ctx.node.appendChild(el('p', { class: 'muted', text: win >= 0 ? names[win] + ' reached ' + target + '. Time for the bonuses.' : 'Hand points are tied.' }));
+      var tb = el('table', { class: 'bon' });
+      tb.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: 'Hands' }), el('th', { text: 'Line' }), el('th', { text: 'Game' }), el('th', { text: 'Final' })]));
+      names.forEach(function (n, i) {
+        tb.appendChild(el('tr', null, [el('td', { text: n }), el('td', { text: String(t[i]) }), el('td', { text: w[i] + ' × 25' }), el('td', { text: i === win ? '100' : '0' }), el('td', { class: 'big', text: String(t[i] + bonus[i]) })]));
+      });
+      ctx.node.appendChild(tb);
+      ctx.node.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('trophy') + '<span>Add bonuses and finish</span>', onclick: function () {
+        var hl = [];
+        if (win >= 0 && !w[1 - win]) hl.push(names[win] + ' won every hand: a shutout');
+        var streak = 0, sp = -1, bestS = 0, bestP = -1;
+        rounds.forEach(function (r) { var p = r.scores[0] > 0 ? 0 : r.scores[1] > 0 ? 1 : -1; if (p < 0) return; if (p === sp) streak++; else { sp = p; streak = 1; } if (streak > bestS) { bestS = streak; bestP = p; } });
+        if (bestS >= 3) hl.push('Longest winning streak: ' + names[bestP] + ', ' + bestS + ' hands');
+        if (win >= 0) hl.push(names[win] + ' won ' + w[win] + ' hands to ' + w[1 - win]);
+        ctx.done(bonus, { label: 'Bonus', detail: [w[0] + ' won', w[1] + ' won'], highlights: ctx.prev ? [] : hl });
+      } }));
     }
-    if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
-    rmRender();
-    rmSave();
-  });
-  document.getElementById('rm-undo').addEventListener('click',()=>{
-    if(!rmRounds.length) return;
-    rmRounds.pop();hap('light');
-    const totals=rmNames.map((_,i)=>rmRounds.reduce((s,r)=>s+r[i],0));
-    if(!totals.some(t=>t>=rmWin)) document.getElementById('rm-winner').classList.add('hidden');
-    rmRender();rmSave();
-  });
-  document.getElementById('rm-again').addEventListener('click',()=>{rmRounds=[];document.getElementById('rm-winner').classList.add('hidden');rmRender();try{sessionStorage.removeItem('cs_rm');}catch(e){}});
-  document.getElementById('rm-newsetup').addEventListener('click',showSetup);
-  document.getElementById('rm-reset-setup').addEventListener('click',async()=>{
-    if(rmRounds.length&&window.GN&&!(await GN.confirm('Start a new setup?',{body:'This scorecard will be cleared.',ok:'New setup',danger:true}))) return;
-    showSetup();
-  });
-  try{const raw=sessionStorage.getItem('cs_rm');if(raw){const s=JSON.parse(raw);if(s.rmNames&&s.rmRounds.length){rmN=s.rmN||s.rmNames.length;rmNames=s.rmNames;rmRounds=s.rmRounds;rmWin=s.rmWin||500;document.getElementById('rm-setup').classList.add('hidden');document.getElementById('rm-game').classList.remove('hidden');rmRender();}}}catch(e){}
-}
+  }
 
-// Active count button style
-document.querySelectorAll('.active-cnt').forEach(b=>{b.classList.add('btn-gold');b.classList.remove('btn-outline');});
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

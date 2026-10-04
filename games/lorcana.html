@@ -43,6 +43,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
 @keyframes twinkle{50%{opacity:.15;}}
 .gbar{background:linear-gradient(#0b1640 60%, rgba(11,22,64,0));}
 .gbar,.stage,.lc-board{position:relative;z-index:1;}
+.k-toast{pointer-events:none;} /* hidden toast must not swallow taps */
 
 /* ── Board ─────────────────────────────────────────────────────────────── */
 .lc-board{display:grid;gap:6px;padding:0 6px calc(var(--safe-b) + 6px);max-width:900px;margin:0 auto;
@@ -78,10 +79,11 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
 .lc-head{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%;min-height:30px;}
 .lc-name{font-family:var(--serif);font-weight:700;font-style:italic;font-size:clamp(1.05rem,7.5cqw,1.5rem);color:var(--gold-2);letter-spacing:.02em;
   text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 12px rgba(232,193,106,.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.lc-flag .ico{width:13px;height:13px;}
 .lc-jewel{flex:none;width:24px;height:24px;border:0;padding:0;background:none;display:grid;place-items:center;}
 .lc-jewel i{width:15px;height:15px;transform:rotate(45deg);border-radius:3px;background:linear-gradient(135deg,color-mix(in srgb,var(--ink) 40%,#fff),var(--ink));
   box-shadow:0 0 0 1.5px var(--gold), 0 0 8px var(--ink);}
-.lc-flag{flex:none;padding:2px 9px;border-radius:999px;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#2a1a00;font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 2px 8px rgba(232,193,106,.5);}
+.lc-flag{flex:none;display:inline-flex;align-items:center;gap:3px;padding:2px 9px 2px 6px;border-radius:999px;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#2a1a00;font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 2px 8px rgba(232,193,106,.5);}
 
 /* Lore row: [-1] gem [+1]; quick taps under */
 .lc-mid{display:flex;align-items:center;justify-content:center;gap:clamp(8px,4cqw,20px);}
@@ -124,12 +126,18 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
 
 /* Narrow panels (4 players, or the bottom pair of 3): stack the buttons */
 @container (max-width: 260px){
-  .lc-gem{--g:min(36cqh,60cqw);}
-  .lc-mid .lbtn{--sz:44px;}
-  .lc-mid{gap:6px;}
+  .lc-gem{--g:min(31cqh,62cqw);grid-area:g;}
+  .lc-mid{display:grid;grid-template-columns:auto auto;grid-template-areas:"g g" "m p";gap:6px 10px;justify-items:center;}
+  .lc-mid .lbtn{--sz:44px;width:64px;border-radius:999px;font-size:1.05rem;}
+  .lc-mid .lbtn:first-child{grid-area:m;}
+  .lc-mid .lbtn:last-child{grid-area:p;}
+  .lc-quick .lbtn{--sz:44px;}
+  .lc-flag{padding:3px;}
+  .lc-flag span{display:none;}
   .lc-quick .lbtn{min-width:52px;padding:0 10px;}
   .lc-track{grid-template-columns:repeat(10,1fr);width:min(90%,150px);gap:3px 2px;}
   .lc-ink .iv small{display:none;}
+  .lc-head{gap:5px;}
   .lc-ink .iv{min-width:44px;}
   .lc-in{padding:8px 6px 6px;}
 }
@@ -257,7 +265,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     undoStack = []; Kit.gameStart();
     save(); render();
     setTimeout(function () { Kit.callout(S.players[first].name + ' goes first'); Kit.sfx('good'); }, 250);
-    setTimeout(function () { Kit.toast('First player skips their first draw', 2600); }, 1500);
+    setTimeout(function () { if (S && S.turnNo === 1) Kit.callout('No draw on turn 1', '#f7e2a6'); }, 1750);
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -272,7 +280,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     else { Kit.sfx('tap'); Kit.haptic('light'); }
     save(); paintPanel(p, real);
     if (v >= WIN) { setTimeout(function () { win(p); }, 500); return; }
-    if (real > 0 && v >= WIN - 5 && v - real < WIN - 5) Kit.toast(pl.name + ' is ' + (WIN - v) + ' lore away!');
+    if (real > 0 && v >= WIN - 5 && v - real < WIN - 5) Kit.callout((WIN - v) + ' to go!', '#f7e2a6');
   }
   function setLore(p, v) { lore(p, v - S.players[p].lore); }
   function ink(p, d) {
@@ -290,7 +298,6 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     S.turn = (S.turn + 1) % S.players.length; S.turnNo++;
     Kit.sfx('whoosh'); Kit.haptic('medium');
     save(); paintTurn();
-    if (S.turn === S.first) Kit.toast('Round ' + round());
   }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo');
@@ -471,7 +478,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
       el('button', { type: 'button', class: 'lc-jewel', 'aria-label': 'Choose ink colour', onclick: function () { pickInk(p); } }, [el('i')]),
       el('span', { class: 'lc-name', text: pl.name })
     ]);
-    P.flag = el('span', { class: 'lc-flag', text: 'Turn' });
+    P.flag = el('span', { class: 'lc-flag', html: Kit.icon('star') + '<span>Turn</span>' });
     head.appendChild(P.flag);
     inn.appendChild(head);
     P.gem = el('button', { type: 'button', class: 'lc-gem', 'aria-label': pl.name + ' lore', onclick: function () { pickLore(p); } }, [el('b'), el('small', { text: 'lore' })]);
@@ -525,7 +532,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     });
     roundEl.innerHTML = '<small>Round</small><b>' + round() + '</b>';
     var nx = S.players[(S.turn + 1) % S.players.length].name;
-    endEl.innerHTML = '<span>End ' + Kit.esc(Kit.poss(S.players[S.turn].name)) + ' turn</span>' + Kit.icon('right');
+    endEl.innerHTML = '<span>End turn</span>' + Kit.icon('right');
     endEl.setAttribute('aria-label', 'End turn. ' + nx + ' is next');
     endEl.disabled = !!S.over;
   }

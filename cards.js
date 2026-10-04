@@ -310,7 +310,7 @@ function Scorepad(host, o) {
       players: S.sides.map(function (s, i) { return { name: s.name, score: t[i] }; }),
       winner: w >= 0 ? S.sides[w].name : null,
       rounds: { labels: S.rounds.map(function (r, i) { return r.label || String(i + 1); }), scores: S.rounds.map(function (r) { return r.scores; }) },
-      highlights: S.highlights.concat([S.rounds.length + ' rounds played'])
+      highlights: S.highlights.concat([S.rounds.filter(function (r) { return !/^bonus/i.test(r.label || ''); }).length + ' rounds played'])
     });
     clear();
     setTimeout(function () {
