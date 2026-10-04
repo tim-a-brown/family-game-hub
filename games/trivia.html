@@ -832,10 +832,33 @@ function saveTvState(){
   if(!total)return;
   try{sessionStorage.setItem('tv_state',JSON.stringify({curTopic,score,total,correct_count,streak,usedIdx:Object.fromEntries(usedIdx),_ts:Date.now()}));}catch(e){}
 }
+// One history entry per play session: the first save adds it, later saves
+// (every page unload) update that same entry in place. Its _date is kept so
+// the cloud merge (deduped by _date) treats it as the same row.
+function tvSessionId(){
+  try{
+    let id=sessionStorage.getItem('tv_sid');
+    if(!id){id=String(Date.now())+Math.random().toString(36).slice(2,6);sessionStorage.setItem('tv_sid',id);}
+    return id;
+  }catch(e){return null;}
+}
 function saveTvHistory(){
   if(total<5)return; // only save meaningful sessions
   bestStreak=Math.max(bestStreak,streak);
-  GameHistory.save('trivia',{_summary:`${correct_count}/${total} correct · ${score} pts`,_badge:Math.round(correct_count/total*100)+'%',score,total,correct_count,bestStreak,topic:curTopic});
+  const entry={_summary:`${correct_count}/${total} correct · ${score} pts`,_badge:Math.round(correct_count/total*100)+'%',score,total,correct_count,bestStreak,topic:curTopic};
+  const sid=tvSessionId();
+  if(sid){
+    entry._sid=sid;
+    const list=GameHistory.load('trivia');
+    const i=list.findIndex(r=>r&&r._sid===sid);
+    if(i>=0){
+      if(list[i].total===total)return; // nothing new since last save
+      list[i]={...entry,_date:list[i]._date};
+      try{localStorage.setItem('gh_trivia',JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('gh_trivia');}catch(e){}
+      return;
+    }
+  }
+  GameHistory.save('trivia',entry);
 }
 function loadTvState(){
   try{
@@ -849,6 +872,7 @@ function loadTvState(){
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',()=>{saveTvState();saveTvHistory();});
+window.addEventListener('pagehide',()=>{saveTvState();saveTvHistory();});
 if(!loadTvState()){buildTopics();loadQ();}
 </script>
 </body>
