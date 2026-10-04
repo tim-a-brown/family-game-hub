@@ -518,6 +518,10 @@
       '<polygon points="' + poly + '" fill="url(#ccsh)" stroke="none"/>' +
       '<polygon points="' + poly + '" fill="none" stroke="rgba(0,0,0,.45)" stroke-width=".06" stroke-linejoin="round" transform="scale(1.05)"/>' +
       '<polygon points="' + poly + '" fill="none" stroke="rgba(255,226,180,.16)" stroke-width=".05" stroke-linejoin="round" transform="scale(.96)"/>';
+    // Inlaid star: a darker lacquer field with a fine light edge, clipped by the rim
+    var star = [];
+    for (k = 0; k < 12; k++) { var rr = k % 2 ? 4.72 : 7.9, aa = (90 + 30 * k) * Math.PI / 180; star.push(f2(rr * Math.cos(aa)) + ',' + f2(rr * Math.sin(aa))); }
+    s += '<clipPath id="ccclip"><polygon points="' + poly + '"/></clipPath><g clip-path="url(#ccclip)"><polygon points="' + star.join(' ') + '" fill="rgba(40,16,4,.28)" stroke="rgba(255,222,170,.28)" stroke-width=".06" stroke-linejoin="round"/></g>';
     // Each start point tinted lightly in its owner's colour
     S.players.forEach(function (pl, p) {
       var cells = E.PT[S.pts[p]], tip = E.TIP[S.pts[p]], far = cells.filter(function (c) { return E.hd(c, tip) === 3; });
@@ -637,7 +641,7 @@
       var on = !S.over && S.turn === i, pi = S.fin.indexOf(i), hc = E.homeCount(S.b, i, S.pts);
       var sub = on && pl.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>'
         : pi >= 0 && (S.places || pi === 0) && E.isWin(S.b, i, S.pts) ? Kit.icon('trophy') + ' ' + ord(pi + 1) + (S.over ? '' : ' place')
-        : hc + '/10 home' + (on ? ' · to move' : '');
+        : hc + '/10 home';
       var chip = el('div', { class: 'pchip' + (on ? ' on' : '') + (pi >= 0 ? ' done' : '') }, [
         el('span', { class: 'mm' }, [marble(pl.col)]),
         el('div', { class: 'who' }, [
