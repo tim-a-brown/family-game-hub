@@ -22,7 +22,7 @@ body{overflow:hidden;}
 .pill .ico{width:16px;height:16px;}
 .pill.streak{color:var(--orange);}
 .pill.streak.hot{background:color-mix(in srgb,var(--orange) 22%,transparent);animation:bounce .5s var(--spring);}
-.pill.score{color:var(--yellow);}
+.pill.pts{color:var(--yellow);}
 .pill.clock{color:var(--text);}
 .pill.clock.low{color:var(--red);animation:pulse 1s infinite;}
 .finish{height:34px;min-height:34px;padding:0 12px;font-size:.85rem;}
@@ -40,8 +40,8 @@ body{overflow:hidden;}
 .tbar.low{background:linear-gradient(90deg,#ff8a8a,#ff4d5e);}
 .q{position:relative;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:18px 16px 8px;text-align:center;}
 .q .ty{font-family:var(--font);font-weight:900;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#f6d77a;opacity:.9;}
-.q .tx{font-size:clamp(1.6rem,7.6vw,2.4rem);line-height:1.2;text-shadow:0 0 1px rgba(255,255,255,.4);word-break:break-word;}
-.q .tx.long{font-size:clamp(1.3rem,5.8vw,1.8rem);}
+.q .tx{font-size:clamp(1.9rem,9vw,2.8rem);line-height:1.2;text-shadow:0 0 1px rgba(255,255,255,.4);word-break:break-word;}
+.q .tx.long{font-size:clamp(1.45rem,6.6vw,2rem);}
 .q .tx .shp{display:inline-block;width:.9em;height:.9em;vertical-align:-.08em;}
 .seq{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 4px;font-size:clamp(1.4rem,6.6vw,2rem);}
 .seq span{min-width:1.7em;padding:0 .2em;}
@@ -540,7 +540,7 @@ var GENERATORS={
     });
     void w;
     var card = document.querySelector('.k-win .card .sub');
-    if (card) card.after(el('div', { class: 'res', html: '<div><b>' + S.score + '</b><span>Points</span></div><div><b>' + right + '/' + n + '</b><span>Right</span></div><div><b>' + S.best + '</b><span>Best streak</span></div>' }));
+    if (card) card.after(el('div', { class: 'res', html: '<div><b>' + S.score + '</b><span>Points</span></div><div><b>' + right + '/' + n + '</b><span>Right</span></div><div><b>' + S.best + '</b><span>Streak</span></div>' }));
     void tried;
   }
 
@@ -558,7 +558,7 @@ var GENERATORS={
       app.appendChild(stripEl);
       app.appendChild(el('div', { class: 'board wood' }, [slateEl, trayEl]));
       padEl = el('div', { class: 'pad' });
-      [['7'], ['8'], ['9'], ['del', 'fn', Kit.icon('back')], ['4'], ['5'], ['6'], ['-', 'fn', '−'], ['1'], ['2'], ['3'], ['.', 'fn', '.'], ['clr', 'fn sm', 'Clear'], ['0'], ['go', 'go', 'Check']].forEach(function (k) {
+      [['7'], ['8'], ['9'], ['del', 'fn', '⌫'], ['4'], ['5'], ['6'], ['-', 'fn', '−'], ['1'], ['2'], ['3'], ['.', 'fn', '.'], ['clr', 'fn sm', 'Clear'], ['0'], ['go', 'go', 'Check']].forEach(function (k) {
         var b = el('button', { type: 'button', class: k[1] || '', html: k[2] || k[0], 'aria-label': { del: 'Delete', '-': 'Negative', '.': 'Decimal point', clr: 'Clear', go: 'Check' }[k[0]] || k[0] });
         b.addEventListener('click', function () { press(k[0]); });
         if (k[0] === 'go') goBtn = b;
@@ -614,10 +614,10 @@ var GENERATORS={
   function paintStrip() {
     if (!stripEl) return;
     stripEl.innerHTML = '';
-    stripEl.appendChild(el('div', { class: 'grow' }, [el('div', { class: 'lv', text: lvName(S.level) + ' · ' + MODES[S.mode] })]));
+    stripEl.appendChild(el('div', { class: 'grow' }, [el('div', { class: 'lv', text: lvName(S.level) })]));
     if (S.mode === 'timed') stripEl.appendChild(el('span', { class: 'pill clock' + (S.left <= 10 ? ' low' : ''), text: Math.floor(Math.max(0, S.left) / 60) + ':' + ('0' + Math.max(0, S.left) % 60).slice(-2) }));
     stripEl.appendChild(el('span', { class: 'pill streak' + (S.streak >= 3 ? ' hot' : ''), 'aria-label': 'Streak', html: Kit.icon('flame') + '<span>' + S.streak + '</span>' }));
-    stripEl.appendChild(el('span', { class: 'pill score', 'aria-label': 'Score', html: Kit.icon('star') + '<span>' + S.score + '</span>' }));
+    stripEl.appendChild(el('span', { class: 'pill pts', 'aria-label': 'Score', html: Kit.icon('star') + '<span>' + S.score + '</span>' }));
     if (S.mode === 'free') stripEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm finish', text: 'Finish', onclick: function () { finish(); } }));
     if (tbar) { tbar.style.width = Math.max(0, 100 * S.left / S.secs) + '%'; tbar.classList.toggle('low', S.left <= 10); }
     // Progress marks on the chalk tray

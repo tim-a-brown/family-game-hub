@@ -1054,7 +1054,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
   }
   function endShot() {
-    state = 'clear'; zoom.on = false; tsTarget = 1; stopDrum();
+    state = 'clear'; zoom.on = false; tsTarget = 1; stopDrum(); shot.flight = wt - shot.t0;
     var q = shot.hits.filter(function (o) { return !o.gone; });
     var gap = clamp(0.9 / Math.max(1, q.length), 0.028, 0.07), t = 0.3;
     q.forEach(function (o, i) { later(t + i * gap, function () { removePeg(o); sPop(Math.min(i, 30)); }); });
@@ -1736,7 +1736,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Test hooks (used by automated checks) ═══════════════════════════════
   window.__peg = {
-    get: function () { return L && { shotAge: shot ? wt - shot.t0 : 0, state: state, n: L.n, balls: L.ballsLeft, score: L.score, oranges: orangeLeft(), orangeHit: L.orangeHit, fever: L.fever, mult: mult(), guide: L.guide, shots: L.shots.slice(), stats: L.stats, inFlight: balls.length, wt: wt, zoom: zoom.on, paused: paused, pegs: objs.filter(function (o) { return !o.gone; }).length }; },
+    get: function () { return L && { flight: shot ? (shot.flight != null ? shot.flight : wt - shot.t0) : 0, shotAge: shot ? wt - shot.t0 : 0, state: state, n: L.n, balls: L.ballsLeft, score: L.score, oranges: orangeLeft(), orangeHit: L.orangeHit, fever: L.fever, mult: mult(), guide: L.guide, shots: L.shots.slice(), stats: L.stats, inFlight: balls.length, wt: wt, zoom: zoom.on, paused: paused, pegs: objs.filter(function (o) { return !o.gone; }).length }; },
     aim: function (deg) { ang = clamp(deg * PI / 180, -MAX_ANG, MAX_ANG); },
     fire: fire, speed: function (k) { speedMul = k; },
     start: function (n, master) { startLevel(n, { who: 'Tester', master: master || 'guide', fireMode: 'lift' }); },
