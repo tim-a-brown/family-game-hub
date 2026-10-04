@@ -29,7 +29,8 @@
 .tl span{display:inline-flex;align-items:center;gap:5px;}
 
 /* The deck and the drawn card */
-.deckwrap{position:relative;width:min(80vw,330px);aspect-ratio:5/6.4;max-height:calc(100dvh - 380px);min-height:300px;}
+.deckwrap{position:relative;width:min(80vw,330px);height:clamp(270px,calc(100dvh - 440px - var(--tx,0px)),430px);}
+.has-timer .deckwrap{--tx:56px;}
 .pile{position:absolute;inset:0;}
 .pile i{position:absolute;inset:0;border-radius:20px;transform:translate(calc(var(--k) * 2px),calc(var(--k) * 3px));
   background:linear-gradient(135deg,#0e6b52,#0a4d3b);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 2px 3px rgba(0,0,0,.35);}
@@ -82,7 +83,7 @@
 
 /* Timer */
 .timer{display:flex;align-items:center;gap:10px;}
-.timer svg{width:44px;height:44px;transform:rotate(-90deg);}
+.timer > svg{width:44px;height:44px;transform:rotate(-90deg);}
 .timer circle{fill:none;stroke-width:5;}
 .timer .bg{stroke:rgba(255,255,255,.15);}
 .timer .fg{stroke:var(--yellow);stroke-linecap:round;transition:stroke-dashoffset .25s linear;}
@@ -123,7 +124,7 @@
     { id: 'funny', name: 'Funny', color: '#e0a21a', icon: 'party' },
     { id: 'deep', name: 'Deep', color: '#7b5bd6', icon: 'lightbulb' },
     { id: 'you', name: 'About you', color: '#1f9bb0', icon: 'user' },
-    { id: 'kids', name: 'Kids', color: '#e5534b', icon: 'star' },
+    { id: 'kids', name: 'Kids', color: '#e5534b', icon: 'hand' },
     { id: 'colorado', name: 'Colorado', color: '#4a7a5a', icon: 'mountain' }
   ];
   var CAT = {}; CATS.forEach(function (c) { CAT[c.id] = c; });
@@ -616,7 +617,7 @@
     CATS.forEach(function (c) { chip(c.id, c.name, catIcon(c), c.color); });
     app.appendChild(cats);
 
-    var felt = el('div', { class: 'felt-in' });
+    var felt = el('div', { class: 'felt-in' + (S.timer ? ' has-timer' : '') });
     var table = el('div', { class: 'table wood' }, [felt]);
     var p = S.cur ? BYID[S.cur] : null;
     felt.appendChild(el('div', { class: 'tl' }, [
@@ -790,7 +791,7 @@
   function setCat(id) {
     if (S.cat === id) return;
     snapshot();
-    S.cat = id; buildDeck(); S.cur = null; S.answerer = S.answerer; stopTimer();
+    S.cat = id; buildDeck(); S.cur = null; stopTimer();
     save(); Kit.sfx('deal'); Kit.haptic('light'); render();
   }
 
@@ -803,7 +804,8 @@
       var f = favs(), P = S.players, D = S.drawn;
       D.forEach(function (d) { d.star = f.indexOf(BYID[d.id].q) >= 0; });
       var hl = [];
-      D.filter(function (d) { return d.star; }).slice(0, 3).forEach(function (d) {
+      var seenQ = {};
+      D.filter(function (d) { if (!d.star || seenQ[d.id]) return false; seenQ[d.id] = 1; return true; }).slice(0, 3).forEach(function (d) {
         hl.push('Starred: "' + BYID[d.id].q + '"' + (d.who != null && P[d.who] ? ' (' + P[d.who].name + ')' : ''));
       });
       var byCat = {}; D.forEach(function (d) { var c = BYID[d.id].c; byCat[c] = (byCat[c] || 0) + 1; });
@@ -816,7 +818,7 @@
       }
       var mins = Math.round((Date.now() - S.started) / 60000);
       Kit.record(KEY, {
-        started: S.started, mode: CAT[S.cat] ? CAT[S.cat].name : S.cat === 'star' ? 'Starred' : 'All cards',
+        started: S.started, mode: Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; }).slice(0, 2).map(function (c) { return CAT[c].name; }).join(', '),
         players: P.length > 1 ? P.map(function (p) { return { name: p.name, score: S.who === 'all' ? undefined : p.n }; }) : P.map(function (p) { return { name: p.name }; }),
         winner: null,
         summary: D.length + (D.length === 1 ? ' card' : ' cards') + ' talked about',

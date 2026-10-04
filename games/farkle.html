@@ -319,7 +319,8 @@
       S.dice = freshDice();
     }
     var idx = liveIdx();
-    idx.forEach(function (i) { S.dice[i].v = 1 + Math.floor(Math.random() * 6); S.dice[i].sel = false; });
+    var rig = window.__farkle && window.__farkle.rig; if (rig) window.__farkle.rig = null;
+    idx.forEach(function (i, k) { S.dice[i].v = rig && rig[k] ? rig[k] : 1 + Math.floor(Math.random() * 6); S.dice[i].sel = false; });
     scatter(idx);
     S.rolls++;
     var vals = idx.map(function (i) { return S.dice[i].v; });
@@ -452,16 +453,17 @@
     var top = rank[0], tie = rank.length > 1 && rank[1].score === top.score;
     var hl = [];
     // Final-round comeback
-    if (S.final != null && rank.length > 1 && top.i !== S.final) hl.push(S.players[S.final].name + ' crossed ' + fmt(S.rules.target) + ' first, but ' + top.name + ' stole it on the last turn');
+    var stole = S.final != null && rank.length > 1 && top.i !== S.final && !tie;
+    if (stole) hl.push(S.players[S.final].name + ' crossed ' + fmt(S.rules.target) + ' first, but ' + top.name + ' stole it on the last turn');
     var evs = S.ev.slice().sort(function (a, b) { return b.p - a.p || b.v - a.v; });
     var seen = {};
-    evs.forEach(function (e) { if (hl.length < 5 && !seen[e.t]) { seen[e.t] = 1; hl.push(e.t); } });
+    evs.forEach(function (e) { if (stole && / first in round /.test(e.t)) return; if (hl.length < 5 && !seen[e.t]) { seen[e.t] = 1; hl.push(e.t); } });
     var best = null; S.players.forEach(function (p) { if (!best || p.st.best > best.st.best) best = p; });
     if (best && best.st.best >= 1000) hl.push('Biggest turn: ' + best.name + ' banked ' + fmt(best.st.best));
     var mostF = null; S.players.forEach(function (p) { if (!mostF || p.st.farkles > mostF.st.farkles) mostF = p; });
     if (mostF && mostF.st.farkles >= 4 && hl.length < 6) hl.push(mostF.name + ' farkled ' + mostF.st.farkles + ' times');
     if (S.players.length === 1) hl.unshift('Reached ' + fmt(top.score) + ' in ' + S.round + ' turns');
-    var rounds = S.rounds.filter(function (r) { return r.some(function (x) { return x !== 0; }) || true; });
+    var rounds = S.rounds;
     Kit.record(KEY, {
       started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + ' · to ' + fmt(S.rules.target) + (S.rules.dbl ? ' · doubling' : ''),
       players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
@@ -614,7 +616,7 @@
     // Table: felt with the cup and dice, ledge below for set-aside dice
     var table = el('div', { class: 'table wood' });
     var felt = el('div', { class: 'felt-in' });
-    var zone = el('div', { class: 'zone' });
+    var zone = el('div', { class: 'zone', style: { height: 'clamp(196px, calc(100svh - ' + (420 + (n > 3 ? 70 : 0) + (S.final != null && live ? 44 : 0)) + 'px), 340px)' } });
     var mine = live && !p.cpu && !lock;
     var cup = el('button', { type: 'button', class: 'cup' + (mine && (S.phase === 'start' || (S.phase === 'pick' && selScore() > 0)) ? ' ready' : ''), 'aria-label': 'Roll the dice', onclick: function () { roll(); } },
       [el('span', { class: 'body' }), el('span', { class: 'rim' })]);
@@ -641,7 +643,6 @@
     var ledge = el('div', { class: 'ledge' }, [el('span', { class: 'lbl', text: S.hot ? 'Hot dice ×' + S.hot : 'Set aside' })]);
     var sets = el('div', { class: 'sets' });
     S.sets.forEach(function (st, k) {
-      if (k < S.sets.length - liveSetsCount()) return;
       var g = el('div', { class: 'set' });
       st.v.forEach(function (v) { var dd = Kit.die(v); dd.tabIndex = -1; dd.disabled = true; if (k === S.sets.length - 1 && S.phase !== 'start') dd.classList.add('in'); g.appendChild(dd); });
       g.appendChild(el('b', { text: '+' + fmt(st.p) }));
@@ -688,7 +689,6 @@
       el('button', { type: 'button', text: 'Scoring chart', onclick: chart })
     ]));
   }
-  function liveSetsCount() { return 99; }
 
   function tapDie(i) {
     if (!S || lock || S.phase !== 'pick' || P().cpu) return;

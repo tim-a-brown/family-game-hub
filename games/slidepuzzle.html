@@ -81,6 +81,7 @@ body{overflow-x:hidden;}
 /* Finish: last tile drops in, gaps close, a shine runs across */
 .tile.last .face{animation:slot .5s cubic-bezier(.3,1.4,.5,1) both;}
 @keyframes slot{0%{transform:translateY(-40%) scale(1.15);opacity:0;}60%{opacity:1;}100%{transform:none;opacity:1;}}
+.tile.last .face .mark{position:absolute;inset:0;display:grid;place-items:center;}
 .tile.last .face .ico{width:52%;height:52%;color:#b8860b;stroke-width:2.4;}
 .board.won.pics{--g:0px;transition:--g .7s ease .35s;}
 .board.won.pics .face{border-radius:0;box-shadow:none;}
@@ -592,7 +593,7 @@ body{overflow-x:hidden;}
       mode: '4',
       options: [
         { id: 'style', label: 'Tiles', choices: [['num', 'Numbers'], ['pic', 'Picture']], value: 'num' },
-        { id: 'pic', label: 'Picture', choices: [['meadow', 'Meadow'], ['night', 'Game night'], ['space', 'Space'], ['harbor', 'Harbor']], value: 'meadow' }
+        { id: 'pic', label: 'Picture', choices: [['meadow', 'Meadow'], ['night', 'Games'], ['space', 'Space'], ['harbor', 'Harbor']], value: 'meadow' }
       ],
       start: 'Shuffle and play',
       onStart: function (cfg) { newGame(+cfg.mode || 4, cfg.options.style, cfg.options.pic); }
@@ -934,15 +935,15 @@ body{overflow-x:hidden;}
     var mini = function (a) { return a.slice(); };
     Kit.record(HKEY, {
       started: S.started, mode: name + ' ' + SIZES[n] + (pic ? ' · ' + PIC_NAMES[S.pic] : ''),
-      players: [{ name: 'You', score: S.moves }], winner: S.watched ? null : 'You', lowWins: true,
-      summary: (S.watched ? 'Computer finished · ' : '') + name + ' · ' + S.moves + ' moves · ' + fmt(S.time), badge: name,
+      players: [{ name: 'You', score: S.moves }], winner: null, lowWins: true,
+      summary: (S.watched ? 'Computer solved it' : 'Solved') + ' · ' + name + ' · ' + S.moves + ' moves · ' + fmt(S.time), badge: name,
       highlights: hl.slice(0, 6),
       meta: { size: n, moves: S.moves, seconds: S.time, hints: S.hints, undos: S.undos, watched: S.watched || 0, style: S.style, pic: pic ? S.pic : '', opt: S.opt || 0, start: mini(S.start) }
     });
     clearSave();
     // The missing tile slots in, the board shines
     var last = el('div', { class: 'tile last', style: { '--hr': n - 1, '--hc': n - 1, '--x': n - 1, '--y': n - 1 } },
-      [el('div', { class: 'face' }, [pic ? el('div', { class: 'pic' }) : el('span', { html: Kit.icon('star') })])]);
+      [el('div', { class: 'face' }, [pic ? el('div', { class: 'pic' }) : el('span', { class: 'mark', html: Kit.icon('star') })])]);
     board.appendChild(last);
     Kit.sfx('good'); Kit.haptic('success');
     setTimeout(function () { board.classList.add('won'); well.classList.add('won'); well.appendChild(el('div', { class: 'shine' })); }, 450);
