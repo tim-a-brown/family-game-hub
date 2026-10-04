@@ -1,328 +1,647 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
-<title>Mahjong</title>
-<link rel="stylesheet" href="../shared.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mahjong Tiles</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.mj-wrap{width:100%;max-width:980px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(24px + var(--safe-b)) max(8px,var(--safe-l));}
-.mj-hud{display:flex;gap:8px;margin-bottom:10px;max-width:560px;margin-left:auto;margin-right:auto;}
-.mj-hud .stat{flex:1;max-width:none;padding:6px 8px;}
-.mj-hud .stat-val{font-size:1.25rem;}
-.mj-status{text-align:center;font-size:.9rem;font-weight:600;min-height:22px;margin-bottom:10px;color:var(--text-2);}
-.mj-status.good{color:var(--green);}
-.mj-status.warn{color:#fbbf24;}
-.mj-table{padding:12px 8px;border-radius:var(--r-lg);margin-bottom:12px;
-  background:radial-gradient(120% 90% at 50% 0%,#3a1d1d 0%,#271313 50%,#170b0b 100%);
-  border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 2px 30px rgba(0,0,0,.4);}
-.mj-board{position:relative;margin:0 auto;}
-.mj-tile{position:absolute;border-radius:calc(var(--tw)*.14);display:flex;align-items:center;justify-content:center;cursor:pointer;
-  user-select:none;line-height:1;color:#1a1008;overflow:hidden;
-  background:linear-gradient(150deg,#fffaf0 0%,#f1e6d0 60%,#e2d2b4 100%);
-  border:1px solid rgba(90,60,30,.55);
-  box-shadow:calc(var(--tw)*.08) calc(var(--tw)*.1) 0 #b8946a,calc(var(--tw)*.1) calc(var(--tw)*.13) 0 #7c5a36,calc(var(--tw)*.1) calc(var(--tw)*.16) 6px rgba(0,0,0,.45);
-  transition:filter .12s,transform .12s;}
-.mj-tile span{display:block;font-size:calc(var(--th)*.9);line-height:1;transform:translateY(2%);pointer-events:none;}
-.mj-tile.blocked{filter:brightness(.72) saturate(.75);cursor:default;}
-.mj-tile.selected{background:linear-gradient(150deg,#fff6c8,#f9dc6a);border-color:#b38600;transform:translate(-1px,-2px);}
-.mj-tile.hint{background:linear-gradient(150deg,#e6ffef,#a7f3c4);border-color:#15803d;}
-@media (hover:hover){.mj-tile:not(.blocked):not(.selected):hover{filter:brightness(1.06);}}
-.mj-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-.mj-actions .btn{flex:1;max-width:180px;}
+:root{--tb:#1e7a5b;--tb2:#2a9a74;--cjk:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Noto Serif CJK SC","Source Han Sans SC","WenQuanYi Zen Hei","Microsoft YaHei",serif;}
+body{overflow:hidden;}
+.mjw{display:flex;flex-direction:column;height:calc(100dvh - var(--safe-t) - 58px);max-width:1100px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 4px);}
+.mtab{flex:1;min-height:0;display:flex;border-radius:22px;padding:7px;}
+.mtab .felt-in{flex:1;position:relative;border-radius:16px;overflow:hidden;}
+.vp{position:absolute;inset:0;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.bd{position:absolute;left:0;top:0;transform-origin:0 0;}
+/* Tiles: ivory face, bone layer, green back, built up with stacked shadows */
+.t{position:absolute;left:0;top:0;width:var(--tw);height:var(--th);padding:0;border:0;border-radius:calc(var(--tw) * .13);cursor:pointer;
+  background:linear-gradient(160deg,#fffef8 0%,#f8f1df 55%,#ece2c8 100%);
+  box-shadow:inset 0 0 0 1px rgba(120,95,50,.22), inset 1px -1px 0 rgba(255,255,255,.7),
+    calc(var(--e) * -.3) calc(var(--e) * .3) 0 #e6d9b6, calc(var(--e) * -.55) calc(var(--e) * .55) 0 #d8c69a,
+    calc(var(--e) * -.8) calc(var(--e) * .8) 0 var(--tb2), calc(var(--e) * -1) var(--e) 0 var(--tb),
+    calc(var(--e) * -1 - 1px) calc(var(--e) + 1px) 0 rgba(0,0,0,.3), calc(var(--e) * -1 - 2px) calc(var(--e) + 3px) 6px rgba(0,0,0,.35);
+  transition:filter .2s, transform .18s var(--spring), opacity .25s;}
+.t svg{position:absolute;inset:6% 8%;width:84%;height:88%;overflow:visible;pointer-events:none;}
+.free-hl .t.blk{filter:brightness(.78) saturate(.75);}
+.t.sel{transform:translate(1px,-3px);background:linear-gradient(160deg,#fff8d0,#fde58a 70%,#f5d061);
+  box-shadow:inset 0 0 0 2px #e0a800, 0 0 0 2px rgba(255,216,74,.55), calc(var(--e) * -.3) calc(var(--e) * .3) 0 #e6d9b6, calc(var(--e) * -.55) calc(var(--e) * .55) 0 #d8c69a, calc(var(--e) * -.8) calc(var(--e) * .8) 0 var(--tb2), calc(var(--e) * -1) var(--e) 0 var(--tb), calc(var(--e) * -1 - 2px) calc(var(--e) + 6px) 10px rgba(0,0,0,.45);}
+.t.hint{animation:hintp 1s ease-in-out infinite;background:linear-gradient(160deg,#effff4,#bff2d2);}
+@keyframes hintp{50%{transform:translateY(-3px);}}
+.t.no{animation:nudge .3s;}
+@keyframes nudge{25%{translate:-3px 0;}75%{translate:3px 0;}}
+.t.gone{animation:gone .38s var(--ease) forwards;pointer-events:none;}
+@keyframes gone{0%{transform:none;opacity:1;}35%{transform:translateY(-10px) scale(1.12);opacity:1;}100%{transform:translateY(-26px) scale(.7);opacity:0;}}
+.t.out{display:none;}
+.t.back-in{animation:backin .3s var(--spring);}
+@keyframes backin{from{transform:translateY(-18px) scale(.8);opacity:0;}to{transform:none;opacity:1;}}
+.t.mix{animation:mix .45s ease;}
+@keyframes mix{0%,100%{transform:none;}50%{transform:scaleX(.05);}}
+.fit{position:absolute;right:10px;top:10px;z-index:5;display:none;}
+.fit.on{display:inline-grid;}
+.fit.icon-btn{background:rgba(0,0,0,.35);}
+.tip{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:5;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.4);color:rgba(255,255,255,.85);font-size:.78rem;font-weight:800;white-space:nowrap;pointer-events:none;transition:opacity .4s;}
+.tip.hide{opacity:0;}
+.tip .ico{width:15px;height:15px;margin-right:4px;vertical-align:-3px;}
+/* Bottom bar */
+.sbar{flex:none;display:flex;align-items:center;gap:6px;height:58px;padding:6px 2px 0;}
+.sbar .icon-btn{width:46px;height:46px;}
+.sbar .icon-btn:disabled{opacity:.35;}
+.sbar .stats{flex:1;display:flex;justify-content:center;gap:clamp(10px,4vw,30px);}
+.sbar .st{display:flex;flex-direction:column;align-items:center;line-height:1.1;min-width:42px;}
+.sbar .st b{font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;}
+.sbar .st small{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.sbar .st.warn b{color:var(--orange);}
+.rules .mrow{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0;}
+.rules .mt{position:relative;width:28px;height:37px;border-radius:4px;background:linear-gradient(160deg,#fffef8,#ece2c8);box-shadow:inset 0 0 0 1px rgba(120,95,50,.25), -2px 2px 0 var(--tb);}
+.rules .mt svg{position:absolute;inset:6% 8%;width:84%;height:88%;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mahjong</span>
-  <button class="icon-btn" id="mj-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="mj-wrap">
-<div class="mj-hud">
-  <div class="stat"><div class="stat-val" id="mj-left">144</div><div class="stat-lbl">Tiles left</div></div>
-  <div class="stat"><div class="stat-val" id="mj-score">0</div><div class="stat-lbl">Score</div></div>
-  <div class="stat"><div class="stat-val" id="mj-time">0:00</div><div class="stat-lbl">Time</div></div>
-</div>
-<div class="mj-status" id="mj-status">Match pairs of free tiles to clear the board</div>
-<div class="mj-table" id="mj-table"><div class="mj-board" id="mj-board"></div></div>
-<div class="mj-actions">
-  <button class="btn btn-outline" id="mj-hint">💡 Hint</button>
-  <button class="btn btn-outline" id="mj-undo">↩ Undo</button>
-</div>
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-// Tile types (4 of each = 144 total)
-const TILE_TYPES=[
-  // Characters (man)
-  '🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏',
-  // Bamboo
-  '🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘',
-  // Circles
-  '🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡',
-  // Winds & Dragons
-  '🀀','🀁','🀂','🀃','🀄','🀅','🀆',
-].map((t,i)=>({type:t,id:i}));
-// 144 tiles = 36 types × 4 copies
-// Fallback to text if emoji don't render
-const TILE_TEXT=['🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏','🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘','🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡','🀀','🀁','🀂','🀃','🀄','🀅','🀆','🌸','🍂'];
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'mahjong_state', KEY = 'mahjong';
+  var WIND_CH = ['東', '南', '西', '北'], WIND_EN = ['East', 'South', 'West', 'North'];
+  var NUM_CH = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  var LAYOUTS = { turtle: 'Turtle', pyramid: 'Pyramid', castle: 'Castle', mini: 'Mini' };
 
-// Classic Shanghai turtle — exactly 144 tiles across 5 layers.
-// L0 (84): tapered shell body with 2-tile wings on each side at the middle.
-// L1 (32): 8×4 rectangle centered on the body.
-// L2 (20): 5×4 rectangle.
-// L3 (6):  3×2 rectangle.
-// L4 (2):  apex pair (the turtle's "head").
-function buildLayout(){
-  const pos=[];
-  const add=(c,r,z)=>pos.push({c,r,z});
+  function sample(ks) { return '<span class="mrow">' + ks.map(function (k) { return '<span class="mt">' + faceSVG(k) + '</span>'; }).join('') + '</span>'; }
 
-  // Layer 0 — tapered body + wings
-  const L0=[
-    // Row 0 (top edge, tapered): cols 2–9  (8)
-    [2,0],[3,0],[4,0],[5,0],[6,0],[7,0],[8,0],[9,0],
-    // Row 1: cols 1–10  (10)
-    [1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1],[8,1],[9,1],[10,1],
-    // Row 2: cols 1–10  (10)
-    [1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],[9,2],[10,2],
-    // Row 3: col -1 (left wing) + cols 0–11 + col 12 (right wing)  (14)
-    [-1,3],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[7,3],[8,3],[9,3],[10,3],[11,3],[12,3],
-    // Row 4: col -1 + cols 0–11 + col 12  (14)
-    [-1,4],[0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[6,4],[7,4],[8,4],[9,4],[10,4],[11,4],[12,4],
-    // Row 5: cols 1–10  (10)
-    [1,5],[2,5],[3,5],[4,5],[5,5],[6,5],[7,5],[8,5],[9,5],[10,5],
-    // Row 6: cols 1–10  (10)
-    [1,6],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[8,6],[9,6],[10,6],
-    // Row 7 (bottom edge, tapered): cols 2–9  (8)
-    [2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7],
-  ];
-  L0.forEach(([c,r])=>add(c,r,0));
 
-  // Layer 1 — 8×4 raised back (cols 2–9, rows 2–5)
-  for(let c=2;c<=9;c++) for(let r=2;r<=5;r++) add(c,r,1);
-
-  // Layer 2 — 5×4 upper ridge (cols 3–7, rows 2–5)
-  for(let c=3;c<=7;c++) for(let r=2;r<=5;r++) add(c,r,2);
-
-  // Layer 3 — 3×2 near apex (cols 4–6, rows 3–4)
-  for(let c=4;c<=6;c++) for(let r=3;r<=4;r++) add(c,r,3);
-
-  // Layer 4 — apex pair
-  add(5,3,4); add(5,4,4);
-
-  return pos;
-}
-
-let tiles,sel,score,timer,timerInt,history,hintIds=[],hintT=null;
-let TW=30,TH=40,ZOFF=5,COFF=30,ROFF=40;
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-function fmtTime(t){return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;}
-function startTimer(){
-  clearInterval(timerInt);
-  timerInt=setInterval(()=>{timer++;document.getElementById('mj-time').textContent=fmtTime(timer);},1000);
-  document.getElementById('mj-time').textContent=fmtTime(timer);
-}
-function setStatus(msg,cls=''){const el=document.getElementById('mj-status');el.className='mj-status'+(cls?' '+cls:'');el.textContent=msg;}
-
-function newGame(){
-  const layout=buildLayout();
-  // Assign tile types (ensure pairs)
-  const typePool=[];
-  for(let i=0;i<36;i++)for(let j=0;j<4;j++)typePool.push(i);
-  // Shuffle
-  for(let i=typePool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[typePool[i],typePool[j]]=[typePool[j],typePool[i]];}
-  tiles=layout.map((pos,i)=>({...pos,type:typePool[i],removed:false,id:i}));
-  sel=null;score=0;history=[];hintIds=[];
-  timer=0;startTimer();
-  updateStats();
-  setStatus('Match pairs of free tiles to clear the board');
-  render();
-}
-async function confirmNew(){
-  const left=tiles?tiles.filter(t=>!t.removed).length:0;
-  if(left>0&&left<144&&window.GN){
-    const ok=await GN.confirm('Your current board will be lost.',{title:'Start a new game?',ok:'New Game'});
-    if(!ok)return;
+  // ── Tile kinds ────────────────────────────────────────────────────────────
+  // 0-8 Characters, 9-17 Dots, 18-26 Bamboo, 27-30 Winds E S W N,
+  // 31-33 Dragons red/green/white, 34-37 Flowers, 38-41 Seasons.
+  function suit(k) { return k < 9 ? 0 : k < 18 ? 1 : k < 27 ? 2 : k < 31 ? 3 : k < 34 ? 4 : 5; }
+  function num(k) { return k % 9 + 1; }
+  function group(k) { return k < 34 ? k : k < 38 ? 34 : 38; }   // flowers match flowers, seasons match seasons
+  var FLOWER = [['梅', 'Plum', '#d6336c'], ['蘭', 'Orchid', '#8e44ad'], ['菊', 'Chrysanthemum', '#e08a00'], ['竹', 'Bamboo', '#12804a']];
+  var SEASON = [['春', 'Spring', '#2f9e44'], ['夏', 'Summer', '#d9480f'], ['秋', 'Autumn', '#b8860b'], ['冬', 'Winter', '#1c63c7']];
+  function kname(k) {
+    var s = suit(k);
+    if (s < 3) return num(k) + ' ' + ['Characters', 'Dots', 'Bamboo'][s];
+    if (s === 3) return WIND_EN[k - 27] + ' Wind';
+    if (s === 4) return ['Red', 'Green', 'White'][k - 31] + ' Dragon';
+    return k < 38 ? FLOWER[k - 34][1] + ' (Flower)' : SEASON[k - 38][1] + ' (Season)';
   }
-  try{sessionStorage.removeItem('mahjong');}catch(e){}
-  newGame();
-}
+  function gname(k) { var g = group(k); return g === 34 ? 'Flowers' : g === 38 ? 'Seasons' : kname(k) + 's'; }
+  // Flowers and seasons: a small blossom or emblem, the character, and its number
+  function bonusSVG(k) {
+    var fl = k < 38, d = fl ? FLOWER[k - 34] : SEASON[k - 38], c = d[2], i = (k - 34) % 4, b = '';
+    var font = 'font-family=\'PingFang SC,Hiragino Sans GB,Noto Sans CJK SC,Noto Serif CJK SC,WenQuanYi Zen Hei,Microsoft YaHei,serif\' font-weight=\'700\' text-anchor=\'middle\'';
+    if (fl) {
+      for (var a = 0; a < 5; a++) { var t = a * Math.PI * 2 / 5 - Math.PI / 2; b += '<circle cx="' + (15 + Math.cos(t) * 5.2).toFixed(2) + '" cy="' + (13 + Math.sin(t) * 5.2).toFixed(2) + '" r="3.9" fill="' + c + '" opacity=".9"/>'; }
+      b += '<circle cx="15" cy="13" r="2.6" fill="#ffd43b"/><path d="M15 19 C15 23 13 24 11 26" stroke="#2f7d32" stroke-width="1.3" fill="none"/><path d="M13 23 c-3 -1 -4 0 -5 1 c2 1 4 1 5 -1z" fill="#2f7d32"/>';
+      b += '<text x="15" y="37" font-size="11" fill="#1b2552" ' + font + '>' + d[0] + '</text>';
+    } else {
+      b += '<circle cx="15" cy="12" r="8.5" fill="none" stroke="' + c + '" stroke-width="1.6"/>';
+      b += '<text x="15" y="16.2" font-size="11.5" fill="' + c + '" ' + font + '>' + d[0] + '</text>';
+      for (var j = 0; j < 4; j++) b += '<circle cx="' + (7.5 + j * 5) + '" cy="27" r="1.5" fill="' + (j === i ? c : '#d8cfb8') + '"/>';
+      b += '<text x="15" y="38" font-size="7" fill="#1b2552" font-family="system-ui,sans-serif" font-weight="800" text-anchor="middle">' + d[1].toUpperCase() + '</text>';
+    }
+    b += '<text x="26.5" y="7" font-size="7" fill="#c8282b" font-family="system-ui,sans-serif" font-weight="900" text-anchor="middle">' + (i + 1) + '</text>';
+    return '<svg viewBox="0 0 30 40" aria-hidden="true">' + b + '</svg>';
+  }
+  var B = '#1d4fa5', G = '#12804a', R = '#c8282b', INK = '#1b2552';
+  function dot(x, y, r, c) {
+    return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c + '"/><circle cx="' + x + '" cy="' + y + '" r="' + (r * .66) + '" fill="#fffdf4"/><circle cx="' + x + '" cy="' + y + '" r="' + (r * .46) + '" fill="' + c + '"/><circle cx="' + (x - r * .15) + '" cy="' + (y - r * .15) + '" r="' + (r * .14) + '" fill="#fffdf4"/>';
+  }
+  function stick(x, y, h, c, w) {
+    w = w || 4;
+    var s = '<rect x="' + (x - w / 2) + '" y="' + (y - h / 2) + '" width="' + w + '" height="' + h + '" rx="' + (w / 2) + '" fill="' + c + '"/>';
+    s += '<rect x="' + (x - w / 2 - .4) + '" y="' + (y - .7) + '" width="' + (w + .8) + '" height="1.4" rx=".7" fill="' + c + '" stroke="#fffdf4" stroke-width=".5"/>';
+    s += '<rect x="' + (x - .5) + '" y="' + (y - h / 2 + 1.5) + '" width="1" height="' + (h - 3) + '" fill="rgba(255,255,255,.45)"/>';
+    return s;
+  }
+  var SVG = {};
+  function faceSVG(k) {
+    if (SVG[k]) return SVG[k];
+    if (k >= 34) return (SVG[k] = bonusSVG(k));
+    var s = suit(k), n = num(k), b = '';
+    var font = 'font-family=\'PingFang SC,Hiragino Sans GB,Noto Sans CJK SC,Noto Serif CJK SC,WenQuanYi Zen Hei,Microsoft YaHei,serif\' font-weight=\'700\' text-anchor=\'middle\'';
+    if (s === 0) {
+      b += '<text x="15" y="17.5" font-size="15" fill="' + INK + '" ' + font + '>' + NUM_CH[n - 1] + '</text>';
+      b += '<text x="15" y="36" font-size="15" fill="' + R + '" ' + font + '>萬</text>';
+      b += '<text x="2.6" y="7" font-size="7" fill="' + INK + '" font-family="system-ui,sans-serif" font-weight="800">' + n + '</text>';
+    } else if (s === 1) {
+      var L = {
+        1: [[15, 20, 11, 'x']],
+        2: [[15, 10.5, 6, G], [15, 29.5, 6, B]],
+        3: [[7.5, 8, 5.2, B], [15, 20, 5.2, R], [22.5, 32, 5.2, G]],
+        4: [[8.5, 10.5, 5.6, B], [21.5, 10.5, 5.6, G], [8.5, 29.5, 5.6, G], [21.5, 29.5, 5.6, B]],
+        5: [[8, 8.5, 5, B], [22, 8.5, 5, G], [15, 20, 5, R], [8, 31.5, 5, G], [22, 31.5, 5, B]],
+        6: [[9, 7.5, 4.6, G], [21, 7.5, 4.6, G], [9, 20, 4.6, R], [21, 20, 4.6, R], [9, 32.5, 4.6, R], [21, 32.5, 4.6, R]],
+        7: [[6.5, 6, 3.9, G], [15, 10, 3.9, G], [23.5, 14, 3.9, G], [9, 24, 4.1, R], [21, 24, 4.1, R], [9, 33.5, 4.1, R], [21, 33.5, 4.1, R]],
+        8: [[9, 5.5, 3.9, B], [21, 5.5, 3.9, B], [9, 15.2, 3.9, B], [21, 15.2, 3.9, B], [9, 24.8, 3.9, B], [21, 24.8, 3.9, B], [9, 34.5, 3.9, B], [21, 34.5, 3.9, B]],
+        9: [[7, 7, 4, B], [15, 7, 4, B], [23, 7, 4, B], [7, 20, 4, R], [15, 20, 4, R], [23, 20, 4, R], [7, 33, 4, G], [15, 33, 4, G], [23, 33, 4, G]]
+      }[n];
+      L.forEach(function (d) {
+        if (d[3] === 'x') {
+          b += '<circle cx="15" cy="20" r="12" fill="' + G + '"/><circle cx="15" cy="20" r="10" fill="#fffdf4"/><circle cx="15" cy="20" r="8.6" fill="' + B + '"/><circle cx="15" cy="20" r="6.2" fill="#fffdf4"/><circle cx="15" cy="20" r="4.6" fill="' + R + '"/><circle cx="15" cy="20" r="1.8" fill="#fffdf4"/>';
+          for (var a = 0; a < 8; a++) { var t = a * Math.PI / 4; b += '<circle cx="' + (15 + Math.cos(t) * 7.4).toFixed(2) + '" cy="' + (20 + Math.sin(t) * 7.4).toFixed(2) + '" r=".9" fill="' + G + '"/>'; }
+        } else b += dot(d[0], d[1], d[2], d[3]);
+      });
+    } else if (s === 2) {
+      var P = {
+        2: [[15, 11, 15, G], [15, 29, 15, B]],
+        3: [[15, 11, 15, G], [9, 29, 15, B], [21, 29, 15, B]],
+        4: [[9, 11, 15, G], [21, 11, 15, B], [9, 29, 15, B], [21, 29, 15, G]],
+        5: [[7, 11, 15, G], [23, 11, 15, B], [15, 20, 15, R], [7, 29, 15, B], [23, 29, 15, G]],
+        6: [[7, 11, 15, G], [15, 11, 15, G], [23, 11, 15, G], [7, 29, 15, B], [15, 29, 15, B], [23, 29, 15, B]],
+        7: [[15, 7, 10, R], [7, 20, 10, G], [15, 20, 10, G], [23, 20, 10, G], [7, 33, 10, B], [15, 33, 10, B], [23, 33, 10, B]],
+        8: [[5.5, 11, 15, G], [12, 11, 15, G], [18, 11, 15, G], [24.5, 11, 15, G], [5.5, 29, 15, B], [12, 29, 15, B], [18, 29, 15, B], [24.5, 29, 15, B]],
+        9: [[7, 7, 10, G], [15, 7, 10, R], [23, 7, 10, B], [7, 20, 10, G], [15, 20, 10, R], [23, 20, 10, B], [7, 33, 10, G], [15, 33, 10, R], [23, 33, 10, B]]
+      }[n];
+      if (n === 1) {
+        b += stick(15, 21, 28, G, 6) + '<path d="M15 9 C9 6 6 8 4 12 C9 12 12 11 15 9z" fill="' + G + '"/><path d="M15 9 C21 6 24 8 26 12 C21 12 18 11 15 9z" fill="' + G + '"/><circle cx="15" cy="7" r="2.6" fill="' + R + '"/>';
+      } else P.forEach(function (p) { b += stick(p[0], p[1], p[2], p[3], n === 8 ? 3.4 : 4); });
+    } else if (s === 3) {
+      b += '<text x="15" y="29" font-size="22" fill="' + INK + '" ' + font + '>' + WIND_CH[k - 27] + '</text>';
+      b += '<text x="2.6" y="7" font-size="7" fill="' + INK + '" font-family="system-ui,sans-serif" font-weight="800">' + 'ESWN'[k - 27] + '</text>';
+    } else {
+      if (k === 31) b += '<text x="15" y="29.5" font-size="24" fill="' + R + '" ' + font + '>中</text>';
+      else if (k === 32) b += '<text x="15" y="29.5" font-size="23" fill="' + G + '" ' + font + '>發</text>';
+      else b += '<rect x="6" y="6" width="18" height="28" rx="2" fill="none" stroke="' + B + '" stroke-width="2.2"/><rect x="9" y="9" width="12" height="22" rx="1" fill="none" stroke="' + B + '" stroke-width=".9"/>';
+    }
+    SVG[k] = '<svg viewBox="0 0 30 40" aria-hidden="true">' + b + '</svg>';
+    return SVG[k];
+  }
 
-function isFree(tile){
-  const t=tile;
-  // Blocked if a tile sits directly above on the next layer (same c, r).
-  const blocked=tiles.some(o=>
-    !o.removed && o.id!==t.id && o.z===t.z+1 &&
-    o.c===t.c && o.r===t.r);
-  if(blocked)return false;
-  // Free if at least one full long edge is exposed — i.e. no same-layer
-  // neighbor directly to the left OR directly to the right.
-  const hasLeft =tiles.some(o=>!o.removed && o.id!==t.id && o.z===t.z && o.c===t.c-1 && o.r===t.r);
-  const hasRight=tiles.some(o=>!o.removed && o.id!==t.id && o.z===t.z && o.c===t.c+1 && o.r===t.r);
-  return !(hasLeft && hasRight);
-}
+  // ── Layouts (half-tile grid: x, y in halves; a tile covers 2×2) ──────────
+  function rect(out, x0, x1, y0, y1, z) { for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) out.push({ x: x * 2, y: y * 2, z: z }); }
+  function buildLayout(name) {
+    var p = [];
+    if (name === 'turtle') {
+      [[0, 1, 12], [1, 3, 10], [2, 2, 11], [3, 1, 12], [4, 1, 12], [5, 2, 11], [6, 3, 10], [7, 1, 12]].forEach(function (r) { rect(p, r[1], r[2], r[0], r[0], 0); });
+      p.push({ x: 0, y: 7, z: 0 }, { x: 26, y: 7, z: 0 }, { x: 28, y: 7, z: 0 });
+      rect(p, 4, 9, 1, 6, 1); rect(p, 5, 8, 2, 5, 2); rect(p, 6, 7, 3, 4, 3);
+      p.push({ x: 13, y: 7, z: 4 });
+    } else if (name === 'pyramid') {
+      rect(p, 0, 7, 0, 7, 0); rect(p, 1, 6, 1, 6, 1); rect(p, 2, 5, 2, 5, 2); rect(p, 3, 4, 3, 4, 3);
+    } else if (name === 'castle') {
+      rect(p, 0, 9, 0, 5, 0);
+      [[0, 0], [8, 0], [0, 4], [8, 4]].forEach(function (c) { rect(p, c[0], c[0] + 1, c[1], c[1] + 1, 1); p.push({ x: c[0] * 2 + 1, y: c[1] * 2 + 1, z: 2 }); });
+      rect(p, 3, 6, 2, 3, 1);
+    } else {
+      rect(p, 0, 5, 0, 4, 0); rect(p, 1, 4, 1, 3, 1); rect(p, 2, 3, 2, 2, 2);
+    }
+    return p;
+  }
+  // Neighbour lists: tiles resting on top, and tiles touching the left / right side
+  function links(pos) {
+    return pos.map(function (a, i) {
+      var L = { up: [], l: [], r: [] };
+      pos.forEach(function (b, j) {
+        if (i === j) return;
+        var dx = b.x - a.x, dy = Math.abs(b.y - a.y);
+        if (b.z === a.z + 1 && Math.abs(dx) < 2 && dy < 2) L.up.push(j);
+        if (b.z === a.z && dy < 2) { if (dx === -2) L.l.push(j); if (dx === 2) L.r.push(j); }
+      });
+      return L;
+    });
+  }
+  function isFree(i, gone, LK) {
+    if (gone[i]) return false;
+    var l = LK[i];
+    function clear(arr) { for (var j = 0; j < arr.length; j++) if (!gone[arr[j]]) return false; return true; }
+    return clear(l.up) && (clear(l.l) || clear(l.r));
+  }
 
-function updateStats(){
-  document.getElementById('mj-left').textContent=tiles.filter(t=>!t.removed).length;
-  document.getElementById('mj-score').textContent=score;
-}
+  // ── Solvable deals: play the game backwards ───────────────────────────────
+  // Remove random pairs of free tiles from the full layout until it is empty,
+  // then give each removed pair matching faces. Playing those pairs forward in
+  // the opposite order always works, so every deal can be cleared.
+  function removalOrder(idx, LK, n) {
+    for (var tries = 0; tries < 400; tries++) {
+      var gone = []; for (var i = 0; i < n; i++) gone.push(true);
+      idx.forEach(function (i) { gone[i] = false; });
+      var left = idx.length, order = [], ok = true;
+      while (left) {
+        var free = idx.filter(function (i) { return isFree(i, gone, LK); });
+        if (free.length < 2) { ok = false; break; }
+        // Prefer high tiles and tiles that free others, so stacks are not stranded
+        var w = free.map(function (i) { return 1 + POS[i].z * 3 + LK[i].up.length; });
+        var a = wpick(free, w), rest = free.filter(function (i) { return i !== a; });
+        var b = wpick(rest, rest.map(function (i) { return 1 + POS[i].z * 3; }));
+        gone[a] = gone[b] = true; left -= 2; order.push([a, b]);
+      }
+      if (ok) return order;
+    }
+    return null;
+  }
+  function wpick(arr, w) {
+    var tot = w.reduce(function (s, x) { return s + x; }, 0), r = Math.random() * tot;
+    for (var i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; }
+    return arr[arr.length - 1];
+  }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  // Pairs of faces for n tiles: whole sets of four where possible (like a real set)
+  function facePairs(n) {
+    var groups = [];
+    for (var k = 0; k < 34; k++) groups.push([[k, k], [k, k]]);
+    var f = shuffle([34, 35, 36, 37]), s = shuffle([38, 39, 40, 41]);
+    groups.push([[f[0], f[1]], [f[2], f[3]]], [[s[0], s[1]], [s[2], s[3]]]);
+    shuffle(groups);
+    var pairs = [];
+    for (var g = 0; pairs.length < n / 2; g++) { pairs.push(groups[g][0]); if (pairs.length < n / 2) pairs.push(groups[g][1]); }
+    return shuffle(pairs);
+  }
 
-function clickTile(id){
-  const tile=tiles.find(t=>t.id===id);
-  if(!tile||tile.removed)return;
-  if(!isFree(tile)){hap('error');return;}
-  clearHint();
-  if(sel===null){sel=id;hap('select');render();return;}
-  if(sel===id){sel=null;render();return;}
-  const other=tiles.find(t=>t.id===sel);
-  if(tile.type===other.type){
-    // Match!
-    history.push([sel,id]);
-    tile.removed=true;other.removed=true;
-    score+=10;sel=null;
-    hap('medium');
-    render();
-    updateStats();
-    const left=tiles.filter(t=>!t.removed).length;
-    if(left===0){clearInterval(timerInt);setStatus('🎉 You cleared the board! Score: '+score,'good');showWin();}
-    else if(!hasAnyMove()){setStatus('No more moves!','warn');showStuck();}
-  } else {sel=id;hap('select');render();}
-}
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S.k[i] face of tile i, S.gone[i] removed. U = undo stack of {k, gone}.
+  var S = null, U = [], POS = [], LK = [], sel = -1, hintIds = [], hintT = 0, tickT = 0, busy = false;
+  function dimOn() { try { return localStorage.getItem('mahjong_dim') !== '0'; } catch (e) { return true; } }
+  function setDim(on) { try { localStorage.setItem('mahjong_dim', on ? '1' : '0'); } catch (e) {} if (bd) bd.classList.toggle('free-hl', on); Kit.toast(on ? 'Blocked tiles are dimmed' : 'All tiles look the same'); }
+  function save() {
+    if (!S || S.done) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U.slice(-120) })); } catch (e) {}
+    Kit.resume.set(LAYOUTS[S.layout] + ' · ' + left() + ' tiles left');
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function left() { var n = 0; for (var i = 0; i < S.gone.length; i++) if (!S.gone[i]) n++; return n; }
+  function snapshot() { U.push({ k: S.k.slice(), gone: S.gone.slice(), pairs: S.pairs.length }); }
 
-function hasAnyMove(){
-  const free=tiles.filter(t=>!t.removed&&isFree(t));
-  for(let i=0;i<free.length;i++)for(let j=i+1;j<free.length;j++)if(free[i].type===free[j].type)return true;
-  return false;
-}
+  function showSetup() {
+    stopTick(); busy = false; app.className = 'stage';
+    Kit.setup(app, {
+      intro: 'Match pairs of free tiles until the table is clear',
+      players: { min: 1, max: 1, names: true, label: 'Who is playing?' },
+      options: [{ id: 'layout', label: 'Layout', value: 'turtle', choices: [['turtle', 'Turtle'], ['pyramid', 'Pyramid'], ['castle', 'Castle'], ['mini', 'Mini']] }],
+      start: 'Deal the tiles',
+      onStart: function (cfg) { newGame(cfg.options.layout, (cfg.players[0] && cfg.players[0].name) || 'You'); }
+    });
+    var lab = app.querySelector('.setup .stack .label');
+    if (lab) lab.after(el('div', { class: 'dim', style: { 'font-size': '.82rem', 'margin-top': '6px' }, text: 'Turtle 144 tiles (the classic) · Pyramid 120 · Castle 88 · Mini 44 (quick, bigger tiles)' }));
+  }
 
-function clearHint(){clearTimeout(hintT);if(hintIds.length){hintIds=[];}}
-function hint(){
-  const free=tiles.filter(t=>!t.removed&&isFree(t));
-  for(let i=0;i<free.length;i++)for(let j=i+1;j<free.length;j++){
-    if(free[i].type===free[j].type){
-      sel=null;hintIds=[free[i].id,free[j].id];hap('light');render();
-      clearTimeout(hintT);hintT=setTimeout(()=>{hintIds=[];render();},1800);
+  function newGame(layout, name) {
+    if (!LAYOUTS[layout]) layout = 'turtle';
+    var pos = buildLayout(layout), lk = links(pos);
+    POS = pos; LK = lk;
+    var idx = pos.map(function (_, i) { return i; }), order = removalOrder(idx, lk, pos.length);
+    var k = pos.map(function () { return 0; }), pairs = facePairs(pos.length);
+    order.forEach(function (pr, i) { var f = Math.random() < .5 ? pairs[i] : [pairs[i][1], pairs[i][0]]; k[pr[0]] = f[0]; k[pr[1]] = f[1]; });
+    S = { layout: layout, name: name, k: k, gone: pos.map(function () { return false; }), pairs: [], time: 0, hints: 0, shuffles: 0, undos: 0, started: Date.now(), done: false, init: k.slice() };
+    U = []; sel = -1; hintIds = [];
+    Kit.gameStart();
+    build(true); save();
+    Kit.sfx('deal');
+  }
+  function restart() {
+    if (!S || S.done) return;
+    snapshot();
+    S.k = S.init.slice(); S.gone = S.gone.map(function () { return false; }); S.pairs = [];
+    sel = -1; clearHint(); Kit.sfx('whoosh'); Kit.toast('Back to the start of this deal');
+    paint(true); save();
+  }
+
+  // ── Play ──────────────────────────────────────────────────────────────────
+  function freePairs() {
+    var free = [], out = [];
+    for (var i = 0; i < POS.length; i++) if (isFree(i, S.gone, LK)) free.push(i);
+    for (var a = 0; a < free.length; a++) for (var b = a + 1; b < free.length; b++) if (group(S.k[free[a]]) === group(S.k[free[b]])) out.push([free[a], free[b]]);
+    return out;
+  }
+  function tap(i) {
+    if (!S || S.done || busy || S.gone[i]) return;
+    startTick();
+    var t = tiles[i];
+    if (!isFree(i, S.gone, LK)) {
+      Kit.sfx('bad'); Kit.haptic('error');
+      t.classList.remove('no'); void t.offsetWidth; t.classList.add('no');
+      if (!S.blockedTip) { S.blockedTip = true; Kit.toast('That tile is blocked. A tile is free when nothing is on top and its left or right side is open.', 3200); }
       return;
     }
+    clearHint();
+    if (sel < 0) { sel = i; Kit.sfx('tap'); Kit.haptic('light'); paint(); return; }
+    if (sel === i) { sel = -1; Kit.sfx('tap'); paint(); return; }
+    if (group(S.k[sel]) !== group(S.k[i])) { sel = i; Kit.sfx('tap'); Kit.haptic('light'); paint(); return; }
+    // Match
+    snapshot();
+    var a = sel, b = i; sel = -1;
+    S.gone[a] = S.gone[b] = true; S.pairs.push([a, b, S.k[a]]);
+    [a, b].forEach(function (j) { tiles[j].classList.remove('sel', 'hint'); tiles[j].classList.add('gone'); });
+    Kit.sfx('pop'); Kit.haptic('medium');
+    var n = left();
+    if (n && n % 24 === 0 && n < POS.length) Kit.callout(n + ' to go');
+    setTimeout(function () { [a, b].forEach(function (j) { if (S.gone[j]) { tiles[j].classList.add('out'); tiles[j].classList.remove('gone'); } }); }, 400);
+    paint();
+    if (!n) return finish(true);
+    save();
+    if (!freePairs().length) setTimeout(stuck, 500);
   }
-  setStatus('No moves available!','warn');hap('error');
-}
+  function undo() {
+    if (!S || S.done || !U.length) { Kit.toast('Nothing to undo'); return; }
+    var u = U.pop(), back = [];
+    for (var i = 0; i < POS.length; i++) if (S.gone[i] && !u.gone[i]) back.push(i);
+    var faces = u.k.some(function (v, i) { return v !== S.k[i]; });
+    S.k = u.k; S.gone = u.gone; S.pairs.length = u.pairs; S.undos++;
+    sel = -1; clearHint();
+    if (faces) tiles.forEach(function (t, i) { t.innerHTML = faceSVG(S.k[i]); t.setAttribute('aria-label', kname(S.k[i])); });
+    back.forEach(function (j) { var t = tiles[j]; t.classList.remove('out', 'gone'); t.classList.remove('back-in'); void t.offsetWidth; t.classList.add('back-in'); });
+    Kit.sfx('flip'); Kit.haptic('light');
+    paint(); save();
+  }
+  function clearHint() { clearTimeout(hintT); if (hintIds.length) { hintIds.forEach(function (j) { if (tiles[j]) tiles[j].classList.remove('hint'); }); hintIds = []; } }
+  function hint() {
+    if (!S || S.done) return;
+    var fp = freePairs();
+    if (!fp.length) { stuck(); return; }
+    clearHint(); sel = -1;
+    // Prefer a pair whose removal opens up the most tiles
+    fp.sort(function (p, q) { return opens(q) - opens(p); });
+    hintIds = fp[Math.random() < .7 ? 0 : Math.floor(Math.random() * fp.length)];
+    S.hints++; startTick();
+    hintIds.forEach(function (j) { tiles[j].classList.add('hint'); });
+    Kit.sfx('pop'); paint(); save();
+    hintT = setTimeout(clearHint, 2600);
+  }
+  function opens(p) {
+    var g = S.gone.slice(), before = 0, after = 0, i;
+    for (i = 0; i < POS.length; i++) if (isFree(i, g, LK)) before++;
+    g[p[0]] = g[p[1]] = true;
+    for (i = 0; i < POS.length; i++) if (isFree(i, g, LK)) after++;
+    return after - before + (POS[p[0]].z + POS[p[1]].z) * .5;
+  }
+  // Re-deal the faces of the tiles still on the table, keeping it solvable
+  function reshuffle() {
+    var idx = []; for (var i = 0; i < POS.length; i++) if (!S.gone[i]) idx.push(i);
+    var byG = {};
+    idx.forEach(function (i) { var g = group(S.k[i]); (byG[g] = byG[g] || []).push(S.k[i]); });
+    var pairs = [];
+    Object.keys(byG).forEach(function (g) { var a = shuffle(byG[g]); for (var j = 0; j + 1 < a.length; j += 2) pairs.push([a[j], a[j + 1]]); });
+    shuffle(pairs);
+    var order = removalOrder(idx, LK, POS.length);
+    if (order) order.forEach(function (pr, j) { S.k[pr[0]] = pairs[j][0]; S.k[pr[1]] = pairs[j][1]; });
+    else { var flat = shuffle([].concat.apply([], pairs)); idx.forEach(function (i, j) { S.k[i] = flat[j]; }); }
+    return !!order;
+  }
+  function shuffleAsk() {
+    if (!S || S.done) return;
+    Kit.confirm('Shuffle the tiles?', { ok: 'Shuffle', body: 'The tiles left on the table swap places. The new layout can always be cleared.' }).then(function (ok) { if (ok) doShuffle(); });
+  }
+  function doShuffle() {
+    snapshot(); S.shuffles++; sel = -1; clearHint();
+    var ok = reshuffle();
+    tiles.forEach(function (t, i) {
+      if (S.gone[i]) return;
+      t.classList.remove('mix'); void t.offsetWidth; t.classList.add('mix');
+      setTimeout(function () { t.innerHTML = faceSVG(S.k[i]); t.setAttribute('aria-label', kname(S.k[i])); }, 220);
+    });
+    Kit.sfx('roll'); Kit.haptic('medium');
+    if (!ok) Kit.toast('These last tiles are stacked in a way that cannot be cleared. Try Undo.', 3200);
+    setTimeout(function () { paint(); save(); if (!freePairs().length) stuck(); }, 480);
+  }
+  var stuckOpen = false;
+  function stuck() {
+    if (!S || S.done || stuckOpen || freePairs().length) return;
+    stuckOpen = true;
+    Kit.sfx('bad'); Kit.haptic('error');
+    Kit.sheet({
+      title: 'No more matches', html: '<p class="muted">' + left() + ' tiles are left, but no two free tiles match. Take back a move, or shuffle the tiles that are left.</p>',
+      onClose: function () { stuckOpen = false; },
+      actions: [
+        { label: 'Shuffle the tiles', primary: true, onClick: doShuffle },
+        { label: 'Undo last pair', onClick: undo },
+        { label: 'End this game', cls: 'btn-ghost', onClick: function () { finish(false); } }
+      ]
+    });
+  }
 
-function undo(){
-  if(!history.length){hap('error');return;}
-  const[a,b]=history.pop();
-  tiles.find(t=>t.id===a).removed=false;
-  tiles.find(t=>t.id===b).removed=false;
-  score=Math.max(0,score-10);sel=null;clearHint();
-  updateStats();
-  setStatus('Match pairs of free tiles to clear the board');
-  hap('light');
-  render();
-}
+  // ── Finish & history ──────────────────────────────────────────────────────
+  function fmt(t) { t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
+  function finish(won) {
+    stopTick(); S.done = true; busy = true;
+    var name = S.name || 'You', lay = LAYOUTS[S.layout], cleared = POS.length - left();
+    var past = []; try { past = GameHistory.load(KEY); } catch (e) {}
+    var best = past.filter(function (e) { return e.won && e.layout === S.layout && e.time; }).map(function (e) { return e.time; });
+    var bestT = best.length ? Math.min.apply(null, best) : 0;
+    var hl = [];
+    if (won) {
+      hl.push(name + ' cleared the ' + lay + ' in ' + fmt(S.time));
+      if (!best.length) hl.push('First time clearing the ' + lay);
+      else if (S.time < bestT) hl.push('New best ' + lay + ' time (old best ' + fmt(bestT) + ')');
+      var last = S.pairs[S.pairs.length - 1]; if (last) hl.push('Last pair: ' + gname(last[2]));
+    } else hl.push(name + ' got stuck with ' + left() + ' of ' + POS.length + ' tiles left');
+    hl.push(S.hints ? 'Used ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : 'No hints used');
+    if (S.shuffles) hl.push('Shuffled ' + S.shuffles + (S.shuffles === 1 ? ' time' : ' times'));
+    if (won && !S.undos && !S.shuffles) hl.push('Cleared without a single undo or shuffle');
+    else if (S.undos >= 5) hl.push('Took back ' + S.undos + ' moves along the way');
+    Kit.record(KEY, {
+      started: S.started, mode: lay + (won ? '' : ' · stuck'),
+      players: [{ name: name, score: cleared }], winner: won ? name : null,
+      summary: won ? 'Cleared in ' + fmt(S.time) : 'Stuck · ' + left() + ' tiles left', badge: won ? fmt(S.time) : left() + ' left',
+      highlights: hl.slice(0, 6), meta: { layout: S.layout, won: won, time: S.time, left: left(), hints: S.hints, shuffles: S.shuffles }
+    });
+    clearSave(); updBar();
+    var layout = S.layout, nm = S.name;
+    setTimeout(function () {
+      Kit.win({
+        lose: !won, title: won ? 'Table cleared!' : 'Out of moves',
+        sub: won ? lay + ' in ' + fmt(S.time) + (best.length && S.time < bestT ? ' · new best!' : '') : cleared + ' of ' + POS.length + ' tiles cleared',
+        again: function () { newGame(layout, nm); }, againLabel: 'Deal again',
+        extra: [{ label: 'Change layout', onClick: showSetup }]
+      });
+    }, won ? 500 : 200);
+  }
 
-// Re-deal the faces of the remaining tiles (same tile set, new positions)
-function shuffleRemaining(){
-  const rest=tiles.filter(t=>!t.removed);
-  const types=rest.map(t=>t.type);
-  for(let i=types.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
-  rest.forEach((t,i)=>t.type=types[i]);
-  history=[];sel=null;clearHint();
-  setStatus('Tiles shuffled');
-  render();
-  if(!hasAnyMove()){setStatus('Still stuck — shuffle again?','warn');showStuck();}
-}
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  function startTick() { if (tickT || !S || S.done) return; tickT = setInterval(function () { if (document.visibilityState !== 'visible') return; S.time++; updBar(); if (S.time % 10 === 0) save(); }, 1000); }
+  function stopTick() { clearInterval(tickT); tickT = 0; }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && S && !S.done) save(); });
 
-function showWin(){
-  hap('success');
-  setTimeout(()=>GN.sheet({title:'Board cleared!',body:`<div style="font-size:2.4rem;margin-bottom:4px">🀄</div>Score <b>${score}</b> · Time <b>${fmtTime(timer)}</b>`,
-    actions:[{label:'Play Again',primary:true,onClick:()=>{try{sessionStorage.removeItem('mahjong');}catch(e){}newGame();}},{label:'Close'}]}),300);
-}
-function showStuck(){
-  hap('error');
-  const left=tiles.filter(t=>!t.removed).length;
-  setTimeout(()=>GN.sheet({title:'No more moves',body:`${left} tiles left. Undo, shuffle the remaining tiles, or start fresh.`,
-    actions:[{label:'Shuffle tiles',primary:true,onClick:shuffleRemaining},{label:'↩ Undo last pair',onClick:undo},
-      {label:'New Game',onClick:()=>{try{sessionStorage.removeItem('mahjong');}catch(e){}newGame();}}]}),300);
-}
+  // ── Board ─────────────────────────────────────────────────────────────────
+  var vp, bd, tiles = [], bar = {}, Z = { s: 1, x: 0, y: 0 }, fitBtn, tipEl;
+  function build(fresh) {
+    app.className = 'mjw'; app.innerHTML = '';
+    vp = el('div', { class: 'vp' }); bd = el('div', { class: 'bd' + (dimOn() ? ' free-hl' : '') });
+    vp.appendChild(bd);
+    fitBtn = el('button', { type: 'button', class: 'icon-btn fit', 'aria-label': 'Fit the board', html: Kit.icon('search'), onclick: function () { setZoom(1, 0, 0, true); } });
+    tipEl = el('div', { class: 'tip hide', html: Kit.icon('hand') + 'Pinch to zoom in' });
+    var felt = el('div', { class: 'felt-in' }, [vp, fitBtn, tipEl]);
+    app.appendChild(el('div', { class: 'mtab wood' }, [felt]));
+    bar.undo = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: undo });
+    bar.hint = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Hint', html: Kit.icon('lightbulb'), onclick: hint });
+    bar.shuf = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Shuffle', html: Kit.icon('shuffle'), onclick: shuffleAsk });
+    bar.left = el('b'); bar.moves = el('b'); bar.time = el('b');
+    bar.mv = el('div', { class: 'st' }, [bar.moves, el('small', { text: 'Matches' })]);
+    app.appendChild(el('div', { class: 'sbar' }, [bar.undo,
+      el('div', { class: 'stats' }, [el('div', { class: 'st' }, [bar.left, el('small', { text: 'Tiles' })]), bar.mv, el('div', { class: 'st' }, [bar.time, el('small', { text: 'Time' })])]),
+      bar.hint, bar.shuf]));
+    tiles = POS.map(function (p, i) {
+      var t = el('button', { type: 'button', class: 't', 'data-i': i, html: faceSVG(S.k[i]), 'aria-label': kname(S.k[i]) });
+      if (S.gone[i]) t.classList.add('out');
+      bd.appendChild(t); return t;
+    });
+    bindZoom();
+    layout(); paint();
+    if (fresh) dealAnim();
+    // Small screens and the big layouts: suggest zooming or turning the phone
+    var wide = POS.reduce(function (m, p) { return Math.max(m, p.x); }, 0) > 20;
+    if (wide && innerWidth < 600) {
+      tipEl.innerHTML = Kit.icon('hand') + (innerHeight > innerWidth ? 'Pinch to zoom, or turn your phone sideways' : 'Pinch to zoom in');
+      tipEl.classList.remove('hide'); setTimeout(function () { tipEl.classList.add('hide'); }, 4500);
+    }
+  }
+  var G = {};
+  function layout() {
+    var W = vp.clientWidth, H = vp.clientHeight;
+    var mx = 0, my = 0, mz = 0;
+    POS.forEach(function (p) { mx = Math.max(mx, p.x + 2); my = Math.max(my, p.y + 2); mz = Math.max(mz, p.z); });
+    var E = .14, pad = 12;
+    var tw = Math.min((W - pad * 2) / (mx / 2 + (mz + 1) * E), (H - pad * 2) / (my / 2 * 4 / 3 + (mz + 1) * E), 76);
+    tw = Math.max(16, Math.floor(tw));
+    var th = Math.round(tw * 4 / 3), e = Math.max(3, Math.round(tw * E));
+    var bw = mx / 2 * tw + (mz + 1) * e, bh = my / 2 * th + (mz + 1) * e;
+    G = { tw: tw, th: th, e: e, bw: bw, bh: bh, ox: Math.round((W - bw) / 2), oy: Math.round((H - bh) / 2) };
+    bd.style.setProperty('--tw', tw + 'px'); bd.style.setProperty('--th', th + 'px'); bd.style.setProperty('--e', e + 'px');
+    bd.style.width = bw + 'px'; bd.style.height = bh + 'px';
+    POS.forEach(function (p, i) {
+      var t = tiles[i];
+      t.style.left = (p.x / 2 * tw + p.z * e + e) + 'px';
+      t.style.top = (p.y / 2 * th - p.z * e + mz * e) + 'px';
+      t.style.zIndex = p.z * 10000 + p.y * 100 + (99 - p.x);
+    });
+    applyZoom();
+  }
+  function paint(all) {
+    if (!S) return;
+    for (var i = 0; i < tiles.length; i++) {
+      var t = tiles[i];
+      if (all) { t.classList.remove('gone'); t.classList.toggle('out', !!S.gone[i]); t.innerHTML = faceSVG(S.k[i]); }
+      t.classList.toggle('blk', !S.gone[i] && !isFree(i, S.gone, LK));
+      t.classList.toggle('sel', i === sel);
+    }
+    updBar();
+  }
+  function updBar() {
+    if (!S || !bar.left) return;
+    var fp = S.done ? 0 : freePairs().length;
+    bar.left.textContent = left(); bar.moves.textContent = fp; bar.time.textContent = fmt(S.time);
+    bar.mv.classList.toggle('warn', !S.done && fp <= 1 && left() > 0);
+    bar.undo.disabled = !U.length || S.done;
+  }
+  function dealAnim() {
+    var order = POS.map(function (_, i) { return i; }).sort(function (a, b) { return POS[a].z - POS[b].z || POS[a].y - POS[b].y || POS[a].x - POS[b].x; });
+    order.forEach(function (i, n) {
+      var t = tiles[i]; t.style.opacity = '0'; t.style.transform = 'translateY(-14px)';
+      setTimeout(function () { t.style.transition = 'opacity .25s, transform .3s var(--spring)'; t.style.opacity = ''; t.style.transform = ''; setTimeout(function () { t.style.transition = ''; }, 320); }, 120 + n * Math.min(8, 900 / order.length));
+    });
+  }
 
-// Fit the turtle to the space available (width and height)
-function calcSizes(minC,colCount,maxR,maxZ){
-  const table=document.getElementById('mj-table');
-  const W=table.clientWidth-16;
-  const top=table.getBoundingClientRect().top+window.scrollY;
-  const H=Math.max(260,window.innerHeight-top-24-64);
-  // width: colCount*TW + maxZ*ZOFF(≈.16TW) + shadow(≈.12TW)
-  const byW=W/(colCount+maxZ*.16+.15);
-  const byH=H/((maxR)*1.32+maxZ*.16+.2);
-  TW=Math.max(20,Math.floor(Math.min(byW,byH,64)));
-  TH=Math.round(TW*1.32);ZOFF=Math.max(3,Math.round(TW*.16));COFF=TW;ROFF=TH;
-  const r=document.documentElement.style;r.setProperty('--tw',TW+'px');r.setProperty('--th',TH+'px');
-}
+  // ── Zoom & pan (pinch on phones, wheel on computers) ──────────────────────
+  function applyZoom() {
+    if (!bd) return;
+    var W = vp.clientWidth, H = vp.clientHeight, s = Z.s;
+    var cw = G.bw * s, ch = G.bh * s;
+    // keep the board covering the view when zoomed in; centred otherwise
+    var minX = Math.min(G.ox, W - cw - 8), maxX = Math.max(G.ox, 8) , minY = Math.min(G.oy, H - ch - 8), maxY = Math.max(G.oy, 8);
+    if (cw <= W) { Z.x = (W - cw) / 2; } else Z.x = Math.max(W - cw - 8, Math.min(8, Z.x));
+    if (ch <= H) { Z.y = (H - ch) / 2; } else Z.y = Math.max(H - ch - 8, Math.min(8, Z.y));
+    void minX; void maxX; void minY; void maxY;
+    bd.style.transform = 'translate(' + Z.x + 'px,' + Z.y + 'px) scale(' + s + ')';
+    if (fitBtn) fitBtn.classList.toggle('on', s > 1.02);
+  }
+  function setZoom(s, cx, cy, reset) {
+    s = Math.max(1, Math.min(3, s));
+    if (reset) { Z.s = 1; Z.x = G.ox; Z.y = G.oy; }
+    else { var k = s / Z.s; Z.x = cx - (cx - Z.x) * k; Z.y = cy - (cy - Z.y) * k; Z.s = s; }
+    applyZoom();
+  }
+  var pts = {}, pinch = null, pan = null, moved = false;
+  function bindZoom() {
+    Z = { s: 1, x: 0, y: 0 };
+    vp.addEventListener('pointerdown', function (e) {
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(pts);
+      if (ids.length === 1) { moved = false; pan = { x: e.clientX, y: e.clientY, zx: Z.x, zy: Z.y }; }
+      if (ids.length === 2) {
+        var a = pts[ids[0]], b = pts[ids[1]], r = vp.getBoundingClientRect();
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: Z.s, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top, zx: Z.x, zy: Z.y };
+        moved = true; tipEl.classList.add('hide');
+      }
+    });
+    vp.addEventListener('pointermove', function (e) {
+      if (!pts[e.pointerId]) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(pts);
+      if (pinch && ids.length >= 2) {
+        var a = pts[ids[0]], b = pts[ids[1]], r = vp.getBoundingClientRect();
+        var s = Math.max(1, Math.min(3, pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d)), k = s / pinch.s;
+        var cx = (a.x + b.x) / 2 - r.left, cy = (a.y + b.y) / 2 - r.top;
+        Z.s = s; Z.x = cx - (pinch.cx - pinch.zx) * k; Z.y = cy - (pinch.cy - pinch.zy) * k;
+        applyZoom();
+      } else if (pan && Z.s > 1.02) {
+        var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+        if (!moved && Math.hypot(dx, dy) < 8) return;
+        moved = true; Z.x = pan.zx + dx; Z.y = pan.zy + dy; applyZoom();
+      }
+    });
+    function up(e) {
+      delete pts[e.pointerId];
+      if (Object.keys(pts).length < 2) pinch = null;
+      if (!Object.keys(pts).length) pan = null;
+      else { var id = Object.keys(pts)[0]; pan = { x: pts[id].x, y: pts[id].y, zx: Z.x, zy: Z.y }; }
+    }
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up); vp.addEventListener('pointerleave', up);
+    vp.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var r = vp.getBoundingClientRect();
+      setZoom(Z.s * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    vp.addEventListener('click', function (e) {
+      var t = e.target.closest('.t'); if (!t) { if (sel >= 0 && !moved) { sel = -1; paint(); } return; }
+      if (moved) return;
+      tap(+t.getAttribute('data-i'));
+    });
+    vp.addEventListener('dblclick', function (e) { e.preventDefault(); });
+  }
+  var rzT = 0;
+  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && vp && vp.isConnected) { Z.s = 1; layout(); setZoom(1, 0, 0, true); } }, 80); });
 
-function render(){
-  const board=document.getElementById('mj-board');board.innerHTML='';
-  // Board extents from the full layout so the turtle doesn't jump as tiles go
-  const minC=Math.min(...tiles.map(t=>t.c));
-  const maxC=Math.max(...tiles.map(t=>t.c))+1;
-  const maxR=Math.max(...tiles.map(t=>t.r))+1;
-  const maxZ=Math.max(...tiles.map(t=>t.z))+1;
-  const cOffset=-minC; // shift so minimum column maps to 0
-  const colCount=maxC-minC;
-  calcSizes(minC,colCount,maxR,maxZ);
-  const BW=colCount*COFF+(maxZ-1)*ZOFF+Math.ceil(TW*.15);
-  const BH=maxR*ROFF+(maxZ-1)*ZOFF+Math.ceil(TW*.2);
-  board.style.width=BW+'px';
-  board.style.height=BH+'px';
-  // Paint lower layers first so upper tiles sit on top visually.
-  const sorted=[...tiles].filter(t=>!t.removed).sort((a,b)=>a.z-b.z||a.r-b.r||a.c-b.c);
-  sorted.forEach(tile=>{
-    const el=document.createElement('div');el.className='mj-tile';
-    const free=isFree(tile);
-    if(!free)el.classList.add('blocked');
-    if(sel===tile.id)el.classList.add('selected');
-    if(hintIds.includes(tile.id))el.classList.add('hint');
-    // Higher layers shift UP-RIGHT (classic isometric look).
-    const x=(tile.c+cOffset)*COFF + tile.z*ZOFF;
-    const y=tile.r*ROFF + (maxZ-1-tile.z)*ZOFF;
-    el.style.cssText=`left:${x}px;top:${y}px;width:${TW}px;height:${TH}px;z-index:${tile.z*1000+tile.r*30+tile.c+100};`;
-    el.innerHTML=`<span>${TILE_TEXT[tile.type]||'?'}</span>`;
-    el.addEventListener('click',()=>clickTile(tile.id));
-    board.appendChild(el);
+  // ── Rules (built after the tile faces exist so the sheet can show them) ───
+  var RULES =
+    '<p class="goal">Clear the table by removing matching tiles <b>in pairs</b>. Clear every tile to win.</p>' +
+    '<h3>Free tiles</h3><ul><li>You can only pick a tile that is <b>free</b>: nothing is resting on top of it, <b>and</b> its left side or its right side is open.</li>' +
+    '<li>Tiles above and below it do not matter, only left and right.</li><li>Blocked tiles look a little darker (you can turn this off in the menu).</li></ul>' +
+    '<h3>Making a match</h3><ul><li>Tap a free tile, then tap a free tile with the same face. Both disappear.</li>' +
+    '<li>The tiles: Characters ' + sample([0, 4]) + ' Dots ' + sample([9, 13]) + ' Bamboo ' + sample([19, 22]) + ' Winds and Dragons ' + sample([27, 31, 32, 33]) + '</li>' +
+    '<li><b>Flowers</b> match any other flower, and <b>Seasons</b> match any other season:' + sample([34, 35, 36, 37]) + sample([38, 39, 40, 41]) + '</li></ul>' +
+    '<h3>Help when you need it</h3><ul><li><b>Hint</b> lights up a pair you can take.</li><li><b>Undo</b> takes back as many pairs as you like.</li>' +
+    '<li><b>Shuffle</b> swaps the faces of the tiles that are left. Every deal and every shuffle can be cleared, but a wrong choice can still leave you stuck. If no free tiles match, the game tells you.</li>' +
+    '<li>The <b>Matches</b> number shows how many pairs you can take right now.</li></ul>' +
+    '<h3>Layouts</h3><p><b>Turtle</b> is the classic 144-tile layout. <b>Pyramid</b> (120), <b>Castle</b> (88) and <b>Mini</b> (44, quick, with bigger tiles) are smaller. On a phone you can pinch to zoom, or turn the phone sideways.</p>';
+  Kit.init({
+    id: 'mahjong',
+    theme: { felt: ['#1f6e5c', '#134a3d', '#0c372d'] },
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
+      { icon: 'shuffle', label: 'Shuffle the tiles', onClick: function () { shuffleAsk(); } },
+      { icon: 'sync', label: 'Restart this deal', onClick: function () { restart(); } },
+      { icon: 'eye', label: function () { return 'Dim blocked tiles: ' + (dimOn() ? 'on' : 'off'); }, onClick: function () { setDim(!dimOn()); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mahjong Tiles: past games' }); } }
+    ],
+    rules: RULES
   });
-}
 
-document.getElementById('mj-new').addEventListener('click',confirmNew);
-document.getElementById('mj-hint').addEventListener('click',hint);
-document.getElementById('mj-undo').addEventListener('click',undo);
-let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(render,80);});
-newGame();
-
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_mahjong(){
-  try{
-    if(!tiles||tiles.every(t=>t.removed)){sessionStorage.removeItem('mahjong');return;}
-    sessionStorage.setItem('mahjong',JSON.stringify({tiles,score,history,_ts:Date.now()}));
-  }catch(e){}
-}
-function _load_mahjong(){
-  try{
-    const raw=sessionStorage.getItem('mahjong');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s||!s.tiles)return false;
-    tiles=s.tiles;score=s.score||0;history=s.history||[];sel=null;
-    updateStats();render();
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_mahjong);
-window.addEventListener('pagehide',_save_mahjong);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')_save_mahjong();});
-_load_mahjong();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.S && saved.S.k && !saved.S.done && LAYOUTS[saved.S.layout]) {
+    S = saved.S; U = saved.U || [];
+    POS = buildLayout(S.layout); LK = links(POS);
+    if (POS.length === S.k.length) { build(false); if (!freePairs().length) setTimeout(stuck, 400); }
+    else showSetup();
+  } else showSetup();
+})();
 </script>
 </body>
 </html>

@@ -15,14 +15,15 @@
 var GAME_CATS = [
   // hue: each section has its own colour family; every game icon in the
   // section gets a shade of it (see the colour pass below GAMES).
-  { id: 'cards',  name: 'Cards',       hue: 352, sat: 72 },
+  { id: 'cards',  name: 'Classic Cards',   hue: 352, sat: 72 },
+  { id: 'specialty', name: 'Specialty Cards', hue: 292, sat: 58 },
   { id: 'board',  name: 'Board',       hue: 24,  sat: 78 },
   { id: 'dice',   name: 'Dice & Luck', hue: 44,  sat: 88 },
   { id: 'puzzle', name: 'Puzzles',     hue: 205, sat: 78 },
   { id: 'words',  name: 'Words',       hue: 172, sat: 70 },
   { id: 'party',  name: 'Party',       hue: 322, sat: 68 },
   { id: 'casino', name: 'Casino',      hue: 142, sat: 62 },
-  { id: 'arcade', name: 'Arcade',      hue: 266, sat: 70 },
+  { id: 'arcade', name: 'Arcade',      hue: 252, sat: 72 },
   { id: 'tools',  name: 'Tools',       hue: 228, sat: 32 }
 ];
 
@@ -33,17 +34,17 @@ var GAMES = [
   { id: 'euchre',      name: 'Euchre',       color: '#22b07d', cat: 'cards', min: 4, max: 4, tag: 'Call trump and take three tricks', play: 'euchre-ai', score: 'euchre' },
   { id: 'cribbage',    name: 'Cribbage',     color: '#c9853d', cat: 'cards', min: 2, max: 2, tag: 'Peg your way to 121', play: 'cribbage' },
   { id: 'gin-rummy',   name: 'Gin Rummy',    color: '#2bb3a3', cat: 'cards', min: 2, max: 2, tag: 'Meld sets and runs, then knock', play: 'gin-rummy-ai', score: 'gin-rummy' },
-  { id: 'wizard',      name: 'Wizard',       color: '#8b5cf6', cat: 'cards', min: 3, max: 6, tag: 'Bid exactly how many tricks you take', play: 'wizard-ai', score: 'wizard' },
-  { id: 'flip7',       name: 'Flip 7',       color: '#ff8a00', cat: 'cards', min: 2, max: 8, tag: 'Push your luck to 200', play: 'flip7-ai', score: 'flip7' },
-  { id: 'five-crowns', name: 'Five Crowns',  color: '#e2a400', cat: 'cards', min: 2, max: 7, tag: 'Eleven rounds, the wilds keep moving', play: 'fivecrownss-ai', score: 'five-crowns' },
-  { id: 'rook',        name: 'Rook',         color: '#3a86ff', cat: 'cards', min: 4, max: 4, tag: 'Bid, name trump, capture the Rook', play: 'rook-ai', score: 'rook' },
-  { id: 'phase10',     name: 'Phase 10',     color: '#f72585', cat: 'cards', min: 2, max: 6, tag: 'Race through ten phases', play: 'phase10-ai', score: 'phase10' },
+  { id: 'wizard',      name: 'Wizard',       color: '#8b5cf6', cat: 'specialty', min: 3, max: 6, tag: 'Bid exactly how many tricks you take', play: 'wizard-ai', score: 'wizard' },
+  { id: 'flip7',       name: 'Flip 7',       color: '#ff8a00', cat: 'specialty', min: 2, max: 8, tag: 'Push your luck to 200', play: 'flip7-ai', score: 'flip7' },
+  { id: 'five-crowns', name: 'Five Crowns',  color: '#e2a400', cat: 'specialty', min: 2, max: 7, tag: 'Eleven rounds, the wilds keep moving', play: 'fivecrownss-ai', score: 'five-crowns' },
+  { id: 'rook',        name: 'Rook',         color: '#3a86ff', cat: 'specialty', min: 4, max: 4, tag: 'Bid, name trump, capture the Rook', play: 'rook-ai', score: 'rook' },
+  { id: 'phase10',     name: 'Phase 10',     color: '#f72585', cat: 'specialty', min: 2, max: 6, tag: 'Race through ten phases', play: 'phase10-ai', score: 'phase10' },
   { id: 'solitaire',   name: 'Solitaire',    color: '#16a34a', cat: 'cards', min: 1, max: 1, tag: 'Classic Klondike', play: 'solitaire' },
   { id: 'freecell',    name: 'FreeCell',     color: '#0ea5e9', cat: 'cards', min: 1, max: 1, tag: 'Every deal is winnable', play: 'freecell' },
   { id: 'pyramid',     name: 'Pyramid',      color: '#f59e0b', cat: 'cards', min: 1, max: 1, tag: 'Pair cards that add to 13', play: 'pyramid' },
   { id: 'jokerrun',    name: 'Joker Run',    color: '#e11d48', cat: 'cards', min: 1, max: 1, tag: 'Poker hands, wild jokers, beat the blinds', play: 'jokerrun' },
   { id: 'pokersquares',name: 'Poker Squares', color: '#ef4444', cat: 'cards', min: 1, max: 1, tag: 'Build ten poker hands on a 5×5 grid', play: 'pokersquares' },
-  { id: 'lorcana',     name: 'Lorcana',      color: '#a855f7', cat: 'cards', min: 2, max: 4, tag: 'Lore counter: first to 20 wins', play: 'lorcana' },
+  { id: 'lorcana',     name: 'Lorcana',      color: '#a855f7', cat: 'specialty', min: 2, max: 4, tag: 'Lore counter: first to 20 wins', play: 'lorcana' },
 
   // ── Board ────────────────────────────────────────────────────────────────
   { id: 'chess',       name: 'Chess',        color: '#64748b', cat: 'board', min: 1, max: 2, tag: 'The classic, vs computer or a friend', play: 'chess' },

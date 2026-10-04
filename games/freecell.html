@@ -55,6 +55,7 @@
 .sbar .st b{font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;}
 .sbar .st small{font-size:.64rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);}
 .cascade{position:fixed;inset:0;z-index:440;transition:opacity .5s;}
+.cascade-skip{position:fixed;left:50%;bottom:calc(var(--safe-b) + 18px);transform:translateX(-50%);z-index:441;pointer-events:none;color:rgba(255,255,255,.7);font-weight:800;font-size:.85rem;background:rgba(0,0,0,.35);padding:6px 14px;border-radius:999px;}
 /* Stats sheet */
 .stt{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:4px;}
 .stt th,.stt td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:right;}
@@ -248,8 +249,46 @@
     lastMove = { ids: cards, t: Date.now() };
     return cards;
   }
+  // A multi-card move is really a "supermove": the cards travel one at a
+  // time through the free cells (and any empty columns), like moving them by
+  // hand. Plan those single-card steps so they can be shown.
+  function plan(n, a, b, C, E) {
+    var out = [], j;
+    if (n <= C.length + 1) {
+      for (j = 0; j < n - 1; j++) out.push([{ t: 'tab', i: a }, { t: 'cell', i: C[j] }]);
+      out.push([{ t: 'tab', i: a }, { t: 'tab', i: b }]);
+      for (j = n - 2; j >= 0; j--) out.push([{ t: 'cell', i: C[j] }, { t: 'tab', i: b }]);
+      return out;
+    }
+    var e = E[0], E2 = E.slice(1), m = Math.min(n - 1, (C.length + 1) * Math.pow(2, E2.length));
+    return out.concat(plan(m, a, e, C, E2), plan(n - m, a, b, C, E2), plan(m, e, b, C, E2));
+  }
+  function step(mv) {
+    var c = mv[0].t === 'cell' ? S.cells[mv[0].i] : S.tab[mv[0].i].pop();
+    if (mv[0].t === 'cell') S.cells[mv[0].i] = null;
+    if (mv[1].t === 'cell') S.cells[mv[1].i] = c; else S.tab[mv[1].i].push(c);
+  }
+  function superMove(src, dst) {
+    var n = S.tab[src.i].length - src.k, C = [], E = [], j;
+    for (j = 0; j < 4; j++) if (!S.cells[j]) C.push(j);
+    for (j = 0; j < 8; j++) if (!S.tab[j].length && j !== dst.i && j !== src.i) E.push(j);
+    var steps = plan(n, src.i, dst.i, C, E), cards = S.tab[src.i].slice(src.k);
+    S.maxCells = Math.max(S.maxCells, 4 - freeCells());
+    busy = true; var tk = ++token, k = 0, gap = steps.length > 8 ? 95 : 140;
+    (function next() {
+      if (tk !== token) return;
+      if (k >= steps.length) {
+        lastMove = { ids: cards, t: Date.now() }; S.moves++; busy = false;
+        return after();
+      }
+      step(steps[k]); k++;
+      Kit.sfx(k === steps.length ? 'deal' : 'flip'); place();
+      setTimeout(next, gap);
+    })();
+  }
   function doMove(src, dst) {
     snapshot(); begin();
+    if (src.t === 'tab' && dst.t === 'tab' && S.tab[src.i].length - src.k > 1) { Kit.haptic('light'); return superMove(src, dst); }
     var cards = apply(src, dst); S.moves++;
     Kit.sfx(dst.t === 'found' ? 'pop' : cards.length > 1 ? 'deal' : 'flip'); Kit.haptic('light');
     after();
@@ -398,28 +437,38 @@
       var c = document.createElement('canvas'); c.width = Math.ceil(cw * dpr); c.height = Math.ceil(ch * dpr);
       var x = c.getContext('2d'); x.scale(dpr, dpr); drawCard(x, code, cw, ch); return c;
     }
+    var done2 = false;
     function finish() {
-      if (over) return; over = true;
+      if (done2) return; done2 = true; over = true;
       cv.style.opacity = '0'; setTimeout(function () { cv.remove(); }, 520);
       ids.forEach(function (id) { if (cardEls[id]) cardEls[id].style.visibility = 'hidden'; });
       done();
     }
     cv.addEventListener('pointerdown', finish);
     Kit.sfx('win');
+    var hint = el('div', { class: 'cascade-skip', text: 'Tap to skip' }); document.body.appendChild(hint);
+    var cur = null, lastBounce = 0;
+    function launch(t) {
+      var n = cardEls[ids[i]], r = n.getBoundingClientRect(); n.style.visibility = 'hidden';
+      cur = { im: img(ids[i]), x: r.left, y: r.top, vx: (Math.random() < .5 ? -1 : 1) * (2.2 + Math.random() * 3.6), vy: -(1 + Math.random() * 6), t: t };
+      live.push(cur); i++;
+    }
     (function frame(t) {
-      if (over) return;
-      if (i < ids.length && t - last > 70) {
-        var n = cardEls[ids[i]], r = n.getBoundingClientRect(); n.style.visibility = 'hidden';
-        live.push({ im: img(ids[i]), x: r.left, y: r.top, vx: (Math.random() < .5 ? -1 : 1) * (2.5 + Math.random() * 4.5), vy: -(2 + Math.random() * 7) });
-        i++; last = t;
-      }
+      if (over) { hint.remove(); return; }
+      // Classic finish: one card at a time leaps off its pile and bounces
+      // away, leaving a trail of copies; the next goes when it's gone.
+      if (i < ids.length && (!cur || cur.gone || t - cur.t > 2600)) launch(t);
       live.forEach(function (p) {
-        p.vy += .55; p.x += p.vx; p.y += p.vy;
-        if (p.y + ch > H) { p.y = H - ch; p.vy = -p.vy * .78; }
+        p.vy += .5; p.x += p.vx; p.y += p.vy;
+        if (p.y + ch > H) {
+          p.y = H - ch; p.vy = -p.vy * .76;
+          if (Math.abs(p.vy) > 2 && t - lastBounce > 60) { lastBounce = t; Kit.sfx('tick'); }
+        }
         g.drawImage(p.im, p.x, p.y, cw, ch);
+        if (p.x <= -cw || p.x >= W) p.gone = true;
       });
-      live = live.filter(function (p) { return p.x > -cw && p.x < W; });
-      if ((i >= ids.length && !live.length) || t - t0 > 9000) return finish();
+      live = live.filter(function (p) { return !p.gone; });
+      if (i >= ids.length && !live.length) { setTimeout(finish, 600); over = true; hint.remove(); return; }
       requestAnimationFrame(frame);
     })(t0);
   }

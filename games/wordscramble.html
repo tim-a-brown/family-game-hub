@@ -1,319 +1,700 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Word Scramble</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../data/wordle-words.js"></script>
 <style>
-.sc-page{max-width:560px;padding-top:12px;}
-.cat-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:2px 16px;}
-.cat-row::-webkit-scrollbar{display:none;}
-.cat-btn{flex:none;min-height:38px;padding:0 16px;border-radius:999px;font-size:.9rem;font-weight:600;cursor:pointer;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);transition:background .15s,border-color .15s,color .15s;}
-.cat-btn.active{border-color:rgba(245,200,66,.6);background:rgba(245,200,66,.14);color:var(--gold);}
-.score-row .stat{max-width:none;}
-#timer{color:var(--gold);}
-#timer.low{color:var(--red);animation:sc-pulse 1s ease infinite;}
-@keyframes sc-pulse{50%{opacity:.55;}}
-.timer-bar{height:6px;background:var(--surface-2);border-radius:3px;margin:-4px 0 20px;overflow:hidden;}
-.timer-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold2));border-radius:3px;transition:width 1s linear;}
-.sc-stage{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 12px 16px;margin-bottom:14px;}
-.hint-text{text-align:center;color:var(--text-2);font-size:.95rem;min-height:24px;margin-bottom:14px;}
-.hint-text.shown{color:var(--gold);}
-.hint-text .muted{color:var(--text-3);}
-/* Tiles */
-.sc-row{--n:7;--g:clamp(3px, calc(42px / var(--n)), 6px);--tw:min(50px, calc((min(100vw, 560px) - 58px - (var(--n) - 1) * var(--g)) / var(--n)));display:flex;justify-content:center;gap:var(--g);min-height:calc(var(--tw) * 1.1);}
-.sc-slot,.sc-tile{width:var(--tw);height:calc(var(--tw) * 1.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:calc(var(--tw) * .55);font-weight:800;}
-.sc-slot{border:2px dashed var(--line-2);color:var(--text);cursor:pointer;background:transparent;padding:0;}
-.sc-slot.filled{border-style:solid;border-color:rgba(245,200,66,.55);background:rgba(245,200,66,.12);color:var(--gold);animation:gn-pop .2s var(--spring) both;}
-.sc-answer{margin-bottom:22px;}
-.sc-answer.good .sc-slot{border-color:var(--green);background:rgba(74,222,128,.16);color:var(--green);}
-.sc-answer.bad{animation:sc-shake .4s ease;}
-.sc-answer.bad .sc-slot.filled{border-color:var(--red);background:rgba(248,113,113,.14);color:var(--red);}
-.sc-answer.reveal .sc-slot{border-style:solid;border-color:var(--line-2);color:var(--text-2);}
-@keyframes sc-shake{20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
-.sc-tile{border:0;cursor:pointer;background:linear-gradient(180deg,#f4f1e8,#dcd6c6);color:#1b1d24;box-shadow:0 3px 0 #a9a290,0 6px 12px rgba(0,0,0,.3);transition:transform .1s var(--ease),opacity .15s;padding:0;}
-.sc-tile:active{transform:translateY(2px);box-shadow:0 1px 0 #a9a290;}
-.sc-tile.used{opacity:0;pointer-events:none;transform:scale(.6);}
-.scramble-word{display:none;}
-.feedback{text-align:center;font-size:1rem;font-weight:700;min-height:26px;margin:12px 0 0;}
-.sc-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.sc-actions .btn{padding:0 8px;}
-/* Result sheet */
-.sc-result{position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
-.sc-result.show{display:flex;animation:gn-fade .2s ease both;}
-.sc-sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));text-align:center;animation:gn-sheet .32s var(--ease) both;}
-@media (min-width:600px){.sc-result{align-items:center;}.sc-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
-.sc-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 16px;}
-.sc-res-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.sc-res-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-bottom:14px;}
-.nav-icon{width:36px;height:36px;padding:0!important;display:inline-grid;place-items:center;border-radius:50%!important;border:1px solid var(--line-2);background:var(--surface);color:var(--text);cursor:pointer;}
-.nav-icon svg{width:18px;height:18px;}
+.sc{max-width:560px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 18px);}
+.sc .scores{margin-bottom:2px;}
+.hud{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;flex-wrap:wrap;}
+.pill{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.07);
+  font-weight:800;font-size:.9rem;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pill .ico{width:16px;height:16px;color:var(--text-3);}
+.pill b{color:var(--text);font-weight:900;}
+.pill.hot{background:color-mix(in srgb,var(--orange) 22%,transparent);color:var(--orange);}
+.pill.hot .ico{color:var(--orange);}
+/* Sand-timer bar */
+.clock{position:relative;height:12px;border-radius:999px;background:rgba(0,0,0,.35);box-shadow:inset 0 1px 3px rgba(0,0,0,.6);overflow:hidden;margin:0 6px 10px;}
+.clock i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(180deg,#ffe08a,#e7a93a);box-shadow:inset 0 1px 0 rgba(255,255,255,.5);transition:width .25s linear;}
+.clock.low i{background:linear-gradient(180deg,#ff8a8a,#e0353f);animation:blink .5s infinite alternate;}
+@keyframes blink{to{opacity:.6;}}
+/* The table */
+.table{border-radius:22px;padding:10px;}
+.felt{position:relative;border-radius:14px;padding:14px 10px 0;overflow:hidden;min-height:300px;display:flex;flex-direction:column;}
+.clue{align-self:center;max-width:100%;min-height:36px;margin:0 6px 12px;padding:6px 14px;border-radius:3px;font-family:var(--hand);font-size:1.15rem;line-height:1.2;text-align:center;
+  color:#3a3a50;background:linear-gradient(180deg,#fffaf0,#f3ead3);box-shadow:0 6px 12px rgba(0,0,0,.35);transform:rotate(-1deg);}
+.clue.dim{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);box-shadow:none;transform:none;font-size:1.05rem;}
+.row{--n:7;--g:clamp(3px,calc(40px / var(--n)),6px);--t:min(48px,calc((min(100vw,560px) - 66px - (var(--n) - 1) * var(--g)) / var(--n)));
+  display:flex;justify-content:center;gap:var(--g);}
+.slots{margin:4px 0 6px;}
+.slot{position:relative;width:var(--t);height:var(--t);border-radius:7px;background:rgba(0,0,0,.22);box-shadow:inset 0 2px 5px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.08);flex:none;}
+.slot.lock::after{content:"";position:absolute;left:50%;bottom:-7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#ffd76a;}
+.slots.bad{animation:shake .4s;}
+.rackwrap{margin-top:auto;padding:16px 0 0;}
+.rack{position:relative;padding:0 6px 14px;}
+.rack::after{content:"";position:absolute;left:-10px;right:-10px;bottom:0;height:22px;border-radius:6px 6px 0 0;z-index:0;
+  background:repeating-linear-gradient(92deg,rgba(255,255,255,.05) 0 2px,transparent 2px 9px),linear-gradient(180deg,#b07a42,#7d4f24);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.25), 0 -2px 6px rgba(0,0,0,.3);}
+.rack .row{position:relative;z-index:1;}
+.rspot{width:var(--t);height:var(--t);flex:none;position:relative;}
+/* Wooden letter tiles */
+.tile{position:absolute;inset:0;display:grid;place-items:center;border:0;padding:0;border-radius:6px;cursor:grab;touch-action:none;
+  font-family:var(--font);font-weight:900;font-size:calc(var(--t) * .56);color:#2b2118;line-height:1;
+  background:
+    repeating-linear-gradient(100deg,rgba(120,70,20,.05) 0 2px,transparent 2px 7px),
+    linear-gradient(160deg,#f7e2b8 0%,#ecc98f 55%,#ddb070 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -2px 0 rgba(120,70,20,.35), 0 3px 0 #9a6a35, 0 5px 8px rgba(0,0,0,.35);
+  transition:box-shadow .15s, background .3s, color .3s;}
+.tile sub{position:absolute;right:9%;bottom:7%;font-size:calc(var(--t) * .22);font-weight:800;line-height:1;}
+.tile:active{cursor:grabbing;}
+.tile.lock{background:linear-gradient(160deg,#ffe9a8,#f2c64e);}
+.tile.good{background:linear-gradient(160deg,#c8f7cf,#69d683);color:#0b3a17;box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 3px 0 #2f8f4a, 0 0 18px rgba(61,220,132,.6);}
+.tile.wrong{background:linear-gradient(160deg,#ffd0d0,#f08a8a);}
+.tile.reveal{background:rgba(255,255,255,.18);color:#fff;box-shadow:none;}
+.tile.dance{animation:dance .55s var(--spring) both;}
+@keyframes dance{35%{transform:translateY(-16px) rotate(-4deg);}70%{transform:translateY(3px);}100%{transform:none;}}
+.tile.drag{position:fixed;inset:auto;z-index:300;width:var(--t);height:var(--t);transform:scale(1.18) rotate(-4deg);box-shadow:0 14px 22px rgba(0,0,0,.45);transition:none;pointer-events:none;}
+.slot.over{box-shadow:inset 0 0 0 3px #ffd76a, inset 0 2px 5px rgba(0,0,0,.45);}
+.float{position:absolute;left:50%;top:38%;transform:translate(-50%,0);font-family:var(--display);font-size:2rem;color:#ffd76a;text-shadow:0 3px 0 rgba(0,0,0,.4);pointer-events:none;animation:floatup 1s ease-out forwards;z-index:5;}
+@keyframes floatup{from{opacity:0;transform:translate(-50%,10px) scale(.6);}25%{opacity:1;transform:translate(-50%,0) scale(1.1);}to{opacity:0;transform:translate(-50%,-50px);}}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+.tools .btn{padding:0 4px;flex-direction:column;gap:2px;min-height:58px;font-size:.82rem;}
+.tools .btn .ico{width:20px;height:20px;}
+/* Overlays on the felt (ready, paused, turn summary) */
+.cover{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px;text-align:center;
+  background:radial-gradient(120% 90% at 50% 35%,var(--felt-a),var(--felt-c));}
+.cover h2{font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.05;}
+.cover p{color:rgba(255,255,255,.8);max-width:300px;}
+.cover .big{font-family:var(--display);font-size:3.2rem;color:#ffd76a;line-height:1;}
+.cover .btn{min-width:200px;margin-top:6px;}
+.cats{display:flex;flex-wrap:wrap;gap:6px;}
+.cats .chip.on{background:var(--accent);color:var(--accent-ink);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Word Scramble</span>
-  <button class="nav-icon" id="new-game" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></button>
-</nav>
-<div class="page sc-page">
-<div class="cat-row" id="cats"></div>
-<div class="stat-row score-row">
-  <div class="stat"><div class="stat-val" id="score">0</div><div class="stat-lbl">Score</div></div>
-  <div class="stat"><div class="stat-val" id="timer">60</div><div class="stat-lbl">Seconds</div></div>
-  <div class="stat"><div class="stat-val" id="streak">0</div><div class="stat-lbl">Streak</div></div>
-</div>
-<div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
-
-<div class="sc-stage">
-  <div class="hint-text" id="hint"></div>
-  <div class="sc-row sc-answer" id="answer-row"></div>
-  <div class="sc-row" id="tiles"></div>
-  <div class="scramble-word" id="scrambled"></div>
-  <div class="feedback" id="feedback"></div>
-</div>
-<div class="sc-actions">
-  <button class="btn btn-outline" id="hint-btn">💡 Hint</button>
-  <button class="btn btn-outline" id="shuffle-btn">🔀 Shuffle</button>
-  <button class="btn btn-outline" id="skip-btn">Skip</button>
-</div>
-</div>
-
-<div class="sc-result" id="sc-result">
-  <div class="sc-sheet" role="dialog" aria-modal="true">
-    <div class="sc-grab"></div>
-    <div class="sc-res-emoji">🏁</div>
-    <div class="sc-res-title">Time’s up!</div>
-    <div class="stat-row" id="sc-res-stats"></div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
-      <button class="btn btn-gold btn-block" id="sc-again">Play again</button>
-      <button class="btn btn-ghost btn-block" id="sc-close">Close</button>
-    </div>
-  </div>
-</div>
+<main class="sc" id="app"></main>
 <script>
-'use strict';
-const WORDS={
-  Animals:{ELEPHANT:'Largest land animal',GIRAFFE:'Tallest animal',PENGUIN:'Flightless bird',DOLPHIN:'Ocean mammal',CHEETAH:'Fastest land animal',GORILLA:'Great ape',FLAMINGO:'Pink wading bird',WALRUS:'Has long tusks',LEOPARD:'Spotted big cat',HEDGEHOG:'Prickly small mammal'},
-  Geography:{VOLCANO:'Erupts with lava',GLACIER:'Slow-moving ice river',CANYON:'Deep gorge',PLATEAU:'Flat-topped highland',EQUATOR:'Earth\'s middle line',PENINSULA:'Land surrounded by water on 3 sides',ARCHIPELAGO:'Group of islands',SAVANNA:'Tropical grassland',TUNDRA:'Frozen treeless plain',FJORD:'Narrow sea inlet'},
-  Science:{GRAVITY:'Force that pulls objects down',ELECTRON:'Negative particle in atom',NUCLEUS:'Center of atom or cell',PROTEIN:'Building block of life',ECLIPSE:'One body shadowing another',ELEMENT:'Pure substance on periodic table',PHOTON:'Light particle',PROTON:'Positive particle in atom',NEUTRON:'Neutral particle in atom',ENZYME:'Biological catalyst'},
-  Misc:{GUITAR:'6-stringed instrument',COMPASS:'Navigation tool',PYRAMID:'Ancient Egyptian structure',LANTERN:'Light in a case',BLANKET:'Keeps you warm in bed',CAPTAIN:'Ship or team leader',JOURNEY:'Long trip',MYSTERY:'Something unexplained',THUNDER:'Sound of lightning',DIAMOND:'Hardest natural mineral'},
-};
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var KEY = 'wordscramble', SAVE = 'wordscramble_state', CAT_KEY = 'wordscramble_cat';
 
-let cat='Animals',words=[],wi=0,score=0,streak=0,timerSec=60,timerInt,gameOver=false;
-let hintUsed=false,locked=false,solved=0,bestStreak=0;
-let letters=[],picks=[];   // letters = scrambled tiles; picks = tile indexes placed in the answer
-const $=id=>document.getElementById(id);
-const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+  // word=clue; groups by length: 4-5 easy, 6-7 medium, 8+ hard
+  var RAW = {
+    Animals: 'BEAR=Big furry animal that loves honey;WOLF=Wild dog that howls at the moon;FROG=Green hopper that says ribbit;DUCK=Bird that quacks;GOAT=Farm animal with a little beard;LION=King of the jungle;TIGER=Big orange cat with black stripes;ZEBRA=Striped horse of Africa;MOOSE=Huge deer with flat antlers;SHARK=Ocean hunter with lots of teeth;HORSE=You can ride it and it neighs;SNAKE=Long reptile with no legs;KOALA=Australian tree-hugger;CAMEL=Desert animal with humps;PANDA=Black and white bear that eats bamboo;OTTER=Playful swimmer that floats on its back;' +
+      'MONKEY=Swings through trees and loves bananas;RABBIT=Long ears and a fluffy tail;TURTLE=Carries its house on its back;PARROT=Colourful bird that can talk;DONKEY=Says hee-haw;GIRAFFE=Tallest animal on Earth;PENGUIN=Bird in a tuxedo that cannot fly;DOLPHIN=Smart ocean mammal that clicks;CHEETAH=Fastest land animal;GORILLA=Biggest of the great apes;LEOPARD=Spotted cat that climbs trees;WALRUS=Has long tusks and whiskers;OSTRICH=Biggest bird in the world;HAMSTER=Small pet that runs on a wheel;LOBSTER=Sea creature with big claws;' +
+      'ELEPHANT=Largest land animal, with a trunk;FLAMINGO=Pink bird that stands on one leg;HEDGEHOG=Prickly little animal that rolls into a ball;KANGAROO=Hops around with a baby in its pouch;CROCODILE=Big reptile with a toothy grin;PORCUPINE=Covered in sharp quills;ARMADILLO=Wears a suit of armour;CHAMELEON=Lizard that changes colour;SQUIRREL=Bushy-tailed nut collector;TARANTULA=Big hairy spider;ALLIGATOR=Lives in swamps and has a wide snout;BUTTERFLY=Was once a caterpillar',
+    Food: 'CAKE=Birthday treat with candles;SOUP=Hot meal you eat with a spoon;RICE=Tiny white grains;CORN=Yellow kernels on a cob;PEAR=Fruit shaped like a light bulb;LIME=Small green sour fruit;TACO=Folded shell with fillings;PIZZA=Round, cheesy and cut into slices;BREAD=You make toast from it;APPLE=Keeps the doctor away;LEMON=Sour yellow fruit;HONEY=Sweet stuff made by bees;BAGEL=Bread with a hole in it;GRAPE=Grows in bunches on a vine;MANGO=Sweet orange tropical fruit;' +
+      'CHEESE=Mice love it;BANANA=Yellow fruit you peel;CARROT=Orange vegetable rabbits love;BUTTER=Spread it on toast;COOKIE=Sweet treat with chocolate chips;MUFFIN=Small cake baked in a cup;WAFFLE=Breakfast with little squares;POPCORN=Movie snack that pops;PANCAKE=Flat breakfast stacked with syrup;NOODLES=Long and slurpy;PRETZEL=Twisted salty snack;CUPCAKE=Little cake with frosting;SANDWICH=Filling between two slices of bread;SPAGHETTI=Long pasta with meatballs;' +
+      'AVOCADO=Green fruit for guacamole;BROCCOLI=Green vegetable like a tiny tree;PINEAPPLE=Spiky tropical fruit;CHOCOLATE=Sweet treat made from cocoa;MEATBALL=Round and goes with spaghetti;HAMBURGER=Patty in a bun;BLUEBERRY=Small round blue fruit;STRAWBERRY=Red berry with seeds on the outside;WATERMELON=Big green fruit, red inside;CUCUMBER=Long green salad vegetable',
+    Home: 'SOFA=Comfy seat for the whole family;LAMP=Turns on to light the room;DOOR=Open it to come inside;SINK=Where you wash your hands;OVEN=Bakes cakes and cookies;BATH=Fill it with bubbles;RUG=Soft mat on the floor;BROOM=Sweeps the floor;TABLE=Where you eat dinner;CHAIR=You sit on it;CLOCK=Tells the time;TOWEL=Dries you off;SPOON=Eat cereal with it;PLATE=Put your food on it;SHELF=Holds books;' +
+      'PILLOW=Rest your head on it at night;MIRROR=Shows your reflection;WINDOW=Glass you look through;CARPET=Covers the whole floor;FRIDGE=Keeps food cold;BLANKET=Keeps you warm in bed;BATHTUB=Fill it with water and soak;TEAPOT=Pours hot drinks;KITCHEN=Room where food is made;BEDROOM=Where you sleep;CURTAIN=Closes over the window;TOASTER=Makes bread crispy;HAMMOCK=Swinging bed for the garden;' +
+      'CUPBOARD=Where dishes are kept;STAIRCASE=Go up and down between floors;BOOKCASE=Furniture full of books;DOORBELL=Ding-dong, someone is here;FIREPLACE=Cozy spot with a fire;CALENDAR=Shows the days and months;BACKPACK=Bag you carry to school;TOOTHBRUSH=Use it twice a day;DISHWASHER=Machine that cleans plates;UMBRELLA=Keeps you dry in the rain;FLASHLIGHT=Light you carry in the dark',
+    Sports: 'GOLF=Hit a small ball into a hole;SWIM=Move through water;DIVE=Jump into the pool head first;SKATE=Glide on ice or wheels;SKI=Slide down a snowy hill;RUGBY=Rough game with an oval ball;KICK=Hit the ball with your foot;GOAL=Score in soccer by getting one;BOXING=Fight with padded gloves;TENNIS=Hit a ball over a net with rackets;HOCKEY=Played with sticks and a puck;SOCCER=Kick the ball into the net;KARATE=Martial art with chops and kicks;SURF=Ride the waves;BALL=Round thing you throw or kick;' +
+      'ARCHERY=Shoot arrows at a target;CYCLING=Racing on a bike;BOWLING=Knock down all ten pins;FENCING=Sword fighting sport;SPRINT=A short fast run;SKIING=Gliding down snowy slopes;SAILING=Using the wind to move a boat;REFEREE=Blows the whistle;TROPHY=Prize for the winner;PADDLE=Rows a canoe;STADIUM=Huge place to watch a game;JAVELIN=Throw this spear far;' +
+      'BASEBALL=Hit a home run;FOOTBALL=Touchdown sport;SOFTBALL=Like baseball with a bigger ball;VOLLEYBALL=Bump, set and spike over a net;BASKETBALL=Shoot hoops;GYMNASTICS=Flips, cartwheels and balance beams;MARATHON=A very, very long run;TRAMPOLINE=Bounce up high;SKATEBOARD=Board with four wheels;BADMINTON=Hit a shuttlecock over a net;LACROSSE=Sport with a netted stick',
+    Nature: 'TREE=Tall plant with a trunk;LEAF=Turns colours in autumn;RAIN=Water falling from clouds;SNOW=White flakes in winter;WIND=Air that blows;MOSS=Soft green plant on rocks;POND=Small lake for ducks;CLOUD=Fluffy white thing in the sky;STORM=Thunder and lightning;RIVER=Water flowing to the sea;BEACH=Sandy place by the sea;OCEAN=Huge salty water;STONE=A small rock;PETAL=Part of a flower;ACORN=Seed of an oak tree;' +
+      'FOREST=Lots of trees together;FLOWER=Blooms in spring;GARDEN=Where you grow plants;MEADOW=Field of grass and flowers;SUNSET=When the sun goes down;THUNDER=Loud boom in a storm;RAINBOW=Colours in the sky after rain;VOLCANO=Mountain that erupts;BLOSSOM=Flowers on a fruit tree;PEBBLE=Small smooth stone;CANYON=Deep valley with steep sides;' +
+      'MOUNTAIN=Very tall land;WATERFALL=Water dropping off a cliff;SUNFLOWER=Tall yellow flower that follows the sun;LIGHTNING=Flash in a storm;SNOWFLAKE=No two are alike;DANDELION=Blow its fluffy seeds;HURRICANE=Huge spinning storm;EARTHQUAKE=When the ground shakes;CATERPILLAR=Turns into a butterfly;TORNADO=Twisting funnel of wind',
+    Science: 'ATOM=Tiny building block of everything;CELL=Smallest unit of life;GENE=Passes traits from parents;MASS=How much matter something has;HEAT=Energy that makes things warm;ACID=Sour chemical like lemon juice;ORBIT=Path around a planet or star;FORCE=A push or a pull;SOLID=Not a liquid or a gas;LASER=Very bright beam of light;SPACE=Out beyond the sky;PLANT=Makes food from sunlight;' +
+      'GRAVITY=Force that pulls things down;ELECTRON=Negative particle in an atom;NUCLEUS=Centre of an atom or cell;PROTEIN=Muscles need it;ECLIPSE=When the moon blocks the sun;ELEMENT=Found on the periodic table;PHOTON=A particle of light;PROTON=Positive particle in an atom;NEUTRON=Particle with no charge;ENZYME=Helps break down food;MAGNET=Sticks to the fridge;ENERGY=Power to do work;FOSSIL=Ancient remains in rock;OXYGEN=Gas we breathe;' +
+      'MOLECULE=Atoms joined together;TELESCOPE=Look at stars with it;MICROSCOPE=Makes tiny things look big;SKELETON=All the bones in your body;THERMOMETER=Measures temperature;EXPERIMENT=A scientific test;HYPOTHESIS=An educated guess;DINOSAUR=Ancient reptile;ASTRONAUT=Travels to space;BATTERY=Stores electric power',
+    Geography: 'LAKE=Water with land all around;HILL=Smaller than a mountain;CAVE=Hollow in a rock;ISLE=A small island;COAST=Where land meets sea;DELTA=Where a river fans out;FJORD=Narrow sea inlet between cliffs;CAPE=Point of land in the sea;GULF=Big bay;OASIS=Water spring in the desert;MAP=Shows where places are;GLOBE=Round map of Earth;NORTH=Where a compass points;' +
+      'DESERT=Hot, dry and sandy;ISLAND=Land surrounded by water;VALLEY=Low land between hills;GLACIER=Slow river of ice;JUNGLE=Thick hot rainforest;PLATEAU=Flat high land;EQUATOR=Line around Earth\'s middle;SAVANNA=Grassland with scattered trees;TUNDRA=Frozen treeless plain;COUNTRY=A nation;HARBOUR=Safe place for boats;' +
+      'CONTINENT=Asia, Africa or Europe for example;PENINSULA=Land with water on three sides;ARCHIPELAGO=A group of islands;HEMISPHERE=Half of the Earth;LONGITUDE=Lines running north to south;LATITUDE=Lines running east to west;MOUNTAIN=Very tall land;COMPASS=Points north;VOLCANO=Can erupt with lava;CAPITAL=Main city of a country',
+    Everyday: 'BOOK=You read it;GAME=Something you play;KITE=Flies on a string;SHOE=Goes on your foot;BELL=Rings ding-dong;DRUM=Bang it to make a beat;MUSIC=Songs and tunes;PAINT=Colours on a brush;TRAIN=Runs on tracks;CLOWN=Funny circus performer;ROBOT=Machine that can move by itself;MAGIC=Tricks and wands;PIANO=Instrument with black and white keys;' +
+      'GUITAR=Instrument with six strings;COMPASS=Points the way;PYRAMID=Ancient Egyptian building;LANTERN=Light in a case;CAPTAIN=Leader of a ship or team;JOURNEY=A long trip;MYSTERY=Something unexplained;DIAMOND=Hardest natural gem;BALLOON=Fill it with air;PUZZLE=Fit the pieces together;CASTLE=Home for a king and queen;PIRATE=Sails the seas looking for treasure;ROCKET=Blasts off to space;' +
+      'TREASURE=Pirates search for it;BIRTHDAY=Day with cake and candles;DINOSAUR=Ancient giant reptile;HOLIDAY=Time off from school;SCISSORS=Cut paper with them;PENGUIN=Tuxedo bird;CHAMPION=The winner;ADVENTURE=An exciting journey;FIREWORKS=Bangs and sparkles in the sky;PLAYGROUND=Swings and slides;SUPERHERO=Saves the day'
+  };
+  var WORDS = {}, ALL = {};
+  Object.keys(RAW).forEach(function (cat) {
+    var seen = {};
+    WORDS[cat] = RAW[cat].split(';').map(function (x) { var p = x.split('='); return { w: p[0].trim(), clue: p[1] }; })
+      .filter(function (o) { if (seen[o.w] || !/^[A-Z]{3,11}$/.test(o.w)) return false; seen[o.w] = 1; ALL[o.w] = 1; return true; });
+  });
+  var CATS = Object.keys(WORDS), CAT_NAME = { Home: 'Around the house' };
+  var VALID5 = {}; try { WORDLE_ANSWERS.concat(WORDLE_EXTRA).forEach(function (w) { VALID5[w] = 1; }); } catch (e) {}
+  var DIFF = { easy: [3, 5, 'Easy'], medium: [6, 7, 'Medium'], hard: [8, 11, 'Hard'] };
+  var VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
+  var TIMES = { 60: '60 sec', 90: '90 sec', 120: '2 min', 0: 'Relaxed' };
+  var RELAXED_WORDS = 10;
 
-Object.keys(WORDS).forEach(c=>{
-  const b=document.createElement('button');b.className='cat-btn'+(c===cat?' active':'');b.textContent=c;b.dataset.cat=c;
-  b.addEventListener('click',async()=>{
-    if(c===cat)return;
-    if(!gameOver&&score>0){
-      const ok=await GN.confirm('Switch category?',{title:'Switch to '+c+'?',body:'This starts a new game and resets your score.',ok:'Switch'});
-      if(!ok)return;
+  Kit.init({
+    id: 'wordscramble',
+    theme: { felt: ['#167a72', '#0d524d', '#083b37'] },
+    onNew: function () { showSetup(); },
+    undo: function () { undoTile(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Word Scramble: past games' }); } }],
+    rules:
+      '<p class="goal">Unscramble the letter tiles to make the hidden word. Solve as many as you can before the sand runs out.</p>' +
+      '<h3>Playing</h3><ul><li><b>Tap</b> a tile to put it in the next empty square, or <b>drag</b> it to any square.</li>' +
+      '<li>Tap a placed tile (or drag it back to the rack) to take it out.</li>' +
+      '<li>When every square is full the word is checked. Any real word that uses all the letters counts.</li>' +
+      '<li><b>Shuffle</b> mixes up the rack to help you see the word.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>A word scores the <b>Scrabble value</b> of its tiles (the small number on each tile).</li>' +
+      '<li><b>Letter</b> puts one correct tile in place. That tile scores nothing.</li>' +
+      '<li><b>Clue</b> shows a hint. It halves the word\'s score.</li>' +
+      '<li>Solve 3 or more in a row for a <b>+5 streak bonus</b> on each word. Skipping ends your streak.</li></ul>' +
+      '<h3>Ways to play</h3><ul><li><b>Solo</b>: beat your best score.</li>' +
+      '<li><b>Pass and play</b>: 2 to 4 players take turns with the same clock. Highest total after all rounds wins.</li>' +
+      '<li><b>Relaxed</b> has no clock: ' + RELAXED_WORDS + ' words per turn.</li></ul>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S = {mode, cat, diff, time, rounds, players:[{name}], scores:[], roundScores:[[..]], turn, phase:'ready'|'play'|'turnover',
+  //      deck:[idx], R: current word {w, clue, letters, slots, rack, locked, clueUsed}, left(ms), words:[...] per turn log, log:[]}
+  var S = null, undoStack = [];
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set(catName(S.cat) + ' · ' + (S.mode === 'race' ? curP().name + "'s turn" : S.T.score + ' points'));
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function catName(c) { return CAT_NAME[c] || c; }
+  function rnd(n) { return Math.floor(Math.random() * n); }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function curP() { return S.players[S.turn % S.players.length]; }
+  function curRound() { return Math.floor(S.turn / S.players.length); }
+  function totalTurns() { return S.players.length * S.rounds; }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopClock(); S = null; clearSave();
+    var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
+    if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
+    var st = Kit.setup(app, {
+      modes: [
+        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Beat the clock and your best score' },
+        { id: 'race', icon: 'users', title: 'Pass and play', desc: '2 to 4 players race the same clock in turns' }
+      ],
+      options: [
+        { id: 'diff', label: 'Word length', value: 'medium', choices: [['easy', 'Easy 4–5'], ['medium', 'Medium 6–7'], ['hard', 'Hard 8+']] },
+        { id: 'time', label: 'Clock', value: 90, choices: [[60, '60 sec'], [90, '90 sec'], [120, '2 min'], [0, 'Relaxed']] },
+        { id: 'rounds', label: 'Rounds', value: 1, choices: [[1, '1 round'], [2, '2 rounds'], [3, '3 rounds']], when: function (m) { return m === 'race'; } }
+      ],
+      players: { min: 1, max: 4, range: function (m) { return m === 'race' ? [2, 4] : [1, 1]; } },
+      onStart: function (cfg) {
+        var cat = chosen === 'Surprise' ? null : chosen;
+        start(cfg, cat);
+      }
+    });
+    var box = el('div', { class: 'cats' });
+    function paint() {
+      box.innerHTML = '';
+      CATS.concat(['Surprise']).forEach(function (c) {
+        box.appendChild(el('button', { type: 'button', class: 'chip' + (c === chosen ? ' on' : ''), html: c === 'Surprise' ? Kit.icon('shuffle') + '<span>Mix them all</span>' : Kit.esc(catName(c)),
+          onclick: function () { chosen = c; try { localStorage.setItem(CAT_KEY, c); } catch (e) {} Kit.sfx('tap'); paint(); } }));
+      });
     }
-    cat=c;markCat();newGame();
+    paint();
+    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Words about' }), box]), st.el.querySelector('.btn-lg'));
+  }
+
+  function poolFor(cat, diff) {
+    var d = DIFF[diff], cats = cat ? [cat] : CATS, out = [];
+    cats.forEach(function (c) { WORDS[c].forEach(function (o) { if (o.w.length >= d[0] && o.w.length <= d[1] && !out.some(function (x) { return x.w === o.w; })) out.push(o); }); });
+    return shuffle(out);
+  }
+  function start(cfg, cat) {
+    var time = +cfg.options.time; if (!(time in TIMES)) time = 90;
+    S = { mode: cfg.mode, cat: cat || 'Mixed', diff: cfg.options.diff || 'medium', time: time, rounds: cfg.mode === 'race' ? (+cfg.options.rounds || 1) : 1,
+      players: cfg.players.map(function (p) { return { name: p.name }; }), scores: cfg.players.map(function () { return 0; }), roundScores: [],
+      turn: 0, phase: 'ready', deck: poolFor(cat, cfg.options.diff || 'medium'), di: 0, R: null, T: null, log: [], started: Date.now() };
+    if (S.cat === 'Mixed') CAT_NAME.Mixed = 'Mixed';
+    Kit.gameStart();
+    newTurn();
+  }
+  function newTurn() {
+    S.phase = 'ready';
+    S.T = { score: 0, solved: 0, streak: 0, best: 0, words: [], left: S.time * 1000, count: 0 };
+    S.R = null;
+    save(); render();
+    if (S.mode === 'solo') beginTurn();
+  }
+  function beginTurn() {
+    S.phase = 'play'; Kit.sfx('pop');
+    nextWord(); save(); render(); startClock();
+  }
+
+  // ── Words and tiles ───────────────────────────────────────────────────────
+  function scramble(w) {
+    var a = w.split(''), s, n = 0;
+    do { s = shuffle(a.slice()).join(''); n++; } while ((s === w || isWord(s)) && n < 40);
+    return s;
+  }
+  function isWord(s) { return !!ALL[s] || (s.length === 5 && !!VALID5[s]); }
+  function nextWord() {
+    if (S.di >= S.deck.length) { S.deck = shuffle(S.deck); S.di = 0; }
+    var o = S.deck[S.di++], sc = scramble(o.w), n = o.w.length;
+    S.R = { w: o.w, clue: o.clue, mix: sc, letters: sc.split(''), slots: new Array(n).fill(null), rack: sc.split('').map(function (_, i) { return i; }),
+      locked: new Array(n).fill(false), clueUsed: false, hinted: 0, fresh: true };
+    undoStack = [];
+  }
+  function snapshot() { undoStack.push(JSON.stringify({ slots: S.R.slots, rack: S.R.rack })); if (undoStack.length > 40) undoStack.shift(); }
+  function placeTile(t, slot) {
+    var R = S.R;
+    if (slot == null) slot = R.slots.indexOf(null);
+    if (slot < 0 || R.locked[slot]) return;
+    var from = R.rack.indexOf(t), fromSlot = R.slots.indexOf(t);
+    var occupant = R.slots[slot];
+    if (occupant === t) return;
+    snapshot();
+    if (from >= 0) R.rack[from] = null;
+    if (fromSlot >= 0) R.slots[fromSlot] = null;
+    if (occupant != null) {
+      if (fromSlot >= 0) R.slots[fromSlot] = occupant; // swap between squares
+      else R.rack[from >= 0 ? from : R.rack.indexOf(null)] = occupant;
+    }
+    R.slots[slot] = t;
+  }
+  function toRack(t) {
+    var R = S.R, s = R.slots.indexOf(t);
+    if (s < 0 || R.locked[s]) return;
+    snapshot();
+    R.slots[s] = null;
+    var spot = R.rack.indexOf(null); R.rack[spot] = t;
+  }
+  function undoTile() {
+    if (!S || S.phase !== 'play' || busy) return Kit.toast('Nothing to undo');
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    var u = JSON.parse(undoStack.pop());
+    flip(function () { S.R.slots = u.slots; S.R.rack = u.rack; paintTiles(); });
+    Kit.sfx('whoosh'); save();
+  }
+
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  var timer = null, lastTs = 0, paused = false, lastTick = -1;
+  function startClock() {
+    stopClock(); paused = false;
+    if (!S.time) return;
+    lastTs = Date.now();
+    timer = setInterval(function () {
+      var now = Date.now(), dt = now - lastTs; lastTs = now;
+      if (!S || S.phase !== 'play' || paused) return;
+      if (document.hidden) { pause(); return; }
+      S.T.left -= dt;
+      var sec = Math.ceil(S.T.left / 1000);
+      if (sec <= 10 && sec > 0 && sec !== lastTick) { lastTick = sec; Kit.sfx('tick'); if (sec <= 5) Kit.haptic('tick'); }
+      paintClock();
+      if (S.T.left <= 0) { S.T.left = 0; endTurn(); }
+      else if (sec % 3 === 0) save();
+    }, 200);
+  }
+  function stopClock() { clearInterval(timer); timer = null; }
+  function pause() { if (!S || S.phase !== 'play' || !S.time) return; paused = true; save(); render(); }
+  function resume() { paused = false; lastTs = Date.now(); render(); startClock(); }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var feltEl, slotsEl, rackEl, clueEl, hudEl, clockEl, stripEl;
+  function render() {
+    app.innerHTML = '';
+    if (S.mode === 'race') { stripEl = el('div', { class: 'scores' }); app.appendChild(stripEl); paintStrip(); }
+    hudEl = el('div', { class: 'hud' }); app.appendChild(hudEl);
+    clockEl = el('div', { class: 'clock' }, [el('i')]);
+    if (S.time) app.appendChild(clockEl);
+    feltEl = el('div', { class: 'felt felt-in' });
+    app.appendChild(el('div', { class: 'table wood' }, [feltEl]));
+    var tools = el('div', { class: 'tools' });
+    [['shuffle', 'Shuffle', doShuffle], ['sparkle', 'Letter', hintLetter], ['lightbulb', 'Clue', showClue], ['right', 'Skip', skip]].forEach(function (b) {
+      tools.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon(b[0]) + '<span>' + b[1] + '</span>', onclick: b[2], disabled: S.phase !== 'play' || paused }));
+    });
+    app.appendChild(tools);
+    paintHud(); paintClock();
+    if (S.phase === 'ready') return coverReady();
+    if (S.phase === 'turnover') return coverTurnOver();
+    if (S.phase === 'over') return coverOver();
+    clueEl = el('div', { class: 'clue dim' }); feltEl.appendChild(clueEl); paintClue();
+    slotsEl = el('div', { class: 'row slots' });
+    rackEl = el('div', { class: 'row' });
+    feltEl.appendChild(slotsEl);
+    feltEl.appendChild(el('div', { class: 'rackwrap' }, [el('div', { class: 'rack' }, [rackEl])]));
+    var n = S.R.w.length; slotsEl.style.setProperty('--n', n); rackEl.style.setProperty('--n', n);
+    if (S.R.fresh) { S.R.fresh = false; dealIn(); } else paintTiles();
+    if (paused) coverPaused();
+  }
+  function paintStrip() {
+    if (!stripEl) return;
+    stripEl.innerHTML = '';
+    S.players.forEach(function (p, i) {
+      var on = i === S.turn % S.players.length && S.phase !== 'over';
+      stripEl.appendChild(el('div', { class: 'score' + (on ? ' on' : ''), style: { '--c': Kit.color(i) } }, [
+        el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(S.scores[i] + (on && S.T ? S.T.score : 0)) }),
+        el('span', { class: 'sub', text: S.rounds > 1 ? 'Round ' + Math.min(S.rounds, curRound() + 1) : on ? 'Playing' : '' })
+      ]));
+    });
+  }
+  function paintHud() {
+    if (!hudEl || !S.T) return;
+    hudEl.innerHTML = '';
+    hudEl.appendChild(el('span', { class: 'pill', html: Kit.icon('star') + '<b>' + S.T.score + '</b>points' }));
+    hudEl.appendChild(el('span', { class: 'pill', html: Kit.icon('check') + '<b>' + S.T.solved + '</b>' + (S.time ? 'solved' : 'of ' + RELAXED_WORDS) }));
+    hudEl.appendChild(el('span', { class: 'pill' + (S.T.streak >= 3 ? ' hot' : ''), html: Kit.icon('flame') + '<b>' + S.T.streak + '</b>streak' }));
+  }
+  function paintClock() {
+    if (!S.time || !clockEl || !S.T) return;
+    var f = Math.max(0, S.T.left / (S.time * 1000));
+    clockEl.firstChild.style.width = (f * 100) + '%';
+    clockEl.classList.toggle('low', S.T.left <= 10000 && S.phase === 'play');
+  }
+  function paintClue() {
+    var R = S.R;
+    clueEl.className = 'clue' + (R.clueUsed ? '' : ' dim');
+    clueEl.textContent = R.clueUsed ? R.clue : R.w.length + ' letters · ' + catName(S.cat === 'Mixed' ? catOf(R.w) : S.cat);
+  }
+  function catOf(w) { for (var i = 0; i < CATS.length; i++) if (WORDS[CATS[i]].some(function (o) { return o.w === w; })) return catName(CATS[i]); return ''; }
+
+  function tileEl(t) {
+    var R = S.R, ch = R.letters[t], s = R.slots.indexOf(t);
+    var b = el('button', { type: 'button', class: 'tile' + (s >= 0 && R.locked[s] ? ' lock' : ''), 'data-t': t, 'aria-label': 'Letter ' + ch, html: ch + '<sub>' + VAL[ch] + '</sub>' });
+    bindTile(b, t);
+    return b;
+  }
+  function paintTiles() {
+    var R = S.R;
+    slotsEl.innerHTML = ''; rackEl.innerHTML = '';
+    R.slots.forEach(function (t, i) {
+      var s = el('div', { class: 'slot' + (R.locked[i] ? ' lock' : ''), 'data-slot': i });
+      if (t != null) s.appendChild(tileEl(t));
+      slotsEl.appendChild(s);
+    });
+    R.rack.forEach(function (t, i) {
+      var s = el('div', { class: 'rspot', 'data-rack': i });
+      if (t != null) s.appendChild(tileEl(t));
+      rackEl.appendChild(s);
+    });
+  }
+  // FLIP: tiles glide from where they were to where they are now
+  function flip(change, dur, override) {
+    var before = {};
+    document.querySelectorAll('.tile[data-t]').forEach(function (t) { before[t.dataset.t] = t.getBoundingClientRect(); });
+    if (override) for (var k in override) before[k] = override[k];
+    change();
+    document.querySelectorAll('.tile[data-t]').forEach(function (t) {
+      var a = before[t.dataset.t]; if (!a) return;
+      var b = t.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
+      if (!dx && !dy) return;
+      t.style.transition = 'none'; t.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        t.style.transition = 'transform ' + (dur || 0.28) + 's cubic-bezier(.3,1.3,.5,1), box-shadow .15s, background .3s';
+        t.style.transform = '';
+      }); });
+    });
+  }
+  // A new word: the tiles tumble out of the bag into a pile, then spread along the rack
+  function dealIn() {
+    paintTiles(); busy = true;
+    var rr = rackEl.getBoundingClientRect(), cx = rr.left + rr.width / 2;
+    var tiles = rackEl.querySelectorAll('.tile');
+    tiles.forEach(function (t, i) {
+      var b = t.getBoundingClientRect();
+      t.style.transition = 'none'; t.style.opacity = '0';
+      t.style.transform = 'translate(' + (cx - b.left - b.width / 2 + (Math.random() - .5) * 14) + 'px,-70px) rotate(' + ((Math.random() - .5) * 50) + 'deg)';
+    });
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      tiles.forEach(function (t, i) {
+        setTimeout(function () {
+          t.style.transition = 'transform .42s cubic-bezier(.3,1.35,.5,1), opacity .15s';
+          t.style.opacity = ''; t.style.transform = ''; Kit.sfx('tick');
+        }, i * 55);
+      });
+      setTimeout(function () { busy = false; tiles.forEach(function (t) { t.style.transition = ''; }); save(); }, tiles.length * 55 + 420);
+    }); });
+  }
+
+  // ── Input: tap or drag ────────────────────────────────────────────────────
+  var busy = false, drag = null;
+  function bindTile(b, t) {
+    b.addEventListener('pointerdown', function (e) {
+      if (busy || paused || S.phase !== 'play' || e.button > 0) return;
+      var s = S.R.slots.indexOf(t); if (s >= 0 && S.R.locked[s]) return;
+      e.preventDefault();
+      drag = { t: t, el: b, x0: e.clientX, y0: e.clientY, moving: false, ghost: null, over: null, id: e.pointerId };
+      try { b.setPointerCapture(e.pointerId); } catch (x) {}
+    });
+    b.addEventListener('pointermove', function (e) {
+      if (!drag || drag.t !== t) return;
+      var dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+      if (!drag.moving && dx * dx + dy * dy > 64) {
+        drag.moving = true;
+        var g = b.cloneNode(true); g.classList.add('drag'); g.style.setProperty('--t', b.getBoundingClientRect().width + 'px');
+        document.body.appendChild(g); drag.ghost = g; b.style.opacity = '.25'; Kit.sfx('tap'); Kit.haptic('tick');
+      }
+      if (drag.moving) {
+        var w = drag.ghost.offsetWidth;
+        drag.ghost.style.left = (e.clientX - w / 2) + 'px'; drag.ghost.style.top = (e.clientY - w / 2) + 'px';
+        var over = targetAt(e.clientX, e.clientY);
+        document.querySelectorAll('.slot.over').forEach(function (x) { x.classList.remove('over'); });
+        if (over && over.slot != null) slotsEl.children[over.slot].classList.add('over');
+        drag.over = over;
+      }
+    });
+    b.addEventListener('pointerup', function () { endDrag(t); });
+    b.addEventListener('pointercancel', function () { if (drag && drag.ghost) drag.ghost.remove(); if (drag) drag.el.style.opacity = ''; drag = null; });
+  }
+  function targetAt(x, y) {
+    var best = null, bd = 1e9;
+    Array.prototype.forEach.call(slotsEl.children, function (s, i) {
+      var r = s.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, d = Math.hypot(x - cx, y - cy);
+      if (d < bd && d < r.width * 0.9) { bd = d; best = { slot: i }; }
+    });
+    if (best) return best;
+    var rr = rackEl.parentNode.getBoundingClientRect();
+    if (y > rr.top - 20 && y < rr.bottom + 30) return { rack: true };
+    return null;
+  }
+  function endDrag(t) {
+    if (!drag || drag.t !== t) return;
+    var d = drag; drag = null;
+    document.querySelectorAll('.slot.over').forEach(function (x) { x.classList.remove('over'); });
+    if (!d.moving) { tapTile(t); return; }
+    var g = d.ghost, gr = g.getBoundingClientRect();
+    g.remove(); d.el.style.opacity = '';
+    var R = S.R, before = R.slots.indexOf(t);
+    var ov = {}; ov[t] = gr; // glide from where the finger let go
+    if (d.over && d.over.slot != null && !R.locked[d.over.slot]) {
+      flip(function () { placeTile(t, d.over.slot); paintTiles(); }, 0.25, ov);
+      Kit.sfx('deal'); Kit.haptic('light');
+    } else if (d.over && d.over.rack && before >= 0) {
+      flip(function () { toRack(t); paintTiles(); }, 0.25, ov); Kit.sfx('tap');
+    } else { flip(function () { paintTiles(); }, 0.3, ov); }
+    afterMove();
+  }
+  function tapTile(t) {
+    var R = S.R;
+    if (R.slots.indexOf(t) >= 0) { flip(function () { toRack(t); paintTiles(); }); Kit.sfx('tap'); }
+    else { flip(function () { placeTile(t, null); paintTiles(); }); Kit.sfx('deal'); Kit.haptic('tick'); }
+    afterMove();
+  }
+  function afterMove() {
+    save();
+    if (S.R.slots.every(function (x) { return x != null; })) { busy = true; setTimeout(check, 260); }
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!S || S.phase !== 'play' || paused || busy || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.k-scrim,.k-win')) return;
+    var R = S.R;
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      for (var i = R.slots.length - 1; i >= 0; i--) if (R.slots[i] != null && !R.locked[i]) { var tt = R.slots[i]; flip(function () { toRack(tt); paintTiles(); }); Kit.sfx('tap'); save(); return; }
+      return;
+    }
+    if (/^[a-z]$/i.test(e.key)) {
+      var L = e.key.toUpperCase(), k = R.rack.filter(function (x) { return x != null && R.letters[x] === L; })[0];
+      if (k != null) tapTile(k); else Kit.haptic('error');
+    }
   });
-  $('cats').appendChild(b);
-});
-function markCat(){document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));}
 
-function scramble(w){
-  let s=w.split('');
-  while(s.join('')===w){for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]];}}
-  return s.join('');
-}
-function shuffleWords(){for(let i=words.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[words[i],words[j]]=[words[j],words[i]];}}
-
-function startTimer(){
-  clearInterval(timerInt);
-  renderTimer();
-  timerInt=setInterval(()=>{if(document.hidden)return;timerSec--;renderTimer();if(timerSec<=0)endGame();},1000);
-}
-function renderTimer(){
-  $('timer').textContent=Math.max(0,timerSec);
-  $('timer').classList.toggle('low',timerSec<=10&&!gameOver);
-  $('timer-fill').style.width=(Math.max(0,timerSec)/60*100)+'%';
-}
-
-function newGame(){
-  clearInterval(timerInt);
-  score=0;streak=0;timerSec=60;gameOver=false;solved=0;bestStreak=0;
-  words=Object.entries(WORDS[cat]).map(([w,h])=>({word:w,hint:h}));
-  shuffleWords();
-  wi=0;updateScore();
-  hideResult();
-  setControls(true);
-  startTimer();
-  loadWord();
-}
-function setControls(on){['hint-btn','shuffle-btn','skip-btn'].forEach(id=>$(id).disabled=!on);}
-
-function loadWord(){
-  if(wi>=words.length){wi=0;shuffleWords();}
-  hintUsed=false;locked=false;
-  const hintEl=$('hint');
-  hintEl.innerHTML=`<span class="muted">${words[wi].word.length} letters · tap 💡 for a clue</span>`;
-  hintEl.classList.remove('shown');
-  $('feedback').textContent='';
-  const sc=scramble(words[wi].word);
-  $('scrambled').textContent=sc;
-  letters=sc.split('');picks=[];
-  renderTiles();
-}
-
-function renderTiles(){
-  const n=letters.length;
-  const ans=$('answer-row'),tiles=$('tiles');
-  ans.style.setProperty('--n',n);tiles.style.setProperty('--n',n);
-  ans.className='sc-row sc-answer';
-  ans.innerHTML='';tiles.innerHTML='';
-  for(let i=0;i<n;i++){
-    const slot=document.createElement('button');slot.type='button';slot.className='sc-slot';
-    if(picks[i]!==undefined){slot.textContent=letters[picks[i]];slot.classList.add('filled');}
-    slot.addEventListener('click',()=>unpick(i));
-    ans.appendChild(slot);
+  // ── Checking ──────────────────────────────────────────────────────────────
+  function check() {
+    var R = S.R, guess = R.slots.map(function (t) { return R.letters[t]; }).join('');
+    if (guess === R.w || isWord(guess)) return solved(guess);
+    // Wrong: shake, then everything that is not locked goes back to the rack
+    Kit.sfx('bad'); Kit.haptic('error');
+    slotsEl.classList.remove('bad'); void slotsEl.offsetWidth; slotsEl.classList.add('bad');
+    slotsEl.querySelectorAll('.tile:not(.lock)').forEach(function (t) { t.classList.add('wrong'); });
+    setTimeout(function () {
+      flip(function () {
+        R.slots.forEach(function (t, i) { if (t != null && !R.locked[i]) { R.slots[i] = null; R.rack[R.rack.indexOf(null)] = t; } });
+        paintTiles();
+      });
+      busy = false; undoStack = []; save();
+    }, 650);
   }
-  letters.forEach((l,i)=>{
-    const t=document.createElement('button');t.type='button';t.className='sc-tile'+(picks.includes(i)?' used':'');
-    t.textContent=l;t.addEventListener('click',()=>pick(i));
-    tiles.appendChild(t);
-  });
-}
-function pick(i){
-  if(gameOver||locked||picks.includes(i))return;
-  picks.push(i);haptic('select');
-  if(picks.length===1)$('feedback').textContent='';
-  renderTiles();
-  if(picks.length===letters.length)check();
-}
-function unpick(slotIdx){
-  if(gameOver||locked||slotIdx>=picks.length)return;
-  picks.splice(slotIdx);   // remove this letter and everything after it
-  haptic('select');renderTiles();
-}
-
-function updateScore(){
-  $('score').textContent=score;
-  $('streak').textContent=streak;
-  renderTimer();
-}
-
-function check(){
-  if(gameOver)return;
-  const ans=picks.map(i=>letters[i]).join('');
-  if(!ans)return;
-  if(ans===words[wi].word){
-    const pts=hintUsed?1:2;score+=pts;streak++;solved++;bestStreak=Math.max(bestStreak,streak);
-    locked=true;
-    $('answer-row').classList.add('good');
-    $('feedback').innerHTML=`<span style="color:var(--green)">Correct! +${pts} point${pts>1?'s':''}</span>`;
-    haptic('success');
-    updateScore();wi++;setTimeout(()=>{if(!gameOver)loadWord();},800);
-  } else {
-    streak=0;
-    locked=true;
-    $('answer-row').classList.add('bad');
-    $('feedback').innerHTML=`<span style="color:var(--red)">Not quite — try again!</span>`;
-    haptic('error');
-    updateScore();
-    setTimeout(()=>{locked=false;picks=[];renderTiles();},500);
+  function wordScore(R) {
+    var base = 0;
+    R.slots.forEach(function (t, i) { if (!R.locked[i]) base += VAL[R.letters[t]]; });
+    if (R.clueUsed) base = Math.ceil(base / 2);
+    return Math.max(1, base);
   }
-}
-
-function skip(){
-  if(gameOver||locked)return;
-  streak=0;locked=true;
-  // show the answer in the slots
-  const ans=$('answer-row');ans.className='sc-row sc-answer reveal';
-  [...ans.children].forEach((s,i)=>{s.textContent=words[wi].word[i];});
-  $('tiles').querySelectorAll('.sc-tile').forEach(t=>t.classList.add('used'));
-  $('feedback').innerHTML=`<span style="color:var(--text-2)">Skipped — it was <strong style="color:var(--text)">${words[wi].word}</strong></span>`;
-  haptic('light');
-  updateScore();wi++;setTimeout(()=>{if(!gameOver)loadWord();},1300);
-}
-
-function endGame(){
-  clearInterval(timerInt);gameOver=true;locked=true;
-  setControls(false);
-  renderTimer();
-  haptic('heavy');
-  try{sessionStorage.removeItem('wscr');}catch(e){}
-  $('sc-res-stats').innerHTML=
-    `<div class="stat"><div class="stat-val" style="color:var(--gold)">${score}</div><div class="stat-lbl">Score</div></div>`+
-    `<div class="stat"><div class="stat-val">${solved}</div><div class="stat-lbl">Solved</div></div>`+
-    `<div class="stat"><div class="stat-val">${bestStreak}</div><div class="stat-lbl">Best streak</div></div>`;
-  $('sc-result').classList.add('show');
-}
-function hideResult(){$('sc-result').classList.remove('show');}
-
-$('skip-btn').addEventListener('click',skip);
-$('shuffle-btn').addEventListener('click',()=>{
-  if(gameOver||locked)return;
-  const placed=picks.map(i=>letters[i]);
-  const rest=letters.filter((_,i)=>!picks.includes(i));
-  for(let i=rest.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[rest[i],rest[j]]=[rest[j],rest[i]];}
-  letters=placed.concat(rest);picks=placed.map((_,i)=>i);
-  haptic('light');renderTiles();
-});
-$('hint-btn').addEventListener('click',()=>{
-  if(gameOver)return;
-  const hintEl=$('hint');
-  hintEl.textContent='💡 '+words[wi].hint;
-  hintEl.classList.add('shown');
-  hintUsed=true;
-});
-$('sc-again').addEventListener('click',newGame);
-$('sc-close').addEventListener('click',hideResult);
-$('sc-result').addEventListener('click',e=>{if(e.target.id==='sc-result')hideResult();});
-$('new-game').addEventListener('click',async()=>{
-  if(!gameOver&&score>0){
-    const ok=await GN.confirm('Start a new game?',{title:'Start a new game?',body:'Your current score will be reset.',ok:'New game'});
-    if(!ok)return;
+  function solved(guess) {
+    var R = S.R, T = S.T, pts = wordScore(R);
+    T.streak++; T.solved++; T.count++; T.best = Math.max(T.best, T.streak);
+    var bonus = T.streak >= 3 ? 5 : 0;
+    T.score += pts + bonus;
+    T.words.push({ w: R.w, as: guess !== R.w ? guess : undefined, mix: R.mix, pts: pts + bonus, clue: R.clueUsed, help: R.hinted });
+    Kit.sfx('good'); Kit.haptic('success');
+    slotsEl.querySelectorAll('.tile').forEach(function (t, i) { setTimeout(function () { t.classList.add('good', 'dance'); }, i * 60); });
+    feltEl.appendChild(el('div', { class: 'float', text: '+' + (pts + bonus) }));
+    if (guess !== R.w) setTimeout(function () { Kit.toast(guess + ' works too! (We were thinking ' + R.w + ')', 2400); }, 300);
+    if (T.streak >= 3) setTimeout(function () { Kit.callout(T.streak >= 6 ? 'Unstoppable! ' + T.streak + ' in a row' : T.streak + ' in a row! +5'); }, 200);
+    else if (!R.clueUsed && !R.hinted && R.w.length >= 8) setTimeout(function () { Kit.callout('Brilliant!'); }, 200);
+    paintHud(); paintStrip(); save();
+    setTimeout(advance, 1100);
   }
-  newGame();
-});
-// Physical keyboard: type letters, Backspace to undo, Enter/Tab to skip
-document.addEventListener('keydown',e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey||gameOver)return;
-  if(e.key==='Backspace'){e.preventDefault();if(picks.length)unpick(picks.length-1);return;}
-  if(/^[a-zA-Z]$/.test(e.key)){
-    const L=e.key.toUpperCase();
-    const i=letters.findIndex((l,idx)=>l===L&&!picks.includes(idx));
-    if(i>=0)pick(i);else haptic('error');
+  function advance() {
+    busy = false;
+    if (S.phase !== 'play') return;
+    if (!S.time && S.T.count >= RELAXED_WORDS) return endTurn();
+    nextWord(); save(); render();
   }
-});
+  function doShuffle() {
+    if (busy || S.phase !== 'play') return;
+    var R = S.R, free = R.rack.filter(function (x) { return x != null; });
+    var spots = []; R.rack.forEach(function (x, i) { spots.push(i); });
+    shuffle(free);
+    flip(function () { R.rack = R.rack.map(function () { return null; }); free.forEach(function (t, i) { R.rack[i] = t; }); paintTiles(); }, 0.4);
+    Kit.sfx('roll'); Kit.haptic('light'); save();
+  }
+  function hintLetter() {
+    if (busy || S.phase !== 'play') return;
+    var R = S.R, i;
+    for (i = 0; i < R.w.length; i++) if (!R.locked[i]) break;
+    if (i >= R.w.length) return;
+    var need = R.w[i];
+    // Find a tile with that letter: rack first, then a wrong square
+    var t = R.rack.filter(function (x) { return x != null && R.letters[x] === need; })[0];
+    if (t == null) t = R.slots.filter(function (x, j) { return x != null && !R.locked[j] && R.letters[x] === need; })[0];
+    if (t == null) return;
+    flip(function () {
+      var occ = R.slots[i], from = R.slots.indexOf(t), fr = R.rack.indexOf(t);
+      if (from >= 0) R.slots[from] = null;
+      if (fr >= 0) R.rack[fr] = null;
+      if (occ != null && occ !== t) R.rack[R.rack.indexOf(null)] = occ;
+      R.slots[i] = t; R.locked[i] = true; R.hinted++;
+      paintTiles();
+    });
+    undoStack = [];
+    Kit.sfx('pop'); Kit.haptic('light'); afterMove();
+  }
+  function showClue() {
+    if (busy || S.phase !== 'play') return;
+    var R = S.R;
+    if (R.clueUsed) return Kit.toast('The clue is on the table');
+    R.clueUsed = true; Kit.sfx('flip'); paintClue(); clueEl.classList.add('pop'); save();
+  }
+  function skip() {
+    if (busy || S.phase !== 'play') return;
+    var R = S.R, T = S.T;
+    busy = true; T.streak = 0; T.count++;
+    T.words.push({ w: R.w, mix: R.mix, pts: 0, skipped: true });
+    // Show the answer in the squares
+    flip(function () {
+      var used = {};
+      R.slots = R.w.split('').map(function (ch) { for (var k = 0; k < R.letters.length; k++) if (!used[k] && R.letters[k] === ch) { used[k] = 1; return k; } return null; });
+      R.rack = R.rack.map(function () { return null; });
+      paintTiles();
+    });
+    slotsEl.querySelectorAll('.tile').forEach(function (t) { t.classList.add('reveal'); });
+    Kit.sfx('whoosh'); paintHud(); save();
+    setTimeout(advance, 1300);
+  }
 
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_wscr(){if(gameOver)return;
-  try{sessionStorage.setItem('wscr',JSON.stringify({cat,wi,score,streak,solved,bestStreak,_ts:Date.now()}));}catch(e){}
-}
-function _load_wscr(){
-  try{
-    const raw=sessionStorage.getItem('wscr');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s||!WORDS[s.cat||'Animals'])return false;
-    cat=s.cat||'Animals';score=s.score||0;streak=s.streak||0;solved=s.solved||0;bestStreak=s.bestStreak||streak;
-    // Re-build words array properly, then restore position
-    words=Object.entries(WORDS[cat]).map(([w,h])=>({word:w,hint:h}));
-    wi=Math.min(s.wi||0,words.length-1);
-    markCat();
-    timerSec=60;gameOver=false;setControls(true);
-    updateScore();startTimer();loadWord();
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_wscr);
-window.addEventListener('pagehide',_save_wscr);
+  // ── Turns and the end ─────────────────────────────────────────────────────
+  function endTurn() {
+    stopClock();
+    var i = S.turn % S.players.length;
+    S.scores[i] += S.T.score;
+    var r = curRound();
+    if (!S.roundScores[r]) S.roundScores[r] = S.players.map(function () { return 0; });
+    S.roundScores[r][i] = S.T.score;
+    S.log.push({ p: i, r: r, score: S.T.score, solved: S.T.solved, best: S.T.best, words: S.T.words });
+    busy = false;
+    if (S.time) { Kit.sfx('lose'); Kit.callout("Time's up!"); } else Kit.sfx('good');
+    S.turn++;
+    if (S.turn >= totalTurns()) { S.phase = 'over'; save(); setTimeout(finish, 900); render(); return; }
+    S.phase = 'turnover'; save(); render();
+  }
+  function coverReady() {
+    var p = curP(), c = el('div', { class: 'cover' });
+    c.appendChild(el('p', { text: S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds : 'Pass the phone to' }));
+    c.appendChild(el('h2', { text: p.name === 'You' ? 'Your turn' : p.name }));
+    c.appendChild(el('p', { text: (S.time ? TIMES[S.time] + ' on the clock' : RELAXED_WORDS + ' words') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] }));
+    c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Start my turn', onclick: beginTurn }));
+    feltEl.appendChild(c);
+  }
+  function coverTurnOver() {
+    var last = S.log[S.log.length - 1], p = S.players[last.p], c = el('div', { class: 'cover' });
+    c.appendChild(el('p', { text: p.name + ' scored' }));
+    c.appendChild(el('div', { class: 'big', text: String(last.score) }));
+    c.appendChild(el('p', { text: last.solved + (last.solved === 1 ? ' word' : ' words') + (last.best >= 3 ? ' · best streak ' + last.best : '') }));
+    c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Next: ' + curP().name, onclick: function () { newTurn(); } }));
+    feltEl.appendChild(c);
+  }
+  function coverOver() {
+    var c = el('div', { class: 'cover' });
+    c.appendChild(el('h2', { text: 'Game over' }));
+    c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Play again', onclick: again }));
+    c.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Change settings', onclick: showSetup }));
+    feltEl.appendChild(c);
+  }
+  function coverPaused() {
+    var c = el('div', { class: 'cover' });
+    c.appendChild(el('h2', { text: 'Paused' }));
+    c.appendChild(el('p', { text: 'The clock stopped. The letters are hidden so nobody peeks.' }));
+    c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Keep going', onclick: resume }));
+    feltEl.appendChild(c);
+  }
+  function bestBefore() {
+    var best = null;
+    try { GameHistory.load(KEY).forEach(function (e) { if (e.solo && e.time === S.time && e.diff === S.diff && (best == null || e.top > best)) best = e.top; }); } catch (x) {}
+    return best;
+  }
+  function finish() {
+    var hl = [], P = S.players, solo = S.mode === 'solo';
+    var all = []; S.log.forEach(function (L) { L.words.forEach(function (w) { if (!w.skipped) all.push({ p: L.p, w: w }); }); });
+    var order = P.map(function (p, i) { return i; }).sort(function (a, b) { return S.scores[b] - S.scores[a]; });
+    var top = S.scores[order[0]], tie = P.length > 1 && S.scores[order[1]] === top;
+    var best = solo ? bestBefore() : null;
+    if (solo) {
+      var L0 = S.log[0];
+      hl.push(P[0].name + ' unscrambled ' + L0.solved + (L0.solved === 1 ? ' word' : ' words') + ' for ' + top + ' points' + (S.time ? ' in ' + TIMES[S.time] : ''));
+      if (best != null && top > best) hl.push('New best score! Beat ' + best);
+    } else {
+      if (tie) hl.push('A tie at ' + top + ' points!');
+      else hl.push(P[order[0]].name + ' won by ' + (top - S.scores[order[1]]) + ' points');
+    }
+    var bw = all.slice().sort(function (a, b) { return b.w.pts - a.w.pts; })[0];
+    if (bw) hl.push('Best word: ' + bw.w.mix + ' became ' + (bw.w.as || bw.w.w) + ' for ' + bw.w.pts + (solo ? '' : ' (' + P[bw.p].name + ')'));
+    var streak = S.log.slice().sort(function (a, b) { return b.best - a.best; })[0];
+    if (streak && streak.best >= 3) hl.push('Longest streak: ' + streak.best + ' in a row' + (solo ? '' : ' by ' + P[streak.p].name));
+    var clean = all.filter(function (x) { return !x.w.clue && !x.w.help; }).length;
+    if (clean >= 3) hl.push(clean + ' words solved with no help');
+    var alt = all.filter(function (x) { return x.w.as; })[0];
+    if (alt) hl.push('Found ' + alt.w.as + ' hiding in ' + alt.w.w);
+    var skipped = 0; S.log.forEach(function (L) { L.words.forEach(function (w) { if (w.skipped) skipped++; }); });
+    if (!all.length && skipped) hl.push('Tough letters: ' + skipped + ' skipped');
+    var mode = (solo ? 'Solo' : 'Pass and play') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] + ' · ' + TIMES[S.time];
+    Kit.record(KEY, {
+      started: S.started, mode: mode,
+      players: P.map(function (p, i) { return { name: p.name, score: S.scores[i] }; }),
+      winner: solo ? P[0].name : tie ? null : P[order[0]].name,
+      rounds: !solo && S.rounds > 1 ? { labels: S.roundScores.map(function (r, i) { return 'Round ' + (i + 1); }), scores: S.roundScores } : undefined,
+      summary: solo ? P[0].name + ' scored ' + top : undefined,
+      highlights: hl.slice(0, 6),
+      meta: { solo: solo, time: S.time, diff: S.diff, cat: S.cat, top: top }
+    });
+    clearSave();
+    Kit.win({
+      title: solo ? (best != null && top > best ? 'New best!' : top + ' points!') : tie ? "It's a tie!" : (P[order[0]].name === 'You' ? 'You win!' : P[order[0]].name + ' wins!'),
+      sub: solo ? S.log[0].solved + ' words unscrambled' + (best != null ? ' · best before: ' + best : '') : 'After ' + S.rounds + (S.rounds > 1 ? ' rounds' : ' round'),
+      rank: solo ? null : order.map(function (i) { return { name: P[i].name, score: S.scores[i], color: Kit.color(i) }; }),
+      againLabel: 'Play again', again: again,
+      extra: [{ label: 'Change settings', onClick: showSetup }]
+    });
+  }
+  function again() {
+    var cfg = { mode: S.mode, players: S.players, options: { diff: S.diff, time: S.time, rounds: S.rounds } };
+    start(cfg, S.cat === 'Mixed' ? null : S.cat);
+  }
 
-if(!_load_wscr())newGame();
+  document.addEventListener('visibilitychange', function () { if (document.hidden && S && S.phase === 'play' && S.time) pause(); });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.phase && saved.phase !== 'over') {
+    S = saved; if (S.cat === 'Mixed') CAT_NAME.Mixed = 'Mixed';
+    if (S.phase === 'play') { if (S.R) S.R.fresh = false; if (S.time) { paused = true; render(); } else { render(); } }
+    else render();
+  } else showSetup();
+  window.__sc = { state: function () { return S; } };
+})();
 </script>
 </body>
 </html>

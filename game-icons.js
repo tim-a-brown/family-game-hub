@@ -30,6 +30,7 @@ var GameIcon = (function () {
               rect(11, 8.5, 22, 31, 3.5, W, ' transform="rotate(-7 22 24)"'),
               'rotate(-7 22 24) translate(12.4 14.4) scale(.8)'];
     },
+    specialty: function () { return BASE.cards(); },
     board: function () {
       return [rect(8, 8, 32, 32, 6, W) + rect(8, 8, 16, 16, 0, K, ' opacity=".05"') + rect(24, 24, 16, 16, 0, K, ' opacity=".05"') +
               rect(8, 8, 32, 32, 6, 'none', ' stroke="' + K + '" stroke-opacity=".12" stroke-width="1.5"'),

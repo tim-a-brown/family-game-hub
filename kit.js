@@ -145,6 +145,7 @@
     meh: '<circle cx="12" cy="12" r="9.5"/><path d="M8 15h8"/><path d="M9 9.5h.01"/><path d="M15 9.5h.01"/>',
     coins: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/>',
     // Category marks
+    specialty: '<rect x="8" y="2" width="13" height="17" rx="2"/><path d="M5.5 6.2 3.6 6.8a2 2 0 0 0-1.3 2.4l3 10.6a2 2 0 0 0 2.5 1.4l5.4-1.6"/><path d="M14.5 5.5l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z"/>',
     cards: '<rect x="8" y="2" width="13" height="17" rx="2"/><path d="M5.5 6.2 3.6 6.8a2 2 0 0 0-1.3 2.4l3 10.6a2 2 0 0 0 2.5 1.4l5.4-1.6"/>',
     board: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>',
     dice: '<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',

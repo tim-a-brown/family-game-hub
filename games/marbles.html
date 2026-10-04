@@ -414,13 +414,25 @@
     });
     return d;
   }
+  // Opponents who could land in the centre next turn (from a star, exact count)
+  function centreDanger(owner) {
+    var n = N(), d = 0;
+    S.players.forEach(function (Q, qi) {
+      if (friendly(qi, owner)) return;
+      Q.m.forEach(function (p) {
+        if (p < 0 || p === CEN || p >= n) return;
+        for (var k = 0; k <= 5; k++) if (p + k <= n - 1 && isStar(absOf(qi, p + k))) { d += 1; break; }
+      });
+    });
+    return d;
+  }
   function cpuScore(m) {
     var n = N(), s = Math.random() * 5;
     if (m.cap) { var vp = S.players[m.cap.pi].m[m.cap.mi]; s += 110 + (vp === CEN ? n / 2 : vp) * 1.3; }
     if (m.kind === 'out') s += 65;
     if (m.kind === 'home') s += 85 + (m.to - n) * 4;
     if (m.kind === 'inhome') s += 14;
-    if (m.to === CEN) s += 30 + Math.max(0, (n - 8) - m.from) * 0.7;
+    if (m.to === CEN) s += Math.max(0, (n - 8) - m.from) * 0.55 - centreDanger(m.o) * (12 + m.from * 0.3);
     else if (m.from === CEN) s += m.to * 0.9;
     else if (m.from >= 0 && m.to < n + 4) s += (m.to - m.from) * 1.1;
     if (m.to !== CEN && m.to < n) s -= danger(m.o, absOf(m.o, m.to)) * (14 + m.to * 0.35);
@@ -465,11 +477,13 @@
     });
     var most = S.players.slice().sort(function (a, b) { return b.st.got - a.st.got; })[0];
     if (most.st.got >= 3) hl.push(most.name + ' got sent back to base ' + times(most.st.got));
-    S.players.forEach(function (p) {
-      if (p.st.centre) hl.push(p.name + ' took the centre shortcut ' + times(p.st.centre));
-      if (p.st.star >= 2) hl.push(p.name + ' hopped the star shortcuts ' + times(p.st.star));
-      if (p.st.maxSix >= 3) hl.push(p.name + ' rolled ' + (NUM[p.st.maxSix] || p.st.maxSix) + ' 6s in a row');
-    });
+    function top(f) { return S.players.slice().sort(function (a, b) { return f(b) - f(a); })[0]; }
+    var six = top(function (p) { return p.st.maxSix; });
+    if (six.st.maxSix >= 3) hl.push(six.name + ' rolled ' + (NUM[six.st.maxSix] || six.st.maxSix) + ' 6s in a row');
+    var cen = top(function (p) { return p.st.centre; });
+    if (cen.st.centre) hl.push(cen.name + ' took the centre shortcut ' + times(cen.st.centre));
+    var str = top(function (p) { return p.st.star; });
+    if (str.st.star >= 2) hl.push(str.name + ' hopped the star shortcuts ' + times(str.st.star));
     var wp = S.players[w.team[0]];
     hl.unshift(wname + (w.team.length > 1 ? ' got all eight marbles home' : ' got all four marbles home') + ' in ' + wp.st.turns + ' turns');
     if (!pairs.length) hl.push('Nobody got ' + (S.rules === 'agg' ? 'aggravated' : 'sent home') + ' all game');
@@ -622,7 +636,7 @@
     if (!S || !layerEl) return;
     var n = N(), cur = P(), ms = (S.phase === 'move' && !lock && !cur.cpu) ? legal() : [];
     // Chips
-    var cols = S.players.length <= 4 ? S.players.length : 3;
+    var cols = S.players.length <= 3 ? S.players.length : S.players.length === 4 ? 2 : 3;
     chipsEl.style.setProperty('--n', cols);
     chipsEl.innerHTML = '';
     S.players.forEach(function (p, i) {

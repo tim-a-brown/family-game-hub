@@ -1,240 +1,665 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sudoku</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.page{max-width:480px;padding-top:12px;}
-.sdk-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
-.sdk-top .tabs{margin:0;flex:1;}
-.sdk-top .tab{flex:1 1 0;min-height:36px;}
-.sdk-status{display:flex;align-items:center;justify-content:space-between;margin:0 2px 10px;}
-.timer{font-family:var(--display);font-size:1.35rem;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:-.01em;display:flex;align-items:center;gap:6px;}
-.timer svg{width:18px;height:18px;opacity:.8;}
-.sdk-diff-lbl{font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
-.sudoku-wrap{width:100%;max-width:min(460px,calc(100dvh - 330px));min-width:min(100%,300px);margin:0 auto;}
-.sudoku-grid{display:grid;grid-template-columns:repeat(9,1fr);background:var(--surface);border:2px solid rgba(255,255,255,.42);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);}
-.s-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:clamp(1.05rem,5.2vw,1.6rem);font-weight:700;cursor:pointer;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2);position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .12s;}
-.s-cell:nth-child(9n){border-right:0;}
-.s-cell:nth-child(n+73){border-bottom:0;}
-.s-cell.given{color:var(--text);cursor:default;}
-.s-cell.user{color:#7cc4ff;}
-.s-cell.highlight{background:rgba(124,196,255,.07);}
-.s-cell.same{background:rgba(245,200,66,.14);}
-.s-cell.selected{background:rgba(124,196,255,.28)!important;box-shadow:inset 0 0 0 2px rgba(124,196,255,.7);}
-.s-cell.error{color:var(--red)!important;background:rgba(248,113,113,.1);}
-.s-cell.box-right{border-right:2px solid rgba(255,255,255,.42)!important;}
-.s-cell.box-bottom{border-bottom:2px solid rgba(255,255,255,.42)!important;}
-.sudoku-grid.solved .s-cell{animation:sdk-wave .6s var(--ease) both;}
-@keyframes sdk-wave{40%{background:rgba(245,200,66,.25);}}
-.numpad{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}
-.num-btn{min-height:58px;padding:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font-family:var(--display);font-size:1.5rem;font-weight:700;cursor:pointer;transition:transform .1s var(--ease),background .15s,opacity .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;}
-.num-btn small{font-family:var(--font);font-size:.7rem;font-weight:600;color:var(--text-3);margin-top:4px;}
-.num-btn:active{transform:scale(.92);background:var(--surface-3);}
-.num-btn.done{opacity:.35;}
-.sdk-tools{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
-.tool-btn{flex:1;max-width:150px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;background:transparent;border:1px solid var(--line-2);border-radius:999px;color:var(--text-2);font-size:.9rem;font-weight:600;cursor:pointer;}
-.tool-btn:active{background:var(--surface-2);}
-.tool-btn svg{width:18px;height:18px;}
-#msg:empty{display:none;}
-.sudoku-wrap.is-solved .sdk-tools,.sudoku-wrap.is-solved .numpad{display:none;}
-#msg .win-actions .btn{min-height:48px;}
-#msg .winner-banner{margin:14px 0 0;}
-#msg .win-actions{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
-@media (hover:hover){.num-btn:hover{background:var(--surface-3);}}
+body{overflow-x:hidden;}
+.sdk{max-width:500px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 16px);}
+.sdk .play{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 76px);padding-bottom:4vh;}
+.note{position:absolute;left:0;right:0;bottom:calc(100% + 4px);z-index:5;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.12rem;line-height:1.25;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.6deg);}
+.note.show{display:flex;animation:rise .3s var(--ease) both;}
+.note .ico{flex:none;width:22px;height:22px;color:#7a6200;}
+.note.bad{background:linear-gradient(180deg,#ffd9d2,#ffc2b6);color:#5a0e0e;}
+.note.bad .ico{color:#a8202e;}
+.sdk .play > *{width:min(100%, 476px, calc(100dvh - var(--safe-t) - var(--safe-b) - 290px));min-width:min(100%,320px);}
+.loading{min-height:60vh;display:grid;place-items:center;text-align:center;font-family:var(--hand);font-size:1.5rem;color:var(--text-2);}
+
+/* A page torn from a puzzle book */
+.page{position:relative;border-radius:4px 4px 10px 10px;padding:10px 10px 8px;color:#22222c;
+  background:
+    radial-gradient(rgba(120,90,40,.05) 1px, transparent 1.2px) 0 0/5px 5px,
+    radial-gradient(140% 90% at 50% 0%, #fffdf6 0%, #f7f0de 70%, #efe5cc 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 -1px 0 rgba(0,0,0,.05) inset, 0 2px 0 #e2d6b8, 0 4px 0 #d8caa6, 0 16px 34px rgba(0,0,0,.5);}
+.page::after{content:"";position:absolute;left:8%;right:8%;bottom:-6px;height:12px;border-radius:50%;background:rgba(0,0,0,.25);filter:blur(6px);z-index:-1;}
+.ph{display:flex;align-items:baseline;gap:8px;padding:0 2px 7px;border-bottom:1.5px solid #22222c;margin-bottom:8px;font-family:Georgia,"Times New Roman",serif;}
+.ph .t{font-weight:700;font-size:1rem;letter-spacing:.14em;text-transform:uppercase;}
+.ph .no{font-style:italic;font-size:.9rem;color:#5c5848;}
+.ph .tm{margin-left:auto;font-family:var(--hand);font-size:1.25rem;color:var(--ink);font-variant-numeric:tabular-nums;min-width:3.2em;text-align:right;}
+.pf{display:flex;justify-content:space-between;gap:8px;padding:6px 2px 0;font-family:Georgia,serif;font-style:italic;font-size:.8rem;color:#6d6856;}
+.pf b{font-style:normal;font-family:var(--hand);font-weight:400;font-size:1rem;color:var(--ink);}
+
+.grid{display:grid;grid-template-columns:repeat(9,1fr);border:2.5px solid #22222c;background:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+.c{position:relative;aspect-ratio:1;display:grid;place-items:center;border-right:1px solid rgba(34,34,44,.32);border-bottom:1px solid rgba(34,34,44,.32);cursor:pointer;container-type:size;}
+.c.br{border-right:2px solid #22222c;}.c.bb{border-bottom:2px solid #22222c;}
+.c.er{border-right:0;}.c.eb{border-bottom:0;}
+.c::before{content:"";position:absolute;inset:0;pointer-events:none;transition:background .12s;}
+.c.unit::before{background:rgba(255,206,60,.2);}
+.c.same::before{background:rgba(70,120,230,.2);}
+.c.sel::before{background:rgba(255,190,30,.55);}
+.c.flash::before{animation:flash 1.2s ease;}
+@keyframes flash{0%,60%{background:rgba(61,180,110,.35);}100%{background:transparent;}}
+.c .v{font-size:66cqh;line-height:1;}
+.c.g .v{font-family:Georgia,"Times New Roman",serif;font-weight:700;color:#1d1d26;font-size:60cqh;}
+.c.u .v{font-family:var(--hand);color:var(--ink);font-size:76cqh;transform:translateY(3%) rotate(-2deg);}
+.c.u.bad .v{color:#c8102e;}
+.c.u.hint .v{color:#1d7a46;}
+.c .v.wr{animation:write .32s ease-out;}
+@keyframes write{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.nt{position:absolute;inset:4%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);font-family:var(--hand);color:#55555f;font-size:34cqh;line-height:1;}
+.nt i{font-style:normal;display:grid;place-items:center;}
+.nt i.hl{color:#1f4fbf;font-weight:700;text-shadow:0 0 .5px #1f4fbf;}
+.grid.won .c .v{animation:wave .7s ease both;animation-delay:calc(var(--d) * 40ms);}
+@keyframes wave{40%{transform:translateY(-14%) scale(1.25);color:#c8102e;}}
+
+/* Tools and number pad: clean chrome */
+.tools{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.tool{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;border:0;border-radius:14px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.72rem;letter-spacing:.01em;white-space:nowrap;transition:transform .12s var(--spring), background .15s;}
+.tool .ico{width:22px;height:22px;}
+.tool:active{transform:scale(.93);background:rgba(255,255,255,.14);}
+.tool:disabled{opacity:.35;}
+.tool.redo .ico{transform:scaleX(-1);}
+.tool.on{background:var(--accent);color:var(--accent-ink);}
+.pad{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}
+.pad button{position:relative;min-height:62px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:var(--text);
+  box-shadow:0 3px 0 rgba(0,0,0,.35);font-family:var(--display);font-size:1.75rem;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:transform .06s, opacity .2s;}
+.pad button small{font-family:var(--font);font-size:.66rem;font-weight:800;color:var(--text-3);}
+.pad button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.pad button.done{opacity:.28;}
+.pad.notes button{font-family:var(--hand);font-size:1.5rem;color:#bfd2ff;}
+.mini{display:grid;grid-template-columns:repeat(9,18px);border:2px solid #22222c;background:#fbf6e8;width:max-content;}
+.mini span{height:18px;display:grid;place-items:center;font-size:.72rem;border-right:1px solid rgba(0,0,0,.18);border-bottom:1px solid rgba(0,0,0,.18);color:#1f2a6b;font-family:var(--hand);}
+.mini span.g{font-family:Georgia,serif;font-weight:700;color:#1d1d26;}
+.mini span.br{border-right:1.5px solid #22222c;}.mini span.bb{border-bottom:1.5px solid #22222c;}
+@media (min-width:700px){ .pad button{min-height:58px;} }
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Sudoku</span>
-  <button class="icon-btn" id="new-puzzle" aria-label="New puzzle" title="New puzzle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="page">
-<div class="sdk-top">
-  <div class="tabs" role="tablist">
-    <button class="tab diff-btn" data-d="easy">Easy</button>
-    <button class="tab diff-btn active" data-d="medium">Medium</button>
-    <button class="tab diff-btn" data-d="hard">Hard</button>
-  </div>
-</div>
-<div class="sudoku-wrap">
-  <div class="sdk-status">
-    <span class="sdk-diff-lbl" id="diff-lbl">Medium</span>
-    <div class="timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span id="timer">0:00</span></div>
-  </div>
-  <div class="sudoku-grid" id="grid"></div>
-  <div class="sdk-tools">
-    <button class="tool-btn" id="erase-btn" aria-label="Erase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m17 9-6 6M11 9l6 6"/></svg>Erase</button>
-  </div>
-  <div class="numpad" id="numpad"></div>
-  <div id="msg"></div>
-</div>
-</div>
+<main class="sdk" id="app"></main>
 <script>
-'use strict';
-// Puzzles: [givens, solution]
-const PUZZLES={
-easy:[
-[[5,3,0,0,7,0,0,0,0],[6,0,0,1,9,5,0,0,0],[0,9,8,0,0,0,0,6,0],[8,0,0,0,6,0,0,0,3],[4,0,0,8,0,3,0,0,1],[7,0,0,0,2,0,0,0,6],[0,6,0,0,0,0,2,8,0],[0,0,0,4,1,9,0,0,5],[0,0,0,0,8,0,0,7,9]],
-[[5,3,4,6,7,8,9,1,2],[6,7,2,1,9,5,3,4,8],[1,9,8,3,4,2,5,6,7],[8,5,9,7,6,1,4,2,3],[4,2,6,8,5,3,7,9,1],[7,1,3,9,2,4,8,5,6],[9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9]]
-],
-medium:[
-[[0,0,0,2,6,0,7,0,1],[6,8,0,0,7,0,0,9,0],[1,9,0,0,0,4,5,0,0],[8,2,0,1,0,0,0,4,0],[0,0,4,6,0,2,9,0,0],[0,5,0,0,0,3,0,2,8],[0,0,9,3,0,0,0,7,4],[0,4,0,0,5,0,0,3,6],[7,0,3,0,1,8,0,0,0]],
-[[4,3,5,2,6,9,7,8,1],[6,8,2,5,7,1,4,9,3],[1,9,7,8,3,4,5,6,2],[8,2,6,1,9,5,3,4,7],[3,7,4,6,8,2,9,1,5],[9,5,1,7,4,3,6,2,8],[5,1,9,3,2,6,8,7,4],[2,4,8,9,5,7,1,3,6],[7,6,3,4,1,8,2,5,9]]
-],
-hard:[
-[[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,3,0,8,5],[0,0,1,0,2,0,0,0,0],[0,0,0,5,0,7,0,0,0],[0,0,4,0,0,0,1,0,0],[0,9,0,0,0,0,0,0,0],[5,0,0,0,0,0,0,7,3],[0,0,2,0,1,0,0,0,0],[0,0,0,0,4,0,0,0,9]],
-[[9,8,7,6,5,4,3,2,1],[2,4,6,1,7,3,9,8,5],[3,5,1,9,2,8,7,4,6],[1,2,8,5,3,7,6,9,4],[6,3,4,8,9,2,1,5,7],[7,9,5,4,6,1,8,3,2],[5,1,9,2,8,6,4,7,3],[4,7,2,3,1,9,5,6,8],[8,6,3,7,4,5,2,1,9]]
-]
-};
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'sudoku_state', OPTS = 'sudoku_opts', HKEY = 'sudoku';
+  var DIFFS = { easy: 'Easy', medium: 'Medium', hard: 'Hard', expert: 'Expert' };
+  var DAILY_DIFF = ['expert', 'easy', 'easy', 'medium', 'medium', 'hard', 'hard']; // Sun..Sat
 
-let diff='medium',sel=null,board,givens,solution,timerInt,seconds=0,solved=false;
-const DIFF_LBL={easy:'Easy',medium:'Medium',hard:'Hard'};
-function fmtTime(t){return `${Math.floor(t/60)}:${(t%60).toString().padStart(2,'0')}`;}
-function showTime(){document.getElementById('timer').textContent=fmtTime(seconds);}
-
-function startTimer(){clearInterval(timerInt);seconds=0;showTime();timerInt=setInterval(()=>{seconds++;showTime();},1000);}
-function stopTimer(){clearInterval(timerInt);}
-
-function newPuzzle(){
-  const p=PUZZLES[diff];
-  const idx=Math.floor(Math.random()*p.length/2)*2; // same puzzle each difficulty for now
-  givens=p[0].map(r=>[...r]);
-  solution=p[1].map(r=>[...r]);
-  board=givens.map(r=>[...r]);
-  sel=null;solved=false;startTimer();
-  document.getElementById('msg').innerHTML='';
-  document.getElementById('grid').classList.remove('solved');document.querySelector('.sudoku-wrap').classList.remove('is-solved');
-  document.getElementById('diff-lbl').textContent=DIFF_LBL[diff];
-  renderGrid();buildNumpad();
-}
-
-function renderGrid(){
-  const g=document.getElementById('grid');g.innerHTML='';
-  for(let r=0;r<9;r++)for(let c=0;c<9;c++){
-    const cell=document.createElement('div');
-    const gi=givens[r][c];
-    cell.className='s-cell '+(gi?'given':'user');
-    const selVal=sel?board[sel[0]][sel[1]]:0;
-    if(sel&&sel[0]===r&&sel[1]===c)cell.classList.add('selected');
-    else if(selVal&&board[r][c]===selVal)cell.classList.add('same');
-    else if(sel){
-      const[sr,sc]=sel;
-      if(sr===r||sc===c||Math.floor(sr/3)===Math.floor(r/3)&&Math.floor(sc/3)===Math.floor(c/3))
-        cell.classList.add('highlight');
+  // ── Sudoku engine: generator, uniqueness check, technique grader ─────────
+  var Sdk = (function () {
+    var UNITS = [], PEERS = [], UNITS_OF = [];
+    (function () {
+      var r, c, i;
+      for (r = 0; r < 9; r++) { var u = []; for (c = 0; c < 9; c++) u.push(r * 9 + c); UNITS.push(u); }
+      for (c = 0; c < 9; c++) { u = []; for (r = 0; r < 9; r++) u.push(r * 9 + c); UNITS.push(u); }
+      for (var b = 0; b < 9; b++) { u = []; var br = Math.floor(b / 3) * 3, bc = (b % 3) * 3; for (r = 0; r < 3; r++) for (c = 0; c < 3; c++) u.push((br + r) * 9 + bc + c); UNITS.push(u); }
+      for (i = 0; i < 81; i++) {
+        var ri = Math.floor(i / 9), ci = i % 9, bi = Math.floor(ri / 3) * 3 + Math.floor(ci / 3);
+        UNITS_OF.push([ri, 9 + ci, 18 + bi]);
+        var p = {}; UNITS_OF[i].forEach(function (k) { UNITS[k].forEach(function (j) { if (j !== i) p[j] = 1; }); });
+        PEERS.push(Object.keys(p).map(Number));
+      }
+    })();
+    var ALL = 511;
+    function bits(m) { var n = 0; while (m) { m &= m - 1; n++; } return n; }
+    function low(m) { for (var d = 0; d < 9; d++) if (m & (1 << d)) return d + 1; return 0; }
+    function digits(m) { var a = []; for (var d = 0; d < 9; d++) if (m & (1 << d)) a.push(d + 1); return a; }
+    function rng(seed) {
+      var a = seed >>> 0;
+      return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     }
-    if(board[r][c]){
-      cell.textContent=board[r][c];
-      if(!gi&&board[r][c]!==solution[r][c])cell.classList.add('error');
+    function shuffle(a, R) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(R() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+    // Count solutions (stops at limit). g = array of 81 (0 = empty)
+    function count(g, limit, R, out) {
+      var rows = [0,0,0,0,0,0,0,0,0], cols = rows.slice(), boxes = rows.slice(), cells = g.slice(), n = 0;
+      for (var i = 0; i < 81; i++) if (cells[i]) {
+        var m = 1 << (cells[i] - 1), r = (i / 9) | 0, c = i % 9, b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+        if ((rows[r] | cols[c] | boxes[b]) & m) return 0;
+        rows[r] |= m; cols[c] |= m; boxes[b] |= m;
+      }
+      function rec() {
+        var best = -1, bm = 0, bc = 10;
+        for (var i = 0; i < 81; i++) if (!cells[i]) {
+          var r = (i / 9) | 0, c = i % 9, b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+          var m = ALL & ~(rows[r] | cols[c] | boxes[b]), k = bits(m);
+          if (k < bc) { bc = k; best = i; bm = m; if (k <= 1) break; }
+        }
+        if (best < 0) { n++; if (out && !out.length) for (var j = 0; j < 81; j++) out.push(cells[j]); return n >= limit; }
+        if (!bm) return false;
+        var ds = digits(bm); if (R) shuffle(ds, R);
+        var r0 = (best / 9) | 0, c0 = best % 9, b0 = ((r0 / 3) | 0) * 3 + ((c0 / 3) | 0);
+        for (var x = 0; x < ds.length; x++) {
+          var mm = 1 << (ds[x] - 1);
+          cells[best] = ds[x]; rows[r0] |= mm; cols[c0] |= mm; boxes[b0] |= mm;
+          if (rec()) return true;
+          rows[r0] &= ~mm; cols[c0] &= ~mm; boxes[b0] &= ~mm;
+        }
+        cells[best] = 0; return false;
+      }
+      rec(); return n;
     }
-    if((c+1)%3===0&&c<8)cell.classList.add('box-right');
-    if((r+1)%3===0&&r<8)cell.classList.add('box-bottom');
-    cell.addEventListener('click',()=>{if(solved)return;if(gi){sel=[r,c];renderGrid();return;}sel=[r,c];GN.haptic('select');renderGrid();});
-    g.appendChild(cell);
-  }
-}
+    function fullGrid(R) { var out = []; var g = []; for (var i = 0; i < 81; i++) g.push(0); count(g, 1, R, out); return out; }
 
-function buildNumpad(){
-  const n=document.getElementById('numpad');n.innerHTML='';
-  for(let i=1;i<=9;i++){
-    const b=document.createElement('button');b.className='num-btn';b.dataset.n=i;
-    b.innerHTML=`${i}<small></small>`;b.setAttribute('aria-label','Enter '+i);
-    b.addEventListener('click',()=>input(i));n.appendChild(b);
-  }
-  updateNumpad();
-}
-function updateNumpad(){
-  // Show how many of each digit are still left to place
-  document.querySelectorAll('#numpad .num-btn').forEach(b=>{
-    const i=+b.dataset.n;let cnt=0;
-    for(const row of board)for(const v of row)if(v===i)cnt++;
-    const left=Math.max(0,9-cnt);
-    b.querySelector('small').textContent=left;
-    b.classList.toggle('done',left===0);
-  });
-}
-
-function input(v){
-  if(!sel||solved)return;
-  const[r,c]=sel;
-  if(givens[r][c]){GN.haptic('light');return;}
-  board[r][c]=v||0;
-  if(v&&v!==solution[r][c])GN.haptic('error');else GN.haptic('light');
-  renderGrid();updateNumpad();
-  if(board.every((row,ri)=>row.every((val,ci)=>val===solution[ri][ci]))){
-    stopTimer();solved=true;sel=null;renderGrid();
-    GN.haptic('success');
-    document.getElementById('grid').classList.add('solved');document.querySelector('.sudoku-wrap').classList.add('is-solved');
-    const timeStr=document.getElementById('timer').textContent;
-    document.getElementById('msg').innerHTML=`<div class="winner-banner"><div style="font-size:2rem;line-height:1">🎉</div><div class="winner-name">Solved!</div><div class="winner-pts">${DIFF_LBL[diff]} puzzle in ${timeStr}</div><div class="win-actions"><button class="btn btn-gold" id="play-again">New puzzle</button></div></div>`;
-    document.getElementById('play-again').addEventListener('click',()=>{try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();window.scrollTo({top:0,behavior:'smooth'});});
-    setTimeout(()=>document.getElementById('msg').scrollIntoView({behavior:'smooth',block:'end'}),200);
-    GameHistory.save('sudoku',{_summary:`${diff} · solved in ${timeStr}`,_badge:timeStr,diff,seconds,board:board.map(r=>[...r]),givens:givens.map(r=>[...r])});
-    try{sessionStorage.removeItem('sdk_state');}catch(e){}
-    // Add History button below msg
-    const actEl=document.querySelector('#msg .win-actions');
-    if(actEl&&!actEl.querySelector('.gh-hist-btn')){
-      const b=GameHistory.btn('sudoku','Sudoku',e=>GameHistory.renderSudokuGrid(e.board,e.givens));
-      b.classList.add('gh-hist-btn');b.classList.remove('btn-sm');
-      actEl.appendChild(b);
+    // ── Logical solver. Returns {level, solved, steps}
+    // level 1 singles · 2 locked candidates, pairs · 3 triples, X-Wing · 4 XY-Wing, Swordfish · 5 needs more
+    function candidates(g) {
+      var cand = [];
+      for (var i = 0; i < 81; i++) {
+        if (g[i]) { cand.push(0); continue; }
+        var m = ALL; PEERS[i].forEach(function (j) { if (g[j]) m &= ~(1 << (g[j] - 1)); });
+        cand.push(m);
+      }
+      return cand;
     }
-  }
-}
+    // One easy step on a board: a naked or hidden single. Returns {i, v, why, unit} or null.
+    function single(g, cand) {
+      cand = cand || candidates(g);
+      for (var i = 0; i < 81; i++) if (!g[i] && bits(cand[i]) === 1) return { i: i, v: low(cand[i]), why: 'naked' };
+      for (var u = 0; u < 27; u++) for (var d = 0; d < 9; d++) {
+        var m = 1 << d, at = -1, n = 0;
+        for (var k = 0; k < 9; k++) { var j = UNITS[u][k]; if (g[j] === d + 1) { n = 9; break; } if (!g[j] && (cand[j] & m)) { n++; at = j; } }
+        if (n === 1) return { i: at, v: d + 1, why: 'hidden', unit: u };
+      }
+      return null;
+    }
+    function place(g, cand, i, v) {
+      g[i] = v; cand[i] = 0; var m = ~(1 << (v - 1));
+      for (var k = 0; k < PEERS[i].length; k++) cand[PEERS[i][k]] &= m;
+    }
+    function lockedCandidates(cand) {
+      var hit = false;
+      for (var b = 18; b < 27; b++) for (var d = 0; d < 9; d++) {
+        var m = 1 << d, cells = UNITS[b].filter(function (j) { return cand[j] & m; });
+        if (cells.length < 2) continue;
+        var r0 = (cells[0] / 9) | 0, c0 = cells[0] % 9;
+        var sameR = cells.every(function (j) { return ((j / 9) | 0) === r0; }), sameC = cells.every(function (j) { return j % 9 === c0; });
+        var line = sameR ? UNITS[r0] : sameC ? UNITS[9 + c0] : null;
+        if (line) line.forEach(function (j) { if (cells.indexOf(j) < 0 && (cand[j] & m)) { cand[j] &= ~m; hit = true; } });
+      }
+      for (var l = 0; l < 18; l++) for (d = 0; d < 9; d++) {
+        m = 1 << d; cells = UNITS[l].filter(function (j) { return cand[j] & m; });
+        if (cells.length < 2) continue;
+        var bx = UNITS_OF[cells[0]][2];
+        if (cells.every(function (j) { return UNITS_OF[j][2] === bx; }))
+          UNITS[bx].forEach(function (j) { if (cells.indexOf(j) < 0 && (cand[j] & m)) { cand[j] &= ~m; hit = true; } });
+      }
+      return hit;
+    }
+    function combos(arr, k) {
+      var out = [];
+      (function go(s, pick) { if (pick.length === k) { out.push(pick.slice()); return; } for (var i = s; i < arr.length; i++) { pick.push(arr[i]); go(i + 1, pick); pick.pop(); } })(0, []);
+      return out;
+    }
+    function nakedSubset(cand, k) {
+      var hit = false;
+      for (var u = 0; u < 27; u++) {
+        var open = UNITS[u].filter(function (j) { var n = bits(cand[j]); return n >= 2 && n <= k; });
+        if (open.length < k) continue;
+        combos(open, k).forEach(function (set) {
+          var m = 0; set.forEach(function (j) { m |= cand[j]; });
+          if (bits(m) !== k) return;
+          UNITS[u].forEach(function (j) { if (set.indexOf(j) < 0 && (cand[j] & m)) { cand[j] &= ~m; hit = true; } });
+        });
+      }
+      return hit;
+    }
+    function hiddenSubset(cand, k) {
+      var hit = false;
+      for (var u = 0; u < 27; u++) {
+        var ds = [];
+        for (var d = 0; d < 9; d++) { var n = 0; UNITS[u].forEach(function (j) { if (cand[j] & (1 << d)) n++; }); if (n >= 2 && n <= k) ds.push(d); }
+        if (ds.length < k) continue;
+        combos(ds, k).forEach(function (set) {
+          var m = 0; set.forEach(function (d) { m |= 1 << d; });
+          var cells = UNITS[u].filter(function (j) { return cand[j] & m; });
+          if (cells.length !== k) return;
+          cells.forEach(function (j) { if (cand[j] & ~m) { cand[j] &= m; hit = true; } });
+        });
+      }
+      return hit;
+    }
+    function fish(cand, size) {
+      var hit = false;
+      for (var d = 0; d < 9; d++) {
+        var m = 1 << d;
+        for (var dir = 0; dir < 2; dir++) {
+          var base = [], pos = [];
+          for (var l = 0; l < 9; l++) {
+            var u = UNITS[dir * 9 + l], p = 0;
+            for (var k = 0; k < 9; k++) if (cand[u[k]] & m) p |= 1 << k;
+            var n = bits(p); if (n >= 2 && n <= size) { base.push(l); pos.push(p); }
+          }
+          if (base.length < size) continue;
+          combos(base.map(function (_, i) { return i; }), size).forEach(function (set) {
+            var cover = 0; set.forEach(function (i) { cover |= pos[i]; });
+            if (bits(cover) !== size) return;
+            var lines = set.map(function (i) { return base[i]; });
+            for (var k = 0; k < 9; k++) if (cover & (1 << k)) {
+              var cu = UNITS[(1 - dir) * 9 + k];
+              for (var x = 0; x < 9; x++) if (lines.indexOf(x) < 0 && (cand[cu[x]] & m)) { cand[cu[x]] &= ~m; hit = true; }
+            }
+          });
+        }
+      }
+      return hit;
+    }
+    function xyWing(cand) {
+      var hit = false, bi = [];
+      for (var i = 0; i < 81; i++) if (bits(cand[i]) === 2) bi.push(i);
+      bi.forEach(function (p) {
+        var pw = PEERS[p].filter(function (j) { return bits(cand[j]) === 2 && bits(cand[j] & cand[p]) === 1; });
+        for (var a = 0; a < pw.length; a++) for (var b = a + 1; b < pw.length; b++) {
+          var x = pw[a], y = pw[b];
+          if ((cand[x] & cand[p]) === (cand[y] & cand[p])) continue;
+          var z = cand[x] & cand[y] & ~cand[p];
+          if (bits(z) !== 1 || (cand[x] | cand[y] | cand[p]) !== (cand[p] | z)) continue;
+          PEERS[x].forEach(function (j) { if (j !== y && j !== p && PEERS[y].indexOf(j) >= 0 && (cand[j] & z)) { cand[j] &= ~z; hit = true; } });
+        }
+      });
+      return hit;
+    }
+    function rate(given) {
+      var g = given.slice(), cand = candidates(g), level = 1;
+      for (;;) {
+        var s = single(g, cand);
+        if (s) { place(g, cand, s.i, s.v); continue; }
+        if (g.indexOf(0) < 0) return { level: level, solved: true };
+        for (var i = 0; i < 81; i++) if (!g[i] && !cand[i]) return { level: 9, solved: false };
+        if (lockedCandidates(cand) || nakedSubset(cand, 2) || hiddenSubset(cand, 2)) { level = Math.max(level, 2); continue; }
+        if (nakedSubset(cand, 3) || hiddenSubset(cand, 3) || fish(cand, 2)) { level = Math.max(level, 3); continue; }
+        if (xyWing(cand) || fish(cand, 3) || nakedSubset(cand, 4) || hiddenSubset(cand, 4)) { level = Math.max(level, 4); continue; }
+        return { level: 5, solved: false };
+      }
+    }
 
-document.getElementById('erase-btn').addEventListener('click',()=>input(0));
-document.addEventListener('keydown',e=>{
-  if(sel&&e.key.startsWith('Arrow')){
-    e.preventDefault();
-    const d={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
-    sel=[(sel[0]+d[0]+9)%9,(sel[1]+d[1]+9)%9];renderGrid();return;
-  }
-  if(e.key>='1'&&e.key<='9')input(+e.key);
-  else if(e.key==='Backspace'||e.key==='Delete')input(0);
-});
-
-document.querySelectorAll('.diff-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    if(b.dataset.d===diff)return;
-    const go=()=>{
-      document.querySelectorAll('.diff-btn').forEach(x=>x.classList.toggle('active',x===b));
-      diff=b.dataset.d;try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();
+    var SPEC = {
+      easy:   { max: 1, want: [1], floor: 36 },
+      medium: { max: 2, want: [2], floor: 28 },
+      hard:   { max: 4, want: [3, 4], floor: 22 },
+      expert: { max: 5, want: [5], floor: 17 }
     };
-    if(!solved&&isInProgress())GN.confirm('Your current puzzle will be lost.',{title:'Switch to '+DIFF_LBL[b.dataset.d]+'?',ok:'Start '+DIFF_LBL[b.dataset.d]}).then(ok=>{if(ok)go();});
-    else go();
+    // One attempt: carve a random full grid while it stays unique and within
+    // the level cap, in symmetric pairs, like a printed puzzle.
+    function attempt(diff, R) {
+      var sp = SPEC[diff], sol = fullGrid(R), g = sol.slice(), givens = 81;
+      var order = shuffle(Array.from({ length: 41 }, function (_, i) { return i; }), R);
+      for (var k = 0; k < order.length && givens > sp.floor; k++) {
+        var a = order[k], b = 80 - a, keepA = g[a], keepB = g[b];
+        g[a] = 0; g[b] = 0;
+        var ok = count(g, 2) === 1;
+        if (ok && sp.max < 5) ok = rate(g).level <= sp.max;
+        if (!ok) { g[a] = keepA; g[b] = keepB; } else givens -= a === b ? 1 : 2;
+      }
+      return { puzzle: g, solution: sol, level: rate(g).level, givens: givens };
+    }
+    function generate(diff, seed, tries) {
+      var R = rng(seed), best = null;
+      for (var t = 0; t < (tries || 150); t++) {
+        var p = attempt(diff, R);
+        if (SPEC[diff].want.indexOf(p.level) >= 0) { p.tries = t + 1; return p; }
+        if (!best || Math.abs(p.level - SPEC[diff].want[0]) < Math.abs(best.level - SPEC[diff].want[0])) best = p;
+      }
+      best.tries = tries || 150; return best;
+    }
+    return { generate: generate, rate: rate, count: count, single: single, candidates: candidates, PEERS: PEERS, UNITS: UNITS, rng: rng, bits: bits };
+  })();
+
+  Kit.init({
+    id: 'sudoku',
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
+      { icon: 'eye', label: function () { return 'Show mistakes: ' + (opts.mistakes ? 'on' : 'off'); }, onClick: function () { opts.mistakes = !opts.mistakes; saveOpts(); render(); Kit.toast(opts.mistakes ? 'Wrong numbers show in red' : 'Mistakes hidden'); } },
+      { icon: 'sync', label: 'Restart this puzzle', onClick: function () { restart(); } },
+      { icon: 'chart', label: 'Best times', onClick: function () { showBests(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Sudoku: past games', extra: miniGrid }); } }
+    ],
+    rules:
+      '<p class="goal">Fill every empty square so each <b>row</b>, each <b>column</b> and each <b>3×3 box</b> has the numbers <b>1 to 9</b>, each one exactly once.</p>' +
+      '<h3>Playing</h3><ul><li>Tap a square, then tap a number. Tap the number again (or <b>Erase</b>) to clear it.</li>' +
+      '<li>The printed numbers are the clues. They never change.</li>' +
+      '<li>Every puzzle has exactly <b>one</b> answer, and you can always find the next number by logic. No guessing needed.</li></ul>' +
+      '<h3>Pencil notes</h3><p>Turn on <b>Notes</b> to jot small possible numbers in a square. When you write a number in, it is rubbed out of the notes in the same row, column and box.</p>' +
+      '<h3>Help</h3><ul><li>Tapping a square shades its row, column and box, and every square with the same number.</li>' +
+      '<li><b>Hint</b> fills in a square that can be worked out now and tells you why. It points out a wrong number first.</li>' +
+      '<li>Wrong numbers show in red. Turn that off in the menu if you want a real challenge.</li><li><b>Undo</b> and <b>Redo</b> step through your moves.</li></ul>' +
+      '<h3>Levels</h3><ul><li><b>Easy:</b> each square can be found by looking at one row, column or box.</li>' +
+      '<li><b>Medium:</b> needs pencil-mark tricks like pairs and pointing.</li><li><b>Hard:</b> needs triples, X-Wings or XY-Wings.</li>' +
+      '<li><b>Expert:</b> needs advanced chains. Bring a pencil.</li></ul>' +
+      '<h3>Daily puzzle</h3><p>A new puzzle every day, the same on every device. Easy early in the week, harder by the weekend, Expert on Sunday.</p>'
   });
-});
-function isInProgress(){return board&&board.some((row,r)=>row.some((v,c)=>v&&!givens[r][c]));}
-document.getElementById('new-puzzle').addEventListener('click',()=>{
-  const go=()=>{try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();};
-  if(!solved&&isInProgress())GN.confirm('Your progress on this puzzle will be lost.',{title:'Start a new puzzle?',ok:'New puzzle'}).then(ok=>{if(ok)go();});
-  else go();
-});
-function saveSdkState(){if(!board||solved)return;try{sessionStorage.setItem('sdk_state',JSON.stringify({board,givens,solution,diff,seconds,_ts:Date.now()}));}catch(e){}}
-function loadSdkState(){
-  try{
-    const raw=sessionStorage.getItem('sdk_state');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s.board)return false;
-    board=s.board;givens=s.givens;solution=s.solution;diff=s.diff||'medium';seconds=s.seconds||0;
-    sel=null;
-    // Restore diff button highlight
-    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===diff));
-    document.getElementById('diff-lbl').textContent=DIFF_LBL[diff];
-    showTime();timerInt=setInterval(()=>{seconds++;showTime();},1000);
-    document.getElementById('msg').innerHTML='';
-    renderGrid();buildNumpad();return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',saveSdkState);
-if(!loadSdkState())newPuzzle();
+
+  // ── Options & state ───────────────────────────────────────────────────────
+  var opts = { mistakes: true }; try { var o = JSON.parse(localStorage.getItem(OPTS)); if (o) opts.mistakes = o.mistakes !== false; } catch (e) {}
+  function saveOpts() { try { localStorage.setItem(OPTS, JSON.stringify(opts)); } catch (e) {} }
+  // S: {diff, daily, no, given[81], sol[81], vals[81], notes[81 bitmask], hinted[81], time, mistakes, hints, undos, started, done, level}
+  var S = null, U = [], R = [], sel = -1, notesMode = false, tick = null;
+  function save() {
+    if (!S || S.done) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U.slice(-80), R: R.slice(-80), notesMode: notesMode })); } catch (e) {}
+    var filled = S.vals.filter(function (v) { return v; }).length;
+    if (filled > S.given.filter(function (v) { return v; }).length) Kit.resume.set(label() + ' · ' + fmt(S.time)); else Kit.resume.clear();
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function fmt(t) { t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
+  function today() { return Math.floor((Date.now() - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }
+  function label() { return (S.daily ? 'Daily · ' : '') + DIFFS[S.diff]; }
+  function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
+  function bestTime(d) {
+    var b = 0;
+    hist().forEach(function (e) { if (e && e.diff === d && e.seconds > 0 && !e.hints && (!b || e.seconds < b)) b = e.seconds; });
+    return b;
+  }
+  function dailyDone() { var d = today(); return hist().filter(function (e) { return e && e.daily === d; })[0] || null; }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopClock(); app.className = 'sdk';
+    var dd = DAILY_DIFF[new Date().getDay()], done = dailyDone();
+    function bt(d) { var b = bestTime(d); return b ? ' · best ' + fmt(b) : ''; }
+    Kit.setup(app, {
+      intro: 'A fresh puzzle, printed just for you',
+      modes: [
+        { id: 'daily', icon: 'calendar', title: 'Daily puzzle', desc: done ? 'Done today in ' + fmt(done.seconds) + '. Play it again?' : "Today's is " + DIFFS[dd] + '. Same puzzle everywhere.' },
+        { id: 'easy', icon: 'star', title: 'Easy', desc: 'Find each number by looking' + bt('easy') },
+        { id: 'medium', icon: 'pencil', title: 'Medium', desc: 'Pairs and pointing' + bt('medium') },
+        { id: 'hard', icon: 'lightbulb', title: 'Hard', desc: 'Triples, X-Wings, XY-Wings' + bt('hard') },
+        { id: 'expert', icon: 'flame', title: 'Expert', desc: 'Advanced chains' + bt('expert') }
+      ],
+      mode: 'easy', start: 'Start puzzle',
+      onStart: function (cfg) { newPuzzle(cfg.mode); }
+    });
+  }
+  function newPuzzle(mode) {
+    var daily = mode === 'daily', diff = daily ? DAILY_DIFF[new Date().getDay()] : mode;
+    var seed = daily ? today() * 7919 + 13 : (Math.random() * 4294967295) >>> 0;
+    app.className = 'sdk'; app.innerHTML = '<div class="loading">Printing your puzzle…</div>';
+    setTimeout(function () {
+      var p = Sdk.generate(diff, seed);
+      U = []; R = []; sel = -1; notesMode = false;
+      S = { diff: diff, daily: daily ? today() : 0, no: daily ? today() : 100 + (seed % 9000), given: p.puzzle, sol: p.solution, vals: p.puzzle.slice(),
+        notes: p.puzzle.map(function () { return 0; }), hinted: p.puzzle.map(function () { return 0; }),
+        time: 0, mistakes: 0, hints: 0, undos: 0, started: Date.now(), done: false, level: p.level };
+      Kit.gameStart(); build(); save(); Kit.sfx('flip');
+    }, 60);
+  }
+  function restart() {
+    if (!S || S.done) return;
+    Kit.confirm('Start this puzzle over?', { ok: 'Restart', body: 'Your numbers and notes are rubbed out. The clock keeps running.' }).then(function (ok) {
+      if (!ok) return;
+      snap(); S.vals = S.given.slice(); S.notes = S.notes.map(function () { return 0; }); S.hinted = S.hinted.map(function () { return 0; });
+      sel = -1; render(); save(); Kit.sfx('whoosh');
+    });
+  }
+
+  // ── Moves ─────────────────────────────────────────────────────────────────
+  function snap() { U.push({ v: S.vals.slice(), n: S.notes.slice(), h: S.hinted.slice() }); if (U.length > 300) U.shift(); R = []; }
+  function restore(x) { S.vals = x.v; S.notes = x.n; S.hinted = x.h || S.hinted; }
+  function undo() {
+    if (!S || S.done) return;
+    if (!U.length) { Kit.toast('Nothing to undo'); return; }
+    R.push({ v: S.vals.slice(), n: S.notes.slice(), h: S.hinted.slice() }); restore(U.pop()); S.undos++;
+    Kit.sfx('tap'); render(); save();
+  }
+  function redo() {
+    if (!S || S.done || !R.length) return;
+    U.push({ v: S.vals.slice(), n: S.notes.slice(), h: S.hinted.slice() }); restore(R.pop());
+    Kit.sfx('tap'); render(); save();
+  }
+  var lastWrite = -1;
+  function input(v) {
+    if (!S || S.done) return;
+    if (sel < 0) { Kit.toast('Tap a square first'); return; }
+    if (S.given[sel]) { Kit.haptic('light'); return; }
+    if (notesMode && v) {
+      if (S.vals[sel]) { Kit.toast('Erase the number to add notes'); return; }
+      snap(); S.notes[sel] ^= 1 << (v - 1); Kit.sfx('tick'); Kit.haptic('tick'); render(); save(); return;
+    }
+    if (!v) {
+      if (!S.vals[sel] && !S.notes[sel]) return;
+      snap(); S.vals[sel] = 0; S.notes[sel] = 0; S.hinted[sel] = 0; Kit.sfx('flip'); render(); save(); return;
+    }
+    if (S.vals[sel] === v) { snap(); S.vals[sel] = 0; S.hinted[sel] = 0; Kit.sfx('flip'); render(); save(); return; }
+    write(sel, v, false);
+  }
+  function write(i, v, byHint) {
+    snap();
+    S.vals[i] = v; S.notes[i] = 0; S.hinted[i] = byHint ? 1 : 0;
+    var m = ~(1 << (v - 1));
+    if (v === S.sol[i]) Sdk.PEERS[i].forEach(function (j) { S.notes[j] &= m; });
+    lastWrite = i;
+    if (v !== S.sol[i]) {
+      S.mistakes++;
+      if (opts.mistakes) { Kit.sfx('bad'); Kit.haptic('error'); } else { Kit.sfx('tap'); Kit.haptic('light'); }
+    } else {
+      Kit.sfx('tap'); Kit.haptic('light');
+      // Finishing a row, column or box gets a little cheer
+      var doneU = Sdk.UNITS.filter(function (u) { return u.indexOf(i) >= 0 && u.every(function (j) { return S.vals[j] === S.sol[j]; }); });
+      if (doneU.length) { setTimeout(function () { flash([].concat.apply([], doneU)); Kit.sfx('good'); }, 200); }
+    }
+    render(); save();
+    if (S.vals.every(function (x, k) { return x === S.sol[k]; })) solved();
+  }
+
+  // ── Hints ─────────────────────────────────────────────────────────────────
+  var UNAME = ['row', 'column', 'box'];
+  function hint() {
+    if (!S || S.done) return;
+    for (var i = 0; i < 81; i++) if (S.vals[i] && S.vals[i] !== S.sol[i]) {
+      sel = i; render(); flash([i]);
+      note('This number is not right. Try again here.', true); Kit.sfx('bad'); return;
+    }
+    var g = S.vals.slice(), s = Sdk.single(g);
+    var target = s ? s.i : -1, why;
+    if (s) {
+      why = s.why === 'naked' ? 'Only ' + s.v + ' fits here: the other numbers are already in its row, column or box.'
+        : 'This is the only place for a ' + s.v + ' in this ' + UNAME[Math.floor(s.unit / 9)] + '.';
+      if (s.why === 'hidden') flash(Sdk.UNITS[s.unit]);
+    } else {
+      target = sel >= 0 && !S.vals[sel] ? sel : -1;
+      if (target < 0) { var cand = Sdk.candidates(g), bc = 10; for (i = 0; i < 81; i++) if (!g[i] && Sdk.bits(cand[i]) < bc) { bc = Sdk.bits(cand[i]); target = i; } }
+      why = 'A tricky spot. Here is a ' + S.sol[target] + ' to get you going.';
+    }
+    S.hints++; sel = target;
+    write(target, S.sol[target], true);
+    if (!S.done) note(why);
+  }
+  var noteT = null;
+  function note(msg, bad) {
+    var n = document.getElementById('note'); if (!n) return;
+    n.innerHTML = Kit.icon(bad ? 'close' : 'lightbulb') + '<span>' + Kit.esc(msg) + '</span>';
+    n.className = 'note show' + (bad ? ' bad' : '');
+    clearTimeout(noteT); noteT = setTimeout(function () { n.className = 'note'; }, 4500);
+  }
+  function flash(cells) {
+    cells.forEach(function (j) { var c = cellEls[j]; if (!c) return; c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); });
+  }
+
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  function startClock() {
+    stopClock();
+    tick = setInterval(function () {
+      if (!S || S.done || document.hidden) return;
+      S.time++; var t = document.getElementById('tm'); if (t) t.textContent = fmt(S.time);
+      if (S.time % 10 === 0) save();
+    }, 1000);
+  }
+  function stopClock() { if (tick) clearInterval(tick); tick = null; }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+  // ── Finish ────────────────────────────────────────────────────────────────
+  function solved() {
+    S.done = true; stopClock(); sel = -1;
+    var prev = bestTime(S.diff), clean = !S.hints, best = clean && (!prev || S.time < prev);
+    var name = DIFFS[S.diff], hl = [];
+    hl.push('Solved ' + (S.diff === 'easy' || S.diff === 'expert' ? 'an ' : 'a ') + name + ' sudoku in ' + fmt(S.time) + (S.hints ? ' with ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ' with no hints'));
+    if (S.daily) hl.push('Daily puzzle for ' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }));
+    if (best && prev) hl.push('New best ' + name + ' time (old best ' + fmt(prev) + ')');
+    else if (best) hl.push('First ' + name + ' puzzle solved without hints');
+    hl.push(S.mistakes ? S.mistakes + (S.mistakes === 1 ? ' wrong number' : ' wrong numbers') + ' along the way' : 'No wrong numbers. Clean sheet!');
+    if (!opts.mistakes) hl.push('Played with mistakes hidden');
+    if (S.level >= 3) hl.push(S.level >= 5 ? 'Needed advanced chains' : S.level === 4 ? 'Needed an XY-Wing or Swordfish' : 'Needed a triple or X-Wing');
+    var grid = function (a) { var out = []; for (var r = 0; r < 9; r++) out.push(a.slice(r * 9, r * 9 + 9)); return out; };
+    Kit.record(HKEY, {
+      started: S.started, mode: label(), players: [{ name: 'You' }], winner: 'You',
+      summary: name + ' · solved in ' + fmt(S.time), badge: fmt(S.time), highlights: hl.slice(0, 6),
+      meta: { diff: S.diff, seconds: S.time, hints: S.hints, mistakes: S.mistakes, daily: S.daily, level: S.level, board: grid(S.vals), givens: grid(S.given) }
+    });
+    clearSave(); render();
+    var g = document.getElementById('grid'); if (g) g.classList.add('won');
+    Kit.sfx('good');
+    setTimeout(function () {
+      Kit.callout(best ? 'New best!' : 'Solved!');
+      setTimeout(function () {
+        var diff = S.diff;
+        Kit.win({
+          title: 'Solved!', sub: name + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (best && prev ? ' · new best time' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
+          againLabel: 'Another ' + name, again: function () { newPuzzle(diff); },
+          extra: [{ label: 'Choose a level', onClick: showSetup }]
+        });
+      }, 900);
+    }, 900);
+  }
+  function miniGrid(e) {
+    if (!e || !Array.isArray(e.board) || !Array.isArray(e.givens)) return null;
+    var g = el('div', { class: 'mini' });
+    for (var r = 0; r < 9; r++) for (var c = 0; c < 9; c++) g.appendChild(el('span', { class: (e.givens[r][c] ? 'g' : '') + (c === 2 || c === 5 ? ' br' : '') + (r === 2 || r === 5 ? ' bb' : ''), text: String(e.board[r][c] || '') }));
+    return g;
+  }
+  function showBests() {
+    var rows = Object.keys(DIFFS).map(function (d) {
+      var all = hist().filter(function (e) { return e && e.diff === d; });
+      var b = bestTime(d);
+      return '<tr><td>' + DIFFS[d] + '</td><td>' + all.length + '</td><td>' + (b ? fmt(b) : '–') + '</td></tr>';
+    }).join('');
+    Kit.sheet({ title: 'Best times', html: '<p class="muted" style="margin-bottom:10px">Fastest solves without hints, from your past games.</p><table style="width:100%;border-collapse:collapse;font-weight:800" class="k-hd-rounds"><tr><th>Level</th><th>Solved</th><th>Best</th></tr>' + rows + '</table>', actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ── Drawing ───────────────────────────────────────────────────────────────
+  var cellEls = [], padEls = [], toolEls = {};
+  function build() {
+    app.className = 'sdk'; app.innerHTML = '';
+    var play = el('div', { class: 'play' });
+    var page = el('div', { class: 'page' });
+    page.appendChild(el('div', { class: 'ph' }, [el('span', { class: 't', text: label() }), el('span', { class: 'no', text: 'No. ' + S.no }), el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]));
+    var grid = el('div', { class: 'grid', id: 'grid', role: 'grid', 'aria-label': 'Sudoku grid' });
+    cellEls = [];
+    for (var i = 0; i < 81; i++) (function (i) {
+      var r = Math.floor(i / 9), c = i % 9;
+      var n = el('div', { class: 'c' + (c === 2 || c === 5 ? ' br' : '') + (r === 2 || r === 5 ? ' bb' : '') + (c === 8 ? ' er' : '') + (r === 8 ? ' eb' : ''), style: { '--d': r + c } });
+      n.addEventListener('pointerdown', function () { if (S.done) return; sel = i; Kit.haptic('tick'); render(); });
+      cellEls.push(n); grid.appendChild(n);
+    })(i);
+    page.appendChild(grid);
+    page.appendChild(el('div', { class: 'pf' }, [el('span', { id: 'pfL' }), el('span', { id: 'pfR' })]));
+    play.appendChild(page);
+    var tools = el('div', { class: 'tools' });
+    [['undo', 'undo', 'Undo', undo], ['redo', 'undo', 'Redo', redo], ['erase', 'close', 'Erase', function () { input(0); }],
+     ['notes', 'pencil', 'Notes', function () { notesMode = !notesMode; Kit.sfx('tap'); render(); save(); }], ['hint', 'lightbulb', 'Hint', hint]].forEach(function (t) {
+      var b = el('button', { type: 'button', class: 'tool ' + t[0], 'aria-label': t[2], html: Kit.icon(t[1]) + '<span>' + t[2] + '</span>', onclick: t[3] });
+      toolEls[t[0]] = b; tools.appendChild(b);
+    });
+    play.appendChild(tools);
+    tools.appendChild(el('div', { class: 'note', id: 'note' }));
+    var pad = el('div', { class: 'pad', id: 'pad' }); padEls = [];
+    for (var d = 1; d <= 9; d++) (function (d) {
+      var b = el('button', { type: 'button', 'aria-label': 'Write ' + d, html: d + '<small></small>', onclick: function () { input(d); } });
+      padEls.push(b); pad.appendChild(b);
+    })(d);
+    play.appendChild(pad);
+    app.appendChild(play);
+    render(); startClock();
+  }
+  function render() {
+    if (!S || !cellEls.length) return;
+    var sv = sel >= 0 ? S.vals[sel] : 0, sr = Math.floor(sel / 9), sc = sel % 9, sb = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
+    for (var i = 0; i < 81; i++) {
+      var n = cellEls[i], v = S.vals[i], r = Math.floor(i / 9), c = i % 9, b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      var cls = n.className.replace(/ (g|u|sel|unit|same|bad|hint)\b/g, '');
+      cls += S.given[i] ? ' g' : ' u';
+      if (sel >= 0 && !S.done) {
+        if (i === sel) cls += ' sel';
+        else if (sv && v === sv) cls += ' same';
+        else if (r === sr || c === sc || b === sb) cls += ' unit';
+      }
+      if (v && !S.given[i] && v !== S.sol[i] && opts.mistakes) cls += ' bad';
+      if (S.hinted[i]) cls += ' hint';
+      n.className = cls;
+      var key = v ? 'v' + v : S.notes[i] ? 'n' + S.notes[i] + ':' + sv : '';
+      if (n._k !== key || i === lastWrite) {
+        n._k = key; n.innerHTML = '';
+        if (v) { var sp = el('span', { class: 'v' + (i === lastWrite ? ' wr' : ''), text: String(v) }); n.appendChild(sp); }
+        else if (S.notes[i]) {
+          var nt = el('div', { class: 'nt' });
+          for (var d = 1; d <= 9; d++) nt.appendChild(el('i', { class: d === sv ? 'hl' : '', text: S.notes[i] & (1 << (d - 1)) ? String(d) : '' }));
+          n.appendChild(nt);
+        }
+      }
+      n.setAttribute('aria-label', 'Row ' + (r + 1) + ' column ' + (c + 1) + (v ? ', ' + v : ', empty'));
+    }
+    lastWrite = -1;
+    var cnt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    S.vals.forEach(function (v, i) { if (v && v === S.sol[i]) cnt[v]++; });
+    padEls.forEach(function (b, k) { var left = 9 - cnt[k + 1]; b.querySelector('small').textContent = left ? String(left) : ''; b.classList.toggle('done', !left); });
+    document.getElementById('pad').classList.toggle('notes', notesMode);
+    toolEls.notes.classList.toggle('on', notesMode);
+    toolEls.notes.querySelector('span').textContent = notesMode ? 'Notes on' : 'Notes off';
+    toolEls.undo.disabled = !U.length || S.done; toolEls.redo.disabled = !R.length || S.done;
+    toolEls.erase.disabled = toolEls.hint.disabled = toolEls.notes.disabled = S.done;
+    document.getElementById('pfL').innerHTML = 'Mistakes <b>' + (opts.mistakes ? S.mistakes : '–') + '</b>';
+    document.getElementById('pfR').innerHTML = 'Hints <b>' + S.hints + '</b>';
+  }
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if (!S || S.done || document.querySelector('.k-scrim,.k-win') || !cellEls.length) return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key;
+    if (/^[1-9]$/.test(k)) { input(+k); return; }
+    if (k === '0' || k === 'Backspace' || k === 'Delete') { input(0); return; }
+    if (k === 'n' || k === 'N') { notesMode = !notesMode; render(); return; }
+    if (k === 'h' || k === 'H') { hint(); return; }
+    var d = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
+    if (d) {
+      e.preventDefault();
+      if (sel < 0) sel = 40;
+      else { var r = Math.floor(sel / 9), c = sel % 9; if (d === -9) r = (r + 8) % 9; else if (d === 9) r = (r + 1) % 9; else if (d === -1) c = (c + 8) % 9; else c = (c + 1) % 9; sel = r * 9 + c; }
+      render();
+    }
+  });
+
+  // Test hook
+  window.__sdk = { get: function () { return S; }, fill: function (leave) {
+    var n = 0; for (var i = 0; i < 81 && S; i++) if (!S.vals[i]) { if (n++ >= (leave || 0)) S.vals[i] = S.sol[i]; }
+    // put the left-over blanks last: refill so exactly `leave` blanks remain
+    render(); save();
+  }, Sdk: Sdk };
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (!saved) { // pick up a puzzle in progress from the old version
+    try { var old = JSON.parse(sessionStorage.getItem('sdk_state')); if (old && old.board && old.solution) {
+      var flat = function (a) { return [].concat.apply([], a); };
+      var gv = flat(old.givens);
+      saved = { S: { diff: old.diff === 'hard' ? 'hard' : old.diff === 'easy' ? 'easy' : 'medium', daily: 0, no: 1, given: gv, sol: flat(old.solution), vals: flat(old.board),
+        notes: gv.map(function () { return 0; }), hinted: gv.map(function () { return 0; }), time: old.seconds || 0, mistakes: 0, hints: 0, undos: 0, started: Date.now(), done: false, level: 2 } };
+      sessionStorage.removeItem('sdk_state');
+    } } catch (e) {}
+  }
+  if (saved && saved.S && Array.isArray(saved.S.vals) && saved.S.vals.length === 81 && !saved.S.done) {
+    S = saved.S; U = saved.U || []; R = saved.R || []; notesMode = !!saved.notesMode; build();
+  } else showSetup();
+})();
 </script>
 </body>
 </html>

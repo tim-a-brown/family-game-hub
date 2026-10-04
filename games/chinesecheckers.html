@@ -12,7 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-.cc-col{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.cc-col{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:8px;overflow-x:clip;}
 
 /* Player chips: one per seat, marble colour, marbles home, turn ring */
 .chips{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:6px;}
@@ -27,6 +27,10 @@
 .pchip .sub{font-size:.7rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pchip.on .sub{color:var(--c);}
 .pchip .sub .ico{width:12px;height:12px;vertical-align:-2px;}
+.chips.c3 .pchip{gap:5px;padding:4px 6px;}
+.chips.c3 .pchip .nm{font-size:.84rem;}
+.chips.c3 .pchip .nm .ico{display:none;}
+.chips.c3 .pchip .mm{width:17px;height:17px;}
 .think i{display:inline-block;width:4px;height:4px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
 .think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
 @keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
@@ -335,7 +339,7 @@
     S = {
       mode: cfg.mode, level: cfg.level, places: !!cfg.places, nostay: !!cfg.nostay, spin: !!cfg.spin,
       players: cfg.players, pts: st.pts, b: st.b, turn: 0, round: 1,
-      cnt: cfg.players.map(function () { return 0; }), fin: [], last: null,
+      cnt: cfg.players.map(function () { return 0; }), fin: [], won: [], last: null,
       st: { chains: cfg.players.map(function () { return 0; }), big: [] }, rk: {}, hist: [], over: false, started: Date.now(), rot: 0
     };
     sel = -1; selMoves = [];
@@ -367,7 +371,7 @@
     if (!legal || S.b[mv.f] !== p + 1) return;
     var path = mv.path && mv.path[0] === legal.f && mv.path[mv.path.length - 1] === legal.t ? mv.path : legal.path;
     var h = legal.h ? path.length - 1 : 0;
-    S.hist.push({ b: S.b.join(''), turn: S.turn, round: S.round, cnt: S.cnt.slice(), fin: S.fin.slice(), last: S.last, st: JSON.stringify(S.st), rot: S.rot, cpu: !!byCpu });
+    S.hist.push({ b: S.b.join(''), turn: S.turn, round: S.round, cnt: S.cnt.slice(), fin: S.fin.slice(), won: S.won.slice(), last: S.last, st: JSON.stringify(S.st), rot: S.rot, cpu: !!byCpu });
     if (S.hist.length > 400) S.hist.shift();
     var D = E.DIST[E.tgtOf(S.pts, p)], gain = D[legal.f] - D[legal.t];
     S.b = S.b.slice(); S.b[legal.f] = 0; S.b[legal.t] = p + 1;
@@ -376,7 +380,7 @@
     if (h >= 4) S.st.big.push({ p: p, h: h, gain: gain, round: S.round });
     var rk = S.rk[p] || (S.rk[p] = {}), kk = E.key(S.b, p); rk[kk] = (rk[kk] || 0) + 1;
     var won = E.isWin(S.b, p, S.pts), place = 0;
-    if (won) { S.fin.push(p); place = S.fin.length; }
+    if (won) { S.fin.push(p); S.won.push(p); place = S.fin.length; }
     var left = S.players.map(function (x, i) { return i; }).filter(active);
     if (won && (!S.places || left.length <= 1)) {
       if (S.places) left.forEach(function (i) { S.fin.push(i); });
@@ -423,7 +427,7 @@
     cancelThink(); S.busy = false; animating = false;
     var snap;
     while (S.hist.length) { snap = S.hist.pop(); if (!snap.cpu) break; }
-    S.b = snap.b.split('').map(Number); S.turn = snap.turn; S.round = snap.round; S.cnt = snap.cnt; S.fin = snap.fin;
+    S.b = snap.b.split('').map(Number); S.turn = snap.turn; S.round = snap.round; S.cnt = snap.cnt; S.fin = snap.fin; S.won = snap.won || [];
     S.last = snap.last; S.st = JSON.parse(snap.st); S.rot = snap.rot;
     sel = -1; selMoves = [];
     Kit.sfx('whoosh'); save(); render(); maybeCpu();
@@ -442,7 +446,7 @@
         if (!S || S.b !== myB) return;
         S.busy = false;
         if (res) commit(res, true);
-        else { var sk = advance(); save(); paintAll(); maybeCpu(); if (!sk) return; }
+        else { advance(); save(); paintAll(); maybeCpu(); }
       }, fast ? 0 : Math.max(0, 600 + Math.random() * 250 - (Date.now() - t0)));
     });
   }
@@ -460,23 +464,23 @@
     order = S.fin.slice().concat(tail);
     var hl = [];
     var moves = S.cnt[w];
-    hl.push((W.name === 'You' ? 'You' : W.name) + ' finished in ' + moves + ' moves' + (n > 1 ? ', ' + S.round + (S.round === 1 ? ' turn' : ' turns') + ' into the game' : ''));
+    hl.push(W.name + ' finished in ' + moves + ' moves');
     var bestP = -1, bestH = 0;
     S.st.chains.forEach(function (h, i) { if (h > bestH) { bestH = h; bestP = i; } });
     var big = S.st.big.slice().sort(function (a, b) { return b.h - a.h || b.gain - a.gain; })[0];
     if (big && big.h >= 5) hl.push(S.players[big.p].name + ' chained a ' + big.h + '-hop jump' + (big.gain >= 7 ? ' across the board' : '') + ' on turn ' + big.round);
-    if (bestP >= 0) hl.push('Longest hop chain: ' + bestH + (bestH === 1 ? ' hop' : ' hops') + ' (' + S.players[bestP].name + ')');
+    else if (bestP >= 0) hl.push('Longest hop chain: ' + bestH + (bestH === 1 ? ' hop' : ' hops') + ' (' + S.players[bestP].name + ')');
     if (S.places && S.fin.length > 1) hl.push('Places: ' + S.fin.map(function (i, k) { return ord(k + 1) + ' ' + S.players[i].name; }).join(', '));
     else if (n > 1) {
       var ru = order[1], hc = E.homeCount(S.b, ru, S.pts);
-      hl.push(S.players[ru].name + ' came closest with ' + hc + ' of 10 marbles home');
+      hl.push(S.players[ru].name + (n === 2 ? ' had ' : ' came closest with ') + hc + ' of 10 marbles home' + (n === 2 ? ' at the end' : ''));
     }
     if (S.nostay) hl.push('Played with pass-through-only points');
     if (hasCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     var modeName = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : S.mode === 'mix' ? 'People + computers (' + LEVEL_NAME[S.level] + ')' : n === 1 ? 'Solo' : 'Pass & play';
     Kit.record(KEY, {
       started: S.started, mode: modeName + (n > 1 ? ' · ' + n + ' players' : ''),
-      players: order.map(function (i) { var x = S.players[i]; return { name: x.name, score: E.homeCount(S.b, i, S.pts), cpu: x.cpu }; }),
+      players: order.map(function (i) { var x = S.players[i]; return { name: x.name, score: S.won.indexOf(i) >= 0 ? 10 : E.homeCount(S.b, i, S.pts), cpu: x.cpu }; }),
       winner: W.name,
       summary: W.name + ' won in ' + moves + ' moves',
       highlights: hl, meta: { rounds: S.round, places: S.fin.map(function (i) { return S.players[i].name; }), colors: S.players.map(function (x) { return x.col; }) }
@@ -490,8 +494,8 @@
         sub: n === 1 ? 'All 10 marbles across the star' : 'Filled the ' + CNAME[W.col].toLowerCase() + ' goal point in ' + moves + ' moves',
         lose: lose,
         rank: n > 1 ? order.map(function (i, k) {
-          var x = S.players[i], done = S.fin.indexOf(i) >= 0 && (k === 0 || S.places);
-          return { name: x.name, score: done && k < S.fin.length && E.isWin(S.b, i, S.pts) ? S.cnt[i] + ' moves' : E.homeCount(S.b, i, S.pts) + '/10 home', color: CHEX[x.col] };
+          var x = S.players[i];
+          return { name: x.name, score: S.won.indexOf(i) >= 0 ? S.cnt[i] + ' moves' : E.homeCount(S.b, i, S.pts) + '/10 home', color: CHEX[x.col] };
         }) : null,
         again: again, againLabel: 'Play again',
         extra: [{ label: 'View the board', onClick: function () {} }],
@@ -544,6 +548,7 @@
     chipsEl = el('div', { class: 'chips' });
     var n = S.players.length;
     chipsEl.style.setProperty('--cols', n >= 5 ? 3 : n === 1 ? 1 : 2);
+    if (n >= 5) chipsEl.classList.add('c3');
     col.appendChild(chipsEl);
     wrapEl = el('div', { class: 'bwrap', role: 'application', 'aria-label': 'Chinese checkers board' });
     wrapEl.style.setProperty('--chrome', (n > 2 ? 380 : 330) + 'px');
@@ -640,7 +645,7 @@
     S.players.forEach(function (pl, i) {
       var on = !S.over && S.turn === i, pi = S.fin.indexOf(i), hc = E.homeCount(S.b, i, S.pts);
       var sub = on && pl.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>'
-        : pi >= 0 && (S.places || pi === 0) && E.isWin(S.b, i, S.pts) ? Kit.icon('trophy') + ' ' + ord(pi + 1) + (S.over ? '' : ' place')
+        : S.won.indexOf(i) >= 0 ? Kit.icon('trophy') + ' ' + ord(pi + 1) + (S.over ? '' : ' place')
         : hc + '/10 home';
       var chip = el('div', { class: 'pchip' + (on ? ' on' : '') + (pi >= 0 ? ' done' : '') }, [
         el('span', { class: 'mm' }, [marble(pl.col)]),
@@ -732,7 +737,7 @@
 
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; render(); maybeCpu(); }
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.won = S.won || []; S.busy = false; render(); maybeCpu(); }
   else showSetup();
 })();
 </script>
