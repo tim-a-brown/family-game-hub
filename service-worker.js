@@ -83,6 +83,7 @@ const PRECACHE_URLS = [
   '/games/minesweeper.html',
   '/games/minigolf.html',
   '/games/othello.html',
+  '/games/chinesecheckers.html',
   '/games/pacman.html',
   '/games/paigow.html',
   '/games/peggle.html',

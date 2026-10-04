@@ -68,6 +68,8 @@
 .rack .gap{width:100%;height:0;}
 .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%;max-width:560px;min-height:52px;}
 .acts .btn{flex:1 1 0;min-width:0;padding:0 12px;}
+.acts .btn.hintb{flex:0 0 auto;min-width:56px;}
+.acts .btn{font-size:1rem;gap:6px;}
 .acts .btn .mt{--tw:16px;margin:0 1px 2px;}
 .claim{display:flex;align-items:center;gap:12px;width:100%;max-width:560px;padding:10px 12px;border-radius:18px;background:rgba(255,200,61,.1);border:2px solid rgba(255,200,61,.5);animation:pop .3s var(--spring);}
 .claim .tx{flex:1;min-width:0;font-weight:800;line-height:1.25;}
@@ -601,7 +603,7 @@
       if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
     } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
     var label = 'ESWN'[S.wind] + S.handNo;
-    S.log.push({ label: label, winner: res ? res.winner : -1, from: res ? (res.self ? -1 : res.from) : -1, self: res ? res.self : false, faan: sc ? sc.faan : 0, pts: sc ? sc.pts : 0, list: sc ? sc.list.map(function (x) { return x[0]; }) : [], deltas: deltas });
+    S.log.push({ label: label, winner: res ? res.winner : -1, from: res ? (res.self ? -1 : res.from) : -1, self: res ? res.self : false, faan: sc ? sc.faan : 0, pts: sc ? sc.pts : 0, list: sc ? sc.list.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (x) { return x[0]; }) : [], deltas: deltas });
     S.result = { res: res, sc: sc, deltas: deltas };
     // dealer and round wind
     var dealerWon = res && res.winner === S.dealer;
@@ -655,6 +657,7 @@
     var mw = Math.max.apply(null, wins);
     if (mw >= 2) hl.push('Most hands won: ' + P[wins.indexOf(mw)].name + ' with ' + mw);
     S.log.forEach(function (h) {
+      if (h === big) return;
       if (h.list.indexOf('Seven Pairs') >= 0) hl.push(P[h.winner].name + ' won with Seven Pairs in hand ' + h.label);
       if (h.list.indexOf('Pure One Suit') >= 0) hl.push(P[h.winner].name + ' made a Pure One Suit hand in ' + h.label);
       if (h.list.indexOf('Thirteen Orphans') >= 0) hl.push(P[h.winner].name + ' pulled off Thirteen Orphans!');
@@ -697,7 +700,7 @@
       strip.appendChild(el('div', { class: 'score' + (on ? ' on' : ''), style: { '--c': q === 0 ? 'var(--yellow)' : '#9fd8ff' } }, [
         el('span', { class: 'nm', text: P[q].name }),
         el('span', { class: 'pt', text: String(S.scores[q]) }),
-        el('span', { class: 'sub', html: '<span class="wd">' + WIND_CH[sw] + '</span> ' + WIND_EN[sw] + (sw === 0 ? ' · dealer' : '') })
+        el('span', { class: 'sub', html: '<span class="wd">' + WIND_CH[sw] + '</span> ' + WIND_EN[sw] })
       ]));
     });
     wrap.appendChild(strip);
@@ -726,7 +729,7 @@
     felt.appendChild(wall);
 
     // ponds
-    var inner = L - 2 * ring - 6, ptw = Math.floor(Math.min(20, (inner * 0.43) / 6.3)), pondW = ptw * 6 + 5, depth = Math.round(ptw * 1.42 * 3 + 8);
+    var inner = L - 2 * ring - 6, ptw = Math.floor(Math.min(22, (inner * 0.46) / 6.3)), pondW = ptw * 6 + 5, depth = Math.round(ptw * 1.42 * 3 + 8);
     var cbox = Math.max(pondW, inner - 2 * depth);
     var half = cbox / 2;
     var center = el('div', { class: 'center', style: { left: (cx - half + 6) + 'px', top: (cy - half + 6) + 'px', width: (cbox - 12) + 'px', height: (cbox - 12) + 'px' } }, [
@@ -872,7 +875,7 @@
         b.addEventListener('click', function () { humanKong(k); });
         a.appendChild(b);
       });
-      a.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('lightbulb') + '<span>Hint</span>', onclick: hint }));
+      a.appendChild(el('button', { type: 'button', class: 'btn btn-soft hintb', 'aria-label': 'Hint', html: Kit.icon('lightbulb') + (a.children.length ? '' : '<span>Hint</span>'), onclick: hint }));
       var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { snapshot(); discard(0, sel); } } });
       d.disabled = sel == null; a.appendChild(d);
     } else if (S.phase === 'end') {

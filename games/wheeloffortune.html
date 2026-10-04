@@ -2,651 +2,1637 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wheel of Fortune</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(800px 500px at 50% -10%,rgba(124,58,237,.2),transparent 70%),var(--bg);}
-.page{padding-top:10px;}
-.wof-wrap{max-width:560px;margin:0 auto;}
-canvas#wof-wheel{display:block;margin:0 auto;cursor:pointer;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5));touch-action:manipulation;}
-/* Puzzle board — classic panel; tiles sized so a 13-letter row always fits */
-.puzzle-board{
-  background:linear-gradient(180deg,#22197a 0%,#170f55 100%);
-  border:2px solid rgba(167,139,250,.5);
-  border-radius:18px;padding:10px 8px 12px;margin-bottom:10px;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.06),0 8px 24px rgba(30,21,112,.45);
-  container-type:inline-size;
-}
-.puzzle-category{text-align:center;font-size:.74rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#c4b5fd;margin-bottom:8px;}
-.puzzle-rows{display:flex;flex-direction:column;gap:4px;align-items:center;--tw:min(34px,calc((100cqw - 40px) / 13));}
-.puzzle-row{display:flex;gap:3px;flex-wrap:nowrap;justify-content:center;}
-.puzzle-tile{
-  width:var(--tw);height:calc(var(--tw) * 1.32);border-radius:4px;
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--display);font-size:calc(var(--tw) * .7);font-weight:800;
-  background:#fff;color:#0f172a;
-  box-shadow:inset 0 -3px 0 rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.25);
-}
-.puzzle-tile.space{background:transparent;box-shadow:none;width:calc(var(--tw) * .45);}
-.puzzle-tile.blank{background:#fff;color:transparent;}
-.puzzle-tile.solved{background:#fde68a;color:#1f2937;animation:tile-pop .25s ease both;}
-.puzzle-tile.flip{animation:tile-flip .45s var(--ease) both;}
-@keyframes tile-pop{0%{transform:scale(.8)}80%{transform:scale(1.1)}100%{transform:scale(1)}}
-@keyframes tile-flip{0%{transform:rotateY(90deg);background:#60a5fa;}100%{transform:none;}}
-/* Status + wedge */
-.wof-status{text-align:center;font-family:var(--display);font-size:1.08rem;font-weight:700;min-height:26px;color:var(--text);padding:0 8px;line-height:1.25;}
-.wedge-display{text-align:center;margin:2px 0 8px;font-size:.88rem;font-weight:700;min-height:20px;line-height:1.3;}
-.wedge-bankrupt{color:var(--red);}
-.wedge-lose{color:#fbbf24;}
-.wedge-money{color:var(--green);}
-/* Wheel + scores */
-.wof-mid{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;margin-bottom:10px;}
-.score-board{display:flex;flex-direction:column;gap:6px;}
-.player-card{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:6px 10px;transition:border-color .2s,background .2s;
-  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:8px;}
-.player-card.active{border-color:var(--gold);background:var(--surface-2);box-shadow:0 0 0 3px rgba(245,200,66,.12);}
-.player-name{font-size:.8rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;grid-column:1;grid-row:1;}
-.player-total{font-size:.7rem;color:var(--text-3);grid-column:1;grid-row:2;white-space:nowrap;}
-.player-round{font-family:var(--display);font-size:clamp(1rem,4.6vw,1.25rem);font-weight:800;color:var(--gold);line-height:1;grid-column:2;grid-row:1 / span 2;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
-/* Actions */
-.spin-area{display:flex;gap:8px;margin-bottom:10px;}
-.spin-area:empty{display:none;}
-.spin-area .btn{flex:1;padding:0 10px;}
-.spin-area .btn-gold{flex:1.4;}
-/* Keyboard */
-.letter-keyboard{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin:0 auto 10px;}
-.letter-keyboard:empty{display:none;}
-.letter-key{
-  min-height:44px;border-radius:10px;font-size:1.05rem;font-weight:700;padding:0;
-  background:var(--surface-3);border:1px solid var(--line-2);color:var(--text);
-  cursor:pointer;transition:transform .1s,background .15s,opacity .15s;font-family:var(--font);touch-action:manipulation;
-}
-.letter-key:active:not(:disabled){transform:scale(.9);background:#3a4258;}
-@media (hover:hover){.letter-key:hover:not(:disabled){background:#3a4258;}}
-.letter-key:disabled{background:var(--surface);color:var(--text-3);opacity:.45;cursor:default;border-color:transparent;}
-.letter-key.vowel{border-color:rgba(245,200,66,.45);color:var(--gold);}
-.letter-key.vowel:disabled{color:var(--text-3);border-color:transparent;}
-/* Solve input */
-.solve-row{display:flex;gap:8px;margin-bottom:10px;}
-.solve-row .input{flex:1;text-transform:uppercase;}
-.solve-row .input::placeholder{text-transform:none;}
-/* Setup */
-#wof-setup .modal{text-align:center;}
-#wof-setup .tabs{margin:0 0 14px;}
-#wof-setup .tabs .tab{flex:1 1 0;font-size:1.05rem;min-height:44px;}
-.wof-pname-input{margin-bottom:8px;}
-@media (min-width:600px){.wof-mid{grid-template-columns:auto 220px;justify-content:center;}}
+#app.wofgame{max-width:1180px;padding:0 10px calc(var(--safe-b) + 14px);}
+.show{display:flex;flex-direction:column;gap:9px;}
+.side{display:flex;flex-direction:column;gap:9px;min-width:0;}
+
+/* ── TV studio "camera" ─────────────────────────────────────────────── */
+.studio{position:relative;height:340px;border-radius:20px;overflow:hidden;isolation:isolate;
+  background:
+    radial-gradient(70% 45% at 50% 105%, rgba(140,110,255,.45), transparent 70%),
+    repeating-conic-gradient(from 0deg at 50% 115%, rgba(255,255,255,.05) 0 3deg, transparent 3deg 11deg),
+    radial-gradient(120% 90% at 50% 0%, #2c2173 0%, #170f40 58%, #0b0723 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07), inset 0 -40px 60px rgba(0,0,0,.35), 0 12px 30px rgba(0,0,0,.45);}
+.studio.flash::after{content:"";position:absolute;inset:0;z-index:9;pointer-events:none;background:radial-gradient(circle,rgba(255,30,30,.15),rgba(160,0,0,.55));animation:flash .9s ease-out forwards;}
+@keyframes flash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+.boardcam{position:absolute;left:0;right:0;top:0;z-index:2;padding:8px 6px 0;transition:transform .6s var(--ease), opacity .45s ease;}
+.wheelcam{position:absolute;left:50%;top:0;z-index:1;width:var(--wc,300px);height:var(--wc,300px);margin-left:calc(var(--wc,300px) / -2);
+  transform-origin:50% 0;transform:translateY(var(--wy,190px)) scale(.94);transition:transform .6s var(--ease);}
+.wheelcam canvas{width:100%;height:100%;touch-action:pan-y;}
+.wheelcam canvas.flick{touch-action:none;cursor:grab;}
+.studio[data-cam="wheel"] .boardcam{transform:translateY(-104%);opacity:0;}
+.studio[data-cam="wheel"] .wheelcam{transform:translateY(var(--wy2,0px)) scale(1);}
+
+/* ── Puzzle board ─────────────────────────────────────────────────────── */
+.board{container-type:inline-size;padding:6px;border-radius:14px;
+  background:linear-gradient(180deg,#5d74ff 0%,#2c3fc4 18%,#1b278a 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.4), inset 0 -3px 0 rgba(0,0,0,.35), 0 10px 22px rgba(0,0,0,.5);}
+.board.shake{animation:shake .4s;}
+.grid{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;padding:5px;border-radius:9px;background:#08103a;
+  box-shadow:inset 0 3px 10px rgba(0,0,0,.7);perspective:700px;}
+.tile{position:relative;aspect-ratio:.76;border-radius:3px;display:grid;place-items:center;
+  font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:800;line-height:1;color:transparent;
+  font-size:calc((100cqw - 61px) / 14 * .8);user-select:none;-webkit-user-select:none;}
+.tile.x{visibility:hidden;}
+.tile.off{background:linear-gradient(155deg,#3cc07a 0%,#1d8f53 55%,#147040 100%);box-shadow:inset 0 0 0 1.5px #0b4f2c, inset 0 2px 0 rgba(255,255,255,.25);}
+.tile.on{background:linear-gradient(180deg,#ffffff 0%,#f1f4f6 70%,#dfe5ea 100%);box-shadow:inset 0 0 0 1.5px #168048, inset 0 -2px 0 rgba(0,0,0,.12);}
+.tile.on.rev{color:#101018;}
+.tile.on.lit{background:radial-gradient(circle at 50% 35%,#d4f3ff 0%,#43a6ff 45%,#0d55d8 100%);box-shadow:0 0 14px 2px rgba(70,160,255,.9), inset 0 0 0 1.5px #0a3a9c;animation:litp .32s var(--spring);z-index:1;}
+@keyframes litp{from{transform:scale(.8)}to{transform:none}}
+.tile.flip{animation:flip .46s ease-in-out both;}
+@keyframes flip{
+  0%{transform:rotateY(0);background:radial-gradient(circle at 50% 35%,#d4f3ff 0%,#43a6ff 45%,#0d55d8 100%);color:transparent;}
+  49%{transform:rotateY(90deg);background:radial-gradient(circle at 50% 35%,#d4f3ff 0%,#43a6ff 45%,#0d55d8 100%);color:transparent;}
+  51%{transform:rotateY(90deg);color:#101018;}
+  100%{transform:rotateY(0);color:#101018;}}
+.tile.pop{animation:tpop .35s var(--spring);}
+@keyframes tpop{0%{transform:scale(.4);color:transparent}100%{transform:none}}
+.tile.in{animation:tin .4s var(--spring) both;}
+@keyframes tin{0%{transform:rotateY(90deg);background:#1d8f53}50%{transform:rotateY(90deg)}100%{transform:none}}
+.tile.slot{cursor:pointer;background:linear-gradient(180deg,#fffdf0,#fff3c4);}
+.tile.slot.typed{color:#1d4ed8;}
+.tile.slot.cur{box-shadow:inset 0 0 0 2.5px #ff9f00, 0 0 10px rgba(255,170,0,.85);z-index:1;}
+.tile.slot.bad{color:#d0172b;}
+.cat{margin:7px auto 0;width:max-content;max-width:100%;padding:4px 16px;border-radius:8px;
+  background:linear-gradient(180deg,#26359f,#121b62);border:2px solid #7d93ff;color:#fff;
+  font-weight:900;font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 4px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3);}
+
+/* Wheel readouts and big moments */
+.readout{position:absolute;left:50%;top:var(--cy,50%);z-index:7;padding:6px 18px;border-radius:14px;pointer-events:none;white-space:nowrap;
+  background:linear-gradient(180deg,#fff8d6,#ffd34d);color:#3b2400;font-family:var(--display);font-size:2.3rem;line-height:1.1;
+  box-shadow:0 10px 26px rgba(0,0,0,.55), inset 0 0 0 3px #fff;opacity:0;transform:translate(-50%,-50%) scale(.2);}
+.readout.go{animation:ro 1.7s var(--spring) forwards;}
+@keyframes ro{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}22%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}34%{transform:translate(-50%,-50%) scale(1)}84%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.95)}}
+.band{position:absolute;left:-8%;right:-8%;top:var(--cy,50%);z-index:8;padding:12px 0;text-align:center;pointer-events:none;
+  font-family:var(--display);font-size:clamp(2.1rem,11vw,3.4rem);letter-spacing:.08em;line-height:1;opacity:0;}
+.band.go{animation:band 2.2s var(--ease) forwards;}
+.band.bk{background:#050505;color:#fff;box-shadow:inset 0 3px 0 #fff, inset 0 -3px 0 #fff, 0 0 40px rgba(0,0,0,.8);}
+.band.lose{background:#f7f7f2;color:#111;box-shadow:inset 0 3px 0 #111, inset 0 -3px 0 #111, 0 0 30px rgba(0,0,0,.5);}
+.band.free{background:#8bd43a;color:#163300;box-shadow:inset 0 3px 0 #fff, inset 0 -3px 0 #fff, 0 0 30px rgba(139,212,58,.6);}
+@keyframes band{0%{opacity:0;transform:translateY(-50%) rotate(-5deg) scale(1.6,0)}12%{opacity:1;transform:translateY(-50%) rotate(-5deg) scale(1,1.2)}20%{transform:translateY(-50%) rotate(-5deg) scale(1)}82%{opacity:1;transform:translateY(-50%) rotate(-5deg) scale(1)}100%{opacity:0;transform:translateY(-50%) rotate(-5deg) scale(1.08)}}
+.tcard{position:fixed;inset:0;z-index:300;display:grid;place-items:center;pointer-events:none;}
+.tcard .in{min-width:230px;padding:18px 30px 16px;border-radius:18px;text-align:center;
+  background:linear-gradient(180deg,#3346e0,#16207a);border:3px solid #ffd54a;
+  box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.35);animation:tcard 1.8s var(--ease) forwards;}
+.tcard h2{font-family:var(--display);font-weight:400;font-size:2.5rem;color:#fff;letter-spacing:.05em;text-transform:uppercase;text-shadow:0 3px 0 rgba(0,0,0,.35);}
+.tcard p{color:#ffd54a;font-weight:900;font-size:1.1rem;margin-top:2px;}
+@keyframes tcard{0%{transform:scale(.4) rotate(-6deg);opacity:0}16%{transform:scale(1.07) rotate(0);opacity:1}28%{transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.12)}}
+.mfloat{position:fixed;z-index:320;pointer-events:none;font-family:var(--display);font-size:1.7rem;color:#ffe066;
+  text-shadow:0 3px 0 rgba(0,0,0,.45), 0 0 18px rgba(255,210,60,.6);white-space:nowrap;}
+.mfloat.neg{color:#ff8a8a;}
+
+/* ── Podiums ──────────────────────────────────────────────────────────── */
+.pods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-top:4px;}
+.pod{--pc:#d8312c;--pi:#fff;position:relative;border-radius:12px 12px 9px 9px;padding:5px 6px 6px;text-align:center;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--pc) 70%,#fff) 0%,var(--pc) 38%,color-mix(in srgb,var(--pc) 72%,#000) 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.45), inset 0 -4px 0 rgba(0,0,0,.25), 0 6px 14px rgba(0,0,0,.4);
+  transition:transform .35s var(--spring), filter .3s, box-shadow .3s, opacity .3s;filter:saturate(.7) brightness(.78);}
+.pod.yel{--pi:#2a1c00;}
+.pod.on{filter:none;transform:translateY(-3px);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.45), inset 0 -4px 0 rgba(0,0,0,.25), 0 0 0 3px #fff, 0 0 26px color-mix(in srgb,var(--pc) 75%,transparent);}
+.pod.on::before{content:"";position:absolute;left:50%;top:-12px;margin-left:-7px;border:7px solid transparent;border-top:8px solid #fff;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
+.pod.out{opacity:.4;filter:grayscale(.7) brightness(.7);}
+.pod.bk{animation:shake .45s 2;}
+.pod.bk .pbank{color:#ff3b3b;}
+.pname{font-weight:900;font-size:.82rem;color:#fff;background:rgba(10,6,30,.55);border-radius:6px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbank{font-family:var(--display);font-size:1.5rem;line-height:1.15;color:var(--pi);margin-top:2px;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 0 rgba(0,0,0,.25);white-space:nowrap;transition:color .3s;}
+.ptot{font-size:.7rem;font-weight:800;color:var(--pi);opacity:.85;white-space:nowrap;}
+.say{position:absolute;left:50%;bottom:calc(100% + 12px);z-index:12;pointer-events:none;padding:6px 11px;border-radius:12px;
+  background:#fff;color:#1b1340;font-weight:900;font-size:.88rem;white-space:nowrap;opacity:0;transform:translateX(-50%) scale(.5);
+  box-shadow:0 6px 16px rgba(0,0,0,.45);}
+.say::after{content:"";position:absolute;left:50%;top:100%;margin-left:-7px;border:7px solid transparent;border-top-color:#fff;}
+.say.go{animation:say 2s var(--spring) forwards;}
+@keyframes say{0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.5)}14%{opacity:1;transform:translateX(-50%) scale(1.05)}22%{transform:translateX(-50%) scale(1)}85%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.95)}}
+
+/* ── Host line, action deck, letter keys ──────────────────────────────── */
+.host{min-height:22px;text-align:center;font-weight:800;font-size:.95rem;line-height:1.25;color:var(--text-2);padding:0 4px;}
+.host b{color:var(--yellow);}
+.deck{display:flex;flex-direction:column;gap:8px;}
+.acts{display:flex;gap:8px;min-height:52px;}
+.acts > *{flex:1 1 0;min-width:0;}
+.acts .btn{min-height:52px;padding:0 8px;font-size:1rem;}
+.acts .grow2{flex-grow:1.8;}
+.btn .two{display:flex;flex-direction:column;line-height:1.05;}
+.btn .two small{font-size:.74rem;font-weight:800;opacity:.75;}
+.spinbtn{overflow:hidden;font-family:var(--display);font-weight:400;font-size:1.35rem!important;letter-spacing:.04em;}
+.spinbtn .pw{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.15),rgba(255,255,255,.55));transform-origin:left;transform:scaleX(0);}
+.spinbtn .lb{position:relative;}
+.info{display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;padding:0 10px;border-radius:var(--r);
+  background:rgba(255,255,255,.06);font-weight:900;color:var(--text);text-align:center;}
+.info b{color:var(--yellow);font-family:var(--display);font-weight:400;font-size:1.35rem;}
+.buzz{font-family:var(--display);font-weight:400;font-size:1.3rem!important;letter-spacing:.03em;}
+.kb{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;}
+.key{min-height:42px;padding:0;border:0;border-radius:9px;font-weight:900;font-size:1.1rem;color:#1b1340;
+  background:linear-gradient(180deg,#fbf9ff,#ddd6f3);box-shadow:0 3px 0 #8f86b8;transition:transform .08s, opacity .15s;}
+.key.v{background:linear-gradient(180deg,#e7f4ff,#a9d3ff);box-shadow:0 3px 0 #5a8cc2;}
+.key:active:not(:disabled){transform:translateY(3px);box-shadow:none;}
+.key:disabled{opacity:.42;cursor:default;}
+.key.used{opacity:1;background:rgba(255,255,255,.05);box-shadow:none;color:rgba(255,255,255,.28);}
+.key.used.hit{color:#7cc4ff;}
+.key.used.miss{color:rgba(255,110,120,.6);text-decoration:line-through;text-decoration-thickness:2px;}
+.key.picked{outline:3px solid var(--yellow);opacity:1;}
+.key.bs{background:linear-gradient(180deg,#ffd9de,#f3a7b2);box-shadow:0 3px 0 #b5606d;display:grid;place-items:center;}
+.key.bs .ico{width:22px;height:22px;}
+.key.ghost{visibility:hidden;}
+.slots{display:flex;gap:6px;justify-content:center;align-items:center;}
+.slots span{width:40px;height:50px;border-radius:6px;display:grid;place-items:center;font-family:"Helvetica Neue",Arial,sans-serif;font-weight:800;font-size:1.6rem;
+  background:#fff;color:#101018;box-shadow:inset 0 0 0 2px #168048;}
+.slots span.e{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);}
+.slots span.v{box-shadow:inset 0 0 0 2px #2f7de1;}
+.slots span.v.e{box-shadow:inset 0 0 0 2px rgba(80,160,255,.6);}
+.slots i{width:10px;}
+.clock{position:relative;display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:var(--r);overflow:hidden;
+  background:#0d0a26;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12);font-family:var(--display);font-size:1.9rem;color:#fff;}
+.clock i{position:absolute;left:0;top:0;bottom:0;width:100%;transform-origin:left;background:linear-gradient(90deg,#ff5c5c,#ffc83d 45%,#3ddc84);opacity:.55;}
+.clock span{position:relative;text-shadow:0 2px 0 rgba(0,0,0,.4);}
+
+/* Bonus envelope */
+.envo{position:fixed;inset:0;z-index:420;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;
+  background:rgba(10,6,28,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .3s;}
+.envo.show{opacity:1;}
+.envo .lab{color:#fff;font-weight:900;font-size:1.25rem;text-align:center;}
+.env{position:relative;width:260px;height:168px;margin-top:70px;}
+.env .bk{position:absolute;inset:0;border-radius:10px;background:linear-gradient(180deg,#d8ab3c,#b5861f);}
+.env .note{position:absolute;left:14px;right:14px;top:14px;height:136px;border-radius:8px;background:linear-gradient(180deg,#fff,#f4efe2);
+  display:grid;place-items:center;font-family:var(--display);font-size:2.5rem;color:#16207a;box-shadow:0 2px 8px rgba(0,0,0,.25);
+  transition:transform .9s var(--spring) .55s;}
+.env .front{position:absolute;inset:0;border-radius:10px;background:linear-gradient(180deg,#f3d27a,#dcb04a);clip-path:polygon(0 30%,50% 62%,100% 30%,100% 100%,0 100%);}
+.env .flap{position:absolute;left:0;right:0;top:0;height:100px;background:linear-gradient(180deg,#f7dc8d,#e2b84f);clip-path:polygon(0 0,100% 0,50% 100%);
+  transform-origin:top;transition:transform .55s ease, opacity .3s .3s;}
+.envo.open .flap{transform:rotateX(180deg);opacity:0;}
+.envo.open .note{transform:translateY(-104px);}
+
+/* ── Desktop: wheel and board side by side ────────────────────────────── */
+.bwrap{display:none;}
+.show.desk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:18px;align-items:start;padding-top:6px;}
+.show.desk .studio{position:sticky;top:calc(var(--safe-t) + 66px);}
+.show.desk .bwrap{display:block;padding:14px 12px 12px;border-radius:20px;
+  background:radial-gradient(120% 90% at 50% 0%, #2c2173 0%, #170f40 60%, #0b0723 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07), 0 12px 30px rgba(0,0,0,.45);}
+.show.desk .boardcam{position:static;transform:none!important;opacity:1!important;padding:0;}
+.show.desk .wheelcam{transform:translateY(var(--wy2,0px))!important;}
+.show.desk .pbank{font-size:1.9rem;}
+.show.desk .pname{font-size:.95rem;}
+.show.desk .key{min-height:46px;}
+.show.desk .cat{font-size:.95rem;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Wheel of Fortune</span>
-</nav>
-<div class="page">
-<div class="wof-wrap">
-  <div class="puzzle-board">
-    <div class="puzzle-category" id="puzzle-cat"></div>
-    <div class="puzzle-rows" id="puzzle-board"></div>
-  </div>
-  <div class="wof-status" id="wof-status"></div>
-  <div class="wedge-display" id="wedge-display"></div>
-  <div class="wof-mid">
-    <canvas id="wof-wheel" width="220" height="220"></canvas>
-    <div class="score-board" id="score-board"></div>
-  </div>
-  <div class="spin-area" id="spin-area"></div>
-  <div class="solve-row" id="solve-row" style="display:none;">
-    <input class="input solve-input" id="solve-input" placeholder="Your answer…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="60">
-    <button class="btn btn-gold" id="solve-btn">Solve</button>
-  </div>
-  <div class="letter-keyboard" id="letter-kb"></div>
-</div>
-</div>
+<main class="stage" id="app"></main>
+
 <script>
-'use strict';
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc;
+  var app = document.getElementById('app');
+  var SAVE = 'wof_state', HKEY = 'wof', RECENT = 'wof_recent';
+  var FAST = /fast/.test(location.hash);          // test hook: speeds every timer up
+  var SPD = FAST ? 0.08 : 1;
+  var VOW = 'AEIOU';
+  var FREQ = 'TNSRHLDCMGPBFYWKVXZJQ';
+  var PODS = [{ c: '#d8312c', k: 'red' }, { c: '#f2c230', k: 'yel' }, { c: '#2f7de1', k: 'blu' }];
+  var TOP = [0, 2500, 3500, 5000, 5000];
+  var ENVELOPES = [[40000, 7], [45000, 6], [50000, 5], [75000, 3], [100000, 2]];
+  function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+  function isL(c) { return c >= 'A' && c <= 'Z'; }
+  function rnd(n) { return Math.floor(Math.random() * n); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function wpick(list) { var tot = 0; list.forEach(function (x) { tot += x[1]; }); var r = Math.random() * tot; for (var i = 0; i < list.length; i++) { r -= list[i][1]; if (r < 0) return list[i][0]; } return list[0][0]; }
+  // Pick from a ranked list, favouring the front: weights .5 .25 .13 …
+  function topPick(list) { var w = [50, 25, 13, 7, 5]; return wpick(list.slice(0, 5).map(function (x, i) { return [x, w[i]]; })); }
 
-// ── Wheel segments ──────────────────────────────────────────────────────────
-const SEGMENTS=[
-  {label:'$300',val:300,color:'#1d4ed8'},{label:'$500',val:500,color:'#7c3aed'},
-  {label:'BANKRUPT',val:'bankrupt',color:'#111'},{label:'$600',val:600,color:'#0d9488'},
-  {label:'$350',val:350,color:'#b45309'},{label:'$700',val:700,color:'#be123c'},
-  {label:'LOSE TURN',val:'lose',color:'#374151'},{label:'$800',val:800,color:'#1d4ed8'},
-  {label:'$400',val:400,color:'#7c3aed'},{label:'$1,000',val:1000,color:'#ea580c'},
-  {label:'BANKRUPT',val:'bankrupt',color:'#111'},{label:'$550',val:550,color:'#0d9488'},
-  {label:'$2,500',val:2500,color:'#b45309'},{label:'$450',val:450,color:'#be123c'},
-  {label:'$900',val:900,color:'#1d4ed8'},{label:'$1,500',val:1500,color:'#7c3aed'},
-  {label:'$650',val:650,color:'#0d9488'},{label:'$1,000',val:1000,color:'#ea580c'},
-  {label:'$750',val:750,color:'#be123c'},{label:'FREE SPIN',val:'free',color:'#16a34a'},
-  {label:'$500',val:500,color:'#1d4ed8'},{label:'$3,500',val:3500,color:'#7c3aed'},
-  {label:'$600',val:600,color:'#b45309'},{label:'$800',val:800,color:'#0d9488'},
-];
-const N=SEGMENTS.length;
-const ANG=Math.PI*2/N;
-
-// ── Puzzles ─────────────────────────────────────────────────────────────────
-const PUZZLES=[
-  {cat:'PHRASE',text:'BETTER LATE THAN NEVER'},
-  {cat:'PHRASE',text:'ACTIONS SPEAK LOUDER THAN WORDS'},
-  {cat:'THING',text:'BIRTHDAY CAKE'},
-  {cat:'PLACE',text:'NIAGARA FALLS'},
-  {cat:'PHRASE',text:'PIECE OF CAKE'},
-  {cat:'PERSON',text:'ALBERT EINSTEIN'},
-  {cat:'FOOD & DRINK',text:'CHOCOLATE CHIP COOKIES'},
-  {cat:'THING',text:'SWIMMING POOL'},
-  {cat:'BEFORE & AFTER',text:'ROCK AND ROLL MODEL'},
-  {cat:'PHRASE',text:'BURNING THE MIDNIGHT OIL'},
-  {cat:'PLACE',text:'GRAND CANYON'},
-  {cat:'THING',text:'MOUNTAIN BIKE'},
-  {cat:'PHRASE',text:'ON THE TIP OF MY TONGUE'},
-  {cat:'THING',text:'ROLLER COASTER'},
-  {cat:'PHRASE',text:'JUMP FOR JOY'},
-  {cat:'PERSON',text:'ABRAHAM LINCOLN'},
-  {cat:'FOOD & DRINK',text:'PEPPERONI PIZZA'},
-  {cat:'THING',text:'SURFBOARD'},
-  {cat:'PHRASE',text:'HIT THE NAIL ON THE HEAD'},
-  {cat:'PLACE',text:'GOLDEN GATE BRIDGE'},
-  {cat:'THING',text:'FIREWORKS'},
-  {cat:'FOOD & DRINK',text:'SCRAMBLED EGGS'},
-  {cat:'PHRASE',text:'THE SKY IS THE LIMIT'},
-  {cat:'THING',text:'REMOTE CONTROL'},
-  {cat:'PLACE',text:'TIMES SQUARE'},
-  {cat:'PHRASE',text:'KEEP YOUR FINGERS CROSSED'},
-  {cat:'THING',text:'BASEBALL GLOVE'},
-  {cat:'FOOD & DRINK',text:'APPLE PIE'},
-  {cat:'PHRASE',text:'EVERY CLOUD HAS A SILVER LINING'},
-  {cat:'PLACE',text:'EIFFEL TOWER'},
-];
-
-// ── State ────────────────────────────────────────────────────────────────────
-let PLAYER_NAMES=['You','Vanna','Pat'];
-let puzzle,revealed,usedLetters,round,scores,totalScores,curPlayer,phase,spinResult,freeSpin;
-// phase: 'spin'|'pick-letter'|'ai-turn'|'over'
-
-function initGame(){
-  const p=PUZZLES[Math.floor(Math.random()*PUZZLES.length)];
-  puzzle=p;
-  revealed=new Set();
-  usedLetters=new Set();
-  round=1; scores=[0,0,0]; totalScores=[0,0,0];
-  curPlayer=0; phase='spin'; spinResult=null; freeSpin=false;
-  buildKeyboard();
-  // Clear stale UI elements left over from the previous puzzle
-  document.getElementById('wedge-display').innerHTML='';
-  document.getElementById('solve-row').style.display='none';
-  document.getElementById('solve-input').value='';
-  renderAll();
-  drawWheel(0);
-  setStatus(`${PLAYER_NAMES[0]}'s turn — spin the wheel!`);
-}
-
-const VOWELS=new Set('AEIOU');
-
-function buildKeyboard(){
-  const kb=document.getElementById('letter-kb');
-  kb.innerHTML='';
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l=>{
-    const b=document.createElement('button');
-    b.className='letter-key'+(VOWELS.has(l)?' vowel':'');
-    b.textContent=l;b.dataset.l=l;
-    b.addEventListener('click',()=>pickLetter(l));
-    kb.appendChild(b);
-  });
-}
-
-function updateKeyboard(){
-  document.querySelectorAll('.letter-key').forEach(b=>{
-    const l=b.dataset.l;
-    b.disabled=usedLetters.has(l)||phase!=='pick-letter'||
-      (VOWELS.has(l)&&(curPlayer>=nHumans||scores[curPlayer]<250));
-  });
-}
-
-// ── Wheel drawing ─────────────────────────────────────────────────────────────
-const cv=document.getElementById('wof-wheel');
-const ctx=cv.getContext('2d');
-let wheelAngle=0,spinning=false,WS=220;
-function sizeWheel(){
-  // Wheel fills the left half on phones; crisp on retina
-  const W=Math.min(560,document.documentElement.clientWidth-32);
-  WS=Math.round(Math.max(150,Math.min(260,W*0.5)));
-  const dpr=Math.min(3,window.devicePixelRatio||1);
-  cv.width=WS*dpr;cv.height=WS*dpr;cv.style.width=WS+'px';cv.style.height=WS+'px';
-  drawWheel(wheelAngle);
-}
-window.addEventListener('resize',()=>{if(!spinning)sizeWheel();});
-cv.addEventListener('click',()=>{if(curPlayer<nHumans&&phase==='spin'&&!spinning&&document.querySelector('#spin-area .btn-gold'))spinWheel();});
-
-function drawWheel(angle){
-  const k=WS/220, dpr=cv.width/WS;
-  ctx.setTransform(dpr*k,0,0,dpr*k,0,0);
-  const cx=110,cy=110,r=100;
-  ctx.clearRect(0,0,220,220);
-  SEGMENTS.forEach((seg,i)=>{
-    const start=angle+i*ANG-Math.PI/2;
-    const end=start+ANG;
-    ctx.beginPath();ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,r,start,end);ctx.closePath();
-    ctx.fillStyle=seg.color;ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=1.5;ctx.stroke();
-    // Label
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+ANG/2);
-    ctx.textAlign='right';ctx.fillStyle='#fff';
-    ctx.font=`800 ${seg.label.length>6?7.5:9.5}px Inter,sans-serif`;
-    ctx.fillText(seg.label,r-6,3.2);
-    ctx.restore();
-  });
-  // Center hub
-  ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);
-  const hub=ctx.createRadialGradient(cx-5,cy-5,2,cx,cy,18);hub.addColorStop(0,'#fde68a');hub.addColorStop(1,'#b7791f');
-  ctx.fillStyle=hub;ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.stroke();
-  // Pointer at top — tip points INTO the wheel (downward) to indicate the selected slice
-  ctx.beginPath();
-  ctx.moveTo(cx,cy-r+10);        // tip inside wheel edge
-  ctx.lineTo(cx-9,cy-r-6);       // left base above wheel
-  ctx.lineTo(cx+9,cy-r-6);       // right base above wheel
-  ctx.closePath();
-  ctx.fillStyle='#f5c842';ctx.fill();
-  ctx.strokeStyle='#1a1a2e';ctx.lineWidth=1.5;ctx.stroke();
-}
-
-let _wac=null;
-function wofAudio(){if(!_wac)_wac=new(window.AudioContext||window.webkitAudioContext)();if(_wac.state==='suspended')_wac.resume();return _wac;}
-function spinWheel(){
-  if(spinning)return;
-  if(phase!=='spin')return;
-  if(curPlayer<nHumans)GN.haptic('medium');
-  document.getElementById('solve-row').style.display='none';
-  spinning=true;
-  document.getElementById('spin-area').innerHTML='';
-  const extra=Math.PI*2*(7+Math.random()*6);
-  const totalDur=4500+Math.random()*1500;
-  const start=performance.now();
-  const startAngle=wheelAngle;
-  const targetAngle=startAngle+extra;
-  const N_SEGS=SEGMENTS.length;
-  const ANG_SEG=Math.PI*2/N_SEGS;
-  let lastPegSound=-1;
-
-  function frame(now){
-    const elapsed=now-start;
-    const t=Math.min(1,elapsed/totalDur);
-
-    // Single smooth cubic ease-out — monotonically decelerating, never speeds back up.
-    // f(t) = 1 - (1-t)^3
-    //   f(0)=0, f(1)=1
-    //   f'(0)=3 (fast start), f'(1)=0 (stops smoothly)
-    const ease = 1 - Math.pow(1 - t, 3);
-    const angle = startAngle + extra * ease;
-
-    // Play a soft peg click at each segment boundary as we rotate
-    const pegsRotated = Math.floor(angle / ANG_SEG);
-    if(pegsRotated !== lastPegSound){
-      lastPegSound = pegsRotated;
-      try{
-        const ac = wofAudio();
-        const o = ac.createOscillator(), g = ac.createGain();
-        // Pitch the clicks higher near the start, lower near the end (peg slowdown feel)
-        o.frequency.value = 650 + (1 - t) * 350;
-        o.type = 'triangle';
-        g.gain.setValueAtTime(0.05, ac.currentTime);
-        g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + 0.04);
-        o.connect(g); g.connect(ac.destination);
-        o.start(); o.stop(ac.currentTime + 0.05);
-      }catch(e){}
+  // ── Sound: show-style effects, synthesized (respects the kit sound switch) ──
+  var snd = (function () {
+    var ac = null;
+    function on() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
+    function A() { if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); } if (ac.state === 'suspended') ac.resume(); return ac; }
+    function tone(f, t0, dur, type, vol, slide) {
+      var a = A(); if (!a) return;
+      var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
     }
-
-    wheelAngle = angle;
-    drawWheel(angle);
-
-    if(t<1){requestAnimationFrame(frame);}
-    else{
-      wheelAngle = targetAngle % (Math.PI * 2);
-      drawWheel(wheelAngle);
-      spinning = false;
-      setTimeout(resolveSpin, 200);
+    function noise(t0, dur, vol, hp) {
+      var a = A(); if (!a) return;
+      var n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      var s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.value = hp || 1500; g.gain.value = vol; s.buffer = b; s.connect(f); f.connect(g); g.connect(a.destination); s.start(a.currentTime + t0);
     }
+    var FX = {
+      ding: function () { tone(1568, 0, 1.3, 'sine', 0.16); tone(3136, 0, 0.5, 'sine', 0.045); tone(2349, 0, 0.8, 'triangle', 0.025); },
+      touch: function () { tone(760, 0, 0.08, 'triangle', 0.06); noise(0, 0.03, 0.05, 3000); },
+      click: function () { noise(0, 0.016, 0.16, 2200); tone(1900, 0, 0.018, 'square', 0.016); },
+      buzz: function () { tone(110, 0, 0.6, 'square', 0.06); tone(117, 0, 0.6, 'sawtooth', 0.05); },
+      bankrupt: function () { tone(98, 0, 1.0, 'sawtooth', 0.07); tone(104, 0, 1.0, 'square', 0.05); tone(392, 0.12, 1.4, 'sawtooth', 0.05, 60); },
+      lose: function () { tone(262, 0, 0.3, 'triangle', 0.1, 200); tone(196, 0.22, 0.55, 'triangle', 0.1, 140); },
+      pop: function () { tone(660, 0, 0.12, 'triangle', 0.09, 1320); },
+      cash: function () { [1318, 1568, 2093, 2637].forEach(function (f, i) { tone(f, i * 0.05, 0.2, 'square', 0.025); }); },
+      solve: function () { [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, i * 0.09, i === 6 ? 0.7 : 0.18, 'triangle', 0.1); }); },
+      blip: function () { tone(988, 0, 0.06, 'sine', 0.05); },
+      buzzin: function () { tone(880, 0, 0.28, 'square', 0.045); tone(1320, 0, 0.28, 'square', 0.03); },
+      tick: function () { tone(1250, 0, 0.05, 'square', 0.045); },
+      horn: function () { tone(220, 0, 1.0, 'sawtooth', 0.06); tone(277, 0, 1.0, 'sawtooth', 0.05); tone(330, 0, 1.0, 'sawtooth', 0.04); },
+      chime: function () { [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, i * 0.07, 0.55, 'sine', 0.08); }); }
+    };
+    return function (n) { if (!on()) return; try { FX[n](); } catch (e) {} };
+  })();
+
+  // ── Puzzles (family-friendly, real show categories) ─────────────────────
+  var BANK = {
+    'PHRASE': ['BETTER LATE THAN NEVER', 'ACTIONS SPEAK LOUDER THAN WORDS', 'PIECE OF CAKE', 'BURNING THE MIDNIGHT OIL', 'ON THE TIP OF MY TONGUE',
+      'JUMP FOR JOY', 'HIT THE NAIL ON THE HEAD', 'THE SKY IS THE LIMIT', 'KEEP YOUR FINGERS CROSSED', 'EVERY CLOUD HAS A SILVER LINING',
+      'BREAK A LEG', 'ONCE IN A BLUE MOON', 'PRACTICE MAKES PERFECT', "TIME FLIES WHEN YOU'RE HAVING FUN", 'EASY AS PIE', 'HOME SWEET HOME',
+      'THE EARLY BIRD CATCHES THE WORM', "LET'S CALL IT A DAY", 'RISE AND SHINE', 'SLOW AND STEADY WINS THE RACE', 'WHAT GOES AROUND COMES AROUND',
+      'NO TIME LIKE THE PRESENT', 'BACK TO THE DRAWING BOARD', "IT'S RAINING CATS AND DOGS", 'SWEET DREAMS', 'LOOK BEFORE YOU LEAP',
+      'TWO HEADS ARE BETTER THAN ONE', 'A PICTURE IS WORTH A THOUSAND WORDS', "ALL'S WELL THAT ENDS WELL", 'BEST FOOT FORWARD', 'COOL AS A CUCUMBER',
+      'FIRST THINGS FIRST', 'HAPPY AS A CLAM', 'HOLD YOUR HORSES', 'OVER THE MOON', 'SAFE AND SOUND', 'THINK OUTSIDE THE BOX', 'THE MORE THE MERRIER',
+      'GOOD THINGS COME TO THOSE WHO WAIT', 'BETTER SAFE THAN SORRY', 'A PENNY FOR YOUR THOUGHTS', 'SLEEP TIGHT'],
+    'THING': ['BIRTHDAY CAKE', 'SWIMMING POOL', 'MOUNTAIN BIKE', 'ROLLER COASTER', 'SURFBOARD', 'FIREWORKS', 'REMOTE CONTROL', 'BASEBALL GLOVE',
+      'TREASURE CHEST', 'HOT AIR BALLOON', 'MAGIC WAND', 'TELESCOPE', 'SKATEBOARD', 'PIGGY BANK', 'ALARM CLOCK', 'BACKPACK', 'SNOW GLOBE',
+      'WIND CHIMES', 'SLEEPING BAG', 'TRAMPOLINE', 'MAP AND COMPASS', 'FLASHLIGHT', 'PAPER AIRPLANE', 'TIME CAPSULE', 'BOUNCY BALL',
+      'MAGNIFYING GLASS', 'ROCKING CHAIR'],
+    'THINGS': ['ROLLER SKATES', 'SNOWFLAKES', 'BUILDING BLOCKS', 'CRAYONS AND MARKERS', 'SEASHELLS', 'SUNGLASSES'],
+    'PLACE': ['NIAGARA FALLS', 'GRAND CANYON', 'GOLDEN GATE BRIDGE', 'TIMES SQUARE', 'EIFFEL TOWER', 'MOUNT RUSHMORE', 'STATUE OF LIBERTY',
+      'YELLOWSTONE NATIONAL PARK', 'THE GREAT WALL OF CHINA', 'AMAZON RAINFOREST', 'ICE CREAM PARLOR', 'PUBLIC LIBRARY', 'CANDY STORE',
+      'SCHOOL PLAYGROUND', 'BOWLING ALLEY', 'PETTING ZOO', 'MOVIE THEATER', 'SOUTH POLE', 'OUTER SPACE', 'HAUNTED HOUSE', 'AQUARIUM',
+      'TREEHOUSE', 'BACKYARD', 'FARMERS MARKET'],
+    'ON THE MAP': ['ROCKY MOUNTAINS', 'PACIFIC OCEAN', 'MISSISSIPPI RIVER', 'HAWAII', 'AUSTRALIA', 'THE NORTH POLE', 'LAKE TAHOE'],
+    'PERSON': ['ALBERT EINSTEIN', 'ABRAHAM LINCOLN', 'GEORGE WASHINGTON', 'AMELIA EARHART', 'BENJAMIN FRANKLIN', 'NEIL ARMSTRONG', 'THOMAS EDISON',
+      'LEONARDO DA VINCI', 'WALT DISNEY', 'ISAAC NEWTON', 'ROSA PARKS', 'HELEN KELLER', 'PABLO PICASSO', 'WOLFGANG AMADEUS MOZART', 'SALLY RIDE',
+      'BEST FRIEND', 'BABYSITTER', 'CROSSING GUARD', 'PASTRY CHEF', 'SCHOOL PRINCIPAL', 'LIFEGUARD'],
+    'OCCUPATION': ['ASTRONAUT', 'FIREFIGHTER', 'ZOOKEEPER', 'MAIL CARRIER', 'VETERINARIAN'],
+    'CHARACTER': ['SANTA CLAUS', 'THE TOOTH FAIRY', 'MICKEY MOUSE', 'WINNIE THE POOH', 'HARRY POTTER', 'CINDERELLA', 'PETER PAN',
+      'SPONGEBOB SQUAREPANTS', 'CAPTAIN HOOK'],
+    'FOOD & DRINK': ['CHOCOLATE CHIP COOKIES', 'PEPPERONI PIZZA', 'SCRAMBLED EGGS', 'APPLE PIE', 'FRESH SQUEEZED ORANGE JUICE', 'PEANUT BUTTER AND JELLY',
+      'MACARONI AND CHEESE', 'HOT FUDGE SUNDAE', 'BLUEBERRY PANCAKES', 'GRILLED CHEESE SANDWICH', 'STRAWBERRY MILKSHAKE', 'SPAGHETTI AND MEATBALLS',
+      'BUTTERED POPCORN', 'CHICKEN NOODLE SOUP', 'BANANA SPLIT', 'HOT CHOCOLATE WITH MARSHMALLOWS', 'PINK LEMONADE', 'CARAMEL APPLES',
+      'FRENCH FRIES', 'CINNAMON ROLLS', 'BIRTHDAY CUPCAKES', 'FRUIT SALAD', 'TACOS AND SALSA', 'WATERMELON SLICES'],
+    'BEFORE & AFTER': ['ROCK AND ROLL MODEL', 'BIRTHDAY PARTY ANIMAL', 'SNOW WHITE HOUSE', 'TEDDY BEAR HUG', 'SPACE STATION WAGON', 'FIRE TRUCK STOP',
+      'BOWLING BALL GAME', 'HOT DOG HOUSE', 'SWIMMING POOL PARTY', 'BUBBLE GUM DROP', 'APPLE PIE CHART', 'TOOTH FAIRY TALE', 'PICNIC BASKETBALL',
+      'PEANUT BUTTERFLY', 'BACK YARD SALE', 'COUCH POTATO SALAD', 'PAPER AIRPLANE MODE', 'SUNDAY MORNING GLORY', 'MOTHER GOOSE BUMPS',
+      'PIGGY BANK ACCOUNT', 'FOOTBALL FIELD TRIP', 'SPELLING BEE STING', 'LUNCH BOX TURTLE', 'FAMILY TREE HOUSE'],
+    'EVENT': ['BIRTHDAY PARTY', 'FAMILY REUNION', 'SUMMER VACATION', 'FOURTH OF JULY PARADE', 'SCHOOL TALENT SHOW', 'SLUMBER PARTY', 'SCIENCE FAIR',
+      'COUNTY FAIR', 'FIREWORKS SHOW', 'HALLOWEEN COSTUME PARTY', 'THANKSGIVING DINNER', "NEW YEAR'S EVE COUNTDOWN", 'ROAD TRIP', 'FIELD DAY',
+      'GRADUATION CEREMONY', 'BAKE SALE', 'SNOW DAY', 'FIRST DAY OF SCHOOL', 'SURPRISE PARTY'],
+    'TITLE': ['THE WIZARD OF OZ', 'TOY STORY', 'FINDING NEMO', 'THE LION KING', "CHARLOTTE'S WEB", 'JINGLE BELLS', 'TWINKLE TWINKLE LITTLE STAR',
+      'WHERE THE WILD THINGS ARE', 'GREEN EGGS AND HAM', 'THE CAT IN THE HAT', 'HAPPY BIRTHDAY TO YOU', 'STAR WARS', 'BEAUTY AND THE BEAST',
+      'THE VERY HUNGRY CATERPILLAR', 'FROSTY THE SNOWMAN', 'TAKE ME OUT TO THE BALL GAME', 'JACK AND THE BEANSTALK', 'GOLDILOCKS AND THE THREE BEARS'],
+    'AROUND THE HOUSE': ['LAUNDRY BASKET', 'COFFEE TABLE', 'KITCHEN SINK', 'BOOKSHELF', 'VACUUM CLEANER', 'BUNK BEDS', 'WELCOME MAT', 'SMOKE DETECTOR',
+      'FRONT PORCH', 'TOASTER OVEN', 'THROW PILLOWS', 'GRANDFATHER CLOCK', 'LINEN CLOSET', 'REFRIGERATOR MAGNETS', 'DOORBELL', 'CEILING FAN'],
+    'FUN & GAMES': ['HIDE AND SEEK', 'MUSICAL CHAIRS', 'HOPSCOTCH', 'TIC-TAC-TOE', 'JUMP ROPE', 'CHECKERS', 'PLAYING CARDS', 'JIGSAW PUZZLE',
+      'CONNECT THE DOTS', 'CROSSWORD PUZZLE', 'SIMON SAYS', 'FREEZE TAG', 'DUCK DUCK GOOSE', 'RED LIGHT GREEN LIGHT', 'CAPTURE THE FLAG',
+      'BOARD GAME NIGHT', 'SKIPPING STONES', 'MARCO POLO'],
+    'WHAT ARE YOU DOING?': ['BAKING COOKIES', 'WALKING THE DOG', 'BUILDING A SANDCASTLE', 'MAKING PANCAKES', 'PLANTING A GARDEN', 'READING A GOOD BOOK',
+      'RIDING A BIKE', 'ROASTING MARSHMALLOWS', 'BRUSHING MY TEETH', 'CATCHING FIREFLIES', 'FLYING A KITE', 'TELLING JOKES', 'DOING A CARTWHEEL',
+      'SLEEPING IN', 'PITCHING A TENT', 'FEEDING THE DUCKS', 'BLOWING BUBBLES', 'RAKING LEAVES', 'BUILDING A SNOWMAN'],
+    'LIVING THING': ['GIANT PANDA', 'BALD EAGLE', 'BUMBLEBEE', 'GOLDEN RETRIEVER', 'KILLER WHALE', 'SUNFLOWER', 'GRIZZLY BEAR', 'MONARCH BUTTERFLY',
+      'HUMMINGBIRD', 'SEA TURTLE']
+  };
+  var PUZZLES = [];
+  Object.keys(BANK).forEach(function (cat) { BANK[cat].forEach(function (t) { PUZZLES.push({ cat: cat, text: t }); }); });
+
+  // ── Board layout: 4 rows of 12 / 14 / 14 / 12 tiles ─────────────────────
+  var ROWW = [12, 14, 14, 12];
+  function rowOK(r, c) { return r === 0 || r === 3 ? c >= 1 && c <= 12 : c >= 0 && c <= 13; }
+  function splitsOf(ws, n) {
+    var out = [];
+    (function rec(s, acc) {
+      if (acc.length === n - 1) { if (s < ws.length) out.push(acc.concat([ws.slice(s).join(' ')])); return; }
+      for (var e = s + 1; e <= ws.length - (n - 1 - acc.length); e++) rec(e, acc.concat([ws.slice(s, e).join(' ')]));
+    })(0, []);
+    return out;
   }
-  requestAnimationFrame(frame);
-}
-
-function resolveSpin(){
-  // Which segment is at the pointer (top)?
-  const normalized=(((-wheelAngle+Math.PI/2)%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
-  const segIdx=Math.floor(normalized/ANG)%N;
-  const seg=SEGMENTS[segIdx];
-  spinResult=seg;
-  const wd=document.getElementById('wedge-display');
-  if(seg.val==='bankrupt'){
-    scores[curPlayer]=0;freeSpin=false;
-    if(curPlayer<nHumans)GN.haptic('error');
-    wd.innerHTML=`<span class="wedge-bankrupt">💸 BANKRUPT — ${PLAYER_NAMES[curPlayer]} loses all round winnings!</span>`;
-    renderScores();
-    setTimeout(()=>nextPlayer(),1800);
-  } else if(seg.val==='lose'){
-    freeSpin=false;
-    wd.innerHTML=`<span class="wedge-lose">🚫 LOSE A TURN — ${PLAYER_NAMES[curPlayer]} passes!</span>`;
-    setTimeout(()=>nextPlayer(),1500);
-  } else {
-    const isFree=seg.val==='free';
-    if(isFree)freeSpin=true;
-    wd.innerHTML=`<span class="wedge-money">${isFree?'🎰 FREE SPIN':('💰 '+seg.label)} — ${curPlayer<nHumans?'Pick a consonant!':PLAYER_NAMES[curPlayer]+' is picking…'}</span>`;
-    phase='pick-letter';
-    if(curPlayer>=nHumans){
-      // AI picks a letter
-      setTimeout(()=>aiPickLetter(),800);
-    } else {
-      setStatus(`${PLAYER_NAMES[curPlayer]}, pick a consonant!`);
-      renderSpinArea();
-      updateKeyboard();
-    }
-  }
-}
-
-function pickLetter(l){
-  if(phase!=='pick-letter')return;
-  if(usedLetters.has(l))return;
-  if(VOWELS.has(l)){
-    if(curPlayer>=nHumans)return;
-    if(scores[curPlayer]<250){setStatus('Need $250 to buy a vowel!');return;}
-    scores[curPlayer]-=250;
-  }
-  usedLetters.add(l);
-  const count=puzzle.text.split('').filter(c=>c===l).length;
-  if(count>0){
-    // Reveal tiles
-    puzzle.text.split('').forEach((c,i)=>{ if(c===l){ revealed.add(i); justRevealed.add(i); } });
-    if(curPlayer<nHumans)GN.haptic('success');
-    if(VOWELS.has(l)){
-      setStatus(`Yes! "${l}" appears ${count} time${count>1?'s':''}!`);
-    } else {
-      scores[curPlayer]+=spinResult?.val*count||0;
-      setStatus(`${l}×${count}! +$${(spinResult?.val||0)*count}!`);
-    }
-    renderAll();
-    // Check if solved
-    if(isPuzzleSolved()){
-      totalScores[curPlayer]+=scores[curPlayer];
-      setTimeout(endRound,1000);
-    } else {
-      phase='spin';
-      if(curPlayer>=nHumans){
-        // AI keeps spinning after a correct letter
-        setTimeout(()=>aiTurn(),1000);
-      } else {
-        setTimeout(()=>{ renderSpinArea(); updateKeyboard(); },800);
-      }
-    }
-  } else {
-    if(curPlayer<nHumans)GN.haptic('error');
-    setStatus(`No "${l}" in the puzzle — ${PLAYER_NAMES[curPlayer]}'s turn ends.`);
-    phase='spin'; // lock out further picks during transition
-    renderPuzzle();
-    updateKeyboard(); // disable keys since phase is now 'spin'
-    setTimeout(()=>nextPlayer(),1200);
-  }
-}
-
-function isPuzzleSolved(){
-  return puzzle.text.split('').every((c,i)=>c===' '||revealed.has(i));
-}
-
-function nextPlayer(){
-  curPlayer=(curPlayer+1)%3;
-  phase='spin';
-  spinResult=null;
-  document.getElementById('wedge-display').innerHTML='';
-  renderAll();
-  if(curPlayer>=nHumans){
-    // AI turn
-    setTimeout(aiTurn,900);
-  } else {
-    setStatus(`${PLAYER_NAMES[curPlayer]}'s turn! Spin the wheel.`);
-    renderSpinArea();
-    updateKeyboard();
-  }
-}
-
-function aiTurn(){
-  if(curPlayer<nHumans)return;
-  setStatus(`${PLAYER_NAMES[curPlayer]} is spinning…`);
-  spinWheel();
-  // AI letter picking is handled after spin resolves via pickLetter
-  // We need to intercept after phase becomes 'pick-letter'
-}
-
-function aiPickLetter(){
-  // Pick most common unrevealed consonant
-  const consonants='RSTLNEABCDFGHJKMPQUVWXYZ';
-  let pick=null;
-  for(const l of consonants){
-    if(!usedLetters.has(l)&&!VOWELS.has(l)){pick=l;break;}
-  }
-  if(!pick){nextPlayer();return;}
-  setStatus(`${PLAYER_NAMES[curPlayer]} picks "${pick}"…`);
-  setTimeout(()=>pickLetter(pick),600);
-}
-
-function attemptSolve(){
-  if(curPlayer>=nHumans||phase==='over'||spinning)return;
-  const guess=document.getElementById('solve-input').value.trim().toUpperCase().replace(/\s+/g,' ');
-  if(!guess)return;
-  document.getElementById('solve-input').blur();
-  if(guess===puzzle.text){
-    GN.haptic('success');
-    // Reveal all
-    puzzle.text.split('').forEach((_,i)=>revealed.add(i));
-    totalScores[curPlayer]+=scores[curPlayer];
-    renderPuzzle();
-    setStatus('🎉 You solved it!');
-    setTimeout(endRound,1200);
-  } else {
-    GN.haptic('error');
-    setStatus('❌ Not quite — turn passes!');
-    phase='spin';updateKeyboard();
-    document.getElementById('spin-area').innerHTML='';
-    document.getElementById('solve-row').style.display='none';
-    document.getElementById('solve-input').value='';
-    setTimeout(()=>nextPlayer(),1200);
-  }
-}
-
-function endRound(){
-  phase='over';
-  const winner=totalScores.indexOf(Math.max(...totalScores));
-  const wd=document.getElementById('wedge-display');
-  wd.innerHTML=`<span style="color:#22c55e">✅ Puzzle: ${puzzle.text}</span>`;
-  const winnerName=PLAYER_NAMES[winner];
-  const amount=totalScores[winner].toLocaleString();
-  const msg = winner===0 && PLAYER_NAMES[0]==='You'
-    ? `🏆 You win with $${amount}!`
-    : `🏆 ${winnerName} wins with $${amount}`;
-  setStatus(msg);
-  GN.haptic(winner<nHumans?'success':'medium');
-  renderPuzzle();  // ensure all tiles are shown in their final solved state
-  renderScores();
-  document.getElementById('spin-area').innerHTML=`<button class="btn btn-gold btn-block" onclick="initGame()">New Puzzle</button>`;
-  document.getElementById('solve-row').style.display='none';
-  document.getElementById('letter-kb').innerHTML='';
-  try{
-    GameHistory.save('wof',{
-      _summary:`Wheel of Fortune · ${puzzle.text}`,
-      _badge:'$'+totalScores[0].toLocaleString(),
-      puzzle:puzzle.text,score:totalScores[0],winner:PLAYER_NAMES[winner]
-    });
-  }catch(e){}
-}
-
-function renderPuzzle(){ renderPuzzleClean(); }
-
-const justRevealed=new Set();
-function renderPuzzleClean(){
-  const board=document.getElementById('puzzle-board');
-  document.getElementById('puzzle-cat').textContent=puzzle.cat;
-  const text=puzzle.text;
-  const words=text.split(' ');
-  const rows=[]; let curRow=[]; let pos=0;
-  words.forEach((word,wi)=>{
-    if(wi>0){
-      if(curRow.reduce((s,t)=>s+t.len,0)+1+word.length>13&&curRow.length){
-        rows.push([...curRow]);curRow=[];
-      } else curRow.push({ch:' ',pos:-1,len:1});
-      pos++;
-    }
-    word.split('').forEach(c=>{
-      curRow.push({ch:c,pos:pos,len:1});pos++;
-    });
-  });
-  if(curRow.length)rows.push(curRow);
-  board.innerHTML=rows.map(r=>`<div class="puzzle-row">${
-    r.map(t=>{
-      if(t.ch===' ')return`<div class="puzzle-tile space"></div>`;
-      const rev=revealed.has(t.pos);
-      const fl=rev&&justRevealed.has(t.pos)&&phase!=='over'?' flip':'';
-      return`<div class="puzzle-tile${phase==='over'?' solved':rev?fl:' blank'}">${rev||phase==='over'?t.ch:''}</div>`;
-    }).join('')
-  }</div>`).join('');
-  justRevealed.clear();
-}
-
-function renderScores(){
-  const sb=document.getElementById('score-board');
-  sb.innerHTML=PLAYER_NAMES.map((n,i)=>`
-    <div class="player-card${i===curPlayer&&phase!=='over'?' active':''}${i===0?' human':''}">
-      <div class="player-name">${n}</div>
-      <div class="player-round">$${scores[i].toLocaleString()}</div>
-      <div class="player-total">Total: $${totalScores[i].toLocaleString()}</div>
-    </div>`).join('');
-}
-
-function renderSpinArea(){
-  const sa=document.getElementById('spin-area');
-  if(phase==='over')return;
-  if(curPlayer<nHumans&&phase==='spin'&&!spinning){
-    sa.innerHTML=`
-      <button class="btn btn-gold" onclick="spinWheel()">🎡 Spin</button>
-      <button class="btn btn-outline" onclick="buyVowel()" ${scores[curPlayer]>=250?'':'disabled'}>Vowel $250</button>
-      <button class="btn btn-outline" onclick="showSolve()">Solve</button>`;
-  } else if(curPlayer<nHumans&&phase==='pick-letter'){
-    sa.innerHTML=`<button class="btn btn-outline" onclick="showSolve()">Solve the puzzle</button>`;
-  } else {
-    sa.innerHTML='';
-  }
-}
-
-function buyVowel(){
-  if(curPlayer>=nHumans||phase!=='spin'||spinning||scores[curPlayer]<250)return;
-  phase='pick-letter';spinResult={val:0};
-  setStatus('Pick a vowel!');
-  updateKeyboard();
-  renderSpinArea();
-  // Enable vowels only
-  document.querySelectorAll('.letter-key').forEach(b=>{
-    b.disabled=!VOWELS.has(b.dataset.l)||usedLetters.has(b.dataset.l);
-  });
-}
-
-function showSolve(){
-  if(curPlayer>=nHumans||phase==='over'||spinning)return;
-  const row=document.getElementById('solve-row');
-  row.style.display='flex';
-  const inp=document.getElementById('solve-input');
-  inp.focus();
-  setTimeout(()=>row.scrollIntoView({behavior:'smooth',block:'center'}),250);
-}
-
-function setStatus(msg){ document.getElementById('wof-status').textContent=msg; }
-
-function renderAll(){
-  renderPuzzleClean();
-  renderScores();
-  renderSpinArea();
-  updateKeyboard();
-}
-
-document.getElementById('solve-btn').addEventListener('click',attemptSolve);
-document.getElementById('solve-input').addEventListener('keydown',e=>{if(e.key==='Enter')attemptSolve();});
-
-// ── Player setup ──────────────────────────────────────────────────────────
-let nHumans = 1; // default
-function showPlayerSetup() {
-  const overlay = document.createElement('div');
-  overlay.id = 'wof-setup';
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="wof-setup-title">
-      <div style="font-size:2.4rem;line-height:1;margin-bottom:6px;">🎡</div>
-      <div class="modal-title" id="wof-setup-title">Wheel of Fortune</div>
-      <div style="font-size:.92rem;color:var(--text-2);margin-bottom:16px;">How many people are playing? Empty seats are filled by Vanna &amp; Pat.</div>
-      <div class="tabs">
-        ${[1,2,3].map(n=>`<button class="tab${n===1?' active':''}" data-n="${n}" onclick="selectPlayers(${n})">${n}</button>`).join('')}
-      </div>
-      <div id="wof-name-inputs" style="margin-bottom:8px;text-align:left;"></div>
-      <button class="btn btn-gold btn-block" onclick="startWithPlayers()">Start Game</button>
-    </div>`;
-  document.body.appendChild(overlay);
-  renderNameInputs(1);
-}
-
-function selectPlayers(n) {
-  nHumans = n;
-  document.querySelectorAll('#wof-setup [data-n]').forEach(b => {
-    b.classList.toggle('active', +b.dataset.n === n);
-  });
-  GN.haptic('select');
-  renderNameInputs(n);
-}
-
-function renderNameInputs(n) {
-  const el = document.getElementById('wof-name-inputs');
-  if (!el) return;
-  if (n === 1) { el.innerHTML = '<div style="height:6px"></div>'; return; }
-  el.innerHTML = Array.from({length:n}, (_,i) =>
-    `<input type="text" placeholder="Player ${i+1} name" maxlength="12"
-      class="input wof-pname-input" autocomplete="off"
-      id="wof-pname-${i}">`
-  ).join('');
-  // Wire up the frequent-player picker under each input
-  if (typeof FrequentPlayers !== 'undefined') {
-    for (let i = 0; i < n; i++) {
-      const inp = document.getElementById('wof-pname-' + i);
-      if (inp) FrequentPlayers.attachPicker(inp, {
-        siblingSelector: '.wof-pname-input',
-        managePath: 'players.html'
+  function layoutPuzzle(text) {
+    var words = text.split(' '), SETS = { 1: [[1]], 2: [[1, 2]], 3: [[0, 1, 2], [1, 2, 3]], 4: [[0, 1, 2, 3]] };
+    var best = null;
+    for (var n = 1; n <= 4 && !best; n++) {
+      if (words.length < n) break;
+      splitsOf(words, n).forEach(function (lines) {
+        SETS[n].forEach(function (rows) {
+          if (lines.some(function (l, k) { return l.length > ROWW[rows[k]]; })) return;
+          var mx = Math.max.apply(null, lines.map(function (l) { return l.length; }));
+          var sc = mx * 1000 + lines.reduce(function (a, l) { return a + (mx - l.length) * (mx - l.length); }, 0);
+          if (!best || sc < best.sc) best = { sc: sc, lines: lines, rows: rows };
+        });
       });
     }
+    if (!best) return null;
+    var cell = [], pos = {};
+    for (var k = 0; k < 56; k++) cell.push(-1);
+    var mx = Math.max.apply(null, best.lines.map(function (l) { return l.length; }));
+    var start = Math.floor((14 - mx) / 2), off = 0;
+    best.lines.forEach(function (l, i) {
+      var r = best.rows[i], s = start;
+      if (r === 0 || r === 3) { s = Math.max(1, s); if (s + l.length > 13) s = 13 - l.length; }
+      for (var j = 0; j < l.length; j++) { if (l[j] !== ' ') { cell[r * 14 + s + j] = off + j; pos[off + j] = r * 14 + s + j; } }
+      off += l.length + 1;
+    });
+    return { cell: cell, pos: pos };
   }
-}
 
-function startWithPlayers() {
-  const names = ['You','Vanna','Pat'];
-  for (let i = 0; i < nHumans; i++) {
-    const el = document.getElementById('wof-pname-' + i);
-    if (el && el.value.trim()) names[i] = el.value.trim();
-    else if (i === 0) names[0] = 'You';
+  // ── Wheel ─────────────────────────────────────────────────────────────────
+  function wedgesFor(r) {
+    var C = { pink: '#ec4fa0', yel: '#fbd331', blu: '#1e88e5', red: '#e8322f', grn: '#2fae4b', pur: '#7e3fbf', org: '#f5891f', teal: '#14aebf' };
+    function m(v, c) { return { t: '$', v: v, c: C[c] }; }
+    return [{ t: '$', v: TOP[Math.min(r, 4)], top: true }, m(600, 'pink'), m(700, 'yel'), m(600, 'blu'), m(650, 'red'), m(500, 'grn'), m(700, 'pur'),
+      { t: 'bk' }, m(600, 'org'), m(550, 'teal'), m(500, 'pink'), m(600, 'red'), m(650, 'blu'), { t: 'free' }, m(700, 'pur'), { t: 'lose' },
+      m(800, 'red'), m(500, 'org'), m(650, 'pur'), m(500, 'teal'), m(900, 'yel'), { t: 'bk' }, m(800, 'grn'), m(550, 'pink')];
   }
-  // Fill remaining AI slots
-  PLAYER_NAMES[0] = names[0];
-  PLAYER_NAMES[1] = nHumans >= 2 ? names[1] : 'Vanna';
-  PLAYER_NAMES[2] = nHumans >= 3 ? names[2] : 'Pat';
-  document.getElementById('wof-setup')?.remove();
-  initGame();
-}
+  var ENV_WEDGES = []; for (var ew = 0; ew < 24; ew++) ENV_WEDGES.push({ t: 'env', c: ew % 2 ? '#c4cad6' : '#e3bb4f' });
 
-sizeWheel();
-showPlayerSetup();
-setStatus(`${PLAYER_NAMES[0]}'s turn — spin the wheel!`);
+  var epoch = 0, CANCEL = { cancel: true };
+  function wait(ms) { var e = epoch; return new Promise(function (res, rej) { setTimeout(function () { if (e === epoch) res(); else rej(CANCEL); }, ms * SPD); }); }
+  function run(fn) { Promise.resolve().then(fn).catch(function (err) { if (err !== CANCEL) console.error(err); }); }
+
+  var Wheel = (function () {
+    var N = 24, A = Math.PI * 2 / N, Z = A * 0.3, KC = 11, F0 = 0.2, F1 = 0.1, H = 1 / 240;
+    var cv, g, C = 300, dpr = 1, R = 120, off = null, wedges = [], theta = 0, omega = 0, dir = 1, contact = false;
+    var flap = 0, flapV = 0, glow = -1, glowT0 = 0, raf = 0, last = 0, acc = 0, spinning = null, spinT0 = 0, lastClick = 0, lastHap = 0;
+    var drag = null, hooks = {};
+    function mount(canvas, h) {
+      cv = canvas; g = cv.getContext('2d'); hooks = h || {};
+      cv.addEventListener('pointerdown', function (e) {
+        if (spinning || !hooks.canFlick || !hooks.canFlick()) return;
+        e.preventDefault();
+        drag = { last: angleOf(e), s: [[performance.now(), theta]] };
+        try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+        if (hooks.onGrab) hooks.onGrab();
+        kick();
+      });
+      cv.addEventListener('pointermove', function (e) {
+        if (!drag) return;
+        var a = angleOf(e), da = a - drag.last;
+        if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+        drag.last = a; theta += da;
+        var now = performance.now(); drag.s.push([now, theta]);
+        while (drag.s.length > 2 && now - drag.s[0][0] > 120) drag.s.shift();
+      });
+      function up() {
+        if (!drag) return;
+        var s = drag.s, now = performance.now(); drag = null;
+        var a = s[0], b = s[s.length - 1], dt = (b[0] - a[0]) / 1000;
+        var om = dt > 0.008 && now - b[0] < 150 ? (b[1] - a[1]) / dt : 0;
+        if (hooks.onFlick) hooks.onFlick(om);
+      }
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', function () { drag = null; if (hooks.onFlick) hooks.onFlick(0); });
+      setInterval(function () { if (!raf && document.visibilityState === 'visible' && cv.isConnected) draw(performance.now()); }, 650);
+    }
+    function angleOf(e) {
+      var r = cv.getBoundingClientRect();
+      return Math.atan2(e.clientY - (r.top + r.height * 0.53), e.clientX - (r.left + r.width / 2));
+    }
+    function resize(size) {
+      if (!cv || !size) return;
+      C = size; dpr = Math.min(3, window.devicePixelRatio || 1); R = C * 0.4;
+      cv.width = Math.round(C * dpr); cv.height = Math.round(C * dpr);
+      buildOff(); draw();
+    }
+    function setWedges(w) { wedges = w; glow = -1; buildOff(); draw(); }
+    function setAngle(a) { theta = a || 0; glow = -1; draw(); }
+    function indexAt() { var a = ((-theta) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); return Math.floor(a / A) % N; }
+    function rel() { var d = ((theta % A) + A) % A; if (d > A / 2) d -= A; return d; }
+    function zone() { var d = rel(); if (dir > 0) return d > -Z && d < 0 ? (d + Z) / Z : 0; return d < Z && d > 0 ? (Z - d) / Z : 0; }
+
+    function light(w) { return w.t === 'lose' || w.t === 'free' || w.t === 'env' || w.top || w.c === '#fbd331'; }
+    function wedgeFill(o, w, i) {
+      if (w.t === 'bk') return '#0b0b0b';
+      if (w.t === 'lose') return '#f6f6f1';
+      if (w.t === 'free') return '#8bd43a';
+      if (w.t === 'env') return w.c;
+      if (w.top) {
+        var gr = o.createRadialGradient(0, 0, R * 0.2, 0, 0, R);
+        var st = w.v >= 5000 ? ['#fff4b8', '#eabf45', '#a8781a'] : w.v >= 3500 ? ['#ffffff', '#cfd4de', '#8d96aa'] : ['#f3eeff', '#b7a6f5', '#6c4fd0'];
+        gr.addColorStop(0, st[0]); gr.addColorStop(0.6, st[1]); gr.addColorStop(1, st[2]); return gr;
+      }
+      return w.c;
+    }
+    function buildOff() {
+      if (!g || !wedges.length) return;
+      var sz = Math.ceil((2 * R + 8) * dpr);
+      off = document.createElement('canvas'); off.width = off.height = sz;
+      var o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, sz / 2, sz / 2);
+      var RR = R * 0.965, i, s;
+      for (i = 0; i < N; i++) {
+        var w = wedges[i]; s = -Math.PI / 2 + i * A;
+        o.beginPath(); o.moveTo(0, 0); o.arc(0, 0, RR, s, s + A); o.closePath();
+        o.fillStyle = wedgeFill(o, w, i); o.fill();
+        if (w.top) { // glitter
+          o.save(); o.clip(); var seed = 7 + i;
+          for (var k = 0; k < 70; k++) { seed = (seed * 9301 + 49297) % 233280; var rr = R * (0.2 + 0.78 * seed / 233280); seed = (seed * 9301 + 49297) % 233280; var aa = s + A * seed / 233280;
+            o.fillStyle = k % 3 ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.35)'; o.fillRect(Math.cos(aa) * rr, Math.sin(aa) * rr, R * 0.008 + 0.6, R * 0.008 + 0.6); }
+          o.restore();
+        }
+      }
+      var sh = o.createRadialGradient(0, 0, R * 0.12, 0, 0, RR);
+      sh.addColorStop(0, 'rgba(255,255,255,.2)'); sh.addColorStop(0.5, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.3)');
+      o.beginPath(); o.arc(0, 0, RR, 0, Math.PI * 2); o.fillStyle = sh; o.fill();
+      o.strokeStyle = 'rgba(255,246,214,.92)'; o.lineWidth = Math.max(1, R * 0.008);
+      for (i = 0; i < N; i++) { s = -Math.PI / 2 + i * A; o.beginPath(); o.moveTo(Math.cos(s) * R * 0.17, Math.sin(s) * R * 0.17); o.lineTo(Math.cos(s) * RR, Math.sin(s) * RR); o.stroke(); }
+      for (i = 0; i < N; i++) label(o, wedges[i], i);
+      var rim = o.createLinearGradient(-R, -R, R, R); rim.addColorStop(0, '#fff1b5'); rim.addColorStop(0.35, '#d7a93a'); rim.addColorStop(0.65, '#f7da7a'); rim.addColorStop(1, '#8e6414');
+      o.beginPath(); o.arc(0, 0, R * 0.985, 0, Math.PI * 2); o.lineWidth = R * 0.045; o.strokeStyle = rim; o.stroke();
+      for (i = 0; i < N; i++) {
+        s = -Math.PI / 2 + i * A; var px = Math.cos(s) * R * 0.925, py = Math.sin(s) * R * 0.925, pr = R * 0.024;
+        var pg = o.createRadialGradient(px - pr * 0.3, py - pr * 0.3, pr * 0.1, px, py, pr);
+        pg.addColorStop(0, '#fffbe6'); pg.addColorStop(0.5, '#e6c15a'); pg.addColorStop(1, '#7a5610');
+        o.beginPath(); o.arc(px, py, pr, 0, Math.PI * 2); o.fillStyle = pg; o.fill(); o.lineWidth = 0.8; o.strokeStyle = 'rgba(40,25,0,.6)'; o.stroke();
+      }
+      var hr = R * 0.17, hg = o.createRadialGradient(-hr * 0.35, -hr * 0.35, hr * 0.1, 0, 0, hr);
+      hg.addColorStop(0, '#fff6cf'); hg.addColorStop(0.45, '#e8bf4c'); hg.addColorStop(1, '#8a6012');
+      o.beginPath(); o.arc(0, 0, hr, 0, Math.PI * 2); o.fillStyle = hg; o.fill();
+      o.lineWidth = R * 0.012; o.strokeStyle = '#5c3d06'; o.stroke();
+      o.beginPath(); o.arc(0, 0, hr * 0.62, 0, Math.PI * 2); o.lineWidth = R * 0.008; o.strokeStyle = 'rgba(92,61,6,.6)'; o.stroke();
+      for (i = 0; i < 8; i++) { var ba = i * Math.PI / 4; o.beginPath(); o.arc(Math.cos(ba) * hr * 0.8, Math.sin(ba) * hr * 0.8, R * 0.012, 0, Math.PI * 2); o.fillStyle = '#7a5610'; o.fill(); }
+    }
+    function label(o, w, i) {
+      o.save(); o.rotate(i * A + A / 2);
+      var lt = light(w), ink = w.t === 'free' ? '#173300' : lt ? '#1b1340' : '#fff';
+      o.textAlign = 'center'; o.textBaseline = 'middle'; o.lineJoin = 'round';
+      var font = '"Arial Black","Arial Bold",Arial,sans-serif';
+      if (w.t === '$') {
+        var ch = ('$' + w.v).split(''), n = ch.length, step = Math.min(R * 0.165, R * 0.64 / n), fs = step * 1.1;
+        ch.forEach(function (c, k) {
+          var r = R * 0.855 - step * (k + 0.5), f = c === '$' ? fs * 0.8 : fs;
+          o.font = '900 ' + f.toFixed(1) + 'px ' + font;
+          // Condense each character to fit the wedge at its radius (it narrows toward the hub)
+          var room = 2 * r * Math.tan(A / 2) * 0.8, sx = Math.min(0.86, room / o.measureText(c).width);
+          o.save(); o.translate(0, -r); o.scale(sx, 1);
+          if (!lt) { o.lineWidth = f * 0.16; o.strokeStyle = 'rgba(0,0,0,.45)'; o.strokeText(c, 0, 0); }
+          o.fillStyle = ink; o.fillText(c, 0, 0); o.restore();
+        });
+      } else if (w.t === 'env') {
+        var ew = R * 0.15, eh = R * 0.1, cy = -R * 0.68;
+        o.fillStyle = '#fffaf0'; o.strokeStyle = 'rgba(80,55,0,.6)'; o.lineWidth = 1;
+        o.fillRect(-ew / 2, cy - eh / 2, ew, eh); o.strokeRect(-ew / 2, cy - eh / 2, ew, eh);
+        o.beginPath(); o.moveTo(-ew / 2, cy - eh / 2); o.lineTo(0, cy + eh * 0.1); o.lineTo(ew / 2, cy - eh / 2); o.stroke();
+        o.fillStyle = '#c0392b'; o.beginPath(); o.arc(0, cy + eh * 0.05, R * 0.013, 0, Math.PI * 2); o.fill();
+      } else {
+        o.rotate(Math.PI / 2);
+        var lines = w.t === 'bk' ? ['BANKRUPT'] : w.t === 'lose' ? ['LOSE A', 'TURN'] : ['FREE', 'PLAY'];
+        var f2 = lines.length === 1 ? R * 0.11 : R * 0.07;
+        lines.forEach(function (t, k) {
+          o.font = '900 ' + f2.toFixed(1) + 'px ' + font;
+          var wd = o.measureText(t).width, sx = Math.min(1, R * 0.6 / wd);
+          o.save(); o.translate(-R * 0.555, (k - (lines.length - 1) / 2) * f2 * 1.02); o.scale(sx, 1);
+          o.fillStyle = ink; o.fillText(t, 0, 0); o.restore();
+        });
+      }
+      o.restore();
+    }
+    function draw(now) {
+      if (!g) return;
+      now = now || performance.now();
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, C, C);
+      var cx = C / 2, cy = C / 2 + C * 0.03, i;
+      var fl = g.createRadialGradient(cx, cy + R * 0.1, R * 0.8, cx, cy + R * 0.1, R * 1.3);
+      fl.addColorStop(0, 'rgba(0,0,0,.55)'); fl.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = fl; g.beginPath(); g.arc(cx, cy + R * 0.1, R * 1.3, 0, Math.PI * 2); g.fill();
+      var ring = g.createRadialGradient(cx, cy, R * 0.98, cx, cy, R * 1.14);
+      ring.addColorStop(0, '#0a0c2c'); ring.addColorStop(0.5, '#262a72'); ring.addColorStop(1, '#0b0d33');
+      g.beginPath(); g.arc(cx, cy, R * 1.13, 0, Math.PI * 2); g.fillStyle = ring; g.fill();
+      var nb = 40, mode = spinning ? 'chase' : glow >= 0 && now - glowT0 < 2600 ? 'flash' : 'idle', step = Math.floor(now / (spinning ? 70 : 520));
+      for (i = 0; i < nb; i++) {
+        var on = mode === 'chase' ? (i + step) % 4 === 0 : mode === 'flash' ? Math.floor(now / 160) % 2 === 0 : (i + step) % 2 === 0;
+        var ba = i * Math.PI * 2 / nb, bx = cx + Math.cos(ba) * R * 1.075, by = cy + Math.sin(ba) * R * 1.075, br = R * 0.02;
+        if (on) { g.fillStyle = 'rgba(255,214,110,.28)'; g.beginPath(); g.arc(bx, by, br * 2.3, 0, Math.PI * 2); g.fill(); }
+        g.fillStyle = on ? '#fff3c4' : '#5d5230'; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
+      }
+      if (off) {
+        var sz = off.width / dpr;
+        g.save(); g.translate(cx, cy); g.rotate(theta); g.drawImage(off, -sz / 2, -sz / 2, sz, sz); g.restore();
+      }
+      if (glow >= 0) {
+        var s0 = -Math.PI / 2 + glow * A + theta, age = now - glowT0, pulse = 0.5 + 0.5 * Math.sin(age / 110);
+        g.save(); g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, R * 0.965, s0, s0 + A); g.closePath();
+        g.fillStyle = 'rgba(255,255,255,' + (age < 2600 ? 0.1 + 0.22 * pulse : 0.1) + ')'; g.fill();
+        g.lineWidth = Math.max(2, R * 0.022); g.strokeStyle = 'rgba(255,236,150,.95)'; g.stroke(); g.restore();
+      }
+      var gl = g.createRadialGradient(cx - R * 0.4, cy - R * 0.5, R * 0.05, cx - R * 0.2, cy - R * 0.3, R * 1.1);
+      gl.addColorStop(0, 'rgba(255,255,255,.16)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gl; g.beginPath(); g.arc(cx, cy, R * 0.97, 0, Math.PI * 2); g.fill();
+      // Flapper: pivot above the rim, tip reaches between the pegs
+      var px = cx, py = cy - R * 1.16, L = R * 0.31;
+      g.save(); g.translate(px, py); g.rotate(-flap * 0.55 * dir);
+      var fg = g.createLinearGradient(-R * 0.06, 0, R * 0.06, 0); fg.addColorStop(0, '#a50f16'); fg.addColorStop(0.5, '#ff5148'); fg.addColorStop(1, '#8e0b12');
+      g.beginPath(); g.moveTo(-R * 0.058, 0); g.lineTo(R * 0.058, 0); g.lineTo(R * 0.013, L); g.lineTo(-R * 0.013, L); g.closePath();
+      g.fillStyle = fg; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#3a0306'; g.stroke();
+      var cg = g.createRadialGradient(-R * 0.02, -R * 0.02, 1, 0, 0, R * 0.065); cg.addColorStop(0, '#fff6cf'); cg.addColorStop(0.5, '#e2b440'); cg.addColorStop(1, '#7a5610');
+      g.beginPath(); g.arc(0, 0, R * 0.065, 0, Math.PI * 2); g.fillStyle = cg; g.fill(); g.strokeStyle = '#4a3305'; g.stroke();
+      g.restore();
+    }
+    function passed(now) {
+      if (now - lastClick > 38) { lastClick = now; snd('click'); }
+      if (hooks.haptics && hooks.haptics() && now - lastHap > 90) { lastHap = now; Kit.haptic('tick'); }
+    }
+    function physics(h, now) {
+      var d0 = rel(), p = zone();
+      if (p > 0) { if (omega * dir > 0) contact = true; } else contact = false;
+      if (!contact) p = 0;
+      var om0 = omega, a = 0;
+      if (omega !== 0) a -= (omega > 0 ? 1 : -1) * (F0 + F1 * Math.abs(omega));
+      a -= dir * KC * p;
+      omega += a * h;
+      if (p === 0 && om0 !== 0 && (omega > 0) !== (om0 > 0)) omega = 0;
+      theta += omega * h;
+      var d1 = rel();
+      if ((dir > 0 && d0 < 0 && d1 >= 0 && d0 > -A / 4) || (dir < 0 && d0 > 0 && d1 <= 0 && d0 < A / 4)) passed(now);
+      if (p > 0) { flap = p; flapV = 0; } else spring(h);
+    }
+    function spring(h) { flapV += (-420 * flap - 13 * flapV) * h; flap += flapV * h; }
+    function loop(now) {
+      raf = 0;
+      var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+      if (spinning) {
+        if (spinning.e !== epoch) { var sp = spinning; spinning = null; omega = 0; sp.reject(CANCEL); }
+        else {
+          acc += dt / SPD; var stopped = false;
+          while (acc >= H) { physics(H, now); acc -= H; if (Math.abs(omega) < 0.012 && !(contact && zone() > 0)) { stopped = true; break; } }
+          if (stopped || now - spinT0 > 30000) {
+            omega = 0; glow = indexAt(); glowT0 = now; var res = spinning; spinning = null; res.resolve(glow);
+          }
+        }
+      } else { var k = Math.round(dt / SPD / H); for (var j = 0; j < Math.min(k, 60); j++) spring(H); }
+      draw(now);
+      if (spinning || drag || Math.abs(flap) > 0.003 || Math.abs(flapV) > 0.02 || (glow >= 0 && now - glowT0 < 2700)) raf = requestAnimationFrame(loop);
+    }
+    function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }
+    function spin(w0) {
+      return new Promise(function (resolve, reject) {
+        omega = w0; dir = w0 >= 0 ? 1 : -1; contact = false; glow = -1; acc = 0; spinT0 = performance.now();
+        spinning = { resolve: resolve, reject: reject, e: epoch };
+        kick();
+      });
+    }
+    return {
+      mount: mount, resize: resize, setWedges: setWedges, setAngle: setAngle, spin: spin,
+      wedge: function (i) { return wedges[i]; }, angle: function () { return theta; },
+      clearGlow: function () { glow = -1; draw(); }, busy: function () { return !!spinning || !!drag; }
+    };
+  })();
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, shell = null, undoStack = [];
+  var ui = { cam: 'wide', vowel: false, solve: null, busy: false, blank: false, hide: {}, disp: [], clock: null };
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    Kit.resume.set(S.phase.indexOf('bonus') === 0 ? 'Bonus round' : 'Round ' + S.round + ' of ' + S.opts.rounds);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function load() { try { return JSON.parse(localStorage.getItem(SAVE)); } catch (e) { return null; } }
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 25) undoStack.shift(); }
+
+  var LAY = null, LAYT = '';
+  function lay() { if (LAYT !== S.pz.text) { LAY = layoutPuzzle(S.pz.text); LAYT = S.pz.text; } return LAY; }
+  function letterIdx() { var t = S.pz.text, out = []; for (var i = 0; i < t.length; i++) if (isL(t[i])) out.push(i); return out; }
+  function blankIdx() { return letterIdx().filter(function (i) { return !S.rev[i]; }); }
+  function knownFrac() { var l = letterIdx(); return l.length ? l.filter(function (i) { return S.rev[i]; }).length / l.length : 1; }
+  function consLeft() { return blankIdx().some(function (i) { return VOW.indexOf(S.pz.text[i]) < 0; }); }
+  function vowelsLeft() { return blankIdx().some(function (i) { return VOW.indexOf(S.pz.text[i]) >= 0; }); }
+  function vowelCost(p) { return !consLeft() && p.bank < 250 ? 0 : 250; }
+  function canBuy(p) { return vowelsLeft() && p.bank >= vowelCost(p); }
+  function newPuzzle(p) { S.pz = { cat: p.cat, text: p.text }; S.rev = p.text.split('').map(function (c) { return !isL(c); }); S.used = ''; }
+  function hiddenAfter(text, letters) { return text.split('').filter(function (c) { return isL(c) && letters.indexOf(c) < 0; }).length; }
+  function bonusOK(p) {
+    var nL = p.text.replace(/[^A-Z]/g, '').length;
+    return p.text.split(' ').length <= 3 && nL <= 14 && ['BEFORE & AFTER', 'TITLE', 'PERSON', 'CHARACTER', 'ON THE MAP'].indexOf(p.cat) < 0 && hiddenAfter(p.text, 'RSTLNE') >= 4;
+  }
+  function pickPuzzle(filter) {
+    var recent = []; try { recent = JSON.parse(localStorage.getItem(RECENT) || '[]') || []; } catch (e) {}
+    var pool = PUZZLES.filter(function (p) { return S.seen.indexOf(p.text) < 0 && (!filter || filter(p)); });
+    var fresh = pool.filter(function (p) { return recent.indexOf(p.text) < 0; });
+    if (fresh.length) pool = fresh;
+    if (!pool.length) pool = PUZZLES.filter(function (p) { return !filter || filter(p); });
+    var p = pool[rnd(pool.length)];
+    S.seen.push(p.text); recent.push(p.text); if (recent.length > 150) recent = recent.slice(-150);
+    try { localStorage.setItem(RECENT, JSON.stringify(recent)); } catch (e) {}
+    return p;
+  }
+
+  // ── Rules ─────────────────────────────────────────────────────────────────
+  var RULES =
+    '<p class="goal">Solve word puzzles to win money. Whoever has the most money at the end plays the Bonus Round.</p>' +
+    '<h3>On your turn</h3><ul>' +
+    '<li><b>Spin the wheel.</b> Flick it with your finger, or hold the Spin button and let go (hold longer for a bigger spin). Then call a consonant. You win the amount you landed on for <b>every time</b> it appears: three Ts on $700 = $2,100.</li>' +
+    '<li><b>Buy a vowel</b> (A, E, I, O, U) for $250 from this round\'s money.</li>' +
+    '<li><b>Solve</b> the puzzle at the start of your turn, or right after a correct letter. Fill in the missing letters on the board.</li></ul>' +
+    '<p>Your turn keeps going as long as your letters are in the puzzle. A letter that isn\'t there, or a wrong solve, passes the turn.</p>' +
+    '<h3>Special wedges</h3><ul>' +
+    '<li><b>BANKRUPT</b> (black): you lose all your money for this round, and your turn. Money banked in earlier rounds is safe.</li>' +
+    '<li><b>LOSE A TURN</b> (white): your turn passes.</li>' +
+    '<li><b>FREE PLAY</b> (green): call any consonant for $500 each, take a vowel for free, or try to solve. A miss costs you nothing.</li>' +
+    '<li>The top-dollar wedge grows each round: $2,500, then $3,500, then $5,000.</li></ul>' +
+    '<h3>Winning a round</h3><p>Only the player who solves keeps their money from that round, and always at least $1,000. Everyone else\'s round money is lost. When only vowels are left the wheel is off: buy a vowel or solve (vowels are free if you can\'t afford one).</p>' +
+    '<h3>Toss-ups</h3><p>Letters pop up one at a time. Buzz in when you know it. Right: you win the cash and start the round. Wrong: you\'re out of that toss-up.</p>' +
+    '<h3>Bonus Round</h3><p>The player with the most money spins for a secret prize envelope. R, S, T, L, N and E are shown free. Pick 3 more consonants and 1 vowel, then you have 10 seconds. Tap <b>Solve</b> the moment you know it (the clock stops) and fill it in. If it\'s wrong the clock keeps going.</p>';
+
+  Kit.init({
+    id: 'wheeloffortune',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    rules: RULES,
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Wheel of Fortune: past games' }); } }]
+  });
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    epoch++; stopClock(); S = null; shell = null; undoStack = [];
+    ui.solve = null; ui.vowel = false; ui.busy = false;
+    app.classList.remove('wofgame');
+    Kit.setup(app, {
+      intro: 'Spin the wheel, call letters, solve the puzzle.',
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You and two computer contestants' },
+        { id: 'family', icon: 'users', title: 'Family game', desc: '2 or 3 people take turns on this device. An empty podium gets a computer player.' }
+      ],
+      players: { range: function (m) { return m === 'cpu' ? [3, 3] : [2, 3]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, count: 3 },
+      options: [
+        { id: 'rounds', label: 'Main rounds', choices: [[3, '3 rounds'], [4, '4 rounds']], value: 3 },
+        { id: 'tossups', label: 'Toss-ups', choices: [['on', 'On'], ['off', 'Off']], value: 'on' },
+        { id: 'clock', label: 'Bonus round clock', choices: [[10, '10 sec'], [20, '20 sec'], [30, '30 sec']], value: 10 }
+      ],
+      start: 'Start the show',
+      onStart: start
+    });
+  }
+  function start(cfg) {
+    epoch++; stopClock();
+    var players = cfg.players.slice(0, 3).map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+    if (players.length < 3) {
+      var taken = players.map(function (p) { return p.name; });
+      Kit.cpuNames(3 - players.length, taken).forEach(function (n) { players.push({ name: n, cpu: true }); });
+    }
+    var o = cfg.options || {};
+    S = {
+      v: 1, started: Date.now(), mode: cfg.mode, cfg: { mode: cfg.mode, players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: o },
+      opts: { rounds: +o.rounds === 4 ? 4 : 3, tossups: o.tossups !== 'off', clock: +o.clock || 10 },
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, bank: 0, total: 0, tu: 0, skill: 0.85 + Math.random() * 0.3 }; }),
+      round: 0, phase: 'intro', cur: 0, pz: null, rev: [], used: '', wedge: null, angle: Math.random() * Math.PI * 2,
+      seen: [], rows: [], row: [0, 0, 0], log: { bk: [], solves: [], best: null }, tu: null, bonus: null, next: null, lastWin: null
+    };
+    undoStack = [];
+    if (Kit.gameStart) Kit.gameStart();
+    buildShell();
+    Wheel.setAngle(S.angle);
+    beginRound(1);
+  }
+
+  // ── Shell ─────────────────────────────────────────────────────────────────
+  function buildShell() {
+    app.innerHTML = ''; app.classList.add('wofgame');
+    var studio = el('div', { class: 'studio', 'data-cam': 'wide' });
+    var boardcam = el('div', { class: 'boardcam' });
+    var board = el('div', { class: 'board' }), grid = el('div', { class: 'grid' }), tiles = [];
+    for (var k = 0; k < 56; k++) (function (k) {
+      var t = el('div', { class: 'tile off', onclick: function () { tileTap(k); } });
+      tiles.push(t); grid.appendChild(t);
+    })(k);
+    board.appendChild(grid);
+    var cat = el('div', { class: 'cat' });
+    boardcam.appendChild(board); boardcam.appendChild(cat);
+    var wheelcam = el('div', { class: 'wheelcam' }), cv = el('canvas', { 'aria-label': 'The wheel. Flick it to spin.' });
+    wheelcam.appendChild(cv);
+    var readout = el('div', { class: 'readout' }), band = el('div', { class: 'band' });
+    studio.appendChild(boardcam); studio.appendChild(wheelcam); studio.appendChild(readout); studio.appendChild(band);
+    var pods = el('div', { class: 'pods' }), podEls = [];
+    for (var i = 0; i < 3; i++) {
+      var d = { root: el('div', { class: 'pod ' + PODS[i].k, style: { '--pc': PODS[i].c } }) };
+      d.say = el('div', { class: 'say' }); d.name = el('div', { class: 'pname' }); d.bank = el('div', { class: 'pbank' }); d.tot = el('div', { class: 'ptot' });
+      [d.say, d.name, d.bank, d.tot].forEach(function (x) { d.root.appendChild(x); });
+      pods.appendChild(d.root); podEls.push(d);
+    }
+    var host = el('div', { class: 'host', 'aria-live': 'polite' });
+    var acts = el('div', { class: 'acts' }), kb = el('div', { class: 'kb' }), keys = {};
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(function (L) {
+      var b = el('button', { type: 'button', class: 'key' + (VOW.indexOf(L) >= 0 ? ' v' : ''), text: L, onclick: function () { Kit.haptic('light'); pressKey(L); } });
+      keys[L] = b; kb.appendChild(b);
+    });
+    var bs = el('button', { type: 'button', class: 'key bs', 'aria-label': 'Delete', html: Kit.icon('back'), onclick: function () { backspace(); } });
+    kb.appendChild(bs);
+    var deck = el('div', { class: 'deck' }, [acts, kb]);
+    var bwrap = el('div', { class: 'bwrap' });
+    var side = el('div', { class: 'side' }, [bwrap, pods, host, deck]);
+    var show = el('div', { class: 'show' }, [studio, side]);
+    app.appendChild(show);
+    shell = { show: show, studio: studio, boardcam: boardcam, board: board, tiles: tiles, cat: cat, cv: cv, readout: readout, band: band, pods: podEls, host: host, acts: acts, keys: keys, bs: bs, bwrap: bwrap };
+    Wheel.mount(cv, {
+      canFlick: function () { return !!canFlick(); },
+      onGrab: function () { setCam('wheel'); },
+      onFlick: onFlick,
+      haptics: function () { return S && S.players[S.cur] && !S.players[S.cur].cpu; }
+    });
+    layoutStage();
+    requestAnimationFrame(layoutStage);
+  }
+  var mq = window.matchMedia('(min-width: 960px)');
+  function layoutStage() {
+    if (!shell) return;
+    var desk = mq.matches;
+    shell.show.classList.toggle('desk', desk);
+    if (desk) { if (shell.boardcam.parentNode !== shell.bwrap) shell.bwrap.appendChild(shell.boardcam); }
+    else if (shell.boardcam.parentNode !== shell.studio) shell.studio.insertBefore(shell.boardcam, shell.studio.firstChild);
+    var W = shell.studio.clientWidth || 360, H, C;
+    if (desk) { C = Math.round(Math.min(W, 620, window.innerHeight - 100)); H = C; }
+    else { H = Math.round(Math.min(W * 0.93, 470)); C = H; }
+    shell.studio.style.height = H + 'px';
+    var bh = desk ? 0 : shell.boardcam.offsetHeight;
+    var st = shell.studio.style;
+    st.setProperty('--wc', C + 'px');
+    st.setProperty('--wy', (desk ? 0 : bh + 4) + 'px');
+    st.setProperty('--wy2', Math.round((H - C) / 2) + 'px');
+    st.setProperty('--cy', Math.round((H - C) / 2 + C * 0.53) + 'px');
+    Wheel.resize(C);
+  }
+  var rsT = 0;
+  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(layoutStage, 120); });
+  function setCam(c) { ui.cam = c; if (shell) shell.studio.setAttribute('data-cam', c); }
+
+  // ── Painting ──────────────────────────────────────────────────────────────
+  function paintBoard() {
+    if (!shell || !S || !S.pz) return;
+    var L = lay(), t = S.pz.text, sv = ui.solve;
+    shell.cat.textContent = S.pz.cat;
+    for (var k = 0; k < 56; k++) {
+      var tile = shell.tiles[k], r = (k / 14) | 0, c = k % 14;
+      if (!rowOK(r, c)) { tile.className = 'tile x'; tile.textContent = ''; continue; }
+      var ci = L.cell[k];
+      if (ci < 0 || ui.blank) { tile.className = 'tile off'; tile.textContent = ''; continue; }
+      var ch = t[ci], shown = !isL(ch) || (S.rev[ci] && !ui.hide[ci]);
+      var cls = 'tile on', txt = '';
+      if (shown) { cls += ' rev'; txt = ch; }
+      else if (sv) { cls += ' slot'; if (sv.fill[ci]) { cls += ' typed'; txt = sv.fill[ci]; } if (sv.cur === ci) cls += ' cur'; }
+      tile.className = cls; tile.textContent = txt;
+    }
+  }
+  function tileOf(ci) { return shell.tiles[lay().pos[ci]]; }
+  function syncDisp() {
+    Object.keys(tw).forEach(function (k) { cancelAnimationFrame(tw[k]); }); tw = {};
+    ui.disp = S.players.map(function (p) { return { bank: p.bank, total: p.total }; });
+  }
+  function paintMoney(i) {
+    var d = shell.pods[i], v = ui.disp[i];
+    d.bank.textContent = money(v.bank); d.tot.textContent = 'Total ' + money(v.total);
+  }
+  function paintPodiums() {
+    if (!shell) return;
+    var active = ['turn', 'call', 'roundEnd', 'tuwon', 'bonusIntro', 'bonusPick', 'bonusReady'].indexOf(S.phase) >= 0 || (S.phase === 'tossup' && S.cur >= 0 && ui.busy) || (ui.solve && ui.solve.ctx === 'tossup');
+    S.players.forEach(function (p, i) {
+      var d = shell.pods[i];
+      d.root.classList.toggle('on', active && i === S.cur);
+      var out = (S.phase === 'tossup' && S.tu && (S.tu.locked.indexOf(i) >= 0 || S.tu.elig.indexOf(i) < 0)) || (S.phase.indexOf('bonus') === 0 && S.bonus && i !== S.bonus.who);
+      d.root.classList.toggle('out', !!out);
+      d.name.textContent = p.name;
+      paintMoney(i);
+    });
+  }
+  function host(html) { if (shell) shell.host.innerHTML = html || ''; }
+  function nm(i) { return esc(S.players[i].name); }
+  function hostText() {
+    var p = S.players[S.cur], n = p ? esc(p.name) : '';
+    switch (S.phase) {
+      case 'turn':
+        if (p.cpu) return n + ' is up.';
+        if (!consLeft()) return 'Only vowels remain. Buy a vowel or solve.';
+        if (ui.vowel) return 'Pick a vowel.';
+        return Kit.poss(p.name) + ' turn: spin, buy a vowel, or solve.';
+      case 'call':
+        if (S.wedge.t === 'free') return 'Free Play! Consonants pay <b>$500</b> each, vowels are free, and a miss costs nothing.';
+        return p.cpu ? n + ' is calling a letter for <b>' + money(S.wedge.v) + '</b>.' : 'Call a consonant for <b>' + money(S.wedge.v) + '</b> each.';
+      case 'tossup': return 'Toss-up for <b>' + money(S.tu.prize) + '</b>. Buzz in when you know it!';
+      case 'roundEnd': return S.lastWin ? nm(S.lastWin.p) + ' wins round ' + S.round + ' and banks <b>' + money(S.lastWin.amt) + '</b>!' : '';
+      case 'bonusIntro': return n + ' is in the Bonus Round! Spin for a prize envelope.';
+      case 'bonusPick': return 'R, S, T, L, N and E are free. ' + (p.cpu ? n + ' is choosing letters…' : 'Pick 3 more consonants and 1 vowel.');
+      case 'bonusReady': return p.cpu ? n + ' has ' + S.opts.clock + ' seconds…' : ui.clock ? 'Tap <b>Solve!</b> the moment you know it.' : 'You get <b>' + S.opts.clock + ' seconds</b>. Ready?';
+      case 'over': return 'Thanks for playing!';
+    }
+    return '';
+  }
+  function renderAll() {
+    if (!shell || !S) return;
+    ui.hide = {}; syncDisp(); paintBoard(); paintPodiums(); paintDeck(); host(hostText());
+  }
+
+  function btn(label, cls, fn, dis) {
+    var b = el('button', { type: 'button', class: 'btn ' + (cls || 'btn-soft'), html: label });
+    b.disabled = !!dis;
+    b.addEventListener('click', function () { if (!b.disabled) { Kit.haptic('light'); fn(); } });
+    return b;
+  }
+  function info(html) { return el('div', { class: 'info', html: html }); }
+  function spinButton(label, enabled, go) {
+    var b = el('button', { type: 'button', class: 'btn btn-yellow spinbtn', html: '<span class="pw"></span><span class="lb">' + label + '</span>' });
+    b.disabled = !enabled;
+    var pw = b.firstChild, t0 = 0, raf = 0, holding = false, viaPointer = false;
+    function pow() { return Math.min(1, (performance.now() - t0) / 1100); }
+    function tick() { pw.style.transform = 'scaleX(' + pow() + ')'; if (holding) raf = requestAnimationFrame(tick); }
+    b.addEventListener('pointerdown', function (e) {
+      if (b.disabled) return;
+      holding = true; viaPointer = true; t0 = performance.now();
+      try { b.setPointerCapture(e.pointerId); } catch (x) {}
+      setCam('wheel'); Kit.haptic('light'); tick();
+    });
+    b.addEventListener('pointerup', function () { if (!holding) return; holding = false; cancelAnimationFrame(raf); go(Math.max(0.12, pow())); });
+    b.addEventListener('pointercancel', function () { holding = false; cancelAnimationFrame(raf); pw.style.transform = 'scaleX(0)'; if (!ui.busy) setCam('wide'); });
+    b.addEventListener('click', function () { if (viaPointer) { viaPointer = false; return; } if (!b.disabled) go(0.6); });
+    return b;
+  }
+  function paintDeck() {
+    if (!shell || !S) return;
+    var A = shell.acts; A.innerHTML = '';
+    var p = S.players[S.cur], human = p && !p.cpu, busy = ui.busy;
+    if (ui.solve) {
+      var s = ui.solve, full = blankIdx().every(function (i) { return s.fill[i]; });
+      A.appendChild(btn(s.ctx === 'main' ? 'Cancel' : s.ctx === 'tossup' ? 'Pass' : 'Keep thinking', 'btn-soft', cancelSolve, busy));
+      A.appendChild(btn(Kit.icon('check') + '<span>Solve it!</span>', 'btn-green grow2', submitSolve, busy || !full));
+    } else switch (S.phase) {
+      case 'turn':
+        var can = human && !busy;
+        A.appendChild(spinButton('SPIN', can && consLeft() && !ui.vowel, function (pw) { run(function () { return doSpin(pw); }); }));
+        if (ui.vowel) A.appendChild(btn('Cancel', 'btn-soft', function () { ui.vowel = false; paintDeck(); host(hostText()); }));
+        else A.appendChild(btn('<span class="two">Buy a vowel<small>' + (p && vowelCost(p) === 0 ? 'free' : '$250') + '</small></span>', 'btn-blue', function () { ui.vowel = true; snd('pop'); paintDeck(); host(hostText()); }, !(can && canBuy(p))));
+        A.appendChild(btn('Solve', 'btn-green', function () { openSolve(S.cur, 'main'); }, !can || ui.vowel));
+        break;
+      case 'call':
+        if (S.wedge.t === 'free') {
+          A.appendChild(info('Free Play'));
+          if (human) A.appendChild(btn('Solve', 'btn-green', function () { openSolve(S.cur, 'main'); }, busy));
+        } else A.appendChild(info((human ? 'Call a consonant' : esc(p.name)) + ' · <b>' + money(S.wedge.v) + '</b>'));
+        break;
+      case 'tossup':
+        var hs = S.tu.elig.filter(function (i) { return !S.players[i].cpu; });
+        if (!hs.length) A.appendChild(info('Watching the tiebreaker…'));
+        hs.forEach(function (i) {
+          var b = btn(hs.length === 1 ? 'Buzz in!' : 'Buzz: ' + nm(i), 'btn-red buzz', function () { humanBuzz(i); }, busy || S.tu.locked.indexOf(i) >= 0);
+          b.style.setProperty('--b', PODS[i].c); b.style.setProperty('--b-ink', i === 1 ? '#2a1c00' : '#fff'); b.style.setProperty('--b-lip', 'color-mix(in srgb,' + PODS[i].c + ' 55%,#000)');
+          A.appendChild(b);
+        });
+        break;
+      case 'tuwon': A.appendChild(info('Get ready…')); break;
+      case 'roundEnd':
+        A.appendChild(btn(S.round < S.opts.rounds ? 'Next: Round ' + (S.round + 1) : 'On to the Bonus Round', 'btn-primary', nextRound, busy));
+        break;
+      case 'bonusIntro':
+        if (human) A.appendChild(spinButton('SPIN FOR AN ENVELOPE', !busy, function (pw) { run(function () { return bonusSpin(pw); }); }));
+        else A.appendChild(info(esc(p.name) + ' spins for an envelope…'));
+        break;
+      case 'bonusPick': A.appendChild(slotsEl()); break;
+      case 'bonusReady':
+        if (ui.clock) {
+          A.appendChild(clockEl());
+          if (human) A.appendChild(btn('Solve!', 'btn-green', function () { if (ui.clock) ui.clock.paused = true; openSolve(S.cur, 'bonus'); }, busy));
+        } else if (human) A.appendChild(btn('Start the clock', 'btn-primary', function () { startClock(null); }, busy));
+        else A.appendChild(info('…'));
+        break;
+      case 'over': A.appendChild(btn('See results', 'btn-primary', showResults, busy)); break;
+      default: A.appendChild(info('')); break;
+    }
+    paintKeys();
+    shell.cv.classList.toggle('flick', !!canFlick());
+  }
+  function slotsEl() {
+    var picks = S.bonus.picks.split(''), cons = picks.filter(function (c) { return VOW.indexOf(c) < 0; }), vow = picks.filter(function (c) { return VOW.indexOf(c) >= 0; });
+    var box = el('div', { class: 'slots', 'aria-label': 'Your bonus letters' });
+    for (var i = 0; i < 3; i++) box.appendChild(el('span', { class: cons[i] ? '' : 'e', text: cons[i] || '' }));
+    box.appendChild(el('i'));
+    box.appendChild(el('span', { class: 'v' + (vow[0] ? '' : ' e'), text: vow[0] || '' }));
+    return box;
+  }
+  function clockEl() {
+    var c = el('div', { class: 'clock' }, [el('i'), el('span')]);
+    ui.clockEl = c; paintClock(); return c;
+  }
+  function paintClock() {
+    if (!ui.clock || !ui.clockEl) return;
+    var left = Math.max(0, ui.clock.left), tot = S.opts.clock * 1000;
+    ui.clockEl.firstChild.style.transform = 'scaleX(' + (left / tot) + ')';
+    ui.clockEl.lastChild.textContent = Math.ceil(left / 1000) + (ui.clock.paused ? ' · stopped' : '');
+  }
+  function paintKeys() {
+    var p = S.players[S.cur], human = p && !p.cpu && !ui.busy, s = ui.solve;
+    Object.keys(shell.keys).forEach(function (L) {
+      var k = shell.keys[L], used = S.used.indexOf(L) >= 0, isV = VOW.indexOf(L) >= 0, on = false;
+      if (s) on = !ui.busy;
+      else if (human) {
+        if (S.phase === 'call') on = !used && (!isV || S.wedge.t === 'free');
+        else if (S.phase === 'turn' && ui.vowel) on = isV && !used;
+        else if (S.phase === 'bonusPick') {
+          var pk = S.bonus.picks, nv = pk.split('').filter(function (c) { return VOW.indexOf(c) >= 0; }).length, nc = pk.length - nv;
+          on = !used && pk.indexOf(L) < 0 && (isV ? nv < 1 : nc < 3);
+        }
+      }
+      k.disabled = !on;
+      var showUsed = used && !s;
+      k.classList.toggle('used', showUsed);
+      k.classList.toggle('hit', showUsed && S.pz.text.indexOf(L) >= 0);
+      k.classList.toggle('miss', showUsed && S.pz.text.indexOf(L) < 0);
+      k.classList.toggle('picked', S.phase === 'bonusPick' && S.bonus.picks.indexOf(L) >= 0);
+    });
+    shell.bs.classList.toggle('ghost', !s);
+    shell.bs.disabled = !s || ui.busy;
+  }
+
+  // ── Show effects ──────────────────────────────────────────────────────────
+  var tw = {};
+  function tweenMoney(i, key, to, ms) {
+    var from = ui.disp[i][key], id = i + key, t0 = performance.now(); ms = (ms || 700) * SPD;
+    cancelAnimationFrame(tw[id]);
+    function f(now) {
+      var q = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - q, 3);
+      ui.disp[i][key] = Math.round(from + (to - from) * e); if (shell) paintMoney(i);
+      if (q < 1) tw[id] = requestAnimationFrame(f); else delete tw[id];
+    }
+    tw[id] = requestAnimationFrame(f);
+  }
+  function say(i, text) {
+    var b = shell.pods[i].say; b.textContent = text;
+    b.classList.remove('go'); void b.offsetWidth; b.classList.add('go');
+  }
+  function readout(text) { var r = shell.readout; r.textContent = text; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); }
+  function band(kind, text) { var b = shell.band; b.className = 'band ' + kind; b.textContent = text; void b.offsetWidth; b.classList.add('go'); }
+  function fx(node, cls, ms) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); setTimeout(function () { node.classList.remove(cls); }, ms || 900); }
+  function floatMoney(i, amt) {
+    var from = shell.board.getBoundingClientRect(), to = shell.pods[i].bank.getBoundingClientRect();
+    if (!from.width || !to.width) return;
+    var f = el('div', { class: 'mfloat' + (amt < 0 ? ' neg' : ''), text: (amt < 0 ? '−' : '+') + money(Math.abs(amt)) });
+    document.body.appendChild(f);
+    var fw = f.offsetWidth, fh = f.offsetHeight;
+    var x0 = from.left + from.width / 2 - fw / 2, y0 = from.top + from.height / 2 - fh / 2, x1 = to.left + to.width / 2 - fw / 2, y1 = to.top + to.height / 2 - fh / 2;
+    if (amt < 0) { x0 = x1; y0 = y1 - 30; }
+    f.style.left = '0px'; f.style.top = '0px';
+    var a = f.animate([
+      { transform: 'translate(' + x0 + 'px,' + y0 + 'px) scale(.6)', opacity: 0 },
+      { transform: 'translate(' + x0 + 'px,' + (y0 - 14) + 'px) scale(1.15)', opacity: 1, offset: 0.25 },
+      { transform: 'translate(' + x1 + 'px,' + y1 + 'px) scale(.8)', opacity: 0.9 }
+    ], { duration: 1000 * SPD + 1, easing: 'cubic-bezier(.5,0,.4,1)' });
+    a.onfinish = function () { f.remove(); };
+    setTimeout(function () { f.remove(); }, 1500);
+  }
+  function titleCard(title, sub) {
+    var c = el('div', { class: 'tcard' }, [el('div', { class: 'in' }, [el('h2', { text: title }), sub ? el('p', { text: sub }) : null])]);
+    document.body.appendChild(c); snd('chime');
+    setTimeout(function () { c.remove(); }, 1900 * SPD + 50);
+    return wait(1750);
+  }
+  async function boardIntro() {
+    ui.blank = false; paintBoard();
+    var n = 0;
+    shell.tiles.forEach(function (t) { if (t.classList.contains('on')) { t.classList.add('in'); t.style.animationDelay = (n++ * 30 * SPD) + 'ms'; } });
+    for (var i = 0; i < 4; i++) setTimeout(function () { snd('blip'); }, i * 120 * SPD);
+    await wait(400 + n * 30);
+    shell.tiles.forEach(function (t) { t.classList.remove('in'); t.style.animationDelay = ''; });
+  }
+  async function revealLetters(idxs, o) {
+    o = o || {};
+    idxs = idxs.slice().sort(function (a, b) { return a - b; });
+    idxs.forEach(function (i) { ui.hide[i] = 1; }); paintBoard();
+    var i, k;
+    if (o.together) { idxs.forEach(function (i) { tileOf(i).classList.add('lit'); }); snd('ding'); await wait(950); }
+    else for (k = 0; k < idxs.length; k++) { tileOf(idxs[k]).classList.add('lit'); snd('ding'); await wait(o.quick ? 260 : 480); }
+    await wait(380);
+    for (k = 0; k < idxs.length; k++) {
+      i = idxs[k]; delete ui.hide[i];
+      var e = tileOf(i); e.textContent = S.pz.text[i]; e.className = 'tile on rev flip'; snd('touch');
+      await wait(o.together ? 110 : 230);
+    }
+    await wait(260);
+  }
+  async function revealWave(idxs) {
+    if (!idxs.length) return;
+    idxs.forEach(function (i) { ui.hide[i] = 1; }); paintBoard();
+    idxs.forEach(function (i) { tileOf(i).classList.add('lit'); });
+    snd('ding'); await wait(450);
+    for (var k = 0; k < idxs.length; k++) {
+      var i = idxs[k]; delete ui.hide[i];
+      var e = tileOf(i); e.textContent = S.pz.text[i]; e.className = 'tile on rev flip';
+      if (k % 3 === 0) snd('touch');
+      await wait(55);
+    }
+    await wait(400);
+  }
+  async function showWrong(s) {
+    blankIdx().forEach(function (i) { var t = tileOf(i); if (s.fill[i]) { t.textContent = s.fill[i]; t.className = 'tile on slot typed bad'; } });
+    fx(shell.board, 'shake', 500);
+    await wait(900);
+  }
+
+  // ── Turn flow ─────────────────────────────────────────────────────────────
+  function nextPlayer() { S.cur = (S.cur + 1) % 3; S.phase = 'turn'; S.wedge = null; ui.vowel = false; }
+  function proceed() {
+    if (!S || !shell) return;
+    renderAll();
+    var p = S.players[S.cur];
+    switch (S.phase) {
+      case 'turn': case 'call': if (p.cpu) run(cpuTurn); break;
+      case 'tossup': run(tossupLoop); break;
+      case 'tuwon': run(async function () { await wait(500); continueAfterTossup(); }); break;
+      case 'bonusIntro': if (p.cpu) run(async function () { ui.busy = true; paintDeck(); await wait(1100); await bonusSpin(0.3 + Math.random() * 0.6); }); break;
+      case 'bonusPick': if (p.cpu) run(cpuBonusPicks); else if (S.bonus.picks.length >= 4) run(bonusRevealPicks); break;
+      case 'bonusReady': if (p.cpu) run(cpuBonus); break;
+    }
+  }
+
+  function beginRound(r) {
+    epoch++; undoStack = [];
+    S.round = r; S.players.forEach(function (p) { p.bank = 0; }); S.row = [0, 0, 0]; S.wedge = null; S.lastWin = null;
+    Wheel.setWedges(wedgesFor(r));
+    if (S.opts.tossups) beginTossup(r === 1 ? 1000 : 2000, [0, 1, 2], 'round');
+    else beginMain((r - 1) % 3);
+  }
+  function beginMain(starter) {
+    epoch++;
+    newPuzzle(pickPuzzle());
+    S.cur = starter; S.phase = 'turn'; S.wedge = null; S.tu = null; S.next = null; save();
+    run(async function () {
+      ui.busy = true; ui.blank = true; setCam('wide'); renderAll();
+      host('Round ' + S.round + '. ' + nm(starter) + ' starts.');
+      await titleCard('Round ' + S.round, 'Top dollar ' + money(TOP[Math.min(S.round, 4)]));
+      await boardIntro();
+      ui.busy = false; proceed();
+    });
+  }
+  function canFlick() {
+    if (!S || ui.busy || ui.solve || Wheel.busy()) return false;
+    var p = S.players[S.cur]; if (!p || p.cpu) return false;
+    if (S.phase === 'turn' && consLeft() && !ui.vowel) return 'main';
+    if (S.phase === 'bonusIntro') return 'bonus';
+    return false;
+  }
+  function onFlick(om) {
+    var m = canFlick();
+    if (!m) return;
+    if (Math.abs(om) < 2.2) {
+      if (om) Kit.toast('Give it a bigger flick!');
+      setTimeout(function () { if (!ui.busy) setCam('wide'); }, 600);
+      return;
+    }
+    var w0 = (om > 0 ? 1 : -1) * clamp(Math.abs(om) * 0.8, 6, 9.6);
+    if (m === 'main') run(function () { return doSpin(null, w0); }); else run(function () { return bonusSpin(null, w0); });
+  }
+  async function doSpin(power, w0) {
+    var me = S.cur, p = S.players[me];
+    ui.busy = true; ui.vowel = false; paintDeck();
+    setCam('wheel'); host(esc(p.name) + ' spins…');
+    if (!p.cpu) Kit.haptic('medium');
+    await wait(p.cpu ? 650 : 200);
+    var idx = await Wheel.spin(w0 || 6 + 3.4 * power);
+    await landed(idx);
+  }
+  async function landed(idx) {
+    var w = Wheel.wedge(idx), me = S.cur, p = S.players[me];
+    S.angle = Wheel.angle();
+    if (w.t === '$' || w.t === 'free') {
+      S.wedge = w.t === 'free' ? { t: 'free' } : { t: '$', v: w.v };
+      S.phase = 'call'; save();
+      if (w.t === 'free') { band('free', 'FREE PLAY'); snd('chime'); host('Free Play!'); }
+      else {
+        readout(money(w.v)); snd('pop'); host(esc(p.name) + ' lands on <b>' + money(w.v) + '</b>.');
+        if (w.top) { snd('chime'); setTimeout(function () { Kit.callout(money(w.v) + '!'); }, 250); }
+      }
+      await wait(w.t === 'free' ? 1800 : 1300);
+    } else if (w.t === 'bk') {
+      var lost = p.bank;
+      S.log.bk.push({ p: me, amt: lost, r: S.round });
+      p.bank = 0; nextPlayer(); save();
+      band('bk', 'BANKRUPT'); snd('bankrupt'); fx(shell.studio, 'shake', 500); fx(shell.studio, 'flash', 950); fx(shell.pods[me].root, 'bk', 1600);
+      if (!p.cpu) Kit.haptic('error');
+      host(lost ? esc(p.name) + ' loses <b>' + money(lost) + '</b>!' : esc(p.name) + ' hits BANKRUPT.');
+      await wait(450); tweenMoney(me, 'bank', 0, 1000);
+      await wait(1900);
+    } else {
+      nextPlayer(); save();
+      band('lose', 'LOSE A TURN'); snd('lose'); host(esc(p.name) + ' loses a turn.');
+      if (!p.cpu) Kit.haptic('error');
+      await wait(2000);
+    }
+    setCam('wide'); await wait(450);
+    ui.busy = false; proceed();
+  }
+
+  async function callLetter(L) {
+    var me = S.cur, p = S.players[me], isV = VOW.indexOf(L) >= 0;
+    if (S.used.indexOf(L) >= 0) return;
+    if (!p.cpu) snapshot();
+    ui.busy = true; ui.vowel = false;
+    var free = S.wedge && S.wedge.t === 'free';
+    var cost = isV && !free ? vowelCost(p) : 0;
+    var per = isV ? 0 : free ? 500 : S.wedge.v;
+    var idxs = letterIdx().filter(function (i) { return S.pz.text[i] === L; }), n = idxs.length;
+    var hadCons = consLeft(), hadVow = vowelsLeft();
+    var before = ui.disp[me].bank;
+    p.bank += n * per - cost;
+    S.used += L; idxs.forEach(function (i) { S.rev[i] = true; });
+    if (n * per >= 1000 && (!S.log.best || n * per > S.log.best.amt)) S.log.best = { p: me, L: L, n: n, v: per, amt: n * per, r: S.round };
+    var done = n > 0 && blankIdx().length === 0, winInfo = null;
+    if (done) winInfo = applyWin(me);
+    else if (n === 0 && !free) nextPlayer();
+    else { S.phase = 'turn'; S.wedge = null; }
+    save();
+    ui.hide = {}; idxs.forEach(function (i) { ui.hide[i] = 1; });
+    paintBoard(); paintDeck();
+    say(me, isV ? (cost ? 'Buy an ' + L : L + ', free') : L + ', please');
+    snd('pop');
+    await wait(p.cpu ? 550 : 350);
+    if (cost) { floatMoney(me, -cost); tweenMoney(me, 'bank', before - cost, 500); snd('cash'); await wait(350); }
+    if (n) {
+      host(n === 1 ? 'There is one ' + L + '.' : 'There are ' + n + ' ' + L + "'s!");
+      await revealLetters(idxs, { quick: n > 3 });
+      if (per) {
+        floatMoney(me, n * per); tweenMoney(me, 'bank', before - cost + n * per, 800); snd('cash');
+        if (n * per >= 2500) setTimeout(function () { Kit.callout(money(n * per)); }, 200);
+      }
+      if (!p.cpu) Kit.haptic('success');
+      paintKeys();
+      await wait(700);
+    } else {
+      host('Sorry, no ' + L + '.'); snd('buzz'); paintKeys(); fx(shell.keys[L], 'shake', 450);
+      if (!p.cpu) Kit.haptic('error');
+      await wait(1400);
+    }
+    if (!done && hadCons && !consLeft()) { host('<b>Only vowels remain!</b> The wheel is off.'); Kit.toast('Only vowels remain'); await wait(1300); }
+    else if (!done && hadVow && !vowelsLeft()) { host('<b>No more vowels!</b>'); Kit.toast('No more vowels'); await wait(1100); }
+    if (winInfo) return winSequence(me, winInfo);
+    ui.busy = false; proceed();
+  }
+
+  function applyWin(me) {
+    var p = S.players[me], letters = letterIdx();
+    var hidden = letters.filter(function (i) { return !S.rev[i]; });
+    var amt = Math.max(1000, p.bank);
+    S.log.solves.push({ p: me, text: S.pz.text, shown: letters.length - hidden.length, total: letters.length, r: S.round, amt: amt });
+    p.total += amt; S.row[me] += amt;
+    S.rows.push({ label: 'Round ' + S.round, sc: S.row.slice() }); S.row = [0, 0, 0];
+    var info = { hidden: hidden, amt: amt, min: p.bank < 1000 };
+    S.players.forEach(function (q) { q.bank = 0; });
+    letters.forEach(function (i) { S.rev[i] = true; });
+    S.phase = 'roundEnd'; S.wedge = null; S.cur = me; S.lastWin = { p: me, amt: amt };
+    return info;
+  }
+  async function winSequence(me, info) {
+    ui.busy = true; paintDeck();
+    var p = S.players[me];
+    if (info.hidden.length) await revealWave(info.hidden);
+    snd('solve'); Kit.callout('SOLVED!');
+    if (!p.cpu) { Kit.confetti({ count: 90 }); Kit.haptic('success'); }
+    host(nm(me) + ' wins round ' + S.round + ' and banks <b>' + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
+    await wait(800);
+    tweenMoney(me, 'bank', info.amt, 400);
+    await wait(500);
+    S.players.forEach(function (q, j) { tweenMoney(j, 'bank', 0, 900); });
+    tweenMoney(me, 'total', p.total, 1100);
+    await wait(1300);
+    ui.busy = false; proceed();
+  }
+  function nextRound() {
+    if (S.phase !== 'roundEnd') return;
+    if (S.round < S.opts.rounds) beginRound(S.round + 1); else toBonus();
+  }
+  function toBonus() {
+    var mx = Math.max.apply(null, S.players.map(function (p) { return p.total; }));
+    var top = [0, 1, 2].filter(function (i) { return S.players[i].total === mx; });
+    if (top.length > 1) beginTossup(1000, top, 'tie'); else beginBonus(top[0]);
+  }
+
+  // ── Solving on the board (humans) ─────────────────────────────────────────
+  function openSolve(who, ctx) {
+    if (!S) return;
+    var b = blankIdx(); if (!b.length) return;
+    ui.solve = { who: who, ctx: ctx, fill: {}, cur: b[0] };
+    ui.vowel = false; setCam('wide');
+    snd('pop');
+    paintBoard(); paintPodiums(); paintDeck();
+    host('Type the missing letters. Tap a tile to move the cursor.');
+  }
+  function typeFill(L) {
+    var s = ui.solve; if (!s || ui.busy || s.cur == null) return;
+    s.fill[s.cur] = L; snd('blip');
+    var b = blankIdx(), k = b.indexOf(s.cur);
+    if (k < b.length - 1) s.cur = b[k + 1];
+    paintBoard(); paintDeck();
+  }
+  function backspace() {
+    var s = ui.solve; if (!s || ui.busy) return;
+    var b = blankIdx(), k = b.indexOf(s.cur);
+    if (s.fill[s.cur]) delete s.fill[s.cur];
+    else if (k > 0) { s.cur = b[k - 1]; delete s.fill[s.cur]; }
+    snd('blip');
+    paintBoard(); paintDeck();
+  }
+  function tileTap(k) {
+    var s = ui.solve; if (!s || !S) return;
+    var ci = lay().cell[k];
+    if (ci >= 0 && isL(S.pz.text[ci]) && !S.rev[ci]) { s.cur = ci; paintBoard(); }
+  }
+  function cancelSolve() {
+    var s = ui.solve; if (!s) return;
+    if (s.ctx === 'tossup') { ui.solve = null; run(function () { return tossupAnswer(s.who, false, null); }); return; }
+    ui.solve = null;
+    if (s.ctx === 'bonus' && ui.clock) ui.clock.paused = false;
+    renderAll();
+  }
+  function submitSolve() {
+    var s = ui.solve; if (!s || ui.busy) return;
+    var b = blankIdx();
+    if (b.some(function (i) { return !s.fill[i]; })) { Kit.toast('Fill in every blank first'); return; }
+    var ok = b.every(function (i) { return s.fill[i] === S.pz.text[i]; });
+    if (s.ctx === 'main') snapshot();
+    ui.solve = null;
+    if (s.ctx === 'main') run(function () { return humanSolved(s.who, ok, s); });
+    else if (s.ctx === 'tossup') run(function () { return tossupAnswer(s.who, ok, s); });
+    else run(function () { return bonusAnswer(ok, s); });
+  }
+  async function humanSolved(me, ok, s) {
+    ui.busy = true; paintDeck();
+    if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
+    await showWrong(s); snd('buzz'); Kit.haptic('error');
+    var free = S.wedge && S.wedge.t === 'free';
+    if (free) { S.phase = 'turn'; S.wedge = null; } else nextPlayer();
+    save(); renderAll();
+    host(free ? "That's not it, but Free Play means you keep your turn." : "Sorry, that's not it.");
+    await wait(1400);
+    ui.busy = false; proceed();
+  }
+
+  // ── Computer contestants (they only see what's on the board) ─────────────
+  async function cpuTurn() {
+    var me = S.cur, p = S.players[me];
+    ui.busy = true; paintDeck();
+    await wait(850);
+    if (S.phase === 'call') return callLetter(cpuConsonant());
+    var k = knownFrac(), b = blankIdx().length;
+    var pk = b <= 1 ? 1 : b <= 2 ? 0.88 : Math.pow(clamp((k - 0.5) / 0.35, 0, 1), 1.6) * 0.9 + (b <= 4 ? 0.25 : 0);
+    pk = clamp(pk * p.skill, 0, 1);
+    if (consLeft() && p.bank < 1000 && b > 3) pk *= 0.45;
+    if (Math.random() < pk) return cpuSolve();
+    if (!consLeft()) {
+      if (canBuy(p)) return callLetter(cpuVowel());
+      return cpuSolve();
+    }
+    if (vowelsLeft() && p.bank >= 250) {
+      var anyV = VOW.split('').some(function (v) { return S.used.indexOf(v) >= 0; });
+      var want = 0.18 + (p.bank >= 1500 ? 0.17 : 0) + (!anyV && k > 0.15 ? 0.25 : 0);
+      if (Math.random() < want) return callLetter(cpuVowel());
+    }
+    return doSpin(0.2 + Math.random() * 0.75);
+  }
+  function cpuConsonant() { return topPick(FREQ.split('').filter(function (c) { return S.used.indexOf(c) < 0; })); }
+  function cpuVowel() { return topPick('EAOIU'.split('').filter(function (c) { return S.used.indexOf(c) < 0; })); }
+  async function cpuSolve() {
+    var me = S.cur, p = S.players[me], k = knownFrac(), b = blankIdx().length;
+    var ok = Math.random() < (b <= 2 ? 0.98 : clamp(0.5 + 0.45 * k, 0, 0.97));
+    say(me, "I'd like to solve!"); host(esc(p.name) + ' wants to solve…');
+    await wait(1400);
+    if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
+    snd('buzz'); say(me, 'Hmm… no?'); fx(shell.board, 'shake', 500);
+    host("That's not it. " + esc(p.name) + "'s turn is over.");
+    nextPlayer(); save();
+    await wait(1500);
+    ui.busy = false; proceed();
+  }
+
+  // ── Toss-ups ──────────────────────────────────────────────────────────────
+  function beginTossup(prize, elig, purpose) {
+    epoch++; undoStack = [];
+    newPuzzle(pickPuzzle());
+    S.tu = { prize: prize, elig: elig, purpose: purpose, order: shuffle(letterIdx()), step: 0, locked: [],
+      thr: S.players.map(function (p) { return 0.45 + Math.random() * 0.35; }) };
+    S.phase = 'tossup'; S.cur = -1; S.wedge = null; S.next = null; save();
+    run(async function () {
+      ui.busy = true; ui.blank = true; setCam('wide'); renderAll();
+      host(purpose === 'tie' ? "It's a tie! A toss-up decides who plays the Bonus Round." : 'Toss-up! Letters will pop up one at a time.');
+      await titleCard(purpose === 'tie' ? 'Tiebreaker' : 'Toss-up', money(prize));
+      await boardIntro();
+      ui.busy = false; proceed();
+    });
+  }
+  function tuOut(i) { return S.tu.locked.indexOf(i) >= 0 || S.tu.elig.indexOf(i) < 0; }
+  async function tossupLoop() {
+    var tu = S.tu;
+    while (S.phase === 'tossup') {
+      if (tu.step >= tu.order.length) {
+        await wait(1600);
+        var cs = tu.elig.filter(function (i) { return S.players[i].cpu && !tuOut(i); });
+        if (cs.length) return cpuBuzz(cs[rnd(cs.length)], true);
+        await wait(3500);
+        return tossupNobody();
+      }
+      await wait(1000);
+      var i = tu.order[tu.step++]; S.rev[i] = true; save();
+      var t = tileOf(i); t.textContent = S.pz.text[i]; t.className = 'tile on rev pop'; snd('blip');
+      var k = knownFrac();
+      var ready = tu.elig.filter(function (j) { return S.players[j].cpu && !tuOut(j) && k >= tu.thr[j]; });
+      if (ready.length) { await wait(250 + Math.random() * 650); return cpuBuzz(ready[rnd(ready.length)], false); }
+    }
+  }
+  async function cpuBuzz(i, sure) {
+    ui.busy = true; S.cur = i;
+    snd('buzzin'); say(i, 'Buzz!'); host(nm(i) + ' buzzes in…');
+    paintPodiums(); paintDeck();
+    await wait(1200);
+    var ok = sure || Math.random() < clamp(0.35 + knownFrac() * 0.7, 0, 0.97);
+    if (ok) return tossupWon(i);
+    say(i, 'Is it…?'); await wait(800);
+    return tossupAnswer(i, false, null);
+  }
+  function humanBuzz(i) {
+    if (!S || S.phase !== 'tossup' || ui.solve || ui.busy || tuOut(i)) return;
+    epoch++;                       // stops the letters
+    snd('buzzin'); Kit.haptic('medium'); S.cur = i; say(i, 'Buzz!');
+    openSolve(i, 'tossup');
+  }
+  async function tossupAnswer(i, ok, s) {
+    if (ok) return tossupWon(i);
+    ui.busy = true; paintDeck();
+    if (s) await showWrong(s);
+    snd('buzz'); host("No, that's not it. " + nm(i) + ' is out of this toss-up.');
+    S.tu.locked.push(i); S.cur = -1; save();
+    renderAll(); ui.busy = true; paintDeck();
+    await wait(1300);
+    ui.busy = false;
+    if (S.tu.elig.every(tuOut)) return tossupNobody();
+    paintPodiums(); paintDeck(); host(hostText());
+    return tossupLoop();
+  }
+  async function tossupWon(i) {
+    var tu = S.tu, p = S.players[i];
+    var hidden = blankIdx();
+    p.total += tu.prize; p.tu = (p.tu || 0) + 1;
+    if (tu.purpose === 'tie') S.rows.push({ label: 'Tiebreak', sc: S.players.map(function (q, j) { return j === i ? tu.prize : 0; }) });
+    else S.row[i] += tu.prize;
+    hidden.forEach(function (k) { S.rev[k] = true; });
+    S.next = { fn: tu.purpose === 'tie' ? 'bonus' : 'main', who: i };
+    S.cur = i; S.phase = 'tuwon'; save();
+    ui.busy = true; paintPodiums(); paintDeck();
+    await revealWave(hidden);
+    snd('solve'); say(i, 'Got it!'); Kit.callout(money(tu.prize));
+    host(nm(i) + ' wins the toss-up: <b>' + money(tu.prize) + '</b>!');
+    tweenMoney(i, 'total', p.total, 1000);
+    if (!p.cpu) { Kit.confetti({ count: 60 }); Kit.haptic('success'); }
+    await wait(2400);
+    ui.busy = false; continueAfterTossup();
+  }
+  async function tossupNobody() {
+    ui.busy = true;
+    var tu = S.tu, hidden = blankIdx();
+    hidden.forEach(function (k) { S.rev[k] = true; });
+    S.next = tu.purpose === 'tie' ? { fn: 'tie', elig: tu.elig } : { fn: 'main', who: (S.round - 1) % 3 };
+    S.phase = 'tuwon'; S.cur = -1; save();
+    paintPodiums(); paintDeck();
+    await revealWave(hidden);
+    snd('lose'); host('Nobody got that one.');
+    await wait(2200);
+    ui.busy = false; continueAfterTossup();
+  }
+  function continueAfterTossup() {
+    var n = S.next || { fn: 'main', who: 0 };
+    if (n.fn === 'bonus') beginBonus(n.who);
+    else if (n.fn === 'tie') beginTossup(1000, n.elig, 'tie');
+    else beginMain(n.who);
+  }
+
+  // ── Bonus Round ───────────────────────────────────────────────────────────
+  function beginBonus(who) {
+    epoch++; undoStack = []; stopClock();
+    newPuzzle(pickPuzzle(bonusOK));
+    S.bonus = { who: who, env: null, picks: '', solved: null };
+    S.cur = who; S.phase = 'bonusIntro'; S.wedge = null; S.tu = null; S.next = null; save();
+    Wheel.setWedges(ENV_WEDGES);
+    run(async function () {
+      ui.busy = true; ui.blank = true; setCam('wide'); renderAll();
+      await titleCard('Bonus Round', S.players[who].name);
+      await boardIntro();
+      ui.busy = false; proceed();
+    });
+  }
+  async function bonusSpin(power, w0) {
+    ui.busy = true; paintDeck(); setCam('wheel');
+    host(nm(S.cur) + ' spins for an envelope…');
+    await wait(300);
+    await Wheel.spin(w0 || 6 + 3.4 * power);
+    S.angle = Wheel.angle();
+    var R = 'RSTLNE', idxs = letterIdx().filter(function (i) { return R.indexOf(S.pz.text[i]) >= 0; });
+    S.bonus.env = wpick(ENVELOPES); S.used = R; idxs.forEach(function (i) { S.rev[i] = true; });
+    S.phase = 'bonusPick'; save();
+    readout('Sealed envelope'); snd('chime'); host("The envelope stays sealed until the end.");
+    await wait(1600);
+    setCam('wide'); await wait(500);
+    host('Here come R, S, T, L, N and E…');
+    if (idxs.length) await revealLetters(idxs, { together: true });
+    ui.busy = false; proceed();
+  }
+  function bonusPickKey(L) {
+    var b = S.bonus, pk = b.picks, isV = VOW.indexOf(L) >= 0;
+    var nv = pk.split('').filter(function (c) { return VOW.indexOf(c) >= 0; }).length, nc = pk.length - nv;
+    if (S.used.indexOf(L) >= 0 || pk.indexOf(L) >= 0) return;
+    if (isV ? nv >= 1 : nc >= 3) { Kit.toast(isV ? 'Just one vowel' : 'Three consonants max'); return; }
+    b.picks += L; snd('pop'); say(S.cur, L); save(); paintDeck();
+    if (b.picks.length === 4) run(bonusRevealPicks);
+  }
+  async function cpuBonusPicks() {
+    ui.busy = true; paintDeck();
+    var b = S.bonus;
+    while (b.picks.length < 4) {
+      await wait(800);
+      var nc = b.picks.split('').filter(function (c) { return VOW.indexOf(c) < 0; }).length;
+      var pool = (nc < 3 ? 'CDMGHPBFKWY' : 'AOIU').split('').filter(function (c) { return b.picks.indexOf(c) < 0 && S.used.indexOf(c) < 0; });
+      var L = pool[Math.random() < 0.6 ? 0 : rnd(Math.min(3, pool.length))];
+      b.picks += L; save(); snd('pop'); say(S.cur, L); paintDeck();
+    }
+    await wait(700);
+    return bonusRevealPicks();
+  }
+  async function bonusRevealPicks() {
+    ui.busy = true; paintDeck();
+    var pk = S.bonus.picks;
+    var idxs = letterIdx().filter(function (i) { return pk.indexOf(S.pz.text[i]) >= 0 && !S.rev[i]; });
+    S.used += pk; idxs.forEach(function (i) { S.rev[i] = true; }); S.phase = 'bonusReady'; save();
+    say(S.cur, pk.split('').join(', '));
+    host(idxs.length ? "Let's see…" : 'None of those are in the puzzle!');
+    await wait(700);
+    if (idxs.length) await revealLetters(idxs, { together: true }); else { snd('buzz'); await wait(900); }
+    ui.busy = false; proceed();
+  }
+  function stopClock() { if (ui.clock) ui.clock.done = true; ui.clock = null; ui.clockEl = null; }
+  function startClock(plan) {
+    if (ui.clock) return;
+    var c = ui.clock = { left: S.opts.clock * 1000, paused: false, done: false };
+    paintDeck(); host(hostText()); snd('pop');
+    run(async function () {
+      var elapsed = 0, lastSec = Math.ceil(c.left / 1000);
+      while (!c.done) {
+        await wait(100);
+        if (c.done) return;
+        if (c.paused) { paintClock(); continue; }
+        c.left -= 100; elapsed += 100; paintClock();
+        var sec = Math.ceil(c.left / 1000); if (sec !== lastSec) { lastSec = sec; snd('tick'); }
+        if (plan && plan.ok && elapsed >= plan.at) { c.done = true; say(S.cur, 'I know it!'); await wait(700); return bonusEnd(true); }
+        if (c.left <= 0) { c.done = true; ui.solve = null; return bonusEnd(false); }
+      }
+    });
+  }
+  async function cpuBonus() {
+    var p = S.players[S.cur];
+    ui.busy = true; paintDeck(); await wait(1000);
+    var chance = clamp((knownFrac() - 0.2) * 1.6 * p.skill, 0.08, 0.92);
+    startClock({ ok: Math.random() < chance, at: (1.5 + Math.random() * (S.opts.clock - 2.5)) * 1000 });
+  }
+  async function bonusAnswer(ok, s) {
+    if (ok) return bonusEnd(true);
+    ui.busy = true; paintDeck();
+    await showWrong(s); snd('buzz');
+    ui.busy = false;
+    if (ui.clock && ui.clock.left > 0) { ui.clock.paused = false; renderAll(); host("Not that. <b>Keep going!</b>"); }
+    else bonusEnd(false);
+  }
+  async function bonusEnd(ok) {
+    if (!S || S.phase !== 'bonusReady') return;
+    ui.solve = null;
+    if (ui.clock) ui.clock.done = true;
+    ui.busy = true;
+    var b = S.bonus, p = S.players[b.who], hidden = blankIdx();
+    b.solved = ok; if (ok) p.total += b.env;
+    S.rows.push({ label: 'Bonus', sc: S.players.map(function (q, j) { return j === b.who && ok ? b.env : 0; }) });
+    hidden.forEach(function (i) { S.rev[i] = true; });
+    S.phase = 'over';
+    recordGame();
+    paintDeck(); paintPodiums();
+    if (!ok) { snd('horn'); host("Time's up!"); }
+    await revealWave(hidden);
+    if (ok) { snd('solve'); Kit.callout('SOLVED!'); host(nm(b.who) + ' solves the Bonus Round!'); }
+    else host('The answer was <b>' + esc(S.pz.text) + '</b>.');
+    await wait(1000);
+    await openEnvelope(b.env, ok, p);
+    if (ok) { ui.disp[b.who].total = p.total - b.env; tweenMoney(b.who, 'total', p.total, 1000); }
+    stopClock(); ui.busy = false; paintDeck(); host(hostText());
+    showResults();
+  }
+  function openEnvelope(env, ok, p) {
+    var o = el('div', { class: 'envo' }, [
+      el('div', { class: 'lab', text: p.name + (ok ? ' won…' : ' would have won…') }),
+      el('div', { class: 'env' }, [el('div', { class: 'bk' }), el('div', { class: 'note', text: money(env) }), el('div', { class: 'front' }), el('div', { class: 'flap' })])
+    ]);
+    document.body.appendChild(o);
+    function close() { o.classList.remove('show'); setTimeout(function () { o.remove(); }, 350); }
+    o.addEventListener('click', close);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { o.classList.add('show'); }); });
+    setTimeout(function () { o.classList.add('open'); snd(ok ? 'cash' : 'pop'); }, 700 * SPD);
+    setTimeout(function () { if (ok) snd('chime'); }, 1500 * SPD);
+    setTimeout(close, 4200 * SPD + 100);
+    return new Promise(function (res) { setTimeout(res, 4500 * SPD + 150); });
+  }
+
+  // ── End of game: history + results ───────────────────────────────────────
+  function highlights() {
+    var P = S.players, L = S.log, out = [];
+    var bks = L.bk.filter(function (b) { return b.amt > 0; }).sort(function (a, b) { return b.amt - a.amt; });
+    if (bks[0]) out.push(P[bks[0].p].name + ' hit BANKRUPT with ' + money(bks[0].amt) + ' in round ' + bks[0].r);
+    var sv = L.solves.filter(function (s) { return s.shown < s.total; }).sort(function (a, b) { return a.shown / a.total - b.shown / b.total; });
+    if (sv[0]) out.push(P[sv[0].p].name + " solved '" + sv[0].text + "' with " + (sv[0].shown === 0 ? 'no letters' : sv[0].shown === 1 ? 'only 1 letter' : sv[0].shown + ' letters') + ' showing');
+    var big = L.solves.slice().sort(function (a, b) { return b.amt - a.amt; })[0];
+    if (big && big.amt >= 5000) out.push(P[big.p].name + ' banked ' + money(big.amt) + ' in round ' + big.r);
+    if (L.best && L.best.n >= 2 && L.best.amt >= 1500) out.push(P[L.best.p].name + ' called ' + L.best.n + ' ' + L.best.L + "'s on " + money(L.best.v) + ' for ' + money(L.best.amt));
+    P.forEach(function (p) { if (p.tu >= 2) out.push(p.name + ' won ' + p.tu + ' toss-ups'); });
+    var b = S.bonus;
+    if (b && b.env) out.push(b.solved ? 'Bonus round: ' + P[b.who].name + " solved '" + S.pz.text + "' and won a " + money(b.env) + ' envelope'
+      : 'Bonus round: ' + P[b.who].name + " missed '" + S.pz.text + "' (a " + money(b.env) + ' envelope)');
+    return out.slice(0, 6);
+  }
+  function recordGame() {
+    var P = S.players;
+    var ranked = P.slice().sort(function (a, b) { return b.total - a.total; });
+    var tie = ranked[1] && ranked[1].total === ranked[0].total;
+    Kit.record(HKEY, {
+      started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Family game') + ' · ' + S.opts.rounds + ' rounds',
+      players: P.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+      winner: tie ? null : ranked[0].name,
+      rounds: { labels: S.rows.map(function (r) { return r.label; }), scores: S.rows.map(function (r) { return r.sc; }) },
+      highlights: highlights(),
+      summary: (tie ? 'Tie' : ranked[0].name + ' won') + ' · ' + money(ranked[0].total),
+      badge: money(ranked[0].total)
+    });
+    clearSave();
+  }
+  function showResults() {
+    if (!S) return;
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: money(p.total), color: PODS[i].c, cpu: p.cpu, t: p.total }; })
+      .sort(function (a, b) { return b.t - a.t; });
+    var tie = rank[1].t === rank[0].t, cfg = S.cfg;
+    Kit.win({
+      title: tie ? "It's a tie!" : rank[0].name === 'You' ? 'You win!' : rank[0].name + ' wins!',
+      sub: money(rank[0].t) + ' in cash and prizes',
+      rank: rank, lose: S.mode === 'cpu' && rank[0].cpu,
+      again: function () { start(cfg); },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Input ─────────────────────────────────────────────────────────────────
+  function pressKey(L) {
+    if (!S || !shell) return;
+    if (ui.solve) return typeFill(L);
+    if (ui.busy) return;
+    var p = S.players[S.cur]; if (!p || p.cpu) return;
+    var isV = VOW.indexOf(L) >= 0;
+    if (S.phase === 'bonusPick') return bonusPickKey(L);
+    if (S.used.indexOf(L) >= 0) return;
+    if (S.phase === 'call') {
+      if (isV && S.wedge.t !== 'free') { Kit.toast('Call a consonant. Vowels are bought before you spin.'); return; }
+      run(function () { return callLetter(L); }); return;
+    }
+    if (S.phase === 'turn' && isV) {
+      if (!canBuy(p)) { Kit.toast(vowelsLeft() ? 'You need $250 to buy a vowel' : 'No more vowels'); return; }
+      run(function () { return callLetter(L); });
+    }
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!S || !shell || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (document.querySelector('.k-scrim, .k-win') || (e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) return;
+    var k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+    if (/^[A-Z]$/.test(k)) { e.preventDefault(); pressKey(k); }
+    else if (k === 'Backspace' && ui.solve) { e.preventDefault(); backspace(); }
+    else if (k === 'Enter' && ui.solve) { e.preventDefault(); submitSolve(); }
+    else if (k === 'Escape' && ui.solve) { cancelSolve(); }
+    else if (k === ' ' && canFlick()) { e.preventDefault(); var m = canFlick(); var pw = 0.45 + Math.random() * 0.4; run(function () { return m === 'main' ? doSpin(pw) : bonusSpin(pw); }); }
+  });
+
+  function undo() {
+    if (!S || !undoStack.length) {
+      Kit.toast(S && S.phase.indexOf('bonus') === 0 ? 'Nothing to undo in the Bonus Round' : "Nothing to undo. Spins can't be taken back.");
+      return;
+    }
+    epoch++; stopClock();
+    ui.solve = null; ui.vowel = false; ui.busy = false; ui.blank = false;
+    S = JSON.parse(undoStack.pop()); save();
+    Wheel.setWedges(S.phase.indexOf('bonus') === 0 ? ENV_WEDGES : wedgesFor(S.round)); Wheel.setAngle(S.angle);
+    setCam('wide'); snd('pop'); Kit.toast('Took back your last move');
+    proceed();
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = load();
+  if (saved && saved.players && saved.pz && saved.phase && saved.phase !== 'over' && saved.phase !== 'intro') {
+    S = saved; buildShell();
+    Wheel.setWedges(S.phase.indexOf('bonus') === 0 ? ENV_WEDGES : wedgesFor(S.round));
+    Wheel.setAngle(S.angle);
+    proceed();
+  } else showSetup();
+
+  window.__wof = { state: function () { return S; }, layout: layoutPuzzle, puzzles: PUZZLES, bonusOK: bonusOK };
+})();
 </script>
 </body>
 </html>
