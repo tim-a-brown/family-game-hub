@@ -26,6 +26,8 @@ const PRECACHE_URLS = [
   '/games.js',
   '/diag.js',
   '/data/wordle-words.js',
+  '/fonts/lilita-one.woff2',
+  '/fonts/patrick-hand.woff2',
   '/app.js',
   '/sync.js',
   '/hist.js',

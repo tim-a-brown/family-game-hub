@@ -11,45 +11,56 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-.tray{position:sticky;top:calc(var(--safe-t) + 58px);z-index:10;padding:10px 0 12px;margin:0 -16px;padding-left:16px;padding-right:16px;
-  background:linear-gradient(var(--bg) 85%, rgba(20,16,41,0));}
-.dice{display:flex;justify-content:center;gap:10px;margin:4px 0 14px;}
-.dice .die{--ds:min(16vw,62px);}
-.dice .die.blank i{visibility:hidden!important;}
-.dice .die.blank{background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 2px rgba(255,255,255,.15);}
-.hint{text-align:center;color:var(--text-3);font-size:.85rem;font-weight:700;min-height:1.2em;margin-top:8px;}
-.rollbtn .left{opacity:.7;font-weight:800;}
+.turnline{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 10px;font-family:var(--display);font-size:1.35rem;color:var(--c,var(--yellow));}
+.turnline .dot{width:12px;height:12px;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 25%,transparent);}
 
-.card-h{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 8px;}
-.card-h h3{font-size:1rem;color:var(--text-2);}
-.sc{display:flex;flex-direction:column;gap:6px;}
-.cat{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:6px 8px 6px 12px;border:0;border-radius:var(--r);
-  background:rgba(255,255,255,.05);color:var(--text);text-align:left;transition:transform .12s var(--spring), background .15s;}
-.cat .die.mini{--ds:30px;padding:4px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12);pointer-events:none;}
-.cat .nm{padding-left:2px;}
-.cat .nm{flex:1;min-width:0;}
-.cat .nm b{display:block;font-size:.98rem;}
-.cat .nm small{display:block;color:var(--text-3);font-size:.76rem;font-weight:700;}
-.cat .v{min-width:56px;height:40px;display:grid;place-items:center;border-radius:12px;font-weight:900;font-size:1.15rem;font-variant-numeric:tabular-nums;}
-.cat.done{background:rgba(255,255,255,.025);}
-.cat.done .v{color:var(--text-2);}
-.cat.done .nm b{color:var(--text-2);}
-.cat.open.can .v{background:var(--accent);color:var(--accent-ink);box-shadow:0 3px 0 color-mix(in srgb,var(--accent) 50%,#000);}
-.cat.open.zero .v{background:rgba(255,255,255,.08);color:var(--text-3);}
-.cat.open.best .v{animation:bounce 1.6s var(--spring) infinite;}
-.cat.open:active{transform:scale(.97);}
-.cat.locked{opacity:.35;}
-.cat:disabled{cursor:default;}
-.bonus{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:.85rem;font-weight:800;color:var(--text-2);}
-.bonus .bar{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;}
-.bonus .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--yellow),var(--orange));border-radius:4px;transition:width .5s var(--ease);}
-.bonus.got{color:var(--yellow);}
-.totals{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:14px 16px;border-radius:var(--r);background:var(--surface);font-weight:900;font-size:1.1rem;}
-.totals span:last-child{font-size:1.5rem;color:var(--accent);}
-.ybonus{color:var(--yellow);font-weight:900;font-size:.85rem;}
-.score{cursor:pointer;}
+/* Dice tray: felt inside a wooden box */
+.tray{position:sticky;top:calc(var(--safe-t) + 56px);z-index:10;border-radius:24px;padding:8px;margin-bottom:16px;}
+.tray .felt-in{position:relative;border-radius:18px;padding:20px 8px 22px;min-height:112px;}
+.dice{display:flex;justify-content:center;gap:clamp(6px,2.4vw,14px);}
+.dice .die{--ds:min(14.5vw,58px);}
+.dice .die.blank{opacity:0;}
+.dice .tag{position:absolute;}
+.held-lbl{position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.12em;color:rgba(255,255,255,.55);text-transform:uppercase;}
+.empty-msg{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:1.3rem;color:rgba(255,255,255,.45);}
+.rolls{position:absolute;top:8px;right:12px;display:flex;gap:5px;}
+.rolls i{width:9px;height:9px;border-radius:50%;background:var(--yellow);box-shadow:0 0 6px rgba(255,200,61,.7);}
+.rolls i.used{background:rgba(255,255,255,.18);box-shadow:none;}
+.tray .rollbtn{margin-top:8px;min-height:52px;}
+
+/* Paper scorecard */
+.card{border-radius:6px 6px 14px 14px;padding:0 0 10px;overflow:hidden;position:relative;background:linear-gradient(180deg,#fffaf0,#f6eedb);}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:radial-gradient(circle at 10px 0, transparent 6px, #fffaf0 6.5px) 0 0/20px 10px;opacity:0;}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 8px;border-bottom:3px double #c8102e;}
+.card-head h2{font-family:var(--display);font-weight:400;font-size:1.7rem;color:#c8102e;letter-spacing:.04em;}
+.card-head small{font-family:var(--hand);font-size:1.05rem;color:#6a6a80;}
+table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
+.sc th,.sc td{height:44px;border-bottom:1px solid rgba(60,80,160,.16);padding:0;}
+.sc thead th{height:36px;font-family:var(--hand);font-weight:400;font-size:1.1rem;color:#3a3a50;border-bottom:2px solid rgba(60,80,160,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc .lbl{text-align:left;padding-left:12px;width:52%;}
+.sc .lbl b{display:block;font-size:.95rem;font-weight:900;color:#2a2a3a;line-height:1.05;}
+.sc .lbl small{display:block;font-size:.7rem;font-weight:700;color:#8a8796;line-height:1.1;}
+.sc .lbl .die{--ds:22px;padding:3px;display:inline-grid;vertical-align:middle;margin-right:8px;box-shadow:0 1px 2px rgba(0,0,0,.35);}
+.sc .lbl .row{display:flex;align-items:center;}
+.sc td.v{text-align:center;border-left:1px solid rgba(200,16,46,.22);font-family:var(--hand);font-size:1.45rem;color:var(--ink);position:relative;}
+.sc td.v.cur{background:rgba(255,220,60,.28);}
+.sc td.v.ghost{color:rgba(80,80,110,.42);}
+.sc td.v.ghost.good{color:rgba(31,42,107,.6);}
+.sc td.v.tap{cursor:pointer;}
+.sc td.v.tap::after{content:"";position:absolute;inset:4px;border-radius:8px;border:2px dashed rgba(31,42,107,.25);}
+.sc td.v.best::after{border-color:#c8102e;border-style:solid;animation:pulseb 1.4s ease-in-out infinite;}
+@keyframes pulseb{50%{opacity:.35;}}
+.sc td.v.zero{color:rgba(200,16,46,.55);}
+.sc td.v .x{text-decoration:line-through;text-decoration-thickness:2px;}
+.sc td.v.just{animation:write .5s ease-out;}
+@keyframes write{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.sc tr.sum th,.sc tr.sum td{background:rgba(200,16,46,.06);}
+.sc tr.sum .lbl b{color:#c8102e;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;}
+.sc tr.grand td,.sc tr.grand th{height:48px;border-top:2px solid #c8102e;}
+.sc tr.grand td.v{font-size:1.8rem;}
+.sc .sect th{height:26px;text-align:left;padding-left:12px;font-size:.7rem;font-weight:900;letter-spacing:.14em;color:#c8102e;text-transform:uppercase;background:rgba(200,16,46,.05);}
 .valgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
-.valgrid .btn{min-height:52px;padding:0;}
+.valgrid .btn{min-height:52px;padding:0;font-family:var(--hand);font-size:1.4rem;}
 </style>
 </head>
 <body>
@@ -69,13 +80,13 @@
     { id: 'fours', name: 'Fours', hint: 'Add up the 4s', up: 4 },
     { id: 'fives', name: 'Fives', hint: 'Add up the 5s', up: 5 },
     { id: 'sixes', name: 'Sixes', hint: 'Add up the 6s', up: 6 },
-    { id: 'k3', name: '3 of a Kind', hint: 'Three alike: add all dice' },
-    { id: 'k4', name: '4 of a Kind', hint: 'Four alike: add all dice' },
-    { id: 'fh', name: 'Full House', hint: 'Three + a pair: 25' },
-    { id: 'ss', name: 'Small Straight', hint: 'Four in a row: 30' },
-    { id: 'ls', name: 'Large Straight', hint: 'Five in a row: 40' },
-    { id: 'yz', name: 'Yahtzee', hint: 'All five alike: 50' },
-    { id: 'ch', name: 'Chance', hint: 'Anything: add all dice' }
+    { id: 'k3', name: '3 of a Kind', hint: 'Total of all dice' },
+    { id: 'k4', name: '4 of a Kind', hint: 'Total of all dice' },
+    { id: 'fh', name: 'Full House', hint: '3 + 2 alike · 25' },
+    { id: 'ss', name: 'Sm. Straight', hint: '4 in a row · 30' },
+    { id: 'ls', name: 'Lg. Straight', hint: '5 in a row · 40' },
+    { id: 'yz', name: 'Yahtzee', hint: '5 alike · 50' },
+    { id: 'ch', name: 'Chance', hint: 'Total of all dice' }
   ];
   var CAT = {}; CATS.forEach(function (c) { CAT[c.id] = c; });
 
@@ -199,7 +210,7 @@
     var p = P();
     if (p.card[id] != null) return;
     var wasJokerBonus = S.mode !== 'card' && isYahtzee(S.dice) && p.card.yz === 50;
-    p.card[id] = val;
+    p.card[id] = val; lastScored = id;
     if (wasJokerBonus) { p.yb = (p.yb || 0) + 1; Kit.callout('+100 Bonus!'); Kit.confetti({ count: 80 }); }
     var u = upperSum(p);
     if (CAT[id].up && u >= 63 && u - val < 63) setTimeout(function () { Kit.callout('+35 Bonus!'); Kit.sfx('win'); }, 200);
@@ -345,89 +356,115 @@
     var p = P();
     app.innerHTML = '';
 
-    // Scores
-    var lead = Math.max.apply(null, S.players.map(total));
-    var strip = el('div', { class: 'scores' });
-    S.players.forEach(function (q, i) {
-      var pill = el('div', { class: 'score' + (i === S.cur ? ' on' : '') + (S.players.length > 1 && total(q) === lead && lead > 0 ? ' lead' : ''), style: { '--c': q.color } }, [
-        el('span', { class: 'nm', text: q.name }),
-        el('span', { class: 'pt', text: String(total(q)) }),
-        el('span', { class: 'sub', text: filled(q) + '/13' })
-      ]);
-      if (S.mode === 'card') pill.addEventListener('click', function () { S.cur = i; Kit.sfx('tap'); save(); render(); });
-      else pill.addEventListener('click', function () { if (i !== S.cur) peek(q); });
-      strip.appendChild(pill);
-    });
-    app.appendChild(strip);
-
-    // Turn line
-    app.appendChild(el('div', { class: 'turn', style: { '--c': p.color } }, [
-      el('span', { class: 'dot' }),
-      el('span', { text: S.mode === 'card' ? 'Scoring for ' + p.name : (S.players.length === 1 ? 'Round ' + S.round + ' of 13' : (p.cpu ? p.name + ' is rolling…' : Kit.poss(p.name) + ' turn') + ' · Round ' + S.round) })
-    ]));
+    var line = S.mode === 'card' ? 'Scoring for ' + p.name
+      : S.players.length === 1 ? 'Round ' + S.round + ' of 13'
+      : p.cpu ? p.name + ' is rolling…' : Kit.poss(p.name) + ' turn';
+    app.appendChild(el('div', { class: 'turnline', style: { '--c': p.color } }, [el('span', { class: 'dot' }), el('span', { text: line })]));
 
     var opts = S.mode === 'card' ? null : (S.rolls ? options(p, S.dice) : null);
 
     // Dice tray
     if (S.mode !== 'card') {
-      var tray = el('div', { class: 'tray' });
+      var tray = el('div', { class: 'tray wood' });
+      var felt = el('div', { class: 'felt-in' });
+      var rl = el('div', { class: 'rolls', 'aria-label': (3 - S.rolls) + ' rolls left' });
+      for (var k = 0; k < 3; k++) rl.appendChild(el('i', { class: k < S.rolls ? 'used' : '' }));
+      felt.appendChild(rl);
       var row = el('div', { class: 'dice' });
       diceEls = [];
       for (var i = 0; i < 5; i++) {
         (function (i) {
           var d = Kit.die(S.dice[i] || 1);
-          if (animate && !S.held[i]) { d.classList.add('rolling'); d.style.animationDelay = (i * 40) + 'ms'; }
+          if (animate && !S.held[i]) {
+            d.classList.add('rolling');
+            d.style.animationDelay = (i * 45) + 'ms';
+            d.style.setProperty('--dx', ((Math.random() - .5) * 120) + 'px');
+            d.style.setProperty('--dr', ((Math.random() > .5 ? 1 : -1) * (240 + Math.random() * 300)) + 'deg');
+          }
           d.addEventListener('click', function () { toggleHold(i); });
           diceEls.push(d); row.appendChild(d);
         })(i);
       }
-      tray.appendChild(row);
+      felt.appendChild(row);
+      if (!S.rolls) felt.appendChild(el('div', { class: 'empty-msg', text: p.cpu ? '' : 'Tap Roll to start' }));
+      else if (S.rolls < 3 && !p.cpu) felt.appendChild(el('div', { class: 'held-lbl', text: 'Tap dice to hold' }));
+      tray.appendChild(felt);
       var left = 3 - S.rolls;
       var rb = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block rollbtn', onclick: roll },
-        [el('span', { text: S.rolls === 0 ? 'Roll!' : left ? 'Roll again' : 'Pick a box below' }), left && S.rolls ? el('span', { class: 'left', text: '· ' + left + ' left' }) : null]);
+        [el('span', { text: S.rolls === 0 ? 'Roll!' : left ? 'Roll again' : 'Pick a score below' })]);
       rb.disabled = left === 0 || p.cpu || S.busy;
       tray.appendChild(rb);
-      tray.appendChild(el('div', { class: 'hint', text: p.cpu ? '' : S.rolls === 0 ? 'Roll to start your turn' : left ? 'Tap dice to hold them, or pick a box' : 'Choose where to score' }));
       app.appendChild(tray);
       paintDice();
     }
 
-    // Scorecard
+    // Paper scorecard: one column per player, the active one highlighted
     var best = null, bestV = 0;
     if (opts) Object.keys(opts).forEach(function (id) { if (opts[id] > bestV) { bestV = opts[id]; best = id; } });
-    function section(title, cats) {
-      app.appendChild(el('div', { class: 'card-h' }, [el('h3', { text: title })]));
-      var box = el('div', { class: 'sc' });
-      cats.forEach(function (c) {
-        var done = p.card[c.id] != null, avail = opts && opts[c.id] != null;
-        var v = done ? p.card[c.id] : avail ? opts[c.id] : null;
-        var b = el('button', { type: 'button', class: 'cat ' + (done ? 'done' : 'open') + (avail ? (v > 0 ? ' can' : ' zero') : '') + (avail && c.id === best && S.rolls ? ' best' : '') + (opts && !done && !avail ? ' locked' : '') }, [
-          c.up ? miniDie(c.up) : null,
-          el('span', { class: 'nm' }, [el('b', { text: c.name }), el('small', { text: c.hint })]),
-          el('span', { class: 'v', text: v == null ? '' : String(v) })
-        ]);
-        if (S.mode === 'card') { if (!done) b.addEventListener('click', function () { enterValue(c.id); }); else b.addEventListener('click', function () { fixValue(c.id); }); }
-        else if (avail && !p.cpu && !S.busy) b.addEventListener('click', function () {
-          if (opts[c.id] === 0) Kit.confirm('Score 0 in ' + c.name + '?', { ok: 'Take 0', body: 'You can\'t use this box again.' }).then(function (ok) { if (ok) scoreBox(c.id, 0); });
-          else scoreBox(c.id, opts[c.id]);
-        });
-        else b.disabled = true;
-        box.appendChild(b);
+    var card = el('div', { class: 'card paper' });
+    card.appendChild(el('div', { class: 'card-head' }, [el('h2', { text: 'YAHTZEE' }), el('small', { text: S.mode === 'card' ? 'tap a box to fill it in' : opts ? 'tap a box to score' : '' })]));
+    var tbl = el('table', { class: 'sc' });
+    var head = el('tr', null, [el('th', { class: 'lbl' })]);
+    S.players.forEach(function (q, i) {
+      var th = el('th', { text: q.name, style: { color: i === S.cur ? q.color : '' } });
+      if (S.mode === 'card') th.addEventListener('click', function () { S.cur = i; Kit.sfx('tap'); save(); render(); });
+      head.appendChild(th);
+    });
+    tbl.appendChild(el('thead', null, [head]));
+    var body = el('tbody');
+    function sect(t) { body.appendChild(el('tr', { class: 'sect' }, [el('th', { colspan: S.players.length + 1, text: t })])); }
+    function catRow(c) {
+      var tr = el('tr');
+      var lbl = el('th', { class: 'lbl' });
+      var inner = el('span', { class: 'row' });
+      if (c.up) { var dd = Kit.die(c.up); dd.disabled = true; dd.tabIndex = -1; inner.appendChild(dd); }
+      inner.appendChild(el('span', null, [el('b', { text: c.name }), el('small', { text: c.hint })]));
+      lbl.appendChild(inner); tr.appendChild(lbl);
+      S.players.forEach(function (q, i) {
+        var done = q.card[c.id] != null, isCur = i === S.cur;
+        var td = el('td', { class: 'v' + (isCur ? ' cur' : '') });
+        if (done) {
+          td.textContent = q.card[c.id] === 0 ? '' : String(q.card[c.id]);
+          if (q.card[c.id] === 0) { td.classList.add('zero'); td.appendChild(el('span', { class: 'x', text: '0' })); }
+          if (isCur && c.id === lastScored) td.classList.add('just');
+          if (S.mode === 'card' && isCur) { td.classList.add('tap'); td.addEventListener('click', function () { fixValue(c.id); }); }
+        } else if (isCur && S.mode === 'card') {
+          td.classList.add('tap'); td.addEventListener('click', function () { enterValue(c.id); });
+        } else if (isCur && opts && opts[c.id] != null) {
+          var v = opts[c.id];
+          td.textContent = String(v);
+          td.classList.add('ghost'); if (v > 0) td.classList.add('good');
+          if (!p.cpu && !S.busy) {
+            td.classList.add('tap'); if (c.id === best) td.classList.add('best');
+            td.addEventListener('click', function () {
+              if (v === 0) Kit.confirm('Score 0 in ' + c.name + '?', { ok: 'Take 0', body: "You can't use this box again." }).then(function (ok) { if (ok) scoreBox(c.id, 0); });
+              else scoreBox(c.id, v);
+            });
+          }
+        }
+        tr.appendChild(td);
       });
-      app.appendChild(box);
+      body.appendChild(tr);
     }
-    section('Upper section', CATS.slice(0, 6));
-    var u = upperSum(p);
-    app.appendChild(el('div', { class: 'bonus' + (u >= 63 ? ' got' : '') }, [
-      el('span', { text: 'Upper bonus' }), el('span', { class: 'bar' }, [el('i', { style: { width: Math.min(100, u / 63 * 100) + '%' } })]),
-      el('span', { text: u >= 63 ? '+35' : u + ' / 63' })
-    ]));
-    section('Lower section', CATS.slice(6));
-    if (p.yb) app.appendChild(el('div', { class: 'bonus got' }, [el('span', { text: 'Yahtzee bonus ×' + p.yb }), el('span', { class: 'grow' }), el('span', { text: '+' + p.yb * 100 })]));
-    app.appendChild(el('div', { class: 'totals' }, [el('span', { text: p.name + "'s total" }), el('span', { text: String(total(p)) })]));
+    function sumRow(label, fn, cls) {
+      var tr = el('tr', { class: 'sum ' + (cls || '') }, [el('th', { class: 'lbl' }, [el('b', { text: label })])]);
+      S.players.forEach(function (q, i) { tr.appendChild(el('td', { class: 'v' + (i === S.cur ? ' cur' : ''), text: fn(q) })); });
+      body.appendChild(tr);
+    }
+    sect('Upper section');
+    CATS.slice(0, 6).forEach(catRow);
+    sumRow('Bonus', function (q) { var u = upperSum(q); return u >= 63 ? '35' : u ? u + '/63' : ''; });
+    sect('Lower section');
+    CATS.slice(6).forEach(catRow);
+    if (S.players.some(function (q) { return q.yb; })) sumRow('Yahtzee bonus', function (q) { return q.yb ? String(q.yb * 100) : ''; });
+    sumRow('Grand total', function (q) { return String(total(q)); }, 'grand');
+    tbl.appendChild(body);
+    card.appendChild(tbl);
+    app.appendChild(card);
+    lastScored = null;
   }
+  var lastScored = null;
 
-  function miniDie(v) { var d = Kit.die(v); d.classList.add('mini'); d.disabled = true; d.tabIndex = -1; return d; }
   function fixValue(id) {
     Kit.confirm('Clear ' + CAT[id].name + ' for ' + P().name + '?', { ok: 'Clear it', body: 'Use this to fix a mistake.' }).then(function (ok) {
       if (ok) { delete P().card[id]; save(); render(); }

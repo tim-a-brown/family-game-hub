@@ -1,9 +1,20 @@
 # Family Game Hub
 
 Static site (plain HTML/CSS/JS, no build step) served at **games.timbrown.xyz**
-from Firebase Hosting, project `familygames-da3e5`. Games live in `games/*.html`;
-shared code is `shared.css`, `sync.js` (Firestore sync, PIN sign-in), `players.js`,
-`hist.js`, `casino.js`, `arcade-hi.js`, `app.js`.
+from Firebase Hosting, project `familygames-da3e5`. Games live in `games/*.html`.
+
+Shared code:
+- `kit.css` / `kit.js`: design system and game shell (game bar, rules sheet,
+  setup screen, win screen, sounds, haptics, icons, cards, dice). New and
+  rebuilt games use these. API is documented at the top of `kit.js`.
+- `games.js`: the game catalog (names, colours, categories, player counts,
+  which file is "play" vs "keep score"). Home screen and kit both read it.
+- `sync.js` (Firestore sync, PIN sign-in), `hist.js` (game history),
+  `players.js` (frequent players), `casino.js` (bankroll), `arcade-hi.js`.
+- Legacy: `shared.css` + `app.js` are still used by games not yet rebuilt.
+
+Synced storage keys must never change: `hi_*`, `gh_*`, `casino_bank`,
+`rklists`, `fav_games`.
 
 ## How Tim works with Claude
 
@@ -21,6 +32,18 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
    - `dropbox-sync.yml` mirrors the repo into Tim's Dropbox
      (`Apps/Webapp - Family Game Hub`)
 4. Confirm both Actions succeeded, then tell Tim it's live.
+
+## Design rules (Tim's feedback)
+
+- **No emoji in the UI.** Use `Kit.icon(name)` line icons. Emoji look cheap.
+- **Text first for finding things.** Game names must be readable at a glance.
+- **Game play areas must feel like a real game, not an app.** Use table
+  materials from `kit.css` (`.wood`, `.felt-in`, `.paper`, `.ink`,
+  `.display`), real-looking pieces (`Kit.die`, `Kit.card`), and motion. Chrome
+  (bar, menus, setup) stays clean and minimal. Yahtzee is the reference.
+- Every game checks its rules against the official/standard rules, and has a
+  plain-language "How to play" via `Kit.init({rules})`.
+- Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
 
 ## Rules for every change
 
