@@ -27,6 +27,7 @@
 .cres b{display:block;font-weight:800;}
 .cres small{display:block;color:var(--text-3);font-weight:600;font-size:.8rem;}
 .cres .d{margin-left:auto;font-weight:800;color:var(--text-3);font-size:.8rem;white-space:nowrap;}
+.cres .ico{width:20px;height:20px;}
 .cnote{color:var(--text-3);font-weight:700;font-size:.85rem;text-align:center;padding:10px;}
 .csec{font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:12px 0 2px;}
 
@@ -102,7 +103,7 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
     ],
     rules:
       '<p class="goal">Keep score for a real round of mini golf. <b>Fewest strokes wins.</b></p>' +
-      '<h3>How it works</h3><ul><li>Pick the course you\'re playing (search nearby or by name) so your rounds and records are saved for that course.</li>' +
+      '<h3>How it works</h3><ul><li>Pick where you\'re playing: type the name, search the map, or find courses near you. If the place has several courses (Pirate, Jungle and so on), pick which one. Records are kept for each course.</li>' +
       '<li>On each hole, tap + for every stroke a player takes. Tap Next hole when everyone is in.</li>' +
       '<li>Tap the par to change it. Pars are remembered for that course next time.</li></ul>' +
       '<h3>Common house rules</h3><ul><li><b>Stroke limit:</b> most courses cap a hole at 6 strokes. You can turn the cap off in setup.</li>' +
@@ -168,64 +169,112 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
       });
   }
 
+  // "Mulligan's Island · Pirate" for a venue with several courses
+  function label(c) { return c ? c.name + (c.sub ? ' · ' + c.sub : '') : ''; }
+
+  // Step 1: which place? (played before, search, near me, or just type a name)
   function pickCourse(onPick) {
     var node = el('div'), res = el('div', { class: 'cres' }), s;
     var inp = el('input', { class: 'input', type: 'search', placeholder: 'Course name or town', autocomplete: 'off', enterkeyhint: 'search' });
-    var go = el('button', { type: 'button', class: 'btn btn-primary btn-sm', html: Kit.icon('search') });
+    var go = el('button', { type: 'button', class: 'btn btn-primary btn-sm', 'aria-label': 'Search the map', html: Kit.icon('search') });
+    var use = el('div', { class: 'cres', style: { 'margin-top': '10px' } });
     var near = el('button', { type: 'button', class: 'btn btn-soft btn-block', style: { 'margin-top': '10px' }, html: LOC + '<span>Find courses near me</span>' });
     node.appendChild(el('div', { class: 'csearch' }, [inp, go]));
+    node.appendChild(use);
     node.appendChild(near);
     node.appendChild(res);
+    function venue(v) { s.close(); Kit.sfx('pop'); pickSub(v, onPick); }
+    // Typing a name is enough: no search, GPS or signal needed
+    function paintUse() {
+      use.innerHTML = '';
+      var t = inp.value.trim(); if (!t) return;
+      use.appendChild(el('button', { type: 'button', onclick: function () { venue({ key: 'custom:' + t.toLowerCase(), name: t, place: '' }); } }, [
+        el('span', { html: Kit.icon('pencil'), style: { color: 'var(--accent)', display: 'flex' } }),
+        el('span', null, [el('b', { text: 'Use "' + t + '"' }), el('small', { text: 'Name the course yourself, no map needed' })])
+      ]));
+    }
+    inp.addEventListener('input', paintUse);
+    function row(c, onTap, sub) {
+      return el('button', { type: 'button', onclick: onTap }, [
+        el('span', { html: PIN, style: { color: 'var(--accent)', display: 'flex' } }),
+        el('span', { style: { 'min-width': 0 } }, [el('b', { text: sub ? label(c) : c.name }), c.place ? el('small', { text: c.place }) : null]),
+        el('span', { class: 'd', text: dist(km(here, c)) })
+      ]);
+    }
     function list(title, items, emptyMsg) {
       res.innerHTML = '';
       if (title) res.appendChild(el('div', { class: 'csec', text: title }));
-      if (!items.length) { res.appendChild(el('div', { class: 'cnote', text: emptyMsg || 'Nothing found.' })); }
-      items.forEach(function (c) {
-        res.appendChild(el('button', { type: 'button', onclick: function () { s.close(); Kit.sfx('pop'); onPick(c); } }, [
-          el('span', { html: PIN, style: { color: 'var(--accent)', display: 'flex' } }),
-          el('span', { style: { 'min-width': 0 } }, [el('b', { text: c.name }), c.place ? el('small', { text: c.place }) : null]),
-          el('span', { class: 'd', text: dist(km(here, c)) })
-        ]));
-      });
-      if (inp.value.trim()) {
-        var custom = inp.value.trim();
-        res.appendChild(el('button', { type: 'button', onclick: function () { s.close(); onPick({ key: 'custom:' + custom.toLowerCase(), name: custom, place: '' }); } }, [
-          el('span', { html: Kit.icon('pencil'), style: { color: 'var(--text-3)', display: 'flex' } }),
-          el('span', null, [el('b', { text: 'Use "' + custom + '"' }), el('small', { text: 'Save it as a course name without a map location' })])
-        ]));
-      }
+      if (!items.length) res.appendChild(el('div', { class: 'cnote', text: emptyMsg || 'Nothing found.' }));
+      items.forEach(function (c) { res.appendChild(row(c, function () { venue(c); })); });
     }
     function loading(t) { res.innerHTML = ''; res.appendChild(el('div', { class: 'cnote', text: t })); }
     function doSearch() {
       var q = inp.value.trim(); if (!q) return;
       loading('Searching…');
-      searchName(q).then(function (r) { list('Search results', r, 'No places matched. You can still use the name you typed.'); })
-        .catch(function () { list('', [], "Couldn't reach the map service. You can still use the name you typed."); });
+      searchName(q).then(function (r) { list('Search results', r, 'No places matched. Tap "Use" above to name it yourself.'); })
+        .catch(function () { list('', [], "Couldn't reach the map service. Tap \"Use\" above to name it yourself."); });
     }
     go.addEventListener('click', doSearch);
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
     near.addEventListener('click', function () {
-      if (!navigator.geolocation) return loading('Location is not available on this device.');
+      if (!navigator.geolocation) return loading('Location is not available on this device. Type the course name instead.');
       loading('Finding where you are…');
       navigator.geolocation.getCurrentPosition(function (pos) {
         here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
         loading('Looking for mini golf nearby…');
         searchNear(here.lat, here.lon).then(function (r) {
           r.sort(function (a, b) { return km(here, a) - km(here, b); });
-          list('Within 25 miles', r, 'No mini golf courses found nearby. Try searching by name.');
-        }).catch(function () { list('', [], "Couldn't reach the map service. Try again, or search by name."); });
-      }, function () { loading('Location permission was denied. Search by name instead.'); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
+          list('Within 25 miles', r, 'No mini golf courses found nearby. Type the name instead.');
+        }).catch(function () { list('', [], "Couldn't reach the map service. Type the course name instead."); });
+      }, function () { loading("Couldn't get your location. Type the course name instead."); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
     });
     var played = playedCourses();
-    if (played.length) list('Courses you have played', played);
-    else res.appendChild(el('div', { class: 'cnote', text: 'Search for the course you are playing, or find courses near you.' }));
-    s = Kit.sheet({ title: 'Which course?', node: node });
+    if (played.length) {
+      res.appendChild(el('div', { class: 'csec', text: 'Courses you have played' }));
+      played.forEach(function (c) { res.appendChild(row(c, function () { s.close(); Kit.sfx('pop'); onPick(c); }, true)); });
+    } else res.appendChild(el('div', { class: 'cnote', text: 'Type the course name, search the map, or find courses near you.' }));
+    s = Kit.sheet({ title: 'Where are you playing?', node: node });
+  }
+
+  // Step 2: many places have more than one course (Pirate, Jungle, Front 18…)
+  function pickSub(v, onPick) {
+    var vkey = v.venue || v.key, nm = String(v.name || '').trim().toLowerCase();
+    // A typed name that matches a place you've played joins that place's records
+    var same = playedCourses().filter(function (c) { return (c.venue || c.key) === vkey || String(c.name || '').trim().toLowerCase() === nm; });
+    if (same.length && vkey.indexOf('custom:') === 0) { var real = same[0]; vkey = real.venue || real.key; v = { name: real.name, place: real.place, lat: real.lat, lon: real.lon }; }
+    var seenSub = {}, subs = same.filter(function (c) { var k = (c.sub || '').toLowerCase(); if (!c.sub || seenSub[k]) return false; seenSub[k] = 1; return true; });
+    var box = el('div', { class: 'cres' }), s;
+    function choose(sub) {
+      s.close(); Kit.sfx('pop');
+      var c = { key: sub ? vkey + '#' + sub.toLowerCase() : vkey, venue: vkey, name: v.name, sub: sub || '', place: v.place || '', lat: v.lat, lon: v.lon };
+      onPick(c);
+    }
+    subs.forEach(function (c) {
+      box.appendChild(el('button', { type: 'button', onclick: function () { choose(c.sub); } }, [
+        el('span', { html: Kit.icon('trophy'), style: { color: 'var(--accent)', display: 'flex' } }),
+        el('span', null, [el('b', { text: c.sub }), el('small', { text: 'Played before' })])
+      ]));
+    });
+    box.appendChild(el('button', { type: 'button', onclick: function () { choose(''); } }, [
+      el('span', { html: Kit.icon('check'), style: { color: 'var(--text-3)', display: 'flex' } }),
+      el('span', null, [el('b', { text: 'Only one course here' }), el('small', { text: 'Skip naming the course' })])
+    ]));
+    var inp = el('input', { class: 'input', maxlength: 24, placeholder: 'Course name, e.g. Pirate or Back 18', autocomplete: 'off' });
+    function add() { var t = inp.value.trim(); if (t) choose(t); }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') add(); });
+    var node = el('div', null, [
+      el('p', { class: 'muted', style: { 'margin-bottom': '10px' }, text: 'If this place has more than one course, pick or name the one you are playing. Records are kept for each course.' }),
+      box,
+      el('div', { class: 'csec', text: 'Add a course' }),
+      el('div', { class: 'csearch', style: { 'margin-top': '6px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: add })])
+    ]);
+    s = Kit.sheet({ title: v.name, node: node });
   }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   var S = null, undoStack = [], chosen = null;
   try { chosen = JSON.parse(localStorage.getItem('mg_last_course')); } catch (e) {}
-  function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (S && !S.over) Kit.resume.set('Hole ' + (S.hole + 1) + ' of ' + S.holes + (S.course ? ' · ' + S.course.name : '')); }
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (S && !S.over) Kit.resume.set('Hole ' + (S.hole + 1) + ' of ' + S.holes + (S.course ? ' · ' + label(S.course) : '')); }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
@@ -245,7 +294,7 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
       block.appendChild(el('div', { class: 'label', text: 'Course' }));
       var b = el('button', { type: 'button', class: 'course' }, [
         el('span', { class: 'pin', html: PIN }),
-        el('span', { class: 'grow', style: { 'min-width': 0 } }, [el('b', { text: chosen ? chosen.name : 'Pick a course' }), el('small', { text: chosen ? (chosen.place || 'Tap to change') : 'Search nearby or by name (optional)' })]),
+        el('span', { class: 'grow', style: { 'min-width': 0 } }, [el('b', { text: chosen ? label(chosen) : 'Pick a course' }), el('small', { text: chosen ? (chosen.place || 'Tap to change') : 'Search nearby or by name (optional)' })]),
         chosen ? el('span', { html: Kit.icon('close'), style: { display: 'flex', color: 'var(--text-3)' }, onclick: function (e) { e.stopPropagation(); chosen = null; localStorage.removeItem('mg_last_course'); paint(); } }) : el('span', { html: Kit.icon('right'), style: { display: 'flex', color: 'var(--text-3)' } })
       ]);
       b.addEventListener('click', function () { pickCourse(function (c) { chosen = c; localStorage.setItem('mg_last_course', JSON.stringify(c)); paint(); }); });
@@ -320,10 +369,10 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
     var worst = { v: 0 };
     S.players.forEach(function (p, i) { S.strokes[i].forEach(function (v, h) { if (v > worst.v) worst = { v: v, who: p.name, h: h }; }); });
     if (worst.v >= 6) hl.push('Toughest hole: ' + worst.who + ' needed ' + worst.v + ' on hole ' + (worst.h + 1));
-    if (S.course) hl.unshift('Played at ' + S.course.name + (S.course.place ? ', ' + S.course.place : ''));
+    if (S.course) hl.unshift('Played at ' + label(S.course) + (S.course.place ? ', ' + S.course.place : ''));
     var byHole = []; for (var h = 0; h < S.holes; h++) byHole.push(S.strokes.map(function (row) { return row[h] == null ? 0 : row[h]; }));
     Kit.record(KEY, {
-      started: S.started, mode: S.holes + ' holes' + (S.course ? ' · ' + S.course.name : ''), lowWins: true,
+      started: S.started, mode: S.holes + ' holes' + (S.course ? ' · ' + label(S.course) : ''), lowWins: true,
       players: S.players.map(function (p, i) { return { name: p.name, score: tot[i] }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: byHole.map(function (x, i) { return 'H' + (i + 1); }), scores: byHole },
@@ -333,7 +382,7 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
     savePars(); clearSave(); render();
     Kit.win({
       title: rank.length === 1 ? rank[0].score + ' strokes' : tie ? "It's a tie!" : rank[0].name + ' wins!',
-      sub: (S.course ? S.course.name + ' · ' : '') + 'Fewest strokes wins', rank: rank.length > 1 ? rank : null,
+      sub: (S.course ? label(S.course) + ' · ' : '') + 'Fewest strokes wins', rank: rank.length > 1 ? rank : null,
       againLabel: 'Play again', again: function () { start({ players: S.players, options: { holes: S.holes, cap: S.cap } }); },
       extra: [{ label: 'See the scorecard', onClick: function () {} }]
     });
@@ -373,7 +422,7 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
     }
     // Paper scorecard
     var card = el('div', { class: 'card' });
-    card.appendChild(el('div', { class: 'card-h' }, [el('h2', { text: S.course ? S.course.name : 'Mini Golf' }), el('small', { text: S.over ? 'final' : 'tap a box to jump there' })]));
+    card.appendChild(el('div', { class: 'card-h' }, [el('h2', { text: S.course ? label(S.course) : 'Mini Golf' }), el('small', { text: S.over ? 'final' : 'tap a box to jump there' })]));
     var tbl = el('table', { class: 'sc' }), hr = el('tr', null, [el('th', { text: 'HOLE' })]);
     for (var h = 0; h < S.holes; h++) hr.appendChild(el('th', { class: h === S.hole && !S.over ? 'cur' : '', text: String(h + 1) }));
     hr.appendChild(el('th', { text: 'TOT' }));
@@ -404,33 +453,39 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
         snapshot(); S.par[S.hole] = v; savePars(); save(); s.close(); render();
       } }));
     });
-    s = Kit.sheet({ title: 'Par for hole ' + (S.hole + 1), node: el('div', null, [grid, el('p', { class: 'muted', style: { 'margin-top': '10px' }, text: S.course ? 'Saved for ' + S.course.name + ' next time.' : 'Pick a course in setup to remember pars.' })]) });
+    s = Kit.sheet({ title: 'Par for hole ' + (S.hole + 1), node: el('div', null, [grid, el('p', { class: 'muted', style: { 'margin-top': '10px' }, text: S.course ? 'Saved for ' + label(S.course) + ' next time.' : 'Pick a course in setup to remember pars.' })]) });
   }
 
   // ── Courses & records ─────────────────────────────────────────────────────
   function showCourses() {
     var list = []; try { list = GameHistory.load(KEY); } catch (e) {}
-    var by = {};
+    var venues = {};
     list.forEach(function (e) {
-      var k = e.course ? e.course.key : 'none';
-      by[k] = by[k] || { course: e.course, rounds: 0, best: {}, last: 0 };
-      var g = by[k]; g.rounds++; g.last = Math.max(g.last, e._date || 0);
+      var c = e.course, vk = c ? (c.venue || c.key) : 'none', ck = c ? c.key : 'none';
+      var v = venues[vk] = venues[vk] || { course: c, courses: {}, last: 0 };
+      v.last = Math.max(v.last, e._date || 0);
+      var g = v.courses[ck] = v.courses[ck] || { sub: c ? c.sub : '', rounds: 0, best: {} };
+      g.rounds++;
       (e.players || []).forEach(function (p) {
         var key = p.name + '|' + (e.holes || '');
         if (!g.best[key] || p.score < g.best[key].score) g.best[key] = { name: p.name, score: p.score, holes: e.holes };
       });
     });
     var box = el('div', { class: 'recs' });
-    var keys = Object.keys(by).sort(function (a, b) { return by[b].last - by[a].last; });
+    var keys = Object.keys(venues).sort(function (a, b) { return venues[b].last - venues[a].last; });
     if (!keys.length) box.appendChild(el('p', { class: 'muted', text: 'Finish a round to start your course records.' }));
     keys.forEach(function (k) {
-      var g = by[k], bests = Object.keys(g.best).map(function (x) { return g.best[x]; }).sort(function (a, b) { return a.score - b.score; });
+      var v = venues[k], c = v.course;
       var r = el('div', { class: 'rec' }, [
-        el('b', { text: g.course ? g.course.name : 'No course picked' }),
-        el('small', { text: (g.course && g.course.place ? g.course.place + ' · ' : '') + g.rounds + (g.rounds === 1 ? ' round' : ' rounds') + ' · last ' + new Date(g.last).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) }),
-        el('div', { class: 'best', text: 'Best: ' + bests.slice(0, 4).map(function (b) { return b.name + ' ' + b.score + (b.holes ? ' (' + b.holes + ')' : ''); }).join(' · ') })
+        el('b', { text: c ? c.name : 'No course picked' }),
+        el('small', { text: (c && c.place ? c.place + ' · ' : '') + 'last played ' + new Date(v.last).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) })
       ]);
-      if (g.course && g.course.lat != null) r.appendChild(el('a', { href: 'https://maps.apple.com/?ll=' + g.course.lat + ',' + g.course.lon + '&q=' + encodeURIComponent(g.course.name), target: '_blank', rel: 'noopener', class: 'btn btn-soft btn-sm', style: { 'margin-top': '8px' }, html: PIN + '<span>Open in Maps</span>' }));
+      Object.keys(v.courses).forEach(function (ck) {
+        var g = v.courses[ck], bests = Object.keys(g.best).map(function (x) { return g.best[x]; }).sort(function (a, b) { return a.score - b.score; });
+        r.appendChild(el('div', { class: 'best', html: '<b style="display:inline">' + Kit.esc(g.sub || (Object.keys(v.courses).length > 1 ? 'Main course' : 'Course')) + '</b> · ' + g.rounds + (g.rounds === 1 ? ' round' : ' rounds') +
+          '<br>Best: ' + Kit.esc(bests.slice(0, 4).map(function (b) { return b.name + ' ' + b.score + (b.holes ? ' (' + b.holes + ' holes)' : ''); }).join(' · ')) }));
+      });
+      if (c && c.lat != null) r.appendChild(el('a', { href: 'https://maps.apple.com/?ll=' + c.lat + ',' + c.lon + '&q=' + encodeURIComponent(c.name), target: '_blank', rel: 'noopener', class: 'btn btn-soft btn-sm', style: { 'margin-top': '8px' }, html: PIN + '<span>Open in Maps</span>' }));
       box.appendChild(r);
     });
     Kit.sheet({ title: 'Courses & records', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
