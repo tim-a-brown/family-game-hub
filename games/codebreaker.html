@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Code Breaker</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+.stage{padding-bottom:calc(var(--safe-b) + 10px);}
+.cb{--pg:30px;--rh:40px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;-webkit-user-select:none;user-select:none;}
+.cb.p5{--pg:28px;--rh:38px;}
+.top{display:flex;align-items:center;gap:8px;min-height:38px;}
+.top .turn{flex:1;margin:0;min-height:38px;font-size:1rem;line-height:1.15;text-align:center;}
+.top .turn small{display:block;font-size:.74rem;font-weight:800;color:var(--text-3);}
+.top .turn .dot{flex:none;}
+.scores{padding:2px 2px 2px;}
+.score{min-width:0;flex:1 1 0;flex-direction:row;justify-content:center;gap:8px;padding:6px 10px;}
+.score .nm{max-width:none;}
+.score .pt{font-size:1.2rem;}
+.score .role{font-size:.64rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+.score .col{display:flex;flex-direction:column;align-items:flex-start;min-width:0;line-height:1.1;}
+.score .col .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;}
+
+/* ── Board ─────────────────────────────────────────────────────────── */
+.bd{position:relative;border-radius:20px;padding:8px 10px 10px;}
+.bd::after{content:"";position:absolute;inset:4px;border-radius:16px;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.1);}
+.lane{display:grid;grid-template-columns:22px 1fr 38px;align-items:center;column-gap:8px;}
+.holes{display:flex;justify-content:space-around;align-items:center;gap:4px;}
+.num{font-family:var(--display);font-size:.8rem;color:rgba(255,236,210,.42);text-align:center;}
+/* Code row + shield */
+.coderow{position:relative;height:calc(var(--rh) + 14px);margin-bottom:6px;padding:0 0 4px;border-bottom:2px solid rgba(0,0,0,.35);box-shadow:0 1px 0 rgba(255,255,255,.08);}
+.coderow .lane{height:100%;}
+.coderow .tag{font-size:.56rem;font-weight:900;letter-spacing:.08em;color:rgba(255,236,210,.45);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg);justify-self:center;}
+.coderow .lock{justify-self:center;color:rgba(255,236,210,.4);}
+.coderow .lock .ico{width:18px;height:18px;}
+.shield{position:absolute;left:28px;right:44px;top:2px;bottom:6px;border-radius:10px 10px 6px 6px;transform-origin:50% 0;z-index:3;
+  background:linear-gradient(180deg,#3d4350 0%,#272b35 55%,#1b1e26 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.4),0 4px 8px rgba(0,0,0,.5);
+  display:grid;place-items:center;transition:transform .75s cubic-bezier(.3,1.35,.5,1),opacity .4s;backface-visibility:visible;}
+.shield span{font-family:var(--display);font-size:1rem;letter-spacing:.32em;color:rgba(255,255,255,.18);text-shadow:0 -1px 0 rgba(0,0,0,.6);padding-left:.32em;}
+.shield::before{content:"";position:absolute;left:8%;right:8%;top:4px;height:6px;border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,.18),transparent);}
+.shield.smoked{background:linear-gradient(180deg,rgba(60,68,84,.55),rgba(25,28,36,.6));}
+.shield.smoked span{color:rgba(255,255,255,.35);}
+.shield.open{transform:perspective(420px) rotateX(-84deg) translateY(-6px);opacity:.92;}
+.shield.flip{animation:flipup .9s cubic-bezier(.3,1.3,.5,1) both;}
+@keyframes flipup{0%{transform:none;}35%{transform:perspective(420px) rotateX(12deg);}100%{transform:perspective(420px) rotateX(-84deg) translateY(-6px);}}
+.shield.shut{animation:shut .55s cubic-bezier(.5,0,.6,1.4) both;}
+@keyframes shut{from{transform:perspective(420px) rotateX(-84deg) translateY(-6px);}to{transform:none;}}
+
+/* Guess rows */
+.rows{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;border-radius:12px;scroll-behavior:smooth;}
+.rows::-webkit-scrollbar{display:none;}
+.row{height:var(--rh);position:relative;border-radius:12px;transition:background .25s;}
+.row + .row{margin-top:1px;}
+.row::after{content:"";position:absolute;left:30px;right:46px;bottom:-1px;height:1px;background:rgba(0,0,0,.22);box-shadow:0 1px 0 rgba(255,255,255,.05);}
+.row.cur{background:rgba(255,230,170,.13);box-shadow:inset 0 0 0 2px rgba(255,214,120,.45);}
+.row.cur .num{color:#ffd88a;}
+.row.fut .hole{opacity:.6;}
+.hole{position:relative;width:var(--pg);height:var(--pg);flex:none;border-radius:50%;display:grid;place-items:center;border:0;padding:0;background:none;}
+.hole::before{content:"";width:42%;height:42%;border-radius:50%;background:radial-gradient(circle at 50% 35%,#0c0805,#1d130c);box-shadow:inset 0 2px 3px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.14);}
+button.hole{cursor:pointer;}
+.hole.act::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #ffd88a;box-shadow:0 0 10px rgba(255,214,120,.7);animation:glow 1s ease-in-out infinite alternate;}
+@keyframes glow{from{opacity:.5;transform:scale(.94);}to{opacity:1;transform:scale(1.04);}}
+.hole .peg{position:absolute;inset:0;}
+
+/* Pegs: glossy plastic heads, seen from above */
+.peg{--c:#e8323c;--k:rgba(0,0,0,.5);width:var(--pg);height:var(--pg);border-radius:50%;display:grid;place-items:center;
+  background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,.95) 0 9%,rgba(255,255,255,0) 24%),
+    radial-gradient(circle at 66% 76%,rgba(255,255,255,.28) 0 6%,rgba(255,255,255,0) 20%),
+    radial-gradient(circle at 44% 40%,color-mix(in srgb,var(--c) 62%,#fff) 0%,var(--c) 46%,color-mix(in srgb,var(--c) 55%,#000) 100%);
+  box-shadow:0 3px 4px rgba(0,0,0,.55),inset 0 -2px 3px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.25);}
+.peg svg{width:52%;height:52%;fill:none;stroke:var(--k);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;display:none;}
+.sym .peg svg{display:block;}
+.peg.blank{background:radial-gradient(circle at 40% 35%,#6b5a4b,#3d3128 70%,#2a211b);box-shadow:inset 0 2px 4px rgba(0,0,0,.6),0 0 0 2px rgba(255,236,210,.25);}
+.peg.blank::after{content:"";width:46%;height:3px;border-radius:2px;background:rgba(255,236,210,.45);}
+.peg.pop{animation:pegpop .3s var(--spring);}
+@keyframes pegpop{0%{transform:scale(.3) translateY(-8px);opacity:.3;}100%{transform:none;opacity:1;}}
+
+/* Key pegs */
+.keys{display:grid;grid-template-columns:repeat(2,12px);grid-auto-rows:12px;gap:3px;justify-content:center;align-content:center;}
+.keys.k5{grid-template-columns:repeat(3,10px);grid-auto-rows:10px;gap:2px;}
+.kh{position:relative;border-radius:50%;display:grid;place-items:center;}
+.kh::before{content:"";width:46%;height:46%;border-radius:50%;background:#0c0805;box-shadow:inset 0 1px 2px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.12);}
+.kp{position:absolute;inset:0;border-radius:50%;}
+.kp.b{background:radial-gradient(circle at 35% 30%,#8a8f99 0 6%,#2b2e35 30%,#08090c 100%);box-shadow:0 1px 2px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.22);}
+.kp.w{background:radial-gradient(circle at 35% 30%,#fff 0 12%,#eeeae0 40%,#a9a294 100%);box-shadow:0 1px 2px rgba(0,0,0,.7);}
+.kp.pop{animation:kpop .28s var(--spring);}
+@keyframes kpop{0%{transform:scale(2.2);opacity:0;}100%{transform:none;opacity:1;}}
+.row.solved{background:rgba(120,255,170,.12);box-shadow:inset 0 0 0 2px rgba(120,255,170,.45);}
+
+/* ── Tray ──────────────────────────────────────────────────────────── */
+.tray{border-radius:20px;padding:7px;}
+.tray-in{position:relative;border-radius:14px;padding:9px 8px 10px;display:flex;flex-direction:column;gap:9px;}
+.pal{display:flex;justify-content:center;gap:4px;flex-wrap:nowrap;}
+.pal .tp{--pg:36px;flex:0 1 46px;height:46px;min-width:0;border:0;padding:0;background:none;display:grid;place-items:center;border-radius:50%;touch-action:none;position:relative;}
+.pal .tp::before{content:"";position:absolute;width:40px;height:40px;max-width:100%;aspect-ratio:1;border-radius:50%;background:rgba(0,0,0,.28);box-shadow:inset 0 3px 6px rgba(0,0,0,.55);}
+.cb.c9 .pal .tp{--pg:31px;}
+.cb.c9 .pal .tp::before{width:35px;height:35px;}
+.pal .tp .peg{position:relative;transition:transform .2s var(--spring),opacity .2s;}
+.pal .tp:active .peg{transform:scale(.9);}
+.pal .tp.used .peg{opacity:.28;filter:saturate(.4);}
+.acts{display:flex;gap:8px;}
+.acts .btn{min-height:46px;}
+.acts .grow{flex:1;}
+.acts .btn-soft .ico{width:18px;height:18px;}
+.acts .sq{flex:none;width:52px;padding:0;}
+.res{display:flex;flex-direction:column;gap:8px;align-items:stretch;text-align:center;}
+.res .msg{font-weight:900;font-size:1.02rem;color:#fff;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.4);}
+.res .msg small{display:block;font-weight:700;font-size:.82rem;color:rgba(255,255,255,.75);margin-top:2px;}
+.think{display:flex;align-items:center;justify-content:center;gap:10px;min-height:46px;font-weight:900;color:rgba(255,255,255,.9);}
+.think .ico{width:22px;height:22px;}
+.think i{display:inline-block;width:6px;height:6px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-3px);}}
+.legend{display:flex;justify-content:center;gap:14px;font-size:.72rem;font-weight:800;color:var(--text-3);}
+.legend span{display:flex;align-items:center;gap:5px;}
+.legend i{position:relative;width:11px;height:11px;border-radius:50%;}
+
+/* Drag ghost */
+.dragpeg{position:fixed;z-index:300;pointer-events:none;--pg:40px;margin:-20px 0 0 -20px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));}
+.hole.over::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #fff;}
+
+/* Pass-the-phone screen */
+.privacy{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:90px 28px 40px;text-align:center;
+  background:radial-gradient(120% 80% at 50% 30%,#2e2420,#120d0b);animation:rise .3s var(--ease) both;}
+.privacy .ph{width:84px;height:84px;border-radius:24px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:#ffd88a;}
+.privacy .ph .ico{width:44px;height:44px;}
+.privacy h2{font-family:var(--display);font-weight:400;font-size:2rem;}
+.privacy p{color:var(--text-2);max-width:300px;line-height:1.4;}
+.privacy .btn{min-width:240px;}
+.rules .kx{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin:0 2px;}
+.rules .kx.b{background:#111;box-shadow:0 0 0 1px #888;}
+.rules .kx.w{background:#f2eee4;box-shadow:0 0 0 1px #888;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var KEY = 'codebreaker', SAVE = 'codebreaker_state', SYM = 'codebreaker_symbols';
+
+  // Peg colours. Each also has a shape for colour-blind play (menu toggle).
+  var PEGS = [
+    { n: 'Red', c: '#e8323c', k: 'rgba(0,0,0,.5)', s: '<path d="M12 4.5 20 18.5H4z"/>' },
+    { n: 'Orange', c: '#ff8a1f', k: 'rgba(0,0,0,.5)', s: '<rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/>' },
+    { n: 'Yellow', c: '#ffd23a', k: 'rgba(0,0,0,.5)', s: '<circle cx="12" cy="12" r="6.5"/>' },
+    { n: 'Green', c: '#27b856', k: 'rgba(0,0,0,.55)', s: '<path d="M12 4.5v15M4.5 12h15"/>' },
+    { n: 'Blue', c: '#2f78ff', k: 'rgba(255,255,255,.85)', s: '<path d="M12 3.5 20.5 12 12 20.5 3.5 12z"/>' },
+    { n: 'Purple', c: '#9a4dff', k: 'rgba(255,255,255,.85)', s: '<path d="M12 3.8l2.5 5.2 5.6.7-4.1 3.9 1.1 5.6L12 16.4l-5.1 2.8 1.1-5.6-4.1-3.9 5.6-.7z"/>' },
+    { n: 'Pink', c: '#ff6fb5', k: 'rgba(0,0,0,.5)', s: '<path d="M12 19.5s-7.5-4.6-7.5-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7.5 1.9c0 5-7.5 9.6-7.5 9.6z"/>' },
+    { n: 'White', c: '#f2efe8', k: 'rgba(0,0,0,.5)', s: '<path d="M6 6l12 12M18 6 6 18"/>' }
+  ];
+  var DIFF = {
+    easy: { label: 'Easy', pegs: 4, colors: 6, dup: false, rows: 10 },
+    classic: { label: 'Classic', pegs: 4, colors: 6, dup: true, rows: 10 },
+    hard: { label: 'Hard', pegs: 5, colors: 8, dup: true, rows: 12 }
+  };
+  var MODES = { solo: 'Solo', '2p': 'Two players', watch: 'Computer breaks' };
+
+  Kit.init({
+    id: KEY,
+    mark: false,
+    theme: { wood: ['#5a3b26', '#33200f'], felt: ['#5b2230', '#3d1420', '#2b0d16'] },
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'eye', label: function () { return symOn() ? 'Colour shapes: on' : 'Colour shapes: off'; }, onClick: function () { setSym(!symOn()); Kit.toast(symOn() ? 'Shapes on every peg' : 'Shapes hidden'); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Code Breaker: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Crack the secret colour code in as few guesses as you can.</p>' +
+      '<h3>The secret code</h3><ul>' +
+      '<li>The codemaker hides a row of coloured pegs behind the shield.</li>' +
+      '<li><b>Classic:</b> 4 pegs from 6 colours. Colours can repeat. You get 10 guesses.</li>' +
+      '<li><b>Easy:</b> 4 pegs, 6 colours, no repeats. <b>Hard:</b> 5 pegs, 8 colours, 12 guesses.</li>' +
+      '<li><b>Blanks</b> (optional): an empty spot counts as one more "colour".</li></ul>' +
+      '<h3>Making a guess</h3><ul>' +
+      '<li>Tap a colour in the tray: it goes into the glowing hole. Tap a hole to pick it, tap again to change its colour. You can also drag pegs.</li>' +
+      '<li>When the row is full, tap <b>Check</b>.</li></ul>' +
+      '<h3>The little pegs</h3><ul>' +
+      '<li><span class="kx b"></span> <b>Black</b>: one of your pegs is the right colour in the right spot.</li>' +
+      '<li><span class="kx w"></span> <b>White</b>: one of your pegs is the right colour but in the wrong spot.</li>' +
+      '<li>No little peg: that colour is not needed there at all (or not that many of it).</li>' +
+      '<li>The little pegs do not tell you <i>which</i> of your pegs they mean. That is the puzzle!</li>' +
+      '<li>Repeats count fairly: guess two reds when the code has one red, and only one of them earns a little peg.</li></ul>' +
+      '<p>Four black pegs (five on Hard) means you cracked it. The shield flips open either way at the end.</p>' +
+      '<h3>Two players</h3><ul>' +
+      '<li>One player sets the code in secret while the other looks away, then hands over the phone.</li>' +
+      '<li>The codemaker scores <b>1 point for every guess</b> the breaker makes, plus <b>1 bonus point</b> if the code is never cracked.</li>' +
+      '<li>Swap roles every round. Play 2, 4 or 6 rounds; most points wins.</li></ul>' +
+      '<h3>Computer breaks</h3><p>You set a code and watch the computer crack it, one guess at a time. It plays a clever strategy: on Classic it never needs more than 5 guesses.</p>' +
+      '<h3>Tips</h3><ul><li>Start with something like two of one colour and two of another.</li><li>Every new guess should fit all the clues so far.</li><li>Colour shapes in the menu add a symbol to every peg.</li></ul>'
+  });
+
+  // ── Preferences ──────────────────────────────────────────────────────────
+  function symOn() { try { return localStorage.getItem(SYM) === '1'; } catch (e) { return false; } }
+  function setSym(on) { try { localStorage.setItem(SYM, on ? '1' : '0'); } catch (e) {} document.body.classList.toggle('sym', on); }
+  document.body.classList.toggle('sym', symOn());
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = {mode, diff, blanks, P (pegs), C (colours), K (symbols incl. blank), dup, R (rows),
+  //   players:[{name,cpu}], total (rounds), round, scores:[a,b], log:[{maker,breaker,n,cracked,code}],
+  //   maker, breaker, code:[], guesses:[{g:[],b,w}], cur:[], act, stack:[{i,prev}],
+  //   phase:'make'|'break'|'reveal'|'over', pass:null|'make'|'break', perm (solver), started}
+  var S = null, tok = 0, busy = false, flash = -1, keyAnim = -1, shieldAnim = '';
+  function later(fn, ms) { var t = tok; setTimeout(function () { if (t === tok && S) fn(); }, ms); }
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase === 'over') return;
+    var lbl = DIFF[S.diff].label;
+    if (S.mode === '2p') lbl = 'Round ' + (S.round + 1) + ' of ' + S.total + ' · ' + lbl;
+    else if (S.phase === 'break') lbl = 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R + ' · ' + lbl;
+    Kit.resume.set(lbl);
+  }
+  function clearSave() { tok++; busy = false; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  function showSetup() {
+    S = null; tok++; busy = false;
+    Kit.setup(app, {
+      modes: [
+        { id: 'solo', icon: 'user', title: 'Crack the code', desc: 'The computer hides a code. Can you break it?' },
+        { id: '2p', icon: 'users', title: 'Two players', desc: 'Take turns making and breaking codes' },
+        { id: 'watch', icon: 'bot', title: 'Computer breaks', desc: 'You set a code, watch the computer crack it' }
+      ],
+      options: [
+        { id: 'diff', label: 'Difficulty', value: 'classic', choices: [['easy', 'Easy'], ['classic', 'Classic'], ['hard', 'Hard']] },
+        { id: 'blanks', label: 'Blanks allowed in the code', value: 'no', choices: [['no', 'No'], ['yes', 'Yes']] },
+        { id: 'rounds', label: 'Rounds', value: 2, choices: [[2, '2'], [4, '4'], [6, '6']], when: function (m) { return m === '2p'; } }
+      ],
+      players: {
+        min: 1, max: 2,
+        range: function (m) { return m === 'solo' ? [1, 1] : [2, 2]; },
+        cpu: function (m) { return m === 'watch' ? 'seats' : false; }
+      },
+      onStart: function (cfg) {
+        var d = DIFF[cfg.options.diff] || DIFF.classic, blanks = cfg.options.blanks === 'yes';
+        S = {
+          mode: cfg.mode, diff: cfg.options.diff in DIFF ? cfg.options.diff : 'classic', blanks: blanks,
+          P: d.pegs, C: d.colors, K: d.colors + (blanks ? 1 : 0), dup: d.dup, R: d.rows,
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
+          total: cfg.mode === '2p' ? (+cfg.options.rounds || 2) : 1,
+          round: 0, scores: [0, 0], log: [], started: Date.now()
+        };
+        Kit.gameStart();
+        startRound();
+      }
+    });
+  }
+
+  function emptyRow() { var a = []; for (var i = 0; i < S.P; i++) a.push(null); return a; }
+  function randomCode() {
+    var out = [], pool = [];
+    for (var c = 0; c < S.K; c++) pool.push(c);
+    for (var i = 0; i < S.P; i++) {
+      if (S.dup) out.push(Math.floor(Math.random() * S.K));
+      else out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    return out;
+  }
+  function startRound() {
+    tok++; busy = false;
+    S.guesses = []; S.cur = emptyRow(); S.act = 0; S.stack = []; S.result = null; S.perm = null;
+    if (S.mode === 'solo') { S.maker = -1; S.breaker = 0; }
+    else if (S.mode === 'watch') { S.maker = 0; S.breaker = 1; }
+    else { S.maker = S.round % 2; S.breaker = 1 - S.maker; }
+    if (S.maker < 0) { S.code = randomCode(); S.phase = 'break'; S.pass = null; shieldAnim = ''; }
+    else { S.code = null; S.phase = 'make'; S.pass = S.mode === '2p' ? 'make' : null; shieldAnim = 'open'; }
+    save(); render();
+    if (S.phase === 'break') Kit.sfx('deal');
+  }
+
+  // ── Scoring: standard Mastermind feedback, counting repeats fairly ──────
+  function feedback(code, guess, K) {
+    var b = 0, w = 0, cc = [], gc = [], i;
+    for (i = 0; i < K; i++) { cc.push(0); gc.push(0); }
+    for (i = 0; i < code.length; i++) {
+      if (code[i] === guess[i]) b++;
+      else { cc[code[i]]++; gc[guess[i]]++; }
+    }
+    for (i = 0; i < K; i++) w += Math.min(cc[i], gc[i]);
+    return [b, w];
+  }
+
+  // ── Computer codebreaker ────────────────────────────────────────────────
+  // Knuth's minimax: pick the guess whose worst-case answer leaves the fewest
+  // possible codes (prefer guesses that could be the code). On Classic it
+  // searches every code and never needs more than 5 guesses. On bigger boards
+  // it searches a random sample, which still solves Hard in about 6 or 7.
+  // It works on a shuffled copy of the colours, so its games look different
+  // each time without changing how well it plays.
+  function Solver(P, K, dup) {
+    var all = [], n = 0;
+    (function gen(pre, used) {
+      if (pre.length === P) { all.push(pre.slice()); return; }
+      for (var c = 0; c < K; c++) { if (!dup && used[c]) continue; pre.push(c); used[c] = 1; gen(pre, used); pre.pop(); used[c] = 0; }
+    })([], {});
+    n = all.length;
+    var flat = new Uint8Array(n * P);
+    all.forEach(function (a, i) { for (var j = 0; j < P; j++) flat[i * P + j] = a[j]; });
+    var cc = new Int32Array(K), gc = new Int32Array(K);
+    function fb(a, b) { // indices into flat; returns b*10+w
+      var bl = 0, w = 0, i, x, y;
+      for (i = 0; i < K; i++) { cc[i] = 0; gc[i] = 0; }
+      for (i = 0; i < P; i++) { x = flat[a * P + i]; y = flat[b * P + i]; if (x === y) bl++; else { cc[x]++; gc[y]++; } }
+      for (i = 0; i < K; i++) w += cc[i] < gc[i] ? cc[i] : gc[i];
+      return bl * 10 + w;
+    }
+    function index(code) { for (var i = 0; i < n; i++) { var ok = true; for (var j = 0; j < P; j++) if (flat[i * P + j] !== code[j]) { ok = false; break; } if (ok) return i; } return -1; }
+    var cand = []; for (var i = 0; i < n; i++) cand.push(i);
+    function sample(arr, k) { if (arr.length <= k) return arr.slice(); var a = arr.slice(), out = []; for (var i = 0; i < k; i++) { var j = i + Math.floor(Math.random() * (a.length - i)); var t = a[i]; a[i] = a[j]; a[j] = t; out.push(a[i]); } return out; }
+    var LIMIT = 1.8e6;
+    return {
+      size: n,
+      left: function () { return cand.length; },
+      add: function (code, b, w) {
+        var gi = index(code), key = b * 10 + w;
+        cand = cand.filter(function (c) { return fb(c, gi) === key; });
+      },
+      next: function (first) {
+        if (cand.length <= 2) return all[cand[0]].slice();
+        if (first) {
+          var f = []; for (var i = 0; i < P; i++) f.push(dup ? Math.min(K - 1, Math.floor(i / 2)) : i);
+          return f;
+        }
+        var pool, targets = cand;
+        if (n * cand.length <= LIMIT) pool = null; // every code (Knuth)
+        else {
+          targets = sample(cand, Math.min(cand.length, 1200));
+          var per = Math.max(60, Math.floor(LIMIT / targets.length));
+          var fromCand = sample(cand, Math.min(cand.length, Math.floor(per * 0.6)));
+          var rest = []; for (var r = 0; r < per - fromCand.length; r++) rest.push(Math.floor(Math.random() * n));
+          pool = fromCand.concat(rest);
+        }
+        var inCand = new Uint8Array(n); cand.forEach(function (c) { inCand[c] = 1; });
+        var best = -1, bestW = Infinity, bestIn = 0, counts = new Int32Array(60);
+        var len = pool ? pool.length : n;
+        for (var p = 0; p < len; p++) {
+          var g = pool ? pool[p] : p;
+          counts.fill(0);
+          var worst = 0;
+          for (var t = 0; t < targets.length; t++) { var k = fb(targets[t], g); var v = ++counts[k]; if (v > worst) { worst = v; if (worst > bestW) break; } }
+          var isIn = inCand[g];
+          if (worst < bestW || (worst === bestW && isIn && !bestIn)) { bestW = worst; best = g; bestIn = isIn; }
+        }
+        return all[best].slice();
+      }
+    };
+  }
+  var solver = null;
+  function shuffled(k) { var a = []; for (var i = 0; i < k; i++) a.push(i); for (i = k - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function ensureSolver() {
+    if (!S.perm) S.perm = shuffled(S.K);
+    if (solver && solver.key === [S.P, S.K, S.dup, S.perm.join('')].join('/') + S.guesses.length) return;
+    solver = Solver(S.P, S.K, S.dup);
+    var inv = []; S.perm.forEach(function (c, i) { inv[c] = i; });
+    S.guesses.forEach(function (gr) { solver.add(gr.g.map(function (c) { return inv[c]; }), gr.b, gr.w); });
+    solver.key = [S.P, S.K, S.dup, S.perm.join('')].join('/') + S.guesses.length;
+  }
+  function cpuTurn() {
+    if (!S || S.phase !== 'break' || S.pass || !S.players[S.breaker] || !S.players[S.breaker].cpu || busy) return;
+    busy = true; render();
+    later(function () {
+      ensureSolver();
+      var g = solver.next(S.guesses.length === 0).map(function (c) { return S.perm[c]; });
+      // Place the pegs one by one so you can follow along
+      g.forEach(function (c, i) {
+        later(function () { S.cur[i] = c; S.act = i; flash = i; Kit.sfx('tap'); render(); }, i * 230);
+      });
+      later(function () { busy = false; submit(true); }, g.length * 230 + 380);
+    }, 650 + Math.random() * 450);
+  }
+
+  // ── Human input ─────────────────────────────────────────────────────────
+  function myTurn() {
+    if (!S || busy || S.pass) return false;
+    if (S.phase === 'make') return true;
+    return S.phase === 'break' && !(S.players[S.breaker] && S.players[S.breaker].cpu);
+  }
+  function rowUses(c, except) { for (var i = 0; i < S.P; i++) if (i !== except && S.cur[i] === c) return true; return false; }
+  function place(i, c) {
+    if (!myTurn()) return;
+    if (!S.dup && rowUses(c, i)) { Kit.toast('No repeats on Easy'); Kit.haptic('error'); return; }
+    S.stack.push({ i: i, prev: S.cur[i] });
+    S.cur[i] = c; flash = i;
+    // Move the cursor to the next empty hole
+    for (var k = 1; k <= S.P; k++) { var j = (i + k) % S.P; if (S.cur[j] == null) { S.act = j; break; } }
+    if (S.cur.every(function (x) { return x != null; })) S.act = i;
+    Kit.sfx('tap'); Kit.haptic('light');
+    save(); render();
+  }
+  function tapHole(i) {
+    if (!myTurn()) return;
+    if (S.act !== i) { S.act = i; Kit.sfx('tick'); render(); if (S.cur[i] != null) return; return; }
+    // Tapping the glowing hole again changes its colour
+    var c = S.cur[i] == null ? -1 : S.cur[i];
+    for (var k = 1; k <= S.K; k++) { var nc = (c + k) % S.K; if (S.dup || !rowUses(nc, i)) { S.stack.push({ i: i, prev: S.cur[i] }); S.cur[i] = nc; flash = i; Kit.sfx('tap'); Kit.haptic('light'); save(); render(); return; } }
+  }
+  function tapColour(c) {
+    if (!myTurn()) return;
+    var i = S.act == null ? 0 : S.act;
+    place(i, c);
+  }
+  function undo() {
+    if (!S || !myTurn() || !S.stack || !S.stack.length) return Kit.toast(S && S.phase === 'break' && S.guesses.length && !S.stack.length ? 'Checked guesses stay on the board' : 'Nothing to undo');
+    var u = S.stack.pop();
+    S.cur[u.i] = u.prev; S.act = u.i;
+    Kit.sfx('whoosh'); save(); render();
+  }
+  function clearRow() {
+    if (!myTurn()) return;
+    for (var i = S.P - 1; i >= 0; i--) if (S.cur[i] != null) S.stack.push({ i: i, prev: S.cur[i] });
+    S.cur = emptyRow(); S.act = 0; Kit.sfx('whoosh'); save(); render();
+  }
+  function randomFill() {
+    if (!myTurn()) return;
+    var r = randomCode();
+    for (var i = 0; i < S.P; i++) S.stack.push({ i: i, prev: S.cur[i] });
+    S.cur = r; S.act = 0; Kit.sfx('roll'); Kit.haptic('light'); save(); render();
+  }
+  function lockCode() {
+    if (!myTurn() || S.phase !== 'make' || S.cur.some(function (x) { return x == null; })) return;
+    S.code = S.cur.slice(); S.cur = emptyRow(); S.act = 0; S.stack = [];
+    S.phase = 'break';
+    Kit.sfx('chip'); Kit.haptic('medium');
+    shieldAnim = 'shut';
+    if (S.mode === '2p') {
+      busy = true; save(); render();
+      later(function () { busy = false; S.pass = 'break'; save(); render(); }, 900);
+    } else {
+      save(); render();
+      later(cpuTurn, 700);
+    }
+  }
+
+  function submit(byCpu) {
+    if (!S || S.phase !== 'break' || (!byCpu && !myTurn())) return;
+    if (S.cur.some(function (x) { return x == null; })) { Kit.toast('Fill every hole first'); return; }
+    var g = S.cur.slice(), f = feedback(S.code, g, S.K);
+    S.guesses.push({ g: g, b: f[0], w: f[1] });
+    S.cur = emptyRow(); S.act = 0; S.stack = [];
+    var row = S.guesses.length - 1, n = f[0] + f[1];
+    busy = true; keyAnim = row;
+    Kit.sfx('chip');
+    var cracked = f[0] === S.P, out = cracked || S.guesses.length >= S.R;
+    if (out) { S.phase = 'reveal'; S.result = { cracked: cracked, n: S.guesses.length }; }
+    save(); render();
+    // Key pegs pop in one by one
+    for (var k = 0; k < n; k++) (function (k) {
+      later(function () {
+        var holes = document.querySelectorAll('.row[data-r="' + row + '"] .kh');
+        if (holes[k]) holes[k].appendChild(el('i', { class: 'kp pop ' + (k < f[0] ? 'b' : 'w') }));
+        Kit.sfx('tick'); Kit.haptic('tick');
+      }, 260 + k * 190);
+    })(k);
+    later(function () {
+      keyAnim = -1; busy = false;
+      if (out) return endRound();
+      if (n === 0) Kit.toast('None of those colours are in the code');
+      render();
+      if (S.players[S.breaker] && S.players[S.breaker].cpu) cpuTurn();
+    }, 300 + n * 190 + 200);
+  }
+
+  // ── Round & game end ─────────────────────────────────────────────────────
+  function endRound() {
+    var r = S.result, breaker = S.players[S.breaker], maker = S.maker >= 0 ? S.players[S.maker] : null;
+    var pts = r.n + (r.cracked ? 0 : 1);
+    if (maker) S.scores[S.maker] += pts;
+    S.log.push({ maker: S.maker, breaker: S.breaker, n: r.n, cracked: r.cracked, pts: pts, code: S.code.slice() });
+    shieldAnim = 'flip';
+    var last = S.log.length >= S.total;
+    if (last) S.phase = 'over';
+    save(); render();
+    Kit.sfx('whoosh');
+    if (r.cracked) {
+      later(function () { Kit.callout(r.n === 1 ? 'First try!' : 'Cracked!'); Kit.sfx('good'); Kit.haptic('success'); }, 450);
+    } else {
+      later(function () { Kit.callout('Unbroken!', '#ff8a8a'); Kit.sfx('bad'); Kit.haptic('error'); }, 450);
+    }
+    if (last) later(finish, 1900);
+  }
+
+  function codeName(code) { return code.map(function (c) { return c === S.C ? 'Blank' : PEGS[c].n; }).join(', '); }
+  function personalBest() {
+    var best = null;
+    try { (GameHistory.load(KEY) || []).forEach(function (e) { if (e.mode === modeLabel() && e.solved && (best == null || e.guesses < best)) best = e.guesses; }); } catch (e) {}
+    return best;
+  }
+  function modeLabel() { return MODES[S.mode] + ' · ' + DIFF[S.diff].label + (S.blanks ? ' + blanks' : ''); }
+
+  function finish() {
+    var hl = [], ps = S.players;
+    if (S.mode === 'solo') {
+      var L = S.log[0], me = ps[0], pb = personalBest();
+      if (L.cracked) {
+        hl.push(L.n === 1 ? 'Cracked the code on the very first guess!' : 'Cracked the code in ' + L.n + ' guesses');
+        if (pb == null) hl.push('First ' + DIFF[S.diff].label + ' code cracked');
+        else if (L.n < pb) hl.push('New personal best on ' + DIFF[S.diff].label + ' (was ' + pb + ')');
+      } else hl.push('The code stayed secret after ' + L.n + ' guesses');
+      hl.push('The code was ' + codeName(L.code));
+      var g1 = S.guesses[0]; if (g1 && L.n > 1 && g1.b + g1.w === S.P) hl.push('First guess already had every colour right');
+      Kit.record(KEY, {
+        started: S.started, mode: modeLabel(),
+        players: [{ name: me.name, score: L.n, cpu: false }], winner: L.cracked ? me.name : null, lowWins: true,
+        summary: L.cracked ? me.name + ' cracked it in ' + L.n : 'Code unbroken', highlights: hl,
+        meta: { solved: L.cracked, guesses: L.n }
+      });
+      Kit.win({
+        icon: L.cracked ? 'trophy' : 'meh', lose: !L.cracked,
+        title: L.cracked ? (L.n === 1 ? 'First try!' : 'Code cracked!') : 'The code wins',
+        sub: L.cracked ? 'You needed ' + L.n + ' guess' + (L.n === 1 ? '' : 'es') + (pb != null && L.n < pb ? ': a new best!' : '') : 'It was ' + codeName(L.code),
+        againLabel: 'New code', again: function () { S.log = []; S.started = Date.now(); Kit.gameStart(); startRound(); },
+        extra: [{ label: 'Look at the board', onClick: function () {} }]
+      });
+      return;
+    }
+    if (S.mode === 'watch') {
+      var W = S.log[0], bot = ps[1], hu = ps[0];
+      hl.push(W.cracked ? 'The computer needed ' + W.n + ' guesses for ' + hu.name + "'s code" : hu.name + "'s code beat the computer!");
+      hl.push(hu.name + ' hid ' + codeName(W.code));
+      if (W.n >= 6 && W.cracked) hl.push('A tough one: ' + bot.name + ' had to think hard');
+      Kit.record(KEY, {
+        started: S.started, mode: modeLabel(),
+        players: [{ name: hu.name, score: S.scores[0], cpu: false }, { name: bot.name, score: S.scores[1], cpu: true }],
+        winner: W.cracked ? bot.name : hu.name,
+        summary: W.cracked ? bot.name + ' cracked it in ' + W.n : 'Code unbroken', highlights: hl,
+        meta: { solved: W.cracked, guesses: W.n }
+      });
+      Kit.win({
+        icon: 'bot', lose: W.cracked,
+        title: W.cracked ? bot.name + ' cracked it' : 'Your code held!',
+        sub: W.cracked ? 'in ' + W.n + ' guesses. Your code scored ' + S.scores[0] + ' point' + (S.scores[0] === 1 ? '' : 's') + '.' : 'The computer ran out of guesses.',
+        againLabel: 'Set another code', again: function () { S.log = []; S.scores = [0, 0]; S.started = Date.now(); Kit.gameStart(); startRound(); },
+        extra: [{ label: 'Look at the board', onClick: function () {} }]
+      });
+      return;
+    }
+    // Two players
+    var tough = null, fast = null;
+    S.log.forEach(function (l, i) {
+      var mk = ps[l.maker].name, br = ps[l.breaker].name;
+      if (l.cracked) hl.push(br + ' cracked ' + mk + "'s code in " + l.n + ' (round ' + (i + 1) + ')');
+      else hl.push(mk + "'s code was never cracked (round " + (i + 1) + ')');
+      if (!tough || l.pts > tough.pts) tough = l;
+      if (l.cracked && (!fast || l.n < fast.n)) fast = l;
+    });
+    if (hl.length > 4) hl = hl.slice(0, 2);
+    if (tough && S.log.length > 2) hl.push('Toughest code: ' + ps[tough.maker].name + "'s, worth " + tough.pts + ' points');
+    if (fast && S.log.length > 2) hl.push('Quickest crack: ' + ps[fast.breaker].name + ', ' + fast.n + ' guesses');
+    var lead = S.scores[0] === S.scores[1] ? -1 : S.scores[0] > S.scores[1] ? 0 : 1;
+    Kit.record(KEY, {
+      started: S.started, mode: modeLabel() + ' · ' + S.total + ' rounds',
+      players: ps.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: false }; }),
+      winner: lead < 0 ? null : ps[lead].name,
+      rounds: { labels: S.log.map(function (l, i) { return 'R' + (i + 1); }), scores: S.log.map(function (l) { var a = [0, 0]; a[l.maker] = l.pts; return a; }) },
+      highlights: hl
+    });
+    Kit.win({
+      icon: lead < 0 ? 'users' : 'trophy',
+      title: lead < 0 ? "It's a tie!" : ps[lead].name + ' wins!',
+      sub: ps[0].name + ' ' + S.scores[0] + ' – ' + S.scores[1] + ' ' + ps[1].name,
+      rank: ps.map(function (p, i) { return { name: p.name, score: S.scores[i], color: Kit.color(i) }; }).sort(function (a, b) { return b.score - a.score; }),
+      againLabel: 'Play again', again: function () { S.round = 0; S.scores = [0, 0]; S.log = []; S.started = Date.now(); Kit.gameStart(); startRound(); },
+      extra: [{ label: 'Look at the board', onClick: function () {} }]
+    });
+  }
+  function nextRound() { S.round++; startRound(); }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  function svgSym(c) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + PEGS[c].s + '</svg>'; }
+  function peg(c, cls) {
+    if (c === S.C) return el('span', { class: 'peg blank' + (cls ? ' ' + cls : ''), 'aria-label': 'Blank' });
+    return el('span', { class: 'peg' + (cls ? ' ' + cls : ''), style: { '--c': PEGS[c].c, '--k': PEGS[c].k }, html: svgSym(c), 'aria-label': PEGS[c].n });
+  }
+  function keyBox(gr, animate) {
+    var k = el('div', { class: 'keys' + (S.P === 5 ? ' k5' : '') });
+    for (var i = 0; i < S.P; i++) {
+      var h = el('span', { class: 'kh' });
+      if (gr && !animate && i < gr.b + gr.w) h.appendChild(el('i', { class: 'kp ' + (i < gr.b ? 'b' : 'w') }));
+      k.appendChild(h);
+    }
+    if (gr) k.setAttribute('aria-label', gr.b + ' black, ' + gr.w + ' white');
+    return k;
+  }
+  function render() {
+    var keep = document.querySelector('.rows'), st = keep ? keep.scrollTop : null;
+    app.innerHTML = '';
+    if (!S) return;
+    if (S.pass && S.phase !== 'over' && S.phase !== 'reveal') return renderPrivacy();
+    var cb = el('div', { class: 'cb' + (S.P === 5 ? ' p5' : '') + (S.K > 7 ? ' c9' : '') });
+    app.appendChild(cb);
+
+    // Scores (two players / computer breaks)
+    if (S.mode !== 'solo') {
+      var strip = el('div', { class: 'scores' });
+      S.players.forEach(function (p, i) {
+        var role = i === S.maker ? 'Codemaker' : 'Codebreaker';
+        strip.appendChild(el('div', { class: 'score' + ((S.phase === 'make' ? i === S.maker : i === S.breaker) && S.phase !== 'over' ? ' on' : ''), style: { '--c': Kit.color(i) } }, [
+          el('span', { class: 'col' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'role', text: role })]),
+          el('span', { class: 'pt', text: String(S.scores[i]) })
+        ]));
+      });
+      cb.appendChild(strip);
+    }
+    var top = el('div', { class: 'top' }), turn = el('div', { class: 'turn' });
+    top.appendChild(turn); cb.appendChild(top);
+    paintTurn(turn);
+
+    // Board
+    var bd = el('div', { class: 'bd wood' });
+    var cr = el('div', { class: 'coderow' }), lane = el('div', { class: 'lane' }), holes = el('div', { class: 'holes' });
+    lane.appendChild(el('span', { class: 'tag', text: 'Code' }));
+    var making = S.phase === 'make', src = making ? S.cur : S.code;
+    for (var i = 0; i < S.P; i++) (function (i) {
+      var h = el(making && myTurn() ? 'button' : 'span', { type: making ? 'button' : null, class: 'hole' + (making && S.act === i && myTurn() ? ' act' : ''), 'data-i': making ? i : null, 'aria-label': 'Code peg ' + (i + 1) });
+      if (src && src[i] != null) h.appendChild(peg(src[i], making && flash === i ? 'pop' : ''));
+      if (making) h.addEventListener('click', function () { tapHole(i); });
+      holes.appendChild(h);
+    })(i);
+    lane.appendChild(holes);
+    lane.appendChild(el('span', { class: 'lock', html: Kit.icon(making ? 'pencil' : 'eye') }));
+    cr.appendChild(lane);
+    var sh = el('div', { class: 'shield' + (S.mode === 'watch' && S.phase === 'break' ? ' smoked' : '') }, [el('span', { text: 'CODE' })]);
+    var open = S.phase === 'make' || S.phase === 'reveal' || S.phase === 'over';
+    if (shieldAnim === 'flip') sh.classList.add('flip');
+    else if (shieldAnim === 'shut') sh.classList.add('shut');
+    else if (open) sh.classList.add('open');
+    shieldAnim = '';
+    cr.appendChild(sh);
+    bd.appendChild(cr);
+
+    var rows = el('div', { class: 'rows' });
+    var curRow = S.phase === 'break' ? S.guesses.length : -1;
+    for (var r = S.R - 1; r >= 0; r--) (function (r) {
+      var gr = S.guesses[r], isCur = r === curRow;
+      var row = el('div', { class: 'row' + (isCur ? ' cur' : '') + (r > curRow && !gr && curRow >= 0 ? ' fut' : '') + (gr && gr.b === S.P ? ' solved' : ''), 'data-r': r });
+      var ln = el('div', { class: 'lane' }), hs = el('div', { class: 'holes' });
+      ln.style.height = '100%';
+      ln.appendChild(el('span', { class: 'num', text: String(r + 1) }));
+      for (var i = 0; i < S.P; i++) (function (i) {
+        var mine = isCur && myTurn();
+        var val = gr ? gr.g[i] : isCur ? S.cur[i] : null;
+        var h = el(mine ? 'button' : 'span', { type: mine ? 'button' : null, class: 'hole' + (mine && S.act === i ? ' act' : ''), 'data-i': mine ? i : null, 'aria-label': mine ? 'Hole ' + (i + 1) : null });
+        if (val != null) h.appendChild(peg(val, isCur && flash === i ? 'pop' : ''));
+        if (mine) h.addEventListener('click', function () { tapHole(i); });
+        hs.appendChild(h);
+      })(i);
+      ln.appendChild(hs);
+      ln.appendChild(keyBox(gr, keyAnim === r));
+      row.appendChild(ln);
+      rows.appendChild(row);
+    })(r);
+    bd.appendChild(rows);
+    cb.appendChild(bd);
+    flash = -1;
+
+    // Tray
+    var tray = el('div', { class: 'tray wood' }), tin = el('div', { class: 'tray-in felt-in' });
+    tray.appendChild(tin);
+    cb.appendChild(tray);
+    if (S.phase === 'reveal' || S.phase === 'over') tin.appendChild(resultPanel());
+    else if (!myTurn() && S.phase === 'break' && S.players[S.breaker] && S.players[S.breaker].cpu) {
+      tin.appendChild(el('div', { class: 'think', html: Kit.icon('bot') + '<span>' + Kit.esc(S.players[S.breaker].name) + ' is thinking</span><span><i></i><i></i><i></i></span>' }));
+      tin.appendChild(legend());
+    } else {
+      var pal = el('div', { class: 'pal' });
+      for (var c = 0; c < S.K; c++) (function (c) {
+        var used = !S.dup && rowUses(c, -1);
+        var b = el('button', { type: 'button', class: 'tp' + (used ? ' used' : ''), 'aria-label': c === S.C ? 'Blank' : PEGS[c].n }, [peg(c)]);
+        dragify(b, c);
+        pal.appendChild(b);
+      })(c);
+      tin.appendChild(pal);
+      var full = S.cur.every(function (x) { return x != null; }), any = S.cur.some(function (x) { return x != null; });
+      var acts = el('div', { class: 'acts' });
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Undo last peg', html: Kit.icon('undo'), disabled: !S.stack.length || busy, onclick: undo }));
+      if (S.phase === 'make') {
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Random code', html: Kit.icon('shuffle'), disabled: busy, onclick: randomFill }));
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary grow', html: Kit.icon('check') + '<span>Hide the code</span>', disabled: !full || busy, onclick: lockCode }));
+      } else {
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Clear the row', html: Kit.icon('close'), disabled: !any || busy, onclick: clearRow }));
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary grow', html: Kit.icon('check') + '<span>Check</span>', disabled: !full || busy, onclick: function () { submit(false); } }));
+      }
+      tin.appendChild(acts);
+    }
+
+    fit(rows, tray, st);
+  }
+  function legend() {
+    return el('div', { class: 'legend' }, [
+      el('span', null, [el('i', { class: 'kp b' }), document.createTextNode('right spot')]),
+      el('span', null, [el('i', { class: 'kp w' }), document.createTextNode('wrong spot')])
+    ]);
+  }
+  function paintTurn(t) {
+    var ps = S.players, txt = '', sub = '', c = '#ffd88a';
+    if (S.phase === 'make') {
+      txt = (S.mode === 'watch' ? 'Set a secret code' : ps[S.maker].name + ', set the code');
+      sub = S.mode === 'watch' ? 'The computer will try to crack it' : DIFF[S.diff].label + ': ' + S.P + ' pegs' + (S.dup ? ', repeats allowed' : ', no repeats');
+      c = Kit.color(S.maker);
+    } else if (S.phase === 'break') {
+      var b = ps[S.breaker];
+      txt = S.mode === 'solo' ? 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R : b.cpu ? b.name + ': guess ' + (S.guesses.length + 1) : b.name + ': guess ' + (S.guesses.length + 1) + ' of ' + S.R;
+      sub = S.mode === '2p' ? 'Round ' + (S.round + 1) + ' of ' + S.total + ' · breaking ' + ps[S.maker].name + "'s code" : DIFF[S.diff].label + (S.blanks ? ' with blanks' : '');
+      c = S.mode === 'solo' ? '#ffd88a' : Kit.color(S.breaker);
+    } else {
+      var r = S.result || {};
+      txt = r.cracked ? 'Cracked in ' + r.n + '!' : 'Code unbroken';
+      sub = S.mode === '2p' ? 'Round ' + (S.round + 1) + ' of ' + S.total : DIFF[S.diff].label;
+    }
+    t.style.setProperty('--c', c);
+    if (S.phase !== 'reveal' && S.phase !== 'over') t.appendChild(el('span', { class: 'dot' }));
+    t.appendChild(el('span', null, [document.createTextNode(txt), el('small', { text: sub })]));
+  }
+  function resultPanel() {
+    var r = S.result || { n: 0 }, ps = S.players, box = el('div', { class: 'res' }), msg, small;
+    if (S.mode === '2p') {
+      var mk = ps[S.maker].name, br = ps[S.breaker].name, pts = r.n + (r.cracked ? 0 : 1);
+      msg = r.cracked ? br + ' cracked it in ' + r.n : br + ' could not crack it';
+      small = mk + ' scores ' + pts + ' point' + (pts === 1 ? '' : 's') + (r.cracked ? '' : ' (with the bonus)');
+    } else if (S.mode === 'watch') {
+      msg = r.cracked ? ps[1].name + ' cracked it in ' + r.n : 'Your code beat the computer!';
+      small = 'Your code scored ' + S.scores[0] + ' points';
+    } else {
+      msg = r.cracked ? 'You cracked it in ' + r.n + '!' : 'Out of guesses';
+      small = r.cracked ? 'Nice code breaking' : 'The secret code is under the shield';
+    }
+    box.appendChild(el('div', { class: 'msg' }, [document.createTextNode(msg), el('small', { text: small })]));
+    if (S.phase === 'reveal' && S.mode === '2p') {
+      box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('swap') + '<span>Next round: ' + Kit.esc(ps[(S.round + 1) % 2].name) + ' makes the code</span>', onclick: function () { Kit.sfx('pop'); nextRound(); } }));
+    } else if (S.phase === 'over') {
+      box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('sparkle') + '<span>New game</span>', onclick: function () { clearSave(); showSetup(); } }));
+    }
+    return box;
+  }
+  function renderPrivacy() {
+    var ps = S.players, making = S.pass === 'make', who = making ? ps[S.maker] : ps[S.breaker], other = making ? ps[S.breaker] : ps[S.maker];
+    var box = el('div', { class: 'privacy' }, [
+      el('div', { class: 'ph', html: Kit.icon('phone') }),
+      el('h2', { text: 'Pass to ' + who.name }),
+      el('p', { text: making ? who.name + ' makes the secret code for round ' + (S.round + 1) + '. ' + other.name + ', look away!' : other.name + "'s code is hidden. " + who.name + ', crack it in ' + S.R + ' guesses or fewer.' }),
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: "I'm " + who.name + (making ? ': set the code' : ': start guessing'), onclick: function () { S.pass = null; Kit.sfx('pop'); if (making) shieldAnim = 'open'; save(); render(); } })
+    ]);
+    app.appendChild(box);
+  }
+
+  // Board height: keep the tray on screen; the rows scroll inside the board
+  function fit(rows, tray, st) {
+    requestAnimationFrame(function () {
+      if (!rows.isConnected) return;
+      var top = rows.getBoundingClientRect().top + window.scrollY;
+      var below = tray.offsetHeight + 8 /* gap */ + 10 /* board padding */ + 12;
+      var safe = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
+      var avail = window.innerHeight - top - below - safe;
+      rows.style.maxHeight = Math.max(4 * rows.firstChild.offsetHeight, avail) + 'px';
+      rows.style.scrollBehavior = 'auto';
+      if (st != null) rows.scrollTop = st;
+      rows.style.scrollBehavior = '';
+      var cur = rows.querySelector('.row.cur') || rows.querySelector('.row[data-r="' + Math.max(0, S.guesses.length - 1) + '"]');
+      if (cur) {
+        var rt = cur.offsetTop - rows.offsetTop, h = cur.offsetHeight;
+        if (rt < rows.scrollTop + 4 || rt + h > rows.scrollTop + rows.clientHeight - 4) rows.scrollTop = Math.max(0, rt - rows.clientHeight + h * 2);
+      }
+    });
+  }
+  window.addEventListener('resize', function () { var r = document.querySelector('.rows'), t = document.querySelector('.tray'); if (r && t && S) fit(r, t, r.scrollTop); });
+
+  // Drag a peg from the tray onto a hole (a plain tap drops it in the glowing hole)
+  function dragify(btn, c) {
+    btn.addEventListener('pointerdown', function (e) {
+      if (!myTurn()) return;
+      if (!S.dup && rowUses(c, -1)) { Kit.toast('No repeats on Easy'); return; }
+      var x0 = e.clientX, y0 = e.clientY, ghost = null, over = null, id = e.pointerId;
+      try { btn.setPointerCapture(id); } catch (err) {}
+      function target(x, y) {
+        var t = document.elementFromPoint(x, y);
+        var h = t && t.closest ? t.closest('button.hole') : null;
+        return h;
+      }
+      function move(ev) {
+        if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) {
+          ghost = el('div', { class: 'dragpeg' }, [peg(c)]); document.body.appendChild(ghost);
+        }
+        if (!ghost) return;
+        ev.preventDefault();
+        ghost.style.left = ev.clientX + 'px'; ghost.style.top = (ev.clientY - 22) + 'px';
+        var h = target(ev.clientX, ev.clientY - 22);
+        if (h !== over) { if (over) over.classList.remove('over'); over = h; if (over) over.classList.add('over'); }
+      }
+      function up(ev) {
+        btn.removeEventListener('pointermove', move); btn.removeEventListener('pointerup', up); btn.removeEventListener('pointercancel', cancel);
+        if (ghost) {
+          ghost.remove();
+          var h = target(ev.clientX, ev.clientY - 22);
+          if (h) place(+h.getAttribute('data-i'), c);
+        } else tapColour(c);
+      }
+      function cancel() { btn.removeEventListener('pointermove', move); btn.removeEventListener('pointerup', up); btn.removeEventListener('pointercancel', cancel); if (ghost) ghost.remove(); }
+      btn.addEventListener('pointermove', move); btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', cancel);
+    });
+    btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapColour(c); } });
+  }
+
+  // For tests: the scoring rule and the solver
+  window.CodeBreaker = { feedback: feedback, Solver: Solver };
+
+  // ── Boot ────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.phase && saved.phase !== 'over') {
+    S = saved; busy = false;
+    if (S.phase === 'reveal') { S.phase = 'break'; S.guesses.length && (S.result = null); }
+    // A round that ended mid-animation: settle it now
+    if (S.phase === 'break' && S.guesses.length) {
+      var lg = S.guesses[S.guesses.length - 1];
+      if (lg.b === S.P || S.guesses.length >= S.R) {
+        S.phase = 'reveal'; S.result = { cracked: lg.b === S.P, n: S.guesses.length };
+        if (S.log.length < S.round + 1) { render(); endRound(); }
+        else { if (S.log.length >= S.total) S.phase = 'over'; render(); }
+      } else { render(); cpuTurn(); }
+    } else { if (S.phase === 'make') shieldAnim = 'open'; render(); cpuTurn(); }
+    if (S.phase !== 'over') save();
+  } else showSetup();
+})();
+</script>
+</body>
+</html>

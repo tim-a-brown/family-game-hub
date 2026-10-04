@@ -42,7 +42,7 @@ var GAMES = [
   { id: 'solitaire',   name: 'Solitaire',    color: '#16a34a', cat: 'cards', min: 1, max: 1, tag: 'Classic Klondike', play: 'solitaire' },
   { id: 'freecell',    name: 'FreeCell',     color: '#0ea5e9', cat: 'cards', min: 1, max: 1, tag: 'Every deal is winnable', play: 'freecell' },
   { id: 'pyramid',     name: 'Pyramid',      color: '#f59e0b', cat: 'cards', min: 1, max: 1, tag: 'Pair cards that add to 13', play: 'pyramid' },
-  { id: 'jokerrun',    name: 'Joker Run',    color: '#e11d48', cat: 'cards', min: 1, max: 1, tag: 'Poker hands, wild jokers, beat the blinds', play: 'jokerrun' },
+  { id: 'jokerrun',    name: 'Balatro',      color: '#e11d48', cat: 'cards', min: 1, max: 1, tag: 'Poker hands, wild jokers, beat the blinds', play: 'jokerrun' },
   { id: 'pokersquares',name: 'Poker Squares', color: '#ef4444', cat: 'cards', min: 1, max: 1, tag: 'Build ten poker hands on a 5×5 grid', play: 'pokersquares' },
   { id: 'lorcana',     name: 'Lorcana',      color: '#a855f7', cat: 'specialty', min: 2, max: 4, tag: 'Lore counter: first to 20 wins', play: 'lorcana' },
 
@@ -52,7 +52,7 @@ var GAMES = [
   { id: 'connectfour', name: 'Connect Four', color: '#2563eb', cat: 'board', min: 1, max: 2, tag: 'Four in a row wins', play: 'connectfour' },
   { id: 'tictactoe',   name: 'Tic-Tac-Toe',  color: '#06b6d4', cat: 'board', min: 1, max: 3, tag: 'Classic, Ultimate, and 3-player', play: 'tictactoe' },
   { id: 'chinesecheckers', name: 'Chinese Checkers', color: '#b91c1c', cat: 'board', min: 1, max: 6, tag: 'Hop your marbles across the star', play: 'chinesecheckers' },
-  { id: 'codebreaker', name: 'Code Breaker', color: '#000', cat: 'board', min: 1, max: 2, tag: 'Crack the secret color code', play: 'codebreaker' },
+  { id: 'codebreaker', name: 'Mastermind', color: '#000', cat: 'board', min: 1, max: 2, tag: 'Crack the secret color code', play: 'codebreaker' },
   { id: 'marbles',     name: 'Marbles',      color: '#7c3aed', cat: 'board', min: 2, max: 6, tag: 'Aggravation and Wahoo: race home, bump rivals', play: 'marbles' },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello' },
   { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon' },
@@ -115,8 +115,8 @@ var GAMES = [
   { id: 'flappybird',  name: 'Flappy Bird',       color: '#38bdf8', cat: 'arcade', min: 1, max: 1, tag: 'Tap to fly through the pipes', play: 'flappybird' },
   { id: 'asteroids',   name: 'Asteroids',    color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
   { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle' },
-  { id: 'cubehopper',  name: 'Cube Hopper',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },
-  { id: 'paddleball',  name: 'Paddle Ball',  color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
+  { id: 'cubehopper',  name: 'Q*bert',       color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },
+  { id: 'paddleball',  name: 'Pong',         color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
 
   // ── Tools ────────────────────────────────────────────────────────────────
   { id: 'scorecard',   name: 'Scorecard',    color: '#0ea5e9', cat: 'tools', min: 1, max: 8, tag: 'Keep score for any game', play: 'scorecard' },
