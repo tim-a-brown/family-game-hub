@@ -14,11 +14,12 @@
 <script src="../arcade-hi.js"></script>
 <style>
 /* ── Arcade page shell: fills the screen, never scrolls ─────────────────── */
-html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
-body{display:flex;flex-direction:column;
+html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.ar-on body{display:flex;flex-direction:column;
   background:radial-gradient(90% 45% at 50% 0%, rgba(255,214,60,.10) 0%, rgba(255,214,60,0) 70%),var(--bg);}
-#app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:0 8px calc(var(--safe-b) + 10px);gap:8px;}
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 10px);display:flex;}
+.pm-view{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.pm-view[hidden]{display:none;}
 .hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
 .plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
   background:linear-gradient(180deg,#1d1838,#100c22);box-shadow:inset 0 0 0 1.5px rgba(255,214,90,.28),0 6px 14px rgba(0,0,0,.35);}
@@ -59,10 +60,6 @@ body{display:flex;flex-direction:column;
 .ov .btn-lg{width:100%;}
 .ov .row2{display:flex;gap:8px;margin-top:10px;}
 .ov .row2 .btn{flex:1;min-height:42px;padding:0 10px;font-size:.9rem;}
-.who{display:inline-flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 14px 6px 6px;border:0;border-radius:999px;font-weight:800;font-size:.92rem;
-  background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:var(--text);}
-.who .avatar{width:28px;height:28px;font-size:.8rem;}
-.who .ico{width:15px;height:15px;color:var(--text-3);}
 /* Touch pad: drag or tap in a direction (also swipe on the maze) */
 .padwrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;width:100%;}
 .pad{position:relative;width:184px;height:184px;border-radius:50%;touch-action:none;-webkit-user-select:none;user-select:none;
@@ -83,7 +80,8 @@ body{display:flex;flex-direction:column;
 </style>
 </head>
 <body>
-<main id="app">
+<main class="stage" id="app"></main>
+<div class="pm-view" id="view" hidden>
   <div class="hud">
     <div class="plate sc" id="p-score"><small>Score</small><b id="h-score">0</b></div>
     <div class="plate"><small>High score</small><b id="h-hi">0</b></div>
@@ -107,11 +105,12 @@ body{display:flex;flex-direction:column;
     <span class="nub" id="nub"></span>
   </div></div>
   <div class="hint">Arrow keys or WASD to steer · P to pause</div>
-</main>
+</div>
 <script>
 (function () {
   'use strict';
-  var KEY = 'pacman', HI = 'pac', SAVE = 'pacman_state', WHO = 'gn_arcade_who';
+  var KEY = 'pacman', HI = 'pac', SAVE = 'pacman_state';
+  var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var $ = function (id) { return document.getElementById(id); };
   var PI = Math.PI, TAU = PI * 2;
 
@@ -185,10 +184,10 @@ body{display:flex;flex-direction:column;
 
   // ═══ Ghosts: four personalities ═════════════════════════════════════════
   var GDEF = [
-    { id: 'red', label: 'the red ghost', color: '#ff3d4a', scat: [25, -3], hx: 112 },
-    { id: 'pink', label: 'the pink ghost', color: '#ff9ee2', scat: [2, -3], hx: 112 },
-    { id: 'cyan', label: 'the blue ghost', color: '#3fe3ff', scat: [27, 34], hx: 96 },
-    { id: 'orange', label: 'the orange ghost', color: '#ffae42', scat: [0, 34], hx: 128 }
+    { id: 'red', label: 'Blinky', color: '#ff3d4a', scat: [25, -3], hx: 112 },
+    { id: 'pink', label: 'Pinky', color: '#ff9ee2', scat: [2, -3], hx: 112 },
+    { id: 'cyan', label: 'Inky', color: '#3fe3ff', scat: [27, 34], hx: 96 },
+    { id: 'orange', label: 'Clyde', color: '#ffae42', scat: [0, 34], hx: 128 }
   ];
 
   // ═══ Sound: tiny WebAudio synth, follows the kit sound setting ══════════
@@ -277,13 +276,14 @@ body{display:flex;flex-direction:column;
   var cv = $('cv'), g = cv.getContext('2d'), scr = $('scr'), cab = $('cab');
   var DPR = 1, SC = 1, wallImg = null, wallFlash = null;
   function fit() {
-    var app = $('app'), cs = getComputedStyle(app), used = 0, n = 0;
-    Array.prototype.forEach.call(app.children, function (ch) {
+    var view = $('view'), used = 0, n = 0;
+    if (view.hidden || !view.clientHeight) return;
+    Array.prototype.forEach.call(view.children, function (ch) {
       if (ch === cab || getComputedStyle(ch).display === 'none') return;
       n++; used += ch.classList.contains('padwrap') ? $('pad').offsetHeight + 12 : ch.offsetHeight;
     });
-    var avH = app.clientHeight - parseFloat(cs.paddingBottom) - used - n * 8 - 14;
-    var avW = app.clientWidth - parseFloat(cs.paddingLeft) * 2 - 14;
+    var avH = view.clientHeight - used - n * 8 - 14;
+    var avW = view.clientWidth - 14;
     var s = Math.max(.5, Math.min(avW / LW, avH / LH));
     var w = Math.floor(LW * s), h = Math.floor(LH * s);
     DPR = Math.min(window.devicePixelRatio || 1, 3);
@@ -327,15 +327,16 @@ body{display:flex;flex-direction:column;
   }
 
   // ═══ Game state ═════════════════════════════════════════════════════════
-  var G = null, S = spec(1), phase = 'title', paused = false, frame = 0;
-  var who = (function () { try { return localStorage.getItem(WHO) || ''; } catch (e) { return ''; } })();
+  var G = null, S = spec(1), phase = 'idle', paused = false, frame = 0;
   function hiList() { try { return JSON.parse(localStorage.getItem('hi_' + HI) || '[]'); } catch (e) { return []; } }
   function topScore() { var l = hiList(), old = 0; try { old = +localStorage.getItem('pmHi') || 0; } catch (e) {} return Math.max(old, l.length ? l[0].score : 0); }
   var hiAtStart = topScore();
 
-  function newGame(saved) {
+  // cfg: {who, lives, pad}
+  function newGame(cfg, saved) {
     G = {
-      score: 0, lives: 3, level: 1, extra: false, started: Date.now(), dots: null, left: 0, eaten: 0,
+      who: cfg.who || 'Player', startLives: cfg.lives || 3, pad: cfg.pad !== false,
+      score: 0, lives: cfg.lives || 3, level: 1, extra: false, started: Date.now(), dots: null, left: 0, eaten: 0,
       stats: { ghosts: 0, quad: 0, quadLvl: 0, fruit: 0, bestFruit: null, deaths: [], levelPts: [], combos: 0, maxCombo: 0 },
       levelStart: 0
     };
@@ -344,8 +345,8 @@ body{display:flex;flex-direction:column;
       G.stats = saved.stats || G.stats; G.levelStart = saved.levelStart != null ? saved.levelStart : saved.score;
     }
     hiAtStart = topScore();
+    Kit.gameStart();
     startLevel(saved && saved.dots);
-    Kit.gameStart && Kit.gameStart();
   }
   function startLevel(dotStr) {
     S = spec(G.level);
@@ -607,7 +608,7 @@ body{display:flex;flex-direction:column;
     clearSave();
     var levelsCleared = G.level - 1;
     if (G.score > G.levelStart || !G.stats.levelPts.length) G.stats.levelPts.push(G.score - G.levelStart);
-    var newTop = G.score > 0 && G.score > hiAtStart;
+    var newTop = G.score > 0 && G.score > hiAtStart, who = G.who;
     var hl = [];
     hl.push(levelsCleared ? 'Cleared ' + levelsCleared + (levelsCleared === 1 ? ' maze' : ' mazes') + ' and reached level ' + G.level : 'Ate ' + G.eaten + ' of the 244 dots on level 1');
     if (newTop) hl.push('New high score: ' + G.score.toLocaleString() + (hiAtStart ? ' (old best ' + hiAtStart.toLocaleString() + ')' : ''));
@@ -621,8 +622,8 @@ body{display:flex;flex-direction:column;
     lastResult = { score: G.score, level: G.level, newTop: newTop, ghosts: G.stats.ghosts };
     try {
       Kit.record(KEY, {
-        started: G.started, mode: 'Reached level ' + G.level,
-        players: [{ name: who || 'Player', score: G.score }], winner: null,
+        started: G.started, mode: G.startLives !== 3 ? G.startLives + ' lives' : '',
+        players: [{ name: who, score: G.score }], winner: null,
         rounds: lp.length > 1 ? { labels: lp.map(function (x, i) { return 'Level ' + (i + 1); }), scores: lp.map(function (x) { return [x]; }) } : null,
         highlights: hl.slice(0, 6),
         summary: G.score.toLocaleString() + ' points · level ' + G.level, badge: G.score + ' pts',
@@ -630,19 +631,28 @@ body{display:flex;flex-direction:column;
       });
     } catch (e) {}
     try { if (G.score > (+localStorage.getItem('pmHi') || 0)) localStorage.setItem('pmHi', String(G.score)); } catch (e) {}
-    if (newTop) { Kit.sfx('win'); setTimeout(function () { Kit.confetti(); }, 300); } else Kit.sfx('lose');
+    var r = lastResult, cfg = { who: G.who, lives: G.startLives, pad: G.pad };
     setTimeout(function () {
-      ArcadeHi.check(HI, G.score, function () { overReady = true; hud(); syncOverlay(); });
-    }, 900);
+      ArcadeHi.check(HI, r.score, function () {
+        hud();
+        Kit.win({
+          lose: !r.newTop, icon: r.newTop ? 'trophy' : 'meh',
+          title: r.newTop ? 'New high score!' : 'Game over',
+          sub: r.score.toLocaleString() + ' points · reached level ' + r.level,
+          again: function () { startGame(cfg); }, againLabel: 'Play again',
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Pac-Man'); showSetup(); } }, { label: 'Change settings', onClick: showSetup }]
+        });
+      });
+    }, 1600);
   }
 
   // ═══ Save / resume ══════════════════════════════════════════════════════
   function save() {
-    if (!G || phase === 'over' || phase === 'title') return;
+    if (!G || phase === 'over' || phase === 'idle') return;
     var s = '';
     for (var i = 0; i < COLS * ROWS; i++) { var ch = MAP[Math.floor(i / COLS)].charAt(i % COLS); s += (ch === '.' || ch === 'o') ? (G.dots[i] ? '1' : '0') : '-'; }
     try {
-      localStorage.setItem(SAVE, JSON.stringify({ v: 1, score: G.score, lives: G.lives, level: G.level, extra: G.extra, dots: s, started: G.started, stats: G.stats, levelStart: G.levelStart }));
+      localStorage.setItem(SAVE, JSON.stringify({ v: 1, who: G.who, startLives: G.startLives, pad: G.pad, score: G.score, lives: G.lives, level: G.level, extra: G.extra, dots: s, started: G.started, stats: G.stats, levelStart: G.levelStart }));
     } catch (e) {}
     Kit.resume.set('Level ' + G.level + ' · ' + G.score.toLocaleString() + ' pts');
   }
@@ -780,7 +790,7 @@ body{display:flex;flex-direction:column;
     g.setTransform(SC, 0, 0, SC, 0, 0);
     // Door
     g.fillStyle = '#ffb4e6'; g.fillRect(13 * TS, 12 * TS + 3.2, 2 * TS, 1.6);
-    if (!G) { renderAttract(); return; }
+    if (!G) return;
     // Dots
     var blink = phase === 'play' && Math.floor(frame / 12) % 2 === 1;
     g.fillStyle = '#ffd7b8';
@@ -819,19 +829,7 @@ body{display:flex;flex-direction:column;
     // Popups
     G.popups.forEach(function (pp) { text(pp.txt, pp.x, pp.y - (pp.ghost ? 0 : (120 - pp.t) * .05), pp.col, 7); });
     if (phase === 'ready') text('READY!', 112, FRUIT_Y, '#ffd84a', 11);
-    if (phase === 'over' && !overReady) text('GAME  OVER', 112, FRUIT_Y, '#ff3d4a', 11);
-  }
-  // Title backdrop: ghosts parading and a chomper in the maze
-  function renderAttract() {
-    var t = frame;
-    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
-      var ch = MAP[r].charAt(c);
-      if (ch === '.') { g.fillStyle = '#ffd7b8'; g.fillRect(c * TS + 3, r * TS + 3, 2, 2); }
-      else if (ch === 'o') { g.fillStyle = '#ffe2c8'; g.beginPath(); g.arc(cen(c), cen(r), 3.4, 0, TAU); g.fill(); }
-    }
-    var x = ((t * 1.1) % 320) - 40;
-    drawChomp(g, x, 116 + 72, 6.6, 0, .06 + .4 * Math.abs(Math.sin(t * .25)));
-    GDEF.forEach(function (d, i) { var gx = x - 22 - i * 16; ghostBody(g, gx, 188, d.color, Math.floor(t / 8) % 2); ghostEyes(g, gx, 188, 3); });
+    if (phase === 'over') text('GAME  OVER', 112, FRUIT_Y, '#ff3d4a', 11);
   }
   // Intermission: a short chase, then the tables turn
   function renderCut() {
@@ -855,79 +853,93 @@ body{display:flex;flex-direction:column;
     text('Tap to skip', 112, 206, 'rgba(255,255,255,.4)', 7);
   }
 
-  // ═══ Overlay cards ══════════════════════════════════════════════════════
+  // ═══ Pause card, setup, start ═══════════════════════════════════════════
   var PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>';
   var PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>';
-  function whoBtn() {
-    var nm = who || 'Who is playing?';
-    return '<button class="who" type="button" id="ov-who"><span class="avatar sm" style="--c:var(--surface-3)">' + Kit.esc((who || '?').charAt(0).toUpperCase()) + '</span><span>' + Kit.esc(nm) + '</span>' + Kit.icon('down') + '</button>';
-  }
+  var welcome = false;
   function syncOverlay() {
     $('btn-pause').innerHTML = paused ? PLAY_SVG : PAUSE_SVG;
-    $('btn-pause').style.visibility = G && phase !== 'over' && phase !== 'title' ? 'visible' : 'hidden';
+    $('btn-pause').style.visibility = G && phase !== 'over' && phase !== 'idle' ? 'visible' : 'hidden';
     var ov = $('ov'), card = $('ov-card'), h = '';
-    if (phase === 'title') {
-      var sv = loadSave();
-      h = '<h2>Pac-Man</h2><div class="sub">Eat every dot. Grab a power pellet<br>and the ghosts run from you.</div>' + whoBtn() +
-        (sv ? '<button class="btn btn-primary btn-lg" id="ov-cont" type="button">Continue level ' + sv.level + '</button><div class="row2"><button class="btn btn-soft" id="ov-go" type="button">New game</button><button class="btn btn-soft" id="ov-hi" type="button">' + Kit.icon('trophy') + 'Scores</button></div>'
-          : '<button class="btn btn-primary btn-lg" id="ov-go" type="button">' + Kit.icon('play') + 'Play</button><div class="row2"><button class="btn btn-soft" id="ov-hi" type="button">' + Kit.icon('trophy') + 'Scores</button><button class="btn btn-soft" id="ov-rules" type="button">' + Kit.icon('book') + 'How to play</button></div>');
-    } else if (paused && G && phase !== 'over') {
-      h = '<h2>Paused</h2><div class="sub">Level ' + G.level + ' · ' + G.score.toLocaleString() + ' points</div>' +
-        '<button class="btn btn-primary btn-lg" id="ov-resume" type="button">' + Kit.icon('play') + 'Resume</button>' +
-        '<div class="row2"><button class="btn btn-soft" id="ov-quit" type="button">Quit game</button><button class="btn btn-soft" id="ov-rules" type="button">' + Kit.icon('book') + 'Rules</button></div>';
-    } else if (phase === 'over' && lastResult && overReady) {
-      var r = lastResult;
-      h = '<h2 class="red">Game over</h2><div class="sub">' + Kit.esc(who || 'Player') + ' reached level ' + r.level + '</div>' +
-        (r.newTop ? '<div class="badge">' + Kit.icon('trophy') + 'New high score</div>' : '') +
-        '<div class="stats"><div class="stat"><b>' + r.score.toLocaleString() + '</b><span>Score</span></div><div class="stat"><b>' + Math.max(topScore(), r.score).toLocaleString() + '</b><span>Best</span></div></div>' +
-        '<button class="btn btn-primary btn-lg" id="ov-go" type="button">Play again</button>' +
-        '<div class="row2"><button class="btn btn-soft" id="ov-hi" type="button">' + Kit.icon('trophy') + 'Scores</button><button class="btn btn-soft" id="ov-past" type="button">' + Kit.icon('history') + 'Past games</button></div>';
+    if (paused && G && phase !== 'over') {
+      h = '<h2>' + (welcome ? 'Welcome back' : 'Paused') + '</h2><div class="sub">Level ' + G.level + ' · ' + G.score.toLocaleString() + ' points</div>' +
+        '<button class="btn btn-primary btn-lg" id="ov-resume" type="button">' + Kit.icon('play') + (welcome ? 'Continue' : 'Resume') + '</button>' +
+        '<div class="row2"><button class="btn btn-soft" id="ov-quit" type="button">New game</button><button class="btn btn-soft" id="ov-rules" type="button">' + Kit.icon('book') + 'Rules</button></div>';
     }
     if (!h) { ov.hidden = true; return; }
     card.innerHTML = h; ov.hidden = false;
-    bind('ov-go', function () { clearSave(); begin(null); });
-    bind('ov-cont', function () { begin(loadSave()); });
     bind('ov-resume', function () { setPaused(false); });
-    bind('ov-quit', function () { Kit.confirm('Quit this game?', { ok: 'Quit', danger: true, body: 'Your score will not be saved.' }).then(function (ok) { if (ok) { clearSave(); paused = false; G = null; Snd.loop(null); phase = 'title'; hud(); drawStrip(); syncOverlay(); } }); });
-    bind('ov-hi', function () { ArcadeHi.show(HI, 'Pac-Man'); });
+    bind('ov-quit', function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); });
     bind('ov-rules', function () { Kit.rules(); });
-    bind('ov-past', showPast);
-    bind('ov-who', function () { Kit.pickName(function (n) { who = n; try { localStorage.setItem(WHO, n); } catch (e) {} syncOverlay(); }, { title: 'Who is playing?' }); });
   }
-  var overReady = false;
   function bind(id, fn) { var b = $(id); if (b) b.addEventListener('click', function (e) { e.stopPropagation(); Kit.sfx('tap'); fn(); }); }
-  function showPast() { Kit.history(KEY, { title: 'Pac-Man: past games' }); }
-  function begin(saved) {
-    Snd.unlock(); overReady = false;
-    if (!who) { Kit.pickName(function (n) { who = n; try { localStorage.setItem(WHO, n); } catch (e) {} begin(saved); }, { title: 'Who is playing?' }); return; }
-    paused = false; newGame(saved);
-    if (!saved || saved.level === 1) Snd.start();
-    G.pt = saved ? 130 : 150;
-    hud();
+  function showPast() { setPaused(true); Kit.history(KEY, { title: 'Pac-Man: past games' }); }
+
+  function showSetup() {
+    leaveGame();
+    var opts = [
+      { id: 'lives', label: 'Lives', help: 'How many tries you get before the game ends.',
+        choices: [[3, '3 lives', 'Same as the real arcade game.'], [5, '5 lives', 'Two extra tries, good for learning the maze.']], value: 3 }
+    ];
+    if (TOUCH) opts.push({ id: 'pad', label: 'Controls', help: 'You can always swipe on the maze to steer.',
+      choices: [['pad', 'Swipe + pad', 'A round joystick pad under the maze, too.'], ['swipe', 'Swipe only', 'No pad, so the maze is a bit bigger.']], value: 'pad' });
+    Kit.setup($('app'), {
+      intro: 'Eat every dot, dodge Blinky, Pinky, Inky and Clyde',
+      options: opts,
+      players: { min: 1, max: 1, count: 1, label: 'Player' },
+      start: 'Play',
+      onStart: function (cfg) {
+        var o = cfg.options || {};
+        startGame({ who: (cfg.players[0] && cfg.players[0].name) || 'Player', lives: +o.lives || 3, pad: o.pad !== 'swipe' });
+      }
+    });
+    window.scrollTo(0, 0);
+  }
+  function leaveGame() {
+    Snd.loop(null); paused = false; welcome = false; G = null; phase = 'idle';
+    document.documentElement.classList.remove('ar-on');
+    var v = $('view'); if (v.parentNode === $('app')) document.body.appendChild(v);
+    v.hidden = true;
+  }
+  function buildView() {
+    var app = $('app'), v = $('view');
+    app.className = ''; app.innerHTML = '';
+    document.documentElement.classList.add('ar-on');
+    v.hidden = false; app.appendChild(v);
+    $('pad').parentNode.style.display = G.pad ? '' : 'none';
+    fit();
+  }
+  function startGame(cfg, saved) {
+    paused = false; welcome = false;
+    newGame(cfg, saved);
+    buildView();
+    Snd.unlock();
+    if (saved) { welcome = true; paused = true; }
+    else { Snd.start(); G.pt = 150; }
+    hud(); drawStrip(); syncOverlay();
   }
   function setPaused(v) {
-    if (!G || phase === 'over' || phase === 'title') return;
+    if (!G || phase === 'over' || phase === 'idle') return;
     if (paused === v) return;
-    paused = v; if (v) { Snd.loop(null); save(); } else { Snd.unlock(); }
+    paused = v; if (v) { Snd.loop(null); save(); } else { welcome = false; Snd.unlock(); last = 0; acc = 0; }
     syncOverlay();
   }
 
   // ═══ Input ══════════════════════════════════════════════════════════════
   function steer(d) {
-    if (!G || phase === 'over' || phase === 'title') return;
+    if (!G || phase === 'over' || phase === 'idle') return;
     if (paused) setPaused(false);
     G.pac.want = d;
     padShow();
   }
   var KEYS = { ArrowUp: 0, KeyW: 0, ArrowLeft: 1, KeyA: 1, ArrowDown: 2, KeyS: 2, ArrowRight: 3, KeyD: 3 };
   document.addEventListener('keydown', function (e) {
-    if (document.querySelector('.ahi-overlay, .k-scrim')) return;
+    if (!G || document.querySelector('.ahi-overlay, .k-scrim, .k-win')) return;
     if (KEYS[e.code] != null) { e.preventDefault(); steer(KEYS[e.code]); return; }
     if (e.code === 'KeyP' || e.code === 'Escape') { if (G && phase !== 'over') setPaused(!paused); return; }
     if (e.code === 'Space' || e.code === 'Enter') {
       e.preventDefault();
-      if (phase === 'title' || (phase === 'over' && overReady)) { var b = $('ov-cont') || $('ov-go'); if (b) b.click(); }
-      else if (paused) setPaused(false);
+      if (paused) setPaused(false);
       else if (phase === 'cut') { G.pt = 1; }
     }
   });
@@ -968,8 +980,8 @@ body{display:flex;flex-direction:column;
     for (var i = 0; i < 4; i++) { padIs[i].classList.toggle('on', map[i] === d); padIs[i].classList.toggle('want', w === map[i]); }
   }
   $('btn-pause').addEventListener('click', function () { Kit.sfx('tap'); setPaused(!paused); });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { if (G && phase !== 'over' && phase !== 'title') { setPaused(true); } save(); } });
-  window.addEventListener('blur', function () { if (G && phase !== 'over' && phase !== 'title') setPaused(true); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { setPaused(true); save(); } });
+  window.addEventListener('blur', function () { setPaused(true); });
   window.addEventListener('pagehide', save);
 
   // ═══ Main loop (fixed 60 Hz) ════════════════════════════════════════════
@@ -980,13 +992,13 @@ body{display:flex;flex-direction:column;
     Snd.poll();
     while (acc >= DT) {
       acc -= DT;
-      if (!G || phase === 'title') { frame++; continue; }
+      if (!G || phase === 'idle') { frame++; continue; }
       if (paused) continue;
       if (phase === 'over') { frame++; continue; }
       step();
     }
     if (G && !paused) padShow();
-    render();
+    if (G) render();
     requestAnimationFrame(loop);
   }
 
@@ -994,20 +1006,21 @@ body{display:flex;flex-direction:column;
   Kit.init({
     id: 'pacman',
     theme: { wood: ['#3a3550', '#1f1b33'] },
-    onNew: function () { clearSave(); begin(null); },
+    onNew: function () { clearSave(); showSetup(); },
     menu: [
-      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Pac-Man'); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { setPaused(true); ArcadeHi.show(HI, 'Pac-Man'); } },
       { icon: 'history', label: 'Past games', onClick: showPast }
     ],
     rules:
       '<p class="goal">Eat every dot in the maze without getting caught by a ghost. Clear the maze to go to the next level.</p>' +
-      '<h3>Moving</h3><ul><li><b>Swipe</b> on the maze, or drag the round pad, to steer. You can swipe a little <b>before</b> a corner: the chomper turns as soon as the path opens.</li>' +
+      '<p>You start with 3 lives (or 5 if you pick that before the game). A ghost touching you costs one life.</p>' +
+      '<h3>Moving</h3><ul><li><b>Swipe</b> on the maze, or drag the round pad, to steer. You can swipe a little <b>before</b> a corner: Pac-Man turns as soon as the path opens.</li>' +
       '<li>On a computer, use the <b>arrow keys</b> or <b>WASD</b>. <b>P</b> pauses.</li>' +
       '<li>The tunnels on the left and right sides take you to the other side. Ghosts slow down in them.</li></ul>' +
       '<h3>Points</h3><ul><li>Dot: <b>10</b>. Power pellet: <b>50</b>.</li><li>After a power pellet the ghosts turn blue and run away. Eat them for <b>200, 400, 800</b> and <b>1,600</b> points. They flash when they are about to turn back.</li>' +
       '<li>Bonus fruit appears under the ghost house twice per level: <b>100</b> (cherry) up to <b>5,000</b> (key) on later levels.</li><li>You get <b>one extra life</b> at 10,000 points.</li></ul>' +
-      '<h3>The four ghosts</h3><ul><li><b>Red</b> chases you directly, and speeds up when only a few dots are left.</li><li><b>Pink</b> tries to get in front of you.</li>' +
-      '<li><b>Blue</b> works with Red to trap you from the other side.</li><li><b>Orange</b> chases you from far away but wanders off when it gets close.</li>' +
+      '<h3>The four ghosts</h3><ul><li><b>Blinky</b> (red) chases you directly, and speeds up when only a few dots are left.</li><li><b>Pinky</b> (pink) tries to get in front of you.</li>' +
+      '<li><b>Inky</b> (cyan) works with Blinky to trap you from the other side.</li><li><b>Clyde</b> (orange) chases you from far away but wanders off when he gets close.</li>' +
       '<li>Every so often the ghosts stop chasing and head to their own corners for a few seconds. That is your chance to breathe.</li>' +
       '<li>When you eat a ghost, its eyes fly back to the ghost house and it comes out again.</li></ul>' +
       '<h3>Levels</h3><p>Each level is a little faster, and the blue time gets shorter. After levels 2, 5 and 9 there is a short break to watch.</p>'
@@ -1018,12 +1031,14 @@ body{display:flex;flex-direction:column;
     G: function () { return G; }, phase: function () { return phase; },
     eatAllBut: function (n) { if (!G) return; for (var i = 0; i < G.dots.length && G.left > n; i++) if (G.dots[i]) { G.dots[i] = 0; G.left--; G.eaten++; } },
     lives: function (n) { if (G) { G.lives = n; drawStrip(); } },
-    steer: function (d) { steer(d); }, god: false, MAP: MAP
+    steer: function (d) { steer(d); }, god: false, MAP: MAP,
+    kill: function () { if (!G) return; var gh = G.ghosts[0]; gh.state = 'out'; gh.fright = false; gh.x = G.pac.x; gh.y = G.pac.y; }
   };
 
-  new ResizeObserver(function () { fit(); }).observe($('app'));
-  phase = 'title';
-  fit(); hud(); syncOverlay();
+  new ResizeObserver(function () { fit(); }).observe($('view'));
+  var saved0 = loadSave();
+  if (saved0) startGame({ who: saved0.who, lives: saved0.startLives || 3, pad: saved0.pad !== false }, saved0);
+  else showSetup();
   requestAnimationFrame(loop);
 })();
 </script>

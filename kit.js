@@ -729,8 +729,9 @@
             } }));
           } else {
             inp.addEventListener('input', function () { names[i] = inp.value; clr.hidden = !inp.value; });
-            // Re-offer the frequent-player chips once a typed name is settled or cleared
-            inp.addEventListener('change', function () { renderSeats(); });
+            // Re-offer the frequent-player chips once a typed name is settled
+            // (only the chips are rebuilt, so focus in another seat is kept)
+            inp.addEventListener('change', function () { renderQuick(); });
             var clr = el('button', { type: 'button', class: 'seat-clear', 'aria-label': 'Clear name', html: icon('close'), onclick: function () {
               names[i] = ''; sfx('tap'); haptic('light'); renderSeats();
               var again = seatsBox.querySelectorAll('input')[i]; if (again) again.focus();
@@ -745,11 +746,18 @@
           seatsBox.appendChild(row);
         })(i);
       }
-      // One-tap names: frequent players plus everyone in past game history
+      quickBox = el('div'); seatsBox.appendChild(quickBox); renderQuick();
+    }
+    var quickBox = null;
+    // One-tap names: frequent players plus everyone in past game history
+    function renderQuick() {
+      if (!quickBox) return;
+      quickBox.innerHTML = '';
+      var cpu = cpuFor();
       var taken = names.slice(0, state.count).map(function (n) { return String(n || '').trim().toLowerCase(); });
       var pool = knownNames().filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
       if (pool.length) {
-        seatsBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Frequent players' }));
+        quickBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Frequent players' }));
         var quick = el('div', { class: 'quick' });
         pool.slice(0, 4).forEach(function (n) {
           quick.appendChild(el('button', {
@@ -765,9 +773,9 @@
             }
           }, [el('span', { class: 'avatar sm', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }), el('span', { text: n })]));
         });
-        seatsBox.appendChild(quick);
+        quickBox.appendChild(quick);
       }
-    }
+        }
 
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block', text: o.start || "Let's play!",

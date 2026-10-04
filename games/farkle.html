@@ -25,7 +25,7 @@
 .pc .sub{font-size:.66rem;font-weight:800;color:var(--text-3);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:.9em;}
 .pc .fk{position:absolute;right:7px;top:7px;display:flex;gap:3px;}
 .pc .fk i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px rgba(255,77,94,.25);}
-.pc.bump .sc{animation:bump .5s var(--spring);}
+.pc.bump .sc{animation:bump .5s var(--spring);transform-origin:left center;}
 @keyframes bump{40%{transform:scale(1.25);color:var(--green);}}
 
 /* Table */
@@ -246,10 +246,14 @@
         count: 2
       },
       options: [
-        { id: 'target', label: 'Play to', choices: [[10000, '10,000'], [5000, '5,000'], [2500, '2,500 (quick)']], value: 10000 },
-        { id: 'entry', label: 'Getting on the board', choices: [[500, 'Need 500 first'], [0, 'No minimum']], value: 500 },
-        { id: 'scoring', label: 'Four, five, six of a kind', choices: [['std', '1,000 / 2,000 / 3,000'], ['dbl', 'Classic doubling']], value: 'std' },
-        { id: 'pen', label: 'Three farkles in a row', choices: [['on', 'Lose 1,000'], ['off', 'No penalty']], value: 'on' }
+        { id: 'target', label: 'Play to', help: 'The score you need to reach. Once someone gets there, everyone else gets one last turn.',
+          choices: [[10000, '10,000', 'The standard game, about 20 to 30 minutes.'], [5000, '5,000', 'About half as long.'], [2500, '2,500 (quick)', 'A short game, good for a quick round.']], value: 10000 },
+        { id: 'entry', label: 'Getting on the board', help: 'Whether your very first bank of the game has to be a big one.',
+          choices: [[500, 'Need 500 first', 'You must score at least 500 in one turn before you can bank anything.'], [0, 'No minimum', 'You can bank any points, even 50.']], value: 500 },
+        { id: 'scoring', label: 'Four, five, six of a kind', help: 'How much four, five or six matching dice are worth.',
+          choices: [['std', '1,000 / 2,000 / 3,000', 'Four of a kind is 1,000, five is 2,000, six is 3,000. Two triplets score 2,500.'], ['dbl', 'Classic doubling', 'Each extra matching die doubles the three of a kind: four 3s = 600, five 3s = 1,200.']], value: 'std' },
+        { id: 'pen', label: 'Three farkles in a row', help: 'What happens if you farkle three turns in a row.',
+          choices: [['on', 'Lose 1,000', 'Your third farkle in a row takes 1,000 points off your score.'], ['off', 'No penalty', 'Farkles only cost you the points from that turn.']], value: 'on' }
       ],
       onStart: function (cfg) { start(cfg); }
     });
@@ -375,19 +379,25 @@
     });
   }
 
-  function farkle() {
-    var p = P(), lost = S.turn;
+  // Score bookkeeping for a farkle. Runs once per farkle, even across a reload.
+  function applyFarkle() {
+    if (S.fkInfo) return S.fkInfo;
+    var p = P(), lost = S.turn, pen = 0;
     p.fk++; p.st.farkles++;
     if (lost > p.st.lostMax) p.st.lostMax = lost;
     if (lost >= 1000) note(lost >= 2000 ? 4 : 3, p.name + ' farkled with ' + fmt(lost) + ' on the line', lost);
-    var pen = 0;
     if (S.rules.pen && p.fk >= 3) {
       pen = Math.min(1000, p.score); p.score -= pen; p.fk = 0;
-      note(3, p.name + ' lost ' + fmt(pen || 1000) + ' for three farkles in a row');
+      note(3, pen ? p.name + ' lost ' + fmt(pen) + ' for three farkles in a row' : p.name + ' farkled three turns in a row');
       S.rounds[S.round - 1][S.cur] -= pen;
     }
     S.turn = 0;
+    S.fkInfo = { lost: lost, pen: pen, three: S.rules.pen && p.fk === 0 };
     save();
+    return S.fkInfo;
+  }
+  function farkle() {
+    var info = applyFarkle(), lost = info.lost, pen = info.three;
     render();
     var felt = app.querySelector('.table'), zone = app.querySelector('.zone');
     if (zone) zone.appendChild(el('div', { class: 'stamp', html: 'FARKLE' + (lost ? '<small>−' + fmt(lost) + '</small>' : '') }));
@@ -430,7 +440,7 @@
 
   function endTurn() {
     if (!S) return;
-    S.dice = freshDice(); S.turn = 0; S.sets = []; S.hot = 0; S.rolls = 0;
+    S.dice = freshDice(); S.turn = 0; S.sets = []; S.hot = 0; S.rolls = 0; S.fkInfo = null;
     var n = S.players.length;
     if (S.final != null) {
       if (S.finalLeft <= 0) return finish();
@@ -723,7 +733,7 @@
   if (saved && saved.players && saved.players.length && saved.phase !== 'over') {
     S = saved; lock = false;
     if (S.phase === 'banked') { endTurn(); }
-    else if (S.phase === 'farkle') { render(); later(endTurn, 900); }
+    else if (S.phase === 'farkle') { applyFarkle(); render(); later(endTurn, 900); }
     else { render(); maybeCpu(); }
   } else showSetup();
 })();

@@ -13,11 +13,12 @@
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
 <style>
-html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
-body{display:flex;flex-direction:column;
+html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.ar-on body{display:flex;flex-direction:column;
   background:radial-gradient(90% 45% at 50% 0%, rgba(80,190,255,.14) 0%, rgba(80,190,255,0) 70%),var(--bg);}
-#app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;align-items:center;
-  padding:0 8px calc(var(--safe-b) + 10px);gap:8px;touch-action:none;-webkit-user-select:none;user-select:none;}
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 10px);display:flex;}
+.fb-view{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;touch-action:none;-webkit-user-select:none;user-select:none;}
+.fb-view[hidden]{display:none;}
 .hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
 .plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
   background:linear-gradient(180deg,#1b2440,#0e1428);box-shadow:inset 0 0 0 1.5px rgba(140,210,255,.28),0 6px 14px rgba(0,0,0,.35);}
@@ -54,10 +55,7 @@ body{display:flex;flex-direction:column;
 @keyframes fb-ring{0%{transform:scale(.5);opacity:0}45%{transform:scale(.6);opacity:.9}100%{transform:scale(1.25);opacity:0}}
 .ready .tip{font-weight:900;color:#fff;font-size:1rem;padding:6px 14px;border-radius:999px;background:rgba(10,20,40,.45);}
 .tapme{background:rgba(10,20,40,.35);border-radius:50%;}
-.who{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border:0;border-radius:999px;font-weight:800;font-size:.92rem;
-  background:rgba(10,20,40,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
-.who .avatar{width:28px;height:28px;font-size:.8rem;}
-.who .ico{width:15px;height:15px;color:rgba(255,255,255,.6);}
+.pilot{font-weight:900;font-size:.9rem;color:#fff;padding:6px 14px;border-radius:999px;background:rgba(10,20,40,.45);}
 /* Scorecard */
 .sc-wrap{background:rgba(8,14,30,.28);}
 .sc-wrap h2{margin-bottom:12px;animation:fb-drop .45s var(--spring) both;}
@@ -97,7 +95,8 @@ body{display:flex;flex-direction:column;
 </style>
 </head>
 <body>
-<main id="app">
+<main class="stage" id="app"></main>
+<div class="fb-view" id="view" hidden>
   <div class="hud">
     <div class="plate gold"><small>Best</small><b id="h-best">0</b></div>
     <div class="plate"><small>Last flight</small><b id="h-last">–</b></div>
@@ -113,11 +112,12 @@ body{display:flex;flex-direction:column;
     </div>
   </div>
   <div class="hint">Space, Up arrow or click to flap · P to pause</div>
-</main>
+</div>
 <script>
 (function () {
   'use strict';
-  var HI = 'flappy', KEY = 'flappybird', WHO = 'gn_arcade_who';
+  var HI = 'flappy', KEY = 'flappybird';
+  var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var $ = function (id) { return document.getElementById(id); };
   var PI = Math.PI, TAU = PI * 2;
 
@@ -260,7 +260,7 @@ body{display:flex;flex-direction:column;
 
   // ═══ State ══════════════════════════════════════════════════════════════
   var state = 'ready', paused = false, countdown = 0, bird = null, pipes = [], score = 0, t = 0, deadT = 0, scroll = 0;
-  var who = (function () { try { return localStorage.getItem(WHO) || ''; } catch (e) { return ''; } })();
+  var who = 'Player', birdPick = 'random', live = false;
   var session = { runs: 0, best: 0 }, runStart = 0, lastPipeY = 0, deathCause = '', bestAtStart = 0, lastFlight = null;
   function hiList() { try { return JSON.parse(localStorage.getItem('hi_' + HI) || '[]'); } catch (e) { return []; } }
   function best() { var b = 0; try { b = +localStorage.getItem('flappyBest') || 0; } catch (e) {} var l = hiList(); return Math.max(b, l.length ? l[0].score : 0); }
@@ -268,13 +268,12 @@ body{display:flex;flex-direction:column;
   function toReady() {
     var names = Object.keys(THEMES);
     themeName = session.runs === 0 ? 'day' : names[(Math.random() * names.length) | 0];
-    theme = THEMES[themeName]; bc = COLORS[(Math.random() * COLORS.length) | 0];
+    theme = THEMES[themeName]; bc = COLORS[birdPick === 'random' ? (Math.random() * COLORS.length) | 0 : +birdPick] || COLORS[0];
     bird = { x: W * BIRD_X, y: H * .42, vy: 0, ang: 0, wing: 0, wingT: 0 };
     pipes = []; score = 0; state = 'ready'; paused = false; countdown = 0; t = 0;
     buildLayers(); hud(); overlay();
   }
   function start() {
-    if (!who) { Kit.pickName(function (n) { who = n; try { localStorage.setItem(WHO, n); } catch (e) {} start(); }, { title: 'Who is flying?' }); return; }
     Snd.unlock();
     state = 'play'; runStart = Date.now(); bestAtStart = best(); deathCause = '';
     lastPipeY = (H - GROUND) / 2;
@@ -442,16 +441,13 @@ body{display:flex;flex-direction:column;
   // ═══ Overlays ═══════════════════════════════════════════════════════════
   var PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>';
   var PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>';
-  function whoBtn() {
-    return '<button class="who" type="button" id="ov-who"><span class="avatar sm" style="--c:var(--surface-3)">' + Kit.esc((who || '?').charAt(0).toUpperCase()) + '</span><span>' + Kit.esc(who || 'Who is flying?') + '</span>' + Kit.icon('down') + '</button>';
-  }
   function overlay() {
     $('btn-pause').innerHTML = paused ? PLAY_SVG : PAUSE_SVG;
     $('btn-pause').style.visibility = state === 'play' ? 'visible' : 'hidden';
     var ov = $('ov'), h = '', cls = 'ov';
     if (state === 'ready') {
       cls += ' ready';
-      h = '<h2 class="gold">Get ready</h2><div class="mid"><div class="tapme">' + Kit.icon('hand') + '</div><div class="tip">Tap to flap</div></div>' + whoBtn();
+      h = '<h2 class="gold">Get ready</h2><div class="mid"><div class="tapme">' + Kit.icon('hand') + '</div><div class="tip">' + (TOUCH ? 'Tap to flap' : 'Click or press Space to flap') + '</div></div><div class="pilot">' + Kit.esc(who) + (session.runs ? ' · flight ' + (session.runs + 1) : '') + '</div>';
     } else if (state === 'play' && paused) {
       cls += ' pausecard';
       h = '<h2>Paused</h2><button class="btn btn-primary btn-lg" type="button" id="ov-resume">' + Kit.icon('play') + 'Keep flying</button>';
@@ -465,12 +461,13 @@ body{display:flex;flex-direction:column;
         '<div class="nums"><div><small>Score</small><b id="cnt">0</b></div><div><small>Best</small><b>' + (r.isBest ? '<span class="new">New</span>' : '') + Math.max(best(), r.score) + '</b></div></div></div>' +
         (nx ? '<div class="next">' + (nx.at - r.score) + ' more for ' + nx.n.toLowerCase() + '</div>' : '<div class="next">Top medal. Amazing flying!</div>') + '</div>' +
         '<div class="acts"><button class="btn btn-primary btn-lg" type="button" id="ov-again">Fly again</button>' +
-        '<div class="row2"><button class="btn btn-soft" type="button" id="ov-hi">' + Kit.icon('trophy') + 'Scores</button><button class="btn btn-soft" type="button" id="ov-past">' + Kit.icon('history') + 'Past flights</button></div></div>';
+        '<div class="row2"><button class="btn btn-soft" type="button" id="ov-hi">' + Kit.icon('trophy') + 'Scores</button><button class="btn btn-soft" type="button" id="ov-past">' + Kit.icon('history') + 'Past flights</button></div>' +
+        '<button class="btn btn-ghost" type="button" id="ov-who">' + Kit.icon('user') + 'Change player</button></div>';
     }
     ov.className = cls;
     if (!h) { ov.hidden = true; ov.innerHTML = ''; return; }
     ov.innerHTML = h; ov.hidden = false;
-    bind('ov-who', function () { Kit.pickName(function (n) { who = n; try { localStorage.setItem(WHO, n); } catch (e) {} overlay(); }, { title: 'Who is flying?' }); });
+    bind('ov-who', showSetup);
     bind('ov-resume', function () { resume(); });
     bind('ov-again', function () { Snd.swoosh(); toReady(); });
     bind('ov-hi', function () { ArcadeHi.show(HI, 'Flappy Bird'); });
@@ -498,14 +495,14 @@ body{display:flex;flex-direction:column;
     if (state === 'ready') { start(); return; }
     if (state === 'play' && !paused) flap();
   }
-  $('app').addEventListener('pointerdown', function (e) {
+  $('view').addEventListener('pointerdown', function (e) {
     if (e.target.closest('button, .card')) return;
     if (e.button && e.button !== 0) return;
     e.preventDefault(); press();
   });
-  $('app').addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+  $('view').addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
   document.addEventListener('keydown', function (e) {
-    if (document.querySelector('.ahi-overlay, .k-scrim')) return;
+    if (!live || document.querySelector('.ahi-overlay, .k-scrim')) return;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
       e.preventDefault(); if (e.repeat) return;
       if (paused) { resume(); return; }
@@ -533,10 +530,10 @@ body{display:flex;flex-direction:column;
   Kit.init({
     id: 'flappybird',
     theme: { wood: ['#4a7f3a', '#2c5222'] },
-    onNew: function () { toReady(); }, confirmNew: false,
+    onNew: showSetup, confirmNew: false,
     menu: [
-      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Flappy Bird'); } },
-      { icon: 'history', label: 'Past flights', onClick: showPast }
+      { icon: 'trophy', label: 'High scores', onClick: function () { pause(); ArcadeHi.show(HI, 'Flappy Bird'); } },
+      { icon: 'history', label: 'Past flights', onClick: function () { pause(); showPast(); } }
     ],
     rules:
       '<p class="goal">Fly through the gaps between the pipes. Every pipe you pass is one point.</p>' +
@@ -548,8 +545,33 @@ body{display:flex;flex-direction:column;
   });
   window.__fb = { state: function () { return state; }, bird: function () { return bird; }, pipes: function () { return pipes; }, score: function () { return score; }, flap: press, GAP: GAP };
 
-  new ResizeObserver(fit).observe(cab);
-  toReady(); fit(); hud();
+  // ═══ Setup ══════════════════════════════════════════════════════════════
+  function showSetup() {
+    live = false; paused = false; state = 'ready'; countdown = 0;
+    document.documentElement.classList.remove('ar-on');
+    var v = $('view'); if (v.parentNode === $('app')) document.body.appendChild(v);
+    v.hidden = true;
+    Kit.setup($('app'), {
+      intro: 'Tap to flap through the pipes',
+      options: [{ id: 'bird', label: 'Bird', help: 'Pick the color of your bird. Surprise me picks a new one each flight.',
+        choices: [['0', 'Yellow'], ['1', 'Blue'], ['2', 'Red'], ['random', 'Surprise me']], value: '0' }],
+      players: { min: 1, max: 1, count: 1, label: 'Player' },
+      start: 'Fly',
+      onStart: function (cfg) {
+        who = (cfg.players[0] && cfg.players[0].name) || 'Player';
+        birdPick = String((cfg.options || {}).bird || '0');
+        session = { runs: 0, best: 0 }; lastFlight = null;
+        var app = $('app'); app.className = ''; app.innerHTML = '';
+        document.documentElement.classList.add('ar-on');
+        v.hidden = false; app.appendChild(v); live = true;
+        state = 'ready'; fit(); toReady(); hud(); Snd.unlock();
+      }
+    });
+    window.scrollTo(0, 0);
+  }
+
+  new ResizeObserver(function () { if (live) fit(); }).observe(cab);
+  showSetup();
   requestAnimationFrame(loop);
 })();
 </script>

@@ -28,7 +28,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-plate.sc{flex:1.7;}
 .ar-plate.sc b{color:#ffd45a;text-shadow:0 0 14px rgba(255,190,40,.4),0 2px 0 rgba(0,0,0,.5);}
 .ar-plate.bump b{animation:bounce .45s var(--spring);}
-.ar-wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.ar-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .ar-cab{position:relative;padding:7px;border-radius:20px;}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .ar-ov{position:absolute;inset:7px;border-radius:13px;display:none;align-items:center;justify-content:center;z-index:4;
@@ -188,6 +188,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function spawn(type) {
     var t = type || G.queue.shift(); fillQueue();
     var p = { t: t, r: 0, x: t === 'O' ? 4 : 3, y: HID - 2 };
+    slide = null;
     G.cur = p; G.lockT = 0; G.resets = 0; G.lowest = p.y; G.lastRot = false; G.kick5 = false; G.grav = 0;
     if (!fits(p.t, p.r, p.x, p.y)) { topOut(); return false; }
     if (fits(p.t, p.r, p.x, p.y + 1)) { p.y++; G.lowest = p.y; }
@@ -388,7 +389,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<p class="goal">Stack the falling blocks and fill whole rows. A full row disappears. Keep going as long as you can!</p>' +
       '<h3>Moving the blocks</h3><ul>' +
       '<li><b>Tap</b> the board to turn the block.</li>' +
-      '<li><b>Drag</b> left or right to slide it.</li>' +
+      '<li><b>Drag</b> left or right to slide it one step at a time. A quick <b>swipe</b> sends it all the way to the side.</li>' +
       '<li><b>Drag down</b> to make it fall faster. <b>Flick down</b> to drop it straight to the bottom.</li>' +
       '<li><b>Flick up</b>, tap the <b>Hold</b> box, or press <b>Hold</b> to save the block for later. You can swap once per block.</li>' +
       '<li>The buttons under the board do the same things. Hold an arrow to keep sliding.</li>' +
@@ -409,7 +410,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.className = 'stage';
     Kit.setup(app, {
       intro: 'Stack the blocks, clear the lines',
-      options: [{ id: 'start', label: 'Starting level', choices: [[1, '1'], [5, '5'], [10, '10'], [15, '15']], value: 1 }],
+      options: [{ id: 'start', label: 'Starting level', help: 'Blocks fall faster at higher levels, and every line is worth more points.',
+        choices: [[1, '1', 'A gentle start. Best for learning.'], [5, '5', 'Already quick. Good if you know the moves.'], [10, '10', 'Fast! For confident players.'], [15, '15', 'Very fast. Experts only.']], value: 1 }],
       players: { min: 1, max: 1, count: 1, label: 'Player' },
       start: 'Play',
       onStart: function (cfg) {
@@ -432,7 +434,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     cv = el('canvas', { 'aria-label': 'Tetris playfield' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
-    wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
+    wrapEl = el('div', { class: 'ar-wrap' }, [hudEl, cabEl]);
     var I = function (n) { return Kit.icon(n); };
     var DROP = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 10 6 6 6-6"/><path d="M5 21h14"/></svg>';
     var ROT = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
@@ -442,7 +444,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var kRot = key(ROT, 'Rotate'), kDrop = key(DROP + '<span>Drop</span>', 'Hard drop', 'hot');
     ctlEl = el('div', { class: 'ar-ctl ar-touch' }, [kHold, kL, kD, kR, kRot, kDrop]);
     hintEl = el('div', { class: 'ar-hint ar-desk', text: 'Arrows move · Up turns · Space drops · C holds · P pauses' });
-    app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(ctlEl); app.appendChild(hintEl);
+    app.appendChild(wrapEl); app.appendChild(ctlEl); app.appendChild(hintEl);
     press(kHold, function () { doHold(); });
     press(kRot, function () { rotate(1); });
     press(kDrop, function () { hardDrop(); });
@@ -470,7 +472,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
-    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14;
+    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - hudEl.offsetHeight - 8;
     var c = Math.min(aw / CW_CELLS, ah / CH_CELLS, 40); c = Math.max(8, Math.floor(c * 2) / 2);
     var w = Math.round(c * CW_CELLS), h = Math.round(c * CH_CELLS);
     if (w === cssW && cv.width) return;
@@ -493,6 +495,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (!canAct()) return;
       e.preventDefault();
       try { wrapEl.setPointerCapture(e.pointerId); } catch (er) {}
+      slide = null;
       gest = { id: e.pointerId, x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t0: performance.now(), axis: null, hist: [[e.clientX, e.clientY, performance.now()]], soft: 0 };
     });
     wrapEl.addEventListener('pointermove', function (e) {
@@ -532,11 +535,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         return;
       }
       if (gs.axis === 'v' && vy > 0.9 && dy > 30) { hardDrop(); return; }
+      // A quick sideways swipe auto-repeats (DAS) and slides the block to the wall
+      // (short, fast, and still moving when the finger lifts; slow drags stay one step at a time)
+      var restMs = performance.now() - gs.hist[gs.hist.length - 1][2];
+      if (gs.axis === 'h' && dt < 250 && restMs < 110 && Math.abs(dx) > Math.max(40, C * 1.8) && Math.abs(dx) / dt > 0.3) {
+        slideTo(dx > 0 ? 1 : -1); return;
+      }
       if (gs.axis === 'u' && vy < -0.6 && dy < -30) { doHold(); return; }
     }
     wrapEl.addEventListener('pointerup', end);
     wrapEl.addEventListener('pointercancel', function () { gest = null; });
   }
+
+  // Swipe auto-shift: repeats at ARR speed until the block hits something
+  var slide = null;
+  function slideTo(d) { slide = { d: d, t: 0 }; }
 
   // ── Keyboard with DAS / ARR
   var dasDir = 0, dasT = 0, dasHeld = {}, softHeld = {};
@@ -700,6 +713,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       return;
     }
     if (!G.cur) return;
+    // Swipe slide
+    if (slide) {
+      slide.t += dt;
+      var sg = 0; while (slide && slide.t >= ARR && sg++ < 10) { slide.t -= ARR; if (!shift(slide.d)) slide = null; }
+    }
     // DAS
     if (dasDir) {
       dasT += dt;

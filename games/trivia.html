@@ -155,7 +155,7 @@ body{overflow-x:hidden;}
 .buzzbar i{display:block;height:100%;background:var(--c,#ffd447);transform-origin:left;}
 
 /* Podium */
-.podium{display:flex;align-items:flex-end;justify-content:center;gap:6px;height:250px;margin-top:6px;}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:6px;margin-top:14px;}
 .pod{display:flex;flex-direction:column;align-items:center;width:31%;max-width:150px;}
 .pod .av{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#1a1033;font-family:var(--display);font-size:1.6rem;
   box-shadow:0 0 0 4px rgba(255,255,255,.12);opacity:0;animation:pop .5s var(--spring) forwards;animation-delay:var(--d2);}
@@ -1589,6 +1589,9 @@ var QB = {
     P.forEach(function (p, i) {
       var cc = {}; S.log.forEach(function (l) { if (l.p !== i) return; cc[l.cat] = cc[l.cat] || [0, 0]; cc[l.cat][1]++; if (l.ok) cc[l.cat][0]++; });
       Object.keys(cc).forEach(function (c) { if (cc[c][1] >= 3 && cc[c][0] === cc[c][1]) hl.push({ w: 4, t: p.name + ' aced all ' + cc[c][1] + ' ' + CAT_NAME[c] + ' questions' }); });
+    });
+    if (n > 1) P.forEach(function (p, i) {
+      if (S.asked[i] && !(S.asked[i] >= 3 && S.right[i] === S.asked[i])) hl.push({ w: 1, t: p.name + ' got ' + S.right[i] + ' of ' + S.asked[i] + ' right' + (S.mode === 'pass' && P.some(function (x) { return x.level !== P[0].level; }) ? ' on ' + LEVELS[p.level] : '') });
     });
     if (S.fastest && S.fastest.t < 6) hl.push({ w: 5, t: 'Fastest answer: ' + P[S.fastest.p].name + ' in ' + S.fastest.t.toFixed(1) + ' seconds (' + CAT_NAME[S.fastest.cat] + ')' });
     if (S.mode === 'buzz') {

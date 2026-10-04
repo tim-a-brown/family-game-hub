@@ -12,7 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-.stage{padding-bottom:calc(var(--safe-b) + 104px);}
+.stage{padding-bottom:calc(var(--dock-h,calc(var(--safe-b) + 84px)) + 16px);}
 /* Category chips */
 .cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 8px;padding:2px 16px 4px;}
 .cats::-webkit-scrollbar{display:none;}
@@ -557,9 +557,17 @@
       intro: ALL.length + ' questions that get everyone talking.',
       players: { min: 1, max: 8, count: 3, label: "Who's at the table?" },
       options: [
-        { id: 'who', label: 'Who answers', value: 'spin', choices: [['spin', 'Spin'], ['turns', 'Take turns'], ['all', 'Everyone']] },
-        { id: 'timer', label: 'Answer timer', value: 0, choices: [[0, 'Off'], [30, '30 s'], [60, '1 min'], [120, '2 min']] },
-        { id: 'depth', label: 'Depth', value: 'all', choices: [['all', 'All'], ['l', 'Light'], ['m', 'Thoughtful'], ['d', 'Deep']] }
+        { id: 'who', label: 'Who answers', value: 'spin', help: 'How the game picks who answers each card.', choices: [
+          ['spin', 'Spin', 'A spinner picks someone at random, never the same person twice in a row.'],
+          ['turns', 'Take turns', 'Go around the table in order, one person per card.'],
+          ['all', 'Everyone', 'Everybody answers every card.']] },
+        { id: 'timer', label: 'Answer timer', value: 0, help: 'A countdown you can start on each card to keep answers quick. Just for fun.', choices: [
+          [0, 'Off', 'No timer. Talk as long as you like.'], [30, '30 s', 'Quick answers.'], [60, '1 min', 'Time for a short story.'], [120, '2 min', 'Time for a longer story.']] },
+        { id: 'depth', label: 'Depth', value: 'all', help: 'How big the questions are, from silly to serious.', choices: [
+          ['all', 'All', 'A mix of light, thoughtful and deep questions.'],
+          ['l', 'Light', 'Easy, fun questions anyone can answer fast.'],
+          ['m', 'Thoughtful', 'Questions that need a little thinking.'],
+          ['d', 'Deep', 'Big, serious questions. Best with older kids and grown-ups.']] }
       ],
       start: 'Shuffle and deal',
       onStart: start
@@ -598,6 +606,8 @@
 
   // ── Render ────────────────────────────────────────────────────────────────
   var dock = el('div', { class: 'dock' }), dockIn = el('div', { class: 'dock-in' }); dock.appendChild(dockIn);
+  // Keep page content clear of the fixed dock: pad the page by its real height (includes the safe area)
+  if (window.ResizeObserver) new ResizeObserver(function () { if (dock.parentNode) document.documentElement.style.setProperty('--dock-h', dock.offsetHeight + 'px'); }).observe(dock);
   var cardEl = null;
 
   function render(anim) {

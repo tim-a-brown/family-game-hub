@@ -28,7 +28,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-plate.sc{flex:1.5;}
 .ar-plate.sc b{color:#ffd45a;text-shadow:0 0 14px rgba(255,190,40,.4),0 2px 0 rgba(0,0,0,.5);}
 .ar-plate.bump b{animation:bounce .45s var(--spring);}
-.ar-wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.ar-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .ar-cab{position:relative;padding:7px;border-radius:20px;}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .ar-ov{position:absolute;inset:7px;border-radius:13px;display:none;align-items:center;justify-content:center;z-index:4;
@@ -226,10 +226,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     leaveGame();
     app.className = 'stage';
     var opts = [
-      { id: 'speed', label: 'Speed', choices: [['relaxed', 'Relaxed'], ['normal', 'Normal'], ['fast', 'Fast'], ['turbo', 'Turbo']], value: 'normal' },
-      { id: 'walls', label: 'Walls', choices: [['solid', 'Solid walls'], ['wrap', 'Wrap around']], value: 'solid' }
+      { id: 'speed', label: 'Speed', help: 'How fast the snake moves. Faster speeds score more for each apple.',
+        choices: [['relaxed', 'Relaxed', 'Slow and steady. 5 points an apple.'], ['normal', 'Normal', 'The classic speed. 10 points an apple.'], ['fast', 'Fast', 'Quick! 15 points an apple.'], ['turbo', 'Turbo', 'Super fast. 20 points an apple.']], value: 'normal' },
+      { id: 'walls', label: 'Walls', choices: [['solid', 'Solid walls', 'Bumping into the edge ends the game.'], ['wrap', 'Wrap around', 'Go off one edge and come back on the other side.']], value: 'solid' }
     ];
-    if (TOUCH) opts.push({ id: 'pad', label: 'Controls', choices: [['pad', 'Swipe + pad'], ['swipe', 'Swipe only']], value: 'pad' });
+    if (TOUCH) opts.push({ id: 'pad', label: 'Controls', choices: [['pad', 'Swipe + pad', 'Swipe on the board, or press the arrow buttons under it.'], ['swipe', 'Swipe only', 'Hides the arrow buttons for a bigger board. Swipe to steer.']], value: 'pad' });
     Kit.setup(app, {
       intro: 'Eat the apples, grow your tail, don\'t crash',
       options: opts,
@@ -256,12 +257,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     cv = el('canvas', { 'aria-label': 'Snake board' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
-    wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
+    wrapEl = el('div', { class: 'ar-wrap' }, [hudEl, cabEl]);
     function key(d, ic, lab) { var b = el('button', { type: 'button', class: 'ar-key ' + d, 'aria-label': lab, html: Kit.icon(ic) }); b.addEventListener('pointerdown', function (e) { e.preventDefault(); b.classList.add('on'); steer(d); }); ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { b.addEventListener(ev, function () { b.classList.remove('on'); }); }); b.addEventListener('contextmenu', function (e) { e.preventDefault(); }); return b; }
     var ku = key('u', 'down', 'Up'); ku.querySelector('svg').style.transform = 'rotate(180deg)';
     padEl = el('div', { class: 'ar-pad ar-touch' }, [key('l', 'back', 'Left'), ku, key('d', 'down', 'Down'), key('r', 'right', 'Right')]);
     if (!G.pad) padEl.style.display = 'none';
-    app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(padEl);
+    app.appendChild(wrapEl); app.appendChild(padEl);
     app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Arrow keys or W A S D to steer · Space pauses' }));
     bindGestures();
     if (ro) ro.disconnect();
@@ -278,7 +279,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
-    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14;
+    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - hudEl.offsetHeight - 8;
     var c = Math.min(aw / COLS, ah / ROWS, 44); c = Math.max(8, Math.floor(c * 2) / 2);
     var w = Math.round(c * COLS), h = Math.round(c * ROWS);
     if (w === cssW && cv.width) return;

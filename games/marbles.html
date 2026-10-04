@@ -86,7 +86,7 @@
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'marbles', SAVE = 'marbles_state';
   var SEG = 14, CEN = 999;
-  var RULES = { agg: 'Aggravation', wahoo: 'Wahoo', plain: 'Wahoo, no centre' };
+  var RULES = { agg: 'Aggravation', wahoo: 'Wahoo', plain: 'Wahoo, no center' };
   var NEUTRAL = '#e8dcc2';
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -169,10 +169,10 @@
       '<li>You need the <b>exact number</b> to move in. You can\'t jump marbles in your home row.</li></ul>' +
       '<h3>Shortcuts (Aggravation)</h3><ul>' +
       '<li><b>Stars:</b> the star holes sit in the inside corners. If a marble <b>starts its turn on a star</b>, it may hop clockwise from star to star. Each hop counts as one, then keep going along the track with what\'s left.</li>' +
-      '<li><b>Centre hole:</b> it counts as one step past any star, so you need the exact number to land in it.</li>' +
-      '<li>You can only leave the centre by rolling a <b>1</b>. Then you hop out to <b>any star</b> you like.</li></ul>' +
-      '<h3>Wahoo rules</h3><ul><li><b>Wahoo:</b> the same race with no star hops. The centre hole still works.</li>' +
-      '<li><b>Wahoo, no centre:</b> no shortcuts at all.</li></ul>' +
+      '<li><b>Center hole:</b> it counts as one step past any star, so you need the exact number to land in it.</li>' +
+      '<li>You can only leave the center by rolling a <b>1</b>. Then you hop out to <b>any star</b> you like.</li></ul>' +
+      '<h3>Wahoo rules</h3><ul><li><b>Wahoo:</b> the same race with no star hops. The center hole still works.</li>' +
+      '<li><b>Wahoo, no center:</b> no shortcuts at all.</li></ul>' +
       '<h3>Partners</h3><ul><li>With 4 or 6 players you can play as partners: you team up with the player straight across.</li>' +
       '<li>You can jump your partner but not land on them.</li>' +
       '<li>Once all your marbles are home, you keep rolling and move your <b>partner\'s</b> marbles.</li>' +
@@ -190,8 +190,8 @@
         { id: 'mix', icon: 'users', title: 'Family game', desc: 'Pass the phone. Leave a seat blank for a computer player' }
       ],
       options: [
-        { id: 'rules', label: 'Rules', value: 'agg', choices: [['agg', 'Aggravation'], ['wahoo', 'Wahoo'], ['plain', 'No centre']] },
-        { id: 'teams', label: 'Partners (4 or 6 players)', value: 'off', choices: [['off', 'No partners'], ['on', 'Partners across']] }
+        { id: 'rules', label: 'Rules', value: 'agg', choices: [['agg', 'Aggravation', 'Star holes let you hop around the corners, and the center hole is a shortcut.'], ['wahoo', 'Wahoo', 'No star hops, but the center hole shortcut still works.'], ['plain', 'No center', 'No shortcuts at all: just race around the track.']] },
+        { id: 'teams', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'off', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
       ],
       players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
@@ -385,7 +385,7 @@
       lock = false;
       if (m.kind === 'out') { Kit.sfx('pop'); }
       if (m.kind === 'home' || m.kind === 'inhome') { Kit.sfx('good'); Kit.haptic('light'); }
-      if (m.to === CEN) { Kit.sfx('good'); Kit.toast((me.name === 'You' ? 'You' : me.name) + ' took the centre shortcut'); }
+      if (m.to === CEN) { Kit.sfx('good'); Kit.toast((me.name === 'You' ? 'You' : me.name) + ' took the center shortcut'); }
       var w = winner();
       if (w) { S.phase = 'over'; save(); later(function () { finish(w); }, 500); return; }
       later(nextTurn, m.cap ? 650 : 150);
@@ -481,7 +481,7 @@
     var six = top(function (p) { return p.st.maxSix; });
     if (six.st.maxSix >= 3) hl.push(six.name + ' rolled ' + (NUM[six.st.maxSix] || six.st.maxSix) + ' 6s in a row');
     var cen = top(function (p) { return p.st.centre; });
-    if (cen.st.centre) hl.push(cen.name + ' took the centre shortcut ' + times(cen.st.centre));
+    if (cen.st.centre) hl.push(cen.name + ' took the center shortcut ' + times(cen.st.centre));
     var str = top(function (p) { return p.st.star; });
     if (str.st.star >= 2) hl.push(str.name + ' hopped the star shortcuts ' + times(str.st.star));
     var wp = S.players[w.team[0]];
@@ -698,7 +698,7 @@
   function optLabel(m) {
     var n = N(), cap = m.cap ? ', bump ' + S.players[m.cap.pi].name : '';
     if (m.kind === 'out') return 'Move out' + cap;
-    if (m.to === CEN) return 'Into the centre' + cap;
+    if (m.to === CEN) return 'Into the center' + cap;
     if (m.kind === 'leave') return 'Out to star, ' + (n - 1 - m.to) + ' to go' + cap;
     if (m.kind === 'home' || m.kind === 'inhome') return 'Into home';
     if (m.kind === 'star') return 'Star shortcut' + cap;

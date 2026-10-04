@@ -31,7 +31,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-lives{display:flex;gap:4px;height:1.52rem;align-items:center;}
 .ar-lives i{display:block;width:18px;height:7px;border-radius:4px;background:linear-gradient(90deg,#e8384f 0 22%,#d9dde8 22% 78%,#e8384f 78%);box-shadow:0 0 6px rgba(255,255,255,.25);}
 .ar-lives em{font-style:normal;font-family:var(--display);font-size:1.1rem;color:#fff;}
-.ar-wrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.ar-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .ar-cab{position:relative;padding:7px;border-radius:20px;}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .ar-ov{position:absolute;inset:7px;border-radius:13px;display:none;align-items:center;justify-content:center;z-index:4;
@@ -401,7 +401,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<h3>Controls</h3><ul><li><b>Drag</b> anywhere on the screen to slide the paddle. Your finger doesn\'t have to be on the paddle.</li>' +
       '<li><b>Tap</b> to launch the ball.</li><li>On a computer: move the mouse or use the arrow keys, and click or press Space to launch. P pauses.</li></ul>' +
       '<h3>Aiming</h3><p>Where the ball hits the paddle decides where it goes. The middle sends it straight up, the ends send it off at a steep angle. Moving the paddle as it hits adds a little spin.</p>' +
-      '<h3>Bricks</h3><ul><li><b>Coloured</b> bricks break in one hit (50 to 120 points).</li>' +
+      '<h3>Bricks</h3><ul><li><b>Colored</b> bricks break in one hit (50 to 120 points).</li>' +
       '<li><b>Silver</b> bricks need 2 hits (3 hits from level 9).</li><li><b>Gold</b> bricks never break. Bounce around them.</li>' +
       '<li>Break 5 or more bricks in a row without touching the paddle for <b>double points</b>.</li></ul>' +
       '<h3>Power-ups</h3><p>Broken bricks sometimes drop a capsule. Catch it with the paddle:</p><ul>' +
@@ -417,7 +417,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.className = 'stage';
     var prog = loadProg(), choices = [[1, 'Level 1']];
     [4, 7, 10].forEach(function (n) { if (prog.reached >= n) choices.push([n, 'Level ' + n]); });
-    var opts = choices.length > 1 ? [{ id: 'start', label: 'Start at', choices: choices, value: 1 }] : [];
+    choices = choices.map(function (c) { return [c[0], c[1], c[0] === 1 ? 'Start from the very first level.' : 'Skip ahead to level ' + c[0] + ' (' + LEVELS[c[0] - 1].name + '). You unlocked it by getting there before.']; });
+    var opts = choices.length > 1 ? [{ id: 'start', label: 'Start at', help: 'Pick where to begin. More starting levels unlock as you reach them.', choices: choices, value: 1 }] : [];
     Kit.setup(app, {
       intro: NL + ' levels of bricks to smash',
       options: opts,
@@ -445,9 +446,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     cv = el('canvas', { 'aria-label': 'Breakout playfield' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
-    wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
+    wrapEl = el('div', { class: 'ar-wrap' }, [hudEl, cabEl]);
     hintEl = el('div', { class: 'ar-hint', text: TOUCH ? 'Drag anywhere to move · tap to launch' : 'Mouse or arrow keys to move · click or Space to launch · P pauses' });
-    app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(hintEl);
+    app.appendChild(wrapEl); app.appendChild(hintEl);
     bindInput();
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app);
@@ -464,7 +465,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
-    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14;
+    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - hudEl.offsetHeight - 8;
     var s = Math.min(aw / FW, ah / FH, 1.6); s = Math.max(0.3, s);
     var w = Math.round(FW * s), h = Math.round(FH * s);
     if (w === cssW && cv.width) return;
