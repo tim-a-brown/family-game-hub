@@ -55,6 +55,8 @@ body{overflow-x:hidden;}
 .sb-word::after{content:"";width:3px;height:36px;margin-left:3px;border-radius:2px;background:#ffc23d;animation:caret 1s steps(1) infinite;}
 @keyframes caret{50%{opacity:0;}}
 .sb-word.shake{animation:shake .4s;}
+.sb-word.fin::after{display:none;}
+.sb-word .fintx{font-family:var(--font);font-weight:800;font-size:1rem;letter-spacing:0;text-transform:none;color:#ffe6a8;text-shadow:none;}
 .sb-word.good{animation:fly .45s var(--ease) forwards;}
 @keyframes fly{to{transform:translateY(-18px);opacity:0;}}
 
@@ -358,6 +360,8 @@ body{overflow-x:hidden;}
   }
   function paintWord() {
     var w = $('word'); w.innerHTML = '';
+    w.classList.toggle('fin', !!S.done && !typed);
+    if (S.done && !typed) { w.appendChild(el('span', { class: 'fintx', text: 'Puzzle finished. Try a Practice hive!' })); w.style.fontSize = ''; return; }
     typed.split('').forEach(function (ch) {
       w.appendChild(el('span', { class: ch === S.center ? 'c' : S.letters.indexOf(ch) < 0 ? 'x' : '', text: ch }));
     });
