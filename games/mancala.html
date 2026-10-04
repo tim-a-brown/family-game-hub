@@ -2,397 +2,459 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mancala</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-:root{--p1:#60a5fa;--p2:#f87171;}
-.site-nav button.icon-btn{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;display:inline-grid;place-items:center;}
-.icon-btn svg{width:18px;height:18px;}
-.mc-wrap{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.mc{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:2px;}
+/* Player tags at each end of the board */
+.mtag{--c:var(--p1);display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 14px 4px 5px;border-radius:999px;background:rgba(255,255,255,.06);
+  border:2px solid transparent;transition:border-color .2s, background .2s, transform .3s var(--spring);max-width:100%;}
+.mtag .avatar{width:34px;height:34px;font-size:.9rem;background:var(--c);}
+.mtag .nm{font-weight:900;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+.mtag .st{font-size:.78rem;font-weight:800;color:var(--text-3);white-space:nowrap;}
+.mtag .col{display:flex;flex-direction:column;line-height:1.15;min-width:0;}
+.mtag .cnt{margin-left:6px;font-family:var(--display);font-size:1.6rem;line-height:1;color:var(--c);font-variant-numeric:tabular-nums;min-width:1.4em;text-align:right;}
+.mtag.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);transform:scale(1.03);}
+.mtag.on .st{color:var(--c);}
 
-/* Setup */
-.mc-setup{max-width:440px;margin:0 auto;}
-.mc-setup .card-title{margin-bottom:14px;}
-.name-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.name-row .dot{width:12px;height:12px;border-radius:50%;flex:none;}
-.name-row > div{flex:1;min-width:0;}
-.field-lbl{font-size:.78rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;}
-.mc-setup .tabs{margin-bottom:18px;}
-
-/* Score tiles */
-.mc-scores{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.mc-score{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:border-color .25s var(--ease),background .25s,box-shadow .25s;}
-.mc-score.on{border-color:color-mix(in srgb,var(--c) 60%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,transparent),transparent),var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 12%,transparent);}
-.mc-score .dot{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none;}
-.mc-score .who{flex:1;min-width:0;}
-.mc-score .nm{font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mc-score .sub{font-size:.74rem;font-weight:600;color:var(--text-3);}
-.mc-score.on .sub{color:var(--c);}
-.mc-score .val{font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1;color:var(--c);font-variant-numeric:tabular-nums;}
-.mc-status{text-align:center;font-size:.92rem;font-weight:600;color:var(--text-2);min-height:22px;}
-.mc-status b{color:var(--text);}
-
-/* Board */
-.mc-board{position:relative;display:grid;gap:7px;padding:10px;border-radius:24px;
-  background:linear-gradient(145deg,#6b4423,#45290f);
-  box-shadow:0 18px 40px rgba(0,0,0,.55),inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.25);}
-.mc-board::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:.35;
-  background:repeating-linear-gradient(100deg,rgba(255,255,255,.04) 0 2px,transparent 2px 9px);}
-/* Horizontal (wide screens) */
-.mc-board.h{grid-template-columns:72px repeat(6,1fr) 72px;grid-template-rows:96px 96px;}
-/* Vertical (phones) */
-.mc-board.v{grid-template-columns:1fr 1fr;grid-template-rows:62px repeat(6,minmax(54px,1fr)) 62px;}
-.mc-pit,.mc-store{position:relative;border-radius:18px;background:radial-gradient(120% 120% at 50% 30%,#2b1809,#3a2210 70%);
-  box-shadow:inset 0 4px 10px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;}
-.mc-pit{cursor:pointer;transition:box-shadow .15s,transform .12s var(--ease);}
-.mc-pit.active-pit{box-shadow:inset 0 4px 10px rgba(0,0,0,.6),0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent);}
-.mc-pit.active-pit:active{transform:scale(.96);}
-.mc-pit.disabled{cursor:default;}
-.mc-pit.hot{box-shadow:inset 0 4px 10px rgba(0,0,0,.6),0 0 0 2px var(--gold),0 0 14px rgba(245,200,66,.45);}
-.mc-store.hot{box-shadow:inset 0 4px 10px rgba(0,0,0,.6),0 0 0 2px var(--gold),0 0 14px rgba(245,200,66,.45);}
-.mc-store.active-store{box-shadow:inset 0 4px 10px rgba(0,0,0,.6),0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent);}
-.seeds{display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:2px;padding:8px 10px;max-width:100%;max-height:100%;overflow:hidden;}
-.seed{width:11px;height:11px;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6),inset 0 -1px 1px rgba(0,0,0,.25);flex-shrink:0;}
-.mc-store .seeds{gap:1px;}
-.mc-store .seed{width:9px;height:9px;}
-.pit-count{position:absolute;bottom:4px;right:8px;font-size:12px;font-weight:800;color:rgba(255,236,200,.75);pointer-events:none;font-variant-numeric:tabular-nums;}
-.mc-board.v .mc-pit:nth-child(odd) .pit-count{right:auto;left:8px;}
-.store-info{position:absolute;display:flex;align-items:baseline;gap:6px;pointer-events:none;}
-.mc-board.v .store-info{left:14px;top:50%;transform:translateY(-50%);}
-.mc-board.h .store-info{bottom:6px;left:0;right:0;justify-content:center;flex-direction:column;align-items:center;gap:0;}
-.store-count{font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1;color:var(--c);text-shadow:0 2px 4px rgba(0,0,0,.6);}
-.store-lbl{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,236,200,.55);}
-.mc-board.v .mc-store .seeds{margin-left:70px;}
-.mc-board.h .mc-store .seeds{margin-bottom:36px;}
-.side-lbl{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;text-align:center;}
-.winner-banner{margin:0;}
-.winner-banner .btn-row{display:flex;gap:8px;justify-content:center;margin-top:12px;}
+/* Carved wooden board */
+.mboard{position:relative;border-radius:var(--br,48px);touch-action:manipulation;
+  background:
+    radial-gradient(140% 60% at 30% 20%, rgba(255,255,255,.10), transparent 60%),
+    repeating-linear-gradient(var(--grain,180deg), rgba(255,255,255,.045) 0 2px, transparent 2px 7px, rgba(0,0,0,.05) 7px 8px, transparent 8px 13px),
+    linear-gradient(var(--grain,180deg), #a8693a, #8a5129 45%, #74411f);
+  box-shadow:inset 0 3px 0 rgba(255,220,180,.25), inset 0 -6px 0 rgba(0,0,0,.28), inset 0 0 0 2px rgba(0,0,0,.18), 0 18px 34px rgba(0,0,0,.5), 0 4px 0 #4a2812;}
+.pit{position:absolute;border:0;padding:0;border-radius:50%;cursor:default;
+  background:radial-gradient(70% 70% at 50% 62%, #4a2a12 0%, #5e3619 55%, #7a4722 80%, #8d5428 100%);
+  box-shadow:inset 0 9px 14px rgba(0,0,0,.55), inset 0 -3px 4px rgba(255,210,160,.18), 0 1px 0 rgba(255,220,180,.25);
+  transition:box-shadow .2s;}
+.pit.store{border-radius:999px;}
+.pit.can{cursor:pointer;}
+.pit.can::after{content:"";position:absolute;inset:-4px;border-radius:inherit;border:2.5px solid var(--c);opacity:.75;animation:glow 1.6s ease-in-out infinite;pointer-events:none;}
+@keyframes glow{50%{opacity:.25;}}
+.pit.land{box-shadow:inset 0 9px 14px rgba(0,0,0,.55), 0 0 0 3px var(--yellow), 0 0 18px rgba(255,200,61,.6);}
+.pit:focus-visible{outline:3px solid #fff;}
+.lbl{position:absolute;transform:translate(-50%,-50%);font-family:var(--display);font-size:1.02rem;color:rgba(255,232,200,.82);text-shadow:0 1px 0 rgba(0,0,0,.45);pointer-events:none;font-variant-numeric:tabular-nums;}
+.lbl.big{font-size:1.5rem;color:rgba(255,236,206,.9);}
+.lbl.pop{animation:lblpop .4s var(--spring);}
+@keyframes lblpop{0%{transform:translate(-50%,-50%) scale(1.6);color:#ffe08a;}100%{transform:translate(-50%,-50%) scale(1);}}
+/* Glass stones */
+.stone{position:absolute;left:0;top:0;width:var(--ss);height:var(--ss);border-radius:50%;pointer-events:none;will-change:transform;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.95) 0 9%, rgba(255,255,255,.35) 16%, transparent 34%),
+    radial-gradient(circle at 62% 72%, rgba(255,255,255,.35), transparent 40%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb,var(--g) 70%,#fff) 0%, var(--g) 55%, color-mix(in srgb,var(--g) 55%,#000) 100%);
+  box-shadow:0 2px 3px rgba(0,0,0,.55), inset 0 -2px 3px rgba(0,0,0,.25);opacity:.96;
+  transition:transform .32s cubic-bezier(.3,.7,.3,1);}
+.stone.up{transition:transform .26s cubic-bezier(.3,1.4,.5,1);box-shadow:0 10px 12px rgba(0,0,0,.45);}
+.ctrls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
+@media (min-width:640px){.mc{gap:14px;padding-top:12px;}}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Mancala</span>
-  <button class="icon-btn hidden" id="mc-new-setup" aria-label="Change players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 20a6.5 6.5 0 0 0-3-5.5"/></svg></button>
-  <button class="icon-btn hidden" id="mc-new-game" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="page">
-
-<!-- Setup -->
-<div class="mc-setup" id="mc-setup">
-  <div class="card">
-    <div class="card-title">Players</div>
-    <div class="name-row"><span class="dot" style="background:var(--p1)"></span><div><input class="input" id="mc-p1" value="Player 1" maxlength="16"></div></div>
-    <div class="name-row"><span class="dot" style="background:var(--p2)"></span><div><input class="input" id="mc-p2" value="Player 2" maxlength="16"></div></div>
-    <div class="field-lbl">Seeds per pit</div>
-    <div class="tabs">
-      <button class="tab mc-seeds" data-s="3">3</button>
-      <button class="tab mc-seeds active active-seeds" data-s="4">4</button>
-      <button class="tab mc-seeds" data-s="5">5</button>
-      <button class="tab mc-seeds" data-s="6">6</button>
-    </div>
-    <button class="btn btn-gold btn-block" id="mc-start">Start game</button>
-  </div>
-
-  <details class="rules-details">
-    <summary class="rules-summary">How to play Mancala</summary>
-    <div class="rules-body">
-      <p><strong>Goal:</strong> Capture more seeds than your opponent. When all of one side's pits are empty, the game ends and the most seeds in a store wins.</p>
-      <p><strong>Your turn:</strong> Pick up all seeds from one of your pits and drop one in each pit going counter-clockwise, including your store — but skip your opponent's store.</p>
-      <p><strong>Extra turn:</strong> If your last seed lands in your own store, go again!</p>
-      <p><strong>Capture:</strong> If your last seed lands in an empty pit on <em>your</em> side, you capture it plus all seeds in the pit directly opposite.</p>
-      <p><strong>Game end:</strong> When one side is empty, the other player collects all remaining seeds on their side.</p>
-    </div>
-  </details>
-</div>
-
-<!-- Game -->
-<div id="mc-game" class="hidden mc-wrap">
-  <div id="mc-winner-area"></div>
-  <div class="mc-scores" id="mc-scores"></div>
-  <div class="mc-status" id="mc-status"></div>
-  <div class="mc-board" id="mc-board"></div>
-</div>
-
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-window.GN=window.GN||{haptic(){},toast(){},sheet(){return{close(){},el:document.createElement('div')};},confirm:()=>Promise.resolve(true)};
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'mancala_state', KEY = 'mancala';
+  var GLASS = ['#3d8bff', '#2fc56b', '#ffad33', '#ff4d6d', '#a479ff', '#35d0d0', '#f2f2f2'];
 
-// ── Seed color palette ─────────────────────────────────────────────────────
-const SEED_COLORS=[
-  ['#7dd3fc','#2563eb'],['#fca5a5','#dc2626'],
-  ['#86efac','#16a34a'],['#fcd34d','#d97706'],
-  ['#c4b5fd','#7c3aed'],['#fdba74','#ea580c'],
-];
-
-// ── State ──────────────────────────────────────────────────────────────────
-// Board layout: pits[0..5] = P1 left→right, pits[6] = P1 store,
-//               pits[7..12] = P2 left→right, pits[13] = P2 store
-// P1 plays left-to-right, P2 plays right-to-left
-let board, turn, gameOver, names, seedsPerPit;
-let animating=false, hot=-1, lastMsg='';
-const vertical=window.matchMedia('(max-width: 599px)');
-
-function initBoard(spd){
-  board=Array(14).fill(0).map((_,i)=>(i===6||i===13)?0:spd);
-}
-
-function nextIdx(i, player){
-  // Go around the board, skip opponent's store
-  let n=(i+1)%14;
-  if(player===0 && n===13) n=0; // skip P2 store
-  if(player===1 && n===6)  n=7; // skip P1 store
-  return n;
-}
-
-// ── Seeds per pit selector ─────────────────────────────────────────────────
-let _seedCount=4;
-document.querySelectorAll('.mc-seeds').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.mc-seeds').forEach(x=>x.classList.toggle('active',x===b));
-    document.querySelectorAll('.mc-seeds').forEach(x=>x.classList.toggle('active-seeds',x===b));
-    _seedCount=+b.dataset.s;GN.haptic('select');
+  Kit.init({
+    id: 'mancala',
+    onNew: function () { cpuToken++; clearSave(); undoStack = []; showSetup(); },
+    undo: function () { undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mancala: past games' }); } }],
+    rules:
+      '<p class="goal">Collect more stones in your <b>store</b> (the long pit at your end) than the other player.</p>' +
+      '<h3>The board</h3><ul><li>You own the <b>6 small pits on your side</b> and the <b>store</b> at your end.</li>' +
+      '<li>Every small pit starts with 4 stones (or 6 if you pick that).</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Tap one of your pits. You scoop up all its stones and drop them <b>one at a time</b> into the next pits, going counter-clockwise.</li>' +
+      '<li>Drop stones into <b>your own store</b> as you pass it, but <b>skip the other player\'s store</b>.</li></ul>' +
+      '<h3>Special moves</h3><ul><li><b>Extra turn:</b> if your last stone lands in your store, go again.</li>' +
+      '<li><b>Capture:</b> if your last stone lands in an <b>empty pit on your side</b> and the pit across from it has stones, you take that stone and everything across into your store.</li></ul>' +
+      '<h3>Game end</h3><p>When all six pits on one side are empty, the game ends. The other player puts every stone left on their side into their own store. Most stones wins.</p>' +
+      '<p class="muted" style="margin-top:10px">Rules: standard Kalah (6 pits a side).</p>'
   });
-});
 
-function showGame(inGame){
-  document.getElementById('mc-setup').classList.toggle('hidden',inGame);
-  document.getElementById('mc-game').classList.toggle('hidden',!inGame);
-  document.getElementById('mc-new-game').classList.toggle('hidden',!inGame);
-  document.getElementById('mc-new-setup').classList.toggle('hidden',!inGame);
-}
-function restart(){
-  initBoard(seedsPerPit);
-  turn=0; gameOver=false; animating=false; hot=-1; lastMsg='';
-  document.getElementById('mc-winner-area').innerHTML='';
-  render();
-}
-function inProgress(){return board&&!gameOver&&board.some((v,i)=>i!==6&&i!==13&&v!==seedsPerPit);}
-
-// ── Start ──────────────────────────────────────────────────────────────────
-document.getElementById('mc-start').addEventListener('click',()=>{
-  names=[
-    document.getElementById('mc-p1').value.trim()||'Player 1',
-    document.getElementById('mc-p2').value.trim()||'Player 2'
-  ];
-  seedsPerPit=_seedCount;
-  showGame(true);
-  restart();
-});
-
-document.getElementById('mc-new-game').addEventListener('click',async()=>{
-  if(inProgress()&&!(await GN.confirm('The current game will be lost.',{title:'Start a new game?',ok:'New game',danger:true})))return;
-  restart();
-});
-document.getElementById('mc-new-setup').addEventListener('click',async()=>{
-  if(inProgress()&&!(await GN.confirm('The current game will be lost.',{title:'Change players?',ok:'Change players',danger:true})))return;
-  showGame(false);
-});
-
-// ── Move logic ─────────────────────────────────────────────────────────────
-function doMove(pitIdx){
-  if(animating || gameOver) return;
-  // Validate it's the current player's pit and has seeds
-  if(turn===0 && (pitIdx<0||pitIdx>5)) return;
-  if(turn===1 && (pitIdx<7||pitIdx>12)) return;
-  if(board[pitIdx]===0){GN.haptic('error');return;}
-
-  animating=true;
-  let seeds=board[pitIdx];
-  board[pitIdx]=0;
-  let cur=pitIdx;
-  GN.haptic('light');
-  const step=Math.max(70,Math.min(150,1400/seeds));
-
-  // Sow seeds one by one (animated)
-  const sowOne=()=>{
-    cur=nextIdx(cur,turn);
-    board[cur]++;seeds--;hot=cur;
-    sSeed();
-    render();
-    if(seeds>0)setTimeout(sowOne,step);
-    else setTimeout(()=>finishMove(cur),step+60);
-  };
-  render();
-  setTimeout(sowOne,step);
-}
-
-function finishMove(cur){
-  let extra=false;
-  lastMsg='';
-  // Check extra turn: last seed in own store
-  const ownStore=turn===0?6:13;
-  if(cur===ownStore){
-    extra=true;
+  // ── State ─────────────────────────────────────────────────────────────────
+  // pits 0-5 = player 0's pits, 6 = player 0's store, 7-12 = player 1's pits, 13 = player 1's store.
+  // S.stones[i] = {c: colour index, p: pit, k: arrival order}. Pit counts are derived from stones.
+  var S = null, undoStack = [], cpuToken = 0, busy = false, K = 0;
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.players[0].name + ' ' + store(0) + ' – ' + store(1) + ' ' + S.players[1].name);
   }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function counts() { var c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; S.stones.forEach(function (s) { if (typeof s.p === 'number') c[s.p]++; }); return c; }
+  function store(pl) { return counts()[pl ? 13 : 6]; }
+  function own(pl, i) { return pl === 0 ? i >= 0 && i <= 5 : i >= 7 && i <= 12; }
+  function storeOf(pl) { return pl ? 13 : 6; }
 
-  // Check capture: last seed in own empty pit (was empty before, now has 1)
-  if(!extra && board[cur]===1){
-    const isOwnPit=(turn===0 && cur>=0 && cur<=5)||(turn===1 && cur>=7 && cur<=12);
-    if(isOwnPit){
-      // Opposite of pit i is (12-i) for pits 0-5 and 7-12
-      const opp=12-cur;
-      if(board[opp]>0){
-        const n=board[cur]+board[opp];
-        board[ownStore]+=n;
-        board[cur]=0;
-        board[opp]=0;
-        lastMsg=`${names[turn]} captured ${n}!`;
-        GN.haptic('medium');
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; app.innerHTML = '';
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against the computer' },
+        { id: '2p', icon: 'users', title: 'Two players', desc: 'Pass the phone back and forth' }
+      ],
+      options: [
+        { id: 'stones', label: 'Stones per pit', value: '4', choices: [['4', '4 stones'], ['6', '6 stones']] },
+        { id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', 'Easy'], ['med', 'Medium'], ['hard', 'Hard']], when: function (m) { return m === 'cpu'; } }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        S = {
+          mode: cfg.mode, level: cfg.options.level || 'med', per: +cfg.options.stones || 4,
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }),
+          wins: [0, 0, 0], first: 0
+        };
+        newRound();
       }
-    }
-  }
-  hot=-1;
-
-  // Check game over: any side all empty
-  const p1Empty=board.slice(0,6).every(v=>v===0);
-  const p2Empty=board.slice(7,13).every(v=>v===0);
-  if(p1Empty||p2Empty){
-    // Collect remaining seeds
-    for(let i=0;i<6;i++) board[6]+=board[i],board[i]=0;
-    for(let i=7;i<13;i++) board[13]+=board[i],board[i]=0;
-    gameOver=true;
-    animating=false;
-    render();
-    endGame();
-    return;
-  }
-
-  if(extra){lastMsg=`Last seed in the store — ${names[turn]} goes again!`;GN.haptic('medium');}
-  if(!extra) turn=1-turn;
-  animating=false;
-  render();
-}
-
-function endGame(){
-  const s1=board[6], s2=board[13];
-  let title, sub;
-  if(s1>s2){ title=names[0]+' wins! 🏆'; sub=s1+' vs '+s2+' seeds'; }
-  else if(s2>s1){ title=names[1]+' wins! 🏆'; sub=s2+' vs '+s1+' seeds'; }
-  else { title="It's a tie! 🤝"; sub=s1+' seeds each'; }
-
-  document.getElementById('mc-winner-area').innerHTML=
-    `<div class="winner-banner">
-      <div class="winner-name">${title}</div>
-      <div class="winner-pts">${sub}</div>
-      <div class="btn-row"><button class="btn btn-gold" id="mc-again">Play again</button><button class="btn btn-outline" id="mc-change">Change players</button></div>
-    </div>`;
-  document.getElementById('mc-again').addEventListener('click',restart);
-  document.getElementById('mc-change').addEventListener('click',()=>showGame(false));
-  GN.haptic('success');sWin();
-  window.scrollTo({top:0,behavior:'smooth'});
-
-  try{
-    const wi=s1>s2?0:s2>s1?1:-1;
-    GameHistory.save('mancala',{
-      _summary:`${wi>=0?names[wi]+' wins':title} · ${s1}–${s2}`,
-      _badge:wi>=0?names[wi]:'Tie',
-      winner:wi>=0?names[wi]:'Tie',
-      p1:names[0],p2:names[1],s1,s2
     });
-  }catch(e){}
-}
-
-// ── Render ─────────────────────────────────────────────────────────────────
-function seedsHTML(count){
-  let html='';
-  for(let i=0;i<Math.min(count,30);i++){
-    const [c1,c2]=SEED_COLORS[i%SEED_COLORS.length];
-    html+=`<div class="seed" style="background:radial-gradient(circle at 35% 35%,${c1},${c2});"></div>`;
   }
-  return `<div class="seeds">${html}</div>`;
-}
 
-function pitEl(i){
-  const owner=i<=5?0:1;
-  const canPlay=!gameOver&&!animating&&turn===owner&&board[i]>0;
-  const d=document.createElement('div');
-  d.className='mc-pit'+(canPlay?' active-pit':' disabled')+(hot===i?' hot':'');
-  d.style.setProperty('--c',owner===0?'var(--p1)':'var(--p2)');
-  d.dataset.pit=i;
-  d.innerHTML=seedsHTML(board[i])+`<span class="pit-count">${board[i]}</span>`;
-  d.addEventListener('click',()=>doMove(i));
-  return d;
-}
-function storeEl(i){
-  const owner=i===6?0:1;
-  const d=document.createElement('div');
-  d.className='mc-store'+(!gameOver&&turn===owner?' active-store':'')+(hot===i?' hot':'');
-  d.style.setProperty('--c',owner===0?'var(--p1)':'var(--p2)');
-  d.innerHTML=seedsHTML(board[i])+`<div class="store-info"><span class="store-count">${board[i]}</span><span class="store-lbl">Store</span></div>`;
-  return d;
-}
-
-function render(){
-  if(!board)return;
-  const el=document.getElementById('mc-board');
-  const v=vertical.matches;
-  el.className='mc-board '+(v?'v':'h');
-  el.innerHTML='';
-  const place=(node,col,row)=>{node.style.gridColumn=col;node.style.gridRow=row;el.appendChild(node);};
-  if(v){
-    // Rotated 90°: P2 store on top, P1 pits down the left, P2 pits up the right, P1 store at bottom
-    place(storeEl(13),'1 / span 2','1');
-    for(let k=0;k<6;k++){
-      place(pitEl(k),'1',String(k+2));
-      place(pitEl(12-k),'2',String(k+2));
+  function newRound() {
+    cpuToken++; undoStack = []; busy = false;
+    S.stones = []; K = 0;
+    var ci = 0;
+    for (var i = 0; i < 14; i++) {
+      if (i === 6 || i === 13) continue;
+      for (var j = 0; j < S.per; j++) S.stones.push({ c: (ci++ * 5 + i) % GLASS.length, p: i, k: ++K });
     }
-    place(storeEl(6),'1 / span 2','8');
-  } else {
-    place(storeEl(13),'1','1 / span 2');
-    for(let k=0;k<6;k++){
-      place(pitEl(12-k),String(k+2),'1');
-      place(pitEl(k),String(k+2),'2');
+    S.cur = S.first; S.over = false; S.started = Date.now(); S.moves = 0;
+    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null };
+    S.last = -1;
+    save(); render(); maybeCpu();
+  }
+
+  // ── Pure rules on a 14-count board ────────────────────────────────────────
+  function next(i, pl) { i = (i + 1) % 14; if (i === storeOf(1 - pl)) i = (i + 1) % 14; return i; }
+  function simulate(b, pl, pit) {
+    b = b.slice(); var n = b[pit], c = pit; b[pit] = 0;
+    while (n > 0) { c = next(c, pl); b[c]++; n--; }
+    var r = { b: b, last: c, extra: c === storeOf(pl), cap: 0, end: false };
+    if (!r.extra && own(pl, c) && b[c] === 1 && b[12 - c] > 0) {
+      r.cap = b[12 - c] + 1; b[storeOf(pl)] += r.cap; b[c] = 0; b[12 - c] = 0;
     }
-    place(storeEl(6),'8','1 / span 2');
+    var e0 = true, e1 = true;
+    for (var i = 0; i < 6; i++) { if (b[i]) e0 = false; if (b[i + 7]) e1 = false; }
+    if (e0 || e1) {
+      r.end = true;
+      for (i = 0; i < 6; i++) { b[6] += b[i]; b[i] = 0; b[13] += b[i + 7]; b[i + 7] = 0; }
+    }
+    return r;
+  }
+  function legal(b, pl) { var o = []; for (var i = 0; i < 6; i++) { var p = pl ? i + 7 : i; if (b[p]) o.push(p); } return o; }
+
+  // ── Computer: alpha-beta search (extra turns keep the same side to move) ──
+  function evalB(b, me) { var s = b[storeOf(me)] - b[storeOf(1 - me)], side = 0; for (var i = 0; i < 6; i++) side += b[me ? i + 7 : i] - b[me ? i : i + 7]; return s + side * 0.25; }
+  function search(b, pl, me, depth, a, bt) {
+    var moves = legal(b, pl);
+    if (depth === 0 || !moves.length) return evalB(b, me);
+    var maxing = pl === me, best = maxing ? -Infinity : Infinity;
+    for (var i = 0; i < moves.length; i++) {
+      var r = simulate(b, pl, moves[i]), v;
+      if (r.end) v = (r.b[storeOf(me)] - r.b[storeOf(1 - me)]) * 100;
+      else v = search(r.b, r.extra ? pl : 1 - pl, me, depth - 1, a, bt);
+      if (maxing) { if (v > best) best = v; if (best > a) a = best; } else { if (v < best) best = v; if (best < bt) bt = best; }
+      if (a >= bt) break;
+    }
+    return best;
+  }
+  function cpuPick() {
+    var b = counts(), me = S.cur, moves = legal(b, me);
+    if (S.level === 'easy' && Math.random() < 0.4) return moves[Math.floor(Math.random() * moves.length)];
+    var depth = S.level === 'easy' ? 1 : S.level === 'med' ? 4 : 9, best = moves[0], bv = -Infinity;
+    moves.forEach(function (m) {
+      var r = simulate(b, me, m), v = r.end ? (r.b[storeOf(me)] - r.b[storeOf(1 - me)]) * 100 : search(r.b, r.extra ? me : 1 - me, me, depth - 1, -Infinity, Infinity);
+      v += Math.random() * (S.level === 'hard' ? 0.05 : 0.6);
+      if (v > bv) { bv = v; best = m; }
+    });
+    return best;
+  }
+  function maybeCpu() {
+    if (!S || S.over || !S.players[S.cur].cpu) return;
+    busy = true; paint();
+    var tk = ++cpuToken;
+    setTimeout(function () { if (tk !== cpuToken) return; play(cpuPick(), true); }, 750);
   }
 
-  // Scores
-  const sc=document.getElementById('mc-scores');
-  sc.innerHTML=[0,1].map(p=>`<div class="mc-score${!gameOver&&turn===p?' on':''}" style="--c:var(--p${p+1})">
-    <span class="dot"></span><div class="who"><div class="nm">${names[p]}</div><div class="sub">${!gameOver&&turn===p?'Your turn':(v?(p===0?'Left side':'Right side'):(p===0?'Bottom row':'Top row'))}</div></div>
-    <div class="val">${board[p===0?6:13]}</div></div>`).join('');
-
-  // Status
-  const status_el=document.getElementById('mc-status');
-  if(!gameOver){
-    status_el.innerHTML=lastMsg?`<b>${lastMsg}</b>`:(animating?'Sowing…':`<b style="color:var(--p${turn+1})">${names[turn]}</b> · pick a pit on your side`);
-  } else {
-    status_el.innerHTML='<b>Game over</b>';
+  // ── Playing a move (animated, one stone at a time) ───────────────────────
+  function tap(pit) {
+    if (!S || S.over || busy || S.players[S.cur].cpu) return;
+    var b = counts();
+    if (!own(S.cur, pit)) { nudge('Pick a pit on your side'); return; }
+    if (!b[pit]) { nudge('That pit is empty'); return; }
+    snapshot();
+    play(pit, false);
   }
-}
-vertical.addEventListener?.('change',render);
+  function nudge(msg) { Kit.haptic('error'); Kit.sfx('bad'); Kit.toast(msg); }
 
-// ── Sound ──────────────────────────────────────────────────────────────────
-let _ac=null;
-function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
-function sTone(freq,start,dur,vol,type){
-  try{const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
-  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.12,t+0.01);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);}catch(e){}
-}
-function sSeed(){sTone(900+Math.random()*300,0,.06,.06,'triangle');}
-function sWin(){[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.16));}
+  function play(pit, byCpu) {
+    var tk = cpuToken, pl = S.cur;
+    busy = true; S.last = -1;
+    var hand = S.stones.filter(function (s) { return s.p === pit; }).sort(function (a, b) { return a.k - b.k; });
+    var n = hand.length, step = Math.max(150, Math.min(260, 2600 / n));
+    hand.forEach(function (s, i) { s.p = 'h'; s.hp = pit; s.hi = i; });
+    Kit.sfx('pop'); Kit.haptic('light');
+    paint();
+    var c = pit;
+    setTimeout(sow, 300);
+    function sow() {
+      if (tk !== cpuToken) return;
+      c = next(c, pl);
+      var s = hand.shift(); s.p = c; s.k = ++K; delete s.hp; delete s.hi;
+      hand.forEach(function (h, i) { h.hi = i; h.hp = c; });
+      Kit.sfx('tick'); Kit.haptic('tick');
+      paint(c);
+      if (hand.length) setTimeout(sow, step);
+      else setTimeout(function () { if (tk === cpuToken) after(pl, pit, c, n); }, step + 220);
+    }
+  }
+  function after(pl, from, lastPit, n) {
+    var b = counts(), who = S.players[pl], extra = lastPit === storeOf(pl), cap = 0, delay = 0;
+    S.moves++;
+    if (!extra && own(pl, lastPit) && b[lastPit] === 1 && b[12 - lastPit] > 0) {
+      cap = b[12 - lastPit] + 1;
+      moveAll([lastPit, 12 - lastPit], storeOf(pl));
+      S.st.caps.push({ who: pl, n: cap, pit: lastPit });
+      Kit.callout('Capture! +' + cap, who.color); Kit.sfx('good'); Kit.haptic('success');
+      delay = 700;
+    }
+    if (extra) {
+      S.st.extra[pl]++; S.st.chain++;
+      if (S.st.chain > S.st.bestChain.n) S.st.bestChain = { n: S.st.chain, who: pl };
+    } else S.st.chain = 0;
+    S.last = lastPit;
+    paint();
+    setTimeout(function () {
+      b = counts();
+      var e0 = true, e1 = true;
+      for (var i = 0; i < 6; i++) { if (b[i]) e0 = false; if (b[i + 7]) e1 = false; }
+      if (e0 || e1) {
+        var left0 = 0, left1 = 0; for (i = 0; i < 6; i++) { left0 += b[i]; left1 += b[i + 7]; }
+        var sweeper = left0 ? 0 : 1, amt = left0 + left1;
+        if (amt) S.st.sweep = { who: sweeper, n: amt };
+        var pits0 = [], pits1 = []; for (i = 0; i < 6; i++) { pits0.push(i); pits1.push(i + 7); }
+        moveAll(pits0, 6); moveAll(pits1, 13);
+        if (amt) Kit.toast(S.players[sweeper].name + ' sweeps up ' + amt + ' stone' + (amt === 1 ? '' : 's'));
+        S.over = true; busy = false; paint();
+        setTimeout(endGame, amt ? 1200 : 500);
+        return;
+      }
+      if (extra) {
+        Kit.callout(who.name === 'You' ? 'Go again!' : who.name + ' goes again!', who.color);
+        Kit.sfx('good'); Kit.haptic('medium');
+      } else S.cur = 1 - S.cur;
+      busy = false;
+      save(); paint(); maybeCpu();
+    }, delay);
+  }
+  function moveAll(pits, to) {
+    S.stones.forEach(function (s) { if (pits.indexOf(s.p) >= 0) { s.p = to; s.k = ++K; } });
+  }
 
-// Frequent-player pickers under each name input
-if(typeof FrequentPlayers!=='undefined'){
-  FrequentPlayers.attachPicker(document.getElementById('mc-p1'),
-    {siblingSelector:'#mc-p1, #mc-p2'});
-  FrequentPlayers.attachPicker(document.getElementById('mc-p2'),
-    {siblingSelector:'#mc-p1, #mc-p2'});
-}
+  // ── Undo: back to before your last move ───────────────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (!S || !undoStack.length) return Kit.toast('Nothing to undo');
+    cpuToken++; busy = false;
+    S = JSON.parse(undoStack.pop());
+    K = S.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
+    Kit.sfx('whoosh'); Kit.toast('Move taken back');
+    save(); render(); maybeCpu();
+  }
+
+  // ── End of game ───────────────────────────────────────────────────────────
+  function endGame() {
+    var s0 = store(0), s1 = store(1), w = s0 > s1 ? 0 : s1 > s0 ? 1 : -1;
+    if (w >= 0) S.wins[w]++; else S.wins[2]++;
+    S.first = 1 - S.first;
+    var P = S.players, hl = [];
+    var big = S.st.caps.slice().sort(function (a, b) { return b.n - a.n; })[0];
+    if (big) hl.push('Biggest capture: ' + P[big.who].name + ' grabbed ' + big.n + ' stones');
+    var capCount = [0, 0]; S.st.caps.forEach(function (c) { capCount[c.who]++; });
+    if (capCount[0] + capCount[1] >= 3) hl.push('Captures: ' + P[0].name + ' ' + capCount[0] + ', ' + P[1].name + ' ' + capCount[1]);
+    if (S.st.bestChain.n >= 2) hl.push(P[S.st.bestChain.who].name + ' took ' + (S.st.bestChain.n + 1) + ' turns in a row with extra turns');
+    else if (S.st.extra[0] + S.st.extra[1]) hl.push('Extra turns: ' + P[0].name + ' ' + S.st.extra[0] + ', ' + P[1].name + ' ' + S.st.extra[1]);
+    if (S.st.sweep && S.st.sweep.n >= 4) hl.push(P[S.st.sweep.who].name + ' swept ' + S.st.sweep.n + ' stones into their store at the end');
+    if (w >= 0 && Math.abs(s0 - s1) <= 2) hl.push('A nail-biter: won by ' + Math.abs(s0 - s1));
+    if (w >= 0 && Math.abs(s0 - s1) >= 16) hl.push(P[w].name + ' won by a landslide (' + Math.abs(s0 - s1) + ' stones)');
+    hl.push(S.per + ' stones per pit' + (S.mode === 'cpu' ? ', ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard' }[S.level]) + ' computer' : ''));
+    Kit.record(KEY, {
+      started: S.started, mode: S.mode === 'cpu' ? 'vs Computer' : 'Two players',
+      players: P.map(function (p, i) { return { name: p.name, score: i ? s1 : s0, cpu: p.cpu }; }),
+      winner: w >= 0 ? P[w].name : null, highlights: hl
+    });
+    clearSave();
+    var lose = w >= 0 && P[w].cpu;
+    Kit.win({
+      icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy',
+      title: w < 0 ? "It's a tie!" : P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!',
+      sub: s0 + ' – ' + s1 + ' · Series ' + S.wins[0] + '–' + S.wins[1] + (S.wins[2] ? ' (' + S.wins[2] + ' tied)' : ''),
+      rank: [{ name: P[0].name, score: s0, color: P[0].color }, { name: P[1].name, score: s1, color: P[1].color }].sort(function (a, b) { return b.score - a.score; }),
+      lose: lose, againLabel: 'Play again',
+      again: function () { newRound(); },
+      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, { label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Geometry ──────────────────────────────────────────────────────────────
+  var G = null;
+  function geometry() {
+    var aw = Math.min(app.clientWidth || 358, 940);
+    var vertical = aw < 600;
+    var g = { v: vertical, r: {} }, i;
+    if (vertical) {
+      var ah = (window.innerHeight || 800) - 58 - 2 * 54 - 26;
+      var D = Math.max(44, Math.min(80, ah / 9.7, (aw - 70) / 2.3));
+      var gap = Math.round(D * 0.1), rim = Math.round(D * 0.42), cg = Math.round(D * 0.22);
+      var W = rim * 2 + D * 2 + cg, SH = D * 1.25, pad = Math.round(D * 0.22);
+      var H = pad * 2 + SH * 2 + gap * 2 + 6 * D + 5 * gap;
+      g.W = W; g.H = H; g.D = D;
+      g.r[13] = { x: rim, y: pad, w: D * 2 + cg, h: SH };
+      g.r[6] = { x: rim, y: H - pad - SH, w: D * 2 + cg, h: SH };
+      for (i = 0; i < 6; i++) {
+        var y = pad + SH + gap + i * (D + gap);
+        g.r[i] = { x: rim, y: y, w: D, h: D };
+        g.r[12 - i] = { x: rim + D + cg, y: y, w: D, h: D };
+      }
+      g.lbl = function (p) { var r = g.r[p]; if (p === 6 || p === 13) return null; return { x: p <= 5 ? rim / 2 : W - rim / 2, y: r.y + r.h / 2 }; };
+      g.ss = Math.round(D * 0.25);
+    } else {
+      var D2 = Math.min(84, (aw - 60) / 8.6), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
+      var SW = D2 * 1.15, pad2 = Math.round(D2 * 0.24);
+      var W2 = pad2 * 2 + SW * 2 + gap2 * 2 + 6 * D2 + 5 * gap2, H2 = rim2 * 2 + D2 * 2 + Math.round(D2 * 0.25);
+      g.W = W2; g.H = H2; g.D = D2;
+      g.r[13] = { x: pad2, y: rim2, w: SW, h: H2 - rim2 * 2 };
+      g.r[6] = { x: W2 - pad2 - SW, y: rim2, w: SW, h: H2 - rim2 * 2 };
+      for (i = 0; i < 6; i++) {
+        var x = pad2 + SW + gap2 + i * (D2 + gap2);
+        g.r[i] = { x: x, y: H2 - rim2 - D2, w: D2, h: D2 };
+        g.r[12 - i] = { x: x, y: rim2, w: D2, h: D2 };
+      }
+      g.lbl = function (p) { var r = g.r[p]; if (p === 6 || p === 13) return null; return { x: r.x + r.w / 2, y: p <= 5 ? H2 - rim2 / 2 : rim2 / 2 }; };
+      g.ss = Math.round(D2 * 0.25);
+    }
+    return g;
+  }
+  // Stable, natural-looking spot for the n-th stone in a pit
+  function spot(p, slot, id) {
+    var r = G.r[p], cx = r.x + r.w / 2, cy = r.y + r.h / 2, ss = G.ss;
+    var rx = r.w / 2 - ss * 0.75, ry = r.h / 2 - ss * 0.75;
+    var a = slot * 2.39996 + (id % 7) * 0.31, d = Math.sqrt(slot + 0.35) * ss * 0.56;
+    var lim = Math.min(rx, ry), x, y;
+    if (rx > ry) { x = Math.cos(a) * d * (rx / ry); y = Math.sin(a) * d; } else if (ry > rx) { x = Math.cos(a) * d; y = Math.sin(a) * d * (ry / rx); } else { x = Math.cos(a) * d; y = Math.sin(a) * d; }
+    // fold anything past the rim back in (piles stay inside the bowl)
+    var nx = x / Math.max(rx, 1), ny = y / Math.max(ry, 1), m = Math.sqrt(nx * nx + ny * ny);
+    if (m > 1) { var f = (0.55 + 0.4 * ((m * 7.3) % 1)) / m; x *= f; y *= f; }
+    var jx = ((id * 37) % 9 - 4) * ss * 0.03, jy = ((id * 53) % 9 - 4) * ss * 0.03;
+    void lim;
+    return { x: cx + x + jx - ss / 2, y: cy + y + jy - ss / 2 };
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var boardEl, pitEls, stoneEls, lblEls, tagEls;
+  function render() {
+    if (!S) return;
+    app.innerHTML = '';
+    G = geometry();
+    var wrap = el('div', { class: 'mc' });
+    tagEls = [mkTag(0), mkTag(1)];
+    if (G.v) wrap.appendChild(tagEls[1]);
+    else wrap.appendChild(el('div', { class: 'row', style: { gap: '12px', 'justify-content': 'center', 'flex-wrap': 'wrap' } }, [tagEls[1], tagEls[0]]));
+    boardEl = el('div', { class: 'mboard', style: { width: G.W + 'px', height: G.H + 'px', '--grain': G.v ? '180deg' : '90deg', '--br': Math.round(G.D * 0.7) + 'px' } });
+    pitEls = []; lblEls = [];
+    for (var i = 0; i < 14; i++) {
+      (function (i) {
+        var r = G.r[i], isStore = i === 6 || i === 13;
+        var p = el('button', { type: 'button', class: 'pit' + (isStore ? ' store' : ''), 'aria-label': isStore ? 'Store' : 'Pit', style: { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' } });
+        if (isStore) { p.tabIndex = -1; } else p.addEventListener('click', function () { tap(i); });
+        pitEls[i] = p; boardEl.appendChild(p);
+        var lp = G.lbl(i);
+        if (lp) { var l = el('div', { class: 'lbl', style: { left: lp.x + 'px', top: lp.y + 'px' } }); lblEls[i] = l; boardEl.appendChild(l); }
+      })(i);
+    }
+    stoneEls = S.stones.map(function (s, i) {
+      var st = el('div', { class: 'stone', style: { '--g': GLASS[s.c], '--ss': G.ss + 'px' } });
+      boardEl.appendChild(st); return st;
+    });
+    wrap.appendChild(boardEl);
+    if (G.v) wrap.appendChild(tagEls[0]);
+    if (S.over) wrap.appendChild(el('div', { class: 'ctrls' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'Play again', onclick: newRound })]));
+    app.appendChild(wrap);
+    paint(-1, true);
+  }
+  function mkTag(pl) {
+    var p = S.players[pl];
+    return el('div', { class: 'mtag', style: { '--c': p.color } }, [
+      el('span', { class: 'avatar', html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
+      el('span', { class: 'col' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'st' })]),
+      el('span', { class: 'cnt' })
+    ]);
+  }
+  function paint(landing, instant) {
+    if (!boardEl) return;
+    var c = counts(), canPlay = !S.over && !busy && !S.players[S.cur].cpu;
+    // place stones: in-pit by arrival order, "in hand" ones float above their pit
+    var byPit = {};
+    S.stones.forEach(function (s, i) { if (typeof s.p === 'number') (byPit[s.p] = byPit[s.p] || []).push(i); });
+    Object.keys(byPit).forEach(function (p) {
+      byPit[p].sort(function (a, b) { return S.stones[a].k - S.stones[b].k; });
+      byPit[p].forEach(function (si, slot) {
+        var pos = spot(+p, slot, si), e = stoneEls[si];
+        e.classList.remove('up');
+        e.style.transform = 'translate(' + pos.x.toFixed(1) + 'px,' + pos.y.toFixed(1) + 'px)';
+        e.style.zIndex = 2 + slot;
+      });
+    });
+    S.stones.forEach(function (s, si) {
+      if (s.p !== 'h') return;
+      var r = G.r[s.hp], e = stoneEls[si], ss = G.ss;
+      var x = r.x + r.w / 2 - ss / 2 + (s.hi % 4 - 1.5) * ss * 0.55, y = r.y + r.h / 2 - ss / 2 - ss * 0.9 - Math.floor(s.hi / 4) * ss * 0.4;
+      e.classList.add('up');
+      e.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(1.18)';
+      e.style.zIndex = 60 + s.hi;
+    });
+    if (instant) { stoneEls.forEach(function (e) { e.style.transition = 'none'; }); void boardEl.offsetWidth; stoneEls.forEach(function (e) { e.style.transition = ''; }); }
+    for (var i = 0; i < 14; i++) {
+      var p = pitEls[i], mine = own(S.cur, i);
+      p.classList.toggle('can', canPlay && mine && c[i] > 0);
+      p.classList.toggle('land', i === landing || (landing == null && i === S.last));
+      p.style.setProperty('--c', S.players[i <= 6 ? 0 : 1].color);
+      if (i !== 6 && i !== 13) p.setAttribute('aria-label', (i <= 5 ? S.players[0].name : S.players[1].name) + ' pit with ' + c[i] + ' stones');
+      if (lblEls[i]) { var t = String(c[i]); if (lblEls[i].textContent !== t) { lblEls[i].textContent = t; if (!instant) { lblEls[i].classList.remove('pop'); void lblEls[i].offsetWidth; lblEls[i].classList.add('pop'); } } }
+    }
+    [0, 1].forEach(function (pl) {
+      var t = tagEls[pl], p = S.players[pl], on = !S.over && S.cur === pl;
+      t.classList.toggle('on', on);
+      t.querySelector('.cnt').textContent = c[storeOf(pl)];
+      t.querySelector('.st').textContent = S.over ? (c[storeOf(pl)] > c[storeOf(1 - pl)] ? 'Winner' : c[storeOf(pl)] === c[storeOf(1 - pl)] ? 'Tie' : 'Final') :
+        on ? (p.cpu ? 'Thinking…' : busy ? 'Sowing…' : S.mode === 'cpu' ? 'Your turn: tap a pit' : 'Your turn') : 'in store';
+    });
+  }
+  var rT = null;
+  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && !busy) render(); }, 150); });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.stones && saved.players && !saved.over) {
+    S = saved;
+    // a save made mid-sow is never written, but be safe: drop any stone still "in hand" back into its pit
+    S.stones.forEach(function (s) { if (s.p === 'h') { s.p = s.hp; delete s.hp; delete s.hi; } });
+    K = S.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
+    render(); maybeCpu();
+  } else showSetup();
+})();
 </script>
 </body>
 </html>
