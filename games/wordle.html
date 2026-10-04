@@ -41,6 +41,8 @@ body{overflow:hidden;}
 .key.hit{background:var(--hit);color:#05290f;}
 .key.near{background:var(--near);color:#2b1a00;}
 .key.miss{background:#2a2348;color:#7d74a6;}
+.sw{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;font-weight:900;font-size:.9rem;vertical-align:middle;margin-right:4px;}
+.sw.hit{background:var(--hit);color:#05290f;}.sw.near{background:var(--near);color:#2b1a00;}.sw.miss{background:var(--miss);color:#d9d2f5;}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:6px 0 14px;}
 .stats div{text-align:center;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.05);}
 .stats b{display:block;font-size:1.5rem;font-weight:900;}
@@ -73,15 +75,15 @@ body{overflow:hidden;}
     confirmNew: false,
     onNew: function () { start(true); },
     menu: [
-      { icon: '📊', label: 'Stats', onClick: function () { showStats(); } },
-      { icon: '💪', label: 'Hard mode', onClick: function () { toggleHard(); } },
-      { icon: '📜', label: 'Past games', onClick: function () { GameHistory.open('wordle', '🟩 Wordle', function (e) { return GameHistory.renderWordleGrid(e.guesses, e.results, e.answer); }); } }
+      { icon: 'chart', label: 'Stats', onClick: function () { showStats(); } },
+      { icon: 'flame', label: 'Hard mode', onClick: function () { toggleHard(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { GameHistory.open('wordle', 'Wordle', function (e) { return GameHistory.renderWordleGrid(e.guesses, e.results, e.answer); }); } }
     ],
     rules:
       '<p class="goal">Guess the secret <b>five-letter word</b> in six tries.</p>' +
       '<h3>How it works</h3><ul><li>Type any real five-letter word and press <b>Enter</b>.</li>' +
       '<li>The tiles change colour to show how close you are:</li></ul>' +
-      '<p>🟩 <b>Green</b>: right letter, right spot.<br>🟨 <b>Yellow</b>: the letter is in the word, but somewhere else.<br>⬛ <b>Grey</b>: the letter isn\'t in the word.</p>' +
+      '<p><span class="sw hit">A</span> <b>Green</b>: right letter, right spot.</p><p><span class="sw near">B</span> <b>Yellow</b>: in the word, but somewhere else.</p><p><span class="sw miss">C</span> <b>Grey</b>: not in the word at all.</p>' +
       '<p>Letters can repeat. A letter only lights up as many times as it appears in the answer.</p>' +
       '<h3>Daily or practice</h3><p><b>Daily</b> is the same word for everyone today. <b>Practice</b> gives you a new random word whenever you like.</p>' +
       '<h3>Hard mode</h3><p>Any green or yellow letter you find must be used in every guess after it.</p>'
@@ -216,7 +218,7 @@ body{overflow:hidden;}
     box.appendChild(el('div', { class: 'dim', style: { 'font-size': '.75rem', 'margin-top': '6px' }, text: 'Based on your last ' + played + ' games' }));
     return box;
   }
-  function showStats() { Kit.sheet({ title: '📊 Your Wordle stats', node: statsNode(), actions: [{ label: 'Close', cls: 'btn-soft' }] }); }
+  function showStats() { Kit.sheet({ title: 'Your Wordle stats', node: statsNode(), actions: [{ label: 'Close', cls: 'btn-soft' }] }); }
   function share() {
     var emo = { hit: '🟩', near: '🟨', miss: '⬛' };
     var text = 'Wordle ' + (S.random ? '(practice)' : '#' + S.day) + ' ' + (S.won ? S.guesses.length : 'X') + '/6' + (hard ? '*' : '') + '\n\n' +
@@ -226,12 +228,11 @@ body{overflow:hidden;}
   }
   function result() {
     var w = Kit.win({
-      emoji: S.won ? ['🤯', '🌟', '🎉', '😎', '👏', '😅'][S.guesses.length - 1] : '🫣',
       title: S.won ? CHEERS[S.guesses.length - 1] : 'So close!',
       sub: S.won ? 'Solved in ' + S.guesses.length + (S.guesses.length === 1 ? ' guess' : ' guesses') : 'The word was',
-      lose: !S.won, againLabel: '♾️ Practice word',
+      lose: !S.won, againLabel: 'Practice word',
       again: function () { start(true); },
-      extra: [{ label: '📤 Share', onClick: function () { share(); } }]
+      extra: [{ label: 'Share', onClick: function () { share(); } }]
     });
     var card = document.querySelector('.k-win .card'), sub = card.querySelector('.sub');
     var ans = el('div', { class: 'answer' + (S.won ? '' : ' lost') });
@@ -244,7 +245,7 @@ body{overflow:hidden;}
   var rows = [], keys = {};
   function build() {
     var t = today(), m = $('modes'); m.innerHTML = '';
-    [['daily', '📅 Daily #' + t.day], ['random', '♾️ Practice']].forEach(function (x) {
+    [['daily', 'Daily #' + t.day], ['random', 'Practice']].forEach(function (x) {
       m.appendChild(el('button', {
         type: 'button', class: (S.random ? 'random' : 'daily') === x[0] ? 'on' : '', text: x[1],
         onclick: function () {
@@ -298,7 +299,7 @@ body{overflow:hidden;}
   function toggleHard() {
     if (S.guesses.length && !S.over && !hard) return Kit.toast('Turn on hard mode before your first guess');
     hard = !hard; localStorage.setItem('wordle_hard', hard ? '1' : '0');
-    Kit.toast(hard ? '💪 Hard mode on' : 'Hard mode off');
+    Kit.toast(hard ? 'Hard mode on' : 'Hard mode off');
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────

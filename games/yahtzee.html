@@ -25,7 +25,8 @@
 .sc{display:flex;flex-direction:column;gap:6px;}
 .cat{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:6px 8px 6px 12px;border:0;border-radius:var(--r);
   background:rgba(255,255,255,.05);color:var(--text);text-align:left;transition:transform .12s var(--spring), background .15s;}
-.cat .ic{width:30px;text-align:center;font-size:1.15rem;font-weight:900;}
+.cat .die.mini{--ds:30px;padding:4px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12);pointer-events:none;}
+.cat .nm{padding-left:2px;}
 .cat .nm{flex:1;min-width:0;}
 .cat .nm b{display:block;font-size:.98rem;}
 .cat .nm small{display:block;color:var(--text-3);font-size:.76rem;font-weight:700;}
@@ -62,19 +63,19 @@
   var SAVE = 'yahtzee_state';
 
   var CATS = [
-    { id: 'ones', name: 'Ones', ic: '⚀', hint: 'Add up the 1s', up: 1 },
-    { id: 'twos', name: 'Twos', ic: '⚁', hint: 'Add up the 2s', up: 2 },
-    { id: 'threes', name: 'Threes', ic: '⚂', hint: 'Add up the 3s', up: 3 },
-    { id: 'fours', name: 'Fours', ic: '⚃', hint: 'Add up the 4s', up: 4 },
-    { id: 'fives', name: 'Fives', ic: '⚄', hint: 'Add up the 5s', up: 5 },
-    { id: 'sixes', name: 'Sixes', ic: '⚅', hint: 'Add up the 6s', up: 6 },
-    { id: 'k3', name: '3 of a Kind', ic: '3×', hint: 'Three alike: add all dice' },
-    { id: 'k4', name: '4 of a Kind', ic: '4×', hint: 'Four alike: add all dice' },
-    { id: 'fh', name: 'Full House', ic: '🏠', hint: 'Three + a pair: 25' },
-    { id: 'ss', name: 'Small Straight', ic: '🪜', hint: 'Four in a row: 30' },
-    { id: 'ls', name: 'Large Straight', ic: '🌈', hint: 'Five in a row: 40' },
-    { id: 'yz', name: 'Yahtzee', ic: '🎲', hint: 'All five alike: 50' },
-    { id: 'ch', name: 'Chance', ic: '❓', hint: 'Anything: add all dice' }
+    { id: 'ones', name: 'Ones', hint: 'Add up the 1s', up: 1 },
+    { id: 'twos', name: 'Twos', hint: 'Add up the 2s', up: 2 },
+    { id: 'threes', name: 'Threes', hint: 'Add up the 3s', up: 3 },
+    { id: 'fours', name: 'Fours', hint: 'Add up the 4s', up: 4 },
+    { id: 'fives', name: 'Fives', hint: 'Add up the 5s', up: 5 },
+    { id: 'sixes', name: 'Sixes', hint: 'Add up the 6s', up: 6 },
+    { id: 'k3', name: '3 of a Kind', hint: 'Three alike: add all dice' },
+    { id: 'k4', name: '4 of a Kind', hint: 'Four alike: add all dice' },
+    { id: 'fh', name: 'Full House', hint: 'Three + a pair: 25' },
+    { id: 'ss', name: 'Small Straight', hint: 'Four in a row: 30' },
+    { id: 'ls', name: 'Large Straight', hint: 'Five in a row: 40' },
+    { id: 'yz', name: 'Yahtzee', hint: 'All five alike: 50' },
+    { id: 'ch', name: 'Chance', hint: 'Anything: add all dice' }
   ];
   var CAT = {}; CATS.forEach(function (c) { CAT[c.id] = c; });
 
@@ -82,7 +83,7 @@
   Kit.init({
     id: 'yahtzee',
     onNew: function () { clearSave(); showSetup(); },
-    menu: [{ icon: '📜', label: 'Past games', onClick: function () { openHistory(); } }],
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { openHistory(); } }],
     rules:
       '<p class="goal">Roll five dice to make scoring combos. After 13 rounds, the highest total wins.</p>' +
       '<h3>Your turn</h3><ul><li>Roll up to <b>3 times</b>. Tap dice between rolls to <b>hold</b> them.</li>' +
@@ -148,9 +149,9 @@
     S = null;
     Kit.setup(app, {
       modes: [
-        { id: 'roll', emoji: '🎲', title: 'Pass & play', desc: 'Take turns rolling on this phone' },
-        { id: 'cpu', emoji: '🤖', title: 'vs Computer', desc: 'You against the computer' },
-        { id: 'card', emoji: '📝', title: 'Real dice', desc: 'Roll at the table, score here' }
+        { id: 'roll', icon: 'users', title: 'Pass & play', desc: 'Take turns rolling on this phone' },
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against the computer' },
+        { id: 'card', icon: 'pencil', title: 'Real dice', desc: 'Roll at the table, score here' }
       ],
       players: {
         range: function (m) { return m === 'cpu' ? [2, 4] : [1, 8]; },
@@ -231,7 +232,6 @@
     clearSave();
     var youLost = S.mode === 'cpu' && top.cpu;
     Kit.win({
-      emoji: rank.length === 1 ? (top.score >= 250 ? '🏆' : '🎲') : tie ? '🤝' : youLost ? '🤖' : '🏆',
       title: rank.length === 1 ? top.score + ' points!' : tie ? "It's a tie!" : top.name + ' wins!',
       sub: rank.length === 1 ? (top.score >= 300 ? 'Legendary game!' : top.score >= 250 ? 'Great game!' : 'Nice rolling!') : 'Final scores',
       rank: rank.length > 1 ? rank : null, lose: youLost,
@@ -325,7 +325,7 @@
     });
     var node = el('div', null, [el('p', { class: 'muted', text: c.hint }), grid]);
     if (id !== 'yz' && P().card.yz === 50) {
-      node.appendChild(el('button', { type: 'button', class: 'btn btn-yellow btn-block', style: { 'margin-top': '14px' }, text: '🎲 Extra Yahtzee! Add +100', onclick: function () { P().yb = (P().yb || 0) + 1; Kit.callout('+100!'); Kit.confetti({ count: 60 }); save(); render(); } }));
+      node.appendChild(el('button', { type: 'button', class: 'btn btn-yellow btn-block', style: { 'margin-top': '14px' }, text: 'Extra Yahtzee! Add +100', onclick: function () { P().yb = (P().yb || 0) + 1; Kit.callout('+100!'); Kit.confetti({ count: 60 }); save(); render(); } }));
     }
     s = Kit.sheet({ title: P().name + ': ' + c.name, node: node });
   }
@@ -350,7 +350,7 @@
     var strip = el('div', { class: 'scores' });
     S.players.forEach(function (q, i) {
       var pill = el('div', { class: 'score' + (i === S.cur ? ' on' : '') + (S.players.length > 1 && total(q) === lead && lead > 0 ? ' lead' : ''), style: { '--c': q.color } }, [
-        el('span', { class: 'nm', text: (q.cpu ? '🤖 ' : '') + q.name }),
+        el('span', { class: 'nm', text: q.name }),
         el('span', { class: 'pt', text: String(total(q)) }),
         el('span', { class: 'sub', text: filled(q) + '/13' })
       ]);
@@ -384,7 +384,7 @@
       tray.appendChild(row);
       var left = 3 - S.rolls;
       var rb = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block rollbtn', onclick: roll },
-        [el('span', { text: S.rolls === 0 ? '🎲 Roll!' : left ? 'Roll again' : 'Pick a box below' }), left && S.rolls ? el('span', { class: 'left', text: '· ' + left + ' left' }) : null]);
+        [el('span', { text: S.rolls === 0 ? 'Roll!' : left ? 'Roll again' : 'Pick a box below' }), left && S.rolls ? el('span', { class: 'left', text: '· ' + left + ' left' }) : null]);
       rb.disabled = left === 0 || p.cpu || S.busy;
       tray.appendChild(rb);
       tray.appendChild(el('div', { class: 'hint', text: p.cpu ? '' : S.rolls === 0 ? 'Roll to start your turn' : left ? 'Tap dice to hold them, or pick a box' : 'Choose where to score' }));
@@ -402,7 +402,7 @@
         var done = p.card[c.id] != null, avail = opts && opts[c.id] != null;
         var v = done ? p.card[c.id] : avail ? opts[c.id] : null;
         var b = el('button', { type: 'button', class: 'cat ' + (done ? 'done' : 'open') + (avail ? (v > 0 ? ' can' : ' zero') : '') + (avail && c.id === best && S.rolls ? ' best' : '') + (opts && !done && !avail ? ' locked' : '') }, [
-          el('span', { class: 'ic', text: c.ic }),
+          c.up ? miniDie(c.up) : null,
           el('span', { class: 'nm' }, [el('b', { text: c.name }), el('small', { text: c.hint })]),
           el('span', { class: 'v', text: v == null ? '' : String(v) })
         ]);
@@ -419,14 +419,15 @@
     section('Upper section', CATS.slice(0, 6));
     var u = upperSum(p);
     app.appendChild(el('div', { class: 'bonus' + (u >= 63 ? ' got' : '') }, [
-      el('span', { text: '⭐ Bonus' }), el('span', { class: 'bar' }, [el('i', { style: { width: Math.min(100, u / 63 * 100) + '%' } })]),
+      el('span', { text: 'Upper bonus' }), el('span', { class: 'bar' }, [el('i', { style: { width: Math.min(100, u / 63 * 100) + '%' } })]),
       el('span', { text: u >= 63 ? '+35' : u + ' / 63' })
     ]));
     section('Lower section', CATS.slice(6));
-    if (p.yb) app.appendChild(el('div', { class: 'bonus got' }, [el('span', { text: '🎲 Yahtzee bonus ×' + p.yb }), el('span', { class: 'grow' }), el('span', { text: '+' + p.yb * 100 })]));
+    if (p.yb) app.appendChild(el('div', { class: 'bonus got' }, [el('span', { text: 'Yahtzee bonus ×' + p.yb }), el('span', { class: 'grow' }), el('span', { text: '+' + p.yb * 100 })]));
     app.appendChild(el('div', { class: 'totals' }, [el('span', { text: p.name + "'s total" }), el('span', { text: String(total(p)) })]));
   }
 
+  function miniDie(v) { var d = Kit.die(v); d.classList.add('mini'); d.disabled = true; d.tabIndex = -1; return d; }
   function fixValue(id) {
     Kit.confirm('Clear ' + CAT[id].name + ' for ' + P().name + '?', { ok: 'Clear it', body: 'Use this to fix a mistake.' }).then(function (ok) {
       if (ok) { delete P().card[id]; save(); render(); }
@@ -435,13 +436,13 @@
   function peek(q) {
     var box = el('div', { class: 'sc' });
     CATS.forEach(function (c) {
-      box.appendChild(el('div', { class: 'cat done' }, [el('span', { class: 'ic', text: c.ic }), el('span', { class: 'nm' }, [el('b', { text: c.name })]), el('span', { class: 'v', text: q.card[c.id] == null ? '–' : String(q.card[c.id]) })]));
+      box.appendChild(el('div', { class: 'cat done' }, [c.up ? miniDie(c.up) : null, el('span', { class: 'nm' }, [el('b', { text: c.name })]), el('span', { class: 'v', text: q.card[c.id] == null ? '–' : String(q.card[c.id]) })]));
     });
     Kit.sheet({ title: q.name + ' · ' + total(q), node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
   function openHistory() {
     try {
-      GameHistory.open('yahtzee', '🎲 Yahtzee', function (e) {
+      GameHistory.open('yahtzee', 'Yahtzee', function (e) {
         return e && e.players ? GameHistory.renderPlayerResults(e.players, e.winner) : document.createTextNode(e._summary || '');
       });
     } catch (e) { Kit.toast('No past games yet'); }

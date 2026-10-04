@@ -52,7 +52,7 @@
   Kit.init({
     id: 'connectfour',
     onNew: function () { clearSave(); showSetup(); },
-    menu: [{ icon: '↩️', label: 'Undo last move', onClick: function () { undo(); } }],
+    menu: [{ icon: 'undo', label: 'Undo last move', onClick: function () { undo(); } }],
     rules:
       '<p class="goal">Be the first to line up <b>four of your discs</b> in a row: across, up and down, or diagonally.</p>' +
       '<h3>How it works</h3><ul><li>Players take turns dropping one disc into any column. It falls to the lowest empty spot.</li>' +
@@ -68,10 +68,10 @@
     S = null;
     Kit.setup(app, {
       modes: [
-        { id: 'cpu', emoji: '🤖', title: 'vs Computer', desc: 'Can you outsmart it?' },
-        { id: '2p', emoji: '👫', title: 'Two players', desc: 'Pass the phone back and forth' }
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Can you outsmart it?' },
+        { id: '2p', icon: 'users', title: 'Two players', desc: 'Pass the phone back and forth' }
       ],
-      options: [{ id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', '😊 Easy'], ['med', '🤔 Medium'], ['hard', '😈 Hard']], when: function (m) { return m === 'cpu'; } }],
+      options: [{ id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', 'Easy'], ['med', 'Medium'], ['hard', 'Hard']], when: function (m) { return m === 'cpu'; } }],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
         S = {
@@ -215,7 +215,7 @@
     try { GameHistory.save('c4', { players: S.players.map(function (q, i) { return { name: q.name, score: S.wins[i] }; }), winner: p ? p.name : null, _summary: p ? p.name + ' won' : 'Draw' }); } catch (e) {}
     var lose = p && p.cpu;
     Kit.win({
-      emoji: !p ? '🤝' : lose ? '🤖' : '🏆',
+      icon: !p ? 'users' : lose ? 'bot' : 'trophy',
       title: !p ? "It's a draw!" : lose ? p.name + ' wins this one' : p.name === 'You' ? 'You win!' : p.name + ' wins!',
       sub: 'Series: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name + (S.wins[2] ? ' · ' + S.wins[2] + ' draw' + (S.wins[2] > 1 ? 's' : '') : ''),
       lose: !!lose, againLabel: 'Next game',
@@ -271,7 +271,7 @@
     stripEl.innerHTML = '';
     S.players.forEach(function (p, i) {
       stripEl.appendChild(el('div', { class: 'score' + (i === S.cur && !S.over ? ' on' : ''), style: { '--c': p.disc === 'r' ? '#ff4d5e' : '#ffc83d' } }, [
-        el('span', { class: 'nm', text: (p.cpu ? '🤖 ' : '') + p.name }),
+        el('span', { class: 'nm', text: p.name }),
         el('span', { class: 'mini ' + p.disc }),
         el('span', { class: 'sub', text: S.wins[i] + ' win' + (S.wins[i] === 1 ? '' : 's') })
       ]));
@@ -279,7 +279,7 @@
     var p = S.players[S.cur];
     turnEl.style.setProperty('--c', p.disc === 'r' ? '#ff4d5e' : '#ffc83d');
     turnEl.innerHTML = '';
-    if (S.over) { turnEl.appendChild(el('span', { text: S.line ? '🎉 ' + S.players[S.grid[S.line[0][0]][S.line[0][1]] - 1].name + ' connected four!' : 'Board full: draw' })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: S.line ? S.players[S.grid[S.line[0][0]][S.line[0][1]] - 1].name + ' connected four!' : 'Board full: draw' })); return; }
     turnEl.appendChild(el('span', { class: 'dot' }));
     turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' turn' }));
   }
