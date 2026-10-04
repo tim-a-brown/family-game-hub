@@ -247,7 +247,7 @@ const ArcadeHi = (function(){
       list.forEach((e,i)=>{
         const isNew = i===newIdx;
         const isTop = i===0;
-        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        const medal = i<3 ? `<span style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:900;font-size:.75rem;color:#2b1a00;background:${['#ffc83d','#cfd6e4','#d9925a'][i]}">${i+1}</span>` : '';
         rows += `<tr class="${isNew?'ahi-new':''}">
           <td class="ahi-rank">${medal||i+1}</td>
           <td class="ahi-name">${e.name}</td>
@@ -260,7 +260,7 @@ const ArcadeHi = (function(){
     const hasScores = list.length > 0;
     overlay.innerHTML = `
       <div class="ahi-box">
-        <div class="ahi-title">🏆 ${gameName}</div>
+        <div class="ahi-title">${window.Kit&&Kit.icon?Kit.icon('trophy'):''} ${gameName}</div>
         <div class="ahi-sub">Top ${MAX} · ${list.length} entr${list.length===1?'y':'ies'}</div>
         <table class="ahi-table">
           <thead><tr><th>#</th><th>Name</th><th style="text-align:right">Score</th><th style="text-align:right">Date</th></tr></thead>
@@ -268,7 +268,7 @@ const ArcadeHi = (function(){
         </table>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
           <button class="btn btn-gold" id="ahi-close" style="min-width:100px;">Close</button>
-          ${hasScores?`<button class="btn btn-outline btn-sm" id="ahi-clear" style="color:rgba(255,100,100,.7);border-color:rgba(255,100,100,.3);">🗑 Clear scores</button>`:''}
+          ${hasScores?`<button class="btn btn-outline btn-sm" id="ahi-clear" style="color:rgba(255,100,100,.7);border-color:rgba(255,100,100,.3);">Clear scores</button>`:''}
         </div>
       </div>`;
     document.body.style.overflow = 'hidden';
@@ -321,7 +321,7 @@ const ArcadeHi = (function(){
       injectCSS();
       const b = document.createElement('button');
       b.className = 'btn btn-outline btn-sm';
-      b.innerHTML = '🏆 Scores';
+      b.innerHTML = (window.Kit&&Kit.icon?Kit.icon('trophy')+' ':'')+'Scores';
       b.addEventListener('click', ()=>showBoard(key, title));
       return b;
     }
