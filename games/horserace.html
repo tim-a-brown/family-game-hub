@@ -1170,7 +1170,8 @@
       var cur = S.players[S.turn] || S.players[0];
       R.bal = el('b', { class: 'gold', text: money(cur.stack) });
       R.bank.appendChild(el('div', null, [el('small', { text: S.phase === 'bet' ? cur.name + ' has' : 'Race' }), S.phase === 'bet' ? R.bal : el('b', { text: S.raceNo + ' of ' + S.opt.races })]));
-      R.bank.appendChild(el('div', null, [el('small', { text: 'On tickets' }), el('b', { text: money(S.phase === 'bet' ? staked(S.turn) : staked()) })]));
+      var paidAll = S.phase === 'result' && S.race && S.race.per ? S.race.per.reduce(function (a, x) { return a + x.ret; }, 0) : null;
+      R.bank.appendChild(el('div', null, [el('small', { text: paidAll != null ? 'Paid out' : 'On tickets' }), el('b', { text: money(paidAll != null ? paidAll : S.phase === 'bet' ? staked(S.turn) : staked()) })]));
       R.bank.appendChild(el('div', null, [el('small', { text: 'Races left' }), el('b', { text: String(S.opt.races - S.raceNo + (S.phase === 'bet' ? 1 : 0)) })]));
       paintStand();
     }
@@ -1491,10 +1492,11 @@
       var pl = S.players[k.p];
       if (w) {
         pl.hits++;
-        var prof = ret - k.amt, desc = BT[k.type] + ' ' + k.sel.map(function (i) { return F.horses[i].post; }).join('-');
-        if (!pl.best || prof > pl.best.amt) pl.best = { amt: prof, t: desc + ' in race ' + S.raceNo };
-        if (k.type === 'TRI' || k.type === 'EX' || k.type === 'QU') S.notes.push({ w: 3 + prof / 50, t: (solo() ? pl.name === 'You' ? 'You' : pl.name : pl.name) + ' hit the ' + BT[k.type].toLowerCase() + ' ' + k.sel.map(function (i) { return F.horses[i].post; }).join(k.type === 'QU' ? '/' : '-') + ' in race ' + S.raceNo + ' for ' + money(ret) });
-        else if (prof >= 50 || k.m >= 10) S.notes.push({ w: 2 + prof / 80, t: pl.name + ' cashed a ' + money(k.amt) + ' ' + BT[k.type].toLowerCase() + ' ticket on ' + F.horses[k.sel[0]].name + ' for ' + money(ret) });
+        var prof = ret - k.amt, desc = BT[k.type] + ' bet on #' + k.sel.map(function (i) { return F.horses[i].post; }).join('-');
+        var nk = S.raceNo + ':' + k.k;
+        if (!pl.best || prof > pl.best.amt) pl.best = { amt: prof, t: desc + ' in race ' + S.raceNo, nk: nk };
+        if (k.type === 'TRI' || k.type === 'EX' || k.type === 'QU') S.notes.push({ nk: nk, w: 3 + prof / 50, t: pl.name + ' hit the ' + BT[k.type].toLowerCase() + ' ' + k.sel.map(function (i) { return F.horses[i].post; }).join(k.type === 'QU' ? '/' : '-') + ' in race ' + S.raceNo + ' for ' + money(ret) });
+        else if (prof >= 50 || k.m >= 10) S.notes.push({ nk: nk, w: 2 + prof / 80, t: pl.name + ' cashed a ' + money(k.amt) + ' ' + BT[k.type].toLowerCase() + ' ticket on ' + F.horses[k.sel[0]].name + ' for ' + money(ret) });
       }
       return ret;
     });
@@ -1619,8 +1621,8 @@
     var h = [], ps = S.players;
     var notes = S.notes.slice().sort(function (a, b) { return b.w - a.w; });
     var bestP = null; ps.forEach(function (p) { if (p.best && (!bestP || p.best.amt > bestP.best.amt)) bestP = p; });
-    if (bestP) h.push('Biggest win: ' + bestP.name + ' ' + signed(bestP.best.amt) + ' on a ' + bestP.best.t);
-    notes.slice(0, 3).forEach(function (n) { if (h.indexOf(n.t) < 0) h.push(n.t); });
+    if (bestP) h.push('Biggest win: ' + bestP.name + ' ' + signed(bestP.best.amt) + ' with a ' + bestP.best.t);
+    notes.filter(function (n) { return !bestP || !n.nk || n.nk !== bestP.best.nk; }).slice(0, 3).forEach(function (n) { if (h.indexOf(n.t) < 0) h.push(n.t); });
     var favs = S.log.filter(function (l) { return l.fav; }).length;
     if (S.log.length >= 3) h.push('Favorites won ' + favs + ' of ' + S.log.length + ' races');
     if (solo()) {

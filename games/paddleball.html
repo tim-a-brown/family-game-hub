@@ -69,7 +69,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var PAD_OFF = 28, PAD_T = 10, PAD_HW = 36, BIG_HW = 58, R = 7;
   var SERVE_V = 330, MAX_V = 860;
   var TICK = 1 / 240;
-  var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+  var TOUCH = (window.matchMedia && matchMedia('(pointer:coarse), (hover:none)').matches) || navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   var PC = ['#38e1ff', '#ff4fa3'];
   var DIFF = {
     easy: { name: 'Easy', react: 0.32, speed: 280, accel: 1600, err: 40, settle: 0.85, aim: 0, hesitate: 0.25 },
@@ -160,7 +160,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var off = (pads[p].c - FC / 2) / (FC / 2); // serve slants back toward the middle
     var a = clamp(-off * 0.35 + (Math.random() - 0.5) * 0.5, -0.5, 0.5);
     b.held = null; b.speed = SERVE_V; b.vl = dir * Math.cos(a) * SERVE_V; b.vc = Math.sin(a) * SERVE_V; b.last = p;
-    G.phase = 'play'; G.rallyT = 0;
+    G.phase = 'play'; G.rallyT = 0; hudDirty = true;
     sServe(); Kit.haptic('light');
   }
 
@@ -275,7 +275,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!human(p)) G.ai.next = 0;
     if (G.rally === 20 || G.rally === 40) Kit.callout && Kit.callout(G.rally + '-hit rally!');
   }
-  function wallSpark(b) { for (var i = 0; i < 4; i++) part(b.l, b.c, (Math.random() - 0.5) * 120, (b.c < FC / 2 ? 1 : -1) * (40 + Math.random() * 80), '#cfe6ff', 0.25, 1.2); }
+  function wallSpark(b) { for (var i = 0; i < 4; i++) part(b.l, b.c, (Math.random() - 0.5) * 120, (b.c < FC / 2 ? 1 : -1) * (40 + Math.random() * 80), '#cfe6ff', 0.2, 0.8); }
   function grabPower(p, o, b) {
     var P = POWERS[o.kind];
     G.stats.powers[p]++; G.stats.powerKinds[o.kind] = (G.stats.powerKinds[o.kind] || 0) + 1;
@@ -435,7 +435,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
     wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
     hintEl = el('div', { class: 'ar-hint ar-desk', text: G.mode === 'two' ? 'Left player: W / S  ·  Right player: arrow keys  ·  Space serves  ·  P pauses' : 'Mouse, W / S or arrow keys to move  ·  Space or click serves  ·  P pauses' });
-    app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(hintEl);
+    app.appendChild(hudEl); app.appendChild(wrapEl); if (!TOUCH) app.appendChild(hintEl);
     bindInput();
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app);
@@ -639,7 +639,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.phase === 'serve' || G.phase === 'play') step(dt);
     else if (G.phase === 'point') { movePad(0, dt); movePad(1, dt); G.pointT += dt; if (G.pointT > 1.0) readyServe(); }
     else if (G.phase === 'over') { G.overT += dt; if (G.overT > 1.3) { G.phase = 'done'; endGame(); } }
-    if (Math.floor(rt * 60) !== Math.floor((rt - dt) * 60)) balls.forEach(function (b) { b.trail.push(b.l, b.c); if (b.trail.length > 20) b.trail.splice(0, 2); });
+    G.trailT = (G.trailT || 0) + dt;
+    if (G.trailT >= 1 / 60) { G.trailT = 0; balls.forEach(function (b) { b.trail.push(b.l, b.c); if (b.trail.length > 20) b.trail.splice(0, 2); }); }
   }
   var shown = { a: -1, b: -1, s: -1 };
   function updateHud() {
@@ -759,7 +760,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.pw.big[p] > 0) tags.push(['BIG ' + Math.ceil(G.pw.big[p]), POWERS.big.c]);
     if (G.pw.curve[p] > 0) tags.push(['CURVE x' + G.pw.curve[p], POWERS.curve.c]);
     tags.forEach(function (t, i) {
-      var q = P2(p === 0 ? l + 22 + i * 16 : l - 22 - i * 16, P.c);
+      var q = P2(p === 0 ? l + 22 + i * 18 : l - 22 - i * 18, P.c);
       txt(t[0], q.x, q.y, 11, t[1], rotFor(p));
     });
     g.restore();

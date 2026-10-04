@@ -81,7 +81,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var W = 44, HW = 22, TH = 12, SH = 26, DY = TH + SH, AX = FW / 2, AY = 100;
   var ROWS = 7, NCUBES = 28, CS = 1.2; // CS: creature scale
   var TICK = 1 / 120;
-  var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+  var TOUCH = (window.matchMedia && matchMedia('(pointer:coarse), (hover:none)').matches) || navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   var DIRS = { ul: [-1, -1], ur: [-1, 0], dl: [1, 0], dr: [1, 1] };
 
   // Round colour schemes: side faces + top colours [start, middle, target]
@@ -633,7 +633,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     padEl.appendChild(el('span', { class: 'nub' }));
     padWrap = el('div', { class: 'qb-padwrap' }, [padEl]);
     var hint = el('div', { class: 'ar-hint ar-desk', text: 'Q E A D, numpad 7 9 1 3, or arrows (turned diagonally) · P pauses' });
-    app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(padWrap); app.appendChild(hint);
+    app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(padWrap); if (!TOUCH) app.appendChild(hint);
     bindInput();
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app);
