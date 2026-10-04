@@ -30,20 +30,20 @@ const GameHistory = (function(){
 
     const style = document.createElement('style');
     style.textContent = `
-      #gh-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299;display:none;}
-      #gh-drawer{position:fixed;bottom:0;left:0;right:0;max-height:78vh;background:#161b22;
-        border-top:1px solid rgba(255,255,255,.15);border-radius:20px 20px 0 0;
+      #gh-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:299;display:none;}
+      #gh-drawer{position:fixed;bottom:0;left:0;right:0;max-height:82vh;max-width:640px;margin:0 auto;background:var(--surface,#12151c);
+        border:1px solid var(--line-2,rgba(255,255,255,.12));border-bottom:0;border-radius:26px 26px 0 0;
         z-index:300;overflow-y:auto;padding:0 0 env(safe-area-inset-bottom);
         transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
       #gh-drawer.open{transform:translateY(0);}
       #gh-drawer-handle{text-align:center;padding:14px 20px 10px;position:sticky;top:0;
-        background:#161b22;z-index:1;border-bottom:1px solid rgba(255,255,255,.07);}
+        background:var(--surface,#12151c);z-index:1;border-bottom:1px solid var(--line,rgba(255,255,255,.07));}
       #gh-drawer-handle-bar{width:36px;height:4px;background:rgba(255,255,255,.2);
         border-radius:2px;margin:0 auto 10px;}
       #gh-drawer-title{font-family:var(--serif,serif);font-size:1.05rem;font-weight:900;
         color:#fff;display:inline;}
       #gh-drawer-close{float:right;background:rgba(255,255,255,.1);border:none;color:#fff;
-        border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:1rem;
+        border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem;
         display:flex;align-items:center;justify-content:center;line-height:1;}
       #gh-drawer-body{padding:12px 16px 20px;}
       .gh-entry{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);

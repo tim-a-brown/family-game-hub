@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v7-2026-10-04-modern-shell';
+const CACHE_VERSION = 'v8-2026-10-04-native-games';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -21,6 +21,7 @@ const PRECACHE_URLS = [
   '/index.html',
   '/gate.html',
   '/shared.css',
+  '/app.js',
   '/sync.js',
   '/hist.js',
   '/players.js',

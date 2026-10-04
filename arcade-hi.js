@@ -37,21 +37,21 @@ const ArcadeHi = (function(){
     if(cssInjected) return; cssInjected = true;
     const s = document.createElement('style');
     s.textContent = `
-.ahi-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:ahi-in .2s ease;}
+.ahi-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:ahi-in .2s ease;}
 @keyframes ahi-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
-.ahi-box{background:#111827;border:2px solid rgba(245,200,66,.3);border-radius:18px;padding:24px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto;}
-.ahi-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;text-align:center;color:#f5c842;margin-bottom:4px;}
+.ahi-box{background:var(--surface,#12151c);border:1px solid var(--line-2,rgba(255,255,255,.12));border-radius:26px;padding:24px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto;}
+.ahi-title{font-family:var(--display);font-size:1.6rem;font-weight:900;text-align:center;color:#f5c842;margin-bottom:4px;}
 .ahi-sub{text-align:center;color:rgba(255,255,255,.45);font-size:.78rem;margin-bottom:18px;}
 /* 3-letter name entry */
 .ahi-slots{display:flex;gap:10px;justify-content:center;margin-bottom:18px;}
 .ahi-slot{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.ahi-letter{width:64px;height:80px;background:rgba(245,200,66,.1);border:2px solid rgba(245,200,66,.4);border-radius:10px;font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:900;color:#f5c842;display:flex;align-items:center;justify-content:center;letter-spacing:0;user-select:none;}
+.ahi-letter{width:64px;height:80px;background:rgba(245,200,66,.1);border:2px solid rgba(245,200,66,.4);border-radius:10px;font-family:var(--display);font-size:2.6rem;font-weight:900;color:#f5c842;display:flex;align-items:center;justify-content:center;letter-spacing:0;user-select:none;}
 .ahi-letter.active{border-color:#f5c842;background:rgba(245,200,66,.2);box-shadow:0 0 12px rgba(245,200,66,.3);}
 .ahi-arrows{display:flex;flex-direction:column;gap:4px;}
-.ahi-arrow{width:64px;height:32px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.6);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
+.ahi-arrow{width:64px;height:40px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.6);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
 .ahi-arrow:active{background:rgba(255,255,255,.15);}
 .ahi-score-disp{text-align:center;margin-bottom:16px;}
-.ahi-score-val{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#f5c842;}
+.ahi-score-val{font-family:var(--display);font-size:2rem;font-weight:900;color:#f5c842;}
 .ahi-score-lbl{font-size:.72rem;color:rgba(255,255,255,.4);margin-top:2px;}
 /* Leaderboard table */
 .ahi-table{width:100%;border-collapse:collapse;font-size:.82rem;}
@@ -60,8 +60,8 @@ const ArcadeHi = (function(){
 .ahi-table tr.ahi-new td{color:#f5c842;}
 .ahi-table tr.ahi-top td:first-child::before{content:'🏆 ';}
 .ahi-rank{color:rgba(255,255,255,.3);font-size:.72rem;width:24px;}
-.ahi-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;letter-spacing:.1em;}
-.ahi-pts{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:900;text-align:right;}
+.ahi-name{font-family:var(--display);font-size:1.1rem;font-weight:900;letter-spacing:.1em;}
+.ahi-pts{font-family:var(--display);font-size:1.05rem;font-weight:900;text-align:right;}
 .ahi-dt{color:rgba(255,255,255,.3);font-size:.65rem;text-align:right;}
 .ahi-empty{text-align:center;color:rgba(255,255,255,.25);padding:24px;font-size:.85rem;}
 `;
@@ -108,7 +108,7 @@ const ArcadeHi = (function(){
           <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:8px;">Type your 3 initials</div>
           <input id="ahi-mobile-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
             maxlength="3" placeholder="AAA"
-            style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;text-align:center;letter-spacing:12px;
+            style="font-family:var(--display);font-size:2.2rem;font-weight:900;text-align:center;letter-spacing:12px;
             background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);border-radius:12px;
             color:#fff;width:160px;padding:12px 8px;text-transform:uppercase;outline:none;">
           <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
