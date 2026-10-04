@@ -110,6 +110,31 @@ document.addEventListener('visibilitychange', function () {
 .g .fav.on .ico{fill:currentColor;}
 .g.spot{background:var(--surface-3);box-shadow:0 0 0 3px var(--yellow);transform:scale(1.02);}
 
+/* Tile view (default): compact cards, icon on top, name and players below */
+.vbtn{flex:none;width:44px;height:44px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--text-2);}
+.vbtn .ico{width:20px;height:20px;}
+.vbtn:active{transform:scale(.9);}
+.list.tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (min-width:560px){.list.tiles{grid-template-columns:repeat(4,minmax(0,1fr));}}
+@media (min-width:720px){.list.tiles{grid-template-columns:repeat(5,minmax(0,1fr));}}
+@media (min-width:1000px){.list.tiles{grid-template-columns:repeat(6,minmax(0,1fr));}}
+@media (min-width:1200px){.list.tiles{grid-template-columns:repeat(7,minmax(0,1fr));}}
+.tiles .g{flex-direction:column;border-radius:18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 16%,var(--surface)) 0%,var(--surface) 70%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 4px 0 rgba(0,0,0,.25);}
+.tiles .g:hover{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 24%,var(--surface-2)) 0%,var(--surface-2) 70%);}
+.tiles .g .go{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 10px 11px;border-radius:18px;height:100%;}
+.tiles .g .gicon{width:52px;height:52px;}
+.tiles .g .txt{width:100%;display:flex;flex-direction:column;flex:1;}
+.tiles .g .txt b{font-size:.92rem;line-height:1.15;white-space:normal;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.3em;}
+.tiles .g .txt small{display:none;}
+.tiles .g .meta,.tiles .g .live{margin-top:auto;}
+.tiles .g .live{font-size:.62rem;padding:2px 7px;align-self:flex-start;}
+.tiles .g .fav{position:absolute;top:4px;right:2px;width:40px;height:40px;border-radius:50%;}
+.tiles .g .fav .ico{width:18px;height:18px;}
+.tiles .g .fav:not(.on){opacity:.55;}
+.tiles .g.spot{transform:scale(1.04);}
+
 /* Keep playing: compact overview, 5-6 games visible at once */
 .rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 @media (min-width:720px){.rail{grid-template-columns:repeat(3,minmax(0,1fr));}}
@@ -174,6 +199,7 @@ document.addEventListener('visibilitychange', function () {
       <div class="hi" id="hi">Hi there</div>
       <h1>Game Night</h1>
     </div>
+    <button class="vbtn" id="view" type="button"></button>
     <button class="me" id="me" type="button" aria-label="Account">G</button>
   </header>
 
@@ -246,14 +272,17 @@ document.addEventListener('visibilitychange', function () {
   var resumeMap = {};
   try { resumeMap = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
   function players(g) { return g.max === 0 ? g.min + '+' : g.min === g.max ? String(g.min) : g.min + '–' + g.max; }
+  function badge(g) {
+    return resumeMap[g.id] ? el('span', { class: 'live', text: 'Resume' }) : el('span', { class: 'meta', html: Kit.icon(g.max === 1 ? 'user' : 'users') + '<span>' + players(g) + '</span>' });
+  }
+  var tiles = get('gn_home_view', 'tiles') !== 'list';
   function row(g) {
     var fav = isFav(g);
     var r = el('div', { class: 'g', 'data-id': g.id, style: { '--c': g.color } });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + players(g) + ' players' }, [
       el('span', { html: GameIcon(g.id), style: { display: 'contents' } }),
-      el('span', { class: 'txt' }, [el('b', { text: g.name }), el('small', { text: g.tag })]),
-      resumeMap[g.id] ? el('span', { class: 'live', text: 'Resume' }) : el('span', { class: 'meta', html: Kit.icon(g.max === 1 ? 'user' : 'users') + '<span>' + players(g) + '</span>' })
-    ]);
+      el('span', { class: 'txt' }, [el('b', { text: g.name }), el('small', { text: g.tag })].concat(tiles ? [badge(g)] : [])),
+    ].concat(tiles ? [] : [badge(g)]));
     go.addEventListener('click', function () { launch(g); });
     var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
     star.addEventListener('click', function () {
@@ -314,7 +343,7 @@ document.addEventListener('visibilitychange', function () {
     var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: String(games.length) })]);
     if (extra) h.appendChild(extra);
     s.appendChild(h);
-    var list = el('div', { class: 'list' });
+    var list = el('div', { class: 'list' + (tiles ? ' tiles' : '') });
     games.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g) { list.appendChild(row(g)); });
     s.appendChild(list);
     return s;
@@ -385,6 +414,14 @@ document.addEventListener('visibilitychange', function () {
   }
 
   // ── Controls ──────────────────────────────────────────────────────────────
+  function paintView() {
+    $('view').innerHTML = Kit.icon(tiles ? 'rows' : 'tiles');
+    $('view').setAttribute('aria-label', tiles ? 'Show as a list' : 'Show as tiles');
+  }
+  paintView();
+  $('view').addEventListener('click', function () {
+    tiles = !tiles; set('gn_home_view', tiles ? 'tiles' : 'list'); Kit.sfx('tap'); Kit.haptic('light'); paintView(); render();
+  });
   var q = $('q');
   q.addEventListener('input', function () { state.q = q.value.trim(); $('search').classList.toggle('has-q', !!state.q); render(); });
   q.addEventListener('keydown', function (e) {

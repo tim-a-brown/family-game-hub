@@ -163,13 +163,13 @@
       o = o || {};
       var b = g.b.slice(), pts = g.pts, ns = !!g.nostay, tgt = tgtOf(pts, p), me = p + 1, D = DIST[tgt], T = PT[tgt];
       var pos = []; for (var i = 0; i < N; i++) if (b[i] === me) pos.push(i);
-      var depth = o.depth || 1, beam = o.beam || 10, noise = o.noise || 0, rec = o.recent || {}, GAMMA = 0.72;
+      var depth = o.depth || 1, beam = o.beam || 10, noise = o.noise || 0, rec = o.recent || {}, GAMMA = o.gamma || 0.72, K2 = o.k2 == null ? 0.07 : o.k2;
       function gen() { var out = []; for (var k = 0; k < pos.length; k++) { var ms = movesFrom(b, pos[k], pts, ns); for (var j = 0; j < ms.length; j++) out.push(ms[j]); } return out; }
       function ev() {
         var s = 0, k, d, empties = [];
         for (k = 0; k < T.length; k++) if (!b[T[k]]) empties.push(T[k]);
         for (k = 0; k < pos.length; k++) {
-          var c = pos[k]; d = D[c]; s += d + 0.07 * d * d;
+          var c = pos[k]; d = D[c]; s += d + K2 * d * d;
           if (PTOF[c] !== tgt && empties.length) {
             var mn = 99; for (var e = 0; e < empties.length; e++) { var h = hd(c, empties[e]); if (h < mn) mn = h; }
             s += 0.3 * mn;

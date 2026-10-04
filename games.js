@@ -13,15 +13,17 @@
 // A game with both `play` and `score` asks which one when launched.
 // ═══════════════════════════════════════════════════════════════════════════
 var GAME_CATS = [
-  { id: 'cards',  name: 'Cards' },
-  { id: 'board',  name: 'Board' },
-  { id: 'dice',   name: 'Dice & Luck' },
-  { id: 'puzzle', name: 'Puzzles' },
-  { id: 'words',  name: 'Words' },
-  { id: 'party',  name: 'Party' },
-  { id: 'casino', name: 'Casino' },
-  { id: 'arcade', name: 'Arcade' },
-  { id: 'tools',  name: 'Tools' }
+  // hue: each section has its own colour family; every game icon in the
+  // section gets a shade of it (see the colour pass below GAMES).
+  { id: 'cards',  name: 'Cards',       hue: 352, sat: 72 },
+  { id: 'board',  name: 'Board',       hue: 24,  sat: 78 },
+  { id: 'dice',   name: 'Dice & Luck', hue: 44,  sat: 88 },
+  { id: 'puzzle', name: 'Puzzles',     hue: 205, sat: 78 },
+  { id: 'words',  name: 'Words',       hue: 172, sat: 70 },
+  { id: 'party',  name: 'Party',       hue: 322, sat: 68 },
+  { id: 'casino', name: 'Casino',      hue: 142, sat: 62 },
+  { id: 'arcade', name: 'Arcade',      hue: 266, sat: 70 },
+  { id: 'tools',  name: 'Tools',       hue: 228, sat: 32 }
 ];
 
 var GAMES = [
@@ -116,6 +118,26 @@ var GAMES = [
   { id: 'ranker',      name: 'Ranker',       color: '#eab308', cat: 'tools', min: 1, max: 0, tag: 'Rank anything, settle debates', play: 'ranker' },
   { id: 'players',     name: 'Frequent Players',      color: '#6366f1', cat: 'tools', min: 1, max: 0, tag: 'The names you play with most', play: 'players' }
 ];
+
+// Section colour families: shade each game's colour from its section's hue,
+// stepping hue and lightness so neighbours stay distinguishable.
+(function () {
+  function hsl(h, sat, l) {
+    sat /= 100; l /= 100;
+    var k = function (n) { return (n + h / 30) % 12; }, a = sat * Math.min(l, 1 - l);
+    var f = function (n) { return Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)))); };
+    return '#' + ((1 << 24) + (f(0) << 16) + (f(8) << 8) + f(4)).toString(16).slice(1);
+  }
+  var L = [46, 38, 54, 42, 50, 35, 58], H = [0, 8, -6, 12, -10, 4, -3];
+  GAME_CATS.forEach(function (c) {
+    var i = 0;
+    GAMES.forEach(function (g) {
+      if (g.cat !== c.id) return;
+      g.color = hsl((c.hue + H[i % H.length] + 360) % 360, c.sat, L[i % L.length]); i++;
+    });
+    c.color = hsl(c.hue, c.sat, 50);
+  });
+})();
 
 // Lookup by game id or by any of its files (hearts-ai → hearts).
 function findGame(key) {
