@@ -2,375 +2,542 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
-<title>Pyramid Solitaire</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pyramid</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-.pyr-wrap{width:100%;max-width:620px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(28px + var(--safe-b)) max(8px,var(--safe-l));}
-.pyr-hud{display:flex;gap:8px;margin-bottom:10px;}
-.pyr-hud .stat{flex:1;max-width:none;padding:6px 8px;}
-.pyr-hud .stat-val{font-size:1.25rem;}
-.pyr-table{padding:12px 6px 14px;margin-bottom:14px;}
-.pyr-status{text-align:center;font-size:.92rem;font-weight:600;min-height:22px;margin-bottom:12px;color:rgba(255,255,255,.82);}
-.pyr-status b{color:var(--gold);}
-.pyr-status.warn{color:#fca5a5;}
-/* Card */
-.pcard{position:absolute;width:var(--cw);height:var(--ch);border-radius:var(--cr);
-  background:linear-gradient(180deg,#fff 0%,#f3f1ea 100%);border:1px solid rgba(0,0,0,.22);
-  box-shadow:0 1px 2px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.18);
-  color:#1b1e26;font-family:var(--display);font-weight:800;cursor:pointer;
-  transition:transform .14s var(--ease),box-shadow .14s,filter .2s,opacity .25s;}
-.pcard.red{color:#d0262f;}
-.pcard .ix{position:absolute;top:calc(var(--cw)*.05);left:calc(var(--cw)*.09);display:flex;align-items:baseline;gap:1px;
-  font-size:calc(var(--cw)*.38);line-height:1;letter-spacing:-.05em;}
-.pcard .ix i{font-style:normal;font-size:.75em;letter-spacing:0;}
-.pcard .pip{position:absolute;right:calc(var(--cw)*.09);bottom:calc(var(--cw)*.05);font-size:calc(var(--cw)*.52);line-height:1;}
-.pcard.covered{filter:brightness(.62) saturate(.7);cursor:default;}
-.pcard.covered .pip{visibility:hidden;}
-.pcard.removed{opacity:0;pointer-events:none;transform:scale(.85);}
-.pcard.selected{transform:translateY(-4px);box-shadow:0 0 0 2.5px var(--gold),0 10px 18px rgba(0,0,0,.45);}
-.pcard.hint{box-shadow:0 0 0 2.5px #4ade80,0 6px 14px rgba(0,0,0,.35);}
-.pyr-field{position:relative;margin:0 auto;}
-/* Stock & waste */
-.pyr-bottom{display:flex;gap:14px;justify-content:center;align-items:flex-start;margin-top:18px;}
-.pyr-pile{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.pyr-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.55);}
-.pyr-slot{position:relative;width:var(--cw);height:var(--ch);}
-.pyr-slot .pcard{left:0;top:0;}
-.stock-card{width:var(--cw);height:var(--ch);border-radius:var(--cr);cursor:pointer;position:relative;
-  background:repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 2px,transparent 2px 6px),linear-gradient(160deg,#4166d5,#1d3480);
-  border:1px solid rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),inset 0 0 0 3px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.35);
-  display:flex;align-items:center;justify-content:center;transition:transform .12s;}
-.stock-card:active{transform:scale(.95);}
-.stock-card.redeal,.stock-card.empty{background:rgba(0,0,0,.14);border:1.5px dashed rgba(255,255,255,.25);box-shadow:none;color:rgba(255,255,255,.6);font-size:1.5rem;}
-.stock-card.empty{cursor:default;color:rgba(255,255,255,.25);}
-.stock-count{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:1px 7px;border-radius:999px;background:rgba(8,14,34,.78);font-size:.75rem;font-weight:800;color:#fff;}
-.empty-slot{width:var(--cw);height:var(--ch);border-radius:var(--cr);border:1.5px dashed rgba(255,255,255,.2);background:rgba(0,0,0,.14);}
-.pyr-undo{align-self:center;margin-left:4px;}
-/* Rules */
-.rules-body p{margin:0 0 6px;}
-.rules-body strong{color:var(--text);}
+/*STYLE*/
+.scard.pick{translate:0 -7px;box-shadow:0 0 0 3px var(--yellow), 0 0 18px rgba(255,200,61,.7), 0 12px 20px rgba(0,0,0,.4);}
+.scard.cov{filter:brightness(.8) saturate(.85);cursor:default;}
+.plbl{position:absolute;left:0;top:0;width:var(--cw);text-align:center;font-size:.66rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);pointer-events:none;white-space:nowrap;}
+.pass{display:flex;justify-content:center;gap:5px;margin-top:4px;}
+.pass i{width:8px;height:8px;border-radius:50%;background:var(--yellow);box-shadow:0 0 6px rgba(255,200,61,.6);}
+.pass i.used{background:rgba(255,255,255,.18);box-shadow:none;}
+.need{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-size:1.15rem;color:rgba(255,255,255,.75);pointer-events:none;transition:opacity .2s;}
+.need b{color:var(--yellow);font-weight:400;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Pyramid</span>
-  <button class="icon-btn" id="pyr-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="pyr-wrap" id="pyr-wrap">
-
-<div class="pyr-hud">
-  <div class="stat"><div class="stat-val" id="pyr-left">28</div><div class="stat-lbl">Left</div></div>
-  <div class="stat"><div class="stat-val" id="pyr-moves">0</div><div class="stat-lbl">Pairs</div></div>
-  <div class="stat"><div class="stat-val" id="pyr-redeals">2</div><div class="stat-lbl">Redeals</div></div>
-</div>
-
-<div class="felt pyr-table" id="pyr-table">
-  <div class="pyr-status" id="pyr-status">Pair cards that add up to <b>13</b> · Kings go alone</div>
-  <div class="pyr-field" id="pyr-field"></div>
-  <div class="pyr-bottom">
-    <div class="pyr-pile">
-      <div class="stock-card" id="pyr-stock" role="button" aria-label="Draw from stock"><span class="stock-count" id="pyr-stock-count"></span></div>
-      <div class="pyr-lbl">Stock</div>
-    </div>
-    <div class="pyr-pile">
-      <div class="pyr-slot" id="pyr-waste-slot"></div>
-      <div class="pyr-lbl">Waste</div>
-    </div>
-    <button class="btn btn-outline btn-sm pyr-undo" id="pyr-undo">↩ Undo</button>
-  </div>
-</div>
-<div id="pyr-result-area"></div>
-
-<details class="rules-details">
-  <summary class="rules-summary">How to play</summary>
-  <div class="rules-body">
-    <p><strong>Goal:</strong> Remove all 28 pyramid cards by pairing them to sum to 13.</p>
-    <p><strong>Pairs that make 13:</strong> K alone · Q+A · J+2 · 10+3 · 9+4 · 8+5 · 7+6</p>
-    <p><strong>Available cards:</strong> Any pyramid card with no cards overlapping it from below, plus the top card of the waste pile.</p>
-    <p><strong>Stock:</strong> Tap the face-down deck to flip one card to the waste pile. When the stock is empty, tap to redeal (2 redeals allowed).</p>
-    <p><strong>Selecting:</strong> Tap one card to select it, then tap its pair. Kings are removed as soon as you tap them.</p>
-    <p><strong>Win:</strong> Clear all 28 pyramid cards — the remaining stock/waste don't need to be cleared.</p>
-  </div>
-</details>
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-const SUITS=['♠','♥','♦','♣'];
-const VALUES={A:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13};
-const RED=new Set(['♥','♦']);
-let CW=44,CH=62,HGAP=48,VGAP=31;
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-
-function calcSizes(){
-  const t=document.getElementById('pyr-table');
-  const w=Math.min(560,(t?t.clientWidth:374)-12);
-  const gap=w>440?8:4;
-  CW=Math.min(72,Math.floor((w-6*gap)/7));CH=Math.round(CW*1.4);
-  HGAP=CW+gap;VGAP=Math.round(CH*.5);
-  const r=document.documentElement.style;
-  r.setProperty('--cw',CW+'px');r.setProperty('--ch',CH+'px');r.setProperty('--cr',Math.max(5,Math.round(CW*.11))+'px');
-}
-
-function deck(){
-  const d=[];
-  SUITS.forEach(s=>RANKS.forEach(r=>d.push({rank:r,suit:s,val:VALUES[r]})));
-  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
-
-// Pyramid: row 0 = top (1 card), row 6 = bottom (7 cards) → 28 cards
-// pyCards[row][col] = card object with .removed, .id
-let pyCards, stock, waste, stockIdx, redeals, sel, moves, undoStack, over=false;
-
-function init(){
-  calcSizes();
-  const d=deck();
-  pyCards=[];
-  let idx=0;
-  for(let r=0;r<7;r++){
-    pyCards[r]=[];
-    for(let c=0;c<=r;c++){
-      pyCards[r][c]={...d[idx++],id:`${r}-${c}`,removed:false,inPyramid:true};
-    }
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'pyramid_state', STATS = 'pyramid_stats', HKEY = 'pyramid', PASSES = 3;
+  var RANKS = 'A23456789TJQK', GL = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  var NAME = { 1: 'Ace', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'Jack', 12: 'Queen', 13: 'King' };
+  function rv(c) { return RANKS.indexOf(c[0]) + 1; }
+  function isRed(c) { return c[1] === 'h' || c[1] === 'd'; }
+  function top(a) { return a[a.length - 1]; }
+  function fmt(t) {
+    t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2);
+    return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s;
   }
-  stock=d.slice(28).map((c,i)=>({...c,id:`s-${i}`,removed:false,inPyramid:false}));
-  waste=[]; stockIdx=0; redeals=2; sel=null; moves=0; undoStack=[]; over=false;
-  document.getElementById('pyr-result-area').innerHTML='';
-  setStatus('');
-  renderAll();
-}
-async function confirmNew(){
-  const left=pyCards.flat().filter(c=>!c.removed).length;
-  if(!over&&left>0&&(moves>0||stockIdx>0)&&window.GN){
-    const ok=await GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New Game'});
-    if(!ok)return;
-  }
-  init();
-}
+  function nth(n) { return ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'][n] || n + 'th'; }
 
-function isCovered(r,c){
-  if(r>=6)return false;
-  const below1=pyCards[r+1][c];
-  const below2=pyCards[r+1][c+1];
-  return(!below1.removed)||(!below2.removed);
-}
-
-function isAvailable(card){
-  if(card.removed)return false;
-  if(!card.inPyramid)return true; // stock/waste handled separately
-  const[r,c]=card.id.split('-').map(Number);
-  return!isCovered(r,c);
-}
-
-function wasteTop(){return waste.length?waste[waste.length-1]:null;}
-
-function clickStock(){
-  if(over)return;
-  if(stockIdx<stock.length){
-    const c=stock[stockIdx++];
-    waste.push(c);
-    sel=null;hap('light');
-    renderAll();
-  } else if(redeals>0){
-    // Redeal: put waste back into stock (reversed)
-    stock=[...waste].reverse().map((c,i)=>({...c,id:`s-${i}`}));
-    waste=[]; stockIdx=0; redeals--;
-    sel=null; hap('medium'); renderAll();
-  } else {
-    setStatus('No redeals left!',true);hap('error');
-  }
-  checkStuck();
-}
-
-function removeCard(card){
-  if(card.inPyramid) card.removed=true;
-  else { const wi=waste.lastIndexOf(card); if(wi>=0)waste.splice(wi,1); }
-}
-
-function clickCard(card){
-  if(over||!isAvailable(card))return;
-  // King: remove alone
-  if(card.val===13){
-    saveUndo();
-    removeCard(card);
-    moves++;hap('medium');
-    sel=null; renderAll(); checkWin(); return;
-  }
-  if(!sel){sel=card;hap('select');renderAll();return;}
-  if(sel.id===card.id){sel=null;renderAll();return;}
-  if(sel.val+card.val===13){
-    saveUndo();
-    removeCard(sel);
-    removeCard(card);
-    moves++;hap('medium');
-    sel=null; renderAll(); checkWin();
-  } else {
-    sel=card; hap('select'); renderAll();
-  }
-}
-
-function saveUndo(){
-  undoStack.push({
-    pyState:pyCards.map(row=>row.map(c=>({...c}))),
-    waste:[...waste.map(c=>({...c}))],
-    stock:stock.map(c=>({...c})),
-    stockIdx, redeals, sel:sel?.id||null, moves
+  Kit.init({
+    id: 'pyramid',
+    onNew: function () { newGame(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
+      { icon: 'sync', label: 'Restart this deal', onClick: function () { restart(); } },
+      { icon: 'chart', label: 'Statistics', onClick: function () { showStats(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Pyramid: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Clear all 28 cards out of the pyramid by taking away pairs of cards that <b>add up to 13</b>.</p>' +
+      '<h3>Card values</h3><ul>' +
+      '<li>Ace = 1, number cards = their number, Jack = 11, Queen = 12, King = 13.</li>' +
+      '<li>Pairs that make 13: <b>Q + A</b>, <b>J + 2</b>, <b>10 + 3</b>, <b>9 + 4</b>, <b>8 + 5</b>, <b>7 + 6</b>.</li>' +
+      '<li>A <b>King</b> is 13 all by itself, so it goes away on its own.</li></ul>' +
+      '<h3>Which cards you can use</h3><ul>' +
+      '<li>A pyramid card is free when <b>no cards are lying on top of it</b> from the row below.</li>' +
+      '<li>The top card of the <b>waste</b> pile is free too.</li></ul>' +
+      '<h3>The stock</h3><ul>' +
+      '<li>Tap the <b>stock</b> to turn its top card onto the waste pile.</li>' +
+      '<li>When the stock runs out, tap it to turn the waste pile back over. You get <b>3 times through the deck</b> in all (the dots under the stock).</li></ul>' +
+      '<h3>Winning</h3><ul>' +
+      '<li>Clear the whole pyramid to win. Cards left in the stock or waste don\'t matter.</li>' +
+      '<li>If you run out of passes and no pairs are left, the game is over.</li></ul>' +
+      '<h3>Controls</h3><ul>' +
+      '<li><b>Tap</b> a card, then tap its partner. Kings go with one tap.</li>' +
+      '<li>Or <b>drag</b> a card onto its partner.</li>' +
+      '<li><b>Undo</b> takes back as many moves as you like.</li></ul>'
   });
-  if(undoStack.length>20)undoStack.shift();
-}
 
-function undo(){
-  if(!undoStack.length){hap('error');return;}
-  const s=undoStack.pop();
-  pyCards=s.pyState; waste=s.waste; if(s.stock)stock=s.stock; stockIdx=s.stockIdx; redeals=s.redeals; moves=s.moves;
-  sel=null; over=false; document.getElementById('pyr-result-area').innerHTML='';
-  setStatus(''); hap('light'); renderAll();
-}
-
-// Cards the player can currently use
-function availableCards(){
-  const out=pyCards.flat().filter(c=>isAvailable(c));
-  const wt=wasteTop(); if(wt)out.push(wt);
-  return out;
-}
-function findPair(){
-  const av=availableCards();
-  const k=av.find(c=>c.val===13); if(k)return [k];
-  for(let i=0;i<av.length;i++)for(let j=i+1;j<av.length;j++)if(av[i].val+av[j].val===13)return [av[i],av[j]];
-  return null;
-}
-
-function histBtn(){
-  const hb=GameHistory.btn('pyramid','Pyramid Solitaire',e=>GameHistory.renderStatGrid([{val:e.moves,lbl:'Pairs'},{val:e.result==='win'?'Win':'—',lbl:'Result'}]));
-  hb.style.cssText='';hb.className='btn btn-outline btn-block';hb.textContent='📜 Past games';
-  return hb;
-}
-
-function checkWin(){
-  const left=pyCards.flat().filter(c=>!c.removed).length;
-  document.getElementById('pyr-left').textContent=left;
-  document.getElementById('pyr-moves').textContent=moves;
-  if(left===0){
-    over=true;hap('success');
-    document.getElementById('pyr-result-area').innerHTML=
-      `<div class="winner-banner"><div style="font-size:2rem">🎉</div><div class="winner-name">You cleared it!</div><div class="winner-pts">Pyramid cleared in ${moves} pairs</div>
-       <button class="btn btn-gold" style="margin-top:14px" onclick="init()">Play Again</button></div>`;
-    try{GameHistory.save('pyramid',{_summary:`Pyramid Solitaire · Won in ${moves} pairs`,_badge:'Win',result:'win',moves});}catch(e){}
-    setTimeout(()=>{
-      const sh=GN.sheet({title:'You cleared the pyramid!',body:`<div style="font-size:2.4rem">🎉</div>Won in <b>${moves}</b> pairs.`,
-        actions:[{label:'Play Again',primary:true,onClick:init},{label:'Close'}]});
-      const acts=sh.el.querySelector('.gn-actions');acts.insertBefore(histBtn(),acts.lastChild);
-    },350);
-    return;
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S.pyr[28]: row r, position c is index r*(r+1)/2 + c (null once removed)
+  var S = null, U = [], I = null, lastMove = { ids: [], t: 0 };
+  function idx(r, c) { return r * (r + 1) / 2 + c; }
+  var ROWC = []; for (var r0 = 0; r0 < 7; r0++) for (var c0 = 0; c0 <= r0; c0++) ROWC.push([r0, c0]);
+  function save() {
+    if (!S || S.won) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U.slice(-150), I: I })); } catch (e) {}
+    if (!S.over) Kit.resume.set(left() + ' cards left · pass ' + S.pass + ' of ' + PASSES);
   }
-  checkStuck();
-}
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function snapshot() { var sel = S.sel; S.sel = null; U.push(JSON.stringify(S)); S.sel = sel; }
 
-// Out of stock, out of redeals and nothing pairs up → the game is over.
-function checkStuck(){
-  if(over)return;
-  if(stockIdx<stock.length||redeals>0)return;
-  if(findPair())return;
-  over=true;hap('error');
-  const left=pyCards.flat().filter(c=>!c.removed).length;
-  setStatus(`No moves left · ${left} card${left===1?'':'s'} remaining`,true);
-  document.getElementById('pyr-result-area').innerHTML=
-    `<div class="card" style="text-align:center"><div class="card-title" style="margin-bottom:4px">Out of moves</div>
-     <div style="color:var(--text-2);font-size:.92rem;margin-bottom:14px">${left} pyramid card${left===1?'':'s'} left after ${moves} pairs.</div>
-     <div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-gold" onclick="init()">New Game</button><button class="btn btn-outline" onclick="undo()">↩ Undo</button></div></div>`;
-  setTimeout(()=>{
-    if(!over)return;
-    GN.sheet({title:'Out of moves',body:`${left} pyramid card${left===1?'':'s'} left after ${moves} pairs.`,
-      actions:[{label:'New Game',primary:true,onClick:init},{label:'Undo last move',onClick:undo},{label:'Close'}]});
-  },350);
-}
+  function newGame() {
+    abandon();
+    var d = []; 'shdc'.split('').forEach(function (s) { RANKS.split('').forEach(function (r) { d.push(r + s); }); });
+    Cards.shuffle(d);
+    S = { pyr: d.slice(0, 28), stock: d.slice(28), waste: [], disc: [], pass: 1, sel: null,
+      moves: 0, pairs: 0, kings: 0, time: 0, undos: 0, clearedOnPass: 0, counted: false, won: false, over: false, recorded: false, started: Date.now() };
+    U = []; I = JSON.stringify(S);
+    Kit.gameStart();
+    build(); dealAnim(); save();
+    Kit.sfx('deal');
+  }
+  function restart() {
+    if (!S || !I || S.won) return;
+    snapshot();
+    var t = S.time, cnt = S.counted, st = S.started;
+    S = JSON.parse(I); S.time = t; S.counted = cnt; S.started = st;
+    Kit.sfx('whoosh'); Kit.toast('Back to the start of this deal');
+    place(); updBar(); save();
+  }
 
-function setStatus(msg,warn){
-  const el=document.getElementById('pyr-status');
-  if(!msg){el.className='pyr-status';el.innerHTML='Pair cards that add up to <b>13</b> · Kings go alone';return;}
-  el.className='pyr-status'+(warn?' warn':'');el.textContent=msg;
-}
+  // ── Stats (this device) ───────────────────────────────────────────────────
+  function loadStats() { try { return JSON.parse(localStorage.getItem(STATS)) || {}; } catch (e) { return {}; } }
+  function saveStats(st) { try { localStorage.setItem(STATS, JSON.stringify(st)); } catch (e) {} }
+  function bucket(st) { return st.all || (st.all = { played: 0, won: 0, streak: 0, bestStreak: 0, bestTime: 0, fewest: 0 }); }
+  function begin() {
+    if (S.counted) return;
+    S.counted = true; var st = loadStats(); bucket(st).played++; saveStats(st);
+  }
+  function abandon() {
+    if (!S || !S.counted || S.won) return;
+    var st = loadStats(); bucket(st).streak = 0; saveStats(st);
+    if (S.over && !S.recorded) recordLoss();
+  }
+  function showStats() {
+    var m = bucket(loadStats());
+    var rows = [['Played', m.played], ['Won', m.won], ['Win rate', m.played ? Math.round(100 * m.won / m.played) + '%' : '–'],
+      ['Current streak', m.streak], ['Best streak', m.bestStreak], ['Best time', m.bestTime ? fmt(m.bestTime) : '–'], ['Fewest moves', m.fewest || '–']];
+    var tb = el('tbody'); rows.forEach(function (r) { tb.appendChild(el('tr', null, [el('td', { text: r[0] }), el('td', { text: String(r[1]) })])); });
+    Kit.sheet({ title: 'Statistics', node: el('div', null, [el('p', { class: 'muted', text: 'Games on this device. A game counts once you make a move.' }), el('table', { class: 'stt' }, [tb])]),
+      actions: [{ label: 'Close', cls: 'btn-soft' }, { label: 'Reset statistics', cls: 'btn-ghost', onClick: function () {
+        Kit.confirm('Reset Pyramid statistics?', { ok: 'Reset', danger: true }).then(function (ok) { if (ok) { saveStats({}); Kit.toast('Statistics reset'); } });
+      } }] });
+  }
 
-function cardHTML(card){
-  return `<div class="ix">${card.rank}<i>${card.suit}</i></div><div class="pip">${card.suit}</div>`;
-}
+  // ── Rules ─────────────────────────────────────────────────────────────────
+  function left() { return S.pyr.filter(Boolean).length; }
+  function covered(i) {
+    var r = ROWC[i][0], c = ROWC[i][1];
+    return r < 6 && !!(S.pyr[idx(r + 1, c)] || S.pyr[idx(r + 1, c + 1)]);
+  }
+  function locate(id) {
+    var k = S.pyr.indexOf(id); if (k >= 0) return { t: 'pyr', i: k };
+    if ((k = S.waste.indexOf(id)) >= 0) return { t: 'waste', k: k };
+    if (S.stock.indexOf(id) >= 0) return { t: 'stock' };
+    if (S.disc.indexOf(id) >= 0) return { t: 'disc' };
+    return null;
+  }
+  function isFree(id) {
+    var l = locate(id); if (!l) return false;
+    if (l.t === 'pyr') return !covered(l.i);
+    return l.t === 'waste' && l.k === S.waste.length - 1;
+  }
+  function freeCards() {
+    var out = S.pyr.filter(function (c, i) { return c && !covered(i); });
+    if (S.waste.length) out.push(top(S.waste));
+    return out;
+  }
+  function findPair() {
+    var f = freeCards(), k = f.filter(function (c) { return rv(c) === 13; })[0];
+    if (k) return [k];
+    for (var a = 0; a < f.length; a++) for (var b = a + 1; b < f.length; b++) if (rv(f[a]) + rv(f[b]) === 13) return [f[a], f[b]];
+    return null;
+  }
+  function remove(ids) {
+    snapshot(); begin();
+    ids.forEach(function (id) {
+      var l = locate(id);
+      if (l.t === 'pyr') S.pyr[l.i] = null; else S.waste.pop();
+      S.disc.push(id);
+    });
+    S.sel = null; S.moves++;
+    if (ids.length === 1) S.kings++; else S.pairs++;
+    lastMove = { ids: ids, t: Date.now() };
+    Kit.sfx('pop'); Kit.haptic('light');
+    after();
+  }
+  function tapStock() {
+    if (S.over) return;
+    if (S.stock.length) {
+      snapshot(); begin();
+      S.waste.push(S.stock.pop()); S.sel = null; S.moves++;
+      Kit.sfx('flip'); Kit.haptic('light');
+    } else if (S.pass < PASSES && S.waste.length) {
+      snapshot(); begin();
+      S.stock = S.waste.reverse(); S.waste = []; S.pass++; S.sel = null; S.moves++;
+      Kit.sfx('whoosh'); Kit.haptic('medium');
+      Kit.toast('Pass ' + S.pass + ' of ' + PASSES + (S.pass === PASSES ? ': last time through!' : ''));
+    } else { Kit.toast(S.waste.length ? 'No passes left' : 'The stock is empty'); Kit.haptic('error'); return; }
+    lastMove = { ids: [], t: Date.now() };
+    after();
+  }
+  function tapCard(id) {
+    if (S.over) return;
+    if (!isFree(id)) { nudge([id]); return; }
+    if (rv(id) === 13) return remove([id]);
+    if (!S.sel || !isFree(S.sel)) { S.sel = id; Kit.sfx('tap'); place(); return; }
+    if (S.sel === id) { S.sel = null; Kit.sfx('tap'); place(); return; }
+    if (rv(S.sel) + rv(id) === 13) return remove([S.sel, id]);
+    S.sel = id; Kit.sfx('tap'); place();
+  }
+  function after() {
+    place(); updBar();
+    if (!left()) return win();
+    if (!S.stock.length && (S.pass >= PASSES || !S.waste.length) && !findPair()) { save(); return setTimeout(lose, 500); }
+    save();
+  }
+  function undo() {
+    if (!S || S.won) return;
+    if (!U.length) { Kit.toast('Nothing to undo'); return; }
+    var t = S.time, n = S.undos;
+    S = JSON.parse(U.pop()); S.time = t; S.undos = n + 1; S.over = false;
+    if (overlay) { overlay.close(); overlay = null; }
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    place(); updBar(); save();
+  }
+  function hint() {
+    if (!S || S.over || S.won) return;
+    var pr = findPair(), lit;
+    if (pr) lit = pr.map(function (id) { return cardEls[id]; });
+    else if (S.stock.length || (S.pass < PASSES && S.waste.length)) { lit = [S.stock.length ? cardEls[top(S.stock)] : slots.stock]; Kit.toast(S.stock.length ? 'No pairs: turn over a card' : 'No pairs: go through the deck again'); }
+    else { Kit.toast('No moves left'); return; }
+    lit.forEach(function (n) { n.classList.add('hint'); });
+    Kit.sfx('pop');
+    setTimeout(function () { lit.forEach(function (n) { n.classList.remove('hint'); }); }, 1500);
+  }
 
-function renderAll(){
-  const field=document.getElementById('pyr-field');
-  const left=pyCards.flat().filter(c=>!c.removed).length;
-  document.getElementById('pyr-left').textContent=left;
-  document.getElementById('pyr-moves').textContent=moves;
-  document.getElementById('pyr-redeals').textContent=redeals;
-  if(sel&&!over){
-    const need=13-sel.val;
-    setStatus(`Selected ${sel.rank}${sel.suit} — find a ${RANKS[need-1]}`);
-  } else if(!over) setStatus('');
-  // Calculate field size
-  const fw=6*HGAP+CW; const fh=6*VGAP+CH;
-  field.style.width=fw+'px'; field.style.height=fh+'px';
-  field.innerHTML='';
-  // Draw pyramid rows
-  for(let r=0;r<7;r++){
-    const rowW=r*HGAP+CW;
-    const xStart=(fw-rowW)/2;
-    for(let c=0;c<=r;c++){
-      const card=pyCards[r][c];
-      const x=xStart+c*HGAP;
-      const y=r*VGAP;
-      const covered=isCovered(r,c)&&!card.removed;
-      const selected=sel&&sel.id===card.id;
-      const el=document.createElement('div');
-      el.className='pcard'+(RED.has(card.suit)?' red':' black')+(covered?' covered':'')+(card.removed?' removed':'')+(selected?' selected':'');
-      if(sel&&!covered&&!card.removed&&!selected&&sel.val+card.val===13)el.classList.add('hint');
-      el.style.cssText=`left:${x}px;top:${y}px;z-index:${r*2+(covered?0:10)};`;
-      el.innerHTML=cardHTML(card);
-      if(!covered&&!card.removed) el.addEventListener('click',()=>clickCard(card));
-      field.appendChild(el);
+  // ── End of game ───────────────────────────────────────────────────────────
+  var overlay = null;
+  function win() {
+    begin(); S.won = true; S.over = true;
+    var st = loadStats(), m = bucket(st), prevTime = m.bestTime, prevMoves = m.fewest;
+    m.won++; m.streak++; m.bestStreak = Math.max(m.bestStreak, m.streak);
+    var bestT = !prevTime || S.time < prevTime, bestM = !prevMoves || S.moves < prevMoves;
+    if (bestT) m.bestTime = S.time;
+    if (bestM) m.fewest = S.moves;
+    saveStats(st);
+    var hl = ['Cleared the pyramid in ' + fmt(S.time) + ' with ' + S.moves + ' moves'];
+    if (m.won === 1) hl.push('First Pyramid win on this device');
+    else if (bestT) hl.push('New best time (old best ' + fmt(prevTime) + ')');
+    if (m.streak >= 2) hl.push(nth(m.streak) + ' win in a row');
+    hl.push(S.pass === 1 ? 'Did it on the first trip through the deck' : 'Needed ' + S.pass + ' trips through the deck');
+    hl.push(S.pairs + ' pairs and ' + S.kings + ' King' + (S.kings === 1 ? '' : 's') + ' taken away');
+    if (S.stock.length + S.waste.length) hl.push((S.stock.length + S.waste.length) + ' cards still left in the deck');
+    if (!S.undos) hl.push('No undos needed');
+    Kit.record(HKEY, {
+      started: S.started, mode: '3 passes', players: [{ name: 'You', score: 28 }], winner: 'You',
+      summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: 'Win',
+      highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, result: 'win', cleared: 28 }
+    });
+    clearSave(); updBar();
+    setTimeout(function () {
+      var list = S.disc.slice().reverse().concat(S.waste.slice().reverse(), S.stock.slice().reverse());
+      cascade(list, function () {
+        Kit.win({
+          title: 'Pyramid cleared!', sub: (bestT && m.won > 1 ? 'New best time! ' : '') + fmt(S.time) + ' · ' + S.moves + ' moves',
+          again: newGame, againLabel: 'New deal',
+          extra: [{ label: 'Statistics', onClick: function () { newGame(); showStats(); } }]
+        });
+      });
+    }, 450);
+  }
+  function lose() {
+    if (!S || S.won || !S.stock || S.stock.length) return;
+    S.over = true; save(); Kit.resume.clear();
+    var n = left();
+    overlay = Kit.win({
+      lose: true, icon: 'meh', title: 'Out of moves', sub: 'You cleared ' + (28 - n) + ' of 28 pyramid cards',
+      again: function () { overlay = null; newGame(); }, againLabel: 'New deal',
+      extra: [{ label: 'Undo last move', onClick: function () { overlay = null; undo(); } }],
+      onClose: function () { overlay = null; abandon(); clearSave(); Kit.home(); }
+    });
+  }
+  function recordLoss() {
+    S.recorded = true;
+    var n = left();
+    var hl = ['Cleared ' + (28 - n) + ' of 28 cards in ' + fmt(S.time)];
+    hl.push(S.pairs + ' pairs and ' + S.kings + ' King' + (S.kings === 1 ? '' : 's') + ' taken away');
+    if (n <= 3) hl.push('So close: only ' + n + ' card' + (n === 1 ? '' : 's') + ' left!');
+    var tops = S.pyr.filter(Boolean).map(function (c) { return (c[0] === 'T' ? '10' : c[0]) + GL[c[1]]; });
+    if (tops.length && tops.length <= 6) hl.push('Stuck with ' + tops.join(' '));
+    Kit.record(HKEY, {
+      started: S.started, mode: '3 passes', players: [{ name: 'You', score: 28 - n }], winner: null,
+      summary: 'Out of moves · ' + (28 - n) + ' of 28 cleared', badge: (28 - n) + '/28',
+      highlights: hl, meta: { moves: S.moves, time: S.time, result: 'loss', cleared: 28 - n }
+    });
+  }
+
+  // Classic bouncing-card finish
+  function cascade(ids, done) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+    var cv = el('canvas', { class: 'cascade' }); cv.width = W * dpr; cv.height = H * dpr;
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    document.body.appendChild(cv);
+    var g = cv.getContext('2d'); g.scale(dpr, dpr);
+    var cw = G.cw, ch = G.ch, live = [], i = 0, last = 0, t0 = performance.now(), over = false;
+    function img(code) {
+      var c = document.createElement('canvas'); c.width = Math.ceil(cw * dpr); c.height = Math.ceil(ch * dpr);
+      var x = c.getContext('2d'); x.scale(dpr, dpr); drawCard(x, code, cw, ch); return c;
     }
+    function finish() {
+      if (over) return; over = true;
+      cv.style.opacity = '0'; setTimeout(function () { cv.remove(); }, 520);
+      ids.forEach(function (id) { if (cardEls[id]) cardEls[id].style.visibility = 'hidden'; });
+      done();
+    }
+    cv.addEventListener('pointerdown', finish);
+    Kit.sfx('win');
+    (function frame(t) {
+      if (over) return;
+      if (i < ids.length && t - last > 70) {
+        var n = cardEls[ids[i]], r = n.getBoundingClientRect(); n.style.visibility = 'hidden';
+        live.push({ im: img(ids[i]), x: r.left, y: r.top, vx: (Math.random() < .5 ? -1 : 1) * (2.5 + Math.random() * 4.5), vy: -(2 + Math.random() * 7) });
+        i++; last = t;
+      }
+      live.forEach(function (p) {
+        p.vy += .55; p.x += p.vx; p.y += p.vy;
+        if (p.y + ch > H) { p.y = H - ch; p.vy = -p.vy * .78; }
+        g.drawImage(p.im, p.x, p.y, cw, ch);
+      });
+      live = live.filter(function (p) { return p.x > -cw && p.x < W; });
+      if ((i >= ids.length && !live.length) || t - t0 > 9000) return finish();
+      requestAnimationFrame(frame);
+    })(t0);
   }
-  // Stock
-  const stockRemaining=stock.length-stockIdx;
-  const stockEl=document.getElementById('pyr-stock');
-  stockEl.className='stock-card'+(stockRemaining>0?'':redeals>0?' redeal':' empty');
-  stockEl.innerHTML=stockRemaining>0?`<span class="stock-count">${stockRemaining}</span>`:redeals>0?'↺':'';
-  stockEl.setAttribute('aria-label',stockRemaining>0?`Draw (${stockRemaining} cards left)`:redeals>0?`Redeal (${redeals} left)`:'No cards left');
-  // Waste
-  const wslot=document.getElementById('pyr-waste-slot');
-  wslot.innerHTML='';
-  const wt=wasteTop();
-  if(wt){
-    const selected=sel&&sel.id===wt.id;
-    const wcard=document.createElement('div');
-    wcard.className='pcard '+(RED.has(wt.suit)?'red':'black')+(selected?' selected':'');
-    if(sel&&!selected&&sel.val+wt.val===13)wcard.classList.add('hint');
-    wcard.innerHTML=cardHTML(wt);
-    wcard.addEventListener('click',function(e){e.stopPropagation();clickCard(wt);});
-    wslot.appendChild(wcard);
-  } else {
-    const empty=document.createElement('div');
-    empty.className='empty-slot';
-    wslot.appendChild(empty);
+  function drawCard(x, code, w, h) {
+    var r = w * .1;
+    x.beginPath(); x.moveTo(r, 0); x.lineTo(w - r, 0); x.quadraticCurveTo(w, 0, w, r); x.lineTo(w, h - r); x.quadraticCurveTo(w, h, w - r, h);
+    x.lineTo(r, h); x.quadraticCurveTo(0, h, 0, h - r); x.lineTo(0, r); x.quadraticCurveTo(0, 0, r, 0); x.closePath();
+    var gr = x.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#f1ead9');
+    x.fillStyle = gr; x.fill(); x.strokeStyle = 'rgba(0,0,0,.25)'; x.lineWidth = 1; x.stroke();
+    x.fillStyle = isRed(code) ? '#d81e3a' : '#1d1b2e';
+    var rk = code[0] === 'T' ? '10' : code[0];
+    x.font = '900 ' + Math.round(w * .34) + 'px ui-rounded, system-ui, sans-serif'; x.textBaseline = 'top'; x.textAlign = 'left';
+    x.fillText(rk + GL[code[1]], w * .07, h * .05);
+    x.font = Math.round(w * .56) + 'px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(/[JQK]/.test(rk) ? rk : GL[code[1]], w / 2, h * .64);
   }
-  document.getElementById('pyr-undo').disabled=!undoStack.length;
-}
 
-document.getElementById('pyr-stock').addEventListener('click',clickStock);
-document.getElementById('pyr-new').addEventListener('click',confirmNew);
-document.getElementById('pyr-undo').addEventListener('click',undo);
-let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{calcSizes();renderAll();},80);});
+  // ── Table ─────────────────────────────────────────────────────────────────
+  var felt, cardEls = {}, slots = {}, bar = {}, lbl = {}, passEl, needEl, G = null;
+  function build() {
+    app.innerHTML = ''; app.className = 'stage play';
+    var table = el('div', { class: 'stable wood' });
+    felt = el('div', { class: 'felt-in' });
+    table.appendChild(felt);
+    var undoBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: function () { undo(); } });
+    var hintBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Hint', html: Kit.icon('lightbulb'), onclick: function () { hint(); } });
+    function stat(l) { var b = el('b', { text: '0' }); return { box: el('div', { class: 'st' }, [b, el('small', { text: l })]), v: b }; }
+    bar.time = stat('Time'); bar.moves = stat('Moves'); bar.left = stat('Left');
+    app.appendChild(table);
+    app.appendChild(el('div', { class: 'sbar' }, [undoBtn, el('div', { class: 'stats' }, [bar.time.box, bar.moves.box, bar.left.box]), hintBtn]));
+    slots = { stock: el('div', { class: 'slot stock', 'aria-label': 'Stock' }), waste: el('div', { class: 'slot' }), disc: el('div', { class: 'slot' }) };
+    felt.appendChild(slots.stock); felt.appendChild(slots.waste); felt.appendChild(slots.disc);
+    lbl.stock = el('div', { class: 'plbl' }, [el('div', { text: 'Stock' })]);
+    passEl = el('div', { class: 'pass' }); lbl.stock.appendChild(passEl);
+    lbl.waste = el('div', { class: 'plbl', text: 'Waste' });
+    lbl.disc = el('div', { class: 'plbl', text: 'Done' });
+    needEl = el('div', { class: 'need' });
+    [lbl.stock, lbl.waste, lbl.disc, needEl].forEach(function (n) { felt.appendChild(n); });
+    badge = el('div', { class: 'badge' }); felt.appendChild(badge);
+    cardEls = {};
+    'shdc'.split('').forEach(function (s) {
+      RANKS.split('').forEach(function (r) {
+        var n = Kit.card(r, s, { cls: 'scard nt' }); n.dataset.id = r + s; n._x = n._y = null; n._up = true;
+        cardEls[r + s] = n; felt.appendChild(n);
+      });
+    });
+    felt.addEventListener('pointerdown', onDown);
+    felt.addEventListener('pointermove', onMove);
+    felt.addEventListener('pointerup', onUp);
+    felt.addEventListener('pointercancel', onCancel);
+    fit(); updBar();
+  }
+  var badge;
+  function fit() {
+    var gb = document.querySelector('.gbar');
+    app.style.height = 'calc(100dvh - ' + (gb ? gb.offsetHeight : 58) + 'px)';
+    var W = felt.clientWidth, H = felt.clientHeight;
+    var small = W < 520, pad = small ? 6 : 14, g = small ? 4 : 10;
+    var cw = Math.min(96, Math.floor((W - 2 * pad - 6 * g) / 7));
+    var step = .54;
+    // height needed: pyramid (6 steps + 1 card) + gap + bottom row + labels
+    cw = Math.max(30, Math.min(cw, Math.floor((H - 2 * pad - 110) / (1.4 * (6 * step + 2)))));
+    var ch = Math.round(cw * 1.4), rowH = Math.round(ch * step);
+    var pyrH = 6 * rowH + ch, gap = Math.max(46, Math.round(ch * .55)), total = pyrH + gap + ch + 34;
+    var y0 = Math.max(pad, Math.round((H - total) * .42));
+    G = { W: W, H: H, pad: pad, g: g, cw: cw, ch: ch, rowH: rowH, y0: y0, botY: y0 + pyrH + gap, cx: W / 2 };
+    felt.style.setProperty('--cw', cw + 'px');
+  }
+  function pyrXY(i) {
+    var r = ROWC[i][0], c = ROWC[i][1], rowW = (r + 1) * G.cw + r * G.g;
+    return [Math.round(G.cx - rowW / 2 + c * (G.cw + G.g)), G.y0 + r * G.rowH];
+  }
+  function bottomXs() {
+    var sp = G.cw + Math.max(G.g * 3, Math.round(G.cw * .35));
+    return { stock: Math.round(G.cx - G.cw / 2 - sp * 1.25), waste: Math.round(G.cx - G.cw / 2), disc: Math.round(G.cx - G.cw / 2 + sp * 1.6) };
+  }
+  function setXY(n, x, y) { n.style.transform = 'translate(' + x + 'px,' + y + 'px)'; }
+  function put(id, x, y, z, up, delay, flat) {
+    var n = cardEls[id];
+    n.classList.toggle('flat', !!flat);
+    if (n._x !== x || n._y !== y) {
+      n.style.transitionDelay = (delay || 0) + 'ms';
+      setXY(n, x, y); n._x = x; n._y = y;
+      n.style.zIndex = 400 + z;
+      clearTimeout(n._zt);
+      n._zt = setTimeout(function () { n.style.zIndex = n._z; n.style.transitionDelay = ''; }, 300 + (delay || 0));
+    } else if (!n._zt || n.style.zIndex < 400) n.style.zIndex = z;
+    n._z = z;
+    if (n._up !== up) {
+      n._up = up; n.classList.toggle('back', !up);
+      n.setAttribute('aria-label', up ? n.dataset.r + n.dataset.s : 'Face-down card');
+      if (up && !n.classList.contains('nt')) { n.classList.remove('flip'); void n.offsetWidth; n.classList.add('flip'); }
+    }
+    n.style.visibility = '';
+  }
+  function place(instant) {
+    if (!S || !felt) return;
+    if (instant) for (var id in cardEls) cardEls[id].classList.add('nt');
+    var bx = bottomXs(), by = G.botY;
+    setXY(slots.stock, bx.stock, by); setXY(slots.waste, bx.waste, by); setXY(slots.disc, bx.disc, by);
+    setXY(lbl.stock, bx.stock, by + G.ch + 6); setXY(lbl.waste, bx.waste, by + G.ch + 6); setXY(lbl.disc, bx.disc, by + G.ch + 6);
+    slots.stock.innerHTML = !S.stock.length && S.waste.length && S.pass < PASSES ? Kit.icon('sync') : '';
+    passEl.innerHTML = '';
+    for (var p = 1; p <= PASSES; p++) passEl.appendChild(el('i', { class: p < S.pass || (p === S.pass && !S.stock.length) ? 'used' : '' }));
+    S.pyr.forEach(function (c, i) {
+      if (!c) return;
+      var xy = pyrXY(i), cov = covered(i);
+      put(c, xy[0], xy[1], 10 + i, true);
+      cardEls[c].classList.toggle('cov', cov);
+    });
+    S.stock.forEach(function (c, k) { put(c, bx.stock, by, 10 + k, false, 0, k < S.stock.length - 1); cardEls[c].classList.remove('cov'); });
+    S.waste.forEach(function (c, k) { put(c, bx.waste, by, 10 + k, true, 0, k < S.waste.length - 1); cardEls[c].classList.remove('cov'); });
+    S.disc.forEach(function (c, k) { put(c, bx.disc, by, 10 + k, true, 0, k < S.disc.length - 1); cardEls[c].classList.remove('cov'); });
+    badge.hidden = !S.stock.length; badge.textContent = S.stock.length;
+    setXY(badge, bx.stock + G.cw / 2 - 14, by + G.ch - 22);
+    for (id in cardEls) cardEls[id].classList.toggle('pick', id === S.sel);
+    // "Find a 6" helper under the pyramid
+    needEl.style.transform = 'translateY(' + (G.botY - Math.round(G.ch * .55) + 6) + 'px)';
+    if (S.sel) { var need = 13 - rv(S.sel); needEl.innerHTML = 'Find ' + (need === 1 || need === 8 ? 'an ' : 'a ') + '<b>' + NAME[need] + '</b>'; needEl.style.opacity = 1; }
+    else needEl.style.opacity = 0;
+    if (instant) { void felt.offsetWidth; for (id in cardEls) cardEls[id].classList.remove('nt'); }
+  }
+  function dealAnim() {
+    fit();
+    var bx = bottomXs(), n = 0;
+    for (var id in cardEls) { var c = cardEls[id]; c.classList.add('nt', 'back'); c._up = false; setXY(c, bx.stock, G.botY); c._x = bx.stock; c._y = G.botY; c.style.visibility = ''; c.classList.remove('cov', 'pick'); }
+    void felt.offsetWidth;
+    for (id in cardEls) cardEls[id].classList.remove('nt');
+    S.pyr.forEach(function (c, i) { var xy = pyrXY(i); put(c, xy[0], xy[1], 10 + i, true, 100 + n++ * 30); cardEls[c].classList.toggle('cov', covered(i)); });
+    place();
+  }
+  function updBar() {
+    if (!S || !bar.time) return;
+    bar.time.v.textContent = fmt(S.time);
+    bar.moves.v.textContent = S.moves;
+    bar.left.v.textContent = left();
+  }
+  setInterval(function () {
+    if (!S || !S.counted || S.won || S.over || document.hidden || !felt || !felt.isConnected) return;
+    S.time++; updBar();
+    if (S.time % 5 === 0) save();
+  }, 1000);
 
-init();
+  // ── Touch: tap a card then its partner, or drag one onto the other ────────
+  var P = null, tgts = [];
+  function onDown(e) {
+    if (P || !S || S.over || (e.button && e.button !== 0)) return;
+    var t = e.target.closest('.scard,.slot'); if (!t) return;
+    P = { t: t, x: e.clientX, y: e.clientY, id: e.pointerId, moved: false, card: null, dx: 0, dy: 0 };
+    if (t.classList.contains('scard') && isFree(t.dataset.id)) P.card = t.dataset.id;
+    try { felt.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  function onMove(e) {
+    if (!P || e.pointerId !== P.id) return;
+    var dx = e.clientX - P.x, dy = e.clientY - P.y;
+    if (!P.moved) {
+      if (dx * dx + dy * dy < 49 || !P.card) return;
+      P.moved = true; startDrag();
+    }
+    P.dx = dx; P.dy = dy;
+    var n = cardEls[P.card]; setXY(n, n._x + dx, n._y + dy);
+  }
+  function onUp(e) {
+    if (!P || e.pointerId !== P.id) return;
+    var p = P; P = null;
+    if (p.moved) endDrag(p); else tap(p);
+  }
+  function onCancel() { if (P && P.moved) { var p = P; P = null; snapBack(p); } P = null; }
+  function startDrag() {
+    var n = cardEls[P.card]; clearTimeout(n._zt); n.classList.add('nt', 'lift'); n.style.zIndex = 3000;
+    var v = rv(P.card);
+    P.dests = v === 13 ? ['disc'] : freeCards().filter(function (c) { return c !== P.card && rv(c) + v === 13; });
+    tgts = P.dests.map(function (d) { return d === 'disc' ? (S.disc.length ? cardEls[top(S.disc)] : slots.disc) : cardEls[d]; });
+    tgts.forEach(function (x) { x.classList.add('tgt'); });
+    Kit.haptic('tick');
+  }
+  function clearDrag(p) {
+    tgts.forEach(function (x) { x.classList.remove('tgt'); }); tgts = [];
+    cardEls[p.card].classList.remove('nt', 'lift');
+  }
+  function snapBack(p) {
+    clearDrag(p);
+    var n = cardEls[p.card]; setXY(n, n._x, n._y); n._zt = setTimeout(function () { n.style.zIndex = n._z; }, 300);
+  }
+  function endDrag(p) {
+    var n = cardEls[p.card], a = { l: n._x + p.dx, t: n._y + p.dy }; a.r = a.l + G.cw; a.b = a.t + G.ch;
+    var best = null, bestA = 0;
+    (p.dests || []).forEach(function (d) {
+      var x, y;
+      if (d === 'disc') { x = bottomXs().disc; y = G.botY; } else { x = cardEls[d]._x; y = cardEls[d]._y; }
+      var ov = Math.max(0, Math.min(a.r, x + G.cw) - Math.max(a.l, x)) * Math.max(0, Math.min(a.b, y + G.ch) - Math.max(a.t, y));
+      if (ov > bestA) { bestA = ov; best = d; }
+    });
+    clearDrag(p);
+    if (best) { S.sel = null; remove(best === 'disc' ? [p.card] : [p.card, best]); }
+    else { var m = cardEls[p.card]; setXY(m, m._x, m._y); m._zt = setTimeout(function () { m.style.zIndex = m._z; }, 300); if (Math.abs(p.dx) + Math.abs(p.dy) > 30) Kit.haptic('error'); }
+  }
+  function nudge(ids) { ids.forEach(function (id) { var n = cardEls[id]; n.classList.remove('nudge'); void n.offsetWidth; n.classList.add('nudge'); }); Kit.haptic('error'); }
+  function tap(p) {
+    var t = p.t;
+    if (t === slots.stock) return tapStock();
+    if (!t.classList.contains('scard')) return;
+    var id = t.dataset.id, l = locate(id); if (!l) return;
+    if (l.t === 'stock') return tapStock();
+    if (l.t === 'disc') return;
+    if (Date.now() - lastMove.t < 300 && lastMove.ids.indexOf(id) >= 0) return;
+    tapCard(id);
+  }
+  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { fit(); place(true); } });
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.S && saved.S.pyr && !saved.S.won) {
+    S = saved.S; U = saved.U || []; I = saved.I || null;
+    build(); place(true); updBar();
+    if (S.over) setTimeout(lose, 300);
+  } else newGame();
+})();
 </script>
 </body>
 </html>

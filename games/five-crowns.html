@@ -50,7 +50,7 @@
   function maxPts(n) { return Math.min(n, 6) * 50 + Math.max(0, n - 6) * 20; }
 
   Kit.init({
-    id: 'five-crowns', title: 'Five Crowns score',
+    id: 'five-crowns', title: 'Five Crowns',
     onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
     undo: function () { if (pad) pad.undo(); },
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [AI_KEY], title: 'Five Crowns: past games' }); } }],
@@ -163,7 +163,7 @@
       v[out] = 0;
       if (k === 10) hl.push(ctx.sides[out].name + ' went out first in the Kings round');
       var mx = Math.max.apply(null, v), who = v.indexOf(mx);
-      if (mx >= 60) hl.push(ctx.sides[who].name + ' got caught holding ' + mx + ' points in ' + roundName(k + 1));
+      if (mx >= 75) hl.push(ctx.sides[who].name + ' got caught holding ' + mx + ' points in ' + roundName(k + 1));
       if (!ctx.prev && k === 10) summary(v, out).forEach(function (h) { hl.push(h); });
       if (!ctx.prev) extra.callout = out >= 0 && n ? ctx.sides[out].name.length <= 8 ? ctx.sides[out].name + ' out!' : 'Out!' : '';
       ctx.done(v, extra);
@@ -188,7 +188,7 @@
     }
     var zeros = st.sides.map(function (s, i) { return rounds.filter(function (r) { return r.s[i] === 0; }).length; });
     var z = zeros.indexOf(Math.max.apply(null, zeros));
-    if (zeros[z] >= 4) hl.push(st.sides[z].name + ' scored zero in ' + zeros[z] + ' of 11 rounds');
+    if (zeros[z] >= 4 && zeros[z] > outs[z]) hl.push(st.sides[z].name + ' scored zero in ' + zeros[z] + ' of 11 rounds');
     return hl;
   }
 
