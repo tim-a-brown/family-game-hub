@@ -1,963 +1,660 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hangman</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-:root{--hm-key:#3a4050;--hm-key-hi:#4a5163;}
-/* ── Setup ── */
-.hm-setup{max-width:480px;margin:0 auto;}
-.hm-sec{margin-bottom:22px;}
-.hm-sec-title{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 10px;}
-.diff-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.diff-card{
-  background:var(--surface);border:2px solid var(--line-2);border-radius:var(--r-lg);
-  padding:14px 10px 12px;cursor:pointer;text-align:center;touch-action:manipulation;
-  transition:border-color .18s,background .18s,transform .12s var(--ease);
-}
-.diff-card:active{transform:scale(.97);}
-.diff-card.selected{border-color:var(--gold);background:linear-gradient(160deg,rgba(245,200,66,.13),rgba(245,200,66,.03));}
-.diff-card-name{font-family:var(--display);font-weight:800;font-size:1.15rem;}
-.diff-card-sub{font-size:.8rem;color:var(--text-2);margin:2px 0 6px;}
-.diff-preview{display:block;margin:0 auto;}
-.hm-setup .tabs{margin-bottom:0;}
-.hm-setup .tab{min-height:42px;font-size:.92rem;}
-.cat-row{display:flex;gap:8px;flex-wrap:wrap;}
-.cat-btn{
-  min-height:40px;padding:0 16px;border-radius:999px;font-size:.9rem;font-weight:600;cursor:pointer;
-  border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);
-  transition:background .15s,border-color .15s,color .15s;
-}
-.cat-btn.active{border-color:rgba(245,200,66,.6);background:rgba(245,200,66,.14);color:var(--gold);}
-.hm-start-bar{position:sticky;bottom:0;padding:12px 0 calc(12px + var(--safe-b));background:linear-gradient(to top,var(--bg) 70%,transparent);}
-/* Custom phrase */
-.custom-entry{max-width:480px;margin:0 auto;}
-.custom-entry-title{font-family:var(--display);font-size:1.4rem;font-weight:800;margin-bottom:4px;}
-.custom-entry-sub{color:var(--text-2);font-size:.92rem;margin-bottom:16px;}
-.phrase-input{letter-spacing:.08em;text-transform:uppercase;}
-.phrase-input::placeholder{text-transform:none;letter-spacing:0;}
-.handoff-overlay{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
-.handoff-icon{font-size:4rem;margin-bottom:16px;}
-.handoff-title{font-family:var(--display);font-size:2rem;font-weight:800;margin-bottom:10px;}
-.handoff-sub{color:var(--text-2);font-size:1rem;max-width:300px;line-height:1.6;margin-bottom:28px;}
-/* ── Play screen: fills the viewport, keyboard docked ── */
-body.playing{height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
-body.playing .page{display:none;}
-.hm-play{display:none;}
-body.playing .hm-play{
-  flex:1;min-height:0;display:flex;flex-direction:column;
-  width:100%;max-width:560px;margin:0 auto;
-  padding:0 max(8px,var(--safe-r)) 0 max(8px,var(--safe-l));
-}
-.hm-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 4px 0;min-height:48px;}
-.hm-cat{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--text);font-size:.88rem;font-weight:700;cursor:pointer;}
-.hm-cat svg{width:14px;height:14px;color:var(--text-3);}
-.hm-cat.custom{cursor:default;}
-.hm-cat.custom svg{display:none;}
-.hint-btn{height:36px;min-height:36px;padding:0 14px;border-radius:999px;font-size:.88rem;}
-.hm-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 0;}
-.hangman-svg{height:100%;max-height:230px;width:auto;max-width:100%;}
-.wrong-counter{display:flex;justify-content:center;gap:6px;margin:2px 0 6px;}
-.wrong-pip{width:10px;height:10px;border-radius:50%;background:transparent;border:1.5px solid rgba(248,113,113,.45);transition:background .2s,transform .2s var(--spring);}
-.wrong-pip.active{background:var(--red);border-color:var(--red);transform:scale(1.1);}
-.status-bar{text-align:center;font-size:.92rem;font-weight:600;color:var(--text-2);min-height:22px;}
-.hint-text{text-align:center;color:var(--gold);font-size:.92rem;font-weight:600;min-height:0;padding:0 12px;}
-.hint-text:not(:empty){margin-top:4px;}
-.word-display{
-  --n:8;
-  --g:clamp(3px, calc(60px / var(--n)), 6px);
-  --lw:min(34px, calc((min(100vw, 560px) - 28px - (var(--n) - 1) * var(--g)) / var(--n)));
-  display:flex;justify-content:center;flex-wrap:wrap;gap:10px 18px;margin:12px 0 6px;
-}
-.hm-word{display:flex;gap:var(--g);}
-.letter-blank{
-  width:var(--lw);height:calc(var(--lw) * 1.3);max-height:44px;
-  border-bottom:3px solid rgba(255,255,255,.32);display:flex;align-items:flex-end;justify-content:center;
-  font-family:var(--display);font-size:calc(var(--lw) * .82);font-weight:800;line-height:1;padding-bottom:3px;
-  color:var(--text);
-}
-.letter-blank.shown{border-bottom-color:var(--green);color:var(--green);animation:gn-pop .3s var(--spring) both;}
-.letter-blank.missed{border-bottom-color:var(--red);color:var(--red);}
-.letter-blank.fixed{border-bottom-color:transparent;}
-.keyboard{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 0 calc(10px + var(--safe-b));}
-.kb-row{display:flex;gap:6px;justify-content:center;}
-.kb-row .half{flex:.5;}
-.key-btn{
-  flex:1;height:54px;padding:0;border:0;border-radius:8px;max-width:52px;
-  background:var(--hm-key);color:var(--text);font-size:1.15rem;font-weight:700;
-  cursor:pointer;touch-action:manipulation;transition:background .15s,color .15s,transform .06s;
-}
-.kb-row .half{max-width:26px;}
-.kb-row .wide-sp{flex:1.5;max-width:78px;}
-.key-btn:active:not(:disabled){background:var(--hm-key-hi);transform:scale(.95);}
-.key-btn:disabled{cursor:default;opacity:1;}
-.key-btn.correct{background:#22a35a;color:#fff;}
-.key-btn.wrong{background:#2a2e38;color:#5c6372;}
-@media (max-height:700px){.key-btn{height:48px;}.keyboard{gap:7px;}}
-/* Result sheet */
-.hm-result{position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
-.hm-result.show{display:flex;animation:gn-fade .2s ease both;}
-.hm-sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));text-align:center;animation:gn-sheet .32s var(--ease) both;}
-@media (min-width:600px){.hm-result{align-items:center;}.hm-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
-.hm-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 16px;}
-.hm-res-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.hm-res-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;}
-.hm-res-word{font-family:var(--display);font-size:1.5rem;font-weight:800;letter-spacing:.08em;color:var(--gold);margin:10px 0 2px;word-break:break-word;}
-.hm-res-hint{color:var(--text-2);font-size:.92rem;margin-bottom:16px;min-height:1em;}
-.hm-res-stats{display:flex;gap:8px;justify-content:center;margin-bottom:18px;}
-.hm-res-actions{display:flex;flex-direction:column;gap:8px;}
-.nav-icon{width:36px;height:36px;padding:0!important;display:inline-grid;place-items:center;border-radius:50%!important;border:1px solid var(--line-2);background:var(--surface);color:var(--text);cursor:pointer;}
-.nav-icon svg{width:18px;height:18px;}
-.nav-icon[hidden]{display:none;}
+:root{--chalk:#f4f1e6;--dread:0;}
+body{overflow-x:hidden;}
+/* The room darkens as misses pile up */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opacity:calc(var(--dread) * .6);transition:opacity .8s;
+  background:radial-gradient(90% 70% at 50% 40%, transparent 30%, rgba(5,2,15,.85) 100%);}
+.hm{display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 10px);min-height:calc(100dvh - var(--safe-t) - 58px);}
+.hm .scores{margin-bottom:0;padding-bottom:6px;}
+.hud{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;flex-wrap:wrap;}
+.pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 11px;border-radius:999px;background:rgba(255,255,255,.07);
+  font-weight:800;font-size:.86rem;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pill .ico{width:15px;height:15px;color:var(--text-3);}
+.pill b{color:var(--text);font-weight:900;}
+.pill.hot{background:color-mix(in srgb,var(--orange) 22%,transparent);color:var(--orange);}
+.pill.hot .ico{color:var(--orange);}
+/* Chalkboard */
+.frame{border-radius:16px;padding:9px;flex:1;display:flex;min-height:0;}
+.slate{position:relative;flex:1;border-radius:8px;padding:10px 12px 22px;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;
+  background:
+    radial-gradient(60% 40% at 25% 30%, rgba(255,255,255,.05), transparent 70%),
+    radial-gradient(50% 35% at 75% 70%, rgba(255,255,255,.045), transparent 70%),
+    radial-gradient(120% 90% at 50% 40%, #33463d 0%, #26372f 60%, #1d2b25 100%);
+  box-shadow:inset 0 2px 10px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.35);
+  filter:brightness(calc(1 - var(--dread) * .28));transition:filter .8s;}
+.slate::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");}
+.slate::after{content:"";pointer-events:none;position:absolute;left:8%;right:8%;bottom:-2px;height:9px;border-radius:4px 4px 0 0;z-index:2;
+  background:linear-gradient(180deg,#7a5a3a,#5a3f26);box-shadow:0 -1px 0 rgba(255,255,255,.12) inset;}
+.slate.shake{animation:shake .35s;}
+.topline{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-family:var(--hand);color:rgba(244,241,230,.75);font-size:1.1rem;line-height:1.1;}
+.topline .miss{color:#ff9d9d;letter-spacing:.12em;text-align:right;}
+.pic{flex:1;min-height:150px;display:flex;align-items:center;justify-content:center;position:relative;}
+.pic svg{height:100%;max-height:260px;width:auto;max-width:100%;overflow:visible;}
+.ch{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.ch.new{stroke-dasharray:1 1;stroke-dashoffset:1;animation:draw .45s cubic-bezier(.4,0,.6,1) forwards;}
+.ch.new.slow{animation-duration:1.4s;}
+@keyframes draw{to{stroke-dashoffset:0;}}
+.clue{font-family:var(--hand);color:#ffe28a;text-align:center;font-size:1.15rem;line-height:1.2;margin:2px 4px 4px;min-height:0;}
+/* Word in chalk */
+.word{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;margin:6px 0 2px;}
+.wd{display:flex;gap:var(--g,5px);}
+.lt{position:relative;width:var(--lw,28px);height:calc(var(--lw,28px) * 1.3);display:flex;align-items:flex-end;justify-content:center;
+  font-family:var(--hand);font-size:calc(var(--lw,28px) * 1.15);line-height:1;color:var(--chalk);padding-bottom:2px;}
+.lt::after{content:"";position:absolute;left:8%;right:8%;bottom:0;height:3px;border-radius:2px;background:rgba(244,241,230,.7);}
+.lt.sp::after{display:none;}
+.lt.stamp span{display:inline-block;animation:stamp .45s var(--spring) both;}
+@keyframes stamp{0%{transform:scale(2.2) rotate(-12deg);opacity:0;}60%{opacity:1;}100%{transform:none;}}
+.lt.red{color:#ff8f8f;}
+.lt.red span{display:inline-block;animation:stamp .4s ease-out both;}
+.lt.wave span{display:inline-block;animation:wave .6s var(--spring) both;}
+@keyframes wave{40%{transform:translateY(-14px);color:#ffe28a;}100%{transform:none;}}
+.spark{position:absolute;left:50%;top:40%;width:0;height:0;pointer-events:none;}
+.spark i{position:absolute;left:-1px;top:-9px;width:2px;height:7px;border-radius:2px;background:#ffe28a;transform-origin:1px 9px;animation:spark .55s ease-out forwards;}
+@keyframes spark{0%{opacity:1;transform:rotate(var(--r)) translateY(0) scaleY(.4);}100%{opacity:0;transform:rotate(var(--r)) translateY(-16px) scaleY(1);}}
+.banner{text-align:center;font-family:var(--display);font-size:2.4rem;line-height:1;pointer-events:none;margin:2px 0 4px;
+  text-shadow:0 3px 0 rgba(0,0,0,.4);animation:pop .5s var(--spring) both;}
+.banner small{display:block;font-family:var(--hand);font-size:1.15rem;color:rgba(244,241,230,.85);margin-top:4px;text-shadow:none;}
+/* Actions + keyboard */
+.acts{display:flex;justify-content:center;gap:8px;margin:10px 0 8px;}
+.acts .btn{min-height:40px;}
+.kb{display:flex;flex-direction:column;gap:6px;user-select:none;}
+.kb .r{display:flex;justify-content:center;gap:5px;}
+.key{position:relative;flex:1;max-width:42px;height:50px;border:0;border-radius:9px;background:rgba(255,255,255,.14);color:var(--text);
+  font-weight:900;font-size:1.1rem;box-shadow:0 3px 0 rgba(0,0,0,.35);transition:transform .06s, background .3s, color .3s;}
+.key:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.key.hit{background:#3ddc84;color:#05290f;}
+.key.miss{background:#2a2348;color:#6d6496;box-shadow:none;}
+.key.miss::after{content:"";position:absolute;left:22%;right:22%;top:50%;height:2px;background:#ff6b6b;transform:rotate(-30deg);border-radius:2px;}
+.key:disabled{cursor:default;}
+@media (max-height:720px){.key{height:44px;}.pic{min-height:120px;}}
+.next{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+/* Hand-off and secret word screens */
+.cover{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px 10px;}
+.cover .big{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.08);color:var(--text-2);}
+.cover .big .ico{width:40px;height:40px;}
+.cover h2{font-family:var(--display);font-weight:400;font-size:2.1rem;line-height:1.05;}
+.cover p{color:var(--text-2);max-width:320px;}
+.cover .btn{min-width:240px;}
+.setw{display:flex;flex-direction:column;gap:12px;padding-top:6px;}
+.setw h2{font-family:var(--display);font-weight:400;font-size:1.8rem;}
+.setw .secret{letter-spacing:.12em;text-transform:uppercase;font-weight:900;}
+.setw .secret::placeholder{letter-spacing:0;text-transform:none;font-weight:500;}
+.setw .err{color:var(--red);font-weight:800;min-height:1.2em;font-size:.92rem;}
+.picks{display:flex;flex-wrap:wrap;gap:6px;}
+.cats{display:flex;flex-wrap:wrap;gap:6px;}
+.cats .chip.on{background:var(--accent);color:var(--accent-ink);}
+.solve-in{letter-spacing:.1em;text-transform:uppercase;font-weight:900;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Hangman</span>
-  <button class="nav-icon" id="new-word" aria-label="New word" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></button>
-  <button class="nav-icon" id="change-diff" aria-label="Game settings" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
-</nav>
-<div class="page">
-
-<!-- Setup: difficulty, mode, category -->
-<div id="diff-screen" class="hm-setup setup-screen">
-  <div class="hm-sec">
-    <div class="hm-sec-title">Difficulty</div>
-    <div class="diff-cards">
-      <div class="diff-card selected" id="diff-easy" onclick="selectDiff('easy')" role="button" tabindex="0">
-        <div class="diff-card-name" style="color:var(--green);">Easy</div>
-        <div class="diff-card-sub">10 wrong guesses</div>
-        <svg class="diff-preview" viewBox="0 0 80 100" width="76" height="76">
-          <g stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"><line x1="10" y1="95" x2="70" y2="95"/><line x1="30" y1="95" x2="30" y2="10"/><line x1="30" y1="10" x2="55" y2="10"/><line x1="55" y1="10" x2="55" y2="22"/></g>
-          <g stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" fill="none"><circle cx="55" cy="30" r="8"/><line x1="55" y1="38" x2="55" y2="60"/><line x1="55" y1="42" x2="44" y2="50"/><line x1="55" y1="42" x2="66" y2="50"/><line x1="55" y1="60" x2="44" y2="74"/><line x1="55" y1="60" x2="66" y2="74"/><line x1="44" y1="74" x2="40" y2="82" stroke-width="2"/><line x1="66" y1="74" x2="70" y2="82" stroke-width="2"/><line x1="44" y1="50" x2="40" y2="58" stroke-width="2"/><line x1="66" y1="50" x2="70" y2="58" stroke-width="2"/></g>
-        </svg>
-      </div>
-      <div class="diff-card" id="diff-hard" onclick="selectDiff('hard')" role="button" tabindex="0">
-        <div class="diff-card-name" style="color:var(--red);">Hard</div>
-        <div class="diff-card-sub">6 wrong guesses</div>
-        <svg class="diff-preview" viewBox="0 0 80 100" width="76" height="76">
-          <g stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-linecap="round"><line x1="10" y1="95" x2="70" y2="95"/><line x1="30" y1="95" x2="30" y2="10"/><line x1="30" y1="10" x2="55" y2="10"/><line x1="55" y1="10" x2="55" y2="22"/></g>
-          <g stroke="#f87171" stroke-width="2.5" stroke-linecap="round" fill="none"><circle cx="55" cy="30" r="8"/><line x1="55" y1="38" x2="55" y2="62"/><line x1="55" y1="44" x2="43" y2="54"/><line x1="55" y1="44" x2="67" y2="54"/><line x1="55" y1="62" x2="43" y2="76"/><line x1="55" y1="62" x2="67" y2="76"/></g>
-        </svg>
-      </div>
-    </div>
-  </div>
-  <div class="hm-sec">
-    <div class="hm-sec-title">Mode</div>
-    <div class="tabs" id="mode-row">
-      <button class="tab active" id="mode-random">🎲 Random word</button>
-      <button class="tab" id="mode-custom">✏️ Custom phrase</button>
-    </div>
-  </div>
-  <div class="hm-sec" id="cats-sec">
-    <div class="hm-sec-title">Category</div>
-    <div class="cat-row" id="cats"></div>
-  </div>
-  <div class="hm-start-bar"><button class="btn btn-gold btn-block" id="diff-start">Start game</button></div>
-</div>
-
-<!-- Custom phrase entry -->
-<div class="custom-entry hidden setup-screen" id="custom-entry">
-  <div class="card">
-    <div class="custom-entry-title">Player 1 — secret phrase</div>
-    <div class="custom-entry-sub">Letters and spaces only. Player 2 won’t see this.</div>
-    <label for="phrase-input">Word or phrase</label>
-    <input class="input phrase-input" id="phrase-input" placeholder="Type a word or phrase…" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" style="margin-bottom:14px;">
-    <label for="hint-custom">Hint (optional)</label>
-    <input class="input" id="hint-custom" placeholder="A clue for Player 2" maxlength="60" autocomplete="off" style="margin-bottom:12px;">
-    <div id="phrase-err" style="color:var(--red);font-size:.88rem;margin-bottom:10px;display:none;"></div>
-    <button class="btn btn-gold btn-block" id="set-phrase-btn">Set phrase</button>
-    <button class="btn btn-ghost btn-block mt-8" id="custom-back">Back</button>
-  </div>
-</div>
-</div>
-
-<!-- Handoff overlay -->
-<div class="handoff-overlay hidden" id="handoff">
-  <div class="handoff-icon">🙈</div>
-  <div class="handoff-title">Phrase set!</div>
-  <div class="handoff-sub">Hand the device to <strong>Player 2</strong>.<br>Don’t peek at the screen!</div>
-  <button class="btn btn-gold" id="ready-btn" style="min-width:220px;">I’m ready to guess</button>
-</div>
-
-<!-- Play screen -->
-<main class="hm-play" id="hm-play">
-  <div class="hm-top">
-    <button class="hm-cat" id="cat-pill"><span id="cat-name">Animals</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
-    <button class="btn btn-outline hint-btn" id="hint-btn">💡 Hint</button>
-  </div>
-  <div class="hm-stage"><svg class="hangman-svg" viewBox="0 0 160 210" id="hsvg"></svg></div>
-  <div class="wrong-counter" id="wrong-counter"></div>
-  <div class="status-bar" id="status"></div>
-  <div class="hint-text" id="hint-text"></div>
-  <div class="word-display" id="word-display"></div>
-  <div class="keyboard" id="keyboard"></div>
-</main>
-
-<!-- Result sheet -->
-<div class="hm-result" id="hm-result">
-  <div class="hm-sheet" role="dialog" aria-modal="true">
-    <div class="hm-grab"></div>
-    <div class="hm-res-emoji" id="hm-res-emoji"></div>
-    <div class="hm-res-title" id="hm-res-title"></div>
-    <div class="hm-res-word" id="hm-res-word"></div>
-    <div class="hm-res-hint" id="hm-res-hint"></div>
-    <div class="stat-row hm-res-stats" id="hm-res-stats"></div>
-    <div class="hm-res-actions">
-      <button class="btn btn-gold btn-block" id="hm-next">Next word</button>
-      <button class="btn btn-outline btn-block hidden" id="new-phrase-btn">New phrase</button>
-      <button class="btn btn-ghost btn-block" id="hm-settings">Change settings</button>
-    </div>
-  </div>
-</div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="chalk" filterUnits="userSpaceOnUse" x="-40" y="-40" width="300" height="320">
+    <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="3" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.75" result="holes"/>
+    <feComposite in="SourceGraphic" in2="holes" operator="in" result="grain"/>
+    <feDisplacementMap in="grain" in2="n" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<main class="hm" id="app"></main>
 <script>
-'use strict';
-const WORDS={
-  Animals:['ELEPHANT','GIRAFFE','PENGUIN','DOLPHIN','CROCODILE','CHEETAH','KANGAROO','PLATYPUS','CHAMELEON','ARMADILLO',
-    'RHINOCEROS','ORANGUTAN','WOLVERINE','PORCUPINE','FLAMINGO','PELICAN','OCTOPUS','LOBSTER','SCORPION','PIRANHA',
-    'CHIMPANZEE','SALAMANDER','TARANTULA','NARWHAL','MANATEE','WOLVERINE','ALLIGATOR','COCKROACH','DRAGONFLY','FIREFLY',
-    'HAMSTER','HEDGEHOG','LEMUR','MEERKAT','MONGOOSE','OPOSSUM','PEACOCK','TOUCAN','WALRUS','WOMBAT',
-    'BARRACUDA','BISON','BUFFALO','COBRA','CONDOR','COYOTE','FALCON','FERRET','GAZELLE','GECKO',
-    'GORILLA','GRIZZLY','IGUANA','JAGUAR','LEOPARD','MACAW','MANTA','MOOSE','MUSKRAT','OSPREY',
-    'PANTHER','PARROT','PYTHON','RACCOON','SEAHORSE','SPARROW','SQUID','STINGRAY','SWAN','TAPIR',
-    'TERMITE','VULTURE','WARTHOG','WEASEL','WILDCAT','WOLVERINE','WOODPECKER','YAK','ZEBRAFISH','ALBATROSS',
-    'ANACONDA','BABOON','CAPYBARA','CATFISH','DINGO','ECHIDNA','EGRET','EMU','GNU','HYENA',
-    'IBIS','JACKAL','KOMODO','LYNX','MANDRILL','MARLIN','MOLE','OKAPI','ORIOLE','QUOKKA'],
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var KEY = 'hangman', SAVE = 'hangman_state', CAT_KEY = 'hangman_cat', STREAK_KEY = 'hangman_streak';
 
-  Food:['SPAGHETTI','AVOCADO','CROISSANT','QUESADILLA','BROCCOLI','PINEAPPLE','CINNAMON','LASAGNA','DUMPLING','ASPARAGUS',
-    'ARTICHOKE','BAGUETTE','BURRITO','CANNOLI','CARAMEL','CHIMICHANGA','COCONUT','EGGPLANT','ENCHILADA','FALAFEL',
-    'GAZPACHO','GUACAMOLE','HUMMUS','JALAPENO','KIMCHI','LENTIL','MOZZARELLA','NOODLE','PAPAYA','PARMESAN',
-    'PERSIMMON','PISTACHIO','POMEGRANATE','PRETZEL','PROSCIUTTO','QUINOA','RAVIOLI','RHUBARB','RISOTTO','ROSEMARY',
-    'RUTABAGA','SAFFRON','SALMON','SAMOSA','SORBET','SPINACH','SRIRACHA','TAHINI','TAMALE','TIRAMISU',
-    'TORTILLA','TRUFFLE','TURMERIC','TURNIP','VANILLA','WAFFLE','WATERCRESS','WATERMELON','ZUCCHINI','ANTIPASTO',
-    'ARUGULA','BASIL','BUTTERNUT','CARDAMOM','CHICKPEA','CHUTNEY','CILANTRO','CLEMENTINE','COUSCOUS','CRANBERRY',
-    'EDAMAME','FENNEL','GNOCCHI','GRAPEFRUIT','HORSERADISH','JALAPEÑO','JICAMA','KIWI','KOHLRABI','KUMQUAT',
-    'LYCHEE','MANGO','MARZIPAN','MERINGUE','MISO','MULBERRY','NECTARINE','OREGANO','PAELLA','PAPRIKA',
-    'PEACH','PESTO','POLENTA','PORTOBELLO','RICOTTA','ROMAINE','SOURDOUGH','TARRAGON','TEMPURA','TZATZIKI'],
-
-  Science:['PHOTOSYNTHESIS','ATMOSPHERE','CHROMOSOME','MAGNETISM','HIBERNATE','MOLECULE','TELESCOPE','EVOLUTION','STALACTITE','VELOCITY',
-    'ACCELERATION','AMPHIBIAN','ANATOMY','ANTIBIOTIC','ASTEROID','BACTERIA','BIODIVERSITY','BIOSPHERE','BOTANY','CALCULUS',
-    'CARNIVORE','CATALYST','CELLULITE','CENTRIFUGE','CHLOROPHYLL','COMBUSTION','CONDENSATION','CONVECTION','DENSITY','DIFFUSION',
-    'EARTHQUAKE','ECOSYSTEM','ELECTRODE','ELECTRON','EMBRYO','ENDURANCE','ENTROPY','ENZYME','EQUILIBRIUM','EROSION',
-    'EVAPORATION','EXTINCTION','FERMENTATION','FOSSIL','FRICTION','FUNGUS','GALAXY','GEOLOGY','GLACIER','GRAVITATION',
-    'GREENHOUSE','HERBIVORE','HORMONE','HYPOTHESIS','IMMUNITY','INERTIA','INVERTEBRATE','ION','ISOTOPE','KINETIC',
-    'LARVA','LATITUDE','LAVA','LONGITUDE','LUMINOSITY','METAMORPHOSIS','METEOR','MICROBE','MIGRATION','MOMENTUM',
-    'NEUTRON','NUCLEUS','OMNIVORE','ORBIT','OSMOSIS','OXIDATION','PARASITE','PARTICLE','PHOTON','PLANKTON',
-    'PLASMA','POLLINATION','PREDATOR','PROTEIN','PROTON','RADIATION','RECEPTOR','REFRACTION','REPRODUCTION','RESPIRATION',
-    'SEDIMENT','SEISMIC','SOLSTICE','SPECIES','SYMBIOSIS','TECTONIC','THERMOMETER','TIDAL','TORNADO','ULTRAVIOLET'],
-
-  Sports:['BASKETBALL','VOLLEYBALL','GYMNASTICS','SKATEBOARD','LACROSSE','BADMINTON','WRESTLING','SNOWBOARD','ARCHERY','FENCING',
-    'ATHLETICS','BIATHLON','BOBSLED','BOXING','CANOE','CRICKET','CURLING','CYCLING','DECATHLON','DISCUS',
-    'EQUESTRIAN','HANDBALL','HEPTATHLON','HURDLES','JAVELIN','JUDO','KAYAK','MARATHON','MOTOCROSS','NETBALL',
-    'PADDLEBOARD','PENTATHLON','POLO','RACQUETBALL','REGATTA','ROWING','RUGBY','SAILING','SHOTPUT','SLALOM',
-    'SOFTBALL','SURFING','SYNCHRONIZED','TAEKWONDO','TRIATHLON','WEIGHTLIFTING','WINDSURFING','POLO','BOCCE','CROQUET',
-    'DRESSAGE','DUATHLON','FOXTROT','FREESTYLE','FRISBEE','GLIDING','GOALBALL','HANDBALL','HURDLING','ICEHOKEY',
-    'JUJITSU','KABADDI','KENDO','KITEBOARDING','LUGE','MOGULS','MOUNTAINBIKE','OBSTACLE','ORIENTEERING','PADDLEBALL',
-    'PARAGLIDING','PARKOUR','PICKLEBALL','POWERLIFTING','RAPPELLING','RINGETTE','ROLLERSKATE','ROUNDERS','SHEEPDOG','SKELETON',
-    'SKIJUMP','SKIINGSLALOM','SPEARFISHING','SQUASH','STEEPLE','SUMO','SURFSKI','TRAMPOLINE','TRAPEZE','WATERPOLO'],
-
-  Geography:['AMAZON','ANTARCTICA','ARCHIPELAGO','ARCTIC','ATMOSPHERE','CANYON','CAPITAL','CONTINENT','DELTA','EQUATOR',
-    'FJORD','GLACIER','HABITAT','HEMISPHERE','HIMALAYA','HURRICANE','ISLAND','ISTHMUS','LAGOON','LATITUDE',
-    'LONGITUDE','MONSOON','MOUNTAIN','PENINSULA','PLATEAU','PRAIRIE','RAINFOREST','SAHARA','SAVANNA','STEPPE',
-    'STRAIT','TUNDRA','TYPHOON','VOLCANO','WATERSHED','WETLAND','MERIDIAN','MANGROVE','OASIS','PERMAFROST',
-    'AUSTRALIA','BANGLADESH','BOTSWANA','BRAZIL','CAMBODIA','CAMEROON','COLOMBIA','CROATIA','CZECHIA','DENMARK',
-    'ECUADOR','ETHIOPIA','FINLAND','GEORGIA','GHANA','GUATEMALA','HONDURAS','HUNGARY','ICELAND','INDONESIA',
-    'JAMAICA','JORDAN','KENYA','LAOS','LEBANON','MADAGASCAR','MALAYSIA','MEXICO','MOROCCO','MOZAMBIQUE',
-    'NAMIBIA','NEPAL','NICARAGUA','NIGERIA','NORWAY','PAKISTAN','PANAMA','PARAGUAY','PERU','PHILIPPINES',
-    'PORTUGAL','ROMANIA','RWANDA','SENEGAL','SERBIA','SINGAPORE','SOMALIA','SURINAME','TANZANIA','THAILAND',
-    'TRINIDAD','TUNISIA','UKRAINE','URUGUAY','UZBEKISTAN','VENEZUELA','VIETNAM','ZAMBIA','ZIMBABWE','AZERBAIJAN'],
-
-  Movies:['ADVENTURE','ANIMATION','CINEMATIC','DOCUMENTARY','FRANCHISE','NARRATIVE','PROTAGONIST','SCREENPLAY','SUSPENSE','THRILLER',
-    'ACADEMY','ACTRESS','BLOCKBUSTER','CAMEO','CLIFFHANGER','COMEDY','CREDITS','CROSSOVER','DIRECTOR','DYSTOPIA',
-    'ENSEMBLE','FANTASY','FILMMAKER','FLASHBACK','FRANCHISE','GHOSTWRITER','HEIST','HORROR','INDIE','MONTAGE',
-    'MUSICAL','MYSTERY','NOIR','PARODY','PREQUEL','PRODUCTION','REBOOT','REMAKE','ROMANCE','SATIRE',
-    'SEQUEL','SERIES','SOUNDTRACK','SPINOFF','STORYBOARD','STUDIO','SUBPLOT','SUPERHERO','TRILOGY','VILLAIN',
-    'WESTERN','WHODUNIT','CLIFFHANGER','ANTICLIMAX','BACKSTORY','CATHARSIS','CINEMATOGRAPHY','CLIMAX','DENOUEMENT','DIALOGUE',
-    'EDITING','EPILOGUE','EXPOSITION','FOREBODING','FORESHADOW','IRONY','JUXTAPOSE','METAPHOR','MOTIF','ODYSSEY',
-    'PARADOX','PATHOS','PERSPECTIVE','PLOTTWIST','PROLOGUE','REDEMPTION','RESOLUTION','REVELATION','SPECTACLE','SYMBOLISM',
-    'ALLEGORY','ANTIHERO','ARCHETYPE','CHARACTER','CONFLICT','DILEMMA','EMPATHY','FLASHFORWARD','FORESHADOWING','HUBRIS',
-    'IMAGERY','INNUENDO','MANIFESTO','MONOLOGUE','NOSTALGIA','PROPAGANDA','SOLILOQUY','STEREOTYPE','SUBTEXT','ZEITGEIST'],
-};
-
-const HINTS={
-  // Animals
-  ELEPHANT:'Largest land animal',GIRAFFE:'Tallest animal, long neck',PENGUIN:'Flightless bird from Antarctica',
-  DOLPHIN:'Intelligent ocean mammal',CROCODILE:'Ancient reptile with strong jaws',CHEETAH:'Fastest land animal',
-  KANGAROO:'Australian marsupial with a pouch',PLATYPUS:'Egg-laying mammal with a duck bill',
-  CHAMELEON:'Lizard that changes color',ARMADILLO:'Has a bony armored shell',
-  RHINOCEROS:'Horned African or Asian megafauna',ORANGUTAN:'Red great ape of Borneo and Sumatra',
-  WOLVERINE:'Fierce weasel-family carnivore',PORCUPINE:'Rodent covered in sharp quills',
-  FLAMINGO:'Pink wading bird on one leg',PELICAN:'Large beak with a throat pouch',
-  OCTOPUS:'Eight-armed sea creature',LOBSTER:'Clawed crustacean, turns red when cooked',
-  SCORPION:'Desert arachnid with a venomous tail',PIRANHA:'Flesh-eating freshwater fish',
-  CHIMPANZEE:'Our closest primate relative',SALAMANDER:'Amphibian that can regrow limbs',
-  TARANTULA:'Large hairy spider',NARWHAL:'Arctic whale with a spiral tusk',
-  MANATEE:'Gentle sea cow of warm coastal waters',ALLIGATOR:'Broad-snouted American reptile',
-  COCKROACH:'Hardy insect survivor',DRAGONFLY:'Agile hovering insect with large eyes',
-  FIREFLY:'Beetle that produces bioluminescent light',HAMSTER:'Small furry rodent with cheek pouches',
-  HEDGEHOG:'Spiny insectivore that rolls into a ball',LEMUR:'Wide-eyed primate from Madagascar',
-  MEERKAT:'Burrowing mongoose that stands guard',MONGOOSE:'Snake-fighting weasel relative',
-  OPOSSUM:'North American marsupial that plays dead',PEACOCK:'Bird famous for its stunning tail display',
-  TOUCAN:'Tropical bird with an oversized colorful beak',WALRUS:'Tusked Arctic marine mammal',
-  WOMBAT:'Stocky Australian marsupial, cube-shaped droppings',BARRACUDA:'Long fast predatory reef fish',
-  BISON:'Shaggy North American grassland giant',BUFFALO:'African bovine, travels in large herds',
-  COBRA:'Hooded venomous snake',CONDOR:'Largest flying bird in the Americas',
-  COYOTE:'Clever canine of North American plains',FALCON:'Fast diving bird of prey',
-  FERRET:'Slender domesticated polecat',GAZELLE:'Slender swift African antelope',
-  GECKO:'Small lizard that can walk on ceilings',GORILLA:'Largest great ape',
-  GRIZZLY:'Large brown bear of North America',IGUANA:'Large tree-dwelling tropical lizard',
-  JAGUAR:'Spotted big cat of the Americas',LEOPARD:'Spotted cat that hauls prey into trees',
-  MACAW:'Colorful large parrot of the tropics',MANTA:'Huge flat ray with wing-like fins',
-  MOOSE:'Largest member of the deer family',MUSKRAT:'Semi-aquatic rodent of North America',
-  OSPREY:'Fish-hunting hawk that dives feet-first',PANTHER:'Black coat phase of leopard or jaguar',
-  PARROT:'Colorful bird that mimics speech',PYTHON:'Large constricting snake',
-  RACCOON:'Masked North American scavenger',SEAHORSE:'Fish with a horse-like head that carries young',
-  SPARROW:'Small common songbird',SQUID:'Ten-armed cephalopod',
-  STINGRAY:'Flat fish with a venomous tail spine',SWAN:'Large graceful white waterfowl',
-  TAPIR:'Pig-like animal with a short prehensile snout',TERMITE:'Wood-eating insect in massive colonies',
-  VULTURE:'Scavenging bird with a bald head',WARTHOG:'Wild pig with curved tusks',
-  WEASEL:'Long slender carnivore',WILDCAT:'Undomesticated small feline',
-  WOODPECKER:'Bird that drums on trees for insects',YAK:'Long-haired Himalayan bovine',
-  ZEBRAFISH:'Striped lab research fish',ALBATROSS:'Giant seabird with the widest wingspan',
-  ANACONDA:'World\'s heaviest snake',BABOON:'Large ground-dwelling monkey',
-  CAPYBARA:'World\'s largest rodent',CATFISH:'Bottom-feeding whiskered fish',
-  DINGO:'Wild dog of Australia',ECHIDNA:'Spiny egg-laying Australian mammal',
-  EGRET:'Tall white wading heron',EMU:'Tall flightless Australian bird',
-  GNU:'Wildebeest of African savanna',HYENA:'Spotted laughing African predator',
-  IBIS:'Long-curved-beak wading bird',JACKAL:'Scavenging African canine',
-  KOMODO:'World\'s largest lizard',LYNX:'Short-tailed tufted-ear wild cat',
-  MANDRILL:'Most colorful primate with bright face',MARLIN:'Large billfish of the open ocean',
-  MOLE:'Small blind burrowing mammal',OKAPI:'Striped-legged relative of the giraffe',
-  ORIOLE:'Bright orange and black songbird',QUOKKA:'Tiny smiling marsupial of Australia',
-  // Food
-  SPAGHETTI:'Long Italian pasta',AVOCADO:'Creamy green fruit',CROISSANT:'Flaky crescent-shaped French pastry',
-  QUESADILLA:'Grilled tortilla with cheese',BROCCOLI:'Green tree-shaped vegetable',
-  PINEAPPLE:'Tropical fruit with spiky leaves',CINNAMON:'Sweet aromatic bark spice',
-  LASAGNA:'Layered Italian pasta dish',DUMPLING:'Dough wrapped around filling',
-  ASPARAGUS:'Long thin spring vegetable',ARTICHOKE:'Thorny flower bud you eat',
-  BAGUETTE:'Long crusty French bread',BURRITO:'Flour tortilla wrapped around fillings',
-  CANNOLI:'Crispy Italian pastry tube with cream filling',CARAMEL:'Sugar cooked until golden',
-  CHIMICHANGA:'Deep-fried Mexican burrito',COCONUT:'Tropical palm fruit with white flesh',
-  EGGPLANT:'Purple teardrop-shaped vegetable',ENCHILADA:'Rolled corn tortilla in chili sauce',
-  FALAFEL:'Fried chickpea balls, Middle Eastern street food',GAZPACHO:'Cold Spanish tomato soup',
-  GUACAMOLE:'Mashed avocado dip',HUMMUS:'Creamy chickpea and tahini dip',
-  JALAPENO:'Spicy green Mexican pepper',KIMCHI:'Fermented Korean spicy cabbage',
-  LENTIL:'Small protein-rich legume',MOZZARELLA:'Stretchy Italian cheese for pizza',
-  NOODLE:'Long strand of pasta or dough',PAPAYA:'Tropical orange-fleshed fruit',
-  PARMESAN:'Hard Italian cheese grated over pasta',PERSIMMON:'Orange autumn fruit',
-  PISTACHIO:'Green nut in a tan shell',POMEGRANATE:'Red fruit packed with jewel-like seeds',
-  PRETZEL:'Twisted baked dough snack',PROSCIUTTO:'Thin Italian dry-cured ham',
-  QUINOA:'Protein-rich South American grain',RAVIOLI:'Stuffed pasta pillows',
-  RHUBARB:'Sour red stalk, often in pies',RISOTTO:'Creamy slow-cooked Italian rice',
-  ROSEMARY:'Fragrant evergreen herb',RUTABAGA:'Large yellow-fleshed root vegetable',
-  SAFFRON:'World\'s most expensive spice, bright yellow',SALMON:'Pink fatty cold-water fish',
-  SAMOSA:'Fried pastry with spiced filling',SORBET:'Dairy-free frozen fruit dessert',
-  SPINACH:'Leafy green Popeye ate',SRIRACHA:'Thai rooster hot sauce',
-  TAHINI:'Sesame seed paste',TAMALE:'Corn dough steamed in a husk',
-  TIRAMISU:'Italian espresso and mascarpone dessert',TORTILLA:'Flat corn or flour bread',
-  TRUFFLE:'Rare underground fungi',TURMERIC:'Golden anti-inflammatory spice',
-  TURNIP:'Round purple-top root vegetable',VANILLA:'Sweet pod from an orchid',
-  WAFFLE:'Grid-patterned breakfast cake',WATERCRESS:'Peppery aquatic leafy green',
-  WATERMELON:'Huge green fruit with pink juicy flesh',ZUCCHINI:'Italian green summer squash',
-  ANTIPASTO:'Italian appetizer platter',ARUGULA:'Peppery salad leaf',
-  BASIL:'Aromatic herb essential to pesto',BUTTERNUT:'Sweet orange-fleshed squash',
-  CARDAMOM:'Aromatic spice in chai and rice dishes',CHICKPEA:'Round legume in hummus and curries',
-  CHUTNEY:'Sweet-spicy fruit condiment',CILANTRO:'Controversial herb — love or hate it',
-  CLEMENTINE:'Small easy-peel orange',COUSCOUS:'Tiny North African semolina pasta',
-  CRANBERRY:'Tart red berry for sauce and juice',EDAMAME:'Young soybeans steamed in the pod',
-  FENNEL:'Anise-flavored bulb vegetable',GNOCCHI:'Soft Italian potato dumplings',
-  GRAPEFRUIT:'Large bitter citrus',HORSERADISH:'Pungent white root used as a condiment',
-  JICAMA:'Crunchy white Mexican root vegetable',KIWI:'Brown fuzzy fruit with green flesh',
-  KOHLRABI:'Alien-looking purple or green stem vegetable',KUMQUAT:'Tiny oval citrus you eat whole',
-  LYCHEE:'Sweet white tropical fruit with bumpy red skin',MANGO:'Juicy tropical stone fruit',
-  MARZIPAN:'Sweet almond paste confection',MERINGUE:'Airy baked egg white sweet',
-  MISO:'Japanese fermented soybean paste',MULBERRY:'Purple berry from a tree',
-  NECTARINE:'Smooth-skinned peach relative',OREGANO:'Pizza herb',
-  PAELLA:'Spanish saffron rice with seafood',PAPRIKA:'Ground red pepper spice',
-  PESTO:'Basil, pine nut and olive oil sauce',POLENTA:'Cornmeal porridge',
-  PORTOBELLO:'Large meaty mushroom cap',RICOTTA:'Soft white Italian cheese',
-  ROMAINE:'Crisp lettuce for Caesar salad',SOURDOUGH:'Tangy bread leavened with wild yeast',
-  TARRAGON:'Anise-flavored French herb',TEMPURA:'Japanese light batter-fried vegetables or shrimp',
-  TZATZIKI:'Greek cucumber and yogurt dip',
-  // Science
-  PHOTOSYNTHESIS:'How plants make food from sunlight',ATMOSPHERE:'Gas layers surrounding Earth',
-  CHROMOSOME:'DNA-carrying structure in cells',MAGNETISM:'Force between magnets',
-  HIBERNATE:'Sleep through winter',MOLECULE:'Smallest unit of a compound',
-  TELESCOPE:'Instrument for viewing distant space objects',EVOLUTION:'Change in species over time',
-  STALACTITE:'Calcite spike hanging from cave ceiling',VELOCITY:'Speed in a specific direction',
-  ACCELERATION:'Rate of change of velocity',AMPHIBIAN:'Cold-blooded creature of land and water',
-  ANATOMY:'Study of body structure',ANTIBIOTIC:'Drug that kills bacterial infections',
-  ASTEROID:'Rocky body orbiting the sun',BACTERIA:'Single-celled microscopic organisms',
-  BIODIVERSITY:'Variety of life in an ecosystem',BIOSPHERE:'All living things on Earth',
-  BOTANY:'Study of plants',CALCULUS:'Branch of math using derivatives and integrals',
-  CARNIVORE:'Animal that eats only meat',CATALYST:'Speeds up a chemical reaction without being consumed',
-  CENTRIFUGE:'Spinning device that separates substances',CHLOROPHYLL:'Green pigment in plants that captures sunlight',
-  COMBUSTION:'Rapid chemical reaction that releases heat and light',CONDENSATION:'Gas turning to liquid',
-  CONVECTION:'Heat transfer through fluid movement',DENSITY:'Mass per unit of volume',
-  DIFFUSION:'Spread of particles from high to low concentration',EARTHQUAKE:'Shaking from tectonic plate movement',
-  ECOSYSTEM:'Community of living things and their environment',ELECTRODE:'Conductor through which electricity enters or leaves',
-  ELECTRON:'Negatively charged subatomic particle',EMBRYO:'Early stage of development in an organism',
-  ENTROPY:'Measure of disorder in a system',ENZYME:'Biological catalyst for chemical reactions',
-  EQUILIBRIUM:'State of balance between forces',EROSION:'Wearing away of rock or soil',
-  EVAPORATION:'Liquid turning to vapor',EXTINCTION:'Complete disappearance of a species',
-  FERMENTATION:'Breakdown of sugars by microorganisms',FOSSIL:'Preserved remains of ancient organisms',
-  FRICTION:'Resistance when surfaces rub together',FUNGUS:'Kingdom that includes mushrooms and molds',
-  GALAXY:'Vast system of stars and interstellar matter',GEOLOGY:'Study of Earth\'s structure and history',
-  GLACIER:'Slow-moving mass of ice',GRAVITATION:'Attractive force between masses',
-  GREENHOUSE:'Effect that warms a planet through trapped radiation',HERBIVORE:'Animal that eats only plants',
-  HORMONE:'Chemical messenger in the bloodstream',HYPOTHESIS:'Testable scientific prediction',
-  IMMUNITY:'Body\'s defense against disease',INERTIA:'Tendency to resist change in motion',
-  INVERTEBRATE:'Animal without a backbone',ION:'Charged atom or molecule',
-  ISOTOPE:'Form of element with different neutron count',KINETIC:'Relating to energy of motion',
-  LARVA:'Young form of an insect before metamorphosis',LATITUDE:'Distance north or south of the equator',
-  LAVA:'Molten rock after it reaches Earth\'s surface',LONGITUDE:'Distance east or west on a globe',
-  LUMINOSITY:'Total brightness of a star',METAMORPHOSIS:'Complete transformation of form',
-  METEOR:'Rock that burns in Earth\'s atmosphere',MICROBE:'Microscopic living organism',
-  MIGRATION:'Seasonal movement of animals to new regions',MOMENTUM:'Mass times velocity',
-  NEUTRON:'Neutral subatomic particle in the nucleus',NUCLEUS:'Control center of a cell or atom',
-  OMNIVORE:'Animal that eats plants and animals',ORBIT:'Curved path of one object around another',
-  OSMOSIS:'Movement of water through a membrane',OXIDATION:'Chemical reaction with oxygen',
-  PARASITE:'Organism that lives at another\'s expense',PARTICLE:'Tiny piece of matter',
-  PHOTON:'Quantum of light',PLANKTON:'Microscopic aquatic organisms',
-  PLASMA:'Fourth state of matter, superheated gas',POLLINATION:'Transfer of pollen to fertilize a plant',
-  PREDATOR:'Animal that hunts other animals',PROTEIN:'Large molecule essential for life',
-  PROTON:'Positively charged particle in nucleus',RADIATION:'Energy transmitted as waves or particles',
-  RECEPTOR:'Cell structure that receives signals',REFRACTION:'Bending of light through a medium',
-  REPRODUCTION:'Biological process of producing offspring',RESPIRATION:'Process cells use to release energy',
-  SEDIMENT:'Solid material deposited by water or wind',SEISMIC:'Relating to earthquakes or tremors',
-  SOLSTICE:'Day with longest or shortest daylight',SPECIES:'Group of organisms that can interbreed',
-  SYMBIOSIS:'Close relationship between two species',TECTONIC:'Relating to Earth\'s crustal plates',
-  THERMOMETER:'Instrument to measure temperature',TIDAL:'Relating to the rise and fall of sea level',
-  TORNADO:'Violent rotating column of air',ULTRAVIOLET:'Light beyond violet in the spectrum',
-  // Sports
-  BASKETBALL:'Sport with hoops and a round ball',VOLLEYBALL:'Sport played over a net',
-  GYMNASTICS:'Sport with acrobatic movements',SKATEBOARD:'Board on four wheels for tricks',
-  LACROSSE:'Sport with a stick and mesh pocket',BADMINTON:'Racket sport with a shuttlecock',
-  WRESTLING:'Combat sport on a mat',SNOWBOARD:'Single board for snow riding',
-  ARCHERY:'Sport of shooting with bow and arrow',FENCING:'Sword fighting sport',
-  ATHLETICS:'Track and field events',BIATHLON:'Cross-country skiing and rifle shooting',
-  BOBSLED:'Ice track racing in a sled',BOXING:'Combat sport with padded gloves',
-  CANOE:'Small paddled watercraft',CRICKET:'Bat and ball sport with an oval pitch',
-  CURLING:'Ice sport sweeping stones to a target',CYCLING:'Competitive bike riding',
-  DECATHLON:'Ten-event athletics competition',DISCUS:'Throwing a heavy disk for distance',
-  EQUESTRIAN:'Competitive horseback riding',HANDBALL:'Team sport throwing a ball into a goal',
-  HEPTATHLON:'Seven-event women\'s athletics',HURDLES:'Sprint race with barriers to clear',
-  JAVELIN:'Throwing a spear for distance',JUDO:'Japanese throwing and grappling martial art',
-  KAYAK:'Small paddled enclosed boat',MARATHON:'42.2 km long-distance foot race',
-  MOTOCROSS:'Off-road dirt bike racing',NETBALL:'Shooting hoops without a backboard',
-  PADDLEBOARD:'Standing on a board and paddling',PENTATHLON:'Five-event Olympic competition',
-  POLO:'Equestrian sport hitting a ball with a mallet',RACQUETBALL:'Court sport with a rubber ball',
-  REGATTA:'Series of boat races',ROWING:'Propelling a boat with oars',
-  RUGBY:'Contact sport with an oval ball, no pads',SAILING:'Racing boats using wind power',
-  SHOTPUT:'Throwing a heavy metal ball for distance',SLALOM:'Timed weaving through gates',
-  SOFTBALL:'Like baseball but with a larger ball',SURFING:'Riding ocean waves on a board',
-  SYNCHRONIZED:'Swimming or diving performed in unison',TAEKWONDO:'Korean kicking martial art',
-  TRIATHLON:'Swim, bike, run race',WEIGHTLIFTING:'Olympic sport of lifting barbells',
-  WINDSURFING:'Surfboard with a sail attached',BOCCE:'Italian lawn bowling game',
-  CROQUET:'Mallet game hitting balls through hoops',DRESSAGE:'Precise horse movement sport',
-  FRISBEE:'Throwing and catching a plastic disc',FREESTYLE:'Swimming stroke with no restriction',
-  KABADDI:'Contact team sport with breath-holding',KENDO:'Japanese sword-fighting with bamboo',
-  LUGE:'Feet-first ice track sliding sport',PARKOUR:'Free-running over urban obstacles',
-  PICKLEBALL:'Fast-growing paddle and wiffle ball sport',POWERLIFTING:'Max weight squat, bench, deadlift',
-  SQUASH:'Racket sport inside a closed court',TRAMPOLINE:'Bouncing gymnastics',
-  WATERPOLO:'Swimming pool team ball sport',SUMO:'Japanese wrestling to push opponent out of ring',
-  SKELETON:'Head-first ice track sliding sport',BIATHLON:'Skiing and rifle shooting combined',
-  DUATHLON:'Run, bike, run race',GLIDING:'Engineless aircraft soaring sport',
-  MOUNTAINBIKE:'Off-road bicycle racing',ORIENTEERING:'Navigation race with map and compass',
-  PARAGLIDING:'Flying with a parachute-like wing',ROLLERSKATE:'Racing or figure skating on four-wheeled boots',
-  RAPPELLING:'Descending a rope on a cliff',ROWING:'Propelling a shell boat with oars',
-  // Geography
-  AMAZON:'World\'s largest river by volume',ANTARCTICA:'Earth\'s southernmost frozen continent',
-  ARCHIPELAGO:'Chain or cluster of islands',ARCTIC:'Frozen ocean at the North Pole',
-  CANYON:'Deep gorge carved by a river',CAPITAL:'A country\'s seat of government',
-  CONTINENT:'Major land mass on Earth',DELTA:'Fan-shaped river mouth deposit',
-  EQUATOR:'Imaginary line around Earth\'s middle',FJORD:'Narrow sea inlet between cliffs',
-  GLACIER:'Slow-moving mass of ice',HEMISPHERE:'Half of the globe',
-  HIMALAYA:'World\'s highest mountain range',HURRICANE:'Tropical cyclone with winds over 74mph',
-  ISLAND:'Land entirely surrounded by water',ISTHMUS:'Narrow strip of land connecting two larger areas',
-  LAGOON:'Shallow coastal water body',LATITUDE:'Horizontal grid lines on a map',
-  LONGITUDE:'Vertical grid lines on a map',MONSOON:'Seasonal reversing wind bringing heavy rain',
-  MOUNTAIN:'Large natural elevation of land',PENINSULA:'Land surrounded by water on three sides',
-  PLATEAU:'Flat elevated landform',PRAIRIE:'Vast treeless grassland',
-  RAINFOREST:'Dense tropical forest with heavy rainfall',SAHARA:'World\'s largest hot desert',
-  SAVANNA:'Tropical grassland with scattered trees',STEPPE:'Vast Eurasian or American grassland',
-  STRAIT:'Narrow waterway between two seas',TUNDRA:'Flat treeless Arctic landscape',
-  TYPHOON:'Pacific tropical cyclone',VOLCANO:'Mountain that erupts molten rock',
-  WATERSHED:'Area of land draining to a river',WETLAND:'Land saturated with water',
-  MERIDIAN:'Line of longitude',MANGROVE:'Coastal salt-tolerant forest',
-  OASIS:'Fertile water source in the desert',PERMAFROST:'Permanently frozen subsoil',
-  AUSTRALIA:'Continent-island nation in the Pacific',BANGLADESH:'Densely populated South Asian delta nation',
-  BOTSWANA:'Landlocked southern African nation known for wildlife',BRAZIL:'Largest country in South America',
-  CAMBODIA:'Southeast Asian nation with Angkor Wat',CAMEROON:'Central African nation',
-  COLOMBIA:'South American nation famed for coffee',CROATIA:'Adriatic coastal European nation',
-  DENMARK:'Scandinavian kingdom connected to mainland Europe',ECUADOR:'Country on the equator in South America',
-  ETHIOPIA:'Highlands nation, origin of coffee',FINLAND:'Nordic nation of lakes and saunas',
-  GHANA:'West African nation',GUATEMALA:'Central American nation with Mayan ruins',
-  HONDURAS:'Central American nation',HUNGARY:'Central European landlocked nation',
-  ICELAND:'Island nation near Arctic Circle',INDONESIA:'Largest archipelago nation',
-  JAMAICA:'Caribbean island nation',JORDAN:'Middle Eastern nation adjacent to Dead Sea',
-  KENYA:'East African nation with Serengeti',LAOS:'Southeast Asian landlocked nation',
-  LEBANON:'Small Mediterranean Middle Eastern nation',MADAGASCAR:'Large island nation off Africa',
-  MALAYSIA:'Southeast Asian peninsula and island nation',MEXICO:'Spanish-speaking North American nation',
-  MOROCCO:'North African kingdom',MOZAMBIQUE:'Eastern African coastal nation',
-  NAMIBIA:'Southwestern African desert nation',NEPAL:'Himalayan landlocked nation',
-  NICARAGUA:'Largest Central American nation',NIGERIA:'Most populous African nation',
-  NORWAY:'Fjord-filled Scandinavian nation',PAKISTAN:'South Asian nation',
-  PANAMA:'Central American nation with a famous canal',PARAGUAY:'Landlocked South American nation',
-  PERU:'South American nation with Machu Picchu',PHILIPPINES:'Southeast Asian archipelago nation',
-  PORTUGAL:'Western Iberian Peninsula nation',ROMANIA:'Eastern European Carpathian nation',
-  RWANDA:'Small densely populated African nation',SENEGAL:'West African coastal nation',
-  SERBIA:'Balkan European nation',SINGAPORE:'Tiny wealthy city-state in Southeast Asia',
-  SOMALIA:'Horn of Africa nation',SURINAME:'Smallest South American nation',
-  TANZANIA:'East African nation with Kilimanjaro',THAILAND:'Southeast Asian kingdom',
-  TRINIDAD:'Caribbean twin-island nation',TUNISIA:'North African Mediterranean nation',
-  UKRAINE:'Largest country entirely in Europe',URUGUAY:'Small stable South American nation',
-  UZBEKISTAN:'Central Asian Silk Road nation',VENEZUELA:'Northern South American nation',
-  VIETNAM:'Southeast Asian peninsula nation',ZAMBIA:'Landlocked southern African nation',
-  ZIMBABWE:'Southern African nation with Victoria Falls',AZERBAIJAN:'Caspian Sea Caucasus nation',
-  // Movies
-  ADVENTURE:'Genre of daring journeys and quests',ANIMATION:'Genre of drawn or computer-generated characters',
-  CINEMATIC:'Relating to the art of film',DOCUMENTARY:'Non-fiction film of real events',
-  FRANCHISE:'Series of films sharing characters and world',NARRATIVE:'The story being told',
-  PROTAGONIST:'Main character of a story',SCREENPLAY:'Written script of a film',
-  SUSPENSE:'Feeling of anticipation and tension',THRILLER:'High-tension genre keeping you on edge',
-  BLOCKBUSTER:'High-budget film with huge audience',CAMEO:'Brief appearance by a famous person',
-  CLIFFHANGER:'Ending that leaves audience in suspense',COMEDY:'Genre intended to make you laugh',
-  CROSSOVER:'Two franchises sharing the same story',DIRECTOR:'Person who guides the cast and crew',
-  DYSTOPIA:'Imagined society where everything has gone wrong',ENSEMBLE:'Large cast of equal importance',
-  FANTASY:'Genre with magic and mythical creatures',FLASHBACK:'Scene from earlier in the story',
-  HEIST:'Film about planning and executing a theft',HORROR:'Genre meant to frighten',
-  MONTAGE:'Sequence of shots shown in quick succession',MUSICAL:'Genre where characters sing their feelings',
-  MYSTERY:'Genre where a puzzle must be solved',NOIR:'Dark crime film with moral ambiguity',
-  PARODY:'Comedy that imitates another work',PREQUEL:'Story set before an existing film',
-  REBOOT:'Fresh reimagining of existing property',REMAKE:'New version of an earlier film',
-  ROMANCE:'Genre focusing on love and relationships',SATIRE:'Uses humor to criticize society',
-  SEQUEL:'Film that continues an earlier story',SOUNDTRACK:'Music accompanying a film',
-  SPINOFF:'New film derived from an existing character',STORYBOARD:'Visual script panel drawings',
-  SUBPLOT:'Secondary storyline within a film',SUPERHERO:'Genre featuring powered beings fighting evil',
-  TRILOGY:'Group of three related films',VILLAIN:'The main antagonist of a story',
-  WESTERN:'Genre set in the American frontier',WHODUNIT:'Mystery where the killer\'s identity is hidden',
-  ANTICLIMAX:'Disappointing end after building tension',BACKSTORY:'Character\'s history before the main story',
-  CATHARSIS:'Emotional release through watching drama',CINEMATOGRAPHY:'Art of photographing a film',
-  CLIMAX:'The peak moment of tension in a story',DENOUEMENT:'Resolution after the climax',
-  DIALOGUE:'Spoken exchange between characters',EPILOGUE:'Section after the main story ends',
-  EXPOSITION:'Background information given to the audience',FORESHADOW:'Early hint of future events',
-  IRONY:'Situation opposite of what is expected',JUXTAPOSE:'Placing contrasting elements side by side',
-  METAPHOR:'Describing something as something else',MOTIF:'Recurring element throughout a story',
-  ODYSSEY:'Long journey filled with adventures',PARADOX:'Statement that contradicts itself but is true',
-  PATHOS:'Quality that evokes sadness or pity',PLOTTWIST:'Unexpected turn in the story',
-  PROLOGUE:'Introductory section before the main story',REDEMPTION:'Saving oneself through good acts',
-  RESOLUTION:'Solving of the central conflict',REVELATION:'Dramatic disclosure of hidden truth',
-  SPECTACLE:'Visually impressive display',SYMBOLISM:'Using objects to represent deeper meanings',
-  ALLEGORY:'Story with a hidden moral meaning',ANTIHERO:'Protagonist lacking traditional heroic qualities',
-  ARCHETYPE:'Universal character pattern',CONFLICT:'Central struggle driving a story',
-  DILEMMA:'Difficult choice between two bad options',EMPATHY:'Ability to feel what characters feel',
-  IMAGERY:'Descriptive language that paints a picture',INNUENDO:'Indirect suggestive hint',
-  MONOLOGUE:'Long speech by a single character',NOSTALGIA:'Sentimental longing for the past',
-  SOLILOQUY:'Character speaking thoughts aloud when alone',STEREOTYPE:'Oversimplified fixed idea about a group',
-  SUBTEXT:'Hidden meaning beneath the surface',ZEITGEIST:'Spirit of the times reflected in art',
-};
-
-// ── Difficulty definitions ─────────────────────────────────────────────────
-// Each array item is an SVG element string revealed on that wrong guess
-const DIFF={
-  easy:{
-    max:10,
-    parts:[
-      // 1: head
-      `<circle id="h-0" cx="110" cy="54" r="14" stroke="#ff6b6b" stroke-width="3" fill="none" opacity="0"/>`,
-      // 2: neck
-      `<line id="h-1" x1="110" y1="68" x2="110" y2="78" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      // 3: body
-      `<line id="h-2" x1="110" y1="78" x2="110" y2="118" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      // 4: left arm
-      `<line id="h-3" x1="110" y1="85" x2="85" y2="108" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      // 5: right arm
-      `<line id="h-4" x1="110" y1="85" x2="135" y2="108" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      // 6: left hand
-      `<line id="h-5" x1="85" y1="108" x2="80" y2="116" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/>`,
-      // 7: right hand
-      `<line id="h-6" x1="135" y1="108" x2="140" y2="116" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/>`,
-      // 8: left leg
-      `<line id="h-7" x1="110" y1="118" x2="86" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      // 9: right leg
-      `<line id="h-8" x1="110" y1="118" x2="134" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      // 10: feet (both)
-      `<line id="h-9a" x1="86" y1="150" x2="78" y2="158" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/><line id="h-9b" x1="134" y1="150" x2="142" y2="158" stroke="#ff6b6b" stroke-width="2.5" stroke-linecap="round" opacity="0"/>`,
-    ]
-  },
-  hard:{
-    max:6,
-    parts:[
-      `<circle id="h-0" cx="110" cy="54" r="14" stroke="#ff6b6b" stroke-width="3" fill="none" opacity="0"/>`,
-      `<line id="h-1" x1="110" y1="68" x2="110" y2="118" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      `<line id="h-2" x1="110" y1="82" x2="86" y2="105" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      `<line id="h-3" x1="110" y1="82" x2="134" y2="105" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      `<line id="h-4" x1="110" y1="118" x2="86" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-      `<line id="h-5" x1="110" y1="118" x2="134" y2="150" stroke="#ff6b6b" stroke-width="3" stroke-linecap="round" opacity="0"/>`,
-    ]
-  }
-};
-
-// ── State ─────────────────────────────────────────────────────────────────
-let word='', guessed=new Set(), wrong=0, cat='Animals', won=false, over=false;
-let customMode=false, customHint='';
-let difficulty='easy'; // 'easy' | 'hard'
-let gameStarted=false;
-const $=id=>document.getElementById(id);
-const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const isLetter=c=>/^[A-Z]$/.test(c);           // only A–Z are guessable
-const letters=()=>word.split('').filter(isLetter);
-
-// ── Screens ────────────────────────────────────────────────────────────────
-function showSetup(){
-  document.body.classList.remove('playing');
-  $('diff-screen').classList.remove('hidden');
-  $('custom-entry').classList.add('hidden');
-  $('new-word').hidden=true; $('change-diff').hidden=true;
-  hideResult();
-  gameStarted=false;
-  window.scrollTo(0,0);
-}
-function showPlay(){
-  document.body.classList.add('playing');
-  $('diff-screen').classList.add('hidden');
-  $('custom-entry').classList.add('hidden');
-  $('new-word').hidden=false; $('change-diff').hidden=false;
-  $('cat-name').textContent=customMode?'Custom phrase':cat;
-  $('cat-pill').classList.toggle('custom',customMode);
-  gameStarted=true;
-  buildGallows();
-}
-
-// ── Difficulty selector ────────────────────────────────────────────────────
-function selectDiff(d){
-  difficulty=d;
-  $('diff-easy').classList.toggle('selected',d==='easy');
-  $('diff-hard').classList.toggle('selected',d==='hard');
-  haptic('select');
-}
-['diff-easy','diff-hard'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$(id).click();}}));
-
-function setMode(custom){
-  customMode=custom;
-  $('mode-random').classList.toggle('active',!custom);
-  $('mode-custom').classList.toggle('active',custom);
-  $('cats-sec').style.display=custom?'none':'';
-  $('diff-start').textContent=custom?'Enter a phrase':'Start game';
-}
-$('mode-random').addEventListener('click',()=>setMode(false));
-$('mode-custom').addEventListener('click',()=>setMode(true));
-
-$('diff-start').addEventListener('click',()=>{
-  if(customMode){ openCustomEntry(); return; }
-  showPlay();
-  newWord();
-});
-
-function openCustomEntry(){
-  document.body.classList.remove('playing');
-  hideResult();
-  $('diff-screen').classList.add('hidden');
-  $('custom-entry').classList.remove('hidden');
-  $('new-word').hidden=true; $('change-diff').hidden=true;
-  $('phrase-input').value='';$('hint-custom').value='';$('phrase-err').style.display='none';
-  gameStarted=false;
-  setTimeout(()=>$('phrase-input').focus(),50);
-}
-$('custom-back').addEventListener('click',showSetup);
-
-async function goToSettings(){
-  if(gameStarted&&!over&&guessed.size){
-    const ok=await GN.confirm('Leave this game?',{title:'Leave this game?',body:'Your current word will be abandoned.',ok:'Leave',danger:true});
-    if(!ok)return;
-  }
-  try{sessionStorage.removeItem('hangman');}catch(e){}
-  $('word-display').innerHTML='';$('keyboard').innerHTML='';
-  showSetup();
-}
-$('change-diff').addEventListener('click',goToSettings);
-$('hm-settings').addEventListener('click',goToSettings);
-
-// ── Build gallows + part placeholders ─────────────────────────────────────
-function buildGallows(){
-  const def=DIFF[difficulty];
-  let svg=`
-    <line x1="20" y1="195" x2="140" y2="195" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
-    <line x1="60" y1="195" x2="60" y2="20" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
-    <line x1="60" y1="20" x2="110" y2="20" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
-    <line x1="110" y1="20" x2="110" y2="40" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
-  `;
-  def.parts.forEach(p=>svg+=p);
-  $('hsvg').innerHTML=svg;
-  [...$('hsvg').querySelectorAll('[id^="h-"]')].forEach(el=>el.style.transition='opacity .3s');
-}
-
-// ── Wrong counter pips ─────────────────────────────────────────────────────
-function renderPips(){
-  const def=DIFF[difficulty];
-  const c=$('wrong-counter');
-  c.innerHTML='';
-  for(let i=0;i<def.max;i++){
-    const pip=document.createElement('div');
-    pip.className='wrong-pip'+(i<wrong?' active':'');
-    c.appendChild(pip);
-  }
-}
-
-// ── Custom phrase entry ────────────────────────────────────────────────────
-$('set-phrase-btn').addEventListener('click',()=>{
-  const raw=$('phrase-input').value.trim().replace(/\s+/g,' ').toUpperCase();
-  const err=$('phrase-err');
-  const lettersOnly=raw.replace(/ /g,'');
-  if(lettersOnly.length<2){err.textContent='Enter at least 2 letters.';err.style.display='block';haptic('error');return;}
-  if(!/^[A-Z ]+$/.test(raw)){err.textContent='Letters and spaces only, please.';err.style.display='block';haptic('error');return;}
-  err.style.display='none';
-  word=raw;
-  customHint=$('hint-custom').value.trim();
-  document.activeElement&&document.activeElement.blur();
-  $('custom-entry').classList.add('hidden');
-  $('handoff').classList.remove('hidden');
-});
-
-$('phrase-input').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){e.preventDefault();$('hint-custom').focus();}
-});
-$('hint-custom').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){e.preventDefault();$('set-phrase-btn').click();}
-});
-
-$('ready-btn').addEventListener('click',()=>{
-  $('handoff').classList.add('hidden');
-  startCustomGame();
-});
-
-$('new-phrase-btn').addEventListener('click',()=>{
-  try{sessionStorage.removeItem('hangman');}catch(e){}
-  openCustomEntry();
-});
-
-function startCustomGame(){
-  guessed=new Set(); wrong=0; won=false; over=false;
-  showPlay();
-  resetFigure();
-  $('hint-btn').style.display=customHint?'':'none';
-  $('hint-text').textContent='';
-  renderPips();
-  renderWord();buildKeyboard();
-  setStatusDefault();
-  _save_hangman();
-}
-
-function setStatusDefault(){
-  const def=DIFF[difficulty];
-  if(!guessed.size){
-    const words=word.trim().split(' ').filter(Boolean);
-    const letterCount=word.replace(/ /g,'').length;
-    $('status').textContent=words.length>1?`${words.length} words · ${letterCount} letters`:`${letterCount}-letter word`;
-  } else {
-    $('status').textContent=`${def.max-wrong} wrong guess${def.max-wrong!==1?'es':''} left`;
-  }
-}
-
-// ── Category buttons ───────────────────────────────────────────────────────
-const catRow=$('cats');
-function markCat(){document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));$('cat-name').textContent=customMode?'Custom phrase':cat;}
-Object.keys(WORDS).forEach(c=>{
-  const b=document.createElement('button');b.className='cat-btn'+(c===cat?' active':'');b.textContent=c;b.dataset.cat=c;
-  b.addEventListener('click',()=>{cat=c;markCat();haptic('select');});
-  catRow.appendChild(b);
-});
-$('cat-pill').addEventListener('click',()=>{
-  if(customMode)return;
-  GN.sheet({title:'Category',body:'Pick a category for your next word.',
-    actions:Object.keys(WORDS).map(c=>({label:(c===cat?'✓ ':'')+c,primary:c===cat,onClick:()=>{cat=c;markCat();try{sessionStorage.removeItem('hangman');}catch(e){}newWord();}}))
-      .concat([{label:'Cancel'}])});
-});
-
-function resetFigure(){
-  const def=DIFF[difficulty];
-  for(let i=0;i<def.max;i++) setPart(i,0);
-}
-function setPart(i,on){
-  ['','a','b'].forEach(suf=>{const el=$('h-'+i+suf);if(el)el.style.opacity=on;});
-}
-
-function newWord(){
-  customMode=false;
-  if(!document.body.classList.contains('playing'))showPlay();
-  $('cat-name').textContent=cat;$('cat-pill').classList.remove('custom');
-  hideResult();
-  const list=WORDS[cat];
-  word=list[Math.floor(Math.random()*list.length)];
-  guessed=new Set();wrong=0;won=false;over=false;
-  resetFigure();
-  $('hint-text').textContent='';
-  $('hint-btn').style.display='';
-  renderPips();
-  renderWord();buildKeyboard();
-  $('status').textContent=`${letters().length}-letter word`;
-  _save_hangman();
-}
-
-// ── Render word ────────────────────────────────────────────────────────────
-function renderWord(revealAll){
-  const d=$('word-display');d.innerHTML='';
-  const parts=word.split(' ').filter(Boolean);
-  d.style.setProperty('--n',Math.max(6,...parts.map(w=>w.length)));
-  parts.forEach(w=>{
-    const g=document.createElement('div');g.className='hm-word';
-    w.split('').forEach(l=>{
-      const span=document.createElement('div');span.className='letter-blank';
-      if(!isLetter(l)){span.textContent=l;span.classList.add('fixed');}
-      else if(guessed.has(l)){span.textContent=l;span.classList.add('shown');}
-      else if(revealAll){span.textContent=l;span.classList.add('missed');}
-      g.appendChild(span);
-    });
-    d.appendChild(g);
+  // ── Words: "WORD=clue;..." per category ───────────────────────────────────
+  var RAW = {
+    Animals: "ELEPHANT=Largest land animal;GIRAFFE=Tallest animal, long neck;PENGUIN=Flightless bird from Antarctica;DOLPHIN=Intelligent ocean mammal;CROCODILE=Ancient reptile with strong jaws;CHEETAH=Fastest land animal;KANGAROO=Australian marsupial with a pouch;PLATYPUS=Egg-laying mammal with a duck bill;CHAMELEON=Lizard that changes color;ARMADILLO=Has a bony armored shell;RHINOCEROS=Horned African or Asian megafauna;ORANGUTAN=Red great ape of Borneo and Sumatra;WOLVERINE=Fierce weasel-family carnivore;PORCUPINE=Rodent covered in sharp quills;FLAMINGO=Pink wading bird on one leg;PELICAN=Large beak with a throat pouch;OCTOPUS=Eight-armed sea creature;LOBSTER=Clawed crustacean, turns red when cooked;SCORPION=Desert arachnid with a venomous tail;PIRANHA=Flesh-eating freshwater fish;CHIMPANZEE=Our closest primate relative;SALAMANDER=Amphibian that can regrow limbs;TARANTULA=Large hairy spider;NARWHAL=Arctic whale with a spiral tusk;MANATEE=Gentle sea cow of warm coastal waters;ALLIGATOR=Broad-snouted American reptile;DRAGONFLY=Agile hovering insect with large eyes;FIREFLY=Beetle that produces bioluminescent light;HAMSTER=Small furry rodent with cheek pouches;HEDGEHOG=Spiny insectivore that rolls into a ball;LEMUR=Wide-eyed primate from Madagascar;MEERKAT=Burrowing mongoose that stands guard;MONGOOSE=Snake-fighting weasel relative;OPOSSUM=North American marsupial that plays dead;PEACOCK=Bird famous for its stunning tail display;TOUCAN=Tropical bird with an oversized colorful beak;WALRUS=Tusked Arctic marine mammal;WOMBAT=Stocky Australian marsupial, cube-shaped droppings;BARRACUDA=Long fast predatory reef fish;BISON=Shaggy North American grassland giant;BUFFALO=African bovine, travels in large herds;COBRA=Hooded venomous snake;CONDOR=Largest flying bird in the Americas;COYOTE=Clever canine of North American plains;FALCON=Fast diving bird of prey;FERRET=Slender domesticated polecat;GAZELLE=Slender swift African antelope;GECKO=Small lizard that can walk on ceilings;GORILLA=Largest great ape;GRIZZLY=Large brown bear of North America;IGUANA=Large tree-dwelling tropical lizard;JAGUAR=Spotted big cat of the Americas;LEOPARD=Spotted cat that hauls prey into trees;MACAW=Colorful large parrot of the tropics;MANTA=Huge flat ray with wing-like fins;MOOSE=Largest member of the deer family;OSPREY=Fish-hunting hawk that dives feet-first;PANTHER=Black coat phase of leopard or jaguar;PARROT=Colorful bird that mimics speech;PYTHON=Large constricting snake;RACCOON=Masked North American scavenger;SEAHORSE=Fish with a horse-like head that carries young;SPARROW=Small common songbird;SQUID=Ten-armed cephalopod;STINGRAY=Flat fish with a venomous tail spine;SWAN=Large graceful white waterfowl;TAPIR=Pig-like animal with a short prehensile snout;TERMITE=Wood-eating insect in massive colonies;VULTURE=Scavenging bird with a bald head;WARTHOG=Wild pig with curved tusks;WEASEL=Long slender carnivore;WILDCAT=Undomesticated small feline;WOODPECKER=Bird that drums on trees for insects;YAK=Long-haired Himalayan bovine;ALBATROSS=Giant seabird with the widest wingspan;ANACONDA=World's heaviest snake;BABOON=Large ground-dwelling monkey;CAPYBARA=World's largest rodent;CATFISH=Bottom-feeding whiskered fish;DINGO=Wild dog of Australia;ECHIDNA=Spiny egg-laying Australian mammal;EGRET=Tall white wading heron;EMU=Tall flightless Australian bird;GNU=Wildebeest of African savanna;HYENA=Spotted laughing African predator;IBIS=Long-curved-beak wading bird;JACKAL=Scavenging African canine;KOMODO=World's largest lizard;LYNX=Short-tailed tufted-ear wild cat;MANDRILL=Most colorful primate with bright face;MARLIN=Large billfish of the open ocean;MOLE=Small blind burrowing mammal;OKAPI=Striped-legged relative of the giraffe;ORIOLE=Bright orange and black songbird;QUOKKA=Tiny smiling marsupial of Australia",
+    Food: "SPAGHETTI=Long Italian pasta;AVOCADO=Creamy green fruit;CROISSANT=Flaky crescent-shaped French pastry;QUESADILLA=Grilled tortilla with cheese;BROCCOLI=Green tree-shaped vegetable;PINEAPPLE=Tropical fruit with spiky leaves;CINNAMON=Sweet aromatic bark spice;LASAGNA=Layered Italian pasta dish;DUMPLING=Dough wrapped around filling;ASPARAGUS=Long thin spring vegetable;ARTICHOKE=Thorny flower bud you eat;BAGUETTE=Long crusty French bread;BURRITO=Flour tortilla wrapped around fillings;CANNOLI=Crispy Italian pastry tube with cream filling;CARAMEL=Sugar cooked until golden;CHIMICHANGA=Deep-fried Mexican burrito;COCONUT=Tropical palm fruit with white flesh;EGGPLANT=Purple teardrop-shaped vegetable;ENCHILADA=Rolled corn tortilla in chili sauce;FALAFEL=Fried chickpea balls, Middle Eastern street food;GAZPACHO=Cold Spanish tomato soup;GUACAMOLE=Mashed avocado dip;HUMMUS=Creamy chickpea and tahini dip;JALAPENO=Spicy green Mexican pepper;KIMCHI=Fermented Korean spicy cabbage;LENTIL=Small protein-rich legume;MOZZARELLA=Stretchy Italian cheese for pizza;NOODLE=Long strand of pasta or dough;PAPAYA=Tropical orange-fleshed fruit;PARMESAN=Hard Italian cheese grated over pasta;PERSIMMON=Orange autumn fruit;PISTACHIO=Green nut in a tan shell;POMEGRANATE=Red fruit packed with jewel-like seeds;PRETZEL=Twisted baked dough snack;PROSCIUTTO=Thin Italian dry-cured ham;QUINOA=Protein-rich South American grain;RAVIOLI=Stuffed pasta pillows;RHUBARB=Sour red stalk, often in pies;RISOTTO=Creamy slow-cooked Italian rice;ROSEMARY=Fragrant evergreen herb;RUTABAGA=Large yellow-fleshed root vegetable;SAFFRON=World's most expensive spice, bright yellow;SALMON=Pink fatty cold-water fish;SAMOSA=Fried pastry with spiced filling;SORBET=Dairy-free frozen fruit dessert;SPINACH=Leafy green Popeye ate;SRIRACHA=Thai rooster hot sauce;TAHINI=Sesame seed paste;TAMALE=Corn dough steamed in a husk;TIRAMISU=Italian espresso and mascarpone dessert;TORTILLA=Flat corn or flour bread;TRUFFLE=Rare underground fungi;TURMERIC=Golden anti-inflammatory spice;TURNIP=Round purple-top root vegetable;VANILLA=Sweet pod from an orchid;WAFFLE=Grid-patterned breakfast cake;WATERCRESS=Peppery aquatic leafy green;WATERMELON=Huge green fruit with pink juicy flesh;ZUCCHINI=Italian green summer squash;ANTIPASTO=Italian appetizer platter;ARUGULA=Peppery salad leaf;BASIL=Aromatic herb essential to pesto;BUTTERNUT=Sweet orange-fleshed squash;CARDAMOM=Aromatic spice in chai and rice dishes;CHICKPEA=Round legume in hummus and curries;CHUTNEY=Sweet-spicy fruit condiment;CILANTRO=Controversial herb — love or hate it;CLEMENTINE=Small easy-peel orange;COUSCOUS=Tiny North African semolina pasta;CRANBERRY=Tart red berry for sauce and juice;EDAMAME=Young soybeans steamed in the pod;FENNEL=Anise-flavored bulb vegetable;GNOCCHI=Soft Italian potato dumplings;GRAPEFRUIT=Large bitter citrus;HORSERADISH=Pungent white root used as a condiment;JICAMA=Crunchy white Mexican root vegetable;KIWI=Brown fuzzy fruit with green flesh;KOHLRABI=Alien-looking purple or green stem vegetable;KUMQUAT=Tiny oval citrus you eat whole;LYCHEE=Sweet white tropical fruit with bumpy red skin;MANGO=Juicy tropical stone fruit;MARZIPAN=Sweet almond paste confection;MERINGUE=Airy baked egg white sweet;MISO=Japanese fermented soybean paste;MULBERRY=Purple berry from a tree;NECTARINE=Smooth-skinned peach relative;OREGANO=Pizza herb;PAELLA=Spanish saffron rice with seafood;PAPRIKA=Ground red pepper spice;PEACH=;PESTO=Basil, pine nut and olive oil sauce;POLENTA=Cornmeal porridge;PORTOBELLO=Large meaty mushroom cap;RICOTTA=Soft white Italian cheese;ROMAINE=Crisp lettuce for Caesar salad;SOURDOUGH=Tangy bread leavened with wild yeast;TARRAGON=Anise-flavored French herb;TEMPURA=Japanese light batter-fried vegetables or shrimp;TZATZIKI=Greek cucumber and yogurt dip",
+    Science: "PHOTOSYNTHESIS=How plants make food from sunlight;ATMOSPHERE=Gas layers surrounding Earth;CHROMOSOME=DNA-carrying structure in cells;MAGNETISM=Force between magnets;HIBERNATE=Sleep through winter;MOLECULE=Smallest unit of a compound;TELESCOPE=Instrument for viewing distant space objects;EVOLUTION=Change in species over time;STALACTITE=Calcite spike hanging from cave ceiling;VELOCITY=Speed in a specific direction;ACCELERATION=Rate of change of velocity;AMPHIBIAN=Cold-blooded creature of land and water;ANATOMY=Study of body structure;ANTIBIOTIC=Drug that kills bacterial infections;ASTEROID=Rocky body orbiting the sun;BACTERIA=Single-celled microscopic organisms;BIODIVERSITY=Variety of life in an ecosystem;BIOSPHERE=All living things on Earth;BOTANY=Study of plants;CARNIVORE=Animal that eats only meat;CATALYST=Speeds up a chemical reaction without being consumed;CENTRIFUGE=Spinning device that separates substances;CHLOROPHYLL=Green pigment in plants that captures sunlight;COMBUSTION=Rapid chemical reaction that releases heat and light;CONDENSATION=Gas turning to liquid;CONVECTION=Heat transfer through fluid movement;DENSITY=Mass per unit of volume;DIFFUSION=Spread of particles from high to low concentration;EARTHQUAKE=Shaking from tectonic plate movement;ECOSYSTEM=Community of living things and their environment;ELECTRODE=Conductor through which electricity enters or leaves;ELECTRON=Negatively charged subatomic particle;EMBRYO=Early stage of development in an organism;ENTROPY=Measure of disorder in a system;ENZYME=Biological catalyst for chemical reactions;EQUILIBRIUM=State of balance between forces;EROSION=Wearing away of rock or soil;EVAPORATION=Liquid turning to vapor;EXTINCTION=Complete disappearance of a species;FERMENTATION=Breakdown of sugars by microorganisms;FOSSIL=Preserved remains of ancient organisms;FRICTION=Resistance when surfaces rub together;FUNGUS=Kingdom that includes mushrooms and molds;GALAXY=Vast system of stars and interstellar matter;GEOLOGY=Study of Earth's structure and history;GLACIER=Slow-moving mass of ice;GRAVITATION=Attractive force between masses;GREENHOUSE=Effect that warms a planet through trapped radiation;HERBIVORE=Animal that eats only plants;HORMONE=Chemical messenger in the bloodstream;HYPOTHESIS=Testable scientific prediction;IMMUNITY=Body's defense against disease;INERTIA=Tendency to resist change in motion;INVERTEBRATE=Animal without a backbone;ION=Charged atom or molecule;ISOTOPE=Form of element with different neutron count;KINETIC=Relating to energy of motion;LARVA=Young form of an insect before metamorphosis;LATITUDE=Horizontal grid lines on a map;LAVA=Molten rock after it reaches Earth's surface;LONGITUDE=Vertical grid lines on a map;LUMINOSITY=Total brightness of a star;METAMORPHOSIS=Complete transformation of form;METEOR=Rock that burns in Earth's atmosphere;MICROBE=Microscopic living organism;MIGRATION=Seasonal movement of animals to new regions;MOMENTUM=Mass times velocity;NEUTRON=Neutral subatomic particle in the nucleus;NUCLEUS=Control center of a cell or atom;OMNIVORE=Animal that eats plants and animals;ORBIT=Curved path of one object around another;OSMOSIS=Movement of water through a membrane;OXIDATION=Chemical reaction with oxygen;PARASITE=Organism that lives at another's expense;PARTICLE=Tiny piece of matter;PHOTON=Quantum of light;PLANKTON=Microscopic aquatic organisms;PLASMA=Fourth state of matter, superheated gas;POLLINATION=Transfer of pollen to fertilize a plant;PREDATOR=Animal that hunts other animals;PROTEIN=Large molecule essential for life;PROTON=Positively charged particle in nucleus;RADIATION=Energy transmitted as waves or particles;RECEPTOR=Cell structure that receives signals;REFRACTION=Bending of light through a medium;REPRODUCTION=Biological process of producing offspring;RESPIRATION=Process cells use to release energy;SEDIMENT=Solid material deposited by water or wind;SEISMIC=Relating to earthquakes or tremors;SOLSTICE=Day with longest or shortest daylight;SPECIES=Group of organisms that can interbreed;SYMBIOSIS=Close relationship between two species;TECTONIC=Relating to Earth's crustal plates;THERMOMETER=Instrument to measure temperature;TIDAL=Relating to the rise and fall of sea level;TORNADO=Violent rotating column of air;ULTRAVIOLET=Light beyond violet in the spectrum",
+    Sports: "BASKETBALL=Sport with hoops and a round ball;VOLLEYBALL=Sport played over a net;GYMNASTICS=Sport with acrobatic movements;SKATEBOARD=Board on four wheels for tricks;LACROSSE=Sport with a stick and mesh pocket;BADMINTON=Racket sport with a shuttlecock;WRESTLING=Combat sport on a mat;SNOWBOARD=Single board for snow riding;ARCHERY=Sport of shooting with bow and arrow;FENCING=Sword fighting sport;ATHLETICS=Track and field events;BIATHLON=Skiing and rifle shooting combined;BOBSLED=Ice track racing in a sled;BOXING=Combat sport with padded gloves;CANOE=Small paddled watercraft;CRICKET=Bat and ball sport with an oval pitch;CURLING=Ice sport sweeping stones to a target;CYCLING=Competitive bike riding;DECATHLON=Ten-event athletics competition;DISCUS=Throwing a heavy disk for distance;EQUESTRIAN=Competitive horseback riding;HANDBALL=Team sport throwing a ball into a goal;HEPTATHLON=Seven-event women's athletics;HURDLES=Sprint race with barriers to clear;JAVELIN=Throwing a spear for distance;JUDO=Japanese throwing and grappling martial art;KAYAK=Small paddled enclosed boat;MARATHON=42.2 km long-distance foot race;MOTOCROSS=Off-road dirt bike racing;NETBALL=Shooting hoops without a backboard;PADDLEBOARD=Standing on a board and paddling;PENTATHLON=Five-event Olympic competition;POLO=Equestrian sport hitting a ball with a mallet;RACQUETBALL=Court sport with a rubber ball;REGATTA=Series of boat races;ROWING=Propelling a shell boat with oars;RUGBY=Contact sport with an oval ball, no pads;SAILING=Racing boats using wind power;SHOTPUT=Throwing a heavy metal ball for distance;SLALOM=Timed weaving through gates;SOFTBALL=Like baseball but with a larger ball;SURFING=Riding ocean waves on a board;TAEKWONDO=Korean kicking martial art;TRIATHLON=Swim, bike, run race;WEIGHTLIFTING=Olympic sport of lifting barbells;WINDSURFING=Surfboard with a sail attached;BOCCE=Italian lawn bowling game;CROQUET=Mallet game hitting balls through hoops;DRESSAGE=Precise horse movement sport;DUATHLON=Run, bike, run race;FREESTYLE=Swimming stroke with no restriction;FRISBEE=Throwing and catching a plastic disc;GLIDING=Engineless aircraft soaring sport;ICE HOCKEY=;JUJITSU=;KABADDI=Contact team sport with breath-holding;KENDO=Japanese sword-fighting with bamboo;KITEBOARDING=;LUGE=Feet-first ice track sliding sport;MOGULS=;MOUNTAIN BIKE=Off-road bicycle racing;ORIENTEERING=Navigation race with map and compass;PARAGLIDING=Flying with a parachute-like wing;PARKOUR=Free-running over urban obstacles;PICKLEBALL=Fast-growing paddle and wiffle ball sport;POWERLIFTING=Max weight squat, bench, deadlift;RAPPELLING=Descending a rope on a cliff;ROLLER SKATING=Racing or figure skating on four-wheeled boots;ROUNDERS=;SKELETON=Head-first ice track sliding sport;SKI JUMP=;SPEARFISHING=;SQUASH=Racket sport inside a closed court;SUMO=Japanese wrestling to push opponent out of ring;TRAMPOLINE=Bouncing gymnastics;TRAPEZE=;WATER POLO=Swimming pool team ball sport",
+    Geography: "AMAZON=World's largest river by volume;ANTARCTICA=Earth's southernmost frozen continent;ARCHIPELAGO=Chain or cluster of islands;ARCTIC=Frozen ocean at the North Pole;ATMOSPHERE=Gas layers surrounding Earth;CANYON=Deep gorge carved by a river;CAPITAL=A country's seat of government;CONTINENT=Major land mass on Earth;DELTA=Fan-shaped river mouth deposit;EQUATOR=Imaginary line around Earth's middle;FJORD=Narrow sea inlet between cliffs;GLACIER=Slow-moving mass of ice;HABITAT=;HEMISPHERE=Half of the globe;HIMALAYA=World's highest mountain range;HURRICANE=Tropical cyclone with winds over 74mph;ISLAND=Land entirely surrounded by water;ISTHMUS=Narrow strip of land connecting two larger areas;LAGOON=Shallow coastal water body;LATITUDE=Horizontal grid lines on a map;LONGITUDE=Vertical grid lines on a map;MONSOON=Seasonal reversing wind bringing heavy rain;MOUNTAIN=Large natural elevation of land;PENINSULA=Land surrounded by water on three sides;PLATEAU=Flat elevated landform;PRAIRIE=Vast treeless grassland;RAINFOREST=Dense tropical forest with heavy rainfall;SAHARA=World's largest hot desert;SAVANNA=Tropical grassland with scattered trees;STEPPE=Vast Eurasian or American grassland;STRAIT=Narrow waterway between two seas;TUNDRA=Flat treeless Arctic landscape;TYPHOON=Pacific tropical cyclone;VOLCANO=Mountain that erupts molten rock;WATERSHED=Area of land draining to a river;WETLAND=Land saturated with water;MERIDIAN=Line of longitude;MANGROVE=Coastal salt-tolerant forest;OASIS=Fertile water source in the desert;PERMAFROST=Permanently frozen subsoil;AUSTRALIA=Continent-island nation in the Pacific;BANGLADESH=Densely populated South Asian delta nation;BOTSWANA=Landlocked southern African nation known for wildlife;BRAZIL=Largest country in South America;CAMBODIA=Southeast Asian nation with Angkor Wat;CAMEROON=Central African nation;COLOMBIA=South American nation famed for coffee;CROATIA=Adriatic coastal European nation;CZECHIA=;DENMARK=Scandinavian kingdom connected to mainland Europe;ECUADOR=Country on the equator in South America;ETHIOPIA=Highlands nation, origin of coffee;FINLAND=Nordic nation of lakes and saunas;GEORGIA=;GHANA=West African nation;GUATEMALA=Central American nation with Mayan ruins;HONDURAS=Central American nation;HUNGARY=Central European landlocked nation;ICELAND=Island nation near Arctic Circle;INDONESIA=Largest archipelago nation;JAMAICA=Caribbean island nation;JORDAN=Middle Eastern nation adjacent to Dead Sea;KENYA=East African nation with Serengeti;LAOS=Southeast Asian landlocked nation;LEBANON=Small Mediterranean Middle Eastern nation;MADAGASCAR=Large island nation off Africa;MALAYSIA=Southeast Asian peninsula and island nation;MEXICO=Spanish-speaking North American nation;MOROCCO=North African kingdom;MOZAMBIQUE=Eastern African coastal nation;NAMIBIA=Southwestern African desert nation;NEPAL=Himalayan landlocked nation;NICARAGUA=Largest Central American nation;NIGERIA=Most populous African nation;NORWAY=Fjord-filled Scandinavian nation;PAKISTAN=South Asian nation;PANAMA=Central American nation with a famous canal;PARAGUAY=Landlocked South American nation;PERU=South American nation with Machu Picchu;PHILIPPINES=Southeast Asian archipelago nation;PORTUGAL=Western Iberian Peninsula nation;ROMANIA=Eastern European Carpathian nation;RWANDA=Small densely populated African nation;SENEGAL=West African coastal nation;SERBIA=Balkan European nation;SINGAPORE=Tiny wealthy city-state in Southeast Asia;SOMALIA=Horn of Africa nation;SURINAME=Smallest South American nation;TANZANIA=East African nation with Kilimanjaro;THAILAND=Southeast Asian kingdom;TRINIDAD=Caribbean twin-island nation;TUNISIA=North African Mediterranean nation;UKRAINE=Largest country entirely in Europe;URUGUAY=Small stable South American nation;UZBEKISTAN=Central Asian Silk Road nation;VENEZUELA=Northern South American nation;VIETNAM=Southeast Asian peninsula nation;ZAMBIA=Landlocked southern African nation;ZIMBABWE=Southern African nation with Victoria Falls;AZERBAIJAN=Caspian Sea Caucasus nation",
+    Movies: "ADVENTURE=Genre of daring journeys and quests;ANIMATION=Genre of drawn or computer-generated characters;CINEMATIC=Relating to the art of film;DOCUMENTARY=Non-fiction film of real events;FRANCHISE=Series of films sharing characters and world;PROTAGONIST=Main character of a story;SCREENPLAY=Written script of a film;SUSPENSE=Feeling of anticipation and tension;THRILLER=High-tension genre keeping you on edge;ACADEMY=;ACTRESS=;BLOCKBUSTER=High-budget film with huge audience;CAMEO=Brief appearance by a famous person;CLIFFHANGER=Ending that leaves audience in suspense;COMEDY=Genre intended to make you laugh;CREDITS=;CROSSOVER=Two franchises sharing the same story;DIRECTOR=Person who guides the cast and crew;DYSTOPIA=Imagined society where everything has gone wrong;ENSEMBLE=Large cast of equal importance;FANTASY=Genre with magic and mythical creatures;FILMMAKER=;FLASHBACK=Scene from earlier in the story;HEIST=Film about planning and executing a theft;HORROR=Genre meant to frighten;INDIE=;MONTAGE=Sequence of shots shown in quick succession;MUSICAL=Genre where characters sing their feelings;MYSTERY=Genre where a puzzle must be solved;NOIR=Dark crime film with moral ambiguity;PARODY=Comedy that imitates another work;PREQUEL=Story set before an existing film;PRODUCTION=;REBOOT=Fresh reimagining of existing property;REMAKE=New version of an earlier film;ROMANCE=Genre focusing on love and relationships;SEQUEL=Film that continues an earlier story;SERIES=;SOUNDTRACK=Music accompanying a film;SPINOFF=New film derived from an existing character;STORYBOARD=Visual script panel drawings;STUDIO=;SUBPLOT=Secondary storyline within a film;SUPERHERO=Genre featuring powered beings fighting evil;TRILOGY=Group of three related films;VILLAIN=The main antagonist of a story;WESTERN=Genre set in the American frontier;WHODUNIT=Mystery where the killer's identity is hidden;BACKSTORY=Character's history before the main story;CINEMATOGRAPHY=Art of photographing a film;CLIMAX=The peak moment of tension in a story;DIALOGUE=Spoken exchange between characters;EDITING=;EPILOGUE=Section after the main story ends;FOREBODING=;FORESHADOW=Early hint of future events;IRONY=Situation opposite of what is expected;METAPHOR=Describing something as something else;ODYSSEY=Long journey filled with adventures;PARADOX=Statement that contradicts itself but is true;PLOT TWIST=Unexpected turn in the story;PROLOGUE=Introductory section before the main story;REDEMPTION=Saving oneself through good acts;RESOLUTION=Solving of the central conflict;REVELATION=Dramatic disclosure of hidden truth;SPECTACLE=Visually impressive display;SYMBOLISM=Using objects to represent deeper meanings;ANTIHERO=Protagonist lacking traditional heroic qualities;CHARACTER=;CONFLICT=Central struggle driving a story;DILEMMA=Difficult choice between two bad options;EMPATHY=Ability to feel what characters feel;FLASH FORWARD=;FORESHADOWING=;MONOLOGUE=Long speech by a single character;NOSTALGIA=Sentimental longing for the past",
+    House: 'CUPBOARD=Where the dishes are kept;BOOKSHELF=Holds your books;REFRIGERATOR=Keeps food cold;TOASTER=Makes bread crispy;MICROWAVE=Heats food fast;DISHWASHER=Washes the plates for you;BATHTUB=Fill it up and soak;SHOWER=Rain inside the bathroom;TOOTHBRUSH=Use it twice a day;PILLOW=Rest your head on it;BLANKET=Keeps you warm in bed;CURTAINS=Close them at night;CARPET=Soft covering for the floor;STAIRCASE=Takes you upstairs;DOORBELL=Ding-dong, someone is here;MAILBOX=Where letters arrive;FIREPLACE=Cozy fire inside;CHIMNEY=Smoke goes up it;ATTIC=Room right under the roof;BASEMENT=Room below the ground floor;GARAGE=Where the car sleeps;KITCHEN=Where meals are made;LAUNDRY=Dirty clothes waiting to be washed;WARDROBE=Tall cupboard for clothes;MIRROR=Shows your reflection;LAMP=Lights up the room;CLOCK=Tells the time;TELEVISION=Watch your shows on it;SOFA=Comfy seat for the family;HAMMOCK=Swinging bed in the garden;VACUUM=Sucks up the dust;BROOM=Sweeps the floor;SPATULA=Flips pancakes;COLANDER=Bowl with holes for draining pasta;KETTLE=Boils water;TEAPOT=Pours the tea;WASHING MACHINE=Cleans your clothes;FRONT DOOR=Where visitors knock;LIVING ROOM=Where the family hangs out;BUNK BED=One bed stacked on another',
+    Jobs: 'DOCTOR=Helps you when you are sick;NURSE=Cares for patients in hospital;TEACHER=Helps you learn at school;FIREFIGHTER=Puts out fires;POLICE OFFICER=Keeps people safe;ASTRONAUT=Travels to space;CHEF=Cooks in a restaurant;BAKER=Makes bread and cakes;FARMER=Grows crops and raises animals;PILOT=Flies the plane;DENTIST=Looks after your teeth;VET=Doctor for animals;MECHANIC=Fixes cars;PLUMBER=Fixes leaky pipes;ELECTRICIAN=Works with wires and lights;CARPENTER=Builds things out of wood;ARCHITECT=Designs buildings;SCIENTIST=Does experiments;LIBRARIAN=Looks after the books;MUSICIAN=Plays music;ARTIST=Paints and draws;AUTHOR=Writes books;JOURNALIST=Reports the news;LIFEGUARD=Watches over swimmers;ZOOKEEPER=Looks after zoo animals;PHOTOGRAPHER=Takes pictures;GARDENER=Looks after plants;JUDGE=In charge of a courtroom;LAWYER=Argues cases in court;ENGINEER=Designs machines and bridges;PROGRAMMER=Writes computer code;MAIL CARRIER=Delivers letters;BUS DRIVER=Takes passengers around town;COACH=Trains a sports team;PARAMEDIC=Rides in the ambulance;MAGICIAN=Pulls a rabbit out of a hat;CLOWN=Makes people laugh at the circus;PRINCIPAL=Runs the school',
+    Space: 'PLANET=Earth is one;GALAXY=Billions of stars together;COMET=Icy visitor with a glowing tail;ASTEROID=Space rock orbiting the sun;METEOR=Streak of light from a falling rock;ROCKET=Blasts off into space;ASTRONAUT=Space traveller;SATELLITE=Orbits Earth and sends signals;TELESCOPE=Makes far stars look close;ORBIT=Path around a planet or star;ECLIPSE=When the moon blocks the sun;NEBULA=Cloud of gas where stars are born;SUPERNOVA=Huge exploding star;BLACK HOLE=Not even light escapes it;MILKY WAY=Our home galaxy;SOLAR SYSTEM=The sun and its planets;JUPITER=Biggest planet;SATURN=Planet with beautiful rings;MERCURY=Planet closest to the sun;VENUS=Hottest planet;MARS=The red planet;NEPTUNE=Blue planet farthest from the sun;PLUTO=Dwarf planet with a heart shape;MOON=Shines at night and orbits Earth;CRATER=Dent made by a space rock;SPACESHIP=Vehicle for space travel;SPACE STATION=Astronauts live on it in orbit;GRAVITY=Keeps your feet on the ground;CONSTELLATION=Stars that make a picture;SHOOTING STAR=Make a wish when you see one;ALIEN=Visitor from another planet;LAUNCH PAD=Where rockets take off;COUNTDOWN=Ten, nine, eight...;ROVER=Robot car on Mars;LIGHT YEAR=How far light travels in a year'
+  };
+  var MORE_CLUES = { PEACH: 'Fuzzy summer stone fruit', 'ICE HOCKEY': 'Skates, sticks and a puck', JUJITSU: 'Japanese grappling martial art', KITEBOARDING: 'Surfing pulled along by a big kite',
+    MOGULS: 'Skiing over bumps', ROUNDERS: 'British bat and ball game', 'SKI JUMP': 'Fly off a ramp on skis', SPEARFISHING: 'Catching fish underwater with a spear', TRAPEZE: 'Circus swing high in the air',
+    HABITAT: 'Natural home of a plant or animal', CZECHIA: 'European country whose capital is Prague', GEORGIA: 'A country, and a US state', ACADEMY: 'Gives out the Oscars', ACTRESS: 'Woman who acts in films',
+    CREDITS: 'Names that roll at the end', FILMMAKER: 'Person who makes movies', INDIE: 'Small independent film', PRODUCTION: 'The making of a film', SERIES: 'A show with many episodes', STUDIO: 'Where films are made',
+    EDITING: 'Cutting scenes together', FOREBODING: 'Feeling that something bad is coming', CHARACTER: 'A person in a story', 'FLASH FORWARD': 'Scene that jumps ahead in time', FORESHADOWING: 'Clues about what happens later' };
+  var WORDS = {};
+  Object.keys(RAW).forEach(function (c) {
+    WORDS[c] = RAW[c].split(';').map(function (x) { var p = x.split('='), w = p[0].trim(); return { w: w, clue: (p[1] || MORE_CLUES[w] || '').trim() }; })
+      .filter(function (o) { return /^[A-Z][A-Z ]*[A-Z]$/.test(o.w); });
   });
-}
+  var CATS = Object.keys(WORDS), CAT_NAME = { House: 'Around the house' };
+  function catName(c) { return CAT_NAME[c] || c; }
+  var DIFF = {
+    easy: { max: 10, name: 'Easy', fits: function (n) { return n >= 3 && n <= 7; } },
+    medium: { max: 8, name: 'Medium', fits: function (n) { return n >= 5 && n <= 10; } },
+    hard: { max: 6, name: 'Hard', fits: function (n) { return n >= 6; } }
+  };
+  var THEME_NAME = { classic: 'Classic', balloons: 'Balloons' };
 
-// ── Keyboard ───────────────────────────────────────────────────────────────
-function buildKeyboard(){
-  const kb=$('keyboard');kb.innerHTML='';
-  ['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'].forEach((row,ri)=>{
-    const r=document.createElement('div');r.className='kb-row';
-    if(ri===1){const s=document.createElement('span');s.className='half';r.appendChild(s);}
-    if(ri===2){const s=document.createElement('span');s.className='wide-sp';r.appendChild(s);}
-    row.split('').forEach(l=>{
-      const b=document.createElement('button');b.type='button';b.className='key-btn';b.textContent=l;b.id='k'+l;
-      if(guessed.has(l)){b.disabled=true;b.classList.add(word.includes(l)?'correct':'wrong');}
-      b.addEventListener('click',()=>guess(l));
-      r.appendChild(b);
-    });
-    if(ri===1){const s=document.createElement('span');s.className='half';r.appendChild(s);}
-    if(ri===2){const s=document.createElement('span');s.className='wide-sp';r.appendChild(s);}
-    kb.appendChild(r);
+  Kit.init({
+    id: 'hangman',
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Hangman: past games' }); } }],
+    rules:
+      '<p class="goal">Work out the secret word one letter at a time, before the picture is finished.</p>' +
+      '<h3>How to play</h3><ul><li>Each blank is one letter. Tap a letter on the keyboard to guess it.</li>' +
+      '<li>If the letter is in the word, it is written into <b>every</b> blank where it belongs.</li>' +
+      '<li>If it is not, that is a <b>miss</b> and another part of the picture is drawn.</li>' +
+      '<li>Spell the whole word before you run out of misses to win.</li>' +
+      '<li>Think you know it? Tap <b>Solve</b> and type the whole word. A wrong answer counts as a miss.</li></ul>' +
+      '<h3>Difficulty</h3><ul><li><b>Easy</b>: 10 misses, shorter words.</li><li><b>Medium</b>: 8 misses.</li><li><b>Hard</b>: 6 misses (head, body, two arms, two legs) like the classic pencil-and-paper game.</li></ul>' +
+      '<h3>Pictures</h3><p><b>Classic</b> draws the gallows and stick figure in chalk. <b>Balloons</b> is gentler: each miss pops a balloon, and if they all pop the basket drops.</p>' +
+      '<h3>Scoring</h3><ul><li>Solve a word: <b>1 point plus 1 for each miss you had left</b>.</li>' +
+      '<li><b>Clue</b> shows a hint, but costs 1 point if you solve it.</li>' +
+      '<li>Two players: take turns writing a secret word for each other. If your word stumps the other player, <b>you</b> get 5 points.</li></ul>'
   });
-}
 
-// ── Guess ──────────────────────────────────────────────────────────────────
-function guess(l){
-  if(guessed.has(l)||over||!gameStarted)return;
-  guessed.add(l);
-  const kb=$('k'+l);
-  const def=DIFF[difficulty];
-  if(word.includes(l)){
-    if(kb){kb.classList.add('correct');kb.disabled=true;}
-    haptic('select');
-    if(letters().every(c=>guessed.has(c))){
-      won=true;over=true;
-      haptic('success');
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, undoStack = [], fresh = null;
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set(S.mode === 'duel' ? 'Two players · round ' + (Math.floor(S.wi / 2) + 1) : catName(S.cat) + ' · word ' + (S.wi + 1) + ' of ' + S.perGame);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function rnd(n) { return Math.floor(Math.random() * n); }
+  function lifeStreak() { try { return +localStorage.getItem(STREAK_KEY) || 0; } catch (e) { return 0; } }
+  function setLifeStreak(n) { try { localStorage.setItem(STREAK_KEY, String(n)); } catch (e) {} }
+  function letters(w) { return w.replace(/[^A-Z]/g, '').split('').filter(function (c, i, a) { return a.indexOf(c) === i; }); }
+  function maxMiss() { return DIFF[S.diff].max; }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    stopBeat(); setDread(0); S = null; clearSave();
+    var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
+    if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
+    var st = Kit.setup(app, {
+      modes: [
+        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Guess words from a category' },
+        { id: 'duel', icon: 'users', title: 'Two players', desc: 'Take turns writing a secret word for each other' }
+      ],
+      options: [
+        { id: 'diff', label: 'Difficulty', value: 'easy', choices: [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']] },
+        { id: 'theme', label: 'Picture', value: 'classic', choices: [['classic', 'Classic'], ['balloons', 'Balloons']] },
+        { id: 'count', label: 'Words', value: 5, choices: [[3, '3 words'], [5, '5 words'], [10, '10 words']], when: function (m) { return m === 'solo'; } },
+        { id: 'rounds', label: 'Rounds', value: 2, choices: [[1, '1 each'], [2, '2 each'], [3, '3 each']], when: function (m) { return m === 'duel'; } }
+      ],
+      players: { min: 1, max: 2, range: function (m) { return m === 'duel' ? [2, 2] : [1, 1]; } },
+      onStart: function (cfg) { start(cfg, chosen); }
+    });
+    var box = el('div', { class: 'cats' });
+    function paint() {
+      box.innerHTML = '';
+      CATS.concat(['Surprise']).forEach(function (c) {
+        box.appendChild(el('button', { type: 'button', class: 'chip' + (c === chosen ? ' on' : ''), html: c === 'Surprise' ? Kit.icon('shuffle') + '<span>Mix them all</span>' : Kit.esc(catName(c)),
+          onclick: function () { chosen = c; try { localStorage.setItem(CAT_KEY, c); } catch (e) {} Kit.sfx('tap'); paint(); } }));
+      });
     }
-  } else {
-    if(kb){kb.classList.add('wrong');kb.disabled=true;}
-    wrong++;
-    haptic('error');
-    setPart(wrong-1,1);
-    renderPips();
-    if(wrong>=def.max){
-      over=true;
+    paint();
+    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Category (two players: for "pick one for me")' }), box]), st.el.querySelector('.btn-lg'));
+  }
+  function start(cfg, cat) {
+    S = { mode: cfg.mode, diff: cfg.options.diff || 'easy', theme: cfg.options.theme || 'classic', cat: cat || 'Animals',
+      perGame: cfg.mode === 'solo' ? (+cfg.options.count || 5) : (+cfg.options.rounds || 2) * 2,
+      players: cfg.players.map(function (p) { return { name: p.name }; }), scores: cfg.players.map(function () { return 0; }),
+      wi: 0, log: [], used: [], streak: 0, bestStreak: 0, W: null, phase: 'play', started: Date.now() };
+    Kit.gameStart();
+    nextWord();
+  }
+  function pool() {
+    var d = DIFF[S.diff], cats = S.cat === 'Surprise' ? CATS : [S.cat], out = [];
+    cats.forEach(function (c) { WORDS[c].forEach(function (o) { if (d.fits(o.w.replace(/ /g, '').length) && S.used.indexOf(o.w) < 0) out.push({ w: o.w, clue: o.clue, cat: c }); }); });
+    if (!out.length) { S.used = []; return pool(); }
+    return out;
+  }
+  function newW(word, clue, cat, setter, guesser) {
+    return { word: word, clue: clue || '', cat: cat || '', setter: setter, guesser: guesser, guessed: [], misses: 0, missed: [], clueShown: false, over: false, won: false, wholeWord: false };
+  }
+  function nextWord() {
+    undoStack = []; fresh = null; setDread(0); stopBeat();
+    if (S.mode === 'solo') {
+      var p = pool(), o = p[rnd(p.length)];
+      S.used.push(o.w);
+      S.W = newW(o.w, o.clue, o.cat, -1, 0);
+      S.phase = 'play';
+    } else {
+      var setter = S.wi % 2;
+      S.W = newW('', '', '', setter, 1 - setter);
+      S.phase = 'cover-set';
+    }
+    save(); render();
+    if (S.phase === 'play') Kit.sfx('whoosh');
+  }
+
+  // ── Guessing ──────────────────────────────────────────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify({ W: S.W, streak: S.streak })); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (!S || S.phase !== 'play' || !S.W || S.W.over) return Kit.toast(S && S.W && S.W.over ? 'This word is finished' : 'Nothing to undo');
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    var u = JSON.parse(undoStack.pop()); S.W = u.W; S.streak = u.streak; fresh = null;
+    Kit.sfx('whoosh'); Kit.toast('Guess taken back'); save(); render(); syncBeat();
+  }
+  function guess(L) {
+    var W = S.W;
+    if (!W || W.over || S.phase !== 'play' || W.guessed.indexOf(L) >= 0 || busy) return;
+    snapshot();
+    W.guessed.push(L);
+    if (W.word.indexOf(L) >= 0) {
+      fresh = { hit: L };
+      Kit.sfx('pop'); Kit.haptic('light');
+      if (letters(W.word).every(function (c) { return W.guessed.indexOf(c) >= 0; })) return win();
+      save(); render();
+    } else {
+      miss(L);
     }
   }
-  renderWord(over&&!won);
-  if(over){
-    $('status').innerHTML=won?`<span style="color:var(--green)">🎉 Solved!</span>`:`<span style="color:var(--red)">Out of guesses</span>`;
-    try{sessionStorage.removeItem('hangman');}catch(e){}
-    setTimeout(()=>showResult(),won?700:900);
-  } else {
-    $('status').textContent=`${def.max-wrong} wrong guess${def.max-wrong!==1?'es':''} left`;
-    _save_hangman();
+  function miss(L) {
+    var W = S.W;
+    W.misses++; if (L) W.missed.push(L);
+    fresh = { miss: W.misses };
+    var last = W.misses >= maxMiss();
+    Kit.haptic(last ? 'heavy' : 'error');
+    if (!last) Kit.sfx('bad');
+    save(); render();
+    var sl = app.querySelector('.slate'); if (sl) { sl.classList.remove('shake'); void sl.offsetWidth; sl.classList.add('shake'); }
+    if (last) lose(); else syncBeat();
   }
-}
-
-// ── Result sheet ───────────────────────────────────────────────────────────
-function showResult(){
-  if(!over)return;
-  const def=DIFF[difficulty];
-  $('hm-res-emoji').textContent=won?'🎉':'💀';
-  $('hm-res-title').textContent=won?(wrong===0?'Flawless!':'You got it!'):'Out of guesses';
-  $('hm-res-word').textContent=word;
-  $('hm-res-hint').textContent=customMode?(customHint||''):(HINTS[word]||'');
-  $('hm-res-stats').innerHTML=
-    `<div class="stat"><div class="stat-val">${wrong}</div><div class="stat-lbl">Misses</div></div>`+
-    `<div class="stat"><div class="stat-val">${guessed.size}</div><div class="stat-lbl">Guesses</div></div>`+
-    `<div class="stat"><div class="stat-val" style="font-size:1.1rem;line-height:1.6">${difficulty==='easy'?'Easy':'Hard'}</div><div class="stat-lbl">Mode</div></div>`;
-  $('hm-next').classList.toggle('hidden',customMode);
-  $('new-phrase-btn').classList.toggle('hidden',!customMode);
-  $('new-phrase-btn').classList.toggle('btn-gold',customMode);
-  $('new-phrase-btn').classList.toggle('btn-outline',!customMode);
-  $('hm-result').classList.add('show');
-}
-function hideResult(){$('hm-result').classList.remove('show');}
-$('hm-result').addEventListener('click',e=>{if(e.target.id==='hm-result')hideResult();});
-$('hm-next').addEventListener('click',()=>{try{sessionStorage.removeItem('hangman');}catch(e){}newWord();});
-
-// ── Hint ───────────────────────────────────────────────────────────────────
-$('hint-btn').addEventListener('click',function(){
-  $('hint-text').textContent=customMode?customHint:(HINTS[word]||'No hint available');
-  this.style.display='none';
-  haptic('light');
-});
-
-// ── Keyboard shortcut ──────────────────────────────────────────────────────
-document.addEventListener('keydown',e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey)return;
-  const a=document.activeElement;
-  if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'))return;
-  if(!gameStarted)return;
-  if(e.key==='Escape'){hideResult();return;}
-  if(/^[a-zA-Z]$/.test(e.key))guess(e.key.toUpperCase());
-});
-
-$('new-word').addEventListener('click',async()=>{
-  if(customMode){
-    if(!over&&guessed.size){const ok=await GN.confirm('Start a new phrase?',{title:'Start a new phrase?',body:'This phrase will be abandoned.',ok:'New phrase',danger:true});if(!ok)return;}
-    try{sessionStorage.removeItem('hangman');}catch(e){}
-    openCustomEntry();return;
+  function solveSheet() {
+    var W = S.W; if (!W || W.over || busy) return;
+    var inp = el('input', { class: 'input solve-in', maxlength: 30, placeholder: 'Type the whole answer', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' }), s;
+    function go() {
+      var v = inp.value.toUpperCase().replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim();
+      if (!v) return;
+      s.close();
+      snapshot();
+      if (v.replace(/ /g, '') === W.word.replace(/[^A-Z]/g, '')) {
+        W.wholeWord = true;
+        letters(W.word).forEach(function (c) { if (W.guessed.indexOf(c) < 0) W.guessed.push(c); });
+        win();
+      } else { Kit.toast(v + ' is not it'); miss(null); }
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    s = Kit.sheet({ title: 'Solve it', html: '<p class="muted" style="margin-bottom:10px">Get it right and you win the word. A wrong answer counts as a miss.</p>', node: inp,
+      actions: [{ label: 'Solve', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    setTimeout(function () { inp.focus(); }, 350);
   }
-  if(!over&&guessed.size){const ok=await GN.confirm('Skip this word?',{title:'Skip this word?',body:'You’ll get a fresh word from '+cat+'.',ok:'New word'});if(!ok)return;}
-  try{sessionStorage.removeItem('hangman');}catch(e){}
-  newWord();
-});
+  function showClue() {
+    var W = S.W; if (!W || W.over || W.clueShown) return;
+    if (!W.clue) return Kit.toast('No clue for this one');
+    snapshot(); W.clueShown = true; Kit.sfx('flip'); save(); render();
+  }
+  function wordPoints(W) { return Math.max(1, 1 + (maxMiss() - W.misses) - (W.clueShown ? 1 : 0)); }
 
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_hangman(){if(!gameStarted||(over||won))return;
-  try{sessionStorage.setItem('hangman',JSON.stringify({word,guessed:[...guessed],wrong,cat,won,over,customMode,customHint,difficulty,gameStarted:true,_ts:Date.now()}));}catch(e){}
-}
-function _load_hangman(){
-  try{
-    const raw=sessionStorage.getItem('hangman');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s||!s.gameStarted)return false;
-    word=s.word;guessed=new Set(s.guessed||[]);wrong=s.wrong||0;cat=s.cat||'Animals';
-    won=s.won||false;over=s.over||false;customMode=s.customMode||false;customHint=s.customHint||'';
-    difficulty=s.difficulty||'easy';
-    selectDiff(difficulty);
-    setMode(customMode);
-    markCat();
-    showPlay();
-    for(let i=0;i<wrong;i++) setPart(i,1);   // restore the drawn figure
-    $('hint-btn').style.display=(customMode&&!customHint)?'none':'';
-    renderPips();
-    renderWord();
-    buildKeyboard();
-    setStatusDefault();
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_hangman);
-window.addEventListener('pagehide',_save_hangman);
-if(!_load_hangman()){
-  setMode(false);
-}
+  // ── Endings for one word ──────────────────────────────────────────────────
+  var busy = false;
+  function win() {
+    var W = S.W; W.over = true; W.won = true; stopBeat();
+    var pts = wordPoints(W);
+    S.scores[W.guesser] += pts;
+    S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
+    if (S.mode === 'solo') setLifeStreak(lifeStreak() + 1);
+    S.log.push({ w: W.word, cat: W.cat, won: true, misses: W.misses, max: maxMiss(), pts: pts, guesser: W.guesser, setter: W.setter, clue: W.clueShown, whole: W.wholeWord, guesses: W.guessed.length });
+    fresh = { win: true };
+    S.phase = 'result'; setDread(0);
+    save(); render();
+    busy = true;
+    Kit.sfx('good'); Kit.haptic('success');
+    setTimeout(function () { Kit.sfx('win'); Kit.confetti({ count: 90 }); }, 450);
+    var s = S.mode === 'solo' ? lifeStreak() : S.streak;
+    setTimeout(function () {
+      Kit.callout(s >= 10 ? 'Legendary! ' + s + ' in a row' : s >= 5 ? 'On fire! ' + s + ' in a row' : s >= 2 ? s + ' in a row!' : W.misses === 0 ? 'Flawless!' : maxMiss() - W.misses === 1 ? 'Phew! Just in time' : 'Saved!');
+    }, 650);
+    setTimeout(function () { busy = false; }, 1200);
+  }
+  function lose() {
+    var W = S.W; W.over = true; W.won = false; stopBeat();
+    var stump = S.mode === 'duel' ? 5 : 0;
+    if (stump) S.scores[W.setter] += stump;
+    S.streak = 0; if (S.mode === 'solo') setLifeStreak(0);
+    S.log.push({ w: W.word, cat: W.cat, won: false, misses: W.misses, max: maxMiss(), pts: 0, stump: stump, guesser: W.guesser, setter: W.setter, clue: W.clueShown, guesses: W.guessed.length });
+    busy = true;
+    // The final stroke is drawn slowly, then a thud, then the answer in red
+    setTimeout(function () { Kit.sfx('lose'); Kit.haptic('heavy'); var sl = app.querySelector('.slate'); if (sl) { sl.classList.remove('shake'); void sl.offsetWidth; sl.classList.add('shake'); } }, 1400);
+    setTimeout(function () { fresh = { lose: true }; S.phase = 'result'; save(); render(); }, 1700);
+    setTimeout(function () { busy = false; }, 1750);
+  }
+  function afterWord() {
+    if (busy) return;
+    S.wi++;
+    if (S.wi >= S.perGame) return finish();
+    nextWord();
+  }
+
+  // ── Heartbeat on the last life ────────────────────────────────────────────
+  var beat = null;
+  function syncBeat() {
+    var W = S && S.W;
+    if (W && !W.over && S.phase === 'play' && W.misses === maxMiss() - 1) {
+      if (beat) return;
+      var b = function () { Kit.sfx('tick'); setTimeout(function () { Kit.sfx('tick'); }, 170); Kit.haptic('tick'); };
+      b(); beat = setInterval(b, 1100);
+    } else stopBeat();
+  }
+  function stopBeat() { clearInterval(beat); beat = null; }
+  function setDread(v) { document.documentElement.style.setProperty('--dread', String(v)); }
+
+  // ── Chalk drawing ─────────────────────────────────────────────────────────
+  function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function f1(n) { return Math.round(n * 10) / 10; }
+  function ln(r, x1, y1, x2, y2) {
+    var mx = (x1 + x2) / 2 + (r() - 0.5) * 3, my = (y1 + y2) / 2 + (r() - 0.5) * 3;
+    return 'M' + f1(x1 + (r() - .5) * 1.5) + ' ' + f1(y1 + (r() - .5) * 1.5) + ' Q' + f1(mx) + ' ' + f1(my) + ' ' + f1(x2) + ' ' + f1(y2);
+  }
+  function circ(r, cx, cy, rad) {
+    var a0 = -Math.PI / 2 + (r() - .5) * .5, d = '';
+    for (var k = 0; k <= 28; k++) { var a = a0 + (Math.PI * 2 + .3) * k / 28, rr = rad * (1 + (r() - .5) * .06); d += (k ? ' L' : 'M') + f1(cx + Math.cos(a) * rr) + ' ' + f1(cy + Math.sin(a) * rr); }
+    return d;
+  }
+  function path(d, col, w, cls) { return '<path class="ch ' + (cls || '') + '" pathLength="1" stroke="' + (col || '#f4f1e6') + '" stroke-width="' + (w || 4) + '" d="' + d + '"/>'; }
+  // Classic: 10 strokes. Fewer allowed misses means the first strokes are already drawn.
+  function classicParts(r) {
+    return [
+      ln(r, 18, 205, 152, 205), ln(r, 48, 205, 48, 18), ln(r, 42, 20, 140, 20) + ' ' + ln(r, 48, 58, 86, 20), ln(r, 130, 20, 130, 46),
+      circ(r, 130, 62, 16), ln(r, 130, 78, 130, 132), ln(r, 130, 92, 106, 116), ln(r, 130, 92, 154, 116), ln(r, 130, 132, 112, 170), ln(r, 130, 132, 148, 170)
+    ];
+  }
+  function picture() {
+    var W = S.W, max = maxMiss(), seed = hash(W.word || 'x'), r = rng(seed), out = '';
+    var newMiss = fresh && fresh.miss, isLast = newMiss && W.misses >= max;
+    if (S.theme === 'classic') {
+      var parts = classicParts(r), pre = 10 - max, shown = pre + W.misses;
+      var freed = W.over && W.won;
+      out += '<g filter="url(#chalk)">';
+      for (var i = 0; i < Math.min(4, shown); i++) {
+        var isNew = newMiss && i === shown - 1;
+        if (i === 3 && freed) { out += path(ln(rng(seed + 3), 130, 20, 130, 30), '#f4f1e6', 4) + path('M124 34 L127 38 M136 33 L133 38 M130 36 L130 41', '#ffe28a', 2.2, 'new'); continue; }
+        out += path(parts[i], '#f4f1e6', 4.5, isNew ? 'new' + (isLast ? ' slow' : '') : '');
+      }
+      if (!freed) {
+        for (i = 4; i < shown; i++) { var nw = newMiss && i === shown - 1; out += path(parts[i], W.over ? '#ff9d9d' : '#f4f1e6', 3.6, nw ? 'new' + (isLast ? ' slow' : '') : ''); }
+      } else {
+        // Freed: a happy figure hops down beside the gallows, arms up
+        var r2 = rng(seed + 9), cls = fresh && fresh.win ? 'new' : '';
+        out += path(circ(r2, 172, 132, 13), '#ffe28a', 3.6, cls) + path(ln(r2, 172, 145, 172, 178), '#ffe28a', 3.6, cls) +
+          path(ln(r2, 172, 156, 154, 136) + ' ' + ln(r2, 172, 156, 190, 136), '#ffe28a', 3.6, cls) +
+          path(ln(r2, 172, 178, 160, 204) + ' ' + ln(r2, 172, 178, 184, 204), '#ffe28a', 3.6, cls) +
+          path('M166 134 Q172 140 178 134', '#ffe28a', 2.4, cls);
+      }
+      out += '</g>';
+      return '<svg viewBox="0 0 200 215" role="img" aria-label="' + W.misses + ' of ' + max + ' misses">' + out + '</svg>';
+    }
+    // Balloons: one balloon per allowed miss; each miss pops one, the basket sinks
+    var P = [[100, 38], [74, 50], [126, 50], [87, 18], [113, 18], [52, 32], [148, 32], [62, 66], [138, 66], [100, 64]];
+    var COLS = ['#ffb3c2', '#9fd3ff', '#ffe28a', '#b6f0a8', '#d8b8ff', '#ffc999', '#9ff0e0', '#ffb3c2', '#9fd3ff', '#ffe28a'];
+    var left = max - W.misses, sink = W.over && !W.won ? 30 : (W.misses / max) * 16, fly = W.over && W.won;
+    out += '<g filter="url(#chalk)">' + path(ln(r, 10, 207, 190, 207), 'rgba(244,241,230,.6)', 3) + '</g>';
+    var g = '<g filter="url(#chalk)">';
+    for (var b = max - 1; b >= 0; b--) {
+      var p = P[b], alive = b < left, justPopped = newMiss && b === left;
+      if (alive) {
+        g += path('M' + (p[0]) + ' ' + (p[1] + 17) + ' Q' + (p[0] + (b % 2 ? 6 : -6)) + ' ' + ((p[1] + 140) / 2) + ' ' + (92 + (b % 5) * 4) + ' 142', 'rgba(244,241,230,.55)', 1.6);
+        g += path(circ(r, p[0], p[1], 15).replace(/(\d+\.?\d*) (\d+\.?\d*)/g, function (m, x, y) { return x + ' ' + f1(p[1] + (y - p[1]) * 1.15); }), COLS[b], 3.4);
+        g += path('M' + (p[0] - 3) + ' ' + (p[1] + 19) + ' L' + (p[0] + 3) + ' ' + (p[1] + 19) + ' L' + p[0] + ' ' + (p[1] + 16) + ' Z', COLS[b], 2.2);
+      } else if (justPopped) {
+        var burst = '';
+        for (var k = 0; k < 8; k++) { var a = k * Math.PI / 4; burst += 'M' + f1(p[0] + Math.cos(a) * 8) + ' ' + f1(p[1] + Math.sin(a) * 8) + ' L' + f1(p[0] + Math.cos(a) * 18) + ' ' + f1(p[1] + Math.sin(a) * 18) + ' '; }
+        g += path(burst, COLS[b], 2.4, 'new');
+      }
+    }
+    // Basket and passenger
+    g += path(ln(r, 82, 146, 118, 146) + ' ' + ln(r, 118, 146, 113, 172) + ' ' + ln(r, 113, 172, 87, 172) + ' ' + ln(r, 87, 172, 82, 146), '#e2b37a', 3.6);
+    g += path(ln(r, 84, 156, 116, 156), 'rgba(226,179,122,.7)', 2);
+    g += path(circ(r, 100, 133, 7), W.over && !W.won ? '#ff9d9d' : '#f4f1e6', 3);
+    g += path(ln(r, 100, 140, 100, 147) + (fly ? ' M100 143 L89 132 M100 143 L111 132' : ' M100 143 L91 148 M100 143 L109 148'), '#f4f1e6', 3);
+    if (fly) g += path('M96 134 Q100 138 104 134', '#f4f1e6', 2);
+    g += '</g>';
+    var anim = fly && fresh && fresh.win ? ' style="animation:floataway 2.6s cubic-bezier(.5,0,.8,.4) .5s forwards"' : fly ? ' style="transform:translateY(-260px)"' : ' style="transform:translateY(' + sink + 'px);transition:transform ' + (W.over ? '.35s cubic-bezier(.6,0,1,.6)' : '.8s var(--ease)') + '"';
+    out += '<g class="flyer"' + anim + '>' + g + '</g>';
+    return '<svg viewBox="0 0 200 215" role="img" aria-label="' + left + ' balloons left"><style>@keyframes floataway{0%{transform:translateY(0)}15%{transform:translateY(6px)}100%{transform:translateY(-280px)}}</style>' + out + '</svg>';
+  }
+  function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render() {
+    app.innerHTML = '';
+    var W = S.W;
+    if (S.mode === 'duel') {
+      var strip = el('div', { class: 'scores' });
+      S.players.forEach(function (p, i) {
+        var guessing = W && W.guesser === i && S.phase === 'play';
+        strip.appendChild(el('div', { class: 'score' + (guessing ? ' on' : ''), style: { '--c': Kit.color(i), flex: '1' } }, [
+          el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(S.scores[i]) }),
+          el('span', { class: 'sub', text: W && S.phase === 'play' ? (W.guesser === i ? 'Guessing' : 'Wrote the word') : 'Round ' + (Math.floor(S.wi / 2) + 1) + ' of ' + S.perGame / 2 })
+        ]));
+      });
+      app.appendChild(strip);
+    }
+    if (S.phase === 'cover-set') return coverSet();
+    if (S.phase === 'set') return setWord();
+    if (S.phase === 'cover-guess') return coverGuess();
+    var hud = el('div', { class: 'hud' });
+    if (S.mode === 'solo') {
+      hud.appendChild(el('span', { class: 'pill', html: Kit.icon('book') + 'Word <b>' + (S.wi + 1) + '</b>of ' + S.perGame }));
+      hud.appendChild(el('span', { class: 'pill', html: Kit.icon('star') + '<b>' + S.scores[0] + '</b>pts' }));
+      var ls = lifeStreak();
+      hud.appendChild(el('span', { class: 'pill' + (ls >= 3 ? ' hot' : ''), html: Kit.icon('flame') + '<b>' + ls + '</b>in a row' }));
+      app.appendChild(hud);
+    }
+    var slate = el('div', { class: 'slate' });
+    var max = maxMiss(), left = max - W.misses;
+    slate.appendChild(el('div', { class: 'topline' }, [
+      el('span', { text: W.cat ? catName(W.cat) : 'Secret word' }),
+      el('span', { class: 'miss', text: W.missed.length ? W.missed.join(' ') : (left + ' misses left') })
+    ]));
+    var pic = el('div', { class: 'pic', html: picture() });
+    slate.appendChild(pic);
+    if (W.clueShown) slate.appendChild(el('div', { class: 'clue', text: W.clue }));
+    if (S.phase === 'result') {
+      var ttl = W.won ? (S.mode === 'duel' ? S.players[W.guesser].name + ' got it!' : W.misses === 0 ? 'Flawless!' : 'Saved!') : (S.mode === 'duel' ? 'Stumped!' : 'Got away!');
+      var sub = W.won ? '+' + wordPoints(W) + (wordPoints(W) === 1 ? ' point' : ' points') : S.mode === 'duel' ? '+5 for ' + S.players[W.setter].name : 'Better luck next word';
+      slate.appendChild(el('div', { class: 'banner', style: { color: W.won ? '#ffe28a' : '#ff8f8f' }, html: Kit.esc(ttl) + '<small>' + Kit.esc(sub) + '</small>' }));
+    }
+    slate.appendChild(wordEl());
+    app.appendChild(el('div', { class: 'frame wood' }, [slate]));
+    var dread = W.over ? (W.won ? 0 : 1) : W.misses / max;
+    setDread(dread);
+    if (S.phase === 'result') {
+      var nx = el('div', { class: 'next' });
+      if (!W.won && S.mode === 'solo' && W.clue && !W.clueShown) nx.appendChild(el('div', { class: 'center muted', text: W.clue }));
+      nx.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: S.wi + 1 >= S.perGame ? 'See the results' : S.mode === 'duel' ? 'Next secret word' : 'Next word', onclick: afterWord }));
+      nx.style.marginTop = '12px';
+      app.appendChild(nx);
+    } else {
+      var acts = el('div', { class: 'acts' }, [
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('lightbulb') + '<span>Clue</span>', disabled: W.clueShown || !W.clue, onclick: showClue }),
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('pencil') + '<span>Solve</span>', onclick: solveSheet })
+      ]);
+      app.appendChild(acts);
+      app.appendChild(keyboard());
+    }
+    afterPaint();
+  }
+  function wordEl() {
+    var W = S.W, wrap = el('div', { class: 'word' }), words = W.word.split(' ');
+    var longest = Math.max.apply(null, words.map(function (w) { return w.length; }).concat([6]));
+    var avail = Math.min(window.innerWidth, 560) - 64;
+    var lw = Math.max(16, Math.min(32, Math.floor((avail - (longest - 1) * 5) / longest)));
+    wrap.style.setProperty('--lw', lw + 'px');
+    var reveal = W.over && !W.won, k = 0;
+    words.forEach(function (w) {
+      var g = el('div', { class: 'wd' });
+      w.split('').forEach(function (ch) {
+        var shown = W.guessed.indexOf(ch) >= 0, cls = 'lt';
+        if (!/[A-Z]/.test(ch)) cls += ' sp';
+        var s = el('span', { text: shown || reveal || !/[A-Z]/.test(ch) ? ch : '' });
+        if (fresh && fresh.hit === ch) cls += ' stamp';
+        if (reveal && !shown) { cls += ' red'; s.style.animationDelay = (k++ * 140) + 'ms'; }
+        if (fresh && fresh.win) { cls += ' wave'; s.style.animationDelay = (k++ * 70) + 'ms'; }
+        var c = el('div', { class: cls, 'data-ch': ch }, [s]);
+        g.appendChild(c);
+      });
+      wrap.appendChild(g);
+    });
+    return wrap;
+  }
+  function afterPaint() {
+    if (!fresh) return;
+    if (fresh.hit) {
+      app.querySelectorAll('.lt.stamp').forEach(function (c, i) {
+        var sp = el('span', { class: 'spark' });
+        for (var k = 0; k < 6; k++) { var b = el('i'); b.style.setProperty('--r', (k * 60) + 'deg'); sp.appendChild(b); }
+        c.appendChild(sp); setTimeout(function () { sp.remove(); }, 700);
+      });
+    }
+    if (fresh.lose) {
+      var n = app.querySelectorAll('.lt.red').length;
+      for (var i = 0; i < n; i++) (function (i) { setTimeout(function () { Kit.sfx('flip'); }, i * 140); })(i);
+    }
+    fresh = null;
+  }
+  function keyboard() {
+    var W = S.W, kb = el('div', { class: 'kb' });
+    ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].forEach(function (row) {
+      var r = el('div', { class: 'r' });
+      row.split('').forEach(function (L) {
+        var used = W.guessed.indexOf(L) >= 0, hit = used && W.word.indexOf(L) >= 0;
+        r.appendChild(el('button', { type: 'button', class: 'key' + (used ? (hit ? ' hit' : ' miss') : ''), text: L, disabled: used || W.over, 'aria-label': L + (used ? (hit ? ', in the word' : ', not in the word') : ''), onclick: function () { guess(L); } }));
+      });
+      kb.appendChild(r);
+    });
+    return kb;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey || !S || S.phase !== 'play' || document.querySelector('.k-scrim,.k-win')) return;
+    var a = document.activeElement; if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+    if (/^[a-z]$/i.test(e.key)) guess(e.key.toUpperCase());
+  });
+
+  // ── Two players: hand-off and the secret word ─────────────────────────────
+  function cover(icon, title, body, btn, fn) {
+    var c = el('div', { class: 'cover' }, [el('div', { class: 'big', html: Kit.icon(icon) }), el('h2', { text: title }), el('p', { html: body }),
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: btn, onclick: fn })]);
+    app.appendChild(c);
+  }
+  function coverSet() {
+    var W = S.W, setter = S.players[W.setter].name, guesser = S.players[W.guesser].name;
+    cover('eye', 'Pass to ' + setter, '<b>' + Kit.esc(guesser) + '</b>, no peeking! ' + Kit.esc(setter) + ' is about to write a secret word.', "I'm " + setter, function () { S.phase = 'set'; save(); render(); });
+  }
+  function coverGuess() {
+    var W = S.W, guesser = S.players[W.guesser].name;
+    cover('hand', 'Pass to ' + guesser, 'The secret word is ready: ' + W.word.replace(/[^A-Z]/g, '').length + ' letters' + (W.word.indexOf(' ') >= 0 ? ', ' + W.word.split(' ').length + ' words' : '') + '.', "I'm ready to guess", function () {
+      S.phase = 'play'; save(); render(); Kit.sfx('whoosh');
+    });
+  }
+  function setWord() {
+    var W = S.W, setter = S.players[W.setter].name, guesser = S.players[W.guesser].name;
+    var box = el('div', { class: 'setw' });
+    box.appendChild(el('h2', { text: setter + ', write a word for ' + guesser }));
+    var inp = el('input', { class: 'input secret', maxlength: 24, placeholder: 'Secret word or short phrase', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+    var clue = el('input', { class: 'input', maxlength: 60, placeholder: 'Clue (optional)', autocomplete: 'off' });
+    var err = el('div', { class: 'err' });
+    var picked = null;
+    box.appendChild(inp); box.appendChild(clue); box.appendChild(err);
+    var picks = el('div', { class: 'picks' });
+    function pickOne() {
+      var p = pool(), o = p[rnd(p.length)]; picked = o;
+      inp.value = o.w; clue.value = o.clue; err.textContent = ''; Kit.sfx('pop');
+    }
+    picks.appendChild(el('button', { type: 'button', class: 'chip', html: Kit.icon('shuffle') + '<span>Pick one for me (' + Kit.esc(S.cat === 'Surprise' ? 'any category' : catName(S.cat)) + ')</span>', onclick: pickOne }));
+    box.appendChild(picks);
+    box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Hide it and pass the phone', onclick: function () {
+      var v = inp.value.toUpperCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
+      if (!/^[A-Z ]+$/.test(v)) { err.textContent = 'Letters and spaces only, please.'; Kit.sfx('bad'); return; }
+      if (v.replace(/ /g, '').length < 2) { err.textContent = 'Use at least 2 letters.'; Kit.sfx('bad'); return; }
+      if (v.split(' ').some(function (w) { return w.length > 13; })) { err.textContent = 'That word is too long to fit. Try 13 letters or fewer.'; Kit.sfx('bad'); return; }
+      if (v.split(' ').length > 3) { err.textContent = 'Keep it to 3 words or fewer.'; Kit.sfx('bad'); return; }
+      W.word = v; W.clue = clue.value.trim(); W.cat = picked && picked.w === v ? picked.cat : '';
+      if (picked && picked.w === v) S.used.push(v);
+      if (document.activeElement) document.activeElement.blur();
+      S.phase = 'cover-guess'; save(); render(); Kit.sfx('flip');
+    } }));
+    box.appendChild(el('p', { class: 'dim center', style: { 'font-size': '.85rem' }, text: 'If ' + guesser + ' runs out of misses, you get 5 points.' }));
+    app.appendChild(box);
+    setTimeout(function () { inp.focus(); }, 200);
+  }
+
+  // ── The end ───────────────────────────────────────────────────────────────
+  function finish() {
+    S.phase = 'over'; stopBeat(); setDread(0);
+    var P = S.players, solo = S.mode === 'solo', hl = [], L = S.log;
+    if (solo) {
+      var won = L.filter(function (x) { return x.won; });
+      hl.push(P[0].name + ' solved ' + won.length + ' of ' + L.length + ' ' + (S.cat === 'Surprise' ? '' : catName(S.cat).toLowerCase() + ' ') + 'words');
+      var clean = won.filter(function (x) { return x.misses === 0; });
+      if (clean.length) hl.push('Solved ' + clean.map(function (x) { return x.w; }).slice(0, 3).join(', ') + ' with no misses');
+      var close = won.filter(function (x) { return x.max - x.misses === 1; })[0];
+      if (close) hl.push('Saved ' + close.w + ' with one miss to spare');
+      var lost = L.filter(function (x) { return !x.won; })[0];
+      if (lost) hl.push(lost.w + ' got away');
+    } else {
+      var a = S.scores[0], b = S.scores[1];
+      hl.push(a === b ? 'A tie at ' + a + ' points' : P[a > b ? 0 : 1].name + ' won ' + Math.max(a, b) + ' to ' + Math.min(a, b));
+      L.filter(function (x) { return !x.won; }).slice(0, 2).forEach(function (x) { hl.push(P[x.setter].name + ' stumped ' + P[x.guesser].name + ' with ' + x.w); });
+      L.filter(function (x) { return x.won && x.misses === 0; }).slice(0, 1).forEach(function (x) { hl.push(P[x.guesser].name + ' cracked ' + x.w + ' without a single miss'); });
+    }
+    var whole = L.filter(function (x) { return x.whole; })[0];
+    if (whole) hl.push((solo ? '' : P[whole.guesser].name + ' ') + 'Called it early: solved ' + whole.w + ' in one go');
+    if (S.bestStreak >= 2) hl.push('Best run: ' + S.bestStreak + ' words in a row');
+    var mode = (solo ? 'Solo · ' + catName(S.cat === 'Surprise' ? 'Mixed' : S.cat) : 'Two players') + ' · ' + DIFF[S.diff].name + ' · ' + THEME_NAME[S.theme];
+    Kit.record(KEY, {
+      started: S.started, mode: mode,
+      players: P.map(function (p, i) { return { name: p.name, score: S.scores[i] }; }),
+      winner: solo ? (L.some(function (x) { return x.won; }) ? P[0].name : null) : S.scores[0] === S.scores[1] ? null : P[S.scores[0] > S.scores[1] ? 0 : 1].name,
+      summary: solo ? P[0].name + ' solved ' + L.filter(function (x) { return x.won; }).length + ' of ' + L.length : undefined,
+      rounds: { labels: L.map(function (x) { return x.w.length > 10 ? x.w.slice(0, 9) + '…' : x.w; }),
+        scores: L.map(function (x) { return solo ? [x.pts] : P.map(function (p, i) { return i === x.guesser ? x.pts : i === x.setter ? (x.stump || 0) : 0; }); }) },
+      highlights: hl.slice(0, 6),
+      meta: { words: L.map(function (x) { return { w: x.w, won: x.won, misses: x.misses }; }), diff: S.diff, theme: S.theme }
+    });
+    clearSave();
+    var wonN = L.filter(function (x) { return x.won; }).length;
+    var top = solo ? null : S.scores[0] === S.scores[1] ? -1 : (S.scores[0] > S.scores[1] ? 0 : 1);
+    Kit.win({
+      title: solo ? (wonN === L.length ? 'Perfect game!' : wonN ? wonN + ' of ' + L.length + ' saved' : 'Tough words!') : top < 0 ? "It's a tie!" : P[top].name + ' wins!',
+      sub: solo ? S.scores[0] + ' points' : 'After ' + L.length / 2 + (L.length > 2 ? ' rounds' : ' round'),
+      lose: solo && !wonN,
+      rank: solo ? null : [0, 1].sort(function (x, y) { return S.scores[y] - S.scores[x]; }).map(function (i) { return { name: P[i].name, score: S.scores[i], color: Kit.color(i) }; }),
+      againLabel: 'Play again', again: again,
+      extra: [{ label: 'Change settings', onClick: showSetup }]
+    });
+    app.innerHTML = '';
+  }
+  function again() {
+    start({ mode: S.mode, players: S.players, options: { diff: S.diff, theme: S.theme, count: S.mode === 'solo' ? S.perGame : 0, rounds: S.perGame / 2 } }, S.cat);
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.W && saved.players && saved.phase !== 'over') {
+    S = saved;
+    if (S.phase === 'set') S.phase = 'cover-set';
+    // A word that was mid-ending when the page closed: show its result
+    if (S.phase === 'play' && S.W.over) S.phase = 'result';
+    render(); syncBeat();
+  } else showSetup();
+  window.__hm = { state: function () { return S; }, words: WORDS };
+})();
 </script>
 </body>
 </html>

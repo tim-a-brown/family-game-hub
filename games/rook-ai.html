@@ -176,6 +176,19 @@
       return ia - ib || rv(b) - rv(a);
     });
   }
+  // Your hand on screen (display only). Color: trump first, the Rook with
+  // trump, high to low. Number: high to low across colors, the Rook first.
+  var sortT = Cards.sortToggle(null, {
+    key: 'rook_sort', modes: ['color', { id: 'rank', label: 'Number' }], value: 'color',
+    flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); }
+  });
+  function view(h) {
+    var a = h.slice();
+    if (sortT.get() !== 'rank') return sortHand(a);
+    var order = COLS.slice();
+    if (S.trump) { order = order.filter(function (c) { return c !== S.trump; }); order.unshift(S.trump); }
+    return Cards.sortBy(a, 'rank', { rank: function (x, y) { return rv(y) - rv(x) || order.indexOf(x.c) - order.indexOf(y.c); } });
+  }
   function cardEl(c, o) {
     o = o || {};
     var n;
@@ -576,6 +589,7 @@
     felt.appendChild(nestEl); felt.appendChild(trickEl); felt.appendChild(msgEl);
     table.appendChild(felt);
     app.appendChild(table);
+    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'chand' });
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
@@ -653,7 +667,7 @@
     handEl.innerHTML = '';
     var mine = S.hands[0];
     var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
-    mine.forEach(function (c) {
+    view(mine).forEach(function (c) {
       var n = cardEl(c);
       if (S.phase === 'nest' && S.bidder === 0) {
         n.classList.add('play');

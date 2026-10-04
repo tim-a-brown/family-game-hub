@@ -91,9 +91,6 @@
 .dots i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:.62rem;font-weight:900;color:#8a8796;box-shadow:inset 0 0 0 1.5px rgba(60,80,160,.3);}
 .dots i.done{background:#137a3e;color:#fff;box-shadow:none;}
 .dots i.cur{background:#c8102e;color:#fff;box-shadow:0 0 0 2px rgba(200,16,46,.25);}
-.sortb{flex:none;border:0;background:rgba(31,42,107,.08);color:var(--ink);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;}
-.sortb .ico{width:20px;height:20px;}
-.sortb small{display:block;font-size:.55rem;font-weight:900;margin-top:-2px;}
 /* ── Phase builder ────────────────────────────────────────────────────── */
 .builder{border-radius:18px;padding:8px;margin:6px 0 0;}
 .bhead{display:flex;align-items:center;gap:8px;padding:0 2px 6px;color:#fff;font-weight:900;font-size:.85rem;}
@@ -771,6 +768,7 @@
     app.appendChild(table);
     goalEl = el('div', { class: 'phstrip paper' }); app.appendChild(goalEl);
     builderEl = el('div', { class: 'builder felt', hidden: true }); app.appendChild(builderEl);
+    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
     paint();
@@ -846,14 +844,19 @@
       el('span', { html: pl.done ? 'Wait for the hand to end' : Kit.esc(PH[ph].d) + (S.laid[0] ? ' <span class="ok">· laid down</span>' : '') })
     ]));
     goalEl.appendChild(dots);
-    goalEl.appendChild(el('button', { type: 'button', class: 'sortb', 'aria-label': 'Sort hand', html: Kit.icon('swap') + '<small>' + (S.sort === 'num' ? '1–12' : 'color') + '</small>', onclick: function () { S.sort = S.sort === 'num' ? 'color' : 'num'; Kit.sfx('tap'); save(); paintHand(); paintGoal(); } }));
   }
+  // Your hand on screen (display only): by color or by number, Wilds then Skips last
+  var sortT = Cards.sortToggle(null, {
+    key: 'phase10_sort', modes: ['color', { id: 'rank', label: 'Number' }], value: 'rank',
+    flip: function () { return handEl; },
+    onChange: function (m) { if (!S || !S.hands || !handEl) return; S.sort = m === 'rank' ? 'num' : 'color'; save(); paintHand(); }
+  });
   function sorted(h) {
     var co = { r: 0, b: 1, g: 2, y: 3, w: 4, s: 5 };
     return h.slice().sort(function (a, b) {
       var sa = isN(a) ? 0 : isW(a) ? 1 : 2, sb = isN(b) ? 0 : isW(b) ? 1 : 2;
       if (sa !== sb) return sa - sb;
-      return S.sort === 'num' ? (a.n - b.n || co[a.c] - co[b.c]) : (co[a.c] - co[b.c] || a.n - b.n);
+      return sortT.get() === 'rank' ? (a.n - b.n || co[a.c] - co[b.c]) : (co[a.c] - co[b.c] || a.n - b.n);
     });
   }
   function paintBuilder() {
@@ -959,6 +962,8 @@
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.stage !== 'over') {
     S = saved; Kit.gameStart();
+    // older saves kept the sort choice in the game state
+    if (S.sort === 'color' && Cards.sortMode('phase10_sort', null) == null) sortT.set('color');
     if (S.stage === 'ending') { S.stage = 'play'; }
     render();
     if (S.stage === 'play' && S.players.some(function (pl, i) { return !S.hands[i].length; })) endHand(S.hands.findIndex(function (h) { return !h.length; }));

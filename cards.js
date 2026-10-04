@@ -114,7 +114,7 @@ var Cards = (function () {
   function sortMode(key, def, ids) {
     var v = key ? lsGet(key) : null;
     if (v && (!ids || ids.indexOf(v) >= 0)) return v;
-    return def != null ? def : (ids ? ids[0] : 'suit');
+    return def !== undefined ? def : (ids ? ids[0] : 'suit');
   }
   function sortToggle(host, o) {
     o = o || {};

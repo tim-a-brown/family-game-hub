@@ -95,6 +95,7 @@
 @keyframes fresh{0%,60%{box-shadow:0 0 0 3px var(--yellow), 0 0 18px rgba(255,200,61,.7);}}
 .fc-hand .pcard.hint{box-shadow:0 0 0 3px var(--green), 0 0 16px rgba(61,220,132,.7);}
 .cbar .btn{min-width:120px;}
+.fc-sortrow{margin-bottom:2px;}
 .cbar{flex-wrap:wrap;}
 .cbar .hint{text-align:center;}
 .cbar .hint.last{color:var(--yellow);width:100%;}
@@ -277,6 +278,9 @@
     function rnOf(g) { var n = g.cards.filter(function (c) { return !isW(c, w); })[0]; return n ? rn(n) : 99; }
     return { groups: groups, left: left, cost: left.reduce(function (a, c) { return a + val(c, w); }, 0) };
   }
+  // Your hand on screen (display only): the game's own groups (melds first),
+  // or plain suit / rank order. Wild cards (this round's rank and Jokers) go last.
+  var sortT = Cards.sortToggle(null, { key: 'fivecrowns_sort', modes: ['groups', 'suit', 'rank'], value: 'groups', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paint(); } });
   function groupLabel(g, w) {
     if (g.t === 'run') return 'Run ' + GLYPH[g.s];
     var n = g.cards.filter(function (c) { return !isW(c, w); })[0];
@@ -650,6 +654,7 @@
     app.appendChild(table);
     meEl = el('div', { class: 'fc-me' });
     app.appendChild(meEl);
+    app.appendChild(el('div', { class: 'csort-row fc-sortrow' }, [sortT.el]));
     handEl = el('div', { class: 'fc-hand' });
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
@@ -737,14 +742,31 @@
         }
         cs.appendChild(n);
       });
-      g.appendChild(cs); g.appendChild(el('span', { class: 'gl', text: lbl }));
+      g.appendChild(cs); if (lbl) g.appendChild(el('span', { class: 'gl', text: lbl }));
       handEl.appendChild(g);
     }
     if (S.sel) { var sc = h.filter(function (c) { return c.id === S.sel; })[0]; if (sc) add([sc], 'pick', 'Discard?'); }
-    a.groups.forEach(function (g) { add(g.cards, 'meld', groupLabel(g, w)); });
-    if (a.left.length) {
-      var left = a.left.slice().sort(function (x, y) { return isW(x, w) - isW(y, w) || SUITS.indexOf(x.s) - SUITS.indexOf(y.s) || rn(x) - rn(y); });
-      add(left, 'dead', 'Left over · ' + a.cost);
+    var mode = sortT.get();
+    if (mode === 'suit') {
+      // one group per suit, wild cards together at the end
+      SUITS.forEach(function (su) {
+        var cs = shown.filter(function (c) { return c.s === su && !isW(c, w); }).sort(function (x, y) { return rn(x) - rn(y); });
+        if (cs.length) add(cs, '', GLYPH[su] + ' ' + SUIT_NAME[su]);
+      });
+      var wl = shown.filter(function (c) { return isW(c, w); }).sort(function (x, y) { return (x.r === 'JK') - (y.r === 'JK') || SUITS.indexOf(x.s) - SUITS.indexOf(y.s); });
+      if (wl.length) add(wl, '', 'Wild');
+    } else if (mode === 'rank') {
+      // 3 up to King, wild cards last, in as few even rows as fit
+      var rk = shown.slice().sort(function (x, y) { return isW(x, w) - isW(y, w) || (x.r === 'JK') - (y.r === 'JK') || rn(x) - rn(y) || SUITS.indexOf(x.s) - SUITS.indexOf(y.s); });
+      var cw = Math.min(64, Math.max(50, window.innerWidth * .136)), cap = Math.max(3, Math.floor((handEl.clientWidth - 6 - cw) / (cw * .5)) + 1);
+      var rows = Math.ceil(rk.length / cap), per = Math.ceil(rk.length / Math.max(1, rows));
+      for (var ri = 0; ri < rk.length; ri += per) add(rk.slice(ri, ri + per), '', '');
+    } else {
+      a.groups.forEach(function (g) { add(g.cards, 'meld', groupLabel(g, w)); });
+      if (a.left.length) {
+        var left = a.left.slice().sort(function (x, y) { return isW(x, w) - isW(y, w) || SUITS.indexOf(x.s) - SUITS.indexOf(y.s) || rn(x) - rn(y); });
+        add(left, 'dead', 'Left over · ' + a.cost);
+      }
     }
     if (!h.length) handEl.appendChild(el('div', { class: 'muted', text: 'No cards' }));
 

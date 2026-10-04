@@ -106,7 +106,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Playfield geometry & physics constants (logical units) ═══════════════
   var FW = 360, FH = 640, RAIL = 34, CW = FW + RAIL * 2, CH = FH;
   var BR = 7, PR = 9, KR = 5;                    // ball, peg, brick half-thickness
-  var GRAV = 470, V0 = 470, E_PEG = 0.8, E_WALL = 0.86, VMAX = 1100;
+  var GRAV = 400, V0 = 440, E_PEG = 0.8, E_WALL = 0.86, VMAX = 1100;
   var LX = 180, LY = 26, BARREL = 30;            // launcher pivot and barrel length
   var TICK = 1 / 240;                            // fixed physics step
   var BUCKET_Y = 604, FEVER_VALUES = [10000, 50000, 100000, 50000, 10000];
@@ -281,7 +281,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   var LEVELS = [
     { name: 'First Light', bg: 'dawn', build: function (B) {
-      for (var r = 0; r < 11; r++) { var odd = r % 2; B.row(118 + r * 40, odd ? 60 : 40, odd ? 300 : 320, 40); }
+      for (var r = 0; r < 9; r++) { var odd = r % 2; B.row(118 + r * 40, odd ? 60 : 40, odd ? 300 : 320, 40); }
+      B.arcBricks(180, 250, 240, 0.34 * PI, 0.66 * PI, 6); B.arcBricks(180, 250, 290, 0.36 * PI, 0.64 * PI, 7);
     } },
     { name: 'Rainbow Arches', bg: 'sea', build: function (B) {
       B.arc(180, 330, 150, PI, TAU, 15); B.arc(180, 330, 112, PI * 1.08, PI * 1.92, 10); B.arcBricks(180, 330, 74, PI, TAU, 5);
@@ -369,9 +370,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         }
         B.brick(166, 330, 194, 330);
       });
-      B.row(104, 30, 330, 37.5); B.row(132, 48.75, 311.25, 37.5);
-      B.row(528, 30, 330, 37.5); B.row(556, 48.75, 311.25, 37.5);
-      B.lattice(function (x, y) { return y > 150 && y < 510 && Math.hypot(x - 180, y - 330) > 184; }, 34, 150, 510);
+      B.arcBricks(180, 330, 215, 1.3 * PI, 1.7 * PI, 6); B.arcBricks(180, 330, 215, 0.3 * PI, 0.7 * PI, 6);
+      B.row(100, 40, 320, 40); B.row(560, 40, 320, 40);
+      B.lattice(function (x, y) { return Math.hypot(x - 180, y - 330) > 184; }, 34, 190, 470);
     } },
     { name: 'Clockwork', bg: 'clock', build: function (B) {
       B.group({ t: 'rot', cx: 180, cy: 330, w: 0.32 }, function () { B.ring(180, 330, 118, 24, 0); });
@@ -846,7 +847,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     balls = []; shot = null; fx.parts = []; fx.pops = []; fx.banners = []; fx.later = [];
     zoom.on = false; zoom.z = 1; timeScale = tsTarget = 1; hitStop = 0; flash = 0; shake = 0; recoil = 0;
     if (L.purple < 0) movePurple();
-    rebuildColliders(); placeAll(wt);
+    rebuildColliders(); placeAll(wt); shownScore = -1;
     Kit.gameStart();
     buildView();
     state = 'aim'; paused = false;
@@ -862,7 +863,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   function newBall(x, y, vx, vy) {
-    return { id: nextBallId++, x: x, y: y, vx: vx, vy: vy, trail: [], dist: 0, hits: 0, wall: false, spooky: false, ax: x, ay: y, at: wt, stuckN: 0, born: rt };
+    return { id: nextBallId++, x: x, y: y, vx: vx, vy: vy, trail: [], dist: 0, hits: 0, wall: false, spooky: false, ax: x, ay: y, at: wt, low: y, lowT: wt, stuckN: 0, born: rt };
   }
   function fire() {
     if (view !== 'game' || state !== 'aim' || paused || !L || L.ballsLeft <= 0) return;
@@ -895,7 +896,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (o.c === 'o') { L.orangeHit++; var after = mult(); if (after !== before) multUp(after); }
     var base = o.c === 'o' ? 100 : o.c === 'p' ? 500 : 10, pts = base * mult();
     addShot(pts);
-    pop(o.mx, o.my - 12, fmt(pts), COL[o.c].lit, o.c === 'p' ? 15 : o.c === 'o' ? 12 : 10);
+    pop(o.mx, o.my - 12, fmt(pts), '#ffe14d', o.c === 'p' ? 15 : o.c === 'o' ? 13 : 11);
     burst(o.mx, o.my, COL[o.c].lit, o.c === 'b' ? 5 : 9);
     sPeg(shot.hits.length - 1, o.c); tickHaptic();
     if (o.c === 'o' && info && b) {
@@ -907,7 +908,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (o.c === 'o' && !L.fever && orangeLeft() === 0) startFever(b, o);
   }
   function addShot(pts, noFree) {
-    shot.score += pts; L.score += pts; bumpScore();
+    shot.score += pts; shotBump = 1;
     if (noFree) return;
     var th = [25000, 75000, 125000];
     while (shot.fb < 3 && shot.score >= th[shot.fb]) { shot.fb++; freeBall(fmt(th[shot.fb - 1]) + ' point shot', 'score'); }
@@ -968,7 +969,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ── Per-tick simulation ─────────────────────────────────────────────────
-  var feverT = -10, feverHit = null, meterPulse = 0, pwFlash = 0, predTick = 0;
+  var bucketFlash = 0, feverT = -10, feverHit = null, meterPulse = 0, pwFlash = 0, predTick = 0;
   function tick(dt) {
     wt += dt;
     placeAll(wt);
@@ -982,7 +983,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       // Catch: bucket or fever buckets
       if (!L.fever) {
         if (b.y > BUCKET_Y + 6 && b.y < BUCKET_Y + 30 && Math.abs(b.x - bx) < 28) {
-          balls.splice(i, 1); freeBall('Bucket catch', 'bucket');
+          balls.splice(i, 1); freeBall('Bucket catch', 'bucket'); bucketFlash = 1; shake = Math.max(shake, 4);
           for (var k = 0; k < 14; k++) part(b.x, BUCKET_Y, (Math.random() - 0.5) * 200, -100 - Math.random() * 200, '#ffe7a8', 0.7, 2.2);
           continue;
         }
@@ -997,30 +998,36 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
       // Stuck detection: if the ball hardly moves, clear the lit pegs it's resting on
       if (Math.abs(b.x - b.ax) + Math.abs(b.y - b.ay) > 14) { b.ax = b.x; b.ay = b.y; b.at = wt; }
-      else if (wt - b.at > 1.1) { unstick(b); b.at = wt; }
+      else if (wt - b.at > 1.1) { unstick(b, true); b.at = wt; }
+      // rolling to and fro in a cradle: no new low point for a while, so clear the lit pegs it touches
+      if (b.y > b.low + 6) { b.low = b.y; b.lowT = wt; }
+      else if (wt - b.lowT > 2.4) { if (unstick(b, false)) { b.lowT = wt; b.low = b.y; } else b.lowT = wt - 1.6; }
     }
     // Safety net: a shot can never go on forever
     var age = wt - shot.t0;
-    if (age > 30 && !shot.purged) { shot.purged = true; shot.hits.forEach(function (o) { if (!o.gone) removePeg(o, true); }); }
-    if (age > 45) balls = [];
+    if (age > 20 && !shot.purged) { shot.purged = true; shot.hits.forEach(function (o) { if (!o.gone) removePeg(o, true); }); }
+    if (age > 32) balls = [];
     // Last orange peg: slow motion if the ball is about to hit it
     if (!L.fever && balls.length && !zoom.on && rt > zoom.cool && ++predTick % 6 === 0) checkLastPeg();
     if (zoom.on && wt > zoom.until) { zoom.on = false; tsTarget = 1; stopDrum(); zoom.cool = rt + 0.6; }
     if (!balls.length) endShot();
   }
-  function unstick(b) {
-    L.stats.stuck++;
+  function unstick(b, hard) {
     var near = colliders.filter(function (o) {
       if (o.gone || o.k === 'bw' || o.k === 'post') return false;
       var qx, qy;
       if (o.k === 'peg') { qx = o.x; qy = o.y; }
       else { var ux = o.x2 - o.x, uy = o.y2 - o.y, s = clamp(((b.x - o.x) * ux + (b.y - o.y) * uy) / (ux * ux + uy * uy), 0, 1); qx = o.x + ux * s; qy = o.y + uy * s; }
-      return Math.hypot(b.x - qx, b.y - qy) < BR + o.r + 6;
+      return Math.hypot(b.x - qx, b.y - qy) < BR + o.r + (hard ? 6 : 3);
     });
+    if (!hard) near = near.filter(function (o) { return o.lit; });
     if (near.length) {
+      L.stats.stuck++;
       near.forEach(function (o) { if (!o.lit) lightPeg(o, b, null); removePeg(o, true); });
-    } else { b.vx += (b.x < 180 ? 1 : -1) * 70; b.vy = -90; }
+    } else if (hard) { b.vx += (b.x < 180 ? 1 : -1) * 70; b.vy = -90; }
+    else return false;
     b.stuckN++;
+    return true;
   }
   function removePeg(o, early) {
     if (o.gone) return;
@@ -1055,6 +1062,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function finishShot() {
     var s = shot.score;
+    L.score += s;
     L.shots.push(s);
     if (s > L.stats.maxShot) L.stats.maxShot = s;
     if (shot.hits.length > L.stats.maxHits) L.stats.maxHits = shot.hits.length;
@@ -1134,8 +1142,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fx.banners.push({ text: text, sub: sub, c: color, life: life, max: life, y: y || 0.42, shot: !!shotTotal });
   }
   function later(t, fn) { fx.later.push({ t: t, fn: fn }); }
-  var bumpT = 0;
-  function bumpScore() { bumpT = 0.12; }
+  var shotBump = 0;
   function updateHud() {
     if (!L || !lvEl) return;
     lvEl.innerHTML = ''; lvEl.title = L.def.name; lvEl.appendChild(el('small', { text: 'Level' })); lvEl.appendChild(el('b', { text: String(L.n) }));
@@ -1153,8 +1160,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function syncHud() {
     if (!L || !scoreEl) return;
     if (shownScore !== L.score) {
-      shownScore = L.score; scoreEl.querySelector('b').textContent = fmt(L.score);
-      scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump');
+      var was = shownScore;
+      shownScore = shownScore < 0 || L.score < shownScore ? L.score : Math.abs(L.score - shownScore) < 12 ? L.score : Math.round(shownScore + (L.score - shownScore) * 0.16);
+      scoreEl.querySelector('b').textContent = fmt(shownScore);
+      if (was >= 0 && shownScore === L.score) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
     }
     var hs = state + '|' + balls.length + '|' + L.guide + '|' + balls.some(function (b) { return b.spooky; });
     if (hs !== hudState) { hudState = hs; updateHud(); }
@@ -1200,7 +1209,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fx.banners.forEach(function (b) { b.life -= dt; });
     fx.banners = fx.banners.filter(function (b) { return b.life > 0; });
     recoil = Math.max(0, recoil - dt * 5); shake = Math.max(0, shake - dt * 20); flash = Math.max(0, flash - dt * 1.4);
-    meterPulse = Math.max(0, meterPulse - dt * 1.5); pwFlash = Math.max(0, pwFlash - dt);
+    meterPulse = Math.max(0, meterPulse - dt * 1.5); bucketFlash = Math.max(0, bucketFlash - dt * 1.6); pwFlash = Math.max(0, pwFlash - dt);
     // camera
     var zt = zoom.on ? 2.1 : 1;
     zoom.z += (zt - zoom.z) * Math.min(1, dt * (zoom.on ? 4.5 : 2.2));
@@ -1330,6 +1339,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var x = bucketX(wt), y = BUCKET_Y;
       g.save();
       g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, FH - 2, 40, 6, 0, 0, TAU); g.fill();
+      if (bucketFlash > 0) { var bgl = g.createRadialGradient(x, y + 8, 4, x, y + 8, 70); bgl.addColorStop(0, 'rgba(255,240,170,' + (0.8 * bucketFlash).toFixed(3) + ')'); bgl.addColorStop(1, 'rgba(255,240,170,0)'); g.fillStyle = bgl; g.fillRect(x - 70, y - 62, 140, 140); }
       var gr = g.createLinearGradient(x - 34, 0, x + 34, 0);
       gr.addColorStop(0, '#6b4810'); gr.addColorStop(0.25, '#e9bf5c'); gr.addColorStop(0.5, '#fff0b8'); gr.addColorStop(0.75, '#d9a640'); gr.addColorStop(1, '#5e3e0c');
       g.fillStyle = gr;
@@ -1454,12 +1464,19 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.globalAlpha = 1;
   }
   function drawShotScore(g) {
-    if (!shot || state === 'aim') return;
-    if (shot.score <= 0) return;
-    g.save(); g.textAlign = 'right'; g.textBaseline = 'middle';
-    g.font = '400 18px ' + DFONT; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,.6)';
-    g.strokeText(fmt(shot.score), FW - 10, 20); g.fillStyle = '#ffd45a'; g.fillText(fmt(shot.score), FW - 10, 20);
-    g.font = '900 8px ' + FONT; g.fillStyle = 'rgba(255,230,170,.8)'; g.fillText('THIS SHOT', FW - 10, 36);
+    if (!shot || (state !== 'fly' && state !== 'clear')) return;
+    shotBump = Math.max(0, shotBump - 0.08);
+    var m = mult(), txt = fmt(shot.score);
+    g.save(); g.translate(12, 22); g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.font = '900 8px ' + FONT; g.fillStyle = 'rgba(255,240,200,.85)'; g.fillText('THIS SHOT', 1, -10);
+    var sc = 1 + shotBump * 0.12; g.scale(sc, sc);
+    g.font = '400 22px ' + DFONT; g.lineWidth = 4; g.lineJoin = 'round'; g.strokeStyle = 'rgba(0,0,0,.6)';
+    g.strokeText(txt, 0, 6); g.fillStyle = '#ffe14d'; g.fillText(txt, 0, 6);
+    if (m > 1) {
+      var w = g.measureText(txt).width + 8;
+      g.fillStyle = 'rgba(255,140,40,.95)'; roundRect(g, w, -3, 30, 18, 9); g.fill();
+      g.font = '400 13px ' + DFONT; g.fillStyle = '#fff'; g.fillText('×' + m, w + 6, 6.5);
+    }
     g.restore();
   }
   function drawBanners(g) {

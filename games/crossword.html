@@ -1,712 +1,538 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mini Crossword</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
 <style>
-:root{--cx-key:#3a4050;--cx-key-hi:#4a5163;--cx-word:rgba(96,165,250,.32);--cx-sel:var(--gold);}
-html,body{height:100%;overflow:hidden;}
-body{display:flex;flex-direction:column;}
-.cx-app{
-  flex:1;min-height:0;display:flex;flex-direction:column;
-  width:100%;max-width:1000px;margin:0 auto;
-  padding:0 max(8px,var(--safe-r)) 0 max(8px,var(--safe-l));
-}
-/* Puzzle picker */
-.cx-picker{display:flex;gap:6px;justify-content:center;padding:10px 0 4px;flex:none;}
-.cx-puz-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s;position:relative;}
-.cx-puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.14);color:var(--gold);}
-.cx-puz-btn.solved{border-color:rgba(74,222,128,.5);background:rgba(74,222,128,.12);color:var(--green);}
-.cx-puz-btn.solved.active{box-shadow:0 0 0 2px var(--gold);}
-/* Main: grid (+ clue lists on wide screens) */
-.cx-main{flex:1;min-height:0;display:flex;gap:24px;align-items:stretch;justify-content:center;}
-.cx-grid-area{flex:1;min-height:0;min-width:0;container-type:size;display:flex;align-items:center;justify-content:center;padding:8px 0;}
-.cx-grid{
-  --w:min(100cqw - 8px, 100cqh - 4px, 380px);
-  width:var(--w);height:var(--w);
-  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);
-  gap:0;border:2px solid #000;background:#000;border-radius:6px;overflow:hidden;
-}
-.cx-cell{position:relative;}
-.cx-cell-inner{
-  width:100%;height:100%;position:relative;
-  border:1px solid #11141b;background:#e8eaef;
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--display);font-size:calc(var(--w) * .1);font-weight:700;
-  text-transform:uppercase;color:#11141b;cursor:pointer;line-height:1;padding-top:6%;
-  transition:background .1s;
-}
-.cx-cell-inner.black{background:#05060a;border-color:#05060a;pointer-events:none;}
-.cx-cell-inner.highlighted{background:#a7c7f5;}
-.cx-cell-inner.selected{background:var(--cx-sel);}
-.cx-cell-inner.correct{color:#1d6fd8;}
-.cx-cell-inner.wrong{color:#d33;}
-.cx-cell-inner.wrong::after{content:'';position:absolute;left:8%;right:8%;top:50%;height:2px;background:#d33;transform:rotate(-38deg);}
-.cx-grid.solved .cx-cell-inner:not(.black){background:#bfe7cb;color:#11141b;}
-.cx-num{position:absolute;top:3%;left:6%;font-family:var(--font);font-size:calc(var(--w) * .036);font-weight:700;color:#3a3f4b;line-height:1;pointer-events:none;}
-@keyframes cx-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
-.cx-cell-inner.popping{animation:cx-pop .1s ease;}
-/* Clue bar (NYT style) */
-.cx-cluebar{
-  flex:none;display:flex;align-items:stretch;gap:0;min-height:58px;
-  background:rgba(96,165,250,.16);border:1px solid rgba(96,165,250,.3);border-radius:14px;margin:4px 0 6px;overflow:hidden;
-}
-.cx-cluebar button{flex:none;width:44px;border:0;background:transparent;color:var(--text);cursor:pointer;display:grid;place-items:center;}
-.cx-cluebar button:active{background:rgba(255,255,255,.06);}
-.cx-cluebar svg{width:20px;height:20px;}
-.cx-cluetext{flex:1;display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;font-size:1rem;font-weight:600;line-height:1.3;}
-.cx-cluetext b{font-family:var(--display);font-weight:800;color:var(--blue);flex:none;}
-/* Clue lists (wide screens only) */
-.cx-clues{display:none;}
-@media (min-width:820px){
-  .cx-clues{display:flex;flex-direction:column;gap:14px;width:320px;flex:none;overflow:auto;padding:12px 0;}
-  .cx-grid-area{flex:0 1 480px;}
-  .cx-cluebar{max-width:560px;width:100%;margin-left:auto;margin-right:auto;}
-}
-.cx-clue-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;}
-.cx-clue-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin:0 4px 6px;}
-.cx-clue-item{font-size:.95rem;padding:8px 10px;border-radius:10px;cursor:pointer;color:var(--text-2);line-height:1.4;border-left:3px solid transparent;}
-.cx-clue-item:hover{background:var(--surface-2);}
-.cx-clue-item.active{background:rgba(96,165,250,.16);color:var(--text);border-left-color:var(--blue);}
-.cx-clue-item.done{color:var(--text-3);}
-.cx-clue-num{font-weight:800;color:var(--text);margin-right:6px;}
-/* Tools row */
-.cx-actions{flex:none;display:flex;gap:8px;justify-content:center;padding:2px 0 6px;}
-.cx-actions .btn{min-height:36px;height:36px;padding:0 14px;border-radius:999px;font-size:.86rem;}
+:root{--np:#f4efe2;--np-2:#e9e2cf;--np-ink:#16130f;--np-dim:#6b6455;--hl:#a9d1f7;--sel:#ffd84d;--cross:#e3edf7;--np-serif:Georgia,"Times New Roman",serif;--np-sans:"Helvetica Neue",Helvetica,Arial,sans-serif;}
+html,body{height:100%;}
+body{overflow:hidden;display:flex;flex-direction:column;}
+.cw{flex:1;min-height:0;display:flex;flex-direction:column;width:100%;max-width:560px;margin:0 auto;padding:0 10px;}
+
+/* Top line: puzzle chip, timer, help */
+.top{flex:none;display:flex;align-items:center;gap:8px;padding:0 0 8px;}
+.puz{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px 0 14px;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:var(--text);font-weight:900;font-size:.95rem;white-space:nowrap;}
+.puz .ico{width:16px;height:16px;color:var(--text-3);}
+.clock{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:0;border-radius:999px;background:rgba(0,0,0,.25);color:var(--text);font-weight:900;font-variant-numeric:tabular-nums;font-size:1rem;}
+.clock .ico{width:16px;height:16px;color:var(--text-3);}
+.top .sp{flex:1;}
+.top .btn{min-height:40px;padding:0 12px;font-size:.88rem;}
+
+/* The newspaper page */
+.paper{flex:none;position:relative;border-radius:6px;padding:10px 10px 0;color:var(--np-ink);
+  background:
+    radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px) 0 0/3px 3px,
+    linear-gradient(180deg,var(--np),var(--np-2));
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 14px 30px rgba(0,0,0,.45);}
+.mast{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:2px solid var(--np-ink);padding:0 2px 4px;margin-bottom:8px;font-family:var(--np-serif);}
+.mast b{font-size:1.05rem;letter-spacing:.04em;font-weight:700;font-variant:small-caps;}
+.mast span{font-size:.8rem;font-style:italic;color:var(--np-dim);white-space:nowrap;}
+.gwrap{display:flex;justify-content:center;}
+.grid{--n:5;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);width:min(100%,var(--gw,360px));aspect-ratio:1;border:2.5px solid var(--np-ink);background:var(--np-ink);gap:1px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+.sq{position:relative;background:#fffdf7;display:grid;place-items:center;cursor:pointer;}
+.sq.blk{background:var(--np-ink);cursor:default;}
+.sq .n{position:absolute;left:5%;top:3%;font-family:var(--np-serif);font-size:calc(var(--cell) * .24);line-height:1;color:var(--np-ink);}
+.sq .l{font-family:var(--np-sans);font-weight:700;font-size:calc(var(--cell) * .56);line-height:1;padding-top:12%;text-transform:uppercase;color:var(--np-ink);}
+.sq.word{background:var(--hl);}
+.sq.sel{background:var(--sel);}
+.sq.ok .l{color:#1f5fbf;}
+.sq.bad::after{content:"";position:absolute;left:6%;right:6%;top:50%;height:2px;background:#d01b2a;transform:rotate(-40deg);}
+.sq.rev::before{content:"";position:absolute;right:0;top:0;border-style:solid;border-width:0 calc(var(--cell) * .26) calc(var(--cell) * .26) 0;border-color:transparent #d01b2a transparent transparent;}
+.sq.type .l{animation:ink .18s ease-out;}
+@keyframes ink{from{transform:scale(1.35);opacity:.3;}to{transform:none;opacity:1;}}
+.grid.done .sq:not(.blk){animation:wave .6s ease both;animation-delay:calc(var(--d) * 40ms);}
+@keyframes wave{40%{background:#bfe7c9;transform:scale(1.08);}100%{background:#fffdf7;}}
+.grid.paused .sq:not(.blk){background:#efe9da;}
+.grid.paused .sq .l,.grid.paused .sq .n{visibility:hidden;}
+.pausecover{position:absolute;inset:0;display:grid;place-items:center;z-index:2;}
+.pausecover .btn{--b:var(--np-ink);--b-ink:#fff;--b-lip:#000;}
+
+/* Clue bar on the paper */
+.cbar{display:flex;align-items:stretch;min-height:54px;margin:10px -10px 0;border-top:1px solid rgba(0,0,0,.18);background:#d8e8f6;border-radius:0 0 6px 6px;}
+.cbar button{flex:none;width:44px;border:0;background:none;color:var(--np-ink);display:grid;place-items:center;}
+.cbar button .ico{width:20px;height:20px;}
+.cbar .ct{flex:1;display:flex;align-items:center;gap:10px;padding:6px 2px;font-family:var(--np-serif);font-size:1.02rem;line-height:1.25;cursor:pointer;}
+.cbar .ct b{flex:none;font-family:var(--np-sans);font-weight:800;font-size:.9rem;}
+
+/* Clue lists */
+.clues{flex:1;min-height:0;overflow:auto;margin:10px 0 0;padding:2px 2px 8px;scroll-behavior:smooth;}
+.clues h3{font-family:var(--np-serif);font-variant:small-caps;font-size:1rem;letter-spacing:.06em;color:var(--text-2);margin:6px 4px 4px;border-bottom:1px solid var(--line-2);padding-bottom:3px;}
+.clue{display:flex;gap:8px;padding:7px 8px;border-radius:10px;border-left:3px solid transparent;cursor:pointer;color:var(--text-2);font-size:.95rem;line-height:1.35;}
+.clue b{flex:none;min-width:18px;color:var(--text);font-weight:900;}
+.clue.on{background:rgba(169,209,247,.18);border-left-color:var(--hl);color:var(--text);}
+.clue.x{background:rgba(255,255,255,.04);}
+.clue.full{color:var(--text-3);}
+.clue.full b{color:var(--text-3);}
+
 /* Keyboard */
-.cx-kb{flex:none;display:flex;flex-direction:column;gap:8px;padding:4px 0 calc(10px + var(--safe-b));width:100%;max-width:560px;margin:0 auto;}
-.cx-kb-row{display:flex;gap:6px;justify-content:center;}
-.cx-kb-row .half{flex:.5;}
-.cx-key{
-  flex:1;height:54px;padding:0;border-radius:8px;border:0;background:var(--cx-key);color:var(--text);
-  font-family:var(--font);font-size:1.15rem;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;touch-action:manipulation;transition:background .12s,transform .06s;
+.kb{flex:none;display:flex;flex-direction:column;gap:6px;padding:8px 0 calc(var(--safe-b) + 8px);user-select:none;}
+.kb .r{display:flex;justify-content:center;gap:5px;}
+.key{flex:1;max-width:42px;height:48px;border:0;border-radius:8px;background:rgba(255,255,255,.16);color:var(--text);font-weight:900;font-size:1.08rem;box-shadow:0 3px 0 rgba(0,0,0,.35);touch-action:manipulation;}
+.key:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);background:rgba(255,255,255,.26);}
+.key.wide{max-width:64px;flex:1.5;}
+.key .ico{width:22px;height:22px;margin:auto;}
+.kb .half{flex:.5;max-width:20px;}
+
+/* Picker */
+.pk h3{font-size:.8rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:14px 0 8px;}
+.pk .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;}
+.pk button{position:relative;min-height:58px;border:0;border-radius:14px;background:rgba(255,255,255,.07);color:var(--text);font-weight:900;font-size:1.1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;}
+.pk button small{font-size:.68rem;font-weight:800;color:var(--text-3);}
+.pk button.done{background:color-mix(in srgb,var(--green) 18%,transparent);}
+.pk button.done small{color:var(--green);}
+.pk button.cur{box-shadow:inset 0 0 0 2px var(--accent);}
+.pk button.prog small{color:var(--yellow);}
+.hs{display:flex;flex-direction:column;gap:8px;}
+.hs .row2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.hs .row2 .btn{min-height:48px;padding:0 6px;font-size:.95rem;}
+
+@media (max-height:740px){.key{height:42px;}.cbar{min-height:48px;}.kb{gap:5px;}}
+@media (min-width:860px){
+  .cw{max-width:1040px;}
+  .main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:24px;align-items:start;}
+  .paper{padding:16px 16px 0;}
+  .cbar{margin:14px -16px 0;}
+  .clues{margin:0;max-height:calc(100dvh - var(--safe-t) - 130px);display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-content:start;}
+  .clues > div{min-width:0;}
 }
-.cx-key.wide{flex:1.55;}
-.cx-key svg{width:24px;height:24px;}
-.cx-key:active{background:var(--cx-key-hi);transform:scale(.95);}
-@media (max-height:720px){.cx-key{height:46px;}.cx-kb{gap:6px;}.cx-cluebar{min-height:50px;}}
-.cx-status{display:none;}
-/* Result sheet */
-.cx-result{position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
-.cx-result.show{display:flex;animation:gn-fade .2s ease both;}
-.cx-sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));text-align:center;animation:gn-sheet .32s var(--ease) both;}
-@media (min-width:600px){.cx-result{align-items:center;}.cx-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
-.cx-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 16px;}
-.cx-result-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.cx-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;}
-.cx-result-sub{font-size:.95rem;color:var(--text-2);margin:4px 0 16px;}
-.cx-progress{display:flex;gap:6px;justify-content:center;margin-bottom:18px;}
-.cx-progress span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;background:var(--surface-2);color:var(--text-3);border:1px solid var(--line-2);}
-.cx-progress span.on{background:rgba(74,222,128,.15);color:var(--green);border-color:rgba(74,222,128,.45);}
-.cx-res-actions{display:flex;flex-direction:column;gap:8px;}
+@media (min-width:860px) and (pointer:fine){.kb{display:none;}}
+.main{display:contents;}
+@media (min-width:860px){.main{display:grid;}}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mini Crossword</span>
-</nav>
-<main class="cx-app">
-  <div class="cx-picker" id="cx-picker"></div>
-  <div class="cx-main">
-    <div class="cx-grid-area"><div class="cx-grid" id="cx-grid"></div></div>
-    <div class="cx-clues" id="cx-clues"></div>
+<div class="cw" id="app">
+  <div class="top">
+    <button type="button" class="puz" id="puz"></button>
+    <button type="button" class="clock" id="clock" aria-label="Pause"></button>
+    <span class="sp"></span>
+    <button type="button" class="btn btn-soft btn-sm" id="check">Check</button>
+    <button type="button" class="btn btn-soft btn-sm" id="reveal">Reveal</button>
   </div>
-  <div class="cx-status" id="cx-status"></div>
-  <div class="cx-cluebar" id="cx-cluebar">
-    <button id="cx-prev" aria-label="Previous clue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-    <div class="cx-cluetext" id="cx-cluetext" role="button" aria-label="Switch direction"></div>
-    <button id="cx-next" aria-label="Next clue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  <div class="main">
+    <section class="paper" id="paper">
+      <div class="mast"><b id="mast">Crossword</b><span id="by"></span></div>
+      <div class="gwrap"><div class="grid" id="grid"></div></div>
+      <div class="cbar">
+        <button type="button" id="prev" aria-label="Previous clue"></button>
+        <div class="ct" id="ct" role="button" aria-label="Switch direction"></div>
+        <button type="button" id="next" aria-label="Next clue"></button>
+      </div>
+    </section>
+    <div class="clues" id="clues"></div>
   </div>
-  <div class="cx-actions">
-    <button class="btn btn-outline" id="cx-check">Check</button>
-    <button class="btn btn-outline" id="cx-reveal-cell">Reveal letter</button>
-    <button class="btn btn-outline" id="cx-clear">Clear</button>
-  </div>
-  <div class="cx-kb" id="cx-kb">
-    <div class="cx-kb-row" id="cx-kb-r0"></div>
-    <div class="cx-kb-row" id="cx-kb-r1"></div>
-    <div class="cx-kb-row" id="cx-kb-r2"></div>
-  </div>
-</main>
-
-<div class="cx-result" id="cx-result">
-  <div class="cx-sheet" role="dialog" aria-modal="true">
-    <div class="cx-grab"></div>
-    <div class="cx-result-emoji">🎉</div>
-    <div class="cx-result-title">Puzzle solved!</div>
-    <div class="cx-result-sub" id="cx-result-sub"></div>
-    <div class="cx-progress" id="cx-progress"></div>
-    <div class="cx-res-actions">
-      <button class="btn btn-gold btn-block" id="cx-next-puz">Next puzzle</button>
-      <button class="btn btn-ghost btn-block" id="cx-close">Admire the grid</button>
-    </div>
-  </div>
+  <div class="kb" id="kb"></div>
 </div>
-
 <script>
-'use strict';
-// ── Puzzle data ─────────────────────────────────────────────────────────────
-// Grid layout for all puzzles (5×5):
-//   Even rows (0,2,4): cols 0,2,4 white; cols 1,3 black
-//   Odd rows (1,3): all cols white (across words)
-// Numbering: (0,0)=1, (0,2)=2, (0,4)=3, (1,0)=4-Across, (3,0)=5-Across
-//
-// Verified intersections for each puzzle:
-//   1A[0]=1D[1], 1A[2]=2D[1], 1A[4]=3D[1]
-//   2A[0]=1D[3], 2A[2]=2D[3], 2A[4]=3D[3]
+(function () {
+  'use strict';
+  var el = Kit.el, $ = function (id) { return document.getElementById(id); };
+  var KEY = 'crossword', SAVE = 'crossword_state';
 
-const PUZZLES=[
-  { title:'Puzzle 1',
-    across:[
-      {n:4,clue:'Across: Sound input/output format',answer:'AUDIO'},
-      {n:5,clue:'Across: More than usual; bonus',  answer:'EXTRA'},
-    ],
-    down:[
-      {n:1,clue:'Down: Ocean swells',             answer:'WAVES'},
-      {n:2,clue:'Down: Makes corrections to text', answer:'EDITS'},
-      {n:3,clue:'Down: Reef-building marine animal; pinkish-orange color', answer:'CORAL'},
-    ]
-  },
-  { title:'Puzzle 2',
-    across:[
-      {n:4,clue:'Across: Striped big cat',          answer:'TIGER'},
-      {n:5,clue:'Across: Synthetic stocking fabric', answer:'NYLON'},
-    ],
-    down:[
-      {n:1,clue:"Down: Rise to one's feet",         answer:'STAND'},
-      {n:2,clue:'Down: Quick and nimble',            answer:'AGILE'},
-      {n:3,clue:'Down: Popular direction; fashion',  answer:'TREND'},
-    ]
-  },
-  { title:'Puzzle 3',
-    across:[
-      {n:4,clue:'Across: Extreme; beyond normal',  answer:'ULTRA'},
-      {n:5,clue:'Across: Love deeply',              answer:'ADORE'},
-    ],
-    down:[
-      {n:1,clue:'Down: Sweet crystalline ingredient', answer:'SUGAR'},
-      {n:2,clue:'Down: Guiding values of a group',   answer:'ETHOS'},
-      {n:3,clue:'Down: One who makes bread or pastries', answer:'BAKER'},
-    ]
-  },
-  { title:'Puzzle 4',
-    across:[
-      {n:4,clue:'Across: Sour yellow citrus fruit', answer:'LEMON'},
-      {n:5,clue:'Across: Short; concise',           answer:'BRIEF'},
-    ],
-    down:[
-      {n:1,clue:'Down: Spherical map of the Earth', answer:'GLOBE'},
-      {n:2,clue:'Down: Range or scope',             answer:'AMBIT'},
-      {n:3,clue:'Down: Sharp cutting utensil',      answer:'KNIFE'},
-    ]
-  },
-  { title:'Puzzle 5',
-    across:[
-      {n:4,clue:'Across: Chaos and destruction',   answer:'HAVOC'},
-      {n:5,clue:'Across: Latin dance; tomato dip', answer:'SALSA'},
-    ],
-    down:[
-      {n:1,clue:'Down: Board game with pawns and kings', answer:'CHESS'},
-      {n:2,clue:'Down: Wicked deeds (plural)',     answer:'EVILS'},
-      {n:3,clue:'Down: Vast body of salt water',   answer:'OCEAN'},
-    ]
-  },
-  { title:'Puzzle 6',
-    across:[
-      {n:4,clue:'Across: Art of organized sound',  answer:'MUSIC'},
-      {n:5,clue:'Across: Impressive; splendid',    answer:'GRAND'},
-    ],
-    down:[
-      {n:1,clue:'Down: Picture; visual likeness',  answer:'IMAGE'},
-      {n:2,clue:'Down: Written composition; formal piece', answer:'ESSAY'},
-      {n:3,clue:'Down: Corrosive compounds (plural)', answer:'ACIDS'},
-    ]
-  },
-  { title:'Puzzle 7',
-    across:[
-      {n:4,clue:'Across: Tidy; free of mess',      answer:'CLEAN'},
-      {n:5,clue:'Across: Courageous; bold',        answer:'BRAVE'},
-    ],
-    down:[
-      {n:1,clue:'Down: Underwater breathing gear', answer:'SCUBA'},
-      {n:2,clue:'Down: Permitted by law; valid',   answer:'LEGAL'},
-      {n:3,clue:"Down: Drop to one's knees",       answer:'KNEEL'},
-    ]
-  },
-];
+  // ── Puzzles ───────────────────────────────────────────────────────────────
+  // grid: rows of letters, '#' = black square. clues: answer -> clue.
+  // Numbering is worked out from the grid, like a newspaper puzzle.
+  var PUZZLES = /*PUZZLES*/[];
 
-// ── Grid helpers ──────────────────────────────────────────────────────────────
-// isBlack: even rows, odd cols are black squares
-function isBlack(r,c){return r%2===0&&c%2===1;}
-// Cell number: only certain cells get clue numbers
-function cellNum(r,c){
-  if(r===0&&c===0)return 1;
-  if(r===0&&c===2)return 2;
-  if(r===0&&c===4)return 3;
-  if(r===1&&c===0)return 4;
-  if(r===3&&c===0)return 5;
-  return null;
-}
-// Which cells belong to an entry
-function entryCells(dir,startR,startC){
-  const cells=[];
-  if(dir==='across'){for(let c=startC;c<5;c++){if(!isBlack(startR,c))cells.push([startR,c]);else break;}}
-  else {for(let r=startR;r<5;r++){if(!isBlack(r,startC))cells.push([r,startC]);else break;}}
-  return cells;
-}
-// Entry start positions:
-const ENTRY_STARTS={
-  across:[{n:4,r:1,c:0},{n:5,r:3,c:0}],
-  down:[{n:1,r:0,c:0},{n:2,r:0,c:2},{n:3,r:0,c:4}],
-};
-
-// ── State ─────────────────────────────────────────────────────────────────────
-let puzIdx=0;
-let grid=Array.from({length:5},()=>Array(5).fill(''));
-let solvedPuzzles=new Set();
-let selR=1,selC=0,selDir='across';
-let solved=false;
-
-// Build solution map from current puzzle
-function getSolution(){
-  const sol=Array.from({length:5},()=>Array(5).fill(null));
-  const puz=PUZZLES[puzIdx];
-  // Place across answers
-  puz.across.forEach((entry,i)=>{
-    const {r,c}=ENTRY_STARTS.across[i];
-    [...entry.answer].forEach((ch,j)=>{ sol[r][c+j]=ch; });
+  Kit.init({
+    id: 'crossword',
+    theme: { felt: ['#2b3a55', '#1c2840', '#121b2d'] },
+    confirmNew: false,
+    onNew: function () { openPicker(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'board', label: 'Choose a puzzle', onClick: function () { openPicker(); } },
+      { icon: 'close', label: 'Clear this puzzle', onClick: function () { clearAsk(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Crossword: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Fill the grid so every across and down answer matches its clue.</p>' +
+      '<h3>Filling in</h3><ul><li><b>Tap a square</b> to pick it. The highlighted row or column is the word you are typing, and its clue shows under the grid.</li>' +
+      '<li><b>Tap the same square again</b> to switch between Across and Down.</li>' +
+      '<li>Type with the keyboard. The cursor moves along the word for you. Use the arrows by the clue to jump to the previous or next clue.</li>' +
+      '<li>Each number in the grid starts an answer. 1-Across reads left to right; 1-Down reads top to bottom.</li></ul>' +
+      '<h3>Stuck?</h3><ul><li><b>Check</b> marks wrong letters with a red slash. Correct checked letters turn blue.</li>' +
+      '<li><b>Reveal</b> fills in the answer. Revealed squares get a little red corner.</li>' +
+      '<li>You can check or reveal one <b>letter</b>, the whole <b>word</b>, or the whole <b>puzzle</b>.</li></ul>' +
+      '<h3>The puzzles</h3><p><b>Minis</b> are quick 5×5 grids made for all ages. <b>Bigger</b> puzzles are 7×7 for a longer solve. The timer runs while you play; tap it to pause.</p>'
   });
-  // Place down answers (overwrites same cells — they must match due to verified intersections)
-  puz.down.forEach((entry,i)=>{
-    const {r,c}=ENTRY_STARTS.down[i];
-    [...entry.answer].forEach((ch,j)=>{ sol[r+j][c]=ch; });
-  });
-  return sol;
-}
+  $('prev').innerHTML = Kit.icon('back'); $('next').innerHTML = Kit.icon('right');
 
-// ── Build UI ──────────────────────────────────────────────────────────────────
-function buildPicker(){
-  const el=document.getElementById('cx-picker');
-  el.innerHTML='';
-  PUZZLES.forEach((_,i)=>{
-    const btn=document.createElement('button');
-    btn.className='cx-puz-btn'+(i===puzIdx?' active':'')+(solvedPuzzles.has(i)?' solved':'');
-    btn.textContent=i+1;
-    btn.setAttribute('aria-label','Puzzle '+(i+1)+(solvedPuzzles.has(i)?' (solved)':''));
-    btn.addEventListener('click',async()=>{
-      if(i===puzIdx)return;
-      if(!solved&&grid.some(row=>row.some(Boolean))){
-        const ok=await GN.confirm('Switch puzzles?',{title:'Switch to puzzle '+(i+1)+'?',body:'Letters in this puzzle will be cleared.',ok:'Switch'});
-        if(!ok)return;
+  // ── Puzzle model ──────────────────────────────────────────────────────────
+  var Z = null; // current puzzle: {p, n, sol[][], num[][], words:[{dir,n,cells,ans,clue}], at:{r_c:{a:wi,d:wi}}}
+  function model(p) {
+    var n = p.grid.length, sol = p.grid.map(function (r) { return r.toUpperCase().split(''); });
+    var num = [], words = [], at = {}, k = 0;
+    function blk(r, c) { return r < 0 || c < 0 || r >= n || c >= n || sol[r][c] === '#'; }
+    for (var r = 0; r < n; r++) { num.push([]); for (var c = 0; c < n; c++) {
+      var a = !blk(r, c) && blk(r, c - 1) && !blk(r, c + 1), d = !blk(r, c) && blk(r - 1, c) && !blk(r + 1, c);
+      num[r].push(a || d ? ++k : 0);
+      [['a', a, 0, 1], ['d', d, 1, 0]].forEach(function (x) {
+        if (!x[1]) return;
+        var cells = [], rr = r, cc = c;
+        while (!blk(rr, cc)) { cells.push([rr, cc]); rr += x[2]; cc += x[3]; }
+        var ans = cells.map(function (q) { return sol[q[0]][q[1]]; }).join('');
+        words.push({ dir: x[0], n: k, cells: cells, ans: ans, clue: p.clues[ans.toLowerCase()] || '(clue missing)' });
+      });
+    } }
+    words.sort(function (x, y) { return (x.dir === y.dir ? 0 : x.dir === 'a' ? -1 : 1) || x.n - y.n; });
+    words.forEach(function (w, i) { w.cells.forEach(function (q) { var key = q[0] + '_' + q[1]; at[key] = at[key] || {}; at[key][w.dir] = i; }); });
+    return { p: p, n: n, sol: sol, num: num, words: words, at: at };
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S = {id, fill[][], marks{r_c:'ok'|'bad'|'rev'}, r, c, dir, secs, started, checks, reveals, solved}
+  var S = null, undoStack = [], tick = null, paused = false;
+  function all() { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) { return {}; } }
+  function save() {
+    var a = all(); a.cur = S.id; a.prog = a.prog || {}; a.prog[S.id] = S;
+    try { localStorage.setItem(SAVE, JSON.stringify(a)); } catch (e) {}
+    if (!S.solved && filledCount()) Kit.resume.set(Z.p.title + ' · ' + fmt(S.secs)); else Kit.resume.clear();
+  }
+  function solvedMap() {
+    var m = {};
+    try { GameHistory.load(KEY).forEach(function (e) { if (e.pid && (!m[e.pid] || e.secs < m[e.pid])) m[e.pid] = e.secs; }); } catch (e) {}
+    return m;
+  }
+  function byId(id) { for (var i = 0; i < PUZZLES.length; i++) if (PUZZLES[i].id === id) return PUZZLES[i]; return null; }
+  function open(id) {
+    var p = byId(id) || PUZZLES[0];
+    Z = model(p);
+    var a = all(), st = a.prog && a.prog[p.id];
+    if (st && !st.solved && st.fill && st.fill.length === Z.n) S = st;
+    else S = { id: p.id, fill: Z.sol.map(function (r) { return r.map(function (ch) { return ch === '#' ? '#' : ''; }); }), marks: {}, r: 0, c: 0, dir: 'a', secs: 0, started: Date.now(), checks: 0, reveals: 0, solved: false };
+    if (Z.sol[S.r][S.c] === '#') { var w0 = Z.words[0]; S.r = w0.cells[0][0]; S.c = w0.cells[0][1]; S.dir = w0.dir; }
+    undoStack = []; paused = false;
+    Kit.gameStart();
+    save(); build(); startClock();
+  }
+
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  function fmt(s) { s = Math.floor(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  function startClock() {
+    clearInterval(tick);
+    tick = setInterval(function () {
+      if (document.hidden || paused || !S || S.solved || document.querySelector('.k-win')) return;
+      S.secs++; paintClock(); if (S.secs % 5 === 0) save();
+    }, 1000);
+    paintClock();
+  }
+  function paintClock() { $('clock').innerHTML = Kit.icon(paused ? 'play' : 'history') + '<span>' + fmt(S.secs) + '</span>'; $('clock').setAttribute('aria-label', paused ? 'Resume' : 'Pause'); }
+  $('clock').addEventListener('click', function () { if (S.solved) return; setPaused(!paused); });
+  function setPaused(v) {
+    paused = v; Kit.sfx('tap');
+    $('grid').classList.toggle('paused', paused);
+    var cov = $('grid').querySelector('.pausecover'); if (cov) cov.remove();
+    if (paused) $('grid').appendChild(el('div', { class: 'pausecover' }, [el('button', { type: 'button', class: 'btn', html: Kit.icon('play') + '<span>Resume</span>', onclick: function () { setPaused(false); } })]));
+    paintClock(); save();
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden && S) save(); });
+
+  // ── Build the page ────────────────────────────────────────────────────────
+  var sqs = [];
+  function build() {
+    var p = Z.p, g = $('grid');
+    $('puz').innerHTML = '<span>' + Kit.esc(p.title) + '</span>' + Kit.icon('down');
+    $('mast').textContent = p.size === 'big' ? 'The Big Crossword' : 'The Mini Crossword';
+    $('by').textContent = 'No. ' + (PUZZLES.indexOf(p) + 1) + ' · ' + Z.n + '×' + Z.n;
+    g.innerHTML = ''; g.className = 'grid'; g.style.setProperty('--n', Z.n);
+    g.style.setProperty('--gw', Z.n === 5 ? '360px' : '440px');
+    sqs = [];
+    for (var r = 0; r < Z.n; r++) { sqs.push([]); for (var c = 0; c < Z.n; c++) {
+      var b = Z.sol[r][c] === '#';
+      var sq = el('div', { class: 'sq' + (b ? ' blk' : ''), 'data-r': r, 'data-c': c, style: { '--d': r + c } });
+      if (!b) {
+        if (Z.num[r][c]) sq.appendChild(el('span', { class: 'n', text: String(Z.num[r][c]) }));
+        sq.appendChild(el('span', { class: 'l' }));
+        (function (r, c) { sq.addEventListener('pointerdown', function (e) { e.preventDefault(); tapSq(r, c); }); })(r, c);
       }
-      haptic('select');loadPuzzle(i);_save_cword();
+      g.appendChild(sq); sqs[r].push(sq);
+    } }
+    sizeCells();
+    // Clue lists
+    var cl = $('clues'); cl.innerHTML = '';
+    [['a', 'Across'], ['d', 'Down']].forEach(function (x) {
+      var box = el('div', null, [el('h3', { text: x[1] })]);
+      Z.words.forEach(function (w, i) {
+        if (w.dir !== x[0]) return;
+        box.appendChild(el('div', { class: 'clue', id: 'cl' + i, onclick: function () { Kit.sfx('tap'); goWord(i); } }, [el('b', { text: String(w.n) }), el('span', { text: w.clue })]));
+      });
+      cl.appendChild(box);
     });
-    el.appendChild(btn);
-  });
-}
+    if (S.solved) g.classList.add('done');
+    paint();
+  }
+  function sizeCells() { var g = $('grid'); var w = g.getBoundingClientRect().width || 340; g.style.setProperty('--cell', (w / Z.n) + 'px'); }
+  window.addEventListener('resize', function () { if (Z) sizeCells(); });
 
-function buildGrid(){
-  const el=document.getElementById('cx-grid');
-  el.innerHTML='';
-  for(let r=0;r<5;r++){
-    for(let c=0;c<5;c++){
-      const cell=document.createElement('div');
-      cell.className='cx-cell';cell.dataset.r=r;cell.dataset.c=c;
-      const inner=document.createElement('div');
-      inner.className='cx-cell-inner'+(isBlack(r,c)?' black':'');
-      inner.id=`cx-${r}-${c}`;
-      if(!isBlack(r,c)){
-        const num=cellNum(r,c);
-        if(num){const nEl=document.createElement('span');nEl.className='cx-num';nEl.textContent=num;inner.appendChild(nEl);}
-        inner.addEventListener('click',()=>clickCell(r,c));
-      }
-      cell.appendChild(inner);
-      el.appendChild(cell);
+  function curWord() { var a = Z.at[S.r + '_' + S.c] || {}; return a[S.dir] != null ? a[S.dir] : a[S.dir === 'a' ? 'd' : 'a']; }
+  function paint() {
+    var wi = curWord(), w = Z.words[wi];
+    if (w && w.dir !== S.dir) S.dir = w.dir;
+    var inWord = {}; if (w) w.cells.forEach(function (q) { inWord[q[0] + '_' + q[1]] = 1; });
+    for (var r = 0; r < Z.n; r++) for (var c = 0; c < Z.n; c++) {
+      var sq = sqs[r][c]; if (Z.sol[r][c] === '#') continue;
+      var k = r + '_' + c, m = S.marks[k];
+      sq.querySelector('.l').textContent = S.fill[r][c];
+      sq.classList.toggle('word', !S.solved && !!inWord[k]);
+      sq.classList.toggle('sel', !S.solved && r === S.r && c === S.c);
+      sq.classList.toggle('ok', m === 'ok' || m === 'rev');
+      sq.classList.toggle('bad', m === 'bad');
+      sq.classList.toggle('rev', m === 'rev');
     }
-  }
-  renderGrid();
-}
-
-function renderGrid(){
-  const sol=getSolution();
-  for(let r=0;r<5;r++){
-    for(let c=0;c<5;c++){
-      if(isBlack(r,c))continue;
-      const inner=document.getElementById(`cx-${r}-${c}`);
-      // Clear state classes
-      inner.classList.remove('selected','highlighted','correct','wrong');
-      // Content: preserve letter above number span
-      const numSpan=inner.querySelector('.cx-num');
-      inner.textContent=grid[r][c];
-      if(numSpan)inner.prepend(numSpan);
-    }
-  }
-  highlightSelection();
-}
-
-function highlightSelection(){
-  if(isBlack(selR,selC))return;
-  const cells=getActiveCells();
-  // First, clear all highlights
-  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
-    if(!isBlack(r,c)){const el=document.getElementById(`cx-${r}-${c}`);el.classList.remove('selected','highlighted');}
-  }
-  // Highlight active entry
-  cells.forEach(([r,c])=>{document.getElementById(`cx-${r}-${c}`).classList.add('highlighted');});
-  // Mark selected cell
-  document.getElementById(`cx-${selR}-${selC}`).classList.add('selected');
-  // Update clue highlights
-  highlightActiveClue();
-}
-
-function getActiveCells(){
-  const start=ENTRY_STARTS[selDir].find(e=>{
-    const cells=entryCells(selDir,e.r,e.c);
-    return cells.some(([r,c])=>r===selR&&c===selC);
-  });
-  if(!start)return [];
-  return entryCells(selDir,start.r,start.c);
-}
-
-function getActiveEntry(){
-  return ENTRY_STARTS[selDir].find(e=>{
-    const cells=entryCells(selDir,e.r,e.c);
-    return cells.some(([r,c])=>r===selR&&c===selC);
-  });
-}
-
-function highlightActiveClue(){
-  document.querySelectorAll('.cx-clue-item').forEach(el=>el.classList.remove('active'));
-  const entry=getActiveEntry();
-  if(entry){
-    const el=document.getElementById(`cx-clue-${selDir}-${entry.n}`);
-    if(el){
-      el.classList.add('active');
-      const box=document.getElementById('cx-clues');
-      if(box.offsetParent){const t=el.offsetTop-box.offsetTop;if(t<box.scrollTop||t+el.offsetHeight>box.scrollTop+box.clientHeight)box.scrollTo({top:t-40,behavior:'smooth'});}
-    }
-    const clue=PUZZLES[puzIdx][selDir].find(x=>x.n===entry.n);
-    document.getElementById('cx-cluetext').innerHTML=`<b>${entry.n}${selDir==='across'?'A':'D'}</b><span></span>`;
-    document.getElementById('cx-cluetext').lastChild.textContent=clue?clue.clue.replace(/^(Across|Down): ?/,''):'';
-  }
-  // Dim clues whose entries are completely filled
-  ['across','down'].forEach(dir=>ENTRY_STARTS[dir].forEach(e=>{
-    const it=document.getElementById(`cx-clue-${dir}-${e.n}`);
-    if(it)it.classList.toggle('done',entryCells(dir,e.r,e.c).every(([r,c])=>grid[r][c]!==''));
-  }));
-}
-
-function buildClues(){
-  const puz=PUZZLES[puzIdx];
-  const el=document.getElementById('cx-clues');
-  el.innerHTML='';
-  ['across','down'].forEach(dir=>{
-    const sec=document.createElement('div');sec.className='cx-clue-section';
-    const title=document.createElement('div');title.className='cx-clue-title';
-    title.textContent=dir==='across'?'Across':'Down';
-    sec.appendChild(title);
-    const entries=puz[dir];
-    entries.forEach(entry=>{
-      const item=document.createElement('div');
-      item.className='cx-clue-item';item.id=`cx-clue-${dir}-${entry.n}`;
-      const numEl=document.createElement('span');numEl.className='cx-clue-num';numEl.textContent=entry.n+'.';
-      item.appendChild(numEl);
-      // Strip direction prefix from clue for display
-      item.appendChild(document.createTextNode(entry.clue.replace(/^(Across|Down): ?/,'')));
-      item.addEventListener('click',()=>selectEntry(dir,entry.n));
-      sec.appendChild(item);
+    // Clue bar + lists
+    var other = (Z.at[S.r + '_' + S.c] || {})[S.dir === 'a' ? 'd' : 'a'];
+    $('ct').innerHTML = w ? '<b>' + w.n + (w.dir === 'a' ? 'A' : 'D') + '</b><span>' + Kit.esc(w.clue) + '</span>' : '';
+    Z.words.forEach(function (x, i) {
+      var e = $('cl' + i); if (!e) return;
+      e.classList.toggle('on', i === wi); e.classList.toggle('x', i === other);
+      e.classList.toggle('full', x.cells.every(function (q) { return S.fill[q[0]][q[1]]; }));
     });
-    el.appendChild(sec);
-  });
-}
+    var on = $('cl' + wi), box = $('clues');
+    if (on && box.scrollHeight > box.clientHeight) {
+      var t = on.offsetTop - box.offsetTop;
+      if (t < box.scrollTop || t + on.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = Math.max(0, t - 30);
+    }
+    $('check').disabled = $('reveal').disabled = !!S.solved;
+  }
 
-const BKSP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>';
-function buildKeyboard(){
-  const rows=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM⌫'];
-  rows.forEach((row,ri)=>{
-    const el=document.getElementById('cx-kb-r'+ri);
-    el.innerHTML='';
-    const spacer=cls=>{const sp=document.createElement('span');sp.className=cls;el.appendChild(sp);};
-    if(ri===1)spacer('half');
-    if(ri===2){const sp=document.createElement('span');sp.style.flex='1.55';el.appendChild(sp);}
-    row.split('').forEach(k=>{
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='cx-key'+(k==='⌫'?' wide':'');
-      if(k==='⌫'){btn.innerHTML=BKSP_SVG;btn.setAttribute('aria-label','Delete');}
-      else btn.textContent=k;
-      btn.addEventListener('pointerdown',e=>{e.preventDefault();btn._pd=true;handleKey(k);});
-      btn.addEventListener('click',()=>{if(btn._pd){btn._pd=false;return;}handleKey(k);});
-      el.appendChild(btn);
+  // ── Moving around ─────────────────────────────────────────────────────────
+  function tapSq(r, c) {
+    if (S.solved || paused) return;
+    if (r === S.r && c === S.c) { var a = Z.at[r + '_' + c]; if (a[S.dir === 'a' ? 'd' : 'a'] != null) S.dir = S.dir === 'a' ? 'd' : 'a'; }
+    else { S.r = r; S.c = c; if ((Z.at[r + '_' + c] || {})[S.dir] == null) S.dir = S.dir === 'a' ? 'd' : 'a'; }
+    Kit.sfx('tap'); paint();
+  }
+  function goWord(i, preferEmpty) {
+    if (S.solved) return;
+    var w = Z.words[i]; S.dir = w.dir;
+    var q = w.cells.filter(function (x) { return !S.fill[x[0]][x[1]]; })[0] || w.cells[0];
+    S.r = q[0]; S.c = q[1]; paint();
+  }
+  function step(d) { var i = curWord(), n = Z.words.length; Kit.sfx('tap'); goWord((i + d + n) % n); }
+  $('prev').addEventListener('click', function () { step(-1); });
+  $('next').addEventListener('click', function () { step(1); });
+  $('ct').addEventListener('click', function () { tapSq(S.r, S.c); });
+  function nextWordWithGap(from) {
+    for (var k = 1; k <= Z.words.length; k++) {
+      var i = (from + k) % Z.words.length;
+      if (Z.words[i].cells.some(function (q) { return !S.fill[q[0]][q[1]]; })) return i;
+    }
+    return -1;
+  }
+  function advance() {
+    var wi = curWord(), w = Z.words[wi], idx = w.cells.findIndex(function (q) { return q[0] === S.r && q[1] === S.c; });
+    // next empty square later in this word, else next word with a gap
+    for (var k = idx + 1; k < w.cells.length; k++) { var q = w.cells[k]; if (!S.fill[q[0]][q[1]]) { S.r = q[0]; S.c = q[1]; return; } }
+    for (k = 0; k < idx; k++) { q = w.cells[k]; if (!S.fill[q[0]][q[1]]) { S.r = q[0]; S.c = q[1]; return; } }
+    var nx = nextWordWithGap(wi); if (nx >= 0) goWord(nx);
+    else if (idx < w.cells.length - 1) { S.r = w.cells[idx + 1][0]; S.c = w.cells[idx + 1][1]; }
+  }
+  function locked(r, c) { var m = S.marks[r + '_' + c]; return m === 'ok' || m === 'rev'; }
+
+  // ── Typing ────────────────────────────────────────────────────────────────
+  function snap() { undoStack.push(JSON.stringify({ fill: S.fill, marks: S.marks, r: S.r, c: S.c, dir: S.dir })); if (undoStack.length > 200) undoStack.shift(); }
+  function undo() {
+    if (!undoStack.length || S.solved) { Kit.toast('Nothing to undo'); return; }
+    var u = JSON.parse(undoStack.pop()); S.fill = u.fill; S.marks = u.marks; S.r = u.r; S.c = u.c; S.dir = u.dir;
+    Kit.sfx('tap'); save(); paint();
+  }
+  function type(ch) {
+    if (S.solved || paused) return;
+    if (!locked(S.r, S.c)) {
+      snap();
+      S.fill[S.r][S.c] = ch; delete S.marks[S.r + '_' + S.c];
+      var sq = sqs[S.r][S.c]; sq.classList.remove('type'); void sq.offsetWidth; sq.classList.add('type');
+      Kit.sfx('tap'); Kit.haptic('tick');
+    }
+    advance(); paint(); save(); checkDone();
+  }
+  function back() {
+    if (S.solved || paused) return;
+    var wi = curWord(), w = Z.words[wi], idx = w.cells.findIndex(function (q) { return q[0] === S.r && q[1] === S.c; });
+    if (!S.fill[S.r][S.c] || locked(S.r, S.c)) {
+      if (idx > 0) { S.r = w.cells[idx - 1][0]; S.c = w.cells[idx - 1][1]; }
+      else { var pi = (wi - 1 + Z.words.length) % Z.words.length, pw = Z.words[pi]; S.dir = pw.dir; S.r = pw.cells[pw.cells.length - 1][0]; S.c = pw.cells[pw.cells.length - 1][1]; }
+    }
+    if (S.fill[S.r][S.c] && !locked(S.r, S.c)) { snap(); S.fill[S.r][S.c] = ''; delete S.marks[S.r + '_' + S.c]; }
+    Kit.sfx('tap'); paint(); save();
+  }
+  function move(dr, dc) {
+    var r = S.r, c = S.c, want = dr ? 'd' : 'a';
+    if (S.dir !== want && (Z.at[r + '_' + c] || {})[want] != null) { S.dir = want; paint(); return; }
+    do { r += dr; c += dc; } while (r >= 0 && c >= 0 && r < Z.n && c < Z.n && Z.sol[r][c] === '#');
+    if (r >= 0 && c >= 0 && r < Z.n && c < Z.n) { S.r = r; S.c = c; paint(); }
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!S || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.k-scrim,.k-win')) return;
+    if (/^[a-z]$/i.test(e.key)) { e.preventDefault(); type(e.key.toUpperCase()); }
+    else if (e.key === 'Backspace') { e.preventDefault(); back(); }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); step(e.shiftKey ? -1 : 1); }
+    else if (e.key === ' ') { e.preventDefault(); tapSq(S.r, S.c); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); move(0, 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); move(0, -1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(1, 0); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1, 0); }
+  });
+  (function buildKb() {
+    var kb = $('kb');
+    ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM-'].forEach(function (row, ri) {
+      var r = el('div', { class: 'r' });
+      if (ri === 1) r.appendChild(el('span', { class: 'half' }));
+      if (ri === 2) r.appendChild(el('span', { class: 'half' }));
+      row.split('').forEach(function (k) {
+        var b = el('button', { type: 'button', class: 'key' + (k === '-' ? ' wide' : ''), 'aria-label': k === '-' ? 'Delete' : k, html: k === '-' ? '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>' : k });
+        b.addEventListener('pointerdown', function (e) { e.preventDefault(); if (k === '-') back(); else type(k); });
+        r.appendChild(b);
+      });
+      if (ri === 1) r.appendChild(el('span', { class: 'half' }));
+      kb.appendChild(r);
     });
-    if(ri===1)spacer('half');
-  });
-}
+  })();
 
-// ── Interaction ───────────────────────────────────────────────────────────────
-function clickCell(r,c){
-  if(solved)return;
-  if(r===selR&&c===selC){
-    // Toggle direction
-    const otherDir=selDir==='across'?'down':'across';
-    const otherEntry=ENTRY_STARTS[otherDir].find(e=>entryCells(otherDir,e.r,e.c).some(([er,ec])=>er===r&&ec===c));
-    if(otherEntry){selDir=otherDir;}
-  } else {
-    selR=r;selC=c;
-    // Prefer across if cell is in an across entry
-    const inAcross=ENTRY_STARTS.across.some(e=>entryCells('across',e.r,e.c).some(([er,ec])=>er===r&&ec===c));
-    if(!inAcross)selDir='down';
-    else if(selDir==='down'){
-      const inDown=ENTRY_STARTS.down.some(e=>entryCells('down',e.r,e.c).some(([er,ec])=>er===r&&ec===c));
-      if(!inDown)selDir='across';
+  // ── Check and reveal ──────────────────────────────────────────────────────
+  function cellsFor(scope) {
+    if (scope === 'letter') return [[S.r, S.c]];
+    if (scope === 'word') return Z.words[curWord()].cells;
+    var out = []; for (var r = 0; r < Z.n; r++) for (var c = 0; c < Z.n; c++) if (Z.sol[r][c] !== '#') out.push([r, c]);
+    return out;
+  }
+  function doCheck(scope) {
+    snap(); S.checks++;
+    var bad = 0, empty = 0;
+    cellsFor(scope).forEach(function (q) {
+      var r = q[0], c = q[1], k = r + '_' + c;
+      if (!S.fill[r][c]) { empty++; return; }
+      if (S.marks[k] === 'rev') return;
+      if (S.fill[r][c] === Z.sol[r][c]) S.marks[k] = 'ok'; else { S.marks[k] = 'bad'; bad++; }
+    });
+    paint(); save();
+    if (bad) { Kit.sfx('bad'); Kit.haptic('error'); Kit.toast(bad + (bad === 1 ? ' square is' : ' squares are') + ' wrong'); }
+    else { Kit.sfx('good'); Kit.toast(empty ? 'All good so far' : 'All correct'); }
+    checkDone();
+  }
+  function doReveal(scope) {
+    snap(); S.reveals++;
+    cellsFor(scope).forEach(function (q) {
+      var r = q[0], c = q[1], k = r + '_' + c;
+      if (S.fill[r][c] === Z.sol[r][c] && S.marks[k] === 'ok') return;
+      if (S.fill[r][c] !== Z.sol[r][c]) { S.fill[r][c] = Z.sol[r][c]; S.marks[k] = 'rev'; }
+    });
+    Kit.sfx('flip'); if (scope !== 'puzzle') advance(); paint(); save(); checkDone(scope === 'puzzle');
+  }
+  function helpSheet(kind) {
+    if (S.solved) return;
+    Kit.sfx('pop');
+    var s, box = el('div', { class: 'hs' }, [el('p', { class: 'muted', text: kind === 'check' ? 'Wrong letters get a red slash.' : 'Fill in the answer. Revealed squares get a red corner.' })]);
+    var row = el('div', { class: 'row2' });
+    [['letter', 'Letter'], ['word', 'Word'], ['puzzle', 'Puzzle']].forEach(function (x) {
+      row.appendChild(el('button', { type: 'button', class: 'btn ' + (x[0] === 'puzzle' ? 'btn-soft' : 'btn-primary'), text: x[1], onclick: function () {
+        s.close();
+        if (kind === 'reveal' && x[0] === 'puzzle') Kit.confirm('Reveal the whole puzzle?', { ok: 'Reveal it', danger: true, body: 'This ends the puzzle.' }).then(function (ok) { if (ok) doReveal('puzzle'); });
+        else (kind === 'check' ? doCheck : doReveal)(x[0]);
+      } }));
+    });
+    box.appendChild(row);
+    s = Kit.sheet({ title: kind === 'check' ? 'Check' : 'Reveal', node: box, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+  $('check').addEventListener('click', function () { helpSheet('check'); });
+  $('reveal').addEventListener('click', function () { helpSheet('reveal'); });
+  function clearAsk() {
+    Kit.confirm('Clear this puzzle?', { ok: 'Clear', danger: true, body: 'All your letters will be erased and the timer reset.' }).then(function (ok) {
+      if (!ok) return;
+      var a = all(); if (a.prog) delete a.prog[S.id]; try { localStorage.setItem(SAVE, JSON.stringify(a)); } catch (e) {}
+      S.solved = false; open(S.id);
+    });
+  }
+
+  // ── Finishing ─────────────────────────────────────────────────────────────
+  var warned = '';
+  function filledCount() { var n = 0; for (var r = 0; r < Z.n; r++) for (var c = 0; c < Z.n; c++) if (S.fill[r][c] && S.fill[r][c] !== '#') n++; return n; }
+  function checkDone(gaveUp) {
+    if (S.solved) return;
+    var full = true, right = true;
+    for (var r = 0; r < Z.n; r++) for (var c = 0; c < Z.n; c++) {
+      if (Z.sol[r][c] === '#') continue;
+      if (!S.fill[r][c]) full = false; else if (S.fill[r][c] !== Z.sol[r][c]) right = false;
     }
-  }
-  highlightSelection();
-  setStatus('');
-}
-
-function selectEntry(dir,n){
-  selDir=dir;
-  const entry=ENTRY_STARTS[dir].find(e=>e.n===n);
-  if(entry){selR=entry.r;selC=entry.c;}
-  highlightSelection();
-}
-
-document.addEventListener('keydown',e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey)return;
-  if(document.getElementById('cx-result').classList.contains('show')){if(e.key==='Escape')hideResult();return;}
-  if(e.key==='Backspace'){e.preventDefault();handleKey('⌫');}
-  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();advanceOrSwitch();}
-  else if(e.key==='ArrowRight'){e.preventDefault();selDir='across';highlightSelection();}
-  else if(e.key==='ArrowDown'){e.preventDefault();selDir='down';highlightSelection();}
-  else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toUpperCase());
-});
-
-function handleKey(k){
-  if(solved)return;
-  if(k==='⌫'){doBackspace();}
-  else if(k==='↵'){advanceOrSwitch();}
-  else if(/^[A-Z]$/.test(k)){typeInCell(k);checkSilent();}
-  _save_cword();
-}
-
-function typeInCell(k){
-  grid[selR][selC]=k;
-  haptic('select');
-  const inner=document.getElementById(`cx-${selR}-${selC}`);
-  inner.classList.add('popping');setTimeout(()=>inner.classList.remove('popping'),80);
-  renderGrid();
-  advance();
-}
-
-function doBackspace(){
-  haptic('select');
-  if(grid[selR][selC]!==''){
-    grid[selR][selC]='';renderGrid();
-  } else {
-    retreat();
-    grid[selR][selC]='';renderGrid();
-  }
-}
-
-function advance(){
-  const cells=getActiveCells();
-  const idx=cells.findIndex(([r,c])=>r===selR&&c===selC);
-  if(idx<cells.length-1){[selR,selC]=cells[idx+1];highlightSelection();}
-  else {
-    // Jump to next unfilled cell in entry or next entry
-    const nextEmpty=cells.find(([r,c])=>grid[r][c]==='');
-    if(nextEmpty){[selR,selC]=nextEmpty;highlightSelection();}
-  }
-}
-
-function retreat(){
-  const cells=getActiveCells();
-  const idx=cells.findIndex(([r,c])=>r===selR&&c===selC);
-  if(idx>0){[selR,selC]=cells[idx-1];highlightSelection();}
-}
-
-function advanceOrSwitch(){
-  const cells=getActiveCells();
-  const idx=cells.findIndex(([r,c])=>r===selR&&c===selC);
-  if(idx<cells.length-1){[selR,selC]=cells[idx+1];highlightSelection();}
-  else {
-    // Advance to next entry
-    const allEntries=[...ENTRY_STARTS.across,...ENTRY_STARTS.down];
-    const curEntry=getActiveEntry();
-    const curIdx=allEntries.findIndex(e=>e.n===curEntry?.n&&ENTRY_STARTS[selDir].includes(e));
-    // Find next entry with empty cells
-    for(let i=1;i<allEntries.length;i++){
-      const next=allEntries[(curIdx+i)%allEntries.length];
-      const dir=ENTRY_STARTS.across.includes(next)?'across':'down';
-      const nextCells=entryCells(dir,next.r,next.c);
-      const empty=nextCells.find(([r,c])=>grid[r][c]==='');
-      if(empty){selDir=dir;[selR,selC]=empty;highlightSelection();break;}
+    if (!full) { warned = ''; return; }
+    if (!right) {
+      var sig = JSON.stringify(S.fill);
+      if (warned !== sig) { warned = sig; Kit.sfx('bad'); Kit.toast("The grid is full, but something's not right"); }
+      return;
     }
+    solved(gaveUp);
   }
-}
-
-// ── Check / Reveal / Clear ───────────────────────────────────────────────────
-document.getElementById('cx-check').addEventListener('click',checkAll);
-document.getElementById('cx-reveal-cell').addEventListener('click',revealCell);
-document.getElementById('cx-clear').addEventListener('click',clearGrid);
-
-function checkAll(){
-  const sol=getSolution();
-  let allCorrect=true,allFilled=true;
-  for(let r=0;r<5;r++){
-    for(let c=0;c<5;c++){
-      if(isBlack(r,c))continue;
-      const inner=document.getElementById(`cx-${r}-${c}`);
-      inner.classList.remove('correct','wrong');
-      if(grid[r][c]===''){allFilled=false;allCorrect=false;continue;}
-      if(grid[r][c]===sol[r][c]){inner.classList.add('correct');}
-      else{inner.classList.add('wrong');allCorrect=false;}
-    }
+  function solved(gaveUp) {
+    S.solved = true; S.r = -1; S.c = -1;
+    var best = solvedMap()[S.id], revealedCells = Object.keys(S.marks).filter(function (k) { return S.marks[k] === 'rev'; }).length;
+    var clean = !S.checks && !S.reveals;
+    var hl = [];
+    if (gaveUp) hl.push('Revealed the rest of ' + Z.p.title);
+    else hl.push('Solved ' + Z.p.title + ' in ' + fmt(S.secs) + (clean ? ' with no help' : ''));
+    if (!gaveUp && best && S.secs < best) hl.push('New best time (old best ' + fmt(best) + ')');
+    if (revealedCells && !gaveUp) hl.push('Revealed ' + revealedCells + (revealedCells === 1 ? ' square' : ' squares'));
+    if (S.checks && !gaveUp) hl.push('Used check ' + S.checks + (S.checks === 1 ? ' time' : ' times'));
+    var longest = Z.words.slice().sort(function (a, b) { return b.ans.length - a.ans.length; })[0];
+    hl.push('Longest answer: ' + longest.ans);
+    Kit.record(KEY, {
+      started: S.started, mode: Z.p.title, summary: (gaveUp ? 'Revealed' : 'Solved in ' + fmt(S.secs)) + ' · ' + Z.p.title, badge: gaveUp ? '' : fmt(S.secs),
+      highlights: hl, meta: { pid: S.id, secs: gaveUp ? null : S.secs, checks: S.checks, reveals: S.reveals, clean: clean }
+    });
+    save(); Kit.resume.clear();
+    var g = $('grid'); g.classList.add('done'); paint();
+    if (gaveUp) { Kit.toast('Puzzle revealed'); return; }
+    Kit.sfx('good');
+    setTimeout(function () {
+      var nx = nextUnsolved();
+      Kit.win({
+        title: clean ? 'Clean solve!' : 'Solved!', sub: Z.p.title + ' in ' + fmt(S.secs) + (best && S.secs < best ? ' · new best' : ''),
+        againLabel: nx ? 'Next: ' + nx.title : 'Choose a puzzle', again: function () { if (nx) open(nx.id); else openPicker(); },
+        extra: [{ label: 'Choose a puzzle', onClick: openPicker }], closeLabel: 'Admire the grid', onClose: function () {}
+      });
+    }, 900);
   }
-  if(allCorrect){winPuzzle();return;}
-  const bad=document.querySelectorAll('.cx-cell-inner.wrong').length;
-  if(bad){setStatus(`${bad} square${bad>1?'s are':' is'} wrong`);haptic('error');}
-  else if(!allFilled){setStatus('Looking good so far!');haptic('light');}
-}
-
-function revealCell(){
-  const sol=getSolution();
-  if(solved)return;
-  grid[selR][selC]=sol[selR][selC];
-  renderGrid();
-  _save_cword();
-  const inner=document.getElementById(`cx-${selR}-${selC}`);
-  inner.classList.add('correct');
-  setStatus('');
-  advance();
-  // Check if now complete
-  checkSilent();
-}
-
-function checkSilent(){
-  const sol=getSolution();
-  for(let r=0;r<5;r++)for(let c=0;c<5;c++){if(!isBlack(r,c)&&grid[r][c]!==sol[r][c])return;}
-  winPuzzle();
-}
-
-async function clearGrid(){
-  if(grid.some(row=>row.some(Boolean))){
-    const ok=await GN.confirm('Clear the puzzle?',{title:'Clear the puzzle?',body:'All letters you’ve entered will be erased.',ok:'Clear',danger:true});
-    if(!ok)return;
+  function nextUnsolved() {
+    var done = solvedMap(), i = PUZZLES.indexOf(Z.p);
+    for (var k = 1; k <= PUZZLES.length; k++) { var p = PUZZLES[(i + k) % PUZZLES.length]; if (!done[p.id] && p.id !== Z.p.id) return p; }
+    return null;
   }
-  document.getElementById('cx-grid').classList.remove('solved');
-  grid=Array.from({length:5},()=>Array(5).fill(''));
-  document.querySelectorAll('.cx-cell-inner').forEach(el=>el.classList.remove('correct','wrong'));
-  renderGrid();
-  hideResult();
-  solved=false;
-  _save_cword();
-}
 
-function winPuzzle(){
-  if(solved)return;
-  solved=true;
-  solvedPuzzles.add(puzIdx);
-  buildPicker();
-  _save_cword();
-  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
-    if(!isBlack(r,c)){document.getElementById(`cx-${r}-${c}`).classList.remove('selected','highlighted','wrong');}
+  // ── Puzzle picker ─────────────────────────────────────────────────────────
+  function openPicker() {
+    Kit.sfx('pop');
+    var done = solvedMap(), prog = all().prog || {}, s, box = el('div', { class: 'pk' });
+    [['mini', 'Minis · 5×5'], ['big', 'Bigger · 7×7']].forEach(function (sec) {
+      var list = PUZZLES.filter(function (p) { return p.size === sec[0]; }); if (!list.length) return;
+      box.appendChild(el('h3', { text: sec[1] }));
+      var g = el('div', { class: 'g' });
+      list.forEach(function (p) {
+        var pr = prog[p.id], inProg = pr && !pr.solved && pr.fill && pr.fill.some(function (r) { return r.some(function (x) { return x && x !== '#'; }); });
+        var t = done[p.id];
+        g.appendChild(el('button', { type: 'button', class: (done[p.id] !== undefined ? 'done' : inProg ? 'prog' : '') + (Z && Z.p.id === p.id ? ' cur' : ''), 'aria-label': p.title,
+          onclick: function () { s.close(); if (!Z || Z.p.id !== p.id) open(p.id); } },
+          [el('span', { text: p.title.replace(/^\D+/, '') }), el('small', { text: done[p.id] !== undefined ? (t ? fmt(t) : 'done') : inProg ? 'started' : ' ' })]));
+      });
+      box.appendChild(g);
+    });
+    s = Kit.sheet({ title: 'Choose a puzzle', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
-  document.getElementById('cx-grid').classList.add('solved');
-  haptic('success');
-  setTimeout(showResult,500);
-}
-function nextUnsolved(){
-  for(let i=1;i<=PUZZLES.length;i++){const j=(puzIdx+i)%PUZZLES.length;if(!solvedPuzzles.has(j))return j;}
-  return -1;
-}
-function showResult(){
-  const unsolved=nextUnsolved();
-  document.getElementById('cx-result-sub').textContent=
-    unsolved>=0?`Puzzle ${puzIdx+1} complete · ${solvedPuzzles.size} of ${PUZZLES.length} solved`:`All ${PUZZLES.length} puzzles solved — you’re on fire! 🔥`;
-  document.getElementById('cx-progress').innerHTML=PUZZLES.map((_,i)=>`<span class="${solvedPuzzles.has(i)?'on':''}">${i+1}</span>`).join('');
-  const nb=document.getElementById('cx-next-puz');
-  nb.textContent=unsolved>=0?`Play puzzle ${unsolved+1}`:'Play puzzle 1 again';
-  nb.onclick=()=>{hideResult();loadPuzzle(unsolved>=0?unsolved:0);};
-  document.getElementById('cx-result').classList.add('show');
-}
-function hideResult(){document.getElementById('cx-result').classList.remove('show');}
-document.getElementById('cx-close').addEventListener('click',hideResult);
-document.getElementById('cx-result').addEventListener('click',e=>{if(e.target.id==='cx-result')hideResult();});
+  $('puz').addEventListener('click', openPicker);
 
-function setStatus(msg){if(msg&&window.GN)GN.toast(msg,1600);}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-
-// ── Clue bar: prev / next / toggle direction ─────────────────────────────────
-const ALL_ENTRIES=[...ENTRY_STARTS.across.map(e=>['across',e]),...ENTRY_STARTS.down.map(e=>['down',e])];
-function stepClue(d){
-  if(solved)return;
-  const cur=getActiveEntry();
-  let i=ALL_ENTRIES.findIndex(([dir,e])=>dir===selDir&&e===cur);
-  i=(i+d+ALL_ENTRIES.length)%ALL_ENTRIES.length;
-  const [dir,e]=ALL_ENTRIES[i];
-  selDir=dir;
-  const cells=entryCells(dir,e.r,e.c);
-  [selR,selC]=cells.find(([r,c])=>grid[r][c]==='')||cells[0];
-  highlightSelection();
-  haptic('select');
-}
-document.getElementById('cx-prev').addEventListener('click',()=>stepClue(-1));
-document.getElementById('cx-next').addEventListener('click',()=>stepClue(1));
-document.getElementById('cx-cluetext').addEventListener('click',()=>{if(!solved){clickCell(selR,selC);haptic('select');}});
-
-// ── Load puzzle ───────────────────────────────────────────────────────────────
-function loadPuzzle(idx){
-  puzIdx=idx;solved=false;
-  grid=Array.from({length:5},()=>Array(5).fill(''));
-  selR=1;selC=0;selDir='across';
-  buildPicker();
-  buildGrid();
-  buildClues();
-  document.getElementById('cx-grid').classList.toggle('solved',false);
-  hideResult();
-  highlightSelection();
-}
-
-// ── Init ─────────────────────────────────────────────────────────────────────
-buildKeyboard();
-loadPuzzle(0);
-
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_cword(){
-  try{sessionStorage.setItem('cword',JSON.stringify({puzIdx,grid,solvedPuzzles:[...solvedPuzzles],_ts:Date.now()}));}catch(e){}
-}
-function _load_cword(){
-  try{
-    const raw=sessionStorage.getItem('cword');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    solvedPuzzles=new Set(s.solvedPuzzles||[]);
-    loadPuzzle(Math.min(PUZZLES.length-1,s.puzIdx||0));   // builds picker/grid/clues for the saved puzzle
-    if(Array.isArray(s.grid)&&s.grid.length===5)grid=s.grid.map(row=>row.map(ch=>/^[A-Z]$/.test(ch)?ch:''));
-    renderGrid();
-    // Restore a finished puzzle without re-celebrating
-    const sol=getSolution();
-    if(solvedPuzzles.has(puzIdx)&&grid.every((row,r)=>row.every((ch,c)=>isBlack(r,c)||ch===sol[r][c]))){
-      solved=true;document.getElementById('cx-grid').classList.add('solved');
-      for(let r=0;r<5;r++)for(let c=0;c<5;c++)if(!isBlack(r,c))document.getElementById(`cx-${r}-${c}`).classList.remove('selected','highlighted');
-    }
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_cword);
-window.addEventListener('pagehide',_save_cword);
-
-_load_cword();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var a0 = all();
+  var first = a0.cur && byId(a0.cur) && !(a0.prog && a0.prog[a0.cur] && a0.prog[a0.cur].solved) ? a0.cur : null;
+  if (!first) { var dm = solvedMap(); first = (PUZZLES.filter(function (p) { return dm[p.id] === undefined; })[0] || PUZZLES[0]).id; }
+  open(first);
+  window.__cw = { get S() { return S; }, get Z() { return Z; }, open: open };
+})();
 </script>
 </body>
 </html>
