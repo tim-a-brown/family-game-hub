@@ -117,7 +117,7 @@
 @keyframes say{0%{opacity:0;transform:translateX(-50%) translateY(8px) scale(.5)}14%{opacity:1;transform:translateX(-50%) scale(1.05)}22%{transform:translateX(-50%) scale(1)}85%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.95)}}
 
 /* ── Host line, action deck, letter keys ──────────────────────────────── */
-.host{min-height:22px;text-align:center;font-weight:800;font-size:.95rem;line-height:1.25;color:var(--text-2);padding:0 4px;}
+.host{min-height:2.5em;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;font-size:.95rem;line-height:1.25;color:var(--text-2);padding:0 4px;}
 .host b{color:var(--yellow);}
 .deck{display:flex;flex-direction:column;gap:8px;}
 .acts{display:flex;gap:8px;min-height:52px;}
@@ -729,7 +729,7 @@
     var side = el('div', { class: 'side' }, [bwrap, pods, host, deck]);
     var show = el('div', { class: 'show' }, [studio, side]);
     app.appendChild(show);
-    shell = { show: show, studio: studio, boardcam: boardcam, board: board, tiles: tiles, cat: cat, cv: cv, readout: readout, band: band, pods: podEls, host: host, acts: acts, keys: keys, bs: bs, bwrap: bwrap };
+    shell = { show: show, side: side, studio: studio, boardcam: boardcam, board: board, tiles: tiles, cat: cat, cv: cv, readout: readout, band: band, pods: podEls, host: host, acts: acts, keys: keys, bs: bs, bwrap: bwrap };
     Wheel.mount(cv, {
       canFlick: function () { return !!canFlick(); },
       onGrab: function () { setCam('wheel'); },
@@ -748,7 +748,12 @@
     else if (shell.boardcam.parentNode !== shell.studio) shell.studio.insertBefore(shell.boardcam, shell.studio.firstChild);
     var W = shell.studio.clientWidth || 360, H, C;
     if (desk) { C = Math.round(Math.min(W, 620, window.innerHeight - 100)); H = C; }
-    else { H = Math.round(Math.min(W * 0.93, 470)); C = H; }
+    else {
+      // Fill the phone screen: the studio takes whatever the podiums, host line and keys leave over
+      var bar = document.querySelector('.gbar'), barH = bar ? bar.offsetHeight : 58;
+      var avail = (window.innerHeight || 760) - barH - shell.side.offsetHeight - 9 - 18;
+      H = Math.round(clamp(avail, W * 0.82, Math.min(W * 1.1, 560))); C = Math.min(H, W);
+    }
     shell.studio.style.height = H + 'px';
     var bh = desk ? 0 : shell.boardcam.offsetHeight;
     var st = shell.studio.style;
