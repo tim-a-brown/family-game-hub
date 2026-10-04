@@ -403,7 +403,7 @@
       r.nils.forEach(function (x) {
         var label = x.blind ? 'Blind Nil' : 'Nil';
         if (x.ok) { S.nilsMade[x.p]++; S.highlights.push(S.players[x.p].name + ' made ' + label + ' in hand ' + n); notes.push({ text: short(x.p) + ' made ' + label + ' (+' + x.v + ')' }); }
-        else { S.highlights.push(S.players[x.p].name + '\'s ' + label + ' was broken in hand ' + n); notes.push({ bad: t === 0, text: short(x.p) + '\'s ' + label + ' failed (−' + x.v + ')' }); }
+        else { S.highlights.push(Kit.poss(S.players[x.p].name) + ' ' + label + ' was broken in hand ' + n); notes.push({ bad: t === 0, text: Kit.poss(short(x.p)) + ' ' + label + ' failed (−' + x.v + ')' }); }
       });
       if (r.penalty) { S.highlights.push('Bag penalty hit ' + nm + ' in hand ' + n); notes.push({ bad: t === 0, text: 'Bag penalty! ' + teamShort(t) + ' lose 100' }); }
       if (r.took === 13) S.highlights.push(nm + ' took all 13 tricks in hand ' + n);
@@ -464,8 +464,9 @@
     S.phase = 'over';
     var w = S.scores[0] > S.scores[1] ? 0 : 1, l = 1 - w;
     var hl = S.highlights.slice();
-    // Keep the most recent big moments, then add game-level notes
-    if (hl.length > 5) hl = hl.slice(-5);
+    // One line per kind of moment (latest wins), at most 5
+    var seen = {};
+    hl = hl.reverse().filter(function (h) { var k = h.replace(/ in hand \d+$/, ''); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 5).reverse();
     var top = 0; for (var p = 1; p < 4; p++) if (S.tricksAll[p] > S.tricksAll[top]) top = p;
     hl.push('Most tricks: ' + S.players[top].name + ', ' + S.tricksAll[top] + ' over the game');
     hl.push(S.rounds.length + ' hands, played to ' + S.target);
@@ -589,7 +590,7 @@
         el('p', { text: 'You\'re behind by ' + (S.scores[1] - S.scores[0]) + '. Bid Blind Nil before looking? Worth 200 if you take no tricks.' }),
         el('div', { class: 'row' }, [
           el('button', { type: 'button', class: 'btn btn-soft', text: 'Bid Blind Nil', onclick: function () { chooseBlind(true); } }),
-          el('button', { type: 'button', class: 'btn btn-primary', text: 'Look at my cards', onclick: function () { chooseBlind(false); } })
+          el('button', { type: 'button', class: 'btn btn-primary', text: 'Show my cards', onclick: function () { chooseBlind(false); } })
         ])
       ]));
       return;

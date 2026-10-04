@@ -39,10 +39,11 @@
 .opps.roomy .spot .cards{--cw:34px;}
 .spot.out .cards .pcard:not(.dup){opacity:.45;filter:saturate(.4);}
 .spot.out .rp{color:rgba(255,255,255,.45);}
-.stamp{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%) rotate(-8deg);z-index:4;pointer-events:none;
-  font-family:var(--display);font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;line-height:1;
-  padding:3px 8px 2px;border-radius:6px;border:2px solid currentColor;background:rgba(0,0,0,.35);white-space:nowrap;animation:stampin .35s var(--spring);}
-@keyframes stampin{from{transform:translate(-50%,-50%) rotate(-8deg) scale(1.8);opacity:0;}}
+.spot .rpw{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.stamp{transform:rotate(-7deg);pointer-events:none;font-family:var(--display);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;line-height:1;
+  padding:2px 4px 1px;border-radius:4px;border:1.5px solid currentColor;background:rgba(0,0,0,.3);white-space:nowrap;animation:stampin .35s var(--spring);}
+.spot.me .stamp{font-size:.8rem;padding:3px 6px 2px;}
+@keyframes stampin{from{transform:rotate(-7deg) scale(2);opacity:0;}}
 .stamp.bust{color:#ff6b6b;}
 .stamp.stay{color:#e8f5ee;}
 .stamp.frozen{color:#7fd8ff;}
@@ -63,7 +64,7 @@
 
 /* Middle of the table: deck, message, discard */
 .mid{flex:1;display:flex;align-items:center;gap:10px;padding:4px;min-height:100px;}
-.pile{position:relative;flex:none;--cw:clamp(48px,14vw,58px);display:flex;flex-direction:column;align-items:center;gap:3px;}
+.pile{position:relative;flex:none;--cw:clamp(52px,16vw,66px);display:flex;flex-direction:column;align-items:center;gap:3px;}
 .pile .stack{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4);}
 .pile .stack .pcard{position:absolute;left:0;top:0;}
 .pile .stack .pcard:nth-child(1){transform:translate(3px,3px);}
@@ -86,7 +87,7 @@
 .cards .pcard.custom .lbl{display:none;}
 .cards .pcard.custom.mod .big,.cards .pcard.custom.act .big{padding:0;}
 .spot:not(.me) .pcard.custom .ix{display:none;}
-.pcard.dup{box-shadow:0 0 0 2px #ff4d5e, 0 0 10px rgba(255,77,94,.8);}
+.pcard.custom.dup,.pcard.dup{box-shadow:0 0 0 2px #ff4d5e, 0 0 10px rgba(255,77,94,.8);}
 .pcard.later{opacity:.55;}
 
 .f7 .cbar{flex-wrap:wrap;gap:8px;min-height:62px;margin:4px 0 0;}
@@ -115,6 +116,7 @@
   // Each number has its own colour, like the real deck
   var NUMC = ['#2b2b33', '#9a7b6c', '#8f9a14', '#e0306f', '#14998c', '#3a9a3e', '#8e2bb0', '#e0352f', '#f0561d', '#c48d00', '#3346b0', '#0093a8', '#5d7484'];
   var SNOW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="m9 3.5 3 2.5 3-2.5M9 20.5l3-2.5 3 2.5M3.5 10.6l3.7-.6-1.3-3.5M20.5 13.4l-3.7.6 1.3 3.5M5.9 17.5l1.3-3.5-3.7-.6M18.1 6.5l-1.3 3.5 3.7.6"/></svg>';
+  var THREE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="6" width="8" height="12" rx="1.6" transform="rotate(-12 6.5 12)" fill="rgba(255,255,255,.25)"/><rect x="8" y="5" width="8" height="12" rx="1.6" fill="rgba(255,255,255,.35)"/><rect x="13.5" y="6" width="8" height="12" rx="1.6" transform="rotate(12 17.5 12)" fill="rgba(255,255,255,.5)"/></svg>';
   var HEART = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.6-4.7-9.6-9.4C1.1 8.3 3.3 4.8 6.9 4.8c2.1 0 3.5 1.2 5.1 3 1.6-1.8 3-3 5.1-3 3.6 0 5.8 3.5 4.5 6.8C19.6 16.3 12 21 12 21z"/></svg>';
 
   Kit.init({
@@ -562,7 +564,7 @@
     else if (c.k === 'm') n = Kit.cardFace({ center: '+' + c.v, label: 'bonus', color: '#f08400', solid: true, cls: 'mod', aria: 'Plus ' + c.v });
     else if (c.k === 'x2') n = Kit.cardFace({ center: '×2', label: 'double', color: '#7a3fe0', solid: true, cls: 'mod', aria: 'Times two' });
     else if (c.k === 'fz') n = Kit.cardFace({ html: SNOW, label: 'Freeze', color: '#1798d8', solid: true, cls: 'act', aria: 'Freeze' });
-    else if (c.k === 'f3') n = Kit.cardFace({ center: '3', label: 'Flip three', color: '#d99400', solid: true, cls: 'act', aria: 'Flip Three' });
+    else if (c.k === 'f3') n = Kit.cardFace({ html: THREE, label: 'Flip three', color: '#d99400', solid: true, cls: 'act', aria: 'Flip Three' });
     else n = Kit.cardFace({ html: HEART, label: '2nd chance', color: '#e0263f', solid: true, cls: 'act', aria: 'Second Chance' });
     n.dataset.id = c.id;
     if (c.dup) n.classList.add('dup');
@@ -644,10 +646,9 @@
     (S.deferred && S.deferred[p] || []).forEach(function (c) { cards.appendChild(face(c, { later: true })); });
     if (!row.length) cards.appendChild(el('span', { class: 'empty', text: S.phase === 'deal' ? 'waiting for a card' : 'no cards' }));
     line.appendChild(cards);
-    line.appendChild(el('span', { class: 'rp', text: String(shown(p)) }));
-    s.appendChild(line);
     var stamp = { bust: 'Bust', stay: 'Stayed', frozen: 'Frozen', flip7: 'Flip 7' }[st];
-    if (stamp) s.appendChild(el('div', { class: 'stamp ' + st, text: stamp }));
+    line.appendChild(el('span', { class: 'rpw' }, [stamp ? el('span', { class: 'stamp ' + st, text: stamp }) : null, el('span', { class: 'rp', text: String(shown(p)) })]));
+    s.appendChild(line);
     return s;
   }
   function middle() {
@@ -693,6 +694,7 @@
       var st = S.status[0];
       h = S.turn >= 0 && S.turn !== 0 && S.status[S.turn] === 'in' ? S.players[S.turn].name + ' is playing…' : '';
       if (st !== 'in') h = (st === 'bust' ? 'You busted. ' : st === 'frozen' ? 'You are frozen. ' : st === 'stay' ? 'You stayed. ' : '') + 'Waiting for the round to end…';
+      if (S.status.indexOf('flip7') >= 0) h = 'Flip 7! The round is over.';
     }
     if (S.phase === 'roundover') {
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'See scores', onclick: function () { showScores(true); } }));

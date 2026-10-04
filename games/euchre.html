@@ -2,390 +2,208 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Euchre</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Euchre Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-/*SCKIT-START*/
-/* ── Scorecard kit (Spades · Hearts · Euchre · Gin Rummy scorecards) ── */
-.sc{max-width:560px;margin:0 auto;padding:14px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));}
-.sc-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;text-decoration:none;color:#fff;transition:transform .12s var(--ease);}
-.sc-cta:active{transform:scale(.98);}
-.sc-cta-ico{width:44px;height:44px;border-radius:13px;background:rgba(0,0,0,.25);display:grid;place-items:center;font-size:1.35rem;flex:none;}
-.sc-cta-body{flex:1;min-width:0;}
-.sc-cta-t{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em;}
-.sc-cta-s{font-size:.82rem;color:rgba(255,255,255,.75);}
-.sc-cta svg{width:20px;height:20px;flex:none;opacity:.8;}
-.setup-screen{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;}
-.sc-h{font-family:var(--display);font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
-.sc-hsub{font-size:.88rem;color:var(--text-2);margin-bottom:6px;}
-.form-lbl{font-size:.75rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px;}
-.player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.player-setup-row .input{flex:1;}
-.player-dot{width:12px;height:12px;border-radius:50%;flex:none;}
-.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-.seg .btn{min-height:44px;padding:0;}
-.toggle-line{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;margin:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;cursor:pointer;color:var(--text);font-size:.92rem;font-weight:600;letter-spacing:0;}
-.toggle-line .tl-body{flex:1;min-width:0;}
-.toggle-line .tl-sub{display:block;font-size:.8rem;font-weight:500;color:var(--text-2);margin-top:1px;}
-.switch{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);position:relative;cursor:pointer;transition:background .2s;margin:0;}
-.switch::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .22s var(--ease);}
-.switch:checked{background:var(--green);border-color:transparent;}
-.switch:checked::after{transform:translateX(20px);}
-.sc-start{margin-top:18px;}
-/* Live scores */
-.score-display{display:grid;gap:10px;margin-bottom:14px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 26px var(--lc,rgba(245,200,66,.2));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.9rem,8.5vw,2.6rem);font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub{font-size:.75rem;color:var(--text-2);margin-top:5px;}
-.scorer-to{font-size:.75rem;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums;}
-.pbar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:10px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-/* Round entry */
-.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px;}
-.entry-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-family:var(--display);font-size:1.2rem;font-weight:800;letter-spacing:-.015em;margin-bottom:14px;}
-.entry-head small,.entry-head span{font-family:var(--font);font-size:.75rem;font-weight:600;color:var(--text-3);letter-spacing:0;}
-.entry-row{display:grid;gap:10px;margin-bottom:12px;}
-.entry-cell{text-align:center;min-width:0;}
-.entry-label{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mini-lbl{font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
-.score-input,.bid-input{width:100%;min-height:52px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;color:var(--text);font-size:1.25rem !important;font-weight:700;text-align:center;padding:8px 4px;outline:none;font-family:var(--display);transition:border-color .15s,box-shadow .15s,background .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);background:var(--surface-3);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:600;}
-.sc-err{color:var(--red);font-size:.86rem;font-weight:600;text-align:center;margin-bottom:10px;}
-/* History */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
-.hist-head{padding:12px 16px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.totals{background:var(--surface-2);}
-.hist-num{font-size:.8rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--text);}
-.hist-val.neg{color:var(--red);}
-.hist-name{font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hist-total{font-family:var(--display);font-size:1.1rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-.sc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
-.wb-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;}
-.winner-banner .gh-hist-btn{margin-top:10px;}
-.rules-body p{margin-bottom:8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-.nav-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap;}
-.nav-pill:active{transform:scale(.95);}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-/*SCKIT-END*/
-/* Euchre-specific */
-.caller-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
-.caller-row .btn{min-height:50px;padding:0 10px;overflow:hidden;text-overflow:ellipsis;}
-.caller-row .btn.on{background:color-mix(in srgb,var(--c) 18%,transparent);border-color:var(--c);color:var(--c);}
-.eu-trump-row{display:grid;grid-template-columns:repeat(4,1fr) 1.3fr;gap:6px;margin-bottom:4px;}
-.eu-trump-btn{min-height:46px;border-radius:12px;font-size:1.35rem;font-weight:800;cursor:pointer;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);transition:background .15s,border-color .15s,transform .1s;}
-.eu-trump-btn:active{transform:scale(.94);}
-.eu-trump-btn.red{color:#ff6b6b;}
-.eu-trump-btn.clear{font-size:.82rem;font-weight:600;color:var(--text-2);}
-.eu-trump-btn.active{border-color:var(--gold);background:rgba(245,200,66,.14);}
-.eu-trump-btn.red.active{border-color:#ff6b6b;background:rgba(255,107,107,.12);}
-.tricks-row{margin-bottom:12px;}
-.tricks-btns{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
-.tricks-btn{min-height:46px;border-radius:12px;font-family:var(--display);font-size:1.1rem;font-weight:800;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text-2);cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-.tricks-btn:active{transform:scale(.94);}
-.tricks-btn.active{border-color:var(--gold);background:rgba(245,200,66,.14);color:var(--gold);}
-.eu-preview{font-size:.88rem;color:var(--text-2);text-align:center;margin:14px 0 12px;padding:12px;background:var(--surface-2);border-radius:14px;line-height:1.5;}
-.eu-preview b{color:var(--text);}
-.form-lbl.first{margin-top:0;}
+.callers{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.callers button{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border:2px solid transparent;border-radius:var(--r-sm,12px);background:rgba(255,255,255,.06);color:var(--text-2);font-weight:800;font-size:.95rem;text-align:left;overflow:hidden;}
+.callers button .dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c);}
+.callers button span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.callers button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 20%,transparent);color:var(--text);}
+.callers .tm{grid-column:1/-1;font-size:.72rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:2px 0 -4px;}
+.seg.suits > button{font-size:1.5rem;}
+.seg.suits > button.r{color:#ff6b7f;}
+.seg.tricks > button{font-size:1.15rem;}
+.rform .label{margin:4px 0 0;}
+.preview{padding:12px;border-radius:var(--r);background:rgba(255,255,255,.06);text-align:center;font-weight:800;}
+.preview b{display:block;font-family:var(--display);font-weight:400;font-size:1.35rem;color:var(--yellow);}
+.preview.bad b{color:var(--red);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Euchre</span>
-  <a class="nav-pill ai-link" href="euchre-ai.html">🎮 vs AI</a>
-</nav>
-<main class="sc">
-
-<details class="rules-details">
-  <summary class="rules-summary">📖 How to play Euchre</summary>
-  <div class="rules-body">
-    <p><strong>Players &amp; teams:</strong> 4 players in 2 teams of 2 (partners sit across). First team to 10 points wins.</p>
-    <p><strong>The deck:</strong> 24 cards — 9, 10, J, Q, K, A in each of 4 suits. Deal 5 cards to each player.</p>
-    <p><strong>Bowers:</strong> The Jack of trump is the <strong>Right Bower</strong> (highest card). The Jack of the same-color suit is the <strong>Left Bower</strong> (second highest, counts as trump).</p>
-    <p><strong>Calling trump (Round 1):</strong> Dealer flips a card face-up. Each player in turn may "order it up" (dealer takes it, discards one). If all pass, go to Round 2.</p>
-    <p><strong>Calling trump (Round 2):</strong> Each player may call any suit except the turned-down one. If all pass again, the hand is thrown in and re-dealt.</p>
-    <p><strong>Going alone:</strong> The caller may go alone — partner sits out. All 5 tricks alone = 4 points.</p>
-    <p><strong>Scoring:</strong></p>
-    <ul>
-      <li>Calling team takes <strong>3 or 4 tricks: +1 point</strong></li>
-      <li>Calling team takes <strong>all 5 (march): +2 points</strong></li>
-      <li>Going alone, takes all 5: <strong>+4 points</strong></li>
-      <li>Going alone, takes 3–4: <strong>+1 point</strong></li>
-      <li>Calling team <strong>euchred</strong> (0–2 tricks): opponents get <strong>+2 points</strong></li>
-    </ul>
-  </div>
-</details>
-
-<!-- Setup -->
-<div id="eu-setup" class="setup-screen">
-  <a id="fp-ai-solo-cta" class="sc-cta felt" href="euchre-ai.html">
-    <div class="sc-cta-ico">🎮</div>
-    <div class="sc-cta-body"><div class="sc-cta-t">1 player vs AI</div><div class="sc-cta-s">Partner with an AI against two AI opponents</div></div>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-  </a>
-  <div class="sc-h">New scorecard</div>
-  <div class="sc-hsub">Keep score for an in-person game. First to 10 wins.</div>
-  <div class="form-lbl">Team names</div>
-  <div class="player-setup-row"><div class="player-dot" style="background:#5ac8fa;"></div><input class="input" id="eu-t1" value="Team 1" maxlength="20" aria-label="Team 1 name"></div>
-  <div class="player-setup-row"><div class="player-dot" style="background:#f5c842;"></div><input class="input" id="eu-t2" value="Team 2" maxlength="20" aria-label="Team 2 name"></div>
-  <button class="btn btn-gold btn-block sc-start" id="eu-start">Start game</button>
-</div>
-
-<!-- Game -->
-<div id="eu-game" class="hidden">
-  <div id="eu-winner" class="winner-banner hidden">
-    <div style="font-size:2.2rem;line-height:1;margin-bottom:6px;">🏆</div>
-    <div class="winner-name" id="eu-wname"></div>
-    <div class="winner-pts" id="eu-wpts"></div>
-    <div class="wb-actions">
-      <button class="btn btn-gold" id="eu-again">Play again</button>
-      <button class="btn btn-outline" id="eu-newsetup">New setup</button>
-    </div>
-  </div>
-
-  <div class="score-display" style="grid-template-columns:1fr 1fr;" id="eu-scores"></div>
-
-  <div class="entry-panel">
-    <div class="entry-head" id="eu-hand-label">Hand 1</div>
-
-    <div class="form-lbl first">Who called trump?</div>
-    <div class="caller-row">
-      <button class="btn btn-outline" id="eu-c0">Team 1</button>
-      <button class="btn btn-outline" id="eu-c1">Team 2</button>
-    </div>
-
-    <label class="toggle-line" for="eu-alone" style="margin-bottom:4px">
-      <span class="tl-body">Going alone<span class="tl-sub">Partner sits out · all 5 tricks = 4 pts</span></span>
-      <input type="checkbox" class="switch" id="eu-alone">
-    </label>
-
-    <div class="form-lbl">Trump suit <span style="text-transform:none;letter-spacing:0;color:var(--text-3);font-weight:500">(optional)</span></div>
-    <div class="eu-trump-row" id="eu-trump-row">
-      <button class="eu-trump-btn" data-s="♠" aria-label="Spades">♠</button>
-      <button class="eu-trump-btn red" data-s="♥" aria-label="Hearts">♥</button>
-      <button class="eu-trump-btn red" data-s="♦" aria-label="Diamonds">♦</button>
-      <button class="eu-trump-btn" data-s="♣" aria-label="Clubs">♣</button>
-      <button class="eu-trump-btn clear" data-s="">Clear</button>
-    </div>
-
-    <div class="tricks-row">
-      <div class="form-lbl" id="eu-tricks-lbl">Tricks won:</div>
-      <div class="tricks-btns" id="eu-tricks-btns">
-        <button class="tricks-btn" data-t="0">0</button>
-        <button class="tricks-btn" data-t="1">1</button>
-        <button class="tricks-btn" data-t="2">2</button>
-        <button class="tricks-btn active" data-t="3">3</button>
-        <button class="tricks-btn" data-t="4">4</button>
-        <button class="tricks-btn" data-t="5">5</button>
-      </div>
-    </div>
-
-    <div class="eu-preview" id="eu-preview"></div>
-    <div id="eu-err" class="sc-err" style="display:none;"></div>
-    <button class="btn btn-gold btn-block" id="eu-submit">Add hand</button>
-  </div>
-
-  <div id="eu-hist-wrap"></div>
-  <div class="sc-actions">
-    <button class="btn btn-outline" id="eu-reset-setup">New setup</button>
-    <button class="btn btn-outline" id="eu-undo">↩ Undo</button>
-  </div>
-</div>
-
-</main>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#5ac8fa','#f5c842'];
-const CDARK=['#1a88c4','#c49a10'];
-const EU_WIN=10;
-let euNames=['Team 1','Team 2'],euRounds=[],euCaller=0,euTricks=3,euTrump='',euAlone=false;
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
+  var SETUP = 'euchre_pad_setup';
+  var GL = { s: '♠', h: '♥', d: '♦', c: '♣' };
 
-function buildScorers(container,names,totals){
-  container.innerHTML='';
-  names.forEach((nm,i)=>{
-    const leading=totals[i]===Math.max(...totals)&&totals[i]>0;
-    const pct=Math.min(100,(totals[i]/EU_WIN)*100);
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',COLORS[i]+'40');
-    if(leading)s.style.borderColor=COLORS[i];
-    s.innerHTML=`<div class="scorer-name" style="color:${COLORS[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${CDARK[i]},${COLORS[i]})"></div></div>
-      <div class="scorer-to">${EU_WIN-totals[i]>0?EU_WIN-totals[i]+' to win':'🏆 Winner'}</div>`;
-    container.appendChild(s);
+  Kit.init({
+    id: 'euchre', title: 'Euchre score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('eu', { keys: ['euchre'], title: 'Euchre: past games' }); } }],
+    rules:
+      '<p class="goal">Play Euchre with real cards and keep score here. Partners sit across from each other. <b>First team to 10 points wins.</b></p>' +
+      '<h3>The deck</h3><p>Use 24 cards: 9, 10, J, Q, K, A of each suit. Deal 5 cards each and turn the next card face up.</p>' +
+      '<h3>Picking trump</h3><ul><li><b>Round 1:</b> starting left of the dealer, each player can <b>order up</b> the face-up card (its suit becomes trump, and the dealer picks it up and throws one card away) or pass.</li>' +
+      '<li><b>Round 2:</b> if everyone passed, turn the card down. Each player can now name any other suit, or pass. If everyone passes again, throw the cards in and the next player deals. (House rule "stick the dealer": the dealer must pick a suit.)</li></ul>' +
+      '<h3>Bowers</h3><p>The Jack of trump (<b>right bower</b>) is the highest card. The other Jack of the same colour (<b>left bower</b>) is next, and it counts as a trump. Then A, K, Q, 10, 9.</p>' +
+      '<h3>Playing</h3><p>Left of the dealer leads. Follow the suit led if you can (the left bower follows trump). Highest trump wins, otherwise the highest card of the suit led.</p>' +
+      '<h3>Scoring a hand</h3><ul><li>Makers take 3 or 4 tricks: <b>1 point</b>.</li><li>Makers take all 5 (a <b>march</b>): <b>2 points</b>.</li>' +
+      '<li>Caller <b>went alone</b> and took all 5: <b>4 points</b> (3 or 4 alone is still 1).</li><li>Makers take fewer than 3: <b>euchred</b>, the other team gets <b>2 points</b>.</li></ul>' +
+      '<p>After each hand, tap <b>Add round</b>, pick who called trump, whether they went alone, and how many tricks the makers won. The points are worked out for you.</p>'
   });
-}
 
-function buildHistory(container,rounds,names,totals){
-  if(!rounds.length){container.innerHTML='';return;}
-  const gtc='28px minmax(0,1fr) minmax(0,1fr)';
-  let html=`<div class="hist"><div class="hist-head">Hand history</div>
-    <div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-name" style="color:${COLORS[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val" style="${v?'':'color:var(--text-3)'}">${v>0?'+'+v:'–'}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${COLORS[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
+  function showSetup() {
+    var st = Kit.setup(app, {
+      players: { min: 4, max: 4, count: 4, label: 'Players in seat order' },
+      intro: 'Keep score for a game at the table',
+      options: [{ id: 'target', label: 'Play to', value: 10, choices: [[5, '5'], [7, '7'], [10, '10 · standard']] }],
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        var names = cfg.players.map(function (p) { return p.name; });
+        localStorage.setItem(SETUP, JSON.stringify({ names: names, target: +cfg.options.target || 10 }));
+        startPad();
+      }
+    });
+    var start = st.el.querySelector('.btn-primary.btn-lg');
+    if (start) st.el.insertBefore(el('p', { class: 'muted', style: { 'text-align': 'center', margin: '-4px 0 0' }, text: 'Players 1 & 3 are partners against players 2 & 4.' }), start);
+  }
 
-function euCalc(caller,tricks,alone){
-  const opp=1-caller;
-  const scores=[0,0];
-  let note='';
-  if(tricks>=3){
-    if(tricks===5){
-      scores[caller]=alone?4:2;
-      note=alone?'Lone march → +4 pts':'March (5 tricks) → +2 pts';
-    } else {
-      scores[caller]=1;
-      note=`Made it (${tricks} tricks) → +1 pt`;
+  // Points for one hand. side = team that called, tricks = makers' tricks
+  function points(side, tricks, alone) {
+    var s = [0, 0];
+    if (tricks >= 3) s[side] = tricks === 5 ? (alone ? 4 : 2) : 1;
+    else s[1 - side] = 2;
+    return s;
+  }
+  // Each round's maker info lives in the small note under the score:
+  // "Jamie ♥ alone · 5"
+  var NOTE = /^(.*?)(?: ([♠♥♦♣]))?( alone)? · (\d)$/;
+  function parse(round, names) {
+    if (!round || !round.detail) return null;
+    for (var side = 0; side < 2; side++) {
+      var m = NOTE.exec(round.detail[side] || ''); if (!m) continue;
+      var caller = names.indexOf(m[1]);
+      if (caller < 0 || caller % 2 !== side) caller = side;
+      var suit = null; for (var k in GL) if (GL[k] === m[2]) suit = k;
+      return { side: side, caller: caller, suit: suit, alone: !!m[3], tricks: +m[4] };
     }
-  } else {
-    scores[opp]=2;
-    note=`Euchred! (${tricks} tricks) → opponents +2 pts`;
+    return null;
   }
-  return{scores,note};
-}
-
-function euUpdatePreview(){
-  const res=euCalc(euCaller,euTricks,euAlone);
-  const trumpStr=euTrump?` · trump <span style="color:${'♥♦'.includes(euTrump)?'#ff6b6b':'var(--text)'}">${euTrump}</span>`:'';
-  const aloneStr=euAlone?' · going alone':'';
-  document.getElementById('eu-preview').innerHTML=
-    `<span style="color:${COLORS[euCaller]};font-weight:700;">${esc(euNames[euCaller])}</span> called${trumpStr}${aloneStr}<br><b>${res.note}</b>`;
-  document.getElementById('eu-tricks-lbl').textContent=`Tricks won by ${euNames[euCaller]}`;
-}
-
-function euSetCaller(c){
-  euCaller=c;
-  ['eu-c0','eu-c1'].forEach((id,i)=>{
-    const b=document.getElementById(id);
-    b.className='btn btn-outline'+(i===c?' on':'');
-    b.style.setProperty('--c',COLORS[i]);
-  });
-  euUpdatePreview();
-}
-
-document.getElementById('eu-c0').addEventListener('click',()=>{hap('select');euSetCaller(0);});
-document.getElementById('eu-c1').addEventListener('click',()=>{hap('select');euSetCaller(1);});
-document.getElementById('eu-alone').addEventListener('change',()=>{euAlone=document.getElementById('eu-alone').checked;euUpdatePreview();});
-
-document.querySelectorAll('#eu-trump-row .eu-trump-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    hap('select');
-    euTrump=b.dataset.s;
-    document.querySelectorAll('#eu-trump-row .eu-trump-btn').forEach(x=>x.classList.remove('active'));
-    if(euTrump)b.classList.add('active');
-    euUpdatePreview();
-  });
-});
-
-document.querySelectorAll('.tricks-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    hap('select');
-    euTricks=+b.dataset.t;
-    document.querySelectorAll('.tricks-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    euUpdatePreview();
-  });
-});
-
-function euRender(){
-  const totals=euNames.map((_,i)=>euRounds.reduce((s,r)=>s+r.scores[i],0));
-  buildScorers(document.getElementById('eu-scores'),euNames,totals);
-  document.getElementById('eu-hand-label').textContent=`Hand ${euRounds.length+1}`;
-  document.getElementById('eu-c0').textContent=euNames[0];
-  document.getElementById('eu-c1').textContent=euNames[1];
-  buildHistory(document.getElementById('eu-hist-wrap'),euRounds.map(r=>r.scores),euNames,totals);
-  euSetCaller(euCaller);
-}
-function euSave(){try{sessionStorage.setItem('cs_eu',JSON.stringify({euNames,euRounds,euCaller,_ts:Date.now()}));}catch(e){}}
-function showSetup(){document.getElementById('eu-game').classList.add('hidden');document.getElementById('eu-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_eu');}catch(e){}}
-
-document.getElementById('eu-start').addEventListener('click',()=>{
-  euNames=[document.getElementById('eu-t1').value.trim()||'Team 1',document.getElementById('eu-t2').value.trim()||'Team 2'];
-  euRounds=[];euCaller=0;euTricks=3;euTrump='';euAlone=false;
-  hap('medium');
-  document.getElementById('eu-alone').checked=false;
-  document.querySelectorAll('.tricks-btn').forEach(b=>b.classList.toggle('active',b.dataset.t==='3'));
-  document.querySelectorAll('#eu-trump-row .eu-trump-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('eu-setup').classList.add('hidden');
-  document.getElementById('eu-game').classList.remove('hidden');
-  document.getElementById('eu-winner').classList.add('hidden');
-  euRender();
-});
-
-document.getElementById('eu-submit').addEventListener('click',()=>{
-  const res=euCalc(euCaller,euTricks,euAlone);
-  euRounds.push({caller:euCaller,tricks:euTricks,trump:euTrump,alone:euAlone,scores:res.scores});
-  hap('light');
-  const totals=euNames.map((_,i)=>euRounds.reduce((s,r)=>s+r.scores[i],0));
-  if(totals.some(t=>t>=EU_WIN)){
-    const wi=totals.indexOf(Math.max(...totals));
-    const banner=document.getElementById('eu-winner');
-    banner.classList.remove('hidden');
-    document.getElementById('eu-wname').textContent=euNames[wi]+' wins!';
-    document.getElementById('eu-wpts').textContent=totals[wi]+' points';
-    try{GameHistory.save('eu',{_summary:`${euNames[wi]} wins · ${euRounds.length} hands`,_badge:totals[wi]+'pts',winner:euNames[wi],names:euNames,rounds:euRounds.length,totals,roundData:euRounds.map(r=>r.scores)});}catch(e){}
-    hap('success');
-    banner.scrollIntoView({behavior:'smooth',block:'start'});
+  function times(n) { return n === 1 ? 'once' : n === 2 ? 'twice' : n + ' times'; }
+  function hideTeamNames(teams) {
+    try {
+      var h = JSON.parse(localStorage.getItem('gn_hidden_names') || '[]');
+      teams.forEach(function (n) { if (h.indexOf(n) < 0) h.push(n); });
+      localStorage.setItem('gn_hidden_names', JSON.stringify(h.slice(-200)));
+    } catch (e) {}
   }
-  euTricks=3;euTrump='';euAlone=false;
-  document.getElementById('eu-alone').checked=false;
-  document.querySelectorAll('.tricks-btn').forEach(b=>b.classList.toggle('active',b.dataset.t==='3'));
-  document.querySelectorAll('#eu-trump-row .eu-trump-btn').forEach(b=>b.classList.remove('active'));
-  euRender();
-  euSave();
-});
 
-document.getElementById('eu-undo').addEventListener('click',()=>{
-  if(euRounds.length){euRounds.pop();hap('light');document.getElementById('eu-winner').classList.add('hidden');}
-  euRender();
-  euSave();
-});
-document.getElementById('eu-again').addEventListener('click',()=>{euRounds=[];document.getElementById('eu-winner').classList.add('hidden');euRender();try{sessionStorage.removeItem('cs_eu');}catch(e){}});
-document.getElementById('eu-newsetup').addEventListener('click',showSetup);
-document.getElementById('eu-reset-setup').addEventListener('click',async()=>{
-  if(euRounds.length&&window.GN&&!(await GN.confirm('Start a new setup?',{body:'This scorecard will be cleared.',ok:'New setup',danger:true}))) return;
-  showSetup();
-});
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP));
+    var N = cfg.names, teams = [N[0] + ' & ' + N[2], N[1] + ' & ' + N[3]];
+    hideTeamNames(teams);
+    pad = Scorepad(app, {
+      key: 'eu', title: 'Euchre', mode: 'Scorekeeper', target: cfg.target,
+      sides: teams.map(function (n) { return { name: n }; }),
+      goal: 'First team to ' + cfg.target + ' wins',
+      form: function (ctx) {
+        var prev = parse(ctx.prev, N);
+        var caller = prev ? prev.caller : -1, suit = prev ? prev.suit : null, alone = prev ? prev.alone : false, tricks = prev ? prev.tricks : 3;
 
-try{
-  const raw=sessionStorage.getItem('cs_eu');
-  if(raw){const s=JSON.parse(raw);if(s.euNames&&s.euRounds&&s.euRounds.length){
-    euNames=s.euNames;euRounds=s.euRounds;euCaller=s.euCaller||0;
-    document.getElementById('eu-t1').value=euNames[0];document.getElementById('eu-t2').value=euNames[1];
-    document.getElementById('eu-setup').classList.add('hidden');document.getElementById('eu-game').classList.remove('hidden');
-    euRender();
-  }}
-}catch(e){}
+        // Who called trump: players grouped by team
+        ctx.node.appendChild(el('div', { class: 'label', text: 'Who called trump?' }));
+        var grid = el('div', { class: 'callers' }), callBtns = [];
+        [0, 1].forEach(function (tm) {
+          grid.appendChild(el('div', { class: 'tm', text: teams[tm] }));
+          [tm, tm + 2].forEach(function (p) {
+            var b = el('button', { type: 'button', style: { '--c': Kit.color(tm) }, onclick: function () { caller = p; Kit.sfx('tap'); paint(); } },
+              [el('span', { class: 'dot' }), el('span', { text: N[p] })]);
+            callBtns[p] = b; grid.appendChild(b);
+          });
+        });
+        ctx.node.appendChild(grid);
+
+        ctx.node.appendChild(el('div', { class: 'label', text: 'Trump suit (optional)' }));
+        var suitSeg = el('div', { class: 'seg suits' });
+        ['s', 'h', 'd', 'c'].forEach(function (s) {
+          suitSeg.appendChild(el('button', { type: 'button', class: s === 'h' || s === 'd' ? 'r' : '', 'aria-label': { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' }[s], 'data-s': s, text: GL[s],
+            onclick: function () { suit = suit === s ? null : s; Kit.sfx('tap'); paint(); } }));
+        });
+        ctx.node.appendChild(suitSeg);
+
+        ctx.node.appendChild(el('div', { class: 'label', text: 'Did they go alone?' }));
+        var aloneSeg = el('div', { class: 'seg' }, [
+          el('button', { type: 'button', text: 'No, with partner', onclick: function () { alone = false; Kit.sfx('tap'); paint(); } }),
+          el('button', { type: 'button', text: 'Went alone', onclick: function () { alone = true; Kit.sfx('tap'); paint(); } })
+        ]);
+        ctx.node.appendChild(aloneSeg);
+
+        var trLabel = el('div', { class: 'label', text: 'Tricks the makers won' });
+        ctx.node.appendChild(trLabel);
+        var trSeg = el('div', { class: 'seg tricks' });
+        for (var t = 0; t <= 5; t++) (function (t) {
+          trSeg.appendChild(el('button', { type: 'button', text: String(t), onclick: function () { tricks = t; Kit.sfx('tap'); paint(); } }));
+        })(t);
+        ctx.node.appendChild(trSeg);
+
+        var preview = el('div', { class: 'preview' });
+        ctx.node.appendChild(preview);
+        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
+        ctx.node.appendChild(btn);
+
+        function paint() {
+          callBtns.forEach(function (b, p) { b.classList.toggle('on', p === caller); });
+          Array.prototype.forEach.call(suitSeg.children, function (b) { b.classList.toggle('on', b.getAttribute('data-s') === suit); });
+          aloneSeg.children[0].classList.toggle('on', !alone); aloneSeg.children[1].classList.toggle('on', alone);
+          Array.prototype.forEach.call(trSeg.children, function (b, i) { b.classList.toggle('on', i === tricks); });
+          btn.disabled = caller < 0;
+          if (caller < 0) { preview.className = 'preview'; preview.innerHTML = 'Pick who called trump'; return; }
+          var side = caller % 2;
+          trLabel.textContent = 'Tricks ' + (alone ? N[caller] : teams[side]) + ' won';
+          var s = points(side, tricks, alone), html;
+          if (tricks < 3) html = '<b>Euchred!</b>' + Kit.esc(teams[1 - side]) + ' get 2 points';
+          else if (tricks === 5) html = '<b>' + (alone ? 'Alone march!' : 'March!') + '</b>' + Kit.esc(teams[side]) + ' get ' + s[side] + ' points';
+          else html = '<b>Made it</b>' + Kit.esc(teams[side]) + ' get 1 point';
+          preview.className = 'preview' + (tricks < 3 ? ' bad' : '');
+          preview.innerHTML = html;
+        }
+        btn.addEventListener('click', function () {
+          if (caller < 0) return;
+          var side = caller % 2, scores = points(side, tricks, alone);
+          var detail = ['', ''];
+          detail[side] = N[caller] + (suit ? ' ' + GL[suit] : '') + (alone ? ' alone' : '') + ' · ' + tricks;
+          if (tricks < 3) detail[1 - side] = 'euchre!';
+          var extra = { detail: detail, highlights: [] };
+          if (alone && tricks === 5) { extra.highlights.push(N[caller] + ' went alone and marched in hand ' + ctx.round); extra.callout = 'Alone march!'; Kit.confetti({ count: 90 }); }
+          else if (alone && tricks < 3) { extra.highlights.push(N[caller] + ' went alone and got euchred in hand ' + ctx.round); extra.callout = 'Euchred!'; }
+          else if (tricks < 3) extra.callout = 'Euchred!';
+          else if (tricks === 5) extra.callout = 'March!';
+          // Game over after this hand? Add the whole-game highlights now.
+          var ends = !ctx.prev && (ctx.totals[0] + scores[0] >= cfg.target || ctx.totals[1] + scores[1] >= cfg.target);
+          if (ends) {
+            var all = pad.state().rounds.map(function (r) { return parse(r, N); }).filter(Boolean);
+            all.push({ side: side, caller: caller, alone: alone, tricks: tricks });
+            [0, 1].forEach(function (tm) {
+              var eu = all.filter(function (x) { return x.side === tm && x.tricks < 3; }).length;
+              if (eu) extra.highlights.push(teams[tm] + ' got euchred ' + times(eu));
+              var mar = all.filter(function (x) { return x.side === tm && x.tricks === 5 && !x.alone; }).length;
+              if (mar) extra.highlights.push(teams[tm] + ' marched ' + times(mar));
+            });
+            var calls = [0, 0, 0, 0]; all.forEach(function (x) { calls[x.caller]++; });
+            var top = calls.indexOf(Math.max.apply(null, calls));
+            if (calls[top] >= 3) extra.highlights.push(N[top] + ' called trump the most (' + calls[top] + ' times)');
+          }
+          ctx.done(scores, extra);
+        });
+        paint();
+      }
+    });
+  }
+
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

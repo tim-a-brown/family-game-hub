@@ -2,363 +2,146 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Rook</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rook Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ── Scorecard layout (shared look: Flip 7 · Five Crowns · Wizard · Rook · Phase 10) ── */
-.page{max-width:640px;}
-.sc-card,.setup-screen,.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 16px;margin-bottom:14px;}
-.sc-label{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 10px;}
-.cnt-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(40px,1fr));gap:4px;padding:4px;margin-bottom:20px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;}
-.cnt-row .btn{min-height:42px;padding:0;border-radius:11px;background:transparent;border-color:transparent;color:var(--text-2);box-shadow:none;font-size:1rem;font-weight:700;}
-.cnt-row .btn.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);box-shadow:0 4px 14px rgba(240,165,0,.25);}
-.names-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-.player-setup-row{display:flex;align-items:flex-start;gap:12px;}
-.player-setup-row .player-dot{width:12px;height:12px;margin-top:19px;box-shadow:0 0 0 3px rgba(255,255,255,.05);}
-.name-field{flex:1;min-width:0;}
-.fp-ai-cta{border-radius:16px !important;margin-bottom:18px !important;}
-
-/* Scoreboard tiles */
-.score-display{display:grid;gap:8px;margin-bottom:12px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 10px 10px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 24px -6px var(--lc,rgba(245,200,66,.3));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.7rem,7vw,2.3rem);font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub,.scorer-foot{font-size:.75rem;color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer .crown{position:absolute;top:8px;right:9px;font-size:.8rem;}
-.pbar{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:8px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-
-/* Round entry */
-.entry-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
-.entry-title{font-family:var(--display);font-size:1.2rem;font-weight:700;letter-spacing:-.01em;}
-.entry-meta{font-size:.8rem;font-weight:700;color:var(--gold);background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:999px;padding:4px 10px;white-space:nowrap;}
-.entry-meta.muted{color:var(--text-2);background:var(--surface-2);border-color:var(--line);}
-.entry-list{margin-bottom:14px;}
-.erow{display:grid;grid-template-columns:minmax(0,1fr) 96px;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
-.erow:first-child{border-top:0;}
-.erow-name{display:flex;align-items:center;gap:9px;font-weight:600;font-size:.95rem;min-width:0;}
-.erow-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.erow-sub{font-size:.75rem;color:var(--text-3);font-weight:500;}
-.score-input,.bid-input{width:100%;min-height:46px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font-weight:700;text-align:center;padding:8px 4px;outline:none;font-variant-numeric:tabular-nums;transition:border-color .15s,box-shadow .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:500;}
-.score-input:disabled{opacity:.3;}
-.toggle-row{display:flex;gap:6px;}
-.toggle-btn{flex:1;min-height:38px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:11px;color:var(--text-2);font-size:.8rem;font-weight:700;padding:0 8px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-.toggle-btn:active{transform:scale(.96);}
-.toggle-btn.on{background:rgba(245,200,66,.16);border-color:rgba(245,200,66,.6);color:var(--gold);}
-.toggle-btn.bust-on{background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.55);color:var(--red);}
-.toggle-btn:disabled{opacity:.35;cursor:not-allowed;}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;}
-.seg .toggle-btn{border-color:transparent;background:transparent;min-height:40px;}
-.seg .toggle-btn.on,.seg .toggle-btn.bust-on{background:var(--surface-3);box-shadow:0 1px 3px rgba(0,0,0,.35);}
-.form-err{color:var(--red);font-size:.88rem;font-weight:600;text-align:center;margin:0 0 12px;}
-.preview{font-size:.85rem;color:var(--text-2);text-align:center;margin:0 0 12px;min-height:20px;line-height:1.5;}
-
-/* Round history */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;}
-.hist-head{padding:13px 14px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:9px 12px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.alt{background:rgba(255,255,255,.018);}
-.hist-row.names .hist-val{font-size:.75rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.hist-row.totals{background:var(--surface-2);border-top:1px solid var(--line-2);}
-.hist-num{font-size:.78rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.92rem;font-weight:600;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;}
-.hist-val.neg{color:var(--red);}
-.hist-total{font-family:var(--display);font-size:1.08rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-
-/* Footer actions + winner */
-.sc-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-.winner-trophy{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.winner-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
-.winner-actions .btn{flex:1 1 140px;max-width:220px;}
-.winner-banner .gh-hist-btn{font-size:.85rem !important;padding:0 16px !important;margin-top:12px !important;}
-
-/* Rules */
-.rules-body p{margin:0 0 8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-.rk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.rk-field .entry-label{font-size:.78rem;font-weight:700;color:var(--text-2);margin:0 2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rk-bidder-seg .btn{min-height:42px;border-radius:11px;background:transparent;border-color:transparent;color:var(--text-2);box-shadow:none;padding:0 8px;overflow:hidden;text-overflow:ellipsis;}
-.rk-bidder-seg .btn.btn-gold{background:var(--surface-3);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.35);}
-.rk-made-seg .toggle-btn.on{color:var(--green);}
-.rk-made-seg .toggle-btn.bust-on{color:var(--red);}
-.win-field{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
-.win-field .input{max-width:140px;text-align:center;font-weight:700;}
-.win-field span{color:var(--text-2);font-size:.9rem;}
+.rform .rrow .avatar{display:none;}
+.rform .rrow .nm{white-space:normal;line-height:1.2;}
+.rform .seg > button{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rk-prev{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rk-prev > div{padding:8px 10px;border-radius:var(--r-sm);background:rgba(255,255,255,.06);text-align:center;}
+.rk-prev .n{display:block;font-size:.75rem;font-weight:800;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rk-prev .v{font-weight:900;font-size:1.3rem;font-variant-numeric:tabular-nums;}
+.rk-prev .v.neg{color:var(--red);}
+.rk-prev .v.pos{color:var(--green);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Rook</span>
-  <a class="icon-btn ai-link" href="rook-ai.html" aria-label="Play vs AI" title="Play vs AI">🎮</a>
-</nav>
-<div class="page">
-
-<!-- How to Play -->
-<details class="rules-details">
-  <summary class="rules-summary">📖 How to play Rook</summary>
-  <div class="rules-body">
-    <p><strong>Goal:</strong> First team to reach the target score (default 300) wins.</p>
-    <p><strong>Points in the deck:</strong> 5s=5pts each, 10s=10pts each, 14s=10pts each, Rook card=20pts. Total: 120 pts per hand.</p>
-    <p><strong>Bidding:</strong> Players bid how many of the 120 points they think their team can capture. Minimum bid is typically 70. The highest bidder names the trump suit and takes the nest.</p>
-    <p><strong>Scoring:</strong> Bidding team scores their captured points if they meet or exceed their bid; if they fall short, they lose their bid amount (go set). The opposing team always scores their captured points. Record each team's points captured this hand, plus the bid and whether the bidding team made it.</p>
-    <p><strong>Rook card:</strong> Highest trump, worth 20 points.</p>
-  </div>
-</details>
-
-<!-- Setup -->
-<div id="rk-setup" class="setup-screen">
-  <div class="sc-label">Teams</div>
-  <div class="names-list">
-    <div class="player-setup-row"><div class="player-dot" style="background:#5ac8fa;"></div><div class="name-field"><input class="input" id="rk-t1" value="Team 1" maxlength="20" autocomplete="off"></div></div>
-    <div class="player-setup-row"><div class="player-dot" style="background:#ff7a5a;"></div><div class="name-field"><input class="input" id="rk-t2" value="Team 2" maxlength="20" autocomplete="off"></div></div>
-  </div>
-  <div class="sc-label">Winning score</div>
-  <div class="win-field"><input class="input" id="rk-win" type="number" inputmode="numeric" value="300" min="120" max="1000"><span>points to win</span></div>
-  <button class="btn btn-gold btn-block" id="rk-start">Start Game</button>
-</div>
-
-<!-- Game -->
-<div id="rk-game" class="hidden">
-  <div id="rk-winner" class="winner-banner hidden">
-    <div class="winner-trophy">🏆</div>
-    <div class="winner-name" id="rk-wname"></div>
-    <div class="winner-pts" id="rk-wpts"></div>
-    <div class="winner-actions">
-      <button class="btn btn-gold" id="rk-again">Play Again</button>
-      <button class="btn btn-outline" id="rk-newsetup">New Setup</button>
-    </div>
-  </div>
-  <div class="score-display" id="rk-scores"></div>
-  <div class="entry-panel" id="rk-entry">
-    <div class="entry-head"><span class="entry-title" id="rk-round-label">Hand 1</span></div>
-    <!-- Which team bid -->
-    <div class="sc-label">Bidding team</div>
-    <div class="seg rk-bidder-seg">
-      <button class="btn btn-sm rk-bidder active-bidder btn-gold" data-b="0" id="rk-bid-t1">Team 1</button>
-      <button class="btn btn-sm rk-bidder" data-b="1" id="rk-bid-t2">Team 2</button>
-    </div>
-    <div class="rk-grid">
-      <div class="rk-field">
-        <div class="entry-label">Bid</div>
-        <input type="number" inputmode="numeric" class="bid-input" id="rk-bid" min="70" max="120" placeholder="70–120">
-      </div>
-      <div class="rk-field">
-        <div class="entry-label">Result</div>
-        <div class="seg rk-made-seg" style="margin:0;">
-          <button class="toggle-btn on" id="rk-made-yes">Made</button>
-          <button class="toggle-btn" id="rk-made-no">Set</button>
-        </div>
-      </div>
-    </div>
-    <div class="rk-grid">
-      <div class="rk-field">
-        <div class="entry-label" id="rk-pts-t1-lbl">Team 1 Points</div>
-        <input type="number" inputmode="numeric" class="bid-input" id="rk-pts-t1" min="0" max="120" placeholder="0–120">
-      </div>
-      <div class="rk-field">
-        <div class="entry-label" id="rk-pts-t2-lbl">Team 2 Points</div>
-        <input type="number" inputmode="numeric" class="bid-input" id="rk-pts-t2" min="0" max="120" placeholder="0–120">
-      </div>
-    </div>
-    <div id="rk-preview" class="preview"></div>
-    <div id="rk-err" class="form-err" style="display:none;"></div>
-    <button class="btn btn-gold btn-block" id="rk-submit">Add Hand</button>
-  </div>
-  <div id="rk-hist-wrap"></div>
-  <div class="sc-foot">
-    <button class="btn btn-ghost" id="rk-reset-setup">New Setup</button>
-    <button class="btn btn-ghost" id="rk-undo">↩ Undo Hand</button>
-  </div>
-</div>
-
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c','#f472b6'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10','#be185d'];
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-function ask(msg,opts){return (window.GN&&GN.confirm)?GN.confirm(msg,opts):Promise.resolve(true);}
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
+  var SETUP = 'rook_pad_setup', TOTAL = 180;
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' Wins!';
-  ptsEl.textContent=typeof pts==='number'?pts+' points':pts;
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey&&typeof GameHistory!=='undefined'){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
+  Kit.init({
+    id: 'rook', title: 'Rook score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('rk', { keys: ['rook'], title: 'Rook: past games' }); } }],
+    rules:
+      '<p class="goal">Play Rook with a real deck and keep score here. Partners sit across from each other. <b>First team to 500 wins.</b></p>' +
+      '<h3>The deck</h3><p>Take out the 2s, 3s and 4s. Play with 1 and 5 to 14 in four colors, plus the Rook. The <b>1 is the highest</b> card of each color. Deal 10 cards each and 5 face down to the <b>nest</b>.</p>' +
+      '<h3>Point cards (180 per hand)</h3><ul><li><b>Rook:</b> 20</li><li><b>1s:</b> 15 each</li><li><b>14s and 10s:</b> 10 each</li><li><b>5s:</b> 5 each</li></ul>' +
+      '<h3>Bidding and play</h3><ul><li>Bid in 5s starting at 100. Once you pass, you are out.</li>' +
+      '<li>The high bidder takes the nest, puts 5 cards back, and names trump. The <b>Rook is the highest trump</b>.</li>' +
+      '<li>Follow the color led if you can (the Rook counts as trump). Whoever takes the <b>last trick</b> also gets the nest.</li></ul>' +
+      '<h3>After each hand</h3><p>Enter which team won the bid, the bid, and how many points the bidding team took. The other team took the rest of the 180.</p>' +
+      '<ul><li><b>Made it:</b> the bidding team scores what it took.</li><li><b>Set:</b> the bidding team loses its bid.</li><li>The other team always scores what it took.</li></ul>'
+  });
+
+  function showSetup() {
+    Kit.setup(app, {
+      players: { min: 4, max: 4, count: 4, label: 'Players (partners: 1 & 3 vs 2 & 4)' },
+      intro: 'Partners sit across from each other',
+      options: [{ id: 'target', label: 'Play to', value: 500, choices: [[300, '300'], [500, '500']] }],
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        localStorage.setItem(SETUP, JSON.stringify({ names: cfg.players.map(function (p) { return p.name; }), target: +cfg.options.target || 500 }));
+        startPad();
+      }
+    });
   }
-  haptic('success');
-  setTimeout(()=>{try{banner.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
-}
-// opts: {lowWins, target:false, sub:[...]}
-function buildScorers(container,names,totals,win,colors,cdark,opts={}){
-  const n=names.length;
-  const cols=n<=3?n:n<=4?2:3;
-  container.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
-  container.innerHTML='';
-  const best=opts.lowWins?Math.min(...totals):Math.max(...totals);
-  names.forEach((nm,i)=>{
-    const leading=opts.lowWins?(totals[i]===best&&totals[i]!==0):(totals[i]===best&&totals[i]>0);
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'66');
-    if(leading)s.style.borderColor=colors[i];
-    let foot='';
-    if(opts.target!==false){
-      const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-      foot=`<div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-foot">${win-totals[i]>0?(win-totals[i])+' to win':'🏆 Reached '+win}</div>`;
-    }
-    s.innerHTML=`${leading?'<span class="crown">👑</span>':''}<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      ${opts.sub?`<div class="scorer-sub">${opts.sub[i]}</div>`:''}${foot}`;
-    container.appendChild(s);
-  });
-}
-function buildHistory(container,rounds,names,totals,colors,title='Round History'){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`26px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">${title}</div>
-    <div class="hist-row names" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-val" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row ${ri%2?'alt':''}" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val ${v<0?'neg':''}">${v>0?'+'+v:v}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-function nameRow(prefix,i,value,max=16){
-  return `<div class="player-dot" style="background:${COLORS[i]}"></div>
-    <div class="name-field"><input class="input" id="${prefix}${i}" value="${esc(value)}" maxlength="${max}" autocomplete="off"></div>`;
-}
 
+  function mult5(v, lo, hi) { return v >= lo && v <= hi && v % 5 === 0; }
 
-// ── ROOK ──────────────────────────────────────────────────────────────────
-let rkNames=['Team 1','Team 2'],rkRounds=[],rkWin=300;
-let rkBidder=0; // index of bidding team
-const rkColors=['#5ac8fa','#ff7a5a'];
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP)), N = cfg.names;
+    var teams = [N[0] + ' & ' + N[2], N[1] + ' & ' + N[3]];
+    function and(k) { return N[k] + ' and ' + N[k + 2]; }
+    pad = Scorepad(app, {
+      key: 'rk', title: 'Rook', mode: 'Scorekeeper', target: cfg.target,
+      sides: teams.map(function (n) { return { name: n }; }),
+      goal: 'First team to ' + cfg.target + ' wins',
+      isOver: function (t) { return t.some(function (v) { return v >= cfg.target; }) && t[0] !== t[1]; },
+      winner: function (t) { return t[0] === t[1] ? -1 : t[0] > t[1] ? 0 : 1; },
+      form: function (ctx) {
+        // Rebuild the inputs when fixing an old hand
+        var bt = 0, bid = 100, took = 100;
+        if (ctx.prev) {
+          var d = ctx.prev.detail || [], sc = ctx.prev.scores;
+          bt = d[1] && /^bid/.test(d[1]) ? 1 : 0;
+          bid = parseInt(String(d[bt] || '').replace(/\D/g, ''), 10) || 100;
+          took = sc[bt] < 0 ? TOTAL - sc[1 - bt] : sc[bt];
+        }
+        ctx.node.appendChild(el('div', { class: 'label', text: 'Who won the bid?' }));
+        var seg = el('div', { class: 'seg' });
+        teams.forEach(function (n, i) {
+          seg.appendChild(el('button', { type: 'button', text: n, class: i === bt ? 'on' : '', onclick: function () {
+            bt = i; Array.prototype.forEach.call(seg.children, function (b, j) { b.classList.toggle('on', j === i); }); Kit.sfx('tap'); check();
+          } }));
+        });
+        ctx.node.appendChild(seg);
+        var bidRow = ctx.number(0, { label: 'Bid', value: bid, min: 70, max: TOTAL, step: 5, neg: false, placeholder: '100' });
+        var tookRow = ctx.number(0, { label: 'Points they took', value: took, min: 0, max: TOTAL, step: 5, neg: false, placeholder: '0' });
+        bidRow.input.addEventListener('input', check); tookRow.input.addEventListener('input', check);
+        ctx.node.appendChild(bidRow); ctx.node.appendChild(tookRow);
+        var prev = el('div', { class: 'rk-prev' }); ctx.node.appendChild(prev);
+        var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
+        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
+        ctx.node.appendChild(btn);
+        function raw(row) { var v = String(row.input.value).trim(); return /^\d+$/.test(v) ? parseInt(v, 10) : NaN; }
+        function scores() {
+          var b = raw(bidRow), t = raw(tookRow), s = [0, 0];
+          s[bt] = t >= b ? t : -b; s[1 - bt] = TOTAL - t;
+          return s;
+        }
+        function check() {
+          var b = raw(bidRow), t = raw(tookRow), msg = '', ok = true;
+          tookRow.querySelector('.nm').textContent = 'Points ' + teams[bt] + ' took';
+          if (!mult5(b, 70, TOTAL)) { ok = false; msg = 'The bid should be 70 to 180, in 5s.'; }
+          else if (!mult5(t, 0, TOTAL)) { ok = false; msg = 'Points taken should be 0 to 180, in 5s.'; }
+          prev.innerHTML = '';
+          if (ok) {
+            var s = scores();
+            [0, 1].forEach(function (k) {
+              prev.appendChild(el('div', null, [el('span', { class: 'n', text: teams[k] }), el('span', { class: 'v ' + (s[k] < 0 ? 'neg' : 'pos'), text: (s[k] > 0 ? '+' : '') + s[k] })]));
+            });
+            msg = t >= b ? teams[bt] + ' made the bid. ' + teams[1 - bt] + ' took ' + (TOTAL - t) + '.' : teams[bt] + ' went set by ' + (b - t) + '.';
+          }
+          note.className = 'rnote' + (ok ? '' : ' bad'); note.textContent = msg;
+          btn.disabled = !ok;
+          return ok;
+        }
+        btn.addEventListener('click', function () {
+          if (!check()) return;
+          var b = raw(bidRow), t = raw(tookRow), s = scores(), extra = { highlights: [], detail: ['', ''] };
+          extra.detail[bt] = 'bid ' + b;
+          if (t >= b) {
+            if (t === TOTAL) { extra.highlights.push(and(bt) + ' took all 180 points in hand ' + ctx.round); extra.callout = 'All 180!'; Kit.confetti({ count: 90 }); }
+            else if (b >= 140) { extra.highlights.push(and(bt) + ' bid ' + b + ' and made it'); extra.callout = 'Made it!'; }
+            else extra.callout = 'Made it!';
+          } else {
+            extra.highlights.push(and(bt) + ' went set on a bid of ' + b + ' in hand ' + ctx.round);
+            extra.callout = 'Set!';
+          }
+          ctx.done(s, extra);
+        });
+        check();
+      }
+    });
+  }
 
-document.querySelectorAll('.rk-bidder').forEach(b=>{
-  b.addEventListener('click',()=>{
-    rkBidder=+b.dataset.b;
-    document.querySelectorAll('.rk-bidder').forEach(x=>{x.classList.remove('active-bidder','btn-gold');});
-    b.classList.add('active-bidder','btn-gold');
-    haptic('select');rkUpdatePreview();
-  });
-});
-function rkSetMade(made){
-  document.getElementById('rk-made-yes').classList.toggle('on',made);
-  document.getElementById('rk-made-no').classList.toggle('bust-on',!made);
-  haptic('select');rkUpdatePreview();
-}
-document.getElementById('rk-made-yes').addEventListener('click',()=>rkSetMade(true));
-document.getElementById('rk-made-no').addEventListener('click',()=>rkSetMade(false));
-
-function rkUpdatePreview(){
-  const bid=parseInt(document.getElementById('rk-bid').value)||0;
-  const p1=parseInt(document.getElementById('rk-pts-t1').value);
-  const p2=parseInt(document.getElementById('rk-pts-t2').value);
-  const made=document.getElementById('rk-made-yes').classList.contains('on');
-  if(!bid||isNaN(p1)||isNaN(p2)){document.getElementById('rk-preview').textContent='';return;}
-  const bPts=rkBidder===0?p1:p2;
-  const oPts=rkBidder===0?p2:p1;
-  document.getElementById('rk-preview').innerHTML=
-    `<span style="color:${rkColors[rkBidder]};font-weight:700">${esc(rkNames[rkBidder])}: ${made?'+'+bPts:'−'+bid+' (set)'}</span>&nbsp;·&nbsp;<span style="color:${rkColors[1-rkBidder]};font-weight:700">${esc(rkNames[1-rkBidder])}: +${oPts}</span>`;
-}
-['rk-bid','rk-pts-t1','rk-pts-t2'].forEach(id=>{
-  document.getElementById(id).addEventListener('input',rkUpdatePreview);
-});
-
-function rkTotals(){return rkNames.map((_,i)=>rkRounds.reduce((s,r)=>s+r[i],0));}
-function rkRender(){
-  const totals=rkTotals();
-  buildScorers(document.getElementById('rk-scores'),rkNames,totals,rkWin,rkColors,['#1a88c4','#c94020']);
-  document.getElementById('rk-scores').style.gridTemplateColumns='1fr 1fr';
-  document.getElementById('rk-round-label').textContent=`Hand ${rkRounds.length+1}`;
-  document.getElementById('rk-bid-t1').textContent=rkNames[0];
-  document.getElementById('rk-bid-t2').textContent=rkNames[1];
-  document.getElementById('rk-pts-t1-lbl').textContent=rkNames[0]+' points';
-  document.getElementById('rk-pts-t2-lbl').textContent=rkNames[1]+' points';
-  document.getElementById('rk-entry').classList.toggle('hidden',totals.some(t=>t>=rkWin));
-  buildHistory(document.getElementById('rk-hist-wrap'),
-    rkRounds.map(r=>[r[0],r[1]]),rkNames,totals,rkColors,'Hand History');
-}
-function rkSave(){try{sessionStorage.setItem('cs_rook',JSON.stringify({rkNames,rkRounds,rkWin,_ts:Date.now()}));}catch(e){}}
-
-document.getElementById('rk-start').addEventListener('click',()=>{
-  rkNames=[document.getElementById('rk-t1').value.trim()||'Team 1',document.getElementById('rk-t2').value.trim()||'Team 2'];
-  rkWin=parseInt(document.getElementById('rk-win').value)||300;
-  rkRounds=[];
-  document.getElementById('rk-setup').classList.add('hidden');
-  document.getElementById('rk-game').classList.remove('hidden');
-  document.getElementById('rk-winner').classList.add('hidden');
-  haptic('light');rkRender();window.scrollTo(0,0);
-});
-
-document.getElementById('rk-submit').addEventListener('click',()=>{
-  const err=document.getElementById('rk-err');
-  const bid=parseInt(document.getElementById('rk-bid').value);
-  const p1=parseInt(document.getElementById('rk-pts-t1').value);
-  const p2=parseInt(document.getElementById('rk-pts-t2').value);
-  const made=document.getElementById('rk-made-yes').classList.contains('on');
-  if(isNaN(bid)||bid<1){err.textContent='Enter a bid amount.';err.style.display='block';haptic('error');return;}
-  if(isNaN(p1)||isNaN(p2)){err.textContent='Enter points captured for both teams.';err.style.display='block';haptic('error');return;}
-  err.style.display='none';
-  const bScore=made?(rkBidder===0?p1:p2):-bid;
-  const oScore=rkBidder===0?p2:p1;
-  const round=rkBidder===0?[bScore,oScore]:[oScore,bScore];
-  rkRounds.push(round);
-  const totals=rkTotals();
-  ['rk-bid','rk-pts-t1','rk-pts-t2'].forEach(id=>{document.getElementById(id).value='';});
-  document.getElementById('rk-preview').textContent='';
-  rkRender();
-  if(totals.some(t=>t>=rkWin)){
-    const wi=totals.indexOf(Math.max(...totals));
-    const banner=document.getElementById('rk-winner');
-    banner._histKey='rk';banner._histTitle='Rook';
-    banner._histRender=(e)=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds+' hands',lbl:'Hands'},{val:e.totals[wi],lbl:'Score'}]));div.appendChild(GameHistory.renderRoundTable(e.names,e.roundData,e.totals,rkColors));return div;};
-    GameHistory.save('rk',{_summary:`${rkNames[wi]} wins · ${rkRounds.length} hands`,_badge:totals[wi]+'pts',winner:rkNames[wi],names:rkNames,rounds:rkRounds.length,totals,roundData:rkRounds.map(r=>[r[0],r[1]])});
-    showWinner(banner,document.getElementById('rk-wname'),document.getElementById('rk-wpts'),rkNames[wi],totals[wi]);
-  } else haptic('light');
-  rkSave();
-});
-document.getElementById('rk-undo').addEventListener('click',()=>{if(rkRounds.length)rkRounds.pop();document.getElementById('rk-winner').classList.add('hidden');haptic('light');rkRender();rkSave();});
-function rkToSetup(){document.getElementById('rk-game').classList.add('hidden');document.getElementById('rk-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_rook');}catch(e){}window.scrollTo(0,0);}
-document.getElementById('rk-again').addEventListener('click',()=>{rkRounds=[];document.getElementById('rk-winner').classList.add('hidden');rkRender();try{sessionStorage.removeItem('cs_rook');}catch(e){}window.scrollTo(0,0);});
-document.getElementById('rk-newsetup').addEventListener('click',rkToSetup);
-document.getElementById('rk-reset-setup').addEventListener('click',async()=>{
-  if(rkRounds.length&&!rkTotals().some(t=>t>=rkWin)&&!(await ask('Start a new setup?',{title:'New setup?',body:'This clears the current game.',ok:'New Setup',danger:true})))return;
-  rkToSetup();
-});
-try{const raw=sessionStorage.getItem('cs_rook');if(raw){const s=JSON.parse(raw);if(s.rkNames&&s.rkRounds.length){rkNames=s.rkNames;rkRounds=s.rkRounds;rkWin=s.rkWin||300;document.getElementById('rk-setup').classList.add('hidden');document.getElementById('rk-game').classList.remove('hidden');rkRender();const t=rkTotals();if(t.some(x=>x>=rkWin)){const wi=t.indexOf(Math.max(...t));document.getElementById('rk-winner').classList.remove('hidden');document.getElementById('rk-wname').textContent=rkNames[wi]+' Wins!';document.getElementById('rk-wpts').textContent=t[wi]+' points';}}}}catch(e){}
-// Solo vs AI shortcut on the setup screen (same CTA the other scorecards get)
-try{if(typeof FrequentPlayers!=='undefined'&&FrequentPlayers.installAiSoloCta)FrequentPlayers.installAiSoloCta();}catch(e){}
-
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

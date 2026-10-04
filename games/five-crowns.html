@@ -2,341 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Five Crowns</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Five Crowns Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ── Scorecard layout (shared look: Flip 7 · Five Crowns · Wizard · Rook · Phase 10) ── */
-.page{max-width:640px;}
-.sc-card,.setup-screen,.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 16px;margin-bottom:14px;}
-.sc-label{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 10px;}
-.cnt-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(40px,1fr));gap:4px;padding:4px;margin-bottom:20px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;}
-.cnt-row .btn{min-height:42px;padding:0;border-radius:11px;background:transparent;border-color:transparent;color:var(--text-2);box-shadow:none;font-size:1rem;font-weight:700;}
-.cnt-row .btn.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);box-shadow:0 4px 14px rgba(240,165,0,.25);}
-.names-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-.player-setup-row{display:flex;align-items:flex-start;gap:12px;}
-.player-setup-row .player-dot{width:12px;height:12px;margin-top:19px;box-shadow:0 0 0 3px rgba(255,255,255,.05);}
-.name-field{flex:1;min-width:0;}
-.fp-ai-cta{border-radius:16px !important;margin-bottom:18px !important;}
-
-/* Scoreboard tiles */
-.score-display{display:grid;gap:8px;margin-bottom:12px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 10px 10px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 24px -6px var(--lc,rgba(245,200,66,.3));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.7rem,7vw,2.3rem);font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub,.scorer-foot{font-size:.75rem;color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer .crown{position:absolute;top:8px;right:9px;font-size:.8rem;}
-.pbar{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:8px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-
-/* Round entry */
-.entry-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
-.entry-title{font-family:var(--display);font-size:1.2rem;font-weight:700;letter-spacing:-.01em;}
-.entry-meta{font-size:.8rem;font-weight:700;color:var(--gold);background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:999px;padding:4px 10px;white-space:nowrap;}
-.entry-meta.muted{color:var(--text-2);background:var(--surface-2);border-color:var(--line);}
-.entry-list{margin-bottom:14px;}
-.erow{display:grid;grid-template-columns:minmax(0,1fr) 96px;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
-.erow:first-child{border-top:0;}
-.erow-name{display:flex;align-items:center;gap:9px;font-weight:600;font-size:.95rem;min-width:0;}
-.erow-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.erow-sub{font-size:.75rem;color:var(--text-3);font-weight:500;}
-.score-input,.bid-input{width:100%;min-height:46px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font-weight:700;text-align:center;padding:8px 4px;outline:none;font-variant-numeric:tabular-nums;transition:border-color .15s,box-shadow .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:500;}
-.score-input:disabled{opacity:.3;}
-.toggle-row{display:flex;gap:6px;}
-.toggle-btn{flex:1;min-height:38px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:11px;color:var(--text-2);font-size:.8rem;font-weight:700;padding:0 8px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-.toggle-btn:active{transform:scale(.96);}
-.toggle-btn.on{background:rgba(245,200,66,.16);border-color:rgba(245,200,66,.6);color:var(--gold);}
-.toggle-btn.bust-on{background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.55);color:var(--red);}
-.toggle-btn:disabled{opacity:.35;cursor:not-allowed;}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;}
-.seg .toggle-btn{border-color:transparent;background:transparent;min-height:40px;}
-.seg .toggle-btn.on,.seg .toggle-btn.bust-on{background:var(--surface-3);box-shadow:0 1px 3px rgba(0,0,0,.35);}
-.form-err{color:var(--red);font-size:.88rem;font-weight:600;text-align:center;margin:0 0 12px;}
-.preview{font-size:.85rem;color:var(--text-2);text-align:center;margin:0 0 12px;min-height:20px;line-height:1.5;}
-
-/* Round history */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;}
-.hist-head{padding:13px 14px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:9px 12px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.alt{background:rgba(255,255,255,.018);}
-.hist-row.names .hist-val{font-size:.75rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.hist-row.totals{background:var(--surface-2);border-top:1px solid var(--line-2);}
-.hist-num{font-size:.78rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.92rem;font-weight:600;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;}
-.hist-val.neg{color:var(--red);}
-.hist-total{font-family:var(--display);font-size:1.08rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-
-/* Footer actions + winner */
-.sc-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-.winner-trophy{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.winner-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
-.winner-actions .btn{flex:1 1 140px;max-width:220px;}
-.winner-banner .gh-hist-btn{font-size:.85rem !important;padding:0 16px !important;margin-top:12px !important;}
-
-/* Rules */
-.rules-body p{margin:0 0 8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-.fc-rounds{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px;margin:4px 0 14px;}
-.fc-rounds i{height:5px;border-radius:3px;background:var(--surface-3);}
-.fc-rounds i.done{background:var(--gold2);}
-.fc-rounds i.cur{background:var(--gold);box-shadow:0 0 0 2px rgba(245,200,66,.25);}
+.fc-next{display:flex;align-items:center;gap:14px;padding:12px 14px;margin:0 0 14px;border-radius:20px;color:#fff;}
+.fc-next .pcard{--cw:50px;flex:none;transform:rotate(-4deg);}
+.fc-next .pcard.custom .big{font-size:calc(var(--cw) * .5);}
+.fc-next .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.fc-next small{font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);}
+.fc-next b{font-family:var(--display);font-weight:400;font-size:1.45rem;line-height:1.05;text-shadow:0 2px 0 rgba(0,0,0,.3);}
+.fc-next .wl{font-weight:800;font-size:.9rem;color:#ffe08a;}
+.fc-pips{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;}
+.fc-pips i{display:grid;place-items:center;min-width:21px;height:21px;padding:0 2px;border-radius:6px;font-style:normal;font-size:.68rem;font-weight:900;background:rgba(0,0,0,.25);color:rgba(255,255,255,.6);}
+.fc-pips i.done{background:rgba(255,255,255,.15);color:rgba(255,255,255,.4);text-decoration:line-through;}
+.fc-pips i.cur{background:#ffd75e;color:#3a2600;box-shadow:0 0 0 2px #fff3;}
+.fc-form-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r);background:rgba(255,200,61,.12);color:#ffe08a;font-weight:800;font-size:.92rem;}
+.fc-form-h .ico{width:20px;height:20px;flex:none;}
+.rrow .outb{flex:none;min-width:58px;height:40px;padding:0 8px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text-2);font-weight:900;font-size:.82rem;}
+.rrow .outb.on{background:var(--green);color:#03290f;box-shadow:0 0 0 2px #fff3;}
+.rrow.isout .num{opacity:.45;}
+.rrow .num{width:64px;}
+.rrow .pm button{width:36px;}
+.rrow{gap:6px;padding:8px;}
+.rrow .nm{font-size:.95rem;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Five Crowns</span>
-  <a class="icon-btn ai-link" href="fivecrownss-ai.html" aria-label="Play vs AI" title="Play vs AI">🎮</a>
-</nav>
-<div class="page">
-
-<!-- How to Play -->
-<details class="rules-details">
-  <summary class="rules-summary">📖 How to play Five Crowns</summary>
-  <div class="rules-body">
-    <p><strong>Goal:</strong> Lowest score after 11 rounds wins.</p>
-    <p><strong>Rounds:</strong> 11 rounds — players are dealt 3 cards in round 1, increasing by 1 each round up to 13 cards in round 11.</p>
-    <p><strong>Wild cards:</strong> The rank matching the round number is wild (3s in round 1, 4s in round 2 … Kings in round 11). Jokers are always wild.</p>
-    <p><strong>Going out:</strong> On your turn, if you can arrange all cards into valid books (3+ same rank) or runs (3+ consecutive same suit), lay down and go out. Everyone else gets one final turn.</p>
-    <p><strong>Scoring:</strong> Count the value of unmatched cards left in hand: 3–10 = face value, J=11, Q=12, K=13, Wild=20, Joker=50. Enter 0 for the player who went out.</p>
-  </div>
-</details>
-
-<!-- Setup -->
-<div id="fc-setup" class="setup-screen">
-  <div class="sc-label">Number of players</div>
-  <div class="cnt-row">
-    <button class="btn btn-outline btn-sm fc-cnt active-cnt btn-gold" data-n="2">2</button>
-    <button class="btn btn-outline btn-sm fc-cnt" data-n="3">3</button>
-    <button class="btn btn-outline btn-sm fc-cnt" data-n="4">4</button>
-    <button class="btn btn-outline btn-sm fc-cnt" data-n="5">5</button>
-    <button class="btn btn-outline btn-sm fc-cnt" data-n="6">6</button>
-    <button class="btn btn-outline btn-sm fc-cnt" data-n="7">7</button>
-  </div>
-  <div class="sc-label">Players</div>
-  <div id="fc-names" class="names-list"></div>
-  <button class="btn btn-gold btn-block" id="fc-start">Start Game</button>
-</div>
-
-<!-- Game -->
-<div id="fc-game" class="hidden">
-  <div id="fc-winner" class="winner-banner hidden">
-    <div class="winner-trophy">🏆</div>
-    <div class="winner-name" id="fc-wname"></div>
-    <div class="winner-pts" id="fc-wpts"></div>
-    <div class="winner-actions">
-      <button class="btn btn-gold" id="fc-again">Play Again</button>
-      <button class="btn btn-outline" id="fc-newsetup">New Setup</button>
-    </div>
-  </div>
-  <div id="fc-scores" class="score-display"></div>
-  <div class="entry-panel" id="fc-entry">
-    <div class="entry-head">
-      <span class="entry-title" id="fc-round-label">Round 1 — deal 3 cards</span>
-      <span class="entry-meta" id="fc-wild-label"></span>
-    </div>
-    <div class="fc-rounds" id="fc-rounds"></div>
-    <div id="fc-inputs" class="entry-list"></div>
-    <div id="fc-err" class="form-err" style="display:none;"></div>
-    <button class="btn btn-gold btn-block" id="fc-submit">Add Round</button>
-  </div>
-  <div id="fc-hist-wrap"></div>
-  <div class="sc-foot">
-    <button class="btn btn-ghost" id="fc-reset-setup">New Setup</button>
-    <button class="btn btn-ghost" id="fc-undo">↩ Undo Round</button>
-  </div>
-</div>
-
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c','#f472b6'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10','#be185d'];
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-function ask(msg,opts){return (window.GN&&GN.confirm)?GN.confirm(msg,opts):Promise.resolve(true);}
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null, banner = null, padHost = null;
+  var SETUP = 'fivecrowns_pad_setup', KEY = 'fc', AI_KEY = 'fivecrwns';
+  var RANKS = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  var PLURAL = ['Threes', 'Fours', 'Fives', 'Sixes', 'Sevens', 'Eights', 'Nines', 'Tens', 'Jacks', 'Queens', 'Kings'];
+  var LABELS = ['3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', 'Js', 'Qs', 'Ks'];
+  function roundName(k) { return 'the ' + ({ 11: 'Kings', 10: 'Queens', 9: 'Jacks' }[k] || LABELS[k - 1]) + ' round'; }
+  // Most points you can be caught with holding n cards (6 Jokers at 50, the rest wild at 20)
+  function maxPts(n) { return Math.min(n, 6) * 50 + Math.max(0, n - 6) * 20; }
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' Wins!';
-  ptsEl.textContent=typeof pts==='number'?pts+' points':pts;
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey&&typeof GameHistory!=='undefined'){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
+  Kit.init({
+    id: 'five-crowns', title: 'Five Crowns score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [AI_KEY], title: 'Five Crowns: past games' }); } }],
+    rules:
+      '<p class="goal">Play Five Crowns with the real cards and keep score here. Eleven rounds; the <b>lowest total wins</b>.</p>' +
+      '<h3>Each round</h3><ul><li>Round 1 deals 3 cards and <b>3s are wild</b>. Each round deals one more card and the wild moves up: 4s, 5s … up to 13 cards with <b>Kings wild</b>.</li>' +
+      '<li><b>Jokers are always wild.</b></li>' +
+      '<li>On your turn, take the top card of the stock or the discard pile, then discard one.</li>' +
+      '<li><b>Books</b> are 3+ of the same number. <b>Runs</b> are 3+ in a row in the same suit.</li>' +
+      '<li>When someone has every card in a book or run, they <b>go out</b>. Everyone else gets one more turn, then lays down what they can.</li></ul>' +
+      '<h3>Scoring a round</h3><p>Add up the cards each player has left over: <b>3 to 10</b> = their number, <b>J 11, Q 12, K 13</b>, <b>wild card 20</b>, <b>Joker 50</b>. Tap <b>Out</b> for the player who went out (they score 0). Anyone else who laid down everything also scores 0.</p>' +
+      '<p>Tap a round on the score sheet to fix it.</p>'
+  });
+
+  function showSetup() {
+    if (observer) observer.disconnect();
+    Kit.setup(app, {
+      players: { min: 2, max: 7, count: 3 },
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        localStorage.setItem(SETUP, JSON.stringify({ names: cfg.players.map(function (p) { return p.name; }) }));
+        startPad();
+      }
+    });
   }
-  haptic('success');
-  setTimeout(()=>{try{banner.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
-}
-// opts: {lowWins, target:false, sub:[...]}
-function buildScorers(container,names,totals,win,colors,cdark,opts={}){
-  const n=names.length;
-  const cols=n<=3?n:n<=4?2:3;
-  container.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
-  container.innerHTML='';
-  const best=opts.lowWins?Math.min(...totals):Math.max(...totals);
-  names.forEach((nm,i)=>{
-    const leading=opts.lowWins?(totals[i]===best&&totals[i]!==0):(totals[i]===best&&totals[i]>0);
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'66');
-    if(leading)s.style.borderColor=colors[i];
-    let foot='';
-    if(opts.target!==false){
-      const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-      foot=`<div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-foot">${win-totals[i]>0?(win-totals[i])+' to win':'🏆 Reached '+win}</div>`;
+
+  // ── "Next round" banner above the score sheet ─────────────────────────────
+  var observer = null;
+  function paintBanner() {
+    if (!pad || !banner) return;
+    var st = pad.state(), done = st.rounds.length, k = Math.min(done, 10);
+    banner.innerHTML = '';
+    banner.hidden = !!st.over;
+    if (st.over) return;
+    var card = Kit.cardFace({ rank: RANKS[k], center: RANKS[k], label: 'Wild', color: '#b98a00' });
+    var pips = el('div', { class: 'fc-pips', 'aria-hidden': 'true' });
+    RANKS.forEach(function (r, i) { pips.appendChild(el('i', { class: i < done ? 'done' : i === k ? 'cur' : '', text: r })); });
+    banner.appendChild(card);
+    banner.appendChild(el('div', { class: 'tx' }, [
+      el('small', { text: 'Round ' + (k + 1) + ' of 11' }),
+      el('b', { text: 'Deal ' + (k + 3) + ' cards' }),
+      el('span', { class: 'wl', text: PLURAL[k] + ' are wild, plus Jokers' }),
+      pips
+    ]));
+  }
+
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP));
+    app.innerHTML = '';
+    banner = el('div', { class: 'fc-next wood' });
+    padHost = el('div');
+    app.appendChild(banner); app.appendChild(padHost);
+    pad = Scorepad(padHost, {
+      key: KEY, title: 'Five Crowns', mode: 'Scorekeeper', lowWins: true, rounds: 11,
+      sides: cfg.names.map(function (n) { return { name: n }; }),
+      goal: 'Lowest total after 11 rounds wins',
+      form: form
+    });
+    if (observer) observer.disconnect();
+    observer = new MutationObserver(paintBanner);
+    observer.observe(padHost, { childList: true });
+    paintBanner();
+  }
+
+  function form(ctx) {
+    var n = ctx.sides.length, k = ctx.round - 1, cards = k + 3;
+    var out = -1;
+    if (ctx.prev && ctx.prev.detail) ctx.prev.detail.forEach(function (d, i) { if (d === 'out') out = i; });
+    ctx.node.appendChild(el('div', { class: 'fc-form-h', html: Kit.icon('star') + '<span>' + Kit.esc(PLURAL[k]) + ' round · ' + cards + ' cards · ' + Kit.esc(PLURAL[k].toLowerCase()) + ' and Jokers wild</span>' }));
+    ctx.node.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Points left in hand' }));
+    var rows = ctx.sides.map(function (s, i) {
+      var r = ctx.number(i, { min: 0, max: maxPts(cards), neg: false, value: ctx.prev ? ctx.prev.scores[i] : '' });
+      r.input.addEventListener('input', function () { if (out === i && r.value() !== 0) setOut(-1); check(); });
+      var b = el('button', { type: 'button', class: 'outb', text: 'Out', 'aria-pressed': 'false', 'aria-label': s.name + ' went out (0 points)',
+        onclick: function () { setOut(out === i ? -1 : i); Kit.sfx('tap'); Kit.haptic('light'); } });
+      r.appendChild(b); r.outBtn = b;
+      ctx.node.appendChild(r);
+      return r;
+    });
+    function setOut(i) {
+      out = i;
+      rows.forEach(function (r, j) {
+        var on = j === out;
+        r.outBtn.classList.toggle('on', on); r.outBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        r.classList.toggle('isout', on);
+        if (on) r.input.value = '0';
+      });
+      check();
     }
-    s.innerHTML=`${leading?'<span class="crown">👑</span>':''}<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      ${opts.sub?`<div class="scorer-sub">${opts.sub[i]}</div>`:''}${foot}`;
-    container.appendChild(s);
-  });
-}
-function buildHistory(container,rounds,names,totals,colors,title='Round History'){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`26px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">${title}</div>
-    <div class="hist-row names" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-val" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row ${ri%2?'alt':''}" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val ${v<0?'neg':''}">${v>0?'+'+v:v}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-function nameRow(prefix,i,value,max=16){
-  return `<div class="player-dot" style="background:${COLORS[i]}"></div>
-    <div class="name-field"><input class="input" id="${prefix}${i}" value="${esc(value)}" maxlength="${max}" autocomplete="off"></div>`;
-}
-
-// ── FIVE CROWNS ────────────────────────────────────────────────────────────
-const FC_ROUNDS=11; // rounds 1-11, dealing 3-13 cards
-const FC_WILDS=['3','4','5','6','7','8','9','10','J','Q','K'];
-const DFLT_FC=['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6','Player 7'];
-let fcN=2, fcNames=[], fcRounds=[], fcRound=1;
-
-function fcBuildSetup(){
-  const c=document.getElementById('fc-names');c.innerHTML='';
-  for(let i=0;i<fcN;i++){
-    const row=document.createElement('div');row.className='player-setup-row';
-    row.innerHTML=nameRow('fcn',i,DFLT_FC[i]);
-    c.appendChild(row);
+    var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
+    var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score the ' + LABELS[k] + ' round' });
+    ctx.node.appendChild(btn);
+    function vals() { return rows.map(function (r) { return Math.max(0, r.value()); }); }
+    function check() {
+      var v = vals(), msg = '', blank = rows.some(function (r, i) { return i !== out && String(r.input.value).trim() === ''; });
+      var odd = v.map(function (x, i) { return x === 1 || x === 2 ? i : -1; }).filter(function (i) { return i >= 0; });
+      var big = v.map(function (x, i) { return x > maxPts(cards) ? i : -1; }).filter(function (i) { return i >= 0; });
+      if (out < 0) msg = 'Tap Out next to the player who went out';
+      else if (blank) msg = 'Enter points for everyone (0 if they laid it all down)';
+      else if (odd.length) msg = ctx.sides[odd[0]].name + ': the lowest card is a 3, so 1 or 2 points is not possible';
+      else if (big.length) msg = ctx.sides[big[0]].name + ': that is more than ' + cards + ' cards can be worth';
+      note.className = 'rnote' + (msg ? ' bad' : '');
+      note.textContent = msg || ctx.sides[out].name + ' went out. Looks right!';
+      btn.disabled = !!msg;
+      return !msg;
+    }
+    btn.addEventListener('click', function () {
+      if (!check()) return;
+      var v = vals(), hl = [], extra = { label: LABELS[k], detail: v.map(function (x, i) { return i === out ? 'out' : ''; }), highlights: hl };
+      v[out] = 0;
+      if (k === 10) hl.push(ctx.sides[out].name + ' went out first in the Kings round');
+      var mx = Math.max.apply(null, v), who = v.indexOf(mx);
+      if (mx >= 60) hl.push(ctx.sides[who].name + ' got caught holding ' + mx + ' points in ' + roundName(k + 1));
+      if (!ctx.prev && k === 10) summary(v, out).forEach(function (h) { hl.push(h); });
+      if (!ctx.prev) extra.callout = out >= 0 && n ? ctx.sides[out].name.length <= 8 ? ctx.sides[out].name + ' out!' : 'Out!' : '';
+      ctx.done(v, extra);
+    });
+    if (!ctx.prev) setTimeout(function () { try { rows[0].input.focus(); } catch (e) {} }, 350);
+    if (out >= 0) setOut(out); else check();
   }
-  if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("fcn");
-}
-document.querySelectorAll('.fc-cnt').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.fc-cnt').forEach(x=>{x.classList.remove('active-cnt','btn-gold');x.classList.add('btn-outline');});
-    b.classList.add('active-cnt','btn-gold');b.classList.remove('btn-outline');
-    fcN=+b.dataset.n;fcBuildSetup();haptic('select');
-  });
-});
-fcBuildSetup();
 
-function fcSave(){try{sessionStorage.setItem('cs_fivecrwns',JSON.stringify({fcN,fcNames,fcRounds,fcRound,_ts:Date.now()}));}catch(e){}}
-function fcTotals(){return fcNames.map((_,i)=>fcRounds.reduce((s,r)=>s+r[i],0));}
+  // Extra highlights once the Kings round is entered
+  function summary(last, lastOut) {
+    var st = pad.state(), n = st.sides.length, hl = [];
+    var rounds = st.rounds.map(function (r) { return { s: r.scores, out: r.detail ? r.detail.indexOf('out') : -1 }; }).concat([{ s: last, out: lastOut }]);
+    var outs = st.sides.map(function (s, i) { return rounds.filter(function (r) { return r.out === i; }).length; });
+    var m = outs.indexOf(Math.max.apply(null, outs));
+    if (outs[m] >= 2) hl.push(st.sides[m].name + ' went out first ' + outs[m] + ' times');
+    var tot = st.sides.map(function () { return 0; }), at8 = null;
+    rounds.forEach(function (r, ri) { r.s.forEach(function (v, i) { tot[i] += v; }); if (ri === 7) at8 = tot.slice(); });
+    var wi = tot.indexOf(Math.min.apply(null, tot));
+    if (at8 && tot.filter(function (v) { return v === tot[wi]; }).length === 1) {
+      var led = at8.indexOf(Math.min.apply(null, at8));
+      if (led !== wi) hl.push(st.sides[wi].name + ' came from behind in the last 3 rounds to win');
+    }
+    var zeros = st.sides.map(function (s, i) { return rounds.filter(function (r) { return r.s[i] === 0; }).length; });
+    var z = zeros.indexOf(Math.max.apply(null, zeros));
+    if (zeros[z] >= 4) hl.push(st.sides[z].name + ' scored zero in ' + zeros[z] + ' of 11 rounds');
+    return hl;
+  }
 
-function fcStart(){
-  fcNames=Array.from({length:fcN},(_,i)=>document.getElementById('fcn'+i).value.trim()||DFLT_FC[i]);
-  fcRounds=[];fcRound=1;
-  document.getElementById('fc-setup').classList.add('hidden');
-  document.getElementById('fc-game').classList.remove('hidden');
-  document.getElementById('fc-winner').classList.add('hidden');
-  fcRender();window.scrollTo(0,0);
-}
-
-function fcShowWinner(){
-  const totals=fcTotals();
-  const minScore=Math.min(...totals);
-  const wi=totals.indexOf(minScore);
-  const banner=document.getElementById('fc-winner');
-  banner._histKey='fc';banner._histTitle='Five Crowns';
-  banner._histRender=(e)=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds+' rounds',lbl:'Rounds'},{val:e.totals[wi],lbl:'Winning Score'}]));div.appendChild(GameHistory.renderRoundTable(e.names,e.roundData,e.totals,COLORS));return div;};
-  showWinner(banner,document.getElementById('fc-wname'),document.getElementById('fc-wpts'),fcNames[wi],'Lowest score: '+minScore);
-  return {wi,totals};
-}
-
-function fcRender(){
-  const totals=fcTotals();
-  const done=fcRounds.length>=FC_ROUNDS;
-  buildScorers(document.getElementById('fc-scores'),fcNames,totals,999,COLORS,CDARK,{lowWins:true,target:false,sub:totals.map((_,i)=>fcRounds.length?'+'+fcRounds[fcRounds.length-1][i]+' last round':'low score wins')});
-  const dealCards=2+fcRound;
-  const wildRank=FC_WILDS[fcRound-1];
-  document.getElementById('fc-round-label').textContent=`Round ${fcRound} of ${FC_ROUNDS}`;
-  document.getElementById('fc-wild-label').textContent=`Deal ${dealCards} · ${wildRank}s wild`;
-  document.getElementById('fc-rounds').innerHTML=Array.from({length:FC_ROUNDS},(_,i)=>`<i class="${i<fcRounds.length?'done':i===fcRound-1?'cur':''}"></i>`).join('');
-  document.getElementById('fc-entry').classList.toggle('hidden',done);
-
-  const inp=document.getElementById('fc-inputs');inp.innerHTML='';
-  fcNames.forEach((nm,i)=>{
-    const row=document.createElement('div');row.className='erow';
-    row.innerHTML=`<div class="erow-name"><span class="player-dot" style="background:${COLORS[i]}"></span><span>${esc(nm)}</span></div>
-      <input type="number" inputmode="numeric" class="score-input" placeholder="pts" min="0" data-i="${i}">`;
-    inp.appendChild(row);
-  });
-  buildHistory(document.getElementById('fc-hist-wrap'),fcRounds,fcNames,totals,COLORS);
-}
-
-document.getElementById('fc-start').addEventListener('click',()=>{haptic('light');fcStart();});
-document.getElementById('fc-submit').addEventListener('click',()=>{
-  if(fcRounds.length>=FC_ROUNDS) return;
-  const err=document.getElementById('fc-err');
-  const scores=Array.from({length:fcN},(_,i)=>{
-    const v=parseInt(document.querySelector(`#fc-inputs input[data-i="${i}"]`)?.value);
-    return isNaN(v)?null:v;
-  });
-  if(scores.some(v=>v===null)){err.textContent='Enter points left in hand for every player (0 if they went out).';err.style.display='block';haptic('error');return;}
-  err.style.display='none';
-  fcRounds.push(scores);
-  const totals=fcTotals();
-  const finished=fcRound>=FC_ROUNDS;
-  fcRound=Math.min(fcRound+1,FC_ROUNDS);
-  fcRender();
-  if(finished){
-    const {wi}=fcShowWinner();
-    GameHistory.save('fc',{_summary:`${fcNames[wi]} wins · ${totals[wi]} pts`,_badge:totals[wi]+'pts',winner:fcNames[wi],names:fcNames,rounds:FC_ROUNDS,totals,roundData:fcRounds});
-  } else haptic('light');
-  fcSave();
-});
-document.getElementById('fc-undo').addEventListener('click',()=>{
-  if(!fcRounds.length) return;
-  // Undoing the final round: fcRound stayed at 11, so only step back otherwise.
-  if(fcRounds.length<FC_ROUNDS) fcRound=Math.max(1,fcRound-1);
-  fcRounds.pop();
-  document.getElementById('fc-winner').classList.add('hidden');
-  haptic('light');fcRender();fcSave();
-});
-function fcToSetup(){document.getElementById('fc-game').classList.add('hidden');document.getElementById('fc-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_fivecrwns');}catch(e){}window.scrollTo(0,0);}
-document.getElementById('fc-again').addEventListener('click',()=>{fcRounds=[];fcRound=1;document.getElementById('fc-winner').classList.add('hidden');fcRender();try{sessionStorage.removeItem('cs_fivecrwns');}catch(e){}window.scrollTo(0,0);});
-document.getElementById('fc-newsetup').addEventListener('click',fcToSetup);
-document.getElementById('fc-reset-setup').addEventListener('click',async()=>{
-  if(fcRounds.length&&fcRounds.length<FC_ROUNDS&&!(await ask('Start a new setup?',{title:'New setup?',body:'This clears the current game.',ok:'New Setup',danger:true})))return;
-  fcToSetup();
-});
-try{const raw=sessionStorage.getItem('cs_fivecrwns');if(raw){const s=JSON.parse(raw);if(s.fcNames&&s.fcRounds.length){fcN=s.fcN;fcNames=s.fcNames;fcRounds=s.fcRounds;fcRound=s.fcRound||1;document.getElementById('fc-setup').classList.add('hidden');document.getElementById('fc-game').classList.remove('hidden');fcRender();if(fcRounds.length>=FC_ROUNDS){const b=document.getElementById('fc-winner');const t=fcTotals();const m=Math.min(...t);b.classList.remove('hidden');document.getElementById('fc-wname').textContent=fcNames[t.indexOf(m)]+' Wins!';document.getElementById('fc-wpts').textContent='Lowest score: '+m;}}}}catch(e){}
-
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

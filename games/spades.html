@@ -2,353 +2,253 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Spades</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spades Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-/*SCKIT-START*/
-/* ── Scorecard kit (Spades · Hearts · Euchre · Gin Rummy scorecards) ── */
-.sc{max-width:560px;margin:0 auto;padding:14px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));}
-.sc-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;text-decoration:none;color:#fff;transition:transform .12s var(--ease);}
-.sc-cta:active{transform:scale(.98);}
-.sc-cta-ico{width:44px;height:44px;border-radius:13px;background:rgba(0,0,0,.25);display:grid;place-items:center;font-size:1.35rem;flex:none;}
-.sc-cta-body{flex:1;min-width:0;}
-.sc-cta-t{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em;}
-.sc-cta-s{font-size:.82rem;color:rgba(255,255,255,.75);}
-.sc-cta svg{width:20px;height:20px;flex:none;opacity:.8;}
-.setup-screen{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;}
-.sc-h{font-family:var(--display);font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
-.sc-hsub{font-size:.88rem;color:var(--text-2);margin-bottom:6px;}
-.form-lbl{font-size:.75rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px;}
-.player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.player-setup-row .input{flex:1;}
-.player-dot{width:12px;height:12px;border-radius:50%;flex:none;}
-.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-.seg .btn{min-height:44px;padding:0;}
-.toggle-line{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;margin:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;cursor:pointer;color:var(--text);font-size:.92rem;font-weight:600;letter-spacing:0;}
-.toggle-line .tl-body{flex:1;min-width:0;}
-.toggle-line .tl-sub{display:block;font-size:.8rem;font-weight:500;color:var(--text-2);margin-top:1px;}
-.switch{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);position:relative;cursor:pointer;transition:background .2s;margin:0;}
-.switch::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .22s var(--ease);}
-.switch:checked{background:var(--green);border-color:transparent;}
-.switch:checked::after{transform:translateX(20px);}
-.sc-start{margin-top:18px;}
-/* Live scores */
-.score-display{display:grid;gap:10px;margin-bottom:14px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 26px var(--lc,rgba(245,200,66,.2));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.9rem,8.5vw,2.6rem);font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub{font-size:.75rem;color:var(--text-2);margin-top:5px;}
-.scorer-to{font-size:.75rem;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums;}
-.pbar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:10px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-/* Round entry */
-.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px;}
-.entry-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-family:var(--display);font-size:1.2rem;font-weight:800;letter-spacing:-.015em;margin-bottom:14px;}
-.entry-head small,.entry-head span{font-family:var(--font);font-size:.75rem;font-weight:600;color:var(--text-3);letter-spacing:0;}
-.entry-row{display:grid;gap:10px;margin-bottom:12px;}
-.entry-cell{text-align:center;min-width:0;}
-.entry-label{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mini-lbl{font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
-.score-input,.bid-input{width:100%;min-height:52px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;color:var(--text);font-size:1.25rem !important;font-weight:700;text-align:center;padding:8px 4px;outline:none;font-family:var(--display);transition:border-color .15s,box-shadow .15s,background .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);background:var(--surface-3);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:600;}
-.sc-err{color:var(--red);font-size:.86rem;font-weight:600;text-align:center;margin-bottom:10px;}
-/* History */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
-.hist-head{padding:12px 16px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.totals{background:var(--surface-2);}
-.hist-num{font-size:.8rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--text);}
-.hist-val.neg{color:var(--red);}
-.hist-name{font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hist-total{font-family:var(--display);font-size:1.1rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-.sc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
-.wb-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;}
-.winner-banner .gh-hist-btn{margin-top:10px;}
-.rules-body p{margin-bottom:8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-.nav-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap;}
-.nav-pill:active{transform:scale(.95);}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-/*SCKIT-END*/
-/* Spades-specific */
-.team-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;}
-.team-entry .pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
-.nil-chk{display:flex;align-items:center;gap:8px;min-height:44px;margin:0;font-size:.84rem;font-weight:600;color:var(--text-2);cursor:pointer;}
-.nil-chk .switch{width:42px;height:26px;}
-.nil-chk .switch::after{width:20px;height:20px;}
-.nil-chk .switch:checked::after{transform:translateX(16px);}
-.bag-status{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-4px 0 14px;}
-.bag-team{font-size:.75rem;font-weight:600;color:var(--text-2);}
-.bag-team .bt{display:flex;justify-content:space-between;margin-bottom:5px;}
-.bag-team.warn{color:var(--gold);}
-.bagbar{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;}
-.bagbar span{height:6px;border-radius:2px;background:var(--surface-3);}
-.bagbar span.on{background:var(--text-2);}
-.bag-team.warn .bagbar span.on{background:var(--gold);}
+.tblock{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--r);background:rgba(255,255,255,.04);border-left:4px solid var(--c);}
+.tblock h3{font-size:1.05rem;font-weight:900;color:var(--c);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tblock .label{margin:2px 0 0;}
+.tblock .seg{flex-wrap:wrap;}
+.tblock .seg > button{min-height:40px;}
+.tblock .res{font-weight:800;font-size:.9rem;color:var(--text-2);}
+.tblock .res b{color:var(--text);}
+.tblock .res b.neg{color:var(--red);}
+.tblock .res b.pos{color:var(--green);}
+.spad .goal b{color:#c8102e;font-weight:400;}
+.tblock .rrow{padding:6px 8px;gap:8px;}
+.tblock .rrow .avatar{display:none;}
+.tblock .rrow .num{width:64px;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Spades</span>
-  <a class="nav-pill ai-link" href="spades-ai.html">🎮 vs AI</a>
-</nav>
-<main class="sc">
-  <details class="rules-details">
-    <summary class="rules-summary">📖 How to play Spades</summary>
-    <div class="rules-body">
-      <p><strong>Goal:</strong> First team to reach the point target wins (default 500).</p>
-      <p><strong>Bidding:</strong> Each team bids how many tricks (out of 13) they'll take. Spades are always trump.</p>
-      <p><strong>Scoring:</strong></p>
-      <ul>
-        <li>Make your bid: <strong>bid × 10</strong> points</li>
-        <li>Miss your bid: <strong>−(bid × 10)</strong> points</li>
-        <li>Tricks over your bid: <strong>+1 each</strong> (but accumulate as bags)</li>
-        <li><strong>Nil bid:</strong> Partner plays alone. +100 if no tricks taken, −100 if any tricks taken.</li>
-      </ul>
-      <p><strong>Bags:</strong> Overtricks (bags) score +1 each but every 10 bags = <strong>−100 penalty</strong> (optional rule — toggle below).</p>
-    </div>
-  </details>
-
-  <div id="sp-setup" class="setup-screen">
-    <a id="fp-ai-solo-cta" class="sc-cta felt" href="spades-ai.html">
-      <div class="sc-cta-ico">🎮</div>
-      <div class="sc-cta-body"><div class="sc-cta-t">1 player vs AI</div><div class="sc-cta-s">Play with an AI partner against two AI opponents</div></div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    </a>
-    <div class="sc-h">New scorecard</div>
-    <div class="sc-hsub">Keep score for an in-person game.</div>
-    <div class="form-lbl">Team names</div>
-    <div class="player-setup-row"><div class="player-dot" style="background:#5ac8fa;"></div><input class="input" id="sp-t1" value="Team 1" maxlength="20" aria-label="Team 1 name"></div>
-    <div class="player-setup-row"><div class="player-dot" style="background:#f5c842;"></div><input class="input" id="sp-t2" value="Team 2" maxlength="20" aria-label="Team 2 name"></div>
-    <div class="form-lbl">Winning score</div>
-    <input class="input" id="sp-win" type="number" inputmode="numeric" value="500" min="100" max="2000" aria-label="Winning score">
-    <div class="form-lbl">Rules</div>
-    <label class="toggle-line" for="sp-bags-penalty">
-      <span class="tl-body">Bag penalty<span class="tl-sub">−100 points every 10 accumulated overtricks</span></span>
-      <input type="checkbox" class="switch" id="sp-bags-penalty" checked>
-    </label>
-    <button class="btn btn-gold btn-block sc-start" id="sp-start">Start game</button>
-  </div>
-
-  <div id="sp-game" class="hidden">
-    <div id="sp-winner" class="winner-banner hidden">
-      <div style="font-size:2.2rem;line-height:1;margin-bottom:6px;">🏆</div>
-      <div class="winner-name" id="sp-wname"></div>
-      <div class="winner-pts" id="sp-wpts"></div>
-      <div class="wb-actions">
-        <button class="btn btn-gold" id="sp-again">Play again</button>
-        <button class="btn btn-outline" id="sp-newsetup">New setup</button>
-      </div>
-    </div>
-    <div class="score-display" id="sp-scores"></div>
-    <div id="sp-bag-status" class="bag-status" style="display:none"></div>
-    <div class="entry-panel">
-      <div class="entry-head" id="sp-round-label">Round 1<span id="sp-bag-rule-badge"></span></div>
-      <div class="team-entry">
-        <div>
-          <div class="entry-label" id="sp-t1-label" style="color:#5ac8fa">Team 1</div>
-          <div class="pair">
-            <div><div class="mini-lbl">Bid</div><input type="number" inputmode="numeric" class="bid-input" id="sp-bid1" min="0" max="13" placeholder="0"></div>
-            <div><div class="mini-lbl">Tricks</div><input type="number" inputmode="numeric" class="bid-input" id="sp-tricks1" min="0" max="13" placeholder="0"></div>
-          </div>
-          <label class="nil-chk"><input type="checkbox" class="switch" id="sp-nil1"> Nil bid</label>
-        </div>
-        <div>
-          <div class="entry-label" id="sp-t2-label" style="color:#f5c842">Team 2</div>
-          <div class="pair">
-            <div><div class="mini-lbl">Bid</div><input type="number" inputmode="numeric" class="bid-input" id="sp-bid2" min="0" max="13" placeholder="0"></div>
-            <div><div class="mini-lbl">Tricks</div><input type="number" inputmode="numeric" class="bid-input" id="sp-tricks2" min="0" max="13" placeholder="0"></div>
-          </div>
-          <label class="nil-chk"><input type="checkbox" class="switch" id="sp-nil2"> Nil bid</label>
-        </div>
-      </div>
-      <div id="sp-err" class="sc-err" style="display:none;"></div>
-      <button class="btn btn-gold btn-block" id="sp-submit">Add round</button>
-    </div>
-    <div id="sp-hist-wrap"></div>
-    <div class="sc-actions">
-      <button class="btn btn-outline" id="sp-reset-setup">New setup</button>
-      <button class="btn btn-outline" id="sp-undo">↩ Undo</button>
-    </div>
-  </div>
-</main>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10'];
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null, cfg = null;
+  var SETUP = 'spades_pad_setup';
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' wins!';
-  ptsEl.textContent=pts+' points';
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
-  }
-  hap('success');
-  banner.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function buildScorers(container,names,totals,win,colors,cdark,sub=null){
-  container.innerHTML='';
-  names.forEach((nm,i)=>{
-    const leading=totals[i]===Math.max(...totals)&&totals[i]>0;
-    const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'40');
-    if(leading)s.style.borderColor=colors[i];
-    s.innerHTML=`<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      ${sub?`<div class="scorer-sub">${sub[i]}</div>`:''}
-      <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-to">${win-totals[i]>0?(win-totals[i])+' to win':'🏆 Winner'}</div>`;
-    container.appendChild(s);
+  Kit.init({
+    id: 'spades', title: 'Spades score',
+    onNew: function () { if (pad) pad.clear(); try { localStorage.removeItem(SETUP); } catch (e) {} pad = null; showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('sp', { keys: ['spades'], title: 'Spades: past games' }); } }],
+    rules:
+      '<p class="goal">Play Spades with a real deck and keep score here. Two teams of two, partners sit across from each other. First team to the target wins.</p>' +
+      '<h3>Each hand</h3><ul><li>Deal all 52 cards, 13 each. Starting left of the dealer, everyone bids how many tricks they will win.</li>' +
+      '<li>A team\'s goal is both partners\' bids added together.</li>' +
+      '<li>Spades are trump. You must follow suit if you can. Spades can\'t be led until one has been played on another suit (unless you only have spades).</li></ul>' +
+      '<h3>What to enter</h3><ul><li><b>Bid</b>: the team\'s total bid (if someone bid Nil, just the partner\'s bid).</li>' +
+      '<li><b>Tricks won</b>: all the tricks the team took, including any the Nil player took. Both teams together must add up to 13.</li>' +
+      '<li>If someone bid <b>Nil</b> or <b>Blind Nil</b>, pick them and enter how many tricks they took.</li></ul>' +
+      '<h3>Scoring</h3><ul><li><b>Make it:</b> 10 per trick bid, +1 for each extra trick (a <b>bag</b>).</li>' +
+      '<li><b>Set:</b> lose 10 per trick bid.</li>' +
+      '<li><b>Bags:</b> every 10 bags costs 100 points (can be turned off at setup).</li>' +
+      '<li><b>Nil:</b> +100 if they take no tricks, −100 if they take any. <b>Blind Nil</b> (called before looking at your cards) is ±200. The Nil player\'s tricks don\'t help the partner\'s bid but count as bags.</li></ul>'
   });
-}
-function buildHistory(container,rounds,names,totals,colors){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`28px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">Round history</div>
-    <div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-name" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val ${v<0?'neg':''}">${v>=0?'+'+v:'−'+Math.abs(v)}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-// ── SPADES ─────────────────────────────────────────────────────────────────
-{
-  let spNames=['Team 1','Team 2'],spRounds=[],spWin=500,spBagPenalty=true;
-  const spColors=['#5ac8fa','#f5c842'];
 
-  function spCalc(bid,tricks,nil){
-    if(nil) return tricks===0?100:-100;
-    if(tricks>=bid) return bid*10+(tricks-bid);
-    return -(bid*10);
-  }
-  function spSave(){try{sessionStorage.setItem('cs_sp',JSON.stringify({spNames,spRounds,spWin,spBagPenalty,_ts:Date.now()}));}catch(e){}}
-  function showSetup(){document.getElementById('sp-game').classList.add('hidden');document.getElementById('sp-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_sp');}catch(e){}}
-
-  function spStart(){
-    spNames=[document.getElementById('sp-t1').value.trim()||'Team 1',
-             document.getElementById('sp-t2').value.trim()||'Team 2'];
-    spWin=parseInt(document.getElementById('sp-win').value)||500;
-    spBagPenalty=document.getElementById('sp-bags-penalty').checked;
-    spRounds=[];
-    hap('medium');
-    document.getElementById('sp-setup').classList.add('hidden');
-    document.getElementById('sp-game').classList.remove('hidden');
-    document.getElementById('sp-winner').classList.add('hidden');
-    spRender();
-  }
-
-  function spRender(){
-    document.getElementById('sp-t1-label').textContent=spNames[0];
-    document.getElementById('sp-t2-label').textContent=spNames[1];
-    const totals=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+r[i],0));
-    const bags=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+(r.bags?r.bags[i]:0),0));
-    const bagLabels=bags.map(b=>`${b} bag${b===1?'':'s'}`);
-    buildScorers(document.getElementById('sp-scores'),spNames,totals,spWin,spColors,['#1a88c4','#c49a10'],bagLabels);
-    document.getElementById('sp-scores').style.gridTemplateColumns='1fr 1fr';
-    // Bag meter toward the next −100 penalty
-    const bsEl=document.getElementById('sp-bag-status');
-    if(bsEl&&spBagPenalty&&spRounds.length>0){
-      bsEl.innerHTML=bags.map((b,i)=>{
-        const pips=b%10||0;
-        return `<div class="bag-team ${pips>=7?'warn':''}"><div class="bt"><span>Bags</span><span>${pips}/10${pips>=7?' ⚠️':''}</span></div>
-          <div class="bagbar">${Array.from({length:10},(_,k)=>`<span class="${k<pips?'on':''}"></span>`).join('')}</div></div>`;
-      }).join('');
-      bsEl.style.display='grid';
-    } else if(bsEl){bsEl.style.display='none';}
-    document.getElementById('sp-round-label').innerHTML=`Round ${spRounds.length+1}<span>${spBagPenalty?'Bags: −100 at 10':'Bag penalty off'}</span>`;
-    buildHistory(document.getElementById('sp-hist-wrap'),
-      spRounds.map(r=>[r[0],r[1]]),spNames,totals,spColors);
-  }
-
-  document.getElementById('sp-start').addEventListener('click',spStart);
-  document.getElementById('sp-submit').addEventListener('click',()=>{
-    const err=document.getElementById('sp-err');
-    const b1=parseInt(document.getElementById('sp-bid1').value),
-          t1=parseInt(document.getElementById('sp-tricks1').value),
-          b2=parseInt(document.getElementById('sp-bid2').value),
-          t2=parseInt(document.getElementById('sp-tricks2').value),
-          nil1=document.getElementById('sp-nil1').checked,
-          nil2=document.getElementById('sp-nil2').checked;
-    if([b1,t1,b2,t2].some(isNaN)){err.textContent='Fill in every bid and tricks field.';err.style.display='block';hap('error');return;}
-    err.style.display='none';
-    let s1=spCalc(b1,t1,nil1), s2=spCalc(b2,t2,nil2);
-    const bg1=t1>b1&&!nil1?t1-b1:0, bg2=t2>b2&&!nil2?t2-b2:0;
-    // Apply bag penalty: if cumulative bags cross a multiple of 10, deduct 100
-    if(spBagPenalty){
-      const prevBags=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+(r.bags?r.bags[i]:0),0));
-      if(bg1>0){
-        const before=prevBags[0]%10, after=(prevBags[0]+bg1)%10;
-        if(after<before||(before===0&&bg1>=10)) s1-=100*Math.floor((prevBags[0]+bg1)/10-Math.floor(prevBags[0]/10));
+  function showSetup() {
+    Kit.setup(app, {
+      intro: 'Keep score for a real game. Players 1 & 2 are one team, 3 & 4 the other.',
+      players: { min: 4, max: 4, count: 4, label: 'Team 1: players 1 & 2 · Team 2: players 3 & 4' },
+      options: [
+        { id: 'target', label: 'Play to', value: 500, choices: [[300, '300'], [500, '500']] },
+        { id: 'bags', label: 'Bag penalty (10 bags = −100)', value: 1, choices: [[1, 'On'], [0, 'Off']] }
+      ],
+      start: 'Start scoring',
+      onStart: function (c) {
+        var n = c.players.map(function (p) { return p.name; });
+        try { localStorage.setItem(SETUP, JSON.stringify({ teams: [[n[0], n[1]], [n[2], n[3]]], target: +c.options.target || 500, bags: +c.options.bags !== 0 })); } catch (e) {}
+        startPad();
       }
-      if(bg2>0){
-        const before=prevBags[1]%10, after=(prevBags[1]+bg2)%10;
-        if(after<before||(before===0&&bg2>=10)) s2-=100*Math.floor((prevBags[1]+bg2)/10-Math.floor(prevBags[1]/10));
+    });
+  }
+
+  // ── Scoring one team's hand ───────────────────────────────────────────────
+  // in = {bid, tricks, nil: -1|0|1 (which partner), blind, nilTook}; prevBags = bags carried in
+  function score(inp, prevBags, bagRule) {
+    var r = { pts: 0, bags: 0, penalty: 0, set: false, made: false, nilOk: null };
+    var forBid = inp.tricks - (inp.nil >= 0 ? inp.nilTook : 0);
+    if (inp.bid > 0) {
+      if (forBid >= inp.bid) { r.made = true; r.pts += 10 * inp.bid + (forBid - inp.bid); r.bags += forBid - inp.bid; }
+      else { r.set = true; r.pts -= 10 * inp.bid; }
+    } else if (forBid > 0) { r.pts += forBid; r.bags += forBid; }
+    if (inp.nil >= 0) {
+      var v = inp.blind ? 200 : 100;
+      r.nilOk = inp.nilTook === 0;
+      r.pts += r.nilOk ? v : -v;
+      r.pts += inp.nilTook; r.bags += inp.nilTook;
+    }
+    if (bagRule) { var total = prevBags + r.bags; r.penalty = Math.floor(total / 10) - Math.floor(prevBags / 10); r.pts -= 100 * r.penalty; }
+    return r;
+  }
+  // Each round's per-team note doubles as the record of what was entered.
+  function detail(inp, r, names) {
+    var parts = [];
+    if (inp.nil >= 0) parts.push(names[inp.nil] + (inp.blind ? ' blind nil' : ' nil') + (inp.nilTook ? ' took ' + inp.nilTook : ' made'));
+    parts.push(inp.bid + ' bid, ' + inp.tricks + ' won');
+    if (r.bags) parts.push('+' + r.bags + ' bag' + (r.bags === 1 ? '' : 's'));
+    if (r.penalty) parts.push('bag penalty');
+    return parts.join(' · ');
+  }
+  function parse(d, names) {
+    var inp = { bid: 0, tricks: 0, nil: -1, blind: false, nilTook: 0 };
+    if (!d) return null;
+    var m = /(\d+) bid, (\d+) won/.exec(d); if (!m) return null;
+    inp.bid = +m[1]; inp.tricks = +m[2];
+    names.forEach(function (n, j) {
+      var k = d.indexOf(n + ' blind nil') === 0 ? 'b' : d.indexOf(n + ' nil') === 0 ? 'n' : '';
+      if (k && inp.nil < 0) { inp.nil = j; inp.blind = k === 'b'; var t = /nil took (\d+)/.exec(d); inp.nilTook = t ? +t[1] : 0; }
+    });
+    return inp;
+  }
+  function bagsOf(d) { var m = /\+(\d+) bags?/.exec(d || ''); return m ? +m[1] : 0; }
+  function bagsBefore(roundIdx) {
+    var b = [0, 0], rs = pad ? pad.state().rounds : [];
+    rs.slice(0, roundIdx).forEach(function (r) { [0, 1].forEach(function (i) { b[i] += bagsOf(r.detail && r.detail[i]); }); });
+    return b;
+  }
+
+  function startPad() {
+    try { cfg = JSON.parse(localStorage.getItem(SETUP)); } catch (e) { cfg = null; }
+    if (!cfg || !cfg.teams) return showSetup();
+    var teamNames = cfg.teams.map(function (t) { return t[0] + ' & ' + t[1]; });
+    pad = Scorepad(app, {
+      key: 'sp', title: 'Spades', mode: 'Scorekeeper', target: cfg.target,
+      sides: teamNames.map(function (n) { return { name: n }; }),
+      goal: 'First to ' + cfg.target,
+      isOver: function (t) { return Math.max(t[0], t[1]) >= cfg.target && t[0] !== t[1]; },
+      form: form
+    });
+    watchGoal();
+  }
+
+  // Show current bags under the pad (Scorepad re-renders, so watch for it)
+  var obs = null;
+  function watchGoal() {
+    if (obs) obs.disconnect();
+    function paint() {
+      var g = app.querySelector('.spad .goal'); if (!g || !pad) return;
+      var n = pad.state().rounds.length, b = bagsBefore(n);
+      var txt = 'First to ' + cfg.target + (cfg.bags ? ' · bags ' + (b[0] % 10) + ' and ' + (b[1] % 10) + ' (10 = −100)' : '');
+      if (g.textContent !== txt) g.textContent = txt;
+    }
+    obs = new MutationObserver(paint);
+    obs.observe(app, { childList: true, subtree: true });
+    paint();
+  }
+
+  function form(ctx) {
+    var ri = ctx.round - 1, prevBags = bagsBefore(ri);
+    var prevIn = ctx.prev ? [0, 1].map(function (i) { return parse(ctx.prev.detail && ctx.prev.detail[i], cfg.teams[i]); }) : [null, null];
+    var blocks = [0, 1].map(function (i) { return block(i, prevIn[i]); });
+    var note = el('div', { class: 'rnote' });
+    var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
+    ctx.node.appendChild(note); ctx.node.appendChild(btn);
+    var touched = [!!ctx.prev, !!ctx.prev];
+
+    function block(i, p) {
+      var st = { nil: p ? p.nil : -1, blind: p ? p.blind : false };
+      var names = cfg.teams[i];
+      var box = el('div', { class: 'tblock', style: { '--c': Kit.color(i) } }, [el('h3', { text: ctx.sides[i].name })]);
+      box.appendChild(el('div', { class: 'label', text: 'Did anyone bid Nil?' }));
+      var nilSeg = el('div', { class: 'seg' });
+      [['No', -1], [names[0], 0], [names[1], 1]].forEach(function (o) {
+        nilSeg.appendChild(el('button', { type: 'button', text: o[0], class: st.nil === o[1] ? 'on' : '', onclick: function () { st.nil = o[1]; Kit.sfx('tap'); sync(); } }));
+      });
+      box.appendChild(nilSeg);
+      var kindSeg = el('div', { class: 'seg' });
+      [['Nil (±100)', false], ['Blind Nil (±200)', true]].forEach(function (o) {
+        kindSeg.appendChild(el('button', { type: 'button', text: o[0], onclick: function () { st.blind = o[1]; Kit.sfx('tap'); sync(); } }));
+      });
+      box.appendChild(kindSeg);
+      var nilRow = ctx.number(i, { min: 0, max: 13, neg: false, value: p ? p.nilTook : 0, label: 'Nil took' });
+      box.appendChild(nilRow);
+      var bidRow = ctx.number(i, { min: 0, max: 13, neg: false, value: p ? p.bid : '', placeholder: '–', label: 'Bid' });
+      var trRow = ctx.number(i, { min: 0, max: 13, neg: false, value: p ? p.tricks : '', placeholder: '–', label: 'Tricks' });
+      box.appendChild(bidRow); box.appendChild(trRow);
+      var res = el('div', { class: 'res' }); box.appendChild(res);
+      [nilRow, bidRow].forEach(function (r) { r.input.addEventListener('input', check); });
+      trRow.input.addEventListener('input', function () {
+        touched[i] = true;
+        var o = blocks[1 - i]; // fill in the other team's tricks so they add up to 13
+        if (o && !touched[1 - i] && String(trRow.input.value).trim() !== '') o.trRow.input.value = String(Math.max(0, 13 - Math.min(13, trRow.value())));
+        check();
+      });
+      ctx.node.appendChild(box);
+      function sync() {
+        Array.prototype.forEach.call(nilSeg.children, function (b, j) { b.classList.toggle('on', [-1, 0, 1][j] === st.nil); });
+        Array.prototype.forEach.call(kindSeg.children, function (b, j) { b.classList.toggle('on', [false, true][j] === st.blind); });
+        kindSeg.hidden = st.nil < 0; nilRow.hidden = st.nil < 0;
+        if (st.nil >= 0) nilRow.querySelector('.nm').textContent = names[st.nil] + ' took';
+        bidRow.querySelector('.nm').textContent = st.nil >= 0 ? names[1 - st.nil] + ' bid' : 'Team bid';
+        check();
       }
+      function input() {
+        var bidTxt = String(bidRow.input.value).trim(), trTxt = String(trRow.input.value).trim();
+        return { bid: Math.max(0, Math.min(13, bidRow.value())), tricks: Math.max(0, Math.min(13, trRow.value())), nil: st.nil, blind: st.nil >= 0 && st.blind,
+          nilTook: st.nil >= 0 ? Math.max(0, Math.min(13, nilRow.value())) : 0, empty: bidTxt === '' || trTxt === '' };
+      }
+      var api = { box: box, trRow: trRow, res: res, input: input, sync: sync };
+      setTimeout(sync, 0);
+      return api;
     }
-    const round=[s1,s2];round.bags=[bg1,bg2];
-    spRounds.push(round);
-    hap('light');
-    const totals=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+r[i],0));
-    if(totals.some(t=>t>=spWin)){
-      const wi=totals.indexOf(Math.max(...totals));
-      const banner=document.getElementById('sp-winner');
-      banner._histKey='sp';banner._histTitle='Spades';
-      banner._histRender=(e)=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds,lbl:'Hands'},{val:e.totals[wi]+'pts',lbl:'Score'}]));div.appendChild(GameHistory.renderRoundTable(e.names,e.roundData,e.totals,['#5ac8fa','#f5c842']));return div;};
-      GameHistory.save('sp',{_summary:`${spNames[wi]} wins · ${spRounds.length} hands`,_badge:totals[wi]+'pts',winner:spNames[wi],names:spNames,rounds:spRounds.length,totals,roundData:spRounds.map(r=>[r[0],r[1]])});
-      showWinner(banner,document.getElementById('sp-wname'),document.getElementById('sp-wpts'),spNames[wi],totals[wi]);
+
+    function check() {
+      if (!blocks || blocks.length < 2) return false;
+      var ins = blocks.map(function (b) { return b.input(); }), msg = '', ok = true;
+      ins.forEach(function (inp, i) {
+        var r = score(inp, prevBags[i], cfg.bags), b = blocks[i];
+        if (inp.empty) { b.res.innerHTML = ''; return; }
+        b.res.innerHTML = 'This hand: <b class="' + (r.pts < 0 ? 'neg' : 'pos') + '">' + (r.pts > 0 ? '+' : r.pts < 0 ? '−' : '') + Math.abs(r.pts) + '</b>' +
+          (r.set ? ' · set' : '') + (r.bags ? ' · ' + r.bags + ' bag' + (r.bags === 1 ? '' : 's') : '') + (r.penalty ? ' · bag penalty!' : '');
+      });
+      if (ins.some(function (x) { return x.empty; })) { ok = false; msg = 'Enter each team\'s bid and tricks won'; }
+      else if (ins[0].tricks + ins[1].tricks !== 13) { ok = false; msg = 'Tricks add up to ' + (ins[0].tricks + ins[1].tricks) + '. There are 13.'; }
+      else if (ins.some(function (x) { return x.nil >= 0 && x.nilTook > x.tricks; })) { ok = false; msg = 'The Nil player can\'t take more tricks than their team'; }
+      else if (ins.some(function (x) { return x.nil < 0 && x.bid < 1; })) { ok = false; msg = 'A team bid of 0 needs a Nil. Pick who bid Nil.'; }
+      else msg = 'Looks right';
+      note.className = 'rnote' + (ok ? '' : ' bad'); note.textContent = msg;
+      btn.disabled = !ok;
+      return ok;
     }
-    ['sp-bid1','sp-bid2','sp-tricks1','sp-tricks2'].forEach(id=>{document.getElementById(id).value='';});
-    document.getElementById('sp-nil1').checked=false;document.getElementById('sp-nil2').checked=false;
-    if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
-    spRender();
-    spSave();
-  });
-  document.getElementById('sp-undo').addEventListener('click',()=>{
-    if(!spRounds.length) return;
-    spRounds.pop();hap('light');
-    const totals=spNames.map((_,i)=>spRounds.reduce((s,r)=>s+r[i],0));
-    if(!totals.some(t=>t>=spWin)) document.getElementById('sp-winner').classList.add('hidden');
-    spRender();spSave();
-  });
-  document.getElementById('sp-again').addEventListener('click',()=>{spRounds=[];document.getElementById('sp-winner').classList.add('hidden');spRender();try{sessionStorage.removeItem('cs_sp');}catch(e){}});
-  document.getElementById('sp-newsetup').addEventListener('click',showSetup);
-  document.getElementById('sp-reset-setup').addEventListener('click',async()=>{
-    if(spRounds.length&&window.GN&&!(await GN.confirm('Start a new setup?',{body:'This scorecard will be cleared.',ok:'New setup',danger:true}))) return;
-    showSetup();
-  });
-  try{const raw=sessionStorage.getItem('cs_sp');if(raw){const s=JSON.parse(raw);if(s.spNames&&s.spRounds.length){spNames=s.spNames;spRounds=s.spRounds;spWin=s.spWin||500;spBagPenalty=s.spBagPenalty!==undefined?s.spBagPenalty:true;document.getElementById('sp-setup').classList.add('hidden');document.getElementById('sp-game').classList.remove('hidden');spRender();}}}catch(e){}
-}
+
+    btn.addEventListener('click', function () {
+      if (!check()) return;
+      var ins = blocks.map(function (b) { return b.input(); });
+      var res = ins.map(function (inp, i) { return score(inp, prevBags[i], cfg.bags); });
+      var extra = { highlights: [], detail: ins.map(function (inp, i) { return detail(inp, res[i], cfg.teams[i]); }) };
+      var n = ctx.round, callout = null;
+      res.forEach(function (r, i) {
+        var team = ctx.sides[i].name, inp = ins[i];
+        if (r.set) { extra.highlights.push(team + ' went set bidding ' + inp.bid + ' in round ' + n); callout = callout || 'Set!'; }
+        else if (r.made && inp.bid >= 9 && !pad.state().highlights.some(function (h) { return h.indexOf(team + ' made a big bid') === 0; })) extra.highlights.push(team + ' made a big bid of ' + inp.bid + ' in round ' + n);
+        if (inp.nil >= 0) {
+          var who = cfg.teams[i][inp.nil], kind = inp.blind ? 'Blind Nil' : 'Nil';
+          if (r.nilOk) { extra.highlights.push(who + ' made ' + kind + ' in round ' + n); callout = kind + ' made!'; }
+          else extra.highlights.push(Kit.poss(who) + ' ' + kind + ' was broken in round ' + n);
+        }
+        if (r.penalty) { extra.highlights.push('Bag penalty hit ' + team + ' in round ' + n); callout = callout || 'Bag penalty!'; }
+        if (inp.tricks === 13) extra.highlights.push(team + ' took all 13 tricks in round ' + n);
+      });
+      if (!ctx.prev && callout) extra.callout = callout;
+      if (ctx.prev) extra.highlights = [];
+      ctx.done(res.map(function (r) { return r.pts; }), extra);
+    });
+    setTimeout(check, 0);
+  }
+
+  var hasSetup = false; try { hasSetup = !!localStorage.getItem(SETUP); } catch (e) {}
+  if (hasSetup) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

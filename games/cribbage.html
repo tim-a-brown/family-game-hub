@@ -30,7 +30,7 @@
 
 /* ── Table ─────────────────────────────────────────────────────────────── */
 .ctable .felt-in{height:clamp(270px,43dvh,400px);min-height:270px;transition:height .35s var(--ease);}
-.ctable.tall .felt-in{height:calc(clamp(270px,43dvh,400px) + 120px);}
+.ctable.tall .felt-in{height:calc(clamp(270px,43dvh,400px) + 70px);}
 .cseat .backs{--cw:24px;}
 .cseat .dlr{font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:1px 6px;border-radius:999px;background:var(--yellow);color:#2b1a00;margin-left:2px;}
 .deck{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:2;--cw:clamp(42px,11.5vw,50px);}
@@ -72,7 +72,7 @@
 .cutdeal .pcard.low{box-shadow:0 0 0 3px var(--yellow),0 0 20px rgba(255,200,61,.6);}
 
 /* The show: counting a hand */
-.showv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px 12px;z-index:2;}
+.showv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:14px 12px;z-index:2;}
 .showv .who{display:flex;align-items:center;gap:8px;color:#fff;font-family:var(--display);font-size:1.35rem;letter-spacing:.01em;}
 .showv .who .avatar{width:28px;height:28px;font-size:.8rem;font-family:var(--font);}
 .showv .who .step{font-family:var(--font);font-size:.68rem;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.6);text-transform:uppercase;}
@@ -85,7 +85,7 @@
 .slip{width:100%;max-width:400px;border-radius:6px 6px 12px 12px;padding:10px 14px 10px;transform:rotate(-.6deg);position:relative;}
 .slip .say{font-family:var(--hand);font-size:1.3rem;line-height:1.25;color:var(--ink);min-height:1.6em;}
 .slip .say .sg{animation:rise .35s var(--ease) both;}
-.slip .tot{position:absolute;right:10px;top:-16px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#c8102e;color:#fff;font-family:var(--display);font-size:1.4rem;box-shadow:0 4px 10px rgba(0,0,0,.35);transform:rotate(8deg);}
+.slip .tot{position:absolute;right:-4px;top:-12px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#c8102e;color:#fff;font-family:var(--display);font-size:1.4rem;box-shadow:0 4px 10px rgba(0,0,0,.35);transform:rotate(8deg);}
 .slip .tot.pop{animation:pop .45s var(--spring);}
 .slip .combos{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
 .slip .combos span{font-size:.72rem;font-weight:800;color:#4a4a62;background:rgba(31,42,107,.08);border-radius:6px;padding:2px 6px;}
@@ -297,7 +297,7 @@
   function isCpu(p) { return !!S.players[p].cpu; }
   function nm(p) { return S.players[p].name; }
   function you(p) { return S.mode === 'cpu' && p === 0; }
-  function short(p) { return you(p) ? 'You' : nm(p); }
+  function short(p) { return you(p) ? 'You' : nm(p).replace(/-/g, '\u2011'); }
   function poss(p) { return you(p) ? 'Your' : nm(p) + "'s"; }
 
   function showSetup() {
@@ -354,8 +354,9 @@
       tossCards(p, ids);
     }
     if (S.mode === 'pass') S.revealed = false;
+    if (discardActor() < 0) S.phase = 'cut';
     Kit.sfx('deal');
-    save(); render();
+    save(); render(); proceed();
   }
   function sortHand(h) { h.sort(function (a, b) { return ord(a) - ord(b) || 'shdc'.indexOf(a.s) - 'shdc'.indexOf(b.s); }); }
   function tossCards(p, ids) {
@@ -574,7 +575,7 @@
       if (b && b.pts >= 12) hl.push(nm(p) + ' counted a ' + b.pts + (b.crib ? ' crib' : ' hand') + (b.pts === 29 ? ' (the perfect hand!)' : ''));
     });
     if (st.bigPeg && st.bigPeg.pts >= 3) hl.push('Biggest peg: ' + st.bigPeg.pts + ' for ' + st.bigPeg.text.replace(/ for \d+/g, '').replace(/, /g, ' + ') + ' by ' + nm(st.bigPeg.p));
-    [0, 1].forEach(function (p) { if (st.heels[p]) hl.push(nm(p) + ' cut his heels' + (st.heels[p] > 1 ? ' ' + st.heels[p] + ' times' : '')); });
+    [0, 1].forEach(function (p) { if (st.heels[p]) hl.push(nm(p) + ' got his heels (a Jack starter)' + (st.heels[p] > 1 ? ' ' + st.heels[p] + ' times' : '')); });
     [0, 1].forEach(function (p) { if (st.nineteens[p] >= 2) hl.push(nm(p) + ' had ' + st.nineteens[p] + ' zero-point hands ("nineteens")'); });
     hl.push('Pegging points: ' + nm(0) + ' ' + st.peg[0] + ', ' + nm(1) + ' ' + st.peg[1]);
     var rounds = S.rounds;
@@ -583,7 +584,7 @@
       players: S.players.map(function (p, i) { return { name: p.name, score: S.score[i], cpu: p.cpu }; }),
       winner: nm(w),
       rounds: { labels: rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: rounds },
-      highlights: hl.slice(0, 5).concat([rounds.length + ' hands played']),
+      highlights: hl.slice(0, 5).concat([rounds.length + (rounds.length === 1 ? ' hand' : ' hands') + ' played']),
       badge: skunk ? (skunk === 2 ? 'Double skunk' : 'Skunk') : ''
     });
     clearSave();
@@ -591,7 +592,7 @@
     var lose = S.mode === 'cpu' && w === 1;
     Kit.win({
       title: you(w) ? 'You win!' : nm(w) + ' wins!',
-      sub: skunk === 2 ? 'Double skunk! ' + nm(l) + ' stayed under 61' : skunk ? 'Skunk! ' + nm(l) + ' never crossed the skunk line' : 'Won by ' + (WIN - ls) + ' points',
+      sub: skunk === 2 ? 'Double skunk! ' + nm(l) + ' stayed under 61' : skunk ? 'Skunk! ' + nm(l) + " didn't reach 91" : 'Won by ' + (WIN - ls) + ' points',
       rank: rank, lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () { newGame(S.mode, S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; })); },
       extra: [{ label: 'Change players', onClick: showSetup }]

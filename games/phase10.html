@@ -2,363 +2,217 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Phase 10</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phase 10 Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ── Scorecard layout (shared look: Flip 7 · Five Crowns · Wizard · Rook · Phase 10) ── */
-.page{max-width:640px;}
-.sc-card,.setup-screen,.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 16px;margin-bottom:14px;}
-.sc-label{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 10px;}
-.cnt-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(40px,1fr));gap:4px;padding:4px;margin-bottom:20px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;}
-.cnt-row .btn{min-height:42px;padding:0;border-radius:11px;background:transparent;border-color:transparent;color:var(--text-2);box-shadow:none;font-size:1rem;font-weight:700;}
-.cnt-row .btn.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);box-shadow:0 4px 14px rgba(240,165,0,.25);}
-.names-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-.player-setup-row{display:flex;align-items:flex-start;gap:12px;}
-.player-setup-row .player-dot{width:12px;height:12px;margin-top:19px;box-shadow:0 0 0 3px rgba(255,255,255,.05);}
-.name-field{flex:1;min-width:0;}
-.fp-ai-cta{border-radius:16px !important;margin-bottom:18px !important;}
-
-/* Scoreboard tiles */
-.score-display{display:grid;gap:8px;margin-bottom:12px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 10px 10px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 24px -6px var(--lc,rgba(245,200,66,.3));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.7rem,7vw,2.3rem);font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub,.scorer-foot{font-size:.75rem;color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer .crown{position:absolute;top:8px;right:9px;font-size:.8rem;}
-.pbar{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:8px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-
-/* Round entry */
-.entry-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
-.entry-title{font-family:var(--display);font-size:1.2rem;font-weight:700;letter-spacing:-.01em;}
-.entry-meta{font-size:.8rem;font-weight:700;color:var(--gold);background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:999px;padding:4px 10px;white-space:nowrap;}
-.entry-meta.muted{color:var(--text-2);background:var(--surface-2);border-color:var(--line);}
-.entry-list{margin-bottom:14px;}
-.erow{display:grid;grid-template-columns:minmax(0,1fr) 96px;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
-.erow:first-child{border-top:0;}
-.erow-name{display:flex;align-items:center;gap:9px;font-weight:600;font-size:.95rem;min-width:0;}
-.erow-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.erow-sub{font-size:.75rem;color:var(--text-3);font-weight:500;}
-.score-input,.bid-input{width:100%;min-height:46px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font-weight:700;text-align:center;padding:8px 4px;outline:none;font-variant-numeric:tabular-nums;transition:border-color .15s,box-shadow .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:500;}
-.score-input:disabled{opacity:.3;}
-.toggle-row{display:flex;gap:6px;}
-.toggle-btn{flex:1;min-height:38px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:11px;color:var(--text-2);font-size:.8rem;font-weight:700;padding:0 8px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-.toggle-btn:active{transform:scale(.96);}
-.toggle-btn.on{background:rgba(245,200,66,.16);border-color:rgba(245,200,66,.6);color:var(--gold);}
-.toggle-btn.bust-on{background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.55);color:var(--red);}
-.toggle-btn:disabled{opacity:.35;cursor:not-allowed;}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;}
-.seg .toggle-btn{border-color:transparent;background:transparent;min-height:40px;}
-.seg .toggle-btn.on,.seg .toggle-btn.bust-on{background:var(--surface-3);box-shadow:0 1px 3px rgba(0,0,0,.35);}
-.form-err{color:var(--red);font-size:.88rem;font-weight:600;text-align:center;margin:0 0 12px;}
-.preview{font-size:.85rem;color:var(--text-2);text-align:center;margin:0 0 12px;min-height:20px;line-height:1.5;}
-
-/* Round history */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;}
-.hist-head{padding:13px 14px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:9px 12px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.alt{background:rgba(255,255,255,.018);}
-.hist-row.names .hist-val{font-size:.75rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.hist-row.totals{background:var(--surface-2);border-top:1px solid var(--line-2);}
-.hist-num{font-size:.78rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.92rem;font-weight:600;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;}
-.hist-val.neg{color:var(--red);}
-.hist-total{font-family:var(--display);font-size:1.08rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-
-/* Footer actions + winner */
-.sc-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-.winner-trophy{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.winner-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
-.winner-actions .btn{flex:1 1 140px;max-width:220px;}
-.winner-banner .gh-hist-btn{font-size:.85rem !important;padding:0 16px !important;margin-top:12px !important;}
-
-/* Rules */
-.rules-body p{margin:0 0 8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-/* Phase tracker */
-.p10-tracker{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 12px 10px;margin-bottom:14px;}
-.trk{display:grid;gap:4px 6px;align-items:center;}
-.trk-h{font-size:.75rem;font-weight:700;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.trk-ph{font-size:.8rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.trk-ph b{color:var(--text);font-variant-numeric:tabular-nums;margin-right:4px;}
-.trk-c{height:26px;border-radius:8px;display:grid;place-items:center;font-size:.8rem;font-weight:800;background:var(--surface-2);color:var(--text-3);border:1px solid transparent;}
-.trk-c.done{background:rgba(74,222,128,.14);color:var(--green);border-color:rgba(74,222,128,.3);}
-.trk-c.cur{background:color-mix(in srgb,var(--pc) 20%,transparent);color:var(--pc);border-color:color-mix(in srgb,var(--pc) 55%,transparent);}
-.trk-tot{font-family:var(--display);font-weight:800;font-size:1.05rem;text-align:center;padding-top:6px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;}
-.trk-tot.lbl{font-family:var(--font);font-size:.75rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;text-align:left;}
-/* Entry rows */
-.erow.p10{grid-template-columns:minmax(0,1fr) auto 72px;gap:8px;}
-.erow-name.stack{flex-direction:column;align-items:flex-start;gap:0;}
-.erow-name.stack .nm{display:flex;align-items:center;gap:8px;max-width:100%;}
-.erow-name.stack .nm span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.erow-name.stack .erow-sub{padding-left:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
-.ph-toggle{margin:0;display:block;cursor:pointer;}
-.ph-toggle input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;}
-.ph-toggle span{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:40px;padding:0 10px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text-2);font-size:.8rem;font-weight:700;white-space:nowrap;transition:all .15s;}
-.ph-toggle input:checked + span{background:rgba(74,222,128,.14);border-color:rgba(74,222,128,.5);color:var(--green);}
-.ph-toggle input:focus-visible + span{outline:2px solid rgba(245,200,66,.7);outline-offset:2px;}
+/* Phase row under the names on the paper pad */
+.spad thead tr.phrow th{height:auto;padding:2px 2px 6px;border-bottom:2px solid rgba(60,80,160,.3);}
+.spad thead tr.phrow th.rn{font-size:.62rem;}
+.spad thead tr.phrow .pn{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 6px;border-radius:50%;font-family:var(--display);font-weight:400;font-size:1.25rem;color:#fff;background:#c8102e;box-shadow:0 2px 0 rgba(0,0,0,.15);}
+.spad thead tr.phrow .pn.done{background:#137a3e;font-size:.8rem;border-radius:999px;}
+.spad thead tr.phrow small{display:block;font-family:var(--hand);font-size:.85rem;color:#6a6a80;line-height:1.1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.spad thead tr:first-child th{border-bottom:0;}
+.spad td small{font-family:var(--font);font-weight:800;font-size:.62rem !important;letter-spacing:.02em;margin-top:0 !important;}
+/* Entry form */
+.pblk{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:var(--r);background:rgba(255,255,255,.06);}
+.pblk .top{display:flex;align-items:center;gap:10px;min-width:0;}
+.pblk .top .nm{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pblk .top .goal{flex:1;min-width:0;font-size:.78rem;font-weight:700;color:var(--text-3);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pblk .bot{display:flex;align-items:center;gap:8px;}
+.pblk .seg{flex:1;min-width:0;}
+.pblk .seg > button{flex:1;min-height:44px;font-size:.85rem;padding:0 6px;}
+.pblk .seg > button.on.yes{background:var(--green);color:#063;}
+.pblk .seg > button.on.no{background:var(--surface-3);}
+.pblk .rrow{padding:0;background:none;gap:4px;flex:none;}
+.pblk .rrow .num{width:58px;font-size:1.15rem;padding:0 2px;}
+.pblk .rrow .pm button{width:38px;height:44px;}
+.pblk .lbl{font-size:.62rem;font-weight:900;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;text-align:center;}
+.ptsw{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.phhelp{margin-top:12px;}
+.phhelp ol{margin:6px 0 0;padding-left:22px;color:var(--text-2);font-weight:700;font-size:.88rem;line-height:1.6;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Phase 10</span>
-  <a class="icon-btn ai-link" href="phase10-ai.html" aria-label="Play vs AI" title="Play vs AI">🎮</a>
-</nav>
-<div class="page">
-  <div id="p10-setup" class="setup-screen">
-    <div class="sc-label">Number of players</div>
-    <div class="cnt-row">
-      <button class="btn btn-outline btn-sm p10-cnt active-cnt" data-n="2">2</button>
-      <button class="btn btn-outline btn-sm p10-cnt" data-n="3">3</button>
-      <button class="btn btn-outline btn-sm p10-cnt" data-n="4">4</button>
-      <button class="btn btn-outline btn-sm p10-cnt" data-n="5">5</button>
-      <button class="btn btn-outline btn-sm p10-cnt" data-n="6">6</button>
-    </div>
-    <div class="sc-label">Players</div>
-    <div id="p10-names" class="names-list"></div>
-    <button class="btn btn-gold btn-block" id="p10-start">Start Game</button>
-  </div>
-  <div id="p10-game" class="hidden">
-    <div id="p10-winner" class="winner-banner hidden">
-      <div class="winner-trophy">🏆</div>
-      <div class="winner-name" id="p10-wname"></div>
-      <div class="winner-pts" id="p10-wpts"></div>
-      <div class="winner-actions">
-        <button class="btn btn-gold" id="p10-again">Play Again</button>
-        <button class="btn btn-outline" id="p10-newsetup">New Setup</button>
-      </div>
-    </div>
-    <!-- Phase tracker -->
-    <div id="p10-tracker" class="p10-tracker"></div>
-    <!-- Round entry -->
-    <div class="entry-panel" id="p10-entry">
-      <div class="entry-head"><span class="entry-title" id="p10-round-label">Round 1</span><span class="entry-meta muted">low score breaks ties</span></div>
-      <div id="p10-inputs" class="entry-list"></div>
-      <div id="p10-err" class="form-err" style="display:none;"></div>
-      <button class="btn btn-gold btn-block" id="p10-submit">Add Round</button>
-    </div>
-    <div class="sc-foot">
-      <button class="btn btn-ghost" id="p10-reset-setup">New Setup</button>
-      <button class="btn btn-ghost" id="p10-undo">↩ Undo Round</button>
-    </div>
-  </div>
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c','#f472b6'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10','#be185d'];
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-function ask(msg,opts){return (window.GN&&GN.confirm)?GN.confirm(msg,opts):Promise.resolve(true);}
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
+  var SETUP = 'phase10_pad_setup', KEY = 'p10';
+  var PH = ['2 sets of 3', '1 set of 3 + 1 run of 4', '1 set of 4 + 1 run of 4', '1 run of 7', '1 run of 8', '1 run of 9',
+    '2 sets of 4', '7 cards of one color', '1 set of 5 + 1 set of 2', '1 set of 5 + 1 set of 3'];
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' Wins!';
-  ptsEl.textContent=typeof pts==='number'?pts+' points':pts;
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey&&typeof GameHistory!=='undefined'){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
-  }
-  haptic('success');
-  setTimeout(()=>{try{banner.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
-}
-// opts: {lowWins, target:false, sub:[...]}
-function buildScorers(container,names,totals,win,colors,cdark,opts={}){
-  const n=names.length;
-  const cols=n<=3?n:n<=4?2:3;
-  container.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
-  container.innerHTML='';
-  const best=opts.lowWins?Math.min(...totals):Math.max(...totals);
-  names.forEach((nm,i)=>{
-    const leading=opts.lowWins?(totals[i]===best&&totals[i]!==0):(totals[i]===best&&totals[i]>0);
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'66');
-    if(leading)s.style.borderColor=colors[i];
-    let foot='';
-    if(opts.target!==false){
-      const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-      foot=`<div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-foot">${win-totals[i]>0?(win-totals[i])+' to win':'🏆 Reached '+win}</div>`;
-    }
-    s.innerHTML=`${leading?'<span class="crown">👑</span>':''}<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      ${opts.sub?`<div class="scorer-sub">${opts.sub[i]}</div>`:''}${foot}`;
-    container.appendChild(s);
+  Kit.init({
+    id: 'phase10', title: 'Phase 10 score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Phase 10: past games' }); } }],
+    rules:
+      '<p class="goal">Play Phase 10 with a real deck and keep score here. The first player to finish <b>Phase 10</b> wins. If two players finish it in the same hand, the one with the <b>fewest points</b> wins.</p>' +
+      '<h3>The phases</h3><ol>' + PH.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ol>' +
+      '<p>A <b>set</b> is cards of the same number. A <b>run</b> is numbers in a row. Wilds can be anything; Skips make someone lose a turn.</p>' +
+      '<h3>After each hand</h3><ul><li>For each player, tap <b>Made it</b> if they laid down their phase, or <b>Missed</b> if not.</li>' +
+      '<li>Enter the points left in their hand: <b>1–9 are 5 points</b>, <b>10–12 are 10</b>, <b>Skip 15</b>, <b>Wild 25</b>. Whoever went out has 0.</li>' +
+      '<li>The pad shows everyone\'s phase number. Players who made it move on; everyone else tries again.</li></ul>' +
+      '<h3>Dealing</h3><p>10 cards each. The deal passes to the left every hand.</p>'
   });
-}
-function buildHistory(container,rounds,names,totals,colors,title='Round History'){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`26px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">${title}</div>
-    <div class="hist-row names" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-val" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row ${ri%2?'alt':''}" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val ${v<0?'neg':''}">${v>0?'+'+v:v}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-function nameRow(prefix,i,value,max=16){
-  return `<div class="player-dot" style="background:${COLORS[i]}"></div>
-    <div class="name-field"><input class="input" id="${prefix}${i}" value="${esc(value)}" maxlength="${max}" autocomplete="off"></div>`;
-}
-// ── PHASE 10 ───────────────────────────────────────────────────────────────
-{
-const P10_PHASES=[
-  '2 sets of 3','1 set of 3 + 1 run of 4','1 set of 4 + 1 run of 4',
-  '1 run of 7','1 run of 8','1 run of 9','2 sets of 4',
-  '7 cards of one color','1 set of 5 + 1 set of 2','1 set of 5 + 1 set of 3'
-];
-const DFLT=['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6'];
-// p10Phases[i] = phase the player is working on (1–10); 11 = finished all ten.
-let p10N=2, p10Names=[], p10Phases=[], p10Points=[], p10Rounds=[];
 
-function p10BuildNames(){
-  const c=document.getElementById('p10-names');c.innerHTML='';
-  for(let i=0;i<p10N;i++){
-    const row=document.createElement('div');row.className='player-setup-row';
-    row.innerHTML=nameRow('p10n',i,DFLT[i]);
-    c.appendChild(row);
-  }
-  if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("p10n");
-}
-document.querySelectorAll('.p10-cnt').forEach(b=>{
-  b.addEventListener('click',()=>{
-    p10N=+b.dataset.n;
-    document.querySelectorAll('.p10-cnt').forEach(x=>x.classList.remove('active-cnt','btn-gold'));
-    b.classList.add('active-cnt','btn-gold');p10BuildNames();haptic('select');
-  });
-});
-document.querySelector('.p10-cnt[data-n="2"]').classList.add('btn-gold');
-p10BuildNames();
-
-function p10Save(){try{sessionStorage.setItem('cs_p10',JSON.stringify({p10N,p10Names,p10Phases,p10Points,p10Rounds,_ts:Date.now()}));}catch(e){}}
-function p10Done(){return p10Phases.some(ph=>ph>10);}
-
-function p10Start(){
-  p10Names=Array.from({length:p10N},(_,i)=>document.getElementById('p10n'+i).value.trim()||DFLT[i]);
-  p10Phases=Array(p10N).fill(1);
-  p10Points=Array(p10N).fill(0);
-  p10Rounds=[];
-  document.getElementById('p10-setup').classList.add('hidden');
-  document.getElementById('p10-game').classList.remove('hidden');
-  document.getElementById('p10-winner').classList.add('hidden');
-  p10Render();window.scrollTo(0,0);
-}
-
-function p10Render(){
-  // Phase tracker
-  const tracker=document.getElementById('p10-tracker');
-  const cw=p10N<=3?44:p10N<=4?38:32;
-  let html=`<div class="trk" style="grid-template-columns:minmax(0,1fr) repeat(${p10N},${cw}px)">`;
-  html+=`<div class="trk-ph" style="color:var(--text-3);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Phase</div>`;
-  p10Names.forEach((nm,i)=>html+=`<div class="trk-h" style="color:${COLORS[i]}" title="${esc(nm)}">${esc(nm.length>4&&cw<40?nm.slice(0,3)+'…':nm)}</div>`);
-  for(let ph=1;ph<=10;ph++){
-    html+=`<div class="trk-ph"><b>${ph}</b>${P10_PHASES[ph-1]}</div>`;
-    p10Names.forEach((_,i)=>{
-      const done=p10Phases[i]>ph;
-      const current=p10Phases[i]===ph;
-      html+=`<div class="trk-c ${done?'done':current?'cur':''}" style="--pc:${COLORS[i]}">${done?'✓':current?'●':''}</div>`;
+  function showSetup() {
+    Kit.setup(app, {
+      players: { min: 2, max: 6, count: 3 },
+      options: [{ id: 'last', label: 'Game length', value: 10, choices: [[10, 'All 10 phases'], [5, 'Quick · phases 1–5']] }],
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        localStorage.setItem(SETUP, JSON.stringify({ names: cfg.players.map(function (p) { return p.name; }), last: +cfg.options.last || 10 }));
+        startPad();
+      }
     });
   }
-  html+=`<div class="trk-tot lbl">Points</div>`;
-  p10Names.forEach((_,i)=>html+=`<div class="trk-tot" style="color:${COLORS[i]}">${p10Points[i]}</div>`);
-  html+='</div>';
-  tracker.innerHTML=html;
 
-  // Round entry inputs
-  const rd=p10Rounds.length+1;
-  document.getElementById('p10-round-label').textContent=`Round ${rd}`;
-  document.getElementById('p10-entry').classList.toggle('hidden',p10Done());
-  const inp=document.getElementById('p10-inputs');inp.innerHTML='';
-  p10Names.forEach((nm,i)=>{
-    const div=document.createElement('div');
-    div.className='erow p10';
-    const ph=p10Phases[i];
-    div.innerHTML=`<div class="erow-name stack"><div class="nm"><span class="player-dot" style="background:${COLORS[i]}"></span><span>${esc(nm)}</span></div><div class="erow-sub">Phase ${ph>10?'done':ph}</div></div>
-      <label class="ph-toggle"><input type="checkbox" id="p10cp${i}"><span>✓ Made it</span></label>
-      <input type="number" inputmode="numeric" class="score-input" id="p10pt${i}" placeholder="pts" min="0">`;
-    inp.appendChild(div);
-  });
-  inp.querySelectorAll('.ph-toggle input').forEach(el=>el.addEventListener('change',()=>haptic('select')));
-}
+  // Each round stores detail[i] = 'made N' or 'missed N'. Completion is the source of truth;
+  // the phase numbers are rewritten whenever rounds change so edits stay consistent.
+  function made(r, i) { return !!(r.detail && String(r.detail[i] || '').indexOf('made') === 0); }
+  function phasesAfter(rounds, n) {
+    var ph = []; for (var i = 0; i < n; i++) ph.push(1);
+    rounds.forEach(function (r) { for (var i = 0; i < n; i++) if (made(r, i)) ph[i]++; });
+    return ph; // phase each player is now on (last + 1 = finished)
+  }
+  function normalize(rounds, n) {
+    var ph = []; for (var i = 0; i < n; i++) ph.push(1);
+    rounds.forEach(function (r) {
+      var d = [];
+      for (var i = 0; i < n; i++) { var m = made(r, i); d.push((m ? 'made ' : 'missed ') + ph[i]); if (m) ph[i]++; }
+      r.detail = d;
+    });
+  }
 
-document.getElementById('p10-submit').addEventListener('click',()=>{
-  if(p10Done()) return;
-  const err=document.getElementById('p10-err');
-  const roundData=p10Names.map((_,i)=>{
-    const completed=document.getElementById(`p10cp${i}`).checked;
-    const pts=parseInt(document.getElementById(`p10pt${i}`).value);
-    return{completed,pts:isNaN(pts)?null:pts};
-  });
-  if(roundData.some(r=>r.pts===null)){err.textContent='Enter points for all players (0 if they went out).';err.style.display='block';haptic('error');return;}
-  err.style.display='none';
-  p10Rounds.push(roundData);
-  roundData.forEach((r,i)=>{
-    // Completing phase 10 moves the player to 11 (= finished) so a winner can be found.
-    if(r.completed&&p10Phases[i]<=10)p10Phases[i]++;
-    p10Points[i]+=r.pts;
-  });
-  p10Render();
-  // Winner: completed phase 10; ties broken by lowest points.
-  const winner10=p10Phases.findIndex(ph=>ph>10);
-  if(winner10>=0){
-    const minPts=Math.min(...p10Names.map((_,i)=>p10Phases[i]>10?p10Points[i]:Infinity));
-    const wi=p10Points.findIndex((pt,i)=>p10Phases[i]>10&&pt===minPts);
-    const wb=document.getElementById('p10-winner');
-    GameHistory.save('p10',{_summary:`${p10Names[wi]} wins · ${p10Rounds.length} rounds`,_badge:p10Points[wi]+'pts',winner:p10Names[wi],names:p10Names,rounds:p10Rounds.length,points:p10Points,phases:p10Phases});
-    wb._histKey='p10';wb._histTitle='Phase 10';
-    wb._histRender=e=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds,lbl:'Rounds'},{val:e.points[wi]+'pts',lbl:'Score'}]));return div;};
-    showWinner(wb,document.getElementById('p10-wname'),document.getElementById('p10-wpts'),p10Names[wi],`Completed all 10 phases · ${p10Points[wi]} pts`);
-  } else haptic('light');
-  p10Save();
-});
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP)), LAST = cfg.last || 10, n = cfg.names.length;
+    function finishers(rounds) { var ph = phasesAfter(rounds, n); return ph.map(function (v, i) { return v > LAST ? i : -1; }).filter(function (i) { return i >= 0; }); }
+    pad = Scorepad(app, {
+      key: KEY, title: 'Phase 10', mode: 'Scorekeeper' + (LAST < 10 ? ' · phases 1–' + LAST : ''), lowWins: true,
+      sides: cfg.names.map(function (nm) { return { name: nm }; }),
+      goal: 'First to finish phase ' + LAST + ' wins · fewest points breaks a tie',
+      isOver: function (t, rounds) {
+        normalize(rounds, n);
+        var f = finishers(rounds);
+        if (f.length && pad) pad.state().highlights = highlights(rounds, t);
+        return f.length > 0;
+      },
+      winner: function (t, rounds) {
+        var f = finishers(rounds);
+        if (f.length) {
+          f.sort(function (a, b) { return t[a] - t[b]; });
+          return f.length > 1 && t[f[0]] === t[f[1]] ? -1 : f[0];
+        }
+        var ph = phasesAfter(rounds, n), best = -1;
+        for (var i = 0; i < n; i++) if (best < 0 || ph[i] > ph[best] || (ph[i] === ph[best] && t[i] < t[best])) best = i;
+        var ties = 0; for (var j = 0; j < n; j++) if (ph[j] === ph[best] && t[j] === t[best]) ties++;
+        return ties > 1 ? -1 : best;
+      },
+      form: form
+    });
+    function form(ctx) {
+      var before = pad.state().rounds.slice(0, ctx.round - 1), ph = phasesAfter(before, n);
+      var res = ctx.sides.map(function (s, i) { return ctx.prev ? made(ctx.prev, i) : null; });
+      var rows = [];
+      ctx.sides.forEach(function (s, i) {
+        var blk = el('div', { class: 'pblk' });
+        blk.appendChild(el('div', { class: 'top' }, [
+          el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, text: (s.name || '?').charAt(0).toUpperCase() }),
+          el('span', { class: 'nm', text: s.name }),
+          el('span', { class: 'goal', text: 'Phase ' + ph[i] + ': ' + PH[ph[i] - 1] })
+        ]));
+        var seg = el('div', { class: 'seg' });
+        var yes = el('button', { type: 'button', class: 'yes', html: Kit.icon('check') + '<span>Made it</span>' });
+        var no = el('button', { type: 'button', class: 'no', text: 'Missed' });
+        function paintSeg() { yes.classList.toggle('on', res[i] === true); no.classList.toggle('on', res[i] === false); }
+        yes.addEventListener('click', function () { res[i] = true; Kit.sfx('tap'); Kit.haptic('light'); paintSeg(); check(); });
+        no.addEventListener('click', function () { res[i] = false; Kit.sfx('tap'); Kit.haptic('light'); paintSeg(); check(); });
+        seg.appendChild(yes); seg.appendChild(no); paintSeg();
+        var r = ctx.number(i, { min: 0, step: 5, neg: false, label: 'Points left' });
+        var av = r.querySelector('.avatar'), nm = r.querySelector('.nm'); if (av) av.remove(); if (nm) nm.remove();
+        r.input.addEventListener('input', check);
+        blk.appendChild(el('div', { class: 'bot' }, [seg, el('div', { class: 'ptsw' }, [r, el('span', { class: 'lbl', text: 'points left' })])]));
+        ctx.node.appendChild(blk); rows.push(r);
+      });
+      var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
+      var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
+      ctx.node.appendChild(btn);
+      function vals() { return rows.map(function (r) { return Math.max(0, r.value()); }); }
+      function check() {
+        var v = vals(), msg = '', zero = v.filter(function (x) { return x === 0; }).length;
+        if (res.some(function (x) { return x === null; })) msg = 'Tap Made it or Missed for everyone';
+        else if (v.some(function (x) { return x % 5; })) msg = 'Points go up in 5s (cards are 5, 10, 15 or 25)';
+        else if (zero === 0) msg = 'Whoever went out has 0 points';
+        else if (zero > 1) msg = 'Only one player can go out (0 points)';
+        else if (!res[v.indexOf(0)]) msg = ctx.sides[v.indexOf(0)].name + ' went out, so they must have made their phase';
+        note.className = 'rnote' + (msg ? ' bad' : '');
+        note.textContent = msg || ctx.sides[v.indexOf(0)].name + ' went out. Looks right.';
+        btn.disabled = !!msg;
+        return !msg;
+      }
+      btn.addEventListener('click', function () {
+        if (!check()) return;
+        var v = vals(), extra = { detail: res.map(function (m, i) { return (m ? 'made ' : 'missed ') + ph[i]; }), highlights: [] };
+        var fin = res.map(function (m, i) { return m && ph[i] >= LAST ? i : -1; }).filter(function (i) { return i >= 0; });
+        if (!ctx.prev) {
+          if (fin.length) extra.callout = 'Phase ' + LAST + ' done!';
+          else if (res.every(function (m) { return m; })) extra.callout = 'Everyone made it!';
+        }
+        ctx.done(v, extra);
+      });
+      check();
+      var help = el('details', { class: 'phhelp' }, [el('summary', { class: 'label', text: 'All 10 phases' }), el('ol', { html: PH.map(function (p) { return '<li>' + p + '</li>'; }).join('') })]);
+      ctx.node.appendChild(help);
+    }
+    function highlights(rounds, t) {
+      var names = cfg.names, out = [], ph = [], streak = [], stuck = null, outs = [], missed = [], big = null, firstDone = null;
+      for (var i = 0; i < n; i++) { ph.push(1); streak.push(0); outs.push(0); missed.push(0); }
+      rounds.forEach(function (r, ri) {
+        for (var i = 0; i < n; i++) {
+          if (made(r, i)) { if (ph[i] === LAST && !firstDone) firstDone = { i: i, hand: ri + 1 }; ph[i]++; streak[i] = 0; }
+          else { streak[i]++; missed[i]++; if (!stuck || streak[i] > stuck.n) stuck = { i: i, ph: ph[i], n: streak[i] }; }
+          if (r.scores[i] === 0) outs[i]++;
+          if (!big || r.scores[i] > big.pts) big = { i: i, pts: r.scores[i], hand: ri + 1 };
+        }
+      });
+      if (firstDone) out.push(names[firstDone.i] + ' laid down Phase ' + LAST + ' in hand ' + firstDone.hand);
+      if (stuck && stuck.n >= 2) out.push(names[stuck.i] + ' was stuck on phase ' + stuck.ph + ' for ' + stuck.n + ' hands');
+      var mo = outs.indexOf(Math.max.apply(null, outs));
+      if (outs[mo] >= 2) out.push(names[mo] + ' went out ' + outs[mo] + ' times');
+      for (var k = 0; k < n; k++) if (!missed[k] && rounds.length >= 3) out.push(names[k] + ' never missed a phase');
+      if (big && big.pts >= 50) out.push(names[big.i] + ' got caught with ' + big.pts + ' points in hand ' + big.hand);
+      out.push('Final phases: ' + names.map(function (nm, i) { return nm + ' ' + (ph[i] > LAST ? 'done' : ph[i]); }).join(', '));
+      return out;
+    }
+    // Phase numbers under each name on the pad
+    function addPhaseRow() {
+      var thead = app.querySelector('.spad thead'); if (!thead || thead.querySelector('.phrow')) return;
+      var rounds = pad ? pad.state().rounds : [], ph = phasesAfter(rounds, n);
+      var tr = el('tr', { class: 'phrow' }, [el('th', { class: 'rn', text: 'PHASE' })]);
+      ph.forEach(function (v) {
+        tr.appendChild(el('th', null, [
+          el('span', { class: 'pn' + (v > LAST ? ' done' : ''), text: v > LAST ? 'Done' : String(v) }),
+          el('small', { text: v > LAST ? 'finished' : PH[v - 1].replace(/^1 /, '') })
+        ]));
+      });
+      thead.appendChild(tr);
+    }
+    new MutationObserver(addPhaseRow).observe(app, { childList: true, subtree: true });
+    addPhaseRow();
+  }
 
-document.getElementById('p10-undo').addEventListener('click',()=>{
-  if(!p10Rounds.length)return;
-  const last=p10Rounds.pop();
-  last.forEach((r,i)=>{
-    if(r.completed&&p10Phases[i]>1)p10Phases[i]--;
-    p10Points[i]-=r.pts;
-  });
-  document.getElementById('p10-winner').classList.add('hidden');
-  haptic('light');p10Render();p10Save();
-});
-function p10ToSetup(){document.getElementById('p10-game').classList.add('hidden');document.getElementById('p10-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_p10');}catch(e){}window.scrollTo(0,0);}
-document.getElementById('p10-start').addEventListener('click',()=>{haptic('light');p10Start();try{sessionStorage.removeItem('cs_p10');}catch(e){}});
-document.getElementById('p10-again').addEventListener('click',()=>{p10Start();try{sessionStorage.removeItem('cs_p10');}catch(e){}});
-document.getElementById('p10-newsetup').addEventListener('click',p10ToSetup);
-document.getElementById('p10-reset-setup').addEventListener('click',async()=>{
-  if(p10Rounds.length&&!p10Done()&&!(await ask('Start a new setup?',{title:'New setup?',body:'This clears the current game.',ok:'New Setup',danger:true})))return;
-  p10ToSetup();
-});
-try{const raw=sessionStorage.getItem('cs_p10');if(raw){const s=JSON.parse(raw);if(s.p10Names&&s.p10Rounds.length){p10N=s.p10N||s.p10Names.length;p10Names=s.p10Names;p10Phases=s.p10Phases;p10Points=s.p10Points;p10Rounds=s.p10Rounds;document.getElementById('p10-setup').classList.add('hidden');document.getElementById('p10-game').classList.remove('hidden');p10Render();if(p10Done()){const m=Math.min(...p10Names.map((_,i)=>p10Phases[i]>10?p10Points[i]:Infinity));const wi=p10Points.findIndex((pt,i)=>p10Phases[i]>10&&pt===m);document.getElementById('p10-winner').classList.remove('hidden');document.getElementById('p10-wname').textContent=p10Names[wi]+' Wins!';document.getElementById('p10-wpts').textContent=`Completed all 10 phases · ${p10Points[wi]} pts`;}}}}catch(e){}
-}
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>

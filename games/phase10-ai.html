@@ -24,6 +24,7 @@
 .pcard.p10.skip .ov{background:none;box-shadow:none;transform:none;width:58%;height:auto;}
 .pcard.p10.skip .ov svg{width:100%;height:auto;}
 .pcard.p10 .lbl{font-size:calc(var(--cw) * .12);opacity:.92;}
+.pcard.p10 .ix.bot{display:none;}
 .pcard.p10.c-y .ix,.pcard.p10.c-y .lbl{text-shadow:0 1px 1px rgba(90,60,0,.55);}
 /* Mini cards inside laid-down groups: just the corner number */
 .pcard.p10.mini .big,.pcard.p10.mini .lbl,.pcard.p10.mini .ix.bot{display:none;}
@@ -43,6 +44,12 @@
 .p10f .cseat .chip-s.skp{background:var(--red);color:#fff;}
 .p10f .cseat .chip-s .ico{width:11px;height:11px;vertical-align:-1px;}
 .p10f .cseat .say{top:100%;}
+.p10f .cseat .chip-s.cnt .ico{width:12px;height:12px;margin-right:2px;vertical-align:-2px;}
+.opps.many{gap:6px 6px;}
+.opps.many .cseat .tag{font-size:.74rem;padding:3px 8px 3px 3px;gap:4px;}
+.opps.many .cseat .tag .avatar{width:22px;height:22px;}
+.opps.many .cseat .tag .nm{max-width:64px;}
+.opps.many .cseat .chip-s{font-size:.66rem;padding:1px 6px;}
 .p10f .cseat.me .say{top:auto;bottom:100%;margin:0 0 4px;}
 .mid{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:22px;padding:2px 0 0;}
 .pile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;--cw:58px;background:none;border:0;padding:0;color:#fff;}
@@ -103,7 +110,8 @@
 .mat.bad .ms{color:#ffb3ba;}
 /* ── Hand & bar ───────────────────────────────────────────────────────── */
 .chand{padding-top:20px;}
-.cbar .btn{min-height:46px;}
+.cbar .btn{min-height:46px;white-space:nowrap;padding:0 18px;}
+.cbar .hint{font-size:.9rem;white-space:nowrap;}
 .cbar .btn.pulse{animation:pulseb 1.3s ease-in-out infinite;}
 @keyframes pulseb{50%{box-shadow:0 0 0 4px rgba(255,200,61,.45);}}
 .ghost{position:fixed;z-index:60;pointer-events:none;transition:transform .42s cubic-bezier(.2,.8,.25,1),opacity .42s;}
@@ -766,9 +774,9 @@
       el('span', { class: 'nm', text: p === 0 ? 'You' : pl.name })
     ]);
     var info = el('div', { class: 'info' }, [
-      el('span', { class: 'chip-s ph', text: pl.done ? 'Done' : 'Phase ' + pl.ph }),
+      el('span', { class: 'chip-s ph', text: pl.done ? 'Done' : (N() >= 4 && p !== 0 ? 'Ph ' : 'Phase ') + pl.ph }),
       S.laid && S.laid[p] ? el('span', { class: 'chip-s laid', html: Kit.icon('check') }) : null,
-      p !== 0 && S.hands ? el('span', { class: 'chip-s', text: S.hands[p].length + ' cards' }) : null,
+      p !== 0 && S.hands ? el('span', { class: 'chip-s cnt', 'aria-label': S.hands[p].length + ' cards', html: Kit.icon('cards') + S.hands[p].length }) : null,
       S.skipNext && S.skipNext[p] ? el('span', { class: 'chip-s skp', text: 'Skip' }) : null
     ]);
     if (p === 0) { s.appendChild(info); s.appendChild(tag); } else { s.appendChild(tag); s.appendChild(info); }
@@ -781,7 +789,7 @@
     var n = N(), mine = me(), ph = S.players[0].ph - 1, sel = S.sel && find(S.sel);
     feltEl.innerHTML = '';
     seatEls = [];
-    var opps = el('div', { class: 'opps' });
+    var opps = el('div', { class: 'opps' + (n >= 4 ? ' many' : '') });
     for (var i = 1; i < n; i++) { seatEls[i] = seat(i); opps.appendChild(seatEls[i]); }
     feltEl.appendChild(opps);
     // piles
@@ -846,7 +854,7 @@
     if (builderEl.hidden) return;
     var req = PH[S.players[0].ph - 1].req;
     builderEl.appendChild(el('div', { class: 'bhead' }, [
-      el('span', { class: 'grow', text: 'Build phase ' + S.players[0].ph + ': tap a group, then tap cards' }),
+      el('span', { class: 'grow', text: 'Tap a group, then tap cards' }),
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('lightbulb') + '<span>Fill for me</span>', onclick: fillForMe })
     ]));
     var mats = el('div', { class: 'mats' });
@@ -855,7 +863,7 @@
       var mat = el('div', { class: 'mat' + (k === S.bActive ? ' on' : '') + (a.ok ? ' good' : a.empty || a.partial ? '' : ' bad'), role: 'button', tabindex: '0', onclick: function () { S.bActive = k; Kit.sfx('tap'); save(); paintBuilder(); } });
       mat.appendChild(el('div', { class: 'mt', html: '<span>' + reqName(r) + '</span>' + (a.ok ? Kit.icon('check') : '') }));
       var mc = el('div', { class: 'mc' });
-      if (!cards.length) mc.appendChild(el('span', { class: 'ph', text: k === S.bActive ? 'Tap cards below' : 'Tap here first' }));
+      if (!cards.length) mc.appendChild(el('span', { class: 'ph', text: k === S.bActive ? 'Tap cards below' : 'Tap to fill this' }));
       var show = a.ok ? a.g.cards : cards;
       show.forEach(function (c) {
         var cn = cardEl(c, { mini: true });
@@ -897,7 +905,7 @@
     if (S.step === 'draw') {
       var top = S.discard[S.discard.length - 1];
       if (S.skipNext[0]) { barEl.appendChild(el('span', { class: 'hint', text: 'You are skipped' })); return; }
-      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('cards') + '<span>Draw from deck</span>', onclick: function () { youDraw(false); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('cards') + '<span>Draw</span>', onclick: function () { youDraw(false); } }));
       var tb = el('button', { type: 'button', class: 'btn btn-soft', text: top ? (isS(top) ? "Can't take Skip" : 'Take ' + cname(top)) : 'Discard empty', onclick: function () { youDraw(true); } });
       tb.disabled = !top || isS(top);
       barEl.appendChild(tb);
@@ -919,7 +927,7 @@
       var fits = S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(sel, g); }); });
       if (fits) barEl.appendChild(el('span', { class: 'hint', text: 'Tap a glowing group' }));
     } else barEl.appendChild(el('span', { class: 'hint', text: 'Hit or discard' }));
-    var db = el('button', { type: 'button', class: 'btn ' + (S.laid[0] ? 'btn-primary' : 'btn-soft'), text: sel ? 'Discard ' + cname(sel) : 'Pick a discard', onclick: youDiscard });
+    var db = el('button', { type: 'button', class: 'btn ' + (S.laid[0] ? 'btn-primary' : 'btn-soft'), text: sel ? 'Discard ' + cname(sel) : 'Discard', onclick: youDiscard });
     db.disabled = !sel;
     barEl.appendChild(db);
   }
