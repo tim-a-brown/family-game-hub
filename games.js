@@ -52,6 +52,7 @@ var GAMES = [
   { id: 'connectfour', name: 'Connect Four', color: '#2563eb', cat: 'board', min: 1, max: 2, tag: 'Four in a row wins', play: 'connectfour' },
   { id: 'tictactoe',   name: 'Tic-Tac-Toe',  color: '#06b6d4', cat: 'board', min: 1, max: 3, tag: 'Classic, Ultimate, and 3-player', play: 'tictactoe' },
   { id: 'chinesecheckers', name: 'Chinese Checkers', color: '#b91c1c', cat: 'board', min: 1, max: 6, tag: 'Hop your marbles across the star', play: 'chinesecheckers' },
+  { id: 'codebreaker', name: 'Code Breaker', color: '#000', cat: 'board', min: 1, max: 2, tag: 'Crack the secret color code', play: 'codebreaker' },
   { id: 'marbles',     name: 'Marbles',      color: '#7c3aed', cat: 'board', min: 2, max: 6, tag: 'Aggravation and Wahoo: race home, bump rivals', play: 'marbles' },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello' },
   { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon' },
@@ -69,6 +70,7 @@ var GAMES = [
 
   // ── Puzzles ──────────────────────────────────────────────────────────────
   { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048' },
+  { id: 'slidepuzzle', name: 'Slide Puzzle', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Slide the tiles back in order', play: 'slidepuzzle' },
   { id: 'sudoku',      name: 'Sudoku',       color: '#3b82f6', cat: 'puzzle', min: 1, max: 1, tag: 'Fill the grid, 1 to 9', play: 'sudoku' },
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'puzzle', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
   { id: 'memorymatch', name: 'Memory Match', color: '#d946ef', cat: 'puzzle', min: 1, max: 4, tag: 'Flip two, find the pairs', play: 'memorymatch' },
@@ -99,6 +101,7 @@ var GAMES = [
   { id: 'slots',       name: 'Slots',        color: '#d97706', cat: 'casino', min: 1, max: 1, tag: 'Pull the lever, chase the jackpot', play: 'slots' },
   { id: 'craps',       name: 'Craps',        color: '#047857', cat: 'casino', min: 1, max: 1, tag: 'Roll the bones, ride the point', play: 'craps' },
   { id: 'baccarat',    name: 'Baccarat',     color: '#7c3aed', cat: 'casino', min: 1, max: 1, tag: 'Player, Banker or Tie', play: 'baccarat' },
+  { id: 'horserace',   name: 'Horse Race',   color: '#000', cat: 'casino', min: 1, max: 6, tag: 'Pick your horse, place your bets', play: 'horserace' },
   { id: 'threecardpoker', name: 'Three Card Poker', color: '#0f766e', cat: 'casino', min: 1, max: 1, tag: 'Ante up and beat the dealer', play: 'threecardpoker' },
   { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 1, tag: 'Set a high hand and a low hand', play: 'paigow' },
 

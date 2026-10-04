@@ -96,6 +96,9 @@ var GameIcon = (function () {
     chinesecheckers: function (c) { return path('M12.0 1.0L15.2 6.5L21.5 6.5L18.4 12.0L21.5 17.5L15.2 17.5L12.0 23.0L8.8 17.5L2.5 17.5L5.7 12.0L2.5 6.5L8.8 6.5z', c, ' opacity=".85"') + circ(12, 4.2, 1.7, R) + circ(18.8, 16, 1.7, Y) + circ(5.2, 16, 1.7, G) + circ(12, 12, 1.7, B) + circ(8.6, 10, 1.4, W) + circ(15.4, 10, 1.4, W); },
     marbles: function (c) { var t = rect(1.5, 1.5, 21, 21, 5, c, ' opacity=".85"'); [[6,6],[12,6],[18,6],[6,12],[18,12],[6,18],[12,18],[18,18]].forEach(function (p) { t += circ(p[0], p[1], 1.3, '#00000040'); }); return t + circ(12, 12, 2.6, K) + circ(6, 6, 2, R) + circ(18, 12, 2, Y) + circ(12, 18, 2, G) + circ(6, 18, 2, B); },
     jokerrun: function (c) { return rect(3, 3, 12, 17, 2.2, W, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(-10 9 11)"') + rect(9, 4, 12, 17, 2.2, c, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(8 15 12)"') + path('M11.5 10.5l2-3.5 1.8 2.6 1.8-2.6 2 3.5-1 .9h-5.6z', Y, ' transform="rotate(8 15 12)"') + circ(15.5, 15.5, 1.6, W, ' transform="rotate(8 15 12)"'); },
+    codebreaker: function (c) { var t = rect(2, 3, 20, 18, 3, c, ' opacity=".85"'); [[R,B,Y,G],[G,R,B,W]].forEach(function (row, j) { row.forEach(function (col, i) { t += circ(5.5 + i * 4.3, 8 + j * 7, 1.8, col); }); }); return t + circ(20, 8, .8, K) + circ(20, 15, .8, W); },
+    slidepuzzle: function (c) { var t = rect(2, 2, 20, 20, 3, K); for (var i = 0; i < 9; i++) { if (i === 8) continue; t += rect(3.2 + (i % 3) * 6.3, 3.2 + Math.floor(i / 3) * 6.3, 5.6, 5.6, 1.2, i % 2 ? W : c); } return t; },
+    horserace: function (c) { return path('M3 17c2-1 3-4 6-5l2-4 2 1 3-3 1 2-2 2 3 1 2 3-2 1-2-1-2 2v4h-2l-1-4-4 1-2 3H4z', c) + circ(15.2, 6.4, .7, K) + line('M2 21.5h20', K, 1.6); },
     mahjong4: function () { return rect(4, 1.5, 16, 21, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.4"') + txt('中', 13, R, 12.5); },
 
     // Dice & luck
