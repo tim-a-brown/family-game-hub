@@ -432,7 +432,7 @@
     var used = [].concat.apply([], groups).map(function (c) { return c.id; });
     S.hands[p] = S.hands[p].filter(function (c) { return used.indexOf(c.id) < 0; });
     S.laid[p] = made;
-    if (S.turns[p] === 1 && S.stats.firstTurn.length < 3) S.stats.firstTurn.push(S.players[p].name + ' laid down Phase ' + (ph + 1) + ' on their very first turn of hand ' + S.hand);
+    if (S.turns[p] === 1 && S.stats.firstTurn.length < 3) S.stats.firstTurn.push(S.players[p].name + ' laid down Phase ' + (ph + 1) + (S.players[p].name === 'You' ? ' on your' : ' on their') + ' very first turn of hand ' + S.hand);
     Kit.sfx('good'); Kit.haptic('success');
     save(); paint();
     var mr = app.querySelector('.mrow[data-p="' + p + '"]');
@@ -711,7 +711,7 @@
     var fin = S.players.map(function (p, i) { return i; }).filter(function (i) { return S.players[i].done; });
     if (fin.length > 1) out.push(fin.map(function (i) { return names[i]; }).join(', ').replace(/, ([^,]*)$/, ' and $1') + ' all finished Phase ' + S.last + ' in the same hand' + (w >= 0 ? ', and ' + names[w] + ' won on points' : ''));
     else if (w >= 0) out.push(names[w] + ' laid down Phase ' + S.last + ' first, in hand ' + S.hand);
-    if (st.stuck && st.stuck.n >= 2) out.push(names[st.stuck.p] + ' was stuck on phase ' + st.stuck.ph + ' for ' + st.stuck.n + ' hands');
+    if (st.stuck && st.stuck.n >= 2) out.push(names[st.stuck.p] + (names[st.stuck.p] === 'You' ? ' were' : ' was') + ' stuck on phase ' + st.stuck.ph + ' for ' + st.stuck.n + ' hands');
     var sk = null;
     st.skips.forEach(function (row, a) { row.forEach(function (v, b) { if (v && (!sk || v > sk.v)) sk = { a: a, b: b, v: v }; }); });
     if (sk && sk.v >= 2) out.push(names[sk.a] + ' skipped ' + names[sk.b] + ' ' + sk.v + ' times');
