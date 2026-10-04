@@ -2,97 +2,161 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Gin Rummy — vs AI</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#060e0a 60%);}
-.gr-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
-/* Card */
-.gcard{width:46px;height:64px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
-  border:2px solid rgba(0,0,0,.12);display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
-  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;cursor:pointer;}
-.gcard.red{color:#c53030;}.gcard.black{color:#1a1a1a;}
-.gcard:hover:not(.disabled):not(.face-down){border-color:#f5c842;transform:translateY(-4px);}
-.gcard.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);transform:translateY(-10px);}
-.gcard.in-meld{border-color:#22c55e;background:linear-gradient(145deg,#f0fff4,#dcfce7);}
-.gcard.deadwood{border-color:#ef4444;opacity:.85;}
-.gcard.face-down{background:linear-gradient(145deg,#1a4a2e,#0d2818);border-color:rgba(255,255,255,.12);cursor:default;}
-.gcard.disabled{cursor:default;}
-.gc-r{font-size:.88rem;line-height:1.1;}.gc-s{font-size:.75rem;line-height:1;}
-/* Hand */
-.gr-hand{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:68px;align-items:flex-end;}
-/* Table */
-.gr-table{background:linear-gradient(145deg,#0a2a1a,#061508);border:2px solid rgba(255,255,255,.08);
-  border-radius:14px;padding:12px;margin-bottom:10px;}
-/* Piles */
-.gr-piles{display:flex;gap:16px;justify-content:center;align-items:flex-start;margin-bottom:8px;}
-.gr-pile-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.gr-pile-lbl{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);}
-.gr-pile-count{font-size:.6rem;color:rgba(255,255,255,.25);}
-.stock-back{width:46px;height:64px;border-radius:8px;background:linear-gradient(145deg,#1a4a2e,#0d2818);
-  border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:all .15s;font-size:1.2rem;color:rgba(255,255,255,.2);}
-.stock-back:hover{border-color:rgba(255,255,255,.4);}
-/* Score bar */
-.gr-scores{display:flex;justify-content:space-between;align-items:center;
-  background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
-.gr-score-block{text-align:center;}
-.gr-score-name{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);}
-.gr-score-val{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#f5c842;}
-.gr-score-dw{font-size:.65rem;color:rgba(255,255,255,.3);}
-/* Status */
-.gr-status{text-align:center;font-size:.9rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
-/* Phase badge */
-.gr-phase{display:inline-block;background:rgba(90,200,250,.12);border:1px solid rgba(90,200,250,.25);
-  border-radius:20px;padding:3px 12px;font-size:.68rem;font-weight:700;color:#5ac8fa;
-  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
-/* Draw source selection */
-.gr-draw-src{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
-/* Knock/gin buttons */
-.gr-actions{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
-/* Meld overlay */
-.gr-meld-area{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
-  border-radius:10px;padding:10px;margin-bottom:8px;}
-.gr-meld-group{display:flex;gap:3px;margin-bottom:4px;flex-wrap:wrap;}
-/* Round result */
-.gr-round-result{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-  border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
-/* Game over */
-.gr-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;
-  padding:18px;text-align:center;margin-bottom:12px;}
-.gr-game-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;}
-/* Log */
-.gr-log{background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px;max-height:80px;
-  overflow-y:auto;font-size:.75rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
-.gr-log .pts{color:#f5c842;font-weight:700;}
+/*KIT-START*/
+/* ── Card-table kit (same look across Spades · Hearts · Euchre · Gin · Cribbage) ── */
+.ck{max-width:560px;margin:0 auto;padding:10px max(12px,var(--safe-r)) calc(28px + var(--safe-b)) max(12px,var(--safe-l));}
+.ck-board{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:18px;}
+.ck-side{min-width:0;display:flex;flex-direction:column;gap:1px;}
+.ck-side.r{align-items:flex-end;text-align:right;}
+.ck-lbl{display:flex;align-items:center;gap:6px;max-width:100%;font-size:.75rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ck-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.ck-pts{font-family:var(--display);font-size:1.85rem;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+.ck-sub{font-size:.75rem;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ck-mid{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.72rem;color:var(--text-3);font-weight:600;text-align:center;white-space:nowrap;}
+.ck-mid b{font-family:var(--display);font-size:1rem;color:var(--text-2);}
+.ck-lead{color:var(--gold);}
+/* Felt table + seats */
+.ck-table{position:relative;padding:12px 10px 14px;margin-bottom:10px;}
+.tbl4{display:grid;grid-template-columns:68px minmax(0,1fr) 68px;grid-template-areas:". n ." "w c e";align-items:center;gap:6px 2px;}
+.tbl4 .a-n{grid-area:n;justify-self:center;}
+.tbl4 .a-w{grid-area:w;}
+.tbl4 .a-e{grid-area:e;}
+.tbl4 .a-c{grid-area:c;}
+.seat{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
+.seat-row{flex-direction:row;gap:8px;}
+.seat-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;font-family:var(--display);font-weight:800;font-size:1rem;color:#fff;background:rgba(0,0,0,.28);border:2px solid rgba(255,255,255,.16);transition:border-color .2s,box-shadow .2s;}
+.seat.turn .seat-av{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,200,66,.22);}
+.seat-name{font-size:.78rem;font-weight:700;color:#fff;max-width:76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.seat-meta{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.78);background:rgba(0,0,0,.28);border-radius:999px;padding:2px 8px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.seat-meta.hot{color:var(--gold-ink);background:var(--gold);}
+.seat-col{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
+/* Playing cards */
+.pc{--w:var(--cw,56px);position:relative;flex:none;width:var(--w);height:calc(var(--w)*1.4);border-radius:calc(var(--w)*.13);background:linear-gradient(165deg,#fff,#f2eee4);border:1px solid rgba(0,0,0,.22);box-shadow:0 2px 6px rgba(0,0,0,.35);color:#1b1d22;font-family:var(--display);font-weight:800;transition:transform .18s var(--ease),box-shadow .18s,filter .18s,opacity .18s;-webkit-user-select:none;user-select:none;}
+.pc.red{color:#d42a2a;}
+.pc .ix{position:absolute;top:calc(var(--w)*.06);left:calc(var(--w)*.07);display:flex;flex-direction:column;align-items:center;line-height:.95;font-size:calc(var(--w)*.31);letter-spacing:-.05em;}
+.pc .ix i{font-style:normal;font-size:calc(var(--w)*.26);letter-spacing:0;}
+.pc .pip{position:absolute;right:calc(var(--w)*.08);bottom:calc(var(--w)*.04);font-size:calc(var(--w)*.5);line-height:1;}
+.pc.back{background:radial-gradient(circle at 50% 50%,rgba(245,200,66,.4) 0 16%,transparent 17%),repeating-linear-gradient(45deg,#2b3555 0 4px,#1e2640 4px 8px);border:2px solid #ebe6da;}
+.pc.slot{background:rgba(0,0,0,.14);border:1.5px dashed rgba(255,255,255,.22);box-shadow:none;}
+.pc.play{cursor:pointer;}
+.pc.dim{filter:brightness(.55) saturate(.6);}
+.pc.sel{transform:translateY(-14px);box-shadow:0 0 0 2.5px var(--gold),0 10px 22px rgba(0,0,0,.45);}
+.pc.glow{box-shadow:0 0 0 3px var(--gold),0 6px 16px rgba(0,0,0,.45);}
+.pc.new{animation:ck-in .24s var(--ease) both;}
+@keyframes ck-in{from{opacity:0;scale:.82;}to{opacity:1;scale:1;}}
+@media (hover:hover){.pc.play:not(.sel):hover{transform:translateY(-8px);}}
+.pc.play:active{filter:brightness(.92);}
+/* Hand: fans out / overlaps automatically to fit the available width */
+.hand{--cw:clamp(50px,15vw,66px);display:flex;justify-content:center;padding:18px 0 2px;min-height:calc(var(--cw)*1.4 + 20px);}
+.hand>.pc+.pc{margin-left:min(6px,calc((100% - var(--n,10) * var(--cw)) / (var(--n,10) - 1)));}
+.mini-backs{display:flex;justify-content:center;}
+.mini-backs .pc{--w:20px;border-width:1.5px;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.mini-backs .pc+.pc{margin-left:-13px;}
+/* Trick area */
+.trick{--tw:clamp(44px,12.6vw,58px);position:relative;width:calc(var(--tw)*3 + 10px);height:calc(var(--tw)*2.8 + 6px);margin:0 auto;}
+.trick .pc{--w:var(--tw);position:absolute;}
+.trick .t-n{left:calc(50% - var(--tw)/2);top:0;}
+.trick .t-s{left:calc(50% - var(--tw)/2);bottom:0;}
+.trick .t-w{left:0;top:calc(50% - var(--tw)*.7);rotate:-5deg;}
+.trick .t-e{right:0;top:calc(50% - var(--tw)*.7);rotate:5deg;}
+/* Status, chips, panels */
+.ck-status{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 8px;font-weight:700;font-size:.98rem;text-align:center;color:var(--text);}
+.ck-status.you{color:var(--gold);}
+.ck-status .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--text-2);animation:ck-spin .8s linear infinite;}
+@keyframes ck-spin{to{transform:rotate(360deg);}}
+.ck-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+.ck-chip{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 11px;border-radius:999px;font-size:.78rem;font-weight:700;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text-2);white-space:nowrap;}
+.ck-chip.gold{color:var(--gold);border-color:rgba(245,200,66,.35);background:rgba(245,200,66,.1);}
+.ck-chip .s-red{color:#ff6b6b;}
+.ck-panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:10px;}
+.ck-panel h3{font-size:1.2rem;font-weight:800;text-align:center;margin-bottom:4px;}
+.ck-panel p.sub{font-size:.88rem;color:var(--text-2);text-align:center;margin-bottom:14px;}
+.ck-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:.92rem;}
+.ck-row:last-child{border-bottom:0;}
+.ck-row .nm{display:flex;align-items:center;gap:8px;font-weight:700;min-width:0;}
+.ck-row .dt{color:var(--text-2);font-size:.82rem;}
+.ck-row .v{font-family:var(--display);font-weight:800;font-size:1.15rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.v.pos{color:var(--green);}.v.neg{color:var(--red);}
+.ck-notes{margin-top:10px;font-size:.84rem;color:var(--text-2);line-height:1.55;text-align:center;}
+.ck-notes .pts{color:var(--gold);font-weight:700;}
+.ck-log{margin-top:8px;padding:0 4px;font-size:.8rem;line-height:1.55;color:var(--text-3);text-align:center;}
+.ck-log .pts{color:var(--gold);font-weight:600;}
+.ck-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.nav-ico{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);text-decoration:none;}
+.nav-ico svg{width:18px;height:18px;}
+.nav-ico:active{transform:scale(.92);}
+/* During play the hand docks to the bottom of the screen, like a native card app */
+.ck.playing{display:flex;flex-direction:column;min-height:calc(100dvh - var(--nav-h) - var(--safe-t));}
+.ck-dock{margin-top:auto;padding-top:6px;}
+.ck-row .nm .dt{font-weight:500;}
+.seat-row .seat-name{max-width:none;}
+.ck.playing .ck-table{flex:1 1 auto;display:flex;align-items:center;justify-content:center;max-height:460px;}
+.ck.playing .ck-table>*{width:100%;}
+.pc .ix.t{letter-spacing:-.13em;margin-left:calc(var(--w)*-.03);}
+/* 4-player individual scoreboard */
+.ck-board.b4{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:10px 6px;}
+.ck-side.c{align-items:center;text-align:center;}
+.ck-board.b4 .ck-pts{font-size:1.5rem;}
+.ck-board.b4 .ck-lbl{font-size:.72rem;justify-content:center;}
+/*KIT-END*/
+/* Gin-specific */
+.ck.playing .ck-table{max-height:360px;}
+.gr-felt{display:flex;flex-direction:column;align-items:center;justify-content:space-around;gap:14px;}
+.gr-ai{display:flex;align-items:center;gap:10px;}
+.gr-ai .mini-backs .pc{--w:24px;}
+.gr-ai .mini-backs .pc+.pc{margin-left:-15px;}
+.gr-piles{display:flex;gap:clamp(18px,8vw,40px);justify-content:center;align-items:flex-start;}
+.gr-pile{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:default;}
+.gr-pile .pc{--w:clamp(58px,17vw,72px);}
+.gr-pile.can{cursor:pointer;}
+.gr-pile.can .pc{box-shadow:0 0 0 3px rgba(245,200,66,.85),0 8px 18px rgba(0,0,0,.4);}
+.gr-pile.can:active .pc{transform:scale(.95);}
+.gr-pile-lbl{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.75);}
+.gr-pile-count{font-size:.75rem;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums;}
+.stack{position:relative;}
+.stack::before,.stack::after{content:'';position:absolute;inset:0;border-radius:calc(var(--w,60px)*.13);background:#e9e4d8;border:1px solid rgba(0,0,0,.25);}
+.stack::before{transform:translate(3px,3px);}
+.stack::after{transform:translate(1.5px,1.5px);}
+.stack .pc{position:relative;z-index:1;}
+.pc.meld::before{content:'';position:absolute;left:18%;right:18%;bottom:5px;height:4px;border-radius:2px;background:#22c55e;}
+.pc.drawn{box-shadow:0 0 0 2px #60a5fa,0 2px 6px rgba(0,0,0,.35);}
+.gr-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+.gr-actions.one{grid-template-columns:1fr;}
+.legend{display:flex;gap:14px;justify-content:center;font-size:.75rem;color:var(--text-3);margin-top:4px;}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:5px;}
+.rs-hand{margin-bottom:6px;}
+.rs-hand .hand{--cw:clamp(40px,11.5vw,50px);padding-top:6px;min-height:0;}
+.rs-title{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:.9rem;margin-top:8px;}
+.rs-title span{font-size:.8rem;color:var(--text-2);font-weight:600;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Gin Rummy</span>
-  <a class="nav-back scorecard-link" href="gin-rummy.html" style="margin-left:auto;font-size:.7rem;opacity:.55;">📋 Scorecard</a>
+  <a class="nav-ico scorecard-link" href="gin-rummy.html" aria-label="Open the Gin Rummy scorecard" title="Scorecard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></a>
 </nav>
-<div class="page" style="padding:10px 0 60px;">
-<div class="gr-wrap" id="gr-root"></div>
-</div>
+<main class="ck" id="gr-root"></main>
 <script>
 'use strict';
 
 // ── My name (for solo-vs-AI display + history) ───────────────────────────────
 const MYNAME = (typeof FrequentPlayers!=='undefined' && FrequentPlayers.myName()) || 'You';
+const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+const toast=m=>{try{window.GN&&GN.toast(m);}catch(e){}};
 
 // ── Card helpers ─────────────────────────────────────────────────────────────
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -177,7 +241,7 @@ function tryLayoff(defCards, knockerMelds){
         // Try adding to run
         const sorted=[...m].sort((a,b)=>ORD[a.rank]-ORD[b.rank]);
         const lo=ORD[sorted[0].rank],hi=ORD[sorted[sorted.length-1].rank];
-        if(c.suit===sorted[0].suit){
+        if(c.suit===sorted[0].suit&&sorted.every(mc=>mc.suit===c.suit)){
           if(ORD[c.rank]===lo-1){m.push(c);remaining.splice(i,1);changed=true;break;}
           if(ORD[c.rank]===hi+1){m.push(c);remaining.splice(i,1);changed=true;break;}
         }
@@ -218,20 +282,22 @@ function aiChooseDiscard(hand){
 // ── State ────────────────────────────────────────────────────────────────────
 let deck,stock,discard,playerHand,aiHand,turn,phase,scores,roundScores;
 let drawn=null,drawnFrom=null,selDiscard=null,log=[];
-// phases: 'draw'|'discard'|'ai-turn'|'round-end'|'game-over'
+let roundMsg='',roundNum=0,knockCache={key:'',val:null};
+// phases: 'draw'|'discard'|'round-end'|'game-over'  (turn: 0=you, 1=AI)
 
 function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
 
-function newGame(){scores=[0,0];roundScores=[0,0];newRound();}
+function newGame(){scores=[0,0];roundScores=[0,0];roundNum=0;log=[];newRound();}
 
 function newRound(){
+  roundNum++;
   deck=makeDeck();
   playerHand=deck.splice(0,10);
   aiHand=deck.splice(0,10);
   stock=[...deck];
   discard=[stock.pop()];
-  turn=0; phase='draw'; drawn=null; drawnFrom=null; selDiscard=null;
-  addLog('New round. Draw from stock or discard pile.');
+  turn=0; phase='draw'; drawn=null; drawnFrom=null; selDiscard=null; roundMsg='';
+  addLog('New round. Draw from the stock or the discard pile.');
   render();
 }
 
@@ -244,6 +310,7 @@ function drawFrom(src){
     if(!discard.length) return;
     drawn=discard.pop(); drawnFrom='discard';
   }
+  hap('light');
   playerHand.push(drawn);
   phase='discard';
   addLog(`You drew ${drawn.rank}${drawn.suit} from the ${src}.`);
@@ -253,19 +320,20 @@ function drawFrom(src){
 function selectForDiscard(card){
   if(phase!=='discard'||turn!==0) return;
   if(selDiscard&&cKey(selDiscard)===cKey(card)){
-    // Confirm discard
+    // Second tap confirms
     doDiscard(card);
   } else {
+    hap('select');
     selDiscard=card; render();
   }
 }
 
 function doDiscard(card){
+  hap('light');
   playerHand=playerHand.filter(c=>cKey(c)!==cKey(card));
   discard.push(card);
   drawn=null; drawnFrom=null; selDiscard=null;
   addLog(`You discarded ${card.rank}${card.suit}.`);
-  // Check if player wants to knock
   const{dwTotal}=bestMelds(playerHand);
   if(dwTotal===0){
     addLog('GIN! You have 0 deadwood.','pts');
@@ -278,27 +346,55 @@ function doDiscard(card){
   }
 }
 
+// Knocking: you discard one card and lay down a 10-card hand with ≤10 deadwood.
+// Uses the selected card when that works, otherwise the best possible discard.
+function knockOption(){
+  const key=playerHand.map(cKey).join(',');
+  if(knockCache.key!==key){
+    let best=null;
+    playerHand.forEach(c=>{
+      const dw=bestMelds(playerHand.filter(x=>x!==c)).dwTotal;
+      if(!best||dw<best.dw||(dw===best.dw&&dwVal(c)>dwVal(best.card))) best={card:c,dw};
+    });
+    knockCache={key,val:best};
+  }
+  return knockCache.val;
+}
+
 function playerKnock(){
   if(phase!=='discard'||turn!==0) return;
-  const{dwTotal}=bestMelds(playerHand);
-  if(dwTotal>10){addLog('Deadwood too high to knock (max 10).');return;}
-  addLog(`You knock with ${dwTotal} deadwood.`,'pts');
-  phase='round-end';
-  resolveRound(false,false,dwTotal===0);
+  let opt=knockOption();
+  if(selDiscard){
+    const dw=bestMelds(playerHand.filter(c=>cKey(c)!==cKey(selDiscard))).dwTotal;
+    if(dw<=10) opt={card:selDiscard,dw};
+  }
+  if(!opt||opt.dw>10){hap('error');toast('Deadwood too high to knock (max 10)');addLog('Deadwood too high to knock (max 10).');return;}
+  playerHand=playerHand.filter(c=>cKey(c)!==cKey(opt.card));
+  discard.push(opt.card);
+  drawn=null; drawnFrom=null; selDiscard=null;
+  if(opt.dw===0){
+    addLog(`You discard ${opt.card.rank}${opt.card.suit} and go GIN!`,'pts');
+    phase='round-end';
+    resolveRound(true,false,true);
+  } else {
+    addLog(`You discard ${opt.card.rank}${opt.card.suit} and knock with ${opt.dw} deadwood.`,'pts');
+    phase='round-end';
+    resolveRound(false,false,false);
+  }
 }
 
 function aiTurn(){
-  if(turn!==1) return;
+  if(turn!==1||phase!=='draw') return;
   // Draw
   const src=aiDecideDrawSource(aiHand,discard[discard.length-1]);
   let drawn2;
   if(src==='discard'&&discard.length){
     drawn2=discard.pop(); aiHand.push(drawn2);
-    addLog(`AI draws from discard (${drawn2.rank}${drawn2.suit}).`);
+    addLog(`AI takes ${drawn2.rank}${drawn2.suit} from the discard pile.`);
   } else {
     if(!stock.length){stock=[...discard.slice(0,-1)].reverse();discard=[discard[discard.length-1]];}
     drawn2=stock.pop(); aiHand.push(drawn2);
-    addLog('AI draws from stock.');
+    addLog('AI draws from the stock.');
   }
   render();
   setTimeout(()=>{
@@ -334,30 +430,33 @@ function resolveRound(isGin,aiKnocked,playerGin){
     // Can't lay off on gin
     defDW=bestMelds(defHand).dwTotal;
   } else {
-    const{remaining}=tryLayoff(defHand,km);
+    // Defender keeps their own melds, then lays off deadwood on the knocker's melds
+    const{deadwood:defDead}=bestMelds(defHand);
+    const{remaining}=tryLayoff(defDead,km);
     defDW=remaining.reduce((s,c)=>s+dwVal(c),0);
   }
   let pts=0,msg='';
-  if(isGin){pts=defDW+25;msg=`Gin! ${pts} pts (${defDW} deadwood + 25 bonus).`;}
+  if(isGin){pts=defDW+25;msg=`${knocker===0?'Gin! You score':'AI goes gin and scores'} ${pts} (${defDW} deadwood + 25 bonus)`;}
   else if(defDW<=kDW&&knocker===0){
     // Undercut: AI gets points
     pts=kDW-defDW+25;
     scores[1]+=pts;roundScores[1]+=pts;
-    msg=`Undercut! AI scores ${pts} pts.`;
+    msg=`Undercut! AI scores ${pts}`;
     addLog(msg,'pts');
   } else if(defDW<=kDW&&knocker===1){
     pts=kDW-defDW+25;scores[0]+=pts;roundScores[0]+=pts;
-    msg=`Undercut! ${MYNAME} scores ${pts} pts.`;addLog(msg,'pts');
+    msg=`Undercut! You score ${pts}`;addLog(msg,'pts');
   } else {
     pts=defDW-kDW;
     scores[knocker]+=pts;roundScores[knocker]+=pts;
-    msg=`${knocker===0?MYNAME:'AI'} scores ${pts} pts.`;
+    msg=`${knocker===0?'You knock and score':'AI knocks and scores'} ${pts} (${defDW} vs ${kDW} deadwood)`;
     addLog(msg,'pts');
   }
   if(isGin){scores[knocker]+=pts;roundScores[knocker]+=pts;addLog(msg,'pts');}
+  roundMsg=msg;
   phase='round-end';
   if(scores[0]>=100||scores[1]>=100){phase='game-over';endGame();}
-  else render();
+  else {hap(/You score|You knock/.test(msg)?'success':'medium');render();}
 }
 
 function endGame(){
@@ -367,155 +466,134 @@ function endGame(){
     const players=[{name:MYNAME,score:scores[0]},{name:'AI',score:scores[1]}];
     GameHistory.savePlayerGame('gin','Gin Rummy',players,scores[0]>scores[1]?0:1,0);
   }catch(e){}
+  hap(won?'success':'heavy');
   render();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
-function cardEl(c,cls='',onClick){
-  if(!c) return`<div class="gcard face-down disabled"></div>`;
-  const col=RED.has(c.suit)?'red':'black';
-  return`<div class="gcard ${col} ${cls}" data-key="${cKey(c)}"${onClick?` data-click="${onClick}"`:''}><div class="gc-r">${c.rank}</div><div class="gc-s">${c.suit}</div></div>`;
+const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+function pc(c,cls='',attrs=''){
+  if(!c) return `<div class="pc back ${cls}"></div>`;
+  return `<div class="pc ${RED.has(c.suit)?'red':''} ${cls}" ${attrs}><span class="ix${c.rank==='10'?' t':''}">${c.rank}<i>${c.suit}</i></span><span class="pip">${c.suit}</span></div>`;
+}
+// Display order: meld groups first, then deadwood by suit/rank (display only)
+function arrange(hand){
+  const{melds,deadwood,dwTotal}=bestMelds(hand);
+  const so=(a,b)=>a.suit.localeCompare(b.suit)||ORD[a.rank]-ORD[b.rank];
+  const ordered=[...melds.map(m=>[...m].sort(so)).flat(),...[...deadwood].sort(so)];
+  return{ordered,meldKeys:new Set(melds.flat().map(cKey)),dwTotal};
+}
+
+function boardHTML(dw){
+  return `<div class="ck-board">
+    <div class="ck-side">
+      <div class="ck-lbl"><span class="ck-dot" style="background:var(--blue)"></span>${esc(MYNAME)}</div>
+      <div class="ck-pts ${scores[0]>scores[1]?'ck-lead':''}">${scores[0]}</div>
+      <div class="ck-sub">${phase==='draw'||phase==='discard'?`${playerHand.length} cards`:'&nbsp;'}</div>
+    </div>
+    <div class="ck-mid">Round<b>${roundNum}</b>to 100</div>
+    <div class="ck-side r">
+      <div class="ck-lbl">AI<span class="ck-dot" style="background:var(--red)"></span></div>
+      <div class="ck-pts ${scores[1]>scores[0]?'ck-lead':''}">${scores[1]}</div>
+      <div class="ck-sub">${phase==='draw'||phase==='discard'?`${aiHand.length} cards`:'&nbsp;'}</div>
+    </div>
+  </div>`;
 }
 
 function render(){
   const root=document.getElementById('gr-root');
-  let html='';
+  root.className='ck';
 
-  // Scores
-  html+=`<div class="gr-scores">
-    <div class="gr-score-block">
-      <div class="gr-score-name" style="color:#60a5fa;">You</div>
-      <div class="gr-score-val" style="color:#60a5fa;">${scores[0]}</div>
-      <div class="gr-score-dw">Round: ${roundScores[0]}</div>
+  if(phase==='game-over'||phase==='round-end'){
+    const over=phase==='game-over';
+    const won=scores[0]>scores[1];
+    let html=boardHTML(null);
+    if(over) html+=`<div class="winner-banner">
+      <div style="font-size:2.2rem;line-height:1;margin-bottom:6px">${won?'🏆':'🃏'}</div>
+      <div class="winner-name">${won?'You win!':'AI wins'}</div>
+      <div class="winner-pts">${esc(MYNAME)} ${scores[0]} – AI ${scores[1]}</div>
+    </div>`;
+    const P=arrange(playerHand), A=arrange(aiHand);
+    const handRow=(X)=>`<div class="rs-hand"><div class="hand" style="--n:${X.ordered.length}">${X.ordered.map(c=>pc(c,X.meldKeys.has(cKey(c))?'meld':'dim')).join('')}</div></div>`;
+    html+=`<div class="ck-panel">
+      <h3>${over?'Final round':`Round ${roundNum} complete`}</h3>
+      <div class="ck-notes" style="margin:0 0 4px"><span class="pts">${esc(roundMsg)}</span></div>
+      <div class="rs-title">${esc(MYNAME)}<span>${P.dwTotal} deadwood</span></div>${handRow(P)}
+      <div class="rs-title">AI<span>${A.dwTotal} deadwood</span></div>${handRow(A)}
+      <div class="legend"><span><i></i>In a meld</span><span>Dimmed = deadwood</span></div>
     </div>
-    <div style="color:rgba(255,255,255,.2);font-size:1rem;">vs</div>
-    <div class="gr-score-block">
-      <div class="gr-score-name" style="color:#f87171;">AI</div>
-      <div class="gr-score-val" style="color:#f87171;">${scores[1]}</div>
-      <div class="gr-score-dw">Round: ${roundScores[1]}</div>
-    </div>
-  </div>`;
-
-  if(phase==='game-over'){
-    const won=scores[0]>=100;
-    html+=`<div class="gr-game-result">
-      <div class="gr-game-title">${won?'🏆 You Win!':'AI Wins'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">Final: ${MYNAME} ${scores[0]} – AI ${scores[1]}</div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
-    html+=`<div class="gr-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+    <div class="ck-actions"><button class="btn btn-gold btn-block" id="next-btn">${over?'Play again':'Next round'}</button></div>`;
     root.innerHTML=html;
-    document.getElementById('ng-btn')?.addEventListener('click',newGame);
-    return;
-  }
-
-  if(phase==='round-end'){
-    const{melds:pm,deadwood:pdw,dwTotal:pDW}=bestMelds(playerHand);
-    const{melds:am,deadwood:adw,dwTotal:aDW}=bestMelds(aiHand);
-    const meldSet=n=>new Set(n.flat().map(cKey));
-    html+=`<div class="gr-round-result">
-      <div style="font-weight:700;margin-bottom:8px;">Round Complete</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;">
-        <div><div style="color:#60a5fa;font-weight:700;margin-bottom:4px;">Your hand (${pDW} dw)</div>
-          <div style="display:flex;flex-wrap:wrap;gap:2px;">
-            ${playerHand.map(c=>`<div class="gcard disabled ${RED.has(c.suit)?'red':'black'} ${meldSet(pm).has(cKey(c))?'in-meld':'deadwood'}" style="width:30px;height:42px;font-size:.6rem;">
-              <div class="gc-r" style="font-size:.6rem">${c.rank}</div><div class="gc-s" style="font-size:.55rem">${c.suit}</div></div>`).join('')}
-          </div>
-        </div>
-        <div><div style="color:#f87171;font-weight:700;margin-bottom:4px;">AI hand (${aDW} dw)</div>
-          <div style="display:flex;flex-wrap:wrap;gap:2px;">
-            ${aiHand.map(c=>`<div class="gcard disabled ${RED.has(c.suit)?'red':'black'} ${meldSet(am).has(cKey(c))?'in-meld':'deadwood'}" style="width:30px;height:42px;font-size:.6rem;">
-              <div class="gc-r" style="font-size:.6rem">${c.rank}</div><div class="gc-s" style="font-size:.55rem">${c.suit}</div></div>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:6px;">🟢 Green = in meld &nbsp; 🔴 Red = deadwood</div>
-    </div>
-    <div style="text-align:center;margin-bottom:10px;"><button class="btn btn-gold" id="nr-btn">Next Round</button></div>`;
-    html+=`<div class="gr-log">${log.slice(-8).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;
-    document.getElementById('nr-btn')?.addEventListener('click',newRound);
+    document.getElementById('next-btn').addEventListener('click',()=>{hap('light');over?newGame():newRound();});
     return;
   }
 
   // Play phase
-  const{melds:pm,deadwood:pdw,dwTotal:pDW}=bestMelds(playerHand);
-  const meldSet=new Set(pm.flat().map(cKey));
+  const P=arrange(playerHand);
+  const yourDraw=phase==='draw'&&turn===0;
+  const yourDiscard=phase==='discard'&&turn===0;
+  let html=boardHTML(yourDiscard?null:P.dwTotal);
 
-  // Phase badge
-  const phaseLabel={draw:'Draw a Card',discard:'Discard a Card','ai-turn':'AI\'s Turn'}[phase]||phase;
-  html+=`<div style="text-align:center;margin-bottom:8px;"><span class="gr-phase">${phaseLabel}</span></div>`;
-
-  // Table
-  html+=`<div class="gr-table">
-    <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;">AI Hand (${aiHand.length} cards)</div>
-    <div class="gr-hand" style="margin-bottom:10px;">${aiHand.map(()=>cardEl(null,'',null)).join('')}</div>
-    <div class="gr-piles">
-      <div class="gr-pile-wrap">
-        <div class="gr-pile-lbl">Stock</div>
-        <div class="stock-back" id="stock-pile">${stock.length?'🂠':''}</div>
-        <div class="gr-pile-count">${stock.length} left</div>
-      </div>
-      <div class="gr-pile-wrap">
-        <div class="gr-pile-lbl">Discard</div>
-        ${discard.length?cardEl(discard[discard.length-1],'',null):'<div class="gcard face-down" style="border-style:dashed;background:none;opacity:.3;"></div>'}
-      </div>
+  const top=discard[discard.length-1];
+  html+=`<div class="ck-table felt"><div class="gr-felt">
+    <div class="gr-ai seat ${turn===1?'turn':''}" style="flex-direction:row">
+      <div class="seat-av" style="background:rgba(248,113,113,.2)">AI</div>
+      <div class="mini-backs">${aiHand.map(()=>'<div class="pc back"></div>').join('')}</div>
     </div>
-  </div>`;
+    <div class="gr-piles">
+      <button class="gr-pile ${yourDraw&&stock.length?'can':''}" id="stock-pile" aria-label="Draw from stock" ${yourDraw?'':'tabindex="-1"'}>
+        <span class="gr-pile-lbl">Stock</span>
+        <div class="stack" style="--w:clamp(58px,17vw,72px)">${pc(null)}</div>
+        <span class="gr-pile-count">${stock.length} left</span>
+      </button>
+      <button class="gr-pile ${yourDraw&&top?'can':''}" id="discard-pile" aria-label="Take the discard" ${yourDraw?'':'tabindex="-1"'}>
+        <span class="gr-pile-lbl">Discard</span>
+        ${top?pc(top,'new'):'<div class="pc slot"></div>'}
+        <span class="gr-pile-count">${discard.length} card${discard.length===1?'':'s'}</span>
+      </button>
+    </div>
+  </div></div>`;
 
-  // Status
-  const statusMsg=phase==='draw'?'Draw from stock or discard pile.':
-    phase==='discard'?`Select a card to discard. Deadwood: ${pDW}`:'AI is thinking…';
-  html+=`<div class="gr-status">${statusMsg}</div>`;
-
-  // Player actions
-  if(phase==='discard'&&pDW<=10){
-    html+=`<div class="gr-actions">
-      <button class="btn btn-gold btn-sm" id="knock-btn">${pDW===0?'🎉 Declare Gin!':'✊ Knock'} (${pDW} dw)</button>
+  // Status + actions
+  let dock='';
+  if(turn===1) dock+=`<div class="ck-status"><span class="spin"></span>AI is thinking…</div>`;
+  else if(yourDraw) dock+=`<div class="ck-status you">Your turn · draw a card</div>`;
+  else if(yourDiscard){
+    const k=knockOption();
+    dock+=`<div class="ck-status you">${selDiscard?`Tap ${selDiscard.rank}${selDiscard.suit} again to discard`:'Tap a card to discard'}</div>`;
+    const canKnock=k&&k.dw<=10;
+    dock+=`<div class="gr-actions ${selDiscard&&canKnock?'':'one'}">
+      ${selDiscard?`<button class="btn btn-outline" id="discard-btn">Discard ${selDiscard.rank}${selDiscard.suit}</button>`:''}
+      ${canKnock?`<button class="btn btn-gold" id="knock-btn">${k.dw===0?'Go Gin!':`Knock · ${k.dw}`}</button>`:''}
     </div>`;
   }
 
-  // Player hand
-  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand — Deadwood: ${pDW}</div>
-  <div class="gr-hand" id="player-hand">`;
-  playerHand.forEach(c=>{
-    const inMeld=meldSet.has(cKey(c));
-    const isSel=selDiscard&&cKey(selDiscard)===cKey(c);
-    const isDW=!inMeld;
-    let cls=inMeld?'in-meld':isDW?'deadwood':'';
-    if(isSel) cls='selected';
-    if(phase!=='discard') cls+=' disabled';
-    html+=cardEl(c,cls,phase==='discard'?'discard':null);
-  });
-  html+=`</div>`;
-
-  if(phase==='discard'&&selDiscard){
-    html+=`<div style="text-align:center;font-size:.8rem;color:rgba(255,255,255,.6);margin-top:4px;">Tap again to confirm discard of ${selDiscard.rank}${selDiscard.suit}</div>`;
-  }
-
-  // Log
-  html+=`<div class="gr-log" id="gr-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-
+  dock+=`<div class="hand" id="player-hand" style="--n:${P.ordered.length}">${P.ordered.map(c=>{
+    const k=cKey(c);
+    let cls=P.meldKeys.has(k)?'meld':'';
+    if(selDiscard&&cKey(selDiscard)===k) cls+=' sel';
+    if(drawn&&cKey(drawn)===k&&!(selDiscard&&cKey(selDiscard)===k)) cls+=' drawn';
+    if(yourDiscard) cls+=' play';
+    return pc(c,cls,`data-key="${k}"`);
+  }).join('')}</div>
+  <div class="legend"><span><i></i>Melded cards</span><span>Deadwood ${P.dwTotal}</span></div>
+  <div class="ck-log">${log.slice(-2).map(({msg,cls})=>`<div class="${cls}">${esc(msg)}</div>`).join('')}</div>`;
+  html+=`<div class="ck-dock">${dock}</div>`;
+  root.className='ck playing';
   root.innerHTML=html;
 
   // Events
-  document.getElementById('stock-pile')?.addEventListener('click',()=>drawFrom('stock'));
-  if(discard.length){
-    document.querySelectorAll('.gr-table .gcard:not(.face-down)').forEach(el=>{
-      if(el.closest('#stock-pile')) return;
-      el.addEventListener('click',()=>drawFrom('discard'));
-    });
-  }
-  document.getElementById('player-hand')?.querySelectorAll('.gcard:not(.disabled)').forEach(el=>{
+  document.getElementById('stock-pile').addEventListener('click',()=>drawFrom('stock'));
+  document.getElementById('discard-pile').addEventListener('click',()=>drawFrom('discard'));
+  document.querySelectorAll('#player-hand .pc').forEach(el=>{
     el.addEventListener('click',()=>{
+      if(!yourDiscard) return;
       const c=playerHand.find(c=>cKey(c)===el.dataset.key);
       if(c) selectForDiscard(c);
     });
   });
   document.getElementById('knock-btn')?.addEventListener('click',playerKnock);
-
-  const logEl=document.getElementById('gr-log');
-  if(logEl) logEl.scrollTop=logEl.scrollHeight;
+  document.getElementById('discard-btn')?.addEventListener('click',()=>selDiscard&&doDiscard(selDiscard));
 }
 
 newGame();

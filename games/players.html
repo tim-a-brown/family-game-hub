@@ -2,110 +2,60 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Frequent Players</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0f2d1a 0%,#0d1117 60%);min-height:100vh;}
-.wrap{max-width:520px;margin:0 auto;padding:12px 16px 60px;}
-.hero{text-align:center;margin-bottom:18px;padding:18px 10px 10px;}
-.hero-icon{font-size:2.4rem;line-height:1;margin-bottom:4px;}
-.hero-title{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;color:#f5c842;margin-bottom:4px;}
-.hero-sub{font-size:.85rem;color:rgba(255,255,255,.55);line-height:1.45;}
+body{background:radial-gradient(700px 460px at 50% -8%, rgba(74,222,128,.10), transparent 62%), var(--bg);}
+.wrap{max-width:520px;margin:0 auto;}
+.hero{text-align:center;margin-bottom:22px;padding:8px 10px 0;}
+.hero-icon{width:68px;height:68px;margin:0 auto 12px;border-radius:22px;display:grid;place-items:center;font-size:2rem;
+  background:linear-gradient(145deg,rgba(74,222,128,.25),rgba(74,222,128,.08));border:1px solid rgba(74,222,128,.3);}
+.hero-title{font-family:var(--display);font-size:1.8rem;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;}
+.hero-sub{font-size:.92rem;color:var(--text-2);line-height:1.5;max-width:340px;margin:0 auto;}
 
-.add-card{
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-  border-radius:14px;padding:14px;margin-bottom:16px;
-}
-.add-label{
-  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
-  color:rgba(255,255,255,.5);margin-bottom:8px;
-}
-.add-row{display:flex;gap:8px;}
-.add-input{
-  flex:1;min-width:0;box-sizing:border-box;
-  padding:10px 12px;border-radius:10px;
-  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
-  color:#fff;font-size:.95rem;font-family:Inter,system-ui,sans-serif;outline:none;
-}
-.add-input:focus{border-color:rgba(245,200,66,.5);}
-.add-btn{
-  all:unset;cursor:pointer;box-sizing:border-box;
-  padding:10px 18px;border-radius:10px;
-  background:linear-gradient(135deg,#f5c842,#f0a500);color:#0d1117;
-  font-weight:700;font-size:.92rem;font-family:Inter,system-ui,sans-serif;
-  transition:transform .08s,filter .15s;
-}
-.add-btn:hover{filter:brightness(1.08);}
-.add-btn:active{transform:scale(.96);}
-.add-btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
+.sec-lbl{display:flex;justify-content:space-between;align-items:center;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:0 4px 8px;}
+.add-row{display:flex;gap:8px;margin-bottom:24px;}
+.add-input{flex:1;min-width:0;}
+.add-btn{flex:none;min-height:50px;padding:0 20px;}
 
-.list-card{
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-  border-radius:14px;padding:6px 6px;
-}
-.list-empty{
-  text-align:center;padding:34px 20px;color:rgba(255,255,255,.35);font-size:.9rem;line-height:1.5;
-}
-.list-empty .empty-icon{font-size:2.2rem;opacity:.4;margin-bottom:10px;}
+.list-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.list-empty{text-align:center;padding:36px 20px;color:var(--text-3);font-size:.95rem;line-height:1.5;}
+.list-empty .empty-icon{font-size:2.4rem;margin-bottom:10px;}
 
-.player-row{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 10px;border-radius:10px;
-  transition:background .12s;
-}
-.player-row + .player-row{border-top:1px solid rgba(255,255,255,.06);}
-.player-row:hover{background:rgba(255,255,255,.03);}
-.player-name{
-  flex:1;min-width:0;font-size:1rem;font-weight:500;color:#fff;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-.player-edit{
-  flex:1;box-sizing:border-box;padding:7px 10px;border-radius:8px;
-  background:rgba(255,255,255,.08);border:1px solid rgba(245,200,66,.5);
-  color:#fff;font-size:.95rem;font-family:Inter,system-ui,sans-serif;outline:none;
-}
+.player-row{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 8px 8px 14px;animation:gn-fade .2s ease both;}
+.player-row + .player-row{border-top:1px solid var(--line);}
+.avatar{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:.95rem;color:#0b0d12;}
+.player-name{flex:1;min-width:0;font-size:1.02rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.player-edit{flex:1;min-width:0;min-height:44px !important;padding:8px 12px !important;}
 .row-btn{
-  all:unset;cursor:pointer;box-sizing:border-box;
-  width:32px;height:32px;border-radius:8px;
+  all:unset;cursor:pointer;box-sizing:border-box;flex:none;
+  width:40px;height:40px;border-radius:12px;
   display:inline-flex;align-items:center;justify-content:center;
-  font-size:.9rem;color:rgba(255,255,255,.55);
-  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);
-  transition:all .12s;
+  color:var(--text-2);transition:background .12s,transform .1s;
 }
-.row-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
-.row-btn.danger:hover{background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.4);}
-.row-btn.primary{background:rgba(245,200,66,.15);color:#f5c842;border-color:rgba(245,200,66,.4);}
-.row-btn.primary:hover{background:rgba(245,200,66,.25);}
+.row-btn svg{width:18px;height:18px;}
+.row-btn:active{transform:scale(.92);background:var(--surface-3);}
+.row-btn.danger{color:var(--red);}
+.row-btn.danger:active{background:rgba(248,113,113,.15);}
+.row-btn.primary{background:rgba(245,200,66,.15);color:var(--gold);}
 
-.footer-actions{
-  display:flex;justify-content:center;margin-top:22px;
-}
-.footer-actions .row-btn{
-  width:auto;padding:0 14px;font-size:.78rem;font-weight:600;
-}
-.toast{
-  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(12px);
-  background:#161b22;border:1px solid rgba(245,200,66,.4);color:#f5c842;
-  font-size:.82rem;font-weight:600;padding:10px 18px;border-radius:24px;
-  box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:0;pointer-events:none;
-  transition:opacity .2s,transform .2s;z-index:50;
-}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.footer-actions{display:flex;justify-content:center;margin-top:18px;}
+.footer-actions .btn{min-width:200px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Frequent Players</span>
+  <span class="nav-title">Players</span>
 </nav>
 <div class="page">
 <div class="wrap">
@@ -113,26 +63,23 @@ body{background:radial-gradient(ellipse at 50% 0%,#0f2d1a 0%,#0d1117 60%);min-he
   <div class="hero">
     <div class="hero-icon">👥</div>
     <div class="hero-title">Frequent Players</div>
-    <div class="hero-sub">Names you play with often. These appear as quick-pick chips<br>in any game that asks for player names.</div>
+    <div class="hero-sub">Names you play with often appear as quick-pick chips in any game that asks for players.</div>
   </div>
 
-  <div class="add-card">
-    <div class="add-label">Add a player</div>
-    <div class="add-row">
-      <input class="add-input" id="add-input" type="text" maxlength="24"
-             placeholder="e.g. Jamie" autocomplete="off" autocorrect="off" spellcheck="false">
-      <button class="add-btn" id="add-btn" disabled>Add</button>
-    </div>
+  <div class="sec-lbl">Add a player</div>
+  <div class="add-row">
+    <input class="input add-input" id="add-input" type="text" maxlength="24" enterkeyhint="done"
+           placeholder="e.g. Jamie" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="btn btn-gold add-btn" id="add-btn" disabled>Add</button>
   </div>
 
+  <div class="sec-lbl"><span>Players</span><span id="count-lbl"></span></div>
   <div class="list-card" id="list-card"></div>
 
   <div class="footer-actions" id="footer-actions"></div>
 
 </div>
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
 'use strict';
@@ -145,17 +92,32 @@ const footerA  = document.getElementById('footer-actions');
 let editingLower = null; // lowercase name being edited
 
 function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(()=>t.classList.remove('show'), 1600);
+  if(window.GN) GN.toast(msg);
 }
+const haptic = k => { try{ window.GN && GN.haptic(k); }catch(e){} };
+function askConfirm(msg, opts){
+  return (window.GN && GN.confirm) ? GN.confirm(msg, opts) : Promise.resolve(window.confirm(msg));
+}
+const AV_COLORS = ['#f5c842','#60a5fa','#f87171','#4ade80','#c084fc','#fb923c','#2dd4bf','#f472b6'];
+function avatar(name){
+  let h = 0; for(const ch of name.toLowerCase()) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  const el = document.createElement('div');
+  el.className = 'avatar';
+  el.style.background = AV_COLORS[h % AV_COLORS.length];
+  const w = name.trim().split(/\s+/);
+  el.textContent = ((w[0]||'?')[0] + (w[1] ? w[1][0] : '')).toUpperCase();
+  return el;
+}
+const IC_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const IC_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+const IC_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>';
+const IC_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 function render(){
   const names = FrequentPlayers.list();
   listCard.innerHTML = '';
   footerA.innerHTML = '';
+  document.getElementById('count-lbl').textContent = names.length ? names.length + (names.length===1?' player':' players') : '';
 
   if(!names.length){
     listCard.innerHTML = `
@@ -173,7 +135,8 @@ function render(){
 
     if(editingLower === lower){
       const input = document.createElement('input');
-      input.className = 'player-edit';
+      input.className = 'input player-edit';
+      row.appendChild(avatar(name));
       input.type = 'text';
       input.maxLength = 24;
       input.value = name;
@@ -183,7 +146,7 @@ function render(){
       const save = document.createElement('button');
       save.className = 'row-btn primary';
       save.title = 'Save';
-      save.textContent = '✓';
+      save.innerHTML = IC_OK; save.setAttribute('aria-label','Save');
       save.addEventListener('click', () => {
         const v = input.value.trim();
         if(v && v.toLowerCase() !== lower){
@@ -200,7 +163,7 @@ function render(){
       const cancel = document.createElement('button');
       cancel.className = 'row-btn';
       cancel.title = 'Cancel';
-      cancel.textContent = '✕';
+      cancel.innerHTML = IC_X; cancel.setAttribute('aria-label','Cancel');
       cancel.addEventListener('click', () => {
         editingLower = null;
         render();
@@ -219,12 +182,13 @@ function render(){
       const nm = document.createElement('div');
       nm.className = 'player-name';
       nm.textContent = name;
+      row.appendChild(avatar(name));
       row.appendChild(nm);
 
       const edit = document.createElement('button');
       edit.className = 'row-btn';
       edit.title = 'Edit';
-      edit.textContent = '✎';
+      edit.innerHTML = IC_EDIT; edit.setAttribute('aria-label','Edit '+name);
       edit.addEventListener('click', () => {
         editingLower = lower;
         render();
@@ -233,9 +197,10 @@ function render(){
       const del = document.createElement('button');
       del.className = 'row-btn danger';
       del.title = 'Remove';
-      del.textContent = '×';
-      del.addEventListener('click', () => {
-        if(confirm('Remove "' + name + '" from your frequent players?')){
+      del.innerHTML = IC_DEL; del.setAttribute('aria-label','Remove '+name);
+      del.addEventListener('click', async () => {
+        if(await askConfirm('Remove "' + name + '" from your frequent players?', {ok:'Remove', danger:true})){
+          haptic('medium');
           FrequentPlayers.remove(name);
           showToast('Removed ' + name);
           render();
@@ -252,10 +217,10 @@ function render(){
   // Footer: clear-all when list is non-trivial
   if(names.length >= 2){
     const clearBtn = document.createElement('button');
-    clearBtn.className = 'row-btn danger';
+    clearBtn.className = 'btn btn-danger btn-sm';
     clearBtn.textContent = 'Clear all players';
-    clearBtn.addEventListener('click', () => {
-      if(confirm('Remove all ' + names.length + ' frequent players? This cannot be undone.')){
+    clearBtn.addEventListener('click', async () => {
+      if(await askConfirm('This cannot be undone.', {title:'Remove all ' + names.length + ' players?', ok:'Clear all', danger:true})){
         FrequentPlayers.clear();
         showToast('All players cleared');
         render();
@@ -273,6 +238,7 @@ function doAdd(){
   const v = addInput.value.trim();
   if(!v) return;
   FrequentPlayers.add(v);
+  haptic('success');
   showToast('Added ' + v);
   addInput.value = '';
   addBtn.disabled = true;

@@ -6,73 +6,110 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Math Puzzles</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#0d1117 65%);}
-.grade-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
-.grade-btn{padding:7px 12px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;touch-action:manipulation;white-space:nowrap;}
-.grade-btn.active{border-color:var(--green);background:rgba(126,212,126,.12);color:var(--green);}
-.grade-desc{text-align:center;color:var(--muted);font-size:.75rem;margin-bottom:12px;min-height:18px;}
-.puzzle-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:22px 16px;max-width:460px;margin:0 auto 14px;}
-.puzzle-type{font-size:.7rem;font-weight:700;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;margin-bottom:6px;}
-.puzzle-question{font-family:var(--serif);font-size:clamp(1.1rem,5vw,1.5rem);font-weight:700;line-height:1.5;margin-bottom:16px;color:var(--text);}
-.seq-display{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
-.seq-num{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 14px;font-family:var(--serif);font-size:1.2rem;font-weight:700;min-width:44px;text-align:center;}
-.seq-blank{background:rgba(245,200,66,.1);border:2px solid rgba(245,200,66,.4);border-radius:8px;padding:8px 6px;min-width:52px;text-align:center;font-family:var(--serif);font-size:1.2rem;color:var(--gold);}
-.answer-row{display:flex;gap:8px;align-items:center;max-width:280px;}
-.answer-input{font-family:var(--serif);font-size:1.3rem;font-weight:700;text-align:center;flex:1;}
-.feedback{text-align:center;font-size:1rem;font-weight:700;min-height:26px;margin:10px 0;}
+html,body{height:100%;}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden;}
+.mp-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.mp-inner{max-width:560px;margin:0 auto;padding:12px max(16px,var(--safe-r)) 12px max(16px,var(--safe-l));}
+.grade-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 6px;padding:2px 16px;}
+.grade-row::-webkit-scrollbar{display:none;}
+.grade-btn{flex:none;min-height:38px;padding:0 16px;border-radius:999px;font-size:.9rem;font-weight:700;cursor:pointer;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);white-space:nowrap;transition:background .15s,border-color .15s,color .15s;}
+.grade-btn.active{border-color:rgba(74,222,128,.55);background:rgba(74,222,128,.13);color:var(--green);}
+.grade-desc{color:var(--text-3);font-size:.85rem;margin:4px 2px 12px;min-height:18px;}
+.score-strip .stat{max-width:none;}
+#sc-score{color:var(--gold);}#sc-streak{color:var(--blue);}#sc-solved{color:var(--green);}
+.puzzle-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 16px 16px;}
+.puzzle-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.puzzle-type{font-size:.78rem;font-weight:700;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;}
+.puzzle-tools{display:flex;gap:6px;flex:none;}
+.puzzle-tools .btn{min-height:36px;height:36px;padding:0 12px;border-radius:999px;font-size:.85rem;}
+.puzzle-question{font-family:var(--display);font-size:clamp(1.4rem,6.4vw,1.9rem);font-weight:700;line-height:1.3;margin-bottom:14px;color:var(--text);word-break:break-word;}
+.seq-display{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.seq-num{background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:8px 12px;font-family:var(--display);font-size:1.25rem;font-weight:700;min-width:44px;text-align:center;font-variant-numeric:tabular-nums;}
+.seq-arrow{color:var(--text-3);font-size:.9rem;}
+.seq-blank{background:rgba(245,200,66,.12);border:2px dashed rgba(245,200,66,.55);border-radius:10px;padding:7px 10px;min-width:52px;text-align:center;font-family:var(--display);font-size:1.25rem;font-weight:700;color:var(--gold);}
+.answer-row{display:flex;align-items:center;}
+.answer-input{
+  flex:1;height:60px;border-radius:14px;background:var(--surface-2);border:2px solid var(--line-2);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:2rem;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;
+  transition:border-color .15s,background .15s;
+}
+.answer-input:empty::before{content:'?';color:var(--text-3);}
+.answer-input.ok{border-color:var(--green);background:rgba(74,222,128,.12);color:var(--green);}
+.answer-input.bad{border-color:var(--red);animation:mp-shake .4s ease;}
+@keyframes mp-shake{20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
+.feedback{text-align:center;font-size:1rem;font-weight:700;min-height:0;}
+.feedback:not(:empty){margin-top:12px;}
 .feedback.correct{color:var(--green);}
 .feedback.wrong{color:var(--red);}
-.score-strip{display:flex;justify-content:center;gap:16px;margin-bottom:14px;}
-.score-item{text-align:center;}
-.score-item .sv{font-family:var(--serif);font-size:1.6rem;font-weight:900;}
-.score-item .sl{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;}
-.hint-area{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;font-size:.85rem;color:var(--muted);margin-top:8px;display:none;}
+.teach{font-size:.9rem;color:var(--text-2);margin-top:8px;font-weight:500;line-height:1.5;text-align:left;background:var(--surface-2);border-radius:12px;padding:10px 12px;}
+.hint-area{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);border-radius:12px;padding:10px 14px;font-size:.92rem;color:var(--text);margin-top:12px;display:none;}
+/* Number pad */
+.pad{flex:none;width:100%;max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px max(12px,var(--safe-r)) calc(12px + var(--safe-b)) max(12px,var(--safe-l));}
+.pad button{height:54px;border-radius:12px;border:0;background:#3a4050;color:var(--text);font-family:var(--display);font-size:1.45rem;font-weight:700;cursor:pointer;touch-action:manipulation;transition:background .12s,transform .06s;}
+.pad button:active{background:#4a5163;transform:scale(.96);}
+.pad .fn{background:var(--surface-3);font-size:1.2rem;}
+.pad .go{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);font-family:var(--font);font-size:1rem;font-weight:800;}
+.pad svg{width:24px;height:24px;margin:auto;display:block;}
+@media (max-height:720px){.pad button{height:48px;}.pad{gap:7px;}}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Math Puzzles</span>
 </nav>
-<div class="page" style="padding-bottom:50px;">
+<div class="mp-scroll"><div class="mp-inner">
 
 <div class="grade-row" id="grade-row">
   <button class="grade-btn" data-g="k2">K–2</button>
-  <button class="grade-btn" data-g="g34">3–4</button>
-  <button class="grade-btn active" data-g="g56">5–6</button>
-  <button class="grade-btn" data-g="g78">7–8</button>
-  <button class="grade-btn" data-g="g912">9–12</button>
+  <button class="grade-btn" data-g="g34">Grades 3–4</button>
+  <button class="grade-btn active" data-g="g56">Grades 5–6</button>
+  <button class="grade-btn" data-g="g78">Grades 7–8</button>
+  <button class="grade-btn" data-g="g912">Grades 9–12</button>
   <button class="grade-btn" data-g="seq">Sequences</button>
 </div>
 <div class="grade-desc" id="grade-desc"></div>
 
-<div class="score-strip">
-  <div class="score-item"><div class="sv" id="sc-score" style="color:var(--gold)">0</div><div class="sl">Score</div></div>
-  <div class="score-item"><div class="sv" id="sc-streak" style="color:#5ac8fa">0</div><div class="sl">Streak</div></div>
-  <div class="score-item"><div class="sv" id="sc-solved" style="color:var(--green)">0</div><div class="sl">Solved</div></div>
+<div class="stat-row score-strip">
+  <div class="stat"><div class="stat-val" id="sc-score">0</div><div class="stat-lbl">Score</div></div>
+  <div class="stat"><div class="stat-val" id="sc-streak">0</div><div class="stat-lbl">Streak</div></div>
+  <div class="stat"><div class="stat-val" id="sc-solved">0</div><div class="stat-lbl">Solved</div></div>
 </div>
 
 <div class="puzzle-box">
-  <div class="puzzle-type" id="puzzle-type"></div>
+  <div class="puzzle-top">
+    <div class="puzzle-type" id="puzzle-type"></div>
+    <div class="puzzle-tools">
+      <button class="btn btn-outline" id="hint-btn">💡 Hint</button>
+      <button class="btn btn-outline" id="skip-btn">Skip</button>
+    </div>
+  </div>
   <div id="puzzle-render"></div>
   <div class="answer-row" id="answer-row">
-    <input class="input answer-input" type="number" id="answer-input" placeholder="?">
-    <button class="btn btn-gold" id="check-btn">Check ✓</button>
+    <div class="answer-input" id="answer-input" role="textbox" aria-label="Your answer"></div>
   </div>
-  <div class="feedback" id="feedback"></div>
   <div class="hint-area" id="hint-area"></div>
-  <div style="display:flex;gap:8px;margin-top:8px;">
-    <button class="btn btn-outline btn-sm" id="hint-btn">💡 Hint</button>
-    <button class="btn btn-outline btn-sm" id="skip-btn">Skip →</button>
-  </div>
+  <div class="feedback" id="feedback"></div>
 </div>
 
+</div></div>
+
+<div class="pad" id="pad">
+  <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+  <button class="fn" data-k="del" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg></button>
+  <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+  <button class="fn" data-k="-" aria-label="Negative">−</button>
+  <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+  <button class="fn" data-k="." aria-label="Decimal point">.</button>
+  <button class="fn" data-k="clr" style="font-family:var(--font);font-size:.95rem">Clear</button>
+  <button data-k="0">0</button>
+  <button class="go" data-k="go" id="check-btn" style="grid-column:span 2">Check</button>
 </div>
 <script>
 'use strict';
@@ -278,88 +315,133 @@ const GENERATORS={
 };
 
 // ── State ──────────────────────────────────────────────────────────────────
-let grade='g56', score=0, streak=0, solved=0, hintUsed=false, current=null;
+let grade='g56', score=0, streak=0, solved=0, hintUsed=false, current=null, entry='', busy=false;
+const $=id=>document.getElementById(id);
+const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
 
 const GRADE_LABELS={k2:'K–2',g34:'3–4',g56:'5–6',g78:'7–8',g912:'9–12'};
 
 // ── Grade buttons ──────────────────────────────────────────────────────────
+function markGrade(){
+  document.querySelectorAll('.grade-btn').forEach(x=>x.classList.toggle('active',x.dataset.g===grade));
+  $('grade-desc').textContent=GRADE_INFO[grade];
+  const a=document.querySelector('.grade-btn.active'),row=$('grade-row');
+  if(a)row.scrollTo({left:a.offsetLeft-row.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});
+}
 document.querySelectorAll('.grade-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
+  b.addEventListener('click',async()=>{
+    if(b.dataset.g===grade)return;
+    if(score>0){
+      const ok=await GN.confirm('Change level?',{title:'Switch to '+b.textContent+'?',body:'Your score and streak will reset.',ok:'Switch'});
+      if(!ok)return;
+    }
     grade=b.dataset.g;
-    document.querySelectorAll('.grade-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    document.getElementById('grade-desc').textContent=GRADE_INFO[grade];
-    score=0;streak=0;solved=0;updateStats();loadPuzzle();
+    markGrade();haptic('select');
+    score=0;streak=0;solved=0;updateStats();loadPuzzle();_save_math();
   });
 });
-document.getElementById('grade-desc').textContent=GRADE_INFO[grade];
+$('grade-desc').textContent=GRADE_INFO[grade];
 
 // ── Load puzzle ────────────────────────────────────────────────────────────
 function loadPuzzle(){
   const gens=GENERATORS[grade];
   current=gens[Math.floor(Math.random()*gens.length)]();
-  hintUsed=false;
-  document.getElementById('puzzle-type').textContent=current.type;
-  document.getElementById('hint-area').style.display='none';
-  document.getElementById('hint-area').textContent='';
-  document.getElementById('feedback').textContent='';
-  document.getElementById('feedback').className='feedback';
-  document.getElementById('answer-input').value='';
+  hintUsed=false;busy=false;
+  $('puzzle-type').textContent=current.type;
+  $('hint-area').style.display='none';
+  $('hint-area').textContent='';
+  $('feedback').textContent='';
+  $('feedback').className='feedback';
+  setEntry('');
+  $('answer-input').className='answer-input';
 
-  const render=document.getElementById('puzzle-render');
+  const render=$('puzzle-render');
   if(current.seq){
     render.innerHTML=`<div class="seq-display">${
       current.seq.map((v,i)=>{
         if(v==='?')return`<div class="seq-blank">?</div>`;
-        const isLast=i===current.seq.length-2;
-        return`<div class="seq-num">${v}</div>${i<current.seq.length-1?'<span style="color:var(--muted);align-self:center;font-size:.9rem;">→</span>':''}`;
+        return`<div class="seq-num">${v}</div>${i<current.seq.length-1?'<span class="seq-arrow">→</span>':''}`;
       }).join('')
     }</div>`;
   } else {
     render.innerHTML=`<div class="puzzle-question">${current.q}</div>`;
   }
-  document.getElementById('answer-input').focus();
 }
+
+function setEntry(v){entry=v;$('answer-input').textContent=v.replace(/^-/,'−');}
+function press(k){
+  if(busy)return;
+  if(k!=='go'&&current&&current._done)return;
+  $('answer-input').classList.remove('bad');
+  if(k==='del')setEntry(entry.slice(0,-1));
+  else if(k==='clr')setEntry('');
+  else if(k==='-')setEntry(entry.startsWith('-')?entry.slice(1):'-'+entry);
+  else if(k==='.'){if(!entry.includes('.'))setEntry((entry===''||entry==='-'?entry+'0':entry)+'.');}
+  else if(k==='go'){check();return;}
+  else if(/^\d$/.test(k)){if(entry.replace(/[-.]/g,'').length<9)setEntry(entry==='0'?k:entry==='-0'?'-'+k:entry+k);}
+  haptic('select');
+}
+$('pad').addEventListener('click',e=>{const b=e.target.closest('button');if(b)press(b.dataset.k);});
 
 // ── Check answer ───────────────────────────────────────────────────────────
 function check(){
-  const val=parseInt(document.getElementById('answer-input').value);
-  if(isNaN(val))return;
-  const fb=document.getElementById('feedback');
-  if(val===current.ans){
+  // "Next" after a teaching note
+  if(current&&current._done){$('check-btn').textContent='Check';loadPuzzle();return;}
+  if(busy)return;
+  // parseFloat (not parseInt) so decimal answers like 10% of 12 = 1.2 can be entered
+  const val=parseFloat(entry);
+  if(isNaN(val)){haptic('error');$('answer-input').classList.remove('bad');void $('answer-input').offsetWidth;$('answer-input').classList.add('bad');return;}
+  const fb=$('feedback');
+  if(Math.abs(val-current.ans)<1e-9){
     const pts=hintUsed?1:2;
     score+=pts; streak++; solved++;
-    // Build success message with optional teaching note
-    let msg=`✓ Correct! +${pts} point${pts>1?'s':''}`;
-    if(current.teach) msg+=`<div style="font-size:.78rem;color:rgba(255,255,255,.55);margin-top:5px;font-weight:500;">📚 ${current.teach}</div>`;
+    busy=true;
+    $('answer-input').classList.add('ok');
+    let msg=`Correct! +${pts} point${pts>1?'s':''}${streak>=3?` · 🔥 ${streak} in a row`:''}`;
+    if(current.teach) msg+=`<div class="teach">📚 ${current.teach}</div>`;
     fb.className='feedback correct';
     fb.innerHTML=msg;
-    updateStats();
-    setTimeout(loadPuzzle,current.teach?1600:900);
+    haptic('success');
+    updateStats();_save_math();
+    if(current.teach){
+      // give time to read the note; tap Check (or Enter) to continue
+      $('check-btn').textContent='Next';
+      busy=false;current._done=true;
+      requestAnimationFrame(()=>fb.scrollIntoView({block:'nearest',behavior:'smooth'}));
+    } else setTimeout(loadPuzzle,900);
   } else {
     streak=0;
     fb.className='feedback wrong';
-    fb.textContent=`✗ Not quite — try again!`;
-    document.getElementById('answer-input').value='';
-    updateStats();
+    fb.textContent='Not quite — try again!';
+    haptic('error');
+    const ai=$('answer-input');ai.classList.remove('bad');void ai.offsetWidth;ai.classList.add('bad');
+    setTimeout(()=>{if(!busy)setEntry('');},350);
+    updateStats();_save_math();
   }
 }
 
 function updateStats(){
-  document.getElementById('sc-score').textContent=score;
-  document.getElementById('sc-streak').textContent=streak;
-  document.getElementById('sc-solved').textContent=solved;
+  $('sc-score').textContent=score;
+  $('sc-streak').textContent=streak;
+  $('sc-solved').textContent=solved;
 }
 
-document.getElementById('check-btn').addEventListener('click',check);
-document.getElementById('answer-input').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
-document.getElementById('skip-btn').addEventListener('click',()=>{streak=0;updateStats();loadPuzzle();});
-document.getElementById('hint-btn').addEventListener('click',()=>{
-  const ha=document.getElementById('hint-area');
+$('skip-btn').addEventListener('click',()=>{if(busy)return;streak=0;updateStats();$('check-btn').textContent='Check';loadPuzzle();haptic('light');_save_math();});
+$('hint-btn').addEventListener('click',()=>{
+  const ha=$('hint-area');
   ha.style.display='block';ha.textContent='💡 '+current.hint;hintUsed=true;
 });
-
-loadPuzzle();
+// Physical keyboard
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(document.querySelector('.gn-sheet-ov'))return;
+  if(/^\d$/.test(e.key))press(e.key);
+  else if(e.key==='-'||e.key==='−')press('-');
+  else if(e.key==='.'||e.key===',')press('.');
+  else if(e.key==='Backspace'){e.preventDefault();press('del');}
+  else if(e.key==='Escape')press('clr');
+  else if(e.key==='Enter'){e.preventDefault();check();}
+});
 
 // ── Session persistence ────────────────────────────────────────────────────
 function _save_math(){
@@ -368,15 +450,16 @@ function _save_math(){
 function _load_math(){
   try{
     const raw=sessionStorage.getItem('math');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
+    const s=JSON.parse(raw);if(!s||!GENERATORS[s.grade||'g56'])return false;
     grade=s.grade||'g56';score=s.score||0;streak=s.streak||0;solved=s.solved||0;
-    document.querySelectorAll('.grade-btn').forEach(b=>b.classList.toggle('active',b.dataset.g===grade));document.getElementById('mp-score').textContent=score;document.getElementById('mp-streak').textContent=streak;nextQuestion();
+    markGrade();updateStats();loadPuzzle();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_math);
+window.addEventListener('pagehide',_save_math);
 
-_load_math();
+if(!_load_math())loadPuzzle();
 </script>
 </body>
 </html>
