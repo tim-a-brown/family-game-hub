@@ -67,14 +67,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // Abstract court: L runs from player 1's end (0) to player 2's end (FL); C runs across.
   var FL = 600, FC = 360;
   var PAD_OFF = 28, PAD_T = 10, PAD_HW = 36, BIG_HW = 58, R = 7;
-  var SERVE_V = 330, MAX_V = 960;
+  var SERVE_V = 330, MAX_V = 860;
   var TICK = 1 / 240;
   var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var PC = ['#38e1ff', '#ff4fa3'];
   var DIFF = {
-    easy: { name: 'Easy', react: 0.3, speed: 300, accel: 1700, err: 46, aim: 0, hesitate: 0.2 },
-    normal: { name: 'Normal', react: 0.18, speed: 450, accel: 2600, err: 22, aim: 0.25, hesitate: 0.08 },
-    hard: { name: 'Hard', react: 0.1, speed: 640, accel: 4200, err: 9, aim: 0.45, hesitate: 0.02 }
+    easy: { name: 'Easy', react: 0.32, speed: 280, accel: 1600, err: 40, settle: 0.85, aim: 0, hesitate: 0.25 },
+    normal: { name: 'Normal', react: 0.18, speed: 440, accel: 2600, err: 26, settle: 0.72, aim: 0.3, hesitate: 0.1 },
+    hard: { name: 'Hard', react: 0.14, speed: 520, accel: 3600, err: 24, settle: 0.7, aim: 0.5, hesitate: 0.04 }
   };
   var POWERS = { big: { name: 'Big paddle', c: '#ffd24a' }, multi: { name: 'Multi-ball', c: '#7dff9a' }, curve: { name: 'Curve', c: '#c49bff' } };
 
@@ -331,16 +331,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     A.next -= dt;
     if (A.next > 0) return;
     A.next = D.react * (0.8 + Math.random() * 0.5) + (Math.random() < 0.15 ? D.hesitate : 0);
+    A.err *= D.settle;
     var f = front(1) - R, best = null, bt = 1e9;
     balls.forEach(function (b) { if (b.held != null || b.vl <= 0) return; var t = (f - b.l) / b.vl; if (t >= 0 && t < bt) { bt = t; best = b; } });
     if (!best) { A.target = FC / 2 + (balls[0] ? (balls[0].c - FC / 2) * 0.35 : 0); return; }
     var c = best.c + best.vc * bt, span = FC - 2 * R, x = c - R;
     x = ((x % (2 * span)) + 2 * span) % (2 * span); if (x > span) x = 2 * span - x;
     c = x + R;
-    var err = D.err * (0.5 + best.speed / 600) * randn() * Math.min(1, bt * 1.4 + 0.2);
+    if (A.forBall !== best || A.forHit !== G.hits[0] + G.hits[1]) { A.forBall = best; A.forHit = G.hits[0] + G.hits[1]; A.err = D.err * (0.4 + best.speed / 500) * randn(); A.aimSide = Math.random() < 0.7 ? 1 : 0; }
+    var err = A.err;
     if (best.spin) err += best.spin * 0.04;
     var aim = 0;
-    if (D.aim && Math.random() < 0.7) { var opp = pads[0].c; aim = (opp < FC / 2 ? -1 : 1) * P.hw * D.aim; }
+    if (D.aim && A.aimSide) { var opp = pads[0].c; aim = (opp < FC / 2 ? -1 : 1) * P.hw * D.aim; }
     A.target = clamp(c + err + aim, 0, FC);
   }
 
@@ -560,7 +562,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       players: cfg.players && cfg.players.length === 2 ? cfg.players : [{ name: 'You' }, { name: 'Computer', cpu: true }],
       score: [0, 0], firstServer: Math.random() < 0.5 ? 0 : 1, phase: 'serve', started: Date.now(),
       seq: [], run: 0, runP: -1, hits: [0, 0], rally: 0,
-      pw: { big: [0, 0], curve: [0, 0] }, ai: { next: 0, target: FC / 2, serveAt: 1, serveTo: FC / 2 },
+      pw: { big: [0, 0], curve: [0, 0] }, ai: { next: 0, target: FC / 2, serveAt: 1, serveTo: FC / 2, err: 0 },
       stats: { longest: 0, top: 0, smash: [0, 0], smashWins: [0, 0], bestRun: [0, 0], maxDown: [0, 0], powers: [0, 0], powerKinds: {}, maxBalls: 1, deuce: false, longestBy: null }
     };
     if (G.mode === 'cpu') G.players[1].cpu = true;
@@ -808,6 +810,26 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     score: function (a, b) { G.score = [a, b]; hudDirty = true; },
     orb: function (kind, l, c) { orb = { kind: kind, l: l, c: c, life: 10, t: 0 }; },
     autopilot: function (on) { window.__pAuto = on; },
+    reset: function () { if (G) G.ended = true; clearSave(); showSetup(); },
+    // Simulated human: looks every 0.2 s, guesses with some error, moves at a capped speed
+    sim: function (sec, jit, hspeed) {
+      var look = 0, guess = FC / 2;
+      for (var i = 0; i < sec / TICK; i++) {
+        if (G.phase === 'done' || G.phase === 'over') break;
+        look -= TICK;
+        if (look <= 0) {
+          look = 0.2;
+          var f = front(0) + R, best = null, bt = 1e9;
+          balls.forEach(function (b) { if (b.held == null && b.vl < 0) { var t = (b.l - f) / -b.vl; if (t < bt) { bt = t; best = b; } } });
+          if (best) { var c = best.c + best.vc * bt, span = FC - 2 * R, x = c - R; x = ((x % (2 * span)) + 2 * span) % (2 * span); if (x > span) x = 2 * span - x; guess = x + R + randn() * (jit || 0) * Math.min(1, bt + 0.3) + (Math.random() - 0.5) * 40; }
+        }
+        var P0 = pads[0]; P0.tc = clamp(P0.c + clamp(guess - P0.c, -(hspeed || 600) * TICK * 4, (hspeed || 600) * TICK * 4), 0, FC);
+        if (G.phase === 'serve' && human(server()) && G.serveT > 0.3) doServe();
+        update(TICK);
+      }
+      return { score: G.score.slice(), longest: G.stats.longest, phase: G.phase, top: Math.round(G.stats.top), hits: G.hits.slice() };
+    },
+    diff: function (d) { G.diff = d; },
     toCourt: function (x, y) { return toCourt(x, y); },
     shotAt: function (l, c, vl, vc) { var b = balls[0]; if (!b) return; b.held = null; b.l = l; b.c = c; b.vl = vl; b.vc = vc; b.speed = Math.hypot(vl, vc); G.phase = 'play'; }
   };
