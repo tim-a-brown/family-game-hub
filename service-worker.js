@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v8-2026-10-04-native-games';
+const CACHE_VERSION = 'v9-2026-10-04-redesign';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -21,6 +21,11 @@ const PRECACHE_URLS = [
   '/index.html',
   '/gate.html',
   '/shared.css',
+  '/kit.css',
+  '/kit.js',
+  '/games.js',
+  '/diag.js',
+  '/data/wordle-words.js',
   '/app.js',
   '/sync.js',
   '/hist.js',
@@ -40,7 +45,6 @@ const PRECACHE_URLS = [
   '/games/blackjack.html',
   '/games/boggle.html',
   '/games/breakout.html',
-  '/games/card-scoring.html',
   '/games/checkers.html',
   '/games/chess.html',
   '/games/connectfour.html',

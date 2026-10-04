@@ -1,327 +1,298 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0b0d12">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Connect Four</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-:root{--R:#ff5a4f;--Y:#f5c842;--bs:clamp(260px,min(100vw - 32px,(100vh - 360px) * 7 / 6),500px);}
-@supports (height:100dvh){:root{--bs:clamp(260px,min(100vw - 32px,(100dvh - 360px) * 7 / 6),500px);}}
-.site-nav button.icon-btn{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;display:inline-grid;place-items:center;}
-.icon-btn svg{width:18px;height:18px;}
-.gk{width:var(--bs);max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
-.gk .tabs{margin:0;}
-.score-row{display:grid;grid-template-columns:1fr .8fr 1fr;gap:8px;}
-.score-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:62px;padding:6px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:border-color .25s var(--ease),background .25s,box-shadow .25s;}
-.score-chip.on{border-color:color-mix(in srgb,var(--c) 60%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,transparent),transparent),var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 12%,transparent);}
-.sc-lbl{display:flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--text-2);}
-.sc-lbl .dot{width:12px;height:12px;border-radius:50%;background:var(--c);}
-.sc-val{font-family:var(--display);font-size:1.55rem;font-weight:800;line-height:1;color:var(--c);font-variant-numeric:tabular-nums;}
-.status-bar{text-align:center;font-size:.95rem;font-weight:600;color:var(--text-2);min-height:24px;}
-.status-bar b{color:var(--text);}
-
-/* Drop row */
-.cf-drops{display:grid;grid-template-columns:repeat(7,1fr);padding:0 calc(var(--bs) * .025);gap:calc(var(--bs) * .012);}
-.drop-btn{height:40px;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;border-radius:12px;padding:0;}
-.drop-btn .ghost{width:62%;aspect-ratio:1;border-radius:50%;background:var(--pc);opacity:.22;transition:opacity .15s,transform .15s var(--spring);}
-.drop-btn:active .ghost,.drop-btn.hot .ghost{opacity:.9;transform:translateY(3px);}
-@media (hover:hover){.drop-btn:hover .ghost{opacity:.9;}}
-.drop-btn:disabled{cursor:default;}
-.drop-btn:disabled .ghost{opacity:0;}
-
-/* Board */
-.cf-wrap{position:relative;}
-.cf-board{position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:calc(var(--bs) * .012);padding:calc(var(--bs) * .025);border-radius:18px;
-  background:linear-gradient(180deg,#2f5bd8,#2147b5);box-shadow:0 18px 40px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.18),inset 0 -4px 0 rgba(0,0,0,.2);cursor:pointer;touch-action:manipulation;}
-.cf-cell{aspect-ratio:1;border-radius:50%;background:#0f1424;box-shadow:inset 0 3px 6px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.12);position:relative;}
-.cf-cell .disc{position:absolute;inset:4%;border-radius:50%;}
-.cf-cell.R .disc{background:radial-gradient(circle at 36% 32%,#ff9a90,var(--R) 50%,#b32118);box-shadow:inset 0 -3px 0 rgba(0,0,0,.2),inset 0 0 0 4px rgba(0,0,0,.08);}
-.cf-cell.Y .disc{background:radial-gradient(circle at 36% 32%,#fff0b0,var(--Y) 50%,#c98a00);box-shadow:inset 0 -3px 0 rgba(0,0,0,.18),inset 0 0 0 4px rgba(0,0,0,.06);}
-.cf-cell.last .disc::after{content:'';position:absolute;inset:34%;border-radius:50%;border:2px solid rgba(255,255,255,.45);}
-.cf-cell.win .disc{animation:cf-win .9s ease-in-out infinite alternate;box-shadow:0 0 0 3px #fff,0 0 18px 4px rgba(255,255,255,.55);}
-.cf-board.done .cf-cell:not(.win) .disc{opacity:.55;}
-@keyframes cf-win{to{transform:scale(.9);}}
-@keyframes cf-drop{
-  0%{transform:translateY(var(--dy,-200px));}
-  70%{transform:translateY(0);}
-  82%{transform:translateY(-8%);}
-  100%{transform:translateY(0);}
+:root{--red-disc:#ff4d5e;--yel-disc:#ffc83d;}
+.board-wrap{position:relative;margin:4px auto 0;max-width:460px;}
+.drops{display:grid;grid-template-columns:repeat(7,1fr);gap:0;height:44px;margin:0 10px;}
+.drops .ghost{width:78%;aspect-ratio:1;margin:auto;border-radius:50%;opacity:0;transition:opacity .15s, transform .2s var(--spring);}
+.drops .ghost.show{opacity:.9;transform:translateY(4px);}
+.board{
+  position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:10px;border-radius:22px;
+  background:linear-gradient(180deg,#3b6bff,#2649d6);box-shadow:inset 0 -8px 0 rgba(0,0,0,.2), 0 10px 0 #1b3399, 0 20px 30px rgba(0,0,0,.35);
+  touch-action:manipulation;
 }
-.cf-dropping .disc{animation:cf-drop var(--dd,.38s) cubic-bezier(.45,0,.75,1);z-index:3;}
-.cf-col-hl{position:absolute;top:0;bottom:0;border-radius:14px;background:rgba(255,255,255,.07);pointer-events:none;transition:left .12s var(--ease);}
-.btn-row{display:flex;justify-content:center;}
+.col{display:grid;grid-template-rows:repeat(6,1fr);gap:6px;border:0;padding:0;background:none;border-radius:14px;}
+.col:focus-visible{outline:3px solid #fff;}
+.hole{position:relative;aspect-ratio:1;border-radius:50%;background:#140f2e;box-shadow:inset 0 5px 8px rgba(0,0,0,.6);overflow:visible;}
+.disc{position:absolute;inset:6%;border-radius:50%;box-shadow:inset 0 -5px 0 rgba(0,0,0,.2), inset 0 4px 0 rgba(255,255,255,.35);}
+.disc.r{background:var(--red-disc);}
+.disc.y{background:var(--yel-disc);}
+.disc.fall{animation:fall var(--t,.4s) cubic-bezier(.5,0,.75,0) both, land .3s var(--spring) var(--t,.4s);}
+@keyframes fall{from{transform:translateY(var(--from));}to{transform:translateY(0);}}
+@keyframes land{0%{transform:scaleY(.85) scaleX(1.08);}100%{transform:none;}}
+.disc.win{animation:winpulse .8s ease-in-out infinite alternate;box-shadow:0 0 0 4px #fff, 0 0 22px #fff;}
+@keyframes winpulse{to{transform:scale(1.1);}}
+.legs{display:flex;justify-content:space-between;margin:0 18px;}
+.legs i{width:22px;height:26px;background:#1b3399;border-radius:0 0 8px 8px;}
+.who{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 6px;}
+.mini{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);}
+.mini.r{background:var(--red-disc);} .mini.y{background:var(--yel-disc);}
+.series{text-align:center;color:var(--text-3);font-weight:800;font-size:.85rem;margin-top:16px;}
+.actions{display:flex;gap:10px;justify-content:center;margin-top:16px;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Connect Four</span>
-  <button class="icon-btn" id="newgame" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-</nav>
-<div class="page">
-<div class="gk">
-  <div class="tabs" role="tablist">
-    <button class="tab active" id="vsAI">vs Computer</button>
-    <button class="tab" id="vs2p">2 Players</button>
-  </div>
-  <div class="score-row">
-    <div class="score-chip" id="chip-R" style="--c:var(--R)"><div class="sc-lbl"><span class="dot"></span><span id="p1lbl">You</span></div><div class="sc-val" id="rscore">0</div></div>
-    <div class="score-chip" style="--c:var(--text-2)"><div class="sc-lbl">Draws</div><div class="sc-val" id="dscore">0</div></div>
-    <div class="score-chip" id="chip-Y" style="--c:var(--Y)"><div class="sc-lbl"><span class="dot"></span><span id="p2lbl">Computer</span></div><div class="sc-val" id="yscore">0</div></div>
-  </div>
-  <div class="status-bar" id="status">Your turn</div>
-  <div>
-    <div class="cf-drops" id="drops"></div>
-    <div class="cf-wrap"><div class="cf-board" id="board"></div></div>
-  </div>
-</div>
-</div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-window.GN=window.GN||{haptic(){},toast(){},sheet(){return{close(){},el:document.createElement('div')};},confirm:()=>Promise.resolve(true)};
-const ROWS=6,COLS=7;
-let grid,cur,over,ai=true,scores={R:0,Y:0,D:0};
-let lastDrop=null; // {r,c} for animation
-let lastCell=null, aiTimer=null, busy=false;
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var ROWS = 6, COLS = 7, SAVE = 'c4_state';
 
-function emptyGrid(){return Array.from({length:ROWS},()=>Array(COLS).fill(''));}
-function pname(p){return ai?(p==='R'?'You':'Computer'):(p==='R'?'Red':'Yellow');}
-function setStatus(h){document.getElementById('status').innerHTML=h;}
-function turnStatus(){
-  if(over)return;
-  if(ai)setStatus(cur==='R'?'<b>Your turn</b> · tap a column':'Computer is thinking…');
-  else setStatus(`<b style="color:var(--${cur})">${pname(cur)}</b>'s turn`);
-}
+  Kit.init({
+    id: 'connectfour',
+    onNew: function () { clearSave(); showSetup(); },
+    menu: [{ icon: '↩️', label: 'Undo last move', onClick: function () { undo(); } }],
+    rules:
+      '<p class="goal">Be the first to line up <b>four of your discs</b> in a row: across, up and down, or diagonally.</p>' +
+      '<h3>How it works</h3><ul><li>Players take turns dropping one disc into any column. It falls to the lowest empty spot.</li>' +
+      '<li>Tap a column to drop your disc.</li><li>If the board fills up with no four in a row, it\'s a draw.</li><li>The starting player switches every game.</li></ul>' +
+      '<h3>Tips</h3><ul><li>The middle column is the strongest. It\'s part of the most possible lines.</li><li>Watch for "traps": two ways to win at once.</li></ul>'
+  });
 
-function init(){clearTimeout(aiTimer);grid=emptyGrid();cur='R';over=false;lastCell=null;busy=false;render();turnStatus();}
+  var S = null; // {players:[{name,cpu,color,disc}], grid[r][c] 0/1/2, cur, first, moves:[c], over, wins:[a,b,draws], level}
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} if (!S.over) Kit.resume.set(S.moves.length ? 'Game ' + (S.wins[0] + S.wins[1] + S.wins[2] + 1) : 'Ready'); }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
-function colFull(col){return !!grid[0][col];}
-function canHumanDrop(){return !over&&!busy&&!(ai&&cur==='Y');}
-
-function drop(col){
-  if(over)return;
-  let landRow=-1;
-  for(let r=ROWS-1;r>=0;r--){
-    if(!grid[r][col]){sDrop();grid[r][col]=cur;landRow=r;break;}
-    else if(r===0){GN.haptic('error');return;}
+  function showSetup() {
+    S = null;
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', emoji: '🤖', title: 'vs Computer', desc: 'Can you outsmart it?' },
+        { id: '2p', emoji: '👫', title: 'Two players', desc: 'Pass the phone back and forth' }
+      ],
+      options: [{ id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', '😊 Easy'], ['med', '🤔 Medium'], ['hard', '😈 Hard']], when: function (m) { return m === 'cpu'; } }],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        S = {
+          players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, disc: i === 0 ? 'r' : 'y' }; }),
+          level: cfg.options.level || 'med', wins: [0, 0, 0], first: 0
+        };
+        newRound();
+      }
+    });
   }
-  lastDrop={r:landRow,c:col};lastCell={r:landRow,c:col};
-  GN.haptic('light');
-  const w=checkWin();
-  if(w){over=true;scores[cur]++;updateScores();
-    const lost=ai&&cur==='Y';
-    lost?sLose():sWin();
-    setTimeout(()=>GN.haptic(lost?'error':'success'),300);
-    setStatus(`<b style="color:var(--${cur})">${ai?(lost?'Computer wins':'You win! 🎉'):pname(cur)+' wins! 🎉'}</b>`);
-    render(w);
-    endSheet(ai?(lost?'Computer wins':'You win! 🏆'):`${pname(cur)} wins! 🏆`,'Four in a row.');
-    return;}
-  if(grid[0].every(v=>v)){
-    over=true;scores.D++;updateScores();
-    sDraw();GN.haptic('medium');setStatus('<b>Board full — it\'s a draw</b>');render();
-    endSheet("It's a draw",'The board is full with no four in a row.');
-    return;}
-  cur=cur==='R'?'Y':'R';
-  render();
-  turnStatus();
-  if(ai&&cur==='Y'&&!over){
-    busy=true;
-    aiTimer=setTimeout(()=>{busy=false;aiMove();},550);
+
+  function newRound() {
+    S.grid = []; for (var r = 0; r < ROWS; r++) S.grid.push([0, 0, 0, 0, 0, 0, 0]);
+    S.cur = S.first; S.moves = []; S.over = false; S.line = null;
+    save(); render(); maybeCpu();
   }
-}
 
-function endSheet(title,body){
-  setTimeout(()=>GN.sheet({title,body:`${body}<br><span style="color:var(--text-3);font-size:.85rem">Score · ${pname('R')} ${scores.R} – ${scores.Y} ${pname('Y')}${scores.D?` · ${scores.D} draw${scores.D>1?'s':''}`:''}</span>`,
-    actions:[{label:'Play again',primary:true,onClick:()=>{try{sessionStorage.removeItem('c4');}catch(e){}init();}},{label:'View board'}]}),900);
-}
-
-function checkWin(g=grid){
-  const check=(r,c,dr,dc)=>{
-    const p=g[r][c];if(!p)return null;
-    const cells=[[r,c]];
-    for(let k=1;k<4;k++){
-      const nr=r+dr*k,nc=c+dc*k;
-      if(nr<0||nr>=ROWS||nc<0||nc>=COLS||g[nr][nc]!==p)return null;
-      cells.push([nr,nc]);
+  // ── Board logic ───────────────────────────────────────────────────────────
+  function openRow(g, c) { for (var r = ROWS - 1; r >= 0; r--) if (!g[r][c]) return r; return -1; }
+  function findLine(g, who) {
+    var dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      if (g[r][c] !== who) continue;
+      for (var d = 0; d < 4; d++) {
+        var line = [[r, c]], k;
+        for (k = 1; k < 4; k++) {
+          var rr = r + dirs[d][0] * k, cc = c + dirs[d][1] * k;
+          if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS || g[rr][cc] !== who) break;
+          line.push([rr, cc]);
+        }
+        if (k === 4) return line;
+      }
     }
-    return cells;
-  };
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    for(const [dr,dc] of [[0,1],[1,0],[1,1],[1,-1]]){
-      const w=check(r,c,dr,dc);if(w)return w;
+    return null;
+  }
+  function full(g) { return g[0].every(Boolean); }
+
+  // ── AI: alpha-beta minimax with a window-count heuristic ──────────────────
+  function scoreWindow(w, me) {
+    var mine = 0, theirs = 0, empty = 0, opp = 3 - me;
+    w.forEach(function (v) { if (v === me) mine++; else if (v === opp) theirs++; else empty++; });
+    if (mine === 4) return 1000;
+    if (mine === 3 && empty === 1) return 6;
+    if (mine === 2 && empty === 2) return 2;
+    if (theirs === 3 && empty === 1) return -8;
+    return 0;
+  }
+  function evaluate(g, me) {
+    var s = 0, r, c;
+    for (r = 0; r < ROWS; r++) if (g[r][3] === me) s += 4;
+    for (r = 0; r < ROWS; r++) for (c = 0; c < COLS; c++) {
+      if (c + 3 < COLS) s += scoreWindow([g[r][c], g[r][c + 1], g[r][c + 2], g[r][c + 3]], me);
+      if (r + 3 < ROWS) s += scoreWindow([g[r][c], g[r + 1][c], g[r + 2][c], g[r + 3][c]], me);
+      if (r + 3 < ROWS && c + 3 < COLS) s += scoreWindow([g[r][c], g[r + 1][c + 1], g[r + 2][c + 2], g[r + 3][c + 3]], me);
+      if (r + 3 < ROWS && c - 3 >= 0) s += scoreWindow([g[r][c], g[r + 1][c - 1], g[r + 2][c - 2], g[r + 3][c - 3]], me);
     }
+    return s;
   }
-  return null;
-}
-
-function score(g,p){
-  let s=0;
-  const other=p==='Y'?'R':'Y';
-  const eval4=(cells)=>{
-    const mine=cells.filter(([r,c])=>g[r][c]===p).length;
-    const opp=cells.filter(([r,c])=>g[r][c]===other).length;
-    if(opp>0)return 0;
-    return [0,1,10,50,1000][mine];
-  };
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    for(const [dr,dc] of [[0,1],[1,0],[1,1],[1,-1]]){
-      const cells=[];let valid=true;
-      for(let k=0;k<4;k++){const nr=r+dr*k,nc=c+dc*k;if(nr<0||nr>=ROWS||nc<0||nc>=COLS){valid=false;break;}cells.push([nr,nc]);}
-      if(valid)s+=eval4(cells);
+  var ORDER = [3, 2, 4, 1, 5, 0, 6];
+  function minimax(g, depth, a, b, maxing, me) {
+    var opp = 3 - me;
+    if (findLine(g, me)) return 100000 + depth;
+    if (findLine(g, opp)) return -100000 - depth;
+    if (depth === 0 || full(g)) return evaluate(g, me);
+    var who = maxing ? me : opp, best = maxing ? -Infinity : Infinity;
+    for (var i = 0; i < 7; i++) {
+      var c = ORDER[i], r = openRow(g, c); if (r < 0) continue;
+      g[r][c] = who;
+      var v = minimax(g, depth - 1, a, b, !maxing, me);
+      g[r][c] = 0;
+      if (maxing) { if (v > best) best = v; if (best > a) a = best; }
+      else { if (v < best) best = v; if (best < b) b = best; }
+      if (a >= b) break;
     }
+    return best;
   }
-  return s;
-}
-
-function aiMove(){
-  if(over||!ai||cur!=='Y')return;
-  let best=-Infinity,bestCol=-1;
-  for(let c=0;c<COLS;c++){
-    if(colFull(c))continue; // never pick a full column
-    const g=grid.map(r=>[...r]);
-    for(let r=ROWS-1;r>=0;r--){if(!g[r][c]){g[r][c]='Y';break;}}
-    if(checkWin(g)){bestCol=c;break;}
-    const s=score(g,'Y')-score(g,'R');
-    if(s>best){best=s;bestCol=c;}
+  function cpuMove() {
+    var me = S.cur + 1, g = S.grid.map(function (r) { return r.slice(); });
+    var depth = S.level === 'easy' ? 2 : S.level === 'med' ? 4 : 7;
+    var cols = ORDER.filter(function (c) { return openRow(g, c) >= 0; });
+    if (S.level === 'easy' && Math.random() < 0.35) return cols[Math.floor(Math.random() * cols.length)];
+    var best = cols[0], bestV = -Infinity;
+    cols.forEach(function (c) {
+      var r = openRow(g, c); g[r][c] = me;
+      var v = minimax(g, depth - 1, -Infinity, Infinity, false, me) + (S.level === 'med' ? Math.random() * 3 : 0);
+      g[r][c] = 0;
+      if (v > bestV) { bestV = v; best = c; }
+    });
+    return best;
   }
-  if(bestCol<0)return;
-  drop(bestCol);
-}
+  function maybeCpu() {
+    if (!S || S.over || !S.players[S.cur].cpu) return;
+    S.busy = true; paintTurn();
+    setTimeout(function () { var c = cpuMove(); S.busy = false; drop(c, true); }, 550);
+  }
 
-function render(winCells=null){
-  const b=document.getElementById('board');b.innerHTML='';
-  b.classList.toggle('done',!!winCells);
-  const wset=winCells?new Set(winCells.map(([r,c])=>r*COLS+c)):new Set();
-  grid.forEach((row,r)=>row.forEach((v,c)=>{
-    const cell=document.createElement('div');
-    cell.className='cf-cell'+(v?' '+v:'')+(wset.has(r*COLS+c)?' win':'')+(lastCell&&lastCell.r===r&&lastCell.c===c&&!winCells?' last':'');
-    if(v)cell.innerHTML='<div class="disc"></div>';
-    b.appendChild(cell);
-  }));
-  // Animate last-dropped piece
-  if(lastDrop){
-    const {r,c}=lastDrop;lastDrop=null;
-    const cells=b.querySelectorAll('.cf-cell');
-    const cell=cells[r*COLS+c];
-    if(cell&&grid[r][c]){
-      const cellH=cell.offsetHeight||48;
-      const gap=parseFloat(getComputedStyle(b).rowGap)||6;
-      const dy=-((r+1)*(cellH+gap)+12);
-      const dur=Math.max(0.22,0.16+r*0.06);
-      cell.style.setProperty('--dy',dy+'px');
-      cell.style.setProperty('--dd',dur+'s');
-      cell.classList.add('cf-dropping');
-      cell.addEventListener('animationend',()=>cell.classList.remove('cf-dropping'),{once:true});
+  // ── Moves ─────────────────────────────────────────────────────────────────
+  var cells = [], ghosts = [];
+  function drop(c, byCpu) {
+    if (!S || S.over || (S.busy && !byCpu)) return;
+    if (S.players[S.cur].cpu && !byCpu) return;
+    var r = openRow(S.grid, c);
+    if (r < 0) { Kit.haptic('error'); Kit.sfx('bad'); boardEl.classList.remove('shake'); void boardEl.offsetWidth; boardEl.classList.add('shake'); return; }
+    var who = S.cur + 1;
+    S.grid[r][c] = who; S.moves.push(c);
+    var d = el('div', { class: 'disc fall ' + S.players[S.cur].disc });
+    d.style.setProperty('--from', 'calc(' + (-(r + 1) * 100) + '% - ' + ((r + 1) * 6 + 50) + 'px)');
+    d.style.setProperty('--t', (0.18 + r * 0.06) + 's');
+    cells[r][c].appendChild(d);
+    Kit.sfx('pop');
+    setTimeout(function () { Kit.sfx('tap'); Kit.haptic('light'); }, (180 + r * 60));
+    var line = findLine(S.grid, who);
+    if (line) {
+      S.over = true; S.line = line; S.wins[S.cur]++; S.first = 1 - S.first;
+      setTimeout(function () { paintWin(); }, 250 + r * 60);
+      setTimeout(function () { endGame(S.cur); }, 1300 + r * 60);
+    } else if (full(S.grid)) {
+      S.over = true; S.wins[2]++; S.first = 1 - S.first;
+      setTimeout(function () { endGame(-1); }, 700);
+    } else {
+      S.cur = 1 - S.cur;
+      paintTurn();
+      setTimeout(maybeCpu, 200 + r * 60);
     }
+    save();
   }
-  const drops=document.getElementById('drops');drops.innerHTML='';
-  for(let c=0;c<COLS;c++){
-    const btn=document.createElement('button');
-    btn.className='drop-btn';btn.dataset.col=c;btn.setAttribute('aria-label','Drop in column '+(c+1));
-    btn.style.setProperty('--pc',`var(--${cur})`);
-    btn.innerHTML='<span class="ghost"></span>';
-    btn.disabled=over||colFull(c)||(ai&&cur==='Y');
-    btn.addEventListener('click',()=>{if(canHumanDrop())drop(+btn.dataset.col);});
-    drops.appendChild(btn);
+  function undo() {
+    if (!S || !S.moves.length || S.over) return Kit.toast('Nothing to undo');
+    var vsCpu = S.players.some(function (p) { return p.cpu; });
+    var n = vsCpu ? (S.players[S.cur].cpu ? 1 : 2) : 1;
+    for (var i = 0; i < n && S.moves.length; i++) {
+      var c = S.moves.pop();
+      for (var r = 0; r < ROWS; r++) if (S.grid[r][c]) { S.grid[r][c] = 0; break; }
+      S.cur = 1 - S.cur;
+    }
+    Kit.sfx('whoosh'); save(); render(); maybeCpu();
   }
-  document.getElementById('chip-R').classList.toggle('on',!over&&cur==='R');
-  document.getElementById('chip-Y').classList.toggle('on',!over&&cur==='Y');
-}
+  function endGame(winner) {
+    render();
+    var p = winner >= 0 ? S.players[winner] : null;
+    try { GameHistory.save('c4', { players: S.players.map(function (q, i) { return { name: q.name, score: S.wins[i] }; }), winner: p ? p.name : null, _summary: p ? p.name + ' won' : 'Draw' }); } catch (e) {}
+    var lose = p && p.cpu;
+    Kit.win({
+      emoji: !p ? '🤝' : lose ? '🤖' : '🏆',
+      title: !p ? "It's a draw!" : lose ? p.name + ' wins this one' : p.name === 'You' ? 'You win!' : p.name + ' wins!',
+      sub: 'Series: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name + (S.wins[2] ? ' · ' + S.wins[2] + ' draw' + (S.wins[2] > 1 ? 's' : '') : ''),
+      lose: !!lose, againLabel: 'Next game',
+      again: function () { newRound(); },
+      extra: [{ label: 'View the board', onClick: function () {} }],
+      closeLabel: 'Back to games'
+    });
+  }
 
-// Tap anywhere in a column on the board to drop there
-document.getElementById('board').addEventListener('click',e=>{
-  if(!canHumanDrop())return;
-  const rc=e.currentTarget.getBoundingClientRect();
-  const c=Math.floor((e.clientX-rc.left)/rc.width*COLS);
-  if(c<0||c>=COLS)return;
-  if(colFull(c)){GN.haptic('error');return;}
-  drop(c);
-});
+  // ── Render ────────────────────────────────────────────────────────────────
+  var boardEl, turnEl, stripEl;
+  function render() {
+    app.innerHTML = '';
+    stripEl = el('div', { class: 'scores' });
+    app.appendChild(stripEl);
+    turnEl = el('div', { class: 'turn' });
+    app.appendChild(turnEl);
 
-function updateScores(){
-  document.getElementById('rscore').textContent=scores.R;
-  document.getElementById('yscore').textContent=scores.Y;
-  document.getElementById('dscore').textContent=scores.D;
-}
-function syncMode(){
-  document.getElementById('vsAI').classList.toggle('active',ai);
-  document.getElementById('vs2p').classList.toggle('active',!ai);
-  document.getElementById('p1lbl').textContent=ai?'You':'Red';
-  document.getElementById('p2lbl').textContent=ai?'Computer':'Yellow';
-}
-function inProgress(){return !over&&grid.some(r=>r.some(v=>v));}
-async function setMode(a){
-  if(a===ai)return;
-  if(inProgress()&&!(await GN.confirm('Switching modes resets the game and score.',{title:'Switch mode?',ok:'Switch'})))return;
-  ai=a;scores={R:0,Y:0,D:0};updateScores();syncMode();
-  try{sessionStorage.removeItem('c4');}catch(e){}
-  init();
-}
-document.getElementById('newgame').addEventListener('click',async()=>{
-  if(inProgress()&&!(await GN.confirm('The current board will be cleared.',{title:'Start a new game?',ok:'New game'})))return;
-  try{sessionStorage.removeItem('c4');}catch(e){}
-  init();
-});
-document.getElementById('vsAI').addEventListener('click',()=>setMode(true));
-document.getElementById('vs2p').addEventListener('click',()=>setMode(false));
+    var wrap = el('div', { class: 'board-wrap' });
+    var dropsRow = el('div', { class: 'drops' });
+    ghosts = [];
+    for (var c = 0; c < COLS; c++) { var gh = el('div', { class: 'ghost' }); ghosts.push(gh); dropsRow.appendChild(gh); }
+    wrap.appendChild(dropsRow);
+    boardEl = el('div', { class: 'board', role: 'grid', 'aria-label': 'Connect Four board' });
+    cells = []; for (var r = 0; r < ROWS; r++) cells.push([]);
+    for (c = 0; c < COLS; c++) {
+      (function (c) {
+        var col = el('button', { type: 'button', class: 'col', 'aria-label': 'Drop in column ' + (c + 1) });
+        for (var r = 0; r < ROWS; r++) {
+          var h = el('div', { class: 'hole' });
+          if (S.grid[r][c]) h.appendChild(el('div', { class: 'disc ' + S.players[S.grid[r][c] - 1].disc }));
+          cells[r][c] = h; col.appendChild(h);
+        }
+        col.addEventListener('click', function () { drop(c); });
+        col.addEventListener('pointerenter', function () { hover(c); });
+        col.addEventListener('pointerleave', function () { hover(-1); });
+        boardEl.appendChild(col);
+      })(c);
+    }
+    wrap.appendChild(boardEl);
+    wrap.appendChild(el('div', { class: 'legs' }, [el('i'), el('i')]));
+    app.appendChild(wrap);
+    app.appendChild(el('div', { class: 'series', text: 'Series  ' + S.wins[0] + ' – ' + S.wins[1] + (S.wins[2] ? '  ·  ' + S.wins[2] + ' draws' : '') }));
+    if (S.over) app.appendChild(el('div', { class: 'actions' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'Next game', onclick: newRound })]));
+    paintTurn();
+    if (S.line) paintWin();
+  }
+  function hover(c) {
+    var p = S && S.players[S.cur];
+    ghosts.forEach(function (g, i) { g.className = 'ghost' + (i === c && !S.over && !p.cpu ? ' show disc ' + p.disc : ''); g.style.position = 'relative'; });
+  }
+  function paintTurn() {
+    stripEl.innerHTML = '';
+    S.players.forEach(function (p, i) {
+      stripEl.appendChild(el('div', { class: 'score' + (i === S.cur && !S.over ? ' on' : ''), style: { '--c': p.disc === 'r' ? '#ff4d5e' : '#ffc83d' } }, [
+        el('span', { class: 'nm', text: (p.cpu ? '🤖 ' : '') + p.name }),
+        el('span', { class: 'mini ' + p.disc }),
+        el('span', { class: 'sub', text: S.wins[i] + ' win' + (S.wins[i] === 1 ? '' : 's') })
+      ]));
+    });
+    var p = S.players[S.cur];
+    turnEl.style.setProperty('--c', p.disc === 'r' ? '#ff4d5e' : '#ffc83d');
+    turnEl.innerHTML = '';
+    if (S.over) { turnEl.appendChild(el('span', { text: S.line ? '🎉 ' + S.players[S.grid[S.line[0][0]][S.line[0][1]] - 1].name + ' connected four!' : 'Board full: draw' })); return; }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' turn' }));
+  }
+  function paintWin() {
+    (S.line || []).forEach(function (rc) { var d = cells[rc[0]][rc[1]].querySelector('.disc'); if (d) d.classList.add('win'); });
+    paintTurn();
+  }
 
-init();
-
-// ── Sound ────────────────────────────────────────────────────────────────────
-let _ac=null,_muted=false;
-function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
-function sTone(freq,start,dur,vol,type,ramp){
-  try{
-  const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
-  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
-  if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
-  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
-  }catch(e){}
-}
-function sNoise(start,dur,fc,q,vol,decay){
-  try{
-  const ctx=sac(),t=ctx.currentTime+start;
-  const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
-  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
-  const src=ctx.createBufferSource();src.buffer=buf;
-  const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
-  const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-  src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
-  }catch(e){}
-}
-function sWin(){if(_muted)return;[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
-function sLose(){if(_muted)return;[400,320,240].forEach((f,i)=>sTone(f,i*.1,.35,.18,'triangle'));}
-function sClick(pitch){if(_muted)return;sNoise(0,.035,pitch||900,5,.15,.15);}
-function sDing(freq,vol){if(_muted)return;sTone(freq||660,0,.35,vol||.18);}
-
-function sDrop(){if(_muted)return;sNoise(0,.05,600,4,.18,.15);sTone(220,.03,.12,.1,'triangle');}
-function sDraw(){if(_muted)return;[330,370,330].forEach((f,i)=>sTone(f,i*.08,.25,.14));}
-
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_c4(){if(over)return;
-  try{sessionStorage.setItem('c4',JSON.stringify({grid,cur,over,ai,scores,lastDrop,_ts:Date.now()}));}catch(e){}
-}
-function _load_c4(){
-  try{
-    const raw=sessionStorage.getItem('c4');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s||!Array.isArray(s.grid))return false;
-    grid=s.grid;cur=s.cur;over=s.over||false;ai=s.ai!==false;scores=s.scores||{R:0,Y:0,D:0};lastDrop=null;
-    syncMode();updateScores();render();turnStatus();
-    if(!over&&ai&&cur==='Y'){busy=true;aiTimer=setTimeout(()=>{busy=false;aiMove();},600);}
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_c4);
-window.addEventListener('pagehide',_save_c4);
-_load_c4();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.grid && saved.players) { S = saved; S.busy = false; render(); maybeCpu(); }
+  else showSetup();
+})();
 </script>
 </body>
 </html>
