@@ -232,6 +232,7 @@ body{overflow-x:hidden;}
     t.classList.remove('bump'); void t.offsetWidth; t.classList.add('bump');
   }
   function undo() {
+    if (S && S.over) { Kit.toast('The game is over'); return; }
     if (!U) { Kit.toast(S && S.moves ? 'You can only undo one move' : 'Nothing to undo'); return; }
     flush();
     var undos = S.undos + 1, keep = S.marks;
@@ -248,8 +249,7 @@ body{overflow-x:hidden;}
     Kit.win({
       title: 'You made 2048!', sub: 'On move ' + S.wonAt + ' with ' + S.score.toLocaleString() + ' points. Keep going for 4096?',
       againLabel: 'Keep going', again: function () {},
-      extra: [{ label: 'New game', onClick: function () { abandon(); start(); } }],
-      closeLabel: 'Keep going later', onClose: function () {}
+      extra: [{ label: 'New game', onClick: function () { abandon(); start(); } }]
     });
     save();
   }
