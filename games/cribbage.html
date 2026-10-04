@@ -29,8 +29,8 @@
 @keyframes plus{0%{opacity:0;transform:translateY(6px) scale(.6);}15%{opacity:1;transform:none;}75%{opacity:1;}100%{opacity:0;transform:translateY(-8px);}}
 
 /* ── Table ─────────────────────────────────────────────────────────────── */
-.ctable .felt-in{height:clamp(270px,37dvh,360px);min-height:270px;transition:height .35s var(--ease);}
-.ctable.tall .felt-in{height:calc(clamp(270px,37dvh,360px) + 120px);}
+.ctable .felt-in{height:clamp(270px,43dvh,400px);min-height:270px;transition:height .35s var(--ease);}
+.ctable.tall .felt-in{height:calc(clamp(270px,43dvh,400px) + 120px);}
 .cseat .backs{--cw:24px;}
 .cseat .dlr{font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:1px 6px;border-radius:999px;background:var(--yellow);color:#2b1a00;margin-left:2px;}
 .deck{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:2;--cw:clamp(42px,11.5vw,50px);}
@@ -76,7 +76,7 @@
 .showv .who{display:flex;align-items:center;gap:8px;color:#fff;font-family:var(--display);font-size:1.35rem;letter-spacing:.01em;}
 .showv .who .avatar{width:28px;height:28px;font-size:.8rem;font-family:var(--font);}
 .showv .who .step{font-family:var(--font);font-size:.68rem;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.6);text-transform:uppercase;}
-.showv .cards{display:flex;align-items:flex-end;gap:5px;--cw:clamp(50px,14vw,62px);}
+.showv .cards{display:flex;align-items:flex-end;gap:5px;--cw:clamp(46px,13vw,60px);}
 .showv .cards .gap{width:10px;}
 .showv .cards .pcard.lit{transform:translateY(-10px);box-shadow:0 0 0 3px var(--yellow),0 10px 18px rgba(0,0,0,.4);}
 .showv .cards .pcard.st{box-shadow:0 0 0 2px rgba(255,255,255,.75),0 6px 14px rgba(0,0,0,.3);}
@@ -84,7 +84,7 @@
 .showv .stl{font-size:.58rem;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.6);text-transform:uppercase;text-align:center;margin-top:3px;}
 .slip{width:100%;max-width:400px;border-radius:6px 6px 12px 12px;padding:10px 14px 10px;transform:rotate(-.6deg);position:relative;}
 .slip .say{font-family:var(--hand);font-size:1.3rem;line-height:1.25;color:var(--ink);min-height:1.6em;}
-.slip .say .seg{animation:rise .35s var(--ease) both;}
+.slip .say .sg{animation:rise .35s var(--ease) both;}
 .slip .tot{position:absolute;right:10px;top:-16px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#c8102e;color:#fff;font-family:var(--display);font-size:1.4rem;box-shadow:0 4px 10px rgba(0,0,0,.35);transform:rotate(8deg);}
 .slip .tot.pop{animation:pop .45s var(--spring);}
 .slip .combos{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
@@ -372,13 +372,15 @@
     var p = discardActor();
     if (p < 0 || isCpu(p) || S.sel.length !== 2) return;
     snapshot();
-    var from = S.sel.map(function (id) { return handEl.querySelector('[data-id="' + id + '"]'); });
+    var from = S.sel.map(function (id) { return rectOf(handEl.querySelector('[data-id="' + id + '"]')); });
     tossCards(p, S.sel); S.sel = [];
     Kit.sfx('whoosh'); Kit.haptic('medium');
     if (discardActor() >= 0) { if (S.mode === 'pass') S.revealed = false; save(); render(); flyToCrib(from); return; }
     S.phase = 'cut'; save(); render(); flyToCrib(from);
     proceed();
   }
+  // Snapshot where a node is now, so a card can fly from it after a re-render
+  function rectOf(n) { if (!n) return null; var r = n.getBoundingClientRect(); return { getBoundingClientRect: function () { return r; } }; }
   function flyToCrib(from) {
     var target = feltEl.querySelector('.crib .stack');
     if (!target) return;
@@ -401,12 +403,12 @@
     if (heels) {
       S.stats.heels[S.dealer]++;
       setTimeout(function () { Kit.callout('His heels!'); }, 350);
-      say(S.dealer, 'His heels: 2');
     }
     S.phase = 'peg';
     var nd = other(S.dealer);
     S.peg = { count: 0, pile: [], played: [], hand: [S.keep[0].slice(), S.keep[1].slice()], turn: nd, last: -1, go: false, reset: false };
     save(); render();
+    if (heels) say(S.dealer, 'His heels: 2');
     if (heels && addPoints(S.dealer, 2)) return;
     save();
     var t = token; setTimeout(function () { if (t === token) pegStep(); }, heels ? 1200 : 700);
@@ -479,7 +481,7 @@
     if (!P || S.phase !== 'peg' || P.turn !== p || P.reset) return;
     var i = -1; P.hand[p].forEach(function (c, k) { if (c.id === card.id) i = k; });
     if (i < 0 || P.count + val(card) > 31) return;
-    var from = (S.mode === 'pass' || p === 0) && p === bottomSeat() ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[topSeat() === p ? 'n' : 's'].querySelector('.tag');
+    var from = rectOf(p === bottomSeat() ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls.n && seatEls.n.querySelector('.tag'));
     P.hand[p].splice(i, 1);
     P.pile.push({ p: p, c: card }); P.played.push({ p: p, c: card });
     var sc = pegScore(P.pile.map(function (x) { return x.c; }));
@@ -504,7 +506,6 @@
       return;
     }
     P.turn = other(p);
-    if (S.mode === 'pass' && !isCpu(P.turn) && P.hand[P.turn].length && canPlay(P.turn)) S.revealed = false;
     save();
     var t2 = token; setTimeout(function () { if (t2 === token) pegStep(); }, sc.pts ? 700 : 350);
   }
@@ -541,17 +542,17 @@
     var t = token, cardsBox = feltEl.querySelector('.showv .cards'), sayBox = feltEl.querySelector('.slip .say'), totEl = feltEl.querySelector('.slip .tot');
     var chips = feltEl.querySelectorAll('.slip .combos span');
     if (!r.items.length) { if (totEl) totEl.classList.add('pop'); Kit.sfx('bad'); return; }
-    sayBox.innerHTML = '';
+    sayBox.innerHTML = ''; if (totEl) totEl.style.visibility = 'hidden';
     var i = 0;
     (function stepIt() {
       if (t !== token || !sayBox.isConnected) return;
       Array.prototype.forEach.call(cardsBox.querySelectorAll('.pcard'), function (n) { n.classList.remove('lit'); });
       Array.prototype.forEach.call(chips, function (n) { n.classList.remove('on'); });
-      if (i >= r.items.length) { if (totEl) { totEl.textContent = r.total; totEl.classList.add('pop'); } Kit.sfx('good'); return; }
+      if (i >= r.items.length) { if (totEl) { totEl.style.visibility = ''; totEl.classList.add('pop'); } Kit.sfx('good'); return; }
       var it = r.items[i];
       it.ids.forEach(function (id) { var n = cardsBox.querySelector('[data-id="' + id + '"]'); if (n) n.classList.add('lit'); });
       if (chips[i]) chips[i].classList.add('on');
-      sayBox.appendChild(el('span', { class: 'seg', text: (i ? ', ' : '') + it.say }));
+      sayBox.appendChild(el('span', { class: 'sg', text: (i ? ', ' : '') + it.say }));
       Kit.sfx('tick');
       i++; setTimeout(stepIt, 650);
     })();
@@ -762,7 +763,7 @@
     if (!boardEl) createBoard();
     app.innerHTML = '';
     app.appendChild(boardEl);
-    tableEl = el('div', { class: 'ctable wood' + (S.phase === 'show' ? ' tall' : '') });
+    tableEl = el('div', { class: 'ctable wood' + (S.phase === 'show' || S.phase === 'cutdeal' ? ' tall' : '') });
     feltEl = el('div', { class: 'felt-in' });
     tableEl.appendChild(feltEl);
     app.appendChild(tableEl);
@@ -818,7 +819,7 @@
       feltEl.appendChild(pileEl);
     } else if (S.phase === 'discard') {
       var a = discardActor();
-      feltEl.appendChild(el('div', { class: 'feltmsg' }, [el('span', { class: 'display', text: 'Hand ' + S.hand }), el('span', { text: a >= 0 && isCpu(a) ? nm(a) + ' is choosing…' : 'Choose 2 cards for ' + (short(S.dealer) === 'You' ? 'your' : short(S.dealer) + "'s") + ' crib' })]));
+      feltEl.appendChild(el('div', { class: 'feltmsg' }, [el('span', { class: 'display', text: 'Hand ' + S.hand }), el('span', { text: a >= 0 && isCpu(a) ? nm(a) + ' is choosing…' : 'Choose 2 cards for ' + (a === S.dealer ? 'your' : short(S.dealer) + "'s") + ' crib' })]));
     } else if (S.phase === 'cut') {
       feltEl.appendChild(el('div', { class: 'feltmsg' }, [el('span', { class: 'display', text: 'Cut' }), el('span', { text: isCpu(other(S.dealer)) ? nm(other(S.dealer)) + ' cuts the deck…' : short(other(S.dealer)) + (you(other(S.dealer)) ? ' cut' : ' cuts') + ' the deck for the starter' })]));
     }
@@ -860,7 +861,7 @@
     handEl.innerHTML = '';
     handEl.hidden = S.phase === 'show' || S.phase === 'cutdeal' || S.phase === 'over';
     if (handEl.hidden) return;
-    var bot = bottomSeat(), cover = needCover();
+    var bot = bottomSeat(), cover = needCover() || (S.mode === 'pass' && S.phase === 'cut');
     var mine = S.phase === 'peg' ? S.peg.hand[bot] : S.phase === 'discard' ? (S.keep[bot] || S.hands[bot]) : (S.keep[bot] || []);
     var a = actor();
     var canTapDiscard = S.phase === 'discard' && a === bot && !isCpu(bot) && !cover;
@@ -872,7 +873,7 @@
         n.addEventListener('click', function () {
           var i = S.sel.indexOf(c.id);
           if (i >= 0) S.sel.splice(i, 1); else if (S.sel.length < 2) S.sel.push(c.id); else { Kit.toast('Just 2 cards. Tap one to put it back.'); return; }
-          Kit.sfx('tap'); Kit.haptic('light'); save(); paintHand();
+          Kit.sfx('tap'); Kit.haptic('light'); save(); paintHand(); paintBar();
         });
       } else if (canTapPlay) {
         if (S.peg.count + val(c) <= 31) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); playCard(bot, c); }); }

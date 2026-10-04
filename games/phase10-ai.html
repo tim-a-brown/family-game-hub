@@ -2,672 +2,952 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Phase 10 — vs AI</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phase 10</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ai-base:start — shared table layout for the vs-AI card games */
-.page.g-page{max-width:560px;padding-top:12px;padding-bottom:calc(112px + var(--safe-b));}
-.g-hud{display:grid;gap:8px;margin-bottom:10px;}
-.g-seat{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:9px 8px 8px;min-width:0;text-align:center;transition:border-color .25s,box-shadow .25s,background .25s;}
-.g-seat.turn{border-color:rgba(245,200,66,.6);background:linear-gradient(180deg,rgba(245,200,66,.1),var(--surface) 70%);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
-.g-seat.lead::after{content:'👑';position:absolute;top:5px;right:7px;font-size:.75rem;}
-.g-seat-name{font-size:.78rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.g-seat.you .g-seat-name{color:var(--gold);}
-.g-seat-score{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-.g-seat-sub{font-size:.75rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.1em;}
-.g-meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
-.g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
-.g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
-.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
-.g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
-.g-status b{color:var(--text);}
-.g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
-.g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
-.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;}
-.g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
-.g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
-.g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
-.g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
-.g-choices .btn{min-height:44px;}
-.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
-.g-bar:empty{display:none;}
-.g-bar .btn{flex:1;max-width:280px;}
-.g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-.g-log summary{list-style:none;cursor:pointer;min-height:44px;padding:0 14px;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;color:var(--text-2);}
-.g-log summary::-webkit-details-marker{display:none;}
-.g-log summary .last{flex:1;min-width:0;font-weight:500;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
-.g-log summary::after{content:'';flex:none;width:7px;height:7px;border-right:2px solid var(--text-3);border-bottom:2px solid var(--text-3);transform:rotate(45deg);margin:-3px 2px 0 0;transition:transform .2s;}
-.g-log[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
-.g-log-body{padding:2px 14px 12px;font-size:.84rem;line-height:1.6;color:var(--text-2);max-height:200px;overflow-y:auto;}
-.g-log-body .pts{color:var(--gold);font-weight:600;}
-.g-log-body .bust{color:var(--red);}
-.g-log-body .flip7{color:var(--text);font-weight:700;}
-.g-result{text-align:center;padding:22px 16px 16px;border-radius:var(--r-lg);margin-bottom:12px;background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.04));border:1px solid rgba(245,200,66,.35);animation:gn-pop .4s var(--spring) both;}
-.g-result.plain{background:var(--surface);border-color:var(--line-2);}
-.g-result-icon{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.g-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);line-height:1.15;}
-.g-result.plain .g-result-title{color:var(--text);font-size:1.45rem;}
-.g-result-sub{color:var(--text-2);font-size:.92rem;margin-top:4px;}
-.g-rows{margin-top:14px;display:grid;gap:6px;text-align:left;}
-.g-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:.92rem;}
-.g-row > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.g-row.you > span:first-child{color:var(--gold);font-weight:700;}
-.g-row .r{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--text-3);font-size:.84rem;}
-.g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
-.g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
-.fp-nc-label{max-width:64px !important;}
-.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
-@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
-@media (min-width:700px){.page.g-page{max-width:620px;}}
-/* ai-base:end */
-
-/* ── Phase 10 ─────────────────────────────────────────────────────────── */
-.p10-hud{grid-template-columns:repeat(3,minmax(0,1fr));}
-.p10-hud .g-seat-score small{font-size:.8rem;color:var(--text-3);font-weight:700;}
-.p10c{--cw:clamp(40px,11.6vw,52px);width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:var(--display);font-weight:800;position:relative;
-  box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .14s var(--ease),box-shadow .15s;user-select:none;flex-shrink:0;border:1px solid rgba(0,0,0,.12);}
-.p10c.red{background:linear-gradient(160deg,#fff1f1,#fecaca);color:#b91c1c;}
-.p10c.blue{background:linear-gradient(160deg,#eff6ff,#bfdbfe);color:#1d4ed8;}
-.p10c.green{background:linear-gradient(160deg,#effdf4,#bbf7d0);color:#15803d;}
-.p10c.yellow{background:linear-gradient(160deg,#fffbe6,#fde68a);color:#854d0e;}
-.p10c.wild{background:linear-gradient(160deg,#6366f1,#312e81);color:#e0e7ff;border-color:rgba(165,180,252,.5);}
-.p10c.skip{background:linear-gradient(160deg,#f5d0fe,#c026d3);color:#3b0747;}
-.p10c-r{font-size:1.2rem;line-height:1;}
-.p10c-s{font-family:var(--font);font-size:.6rem;font-weight:800;letter-spacing:.04em;line-height:1;margin-top:4px;opacity:.75;}
-.p10c.playable{cursor:pointer;}
-.p10c.playable:active{transform:scale(.95);}
-.p10c.selected{transform:translateY(-8px);box-shadow:0 0 0 3px var(--gold),0 10px 20px rgba(245,200,66,.35);}
-.p10c.xs{--cw:30px;border-radius:6px;}
-.p10c.xs .p10c-r{font-size:.85rem;}
-.p10c.xs .p10c-s{display:none;}
-.p10c.back{background:linear-gradient(150deg,#1e3a8a,#0f1d4a);border:2px solid rgba(255,255,255,.3);box-shadow:3px 3px 0 #0b1638,0 8px 18px rgba(0,0,0,.4);color:#fff;}
-.p10c.back::before{content:'10';font-family:var(--display);font-size:1.2rem;font-weight:800;opacity:.85;}
-.p10-hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:66px;}
-/* Phase strip */
-.p10-strip{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin-bottom:8px;}
-.p10-dot{height:28px;border-radius:8px;display:grid;place-items:center;font-size:.78rem;font-weight:800;background:var(--surface);border:1px solid var(--line);color:var(--text-3);}
-.p10-dot.done{background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.35);color:var(--green);}
-.p10-dot.current{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);border-color:transparent;box-shadow:0 4px 12px rgba(240,165,0,.3);}
-.p10-goal{text-align:center;font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:10px;}
-.p10-goal span{color:var(--text-3);font-weight:600;}
-/* Table */
-.p10-piles{display:flex;justify-content:center;gap:28px;}
-.p10-pile{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.p10-pile-lbl{font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65);}
-.p10-piles .p10c{--cw:54px;}
-.p10-piles .live{cursor:pointer;animation:p10-glow 1.6s ease-in-out infinite;}
-.p10-piles .live:active{transform:scale(.94);}
-.p10-piles .dim{opacity:.55;}
-@keyframes p10-glow{0%,100%{outline:0 solid rgba(245,200,66,0);}50%{outline:4px solid rgba(245,200,66,.35);}}
-.p10-empty{--cw:54px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.2);}
-.p10-laid{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);display:grid;gap:8px;}
-.p10-laid-row{display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:8px;}
-.p10-laid-grps{display:flex;flex-wrap:wrap;gap:6px;}
-.p10-hud .g-seat .cnt{position:absolute;top:7px;right:8px;display:flex;align-items:center;gap:3px;font-size:.75rem;font-weight:700;color:var(--text-3);}
-.p10-hud .g-seat .cnt i{width:8px;height:11px;border-radius:2px;background:linear-gradient(150deg,#3b5bdb,#1e3a8a);border:1px solid rgba(255,255,255,.3);}
-.p10-laid-owner{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.75);min-width:56px;}
-.p10-grp{display:inline-flex;gap:2px;padding:4px;border-radius:9px;background:rgba(0,0,0,.2);flex-wrap:wrap;}
-.p10-grp.target{box-shadow:0 0 0 2px rgba(74,222,128,.7);}
-/* Selection */
-.p10-sel{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;min-height:44px;}
+.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+/* ── Phase 10 cards (built with Kit.cardFace) ───────────────────────────── */
+.pcard.p10 .ix{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.35);font-family:var(--display);font-weight:400;}
+.pcard.p10 .ov{display:grid;place-items:center;width:64%;height:70%;border-radius:50%;background:#fff;transform:rotate(-24deg);
+  box-shadow:inset 0 0 0 calc(var(--cw) * .03) rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.25);}
+.pcard.p10 .ov b{transform:rotate(24deg);color:var(--ink);font-family:var(--display);font-weight:400;font-size:calc(var(--cw) * .44);line-height:1;}
+.pcard.p10.wild .ov{background:conic-gradient(#e0253a 0 25%,#1e6fdc 0 50%,#169a4c 0 75%,#f2b200 0);}
+.pcard.p10.wild .ov b{color:#fff;font-size:calc(var(--cw) * .2);letter-spacing:.04em;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+.pcard.p10.skip .ov{background:none;box-shadow:none;transform:none;width:58%;height:auto;}
+.pcard.p10.skip .ov svg{width:100%;height:auto;}
+.pcard.p10 .lbl{font-size:calc(var(--cw) * .12);opacity:.92;}
+.pcard.p10.c-y .ix,.pcard.p10.c-y .lbl{text-shadow:0 1px 1px rgba(90,60,0,.55);}
+/* Mini cards inside laid-down groups: just the corner number */
+.pcard.p10.mini .big,.pcard.p10.mini .lbl,.pcard.p10.mini .ix.bot{display:none;}
+.pcard.p10.mini .ix{font-size:13px;left:3px;top:3px;}
+.pcard.p10.mini:last-child .big{display:grid;}
+.pcard.p10.mini:last-child .ix{display:none;}
+.pcard.p10.mini .ov b{font-size:15px;}
+.pcard.p10.mini.wild .ov b{font-size:6px;}
+/* ── Table ─────────────────────────────────────────────────────────────── */
+.ctable .felt-in.p10f{height:auto;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 8px 10px;}
+.opps{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;}
+.p10f .cseat{position:relative;min-width:0;}
+.p10f .cseat .tag .nm{max-width:82px;overflow:hidden;text-overflow:ellipsis;}
+.p10f .cseat .info{flex-wrap:wrap;justify-content:center;}
+.p10f .cseat .chip-s.ph{background:#fff7d6;}
+.p10f .cseat .chip-s.laid{background:var(--green);color:#063;}
+.p10f .cseat .chip-s.skp{background:var(--red);color:#fff;}
+.p10f .cseat .chip-s .ico{width:11px;height:11px;vertical-align:-1px;}
+.p10f .cseat .say{top:100%;}
+.p10f .cseat.me .say{top:auto;bottom:100%;margin:0 0 4px;}
+.mid{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:22px;padding:2px 0 0;}
+.pile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;--cw:58px;background:none;border:0;padding:0;color:#fff;}
+.pile .cap{font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+.pile .stackwrap{position:relative;}
+.pile .stackwrap .pcard.under{position:absolute;left:0;top:0;transform:translate(-3px,-3px) rotate(-5deg);filter:brightness(.85);}
+.pile .stackwrap .pcard.under2{position:absolute;left:0;top:0;transform:translate(3px,-2px) rotate(4deg);filter:brightness(.8);}
+.pile .empty{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);}
+.pile.live .stackwrap > .pcard:last-child{box-shadow:0 0 0 3px var(--yellow),0 0 22px rgba(255,200,61,.65);animation:breathe 1.4s ease-in-out infinite;cursor:pointer;}
+@keyframes breathe{50%{transform:translateY(-4px);}}
+.tablemsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-weight:800;font-size:.86rem;white-space:nowrap;pointer-events:none;animation:pop .35s var(--spring);}
+.melds{display:flex;flex-direction:column;gap:6px;}
+.melds .none{text-align:center;color:rgba(255,255,255,.45);font-weight:800;font-size:.8rem;padding:6px 0;}
+.mrow{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.18);border-radius:14px;padding:5px 8px;}
+.mrow .who{width:56px;flex:none;display:flex;flex-direction:column;font-size:.7rem;font-weight:900;color:#fff;line-height:1.15;overflow:hidden;}
+.mrow .who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mrow .who small{color:rgba(255,255,255,.6);font-weight:800;font-size:.64rem;}
+.grps{display:flex;flex-wrap:wrap;gap:6px 10px;min-width:0;}
+.grp{display:flex;--cw:30px;padding:3px;border-radius:8px;border:0;background:none;position:relative;}
+.grp .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.35);}
+.grp .pcard+.pcard{margin-left:-15px;}
+.grp.tgt{cursor:pointer;box-shadow:0 0 0 2px var(--yellow),0 0 16px rgba(255,200,61,.7);background:rgba(255,200,61,.15);}
+.grp.tgt::after{content:'+';position:absolute;right:-8px;top:-8px;width:18px;height:18px;border-radius:50%;background:var(--yellow);color:#2b1a00;font-weight:900;font-size:14px;line-height:18px;text-align:center;}
+.grp .pcard.newc{animation:glow 1.4s ease-in-out 2;}
+@keyframes glow{50%{box-shadow:0 0 0 3px var(--green),0 0 14px rgba(61,220,132,.8);}}
+.mine-row{display:flex;justify-content:center;}
+/* ── Phase strip (like the reference card in the box) ─────────────────── */
+.goal{display:flex;align-items:center;gap:10px;border-radius:10px;padding:8px 10px;margin:0 0 4px;}
+.goal .gl{flex:1;min-width:0;line-height:1.1;}
+.goal .gl b{display:block;font-family:var(--display);font-weight:400;font-size:1.05rem;color:#c8102e;letter-spacing:.03em;}
+.goal .gl span{font-family:var(--hand);font-size:1.15rem;color:var(--ink);}
+.goal .gl span .ok{color:#137a3e;}
+.dots{display:grid;grid-template-columns:repeat(5,18px);gap:3px;}
+.dots i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:.62rem;font-weight:900;color:#8a8796;box-shadow:inset 0 0 0 1.5px rgba(60,80,160,.3);}
+.dots i.done{background:#137a3e;color:#fff;box-shadow:none;}
+.dots i.cur{background:#c8102e;color:#fff;box-shadow:0 0 0 2px rgba(200,16,46,.25);}
+.sortb{flex:none;border:0;background:rgba(31,42,107,.08);color:var(--ink);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;}
+.sortb .ico{width:20px;height:20px;}
+.sortb small{display:block;font-size:.55rem;font-weight:900;margin-top:-2px;}
+/* ── Phase builder ────────────────────────────────────────────────────── */
+.builder{border-radius:18px;padding:8px;margin:6px 0 0;}
+.bhead{display:flex;align-items:center;gap:8px;padding:0 2px 6px;color:#fff;font-weight:900;font-size:.85rem;}
+.bhead .grow{flex:1;}
+.bhead .btn{min-height:36px;padding:0 12px;font-size:.8rem;}
+.mats{display:flex;gap:8px;}
+.mat{flex:1;min-width:0;border:0;border-radius:14px;padding:6px 6px 5px;background:rgba(0,0,0,.2);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);color:#fff;text-align:left;display:flex;flex-direction:column;gap:4px;}
+.mat.on{box-shadow:inset 0 0 0 2px var(--yellow),0 0 14px rgba(255,200,61,.35);}
+.mat.good{box-shadow:inset 0 0 0 2px var(--green);}
+.mat.on.good{box-shadow:inset 0 0 0 2px var(--green),0 0 0 2px var(--yellow);}
+.mat .mt{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;}
+.mat .mt .ico{width:14px;height:14px;color:var(--green);}
+.mat .mc{display:flex;min-height:46px;align-items:center;--cw:33px;padding-left:2px;}
+.mat .mc .pcard+.pcard{margin-left:-14px;}
+.mat .mc .pcard{cursor:pointer;}
+.mat .mc .ph{font-size:.72rem;font-weight:800;color:rgba(255,255,255,.55);}
+.mat .ms{font-size:.72rem;font-weight:800;color:rgba(255,255,255,.75);min-height:1em;}
+.mat.good .ms{color:#9ff5c4;}
+.mat.bad .ms{color:#ffb3ba;}
+/* ── Hand & bar ───────────────────────────────────────────────────────── */
+.chand{padding-top:20px;}
+.cbar .btn{min-height:46px;}
+.cbar .btn.pulse{animation:pulseb 1.3s ease-in-out infinite;}
+@keyframes pulseb{50%{box-shadow:0 0 0 4px rgba(255,200,61,.45);}}
+.ghost{position:fixed;z-index:60;pointer-events:none;transition:transform .42s cubic-bezier(.2,.8,.25,1),opacity .42s;}
+/* ── Hand summary sheet ───────────────────────────────────────────────── */
+.sum{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
+.sum th,.sum td{padding:8px 4px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);}
+.sum th{font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;}
+.sum th:first-child,.sum td:first-child{text-align:left;}
+.sum td.big{font-weight:900;font-size:1.1rem;}
+.sum td .ico{width:18px;height:18px;vertical-align:-3px;}
+.sum td.yes{color:var(--green);}
+.sum td.no{color:var(--text-3);}
+.sum tr.lead td:first-child{color:var(--yellow);}
+.skiplist{display:flex;flex-direction:column;gap:8px;}
+.skiplist .btn{justify-content:flex-start;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Phase 10</span>
-  <a class="icon-btn scorecard-link" href="phase10.html" aria-label="Scorecard" title="Scorecard for in-person play">📋</a>
-</nav>
-<div class="page g-page">
-<div id="p10-root"></div>
-</div>
-<div class="g-bar" id="g-bar"></div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-// 3 players: You + 2 AI. First to complete Phase 10 wins. Ties broken by lowest score.
-const PNAMES=[(typeof FrequentPlayers!=='undefined'&&FrequentPlayers.myName())||'You','Kai','Zoe'];
-const COLORS=['red','blue','green','yellow'];
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'phase10_state', KEY = 'p10';
 
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
+  // ── The deck and the ten phases ───────────────────────────────────────────
+  var COL = { r: { name: 'Red', hex: '#e0253a' }, b: { name: 'Blue', hex: '#1e6fdc' }, g: { name: 'Green', hex: '#169a4c' }, y: { name: 'Yellow', hex: '#f0b000' } };
+  var COLS = ['r', 'b', 'g', 'y'];
+  var PH = [
+    { d: '2 sets of 3', req: [['set', 3], ['set', 3]] },
+    { d: '1 set of 3 + 1 run of 4', req: [['set', 3], ['run', 4]] },
+    { d: '1 set of 4 + 1 run of 4', req: [['set', 4], ['run', 4]] },
+    { d: '1 run of 7', req: [['run', 7]] },
+    { d: '1 run of 8', req: [['run', 8]] },
+    { d: '1 run of 9', req: [['run', 9]] },
+    { d: '2 sets of 4', req: [['set', 4], ['set', 4]] },
+    { d: '7 cards of one color', req: [['color', 7]] },
+    { d: '1 set of 5 + 1 set of 2', req: [['set', 5], ['set', 2]] },
+    { d: '1 set of 5 + 1 set of 3', req: [['set', 5], ['set', 3]] }
+  ];
+  function reqName(r) { return r[0] === 'set' ? 'Set of ' + r[1] : r[0] === 'run' ? 'Run of ' + r[1] : r[1] + ' of one color'; }
+  function makeDeck() {
+    var d = [], id = 0;
+    for (var k = 0; k < 2; k++) COLS.forEach(function (c) { for (var n = 1; n <= 12; n++) d.push({ id: 'k' + (id++), n: n, c: c }); });
+    for (var w = 0; w < 8; w++) d.push({ id: 'k' + (id++), n: 0, c: 'w' });
+    for (var s = 0; s < 4; s++) d.push({ id: 'k' + (id++), n: 0, c: 's' });
+    return Cards.shuffle(d);
+  }
+  function isW(c) { return c.c === 'w'; }
+  function isS(c) { return c.c === 's'; }
+  function isN(c) { return !isW(c) && !isS(c); }
+  function pts(c) { return isW(c) ? 25 : isS(c) ? 15 : c.n <= 9 ? 5 : 10; }
+  function cname(c) { return isW(c) ? 'Wild' : isS(c) ? 'Skip' : COL[c.c].name + ' ' + c.n; }
+  function handPts(h) { return h.reduce(function (a, c) { return a + pts(c); }, 0); }
 
-// 10 phases: [{req:[{type,count}]}]
-// types: set(n)=n of same number, run(n)=n consecutive, color(n)=n of one color
-const PHASES=[
-  {desc:'2 sets of 3',req:[{t:'set',n:3},{t:'set',n:3}]},
-  {desc:'1 set of 3 + 1 run of 4',req:[{t:'set',n:3},{t:'run',n:4}]},
-  {desc:'1 set of 4 + 1 run of 4',req:[{t:'set',n:4},{t:'run',n:4}]},
-  {desc:'Run of 7',req:[{t:'run',n:7}]},
-  {desc:'Run of 8',req:[{t:'run',n:8}]},
-  {desc:'Run of 9',req:[{t:'run',n:9}]},
-  {desc:'2 sets of 4',req:[{t:'set',n:4},{t:'set',n:4}]},
-  {desc:'7 of one color',req:[{t:'color',n:7}]},
-  {desc:'1 set of 5 + 1 set of 2',req:[{t:'set',n:5},{t:'set',n:2}]},
-  {desc:'1 set of 5 + 1 set of 3',req:[{t:'set',n:5},{t:'set',n:3}]},
-];
+  var SKIP_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"><circle cx="20" cy="20" r="15"/><path d="M9.5 30.5 30.5 9.5"/></svg>';
+  function cardEl(c, o) {
+    o = o || {};
+    var n, cls = 'p10' + (o.mini ? ' mini' : '') + (o.cls ? ' ' + o.cls : '');
+    if (isW(c)) n = Kit.cardFace({ rank: 'W', html: '<span class="ov"><b>WILD</b></span>', solid: true, color: '#2a2440', cls: cls + ' wild', aria: 'Wild' });
+    else if (isS(c)) n = Kit.cardFace({ rank: 'S', html: '<span class="ov">' + SKIP_SVG + '</span>', label: 'Skip', solid: true, color: '#26335c', cls: cls + ' skip', aria: 'Skip' });
+    else n = Kit.cardFace({ rank: c.n, html: '<span class="ov"><b>' + c.n + '</b></span>', label: o.mini ? '' : COL[c.c].name, solid: true, color: COL[c.c].hex, cls: cls + ' c-' + c.c, aria: cname(c) });
+    n.dataset.id = c.id;
+    return n;
+  }
 
-function makeP10Deck(){
-  const d=[];
-  for(let rep=0;rep<2;rep++) COLORS.forEach(c=>{for(let n=1;n<=12;n++) d.push({num:n,color:c});});
-  for(let i=0;i<8;i++) d.push({num:0,color:'wild',isWild:true});
-  for(let i=0;i<4;i++) d.push({num:0,color:'skip',isSkip:true});
-  for(let i=d.length-1;i>0;i--){const j=0|Math.random()*(i+1);[d[i],d[j]]=[d[j],d[i]];}
-  return d;
-}
-function cKey(c,idx){return c.num+'_'+c.color+'_'+idx;}
-function cardScore(c){if(c.isWild)return 25;if(c.isSkip)return 15;return c.num<=9?5:10;}
-function cardName(c){return c.isWild?'Wild':c.isSkip?'Skip':c.color[0].toUpperCase()+c.color.slice(1)+' '+c.num;}
+  // ── Groups: checking a set / run / color group ────────────────────────────
+  // Returns {ok, msg, g} where g = {t, v|col|lo,hi, cards(ordered)}
+  function analyze(r, cards) {
+    var t = r[0], need = r[1], nat = cards.filter(isN), wild = cards.filter(isW);
+    if (cards.some(isS)) return { ok: false, msg: "Skips can't be used in a phase" };
+    if (!cards.length) return { ok: false, msg: 'Tap cards to add them', empty: true };
+    if (!nat.length) return { ok: false, msg: 'Needs at least one number card' };
+    var more = need - cards.length, short = more > 0 ? 'Add ' + more + ' more' : '';
+    if (t === 'set') {
+      var v = nat[0].n;
+      if (nat.some(function (c) { return c.n !== v; })) return { ok: false, msg: 'Must all be the same number' };
+      if (short) return { ok: false, msg: short, partial: true };
+      return { ok: true, msg: 'Set of ' + v + 's', g: { t: 'set', v: v, cards: nat.concat(wild) } };
+    }
+    if (t === 'color') {
+      var col = nat[0].c;
+      if (nat.some(function (c) { return c.c !== col; })) return { ok: false, msg: 'Must all be one color' };
+      if (short) return { ok: false, msg: short, partial: true };
+      return { ok: true, msg: 'All ' + COL[col].name.toLowerCase(), g: { t: 'color', col: col, cards: nat.slice().sort(function (a, b) { return a.n - b.n; }).concat(wild) } };
+    }
+    var nums = nat.map(function (c) { return c.n; }).sort(function (a, b) { return a - b; });
+    for (var i = 1; i < nums.length; i++) if (nums[i] === nums[i - 1]) return { ok: false, msg: 'A run has no repeats (two ' + nums[i] + 's)' };
+    var lo = nums[0], hi = nums[nums.length - 1], span = hi - lo + 1;
+    if (span > cards.length) return { ok: false, msg: 'Gap in the run: ' + (span - cards.length) + ' missing', partial: true };
+    if (cards.length > 12) return { ok: false, msg: 'A run only goes 1 to 12' };
+    if (short) return { ok: false, msg: short, partial: true };
+    var extra = cards.length - span, up = Math.min(extra, 12 - hi);
+    hi += up; lo -= extra - up;
+    var ws = wild.slice(), ordered = [];
+    for (var x = lo; x <= hi; x++) { var f = nat.filter(function (c) { return c.n === x; })[0]; ordered.push(f || ws.shift()); }
+    return { ok: true, msg: lo + ' to ' + hi, g: { t: 'run', lo: lo, hi: hi, cards: ordered } };
+  }
+  function canHit(c, g) {
+    if (isS(c)) return false;
+    if (g.t === 'set') return isW(c) || c.n === g.v;
+    if (g.t === 'color') return isW(c) || c.c === g.col;
+    if (isW(c)) return g.lo > 1 || g.hi < 12;
+    return (c.n === g.lo - 1) || (c.n === g.hi + 1);
+  }
+  function addHit(c, g) {
+    if (g.t !== 'run') { g.cards.push(c); return; }
+    if (isW(c) ? g.hi < 12 : c.n === g.hi + 1) { g.hi++; g.cards.push(c); }
+    else { g.lo--; g.cards.unshift(c); }
+  }
 
-// ── Phase checking ───────────────────────────────────────────────────────────
-function findPhaseGroups(hand,phaseIdx){
-  const req=PHASES[phaseIdx].req;
-  const wilds=hand.filter(c=>c.isWild);
-  const nonWilds=hand.filter(c=>!c.isWild&&!c.isSkip);
-
-  function tryReq(reqs,available,wildcards,groups){
-    if(!reqs.length) return groups;
-    const[r,...rest]=reqs;
-    if(r.t==='set'){
-      const byNum={};
-      available.forEach(c=>{(byNum[c.num]=byNum[c.num]||[]).push(c);});
-      for(const [num,cards] of Object.entries(byNum)){
-        for(let w=0;w<=Math.min(wildcards.length,r.n);w++){
-          if(cards.length+w>=r.n){
-            const used=[...cards.slice(0,r.n-w),...wildcards.slice(0,w)];
-            const leftCards=available.filter(c=>!used.slice(0,r.n-w).includes(c));
-            const leftWilds=wildcards.slice(w);
-            const result=tryReq(rest,leftCards,leftWilds,[...groups,used]);
-            if(result) return result;
+  // Find a way to make phase `ph` from `hand` (used by the computers and "Fill for me")
+  function findPhase(hand, ph) {
+    var req = PH[ph].req, nat = hand.filter(isN), wild = hand.filter(isW);
+    function opts(r, pool, wl) {
+      var out = [], t = r[0], n = r[1];
+      if (t === 'set' || t === 'color') {
+        var keys = t === 'set' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] : COLS;
+        keys.forEach(function (k) {
+          var have = pool.filter(function (c) { return t === 'set' ? c.n === k : c.c === k; });
+          for (var use = Math.min(have.length, n); use >= 1; use--) {
+            var w = n - use; if (w > wl) break;
+            out.push({ nat: have.slice(0, use), w: w });
           }
+        });
+      } else {
+        for (var s = 1; s + n - 1 <= 12; s++) {
+          var got = [], w2 = 0;
+          for (var x = s; x < s + n; x++) { var f = pool.filter(function (c) { return c.n === x; })[0]; if (f) got.push(f); else w2++; }
+          if (got.length && w2 <= wl) out.push({ nat: got, w: w2 });
         }
       }
-    } else if(r.t==='run'){
-      const sorted=available.filter(c=>c.num>=1).sort((a,b)=>a.num-b.num);
-      // Try all starting points
-      for(let start=1;start<=12-r.n+1;start++){
-        let run=[]; let w=[...wildcards];
-        let ok=true;
-        for(let n=start;n<start+r.n;n++){
-          const card=sorted.find(c=>c.num===n&&!run.includes(c));
-          if(card){run.push(card);}
-          else if(w.length){run.push(w.shift());}
-          else{ok=false;break;}
-        }
-        if(ok&&run.length===r.n){
-          const leftCards=available.filter(c=>!run.filter(rc=>!rc.isWild).includes(c));
-          const leftWilds=wildcards.filter(wc=>!run.filter(rc=>rc.isWild).includes(wc));
-          const result=tryReq(rest,leftCards,leftWilds,[...groups,run]);
-          if(result) return result;
-        }
+      return out.sort(function (a, b) { return a.w - b.w; });
+    }
+    function rec(order, i, pool, wl, acc) {
+      if (i === order.length) return acc;
+      var r = req[order[i]], o = opts(r, pool, wl);
+      for (var j = 0; j < o.length; j++) {
+        var rest = pool.filter(function (c) { return o[j].nat.indexOf(c) < 0; });
+        var a2 = acc.slice(); a2[order[i]] = o[j];
+        var res = rec(order, i + 1, rest, wl - o[j].w, a2);
+        if (res) return res;
       }
-    } else if(r.t==='color'){
-      // for…of (a forEach callback's `return` never returned a match, so phase 8 could not be laid)
-      for(const col of COLORS){
-        const cards=available.filter(c=>c.color===col);
-        for(let w=0;w<=Math.min(wildcards.length,r.n);w++){
-          if(cards.length+w>=r.n){
-            const used=[...cards.slice(0,r.n-w),...wildcards.slice(0,w)];
-            const leftCards=available.filter(c=>!used.slice(0,r.n-w).includes(c));
-            const leftWilds=wildcards.slice(w);
-            const result=tryReq(rest,leftCards,leftWilds,[...groups,used]);
-            if(result) return result;
-          }
-        }
+      return null;
+    }
+    var orders = req.length === 2 ? [[0, 1], [1, 0]] : [[0]];
+    for (var k = 0; k < orders.length; k++) {
+      var res = rec(orders[k], 0, nat, wild.length, []);
+      if (res) {
+        var ws = wild.slice();
+        return res.map(function (o) { return o.nat.concat(ws.splice(0, o.w)); });
       }
     }
     return null;
   }
-  return tryReq(req,nonWilds,wilds,[]);
-}
-
-// Laid groups remember what they are, so lay-offs follow the group's own rule
-// (previously a 4 could be laid on a set of 5s because it "extended a run").
-function makeLaidGroup(player,phIdx,gi,cards){
-  const t=PHASES[phIdx].req[gi].t;
-  const g={player,groupIdx:laidGroups.length,cards,t};
-  const nat=cards.find(c=>!c.isWild);
-  if(t==='set') g.num=nat?nat.num:0;
-  else if(t==='color') g.color=nat?nat.color:null;
-  else { const k=cards.findIndex(c=>!c.isWild); g.lo=k>=0?cards[k].num-k:1; g.hi=g.lo+cards.length-1; }
-  return g;
-}
-function canLayOff(card,grp){
-  if(card.isSkip) return false;
-  if(grp.t==='set') return card.isWild||card.num===grp.num;
-  if(grp.t==='color') return card.isWild||card.color===grp.color;
-  // run
-  if(card.isWild) return grp.lo>1||grp.hi<12;
-  return (card.num===grp.lo-1&&grp.lo>1)||(card.num===grp.hi+1&&grp.hi<12);
-}
-function layOff(card,grp){
-  if(grp.t==='run'){
-    if((!card.isWild&&card.num===grp.lo-1)||(card.isWild&&grp.hi>=12)){grp.lo--;grp.cards.unshift(card);}
-    else {grp.hi++;grp.cards.push(card);}
-  } else grp.cards.push(card);
-}
-
-// ── State ────────────────────────────────────────────────────────────────────
-let deck,discard,hands,phases,scores,laid,laidGroups,phase,current,skipped,log,selCards;
-let roundPts=[0,0,0], lastOut=-1, wasLaid=[false,false,false];
-// phase: 'draw'|'play'|'choose-skip'|'round-end'|'game-over'
-// laidGroups: [{player,groupIdx,cards,t,...}] — all laid groups on table
-
-let aiTimer=null;
-function later(fn,ms){clearTimeout(aiTimer);aiTimer=setTimeout(fn,ms);}
-
-function addLog(msg,cls=''){log.push({msg,cls});if(log.length>25)log.shift();}
-function newGame(){clearTimeout(aiTimer);phases=[0,0,0];scores=[0,0,0];log=[];newRound();}
-function newRound(){
-  deck=makeP10Deck();
-  hands=Array.from({length:3},()=>deck.splice(0,10));
-  discard=[deck.pop()];
-  laid=[false,false,false]; // has player laid their phase this round?
-  laidGroups=[];
-  skipped=[false,false,false];
-  roundPts=[0,0,0];
-  current=0; phase='draw'; selCards=[];
-  addLog('New round. Draw from stock or discard.');
-  render();
-  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
-  if(current!==0) later(aiTurn,600);
-}
-
-// Refill the stock from the discard pile (keeping the top card) when it runs out.
-function refillStock(){
-  if(deck.length||discard.length<=1) return;
-  const top=discard.pop();
-  deck=[...discard];discard=[top];
-  for(let i=deck.length-1;i>0;i--){const j=0|Math.random()*(i+1);[deck[i],deck[j]]=[deck[j],deck[i]];}
-  addLog('Stock reshuffled from the discard pile.');
-}
-
-function drawFrom(src){
-  if(phase!=='draw'||current!==0) return;
-  if(src==='stock') refillStock();
-  const card=src==='discard'&&discard.length?discard.pop():deck.length?deck.pop():null;
-  if(!card) return;
-  hands[0].push(card);
-  phase='play'; selCards=[];
-  haptic('light');
-  addLog(`You draw ${src==='discard'?cardName(card)+' from the discard':'from the stock'}.`);
-  render();
-}
-
-function toggleSel(card){
-  if(phase!=='play'||current!==0) return;
-  const idx=selCards.findIndex(c=>c===card);
-  if(idx>=0) selCards.splice(idx,1);
-  else if(laid[0]) selCards=[card]; // after laying, work with one card at a time
-  else selCards.push(card);
-  haptic('select');
-  render();
-}
-
-function tryLayPhase(){
-  if(phase!=='play'||current!==0||laid[0]) return;
-  const phIdx=phases[0];
-  const groups=findPhaseGroups(selCards,phIdx);
-  if(groups&&groups.flat().length===selCards.length){
-    laid[0]=true;
-    groups.forEach((grp,gi)=>laidGroups.push(makeLaidGroup(0,phIdx,gi,grp)));
-    hands[0]=hands[0].filter(c=>!selCards.includes(c));
-    selCards=[];
-    addLog(`You lay Phase ${phIdx+1}: ${PHASES[phIdx].desc}!`,'pts');
-    haptic('success');
-    if(window.GN) GN.toast(`Phase ${phIdx+1} complete! 🎉`);
-    if(hands[0].length===0){endRound(0);return;}
-    render();
-  } else {
-    addLog('That does not complete Phase '+(phIdx+1)+'.');
-    haptic('error');
-  }
-}
-
-function tryLayOff(card){
-  if(!laid[0]) return false;
-  for(let i=0;i<laidGroups.length;i++){
-    const grp=laidGroups[i];
-    if(canLayOff(card,grp)){
-      layOff(card,grp);
-      hands[0]=hands[0].filter(c=>c!==card);
-      return true;
+  // How many cards am I missing for this phase? (computer strategy; counts only its own hand)
+  function need(hand, ph) {
+    var req = PH[ph].req, w = 0, cnt = {}, ccnt = { r: 0, b: 0, g: 0, y: 0 };
+    hand.forEach(function (c) { if (isW(c)) w++; else if (isN(c)) { cnt[c.n] = (cnt[c.n] || 0) + 1; ccnt[c.c]++; } });
+    function specs(r) {
+      var a = [];
+      if (r[0] === 'set') for (var v = 1; v <= 12; v++) a.push({ t: 'set', v: v, n: r[1] });
+      else if (r[0] === 'run') for (var s = 1; s + r[1] - 1 <= 12; s++) a.push({ t: 'run', s: s, n: r[1] });
+      else COLS.forEach(function (c) { a.push({ t: 'color', c: c, n: r[1] }); });
+      return a;
     }
-  }
-  return false;
-}
-function playerLayOff(){
-  const c=selCards[0];
-  if(!c||phase!=='play'||current!==0) return;
-  if(tryLayOff(c)){
-    selCards=[];haptic('light');
-    addLog(`You lay off ${cardName(c)}.`);
-    if(hands[0].length===0){endRound(0);return;}
-    render();
-  } else { haptic('error'); if(window.GN) GN.toast('That card doesn’t fit any group'); }
-}
-
-let pendingSkip=null;
-function doDiscard(card){
-  if(phase!=='play'||current!==0) return;
-  if(card.isSkip){
-    // Choose who to skip
-    pendingSkip=card;
-    phase='choose-skip'; haptic('medium'); render(); return;
-  }
-  hands[0]=hands[0].filter(c=>c!==card);
-  discard.push(card);
-  selCards=[];
-  haptic('light');
-  addLog(`You discard ${cardName(card)}.`);
-  if(hands[0].length===0){endRound(0);}
-  else{phase='draw'; advanceTurn();}
-}
-
-function chooseSkipTarget(target){
-  if(phase!=='choose-skip') return;
-  // The Skip card itself goes to the discard pile (it used to stay in your hand).
-  if(pendingSkip){hands[0]=hands[0].filter(c=>c!==pendingSkip);discard.push(pendingSkip);pendingSkip=null;}
-  selCards=[];
-  skipped[target]=true;
-  haptic('select');
-  addLog(`You skip ${PNAMES[target]}.`);
-  if(hands[0].length===0){endRound(0);return;}
-  phase='draw'; advanceTurn();
-}
-function cancelSkip(){
-  if(phase!=='choose-skip') return;
-  pendingSkip=null; phase='play'; render();
-}
-
-function advanceTurn(){
-  const next=(current+1)%3;
-  current=next; phase='draw';
-  if(current===0&&skipped[0]){
-    // You were skipped — show it briefly, then move on.
-    skipped[0]=false;
-    addLog('You are skipped!');
-    if(window.GN) GN.toast('You were skipped ⊘');
-    haptic('error');
-    render();
-    later(()=>advanceTurn(),1100);
-    return;
-  }
-  render();
-  if(current!==0) later(aiTurn,750);
-  else haptic('select');
-}
-
-function aiTurn(){
-  const p=current; if(p===0||phase!=='draw') return;
-  if(skipped[p]){skipped[p]=false;addLog(`${PNAMES[p]} is skipped.`);advanceTurn();return;}
-  // Draw: take discard if useful for phase
-  const phIdx=phases[p];
-  const top=discard[discard.length-1];
-  let drawSrc='stock';
-  if(top&&!top.isSkip){
-    const testHand=[...hands[p],top];
-    const grps=findPhaseGroups(testHand,phIdx);
-    if(grps) drawSrc='discard';
-  }
-  if(drawSrc==='stock') refillStock();
-  const card=drawSrc==='discard'&&discard.length?discard.pop():deck.pop();
-  if(!card){endRound(-1);return;}
-  hands[p].push(card);
-  addLog(`${PNAMES[p]} draws${drawSrc==='discard'?' '+cardName(card)+' from the discard':''}.`);
-
-  // Try to lay phase
-  if(!laid[p]){
-    const grps=findPhaseGroups(hands[p],phIdx);
-    if(grps){
-      laid[p]=true;
-      grps.forEach((grp,gi)=>laidGroups.push(makeLaidGroup(p,phIdx,gi,grp)));
-      grps.flat().forEach(c=>{hands[p]=hands[p].filter(hc=>hc!==c);});
-      addLog(`${PNAMES[p]} lays Phase ${phIdx+1}!`,'pts');
+    function take(sp, cn) {
+      if (sp.t === 'set') { var h = Math.min(cn[sp.v] || 0, sp.n); cn[sp.v] = (cn[sp.v] || 0) - h; return h; }
+      if (sp.t === 'color') return Math.min(ccnt[sp.c], sp.n);
+      var g = 0; for (var x = sp.s; x < sp.s + sp.n; x++) if (cn[x] > 0) { cn[x]--; g++; }
+      return g;
     }
-  }
-
-  // Lay off
-  if(laid[p]&&laidGroups.length){
-    let changed=true;
-    while(changed){
-      changed=false;
-      for(let i=hands[p].length-1;i>=0;i--){
-        const c=hands[p][i];
-        for(const grp of laidGroups){
-          if(canLayOff(c,grp)){layOff(c,grp);hands[p].splice(i,1);changed=true;break;}
-        }
-        if(changed)break;
-      }
+    var best = 99;
+    if (req.length === 1) specs(req[0]).forEach(function (sp) { best = Math.min(best, sp.n - take(sp, Object.assign({}, cnt))); });
+    else {
+      var A = specs(req[0]), B = specs(req[1]);
+      A.forEach(function (a) {
+        B.forEach(function (b) {
+          var c1 = Object.assign({}, cnt), m1 = (a.n - take(a, c1)) + (b.n - take(b, c1));
+          var c2 = Object.assign({}, cnt), m2 = (b.n - take(b, c2)) + (a.n - take(a, c2));
+          best = Math.min(best, m1, m2);
+        });
+      });
     }
+    return Math.max(0, best - w);
   }
 
-  // Discard: skip card if available and not yet laid, else highest value non-useful card
-  let toDiscard=null;
-  const skips=hands[p].filter(c=>c.isSkip);
-  if(skips.length&&!laid[p]){toDiscard=skips[0];}
-  if(!toDiscard){
-    const deadwood=hands[p].filter(c=>!c.isWild&&!c.isSkip);
-    toDiscard=deadwood.length?[...deadwood].sort((a,b)=>cardScore(b)-cardScore(a))[0]:hands[p][0];
-  }
-  if(toDiscard&&toDiscard.isSkip){
-    const skipTarget=[0,1,2].filter(x=>x!==p).sort((a,b)=>phases[a]-phases[b])[0];
-    skipped[skipTarget]=true;
-    addLog(`${PNAMES[p]} skips ${PNAMES[skipTarget]}!`);
-  }
-  if(toDiscard){
-    hands[p]=hands[p].filter(c=>c!==toDiscard);
-    discard.push(toDiscard);
-  }
-
-  if(hands[p].length===0){endRound(p);}
-  else{advanceTurn();}
-}
-
-function endRound(outPlayer){
-  clearTimeout(aiTimer);
-  let msgs=[];
-  wasLaid=laid.slice(); lastOut=outPlayer;
-  for(let p=0;p<3;p++){
-    const pts=hands[p].reduce((s,c)=>s+cardScore(c),0);
-    roundPts[p]=pts;
-    scores[p]+=pts;
-    // Only players who actually laid their phase move on.
-    if(laid[p]) phases[p]=Math.min(10,phases[p]+1);
-    msgs.push(`${PNAMES[p]}: Phase ${Math.min(phases[p]+1,10)} · +${pts}`);
-  }
-  msgs.forEach(m=>addLog(m,'pts'));
-  phase='round-end';
-  if(phases.some(p=>p>=10)){phase='game-over';endGame();}
-  else{haptic(outPlayer===0?'success':'light');render();}
-}
-
-function gameWinner(){
-  const finishers=phases.map((p,i)=>({p,i,s:scores[i]})).filter(x=>x.p>=10);
-  finishers.sort((a,b)=>a.s-b.s);
-  return finishers[0].i;
-}
-function endGame(){
-  const winner=gameWinner();
-  const won=winner===0;
-  addLog(`${PNAMES[winner]} wins Phase 10! Score: ${scores[winner]}.`,'pts');
-  try{
-    const players=PNAMES.map((n,i)=>({name:n,score:scores[i]}));
-    GameHistory.savePlayerGame('p10','Phase 10 (AI)',players,winner,0,{lowestWins:true});
-  }catch(e){}
-  haptic(won?'success':'heavy');
-  render();
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-function cardEl(c,cls='',dataKey=''){
-  const col=c.isWild?'wild':c.isSkip?'skip':c.color;
-  return`<div class="p10c ${col} ${cls}" ${dataKey?`data-key="${dataKey}"`:''}>
-    <div class="p10c-r">${c.isWild?'W':c.isSkip?'⊘':c.num}</div>
-    <div class="p10c-s">${c.isWild?'WILD':c.isSkip?'SKIP':({red:'RED',blue:'BLUE',green:'GRN',yellow:'YEL'})[c.color]}</div>
-  </div>`;
-}
-let logOpen=false;
-function renderLog(){
-  const last=log.length?log[log.length-1].msg:'';
-  return `<details class="g-log" id="g-log" ${logOpen?'open':''}><summary>Game log<span class="last">${esc(last)}</span></summary>
-    <div class="g-log-body">${log.slice(-14).map(({msg,cls})=>`<div class="${cls||''}">${esc(msg)}</div>`).join('')}</div></details>`;
-}
-function wireLog(){
-  const d=document.getElementById('g-log');
-  if(!d) return;
-  d.addEventListener('toggle',()=>{logOpen=d.open;});
-  const b=d.querySelector('.g-log-body'); if(b) b.scrollTop=b.scrollHeight;
-}
-function setBar(html){document.getElementById('g-bar').innerHTML=html||'';}
-const phLabel=i=>phases[i]>=10?'Done':phases[i]+1;
-
-function render(){
-  const root=document.getElementById('p10-root');
-  let html='';
-
-  if(phase==='game-over'||phase==='round-end'){
-    const over=phase==='game-over';
-    const w=over?gameWinner():-1;
-    const order=[0,1,2].sort((a,b)=>phases[b]-phases[a]||scores[a]-scores[b]);
-    html+=`<div class="g-result ${over&&w===0?'':'plain'}">
-      <div class="g-result-icon">${over?(w===0?'🏆':'🎴'):(lastOut===0?'🎉':'🃏')}</div>
-      <div class="g-result-title">${over?(w===0?'You win!':esc(PNAMES[w])+' wins'):(lastOut===0?'You went out!':lastOut>0?esc(PNAMES[lastOut])+' went out':'Round over')}</div>
-      <div class="g-result-sub">${over?`Completed all 10 phases · ${scores[w]} pts`:(wasLaid[0]?`You completed phase ${phases[0]}! On to phase ${phLabel(0)}.`:`You're still on phase ${phLabel(0)}.`)}</div>
-      <div class="g-rows">${order.map(i=>`<div class="g-row ${i===0?'you':''}"><span>${esc(PNAMES[i])}${wasLaid[i]?' ✓':''}</span>
-        <span class="r">Phase ${phLabel(i)} <span class="${roundPts[i]?'neg':'pos'}">+${roundPts[i]}</span><b>${scores[i]}</b></span></div>`).join('')}</div>
-    </div>`;
-    html+=renderLog();
-    root.innerHTML=html;wireLog();
-    setBar(over?`<button class="btn btn-gold" id="ng-btn">New Game</button>`:`<button class="btn btn-gold" id="nr-btn">Next Round</button>`);
-    document.getElementById('ng-btn')?.addEventListener('click',()=>{haptic('light');newGame();});
-    document.getElementById('nr-btn')?.addEventListener('click',()=>{haptic('light');newRound();});
-    return;
-  }
-
-  // Player status grid
-  html+=`<div class="g-hud p10-hud">`;
-  PNAMES.forEach((n,i)=>{
-    html+=`<div class="g-seat ${i===0?'you':''} ${current===i?'turn':''}">
-      ${i?`<span class="cnt"><i></i>${hands[i].length}</span>`:''}
-      <div class="g-seat-name">${esc(n)}</div>
-      <div class="g-seat-score"><small>PH </small>${phLabel(i)}</div>
-      <div class="g-seat-sub">${skipped[i]?'⊘ skipped · ':laid[i]?'✓ laid · ':''}${scores[i]} pts</div>
-    </div>`;
+  // ── Bar & rules ───────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'phase10',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(false); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Phase 10: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Be the first to finish all <b>10 phases</b>. Each hand you try to lay down your current phase. If two players finish Phase 10 in the same hand, the one with the <b>fewest points</b> wins.</p>' +
+      '<h3>The cards</h3><ul><li>Numbers 1 to 12 in four colors (two of each).</li><li><b>Wild</b> cards can be any number or color.</li><li><b>Skip</b> cards make a player lose their next turn.</li></ul>' +
+      '<h3>The phases</h3><ol>' + PH.map(function (p) { return '<li>' + p.d + '</li>'; }).join('') + '</ol>' +
+      '<p>A <b>set</b> is cards of the same number (any colors). A <b>run</b> is numbers in a row (any colors), like 3-4-5-6.</p>' +
+      '<h3>Your turn</h3><ul><li><b>Draw</b> one card from the deck or the discard pile (you can\'t pick up a Skip).</li>' +
+      '<li>If you have your whole phase, <b>lay it down</b>. Tap <b>Build phase</b>, then tap cards into each group.</li>' +
+      '<li>Once your phase is down, you can <b>hit</b>: add cards to any phase on the table (yours or anyone\'s) if they fit.</li>' +
+      '<li>End your turn by <b>discarding</b> one card. Discard a Skip to pick who loses a turn.</li></ul>' +
+      '<h3>End of a hand</h3><ul><li>The hand ends when someone gets rid of all their cards.</li>' +
+      '<li>Everyone who laid down their phase moves on to the next one. Everyone else tries the same phase again.</li>' +
+      '<li>Cards left in your hand count against you: <b>1–9 are 5 points</b>, <b>10–12 are 10</b>, <b>Skip 15</b>, <b>Wild 25</b>.</li></ul>'
   });
-  html+=`</div>`;
 
-  // Phase strip + goal
-  html+=`<div class="p10-strip">${Array.from({length:10},(_,i)=>`<div class="p10-dot ${phases[0]>i?'done':phases[0]===i?'current':''}">${i+1}</div>`).join('')}</div>`;
-  html+=`<div class="p10-goal">Phase ${phases[0]+1}: ${PHASES[phases[0]].desc}${laid[0]?' <span>· laid ✓</span>':''}</div>`;
-
-  // Table: piles + laid groups
-  const isYourDraw=phase==='draw'&&current===0;
-  const isYourPlay=phase==='play'&&current===0;
-  const top=discard[discard.length-1];
-  const sel1=isYourPlay&&laid[0]&&selCards.length===1?selCards[0]:null;
-  html+=`<div class="felt g-table"><div class="p10-piles">
-    <div class="p10-pile"><div class="p10-pile-lbl">Stock · ${deck.length}</div>
-      <div class="p10c back ${isYourDraw?'live':'dim'}" id="stock-card"></div></div>
-    <div class="p10-pile"><div class="p10-pile-lbl">Discard</div>
-      ${top?cardEl(top,isYourDraw?'live':'dim').replace('class="p10c','id="discard-card" class="p10c'):'<div class="p10-empty"></div>'}</div>
-  </div>`;
-  if(laidGroups.length){
-    html+=`<div class="p10-laid">`;
-    [0,1,2].forEach(p=>{
-      const mine=laidGroups.filter(g=>g.player===p);
-      if(!mine.length)return;
-      html+=`<div class="p10-laid-row"><span class="p10-laid-owner">${p===0?'You':esc(PNAMES[p])}</span>
-        <span class="p10-laid-grps">${mine.map(g=>`<span class="p10-grp ${sel1&&canLayOff(sel1,g)?'target':''}">${g.cards.map(c=>cardEl(c,'xs')).join('')}</span>`).join('')}</span></div>`;
-    });
-    html+=`</div>`;
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [];
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.stage !== 'over') Kit.resume.set('Hand ' + S.hand + ' · you are on phase ' + S.players[0].ph);
   }
-  html+=`</div>`;
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; }
+  function N() { return S.players.length; }
+  function me() { return S.turn === 0 && S.stage === 'play'; }
 
-  // Choose skip
-  if(phase==='choose-skip'){
-    html+=`<div class="g-panel accent"><div class="g-panel-title">⊘ Skip a player</div>
-      <div class="g-panel-sub">They lose their next turn.</div>
-      <div class="g-choices">${[1,2].map(t=>`<button class="btn btn-outline p10-skip-btn" data-target="${t}">${esc(PNAMES[t])} · Ph ${phLabel(t)}</button>`).join('')}
-      <button class="btn btn-ghost" id="skip-cancel">Cancel</button></div></div>`;
-  }
-
-  // Status
-  let status='',scls='';
-  if(isYourDraw){status='Your turn — draw from the stock or the discard';scls='yours';}
-  else if(isYourPlay){
-    scls='yours';
-    if(!laid[0]) status=selCards.length?`${selCards.length} selected for Phase ${phases[0]+1}`:'Select cards for your phase, or pick one to discard';
-    else status=sel1?(laidGroups.some(g=>canLayOff(sel1,g))?`${cardName(sel1)} fits a group — lay it off or discard it`:`Discard ${cardName(sel1)}?`):'Phase laid! Tap a card to lay off or discard';
-  } else if(phase==='choose-skip'){status='Choose who to skip';scls='yours';}
-  else if(current!==0) status=`${esc(PNAMES[current])} is playing…`;
-  if(status) html+=`<div class="g-status ${scls}">${status}</div>`;
-
-  // Selected-cards tray (building the phase)
-  let groupsOk=false;
-  if(isYourPlay&&!laid[0]&&selCards.length){
-    const groups=findPhaseGroups(selCards,phases[0]);
-    groupsOk=!!(groups&&groups.flat().length===selCards.length);
-    html+=`<div class="g-panel ${groupsOk?'accent':''}" style="padding:12px;"><div class="p10-sel">${selCards.map(c=>cardEl(c,'')).join('')}</div>
-      <div class="g-panel-sub" style="margin:0;">${groupsOk?'✓ That completes your phase!':`Need: ${PHASES[phases[0]].desc}`}</div></div>`;
-  }
-
-  // Player hand
-  html+=`<div class="g-label"><span>Your hand · ${hands[0].length}</span><span>${isYourPlay?(laid[0]?'tap one card':'tap to select'):''}</span></div>
-  <div class="p10-hand" id="player-hand">
-    ${hands[0].map((c,i)=>cardEl(c,`${isYourPlay?'playable':''}${selCards.includes(c)?' selected':''}`,cKey(c,i))).join('')}
-  </div>`;
-
-  html+=renderLog();
-  root.innerHTML=html;wireLog();
-
-  // Action bar
-  let bar='';
-  if(isYourDraw){
-    bar=`<button class="btn btn-outline" id="bar-stock">Draw stock</button>`+(top?`<button class="btn btn-gold" id="bar-disc">Take ${cardName(top)}</button>`:'');
-  } else if(isYourPlay&&!laid[0]){
-    if(groupsOk) bar=`<button class="btn btn-gold" id="lay-phase-btn">Lay Phase ${phases[0]+1}</button>`;
-    else if(selCards.length===1) bar=`<button class="btn btn-gold" id="discard-sel-btn">Discard ${cardName(selCards[0])}</button>`;
-    if(selCards.length) bar+=`<button class="btn btn-outline" id="clear-sel-btn">Clear</button>`;
-  } else if(sel1){
-    const fits=laidGroups.some(g=>canLayOff(sel1,g));
-    bar=(fits?`<button class="btn btn-gold" id="layoff-btn">Lay off</button>`:'')+`<button class="btn ${fits?'btn-outline':'btn-gold'}" id="discard-sel-btn">Discard</button>`;
-  }
-  setBar(bar);
-
-  // Wire events
-  if(isYourDraw){
-    document.getElementById('stock-card')?.addEventListener('click',()=>drawFrom('stock'));
-    document.getElementById('discard-card')?.addEventListener('click',()=>drawFrom('discard'));
-    document.getElementById('bar-stock')?.addEventListener('click',()=>drawFrom('stock'));
-    document.getElementById('bar-disc')?.addEventListener('click',()=>drawFrom('discard'));
-  }
-  document.getElementById('lay-phase-btn')?.addEventListener('click',tryLayPhase);
-  document.getElementById('clear-sel-btn')?.addEventListener('click',()=>{selCards=[];render();});
-  document.getElementById('discard-sel-btn')?.addEventListener('click',()=>{if(selCards[0])doDiscard(selCards[0]);});
-  document.getElementById('layoff-btn')?.addEventListener('click',playerLayOff);
-  document.getElementById('skip-cancel')?.addEventListener('click',cancelSkip);
-  document.querySelectorAll('.p10-skip-btn').forEach(b=>b.addEventListener('click',()=>chooseSkipTarget(+b.dataset.target)));
-  if(isYourPlay){
-    document.getElementById('player-hand')?.querySelectorAll('.p10c.playable').forEach((el,idx)=>{
-      el.addEventListener('click',()=>{const c=hands[0][idx];if(c)toggleSel(c);});
+  function showSetup() {
+    S = null; token++; app.innerHTML = '';
+    Kit.setup(app, {
+      players: { min: 2, max: 6, count: 3, cpu: 'seats', label: 'Players (you + computers)' },
+      options: [{ id: 'last', label: 'Game length', value: 10, choices: [[10, 'All 10 phases'], [5, 'Quick · phases 1–5']] }],
+      onStart: function (cfg) {
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.last || 10);
+        Kit.gameStart(); newHand();
+      }
     });
   }
-}
+  function freshGame(players, last) {
+    var n = players.length, z = function (v) { return players.map(function () { return v; }); };
+    return {
+      last: last, hand: 0, dealer: n - 1, started: Date.now(), rounds: [], phRounds: [], highlights: [],
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, ph: 1, total: 0, done: false }; }),
+      stats: { skips: players.map(function () { return z(0); }), outs: z(0), streak: z(0), stuck: null, big: null, firstTurn: [], missed: z(0), finishedHand: z(0) },
+      sort: 'num'
+    };
+  }
 
-newGame();
+  // ── Dealing ───────────────────────────────────────────────────────────────
+  function newHand() {
+    var n = N();
+    S.hand++; S.dealer = (S.dealer + 1) % n;
+    var d = makeDeck();
+    S.hands = S.players.map(function () { return []; });
+    for (var k = 0; k < 10; k++) for (var p = 0; p < n; p++) S.hands[(S.dealer + 1 + p) % n].push(d.pop());
+    S.discard = [d.pop()]; S.stock = d;
+    S.laid = S.players.map(function () { return null; });
+    S.skipNext = S.players.map(function () { return false; });
+    S.turns = S.players.map(function () { return 0; });
+    S.turn = (S.dealer + 1) % n; S.step = 'draw'; S.stage = 'play';
+    S.sel = null; S.building = false; S.build = null; S.bActive = 0; S.lastHit = null; S.handSkips = S.players.map(function () { return 0; });
+    if (isS(S.discard[0])) S.skipNext[S.turn] = true;  // a Skip flipped at the start skips the first player
+    clearUndo(); save(); render();
+    Kit.sfx('deal'); setTimeout(function () { Kit.sfx('deal'); }, 120); setTimeout(function () { Kit.sfx('deal'); }, 240);
+    if (S.hand === 1) flash('Phase 1: ' + PH[0].d);
+    next();
+  }
+
+  // ── Turn flow ─────────────────────────────────────────────────────────────
+  function next() {
+    if (!S || S.stage !== 'play') return;
+    var t = token, p = S.turn;
+    if (S.step === 'draw' && S.skipNext[p]) {
+      paint();
+      setTimeout(function () {
+        if (t !== token) return;
+        S.skipNext[p] = false;
+        say(p, 'Skipped!'); Kit.sfx('bad');
+        if (p === 0) { Kit.callout('You were skipped'); Kit.haptic('error'); }
+        save();
+        setTimeout(function () { if (t === token) advance(); }, 900);
+      }, 500);
+      return;
+    }
+    paint();
+    if (S.players[p].cpu) setTimeout(function () { if (t === token && S && S.stage === 'play' && S.turn === p) cpuStep(p); }, S.step === 'draw' ? 750 : 650);
+    else if (S.step === 'draw') Kit.haptic('light');
+  }
+  function advance() {
+    S.turn = (S.turn + 1) % N(); S.step = 'draw'; S.sel = null; S.building = false; S.build = null; S.lastHit = null;
+    save(); next();
+  }
+
+  function refill() {
+    if (S.stock.length || S.discard.length <= 1) return;
+    var top = S.discard.pop();
+    S.stock = Cards.shuffle(S.discard); S.discard = [top];
+    flash('Deck reshuffled');
+  }
+  function draw(p, fromDiscard) {
+    var r0 = rectOf(fromDiscard ? '#discardTop' : '#stockTop');
+    if (!fromDiscard) refill();
+    var c = fromDiscard ? S.discard.pop() : S.stock.pop();
+    if (!c) { endHand(-1); return null; }
+    S.hands[p].push(c); S.step = 'play'; S.turns[p]++;
+    Kit.sfx('flip');
+    save(); paint();
+    if (p === 0) { flyIn(c.id, r0); }
+    else ghost(fromDiscard ? c : null, r0, rectOf(seatEls[p] && seatEls[p].querySelector('.tag')));
+    if (p !== 0 && fromDiscard) say(p, 'Takes ' + cname(c));
+    return c;
+  }
+
+  // Lay down a phase from given groups (arrays of cards)
+  function layDown(p, groups) {
+    var ph = S.players[p].ph - 1, req = PH[ph].req, made = [];
+    for (var i = 0; i < req.length; i++) { var a = analyze(req[i], groups[i]); if (!a.ok) return false; made.push(a.g); }
+    var from = p === 0 ? rectOf(goalEl) : rectOf(seatEls[p].querySelector('.tag'));
+    var used = [].concat.apply([], groups).map(function (c) { return c.id; });
+    S.hands[p] = S.hands[p].filter(function (c) { return used.indexOf(c.id) < 0; });
+    S.laid[p] = made;
+    if (S.turns[p] === 1 && S.stats.firstTurn.length < 3) S.stats.firstTurn.push(S.players[p].name + ' laid down Phase ' + (ph + 1) + ' on their very first turn of hand ' + S.hand);
+    Kit.sfx('good'); Kit.haptic('success');
+    save(); paint();
+    var mr = app.querySelector('.mrow[data-p="' + p + '"]');
+    if (mr) Array.prototype.forEach.call(mr.querySelectorAll('.pcard'), function (n, k) { if (from) flyNode(n, from, 360 + k * 20); });
+    say(p, 'Phase ' + (ph + 1) + '!');
+    if (p === 0) Kit.callout('Phase ' + (ph + 1) + ' down!');
+    return true;
+  }
+  function hit(p, card, owner, gi) {
+    var g = S.laid[owner][gi]; if (!canHit(card, g)) return false;
+    var from = p === 0 ? rectOf(handEl.querySelector('[data-id="' + card.id + '"]')) : rectOf(seatEls[p].querySelector('.tag'));
+    S.hands[p] = S.hands[p].filter(function (c) { return c.id !== card.id; });
+    addHit(card, g); S.lastHit = card.id;
+    Kit.sfx('chip'); Kit.haptic('light');
+    save(); paint();
+    var n = app.querySelector('.grp [data-id="' + card.id + '"]'); if (n) { n.classList.add('newc'); flyNode(n, from, 340); }
+    return true;
+  }
+  function discard(p, card, target) {
+    var from = p === 0 ? rectOf(handEl.querySelector('[data-id="' + card.id + '"]')) : rectOf(seatEls[p].querySelector('.tag'));
+    S.hands[p] = S.hands[p].filter(function (c) { return c.id !== card.id; });
+    S.discard.push(card); S.sel = null;
+    if (isS(card) && target != null && target >= 0) {
+      S.skipNext[target] = true; S.stats.skips[p][target]++; S.handSkips[p]++;
+      Kit.sfx('bad');
+    } else Kit.sfx('flip');
+    save(); paint();
+    flyNode(app.querySelector('#discardTop'), from, 360);
+    if (isS(card) && target != null && target >= 0) { say(p, 'Skip ' + (target === 0 ? 'you' : S.players[target].name) + '!'); if (target === 0) Kit.haptic('error'); }
+    if (!S.hands[p].length) { endHandSoon(p); return; }
+    var t = token;
+    setTimeout(function () { if (t === token) advance(); }, p === 0 ? 350 : 450);
+  }
+  function endHandSoon(p) {
+    S.stage = 'ending'; save(); paint();
+    say(p, 'Out!');
+    if (p === 0) Kit.callout('You went out!');
+    var t = token;
+    setTimeout(function () { if (t === token) endHand(p); }, 1100);
+  }
+
+  // ── Computer players ──────────────────────────────────────────────────────
+  function others(p) { var a = []; for (var i = 0; i < N(); i++) if (i !== p) a.push(i); return a; }
+  function feeds(p, c) { // would this discard help someone who has laid down?
+    return others(p).some(function (o) { return S.laid[o] && S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(c, g); }); }); });
+  }
+  function cpuStep(p) {
+    var h = S.hands[p], ph = S.players[p].ph - 1, top = S.discard[S.discard.length - 1];
+    if (S.step === 'draw') {
+      var take = false;
+      if (top && !isS(top)) {
+        if (isW(top)) take = true;
+        else if (!S.laid[p]) take = need(h.concat([top]), ph) < need(h, ph) && Math.random() < .92;
+        else take = S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(top, g); }); });
+      }
+      draw(p, take);
+      if (S.stage === 'play') next();
+      return;
+    }
+    if (S.step === 'play') {
+      if (!S.laid[p]) { var gs = findPhase(h, ph); if (gs) layDown(p, gs); }
+      S.step = 'hits'; save();
+      next(); return;
+    }
+    if (S.step === 'hits') {
+      if (S.laid[p]) {
+        // one hit per beat so you can follow along
+        for (var i = 0; i < S.hands[p].length; i++) {
+          var c = S.hands[p][i], spot = findSpot(c);
+          if (spot) {
+            hit(p, c, spot[0], spot[1]);
+            if (!S.hands[p].length) { endHandSoon(p); return; }
+            next(); return;
+          }
+        }
+      }
+      S.step = 'discard'; save(); next(); return;
+    }
+    if (S.step === 'discard') {
+      var pick = cpuDiscard(p), tgt = -1;
+      if (isS(pick)) tgt = skipTarget(p);
+      discard(p, pick, tgt);
+    }
+  }
+  function findSpot(c) {
+    // prefer own groups, then anyone's
+    for (var o = 0; o < N(); o++) {
+      var gs = S.laid[o]; if (!gs) continue;
+      for (var g = 0; g < gs.length; g++) if (canHit(c, gs[g])) return [o, g];
+    }
+    return null;
+  }
+  function cpuDiscard(p) {
+    var h = S.hands[p], ph = S.players[p].ph - 1;
+    var skip = h.filter(isS)[0]; if (skip && others(p).some(function (o) { return !S.skipNext[o]; })) return skip;
+    var best = null, bestScore = Infinity;
+    h.forEach(function (c) {
+      var rest = h.filter(function (x) { return x !== c; }), sc;
+      if (!S.laid[p]) {
+        if (isW(c)) sc = 1e6;
+        else {
+          var kin = h.filter(function (x) { return isN(x) && x !== c && (x.n === c.n || (PH[ph].req.some(function (r) { return r[0] === 'run'; }) && Math.abs(x.n - c.n) <= 2) || (PH[ph].req[0][0] === 'color' && x.c === c.c)); }).length;
+          sc = need(rest, ph) * 100 + kin * 6 - pts(c) / 2;
+        }
+      } else sc = (isW(c) ? 1e5 : 0) - pts(c) * 2;
+      if (feeds(p, c)) sc += 40;
+      sc += Math.random() * 4;
+      if (sc < bestScore) { bestScore = sc; best = c; }
+    });
+    return best || h[0];
+  }
+  function skipTarget(p) {
+    var cands = others(p).filter(function (o) { return !S.skipNext[o]; });
+    if (!cands.length) return -1;
+    cands.sort(function (a, b) {
+      var da = (S.laid[a] ? 50 - S.hands[a].length * 3 : 0) + S.players[a].ph * 4, db = (S.laid[b] ? 50 - S.hands[b].length * 3 : 0) + S.players[b].ph * 4;
+      return db - da || Math.random() - .5;
+    });
+    return cands[0];
+  }
+
+  // ── You ───────────────────────────────────────────────────────────────────
+  function find(id) { var h = S.hands[0]; for (var i = 0; i < h.length; i++) if (h[i].id === id) return h[i]; return null; }
+  function youDraw(fromDiscard) {
+    if (!me() || S.step !== 'draw') return;
+    var top = S.discard[S.discard.length - 1];
+    if (fromDiscard) {
+      if (!top) return;
+      if (isS(top)) { Kit.toast("You can't pick up a Skip"); Kit.haptic('error'); return; }
+      snapshot();
+    } else clearUndo(); // no peeking at the deck and putting it back
+    draw(0, fromDiscard);
+  }
+  function tapCard(c) {
+    if (!S || S.stage !== 'play') return;
+    if (S.turn !== 0) { Kit.toast('Wait for your turn'); return; }
+    if (S.step === 'draw') { Kit.toast('Draw a card first'); Kit.haptic('error'); return; }
+    if (S.building) {
+      S.build[S.bActive].push(c.id);
+      var a = analyze(PH[S.players[0].ph - 1].req[S.bActive], ids(S.build[S.bActive]));
+      if (a.ok && S.build[S.bActive].length === PH[S.players[0].ph - 1].req[S.bActive][1]) {
+        // move on to the next unfinished group
+        for (var k = 0; k < S.build.length; k++) if (!analyze(PH[S.players[0].ph - 1].req[k], ids(S.build[k])).ok) { S.bActive = k; break; }
+      }
+      Kit.sfx('tap'); Kit.haptic('light'); save(); paint();
+      return;
+    }
+    S.sel = S.sel === c.id ? null : c.id;
+    Kit.sfx('tap'); Kit.haptic('light'); save(); paint();
+  }
+  function ids(list) { return list.map(find).filter(Boolean); }
+  function openBuilder() {
+    if (!me() || S.step !== 'play' || S.laid[0]) return;
+    S.building = true; S.sel = null; S.bActive = 0;
+    S.build = PH[S.players[0].ph - 1].req.map(function () { return []; });
+    Kit.sfx('pop'); save(); paint();
+  }
+  function closeBuilder() { S.building = false; S.build = null; save(); paint(); }
+  function fillForMe() {
+    var gs = findPhase(S.hands[0], S.players[0].ph - 1);
+    if (!gs) { Kit.toast("You don't have this phase yet"); Kit.haptic('error'); return; }
+    S.build = gs.map(function (g) { return g.map(function (c) { return c.id; }); });
+    Kit.sfx('good'); save(); paint();
+  }
+  function youLay() {
+    var req = PH[S.players[0].ph - 1].req, groups = S.build.map(ids);
+    for (var i = 0; i < req.length; i++) if (!analyze(req[i], groups[i]).ok) { Kit.toast('Finish every group first'); Kit.haptic('error'); return; }
+    snapshot();
+    S.building = false; S.build = null;
+    layDown(0, groups);
+    if (!S.hands[0].length) endHandSoon(0);
+  }
+  function youHit(owner, gi) {
+    var c = S.sel && find(S.sel); if (!c) return;
+    snapshot();
+    if (!hit(0, c, owner, gi)) { undoStack.pop(); return; }
+    S.sel = null; save(); paint();
+    if (!S.hands[0].length) endHandSoon(0);
+  }
+  function youDiscard() {
+    var c = S.sel && find(S.sel);
+    if (!c) { Kit.toast('Tap a card to discard'); return; }
+    if (isS(c)) {
+      var ops = others(0);
+      if (ops.every(function (o) { return S.skipNext[o]; })) { snapshot(); Kit.toast('Everyone is already skipped'); discard(0, c, -1); return; }
+      if (ops.length === 1) { snapshot(); discard(0, c, S.skipNext[ops[0]] ? -1 : ops[0]); return; }
+      var box = el('div', { class: 'skiplist' }), sh;
+      ops.forEach(function (o) {
+        var pl = S.players[o], b = el('button', { type: 'button', class: 'btn btn-soft btn-block', html: '<span class="avatar sm" style="--c:' + Kit.color(o) + '">' + Kit.icon('bot') + '</span><span>' + Kit.esc(pl.name) + ' · phase ' + pl.ph + (S.laid[o] ? ' · laid down, ' + S.hands[o].length + ' cards left' : '') + '</span>', onclick: function () { sh.close(); snapshot(); discard(0, c, o); } });
+        if (S.skipNext[o]) { b.disabled = true; }
+        box.appendChild(b);
+      });
+      sh = Kit.sheet({ title: 'Who loses a turn?', node: box, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+      return;
+    }
+    snapshot(); discard(0, c);
+  }
+
+  // ── End of a hand ─────────────────────────────────────────────────────────
+  function endHand(out) {
+    var st = S.stats, row = [], phr = [];
+    S.players.forEach(function (pl, p) {
+      var got = handPts(S.hands[p]);
+      row.push(got); pl.total += got;
+      phr.push(S.laid[p] ? 1 : 0);
+      if (S.laid[p]) {
+        st.streak[p] = 0;
+        if (pl.ph >= S.last) { pl.done = true; st.finishedHand[p] = S.hand; }
+        else pl.ph++;
+      } else {
+        st.streak[p]++; st.missed[p]++;
+        if (!st.stuck || st.streak[p] > st.stuck.n) st.stuck = { p: p, ph: pl.ph, n: st.streak[p] };
+      }
+      if (!st.big || got > st.big.pts) st.big = { p: p, pts: got, hand: S.hand };
+    });
+    if (out >= 0) st.outs[out]++;
+    S.rounds.push(row); S.phRounds.push(phr); S.lastOut = out;
+    S.stage = 'handover'; S.sel = null; S.building = false;
+    clearUndo(); save(); paint();
+    var t = token;
+    if (S.players.some(function (p) { return p.done; })) setTimeout(function () { if (t === token) finish(); }, 500);
+    else setTimeout(function () { if (t === token) showScores(true); }, 300);
+  }
+  function showScores(between) {
+    var t = el('table', { class: 'sum' }), last = S.rounds.length ? S.rounds[S.rounds.length - 1] : null, lph = S.phRounds.length ? S.phRounds[S.phRounds.length - 1] : null;
+    t.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: between ? 'Phase' : '' }), el('th', { text: between ? 'Hand' : '' }), el('th', { text: 'Total' }), el('th', { text: 'Next' })]));
+    var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return S.players[b].ph - S.players[a].ph || S.players[a].total - S.players[b].total; });
+    order.forEach(function (i, k) {
+      var p = S.players[i];
+      t.appendChild(el('tr', { class: k === 0 ? 'lead' : '' }, [
+        el('td', { text: i === 0 ? 'You' : p.name }),
+        between ? el('td', { class: lph[i] ? 'yes' : 'no', html: lph[i] ? Kit.icon('check') : '–' }) : el('td'),
+        el('td', { text: between ? '+' + last[i] : '' }),
+        el('td', { class: 'big', text: String(p.total) }),
+        el('td', { class: 'big', text: p.done ? 'Done' : String(p.ph) })
+      ]));
+    });
+    var sub = between ? (S.lastOut === 0 ? 'You went out! ' : S.lastOut > 0 ? S.players[S.lastOut].name + ' went out. ' : '') + (lph[0] ? 'You made your phase.' : 'You try phase ' + S.players[0].ph + ' again.') : 'First to finish phase ' + S.last + ' wins. Fewest points breaks a tie.';
+    var node = el('div', null, [el('p', { class: 'muted', text: sub }), t]);
+    Kit.sheet({
+      title: between ? 'Hand ' + S.hand + ' done' : 'Scores', node: node, dismissible: !between,
+      actions: between ? [{ label: 'Deal hand ' + (S.hand + 1), primary: true, onClick: function () { newHand(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
+    });
+  }
+  function finish() {
+    S.stage = 'over';
+    var done = S.players.map(function (p, i) { return i; }).filter(function (i) { return S.players[i].done; });
+    done.sort(function (a, b) { return S.players[a].total - S.players[b].total; });
+    var tie = done.length > 1 && S.players[done[0]].total === S.players[done[1]].total;
+    var w = tie ? -1 : done[0];
+    var rank = S.players.map(function (p, i) { return { i: i, name: i === 0 ? p.name : p.name, ph: p.done ? S.last + 1 : p.ph, pts: p.total, color: Kit.color(i) }; })
+      .sort(function (a, b) { return b.ph - a.ph || a.pts - b.pts; })
+      .map(function (r) { return { name: r.name, score: (r.ph > S.last ? 'Done' : 'Ph ' + r.ph) + ' · ' + r.pts, color: r.color, i: r.i }; });
+    Kit.record(KEY, {
+      started: S.started, mode: 'vs Computer' + (S.last < 10 ? ' · phases 1–' + S.last : ''), lowWins: true,
+      players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+      winner: w >= 0 ? S.players[w].name : null,
+      rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
+      highlights: highlights(w)
+    });
+    clearSave();
+    Kit.win({
+      title: w < 0 ? "It's a tie!" : w === 0 ? 'You win!' : S.players[w].name + ' wins',
+      sub: w >= 0 ? (w === 0 ? 'You' : S.players[w].name) + ' finished phase ' + S.last + ' in ' + S.hand + ' hands' : 'Tied on points after phase ' + S.last,
+      rank: rank, lose: w !== 0 && w >= 0, icon: w === 0 ? 'trophy' : w < 0 ? 'trophy' : 'bot',
+      again: function () {
+        S = freshGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.last);
+        Kit.gameStart(); newHand();
+      },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+  function highlights(w) {
+    var st = S.stats, out = [], names = S.players.map(function (p) { return p.name; });
+    if (w >= 0) out.push(names[w] + ' laid down Phase ' + S.last + ' first');
+    if (st.stuck && st.stuck.n >= 2) out.push(names[st.stuck.p] + ' was stuck on phase ' + st.stuck.ph + ' for ' + st.stuck.n + ' hands');
+    var sk = null;
+    st.skips.forEach(function (row, a) { row.forEach(function (v, b) { if (v && (!sk || v > sk.v)) sk = { a: a, b: b, v: v }; }); });
+    if (sk && sk.v >= 2) out.push(names[sk.a] + ' skipped ' + names[sk.b] + ' ' + sk.v + ' times');
+    var mo = st.outs.indexOf(Math.max.apply(null, st.outs));
+    if (st.outs[mo] >= 2) out.push(names[mo] + ' went out first ' + st.outs[mo] + ' times');
+    S.players.forEach(function (p, i) { if (st.missed[i] === 0 && S.hand >= 3) out.push(names[i] + ' never missed a phase'); });
+    if (st.big && st.big.pts >= 50) out.push(names[st.big.p] + ' got caught holding ' + st.big.pts + ' points in hand ' + st.big.hand);
+    st.firstTurn.slice(0, 1).forEach(function (h) { out.push(h); });
+    out.push('Final phases: ' + S.players.map(function (p) { return p.name + ' ' + (p.done ? 'done' : p.ph); }).join(', '));
+    return out.slice(0, 7);
+  }
+
+  // ── Undo ──────────────────────────────────────────────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function clearUndo() { undoStack = []; }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    token++; S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+  }
+
+  // ── Animation helpers ─────────────────────────────────────────────────────
+  function rectOf(x) { var e = typeof x === 'string' ? app.querySelector(x) : x; if (!e) return null; var r = e.getBoundingClientRect(); return r.width ? r : null; }
+  function flyNode(node, r, ms) {
+    if (!node || !r) return;
+    var b = node.getBoundingClientRect();
+    var dx = (r.left + r.width / 2) - (b.left + b.width / 2), dy = (r.top + r.height / 2) - (b.top + b.height / 2);
+    var sc = r.width && b.width && r.width < 150 ? Math.max(.4, Math.min(1.8, r.width / b.width)) : 1;
+    node.style.transition = 'none';
+    node.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')';
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      node.style.transition = 'transform ' + (ms || 380) + 'ms cubic-bezier(.2,.8,.25,1)';
+      node.style.transform = '';
+      setTimeout(function () { node.style.transition = ''; }, (ms || 380) + 30);
+    }); });
+  }
+  function flyIn(id, r) { var n = handEl && handEl.querySelector('[data-id="' + id + '"]'); if (n) { n.classList.add('hint'); flyNode(n, r, 420); setTimeout(function () { n.classList.remove('hint'); }, 1600); } }
+  function ghost(card, a, b) {
+    if (!a || !b) return;
+    var g = card ? cardEl(card) : Kit.card('', '', { back: true });
+    g.classList.add('ghost'); g.style.setProperty('--cw', a.width + 'px');
+    g.style.left = a.left + 'px'; g.style.top = a.top + 'px';
+    document.body.appendChild(g);
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      g.style.transform = 'translate(' + (b.left + b.width / 2 - a.left - a.width / 2) + 'px,' + (b.top + b.height / 2 - a.top - a.height / 2) + 'px) scale(.45)';
+      g.style.opacity = '.2';
+    }); });
+    setTimeout(function () { g.remove(); }, 480);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var feltEl, seatEls = [], handEl, barEl, goalEl, builderEl, msgT = null, msgText = '';
+  function render() {
+    app.innerHTML = '';
+    var table = el('div', { class: 'ctable wood' });
+    feltEl = el('div', { class: 'felt-in p10f' });
+    table.appendChild(feltEl);
+    app.appendChild(table);
+    goalEl = el('div', { class: 'goal paper' }); app.appendChild(goalEl);
+    builderEl = el('div', { class: 'builder felt', hidden: true }); app.appendChild(builderEl);
+    handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
+    barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
+    paint();
+    if (S.stage === 'handover') setTimeout(function () { showScores(true); }, 200);
+  }
+  function seat(p) {
+    var pl = S.players[p], s = el('div', { class: 'cseat' + (p === 0 ? ' me' : '') + (S.stage === 'play' && S.turn === p ? ' turn' : '') });
+    var tag = el('div', { class: 'tag' }, [
+      el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+      el('span', { class: 'nm', text: p === 0 ? 'You' : pl.name })
+    ]);
+    var info = el('div', { class: 'info' }, [
+      el('span', { class: 'chip-s ph', text: pl.done ? 'Done' : 'Phase ' + pl.ph }),
+      S.laid && S.laid[p] ? el('span', { class: 'chip-s laid', html: Kit.icon('check') }) : null,
+      p !== 0 && S.hands ? el('span', { class: 'chip-s', text: S.hands[p].length + ' cards' }) : null,
+      S.skipNext && S.skipNext[p] ? el('span', { class: 'chip-s skp', text: 'Skip' }) : null
+    ]);
+    if (p === 0) { s.appendChild(info); s.appendChild(tag); } else { s.appendChild(tag); s.appendChild(info); }
+    var b = SAY[p];
+    if (b && Date.now() - b.at < 1500) s.appendChild(el('div', { class: 'say', text: b.t, style: Date.now() - b.at > 300 ? { animation: 'none' } : null }));
+    return s;
+  }
+  function paint() {
+    if (!feltEl || !S || !S.hands) return;
+    var n = N(), mine = me(), ph = S.players[0].ph - 1, sel = S.sel && find(S.sel);
+    feltEl.innerHTML = '';
+    seatEls = [];
+    var opps = el('div', { class: 'opps' });
+    for (var i = 1; i < n; i++) { seatEls[i] = seat(i); opps.appendChild(seatEls[i]); }
+    feltEl.appendChild(opps);
+    // piles
+    var mid = el('div', { class: 'mid' });
+    var canDraw = mine && S.step === 'draw';
+    var top = S.discard[S.discard.length - 1];
+    var sw = el('div', { class: 'stackwrap' });
+    if (S.stock.length > 1) sw.appendChild(Kit.card('', '', { back: true, cls: 'under' }));
+    if (S.stock.length) { var st = Kit.card('', '', { back: true }); st.id = 'stockTop'; sw.appendChild(st); } else sw.appendChild(el('div', { class: 'empty', id: 'stockTop' }));
+    mid.appendChild(el('button', { type: 'button', class: 'pile' + (canDraw ? ' live' : ''), 'aria-label': 'Draw from the deck', onclick: function () { youDraw(false); } }, [sw, el('span', { class: 'cap', text: 'Deck · ' + S.stock.length })]));
+    var dw = el('div', { class: 'stackwrap' });
+    if (S.discard.length > 1) { var u = cardEl(S.discard[S.discard.length - 2], { cls: 'under2' }); u.removeAttribute('data-id'); dw.appendChild(u); }
+    if (top) { var tn = cardEl(top); tn.id = 'discardTop'; dw.appendChild(tn); } else dw.appendChild(el('div', { class: 'empty', id: 'discardTop' }));
+    mid.appendChild(el('button', { type: 'button', class: 'pile' + (canDraw && top && !isS(top) ? ' live' : ''), 'aria-label': 'Take the top discard', onclick: function () { youDraw(true); } }, [dw, el('span', { class: 'cap', text: 'Discard' })]));
+    if (msgText) mid.appendChild(el('div', { class: 'tablemsg', text: msgText }));
+    feltEl.appendChild(mid);
+    // laid-down phases
+    var melds = el('div', { class: 'melds' }), any = false;
+    for (var p = 0; p < n; p++) {
+      if (!S.laid[p]) continue; any = true;
+      var row = el('div', { class: 'mrow', 'data-p': p }, [el('div', { class: 'who' }, [el('span', { text: p === 0 ? 'You' : S.players[p].name, style: { color: Kit.color(p) } }), el('small', { text: 'Phase ' + S.players[p].ph })])]);
+      var grps = el('div', { class: 'grps' });
+      S.laid[p].forEach(function (g, gi) {
+        var target = mine && S.step === 'play' && S.laid[0] && sel && canHit(sel, g);
+        var gEl = el(target ? 'button' : 'div', { class: 'grp' + (target ? ' tgt' : ''), 'aria-label': target ? 'Add to this group' : null });
+        g.cards.forEach(function (c) { var cn = cardEl(c, { mini: true }); if (c.id === S.lastHit) cn.classList.add('newc'); gEl.appendChild(cn); });
+        if (target) (function (o, k) { gEl.addEventListener('click', function () { youHit(o, k); }); })(p, gi);
+        grps.appendChild(gEl);
+      });
+      row.appendChild(grps); melds.appendChild(row);
+    }
+    if (!any) melds.appendChild(el('div', { class: 'none', text: 'Laid-down phases go here' }));
+    feltEl.appendChild(melds);
+    seatEls[0] = seat(0);
+    feltEl.appendChild(el('div', { class: 'mine-row' }, [seatEls[0]]));
+    paintGoal(); paintBuilder(); paintHand(); paintBar();
+  }
+  function paintGoal() {
+    var pl = S.players[0], ph = pl.ph - 1;
+    goalEl.innerHTML = '';
+    var dots = el('div', { class: 'dots' });
+    for (var k = 1; k <= S.last; k++) dots.appendChild(el('i', { class: k < pl.ph || pl.done ? 'done' : k === pl.ph ? 'cur' : '', text: String(k) }));
+    if (S.last < 10) dots.style.gridTemplateColumns = 'repeat(' + S.last + ',18px)';
+    goalEl.appendChild(el('div', { class: 'gl' }, [
+      el('b', { text: pl.done ? 'All done!' : 'Your phase ' + pl.ph }),
+      el('span', { html: pl.done ? 'Wait for the hand to end' : Kit.esc(PH[ph].d) + (S.laid[0] ? ' <span class="ok">· laid down</span>' : '') })
+    ]));
+    goalEl.appendChild(dots);
+    goalEl.appendChild(el('button', { type: 'button', class: 'sortb', 'aria-label': 'Sort hand', html: Kit.icon('swap') + '<small>' + (S.sort === 'num' ? '1–12' : 'color') + '</small>', onclick: function () { S.sort = S.sort === 'num' ? 'color' : 'num'; Kit.sfx('tap'); save(); paintHand(); paintGoal(); } }));
+  }
+  function sorted(h) {
+    var co = { r: 0, b: 1, g: 2, y: 3, w: 4, s: 5 };
+    return h.slice().sort(function (a, b) {
+      var sa = isN(a) ? 0 : isW(a) ? 1 : 2, sb = isN(b) ? 0 : isW(b) ? 1 : 2;
+      if (sa !== sb) return sa - sb;
+      return S.sort === 'num' ? (a.n - b.n || co[a.c] - co[b.c]) : (co[a.c] - co[b.c] || a.n - b.n);
+    });
+  }
+  function paintBuilder() {
+    builderEl.hidden = !(S.building && S.build && me());
+    builderEl.innerHTML = '';
+    if (builderEl.hidden) return;
+    var req = PH[S.players[0].ph - 1].req;
+    builderEl.appendChild(el('div', { class: 'bhead' }, [
+      el('span', { class: 'grow', text: 'Build phase ' + S.players[0].ph + ': tap a group, then tap cards' }),
+      el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('lightbulb') + '<span>Fill for me</span>', onclick: fillForMe })
+    ]));
+    var mats = el('div', { class: 'mats' });
+    req.forEach(function (r, k) {
+      var cards = ids(S.build[k]), a = analyze(r, cards);
+      var mat = el('div', { class: 'mat' + (k === S.bActive ? ' on' : '') + (a.ok ? ' good' : a.empty || a.partial ? '' : ' bad'), role: 'button', tabindex: '0', onclick: function () { S.bActive = k; Kit.sfx('tap'); save(); paintBuilder(); } });
+      mat.appendChild(el('div', { class: 'mt', html: '<span>' + reqName(r) + '</span>' + (a.ok ? Kit.icon('check') : '') }));
+      var mc = el('div', { class: 'mc' });
+      if (!cards.length) mc.appendChild(el('span', { class: 'ph', text: k === S.bActive ? 'Tap cards below' : 'Tap here first' }));
+      var show = a.ok ? a.g.cards : cards;
+      show.forEach(function (c) {
+        var cn = cardEl(c, { mini: true });
+        cn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          S.build[k] = S.build[k].filter(function (x) { return x !== c.id; }); S.bActive = k;
+          Kit.sfx('tap'); save(); paint();
+        });
+        mc.appendChild(cn);
+      });
+      mat.appendChild(mc);
+      mat.appendChild(el('div', { class: 'ms', text: a.ok ? 'Ready: ' + a.msg : a.empty ? '' : a.msg }));
+      mats.appendChild(mat);
+    });
+    builderEl.appendChild(mats);
+  }
+  function paintHand() {
+    handEl.innerHTML = '';
+    var used = S.building && S.build ? [].concat.apply([], S.build) : [];
+    var mine = me() && S.step === 'play';
+    sorted(S.hands[0]).forEach(function (c) {
+      if (used.indexOf(c.id) >= 0) return;
+      var n = cardEl(c);
+      if (mine) n.classList.add('play');
+      if (S.sel === c.id) n.classList.add('sel');
+      n.addEventListener('click', function () { tapCard(c); });
+      handEl.appendChild(n);
+    });
+    requestAnimationFrame(function () { Cards.fan(handEl); });
+  }
+  function paintBar() {
+    barEl.innerHTML = '';
+    if (S.stage !== 'play') { barEl.appendChild(el('span', { class: 'hint', text: S.stage === 'ending' ? 'Hand over!' : '' })); return; }
+    var p = S.turn;
+    if (p !== 0) {
+      barEl.appendChild(el('span', { class: 'hint', text: S.skipNext[p] && S.step === 'draw' ? S.players[p].name + ' is skipped' : S.players[p].name + ' is playing…' }));
+      return;
+    }
+    if (S.step === 'draw') {
+      var top = S.discard[S.discard.length - 1];
+      if (S.skipNext[0]) { barEl.appendChild(el('span', { class: 'hint', text: 'You are skipped' })); return; }
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('cards') + '<span>Draw from deck</span>', onclick: function () { youDraw(false); } }));
+      var tb = el('button', { type: 'button', class: 'btn btn-soft', text: top ? (isS(top) ? "Can't take Skip" : 'Take ' + cname(top)) : 'Discard empty', onclick: function () { youDraw(true); } });
+      tb.disabled = !top || isS(top);
+      barEl.appendChild(tb);
+      return;
+    }
+    if (S.building) {
+      var req = PH[S.players[0].ph - 1].req, ok = S.build.every(function (b, k) { return analyze(req[k], ids(b)).ok; });
+      var lay = el('button', { type: 'button', class: 'btn btn-primary' + (ok ? ' pulse' : ''), html: Kit.icon('check') + '<span>Lay down</span>', onclick: youLay });
+      lay.disabled = !ok;
+      barEl.appendChild(lay);
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-ghost', text: 'Cancel', onclick: closeBuilder }));
+      return;
+    }
+    var sel = S.sel && find(S.sel);
+    if (!S.laid[0]) {
+      var has = !!findPhase(S.hands[0], S.players[0].ph - 1);
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary' + (has ? ' pulse' : ''), html: Kit.icon('plus') + '<span>Build phase</span>', onclick: openBuilder }));
+    } else if (sel) {
+      var fits = S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(sel, g); }); });
+      if (fits) barEl.appendChild(el('span', { class: 'hint', text: 'Tap a glowing group' }));
+    } else barEl.appendChild(el('span', { class: 'hint', text: 'Hit or discard' }));
+    var db = el('button', { type: 'button', class: 'btn ' + (S.laid[0] ? 'btn-primary' : 'btn-soft'), text: sel ? 'Discard ' + cname(sel) : 'Pick a discard', onclick: youDiscard });
+    db.disabled = !sel;
+    barEl.appendChild(db);
+  }
+  function flash(t) {
+    msgText = t; paint();
+    clearTimeout(msgT); msgT = setTimeout(function () { msgText = ''; if (S && S.hands) paint(); }, 1700);
+  }
+  // Speech bubbles survive repaints until they time out
+  var SAY = {};
+  function say(p, t) {
+    SAY[p] = { t: t, at: Date.now() };
+    var s = seatEls[p]; if (!s) return;
+    var old = s.querySelector('.say'); if (old) old.remove();
+    s.appendChild(el('div', { class: 'say', text: t }));
+    setTimeout(function () { if (SAY[p] && Date.now() - SAY[p].at >= 1500) { delete SAY[p]; var b = seatEls[p] && seatEls[p].querySelector('.say'); if (b) b.remove(); } }, 1550);
+  }
+  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.hands && saved.stage !== 'over') {
+    S = saved; Kit.gameStart();
+    if (S.stage === 'ending') { S.stage = 'play'; }
+    render();
+    if (S.stage === 'play' && S.players.some(function (pl, i) { return !S.hands[i].length; })) endHand(S.hands.findIndex(function (h) { return !h.length; }));
+    else next();
+  } else showSetup();
+})();
 </script>
-<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

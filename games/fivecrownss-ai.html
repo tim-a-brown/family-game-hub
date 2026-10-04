@@ -2,701 +2,819 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Five Crowns — vs AI</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Five Crowns</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ai-base:start — shared table layout for the vs-AI card games */
-.page.g-page{max-width:560px;padding-top:12px;padding-bottom:calc(112px + var(--safe-b));}
-.g-hud{display:grid;gap:8px;margin-bottom:10px;}
-.g-seat{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:9px 8px 8px;min-width:0;text-align:center;transition:border-color .25s,box-shadow .25s,background .25s;}
-.g-seat.turn{border-color:rgba(245,200,66,.6);background:linear-gradient(180deg,rgba(245,200,66,.1),var(--surface) 70%);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
-.g-seat.lead::after{content:'👑';position:absolute;top:5px;right:7px;font-size:.75rem;}
-.g-seat-name{font-size:.78rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.g-seat.you .g-seat-name{color:var(--gold);}
-.g-seat-score{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-.g-seat-sub{font-size:.75rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.1em;}
-.g-meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.g-pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
-.g-pill.gold{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.35);color:var(--gold);}
-.g-table{padding:14px 12px;margin-bottom:10px;position:relative;}
-.g-status{display:block;text-align:center;min-height:44px;padding:11px 14px;margin:0 0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:.92rem;font-weight:600;color:var(--text-2);line-height:1.35;}
-.g-status.yours{color:var(--gold);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.3);}
-.g-status b{color:var(--text);}
-.g-label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
-.g-label span:last-child{text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text-2);}
-.g-panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 14px;margin-bottom:10px;text-align:center;}
-.g-panel.accent{border-color:rgba(245,200,66,.35);background:linear-gradient(180deg,rgba(245,200,66,.08),var(--surface));}
-.g-panel-title{font-family:var(--display);font-weight:700;font-size:1.12rem;letter-spacing:-.01em;margin-bottom:4px;}
-.g-panel-sub{font-size:.86rem;color:var(--text-2);margin-bottom:12px;line-height:1.45;}
-.g-choices{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
-.g-choices .btn{min-height:44px;}
-.g-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;gap:8px;padding:10px max(16px,var(--safe-r)) calc(10px + var(--safe-b)) max(16px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
-.g-bar:empty{display:none;}
-.g-bar .btn{flex:1;max-width:280px;}
-.g-log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-.g-log summary{list-style:none;cursor:pointer;min-height:44px;padding:0 14px;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;color:var(--text-2);}
-.g-log summary::-webkit-details-marker{display:none;}
-.g-log summary .last{flex:1;min-width:0;font-weight:500;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
-.g-log summary::after{content:'';flex:none;width:7px;height:7px;border-right:2px solid var(--text-3);border-bottom:2px solid var(--text-3);transform:rotate(45deg);margin:-3px 2px 0 0;transition:transform .2s;}
-.g-log[open] summary::after{transform:rotate(-135deg);margin-top:3px;}
-.g-log-body{padding:2px 14px 12px;font-size:.84rem;line-height:1.6;color:var(--text-2);max-height:200px;overflow-y:auto;}
-.g-log-body .pts{color:var(--gold);font-weight:600;}
-.g-log-body .bust{color:var(--red);}
-.g-log-body .flip7{color:var(--text);font-weight:700;}
-.g-result{text-align:center;padding:22px 16px 16px;border-radius:var(--r-lg);margin-bottom:12px;background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.04));border:1px solid rgba(245,200,66,.35);animation:gn-pop .4s var(--spring) both;}
-.g-result.plain{background:var(--surface);border-color:var(--line-2);}
-.g-result-icon{font-size:2.6rem;line-height:1;margin-bottom:6px;}
-.g-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--gold);line-height:1.15;}
-.g-result.plain .g-result-title{color:var(--text);font-size:1.45rem;}
-.g-result-sub{color:var(--text-2);font-size:.92rem;margin-top:4px;}
-.g-rows{margin-top:14px;display:grid;gap:6px;text-align:left;}
-.g-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:.92rem;}
-.g-row > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.g-row.you > span:first-child{color:var(--gold);font-weight:700;}
-.g-row .r{display:flex;align-items:baseline;gap:10px;white-space:nowrap;color:var(--text-3);font-size:.84rem;}
-.g-row b{font-family:var(--display);font-size:1.08rem;color:var(--text);font-variant-numeric:tabular-nums;}
-.g-row .neg{color:var(--red);} .g-row .pos{color:var(--green);}
-.fp-nc-label{max-width:64px !important;}
-.site-nav .icon-btn{width:36px;height:36px;font-size:.95rem;text-decoration:none;}
-@media (max-width:380px){.fp-nc-label{display:none;}.fp-name-chip{padding:0 10px !important;}}
-@media (min-width:700px){.page.g-page{max-width:620px;}}
-/* ai-base:end */
-
-/* ── Five Crowns ──────────────────────────────────────────────────────── */
-.fc-hud{grid-template-columns:repeat(3,minmax(0,1fr));}
-.fc-hud .g-seat.low{border-color:rgba(74,222,128,.45);}
-/* Cards */
-.fcc{--cw:clamp(40px,11.4vw,52px);width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;
-  background:linear-gradient(160deg,#fbf7ea,#ebe4cf);border:1px solid rgba(0,0,0,.12);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-family:var(--display);font-weight:800;box-shadow:0 3px 8px rgba(0,0,0,.35);
-  transition:transform .14s var(--ease),box-shadow .14s;user-select:none;flex-shrink:0;position:relative;}
-.fcc .fc-r{font-size:1.12rem;line-height:1;}
-.fcc .fc-s{font-size:.95rem;line-height:1;margin-top:2px;}
-.fcc.red{color:#c53030;}
-.fcc.black{color:#1a1a1a;}
-.fcc.star{color:#7c3aed;}
-.fcc.wild-card{background:linear-gradient(160deg,#fef3c7,#fcd34d);border-color:#f5c842;color:#78350f;}
-.fcc.wild-card::after{content:"WILD";position:absolute;bottom:3px;left:0;right:0;text-align:center;font-family:var(--font);font-size:.6rem;font-weight:800;color:#92400e;letter-spacing:.04em;}
-.fcc.joker-card{background:linear-gradient(160deg,#c084fc,#7c3aed);color:#fff;border-color:rgba(255,255,255,.35);}
-.fcc.joker-card::after{content:"JOKER";position:absolute;bottom:3px;left:0;right:0;text-align:center;font-family:var(--font);font-size:.6rem;font-weight:800;color:#f3e8ff;letter-spacing:.04em;}
-.fcc.playable{cursor:pointer;}
-.fcc.playable:active{transform:scale(.95);}
-.fcc.selected{transform:translateY(-8px);box-shadow:0 0 0 3px var(--gold),0 10px 20px rgba(245,200,66,.35);}
-/* Table */
-.fc-opp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;}
-.fc-opp-row + .fc-opp-row{border-top:1px solid rgba(255,255,255,.08);}
-.fc-opp-name{font-size:.9rem;font-weight:700;color:rgba(255,255,255,.92);display:flex;align-items:center;gap:6px;min-width:0;}
-.fc-tag{font-size:.74rem;font-weight:700;padding:2px 8px;border-radius:999px;}
-.fc-tag.turn{background:rgba(245,200,66,.2);color:var(--gold);}
-.fc-tag.out{background:rgba(74,222,128,.2);color:#86efac;}
-.fc-opp-cards{display:flex;align-items:center;}
-.fc-mini-back{width:13px;height:20px;border-radius:3px;margin-left:-4px;background:linear-gradient(150deg,#4c2a9a,#2a1060);border:1px solid rgba(255,255,255,.25);box-shadow:-1px 0 2px rgba(0,0,0,.3);}
-.fc-opp-count{font-size:.78rem;color:rgba(255,255,255,.65);margin-left:8px;font-variant-numeric:tabular-nums;}
-.fc-piles{display:flex;justify-content:center;align-items:flex-start;gap:26px;}
-.fc-pile{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.fc-pile-lbl{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.65);}
-.fc-pile-count{font-size:.75rem;color:rgba(255,255,255,.55);}
-.fc-pile .fcc{--cw:58px;}
-.fc-stock{background:linear-gradient(150deg,#4c2a9a,#2a1060) !important;border:2px solid rgba(255,255,255,.3) !important;box-shadow:3px 3px 0 #1d0b45,0 8px 18px rgba(0,0,0,.4) !important;}
-.fc-stock::before{content:'👑';font-size:1.3rem;opacity:.85;}
-.fc-pile .live{cursor:pointer;animation:fc-glow 1.6s ease-in-out infinite;}
-.fc-pile .live:active{transform:scale(.94);}
-.fc-pile .dim{opacity:.55;}
-@keyframes fc-glow{0%,100%{outline:0 solid rgba(245,200,66,0);}50%{outline:4px solid rgba(245,200,66,.35);}}
-.fc-empty{--cw:58px;width:var(--cw);height:calc(var(--cw)*1.42);border-radius:9px;border:2px dashed rgba(255,255,255,.2);display:grid;place-items:center;font-size:.75rem;color:rgba(255,255,255,.5);}
-/* Hand groups */
-.fc-groups.compact .fcc{--cw:clamp(36px,10.2vw,46px);}
-.fc-groups.compact .fcc .fc-r{font-size:1rem;}
-.fc-groups.compact{gap:13px 6px;}
-.fc-groups.compact .fc-grp{padding:11px 5px 5px;gap:3px;}
-.fc-groups{display:flex;flex-wrap:wrap;gap:14px 8px;align-items:flex-start;justify-content:center;padding-top:8px;}
-.fc-grp{display:inline-flex;flex-wrap:wrap;gap:4px;padding:12px 6px 6px;border-radius:14px;position:relative;}
-.fc-grp::before{content:attr(data-label);position:absolute;top:-9px;left:10px;font-size:.74rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap;}
-.fc-grp.meld{background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.3);}
-.fc-grp.meld::before{background:#14301f;color:#86efac;border:1px solid rgba(74,222,128,.35);}
-.fc-grp.dw{background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.25);}
-.fc-grp.dw::before{background:#3a1717;color:#fca5a5;border:1px solid rgba(248,113,113,.35);}
-.fc-grp.pick{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.45);}
-.fc-grp.pick::before{background:#3a2e0a;color:var(--gold);border:1px solid rgba(245,200,66,.45);}
-.fc-grp.pick .fcc.selected{transform:none;}
-.fc-grp.pick{min-width:84px;justify-content:center;}
-.dw-total{color:var(--gold);font-family:var(--display);font-weight:800;}
-.btn-go{background:linear-gradient(135deg,#4ade80,#16a34a);color:#052e16;box-shadow:0 8px 22px rgba(22,163,74,.3);}
+.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+/* ── Five Crowns cards ───────────────────────────────────────────────── */
+.pcard.fc .big{font-family:var(--font);}
+.fc-ix{position:absolute;left:6%;top:4%;display:flex;flex-direction:column;align-items:center;line-height:.86;font-family:var(--display);font-size:calc(var(--cw) * .28);color:var(--ink);letter-spacing:-.03em;}
+.fc-ix svg{width:calc(var(--cw) * .19);height:calc(var(--cw) * .19);margin-top:calc(var(--cw) * .03);}
+.fc-ix.bot{left:auto;top:auto;right:6%;bottom:4%;transform:rotate(180deg);}
+.fc-mid{display:grid;place-items:center;}
+.fc-mid svg{width:calc(var(--cw) * .5);height:calc(var(--cw) * .5);filter:drop-shadow(0 1px 0 rgba(0,0,0,.12));}
+.pcard.fc.wild{box-shadow:inset 0 0 0 calc(var(--cw) * .045) #e7b416, 0 0 0 1px rgba(0,0,0,.1), 0 2px 0 rgba(0,0,0,.15), 0 6px 14px rgba(0,0,0,.3);}
+.pcard.fc.wild .lbl{color:#b98a00;bottom:5%;font-size:calc(var(--cw) * .13);}
+.pcard.fc.joker .big svg{width:calc(var(--cw) * .56);height:calc(var(--cw) * .56);}
+.pcard.fc.joker .fc-ix{color:#fff;font-size:calc(var(--cw) * .2);}
+.pcard.fc.sel{transform:translateY(-14px);}
+/* ── Table ───────────────────────────────────────────────────────────── */
+.ctable .felt-in{height:clamp(300px,41dvh,400px);}
+.fc-seat{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.fc-seat.l{align-items:flex-start;}
+.fc-seat.r{align-items:flex-end;}
+.fc-seat .tag{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;background:rgba(10,20,15,.55);color:#fff;font-weight:800;font-size:.8rem;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25);transition:box-shadow .2s, transform .3s var(--spring);}
+.fc-seat .tag .nm{max-width:62px;overflow:hidden;text-overflow:ellipsis;}
+.fc-seat .tag .avatar{width:26px;height:26px;font-size:.75rem;}
+.fc-seat .tag .avatar .ico{width:60%;height:60%;}
+.fc-seat.turn .tag{box-shadow:0 0 0 3px var(--yellow), 0 0 18px rgba(255,200,61,.55);transform:scale(1.06);}
+.fc-seat.out .tag{box-shadow:0 0 0 3px var(--green), 0 0 18px rgba(61,220,132,.5);}
+.fc-seat .info{display:flex;align-items:center;gap:6px;}
+.fc-seat .backs{display:flex;--cw:20px;}
+.fc-seat .backs .pcard+.pcard{margin-left:-14px;}
+.chip-s{padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.88);color:#1d1b2e;font-size:.72rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.chip-s.d{background:rgba(255,255,255,.16);color:#fff;}
+.chip-s.ok{background:var(--green);color:#03290f;}
+.fc-seat .say{position:absolute;top:100%;margin-top:4px;padding:5px 10px;border-radius:12px;background:#fff;color:#1d1b2e;font-weight:900;font-size:.8rem;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.3);animation:pop .35s var(--spring);z-index:5;}
+.fc-center{position:absolute;left:50%;top:var(--cy,56%);transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;z-index:2;}
+.fc-piles{display:flex;gap:14px;align-items:flex-start;--cw:clamp(54px,14.5vw,66px);}
+.fc-pile{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.fc-pile .pl{font-size:.66rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);}
+.fc-stack{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);}
+.fc-stack .pcard{position:absolute;left:0;top:0;}
+.fc-stack .pcard:nth-child(1){transform:translate(3px,3px);}
+.fc-stack .pcard:nth-child(2){transform:translate(1.5px,1.5px);}
+.fc-stack.empty{box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);}
+.fc-stack.live{cursor:pointer;animation:livepile 1.6s ease-in-out infinite;}
+@keyframes livepile{50%{box-shadow:0 0 0 4px rgba(255,200,61,.75), 0 0 22px rgba(255,200,61,.55);}}
+.fc-wild{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:linear-gradient(180deg,#ffd75e,#e7a900);color:#3a2600;box-shadow:0 3px 0 #a87400, 0 6px 14px rgba(0,0,0,.35);white-space:nowrap;}
+.fc-wild .wr{display:grid;place-items:center;min-width:30px;height:30px;padding:0 4px;border-radius:999px;background:#fff8e1;font-family:var(--display);font-size:1.15rem;color:#8a5a00;box-shadow:inset 0 0 0 2px #c48b00;}
+.fc-wild b{font-family:var(--display);font-weight:400;font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;}
+.fc-wild small{font-weight:900;font-size:.72rem;opacity:.75;}
+.fc-round{position:absolute;left:10px;bottom:8px;z-index:2;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.fc-round.r{left:auto;right:10px;}
+/* ── Your hand ───────────────────────────────────────────────────────── */
+.fc-me{display:flex;align-items:center;gap:8px;padding:0 2px;min-height:30px;}
+.fc-me .who{display:flex;align-items:center;gap:8px;font-weight:900;}
+.fc-me .who .avatar{width:28px;height:28px;font-size:.8rem;}
+.fc-me .pts{margin-left:auto;display:flex;gap:6px;align-items:center;}
+.fc-left{padding:3px 10px;border-radius:999px;font-weight:900;font-size:.82rem;background:rgba(255,138,61,.18);color:var(--orange);transition:background .2s,color .2s;}
+.fc-left.zero{background:rgba(61,220,132,.18);color:var(--green);}
+.fc-me .chip-s{font-size:.8rem;padding:3px 10px;}
+.fc-me.turn .who{color:var(--yellow);}
+.fc-hand{display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:12px 10px;padding:16px 0 4px;min-height:calc(var(--cw) * 1.4 + 40px);--cw:clamp(50px,13.6vw,64px);}
+.fc-grp{display:flex;flex-direction:column;align-items:center;animation:rise .3s var(--ease);}
+.fc-grp .cs{display:flex;padding:3px;border-radius:calc(var(--cw) * .14);}
+.fc-grp .cs .pcard+.pcard{margin-left:calc(var(--cw) * -.5);}
+.fc-grp.meld .cs{background:rgba(61,220,132,.12);box-shadow:0 0 0 2px rgba(61,220,132,.5);}
+.fc-grp.pick .cs{background:rgba(255,200,61,.12);box-shadow:0 0 0 2px rgba(255,200,61,.6);}
+.fc-grp .gl{margin-top:5px;font-size:.66rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
+.fc-grp.meld .gl{color:var(--green);}
+.fc-grp.dead .gl{color:var(--orange);}
+.fc-grp.pick .gl{color:var(--yellow);}
+.fc-hand .pcard.play{cursor:pointer;}
+.fc-hand .pcard.hint{box-shadow:0 0 0 3px var(--green), 0 0 16px rgba(61,220,132,.7);}
+.cbar .btn{min-width:120px;}
+.cbar{flex-wrap:wrap;}
+.cbar .hint{text-align:center;}
+.cbar .hint.last{color:var(--yellow);width:100%;}
+/* ── Round summary ───────────────────────────────────────────────────── */
+.fc-sum{display:flex;flex-direction:column;gap:10px;}
+.fc-sr{padding:10px 12px;border-radius:var(--r);background:rgba(255,255,255,.05);}
+.fc-sr.out{background:rgba(61,220,132,.1);box-shadow:inset 0 0 0 2px rgba(61,220,132,.35);}
+.fc-sr .hd{display:flex;align-items:center;gap:8px;font-weight:900;}
+.fc-sr .hd .grow{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fc-sr .rp{font-weight:900;color:var(--orange);font-variant-numeric:tabular-nums;}
+.fc-sr .rp.z{color:var(--green);}
+.fc-sr .tt{min-width:46px;text-align:right;font-weight:900;font-size:1.15rem;font-variant-numeric:tabular-nums;}
+.fc-sr .mini{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:8px;--cw:30px;}
+.fc-sr .mini .g{display:flex;padding:2px;border-radius:5px;}
+.fc-sr .mini .g .pcard+.pcard{margin-left:-15px;}
+.fc-sr .mini .g.m{box-shadow:0 0 0 1.5px rgba(61,220,132,.6);}
+.fc-sr .mini .g.d .pcard{filter:saturate(.9);}
+.fc-sr .mini .g.d{box-shadow:0 0 0 1.5px rgba(255,138,61,.7);}
+.fc-sum .note{color:var(--text-2);font-size:.92rem;}
+.fly-ghost{position:fixed;z-index:60;pointer-events:none;transition:transform .42s cubic-bezier(.2,.8,.25,1), opacity .42s;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Five Crowns</span>
-  <a class="icon-btn scorecard-link" href="five-crowns.html" aria-label="Scorecard" title="Scorecard for in-person play">📋</a>
-</nav>
-<div class="page g-page">
-<div id="fc-root"></div>
-</div>
-<div class="g-bar" id="g-bar"></div>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'fivecrowns_state', KEY = 'fivecrwns', PAD_KEY = 'fc';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Five Crowns vs AI — 11 rounds. Cards 3–K in 4 suits plus stars; Jokers and
-// the round-rank are wild. Form sets/runs; discard to minimize deadwood.
-// Go out by having 0 deadwood after your discard. Lowest game total wins.
-// ═══════════════════════════════════════════════════════════════════════════
+  // ── The Five Crowns deck ──────────────────────────────────────────────────
+  // 5 suits (stars, hearts, clubs, spades, diamonds), ranks 3..K, two of each,
+  // plus 6 Jokers = 116 cards.
+  var SUITS = ['t', 'h', 'c', 's', 'd'];
+  var SUIT_NAME = { t: 'stars', h: 'hearts', c: 'clubs', s: 'spades', d: 'diamonds' };
+  var SUIT_COL = { t: '#e3a400', h: '#d81e3a', c: '#178a4a', s: '#1d1b2e', d: '#1f62d0' };
+  var GLYPH = { t: '★', h: '♥', c: '♣', s: '♠', d: '♦' };
+  var RANKS = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  var RN = { '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13 };
+  var PLURAL = ['Threes', 'Fours', 'Fives', 'Sixes', 'Sevens', 'Eights', 'Nines', 'Tens', 'Jacks', 'Queens', 'Kings'];
+  var LABELS = ['3s', '4s', '5s', '6s', '7s', '8s', '9s', '10s', 'Js', 'Qs', 'Ks'];
+  var SVG = {
+    t: '<path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.7l-6.4 3.6 1.4-7.2-5.3-5 7.2-.9z"/>',
+    h: '<path d="M12 21.2S3.6 16 2.2 10.6C1.2 6.9 3.6 3.8 7 3.8c2.2 0 3.8 1.2 5 3 1.2-1.8 2.8-3 5-3 3.4 0 5.8 3.1 4.8 6.8C20.4 16 12 21.2 12 21.2z"/>',
+    d: '<path d="M12 1.5 20.6 12 12 22.5 3.4 12z"/>',
+    s: '<path d="M12 1.8C9.6 5.6 3.3 8.8 3.3 13.6c0 2.7 2 4.5 4.5 4.5 1.5 0 2.7-.6 3.4-1.6L10.2 22h3.6l-1-5.5c.7 1 1.9 1.6 3.4 1.6 2.5 0 4.5-1.8 4.5-4.5 0-4.8-6.3-8-8.7-11.8z"/>',
+    c: '<circle cx="12" cy="6.9" r="4.6"/><circle cx="6.6" cy="13.6" r="4.6"/><circle cx="17.4" cy="13.6" r="4.6"/><path d="M10.6 12.5h2.8l1 9.5h-4.8z"/>',
+    crown: '<path d="M3 18.5 1.6 7.2l5.6 4.3L12 3.6l4.8 7.9 5.6-4.3L21 18.5z"/><rect x="3" y="19.6" width="18" height="2.6" rx="1"/>'
+  };
+  function suitSvg(s, col) { return '<svg viewBox="0 0 24 24" fill="' + (col || SUIT_COL[s]) + '" aria-hidden="true">' + SVG[s] + '</svg>'; }
+  function rn(c) { return RN[c.r] || 0; }
+  function isW(c, w) { return c.r === 'JK' || rn(c) === w; }
+  function val(c, w) { return c.r === 'JK' ? 50 : rn(c) === w ? 20 : rn(c); }
+  function label(c) { return c.r === 'JK' ? 'Joker' : c.r + GLYPH[c.s]; }
 
-const PNAMES = [
-  (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName()) || 'You',
-  'Cleo', 'Thor'
-];
-const SUITS = ['♠','♥','♦','♣','★'];   // Five Crowns has 5 suits (stars = 5th)
-const RED = new Set(['♥','♦']);
-const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K'];
-const RANK_VAL = {'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'JK':50};
-const RANK_ORD = Object.fromEntries(RANKS.map((r,i) => [r, i+3]));
-
-function makeDeck(){
-  const d = [];
-  SUITS.forEach(s => RANKS.forEach(r => d.push({rank:r, suit:s})));
-  for(let i = 0; i < 3; i++) d.push({rank:'JK', suit:'⭐', special:'joker'});
-  // Five Crowns uses two decks
-  const deck = [...d, ...d.map(c => ({...c}))];
-  for(let i = deck.length - 1; i > 0; i--){
-    const j = 0 | Math.random() * (i + 1);
-    [deck[i], deck[j]] = [deck[j], deck[i]];
+  function cardEl(c, o) {
+    o = o || {};
+    var n;
+    if (c.r === 'JK') {
+      n = Kit.cardFace({ html: suitSvg('crown', '#fff'), color: '#6c3fd6', solid: true, label: 'Joker', corner: false, cls: 'fc joker' + (o.cls ? ' ' + o.cls : ''), aria: 'Joker (wild)' });
+      n.insertAdjacentHTML('afterbegin', '<span class="fc-ix">JK</span><span class="fc-ix bot">JK</span>');
+    } else {
+      var wild = S && rn(c) === S.wild;
+      var ix = '<b style="font-weight:400">' + c.r + '</b>' + suitSvg(c.s);
+      n = Kit.cardFace({
+        html: '<span class="fc-ix">' + ix + '</span><span class="fc-ix bot">' + ix + '</span><span class="fc-mid">' + suitSvg(c.s) + '</span>',
+        color: SUIT_COL[c.s], corner: false, label: wild ? 'Wild' : '', cls: 'fc' + (wild ? ' wild' : '') + (o.cls ? ' ' + o.cls : ''),
+        aria: c.r + ' of ' + SUIT_NAME[c.s] + (wild ? ' (wild)' : '')
+      });
+    }
+    n.dataset.id = c.id;
+    return n;
   }
-  return deck;
-}
+  function backEl() { return Kit.card('', '', { back: true }); }
 
-let _cardIdCounter = 0;
-function tagCard(c){
-  // Each card instance gets a unique id since we have duplicates
-  return {...c, _id: ++_cardIdCounter};
-}
-
-function cKey(c){ return c._id != null ? c._id : (c.rank + c.suit); }
-function isWild(c, wildRank){ return c.special === 'joker' || c.rank === wildRank; }
-function cardVal(c){
-  if(c.special === 'joker') return 50;
-  return RANK_VAL[c.rank] || 0;
-}
-
-// ── Meld finder: returns best arrangement minimizing deadwood ──────────────
-function findBestMelds(hand, wildRank){
-  const naturals = hand.filter(c => !isWild(c, wildRank));
-  const wilds = hand.filter(c => isWild(c, wildRank));
-  // Deadwood if nothing melded = sum of all naturals (wilds would score big — avoid)
-  let bestDW = hand.reduce((s,c) => s + (isWild(c,wildRank) ? cardVal(c) : cardVal(c)), 0);
-  let bestMelds = [];
-
-  function stateKey(remaining, wildCount, melds){
-    return remaining.map(c => c._id).sort().join(',') + '|w' + wildCount;
+  function makeDeck() {
+    var d = [], id = 0;
+    for (var k = 0; k < 2; k++) SUITS.forEach(function (s) { RANKS.forEach(function (r) { d.push({ r: r, s: s, id: 'c' + (id++) }); }); });
+    for (var j = 0; j < 6; j++) d.push({ r: 'JK', s: 'j', id: 'c' + (id++) });
+    return Cards.shuffle(d);
   }
-  const memo = new Set();
 
-  function rec(remaining, wildsLeft, usedMelds){
-    // Current deadwood = sum of remaining + unplayed wilds
-    const dw = remaining.reduce((s,c) => s + cardVal(c), 0)
-             + wildsLeft.reduce((s,c) => s + cardVal(c), 0);
-    if(dw < bestDW){ bestDW = dw; bestMelds = usedMelds.map(g => [...g]); }
-    if(dw === 0) return; // can't do better
-
-    const k = stateKey(remaining, wildsLeft.length);
-    if(memo.has(k)) return;
-    memo.add(k);
-
-    // Try sets (3+ same rank)
-    const byRank = {};
-    remaining.forEach(c => (byRank[c.rank] = byRank[c.rank] || []).push(c));
-    Object.values(byRank).forEach(sameRank => {
-      // Use k natural cards + w wild cards, total 3–8
-      for(let natCount = Math.min(sameRank.length, 8); natCount >= 0; natCount--){
-        for(let wCount = 0; wCount <= wildsLeft.length; wCount++){
-          const total = natCount + wCount;
-          if(total < 3) continue;
-          if(total > 8) continue;
-          if(natCount === 0 && wCount === total) continue; // all-wild meld not allowed
-          const pickedNat = sameRank.slice(0, natCount);
-          const pickedWild = wildsLeft.slice(0, wCount);
-          const newRem = remaining.filter(c => !pickedNat.includes(c));
-          const newWilds = wildsLeft.slice(wCount);
-          rec(newRem, newWilds, [...usedMelds, [...pickedNat, ...pickedWild]]);
-        }
+  // ── Meld solver: lowest possible leftover points ──────────────────────────
+  // Books: 3+ cards of one rank (any suits). Runs: 3+ in a row of one suit.
+  // Wilds (the round's rank and Jokers) stand in for anything, any number of them.
+  function solve(cards, w) {
+    var nats = [], wilds = [];
+    cards.forEach(function (c) { (isW(c, w) ? wilds : nats).push(c); });
+    nats.sort(function (a, b) { return SUITS.indexOf(a.s) - SUITS.indexOf(b.s) || rn(a) - rn(b); });
+    var wildSum = wilds.reduce(function (a, c) { return a + val(c, w); }, 0);
+    var N = nats.length, R = nats.map(rn), SU = nats.map(function (c) { return c.s; });
+    var memo = new Map();
+    function rec(mask, wl, has) {
+      if (!mask) return { c: (has || wl >= 3) ? 0 : wildSum, m: null };
+      var key = mask * 64 + wl * 2 + (has ? 1 : 0);
+      var hit = memo.get(key); if (hit) return hit;
+      var i = 0; while (!((mask >> i) & 1)) i++;
+      var r = R[i], rest = mask & ~(1 << i);
+      var sub = rec(rest, wl, has);
+      var best = { c: val(nats[i], w) + sub.c, m: sub.m };
+      // books
+      var same = [];
+      for (var j = i + 1; j < N; j++) if (((rest >> j) & 1) && R[j] === r) same.push(j);
+      for (var b = 0; b < (1 << same.length); b++) {
+        var used = [i], m2 = rest;
+        for (var k = 0; k < same.length; k++) if ((b >> k) & 1) { used.push(same[k]); m2 &= ~(1 << same[k]); }
+        var need = Math.max(0, 3 - used.length);
+        if (need > wl) continue;
+        var s2 = rec(m2, wl - need, true);
+        if (s2.c < best.c) best = { c: s2.c, m: { t: 'book', idx: used, w: need, next: s2.m } };
+        if (best.c === 0) break;
       }
-    });
-
-    // Try runs (same suit, consecutive, 3+)
-    const bySuit = {};
-    remaining.forEach(c => (bySuit[c.suit] = bySuit[c.suit] || []).push(c));
-    Object.values(bySuit).forEach(sameSuit => {
-      const sorted = [...sameSuit].sort((a,b) => RANK_ORD[a.rank] - RANK_ORD[b.rank]);
-      // Try every subset of consecutive runs (with wild filling gaps)
-      for(let startIdx = 0; startIdx < sorted.length; startIdx++){
-        for(let endIdx = startIdx; endIdx < sorted.length; endIdx++){
-          const chosen = sorted.slice(startIdx, endIdx + 1);
-          // Check no duplicate ranks in chosen
-          const ranks = chosen.map(c => c.rank);
-          if(new Set(ranks).size !== ranks.length) continue;
-          const minRank = RANK_ORD[chosen[0].rank];
-          const maxRank = RANK_ORD[chosen[chosen.length - 1].rank];
-          const span = maxRank - minRank + 1;
-          const gaps = span - chosen.length;
-          if(gaps < 0) continue;   // shouldn't happen
-          // Use gaps wilds to fill internal gaps; optionally extend with more wilds
-          for(let extraW = 0; extraW + gaps + chosen.length >= 3 && extraW + gaps <= wildsLeft.length; extraW++){
-            const totalWilds = gaps + extraW;
-            if(totalWilds > wildsLeft.length) break;
-            const totalLen = chosen.length + totalWilds;
-            if(totalLen < 3) continue;
-            if(totalLen > 8) break;
-            // Ensure run extent stays within 3..K range when using extras
-            // (extension can go either direction; simplify by allowing it)
-            const meld = [...chosen, ...wildsLeft.slice(0, totalWilds)];
-            const newRem = remaining.filter(c => !chosen.includes(c));
-            const newWilds = wildsLeft.slice(totalWilds);
-            rec(newRem, newWilds, [...usedMelds, meld]);
+      // runs (this card is the lowest natural in the run)
+      var suit = SU[i];
+      (function ext(pos, m, wu, slots) {
+        if (best.c === 0) return;
+        if (slots.length < 11 && pos <= 13) {
+          for (var j = i + 1; j < N; j++) if (((m >> j) & 1) && SU[j] === suit && R[j] === pos) {
+            slots.push(j); ext(pos + 1, m & ~(1 << j), wu, slots); slots.pop(); break;
           }
         }
-      }
-    });
-  }
-
-  rec(naturals, wilds, []);
-  // Flatten deadwood = hand - melded
-  const meldIds = new Set(bestMelds.flat().map(c => c._id));
-  const deadwood = hand.filter(c => !meldIds.has(c._id));
-  const dwTotal = deadwood.reduce((s,c) => s + cardVal(c), 0);
-  return {melds: bestMelds, deadwood, dwTotal};
-}
-
-// ── State ──────────────────────────────────────────────────────────────────
-let deck, discard, hands, scores, roundScores, phase, round, current, goingOut, lastTurn, wildRank, selCard, log;
-
-function addLog(msg, cls = ''){ log.push({msg, cls}); if(log.length > 30) log.shift(); }
-
-function newGame(){
-  scores = [0, 0, 0];
-  log = [];
-  round = 0;
-  nextRound();
-}
-
-function nextRound(){
-  round++;
-  wildRank = RANKS[round - 1];   // Round 1: 3s wild, round 11: Ks wild
-  const n = round + 2;           // Round 1: 3 cards, round 11: 13 cards
-  const rawDeck = makeDeck();
-  deck = rawDeck.map(tagCard);   // Attach unique ids
-  hands = Array.from({length: 3}, () => deck.splice(0, n));
-  discard = [deck.pop()];
-  roundScores = [0, 0, 0];
-  goingOut = -1;
-  lastTurn = false;
-  current = 0;
-  phase = 'draw';
-  selCard = null;
-  addLog(`Round ${round}: ${n} cards · Wilds are ${wildRank}s + Jokers`);
-  render();
-  if(current !== 0) setTimeout(aiTurn, 700);
-}
-
-function drawFrom(src){
-  if(phase !== 'draw' || current !== 0) return;
-  let card = null;
-  if(src === 'discard' && discard.length){
-    card = discard.pop();
-  } else if(src === 'stock'){
-    if(!deck.length){
-      if(discard.length > 1){
-        const top = discard.pop();
-        deck = [...discard];
-        discard = [top];
-        for(let i = deck.length - 1; i > 0; i--){
-          const j = 0 | Math.random() * (i + 1);
-          [deck[i], deck[j]] = [deck[j], deck[i]];
+        if (wu < wl && slots.length < 11) {
+          var useful = slots.length < 3;
+          if (!useful && pos < 13) for (var q = i + 1; q < N; q++) if (((m >> q) & 1) && SU[q] === suit && R[q] > pos && R[q] <= pos + (wl - wu)) { useful = true; break; }
+          if (useful) { slots.push(-1); ext(pos + 1, m, wu + 1, slots); slots.pop(); }
         }
-        addLog('Stock empty — discards reshuffled.');
+        // longer runs are tried first, so a straight is shown as one long run
+        if (slots.length >= 3 && best.c > 0) {
+          var s3 = rec(m, wl - wu, true);
+          if (s3.c < best.c) best = { c: s3.c, m: { t: 'run', s: suit, start: r, slots: slots.slice(), next: s3.m } };
+        }
+      })(r + 1, rest, 0, [i]);
+      memo.set(key, best);
+      return best;
+    }
+    var res = rec(N ? (1 << N) - 1 : 0, wilds.length, false);
+    return { cost: res.c, plan: res.m, nats: nats, wilds: wilds };
+  }
+  function cost(cards, w) { return solve(cards, w).cost; }
+
+  // Turn a hand into display groups: melds (with wilds placed) + leftovers.
+  function arrange(cards, w) {
+    var sol = solve(cards, w), groups = [], usedN = {}, pool = sol.wilds.slice();
+    pool.sort(function (a, b) { return val(a, w) - val(b, w); });
+    for (var m = sol.plan; m; m = m.next) {
+      if (m.t === 'book') {
+        var g = m.idx.map(function (i) { usedN[i] = 1; return sol.nats[i]; });
+        for (var k = 0; k < m.w; k++) g.push(pool.shift());
+        groups.push({ t: 'book', r: sol.nats[m.idx[0]].r, cards: g });
+      } else {
+        var cs = m.slots.map(function (i, k) {
+          if (i >= 0) { usedN[i] = 1; return sol.nats[i]; }
+          // a wild that is really this card (e.g. the 4 of hearts in the 4s round) goes in its own spot
+          for (var q = 0; q < pool.length; q++) if (pool[q].s === m.s && rn(pool[q]) === m.start + k) return pool.splice(q, 1)[0];
+          return null;
+        });
+        cs = cs.map(function (c) { return c || pool.shift(); });
+        var over = m.start + cs.length - 1 - 13;
+        if (over > 0) cs = cs.slice(cs.length - over).concat(cs.slice(0, cs.length - over));
+        groups.push({ t: 'run', s: m.s, cards: cs });
       }
     }
-    card = deck.pop();
-  }
-  if(!card) return;
-  hands[0].push(card);
-  phase = 'discard';
-  selCard = null;
-  haptic('light');
-  addLog(`You draw from ${src === 'stock' ? 'stock' : 'discard'} → ${cardLbl(card)}.`);
-  render();
-}
-
-function selectCard(card){
-  if(phase !== 'discard' || current !== 0) return;
-  if(selCard && cKey(selCard) === cKey(card)){
-    // Tap the same card again — UNSELECT (no auto-discard)
-    selCard = null;
-  } else {
-    selCard = card;
-  }
-  haptic('select');
-  render();
-}
-
-function confirmDiscard(){
-  if(phase !== 'discard' || current !== 0 || !selCard) return;
-  const card = selCard;
-  hands[0] = hands[0].filter(c => cKey(c) !== cKey(card));
-  discard.push(card);
-  selCard = null;
-  addLog(`You discard ${cardLbl(card)}.`);
-  checkGoOut(0);
-}
-
-function checkGoOut(p){
-  const {dwTotal} = findBestMelds(hands[p], wildRank);
-  if(dwTotal === 0 && goingOut < 0){
-    goingOut = p;
-    roundScores[p] = 0;
-    addLog(`${PNAMES[p]} goes out! 🎉`, 'pts');
-    lastTurn = true;
-    haptic(p === 0 ? 'success' : 'medium');
-    if(window.GN) GN.toast(p === 0 ? 'You went out! 🎉 Final turns…' : `${PNAMES[p]} went out — last turn!`);
-  }
-  advanceTurn();
-}
-
-function advanceTurn(){
-  const next = (current + 1) % 3;
-  if(lastTurn && next === goingOut){
-    scoreRound();
-  } else {
-    current = next;
-    phase = 'draw';
-    selCard = null;
-    render();
-    if(current !== 0) setTimeout(aiTurn, 700);
-  }
-}
-
-function aiTurn(){
-  if(current === 0) return;
-  const p = current;
-  const {deadwood: curDW} = findBestMelds(hands[p], wildRank);
-  const curDWSum = curDW.reduce((s,c) => s + cardVal(c), 0);
-
-  // Consider taking discard if it reduces deadwood more than stock might
-  const discardTop = discard[discard.length - 1];
-  let source = 'stock';
-  if(discardTop){
-    const testHand = [...hands[p], discardTop];
-    // Try each possible discard from testHand and see minimum deadwood
-    let bestDW = Infinity;
-    testHand.forEach(c => {
-      const h = testHand.filter(x => cKey(x) !== cKey(c));
-      const dw = findBestMelds(h, wildRank).dwTotal;
-      if(dw < bestDW) bestDW = dw;
+    if (pool.length) {
+      var host = groups.filter(function (g) { return g.t === 'book'; })[0] || groups.filter(function (g) { return g.cards.length < 11; })[0];
+      if (host) { host.cards = host.cards.concat(pool); pool = []; }
+      else if (pool.length >= 3) { groups.push({ t: 'book', r: '', cards: pool }); pool = []; }
+    }
+    var left = sol.nats.filter(function (c, i) { return !usedN[i]; }).concat(pool);
+    groups.forEach(function (g) {
+      if (g.t === 'book') g.cards.sort(function (a, b) { return isW(a, w) - isW(b, w) || SUITS.indexOf(a.s) - SUITS.indexOf(b.s); });
     });
-    if(bestDW < curDWSum) source = 'discard';
+    groups.sort(function (a, b) { return (a.t === 'run') - (b.t === 'run') || rnOf(a) - rnOf(b); });
+    function rnOf(g) { var n = g.cards.filter(function (c) { return !isW(c, w); })[0]; return n ? rn(n) : 99; }
+    return { groups: groups, left: left, cost: left.reduce(function (a, c) { return a + val(c, w); }, 0) };
+  }
+  function groupLabel(g, w) {
+    if (g.t === 'run') return 'Run ' + GLYPH[g.s];
+    var n = g.cards.filter(function (c) { return !isW(c, w); })[0];
+    return n ? 'Book of ' + n.r + 's' : 'Book of wilds';
   }
 
-  let drawn = null;
-  if(source === 'discard'){
-    drawn = discard.pop();
-  } else {
-    if(!deck.length && discard.length > 1){
-      const top = discard.pop();
-      deck = [...discard];
-      discard = [top];
-    }
-    drawn = deck.pop();
+  // ── Setup & state ─────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [];
+  function roundName(k) { return 'the ' + ({ 11: 'Kings', 10: 'Queens', 9: 'Jacks' }[k] || LABELS[k - 1]) + ' round'; }
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set('Round ' + S.round + ' of ' + S.len + ' · ' + PLURAL[S.round - 1].toLowerCase() + ' wild');
   }
-  if(!drawn){ scoreRound(); return; }
-  hands[p].push(drawn);
-  addLog(`${PNAMES[p]} draws from ${source}.`);
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
-  // Decide discard: pick the card whose removal minimizes deadwood.
-  // Tiebreak: prefer discarding high-value cards (leave wilds in hand).
-  let bestDiscard = null, bestDW = Infinity;
-  hands[p].forEach(c => {
-    const h = hands[p].filter(x => cKey(x) !== cKey(c));
-    const dw = findBestMelds(h, wildRank).dwTotal;
-    if(dw < bestDW || (dw === bestDW && bestDiscard && cardVal(c) > cardVal(bestDiscard))){
-      bestDW = dw;
-      bestDiscard = c;
-    }
+  Kit.init({
+    id: 'five-crowns',
+    onNew: function () { token++; clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [PAD_KEY], title: 'Five Crowns: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Eleven rounds. Each round, try to get rid of all your cards by putting them into groups. After the last round, the <b>lowest total score wins</b>.</p>' +
+      '<h3>The cards</h3><p>Five suits: <b>stars, hearts, clubs, spades and diamonds</b>, with cards 3 to King. There are two of every card, plus 6 Jokers.</p>' +
+      '<h3>Rounds and wild cards</h3><ul><li>Round 1 deals 3 cards, round 2 deals 4, and so on up to 13 cards in round 11.</li>' +
+      '<li>The wild card changes every round: <b>3s are wild</b> in round 1, 4s in round 2 … <b>Kings are wild</b> in the last round.</li>' +
+      '<li><b>Jokers are always wild.</b> A wild card can stand in for any card.</li></ul>' +
+      '<h3>Your turn</h3><ol><li>Take one card: the top of the <b>stock</b> (face down) or the <b>discard</b> pile (face up).</li>' +
+      '<li>Throw one card onto the discard pile.</li></ol>' +
+      '<h3>Groups</h3><ul><li><b>Book:</b> 3 or more of the same number, like 7, 7, 7 (suits can be anything).</li>' +
+      '<li><b>Run:</b> 3 or more in a row in the same suit, like 5, 6, 7 of hearts.</li>' +
+      '<li>The game sorts your hand into groups for you. Green groups are done.</li></ul>' +
+      '<h3>Going out</h3><p>If every card left in your hand is in a group after you discard, you <b>go out</b>! Everyone else gets <b>one more turn</b>, then lays down what they can.</p>' +
+      '<h3>Scoring</h3><p>Cards left over (not in a group) count against you: <b>3 to 10</b> = their number, <b>Jack 11, Queen 12, King 13</b>, a <b>wild card 20</b> and a <b>Joker 50</b>. Going out scores 0.</p>' +
+      '<h3>Tip</h3><p>Hang on to wild cards and Jokers. They are worth a lot if you get caught with them, but they fit in any group.</p>'
   });
-  // Never discard a wild if avoidable
-  if(bestDiscard && isWild(bestDiscard, wildRank)){
-    const nonWilds = hands[p].filter(c => !isWild(c, wildRank));
-    let altBest = null, altBestDW = Infinity;
-    nonWilds.forEach(c => {
-      const h = hands[p].filter(x => cKey(x) !== cKey(c));
-      const dw = findBestMelds(h, wildRank).dwTotal;
-      if(dw < altBestDW){ altBestDW = dw; altBest = c; }
+
+  function showSetup() {
+    S = null; token++; undoStack = [];
+    Kit.setup(app, {
+      players: { min: 2, max: 7, count: 3, cpu: 'seats', label: 'Players (you + computers)' },
+      options: [{ id: 'len', label: 'Game length', value: 11, choices: [[11, 'Full · 11 rounds'], [6, 'Quick · 6 rounds']] }],
+      onStart: function (cfg) {
+        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.len || 11);
+      }
     });
-    if(altBest && altBestDW <= bestDW + 5){  // accept small loss to keep wild
-      bestDiscard = altBest;
-      bestDW = altBestDW;
-    }
+  }
+  function newGame(players, len) {
+    S = {
+      len: len, round: 0, started: Date.now(), rounds: [], log: [],
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; })
+    };
+    Kit.gameStart();
+    deal();
   }
 
-  hands[p] = hands[p].filter(c => cKey(c) !== cKey(bestDiscard));
-  discard.push(bestDiscard);
-  addLog(`${PNAMES[p]} discards ${cardLbl(bestDiscard)}.`);
-  checkGoOut(p);
-}
+  function deal() {
+    var n = S.players.length;
+    S.round++;
+    S.wild = S.round + 2;
+    S.dealer = (S.round - 1) % n;
+    var deck = makeDeck(), count = S.round + 2;
+    S.hands = S.players.map(function () { return []; });
+    for (var k = 0; k < count; k++) for (var p = 0; p < n; p++) S.hands[(S.dealer + 1 + p) % n].push(deck.pop());
+    S.discard = [deck.pop()];
+    S.stock = deck;
+    S.turn = (S.dealer + 1) % n;
+    S.phase = 'draw';
+    S.outBy = -1; S.turns = S.players.map(function () { return 0; });
+    S.sel = null; S.drew = null;
+    undoStack = [];
+    save(); render();
+    Kit.sfx('deal'); setTimeout(function () { Kit.sfx('deal'); }, 120);
+    dealAnim();
+    next();
+  }
 
-function scoreRound(){
-  for(let p = 0; p < 3; p++){
-    if(p === goingOut){
-      roundScores[p] = 0;
+  // ── Turn flow ─────────────────────────────────────────────────────────────
+  function next() {
+    if (!S || (S.phase !== 'draw' && S.phase !== 'discard')) return;
+    paint();
+    var p = S.turn;
+    if (S.players[p].cpu) {
+      var t = token;
+      setTimeout(function () { if (t === token && S && S.turn === p) cpuStep(p); }, S.phase === 'draw' ? 700 : 650);
+    }
+  }
+  function refillStock() {
+    if (S.stock.length) return;
+    var top = S.discard.pop();
+    S.stock = Cards.shuffle(S.discard);
+    S.discard = [top];
+    flash('Discards shuffled into a new stock');
+  }
+  function draw(p, from) {
+    if (S.phase !== 'draw' || S.turn !== p) return null;
+    var c;
+    if (from === 'discard' && S.discard.length) c = S.discard.pop();
+    else { refillStock(); c = S.stock.pop(); from = 'stock'; }
+    if (!c) return null;
+    S.hands[p].push(c);
+    S.drew = { id: c.id, from: from };
+    S.phase = 'discard';
+    return c;
+  }
+  function discard(p, id) {
+    var h = S.hands[p], i = -1;
+    for (var k = 0; k < h.length; k++) if (h[k].id === id) i = k;
+    if (i < 0) return;
+    var c = h.splice(i, 1)[0];
+    S.discard.push(c);
+    S.turns[p]++;
+    S.sel = null; S.drew = null;
+    var finalTurn = S.outBy >= 0;
+    if (!finalTurn && cost(h, S.wild) === 0) {
+      S.outBy = p; S.outTurn = S.turns[p];
+      Kit.callout(p === 0 ? 'You went out!' : 'Out!');
+      Kit.sfx('good'); Kit.haptic(p === 0 ? 'success' : 'medium');
+      seatSay(p, 'Out!');
+      if (S.outTurn === 1) S.log.push(S.players[p].name + ' went out on the very first turn in ' + roundName(S.round));
+    } else if (finalTurn && p !== S.outBy && cost(h, S.wild) === 0) {
+      seatSay(p, 'All down!');
+    }
+    S.turn = (p + 1) % S.players.length;
+    S.phase = 'draw';
+    if (S.outBy >= 0 && S.turn === S.outBy) { endRound(); return; }
+    save();
+    next();
+  }
+
+  // ── Computer players ──────────────────────────────────────────────────────
+  // They only look at their own hand and the face-up discard.
+  function partners(c, hand) {
+    var n = 0;
+    hand.forEach(function (x) { if (x === c) return; if (x.r === c.r) n += 2; else if (x.s === c.s && Math.abs(rn(x) - rn(c)) <= 2) n += 1; });
+    return n;
+  }
+  function bestDiscard(hand, w, avoidId) {
+    var best = null;
+    hand.forEach(function (c) {
+      if (isW(c, w) && hand.some(function (x) { return !isW(x, w); })) return;
+      if (c.id === avoidId && hand.length > 1) return;
+      var rest = hand.filter(function (x) { return x !== c; });
+      var score = cost(rest, w) * 10 + partners(c, rest) * 4 - val(c, w) + Math.random() * 3;
+      if (!best || score < best.score) best = { c: c, score: score };
+    });
+    return best ? best.c : hand[0];
+  }
+  function cpuStep(p) {
+    var h = S.hands[p], w = S.wild;
+    if (S.phase === 'draw') {
+      var top = S.discard[S.discard.length - 1], take = false;
+      if (top) {
+        if (isW(top, w)) take = true;
+        else {
+          var now = cost(h, w), withTop = h.concat([top]);
+          var after = cost(withTop.filter(function (x) { return x !== bestDiscard(withTop, w, top.id); }), w);
+          take = after < now - 1 || (after < now && Math.random() < .6) || (after === 0);
+          if (!take && S.round > 3 && partners(top, h) >= 2 && rn(top) <= 9 && Math.random() < .35) take = true;
+        }
+      }
+      var fromEl = take ? pileEl('discard') : pileEl('stock'), fromRect = fromEl ? fromEl.getBoundingClientRect() : null;
+      var c = draw(p, take ? 'discard' : 'stock');
+      if (!c) return;
+      if (take) { Kit.sfx('flip'); if (isW(c, w)) seatSay(p, 'Wild!'); } else Kit.sfx('deal');
+      save(); paint();
+      ghost(fromRect, seatEls[p] && seatEls[p].querySelector('.tag'), take ? c : null);
+      next();
     } else {
-      roundScores[p] = findBestMelds(hands[p], wildRank).dwTotal;
+      var d = bestDiscard(h, w, S.drew && S.drew.from === 'discard' ? S.drew.id : null);
+      discard(p, d.id);
+      Kit.sfx('flip');
+      flyToDiscard(seatEls[p] && seatEls[p].querySelector('.tag'));
     }
-    scores[p] += roundScores[p];
-  }
-  phase = 'round-end';
-  addLog(`Round ${round} scores — ${PNAMES.map((n,i) => n + ': +' + roundScores[i]).join(' · ')}`, 'pts');
-  if(round === 11){
-    phase = 'game-over';
-    endGame();
-  } else {
-    render();
-  }
-}
-
-function endGame(){
-  const minScore = Math.min(...scores);
-  const winner = scores.indexOf(minScore);
-  const won = winner === 0;
-  addLog(`🏆 ${PNAMES[winner]} wins with ${minScore} pts!`, 'pts');
-  haptic(won ? 'success' : 'heavy');
-  try{
-    const players = PNAMES.map((n,i) => ({name: n, score: scores[i]}));
-    GameHistory.savePlayerGame('fivecrwns', 'Five Crowns (AI)', players, winner, 0, {lowestWins: true});
-  }catch(e){}
-  render();
-}
-
-function goOutPlayer(){
-  if(phase !== 'discard' || current !== 0 || !selCard) return;
-  // Simulate discarding the selected card and see if hand would have 0 DW
-  const testHand = hands[0].filter(c => cKey(c) !== cKey(selCard));
-  const {dwTotal} = findBestMelds(testHand, wildRank);
-  if(dwTotal !== 0){
-    addLog(`Can't go out — ${dwTotal} deadwood would remain.`);
-    if(window.GN) GN.toast(`Can't go out — ${dwTotal} deadwood left`);
-    haptic('error');
-    return;
-  }
-  // Valid — discard and go out
-  confirmDiscard();
-}
-
-// ── Rendering helpers ─────────────────────────────────────────────────────
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
-function cardLbl(c){
-  if(c.special === 'joker') return 'Joker';
-  return c.rank + c.suit;
-}
-
-function cardEl(c, cls = ''){
-  const isWC = isWild(c, wildRank);
-  const joker = c.special === 'joker';
-  const col = joker ? '' : RED.has(c.suit) ? 'red' : c.suit === '★' ? 'star' : 'black';
-  const special = joker ? 'joker-card' : (isWC && !joker) ? 'wild-card' : '';
-  const rank = joker ? '★' : c.rank;
-  const suit = joker ? '' : c.suit;
-  return `<div class="fcc ${col} ${special} ${cls}" data-id="${c._id}">
-    <div class="fc-r">${rank}</div>
-    ${suit ? `<div class="fc-s">${suit}</div>` : ''}
-  </div>`;
-}
-
-// For the meld group preview, compute based on the player's POST-discard hand
-// if a card is currently selected (so the player sees the result of their choice).
-function previewHand(){
-  if(selCard && phase === 'discard'){
-    return hands[0].filter(c => cKey(c) !== cKey(selCard));
-  }
-  return hands[0];
-}
-
-function describeMeld(meld){
-  if(meld.length < 3) return '';
-  // Detect run vs set: same rank = set; consecutive ranks same suit = run
-  const nonWild = meld.filter(c => !isWild(c, wildRank));
-  if(nonWild.length === 0) return 'Meld';
-  const sameRank = nonWild.every(c => c.rank === nonWild[0].rank);
-  if(sameRank) return `Set · ${nonWild[0].rank}s`;
-  return `Run · ${nonWild[0].suit}`;
-}
-
-let logOpen = false;
-function renderLog(){
-  const last = log.length ? log[log.length-1].msg : '';
-  return `<details class="g-log" id="g-log" ${logOpen ? 'open' : ''}><summary>Game log<span class="last">${esc(last)}</span></summary>
-    <div class="g-log-body">${log.slice(-14).map(({msg,cls}) => `<div class="${cls || ''}">${esc(msg)}</div>`).join('')}</div></details>`;
-}
-function wireLog(){
-  const d = document.getElementById('g-log');
-  if(!d) return;
-  d.addEventListener('toggle', () => { logOpen = d.open; });
-  const b = d.querySelector('.g-log-body'); if(b) b.scrollTop = b.scrollHeight;
-}
-function setBar(html){ document.getElementById('g-bar').innerHTML = html || ''; }
-
-function render(){
-  const root = document.getElementById('fc-root');
-  let html = '';
-  const minScore = Math.min(...scores);
-  const live = phase !== 'round-end' && phase !== 'game-over';
-
-  // ── Round + wild header ─────────────────────────────────────────────
-  html += `<div class="g-meta"><span class="g-pill">Round ${round} of 11</span><span class="g-pill gold">Wild: ${wildRank}s + Jokers</span></div>`;
-
-  // ── Game over / round end ───────────────────────────────────────────
-  if(!live){
-    const over = phase === 'game-over';
-    const w = scores.indexOf(Math.min(...scores));
-    const order = PNAMES.map((n,i) => i).sort((a,b) => scores[a] - scores[b]);
-    const title = over ? (w === 0 ? 'You win!' : esc(PNAMES[w]) + ' wins') :
-      (goingOut === 0 ? 'You went out!' : goingOut > 0 ? esc(PNAMES[goingOut]) + ' went out' : 'Round over');
-    const sub = over ? `Lowest total: ${scores[w]} points` : `Round ${round} of 11 · low score wins`;
-    html += `<div class="g-result ${over && w === 0 ? '' : 'plain'}">
-      <div class="g-result-icon">${over ? (w === 0 ? '🏆' : '👑') : goingOut === 0 ? '🎉' : '🃏'}</div>
-      <div class="g-result-title">${title}</div>
-      <div class="g-result-sub">${sub}</div>
-      <div class="g-rows">${order.map(i => `<div class="g-row ${i === 0 ? 'you' : ''}"><span>${esc(PNAMES[i])}${i === goingOut ? ' · out' : ''}</span>
-        <span class="r"><span class="${roundScores[i] ? 'neg' : 'pos'}">+${roundScores[i]}</span><b>${scores[i]}</b></span></div>`).join('')}</div>
-    </div>`;
-    html += renderLog();
-    root.innerHTML = html;
-    wireLog();
-    setBar(over ? `<button class="btn btn-gold" id="ng-btn">New Game</button>` : `<button class="btn btn-gold" id="nr-btn">Next Round</button>`);
-    document.getElementById('ng-btn')?.addEventListener('click', () => { haptic('light'); newGame(); });
-    document.getElementById('nr-btn')?.addEventListener('click', () => { haptic('light'); nextRound(); });
-    return;
   }
 
-  // ── Scores ──────────────────────────────────────────────────────────
-  html += `<div class="g-hud fc-hud">`;
-  PNAMES.forEach((n, i) => {
-    const cls = ['g-seat', i === 0 ? 'you' : '', scores[i] === minScore && scores[i] > 0 ? 'low' : '',
-      current === i ? 'turn' : ''].filter(Boolean).join(' ');
-    html += `<div class="${cls}">
-      <div class="g-seat-name">${esc(n)}</div>
-      <div class="g-seat-score">${scores[i]}</div>
-      <div class="g-seat-sub">${i === goingOut ? '✓ went out' : current === i ? (i === 0 ? 'your turn' : 'thinking…') : i === 0 ? 'you' : hands[i].length + ' cards'}</div>
-    </div>`;
-  });
-  html += `</div>`;
+  // ── You ───────────────────────────────────────────────────────────────────
+  function youDraw(from) {
+    if (!S || S.turn !== 0 || S.phase !== 'draw') return;
+    snapshot();
+    var src = pileEl(from), rect = src ? src.getBoundingClientRect() : null;
+    var c = draw(0, from);
+    if (!c) { undoStack.pop(); return; }
+    Kit.sfx(from === 'discard' ? 'flip' : 'deal'); Kit.haptic('light');
+    S.sel = null;
+    save(); paint();
+    var node = handEl.querySelector('[data-id="' + c.id + '"]');
+    if (node && rect) flyFrom(node, rect);
+    if (node) { node.classList.add('hint'); setTimeout(function () { node.classList.remove('hint'); }, 1200); }
+  }
+  function youSelect(id) {
+    if (!S || S.turn !== 0 || S.phase !== 'discard') return;
+    S.sel = S.sel === id ? null : id;
+    Kit.sfx('tap'); Kit.haptic('light');
+    save(); paint();
+  }
+  function youDiscard() {
+    if (!S || S.turn !== 0 || S.phase !== 'discard' || !S.sel) return;
+    var node = handEl.querySelector('[data-id="' + S.sel + '"]'), rect = node ? node.getBoundingClientRect() : null;
+    snapshot();
+    discard(0, S.sel);
+    Kit.sfx('flip');
+    if (rect && playing()) { var top = discardTopEl(); if (top) flyFrom(top, rect); }
+  }
 
-  // ── Table: opponents + piles ───────────────────────────────────────
-  const isYourDraw = phase === 'draw' && current === 0;
-  const isYourDiscard = phase === 'discard' && current === 0;
-  html += `<div class="felt g-table">`;
-  const top = discard[discard.length-1];
-  html += `<div class="fc-piles">
-    <div class="fc-pile">
-      <div class="fc-pile-lbl">Stock</div>
-      <div class="fcc fc-stock ${isYourDraw ? 'live' : 'dim'}" id="stock-card" ${isYourDraw ? 'role="button" aria-label="Draw from stock"' : ''}></div>
-      <div class="fc-pile-count">${deck.length} left</div>
-    </div>
-    <div class="fc-pile">
-      <div class="fc-pile-lbl">Discard</div>
-      ${top ? cardEl(top, (isYourDraw ? 'live' : 'dim')).replace('class="fcc', 'id="discard-card" class="fcc') : '<div class="fc-empty">empty</div>'}
-      <div class="fc-pile-count">${discard.length} card${discard.length === 1 ? '' : 's'}</div>
-    </div>
-  </div>`;
-  html += `</div>`;
+  // ── End of round & game ───────────────────────────────────────────────────
+  function endRound() {
+    token++;
+    var w = S.wild, res = S.players.map(function (pl, p) {
+      var a = arrange(S.hands[p], w);
+      return { pts: p === S.outBy ? 0 : a.cost, groups: a.groups, left: a.left };
+    });
+    var pts = res.map(function (r) { return r.pts; });
+    pts.forEach(function (v, p) { S.players[p].total += v; });
+    S.rounds.push({ pts: pts, out: S.outBy, catch: res.map(function (r) { return r.left.filter(function (c) { return c.r === 'JK'; }).length + '/' + r.left.filter(function (c) { return isW(c, w) && c.r !== 'JK'; }).length; }) });
+    S.last = res.map(function (r) { return { pts: r.pts, groups: r.groups.map(function (g) { return g.cards; }), left: r.left }; });
+    S.phase = S.round >= S.len ? 'over' : 'roundover';
+    undoStack = [];
+    save(); paint();
+    var me = pts[0];
+    if (S.outBy === 0 || me === 0) Kit.sfx('good'); else if (me >= 50) { Kit.sfx('bad'); Kit.haptic('error'); }
+    setTimeout(function () {
+      if (S.phase === 'over') finish();
+      else showRound();
+    }, 900);
+  }
+  function summaryNode() {
+    var box = el('div', { class: 'fc-sum' });
+    var o = S.rounds[S.rounds.length - 1].out;
+    box.appendChild(el('p', { class: 'note', text: (o === 0 ? 'You went out' : S.players[o].name + ' went out') + ' in ' + roundName(S.round) + '. Leftover cards count against you.' }));
+    S.players.forEach(function (pl, p) {
+      var r = S.last[p];
+      var row = el('div', { class: 'fc-sr' + (p === o ? ' out' : '') }, [
+        el('div', { class: 'hd' }, [
+          el('span', { class: 'avatar sm', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+          el('span', { class: 'grow', text: p === 0 ? 'You' : pl.name }),
+          el('span', { class: 'rp' + (r.pts ? '' : ' z'), text: p === o ? 'Out!' : r.pts ? '+' + r.pts : 'All down' }),
+          el('span', { class: 'tt', text: String(pl.total) })
+        ])
+      ]);
+      var mini = el('div', { class: 'mini' });
+      r.groups.forEach(function (g) { var gg = el('div', { class: 'g m' }); g.forEach(function (c) { gg.appendChild(cardEl(c)); }); mini.appendChild(gg); });
+      if (r.left.length) { var d = el('div', { class: 'g d' }); r.left.forEach(function (c) { d.appendChild(cardEl(c)); }); mini.appendChild(d); }
+      row.appendChild(mini);
+      box.appendChild(row);
+    });
+    return box;
+  }
+  function showRound() {
+    if (!S || S.phase !== 'roundover') return;
+    Kit.sheet({
+      title: 'Round ' + S.round + ' done', node: summaryNode(),
+      actions: [{ label: 'Deal round ' + (S.round + 1) + ' · ' + PLURAL[S.round] + ' wild', primary: true, onClick: function () { if (S && S.phase === 'roundover') deal(); } }]
+    });
+  }
+  function showScores() {
+    var t = el('div', { class: 'fc-sum' });
+    var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return S.players[a].total - S.players[b].total; });
+    order.forEach(function (p) {
+      var pl = S.players[p];
+      t.appendChild(el('div', { class: 'fc-sr' }, [el('div', { class: 'hd' }, [
+        el('span', { class: 'avatar sm', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'grow', text: p === 0 ? 'You' : pl.name }),
+        el('span', { class: 'rp z', text: S.rounds.filter(function (r) { return r.out === p; }).length ? 'out ' + S.rounds.filter(function (r) { return r.out === p; }).length + 'x' : '' }),
+        el('span', { class: 'tt', text: String(pl.total) })
+      ])]));
+    });
+    Kit.sheet({ title: 'Scores after round ' + S.rounds.length, node: el('div', null, [el('p', { class: 'muted', text: 'Lowest total wins after ' + S.len + ' rounds.', style: { 'margin-bottom': '10px' } }), t]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
 
-  // ── Status ──────────────────────────────────────────────────────────
-  const previewHandCards = previewHand();
-  const {melds: previewMelds, deadwood: previewDW, dwTotal: previewDWTotal} = findBestMelds(previewHandCards, wildRank);
-
-  let statusHtml = '';
-  let statusCls = '';
-  if(isYourDraw){
-    statusHtml = `Your turn — draw from the <b>stock</b> or take the <b>discard</b>`;
-    statusCls = 'yours';
-  } else if(isYourDiscard){
-    if(selCard){
-      statusHtml = previewDWTotal === 0 ? `Discard <b>${cardLbl(selCard)}</b> and you can go out!` :
-        `After discarding <b>${cardLbl(selCard)}</b>: <span class="dw-total">&nbsp;${previewDWTotal}&nbsp;</span> deadwood`;
-    } else {
-      statusHtml = `Tap a card to discard · deadwood <span class="dw-total">&nbsp;${previewDWTotal}</span>`;
+  function highlights() {
+    var hl = [], P = S.players, R = S.rounds;
+    var lastOut = R[R.length - 1].out;
+    hl.push(P[lastOut].name + ' went out first in ' + roundName(R.length));
+    var outs = P.map(function (p, i) { return R.filter(function (r) { return r.out === i; }).length; });
+    var most = outs.indexOf(Math.max.apply(null, outs));
+    if (outs[most] >= 2) hl.push(P[most].name + ' went out first ' + outs[most] + ' times');
+    var big = null;
+    R.forEach(function (r, ri) { r.pts.forEach(function (v, p) { if (!big || v > big.v) big = { v: v, p: p, ri: ri }; }); });
+    if (big && big.v >= 30) {
+      var jk = +(R[big.ri].catch[big.p] || '0/0').split('/')[0], wl = +(R[big.ri].catch[big.p] || '0/0').split('/')[1];
+      hl.push(P[big.p].name + ' got caught with ' + (jk ? jk + ' Joker' + (jk > 1 ? 's' : '') + ' ' : wl ? wl + ' wild card' + (wl > 1 ? 's' : '') + ' ' : '') + '(' + big.v + ' points) in ' + roundName(big.ri + 1));
     }
-    statusCls = 'yours';
-  } else if(lastTurn){
-    statusHtml = `${esc(PNAMES[goingOut])} went out — final turns…`;
-  } else {
-    statusHtml = `${esc(PNAMES[current])} is thinking…`;
+    S.log.slice(0, 2).forEach(function (x) { hl.push(x); });
+    var zeros = P.map(function (p, i) { return R.filter(function (r) { return r.pts[i] === 0; }).length; });
+    var zb = zeros.indexOf(Math.max.apply(null, zeros));
+    if (zeros[zb] >= 3 && zeros[zb] > outs[zb]) hl.push(P[zb].name + ' scored zero in ' + zeros[zb] + ' rounds');
+    if (R.length >= 5) {
+      var cut = R.length - 3, tot = P.map(function () { return 0; });
+      R.slice(0, cut).forEach(function (r) { r.pts.forEach(function (v, i) { tot[i] += v; }); });
+      var ledBy = tot.indexOf(Math.min.apply(null, tot));
+      var fin = P.map(function (p) { return p.total; }), wi = fin.indexOf(Math.min.apply(null, fin));
+      if (ledBy !== wi && fin.filter(function (v) { return v === fin[wi]; }).length === 1) hl.push(P[wi].name + ' came from behind in the last 3 rounds to win');
+    }
+    return hl.slice(0, 6);
   }
-  html += `<div class="g-status ${statusCls}">${statusHtml}</div>`;
-
-  // ── Player hand, grouped into melds + deadwood ──────────────────────
-  // Meld preview is based on post-discard hand if a card is selected.
-  const actualHand = hands[0];
-  html += `<div class="g-label"><span>Your hand · ${actualHand.length}</span><span>${isYourDiscard ? 'tap again to unselect' : ''}</span></div>`;
-  html += `<div class="fc-groups ${actualHand.length >= 9 ? 'compact' : ''}">`;
-  const tap = isYourDiscard ? 'playable' : '';
-  if(selCard){
-    html += `<div class="fc-grp pick" data-label="Discard">${cardEl(selCard, 'selected ' + tap)}</div>`;
+  function finish() {
+    S.phase = 'over';
+    var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
+    var tie = rank.length > 1 && rank[1].score === rank[0].score;
+    Kit.record(KEY, {
+      started: S.started, mode: 'vs Computer' + (S.len < 11 ? ' · quick' : ''), lowWins: true,
+      players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+      winner: tie ? null : rank[0].name,
+      rounds: { labels: S.rounds.map(function (r, i) { return LABELS[i]; }), scores: S.rounds.map(function (r) { return r.pts; }) },
+      highlights: highlights()
+    });
+    clearSave();
+    var players = S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), len = S.len;
+    Kit.sheet({
+      title: 'Final round done', node: summaryNode(),
+      actions: [{ label: 'See who won', primary: true }],
+      onClose: function () {
+        Kit.win({
+          title: tie ? "It's a tie!" : rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
+          sub: 'Lowest score wins', rank: rank, lose: rank[0].i !== 0 && !tie, icon: rank[0].i === 0 ? 'trophy' : 'bot',
+          again: function () { newGame(players, len); },
+          extra: [{ label: 'Change players', onClick: showSetup }]
+        });
+      }
+    });
   }
-  previewMelds.forEach(meld => {
-    html += `<div class="fc-grp meld" data-label="${describeMeld(meld)}">${meld.map(c => cardEl(c, tap)).join('')}</div>`;
-  });
-  if(previewDW.length){
-    html += `<div class="fc-grp dw" data-label="Deadwood · ${previewDWTotal}">${previewDW.map(c => cardEl(c, tap)).join('')}</div>`;
+
+  // ── Undo (your last draw or discard) ──────────────────────────────────────
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function undo() {
+    if (!S || !undoStack.length) return Kit.toast('Nothing to undo this round');
+    token++;
+    var was = S;
+    S = JSON.parse(undoStack.pop());
+    // Taking back a stock draw: you saw that card, so mix the stock again
+    if (was.drew && was.drew.from === 'stock' && S.phase === 'draw') Cards.shuffle(S.stock);
+    Kit.sfx('whoosh'); Kit.toast('Undone');
+    save(); render(); next();
   }
-  html += `</div>`;
 
-  html += renderLog();
-  root.innerHTML = html;
-  wireLog();
-
-  // ── Action bar ──────────────────────────────────────────────────────
-  if(isYourDraw){
-    setBar(`<button class="btn btn-outline" id="bar-stock">Draw stock</button>` +
-      (top ? `<button class="btn btn-gold" id="bar-disc">Take ${cardLbl(top)}</button>` : ''));
-  } else if(isYourDiscard && selCard){
-    const canGoOut = previewDWTotal === 0;
-    setBar((canGoOut ? `<button class="btn btn-go" id="goout-btn">🎉 Go Out</button>` : '') +
-      `<button class="btn ${canGoOut ? 'btn-outline' : 'btn-gold'}" id="discard-btn">Discard ${cardLbl(selCard)}</button>`);
-  } else setBar('');
-
-  // Wire events
-  if(isYourDraw){
-    document.getElementById('stock-card')?.addEventListener('click', () => drawFrom('stock'));
-    document.getElementById('discard-card')?.addEventListener('click', () => drawFrom('discard'));
-    document.getElementById('bar-stock')?.addEventListener('click', () => drawFrom('stock'));
-    document.getElementById('bar-disc')?.addEventListener('click', () => drawFrom('discard'));
+  // ── Render ────────────────────────────────────────────────────────────────
+  // Opponent seat spots on the felt [left%, top%, anchor] for 1..6 opponents
+  var SPOTS = {
+    1: [[50, 3, 'c']],
+    2: [[28, 3, 'c'], [72, 3, 'c']],
+    3: [[2, 34, 'l'], [50, 3, 'c'], [98, 34, 'r']],
+    4: [[2, 40, 'l'], [30, 3, 'c'], [70, 3, 'c'], [98, 40, 'r']],
+    5: [[2, 46, 'l'], [22, 3, 'c'], [50, 3, 'c'], [78, 3, 'c'], [98, 46, 'r']],
+    6: [[2, 58, 'l'], [2, 24, 'l'], [34, 3, 'c'], [66, 3, 'c'], [98, 24, 'r'], [98, 58, 'r']]
+  };
+  var seatEls = [], centerEl, handEl, barEl, meEl, feltEl;
+  function render() {
+    app.innerHTML = '';
+    var table = el('div', { class: 'ctable wood' });
+    feltEl = el('div', { class: 'felt-in' });
+    var n = S.players.length, spots = SPOTS[n - 1];
+    seatEls = [null];
+    for (var p = 1; p < n; p++) {
+      var sp = spots[p - 1];
+      var st = { top: sp[1] + '%' };
+      if (sp[2] === 'l') st.left = '8px'; else if (sp[2] === 'r') st.right = '8px';
+      else { st.left = sp[0] + '%'; st.transform = 'translateX(-50%)'; }
+      var s = el('div', { class: 'fc-seat ' + sp[2], style: st });
+      feltEl.appendChild(s); seatEls.push(s);
+    }
+    centerEl = el('div', { class: 'fc-center', style: { '--cy': n >= 6 ? '60%' : n >= 4 ? '58%' : '55%' } });
+    feltEl.appendChild(centerEl);
+    feltEl.appendChild(el('div', { class: 'fc-round', text: 'Round ' + S.round + ' of ' + S.len }));
+    feltEl.appendChild(el('div', { class: 'fc-round r', text: (S.round + 2) + ' cards' }));
+    table.appendChild(feltEl);
+    app.appendChild(table);
+    meEl = el('div', { class: 'fc-me' });
+    app.appendChild(meEl);
+    handEl = el('div', { class: 'fc-hand' });
+    app.appendChild(handEl);
+    barEl = el('div', { class: 'cbar' });
+    app.appendChild(barEl);
+    paint();
+    if (S.phase === 'roundover') setTimeout(showRound, 250);
+    if (S.phase === 'over') setTimeout(finish, 250);
   }
-  if(isYourDiscard){
-    document.querySelectorAll('.fc-groups .fcc.playable').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = +el.dataset.id;
-        const c = hands[0].find(x => x._id === id);
-        if(c) selectCard(c);
+  function paint() { if (!S || !feltEl) return; paintSeats(); paintCenter(); paintHand(); }
+  function avatar(p) {
+    var pl = S.players[p];
+    return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) });
+  }
+  function playing() { return S.phase === 'draw' || S.phase === 'discard'; }
+  function paintSeats() {
+    for (var p = 1; p < S.players.length; p++) {
+      var s = seatEls[p], pl = S.players[p]; s.innerHTML = '';
+      s.classList.toggle('turn', playing() && S.turn === p);
+      s.classList.toggle('out', S.outBy === p);
+      s.appendChild(el('div', { class: 'tag' }, [avatar(p), el('span', { class: 'nm', text: pl.name })]));
+      var backs = el('div', { class: 'backs' });
+      var cnt = S.hands[p].length;
+      for (var k = 0; k < Math.min(cnt, 5); k++) backs.appendChild(backEl());
+      var info = el('div', { class: 'info' }, [backs, el('span', { class: 'chip-s', text: pl.total + ' pts' })]);
+      if (S.dealer === p) info.appendChild(el('span', { class: 'chip-s d', text: 'Dealer' }));
+      if (S.outBy === p) info.appendChild(el('span', { class: 'chip-s ok', text: 'Out' }));
+      s.appendChild(info);
+    }
+  }
+  function paintCenter() {
+    centerEl.innerHTML = '';
+    var mine = S.turn === 0 && S.phase === 'draw';
+    var stock = el('div', { class: 'fc-stack' + (S.stock.length ? '' : ' empty') + (mine ? ' live' : ''), 'data-pile': 'stock', role: mine ? 'button' : null, 'aria-label': 'Draw from the stock' });
+    for (var k = 0; k < Math.min(3, S.stock.length); k++) stock.appendChild(backEl());
+    var top = S.discard[S.discard.length - 1];
+    var disc = el('div', { class: 'fc-stack' + (top ? '' : ' empty') + (mine && top ? ' live' : ''), 'data-pile': 'discard', role: mine ? 'button' : null, 'aria-label': top ? 'Take the ' + label(top) : 'Discard pile' });
+    if (S.discard.length > 1) disc.appendChild(cardEl(S.discard[S.discard.length - 2]));
+    if (top) disc.appendChild(cardEl(top));
+    if (mine) {
+      stock.addEventListener('click', function () { youDraw('stock'); });
+      if (top) disc.addEventListener('click', function () { youDraw('discard'); });
+    } else if (S.turn === 0 && S.phase === 'discard') {
+      disc.style.cursor = 'pointer';
+      disc.addEventListener('click', function () { if (S.sel) youDiscard(); else Kit.toast('Tap a card in your hand first'); });
+    }
+    centerEl.appendChild(el('div', { class: 'fc-piles' }, [
+      el('div', { class: 'fc-pile' }, [stock, el('span', { class: 'pl', text: 'Stock ' + S.stock.length })]),
+      el('div', { class: 'fc-pile' }, [disc, el('span', { class: 'pl', text: 'Discard' })])
+    ]));
+    var wr = RANKS[S.wild - 3];
+    centerEl.appendChild(el('div', { class: 'fc-wild', 'aria-label': PLURAL[S.wild - 3] + ' and Jokers are wild' }, [
+      el('span', { class: 'wr', text: wr }), el('b', { text: PLURAL[S.wild - 3] + ' wild' }), el('small', { text: '+ Jokers' })
+    ]));
+  }
+  function paintHand() {
+    var h = S.hands[0], w = S.wild, myTurn = S.turn === 0 && playing();
+    // Header: you, your total, live leftover points
+    meEl.innerHTML = '';
+    meEl.className = 'fc-me' + (myTurn ? ' turn' : '');
+    var shown = S.sel ? h.filter(function (c) { return c.id !== S.sel; }) : h;
+    var a = arrange(shown, w);
+    var after = S.phase === 'discard' && S.turn === 0 && S.sel;
+    meEl.appendChild(el('div', { class: 'who' }, [avatar(0), el('span', { text: 'You' })]));
+    var pts = el('div', { class: 'pts' });
+    if (S.dealer === 0) pts.appendChild(el('span', { class: 'chip-s d', text: 'Dealer' }));
+    if (S.outBy === 0) pts.appendChild(el('span', { class: 'chip-s ok', text: 'Out' }));
+    pts.appendChild(el('span', { class: 'fc-left' + (a.cost ? '' : ' zero'), text: a.cost ? 'Left over: ' + a.cost : 'All in groups!' }));
+    pts.appendChild(el('span', { class: 'chip-s', text: 'Total ' + S.players[0].total }));
+    meEl.appendChild(pts);
+
+    // Which discards would let you go out?
+    var outIds = {};
+    if (S.turn === 0 && S.phase === 'discard' && S.outBy < 0) h.forEach(function (c) { if (cost(h.filter(function (x) { return x !== c; }), w) === 0) outIds[c.id] = 1; });
+    var canOut = Object.keys(outIds).length > 0;
+
+    handEl.innerHTML = '';
+    var picking = S.turn === 0 && S.phase === 'discard';
+    function add(group, cls, lbl) {
+      var g = el('div', { class: 'fc-grp ' + cls }), cs = el('div', { class: 'cs' });
+      group.forEach(function (c) {
+        var n = cardEl(c);
+        if (picking) {
+          n.classList.add('play');
+          if (c.id === S.sel) n.classList.add('sel');
+          if (!S.sel && outIds[c.id]) n.classList.add('hint');
+          n.addEventListener('click', function () { youSelect(c.id); });
+        }
+        cs.appendChild(n);
       });
-    });
-    document.getElementById('discard-btn')?.addEventListener('click', confirmDiscard);
-    document.getElementById('goout-btn')?.addEventListener('click', goOutPlayer);
-  }
-}
+      g.appendChild(cs); g.appendChild(el('span', { class: 'gl', text: lbl }));
+      handEl.appendChild(g);
+    }
+    if (S.sel) { var sc = h.filter(function (c) { return c.id === S.sel; })[0]; if (sc) add([sc], 'pick', 'Discard?'); }
+    a.groups.forEach(function (g) { add(g.cards, 'meld', groupLabel(g, w)); });
+    if (a.left.length) {
+      var left = a.left.slice().sort(function (x, y) { return isW(x, w) - isW(y, w) || SUITS.indexOf(x.s) - SUITS.indexOf(y.s) || rn(x) - rn(y); });
+      add(left, 'dead', 'Left over · ' + a.cost);
+    }
+    if (!h.length) handEl.appendChild(el('div', { class: 'muted', text: 'No cards' }));
 
-newGame();
+    // Action bar
+    barEl.innerHTML = '';
+    if (!playing()) {
+      if (S.phase === 'roundover') barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Round results', onclick: showRound }));
+      return;
+    }
+    if (S.turn !== 0) {
+      var who = S.players[S.turn].name;
+      barEl.appendChild(el('span', { class: 'hint', text: S.outBy >= 0 ? (S.outBy === 0 ? 'You went out! ' : S.players[S.outBy].name + ' went out. ') + who + "'s last turn…" : who + ' is thinking…' }));
+      return;
+    }
+    var last = S.outBy >= 0 ? 'Last turn! ' : '';
+    if (S.phase === 'draw') {
+      if (last) barEl.appendChild(el('span', { class: 'hint last', text: 'Last turn! Draw, discard, then lay down.' }));
+      var top = S.discard[S.discard.length - 1];
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: '<span>Draw stock</span>', onclick: function () { youDraw('stock'); } }));
+      if (top) barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take ' + label(top), onclick: function () { youDraw('discard'); } }));
+    } else if (S.sel) {
+      var sel = h.filter(function (c) { return c.id === S.sel; })[0];
+      var goes = outIds[S.sel];
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Cancel', onclick: function () { youSelect(S.sel); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (goes ? 'btn-green' : 'btn-primary'), html: goes ? Kit.icon('trophy') + '<span>Go out!</span>' : '<span>Discard ' + Kit.esc(label(sel)) + '</span>', onclick: youDiscard }));
+    } else {
+      barEl.appendChild(el('span', { class: 'hint', text: last + (canOut ? 'You can go out! Tap a glowing card.' : 'Tap a card to discard') }));
+    }
+  }
+  function pileEl(which) { return centerEl ? centerEl.querySelector('[data-pile="' + which + '"]') : null; }
+  function discardTopEl() { var d = pileEl('discard'); return d ? d.lastElementChild : null; }
+
+  // ── Motion ────────────────────────────────────────────────────────────────
+  function flyFrom(node, rect, ms) {
+    var b = node.getBoundingClientRect();
+    var dx = (rect.left + rect.width / 2) - (b.left + b.width / 2), dy = (rect.top + rect.height / 2) - (b.top + b.height / 2);
+    var sc = rect.width && b.width ? Math.max(.4, Math.min(1.6, rect.width / b.width)) : 1;
+    node.style.transition = 'none';
+    node.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')';
+    node.style.zIndex = 30;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      node.style.transition = 'transform ' + (ms || 380) + 'ms cubic-bezier(.2,.8,.25,1)';
+      node.style.transform = '';
+      setTimeout(function () { node.style.zIndex = ''; node.style.transition = ''; }, (ms || 380) + 30);
+    }); });
+  }
+  function ghost(a, toEl, card) {
+    if (!a || !toEl) return;
+    var b = toEl.getBoundingClientRect();
+    var g = card ? cardEl(card) : backEl();
+    g.classList.add('fly-ghost');
+    g.style.setProperty('--cw', a.width + 'px');
+    g.style.left = a.left + 'px'; g.style.top = a.top + 'px';
+    document.body.appendChild(g);
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      g.style.transform = 'translate(' + (b.left + b.width / 2 - a.left - a.width / 2) + 'px,' + (b.top + b.height / 2 - a.top - a.height / 2) + 'px) scale(.4)';
+      g.style.opacity = '0.2';
+    }); });
+    setTimeout(function () { g.remove(); }, 460);
+  }
+  function flyToDiscard(fromEl) {
+    var top = discardTopEl();
+    if (top && fromEl && fromEl.isConnected) flyFrom(top, fromEl.getBoundingClientRect(), 420);
+  }
+  function dealAnim() {
+    var st = pileEl('stock'); if (!st) return;
+    var r = st.getBoundingClientRect();
+    Array.prototype.forEach.call(handEl.querySelectorAll('.pcard'), function (n, i) {
+      n.style.opacity = '0';
+      setTimeout(function () { n.style.opacity = ''; flyFrom(n, r, 360); }, 40 * i);
+    });
+  }
+  function seatSay(p, t) {
+    if (p === 0 || !seatEls[p]) return;
+    var b = el('div', { class: 'say', text: t }); seatEls[p].appendChild(b);
+    setTimeout(function () { b.remove(); }, 1400);
+  }
+  function flash(t) { Kit.toast(t); }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.hands) {
+    S = saved; Kit.gameStart();
+    render(); next();
+  } else showSetup();
+
+  // test hook (harmless): lets the test harness inspect the solver
+  window.__fc = { solve: solve, arrange: arrange, state: function () { return S; } };
+})();
 </script>
-<script>if(typeof FrequentPlayers!=="undefined") FrequentPlayers.installNameChip();</script>
 </body>
 </html>

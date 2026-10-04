@@ -33,7 +33,7 @@
 .kitty .stack .pcard.up{left:12px;top:4px;transform:rotate(6deg);box-shadow:0 0 0 3px rgba(255,200,61,.85),0 8px 18px rgba(0,0,0,.4);}
 .kitty .klbl{padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.4);color:#fff;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
 /* Trump plaque and score card in the felt corners */
-.plaque{position:absolute;top:10px;z-index:3;width:80px;padding:6px 6px 7px;border-radius:12px;text-align:center;color:#2a2a3a;
+.plaque{position:absolute;top:10px;z-index:3;width:86px;padding:6px 6px 7px;border-radius:12px;text-align:center;color:#2a2a3a;
   background:linear-gradient(180deg,#fffaf0,#f1e6cc);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 6px 14px rgba(0,0,0,.4);}
 .plaque.tl{left:10px;transform:rotate(-3deg);}
 .plaque.tr{right:10px;transform:rotate(2deg);}
@@ -43,10 +43,10 @@
 .plaque .by{font-family:var(--hand);font-size:.95rem;line-height:1.05;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .plaque .al{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;background:#c8102e;color:#fff;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;}
 .plaque.pop{animation:pop .45s var(--spring);}
-.plaque .row2{display:flex;align-items:center;gap:5px;padding:1px 2px;}
+.plaque .row2{display:flex;align-items:center;gap:4px;padding:1px 0;}
 .plaque .row2 .dot{width:9px;height:9px;border-radius:50%;flex:none;}
-.plaque .row2 .t{flex:1;text-align:left;font-weight:900;font-size:.78rem;}
-.plaque .row2 .n{font-family:var(--display);font-size:1.45rem;line-height:1.05;}
+.plaque .row2 .t{flex:1;min-width:0;text-align:left;font-weight:900;font-size:.74rem;}
+.plaque .row2 .n{font-family:var(--display);font-size:1.3rem;line-height:1.05;min-width:1.1em;text-align:right;}
 .plaque .goal{font-family:var(--hand);font-size:.85rem;color:#8a7a5a;margin-top:1px;}
 /* Bidding controls under your hand */
 .bidbox{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;}
@@ -729,7 +729,8 @@
       ]);
       barEl.appendChild(b2);
     } else if (S.phase === 'discard') hint('You picked up the ' + cardHtml(S.up) + '. Tap a card to throw away');
-    else if (bidding()) hint(Kit.esc(who(S.turn)) + ' is deciding…');
+    else if (bidding() && S.turn > 0) hint(Kit.esc(who(S.turn)) + ' is deciding…');
+    else if (S.phase === 'starting' || (bidding() && S.turn < 0)) hint(S.maker === 0 ? 'You picked trump' : Kit.esc(who(S.maker)) + ' picked trump');
     else if (S.phase === 'play') {
       if (S.out === 0) hint('Your partner is going alone. Cheer them on!');
       else if (S.turn === 0) hint(S.trick.length ? 'Your turn: tap a card' : 'Your lead: tap a card');

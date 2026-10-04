@@ -16,7 +16,7 @@
 .f7 .tinfo{display:flex;justify-content:space-between;gap:8px;margin:0 4px 6px;font-size:.8rem;font-weight:800;color:var(--text-3);}
 .f7 .tinfo b{color:var(--text-2);}
 .f7 .ctable{margin:0 0 6px;padding:8px;border-radius:26px;}
-.f7 .ctable .felt-in{height:auto;min-height:0;padding:8px;display:flex;flex-direction:column;gap:6px;border-radius:19px;}
+.f7 .ctable .felt-in{height:auto;min-height:min(640px,calc(100dvh - 250px - var(--safe-t) - var(--safe-b)));padding:8px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;border-radius:19px;}
 
 /* Each player's place at the table: their cards laid out in a row */
 .opps{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
@@ -32,11 +32,12 @@
 .spot .tot{flex:none;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.88);color:#1d1b2e;font-size:.72rem;font-weight:900;font-variant-numeric:tabular-nums;}
 .spot .tot.lead{background:var(--yellow);}
 .spot .line{display:flex;align-items:center;gap:6px;margin-top:4px;}
-.spot .cards{--cw:25px;flex:1;min-width:0;display:flex;align-items:center;min-height:calc(var(--cw) * 1.4);}
+.spot .cards{--cw:26px;flex:1;min-width:0;display:flex;align-items:center;min-height:calc(var(--cw) * 1.4);}
 .cards > .pcard + .pcard{margin-left:var(--overlap,2px);}
 .spot .rp{flex:none;min-width:30px;text-align:right;font-family:var(--display);font-size:1.25rem;line-height:1;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35);font-variant-numeric:tabular-nums;}
 .spot .empty{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.4);}
-.spot.out .cards{opacity:.5;filter:saturate(.5);}
+.opps.roomy .spot .cards{--cw:34px;}
+.spot.out .cards .pcard:not(.dup){opacity:.45;filter:saturate(.4);}
 .spot.out .rp{color:rgba(255,255,255,.45);}
 .stamp{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%) rotate(-8deg);z-index:4;pointer-events:none;
   font-family:var(--display);font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;line-height:1;
@@ -54,15 +55,15 @@
 .spot.me{padding:7px 8px 8px;}
 .spot.me .sh{font-size:.9rem;}
 .spot.me .sh .avatar{width:26px;height:26px;}
-.spot.me .cards{--cw:clamp(38px,10.5vw,50px);}
+.spot.me .cards{--cw:clamp(42px,12.4vw,58px);}
 .spot.me .rp{font-size:1.9rem;min-width:44px;}
 .spot.me .risk{flex:none;font-size:.72rem;font-weight:800;color:rgba(255,255,255,.7);}
 .spot.me .risk b{color:#fff;}
 .spot.me .risk.safe b{color:#ff9fb0;}
 
 /* Middle of the table: deck, message, discard */
-.mid{display:flex;align-items:center;gap:10px;padding:2px 4px;min-height:94px;}
-.pile{position:relative;flex:none;--cw:48px;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.mid{flex:1;display:flex;align-items:center;gap:10px;padding:4px;min-height:100px;}
+.pile{position:relative;flex:none;--cw:clamp(48px,14vw,58px);display:flex;flex-direction:column;align-items:center;gap:3px;}
 .pile .stack{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4);}
 .pile .stack .pcard{position:absolute;left:0;top:0;}
 .pile .stack .pcard:nth-child(1){transform:translate(3px,3px);}
@@ -74,7 +75,7 @@
 .pile .none{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:5px;border:2px dashed rgba(255,255,255,.2);}
 .pile.disc .stack .pcard{opacity:.85;}
 .msg{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;color:#fff;font-family:var(--display);font-size:1.1rem;line-height:1.15;text-shadow:0 2px 0 rgba(0,0,0,.3);}
-.msg .slot{--cw:52px;flex:none;}
+.msg .slot{--cw:clamp(52px,15vw,64px);flex:none;}
 .msg .slot .pcard{animation:pop .35s var(--spring);box-shadow:0 0 0 3px var(--yellow), 0 8px 20px rgba(0,0,0,.4);}
 
 /* Cards */
@@ -589,7 +590,7 @@
       el('span', { html: 'First to <b>' + S.target + '</b>' })
     ]));
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
-    var opps = el('div', { class: 'opps' });
+    var opps = el('div', { class: 'opps' + (n <= 5 ? ' roomy' : '') });
     spotEls = [];
     var top = Math.max.apply(null, S.players.map(function (p) { return p.total; }));
     for (var p = 1; p < n; p++) {

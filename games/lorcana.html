@@ -2,702 +2,539 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Game Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Lorcana Counter</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lorcana</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
 :root{
-  --lc-gold: #e8c16a;
-  --lc-gold-dim: #b69345;
-  --lc-ink: #0a0518;
+  --gold:#e8c16a; --gold-2:#f7e2a6; --gold-3:#a8823a;
+  --night:#0a1433; --night-2:#060c22;
+  --serif:"Palatino","Palatino Linotype","Book Antiqua","Iowan Old Style",Georgia,serif;
 }
+/* Storybook night sky */
 body{
   background:
-    radial-gradient(ellipse 55% 40% at 30% 18%, rgba(255,120,200,.22) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 55% at 82% 14%, rgba(148,110,240,.30) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 45% at 12% 52%, rgba(100,220,230,.14) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 55% at 82% 62%, rgba(120,90,230,.26) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 40% at 20% 92%, rgba(210,130,255,.2) 0%, transparent 60%),
-    radial-gradient(ellipse 90% 90% at 50% 50%, #170c2c 0%, #0d0820 60%, #05030f 100%);
-  background-attachment: fixed;
+    radial-gradient(60% 40% at 18% 12%, rgba(80,120,255,.22) 0%, transparent 60%),
+    radial-gradient(55% 45% at 85% 20%, rgba(170,110,255,.20) 0%, transparent 60%),
+    radial-gradient(70% 50% at 50% 100%, rgba(40,90,200,.25) 0%, transparent 60%),
+    linear-gradient(180deg,#0b1640 0%,#071030 55%,#040920 100%);
+  background-attachment:fixed;
 }
-body.in-game{overflow:hidden;}
-body::before{
-  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image:
-    radial-gradient(1.3px 1.3px at 12% 18%, rgba(255,255,255,.85) 50%, transparent 51%),
-    radial-gradient(1px 1px at 38% 62%, rgba(255,255,255,.75) 50%, transparent 51%),
-    radial-gradient(1.1px 1.1px at 72% 28%, rgba(255,255,255,.85) 50%, transparent 51%),
-    radial-gradient(.9px .9px at 88% 78%, rgba(255,255,255,.7) 50%, transparent 51%),
-    radial-gradient(1px 1px at 48% 8%, rgba(255,255,255,.8) 50%, transparent 51%),
-    radial-gradient(1.2px 1.2px at 8% 82%, rgba(255,255,255,.8) 50%, transparent 51%),
-    radial-gradient(.8px .8px at 60% 88%, rgba(255,255,255,.65) 50%, transparent 51%),
-    radial-gradient(1px 1px at 92% 42%, rgba(255,255,255,.75) 50%, transparent 51%),
-    radial-gradient(1.2px 1.2px at 26% 44%, rgba(255,255,255,.8) 50%, transparent 51%),
-    radial-gradient(.9px .9px at 82% 16%, rgba(255,255,255,.65) 50%, transparent 51%);
-  opacity:.6;
-}
-.site-nav{background:rgba(13,8,32,.72);}
-.lc-nav-act{color:var(--lc-gold);}
-.lc-nav-act[hidden]{display:none!important;}
-.lc-nav-act svg{width:18px;height:18px;}
+    radial-gradient(1.4px 1.4px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 38% 62%, #fff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 72% 28%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 78%, #ffe9b0 50%, transparent 51%),
+    radial-gradient(1px 1px at 48% 8%, #fff 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 8% 82%, #ffe9b0 50%, transparent 51%),
+    radial-gradient(1px 1px at 60% 90%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 93% 44%, #fff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 26% 44%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 80% 6%, #fff 50%, transparent 51%);
+  opacity:.55;animation:twinkle 5s ease-in-out infinite;}
+body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacity:.35;}
+@keyframes twinkle{50%{opacity:.15;}}
+.gbar{background:linear-gradient(#0b1640 60%, rgba(11,22,64,0));}
+.gbar,.stage,.lc-board{position:relative;z-index:1;}
 
-/* ═══════════════ SETUP SCREEN ═══════════════ */
-#setup{position:relative;z-index:2;width:100%;max-width:460px;margin:0 auto;
-  padding:24px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));}
-.setup-card{
-  background:linear-gradient(180deg, rgba(24,14,48,.86), rgba(12,7,30,.94));
-  border:1px solid rgba(232,193,106,.32);
-  border-radius:var(--r-lg);padding:26px 20px 22px;
-  box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
-  text-align:center;margin-bottom:14px;
-}
-.setup-gem{width:44px;height:56px;margin:0 auto 10px;filter:drop-shadow(0 6px 18px rgba(232,193,106,.35));}
-.setup-title{font-family:var(--display);font-size:1.9rem;font-weight:800;letter-spacing:-.01em;color:var(--lc-gold);line-height:1.1;}
-.setup-sub{color:var(--text-2);font-size:.92rem;margin:4px 0 22px;}
-.setup-lbl{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;text-align:left;}
-.pcount-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
-.pcount-btn{
-  min-height:56px;border-radius:14px;cursor:pointer;
-  background:rgba(232,193,106,.06);border:1px solid rgba(232,193,106,.22);
-  color:var(--text);font-family:var(--display);font-size:1.5rem;font-weight:800;
-  transition:background .15s,border-color .15s,color .15s,transform .1s;
-}
-.pcount-btn:active{transform:scale(.96);}
-.pcount-btn.active{background:linear-gradient(135deg, rgba(232,193,106,.32), rgba(232,193,106,.1)); border-color:var(--lc-gold); color:var(--lc-gold);}
-.name-inputs{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-.name-inputs .input{text-align:center;border-color:rgba(232,193,106,.2);}
-.setup-start{background:linear-gradient(135deg,#f0cf7c,#b69345);color:#1a0f00;box-shadow:0 8px 22px rgba(232,193,106,.28),inset 0 1px 0 rgba(255,255,255,.35);font-size:1.05rem;}
-.rules-details{background:rgba(20,12,40,.7);border-color:rgba(232,193,106,.15);}
-.rules-body h3{font-family:var(--font);font-size:.75rem;font-weight:700;color:var(--lc-gold);text-transform:uppercase;letter-spacing:.1em;margin:12px 0 4px;}
-.rules-body h3:first-child{margin-top:0;}
-.rules-body strong{color:var(--text);}
+/* ── Board ─────────────────────────────────────────────────────────────── */
+.lc-board{display:grid;gap:6px;padding:0 6px calc(var(--safe-b) + 6px);max-width:900px;margin:0 auto;
+  grid-template-columns:1fr 1fr;grid-template-rows:1fr auto 1fr;}
+.lc-board .lc-strip{grid-column:1 / -1;grid-row:2;}
+.lc-board.n2 .lc-p{grid-column:1 / -1;}
+.lc-board.n3 .lc-p.top{grid-column:1 / -1;}
+.lc-p.top{grid-row:1;} .lc-p.bot{grid-row:3;}
 
-/* ═══════════════ GAME SCREEN ═══════════════ */
-#game{position:fixed;left:0;right:0;bottom:0;top:calc(var(--nav-h) + var(--safe-t));z-index:1;}
-#game.hidden{display:none;}
+/* ── Player panel: a storybook card with gold filigree ─────────────────── */
+.lc-p{--ink:#8e5bd6;position:relative;container-type:size;min-height:0;min-width:0;border-radius:20px;padding:4px;
+  background:linear-gradient(160deg,var(--gold-2),var(--gold) 30%,var(--gold-3) 70%,var(--gold));
+  box-shadow:0 10px 28px rgba(0,0,0,.5);transition:filter .3s, box-shadow .3s, transform .3s var(--spring);}
+.lc-p .lc-face{position:absolute;inset:4px;border-radius:16px;overflow:hidden;
+  background:
+    radial-gradient(90% 60% at 50% 42%, color-mix(in srgb,var(--ink) 34%,transparent) 0%, transparent 70%),
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 75% 18%, rgba(255,255,255,.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 84% 70%, rgba(255,255,255,.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 12% 80%, rgba(255,255,255,.5) 50%, transparent 51%),
+    linear-gradient(180deg,#13235a 0%,#0a1438 60%,#070d28 100%);
+  box-shadow:inset 0 0 0 1.5px rgba(232,193,106,.55), inset 0 0 0 5px rgba(6,12,34,.9), inset 0 0 0 6px rgba(232,193,106,.35), inset 0 0 30px rgba(0,0,0,.5);}
+.lc-orn{position:absolute;width:34px;height:34px;color:var(--gold);opacity:.9;pointer-events:none;}
+.lc-orn.tl{left:6px;top:6px;} .lc-orn.tr{right:6px;top:6px;transform:scaleX(-1);}
+.lc-orn.bl{left:6px;bottom:6px;transform:scaleY(-1);} .lc-orn.br{right:6px;bottom:6px;transform:scale(-1,-1);}
+.lc-p:not(.turn){filter:saturate(.8) brightness(.82);}
+.lc-p.turn{box-shadow:0 0 0 2px rgba(255,236,170,.9), 0 0 26px rgba(232,193,106,.75), 0 10px 28px rgba(0,0,0,.5);animation:glowp 2.4s ease-in-out infinite;}
+@keyframes glowp{50%{box-shadow:0 0 0 2px rgba(255,236,170,.6), 0 0 12px rgba(232,193,106,.4), 0 10px 28px rgba(0,0,0,.5);}}
 
-.lc-frame{position:absolute;inset:8px;pointer-events:none;z-index:15;}
-.lc-corner{position:absolute;width:56px;height:56px;opacity:.7;}
-.lc-corner.tl{top:0;left:0;}
-.lc-corner.tr{top:0;right:0;transform:scaleX(-1);}
-.lc-corner.bl{bottom:0;left:0;transform:scaleY(-1);}
-.lc-corner.br{bottom:0;right:0;transform:scale(-1,-1);}
+.lc-in{position:absolute;inset:4px;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;padding:10px 10px 8px;}
+.lc-p.rot .lc-in{transform:rotate(180deg);}
 
-.lc-grid{
-  position:absolute;inset:0;display:grid;
-  gap:0;padding:14px max(12px,var(--safe-r)) calc(14px + var(--safe-b)) max(12px,var(--safe-l));
-  box-sizing:border-box;
-}
-.lc-grid.g2{grid-template-rows:1fr 1fr;grid-template-columns:1fr;}
-.lc-grid.g3{grid-template-rows:1fr 1fr;grid-template-columns:1fr 1fr;}
-.lc-grid.g3 > :nth-child(1){grid-column:1 / span 2;}
-.lc-grid.g4{grid-template-rows:1fr 1fr;grid-template-columns:1fr 1fr;}
+.lc-head{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%;min-height:30px;}
+.lc-name{font-family:var(--serif);font-weight:700;font-style:italic;font-size:clamp(1.05rem,7.5cqw,1.5rem);color:var(--gold-2);letter-spacing:.02em;
+  text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 12px rgba(232,193,106,.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.lc-jewel{flex:none;width:24px;height:24px;border:0;padding:0;background:none;display:grid;place-items:center;}
+.lc-jewel i{width:15px;height:15px;transform:rotate(45deg);border-radius:3px;background:linear-gradient(135deg,color-mix(in srgb,var(--ink) 40%,#fff),var(--ink));
+  box-shadow:0 0 0 1.5px var(--gold), 0 0 8px var(--ink);}
+.lc-flag{flex:none;padding:2px 9px;border-radius:999px;background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#2a1a00;font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 2px 8px rgba(232,193,106,.5);}
 
-.lc-cell{
-  position:relative;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:6px 6px;min-height:0;min-width:0;
-}
-.lc-cell.rotated{transform:rotate(180deg);}
+/* Lore row: [-1] gem [+1]; quick taps under */
+.lc-mid{display:flex;align-items:center;justify-content:center;gap:clamp(8px,4cqw,20px);}
+.lc-gem{--g:min(44cqh,36cqw);position:relative;width:calc(var(--g) * .84);height:var(--g);flex:none;border:0;padding:0;background:none;display:grid;place-items:center;cursor:pointer;}
+.lc-gem::before{content:"";position:absolute;inset:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
+  background:linear-gradient(160deg,#fff4cf 0%,var(--gold) 35%,#8a6420 65%,var(--gold-2) 100%);}
+.lc-gem::after{content:"";position:absolute;inset:6%;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
+  background:radial-gradient(70% 55% at 50% 38%, color-mix(in srgb,var(--ink) 55%,#1a2b6a) 0%, #0b1540 75%);
+  box-shadow:inset 0 0 20px rgba(0,0,0,.5);}
+.lc-gem b{position:relative;z-index:2;font-family:var(--serif);font-weight:700;font-size:calc(var(--g) * .4);line-height:1;color:#fff;
+  font-variant-numeric:lining-nums tabular-nums;text-shadow:0 2px 0 rgba(0,0,0,.4),0 0 16px rgba(255,226,150,.65);}
+.lc-gem small{position:absolute;z-index:2;bottom:22%;left:0;right:0;text-align:center;font-size:calc(var(--g) * .075);font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);}
+.lc-gem.pop b{animation:lpop .45s var(--spring);}
+@keyframes lpop{40%{transform:scale(1.28);}}
+.lc-gem.near::before{animation:near 1.2s ease-in-out infinite;}
+@keyframes near{50%{filter:brightness(1.35) drop-shadow(0 0 10px #ffd86a);}}
 
-.lc-name{
-  font-family:var(--display);font-weight:700;letter-spacing:.04em;
-  color:var(--lc-gold);font-size:clamp(1rem,3.6vw,1.25rem);
-  text-shadow:0 1px 8px rgba(232,193,106,.35);
-  cursor:pointer;touch-action:manipulation;
-  min-height:40px;display:flex;align-items:center;
-  padding:4px 14px;border-radius:999px;
-  transition:background .15s;
-  max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;
-  margin-top:8px;
-}
-.lc-name:active{background:rgba(232,193,106,.12);}
+.lbtn{--sz:clamp(44px,15cqw,62px);width:var(--sz);height:var(--sz);flex:none;border-radius:50%;border:2px solid rgba(232,193,106,.75);
+  background:radial-gradient(circle at 50% 35%, #1d2f6e, #0a1438);color:var(--gold-2);display:grid;place-items:center;
+  font-family:var(--serif);font-weight:700;font-size:calc(var(--sz) * .36);line-height:1;
+  box-shadow:0 4px 0 rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15);transition:transform .12s var(--spring), background .15s;}
+.lbtn:active{transform:translateY(3px) scale(.94);box-shadow:0 1px 0 rgba(0,0,0,.45);}
+.lbtn.plus{background:radial-gradient(circle at 50% 30%, #fff1c4, var(--gold) 55%, #8f6a22);color:#2a1a00;border-color:#fff1c4;}
+.lbtn:disabled{opacity:.3;}
+.lc-quick{display:flex;gap:10px;}
+.lc-quick .lbtn{--sz:44px;width:auto;min-width:64px;padding:0 14px;border-radius:999px;font-size:1.05rem;}
 
-.lc-row{
-  display:flex;align-items:center;justify-content:center;gap:min(2.4vw,14px);
-  width:100%;max-width:560px;
-}
-.lc-btn{
-  cursor:pointer;touch-action:manipulation;flex:none;
-  width:52px;height:52px;border-radius:50%;
-  background:rgba(10,5,24,.6);border:2px solid rgba(232,193,106,.45);
-  color:var(--lc-gold);
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.6rem;font-weight:700;line-height:1;
-  transition:transform .12s,background .12s;
-  box-shadow:0 4px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
-}
-/* Small (quarter) cells: diamond on top, −/+ underneath */
-.lc-grid.g4 .lc-row,.lc-grid.g3 .lc-cell:not(:first-child) .lc-row{display:grid;grid-template-columns:auto auto;grid-template-areas:"d d" "m p";justify-content:center;gap:14px 28px;}
-.lc-grid.g4 .lc-diamond,.lc-grid.g3 .lc-cell:not(:first-child) .lc-diamond{grid-area:d;justify-self:center;}
-.lc-grid.g4 .lc-minus,.lc-grid.g3 .lc-cell:not(:first-child) .lc-minus{grid-area:m;}
-.lc-grid.g4 .lc-plus,.lc-grid.g3 .lc-cell:not(:first-child) .lc-plus{grid-area:p;}
-.lc-btn:active{transform:scale(.88);background:rgba(232,193,106,.25);}
-.lc-btn.disabled{opacity:.3;pointer-events:none;}
-.lc-step{
-  font-family:var(--display);font-weight:800;color:rgba(232,193,106,.7);
-  font-size:.9rem;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;touch-action:manipulation;border-radius:999px;border:1px solid rgba(232,193,106,.22);
-}
-.lc-step::before{content:'×';opacity:.6;margin-right:1px;font-size:.8em;}
-.lc-step:active{background:rgba(232,193,106,.15);}
-.lc-grid.g3 .lc-cell:not(:first-child) .lc-step,.lc-grid.g4 .lc-step{display:none;}
+/* Progress to 20: little diamonds */
+.lc-track{display:grid;grid-template-columns:repeat(20,1fr);gap:clamp(2px,.9cqw,4px);width:min(92%,330px);}
+.lc-track i{aspect-ratio:1;transform:rotate(45deg) scale(.7);border-radius:2px;background:rgba(232,193,106,.16);box-shadow:inset 0 0 0 1px rgba(232,193,106,.4);}
+.lc-track i.on{background:linear-gradient(135deg,#fff3c8,var(--gold));box-shadow:0 0 6px rgba(255,214,120,.8);}
 
-.lc-diamond{
-  position:relative;width:min(36vw,160px);aspect-ratio:.82/1;flex:none;
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;
-  filter:drop-shadow(0 8px 24px rgba(232,193,106,.2));
+/* Ink counter */
+.lc-ink{display:flex;align-items:center;gap:8px;color:var(--text-2);}
+.lc-ink .ib{width:40px;height:40px;border-radius:12px;border:1px solid rgba(232,193,106,.35);background:rgba(6,12,34,.6);color:var(--gold-2);font-weight:900;font-size:1.2rem;display:grid;place-items:center;}
+.lc-ink .ib:active{transform:scale(.9);}
+.lc-ink .iv{display:flex;align-items:center;gap:5px;min-width:64px;justify-content:center;font-family:var(--serif);font-weight:700;font-size:1.15rem;color:#fff;}
+.lc-ink .iv svg{width:20px;height:20px;}
+.lc-ink .iv small{font-family:var(--font);font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+
+/* Narrow panels (4 players, or the bottom pair of 3): stack the buttons */
+@container (max-width: 260px){
+  .lc-gem{--g:min(36cqh,60cqw);}
+  .lc-mid .lbtn{--sz:44px;}
+  .lc-mid{gap:6px;}
+  .lc-quick .lbtn{min-width:52px;padding:0 10px;}
+  .lc-track{grid-template-columns:repeat(10,1fr);width:min(90%,150px);gap:3px 2px;}
+  .lc-ink .iv small{display:none;}
+  .lc-ink .iv{min-width:44px;}
+  .lc-in{padding:8px 6px 6px;}
 }
-.lc-grid.g3 .lc-cell:not(:first-child) .lc-diamond,.lc-grid.g4 .lc-diamond{width:min(30vw,130px);}
-.lc-diamond svg{width:100%;height:100%;position:absolute;inset:0;}
-.lc-score{
-  position:relative;z-index:2;
-  font-family:var(--display);
-  font-size:clamp(2.6rem,10vw,4.4rem);font-weight:800;
-  color:var(--lc-gold);font-variant-numeric:tabular-nums;
-  text-shadow:0 2px 10px rgba(232,193,106,.5);
-  line-height:1;
-}
-.lc-grid.g3 .lc-cell:not(:first-child) .lc-score,.lc-grid.g4 .lc-score{font-size:clamp(2rem,8vw,3rem);}
-.lc-diamond.winner .lc-score{animation:winpulse 1s ease-in-out infinite;}
-@keyframes winpulse{
-  0%,100%{transform:scale(1);}
-  50%{transform:scale(1.08);filter:brightness(1.2);}
+@container (max-height: 300px){
+  .lc-track{display:none;}
 }
 
-.lc-div-h, .lc-div-v{position:absolute;pointer-events:none;z-index:12;opacity:.7;}
-.lc-div-h{left:14%;right:14%;top:50%;height:1px;
-  background:linear-gradient(90deg, transparent 0%, rgba(232,193,106,.5) 15%, rgba(232,193,106,.85) 50%, rgba(232,193,106,.5) 85%, transparent 100%);
-  transform:translateY(-.5px);}
-.lc-div-v{top:14%;bottom:14%;left:50%;width:1px;
-  background:linear-gradient(180deg, transparent 0%, rgba(232,193,106,.5) 15%, rgba(232,193,106,.85) 50%, rgba(232,193,106,.5) 85%, transparent 100%);
-  transform:translateX(-.5px);}
-.lc-center-orn{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:13;
-  pointer-events:none;
-}
+/* Effects */
+.lc-delta{position:absolute;left:50%;top:40%;z-index:5;transform:translate(-50%,-50%);pointer-events:none;font-family:var(--serif);font-weight:700;font-size:2rem;color:var(--gold-2);
+  text-shadow:0 0 12px rgba(255,214,120,.9),0 2px 0 rgba(0,0,0,.5);animation:rise 1s ease-out forwards;}
+.lc-delta.neg{color:#ffb4c0;text-shadow:0 2px 0 rgba(0,0,0,.5);}
+@keyframes rise{to{transform:translate(-50%,-160%);opacity:0;}}
+.spk{position:absolute;left:50%;top:50%;z-index:4;width:12px;height:12px;margin:-6px 0 0 -6px;pointer-events:none;
+  background:#fff3c8;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);
+  filter:drop-shadow(0 0 4px #ffd86a);animation:spk .8s ease-out forwards;}
+@keyframes spk{0%{transform:translate(0,0) scale(.4) rotate(0);opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(1) rotate(160deg);opacity:0;}}
 
-.lc-winner-banner{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:18;
-  background:linear-gradient(135deg,#e8c16a,#b69345);color:#1a0f00;
-  padding:10px 20px;border-radius:999px;
-  font-family:var(--display);font-weight:800;font-size:1rem;letter-spacing:.02em;
-  box-shadow:0 8px 24px rgba(232,193,106,.4);
-  animation:lcwinslide .4s cubic-bezier(.34,1.56,.64,1) both;
-  white-space:nowrap;
-}
-@keyframes lcwinslide{from{transform:translate(-50%,-50%) scale(.8);opacity:0;}to{transform:translate(-50%,-50%);opacity:1;}}
+/* Middle strip */
+.lc-strip{display:flex;align-items:center;gap:8px;padding:2px 0;}
+.lc-strip .sbtn{flex:none;width:46px;height:46px;border-radius:50%;border:1px solid rgba(232,193,106,.45);background:rgba(6,12,34,.75);color:var(--gold-2);display:grid;place-items:center;}
+.lc-strip .sbtn .ico{width:20px;height:20px;}
+.lc-strip .sbtn:active{transform:scale(.9);}
+.lc-strip .round{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:64px;height:46px;padding:0 10px;border-radius:14px;border:1px solid rgba(232,193,106,.35);background:rgba(6,12,34,.75);color:var(--gold);}
+.lc-strip .round b{font-family:var(--serif);font-size:1.05rem;line-height:1;color:#fff;}
+.lc-strip .round small{font-size:.6rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;}
+.lc-end{flex:1;min-width:0;min-height:46px;border:0;border-radius:999px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(180deg,#fff1c4,var(--gold) 55%,#b48a33);color:#2a1a00;font-weight:900;font-size:1rem;
+  box-shadow:0 4px 0 #6e5017, inset 0 1px 0 rgba(255,255,255,.6);}
+.lc-end:active{transform:translateY(3px);box-shadow:0 1px 0 #6e5017;}
+.lc-end span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lc-end .ico{width:18px;height:18px;flex:none;}
 
-.hidden{display:none!important;}
+/* Log sheet */
+.lg{display:flex;flex-direction:column;gap:8px;}
+.lg .t{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);background:rgba(255,255,255,.05);}
+.lg .t .tn{flex:none;width:58px;font-size:.72rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+.lg .t .nm{flex:1;min-width:0;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lg .t .ch{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;}
+.lg .t .ch i{font-style:normal;padding:1px 7px;border-radius:999px;background:rgba(232,193,106,.18);color:var(--gold-2);font-weight:900;font-size:.8rem;}
+.lg .t .ch i.neg{background:rgba(255,77,94,.18);color:#ffb4c0;}
+.lg .t .to{flex:none;width:34px;text-align:right;font-family:var(--serif);font-weight:700;font-size:1.15rem;color:#fff;}
+.inks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.inks button{min-height:56px;border-radius:var(--r-sm);border:2px solid transparent;background:rgba(255,255,255,.06);color:var(--text);font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;}
+.inks button.on{border-color:var(--gold);}
+.inks button i{width:14px;height:14px;transform:rotate(45deg);border-radius:3px;box-shadow:0 0 0 1.5px var(--gold);}
+.setlore{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.setlore button{min-height:44px;border:0;border-radius:10px;background:rgba(255,255,255,.07);color:var(--text);font-family:var(--serif);font-weight:700;font-size:1.1rem;}
+.setlore button.on{background:var(--gold);color:#2a1a00;}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Lorcana</span>
-  <button type="button" class="icon-btn lc-nav-act" id="lc-reset-btn" aria-label="Reset lore" title="Reset lore" hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-  </button>
-  <button type="button" class="icon-btn lc-nav-act" id="lc-menu-btn" aria-label="Menu" title="Menu" hidden>
-    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-  </button>
-</nav>
-
-<div id="setup">
-  <div class="setup-card">
-    <svg class="setup-gem" viewBox="0 0 100 140" aria-hidden="true"><path d="M 50,4 L 96,70 L 50,136 L 4,70 Z" fill="#1a0f2e" stroke="#e8c16a" stroke-width="4"/><path d="M 50,18 L 84,70 L 50,122 L 16,70 Z" fill="none" stroke="#e8c16a" stroke-width="1.5" opacity=".6"/></svg>
-    <div class="setup-title">Lore Tracker</div>
-    <div class="setup-sub">First to 20 lore wins</div>
-
-    <div class="setup-lbl">Players</div>
-    <div class="pcount-row" id="cnt-row">
-      <button type="button" class="pcount-btn" data-n="2">2</button>
-      <button type="button" class="pcount-btn active" data-n="3">3</button>
-      <button type="button" class="pcount-btn" data-n="4">4</button>
-    </div>
-
-    <div class="setup-lbl">Names</div>
-    <div id="setup-names" class="name-inputs"></div>
-
-    <button type="button" class="btn btn-block setup-start" id="start-btn">Start Game</button>
-  </div>
-
-  <details class="rules-details" id="htp-panel">
-    <summary class="rules-summary">How to play</summary>
-    <div class="rules-body">
-      <h3>Goal</h3>
-      Be the first to <strong>20 lore</strong>. Gain lore by questing with characters.
-      <h3>Turn structure</h3>
-      <strong>Ready</strong> → <strong>Set</strong> (draw, optionally ink) → <strong>Do</strong> (play cards, quest, challenge).
-      <h3>Using this counter</h3>
-      Tap <strong>+</strong> / <strong>−</strong> to adjust lore. Tap the ×1 chip to change the step (1 / 2 / 3). Long-press the diamond to set an exact value. Tap a player's name to rename them.
-      <h3>Orientation</h3>
-      Scores across from you appear upside-down so each player reads from their own seat.
-    </div>
-  </details>
-</div>
-
-<div id="game" class="hidden">
-  <div id="lc-winner" class="hidden"></div>
-  <div class="lc-frame">
-    <svg class="lc-corner tl" viewBox="0 0 64 64" fill="none">
-      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
-      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
-      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
-      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
-    </svg>
-    <svg class="lc-corner tr" viewBox="0 0 64 64" fill="none">
-      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
-      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
-      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
-      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
-    </svg>
-    <svg class="lc-corner bl" viewBox="0 0 64 64" fill="none">
-      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
-      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
-      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
-      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
-    </svg>
-    <svg class="lc-corner br" viewBox="0 0 64 64" fill="none">
-      <path d="M 2,28 V 10 Q 2,2 10,2 H 28" stroke="#e8c16a" stroke-width="1.2" fill="none"/>
-      <path d="M 6,30 V 12 Q 6,6 12,6 H 30" stroke="#e8c16a" stroke-width=".8" fill="none" opacity=".6"/>
-      <path d="M 2,22 H 10 M 22,2 V 10" stroke="#e8c16a" stroke-width=".8" opacity=".5"/>
-      <circle cx="12" cy="12" r="1.5" fill="#e8c16a"/>
-    </svg>
-  </div>
-
-  <div id="lc-grid" class="lc-grid"></div>
-  <div id="lc-dividers"></div>
-</div>
-
+<main class="stage" id="app"></main>
 <script>
-'use strict';
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'lorcana_state', HKEY = 'lorcana', WIN = 20;
+  var INKS = [
+    { id: 'amber', name: 'Amber', c: '#f2a81d' }, { id: 'amethyst', name: 'Amethyst', c: '#9b4fc9' },
+    { id: 'emerald', name: 'Emerald', c: '#2aa857' }, { id: 'ruby', name: 'Ruby', c: '#d8243f' },
+    { id: 'sapphire', name: 'Sapphire', c: '#2390d8' }, { id: 'steel', name: 'Steel', c: '#97a3b3' }
+  ];
+  var DEF_INK = ['amethyst', 'sapphire', 'ruby', 'emerald'];
+  function inkOf(id) { for (var i = 0; i < INKS.length; i++) if (INKS[i].id === id) return INKS[i]; return INKS[1]; }
+  var DROP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c3.6 4.6 6.5 8.3 6.5 11.7A6.5 6.5 0 0 1 5.5 14.2C5.5 10.8 8.4 7.1 12 2.5z" fill="currentColor" opacity=".9"/><path d="M9 14.5a3 3 0 0 0 3 3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>';
+  var ORN = '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M3 30V12q0-9 9-9h18" stroke-width="1.6"/><path d="M8 32V14q0-6 6-6h18" stroke-width=".8" opacity=".6"/><path d="M3 12c6 0 9 3 9 9" stroke-width="1"/><path d="M12 3c0 6 3 9 9 9" stroke-width="1"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M26 3l2 2-2 2-2-2z" fill="currentColor" stroke="none"/><path d="M3 26l2 2-2 2-2-2z" fill="currentColor" stroke="none"/></svg>';
 
-const WIN_LORE = 20;
-const DEF_NAMES = ['Player 1','Player 2','Player 3','Player 4'];
-const STEP_VALUES = [1, 2, 3];
-
-const hap = k => { try{ window.GN && GN.haptic(k); }catch(e){} };
-let numP = 3;
-let setupN = 3;
-let pNames = [];
-let lore = [];
-let step = 1;
-let announcedWinner = -1;
-
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, c =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// Setup
-function buildSetupNames(){
-  const c = document.getElementById('setup-names');
-  c.innerHTML = '';
-  for(let i = 0; i < setupN; i++){
-    const row = document.createElement('div');
-    row.innerHTML = `<input class="input" id="pn${i}" value="${DEF_NAMES[i]}" maxlength="16" autocomplete="off" autocorrect="off" spellcheck="false">`;
-    c.appendChild(row);
-  }
-  if(typeof FrequentPlayers !== 'undefined'){
-    FrequentPlayers.attachPickersByPrefix('pn');
-  }
-}
-buildSetupNames();
-
-document.querySelectorAll('.pcount-btn').forEach(b => {
-  b.addEventListener('click', () => {
-    setupN = +b.dataset.n;
-    document.querySelectorAll('.pcount-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    buildSetupNames();
-  });
-});
-
-document.querySelectorAll('.pcount-btn').forEach(b => b.addEventListener('click', () => hap('select')));
-
-document.getElementById('start-btn').addEventListener('click', startGame);
-
-function startGame(){
-  numP = setupN;
-  pNames = Array.from({length:numP}, (_,i) => {
-    const el = document.getElementById('pn'+i);
-    return (el && el.value.trim()) || DEF_NAMES[i];
-  });
-  lore = Array(numP).fill(0);
-  step = 1;
-  announcedWinner = -1;
-  showGameScreen(true);
-  buildGame();
-  render();
-}
-
-function showGameScreen(on){
-  document.getElementById('setup').classList.toggle('hidden',on);
-  document.getElementById('game').classList.toggle('hidden',!on);
-  document.body.classList.toggle('in-game',on);
-  document.querySelectorAll('.lc-nav-act').forEach(b=>b.hidden=!on);
-}
-
-// Game build
-function buildGame(){
-  const grid = document.getElementById('lc-grid');
-  grid.className = 'lc-grid g' + numP;
-  grid.innerHTML = '';
-
-  // DOM slot order → which player index appears in that slot, and whether rotated.
-  // 2p: [top: p2 rotated, bottom: p1]
-  // 3p: [top (spans): p3 rotated, bottomL: p1, bottomR: p2]
-  // 4p: [topL: p3 rotated, topR: p4 rotated, bottomL: p1, bottomR: p2]
-  const slotOrder = {
-    2: [1, 0],
-    3: [2, 0, 1],
-    4: [2, 3, 0, 1],
-  }[numP];
-  const rotatedCount = numP === 3 ? 1 : (numP === 2 ? 1 : 2);
-
-  slotOrder.forEach((pIdx, slotPos) => {
-    const cell = document.createElement('div');
-    cell.className = 'lc-cell' + (slotPos < rotatedCount ? ' rotated' : '');
-    cell.dataset.p = pIdx;
-    cell.innerHTML = buildCellHTML(pIdx);
-    grid.appendChild(cell);
+  Kit.init({
+    id: 'lorcana', color: '#e8c16a',
+    onNew: function () { clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'book', label: 'Lore log', onClick: function () { if (S) showLog(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Lorcana: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Play Disney Lorcana with your real cards and keep track of <b>lore</b> here. The first player to reach <b>20 lore</b> wins right away.</p>' +
+      '<h3>Getting ready</h3><ul><li>Each player shuffles a 60-card deck and draws <b>7 cards</b>.</li><li>You may put any number of cards from your hand on the bottom of your deck and draw that many again (once).</li>' +
+      '<li>This app picks who goes first. The first player <b>skips their draw</b> on their very first turn.</li></ul>' +
+      '<h3>On your turn</h3><ol><li><b>Ready:</b> stand up (ready) all your exerted cards.</li><li><b>Set:</b> check effects that happen at the start of your turn.</li><li><b>Draw</b> a card.</li>' +
+      '<li><b>Main phase</b>, in any order: put <b>one</b> card with the ink symbol into your inkwell, play characters, items and actions by paying ink, <b>quest</b> and <b>challenge</b>.</li><li>Tap <b>End turn</b> here when you are done.</li></ol>' +
+      '<h3>Getting lore</h3><ul><li><b>Quest:</b> exert (turn sideways) a dry character to gain the lore shown on it. Characters are "drying" the turn they are played and can\'t quest yet.</li>' +
+      '<li>Locations and some card effects give lore too.</li></ul>' +
+      '<h3>Using this tracker</h3><ul><li>Tap <b>+1</b>, <b>+2</b> or <b>+3</b> when you quest. Tap <b>−1</b> if a card makes you lose lore.</li><li>Tap the big lore gem to set an exact number.</li>' +
+      '<li>The ink counter (if on) tracks how many cards are in each inkwell.</li><li>Tap the little jewel by your name to pick your ink colour.</li><li><b>Undo</b> takes back the last tap.</li></ul>' +
+      '<h3>Other ways to win</h3><p>If a player has to draw from an empty deck, they lose. Use <b>New game</b> in the menu if that happens.</p>'
   });
 
-  const divs = document.getElementById('lc-dividers');
-  divs.innerHTML = '';
-  const divH = document.createElement('div');
-  divH.className = 'lc-div-h';
-  divs.appendChild(divH);
-
-  if(numP === 4){
-    const divV = document.createElement('div');
-    divV.className = 'lc-div-v';
-    divs.appendChild(divV);
-    const ctr = document.createElement('div');
-    ctr.className = 'lc-center-orn';
-    ctr.style.width = '40px';ctr.style.height = '40px';
-    ctr.innerHTML = `<svg viewBox="0 0 40 40" width="40" height="40">
-      <path d="M 20,4 L 24,20 L 20,36 L 16,20 Z" fill="rgba(232,193,106,.9)"/>
-      <path d="M 4,20 L 20,16 L 36,20 L 20,24 Z" fill="rgba(232,193,106,.9)"/>
-      <circle cx="20" cy="20" r="2" fill="#0d0820"/>
-    </svg>`;
-    divs.appendChild(ctr);
-  } else if(numP === 3){
-    const divV = document.createElement('div');
-    divV.className = 'lc-div-v';
-    divV.style.top = '50%';
-    divs.appendChild(divV);
-    const ctr = document.createElement('div');
-    ctr.className = 'lc-center-orn';
-    ctr.style.width = '80px';ctr.style.height = '20px';
-    ctr.innerHTML = `<svg viewBox="0 0 80 20" width="80" height="20">
-      <line x1="10" y1="10" x2="32" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
-      <line x1="48" y1="10" x2="70" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
-      <path d="M 32,10 Q 36,4 40,10 Q 44,16 48,10" stroke="rgba(232,193,106,.9)" fill="none" stroke-width="1.2"/>
-      <circle cx="40" cy="10" r="2" fill="rgba(232,193,106,.9)"/>
-    </svg>`;
-    divs.appendChild(ctr);
-  } else {
-    // 2p center ornament
-    const ctr = document.createElement('div');
-    ctr.className = 'lc-center-orn';
-    ctr.style.width = '80px';ctr.style.height = '20px';
-    ctr.innerHTML = `<svg viewBox="0 0 80 20" width="80" height="20">
-      <line x1="10" y1="10" x2="32" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
-      <line x1="48" y1="10" x2="70" y2="10" stroke="rgba(232,193,106,.7)" stroke-width="1"/>
-      <path d="M 32,10 Q 36,4 40,10 Q 44,16 48,10" stroke="rgba(232,193,106,.9)" fill="none" stroke-width="1.2"/>
-      <circle cx="40" cy="10" r="2" fill="rgba(232,193,106,.9)"/>
-    </svg>`;
-    divs.appendChild(ctr);
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S = {players:[{name,lore,ink,col}], turn, turnNo, first, ink:bool, seat:'around'|'facing',
+  //      log:[{k:'l'|'i', p, d, v, t}], started, over}
+  var S = null, undoStack = [];
+  function save() {
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set('Round ' + round() + ' · ' + S.players.map(function (p) { return p.name + ' ' + p.lore; }).join(', '));
   }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function round() { return Math.floor((S.turnNo - 1) / S.players.length) + 1; }
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 80) undoStack.shift(); }
 
-  if(!grid._wired){ grid._wired=true; grid.addEventListener('click', onGridClick); attachLongPress(grid); }
-}
-
-function buildCellHTML(pIdx){
-  return `
-    <div class="lc-row">
-      <button type="button" class="lc-btn lc-minus" data-p="${pIdx}" data-d="-1" aria-label="Minus">−</button>
-      <span class="lc-step" data-act="step">1</span>
-      <div class="lc-diamond" data-p="${pIdx}">
-        <svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <linearGradient id="dgrad${pIdx}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#1a0f2e"/>
-              <stop offset="100%" stop-color="#0a0518"/>
-            </linearGradient>
-          </defs>
-          <path d="M 50,4 L 96,70 L 50,136 L 4,70 Z" fill="url(#dgrad${pIdx})" stroke="#e8c16a" stroke-width="3"/>
-          <path d="M 50,14 L 86,70 L 50,126 L 14,70 Z" fill="none" stroke="#e8c16a" stroke-width="1" opacity=".55"/>
-        </svg>
-        <div class="lc-score" data-p="${pIdx}">0</div>
-      </div>
-      <span class="lc-step" data-act="step">1</span>
-      <button type="button" class="lc-btn lc-plus" data-p="${pIdx}" data-d="1" aria-label="Plus">+</button>
-    </div>
-    <div class="lc-name" data-p="${pIdx}" data-act="rename">${escapeHtml(pNames[pIdx])}</div>
-  `;
-}
-
-function render(){
-  document.querySelectorAll('.lc-score').forEach(el => {
-    const p = +el.dataset.p;
-    el.textContent = lore[p];
-    el.parentElement.classList.toggle('winner', lore[p] >= WIN_LORE);
-  });
-  document.querySelectorAll('.lc-step').forEach(el => { el.textContent = step; });
-  document.querySelectorAll('.lc-minus').forEach(el => {
-    const p = +el.dataset.p;
-    el.classList.toggle('disabled', lore[p] <= 0);
-  });
-
-  const w = lore.findIndex(l => l >= WIN_LORE);
-  const banner = document.getElementById('lc-winner');
-  if(w >= 0){
-    banner.className = 'lc-winner-banner';
-    banner.textContent = '✨ ' + pNames[w] + ' wins ✨';
-    if(announcedWinner !== w){
-      sWin();
-      hap('success');
-      announcedWinner = w;
-      setTimeout(()=>GN.sheet({title:'✨ '+pNames[w]+' wins!',body:`Reached ${lore[w]} lore.`,actions:[
-        {label:'New Game',primary:true,onClick:newGame},
-        {label:'Play Again (same players)',onClick:resetLore},
-        {label:'Keep Going'}]}),500);
-    }
-  } else {
-    banner.className = 'hidden';
-    announcedWinner = -1;
-  }
-
-  saveSession();
-}
-
-function onGridClick(e){
-  const stepEl = e.target.closest('.lc-step');
-  if(stepEl){
-    const idx = STEP_VALUES.indexOf(step);
-    step = STEP_VALUES[(idx + 1) % STEP_VALUES.length];
-    hap('select');
-    render();
-    sClick(600 + step * 120);
-    return;
-  }
-  const btn = e.target.closest('.lc-btn');
-  if(btn){
-    const p = +btn.dataset.p;
-    const d = +btn.dataset.d * step;
-    const prev = lore[p];
-    lore[p] = Math.max(0, lore[p] + d);
-    if(lore[p] !== prev){
-      hap(lore[p] > prev ? 'light' : 'select');
-      if(lore[p] > prev){
-        if(lore[p] < WIN_LORE) sLoreUp(step);
-      } else {
-        sLoreDown();
+  function showSetup() {
+    S = null; undoStack = [];
+    app.className = 'stage';
+    Kit.setup(app, {
+      players: { min: 2, max: 4, count: 2 },
+      options: [
+        { id: 'first', label: 'Who goes first?', value: 'random', choices: [['random', 'Pick at random'], ['p1', 'Player 1']] },
+        { id: 'ink', label: 'Ink counters', value: 'on', choices: [['on', 'On'], ['off', 'Off']] },
+        { id: 'seat', label: 'Seating', value: 'around', choices: [['around', 'Around the table'], ['facing', 'All facing me']] }
+      ],
+      intro: 'Lore tracker for the card game. First to 20 lore wins.',
+      start: 'Begin the story',
+      onStart: function (cfg) {
+        start(cfg.players.map(function (p, i) { return { name: p.name, col: DEF_INK[i] }; }), cfg.options);
       }
+    });
+  }
+  function start(players, o) {
+    var first = o.first === 'p1' ? 0 : Math.floor(Math.random() * players.length);
+    S = {
+      players: players.map(function (p) { return { name: p.name, lore: 0, ink: 0, col: p.col || 'amethyst' }; }),
+      turn: first, first: first, turnNo: 1, ink: o.ink !== 'off', seat: o.seat === 'facing' ? 'facing' : 'around',
+      opts: { first: o.first, ink: o.ink, seat: o.seat }, log: [], started: Date.now(), over: false
+    };
+    undoStack = []; Kit.gameStart();
+    save(); render();
+    setTimeout(function () { Kit.callout(S.players[first].name + ' goes first'); Kit.sfx('good'); }, 250);
+    setTimeout(function () { Kit.toast('First player skips their first draw', 2600); }, 1500);
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  function lore(p, d) {
+    if (!S || S.over) return;
+    var pl = S.players[p], v = Math.max(0, Math.min(99, pl.lore + d)), real = v - pl.lore;
+    if (!real) { Kit.haptic('error'); return; }
+    snapshot();
+    pl.lore = v;
+    S.log.push({ k: 'l', p: p, d: real, v: v, t: S.turnNo });
+    if (real > 0) { Kit.sfx(real >= 3 ? 'good' : 'pop'); Kit.haptic(real >= 2 ? 'medium' : 'light'); }
+    else { Kit.sfx('tap'); Kit.haptic('light'); }
+    save(); paintPanel(p, real);
+    if (v >= WIN) { setTimeout(function () { win(p); }, 500); return; }
+    if (real > 0 && v >= WIN - 5 && v - real < WIN - 5) Kit.toast(pl.name + ' is ' + (WIN - v) + ' lore away!');
+  }
+  function setLore(p, v) { lore(p, v - S.players[p].lore); }
+  function ink(p, d) {
+    if (!S || S.over) return;
+    var pl = S.players[p], v = Math.max(0, Math.min(60, pl.ink + d));
+    if (v === pl.ink) return;
+    snapshot(); pl.ink = v;
+    S.log.push({ k: 'i', p: p, d: d, v: v, t: S.turnNo });
+    Kit.sfx(d > 0 ? 'chip' : 'tap'); Kit.haptic('light');
+    save(); paintPanel(p);
+  }
+  function endTurn() {
+    if (!S || S.over) return;
+    snapshot();
+    S.turn = (S.turn + 1) % S.players.length; S.turnNo++;
+    Kit.sfx('whoosh'); Kit.haptic('medium');
+    save(); paintTurn();
+    if (S.turn === S.first) Kit.toast('Round ' + round());
+  }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    S = JSON.parse(undoStack.pop()); S.over = false;
+    Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render();
+  }
+
+  // ── Win & history ─────────────────────────────────────────────────────────
+  function highlights(w) {
+    var n = S.players.length, lv = S.players.map(function () { return 0; }), hl = [];
+    var worst = 0, worstAt = null, leader = null, changes = 0, ledAll = true, firstTen = null;
+    var turnGain = {};
+    S.log.forEach(function (e) {
+      if (e.k !== 'l') return;
+      lv[e.p] = e.v;
+      var key = e.t + ':' + e.p; turnGain[key] = (turnGain[key] || 0) + e.d;
+      if (firstTen == null && e.v >= 10) firstTen = e.p;
+      var mx = Math.max.apply(null, lv), tops = lv.filter(function (x) { return x === mx; }).length;
+      var lead = tops === 1 ? lv.indexOf(mx) : null;
+      if (lead != null && leader != null && lead !== leader) changes++;
+      if (lead != null) leader = lead;
+      if (mx > 0 && lead !== w) ledAll = false;
+      var others = lv.filter(function (x, i) { return i !== w; }), best = Math.max.apply(null, others);
+      if (best - lv[w] > worst) { worst = best - lv[w]; worstAt = [lv[w], best]; }
+    });
+    var W = S.players[w].name;
+    if (worst >= 4) hl.push('Comeback: ' + W + ' was down ' + worstAt[0] + '–' + worstAt[1] + ' and won');
+    else if (ledAll) hl.push(W + ' led from start to finish');
+    var big = null;
+    Object.keys(turnGain).forEach(function (k) { if (!big || turnGain[k] > big.v) { var a = k.split(':'); big = { t: +a[0], p: +a[1], v: turnGain[k] }; } });
+    if (big && big.v >= 3) hl.push('Biggest turn: ' + S.players[big.p].name + ' gained ' + big.v + ' lore on turn ' + big.t);
+    var rest = S.players.map(function (p) { return p.lore; }).filter(function (x, i) { return i !== w; }), second = Math.max.apply(null, rest);
+    if (second >= WIN - 2) hl.push('Photo finish: ' + S.players[w].lore + ' to ' + second);
+    else if (second <= 8) hl.push('A runaway win: ' + S.players[w].lore + ' to ' + second);
+    if (changes >= 3) hl.push('The lead changed ' + changes + ' times');
+    if (firstTen != null && firstTen !== w && worst < 4) hl.push(S.players[firstTen].name + ' reached 10 lore first');
+    if (S.ink) {
+      var ib = 0; S.players.forEach(function (p, i) { if (p.ink > S.players[ib].ink) ib = i; });
+      if (S.players[ib].ink >= 5) hl.push('Biggest inkwell: ' + S.players[ib].name + ' with ' + S.players[ib].ink + ' ink');
     }
-    render();
-    return;
+    hl.push(W + ' won on turn ' + S.turnNo + ' (round ' + round() + ')');
+    return hl;
   }
-  const name = e.target.closest('.lc-name');
-  if(name){
-    const p = +name.dataset.p;
-    renamePlayer(p);
-    return;
+  function roundsTable() {
+    var n = S.players.length, rows = [], labels = [];
+    var R = round();
+    for (var r = 0; r < R; r++) { rows.push(S.players.map(function () { return 0; })); labels.push('R' + (r + 1)); }
+    S.log.forEach(function (e) { if (e.k === 'l') rows[Math.floor((e.t - 1) / n)][e.p] += e.d; });
+    return { labels: labels, scores: rows };
   }
-}
-
-function inputSheet(title, value, opts, onSave){
-  opts = opts || {};
-  const inp = document.createElement('input');
-  inp.className = 'input'; inp.value = value; inp.style.textAlign = 'center';
-  if(opts.type) inp.type = opts.type;
-  if(opts.inputmode) inp.setAttribute('inputmode', opts.inputmode);
-  if(opts.maxlength) inp.maxLength = opts.maxlength;
-  inp.autocomplete = 'off'; inp.spellcheck = false;
-  const sh = GN.sheet({title, body: inp, actions:[
-    {label:'Save', primary:true, onClick:()=>onSave(inp.value)},
-    {label:'Cancel'}]});
-  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ sh.close(); onSave(inp.value); } });
-  setTimeout(()=>{ try{ inp.focus(); inp.select(); }catch(e){} }, 250);
-}
-
-function renamePlayer(p){
-  inputSheet('Rename player', pNames[p], {maxlength:18}, nm => {
-    if(nm && nm.trim()){
-      pNames[p] = nm.trim().slice(0, 18);
-      document.querySelectorAll('.lc-name[data-p="'+p+'"]').forEach(el => {
-        el.textContent = pNames[p];
+  var recorded = null;
+  function win(p) {
+    if (!S || S.over) return;
+    S.over = true;
+    var pre = undoStack.length ? undoStack[undoStack.length - 1] : null;
+    var hl = highlights(p);
+    Kit.record(HKEY, {
+      started: S.started, mode: S.players.length + ' players',
+      players: S.players.map(function (q) { return { name: q.name, score: q.lore }; }),
+      winner: S.players[p].name, rounds: roundsTable(), highlights: hl,
+      meta: { turns: S.turnNo, target: WIN, inks: S.players.map(function (q) { return q.col; }) }
+    });
+    recorded = S.started;
+    clearSave();
+    Kit.callout(S.players[p].name + ' wins!', '#f7e2a6');
+    Kit.confetti({ colors: ['#e8c16a', '#f7e2a6', '#ffffff', '#9b4fc9', '#2390d8', '#7fd4ff'] });
+    var rank = S.players.map(function (q, i) { return { name: q.name, score: q.lore, color: inkOf(q.col).c }; }).sort(function (a, b) { return b.score - a.score; });
+    setTimeout(function () {
+      Kit.win({
+        icon: 'trophy', title: S.players[p].name + ' wins!', sub: hl[0], rank: rank,
+        againLabel: 'Play again',
+        again: function () { start(S.players.map(function (q) { return { name: q.name, col: q.col }; }), S.opts || {}); },
+        extra: [
+          { label: 'Oops, undo that', onClick: function () { unrecord(); if (pre) { S = JSON.parse(pre); S.over = false; save(); render(); Kit.toast('Back in the game'); } } },
+          { label: 'Change players', onClick: showSetup }
+        ]
       });
-      if(typeof FrequentPlayers !== 'undefined') FrequentPlayers.add(pNames[p]);
-      saveSession();
+    }, 900);
+    paintTurn();
+  }
+  function unrecord() {
+    try {
+      var list = JSON.parse(localStorage.getItem('gh_' + HKEY) || '[]');
+      if (list.length && list[0].started === recorded) {
+        list.shift(); localStorage.setItem('gh_' + HKEY, JSON.stringify(list));
+        if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('gh_' + HKEY);
+      }
+    } catch (e) {}
+  }
+
+  // ── Sheets ────────────────────────────────────────────────────────────────
+  function showLog() {
+    var box = el('div', { class: 'lg' }), groups = [], cur = null;
+    S.log.forEach(function (e) {
+      if (e.k !== 'l') return;
+      if (!cur || cur.t !== e.t || cur.p !== e.p) { cur = { t: e.t, p: e.p, ch: [], v: e.v }; groups.push(cur); }
+      cur.ch.push(e.d); cur.v = e.v;
+    });
+    if (!groups.length) box.appendChild(el('p', { class: 'muted', text: 'No lore yet. Tap +1, +2 or +3 when someone quests.' }));
+    groups.reverse().forEach(function (g) {
+      var ch = el('span', { class: 'ch' });
+      g.ch.forEach(function (d) { ch.appendChild(el('i', { class: d < 0 ? 'neg' : '', text: (d > 0 ? '+' : '−') + Math.abs(d) })); });
+      box.appendChild(el('div', { class: 't' }, [
+        el('span', { class: 'tn', text: 'Turn ' + g.t }),
+        el('span', { class: 'nm', style: { color: inkOf(S.players[g.p].col).c }, text: S.players[g.p].name }),
+        ch, el('span', { class: 'to', text: String(g.v) })
+      ]));
+    });
+    Kit.sheet({ title: 'Lore log', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  function pickInk(p) {
+    var grid = el('div', { class: 'inks' }), s;
+    INKS.forEach(function (k) {
+      grid.appendChild(el('button', { type: 'button', class: S.players[p].col === k.id ? 'on' : '', onclick: function () {
+        S.players[p].col = k.id; save(); s.close(); render(); Kit.sfx('pop');
+      } }, [el('i', { style: { background: k.c } }), el('span', { text: k.name })]));
+    });
+    s = Kit.sheet({ title: S.players[p].name + "'s ink", node: grid });
+  }
+  function pickLore(p) {
+    if (S.over) return;
+    var grid = el('div', { class: 'setlore' }), s;
+    for (var v = 0; v <= 20; v++) (function (v) {
+      grid.appendChild(el('button', { type: 'button', class: S.players[p].lore === v ? 'on' : '', text: String(v), onclick: function () { s.close(); setLore(p, v); } }));
+    })(v);
+    s = Kit.sheet({ title: 'Set ' + S.players[p].name + "'s lore", node: grid, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var panels = [], boardEl = null, endEl = null, roundEl = null;
+  function layout() {
+    // [player index, row, column, rotated] in turn order around the table
+    var n = S.players.length, around = S.seat === 'around';
+    if (n === 2) return around ? [[0, 'bot', 0, 0], [1, 'top', 0, 1]] : [[0, 'top', 0, 0], [1, 'bot', 0, 0]];
+    if (n === 3) return around ? [[0, 'bot', 1, 0], [1, 'bot', 2, 0], [2, 'top', 0, 1]] : [[0, 'top', 0, 0], [1, 'bot', 1, 0], [2, 'bot', 2, 0]];
+    return around ? [[0, 'bot', 1, 0], [1, 'bot', 2, 0], [2, 'top', 2, 1], [3, 'top', 1, 1]] : [[0, 'top', 1, 0], [1, 'top', 2, 0], [2, 'bot', 1, 0], [3, 'bot', 2, 0]];
+  }
+  function render() {
+    if (!S) return;
+    app.className = '';
+    app.innerHTML = '';
+    boardEl = el('div', { class: 'lc-board n' + S.players.length });
+    panels = [];
+    layout().forEach(function (L) {
+      var p = L[0], sec = el('section', { class: 'lc-p ' + L[1] + (L[3] ? ' rot' : ''), 'aria-label': S.players[p].name });
+      if (L[2]) sec.style.gridColumn = String(L[2]);
+      sec.appendChild(el('div', { class: 'lc-face' }));
+      ['tl', 'tr', 'bl', 'br'].forEach(function (c) { sec.appendChild(el('span', { class: 'lc-orn ' + c, html: ORN })); });
+      var inn = el('div', { class: 'lc-in' });
+      sec.appendChild(inn);
+      panels[p] = { sec: sec, inn: inn };
+      buildPanel(p);
+      boardEl.appendChild(sec);
+    });
+    var strip = el('div', { class: 'lc-strip' });
+    strip.appendChild(el('button', { type: 'button', class: 'sbtn', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: undo }));
+    roundEl = el('button', { type: 'button', class: 'round', 'aria-label': 'Lore log', onclick: showLog });
+    strip.appendChild(roundEl);
+    endEl = el('button', { type: 'button', class: 'lc-end', onclick: endTurn });
+    strip.appendChild(endEl);
+    strip.appendChild(el('button', { type: 'button', class: 'sbtn', 'aria-label': 'Lore log', html: Kit.icon('book'), onclick: showLog }));
+    boardEl.appendChild(strip);
+    app.appendChild(boardEl);
+    fit(); paintTurn();
+  }
+  function fit() {
+    if (!boardEl) return;
+    var top = boardEl.getBoundingClientRect().top + window.scrollY;
+    boardEl.style.height = Math.max(420, window.innerHeight - top) + 'px';
+  }
+  window.addEventListener('resize', fit);
+
+  function buildPanel(p) {
+    var pl = S.players[p], P = panels[p], inn = P.inn;
+    P.sec.style.setProperty('--ink', inkOf(pl.col).c);
+    inn.innerHTML = '';
+    var head = el('div', { class: 'lc-head' }, [
+      el('button', { type: 'button', class: 'lc-jewel', 'aria-label': 'Choose ink colour', onclick: function () { pickInk(p); } }, [el('i')]),
+      el('span', { class: 'lc-name', text: pl.name })
+    ]);
+    P.flag = el('span', { class: 'lc-flag', text: 'Turn' });
+    head.appendChild(P.flag);
+    inn.appendChild(head);
+    P.gem = el('button', { type: 'button', class: 'lc-gem', 'aria-label': pl.name + ' lore', onclick: function () { pickLore(p); } }, [el('b'), el('small', { text: 'lore' })]);
+    P.minus = el('button', { type: 'button', class: 'lbtn', 'aria-label': 'Lose 1 lore', text: '−1', onclick: function () { lore(p, -1); } });
+    inn.appendChild(el('div', { class: 'lc-mid' }, [P.minus, P.gem, el('button', { type: 'button', class: 'lbtn plus', 'aria-label': 'Gain 1 lore', text: '+1', onclick: function () { lore(p, 1); } })]));
+    inn.appendChild(el('div', { class: 'lc-quick' }, [
+      el('button', { type: 'button', class: 'lbtn plus', 'aria-label': 'Gain 2 lore', text: '+2', onclick: function () { lore(p, 2); } }),
+      el('button', { type: 'button', class: 'lbtn plus', 'aria-label': 'Gain 3 lore', text: '+3', onclick: function () { lore(p, 3); } })
+    ]));
+    P.track = el('div', { class: 'lc-track', 'aria-hidden': 'true' });
+    for (var i = 0; i < WIN; i++) P.track.appendChild(el('i'));
+    inn.appendChild(P.track);
+    if (S.ink) {
+      P.ink = el('span', { class: 'iv' });
+      inn.appendChild(el('div', { class: 'lc-ink' }, [
+        el('button', { type: 'button', class: 'ib', 'aria-label': 'Remove ink', text: '−', onclick: function () { ink(p, -1); } }),
+        P.ink,
+        el('button', { type: 'button', class: 'ib', 'aria-label': 'Add ink', text: '+', onclick: function () { ink(p, 1); } })
+      ]));
     }
-  });
-}
-
-function attachLongPress(root){
-  let pressTimer = null;
-  let pressedP = -1;
-  let sx = 0, sy = 0;
-  function start(e){
-    const dia = e.target.closest('.lc-diamond');
-    if(!dia) return;
-    pressedP = +dia.dataset.p;
-    sx = e.clientX; sy = e.clientY;
-    pressTimer = setTimeout(() => {
-      pressTimer = null;
-      hap('medium');
-      inputSheet(pNames[pressedP] + ' — set lore', String(lore[pressedP]), {type:'number', inputmode:'numeric'}, v => {
-        const n = parseInt(v, 10);
-        if(!isNaN(n) && n >= 0 && n <= 99){
-          lore[pressedP] = n;
-          render();
-        }
-      });
-    }, 550);
+    paintPanel(p);
   }
-  function cancel(){
-    if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+  function paintPanel(p, delta) {
+    var pl = S.players[p], P = panels[p]; if (!P) return;
+    P.gem.querySelector('b').textContent = String(pl.lore);
+    P.gem.classList.toggle('near', pl.lore >= WIN - 5 && pl.lore < WIN);
+    P.minus.disabled = pl.lore <= 0;
+    Array.prototype.forEach.call(P.track.children, function (n, i) { n.classList.toggle('on', i < pl.lore); });
+    if (P.ink) P.ink.innerHTML = '<span style="color:' + inkOf(pl.col).c + '">' + DROP + '</span><span>' + pl.ink + '</span><small>ink</small>';
+    if (delta) {
+      P.gem.classList.remove('pop'); void P.gem.offsetWidth; P.gem.classList.add('pop');
+      var d = el('span', { class: 'lc-delta' + (delta < 0 ? ' neg' : ''), text: (delta > 0 ? '+' : '−') + Math.abs(delta) });
+      P.gem.appendChild(d); setTimeout(function () { d.remove(); }, 1000);
+      if (delta > 0) sparkle(P.gem, 6 + delta * 3);
+    }
   }
-  root.addEventListener('pointerdown', start);
-  root.addEventListener('pointerup', cancel);
-  root.addEventListener('pointerleave', cancel);
-  root.addEventListener('pointercancel', cancel);
-  root.addEventListener('pointermove', e => { if(pressTimer && Math.hypot(e.clientX-sx, e.clientY-sy) > 10) cancel(); });
-  root.addEventListener('contextmenu', e => { if(e.target.closest('.lc-diamond')) e.preventDefault(); });
-}
+  function sparkle(host, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 60;
+      var s = el('span', { class: 'spk', style: { '--dx': Math.cos(a) * r + 'px', '--dy': Math.sin(a) * r + 'px', 'animation-delay': (Math.random() * 120) + 'ms' } });
+      host.appendChild(s);
+      (function (s) { setTimeout(function () { s.remove(); }, 1000); })(s);
+    }
+  }
+  function paintTurn() {
+    if (!S || !boardEl) return;
+    S.players.forEach(function (pl, i) {
+      var P = panels[i]; if (!P) return;
+      P.sec.classList.toggle('turn', i === S.turn && !S.over);
+      P.flag.hidden = i !== S.turn || S.over;
+    });
+    roundEl.innerHTML = '<small>Round</small><b>' + round() + '</b>';
+    var nx = S.players[(S.turn + 1) % S.players.length].name;
+    endEl.innerHTML = '<span>End ' + Kit.esc(Kit.poss(S.players[S.turn].name)) + ' turn</span>' + Kit.icon('right');
+    endEl.setAttribute('aria-label', 'End turn. ' + nx + ' is next');
+    endEl.disabled = !!S.over;
+  }
 
-// Menu
-function openMenu(){
-  GN.sheet({title:'Menu', actions:[
-    {label:'Resume Game', primary:true},
-    {label:'Lore step: ×'+step+' → ×'+STEP_VALUES[(STEP_VALUES.indexOf(step)+1)%STEP_VALUES.length], onClick:()=>{ step = STEP_VALUES[(STEP_VALUES.indexOf(step)+1)%STEP_VALUES.length]; render(); GN.toast('Each tap now adds '+step); }},
-    {label:'Reset Lore', onClick:confirmReset},
-    {label:'Rename Players…', onClick:renameAllFlow},
-    {label:_muted ? '🔇 Sound Off — tap to unmute' : '🔊 Mute Sound', onClick:()=>{ _muted = !_muted; GN.toast(_muted ? 'Sound off' : 'Sound on'); }},
-    {label:'New Game', danger:true, onClick:newGame},
-  ]});
-}
-async function confirmReset(){
-  const ok = await GN.confirm('Players stay the same.', {title:'Reset all lore to 0?', ok:'Reset', danger:true});
-  if(ok) resetLore();
-}
-document.getElementById('lc-menu-btn').addEventListener('click', openMenu);
-document.getElementById('lc-reset-btn').addEventListener('click', confirmReset);
-
-function resetLore(){
-  lore = Array(numP).fill(0);
-  announcedWinner = -1;
-  hap('medium');
-  render();
-}
-
-function newGame(){
-  try{ sessionStorage.removeItem('lorcana'); }catch(e){}
-  showGameScreen(false);
-}
-
-function renameAllFlow(){
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
-  const inputs = pNames.map((nm, i) => {
-    const inp = document.createElement('input');
-    inp.className = 'input'; inp.value = nm; inp.maxLength = 18; inp.style.textAlign = 'center';
-    inp.setAttribute('aria-label', 'Player ' + (i+1) + ' name');
-    wrap.appendChild(inp); return inp;
-  });
-  GN.sheet({title:'Rename players', body:wrap, actions:[
-    {label:'Save', primary:true, onClick:()=>{
-      inputs.forEach((inp, i) => {
-        const v = inp.value.trim();
-        if(v){
-          pNames[i] = v.slice(0, 18);
-          if(typeof FrequentPlayers !== 'undefined') FrequentPlayers.add(pNames[i]);
-        }
-      });
-      buildGame();
-      render();
-    }},
-    {label:'Cancel'}]});
-}
-
-// Session persistence
-function saveSession(){
-  try{
-    sessionStorage.setItem('lorcana', JSON.stringify({
-      numP, pNames, lore, step, _ts: Date.now()
-    }));
-  }catch(e){}
-}
-function loadSession(){
-  try{
-    const raw = sessionStorage.getItem('lorcana');
-    if(!raw) return false;
-    const s = JSON.parse(raw);
-    if(!s || !s.numP) return false;
-    numP = s.numP;
-    pNames = s.pNames;
-    lore = s.lore;
-    step = s.step || 1;
-    announcedWinner = lore.findIndex(l => l >= WIN_LORE);
-    showGameScreen(true);
-    buildGame();
-    render();
-    return true;
-  }catch(e){ return false; }
-}
-window.addEventListener('beforeunload', saveSession);
-window.addEventListener('pagehide', saveSession);
-
-// Sound
-let _ac = null, _muted = false;
-function sac(){
-  if(!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
-  if(_ac.state === 'suspended') _ac.resume();
-  return _ac;
-}
-function sTone(freq, start, dur, vol, type, ramp){
-  if(_muted) return;
-  try{
-    const ctx = sac(), t = ctx.currentTime + start;
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type || 'sine';
-    o.frequency.setValueAtTime(freq, t);
-    if(ramp) o.frequency.exponentialRampToValueAtTime(ramp, t + dur);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vol || .18, t + .012);
-    g.gain.exponentialRampToValueAtTime(.001, t + dur);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(t); o.stop(t + dur + .05);
-  }catch(e){}
-}
-function sClick(p){ sTone(p || 900, 0, .06, .1, 'triangle'); }
-function sLoreUp(d){
-  if(_muted) return;
-  if(d >= 3){ [660,830,990].forEach((f,i)=>sTone(f, i*.06, .35, .16)); }
-  else if(d >= 2){ [660,830].forEach((f,i)=>sTone(f, i*.06, .3, .16)); }
-  else { sTone(660, 0, .2, .18); }
-}
-function sLoreDown(){ sTone(330, 0, .2, .12, 'triangle', 220); }
-function sWin(){
-  if(_muted) return;
-  [523, 659, 784, 988, 1047].forEach((f,i) => sTone(f, i*.09, .6, .22));
-  sTone(262, 0, .7, .1, 'triangle');
-}
-
-loadSession();
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.players.length >= 2 && !saved.over) { S = saved; Kit.gameStart(); render(); }
+  else showSetup();
+})();
 </script>
 </body>
 </html>
