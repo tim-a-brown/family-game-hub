@@ -1,251 +1,681 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Riddle Stories</title>
-<link rel="stylesheet" href="../shared.css">
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
 <style>
-body{background:radial-gradient(800px 500px at 30% -10%,rgba(192,132,252,.16),transparent 70%),var(--bg);}
-.page{padding-top:12px;padding-bottom:calc(110px + var(--safe-b));}
-.riddle-card{max-width:600px;margin:0 auto;}
-.diff-row{max-width:600px;margin:0 auto 10px;}
-.diff-row .tab{flex:1 1 0;}
-.intro{max-width:600px;margin:0 auto 12px;color:var(--text-3);font-size:.86rem;text-align:center;line-height:1.45;}
-.riddle-box{position:relative;background:linear-gradient(160deg,#2a1d40,#17121f);border:1px solid rgba(192,132,252,.25);border-radius:26px;padding:24px 22px 26px;margin-bottom:14px;box-shadow:0 18px 44px rgba(0,0,0,.35);touch-action:pan-y;min-height:clamp(220px,38dvh,380px);display:flex;flex-direction:column;}
-.riddle-box.enter{animation:rd-in .35s var(--ease) both;}
-.riddle-box.leave{animation:rd-out .2s ease-in both;}
-@keyframes rd-in{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:none;}}
-@keyframes rd-out{to{opacity:0;transform:translateX(-40px);}}
-.riddle-num{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;font-weight:800;color:#c4b5fd;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;}
-.riddle-num::after{content:'🕵️';font-size:1.3rem;letter-spacing:0;}
-.riddle-text{font-family:var(--display);font-size:clamp(1.35rem,5.6vw,1.8rem);font-weight:700;line-height:1.35;letter-spacing:-.01em;color:var(--text);flex:1;display:flex;align-items:center;}
-.answer-box{background:linear-gradient(160deg,rgba(192,132,252,.18),rgba(192,132,252,.06));border:1px solid rgba(192,132,252,.4);border-radius:22px;padding:18px 20px;margin-bottom:14px;display:none;animation:gn-pop .35s var(--spring) both;}
-.answer-label{font-size:.75rem;font-weight:800;color:var(--purple);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
-.answer-text{font-size:1.12rem;line-height:1.55;color:var(--text);font-weight:500;}
-.swipe-hint{text-align:center;color:var(--text-3);font-size:.82rem;}
-.ctrl-bar{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px max(16px,var(--safe-r)) calc(12px + var(--safe-b)) max(16px,var(--safe-l));background:linear-gradient(180deg,transparent,rgba(11,13,18,.92) 30%);}
-.ctrl-inner{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:600px;margin:0 auto;}
-.ctrl-inner .btn{min-height:54px;font-size:1.02rem;}
-.btn-purple{background:linear-gradient(135deg,#c084fc,#9333ea);color:#fff;box-shadow:0 8px 22px rgba(147,51,234,.3);}
+:root{--manila-a:#efdcaa;--manila-b:#dcc286;--manila-ink:#3a2a14;--typed:"American Typewriter","Courier Prime",Georgia,"Times New Roman",serif;}
+.stage{padding-bottom:calc(var(--safe-b) + 150px);}
+.scores{margin-bottom:2px;}
+.score .sub{text-transform:uppercase;letter-spacing:.08em;font-size:.64rem;}
+.caseline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 10px;font-weight:800;color:var(--text-2);font-size:.92rem;}
+.caseline b{font-family:var(--display);font-weight:400;font-size:1.2rem;color:var(--text);letter-spacing:.02em;}
+.stars{display:inline-flex;align-items:center;gap:2px;}
+.stars .ico{width:14px;height:14px;}
+.stars .on{fill:currentColor;}
+.stars .off{opacity:.3;}
+.dk{display:inline-flex;align-items:center;gap:6px;color:#c7c9ff;}
+
+/* Desk: dark blotter in a wooden rim */
+.desk{border-radius:22px;padding:8px;}
+.desk .felt-in{position:relative;border-radius:16px;padding:22px 12px 14px;min-height:300px;}
+
+/* Manila case folder */
+.folder{position:relative;perspective:1200px;margin-top:6px;}
+.folder .tab{position:absolute;left:14px;top:-15px;height:20px;padding:3px 14px 0;border-radius:8px 8px 0 0;background:var(--manila-a);
+  font:700 .7rem/1 var(--mono);letter-spacing:.14em;color:#7a5a2a;box-shadow:0 -1px 0 rgba(255,255,255,.4) inset;}
+.page{position:relative;border-radius:3px 12px 12px 12px;padding:18px 16px 20px;min-height:250px;color:var(--manila-ink);
+  background:
+    radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.35),transparent 60%),
+    repeating-linear-gradient(0deg,rgba(120,80,20,.035) 0 2px,transparent 2px 5px),
+    linear-gradient(170deg,var(--manila-a),var(--manila-b));
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -2px 0 rgba(0,0,0,.08) inset,0 12px 24px rgba(0,0,0,.45);}
+.page .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#8a6a35;}
+.page .meta .stars{color:#8a6a35;}
+.page h2{font-family:var(--display);font-weight:400;font-size:1.65rem;line-height:1.1;margin:10px 0 10px;color:#4a2d10;letter-spacing:.01em;}
+.page .story{font-family:var(--typed);font-size:1.12rem;line-height:1.55;color:#2b2116;}
+.page .stamp{position:absolute;right:12px;top:30px;transform:rotate(9deg);padding:3px 8px;border:2.5px solid rgba(178,34,34,.55);border-radius:6px;
+  font:900 .72rem/1 var(--mono);letter-spacing:.14em;color:rgba(178,34,34,.6);text-transform:uppercase;}
+
+/* Cover of the folder (closed case) */
+.cover{position:absolute;inset:0;z-index:3;border-radius:3px 12px 12px 12px;transform-origin:50% 0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px 18px;cursor:pointer;
+  background:
+    repeating-linear-gradient(0deg,rgba(120,80,20,.04) 0 2px,transparent 2px 5px),
+    linear-gradient(170deg,#e6cf96,#cfb072);
+  box-shadow:0 1px 0 rgba(255,255,255,.45) inset,0 14px 26px rgba(0,0,0,.5);color:var(--manila-ink);
+  transition:transform .7s var(--ease),opacity .7s;backface-visibility:hidden;}
+.cover .no{font:700 .78rem/1 var(--mono);letter-spacing:.22em;color:#7a5a2a;text-transform:uppercase;}
+.cover h3{font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.05;color:#4a2d10;max-width:280px;}
+.cover .conf{transform:rotate(-8deg);padding:4px 12px;border:3px solid rgba(178,34,34,.7);border-radius:6px;font:900 .95rem/1 var(--mono);letter-spacing:.2em;color:rgba(178,34,34,.8);}
+.cover .who{font-family:var(--hand);font-size:1.35rem;color:var(--ink);}
+.cover .tap{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:.85rem;color:#7a5a2a;}
+.cover .tap .ico{width:16px;height:16px;}
+.cover .string{position:absolute;left:50%;bottom:22px;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#b98b4a,#7a5426);box-shadow:0 2px 3px rgba(0,0,0,.35);}
+.folder.opening .cover{transform:rotateX(-100deg);opacity:0;}
+
+/* Clue cards */
+.clues{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.clue{position:relative;border-radius:4px;padding:10px 14px 12px 14px;color:#24305e;
+  background:repeating-linear-gradient(180deg,transparent 0 25px,rgba(70,110,200,.22) 25px 26px) 0 30px/100% 100% no-repeat,linear-gradient(180deg,#fffdf6,#f5efdf);
+  box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(var(--rot,-1deg));}
+.clue::before{content:"";position:absolute;left:0;right:0;top:28px;height:2px;background:rgba(220,60,70,.45);}
+.clue .k{font:800 .7rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#b33a44;height:20px;display:flex;align-items:center;}
+.clue p{font-family:var(--hand);font-size:1.3rem;line-height:26px;margin-top:6px;}
+.clue.new{animation:clue-in .55s var(--spring) both;}
+@keyframes clue-in{from{transform:translateY(-30px) rotate(-12deg) scale(.8);opacity:0;}to{transform:rotate(var(--rot,-1deg));opacity:1;}}
+
+/* Sealed solution envelope */
+.env{position:relative;height:138px;margin:18px 4px 4px;perspective:900px;}
+.env .body{position:absolute;inset:0;border-radius:6px;background:linear-gradient(180deg,#f3e6c6,#e3cf9f);box-shadow:0 10px 20px rgba(0,0,0,.4);}
+.env .pocket{position:absolute;inset:0;z-index:3;border-radius:6px;pointer-events:none;
+  background:
+    linear-gradient(to top right,transparent calc(50% - 1px),rgba(120,90,40,.25) 50%,transparent calc(50% + 1px)) left bottom/50% 100% no-repeat,
+    linear-gradient(to top left,transparent calc(50% - 1px),rgba(120,90,40,.25) 50%,transparent calc(50% + 1px)) right bottom/50% 100% no-repeat,
+    linear-gradient(180deg,rgba(255,255,255,0) 40%,#e8d6aa 41%,#dcc690);
+  clip-path:polygon(0 38%,50% 72%,100% 38%,100% 100%,0 100%);}
+.env .flap{position:absolute;left:0;right:0;top:0;height:72%;z-index:4;transform-origin:50% 0;transition:transform .55s var(--ease);
+  background:linear-gradient(180deg,#eadbb4,#d8c08a);clip-path:polygon(0 0,100% 0,50% 100%);filter:drop-shadow(0 2px 1px rgba(0,0,0,.2));}
+.env .seal{position:absolute;left:50%;top:72%;z-index:5;width:46px;height:46px;margin:-26px 0 0 -23px;border-radius:50%;
+  display:grid;place-items:center;color:rgba(255,220,220,.75);font-family:var(--display);font-size:1.5rem;
+  background:radial-gradient(circle at 38% 32%,#d33a3a,#8f1414 70%);box-shadow:0 0 0 3px rgba(143,20,20,.35),0 3px 6px rgba(0,0,0,.4),inset 0 -3px 0 rgba(0,0,0,.25);
+  transition:transform .35s var(--spring),opacity .3s;}
+.env .lbl{position:absolute;left:0;right:0;bottom:12px;z-index:5;text-align:center;font:700 .7rem/1.3 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#8a6a35;}
+.env .letter{position:absolute;left:12px;right:12px;top:14px;height:110px;z-index:2;border-radius:3px;background:linear-gradient(180deg,#fffdf7,#f4eddc);
+  box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .6s var(--ease);}
+.env.opening .seal{transform:scale(1.5);opacity:0;}
+.env.opening .flap{transform:rotateX(180deg);z-index:1;}
+.env.opening .letter{transform:translateY(-70px);}
+.env.opening .lbl{opacity:0;}
+
+/* The solution letter (after the envelope opens) */
+.solution{position:relative;margin:18px 2px 4px;padding:16px 16px 18px;border-radius:4px;color:#22264a;
+  background:repeating-linear-gradient(180deg,transparent 0 29px,rgba(70,110,200,.18) 29px 30px) 0 46px/100% 100% no-repeat,linear-gradient(180deg,#fffdf7,#f4eddc);
+  box-shadow:0 14px 28px rgba(0,0,0,.45);transform-origin:50% 0;}
+.solution.unfold{animation:unfold .6s var(--ease) both;}
+@keyframes unfold{from{transform:translateY(40px) scaleY(.25);opacity:.4;}to{transform:none;opacity:1;}}
+.solution .k{display:flex;align-items:center;justify-content:space-between;gap:8px;font:800 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#8f1414;height:28px;}
+.solution p{font-family:var(--hand);font-size:1.42rem;line-height:30px;margin-top:10px;}
+.solution .verdict{position:absolute;right:10px;bottom:-12px;transform:rotate(-6deg);padding:4px 10px;border-radius:6px;background:#fffdf7;
+  border:3px solid var(--vc,#1e8a4a);color:var(--vc,#1e8a4a);font:900 .8rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;box-shadow:0 4px 8px rgba(0,0,0,.25);}
+.solution .verdict.miss{--vc:#a12a2a;}
+
+.howto{margin:12px 4px 0;color:rgba(255,255,255,.72);font-size:.9rem;line-height:1.4;text-align:center;}
+.howto b{color:#fff;}
+
+/* Dock with the controls */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:14px 16px calc(var(--safe-b) + 14px);
+  background:linear-gradient(180deg,rgba(20,16,41,0),rgba(20,16,41,.92) 26%);}
+.dock-in{max-width:588px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.dock .btn-row .btn{min-height:50px;padding:0 10px;font-size:.98rem;}
+.dock .btn .pts{opacity:.7;font-weight:900;}
+.dock .note{text-align:center;font-weight:800;color:var(--text-2);font-size:.9rem;}
+.peek{touch-action:none;-webkit-touch-callout:none;}
+.peekbox{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(8,5,22,.9);}
+.peekbox.on{display:flex;}
+.peekbox .in{max-width:420px;text-align:center;}
+.peekbox .k{font:800 .74rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px;}
+.peekbox p{font-family:var(--hand);font-size:1.5rem;line-height:1.35;color:#fff;}
+
+/* Casebook sheet */
+.cb-deck{margin-top:14px;}
+.cb-deck h3{display:flex;align-items:center;justify-content:space-between;font-size:1rem;margin-bottom:6px;}
+.cb-deck h3 small{color:var(--text-3);font-weight:800;}
+.cb-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:8px;}
+.cb-bar i{display:block;height:100%;background:var(--accent);}
+.cb-list{display:flex;flex-wrap:wrap;gap:6px;}
+.cb-list span{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.05);font-size:.82rem;font-weight:700;color:var(--text-3);}
+.cb-list span.ok{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--text);}
+.cb-list .ico{width:13px;height:13px;color:var(--green);}
 </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Riddle Stories</span>
-  <button class="icon-btn" id="shuffle-btn" aria-label="Shuffle riddles" title="Shuffle">🔀</button>
-</nav>
-<div class="page">
-<div class="tabs diff-row" id="diff-row"></div>
-<p class="intro">One player reads the mystery aloud. Everyone asks yes/no questions to figure out what happened.</p>
-<div class="riddle-card">
-  <div class="riddle-box" id="riddle-box">
-    <div class="riddle-num" id="riddle-num">Riddle 1 of 10</div>
-    <div class="riddle-text" id="riddle-text"></div>
-  </div>
-  <div class="answer-box" id="answer-box">
-    <div class="answer-label">The Answer</div>
-    <div class="answer-text" id="answer-text"></div>
-  </div>
-  <div class="swipe-hint">Swipe the card for the next mystery</div>
-</div>
-<div class="ctrl-bar"><div class="ctrl-inner">
-  <button class="btn btn-outline" id="reveal-btn">👁 Reveal</button>
-  <button class="btn btn-purple" id="next-btn">Next mystery →</button>
-</div></div>
-</div>
+<main class="stage" id="app"></main>
+<div class="peekbox" id="peekbox" aria-hidden="true"><div class="in"><div class="k">Reader only &middot; let go to hide</div><p id="peektext"></p></div></div>
+
 <script>
-'use strict';
-const RIDDLES={
-  Classic:[
-    {q:"A man walks into a bar and asks for a glass of water. The bartender pulls out a gun and points it at the man. The man says 'Thank you' and walks out.",a:"The man had hiccups. He needed water to cure them, but the sudden shock of the gun cured his hiccups instead — so he thanked the bartender and left."},
-    {q:"A woman shoots her husband, then holds him underwater for five minutes. A little while later, they go out to dinner together.",a:"She's a photographer. She shot his photo, then developed the film by holding it in developer fluid."},
-    {q:"A man lives on the 30th floor of a building. Every morning he takes the elevator to the ground floor and goes to work. When he returns, he takes the elevator to the 15th floor and walks the rest of the way — unless it's raining.",a:"The man is very short and can only reach the button for the 15th floor. On rainy days he has his umbrella, which he uses to press the 30th floor button."},
-    {q:"A man pushes his car to a hotel and tells the owner he's bankrupt.",a:"The man is playing Monopoly."},
-    {q:"A woman is sitting in her hotel room when she hears a knock on the door. She opens it and finds a man she has never seen before. 'I'm sorry,' he says, 'I thought this was my room.' He leaves and she immediately calls security. Why?",a:"You don't knock on your own hotel room door. The man was clearly not a real guest — he was likely checking which rooms were occupied before trying to break in."},
-    {q:"A man is walking down the street when he sees a sign in a hardware store window that says '2 for $1, 12 for $2, 112 for $3.' A woman comes in and buys 712, spending just $3. What is she buying?",a:"House numbers. Each individual digit costs $1. '7', '1', '2' = three digits = $3."},
-    {q:"A woman walks into a library and asks for books about paranoia. The librarian whispers, 'They're right behind you!'",a:"This is a joke, but the lateral thinking answer is: the librarian was being playful — the books about paranoia were literally shelved on the wall behind the woman."},
-    {q:"A man calls his dog from the opposite side of a river. The dog crosses the river without getting wet and without using a bridge, a boat, or any other vessel. How?",a:"The river was frozen."},
-    {q:"Two fathers and two sons go fishing. They catch exactly three fish. Each person goes home with exactly one fish. How?",a:"There are only three people: a grandfather, his son, and his son's son. The grandfather is both a father and a grandfather. Two fathers and two sons, but only three people."},
-    {q:"A boy is at a carnival and goes to a booth where the man says, 'If I write your exact weight on this piece of paper, you give me $5. If I can't, I pay you $50.' The boy agrees, thinking he can fool the man, and the man wins the $5. How?",a:"The man wrote 'your exact weight' on the paper — the literal phrase, not the number. The boy's exact weight was indeed written on the paper."},
-    {q:"A woman had two sons who were born in the same hour of the same day of the same year, but were not twins. How is this possible?",a:"They were part of a set of triplets (or more)."},
-    {q:"A man shaves several times a day yet still has a beard. How?",a:"He's a barber. He shaves other people, not himself."},
-    {q:"How far can a dog run into the woods?",a:"Halfway. After that, it's running out of the woods."},
-    {q:"A farmer has 17 sheep. All but 9 run away. How many sheep does he have left?",a:"9. 'All but 9' means all except 9 ran away."},
-    {q:"A rooster sits on top of a barn roof. The wind is blowing east. Which way does the egg roll?",a:"Roosters don't lay eggs."},
-    {q:"A cowboy rides into town on Friday, stays for three days, and leaves on Friday. How?",a:"His horse's name is Friday."},
-    {q:"There's a one-story house. The walls are blue, the floor is pink, and the furniture is all purple. What color are the stairs?",a:"There are no stairs — it's a one-story house."},
-  ],
-  Tricky:[
-    {q:"A man is looking at a photograph. Someone asks who is in the photo. The man says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is in the photo?",a:"The man's own son. 'My father's son' with no siblings = himself. So 'that man's father is me.' The photo is of his son."},
-    {q:"A plane crashes exactly on the border between the USA and Canada. Where do you bury the survivors?",a:"You don't bury survivors."},
-    {q:"An electric train is moving north at 100 mph. The wind is blowing east at 50 mph. Which way does the smoke blow?",a:"There is no smoke — it's an electric train."},
-    {q:"You are driving a bus. At the first stop, 4 people get on. At the second, 3 get off and 2 get on. At the third, everyone gets off. What color are the bus driver's eyes?",a:"Whatever color your own eyes are — you're the driver. The question starts 'You are driving a bus.'"},
-    {q:"A man and his son are in a car crash. The father is rushed to a different hospital. When the son arrives at surgery, the surgeon says, 'I can't operate — this is my son.' How is this possible?",a:"The surgeon is the boy's mother."},
-    {q:"A woman shoots her husband and then dines with him an hour later. How?",a:"She photographed him. 'Shooting' is slang for taking a photo."},
-    {q:"You have a 3-gallon jug and a 5-gallon jug. You need to measure exactly 4 gallons of water. How?",a:"Fill the 5-gallon jug. Pour 3 gallons into the 3-gallon jug (leaving 2 gallons in the 5-gallon jug). Empty the 3-gallon jug. Pour the 2 gallons into it. Fill the 5-gallon jug again, then pour 1 gallon into the 3-gallon jug (which already has 2). You now have exactly 4 gallons in the 5-gallon jug."},
-    {q:"What can you hold in your right hand but never in your left hand?",a:"Your left hand."},
-    {q:"A man goes outside in the pouring rain with no hat, no umbrella, and no coat. Not a single hair on his head gets wet. How?",a:"He's bald."},
-    {q:"You have two coins that add up to 30 cents. One is not a nickel. What are the two coins?",a:"A quarter and a nickel. The riddle says 'one is not a nickel' — the other one is."},
-    {q:"If you have a bowl with six apples and you take away four, how many apples do you have?",a:"Four — the ones you took away."},
-    {q:"A man walks into a restaurant and orders albatross soup. He takes one sip, thanks the chef, goes home and immediately calls an old friend who he hasn't spoken to in years.",a:"The man and the friend were once stranded on a deserted island together. A stranger had given them 'albatross soup.' Now, tasting real albatross soup in a restaurant, he realizes the soup on the island tasted completely different — so the island soup must have been something else entirely. He calls his friend to compare notes. (This is the non-morbid version of the classic!)"},
-    {q:"A woman walks into a store and asks for something for the kitchen. The shopkeeper asks if it's for upstairs or downstairs. Why does that matter?",a:"She's buying a lightbulb. Different floors might have different voltage fixtures, or perhaps the shopkeeper is being playful about brightness — but the key is she said 'for the kitchen' without specifying what she needs."},
-    {q:"A man buys a stamp, licks it, and mails a letter. The next day he receives the letter back unopened. Why?",a:"He licked the wrong side of the stamp and it never stuck to the envelope."},
-    {q:"A magician claims he can place a coin in a bottle and seal it, then remove the coin without breaking the bottle or the seal. How?",a:"He puts the coin in a bottle with a cork — not a sealed glass bottle. He just removes the cork to get the coin out."},
-    {q:"A man on the 20th floor watches a window washer fall 20 stories. He's not hurt at all. How?",a:"The window washer was washing windows on the inside of the building — he fell 20 stories inside a building with an open atrium and landed in a foam pit, or simply, he fell off the ladder inside the building onto the carpeted floor one floor below."},
-  ],
-  Easy:[
-    {q:"A rooster lays an egg on a roof. Which way does it roll?",a:"Roosters don't lay eggs."},
-    {q:"A boy throws a ball as hard as he can. It comes back to him without bouncing off anything. How?",a:"He throws it straight up into the air."},
-    {q:"What has a neck but no head, and can still wear a cap?",a:"A bottle."},
-    {q:"A doctor gives you three pills and tells you to take one every half hour. How long will the pills last?",a:"One hour. You take the first pill right away (0 min), the second at 30 minutes, and the third at 60 minutes."},
-    {q:"A 10-foot rope ladder hangs over the side of a boat. The rungs are 1 foot apart. The tide rises 5 feet. How many rungs are now underwater?",a:"None — the boat (and the ladder hanging from it) rises with the tide."},
-    {q:"Johnny's mother has three children. The first child is named April. The second child is named May. What is the name of the third child?",a:"Johnny. The question begins 'Johnny's mother has three children...'"},
-    {q:"Before Mount Everest was discovered, what was the highest mountain in the world?",a:"Mount Everest. It was still the tallest mountain — it just hadn't been discovered yet."},
-    {q:"What's bigger than an elephant but doesn't weigh anything?",a:"An elephant's shadow."},
-    {q:"A truck driver is going down a one-way street the wrong way without lights on. There's no moon out. How does the police officer who sees him know not to pull him over?",a:"The truck driver is walking — he's not in his truck."},
-    {q:"What word is spelled incorrectly in every dictionary?",a:"The word 'incorrectly.'"},
-    {q:"If there are 6 apples and you take away 4, how many apples do YOU have?",a:"4 — the ones you took."},
-    {q:"How much dirt is in a hole that is 3 feet wide, 4 feet long, and 2 feet deep?",a:"None — there's no dirt in a hole."},
-    {q:"What can run but never walks, has a mouth but never talks, has a head but never weeps?",a:"A river."},
-    {q:"I have cities, but no houses live there. I have mountains, but no trees grow there. I have water, but no fish swim there. I have roads, but no cars drive there. What am I?",a:"A map."},
-    {q:"A boy was rushed to the hospital for an emergency. The doctor looked at the patient and said, 'I can't treat this child — he's my son!' But the doctor was not the boy's father. How?",a:"The doctor is the boy's mother."},
-    {q:"If you drop me I'm sure to crack, but give me a smile and I'll always smile back. What am I?",a:"A mirror."},
-    {q:"The more you take, the more you leave behind. What am I?",a:"Footsteps."},
-    {q:"I speak without a mouth and hear without ears. I have no body, but I come alive with the wind. What am I?",a:"An echo."},
-    {q:"What has 13 hearts but no other organs?",a:"A deck of playing cards."},
-    {q:"You see a boat filled with people, yet there isn't a single person on board. How is that possible?",a:"All the people on board are married (not single)."},
-  ],
-  Brain:[
-    {q:"A woman is born in 1975 and dies in 1975, yet she lives to be 70 years old. How?",a:"She was born in Room 1975 in a hospital and died in Room 1975 in a nursing home. The numbers are room numbers, not years."},
-    {q:"A man is pushing his car along a road when he comes to a hotel. He shouts 'I'm bankrupt!' Why?",a:"He's playing Monopoly. The hotel means he has to pay rent he can't afford."},
-    {q:"I have a head, a tail, but no body. What am I?",a:"A coin."},
-    {q:"What comes once in a minute, twice in a moment, but never in a thousand years?",a:"The letter 'M.'"},
-    {q:"A baseball bat and ball together cost $1.10. The bat costs $1.00 more than the ball. How much does the ball cost?",a:"5 cents. If the ball costs 5 cents and the bat costs $1.05, the difference is $1.00 and the total is $1.10. (Most people say 10 cents — that's the trick!)"},
-    {q:"You have a fox, a chicken, and a bag of grain. You must cross a river in a boat that only holds you and one item. If left alone, the fox eats the chicken, or the chicken eats the grain. How do you get all three across?",a:"Take the chicken first. Go back, take the fox. On the way back, bring the chicken. Take the grain across. Return, take the chicken. Done!"},
-    {q:"There are 3 boxes. One says 'Apples,' one says 'Oranges,' one says 'Apples and Oranges.' All three are labeled incorrectly. You may pick one fruit from one box. Which box do you pick from, and how do you figure out all three labels?",a:"Pick from the 'Apples and Oranges' box. Since all labels are wrong, this box has only one type. If you pull an apple, it's the Apples box. The box labeled 'Apples' must then be Oranges, and 'Oranges' must be Apples and Oranges."},
-    {q:"A man looks at a painting and says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is the man in the painting?",a:"His son. 'My father's son' with no siblings = himself. So 'that man's father is me.' The painting shows his son."},
-    {q:"You enter a dark room. You have one match. There is a candle, an oil lantern, and a wood stove in the room. Which do you light first?",a:"The match."},
-    {q:"A snail is at the bottom of a 10-foot well. Each day it climbs 3 feet, but each night it slides back 2 feet. How many days does it take to escape?",a:"8 days. After day 7, the snail is at 7 feet. On day 8 it climbs 3 more feet (10 feet), reaching the top before sliding back."},
-    {q:"There are 100 prisoners in 100 cells. All lights are off. Guard 1 opens every cell. Guard 2 closes every 2nd cell. Guard 3 changes every 3rd cell (open→close or close→open). This continues to Guard 100. Which cells are open at the end?",a:"Cells with perfect square numbers: 1, 4, 9, 16, 25, 36, 49, 64, 81, 100. Only perfect squares have an odd number of factors."},
-    {q:"Two trains are 100 miles apart, moving toward each other at 50 mph each. A fly travels at 75 mph back and forth between the trains until they crash. How far does the fly travel?",a:"75 miles. The trains meet in 1 hour (each going 50 mph). The fly travels at 75 mph for 1 hour = 75 miles total."},
-    {q:"You have 12 balls, one slightly heavier or lighter than the rest. Using a balance scale only 3 times, how do you find the odd ball?",a:"Weigh 4 vs 4. If balanced, the odd ball is in the remaining 4. If unbalanced, you know whether it's heavy or light. Use the remaining 2 weighings to narrow it down. (The full solution takes several branches — the key insight is grouping into thirds.)"},
-    {q:"You can't keep me until you give me. What am I?",a:"A promise."},
-    {q:"What asks questions but never speaks, and can be answered without a sound?",a:"A book — or a survey."},
-    {q:"A man builds a house with all four sides facing south. A bear walks past the window. What color is the bear?",a:"White. The only place you can build a house where all four sides face south is the North Pole — where only polar bears live."},
-    {q:"Three friends each pay $10 for a hotel room ($30 total). The manager later realizes the room costs $25, so he sends a bellhop with $5 change. The bellhop pockets $2 and returns $1 to each friend. Each friend paid $9, so they paid $27 total. The bellhop has $2. Where is the missing dollar?",a:"There is no missing dollar — it's a trick of framing. The friends paid $27 total, $25 went to the hotel and $2 to the bellhop. Adding the $2 to the $27 is the error; you should subtract it: $27 - $2 = $25."},
-    {q:"A woman lives on the 30th floor of a building. Every morning she takes the elevator down to the ground floor and goes to work. When she returns in the evening, she takes the elevator to the 15th floor, then walks up the stairs to the 30th — unless it is raining, or someone else is in the elevator. Why?",
-     a:"She is too short to reach the button for the 30th floor. On rainy days she has an umbrella to press it, and when someone else is in the elevator she asks them to press it for her."},
-    {q:"A man pushed his car to a hotel and immediately knew he was bankrupt. What happened?",
-     a:"He was playing Monopoly."},
-    {q:"A woman shoots her husband, then goes to a fancy dinner with friends. Later that night she brings her husband home. How is this possible?",
-     a:"She is a professional photographer. She took his photograph (shot him) and developed it in the darkroom before going out."},
-    {q:"A boy and his father are in a car accident. The father dies at the scene. The boy is rushed to the hospital in critical condition. The surgeon looks at the boy and says, 'I can't operate — this is my son!' How can this be?",
-     a:"The surgeon is the boy's mother."},
-    {q:"Five men are wearing hats in a line: two red hats and three blue hats. Each man can see only the hats of the people in front of him. The man at the back announces the color of his own hat correctly. How did he know?",
-     a:"He saw that the two men directly in front of him both wore the same color, so both remaining possibilities were used — which told him his own hat must be the other color."},
-    {q:"A man who lives in a small town married twenty different women from the same town, all of whom are still alive. He has never divorced. He broke no laws. How?",
-     a:"He is a minister (pastor/priest) who officiated at twenty wedding ceremonies — he married other people."},
-    {q:"A murderer is condemned to death. He has to choose between three rooms: Room 1 has a raging fire, Room 2 has armed assassins, and Room 3 has lions who haven't eaten in three years. Which room is safest?",
-     a:"Room 3. Lions that haven't eaten in three years are dead."},
-    {q:"Before Mount Everest was discovered, what was the tallest mountain in the world?",
-     a:"Mount Everest — it was the tallest whether or not it had been discovered yet."},
-    {q:"A woman had two sons born at the same time, on the same day, of the same month, of the same year, from the same mother — yet they were not twins. How?",
-     a:"They were two of a set of triplets (or more)."},
-    {q:"A man leaves home, makes three left turns, and then returns home to find two masked men waiting for him. Who are the masked men?",
-     a:"A catcher and an umpire. The man is a baseball player running the bases."},
-    {q:"You are a bus driver. At the first stop, 4 people get on. At the second stop, 8 get on and 3 get off. At the third stop, 2 get on and 5 get off. What color are the driver's eyes?",
-     a:"Whatever color your eyes are — the riddle starts 'You are a bus driver.'"},
-    {q:"A rooster lays an egg on the peak of a roof. Which way does it roll?",
-     a:"Roosters don't lay eggs."},
-    {q:"A man is trapped in a room with two doors. One door leads to a burning inferno. The other leads to a room made of magnifying glass that will fry anyone inside at noon. It is 11:58 AM. Which door should he choose?",
-     a:"Door 1 — the burning inferno is already burning, which means the fire has used up much of the oxygen. He can make a run for it. The magnifying glass room will only be deadly at noon (2 minutes away)."},
-    {q:"Two guards stand at two doors. One door leads to paradise; the other to doom. One guard always lies; the other always tells the truth. You can ask one guard one question. What do you ask?",
-     a:"Ask either guard: 'If I asked the other guard which door leads to paradise, what would he say?' Then take the OPPOSITE door. Both guards will point to the wrong door when you phrase it this way."},
-    {q:"A man is walking in the rain without a coat, hat, or umbrella. Not a single hair on his head gets wet. Why?",
-     a:"He is completely bald."},
-    {q:"There is a one-story house. Everything in the house is pink: the walls, floors, furniture, and the cat. What color are the stairs?",
-     a:"There are no stairs — it is a one-story house."},
-    {q:"A farmer has 17 sheep, and all but 9 die. How many sheep does he have left?",
-     a:"9 sheep — 'all but 9' means only 9 survived."},
-    {q:"A woman walks into a library and asks for books about paranoia. The librarian whispers, 'They're right behind you!' Why does the librarian whisper?",
-     a:"It is a library — librarians always speak quietly. There is nothing suspicious happening."},
-  ],
-};
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var SAVE = 'riddlestories_state', SOLVED = 'riddle_solved', KEY = 'riddlestories';
 
+  // ── Decks (difficulty) ────────────────────────────────────────────────────
+  var DECKS = [
+    { id: 'E', name: 'Easy', stars: 1 },
+    { id: 'C', name: 'Classic', stars: 2 },
+    { id: 'T', name: 'Tricky', stars: 3 },
+    { id: 'B', name: 'Brain', stars: 4 }
+  ];
+  var DECK = {}; DECKS.forEach(function (d) { DECK[d.id] = d; });
 
-const DIFFS=Object.keys(RIDDLES);
-let diff='Classic',riddles=[],ri=0;
+  // ── The cases: [id, deck, title, story, solution, [clues]] ────────────────
+  var RAW = [
+    // Easy
+    ['rooster', 'E', 'The Rooster on the Roof', "A rooster sits on the very top of a barn roof and lays an egg. The wind is blowing east. Which way does the egg roll?", "It doesn't roll anywhere. Roosters don't lay eggs; only hens do.", ["Think about the bird, not the roof.", "Is a rooster a boy bird or a girl bird?"]],
+    ['frozen', 'E', 'The Dry Dog', "A man calls his dog from the other side of a river. The dog crosses the river without getting wet, and without a bridge, a boat, or anything else. How?", "The river was frozen. The dog just ran across the ice.", ["The dog didn't swim, jump or fly.", "What time of year might it be?", "Water isn't always liquid."]],
+    ['shaver', 'E', 'The Bearded Shaver', "A man shaves many times every day, yet he still has a full beard. How?", "He's a barber. He shaves other people all day, not himself.", ["He isn't shaving his own face.", "Think about his job."]],
+    ['woods', 'E', 'Into the Woods', "How far can a dog run into the woods?", "Halfway. After that, it's running OUT of the woods!", ["Think about the word 'into'.", "What happens once the dog passes the middle?"]],
+    ['sheep', 'E', 'The Runaway Sheep', "A farmer has 17 sheep. All but 9 run away. How many sheep does he have left?", "9. 'All but 9' means every sheep except 9 ran off.", ["Read the words very slowly.", "'All but' means 'all except'."]],
+    ['friday', 'E', 'Friday', "A cowboy rides into town on Friday, stays for three days, and rides out on Friday. How?", "His horse is named Friday.", ["The days of the week are a trap.", "Friday isn't a day here.", "What did he ride in on?"]],
+    ['pinkhouse', 'E', 'The Pink House', "In a one-story house, everything is pink: the walls, the floors, the furniture, even the cat. What color are the stairs?", "There are no stairs. It's a one-story house!", ["How many floors does the house have?", "Do you need stairs in that house?"]],
+    ['librarian', 'E', 'The Whispering Librarian', "A woman walks into a library and asks for books about paranoia (being worried that someone is after you). The librarian leans in and whispers, 'They're right behind you!' Why does she whisper?", "It's a joke with a real answer. Librarians whisper because it's a library, and the paranoia books really were on the shelf right behind the woman. Nothing spooky at all!", ["Where are they standing?", "What's the rule about noise in a library?", "Look at the shelves."]],
+    ['survivors', 'E', 'On the Border', "A plane crashes exactly on the border between the USA and Canada. In which country do they bury the survivors?", "Nowhere. You don't bury survivors!", ["Read the last word again.", "What does 'survivor' mean?"]],
+    ['etrain', 'E', 'Which Way the Smoke', "An electric train races north at 100 miles an hour. The wind blows east at 50 miles an hour. Which way does the smoke blow?", "There is no smoke. It's an electric train.", ["What makes smoke on a train?", "What powers this train?"]],
+    ['busdriver', 'E', 'The Bus Driver', "You are driving a bus. At the first stop, 4 people get on. At the second, 8 get on and 3 get off. At the third, 2 get on and 5 get off. What color are the bus driver's eyes?", "The same color as yours. The very first line says YOU are driving the bus.", ["Forget the numbers completely.", "Who is driving?", "Listen to the first three words."]],
+    ['lefthand', 'E', 'One Hand Only', "What can you hold in your right hand but never in your left hand?", "Your left hand! (Or your left elbow.)", ["It's something you always carry.", "It's part of you."]],
+    ['bald', 'E', 'Not a Drop', "A man walks home in the pouring rain with no hat, no umbrella and no hood. His clothes get soaked, but not a single hair on his head gets wet. How?", "He's bald. He has no hair to get wet.", ["Count the hairs on his head.", "Some grown-ups have shiny heads."]],
+    ['apples', 'E', 'Taking Apples', "There are six apples in a bowl. You take away four. How many apples do you have?", "Four. You have the four you took.", ["The question isn't how many are left in the bowl.", "Look in your own hands."]],
+    ['ballback', 'E', 'The Boomerang Ball', "A boy throws a ball as hard as he can. It stops, then comes straight back to him, without hitting anything or bouncing off anything. How?", "He threw it straight up into the air.", ["Nobody caught it and threw it back.", "Which direction did he throw it?", "What always pulls things down?"]],
+    ['bottle', 'E', 'Neck but No Head', "What has a neck but no head, and still wears a cap?", "A bottle.", ["You might find one in the fridge.", "You twist the cap off."]],
+    ['johnny', 'E', "Johnny's Mother", "Johnny's mother has three children. The first is named April. The second is named May. What is the third child's name?", "Johnny!", ["It isn't June.", "Read the first two words again."]],
+    ['everest', 'E', 'Before Everest', "Before Mount Everest was discovered, what was the tallest mountain in the world?", "Mount Everest. It was still the tallest; nobody had measured it yet.", ["Mountains don't grow overnight.", "Being discovered doesn't change your size."]],
+    ['shadow', 'E', 'Bigger Than an Elephant', "What is bigger than an elephant but weighs nothing at all?", "An elephant's shadow.", ["You'd see it on a sunny day.", "It follows the elephant everywhere."]],
+    ['incorrectly', 'E', 'The Dictionary Mistake', "Which word is spelled incorrectly in every dictionary?", "The word 'incorrectly'.", ["Take the question very literally.", "The answer is hiding in the question."]],
+    ['hole', 'E', 'The Hole', "How much dirt is in a hole that is 3 feet wide, 4 feet long and 2 feet deep?", "None. A hole is empty; that's what makes it a hole.", ["Don't do any math!", "What is a hole made of?"]],
+    ['river', 'E', 'Runs but Never Walks', "I can run but never walk. I have a mouth but never talk. I have a bed but never sleep, and a head but never weep. What am I?", "A river.", ["You'll find me outdoors.", "Fish live in me.", "I flow to the sea."]],
+    ['map', 'E', 'Cities With No Houses', "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. I have roads, but no cars. What am I?", "A map.", ["You can fold me up.", "Explorers and road-trippers use me."]],
+    ['mirror', 'E', 'Smile Back', "If you drop me I'm sure to crack, but give me a smile and I'll always smile back. What am I?", "A mirror.", ["You look into me every morning.", "I copy everything you do."]],
+    ['footsteps', 'E', 'The More You Take', "The more you take, the more you leave behind. What are they?", "Footsteps.", ["You take them every day.", "Look behind you on a sandy beach."]],
+    ['echo', 'E', 'A Voice Without a Mouth', "I speak without a mouth and hear without ears. I have no body, but I come alive in canyons and caves. What am I?", "An echo.", ["Try shouting in a canyon.", "I repeat whatever you say."]],
+    ['hearts13', 'E', 'Thirteen Hearts', "What has 13 hearts but no other organs?", "A deck of playing cards.", ["You'd find me on a game-night table.", "I also have 13 spades."]],
+    ['coin', 'E', 'Head and Tail', "I have a head and a tail, but no body. What am I?", "A coin.", ["You can flip me.", "I live in your pocket or piggy bank."]],
+    ['letterm', 'E', 'Once in a Minute', "What comes once in a minute, twice in a moment, but never in a thousand years?", "The letter M.", ["It's not about time at all.", "Look at how the words are spelled."]],
+    ['match', 'E', 'One Match', "You walk into a cold, dark cabin with just one match. There's a candle, an oil lamp and a wood stove. Which do you light first?", "The match!", ["What do you need before you can light anything?"]],
+    ['promise', 'E', 'Give It to Keep It', "You can't keep me until you've given me. What am I?", "A promise.", ["You make me with words.", "Pinkie swear!"]],
+    ['quiz', 'E', 'Questions Without Speaking', "I ask lots of questions but never speak, and you can answer me without making a sound. What am I?", "A quiz or a test! (A survey or a riddle book works too.)", ["You'd find me at school.", "You answer me with a pencil."]],
+    ['cardoor', 'E', 'Three Doors', "You're sitting in a car. In front of you are a golden door, a silver door and a wooden door. Which door do you open first?", "The car door! You have to get out of the car first.", ["Where are you sitting?", "How do you get out of a car?"]],
+    ['ladder', 'E', 'The Tall Ladder', "A girl falls off a 30-foot ladder onto hard ground, but she isn't hurt at all. How?", "She fell off the bottom rung.", ["She didn't land on anything soft.", "How high up the ladder was she?"]],
+    ['towel', 'E', 'Wetter While Drying', "What gets wetter the more it dries?", "A towel.", ["You use me after a bath.", "I hang in the bathroom."]],
+    ['piano', 'E', 'Keys but No Locks', "What has lots of keys but can't open a single lock?", "A piano (a computer keyboard works too).", ["You can make music with me.", "My keys are black and white."]],
+    ['clock', 'E', "Hands That Can't Clap", "What has two hands and a face, but can't clap or smile?", "A clock.", ["I hang on the wall.", "Tick, tock."]],
+    ['age', 'E', 'Up but Never Down', "What goes up and up but never comes down?", "Your age.", ["It changes once a year.", "Birthday candles count it."]],
+    ['egg', 'E', 'Break Me First', "What has to be broken before you can use it?", "An egg.", ["You'll find me in the kitchen.", "Chickens make me."]],
+    ['candle', 'E', 'Tall When Young', "I'm tall when I'm young and short when I'm old. What am I?", "A candle.", ["I melt.", "You'll find me on a birthday cake."]],
+    ['umbrella', 'E', 'Ten Under One', "Ten people stand under one small umbrella, yet none of them gets wet. How?", "It isn't raining.", ["The umbrella isn't magic.", "Look at the sky."]],
+    ['concrete', 'E', 'The Egg Drop', "How can you drop a raw egg onto a concrete floor without cracking the floor?", "Easy: concrete floors are very hard to crack! (The egg will break, though.)", ["Read carefully: what are you trying not to crack?", "Concrete is very tough."]],
+    ['feathers', 'E', 'Feathers or Bricks', "Which is heavier: a ton of feathers or a ton of bricks?", "They weigh the same. A ton is a ton.", ["Both are a ton.", "Don't think about how big they are."]],
 
-DIFFS.forEach(d=>{
-  const b=document.createElement('button');b.className='tab diff-btn'+(d===diff?' active':'');b.textContent=d;b.dataset.d=d;
-  b.addEventListener('click',()=>{if(d===diff)return;diff=d;GN.haptic('select');document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadDiff();});
-  document.getElementById('diff-row').appendChild(b);
-});
+    // Classic
+    ['hiccups', 'C', 'Water and a Scare', "A man walks into a shop and asks for a glass of water. The shopkeeper suddenly jumps up and shouts 'BOO!' The man says 'Thank you!' and walks out happy.", "The man had hiccups. He wanted water to cure them, but the big scare cured them instead, so he thanked the shopkeeper and left.", ["The man wasn't really thirsty.", "He had a small problem that water can sometimes fix.", "A big surprise can fix it too."]],
+    ['photo', 'C', 'Shot and Underwater', "A woman shoots her husband, then holds him under water for five minutes. Then she hangs him up to dry. An hour later they go out to dinner together, happy as ever.", "She's a photographer. She 'shot' a photo of him, developed the print in a tray of liquid, then hung it up to dry. Nobody was hurt.", ["Nobody was hurt at all.", "'Shoot' has more than one meaning.", "Think about old-fashioned cameras and film."]],
+    ['elevator', 'C', 'The Elevator', "A woman lives on the 30th floor. Every morning she takes the elevator down to the ground floor. Every evening she takes it up to the 15th floor and walks the rest of the way, unless it's raining or someone else is in the elevator. Why?", "She's too short to reach the button for the 30th floor. On rainy days she presses it with her umbrella, and if someone else is in the elevator she asks them to press it.", ["She'd love to ride all the way up.", "It has to do with the buttons.", "How tall is she?"]],
+    ['monopoly', 'C', 'Bankrupt at the Hotel', "A man pushes his car up to a hotel and instantly knows he's bankrupt. What happened?", "He's playing Monopoly. His little car token landed on a property with a hotel he couldn't pay for.", ["It isn't a real car.", "It isn't a real hotel either.", "It happens on game night."]],
+    ['knock', 'C', 'The Wrong Room', "A woman is in her hotel room when there's a knock at the door. A stranger says, 'Sorry, I thought this was my room,' and walks away. She calls security right away. Why?", "Nobody knocks on their own hotel room door. He wasn't a guest looking for his room; he was checking which rooms had someone in them.", ["What would you do at your own room's door?", "Do you knock on your own door?"]],
+    ['housenumbers', 'C', 'Three Dollars', "A sign in a hardware store window says: '1 for $1, 12 for $2, 112 for $3.' A woman buys 712 and pays just $3. What is she buying?", "House numbers. Each digit costs $1, so 7-1-2 is three digits for $3.", ["She's going to put them on her house.", "Each one costs the same.", "The mail carrier needs them."]],
+    ['threefish', 'C', 'Three Fish', "Two fathers and two sons go fishing. They catch exactly three fish, and each of them goes home with exactly one fish. How?", "There were only three people: a grandpa, his son, and his grandson. The middle one is both a father and a son.", ["Nobody shared or cut a fish.", "Can one person be a father AND a son?", "Think about three generations."]],
+    ['nottwins', 'C', 'Not Twins', "A mother has two sons born in the same hour of the same day of the same year, but they are not twins. How?", "They're two of a set of triplets (or more)!", ["Same mother, same birthday, same hour.", "Maybe there were more than two babies."]],
+    ['surgeon', 'C', 'The Surgeon', "A boy and his dad are in a car accident. The dad is fine, but the boy goes to the hospital. The surgeon looks at him and says, 'I can't operate on this boy. He's my son!' The surgeon isn't his dad. How?", "The surgeon is the boy's mom.", ["The surgeon is telling the truth.", "A boy has two parents.", "Doctors can be women too."]],
+    ['trucker', 'C', 'No Lights', "A truck driver goes the wrong way down a one-way street with no lights on. There's no moon. A police officer sees him clearly and doesn't stop him. Why?", "The truck driver is walking. He isn't in his truck at all.", ["The police officer saw him clearly.", "He broke no rules.", "Was he in his truck?"]],
+    ['ropeladder', 'C', 'Rising Tide', "A rope ladder hangs over the side of a boat. The bottom rung just touches the water and the rungs are one foot apart. The tide rises 5 feet. How many rungs are now underwater?", "None. The boat floats up with the tide, and the ladder rises with it.", ["The ladder is attached to something.", "What does a boat do when the water rises?"]],
+    ['singles', 'C', 'Not a Single Person', "You see a boat full of people. It hasn't sunk, but when you look again, there isn't a single person on board. Why?", "Everyone on board is married, so there isn't a single person!", ["Nobody left the boat.", "'Single' has more than one meaning."]],
+    ['room1975', 'C', 'Born in 1975', "A woman was born in 1975 and died in 1975, yet she lived to be 70 years old. How?", "1975 wasn't a year. She was born in hospital room 1975 and, many years later, passed away in room 1975 of a different building.", ["The numbers aren't years.", "Where are babies born?", "Think about where you see big numbers on doors."]],
+    ['polarbear', 'C', 'All Sides South', "A man builds a house where all four walls face south. A bear walks past the window. What color is the bear?", "White. The only place where every wall faces south is the North Pole, so it's a polar bear.", ["Where on Earth could every wall face south?", "There's only one such spot.", "What bears live in the far north?"]],
+    ['minister', 'C', 'Twenty Weddings', "A man in a small town has married twenty women from that town. All of them are alive, he has never been divorced, and he broke no laws. How?", "He's a minister. He performed twenty weddings; he married other couples.", ["He never got divorced.", "He isn't the groom.", "Who stands at the front at a wedding?"]],
+    ['lions', 'C', 'Three Rooms', "In an old story, a prisoner must escape through one of three rooms. The first is full of fire. The second has guards with swords. The third has lions that haven't eaten in three years. Which room is safest?", "The third room. Lions that haven't eaten in three years wouldn't still be around!", ["Think about the lions.", "How long can anything go without food?"]],
+    ['maskedmen', 'C', 'Two Masked Men', "A man leaves home, makes three left turns, and returns home to find two masked men waiting for him. Who are they?", "A catcher and an umpire. He's a baseball player running the bases back to home plate.", ["He isn't scared of them.", "He's playing a sport.", "'Home' isn't his house."]],
+    ['windowwasher', 'C', 'The Fall', "A window washer slips off his ladder on the 20th floor of a skyscraper, but he isn't hurt at all. How?", "He was washing the windows from the inside, so he just fell off a short stepladder onto the office floor.", ["He fell a very short way.", "Which side of the glass was he cleaning?"]],
+    ['stamp', 'C', 'Return to Sender', "A man buys a stamp, licks it, sticks it on and mails a letter. The next day the letter comes back to him unopened. Why?", "He licked the wrong side of the stamp (the picture side), so it fell off and the letter had no stamp.", ["The address was correct.", "Something went wrong with the stamp.", "Which side of a stamp is sticky?"]],
+    ['snowman', 'C', 'Coal and a Carrot', "Two lumps of coal, a carrot and a scarf are lying in the middle of a field. Nobody put them there today. What happened?", "They were a snowman! The sun came out and he melted.", ["The things used to be part of something.", "Someone put them together a while ago.", "Think about winter turning into spring."]],
+    ['christmas', 'C', 'A Sunny Christmas', "Mia opens her Christmas presents, then spends the afternoon at the beach in her swimsuit and gets a sunburn. Nothing strange is going on.", "Mia lives in the southern half of the world, like Australia, where Christmas comes in summer.", ["It really is December 25th.", "Seasons aren't the same everywhere.", "Think about the other side of the world."]],
+    ['nightguard', 'C', 'The Dream', "A museum's night guard tells the owner, 'Last night I dreamed your morning flight gets cancelled by fog. Take the train!' The owner takes the train, thanks the guard, and then fires him. Why?", "He dreamed it during his night shift, which means he was asleep on the job!", ["The dream came true.", "When did the guard have his dream?", "What is a night guard supposed to do all night?"]],
+    ['parrot', 'C', 'The Silent Parrot', "A pet shop owner promises that a parrot will repeat every word it hears. A girl buys it, but a month later it still hasn't said a word. The owner told the truth. How?", "The parrot is deaf. It would repeat every word it heard, but it can't hear any.", ["The parrot isn't broken or sad.", "Read the promise very carefully.", "To repeat a word, what must you do first?"]],
+    ['coffee', 'C', 'Ring in the Coffee', "Dad drops his ring into a full cup of coffee, but when he picks it out, the ring is completely dry. How?", "The cup was full of coffee beans (or ground coffee), not a drink.", ["Nobody drank or spilled anything.", "Coffee comes in more than one form."]],
+    ['watchdog', 'C', "The Dog That Didn't Bark", "A prize horse is stolen from a barn in the night. A watchdog sleeps in that barn and barks at every stranger, but it didn't bark once. Who should the detective look for?", "Someone the dog knew well, like the horse's own trainer. The dog only barks at strangers. (This one is from a Sherlock Holmes story!)", ["The dog wasn't asleep or sick.", "Why does a watchdog bark?", "The thief wasn't a stranger."]],
+    ['chess', 'C', 'Five Games', "Two girls play five games of chess. Each girl wins the same number of games, and there are no ties. How?", "They weren't playing each other.", ["Every game had a winner.", "Who was each girl's opponent?"]],
+    ['leapyear', 'C', 'Twenty Birthdays', "Grandpa just turned 80, but he has only had 20 birthdays on his actual birthday. How?", "He was born on February 29th, which only comes around once every four years.", ["He celebrates every year, just not on the real day.", "His birthday is special on the calendar.", "Leap!"]],
+    ['bridge', 'C', 'Stuck Under the Bridge', "A big truck gets stuck under a low bridge. Firefighters can't work out how to free it without damaging the bridge. A girl in a passing car solves it in ten seconds. What does she say?", "Let some air out of the tires. The truck sinks a little lower and can back out.", ["Leave the bridge alone.", "Can the truck be made a little shorter?", "What on a truck is full of air?"]],
+    ['blackcat', 'C', 'The Black Cat', "A man drives down a country road with no streetlights and his headlights off. There's no moon. A black cat runs across the road, and he stops just in time. How did he see it?", "It was daytime.", ["He could see perfectly well.", "Nobody said it was night."]],
 
-function loadDiff(){
-  riddles=[...RIDDLES[diff]].sort(()=>Math.random()-.5);ri=0;loadRiddle();
-}
+    // Tricky
+    ['weight', 'T', 'Your Exact Weight', "At the fair, a man says, 'I'll write your exact weight on this paper. If I'm right, you pay me $5. If not, I pay you $50.' A boy agrees and the man wins. How?", "The man wrote the words 'your exact weight' on the paper. That's exactly what he promised!", ["The man didn't guess a number.", "Read his promise word for word.", "What exactly did he write?"]],
+    ['twocoins', 'T', 'Thirty Cents', "You have two US coins that add up to 30 cents. One of them is not a nickel. What are the two coins?", "A quarter and a nickel. The quarter is the one that's not a nickel!", ["One coin is not a nickel...", "...but what about the other one?"]],
+    ['albatross', 'T', 'Albatross Soup', "A man orders albatross soup at a seaside restaurant. He takes one sip, laughs out loud, and rushes outside to phone an old friend he hasn't talked to in years. Why?", "Years ago, he and his friend were shipwrecked on an island, and his friend cooked him 'albatross soup' to keep his spirits up. Tasting the real thing, he realizes it's totally different. His friend's soup was really seaweed and boiled boot leather! He calls to laugh about it.", ["He had tasted 'albatross soup' once before.", "It was long ago, on an island, with that friend.", "The first soup wasn't really albatross."]],
+    ['corkcoin', 'T', 'Coin in a Bottle', "A coin is inside a glass bottle with a cork in its neck. How can you get the coin out without pulling out the cork or breaking the bottle?", "Push the cork down into the bottle, then shake the coin out.", ["The cork doesn't have to come OUT.", "Which other way can a cork go?"]],
+    ['pills', 'T', 'Three Pills', "A doctor gives you three vitamins and says to take one every half hour. How long until they're all gone?", "One hour. You take the first one right away, the second at 30 minutes and the third at 60 minutes.", ["Take the first one right away.", "Count the gaps between them, not the vitamins."]],
+    ['twodoors', 'T', 'Two Doors', "A treasure hunter must leave through one of two doors. Behind the first is a room on fire. Behind the second is a room with a glass roof full of giant magnifying glasses that roast anything in sunlight. It's 11:58 at night. Which door?", "The magnifying-glass room. It's only deadly when the sun shines through, and at midnight there's no sun.", ["One room needs something to be dangerous.", "What makes a magnifying glass hot?", "What time of day is it?"]],
+    ['twinbday', 'T', 'Older but Second', "Sam is older than his twin sister Kim, yet every year Kim has her birthday first. How?", "Sam was born just before midnight on December 31st, and Kim just after midnight on January 1st. Every new year, Kim's birthday comes first.", ["They were born minutes apart.", "Those minutes crossed a big line on the calendar.", "Think about New Year's Eve."]],
+    ['alarm', 'T', 'The Alarm Clock', "Grandpa goes to bed at 8 o'clock at night and sets his old wind-up alarm clock for 9 o'clock in the morning. How long does he sleep before it rings?", "One hour. An old wind-up clock doesn't know morning from night, so it rings at 9 that same evening.", ["It's an old clock with hands.", "Does an old clock know AM from PM?"]],
+    ['basket', 'T', 'Five Girls, Five Apples', "Five apples are in a basket. Five girls each take one apple, yet one apple is still in the basket. How?", "The last girl took the basket with her apple still in it.", ["Each girl really did get an apple.", "Nobody cut or shared an apple.", "What did the last girl carry?"]],
+    ['horserace', 'T', 'The Slowest Horse', "A king tells his two sons, 'Race your horses to the city. Whoever's horse arrives LAST gets my crown.' The sons jump on and gallop as fast as they can. Why?", "They swapped horses! Each rode his brother's horse, so getting there first meant his own horse came last.", ["They understood the rules perfectly.", "Whose horse is whose?", "The sons did something before riding off."]],
+    ['barbers', 'T', 'Two Barbers', "A town has only two barbers. One has a neat shop and a perfect haircut. The other has a messy shop and a terrible haircut. Which barber should you visit?", "The one with the terrible haircut. The two barbers cut each other's hair, so he's the one who gave the other his perfect cut.", ["Barbers can't easily cut their own hair.", "Who cut each barber's hair?"]],
+    ['snowtracks', 'T', 'Tracks in the Snow', "A line of footprints leads into the middle of a snowy field and simply stops. Nobody is there, and nobody flew away. What happened?", "The person walked out, then walked backward, stepping exactly in their own footprints.", ["Nobody was picked up or carried.", "The person went back the way they came.", "Look very closely at each footprint."]],
+    ['timezones', 'T', 'A Message From Tomorrow', "Lucy in Australia sends her cousin in Hawaii a message on Monday morning. He reads it the moment it arrives, and for him it's still Sunday. How?", "Time zones. Australia is almost a whole day ahead of Hawaii, across the International Date Line.", ["Nobody's clock is broken.", "They live very far apart.", "The sun rises at different times around the world."]],
+    ['cookies', 'T', 'The Cookie Jar Caper', "The cookie jar sits on top of the fridge, too high for anyone but Dad, and Dad's been at work all day. Cookies are missing. There's no chair or stool nearby, just a small puddle of water in front of the fridge. What happened?", "Someone stood on a big block of ice from the freezer to reach the jar, then left it to melt into a puddle.", ["The thief needed to be taller.", "They stood on something.", "Where did the puddle come from?"]],
+    ['brokenglass', 'T', 'The Broken Window', "Mr. Gray tells a detective that a burglar smashed his back window to get in and stole his coin collection. The detective looks at the broken glass lying on the lawn outside and says, 'Nobody broke in here.' How does she know?", "The glass was outside. If a burglar had smashed in, the glass would have fallen inside the house. The window was broken from inside.", ["Look at where the glass landed.", "When glass breaks, which way does it fall?"]],
 
-function loadRiddle(){
-  if(ri>=riddles.length)ri=0;
-  document.getElementById('riddle-text').textContent=riddles[ri].q;
-  document.getElementById('riddle-num').textContent=`Riddle ${ri+1} of ${riddles.length}`;
-  document.getElementById('answer-box').style.display='none';
-  document.getElementById('answer-text').textContent='';
-  const rb=document.getElementById('reveal-btn');rb.textContent='👁 Reveal';rb.disabled=false;
-  const box=document.getElementById('riddle-box');box.classList.remove('enter','leave');void box.offsetWidth;box.classList.add('enter');
-}
-function nextRiddle(){
-  const box=document.getElementById('riddle-box');box.classList.remove('enter');box.classList.add('leave');
-  GN.haptic('select');
-  setTimeout(()=>{ri++;loadRiddle();window.scrollTo({top:0,behavior:'smooth'});},180);
-}
+    // Brain
+    ['photoson', 'B', "Who's in the Picture?", "A man looks at a portrait and says, 'Brothers and sisters I have none, but that man's father is my father's son.' Who is in the portrait?", "His son. 'My father's son' (with no brothers) is the man himself, so 'that man's father is me.'", ["'My father's son' with no brothers is... who?", "Swap that phrase for 'me'.", "So: 'that man's father is me.'"]],
+    ['jugs', 'B', 'Four Gallons', "You have a 3-gallon jug and a 5-gallon jug and a tap. How do you measure exactly 4 gallons?", "Fill the 5. Pour it into the 3, leaving 2. Empty the 3 and pour the 2 into it. Fill the 5 again and top up the 3 (that takes 1). Exactly 4 gallons are left in the 5.", ["Start by filling the 5-gallon jug.", "Pour from the big jug into the small one.", "Leftovers are useful."]],
+    ['batball', 'B', 'Bat and Ball', "A bat and a ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?", "5 cents. The bat is $1.05, which is $1.00 more, and together they make $1.10. (Most people say 10 cents!)", ["It isn't 10 cents.", "If the ball were 10 cents, the bat would be $1.10."]],
+    ['foxchicken', 'B', 'Fox, Chicken, Grain', "You must ferry a fox, a chicken and a bag of grain across a river. Your boat holds you and one of them. Left alone, the fox eats the chicken and the chicken eats the grain. How do you get them all across?", "Take the chicken over. Go back, take the fox over, and bring the chicken back. Take the grain over. Go back and take the chicken over. Done!", ["The fox doesn't eat grain.", "You're allowed to bring something back.", "Take the chicken first."]],
+    ['labels', 'B', 'Wrong Labels', "Three boxes are labeled 'Apples', 'Oranges' and 'Apples and Oranges'. Every label is wrong. You may take one fruit from one box without looking. How do you fix all three labels?", "Pick from 'Apples and Oranges'. It must hold only one kind. If you get an apple, it's the Apples box; then the box labeled 'Oranges' can't be oranges or apples, so it's the mix, and the last box is Oranges.", ["Every label is wrong.", "The mixed label can't be the mixed box.", "Pick from 'Apples and Oranges'."]],
+    ['snail', 'B', 'The Snail in the Well', "A snail is at the bottom of a 10-foot well. Each day it climbs 3 feet, and each night it slides back 2. How many days to get out?", "8 days. After 7 days and nights it's at 7 feet. On day 8 it climbs 3 more and reaches the top before it can slide back.", ["Each full day and night it gains 1 foot.", "On the last day it doesn't slide back."]],
+    ['cells', 'B', 'A Hundred Doors', "100 doors are all closed. Person 1 opens every door. Person 2 changes every 2nd door (open to closed, closed to open). Person 3 changes every 3rd door, and so on up to Person 100. Which doors end up open?", "Doors 1, 4, 9, 16, 25, 36, 49, 64, 81 and 100: the perfect squares. Only they are changed an odd number of times.", ["A door is changed once for each number that divides it.", "Most numbers have their divisors in pairs.", "Which numbers have a divisor paired with itself?"]],
+    ['trainfly', 'B', 'The Fly and the Trains', "Two trains are 100 miles apart, heading toward each other at 50 mph each. A fly zooms back and forth between them at 75 mph until they meet. How far does the fly travel?", "75 miles. The trains meet in 1 hour, and the fly flies for that hour at 75 mph.", ["Don't follow the fly's zigzags.", "How long until the trains meet?"]],
+    ['twelveballs', 'B', 'Twelve Balls', "You have 12 balls that look the same, but one is a tiny bit heavier or lighter. With a balance scale and only 3 weighings, how do you find the odd ball?", "Weigh 4 against 4. If they balance, the odd ball is in the other 4; otherwise you know which group is heavy and which is light. Use the last two weighings to split the suspects into thirds and narrow it down. (The full answer has several branches. The key idea is grouping into thirds.)", ["Split the balls into three groups.", "Weigh 4 against 4 first."]],
+    ['dollar', 'B', 'The Missing Dollar', "Three friends pay $30 for a hotel room. The manager realizes it costs $25 and sends the bellhop with $5. The bellhop keeps $2 and gives each friend $1 back. Now each paid $9 ($27) plus the bellhop's $2 is $29. Where's the missing dollar?", "There isn't one. The $27 the friends paid already includes the bellhop's $2 ($25 hotel + $2 bellhop). Adding the $2 again is the trick.", ["Follow where each dollar actually went.", "Adding $27 and $2 is the mistake."]],
+    ['hats', 'B', 'Two Red Hats', "Three friends stand in a line, all facing forward. A teacher shows them two red hats and one blue hat, then puts a hat on each head. The friend at the back sees the other two and instantly knows her own color. What is it?", "Blue. There were only two red hats, and she could see both of them on her friends.", ["Count the hats she can see.", "How many red hats were there?"]],
+    ['guards', 'B', 'Two Guards', "Two doors: one leads to treasure, one to a swamp. One guard always lies and one always tells the truth, and you don't know which is which. You may ask one guard one question. What do you ask?", "Ask either guard: 'Which door would the OTHER guard say leads to the treasure?' Both will point to the swamp door, so take the other one.", ["Make both guards point the same way.", "Ask about what the OTHER guard would say."]],
+    ['lily', 'B', "Lily's Birthday", "The day before yesterday, Lily was 9. Next year she'll turn 12. How can that be?", "Today is January 1st and Lily's birthday is December 31st. On Dec 30 she was 9, she turned 10 yesterday, she'll turn 11 this December and 12 next December.", ["Her birthday is very close to today.", "Today is a special day of the year.", "Think about New Year's Day."]],
+    ['ottffss', 'B', 'What Comes Next?', "What are the next three letters? O, T, T, F, F, S, S, ...", "E, N, T: One, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten.", ["Each letter starts a word.", "Start counting."]],
+    ['siblings', 'B', 'Brothers and Sisters', "In one family, each girl has as many brothers as sisters, but each boy has only half as many brothers as sisters. How many boys and girls are there?", "4 girls and 3 boys. Each girl has 3 sisters and 3 brothers; each boy has 2 brothers and 4 sisters.", ["There's one more girl than boys.", "Try small numbers.", "Try 3 boys."]],
+    ['cake', 'B', 'Who Ate the Cake?', "Ava says, 'Ben ate the cake.' Ben says, 'I didn't eat it.' Cal says, 'I didn't eat it.' Only ONE of them is telling the truth. Who ate the cake?", "Cal. If Cal did it, only Ben is telling the truth. If Ava or Ben did it, two of them would be telling the truth.", ["Try each kid as the cake-eater.", "Count the true statements each time."]]
+  ];
+  var CASES = RAW.map(function (r) { return { id: r[0], deck: r[1], title: r[2], q: r[3], a: r[4], h: r[5] }; });
+  var BY = {}; CASES.forEach(function (c) { BY[c.id] = c; });
 
-document.getElementById('reveal-btn').addEventListener('click',()=>{
-  const ab=document.getElementById('answer-box');
-  if(ab.style.display==='block'){ab.style.display='none';document.getElementById('reveal-btn').textContent='👁 Reveal';return;}
-  ab.style.display='block';
-  document.getElementById('answer-text').textContent=riddles[ri].a;
-  document.getElementById('reveal-btn').textContent='🙈 Hide';
-  GN.haptic('medium');
-  setTimeout(()=>ab.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
-});
-document.getElementById('next-btn').addEventListener('click',nextRiddle);
-document.getElementById('shuffle-btn').addEventListener('click',()=>{riddles.sort(()=>Math.random()-.5);ri=0;loadRiddle();GN.toast('Shuffled');});
-(function(){
-  const box=document.getElementById('riddle-box');let sx=null,sy=null;
-  box.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
-  box.addEventListener('touchend',e=>{
-    if(sx===null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;
-    if(dx<-60&&Math.abs(dx)>Math.abs(dy)*1.5)nextRiddle();
-  },{passive:true});
+  // ── Storage ───────────────────────────────────────────────────────────────
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function solvedMap() { var m = lsGet(SOLVED, {}); return m && typeof m === 'object' ? m : {}; }
+  function markSolved(id) { var m = solvedMap(); m[id] = Date.now(); lsSet(SOLVED, m); }
+  function solvedCount(deck) { var m = solvedMap(); return CASES.filter(function (c) { return (!deck || c.deck === deck) && m[c.id]; }).length; }
+
+  var S = null, undoStack = [];
+  function save() {
+    lsSet(SAVE, S);
+    Kit.resume.set('Case ' + Math.min(S.i + 1, S.order.length) + ' of ' + S.order.length);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (!S || !undoStack.length) { Kit.toast('Nothing to undo'); return; }
+    S = JSON.parse(undoStack.pop()); save(); render(); Kit.toast('Undone');
+  }
+
+  // ── Points ────────────────────────────────────────────────────────────────
+  function ptsFor(h) { return h === 0 ? 3 : h === 1 ? 2 : 1; }
+
+  // ── Shell ─────────────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'riddlestories',
+    theme: { felt: ['#2e3466', '#1f2449', '#151935'], wood: ['#6b4a33', '#3f2a1c'] },
+    onNew: function () { clearSave(); undoStack = []; showSetup(); },
+    undo: undo,
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Riddle Stories: past games' }); } },
+      { icon: 'book', label: 'Casebook (solved cases)', onClick: casebook }
+    ],
+    rules:
+      '<p class="goal">Each card is a little mystery. Ask yes-or-no questions until you figure out what really happened.</p>' +
+      '<h3>Taking turns</h3><ul><li>One player is the <b>reader</b>. They open the case file and read the story out loud.</li>' +
+      '<li>The reader can <b>hold the Peek button</b> to secretly see the solution, so they know how to answer.</li>' +
+      '<li>Everyone else asks questions. The reader may only answer <b>Yes</b>, <b>No</b>, or <b>Doesn\'t matter</b>.</li>' +
+      '<li>The reader changes every case, so everybody gets a turn.</li></ul>' +
+      '<h3>Clues</h3><p>Stuck? The reader can give a <b>clue</b>, one at a time. Fewer clues means more points.</p>' +
+      '<h3>Scoring</h3><ul><li>Solved with <b>no clues: 3 points</b></li><li>With <b>one clue: 2 points</b></li><li>With <b>two or more clues: 1 point</b></li>' +
+      '<li>Give up and nobody scores. The sealed envelope opens either way.</li></ul>' +
+      '<p>After the last case, the best detective wins.</p>' +
+      '<h3>Playing alone</h3><p>Read the case yourself, use clues if you need them, then open the envelope and be honest about whether you got it.</p>' +
+      '<h3>Difficulty</h3><p><b>Easy</b> riddles and silly tricks, <b>Classic</b> mystery stories, <b>Tricky</b> head-scratchers, and <b>Brain</b> busters that need careful thinking. Cases you have already solved are saved, and new ones come up first.</p>'
+  });
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; render.clearDock();
+    var n = solvedCount();
+    Kit.setup(app, {
+      intro: n ? 'You have solved ' + n + ' of ' + CASES.length + ' cases. Unsolved ones come up first.' : 'Solve the mystery with yes-or-no questions. ' + CASES.length + ' cases to crack.',
+      modes: [
+        { id: 'group', icon: 'users', title: 'Pass & play', desc: 'Take turns reading. Solve cases to score points.' },
+        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Read the cases yourself and see how many you crack' }
+      ],
+      players: { range: function (m) { return m === 'solo' ? [1, 1] : [2, 8]; }, count: 3 },
+      options: [
+        { id: 'deck', label: 'Difficulty', value: 'M', choices: [['E', 'Easy'], ['C', 'Classic'], ['T', 'Tricky'], ['B', 'Brain'], ['M', 'Mix']] },
+        { id: 'n', label: 'Cases', value: 10, choices: [[5, '5'], [10, '10'], [15, '15'], [20, '20']] }
+      ],
+      start: 'Open the casebook',
+      onStart: start
+    });
+  }
+
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function draw(deck, n, avoid) {
+    var m = solvedMap(), av = avoid || [];
+    var pool = CASES.filter(function (c) { return (deck === 'M' || c.deck === deck) && av.indexOf(c.id) < 0; });
+    var fresh = shuffle(pool.filter(function (c) { return !m[c.id]; })), old = shuffle(pool.filter(function (c) { return m[c.id]; }));
+    return fresh.concat(old).slice(0, n).map(function (c) { return c.id; });
+  }
+
+  function start(cfg) {
+    undoStack = [];
+    var deck = String(cfg.options.deck || 'M'), n = Number(cfg.options.n) || 10;
+    S = {
+      mode: cfg.mode === 'solo' ? 'solo' : 'group', deck: deck,
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, score: 0 }; }),
+      order: draw(deck, n), i: 0, phase: 'closed', hints: 0, res: null, log: [], started: Date.now(),
+      first: Math.floor(Math.random() * cfg.players.length)
+    };
+    Kit.gameStart();
+    Kit.sfx('deal');
+    save(); render();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function cur() { return BY[S.order[S.i]]; }
+  function readerIdx() { return S.mode === 'group' ? (S.first + S.i) % S.players.length : -1; }
+  function stars(deck) {
+    var d = DECK[deck], h = '<span class="stars" aria-label="' + d.name + '">';
+    for (var i = 0; i < 4; i++) h += '<span class="' + (i < d.stars ? 'on' : 'off') + '">' + Kit.icon('star') + '</span>';
+    return h + '</span>';
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  var dock = el('div', { class: 'dock' }), dockIn = el('div', { class: 'dock-in' });
+  dock.appendChild(dockIn);
+  render.clearDock = function () { dock.remove(); };
+
+  function render(anim) {
+    if (!S) return;
+    anim = anim || {};
+    app.innerHTML = '';
+    var c = cur(), ri = readerIdx();
+
+    // Scoreboard
+    if (S.mode === 'group') {
+      var lead = Math.max.apply(null, S.players.map(function (p) { return p.score; }));
+      var sc = el('div', { class: 'scores' });
+      S.players.forEach(function (p, i) {
+        sc.appendChild(el('div', { class: 'score' + (i === ri ? ' on' : '') + (lead > 0 && p.score === lead ? ' lead' : ''), style: { '--c': p.color } }, [
+          el('span', { class: 'nm', text: p.name }), el('span', { class: 'pt', text: String(p.score) }),
+          el('span', { class: 'sub', text: i === ri ? 'Reader' : 'Detective' })
+        ]));
+      });
+      app.appendChild(sc);
+    }
+    app.appendChild(el('div', { class: 'caseline' }, [
+      el('span', null, [el('b', { text: 'Case ' + (S.i + 1) }), el('span', { text: ' of ' + S.order.length })]),
+      el('span', { class: 'dk', html: '<span>' + DECK[c.deck].name + '</span>' + stars(c.deck) })
+    ]));
+
+    // Desk + folder
+    var felt = el('div', { class: 'felt-in' });
+    var desk = el('div', { class: 'desk wood' }, [felt]);
+    var folder = el('div', { class: 'folder' });
+    folder.appendChild(el('div', { class: 'tab', text: 'CASE No. ' + String(S.i + 1).padStart(2, '0') }));
+    var page = el('div', { class: 'page' }, [
+      el('div', { class: 'meta', html: '<span>Case file &middot; ' + DECK[c.deck].name + '</span>' }),
+      el('h2', { text: c.title }),
+      el('p', { class: 'story', text: c.q })
+    ]);
+    if (solvedMap()[c.id] && S.phase !== 'revealed') page.appendChild(el('div', { class: 'stamp', text: 'Solved before' }));
+    folder.appendChild(page);
+    if (S.phase === 'closed' || anim.opening) {
+      var cover = el('div', { class: 'cover', role: 'button', 'aria-label': 'Open the case file', onclick: openCase }, [
+        el('div', { class: 'no', text: 'Case file No. ' + String(S.i + 1).padStart(2, '0') }),
+        el('div', { class: 'conf', text: 'CONFIDENTIAL' }),
+        el('h3', { text: c.title }),
+        el('div', { class: 'who', text: ri >= 0 ? 'Read by ' + S.players[ri].name : 'For your eyes only' }),
+        el('div', { class: 'tap', html: Kit.icon('hand') + '<span>Tap to open</span>' })
+      ]);
+      folder.appendChild(cover);
+      if (anim.opening) requestAnimationFrame(function () { requestAnimationFrame(function () { folder.classList.add('opening'); }); });
+    }
+    felt.appendChild(folder);
+
+    // Clues
+    if (S.phase !== 'closed' && S.hints > 0) {
+      var cl = el('div', { class: 'clues' });
+      for (var k = 0; k < S.hints; k++) {
+        cl.appendChild(el('div', { class: 'clue' + (anim.clue === k ? ' new' : ''), style: { '--rot': (k % 2 ? 1.2 : -1.2) + 'deg' } }, [
+          el('div', { class: 'k', text: 'Clue ' + (k + 1) }), el('p', { text: c.h[k] })
+        ]));
+      }
+      felt.appendChild(cl);
+    }
+
+    // Envelope / solution
+    if (S.phase === 'open') {
+      felt.appendChild(el('div', { class: 'env' }, [
+        el('div', { class: 'body' }), el('div', { class: 'letter' }), el('div', { class: 'pocket' }),
+        el('div', { class: 'flap' }), el('div', { class: 'seal', text: '?' }),
+        el('div', { class: 'lbl', html: 'The solution<br>Sealed until the case is closed' })
+      ]));
+      if (S.mode === 'group' && S.hints === 0) felt.appendChild(el('p', { class: 'howto', html: '<b>' + esc(S.players[ri].name) + '</b> reads the story aloud. Detectives ask questions; the reader answers only <b>Yes</b>, <b>No</b> or <b>Doesn\'t matter</b>.' }));
+      if (S.mode === 'solo' && S.hints === 0) felt.appendChild(el('p', { class: 'howto', text: 'Think it through. Use a clue if you get stuck, then open the envelope.' }));
+    } else if (S.phase === 'revealed') {
+      var sol = el('div', { class: 'solution' + (anim.reveal ? ' unfold' : '') }, [
+        el('div', { class: 'k', html: '<span>The solution</span>' + stars(c.deck) }),
+        el('p', { text: c.a })
+      ]);
+      var r = S.res || {};
+      sol.appendChild(el('div', { class: 'verdict' + (r.solver == null ? ' miss' : ''), text: r.solver == null ? (r.pending ? 'Case closed' : 'Unsolved') : 'Solved +' + r.pts }));
+      if (anim.reveal) {
+        var env = el('div', { class: 'env' }, [
+          el('div', { class: 'body' }), el('div', { class: 'letter' }), el('div', { class: 'pocket' }),
+          el('div', { class: 'flap' }), el('div', { class: 'seal', text: '?' }),
+          el('div', { class: 'lbl', html: 'The solution<br>Sealed until the case is closed' })
+        ]);
+        felt.appendChild(env);
+        Kit.sfx('flip'); Kit.haptic('medium');
+        requestAnimationFrame(function () { requestAnimationFrame(function () { env.classList.add('opening'); }); });
+        setTimeout(function () {
+          Kit.sfx('whoosh');
+          env.replaceWith(sol);
+          setTimeout(function () { sol.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 120);
+        }, 950);
+      } else felt.appendChild(sol);
+    }
+    app.appendChild(desk);
+    renderDock();
+    if (anim.clue != null) setTimeout(function () { var n = app.querySelectorAll('.clue'); if (n.length) n[n.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
+  }
+
+  function btn(label, cls, fn, extra) {
+    var b = el('button', { type: 'button', class: 'btn ' + cls, html: label, onclick: fn });
+    if (extra) for (var k in extra) b.setAttribute(k, extra[k]);
+    return b;
+  }
+  function renderDock() {
+    dockIn.innerHTML = '';
+    if (!dock.parentNode) document.body.appendChild(dock);
+    var c = cur(), left = c.h.length - S.hints;
+    if (S.phase === 'closed') {
+      dockIn.appendChild(btn(Kit.icon('book') + '<span>Open the case file</span>', 'btn-primary btn-lg btn-block', openCase));
+      dockIn.appendChild(btn('<span>Try a different case</span>', 'btn-ghost btn-block', skipCase));
+    } else if (S.phase === 'open') {
+      var row1 = el('div', { class: 'btn-row' });
+      row1.appendChild(btn(Kit.icon('lightbulb') + '<span>' + (left ? 'Clue (' + left + ' left)' : 'No clues left') + '</span>', 'btn-soft', giveClue, left ? null : { disabled: '' }));
+      if (S.mode === 'group') {
+        var pk = btn(Kit.icon('eye') + '<span>Hold to peek</span>', 'btn-soft peek', function () {});
+        bindPeek(pk); row1.appendChild(pk);
+      }
+      dockIn.appendChild(row1);
+      var row2 = el('div', { class: 'btn-row' });
+      row2.appendChild(btn(Kit.icon('check') + '<span>' + (S.mode === 'solo' ? 'Open envelope' : 'Solved!') + '</span>' + (S.mode === 'group' ? ' <span class="pts">+' + ptsFor(S.hints) + '</span>' : ''), 'btn-green', solved));
+      row2.appendChild(btn('<span>Give up</span>', 'btn-soft', giveUp));
+      row2.lastChild.style.flex = '0 0 34%';
+      dockIn.appendChild(row2);
+    } else if (S.phase === 'revealed') {
+      if (S.res && S.res.pending) {
+        dockIn.appendChild(el('div', { class: 'note', text: 'Did you get it?' }));
+        var row = el('div', { class: 'btn-row' });
+        row.appendChild(btn(Kit.icon('check') + '<span>Yes! +' + ptsFor(S.hints) + '</span>', 'btn-green', function () { soloVerdict(true); }));
+        row.appendChild(btn('<span>Not quite</span>', 'btn-soft', function () { soloVerdict(false); }));
+        dockIn.appendChild(row);
+      } else {
+        var last = S.i >= S.order.length - 1;
+        dockIn.appendChild(btn((last ? Kit.icon('trophy') + '<span>See the final scores</span>' : '<span>Next case</span>' + Kit.icon('right')), 'btn-primary btn-lg btn-block', nextCase));
+      }
+    }
+  }
+
+  // Reader-only peek at the solution while the button is held
+  var peekbox = document.getElementById('peekbox'), peektext = document.getElementById('peektext');
+  function bindPeek(b) {
+    function on(e) { e.preventDefault(); peektext.textContent = cur().a; peekbox.classList.add('on'); Kit.haptic('light'); }
+    function off() { peekbox.classList.remove('on'); }
+    b.addEventListener('pointerdown', on);
+    b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { b.addEventListener(t, off); });
+    peekbox.addEventListener('pointerup', off);
+    b.addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') on(e); });
+    b.addEventListener('keyup', off);
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  function openCase() {
+    if (S.phase !== 'closed') return;
+    snapshot();
+    S.phase = 'open'; save();
+    Kit.sfx('flip'); Kit.haptic('light');
+    render({ opening: true });
+    setTimeout(function () { var cv = app.querySelector('.cover'); if (cv) cv.remove(); }, 750);
+  }
+  function skipCase() {
+    var used = S.order.concat(S.log.map(function (l) { return l.id; }));
+    var nx = draw(S.deck, 1, used);
+    if (!nx.length) { Kit.toast('No other cases in this deck'); return; }
+    snapshot();
+    S.order[S.i] = nx[0]; save();
+    Kit.sfx('deal'); render();
+  }
+  function giveClue() {
+    var c = cur(); if (S.hints >= c.h.length) return;
+    snapshot();
+    S.hints++; save();
+    Kit.sfx('pop'); Kit.haptic('light');
+    render({ clue: S.hints - 1 });
+  }
+  function solved() {
+    if (S.mode === 'solo') {
+      snapshot();
+      S.phase = 'revealed'; S.res = { solver: null, pts: 0, pending: true }; save();
+      render({ reveal: true });
+      return;
+    }
+    var ri = readerIdx(), list = el('div', { class: 'k-names' }), sh;
+    S.players.forEach(function (p, i) {
+      if (i === ri) return;
+      list.appendChild(el('button', { type: 'button', class: 'k-name', onclick: function () { sh.close(); award(i); } }, [
+        el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }),
+        el('span', { class: 'grow', text: p.name }),
+        el('span', { class: 'dim', text: '+' + ptsFor(S.hints) })
+      ]));
+    });
+    sh = Kit.sheet({ title: 'Who cracked the case?', node: list, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+  function award(i) {
+    snapshot();
+    var pts = ptsFor(S.hints), c = cur();
+    S.players[i].score += pts;
+    S.res = { solver: i, pts: pts };
+    S.phase = 'revealed';
+    S.log.push({ id: c.id, reader: readerIdx(), solver: i, hints: S.hints, pts: pts });
+    markSolved(c.id); save();
+    render({ reveal: true });
+    setTimeout(function () { Kit.callout(S.players[i].name + ' +' + pts); Kit.sfx('good'); Kit.haptic('success'); }, 1100);
+  }
+  function soloVerdict(ok) {
+    snapshot();
+    var c = cur(), pts = ok ? ptsFor(S.hints) : 0;
+    S.players[0].score += pts;
+    S.res = { solver: ok ? 0 : null, pts: pts };
+    S.log.push({ id: c.id, reader: -1, solver: ok ? 0 : null, hints: S.hints, pts: pts });
+    if (ok) { markSolved(c.id); Kit.callout('+' + pts); Kit.sfx('good'); Kit.haptic('success'); } else Kit.sfx('tap');
+    save(); render();
+  }
+  function giveUp() {
+    Kit.confirm('Give up on this case?', { ok: 'Open the envelope', body: 'Nobody scores for this one.' }).then(function (ok) {
+      if (!ok) return;
+      snapshot();
+      var c = cur();
+      S.res = { solver: null, pts: 0 }; S.phase = 'revealed';
+      S.log.push({ id: c.id, reader: readerIdx(), solver: null, hints: S.hints, pts: 0 });
+      save(); render({ reveal: true });
+      setTimeout(function () { Kit.sfx('bad'); }, 1000);
+    });
+  }
+  function nextCase() {
+    if (S.i >= S.order.length - 1) { finish(); return; }
+    snapshot();
+    S.i++; S.phase = 'closed'; S.hints = 0; S.res = null; save();
+    Kit.sfx('deal'); Kit.haptic('light');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    render();
+  }
+
+  // ── End of game ───────────────────────────────────────────────────────────
+  function finish() {
+    var P = S.players, n = S.log.length;
+    var rounds = { labels: S.log.map(function (l, i) { return String(i + 1); }), scores: S.log.map(function (l) { return P.map(function (p, i) { return l.solver === i ? l.pts : 0; }); }) };
+    var hl = [];
+    var clean = S.log.filter(function (l) { return l.solver != null && l.hints === 0; });
+    clean.slice(0, 2).forEach(function (l) { hl.push(P[l.solver].name + ' cracked "' + BY[l.id].title + '" with no clues'); });
+    var stumped = S.log.filter(function (l) { return l.solver == null; });
+    if (stumped.length) hl.push((S.mode === 'solo' ? 'Stumped by "' : 'Nobody solved "') + BY[stumped[0].id].title + '"' + (stumped.length > 1 ? ' (and ' + (stumped.length - 1) + ' more)' : ''));
+    var tough = S.log.filter(function (l) { return l.solver != null && l.hints >= 2; });
+    if (tough.length) hl.push('"' + BY[tough[0].id].title + '" took ' + tough[0].hints + ' clues to crack');
+    var solvedN = n - stumped.length;
+    var summary;
+    if (S.mode === 'group') {
+      var counts = P.map(function (p, i) { return S.log.filter(function (l) { return l.solver === i; }).length; });
+      var bestI = counts.indexOf(Math.max.apply(null, counts));
+      if (counts[bestI] > 1) hl.push('Top detective: ' + P[bestI].name + ', ' + counts[bestI] + ' cases');
+      hl.push(solvedN + ' of ' + n + ' cases solved');
+    } else {
+      summary = 'Solved ' + solvedN + ' of ' + n + ' · ' + P[0].score + ' pts';
+      hl.push('Solved ' + solvedN + ' of ' + n + ' cases for ' + P[0].score + ' points');
+    }
+    var rank = P.map(function (p) { return { name: p.name, score: p.score, color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
+    var tie = rank.length > 1 && rank[0].score === rank[1].score;
+    Kit.record(KEY, {
+      started: S.started, mode: (S.mode === 'solo' ? 'Solo' : 'Pass & play') + ' · ' + (S.deck === 'M' ? 'Mix' : DECK[S.deck].name),
+      players: P.map(function (p) { return { name: p.name, score: p.score }; }),
+      winner: S.mode === 'solo' ? null : (tie ? null : rank[0].name),
+      summary: summary, rounds: S.mode === 'group' ? rounds : null, highlights: hl,
+      meta: { cases: S.log.map(function (l) { return l.id; }) }
+    });
+    var again = { mode: S.mode, players: P.map(function (p) { return { name: p.name, color: p.color }; }), options: { deck: S.deck, n: S.order.length } };
+    clearSave(); undoStack = [];
+    var solo = S.mode === 'solo';
+    Kit.win({
+      icon: solo ? 'book' : 'trophy',
+      title: solo ? solvedN + ' of ' + n + ' solved' : tie ? "It's a tie!" : rank[0].name + ' wins!',
+      sub: solo ? P[0].score + ' points' + (solvedN === n ? ' · a perfect casebook!' : '') : 'Best detective' + (tie ? 's' : '') + ' of the night',
+      rank: solo ? null : rank,
+      lose: solo && solvedN === 0,
+      again: function () { start(again); },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Casebook: which cases have been solved ────────────────────────────────
+  function casebook() {
+    var m = solvedMap(), box = el('div');
+    box.appendChild(el('p', { class: 'muted', text: solvedCount() + ' of ' + CASES.length + ' cases solved on this device.' }));
+    DECKS.forEach(function (d) {
+      var list = CASES.filter(function (c) { return c.deck === d.id; }), got = list.filter(function (c) { return m[c.id]; }).length;
+      var sec = el('div', { class: 'cb-deck' }, [
+        el('h3', { html: '<span>' + d.name + '</span><small>' + got + ' / ' + list.length + '</small>' }),
+        el('div', { class: 'cb-bar', html: '<i style="width:' + Math.round(100 * got / list.length) + '%"></i>' })
+      ]);
+      var tags = el('div', { class: 'cb-list' });
+      list.forEach(function (c) { tags.appendChild(el('span', { class: m[c.id] ? 'ok' : '', html: (m[c.id] ? Kit.icon('check') : '') + esc(c.title) })); });
+      sec.appendChild(tags); box.appendChild(sec);
+    });
+    Kit.sheet({ title: 'Casebook', node: box, actions: [
+      { label: 'Close', cls: 'btn-soft' },
+      { label: 'Forget solved cases', cls: 'btn-ghost', onClick: function () {
+        Kit.confirm('Forget every solved case?', { ok: 'Forget them', danger: true, body: 'Solved stamps are cleared. Past games are kept.' }).then(function (ok) { if (ok) { lsSet(SOLVED, {}); Kit.toast('Casebook cleared'); if (S) render(); } });
+      } }
+    ] });
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = lsGet(SAVE, null);
+  if (saved && saved.order && saved.order.length && saved.players && BY[saved.order[saved.i]]) { S = saved; render(); }
+  else showSetup();
 })();
-
-loadDiff();
-
-// ── Session persistence ────────────────────────────────────────────────────
-function _save_riddle(){
-  try{sessionStorage.setItem('riddle',JSON.stringify({diff,ri,_ts:Date.now()}));}catch(e){}
-}
-function _load_riddle(){
-  try{
-    const raw=sessionStorage.getItem('riddle');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    diff=s.diff||'Classic';ri=s.ri||0;
-    document.querySelectorAll('.diff-btn')&&document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===diff));if(!RIDDLES[diff])diff='Classic';riddles=[...RIDDLES[diff]];loadRiddle(ri);
-    return true;
-  }catch(e){return false;}
-}
-window.addEventListener('beforeunload',_save_riddle);
-
-_load_riddle();
 </script>
 </body>
 </html>
