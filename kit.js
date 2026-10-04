@@ -741,15 +741,168 @@
     return { close: close };
   }
 
+
+  // ── Game records & history ────────────────────────────────────────────────
+  // Kit.record(key, {players:[{name,score,cpu}], winner, lowWins, mode,
+  //   rounds:{labels:[..], scores:[[p0,p1..],..]}   points scored each round
+  //   highlights:['Cam shot the moon in round 4', ..], meta:{..game extras}})
+  // Saves to gh_<key> through GameHistory (synced). Kit.gameStart() marks the
+  // start time so the record knows how long the game took.
+  var startedAt = Date.now();
+  function gameStart() { startedAt = Date.now(); }
+  function record(key, r) {
+    r = r || {};
+    var players = (r.players || []).map(function (p) { return { name: p.name, score: p.score, cpu: !!p.cpu }; });
+    var ranked = players.filter(function (p) { return typeof p.score === 'number'; }).slice()
+      .sort(function (a, b) { return r.lowWins ? a.score - b.score : b.score - a.score; });
+    var winner = r.winner !== undefined ? r.winner
+      : ranked.length > 1 && ranked[0].score !== ranked[1].score ? ranked[0].name : ranked.length === 1 ? ranked[0].name : null;
+    var entry = {};
+    if (r.meta) for (var k in r.meta) entry[k] = r.meta[k];
+    entry.v = 2; entry.game = game ? game.id : pageKey(); entry.mode = r.mode || '';
+    entry.players = players; entry.winner = winner; entry.lowWins = !!r.lowWins;
+    if (r.rounds && r.rounds.scores && r.rounds.scores.length) entry.rounds = r.rounds;
+    entry.highlights = (r.highlights || []).filter(Boolean).slice(0, 12);
+    var st = r.started || startedAt;
+    entry.started = st; entry.duration = Math.max(0, Math.round((Date.now() - st) / 1000));
+    entry._summary = r.summary || (winner ? winner + ' won' : players.length > 1 ? 'Tie game' : 'Finished') +
+      (ranked.length > 1 ? ' · ' + ranked.map(function (p) { return p.score; }).join(' – ') : ranked.length === 1 ? ' · ' + ranked[0].score : '');
+    entry._badge = r.badge || '';
+    try { GameHistory.save(key, entry); } catch (e) {}
+    return entry;
+  }
+
+  function fmtDate(ts) {
+    var d = new Date(ts);
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  function fmtDur(sec) {
+    if (!sec) return ''; var m = Math.round(sec / 60);
+    return m < 1 ? 'under a minute' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
+  }
+  // Older records used different field names; map what we can.
+  function normalize(e) {
+    e = e || {};
+    var players = e.players;
+    if (!players && Array.isArray(e.names)) players = e.names.map(function (n, i) { return { name: n, score: e.totals ? e.totals[i] : undefined }; });
+    return { players: Array.isArray(players) ? players.map(function (p) { return typeof p === 'string' ? { name: p } : p; }) : [],
+      winner: e.winner, rounds: e.rounds && e.rounds.scores ? e.rounds : null, highlights: e.highlights || [], mode: e.mode || '',
+      duration: e.duration, date: e._date, summary: e._summary || '', lowWins: !!e.lowWins };
+  }
+  function raceChart(n, names) {
+    var sc = n.rounds.scores, P = n.players.length; if (sc.length < 2 || !P) return null;
+    var cum = [], tot = []; for (var i = 0; i < P; i++) tot.push(0);
+    cum.push(tot.slice());
+    sc.forEach(function (row) { for (var i = 0; i < P; i++) tot[i] += Number(row[i]) || 0; cum.push(tot.slice()); });
+    var all = [].concat.apply([], cum), mn = Math.min.apply(null, all.concat([0])), mx = Math.max.apply(null, all.concat([1]));
+    var W = 300, H = 120, pad = 8;
+    function x(i) { return pad + i * (W - 2 * pad) / (cum.length - 1); }
+    function y(v) { return H - pad - (v - mn) * (H - 2 * pad) / ((mx - mn) || 1); }
+    var svg = '<svg class="k-race" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Score race">';
+    if (mn < 0) svg += '<line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="rgba(255,255,255,.15)" stroke-dasharray="3 4"/>';
+    for (var p = 0; p < P; p++) {
+      var pts = cum.map(function (c, i) { return x(i).toFixed(1) + ',' + y(c[p]).toFixed(1); }).join(' ');
+      var col = playerColor(p);
+      svg += '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>';
+      svg += '<circle cx="' + x(cum.length - 1) + '" cy="' + y(cum[cum.length - 1][p]) + '" r="4" fill="' + col + '"/>';
+    }
+    return el('div', { class: 'k-race-wrap', html: svg + '</svg>' });
+  }
+  function historyDetail(e, o) {
+    o = o || {};
+    var n = normalize(e), box = el('div', { class: 'k-hd' });
+    var meta = o.inList ? [] : [fmtDate(n.date)]; if (n.duration && !o.inList) meta.push(fmtDur(n.duration)); if (n.mode) meta.push(n.mode);
+    if (meta.length) box.appendChild(el('div', { class: 'k-hd-meta', text: meta.join(' · ') }));
+    if (n.players.length) {
+      var ps = n.players.map(function (p, i) { return { p: p, i: i }; });
+      if (ps.some(function (x) { return typeof x.p.score === 'number'; })) ps.sort(function (a, b) { return n.lowWins ? a.p.score - b.p.score : b.p.score - a.p.score; });
+      var st = el('div', { class: 'k-hd-players' });
+      ps.forEach(function (x, rank) {
+        var won = n.winner && x.p.name === n.winner;
+        st.appendChild(el('div', { class: 'k-hd-p' + (won ? ' won' : '') }, [
+          el('span', { class: 'place', text: String(rank + 1) }),
+          el('span', { class: 'avatar sm', style: { '--c': playerColor(x.i) }, html: x.p.cpu ? icon('bot') : esc((x.p.name || '?').charAt(0).toUpperCase()) }),
+          el('span', { class: 'grow', text: x.p.name || 'Player' }),
+          won ? el('span', { class: 'crown', html: icon('trophy') }) : null,
+          el('span', { class: 'sc', text: x.p.score == null ? '' : String(x.p.score) })
+        ]));
+      });
+      box.appendChild(st);
+    } else if (n.summary) box.appendChild(el('div', { class: 'k-hd-sum', text: n.summary }));
+    if (n.highlights.length) {
+      var hl = el('ul', { class: 'k-hd-hl' });
+      n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + esc(h) + '</span>' })); });
+      box.appendChild(hl);
+    }
+    if (n.rounds && n.players.length) {
+      var chart = raceChart(n); if (chart) box.appendChild(chart);
+      var t = el('table', { class: 'k-hd-rounds' }), hr = el('tr', null, [el('th', { text: '' })]);
+      n.players.forEach(function (p, i) { hr.appendChild(el('th', { text: p.name, style: { color: playerColor(i) } })); });
+      t.appendChild(hr);
+      var run = n.players.map(function () { return 0; });
+      n.rounds.scores.forEach(function (row, ri) {
+        var tr = el('tr', null, [el('th', { text: (n.rounds.labels && n.rounds.labels[ri]) || String(ri + 1) })]);
+        row.forEach(function (v, pi) { run[pi] += Number(v) || 0; tr.appendChild(el('td', { text: v == null ? '–' : String(v) })); });
+        t.appendChild(tr);
+      });
+      var ft = el('tr', { class: 'tot' }, [el('th', { text: 'Total' })]);
+      n.players.forEach(function (p, i) { ft.appendChild(el('td', { text: String(p.score != null ? p.score : run[i]) })); });
+      t.appendChild(ft);
+      box.appendChild(el('div', { class: 'k-hd-scroll' }, [t]));
+    }
+    if (o.extra) { try { var x = o.extra(e); if (x) box.appendChild(x); } catch (err) {} }
+    return box;
+  }
+  // Kit.history(key, {title, extra(entry) -> Node}) opens the past-games sheet.
+  function history(key, o) {
+    o = o || {};
+    var list = []; try { list = GameHistory.load(key); } catch (e) {}
+    if (o.keys) o.keys.forEach(function (k) { try { list = list.concat(GameHistory.load(k)); } catch (e) {} });
+    list.sort(function (a, b) { return (b._date || 0) - (a._date || 0); });
+    var box = el('div', { class: 'k-hist' }), inList = { inList: true, extra: o.extra };
+    if (!list.length) box.appendChild(el('p', { class: 'muted', text: 'No finished games yet. Each game you finish is saved here.' }));
+    list.forEach(function (e, i) {
+      var n = normalize(e);
+      var head = el('button', { type: 'button', class: 'k-hist-h' }, [
+        el('span', { class: 'grow' }, [el('b', { text: n.winner ? n.winner + ' won' : n.summary.split(' · ')[0] || 'Finished' }), el('small', { text: fmtDate(n.date) + (n.duration ? ' · ' + fmtDur(n.duration) : '') + (n.mode ? ' · ' + n.mode : '') })]),
+        el('span', { class: 'k-hist-s', text: n.players.length > 1 && n.players.every(function (p) { return p.score != null; }) ? n.players.map(function (p) { return p.score; }).join(' – ') : '' }),
+        el('span', { class: 'chev', html: icon('down') })
+      ]);
+      var item = el('div', { class: 'k-hist-i' + (i === 0 ? ' open' : '') }, [head]);
+      var body = null;
+      function toggle() {
+        var open = item.classList.toggle('open');
+        if (open && !body) { body = historyDetail(e, inList); item.appendChild(body); }
+      }
+      head.addEventListener('click', function () { sfx('tap'); toggle(); });
+      if (i === 0) { body = historyDetail(e, inList); item.appendChild(body); }
+      box.appendChild(item);
+    });
+    sheet({ title: o.title || ((game ? game.name : '') + ': past games'), node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
   // ── Cards & dice ──────────────────────────────────────────────────────────
   var SUIT = { s: '♠', h: '♥', d: '♦', c: '♣', '♠': '♠', '♥': '♥', '♦': '♦', '♣': '♣' };
   function card(rank, suit, o) {
     o = o || {};
-    var s = SUIT[suit] || suit || '', red = s === '♥' || s === '♦';
+    var st = SUIT[suit] || suit || '', red = st === '♥' || st === '♦';
     var r = rank === 'T' || rank === 10 ? '10' : String(rank);
-    var c = el('div', { class: 'pcard' + (red ? ' red' : '') + (o.back ? ' back' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': r, 'data-s': s });
-    c.innerHTML = '<span class="ix">' + esc(r) + '<b>' + s + '</b></span><span class="pip">' + s + '</span>';
-    c.setAttribute('aria-label', o.back ? 'Face-down card' : r + ' of ' + ({ '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' }[s] || s));
+    var c = el('div', { class: 'pcard' + (red ? ' red' : '') + (o.back ? ' back' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': r, 'data-s': st });
+    var corner = '<span class="ix">' + esc(r) + '<b>' + st + '</b></span><span class="ix bot">' + esc(r) + '<b>' + st + '</b></span>';
+    var center = /^[JQK]$/.test(r) ? '<span class="face"><span>' + r + '</span><i>' + st + '</i></span>' : '<span class="pip">' + st + '</span>';
+    c.innerHTML = corner + center;
+    c.setAttribute('aria-label', o.back ? 'Face-down card' : ({ A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' }[r] || r) + ' of ' + ({ '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' }[st] || st));
+    return c;
+  }
+  // Non-standard decks: Kit.cardFace({rank:'7', label:'Freeze', color:'#e5263f', solid:false, corner:true})
+  function cardFace(o) {
+    o = o || {};
+    var c = el('div', { class: 'pcard custom' + (o.solid ? ' solid' : '') + (o.cls ? ' ' + o.cls : '') });
+    if (o.color) c.style.setProperty('--ink', o.color);
+    var r = o.rank == null ? '' : String(o.rank);
+    c.innerHTML = (o.corner !== false && r ? '<span class="ix">' + esc(r) + '</span><span class="ix bot">' + esc(r) + '</span>' : '') +
+      '<span class="big">' + (o.html || esc(o.center != null ? o.center : r)) + '</span>' + (o.label ? '<span class="lbl">' + esc(o.label) + '</span>' : '');
+    c.setAttribute('aria-label', o.aria || ((o.label ? o.label + ' ' : '') + r));
     return c;
   }
   function die(v) {
@@ -760,8 +913,8 @@
 
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
-    confetti: confetti, sfx: sfx, haptic: haptic, card: card, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
-    resume: resume, rules: rules, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, game: function () { return game; }
+    confetti: confetti, sfx: sfx, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
+    resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();

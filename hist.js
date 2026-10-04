@@ -4,7 +4,7 @@
 // history drawer accessible via a 📜 button in any game.
 
 const GameHistory = (function(){
-  const MAX = 20;
+  const MAX = 40;
 
   function save(key, entry){
     const list = load(key);

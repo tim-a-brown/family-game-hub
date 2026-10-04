@@ -2,339 +2,108 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0b0d12">
-<title>Hearts</title>
-<link rel="stylesheet" href="../shared.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hearts Scorekeeper</title>
+<link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
-<script src="../app.js" defer></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
-<style>
-/*SCKIT-START*/
-/* ── Scorecard kit (Spades · Hearts · Euchre · Gin Rummy scorecards) ── */
-.sc{max-width:560px;margin:0 auto;padding:14px max(16px,var(--safe-r)) calc(40px + var(--safe-b)) max(16px,var(--safe-l));}
-.sc-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;text-decoration:none;color:#fff;transition:transform .12s var(--ease);}
-.sc-cta:active{transform:scale(.98);}
-.sc-cta-ico{width:44px;height:44px;border-radius:13px;background:rgba(0,0,0,.25);display:grid;place-items:center;font-size:1.35rem;flex:none;}
-.sc-cta-body{flex:1;min-width:0;}
-.sc-cta-t{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em;}
-.sc-cta-s{font-size:.82rem;color:rgba(255,255,255,.75);}
-.sc-cta svg{width:20px;height:20px;flex:none;opacity:.8;}
-.setup-screen{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;}
-.sc-h{font-family:var(--display);font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
-.sc-hsub{font-size:.88rem;color:var(--text-2);margin-bottom:6px;}
-.form-lbl{font-size:.75rem;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 8px;}
-.player-setup-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.player-setup-row .input{flex:1;}
-.player-dot{width:12px;height:12px;border-radius:50%;flex:none;}
-.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-.seg .btn{min-height:44px;padding:0;}
-.toggle-line{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;margin:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;cursor:pointer;color:var(--text);font-size:.92rem;font-weight:600;letter-spacing:0;}
-.toggle-line .tl-body{flex:1;min-width:0;}
-.toggle-line .tl-sub{display:block;font-size:.8rem;font-weight:500;color:var(--text-2);margin-top:1px;}
-.switch{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);position:relative;cursor:pointer;transition:background .2s;margin:0;}
-.switch::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .22s var(--ease);}
-.switch:checked{background:var(--green);border-color:transparent;}
-.switch:checked::after{transform:translateX(20px);}
-.sc-start{margin-top:18px;}
-/* Live scores */
-.score-display{display:grid;gap:10px;margin-bottom:14px;}
-.scorer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px;text-align:center;transition:border-color .3s,box-shadow .3s;min-width:0;}
-.scorer.leading{box-shadow:0 8px 26px var(--lc,rgba(245,200,66,.2));}
-.scorer-name{font-size:.82rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scorer-pts{font-family:var(--display);font-size:clamp(1.9rem,8.5vw,2.6rem);font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
-.scorer-sub{font-size:.75rem;color:var(--text-2);margin-top:5px;}
-.scorer-to{font-size:.75rem;color:var(--text-3);margin-top:6px;font-variant-numeric:tabular-nums;}
-.pbar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-top:10px;}
-.pbar-fill{height:100%;border-radius:3px;transition:width .5s var(--ease);}
-/* Round entry */
-.entry-panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px;}
-.entry-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-family:var(--display);font-size:1.2rem;font-weight:800;letter-spacing:-.015em;margin-bottom:14px;}
-.entry-head small,.entry-head span{font-family:var(--font);font-size:.75rem;font-weight:600;color:var(--text-3);letter-spacing:0;}
-.entry-row{display:grid;gap:10px;margin-bottom:12px;}
-.entry-cell{text-align:center;min-width:0;}
-.entry-label{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mini-lbl{font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
-.score-input,.bid-input{width:100%;min-height:52px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;color:var(--text);font-size:1.25rem !important;font-weight:700;text-align:center;padding:8px 4px;outline:none;font-family:var(--display);transition:border-color .15s,box-shadow .15s,background .15s;}
-.score-input:focus,.bid-input:focus{border-color:rgba(245,200,66,.6);box-shadow:0 0 0 4px rgba(245,200,66,.12);background:var(--surface-3);}
-.score-input::placeholder,.bid-input::placeholder{color:var(--text-3);font-weight:600;}
-.sc-err{color:var(--red);font-size:.86rem;font-weight:600;text-align:center;margin-bottom:10px;}
-/* History */
-.hist{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;}
-.hist-head{padding:12px 16px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--line);}
-.hist-row{display:grid;gap:4px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--line);}
-.hist-row:last-child{border-bottom:0;}
-.hist-row.totals{background:var(--surface-2);}
-.hist-num{font-size:.8rem;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.hist-val{font-size:.95rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;color:var(--text);}
-.hist-val.neg{color:var(--red);}
-.hist-name{font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hist-total{font-family:var(--display);font-size:1.1rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;}
-.sc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
-.wb-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;}
-.winner-banner .gh-hist-btn{margin-top:10px;}
-.rules-body p{margin-bottom:8px;}
-.rules-body ul{margin:0 0 8px;padding-left:18px;}
-.rules-body li{margin-bottom:4px;}
-.rules-body strong{color:var(--text);}
-.nav-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap;}
-.nav-pill:active{transform:scale(.95);}
-.winner-banner{scroll-margin-top:calc(var(--nav-h) + var(--safe-t) + 12px);}
-/*SCKIT-END*/
-/* Hearts-specific */
-#ht-moon-picker{margin:-2px 0 14px;padding:12px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:14px;}
-#ht-moon-picker .mini-lbl{margin-bottom:8px;}
-#ht-moon-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-#ht-moon-btns .btn{min-height:44px;padding:0 8px;overflow:hidden;text-overflow:ellipsis;}
-.low-note{font-size:.8rem;color:var(--text-3);text-align:center;margin:-6px 0 14px;}
-</style>
 </head>
 <body>
-<nav class="site-nav">
-  <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Hearts</span>
-  <a class="nav-pill ai-link" href="hearts-ai.html">🎮 vs AI</a>
-</nav>
-<main class="sc">
-  <details class="rules-details">
-    <summary class="rules-summary">📖 How to play Hearts</summary>
-    <div class="rules-body">
-      <p><strong>Goal:</strong> Have the lowest score when any player reaches 100 points.</p>
-      <p><strong>Scoring per round:</strong></p>
-      <ul>
-        <li>Each ♥ heart card taken: <strong>+1 point</strong></li>
-        <li>Queen of Spades ♛: <strong>+13 points</strong></li>
-        <li>Avoid hearts and the Queen of Spades — they hurt!</li>
-      </ul>
-      <p><strong>Shooting the Moon 🌕:</strong> If one player takes <em>all</em> 13 hearts AND the Queen of Spades, they score 0 and every other player gets +26. Use the toggle when entering a round where someone pulls this off.</p>
-      <p><strong>Passing:</strong> Before each round, players pass 3 cards to an opponent (direction rotates each hand).</p>
-    </div>
-  </details>
-
-  <div id="ht-setup" class="setup-screen">
-    <a id="fp-ai-solo-cta" class="sc-cta felt" href="hearts-ai.html">
-      <div class="sc-cta-ico">🎮</div>
-      <div class="sc-cta-body"><div class="sc-cta-t">1 player vs AI</div><div class="sc-cta-s">Play solo against three computer opponents</div></div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    </a>
-    <div class="sc-h">New scorecard</div>
-    <div class="sc-hsub">Keep score for an in-person game. Lowest score wins.</div>
-    <div class="form-lbl">Players</div>
-    <div id="ht-names"></div>
-    <button class="btn btn-gold btn-block sc-start" id="ht-start">Start game</button>
-  </div>
-
-  <div id="ht-game" class="hidden">
-    <div id="ht-winner" class="winner-banner hidden">
-      <div style="font-size:2.2rem;line-height:1;margin-bottom:6px;">🏆</div>
-      <div class="winner-name" id="ht-wname"></div>
-      <div class="winner-pts" id="ht-wpts"></div>
-      <div class="wb-actions">
-        <button class="btn btn-gold" id="ht-again">Play again</button>
-        <button class="btn btn-outline" id="ht-newsetup">New setup</button>
-      </div>
-    </div>
-    <div class="score-display" id="ht-scores"></div>
-    <div class="low-note">Lowest score wins · game ends at 100</div>
-    <div class="entry-panel">
-      <div class="entry-head" id="ht-round-label">Round 1</div>
-      <label class="toggle-line" for="ht-moon" id="ht-moon-toggle" style="margin-bottom:12px">
-        <span class="tl-body">🌕 Someone shot the moon<span class="tl-sub">They score 0, everyone else +26</span></span>
-        <input type="checkbox" class="switch" id="ht-moon">
-      </label>
-      <div id="ht-moon-picker" style="display:none;">
-        <div class="mini-lbl">Who shot the moon?</div>
-        <div id="ht-moon-btns"></div>
-      </div>
-      <div id="ht-inputs" class="entry-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"></div>
-      <div id="ht-err" class="sc-err" style="display:none;"></div>
-      <button class="btn btn-gold btn-block" id="ht-submit">Add round</button>
-    </div>
-    <div id="ht-hist-wrap"></div>
-    <div class="sc-actions">
-      <button class="btn btn-outline" id="ht-reset-setup">New setup</button>
-      <button class="btn btn-outline" id="ht-undo">↩ Undo</button>
-    </div>
-  </div>
-</main>
+<main class="stage" id="app"></main>
 <script>
-'use strict';
-const COLORS=['#f5c842','#ff7a5a','#5ac8fa','#7ed47e','#c084fc','#fb923c'];
-const CDARK=['#c49a10','#c94020','#1a88c4','#3a9a3a','#8b3fc8','#c45a10'];
-const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
-const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
+  var SETUP = 'hearts_pad_setup';
 
-function showWinner(banner,nameEl,ptsEl,name,pts){
-  banner.classList.remove('hidden');
-  nameEl.textContent=name+' wins!';
-  ptsEl.textContent='Lowest score · '+pts+' points';
-  if(!banner.querySelector('.gh-hist-btn')&&banner._histKey){
-    const b=GameHistory.btn(banner._histKey,banner._histTitle,banner._histRender);
-    b.className+=' gh-hist-btn';
-    banner.appendChild(b);
-  }
-  hap('success');
-  banner.scrollIntoView({behavior:'smooth',block:'start'});
-}
-// Hearts: low score is best, so the "leader" is the lowest total
-function buildScorers(container,names,totals,win,colors,cdark){
-  container.innerHTML='';
-  const low=Math.min(...totals), any=totals.some(t=>t>0);
-  names.forEach((nm,i)=>{
-    const leading=any&&totals[i]===low;
-    const pct=Math.max(0,Math.min(100,(totals[i]/win)*100));
-    const s=document.createElement('div');
-    s.className='scorer'+(leading?' leading':'');
-    s.style.setProperty('--lc',colors[i]+'40');
-    if(leading)s.style.borderColor=colors[i];
-    s.innerHTML=`<div class="scorer-name" style="color:${colors[i]}">${esc(nm)}</div>
-      <div class="scorer-pts">${totals[i]}</div>
-      <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${cdark[i]},${colors[i]})"></div></div>
-      <div class="scorer-to">${leading?'Leading':win-totals[i]>0?(win-totals[i])+' left':'Out'}</div>`;
-    container.appendChild(s);
+  Kit.init({
+    id: 'hearts', title: 'Hearts score',
+    onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); showSetup(); },
+    undo: function () { if (pad) pad.undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('hearts', { keys: ['ht'], title: 'Hearts: past games' }); } }],
+    rules:
+      '<p class="goal">Play Hearts with a real deck and keep score here. When someone reaches the target, the <b>lowest score wins</b>.</p>' +
+      '<h3>After each hand</h3><p>Enter how many <b>hearts</b> each player took and who took the <b>Queen of Spades</b>. Hearts are 1 point each and the Queen is 13.</p>' +
+      '<h3>Shooting the moon</h3><p>If one player takes all 13 hearts and the Queen, they score 0 and everyone else gets 26. This is detected automatically.</p>' +
+      '<h3>Player counts</h3><ul><li><b>4 players:</b> full deck, 13 cards each.</li><li><b>3 players:</b> remove the 2♦.</li><li><b>5 players:</b> remove the 2♦ and 2♣.</li><li><b>6 players:</b> remove the 2♦, 2♣, 3♦ and 3♣.</li></ul><p>Passing rotates left, right, across, then no pass (with 3 or 5+ players, just alternate left and right).</p>'
   });
-}
-function buildHistory(container,rounds,names,totals,colors){
-  if(!rounds.length){container.innerHTML='';return;}
-  const n=names.length;
-  const gtc=`28px repeat(${n},minmax(0,1fr))`;
-  let html=`<div class="hist"><div class="hist-head">Round history</div>
-    <div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">#</div>
-      ${names.map((nm,i)=>`<div class="hist-name" style="color:${colors[i]}">${esc(nm)}</div>`).join('')}
-    </div>`;
-  rounds.forEach((r,ri)=>{
-    html+=`<div class="hist-row" style="grid-template-columns:${gtc}">
-      <div class="hist-num">${ri+1}</div>
-      ${r.map(v=>`<div class="hist-val">${v>0?'+'+v:v}</div>`).join('')}
-    </div>`;
-  });
-  html+=`<div class="hist-row totals" style="grid-template-columns:${gtc}">
-    <div class="hist-num">Σ</div>
-    ${totals.map((t,i)=>`<div class="hist-total" style="color:${colors[i]}">${t}</div>`).join('')}
-  </div></div>`;
-  container.innerHTML=html;
-}
-// ── HEARTS ─────────────────────────────────────────────────────────────────
-{
-  let htNames=[],htRounds=[],htWin=100;
-  const htColors=['#ff6b6b','#5ac8fa','#7ed47e','#c084fc'];
-  const DFLT=['Player 1','Player 2','Player 3','Player 4','Player 5'];
-  function htSave(){try{sessionStorage.setItem('cs_ht',JSON.stringify({htNames,htRounds,htWin,_ts:Date.now()}));}catch(e){}}
-  function showSetup(){document.getElementById('ht-game').classList.add('hidden');document.getElementById('ht-setup').classList.remove('hidden');try{sessionStorage.removeItem('cs_ht');}catch(e){}}
 
-  function htBuildSetup(){
-    const c=document.getElementById('ht-names');c.innerHTML='';
-    for(let i=0;i<4;i++){
-      const row=document.createElement('div');row.className='player-setup-row';
-      row.innerHTML=`<div class="player-dot" style="background:${htColors[i]}"></div>
-        <input class="input" id="htn${i}" value="${DFLT[i]}" maxlength="16" aria-label="Player ${i+1} name">`;
-      c.appendChild(row);
-    }
-    if(typeof FrequentPlayers!=="undefined") FrequentPlayers.attachPickersByPrefix("htn");
-  }
-  htBuildSetup();
-
-  function htStart(){
-    htNames=Array.from({length:4},(_,i)=>document.getElementById('htn'+i).value.trim()||DFLT[i]);
-    htRounds=[];
-    hap('medium');
-    document.getElementById('ht-setup').classList.add('hidden');
-    document.getElementById('ht-game').classList.remove('hidden');
-    document.getElementById('ht-winner').classList.add('hidden');
-    htRender();
-  }
-
-  function htRender(){
-    const totals=htNames.map((_,i)=>htRounds.reduce((s,r)=>s+r[i],0));
-    buildScorers(document.getElementById('ht-scores'),htNames,totals,htWin,htColors,['#c94020','#1a88c4','#3a9a3a','#8b3fc8']);
-    document.getElementById('ht-scores').style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
-    document.getElementById('ht-round-label').textContent=`Round ${htRounds.length+1}`;
-
-    const inp=document.getElementById('ht-inputs');inp.innerHTML='';
-    htNames.forEach((nm,i)=>{
-      const cell=document.createElement('div');cell.className='entry-cell';
-      cell.innerHTML=`<div class="entry-label" style="color:${htColors[i]}">${esc(nm)}</div>
-        <input type="number" inputmode="numeric" class="score-input" placeholder="0" min="0" max="26" data-i="${i}" aria-label="${esc(nm)} points">`;
-      inp.appendChild(cell);
+  function showSetup() {
+    Kit.setup(app, {
+      players: { min: 3, max: 6, count: 4 },
+      options: [{ id: 'target', label: 'Play to', value: 100, choices: [[50, '50'], [100, '100']] }],
+      start: 'Start scoring',
+      onStart: function (cfg) {
+        localStorage.setItem(SETUP, JSON.stringify({ names: cfg.players.map(function (p) { return p.name; }), target: +cfg.options.target || 100 }));
+        startPad();
+      }
     });
-
-    // Moon picker
-    const moonBtns=document.getElementById('ht-moon-btns');moonBtns.innerHTML='';
-    htNames.forEach((nm,i)=>{
-      const b=document.createElement('button');
-      b.className='btn btn-outline btn-sm';b.textContent=nm;b.dataset.pi=i;
-      b.addEventListener('click',()=>{
-        hap('select');
-        moonBtns.querySelectorAll('button').forEach(x=>{x.classList.remove('btn-gold');x.classList.add('btn-outline');});
-        b.classList.add('btn-gold');b.classList.remove('btn-outline');b.dataset.selected='1';
-        moonBtns.querySelectorAll('button').forEach(x=>{if(x!==b)delete x.dataset.selected;});
-      });
-      moonBtns.appendChild(b);
-    });
-
-    buildHistory(document.getElementById('ht-hist-wrap'),htRounds,htNames,totals,htColors);
   }
 
-  document.getElementById('ht-moon').addEventListener('change',function(){
-    document.getElementById('ht-moon-picker').style.display=this.checked?'block':'none';
-    document.getElementById('ht-inputs').style.display=this.checked?'none':'grid';
-  });
+  function startPad() {
+    var cfg = JSON.parse(localStorage.getItem(SETUP));
+    pad = Scorepad(app, {
+      key: 'ht', title: 'Hearts', mode: 'Scorekeeper', lowWins: true, target: cfg.target,
+      sides: cfg.names.map(function (n) { return { name: n }; }),
+      goal: 'Lowest score wins · game ends at ' + cfg.target,
+      form: function (ctx) {
+        var n = ctx.sides.length, prevQ = -1, prevHearts = null;
+        if (ctx.prev) {
+          var sc = ctx.prev.scores, moon = sc.filter(function (v) { return v === 26; }).length === n - 1 && sc.indexOf(0) >= 0;
+          if (moon) { prevQ = sc.indexOf(0); prevHearts = sc.map(function (v, i) { return i === prevQ ? 13 : 0; }); }
+          else {
+            sc.forEach(function (v, i) { if (v >= 13) prevQ = i; });
+            prevHearts = sc.map(function (v, i) { return i === prevQ ? v - 13 : v; });
+          }
+        }
+        ctx.node.appendChild(el('div', { class: 'label', text: 'Hearts taken' }));
+        var rows = ctx.sides.map(function (s, i) {
+          var r = ctx.number(i, { min: 0, max: 13, neg: false, value: prevHearts ? prevHearts[i] : 0 });
+          r.input.addEventListener('input', check);
+          ctx.node.appendChild(r); return r;
+        });
+        ctx.node.appendChild(el('div', { class: 'label', style: { 'margin-top': '6px' }, text: 'Who took the Queen of Spades?' }));
+        var q = prevQ, seg = el('div', { class: 'seg', style: { 'flex-wrap': 'wrap' } });
+        ctx.sides.forEach(function (s, i) {
+          seg.appendChild(el('button', { type: 'button', text: s.name, class: i === q ? 'on' : '', onclick: function () {
+            q = i; Array.prototype.forEach.call(seg.children, function (b, j) { b.classList.toggle('on', j === i); }); Kit.sfx('tap'); check();
+          } }));
+        });
+        ctx.node.appendChild(seg);
+        var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
+        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
+        ctx.node.appendChild(btn);
+        function hearts() { return rows.map(function (r) { return Math.max(0, Math.min(13, r.value())); }); }
+        function check() {
+          var h = hearts(), sum = h.reduce(function (a, b) { return a + b; }, 0);
+          var ok = sum === 13 && q >= 0;
+          note.className = 'rnote' + (ok ? '' : ' bad');
+          note.textContent = sum !== 13 ? 'Hearts add up to ' + sum + '. There are 13.' : q < 0 ? 'Pick who took the Queen' : (h[q] === 13 ? ctx.sides[q].name + ' shot the moon!' : 'Looks right');
+          btn.disabled = !ok;
+          return ok;
+        }
+        btn.addEventListener('click', function () {
+          if (!check()) return;
+          var h = hearts(), scores, extra = { highlights: [] };
+          if (h[q] === 13) {
+            scores = ctx.sides.map(function (s, i) { return i === q ? 0 : 26; });
+            extra.highlights.push(ctx.sides[q].name + ' shot the moon in hand ' + ctx.round + '!');
+            extra.callout = 'Shot the moon!'; Kit.confetti({ count: 90 });
+          } else scores = h.map(function (v, i) { return v + (i === q ? 13 : 0); });
+          ctx.done(scores, extra);
+        });
+        check();
+      }
+    });
+  }
 
-  document.getElementById('ht-start').addEventListener('click',htStart);
-  document.getElementById('ht-submit').addEventListener('click',()=>{
-    const err=document.getElementById('ht-err');
-    const moon=document.getElementById('ht-moon').checked;
-    let scores;
-    if(moon){
-      const sel=document.querySelector('#ht-moon-btns button[data-selected]');
-      if(!sel){err.textContent='Select who shot the moon.';err.style.display='block';hap('error');return;}
-      const si=+sel.dataset.pi;
-      scores=Array.from({length:4},(_,i)=>i===si?0:26);
-    } else {
-      scores=Array.from({length:4},(_,i)=>{
-        const v=parseInt(document.querySelector(`#ht-inputs input[data-i="${i}"]`)?.value);
-        return isNaN(v)?null:v;
-      });
-      if(scores.some(v=>v===null)){err.textContent='Enter points for every player.';err.style.display='block';hap('error');return;}
-    }
-    err.style.display='none';
-    htRounds.push(scores);
-    hap('light');
-    const totals=htNames.map((_,i)=>htRounds.reduce((s,r)=>s+r[i],0));
-    if(totals.some(t=>t>=htWin)){
-      const wi=totals.indexOf(Math.min(...totals));
-      const banner=document.getElementById('ht-winner');
-      const htColors=['#ff6b6b','#5ac8fa','#7ed47e','#c084fc'];
-      banner._histKey='ht';banner._histTitle='Hearts';
-      banner._histRender=(e)=>{const div=document.createElement('div');div.appendChild(GameHistory.renderStatGrid([{val:e.winner,lbl:'Winner'},{val:e.rounds,lbl:'Rounds'},{val:e.totals[wi]+'pts',lbl:'Low Score'}]));div.appendChild(GameHistory.renderRoundTable(e.names,e.roundData,e.totals,htColors));return div;};
-      GameHistory.save('ht',{_summary:`${htNames[wi]} wins · ${htRounds.length} rounds`,_badge:totals[wi]+'pts',winner:htNames[wi],names:htNames,rounds:htRounds.length,totals,roundData:htRounds});
-      showWinner(banner,document.getElementById('ht-wname'),document.getElementById('ht-wpts'),htNames[wi],totals[wi]);
-    }
-    document.getElementById('ht-moon').checked=false;
-    document.getElementById('ht-moon-picker').style.display='none';
-    document.getElementById('ht-inputs').style.display='grid';
-    if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
-    htRender();
-    htSave();
-  });
-  document.getElementById('ht-undo').addEventListener('click',()=>{
-    if(!htRounds.length) return;
-    htRounds.pop();hap('light');
-    const totals=htNames.map((_,i)=>htRounds.reduce((s,r)=>s+r[i],0));
-    if(!totals.some(t=>t>=htWin)) document.getElementById('ht-winner').classList.add('hidden');
-    htRender();htSave();
-  });
-  document.getElementById('ht-again').addEventListener('click',()=>{htRounds=[];document.getElementById('ht-winner').classList.add('hidden');htRender();try{sessionStorage.removeItem('cs_ht');}catch(e){}});
-  document.getElementById('ht-newsetup').addEventListener('click',showSetup);
-  document.getElementById('ht-reset-setup').addEventListener('click',async()=>{
-    if(htRounds.length&&window.GN&&!(await GN.confirm('Start a new setup?',{body:'This scorecard will be cleared.',ok:'New setup',danger:true}))) return;
-    showSetup();
-  });
-  try{const raw=sessionStorage.getItem('cs_ht');if(raw){const s=JSON.parse(raw);if(s.htNames&&s.htRounds.length){htNames=s.htNames;htRounds=s.htRounds;htWin=s.htWin||100;document.getElementById('ht-setup').classList.add('hidden');document.getElementById('ht-game').classList.remove('hidden');htRender();}}}catch(e){}
-}
+  if (localStorage.getItem(SETUP)) startPad(); else showSetup();
+})();
 </script>
 </body>
 </html>
