@@ -157,7 +157,6 @@ const GameHistory = (function(){
     const b = document.createElement('button');
     b.className = 'btn btn-outline btn-sm';
     b.textContent = label;
-    b.style.cssText = 'font-size:.72rem;padding:4px 10px;';
     b.addEventListener('click', () => open(key, title, renderFn));
     return b;
   }
