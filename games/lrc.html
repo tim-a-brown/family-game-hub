@@ -40,16 +40,16 @@
 /* Chips */
 .chip{--cc:#d8263a;--cs:24px;width:var(--cs);height:var(--cs);border-radius:50%;pointer-events:none;
   background:radial-gradient(circle,var(--cc) 0 40%,rgba(255,255,255,.85) 41% 45%,var(--cc) 46% 60%,transparent 61%),repeating-conic-gradient(#fff 0 13deg,var(--cc) 13deg 45deg);
-  box-shadow:0 2px 0 color-mix(in srgb,var(--cc) 55%,#000),0 3px 4px rgba(0,0,0,.45);}
+  box-shadow:0 3px 0 color-mix(in srgb,var(--cc) 50%,#000),0 4px 5px rgba(0,0,0,.4);}
 .chip.c1{--cc:#2456c9;}.chip.c2{--cc:#1f9a55;}.chip.c3{--cc:#e3a823;}
 .chip.fly{position:fixed;z-index:60;margin:0;left:0;top:0;}
 
 /* Seats */
-.seat{position:absolute;width:78px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2;}
-.seat .stack{position:relative;width:34px;height:46px;}
+.seat{position:absolute;width:var(--sw,78px);transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2;}
+.seat .stack{position:relative;width:34px;height:var(--sh,58px);}
 .seat .stack .chip{position:absolute;left:5px;}
 .seat .stack.empty::after{content:"";position:absolute;left:5px;bottom:0;width:24px;height:24px;border-radius:50%;border:2px dashed rgba(255,255,255,.28);box-sizing:border-box;}
-.seat .tag{display:flex;align-items:center;gap:5px;max-width:78px;padding:3px 4px 3px 8px;border-radius:999px;background:rgba(12,10,28,.82);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent),0 3px 8px rgba(0,0,0,.35);font-size:.74rem;font-weight:800;color:#fff;transition:box-shadow .2s;}
+.seat .tag{display:flex;align-items:center;gap:5px;max-width:var(--sw,78px);padding:3px 4px 3px 8px;border-radius:999px;background:rgba(12,10,28,.82);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent),0 3px 8px rgba(0,0,0,.35);font-size:.74rem;font-weight:800;color:#fff;transition:box-shadow .2s;}
 .seat .tag .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .seat .tag b{flex:none;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--c);color:#14122a;font-size:.78rem;font-weight:900;}
 .seat.on .tag{box-shadow:inset 0 0 0 2px var(--c),0 0 0 3px var(--c),0 0 18px color-mix(in srgb,var(--c) 70%,transparent);}
@@ -305,9 +305,9 @@
   function topChipRect(i, plusOne) {
     var st = app.querySelector('.seat[data-i="' + i + '"] .stack');
     if (!st) return { x: innerWidth / 2, y: innerHeight / 2 };
-    var r = st.getBoundingClientRect(), n = Math.min(STACK_MAX, view.chips[i] + (plusOne ? 0 : -1));
+    var r = st.getBoundingClientRect(), n = Math.min(stackMax() - 1, view.chips[i] + (plusOne ? 0 : -1));
     n = Math.max(0, n);
-    return { x: r.left + r.width / 2, y: r.bottom - 12 - n * 3.2 };
+    return { x: r.left + r.width / 2, y: r.bottom - 12 - n * CH };
   }
   function potSpotRect(idx) {
     var pot = app.querySelector('.pot');
@@ -350,9 +350,11 @@
     var modeTxt = (S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + (S.stake ? ' · ' + stakeName(S.stake) + ' chips' : '');
     Kit.record(KEY, {
       started: S.started, mode: modeTxt,
-      players: S.players.map(function (q) { return { name: q.name, score: q.chips, cpu: q.cpu }; }),
+      // Scores are chips taken home: the winner's stack plus the pot
+      players: S.players.map(function (q, i) { return { name: q.name, score: q.chips + (i === S.winner ? pot : 0), cpu: q.cpu }; }),
       winner: w.name,
-      rounds: { labels: S.rounds.map(function (r, i) { return i === 0 ? 'Start' : String(i); }), scores: S.rounds },
+      rounds: { labels: S.rounds.map(function (r, i) { return i === 0 ? 'Start' : String(i); }).concat(['Pot']),
+        scores: S.rounds.concat([S.players.map(function (q, i) { return i === S.winner ? pot : 0; })]) },
       highlights: hl.slice(0, 6),
       summary: w.name + ' won the pot · ' + pot + ' chips' + (S.stake ? ' · ' + money(pot) : ''),
       meta: { pot: pot, stake: S.stake }
@@ -387,7 +389,7 @@
       var youLost = last.mode === 'cpu' && w.cpu;
       Kit.win({
         title: w.name === 'You' ? 'You win!' : w.name + ' wins!',
-        sub: 'Took the pot: ' + pot + ' chip' + (pot === 1 ? '' : 's') + (last.stake ? ' · ' + money(pot) : '') + (w.chips ? ' (plus ' + w.chips + ' in hand)' : '') + ' · ' + last.round + ' rounds',
+        sub: 'Took the pot: ' + pot + ' chip' + (pot === 1 ? '' : 's') + (last.stake ? ' · ' + money(pot) : '') + ' · ' + last.round + ' rounds',
         lose: youLost,
         again: function () { start({ mode: last.mode, players: last.players, options: { stake: last.stake } }); },
         extra: [{ label: 'Change players', onClick: showSetup }]
@@ -397,7 +399,8 @@
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
-  var STACK_MAX = 9;
+  var CH = 4.5;
+  function stackMax() { return S && S.players.length > 6 ? 6 : 8; }
   function stackEl(n) {
     var st = el('div', { class: 'stack' + (n ? '' : ' empty') });
     fillStack(st, n);
@@ -405,9 +408,9 @@
   }
   function fillStack(st, n) {
     st.innerHTML = ''; st.classList.toggle('empty', !n);
-    for (var k = 0; k < Math.min(n, STACK_MAX); k++) {
+    for (var k = 0; k < Math.min(n, stackMax()); k++) {
       var c = el('div', { class: 'chip ' + chipColor(k) });
-      c.style.bottom = (k * 3.2) + 'px';
+      c.style.bottom = (k * CH) + 'px';
       c.style.left = (5 + ((k * 7) % 3) - 1) + 'px';
       st.appendChild(c);
     }
@@ -431,7 +434,7 @@
       var pp = potPos(k);
       pot.appendChild(el('div', { class: 'chip ' + chipColor(k * 3 + 1), style: { left: pp[0] + '%', top: pp[1] + '%' } }));
     }
-    pot.querySelector('.lbl').innerHTML = 'Pot<b>' + n + '</b>' + (S.stake ? '<b style="color:var(--yellow)">' + money(n) + '</b>' : '');
+    pot.querySelector('.lbl').innerHTML = 'Pot<b>' + n + '</b>' + (S.stake && n ? '<b style="color:var(--yellow)"> · ' + money(n) + '</b>' : '');
   }
 
   // Seats sit around the oval at equal distances along its edge, starting at the bottom
@@ -466,7 +469,7 @@
     else line = n > 1 && (S.mode === 'pass' || cur.name !== 'You') ? Kit.poss(cur.name) + ' roll' : 'Your roll';
     app.appendChild(el('div', { class: 'turnline', style: { '--c': roller.color } }, [el('span', { class: 'dot' }), el('span', { text: line })]));
 
-    var oval = el('div', { class: 'oval wood' });
+    var oval = el('div', { class: 'oval wood', style: { '--sw': (n <= 4 ? 124 : n <= 6 ? 104 : 92) + 'px', '--sh': (n <= 6 ? 58 : 46) + 'px' } });
     var felt = el('div', { class: 'felt-in' });
     var mid = el('div', { class: 'mid' });
     var dice = el('div', { class: 'dice' });
@@ -518,7 +521,7 @@
     });
     app.appendChild(el('div', { class: 'ctrls' }, [auto, seg]));
     var tot = n * 3;
-    app.appendChild(el('div', { class: 'stakeline', text: tot + ' chips in play' + (S.stake ? ' · ' + stakeName(S.stake) + ' each · ' + money(tot) + ' on the table' : '') + ' · round ' + S.round }));
+    app.appendChild(el('div', { class: 'stakeline', text: 'Round ' + S.round + ' · ' + tot + ' chips' + (S.stake ? ' at ' + stakeName(S.stake) + ' (' + money(tot) + ')' : '') }));
   }
 
   // Test hooks
