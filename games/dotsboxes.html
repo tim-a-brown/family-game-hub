@@ -1,83 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Dots & Boxes</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a3a 0%,#0d1117 60%);}
-#canvas{display:block;margin:0 auto;touch-action:none;cursor:pointer;max-width:calc(100vw - 24px);}
-.status-bar{text-align:center;font-size:.95rem;font-weight:700;margin:10px 0;min-height:24px;}
-.score-row{display:flex;justify-content:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
-.score-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 16px;text-align:center;min-width:72px;transition:all .2s;}
-.score-chip.active-turn{transform:scale(1.06);}
-.ctrl-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.ctrl-btn{padding:6px 12px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);transition:all .15s;touch-action:manipulation;}
-.ctrl-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+:root{--bs:clamp(260px,min(100vw - 32px,100vh - 380px),520px);}
+@supports (height:100dvh){:root{--bs:clamp(260px,min(100vw - 32px,100dvh - 380px),520px);}}
+.site-nav button.icon-btn{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;display:inline-grid;place-items:center;}
+.icon-btn svg{width:18px;height:18px;}
+.gk{width:max(var(--bs),min(100vw - 32px,420px));max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.opt{display:flex;align-items:center;gap:10px;}
+.opt .lbl{flex:none;width:58px;font-size:.78rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;}
+.opt .tabs{flex:1;margin:0;}
+.opt .tab{min-height:36px;padding:0 6px;font-size:.84rem;flex:1 1 0;}
+.score-row{display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:8px;margin-top:2px;}
+.score-chip{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:border-color .25s var(--ease),background .25s,box-shadow .25s;}
+.score-chip.active-turn{border-color:color-mix(in srgb,var(--c) 60%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,transparent),transparent),var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 12%,transparent);}
+.score-chip .dot{width:14px;height:14px;border-radius:50%;background:var(--c);flex:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent);}
+.score-chip .nm{flex:1;min-width:0;font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.score-chip .val{font-family:var(--display);font-weight:800;font-size:1.5rem;line-height:1;color:var(--c);font-variant-numeric:tabular-nums;}
+.status-bar{text-align:center;font-size:.95rem;font-weight:600;color:var(--text-2);min-height:24px;}
+.status-bar b{color:var(--text);}
+.board-card{width:var(--bs);max-width:100%;margin:0 auto;border-radius:22px;background:var(--surface);border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);}
+#canvas{display:block;width:100%;aspect-ratio:1;touch-action:none;cursor:pointer;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Dots & Boxes</span>
+  <button class="icon-btn" id="newbtn" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding:10px 8px 40px;">
-<div class="ctrl-row">
-  <span style="color:var(--muted);font-size:.82rem;align-self:center;">Players:</span>
-  <button class="ctrl-btn active" data-players="2">2</button>
-  <button class="ctrl-btn" data-players="3">3</button>
-  <span style="color:var(--muted);font-size:.82rem;align-self:center;margin-left:6px;">Grid:</span>
-  <button class="ctrl-btn" data-size="2">2×2</button>
-  <button class="ctrl-btn" data-size="3">3×3</button>
-  <button class="ctrl-btn active" data-size="4">4×4</button>
-  <button class="ctrl-btn" data-size="5">5×5</button>
-  <button class="ctrl-btn" data-size="6">6×6</button>
-  <button class="ctrl-btn" data-size="7">7×7</button>
-  <button class="ctrl-btn" id="newbtn">New Game</button>
+<div class="page">
+<div class="gk">
+  <div class="opt"><span class="lbl">Players</span>
+    <div class="tabs"><button class="tab active" data-players="2">2 Players</button><button class="tab" data-players="3">3 Players</button></div>
+  </div>
+  <div class="opt"><span class="lbl">Grid</span>
+    <div class="tabs">
+      <button class="tab" data-size="2">2×2</button>
+      <button class="tab" data-size="3">3×3</button>
+      <button class="tab active" data-size="4">4×4</button>
+      <button class="tab" data-size="5">5×5</button>
+      <button class="tab" data-size="6">6×6</button>
+      <button class="tab" data-size="7">7×7</button>
+    </div>
+  </div>
+  <div class="score-row" id="score-row"></div>
+  <div class="status-bar" id="status"></div>
+  <div class="board-card"><canvas id="canvas"></canvas></div>
 </div>
-<div class="score-row" id="score-row"></div>
-<div class="status-bar" id="status"></div>
-<canvas id="canvas"></canvas>
 </div>
 <script>
 'use strict';
+window.GN=window.GN||{haptic(){},toast(){},sheet(){return{close(){},el:document.createElement('div')};},confirm:()=>Promise.resolve(true)};
 // Player colors: Blue, Red, Purple
 const P_COLORS=['#5ac8fa','#ff6b6b','#c084fc'];
-const P_EMOJIS=['🔵','🔴','🟣'];
-const P_BG=['rgba(90,200,250,.18)','rgba(255,107,107,.18)','rgba(192,132,252,.18)'];
+const P_BG=['rgba(90,200,250,.2)','rgba(255,107,107,.2)','rgba(192,132,252,.2)'];
 
 let numPlayers=2, N=4, cur=0, over=false;
-let hLines, vLines, boxes;
-const PAD=28, DOT=6, LINE_W=5;
+let hLines, vLines, boxes, lastLine=null, hover=null;
+let W=360; // logical canvas size (CSS px)
+const canvas=document.getElementById('canvas');
+function PAD(){return Math.round(W*0.075);}
+
+function sizeCanvas(){
+  W=Math.round(canvas.getBoundingClientRect().width)||Math.min(390,window.innerWidth-32);
+  const dpr=Math.min(3,window.devicePixelRatio||1);
+  canvas.width=Math.round(W*dpr);canvas.height=Math.round(W*dpr);
+  canvas.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+}
 
 function init(){
   hLines=Array.from({length:N+1},()=>Array(N).fill(0));
   vLines=Array.from({length:N},()=>Array(N+1).fill(0));
   boxes=Array.from({length:N},()=>Array(N).fill(0));
-  cur=0; over=false;
-  const maxW=Math.min(390, window.innerWidth-24);
-  const canvas=document.getElementById('canvas');
-  canvas.width=maxW; canvas.height=maxW;
+  cur=0; over=false; lastLine=null; hover=null;
+  syncTabs(); sizeCanvas();
   renderScores(); updateStatus(); draw();
 }
+function freshGame(){try{sessionStorage.removeItem('db');}catch(e){}init();}
 
-function getCell(){return(document.getElementById('canvas').width-2*PAD)/N;}
+function getCell(){return(W-2*PAD())/N;}
 
 function renderScores(){
   const el=document.getElementById('score-row'); el.innerHTML='';
+  el.style.setProperty('--n',numPlayers);
   const scores=getScores();
   for(let p=0;p<numPlayers;p++){
     const chip=document.createElement('div');
     chip.className='score-chip'+(cur===p&&!over?' active-turn':'');
-    chip.style.borderColor=cur===p&&!over?P_COLORS[p]:'rgba(255,255,255,.1)';
-    chip.innerHTML=`<div style="font-size:.7rem;color:${P_COLORS[p]};font-weight:700">P${p+1} ${P_EMOJIS[p]}</div><div style="font-family:var(--serif);font-size:1.5rem;font-weight:900;color:${P_COLORS[p]}">${scores[p]}</div>`;
+    chip.style.setProperty('--c',P_COLORS[p]);
+    chip.innerHTML=`<span class="dot"></span><span class="nm">${numPlayers===3?'P':'Player '}${p+1}</span><span class="val">${scores[p]}</span>`;
     el.appendChild(chip);
   }
 }
@@ -88,145 +109,176 @@ function getScores(){
   return s;
 }
 
-function updateStatus(){
-  if(over){document.getElementById('status').textContent='';return;}
-  document.getElementById('status').textContent=`Player ${cur+1}'s turn ${P_EMOJIS[cur]}`;
+function updateStatus(extra){
+  if(over)return;
+  document.getElementById('status').innerHTML=`<b style="color:${P_COLORS[cur]}">Player ${cur+1}</b>'s turn${extra?` · ${extra}`:' · draw a line'}`;
 }
 
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
 function draw(){
-  const canvas=document.getElementById('canvas');
   const ctx=canvas.getContext('2d');
-  const cw=canvas.width,ch=canvas.height;
-  const CELL=getCell();
-  // Scale visual elements to cell size
-  const DOT_R=Math.max(3,Math.round(CELL*0.1));
-  const LW=Math.max(2,Math.round(CELL*0.08));
-  ctx.clearRect(0,0,cw,ch);
+  const P=PAD(), CELL=getCell();
+  const DOT_R=Math.max(4,CELL*0.085);
+  const LW=Math.max(4,CELL*0.085);
+  ctx.clearRect(0,0,W,W);
 
   // Filled boxes
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){
     if(boxes[r][c]){
+      const inset=LW*.9;
       ctx.fillStyle=P_BG[boxes[r][c]-1];
-      ctx.fillRect(PAD+c*CELL,PAD+r*CELL,CELL,CELL);
+      roundRect(ctx,P+c*CELL+inset,P+r*CELL+inset,CELL-2*inset,CELL-2*inset,Math.min(10,CELL*.12));ctx.fill();
       ctx.fillStyle=P_COLORS[boxes[r][c]-1];
-      ctx.font=`bold ${Math.round(CELL*0.32)}px Inter,sans-serif`;
+      ctx.font=`800 ${Math.round(CELL*0.3)}px ${getComputedStyle(document.body).getPropertyValue('--display')||'sans-serif'}`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(boxes[r][c],PAD+c*CELL+CELL/2,PAD+r*CELL+CELL/2);
+      ctx.fillText('P'+boxes[r][c],P+c*CELL+CELL/2,P+r*CELL+CELL/2+1);
     }
   }
-
+  const seg=(x1,y1,x2,y2,owner,isLast,isHover)=>{
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineCap='round';
+    if(owner){
+      ctx.strokeStyle=P_COLORS[owner-1];ctx.lineWidth=LW;
+      if(isLast){ctx.shadowColor=P_COLORS[owner-1];ctx.shadowBlur=12;}
+      ctx.stroke();ctx.shadowBlur=0;
+    } else if(isHover){
+      ctx.strokeStyle=P_COLORS[cur];ctx.globalAlpha=.45;ctx.lineWidth=LW;ctx.stroke();ctx.globalAlpha=1;
+    } else {
+      ctx.strokeStyle='rgba(255,255,255,.09)';ctx.lineWidth=Math.max(2,LW*.4);ctx.setLineDash([2,LW]);ctx.stroke();ctx.setLineDash([]);
+    }
+  };
+  const gap=DOT_R+2;
   // H-lines
   for(let r=0;r<=N;r++)for(let c=0;c<N;c++){
-    ctx.beginPath();
-    ctx.moveTo(PAD+c*CELL+DOT_R+2,PAD+r*CELL);
-    ctx.lineTo(PAD+(c+1)*CELL-DOT_R-2,PAD+r*CELL);
-    ctx.strokeStyle=hLines[r][c]?P_COLORS[hLines[r][c]-1]:'rgba(255,255,255,.15)';
-    ctx.lineWidth=hLines[r][c]?LW:1.5;
-    ctx.lineCap='round'; ctx.stroke();
+    const isLast=lastLine&&lastLine.t==='h'&&lastLine.r===r&&lastLine.c===c;
+    const isHover=hover&&hover.t==='h'&&hover.r===r&&hover.c===c;
+    seg(P+c*CELL+gap,P+r*CELL,P+(c+1)*CELL-gap,P+r*CELL,hLines[r][c],isLast,isHover);
   }
   // V-lines
   for(let r=0;r<N;r++)for(let c=0;c<=N;c++){
-    ctx.beginPath();
-    ctx.moveTo(PAD+c*CELL,PAD+r*CELL+DOT_R+2);
-    ctx.lineTo(PAD+c*CELL,PAD+(r+1)*CELL-DOT_R-2);
-    ctx.strokeStyle=vLines[r][c]?P_COLORS[vLines[r][c]-1]:'rgba(255,255,255,.15)';
-    ctx.lineWidth=vLines[r][c]?LW:1.5;
-    ctx.lineCap='round'; ctx.stroke();
+    const isLast=lastLine&&lastLine.t==='v'&&lastLine.r===r&&lastLine.c===c;
+    const isHover=hover&&hover.t==='v'&&hover.r===r&&hover.c===c;
+    seg(P+c*CELL,P+r*CELL+gap,P+c*CELL,P+(r+1)*CELL-gap,vLines[r][c],isLast,isHover);
   }
   // Dots
   for(let r=0;r<=N;r++)for(let c=0;c<=N;c++){
-    ctx.beginPath(); ctx.arc(PAD+c*CELL,PAD+r*CELL,DOT_R,0,Math.PI*2);
-    ctx.fillStyle='#e2e8f0'; ctx.fill();
+    ctx.beginPath(); ctx.arc(P+c*CELL,P+r*CELL,DOT_R,0,Math.PI*2);
+    ctx.fillStyle='#e8ecf3'; ctx.fill();
   }
+}
+
+// Nearest free line to a point (null if none close enough)
+function hitLine(px,py){
+  const P=PAD(), CELL=getCell();
+  const HIT=CELL*0.42;
+  const DOT_R=Math.max(4,CELL*0.085);
+  let best=Infinity, res=null;
+  for(let r=0;r<=N;r++)for(let c=0;c<N;c++){
+    const my=P+r*CELL;
+    if(Math.abs(py-my)<HIT&&px>P+c*CELL+DOT_R*.5&&px<P+(c+1)*CELL-DOT_R*.5){
+      const d=Math.abs(py-my);if(d<best&&!hLines[r][c]){best=d;res={t:'h',r,c};}
+    }
+  }
+  for(let r=0;r<N;r++)for(let c=0;c<=N;c++){
+    const mx=P+c*CELL;
+    if(Math.abs(px-mx)<HIT&&py>P+r*CELL+DOT_R*.5&&py<P+(r+1)*CELL-DOT_R*.5){
+      const d=Math.abs(px-mx);if(d<best&&!vLines[r][c]){best=d;res={t:'v',r,c};}
+    }
+  }
+  return res;
 }
 
 function onClick(px,py){
   if(over)return;
-  const CELL=getCell();
-  const HIT=CELL*0.38;
-  const DOT_R=Math.max(3,Math.round(CELL*0.1));
-  let best=Infinity, type=null, br, bc;
-
-  for(let r=0;r<=N;r++)for(let c=0;c<N;c++){
-    const mx=PAD+c*CELL+CELL/2, my=PAD+r*CELL;
-    if(Math.abs(py-my)<HIT&&px>PAD+c*CELL+DOT_R&&px<PAD+(c+1)*CELL-DOT_R){
-      const d=Math.abs(py-my);if(d<best){best=d;type='h';br=r;bc=c;}
-    }
-  }
-  for(let r=0;r<N;r++)for(let c=0;c<=N;c++){
-    const mx=PAD+c*CELL, my=PAD+r*CELL+CELL/2;
-    if(Math.abs(px-mx)<HIT&&py>PAD+r*CELL+DOT_R&&py<PAD+(r+1)*CELL-DOT_R){
-      const d=Math.abs(px-mx);if(d<best){best=d;type='v';br=r;bc=c;}
-    }
-  }
-  if(!type)return;
+  const hit=hitLine(px,py);
+  if(!hit)return;
+  const {t:type,r:br,c:bc}=hit;
   if(type==='h'){if(hLines[br][bc])return;sLine();
     hLines[br][bc]=cur+1;}
   else{if(vLines[br][bc])return;sLine();
     vLines[br][bc]=cur+1;}
+  lastLine=hit;hover=null;
 
-  let scored=false;
+  let scored=0;
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){
     if(!boxes[r][c]&&hLines[r][c]&&hLines[r+1][c]&&vLines[r][c]&&vLines[r][c+1]){
       sBox();
-          boxes[r][c]=cur+1; scored=true;
+          boxes[r][c]=cur+1; scored++;
     }
   }
+  GN.haptic(scored?'medium':'light');
 
   const scores=getScores();
   if(scores.reduce((a,b)=>a+b,0)===N*N){
-    sWin(); over=true;
+    sWin(); over=true; GN.haptic('success');
     const max=Math.max(...scores);
     const winners=scores.map((s,i)=>s===max?i:-1).filter(i=>i>=0);
-    const winText=winners.length===1?`Player ${winners[0]+1} ${P_EMOJIS[winners[0]]} wins!`:'It\'s a draw!';
-    document.getElementById('status').innerHTML=`<span style="color:${winners.length===1?P_COLORS[winners[0]]:'var(--gold)'}">${winText}</span>`;
-    renderScores(); draw(); return;
+    const winText=winners.length===1?`Player ${winners[0]+1} wins!`:winners.length===numPlayers?'It\'s a draw!':`Tie: ${winners.map(i=>'P'+(i+1)).join(' & ')}`;
+    document.getElementById('status').innerHTML=`<b style="color:${winners.length===1?P_COLORS[winners[0]]:'var(--gold)'}">${winText}</b> ${scores.join(' – ')}`;
+    renderScores(); draw();
+    setTimeout(()=>GN.sheet({title:winText+(winners.length===1?' 🏆':''),
+      body:scores.map((s,i)=>`<span style="color:${P_COLORS[i]};font-weight:700;white-space:nowrap">Player ${i+1}: ${s}</span>`).join(' · '),
+      actions:[{label:'Play again',primary:true,onClick:freshGame},{label:'View board'}]}),600);
+    return;
   }
   if(!scored){cur=(cur+1)%numPlayers;}
-  renderScores(); updateStatus(); draw();
+  renderScores(); updateStatus(scored?`+${scored} — go again!`:''); draw();
 }
 
-const canvas=document.getElementById('canvas');
 function getPos(e){
   const rect=canvas.getBoundingClientRect();
-  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
-  // Prefer changedTouches (populated on touchend), fall back to active touches, then mouse coords
-  const pt=(e.changedTouches&&e.changedTouches[0])||(e.touches&&e.touches[0])||e;
-  return{x:(pt.clientX-rect.left)*sx,y:(pt.clientY-rect.top)*sy};
+  const s=W/rect.width;
+  return{x:(e.clientX-rect.left)*s,y:(e.clientY-rect.top)*s};
 }
 canvas.addEventListener('click',e=>{const p=getPos(e);onClick(p.x,p.y);});
-canvas.addEventListener('touchend',e=>{e.preventDefault();const p=getPos(e);onClick(p.x,p.y);},{passive:false});
+// Preview the line under the finger / mouse
+canvas.addEventListener('pointermove',e=>{
+  if(over)return;
+  const p=getPos(e);const h=hitLine(p.x,p.y);
+  if(JSON.stringify(h)!==JSON.stringify(hover)){hover=h;draw();}
+});
+canvas.addEventListener('pointerleave',()=>{if(hover){hover=null;draw();}});
+window.addEventListener('resize',()=>{sizeCanvas();draw();});
 
 // Controls
+function syncTabs(){
+  document.querySelectorAll('[data-players]').forEach(x=>x.classList.toggle('active',+x.dataset.players===numPlayers));
+  document.querySelectorAll('[data-size]').forEach(x=>x.classList.toggle('active',+x.dataset.size===N));
+}
+function inProgress(){return !over&&(hLines.some(r=>r.some(v=>v))||vLines.some(r=>r.some(v=>v)));}
+async function confirmRestart(){
+  return !inProgress()||await GN.confirm('The current game will be cleared.',{title:'Start a new game?',ok:'New game'});
+}
 document.querySelectorAll('[data-players]').forEach(b=>{
-  b.addEventListener('click',()=>{
-    numPlayers=+b.dataset.players;
-    document.querySelectorAll('[data-players]').forEach(x=>{x.classList.remove('active');});
-    b.classList.add('active'); init();
+  b.addEventListener('click',async()=>{
+    if(+b.dataset.players===numPlayers||!(await confirmRestart()))return;
+    numPlayers=+b.dataset.players;GN.haptic('select');freshGame();
   });
 });
 document.querySelectorAll('[data-size]').forEach(b=>{
-  b.addEventListener('click',()=>{
-    N=+b.dataset.size;
-    document.querySelectorAll('[data-size]').forEach(x=>{x.classList.remove('active');});
-    b.classList.add('active'); init();
+  b.addEventListener('click',async()=>{
+    if(+b.dataset.size===N||!(await confirmRestart()))return;
+    N=+b.dataset.size;GN.haptic('select');freshGame();
   });
 });
-document.getElementById('newbtn').addEventListener('click',init);
+document.getElementById('newbtn').addEventListener('click',async()=>{if(await confirmRestart())freshGame();});
 init();
 
 // ── Sound ────────────────────────────────────────────────────────────────────
 let _ac=null,_muted=false;
 function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
 function sTone(freq,start,dur,vol,type,ramp){
+  try{
   const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
   o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
   if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
   g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
 }
 function sNoise(start,dur,fc,q,vol,decay){
+  try{
   const ctx=sac(),t=ctx.currentTime+start;
   const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
@@ -234,6 +286,7 @@ function sNoise(start,dur,fc,q,vol,decay){
   const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
   const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
+  }catch(e){}
 }
 function sWin(){if(_muted)return;[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
 function sLose(){if(_muted)return;[400,320,240].forEach((f,i)=>sTone(f,i*.1,.35,.18,'triangle'));}
@@ -250,14 +303,14 @@ function _save_db(){if(over)return;
 function _load_db(){
   try{
     const raw=sessionStorage.getItem('db');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
+    const s=JSON.parse(raw);if(!s||!Array.isArray(s.hLines))return false;
     numPlayers=s.numPlayers;N=s.N;cur=s.cur;over=s.over||false;hLines=s.hLines;vLines=s.vLines;boxes=s.boxes;
-    render();
+    syncTabs();sizeCanvas();renderScores();updateStatus();draw();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_db);
-document.getElementById('newbtn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('db');}catch(e){}},true);
+window.addEventListener('pagehide',_save_db);
 _load_db();
 </script>
 </body>

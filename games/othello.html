@@ -1,110 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Othello</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#051505 0%,#0d1117 70%);}
-.wrap{max-width:420px;margin:0 auto;padding:0 8px 60px;}
-.ot-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.ot-chip{border-radius:12px;padding:8px 16px;text-align:center;border:2px solid transparent;transition:all .2s;}
-.ot-chip.active{transform:scale(1.06);}
-.ot-chip-val{font-family:var(--serif);font-size:1.4rem;font-weight:900;}
-.ot-chip-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;}
-.mode-row{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
-.mode-btn{padding:7px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;}
-.mode-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
-.ot-board{display:grid;grid-template-columns:repeat(8,1fr);background:#1a5c1a;border:3px solid #0a3a0a;border-radius:8px;gap:2px;padding:4px;width:min(380px,96vw);margin:0 auto 10px;box-shadow:0 4px 20px rgba(0,0,0,.6);}
-.ot-sq{aspect-ratio:1;background:#1d6b1d;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .1s;}
-.ot-sq:hover{background:#228822;}
-.ot-sq.hint{background:#2a8a2a;}
-.ot-sq.hint::after{content:'';position:absolute;width:28%;height:28%;background:rgba(255,255,255,.25);border-radius:50%;}
-.ot-piece{width:82%;height:82%;border-radius:50%;transition:transform .15s;box-shadow:0 2px 6px rgba(0,0,0,.5);}
-.ot-piece.w{background:radial-gradient(circle at 35% 30%,#fff,#ccc 60%,#aaa);}
-.ot-piece.b{background:radial-gradient(circle at 35% 30%,#555,#111 60%,#000);}
+:root{--bs:clamp(260px,min(100vw - 32px,100vh - 340px),520px);}
+@supports (height:100dvh){:root{--bs:clamp(260px,min(100vw - 32px,100dvh - 340px),520px);}}
+.site-nav button.icon-btn{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;display:inline-grid;place-items:center;}
+.icon-btn svg{width:18px;height:18px;}
+.gk{width:var(--bs);max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.gk .tabs{margin:0;}
+
+.players{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ot-chip{display:flex;align-items:center;gap:8px;min-height:56px;padding:8px 10px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:border-color .25s var(--ease),background .25s,box-shadow .25s;}
+.ot-chip.active{border-color:rgba(245,200,66,.5);background:linear-gradient(180deg,rgba(245,200,66,.1),rgba(245,200,66,.02)),var(--surface);box-shadow:0 0 0 3px rgba(245,200,66,.07);}
+.ot-chip .disc{width:24px;height:24px;border-radius:50%;flex:none;}
+.disc.b{background:radial-gradient(circle at 35% 30%,#5a5f68,#16181c 60%,#000);box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
+.disc.w{background:radial-gradient(circle at 35% 30%,#fff,#e4e4e4 55%,#b9b9b9);box-shadow:0 2px 4px rgba(0,0,0,.5);}
+.ot-chip .who{flex:1;min-width:0;}
+.ot-chip .nm{font-weight:700;font-size:.9rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ot-chip .sub{font-size:.74rem;color:var(--text-3);font-weight:600;}
+.ot-chip.active .sub{color:var(--gold);}
+.ot-chip-val{font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1;font-variant-numeric:tabular-nums;}
+
+.board-frame{position:relative;padding:7px;border-radius:16px;background:linear-gradient(145deg,#2b2f37,#14161b);box-shadow:0 18px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);}
+.ot-board{position:relative;display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;border-radius:9px;overflow:hidden;background:radial-gradient(120% 100% at 50% 0%,#1f8a4c,#126b37 60%,#0d5a2d);}
+.ot-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.45);transform:translate(-50%,-50%);pointer-events:none;z-index:1;}
+.ot-sq{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 0 0 .5px rgba(0,0,0,.35);}
+.ot-sq.hint::after{content:'';position:absolute;width:26%;height:26%;border-radius:50%;background:rgba(255,255,255,.28);transition:transform .15s var(--spring);}
+.ot-sq.hint:active::after{transform:scale(1.4);}
+.ot-piece{width:82%;height:82%;border-radius:50%;position:relative;z-index:2;transition:transform .15s;}
+.ot-piece.w{background:radial-gradient(circle at 35% 30%,#fff,#ececec 55%,#bdbdbd);box-shadow:0 3px 0 #9a9a9a,0 5px 8px rgba(0,0,0,.4);}
+.ot-piece.b{background:radial-gradient(circle at 35% 30%,#5a5f68,#16181c 60%,#000);box-shadow:0 3px 0 #000,0 5px 8px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08);}
+.ot-piece.last::after{content:'';position:absolute;left:50%;top:50%;width:20%;height:20%;border-radius:50%;background:#ff5a4f;transform:translate(-50%,-50%);box-shadow:0 0 0 2px rgba(0,0,0,.15);}
 @keyframes ot-flip{0%{transform:scaleX(1);}50%{transform:scaleX(0);}100%{transform:scaleX(1);}}
-.ot-piece.flipping{animation:ot-flip .25s ease;}
-.ot-status{text-align:center;font-size:.88rem;font-weight:700;min-height:26px;margin-bottom:8px;}
-/* Instructions modal */
-.ot-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:16px;}
-.ot-modal.open{display:flex;}
-.ot-modal-box{background:#151c1f;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:22px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto;}
-.ot-modal-box h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold);margin:0 0 14px;}
-.ot-modal-box h3{font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:14px 0 6px;}
-.ot-modal-box p{font-size:.85rem;color:rgba(255,255,255,.75);line-height:1.55;margin:0 0 8px;}
-.ot-modal-box ul{margin:0 0 8px;padding-left:18px;}
-.ot-modal-box li{font-size:.85rem;color:rgba(255,255,255,.75);line-height:1.55;margin-bottom:4px;}
+.ot-piece.flipping{animation:ot-flip .32s ease;}
+@keyframes ot-drop{from{transform:scale(1.25);opacity:.4;}to{transform:scale(1);opacity:1;}}
+.ot-piece.drop{animation:ot-drop .22s var(--ease);}
+.ot-status{text-align:center;font-size:.92rem;font-weight:600;color:var(--text-2);min-height:24px;}
+.ot-status b{color:var(--text);}
+.rules{text-align:left;}
+.rules h4{font-family:var(--display);font-size:.95rem;color:var(--text);margin:14px 0 4px;}
+.rules h4:first-child{margin-top:0;}
+.rules ul{padding-left:18px;}
+.rules li{margin-bottom:4px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Othello</span>
+  <button class="icon-btn" id="help-btn" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.6"/><path d="M12 17.2h.01"/></svg></button>
+  <button class="icon-btn" id="ot-new" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
 
-<!-- Instructions modal -->
-<div class="ot-modal" id="ot-modal">
-  <div class="ot-modal-box">
-    <h2>How to Play Othello</h2>
-    <h3>The Goal</h3>
-    <p>Have more pieces of your color on the board than your opponent when no more moves are possible. The player with the most pieces wins.</p>
-    <h3>Taking a Turn</h3>
+<template id="rules-tpl">
+  <div class="rules">
+    <h4>The goal</h4>
+    <p>Have more discs of your color on the board when neither player can move.</p>
+    <h4>Taking a turn</h4>
     <ul>
-      <li>Place your piece on any empty square that <strong>traps</strong> at least one of your opponent's pieces between your new piece and another of your existing pieces.</li>
-      <li>Trapping works in any direction — horizontal, vertical, or diagonal.</li>
-      <li>All of your opponent's pieces that are trapped between your new piece and your existing pieces are <strong>flipped</strong> to your color.</li>
+      <li>Place a disc so it <strong>traps</strong> one or more opponent discs in a straight line (across, down or diagonal) between it and another of your discs.</li>
+      <li>Every trapped disc is <strong>flipped</strong> to your color.</li>
+      <li>Legal squares show a faint dot. No legal move? Your turn is skipped.</li>
     </ul>
-    <h3>Valid Moves</h3>
-    <p>You must make a move that flips at least one opponent piece. Valid squares are highlighted with a faint dot. If you have no valid move, your turn is skipped. If neither player can move, the game ends.</p>
-    <h3>Strategy Tips</h3>
+    <h4>Strategy tips</h4>
     <ul>
-      <li><strong>Corners are king.</strong> Corner pieces can never be flipped — grab them whenever possible.</li>
-      <li><strong>Avoid the squares next to corners.</strong> Playing there gives your opponent a chance to take the corner.</li>
-      <li><strong>Control the edges.</strong> Edge pieces can only be flipped from one direction, making them more stable.</li>
-      <li><strong>Think ahead.</strong> A big lead early can vanish — the last few moves often flip dozens of pieces at once.</li>
+      <li><strong>Corners are king</strong> — they can never be flipped.</li>
+      <li>Avoid squares next to an empty corner.</li>
+      <li>Edges are stable; a big early lead can vanish late.</li>
     </ul>
-    <h3>Winning</h3>
-    <p>The board fills up (or neither player can move) and pieces are counted. Most pieces wins. A full board with 64 pieces means the game went all the way!</p>
-    <div style="text-align:center;margin-top:16px;">
-      <button class="btn btn-gold" onclick="document.getElementById('ot-modal').classList.remove('open')">Got it!</button>
-    </div>
   </div>
-</div>
+</template>
 
-<div class="page"><div class="wrap">
-
-<div class="ot-header">
-  <div class="ot-chip active" id="chip-b" style="background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.3);">
-    <div class="ot-chip-val" id="cnt-b" style="color:#ddd;">2</div>
-    <div class="ot-chip-lbl" style="color:#aaa;">⚫ Black</div>
+<div class="page">
+<div class="gk">
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="mode-ai">vs Computer</button>
+    <button class="tab" id="mode-2p">2 Players</button>
   </div>
-  <div class="ot-chip" id="chip-w" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);">
-    <div class="ot-chip-val" id="cnt-w" style="color:#fff;">2</div>
-    <div class="ot-chip-lbl" style="color:#aaa;">⚪ White</div>
+  <div class="players">
+    <div class="ot-chip active" id="chip-b"><span class="disc b"></span><div class="who"><div class="nm" id="nm-b">You</div><div class="sub" id="sub-b">Black</div></div><div class="ot-chip-val" id="cnt-b">2</div></div>
+    <div class="ot-chip" id="chip-w"><span class="disc w"></span><div class="who"><div class="nm" id="nm-w">Computer</div><div class="sub" id="sub-w">White</div></div><div class="ot-chip-val" id="cnt-w">2</div></div>
   </div>
+  <div class="board-frame"><div class="ot-board" id="ot-board"></div></div>
+  <div class="ot-status" id="ot-status">Black to move</div>
 </div>
-<div class="mode-row">
-  <button class="mode-btn active" id="mode-ai">vs Computer</button>
-  <button class="mode-btn" id="mode-2p">2 Players</button>
-  <button class="mode-btn" id="ot-new">New Game</button>
-  <button class="mode-btn" onclick="document.getElementById('ot-modal').classList.add('open')">❓ How to Play</button>
 </div>
-
-<div class="ot-board" id="ot-board"></div>
-<div class="ot-status" id="ot-status">Black to move</div>
-
-</div></div>
 <script>
 'use strict';
+window.GN=window.GN||{haptic(){},toast(){},sheet(){return{close(){},el:document.createElement('div')};},confirm:()=>Promise.resolve(true)};
 let board=[], turn='b', aiMode=true, gameOver=false;
+let lastPlaced=null, justFlipped=new Set(), aiTimer=null, movesMade=0;
 const DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
 function opp(t){return t==='b'?'w':'b';}
@@ -132,17 +126,23 @@ function getLegal(t,b=board){
   return moves;
 }
 
+function name(t){return aiMode?(t==='b'?'You':'Computer'):(t==='b'?'Black':'White');}
+
 function playMove(r,c,t=turn){
   const flips=getFlips(r,c,t);
   if(!flips.length)return false;
   board[r][c]=t;
   flips.forEach(([fr,fc])=>{board[fr][fc]=t;});
+  lastPlaced=[r,c];justFlipped=new Set(flips.map(([a,b])=>a*8+b));movesMade++;
+  GN.haptic(flips.length>=4?'medium':'light');
   turn=opp(t);
   const next=getLegal(turn);
   if(!next.length){
+    const skipped=turn;
     turn=opp(turn);
     const back=getLegal(turn);
     if(!back.length){gameOver=true;}
+    else setTimeout(()=>GN.toast(aiMode?(skipped==='b'?'You have no moves — pass':'Computer has no moves — your turn again'):`${skipped==='b'?'Black':'White'} has no moves — pass`),350);
   }
   return true;
 }
@@ -192,6 +192,7 @@ function minimax(b,depth,alpha,beta,maxing){
 }
 
 function aiMove(){
+  if(gameOver||!aiMode||turn!=='w')return;
   const moves=getLegal('w');
   if(!moves.length)return;
   let best=null,bestScore=-Infinity;
@@ -203,13 +204,32 @@ function aiMove(){
     if(score>bestScore){bestScore=score;best=[r,c];}
   });
   if(best)playMove(best[0],best[1],'w');
-  render();
+  afterTurn();
 }
 
+// After any move: render, then hand over to the AI (it may move again if Black had to pass)
+function afterTurn(){
+  render();
+  if(gameOver){showResult();return;}
+  if(aiMode&&turn==='w'){clearTimeout(aiTimer);aiTimer=setTimeout(aiMove,520);}
+}
+
+function showResult(){
+  const{b,w}=countPieces();
+  const winner=b>w?'b':w>b?'w':null;
+  let title;
+  if(!winner)title="It's a tie!";
+  else if(aiMode)title=winner==='b'?'You win! 🏆':'Computer wins';
+  else title=`${winner==='b'?'Black':'White'} wins! 🏆`;
+  GN.haptic(aiMode&&winner==='w'?'error':'success');
+  setTimeout(()=>GN.sheet({title,body:`Final score <b style="color:var(--text)">${b} – ${w}</b>`,actions:[
+    {label:'Play again',primary:true,onClick:freshGame},{label:'View board'}]}),600);
+}
+
+const boardEl=document.getElementById('ot-board');
 function render(){
-  const el=document.getElementById('ot-board');
-  el.innerHTML='';
-  const legal=!gameOver?getLegal(turn):[];
+  boardEl.innerHTML='';
+  const legal=!gameOver&&!(aiMode&&turn==='w')?getLegal(turn):[];
   const legalSet=new Set(legal.map(([r,c])=>`${r},${c}`));
   for(let r=0;r<8;r++){
     for(let c=0;c<8;c++){
@@ -218,35 +238,63 @@ function render(){
       if(board[r][c]){
         const p=document.createElement('div');
         p.className='ot-piece '+board[r][c];
+        if(lastPlaced&&lastPlaced[0]===r&&lastPlaced[1]===c)p.classList.add('last','drop');
+        else if(justFlipped.has(r*8+c))p.classList.add('flipping');
         sq.appendChild(p);
       }
       sq.addEventListener('click',()=>{
-        if(gameOver||!legalSet.has(`${r},${c}`))return;
+        if(gameOver)return;
         if(aiMode&&turn==='w')return;
+        if(!legalSet.has(`${r},${c}`)){if(!board[r][c])GN.haptic('error');return;}
         playMove(r,c);
-        render();
-        if(!gameOver&&aiMode&&turn==='w')setTimeout(aiMove,400);
+        afterTurn();
       });
-      el.appendChild(sq);
+      boardEl.appendChild(sq);
     }
   }
+  // star points
+  [[2,2],[2,6],[6,2],[6,6]].forEach(([r,c])=>{const d=document.createElement('span');d.className='ot-dot';d.style.left=(c/8*100)+'%';d.style.top=(r/8*100)+'%';boardEl.appendChild(d);});
+  justFlipped=new Set();
   const{b,w}=countPieces();
   document.getElementById('cnt-b').textContent=b;
   document.getElementById('cnt-w').textContent=w;
+  document.getElementById('nm-b').textContent=name('b');
+  document.getElementById('nm-w').textContent=name('w');
   document.getElementById('chip-b').classList.toggle('active',turn==='b'&&!gameOver);
   document.getElementById('chip-w').classList.toggle('active',turn==='w'&&!gameOver);
+  document.getElementById('sub-b').textContent=turn==='b'&&!gameOver?(aiMode?'Your turn':'Black · to move'):'Black';
+  document.getElementById('sub-w').textContent=turn==='w'&&!gameOver?(aiMode?'Thinking…':'White · to move'):'White';
+  const st=document.getElementById('ot-status');
   if(gameOver){
-    const msg=b>w?'⚫ Black wins!':w>b?'⚪ White wins!':'Tie!';
-    document.getElementById('ot-status').textContent=`${msg} (${b}–${w})`;
+    const msg=b>w?`${name('b')} win${aiMode?'':'s'}!`:w>b?`${name('w')} wins!`:'Tie game!';
+    st.innerHTML=`<b>${msg}</b> ${b}–${w}`;
+  } else if(aiMode&&turn==='w'){
+    st.textContent='Computer is thinking…';
   } else {
-    document.getElementById('ot-status').textContent=`${turn==='b'?'⚫ Black':'⚪ White'} to move`;
+    st.innerHTML=aiMode?`<b>Your move</b> · ${legal.length} option${legal.length===1?'':'s'}`:`<b>${turn==='b'?'Black':'White'}</b> to move`;
   }
 }
 
-function newGame(){initBoard();turn='b';gameOver=false;render();}
-document.getElementById('mode-ai').addEventListener('click',()=>{aiMode=true;document.getElementById('mode-ai').classList.add('active');document.getElementById('mode-2p').classList.remove('active');newGame();});
-document.getElementById('mode-2p').addEventListener('click',()=>{aiMode=false;document.getElementById('mode-2p').classList.add('active');document.getElementById('mode-ai').classList.remove('active');newGame();});
-document.getElementById('ot-new').addEventListener('click',newGame);
+function newGame(){clearTimeout(aiTimer);initBoard();turn='b';gameOver=false;lastPlaced=null;justFlipped=new Set();movesMade=0;render();}
+function freshGame(){try{sessionStorage.removeItem('othello');}catch(e){}newGame();}
+function syncTabs(){
+  document.getElementById('mode-ai').classList.toggle('active',aiMode);
+  document.getElementById('mode-2p').classList.toggle('active',!aiMode);
+}
+async function setMode(ai){
+  if(ai===aiMode)return;
+  if(!gameOver&&movesMade>0&&!(await GN.confirm('Switching modes starts a new game.',{title:'Start a new game?',ok:'New game'})))return;
+  aiMode=ai;syncTabs();freshGame();
+}
+document.getElementById('mode-ai').addEventListener('click',()=>setMode(true));
+document.getElementById('mode-2p').addEventListener('click',()=>setMode(false));
+document.getElementById('ot-new').addEventListener('click',async()=>{
+  if(!gameOver&&movesMade>0&&!(await GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New game',danger:true})))return;
+  freshGame();
+});
+document.getElementById('help-btn').addEventListener('click',()=>{
+  GN.sheet({title:'How to play Othello',body:document.getElementById('rules-tpl').content.cloneNode(true).firstElementChild,actions:[{label:'Got it',primary:true}]});
+});
 newGame();
 
 // ── Session persistence ────────────────────────────────────────────────────
@@ -256,14 +304,14 @@ function _save_othello(){if(gameOver)return;
 function _load_othello(){
   try{
     const raw=sessionStorage.getItem('othello');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    board=s.board;turn=s.turn;aiMode=s.aiMode;gameOver=s.gameOver||false;
-    render();
+    const s=JSON.parse(raw);if(!s||!Array.isArray(s.board))return false;
+    board=s.board;turn=s.turn;aiMode=s.aiMode!==false;gameOver=s.gameOver||false;
+    syncTabs();afterTurn();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_othello);
-document.getElementById('ot-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('othello');}catch(e){}},true);
+window.addEventListener('pagehide',_save_othello);
 _load_othello();
 </script>
 </body>

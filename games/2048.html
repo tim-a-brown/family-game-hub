@@ -8,41 +8,51 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>2048</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
-.wrap{max-width:420px;margin:0 auto;padding:0 12px 60px;}
-.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.title{font-family:var(--serif);font-size:2rem;font-weight:900;color:var(--gold);}
-.scores{display:flex;gap:8px;}
-.score-box{background:rgba(255,255,255,.07);border-radius:8px;padding:6px 12px;text-align:center;min-width:60px;}
-.score-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
-.score-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
-.board-wrap{touch-action:none;background:#1a1205;border-radius:12px;padding:8px;margin-bottom:12px;}
-.board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.cell{aspect-ratio:1;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;transition:none;position:relative;}
-.tile{position:absolute;inset:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:900;transition:none;}
-@keyframes appear{0%{transform:scale(.6);opacity:0;}100%{transform:scale(1);opacity:1;}}
-@keyframes merge{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
-.tile.new{animation:appear .12s ease;}
-.tile.merged{animation:merge .14s ease;}
-.t2{background:#f0e0c0;color:#7a6040;font-size:clamp(1.1rem,7vw,1.8rem);}
-.t4{background:#edd8a0;color:#7a6040;font-size:clamp(1.1rem,7vw,1.8rem);}
-.t8{background:#f5a050;color:#fff;font-size:clamp(1.1rem,7vw,1.8rem);}
-.t16{background:#f08030;color:#fff;font-size:clamp(.95rem,6vw,1.6rem);}
-.t32{background:#e05030;color:#fff;font-size:clamp(.95rem,6vw,1.6rem);}
-.t64{background:#d03020;color:#fff;font-size:clamp(.95rem,6vw,1.6rem);}
-.t128{background:#e0c020;color:#fff;font-size:clamp(.75rem,5vw,1.3rem);}
-.t256{background:#e0b010;color:#fff;font-size:clamp(.75rem,5vw,1.3rem);}
-.t512{background:#d0a000;color:#fff;font-size:clamp(.75rem,5vw,1.3rem);}
-.t1024{background:#c09000;color:#fff;font-size:clamp(.65rem,4vw,1.1rem);}
-.t2048{background:#f5c842;color:#1a1205;font-size:clamp(.65rem,4vw,1.1rem);}
-.thigh{background:#3a2abb;color:#fff;font-size:clamp(.55rem,3.5vw,.95rem);}
-.status{text-align:center;font-size:.88rem;font-weight:700;min-height:28px;margin-bottom:10px;color:var(--muted);}
-.hint{text-align:center;font-size:.7rem;color:var(--muted);opacity:.5;margin-top:6px;}
+.wrap{max-width:460px;margin:0 auto;}
+.page{padding-top:14px;}
+.header{display:flex;align-items:stretch;gap:8px;margin-bottom:14px;}
+.score-box{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;text-align:center;position:relative;}
+.score-lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);}
+.score-val{font-family:var(--display);font-size:1.55rem;font-weight:800;color:var(--text);line-height:1.15;font-variant-numeric:tabular-nums;}
+.score-box.best .score-val{color:var(--gold);}
+.score-add{position:absolute;left:0;right:0;top:4px;font-family:var(--display);font-weight:800;color:var(--gold);font-size:1rem;pointer-events:none;animation:add-up .7s var(--ease) forwards;}
+@keyframes add-up{0%{opacity:0;transform:translateY(14px);}25%{opacity:1;}100%{opacity:0;transform:translateY(-18px);}}
+#new-btn{flex:0 0 auto;min-height:auto;padding:0 18px;border-radius:14px;}
+.board-wrap{position:relative;touch-action:none;-webkit-user-select:none;user-select:none;background:#3a3122;border-radius:18px;padding:10px;margin:0 auto 12px;width:100%;max-width:min(460px,calc(100dvh - 250px));min-width:min(100%,290px);box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.cell{aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.07);position:relative;container-type:inline-size;}
+.tile{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:44cqw;box-shadow:0 2px 0 rgba(0,0,0,.18);}
+@keyframes appear{0%{transform:scale(.4);opacity:0;}100%{transform:scale(1);opacity:1;}}
+@keyframes merge{0%{transform:scale(1);}45%{transform:scale(1.16);}100%{transform:scale(1);}}
+.tile.new{animation:appear .18s var(--ease) .06s both;}
+.tile.merged{animation:merge .18s var(--spring);z-index:1;}
+.t2{background:#eee4da;color:#776e65;}
+.t4{background:#ede0c8;color:#776e65;}
+.t8{background:#f2b179;color:#fff;}
+.t16{background:#f59563;color:#fff;}
+.t32{background:#f67c5f;color:#fff;}
+.t64{background:#f65e3b;color:#fff;}
+.t128,.t256,.t512{font-size:36cqw;}
+.t1024,.t2048{font-size:29cqw;}
+.t128{background:#edcf72;color:#fff;box-shadow:0 0 18px rgba(237,207,114,.35);}
+.t256{background:#edcc61;color:#fff;box-shadow:0 0 20px rgba(237,204,97,.4);}
+.t512{background:#edc850;color:#fff;box-shadow:0 0 22px rgba(237,200,80,.45);}
+.t1024{background:#edc53f;color:#fff;box-shadow:0 0 26px rgba(237,197,63,.5);}
+.t2048{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--gold-ink);box-shadow:0 0 30px rgba(245,200,66,.6);}
+.thigh{background:#3c3a32;color:#fff;font-size:26cqw;}
+.overlay{position:absolute;inset:0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:20px;background:rgba(11,13,18,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:gn-fade .35s ease both;z-index:5;}
+.overlay.win{background:rgba(245,200,66,.28);}
+.ov-title{font-family:var(--display);font-size:2.4rem;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.overlay.win .ov-title{color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.35);}
+.ov-sub{color:var(--text-2);font-weight:600;margin-bottom:12px;}
+.overlay.win .ov-sub{color:#fff;}
+.ov-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.status{display:none;}
+.hint{text-align:center;font-size:.82rem;color:var(--text-3);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;}
 </style>
 </head>
 <body>
@@ -52,22 +62,16 @@ body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
 <div class="page"><div class="wrap">
 
 <div class="header">
-  <div class="title">2048</div>
-  <div class="scores">
-    <div class="score-box"><div class="score-lbl">Score</div><div class="score-val" id="score">0</div></div>
-    <div class="score-box"><div class="score-lbl">Best</div><div class="score-val" id="best">0</div></div>
-  </div>
+  <div class="score-box"><div class="score-lbl">Score</div><div class="score-val" id="score">0</div></div>
+  <div class="score-box best"><div class="score-lbl">Best</div><div class="score-val" id="best">0</div></div>
+  <button class="btn btn-gold" id="new-btn">New</button>
 </div>
 
-<div style="display:flex;gap:8px;margin-bottom:10px;">
-  <button class="btn btn-gold" id="new-btn" style="flex:1;">New Game</button>
-</div>
-
-<div class="board-wrap">
+<div class="board-wrap" id="board-wrap">
   <div class="board" id="board"></div>
 </div>
 <div class="status" id="status"></div>
-<div class="hint">Arrow keys or swipe to slide tiles</div>
+<div class="hint">Swipe the board or use arrow keys</div>
 
 </div></div>
 <script>
@@ -80,6 +84,7 @@ function newGame(){
   addRandom();addRandom();
   render();
   document.getElementById('status').textContent='';
+  hideOverlay();
 }
 
 function addRandom(){
@@ -139,7 +144,10 @@ function move(dir){
     }
   }
   if(!moved)return false;
+  const gained=mergedAt.reduce((t,[r,c])=>t+newGrid[r][c],0);
   grid=newGrid;
+  GN.haptic(mergedAt.length?'medium':'light');
+  if(gained)showAdd(gained);
   if(score>best){best=score;localStorage.setItem('2048best',best);}
   const newCell=addRandom();
   render(newCell,mergedAt);
@@ -150,7 +158,11 @@ function move(dir){
 function checkEnd(){
   if(grid.flat().includes(2048)&&!won){
     won=true;
-    document.getElementById('status').innerHTML='<span style="color:var(--gold)">🎉 You reached 2048! Keep going!</span>';
+    document.getElementById('status').textContent='You reached 2048! Keep going!';
+    GN.haptic('success');
+    showOverlay('win','You win!','You reached 2048 · '+score+' pts',[
+      {label:'Keep going',cls:'btn-gold',fn:hideOverlay},
+      {label:'New game',cls:'btn-outline',fn:startNew}]);
     return;
   }
   // Check moves available
@@ -160,7 +172,10 @@ function checkEnd(){
     if(r<3&&grid[r][c]===grid[r+1][c])return;
   }
   over=true;
-  document.getElementById('status').innerHTML='<span style="color:#ef4444">Game over!</span>';
+  document.getElementById('status').textContent='Game over!';
+  GN.haptic('error');
+  showOverlay('lose','Game over',`Score ${score}${score>=best&&score>0?' · New best!':''}`,[
+    {label:'Try again',cls:'btn-gold',fn:startNew}]);
 }
 
 function tileClass(v){
@@ -195,35 +210,54 @@ function render(newCell, mergedAt=[]){
   document.getElementById('best').textContent=best;
 }
 
+function showAdd(n){
+  const box=document.getElementById('score').parentElement;
+  const el=document.createElement('div');el.className='score-add';el.textContent='+'+n;
+  box.appendChild(el);setTimeout(()=>el.remove(),700);
+}
+function hideOverlay(){document.querySelector('#board-wrap .overlay')?.remove();}
+function showOverlay(kind,title,sub,acts){
+  hideOverlay();
+  const ov=document.createElement('div');ov.className='overlay '+kind;
+  ov.innerHTML=`<div class="ov-title">${title}</div><div class="ov-sub">${sub}</div><div class="ov-acts"></div>`;
+  acts.forEach(a=>{const b=document.createElement('button');b.className='btn '+a.cls;b.textContent=a.label;
+    b.addEventListener('click',a.fn);ov.querySelector('.ov-acts').appendChild(b);});
+  document.getElementById('board-wrap').appendChild(ov);
+}
+function startNew(){try{sessionStorage.removeItem('g2048');}catch(e){}newGame();}
+
 // Keyboard
 document.addEventListener('keydown',e=>{
   const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
   if(map[e.key]){e.preventDefault();move(map[e.key]);}
 });
 
-// Touch swipe
-let tx=0,ty=0;
-document.addEventListener('touchstart',e=>{
-  // Only intercept if touch starts on the game board
-  if(e.target.closest('.board-wrap')||e.target.closest('.g-grid')||e.target.closest('#grid')){
-    tx=e.touches[0].clientX;ty=e.touches[0].clientY;
-  }
-},{passive:true});
-document.addEventListener('touchmove',e=>{
-  if(tx!==null)e.preventDefault(); // prevent scroll while swiping game
-},{passive:false});
-document.addEventListener('touchend',e=>{
-  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
-  if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;
+// Swipe (pointer events — works for touch, pen and mouse drags on the board)
+const bw=document.getElementById('board-wrap');
+let sx=null,sy=null,sid=null;
+bw.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.overlay'))return;
+  sx=e.clientX;sy=e.clientY;sid=e.pointerId;
+});
+function endSwipe(e){
+  if(sid===null||e.pointerId!==sid)return;
+  const dx=e.clientX-sx,dy=e.clientY-sy;sid=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
   if(Math.abs(dx)>Math.abs(dy))move(dx>0?'right':'left');
   else move(dy>0?'down':'up');
-},{passive:true});
+}
+bw.addEventListener('pointerup',endSwipe);
+bw.addEventListener('pointercancel',()=>{sid=null;});
+// Stop the page from scrolling/bouncing while swiping on the board (iOS)
+bw.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 
-document.getElementById('new-btn').addEventListener('click',newGame);
-newGame();
+document.getElementById('new-btn').addEventListener('click',()=>{
+  if(!over&&score>0)GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New game'}).then(ok=>{if(ok)startNew();});
+  else startNew();
+});
 
 // ── Session persistence ────────────────────────────────────────────────────
-function _save_g2048(){if(over||won)return;
+function _save_g2048(){if(over){try{sessionStorage.removeItem('g2048');}catch(e){}return;}
   try{sessionStorage.setItem('g2048',JSON.stringify({grid,score,won,over,_ts:Date.now()}));}catch(e){}
 }
 function _load_g2048(){
@@ -231,13 +265,15 @@ function _load_g2048(){
     const raw=sessionStorage.getItem('g2048');if(!raw)return false;
     const s=JSON.parse(raw);if(!s)return false;
     grid=s.grid;score=s.score;won=s.won||false;over=s.over||false;
-    calcBest();render();
+    if(!Array.isArray(grid)||grid.length!==4)return false;
+    render();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_g2048);
-document.getElementById('new-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('g2048');}catch(e){}},true);
-_load_g2048();
+window.addEventListener('pagehide',_save_g2048);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')_save_g2048();});
+if(!_load_g2048())newGame();
 </script>
 </body>
 </html>

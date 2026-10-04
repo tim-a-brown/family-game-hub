@@ -8,55 +8,66 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>FreeCell</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);overflow-x:hidden;}
-.wrap{max-width:480px;margin:0 auto;padding:4px 4px 40px;}
-.fc-stats{display:flex;gap:6px;margin-bottom:6px;justify-content:center;align-items:center;}
-.fc-stat{background:rgba(0,0,0,.3);border-radius:6px;padding:4px 10px;text-align:center;}
-.fc-val{font-family:var(--serif);font-size:.95rem;font-weight:900;color:#fff;}
-.fc-lbl{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
-.fc-top{display:flex;gap:3px;margin-bottom:6px;}
-.fc-slot{border-radius:5px;border:2px dashed rgba(255,255,255,.25);background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:.9rem;flex-shrink:0;}
-.fc-tab{display:flex;gap:3px;}
-.fc-col{flex:1;position:relative;min-height:100px;}
-.card{border-radius:5px;background:#fff;border:1px solid rgba(0,0,0,.2);display:flex;flex-direction:column;justify-content:flex-start;padding:2px 3px;font-weight:900;box-shadow:1px 2px 3px rgba(0,0,0,.3);cursor:pointer;user-select:none;flex-shrink:0;}
-.card.face-down{background:repeating-linear-gradient(135deg,#1a3a8a,#1a3a8a 4px,#2a4a9a 4px,#2a4a9a 8px);}
-.card.red{color:#c00;}.card.black{color:#111;}
-.card.selected{outline:2px solid #f5c842;outline-offset:1px;z-index:10;}
-.card.stacked{position:absolute;left:0;right:0;}
-.card-top{font-size:.6rem;line-height:1.1;}
-.card-suit{font-size:.7rem;}
-.fc-empty{border-radius:5px;border:2px dashed rgba(255,255,255,.2);background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:1rem;position:absolute;top:0;left:0;right:0;}
-.fc-slot.valid-target{border-color:rgba(34,197,94,.7)!important;background:rgba(34,197,94,.12)!important;box-shadow:0 0 0 2px rgba(34,197,94,.3);}
-.fc-slot.valid-target .card{box-shadow:0 0 0 2px rgba(34,197,94,.5),1px 2px 3px rgba(0,0,0,.3);}
-.fc-col.valid-target::after{content:'';position:absolute;inset:0;border-radius:5px;border:2px solid rgba(34,197,94,.6);background:rgba(34,197,94,.06);pointer-events:none;z-index:20;}
-.fc-empty.valid-target{border-color:rgba(34,197,94,.7)!important;background:rgba(34,197,94,.1)!important;color:rgba(34,197,94,.7);}
-/* Partial target: only the bottom card of the selection can land here */
-.fc-slot.valid-target-1{border-color:rgba(90,200,250,.6)!important;background:rgba(90,200,250,.08)!important;box-shadow:0 0 0 2px rgba(90,200,250,.25);}
-.fc-slot.valid-target-1 .card{box-shadow:0 0 0 2px rgba(90,200,250,.45),1px 2px 3px rgba(0,0,0,.3);}
-.fc-col.valid-target-1::after{content:'';position:absolute;inset:0;border-radius:5px;border:2px solid rgba(90,200,250,.55);background:rgba(90,200,250,.05);pointer-events:none;z-index:20;}
-.fc-empty.valid-target-1{border-color:rgba(90,200,250,.6)!important;background:rgba(90,200,250,.08)!important;}
+.fc-page{width:100%;max-width:760px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(24px + var(--safe-b)) max(8px,var(--safe-l));}
+.fc-hud{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.fc-hud .stat{flex:1;max-width:none;padding:6px 8px;}
+.fc-hud .stat-val{font-size:1.25rem;}
+.fc-hud .btn{flex:none;min-height:50px;border-radius:14px;padding:0 14px;}
+.fc-table{position:relative;padding:8px 6px 12px;min-height:calc(100dvh - var(--nav-h) - var(--safe-t) - 96px);}
+.fc-top{display:flex;gap:var(--gap);margin-bottom:12px;}
+.fc-slot{width:var(--cw);height:var(--ch);border-radius:var(--cr);border:1.5px dashed rgba(255,255,255,.22);background:rgba(0,0,0,.14);
+  display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.28);font-size:calc(var(--cw)*.4);font-weight:700;flex-shrink:0;cursor:pointer;position:relative;}
+.fc-slot.fc-free{font-size:.72rem;letter-spacing:.06em;font-family:var(--font);}
+.fc-slot > .card{position:absolute;inset:-1.5px;}
+.fc-tab{display:flex;gap:var(--gap);}
+.fc-col{flex:0 0 var(--cw);position:relative;min-height:var(--ch);cursor:pointer;}
+.fc-sep{flex:0 0 0;}
+/* Playing card */
+.card{width:var(--cw);height:var(--ch);border-radius:var(--cr);background:linear-gradient(180deg,#fff 0%,#f3f1ea 100%);
+  border:1px solid rgba(0,0,0,.22);box-shadow:0 1px 2px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.18);
+  color:#1b1e26;font-family:var(--display);font-weight:800;cursor:pointer;flex-shrink:0;
+  transition:transform .14s var(--ease),box-shadow .14s;}
+.card.red{color:#d0262f;}
+.card .ix{position:absolute;top:calc(var(--cw)*.05);left:calc(var(--cw)*.08);display:flex;align-items:baseline;gap:1px;
+  font-size:max(13px,calc(var(--cw)*.36));line-height:1;letter-spacing:-.05em;}
+.card .ix i{font-style:normal;font-size:.8em;letter-spacing:0;}
+.card .pip{position:absolute;right:calc(var(--cw)*.08);bottom:calc(var(--cw)*.04);font-size:calc(var(--cw)*.56);line-height:1;}
+.card.stacked{position:absolute;left:0;}
+.card.selected{transform:translateY(-2px);box-shadow:0 0 0 2.5px var(--gold),0 8px 16px rgba(0,0,0,.4);z-index:10;}
+/* Valid move targets */
+.fc-slot.valid-target{border-color:rgba(74,222,128,.8);border-style:solid;background:rgba(74,222,128,.12);color:rgba(74,222,128,.8);}
+.fc-slot.valid-target .card{box-shadow:0 0 0 2.5px rgba(74,222,128,.75),0 2px 6px rgba(0,0,0,.25);}
+.fc-col.valid-target::after{content:'';position:absolute;inset:-3px;border-radius:calc(var(--cr) + 3px);border:2px solid rgba(74,222,128,.7);background:rgba(74,222,128,.06);pointer-events:none;z-index:20;}
+.fc-empty{border-radius:var(--cr);border:1.5px dashed rgba(255,255,255,.2);background:rgba(0,0,0,.14);position:absolute;top:0;left:0;right:0;height:var(--ch);}
+/* Partial target: only the bottom card(s) of the selection can land here */
+.fc-slot.valid-target-1{border-color:rgba(96,165,250,.75);border-style:solid;background:rgba(96,165,250,.1);}
+.fc-slot.valid-target-1 .card{box-shadow:0 0 0 2.5px rgba(96,165,250,.7),0 2px 6px rgba(0,0,0,.25);}
+.fc-col.valid-target-1::after{content:'';position:absolute;inset:-3px;border-radius:calc(var(--cr) + 3px);border:2px solid rgba(96,165,250,.65);background:rgba(96,165,250,.05);pointer-events:none;z-index:20;}
+.fc-tip{position:absolute;left:12px;right:12px;bottom:14px;text-align:center;font-size:.82rem;line-height:1.45;color:rgba(255,255,255,.5);pointer-events:none;transition:opacity .3s;}
+.fc-tip.gone{opacity:0;}
+.fc-actions{display:flex;justify-content:center;gap:8px;margin-top:14px;}
 </style>
 </head>
 <body>
-<nav class="site-nav" style="background:rgba(0,40,20,.6);border-bottom:1px solid rgba(255,255,255,.1);">
-  <a class="nav-back" href="../index.html" style="color:rgba(255,255,255,.8);">← Home</a>
-  <span class="nav-title" style="color:#fff;">FreeCell</span>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">FreeCell</span>
+  <button class="icon-btn" id="fc-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding:4px 0 0;"><div class="wrap" id="fc-wrap">
-<div class="fc-stats">
-  <div class="fc-stat"><div class="fc-val" id="fc-moves">0</div><div class="fc-lbl">Moves</div></div>
-  <div class="fc-stat"><div class="fc-val" id="fc-time">0:00</div><div class="fc-lbl">Time</div></div>
-  <button class="btn btn-gold btn-sm" id="fc-new" style="padding:4px 10px;font-size:.72rem;">New</button>
-  <button class="btn btn-outline btn-sm" id="fc-hint" style="padding:4px 10px;font-size:.72rem;">Hint</button>
+<div class="fc-page" id="fc-wrap">
+<div class="fc-hud">
+  <div class="stat"><div class="stat-val" id="fc-moves">0</div><div class="stat-lbl">Moves</div></div>
+  <div class="stat"><div class="stat-val" id="fc-time">0:00</div><div class="stat-lbl">Time</div></div>
+  <button class="btn btn-outline" id="fc-hint">💡 Hint</button>
 </div>
-<div id="fc-game"></div>
-</div></div>
+<div class="felt fc-table" id="fc-table"><div id="fc-game"></div>
+<div class="fc-tip" id="fc-tip">Tap a column to pick up its run, then tap where it goes.<br>Double-tap to send a card home or to a free cell.</div></div>
+</div>
 <script>
 'use strict';
 const SUITS=['♠','♥','♦','♣'];const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -68,13 +79,23 @@ let freecells,foundations,tableau,moves,timer,timerInt,won;
 let sel=null;
 let animating=false;
 const ANIM_MS=190;
-let CW=52,CH=72,STACK_OFF=16;
+let CW=42,CH=58,GAP=4,STACK_OFF=22;
+const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+function fmtTime(t){return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;}
+function startTimer(){
+  clearInterval(timerInt);
+  timerInt=setInterval(()=>{timer++;document.getElementById('fc-time').textContent=fmtTime(timer);},1000);
+  document.getElementById('fc-time').textContent=fmtTime(timer);
+}
 
 function calcSizes(){
-  const w=(document.getElementById('fc-wrap')||document.body).clientWidth-8;
-  CW=Math.floor((w-7*3)/8);CH=Math.round(CW*1.35);STACK_OFF=Math.max(22,Math.round(CW*0.38));
-  document.documentElement.style.setProperty('--cw',CW+'px');
-  document.documentElement.style.setProperty('--ch',CH+'px');
+  const t=document.getElementById('fc-table');
+  const w=(t?t.clientWidth:374)-12;
+  GAP=w>440?8:4;
+  CW=Math.min(84,Math.floor((w-7*GAP)/8));CH=Math.round(CW*1.4);STACK_OFF=Math.max(21,Math.round(CW*0.46));
+  const r=document.documentElement.style;
+  r.setProperty('--cw',CW+'px');r.setProperty('--ch',CH+'px');r.setProperty('--gap',GAP+'px');
+  r.setProperty('--cr',Math.max(5,Math.round(CW*.11))+'px');
 }
 
 function newDeck(){
@@ -88,11 +109,17 @@ function newGame(){
   freecells=[null,null,null,null];foundations=[[],[],[],[]];
   tableau=Array.from({length:8},()=>[]);
   for(let i=0;i<52;i++)tableau[i%8].push({...deck[i],faceUp:true});
-  moves=0;sel=null;won=false;
-  clearInterval(timerInt);timer=0;
-  timerInt=setInterval(()=>{timer++;document.getElementById('fc-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+  moves=0;sel=null;won=false;animating=false;
+  timer=0;startTimer();
   try{sessionStorage.removeItem('fc_state');}catch(e){}
   render();
+}
+async function confirmNew(){
+  if(!won&&moves>0&&window.GN){
+    const ok=await GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New Game'});
+    if(!ok)return;
+  }
+  newGame();
 }
 
 function canTabStack(card,target){
@@ -150,23 +177,23 @@ function tryMove(toFrom,toIdx){
   if(toFrom==='fc'){
     const card=cards[cards.length-1];
     if(isFull)removeCards();else tableau[sel.idx].pop();
-    freecells[toIdx]=card;moves++;return true;
+    freecells[toIdx]=card;moves++;hap('light');return true;
   }
   if(toFrom==='found'){
     const card=cards[cards.length-1];
     if(isFull)removeCards();else tableau[sel.idx].pop();
-    foundations[toIdx].push(card);moves++;checkWin();return true;
+    foundations[toIdx].push(card);moves++;hap('light');checkWin();return true;
   }
   if(toFrom==='tab'){
     const pile=tableau[toIdx];
     if(isFull){
       if(cards.length>1&&sel.from==='tab'){animating=true;animateMove([...cards],sel.idx,toIdx);return true;}
-      removeCards();cards.forEach(c=>pile.push(c));moves++;return true;
+      removeCards();cards.forEach(c=>pile.push(c));moves++;hap('light');return true;
     }else{
       const subCards=cards.slice(cards.length-n);
       if(n>1&&sel.from==='tab'){animating=true;animateMove([...subCards],sel.idx,toIdx);return true;}
       tableau[sel.idx].splice(tableau[sel.idx].length-n);
-      subCards.forEach(c=>pile.push(c));moves++;return true;
+      subCards.forEach(c=>pile.push(c));moves++;hap('light');return true;
     }
   }
   return false;
@@ -361,30 +388,59 @@ function hint(){
     }
   }
   render(); // no hint found
+  if(window.GN)GN.toast('No obvious moves — try a free cell or start over');
 }
 
 function checkWin(){
   if(foundations.every(f=>f.length===13)){won=true;clearInterval(timerInt);
-    GameHistory.save('fc',{_summary:`Solved in ${moves} moves · ${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`,_badge:moves+' moves',moves,time:timer});
+    GameHistory.save('fc',{_summary:`Solved in ${moves} moves · ${fmtTime(timer)}`,_badge:moves+' moves',moves,time:timer});
     try{sessionStorage.removeItem('fc_state');}catch(e){}
-    setTimeout(()=>{
-      const msg=document.createElement('div');
-      msg.style.cssText='text-align:center;margin-top:8px;';
-      msg.innerHTML=`<div style="font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);margin-bottom:8px;">🎉 FreeCell solved!<br><span style="font-size:.85rem;color:rgba(255,255,255,.7)">Moves: ${moves} · Time: ${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}</span></div>`;
-      const hb=GameHistory.btn('fc','FreeCell',e=>GameHistory.renderStatGrid([{val:e.moves,lbl:'Moves'},{val:Math.floor(e.time/60)+':'+String(e.time%60).padStart(2,'0'),lbl:'Time'}]));
-      hb.style.display='block';hb.style.margin='0 auto';
-      msg.appendChild(hb);
-      document.getElementById('fc-game').appendChild(msg);
-    },100);
+    hap('success');
+    setTimeout(showWin,350);
   }
+}
+function histBtn(){
+  const hb=GameHistory.btn('fc','FreeCell',e=>GameHistory.renderStatGrid([{val:e.moves,lbl:'Moves'},{val:fmtTime(e.time),lbl:'Time'}]));
+  hb.style.cssText='';hb.className='btn btn-outline btn-block';hb.textContent='📜 Past games';
+  return hb;
+}
+function showWin(){
+  const body=document.createElement('div');
+  body.innerHTML=`<div style="font-size:2.6rem;margin-bottom:6px">🎉</div>
+    <div class="stat-row" style="margin:6px 0 4px">
+      <div class="stat"><div class="stat-val">${moves}</div><div class="stat-lbl">Moves</div></div>
+      <div class="stat"><div class="stat-val">${fmtTime(timer)}</div><div class="stat-lbl">Time</div></div>
+    </div>`;
+  const sh=GN.sheet({title:'FreeCell solved!',body,actions:[{label:'Play Again',primary:true,onClick:newGame},{label:'Close'}]});
+  const acts=sh.el.querySelector('.gn-actions');acts.insertBefore(histBtn(),acts.lastChild);
 }
 
 function cardEl(card){
   const d=document.createElement('div');
-  d.className='card '+(card.faceUp===false?'face-down':(isRed(card.s)?'red':'black'));
-  if(card.faceUp!==false)d.innerHTML=`<div class="card-top">${card.r}<br>${card.s}</div>`;
-  d.style.width=CW+'px';d.style.height=CH+'px';d.style.fontSize=Math.max(9,CW-10)/14+'rem';
+  d.className='card '+(isRed(card.s)?'red':'black');
+  d.innerHTML=`<div class="ix">${card.r}<i>${card.s}</i></div><div class="pip">${card.s}</div>`;
+  d.setAttribute('aria-label',card.r+card.s);
   return d;
+}
+let lastTap={k:'',t:0};
+function isDoubleTap(key){
+  const now=Date.now();const dbl=lastTap.k===key&&now-lastTap.t<380;
+  lastTap={k:key,t:dbl?0:now};return dbl;
+}
+// Send a free-cell card to its foundation
+function fcHome(i){
+  const c=freecells[i];if(!c)return false;
+  for(let f=0;f<4;f++){if(canFoundation(c,foundations[f])){sel={from:'fc',idx:i,cards:[c]};tryMove('found',f);sel=null;render();return true;}}
+  return false;
+}
+// Send the bottom card of a column to a foundation, else a free cell
+function colHome(col){
+  const pile=tableau[col];if(!pile.length)return false;
+  const topCard=pile[pile.length-1],topIdx=pile.length-1;
+  for(let f=0;f<4;f++){if(canFoundation(topCard,foundations[f])){sel={from:'tab',idx:col,cards:[topCard],startIdx:topIdx};tryMove('found',f);sel=null;render();return true;}}
+  const fc=freecells.findIndex(c=>!c);
+  if(fc!==-1){sel={from:'tab',idx:col,cards:[topCard],startIdx:topIdx};tryMove('fc',fc);sel=null;render();return true;}
+  return false;
 }
 
 function render(){
@@ -397,50 +453,48 @@ function render(){
     if(c){
       const ce=cardEl(c);
       if(sel&&sel.from==='fc'&&sel.idx===i)ce.classList.add('selected');
-      ce.addEventListener('click',()=>{if(animating)return;if(sel){if(tryMove('fc',i)){sel=null;if(!animating)render();}else{selectCard('fc',i);}}else{selectCard('fc',i);}});
-      ce.addEventListener('dblclick',()=>{
+      ce.addEventListener('click',()=>{
         if(animating)return;
-        for(let f=0;f<4;f++){
-          if(canFoundation(c,foundations[f])){
-            sel={from:'fc',idx:i,cards:[c]};
-            tryMove('found',f);sel=null;render();return;
-          }
-        }
+        if(isDoubleTap('fc'+i)){sel=null;if(fcHome(i))return;}
+        if(sel&&sel.from==='fc'&&sel.idx===i){sel=null;render();return;}
+        if(sel){if(tryMove('fc',i)){sel=null;if(!animating)render();}else{selectCard('fc',i);}}else{selectCard('fc',i);}
       });
       slot.appendChild(ce);
     }
-    else{slot.textContent='FC';slot.addEventListener('click',()=>{if(animating)return;if(sel&&tryMove('fc',i)){sel=null;render();}});}
+    else{slot.textContent=CW>=40?'FREE':'';slot.classList.add('fc-free');slot.setAttribute('aria-label','Free cell');slot.addEventListener('click',()=>{if(animating)return;if(sel){if(tryMove('fc',i))sel=null;else{sel=null;hap('error');}render();}});}
     const _fcmt=canMoveType('fc',i);if(_fcmt)slot.classList.add(_fcmt==='full'?'valid-target':'valid-target-1');
     topRow.appendChild(slot);
   });
-  // Spacer
-  const sp=document.createElement('div');sp.style.flex='1';topRow.appendChild(sp);
   foundations.forEach((f,i)=>{
     const slot=document.createElement('div');slot.className='fc-slot';slot.style.cssText=`width:${CW}px;height:${CH}px;`;
     if(f.length){const ce=cardEl(f[f.length-1]);ce.addEventListener('click',()=>{if(animating)return;if(sel&&tryMove('found',i)){sel=null;render();}});slot.appendChild(ce);}
-    else{slot.textContent=['♠','♥','♦','♣'][i];slot.addEventListener('click',()=>{if(animating)return;if(sel&&tryMove('found',i)){sel=null;render();}});}
+    else{slot.textContent=['♠','♥','♦','♣'][i];slot.addEventListener('click',()=>{if(animating)return;if(sel){if(tryMove('found',i))sel=null;else{sel=null;hap('error');}render();}});}
     const _fmt=canMoveType('found',i);if(_fmt)slot.classList.add(_fmt==='full'?'valid-target':'valid-target-1');
     topRow.appendChild(slot);
   });
   game.appendChild(topRow);
   // Tableau
   const tabEl=document.createElement('div');tabEl.className='fc-tab';
+  game.appendChild(tabEl);
+  const avail=Math.max(CH*3,window.innerHeight-(tabEl.getBoundingClientRect().top+window.scrollY)-90);
   tableau.forEach((pile,col)=>{
     const colEl=document.createElement('div');colEl.className='fc-col';
     const _tmt=canMoveType('tab',col);if(_tmt)colEl.classList.add(_tmt==='full'?'valid-target':'valid-target-1');
     // Column background click — try to move if something is selected
     colEl.addEventListener('click',e=>{
       if(animating||e.target!==colEl)return;
-      if(sel){if(tryMove('tab',col)){sel=null;if(!animating)render();}else{sel=null;render();}}
+      if(sel){if(tryMove('tab',col)){sel=null;if(!animating)render();}else{sel=null;hap('error');render();}}
     });
     if(!pile.length){
       const e=document.createElement('div');e.className='fc-empty';e.style.height=CH+'px';
       const _emt=canMoveType('tab',col);if(_emt)e.classList.add(_emt==='full'?'valid-target':'valid-target-1');
-      e.addEventListener('click',()=>{if(animating)return;if(sel){if(tryMove('tab',col)){sel=null;if(!animating)render();}else{sel=null;render();}}});
+      e.addEventListener('click',ev=>{ev.stopPropagation();if(animating)return;if(sel){if(tryMove('tab',col)){sel=null;if(!animating)render();}else{sel=null;hap('error');render();}}});
       colEl.appendChild(e);
     }
+    let off=STACK_OFF;
+    if(pile.length>1&&CH+(pile.length-1)*off>avail)off=Math.max(Math.round(CW*.36),Math.floor((avail-CH)/(pile.length-1)));
     pile.forEach((card,idx)=>{
-      const top=idx===0?0:idx*STACK_OFF;
+      const top=idx*off;
       const ce=cardEl(card);ce.classList.add('stacked');ce.style.top=top+'px';
       colEl.style.minHeight=(top+CH)+'px';
       // Highlight cards that are part of the current selection
@@ -448,6 +502,7 @@ function render(){
       ce.addEventListener('click',e=>{
         e.stopPropagation();
         if(animating)return;
+        if(isDoubleTap('c'+col)){sel=null;if(colHome(col))return;}
         if(sel){
           if(sel.from==='tab'&&sel.idx===col){sel=null;render();return;}
           if(tryMove('tab',col)){sel=null;if(!animating)render();return;}
@@ -455,44 +510,25 @@ function render(){
         }
         selectCard('tab',col);
       });
-      ce.addEventListener('dblclick',e=>{
-        e.stopPropagation();
-        if(animating)return;
-        // Double-click anywhere in a column → dispatch the bottom card only
-        // (the actual top of the pile array = most accessible card)
-        // to foundation first, then free cell. Never to tableau.
-        const pile=tableau[col];
-        if(!pile.length)return;
-        const topCard=pile[pile.length-1];
-        const topIdx=pile.length-1;
-        // Try foundation
-        for(let f=0;f<4;f++){
-          if(canFoundation(topCard,foundations[f])){
-            sel={from:'tab',idx:col,cards:[topCard],startIdx:topIdx};
-            tryMove('found',f);sel=null;render();return;
-          }
-        }
-        // Try free cell
-        const fc=freecells.findIndex(c=>!c);
-        if(fc!==-1){
-          sel={from:'tab',idx:col,cards:[topCard],startIdx:topIdx};
-          tryMove('fc',fc);sel=null;render();
-        }
-      });
       colEl.appendChild(ce);
     });
     tabEl.appendChild(colEl);
   });
-  game.appendChild(tabEl);
-  // Auto button
-  const ab=document.createElement('div');ab.style.cssText='text-align:center;margin-top:8px;';
-  const autoBtn=document.createElement('button');autoBtn.className='btn btn-outline btn-sm';autoBtn.textContent='↑ Auto-Complete';
-  autoBtn.addEventListener('click',autoComplete);ab.appendChild(autoBtn);game.appendChild(ab);
+  // Actions
+  const ab=document.createElement('div');ab.className='fc-actions';
+  if(won){
+    const again=document.createElement('button');again.className='btn btn-gold';again.textContent='Play Again';again.addEventListener('click',newGame);ab.appendChild(again);
+  } else {
+    const autoBtn=document.createElement('button');autoBtn.className='btn btn-outline';autoBtn.textContent='⤒ Send cards home';
+    autoBtn.addEventListener('click',()=>{if(animating)return;sel=null;autoComplete();});ab.appendChild(autoBtn);
+  }
+  game.appendChild(ab);
+  document.getElementById('fc-tip').classList.toggle('gone',moves>0||!!sel);
 }
 
-document.getElementById('fc-new').addEventListener('click',newGame);
-document.getElementById('fc-hint').addEventListener('click',hint);
-window.addEventListener('resize',()=>{calcSizes();render();});
+document.getElementById('fc-new').addEventListener('click',confirmNew);
+document.getElementById('fc-hint').addEventListener('click',()=>{if(!animating&&!won)hint();});
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{calcSizes();if(!animating)render();},80);});
 // Persist game state across navigation
 function saveState(){
   if(won||!tableau)return;
@@ -506,12 +542,13 @@ function loadState(){
     if(!s.tableau||!s.foundations)return false;
     calcSizes();
     freecells=s.freecells;foundations=s.foundations;tableau=s.tableau;moves=s.moves;sel=null;won=false;
-    timer=s.timer||0;
-    timerInt=setInterval(()=>{timer++;document.getElementById('fc-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+    timer=s.timer||0;startTimer();
     render();return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',saveState);
+window.addEventListener('pagehide',saveState);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveState();});
 if(!loadState())newGame();
 </script>
 </body>

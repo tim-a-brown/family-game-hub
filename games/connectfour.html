@@ -1,94 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Connect Four</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a1a3a 0%,#0d1117 60%);}
-.cf-wrap{max-width:min(400px,calc(100vw - 16px));margin:0 auto;}
-.cf-board{background:rgba(30,40,100,0.5);border:2px solid rgba(90,100,200,0.3);border-radius:14px;padding:10px;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;overflow:visible;}
-.cf-cell{aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,.08);transition:box-shadow .2s;}
-.cf-cell.R{background:radial-gradient(circle at 35% 35%,#ff9090,#cc2020);border-color:#ff4040;box-shadow:0 0 10px rgba(255,60,60,.4);}
-.cf-cell.Y{background:radial-gradient(circle at 35% 35%,#ffe080,#e0a000);border-color:#f5c842;box-shadow:0 0 10px rgba(245,200,66,.4);}
-.cf-cell.win{box-shadow:0 0 22px currentColor!important;transform:scale(1.08);}
+:root{--R:#ff5a4f;--Y:#f5c842;--bs:clamp(260px,min(100vw - 32px,(100vh - 360px) * 7 / 6),500px);}
+@supports (height:100dvh){:root{--bs:clamp(260px,min(100vw - 32px,(100dvh - 360px) * 7 / 6),500px);}}
+.site-nav button.icon-btn{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;display:inline-grid;place-items:center;}
+.icon-btn svg{width:18px;height:18px;}
+.gk{width:var(--bs);max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.gk .tabs{margin:0;}
+.score-row{display:grid;grid-template-columns:1fr .8fr 1fr;gap:8px;}
+.score-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:62px;padding:6px;border-radius:16px;background:var(--surface);border:1px solid var(--line);transition:border-color .25s var(--ease),background .25s,box-shadow .25s;}
+.score-chip.on{border-color:color-mix(in srgb,var(--c) 60%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,transparent),transparent),var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 12%,transparent);}
+.sc-lbl{display:flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--text-2);}
+.sc-lbl .dot{width:12px;height:12px;border-radius:50%;background:var(--c);}
+.sc-val{font-family:var(--display);font-size:1.55rem;font-weight:800;line-height:1;color:var(--c);font-variant-numeric:tabular-nums;}
+.status-bar{text-align:center;font-size:.95rem;font-weight:600;color:var(--text-2);min-height:24px;}
+.status-bar b{color:var(--text);}
+
+/* Drop row */
+.cf-drops{display:grid;grid-template-columns:repeat(7,1fr);padding:0 calc(var(--bs) * .025);gap:calc(var(--bs) * .012);}
+.drop-btn{height:40px;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;border-radius:12px;padding:0;}
+.drop-btn .ghost{width:62%;aspect-ratio:1;border-radius:50%;background:var(--pc);opacity:.22;transition:opacity .15s,transform .15s var(--spring);}
+.drop-btn:active .ghost,.drop-btn.hot .ghost{opacity:.9;transform:translateY(3px);}
+@media (hover:hover){.drop-btn:hover .ghost{opacity:.9;}}
+.drop-btn:disabled{cursor:default;}
+.drop-btn:disabled .ghost{opacity:0;}
+
+/* Board */
+.cf-wrap{position:relative;}
+.cf-board{position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:calc(var(--bs) * .012);padding:calc(var(--bs) * .025);border-radius:18px;
+  background:linear-gradient(180deg,#2f5bd8,#2147b5);box-shadow:0 18px 40px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.18),inset 0 -4px 0 rgba(0,0,0,.2);cursor:pointer;touch-action:manipulation;}
+.cf-cell{aspect-ratio:1;border-radius:50%;background:#0f1424;box-shadow:inset 0 3px 6px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.12);position:relative;}
+.cf-cell .disc{position:absolute;inset:4%;border-radius:50%;}
+.cf-cell.R .disc{background:radial-gradient(circle at 36% 32%,#ff9a90,var(--R) 50%,#b32118);box-shadow:inset 0 -3px 0 rgba(0,0,0,.2),inset 0 0 0 4px rgba(0,0,0,.08);}
+.cf-cell.Y .disc{background:radial-gradient(circle at 36% 32%,#fff0b0,var(--Y) 50%,#c98a00);box-shadow:inset 0 -3px 0 rgba(0,0,0,.18),inset 0 0 0 4px rgba(0,0,0,.06);}
+.cf-cell.last .disc::after{content:'';position:absolute;inset:34%;border-radius:50%;border:2px solid rgba(255,255,255,.45);}
+.cf-cell.win .disc{animation:cf-win .9s ease-in-out infinite alternate;box-shadow:0 0 0 3px #fff,0 0 18px 4px rgba(255,255,255,.55);}
+.cf-board.done .cf-cell:not(.win) .disc{opacity:.55;}
+@keyframes cf-win{to{transform:scale(.9);}}
 @keyframes cf-drop{
-  0%{transform:translateY(var(--dy,-200px));opacity:.85;}
-  65%{transform:translateY(5px);}
-  80%{transform:translateY(-3px);}
-  100%{transform:translateY(0);opacity:1;}
+  0%{transform:translateY(var(--dy,-200px));}
+  70%{transform:translateY(0);}
+  82%{transform:translateY(-8%);}
+  100%{transform:translateY(0);}
 }
-.cf-dropping{animation:cf-drop var(--dd,.38s) cubic-bezier(.2,0,.38,1);position:relative;z-index:3;}
-.cf-drops{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;max-width:400px;margin:0 auto 8px;padding:0 10px;}
-.drop-btn{aspect-ratio:1.2;background:transparent;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;border-radius:8px;transition:all .15s;display:flex;align-items:center;justify-content:center;min-height:36px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
-.drop-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
-.status-bar{text-align:center;font-size:1rem;font-weight:700;margin:12px 0;min-height:28px;}
-.score-row{display:flex;justify-content:center;gap:10px;margin-bottom:14px;}
-.score-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 18px;text-align:center;}
-.mode-row{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+.cf-dropping .disc{animation:cf-drop var(--dd,.38s) cubic-bezier(.45,0,.75,1);z-index:3;}
+.cf-col-hl{position:absolute;top:0;bottom:0;border-radius:14px;background:rgba(255,255,255,.07);pointer-events:none;transition:left .12s var(--ease);}
+.btn-row{display:flex;justify-content:center;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Connect Four</span>
+  <button class="icon-btn" id="newgame" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
 <div class="page">
-<div class="mode-row">
-  <button class="btn btn-gold btn-sm" id="vsAI">vs Computer</button>
-  <button class="btn btn-outline btn-sm" id="vs2p">2 Players</button>
+<div class="gk">
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="vsAI">vs Computer</button>
+    <button class="tab" id="vs2p">2 Players</button>
+  </div>
+  <div class="score-row">
+    <div class="score-chip" id="chip-R" style="--c:var(--R)"><div class="sc-lbl"><span class="dot"></span><span id="p1lbl">You</span></div><div class="sc-val" id="rscore">0</div></div>
+    <div class="score-chip" style="--c:var(--text-2)"><div class="sc-lbl">Draws</div><div class="sc-val" id="dscore">0</div></div>
+    <div class="score-chip" id="chip-Y" style="--c:var(--Y)"><div class="sc-lbl"><span class="dot"></span><span id="p2lbl">Computer</span></div><div class="sc-val" id="yscore">0</div></div>
+  </div>
+  <div class="status-bar" id="status">Your turn</div>
+  <div>
+    <div class="cf-drops" id="drops"></div>
+    <div class="cf-wrap"><div class="cf-board" id="board"></div></div>
+  </div>
 </div>
-<div class="score-row">
-  <div class="score-chip"><div style="font-size:.72rem;color:#ff6b6b;font-weight:700">🔴 <span id="p1lbl">You</span></div><div style="font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#ff6b6b" id="rscore">0</div></div>
-  <div class="score-chip"><div style="font-size:.72rem;color:var(--muted);font-weight:700">Draws</div><div style="font-family:var(--serif);font-size:1.6rem;font-weight:900;color:var(--muted)" id="dscore">0</div></div>
-  <div class="score-chip"><div style="font-size:.72rem;color:var(--gold);font-weight:700">🟡 <span id="p2lbl">CPU</span></div><div style="font-family:var(--serif);font-size:1.6rem;font-weight:900;color:var(--gold)" id="yscore">0</div></div>
-</div>
-<div class="status-bar" id="status">Your turn 🔴</div>
-<div class="cf-drops" id="drops"></div>
-<div class="cf-wrap"><div class="cf-board" id="board"></div></div>
-<div style="text-align:center;margin-top:14px;"><button class="btn btn-outline" id="newgame">New Game</button></div>
 </div>
 <script>
 'use strict';
+window.GN=window.GN||{haptic(){},toast(){},sheet(){return{close(){},el:document.createElement('div')};},confirm:()=>Promise.resolve(true)};
 const ROWS=6,COLS=7;
 let grid,cur,over,ai=true,scores={R:0,Y:0,D:0};
 let lastDrop=null; // {r,c} for animation
+let lastCell=null, aiTimer=null, busy=false;
 
 function emptyGrid(){return Array.from({length:ROWS},()=>Array(COLS).fill(''));}
+function pname(p){return ai?(p==='R'?'You':'Computer'):(p==='R'?'Red':'Yellow');}
+function setStatus(h){document.getElementById('status').innerHTML=h;}
+function turnStatus(){
+  if(over)return;
+  if(ai)setStatus(cur==='R'?'<b>Your turn</b> · tap a column':'Computer is thinking…');
+  else setStatus(`<b style="color:var(--${cur})">${pname(cur)}</b>'s turn`);
+}
 
-function init(){grid=emptyGrid();cur='R';over=false;render();
-  document.getElementById('status').textContent=ai?'Your turn 🔴':`🔴's turn`;}
+function init(){clearTimeout(aiTimer);grid=emptyGrid();cur='R';over=false;lastCell=null;busy=false;render();turnStatus();}
+
+function colFull(col){return !!grid[0][col];}
+function canHumanDrop(){return !over&&!busy&&!(ai&&cur==='Y');}
 
 function drop(col){
   if(over)return;
   let landRow=-1;
   for(let r=ROWS-1;r>=0;r--){
     if(!grid[r][col]){sDrop();grid[r][col]=cur;landRow=r;break;}
-    else if(r===0)return;
+    else if(r===0){GN.haptic('error');return;}
   }
-  lastDrop={r:landRow,c:col};
+  lastDrop={r:landRow,c:col};lastCell={r:landRow,c:col};
+  GN.haptic('light');
   const w=checkWin();
   if(w){over=true;scores[cur]++;updateScores();
-    sWin(); document.getElementById('status').textContent=`${cur==='R'?'🔴':'🟡'} wins! 🎉`;
-    render(w);return;}
-  if(grid[0].every((_,c)=>grid.some(row=>row[c]))){
+    const lost=ai&&cur==='Y';
+    lost?sLose():sWin();
+    setTimeout(()=>GN.haptic(lost?'error':'success'),300);
+    setStatus(`<b style="color:var(--${cur})">${ai?(lost?'Computer wins':'You win! 🎉'):pname(cur)+' wins! 🎉'}</b>`);
+    render(w);
+    endSheet(ai?(lost?'Computer wins':'You win! 🏆'):`${pname(cur)} wins! 🏆`,'Four in a row.');
+    return;}
+  if(grid[0].every(v=>v)){
     over=true;scores.D++;updateScores();
-    sDraw(); document.getElementById('status').textContent='Draw!';render();return;}
+    sDraw();GN.haptic('medium');setStatus('<b>Board full — it\'s a draw</b>');render();
+    endSheet("It's a draw",'The board is full with no four in a row.');
+    return;}
   cur=cur==='R'?'Y':'R';
   render();
+  turnStatus();
   if(ai&&cur==='Y'&&!over){
-    document.getElementById('status').textContent='Computer thinking…';
-    setTimeout(aiMove,500);
-  } else {
-    document.getElementById('status').textContent=`${cur==='R'?'🔴':'🟡'}'s turn`;
+    busy=true;
+    aiTimer=setTimeout(()=>{busy=false;aiMove();},550);
   }
+}
+
+function endSheet(title,body){
+  setTimeout(()=>GN.sheet({title,body:`${body}<br><span style="color:var(--text-3);font-size:.85rem">Score · ${pname('R')} ${scores.R} – ${scores.Y} ${pname('Y')}${scores.D?` · ${scores.D} draw${scores.D>1?'s':''}`:''}</span>`,
+    actions:[{label:'Play again',primary:true,onClick:()=>{try{sessionStorage.removeItem('c4');}catch(e){}init();}},{label:'View board'}]}),900);
 }
 
 function checkWin(g=grid){
@@ -130,23 +180,28 @@ function score(g,p){
 }
 
 function aiMove(){
-  let best=-Infinity,bestCol=Math.floor(COLS/2);
+  if(over||!ai||cur!=='Y')return;
+  let best=-Infinity,bestCol=-1;
   for(let c=0;c<COLS;c++){
+    if(colFull(c))continue; // never pick a full column
     const g=grid.map(r=>[...r]);
-    for(let r=ROWS-1;r>=0;r--){if(!g[r][c]){g[r][c]='Y';break;} else if(r===0)continue;}
+    for(let r=ROWS-1;r>=0;r--){if(!g[r][c]){g[r][c]='Y';break;}}
     if(checkWin(g)){bestCol=c;break;}
     const s=score(g,'Y')-score(g,'R');
     if(s>best){best=s;bestCol=c;}
   }
+  if(bestCol<0)return;
   drop(bestCol);
 }
 
 function render(winCells=null){
   const b=document.getElementById('board');b.innerHTML='';
+  b.classList.toggle('done',!!winCells);
   const wset=winCells?new Set(winCells.map(([r,c])=>r*COLS+c)):new Set();
   grid.forEach((row,r)=>row.forEach((v,c)=>{
     const cell=document.createElement('div');
-    cell.className='cf-cell'+(v?' '+v:'')+(wset.has(r*COLS+c)?' win':'');
+    cell.className='cf-cell'+(v?' '+v:'')+(wset.has(r*COLS+c)?' win':'')+(lastCell&&lastCell.r===r&&lastCell.c===c&&!winCells?' last':'');
+    if(v)cell.innerHTML='<div class="disc"></div>';
     b.appendChild(cell);
   }));
   // Animate last-dropped piece
@@ -156,8 +211,9 @@ function render(winCells=null){
     const cell=cells[r*COLS+c];
     if(cell&&grid[r][c]){
       const cellH=cell.offsetHeight||48;
-      const dy=-((r+1)*(cellH+6)+16);
-      const dur=Math.max(0.18,0.1+r*0.055);
+      const gap=parseFloat(getComputedStyle(b).rowGap)||6;
+      const dy=-((r+1)*(cellH+gap)+12);
+      const dur=Math.max(0.22,0.16+r*0.06);
       cell.style.setProperty('--dy',dy+'px');
       cell.style.setProperty('--dd',dur+'s');
       cell.classList.add('cf-dropping');
@@ -167,33 +223,53 @@ function render(winCells=null){
   const drops=document.getElementById('drops');drops.innerHTML='';
   for(let c=0;c<COLS;c++){
     const btn=document.createElement('button');
-    btn.className='drop-btn';btn.textContent='▼';btn.dataset.col=c;
-    if(!over)btn.addEventListener('click',()=>drop(+btn.dataset.col));
+    btn.className='drop-btn';btn.dataset.col=c;btn.setAttribute('aria-label','Drop in column '+(c+1));
+    btn.style.setProperty('--pc',`var(--${cur})`);
+    btn.innerHTML='<span class="ghost"></span>';
+    btn.disabled=over||colFull(c)||(ai&&cur==='Y');
+    btn.addEventListener('click',()=>{if(canHumanDrop())drop(+btn.dataset.col);});
     drops.appendChild(btn);
   }
+  document.getElementById('chip-R').classList.toggle('on',!over&&cur==='R');
+  document.getElementById('chip-Y').classList.toggle('on',!over&&cur==='Y');
 }
+
+// Tap anywhere in a column on the board to drop there
+document.getElementById('board').addEventListener('click',e=>{
+  if(!canHumanDrop())return;
+  const rc=e.currentTarget.getBoundingClientRect();
+  const c=Math.floor((e.clientX-rc.left)/rc.width*COLS);
+  if(c<0||c>=COLS)return;
+  if(colFull(c)){GN.haptic('error');return;}
+  drop(c);
+});
 
 function updateScores(){
   document.getElementById('rscore').textContent=scores.R;
   document.getElementById('yscore').textContent=scores.Y;
   document.getElementById('dscore').textContent=scores.D;
 }
-
-document.getElementById('newgame').addEventListener('click',init);
-document.getElementById('vsAI').addEventListener('click',function(){
-  ai=true;scores={R:0,Y:0,D:0};updateScores();
-  this.classList.add('btn-gold');this.classList.remove('btn-outline');
-  document.getElementById('vs2p').classList.add('btn-outline');document.getElementById('vs2p').classList.remove('btn-gold');
-  document.getElementById('p1lbl').textContent='You';document.getElementById('p2lbl').textContent='CPU';
+function syncMode(){
+  document.getElementById('vsAI').classList.toggle('active',ai);
+  document.getElementById('vs2p').classList.toggle('active',!ai);
+  document.getElementById('p1lbl').textContent=ai?'You':'Red';
+  document.getElementById('p2lbl').textContent=ai?'Computer':'Yellow';
+}
+function inProgress(){return !over&&grid.some(r=>r.some(v=>v));}
+async function setMode(a){
+  if(a===ai)return;
+  if(inProgress()&&!(await GN.confirm('Switching modes resets the game and score.',{title:'Switch mode?',ok:'Switch'})))return;
+  ai=a;scores={R:0,Y:0,D:0};updateScores();syncMode();
+  try{sessionStorage.removeItem('c4');}catch(e){}
+  init();
+}
+document.getElementById('newgame').addEventListener('click',async()=>{
+  if(inProgress()&&!(await GN.confirm('The current board will be cleared.',{title:'Start a new game?',ok:'New game'})))return;
+  try{sessionStorage.removeItem('c4');}catch(e){}
   init();
 });
-document.getElementById('vs2p').addEventListener('click',function(){
-  ai=false;scores={R:0,Y:0,D:0};updateScores();
-  this.classList.add('btn-gold');this.classList.remove('btn-outline');
-  document.getElementById('vsAI').classList.add('btn-outline');document.getElementById('vsAI').classList.remove('btn-gold');
-  document.getElementById('p1lbl').textContent='P1';document.getElementById('p2lbl').textContent='P2';
-  init();
-});
+document.getElementById('vsAI').addEventListener('click',()=>setMode(true));
+document.getElementById('vs2p').addEventListener('click',()=>setMode(false));
 
 init();
 
@@ -201,14 +277,17 @@ init();
 let _ac=null,_muted=false;
 function sac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
 function sTone(freq,start,dur,vol,type,ramp){
+  try{
   const ctx=sac(),t=ctx.currentTime+start,o=ctx.createOscillator(),g=ctx.createGain();
   o.type=type||'sine';o.frequency.setValueAtTime(freq,t);
   if(ramp)o.frequency.exponentialRampToValueAtTime(ramp,t+dur);
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.18,t+0.012);
   g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
 }
 function sNoise(start,dur,fc,q,vol,decay){
+  try{
   const ctx=sac(),t=ctx.currentTime+start;
   const buf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(d.length*(decay||0.5)));
@@ -216,6 +295,7 @@ function sNoise(start,dur,fc,q,vol,decay){
   const filt=ctx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=fc||1000;filt.Q.value=q||2;
   const g=ctx.createGain();g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   src.connect(filt);filt.connect(g);g.connect(ctx.destination);src.start(t);src.stop(t+dur+0.05);
+  }catch(e){}
 }
 function sWin(){if(_muted)return;[523,659,784,1047].forEach((f,i)=>sTone(f,i*.08,.5,.2));}
 function sLose(){if(_muted)return;[400,320,240].forEach((f,i)=>sTone(f,i*.1,.35,.18,'triangle'));}
@@ -232,14 +312,15 @@ function _save_c4(){if(over)return;
 function _load_c4(){
   try{
     const raw=sessionStorage.getItem('c4');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
-    grid=s.grid;cur=s.cur;over=s.over||false;ai=s.ai;scores=s.scores||{R:0,Y:0,D:0};lastDrop=s.lastDrop||null;
-    render();
+    const s=JSON.parse(raw);if(!s||!Array.isArray(s.grid))return false;
+    grid=s.grid;cur=s.cur;over=s.over||false;ai=s.ai!==false;scores=s.scores||{R:0,Y:0,D:0};lastDrop=null;
+    syncMode();updateScores();render();turnStatus();
+    if(!over&&ai&&cur==='Y'){busy=true;aiTimer=setTimeout(()=>{busy=false;aiMove();},600);}
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_c4);
-document.getElementById('newgame')?.addEventListener('click',()=>{try{sessionStorage.removeItem('c4');}catch(e){}},true);
+window.addEventListener('pagehide',_save_c4);
 _load_c4();
 </script>
 </body>

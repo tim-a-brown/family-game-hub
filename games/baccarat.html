@@ -2,167 +2,209 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Baccarat</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../casino.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a2a1a 0%,#061410 60%);}
-.bac-wrap{max-width:480px;margin:0 auto;padding:0 12px 60px;}
-/* Table felt */
-.bac-table{background:linear-gradient(145deg,#0d3d28,#082918);border:3px solid #1a5e3a;
-  border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:inset 0 2px 20px rgba(0,0,0,.4);}
-/* Cards */
-.bac-cards{display:flex;justify-content:space-around;gap:10px;margin-bottom:8px;}
-.bac-hand{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.bac-hand-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);}
-.bac-hand-cards{display:flex;gap:5px;min-height:72px;align-items:center;justify-content:center;}
-.bac-hand-score{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#f5c842;}
-.bac-hand.winner .bac-hand-lbl{color:#22c55e;}
-.bac-hand.winner .bac-hand-score{color:#22c55e;}
-/* Cards */
-.bc{width:42px;height:58px;border-radius:7px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
-  border:1.5px solid rgba(0,0,0,.15);display:flex;flex-direction:column;align-items:center;
-  justify-content:center;box-shadow:1px 2px 5px rgba(0,0,0,.4);font-family:'Playfair Display',serif;font-weight:900;}
-.bc.red{color:#c53030;}.bc.black{color:#1a1a1a;}
-.bc.face-down{background:linear-gradient(145deg,#1a3a5e,#0d2040);}
-.bc-r{font-size:.85rem;line-height:1.1;}.bc-s{font-size:.72rem;line-height:1;}
-/* Bet panel */
-.bac-bet-panel{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
-.bac-bet-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-.bac-bet-opt{flex:1;min-width:90px;max-width:130px;padding:12px 8px;border-radius:12px;text-align:center;
-  cursor:pointer;border:2px solid transparent;transition:all .15s;background:rgba(255,255,255,.06);}
-.bac-bet-opt:hover{background:rgba(255,255,255,.12);}
-.bac-bet-opt.active{border-color:#f5c842;background:rgba(245,200,66,.12);}
-.bac-bet-opt.player{border-color:rgba(90,200,250,.3);}
-.bac-bet-opt.player.active{border-color:#5ac8fa;background:rgba(90,200,250,.15);}
-.bac-bet-opt.tie{border-color:rgba(34,197,94,.3);}
-.bac-bet-opt.tie.active{border-color:#22c55e;background:rgba(34,197,94,.15);}
-.bac-bet-name{font-size:.8rem;font-weight:700;margin-bottom:2px;}
-.bac-bet-odds{font-size:.65rem;color:rgba(255,255,255,.4);}
-/* Chips */
-.chip-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
-.chip{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:.72rem;font-weight:800;cursor:pointer;border:3px solid rgba(255,255,255,.25);
-  transition:all .12s;user-select:none;}
-.chip:hover{transform:scale(1.1);}
-.chip:active{transform:scale(.95);}
-/* Bankroll bar */
-.bac-bank{display:flex;align-items:center;justify-content:space-between;
-  background:rgba(255,255,255,.05);border-radius:10px;padding:8px 14px;margin-bottom:10px;}
-.bac-bank-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#f5c842;}
-.bac-bet-amt{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:#fff;}
-/* Result */
-.bac-result{text-align:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;
-  min-height:32px;margin-bottom:8px;}
-.bac-result.win{color:#22c55e;}.bac-result.loss{color:#ef4444;}.bac-result.tie{color:#f5c842;}
-/* Rules */
-.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;margin-bottom:10px;}
-.rules-summary{padding:9px 14px;font-size:.82rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.55);list-style:none;display:flex;justify-content:space-between;user-select:none;}
-.rules-summary::-webkit-details-marker{display:none;}
-.rules-body{padding:4px 14px 12px;font-size:.78rem;line-height:1.75;color:rgba(255,255,255,.5);}
-.rules-body p{margin:0 0 5px;}.rules-body strong{color:rgba(255,255,255,.85);}
+/* CZ-KIT-START — shared casino look (keep identical across casino games) */
+:root{--felt-a:#16603f;--felt-b:#0e3f2a;--felt-c:#08261a;--bar-h:84px;}
+body{background:radial-gradient(1000px 540px at 50% -14%,rgba(22,96,63,.5),transparent 62%),var(--bg);background-attachment:fixed;}
+.cz{width:100%;max-width:560px;margin:0 auto;padding:12px max(14px,var(--safe-r)) calc(var(--bar-h) + 20px) max(14px,var(--safe-l));}
+.cz-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+.cz-stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:7px 8px 8px;text-align:center;min-width:0;}
+.cz-stat-lbl{display:block;font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);line-height:1.4;}
+.cz-stat-val{display:block;font-family:var(--display);font-size:1.25rem;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cz-stat-val.gold{color:var(--gold);}
+.cz-pos{color:var(--green)!important;} .cz-neg{color:var(--red)!important;}
+.cz-felt{position:relative;background:radial-gradient(120% 90% at 50% 0%,var(--felt-a) 0%,var(--felt-b) 52%,var(--felt-c) 100%);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 2px 30px rgba(0,0,0,.35),0 12px 30px rgba(0,0,0,.3);border-radius:var(--r-lg);padding:14px;margin-bottom:12px;color:#fff;}
+.cz-felt::before{content:'';position:absolute;inset:6px;border-radius:calc(var(--r-lg) - 5px);border:1px solid rgba(245,200,66,.13);pointer-events:none;}
+.cz-lbl{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.cz-sec{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);text-align:center;margin:0 0 8px;}
+/* chips */
+.cz-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.cz-chip{--c:#dc2626;position:relative;width:48px;height:48px;flex:none;border-radius:50%;border:0;padding:0;cursor:pointer;color:#fff;font:800 .82rem/1 var(--font);letter-spacing:-.02em;text-shadow:0 1px 2px rgba(0,0,0,.6);display:grid;place-items:center;
+  background:radial-gradient(circle,var(--c) 0 56%,transparent 57%),repeating-conic-gradient(var(--c) 0 30deg,#f8fafc 30deg 45deg);
+  box-shadow:0 3px 0 rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.35),inset 0 0 0 2px rgba(0,0,0,.2);
+  transition:transform .2s var(--spring),box-shadow .2s,opacity .15s;}
+.cz-chip::after{content:'';position:absolute;inset:7px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.55);pointer-events:none;}
+.cz-chip:active{transform:scale(.9);}
+.cz-chip.sel{transform:translateY(-5px);box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--gold),0 10px 18px rgba(0,0,0,.45);}
+.cz-chip:disabled{opacity:.28;cursor:not-allowed;}
+.cz-chip[data-v="1"],.cz-mini[data-v="1"]{--c:#64748b}.cz-chip[data-v="5"],.cz-mini[data-v="5"]{--c:#dc2626}.cz-chip[data-v="10"],.cz-mini[data-v="10"]{--c:#2563eb}.cz-chip[data-v="25"],.cz-mini[data-v="25"]{--c:#16a34a}.cz-chip[data-v="50"],.cz-mini[data-v="50"]{--c:#ea580c}.cz-chip[data-v="100"],.cz-mini[data-v="100"]{--c:#1f2937}.cz-chip[data-v="250"],.cz-mini[data-v="250"]{--c:#7c3aed}.cz-chip[data-v="500"],.cz-mini[data-v="500"]{--c:#7c3aed}
+.cz-mini{--c:#dc2626;position:relative;display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 4px;border-radius:999px;color:#fff;font:800 .74rem/1 var(--font);text-shadow:0 1px 2px rgba(0,0,0,.6);
+  background:radial-gradient(circle,var(--c) 0 58%,transparent 59%),repeating-conic-gradient(var(--c) 0 30deg,#f8fafc 30deg 45deg);box-shadow:0 2px 0 rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.35);animation:cz-drop .35s var(--spring) both;}
+/* bet spots on the felt */
+.cz-spot{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid rgba(255,255,255,.22);border-radius:14px;background:rgba(0,0,0,.16);padding:10px 6px;text-align:center;cursor:pointer;min-height:64px;color:#fff;font:inherit;transition:background .15s,border-color .15s,transform .12s,box-shadow .15s;}
+.cz-spot:active{transform:scale(.97);}
+.cz-spot.on{border-color:var(--gold);background:rgba(245,200,66,.12);box-shadow:0 0 0 3px rgba(245,200,66,.14);}
+.cz-spot.dim{opacity:.5;}
+.cz-spot-n{font-family:var(--display);font-weight:800;font-size:1rem;line-height:1.15;}
+.cz-spot-o{font-size:.72rem;color:rgba(255,255,255,.62);line-height:1.3;}
+/* playing cards */
+.pc{--w:clamp(44px,12.4vw,60px);position:relative;flex:none;width:var(--w);height:calc(var(--w)*1.4);border-radius:calc(var(--w)*.12);background:linear-gradient(160deg,#fff 0%,#f3f1ea 100%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 4px 10px rgba(0,0,0,.4);color:#16181d;font-family:var(--display);animation:pc-in .38s var(--ease) both;user-select:none;}
+.pc.red{color:#d02828;}
+.pc .r{position:absolute;top:5%;left:9%;font-size:calc(var(--w)*.31);font-weight:800;line-height:1;letter-spacing:-.05em;}
+.pc .s{position:absolute;top:calc(8% + var(--w)*.3);left:10%;font-size:calc(var(--w)*.24);line-height:1;}
+.pc .c{position:absolute;right:8%;bottom:5%;font-size:calc(var(--w)*.52);line-height:1;}
+.pc.back{background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.14),transparent 60%),repeating-linear-gradient(45deg,#8f1d1d 0 5px,#a32222 5px 10px);box-shadow:inset 0 0 0 3px #f6f3ea,inset 0 0 0 4px rgba(0,0,0,.15),0 4px 10px rgba(0,0,0,.4);}
+.pc.slot{background:none;box-shadow:none;border:1.5px dashed rgba(255,255,255,.18);animation:none;}
+.pc.sm{--w:clamp(34px,9.6vw,44px);}
+.pc.lg{--w:clamp(52px,15vw,72px);}
+@keyframes pc-in{from{opacity:0;transform:translateY(-16px) rotate(-5deg) scale(.92);}to{opacity:1;transform:none;}}
+@keyframes cz-drop{from{opacity:0;transform:translateY(-10px) scale(.6);}to{opacity:1;transform:none;}}
+@keyframes cz-pop{0%{opacity:0;transform:translateY(10px) scale(.94);}100%{opacity:1;transform:none;}}
+/* bottom action bar */
+.cz-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:10px max(14px,var(--safe-r)) calc(10px + var(--safe-b)) max(14px,var(--safe-l));background:rgba(11,13,18,.84);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line);}
+.cz-bar-in{max-width:560px;margin:0 auto;display:flex;gap:8px;}
+.cz-bar .btn{flex:1 1 0;min-height:54px;padding:0 12px;font-size:1rem;border-radius:16px;}
+.cz-bar .btn-gold{flex:1.7 1 0;font-size:1.08rem;}
+.cz-result{display:none;align-items:center;justify-content:space-between;gap:12px;max-width:560px;margin:0 auto 10px;padding:10px 14px;border-radius:16px;border:1px solid var(--line-2);background:var(--surface-2);text-align:left;}
+.cz-result.show{display:flex;animation:cz-pop .45s var(--spring) both;}
+.cz-result.win{background:linear-gradient(135deg,rgba(74,222,128,.22),rgba(74,222,128,.06)),var(--surface);border-color:rgba(74,222,128,.45);}
+.cz-result.lose{background:linear-gradient(135deg,rgba(248,113,113,.2),rgba(248,113,113,.05)),var(--surface);border-color:rgba(248,113,113,.42);}
+.cz-result.push{background:linear-gradient(135deg,rgba(245,200,66,.18),rgba(245,200,66,.05)),var(--surface);border-color:rgba(245,200,66,.42);}
+.cz-result.big{box-shadow:0 0 0 1px rgba(245,200,66,.5),0 0 30px rgba(245,200,66,.25);}
+.cz-result-t{font-family:var(--display);font-weight:800;font-size:1.05rem;line-height:1.2;}
+.cz-result-s{font-size:.8rem;color:var(--text-2);line-height:1.35;margin-top:1px;}
+.cz-result-amt{font-family:var(--display);font-weight:800;font-size:1.55rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cz-result.win .cz-result-amt{color:var(--green);} .cz-result.lose .cz-result-amt{color:var(--red);} .cz-result.push .cz-result-amt{color:var(--gold);}
+.cz-navbtn{width:36px;padding:0!important;display:inline-grid!important;place-items:center;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text-2);cursor:pointer;}
+.cz-navbtn svg{width:18px;height:18px;}
+.cz-hint{text-align:center;font-size:.8rem;color:var(--text-2);min-height:20px;margin-bottom:8px;}
+.rules-body p{margin:0 0 6px;} .rules-body strong{color:var(--text);}
+@media (min-width:700px){.cz{padding-top:20px;}}
+/* CZ-KIT-END */
+.bac-hands{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:6px;margin-bottom:14px;}
+.bac-hand{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;}
+.bac-hand-head{display:flex;align-items:center;gap:8px;}
+.bac-hand-cards{display:flex;gap:4px;justify-content:center;min-height:calc(clamp(38px,11.4vw,56px)*1.4);}
+.bac-hand-cards .pc{--w:clamp(38px,11.4vw,56px);}
+.bac-score{min-width:34px;height:34px;padding:0 8px;border-radius:999px;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:1.1rem;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);color:#fff;opacity:0;transition:opacity .25s,background .25s,border-color .25s;}
+.bac-score.show{opacity:1;}
+.bac-hand.winner .bac-score{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);box-shadow:0 0 18px rgba(245,200,66,.45);}
+.bac-hand.winner .cz-lbl{color:var(--gold);}
+.bac-vs{align-self:center;font-family:var(--display);font-weight:800;font-size:.8rem;color:rgba(255,255,255,.35);padding-top:18px;}
+.bac-lbl-p{color:#93c5fd!important;} .bac-lbl-b{color:#fca5a5!important;}
+.bac-spots{display:grid;grid-template-columns:1fr .8fr 1fr;gap:8px;}
+.bac-spot .cz-mini{position:absolute;top:-12px;right:-6px;}
+.bac-spot[data-bet=player] .cz-spot-n{color:#93c5fd;}
+.bac-spot[data-bet=banker] .cz-spot-n{color:#fca5a5;}
+.bac-spot[data-bet=tie] .cz-spot-n{color:#86efac;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Baccarat</span>
+  <button class="cz-navbtn" id="bac-reset-bank" aria-label="Reset bankroll" title="Reset bankroll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding:10px 0 60px;">
-<div class="bac-wrap">
 
-<details class="rules-details">
-  <summary class="rules-summary">📖 How to Play <span style="font-size:.6rem;opacity:.4;">▼</span></summary>
-  <div class="rules-body">
-    <p><strong>Goal:</strong> Bet on whether the Player hand, Banker hand, or a Tie will have a score closest to 9.</p>
-    <p><strong>Card values:</strong> Aces = 1, 2–9 = face value, 10/J/Q/K = 0. Only the last digit of the total counts (e.g. 15 = 5).</p>
-    <p><strong>Natural:</strong> If either hand totals 8 or 9 on the first two cards, no more cards are drawn.</p>
-    <p><strong>Third card:</strong> Player draws if total ≤ 5. Banker follows a strict drawing table based on Banker total and Player's third card.</p>
-    <p><strong>Payouts:</strong> Player wins pays 1:1 · Banker wins pays 1:1 minus 5% commission · Tie pays 8:1</p>
+<main class="cz">
+  <div class="cz-stats">
+    <div class="cz-stat"><span class="cz-stat-lbl">Balance</span><span class="cz-stat-val gold" id="bac-balance">$0</span></div>
+    <div class="cz-stat"><span class="cz-stat-lbl">Bet</span><span class="cz-stat-val" id="bac-bet-display">$0</span></div>
+    <div class="cz-stat"><span class="cz-stat-lbl">Last</span><span class="cz-stat-val" id="bac-last">—</span></div>
   </div>
-</details>
 
-<div class="bac-bank">
-  <div>
-    <div style="font-size:.62rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;">Balance</div>
-    <div class="bac-bank-num" id="bac-balance">$0</div>
-  </div>
-  <div style="text-align:center;">
-    <div style="font-size:.62rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;">Bet</div>
-    <div class="bac-bet-amt" id="bac-bet-display">$0</div>
-  </div>
-  <div style="display:flex;gap:6px;">
-    <button class="btn btn-outline btn-sm" id="bac-clear-bet">Clear</button>
-    <button class="btn btn-outline btn-sm" id="bac-reset-bank">↺ Reset</button>
-  </div>
-</div>
-
-<!-- Bet options -->
-<div class="bac-bet-panel" id="bac-bet-panel">
-  <div style="text-align:center;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;">Bet on...</div>
-  <div class="bac-bet-row">
-    <div class="bac-bet-opt player" data-bet="player" id="bet-player">
-      <div class="bac-bet-name" style="color:#5ac8fa;">Player</div>
-      <div class="bac-bet-odds">Pays 1:1</div>
+  <section class="cz-felt" id="bac-table">
+    <div class="bac-hands" id="bac-cards">
+      <div class="bac-hand" id="hand-player">
+        <div class="bac-hand-head"><span class="cz-lbl bac-lbl-p">Player</span><span class="bac-score" id="player-score"></span></div>
+        <div class="bac-hand-cards" id="player-cards"></div>
+      </div>
+      <div class="bac-vs">VS</div>
+      <div class="bac-hand" id="hand-banker">
+        <div class="bac-hand-head"><span class="cz-lbl bac-lbl-b">Banker</span><span class="bac-score" id="banker-score"></span></div>
+        <div class="bac-hand-cards" id="banker-cards"></div>
+      </div>
     </div>
-    <div class="bac-bet-opt" data-bet="banker" id="bet-banker">
-      <div class="bac-bet-name">Banker</div>
-      <div class="bac-bet-odds">Pays 1:1 (−5% comm.)</div>
+    <div class="bac-spots" id="bac-bet-panel">
+      <button class="cz-spot bac-spot" data-bet="player" id="bet-player"><span class="cz-spot-n">Player</span><span class="cz-spot-o">Pays 1:1</span></button>
+      <button class="cz-spot bac-spot" data-bet="tie" id="bet-tie"><span class="cz-spot-n">Tie</span><span class="cz-spot-o">Pays 8:1</span></button>
+      <button class="cz-spot bac-spot" data-bet="banker" id="bet-banker"><span class="cz-spot-n">Banker</span><span class="cz-spot-o">1:1 −5%</span></button>
     </div>
-    <div class="bac-bet-opt tie" data-bet="tie" id="bet-tie">
-      <div class="bac-bet-name" style="color:#22c55e;">Tie</div>
-      <div class="bac-bet-odds">Pays 8:1</div>
-    </div>
-  </div>
-  <div style="text-align:center;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;">Chip value</div>
-  <div class="chip-row">
-    <div class="chip" style="background:#e53e3e;border-color:#fc8181;" data-chip="5">$5</div>
-    <div class="chip" style="background:#2b6cb0;border-color:#63b3ed;" data-chip="10">$10</div>
-    <div class="chip" style="background:#2f855a;border-color:#68d391;" data-chip="25">$25</div>
-    <div class="chip" style="background:#6b46c1;border-color:#b794f4;" data-chip="50">$50</div>
-    <div class="chip" style="background:#c05621;border-color:#fbd38d;" data-chip="100">$100</div>
-  </div>
-</div>
+  </section>
 
-<!-- Table -->
-<div class="bac-table" id="bac-table">
-  <div class="bac-cards" id="bac-cards">
-    <div class="bac-hand" id="hand-player">
-      <div class="bac-hand-lbl">Player</div>
-      <div class="bac-hand-cards" id="player-cards"></div>
-      <div class="bac-hand-score" id="player-score"></div>
+  <div class="cz-hint" id="bac-hint">Pick Player, Banker or Tie, then add chips</div>
+  <div class="cz-chips" id="bac-chips"></div>
+
+  <details class="rules-details">
+    <summary class="rules-summary">How to play</summary>
+    <div class="rules-body">
+      <p><strong>Goal:</strong> Bet on whether the Player hand, Banker hand, or a Tie will have a score closest to 9.</p>
+      <p><strong>Card values:</strong> Aces = 1, 2–9 = face value, 10/J/Q/K = 0. Only the last digit of the total counts (e.g. 15 = 5).</p>
+      <p><strong>Natural:</strong> If either hand totals 8 or 9 on the first two cards, no more cards are drawn.</p>
+      <p><strong>Third card:</strong> Player draws if total ≤ 5. Banker follows a strict drawing table based on Banker total and Player's third card.</p>
+      <p><strong>Payouts:</strong> Player wins pays 1:1 · Banker wins pays 1:1 minus 5% commission · Tie pays 8:1 (Banker bets push on a tie).</p>
     </div>
-    <div class="bac-hand" id="hand-banker">
-      <div class="bac-hand-lbl">Banker</div>
-      <div class="bac-hand-cards" id="banker-cards"></div>
-      <div class="bac-hand-score" id="banker-score"></div>
-    </div>
+  </details>
+</main>
+
+<div class="cz-bar">
+  <div class="cz-result" id="cz-result"></div>
+  <div class="cz-bar-in">
+    <button class="btn btn-outline" id="bac-clear-bet">Clear</button>
+    <button class="btn btn-gold" id="bac-deal-btn" disabled>Deal</button>
   </div>
 </div>
 
-<div class="bac-result" id="bac-result"></div>
-<div style="text-align:center;margin-bottom:12px;" id="bac-action">
-  <button class="btn btn-gold" id="bac-deal-btn" disabled>Deal</button>
-</div>
-
-</div>
-</div>
+<script>
+// CZ-JS-START — shared casino helpers (keep identical across casino games)
+const CZ={
+  hap(k){try{if(window.GN)GN.haptic(k);}catch(e){}},
+  toast(m){try{if(window.GN)GN.toast(m);}catch(e){}},
+  ask(msg,o){return window.GN?GN.confirm(msg,o||{}):Promise.resolve(window.confirm(msg));},
+  money(n){n=Math.round(n);return(n<0?'−':'')+'$'+Math.abs(n).toLocaleString();},
+  signed(n){n=Math.round(n);return(n>0?'+':n<0?'−':'')+'$'+Math.abs(n).toLocaleString();},
+  DENOMS:[500,250,100,50,25,10,5,1],
+  denom(a){return CZ.DENOMS.find(d=>a>=d)||1;},
+  short(a){return a>=10000?Math.round(a/1000)+'k':a>=1000?(Math.round(a/100)/10)+'k':String(a);},
+  chip(v,extra){return`<button type="button" class="cz-chip ${extra||''}" data-v="${v}" aria-label="$${v} chip">${CZ.short(v)}</button>`;},
+  mini(a){return`<span class="cz-mini" data-v="${CZ.denom(a)}">${CZ.short(a)}</span>`;},
+  setMini(host,a){
+    let m=host.querySelector(':scope>.cz-mini');
+    if(!a){if(m)m.remove();return;}
+    if(m&&m.dataset.a===String(a))return;
+    if(m)m.remove();
+    host.insertAdjacentHTML('beforeend',CZ.mini(a));
+    host.querySelector(':scope>.cz-mini').dataset.a=a;
+  },
+  card(c,cls){
+    if(!c)return`<div class="pc back ${cls||''}"></div>`;
+    const red=c.suit==='♥'||c.suit==='♦';
+    return`<div class="pc ${red?'red':''} ${cls||''}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span><span class="c">${c.suit}</span></div>`;
+  },
+  result(kind,title,sub,amt){
+    const el=document.getElementById('cz-result');if(!el)return;
+    if(!kind){el.className='cz-result';el.innerHTML='';return;}
+    el.className='cz-result';void el.offsetWidth;
+    el.className='cz-result show '+kind;
+    el.innerHTML=`<div><div class="cz-result-t">${title}</div>${sub?`<div class="cz-result-s">${sub}</div>`:''}</div>${amt!=null?`<div class="cz-result-amt">${amt}</div>`:''}`;
+  }
+};
+(function(){
+  const bar=document.querySelector('.cz-bar');if(!bar)return;
+  const set=()=>document.documentElement.style.setProperty('--bar-h',bar.offsetHeight+'px');
+  set();if(window.ResizeObserver)new ResizeObserver(set).observe(bar);
+})();
+// CZ-JS-END
+</script>
 <script>
 'use strict';
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const SUITS=['♠','♥','♦','♣'];
-const RED=new Set(['♥','♦']);
+const CHIPS=[5,10,25,50,100];
 
-let betOn=null, betAmt=0, deck=[], phase='bet';
+let betOn=null, betAmt=0, deck=[], phase='bet', lastBet=null;
+const $=id=>document.getElementById(id);
 
 function makeDeck(){
   const d=[];
@@ -174,44 +216,60 @@ function draw(){ if(!deck.length)deck=makeDeck(); return deck.pop(); }
 function bval(c){const v=RANKS.indexOf(c.rank)+1; return v>=10?0:v;}
 function bscore(hand){return hand.reduce((s,c)=>s+bval(c),0)%10;}
 
-function cardEl(c){
-  if(!c)return`<div class="bc face-down"></div>`;
-  return`<div class="bc ${RED.has(c.suit)?'red':'black'}"><div class="bc-r">${c.rank}</div><div class="bc-s">${c.suit}</div></div>`;
-}
+$('bac-chips').innerHTML=CHIPS.map(v=>CZ.chip(v)).join('');
 
 function updateBank(){
-  document.getElementById('bac-balance').textContent='$'+Casino.balance().toLocaleString();
-  document.getElementById('bac-bet-display').textContent='$'+betAmt;
+  $('bac-balance').textContent=CZ.money(Casino.balance());
+  $('bac-bet-display').textContent=CZ.money(betAmt);
+  document.querySelectorAll('.bac-spot').forEach(el=>{
+    const on=el.dataset.bet===betOn;
+    el.classList.toggle('on',on);
+    CZ.setMini(el,on?betAmt:0);
+  });
+  const bal=Casino.balance();
+  document.querySelectorAll('#bac-chips .cz-chip').forEach(c=>c.disabled=phase!=='bet'||betAmt+(+c.dataset.v)>bal);
+  updateButtons();
+}
+
+function updateButtons(){
+  const deal=$('bac-deal-btn'), clear=$('bac-clear-bet');
+  if(phase==='bet'){
+    deal.textContent='Deal'; deal.disabled=!(betOn&&betAmt>0);
+    clear.textContent='Clear'; clear.disabled=betAmt===0&&!betOn;
+    $('bac-hint').textContent=!betOn?'Pick Player, Banker or Tie, then add chips':betAmt?`${CZ.money(betAmt)} on ${betOn[0].toUpperCase()+betOn.slice(1)} — tap Deal`:'Now add chips';
+  } else if(phase==='result'){
+    const canRebet=lastBet&&lastBet.amt<=Casino.balance();
+    deal.textContent=canRebet?`Rebet ${CZ.money(lastBet.amt)}`:'New Hand'; deal.disabled=false;
+    clear.textContent='New Bet'; clear.disabled=false;
+    $('bac-hint').textContent='';
+  } else { deal.disabled=true; clear.disabled=true; }
 }
 
 function setPhase(p){
   phase=p;
-  const panel=document.getElementById('bac-bet-panel');
-  const btn=document.getElementById('bac-deal-btn');
-  if(p==='bet'){
-    panel.style.opacity='1';panel.style.pointerEvents='all';
-    btn.textContent='Deal'; btn.disabled=!(betOn&&betAmt>0);
-  } else {
-    panel.style.opacity='.4';panel.style.pointerEvents='none';
-    btn.textContent='New Hand';btn.disabled=false;
-  }
+  $('bac-bet-panel').style.pointerEvents=p==='bet'?'':'none';
+  document.querySelectorAll('.bac-spot').forEach(el=>el.classList.toggle('dim',p!=='bet'&&el.dataset.bet!==betOn));
+  updateBank();
 }
 
 function deal(){
-  if(phase==='result'){betAmt=0;betOn=null;updateBank();setPhase('bet');clearTable();return;}
-  if(!betOn||betAmt<=0)return;
-  if(!Casino.bet(betAmt)){document.getElementById('bac-result').innerHTML='<span style="color:#f87171">Not enough balance!</span>';return;}
+  if(phase==='result'){
+    const rb=lastBet&&lastBet.amt<=Casino.balance()?lastBet:null;
+    clearTable(); betAmt=0; betOn=null; setPhase('bet');
+    if(rb){betOn=rb.on;betAmt=rb.amt;updateBank();deal();}
+    return;
+  }
+  if(phase!=='bet'||!betOn||betAmt<=0)return;
+  if(!Casino.bet(betAmt)){CZ.toast('Not enough balance');CZ.hap('error');return;}
+  lastBet={on:betOn,amt:betAmt};
+  CZ.hap('medium');
   deck=makeDeck();
-  // Deal: player1,banker1,player2,banker2
   const ph=[draw(),draw()];
   const bh=[draw(),draw()];
-  // Third card rules
   const ps=bscore(ph), bs=bscore(bh);
   let p3=null,b3=null;
   if(ps<=7&&bs<=7){ // no natural
     if(ps<=5){p3=draw();ph.push(p3);}
-    const ps2=bscore(ph);
-    // Banker drawing table
     const shouldBankerDraw=(()=>{
       if(bs>=8)return false;
       if(bs<=2)return true;
@@ -225,70 +283,92 @@ function deal(){
     })();
     if(shouldBankerDraw){b3=draw();bh.push(b3);}
   }
-  renderCards(ph,bh);
   const pf=bscore(ph),bf=bscore(bh);
-  let result='',payout=0,resClass='';
-  if(pf>bf){
-    result='Player wins!';
-    if(betOn==='player'){payout=betAmt*2;resClass='win';}
-    else{result='Player wins — your Banker bet loses.';resClass='loss';}
-  } else if(bf>pf){
-    result='Banker wins!';
-    if(betOn==='banker'){payout=Math.round(betAmt*1.95);resClass='win';}
-    else{result+=' You lose.';resClass='loss';}
+  let title='',payout=0,kind='lose';
+  const winner=pf>bf?'player':bf>pf?'banker':'tie';
+  if(winner==='player'){
+    title='Player wins '+pf+'–'+bf;
+    if(betOn==='player'){payout=betAmt*2;kind='win';}
+  } else if(winner==='banker'){
+    title='Banker wins '+bf+'–'+pf;
+    if(betOn==='banker'){payout=Math.round(betAmt*1.95);kind='win';}
   } else {
-    result="It's a Tie!";
-    if(betOn==='tie'){payout=betAmt*9;resClass='win';}
-    else if(betOn==='banker'){payout=betAmt;result+=' Banker bet returned.';resClass='tie';}
-    else{result+=' You lose.';resClass='loss';}
+    title="It's a tie at "+pf;
+    if(betOn==='tie'){payout=betAmt*9;kind='win';}
+    else if(betOn==='banker'){payout=betAmt;kind='push';}
   }
-  if(payout>0){Casino.win(payout);result+=(resClass==='win'?` +$${payout-betAmt}`:` $${payout} returned`);}
-  document.getElementById('bac-result').innerHTML=result;
-  document.getElementById('bac-result').className='bac-result '+resClass;
-  updateBank();
-  setPhase('result');
+  if(payout>0)Casino.win(payout);
+  const net=payout-betAmt;
+  setPhase('dealing');
+  const t=renderCards(ph,bh);
+  setTimeout(()=>{
+    $('player-score').textContent=pf; $('banker-score').textContent=bf;
+    $('player-score').classList.add('show'); $('banker-score').classList.add('show');
+    if(winner==='player')$('hand-player').classList.add('winner');
+    else if(winner==='banker')$('hand-banker').classList.add('winner');
+    const sub=kind==='win'?`Your ${betOn} bet wins`+(betOn==='banker'?' (5% commission)':''):kind==='push'?'Banker bet returned on a tie':`Your ${betOn} bet loses`;
+    CZ.result(kind,title,sub,kind==='push'?'Push':CZ.signed(net));
+    if(winner==='tie'&&betOn==='tie')$('cz-result').classList.add('big');
+    $('bac-last').textContent=CZ.signed(net);
+    $('bac-last').className='cz-stat-val '+(net>0?'cz-pos':net<0?'cz-neg':'');
+    CZ.hap(kind==='win'?'success':kind==='lose'?'error':'light');
+    setPhase('result');
+  },t);
 }
 
 function renderCards(ph,bh){
-  document.getElementById('player-cards').innerHTML=ph.map(c=>cardEl(c)).join('');
-  document.getElementById('banker-cards').innerHTML=bh.map(c=>cardEl(c)).join('');
-  document.getElementById('player-score').textContent=bscore(ph);
-  document.getElementById('banker-score').textContent=bscore(bh);
-  if(bscore(ph)>bscore(bh)) document.getElementById('hand-player').classList.add('winner');
-  else if(bscore(bh)>bscore(ph)) document.getElementById('hand-banker').classList.add('winner');
+  // Deal order P1,B1,P2,B2 then third cards
+  const order=[['player',ph[0]],['banker',bh[0]],['player',ph[1]],['banker',bh[1]]];
+  if(ph[2])order.push(['player',ph[2]]);
+  if(bh[2])order.push(['banker',bh[2]]);
+  const pc=$('player-cards'), bc=$('banker-cards');
+  pc.innerHTML=''; bc.innerHTML='';
+  order.forEach(([who,c],i)=>{
+    const host=who==='player'?pc:bc;
+    host.insertAdjacentHTML('beforeend',CZ.card(c));
+    host.lastElementChild.style.animationDelay=(i*0.28)+'s';
+  });
+  return order.length*280+250;
 }
 
+const SLOTS='<div class="pc slot"></div><div class="pc slot"></div>';
 function clearTable(){
-  ['player-cards','banker-cards'].forEach(id=>document.getElementById(id).innerHTML='');
-  ['player-score','banker-score'].forEach(id=>document.getElementById(id).textContent='');
-  ['hand-player','hand-banker'].forEach(id=>document.getElementById(id).classList.remove('winner'));
-  document.getElementById('bac-result').innerHTML='';
-  document.querySelectorAll('.bac-bet-opt').forEach(el=>el.classList.remove('active'));
+  ['player-cards','banker-cards'].forEach(id=>$(id).innerHTML=SLOTS);
+  ['player-score','banker-score'].forEach(id=>{$(id).textContent='';$(id).classList.remove('show');});
+  ['hand-player','hand-banker'].forEach(id=>$(id).classList.remove('winner'));
+  CZ.result(null);
 }
 
 // Events
-document.querySelectorAll('.bac-bet-opt').forEach(el=>{
+document.querySelectorAll('.bac-spot').forEach(el=>{
   el.addEventListener('click',()=>{
     if(phase!=='bet')return;
-    document.querySelectorAll('.bac-bet-opt').forEach(e=>e.classList.remove('active'));
-    el.classList.add('active'); betOn=el.dataset.bet;
-    document.getElementById('bac-deal-btn').disabled=!(betOn&&betAmt>0);
+    betOn=el.dataset.bet; CZ.hap('select'); updateBank();
   });
 });
-document.querySelectorAll('.chip').forEach(el=>{
-  el.addEventListener('click',()=>{
-    if(phase!=='bet')return;
-    const v=+el.dataset.chip;
-    if(betAmt+v>Casino.balance()){return;}
-    betAmt+=v; updateBank();
-    document.getElementById('bac-deal-btn').disabled=!(betOn&&betAmt>0);
-  });
+$('bac-chips').addEventListener('click',e=>{
+  const el=e.target.closest('.cz-chip'); if(!el||phase!=='bet')return;
+  const v=+el.dataset.v;
+  if(betAmt+v>Casino.balance()){CZ.toast('Not enough balance');return;}
+  if(!betOn)betOn='player';
+  betAmt+=v; CZ.hap('light'); updateBank();
 });
-document.getElementById('bac-clear-bet').addEventListener('click',()=>{betAmt=0;updateBank();document.getElementById('bac-deal-btn').disabled=true;});
-document.getElementById('bac-reset-bank').addEventListener('click',()=>{if(confirm('Reset bankroll to $1,000?')){Casino.reset();betAmt=0;betOn=null;clearTable();updateBank();setPhase('bet');}});
-document.getElementById('bac-deal-btn').addEventListener('click',deal);
+$('bac-clear-bet').addEventListener('click',()=>{
+  if(phase==='result'){clearTable();betAmt=0;betOn=null;setPhase('bet');return;}
+  if(phase!=='bet')return;
+  betAmt=0;updateBank();
+});
+$('bac-reset-bank').addEventListener('click',async()=>{
+  if(phase==='dealing')return;
+  if(!(await CZ.ask('Reset bankroll to $1,000?',{title:'Reset bankroll?',ok:'Reset',danger:true})))return;
+  Casino.reset();betAmt=0;betOn=null;lastBet=null;clearTable();
+  $('bac-last').textContent='—';$('bac-last').className='cz-stat-val';
+  setPhase('bet');CZ.toast('Bankroll reset to $1,000');
+});
+$('bac-deal-btn').addEventListener('click',deal);
+window.addEventListener('pageshow',updateBank);
 
-updateBank(); setPhase('bet');
+clearTable(); updateBank(); setPhase('bet');
 </script>
 </body>
 </html>

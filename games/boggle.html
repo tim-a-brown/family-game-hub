@@ -6,70 +6,120 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Boggle</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
-.wrap{max-width:440px;margin:0 auto;padding:0 8px 60px;}
-.bg-stats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.bg-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
-.bg-stat-val{font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);}
-.bg-stat-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.wrap{max-width:460px;margin:0 auto;}
+.bl-page{padding-top:12px;}
+.bg-stats{margin-bottom:10px;}
+.bg-stats .stat{max-width:none;}
+#bl-timer{color:var(--gold);}
+#bl-timer.low{color:var(--red);animation:bl-pulse 1s ease infinite;}
+@keyframes bl-pulse{50%{opacity:.55;}}
 /* Timer */
-.timer-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:10px;overflow:hidden;}
-.timer-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b);border-radius:3px;transition:width .9s linear;}
+.timer-bar{height:6px;background:var(--surface-2);border-radius:3px;margin-bottom:14px;overflow:hidden;}
+.timer-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold2));border-radius:3px;transition:width .9s linear;}
 /* Grid */
-.bl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 auto 10px;width:min(300px,80vw);}
-.bl-cell{aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:clamp(1.3rem,7vw,1.8rem);font-weight:900;color:#fff;cursor:pointer;transition:all .1s;user-select:none;touch-action:none;}
-.bl-cell:active{transform:scale(.93);}
-.bl-cell.selected{background:rgba(245,200,66,.3);border-color:var(--gold);color:var(--gold);}
-.bl-cell.path{background:rgba(90,200,250,.2);border-color:#5ac8fa;}
-.bl-cell.wrong{background:rgba(239,68,68,.25);border-color:#ef4444;}
-/* Word input */
-.bl-word{font-family:var(--serif);font-size:1.4rem;font-weight:900;text-align:center;min-height:40px;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;}
+.bl-board{position:relative;width:min(100%,400px);margin:0 auto 12px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);touch-action:none;}
+.bl-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;touch-action:none;user-select:none;-webkit-user-select:none;}
+.bl-cell{
+  aspect-ratio:1;border-radius:16px;position:relative;z-index:1;
+  background:linear-gradient(180deg,#f4f1e8,#dcd6c6);color:#1b1d24;
+  box-shadow:0 3px 0 #a9a290,0 6px 14px rgba(0,0,0,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:clamp(1.7rem,9vw,2.3rem);font-weight:800;
+  cursor:pointer;transition:transform .1s var(--ease),background .12s,box-shadow .12s;touch-action:none;
+}
+.bl-cell.qu{font-size:clamp(1.3rem,7vw,1.8rem);}
+.bl-cell.path{background:linear-gradient(180deg,#ffe58a,#f5c842);box-shadow:0 3px 0 #b8901a,0 6px 14px rgba(0,0,0,.35);}
+.bl-cell.selected{background:linear-gradient(180deg,#ffd75e,#f0a500);transform:scale(1.04);box-shadow:0 3px 0 #a87300,0 0 0 3px rgba(245,200,66,.45);}
+.bl-cell.wrong{background:linear-gradient(180deg,#fecaca,#f87171);box-shadow:0 3px 0 #b91c1c;animation:bl-shake .35s ease;}
+.bl-cell.good{background:linear-gradient(180deg,#bbf7d0,#4ade80);box-shadow:0 3px 0 #15803d;}
+@keyframes bl-shake{20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
+.bl-grid.over .bl-cell{opacity:.45;cursor:default;}
+#bl-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;}
+#bl-svg polyline{fill:none;stroke:rgba(240,165,0,.75);stroke-linecap:round;stroke-linejoin:round;}
+/* Current word */
+.bl-word-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.bl-word{flex:1;height:52px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--surface);border:1px solid var(--line-2);font-family:var(--display);font-size:1.5rem;font-weight:800;letter-spacing:.12em;color:var(--gold);overflow:hidden;white-space:nowrap;}
+.bl-word:empty::before{content:'Drag or tap letters';font-family:var(--font);font-size:.92rem;font-weight:500;letter-spacing:0;color:var(--text-3);}
+.bl-word.bad{color:var(--red);}
+.bl-word-row .btn{min-height:52px;height:52px;}
+#bl-clear{width:52px;padding:0;}
+#bl-clear svg{width:22px;height:22px;}
 /* Found words */
-.found-words{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;min-height:60px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:5px;align-items:flex-start;}
-.fw{padding:3px 8px;border-radius:5px;font-size:.75rem;font-weight:700;border:1px solid;}
-.fw.len3{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.6);}
-.fw.len4{background:rgba(90,200,250,.1);border-color:rgba(90,200,250,.3);color:#5ac8fa;}
-.fw.len5{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#22c55e;}
+.found-title{display:flex;justify-content:space-between;align-items:baseline;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 2px 8px;}
+.found-words{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;min-height:64px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;}
+.found-words:empty::before{content:'Words you find will appear here.';color:var(--text-3);font-size:.9rem;}
+.fw{padding:5px 10px;border-radius:999px;font-size:.88rem;font-weight:700;border:1px solid;text-transform:uppercase;letter-spacing:.03em;}
+.fw small{font-size:.75rem;opacity:.75;margin-left:3px;}
+.fw.len3{background:var(--surface-2);border-color:var(--line-2);color:var(--text-2);}
+.fw.len4{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3);color:var(--blue);}
+.fw.len5{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:var(--green);}
 .fw.len6{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.3);color:var(--gold);}
-.fw.len7{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.3);color:#a855f7;}
-.fw.len8p{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#ef4444;}
+.fw.len7{background:rgba(192,132,252,.12);border-color:rgba(192,132,252,.3);color:var(--purple);}
+.fw.len8p{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.3);color:var(--red);}
 /* Score popup */
-@keyframes bl-pop{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-40px) scale(1.3);}}
-.bl-popup{position:fixed;pointer-events:none;font-family:var(--serif);font-size:1.5rem;font-weight:900;color:var(--gold);animation:bl-pop .8s ease forwards;}
+@keyframes bl-pop{0%{opacity:0;transform:translate(-50%,6px) scale(.8);}20%{opacity:1;transform:translate(-50%,0) scale(1.1);}100%{opacity:0;transform:translate(-50%,-34px) scale(1);}}
+.bl-popup{position:absolute;left:50%;top:-6px;pointer-events:none;font-family:var(--display);font-size:1.6rem;font-weight:800;color:var(--green);animation:bl-pop .9s ease forwards;z-index:5;text-shadow:0 2px 10px rgba(0,0,0,.5);}
+/* Result sheet */
+.bl-result{position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.bl-result.show{display:flex;animation:gn-fade .2s ease both;}
+.bl-sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));text-align:center;animation:gn-sheet .32s var(--ease) both;max-height:90dvh;overflow:auto;}
+@media (min-width:600px){.bl-result{align-items:center;}.bl-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
+.bl-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 16px;}
+.bl-res-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
+.bl-res-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
+.bl-res-sub{color:var(--text-2);font-size:.95rem;margin-bottom:16px;}
+.bl-res-words{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:18px;max-height:140px;overflow:auto;}
+.nav-icon{width:36px;height:36px;padding:0!important;display:inline-grid;place-items:center;border-radius:50%!important;border:1px solid var(--line-2);background:var(--surface);color:var(--text);cursor:pointer;}
+.nav-icon svg{width:18px;height:18px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Boggle</span>
+  <button class="nav-icon" id="bl-new" aria-label="New game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></button>
 </nav>
-<div class="page"><div class="wrap">
+<div class="page bl-page"><div class="wrap">
 
-<div class="bg-stats">
-  <div class="bg-stat"><div class="bg-stat-val" id="bl-score">0</div><div class="bg-stat-lbl">Score</div></div>
-  <div class="bg-stat"><div class="bg-stat-val" id="bl-words">0</div><div class="bg-stat-lbl">Words</div></div>
-  <div class="bg-stat"><div class="bg-stat-val" id="bl-timer">3:00</div><div class="bg-stat-lbl">Time</div></div>
+<div class="stat-row bg-stats">
+  <div class="stat"><div class="stat-val" id="bl-score">0</div><div class="stat-lbl">Score</div></div>
+  <div class="stat"><div class="stat-val" id="bl-words">0</div><div class="stat-lbl">Words</div></div>
+  <div class="stat"><div class="stat-val" id="bl-timer">3:00</div><div class="stat-lbl">Time</div></div>
 </div>
 
 <div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
 
-<div class="bl-grid" id="bl-grid"></div>
-<div class="bl-word" id="bl-word"></div>
-<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">
-  <button class="btn btn-gold" id="bl-submit" style="min-width:100px;">Submit</button>
-  <button class="btn btn-outline" id="bl-clear">Clear</button>
-  <button class="btn btn-outline" id="bl-new">New Game</button>
+<div class="bl-board" id="bl-board"><div class="bl-grid" id="bl-grid"></div></div>
+<div class="bl-word-row">
+  <button class="btn btn-outline" id="bl-clear" aria-label="Clear selection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  <div class="bl-word" id="bl-word"></div>
+  <button class="btn btn-gold" id="bl-submit">Enter</button>
 </div>
 
+<div class="found-title"><span>Found words</span><span id="bl-found-count"></span></div>
 <div class="found-words" id="found-words"></div>
 
 </div></div>
+
+<div class="bl-result" id="bl-result">
+  <div class="bl-sheet" role="dialog" aria-modal="true">
+    <div class="bl-grab"></div>
+    <div class="bl-res-emoji">⏰</div>
+    <div class="bl-res-title">Time’s up!</div>
+    <div class="bl-res-sub" id="bl-res-sub"></div>
+    <div class="stat-row" id="bl-res-stats"></div>
+    <div class="bl-res-words" id="bl-res-words"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-gold btn-block" id="bl-again">New game</button>
+      <button class="btn btn-ghost btn-block" id="bl-close">Review board</button>
+    </div>
+  </div>
+</div>
 <script>
 'use strict';
 // ── Dictionary ─────────────────────────────────────────────────────────────
@@ -234,6 +284,11 @@ WORD_LIST.forEach(w=>DICT.add(w));
 const FREQ='AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTTUUUUVVWWXYYZ'.split('');
 
 let grid=[], selected=[], path=[], foundWords=new Set(), score=0, timerSecs=180, timerInt=null, gameOver=false;
+const $=id=>document.getElementById(id);
+const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+const PTS=[0,0,0,1,1,2,3,5,11]; // scoring: 3=1,4=1,5=2,6=3,7=5,8+=11
+const ptsFor=w=>PTS[Math.min(w.length,8)];
+const tile=i=>{const[r,c]=cellRC(i);return grid[r][c]==='Q'?'QU':grid[r][c];}; // the Q die reads "Qu"
 
 function newGame(){
   clearInterval(timerInt);
@@ -243,23 +298,36 @@ function newGame(){
     return FREQ[Math.floor(Math.random()*FREQ.length)];
   }));
   selected=[];path=[];foundWords=new Set();score=0;timerSecs=180;gameOver=false;
-  document.getElementById('bl-score').textContent='0';
-  document.getElementById('bl-words').textContent='0';
-  document.getElementById('bl-word').textContent='';
-  document.getElementById('found-words').innerHTML='';
-  renderGrid();
+  hideResult();
+  buildGrid();
+  renderStats();renderFound();updateWordDisplay();
   startTimer();
 }
 
+function fmt(t){const m=Math.floor(t/60), s=t%60;return `${m}:${String(s).padStart(2,'0')}`;}
+function renderTimer(){
+  $('bl-timer').textContent=fmt(Math.max(0,timerSecs));
+  $('bl-timer').classList.toggle('low',timerSecs<=15&&!gameOver);
+  $('timer-fill').style.width=(Math.max(0,timerSecs)/180*100)+'%';
+}
 function startTimer(){
   clearInterval(timerInt);
+  renderTimer();
   timerInt=setInterval(()=>{
+    if(document.hidden)return;           // pause while the app is in the background
     timerSecs--;
-    const m=Math.floor(timerSecs/60), s=timerSecs%60;
-    document.getElementById('bl-timer').textContent=`${m}:${String(s).padStart(2,'0')}`;
-    document.getElementById('timer-fill').style.width=(timerSecs/180*100)+'%';
-    if(timerSecs<=0){clearInterval(timerInt);gameOver=true;document.getElementById('bl-word').textContent='Time\'s up!';renderGrid();}
+    renderTimer();
+    if(timerSecs<=0){endGame();}
   },1000);
+}
+function endGame(){
+  clearInterval(timerInt);gameOver=true;
+  selected=[];renderSel();updateWordDisplay();
+  $('bl-grid').classList.add('over');
+  renderTimer();
+  haptic('heavy');
+  try{sessionStorage.removeItem('boggle');}catch(e){}
+  showResult();
 }
 
 function cellIdx(r,c){return r*4+c;}
@@ -269,112 +337,213 @@ function adjacent(i1,i2){
   return Math.abs(r1-r2)<=1&&Math.abs(c1-c2)<=1&&i1!==i2;
 }
 
+// Tap selection: tap adjacent tiles to extend, tap the last tile to undo it
 function clickCell(i){
   if(gameOver)return;
   if(selected.includes(i)){
-    // If clicking last selected, remove it
-    if(selected[selected.length-1]===i){selected.pop();renderGrid();updateWordDisplay();return;}
-    return;
+    if(selected[selected.length-1]===i){selected.pop();renderSel();updateWordDisplay();haptic('select');return;}
+    // tapping an earlier tile trims back to it
+    selected=selected.slice(0,selected.indexOf(i)+1);renderSel();updateWordDisplay();haptic('select');return;
   }
-  if(selected.length>0&&!adjacent(selected[selected.length-1],i))return;
+  if(selected.length>0&&!adjacent(selected[selected.length-1],i)){selected=[];}
   selected.push(i);
-  renderGrid();
+  haptic('select');
+  renderSel();
   updateWordDisplay();
 }
 
+function currentWord(){return selected.map(tile).join('');}
 function updateWordDisplay(){
-  const word=selected.map(i=>grid[cellRC(i)[0]][cellRC(i)[1]]).join('');
-  document.getElementById('bl-word').textContent=word;
+  const el=$('bl-word');el.classList.remove('bad');
+  el.textContent=currentWord();
 }
 
 function submitWord(){
-  if(gameOver)return;
-  const word=selected.map(i=>grid[cellRC(i)[0]][cellRC(i)[1]]).join('').toLowerCase();
-  if(word.length<3){flashCells('wrong');clearSel();return;}
-  if(foundWords.has(word)){flashMsg('Already found!');clearSel();return;}
-  if(!DICT.has(word)){flashCells('wrong');clearSel();return;}
+  if(gameOver||!selected.length)return;
+  const word=currentWord().toLowerCase();
+  if(word.length<3){reject('Too short');return;}
+  if(foundWords.has(word)){reject('Already found');return;}
+  if(!DICT.has(word)){reject('Not in word list');return;}
   // Valid!
   foundWords.add(word);
-  const pts=[0,0,0,1,1,2,3,5,11][Math.min(word.length,8)];// scoring: 3=1,4=1,5=2,6=3,7=5,8+=11
+  const pts=ptsFor(word);
   score+=pts;
-  document.getElementById('bl-score').textContent=score;
-  document.getElementById('bl-words').textContent=foundWords.size;
-  addFoundWord(word,pts);
+  renderStats();
+  addFoundWord(word,pts,true);
   showPopup(`+${pts}`);
-  clearSel();
+  flashCells('good');
+  haptic('success');
+  selected=[];
+  setTimeout(()=>{renderSel();updateWordDisplay();},260);
+  _save_boggle();
+}
+function reject(msg){
+  if(window.GN)GN.toast(msg,1300);
+  haptic('error');
+  $('bl-word').classList.add('bad');
+  flashCells('wrong');
+  const keep=selected.slice();
+  setTimeout(()=>{if(selected.join()===keep.join()){selected=[];renderSel();updateWordDisplay();}},380);
 }
 
-function addFoundWord(word,pts){
-  const el=document.getElementById('found-words');
+function renderStats(){
+  $('bl-score').textContent=score;
+  $('bl-words').textContent=foundWords.size;
+  $('bl-found-count').textContent=foundWords.size?`${foundWords.size} · ${score} pts`:'';
+}
+function fwChip(word,pts){
   const span=document.createElement('span');
-  const lenClass=word.length<=3?'len3':word.length===4?'len4':word.length===5?'len5':word.length===6?'len6':word.length===7?'len7':'len8p';
-  span.className='fw '+lenClass;
-  span.textContent=word+(pts>1?` (+${pts})`:'');
-  el.prepend(span);
+  const n=word.length;
+  span.className='fw '+(n<=3?'len3':n===4?'len4':n===5?'len5':n===6?'len6':n===7?'len7':'len8p');
+  span.textContent=word;
+  if(pts>1){const sm=document.createElement('small');sm.textContent='+'+pts;span.appendChild(sm);}
+  return span;
+}
+function addFoundWord(word,pts,anim){
+  const span=fwChip(word,pts);
+  if(anim)span.style.animation='gn-pop .3s var(--spring) both';
+  $('found-words').prepend(span);
+}
+function renderFound(){
+  $('found-words').innerHTML='';
+  [...foundWords].forEach(w=>addFoundWord(w,ptsFor(w),false));
 }
 
 function showPopup(txt){
   const pop=document.createElement('div');
   pop.className='bl-popup';pop.textContent=txt;
-  pop.style.cssText=`left:${40+Math.random()*20}%;top:${200+Math.random()*30}px;`;
-  document.body.appendChild(pop);
-  setTimeout(()=>pop.remove(),800);
+  $('bl-board').appendChild(pop);
+  setTimeout(()=>pop.remove(),900);
 }
 
 function flashCells(cls){
   selected.forEach(i=>{
-    const el=document.getElementById('bl-cell-'+i);
-    if(el){el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),500);}
+    const el=$('bl-cell-'+i);
+    if(el){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),450);}
   });
 }
 
-function flashMsg(msg){
-  const el=document.getElementById('bl-word');
-  const prev=el.textContent;
-  el.textContent=msg;el.style.color='#ef4444';
-  setTimeout(()=>{el.textContent=prev;el.style.color='';},700);
-}
+function clearSel(){selected=[];renderSel();updateWordDisplay();}
 
-function clearSel(){selected=[];renderGrid();updateWordDisplay();}
-
-function renderGrid(){
-  const el=document.getElementById('bl-grid');el.innerHTML='';
+// Build tiles once per board; selection only toggles classes (never rebuilds
+// the DOM mid-gesture, which used to kill touch drags on iOS).
+function buildGrid(){
+  const el=$('bl-grid');el.innerHTML='';
+  el.classList.toggle('over',gameOver);
   for(let r=0;r<4;r++){
     for(let c=0;c<4;c++){
       const i=cellIdx(r,c);
       const cell=document.createElement('div');
-      cell.className='bl-cell';
-      cell.id='bl-cell-'+i;
+      cell.className='bl-cell'+(grid[r][c]==='Q'?' qu':'');
+      cell.id='bl-cell-'+i;cell.dataset.i=i;
       cell.textContent=grid[r][c]==='Q'?'Qu':grid[r][c];
-      if(selected.includes(i)){
-        if(selected[selected.length-1]===i)cell.classList.add('selected');
-        else cell.classList.add('path');
-      }
-      cell.addEventListener('click',()=>clickCell(i));
-      // Touch events for drag selection
-      cell.addEventListener('touchstart',e=>{e.preventDefault();clickCell(i);},{passive:false});
-      cell.addEventListener('touchmove',e=>{
-        e.preventDefault();
-        const t=e.touches[0];
-        const el2=document.elementFromPoint(t.clientX,t.clientY);
-        if(el2&&el2.id&&el2.id.startsWith('bl-cell-')){
-          const ti=parseInt(el2.id.replace('bl-cell-',''));
-          if(!selected.includes(ti)&&selected.length>0&&adjacent(selected[selected.length-1],ti)){
-            selected.push(ti);renderGrid();updateWordDisplay();
-          }
-        }
-      },{passive:false});
       el.appendChild(cell);
     }
   }
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.id='bl-svg';
+  el.appendChild(svg);
+  renderSel();
+}
+function renderGrid(){buildGrid();}
+function renderSel(){
+  document.querySelectorAll('.bl-cell').forEach(el=>{
+    const i=+el.dataset.i;
+    el.classList.toggle('selected',selected.length>0&&selected[selected.length-1]===i);
+    el.classList.toggle('path',selected.includes(i)&&selected[selected.length-1]!==i);
+  });
+  const svg=$('bl-svg');if(!svg)return;
+  svg.innerHTML='';
+  if(selected.length>1){
+    const g=$('bl-grid').getBoundingClientRect();
+    const pts=selected.map(i=>{const b=$('bl-cell-'+i).getBoundingClientRect();return `${b.left-g.left+b.width/2},${b.top-g.top+b.height/2}`;}).join(' ');
+    svg.setAttribute('viewBox',`0 0 ${g.width} ${g.height}`);
+    const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    pl.setAttribute('points',pts);pl.setAttribute('stroke-width',Math.max(8,g.width/34));
+    svg.appendChild(pl);
+  }
 }
 
-document.getElementById('bl-submit').addEventListener('click',submitWord);
-document.getElementById('bl-clear').addEventListener('click',clearSel);
-document.getElementById('bl-new').addEventListener('click',newGame);
-document.addEventListener('keydown',e=>{if(e.key==='Enter')submitWord();if(e.key==='Escape')clearSel();});
+// ── Pointer drag (touch, mouse, pen) ────────────────────────────────────────
+let dragging=false,dragMoved=false,downIdx=-1;
+function tileAt(x,y,strict){
+  for(const el of document.querySelectorAll('.bl-cell')){
+    const b=el.getBoundingClientRect();
+    // Use an inner hit-zone so diagonal drags don't clip neighbouring tiles
+    const pad=strict?b.width*.18:0;
+    if(x>=b.left+pad&&x<=b.right-pad&&y>=b.top+pad&&y<=b.bottom-pad)return +el.dataset.i;
+  }
+  return -1;
+}
+const board=$('bl-board');
+board.addEventListener('pointerdown',e=>{
+  if(gameOver||e.button>0)return;
+  const i=tileAt(e.clientX,e.clientY,false);if(i<0)return;
+  e.preventDefault();
+  try{board.setPointerCapture(e.pointerId);}catch(_){}
+  dragging=true;dragMoved=false;downIdx=i;
+  clickCell(i);
+});
+board.addEventListener('pointermove',e=>{
+  if(!dragging||gameOver)return;
+  const i=tileAt(e.clientX,e.clientY,true);if(i<0)return;
+  const last=selected[selected.length-1];
+  if(i===last)return;
+  // dragging back onto the previous tile undoes the last step
+  if(selected.length>1&&selected[selected.length-2]===i){selected.pop();dragMoved=true;renderSel();updateWordDisplay();haptic('select');return;}
+  if(!selected.includes(i)&&selected.length>0&&adjacent(last,i)){
+    selected.push(i);dragMoved=true;renderSel();updateWordDisplay();haptic('select');
+  }
+});
+function endDrag(){
+  if(!dragging)return;dragging=false;
+  if(dragMoved&&selected.length>=2)submitWord();   // drag & release submits, like the real thing
+}
+board.addEventListener('pointerup',endDrag);
+board.addEventListener('pointercancel',()=>{dragging=false;});
+window.addEventListener('resize',()=>renderSel());
 
-newGame();
+// ── Results ────────────────────────────────────────────────────────────────
+function showResult(){
+  const words=[...foundWords].sort((a,b)=>b.length-a.length||a.localeCompare(b));
+  $('bl-res-sub').textContent=words.length?`Longest word: ${words[0].toUpperCase()}`:'No words this round — try again!';
+  $('bl-res-stats').innerHTML=
+    `<div class="stat"><div class="stat-val" style="color:var(--gold)">${score}</div><div class="stat-lbl">Score</div></div>`+
+    `<div class="stat"><div class="stat-val">${foundWords.size}</div><div class="stat-lbl">Words</div></div>`;
+  const box=$('bl-res-words');box.innerHTML='';
+  words.forEach(w=>box.appendChild(fwChip(w,ptsFor(w))));
+  $('bl-result').classList.add('show');
+}
+function hideResult(){$('bl-result').classList.remove('show');}
+$('bl-again').addEventListener('click',()=>{try{sessionStorage.removeItem('boggle');}catch(e){}newGame();});
+$('bl-close').addEventListener('click',hideResult);
+$('bl-result').addEventListener('click',e=>{if(e.target.id==='bl-result')hideResult();});
+
+$('bl-submit').addEventListener('click',submitWord);
+$('bl-clear').addEventListener('click',()=>{clearSel();haptic('light');});
+$('bl-new').addEventListener('click',async()=>{
+  if(!gameOver&&foundWords.size){
+    const ok=await GN.confirm('Start a new game?',{title:'Start a new game?',body:'Your current board and score will be lost.',ok:'New game',danger:true});
+    if(!ok)return;
+  }
+  try{sessionStorage.removeItem('boggle');}catch(e){}
+  newGame();
+});
+// Physical keyboard: Enter submits, Esc/Backspace edit, letters pick an adjacent matching tile
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey||gameOver)return;
+  if(e.key==='Enter'){e.preventDefault();submitWord();}
+  else if(e.key==='Escape')clearSel();
+  else if(e.key==='Backspace'){e.preventDefault();selected.pop();renderSel();updateWordDisplay();}
+  else if(/^[a-zA-Z]$/.test(e.key)){
+    const L=e.key.toUpperCase();
+    if(L==='U'&&selected.length&&tile(selected[selected.length-1])==='QU')return; // "Qu" already includes the U
+    const last=selected[selected.length-1];
+    for(let i=0;i<16;i++){
+      if(tile(i)[0]===L&&!selected.includes(i)&&(last===undefined||adjacent(last,i))){clickCell(i);return;}
+    }
+    haptic('error');
+  }
+});
 
 // ── Session persistence ────────────────────────────────────────────────────
 function _save_boggle(){if(gameOver)return;
@@ -383,15 +552,16 @@ function _save_boggle(){if(gameOver)return;
 function _load_boggle(){
   try{
     const raw=sessionStorage.getItem('boggle');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
+    const s=JSON.parse(raw);if(!s||!Array.isArray(s.grid))return false;
     grid=s.grid;foundWords=new Set(s.foundWords||[]);score=s.score||0;timerSecs=s.timerSecs||180;gameOver=s.gameOver||false;selected=[];path=[];
-    renderGrid();renderFound();document.getElementById('bl-score').textContent=score;if(!gameOver&&timerSecs>0)startTimer();
+    buildGrid();renderFound();renderStats();updateWordDisplay();
+    if(!gameOver&&timerSecs>0)startTimer();else renderTimer();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_boggle);
-document.getElementById('bl-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('boggle');}catch(e){}},true);
-_load_boggle();
+window.addEventListener('pagehide',_save_boggle);
+if(!_load_boggle())newGame();
 </script>
 </body>
 </html>

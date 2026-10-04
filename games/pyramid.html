@@ -9,113 +9,99 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Pyramid Solitaire</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);}
-.pyr-wrap{max-width:480px;margin:0 auto;padding:0 8px 60px;}
+.pyr-wrap{width:100%;max-width:620px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(28px + var(--safe-b)) max(8px,var(--safe-l));}
+.pyr-hud{display:flex;gap:8px;margin-bottom:10px;}
+.pyr-hud .stat{flex:1;max-width:none;padding:6px 8px;}
+.pyr-hud .stat-val{font-size:1.25rem;}
+.pyr-table{padding:12px 6px 14px;margin-bottom:14px;}
+.pyr-status{text-align:center;font-size:.92rem;font-weight:600;min-height:22px;margin-bottom:12px;color:rgba(255,255,255,.82);}
+.pyr-status b{color:var(--gold);}
+.pyr-status.warn{color:#fca5a5;}
 /* Card */
-.pcard{
-  width:44px;height:60px;border-radius:7px;border:1.5px solid rgba(255,255,255,.18);
-  background:linear-gradient(145deg,#f8f4e8,#ede8d6);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  cursor:pointer;position:absolute;transition:all .15s;user-select:none;
-  box-shadow:1px 2px 6px rgba(0,0,0,.4);
-  font-family:'Playfair Display',serif;font-weight:900;
-}
-.pcard:hover:not(.covered):not(.removed){border-color:#f5c842;box-shadow:0 0 12px rgba(245,200,66,.4),1px 2px 6px rgba(0,0,0,.4);}
-.pcard.selected{border-color:#f5c842;background:linear-gradient(145deg,#fffbe8,#fff3c4);box-shadow:0 0 14px rgba(245,200,66,.5),1px 2px 6px rgba(0,0,0,.4);}
-.pcard.covered{filter:brightness(.65);cursor:default;}
-.pcard.removed{opacity:0;pointer-events:none;transition:opacity .25s;}
-.pcard.red{color:#c53030;}
-.pcard.black{color:#1a1a1a;}
-.pcard-rank{font-size:.85rem;line-height:1;}
-.pcard-suit{font-size:.75rem;line-height:1;}
-/* Pyramid area */
-.pyr-field{position:relative;margin:0 auto 14px;}
+.pcard{position:absolute;width:var(--cw);height:var(--ch);border-radius:var(--cr);
+  background:linear-gradient(180deg,#fff 0%,#f3f1ea 100%);border:1px solid rgba(0,0,0,.22);
+  box-shadow:0 1px 2px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.18);
+  color:#1b1e26;font-family:var(--display);font-weight:800;cursor:pointer;
+  transition:transform .14s var(--ease),box-shadow .14s,filter .2s,opacity .25s;}
+.pcard.red{color:#d0262f;}
+.pcard .ix{position:absolute;top:calc(var(--cw)*.05);left:calc(var(--cw)*.09);display:flex;align-items:baseline;gap:1px;
+  font-size:calc(var(--cw)*.38);line-height:1;letter-spacing:-.05em;}
+.pcard .ix i{font-style:normal;font-size:.75em;letter-spacing:0;}
+.pcard .pip{position:absolute;right:calc(var(--cw)*.09);bottom:calc(var(--cw)*.05);font-size:calc(var(--cw)*.52);line-height:1;}
+.pcard.covered{filter:brightness(.62) saturate(.7);cursor:default;}
+.pcard.covered .pip{visibility:hidden;}
+.pcard.removed{opacity:0;pointer-events:none;transform:scale(.85);}
+.pcard.selected{transform:translateY(-4px);box-shadow:0 0 0 2.5px var(--gold),0 10px 18px rgba(0,0,0,.45);}
+.pcard.hint{box-shadow:0 0 0 2.5px #4ade80,0 6px 14px rgba(0,0,0,.35);}
+.pyr-field{position:relative;margin:0 auto;}
 /* Stock & waste */
-.pyr-bottom{display:flex;gap:12px;justify-content:center;align-items:flex-start;margin-bottom:12px;}
-.pyr-stock-wrap,.pyr-waste-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.pyr-bottom{position:relative;z-index:50;}
-.pyr-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);}
-.stock-card{
-  width:44px;height:60px;border-radius:7px;border:2px dashed rgba(255,255,255,.2);
-  background:linear-gradient(145deg,#1a3a2e,#0d2218);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;box-shadow:1px 2px 6px rgba(0,0,0,.4);
-  font-size:1.4rem;color:rgba(255,255,255,.25);transition:all .15s;
-}
-.stock-card:hover{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.5);}
-.stock-card.empty{cursor:default;font-size:.65rem;color:rgba(255,255,255,.2);}
-/* Status bar */
-.pyr-status{text-align:center;font-size:.9rem;font-weight:700;min-height:24px;margin-bottom:8px;}
-.pyr-stats{display:flex;justify-content:center;gap:16px;margin-bottom:10px;}
-.pyr-stat{text-align:center;}
-.pyr-stat-val{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:var(--gold);}
-.pyr-stat-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-/* Result */
-.pyr-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
-.pyr-result-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:#0d1117;}
+.pyr-bottom{display:flex;gap:14px;justify-content:center;align-items:flex-start;margin-top:18px;}
+.pyr-pile{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.pyr-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.55);}
+.pyr-slot{position:relative;width:var(--cw);height:var(--ch);}
+.pyr-slot .pcard{left:0;top:0;}
+.stock-card{width:var(--cw);height:var(--ch);border-radius:var(--cr);cursor:pointer;position:relative;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 2px,transparent 2px 6px),linear-gradient(160deg,#4166d5,#1d3480);
+  border:1px solid rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),inset 0 0 0 3px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.35);
+  display:flex;align-items:center;justify-content:center;transition:transform .12s;}
+.stock-card:active{transform:scale(.95);}
+.stock-card.redeal,.stock-card.empty{background:rgba(0,0,0,.14);border:1.5px dashed rgba(255,255,255,.25);box-shadow:none;color:rgba(255,255,255,.6);font-size:1.5rem;}
+.stock-card.empty{cursor:default;color:rgba(255,255,255,.25);}
+.stock-count{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:1px 7px;border-radius:999px;background:rgba(8,14,34,.78);font-size:.75rem;font-weight:800;color:#fff;}
+.empty-slot{width:var(--cw);height:var(--ch);border-radius:var(--cr);border:1.5px dashed rgba(255,255,255,.2);background:rgba(0,0,0,.14);}
+.pyr-undo{align-self:center;margin-left:4px;}
 /* Rules */
-.rules-details{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;margin-bottom:10px;}
-.rules-summary{padding:9px 14px;font-size:.82rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.6);list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none;}
-.rules-summary::-webkit-details-marker{display:none;}
-.rules-body{padding:4px 14px 12px;font-size:.78rem;line-height:1.7;color:rgba(255,255,255,.55);}
-.rules-body p{margin:0 0 5px;}
-.rules-body strong{color:rgba(255,255,255,.85);}
+.rules-body p{margin:0 0 6px;}
+.rules-body strong{color:var(--text);}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
-  <span class="nav-title">Pyramid Solitaire</span>
+  <span class="nav-title">Pyramid</span>
+  <button class="icon-btn" id="pyr-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding:10px 0 60px;">
-<div class="pyr-wrap">
+<div class="pyr-wrap" id="pyr-wrap">
+
+<div class="pyr-hud">
+  <div class="stat"><div class="stat-val" id="pyr-left">28</div><div class="stat-lbl">Left</div></div>
+  <div class="stat"><div class="stat-val" id="pyr-moves">0</div><div class="stat-lbl">Pairs</div></div>
+  <div class="stat"><div class="stat-val" id="pyr-redeals">2</div><div class="stat-lbl">Redeals</div></div>
+</div>
+
+<div class="felt pyr-table" id="pyr-table">
+  <div class="pyr-status" id="pyr-status">Pair cards that add up to <b>13</b> · Kings go alone</div>
+  <div class="pyr-field" id="pyr-field"></div>
+  <div class="pyr-bottom">
+    <div class="pyr-pile">
+      <div class="stock-card" id="pyr-stock" role="button" aria-label="Draw from stock"><span class="stock-count" id="pyr-stock-count"></span></div>
+      <div class="pyr-lbl">Stock</div>
+    </div>
+    <div class="pyr-pile">
+      <div class="pyr-slot" id="pyr-waste-slot"></div>
+      <div class="pyr-lbl">Waste</div>
+    </div>
+    <button class="btn btn-outline btn-sm pyr-undo" id="pyr-undo">↩ Undo</button>
+  </div>
+</div>
+<div id="pyr-result-area"></div>
 
 <details class="rules-details">
-  <summary class="rules-summary">📖 How to Play <span style="font-size:.6rem;opacity:.4;">▼</span></summary>
+  <summary class="rules-summary">How to play</summary>
   <div class="rules-body">
     <p><strong>Goal:</strong> Remove all 28 pyramid cards by pairing them to sum to 13.</p>
     <p><strong>Pairs that make 13:</strong> K alone · Q+A · J+2 · 10+3 · 9+4 · 8+5 · 7+6</p>
     <p><strong>Available cards:</strong> Any pyramid card with no cards overlapping it from below, plus the top card of the waste pile.</p>
-    <p><strong>Stock:</strong> Click the face-down deck to flip one card to the waste pile. When stock is empty, click to redeal (2 redeals allowed).</p>
-    <p><strong>Selecting:</strong> Click one card to select it (gold border), then click its pair. Kings remove immediately on click.</p>
+    <p><strong>Stock:</strong> Tap the face-down deck to flip one card to the waste pile. When the stock is empty, tap to redeal (2 redeals allowed).</p>
+    <p><strong>Selecting:</strong> Tap one card to select it, then tap its pair. Kings are removed as soon as you tap them.</p>
     <p><strong>Win:</strong> Clear all 28 pyramid cards — the remaining stock/waste don't need to be cleared.</p>
   </div>
 </details>
-
-<div class="pyr-stats">
-  <div class="pyr-stat"><div class="pyr-stat-val" id="pyr-left">28</div><div class="pyr-stat-lbl">Remaining</div></div>
-  <div class="pyr-stat"><div class="pyr-stat-val" id="pyr-moves">0</div><div class="pyr-stat-lbl">Pairs removed</div></div>
-  <div class="pyr-stat"><div class="pyr-stat-val" id="pyr-redeals">2</div><div class="pyr-stat-lbl">Redeals left</div></div>
-</div>
-
-<div id="pyr-result-area"></div>
-<div class="pyr-status" id="pyr-status">Select two cards that sum to 13 (K alone)</div>
-
-<div class="pyr-field" id="pyr-field"></div>
-
-<div class="pyr-bottom">
-  <div class="pyr-stock-wrap">
-    <div class="pyr-lbl">Stock</div>
-    <div class="stock-card" id="pyr-stock">🂠</div>
-    <div style="font-size:.65rem;color:rgba(255,255,255,.3);" id="pyr-stock-count"></div>
-  </div>
-  <div class="pyr-waste-wrap">
-    <div class="pyr-lbl">Waste</div>
-    <div id="pyr-waste-slot"></div>
-  </div>
-</div>
-
-<div style="text-align:center;margin-top:4px;">
-  <button class="btn btn-gold btn-sm" id="pyr-new">New Game</button>
-  <button class="btn btn-outline btn-sm" id="pyr-undo" style="margin-left:6px;">↩ Undo</button>
-</div>
-</div>
 </div>
 <script>
 'use strict';
@@ -123,7 +109,18 @@ const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const SUITS=['♠','♥','♦','♣'];
 const VALUES={A:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13};
 const RED=new Set(['♥','♦']);
-const CW=44,CH=60,HGAP=50,VGAP=38;
+let CW=44,CH=62,HGAP=48,VGAP=31;
+const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+
+function calcSizes(){
+  const t=document.getElementById('pyr-table');
+  const w=Math.min(560,(t?t.clientWidth:374)-12);
+  const gap=w>440?8:4;
+  CW=Math.min(72,Math.floor((w-6*gap)/7));CH=Math.round(CW*1.4);
+  HGAP=CW+gap;VGAP=Math.round(CH*.5);
+  const r=document.documentElement.style;
+  r.setProperty('--cw',CW+'px');r.setProperty('--ch',CH+'px');r.setProperty('--cr',Math.max(5,Math.round(CW*.11))+'px');
+}
 
 function deck(){
   const d=[];
@@ -134,9 +131,10 @@ function deck(){
 
 // Pyramid: row 0 = top (1 card), row 6 = bottom (7 cards) → 28 cards
 // pyCards[row][col] = card object with .removed, .id
-let pyCards, stock, waste, stockIdx, redeals, sel, moves, undoStack;
+let pyCards, stock, waste, stockIdx, redeals, sel, moves, undoStack, over=false;
 
 function init(){
+  calcSizes();
   const d=deck();
   pyCards=[];
   let idx=0;
@@ -147,8 +145,18 @@ function init(){
     }
   }
   stock=d.slice(28).map((c,i)=>({...c,id:`s-${i}`,removed:false,inPyramid:false}));
-  waste=[]; stockIdx=0; redeals=2; sel=null; moves=0; undoStack=[];
+  waste=[]; stockIdx=0; redeals=2; sel=null; moves=0; undoStack=[]; over=false;
+  document.getElementById('pyr-result-area').innerHTML='';
+  setStatus('');
   renderAll();
+}
+async function confirmNew(){
+  const left=pyCards.flat().filter(c=>!c.removed).length;
+  if(!over&&left>0&&(moves>0||stockIdx>0)&&window.GN){
+    const ok=await GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New Game'});
+    if(!ok)return;
+  }
+  init();
 }
 
 function isCovered(r,c){
@@ -168,43 +176,47 @@ function isAvailable(card){
 function wasteTop(){return waste.length?waste[waste.length-1]:null;}
 
 function clickStock(){
+  if(over)return;
   if(stockIdx<stock.length){
     const c=stock[stockIdx++];
     waste.push(c);
-    sel=null;
+    sel=null;hap('light');
     renderAll();
   } else if(redeals>0){
     // Redeal: put waste back into stock (reversed)
     stock=[...waste].reverse().map((c,i)=>({...c,id:`s-${i}`}));
     waste=[]; stockIdx=0; redeals--;
-    sel=null; renderAll();
+    sel=null; hap('medium'); renderAll();
   } else {
-    setStatus('No redeals left!');
+    setStatus('No redeals left!',true);hap('error');
   }
+  checkStuck();
+}
+
+function removeCard(card){
+  if(card.inPyramid) card.removed=true;
+  else { const wi=waste.lastIndexOf(card); if(wi>=0)waste.splice(wi,1); }
 }
 
 function clickCard(card){
-  if(!isAvailable(card))return;
+  if(over||!isAvailable(card))return;
   // King: remove alone
   if(card.val===13){
     saveUndo();
-    if(card.inPyramid) card.removed=true;
-    else { const wi=waste.lastIndexOf(card); if(wi>=0)waste.splice(wi,1); }
-    moves++;
+    removeCard(card);
+    moves++;hap('medium');
     sel=null; renderAll(); checkWin(); return;
   }
-  if(!sel){sel=card;renderAll();return;}
+  if(!sel){sel=card;hap('select');renderAll();return;}
   if(sel.id===card.id){sel=null;renderAll();return;}
   if(sel.val+card.val===13){
     saveUndo();
-    if(sel.inPyramid) sel.removed=true;
-    else { const wi=waste.lastIndexOf(sel); if(wi>=0)waste.splice(wi,1); }
-    if(card.inPyramid) card.removed=true;
-    else { const wi=waste.lastIndexOf(card); if(wi>=0)waste.splice(wi,1); }
-    moves++;
+    removeCard(sel);
+    removeCard(card);
+    moves++;hap('medium');
     sel=null; renderAll(); checkWin();
   } else {
-    sel=card; renderAll();
+    sel=card; hap('select'); renderAll();
   }
 }
 
@@ -212,16 +224,37 @@ function saveUndo(){
   undoStack.push({
     pyState:pyCards.map(row=>row.map(c=>({...c}))),
     waste:[...waste.map(c=>({...c}))],
+    stock:stock.map(c=>({...c})),
     stockIdx, redeals, sel:sel?.id||null, moves
   });
   if(undoStack.length>20)undoStack.shift();
 }
 
 function undo(){
-  if(!undoStack.length)return;
+  if(!undoStack.length){hap('error');return;}
   const s=undoStack.pop();
-  pyCards=s.pyState; waste=s.waste; stockIdx=s.stockIdx; redeals=s.redeals; moves=s.moves;
-  sel=null; renderAll();
+  pyCards=s.pyState; waste=s.waste; if(s.stock)stock=s.stock; stockIdx=s.stockIdx; redeals=s.redeals; moves=s.moves;
+  sel=null; over=false; document.getElementById('pyr-result-area').innerHTML='';
+  setStatus(''); hap('light'); renderAll();
+}
+
+// Cards the player can currently use
+function availableCards(){
+  const out=pyCards.flat().filter(c=>isAvailable(c));
+  const wt=wasteTop(); if(wt)out.push(wt);
+  return out;
+}
+function findPair(){
+  const av=availableCards();
+  const k=av.find(c=>c.val===13); if(k)return [k];
+  for(let i=0;i<av.length;i++)for(let j=i+1;j<av.length;j++)if(av[i].val+av[j].val===13)return [av[i],av[j]];
+  return null;
+}
+
+function histBtn(){
+  const hb=GameHistory.btn('pyramid','Pyramid Solitaire',e=>GameHistory.renderStatGrid([{val:e.moves,lbl:'Pairs'},{val:e.result==='win'?'Win':'—',lbl:'Result'}]));
+  hb.style.cssText='';hb.className='btn btn-outline btn-block';hb.textContent='📜 Past games';
+  return hb;
 }
 
 function checkWin(){
@@ -229,13 +262,49 @@ function checkWin(){
   document.getElementById('pyr-left').textContent=left;
   document.getElementById('pyr-moves').textContent=moves;
   if(left===0){
+    over=true;hap('success');
     document.getElementById('pyr-result-area').innerHTML=
-      `<div class="pyr-result"><div class="pyr-result-title">🎉 You Win!</div><div style="color:#2a1a00;font-size:.88rem;margin-top:4px;">Cleared the pyramid in ${moves} pairs!</div></div>`;
+      `<div class="winner-banner"><div style="font-size:2rem">🎉</div><div class="winner-name">You cleared it!</div><div class="winner-pts">Pyramid cleared in ${moves} pairs</div>
+       <button class="btn btn-gold" style="margin-top:14px" onclick="init()">Play Again</button></div>`;
     try{GameHistory.save('pyramid',{_summary:`Pyramid Solitaire · Won in ${moves} pairs`,_badge:'Win',result:'win',moves});}catch(e){}
+    setTimeout(()=>{
+      const sh=GN.sheet({title:'You cleared the pyramid!',body:`<div style="font-size:2.4rem">🎉</div>Won in <b>${moves}</b> pairs.`,
+        actions:[{label:'Play Again',primary:true,onClick:init},{label:'Close'}]});
+      const acts=sh.el.querySelector('.gn-actions');acts.insertBefore(histBtn(),acts.lastChild);
+    },350);
+    return;
   }
+  checkStuck();
 }
 
-function setStatus(msg){document.getElementById('pyr-status').textContent=msg;}
+// Out of stock, out of redeals and nothing pairs up → the game is over.
+function checkStuck(){
+  if(over)return;
+  if(stockIdx<stock.length||redeals>0)return;
+  if(findPair())return;
+  over=true;hap('error');
+  const left=pyCards.flat().filter(c=>!c.removed).length;
+  setStatus(`No moves left · ${left} card${left===1?'':'s'} remaining`,true);
+  document.getElementById('pyr-result-area').innerHTML=
+    `<div class="card" style="text-align:center"><div class="card-title" style="margin-bottom:4px">Out of moves</div>
+     <div style="color:var(--text-2);font-size:.92rem;margin-bottom:14px">${left} pyramid card${left===1?'':'s'} left after ${moves} pairs.</div>
+     <div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-gold" onclick="init()">New Game</button><button class="btn btn-outline" onclick="undo()">↩ Undo</button></div></div>`;
+  setTimeout(()=>{
+    if(!over)return;
+    GN.sheet({title:'Out of moves',body:`${left} pyramid card${left===1?'':'s'} left after ${moves} pairs.`,
+      actions:[{label:'New Game',primary:true,onClick:init},{label:'Undo last move',onClick:undo},{label:'Close'}]});
+  },350);
+}
+
+function setStatus(msg,warn){
+  const el=document.getElementById('pyr-status');
+  if(!msg){el.className='pyr-status';el.innerHTML='Pair cards that add up to <b>13</b> · Kings go alone';return;}
+  el.className='pyr-status'+(warn?' warn':'');el.textContent=msg;
+}
+
+function cardHTML(card){
+  return `<div class="ix">${card.rank}<i>${card.suit}</i></div><div class="pip">${card.suit}</div>`;
+}
 
 function renderAll(){
   const field=document.getElementById('pyr-field');
@@ -243,13 +312,17 @@ function renderAll(){
   document.getElementById('pyr-left').textContent=left;
   document.getElementById('pyr-moves').textContent=moves;
   document.getElementById('pyr-redeals').textContent=redeals;
+  if(sel&&!over){
+    const need=13-sel.val;
+    setStatus(`Selected ${sel.rank}${sel.suit} — find a ${RANKS[need-1]}`);
+  } else if(!over) setStatus('');
   // Calculate field size
-  const fw=7*HGAP+CW; const fh=7*VGAP+CH;
+  const fw=6*HGAP+CW; const fh=6*VGAP+CH;
   field.style.width=fw+'px'; field.style.height=fh+'px';
   field.innerHTML='';
   // Draw pyramid rows
   for(let r=0;r<7;r++){
-    const rowW=(r+1)*HGAP+(CW-HGAP);
+    const rowW=r*HGAP+CW;
     const xStart=(fw-rowW)/2;
     for(let c=0;c<=r;c++){
       const card=pyCards[r][c];
@@ -259,8 +332,9 @@ function renderAll(){
       const selected=sel&&sel.id===card.id;
       const el=document.createElement('div');
       el.className='pcard'+(RED.has(card.suit)?' red':' black')+(covered?' covered':'')+(card.removed?' removed':'')+(selected?' selected':'');
+      if(sel&&!covered&&!card.removed&&!selected&&sel.val+card.val===13)el.classList.add('hint');
       el.style.cssText=`left:${x}px;top:${y}px;z-index:${r*2+(covered?0:10)};`;
-      el.innerHTML=`<div class="pcard-rank">${card.rank}</div><div class="pcard-suit">${card.suit}</div>`;
+      el.innerHTML=cardHTML(card);
       if(!covered&&!card.removed) el.addEventListener('click',()=>clickCard(card));
       field.appendChild(el);
     }
@@ -268,10 +342,9 @@ function renderAll(){
   // Stock
   const stockRemaining=stock.length-stockIdx;
   const stockEl=document.getElementById('pyr-stock');
-  stockEl.className='stock-card'+(stockRemaining===0&&redeals===0?' empty':'');
-  stockEl.textContent=stockRemaining>0?'🂠':redeals>0?'↺':'';
-  stockEl.title=stockRemaining>0?`${stockRemaining} cards left`:redeals>0?`Redeal (${redeals} left)`:'No cards left';
-  document.getElementById('pyr-stock-count').textContent=stockRemaining>0?`${stockRemaining} left`:'';
+  stockEl.className='stock-card'+(stockRemaining>0?'':redeals>0?' redeal':' empty');
+  stockEl.innerHTML=stockRemaining>0?`<span class="stock-count">${stockRemaining}</span>`:redeals>0?'↺':'';
+  stockEl.setAttribute('aria-label',stockRemaining>0?`Draw (${stockRemaining} cards left)`:redeals>0?`Redeal (${redeals} left)`:'No cards left');
   // Waste
   const wslot=document.getElementById('pyr-waste-slot');
   wslot.innerHTML='';
@@ -280,22 +353,22 @@ function renderAll(){
     const selected=sel&&sel.id===wt.id;
     const wcard=document.createElement('div');
     wcard.className='pcard '+(RED.has(wt.suit)?'red':'black')+(selected?' selected':'');
-    wcard.style.cssText='position:relative;cursor:pointer;z-index:100;';
-    wcard.innerHTML='<div class="pcard-rank">'+wt.rank+'</div><div class="pcard-suit">'+wt.suit+'</div>';
+    if(sel&&!selected&&sel.val+wt.val===13)wcard.classList.add('hint');
+    wcard.innerHTML=cardHTML(wt);
     wcard.addEventListener('click',function(e){e.stopPropagation();clickCard(wt);});
     wslot.appendChild(wcard);
   } else {
     const empty=document.createElement('div');
-    empty.className='stock-card empty';
-    empty.style.cssText='font-size:.6rem;color:rgba(255,255,255,.15);';
-    empty.textContent='Empty';
+    empty.className='empty-slot';
     wslot.appendChild(empty);
   }
+  document.getElementById('pyr-undo').disabled=!undoStack.length;
 }
 
 document.getElementById('pyr-stock').addEventListener('click',clickStock);
-document.getElementById('pyr-new').addEventListener('click',()=>{document.getElementById('pyr-result-area').innerHTML='';init();});
+document.getElementById('pyr-new').addEventListener('click',confirmNew);
 document.getElementById('pyr-undo').addEventListener('click',undo);
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{calcSizes();renderAll();},80);});
 
 init();
 </script>

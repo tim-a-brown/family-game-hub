@@ -8,48 +8,76 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Sudoku</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 30% 0%,#0a2a1a 0%,#0d1117 65%);}
-.sudoku-wrap{max-width:min(400px, calc(100vw - 24px));margin:0 auto;}
-.sudoku-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);border-radius:8px;overflow:hidden;margin-bottom:12px;}
-.s-cell{aspect-ratio:1;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:clamp(.95rem,4vw,1.2rem);font-weight:700;cursor:pointer;transition:background .1s;border:1px solid transparent;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
-.s-cell.given{color:rgba(255,255,255,.9);cursor:default;}
-.s-cell.user{color:#5ac8fa;cursor:pointer;}
-.s-cell.selected{background:rgba(90,200,250,.15)!important;}
-.s-cell.highlight{background:rgba(90,200,250,.06);}
-.s-cell.error{color:var(--red)!important;}
-.s-cell.box-right{border-right:2px solid rgba(255,255,255,.3)!important;}
-.s-cell.box-bottom{border-bottom:2px solid rgba(255,255,255,.3)!important;}
-.numpad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px;}
-.num-btn{aspect-ratio:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--text);font-size:1.1rem;font-weight:700;cursor:pointer;transition:all .15s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:44px;}
-.num-btn:hover{background:rgba(255,255,255,.14);}
-.num-btn.erase{font-size:.85rem;color:var(--muted);}
-.difficulty-row{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
-.timer{text-align:center;font-family:var(--serif);font-size:1.4rem;font-weight:700;color:var(--gold);margin-bottom:8px;}
+.page{max-width:480px;padding-top:12px;}
+.sdk-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.sdk-top .tabs{margin:0;flex:1;}
+.sdk-top .tab{flex:1 1 0;min-height:36px;}
+.sdk-status{display:flex;align-items:center;justify-content:space-between;margin:0 2px 10px;}
+.timer{font-family:var(--display);font-size:1.35rem;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:-.01em;display:flex;align-items:center;gap:6px;}
+.timer svg{width:18px;height:18px;opacity:.8;}
+.sdk-diff-lbl{font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+.sudoku-wrap{width:100%;max-width:min(460px,calc(100dvh - 330px));min-width:min(100%,300px);margin:0 auto;}
+.sudoku-grid{display:grid;grid-template-columns:repeat(9,1fr);background:var(--surface);border:2px solid rgba(255,255,255,.42);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);}
+.s-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:clamp(1.05rem,5.2vw,1.6rem);font-weight:700;cursor:pointer;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2);position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .12s;}
+.s-cell:nth-child(9n){border-right:0;}
+.s-cell:nth-child(n+73){border-bottom:0;}
+.s-cell.given{color:var(--text);cursor:default;}
+.s-cell.user{color:#7cc4ff;}
+.s-cell.highlight{background:rgba(124,196,255,.07);}
+.s-cell.same{background:rgba(245,200,66,.14);}
+.s-cell.selected{background:rgba(124,196,255,.28)!important;box-shadow:inset 0 0 0 2px rgba(124,196,255,.7);}
+.s-cell.error{color:var(--red)!important;background:rgba(248,113,113,.1);}
+.s-cell.box-right{border-right:2px solid rgba(255,255,255,.42)!important;}
+.s-cell.box-bottom{border-bottom:2px solid rgba(255,255,255,.42)!important;}
+.sudoku-grid.solved .s-cell{animation:sdk-wave .6s var(--ease) both;}
+@keyframes sdk-wave{40%{background:rgba(245,200,66,.25);}}
+.numpad{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}
+.num-btn{min-height:58px;padding:0;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font-family:var(--display);font-size:1.5rem;font-weight:700;cursor:pointer;transition:transform .1s var(--ease),background .15s,opacity .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;}
+.num-btn small{font-family:var(--font);font-size:.7rem;font-weight:600;color:var(--text-3);margin-top:4px;}
+.num-btn:active{transform:scale(.92);background:var(--surface-3);}
+.num-btn.done{opacity:.35;}
+.sdk-tools{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
+.tool-btn{flex:1;max-width:150px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;background:transparent;border:1px solid var(--line-2);border-radius:999px;color:var(--text-2);font-size:.9rem;font-weight:600;cursor:pointer;}
+.tool-btn:active{background:var(--surface-2);}
+.tool-btn svg{width:18px;height:18px;}
+#msg:empty{display:none;}
+.sudoku-wrap.is-solved .sdk-tools,.sudoku-wrap.is-solved .numpad{display:none;}
+#msg .win-actions .btn{min-height:48px;}
+#msg .winner-banner{margin:14px 0 0;}
+#msg .win-actions{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+@media (hover:hover){.num-btn:hover{background:var(--surface-3);}}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Sudoku</span>
+  <button class="icon-btn" id="new-puzzle" aria-label="New puzzle" title="New puzzle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding-bottom:40px;">
-<div class="difficulty-row">
-  <button class="btn btn-outline btn-sm diff-btn" data-d="easy">Easy</button>
-  <button class="btn btn-gold btn-sm diff-btn" data-d="medium">Medium</button>
-  <button class="btn btn-outline btn-sm diff-btn" data-d="hard">Hard</button>
-  <button class="btn btn-outline btn-sm" id="new-puzzle">New Puzzle</button>
+<div class="page">
+<div class="sdk-top">
+  <div class="tabs" role="tablist">
+    <button class="tab diff-btn" data-d="easy">Easy</button>
+    <button class="tab diff-btn active" data-d="medium">Medium</button>
+    <button class="tab diff-btn" data-d="hard">Hard</button>
+  </div>
 </div>
-<div class="timer" id="timer">0:00</div>
 <div class="sudoku-wrap">
+  <div class="sdk-status">
+    <span class="sdk-diff-lbl" id="diff-lbl">Medium</span>
+    <div class="timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span id="timer">0:00</span></div>
+  </div>
   <div class="sudoku-grid" id="grid"></div>
+  <div class="sdk-tools">
+    <button class="tool-btn" id="erase-btn" aria-label="Erase"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m17 9-6 6M11 9l6 6"/></svg>Erase</button>
+  </div>
   <div class="numpad" id="numpad"></div>
+  <div id="msg"></div>
 </div>
-<div id="msg" style="text-align:center;font-weight:700;min-height:24px;"></div>
 </div>
 <script>
 'use strict';
@@ -69,9 +97,12 @@ hard:[
 ]
 };
 
-let diff='medium',sel=null,board,givens,solution,timerInt,seconds=0;
+let diff='medium',sel=null,board,givens,solution,timerInt,seconds=0,solved=false;
+const DIFF_LBL={easy:'Easy',medium:'Medium',hard:'Hard'};
+function fmtTime(t){return `${Math.floor(t/60)}:${(t%60).toString().padStart(2,'0')}`;}
+function showTime(){document.getElementById('timer').textContent=fmtTime(seconds);}
 
-function startTimer(){clearInterval(timerInt);seconds=0;timerInt=setInterval(()=>{seconds++;const m=Math.floor(seconds/60),s=seconds%60;document.getElementById('timer').textContent=`${m}:${s.toString().padStart(2,'0')}`;},1000);}
+function startTimer(){clearInterval(timerInt);seconds=0;showTime();timerInt=setInterval(()=>{seconds++;showTime();},1000);}
 function stopTimer(){clearInterval(timerInt);}
 
 function newPuzzle(){
@@ -80,8 +111,10 @@ function newPuzzle(){
   givens=p[0].map(r=>[...r]);
   solution=p[1].map(r=>[...r]);
   board=givens.map(r=>[...r]);
-  sel=null;startTimer();
-  document.getElementById('msg').textContent='';
+  sel=null;solved=false;startTimer();
+  document.getElementById('msg').innerHTML='';
+  document.getElementById('grid').classList.remove('solved');document.querySelector('.sudoku-wrap').classList.remove('is-solved');
+  document.getElementById('diff-lbl').textContent=DIFF_LBL[diff];
   renderGrid();buildNumpad();
 }
 
@@ -91,7 +124,9 @@ function renderGrid(){
     const cell=document.createElement('div');
     const gi=givens[r][c];
     cell.className='s-cell '+(gi?'given':'user');
+    const selVal=sel?board[sel[0]][sel[1]]:0;
     if(sel&&sel[0]===r&&sel[1]===c)cell.classList.add('selected');
+    else if(selVal&&board[r][c]===selVal)cell.classList.add('same');
     else if(sel){
       const[sr,sc]=sel;
       if(sr===r||sc===c||Math.floor(sr/3)===Math.floor(r/3)&&Math.floor(sc/3)===Math.floor(c/3))
@@ -103,7 +138,7 @@ function renderGrid(){
     }
     if((c+1)%3===0&&c<8)cell.classList.add('box-right');
     if((r+1)%3===0&&r<8)cell.classList.add('box-bottom');
-    if(!gi)cell.addEventListener('click',()=>{sel=[r,c];renderGrid();});
+    cell.addEventListener('click',()=>{if(solved)return;if(gi){sel=[r,c];renderGrid();return;}sel=[r,c];GN.haptic('select');renderGrid();});
     g.appendChild(cell);
   }
 }
@@ -111,50 +146,79 @@ function renderGrid(){
 function buildNumpad(){
   const n=document.getElementById('numpad');n.innerHTML='';
   for(let i=1;i<=9;i++){
-    const b=document.createElement('button');b.className='num-btn';b.textContent=i;
+    const b=document.createElement('button');b.className='num-btn';b.dataset.n=i;
+    b.innerHTML=`${i}<small></small>`;b.setAttribute('aria-label','Enter '+i);
     b.addEventListener('click',()=>input(i));n.appendChild(b);
   }
-  const e=document.createElement('button');e.className='num-btn erase';e.textContent='✕ Erase';
-  e.style.gridColumn='4/6';
-  e.addEventListener('click',()=>input(0));n.appendChild(e);
+  updateNumpad();
+}
+function updateNumpad(){
+  // Show how many of each digit are still left to place
+  document.querySelectorAll('#numpad .num-btn').forEach(b=>{
+    const i=+b.dataset.n;let cnt=0;
+    for(const row of board)for(const v of row)if(v===i)cnt++;
+    const left=Math.max(0,9-cnt);
+    b.querySelector('small').textContent=left;
+    b.classList.toggle('done',left===0);
+  });
 }
 
 function input(v){
-  if(!sel)return;
+  if(!sel||solved)return;
   const[r,c]=sel;
-  if(givens[r][c])return;
+  if(givens[r][c]){GN.haptic('light');return;}
   board[r][c]=v||0;
-  renderGrid();
+  if(v&&v!==solution[r][c])GN.haptic('error');else GN.haptic('light');
+  renderGrid();updateNumpad();
   if(board.every((row,ri)=>row.every((val,ci)=>val===solution[ri][ci]))){
-    stopTimer();
+    stopTimer();solved=true;sel=null;renderGrid();
+    GN.haptic('success');
+    document.getElementById('grid').classList.add('solved');document.querySelector('.sudoku-wrap').classList.add('is-solved');
     const timeStr=document.getElementById('timer').textContent;
-    document.getElementById('msg').innerHTML=`<span style="color:var(--gold)">🎉 Solved in ${timeStr}!</span>`;
+    document.getElementById('msg').innerHTML=`<div class="winner-banner"><div style="font-size:2rem;line-height:1">🎉</div><div class="winner-name">Solved!</div><div class="winner-pts">${DIFF_LBL[diff]} puzzle in ${timeStr}</div><div class="win-actions"><button class="btn btn-gold" id="play-again">New puzzle</button></div></div>`;
+    document.getElementById('play-again').addEventListener('click',()=>{try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();window.scrollTo({top:0,behavior:'smooth'});});
+    setTimeout(()=>document.getElementById('msg').scrollIntoView({behavior:'smooth',block:'end'}),200);
     GameHistory.save('sudoku',{_summary:`${diff} · solved in ${timeStr}`,_badge:timeStr,diff,seconds,board:board.map(r=>[...r]),givens:givens.map(r=>[...r])});
     try{sessionStorage.removeItem('sdk_state');}catch(e){}
     // Add History button below msg
-    const msgEl=document.getElementById('msg');
-    if(!msgEl.querySelector('.gh-hist-btn')){
+    const actEl=document.querySelector('#msg .win-actions');
+    if(actEl&&!actEl.querySelector('.gh-hist-btn')){
       const b=GameHistory.btn('sudoku','Sudoku',e=>GameHistory.renderSudokuGrid(e.board,e.givens));
-      b.classList.add('gh-hist-btn');b.style.cssText='display:block;margin:8px auto 0;';
-      msgEl.appendChild(b);
+      b.classList.add('gh-hist-btn');b.classList.remove('btn-sm');
+      actEl.appendChild(b);
     }
   }
 }
 
+document.getElementById('erase-btn').addEventListener('click',()=>input(0));
 document.addEventListener('keydown',e=>{
+  if(sel&&e.key.startsWith('Arrow')){
+    e.preventDefault();
+    const d={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+    sel=[(sel[0]+d[0]+9)%9,(sel[1]+d[1]+9)%9];renderGrid();return;
+  }
   if(e.key>='1'&&e.key<='9')input(+e.key);
   else if(e.key==='Backspace'||e.key==='Delete')input(0);
 });
 
 document.querySelectorAll('.diff-btn').forEach(b=>{
   b.addEventListener('click',()=>{
-    document.querySelectorAll('.diff-btn').forEach(x=>{x.classList.remove('btn-gold');x.classList.add('btn-outline');});
-    b.classList.add('btn-gold');b.classList.remove('btn-outline');
-    diff=b.dataset.d;newPuzzle();
+    if(b.dataset.d===diff)return;
+    const go=()=>{
+      document.querySelectorAll('.diff-btn').forEach(x=>x.classList.toggle('active',x===b));
+      diff=b.dataset.d;try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();
+    };
+    if(!solved&&isInProgress())GN.confirm('Your current puzzle will be lost.',{title:'Switch to '+DIFF_LBL[b.dataset.d]+'?',ok:'Start '+DIFF_LBL[b.dataset.d]}).then(ok=>{if(ok)go();});
+    else go();
   });
 });
-document.getElementById('new-puzzle').addEventListener('click',()=>{try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();});
-function saveSdkState(){if(!board)return;try{sessionStorage.setItem('sdk_state',JSON.stringify({board,givens,solution,diff,seconds,_ts:Date.now()}));}catch(e){}}
+function isInProgress(){return board&&board.some((row,r)=>row.some((v,c)=>v&&!givens[r][c]));}
+document.getElementById('new-puzzle').addEventListener('click',()=>{
+  const go=()=>{try{sessionStorage.removeItem('sdk_state');}catch(e){}newPuzzle();};
+  if(!solved&&isInProgress())GN.confirm('Your progress on this puzzle will be lost.',{title:'Start a new puzzle?',ok:'New puzzle'}).then(ok=>{if(ok)go();});
+  else go();
+});
+function saveSdkState(){if(!board||solved)return;try{sessionStorage.setItem('sdk_state',JSON.stringify({board,givens,solution,diff,seconds,_ts:Date.now()}));}catch(e){}}
 function loadSdkState(){
   try{
     const raw=sessionStorage.getItem('sdk_state');if(!raw)return false;
@@ -162,12 +226,10 @@ function loadSdkState(){
     board=s.board;givens=s.givens;solution=s.solution;diff=s.diff||'medium';seconds=s.seconds||0;
     sel=null;
     // Restore diff button highlight
-    document.querySelectorAll('.diff-btn').forEach(b=>{
-      b.classList.toggle('btn-gold',b.dataset.d===diff);
-      b.classList.toggle('btn-outline',b.dataset.d!==diff);
-    });
-    timerInt=setInterval(()=>{seconds++;const m=Math.floor(seconds/60),ss=seconds%60;document.getElementById('timer').textContent=`${m}:${ss.toString().padStart(2,'0')}`;},1000);
-    document.getElementById('msg').textContent='';
+    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===diff));
+    document.getElementById('diff-lbl').textContent=DIFF_LBL[diff];
+    showTime();timerInt=setInterval(()=>{seconds++;showTime();},1000);
+    document.getElementById('msg').innerHTML='';
     renderGrid();buildNumpad();return true;
   }catch(e){return false;}
 }

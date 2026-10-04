@@ -6,71 +6,112 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Spelling Bee</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a1205 0%,#0d1117 70%);}
-.wrap{max-width:400px;margin:0 auto;padding:0 10px 60px;}
-/* Score */
-.sb-score-row{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
-.sb-rank{font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--gold);text-align:center;}
-.sb-progress{height:8px;background:rgba(255,255,255,.08);border-radius:4px;margin-bottom:10px;overflow:hidden;}
-.sb-prog-fill{height:100%;background:linear-gradient(90deg,#f5c842,#f97316);border-radius:4px;transition:width .4s;}
-/* Input display */
-.sb-word{font-family:var(--serif);font-size:1.6rem;font-weight:900;text-align:center;min-height:44px;letter-spacing:.12em;margin:8px 0;color:#fff;}
+:root{--hex-out:#2a2f3b;--hex-out-hi:#363c4b;}
+.wrap{max-width:440px;margin:0 auto;}
+.sb-page{padding-top:12px;}
+/* Header: puzzle chip + rank */
+.sb-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.sb-puz{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--text);font-size:.9rem;font-weight:700;cursor:pointer;}
+.sb-puz svg{width:14px;height:14px;color:var(--text-3);}
+.sb-pts{font-family:var(--display);font-size:1.5rem;font-weight:800;color:var(--gold);line-height:1;}
+.sb-pts small{font-family:var(--font);font-size:.8rem;font-weight:600;color:var(--text-3);margin-left:4px;}
+/* Rank track */
+.sb-rankrow{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.sb-rank{font-family:var(--display);font-size:1.05rem;font-weight:800;color:var(--text);min-width:92px;}
+.sb-track{flex:1;position:relative;height:28px;margin:0 13px;}
+.sb-track::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;background:var(--line-2);transform:translateY(-50%);}
+.sb-prog-fill{position:absolute;left:0;top:50%;height:4px;transform:translateY(-50%);background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:2px;transition:width .5s var(--ease);}
+.sb-dot{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;background:var(--surface-3);transform:translate(-50%,-50%);}
+.sb-dot.on{background:var(--gold);}
+.sb-dot.cur{width:26px;height:26px;display:grid;place-items:center;background:var(--gold);color:var(--gold-ink);font-size:.72rem;font-weight:800;box-shadow:0 0 0 3px rgba(245,200,66,.25);}
+.sb-count{font-size:.85rem;color:var(--text-2);margin-bottom:6px;}
+/* Input + message */
+.sb-entry{position:relative;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:6px;}
+.sb-msg{position:absolute;top:4px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;padding:7px 16px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);font-size:.9rem;font-weight:700;white-space:nowrap;transition:opacity .2s,transform .25s var(--spring);pointer-events:none;}
+.sb-msg.show{opacity:1;transform:translateX(-50%) scale(1);}
+.sb-msg.good{background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);color:var(--green);}
+.sb-msg.pan{background:rgba(245,200,66,.18);border-color:rgba(245,200,66,.5);color:var(--gold);}
+.sb-word{font-family:var(--display);font-size:2rem;font-weight:800;text-align:center;min-height:44px;letter-spacing:.06em;color:var(--text);display:flex;align-items:center;justify-content:center;max-width:100%;overflow:hidden;}
 .sb-word .center-letter{color:var(--gold);}
-/* Honeycomb */
-.honeycomb{display:flex;flex-direction:column;align-items:center;gap:4px;margin:10px 0 16px;}
-.hc-row{display:flex;gap:4px;}
-.hc-hex{width:62px;height:62px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:1.3rem;font-weight:900;cursor:pointer;transition:filter .1s;user-select:none;touch-action:manipulation;}
-.hc-hex.outer{background:#3a3020;color:#fff;}
-.hc-hex.outer:hover,.hc-hex.outer:active{filter:brightness(1.3);}
-.hc-hex.center{background:var(--gold);color:#1a1205;}
-.hc-hex.center:hover,.hc-hex.center:active{filter:brightness(1.15);}
+.sb-word .bad-letter{color:var(--text-3);}
+.sb-word.empty::after{content:'';width:2px;height:34px;background:var(--gold);animation:sb-caret 1s steps(1) infinite;}
+.sb-word:not(.empty)::after{content:'';width:2px;height:34px;background:var(--gold);margin-left:3px;animation:sb-caret 1s steps(1) infinite;}
+@keyframes sb-caret{50%{opacity:0;}}
+@keyframes sb-shake{20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
+.sb-word.shake{animation:sb-shake .4s ease;}
+/* Hive: flat-top hexagons, interlocking */
+.honeycomb{--W:min(92px,24vw);--H:calc(var(--W) * .866);position:relative;width:calc(var(--W) * 2.62);height:calc(var(--H) * 3.12);margin:6px auto 18px;}
+.hc-hex{
+  position:absolute;left:50%;top:50%;width:var(--W);height:var(--H);
+  transform:translate(calc(-50% + var(--x) * var(--W)), calc(-50% + var(--y) * var(--H)));
+  clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:calc(var(--W) * .34);font-weight:800;text-transform:uppercase;
+  cursor:pointer;user-select:none;touch-action:manipulation;border:0;
+  transition:filter .1s,transform .12s var(--ease);
+}
+.hc-hex.outer{background:var(--hex-out);color:var(--text);}
+.hc-hex.center{background:linear-gradient(160deg,var(--gold),var(--gold2));color:var(--gold-ink);}
+.hc-hex:active,.hc-hex.tap{filter:brightness(1.25);transform:translate(calc(-50% + var(--x) * var(--W)), calc(-50% + var(--y) * var(--H))) scale(.92);}
+.honeycomb.shuffling .hc-hex.outer{animation:sb-fade .35s ease;}
+@keyframes sb-fade{0%{opacity:1;}40%{opacity:0;}100%{opacity:1;}}
 /* Controls */
-.sb-btns{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
+.sb-btns{display:flex;gap:10px;justify-content:center;margin-bottom:18px;}
+.sb-btns .btn{min-height:50px;border-radius:999px;padding:0 22px;}
+#sb-shuffle{width:50px;padding:0;}
+#sb-shuffle svg{width:22px;height:22px;}
 /* Found words */
-.sb-found{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;max-height:140px;overflow-y:auto;}
-.sb-found-word{display:inline-block;padding:3px 8px;margin:2px;border-radius:5px;font-size:.8rem;font-weight:700;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);}
-.sb-found-word.pangram{background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.3);color:var(--gold);}
-.sb-msg{text-align:center;font-size:.85rem;font-weight:700;min-height:22px;margin:6px 0;}
-/* Puzzle picker */
-.puz-row{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.puz-btn{padding:5px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);font-size:.7rem;font-weight:700;cursor:pointer;}
-.puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
+.sb-found-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.sb-found-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;min-height:50px;cursor:pointer;font-size:.92rem;font-weight:600;color:var(--text);}
+.sb-found-head span:last-child{color:var(--text-3);font-size:.85rem;}
+.sb-found{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 14px;}
+.sb-found:empty{display:none;}
+.sb-found-word{display:inline-block;padding:6px 12px;border-radius:999px;font-size:.88rem;font-weight:600;background:var(--surface-2);color:var(--text-2);text-transform:capitalize;}
+.sb-found-word.pangram{background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.35);color:var(--gold);font-weight:800;}
+.sb-found-word.new{animation:gn-pop .35s var(--spring) both;}
+.puz-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:4px;}
+.puz-btn{height:44px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);font-size:.95rem;font-weight:700;cursor:pointer;}
+.puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.15);color:var(--gold);}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Spelling Bee</span>
 </nav>
-<div class="page"><div class="wrap">
+<div class="page sb-page"><div class="wrap">
 
-<div class="sb-score-row">
-  <div><span id="sb-score-val" style="font-family:var(--serif);font-size:1.3rem;font-weight:900;color:var(--gold);">0</span> <span style="color:var(--muted);font-size:.75rem;">pts</span></div>
-  <div class="sb-rank" id="sb-rank">Beginner</div>
-  <div style="color:var(--muted);font-size:.75rem;" id="sb-count">0 words</div>
+<div class="sb-top">
+  <button class="sb-puz" id="sb-puz"><span id="sb-puz-name">Puzzle 1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+  <div class="sb-pts"><span id="sb-score-val">0</span><small>pts</small></div>
 </div>
-<div class="sb-progress"><div class="sb-prog-fill" id="sb-prog" style="width:0%"></div></div>
+<div class="sb-rankrow">
+  <div class="sb-rank" id="sb-rank">Beginner</div>
+  <div class="sb-track" id="sb-track"><div class="sb-prog-fill" id="sb-prog" style="width:0%"></div></div>
+</div>
 
-<div class="puz-row" id="puz-row"></div>
-
-<div class="sb-word" id="sb-word"></div>
-<div class="sb-msg" id="sb-msg"></div>
+<div class="sb-entry">
+  <div class="sb-msg" id="sb-msg"></div>
+  <div class="sb-word empty" id="sb-word"></div>
+</div>
 
 <div class="honeycomb" id="honeycomb"></div>
 
 <div class="sb-btns">
-  <button class="btn btn-outline btn-sm" id="sb-del">⌫ Delete</button>
-  <button class="btn btn-outline btn-sm" id="sb-shuffle">↺ Shuffle</button>
-  <button class="btn btn-gold btn-sm" id="sb-enter">Enter</button>
+  <button class="btn btn-outline" id="sb-del">Delete</button>
+  <button class="btn btn-outline" id="sb-shuffle" aria-label="Shuffle letters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></button>
+  <button class="btn btn-gold" id="sb-enter">Enter</button>
 </div>
 
-<div class="sb-found" id="sb-found"></div>
+<div class="sb-found-card">
+  <div class="sb-found-head"><span id="sb-count">You have found 0 words</span><span id="sb-count-of"></span></div>
+  <div class="sb-found" id="sb-found"></div>
+</div>
 </div></div>
 <script>
 'use strict';
@@ -297,8 +338,10 @@ function computeWords(puzzle){
     if([...w].every(c=>allowed.has(c)))valid.push(w.toUpperCase());
   });
   // Add pangrams that might not be in the dictionary
+  // (only ones that can actually be spelled from this hive — some listed
+  // pangrams use letters that aren't on the board and were unreachable)
   puzzle.pangrams.forEach(p=>{
-    if(!valid.includes(p))valid.push(p);
+    if(!valid.includes(p)&&p.includes(puzzle.center)&&[...p.toLowerCase()].every(c=>allowed.has(c)))valid.push(p);
   });
   return valid;
 }
@@ -306,105 +349,186 @@ function computeWords(puzzle){
 // ── State ─────────────────────────────────────────────────────────────────
 let puzIdx=0, current, typed='', foundWords=new Set(), totalScore=0, validWords=[];
 const RANKS=[{name:'Beginner',pct:0},{name:'Good Start',pct:5},{name:'Moving Up',pct:12},{name:'Good',pct:20},{name:'Solid',pct:30},{name:'Nice',pct:42},{name:'Great',pct:56},{name:'Amazing',pct:70},{name:'Genius',pct:90},{name:'Queen Bee',pct:100}];
+const $=id=>document.getElementById(id);
+const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+let outerOrder=[];
+
+function wordScore(w){return isPangram(w)?w.length+7:(w.length===4?1:w.length);}
+function maxScore(){return validWords.reduce((s,w)=>s+wordScore(w),0);}
+function curPct(){const m=maxScore();return m?Math.min(100,Math.round(totalScore/m*100)):0;}
+function rankFor(pct){return RANKS.slice().reverse().find(r=>pct>=r.pct);}
 
 function loadPuzzle(idx){
   puzIdx=idx;current=PUZZLES[idx];
   validWords=computeWords(current);
   typed='';foundWords=new Set();totalScore=0;
-  document.getElementById('sb-score-val').textContent='0';
-  document.getElementById('sb-rank').textContent='Beginner';
-  document.getElementById('sb-prog').style.width='0%';
-  document.getElementById('sb-count').textContent='0 / '+validWords.length+' words';
-  document.getElementById('sb-word').textContent='';
-  document.getElementById('sb-msg').textContent='';
-  document.getElementById('sb-found').innerHTML='';
-  buildPicker();buildHex();
+  $('sb-puz-name').textContent=current.title;
+  outerOrder=shuffle([...current.outer]);
+  buildHex();renderAll();
 }
 
-function buildPicker(){
-  const el=document.getElementById('puz-row');el.innerHTML='';
+function renderAll(){
+  $('sb-score-val').textContent=totalScore;
+  renderRank();
+  $('sb-found').innerHTML='';
+  [...foundWords].sort().forEach(w=>addFoundWord(w.toLowerCase(),isPangram(w),false));
+  renderCount();
+  updateDisplay();
+}
+function renderCount(){
+  const n=foundWords.size;
+  $('sb-count').textContent=`You have found ${n} word${n===1?'':'s'}`;
+  $('sb-count-of').textContent=`of ${validWords.length}`;
+}
+function renderRank(){
+  const pct=curPct(),rank=rankFor(pct);
+  $('sb-rank').textContent=rank.name;
+  const tr=$('sb-track');
+  tr.querySelectorAll('.sb-dot').forEach(d=>d.remove());
+  // Dots for each rank (Queen Bee is the end of the line)
+  const shown=RANKS.slice(0,9);
+  let curI=0;shown.forEach((r,i)=>{if(pct>=r.pct)curI=i;});
+  shown.forEach((r,i)=>{
+    const d=document.createElement('div');
+    d.className='sb-dot'+(i<curI?' on':'')+(i===curI?' cur':'');
+    d.style.left=(i/(shown.length-1)*100)+'%';
+    if(i===curI)d.textContent=totalScore;
+    tr.appendChild(d);
+  });
+  $('sb-prog').style.width=(curI/(shown.length-1)*100)+'%';
+}
+
+function openPicker(){
+  const grid=document.createElement('div');grid.className='puz-row';grid.id='puz-row';
+  let sh;
   PUZZLES.forEach((p,i)=>{
     const btn=document.createElement('button');btn.className='puz-btn'+(i===puzIdx?' active':'');
-    btn.textContent=p.title;btn.addEventListener('click',()=>loadPuzzle(i));el.appendChild(btn);
-  });
-}
-
-function buildHex(){
-  const el=document.getElementById('honeycomb');el.innerHTML='';
-  const letters=shuffle([...current.outer]);
-  const rows=[[letters[0],letters[1]],[letters[2],current.center,letters[3]],[letters[4],letters[5]]];
-  rows.forEach(row=>{
-    const rowEl=document.createElement('div');rowEl.className='hc-row';
-    row.forEach(l=>{
-      const hex=document.createElement('div');
-      hex.className='hc-hex '+(l===current.center?'center':'outer');
-      hex.textContent=l;
-      hex.addEventListener('click',()=>typeLetter(l));
-      rowEl.appendChild(hex);
+    btn.textContent=i+1;btn.setAttribute('aria-label',p.title);
+    btn.addEventListener('click',async()=>{
+      sh.close();
+      if(i===puzIdx)return;
+      if(foundWords.size){
+        const ok=await GN.confirm('Switch puzzles?',{title:'Switch to '+p.title+'?',body:'Words found in this puzzle will be cleared.',ok:'Switch'});
+        if(!ok)return;
+      }
+      loadPuzzle(i);_save_sbee();
     });
-    el.appendChild(rowEl);
+    grid.appendChild(btn);
   });
+  sh=GN.sheet({title:'Choose a puzzle',body:grid,actions:[{label:'Cancel'}]});
+}
+$('sb-puz').addEventListener('click',openPicker);
+
+// Flat-top hive: centre plus six neighbours (x in widths, y in heights)
+const HEX_POS=[[0,-1.04],[.79,-.52],[.79,.52],[0,1.04],[-.79,.52],[-.79,-.52]];
+function buildHex(){
+  const el=$('honeycomb');el.innerHTML='';
+  const mk=(l,cls,x,y)=>{
+    const hex=document.createElement('button');
+    hex.type='button';
+    hex.className='hc-hex '+cls;
+    hex.style.setProperty('--x',x);hex.style.setProperty('--y',y);
+    hex.textContent=l;hex.dataset.l=l;
+    hex.addEventListener('click',()=>typeLetter(l));
+    el.appendChild(hex);
+  };
+  mk(current.center,'center',0,0);
+  outerOrder.forEach((l,i)=>mk(l,'outer',HEX_POS[i][0],HEX_POS[i][1]));
 }
 
 function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
 
 function updateDisplay(){
-  const el=document.getElementById('sb-word');el.innerHTML='';
-  typed.split('').forEach(l=>{const s=document.createElement('span');s.textContent=l;if(l===current.center)s.className='center-letter';el.appendChild(s);});
+  const el=$('sb-word');el.innerHTML='';
+  const allowed=new Set([current.center,...current.outer]);
+  typed.split('').forEach(l=>{const s=document.createElement('span');s.textContent=l;if(l===current.center)s.className='center-letter';else if(!allowed.has(l))s.className='bad-letter';el.appendChild(s);});
+  el.classList.toggle('empty',!typed);
+  el.style.fontSize=typed.length>12?'1.4rem':typed.length>9?'1.7rem':'';
 }
 
-function typeLetter(l){typed+=l;updateDisplay();}
+function typeLetter(l){
+  if(typed.length>=19)return;
+  typed+=l;updateDisplay();haptic('select');
+  const hex=document.querySelector(`.hc-hex[data-l="${l}"]`);
+  if(hex){hex.classList.add('tap');setTimeout(()=>hex.classList.remove('tap'),110);}
+}
 
 function isPangram(word){
   const all=new Set([current.center,...current.outer]);
   return [...all].every(l=>word.toUpperCase().includes(l));
 }
 
+function reject(text){
+  msg(text,'');
+  haptic('error');
+  const el=$('sb-word');el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');
+  setTimeout(()=>{el.classList.remove('shake');typed='';updateDisplay();},420);
+}
+
 function submit(){
-  const word=typed.toUpperCase();typed='';updateDisplay();
-  if(word.length<4){msg('Too short!','#ef4444');return;}
-  if(!word.includes(current.center)){msg('Missing center letter!','#f59e0b');return;}
-  if(foundWords.has(word)){msg('Already found!','#f59e0b');return;}
-  if(!validWords.includes(word)){msg('Not in word list','#ef4444');return;}
+  const word=typed.toUpperCase();
+  if(!word)return;
+  if(word.length<4){reject('Too short');return;}
+  const allowed=new Set([current.center,...current.outer]);
+  if([...word].some(c=>!allowed.has(c))){reject('Bad letters');return;}
+  if(!word.includes(current.center)){reject('Missing center letter');return;}
+  if(foundWords.has(word)){reject('Already found');return;}
+  if(!validWords.includes(word)){reject('Not in word list');return;}
   // Valid!
+  typed='';updateDisplay();
+  const before=rankFor(curPct()).name;
   foundWords.add(word);
   const pan=isPangram(word);
-  const pts=pan?word.length+7:(word.length===4?1:word.length);
+  const pts=wordScore(word);
   totalScore+=pts;
-  document.getElementById('sb-score-val').textContent=totalScore;
-  document.getElementById('sb-count').textContent=foundWords.size+' / '+validWords.length+' words';
-  const maxScore=validWords.reduce((s,w)=>{const pan=isPangram(w);return s+(pan?w.length+7:(w.length===4?1:w.length));},0);
-  const pct=maxScore?Math.min(100,Math.round(totalScore/maxScore*100)):0;
-  document.getElementById('sb-prog').style.width=pct+'%';
-  const rank=RANKS.slice().reverse().find(r=>pct>=r.pct);
-  document.getElementById('sb-rank').textContent=rank.name;
-  msg(pan?'🌟 Pangram! +'+pts:'+'+pts,'#22c55e');
-  addFoundWord(word.toLowerCase(),pan);
+  $('sb-score-val').textContent=totalScore;
+  renderRank();renderCount();
+  const praise=pan?'Pangram!':word.length>=7?'Awesome!':word.length>=5?'Nice!':'Good!';
+  msg(`${praise}  +${pts}`,pan?'pan':'good');
+  haptic(pan?'success':'light');
+  addFoundWord(word.toLowerCase(),pan,true);
+  _save_sbee();
+  const after=rankFor(curPct()).name;
+  if(after!==before&&window.GN)setTimeout(()=>GN.toast(`🐝 New rank: ${after}`,2000),900);
+  if(foundWords.size===validWords.length)setTimeout(()=>{
+    haptic('success');
+    GN.sheet({title:'👑 Queen Bee!',body:`You found all ${validWords.length} words in ${current.title} for ${totalScore} points.`,
+      actions:[{label:puzIdx<PUZZLES.length-1?'Next puzzle':'Back to puzzle 1',primary:true,onClick:()=>{loadPuzzle((puzIdx+1)%PUZZLES.length);_save_sbee();}},{label:'Stay here'}]});
+  },1200);
 }
 
-function addFoundWord(word,pan){
-  const el=document.getElementById('sb-found');
-  const s=document.createElement('span');s.className='sb-found-word'+(pan?' pangram':'');
-  s.textContent=word;el.prepend(s);
+function addFoundWord(word,pan,anim){
+  const el=$('sb-found');
+  const s=document.createElement('span');s.className='sb-found-word'+(pan?' pangram':'')+(anim?' new':'');
+  s.textContent=word;
+  if(anim)el.prepend(s);else el.appendChild(s);
 }
 
-function msg(text,color){
-  const el=document.getElementById('sb-msg');el.textContent=text;el.style.color=color;
-  setTimeout(()=>{el.textContent='';},1500);
+let msgTimer;
+function msg(text,kind){
+  const el=$('sb-msg');el.textContent=text;el.className='sb-msg show'+(kind?' '+kind:'');
+  clearTimeout(msgTimer);msgTimer=setTimeout(()=>{el.classList.remove('show');},1400);
 }
 
-document.getElementById('sb-enter').addEventListener('click',submit);
-document.getElementById('sb-del').addEventListener('click',()=>{typed=typed.slice(0,-1);updateDisplay();});
-document.getElementById('sb-shuffle').addEventListener('click',()=>buildHex());
+function del(){typed=typed.slice(0,-1);updateDisplay();haptic('select');}
+$('sb-enter').addEventListener('click',submit);
+$('sb-del').addEventListener('click',del);
+$('sb-shuffle').addEventListener('click',()=>{
+  outerOrder=shuffle(outerOrder);
+  const hc=$('honeycomb');hc.classList.remove('shuffling');void hc.offsetWidth;hc.classList.add('shuffling');
+  setTimeout(buildHex,140);haptic('light');
+});
 document.addEventListener('keydown',e=>{
-  if(e.key==='Enter')submit();
-  else if(e.key==='Backspace'){typed=typed.slice(0,-1);updateDisplay();}
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(document.querySelector('.gn-sheet-ov'))return;
+  if(e.key==='Enter'){e.preventDefault();submit();}
+  else if(e.key==='Backspace'){e.preventDefault();del();}
+  else if(e.key===' '){e.preventDefault();$('sb-shuffle').click();}
   else if(/^[a-zA-Z]$/.test(e.key)){
     const l=e.key.toUpperCase();
     if(l===current.center||current.outer.includes(l))typeLetter(l);
   }
 });
-loadPuzzle(0);
 
 // ── Session persistence ────────────────────────────────────────────────────
 function _save_sbee(){
@@ -414,14 +538,16 @@ function _load_sbee(){
   try{
     const raw=sessionStorage.getItem('sbee');if(!raw)return false;
     const s=JSON.parse(raw);if(!s)return false;
-    puzIdx=s.puzIdx||0;foundWords=new Set(s.foundWords||[]);totalScore=s.totalScore||0;current=PUZZLES[puzIdx];validWords=computeValid(current);typed='';
-    render();
+    loadPuzzle(Math.min(PUZZLES.length-1,s.puzIdx||0));
+    foundWords=new Set(s.foundWords||[]);totalScore=s.totalScore||0;
+    renderAll();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_sbee);
+window.addEventListener('pagehide',_save_sbee);
 
-_load_sbee();
+if(!_load_sbee())loadPuzzle(0);
 </script>
 </body>
 </html>

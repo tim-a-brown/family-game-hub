@@ -8,52 +8,69 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Plinko</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a3a 0%,#0d1117 65%);}
-#canvas{display:block;margin:0 auto;touch-action:none;-webkit-tap-highlight-color:transparent;}
-.player-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.player-chip{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;text-align:center;transition:all .2s;min-width:78px;}
-.player-chip.active{transform:scale(1.06);}
-.pc-name{font-size:.72rem;font-weight:700;}
-.pc-scores{font-size:.7rem;color:var(--muted);margin-top:2px;}
-.pc-total{font-family:var(--serif);font-size:1.3rem;font-weight:900;line-height:1;}
-.status-bar{text-align:center;font-size:.9rem;font-weight:700;margin:8px 0;min-height:22px;}
-.drop-zone{display:flex;justify-content:space-around;max-width:min(340px,calc(100vw - 24px));margin:0 auto 6px;}
-.drop-col{flex:1;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.15);font-size:.9rem;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:color .15s;}
-.drop-col:hover{color:rgba(255,255,255,.6);}
-.winner-card{text-align:center;max-width:300px;margin:10px auto;background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:16px;}
-.winner-card .wn{font-family:var(--serif);font-size:1.6rem;font-weight:900;color:#0f2d1a;}
+body{background:radial-gradient(800px 500px at 50% -10%,rgba(124,58,237,.18),transparent 70%),var(--bg);}
+.page{padding-top:12px;max-width:560px;}
+#canvas{display:block;margin:0 auto;touch-action:none;-webkit-tap-highlight-color:transparent;cursor:pointer;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px solid var(--line);}
+/* Setup */
+.setup-card{max-width:420px;margin:0 auto;}
+.setup-lbl{font-size:.78rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3);margin:0 0 8px 2px;}
+#sc-row{margin-bottom:16px;}
+#sc-row .tab{flex:1 1 0;font-size:1rem;min-height:42px;}
+.name-row{display:flex;align-items:center;gap:10px;}
+.name-dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 0 3px rgba(255,255,255,.06);}
+.slot-legend{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px;}
+.slot-legend span{text-align:center;font-family:var(--display);font-weight:800;font-size:.78rem;padding:6px 0;border-radius:8px;background:var(--surface-2);}
+/* Game */
+.player-row{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
+.player-chip{flex:1 1 0;max-width:150px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:8px 8px 7px;text-align:center;transition:border-color .2s,transform .25s var(--spring),background .2s;position:relative;}
+.player-chip.active{transform:translateY(-2px);background:var(--surface-2);}
+.pc-name{font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pc-total{font-family:var(--display);font-size:1.45rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;}
+.pc-drops{display:flex;gap:4px;justify-content:center;margin-top:4px;}
+.pc-drops i{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9;}
+.pc-drops i.used{opacity:.18;}
+.status-bar{text-align:center;font-size:.95rem;font-weight:600;margin:4px 0 8px;min-height:24px;color:var(--text-2);}
+.status-bar b{font-weight:800;}
+.drop-zone{display:flex;margin:0 auto 6px;gap:4px;}
+.drop-col{flex:1;height:40px;border:0;background:var(--surface);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-3);touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:color .15s,background .15s,transform .1s;}
+.drop-col svg{width:16px;height:16px;}
+.drop-col:active{transform:scale(.9);}
+@media (hover:hover){.drop-col:hover{color:var(--text);background:var(--surface-3);}}
+.drop-zone.busy .drop-col{opacity:.35;pointer-events:none;}
+#winner-area .winner-banner{margin:12px 0 0;}
+#action-btns{display:none;gap:8px;justify-content:center;margin-top:12px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Plinko</span>
-  <div class="nav-actions">
-    <button id="pl-newgame" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button>
-  </div>
+  <button class="icon-btn" id="mute-btn" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+  <button class="icon-btn" id="pl-newgame" title="New game" aria-label="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding:10px 10px 40px;">
+<div class="page">
 
 <!-- Setup -->
-<div id="setup" style="max-width:360px;margin:0 auto;">
-  <h2 style="font-family:var(--serif);font-size:1.4rem;text-align:center;margin-bottom:14px;">Plinko</h2>
-  <div style="font-weight:700;text-align:center;margin-bottom:10px;">Players</div>
-  <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;" id="sc-row">
-    <button class="btn btn-outline btn-sm sc-btn" data-n="1">1</button>
-    <button class="btn btn-gold btn-sm sc-btn" data-n="2">2</button>
-    <button class="btn btn-outline btn-sm sc-btn" data-n="3">3</button>
-    <button class="btn btn-outline btn-sm sc-btn" data-n="4">4</button>
+<div id="setup" class="setup-card setup-screen">
+  <div class="setup-lbl">Players</div>
+  <div class="tabs" id="sc-row">
+    <button class="tab sc-btn" data-n="1">1</button>
+    <button class="tab sc-btn active" data-n="2">2</button>
+    <button class="tab sc-btn" data-n="3">3</button>
+    <button class="tab sc-btn" data-n="4">4</button>
   </div>
-  <div id="setup-names" style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;"></div>
-  <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;margin-bottom:14px;font-size:.82rem;color:var(--muted);">
-    Drop the ball into any column. 3 drops per player. Highest total score wins!<br>
-    <strong style="color:var(--text);">🎯 Center = 5,000 · ⚠️ Slots next to center = 100 (trap!)</strong>
+  <div id="setup-names" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+  <div class="card" style="font-size:.9rem;color:var(--text-2);line-height:1.55;">
+    Drop the ball into any column. <b style="color:var(--text)">3 drops per player</b> — highest total wins!
+    <div class="slot-legend">
+      <span style="color:#86efac">500</span><span style="color:#7dd3fc">1000</span><span style="color:#fca5a5;background:rgba(248,113,113,.12)">100</span><span style="color:var(--gold);background:rgba(245,200,66,.16)">5000</span><span style="color:#fca5a5;background:rgba(248,113,113,.12)">100</span><span style="color:#7dd3fc">1000</span><span style="color:#86efac">500</span>
+    </div>
+    <div style="margin-top:8px;font-size:.84rem;">🎯 Center = 5,000 · ⚠️ Slots next to center = 100 (trap!)</div>
   </div>
-  <button class="btn btn-gold btn-block" id="start-btn">Start Game →</button>
+  <button class="btn btn-gold btn-block" id="start-btn">Start Game</button>
 </div>
 
 <!-- Game -->
@@ -63,10 +80,9 @@ body{overscroll-behavior:none;background:radial-gradient(ellipse at 50% 0%,#1a0a
   <div class="drop-zone" id="drop-zone"></div>
   <canvas id="canvas"></canvas>
   <div id="winner-area"></div>
-  <div style="text-align:center;margin-top:10px;display:none;" id="action-btns">
+  <div id="action-btns">
     <button class="btn btn-gold" id="play-again-btn">Play Again</button>
-    <button class="btn btn-outline" id="new-game-btn" style="margin-left:8px;">New Setup</button>
-    <button class="btn btn-outline btn-sm" id="mute-btn" style="margin-left:8px;" title="Toggle sound">🔊</button>
+    <button class="btn btn-outline" id="new-game-btn">New Setup</button>
   </div>
 </div>
 </div>
@@ -89,17 +105,19 @@ let setupN=2;
 document.querySelectorAll('.sc-btn').forEach(b=>{
   b.addEventListener('click',()=>{
     setupN=+b.dataset.n;
-    document.querySelectorAll('.sc-btn').forEach(x=>{x.classList.remove('btn-gold');x.classList.add('btn-outline');});
-    b.classList.remove('btn-outline');b.classList.add('btn-gold');
+    document.querySelectorAll('.sc-btn').forEach(x=>x.classList.toggle('active',x===b));
+    GN.haptic('select');
     buildSetupNames();
   });
 });
 function buildSetupNames(){
   const c=document.getElementById('setup-names');c.innerHTML='';
   for(let i=0;i<setupN;i++){
-    const d=document.createElement('div');d.style.cssText='display:flex;align-items:center;gap:8px;';
-    d.innerHTML=`<div style="width:10px;height:10px;border-radius:50%;background:${P_COLORS[i]};flex-shrink:0;"></div>
-      <input class="input" id="pn${i}" value="Player ${i+1}" maxlength="14">`;
+    const prev=document.getElementById('pn'+i);
+    const d=document.createElement('div');d.className='name-row';
+    d.innerHTML=`<div class="name-dot" style="background:${P_COLORS[i]}"></div>
+      <input class="input" id="pn${i}" placeholder="Player ${i+1}" maxlength="14" autocomplete="off">`;
+    if(prev)d.querySelector('input').value=prev.value;
     c.appendChild(d);
   }
 }
@@ -114,18 +132,30 @@ document.getElementById('start-btn').addEventListener('click',()=>{
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('gamearea').classList.remove('hidden');
   document.getElementById('action-btns').style.display='none';
-  setupCanvas();renderChips();buildDropZone();setStatus();
+  document.getElementById('winner-area').innerHTML='';
+  showGame();
+  GN.haptic('medium');
 });
+function showGame(){
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('gamearea').classList.remove('hidden');
+  setupCanvas();renderChips();buildDropZone();setStatus();
+}
 
+const DPR=Math.min(3,window.devicePixelRatio||1);
 function setupCanvas(){
-  const maxW=Math.min(340,window.innerWidth-24);
+  // Fit the board to the phone: width-limited on phones, height-limited on short screens
+  const pageW=Math.min(560,document.documentElement.clientWidth)-32;
+  const maxW=Math.floor(Math.max(260,Math.min(440,pageW,(window.innerHeight-290)/1.25)));
   BW=maxW; BH=Math.round(maxW*1.25);
   CELL_W=BW/COLS; CELL_H=BH/(ROWS+2);
   PAD_X=CELL_W/2; PAD_TOP=CELL_H*1.2;
   PEG_R=Math.max(3,Math.round(CELL_W*0.06));
   BALL_R=Math.max(8,Math.round(CELL_W*0.16));
   const canvas=document.getElementById('canvas');
-  canvas.width=BW; canvas.height=BH;
+  canvas.width=Math.round(BW*DPR); canvas.height=Math.round(BH*DPR);
+  canvas.style.width=BW+'px'; canvas.style.height=BH+'px';
+  const dz=document.getElementById('drop-zone'); if(dz) dz.style.width=BW+'px';
   draw();
 }
 
@@ -159,11 +189,8 @@ function rightWallX(y){return BW-leftWallX(y);}
 function draw(trailBall){
   const canvas=document.getElementById('canvas');
   const ctx=canvas.getContext('2d');
+  ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,BW,BH);
-
-  // Background
-  ctx.fillStyle='rgba(255,255,255,.02)';
-  ctx.fillRect(0,0,BW,BH);
 
   // Angled side walls
   ctx.beginPath();
@@ -186,7 +213,7 @@ function draw(trailBall){
   pegs().forEach(({x,y})=>{
     if(x-PEG_R < leftWallX(y) || x+PEG_R > rightWallX(y)) return;
     ctx.beginPath();ctx.arc(x,y,PEG_R,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,.6)';ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.72)';ctx.fill();
   });
 
   // Score slots
@@ -201,7 +228,7 @@ function draw(trailBall){
     ctx.roundRect(x-CELL_W*0.4,sy-CELL_H*0.4,CELL_W*0.8,CELL_H*0.8,4);
     ctx.fill();
     ctx.fillStyle=isJackpot?'#f5c842':isTrap?'#ff6b6b':isHigh?'#5ac8fa':'#7ed47e';
-    ctx.font=`bold ${Math.round(CELL_W*0.22)}px Inter,sans-serif`;
+    ctx.font=`800 ${Math.round(CELL_W*0.24)}px "Bricolage Grotesque",Inter,sans-serif`;
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(sc,x,sy);
   });
@@ -227,16 +254,19 @@ function buildDropZone(){
   dz.style.width=BW+'px';
   dz.innerHTML='';
   for(let c=0;c<COLS;c++){
-    const col=document.createElement('div');
-    col.className='drop-col';col.textContent='▼';col.dataset.c=c;
+    const col=document.createElement('button');
+    col.className='drop-col';col.dataset.c=c;col.setAttribute('aria-label','Drop in column '+(c+1));
+    col.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>';
     col.addEventListener('click',()=>startDrop(c));
     dz.appendChild(col);
   }
 }
 
 function startDrop(col){
-  if(dropping||gameOver||turnsLeft[curP]<=0)return;
-  dropping=true;
+  if(dropping||gameOver||turnsLeft[curP]<=0||document.getElementById('drop-zone').classList.contains('busy'))return;
+  if(soundOn){try{getCtx();}catch(e){}} // unlock audio inside the tap gesture (iOS)
+  dropping=true;GN.haptic('light');
+  document.getElementById('drop-zone').classList.add('busy');
   const startX=CELL_W*col+CELL_W*0.5;
   const startY=PAD_TOP*0.3;
   ball={x:startX,y:startY,vx:(Math.random()-.5)*0.8,vy:0.6,player:curP,_sf:0,_sy:startY};
@@ -245,7 +275,16 @@ function startDrop(col){
 
 function animate(){
   const GRAV=0.038, BOUNCE_DAMP=0.88, PEG_LIST=pegs().filter(({x,y})=>x-PEG_R>=leftWallX(y)&&x+PEG_R<=rightWallX(y));
-  function step(){
+  // Fixed 60 Hz physics so the ball falls at the same speed on 120 Hz phones
+  let last=performance.now(),acc=0;
+  function frame(now){
+    acc+=Math.min(100,now-last);last=now;
+    let n=0;
+    while(acc>=16.667&&n<6){acc-=16.667;n++;if(physics()){return;}}
+    if(ball)draw(ball);
+    animFrame=requestAnimationFrame(frame);
+  }
+  function physics(){
     ball.vy+=GRAV;
     ball.x+=ball.vx;
     ball.y+=ball.vy;
@@ -311,20 +350,19 @@ function animate(){
       }
     }
 
-    draw(ball);
-
     // Reached slot zone
     if(ball.y>=slotY()-BALL_R){
       const slotIdx=Math.min(COLS-1,Math.max(0,Math.floor(ball.x/CELL_W)));
       const sc=SLOT_SCORES[slotIdx];
       ball=null;dropping=false;
       playScoreSound(sc);
+      GN.haptic(sc===5000?'success':sc===100?'error':'medium');
       recordScore(curP,sc,slotIdx);
-      return;
+      return true;
     }
-    animFrame=requestAnimationFrame(step);
+    return false;
   }
-  animFrame=requestAnimationFrame(step);
+  animFrame=requestAnimationFrame(frame);
 }
 
 function recordScore(pi,sc,slotIdx){
@@ -341,12 +379,12 @@ function recordScore(pi,sc,slotIdx){
     dy-=1.5;alpha-=0.05;
     ctx.globalAlpha=Math.max(0,alpha);
     ctx.fillStyle=P_COLORS[pi];
-    ctx.font=`bold ${Math.round(CELL_W*0.4)}px "Playfair Display",serif`;
+    ctx.font=`800 ${Math.round(CELL_W*0.4)}px "Bricolage Grotesque",Inter,sans-serif`;
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText('+'+sc,x,y+dy);
     ctx.globalAlpha=1;
     if(alpha>0)requestAnimationFrame(popAnim);
-    else{draw();advanceTurn();}
+    else{draw();document.getElementById('drop-zone').classList.remove('busy');advanceTurn();}
   }
   requestAnimationFrame(popAnim);
 }
@@ -366,7 +404,7 @@ function advanceTurn(){
 function setStatus(){
   const remaining=turnsLeft[curP];
   const s=document.getElementById('status');
-  s.innerHTML=`<span style="color:${P_COLORS[curP]}">${pNames[curP]}</span> — drop the ball! (${remaining} drop${remaining!==1?'s':''} left)`;
+  s.innerHTML=`<b style="color:${P_COLORS[curP]}">${esc(pNames[curP])}</b>, tap a column to drop · ${remaining} left`;
 }
 
 function renderChips(){
@@ -375,11 +413,12 @@ function renderChips(){
     const chip=document.createElement('div');
     const total=scores[i].reduce((a,b)=>a+b,0);
     chip.className='player-chip'+(i===curP&&!gameOver?' active':'');
-    chip.style.borderColor=i===curP&&!gameOver?P_COLORS[i]:'rgba(255,255,255,.12)';
-    chip.innerHTML=`<div class="pc-name" style="color:${P_COLORS[i]}">${nm}</div>
-      <div class="pc-total" style="color:${P_COLORS[i]}">${total}</div>
-      <div class="pc-scores">${scores[i].join(' + ')||'—'}</div>
-      <div style="font-size:.7rem;color:var(--muted);">${turnsLeft[i]} left</div>`;
+    chip.style.borderColor=i===curP&&!gameOver?P_COLORS[i]:'';
+    chip.title=scores[i].join(' + ');
+    const dots=Array.from({length:TURNS_PER_PLAYER},(_,k)=>`<i class="${k<TURNS_PER_PLAYER-turnsLeft[i]?'used':''}"></i>`).join('');
+    chip.innerHTML=`<div class="pc-name" style="color:${P_COLORS[i]}">${esc(nm)}</div>
+      <div class="pc-total">${total.toLocaleString()}</div>
+      <div class="pc-drops" style="color:${P_COLORS[i]}" aria-label="${turnsLeft[i]} drops left">${dots}</div>`;
     el.appendChild(chip);
   });
 }
@@ -392,13 +431,16 @@ function endGame(){
   const winners=totals.map((t,i)=>t===max?i:-1).filter(i=>i>=0);
   const wa=document.getElementById('winner-area');
   if(numP===1){
-    wa.innerHTML=`<div class="winner-card"><div style="font-size:1.8rem;margin-bottom:6px;">🎯</div><div class="wn">Score: ${totals[0]}</div></div>`;
+    wa.innerHTML=`<div class="winner-banner"><div style="font-size:2rem;line-height:1">🎯</div><div class="winner-name">${totals[0].toLocaleString()} points</div><div class="winner-pts">${scores[0].join(' + ')}</div></div>`;
   } else {
-    const wText=winners.length===1?`${pNames[winners[0]]} wins!`:`Tie: ${winners.map(i=>pNames[i]).join(' & ')}`;
-    wa.innerHTML=`<div class="winner-card"><div style="font-size:1.8rem;margin-bottom:6px;">🏆</div><div class="wn">${wText}</div><div style="color:#3a2000;font-size:.88rem;">${max} points</div></div>`;
+    const wText=winners.length===1?`${esc(pNames[winners[0]])} wins!`:`Tie: ${winners.map(i=>esc(pNames[i])).join(' & ')}`;
+    wa.innerHTML=`<div class="winner-banner"><div style="font-size:2rem;line-height:1">🏆</div><div class="winner-name">${wText}</div><div class="winner-pts">${max.toLocaleString()} points</div></div>`;
   }
-  document.getElementById('status').textContent='';
-  document.getElementById('action-btns').style.display='block';
+  GN.haptic('success');
+  try{sessionStorage.removeItem('plinko2');}catch(e){}
+  document.getElementById('status').textContent='Game over';
+  document.getElementById('action-btns').style.display='flex';
+  setTimeout(()=>document.getElementById('action-btns').scrollIntoView({behavior:'smooth',block:'end'}),150);
 }
 
 document.getElementById('play-again-btn').addEventListener('click',()=>{
@@ -408,11 +450,25 @@ document.getElementById('play-again-btn').addEventListener('click',()=>{
   document.getElementById('winner-area').innerHTML='';
   document.getElementById('action-btns').style.display='none';
   renderChips();setStatus();draw();
+  window.scrollTo({top:0,behavior:'smooth'});
 });
-document.getElementById('new-game-btn').addEventListener('click',()=>{
+function toSetup(){
+  if(animFrame)cancelAnimationFrame(animFrame);ball=null;dropping=false;
+  document.getElementById('drop-zone').classList.remove('busy');
+  pNames=[];gameOver=false;
+  try{sessionStorage.removeItem('plinko2');}catch(e){}
   document.getElementById('gamearea').classList.add('hidden');
   document.getElementById('setup').classList.remove('hidden');
+}
+document.getElementById('new-game-btn').addEventListener('click',toSetup);
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// Tap the board itself to drop in that column
+document.getElementById('canvas').addEventListener('click',e=>{
+  const r=e.currentTarget.getBoundingClientRect();
+  const c=Math.max(0,Math.min(COLS-1,Math.floor((e.clientX-r.left)/(r.width/COLS))));
+  startDrop(c);
 });
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{if(!dropping&&!document.getElementById('gamearea').classList.contains('hidden')){setupCanvas();}},150);});
 
 // ── Sound system ────────────────────────────────────────────────────────────
 let audioCtx=null, soundOn=true;
@@ -506,24 +562,29 @@ document.getElementById('mute-btn').addEventListener('click',function(){
   this.textContent=soundOn?'🔊':'🔇';
 });
 
-document.getElementById('pl-newgame')?.addEventListener('click',()=>{if(typeof balls!=='undefined'){balls=[];score=0;ballsDropped=0;if(typeof render==='function')render();}});
+document.getElementById('pl-newgame').addEventListener('click',()=>{
+  const inGame=!document.getElementById('gamearea').classList.contains('hidden');
+  if(!inGame)return;
+  if(!gameOver&&scores.some(a=>a.length))GN.confirm('Current scores will be lost.',{title:'Start a new game?',ok:'New game'}).then(ok=>{if(ok)toSetup();});
+  else toSetup();
+});
 
 // ── Session persistence ────────────────────────────────────────────────────
-function _save_plinko2(){if(gameOver)return;
+function _save_plinko2(){if(gameOver||!pNames.length)return;
   try{sessionStorage.setItem('plinko2',JSON.stringify({numP,pNames,scores,turnsLeft,curP,gameOver,_ts:Date.now()}));}catch(e){}
 }
 function _load_plinko2(){
   try{
     const raw=sessionStorage.getItem('plinko2');if(!raw)return false;
     const s=JSON.parse(raw);if(!s)return false;
-    numP=s.numP;pNames=s.pNames;scores=s.scores;turnsLeft=s.turnsLeft;curP=s.curP;gameOver=s.gameOver||false;
-    document.getElementById('plinko-setup')&&document.getElementById('plinko-setup').classList.add('hidden');document.getElementById('plinko-game')&&document.getElementById('plinko-game').classList.remove('hidden');initPhysics&&initPhysics();renderScores&&renderScores();
+    if(!Array.isArray(s.pNames)||!s.pNames.length||s.gameOver)return false;
+    numP=s.numP;pNames=s.pNames;scores=s.scores;turnsLeft=s.turnsLeft;curP=s.curP;gameOver=false;
+    showGame();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_plinko2);
-document.getElementById('new-game-btn')?.addEventListener('click',()=>{try{sessionStorage.removeItem('plinko2');}catch(e){}},true);
-document.getElementById('pl-newgame')?.addEventListener('click',()=>{try{sessionStorage.removeItem('plinko2');}catch(e){}},true);
+window.addEventListener('pagehide',_save_plinko2);
 _load_plinko2();
 </script>
 </body>

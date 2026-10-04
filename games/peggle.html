@@ -1,54 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Peggle</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../arcade-hi.js"></script>
 <script src="../hist.js"></script>
 <style>
-body{overscroll-behavior:none;background:#0a0a1a;overflow:hidden;}
-.wrap{max-width:360px;margin:0 auto;padding:0;display:flex;flex-direction:column;align-items:center;}
-.pg-header{display:flex;gap:8px;padding:6px 8px;width:100%;box-sizing:border-box;}
-.pg-stat{background:rgba(255,255,255,.08);border-radius:8px;padding:5px 12px;text-align:center;flex:1;}
-.pg-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
-.pg-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
-canvas{border-radius:4px;display:block;cursor:crosshair;}
+html,body{height:100%;}
+body{height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;
+  background:radial-gradient(700px 420px at 50% -10%, rgba(249,115,22,.10), transparent 60%), var(--bg);}
+.site-nav{flex:none;}
+.site-nav .icon-btn{width:38px;height:38px;min-height:38px;padding:0;font-size:1rem;border-radius:50%;}
+.arc{flex:1;min-height:0;width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:10px max(12px,var(--safe-r)) calc(12px + var(--safe-b)) max(12px,var(--safe-l));}
+.hud{flex:none;display:flex;gap:6px;justify-content:center;width:100%;}
+.pill{display:flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap;}
+.pill span{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.pill b{font-family:var(--display);font-size:1.12rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.pill.accent b{color:var(--gold);}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;}
+.dot.o{background:#f97316;box-shadow:0 0 6px rgba(249,115,22,.6);}
+.dot.w{background:#fff;box-shadow:0 0 6px rgba(255,255,255,.5);}
+.stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.board{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px var(--line-2),0 20px 50px rgba(0,0,0,.55);}
+canvas{display:block;cursor:crosshair;}
+.ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:rgba(8,8,20,.7);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:gn-fade .2s ease both;z-index:5;}
+.ov.hidden{display:none;}
+.ov-card{text-align:center;width:100%;max-width:280px;animation:gn-pop .3s var(--spring) both;}
+.ov-emoji{font-size:2.5rem;line-height:1;margin-bottom:6px;}
+.ov-title{font-family:var(--display);font-size:1.95rem;font-weight:800;letter-spacing:-.02em;line-height:1.05;}
+.ov-title.gold{color:var(--gold);} .ov-title.red{color:var(--red);}
+.ov-sub{color:var(--text-2);font-size:.92rem;margin-top:6px;line-height:1.45;}
+.ov-stats{display:flex;gap:8px;justify-content:center;margin:14px 0 2px;}
+.ov-stat{flex:1;max-width:110px;padding:8px 6px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--line-2);}
+.ov-stat b{display:block;font-family:var(--display);font-size:1.4rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.ov-stat span{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.ov .btn-gold{min-width:190px;margin-top:16px;}
+#pg-hist-row{justify-content:center;margin-top:10px;}
+.hint{flex:none;font-size:.82rem;color:var(--text-3);text-align:center;}
 </style>
 </head>
 <body>
-<nav class="site-nav" style="background:rgba(0,0,0,.3);">
+<nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Peggle</span>
-  <div class="nav-actions">
-    <button onclick="ArcadeHi.show('peggle','Peggle')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
-  <button id="pg-newbtn" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">New</button>
-  </div>
+  <button class="icon-btn" id="pg-newbtn" aria-label="New game"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button>
+  <button class="icon-btn" onclick="ArcadeHi.show('peggle','Peggle')" aria-label="High scores">🏆</button>
 </nav>
-<div class="page" style="padding:0;"><div class="wrap">
-<div class="pg-header">
-  <div class="pg-stat"><div class="pg-val" id="pg-score">0</div><div class="pg-lbl">Score</div></div>
-  <div class="pg-stat"><div class="pg-val" id="pg-orange">0</div><div class="pg-lbl">Orange Left</div></div>
-  <div class="pg-stat"><div class="pg-val" id="pg-balls">10</div><div class="pg-lbl">Balls</div></div>
-</div>
-<canvas id="cv"></canvas>
-<div id="pg-hist-row" style="display:none;justify-content:center;margin:6px 0;"></div>
-</div></div>
+<main class="arc">
+  <div class="hud">
+    <div class="pill accent"><span>Score</span><b id="pg-score">0</b></div>
+    <div class="pill" title="Orange pegs left"><i class="dot o"></i><b id="pg-orange">0</b></div>
+    <div class="pill" title="Balls left"><i class="dot w"></i><b id="pg-balls">10</b></div>
+    <div class="pill"><span>Lvl</span><b id="pg-level">1</b></div>
+  </div>
+  <div class="stage" id="stage">
+    <div class="board" id="board">
+      <canvas id="cv"></canvas>
+      <div class="ov hidden" id="ov"><div class="ov-card" id="ov-card"></div></div>
+    </div>
+  </div>
+  <div class="hint" id="pg-hint">Drag to aim · release to shoot · clear every orange peg</div>
+</main>
 <script>
 'use strict';
-const W=360,H=Math.min(500,window.innerHeight-110);
-const cv=document.getElementById('cv');cv.width=W;cv.height=H;
+// Fixed logical playfield (layouts are designed for 360×500); the canvas is
+// scaled to fit the screen and rendered at devicePixelRatio for crispness.
+const W=360,H=500;
+const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
+const stage=document.getElementById('stage'),boardEl=document.getElementById('board');
+const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+function fit(){
+  const r=stage.getBoundingClientRect();
+  const s=Math.max(0.1,Math.min(r.width/W,r.height/H));
+  const w=Math.floor(W*s),h=Math.floor(H*s);
+  const d=Math.min(window.devicePixelRatio||1,3);
+  boardEl.style.width=w+'px';boardEl.style.height=h+'px';
+  cv.style.width=w+'px';cv.style.height=h+'px';
+  cv.width=Math.round(w*d);cv.height=Math.round(h*d);
+  ctx.setTransform(cv.width/W,0,0,cv.height/H,0,0);
+  if(pegs)render();
+}
 const PEG_R=7,BALL_R=8,BUCKET_W=70,BUCKET_H=18;
 
-let pegs,ball,bucket,score,balls,state,hitPegs,aimX,aimY,animId,level;
+let pegs=null,ball,bucket,score=0,balls=10,state='aim',hitPegs=[],aimX,aimY,animId,level=1,paused=false,aiming=false;
 let freeBallSplash=0; // countdown frames for FREE BALL splash (>0 = showing)
 const ORANGE_COUNT=25;
 
@@ -336,8 +381,8 @@ function makePegs(lvl){
 function newLevel(){
   pegs=makePegs(level);
   ball=null;bucket={x:W/2-BUCKET_W/2,vx:1.8};
-  state='aim';hitPegs=[];aimX=W/2;aimY=H/2;
-  const hr=document.getElementById('pg-hist-row');if(hr){hr.style.display='none';hr.innerHTML='';}
+  state='aim';hitPegs=[];aimX=W/2;aimY=H/2;aiming=false;
+  syncOverlay();
   updateUI();render();
 }
 
@@ -369,6 +414,7 @@ function updateUI(){
   document.getElementById('pg-score').textContent=score;
   document.getElementById('pg-orange').textContent=pegs.filter(p=>p.orange&&!p.hit).length;
   document.getElementById('pg-balls').textContent=balls;
+  document.getElementById('pg-level').textContent=level;
 }
 
 function shoot(tx,ty){
@@ -382,17 +428,28 @@ function shoot(tx,ty){
   const speed=10;
   ball={x:W/2,y:launchY,vx:dx/len*speed,vy:dy/len*speed};
   hitPegs=[];state='shoot';
-  sLaunch();
-  animate();
+  sLaunch();haptic('light');
 }
 
-function animate(){
-  cancelAnimationFrame(animId);
-  animId=requestAnimationFrame(step);
+// One fixed-rate loop drives everything (60 Hz physics on any display)
+let lastT=0,acc=0;const DT=1000/60;
+function loop(t){
+  if(!lastT)lastT=t;
+  acc+=Math.min(100,t-lastT);lastT=t;
+  while(acc>=DT){
+    acc-=DT;
+    if(paused)continue;
+    if(freeBallSplash>0)freeBallSplash--;
+    pegs.forEach(p=>{if(p.flash>0)p.flash--;});
+    if(state==='shoot')step();
+    else if(state==='aim'){bucket.x+=bucket.vx;if(bucket.x<0||bucket.x+BUCKET_W>W)bucket.vx*=-1;}
+  }
+  render();
+  animId=requestAnimationFrame(loop);
 }
 
 function step(){
-  if(state!=='shoot'){render();return;}
+  if(state!=='shoot')return;
   // Physics — bouncier: higher damping, more elasticity
   ball.vy+=0.32;
   ball.x+=ball.vx;ball.y+=ball.vy;
@@ -416,7 +473,7 @@ function step(){
       if(!hitPegs.includes(p)){
         hitPegs.push(p);p.hit=true;p.flash=10;
         score+=p.orange?500:100;updateUI();
-        sPegHit(p.orange);
+        sPegHit(p.orange);haptic(p.orange?'medium':'select');
       }
     }
   });
@@ -425,10 +482,9 @@ function step(){
   if(bucket.x<0||bucket.x+BUCKET_W>W)bucket.vx*=-1;
   const bucketY=H-BUCKET_H-4;
   if(ball.y+BALL_R>bucketY&&ball.y+BALL_R<bucketY+BUCKET_H*2&&ball.x>bucket.x&&ball.x<bucket.x+BUCKET_W){
-    balls++;freeBallSplash=80;endBall(true);sFreeBall();return;
+    balls++;freeBallSplash=80;endBall(true);sFreeBall();haptic('success');return;
   }
   if(ball.y>H+50){endBall(false);return;}
-  render();animId=requestAnimationFrame(step);
 }
 
 function showPgHistBtn(){
@@ -436,7 +492,7 @@ function showPgHistBtn(){
   if(!hr)return;
   hr.innerHTML='';
   const b=GameHistory.btn('peggle','Peggle',e=>GameHistory.renderStatGrid([{val:e.score,lbl:'Score'},{val:'Level '+e.level,lbl:e.result==='win'?'Completed':'Reached'},{val:e.balls+' left',lbl:'Balls'}]));
-  b.classList.add('gh-hist-btn');hr.appendChild(b);
+  b.classList.add('gh-hist-btn','btn-ghost');hr.appendChild(b);
   hr.style.display='flex';
 }
 
@@ -449,44 +505,30 @@ function endBall(caught){
   if(orangeLeft===0){
     sOrangeCleared();
     setTimeout(sLevelWin,300);
-    state='won';render();
+    state='won';haptic('success');
     GameHistory.save('peggle',{_summary:`Level ${level} clear · ${score} pts`,_badge:'Lvl '+level,score,level,balls,result:'win'});
-    showPgHistBtn();
-    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#f5c842';ctx.font='bold 26px "Playfair Display",serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(`LEVEL ${level} CLEAR! 🎉`,W/2,H/2-28);
-    ctx.fillStyle='#fff';ctx.font='bold 16px Inter,sans-serif';
-    ctx.fillText('Score: '+score+'  Balls left: '+balls,W/2,H/2+4);
-    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='14px Inter,sans-serif';
-    ctx.fillText('Tap for Level '+(level+1),W/2,H/2+36);
+    syncOverlay();showPgHistBtn();
+    if(state==='lost')ArcadeHi.check('peggle',score,()=>{});
     return;
   }
   if(balls<=0){
     sGameOver();
-    ArcadeHi.check('peggle',score,()=>{});
-    state='lost';render();
+    state='lost';haptic('error');
     GameHistory.save('peggle',{_summary:`Level ${level} · out of balls · ${score} pts`,_badge:score+' pts',score,level,balls:0,result:'loss'});
-    showPgHistBtn();
-    ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#ef4444';ctx.font='bold 26px "Playfair Display",serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('OUT OF BALLS',W/2,H/2-28);
-    ctx.fillStyle='#fff';ctx.font='bold 16px Inter,sans-serif';
-    ctx.fillText(orangeLeft+' orange peg'+(orangeLeft!==1?'s':'')+' remaining',W/2,H/2+4);
-    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='14px Inter,sans-serif';
-    ctx.fillText('Tap to try Level '+level+' again',W/2,H/2+36);
+    syncOverlay();showPgHistBtn();
+    if(state==='lost')ArcadeHi.check('peggle',score,()=>{});
     return;
   }
   updateUI();render();
 }
 
 function render(){
-  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b0b1c';ctx.fillRect(0,0,W,H);
   // Level label
-  ctx.fillStyle='rgba(255,255,255,.2)';ctx.font='bold 11px Inter,sans-serif';
-  ctx.textAlign='left';ctx.textBaseline='top';
-  ctx.fillText('LEVEL '+level,8,8);
+  // Subtle backdrop glow
+  const bgG=ctx.createRadialGradient(W/2,0,10,W/2,0,H);
+  bgG.addColorStop(0,'rgba(120,90,255,.12)');bgG.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
   // Launcher
   ctx.fillStyle='rgba(255,255,255,.15)';
   ctx.beginPath();ctx.arc(W/2,25,12,0,Math.PI*2);ctx.fill();
@@ -517,7 +559,7 @@ function render(){
   }
   // Pegs
   pegs.forEach(p=>{
-    if(p.flash>0){p.flash--;ctx.shadowColor='#fff';ctx.shadowBlur=14;}
+    if(p.flash>0){ctx.shadowColor='#fff';ctx.shadowBlur=14;}
     if(!p.hit){
       ctx.fillStyle=p.orange?'#f97316':'#5ac8fa';
       ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
@@ -534,7 +576,7 @@ function render(){
   ctx.beginPath();ctx.roundRect(bucket.x,by,BUCKET_W,BUCKET_H,4);ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.25)';ctx.fillRect(bucket.x+4,by+2,BUCKET_W-8,4);
   // "CATCH" label on bucket
-  ctx.fillStyle='rgba(0,0,0,.55)';ctx.font=`bold ${Math.round(BUCKET_H*0.48)}px Inter,sans-serif`;
+  ctx.fillStyle='rgba(0,0,0,.6)';ctx.font=`800 10px Inter,system-ui,sans-serif`;
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('FREE BALL',bucket.x+BUCKET_W/2,by+BUCKET_H/2+1);
   // Ball
@@ -547,7 +589,6 @@ function render(){
 
   // FREE BALL splash
   if(freeBallSplash>0){
-    freeBallSplash--;
     const t=freeBallSplash/80; // 1→0 as it fades
     const phase=freeBallSplash>50?'rise':freeBallSplash>20?'hold':'fade';
     const progress=freeBallSplash>50?(80-freeBallSplash)/30:freeBallSplash>20?1:freeBallSplash/20;
@@ -562,15 +603,15 @@ function render(){
     ctx.beginPath();ctx.ellipse(0,0,110,32,0,0,Math.PI*2);ctx.fill();
     // Text
     ctx.fillStyle='#f5c842';
-    ctx.font='bold 28px "Playfair Display",serif';
+    ctx.font='800 30px "Bricolage Grotesque",Inter,system-ui,sans-serif';
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.shadowColor='rgba(245,200,66,.8)';ctx.shadowBlur=16;
     ctx.fillText('FREE BALL!',0,0);
     ctx.shadowBlur=0;
     // Subtext
     ctx.fillStyle='rgba(255,255,255,.8)';
-    ctx.font='bold 12px Inter,sans-serif';
-    ctx.fillText('+1 BALL',0,22);
+    ctx.font='700 13px Inter,system-ui,sans-serif';
+    ctx.fillText('+1 BALL',0,24);
     ctx.restore();
     ctx.globalAlpha=1;
   }
@@ -578,71 +619,84 @@ function render(){
 
 const PAD_Y_OFF_SPLASH=50; // approx distance from bottom for splash position
 
+function toLogical(cx,cy){
+  const r=cv.getBoundingClientRect();
+  return [(cx-r.left)*W/r.width,(cy-r.top)*H/r.height];
+}
 cv.addEventListener('mousemove',e=>{
-  const r=cv.getBoundingClientRect();aimX=e.clientX-r.left;aimY=e.clientY-r.top;
-  if(state==='aim')render();
+  [aimX,aimY]=toLogical(e.clientX,e.clientY);
 });
 cv.addEventListener('click',e=>{
-  if(state==='won'){level++;balls=Math.min(balls+2,10);newLevel();return;}
-  if(state==='lost'){balls=10;newLevel();return;}
-  const r=cv.getBoundingClientRect();shoot(e.clientX-r.left,e.clientY-r.top);
+  if(matchMedia('(pointer:coarse)').matches)return;
+  const [x,y]=toLogical(e.clientX,e.clientY);shoot(x,y);
 });
-// Mobile: touchstart/move = aim, touchend = fire
-let _touching=false;
-cv.addEventListener('touchstart',e=>{
+// Touch: drag anywhere on the play area to aim, release to shoot.
+stage.addEventListener('touchstart',e=>{
+  if(e.target.closest('.ov'))return;
   e.preventDefault();
-  if(state==='won'){level++;balls=Math.min(balls+2,10);newLevel();return;}
-  if(state==='lost'){balls=10;newLevel();return;}
-  _touching=true;
-  const r=cv.getBoundingClientRect();
-  aimX=e.touches[0].clientX-r.left;aimY=e.touches[0].clientY-r.top;
-  if(state==='aim')render();
+  if(state!=='aim')return;
+  aiming=true;
+  [aimX,aimY]=toLogical(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:false});
-cv.addEventListener('touchmove',e=>{
+stage.addEventListener('touchmove',e=>{
+  if(e.target.closest('.ov'))return;
   e.preventDefault();
-  if(!_touching)return;
-  const r=cv.getBoundingClientRect();
-  aimX=e.touches[0].clientX-r.left;aimY=e.touches[0].clientY-r.top;
-  if(state==='aim')render();
+  if(!aiming)return;
+  [aimX,aimY]=toLogical(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:false});
-cv.addEventListener('touchend',e=>{
+stage.addEventListener('touchend',e=>{
+  if(e.target.closest('.ov'))return;
   e.preventDefault();
-  _touching=false;
-  if(state==='aim'){
-    shoot(aimX,aimY);
-  } else if(state==='shoot'){
-    // tap during flight does nothing (no accidental re-fire)
-  }
+  if(aiming&&state==='aim')shoot(aimX,aimY);
+  aiming=false;
 },{passive:false});
+stage.addEventListener('touchcancel',()=>{aiming=false;});
 
-setInterval(()=>{
-  if(state==='aim'){bucket.x+=bucket.vx;if(bucket.x<0||bucket.x+BUCKET_W>W)bucket.vx*=-1;render();}
-},16);
-
-newGame();
-
-function makePegs(){
-  const p=[];
-  // Grid of pegs with some orange
-  const orangeIdxs=new Set();
-  while(orangeIdxs.size<ORANGE_COUNT)orangeIdxs.add(Math.floor(Math.random()*80));
-  let idx=0;
-  for(let row=0;row<8;row++){
-    const cols=row%2===0?9:8;
-    const xOff=row%2===0?20:40;
-    for(let col=0;col<cols;col++){
-      const x=xOff+col*(W-40)/(cols-1||1);
-      const y=90+row*42+Math.random()*10-5;
-      const orange=orangeIdxs.has(idx);
-      p.push({x,y,r:PEG_R,orange,hit:false});
-      idx++;
-    }
-  }
-  return p;
+// ── Overlays ──
+function nextLevelAction(){level++;balls=Math.min(balls+2,10);newLevel();}
+function retryAction(){balls=10;newLevel();}
+function syncOverlay(){
+  const ov=document.getElementById('ov'),card=document.getElementById('ov-card');
+  if(state==='won'){
+    card.innerHTML=`<div class="ov-emoji">🎉</div><div class="ov-title gold">Level ${level} clear!</div>
+      <div class="ov-stats"><div class="ov-stat"><b>${score}</b><span>Score</span></div><div class="ov-stat"><b>${balls}</b><span>Balls left</span></div></div>
+      <button class="btn btn-gold" id="ov-go">Level ${level+1} →</button><div id="pg-hist-row" style="display:none"></div>`;
+    ov.classList.remove('hidden');
+    document.getElementById('ov-go').onclick=nextLevelAction;
+  }else if(state==='lost'){
+    const left=pegs.filter(p=>p.orange&&!p.hit).length;
+    card.innerHTML=`<div class="ov-title red">Out of balls</div>
+      <div class="ov-sub">${left} orange peg${left!==1?'s':''} remaining</div>
+      <div class="ov-stats"><div class="ov-stat"><b>${score}</b><span>Score</span></div><div class="ov-stat"><b>${level}</b><span>Level</span></div></div>
+      <button class="btn btn-gold" id="ov-go">Retry level ${level}</button><div id="pg-hist-row" style="display:none"></div>`;
+    ov.classList.remove('hidden');
+    document.getElementById('ov-go').onclick=retryAction;
+  }else if(paused){
+    card.innerHTML=`<div class="ov-title">Paused</div><div class="ov-sub">Level ${level} · ${score} pts</div><button class="btn btn-gold" id="ov-go">Resume</button>`;
+    ov.classList.remove('hidden');
+    document.getElementById('ov-go').onclick=()=>{paused=false;syncOverlay();};
+  }else ov.classList.add('hidden');
 }
+document.addEventListener('keydown',e=>{
+  if(document.querySelector('.ahi-overlay'))return;
+  if(e.key==='Enter'||e.key===' '){
+    if(state==='won'){e.preventDefault();nextLevelAction();}
+    else if(state==='lost'){e.preventDefault();retryAction();}
+    else if(paused){e.preventDefault();paused=false;syncOverlay();}
+  }
+});
+// Auto-pause when the app is backgrounded
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&(state==='aim'||state==='shoot')&&!paused){paused=true;aiming=false;syncOverlay();} });
 
+new ResizeObserver(fit).observe(stage);
 if(!loadPgState())newGame();
-document.getElementById('pg-newbtn').addEventListener('click',()=>{try{sessionStorage.removeItem('pg_state');}catch(e){}newGame();});
+fit();
+requestAnimationFrame(loop);
+document.getElementById('pg-newbtn').addEventListener('click',async()=>{
+  const ok=window.GN?await GN.confirm('Your current score and level will be lost.',{title:'Start a new game?',ok:'New game'}):true;
+  if(!ok)return;
+  try{sessionStorage.removeItem('pg_state');}catch(e){}paused=false;newGame();
+});
 
 // ── Sound System ─────────────────────────────────────────────────────────
 let _ac=null;

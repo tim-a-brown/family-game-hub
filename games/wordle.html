@@ -6,90 +6,153 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Wordle</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
-.wd-wrap{max-width:400px;margin:0 auto;padding:0 8px 60px;}
-.wd-header{text-align:center;margin-bottom:6px;}
-.wd-title{font-family:var(--serif);font-size:1.6rem;font-weight:900;letter-spacing:.05em;}
-.wd-sub{color:var(--muted);font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;}
-/* Board */
-.wd-board{display:grid;grid-template-rows:repeat(6,1fr);gap:5px;width:min(300px,80vw);margin:12px auto;}
-.wd-row{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
-.wd-cell{aspect-ratio:1;border:2px solid rgba(255,255,255,.15);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:clamp(1.2rem,5vw,1.5rem);font-weight:900;font-family:var(--serif);text-transform:uppercase;color:#fff;position:relative;transition:border-color .1s;}
-.wd-cell.filled{border-color:rgba(255,255,255,.4);}
-.wd-cell.active-row{border-color:rgba(245,200,66,.5);}
-.wd-cell[data-state='correct']{background:#22c55e;border-color:#22c55e;}
-.wd-cell[data-state='present']{background:#f59e0b;border-color:#f59e0b;}
-.wd-cell[data-state='absent']{background:#374151;border-color:#374151;}
-/* Flip animation */
-@keyframes wd-flip{0%{transform:rotateX(0);}50%{transform:rotateX(-90deg);}100%{transform:rotateX(0);}  }
+:root{
+  --wd-green:#22a35a; --wd-yellow:#d4a017; --wd-gray:#2e3340;
+  --wd-key:#3a4050; --wd-key-hi:#4a5163;
+}
+html,body{height:100%;overflow:hidden;}
+body{display:flex;flex-direction:column;}
+/* App shell: nav + (header, board, keyboard) fill exactly one screen */
+.wd-app{
+  flex:1;min-height:0;display:flex;flex-direction:column;
+  width:100%;max-width:520px;margin:0 auto;
+  padding:0 max(8px,var(--safe-r)) 0 max(8px,var(--safe-l));
+}
+.wd-header{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0 2px;min-height:40px;}
+.wd-day{
+  display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--line);
+  color:var(--text-2);font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+}
+.wd-again{display:none;height:28px;padding:0 12px;border-radius:999px;border:1px solid rgba(245,200,66,.4);background:rgba(245,200,66,.12);color:var(--gold);font-size:.8rem;font-weight:700;cursor:pointer;}
+.wd-again.show{display:inline-flex;align-items:center;}
+/* Board area grows; board sized from whichever dimension is tighter */
+.wd-board-area{flex:1;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center;padding:8px 0;}
+.wd-board{
+  --w:min(100cqw - 16px, (100cqh - 4px) * 5 / 6, 350px);
+  width:var(--w);height:calc(var(--w) * 6 / 5);
+  display:grid;grid-template-rows:repeat(6,1fr);gap:6px;
+}
+.wd-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.wd-cell{
+  border:2px solid var(--line-2);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:calc(var(--w) * .1);font-weight:800;
+  text-transform:uppercase;color:var(--text);line-height:1;
+  transition:border-color .1s;
+}
+.wd-cell.filled{border-color:#5b6275;}
+.wd-cell[data-state]{color:#fff;}
+.wd-cell[data-state='correct']{background:var(--wd-green);border-color:var(--wd-green);}
+.wd-cell[data-state='present']{background:var(--wd-yellow);border-color:var(--wd-yellow);}
+.wd-cell[data-state='absent']{background:var(--wd-gray);border-color:var(--wd-gray);}
+@keyframes wd-flip{0%{transform:rotateX(0);}50%{transform:rotateX(-90deg);}100%{transform:rotateX(0);}}
 .wd-cell.flipping{animation:wd-flip .45s ease forwards;}
-/* Pop on type */
-@keyframes wd-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}  }
-.wd-cell.popping{animation:wd-pop .08s ease;}
-/* Shake on bad word */
-@keyframes wd-shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-6px);}40%,80%{transform:translateX(6px);}  }
-.wd-row.shaking{animation:wd-shake .4s ease;}
-/* Bounce on win */
-@keyframes wd-bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}  }
-.wd-cell.bouncing{animation:wd-bounce .4s ease;}
-/* Status */
-.wd-status{text-align:center;font-size:.85rem;font-weight:700;min-height:26px;margin:4px 0 8px;}
-/* Keyboard */
-.wd-kb{display:flex;flex-direction:column;gap:5px;align-items:center;margin-top:10px;}
-.wd-kb-row{display:flex;gap:4px;}
-.wd-key{height:44px;min-width:30px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;touch-action:manipulation;font-family:var(--body);}
-.wd-key.wide{min-width:52px;font-size:.7rem;}
-.wd-key[data-state='correct']{background:#22c55e;}
-.wd-key[data-state='present']{background:#f59e0b;}
-.wd-key[data-state='absent']{background:#374151;color:rgba(255,255,255,.4);}
-.wd-key:active{transform:scale(.94);}
-/* Result panel */
-.wd-result{display:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;margin-top:10px;text-align:center;}
-.wd-result.show{display:block;}
-.wd-result-word{font-family:var(--serif);font-size:1.4rem;font-weight:900;color:var(--gold);margin-bottom:4px;}
-.wd-result-msg{font-size:.82rem;color:var(--muted);margin-bottom:10px;}
-.wd-share{font-size:.82rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.7);cursor:pointer;display:inline-block;margin-bottom:8px;}
-.wd-share:hover{background:rgba(255,255,255,.14);}
-.wd-day{color:var(--muted);font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+@keyframes wd-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
+.wd-cell.popping{animation:wd-pop .1s ease;}
+@keyframes wd-shake{0%,100%{transform:translateX(0);}10%,50%,90%{transform:translateX(-5px);}30%,70%{transform:translateX(5px);}}
+.wd-row.shaking{animation:wd-shake .45s ease;}
+@keyframes wd-bounce{0%,100%{transform:translateY(0);}40%{transform:translateY(-14px);}70%{transform:translateY(2px);}}
+.wd-cell.bouncing{animation:wd-bounce .5s ease;}
+/* Keyboard docked at the bottom */
+.wd-kb{
+  flex:none;display:flex;flex-direction:column;gap:8px;
+  padding:6px 0 calc(10px + var(--safe-b));
+}
+.wd-kb-row{display:flex;gap:6px;justify-content:center;}
+.wd-kb-row .half{flex:.5;}
+.wd-key{
+  flex:1;height:56px;padding:0;border-radius:8px;border:0;
+  background:var(--wd-key);color:var(--text);
+  font-family:var(--font);font-size:1.15rem;font-weight:700;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background .15s,transform .06s;touch-action:manipulation;
+}
+.wd-key.wide{flex:1.55;font-size:.8rem;letter-spacing:.04em;}
+.wd-key svg{width:24px;height:24px;}
+.wd-key:active{background:var(--wd-key-hi);transform:scale(.95);}
+.wd-key[data-state='correct']{background:var(--wd-green);color:#fff;}
+.wd-key[data-state='present']{background:var(--wd-yellow);color:#fff;}
+.wd-key[data-state='absent']{background:var(--wd-gray);color:var(--text-3);}
+@media (max-height:700px){.wd-key{height:50px;}.wd-kb{gap:7px;}}
+/* Result sheet */
+.wd-result{
+  position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+.wd-result.show{display:flex;animation:gn-fade .2s ease both;}
+.wd-sheet{
+  width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;
+  border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));
+  max-height:90dvh;overflow:auto;animation:gn-sheet .32s var(--ease) both;text-align:center;
+}
+@media (min-width:600px){.wd-result{align-items:center;}.wd-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
+.wd-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 14px;}
+.wd-result-msg{font-family:var(--display);font-size:1.6rem;font-weight:800;letter-spacing:-.02em;}
+.wd-result-sub{color:var(--text-2);font-size:.92rem;margin-top:2px;}
+.wd-result-word{display:flex;justify-content:center;gap:5px;margin:16px 0 18px;}
+.wd-result-word span{width:44px;height:44px;border-radius:8px;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:1.35rem;color:#fff;background:var(--wd-green);}
+.wd-result-word.lost span{background:var(--surface-3);}
+.wd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+.wd-stats .stat{max-width:none;padding:10px 4px;}
+.wd-dist-title{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);text-align:left;margin-bottom:8px;}
+.wd-dist{display:flex;flex-direction:column;gap:5px;margin-bottom:18px;}
+.wd-dist-row{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:700;}
+.wd-dist-row b{width:12px;color:var(--text-2);}
+.wd-dist-bar{height:22px;min-width:26px;border-radius:6px;background:var(--surface-3);color:var(--text);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:.8rem;transition:width .5s var(--ease);}
+.wd-dist-bar.hi{background:var(--wd-green);color:#fff;}
+.wd-actions{display:flex;flex-direction:column;gap:8px;}
+.wd-actions-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.wd-actions-row .btn{min-height:44px;font-size:.9rem;padding:0 10px;}
+.nav-icon{width:36px;height:36px;padding:0!important;display:inline-grid;place-items:center;border-radius:50%!important;border:1px solid var(--line-2);background:var(--surface);color:var(--text);cursor:pointer;}
+.nav-icon svg{width:18px;height:18px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Wordle</span>
+  <button class="nav-icon" id="wd-help-btn" aria-label="How to play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9"/><path d="M12 17.2h.01"/></svg></button>
+  <button class="nav-icon" id="wd-new-btn" aria-label="New random word"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></button>
 </nav>
-<div class="page"><div class="wd-wrap">
-
-<div class="wd-header">
-  <div class="wd-title">WORDLE</div>
-  <div class="wd-sub" id="wd-day">Daily Puzzle</div>
-</div>
-
-<div class="wd-board" id="wd-board"></div>
-
-<div class="wd-status" id="wd-status"></div>
-
-<div class="wd-kb" id="wd-kb">
-  <div class="wd-kb-row" id="wd-kb-r0"></div>
-  <div class="wd-kb-row" id="wd-kb-r1"></div>
-  <div class="wd-kb-row" id="wd-kb-r2"></div>
-</div>
+<main class="wd-app">
+  <div class="wd-header">
+    <span class="wd-day" id="wd-day">Daily Puzzle</span>
+    <button class="wd-again" id="wd-see-result">See result</button>
+  </div>
+  <div class="wd-board-area"><div class="wd-board" id="wd-board"></div></div>
+  <div class="wd-status" id="wd-status" hidden></div>
+  <div class="wd-kb" id="wd-kb">
+    <div class="wd-kb-row" id="wd-kb-r0"></div>
+    <div class="wd-kb-row" id="wd-kb-r1"></div>
+    <div class="wd-kb-row" id="wd-kb-r2"></div>
+  </div>
+</main>
 
 <div class="wd-result" id="wd-result">
-  <div class="wd-result-word" id="wr-word"></div>
-  <div class="wd-result-msg" id="wr-msg"></div>
-  <div class="wd-share" id="wr-share">📋 Copy Result</div>
-  <div><button class="btn btn-outline btn-sm" id="wr-new" style="margin-top:8px;">New Random Word</button></div>
+  <div class="wd-sheet" role="dialog" aria-modal="true">
+    <div class="wd-grab"></div>
+    <div class="wd-result-msg" id="wr-msg"></div>
+    <div class="wd-result-sub" id="wr-sub"></div>
+    <div class="wd-result-word" id="wr-word"></div>
+    <div class="wd-stats" id="wr-stats"></div>
+    <div class="wd-dist-title">Guess distribution · last 20</div>
+    <div class="wd-dist" id="wr-dist"></div>
+    <div class="wd-actions">
+      <button class="btn btn-gold btn-block" id="wr-new">Play a random word</button>
+      <div class="wd-actions-row" id="wr-row">
+        <button class="btn btn-outline" id="wr-share">Share</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-</div></div>
 <script>
 'use strict';
 // ── Word bank ─────────────────────────────────────────────────────────────────
@@ -452,7 +515,12 @@ function getDailyWord(){
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let answer='',dayNum=0,guesses=[],currentRow=0,currentCol=0,gameOver=false,randomMode=false;
+let answer='',dayNum=0,guesses=[],currentRow=0,currentCol=0,gameOver=false,randomMode=false,revealing=false;
+const $=id=>document.getElementById(id);
+const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+const toast=(m,ms)=>{if(window.GN)GN.toast(m,ms);};
+
+function setDayLabel(){$('wd-day').textContent=randomMode?'Random word':`Puzzle #${dayNum}`;}
 
 function init(useRandom=false){
   randomMode=useRandom;
@@ -463,16 +531,16 @@ function init(useRandom=false){
     const d=getDailyWord();
     answer=d.word;dayNum=d.day;
   }
-  guesses=[];currentRow=0;currentCol=0;gameOver=false;
-  document.getElementById('wd-day').textContent=randomMode?'Random Mode':`Puzzle #${dayNum}`;
+  guesses=[];currentRow=0;currentCol=0;gameOver=false;revealing=false;
+  setDayLabel();
   buildBoard();
   buildKeyboard();
-  document.getElementById('wd-result').classList.remove('show');
-  setStatus('');
+  hideResult();
+  $('wd-see-result').classList.remove('show');
 }
 
 function buildBoard(){
-  const board=document.getElementById('wd-board');
+  const board=$('wd-board');
   board.innerHTML='';
   for(let r=0;r<6;r++){
     const row=document.createElement('div');
@@ -486,42 +554,48 @@ function buildBoard(){
   }
 }
 
-const KB_ROWS=['QWERTYUIOP','ASDFGHJKL','⌫ZXCVBNM↵'];
+const KB_ROWS=['QWERTYUIOP','ASDFGHJKL','↵ZXCVBNM⌫'];
+const BKSP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>';
 const keyState={};
 
 function buildKeyboard(){
   Object.keys(keyState).forEach(k=>delete keyState[k]);
   KB_ROWS.forEach((row,ri)=>{
-    const rowEl=document.getElementById('wd-kb-r'+ri);
+    const rowEl=$('wd-kb-r'+ri);
     rowEl.innerHTML='';
+    if(ri===1){const sp=document.createElement('span');sp.className='half';rowEl.appendChild(sp);}
     row.split('').forEach(k=>{
       const btn=document.createElement('button');
+      btn.type='button';
       btn.className='wd-key'+(k==='⌫'||k==='↵'?' wide':'');
-      btn.textContent=k;btn.dataset.key=k;
-      btn.addEventListener('click',()=>handleKey(k));
+      if(k==='⌫'){btn.innerHTML=BKSP_SVG;btn.setAttribute('aria-label','Delete');}
+      else if(k==='↵'){btn.textContent='Enter';}
+      else btn.textContent=k;
+      btn.dataset.key=k;
+      // pointerdown feels instant like a native keyboard; click fallback for keyboard a11y
+      btn.addEventListener('pointerdown',e=>{e.preventDefault();btn._pd=true;handleKey(k);});
+      btn.addEventListener('click',()=>{if(btn._pd){btn._pd=false;return;}handleKey(k);});
       rowEl.appendChild(btn);
     });
+    if(ri===1){const sp=document.createElement('span');sp.className='half';rowEl.appendChild(sp);}
   });
 }
 
-function setStatus(msg,color){
-  const el=document.getElementById('wd-status');
-  el.textContent=msg;
-  el.style.color=color||'var(--muted)';
-}
+function setStatus(msg){ if(msg) toast(msg,1500); }
 
-function getCell(r,c){return document.getElementById(`wd-${r}-${c}`);}
+function getCell(r,c){return $(`wd-${r}-${c}`);}
 
 // ── Input ─────────────────────────────────────────────────────────────────────
 document.addEventListener('keydown',e=>{
-  if(e.metaKey||e.ctrlKey)return;
-  if(e.key==='Backspace')handleKey('⌫');
-  else if(e.key==='Enter')handleKey('↵');
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if($('wd-result').classList.contains('show')){ if(e.key==='Escape')hideResult(); return; }
+  if(e.key==='Backspace'){e.preventDefault();handleKey('⌫');}
+  else if(e.key==='Enter'){e.preventDefault();handleKey('↵');}
   else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toUpperCase());
 });
 
 function handleKey(k){
-  if(gameOver)return;
+  if(gameOver||revealing)return;
   if(k==='⌫'){deleteLetter();}
   else if(k==='↵'){submitGuess();}
   else if(currentCol<5&&/^[A-Z]$/.test(k)){typeLetter(k);}
@@ -531,8 +605,9 @@ function typeLetter(k){
   const cell=getCell(currentRow,currentCol);
   cell.textContent=k;
   cell.classList.add('filled','popping');
-  setTimeout(()=>cell.classList.remove('popping'),80);
+  setTimeout(()=>cell.classList.remove('popping'),100);
   currentCol++;
+  haptic('select');
 }
 
 function deleteLetter(){
@@ -540,28 +615,35 @@ function deleteLetter(){
   currentCol--;
   const cell=getCell(currentRow,currentCol);
   cell.textContent='';cell.classList.remove('filled');
+  haptic('select');
 }
 
 function submitGuess(){
-  if(currentCol<5){setStatus('Not enough letters');shakeRow(currentRow);return;}
+  if(currentCol<5){setStatus('Not enough letters');shakeRow(currentRow);haptic('error');return;}
   const guess=Array.from({length:5},(_,i)=>getCell(currentRow,i).textContent).join('');
-  if(!ALLVALID.has(guess)){setStatus('Not in word list');shakeRow(currentRow);return;}
-  setStatus('');
+  if(!ALLVALID.has(guess)){setStatus('Not in word list');shakeRow(currentRow);haptic('error');return;}
   const result=checkGuess(guess,answer);
   guesses.push(guess);
+  revealing=true;
   revealRow(currentRow,guess,result,()=>{
+    revealing=false;
     updateKeyboard(guess,result);
     currentRow++;currentCol=0;
     const won=result.every(r=>r==='correct');
     if(won){
       bounceRow(currentRow-1);
       gameOver=true;
+      haptic('success');
       const msgs=['Genius!','Magnificent!','Impressive!','Splendid!','Great!','Phew!'];
-      setTimeout(()=>showResult(true,msgs[currentRow-1]||'Got it!'),400);
+      toast(msgs[currentRow-1]||'Got it!',1400);
+      showResult(true,msgs[currentRow-1]||'Got it!');
     } else if(currentRow===6){
       gameOver=true;
-      setTimeout(()=>showResult(false),400);
+      haptic('error');
+      toast(answer,2200);
+      showResult(false);
     }
+    if(!gameOver) saveWdState();
   });
 }
 
@@ -582,14 +664,14 @@ function checkGuess(guess,answer){
 function revealRow(row,guess,result,done){
   for(let c=0;c<5;c++){
     const cell=getCell(row,c);
-    const delay=c*90;
+    const delay=c*250;
     setTimeout(()=>{
       cell.classList.add('flipping');
       setTimeout(()=>{cell.dataset.state=result[c];},225);
       setTimeout(()=>{cell.classList.remove('flipping');},450);
     },delay);
   }
-  setTimeout(done,5*90+460);
+  setTimeout(done,4*250+470);
 }
 
 function updateKeyboard(guess,result){
@@ -606,48 +688,86 @@ function updateKeyboard(guess,result){
 }
 
 function shakeRow(row){
-  const rowEl=document.getElementById('wd-row-'+row);
+  const rowEl=$('wd-row-'+row);
+  rowEl.classList.remove('shaking');void rowEl.offsetWidth;
   rowEl.classList.add('shaking');
-  setTimeout(()=>rowEl.classList.remove('shaking'),400);
+  setTimeout(()=>rowEl.classList.remove('shaking'),450);
 }
 
 function bounceRow(row){
   for(let c=0;c<5;c++){
-    setTimeout(()=>{ const cell=getCell(row,c);cell.classList.add('bouncing');setTimeout(()=>cell.classList.remove('bouncing'),400); },c*60);
+    setTimeout(()=>{ const cell=getCell(row,c);cell.classList.add('bouncing');setTimeout(()=>cell.classList.remove('bouncing'),500); },c*90);
   }
 }
 
-function showResult(won,msg=''){
-  const panel=document.getElementById('wd-result');
-  document.getElementById('wr-word').textContent=answer;
-  document.getElementById('wr-msg').textContent=won?msg:`The word was "${answer}"`;
-  // Share text
+// ── Result sheet ──────────────────────────────────────────────────────────────
+function hideResult(){$('wd-result').classList.remove('show');}
+function renderStats(){
+  const hist=GameHistory.load('wordle');
+  const played=hist.length, wins=hist.filter(h=>h.won).length;
+  let streak=0;for(const h of hist){if(h.won)streak++;else break;}
+  const best=hist.reduce((m,h)=>h.won&&h.guesses?Math.min(m,h.guesses.length):m,99);
+  $('wr-stats').innerHTML=[
+    [played,'Played'],[played?Math.round(wins/played*100):0,'Win %'],[streak,'Streak'],[best===99?'–':best,'Best']
+  ].map(([v,l])=>`<div class="stat"><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
+  const dist=[0,0,0,0,0,0];
+  hist.forEach(h=>{if(h.won&&h.guesses&&h.guesses.length>=1&&h.guesses.length<=6)dist[h.guesses.length-1]++;});
+  const max=Math.max(1,...dist);
+  const mine=gameOver&&guesses.length&&checkGuess(guesses[guesses.length-1],answer).every(r=>r==='correct')?guesses.length:0;
+  $('wr-dist').innerHTML=dist.map((n,i)=>`<div class="wd-dist-row"><b>${i+1}</b><div class="wd-dist-bar${mine===i+1?' hi':''}" style="width:${Math.max(8,n/max*100)}%">${n}</div></div>`).join('');
+}
+function renderResult(won,msg){
+  $('wr-msg').textContent=won?msg:'So close!';
+  $('wr-sub').textContent=won?`Solved in ${guesses.length} ${guesses.length===1?'guess':'guesses'}`:'The word was';
+  const w=$('wr-word');w.className='wd-result-word'+(won?'':' lost');
+  w.innerHTML=[...answer].map(ch=>`<span>${ch}</span>`).join('');
+  renderStats();
   const emoji={correct:'🟩',present:'🟨',absent:'⬜'};
   const rows=guesses.map(g=>checkGuess(g,answer).map(r=>emoji[r]).join('')).join('\n');
-  const shareText=`Wordle #${dayNum||'?'} ${won?guesses.length:'-'}/6\n${rows}`;
-  document.getElementById('wr-share').onclick=()=>{
-    navigator.clipboard.writeText(shareText).then(()=>{
-      document.getElementById('wr-share').textContent='✅ Copied!';
-      setTimeout(()=>{document.getElementById('wr-share').textContent='📋 Copy Result';},2000);
-    }).catch(()=>{});
+  const shareText=`Wordle #${dayNum||'?'} ${won?guesses.length:'X'}/6\n${rows}`;
+  $('wr-share').onclick=()=>{
+    if(navigator.share&&matchMedia('(pointer:coarse)').matches){navigator.share({text:shareText}).catch(()=>{});return;}
+    (navigator.clipboard?navigator.clipboard.writeText(shareText):Promise.reject()).then(()=>toast('Copied to clipboard')).catch(()=>toast('Couldn’t copy'));
   };
+  const row=$('wr-row');
+  if(!row.querySelector('.gh-hist-btn')){
+    const b=GameHistory.btn('wordle','Wordle',e=>GameHistory.renderWordleGrid(e.guesses,e.results,e.answer),'History');
+    b.classList.add('gh-hist-btn');b.style.cssText='';b.className='btn btn-outline gh-hist-btn';
+    row.appendChild(b);
+  }
+  $('wd-see-result').classList.add('show');
+  $('wd-result').classList.add('show');
+}
+function showResult(won,msg=''){
   // Save to history and clear active session
   const results=guesses.map(g=>checkGuess(g,answer));
   GameHistory.save('wordle',{_summary:(won?`Solved in ${guesses.length}/6`:'Failed')+` · ${answer}`,_badge:won?guesses.length+'/6':'❌',answer,guesses,results,won,dayNum,randomMode});
   try{sessionStorage.removeItem('wd_state');}catch(e){}
-  // Add History button if not already there
-  if(!panel.querySelector('.gh-hist-btn')){
-    const b=GameHistory.btn('wordle','Wordle',e=>GameHistory.renderWordleGrid(e.guesses,e.results,e.answer));
-    b.classList.add('gh-hist-btn');b.style.marginTop='10px';
-    panel.appendChild(b);
-  }
-  panel.classList.add('show');
+  setTimeout(()=>{ if(gameOver) renderResult(won,msg); },1500);
 }
 
-// New random word button
-document.getElementById('wr-new').addEventListener('click',()=>{
+$('wd-result').addEventListener('click',e=>{if(e.target.id==='wd-result')hideResult();});
+$('wd-see-result').addEventListener('click',()=>$('wd-result').classList.add('show'));
+
+// New random word
+function newRandom(){
   try{sessionStorage.removeItem('wd_state');}catch(e){}
   init(true);
+}
+$('wr-new').addEventListener('click',newRandom);
+$('wd-new-btn').addEventListener('click',async()=>{
+  if(guesses.length&&!gameOver){
+    const ok=await GN.confirm('Start a random word?',{title:'Start a random word?',body:'Your current puzzle will be abandoned.',ok:'New word',danger:true});
+    if(!ok)return;
+  }
+  newRandom();
+});
+$('wd-help-btn').addEventListener('click',()=>{
+  GN.sheet({title:'How to play',body:`<div style="text-align:left;line-height:1.6">Guess the 5-letter word in 6 tries. After each guess the tiles change color:<br><br>
+  <span style="display:inline-block;width:18px;height:18px;border-radius:4px;background:var(--wd-green);vertical-align:-3px"></span>&nbsp; right letter, right spot<br>
+  <span style="display:inline-block;width:18px;height:18px;border-radius:4px;background:var(--wd-yellow);vertical-align:-3px"></span>&nbsp; in the word, wrong spot<br>
+  <span style="display:inline-block;width:18px;height:18px;border-radius:4px;background:var(--wd-gray);vertical-align:-3px"></span>&nbsp; not in the word<br><br>
+  A new daily puzzle arrives every day. Tap <b>↻</b> for a random word anytime.</div>`,actions:[{label:'Got it',primary:true}]});
 });
 
 function saveWdState(){
@@ -660,9 +780,10 @@ function loadWdState(){
     const s=JSON.parse(raw);if(!s.answer)return false;
     // For daily mode, ensure we're still on the same day
     if(!s.randomMode){const d=getDailyWord();if(d.day!==s.dayNum)return false;}
-    answer=s.answer;guesses=s.guesses;currentRow=s.currentRow;currentCol=s.currentCol;
+    answer=s.answer;guesses=s.guesses;currentRow=s.currentRow;
     gameOver=s.gameOver;randomMode=s.randomMode;dayNum=s.dayNum;
-    document.getElementById('wd-day').textContent=randomMode?'Random Mode':`Puzzle #${dayNum}`;
+    currentCol=0; // only completed guesses are saved
+    setDayLabel();
     buildBoard();buildKeyboard();
     // Replay guesses instantly (no animation)
     guesses.forEach((g,r)=>{
@@ -670,17 +791,19 @@ function loadWdState(){
       for(let c=0;c<5;c++){const cell=getCell(r,c);cell.textContent=g[c];cell.dataset.state=res[c];}
       updateKeyboard(g,res);
     });
-    // Restore in-progress letters on current row
-    if(!gameOver){
-      const inProg=Array.from({length:currentCol},(_,i)=>getCell(currentRow,i));
-      // currentCol letters already set if currentRow was mid-type — nothing to restore since we only saved completed guesses
+    hideResult();
+    // A finished game restored from the session: show its result again (already saved to history)
+    if(gameOver){
+      const won=guesses.length&&checkGuess(guesses[guesses.length-1],answer).every(r=>r==='correct');
+      const msgs=['Genius!','Magnificent!','Impressive!','Splendid!','Great!','Phew!'];
+      renderResult(won,msgs[guesses.length-1]||'Got it!');
+      hideResult();
     }
-    document.getElementById('wd-result').classList.remove('show');
-    setStatus('');
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',saveWdState);
+window.addEventListener('pagehide',saveWdState);
 
 // Init
 if(!loadWdState())init();

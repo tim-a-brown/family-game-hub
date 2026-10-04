@@ -6,91 +6,152 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Game Night">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="theme-color" content="#0b0d12">
 <title>Mini Crossword</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a1a0a 0%,#0d1117 70%);}
-.cx-wrap{max-width:440px;margin:0 auto;padding:0 8px 60px;}
+:root{--cx-key:#3a4050;--cx-key-hi:#4a5163;--cx-word:rgba(96,165,250,.32);--cx-sel:var(--gold);}
+html,body{height:100%;overflow:hidden;}
+body{display:flex;flex-direction:column;}
+.cx-app{
+  flex:1;min-height:0;display:flex;flex-direction:column;
+  width:100%;max-width:1000px;margin:0 auto;
+  padding:0 max(8px,var(--safe-r)) 0 max(8px,var(--safe-l));
+}
 /* Puzzle picker */
-.cx-picker{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
-.cx-puz-btn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;transition:all .15s;}
-.cx-puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
-.cx-puz-btn.solved{border-color:#22c55e;background:rgba(34,197,94,.12);color:#22c55e;}
-/* Grid */
-.cx-grid-wrap{display:flex;justify-content:center;margin-bottom:14px;}
-.cx-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;width:min(260px,72vw);}
-.cx-cell{aspect-ratio:1;position:relative;}
-.cx-cell-inner{width:100%;height:100%;border:2px solid rgba(255,255,255,.2);border-radius:3px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:clamp(.9rem,4.5vw,1.2rem);font-weight:900;font-family:var(--serif);text-transform:uppercase;color:#fff;cursor:pointer;transition:background .1s,border-color .1s;user-select:none;}
-.cx-cell-inner.black{background:#0d1117;border-color:#0d1117;pointer-events:none;}
-.cx-cell-inner.selected{border-color:var(--gold);background:rgba(245,200,66,.15);}
-.cx-cell-inner.highlighted{border-color:rgba(245,200,66,.4);background:rgba(245,200,66,.07);}
-.cx-cell-inner.correct{background:rgba(34,197,94,.18);border-color:#22c55e;}
-.cx-cell-inner.wrong{background:rgba(239,68,68,.15);border-color:#ef4444;}
-.cx-num{position:absolute;top:2px;left:3px;font-size:clamp(.45rem,.22em,.6rem);font-weight:700;color:var(--muted);line-height:1;pointer-events:none;}
-/* Pop on type */
-@keyframes cx-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
-.cx-cell-inner.popping{animation:cx-pop .08s ease;}
-/* Clues */
-.cx-clues{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.cx-clue-section{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:10px;}
-.cx-clue-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;}
-.cx-clue-item{font-size:.78rem;padding:4px 6px;border-radius:5px;cursor:pointer;transition:background .12s;color:rgba(255,255,255,.7);line-height:1.35;}
-.cx-clue-item:hover{background:rgba(255,255,255,.07);}
-.cx-clue-item.active{background:rgba(245,200,66,.12);color:var(--gold);}
-.cx-clue-item.done{color:rgba(34,197,94,.7);}
-.cx-clue-num{font-weight:700;color:#fff;margin-right:4px;}
+.cx-picker{display:flex;gap:6px;justify-content:center;padding:10px 0 4px;flex:none;}
+.cx-puz-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface);color:var(--text-2);font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s;position:relative;}
+.cx-puz-btn.active{border-color:var(--gold);background:rgba(245,200,66,.14);color:var(--gold);}
+.cx-puz-btn.solved{border-color:rgba(74,222,128,.5);background:rgba(74,222,128,.12);color:var(--green);}
+.cx-puz-btn.solved.active{box-shadow:0 0 0 2px var(--gold);}
+/* Main: grid (+ clue lists on wide screens) */
+.cx-main{flex:1;min-height:0;display:flex;gap:24px;align-items:stretch;justify-content:center;}
+.cx-grid-area{flex:1;min-height:0;min-width:0;container-type:size;display:flex;align-items:center;justify-content:center;padding:8px 0;}
+.cx-grid{
+  --w:min(100cqw - 8px, 100cqh - 4px, 380px);
+  width:var(--w);height:var(--w);
+  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);
+  gap:0;border:2px solid #000;background:#000;border-radius:6px;overflow:hidden;
+}
+.cx-cell{position:relative;}
+.cx-cell-inner{
+  width:100%;height:100%;position:relative;
+  border:1px solid #11141b;background:#e8eaef;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:calc(var(--w) * .1);font-weight:700;
+  text-transform:uppercase;color:#11141b;cursor:pointer;line-height:1;padding-top:6%;
+  transition:background .1s;
+}
+.cx-cell-inner.black{background:#05060a;border-color:#05060a;pointer-events:none;}
+.cx-cell-inner.highlighted{background:#a7c7f5;}
+.cx-cell-inner.selected{background:var(--cx-sel);}
+.cx-cell-inner.correct{color:#1d6fd8;}
+.cx-cell-inner.wrong{color:#d33;}
+.cx-cell-inner.wrong::after{content:'';position:absolute;left:8%;right:8%;top:50%;height:2px;background:#d33;transform:rotate(-38deg);}
+.cx-grid.solved .cx-cell-inner:not(.black){background:#bfe7cb;color:#11141b;}
+.cx-num{position:absolute;top:3%;left:6%;font-family:var(--font);font-size:calc(var(--w) * .036);font-weight:700;color:#3a3f4b;line-height:1;pointer-events:none;}
+@keyframes cx-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+.cx-cell-inner.popping{animation:cx-pop .1s ease;}
+/* Clue bar (NYT style) */
+.cx-cluebar{
+  flex:none;display:flex;align-items:stretch;gap:0;min-height:58px;
+  background:rgba(96,165,250,.16);border:1px solid rgba(96,165,250,.3);border-radius:14px;margin:4px 0 6px;overflow:hidden;
+}
+.cx-cluebar button{flex:none;width:44px;border:0;background:transparent;color:var(--text);cursor:pointer;display:grid;place-items:center;}
+.cx-cluebar button:active{background:rgba(255,255,255,.06);}
+.cx-cluebar svg{width:20px;height:20px;}
+.cx-cluetext{flex:1;display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;font-size:1rem;font-weight:600;line-height:1.3;}
+.cx-cluetext b{font-family:var(--display);font-weight:800;color:var(--blue);flex:none;}
+/* Clue lists (wide screens only) */
+.cx-clues{display:none;}
+@media (min-width:820px){
+  .cx-clues{display:flex;flex-direction:column;gap:14px;width:320px;flex:none;overflow:auto;padding:12px 0;}
+  .cx-grid-area{flex:0 1 480px;}
+  .cx-cluebar{max-width:560px;width:100%;margin-left:auto;margin-right:auto;}
+}
+.cx-clue-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;}
+.cx-clue-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin:0 4px 6px;}
+.cx-clue-item{font-size:.95rem;padding:8px 10px;border-radius:10px;cursor:pointer;color:var(--text-2);line-height:1.4;border-left:3px solid transparent;}
+.cx-clue-item:hover{background:var(--surface-2);}
+.cx-clue-item.active{background:rgba(96,165,250,.16);color:var(--text);border-left-color:var(--blue);}
+.cx-clue-item.done{color:var(--text-3);}
+.cx-clue-num{font-weight:800;color:var(--text);margin-right:6px;}
+/* Tools row */
+.cx-actions{flex:none;display:flex;gap:8px;justify-content:center;padding:2px 0 6px;}
+.cx-actions .btn{min-height:36px;height:36px;padding:0 14px;border-radius:999px;font-size:.86rem;}
 /* Keyboard */
-.cx-kb{display:flex;flex-direction:column;gap:5px;align-items:center;margin-bottom:10px;}
-.cx-kb-row{display:flex;gap:4px;}
-.cx-key{height:40px;min-width:28px;padding:0 5px;border-radius:6px;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:.75rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;touch-action:manipulation;font-family:var(--body);}
-.cx-key.wide{min-width:48px;font-size:.67rem;}
-.cx-key:active{transform:scale(.92);}
-/* Status & result */
-.cx-status{text-align:center;font-size:.82rem;font-weight:700;color:var(--muted);min-height:22px;margin-bottom:6px;}
-.cx-result{display:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center;margin-top:6px;}
-.cx-result.show{display:block;}
-.cx-result-title{font-family:var(--serif);font-size:1.3rem;font-weight:900;color:#22c55e;margin-bottom:4px;}
-.cx-result-sub{font-size:.78rem;color:var(--muted);}
-/* Action buttons */
-.cx-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.cx-kb{flex:none;display:flex;flex-direction:column;gap:8px;padding:4px 0 calc(10px + var(--safe-b));width:100%;max-width:560px;margin:0 auto;}
+.cx-kb-row{display:flex;gap:6px;justify-content:center;}
+.cx-kb-row .half{flex:.5;}
+.cx-key{
+  flex:1;height:54px;padding:0;border-radius:8px;border:0;background:var(--cx-key);color:var(--text);
+  font-family:var(--font);font-size:1.15rem;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation;transition:background .12s,transform .06s;
+}
+.cx-key.wide{flex:1.55;}
+.cx-key svg{width:24px;height:24px;}
+.cx-key:active{background:var(--cx-key-hi);transform:scale(.95);}
+@media (max-height:720px){.cx-key{height:46px;}.cx-kb{gap:6px;}.cx-cluebar{min-height:50px;}}
+.cx-status{display:none;}
+/* Result sheet */
+.cx-result{position:fixed;inset:0;z-index:300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.cx-result.show{display:flex;animation:gn-fade .2s ease both;}
+.cx-sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 20px calc(20px + var(--safe-b));text-align:center;animation:gn-sheet .32s var(--ease) both;}
+@media (min-width:600px){.cx-result{align-items:center;}.cx-sheet{border-radius:24px;border-bottom:1px solid var(--line-2);}}
+.cx-grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);margin:0 auto 16px;}
+.cx-result-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
+.cx-result-title{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;}
+.cx-result-sub{font-size:.95rem;color:var(--text-2);margin:4px 0 16px;}
+.cx-progress{display:flex;gap:6px;justify-content:center;margin-bottom:18px;}
+.cx-progress span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;background:var(--surface-2);color:var(--text-3);border:1px solid var(--line-2);}
+.cx-progress span.on{background:rgba(74,222,128,.15);color:var(--green);border-color:rgba(74,222,128,.45);}
+.cx-res-actions{display:flex;flex-direction:column;gap:8px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mini Crossword</span>
 </nav>
-<div class="page"><div class="cx-wrap">
-
-<div class="cx-picker" id="cx-picker"></div>
-
-<div class="cx-grid-wrap"><div class="cx-grid" id="cx-grid"></div></div>
-
-<div class="cx-status" id="cx-status"></div>
-
-<div class="cx-clues" id="cx-clues"></div>
-
-<div class="cx-kb" id="cx-kb">
-  <div class="cx-kb-row" id="cx-kb-r0"></div>
-  <div class="cx-kb-row" id="cx-kb-r1"></div>
-  <div class="cx-kb-row" id="cx-kb-r2"></div>
-</div>
-
-<div class="cx-actions">
-  <button class="btn btn-outline btn-sm" id="cx-check">✓ Check</button>
-  <button class="btn btn-outline btn-sm" id="cx-reveal-cell">💡 Reveal Letter</button>
-  <button class="btn btn-outline btn-sm" id="cx-clear">↺ Clear</button>
-</div>
+<main class="cx-app">
+  <div class="cx-picker" id="cx-picker"></div>
+  <div class="cx-main">
+    <div class="cx-grid-area"><div class="cx-grid" id="cx-grid"></div></div>
+    <div class="cx-clues" id="cx-clues"></div>
+  </div>
+  <div class="cx-status" id="cx-status"></div>
+  <div class="cx-cluebar" id="cx-cluebar">
+    <button id="cx-prev" aria-label="Previous clue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <div class="cx-cluetext" id="cx-cluetext" role="button" aria-label="Switch direction"></div>
+    <button id="cx-next" aria-label="Next clue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div>
+  <div class="cx-actions">
+    <button class="btn btn-outline" id="cx-check">Check</button>
+    <button class="btn btn-outline" id="cx-reveal-cell">Reveal letter</button>
+    <button class="btn btn-outline" id="cx-clear">Clear</button>
+  </div>
+  <div class="cx-kb" id="cx-kb">
+    <div class="cx-kb-row" id="cx-kb-r0"></div>
+    <div class="cx-kb-row" id="cx-kb-r1"></div>
+    <div class="cx-kb-row" id="cx-kb-r2"></div>
+  </div>
+</main>
 
 <div class="cx-result" id="cx-result">
-  <div class="cx-result-title">Puzzle Solved! 🎉</div>
-  <div class="cx-result-sub" id="cx-result-sub"></div>
+  <div class="cx-sheet" role="dialog" aria-modal="true">
+    <div class="cx-grab"></div>
+    <div class="cx-result-emoji">🎉</div>
+    <div class="cx-result-title">Puzzle solved!</div>
+    <div class="cx-result-sub" id="cx-result-sub"></div>
+    <div class="cx-progress" id="cx-progress"></div>
+    <div class="cx-res-actions">
+      <button class="btn btn-gold btn-block" id="cx-next-puz">Next puzzle</button>
+      <button class="btn btn-ghost btn-block" id="cx-close">Admire the grid</button>
+    </div>
+  </div>
 </div>
 
-</div></div>
 <script>
 'use strict';
 // ── Puzzle data ─────────────────────────────────────────────────────────────
@@ -240,7 +301,15 @@ function buildPicker(){
     const btn=document.createElement('button');
     btn.className='cx-puz-btn'+(i===puzIdx?' active':'')+(solvedPuzzles.has(i)?' solved':'');
     btn.textContent=i+1;
-    btn.addEventListener('click',()=>loadPuzzle(i));
+    btn.setAttribute('aria-label','Puzzle '+(i+1)+(solvedPuzzles.has(i)?' (solved)':''));
+    btn.addEventListener('click',async()=>{
+      if(i===puzIdx)return;
+      if(!solved&&grid.some(row=>row.some(Boolean))){
+        const ok=await GN.confirm('Switch puzzles?',{title:'Switch to puzzle '+(i+1)+'?',body:'Letters in this puzzle will be cleared.',ok:'Switch'});
+        if(!ok)return;
+      }
+      haptic('select');loadPuzzle(i);_save_cword();
+    });
     el.appendChild(btn);
   });
 }
@@ -320,8 +389,20 @@ function highlightActiveClue(){
   const entry=getActiveEntry();
   if(entry){
     const el=document.getElementById(`cx-clue-${selDir}-${entry.n}`);
-    if(el){el.classList.add('active');el.scrollIntoView({block:'nearest',behavior:'smooth'});}
+    if(el){
+      el.classList.add('active');
+      const box=document.getElementById('cx-clues');
+      if(box.offsetParent){const t=el.offsetTop-box.offsetTop;if(t<box.scrollTop||t+el.offsetHeight>box.scrollTop+box.clientHeight)box.scrollTo({top:t-40,behavior:'smooth'});}
+    }
+    const clue=PUZZLES[puzIdx][selDir].find(x=>x.n===entry.n);
+    document.getElementById('cx-cluetext').innerHTML=`<b>${entry.n}${selDir==='across'?'A':'D'}</b><span></span>`;
+    document.getElementById('cx-cluetext').lastChild.textContent=clue?clue.clue.replace(/^(Across|Down): ?/,''):'';
   }
+  // Dim clues whose entries are completely filled
+  ['across','down'].forEach(dir=>ENTRY_STARTS[dir].forEach(e=>{
+    const it=document.getElementById(`cx-clue-${dir}-${e.n}`);
+    if(it)it.classList.toggle('done',entryCells(dir,e.r,e.c).every(([r,c])=>grid[r][c]!==''));
+  }));
 }
 
 function buildClues(){
@@ -331,7 +412,7 @@ function buildClues(){
   ['across','down'].forEach(dir=>{
     const sec=document.createElement('div');sec.className='cx-clue-section';
     const title=document.createElement('div');title.className='cx-clue-title';
-    title.textContent=dir==='across'?'↔ Across':'↕ Down';
+    title.textContent=dir==='across'?'Across':'Down';
     sec.appendChild(title);
     const entries=puz[dir];
     entries.forEach(entry=>{
@@ -348,18 +429,26 @@ function buildClues(){
   });
 }
 
+const BKSP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>';
 function buildKeyboard(){
-  const rows=['QWERTYUIOP','ASDFGHJKL','⌫ZXCVBNM↵'];
+  const rows=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM⌫'];
   rows.forEach((row,ri)=>{
     const el=document.getElementById('cx-kb-r'+ri);
     el.innerHTML='';
+    const spacer=cls=>{const sp=document.createElement('span');sp.className=cls;el.appendChild(sp);};
+    if(ri===1)spacer('half');
+    if(ri===2){const sp=document.createElement('span');sp.style.flex='1.55';el.appendChild(sp);}
     row.split('').forEach(k=>{
       const btn=document.createElement('button');
-      btn.className='cx-key'+(k==='⌫'||k==='↵'?' wide':'');
-      btn.textContent=k;
-      btn.addEventListener('click',()=>handleKey(k));
+      btn.type='button';
+      btn.className='cx-key'+(k==='⌫'?' wide':'');
+      if(k==='⌫'){btn.innerHTML=BKSP_SVG;btn.setAttribute('aria-label','Delete');}
+      else btn.textContent=k;
+      btn.addEventListener('pointerdown',e=>{e.preventDefault();btn._pd=true;handleKey(k);});
+      btn.addEventListener('click',()=>{if(btn._pd){btn._pd=false;return;}handleKey(k);});
       el.appendChild(btn);
     });
+    if(ri===1)spacer('half');
   });
 }
 
@@ -394,7 +483,8 @@ function selectEntry(dir,n){
 
 document.addEventListener('keydown',e=>{
   if(e.metaKey||e.ctrlKey||e.altKey)return;
-  if(e.key==='Backspace')handleKey('⌫');
+  if(document.getElementById('cx-result').classList.contains('show')){if(e.key==='Escape')hideResult();return;}
+  if(e.key==='Backspace'){e.preventDefault();handleKey('⌫');}
   else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();advanceOrSwitch();}
   else if(e.key==='ArrowRight'){e.preventDefault();selDir='across';highlightSelection();}
   else if(e.key==='ArrowDown'){e.preventDefault();selDir='down';highlightSelection();}
@@ -405,11 +495,13 @@ function handleKey(k){
   if(solved)return;
   if(k==='⌫'){doBackspace();}
   else if(k==='↵'){advanceOrSwitch();}
-  else if(/^[A-Z]$/.test(k)){typeInCell(k);}
+  else if(/^[A-Z]$/.test(k)){typeInCell(k);checkSilent();}
+  _save_cword();
 }
 
 function typeInCell(k){
   grid[selR][selC]=k;
+  haptic('select');
   const inner=document.getElementById(`cx-${selR}-${selC}`);
   inner.classList.add('popping');setTimeout(()=>inner.classList.remove('popping'),80);
   renderGrid();
@@ -417,6 +509,7 @@ function typeInCell(k){
 }
 
 function doBackspace(){
+  haptic('select');
   if(grid[selR][selC]!==''){
     grid[selR][selC]='';renderGrid();
   } else {
@@ -480,15 +573,18 @@ function checkAll(){
       else{inner.classList.add('wrong');allCorrect=false;}
     }
   }
-  if(!allFilled){setStatus('Fill in all squares first');return;}
-  if(allCorrect){winPuzzle();}
-  else{setStatus('Some letters are wrong — keep trying!');}
+  if(allCorrect){winPuzzle();return;}
+  const bad=document.querySelectorAll('.cx-cell-inner.wrong').length;
+  if(bad){setStatus(`${bad} square${bad>1?'s are':' is'} wrong`);haptic('error');}
+  else if(!allFilled){setStatus('Looking good so far!');haptic('light');}
 }
 
 function revealCell(){
   const sol=getSolution();
+  if(solved)return;
   grid[selR][selC]=sol[selR][selC];
   renderGrid();
+  _save_cword();
   const inner=document.getElementById(`cx-${selR}-${selC}`);
   inner.classList.add('correct');
   setStatus('');
@@ -503,29 +599,71 @@ function checkSilent(){
   winPuzzle();
 }
 
-function clearGrid(){
+async function clearGrid(){
+  if(grid.some(row=>row.some(Boolean))){
+    const ok=await GN.confirm('Clear the puzzle?',{title:'Clear the puzzle?',body:'All letters you’ve entered will be erased.',ok:'Clear',danger:true});
+    if(!ok)return;
+  }
+  document.getElementById('cx-grid').classList.remove('solved');
   grid=Array.from({length:5},()=>Array(5).fill(''));
   document.querySelectorAll('.cx-cell-inner').forEach(el=>el.classList.remove('correct','wrong'));
   renderGrid();
-  document.getElementById('cx-result').classList.remove('show');
-  solved=false;setStatus('');
+  hideResult();
+  solved=false;
+  _save_cword();
 }
 
 function winPuzzle(){
+  if(solved)return;
   solved=true;
   solvedPuzzles.add(puzIdx);
   buildPicker();
-  document.getElementById('cx-result').classList.add('show');
-  const unsolved=PUZZLES.findIndex((_,i)=>!solvedPuzzles.has(i));
-  document.getElementById('cx-result-sub').textContent=
-    unsolved>=0?`Puzzle ${puzIdx+1} complete! Try Puzzle ${unsolved+1} next.`:'All 7 puzzles solved — you\'re on fire! 🔥';
-  // Green all cells
+  _save_cword();
   for(let r=0;r<5;r++)for(let c=0;c<5;c++){
-    if(!isBlack(r,c)){document.getElementById(`cx-${r}-${c}`).classList.add('correct');}
+    if(!isBlack(r,c)){document.getElementById(`cx-${r}-${c}`).classList.remove('selected','highlighted','wrong');}
   }
+  document.getElementById('cx-grid').classList.add('solved');
+  haptic('success');
+  setTimeout(showResult,500);
 }
+function nextUnsolved(){
+  for(let i=1;i<=PUZZLES.length;i++){const j=(puzIdx+i)%PUZZLES.length;if(!solvedPuzzles.has(j))return j;}
+  return -1;
+}
+function showResult(){
+  const unsolved=nextUnsolved();
+  document.getElementById('cx-result-sub').textContent=
+    unsolved>=0?`Puzzle ${puzIdx+1} complete · ${solvedPuzzles.size} of ${PUZZLES.length} solved`:`All ${PUZZLES.length} puzzles solved — you’re on fire! 🔥`;
+  document.getElementById('cx-progress').innerHTML=PUZZLES.map((_,i)=>`<span class="${solvedPuzzles.has(i)?'on':''}">${i+1}</span>`).join('');
+  const nb=document.getElementById('cx-next-puz');
+  nb.textContent=unsolved>=0?`Play puzzle ${unsolved+1}`:'Play puzzle 1 again';
+  nb.onclick=()=>{hideResult();loadPuzzle(unsolved>=0?unsolved:0);};
+  document.getElementById('cx-result').classList.add('show');
+}
+function hideResult(){document.getElementById('cx-result').classList.remove('show');}
+document.getElementById('cx-close').addEventListener('click',hideResult);
+document.getElementById('cx-result').addEventListener('click',e=>{if(e.target.id==='cx-result')hideResult();});
 
-function setStatus(msg){document.getElementById('cx-status').textContent=msg;}
+function setStatus(msg){if(msg&&window.GN)GN.toast(msg,1600);}
+function haptic(k){try{window.GN&&GN.haptic(k);}catch(e){}}
+
+// ── Clue bar: prev / next / toggle direction ─────────────────────────────────
+const ALL_ENTRIES=[...ENTRY_STARTS.across.map(e=>['across',e]),...ENTRY_STARTS.down.map(e=>['down',e])];
+function stepClue(d){
+  if(solved)return;
+  const cur=getActiveEntry();
+  let i=ALL_ENTRIES.findIndex(([dir,e])=>dir===selDir&&e===cur);
+  i=(i+d+ALL_ENTRIES.length)%ALL_ENTRIES.length;
+  const [dir,e]=ALL_ENTRIES[i];
+  selDir=dir;
+  const cells=entryCells(dir,e.r,e.c);
+  [selR,selC]=cells.find(([r,c])=>grid[r][c]==='')||cells[0];
+  highlightSelection();
+  haptic('select');
+}
+document.getElementById('cx-prev').addEventListener('click',()=>stepClue(-1));
+document.getElementById('cx-next').addEventListener('click',()=>stepClue(1));
+document.getElementById('cx-cluetext').addEventListener('click',()=>{if(!solved){clickCell(selR,selC);haptic('select');}});
 
 // ── Load puzzle ───────────────────────────────────────────────────────────────
 function loadPuzzle(idx){
@@ -535,8 +673,8 @@ function loadPuzzle(idx){
   buildPicker();
   buildGrid();
   buildClues();
-  document.getElementById('cx-result').classList.remove('show');
-  setStatus('');
+  document.getElementById('cx-grid').classList.toggle('solved',false);
+  hideResult();
   highlightSelection();
 }
 
@@ -552,12 +690,21 @@ function _load_cword(){
   try{
     const raw=sessionStorage.getItem('cword');if(!raw)return false;
     const s=JSON.parse(raw);if(!s)return false;
-    puzIdx=s.puzIdx||0;grid=s.grid;solvedPuzzles=new Set(s.solvedPuzzles||[]);
-    renderPuzzle();
+    solvedPuzzles=new Set(s.solvedPuzzles||[]);
+    loadPuzzle(Math.min(PUZZLES.length-1,s.puzIdx||0));   // builds picker/grid/clues for the saved puzzle
+    if(Array.isArray(s.grid)&&s.grid.length===5)grid=s.grid.map(row=>row.map(ch=>/^[A-Z]$/.test(ch)?ch:''));
+    renderGrid();
+    // Restore a finished puzzle without re-celebrating
+    const sol=getSolution();
+    if(solvedPuzzles.has(puzIdx)&&grid.every((row,r)=>row.every((ch,c)=>isBlack(r,c)||ch===sol[r][c]))){
+      solved=true;document.getElementById('cx-grid').classList.add('solved');
+      for(let r=0;r<5;r++)for(let c=0;c<5;c++)if(!isBlack(r,c))document.getElementById(`cx-${r}-${c}`).classList.remove('selected','highlighted');
+    }
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_cword);
+window.addEventListener('pagehide',_save_cword);
 
 _load_cword();
 </script>

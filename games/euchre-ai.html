@@ -2,100 +2,149 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Euchre — vs AI</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a1e10 0%,#060d09 60%);}
-.eu-wrap{max-width:460px;margin:0 auto;padding:0 8px 60px;}
-/* Card */
-.ecard{width:46px;height:64px;border-radius:8px;background:linear-gradient(145deg,#f8f4e8,#ede8d6);
-  border:2px solid rgba(0,0,0,.12);display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:'Playfair Display',serif;font-weight:900;
-  box-shadow:1px 2px 6px rgba(0,0,0,.5);transition:all .15s;user-select:none;flex-shrink:0;}
-.ecard.red{color:#c53030;}.ecard.black{color:#1a1a1a;}
-.ecard.playable{cursor:pointer;}.ecard.playable:hover{transform:translateY(-8px);border-color:#f5c842;}
-.ecard.trump{box-shadow:0 0 8px rgba(245,200,66,.4),1px 2px 6px rgba(0,0,0,.4);}
-.ecard.face-down{background:linear-gradient(145deg,#0a2a18,#051508);border-color:rgba(255,255,255,.1);cursor:default;}
-.ec-r{font-size:.88rem;line-height:1.1;}.ec-s{font-size:.75rem;line-height:1;}
-/* Table */
-.eu-table{background:linear-gradient(145deg,#0a2018,#060e0a);border:2px solid rgba(255,255,255,.07);
-  border-radius:16px;padding:12px;margin-bottom:10px;min-height:180px;}
-.eu-north{text-align:center;margin-bottom:8px;}
-.eu-mid{display:flex;justify-content:space-between;align-items:center;gap:4px;}
-.eu-side{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.eu-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.eu-trick{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:104px;}
-.eu-trick-slot{display:flex;flex-direction:column;align-items:center;gap:1px;}
-.eu-trick-name{font-size:.5rem;color:rgba(255,255,255,.3);text-transform:uppercase;}
-/* Name tags */
-.eu-name{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
-.eu-name.you{color:rgba(90,200,250,.7);}.eu-name.partner{color:rgba(134,239,172,.7);}
-.eu-name.active{color:#f5c842;}
-.eu-bid-info{font-size:.58rem;color:rgba(255,255,255,.35);}
-/* Trump display */
-.eu-trump-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
-  color:rgba(255,255,255,.4);margin-bottom:3px;}
-/* Score board */
-.eu-scores{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.eu-score-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-  border-radius:10px;padding:8px;text-align:center;}
-.eu-score-box.leader{border-color:rgba(34,197,94,.35);}
-.eu-team-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
-.eu-team-score{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#f5c842;}
-.eu-team-tricks{font-size:.62rem;color:rgba(255,255,255,.4);}
-/* Bidding */
-.eu-bid-panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-  border-radius:12px;padding:14px;margin-bottom:10px;}
-.eu-bid-title{font-weight:700;text-align:center;margin-bottom:4px;}
-.eu-bid-sub{font-size:.75rem;color:rgba(255,255,255,.5);text-align:center;margin-bottom:12px;}
-.eu-bid-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-/* Kitty card */
-.eu-kitty{display:flex;flex-direction:column;align-items:center;gap:3px;}
-/* Status */
-.eu-status{text-align:center;font-size:.88rem;font-weight:700;min-height:22px;margin-bottom:8px;color:rgba(255,255,255,.8);}
-/* Log */
-.eu-log{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;max-height:70px;overflow-y:auto;
-  font-size:.73rem;line-height:1.7;color:rgba(255,255,255,.5);margin-bottom:8px;}
-.eu-log .pts{color:#f5c842;font-weight:700;}
-/* Round result */
-.eu-round-result{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;}
-/* Game over */
-.eu-game-result{background:linear-gradient(135deg,#f5c842,#f0a500);border-radius:14px;padding:18px;text-align:center;margin-bottom:12px;}
-.eu-game-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:#0d1117;}
-/* Discard panel */
-.eu-discard-panel{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;}
+/*KIT-START*/
+/* ── Card-table kit (same look across Spades · Hearts · Euchre · Gin · Cribbage) ── */
+.ck{max-width:560px;margin:0 auto;padding:10px max(12px,var(--safe-r)) calc(28px + var(--safe-b)) max(12px,var(--safe-l));}
+.ck-board{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:18px;}
+.ck-side{min-width:0;display:flex;flex-direction:column;gap:1px;}
+.ck-side.r{align-items:flex-end;text-align:right;}
+.ck-lbl{display:flex;align-items:center;gap:6px;max-width:100%;font-size:.75rem;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ck-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.ck-pts{font-family:var(--display);font-size:1.85rem;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+.ck-sub{font-size:.75rem;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ck-mid{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.72rem;color:var(--text-3);font-weight:600;text-align:center;white-space:nowrap;}
+.ck-mid b{font-family:var(--display);font-size:1rem;color:var(--text-2);}
+.ck-lead{color:var(--gold);}
+/* Felt table + seats */
+.ck-table{position:relative;padding:12px 10px 14px;margin-bottom:10px;}
+.tbl4{display:grid;grid-template-columns:68px minmax(0,1fr) 68px;grid-template-areas:". n ." "w c e";align-items:center;gap:6px 2px;}
+.tbl4 .a-n{grid-area:n;justify-self:center;}
+.tbl4 .a-w{grid-area:w;}
+.tbl4 .a-e{grid-area:e;}
+.tbl4 .a-c{grid-area:c;}
+.seat{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
+.seat-row{flex-direction:row;gap:8px;}
+.seat-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;font-family:var(--display);font-weight:800;font-size:1rem;color:#fff;background:rgba(0,0,0,.28);border:2px solid rgba(255,255,255,.16);transition:border-color .2s,box-shadow .2s;}
+.seat.turn .seat-av{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,200,66,.22);}
+.seat-name{font-size:.78rem;font-weight:700;color:#fff;max-width:76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.seat-meta{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.78);background:rgba(0,0,0,.28);border-radius:999px;padding:2px 8px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.seat-meta.hot{color:var(--gold-ink);background:var(--gold);}
+.seat-col{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
+/* Playing cards */
+.pc{--w:var(--cw,56px);position:relative;flex:none;width:var(--w);height:calc(var(--w)*1.4);border-radius:calc(var(--w)*.13);background:linear-gradient(165deg,#fff,#f2eee4);border:1px solid rgba(0,0,0,.22);box-shadow:0 2px 6px rgba(0,0,0,.35);color:#1b1d22;font-family:var(--display);font-weight:800;transition:transform .18s var(--ease),box-shadow .18s,filter .18s,opacity .18s;-webkit-user-select:none;user-select:none;}
+.pc.red{color:#d42a2a;}
+.pc .ix{position:absolute;top:calc(var(--w)*.06);left:calc(var(--w)*.07);display:flex;flex-direction:column;align-items:center;line-height:.95;font-size:calc(var(--w)*.31);letter-spacing:-.05em;}
+.pc .ix i{font-style:normal;font-size:calc(var(--w)*.26);letter-spacing:0;}
+.pc .pip{position:absolute;right:calc(var(--w)*.08);bottom:calc(var(--w)*.04);font-size:calc(var(--w)*.5);line-height:1;}
+.pc.back{background:radial-gradient(circle at 50% 50%,rgba(245,200,66,.4) 0 16%,transparent 17%),repeating-linear-gradient(45deg,#2b3555 0 4px,#1e2640 4px 8px);border:2px solid #ebe6da;}
+.pc.slot{background:rgba(0,0,0,.14);border:1.5px dashed rgba(255,255,255,.22);box-shadow:none;}
+.pc.play{cursor:pointer;}
+.pc.dim{filter:brightness(.55) saturate(.6);}
+.pc.sel{transform:translateY(-14px);box-shadow:0 0 0 2.5px var(--gold),0 10px 22px rgba(0,0,0,.45);}
+.pc.glow{box-shadow:0 0 0 3px var(--gold),0 6px 16px rgba(0,0,0,.45);}
+.pc.new{animation:ck-in .24s var(--ease) both;}
+@keyframes ck-in{from{opacity:0;scale:.82;}to{opacity:1;scale:1;}}
+@media (hover:hover){.pc.play:not(.sel):hover{transform:translateY(-8px);}}
+.pc.play:active{filter:brightness(.92);}
+/* Hand: fans out / overlaps automatically to fit the available width */
+.hand{--cw:clamp(50px,15vw,66px);display:flex;justify-content:center;padding:18px 0 2px;min-height:calc(var(--cw)*1.4 + 20px);}
+.hand>.pc+.pc{margin-left:min(6px,calc((100% - var(--n,10) * var(--cw)) / (var(--n,10) - 1)));}
+.mini-backs{display:flex;justify-content:center;}
+.mini-backs .pc{--w:20px;border-width:1.5px;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.mini-backs .pc+.pc{margin-left:-13px;}
+/* Trick area */
+.trick{--tw:clamp(44px,12.6vw,58px);position:relative;width:calc(var(--tw)*3 + 10px);height:calc(var(--tw)*2.8 + 6px);margin:0 auto;}
+.trick .pc{--w:var(--tw);position:absolute;}
+.trick .t-n{left:calc(50% - var(--tw)/2);top:0;}
+.trick .t-s{left:calc(50% - var(--tw)/2);bottom:0;}
+.trick .t-w{left:0;top:calc(50% - var(--tw)*.7);rotate:-5deg;}
+.trick .t-e{right:0;top:calc(50% - var(--tw)*.7);rotate:5deg;}
+/* Status, chips, panels */
+.ck-status{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 8px;font-weight:700;font-size:.98rem;text-align:center;color:var(--text);}
+.ck-status.you{color:var(--gold);}
+.ck-status .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--text-2);animation:ck-spin .8s linear infinite;}
+@keyframes ck-spin{to{transform:rotate(360deg);}}
+.ck-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+.ck-chip{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 11px;border-radius:999px;font-size:.78rem;font-weight:700;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text-2);white-space:nowrap;}
+.ck-chip.gold{color:var(--gold);border-color:rgba(245,200,66,.35);background:rgba(245,200,66,.1);}
+.ck-chip .s-red{color:#ff6b6b;}
+.ck-panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:10px;}
+.ck-panel h3{font-size:1.2rem;font-weight:800;text-align:center;margin-bottom:4px;}
+.ck-panel p.sub{font-size:.88rem;color:var(--text-2);text-align:center;margin-bottom:14px;}
+.ck-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:.92rem;}
+.ck-row:last-child{border-bottom:0;}
+.ck-row .nm{display:flex;align-items:center;gap:8px;font-weight:700;min-width:0;}
+.ck-row .dt{color:var(--text-2);font-size:.82rem;}
+.ck-row .v{font-family:var(--display);font-weight:800;font-size:1.15rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.v.pos{color:var(--green);}.v.neg{color:var(--red);}
+.ck-notes{margin-top:10px;font-size:.84rem;color:var(--text-2);line-height:1.55;text-align:center;}
+.ck-notes .pts{color:var(--gold);font-weight:700;}
+.ck-log{margin-top:8px;padding:0 4px;font-size:.8rem;line-height:1.55;color:var(--text-3);text-align:center;}
+.ck-log .pts{color:var(--gold);font-weight:600;}
+.ck-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.nav-ico{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);text-decoration:none;}
+.nav-ico svg{width:18px;height:18px;}
+.nav-ico:active{transform:scale(.92);}
+/* During play the hand docks to the bottom of the screen, like a native card app */
+.ck.playing{display:flex;flex-direction:column;min-height:calc(100dvh - var(--nav-h) - var(--safe-t));}
+.ck-dock{margin-top:auto;padding-top:6px;}
+.ck-row .nm .dt{font-weight:500;}
+.seat-row .seat-name{max-width:none;}
+.ck.playing .ck-table{flex:1 1 auto;display:flex;align-items:center;justify-content:center;max-height:460px;}
+.ck.playing .ck-table>*{width:100%;}
+.pc .ix.t{letter-spacing:-.13em;margin-left:calc(var(--w)*-.03);}
+/* 4-player individual scoreboard */
+.ck-board.b4{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:10px 6px;}
+.ck-side.c{align-items:center;text-align:center;}
+.ck-board.b4 .ck-pts{font-size:1.5rem;}
+.ck-board.b4 .ck-lbl{font-size:.72rem;justify-content:center;}
+/*KIT-END*/
+/* Euchre-specific */
+.pc.trump::after{content:'';position:absolute;inset:-1px;border-radius:inherit;box-shadow:inset 0 0 0 2px rgba(245,200,66,.75);pointer-events:none;}
+.seat .badge-d{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff;color:#111;font-size:.66rem;font-weight:800;margin-left:4px;vertical-align:1px;}
+.turnup{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.turnup .pc{--w:clamp(52px,15vw,64px);}
+.turnup-lbl{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+.bid-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;}
+.suit-actions{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:8px;margin-bottom:6px;}
+.suit-btn{min-height:52px;border-radius:14px;border:1px solid var(--line-2);background:#f6f3ea;color:#1b1d22;font-size:1.6rem;font-weight:800;cursor:pointer;transition:transform .1s;}
+.suit-btn.red{color:#d42a2a;}
+.suit-btn:active{transform:scale(.94);}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Euchre</span>
-  <a class="nav-back scorecard-link" href="euchre.html" style="margin-left:auto;font-size:.7rem;opacity:.55;">📋 Scorecard</a>
+  <a class="nav-ico scorecard-link" href="euchre.html" aria-label="Open the Euchre scorecard" title="Scorecard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></a>
 </nav>
-<div class="page" style="padding:10px 0 60px;">
-<div class="eu-wrap" id="eu-root"></div>
-</div>
+<main class="ck" id="eu-root"></main>
 <script>
 'use strict';
 // Players: 0=South(You), 1=West(AI), 2=North(AI partner), 3=East(AI)
-// Teams: 0+2=You+North(makers/defenders), 1+3=West+East
+// Teams: 0+2=You+North, 1+3=West+East
 const PNAMES=[(typeof FrequentPlayers!=='undefined'&&FrequentPlayers.myName())||'You','West','North','East'];
 const EU_RANKS=['9','10','J','Q','K','A'];
 const SUITS=['♠','♥','♦','♣'];
 const RED_SUITS=new Set(['♥','♦']);
 const RED=c=>RED_SUITS.has(c.suit);
 const SAME_COLOR={'♠':'♣','♣':'♠','♥':'♦','♦':'♥'};
+const TEAM_COLORS=['#60a5fa','#f87171'];
+const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+const toast=m=>{try{window.GN&&GN.toast(m);}catch(e){}};
 
 function makeEuDeck(){
   const d=[];
@@ -118,23 +167,26 @@ function cardRank(c,t,led){
 
 let hands,kitty,trump,maker,phase,scores,trick,trickLead,taken,trickNum,
     dealer,roundBid,log,alone;
+let bid1Passes=0,bid2Passes=0,trickWinner=-1,lastPlayed=-1,aiTimer=null,handDelta=[0,0],handMsg='';
 // phases: 'bid1'|'bid2'|'dealer-discard'|'play'|'round-end'|'game-over'
+// During bidding, trickLead holds the player whose turn it is to bid.
 
 function addLog(msg,cls=''){log.push({msg,cls});if(log.length>30)log.shift();}
 
-function newGame(){scores=[0,0];log=[];newRound();}
+function newGame(){scores=[0,0];log=[];dealer=undefined;newRound();}
 function newRound(){
+  clearTimeout(aiTimer);
   dealer=(dealer===undefined?Math.floor(Math.random()*4):(dealer+1)%4);
   const deck=makeEuDeck();
   hands=Array.from({length:4},(_,i)=>deck.slice(i*5,(i+1)*5));
   kitty=deck.slice(20);
   trump=null;maker=-1;alone=false;
   taken=[0,0,0,0];trick=[null,null,null,null];
-  trickLead=(dealer+1)%4;trickNum=0;
+  trickLead=(dealer+1)%4;trickNum=0;trickWinner=-1;lastPlayed=-1;
+  bid1Passes=0;bid2Passes=0;
   phase='bid1';roundBid=0;
-  addLog(`Round. Dealer: ${PNAMES[dealer]}. Kitty: ${kitty[0].rank}${kitty[0].suit}`);
+  addLog(`${PNAMES[dealer]} deals. ${kitty[0].rank}${kitty[0].suit} is turned up.`);
   render();
-  if(trickLead!==0) setTimeout(aiBid1,600);
 }
 
 // ── Bidding ──────────────────────────────────────────────────────────────────
@@ -149,82 +201,59 @@ function countTrickValue(hand,potentialTrump){
   return v;
 }
 
-let bid1Passes=0;
-function aiBid1(){
-  const p=trickLead; // current bidder in round 1
-  const upCard=kitty[0];
-  const tv=countTrickValue(hands[p],upCard.suit);
-  const isPartner=(p%2===0); // partner of player 0
-  const threshold=p===dealer?2.5:3.0;
-  if(tv>=threshold){
-    // Order it up / take it up
-    orderUp(p,upCard.suit);
-  } else {
-    bid1Passes++;
-    addLog(`${PNAMES[p]} passes.`);
-    if(bid1Passes===4){
-      bid1Passes=0;
-      phase='bid2';
-      render();
-      if(trickLead!==0) setTimeout(aiBid2,500);
-    } else {
-      trickLead=(trickLead+1)%4;
-      render();
-      if(trickLead===0){
-        // Player's turn in bid1
-        render();
-      } else {
-        setTimeout(aiBid1,500);
-      }
-    }
-  }
+function passRound1(p){
+  bid1Passes++;
+  addLog(`${PNAMES[p]} passes.`);
+  if(bid1Passes===4){
+    // Everyone passed: turn the card down; round 2 starts left of the dealer.
+    bid1Passes=0; phase='bid2'; trickLead=(dealer+1)%4;
+    addLog(`${kitty[0].suit} turned down. Name another suit.`);
+  } else trickLead=(trickLead+1)%4;
+  render();
 }
 
-function playerOrderUp(suit){
-  if(phase!=='bid1') return;
-  orderUp(0,suit||kitty[0].suit);
+function aiBid1(){
+  if(phase!=='bid1'||trickLead===0) return;
+  const p=trickLead;
+  const upCard=kitty[0];
+  const tv=countTrickValue(hands[p],upCard.suit);
+  const threshold=p===dealer?2.5:3.0;
+  if(tv>=threshold) orderUp(p,upCard.suit);
+  else passRound1(p);
+}
+
+function playerOrderUp(){
+  if(phase!=='bid1'||trickLead!==0) return;
+  hap('medium');
+  orderUp(0,kitty[0].suit);
 }
 function playerPass1(){
-  if(phase!=='bid1') return;
-  bid1Passes++;
-  addLog('You pass.');
-  if(bid1Passes===4){
-    bid1Passes=0; phase='bid2';
-    render();
-    if(trickLead!==0) setTimeout(aiBid2,500);
-  } else {
-    trickLead=(trickLead+1)%4; render();
-    if(trickLead!==0) setTimeout(aiBid1,500);
-  }
+  if(phase!=='bid1'||trickLead!==0) return;
+  hap('light');
+  passRound1(0);
 }
 
 function orderUp(p,suit){
   trump=suit; maker=p; alone=false;
-  if(p===dealer){
-    // Dealer picks up kitty card
-    hands[dealer].push(kitty[0]);
-    if(dealer!==0){
-      // AI dealer discards worst
-      const toDiscard=aiChooseDiscard(hands[dealer],trump);
-      hands[dealer]=hands[dealer].filter(c=>cKey(c)!==cKey(toDiscard));
-      addLog(`${PNAMES[p]} (dealer) orders up ${suit} and discards.`);
-      phase='play'; trickLead=(dealer+1)%4; trick=[null,null,null,null];
-      render();
-      if(trickLead!==0) setTimeout(aiPlayCard,600);
-    } else {
-      addLog(`You ordered up ${suit}. Choose a card to discard.`);
-      phase='dealer-discard'; render();
-    }
+  // The dealer always picks up the turned card and discards one.
+  hands[dealer].push(kitty[0]);
+  addLog(p===dealer?`${PNAMES[p]} picks up ${kitty[0].rank}${kitty[0].suit}.`:`${PNAMES[p]} orders up ${suit}!`,'pts');
+  if(dealer!==0){
+    const toDiscard=aiChooseDiscard(hands[dealer],trump);
+    hands[dealer]=hands[dealer].filter(c=>cKey(c)!==cKey(toDiscard));
+    startPlay();
   } else {
-    addLog(`${PNAMES[p]} orders up ${suit}!`,'pts');
-    phase='play'; trickLead=(dealer+1)%4; trick=[null,null,null,null];
-    render();
-    if(trickLead!==0) setTimeout(aiPlayCard,600);
+    phase='dealer-discard'; render();
   }
 }
 
-let bid2Passes=0;
+function startPlay(){
+  phase='play'; trickLead=(dealer+1)%4; trick=[null,null,null,null];
+  render();
+}
+
 function aiBid2(){
+  if(phase!=='bid2'||trickLead===0) return;
   const p=trickLead;
   const blockedSuit=kitty[0].suit;
   let bestSuit=null,bestVal=0;
@@ -237,49 +266,37 @@ function aiBid2(){
     trump=bestSuit||SUITS.find(s=>s!==blockedSuit);
     maker=p; alone=false;
     addLog(`${PNAMES[p]} names ${trump}!`,'pts');
-    phase='play'; trickLead=(dealer+1)%4; trick=[null,null,null,null];
-    render();
-    if(trickLead!==0) setTimeout(aiPlayCard,600);
+    startPlay();
   } else {
     bid2Passes++;
     addLog(`${PNAMES[p]} passes.`);
     trickLead=(trickLead+1)%4;
-    if(p===dealer){
-      // Should not happen normally (dealer must bid), but guard
-      addLog('All passed round 2 — redeal.');
-      setTimeout(newRound,1000);
-    } else {
-      render();
-      if(trickLead===0) render(); // player's turn
-      else setTimeout(aiBid2,500);
-    }
+    render();
   }
 }
 
 function playerNameTrump(suit){
-  if(phase!=='bid2') return;
+  if(phase!=='bid2'||trickLead!==0) return;
   if(suit===kitty[0].suit) return;
+  hap('medium');
   trump=suit; maker=0; alone=false;
   addLog(`You name ${trump}!`,'pts');
-  phase='play'; trickLead=(dealer+1)%4; trick=[null,null,null,null];
-  render();
-  if(trickLead!==0) setTimeout(aiPlayCard,600);
+  startPlay();
 }
 function playerPass2(){
-  if(phase!=='bid2') return;
-  if(trickLead===dealer){addLog('Dealer must name a suit!');return;}
+  if(phase!=='bid2'||trickLead!==0) return;
+  if(dealer===0){hap('error');toast('Dealer must name a suit');return;}
+  hap('light');
   bid2Passes++;addLog('You pass.');
   trickLead=(trickLead+1)%4; render();
-  if(trickLead!==0) setTimeout(aiBid2,500);
 }
 
 function playerDealerDiscard(card){
   if(phase!=='dealer-discard') return;
+  hap('light');
   hands[0]=hands[0].filter(c=>cKey(c)!==cKey(card));
   addLog(`You discard ${card.rank}${card.suit}.`);
-  phase='play'; trickLead=(dealer+1)%4; trick=[null,null,null,null];
-  render();
-  if(trickLead!==0) setTimeout(aiPlayCard,600);
+  startPlay();
 }
 
 // ── Playing ──────────────────────────────────────────────────────────────────
@@ -292,7 +309,7 @@ function aiChooseDiscard(hand,t){
 
 function validPlays(player){
   const h=hands[player];
-  const led=trick.find(c=>c!==null);
+  const led=trick[trickLead];
   if(!led) return h;
   const ledSuit=effSuit(led,trump);
   const follow=h.filter(c=>effSuit(c,trump)===ledSuit);
@@ -300,11 +317,12 @@ function validPlays(player){
 }
 
 function aiPlayCard(){
+  if(phase!=='play') return;
   const p=getNextPlayer();
   if(p<0||p===0) return;
   const valid=validPlays(p);
   if(!valid.length) return;
-  const led=trick.find(c=>c!==null);
+  const led=trick[trickLead];
   const ledSuit=led?effSuit(led,trump):null;
   const partnerId=(p+2)%4;
   // Is partner currently winning?
@@ -340,14 +358,19 @@ function getNextPlayer(){
 function playerPlay(card){
   if(phase!=='play') return;
   if(getNextPlayer()!==0) return;
-  if(!validPlays(0).some(c=>cKey(c)===cKey(card))) return;
+  if(!validPlays(0).some(c=>cKey(c)===cKey(card))){
+    hap('error');
+    const led=trick[trickLead];
+    toast(`You must follow ${led?effSuit(led,trump):''}${led&&effSuit(led,trump)===trump?' (trump)':''}`);
+    return;
+  }
+  hap('light');
   playCard(0,card);
 }
 
 function playCard(p,card){
-  trick[p]=card;
+  trick[p]=card; lastPlayed=p;
   hands[p]=hands[p].filter(c=>cKey(c)!==cKey(card));
-  render();
   if(trick.filter(c=>c!==null).length===4){
     // Evaluate trick
     const led=trick[trickLead];
@@ -356,39 +379,37 @@ function playCard(p,card){
       if(!c) return wi;
       return cardRank(c,trump,ledSuit)>cardRank(trick[wi],trump,ledSuit)?i:wi;
     },trickLead);
-    taken[winner]++;trickNum++;
+    taken[winner]++;trickNum++;trickWinner=winner;
     addLog(`${PNAMES[winner]} wins trick ${trickNum}.`);
     render();
     setTimeout(()=>{
-      trick=[null,null,null,null];trickLead=winner;
-      if(trickNum===5){finishRound();}
-      else{render();if(winner!==0)setTimeout(aiPlayCard,600);}
-    },1000);
-  } else {
-    const next=getNextPlayer();
-    if(next!==0&&next>=0) setTimeout(aiPlayCard,500);
-  }
+      trick=[null,null,null,null];trickLead=winner;trickWinner=-1;lastPlayed=-1;
+      if(trickNum===5) finishRound();
+      else render();
+    },1100);
+  } else render();
 }
 
 function finishRound(){
+  const before=[...scores];
   const makerTeam=maker%2===0?0:1; // 0+2 vs 1+3
   const makerTricks=makerTeam===0?taken[0]+taken[2]:taken[1]+taken[3];
-  const defTricks=5-makerTricks;
   let pts=0; let winner=-1; let msg='';
   if(makerTricks>=3){
     winner=makerTeam;
-    if(makerTricks===5){pts=alone?4:2;msg=`${makerTricks===5&&alone?'March alone':'March'}! +${pts}`;}
-    else{pts=1;msg=`Makers get 3+ tricks. +1`;}
+    if(makerTricks===5){pts=alone?4:2;msg=`${alone?'March alone':'March'}! All 5 tricks · +${pts}`;}
+    else{pts=1;msg=`Makers take ${makerTricks} tricks · +1`;}
     scores[winner]+=pts;
   } else {
     winner=1-makerTeam; pts=2;
-    msg=`Euchre! Opponents get 2 pts.`;
+    msg=`Euchred! Defenders get +2`;
     scores[winner]+=2;
   }
+  handMsg=msg; handDelta=[scores[0]-before[0],scores[1]-before[1]];
   addLog(msg,'pts');
   phase=scores[0]>=10||scores[1]>=10?'game-over':'round-end';
   if(phase==='game-over') endGame();
-  else render();
+  else {hap(handDelta[0]>0?'success':'medium');render();}
 }
 
 function endGame(){
@@ -401,162 +422,161 @@ function endGame(){
     ];
     GameHistory.savePlayerGame('euchre','Euchre (AI)',players,won?0:1,0,{teamGame:true});
   }catch(e){}
+  hap(won?'success':'heavy');
   render();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
-function cardEl(c,cls=''){
-  if(!c) return`<div class="ecard face-down"></div>`;
+const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+function pc(c,cls='',attrs=''){
+  if(!c) return `<div class="pc back ${cls}"></div>`;
   const tr=trump&&isTrump(c,trump)?'trump':'';
-  const col=RED(c)?'red':'black';
-  return`<div class="ecard ${col} ${tr} ${cls}" data-key="${cKey(c)}">
-    <div class="ec-r">${c.rank}</div><div class="ec-s">${c.suit}</div>
+  return `<div class="pc ${RED(c)?'red':''} ${tr} ${cls}" ${attrs}><span class="ix${c.rank==='10'?' t':''}">${c.rank}<i>${c.suit}</i></span><span class="pip">${c.suit}</span></div>`;
+}
+const suitSpan=s=>`<span style="color:${RED_SUITS.has(s)?'#ff6b6b':'var(--text)'};white-space:nowrap">${s}</span>`;
+
+function boardHTML(){
+  const tk=t=>taken[t]+taken[t+2];
+  const showTricks=phase==='play';
+  return `<div class="ck-board">
+    <div class="ck-side">
+      <div class="ck-lbl"><span class="ck-dot" style="background:${TEAM_COLORS[0]}"></span>${esc(PNAMES[0])} + North</div>
+      <div class="ck-pts ${scores[0]>scores[1]?'ck-lead':''}">${scores[0]}</div>
+      <div class="ck-sub">${showTricks?`${tk(0)} trick${tk(0)===1?'':'s'}`:'&nbsp;'}</div>
+    </div>
+    <div class="ck-mid">${trump?`Trump<b style="font-size:1.4rem">${suitSpan(trump)}</b>`:`First<b>10</b>`}</div>
+    <div class="ck-side r">
+      <div class="ck-lbl">West + East<span class="ck-dot" style="background:${TEAM_COLORS[1]}"></span></div>
+      <div class="ck-pts ${scores[1]>scores[0]?'ck-lead':''}">${scores[1]}</div>
+      <div class="ck-sub">${showTricks?`${tk(1)} trick${tk(1)===1?'':'s'}`:'&nbsp;'}</div>
+    </div>
   </div>`;
 }
 
-function miniCard(c,size=30){
-  if(!c)return`<div style="width:${size}px;height:${Math.round(size*1.4)}px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);"></div>`;
-  return`<div class="ecard ${RED(c)?'red':'black'} disabled" style="width:${size}px;height:${Math.round(size*1.4)}px;font-size:${size*.18}rem;">
-    <div class="ec-r" style="font-size:${size*.014}rem;">${c.rank}</div><div class="ec-s" style="font-size:${size*.012}rem;">${c.suit}</div>
-  </div>`;
+function whoseTurn(){
+  if(phase==='bid1'||phase==='bid2') return trickLead;
+  if(phase==='play'&&trickWinner<0) return getNextPlayer();
+  return -1;
+}
+
+function seat(p,cls=''){
+  const turn=whoseTurn()===p;
+  const name=p===2?'North':PNAMES[p];
+  const d=p===dealer?'<span class="badge-d" title="Dealer">D</span>':'';
+  let meta;
+  if(phase==='play') meta=`${taken[p]} trick${taken[p]===1?'':'s'}${maker===p?' · ★':''}`;
+  else meta=maker===p?'Called':'—';
+  const av=`<div class="seat-av" style="background:${TEAM_COLORS[p%2]}33">${esc(name[0])}</div>`;
+  const metaEl=`<div class="seat-meta ${trickWinner===p?'hot':''}">${meta}</div>`;
+  if(cls==='row') return `<div class="seat seat-row a-n ${turn?'turn':''}">${av}<div class="seat-col"><div class="seat-name">${name} · Partner${d}</div>${metaEl}</div></div>`;
+  return `<div class="seat ${cls} ${turn?'turn':''}">${av}<div class="seat-name">${esc(name)}${d}</div>${metaEl}</div>`;
+}
+
+function centerHTML(){
+  if(phase==='bid1') return `<div class="turnup"><div class="turnup-lbl">Turned up</div>${pc(kitty[0])}</div>`;
+  if(phase==='bid2') return `<div class="turnup"><div class="turnup-lbl">Turned down</div>${pc(null)}<div class="turnup-lbl" style="letter-spacing:0;text-transform:none">${suitSpan(kitty[0].suit)} is out</div></div>`;
+  const pos={2:'t-n',1:'t-w',3:'t-e',0:'t-s'};
+  return `<div class="trick">${[2,1,3,0].map(p=>{
+    const c=trick[p];
+    if(!c) return `<div class="pc slot ${pos[p]}"></div>`;
+    return pc(c,`${pos[p]} ${trickWinner===p?'glow':''} ${lastPlayed===p&&trickWinner<0?'new':''}`);
+  }).join('')}</div>`;
 }
 
 function render(){
+  clearTimeout(aiTimer);
   const root=document.getElementById('eu-root');
-  let html='';
+  root.className='ck';
+  let html=boardHTML();
 
-  // Scores
-  html+=`<div class="eu-scores">
-    <div class="eu-score-box ${scores[0]>=scores[1]?'leader':''}">
-      <div class="eu-team-name" style="color:#60a5fa;">You + North</div>
-      <div class="eu-team-score">${scores[0]}</div>
-      <div class="eu-team-tricks">${phase==='play'?`Tricks: ${taken[0]+taken[2]}/5`:''}</div>
-    </div>
-    <div class="eu-score-box ${scores[1]>scores[0]?'leader':''}">
-      <div class="eu-team-name" style="color:#f87171;">West + East</div>
-      <div class="eu-team-score">${scores[1]}</div>
-      <div class="eu-team-tricks">${phase==='play'?`Tricks: ${taken[1]+taken[3]}/5`:''}</div>
-    </div>
-  </div>`;
-
-  if(phase==='game-over'){
+  if(phase==='game-over'||phase==='round-end'){
+    const over=phase==='game-over';
     const won=scores[0]>=10;
-    html+=`<div class="eu-game-result">
-      <div class="eu-game-title">${won?'🏆 You Win!':'Opponents Win'}</div>
-      <div style="color:#2a1a00;font-size:.85rem;margin-top:4px;">${scores[0]} – ${scores[1]} (first to 10)</div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="ng-btn">New Game</button></div>`;
-    html+=`<div class="eu-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('ng-btn')?.addEventListener('click',newGame);return;
-  }
-
-  if(phase==='round-end'){
-    html+=`<div class="eu-round-result">
-      <div style="font-weight:700;margin-bottom:4px;">Round Complete</div>
-      <div style="font-size:.8rem;color:rgba(255,255,255,.6);">
-        ${maker>=0?`${PNAMES[maker]} made ${trump} — `:''}You+North: ${taken[0]+taken[2]} tricks · West+East: ${taken[1]+taken[3]} tricks
-      </div>
-    </div>
-    <div style="text-align:center;"><button class="btn btn-gold" id="nr-btn">Next Hand</button></div>`;
-    html+=`<div class="eu-log">${log.slice(-6).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
-    root.innerHTML=html;document.getElementById('nr-btn')?.addEventListener('click',newRound);return;
-  }
-
-  // Trump display
-  if(trump) html+=`<div style="text-align:center;margin-bottom:6px;font-size:.78rem;font-weight:700;color:#f5c842;">Trump: ${trump} · Maker: ${PNAMES[maker]}</div>`;
-  else if(kitty.length) html+=`<div style="text-align:center;margin-bottom:6px;font-size:.78rem;color:rgba(255,255,255,.45);">Turn-up: ${kitty[0].rank}${kitty[0].suit} · Dealer: ${PNAMES[dealer]}</div>`;
-
-  // Bidding phase
-  if(phase==='bid1'&&trickLead===0){
-    html+=`<div class="eu-bid-panel">
-      <div class="eu-bid-title">Round 1 Bidding</div>
-      <div class="eu-bid-sub">Order up ${kitty[0].rank}${kitty[0].suit} as trump, or pass?</div>
-      <div class="eu-bid-btns">
-        <button class="btn btn-gold btn-sm" id="order-up-btn">Order It Up</button>
-        ${dealer===0?`<button class="btn btn-gold btn-sm" id="pickup-btn">Pick It Up</button>`:''}
-        <button class="btn btn-outline btn-sm" id="pass1-btn">Pass</button>
-      </div>
+    if(over) html+=`<div class="winner-banner">
+      <div style="font-size:2.2rem;line-height:1;margin-bottom:6px">${won?'🏆':'🃏'}</div>
+      <div class="winner-name">${won?'You win!':'West & East win'}</div>
+      <div class="winner-pts">${scores[0]} – ${scores[1]} · first to 10</div>
     </div>`;
-  } else if(phase==='bid2'&&trickLead===0){
+    const mt=maker%2;
+    const row=(t,nm)=>`<div class="ck-row"><div class="nm"><span class="ck-dot" style="background:${TEAM_COLORS[t]}"></span><div>${nm}<div class="dt">${taken[t]+taken[t+2]} trick${taken[t]+taken[t+2]===1?'':'s'}${mt===t?' · called '+trump:''}</div></div></div><div class="v ${handDelta[t]>0?'pos':''}">+${handDelta[t]}</div></div>`;
+    html+=`<div class="ck-panel">
+      <h3>${over?'Final hand':'Hand complete'}</h3>
+      <div class="ck-notes" style="margin:0 0 6px"><span class="pts">${esc(handMsg)}</span></div>
+      ${row(0,esc(PNAMES[0])+' + North')}${row(1,'West + East')}
+    </div>
+    <div class="ck-actions"><button class="btn btn-gold btn-block" id="next-btn">${over?'Play again':'Next hand'}</button></div>`;
+    root.innerHTML=html;
+    document.getElementById('next-btn').addEventListener('click',()=>{hap('light');over?newGame():newRound();});
+    return;
+  }
+
+  html+=`<div class="ck-table felt"><div class="tbl4">
+    ${seat(2,'row')}
+    ${seat(1,'a-w')}
+    <div class="a-c">${centerHTML()}</div>
+    ${seat(3,'a-e')}
+  </div></div>`;
+
+  const turn=whoseTurn();
+  const nm=p=>p===2?'North':esc(PNAMES[p]);
+  let dock='';
+  let handMode='';   // '', 'play', 'discard'
+  if(phase==='bid1'&&turn===0){
+    const up=kitty[0];
+    dock+=`<div class="ck-status you">${dealer===0?'Pick up':'Order up'} ${up.rank}${suitSpan(up.suit)}?</div>
+      <div class="bid-actions">
+        <button class="btn btn-gold" id="order-up-btn">${dealer===0?'Pick it up':'Order it up'}</button>
+        <button class="btn btn-outline" id="pass1-btn">Pass</button>
+      </div>`;
+  } else if(phase==='bid2'&&turn===0){
     const blocked=kitty[0].suit;
-    html+=`<div class="eu-bid-panel">
-      <div class="eu-bid-title">Round 2 Bidding</div>
-      <div class="eu-bid-sub">Name a trump suit (not ${blocked})</div>
-      <div class="eu-bid-btns">
-        ${SUITS.filter(s=>s!==blocked).map(s=>`<button class="btn btn-gold btn-sm eu-suit-btn" data-suit="${s}">${s}</button>`).join('')}
-        ${dealer!==0?`<button class="btn btn-outline btn-sm" id="pass2-btn">Pass</button>`:''}
-      </div>
-    </div>`;
+    dock+=`<div class="ck-status you">${dealer===0?'You must name trump':'Name trump, or pass'}</div>
+      <div class="suit-actions">
+        ${SUITS.filter(s=>s!==blocked).map(s=>`<button class="suit-btn ${RED_SUITS.has(s)?'red':''}" data-suit="${s}" aria-label="Name ${s} trump">${s}</button>`).join('')}
+        ${dealer!==0?`<button class="btn btn-outline" id="pass2-btn" style="min-height:52px">Pass</button>`:''}
+      </div>`;
   } else if(phase==='dealer-discard'){
-    html+=`<div class="eu-discard-panel">
-      <div style="font-weight:700;margin-bottom:8px;">Pick a card to discard (${hands[0].length} cards)</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;" id="discard-hand">
-        ${hands[0].map(c=>cardEl(c,'playable')).join('')}
-      </div>
-    </div>`;
+    dock+=`<div class="ck-status you">Tap a card to discard</div>`;
+    handMode='discard';
+  } else if(phase==='play'){
+    if(trickWinner>=0) dock+=`<div class="ck-status">${trickWinner===0?'You take':nm(trickWinner)+' takes'} the trick</div>`;
+    else if(turn===0){dock+=`<div class="ck-status you">Your turn · tap a card</div>`;handMode='play';}
+    else dock+=`<div class="ck-status"><span class="spin"></span>${nm(turn)} is playing…</div>`;
   } else {
-    const cur=getNextPlayer();
-    html+=`<div class="eu-status">${cur===0?'Your turn to play.':cur>=0?`${PNAMES[cur]} playing…`:''}</div>`;
+    dock+=`<div class="ck-status"><span class="spin"></span>${nm(turn)} is deciding…</div>`;
   }
-
-  // Table
-  html+=`<div class="eu-table">
-    <div class="eu-north">
-      <div class="eu-name partner ${getNextPlayer()===2?'active':''}">North (partner) — ${taken[2]} tricks</div>
-      <div style="display:flex;gap:2px;justify-content:center;">${Array(hands[2].length).fill(0).map(()=>`<div style="width:9px;height:38px;border-radius:3px;background:rgba(134,239,172,.2);"></div>`).join('')}</div>
-    </div>
-    <div class="eu-mid">
-      <div class="eu-side">
-        <div class="eu-name ${getNextPlayer()===1?'active':''}">West ${taken[1]}</div>
-        <div style="display:flex;flex-direction:column;gap:2px;">${Array(hands[1].length).fill(0).map(()=>`<div style="width:38px;height:9px;border-radius:3px;background:rgba(248,113,113,.2);"></div>`).join('')}</div>
-      </div>
-      <div class="eu-center">
-        <div class="eu-trick">
-          <div></div>
-          <div class="eu-trick-slot">${miniCard(trick[2],34)}<div class="eu-trick-name">N</div></div>
-          <div class="eu-trick-slot">${miniCard(trick[1],34)}<div class="eu-trick-name">W</div></div>
-          <div class="eu-trick-slot">${miniCard(trick[0],34)}<div class="eu-trick-name">You</div></div>
-          <div class="eu-trick-slot">${miniCard(trick[3],34)}<div class="eu-trick-name">E</div></div>
-          <div></div>
-        </div>
-        ${kitty.length&&phase==='bid1'?`<div class="eu-kitty"><div class="eu-trump-label">Turn-up</div>${miniCard(kitty[0],40)}</div>`:''}
-      </div>
-      <div class="eu-side">
-        <div class="eu-name ${getNextPlayer()===3?'active':''}">East ${taken[3]}</div>
-        <div style="display:flex;flex-direction:column;gap:2px;">${Array(hands[3].length).fill(0).map(()=>`<div style="width:38px;height:9px;border-radius:3px;background:rgba(248,113,113,.2);"></div>`).join('')}</div>
-      </div>
-    </div>
+  dock+=`<div class="ck-chips">
+    <span class="ck-chip">Dealer: ${nm(dealer)}</span>
+    ${trump?`<span class="ck-chip gold">Trump ${suitSpan(trump)} · ${maker===0?'you':nm(maker)}</span>`:''}
   </div>`;
 
-  // Player hand
-  const isYourPlay=phase==='play'&&getNextPlayer()===0;
-  const valid=isYourPlay?validPlays(0).map(cKey):[];
-  html+=`<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center;">Your Hand</div>
-  <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:66px;" id="player-hand">
-    ${(phase==='dealer-discard'?[]:hands[0]).map(c=>cardEl(c,isYourPlay&&valid.includes(cKey(c))?'playable':'')).join('')}
-  </div>`;
-
-  html+=`<div class="eu-log">${log.slice(-5).map(({msg,cls})=>`<div class="${cls}">${msg}</div>`).join('')}</div>`;
+  const valid=handMode==='play'?validPlays(0).map(cKey):[];
+  dock+=`<div class="hand" id="player-hand" style="--n:${hands[0].length}">${hands[0].map(c=>{
+    const cls=handMode==='discard'?'play':handMode==='play'?(valid.includes(cKey(c))?'play':'dim'):'';
+    return pc(c,cls,`data-key="${cKey(c)}"`);
+  }).join('')}</div>`;
+  dock+=`<div class="ck-log">${log.slice(-2).map(({msg,cls})=>`<div class="${cls}">${esc(msg)}</div>`).join('')}</div>`;
+  html+=`<div class="ck-dock">${dock}</div>`;
+  root.className='ck playing';
   root.innerHTML=html;
 
-  document.getElementById('order-up-btn')?.addEventListener('click',()=>playerOrderUp(kitty[0]?.suit));
-  document.getElementById('pickup-btn')?.addEventListener('click',()=>playerOrderUp(kitty[0]?.suit));
+  document.getElementById('order-up-btn')?.addEventListener('click',playerOrderUp);
   document.getElementById('pass1-btn')?.addEventListener('click',playerPass1);
   document.getElementById('pass2-btn')?.addEventListener('click',playerPass2);
-  document.querySelectorAll('.eu-suit-btn').forEach(b=>b.addEventListener('click',()=>playerNameTrump(b.dataset.suit)));
-
-  document.getElementById('player-hand')?.querySelectorAll('.ecard.playable').forEach(el=>{
-    el.addEventListener('click',()=>{const c=hands[0].find(c=>cKey(c)===el.dataset.key);if(c)playerPlay(c);});
+  document.querySelectorAll('.suit-btn').forEach(b=>b.addEventListener('click',()=>playerNameTrump(b.dataset.suit)));
+  document.querySelectorAll('#player-hand .pc').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const c=hands[0].find(c=>cKey(c)===el.dataset.key);
+      if(!c) return;
+      if(handMode==='discard') playerDealerDiscard(c);
+      else if(handMode==='play') playerPlay(c);
+    });
   });
-  document.getElementById('discard-hand')?.querySelectorAll('.ecard').forEach(el=>{
-    el.addEventListener('click',()=>{const c=hands[0].find(c=>cKey(c)===el.dataset.key);if(c)playerDealerDiscard(c);});
-  });
 
-  if((phase==='bid1'||phase==='bid2')&&trickLead!==0){
-    if(phase==='bid1') setTimeout(aiBid1,500);
-    else setTimeout(aiBid2,500);
-  }
-  if(phase==='play'&&getNextPlayer()>0) setTimeout(aiPlayCard,600);
+  // One timer drives every AI decision, so nobody acts twice for one turn.
+  if(phase==='bid1'&&turn>0) aiTimer=setTimeout(aiBid1,700);
+  else if(phase==='bid2'&&turn>0) aiTimer=setTimeout(aiBid2,700);
+  else if(phase==='play'&&turn>0) aiTimer=setTimeout(aiPlayCard,650);
 }
 
 newGame();

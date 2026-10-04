@@ -1,71 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Game Night">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0d1117">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Game Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>Breakout</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../arcade-hi.js"></script>
 <style>
-body{overscroll-behavior:none;background:#050a14;overflow:hidden;touch-action:none;}
-#cv{display:block;margin:0 auto;touch-action:none;}
-.hud{display:flex;justify-content:space-between;align-items:center;padding:4px 10px;max-width:480px;margin:0 auto;}
-.hud-stat{text-align:center;}
-.hud-val{font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);}
-.hud-lbl{font-size:.58rem;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;}
-.life{display:inline-block;width:10px;height:10px;background:#5ac8fa;border-radius:50%;margin:0 2px;box-shadow:0 0 5px #5ac8fa;}
-.dpad-row{display:flex;gap:8px;justify-content:center;padding:6px 0;}
-.dpad-btn{width:72px;height:44px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:rgba(255,255,255,.7);font-size:1.3rem;cursor:pointer;touch-action:manipulation;user-select:none;display:flex;align-items:center;justify-content:center;}
-.dpad-btn:active{background:rgba(255,255,255,.2);}
+html,body{height:100%;}
+body{height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;
+  background:radial-gradient(700px 420px at 50% -10%, rgba(96,165,250,.13), transparent 60%), var(--bg);}
+.site-nav{flex:none;}
+.site-nav .icon-btn{width:38px;height:38px;min-height:38px;padding:0;font-size:1rem;border-radius:50%;}
+.arc{flex:1;min-height:0;width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:10px max(12px,var(--safe-r)) calc(10px + var(--safe-b)) max(12px,var(--safe-l));touch-action:none;}
+.hud{flex:none;display:flex;gap:8px;justify-content:center;width:100%;}
+.pill{display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line);}
+.pill span{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.pill b{font-family:var(--display);font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.pill.accent b{color:var(--gold);}
+.life{display:inline-block;width:10px;height:10px;background:#5ac8fa;border-radius:50%;margin:0 2px;box-shadow:0 0 6px #5ac8fa;}
+.stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;}
+.board{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px rgba(96,165,250,.2),0 20px 50px rgba(0,0,0,.55);}
+#cv{display:block;touch-action:none;}
+.ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:rgba(5,10,20,.68);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:gn-fade .2s ease both;z-index:5;}
+.ov.hidden{display:none;}
+.ov-card{text-align:center;width:100%;max-width:280px;animation:gn-pop .3s var(--spring) both;}
+.ov-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;}
+.ov-title{font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:-.02em;line-height:1.05;}
+.ov-title.red{color:var(--red);} .ov-title.gold{color:var(--gold);}
+.ov-sub{color:var(--text-2);font-size:.92rem;margin-top:6px;line-height:1.45;}
+.ov-stats{display:flex;gap:8px;justify-content:center;margin:16px 0 4px;}
+.ov-stat{flex:1;max-width:120px;padding:8px 6px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--line-2);}
+.ov-stat b{display:block;font-family:var(--display);font-size:1.45rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.ov-stat span{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.ov .btn{min-width:180px;margin-top:16px;}
+.hint{flex:none;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:480px;border-radius:999px;
+  font-size:.85rem;font-weight:600;color:var(--text-3);background:var(--surface);border:1px dashed var(--line-2);}
+@media (hover:hover) and (pointer:fine){ .touch-only{display:none !important;} }
+@media (hover:none),(pointer:coarse){ .desk-only{display:none !important;} }
 </style>
 </head>
 <body>
-<nav class="site-nav" style="background:rgba(0,0,0,.5);">
+<nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a>
   <span class="nav-title">Breakout</span>
-  <div class="nav-actions">
-    <button onclick="ArcadeHi.show('breakout','Breakout')" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 8px;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.6);">🏆</button>
-  </div>
+  <button class="icon-btn" id="btn-pause" aria-label="Pause"></button>
+  <button class="icon-btn" onclick="ArcadeHi.show('breakout','Breakout')" aria-label="High scores">🏆</button>
 </nav>
-<div class="hud">
-  <div class="hud-stat"><div class="hud-val" id="hud-score">0</div><div class="hud-lbl">Score</div></div>
-  <div class="hud-stat"><div class="hud-val" id="hud-level">1</div><div class="hud-lbl">Level</div></div>
-  <div class="hud-stat" id="hud-lives-wrap"><div class="hud-lbl" style="margin-bottom:2px;">Lives</div><div id="hud-lives"></div></div>
-</div>
-<canvas id="cv"></canvas>
-<div class="dpad-row" id="dpad" style="display:none;">
-  <button class="dpad-btn" id="btn-left">◀</button>
-  <button class="dpad-btn" id="btn-right">▶</button>
-</div>
+<main class="arc" id="arc">
+  <div class="hud">
+    <div class="pill accent"><span>Score</span><b id="hud-score">0</b></div>
+    <div class="pill"><span>Lvl</span><b id="hud-level">1</b></div>
+    <div class="pill" id="hud-lives-wrap"><span>Lives</span><div id="hud-lives"></div></div>
+  </div>
+  <div class="stage" id="stage">
+    <div class="board" id="board">
+      <canvas id="cv"></canvas>
+      <div class="ov hidden" id="ov"><div class="ov-card" id="ov-card"></div></div>
+    </div>
+  </div>
+  <div class="hint touch-only">↔ Drag anywhere to move the paddle</div>
+  <div class="hint desk-only" style="border:0;background:none;height:auto">Mouse or ← → to move · Space to launch · P to pause</div>
+</main>
 <script>
 'use strict';
 // ── Canvas setup ──────────────────────────────────────────────────────────
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 const isMobile=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
-
+const stage=document.getElementById('stage'),boardEl=document.getElementById('board');
+const haptic=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+// Logical size is in CSS pixels (same units the game was tuned in); the
+// backing store is multiplied by devicePixelRatio for crisp rendering.
+let LW=360,LH=500;
 function resize(){
-  const maxW=Math.min(480,window.innerWidth);
-  const navH=document.querySelector('.site-nav').offsetHeight;
-  const hudH=document.querySelector('.hud').offsetHeight;
-  const dpadH=isMobile?60:0;
-  const avail=window.innerHeight-navH-hudH-dpadH-8;
-  cv.width=maxW;
-  cv.height=Math.min(Math.round(maxW*1.4),avail);
-  if(isMobile)document.getElementById('dpad').style.display='flex';
+  const r=stage.getBoundingClientRect();
+  const nw=Math.max(200,Math.floor(Math.min(480,r.width)));
+  const nh=Math.max(240,Math.floor(Math.min(Math.round(nw*1.4),r.height)));
+  const changed=nw!==LW||nh!==LH;
+  LW=nw;LH=nh;
+  const d=Math.min(window.devicePixelRatio||1,3);
+  boardEl.style.width=LW+'px';boardEl.style.height=LH+'px';
+  cv.style.width=LW+'px';cv.style.height=LH+'px';
+  cv.width=Math.round(LW*d);cv.height=Math.round(LH*d);
+  ctx.setTransform(d,0,0,d,0,0);
+  return changed;
 }
 resize();
-window.addEventListener('resize',()=>{resize();if(state!=='play')render();});
 
 // ── Constants ─────────────────────────────────────────────────────────────
-const W=()=>cv.width,H=()=>cv.height;
+const W=()=>LW,H=()=>LH;
 const PAD_H=22,PAD_Y_OFF=30;
 const BALL_R=6;
 const BRICK_H=18,BRICK_GAP=3;
@@ -448,6 +481,7 @@ function step(){
   if(ball.y>H()+20){
     lives--;
     updateHud();
+    haptic('error');
     if(lives<=0){
       state='gameover';
       ArcadeHi.check('breakout',score,()=>{});
@@ -466,7 +500,7 @@ function step(){
       score+=b.pts*(level);
       updateHud();
       spawnParticles(b.x+b.w/2,b.y+b.h/2,TIER_COLOR[b.tier]||'#fff');
-      sBrick();
+      sBrick();haptic('light');
     } else {
       spawnParticles(b.x+b.w/2,b.y+b.h/2,'rgba(255,255,255,.5)',4);
       sWall();
@@ -492,6 +526,7 @@ function step(){
   if(bricks.filter(b=>!b.indestructible).every(b=>!b.alive)){
     score+=1000*level; // level clear bonus
     updateHud();
+    haptic('success');
     if(level>=LEVELS.length){
       state='won';
       ArcadeHi.check('breakout',score,()=>{});
@@ -561,77 +596,30 @@ function render(){
     ctx.shadowBlur=0;
   }
 
-  // Overlays
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  if(state==='idle'){
-    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#f5c842';ctx.font=`bold ${Math.round(w*0.08)}px "Playfair Display",serif`;
-    ctx.fillText('BREAKOUT',w/2,h/2-40);
-    ctx.fillStyle='rgba(255,255,255,.7)';ctx.font=`bold ${Math.round(w*0.036)}px Inter,sans-serif`;
-    ctx.fillText(isMobile?'Tap to start':'Press Space or click to start',w/2,h/2+4);
-    ctx.fillStyle='rgba(255,255,255,.3)';ctx.font=`${Math.round(w*0.028)}px Inter,sans-serif`;
-    ctx.fillText('20 levels · 3 lives · '+LEVELS.length+' unique layouts',w/2,h/2+36);
-  }
-  if(state==='dead'){
-    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#ef4444';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
-    ctx.fillText('BALL LOST',w/2,h/2-26);
-    ctx.fillStyle='rgba(255,255,255,.6)';ctx.font=`bold ${Math.round(w*0.033)}px Inter,sans-serif`;
-    ctx.fillText(`${lives} ${lives===1?'life':'lives'} remaining`,w/2,h/2+12);
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
-    ctx.fillText(isMobile?'Tap to continue':'Press Space to continue',w/2,h/2+40);
-  }
-  if(state==='paused'){
-    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
-    ctx.fillText('PAUSED',w/2,h/2-16);
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.029)}px Inter,sans-serif`;
-    ctx.fillText(isMobile?'Tap to resume':'Press Space to resume',w/2,h/2+18);
-  }
-  if(state==='levelwin'){
-    ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#f5c842';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
-    ctx.fillText(`LEVEL ${level}!`,w/2,h/2-30);
-    ctx.fillStyle='#22c55e';ctx.font=`bold ${Math.round(w*0.032)}px Inter,sans-serif`;
-    ctx.fillText('+'+((1000*level).toLocaleString())+' bonus',w/2,h/2+4);
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
-    ctx.fillText(isMobile?'Tap for level '+(level+1):'Space for level '+(level+1),w/2,h/2+34);
-  }
-  if(state==='gameover'){
-    ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#ef4444';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
-    ctx.fillText('GAME OVER',w/2,h/2-34);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(w*0.038)}px Inter,sans-serif`;
-    ctx.fillText('Score: '+score.toLocaleString(),w/2,h/2+4);
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
-    ctx.fillText(isMobile?'Tap to play again':'Space to play again',w/2,h/2+36);
-  }
-  if(state==='won'){
-    ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(0,0,w,h);
-    ctx.fillStyle='#f5c842';ctx.font=`bold ${Math.round(w*0.065)}px "Playfair Display",serif`;
-    ctx.fillText('YOU WIN! 🏆',w/2,h/2-34);
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(w*0.038)}px Inter,sans-serif`;
-    ctx.fillText('Final: '+score.toLocaleString(),w/2,h/2+4);
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
-    ctx.fillText(isMobile?'Tap to play again':'Space to play again',w/2,h/2+36);
-  }
+  syncOverlay();
 
   // Launch hint
   if(launchPending&&state==='play'){
-    ctx.fillStyle='rgba(255,255,255,.4)';ctx.font=`${Math.round(w*0.027)}px Inter,sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillStyle='rgba(255,255,255,.6)';ctx.font=`600 ${Math.max(13,Math.round(w*0.034))}px Inter,system-ui,sans-serif`;
     ctx.textBaseline='bottom';
-    ctx.fillText(isMobile?'Tap to launch':'Space or click to launch',w/2,padY-10);
+    ctx.fillText(isMobile?'Tap to launch':'Space or click to launch',w/2,padY-14);
     ctx.textBaseline='middle';
   }
 }
 
 // ── Game loop ─────────────────────────────────────────────────────────────
-function loop(){
-  step(); render();
+// Fixed 60 Hz physics so the game runs at the same speed on 120 Hz phones.
+let lastT=0,acc=0;const DT=1000/60;
+function loop(t){
+  if(!lastT)lastT=t;
+  acc+=Math.min(100,t-lastT);lastT=t;
+  while(acc>=DT){step();acc-=DT;}
+  render();
   animId=requestAnimationFrame(loop);
 }
 
-function startLoop(){if(!animId)animId=requestAnimationFrame(loop);}
+function startLoop(){if(!animId){lastT=0;acc=0;animId=requestAnimationFrame(loop);}}
 function stopLoop(){if(animId){cancelAnimationFrame(animId);animId=null;}}
 
 // ── Input ─────────────────────────────────────────────────────────────────
@@ -649,6 +637,7 @@ function handleAction(){
 document.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){leftHeld=true;e.preventDefault();}
   if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){rightHeld=true;e.preventDefault();}
+  if(document.querySelector('.ahi-overlay'))return;
   if(e.key===' '||e.key==='Enter'){e.preventDefault();handleAction();}
   if(e.key==='p'||e.key==='P'){if(state==='play')state='paused';else if(state==='paused')state='play';}
 });
@@ -663,39 +652,76 @@ cv.addEventListener('mousemove',e=>{
 });
 cv.addEventListener('click',e=>{if(!isMobile)handleAction();});
 
-// Touch — canvas: quick tap = launch/pause; hold = paddle control
-let _tsTime=0, _tsMoved=false;
-cv.addEventListener('touchstart',e=>{
+// Touch — drag anywhere on the play area to steer; a quick tap launches.
+// (Taps no longer pause mid-rally; use the pause button in the nav.)
+const arc=document.getElementById('arc');
+let _tsTime=0, _tsMoved=false, _tsX0=0;
+arc.addEventListener('touchstart',e=>{
+  if(e.target.closest('.ov,button'))return;
   e.preventDefault();
-  _tsTime=Date.now(); _tsMoved=false;
+  _tsTime=Date.now(); _tsMoved=false; _tsX0=e.touches[0].clientX;
   const r=cv.getBoundingClientRect();
   touchX=(e.touches[0].clientX-r.left);
 },{passive:false});
-cv.addEventListener('touchmove',e=>{
+arc.addEventListener('touchmove',e=>{
+  if(e.target.closest('.ov,button'))return;
   e.preventDefault();
-  _tsMoved=true;
+  if(Math.abs(e.touches[0].clientX-_tsX0)>6)_tsMoved=true;
   const r=cv.getBoundingClientRect();
   touchX=(e.touches[0].clientX-r.left);
 },{passive:false});
-cv.addEventListener('touchend',e=>{
+arc.addEventListener('touchend',e=>{
+  if(e.target.closest('.ov,button'))return;
   e.preventDefault();
   const held=Date.now()-_tsTime;
-  if(!_tsMoved && held<220){
-    // Quick tap — launch or pause
-    handleAction();
-  }
+  if(!_tsMoved && held<260 && state==='play' && launchPending){ launchPending=false; }
   touchX=null;
 },{passive:false});
 
-// D-pad buttons
-document.getElementById('btn-left').addEventListener('touchstart',e=>{e.preventDefault();leftHeld=true;},{passive:false});
-document.getElementById('btn-left').addEventListener('touchend',e=>{e.preventDefault();leftHeld=false;},{passive:false});
-document.getElementById('btn-right').addEventListener('touchstart',e=>{e.preventDefault();rightHeld=true;},{passive:false});
-document.getElementById('btn-right').addEventListener('touchend',e=>{e.preventDefault();rightHeld=false;},{passive:false});
-document.getElementById('btn-left').addEventListener('mousedown',()=>leftHeld=true);
-document.getElementById('btn-left').addEventListener('mouseup',()=>leftHeld=false);
-document.getElementById('btn-right').addEventListener('mousedown',()=>rightHeld=true);
-document.getElementById('btn-right').addEventListener('mouseup',()=>rightHeld=false);
+// ── Overlays ──────────────────────────────────────────────────────────────
+const ICON_PAUSE='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+const ICON_PLAY='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+let shownState=null;
+function bestScore(){try{const l=JSON.parse(localStorage.getItem('hi_breakout')||'[]');return Math.max(score,l.length?l[0].score:0);}catch(e){return score;}}
+function syncOverlay(){
+  if(state===shownState)return;
+  shownState=state;
+  document.getElementById('btn-pause').innerHTML=state==='paused'?ICON_PLAY:ICON_PAUSE;
+  const ov=document.getElementById('ov'),card=document.getElementById('ov-card');
+  let html='',btn='',twice=false;
+  if(state==='idle'){
+    html=`<div class="ov-emoji">🧱</div><div class="ov-title gold">Breakout</div>
+      <div class="ov-sub">${LEVELS.length} levels · ${LIVES_START} lives<br>${isMobile?'Drag to move the paddle, tap to launch.':'Mouse or arrow keys to move, Space to launch.'}</div>`;
+    btn='Play';
+  }else if(state==='dead'){
+    html=`<div class="ov-title red">Ball lost</div><div class="ov-sub">${lives} ${lives===1?'life':'lives'} remaining</div>`;
+    btn='Continue';
+  }else if(state==='paused'){
+    html=`<div class="ov-title">Paused</div><div class="ov-sub">Level ${level} · ${score.toLocaleString()} pts</div>`;
+    btn='Resume';
+  }else if(state==='levelwin'){
+    html=`<div class="ov-emoji">✨</div><div class="ov-title gold">Level ${level} clear!</div><div class="ov-sub" style="color:var(--green);font-weight:700">+${(1000*level).toLocaleString()} bonus</div>`;
+    btn='Level '+(level+1)+' →';
+  }else if(state==='gameover'||state==='won'){
+    const best=bestScore();
+    html=`${state==='won'?'<div class="ov-emoji">🏆</div>':''}<div class="ov-title ${state==='won'?'gold':''}">${state==='won'?'You win!':'Game over'}</div>
+      <div class="ov-sub">${score>0&&score>=best?'🎉 New high score!':'Reached level '+level}</div>
+      <div class="ov-stats"><div class="ov-stat"><b>${score.toLocaleString()}</b><span>Score</span></div><div class="ov-stat"><b>${best.toLocaleString()}</b><span>Best</span></div></div>`;
+    btn='Play again';twice=true;
+  }
+  if(!html){ov.classList.add('hidden');return;}
+  card.innerHTML=html+`<button class="btn btn-gold" id="ov-go">${btn}</button>`;
+  ov.classList.remove('hidden');
+  document.getElementById('ov-go').onclick=()=>{handleAction();if(twice)handleAction();};
+}
+document.getElementById('btn-pause').addEventListener('click',()=>{
+  if(state==='play')state='paused';else if(state==='paused')state='play';
+  render();
+});
+// Auto-pause when the app is backgrounded
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='play'){state='paused';render();} });
+window.addEventListener('blur',()=>{ if(state==='play'){state='paused';render();} });
+new ResizeObserver(()=>{ if(resize()&&state==='idle'){pad.x=W()/2-60;ball.x=W()/2;ball.y=H()-PAD_Y_OFF-PAD_H-BALL_R-2;buildLevel(1);} render(); }).observe(stage);
 
 // ── Sound ─────────────────────────────────────────────────────────────────
 let _ac=null;
@@ -710,6 +736,7 @@ function sWall(){sTone(180,0,.06,.04,'sawtooth');}
 pad={x:W()/2-60,y:0};
 ball={x:W()/2,y:H()-PAD_Y_OFF-PAD_H-BALL_R-2,vx:0,vy:0,speed:5};
 buildLevel(1);
+updateHud();
 render(); // show idle screen
 
 // ── Session persistence ────────────────────────────────────────────────────

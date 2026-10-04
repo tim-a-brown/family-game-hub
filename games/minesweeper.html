@@ -8,80 +8,92 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Minesweeper</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
-.wrap{max-width:440px;margin:0 auto;padding:0 8px 50px;}
-.ms-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.ms-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
-.ms-val{font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);}
-.ms-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
-.mode-row{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
-.mode-btn{padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .15s;}
-.mode-btn.active{border-color:var(--gold);background:rgba(245,200,66,.12);color:var(--gold);}
-.ms-board{display:inline-grid;gap:2px;margin:0 auto 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px;}
-.ms-cell{width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:900;cursor:pointer;transition:background .1s;user-select:none;touch-action:manipulation;}
-.ms-cell:hover:not(.revealed){background:rgba(255,255,255,.18);}
-.ms-cell.revealed{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07);cursor:default;}
-.ms-cell.flagged{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);}
-.ms-cell.mine-hit{background:rgba(239,68,68,.4);border-color:#ef4444;}
-.ms-cell.mine-show{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.2);}
-/* Wrong flag — shown on game-over when user flagged a cell that wasn't actually a mine */
-.ms-cell.flag-wrong{
-  background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3);
-  position:relative;
-}
-.ms-cell.flag-wrong::before,
-.ms-cell.flag-wrong::after{
-  content:"";position:absolute;left:50%;top:50%;
-  width:70%;height:2px;background:#ef4444;
-  box-shadow:0 0 3px rgba(239,68,68,.6);
-  transform-origin:center;
-}
+.page{padding-top:12px;}
+.wrap{max-width:640px;margin:0 auto;}
+.ms-header{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.ms-stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 8px;text-align:center;}
+.ms-val{font-family:var(--display);font-size:1.35rem;font-weight:800;color:var(--text);line-height:1.2;font-variant-numeric:tabular-nums;}
+.ms-stat:first-child .ms-val{color:var(--red);}
+.ms-stat:last-child .ms-val{color:var(--gold);}
+.ms-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);}
+.mode-row{margin-bottom:12px;}
+.mode-row .tab{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;min-height:46px;}
+.mode-row .tab small{font-size:.7rem;font-weight:600;color:var(--text-3);}
+.mode-row .tab.active small{color:var(--text-2);}
+.board-wrap{display:flex;justify-content:center;margin-bottom:12px;}
+.ms-board{--cs:32px;display:grid;gap:2px;background:var(--surface);border:1px solid var(--line-2);border-radius:14px;padding:6px;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;box-shadow:0 12px 40px rgba(0,0,0,.35);}
+.ms-board.lost{animation:ms-shake .4s ease;}
+@keyframes ms-shake{0%,100%{translate:0;}20%{translate:-6px;}40%{translate:6px;}60%{translate:-3px;}80%{translate:3px;}}
+.ms-cell{width:var(--cs);height:var(--cs);border-radius:calc(var(--cs) * .18);background:linear-gradient(180deg,#323a4e,#272d3d);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:calc(var(--cs) * .56);font-weight:800;cursor:pointer;-webkit-touch-callout:none;line-height:1;transition:background .12s,transform .1s;}
+.ms-cell.pressing{transform:scale(.88);background:#3d4660;}
+@media (hover:hover){.ms-cell:not(.revealed):hover{background:#3a435a;}}
+.ms-cell.revealed{background:rgba(255,255,255,.035);box-shadow:none;cursor:default;}
+.ms-cell.flagged{background:linear-gradient(180deg,#4a2f36,#3a252b);font-size:calc(var(--cs) * .5);}
+.ms-cell.mine-hit{background:var(--red)!important;}
+.ms-cell.mine-show{background:rgba(248,113,113,.14);}
+.ms-cell.flag-wrong{background:rgba(248,113,113,.06);position:relative;}
+.ms-cell.flag-wrong::before,.ms-cell.flag-wrong::after{content:"";position:absolute;left:50%;top:50%;width:70%;height:2px;background:var(--red);transform-origin:center;}
 .ms-cell.flag-wrong::before{transform:translate(-50%,-50%) rotate(45deg);}
 .ms-cell.flag-wrong::after {transform:translate(-50%,-50%) rotate(-45deg);}
-.n1{color:#5ac8fa;}.n2{color:#22c55e;}.n3{color:#ef4444;}.n4{color:#8b5cf6;}
-.n5{color:#f97316;}.n6{color:#06b6d4;}.n7{color:#ec4899;}.n8{color:#aaa;}
-.ms-status{text-align:center;font-size:.88rem;font-weight:700;min-height:26px;margin-bottom:8px;}
-.board-wrap{overflow-x:auto;text-align:center;}
+.n1{color:#60a5fa;}.n2{color:#4ade80;}.n3{color:#f87171;}.n4{color:#c084fc;}
+.n5{color:#fb923c;}.n6{color:#22d3ee;}.n7{color:#f472b6;}.n8{color:#d1d5db;}
+.ms-tools{display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:10px;}
+.tool-seg{display:inline-flex;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:999px;}
+.tool-seg button{min-height:42px;min-width:104px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--text-2);font-size:.92rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s;}
+.tool-seg button.active{background:var(--surface-3);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.35);}
+.tool-seg button[data-tool=flag].active{background:rgba(248,113,113,.18);color:#fecaca;}
+.ms-status{text-align:center;font-size:.86rem;font-weight:500;color:var(--text-3);min-height:22px;margin-bottom:10px;}
+.ms-result:empty{display:none;}
+.ms-result .winner-banner{margin-bottom:12px;padding:12px 14px 12px 18px;display:flex;align-items:center;gap:12px;text-align:left;}
+.ms-result .winner-banner > div{flex:1;}
+.ms-result .winner-name{font-size:1.35rem;line-height:1.1;}
+.ms-result .winner-pts{font-size:.88rem;}
+.ms-result .lose{background:linear-gradient(135deg,rgba(248,113,113,.16),rgba(248,113,113,.04));border-color:rgba(248,113,113,.35);}
+.ms-result .lose .winner-name{color:var(--red);}
+.ms-result .btn{flex:none;}
+.rules-body p{margin:0 0 8px;}
+.rules-body strong{color:var(--text);}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Minesweeper</span>
+  <button class="icon-btn" id="ms-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
 <div class="page"><div class="wrap">
 <div class="ms-header">
-  <div class="ms-stat"><div class="ms-val" id="ms-mines">0</div><div class="ms-lbl">Mines Left</div></div>
+  <div class="ms-stat"><div class="ms-val" id="ms-mines">0</div><div class="ms-lbl">🚩 Mines</div></div>
   <div class="ms-stat"><div class="ms-val" id="ms-time">0</div><div class="ms-lbl">Seconds</div></div>
   <div class="ms-stat"><div class="ms-val" id="ms-best">—</div><div class="ms-lbl">Best</div></div>
 </div>
-<div class="mode-row">
-  <button class="mode-btn active" data-mode="easy">😊 Easy (9×9, 10)</button>
-  <button class="mode-btn" data-mode="medium">😐 Medium (16×9, 25)</button>
-  <button class="mode-btn" data-mode="hard">😰 Hard (16×16, 50)</button>
+<div class="tabs mode-row" role="tablist">
+  <button class="tab mode-btn active" data-mode="easy">Easy<small>9×9 · 10</small></button>
+  <button class="tab mode-btn" data-mode="medium">Medium<small>16×9 · 25</small></button>
+  <button class="tab mode-btn" data-mode="hard">Hard<small>16×16 · 50</small></button>
 </div>
-<div class="ms-status" id="ms-status">Left-click to reveal · Right-click or long-press to flag</div>
+<div class="ms-result" id="ms-result"></div>
 <div class="board-wrap"><div class="ms-board" id="ms-board"></div></div>
-<div style="text-align:center;margin-top:6px;">
-  <button class="btn btn-gold" id="ms-new">New Game</button>
+<div class="ms-tools">
+  <div class="tool-seg" role="radiogroup" aria-label="Tap action">
+    <button data-tool="dig" class="active" role="radio" aria-checked="true">⛏️ Dig</button>
+    <button data-tool="flag" role="radio" aria-checked="false">🚩 Flag</button>
+  </div>
 </div>
+<div class="ms-status" id="ms-status">Tap to reveal · Long-press to flag</div>
 
-<details style="max-width:500px;margin:14px auto 0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:10px;overflow:hidden;">
-  <summary style="padding:9px 14px;font-size:.78rem;font-weight:700;cursor:pointer;color:rgba(255,255,255,.55);list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none;">
-    💡 How to play &amp; what the numbers mean
-    <span style="font-size:.6rem;opacity:.4;">▼</span>
-  </summary>
-  <div style="padding:4px 14px 14px;font-size:.78rem;line-height:1.75;color:rgba(255,255,255,.5);">
-    <p style="margin:0 0 6px"><strong style="color:rgba(255,255,255,.8);">Goal:</strong> Reveal every safe cell without clicking a mine.</p>
-    <p style="margin:0 0 6px"><strong style="color:rgba(255,255,255,.8);">Numbers:</strong> A number tells you exactly how many mines are hidden in the 8 cells touching it (sides and corners). A <strong style="color:rgba(255,255,255,.8);">1</strong> means 1 mine nearby, a <strong style="color:rgba(255,255,255,.8);">3</strong> means 3 mines nearby, etc.</p>
-    <p style="margin:0 0 6px"><strong style="color:rgba(255,255,255,.8);">Blank cells:</strong> No number means zero mines nearby — clicking one automatically reveals all its safe neighbors.</p>
-    <p style="margin:0 0 6px"><strong style="color:rgba(255,255,255,.8);">Flagging:</strong> Right-click (or long-press on mobile) to place a 🚩 flag on a cell you think is a mine. Flags prevent accidental clicks.</p>
-    <p style="margin:0 0 6px"><strong style="color:rgba(255,255,255,.8);">Strategy tip:</strong> If a number's mine count matches the number of unrevealed neighbors, all of them are mines — flag them! If the count matches flags already placed, all remaining neighbors are safe to reveal.</p>
-    <p style="margin:0"><strong style="color:rgba(255,255,255,.8);">First click:</strong> The first click is always safe — mines are placed after you click so you never start on one.</p>
+<details class="rules-details">
+  <summary class="rules-summary">💡 How to play &amp; what the numbers mean</summary>
+  <div class="rules-body">
+    <p><strong>Goal:</strong> Reveal every safe cell without clicking a mine.</p>
+    <p><strong>Numbers:</strong> A number tells you exactly how many mines are hidden in the 8 cells touching it (sides and corners). A <strong>1</strong> means 1 mine nearby, a <strong>3</strong> means 3 mines nearby, etc.</p>
+    <p><strong>Blank cells:</strong> No number means zero mines nearby — clicking one automatically reveals all its safe neighbors.</p>
+    <p><strong>Flagging:</strong> Long-press a cell (or right-click, or switch to 🚩 Flag mode) to place a flag on a cell you think is a mine. Flags prevent accidental clicks.</p>
+    <p><strong>Strategy tip:</strong> If a number's mine count matches the number of unrevealed neighbors, all of them are mines — flag them! If the count matches flags already placed, all remaining neighbors are safe to reveal.</p>
+    <p style="margin:0"><strong>First click:</strong> The first click is always safe — mines are placed after you click so you never start on one.</p>
   </div>
 </details>
 </div></div>
@@ -90,6 +102,9 @@ body{background:radial-gradient(ellipse at 50% 0%,#0a0a1a 0%,#0d1117 70%);}
 const MODES={easy:{cols:9,rows:9,mines:10},medium:{cols:16,rows:9,mines:25},hard:{cols:16,rows:16,mines:50}};
 let mode='easy', cells=[], revealed=[], flagged=[], mineSet=new Set(), firstClick=true, gameOver=false, won=false;
 let timer=0, timerInt=null, bests={easy:null,medium:null,hard:null};
+let tool='dig';
+const IS_TOUCH=matchMedia('(pointer:coarse)').matches;
+const HINT=IS_TOUCH?'Tap to reveal · Long-press to flag':'Click to reveal · Right-click to flag';
 
 function rc(r,c){return r*MODES[mode].cols+c;}
 function neighbors(r,c){const n=[];const{cols,rows}=MODES[mode];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(dr===0&&dc===0)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols)n.push([nr,nc]);}return n;}
@@ -103,8 +118,10 @@ function newGame(){
   mineSet=new Set();
   document.getElementById('ms-time').textContent='0';
   document.getElementById('ms-mines').textContent=mines;
-  document.getElementById('ms-status').textContent='Left-click to reveal · Long-press or right-click to flag';
-  renderBoard();
+  document.getElementById('ms-status').textContent=HINT;
+  document.getElementById('ms-result').innerHTML='';
+  document.getElementById('ms-best').textContent=bests[mode]!=null?bests[mode]+'s':'—';
+  renderBoard(true);
 }
 
 function placeMines(safeR,safeC){
@@ -131,6 +148,7 @@ function clickCell(r,c,flag=false){
   if(flag){
     if(revealed[i])return;
     flagged[i]=!flagged[i];
+    GN.haptic(flagged[i]?'medium':'light');
     const mines=MODES[mode].mines;
     const flagCount=flagged.filter(Boolean).length;
     document.getElementById('ms-mines').textContent=mines-flagCount;
@@ -146,10 +164,14 @@ function clickCell(r,c,flag=false){
     gameOver=true;clearInterval(timerInt);
     revealed[i]=true;
     mineSet.forEach(mi=>{if(!flagged[mi])revealed[mi]=true;});
-    document.getElementById('ms-status').innerHTML='<span style="color:#ef4444">💥 Boom! Game over.</span>';
-    renderBoard();return;
+    document.getElementById('ms-status').textContent='💥 Boom! Game over.';
+    hitIdx=i;GN.haptic('error');
+    showResult(false);
+    renderBoard();
+    const b=document.getElementById('ms-board');b.classList.remove('lost');void b.offsetWidth;b.classList.add('lost');
+    return;
   }
-  reveal(r,c);
+  reveal(r,c);GN.haptic('light');
   checkWin();renderBoard();
 }
 
@@ -160,61 +182,125 @@ function checkWin(){
     won=true;gameOver=true;clearInterval(timerInt);
     if(!bests[mode]||timer<bests[mode])bests[mode]=timer;
     document.getElementById('ms-best').textContent=bests[mode]+'s';
-    document.getElementById('ms-status').innerHTML=`<span style="color:#22c55e">🎉 You win! ${timer}s</span>`;
+    document.getElementById('ms-status').textContent=`🎉 You win! ${timer}s`;
+    GN.haptic('success');showResult(true);
   }
 }
 
-function renderBoard(){
+let hitIdx=-1;
+function showResult(win){
+  const el=document.getElementById('ms-result');
+  el.innerHTML=win
+    ?`<div class="winner-banner"><div><div class="winner-name">🎉 You win!</div><div class="winner-pts">Cleared in ${timer}s${bests[mode]===timer?' · Best time':''}</div></div><button class="btn btn-gold" data-again>Play again</button></div>`
+    :`<div class="winner-banner lose"><div><div class="winner-name">💥 Boom!</div><div class="winner-pts">Hit a mine after ${timer}s</div></div><button class="btn btn-gold" data-again>Try again</button></div>`;
+  el.querySelector('[data-again]').addEventListener('click',()=>{startNew();window.scrollTo({top:0,behavior:'smooth'});});
+}
+// Portrait phones: show wide boards rotated (rows↔cols) so cells stay big.
+// Purely visual — neighbours are identical under a transpose.
+function isTransposed(){const{cols,rows}=MODES[mode];return cols>rows&&window.innerHeight>window.innerWidth;}
+function sizeBoard(){
+  const{cols,rows}=MODES[mode];const t=isTransposed();
+  const vc=t?rows:cols, vr=t?cols:rows;
+  const el=document.getElementById('ms-board');
+  const wrapW=Math.min(document.querySelector('.wrap').clientWidth,640);
+  const availW=wrapW-14, availH=window.innerHeight-330;
+  const cs=Math.max(16,Math.floor(Math.min(42,(availW-(vc-1)*2)/vc,Math.max(availH,vr*20)/vr-2)));
+  el.style.setProperty('--cs',cs+'px');
+  el.style.gridTemplateColumns=`repeat(${vc},var(--cs))`;
+}
+function renderBoard(rebuild){
   const{cols,rows}=MODES[mode];
   const el=document.getElementById('ms-board');
-  el.style.gridTemplateColumns=`repeat(${cols},32px)`;
-  el.innerHTML='';
-  const cellSize=Math.min(32,Math.floor((window.innerWidth-40)/cols));
-  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-    const i=rc(r,c);const cell=document.createElement('div');
-    cell.className='ms-cell';
-    cell.style.width=cell.style.height=cellSize+'px';
-    cell.style.fontSize=Math.max(10,cellSize-12)+'px';
-    if(revealed[i]){
-      cell.classList.add('revealed');
-      if(cells[i]===-1)cell.textContent='💣';
-      else if(cells[i]>0){cell.textContent=cells[i];cell.classList.add('n'+cells[i]);}
-    } else if(flagged[i]){
-      cell.classList.add('flagged');
-      cell.textContent='🚩';
-      // When the game is lost, highlight any flags that weren't actually
-      // on mines — crosses them out so the player can see their mistakes.
-      // Winning is defined by revealing all non-mines, so on win all flagged
-      // cells are necessarily on mines (or the win would have triggered
-      // earlier) — no need to mark wrongs on a win.
-      if(gameOver && !won && cells[i] !== -1){
-        cell.classList.add('flag-wrong');
-      }
+  const t=isTransposed();
+  if(rebuild||el.children.length!==rows*cols||el.dataset.t!==String(t)){
+    el.innerHTML='';el.dataset.t=String(t);
+    // Build in visual order; each cell remembers its logical r/c
+    const vr=t?cols:rows, vc=t?rows:cols;
+    for(let y=0;y<vr;y++)for(let x=0;x<vc;x++){
+      const r=t?x:y, c=t?y:x;
+      const cell=document.createElement('div');
+      cell.dataset.r=r;cell.dataset.c=c;
+      el.appendChild(cell);
     }
-    // Click & long-press
-    let longPress;
-    cell.addEventListener('contextmenu',e=>{e.preventDefault();clickCell(r,c,true);});
-    cell.addEventListener('touchstart',e=>{longPress=setTimeout(()=>{e.preventDefault();clickCell(r,c,true);},400);},{passive:true});
-    cell.addEventListener('touchend',()=>clearTimeout(longPress));
-    cell.addEventListener('touchmove',()=>clearTimeout(longPress));
-    cell.addEventListener('click',()=>clickCell(r,c,false));
-    el.appendChild(cell);
+    sizeBoard();
+  }
+  for(const cell of el.children){
+    const r=+cell.dataset.r,c=+cell.dataset.c,i=rc(r,c);
+    let cls='ms-cell',txt='';
+    if(revealed[i]){
+      cls+=' revealed';
+      if(cells[i]===-1){txt='💣';cls+=i===hitIdx?' mine-hit':' mine-show';}
+      else if(cells[i]>0){txt=cells[i];cls+=' n'+cells[i];}
+    } else if(flagged[i]){
+      cls+=' flagged';txt='🚩';
+      // On a loss, cross out flags that weren't on mines
+      if(gameOver && !won && cells[i] !== -1) cls+=' flag-wrong';
+    }
+    if(cell.className!==cls)cell.className=cls;
+    if(cell.textContent!==String(txt))cell.textContent=txt;
   }
 }
 
+// ── Input: tap = tool action, long-press / right-click = flag ──────────────
+(function(){
+  const el=document.getElementById('ms-board');
+  let lp=null,lpFired=false,down=null,lastLP=0;
+  const cellOf=e=>e.target.closest('.ms-cell');
+  el.addEventListener('pointerdown',e=>{
+    const cell=cellOf(e);if(!cell||gameOver||(e.pointerType==='mouse'&&e.button!==0))return;
+    down={cell,x:e.clientX,y:e.clientY,id:e.pointerId};lpFired=false;
+    if(!cell.classList.contains('revealed'))cell.classList.add('pressing');
+    clearTimeout(lp);
+    lp=setTimeout(()=>{
+      if(!down)return;lpFired=true;lastLP=Date.now();
+      down.cell.classList.remove('pressing');
+      clickCell(+down.cell.dataset.r,+down.cell.dataset.c,tool!=='flag');
+    },380);
+  });
+  el.addEventListener('pointermove',e=>{
+    if(down&&e.pointerId===down.id&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>10){clearTimeout(lp);down.cell.classList.remove('pressing');down=null;}
+  });
+  const cancel=()=>{clearTimeout(lp);if(down)down.cell.classList.remove('pressing');down=null;};
+  el.addEventListener('pointercancel',cancel);
+  el.addEventListener('pointerleave',cancel);
+  el.addEventListener('pointerup',e=>{
+    clearTimeout(lp);
+    if(!down||e.pointerId!==down.id){down=null;return;}
+    const cell=down.cell;down=null;cell.classList.remove('pressing');
+    if(lpFired)return;
+    clickCell(+cell.dataset.r,+cell.dataset.c,tool==='flag');
+  });
+  el.addEventListener('contextmenu',e=>{
+    e.preventDefault();
+    const cell=cellOf(e);if(!cell)return;
+    if(Date.now()-lastLP<800||IS_TOUCH)return; // already handled by long-press
+    clickCell(+cell.dataset.r,+cell.dataset.c,true);
+  });
+})();
+document.querySelectorAll('.tool-seg button').forEach(b=>b.addEventListener('click',()=>{
+  tool=b.dataset.tool;GN.haptic('select');
+  document.querySelectorAll('.tool-seg button').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-checked',x===b);});
+}));
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{renderBoard(isTransposed()!==(document.getElementById('ms-board').dataset.t==='true'));sizeBoard();},120);});
+
+function startNew(){try{sessionStorage.removeItem('ms');}catch(e){}hitIdx=-1;newGame();}
+function inProgress(){return !firstClick&&!gameOver;}
+function syncModeBtns(){document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));}
 document.querySelectorAll('.mode-btn[data-mode]').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    mode=btn.dataset.mode;
-    document.querySelectorAll('.mode-btn[data-mode]').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    newGame();
+    if(btn.dataset.mode===mode)return;
+    const go=()=>{mode=btn.dataset.mode;syncModeBtns();startNew();};
+    if(inProgress())GN.confirm('Your current game will be lost.',{title:'Switch difficulty?',ok:'Switch'}).then(ok=>{if(ok)go();});
+    else go();
   });
 });
-document.getElementById('ms-new').addEventListener('click',newGame);
-newGame();
+document.getElementById('ms-new').addEventListener('click',()=>{
+  if(inProgress())GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New game'}).then(ok=>{if(ok)startNew();});
+  else startNew();
+});
 
 // ── Session persistence ────────────────────────────────────────────────────
-function _save_ms(){if(gameOver||won)return;
+function _save_ms(){if(gameOver||won){try{sessionStorage.removeItem('ms');}catch(e){}return;}
   try{sessionStorage.setItem('ms',JSON.stringify({mode,cells,revealed,flagged,mineSet:[...mineSet],firstClick,gameOver,won,timer,_ts:Date.now()}));}catch(e){}
 }
 function _load_ms(){
@@ -222,13 +308,18 @@ function _load_ms(){
     const raw=sessionStorage.getItem('ms');if(!raw)return false;
     const s=JSON.parse(raw);if(!s)return false;
     mode=s.mode||'easy';cells=s.cells;revealed=s.revealed;flagged=s.flagged;mineSet=new Set(s.mineSet||[]);firstClick=s.firstClick;gameOver=s.gameOver||false;won=s.won||false;timer=s.timer||0;
-    render();updateUI();
+    if(!MODES[mode]||!Array.isArray(cells)||cells.length!==MODES[mode].rows*MODES[mode].cols){mode='easy';return false;}
+    syncModeBtns();
+    document.getElementById('ms-mines').textContent=MODES[mode].mines-flagged.filter(Boolean).length;
+    document.getElementById('ms-time').textContent=timer;
+    if(!firstClick&&!gameOver)timerInt=setInterval(()=>{timer++;document.getElementById('ms-time').textContent=timer;},1000);
+    renderBoard(true);
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_ms);
-document.getElementById('ms-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('ms');}catch(e){}},true);
-_load_ms();
+window.addEventListener('pagehide',_save_ms);
+if(!_load_ms())newGame();
 </script>
 </body>
 </html>

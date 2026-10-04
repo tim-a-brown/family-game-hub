@@ -8,45 +8,54 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Mahjong</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <style>
-body{background:radial-gradient(ellipse at 50% 0%,#1a0a0a 0%,#0d1117 70%);}
-.wrap{max-width:480px;margin:0 auto;padding:0 6px 50px;}
-.mj-header{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
-.mj-stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;text-align:center;}
-.mj-val{font-family:var(--serif);font-size:1.1rem;font-weight:900;color:var(--gold);}
-.mj-lbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
-.mj-board{position:relative;overflow:auto;margin:0 auto 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;}
-.mj-tile{position:absolute;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:filter .1s,box-shadow .1s;font-size:1.1rem;line-height:1;background:linear-gradient(145deg,#e8d8c0,#c8b89a);border:1px solid #a08060;box-shadow:2px 2px 0 #6a4020,3px 3px 4px rgba(0,0,0,.4);}
-.mj-tile.selected{background:linear-gradient(145deg,#ffe060,#f5c842);box-shadow:2px 2px 0 #8a6000,3px 3px 8px rgba(245,200,66,.5);}
-.mj-tile.disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
-.mj-tile:not(.disabled):not(.selected):hover{filter:brightness(1.1);}
-@keyframes mj-remove{0%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(.7);}}
-.mj-tile.removing{animation:mj-remove .2s ease forwards;}
-.mj-status{text-align:center;font-size:.85rem;font-weight:700;min-height:24px;margin-bottom:8px;color:var(--muted);}
+.mj-wrap{width:100%;max-width:980px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(24px + var(--safe-b)) max(8px,var(--safe-l));}
+.mj-hud{display:flex;gap:8px;margin-bottom:10px;max-width:560px;margin-left:auto;margin-right:auto;}
+.mj-hud .stat{flex:1;max-width:none;padding:6px 8px;}
+.mj-hud .stat-val{font-size:1.25rem;}
+.mj-status{text-align:center;font-size:.9rem;font-weight:600;min-height:22px;margin-bottom:10px;color:var(--text-2);}
+.mj-status.good{color:var(--green);}
+.mj-status.warn{color:#fbbf24;}
+.mj-table{padding:12px 8px;border-radius:var(--r-lg);margin-bottom:12px;
+  background:radial-gradient(120% 90% at 50% 0%,#3a1d1d 0%,#271313 50%,#170b0b 100%);
+  border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 2px 30px rgba(0,0,0,.4);}
+.mj-board{position:relative;margin:0 auto;}
+.mj-tile{position:absolute;border-radius:calc(var(--tw)*.14);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  user-select:none;line-height:1;color:#1a1008;overflow:hidden;
+  background:linear-gradient(150deg,#fffaf0 0%,#f1e6d0 60%,#e2d2b4 100%);
+  border:1px solid rgba(90,60,30,.55);
+  box-shadow:calc(var(--tw)*.08) calc(var(--tw)*.1) 0 #b8946a,calc(var(--tw)*.1) calc(var(--tw)*.13) 0 #7c5a36,calc(var(--tw)*.1) calc(var(--tw)*.16) 6px rgba(0,0,0,.45);
+  transition:filter .12s,transform .12s;}
+.mj-tile span{display:block;font-size:calc(var(--th)*.9);line-height:1;transform:translateY(2%);pointer-events:none;}
+.mj-tile.blocked{filter:brightness(.72) saturate(.75);cursor:default;}
+.mj-tile.selected{background:linear-gradient(150deg,#fff6c8,#f9dc6a);border-color:#b38600;transform:translate(-1px,-2px);}
+.mj-tile.hint{background:linear-gradient(150deg,#e6ffef,#a7f3c4);border-color:#15803d;}
+@media (hover:hover){.mj-tile:not(.blocked):not(.selected):hover{filter:brightness(1.06);}}
+.mj-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.mj-actions .btn{flex:1;max-width:180px;}
 </style>
 </head>
 <body>
 <nav class="site-nav">
   <a class="nav-back" href="../index.html">← Home</a><span class="nav-title">Mahjong</span>
+  <button class="icon-btn" id="mj-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page"><div class="wrap">
-<div class="mj-header">
-  <div class="mj-stat"><div class="mj-val" id="mj-left">144</div><div class="mj-lbl">Tiles Left</div></div>
-  <div class="mj-stat"><div class="mj-val" id="mj-score">0</div><div class="mj-lbl">Score</div></div>
-  <div class="mj-stat"><div class="mj-val" id="mj-time">0:00</div><div class="mj-lbl">Time</div></div>
+<div class="mj-wrap">
+<div class="mj-hud">
+  <div class="stat"><div class="stat-val" id="mj-left">144</div><div class="stat-lbl">Tiles left</div></div>
+  <div class="stat"><div class="stat-val" id="mj-score">0</div><div class="stat-lbl">Score</div></div>
+  <div class="stat"><div class="stat-val" id="mj-time">0:00</div><div class="stat-lbl">Time</div></div>
 </div>
 <div class="mj-status" id="mj-status">Match pairs of free tiles to clear the board</div>
-<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">
-  <button class="btn btn-gold" id="mj-new">New Game</button>
+<div class="mj-table" id="mj-table"><div class="mj-board" id="mj-board"></div></div>
+<div class="mj-actions">
   <button class="btn btn-outline" id="mj-hint">💡 Hint</button>
   <button class="btn btn-outline" id="mj-undo">↩ Undo</button>
 </div>
-<div class="mj-board" id="mj-board"></div>
-</div></div>
+</div>
 <script>
 'use strict';
 // Tile types (4 of each = 144 total)
@@ -110,8 +119,16 @@ function buildLayout(){
   return pos;
 }
 
-let tiles,sel,score,timer,timerInt,history;
-const TW=30,TH=40,ZOFF=5,COFF=30,ROFF=40;
+let tiles,sel,score,timer,timerInt,history,hintIds=[],hintT=null;
+let TW=30,TH=40,ZOFF=5,COFF=30,ROFF=40;
+const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
+function fmtTime(t){return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;}
+function startTimer(){
+  clearInterval(timerInt);
+  timerInt=setInterval(()=>{timer++;document.getElementById('mj-time').textContent=fmtTime(timer);},1000);
+  document.getElementById('mj-time').textContent=fmtTime(timer);
+}
+function setStatus(msg,cls=''){const el=document.getElementById('mj-status');el.className='mj-status'+(cls?' '+cls:'');el.textContent=msg;}
 
 function newGame(){
   const layout=buildLayout();
@@ -121,10 +138,20 @@ function newGame(){
   // Shuffle
   for(let i=typePool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[typePool[i],typePool[j]]=[typePool[j],typePool[i]];}
   tiles=layout.map((pos,i)=>({...pos,type:typePool[i],removed:false,id:i}));
-  sel=null;score=0;history=[];
-  clearInterval(timerInt);timer=0;
-  timerInt=setInterval(()=>{timer++;document.getElementById('mj-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+  sel=null;score=0;history=[];hintIds=[];
+  timer=0;startTimer();
+  updateStats();
+  setStatus('Match pairs of free tiles to clear the board');
   render();
+}
+async function confirmNew(){
+  const left=tiles?tiles.filter(t=>!t.removed).length:0;
+  if(left>0&&left<144&&window.GN){
+    const ok=await GN.confirm('Your current board will be lost.',{title:'Start a new game?',ok:'New Game'});
+    if(!ok)return;
+  }
+  try{sessionStorage.removeItem('mahjong');}catch(e){}
+  newGame();
 }
 
 function isFree(tile){
@@ -141,10 +168,17 @@ function isFree(tile){
   return !(hasLeft && hasRight);
 }
 
+function updateStats(){
+  document.getElementById('mj-left').textContent=tiles.filter(t=>!t.removed).length;
+  document.getElementById('mj-score').textContent=score;
+}
+
 function clickTile(id){
   const tile=tiles.find(t=>t.id===id);
-  if(!tile||tile.removed||!isFree(tile))return;
-  if(sel===null){sel=id;render();return;}
+  if(!tile||tile.removed)return;
+  if(!isFree(tile)){hap('error');return;}
+  clearHint();
+  if(sel===null){sel=id;hap('select');render();return;}
   if(sel===id){sel=null;render();return;}
   const other=tiles.find(t=>t.id===sel);
   if(tile.type===other.type){
@@ -152,13 +186,13 @@ function clickTile(id){
     history.push([sel,id]);
     tile.removed=true;other.removed=true;
     score+=10;sel=null;
+    hap('medium');
     render();
+    updateStats();
     const left=tiles.filter(t=>!t.removed).length;
-    document.getElementById('mj-left').textContent=left;
-    document.getElementById('mj-score').textContent=score;
-    if(left===0){clearInterval(timerInt);document.getElementById('mj-status').innerHTML='<span style="color:#22c55e">🎉 You cleared the board! Score: '+score+'</span>';}
-    else if(!hasAnyMove()){document.getElementById('mj-status').innerHTML='<span style="color:#f59e0b">No more moves! Try a new game.</span>';}
-  } else {sel=id;render();}
+    if(left===0){clearInterval(timerInt);setStatus('🎉 You cleared the board! Score: '+score,'good');showWin();}
+    else if(!hasAnyMove()){setStatus('No more moves!','warn');showStuck();}
+  } else {sel=id;hap('select');render();}
 }
 
 function hasAnyMove(){
@@ -167,78 +201,127 @@ function hasAnyMove(){
   return false;
 }
 
+function clearHint(){clearTimeout(hintT);if(hintIds.length){hintIds=[];}}
 function hint(){
   const free=tiles.filter(t=>!t.removed&&isFree(t));
   for(let i=0;i<free.length;i++)for(let j=i+1;j<free.length;j++){
-    if(free[i].type===free[j].type){sel=free[i].id;render();setTimeout(()=>{sel=free[j].id;render();},600);return;}
+    if(free[i].type===free[j].type){
+      sel=null;hintIds=[free[i].id,free[j].id];hap('light');render();
+      clearTimeout(hintT);hintT=setTimeout(()=>{hintIds=[];render();},1800);
+      return;
+    }
   }
-  document.getElementById('mj-status').textContent='No moves available!';
+  setStatus('No moves available!','warn');hap('error');
 }
 
 function undo(){
-  if(!history.length)return;
+  if(!history.length){hap('error');return;}
   const[a,b]=history.pop();
   tiles.find(t=>t.id===a).removed=false;
   tiles.find(t=>t.id===b).removed=false;
-  score=Math.max(0,score-10);sel=null;
-  document.getElementById('mj-left').textContent=tiles.filter(t=>!t.removed).length;
-  document.getElementById('mj-score').textContent=score;
+  score=Math.max(0,score-10);sel=null;clearHint();
+  updateStats();
+  setStatus('Match pairs of free tiles to clear the board');
+  hap('light');
   render();
+}
+
+// Re-deal the faces of the remaining tiles (same tile set, new positions)
+function shuffleRemaining(){
+  const rest=tiles.filter(t=>!t.removed);
+  const types=rest.map(t=>t.type);
+  for(let i=types.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
+  rest.forEach((t,i)=>t.type=types[i]);
+  history=[];sel=null;clearHint();
+  setStatus('Tiles shuffled');
+  render();
+  if(!hasAnyMove()){setStatus('Still stuck — shuffle again?','warn');showStuck();}
+}
+
+function showWin(){
+  hap('success');
+  setTimeout(()=>GN.sheet({title:'Board cleared!',body:`<div style="font-size:2.4rem;margin-bottom:4px">🀄</div>Score <b>${score}</b> · Time <b>${fmtTime(timer)}</b>`,
+    actions:[{label:'Play Again',primary:true,onClick:()=>{try{sessionStorage.removeItem('mahjong');}catch(e){}newGame();}},{label:'Close'}]}),300);
+}
+function showStuck(){
+  hap('error');
+  const left=tiles.filter(t=>!t.removed).length;
+  setTimeout(()=>GN.sheet({title:'No more moves',body:`${left} tiles left. Undo, shuffle the remaining tiles, or start fresh.`,
+    actions:[{label:'Shuffle tiles',primary:true,onClick:shuffleRemaining},{label:'↩ Undo last pair',onClick:undo},
+      {label:'New Game',onClick:()=>{try{sessionStorage.removeItem('mahjong');}catch(e){}newGame();}}]}),300);
+}
+
+// Fit the turtle to the space available (width and height)
+function calcSizes(minC,colCount,maxR,maxZ){
+  const table=document.getElementById('mj-table');
+  const W=table.clientWidth-16;
+  const top=table.getBoundingClientRect().top+window.scrollY;
+  const H=Math.max(260,window.innerHeight-top-24-64);
+  // width: colCount*TW + maxZ*ZOFF(≈.16TW) + shadow(≈.12TW)
+  const byW=W/(colCount+maxZ*.16+.15);
+  const byH=H/((maxR)*1.32+maxZ*.16+.2);
+  TW=Math.max(20,Math.floor(Math.min(byW,byH,64)));
+  TH=Math.round(TW*1.32);ZOFF=Math.max(3,Math.round(TW*.16));COFF=TW;ROFF=TH;
+  const r=document.documentElement.style;r.setProperty('--tw',TW+'px');r.setProperty('--th',TH+'px');
 }
 
 function render(){
   const board=document.getElementById('mj-board');board.innerHTML='';
-  const allTiles=tiles.filter(t=>!t.removed);
-  if(!allTiles.length){board.style.width='240px';board.style.height='100px';return;}
-  const minC=Math.min(...allTiles.map(t=>t.c));
-  const maxC=Math.max(...allTiles.map(t=>t.c))+1;
-  const maxR=Math.max(...allTiles.map(t=>t.r))+1;
-  const maxZ=Math.max(...allTiles.map(t=>t.z))+1;
+  // Board extents from the full layout so the turtle doesn't jump as tiles go
+  const minC=Math.min(...tiles.map(t=>t.c));
+  const maxC=Math.max(...tiles.map(t=>t.c))+1;
+  const maxR=Math.max(...tiles.map(t=>t.r))+1;
+  const maxZ=Math.max(...tiles.map(t=>t.z))+1;
   const cOffset=-minC; // shift so minimum column maps to 0
   const colCount=maxC-minC;
-  const BW=(colCount)*COFF+TW+maxZ*ZOFF+10;
-  const BH=maxR*ROFF+TH+maxZ*ZOFF+10;
-  board.style.width=Math.min(BW,window.innerWidth-20)+'px';
+  calcSizes(minC,colCount,maxR,maxZ);
+  const BW=colCount*COFF+(maxZ-1)*ZOFF+Math.ceil(TW*.15);
+  const BH=maxR*ROFF+(maxZ-1)*ZOFF+Math.ceil(TW*.2);
+  board.style.width=BW+'px';
   board.style.height=BH+'px';
-  board.style.minWidth='240px';
   // Paint lower layers first so upper tiles sit on top visually.
   const sorted=[...tiles].filter(t=>!t.removed).sort((a,b)=>a.z-b.z||a.r-b.r||a.c-b.c);
   sorted.forEach(tile=>{
     const el=document.createElement('div');el.className='mj-tile';
     const free=isFree(tile);
-    if(!free)el.classList.add('disabled');
+    if(!free)el.classList.add('blocked');
     if(sel===tile.id)el.classList.add('selected');
+    if(hintIds.includes(tile.id))el.classList.add('hint');
     // Higher layers shift UP-RIGHT (classic isometric look).
-    const x=(tile.c+cOffset)*COFF + tile.z*ZOFF + 5;
-    const y=tile.r*ROFF + (maxZ-1-tile.z)*ZOFF + 5;
+    const x=(tile.c+cOffset)*COFF + tile.z*ZOFF;
+    const y=tile.r*ROFF + (maxZ-1-tile.z)*ZOFF;
     el.style.cssText=`left:${x}px;top:${y}px;width:${TW}px;height:${TH}px;z-index:${tile.z*1000+tile.r*30+tile.c+100};`;
-    el.textContent=TILE_TEXT[tile.type]||'?';
-    el.style.fontSize=Math.max(12,TW-10)+'px';el.style.fontWeight='900';el.style.color='#1a1008';
+    el.innerHTML=`<span>${TILE_TEXT[tile.type]||'?'}</span>`;
     el.addEventListener('click',()=>clickTile(tile.id));
     board.appendChild(el);
   });
 }
 
-document.getElementById('mj-new').addEventListener('click',newGame);
+document.getElementById('mj-new').addEventListener('click',confirmNew);
 document.getElementById('mj-hint').addEventListener('click',hint);
 document.getElementById('mj-undo').addEventListener('click',undo);
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(render,80);});
 newGame();
 
 // ── Session persistence ────────────────────────────────────────────────────
 function _save_mahjong(){
-  try{sessionStorage.setItem('mahjong',JSON.stringify({tiles,score,history,_ts:Date.now()}));}catch(e){}
+  try{
+    if(!tiles||tiles.every(t=>t.removed)){sessionStorage.removeItem('mahjong');return;}
+    sessionStorage.setItem('mahjong',JSON.stringify({tiles,score,history,_ts:Date.now()}));
+  }catch(e){}
 }
 function _load_mahjong(){
   try{
     const raw=sessionStorage.getItem('mahjong');if(!raw)return false;
-    const s=JSON.parse(raw);if(!s)return false;
+    const s=JSON.parse(raw);if(!s||!s.tiles)return false;
     tiles=s.tiles;score=s.score||0;history=s.history||[];sel=null;
-    document.getElementById('mj-left').textContent=tiles.filter(t=>!t.removed).length;document.getElementById('mj-score').textContent=score;render();
+    updateStats();render();
     return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',_save_mahjong);
-document.getElementById('mj-new')?.addEventListener('click',()=>{try{sessionStorage.removeItem('mahjong');}catch(e){}},true);
+window.addEventListener('pagehide',_save_mahjong);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')_save_mahjong();});
 _load_mahjong();
 </script>
 </body>

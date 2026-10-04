@@ -8,70 +8,94 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0d1117">
 <title>Solitaire</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../shared.css">
 <script src="../sync.js"></script>
 <script src="../app.js" defer></script>
 <script src="../hist.js"></script>
 <style>
-body{background:radial-gradient(ellipse at 60% 0%,#1a4a2e 0%,#0f2d1a 55%,#0d1117 100%);overflow-x:hidden;}
-.wrap{max-width:480px;margin:0 auto;padding:4px 4px 40px;}
-/* Stats */
-.sol-stats{display:flex;gap:6px;margin-bottom:6px;justify-content:center;}
-.sol-stat{background:rgba(0,0,0,.3);border-radius:6px;padding:4px 10px;text-align:center;}
-.sol-val{font-family:var(--serif);font-size:1rem;font-weight:900;color:#fff;}
-.sol-lbl{font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);}
+/* ── Layout ─────────────────────────────────────────────── */
+.sol-page{width:100%;max-width:760px;margin:0 auto;padding:10px max(8px,var(--safe-r)) calc(24px + var(--safe-b)) max(8px,var(--safe-l));}
+.sol-hud{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.sol-hud .stat{flex:1;max-width:none;padding:6px 8px;}
+.sol-hud .stat-val{font-size:1.25rem;}
+.sol-table{padding:8px 6px 10px;min-height:calc(100dvh - var(--nav-h) - var(--safe-t) - 96px);}
 /* Top row: stock, waste, spacer, foundations */
-.sol-top{display:flex;gap:4px;margin-bottom:6px;align-items:flex-start;}
-.sol-empty{width:var(--cw);height:var(--ch);border-radius:6px;border:2px dashed rgba(255,255,255,.2);background:rgba(0,0,0,.15);flex-shrink:0;}
-/* Tableau */
-.sol-tableau{display:flex;gap:4px;}
-.sol-col{flex:1;display:flex;flex-direction:column;position:relative;min-height:160px;}
-/* Cards */
-.card{width:var(--cw);height:var(--ch);border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,.2);display:flex;flex-direction:column;justify-content:flex-start;padding:3px 4px;font-weight:900;flex-shrink:0;box-shadow:1px 2px 4px rgba(0,0,0,.3);cursor:pointer;user-select:none;touch-action:none;position:relative;}
-.card.face-down{background:repeating-linear-gradient(135deg,#1a4a8a,#1a4a8a 4px,#2a5a9a 4px,#2a5a9a 8px);border-color:rgba(255,255,255,.1);}
-.card.red{color:#c00;}
-.card.black{color:#000;}
-.card.selected{outline:2px solid var(--gold);outline-offset:1px;}
-.card-top{font-size:.65rem;line-height:1;}
-.card-suit{font-size:.75rem;line-height:1;}
-.card-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1rem;}
-.stacked{position:absolute;left:0;right:0;}
+.sol-top{display:flex;gap:var(--gap);margin-bottom:12px;align-items:flex-start;}
+.sol-tableau{display:flex;gap:var(--gap);}
+.sol-col{flex:0 0 var(--cw);position:relative;}
+.slot{width:var(--cw);height:var(--ch);border-radius:var(--cr);border:1.5px dashed rgba(255,255,255,.22);background:rgba(0,0,0,.14);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.28);font-size:calc(var(--cw)*.42);cursor:pointer;}
+.slot.target{border-color:rgba(245,200,66,.75);border-style:solid;background:rgba(245,200,66,.12);color:rgba(245,200,66,.8);}
+/* ── Playing card ───────────────────────────────────────── */
+.card{width:var(--cw);height:var(--ch);border-radius:var(--cr);background:linear-gradient(180deg,#fff 0%,#f3f1ea 100%);
+  border:1px solid rgba(0,0,0,.22);box-shadow:0 1px 2px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.18);
+  color:#1b1e26;font-family:var(--display);font-weight:800;flex-shrink:0;cursor:pointer;position:relative;
+  padding:0;margin:0;transition:transform .14s var(--ease),box-shadow .14s;touch-action:manipulation;}
+.card.red{color:#d0262f;}
+.card .ix{position:absolute;top:calc(var(--cw)*.05);left:calc(var(--cw)*.08);display:flex;align-items:baseline;gap:1px;
+  font-size:calc(var(--cw)*.34);line-height:1;letter-spacing:-.05em;}
+.card .ix i{font-style:normal;font-size:.78em;letter-spacing:0;}
+.card .pip{position:absolute;right:calc(var(--cw)*.08);bottom:calc(var(--cw)*.04);font-size:calc(var(--cw)*.56);line-height:1;}
+.card.face-down{cursor:default;background:
+  repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 2px,transparent 2px 6px),
+  linear-gradient(160deg,#4166d5,#1d3480);
+  border-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),inset 0 0 0 3px rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.35);}
+.card.face-down.tappable{cursor:pointer;}
+.card.selected{transform:translateY(-3px);box-shadow:0 0 0 2.5px var(--gold),0 8px 16px rgba(0,0,0,.4);z-index:50;}
+.card.hint{box-shadow:0 0 0 2.5px #4ade80,0 6px 14px rgba(0,0,0,.35);}
+.stacked{position:absolute;left:0;}
+.stock-count{position:absolute;left:50%;bottom:calc(var(--cw)*.1);transform:translateX(-50%);min-width:24px;padding:1px 7px;border-radius:999px;background:rgba(8,14,34,.78);text-align:center;font-size:.75rem;font-weight:800;color:#fff;font-family:var(--font);pointer-events:none;}
+.sol-table{position:relative;}
+.sol-tip{position:absolute;left:12px;right:12px;bottom:14px;text-align:center;font-size:.82rem;line-height:1.45;color:rgba(255,255,255,.5);pointer-events:none;transition:opacity .3s;}
+.sol-tip.gone{opacity:0;}
+.sol-actions{display:flex;justify-content:center;margin-top:12px;}
+@keyframes sol-pop{0%{transform:scale(.9);}60%{transform:scale(1.04);}100%{transform:none;}}
+.card.land{animation:sol-pop .22s var(--ease);}
 </style>
 </head>
 <body>
-<nav class="site-nav" style="background:rgba(0,40,20,.6);border-bottom:1px solid rgba(255,255,255,.1);">
-  <a class="nav-back" href="../index.html" style="color:rgba(255,255,255,.8);">← Home</a>
-  <span class="nav-title" style="color:#fff;">Solitaire</span>
+<nav class="site-nav">
+  <a class="nav-back" href="../index.html">← Home</a>
+  <span class="nav-title">Solitaire</span>
+  <button class="icon-btn" id="sol-new" aria-label="New game" title="New game"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
 </nav>
-<div class="page" style="padding:4px 0 0;"><div class="wrap" id="sol-wrap">
-<div class="sol-stats">
-  <div class="sol-stat"><div class="sol-val" id="sol-score">0</div><div class="sol-lbl">Score</div></div>
-  <div class="sol-stat"><div class="sol-val" id="sol-moves">0</div><div class="sol-lbl">Moves</div></div>
-  <div class="sol-stat"><div class="sol-val" id="sol-time">0:00</div><div class="sol-lbl">Time</div></div>
-  <button class="btn btn-gold btn-sm" id="sol-new" style="padding:4px 10px;font-size:.72rem;">New</button>
+<div class="sol-page" id="sol-wrap">
+<div class="sol-hud">
+  <div class="stat"><div class="stat-val" id="sol-score">0</div><div class="stat-lbl">Score</div></div>
+  <div class="stat"><div class="stat-val" id="sol-moves">0</div><div class="stat-lbl">Moves</div></div>
+  <div class="stat"><div class="stat-val" id="sol-time">0:00</div><div class="stat-lbl">Time</div></div>
 </div>
-<div id="sol-game"></div>
-</div></div>
+<div class="felt sol-table" id="sol-table"><div id="sol-game"></div>
+<div class="sol-tip" id="sol-tip">Tap a card, then tap where it goes.<br>Double-tap a card to send it to a foundation.</div></div>
+</div>
 <script>
 'use strict';
 const SUITS=['♠','♥','♦','♣'];const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const RED=new Set(['♥','♦']);
 function isRed(suit){return RED.has(suit);}
 function rankVal(r){return RANKS.indexOf(r);}
+const hap=k=>{try{window.GN&&GN.haptic(k);}catch(e){}};
 
 // State
 let stock,waste,foundations,tableau,moves,score,timer,timerInt,won;
 // Layout sizes
-let CW=58,CH=80,STACK_OFFSET=18,FACE_DOWN_H=10;
+let CW=48,CH=66,GAP=5,STACK_OFFSET=20,FACE_DOWN_H=8;
 
 function calcSizes(){
-  const wrap=document.getElementById('sol-wrap');
-  const w=wrap?wrap.clientWidth-8:360;
-  CW=Math.floor((w-6*4)/7);CH=Math.round(CW*1.35);
-  STACK_OFFSET=Math.round(CW*0.3);FACE_DOWN_H=Math.round(CW*0.17);
-  document.documentElement.style.setProperty('--cw',CW+'px');
-  document.documentElement.style.setProperty('--ch',CH+'px');
+  const table=document.getElementById('sol-table');
+  const w=(table?table.clientWidth:374)-12;
+  GAP=w>420?8:5;
+  CW=Math.min(84,Math.floor((w-6*GAP)/7));CH=Math.round(CW*1.4);
+  STACK_OFFSET=Math.round(CW*0.42);FACE_DOWN_H=Math.max(6,Math.round(CW*0.18));
+  const r=document.documentElement.style;
+  r.setProperty('--cw',CW+'px');r.setProperty('--ch',CH+'px');r.setProperty('--gap',GAP+'px');
+  r.setProperty('--cr',Math.max(5,Math.round(CW*.11))+'px');
+}
+function fmtTime(t){return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;}
+function startTimer(){
+  clearInterval(timerInt);
+  timerInt=setInterval(()=>{timer++;document.getElementById('sol-time').textContent=fmtTime(timer);},1000);
+  document.getElementById('sol-time').textContent=fmtTime(timer);
 }
 
 function newDeck(){
@@ -87,11 +111,17 @@ function newGame(){
   for(let col=0;col<7;col++)for(let row=0;row<=col;row++){const c=deck.pop();c.faceUp=row===col;tableau[col].push(c);}
   stock=[...deck].map(c=>({...c,faceUp:false}));
   waste=[];foundations=[[],[],[],[]];
-  moves=0;score=0;won=false;
-  clearInterval(timerInt);timer=0;
-  timerInt=setInterval(()=>{timer++;document.getElementById('sol-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+  moves=0;score=0;won=false;sel=null;
+  timer=0;startTimer();
   try{sessionStorage.removeItem('sol_state');}catch(e){}
   render();
+}
+async function confirmNew(){
+  if(!won&&moves>0&&window.GN){
+    const ok=await GN.confirm('Your current game will be lost.',{title:'Start a new game?',ok:'New Game'});
+    if(!ok)return;
+  }
+  newGame();
 }
 
 function canStack(card,target){// tableau rules: alternating color, descending rank
@@ -107,6 +137,8 @@ function canFoundation(card,pile){
 
 // Selection state
 let sel=null;// {from:'stock'|'waste'|'found'|'tab', col, idx, cards}
+let lastTap={k:'',t:0};
+let landed=null; // card object that just moved (for a small pop animation)
 
 function selectCard(from,col,idx){
   if(sel){
@@ -126,6 +158,7 @@ function selectCard(from,col,idx){
     if(!foundations[col].length)return;
     sel={from,col,idx:0,cards:[foundations[col][foundations[col].length-1]]};
   }
+  hap('select');
   render();
 }
 
@@ -135,7 +168,7 @@ function tryMove(toFrom,toCol,toIdx){
   if(toFrom==='found'&&cards.length===1){
     if(canFoundation(cards[0],foundations[toCol])){
       removeCards();foundations[toCol].push(cards[0]);
-      score+=10;moves++;checkWin();return true;
+      score+=10;moves++;landed=cards[0];hap('light');checkWin();return true;
     }
   }
   if(toFrom==='tab'){
@@ -143,7 +176,7 @@ function tryMove(toFrom,toCol,toIdx){
     const target=pile.length?pile[pile.length-1]:null;
     if(canStack(cards[0],target)){
       removeCards();cards.forEach(c=>pile.push(c));
-      moves++;score+=5;return true;
+      moves++;score+=5;landed=cards[0];hap('light');return true;
     }
   }
   return false;
@@ -161,60 +194,100 @@ function removeCards(){
   }
 }
 
+// Send the current selection (a single card) to a foundation if it fits.
+function selToFoundation(){
+  if(!sel||sel.cards.length!==1)return false;
+  for(let f=0;f<4;f++){if(canFoundation(sel.cards[0],foundations[f])&&tryMove('found',f,0)){sel=null;return true;}}
+  return false;
+}
+
 function autoFoundation(col){
   // Auto-move top card to foundation if possible
-  const pile=tableau[col];if(!pile.length)return;
-  const top=pile[pile.length-1];if(!top.faceUp)return;
-  for(let f=0;f<4;f++){if(canFoundation(top,foundations[f])){pile.pop();foundations[f].push(top);score+=10;moves++;checkWin();return;}}
+  const pile=tableau[col];if(!pile.length)return false;
+  const top=pile[pile.length-1];if(!top.faceUp)return false;
+  for(let f=0;f<4;f++){if(canFoundation(top,foundations[f])){
+    sel={from:'tab',col,idx:pile.length-1,cards:[top]};tryMove('found',f,0);sel=null;return true;}}
+  return false;
 }
 
 function drawStock(){
   sel=null;
-  if(stock.length){const c=stock.pop();c.faceUp=true;waste.push(c);moves++;}
-  else{stock=[...waste].reverse().map(c=>({...c,faceUp:false}));waste=[];score=Math.max(0,score-100);}
+  if(stock.length){const c=stock.pop();c.faceUp=true;waste.push(c);moves++;hap('light');}
+  else if(waste.length){stock=[...waste].reverse().map(c=>({...c,faceUp:false}));waste=[];score=Math.max(0,score-100);hap('medium');}
   render();
+}
+
+// Everything face-up and the stock empty → the game is solved; let the player finish in one tap.
+function canAutoFinish(){
+  return !won&&!stock.length&&!waste.length&&tableau.every(p=>p.every(c=>c.faceUp))&&tableau.some(p=>p.length);
+}
+function autoFinish(){
+  if(!canAutoFinish())return;
+  const step=()=>{
+    if(won)return;
+    for(let col=0;col<7;col++){if(autoFoundation(col)){render();setTimeout(step,70);return;}}
+  };
+  step();
 }
 
 function checkWin(){
   if(foundations.every(f=>f.length===13)){
     won=true;clearInterval(timerInt);
-    const timeStr=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;
+    const timeStr=fmtTime(timer);
     GameHistory.save('sol',{_summary:`Solved in ${moves} moves · ${timeStr}`,_badge:moves+' moves',moves,time:timer,score});
     try{sessionStorage.removeItem('sol_state');}catch(e){}
+    hap('success');
     render();
-    setTimeout(()=>{
-      const msg=document.createElement('div');
-      msg.style.cssText='text-align:center;padding:16px;';
-      msg.innerHTML=`<div style="font-family:var(--serif);font-size:1.2rem;font-weight:900;color:var(--gold);margin-bottom:10px;">🎉 You Win!</div>
-        <div style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:10px;">Score: ${score} · Moves: ${moves} · Time: ${timeStr}</div>`;
-      const hb=GameHistory.btn('sol','Solitaire',e=>GameHistory.renderStatGrid([{val:e.score,lbl:'Score'},{val:e.moves,lbl:'Moves'},{val:Math.floor(e.time/60)+':'+String(e.time%60).padStart(2,'0'),lbl:'Time'}]));
-      hb.style.display='block';hb.style.margin='0 auto';
-      msg.appendChild(hb);
-      document.getElementById('sol-game').appendChild(msg);
-    },100);
+    setTimeout(showWin,350);
   }
+}
+function histBtn(){
+  const hb=GameHistory.btn('sol','Solitaire',e=>GameHistory.renderStatGrid([{val:e.score,lbl:'Score'},{val:e.moves,lbl:'Moves'},{val:fmtTime(e.time),lbl:'Time'}]));
+  hb.style.cssText='';hb.className='btn btn-outline btn-block';hb.textContent='📜 Past games';
+  return hb;
+}
+function showWin(){
+  const body=document.createElement('div');
+  body.innerHTML=`<div style="font-size:2.6rem;margin-bottom:6px">🎉</div>
+    <div class="stat-row" style="margin:6px 0 4px">
+      <div class="stat"><div class="stat-val">${score}</div><div class="stat-lbl">Score</div></div>
+      <div class="stat"><div class="stat-val">${moves}</div><div class="stat-lbl">Moves</div></div>
+      <div class="stat"><div class="stat-val">${fmtTime(timer)}</div><div class="stat-lbl">Time</div></div>
+    </div>`;
+  const sh=GN.sheet({title:'You win!',body,actions:[{label:'Play Again',primary:true,onClick:newGame},{label:'Close'}]});
+  const acts=sh.el.querySelector('.gn-actions');acts.insertBefore(histBtn(),acts.lastChild);
 }
 
 function cardEl(card,extraStyle=''){
   const d=document.createElement('div');
   d.className='card '+(card.faceUp?(isRed(card.s)?'red':'black'):'face-down');
   if(card.faceUp){
-    d.innerHTML=`<div class="card-top">${card.r}<br>${card.s}</div><div class="card-center">${card.s}</div>`;
+    d.innerHTML=`<div class="ix">${card.r}<i>${card.s}</i></div><div class="pip">${card.s}</div>`;
+    d.setAttribute('aria-label',card.r+card.s);
+    if(landed&&landed.s===card.s&&landed.r===card.r)d.classList.add('land');
   }
   if(extraStyle)d.style.cssText+=extraStyle;
   return d;
+}
+
+// Tap on a card: double-tap (or tapping the selected card again) sends it to a foundation.
+function isDoubleTap(key){
+  const now=Date.now();const dbl=lastTap.k===key&&now-lastTap.t<380;
+  lastTap={k:key,t:dbl?0:now};return dbl;
 }
 
 function render(){
   const game=document.getElementById('sol-game');game.innerHTML='';
   document.getElementById('sol-score').textContent=score;
   document.getElementById('sol-moves').textContent=moves;
+  const selOne=sel&&sel.cards.length===1?sel.cards[0]:null;
   // Top row
   const top=document.createElement('div');top.className='sol-top';
   // Stock
-  const stk=document.createElement('div');
-  if(stock.length){const c=cardEl({s:'?',r:'?',faceUp:false});c.style.cursor='pointer';c.addEventListener('click',drawStock);stk.appendChild(c);}
-  else{stk.className='sol-empty';stk.style.cursor='pointer';stk.textContent='↺';stk.style.cssText+=`;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:rgba(255,255,255,.3);`;stk.addEventListener('click',drawStock);}
+  const stk=document.createElement('div');stk.style.position='relative';
+  if(stock.length){const c=cardEl({s:'?',r:'?',faceUp:false});c.classList.add('tappable');c.addEventListener('click',drawStock);stk.appendChild(c);
+    const n=document.createElement('div');n.className='stock-count';n.textContent=stock.length;stk.appendChild(n);}
+  else{const e=document.createElement('div');e.className='slot';e.textContent=waste.length?'↺':'';e.setAttribute('aria-label','Recycle waste');e.addEventListener('click',drawStock);stk.appendChild(e);}
   top.appendChild(stk);
   // Waste
   const wst=document.createElement('div');
@@ -222,76 +295,117 @@ function render(){
     const c=cardEl(waste[waste.length-1]);
     const isSel=sel&&sel.from==='waste';
     if(isSel)c.classList.add('selected');
-    c.addEventListener('click',()=>{if(isSel){sel=null;render();}else selectCard('waste',0,0);});
+    c.addEventListener('click',()=>{
+      const dbl=isDoubleTap('w');
+      if(isSel){ if(!selToFoundation())sel=null; render(); return; }
+      selectCard('waste',0,0);
+      if(dbl&&selToFoundation())render();
+    });
     wst.appendChild(c);
-  } else {const e=document.createElement('div');e.className='sol-empty';wst.appendChild(e);}
+  } else {const e=document.createElement('div');e.className='slot';e.style.cursor='default';wst.appendChild(e);}
   top.appendChild(wst);
   // Spacer
   const sp=document.createElement('div');sp.style.flex='1';top.appendChild(sp);
   // Foundations
   foundations.forEach((f,i)=>{
     const fd=document.createElement('div');
+    const isTarget=selOne&&canFoundation(selOne,f);
     if(f.length){
       const c=cardEl(f[f.length-1]);
       const isSel=sel&&sel.from==='found'&&sel.col===i;
       if(isSel)c.classList.add('selected');
-      c.addEventListener('click',()=>{if(isSel){sel=null;render();}else selectCard('found',i,0);});
+      if(isTarget)c.classList.add('hint');
+      c.addEventListener('click',()=>{
+        if(isSel){sel=null;render();return;}
+        if(sel&&tryMove('found',i,0)){sel=null;render();return;}
+        sel=null;selectCard('found',i,0);
+      });
       fd.appendChild(c);
     } else {
-      fd.className='sol-empty';fd.style.cssText+=`;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:rgba(255,255,255,.2);`;
-      fd.textContent=['♠','♥','♦','♣'][i];
-      fd.addEventListener('click',()=>{if(sel)tryMove('found',i,0)&&(sel=null)&&render();});
+      const e=document.createElement('div');e.className='slot'+(isTarget?' target':'');
+      e.textContent=['♠','♥','♦','♣'][i];
+      e.addEventListener('click',()=>{if(sel){if(tryMove('found',i,0))sel=null;else{sel=null;hap('error');}render();}});
+      fd.appendChild(e);
     }
     top.appendChild(fd);
   });
   game.appendChild(top);
   // Tableau
   const tab=document.createElement('div');tab.className='sol-tableau';
+  game.appendChild(tab);
+  // Compress long columns so the whole tableau fits on screen
+  const avail=Math.max(CH*2.5,window.innerHeight-(tab.getBoundingClientRect().top+window.scrollY)-40);
   tableau.forEach((pile,col)=>{
     const colEl=document.createElement('div');colEl.className='sol-col';
     colEl.style.minHeight=CH+'px';
+    const nUp=pile.filter(c=>c.faceUp).length,nDown=pile.length-nUp;
+    let upOff=STACK_OFFSET,downOff=FACE_DOWN_H;
+    const need=CH+Math.max(0,nUp-1)*upOff+nDown*downOff;
+    if(need>avail&&nUp>1){upOff=Math.max(Math.round(CW*.26),Math.floor((avail-CH-nDown*downOff)/(nUp-1)));}
     // Empty column drop target
     if(!pile.length){
-      const e=document.createElement('div');e.className='sol-empty';
+      const isTarget=sel&&sel.cards[0].r==='K'&&!(sel.from==='tab'&&sel.col===col);
+      const e=document.createElement('div');e.className='slot'+(isTarget?' target':'');
       e.style.position='absolute';e.style.top='0';
-      e.addEventListener('click',()=>{if(sel)tryMove('tab',col,0)&&(sel=null)&&render();});
+      e.addEventListener('click',()=>{if(sel){if(tryMove('tab',col,0))sel=null;else{sel=null;hap('error');}render();}});
       colEl.appendChild(e);
     }
+    let y=0;
     pile.forEach((card,idx)=>{
-      const top=idx===0?0:(pile.slice(0,idx).reduce((s,c,i)=>{return s+(c.faceUp?STACK_OFFSET:FACE_DOWN_H);},0));
-      const c=cardEl(card,`position:absolute;top:${top}px;`);
-      colEl.style.minHeight=(top+CH)+'px';
+      const c=cardEl(card,`position:absolute;top:${y}px;`);
+      colEl.style.minHeight=(y+CH)+'px';
+      y+=card.faceUp?upOff:downOff;
       const isSel=sel&&sel.from==='tab'&&sel.col===col&&idx>=sel.idx;
       if(isSel)c.classList.add('selected');
+      if(idx===pile.length-1&&sel&&!(sel.from==='tab'&&sel.col===col)&&canStack(sel.cards[0],card))c.classList.add('hint');
       c.addEventListener('click',()=>{
-        if(sel&&sel.from!=='tab'||(sel&&sel.col!==col)){if(tryMove('tab',col,idx)){sel=null;render();return;}sel=null;}
+        const dbl=card.faceUp&&idx===pile.length-1&&isDoubleTap('t'+col);
+        if(sel&&(sel.from!=='tab'||sel.col!==col)){if(tryMove('tab',col,idx)){sel=null;render();return;}sel=null;}
         if(card.faceUp){
-          if(isSel){sel=null;render();return;}
+          if(isSel){
+            // Second tap on the selected top card sends it home if possible
+            if(!(idx===pile.length-1&&selToFoundation()))sel=null;
+            render();return;
+          }
           selectCard('tab',col,idx);
+          if(dbl&&selToFoundation())render();
         } else if(idx===pile.length-1){card.faceUp=true;score+=5;moves++;render();}
+        else if(!sel)hap('error');
       });
-      // Double-click to auto foundation
-      c.addEventListener('dblclick',()=>{autoFoundation(col);render();});
       colEl.appendChild(c);
     });
     tab.appendChild(colEl);
   });
-  game.appendChild(tab);
+  // Auto-finish button once everything is face-up
+  if(canAutoFinish()){
+    const a=document.createElement('div');a.className='sol-actions';
+    const b=document.createElement('button');b.className='btn btn-gold';b.textContent='✨ Auto-finish';b.addEventListener('click',autoFinish);
+    a.appendChild(b);game.appendChild(a);
+  }
+  if(won){
+    const a=document.createElement('div');a.className='sol-actions';
+    const b=document.createElement('button');b.className='btn btn-gold';b.textContent='Play Again';b.addEventListener('click',newGame);
+    a.appendChild(b);game.appendChild(a);
+  }
+  document.getElementById('sol-tip').classList.toggle('gone',moves>0);
+  landed=null;
 }
 
-document.getElementById('sol-new').addEventListener('click',newGame);
-window.addEventListener('resize',()=>{calcSizes();render();});
+document.getElementById('sol-new').addEventListener('click',confirmNew);
+let _rz;window.addEventListener('resize',()=>{clearTimeout(_rz);_rz=setTimeout(()=>{calcSizes();render();},80);});
 function saveState(){if(won||!tableau)return;try{sessionStorage.setItem('sol_state',JSON.stringify({stock,waste,foundations,tableau,moves,score,timer,_ts:Date.now()}));}catch(e){}}
 function loadState(){
   try{
     const raw=sessionStorage.getItem('sol_state');if(!raw)return false;
     const s=JSON.parse(raw);if(!s.tableau)return false;
     calcSizes();stock=s.stock;waste=s.waste;foundations=s.foundations;tableau=s.tableau;moves=s.moves;score=s.score;sel=null;won=false;
-    timer=s.timer||0;timerInt=setInterval(()=>{timer++;document.getElementById('sol-time').textContent=`${Math.floor(timer/60)}:${String(timer%60).padStart(2,'0')}`;},1000);
+    timer=s.timer||0;startTimer();
     render();return true;
   }catch(e){return false;}
 }
 window.addEventListener('beforeunload',saveState);
+window.addEventListener('pagehide',saveState);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveState();});
 if(!loadState())newGame();
 </script>
 </body>
