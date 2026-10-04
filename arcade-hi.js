@@ -91,6 +91,8 @@ const ArcadeHi = (function(){
         <button class="btn btn-outline btn-block" id="ahi-skip" style="max-width:240px;margin:0 auto;display:block;font-size:.78rem;">Skip</button>
       </div>`;
     document.body.style.overflow = 'hidden';
+    // Always release the scroll lock however the overlay is dismissed
+    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; _rm(); }; }
     document.body.appendChild(overlay);
 
     // Detect mobile
@@ -240,6 +242,8 @@ const ArcadeHi = (function(){
         </div>
       </div>`;
     document.body.style.overflow = 'hidden';
+    // Always release the scroll lock however the overlay is dismissed
+    { const _rm = overlay.remove.bind(overlay); overlay.remove = () => { document.body.style.overflow = ''; _rm(); }; }
     document.body.appendChild(overlay);
 
     // Close on backdrop click
@@ -248,11 +252,17 @@ const ArcadeHi = (function(){
 
     if(hasScores){
       document.getElementById('ahi-clear').addEventListener('click', () => {
-        if(confirm(`Clear all ${gameName} high scores?\n\nThis can't be undone.`)){
+        const doClear = () => {
           save(key, []);
           overlay.remove();
           // Re-open to show empty state
           showBoard(key, title, null);
+        };
+        if(window.GN && GN.confirm){
+          GN.confirm("This can't be undone.", {title:`Clear ${gameName} high scores?`, ok:'Clear scores', danger:true})
+            .then(ok => { if(ok) doClear(); });
+        } else if(confirm(`Clear all ${gameName} high scores?\n\nThis can't be undone.`)){
+          doClear();
         }
       });
     }
