@@ -480,8 +480,8 @@ const FrequentPlayers = (function(){
       `;
       setup.insertBefore(cta, setup.firstChild);
 
-      // Hide the redundant small nav link now that the CTA is in-page
-      aiLink.style.display = 'none';
+      // The compact nav link stays visible so you can switch to the AI
+      // version from mid-game too, not just from setup.
     }catch(e){}
   }
 
