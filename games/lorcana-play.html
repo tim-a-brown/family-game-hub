@@ -27,6 +27,8 @@
 }
 body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0) 60%),#0d1030;}
 .k-toast{pointer-events:none;}
+/* Longer messages read better as a wide pill above the turn controls */
+html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));border-radius:18px;bottom:calc(var(--safe-b) + 84px + var(--corner-y));}
 #app.stage.full{padding:0;}
 
 /* ── Play layout ───────────────────────────────────────────────────────── */
@@ -34,7 +36,7 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
   grid-template-areas:"table" "hand" "bar";gap:6px;height:var(--avail,calc(100dvh - 64px));
   padding:0 calc(6px + env(safe-area-inset-right,0px)) calc(var(--safe-b) + 6px + var(--corner-y)) calc(6px + env(safe-area-inset-left,0px));overflow:hidden;}
 .lp-table{grid-area:table;position:relative;min-height:0;border-radius:22px;padding:7px;}
-.lp-felt{position:relative;height:100%;border-radius:16px;display:grid;grid-template-rows:auto minmax(0,1fr) auto minmax(0,1fr) auto;overflow:hidden;}
+.lp-felt{position:relative;height:100%;border-radius:16px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto minmax(0,1fr) auto;overflow:hidden;}
 .lp-hand{grid-area:hand;position:relative;height:var(--hh);}
 .lp-bar{grid-area:bar;display:flex;gap:8px;align-items:center;padding:0 var(--corner-x);}
 .lp-panel{display:none;}
@@ -45,10 +47,10 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
 }
 
 /* Player strip: name, lore ring, ink, deck, discard */
-.lp-strip{display:flex;align-items:center;gap:8px;padding:5px 8px;min-height:46px;background:rgba(0,0,0,.18);}
+.lp-strip{display:flex;align-items:center;gap:7px;padding:5px 8px;min-height:46px;min-width:0;background:rgba(0,0,0,.18);}
 .lp-strip.top{box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);}
 .lp-strip.bot{box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
-.lp-who{display:flex;align-items:center;gap:7px;min-width:0;flex:1 1 auto;}
+.lp-who{display:flex;align-items:center;gap:7px;min-width:0;flex:1 1 0;}
 .lp-who .avatar{width:30px;height:30px;font-size:.85rem;flex:none;}
 .lp-who .nm{min-width:0;line-height:1.1;}
 .lp-who b{display:block;font-weight:900;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -63,6 +65,8 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
 .lore.drop-ok{filter:drop-shadow(0 0 8px var(--gilt));}
 .inkz{flex:none;display:flex;align-items:center;gap:5px;border:0;background:none;padding:3px 4px;border-radius:10px;color:#fff;}
 .inkz .hexes{display:flex;flex-wrap:wrap;gap:2px;max-width:78px;}
+.inkz .hx1{display:none;width:16px;height:18px;}
+@media (max-width:600px){.inkz .hexes{display:none;}.inkz .hx1{display:block;}}
 .hx{width:12px;height:13px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:linear-gradient(160deg,var(--gilt-2),var(--gilt) 50%,var(--gilt-3));}
 .hx.used{background:rgba(255,255,255,.18);}
 .inkz .ct{font-family:var(--display);font-size:1rem;line-height:1;white-space:nowrap;}
@@ -82,12 +86,12 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
 .lp-board{position:relative;min-height:0;overflow-x:hidden;overflow-y:auto;padding:6px 6px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--gap,6px);}
 .lp-board.drop-ok{background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 2px rgba(227,189,98,.55);border-radius:12px;}
 .lp-board .empty-msg{align-self:center;color:rgba(255,255,255,.32);font-weight:800;font-size:.85rem;text-align:center;pointer-events:none;}
-.lp-mid{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-height:30px;padding:3px 8px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.28) 20%,rgba(0,0,0,.28) 80%,transparent);}
+.lp-mid{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 8px;min-height:30px;min-width:0;padding:3px 8px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.28) 20%,rgba(0,0,0,.28) 80%,transparent);}
 .phases{display:flex;align-items:center;gap:3px;flex:none;}
 .phases i{font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:8px;color:rgba(255,255,255,.4);}
 .phases i.on{background:var(--gilt);color:#2b1a00;}
 .phases i.done{color:rgba(255,255,255,.62);}
-.lp-msg{min-width:0;flex:1 1 auto;font-size:.78rem;font-weight:800;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:0;background:none;text-align:left;padding:0;}
+.lp-msg{min-width:0;flex:1 1 160px;font-size:.78rem;font-weight:800;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:0;background:none;text-align:left;padding:0;}
 .lp-pick{position:absolute;inset:0;z-index:6;display:flex;align-items:center;gap:8px;padding:2px 6px 2px 10px;background:linear-gradient(90deg,#3a2a00,#6b4b0a);color:#fff3cf;font-weight:900;font-size:.85rem;}
 .lp-pick span{flex:1;min-width:0;line-height:1.15;}
 .lp-pick .btn{min-height:30px;padding:0 12px;font-size:.82rem;}
@@ -99,7 +103,11 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
   border-radius:calc(var(--cu) * .05);overflow:hidden;background:#1d1a2c;box-shadow:0 2px 0 rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.45);
   transition:transform .3s var(--ease),filter .25s,box-shadow .2s;cursor:pointer;user-select:none;-webkit-user-select:none;}
 .lc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none;}
-.slot.ex .lc{transform:rotate(90deg);}
+/* Exerted: the card turns sideways, but our labels stay upright and readable */
+.slot.ex .lc{width:var(--cu);height:calc(var(--cu) * .716);margin:calc(var(--cu) * -.358) 0 0 calc(var(--cu) / -2);}
+.slot.ex .lc > img,.slot.ex .lc > .face{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
+.lc > img,.lc > .face{transition:transform .3s var(--ease);}
+.lc{transition:transform .3s var(--ease),filter .25s,box-shadow .2s,width .3s var(--ease),height .3s var(--ease),margin .3s var(--ease);}
 .slot.loc .lc{width:var(--cu);height:calc(var(--cu) * .716);margin:calc(var(--cu) * -.358) 0 0 calc(var(--cu) / -2);}
 .slot.loc .lc img.port{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
 .slot.dry .lc{filter:saturate(.55) brightness(.82);}
@@ -110,11 +118,14 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
 @keyframes tgt{50%{filter:brightness(1.15);}}
 .picking .slot:not(.tgt):not(.tgt-ok) .lc{filter:brightness(.55) saturate(.6);}
 .slot.drag-src{opacity:.35;}
+.slot.hover-drop .lc{transform:scale(1.08);box-shadow:0 0 0 3px #fff,0 0 22px rgba(127,224,160,.95);}
+.inkz.hover-drop,.lore.hover-drop{transform:scale(1.15);}
+.lp-board.hover-drop{background:rgba(227,189,98,.22);}
+.lore.drop-ok{filter:drop-shadow(0 0 8px var(--gilt));}
 .slot.flash .lc{animation:flash .6s ease;}
 @keyframes flash{30%{filter:brightness(2) saturate(1.4);}}
 .slot.hitd .lc{animation:hit .45s ease;}
 @keyframes hit{20%{transform:translateX(-4px) rotate(var(--rot,0deg));}40%{transform:translateX(4px) rotate(var(--rot,0deg));}60%{transform:translateX(-2px) rotate(var(--rot,0deg));}}
-.slot.ex.hitd .lc{--rot:90deg;}
 /* Overlay: name + stats, readable at any size */
 .ov{position:absolute;left:0;right:0;bottom:0;padding:calc(var(--cu) * .03) calc(var(--cu) * .03) calc(var(--cu) * .025);
   background:linear-gradient(180deg,rgba(10,8,24,0),rgba(10,8,24,.82) 34%,rgba(10,8,24,.94));color:#fff;line-height:1.05;pointer-events:none;}
@@ -151,7 +162,7 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
   radial-gradient(90% 60% at 50% 45%,#34479a 0%,#1b2560 55%,#0d1338 100%);}
 
 /* Hand */
-.lp-hand .row{position:absolute;left:0;right:0;bottom:0;height:100%;display:flex;justify-content:center;align-items:flex-end;}
+.lp-hand .hrow{position:absolute;left:0;right:0;bottom:0;height:100%;display:flex;justify-content:center;align-items:flex-end;}
 .lp-hand .slot{margin-left:var(--ov,0px);transition:transform .2s var(--ease),margin .2s;}
 .lp-hand .slot:first-child{margin-left:0;}
 .lp-hand .slot.sel{transform:translateY(-10px);z-index:3;}
@@ -159,7 +170,13 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
 .lp-hand .hid{display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.5);font-weight:800;gap:8px;}
 
 /* Bar & side panel */
-.lp-bar .btn,.lp-panel .btn{min-height:50px;}
+.lp-bar .btn,.lp-panel .btn{min-height:50px;white-space:nowrap;}
+.lp-bar .btn{padding:0 14px;font-size:1rem;}
+.lp-bar .btn-end{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;}
+.lp-bar .btn-fx{flex:none;}
+.btn-fx .sm{display:none;}
+@media (max-width:440px){.lp-bar .btn-fx .lg{display:none;}.lp-bar .btn-fx .sm{display:inline;}}
+@media (max-width:600px){.lp-mid .phases{order:0;}.lp-msg{order:1;flex-basis:100%;text-align:center;}}
 .lp-bar .grow{flex:1;}
 .btn-end{min-width:150px;}
 .btn-end.attn{animation:attn 1.6s ease-in-out infinite;}
@@ -469,7 +486,13 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
     shift: 'Pay the Shift cost to play this on top of one of your characters with the same name. It keeps that card’s state.'
   };
   function parseKw(d) {
-    var K = { extra: [] }, lines = String(d.tx || '').split(/\n+/);
+    var K = { extra: [] }, raw = String(d.tx || '').split(/\n+/), lines = [];
+    // Re-join lines that break inside reminder text "( … )"
+    raw.forEach(function (x) {
+      var prev = lines[lines.length - 1];
+      if (prev != null && (prev.split('(').length > prev.split(')').length)) lines[lines.length - 1] = prev + ' ' + x.trim();
+      else lines.push(x);
+    });
     lines.forEach(function (line) {
       var L = line.trim(); if (!L) return;
       if (/^\(.*\)$/.test(L)) return;                        // reminder text only, e.g. song cost
@@ -486,7 +509,8 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
           var nm = rem.match(/named ([^.)]+?)\s*\.?$/) || rem.match(/named ([^.)]+)/);
           if (nm) sh.names = nm[1].split(/\s*,\s*|\s+or\s+/).map(function (x) { return x.trim(); }).filter(Boolean);
           if (/any (one )?of your characters/i.test(rem)) sh.any = true;
-          var cm = rem.match(/your ([A-Z][\w' ]+?) characters/); if (cm && !sh.any) sh.cls = sh.cls || cm[1];
+          var cm = rem.match(/your ([A-Z][\w' ]+?) characters/);
+          if (cm && !sh.any) { if (cm[1] === d.n) sh.names.push(d.n); else sh.cls = sh.cls || cm[1]; }
           var dm = head.match(/Discard (a|an|one|two|\d+) ?(song|action|character|item|location)? cards?/i);
           if (dm) sh.discard = { n: nOf(dm[1]), type: dm[2] ? dm[2].toLowerCase() : null };
           if (!sh.names.length && !sh.any && !sh.cls) sh.names = [d.n];
@@ -734,42 +758,39 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
     });
     pool.forEach(function (d) {
       var sc;
-      if (d.t === 'character') sc = ((d.s || 0) * 0.55 + (d.w || 0) * 0.5 + (d.l || 0) * 1.7 + kwValue(d.K) + (d.K.onPlay ? 1 : 0)) / Math.max(1, d.c) * 2 + (d.K.vanilla ? 0.35 : 0) + (d.K.shift ? 0.3 : 0);
-      else if (d.t === 'location') sc = ((d.l || 0) * 1.6 + (d.w || 0) * 0.15) / Math.max(1, d.c) * 2 - 0.4;
-      else sc = 1.6 + (d.song ? 0.4 : 0) - d.c * 0.08;
+      // Favor cards whose whole text the game automates (keywords, simple effects)
+      var auto = d.K.vanilla ? 1 : d.K.onPlay && d.K.onPlay.all && d.K.extra.length === 1 ? 0.7 : 0;
+      if (d.t === 'character') sc = ((d.s || 0) * 0.55 + (d.w || 0) * 0.5 + (d.l || 0) * 1.6 + kwValue(d.K) + (d.K.onPlay ? 0.8 : 0)) / Math.max(1, d.c) * 2 + auto + (d.K.shift ? 0.3 : 0);
+      else if (d.t === 'location') sc = ((d.l || 0) * 1.6 + (d.w || 0) * 0.15) / Math.max(1, d.c) * 2 + auto;
+      else sc = 1.4 + (d.song ? 0.8 : 0) - d.c * 0.08 + d.K.fx.fx.length * 0.3;
       d._q = sc + (d.k ? 0.45 : -0.2) + rnd() * 1.1;
     });
-    var deck = {}, total = 0, used = {}, actions = 0, locs = 0;
-    function add(d, n) { n = Math.min(n, 60 - total); if (n <= 0) return 0; deck[d.id] = (deck[d.id] || 0) + n; total += n; used[d.full] = (used[d.full] || 0) + n; return n; }
-    function pickFrom(list, want) {
-      var turn = 0;
-      list.sort(function (a, b) { return b._q - a._q; });
-      var byInk = inks.map(function (ink) { return list.filter(function (d) { return inkOf(d).indexOf(ink) >= 0; }); });
-      var got = 0, guard = 0;
-      while (got < want && guard++ < 80) {
-        var src = byInk[turn % byInk.length]; turn++;
-        var d = null;
-        for (var i = 0; i < src.length; i++) {
-          var x = src[i]; if ((used[x.full] || 0) >= 4) continue;
-          if (x.t === 'action' && actions >= 8) continue;
-          if (x.t === 'location' && locs >= 3) continue;
-          d = x; break;
-        }
-        if (!d) { if (byInk.every(function (s) { return s.every(function (x) { return (used[x.full] || 0) >= 4; }); })) break; continue; }
-        var n = add(d, Math.min(4 - (used[d.full] || 0), want - got, d.t === 'location' ? 2 : d.c >= 7 ? 2 : 4));
-        if (d.t === 'action') actions += n; if (d.t === 'location') locs += n;
-        got += n;
-      }
-      return got;
-    }
+    var deck = {}, total = 0, used = {}, need = {};
+    CURVE.forEach(function (b) { need[b[0]] = b[1]; });
+    function bucket(d) { return Math.min(7, Math.max(1, d.c)); }
+    function add(d, n) { n = Math.min(n, 60 - total, 4 - (used[d.full] || 0)); if (n <= 0) return 0; deck[d.id] = (deck[d.id] || 0) + n; total += n; used[d.full] = (used[d.full] || 0) + n; need[bucket(d)] -= n; return n; }
+    function best(list) { return list.slice().sort(function (a, b) { return b._q - a._q; }); }
+    // A few songs and actions (2 copies each) and one location
+    var acts = best(pool.filter(function (d) { return d.t === 'action' && d.c <= 6; })), na = 0;
+    for (var i = 0; i < acts.length && na < 6; i++) na += add(acts[i], 2);
+    var loc = best(pool.filter(function (d) { return d.t === 'location'; }))[0]; if (loc) add(loc, 2);
+    // Characters on a curve, alternating inks so both colors show up
+    var chars = pool.filter(function (d) { return d.t === 'character'; });
     var carry = 0;
     CURVE.forEach(function (b) {
-      var cost = b[0], list = pool.filter(function (d) { return cost === 7 ? d.c >= 7 : d.c === cost; });
-      var want = b[1] + carry; carry = want - pickFrom(list, want);
+      var want = need[b[0]] + carry, got = 0, turn = 0;
+      var byInk = inks.map(function (ink) { return best(chars.filter(function (d) { return bucket(d) === b[0] && inkOf(d).indexOf(ink) >= 0; })); });
+      var guard = 0;
+      while (got < want && guard++ < 60) {
+        var src = byInk[turn++ % byInk.length], d = null;
+        for (var k = 0; k < src.length; k++) if ((used[src[k].full] || 0) < 4) { d = src[k]; break; }
+        if (!d) { if (byInk.every(function (s2) { return s2.every(function (x) { return (used[x.full] || 0) >= 4; }); })) break; continue; }
+        got += add(d, Math.min(want - got, d.c >= 7 ? 2 : 4));
+      }
+      carry = want - got;
     });
-    if (total < 60) pickFrom(pool.slice(), 60 - total);
-    var name = inks.join(' & ');
-    return { name: name, cards: deck };
+    if (total < 60) best(chars).forEach(function (d) { if (total < 60) add(d, 4); });
+    return { name: inks.join(' & '), cards: deck };
   }
   function pairings() { var out = []; for (var i = 0; i < INKS.length; i++) for (var j = i + 1; j < INKS.length; j++) out.push([INKS[i], INKS[j]]); return out; }
   // Deck choice for a seat: {kind:'quick', inks:[a,b]} | {kind:'saved', id} | {kind:'random'}
@@ -781,7 +802,7 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
     if (ch && ch.kind === 'quick' && ch.inks) return quickDeck(ch.inks);
     var p = pairings()[Math.floor(Math.random() * 15)];
     var q = quickDeck(p, 'r' + Math.random());
-    q.name = 'Random: ' + q.name; return q;
+    q.name = q.name + ' (random)'; return q;
   }
   function choiceLabel(ch) {
     if (!ch || ch.kind === 'random') return { name: 'Random deck', sub: 'Two random inks, built for you', inks: [] };
@@ -977,7 +998,7 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
     quest: function (pi, u) {
       C(u).ex = true;
       var n = LORE(u), st = S.st[pi];
-      log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + plural(n, 'lore'), pi);
+      log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + n + ' lore', pi);
       gainLore(pi, n);
       st.q++; st.ql += n;
       if (!st.big || n > st.big.n) st.big = { n: n, name: DD(u).full };
@@ -1016,7 +1037,7 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
     p.ink.forEach(function (u) { C(u).ex = false; });
     p.board.forEach(function (u) { if (isChar(u)) C(u).dry = true; });
     var locL = 0; p.board.forEach(function (u) { if (isLoc(u)) locL += LORE(u); });
-    if (locL) { gainLore(pi, locL); S.st[pi].loc += locL; log(p.name + ' gained ' + plural(locL, 'lore') + ' from locations', pi); }
+    if (locL) { gainLore(pi, locL); S.st[pi].loc += locL; log(p.name + ' gained ' + locL + ' lore from locations', pi); }
     if (p.lore >= WIN) return;
     if (S.turn === 1 && pi === S.first) { log(p.name + ' goes first and skips the first draw', pi); return; }
     if (!p.deckL.length) { S.loser = pi; log(p.name + ' had to draw from an empty deck', pi); return; }
@@ -1064,8 +1085,8 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
         (f.who === 'both' ? [actor, opp(actor)] : [actor]).forEach(function (pi) { var g = draw(pi, f.n); said.push(S.P[pi].name + ' drew ' + plural(g, 'card')); });
         break;
       case 'lore':
-        if (f.n > 0) { gainLore(actor, f.n); said.push(me.name + ' gained ' + plural(f.n, 'lore')); }
-        else { var lost = -gainLore(opp(actor), f.n); said.push(them.name + ' lost ' + plural(lost, 'lore')); }
+        if (f.n > 0) { gainLore(actor, f.n); said.push(me.name + ' gained ' + f.n + ' lore'); }
+        else { var lost = -gainLore(opp(actor), f.n); said.push(them.name + ' lost ' + lost + ' lore'); }
         break;
       case 'damage':
         if (f.all) them.board.filter(isChar).forEach(function (u) { dealDamage(u, f.n); });
@@ -1256,7 +1277,1546 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
     return back;
   }
 
-  //@@JS4@@
+  // ═════════════════════════════════════════════════════════════════════════
+  // Shell: game bar, rules, menu
+  // ═════════════════════════════════════════════════════════════════════════
+  var tok = 0, handing = false, finishing = false, SPD = 1;
+  var ui = { pick: null, hint: null, phaseIx: null, modal: 0, mullSel: {}, screen: 'setup' };
+  function later(fn, ms) { var t = tok; setTimeout(function () { if (t === tok && S) fn(); }, ms * SPD); }
+  Kit.init({
+    id: 'lorcana-play', title: 'Lorcana', mark: false,
+    theme: { felt: ['#2f4a8f', '#1d2f66', '#13204a'], back: ['#1b2560', '#e3bd62'], wood: ['#6b4a2c', '#43291a'] },
+    onNew: function () { tok++; Kit.handoff.close(); closeOverlays(); clearSave(); S = null; showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: past games' }); } },
+      { icon: 'cards', label: 'Deck builder', onClick: function () { openBuilderFromMenu(); } },
+      { icon: 'book', label: 'Game log', onClick: function () { showLog(); } },
+      { icon: 'sync', label: 'Update card library', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } }
+    ],
+    rules:
+      '<p class="goal">Be the first to collect <b>20 lore</b>. You get lore by sending your characters on quests.</p>' +
+      '<p>This is the Disney Lorcana trading card game with the real cards. Play the computer, or pass the phone between two players (your hand is hidden while the other person has it).</p>' +
+      '<h3>Your turn</h3><ol>' +
+      '<li><b>Ready, Set, Draw.</b> Your exerted (turned sideways) cards stand back up, your new characters are ready to act, your locations give you their lore, and you draw a card. The very first player skips that first draw.</li>' +
+      '<li><b>Ink.</b> Once per turn you may put a card with the swirly ink symbol (a gold ring around its cost) facedown into your <b>inkwell</b>. Each card there is 1 ink.</li>' +
+      '<li><b>Play cards.</b> Pay a card’s cost by exerting that much ink. Characters, items and locations stay on the table. Actions do their thing and go to the discard pile.</li>' +
+      '<li><b>Quest.</b> Exert a character to gain its lore (the diamonds).</li>' +
+      '<li><b>Challenge.</b> Exert a character to fight an opposing character that is <b>exerted</b> (or any location). Both deal damage equal to their strength at the same time. A card with damage equal to its willpower is <b>banished</b> (discarded).</li>' +
+      '<li>Tap <b>End turn</b> when you’re done.</li></ol>' +
+      '<p>New characters are <b>drying</b> (shown a little faded): they can’t quest, challenge or sing until your next turn.</p>' +
+      '<h3>Playing on this screen</h3><ul>' +
+      '<li><b>Tap any card</b> to see it big with its full text and what you can do with it.</li>' +
+      '<li>Or <b>drag</b>: a card from your hand onto the table to play it, onto your ink to ink it, onto one of your characters to Shift or sing; a character onto your lore ring to quest, onto an exerted opposing card to challenge, or onto your location to move there.</li>' +
+      '<li>Undo is in the menu and takes back your last move this turn (not draws or peeks at hidden cards).</li></ul>' +
+      '<h3>Songs</h3><p>A song is an action. Pay its cost, or exert one of your dry characters with cost at least as high as the song’s cost to sing it for free. <b>Singer 5</b> means a character counts as cost 5 for singing. <b>Sing Together 8</b> lets a group of your characters with total cost 8 sing it.</p>' +
+      '<h3>Locations</h3><p>Play a location, then pay its move cost (on the card) to move a character there. At the start of your turn you gain each location’s lore. Opposing characters can challenge a location at any time; it doesn’t hit back.</p>' +
+      '<h3>Keywords (done for you)</h3><ul>' +
+      '<li><b>Evasive:</b> only Evasive characters can challenge it. <b>Alert:</b> can challenge Evasive characters.</li>' +
+      '<li><b>Bodyguard:</b> may enter play exerted; opponents must challenge a Bodyguard first if they can.</li>' +
+      '<li><b>Ward:</b> opponents can’t choose it with effects (only challenge it).</li>' +
+      '<li><b>Rush:</b> can challenge the turn it’s played. <b>Reckless:</b> can’t quest and must challenge if it can.</li>' +
+      '<li><b>Challenger +N:</b> stronger while challenging. <b>Resist +N:</b> takes N less damage.</li>' +
+      '<li><b>Support:</b> when it quests, add its strength to another character this turn.</li>' +
+      '<li><b>Shift:</b> pay the Shift cost to play it on top of your character with the same name. It keeps that character’s damage and readiness, so it can often act right away.</li>' +
+      '<li><b>Boost:</b> once a turn, pay to tuck your top card under it. <b>Vanish:</b> if an opponent chooses it for an action, it’s banished.</li></ul>' +
+      '<h3>Other card text</h3><p>Every card’s own abilities are printed on it (tap to read). You do them yourself with <b>Apply effect</b>: draw cards, gain or lose lore, deal or remove damage, banish, exert or ready, return to hand, put into the inkwell, look at the top of a deck, give +strength, move cards from the discard, and more. After you play an action it opens by itself, often with the effect ready to tap.</p>' +
+      '<p><b>The computer plays by the keywords.</b> It inks, plays characters and locations, quests and challenges sensibly, uses Shift, Bodyguard and singing, and plays actions whose whole text is a simple effect (like “Deal 3 damage to chosen character”). It ignores the other abilities printed on its cards.</p>' +
+      '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks, with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
+      '<h3>Winning</h3><p>First to 20 lore wins. If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
+      '<p class="muted">Card data and art come from Lorcast (lorcast.com) and are saved on this device so the game works offline after the first download.</p>'
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Setup → choose decks → mulligan → play
+  // ═════════════════════════════════════════════════════════════════════════
+  function libLine() {
+    var box = el('div', { class: 'libline' });
+    function paint() {
+      if (!box.isConnected && box._mounted) { DB.subs.splice(DB.subs.indexOf(paint), 1); return; }
+      box._mounted = true;
+      box.className = 'libline' + (DB.status === 'error' ? ' err' : '');
+      if (DB.status === 'ready') box.innerHTML = Kit.icon('check') + '<span class="grow">Card library ready: ' + DB.cards.length.toLocaleString() + ' cards' + (DB.src ? ' from ' + esc(DB.src) : '') + '. Saved for offline play.</span>';
+      else if (DB.status === 'error') {
+        box.innerHTML = Kit.icon('sync') + '<span class="grow">' + esc(DB.note) + '</span>';
+        box.appendChild(el('button', { type: 'button', class: 'btn btn-sm btn-soft', text: 'Try again', onclick: function () { DB.load(true); } }));
+      } else box.innerHTML = '<div class="spin" style="width:22px;height:22px;border-width:3px;border-radius:50%;border-style:solid;border-color:rgba(255,255,255,.15);border-top-color:var(--gilt);animation:spin 1s linear infinite;flex:none"></div><span class="grow">' + esc(DB.note || 'Loading cards…') + '</span>';
+    }
+    DB.subs.push(paint); paint();
+    return box;
+  }
+  var lastCfg = null;
+  function showSetup() {
+    tok++; ui.screen = 'setup'; closeOverlays(); Kit.handoff.close();
+    document.documentElement.classList.remove('lp-on'); app.className = 'stage';
+    var st = Kit.setup(app, {
+      title: 'Lorcana',
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against a computer player' },
+        { id: 'pass', icon: 'users', title: 'Pass & play', desc: 'Two players share the phone. Your hand stays hidden from the other player' }
+      ],
+      players: { min: 2, max: 2, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      options: [
+        { id: 'first', label: 'Who goes first', help: 'The first player skips their first draw, as in the real game.', value: 'random', choices: [
+          ['random', 'Random', 'A coin flip decides.'], ['p1', 'Player 1', 'The first name on the list goes first.'], ['p2', 'Player 2', 'The second name on the list goes first.']] }
+      ],
+      intro: 'The Disney Lorcana card game, with the real cards',
+      start: 'Choose decks',
+      onStart: function (cfg) { lastCfg = cfg; showDeckPick(cfg); }
+    });
+    var start = $('.k-start', st.el);
+    st.el.insertBefore(libLine(), start);
+  }
+  function lastChoices(cfg) {
+    var L = lsGet(LAST, {}) || {};
+    return cfg.players.map(function (p, i) { return p.cpu ? (L.cpu || { kind: 'random' }) : (L['s' + i] || { kind: 'random' }); });
+  }
+  function rememberChoices(cfg, ch) {
+    var L = lsGet(LAST, {}) || {};
+    cfg.players.forEach(function (p, i) { if (p.cpu) L.cpu = ch[i]; else L['s' + i] = ch[i]; });
+    lsSet(LAST, L);
+  }
+  function showDeckPick(cfg, choices) {
+    tok++; ui.screen = 'decks'; closeOverlays();
+    document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
+    choices = choices || lastChoices(cfg);
+    app.innerHTML = '';
+    var wrap = el('div', { class: 'dk' });
+    wrap.appendChild(el('h1', { text: 'Choose decks' }));
+    wrap.appendChild(libLine());
+    var seats = el('div', { class: 'stack' });
+    wrap.appendChild(seats);
+    function paint() {
+      seats.innerHTML = '';
+      cfg.players.forEach(function (p, i) {
+        var lab = choiceLabel(choices[i]);
+        seats.appendChild(el('div', { class: 'dk-seat' }, [
+          el('span', { class: 'avatar', style: { '--c': p.color }, html: p.cpu ? Kit.icon('bot') : esc(p.name.charAt(0).toUpperCase()) }),
+          el('div', { class: 'grow' }, [el('b', { text: p.name }), el('small', { html: (lab.inks.length ? inkDots(lab.inks) + ' ' : '') + esc(lab.name) + ' · ' + esc(lab.sub) })]),
+          el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: function () { pickDeck(p, choices[i], function (ch) { choices[i] = ch; paint(); }); } })
+        ]));
+      });
+    }
+    paint();
+    var go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Start game', onclick: function () {
+      if (DB.status !== 'ready') { Kit.toast(DB.status === 'error' ? 'The card library isn’t downloaded yet' : 'Still loading the cards…'); return; }
+      var bad = choices.map(choiceLabel).filter(function (l) { return l.bad; })[0];
+      if (bad) { Kit.toast(bad.name + ' isn’t a legal deck yet'); return; }
+      rememberChoices(cfg, choices); newGame(cfg, choices);
+    } });
+    wrap.appendChild(go);
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: Kit.icon('cards') + '<span>Deck builder</span>', onclick: function () {
+      showBuilder(null, function () { showDeckPick(cfg, choices); });
+    } }));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: Kit.icon('users') + '<span>Change players</span>', onclick: showSetup }));
+    app.appendChild(wrap);
+    var sub = function () { if (!wrap.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
+    DB.subs.push(sub);
+    window.scrollTo(0, 0);
+  }
+  function pickDeck(p, cur, done) {
+    var node = el('div'), s;
+    function opt(ch, name, sub, inks, extra) {
+      var on = JSON.stringify(ch) === JSON.stringify(cur);
+      var b = el('button', { type: 'button', class: 'dk-opt' + (on ? ' on' : ''), onclick: function () { s.close(); Kit.sfx('pop'); done(ch); } }, [
+        inks && inks.length ? el('span', { html: inkDots(inks) }) : el('span', { html: Kit.icon('shuffle') }),
+        el('span', { class: 'grow' }, [el('span', { text: name }), sub ? el('small', { text: sub }) : null])
+      ]);
+      if (extra) b.appendChild(extra);
+      return b;
+    }
+    var mine = savedDecks();
+    node.appendChild(el('div', { class: 'dk-h', text: 'Your decks' }));
+    if (!mine.length) node.appendChild(el('p', { class: 'muted', text: 'No saved decks yet. Build one, or start from a quick deck.' }));
+    var list = el('div', { class: 'stack', style: { gap: '6px' } });
+    mine.forEach(function (d) {
+      var pr = DB.status === 'ready' ? deckProblems(d.cards) : [];
+      var edit = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', html: Kit.icon('pencil'), 'aria-label': 'Edit ' + d.name, onclick: function (e) { e.stopPropagation(); s.close(); showBuilder(d.id, function () { reopen(); }); } });
+      list.appendChild(opt({ kind: 'saved', id: d.id }, d.name, pr.length ? 'Not ready: ' + pr[0] : deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit));
+    });
+    node.appendChild(list);
+    node.appendChild(el('div', { class: 'dk-h', text: 'Quick decks (built for you)' }));
+    var g = el('div', { class: 'dk-grid' });
+    pairings().forEach(function (pr) { g.appendChild(opt({ kind: 'quick', inks: pr }, pr.join(' & '), '', pr)); });
+    node.appendChild(g);
+    node.appendChild(el('div', { class: 'dk-h', text: 'Surprise' }));
+    node.appendChild(opt({ kind: 'random' }, 'Random deck', 'Two random inks, different every game', []));
+    function reopen() { showDeckPick(lastCfg); }
+    s = Kit.sheet({ title: 'Deck for ' + p.name, node: node, actions: [
+      { label: 'Build a new deck', cls: 'btn-soft', onClick: function () { showBuilder(null, reopen); } },
+      { label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+
+  var uidN = 0;
+  function compactOf(d) { return { id: d.id, n: d.n, v: d.v, c: d.c, k: d.k, ink: d.ink, ty: d.ty, cl: d.cl, tx: d.tx, kwl: d.kwl, s: d.s, w: d.w, l: d.l, mv: d.mv, r: d.r, set: d.set, no: d.no, im: d.im }; }
+  function newSt() { return { q: 0, ql: 0, big: null, ban: 0, lost: 0, played: 0, songs: [], shifts: [], loc: 0, chal: 0, kills: [], inked: 0, turns: 0, fx: 0 }; }
+  function newGame(cfg, choices) {
+    tok++; closeOverlays(); Kit.handoff.close(); DEF = {}; uidN = 0; finishing = false;
+    var decks = cfg.players.map(function (p, i) { return resolveDeck(choices[i]); });
+    S = { v: 1, mode: cfg.mode, started: Date.now(), turn: 0, cur: 0, first: 0, phase: 'mull', step: 'begin', P: [], cards: {}, defs: {},
+      log: [], st: [newSt(), newSt()], rl: [], viewer: -1, mull: [false, false], mullWho: null, hist: [], cfg: cfg, choices: choices };
+    decks.forEach(function (dk, pi) {
+      var list = [];
+      deckCards(dk.cards).forEach(function (x) {
+        S.defs[x.d.id] = compactOf(x.d);
+        for (var k = 0; k < x.n; k++) { var u = 'c' + (++uidN); S.cards[u] = { id: x.d.id, o: pi, ex: false, dmg: 0, dry: false, at: null, under: [], mods: [], bt: 0 }; list.push(u); }
+      });
+      shuffle(list);
+      var p = cfg.players[pi];
+      S.P.push({ name: p.name, cpu: !!p.cpu, color: p.color, deck: dk.name, lore: 0, deckL: list, hand: [], ink: [], discard: [], board: [], inked: false });
+    });
+    S.uidN = uidN;
+    var f = cfg.options && cfg.options.first;
+    S.first = f === 'p1' ? 0 : f === 'p2' ? 1 : Math.random() < 0.5 ? 0 : 1;
+    S.cur = S.first;
+    if (S.mode === 'cpu') S.viewer = humanIx();
+    draw(0, 7); draw(1, 7);
+    log(S.P[0].name + ' (' + S.P[0].deck + ') vs ' + S.P[1].name + ' (' + S.P[1].deck + ')');
+    log(S.P[S.first].name + ' goes first', S.first);
+    Kit.gameStart(); ui.pick = null; ui.hint = null; ui.mullSel = {};
+    ui.screen = 'game';
+    save(); render();
+    Kit.sfx('deal');
+    Kit.callout(S.P[S.first].name === 'You' ? 'You go first' : S.P[S.first].name + ' goes first');
+    later(mullNext, 1300);
+  }
+  function humans() { return S.P.filter(function (p) { return !p.cpu; }).length; }
+  function humanIx() { return S.P[0].cpu ? 1 : 0; }
+  function bottomPi() {
+    if (S.mode === 'cpu') return humanIx();
+    if (S.phase === 'mull') return S.mullWho != null ? S.mullWho : S.first;
+    return S.viewer >= 0 ? S.viewer : S.cur;
+  }
+  function handShown(pi) { return S.viewer === pi && !S.P[pi].cpu; }
+  function canAct() { return !!S && S.phase === 'play' && S.step === 'main' && !S.P[S.cur].cpu && S.viewer === S.cur && !handing && !finishing; }
+  function meIx() { return S.mode === 'cpu' ? humanIx() : S.viewer; }
+
+  // ── Opening hands ────────────────────────────────────────────────────────
+  function mullNext() {
+    if (!S || S.phase !== 'mull') return;
+    var order = [S.first, opp(S.first)], pi = order.filter(function (i) { return !S.mull[i]; })[0];
+    if (pi == null) {
+      S.phase = 'play'; S.turn = 1; S.cur = S.first; S.step = 'begin'; S.mullWho = null;
+      if (S.mode === 'cpu') S.viewer = humanIx();
+      startTurn(); return;
+    }
+    S.mullWho = pi; ui.mullSel = {};
+    if (S.P[pi].cpu) {
+      save(); render();
+      later(function () { act(function () { doMull(pi, cpuMulligan(pi)); }); later(mullNext, 700); }, 700);
+      return;
+    }
+    if (humans() === 2 && S.viewer !== pi) { S.viewer = -1; save(); render(); later(handoff, 300); return; }
+    S.viewer = pi; save(); render();
+  }
+  function doMull(pi, back) {
+    var p = S.P[pi];
+    back.forEach(function (u) { p.hand.splice(p.hand.indexOf(u), 1); p.deckL.push(u); });
+    draw(pi, back.length);
+    shuffle(p.deckL);
+    S.mull[pi] = true;
+    log(p.name + (back.length ? ' put back ' + plural(back.length, 'card') + ' and drew ' + back.length : ' kept their opening hand'), pi);
+  }
+  function humanMull() {
+    var pi = S.mullWho, back = S.P[pi].hand.filter(function (u) { return ui.mullSel[u]; });
+    ui.mullSel = {};
+    act(function () { doMull(pi, back); });
+    Kit.sfx(back.length ? 'deal' : 'pop');
+    later(mullNext, back.length ? 1100 : 400);
+  }
+
+  // ── Turn flow ────────────────────────────────────────────────────────────
+  function startTurn() {
+    if (!S || S.phase !== 'play') return;
+    S.hist = []; ui.hint = null; ui.pick = null;
+    if (humans() === 2) S.viewer = -1;
+    act(function () { beginTurn(); });
+    if (!S || S.phase !== 'play') return;
+    phaseAnim();
+    afterBegin();
+  }
+  function afterBegin() {
+    if (!S || S.phase !== 'play' || finishing) return;
+    var p = S.P[S.cur];
+    Kit.resume.set('Turn ' + S.turn + ' · ' + S.P[0].name + ' ' + S.P[0].lore + ', ' + S.P[1].name + ' ' + S.P[1].lore);
+    if (p.cpu) { later(cpuStep, 1300); return; }
+    if (humans() === 2 && S.viewer !== S.cur) { later(handoff, 650); return; }
+    S.viewer = S.cur; render();
+  }
+  function lastMoves(pi) { // what the other player did, for the hand-off screen
+    var out = [];
+    for (var i = S.log.length - 1; i >= 0 && out.length < 2; i--) { var l = S.log[i]; if (l.p === pi) break; if (l.p >= 0) out.unshift(l.t); }
+    return out.join('. ');
+  }
+  function handoff() {
+    if (handing || !S || S.phase === 'over') return;
+    var pi = S.phase === 'mull' ? S.mullWho : S.cur;
+    if (pi == null || S.P[pi].cpu || S.viewer === pi) return;
+    handing = true; S.viewer = -1; save(); render();
+    var t = tok;
+    Kit.handoff({ name: S.P[pi].name, color: S.P[pi].color, what: 'cards', msg: S.phase === 'mull' ? 'Choose your opening hand' : lastMoves(pi) }).then(function () {
+      handing = false;
+      if (t !== tok || !S || S.phase === 'over') return;
+      S.viewer = pi; save(); render();
+    });
+  }
+  function humanEnd() {
+    if (!canAct()) return;
+    var r = recklessPending(S.cur);
+    if (r) { Kit.toast(nm(r) + ' is Reckless and must challenge first'); Kit.sfx('bad'); flash(r); return; }
+    ui.hint = null; ui.pick = null;
+    Kit.sfx('whoosh');
+    act(function () { log(S.P[S.cur].name + ' ended their turn', S.cur); endTurnState(); });
+    later(startTurn, 450);
+  }
+  function phaseAnim() {
+    var i = 0; ui.phaseIx = 0; paintMid();
+    var t = tok;
+    (function step() { setTimeout(function () { if (t !== tok || !S) { ui.phaseIx = null; return; } i++; ui.phaseIx = i < 3 ? i : null; paintMid(); if (i < 3) step(); }, 300); })();
+  }
+
+  // ── Computer turn ────────────────────────────────────────────────────────
+  function modalOpen() { return !!$('.k-scrim') || !!$('.lz') || ui.modal > 0 || !!ui.pick; }
+  function cpuStep() {
+    if (!S || S.phase !== 'play' || S.step !== 'main' || !S.P[S.cur].cpu || finishing) return;
+    if (modalOpen()) { later(cpuStep, 700); return; }
+    S.cpuN = (S.cpuN || 0) + 1;
+    var pi = S.cur, a = S.cpuN > 60 ? null : cpuChoose(pi);
+    if (!a) { S.cpuN = 0; act(function () { log(S.P[pi].name + ' ended their turn', pi); endTurnState(); }); later(startTurn, 600); return; }
+    runAction(a, true);
+    if (S && S.phase === 'play') later(cpuStep, 820 + Math.random() * 300);
+  }
+
+  // ── Doing things (human or computer) ────────────────────────────────────
+  function runAction(a, byCpu) {
+    var pi = S.cur, pre = byCpu ? null : snapshot(), d = DD(a.u), res = null, said = '';
+    var over = act(function () {
+      switch (a.k) {
+        case 'ink': A.ink(pi, a.u); Kit.sfx('flip'); break;
+        case 'play':
+          A.play(pi, a.u, a.o);
+          Kit.sfx(a.o && a.o.sing ? 'good' : 'deal');
+          if (byCpu) {
+            var plan = a.plan || (d.K.onPlay && d.t !== 'action' ? fxPlan(d.K.onPlay.fx, pi).plan : null);
+            if (plan && (d.t === 'action' || (d.K.onPlay && d.K.onPlay.all))) plan.forEach(function (st) {
+              if (st.t && S.P[C(st.t).o].board.indexOf(st.t) < 0) return;
+              if (st.t && vanishCheck(st.t, pi, d.t === 'action')) return;
+              var r = applyFx(st.f, pi, st.t); if (r) said += (said ? '. ' : '') + r;
+            });
+            if (said) log(d.n + ': ' + said, pi);
+          }
+          break;
+        case 'quest': A.quest(pi, a.u); Kit.sfx('good'); break;
+        case 'chal': res = A.challenge(pi, a.u, a.t); Kit.sfx(res.banished.length ? 'bad' : 'chip'); Kit.haptic('medium'); break;
+        case 'move': A.move(pi, a.u, a.t); Kit.sfx('whoosh'); break;
+        case 'boost': A.boost(pi, a.u); Kit.sfx('flip'); break;
+      }
+    });
+    if (pre) pushUndo(pre);
+    if (byCpu) flash(a.k === 'chal' ? a.t : a.u);
+    if (over || !S || S.phase !== 'play') return;
+    if (res && res.banished.length) Kit.callout(res.banished.indexOf(a.t) >= 0 ? 'Banished!' : 'Ouch!', '#ff8f8f');
+    // Support
+    if (a.k === 'quest' && hasKw(a.u, 'support') && STR(a.u) > 0) {
+      if (byCpu) { var to = cpuSupportTarget(pi, a.u); if (to) act(function () { A.support(pi, a.u, to); }); }
+      else if (S.P[pi].board.some(function (x) { return x !== a.u && isChar(x); })) {
+        startPick({ title: 'Support: give another character +' + STR(a.u) + ' strength this turn', ok: function (x) { return x !== a.u && isChar(x) && C(x).o === pi && S.P[pi].board.indexOf(x) >= 0; },
+          skip: 'Skip', done: function (x) { act(function () { A.support(pi, a.u, x); }); Kit.sfx('pop'); } });
+      }
+    }
+    if (byCpu) return;
+    // Card text for the human to resolve
+    if (a.k === 'play') {
+      if (d.t === 'action') later(function () { openToolbox(a.u, { action: true }); }, 380);
+      else if (d.K.onPlay) { ui.hint = a.u; later(function () { openToolbox(a.u, {}); }, 380); }
+      else if (!d.K.vanilla) ui.hint = a.u;
+      else ui.hint = null;
+    } else if ((a.k === 'quest' || a.k === 'chal' || a.k === 'move') && /whenever (this character|he|she|they) (quests|challenges|is challenged|moves)|while (this character is )?(here|challenging)/i.test(d.tx)) ui.hint = a.u;
+    else if (a.k !== 'ink') ui.hint = null;
+    render();
+  }
+  function humanPlay(u, o) {
+    var d = DD(u), pi = S.cur;
+    if (d.song && !canPlay(pi, u) && canSing(u)) return humanSing(u);
+    if (!canPlay(pi, u)) { Kit.toast('Needs ' + d.c + ' ink. You have ' + inkReady(pi) + ' ready.'); Kit.sfx('bad'); return; }
+    runAction({ k: 'play', u: u, o: o || {} });
+  }
+  function humanShift(u) {
+    var d = DD(u), sh = d.K.shift, tg = shiftTargets(u);
+    if (!canShift(u)) { Kit.toast(tg.length ? (sh.discard ? 'You need cards to discard for this Shift' : 'Shift needs ' + sh.cost + ' ink') : 'No character to shift onto'); return; }
+    function onto(t) {
+      if (sh.discard) {
+        chooseFromList('Discard ' + plural(sh.discard.n, (sh.discard.type ? sh.discard.type + ' ' : '') + 'card') + ' to shift', shiftDiscards(u), sh.discard.n, function (pay) {
+          runAction({ k: 'play', u: u, o: { shift: t, discard: pay } });
+        });
+      } else runAction({ k: 'play', u: u, o: { shift: t } });
+    }
+    if (tg.length === 1) return onto(tg[0]);
+    startPick({ title: 'Shift ' + d.n + ' onto which character?', ok: function (x) { return tg.indexOf(x) >= 0; }, done: onto });
+  }
+  function humanSing(u) {
+    var d = DD(u), ss = singersFor(u);
+    if (!canSing(u)) { Kit.toast(d.K.singTogether ? 'Your ready characters don’t add up to cost ' + d.K.singTogether : 'No ready, dry character with cost ' + d.c + ' or more'); return; }
+    if (d.K.singTogether) {
+      startPick({ title: 'Sing Together ' + d.K.singTogether + ': choose singers', ok: function (x) { return ss.indexOf(x) >= 0; }, multi: {
+        need: function (sel) { var t = sel.reduce(function (a, x) { return a + singVal(x); }, 0); return t >= d.K.singTogether || (sel.length === 1 && singVal(sel[0]) >= d.c); },
+        label: function (sel) { return 'Sing (' + sel.reduce(function (a, x) { return a + singVal(x); }, 0) + '/' + d.K.singTogether + ')'; },
+        go: function (sel) { runAction({ k: 'play', u: u, o: { sing: sel } }); } } });
+      return;
+    }
+    if (ss.length === 1) return runAction({ k: 'play', u: u, o: { sing: ss } });
+    startPick({ title: 'Who sings ' + d.n + '?', ok: function (x) { return ss.indexOf(x) >= 0; }, done: function (x) { runAction({ k: 'play', u: u, o: { sing: [x] } }); } });
+  }
+  function humanChallenge(u) {
+    var ds = defenders(u);
+    if (!canChallenger(u)) { Kit.toast(C(u).ex ? nm(u) + ' is exerted' : nm(u) + ' is still drying'); return; }
+    if (!ds.length) { Kit.toast('Nothing to challenge. Only exerted characters (or locations) can be challenged.'); return; }
+    startPick({ title: 'Challenge with ' + nm(u) + ' (' + STR(u, true) + ' strength): pick a target', ok: function (x) { return ds.indexOf(x) >= 0; },
+      bad: function (x) { if (C(x).o !== C(u).o && S.P[C(x).o].board.indexOf(x) >= 0) return blockedReason(u, x); return ''; },
+      done: function (x) { runAction({ k: 'chal', u: u, t: x }); } });
+  }
+  function humanMove(u) {
+    var locs = S.P[C(u).o].board.filter(function (x) { return isLoc(x) && C(u).at !== x; });
+    if (!locs.length) { Kit.toast('You have no location to move to'); return; }
+    var ok = locs.filter(function (x) { return canMove(u, x); });
+    if (!ok.length) { Kit.toast('Not enough ink to move there'); return; }
+    if (ok.length === 1) return runAction({ k: 'move', u: u, t: ok[0] });
+    startPick({ title: 'Move ' + nm(u) + ' to which location?', ok: function (x) { return ok.indexOf(x) >= 0; }, done: function (x) { runAction({ k: 'move', u: u, t: x }); } });
+  }
+  function useAbility(u) {
+    var c = C(u), pre = snapshot();
+    if (c.ex) { Kit.toast(nm(u) + ' is already exerted'); return; }
+    if (isChar(u) && !c.dry) { Kit.toast(nm(u) + ' is still drying'); return; }
+    act(function () { c.ex = true; log(S.P[c.o].name + ' exerted ' + nm(u) + ' to use its ability', c.o); });
+    pushUndo(pre); Kit.sfx('flip');
+    openToolbox(u, {});
+  }
+
+  // ── Undo and saving ──────────────────────────────────────────────────────
+  function snapshot() { var h = S.hist, d = S.defs; S.hist = undefined; S.defs = undefined; var s = JSON.stringify(S); S.hist = h; S.defs = d; return s; }
+  function pushUndo(s) { S.hist.push(s); if (S.hist.length > 12) S.hist.shift(); }
+  function noUndo() { if (S) S.hist = []; }
+  function undo() {
+    if (!S || S.phase !== 'play') return Kit.toast(S && S.phase === 'mull' ? 'Nothing to undo yet' : 'Nothing to undo');
+    if (S.P[S.cur].cpu) return Kit.toast('Wait for ' + S.P[S.cur].name + ' to finish');
+    if (!S.hist || !S.hist.length) return Kit.toast('Nothing to undo this turn');
+    tok++; closeOverlays();
+    var h = S.hist, d = S.defs, s = JSON.parse(h.pop());
+    s.hist = h; s.defs = d;
+    var before = captureRects();
+    S = s; ui.pick = null; ui.hint = null;
+    render(); animateFrom(before); save();
+    Kit.sfx('whoosh'); Kit.toast('Move taken back');
+  }
+  function save() {
+    if (!S || S.phase === 'over') return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); }
+    catch (e) { try { var h = S.hist; S.hist = []; localStorage.setItem(SAVE, JSON.stringify(S)); S.hist = h; } catch (e2) {} }
+    if (S.phase === 'play') Kit.resume.set('Turn ' + S.turn + ' · ' + S.P[0].name + ' ' + S.P[0].lore + ', ' + S.P[1].name + ' ' + S.P[1].lore);
+    else Kit.resume.set('Opening hands');
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Rendering
+  // ═════════════════════════════════════════════════════════════════════════
+  var slotCache = {}, imgBad = {};
+  function buildShell() {
+    var lp = el('div', { class: 'lp' }, [
+      el('div', { class: 'lp-table wood' }, [el('div', { class: 'lp-felt felt-in' }, [
+        el('div', { class: 'lp-strip top' }), el('div', { class: 'lp-board top' }), el('div', { class: 'lp-mid' }),
+        el('div', { class: 'lp-board bot' }), el('div', { class: 'lp-strip bot' }), el('div', { class: 'mull-host' })])]),
+      el('div', { class: 'lp-hand' }, [el('div', { class: 'hrow' })]),
+      el('div', { class: 'lp-bar' }), el('div', { class: 'lp-panel' })
+    ]);
+    lp.addEventListener('pointerdown', onDown);
+    lp.addEventListener('click', onClick);
+    return lp;
+  }
+  function layoutVars() {
+    var bar = $('.gbar'), top = bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 60;
+    var H = Math.max(320, window.innerHeight - top), W = window.innerWidth, land = W >= 900 && W > window.innerHeight;
+    document.documentElement.style.setProperty('--avail', Math.floor(H) + 'px');
+    var hh = land ? Math.max(110, Math.min(165, H * 0.2)) : Math.max(100, Math.min(185, H * 0.145));
+    var lp = $('.lp'); if (lp) lp.style.setProperty('--hh', Math.round(hh) + 'px');
+  }
+  function artEl(d, big) {
+    var src = big ? (d.im && (d.im.l || d.im.s)) : (d.im && (d.im.s || d.im.l));
+    if (!src || imgBad[src]) return faceEl(d);
+    var img = document.createElement('img');
+    img.alt = d.full; img.decoding = 'async'; img.draggable = false;
+    img.onerror = function () { imgBad[src] = 1; if (img.parentNode) img.parentNode.replaceChild(faceEl(d), img); };
+    if (d.t === 'location') img.onload = function () { if (img.naturalHeight > img.naturalWidth) img.classList.add('port'); };
+    img.src = src;
+    return img;
+  }
+  function faceEl(d) {
+    var f = el('div', { class: 'face', style: { '--ink-c': INKC[inkOf(d)[0]] || '#666' } });
+    var stats = d.t === 'character' ? (d.s || 0) + ' str · ' + (d.w || 0) + ' will · ' + (d.l || 0) + ' lore' : d.t === 'location' ? (d.w || 0) + ' will · ' + (d.l || 0) + ' lore · move ' + (d.mv || 0) : '';
+    f.innerHTML = '<div class="fn">' + esc(d.n) + '</div>' + (d.v ? '<div class="fv">' + esc(d.v) + '</div>' : '') +
+      '<div class="ft">' + esc((d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (stats ? ' · ' + stats : '')) + '<br>' + esc(d.tx.replace(/\{([A-Z])\}/g, function (m, k) { return { I: 'ink', E: 'exert', S: 'str', W: 'will', L: 'lore' }[k] || k; })) + '</div>';
+    return f;
+  }
+  function statSpan(k, v, base) {
+    var cls = v > base ? 'up' : v < base ? 'dn' : '';
+    return '<span class="' + cls + '">' + v + sym(k, '') + '</span>';
+  }
+  function kwList(u) {
+    var out = [];
+    ['evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'alert', 'vanish', 'boost'].forEach(function (k) { if (hasKw(u, k)) out.push(k); });
+    return out;
+  }
+  function slotFor(u, ctx) {
+    var key = ctx + ':' + u, node = slotCache[key];
+    if (!node || node._id !== C(u).id) {
+      node = el('div', { class: 'slot' });
+      node._id = C(u).id;
+      var lc = el('div', { class: 'lc' });
+      lc.appendChild(artEl(DD(u), false));
+      var ovs = el('div', { class: 'ovs' });
+      lc.appendChild(ovs);
+      node.appendChild(lc);
+      node._ovs = ovs;
+      slotCache[key] = node;
+    }
+    updateSlot(node, u, ctx);
+    return node;
+  }
+  function updateSlot(node, u, ctx) {
+    var d = DD(u), c = C(u), board = ctx === 'board', cls = 'slot';
+    if (board) {
+      if (d.t === 'location') cls += ' loc wide';
+      else if (c.ex) cls += ' ex wide';
+      if (d.t === 'character' && !c.dry && c.o === S.cur && S.phase === 'play') cls += ' dry';
+    }
+    if (ui.pick && ctx !== 'mull') {
+      if (ui.pick.ok(u)) cls += C(u).o === meIxSafe() ? ' tgt-ok' : ' tgt';
+      if (ui.pick.multi && ui.pick.sel.indexOf(u) >= 0) cls += ' sel';
+    }
+    if (ctx === 'hand' && canAct() && !ui.pick && (canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u))) cls += ' can';
+    if (ctx === 'mull' && ui.mullSel[u]) cls += ' out';
+    if (ui.hint === u && board) cls += ' sel';
+    node.className = cls; node.dataset.uid = u; node.dataset.ctx = ctx;
+    var h = '';
+    if (ctx !== 'board') h += '<span class="cost' + (d.k ? ' ink' : '') + '">' + (d.c || 0) + '</span>';
+    if (board) {
+      var ks = kwList(u);
+      if (ks.length) h += '<div class="kws">' + ks.slice(0, 4).map(function (k) { return '<i title="' + KWNAME[k] + '">' + kwIcon(k) + '</i>'; }).join('') + '</div>';
+      if (c.dmg) h += '<span class="dmg">' + c.dmg + '</span>';
+      if (c.at && S.cards[c.at]) h += '<span class="tagl">at ' + esc(DD(c.at).n) + '</span>';
+      if (c.under && c.under.length) h += '<span class="ucount" title="Cards under">' + c.under.length + '</span>';
+    }
+    var st = '';
+    if (d.t === 'character') st = statSpan('S', board ? STR(u) : d.s || 0, d.s || 0) + statSpan('W', board ? WP(u) : d.w || 0, d.w || 0) + statSpan('L', board ? LORE(u) : d.l || 0, d.l || 0);
+    else if (d.t === 'location') st = statSpan('W', board ? WP(u) : d.w || 0, d.w || 0) + statSpan('L', board ? LORE(u) : d.l || 0, d.l || 0) + '<span>' + (d.mv || 0) + sym('I', '') + '</span>';
+    else st = '<span style="font-family:var(--font);font-weight:800;font-size:.8em;opacity:.8">' + (d.song ? 'Song' : d.t === 'item' ? 'Item' : 'Action') + '</span>';
+    h += '<div class="ov"><span class="nm">' + esc(d.n) + '</span><span class="st">' + st + '</span></div>';
+    if (node._h !== h) { node._ovs.innerHTML = h; node._h = h; }
+    var und = node.querySelector(':scope > .under');
+    if (board && c.under && c.under.length) { if (!und) node.insertBefore(el('div', { class: 'under', html: '<div class="lback"></div>' }), node.firstChild); }
+    else if (und) und.remove();
+  }
+  function meIxSafe() { return S.mode === 'cpu' ? humanIx() : (S.viewer >= 0 ? S.viewer : S.cur); }
+  function boardOrder(pi) {
+    var b = S.P[pi].board, out = [], used = {};
+    b.filter(isLoc).forEach(function (l) { out.push(l); used[l] = 1; b.forEach(function (u) { if (isChar(u) && C(u).at === l) { out.push(u); used[u] = 1; } }); });
+    b.forEach(function (u) { if (!used[u] && isChar(u)) { out.push(u); used[u] = 1; } });
+    b.forEach(function (u) { if (!used[u]) out.push(u); });
+    return out;
+  }
+  function loreRing(pi, drop) {
+    var L = S.P[pi].lore, r = 18, segs = '', col = L >= 15 ? '#f6e1a8' : S.P[pi].color;
+    for (var i = 0; i < 20; i++) {
+      var a0 = i / 20 * 2 * Math.PI + 0.05, a1 = (i + 1) / 20 * 2 * Math.PI - 0.05;
+      segs += '<path class="tk" d="M' + (22 + r * Math.cos(a0)).toFixed(2) + ' ' + (22 + r * Math.sin(a0)).toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + (22 + r * Math.cos(a1)).toFixed(2) + ' ' + (22 + r * Math.sin(a1)).toFixed(2) + '" stroke="' + (i < L ? col : 'rgba(255,255,255,.16)') + '"/>';
+    }
+    return '<button type="button" class="lore" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of 20 lore"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b></button>';
+  }
+  function renderStrip(host, pi, top) {
+    var p = S.P[pi], turn = S.phase === 'play' && S.cur === pi, mine = pi === bottomPi();
+    host.className = 'lp-strip ' + (top ? 'top' : 'bot') + (turn ? ' turn-on' : '');
+    var sub = S.phase === 'mull' ? (S.mull[pi] ? 'Hand kept' : 'Choosing a hand') : turn ? (p.cpu ? 'Playing…' : 'Turn ' + S.turn) : p.deck;
+    var rd = inkReady(pi), tot = p.ink.length, hx = '';
+    if (tot <= 10) { for (var i = 0; i < tot; i++) hx += '<i class="hx' + (i < rd ? '' : ' used') + '"></i>'; }
+    var inkCan = mine && canAct() && !p.inked && p.hand.some(function (u) { return DD(u).k; });
+    var h = '<div class="lp-who"><span class="avatar" style="--c:' + p.color + '">' + (p.cpu ? Kit.icon('bot') : esc(p.name.charAt(0).toUpperCase())) + '</span><span class="nm"><b>' + esc(p.name) + '</b><small>' + esc(sub) + '</small></span></div>';
+    if (top || !handShown(pi)) { var nb = Math.min(p.hand.length, window.innerWidth < 600 ? 3 : 6), bk = ''; for (var j = 0; j < nb; j++) bk += '<i class="lback"></i>'; if (top) h += '<div class="ohand" data-z="hand-' + pi + '">' + bk + '<span>' + p.hand.length + '</span></div>'; }
+    h += '<button type="button" class="inkz' + (inkCan ? ' can' : '') + '" data-z="ink-' + pi + '" data-tap="ink"' + (mine ? ' data-drop="ink"' : '') + ' aria-label="Inkwell: ' + rd + ' of ' + tot + ' ready"><span class="hexes">' + hx + '</span><i class="hx hx1' + (rd ? '' : ' used') + '"></i><span class="ct">' + rd + '/' + tot + '<small>ink</small></span></button>';
+    h += '<button type="button" class="pile' + (p.deckL.length ? '' : ' empty') + '" data-z="deck-' + pi + '" data-tap="deck" aria-label="Deck: ' + p.deckL.length + ' cards">' + (p.deckL.length ? '<i class="lback"></i>' : '') + '<span class="n">' + p.deckL.length + '</span></button>';
+    var top1 = p.discard[p.discard.length - 1], mini = '';
+    if (top1) { var dd = DD(top1); mini = dd.im && dd.im.s && !imgBad[dd.im.s] ? '<i class="mini" style="background-image:url(&quot;' + esc(dd.im.s) + '&quot;)"></i>' : '<i class="mini" style="background:' + (INKC[inkOf(dd)[0]] || '#555') + '"></i>'; }
+    h += '<button type="button" class="pile' + (p.discard.length ? '' : ' empty') + '" data-z="disc-' + pi + '" data-tap="disc" aria-label="Discard pile: ' + p.discard.length + ' cards">' + mini + '<span class="n">' + p.discard.length + '</span></button>';
+    h += loreRing(pi, mine);
+    host.innerHTML = h;
+    host.dataset.p = pi;
+  }
+  function renderBoard(host, pi) {
+    var order = boardOrder(pi), mine = pi === bottomPi();
+    host.dataset.z = 'board-' + pi; host.dataset.p = pi;
+    if (mine) host.dataset.drop = 'board'; else delete host.dataset.drop;
+    host.innerHTML = '';
+    if (!order.length) { host.appendChild(el('div', { class: 'empty-msg', text: mine ? (S.P[pi].cpu ? '' : 'Your characters, items and locations go here') : S.P[pi].name + '’s side of the table' })); return; }
+    order.forEach(function (u) { host.appendChild(slotFor(u, 'board')); });
+  }
+  function fitCu(W, H, fs, gap, maxCu) {
+    function fits(cu) {
+      var x = 0, rows = 1;
+      for (var i = 0; i < fs.length; i++) { var w = fs[i] * cu; if (x > 0 && x + gap + w > W) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; }
+      return rows * cu + (rows - 1) * gap <= H;
+    }
+    var lo = 28, hi = Math.max(30, maxCu);
+    if (fits(hi)) return Math.floor(hi);
+    for (var k = 0; k < 16; k++) { var mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+    return Math.floor(lo);
+  }
+  function fitBoards() {
+    $$('.lp-board').forEach(function (b) {
+      var slots = $$(':scope > .slot', b), W = b.clientWidth - 12, H = b.clientHeight - 12;
+      var fs = slots.map(function (s) { return s.classList.contains('wide') ? 1 : 0.716; });
+      var cu = fitCu(W, H, fs, 6, Math.min(H, window.innerWidth >= 700 ? 200 : 150));
+      b.style.setProperty('--cu', cu + 'px');
+    });
+  }
+  function fitHand() {
+    var hand = $('.lp-hand'); if (!hand) return;
+    var row = $('.hrow', hand), cu = Math.max(60, hand.clientHeight - 14);
+    hand.style.setProperty('--cu', cu + 'px');
+    var n = $$('.slot', row).length, w = cu * 0.716, W = row.clientWidth - 8;
+    var ov = n > 1 ? Math.min(5, (W - w) / (n - 1) - w) : 0;
+    row.style.setProperty('--ov', Math.max(ov, -w * 0.8) + 'px');
+  }
+  function renderHand(pi) {
+    var row = $('.lp-hand .hrow'), p = S.P[pi];
+    row.innerHTML = '';
+    if (!handShown(pi)) {
+      row.dataset.z = 'hand-' + pi;
+      var bk = ''; for (var i = 0; i < Math.min(p.hand.length, 7); i++) bk += '<i class="lback" style="display:inline-block;width:30px;height:42px;border-radius:4px;margin-left:' + (i ? -18 : 0) + 'px"></i>';
+      row.innerHTML = '<div class="hid">' + bk + '<span>' + (S.phase === 'over' ? '' : p.cpu ? '' : 'Hand hidden') + '</span></div>';
+      return;
+    }
+    delete row.dataset.z;
+    p.hand.forEach(function (u) { row.appendChild(slotFor(u, 'hand')); });
+  }
+  function paintMid() {
+    var mid = $('.lp-mid'); if (!mid || !S) return;
+    if (ui.pick) {
+      var pk = ui.pick, h = '<div class="lp-pick"><span>' + esc(pk.title) + '</span>';
+      if (pk.multi) h += '<button type="button" class="btn btn-primary btn-sm" data-act="pick-go"' + (pk.multi.need(pk.sel) ? '' : ' disabled') + '>' + esc(pk.multi.label(pk.sel)) + '</button>';
+      if (pk.skip) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-skip">' + esc(pk.skip) + '</button>';
+      else h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-cancel">Cancel</button>';
+      mid.innerHTML = h + '</div>';
+      return;
+    }
+    var steps = ['Ready', 'Set', 'Draw', 'Main', 'End'], ix = S.phase === 'play' ? (ui.phaseIx != null ? ui.phaseIx : 3) : -1;
+    var ph = '<div class="phases" aria-hidden="true">' + steps.map(function (s, i) { return '<i class="' + (i === ix ? 'on' : i < ix ? 'done' : '') + '">' + s + '</i>'; }).join('') + '</div>';
+    var last = S.log[S.log.length - 1], msg = S.phase === 'mull' ? 'Opening hands: put back any cards you don’t want, once' : last ? last.t : '';
+    mid.innerHTML = ph + '<button type="button" class="lp-msg" data-tap="log">' + esc(msg) + '</button>';
+  }
+  function controlsHTML(vertical) {
+    var my = canAct(), cpuT = S.phase === 'play' && S.P[S.cur].cpu;
+    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : 'Waiting';
+    var idle = my && !S.P[S.cur].board.some(function (u) { return canQuest(u) || (canChallenger(u) && defenders(u).length); }) && !S.P[S.cur].hand.some(function (u) { return canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u); });
+    var fxOn = S.phase === 'play' && S.viewer >= 0 && !S.P[S.viewer].cpu && !finishing;
+    var fxb = '<button type="button" class="btn btn-soft btn-fx' + (ui.hint && fxOn ? ' attn' : '') + '" data-act="fx"' + (fxOn ? '' : ' disabled') + '>' + Kit.icon('sparkle') + '<span class="lg">Apply effect</span><span class="sm">Effect</span></button>';
+    var end = '<button type="button" class="btn btn-primary btn-end' + (idle ? ' attn' : '') + (vertical ? ' btn-block btn-lg' : ' grow') + '" data-act="end"' + (my ? '' : ' disabled') + '>' + esc(endLabel) + '</button>';
+    if (vertical) return fxb.replace('btn-fx', 'btn-fx btn-block') + end;
+    return fxb + '<button type="button" class="btn btn-soft icon-sq" data-act="log" aria-label="Game log">' + Kit.icon('book') + '</button>' + end;
+  }
+  function renderBar() {
+    var bar = $('.lp-bar'), panel = $('.lp-panel');
+    bar.innerHTML = controlsHTML(false);
+    var logH = S.log.slice(-40).reverse().map(function (l) { return '<p' + (l.p >= 0 ? ' style="border-left:3px solid ' + S.P[l.p].color + ';padding-left:6px"' : '') + '>' + esc(l.t) + '</p>'; }).join('');
+    panel.innerHTML = '<h3>Game log</h3><div class="logbox">' + logH + '</div>' + controlsHTML(true);
+  }
+  function renderMull() {
+    var host = $('.mull-host'); host.innerHTML = '';
+    if (!S || S.phase !== 'mull' || S.mullWho == null) return;
+    var pi = S.mullWho, p = S.P[pi];
+    if (p.cpu || !handShown(pi)) {
+      host.appendChild(el('div', { class: 'mull', style: { background: 'rgba(5,8,28,.45)' } }, [el('p', { text: p.cpu ? p.name + ' is choosing an opening hand…' : 'Waiting for ' + p.name + '…' })]));
+      return;
+    }
+    var box = el('div', { class: 'mull' }), cards = el('div', { class: 'cards' });
+    var W = Math.min(820, host.parentNode.clientWidth - 24), H = host.parentNode.clientHeight;
+    var per = W < 520 ? 4 : 7, rows = Math.ceil(p.hand.length / per);
+    var cu = Math.min((W - (per - 1) * 8) / per / 0.716, (H - 190) / rows - 8, 230);
+    cards.style.setProperty('--cu', Math.floor(cu) + 'px');
+    p.hand.forEach(function (u) { cards.appendChild(slotFor(u, 'mull')); });
+    var n = p.hand.filter(function (u) { return ui.mullSel[u]; }).length;
+    box.appendChild(el('h2', { text: (p.name === 'You' ? 'Your' : p.name + '’s') + ' opening hand' }));
+    box.appendChild(el('p', { text: 'Tap cards to put them on the bottom of your deck. You draw that many new cards, then your deck is shuffled. You can do this once.' }));
+    box.appendChild(cards);
+    box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', 'data-act': 'mull', text: n ? 'Put back ' + n + ', draw ' + n : 'Keep this hand' }));
+    host.appendChild(box);
+  }
+  function render() {
+    if (!S) return;
+    document.documentElement.classList.add('lp-on');
+    var lp = $('.lp', app);
+    if (!lp) { app.innerHTML = ''; app.className = 'stage full'; lp = buildShell(); app.appendChild(lp); }
+    layoutVars();
+    var b = bottomPi(), t = opp(b);
+    renderStrip($('.lp-strip.top', lp), t, true);
+    renderStrip($('.lp-strip.bot', lp), b, false);
+    renderBoard($('.lp-board.top', lp), t);
+    renderBoard($('.lp-board.bot', lp), b);
+    paintMid(); renderHand(b); renderBar(); renderMull();
+    lp.classList.toggle('picking', !!ui.pick);
+    fitBoards(); fitHand();
+    var q = fxq; fxq = []; q.forEach(function (f) { try { f(); } catch (e) {} });
+  }
+
+  // ── Motion: every card glides from where it was to where it is now ─────
+  var fxq = [];
+  var fx = {
+    lore: function (pi, n) { fxq.push(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); floatText(r, '+' + n); }); },
+    hit: function (u) { fxq.push(function () { $$('.slot[data-uid="' + u + '"]').forEach(function (s) { s.classList.remove('hitd'); void s.offsetWidth; s.classList.add('hitd'); }); }); },
+    banish: function () { Kit.haptic('heavy'); }
+  };
+  function floatText(anchor, text) {
+    var r = anchor.getBoundingClientRect(), f = el('div', { class: 'flyer', text: text, style: { left: (r.left + r.width / 2) + 'px', top: r.top + 'px', transform: 'translate(-50%,0)', 'font-family': 'var(--display)', 'font-size': '1.6rem', color: '#f6e1a8', 'text-shadow': '0 2px 6px #000', transition: 'transform .9s var(--ease), opacity .9s', opacity: '1' } });
+    document.body.appendChild(f);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { f.style.transform = 'translate(-50%,-46px)'; f.style.opacity = '0'; }); });
+    setTimeout(function () { f.remove(); }, 1000);
+  }
+  function flash(u) { var s = $('.slot[data-uid="' + u + '"]'); if (s) { s.classList.remove('flash'); void s.offsetWidth; s.classList.add('flash'); } }
+  function zoneKey(u) {
+    var z = zoneOf(u); if (!z) return null;
+    return { hand: 'hand-', board: 'board-', ink: 'ink-', discard: 'disc-', deckL: 'deck-', under: 'board-' }[z.z] + z.pi;
+  }
+  function captureRects() {
+    var out = { u: {}, z: {}, zk: {} };
+    if (!S || !$('.lp')) return out;
+    $$('.lp [data-uid]').forEach(function (n) { if (!out.u[n.dataset.uid]) out.u[n.dataset.uid] = { r: n.getBoundingClientRect(), n: n }; });
+    $$('.lp [data-z]').forEach(function (n) { out.z[n.dataset.z] = n.getBoundingClientRect(); });
+    for (var k in S.cards) out.zk[k] = zoneKey(k);
+    return out;
+  }
+  function animateFrom(before) {
+    if (!before || !before.u) return;
+    var now = {};
+    $$('.lp [data-uid]').forEach(function (n) {
+      var u = n.dataset.uid; if (now[u]) return; now[u] = 1;
+      var b = before.u[u], r = n.getBoundingClientRect(), from = null;
+      if (b) from = b.r;
+      else { var zk = before.zk[u]; if (zk && before.z[zk]) from = before.z[zk]; }
+      if (!from || !r.width) return;
+      var dx = (from.left + from.width / 2) - (r.left + r.width / 2), dy = (from.top + from.height / 2) - (r.top + r.height / 2);
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+      var sc = Math.max(0.3, Math.min(2, from.width / r.width));
+      if (!b) sc = Math.min(sc, 0.6);
+      n.style.transition = 'none';
+      n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')';
+      n.style.zIndex = 20;
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        n.style.transition = 'transform .42s cubic-bezier(.2,.8,.25,1)'; n.style.transform = '';
+        setTimeout(function () { n.style.zIndex = ''; n.style.transition = ''; }, 460);
+      }); });
+    });
+    // Cards that went somewhere hidden (inkwell, deck, a hidden hand, discard)
+    Object.keys(before.u).forEach(function (u) {
+      if (now[u] || !S.cards[u]) return;
+      var zk = zoneKey(u), tn = zk && $('.lp [data-z="' + zk + '"]'); if (!tn) return;
+      var b = before.u[u], tr = tn.getBoundingClientRect();
+      var g = b.n.cloneNode(true); g.className = b.n.className + ' flyer'; g.removeAttribute('data-uid');
+      g.style.cssText = 'position:fixed;left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;margin:0;transition:transform .45s cubic-bezier(.4,0,.2,1),opacity .45s;z-index:250;' + (b.n.style.getPropertyValue('--cu') ? '' : '');
+      var cu = getComputedStyle(b.n).getPropertyValue('--cu'); if (cu) g.style.setProperty('--cu', cu);
+      document.body.appendChild(g);
+      var dx = (tr.left + tr.width / 2) - (b.r.left + b.r.width / 2), dy = (tr.top + tr.height / 2) - (b.r.top + b.r.height / 2);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { g.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.25)'; g.style.opacity = '0.2'; }); });
+      setTimeout(function () { g.remove(); }, 480);
+    });
+  }
+  function act(mutate) {
+    var before = captureRects();
+    mutate();
+    var w = S && S.phase === 'play' ? winner() : null;
+    render(); animateFrom(before);
+    if (w) { finishing = true; save(); later(function () { finish(w); }, 900); return true; }
+    save();
+    return false;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Input: tap a card to see it big, drag it to act, or pick targets
+  // ═════════════════════════════════════════════════════════════════════════
+  var drag = null;
+  function onClick(e) {
+    if (!S) return;
+    var b = e.target.closest('[data-act]');
+    if (b) {
+      var a = b.dataset.act;
+      if (a === 'end') humanEnd();
+      else if (a === 'fx') openToolbox(ui.hint && S.cards[ui.hint] ? ui.hint : null, {});
+      else if (a === 'log') showLog();
+      else if (a === 'pick-cancel' || a === 'pick-skip') { var p = ui.pick; ui.pick = null; render(); if (p && p.cancel) p.cancel(); }
+      else if (a === 'pick-go') { var q = ui.pick; if (q && q.multi && q.multi.need(q.sel)) { ui.pick = null; render(); q.multi.go(q.sel); } }
+      else if (a === 'mull') humanMull();
+      return;
+    }
+    var t = e.target.closest('[data-tap]'); if (!t) return;
+    var k = t.dataset.tap, pi = +(t.closest('[data-p]') || t).dataset.p;
+    if (isNaN(pi)) { var z = t.dataset.z || ''; pi = +z.split('-')[1]; }
+    if (k === 'log') showLog();
+    else if (k === 'disc') showDiscard(pi);
+    else if (k === 'deck') Kit.toast(S.P[pi].name + ': ' + plural(S.P[pi].deckL.length, 'card') + ' left in deck');
+    else if (k === 'ink') Kit.toast(S.P[pi].name + ': ' + inkReady(pi) + ' of ' + S.P[pi].ink.length + ' ink ready' + (canAct() && pi === S.cur ? (S.P[pi].inked ? '. You already inked this turn.' : '. Drag a card here to ink it.') : ''));
+    else if (k === 'lore') Kit.toast(S.P[pi].name + ' has ' + S.P[pi].lore + ' of 20 lore');
+  }
+  function onDown(e) {
+    if (e.button != null && e.button > 0) return;
+    var s = e.target.closest('.slot[data-uid]'); if (!s || !S || drag) return;
+    drag = { u: s.dataset.uid, s: s, ctx: s.dataset.ctx, x: e.clientX, y: e.clientY, id: e.pointerId, on: false, no: false };
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  }
+  function unlisten() { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onCancel); }
+  function onMove(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.on) {
+      if (drag.no || dx * dx + dy * dy < 110) return;
+      if (!beginDrag()) { drag.no = true; return; }
+    }
+    if (e.cancelable) e.preventDefault();
+    drag.g.style.left = e.clientX + 'px'; drag.g.style.top = e.clientY + 'px';
+    var t = dropAt(e.clientX, e.clientY);
+    if (t !== drag.hover) { if (drag.hover) drag.hover.node.classList.remove('hover-drop'); drag.hover = t; if (t) t.node.classList.add('hover-drop'); }
+  }
+  function onCancel() { if (drag && drag.on) cleanDrag(drag); drag = null; unlisten(); }
+  function onUp(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var d = drag; drag = null; unlisten();
+    if (d.on) { var t = dropAt(e.clientX, e.clientY, d); cleanDrag(d); if (t) t.go(); return; }
+    if (d.no) return;
+    onTap(d.u, d.ctx);
+  }
+  function dragTargets(u, ctx) {
+    var out = [], d = DD(u), pi = S.cur, lp = $('.lp');
+    function slotNode(x) { return $('.lp-board .slot[data-uid="' + x + '"]'); }
+    if (ctx === 'hand') {
+      if (d.K.shift && canShift(u)) shiftTargets(u).forEach(function (t) { var n = slotNode(t); if (n) out.push({ node: n, slot: 1, go: function () {
+        var sh = d.K.shift; if (sh.discard) chooseFromList('Discard ' + plural(sh.discard.n, (sh.discard.type ? sh.discard.type + ' ' : '') + 'card') + ' to shift', shiftDiscards(u), sh.discard.n, function (pay) { runAction({ k: 'play', u: u, o: { shift: t, discard: pay } }); });
+        else runAction({ k: 'play', u: u, o: { shift: t } }); } }); });
+      if (d.song && canSing(u) && !d.K.singTogether) singersFor(u).forEach(function (t) { var n = slotNode(t); if (n && !out.some(function (o) { return o.node === n; })) out.push({ node: n, slot: 1, go: function () { runAction({ k: 'play', u: u, o: { sing: [t] } }); } }); });
+      if (canPlay(pi, u) || (d.song && canSing(u))) out.push({ node: $('.lp-board.bot', lp), go: function () { humanPlay(u, {}); } });
+      if (canInk(pi, u)) out.push({ node: $('.lp-strip.bot .inkz', lp), go: function () { runAction({ k: 'ink', u: u }); } });
+    } else if (ctx === 'board' && C(u).o === pi) {
+      if (canQuest(u)) out.push({ node: $('.lp-strip.bot .lore', lp), go: function () { runAction({ k: 'quest', u: u }); } });
+      if (canChallenger(u)) defenders(u).forEach(function (t) { var n = slotNode(t); if (n) out.push({ node: n, slot: 1, go: function () { runAction({ k: 'chal', u: u, t: t }); } }); });
+      S.P[pi].board.forEach(function (l) { if (canMove(u, l)) { var n = slotNode(l); if (n) out.push({ node: n, slot: 1, go: function () { runAction({ k: 'move', u: u, t: l }); } }); } });
+    }
+    return out.sort(function (a, b) { return (b.slot || 0) - (a.slot || 0); });
+  }
+  function beginDrag() {
+    if (!canAct() || ui.pick || !S.cards[drag.u]) return false;
+    var drops = dragTargets(drag.u, drag.ctx);
+    if (!drops.length) {
+      var d = DD(drag.u);
+      if (drag.ctx === 'hand') Kit.toast(!canPlay(S.cur, drag.u) && !canInk(S.cur, drag.u) ? 'Not enough ink to play ' + d.n + (S.P[S.cur].inked ? '' : d.k ? '' : ', and it can’t be inked') : 'Nothing to do with that right now');
+      return false;
+    }
+    drag.on = true; drag.drops = drops;
+    var lc = $('.lc', drag.s), cu = getComputedStyle(drag.s).getPropertyValue('--cu');
+    var g = el('div', { class: 'ghost' }); var cl = lc.cloneNode(true); g.appendChild(cl);
+    g.style.setProperty('--cu', cu || '100px');
+    if (drag.s.classList.contains('ex')) cl.style.transform = 'rotate(90deg)';
+    g.style.left = drag.x + 'px'; g.style.top = drag.y + 'px';
+    document.body.appendChild(g); drag.g = g;
+    drag.s.classList.add('drag-src');
+    drops.forEach(function (t) { t.node.classList.add(t.slot ? 'tgt-ok' : 'drop-ok'); });
+    $('.lp').classList.add('picking');
+    Kit.haptic('light');
+    return true;
+  }
+  function cleanDrag(d) {
+    if (d.g) d.g.remove();
+    d.s.classList.remove('drag-src');
+    (d.drops || []).forEach(function (t) { t.node.classList.remove('tgt-ok', 'drop-ok', 'hover-drop'); });
+    var lp = $('.lp'); if (lp) lp.classList.toggle('picking', !!ui.pick);
+  }
+  function dropAt(x, y, dg) {
+    dg = dg || drag;
+    if (!dg || !dg.drops) return null;
+    var n = document.elementFromPoint(x, y); if (!n) return null;
+    for (var i = 0; i < dg.drops.length; i++) if (dg.drops[i].node.contains(n)) return dg.drops[i];
+    return null;
+  }
+  function onTap(u, ctx) {
+    if (!S || !S.cards[u]) return;
+    if (ctx === 'mull') { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); return; }
+    if (ui.pick) {
+      var p = ui.pick;
+      if (p.ok(u)) {
+        if (p.multi) { var i = p.sel.indexOf(u); if (i >= 0) p.sel.splice(i, 1); else p.sel.push(u); Kit.sfx('tap'); render(); return; }
+        ui.pick = null; render(); p.done(u); return;
+      }
+      Kit.toast((p.bad && p.bad(u)) || 'Choose one of the glowing cards, or Cancel'); return;
+    }
+    openZoom(u);
+  }
+  function startPick(o) { o.sel = []; ui.pick = o; Kit.sfx('tap'); render(); }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Zoom: the card, big, with its full text and what you can do with it
+  // ═════════════════════════════════════════════════════════════════════════
+  function closeZoom() { $$('.lz').forEach(function (z) { z.remove(); }); }
+  function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
+  function rulesHTML(d) {
+    var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
+    if (!lines.length) return '<p class="rem">No card text.</p>';
+    return lines.map(function (L) {
+      var h = esc(L.trim());
+      h = h.replace(/\(([^)]*)\)/g, '<span class="rem">($1)</span>');
+      var m = L.trim().match(KWRE);
+      if (m) h = h.replace(/^([^<(]+)/, '<span class="kw">$1</span>');
+      else h = h.replace(/^((?:[A-Z0-9’'!?,.\-–&]+\s){1,8}?)(?=[A-Z{][a-z{]|\{|[A-Z][a-z])/, '<span class="ab">$1</span>');
+      h = h.replace(/\{([IESWLC])\}/g, function (x, k) { return sym(k); });
+      return '<p>' + h + '</p>';
+    }).join('');
+  }
+  function defMeta(d) {
+    var h = '';
+    inkOf(d).forEach(function (i) { h += '<span class="chipx"><i class="dot" style="--c:' + INKC[i] + '"></i>' + esc(i) + '</span>'; });
+    h += '<span class="chipx">' + sym('I') + ' Cost ' + (d.c || 0) + '</span>';
+    h += '<span class="chipx' + (d.k ? ' good' : '') + '">' + (d.k ? 'Inkable' : 'Can’t be inked') + '</span>';
+    h += '<span class="chipx">' + esc(d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (d.cl && d.cl.length ? ' · ' + esc(d.cl.filter(function (x) { return x !== 'Song'; }).join(' · ')) : '') + '</span>';
+    if (d.t === 'character') h += '<span class="chipx">' + sym('S') + (d.s || 0) + ' strength</span><span class="chipx">' + sym('W') + (d.w || 0) + ' willpower</span><span class="chipx">' + sym('L') + (d.l || 0) + ' lore</span>';
+    if (d.t === 'location') h += '<span class="chipx">' + sym('W') + (d.w || 0) + ' willpower</span><span class="chipx">' + sym('L') + (d.l || 0) + ' lore</span><span class="chipx">Move cost ' + (d.mv || 0) + '</span>';
+    if (d.set) h += '<span class="chipx">Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</span>';
+    return h;
+  }
+  function statusHTML(u, z) {
+    if (!z || z.z !== 'board') return '';
+    var c = C(u), d = DD(u), h = '';
+    if (d.t === 'character' || d.t === 'item') h += '<span class="chipx' + (c.ex ? ' warn' : ' good') + '">' + (c.ex ? 'Exerted' : 'Ready') + '</span>';
+    if (d.t === 'character' && !c.dry) h += '<span class="chipx warn">Drying: can’t quest, challenge or sing yet' + (hasKw(u, 'rush') ? ' (Rush: can challenge)' : '') + '</span>';
+    if (c.dmg) h += '<span class="chipx warn">Damage ' + c.dmg + ' of ' + WP(u) + '</span>';
+    if (c.at && S.cards[c.at]) h += '<span class="chipx">At ' + esc(DD(c.at).full) + '</span>';
+    if (c.under && c.under.length) h += '<span class="chipx">' + plural(c.under.length, 'card') + ' under it</span>';
+    (c.mods || []).forEach(function (m) {
+      var parts = [];
+      if (m.s) parts.push((m.s > 0 ? '+' : '') + m.s + ' strength'); if (m.w) parts.push((m.w > 0 ? '+' : '') + m.w + ' willpower'); if (m.l) parts.push((m.l > 0 ? '+' : '') + m.l + ' lore');
+      if (m.kw) parts.push(KWNAME[m.kw] + (m.n ? ' +' + m.n : ''));
+      h += '<span class="chipx good">' + esc(parts.join(', ') + (m.until === 'perm' ? '' : ' this turn') + (m.why ? ' (' + m.why + ')' : '')) + '</span>';
+    });
+    return h ? '<div class="meta">' + h + '</div>' : '';
+  }
+  function kwHelpHTML(d, u) {
+    var ks = Object.keys(KWHELP).filter(function (k) {
+      var has = k === 'shift' ? d.K.shift : u ? hasKw(u, k) : d.K[k];
+      // Skip when the card already prints its reminder text for this keyword
+      return has && !new RegExp('^[^\\n(]*' + KWNAME[k] + '[^\\n]*\\(', 'm').test(d.tx);
+    });
+    if (!ks.length) return '';
+    return '<p class="rem" style="margin-top:8px">' + ks.map(function (k) { return '<b>' + KWNAME[k] + ':</b> ' + esc(KWHELP[k]); }).join('<br>') + '</p>';
+  }
+  function zoomShell(d, infoHTML, acts, whys) {
+    closeZoom();
+    var ov = el('div', { class: 'lz', role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    var inner = el('div', { class: 'lz-in' });
+    var card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') });
+    card.appendChild(artEl(d, true));
+    inner.appendChild(card);
+    var info = el('div', { class: 'lz-info', html: infoHTML });
+    if (acts && acts.length) {
+      var g = el('div', { class: 'lz-acts' });
+      acts.forEach(function (a) { g.appendChild(el('button', { type: 'button', class: 'btn ' + (a.primary ? 'btn-primary' : 'btn-soft') + (a.full ? ' full' : ''), disabled: a.ok === false, html: a.label, onclick: function () { closeZoom(); a.go(); } })); });
+      if (whys && whys.length) g.appendChild(el('div', { class: 'why', text: whys.join(' ') }));
+      info.appendChild(g);
+    }
+    inner.appendChild(info);
+    ov.appendChild(inner);
+    ov.appendChild(el('button', { type: 'button', class: 'icon-btn lz-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeZoom }));
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target === inner) closeZoom(); });
+    document.addEventListener('keydown', function esck(e) { if (e.key === 'Escape') { closeZoom(); document.removeEventListener('keydown', esck); } });
+    document.body.appendChild(ov);
+    requestAnimationFrame(function () { ov.classList.add('show'); });
+    Kit.sfx('flip');
+    return ov;
+  }
+  function openZoom(u) {
+    var d = DD(u), z = zoneOf(u), acts = [], whys = [];
+    var info = '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '<div class="meta">' + defMeta(d) + '</div>' + statusHTML(u, z) +
+      '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
+    var c = C(u), pi = S.cur, my = canAct() && c.o === pi;
+    function add(label, ok, why, go, o) { acts.push({ label: label, ok: ok, go: go, primary: o && o.primary, full: o && o.full }); if (!ok && why) whys.push(why); }
+    if (my && z.z === 'hand') {
+      var need = 'Needs ' + (d.c || 0) + ' ink (you have ' + inkReady(pi) + ' ready).';
+      if (d.t === 'action' && d.song) {
+        add('Play · ' + (d.c || 0) + ' ink', canPlay(pi, u), need, function () { humanPlay(u, {}); }, { primary: true });
+        add('Sing it for free', canSing(u), d.K.singTogether ? 'Sing Together needs ready characters with total cost ' + d.K.singTogether + '.' : 'Singing needs a ready, dry character with cost ' + d.c + ' or more.', function () { humanSing(u); });
+      } else add('Play · ' + (d.c || 0) + ' ink', canPlay(pi, u), need, function () { humanPlay(u, {}); }, { primary: true, full: !d.K.bodyguard && !d.K.shift });
+      if (d.t === 'character' && d.K.bodyguard) add('Play exerted (Bodyguard)', canPlay(pi, u), '', function () { humanPlay(u, { exerted: true }); });
+      if (d.K.shift) {
+        var sh = d.K.shift, tg = shiftTargets(u);
+        add('Shift · ' + (sh.discard ? 'discard ' + sh.discard.n : sh.cost + ' ink'), canShift(u), tg.length ? (sh.discard ? 'Not enough cards to discard.' : 'Shift needs ' + sh.cost + ' ink.') : 'Shift needs your ' + (sh.any ? '' : sh.cls ? sh.cls + ' ' : (sh.names.join(' or ') + ' ')) + 'character in play.', function () { humanShift(u); });
+      }
+      add('Put into inkwell', canInk(pi, u), !d.k ? 'This card has no ink symbol, so it can’t go in the inkwell.' : S.P[pi].inked ? 'You already put a card in your inkwell this turn.' : '', function () { runAction({ k: 'ink', u: u }); }, { full: true });
+    }
+    if (my && z.z === 'board') {
+      if (d.t === 'character') {
+        add('Quest · +' + LORE(u) + ' lore', canQuest(u), c.ex ? 'It’s exerted.' : !c.dry ? 'It’s still drying (played this turn).' : hasKw(u, 'reckless') ? 'Reckless characters can’t quest.' : '', function () { runAction({ k: 'quest', u: u }); }, { primary: true });
+        var ds = canChallenger(u) ? defenders(u) : [];
+        add('Challenge', canChallenger(u) && ds.length > 0, c.ex ? '' : !canChallenger(u) ? 'Drying characters can’t challenge (unless they have Rush).' : 'Nothing to challenge: only exerted characters or locations.', function () { humanChallenge(u); });
+        if (S.P[pi].board.some(isLoc)) add('Move to a location', S.P[pi].board.some(function (l) { return canMove(u, l); }), 'Not enough ink, or already there.', function () { humanMove(u); });
+        if (d.K.boost) add('Boost · ' + d.K.boost + ' ink', canBoost(u), c.bt === S.turn ? 'Already boosted this turn.' : 'Boost needs ' + d.K.boost + ' ink and a card in your deck.', function () { runAction({ k: 'boost', u: u }); });
+      }
+      if (d.K.exertAbility && (d.t === 'item' || d.t === 'character' || d.t === 'location')) add('Use ' + sym('E') + ' ability', !c.ex && (d.t !== 'character' || c.dry), c.ex ? 'Already exerted.' : 'Characters must be dry to use exert abilities.', function () { useAbility(u); });
+    }
+    if (S.phase === 'play' && S.viewer >= 0 && !S.P[S.viewer].cpu && (z.z !== 'hand' || handShown(z.pi))) {
+      if (z.z === 'board' && (c.mods || []).length && S.viewer === c.o) add('Clear stat changes', true, '', function () { var pre = snapshot(); act(function () { c.mods = []; checkBanish(); log('Cleared changes on ' + d.n, S.viewer); }); pushUndo(pre); });
+      add(Kit.icon('sparkle') + '<span>Apply effect</span>', true, '', function () { openToolbox(u, {}); }, { full: true });
+    }
+    zoomShell(d, info, acts, whys);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Apply effect: quick tools for everything printed on the cards
+  // ═════════════════════════════════════════════════════════════════════════
+  function miniArt(d) {
+    if (d.im && d.im.s && !imgBad[d.im.s]) return '<i class="mini" style="background-image:url(&quot;' + esc(d.im.s) + '&quot;)"></i>';
+    return '<i class="mini" style="background:' + (INKC[inkOf(d)[0]] || '#555') + '"></i>';
+  }
+  function stepper(v, min, max, on) {
+    var out = el('output', { text: (v > 0 && min < 0 ? '+' : '') + v });
+    var minus = el('button', { type: 'button', text: '−', 'aria-label': 'Less', onclick: function () { if (v > min) { v--; if (v === 0 && min < 0) v--; if (v < min) v = min; paint(); } } });
+    var plus = el('button', { type: 'button', text: '+', 'aria-label': 'More', onclick: function () { if (v < max) { v++; if (v === 0 && min < 0) v++; paint(); } } });
+    function paint() { out.textContent = (v > 0 && min < 0 ? '+' : '') + v; minus.disabled = v <= min; plus.disabled = v >= max; on(v); }
+    paint();
+    return el('div', { class: 'stepper' }, [minus, out, plus]);
+  }
+  function seg(choices, v, on) {
+    var box = el('div', { class: 'seg' });
+    function paint() { box.innerHTML = ''; choices.forEach(function (c) { box.appendChild(el('button', { type: 'button', class: String(c[0]) === String(v) ? 'on' : '', text: c[1], onclick: function () { v = c[0]; Kit.sfx('tap'); paint(); on(v); } })); }); }
+    paint(); return box;
+  }
+  var TOOLS = [
+    { id: 'draw', icon: 'draw', label: 'Draw cards', who: 'me', n: [1, 1, 10] },
+    { id: 'lore', icon: 'lore', label: 'Gain or lose lore', who: 'me', n: [1, -10, 10] },
+    { id: 'dmg', icon: 'dmg', label: 'Deal damage', n: [1, 1, 12], tgt: ['character', 'location'], choose: true },
+    { id: 'heal', icon: 'heal', label: 'Remove damage', n: [1, 1, 12], tgt: ['character', 'location'] },
+    { id: 'banish', icon: 'banish', label: 'Banish', tgt: ['character', 'item', 'location'], choose: true },
+    { id: 'exert', icon: 'exert', label: 'Exert or ready', tgt: ['character', 'item', 'location'], choose: true },
+    { id: 'hand', icon: 'hand', label: 'Return to hand', tgt: ['character', 'item', 'location'], choose: true },
+    { id: 'ink', icon: 'ink', label: 'Put into inkwell', seg: [['play', 'From play'], ['hand', 'From hand'], ['deck', 'Top of deck']], who: 'me' },
+    { id: 'stat', icon: 'stat', label: 'Change strength, willpower, lore', n: [1, -6, 6], tgt: ['character', 'location'], choose: true },
+    { id: 'kw', icon: 'kw', label: 'Give a keyword', tgt: ['character'], choose: true },
+    { id: 'look', icon: 'look', label: 'Look at top of deck', who: 'me', n: [3, 1, 10] },
+    { id: 'disc', icon: 'discard', label: 'Discard pile', who: 'me' },
+    { id: 'toss', icon: 'toss', label: 'Discard from hand', who: 'opp' },
+    { id: 'free', icon: 'free', label: 'Play a card for less', seg: [['0', 'Free'], ['1', '1 less'], ['2', '2 less'], ['3', '3 less']] },
+    { id: 'deck', icon: 'deck', label: 'Put on deck or shuffle', seg: [['top', 'Top'], ['bottom', 'Bottom'], ['shuffle', 'Shuffle a deck']] },
+    { id: 'inkr', icon: 'inkr', label: 'Ready or exert ink', who: 'me', n: [1, 1, 10] }
+  ];
+  function openToolbox(src, o) {
+    o = o || {};
+    if (!S || S.phase !== 'play' || finishing) return;
+    var me = meIx(); if (me == null || me < 0 || S.P[me].cpu) return;
+    if (src && !S.cards[src]) src = null;
+    closeZoom();
+    var node = el('div'), sheet = null, srcAction = !!(src && DD(src).t === 'action' && o.action);
+    function close() { if (sheet) sheet.close(); }
+    function again() { if (src) later(function () { openToolbox(src, o); }, 350); }
+    function name(pi) { return S.P[pi].name; }
+    function note(text, pi) { log(name(me) + ': ' + text + (src ? ' (' + DD(src).n + ')' : ''), me); S.st[me].fx++; }
+    // Pick a card on the table, with Ward and Vanish respected
+    function pickCard(title, types, choose, cb) {
+      var any = [0, 1].some(function (pi) { return S.P[pi].board.some(function (x) { return types.indexOf(DD(x).t) >= 0; }); });
+      if (!any) { Kit.toast('There’s nothing on the table to choose'); return; }
+      close();
+      startPick({ title: title, ok: function (x) { return S.P[C(x).o].board.indexOf(x) >= 0 && types.indexOf(DD(x).t) >= 0; }, cancel: again, done: function (x) {
+        if (choose && C(x).o !== me && hasKw(x, 'ward')) {
+          Kit.confirm(nm(x) + ' has Ward', { body: 'Your effects can’t choose it. Only apply this if the card affects it without choosing (like “each opposing character”).', ok: 'Apply anyway' }).then(function (y) { if (y) cb(x); else again(); });
+          return;
+        }
+        if (choose && srcAction) { var pre = snapshot(); var gone = false; act(function () { gone = vanishCheck(x, me, true); }); if (gone) { pushUndo(pre); Kit.toast(nm(x) + ' has Vanish and was banished'); again(); return; } }
+        cb(x);
+      } });
+    }
+    function doIt(fn, reveal) { var pre = snapshot(); act(fn); if (reveal) noUndo(); else pushUndo(pre); Kit.sfx('pop'); }
+    function runFx(f) {
+      if (f.tgt && !f.all) {
+        var ts = fxTargets(f, me);
+        if (!ts.length) { Kit.toast('No card can be chosen for that'); return; }
+        close();
+        startPick({ title: fxLabel(f), ok: function (x) { return ts.indexOf(x) >= 0; }, cancel: again, bad: function (x) { return C(x).o !== me && hasKw(x, 'ward') ? nm(x) + ' has Ward: your effects can’t choose it' : ''; }, done: function (x) {
+          if (C(x).o !== me && hasKw(x, 'ward')) { Kit.toast(nm(x) + ' has Ward: your effects can’t choose it'); again(); return; }
+          var pre = snapshot(), said = '';
+          act(function () { if (srcAction && vanishCheck(x, me, true)) { said = nm(x) + ' vanished'; return; } said = applyFx(f, me, x); note(said || fxLabel(f)); });
+          pushUndo(pre); Kit.sfx('pop'); if (said) Kit.toast(said);
+          again();
+        } });
+        return;
+      }
+      close();
+      var said2 = '';
+      doIt(function () { said2 = applyFx(f, me, null); note(said2 || fxLabel(f)); }, f.op === 'draw');
+      if (said2) Kit.toast(said2);
+      again();
+    }
+    function paintMain() {
+      node.innerHTML = '';
+      if (src) {
+        var d = DD(src);
+        node.appendChild(el('div', { class: 'tbx-src' }, [el('span', { html: miniArt(d) }), el('div', { class: 'tx', html: '<b>' + esc(d.full) + '</b><div class="rtext" style="margin-top:4px;font-size:.84rem">' + rulesHTML(d) + '</div>' })]));
+        var list = d.t === 'action' ? (d.K.fx ? d.K.fx.fx : []) : d.K.onPlay ? d.K.onPlay.fx : [];
+        if (list.length) {
+          var sg = el('div', { class: 'sugg' });
+          list.forEach(function (f) { sg.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('sparkle') + '<span>' + esc(fxLabel(f)) + '</span>', onclick: function () { runFx(f); } })); });
+          node.appendChild(sg);
+        }
+      }
+      var g = el('div', { class: 'tbx' });
+      TOOLS.forEach(function (t) { g.appendChild(el('button', { type: 'button', html: ti(t.icon) + '<span>' + esc(t.label) + '</span>', onclick: function () { Kit.sfx('tap'); paintTool(t); } })); });
+      node.appendChild(g);
+    }
+    function paintTool(t) {
+      node.innerHTML = '';
+      var v = { who: t.who === 'opp' ? opp(me) : me, n: t.n ? t.n[0] : 1, seg: t.seg ? t.seg[0][0] : null, stat: 's', dur: 'turn', kw: 'evasive', mode: 'they' };
+      var form = el('div', { class: 'tb-form' });
+      form.appendChild(el('div', { class: 'row' }, [
+        el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: paintMain }),
+        el('h3', { class: 'grow', text: t.label })]));
+      function row(label, ctl) { form.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: label }), ctl])); }
+      if (t.who) row('Player', seg([[me, name(me)], [opp(me), name(opp(me))]], v.who, function (x) { v.who = +x; }));
+      if (t.seg) row(t.id === 'free' ? 'Cost' : t.id === 'deck' ? 'Where' : 'From', seg(t.seg, v.seg, function (x) { v.seg = x; }));
+      if (t.id === 'stat') { row('Which', seg([['s', 'Strength'], ['w', 'Willpower'], ['l', 'Lore']], 's', function (x) { v.stat = x; })); }
+      if (t.id === 'kw') {
+        var kwSel = el('select', { class: 'input', style: { 'max-width': '190px' } });
+        ['evasive', 'rush', 'ward', 'bodyguard', 'challenger', 'resist', 'support', 'reckless', 'alert', 'singer'].forEach(function (k) { kwSel.appendChild(el('option', { value: k, text: KWNAME[k] })); });
+        kwSel.addEventListener('change', function () { v.kw = kwSel.value; });
+        row('Keyword', kwSel);
+        row('Amount (Challenger, Resist, Singer)', stepper(1, 1, 9, function (x) { v.n = x; }));
+      }
+      if (t.n) row(t.id === 'lore' ? 'Lore' : t.id === 'stat' ? 'Change' : 'How many', stepper(t.n[0], t.n[1], t.n[2], function (x) { v.n = x; }));
+      if (t.id === 'stat' || t.id === 'kw') row('How long', seg([['turn', 'This turn'], ['perm', 'While in play']], 'turn', function (x) { v.dur = x; }));
+      if (t.id === 'toss') row('Who picks', seg([['they', 'They choose'], ['you', 'You choose'], ['random', 'Random']], 'they', function (x) { v.mode = x; }));
+      if (t.id === 'inkr') row('Do', seg([['ready', 'Ready'], ['exert', 'Exert']], 'ready', function (x) { v.seg = x; }));
+      if (t.id === 'inkr') v.seg = 'ready';
+      var go = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: t.tgt || (t.id === 'ink' || t.id === 'deck') ? 'Choose a card' : 'Apply', onclick: function () { runTool(t, v); } });
+      form.appendChild(go);
+      node.appendChild(form);
+    }
+    function runTool(t, v) {
+      var who = v.who, P = S.P[who];
+      switch (t.id) {
+        case 'draw': {
+          close();
+          var got = 0;
+          doIt(function () { got = draw(who, v.n); note(name(who) + ' drew ' + plural(got, 'card')); }, true);
+          if (got < v.n) Kit.confirm(name(who) + '’s deck is empty', { body: 'A player who has to draw from an empty deck loses. End the game now?', ok: 'End the game', danger: true }).then(function (y) { if (y) { S.loser = who; act(function () {}); } else again(); });
+          else { Kit.toast(name(who) + ' drew ' + plural(got, 'card')); again(); }
+          return;
+        }
+        case 'lore': close(); doIt(function () { var d = gainLore(who, v.n); note(name(who) + (d >= 0 ? ' gained ' : ' lost ') + Math.abs(d) + ' lore'); }); again(); return;
+        case 'dmg': pickCard('Deal ' + v.n + ' damage to which card?', t.tgt, true, function (x) { var dd = 0; doIt(function () { dd = dealDamage(x, v.n); note(nm(x) + ' took ' + dd + ' damage'); checkBanish(); }); if (dd < v.n) Kit.toast('Resist reduced it to ' + dd); again(); }); return;
+        case 'heal': pickCard('Remove ' + v.n + ' damage from which card?', t.tgt, false, function (x) { doIt(function () { C(x).dmg = Math.max(0, C(x).dmg - v.n); note('removed damage from ' + nm(x)); }); again(); }); return;
+        case 'banish': pickCard('Banish which card?', t.tgt, true, function (x) { doIt(function () { note('banished ' + nm(x)); fx.banish(x); banish(x); S.st[C(x).o].lost++; }); Kit.sfx('bad'); again(); }); return;
+        case 'exert': pickCard('Exert or ready which card?', t.tgt, true, function (x) { doIt(function () { C(x).ex = !C(x).ex; note((C(x).ex ? 'exerted ' : 'readied ') + nm(x)); }); again(); }); return;
+        case 'hand': pickCard('Return which card to its owner’s hand?', t.tgt, true, function (x) { doIt(function () { var o2 = C(x).o; leavePlay(x); S.P[o2].hand.push(x); note('returned ' + nm(x) + ' to ' + name(o2) + '’s hand'); }); again(); }); return;
+        case 'ink':
+          if (v.seg === 'play') { pickCard('Put which card into its owner’s inkwell?', ['character', 'item', 'location'], true, function (x) { doIt(function () { var o2 = C(x).o; leavePlay(x); C(x).ex = true; S.P[o2].ink.push(x); note('put ' + nm(x) + ' into ' + name(o2) + '’s inkwell'); }); again(); }); return; }
+          if (v.seg === 'deck') { close(); if (!P.deckL.length) { Kit.toast('That deck is empty'); return; } doIt(function () { var x = P.deckL.shift(); resetCard(x); C(x).ex = true; P.ink.push(x); note('put the top card of ' + name(who) + '’s deck into the inkwell'); }, true); again(); return; }
+          if (!handVisibleTo(who)) { Kit.toast('Only ' + name(who) + ' can choose from their hand'); return; }
+          close(); chooseFromList('Put a card from ' + name(who) + '’s hand into the inkwell', P.hand, 1, function (sel) { doIt(function () { var x = sel[0]; P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); C(x).ex = true; P.ink.push(x); note('put ' + nm(x) + ' into the inkwell'); }); again(); }, { cancel: again });
+          return;
+        case 'stat': pickCard((v.n > 0 ? '+' : '') + v.n + ' ' + { s: 'strength', w: 'willpower', l: 'lore' }[v.stat] + ': which card?', t.tgt, true, function (x) {
+          doIt(function () { var m = { until: v.dur === 'perm' ? 'perm' : S.turn }; m[v.stat] = v.n; C(x).mods.push(m); note(nm(x) + ' gets ' + (v.n > 0 ? '+' : '') + v.n + ' ' + { s: 'strength', w: 'willpower', l: 'lore' }[v.stat] + (v.dur === 'perm' ? '' : ' this turn')); checkBanish(); }); again(); }); return;
+        case 'kw': pickCard('Give ' + KWNAME[v.kw] + ' to which character?', t.tgt, true, function (x) {
+          doIt(function () { C(x).mods.push({ kw: v.kw, n: /challenger|resist|singer/.test(v.kw) ? v.n : 0, until: v.dur === 'perm' ? 'perm' : S.turn }); note(nm(x) + ' gains ' + KWNAME[v.kw] + (/challenger|resist/.test(v.kw) ? ' +' + v.n : /singer/.test(v.kw) ? ' ' + v.n : '') + (v.dur === 'perm' ? '' : ' this turn')); }); again(); }); return;
+        case 'look': close(); lookTop(who, v.n, function (text) { note(text); }, again); return;
+        case 'disc': close(); discardTool(who, note, again); return;
+        case 'toss': {
+          if (!P.hand.length) { Kit.toast(name(who) + ' has no cards in hand'); return; }
+          close();
+          var finish1 = function (x) { doIt(function () { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); P.discard.push(x); note(name(who) + ' discarded ' + DD(x).full); }, true); Kit.toast(name(who) + ' discarded ' + nm(x)); again(); };
+          if (v.mode === 'random') return finish1(P.hand[Math.floor(Math.random() * P.hand.length)]);
+          if (P.cpu && v.mode === 'they') return finish1(P.hand.slice().sort(function (a, b) { return (cpuUsable(DD(a)) ? defValue(DD(a)) : -2) - (cpuUsable(DD(b)) ? defValue(DD(b)) : -2); })[0]);
+          if (who !== me && v.mode === 'they') {
+            // Pass & play: hand the device over so they choose privately
+            Kit.handoff({ name: P.name, color: P.color, what: 'cards', msg: 'Choose a card to discard' }).then(function () {
+              chooseFromList(P.name + ': choose a card to discard', P.hand, 1, function (sel) {
+                Kit.handoff({ name: S.P[me].name, color: S.P[me].color, what: 'cards', msg: P.name + ' discarded ' + DD(sel[0]).full }).then(function () { finish1(sel[0]); });
+              }, { cancel: again });
+            });
+            return;
+          }
+          chooseFromList((who === me ? 'Choose a card to discard' : P.name + ' reveals their hand: choose a card to discard'), P.hand, 1, function (sel) { finish1(sel[0]); }, { cancel: again });
+          return;
+        }
+        case 'free': {
+          if (!canAct()) { Kit.toast('You can do this on your turn'); return; }
+          var less = +v.seg, cand = S.P[me].hand.filter(function (x) { var d = DD(x); return less === 0 || inkReady(me) >= Math.max(0, (d.c || 0) - less); });
+          if (!cand.length) { Kit.toast('Nothing in your hand fits'); return; }
+          close();
+          chooseFromList(less ? 'Play a card for ' + less + ' less' : 'Play a card for free', cand, 1, function (sel) { if (less === 0) runAction({ k: 'play', u: sel[0], o: { free: true } }); else runAction({ k: 'play', u: sel[0], o: { less: less } }); }, { cancel: again });
+          return;
+        }
+        case 'deck': {
+          if (v.seg === 'shuffle') { close(); doIt(function () { shuffle(S.P[me].deckL); note('shuffled their deck'); }, true); Kit.toast('Deck shuffled'); again(); return; }
+          pickCard('Put which card on the ' + v.seg + ' of its owner’s deck?', ['character', 'item', 'location'], true, function (x) { doIt(function () { var o2 = C(x).o; leavePlay(x); if (v.seg === 'top') S.P[o2].deckL.unshift(x); else S.P[o2].deckL.push(x); note('put ' + nm(x) + ' on the ' + v.seg + ' of ' + name(o2) + '’s deck'); }); again(); });
+          return;
+        }
+        case 'inkr': close(); doIt(function () { var k = 0; P.ink.forEach(function (x) { if (k < v.n && C(x).ex === (v.seg === 'ready')) { C(x).ex = v.seg !== 'ready'; k++; } }); note((v.seg === 'ready' ? 'readied ' : 'exerted ') + plural(k, 'ink') + ' for ' + name(who)); }); again(); return;
+      }
+    }
+    paintMain();
+    sheet = Kit.sheet({ title: src ? 'Apply effect: ' + DD(src).n : 'Apply effect', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
+  function handVisibleTo(pi) { return S.mode === 'cpu' ? pi === humanIx() : pi === S.viewer; }
+  function chooseFromList(title, uids, n, cb, o) {
+    o = o || {};
+    var sel = [], node = el('div'), s, list = el('div', { class: 'lp-list' }), done = false;
+    var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { 'margin-top': '10px' }, text: 'Choose ' + n, onclick: function () { if (sel.length !== n) return; done = true; s.close(); cb(sel); } });
+    function paint() {
+      list.innerHTML = '';
+      uids.forEach(function (u) {
+        var d = DD(u), on = sel.indexOf(u) >= 0;
+        var row = el('div', { class: 'lp-li', style: on ? { 'box-shadow': 'inset 0 0 0 2px var(--gilt)' } : null }, [
+          el('span', { html: miniArt(d) }),
+          el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
+          el('button', { type: 'button', class: 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-soft'), text: on ? 'Chosen' : 'Choose', onclick: function () {
+            var i = sel.indexOf(u); if (i >= 0) sel.splice(i, 1); else { if (sel.length >= n) sel.shift(); sel.push(u); }
+            Kit.sfx('tap'); paint(); } })
+        ]);
+        row.querySelector('.mini') && row.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
+        list.appendChild(row);
+      });
+      btn.disabled = sel.length !== n; btn.textContent = n === 1 ? 'Choose' : 'Choose ' + n + ' (' + sel.length + ')';
+    }
+    paint();
+    node.appendChild(list); node.appendChild(btn);
+    s = Kit.sheet({ title: title, node: node, actions: [{ label: 'Cancel', cls: 'btn-ghost' }], onClose: function () { if (!done && o.cancel) o.cancel(); } });
+  }
+  function lookTop(who, n, note, after) {
+    var P = S.P[who], top = P.deckL.slice(0, n);
+    if (!top.length) { Kit.toast('That deck is empty'); return; }
+    var dest = {}, node = el('div'), list = el('div', { class: 'lp-list' }), s, done = false;
+    top.forEach(function (u) { dest[u] = 'top'; });
+    top.forEach(function (u) {
+      var d = DD(u);
+      var r = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]);
+      r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
+      r.appendChild(seg([['top', 'Top'], ['bottom', 'Bottom'], ['hand', 'Hand'], ['discard', 'Discard']], 'top', function (x) { dest[u] = x; }));
+      r.style.flexWrap = 'wrap';
+      list.appendChild(r);
+    });
+    node.appendChild(el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Top of the deck is first. Choose where each card goes.' }));
+    node.appendChild(list);
+    node.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { 'margin-top': '10px' }, text: 'Done', onclick: function () {
+      done = true; s.close();
+      act(function () {
+        var keep = top.filter(function (u) { return dest[u] === 'top'; }), bot = top.filter(function (u) { return dest[u] === 'bottom'; });
+        P.deckL.splice(0, top.length);
+        P.deckL = keep.concat(P.deckL).concat(bot);
+        var moved = [];
+        top.forEach(function (u) { if (dest[u] === 'hand') { P.hand.push(u); moved.push(DD(u).n + ' to hand'); } else if (dest[u] === 'discard') { P.discard.push(u); moved.push(DD(u).n + ' to discard'); } });
+        note('looked at the top ' + plural(top.length, 'card') + ' of ' + P.name + '’s deck' + (moved.length ? ' (' + moved.join(', ') + ')' : ''));
+      });
+      noUndo(); after();
+    } }));
+    s = Kit.sheet({ title: 'Top ' + plural(top.length, 'card') + ' of ' + P.name + '’s deck', node: node, onClose: function () { if (!done) { noUndo(); after(); } } });
+  }
+  function discardTool(who, note, after) {
+    var P = S.P[who];
+    if (!P.discard.length) { Kit.toast(P.name + '’s discard pile is empty'); after(); return; }
+    var node = el('div'), list = el('div', { class: 'lp-list' }), s;
+    function move(u, where) {
+      s.close();
+      var pre = snapshot(), d = DD(u);
+      act(function () {
+        P.discard.splice(P.discard.indexOf(u), 1); resetCard(u);
+        if (where === 'hand') { P.hand.push(u); note('returned ' + d.full + ' from the discard to hand'); }
+        else if (where === 'play') { if (d.t === 'action') { P.discard.push(u); note('played ' + d.full + ' from the discard'); } else { P.board.push(u); C(u).dry = d.t !== 'character'; note('played ' + d.full + ' from the discard'); } }
+        else if (where === 'ink') { C(u).ex = true; P.ink.push(u); note('put ' + d.full + ' from the discard into the inkwell'); }
+        else if (where === 'top') { P.deckL.unshift(u); note('put ' + d.full + ' from the discard on top of the deck'); }
+        else if (where === 'bottom') { P.deckL.push(u); note('put ' + d.full + ' from the discard on the bottom of the deck'); }
+      });
+      pushUndo(pre); Kit.sfx('pop');
+      after();
+    }
+    P.discard.slice().reverse().forEach(function (u) {
+      var d = DD(u);
+      var r = el('div', { class: 'lp-li', style: { 'flex-wrap': 'wrap' } }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
+        el('div', { class: 'acts' }, [['hand', 'Hand'], ['play', 'Play'], ['ink', 'Ink'], ['top', 'Deck top'], ['bottom', 'Bottom']].map(function (a) { return el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: a[1], onclick: function () { move(u, a[0]); } }); }))]);
+      r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
+      list.appendChild(r);
+    });
+    node.appendChild(list);
+    s = Kit.sheet({ title: P.name + '’s discard pile', node: node, actions: [{ label: 'Close', cls: 'btn-soft', onClick: after }] });
+  }
+  function showDiscard(pi) {
+    var P = S.P[pi];
+    if (!P.discard.length) { Kit.toast(P.name + '’s discard pile is empty'); return; }
+    var list = el('div', { class: 'lp-list' });
+    P.discard.slice().reverse().forEach(function (u) {
+      var d = DD(u);
+      list.appendChild(el('button', { type: 'button', class: 'lp-li', style: { border: '0', color: 'inherit', 'text-align': 'left', width: '100%' }, onclick: function () { zoomDef(d); } }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]));
+    });
+    Kit.sheet({ title: P.name + '’s discard pile (' + P.discard.length + ')', node: list, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  function showLog() {
+    if (!S) return;
+    var box = el('div', { class: 'logbox', style: { 'max-height': 'none', background: 'none', padding: '0' } });
+    box.innerHTML = S.log.slice().reverse().map(function (l) { return '<p' + (l.p >= 0 ? ' style="border-left:3px solid ' + S.P[l.p].color + ';padding-left:8px"' : '') + '>' + esc(l.t) + '</p>'; }).join('') || '<p>Nothing yet.</p>';
+    Kit.sheet({ title: 'Game log', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  function zoomDef(d, acts) {
+    zoomShell(d, '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || []);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // End of the game
+  // ═════════════════════════════════════════════════════════════════════════
+  function finish(w) {
+    if (!S || S.phase === 'over') return;
+    S.phase = 'over'; tok++; finishing = false; handing = false;
+    Kit.handoff.close(); closeOverlays();
+    var wp = S.P[w.pi], lp = S.P[opp(w.pi)], hl = [];
+    var rounds = Math.max(1, Math.ceil(S.turn / 2));
+    hl.push(w.how === 'deck' ? lp.name + ' ran out of cards, so ' + wp.name + ' won (' + wp.lore + ' to ' + lp.lore + ' lore)' : wp.name + ' reached ' + wp.lore + ' lore in ' + plural(rounds, 'round') + ' (' + lp.name + ' had ' + lp.lore + ')');
+    var bigs = [0, 1].map(function (i) { return { p: S.P[i], b: S.st[i].big }; }).filter(function (x) { return x.b; }).sort(function (a, b) { return b.b.n - a.b.n; });
+    if (bigs[0] && bigs[0].b.n >= 2) hl.push('Biggest quest: ' + bigs[0].p.name + '’s ' + bigs[0].b.name + ' for ' + bigs[0].b.n + ' lore');
+    var ch = [0, 1].sort(function (a, b) { return S.st[b].ban - S.st[a].ban; })[0];
+    if (S.st[ch].ban) hl.push(S.P[ch].name + ' banished ' + plural(S.st[ch].ban, 'character') + ' in challenges' + (S.st[ch].kills[0] ? ' (' + S.st[ch].kills[0] + ')' : ''));
+    [0, 1].forEach(function (i) { var s = S.st[i]; if (s.songs.length) hl.push(S.P[i].name + ' sang ' + s.songs.slice(0, 2).join(' and ')); });
+    [0, 1].forEach(function (i) { var s = S.st[i]; if (s.shifts.length) hl.push(S.P[i].name + ' shifted ' + s.shifts.slice(0, 2).join(' and ')); });
+    [0, 1].forEach(function (i) { if (S.st[i].loc >= 3) hl.push(S.P[i].name + ' collected ' + S.st[i].loc + ' lore from locations'); });
+    hl.push(S.P[0].name + ' played ' + S.P[0].deck + '; ' + S.P[1].name + ' played ' + S.P[1].deck);
+    var labels = S.rl.map(function (r, i) { return 'R' + (i + 1); });
+    Kit.record(KEY, {
+      started: S.started, mode: (S.mode === 'cpu' ? 'vs computer' : 'pass & play') + ' · ' + S.P[0].deck + ' vs ' + S.P[1].deck,
+      players: S.P.map(function (p) { return { name: p.name, score: p.lore, cpu: p.cpu }; }), winner: wp.name,
+      rounds: S.rl.length ? { labels: labels, scores: S.rl.map(function (r) { return [r[0], r[1]]; }) } : null,
+      highlights: hl.slice(0, 6), summary: wp.name + ' won · ' + S.P[0].lore + ' – ' + S.P[1].lore
+    });
+    var cfg = S.cfg, choices = S.choices;
+    clearSave(); render();
+    var lose = S.mode === 'cpu' && wp.cpu;
+    Kit.win({
+      icon: lose ? 'bot' : 'trophy', lose: lose,
+      title: wp.name === 'You' ? 'You win!' : wp.name + ' wins!',
+      sub: w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
+      rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }),
+      again: function () { newGame(cfg, choices); },
+      extra: [{ label: 'Change decks', onClick: function () { lastCfg = cfg; showDeckPick(cfg, choices); } }]
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Deck builder
+  // ═════════════════════════════════════════════════════════════════════════
+  function openBuilderFromMenu() {
+    var inGame = S && S.phase !== 'over' && ui.screen === 'game';
+    var from = ui.screen;
+    showBuilder(null, function () {
+      if (inGame && S) { ui.screen = 'game'; app.innerHTML = ''; resumeFlow(); }
+      else if (from === 'decks' && lastCfg) showDeckPick(lastCfg);
+      else showSetup();
+    });
+  }
+  function showBuilder(deckId, back) {
+    tok++; ui.screen = 'builder'; closeOverlays(); Kit.handoff.close();
+    document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
+    layoutVars();
+    app.innerHTML = '';
+    if (DB.status !== 'ready') {
+      var wait = el('div', { class: 'lp-load' }, [el('h2', { class: 'display', text: 'Deck builder' }), libLine(),
+        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Back', onclick: back })]);
+      app.appendChild(wait);
+      var sub = function () { if (!wait.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } if (DB.status === 'ready') { DB.subs.splice(DB.subs.indexOf(sub), 1); showBuilder(deckId, back); } };
+      DB.subs.push(sub);
+      if (DB.status === 'error' || DB.status === 'idle') DB.load();
+      return;
+    }
+    var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
+    var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
+    var dirty = false, f = { q: '', inks: {}, cost: null, type: null, set: '', kw: '', inkable: false, fit: false, shown: 60, tab: 'pool' };
+    var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
+    nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
+    var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
+    function leave() {
+      if (!dirty) return back();
+      Kit.confirm('Save changes to ' + (deck.name || 'this deck') + '?', { ok: 'Save', cancel: 'Discard changes' }).then(function (y) { if (y) saveDeck(); back(); });
+    }
+    function saveDeck() {
+      deck.name = (nameIn.value || '').trim() || 'My deck'; deck.at = Date.now();
+      var all = savedDecks().filter(function (d) { return d.id !== deck.id; }); all.unshift(deck); storeDecks(all);
+      dirty = false; Kit.toast('Saved ' + deck.name); Kit.sfx('good');
+    }
+    var top = el('div', { class: 'bld-top' }, [
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: leave }), nameIn, cnt,
+      el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Save', onclick: function () { saveDeck(); } })]);
+    var tabs = el('div', { class: 'bld-tabs' });
+    var body = el('div', { class: 'bld-body tab-pool' });
+    var search = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
+    var t0 = 0; search.addEventListener('input', function () { clearTimeout(t0); t0 = setTimeout(function () { f.q = search.value.trim().toLowerCase(); f.shown = 60; paintGrid(); }, 160); });
+    var moreBtn = el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Filters', onclick: moreFilters });
+    var inkChips = el('div', { class: 'fchips' }), costChips = el('div', { class: 'fchips' }), typeChips = el('div', { class: 'fchips' });
+    var grid = el('div', { class: 'bld-grid' });
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [el('div', { class: 'row1' }, [search, moreBtn]), inkChips, costChips, typeChips]), grid]);
+    var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
+    var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
+    body.appendChild(pool); body.appendChild(dpane);
+    var wrap = el('div', { class: 'bld' }, [top, msg, tabs, body]);
+    app.appendChild(wrap);
+    function chip(label, on, click, dot) { return el('button', { type: 'button', class: 'fchip' + (on ? ' on' : ''), html: (dot ? '<i class="dot" style="--c:' + dot + '"></i>' : '') + esc(label), onclick: function () { Kit.sfx('tap'); click(); } }); }
+    function paintChips() {
+      inkChips.innerHTML = ''; INKS.forEach(function (i) { inkChips.appendChild(chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }, INKC[i])); });
+      costChips.innerHTML = ''; costChips.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
+      [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { costChips.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
+      typeChips.innerHTML = ''; [['character', 'Characters'], ['action', 'Actions'], ['song', 'Songs'], ['item', 'Items'], ['location', 'Locations']].forEach(function (t) {
+        typeChips.appendChild(chip(t[1], f.type === t[0], function () { f.type = f.type === t[0] ? null : t[0]; f.shown = 60; paintChips(); paintGrid(); }));
+      });
+    }
+    function matches(d) {
+      var di = inkOf(d), on = INKS.filter(function (i) { return f.inks[i]; });
+      if (on.length && !di.some(function (i) { return on.indexOf(i) >= 0; })) return false;
+      if (f.fit) { var dk = deckInks(deck.cards); if (dk.length === 2 && !di.every(function (i) { return dk.indexOf(i) >= 0; })) return false; }
+      if (f.cost != null && (f.cost === 8 ? d.c < 8 : d.c !== f.cost)) return false;
+      if (f.type) { if (f.type === 'song' ? !d.song : f.type === 'action' ? d.t !== 'action' || d.song : d.t !== f.type) return false; }
+      if (f.set && String(d.set) !== f.set) return false;
+      if (f.inkable && !d.k) return false;
+      if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
+      if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ')).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
+      return true;
+    }
+    function count(d) { return copiesByFull(deck.cards, d.full); }
+    function addCard(d, n) {
+      var have = count(d);
+      if (n > 0) {
+        if (have >= 4) { Kit.toast('4 copies of a card at most'); Kit.sfx('bad'); return; }
+        var inks = deckInks(deck.cards), di = inkOf(d);
+        if (di.some(function (i) { return inks.indexOf(i) < 0; }) && inks.concat(di.filter(function (i) { return inks.indexOf(i) < 0; })).length > 2) { Kit.toast('A deck can use 2 inks at most (' + inks.join(' & ') + ')'); Kit.sfx('bad'); return; }
+        deck.cards[d.id] = (deck.cards[d.id] || 0) + 1; Kit.sfx('pop');
+      } else {
+        var ids = (DB.byFull[d.full.toLowerCase()] || [d]).map(function (x) { return x.id; }).filter(function (id) { return deck.cards[id]; });
+        if (!ids.length) return;
+        var id = ids[ids.length - 1]; deck.cards[id]--; if (deck.cards[id] <= 0) delete deck.cards[id]; Kit.sfx('tap');
+      }
+      dirty = true; paintDeck(); paintGrid(true);
+    }
+    function cardZoom(d) {
+      var have = count(d);
+      zoomDef(d, [
+        { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d); } },
+        { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d); } }
+      ]);
+    }
+    function paintGrid(keepScroll) {
+      var st = grid.scrollTop, list = DB.unique.filter(matches);
+      grid.innerHTML = '';
+      list.slice(0, f.shown).forEach(function (d) {
+        var n = count(d);
+        var b = el('div', { class: 'pc', role: 'button', tabindex: '0', 'aria-label': d.full + (n ? ', ' + n + ' in deck' : '') });
+        b.appendChild(artEl(d, false));
+        b.appendChild(el('div', { class: 'nmb', html: esc(d.n) + (d.v ? '<small>' + esc(d.v) + '</small>' : '') }));
+        if (n) b.appendChild(el('span', { class: 'n', text: String(n) }));
+        b.appendChild(el('span', { class: 'cost' + (d.k ? ' ink' : ''), style: { '--cu': '120px' }, text: String(d.c) }));
+        var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
+        plus.style.cssText = 'position:absolute;right:4px;bottom:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
+        b.appendChild(plus);
+        b.addEventListener('click', function () { cardZoom(d); });
+        grid.appendChild(b);
+      });
+      if (!list.length) grid.appendChild(el('p', { class: 'muted bld-more', text: 'No cards match these filters.' }));
+      if (list.length > f.shown) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - f.shown) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
+      if (keepScroll) grid.scrollTop = st;
+    }
+    function paintDeck() {
+      var n = deckCount(deck.cards), pr = deckProblems(deck.cards), cs = deckCards(deck.cards);
+      cnt.textContent = n + '/60'; cnt.className = 'cnt' + (pr.length ? '' : ' ok');
+      msg.textContent = pr.length ? pr[0] : 'Ready to play: ' + deckInks(deck.cards).join(' & ');
+      msg.className = 'bld-msg' + (pr.length ? '' : ' ok');
+      tabs.innerHTML = '';
+      tabs.appendChild(chip('Cards', f.tab === 'pool', function () { f.tab = 'pool'; body.className = 'bld-body tab-pool'; paintDeck(); }));
+      tabs.appendChild(chip('Deck (' + n + ')', f.tab === 'deck', function () { f.tab = 'deck'; body.className = 'bld-body tab-deck'; paintDeck(); }));
+      var by = {}, mx = 1; cs.forEach(function (x) { var k = Math.min(8, x.d.c || 0); by[k] = (by[k] || 0) + x.n; mx = Math.max(mx, by[k]); });
+      curve.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<div><span>' + (by[c] || 0) + '</span><i style="height:' + Math.round((by[c] || 0) / mx * 34) + 'px"></i><span>' + (c === 8 ? '8+' : c) + '</span></div>'; }).join('');
+      var ink = cs.reduce(function (a, x) { return a + (x.d.k ? x.n : 0); }, 0), chars = cs.reduce(function (a, x) { return a + (x.d.t === 'character' ? x.n : 0); }, 0);
+      dpane.children[1].textContent = n ? ink + ' inkable · ' + chars + ' characters · ' + (n - chars) + ' other' : 'Tap + on a card to add it. 60 cards, 1 or 2 inks, up to 4 of each.';
+      dlist.innerHTML = '';
+      cs.forEach(function (x) {
+        var d = x.d;
+        dlist.appendChild(el('div', { class: 'drow' }, [
+          el('span', { class: 'hc' + (d.k ? ' ink' : ''), text: String(d.c) }),
+          el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + ' ' + esc((d.v ? d.v + ' · ' : '') + (d.song ? 'Song' : d.t)) })]),
+          el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }), el('button', { type: 'button', text: '+', 'aria-label': 'Add one', onclick: function () { addCard(d, 1); } })])
+        ]));
+      });
+      dfoot.innerHTML = '';
+      dfoot.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm btn-block', text: n ? 'Replace with a quick deck' : 'Start from a quick deck', onclick: function () {
+        var node = el('div', { class: 'dk-grid' }), s;
+        pairings().forEach(function (pr2) { node.appendChild(el('button', { type: 'button', class: 'dk-opt', html: inkDots(pr2) + '<span class="grow">' + esc(pr2.join(' & ')) + '</span>', onclick: function () { s.close(); var q = quickDeck(pr2); deck.cards = q.cards; if (!nameIn.value || nameIn.value === 'My deck') { deck.name = q.name; nameIn.value = q.name; } dirty = true; paintDeck(); paintGrid(true); } })); });
+        s = Kit.sheet({ title: 'Start from a quick deck', node: node, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+      } }));
+      if (orig) dfoot.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-block', text: 'Delete this deck', onclick: function () {
+        Kit.confirm('Delete ' + deck.name + '?', { ok: 'Delete', danger: true }).then(function (y) { if (!y) return; storeDecks(savedDecks().filter(function (d) { return d.id !== deck.id; })); dirty = false; back(); });
+      } }));
+    }
+    function moreFilters() {
+      var node = el('div', { class: 'tb-form' }), setSel = el('select', { class: 'input' }), kwSel = el('select', { class: 'input' });
+      setSel.appendChild(el('option', { value: '', text: 'All sets' }));
+      var codes = {}; DB.unique.forEach(function (d) { codes[d.set] = 1; });
+      var sets = DB.sets.filter(function (s) { return codes[s.code]; });
+      Object.keys(codes).forEach(function (c) { if (!sets.some(function (s) { return s.code === c; })) sets.push({ code: c, name: 'Set ' + c }); });
+      sets.forEach(function (s) { setSel.appendChild(el('option', { value: s.code, text: s.name + (s.name.indexOf(s.code) < 0 ? ' (' + s.code + ')' : ''), selected: f.set === s.code })); });
+      kwSel.appendChild(el('option', { value: '', text: 'Any keyword' }));
+      ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].forEach(function (k) { kwSel.appendChild(el('option', { value: k, text: KWNAME[k], selected: f.kw === k })); });
+      node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Set' }), setSel]));
+      node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Keyword' }), kwSel]));
+      var ik = { v: f.inkable }, ft = { v: f.fit };
+      node.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: 'Inkable only' }), seg([[0, 'Any'], [1, 'Inkable']], f.inkable ? 1 : 0, function (x) { ik.v = !!+x; })]));
+      node.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { ft.v = !!+x; })]));
+      Kit.sheet({ title: 'Filters', node: node, actions: [
+        { label: 'Apply', primary: true, cls: 'btn-primary', onClick: function () { f.set = setSel.value; f.kw = kwSel.value; f.inkable = ik.v; f.fit = ft.v; f.shown = 60; moreBtn.textContent = (f.set || f.kw || f.inkable || f.fit) ? 'Filters on' : 'Filters'; paintGrid(); } },
+        { label: 'Clear', cls: 'btn-ghost', onClick: function () { f.set = ''; f.kw = ''; f.inkable = false; f.fit = false; moreBtn.textContent = 'Filters'; paintGrid(); } }] });
+    }
+    paintChips(); paintDeck(); paintGrid();
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Boot
+  // ═════════════════════════════════════════════════════════════════════════
+  function resumeFlow() {
+    if (!S) return;
+    handing = false; finishing = false; ui.pick = null; ui.screen = 'game'; ui.phaseIx = null;
+    if (S.phase === 'mull') {
+      if (S.mode === 'pass') S.viewer = -1;
+      render(); later(mullNext, 500); return;
+    }
+    if (S.phase !== 'play') return;
+    var w = winner(); if (w) { render(); finish(w); return; }
+    if (S.step === 'begin') { render(); startTurn(); return; }
+    if (humans() === 2) S.viewer = -1;
+    render();
+    afterBegin();
+  }
+  var rz = 0;
+  window.addEventListener('resize', function () {
+    if (rz) return;
+    rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); });
+  });
+  DB.load();
+  (function () {
+    var saved = lsGet(SAVE, null);
+    if (saved && saved.P && saved.P.length === 2 && saved.defs && saved.cards && saved.phase && saved.phase !== 'over') {
+      S = saved; S.hist = S.hist || []; uidN = S.uidN || 0; resumeFlow();
+    } else showSetup();
+  })();
+
+  // Test hooks (used by the automated checks; harmless otherwise)
+  window.__lorcana = {
+    state: function () { return S; }, db: DB, D: D, DD: DD, C: C, parseKw: function (o) { return prep(o).K; }, fromLorcast: fromLorcast, prep: prep,
+    quickDeck: quickDeck, deckProblems: deckProblems, winner: winner,
+    load: function (st) { tok++; closeOverlays(); Kit.handoff.close(); S = st; DEF = {}; S.hist = S.hist || []; resumeFlow(); },
+    run: function (a) { runAction(a); }, end: humanEnd, cpuChoose: cpuChoose, applyFx: applyFx, defenders: defenders, canQuest: canQuest,
+    canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
+    allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
+    STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom
+  };
 })();
 </script>
 </body>
