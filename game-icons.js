@@ -98,7 +98,11 @@ var GameIcon = (function () {
     jokerrun: function (c) { return rect(3, 3, 12, 17, 2.2, W, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(-10 9 11)"') + rect(9, 4, 12, 17, 2.2, c, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(8 15 12)"') + path('M11.5 10.5l2-3.5 1.8 2.6 1.8-2.6 2 3.5-1 .9h-5.6z', Y, ' transform="rotate(8 15 12)"') + circ(15.5, 15.5, 1.6, W, ' transform="rotate(8 15 12)"'); },
     codebreaker: function (c) { var t = rect(2, 3, 20, 18, 3, c, ' opacity=".85"'); [[R,B,Y,G],[G,R,B,W]].forEach(function (row, j) { row.forEach(function (col, i) { t += circ(5.5 + i * 4.3, 8 + j * 7, 1.8, col); }); }); return t + circ(20, 8, .8, K) + circ(20, 15, .8, W); },
     slidepuzzle: function (c) { var t = rect(2, 2, 20, 20, 3, K); for (var i = 0; i < 9; i++) { if (i === 8) continue; t += rect(3.2 + (i % 3) * 6.3, 3.2 + Math.floor(i / 3) * 6.3, 5.6, 5.6, 1.2, i % 2 ? W : c); } return t; },
-    horserace: function (c) { return path('M3 17c2-1 3-4 6-5l2-4 2 1 3-3 1 2-2 2 3 1 2 3-2 1-2-1-2 2v4h-2l-1-4-4 1-2 3H4z', c) + circ(15.2, 6.4, .7, K) + line('M2 21.5h20', K, 1.6); },
+    horserace: function (c) {   // racing horseshoe, toes down, with nail holes and a winner's star
+      var shoe = '<path d="M5 2.6C1.8 9.4 2 16.2 6.2 20c3.3 3 8.3 3 11.6 0 4.2-3.8 4.4-10.6 1.2-17.4" fill="none" stroke="' + K + '" stroke-width="5.4" stroke-linecap="square"/>';
+      var holes = [[4.2, 8.6], [4, 13.4], [6, 17.8], [19.8, 8.6], [20, 13.4], [18, 17.8]].map(function (p) { return circ(p[0], p[1], .9, W); }).join('');
+      return shoe + holes + path('M12 6.4l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 14.6l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z', R);
+    },
     cubehopper: function (c) { function cube(x, y, top) { return path('M' + x + ' ' + y + 'l4 -2.3 4 2.3 -4 2.3z', top) + path('M' + x + ' ' + y + 'l4 2.3v4.6l-4 -2.3z', K, ' opacity=".55"') + path('M' + (x + 8) + ' ' + y + 'l-4 2.3v4.6l4 -2.3z', K, ' opacity=".3"'); } return cube(8, 6, Y) + cube(4, 12.6, c) + cube(12, 12.6, Y) + circ(12, 3.2, 1.8, O); },
     paddleball: function (c) { return rect(2.5, 6, 3, 12, 1.5, W) + rect(18.5, 6, 3, 12, 1.5, c) + rect(11.5, 2, 1, 20, .5, W, ' opacity=".35"') + rect(13, 9, 3.4, 3.4, .6, W); },
     lrc: function (c) { return rect(2, 6, 12, 12, 2.5, W, ' stroke="' + K + '" stroke-width="1.2"') + txt('L', 8, R, 12.6, 15) + rect(12, 4, 10, 10, 2.2, c) + txt('C', 17, W, 9.6, 12.2) + circ(18, 19, 2.6, Y) + circ(18, 19, 1.4, O); },
