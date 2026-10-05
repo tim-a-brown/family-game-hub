@@ -12,6 +12,7 @@
 //   Kit.init({id, rules, menu, onNew, undo})  build the game bar, set accent
 //                                              (undo: fn adds "Undo" to the menu)
 //   Kit.setup(root, {...})                     standard "who's playing" screen
+//   Kit.handoff({name, color, what}) -> Promise  pass-and-play cover; hold 3s to reveal
 //   Kit.win({...})                             celebration + results card
 //   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}
 //   Kit.confirm(msg, {ok, danger})             -> Promise<bool>
@@ -1015,10 +1016,78 @@
     return d;
   }
 
+
+  // ── Pass-and-play hand-off ────────────────────────────────────────────────
+  // Kit.handoff({name, color, what, msg, hold}) -> Promise
+  // Covers the screen with "Pass to <name>". The player must press and HOLD
+  // the button for 3 seconds (hold: ms) before the cover lifts and their
+  // hidden cards/tiles show for their turn. Letting go early resets it.
+  // Call it again before the next player's turn.
+  function handoff(o) {
+    o = o || {};
+    var HOLD = o.hold || 3000;
+    return new Promise(function (resolve) {
+      var c = o.color || 'var(--accent)';
+      var R = 46, CIRC = 2 * Math.PI * R;
+      var ring = '<svg class="k-ho-ring" viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="' + R + '" class="tr"/><circle cx="54" cy="54" r="' + R + '" class="pg" style="stroke-dasharray:' + CIRC + ';stroke-dashoffset:' + CIRC + '"/></svg>';
+      var btn = el('button', { type: 'button', class: 'k-ho-btn', 'aria-label': 'Hold for 3 seconds to show your ' + (o.what || 'cards') }, [
+        el('span', { html: ring }), el('span', { class: 'k-ho-ic', html: icon('eye') })
+      ]);
+      var hint = el('div', { class: 'k-ho-hint', text: 'Hold for 3 seconds to see your ' + (o.what || 'cards') });
+      var cover = el('div', { class: 'k-ho', role: 'dialog', 'aria-modal': 'true', style: { '--ho': c } }, [
+        el('div', { class: 'k-ho-in' }, [
+          el('div', { class: 'k-ho-av', style: { '--c': c }, text: String(o.name || '?').charAt(0).toUpperCase() }),
+          el('div', { class: 'k-ho-k', text: 'Pass to' }),
+          el('h2', { text: o.name || 'the next player' }),
+          o.msg ? el('p', { class: 'k-ho-msg', text: o.msg }) : null,
+          btn, hint
+        ])
+      ]);
+      doc.body.appendChild(cover);
+      requestAnimationFrame(function () { cover.classList.add('show'); });
+      var pg = cover.querySelector('.pg'), t0 = 0, raf = 0, done = false, lastTick = 0;
+      function frame(t) {
+        if (!t0) t0 = t;
+        var p = Math.min(1, (t - t0) / HOLD);
+        pg.style.strokeDashoffset = String(CIRC * (1 - p));
+        var sec = Math.floor((t - t0) / 1000);
+        if (sec > lastTick && p < 1) { lastTick = sec; haptic('tick'); sfx('tick'); }
+        if (p >= 1) return finish();
+        raf = requestAnimationFrame(frame);
+      }
+      function start(e) {
+        if (done) return; e.preventDefault();
+        try { btn.setPointerCapture(e.pointerId); } catch (er) {}
+        btn.classList.add('holding'); hint.textContent = 'Keep holding…';
+        t0 = 0; lastTick = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
+      }
+      function stop() {
+        if (done) return;
+        cancelAnimationFrame(raf); btn.classList.remove('holding');
+        pg.style.transition = 'stroke-dashoffset .25s'; pg.style.strokeDashoffset = String(CIRC);
+        setTimeout(function () { pg.style.transition = ''; }, 260);
+        hint.textContent = 'Hold for 3 seconds to see your ' + (o.what || 'cards');
+      }
+      function finish() {
+        done = true; haptic('success'); sfx('pop');
+        cover.classList.remove('show'); cover.classList.add('lift');
+        setTimeout(function () { cover.remove(); resolve(); }, 320);
+      }
+      btn.addEventListener('pointerdown', start);
+      btn.addEventListener('pointerup', stop);
+      btn.addEventListener('pointercancel', stop);
+      btn.addEventListener('lostpointercapture', function () { if (!done) stop(); });
+      btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      // Keyboard: hold Space or Enter
+      btn.addEventListener('keydown', function (e) { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) start(e); });
+      btn.addEventListener('keyup', function (e) { if (e.key === ' ' || e.key === 'Enter') stop(); });
+    });
+  }
+
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
-    resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, game: function () { return game; }
+    resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();
