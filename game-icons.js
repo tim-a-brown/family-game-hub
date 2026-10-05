@@ -105,6 +105,13 @@ var GameIcon = (function () {
     },
     cubehopper: function (c) { function cube(x, y, top) { return path('M' + x + ' ' + y + 'l4 -2.3 4 2.3 -4 2.3z', top) + path('M' + x + ' ' + y + 'l4 2.3v4.6l-4 -2.3z', K, ' opacity=".55"') + path('M' + (x + 8) + ' ' + y + 'l-4 2.3v4.6l4 -2.3z', K, ' opacity=".3"'); } return cube(8, 6, Y) + cube(4, 12.6, c) + cube(12, 12.6, Y) + circ(12, 3.2, 1.8, O); },
     paddleball: function (c) { return rect(2.5, 6, 3, 12, 1.5, W) + rect(18.5, 6, 3, 12, 1.5, c) + rect(11.5, 2, 1, 20, .5, W, ' opacity=".35"') + rect(13, 9, 3.4, 3.4, .6, W); },
+    axisallies: function (c) {   // a plastic tank piece with a white star, over a strip of map
+      var star = 'M12 6.1l1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z';
+      return rect(2.5, 13.2, 19, 5.6, 2.8, K) + circ(5.4, 16, 1.5, S) + circ(9.1, 16, 1.5, S) + circ(12.8, 16, 1.5, S) + circ(16.5, 16, 1.5, S) + circ(19.4, 16, 1.2, S) +
+        rect(3.6, 10.2, 16.8, 3.8, 1.4, c, ' stroke="' + K + '" stroke-width="1"') +
+        path('M7.6 10.4c0-3 2-4.9 4.4-4.9s4.4 1.9 4.4 4.9z', c, ' stroke="' + K + '" stroke-width="1"') +
+        rect(15.6, 6.9, 7, 1.7, .85, K) + path(star, W);
+    },
     lrc: function (c) {   // the L, C and R dice fanned out, and a chip being passed left and right
       function die(x, y, rot, t, tc) { return '<g transform="rotate(' + rot + ' ' + (x + 3.7) + ' ' + (y + 3.7) + ')">' + rect(x, y, 7.4, 7.4, 1.7, W, ' stroke="' + K + '" stroke-width="1"') + txt(t, 6.2, tc, y + 3.9, x + 3.7) + '</g>'; }
       var arrow = ' stroke="' + K + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
