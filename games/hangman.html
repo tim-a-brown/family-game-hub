@@ -33,7 +33,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 .frame{border-radius:16px;padding:9px;flex:1;display:flex;min-height:0;}
 .frame.jolt{animation:jolt .42s cubic-bezier(.3,.7,.4,1);}
 @keyframes jolt{0%,100%{transform:none;}18%{transform:translate(-7px,4px) rotate(-.9deg);}40%{transform:translate(6px,-2px) rotate(.7deg);}65%{transform:translate(-3px,1px) rotate(-.25deg);}}
-.slate{position:relative;flex:1;border-radius:8px;padding:24px 12px 22px;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;
+.slate{position:relative;flex:1;border-radius:8px;padding:24px 22px 22px;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;
   background:
     radial-gradient(60% 40% at 25% 30%, rgba(255,255,255,.05), transparent 70%),
     radial-gradient(50% 35% at 75% 70%, rgba(255,255,255,.045), transparent 70%),
@@ -65,7 +65,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 .bloom{position:absolute;left:-30%;right:-30%;top:-30%;bottom:-30%;z-index:1;pointer-events:none;opacity:0;
   background:radial-gradient(closest-side, rgba(255,226,138,.5), rgba(255,226,138,.16) 45%, transparent 75%);animation:bloom 1.9s ease-out .35s both;}
 @keyframes bloom{0%{opacity:0;transform:scale(.35);}25%{opacity:1;}100%{opacity:0;transform:scale(1.15);}}
-.cur{position:absolute;top:0;bottom:0;width:51%;z-index:4;pointer-events:none;transform:scaleX(.075);transition:transform 1.15s cubic-bezier(.55,0,.25,1);
+.cur{position:absolute;top:0;bottom:0;width:51%;z-index:4;pointer-events:none;transform:scaleX(.06);transition:transform 1.15s cubic-bezier(.55,0,.25,1);
   background:
     linear-gradient(180deg, rgba(0,0,0,.25), transparent 18%, transparent 62%, rgba(0,0,0,.45)),
     repeating-linear-gradient(90deg, #4f0a14 0, #7d1724 6%, #a52637 10.5%, #8a1a29 14%, #5c0c17 20%);
@@ -73,6 +73,10 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 .cur.l{left:0;transform-origin:0 50%;}
 .cur.r{right:0;transform-origin:100% 50%;}
 .slate.cl .cur{transform:none;}
+/* After a loss, one spotlight stays on the closed curtain where the answer is */
+.pool{position:absolute;left:0;right:0;bottom:0;height:50%;z-index:4;pointer-events:none;opacity:0;transition:opacity 1s .5s;
+  background:radial-gradient(62% 46% at 50% 74%, rgba(255,222,160,.24), rgba(255,222,160,.08) 55%, transparent 75%);}
+.slate.lost.cl .pool{opacity:1;}
 .val{position:absolute;left:0;right:0;top:0;height:21px;z-index:6;pointer-events:none;
   background:
     linear-gradient(180deg,#5a0c17,#8a1a29) top/100% 8px no-repeat,
@@ -83,7 +87,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 .slate.cl .lt{color:#fff6e6;text-shadow:0 2px 6px rgba(0,0,0,.7);}
 .slate.cl .lt.red{color:#ffc0b0;}
 .slate.cl .lt::after{background:rgba(255,236,200,.75);}
-.slate.cl .banner{text-shadow:0 3px 0 rgba(0,0,0,.5), 0 0 18px rgba(0,0,0,.6);}
+.slate.cl .banner{color:#ffc9bc!important;text-shadow:0 3px 0 rgba(0,0,0,.5), 0 0 18px rgba(0,0,0,.6);}
 .pic{flex:1;min-height:150px;display:flex;align-items:center;justify-content:center;position:relative;}
 .pic svg{height:100%;max-height:260px;width:auto;max-width:100%;overflow:visible;}
 .ch{fill:none;stroke-linecap:round;stroke-linejoin:round;}
@@ -264,8 +268,8 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   // ── Stage effects: timers we can cancel, reduced motion ───────────────────
   var RM = false; try { RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
   var fxT = [];
-  function later(fn, ms) { var t = setTimeout(function () { fxT.splice(fxT.indexOf(t), 1); fn(); }, ms); fxT.push(t); return t; }
-  function clearFx() { fxT.forEach(clearTimeout); fxT = []; document.querySelectorAll('.flyL').forEach(function (n) { n.remove(); }); }
+  function later(fn, ms) { var t = setTimeout(function () { var i = fxT.indexOf(t); if (i >= 0) fxT.splice(i, 1); fn(); }, ms); fxT.push(t); return t; }
+  function clearFx() { fxT.forEach(clearTimeout); fxT = []; if (beat === -1) beat = null; document.querySelectorAll('.flyL').forEach(function (n) { n.remove(); }); }
 
   // ── Theatre sounds: synthesized with WebAudio, off when the kit sound is off ─
   var AC = null, NB = null;
@@ -478,24 +482,28 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 
   // ── Endings for one word ──────────────────────────────────────────────────
   var busy = false;
-  function win() {
+  function win(L) {
     var W = S.W; W.over = true; W.won = true; stopBeat();
     var pts = wordPoints(W);
     S.scores[W.guesser] += pts;
     S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
     if (S.mode === 'solo') setLifeStreak(lifeStreak() + 1);
     S.log.push({ w: W.word, cat: W.cat, won: true, misses: W.misses, max: maxMiss(), pts: pts, guesser: W.guesser, setter: W.setter, clue: W.clueShown, whole: W.wholeWord, guesses: W.guessed.length });
-    fresh = { win: true };
+    fresh = { win: true, hit: L || null };
     S.phase = 'result'; setDread(0);
     save(); render();
     busy = true;
-    Kit.sfx('good'); Kit.haptic('success');
-    setTimeout(function () { Kit.sfx('win'); Kit.confetti({ count: 90 }); }, 450);
-    var s = S.mode === 'solo' ? lifeStreak() : S.streak;
-    setTimeout(function () {
-      Kit.callout(s >= 10 ? 'Legendary! ' + s + ' in a row' : s >= 5 ? 'On fire! ' + s + ' in a row' : s >= 2 ? s + ' in a row!' : W.misses === 0 ? 'Flawless!' : maxMiss() - W.misses === 1 ? 'Phew! Just in time' : 'Saved!');
-    }, 650);
-    setTimeout(function () { busy = false; }, 1200);
+    Kit.haptic('success');
+    // The last letters slam in, then the lights come up and the crowd cheers
+    var nHit = L ? W.word.split(L).length - 1 : 0, t0 = Math.max(300, nHit * 110 + 180);
+    later(function () { Kit.sfx('win'); Kit.confetti({ count: 90 }); snd('cheer'); }, t0 + 150);
+    var s = S.mode === 'solo' ? lifeStreak() : S.streak, left = maxMiss() - W.misses;
+    var run = s >= 10 ? 'Legendary! ' + s + ' in a row' : s >= 5 ? 'On fire! ' + s + ' in a row' : s >= 2 ? s + ' in a row!' : null;
+    var first = left === 1 ? 'Close call!' : run || (W.misses === 0 ? 'Flawless!' : left === 2 ? 'That was close!' : 'Saved!');
+    later(function () { Kit.callout(first); }, t0 + 350);
+    if (run && first !== run) later(function () { Kit.callout(run); }, t0 + 1850);
+    if (s >= 2) later(function () { snd('fanfare'); }, t0 + 900);
+    later(function () { busy = false; }, 1200);
   }
   function lose() {
     var W = S.W; W.over = true; W.won = false; stopBeat();
@@ -503,30 +511,40 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     if (stump) S.scores[W.setter] += stump;
     S.streak = 0; if (S.mode === 'solo') setLifeStreak(0);
     S.log.push({ w: W.word, cat: W.cat, won: false, misses: W.misses, max: maxMiss(), pts: 0, stump: stump, guesser: W.guesser, setter: W.setter, clue: W.clueShown, guesses: W.guessed.length });
+    save();
     busy = true;
-    // The final stroke is drawn slowly, then a thud, then the answer in red
-    setTimeout(function () { Kit.sfx('lose'); Kit.haptic('heavy'); var sl = app.querySelector('.slate'); if (sl) { sl.classList.remove('shake'); void sl.offsetWidth; sl.classList.add('shake'); } }, 1400);
-    setTimeout(function () { fresh = { lose: true }; S.phase = 'result'; save(); render(); }, 1700);
-    setTimeout(function () { busy = false; }, 1750);
+    // The final stroke is drawn slowly under a single spotlight, then a drum hit
+    later(function () { snd('drum', 0.34); Kit.haptic('heavy'); var sl = app.querySelector('.slate'); if (sl) { sl.classList.remove('shake'); void sl.offsetWidth; sl.classList.add('shake'); } }, 1400);
+    later(function () { fresh = { lose: true }; S.phase = 'result'; save(); render(); }, 1700);
+    later(function () { busy = false; }, 1750);
   }
   function afterWord() {
     if (busy) return;
-    S.wi++;
-    if (S.wi >= S.perGame) return finish();
-    nextWord();
+    function go() { S.wi++; if (S.wi >= S.perGame) return finish(); nextWord(); }
+    // Bring the curtain down before the next act
+    var sl = app.querySelector('.slate');
+    if (!sl || sl.classList.contains('cl') || RM) return go();
+    clearFx(); busy = true;
+    sl.querySelectorAll('.cur').forEach(function (c) { c.style.transitionDuration = '.55s'; });
+    sl.classList.add('cl'); snd('curtain', 0.55);
+    later(function () { busy = false; go(); }, 600);
   }
 
   // ── Heartbeat on the last life ────────────────────────────────────────────
   var beat = null;
-  function syncBeat() {
-    var W = S && S.W;
-    if (W && !W.over && S.phase === 'play' && W.misses === maxMiss() - 1) {
-      if (beat) return;
-      var b = function () { Kit.sfx('tick'); setTimeout(function () { Kit.sfx('tick'); }, 170); Kit.haptic('tick'); };
+  function syncBeat(delay) {
+    var W = S && S.W, on = !!(W && !W.over && S.phase === 'play' && W.misses === maxMiss() - 1);
+    if (!on) return stopBeat();
+    document.body.classList.add('lastlife');
+    if (beat) return;
+    beat = -1;
+    later(function () {
+      if (beat !== -1) return;
+      var b = function () { snd('heart'); Kit.haptic('tick'); };
       b(); beat = setInterval(b, 1100);
-    } else stopBeat();
+    }, delay || 0);
   }
-  function stopBeat() { clearInterval(beat); beat = null; }
+  function stopBeat() { if (beat && beat !== -1) clearInterval(beat); beat = null; document.body.classList.remove('lastlife'); }
   function setDread(v) { document.documentElement.style.setProperty('--dread', String(v)); }
 
   // ── Chalk drawing ─────────────────────────────────────────────────────────
@@ -564,12 +582,12 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
       if (!freed) {
         for (i = 4; i < shown; i++) { var nw = newMiss && i === shown - 1; out += path(parts[i], W.over ? '#ff9d9d' : '#f4f1e6', 3.6, nw ? 'new' + (isLast ? ' slow' : '') : ''); }
       } else {
-        // Freed: a happy figure hops down beside the gallows, arms up
-        var r2 = rng(seed + 9), cls = fresh && fresh.win ? 'new' : '';
-        out += path(circ(r2, 172, 132, 13), '#ffe28a', 3.6, cls) + path(ln(r2, 172, 145, 172, 178), '#ffe28a', 3.6, cls) +
-          path(ln(r2, 172, 156, 154, 136) + ' ' + ln(r2, 172, 156, 190, 136), '#ffe28a', 3.6, cls) +
-          path(ln(r2, 172, 178, 160, 204) + ' ' + ln(r2, 172, 178, 184, 204), '#ffe28a', 3.6, cls) +
-          path('M166 134 Q172 140 178 134', '#ffe28a', 2.4, cls);
+        // Freed: the figure breaks loose, hops for joy beside the gallows and takes a bow
+        var r2 = rng(seed + 9), cls = fresh && fresh.win ? 'new' : '', go = fresh && fresh.win && !RM ? ' go' : '';
+        out += '<g class="hero' + go + '"><g class="upper">' + path(circ(r2, 172, 132, 13), '#ffe28a', 3.6, cls) + path(ln(r2, 172, 145, 172, 178), '#ffe28a', 3.6, cls) +
+          path(ln(r2, 172, 156, 152, 146) + ' ' + ln(r2, 172, 156, 192, 146), '#ffe28a', 3.6, cls) +
+          path('M166 134 Q172 140 178 134', '#ffe28a', 2.4, cls) + '</g>' +
+          path(ln(r2, 172, 178, 160, 204) + ' ' + ln(r2, 172, 178, 184, 204), '#ffe28a', 3.6, cls) + '</g>';
       }
       out += '</g>';
       return '<svg viewBox="0 0 200 215" role="img" aria-label="' + W.misses + ' of ' + max + ' misses">' + out + '</svg>';
@@ -601,6 +619,12 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     g += '</g>';
     var anim = fly && fresh && fresh.win ? ' style="animation:floataway 2.6s cubic-bezier(.5,0,.8,.4) .5s forwards"' : fly ? ' style="transform:translateY(-260px)"' : ' style="transform:translateY(' + sink + 'px);transition:transform ' + (W.over ? '.35s cubic-bezier(.6,0,1,.6)' : '.8s var(--ease)') + '"';
     out += '<g class="flyer"' + anim + '>' + g + '</g>';
+    // Up, up and away into the night sky
+    if (fly) {
+      var st = '<g class="stars" filter="url(#chalk)">', SP = [[30, 30, 0], [168, 22, .5], [52, 96, 1.1], [150, 92, .3], [100, 130, .8], [18, 150, 1.4], [184, 160, .6]];
+      SP.forEach(function (q) { st += '<path d="M' + q[0] + ' ' + (q[1] - 6) + ' L' + q[0] + ' ' + (q[1] + 6) + ' M' + (q[0] - 6) + ' ' + q[1] + ' L' + (q[0] + 6) + ' ' + q[1] + '" stroke="#ffe28a" stroke-width="2" stroke-linecap="round" style="animation-delay:' + ((fresh && fresh.win ? 1.6 : 0) + q[2]) + 's"/>'; });
+      out += st + '</g>';
+    }
     return '<svg viewBox="0 0 200 215" role="img" aria-label="' + left + ' balloons left"><style>@keyframes floataway{0%{transform:translateY(0)}15%{transform:translateY(6px)}100%{transform:translateY(-280px)}}</style>' + out + '</svg>';
   }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -631,19 +655,32 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
       hud.appendChild(el('span', { class: 'pill' + (ls >= 3 ? ' hot' : ''), html: Kit.icon('flame') + '<b>' + ls + '</b>in a row' }));
       app.appendChild(hud);
     }
-    var slate = el('div', { class: 'slate' });
+    // The stage: spotlight, curtains (closed at the start of a word and after a loss), valance
+    var lostNow = S.phase === 'result' && !W.won;
+    var slate = el('div', { class: 'slate' + (lostNow ? ' lost' : '') + ((lostNow && !(fresh && fresh.lose)) || (fresh && fresh.open) ? ' cl' : '') });
+    slate.appendChild(el('div', { class: 'spot' }));
+    if (fresh && fresh.win && !RM) slate.appendChild(el('div', { class: 'bloom' }));
+    slate.appendChild(el('div', { class: 'cur l' })); slate.appendChild(el('div', { class: 'cur r' })); slate.appendChild(el('div', { class: 'pool' })); slate.appendChild(el('div', { class: 'val' }));
     var max = maxMiss(), left = max - W.misses;
-    slate.appendChild(el('div', { class: 'topline' }, [
-      el('span', { text: W.cat ? catName(W.cat) : 'Secret word' }),
-      el('span', { class: 'miss', style: W.missed.length ? null : { color: 'rgba(244,241,230,.6)', 'letter-spacing': '0' }, text: W.missed.length ? W.missed.join(' ') : (left + ' misses allowed') })
-    ]));
+    var tray;
+    if (W.missed.length) {
+      tray = el('span', { class: 'miss tray', 'aria-label': 'Wrong letters: ' + W.missed.join(', ') });
+      W.missed.forEach(function (c, i) { tray.appendChild(el('span', { class: 'ml' + (fresh && fresh.missL && i === W.missed.length - 1 && !RM ? ' new' : ''), text: c })); });
+    } else tray = el('span', { class: 'miss', style: { color: 'rgba(244,241,230,.6)' }, text: left + ' misses allowed' });
+    slate.appendChild(el('div', { class: 'topline' }, [el('span', { text: W.cat ? catName(W.cat) : 'Secret word' }), tray]));
+    // Loss: plan the slow letter-by-letter reveal
+    if (fresh && fresh.lose) {
+      var hidden = W.word.split('').filter(function (c) { return /[A-Z]/.test(c) && W.guessed.indexOf(c) < 0; }).length;
+      fresh.rv = { start: 1000, step: Math.min(380, Math.round(2800 / Math.max(1, hidden))), n: hidden };
+      fresh.rv.end = fresh.rv.start + hidden * fresh.rv.step;
+    }
     var pic = el('div', { class: 'pic', html: picture() });
     slate.appendChild(pic);
     if (W.clueShown) slate.appendChild(el('div', { class: 'clue', text: W.clue }));
     if (S.phase === 'result') {
-      var ttl = W.won ? (S.mode === 'duel' ? S.players[W.guesser].name + ' got it!' : W.misses === 0 ? 'Flawless!' : 'Saved!') : (S.mode === 'duel' ? 'Stumped!' : 'Got away!');
+      var ttl = W.won ? (S.mode === 'duel' ? S.players[W.guesser].name + ' got it!' : W.misses === 0 ? 'Flawless!' : maxMiss() - W.misses === 1 ? 'Just in time!' : 'Saved!') : (S.mode === 'duel' ? 'Stumped!' : 'Got away!');
       var sub = W.won ? '+' + wordPoints(W) + (wordPoints(W) === 1 ? ' point' : ' points') : S.mode === 'duel' ? '+5 for ' + S.players[W.setter].name : 'Better luck next word';
-      slate.appendChild(el('div', { class: 'banner', style: { color: W.won ? '#ffe28a' : '#ff8f8f' }, html: Kit.esc(ttl) + '<small>' + Kit.esc(sub) + '</small>' }));
+      slate.appendChild(el('div', { class: 'banner', style: { color: W.won ? '#ffe28a' : '#ff8f8f', 'animation-delay': fresh && fresh.rv ? (fresh.rv.end + 300) + 'ms' : null }, html: Kit.esc(ttl) + '<small>' + Kit.esc(sub) + '</small>' }));
     }
     slate.appendChild(wordEl());
     app.appendChild(el('div', { class: 'frame wood' }, [slate]));
@@ -669,7 +706,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   function sizeWord(wrap) {
     var longest = +wrap.dataset.longest || 6, big = window.innerWidth >= 700 && window.innerHeight >= 700;
     var side = window.innerWidth >= 1000 && window.innerHeight >= 600 && window.innerWidth > window.innerHeight ? 526 : 0; // keyboard column
-    var avail = Math.min(window.innerWidth - side, big ? 720 : 560) - 64;
+    var avail = Math.min(window.innerWidth - side, big ? 720 : 560) - 84;
     var lw = Math.max(16, Math.min(big ? 46 : 32, Math.floor((avail - (longest - 1) * 5) / longest)));
     wrap.style.setProperty('--lw', lw + 'px');
   }
@@ -678,16 +715,16 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     var W = S.W, wrap = el('div', { class: 'word' }), words = W.word.split(' ');
     wrap.dataset.longest = Math.max.apply(null, words.map(function (w) { return w.length; }).concat([6]));
     sizeWord(wrap);
-    var reveal = W.over && !W.won, k = 0;
+    var reveal = W.over && !W.won, k = 0, sk = 0, rv = fresh && fresh.rv;
     words.forEach(function (w) {
       var g = el('div', { class: 'wd' });
       w.split('').forEach(function (ch) {
         var shown = W.guessed.indexOf(ch) >= 0, cls = 'lt';
         if (!/[A-Z]/.test(ch)) cls += ' sp';
         var s = el('span', { text: shown || reveal || !/[A-Z]/.test(ch) ? ch : '' });
-        if (fresh && fresh.hit === ch) cls += ' stamp';
-        if (reveal && !shown) { cls += ' red'; s.style.animationDelay = (k++ * 140) + 'ms'; }
-        if (fresh && fresh.win) { cls += ' wave'; s.style.animationDelay = (k++ * 70) + 'ms'; }
+        if (fresh && fresh.hit && fresh.hit === ch) { cls += ' slam'; s.style.animationDelay = (sk++ * 110) + 'ms'; }
+        else if (fresh && fresh.win) { cls += ' wave'; s.style.animationDelay = (300 + k++ * 70) + 'ms'; }
+        if (reveal && !shown) { cls += ' red'; if (rv) s.style.animationDelay = (rv.start + k++ * rv.step) + 'ms'; }
         var c = el('div', { class: cls, 'data-ch': ch }, [s]);
         g.appendChild(c);
       });
@@ -695,20 +732,74 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     });
     return wrap;
   }
+  // ── Spotlight: wide and soft at first, narrowing on the figure as misses climb ─
+  var lastSpot = null;
+  function spotTarget(sl) {
+    var W = S.W, R = sl.getBoundingClientRect();
+    if (S.phase === 'result' && !W.won) {
+      var wr = sl.querySelector('.word').getBoundingClientRect();
+      return { x: wr.left + wr.width / 2 - R.left, y: wr.top + wr.height / 2 - R.top, w: wr.width + 110, h: wr.height * 2.2 + 40, o: 0.94 };
+    }
+    var pr = (sl.querySelector('.pic svg') || sl).getBoundingClientRect();
+    var cx = pr.left + pr.width / 2 - R.left, cy = pr.top + pr.height / 2 - R.top, big = Math.max(R.width, R.height) * 2.4;
+    if (S.phase === 'result') return { x: cx, y: cy, w: big, h: big, o: 0 };
+    var ratio = Math.min(1, W.misses / maxMiss()), tight = Math.max(pr.width, pr.height) * 1.2 + 30;
+    var d = big - (big - tight) * Math.pow(ratio, 0.6);
+    return { x: cx, y: cy, w: d, h: d, o: 0.1 + 0.84 * Math.pow(ratio, 1.25) };
+  }
+  function placeSpot(sl, delay) {
+    var sp = sl && sl.querySelector('.spot'); if (!sp) return;
+    var t = spotTarget(sl);
+    function set(o) { sp.style.left = o.x + 'px'; sp.style.top = o.y + 'px'; sp.style.width = o.w + 'px'; sp.style.height = o.h + 'px'; sp.style.opacity = String(o.o); }
+    if (lastSpot) { sp.style.transition = 'none'; set(lastSpot); void sp.offsetWidth; sp.style.transition = ''; }
+    if (delay) later(function () { set(t); }, delay); else set(t);
+    lastSpot = t;
+  }
+  window.addEventListener('resize', function () { var sl = app.querySelector('.slate'); if (sl && S && S.W) { lastSpot = null; placeSpot(sl); } });
+  // A missed letter flies from its key into the "wrong" tray
+  function flyLetter(L, slot, done) {
+    var key = null; app.querySelectorAll('.key').forEach(function (k) { if (k.textContent === L) key = k; });
+    if (!key || !slot || !slot.animate) return later(done, 380);
+    var a = key.getBoundingClientRect(), b = slot.getBoundingClientRect();
+    var n = el('div', { class: 'flyL', text: L }); n.style.fontSize = getComputedStyle(slot).fontSize;
+    document.body.appendChild(n);
+    var nw = n.offsetWidth, nh = n.offsetHeight;
+    var x0 = a.left + a.width / 2 - nw / 2, y0 = a.top + a.height / 2 - nh / 2, x1 = b.left + b.width / 2 - nw / 2, y1 = b.top + b.height / 2 - nh / 2;
+    function tf(x, y, sc, r) { return 'translate(' + x + 'px,' + y + 'px) scale(' + sc + ') rotate(' + r + 'deg)'; }
+    n.animate([
+      { transform: tf(x0, y0, 1.6, 0), opacity: 0 },
+      { transform: tf(x0, y0 - 24, 2.3, -10), opacity: 1, offset: 0.15 },
+      { transform: tf((x0 + x1) / 2, Math.min(y0, y1) + (Math.abs(y0 - y1) * 0.25) - 50, 1.9, 14), opacity: 1, offset: 0.55 },
+      { transform: tf(x1, y1, 1, 0), opacity: 1 }
+    ], { duration: 440, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' });
+    later(function () { n.remove(); done(); }, 440);
+  }
+  function dust(c) {
+    var d = el('span', { class: 'dust' });
+    for (var k = 0; k < 6; k++) { var b = el('i'); b.style.setProperty('--dx', ((k - 2.5) * 9 + (Math.random() - 0.5) * 6) + 'px'); b.style.setProperty('--dy', (-4 - Math.random() * 10) + 'px'); d.appendChild(b); }
+    c.appendChild(d); later(function () { d.remove(); }, 700);
+  }
+  function jolt() { var fr = app.querySelector('.frame'); if (fr && !RM) { fr.classList.remove('jolt'); void fr.offsetWidth; fr.classList.add('jolt'); } }
   function afterPaint() {
-    if (!fresh) return;
-    if (fresh.hit) {
-      app.querySelectorAll('.lt.stamp').forEach(function (c, i) {
-        var sp = el('span', { class: 'spark' });
-        for (var k = 0; k < 6; k++) { var b = el('i'); b.style.setProperty('--r', (k * 60) + 'deg'); sp.appendChild(b); }
-        c.appendChild(sp); setTimeout(function () { sp.remove(); }, 700);
-      });
+    var sl = app.querySelector('.slate'), f = fresh; fresh = null;
+    if (!sl) return;
+    placeSpot(sl, f && f.win ? 330 : f && f.lose ? 150 : 0);
+    if (!f) return;
+    if (f.open) later(function () { sl.classList.remove('cl'); snd('curtain', 1.15); }, 220);
+    if (f.hit) {
+      sl.querySelectorAll('.lt.slam').forEach(function (c, i) { later(function () { snd('slam', i); dust(c); }, i * 110 + 200); });
     }
-    if (fresh.lose) {
-      var n = app.querySelectorAll('.lt.red').length;
-      for (var i = 0; i < n; i++) (function (i) { setTimeout(function () { Kit.sfx('flip'); }, i * 140); })(i);
+    if (f.miss) {
+      snd('scratch', f.last ? 1.4 : 0.45);
+      var slot = f.missL ? sl.querySelector('.ml.new') : null;
+      var land = function () { if (slot) { slot.classList.remove('new'); slot.classList.add('land'); } snd('crack'); jolt(); };
+      if (slot) flyLetter(f.missL, slot, land); else later(land, 400);
+      if (!f.last && S.W.misses === maxMiss() - 1) later(function () { Kit.callout('Down to the wire!', '#ff9d9d'); snd('drumroll'); }, 520);
     }
-    fresh = null;
+    if (f.lose && f.rv) {
+      for (var i = 0; i < f.rv.n; i++) (function (i) { later(function () { snd('drum', 0.2); Kit.haptic('light'); }, f.rv.start + i * f.rv.step + 60); })(i);
+      later(function () { sl.classList.add('cl'); snd('curtain', 1.2); Kit.sfx('lose'); }, f.rv.end + 150);
+    }
   }
   function keyboard() {
     var W = S.W, kb = el('div', { class: 'kb' });
@@ -749,7 +840,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   function coverGuess() {
     var W = S.W, guesser = S.players[W.guesser].name;
     cover('hand', 'Pass to ' + guesser, 'The secret word is ready: ' + W.word.replace(/[^A-Z]/g, '').length + ' letters' + (W.word.indexOf(' ') >= 0 ? ', ' + W.word.split(' ').length + ' words' : '') + '.', "I'm ready to guess", function () {
-      S.phase = 'play'; save(); render(); Kit.sfx('whoosh');
+      S.phase = 'play'; fresh = { open: true }; lastSpot = null; save(); render();
     });
   }
   function setWord() {
@@ -788,7 +879,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 
   // ── The end ───────────────────────────────────────────────────────────────
   function finish() {
-    S.phase = 'over'; stopBeat(); setDread(0);
+    S.phase = 'over'; clearFx(); stopBeat(); setDread(0);
     var P = S.players, solo = S.mode === 'solo', hl = [], L = S.log;
     if (solo) {
       var won = L.filter(function (x) { return x.won; });
