@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lorcana</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Disney Lorcana, played on one device. Real card data and art are loaded at
+   runtime from the Lorcast API (never copied into this repo) and cached on
+   the device. Layout: a felt table in a wooden rim with the opponent's side
+   on top and yours below, your hand under the table and the turn controls
+   below that (or in a side panel on a wide landscape screen).
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --amber:#f2b01e; --amethyst:#8a4bb0; --emerald:#2e9a4c; --ruby:#d0213f; --sapphire:#1679c0; --steel:#9aa8b4;
+  --gilt:#e3bd62; --gilt-2:#f6e1a8; --gilt-3:#9c7632;
+  --serif:"Palatino","Palatino Linotype","Book Antiqua","Iowan Old Style",Georgia,serif;
+}
+body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0) 60%),#0d1030;}
+.k-toast{pointer-events:none;}
+#app.stage.full{padding:0;}
+
+/* ── Play layout ───────────────────────────────────────────────────────── */
+.lp{--hh:112px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;
+  grid-template-areas:"table" "hand" "bar";gap:6px;height:var(--avail,calc(100dvh - 64px));
+  padding:0 calc(6px + env(safe-area-inset-right,0px)) calc(var(--safe-b) + 6px + var(--corner-y)) calc(6px + env(safe-area-inset-left,0px));overflow:hidden;}
+.lp-table{grid-area:table;position:relative;min-height:0;border-radius:22px;padding:7px;}
+.lp-felt{position:relative;height:100%;border-radius:16px;display:grid;grid-template-rows:auto minmax(0,1fr) auto minmax(0,1fr) auto;overflow:hidden;}
+.lp-hand{grid-area:hand;position:relative;height:var(--hh);}
+.lp-bar{grid-area:bar;display:flex;gap:8px;align-items:center;padding:0 var(--corner-x);}
+.lp-panel{display:none;}
+@media (min-width:900px) and (orientation:landscape){
+  .lp{grid-template-columns:minmax(0,1fr) 230px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"table panel" "hand panel";}
+  .lp-bar{display:none;}
+  .lp-panel{grid-area:panel;display:flex;flex-direction:column;gap:8px;min-height:0;padding-bottom:2px;}
+}
+
+/* Player strip: name, lore ring, ink, deck, discard */
+.lp-strip{display:flex;align-items:center;gap:8px;padding:5px 8px;min-height:46px;background:rgba(0,0,0,.18);}
+.lp-strip.top{box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);}
+.lp-strip.bot{box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+.lp-who{display:flex;align-items:center;gap:7px;min-width:0;flex:1 1 auto;}
+.lp-who .avatar{width:30px;height:30px;font-size:.85rem;flex:none;}
+.lp-who .nm{min-width:0;line-height:1.1;}
+.lp-who b{display:block;font-weight:900;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lp-who small{display:block;font-size:.68rem;font-weight:800;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lp-strip.turn-on .lp-who b{color:var(--gilt-2);}
+.lore{position:relative;flex:none;width:44px;height:44px;border:0;padding:0;background:none;color:#fff;}
+.lore svg{width:100%;height:100%;transform:rotate(-90deg);}
+.lore .tk{fill:none;stroke-width:5;}
+.lore b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:400;font-size:1.15rem;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+.lore.bump b{animation:lbump .5s var(--spring);}
+@keyframes lbump{40%{transform:scale(1.45);color:var(--gilt-2);}}
+.lore.drop-ok{filter:drop-shadow(0 0 8px var(--gilt));}
+.inkz{flex:none;display:flex;align-items:center;gap:5px;border:0;background:none;padding:3px 4px;border-radius:10px;color:#fff;}
+.inkz .hexes{display:flex;flex-wrap:wrap;gap:2px;max-width:78px;}
+.hx{width:12px;height:13px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:linear-gradient(160deg,var(--gilt-2),var(--gilt) 50%,var(--gilt-3));}
+.hx.used{background:rgba(255,255,255,.18);}
+.inkz .ct{font-family:var(--display);font-size:1rem;line-height:1;white-space:nowrap;}
+.inkz .ct small{font-family:var(--font);font-weight:800;font-size:.62rem;color:rgba(255,255,255,.6);display:block;letter-spacing:.04em;text-transform:uppercase;}
+.inkz.drop-ok,.inkz.can{box-shadow:0 0 0 2px var(--gilt),0 0 14px rgba(227,189,98,.6);}
+.pile{position:relative;flex:none;width:30px;height:42px;border:0;padding:0;border-radius:4px;background:none;color:#fff;}
+.pile .lback,.pile .mini{position:absolute;inset:0;border-radius:4px;}
+.pile .n{position:absolute;right:-5px;bottom:-5px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:#141029;color:#fff;font-size:.68rem;font-weight:900;display:grid;place-items:center;box-shadow:0 0 0 1.5px rgba(255,255,255,.35);}
+.pile.empty{outline:1.5px dashed rgba(255,255,255,.25);outline-offset:-2px;}
+.pile .mini{background-size:cover;background-position:center 18%;box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.ohand{flex:none;display:flex;align-items:center;}
+.ohand .lback{width:18px;height:25px;border-radius:3px;margin-left:-11px;box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.ohand .lback:first-child{margin-left:0;}
+.ohand span{font-weight:900;font-size:.75rem;margin-left:5px;color:rgba(255,255,255,.75);}
+
+/* Boards */
+.lp-board{position:relative;min-height:0;overflow-x:hidden;overflow-y:auto;padding:6px 6px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--gap,6px);}
+.lp-board.drop-ok{background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 2px rgba(227,189,98,.55);border-radius:12px;}
+.lp-board .empty-msg{align-self:center;color:rgba(255,255,255,.32);font-weight:800;font-size:.85rem;text-align:center;pointer-events:none;}
+.lp-mid{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-height:30px;padding:3px 8px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.28) 20%,rgba(0,0,0,.28) 80%,transparent);}
+.phases{display:flex;align-items:center;gap:3px;flex:none;}
+.phases i{font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:8px;color:rgba(255,255,255,.4);}
+.phases i.on{background:var(--gilt);color:#2b1a00;}
+.phases i.done{color:rgba(255,255,255,.62);}
+.lp-msg{min-width:0;flex:1 1 auto;font-size:.78rem;font-weight:800;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:0;background:none;text-align:left;padding:0;}
+.lp-pick{position:absolute;inset:0;z-index:6;display:flex;align-items:center;gap:8px;padding:2px 6px 2px 10px;background:linear-gradient(90deg,#3a2a00,#6b4b0a);color:#fff3cf;font-weight:900;font-size:.85rem;}
+.lp-pick span{flex:1;min-width:0;line-height:1.15;}
+.lp-pick .btn{min-height:30px;padding:0 12px;font-size:.82rem;}
+
+/* ── Cards ─────────────────────────────────────────────────────────────── */
+.slot{position:relative;flex:none;width:calc(var(--cu) * .716);height:var(--cu);transition:width .25s var(--ease);touch-action:none;}
+.slot.wide{width:var(--cu);}
+.lc{--w:calc(var(--cu) * .716);position:absolute;left:50%;top:50%;width:var(--w);height:var(--cu);margin:calc(var(--cu) / -2) 0 0 calc(var(--w) / -2);
+  border-radius:calc(var(--cu) * .05);overflow:hidden;background:#1d1a2c;box-shadow:0 2px 0 rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.45);
+  transition:transform .3s var(--ease),filter .25s,box-shadow .2s;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.lc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none;}
+.slot.ex .lc{transform:rotate(90deg);}
+.slot.loc .lc{width:var(--cu);height:calc(var(--cu) * .716);margin:calc(var(--cu) * -.358) 0 0 calc(var(--cu) / -2);}
+.slot.loc .lc img.port{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
+.slot.dry .lc{filter:saturate(.55) brightness(.82);}
+.slot.sel .lc{box-shadow:0 0 0 3px var(--gilt-2),0 0 18px rgba(246,225,168,.8);}
+.slot.can .lc{box-shadow:0 0 0 2px rgba(246,225,168,.75),0 4px 10px rgba(0,0,0,.45);}
+.slot.tgt .lc{box-shadow:0 0 0 3px #ff6b6b,0 0 16px rgba(255,107,107,.85);animation:tgt 1s ease-in-out infinite;}
+.slot.tgt-ok .lc{box-shadow:0 0 0 3px #7fe0a0,0 0 16px rgba(127,224,160,.8);animation:tgt 1s ease-in-out infinite;}
+@keyframes tgt{50%{filter:brightness(1.15);}}
+.picking .slot:not(.tgt):not(.tgt-ok) .lc{filter:brightness(.55) saturate(.6);}
+.slot.drag-src{opacity:.35;}
+.slot.flash .lc{animation:flash .6s ease;}
+@keyframes flash{30%{filter:brightness(2) saturate(1.4);}}
+.slot.hitd .lc{animation:hit .45s ease;}
+@keyframes hit{20%{transform:translateX(-4px) rotate(var(--rot,0deg));}40%{transform:translateX(4px) rotate(var(--rot,0deg));}60%{transform:translateX(-2px) rotate(var(--rot,0deg));}}
+.slot.ex.hitd .lc{--rot:90deg;}
+/* Overlay: name + stats, readable at any size */
+.ov{position:absolute;left:0;right:0;bottom:0;padding:calc(var(--cu) * .03) calc(var(--cu) * .03) calc(var(--cu) * .025);
+  background:linear-gradient(180deg,rgba(10,8,24,0),rgba(10,8,24,.82) 34%,rgba(10,8,24,.94));color:#fff;line-height:1.05;pointer-events:none;}
+.ov .nm{display:block;font-weight:900;font-size:max(9px,calc(var(--cu) * .095));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000;}
+.ov .st{display:flex;align-items:center;justify-content:space-between;margin-top:1px;font-family:var(--display);font-size:max(10px,calc(var(--cu) * .12));}
+.ov .st span{display:inline-flex;align-items:center;gap:1px;}
+.ov .st svg{width:max(9px,calc(var(--cu) * .1));height:max(9px,calc(var(--cu) * .1));}
+.ov .st .up{color:#8ff0a8;} .ov .st .dn{color:#ff8f8f;}
+.slot.loc .ov .nm{font-size:max(9px,calc(var(--cu) * .085));}
+.cost{position:absolute;left:calc(var(--cu) * .02);top:calc(var(--cu) * .02);width:calc(var(--cu) * .2);height:calc(var(--cu) * .22);min-width:18px;min-height:20px;
+  display:grid;place-items:center;font-family:var(--display);font-size:max(11px,calc(var(--cu) * .13));color:#fff;
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:#2a2440;text-shadow:0 1px 1px #000;}
+.cost.ink{background:linear-gradient(160deg,var(--gilt-2),var(--gilt) 45%,var(--gilt-3));color:#2b1a00;text-shadow:none;}
+.dmg{position:absolute;right:calc(var(--cu) * .03);top:calc(var(--cu) * .3);min-width:max(20px,calc(var(--cu) * .24));height:max(20px,calc(var(--cu) * .24));padding:0 3px;border-radius:50%;
+  display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#ff7a7a,#c4102c 60%,#7a0616);color:#fff;font-family:var(--display);font-size:max(11px,calc(var(--cu) * .14));
+  box-shadow:0 2px 5px rgba(0,0,0,.6),inset 0 0 0 1.5px rgba(255,255,255,.45);}
+.kws{position:absolute;left:calc(var(--cu) * .02);top:calc(var(--cu) * .26);display:flex;flex-direction:column;gap:2px;pointer-events:none;}
+.kws i{width:max(14px,calc(var(--cu) * .15));height:max(14px,calc(var(--cu) * .15));border-radius:50%;display:grid;place-items:center;background:rgba(10,8,24,.82);color:var(--gilt-2);box-shadow:0 0 0 1px rgba(246,225,168,.5);}
+.kws svg{width:72%;height:72%;}
+.tagl{position:absolute;left:0;right:0;top:0;padding:1px 3px;font-size:max(8px,calc(var(--cu) * .075));font-weight:900;text-align:center;color:#2b1a00;background:rgba(246,225,168,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+.under{position:absolute;inset:0;transform:translate(4px,-4px);border-radius:calc(var(--cu) * .05);pointer-events:none;}
+.under .lback{position:absolute;inset:0;border-radius:inherit;}
+.ucount{position:absolute;right:calc(var(--cu) * .03);top:calc(var(--cu) * .03);min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#141029;color:var(--gilt-2);font-size:.65rem;font-weight:900;display:grid;place-items:center;box-shadow:0 0 0 1px var(--gilt);}
+/* Fallback face when the art can't load */
+.face{position:absolute;inset:0;display:flex;flex-direction:column;padding:calc(var(--cu) * .05);color:#fff;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ink-c,#555) 70%,#000) 0%,#1b1730 60%);}
+.face::after{content:"";position:absolute;inset:calc(var(--cu) * .025);border-radius:calc(var(--cu) * .04);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink-c,#888) 80%,#fff);pointer-events:none;}
+.face .fn{margin-top:calc(var(--cu) * .24);font-family:var(--serif);font-weight:700;font-size:max(9px,calc(var(--cu) * .105));line-height:1.05;}
+.face .fv{font-family:var(--serif);font-style:italic;font-size:max(8px,calc(var(--cu) * .08));opacity:.85;line-height:1.05;}
+.face .ft{margin-top:3px;font-size:max(7px,calc(var(--cu) * .07));line-height:1.15;opacity:.8;overflow:hidden;flex:1;}
+/* Card back (our own design) */
+.lback{background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'%3E%3Crect x='5' y='5' width='90' height='130' rx='8' fill='none' stroke='%23e3bd62' stroke-width='2'/%3E%3Crect x='10' y='10' width='80' height='120' rx='5' fill='none' stroke='%23e3bd62' stroke-opacity='.4'/%3E%3Ccircle cx='50' cy='70' r='27' fill='none' stroke='%23f6e1a8' stroke-opacity='.35'/%3E%3Cpolygon points='50,46 71,58 71,82 50,94 29,82 29,58' fill='none' stroke='%23f6e1a8' stroke-width='3'/%3E%3Cpath d='M50 55c7 9 9 15 9 19a9 9 0 0 1-18 0c0-4 2-10 9-19z' fill='%23e3bd62'/%3E%3Cpath d='M50 20l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM50 104l2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%23f6e1a8' fill-opacity='.7'/%3E%3C/svg%3E") center/100% 100% no-repeat,
+  radial-gradient(90% 60% at 50% 45%,#34479a 0%,#1b2560 55%,#0d1338 100%);}
+
+/* Hand */
+.lp-hand .row{position:absolute;left:0;right:0;bottom:0;height:100%;display:flex;justify-content:center;align-items:flex-end;}
+.lp-hand .slot{margin-left:var(--ov,0px);transition:transform .2s var(--ease),margin .2s;}
+.lp-hand .slot:first-child{margin-left:0;}
+.lp-hand .slot.sel{transform:translateY(-10px);z-index:3;}
+.lp-hand .slot.can .lc{box-shadow:0 0 0 2px rgba(246,225,168,.85),0 4px 10px rgba(0,0,0,.45);}
+.lp-hand .hid{display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.5);font-weight:800;gap:8px;}
+
+/* Bar & side panel */
+.lp-bar .btn,.lp-panel .btn{min-height:50px;}
+.lp-bar .grow{flex:1;}
+.btn-end{min-width:150px;}
+.btn-end.attn{animation:attn 1.6s ease-in-out infinite;}
+@keyframes attn{50%{filter:brightness(1.18);box-shadow:0 5px 0 var(--b-lip),0 0 0 6px rgba(255,200,61,.25);}}
+.btn-fx.attn{animation:attn 1.6s ease-in-out infinite;--b:#4a3a8a;}
+.lp-bar .icon-sq{flex:none;width:50px;padding:0;}
+.lp-panel .logbox{flex:1;min-height:0;overflow:auto;border-radius:16px;background:rgba(0,0,0,.25);padding:8px 10px;font-size:.8rem;line-height:1.35;color:var(--text-2);}
+.logbox p{margin:0 0 5px;} .logbox p b{color:var(--text);}
+.lp-panel h3{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:2px 2px 0;}
+
+/* Drag ghost */
+.ghost{position:fixed;z-index:300;pointer-events:none;transform:translate(-50%,-60%) rotate(-4deg) scale(1.05);filter:drop-shadow(0 12px 18px rgba(0,0,0,.6));}
+.ghost .lc{position:relative;left:auto;top:auto;margin:0;}
+.flyer{position:fixed;z-index:250;pointer-events:none;}
+
+/* ── Zoom (tap a card) ─────────────────────────────────────────────────── */
+.lz{position:fixed;inset:0;z-index:420;display:flex;align-items:flex-start;justify-content:center;background:rgba(6,5,18,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;transition:opacity .2s;overflow:auto;overscroll-behavior:contain;}
+.lz.show{opacity:1;}
+.lz-in{width:100%;max-width:560px;padding:calc(var(--safe-t) + 14px) 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;gap:12px;}
+.lz-card{position:relative;--cu:min(52vh,104vw,520px);width:calc(var(--cu) * .716);height:var(--cu);flex:none;border-radius:calc(var(--cu) * .045);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);transform:scale(.92);transition:transform .25s var(--spring);background:#1d1a2c;}
+.lz.show .lz-card{transform:none;}
+.lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);}
+.lz-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.lz-card img.port{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
+.lz-card .face{--cu:inherit;}
+.lz-info{width:100%;background:var(--bg-2);border-radius:20px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);}
+.lz-info h2{font-family:var(--serif);font-size:1.3rem;font-weight:700;}
+.lz-info .ver{font-family:var(--serif);font-style:italic;color:var(--text-2);margin-top:1px;}
+.lz-info .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.chipx{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.08);font-size:.78rem;font-weight:800;}
+.chipx .dot{width:9px;height:9px;border-radius:50%;background:var(--c);}
+.chipx svg{width:13px;height:13px;}
+.chipx.warn{background:rgba(255,92,92,.18);color:#ffb3b3;}
+.chipx.good{background:rgba(61,220,132,.16);color:#a5f3c5;}
+.rtext{margin-top:10px;font-size:.95rem;line-height:1.45;}
+.rtext p{margin:0 0 7px;}
+.rtext .ab{font-weight:900;letter-spacing:.02em;}
+.rtext .kw{font-weight:900;color:var(--gilt-2);}
+.rtext .rem{color:var(--text-2);font-style:italic;}
+.sym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.17em;}
+.lz-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+.lz-acts .btn{min-height:48px;font-size:.98rem;padding:0 10px;}
+.lz-acts .full{grid-column:1/-1;}
+.lz-acts .why{grid-column:1/-1;font-size:.82rem;color:var(--text-3);text-align:center;margin-top:-2px;}
+.lz-x{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));top:calc(var(--safe-t) + 10px);z-index:2;}
+@media (min-width:900px) and (orientation:landscape){
+  .lz-in{max-width:1000px;flex-direction:row;align-items:flex-start;justify-content:center;padding-top:calc(var(--safe-t) + 30px);}
+  .lz-card{--cu:min(82vh,560px);}
+  .lz-card.loc{--cu:min(60vw,70vh,620px);}
+  .lz-info{max-width:430px;}
+}
+
+/* Sheets used by this game */
+.tbx{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.tbx button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:66px;border:0;border-radius:14px;background:rgba(255,255,255,.07);color:var(--text);font-weight:800;font-size:.8rem;line-height:1.1;padding:6px 4px;text-align:center;}
+.tbx button:active{transform:scale(.96);}
+.tbx button svg{width:22px;height:22px;color:var(--gilt-2);}
+.tbx-src{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;padding:10px;border-radius:14px;background:rgba(255,255,255,.05);}
+.tbx-src .mini{flex:none;width:52px;height:72px;border-radius:5px;background-size:cover;background-position:center;position:relative;overflow:hidden;}
+.tbx-src .tx{font-size:.84rem;line-height:1.35;color:var(--text-2);}
+.tbx-src .tx b{color:var(--text);}
+.sugg{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.sugg .btn{justify-content:flex-start;text-align:left;min-height:46px;font-size:.92rem;}
+.tb-form{display:flex;flex-direction:column;gap:12px;}
+.tb-row{display:flex;align-items:center;gap:10px;}
+.tb-row .label{margin:0;flex:1;}
+.who2{display:flex;gap:6px;}
+.lp-list{display:flex;flex-direction:column;gap:6px;}
+.lp-li{display:flex;align-items:center;gap:10px;padding:6px;border-radius:12px;background:rgba(255,255,255,.05);}
+.lp-li .mini{flex:none;width:40px;height:56px;border-radius:4px;background-size:cover;background-position:center 15%;position:relative;overflow:hidden;}
+.lp-li .grow{min-width:0;}
+.lp-li .grow b{display:block;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lp-li .grow small{display:block;font-size:.75rem;color:var(--text-3);}
+.lp-li .btn{min-height:36px;padding:0 10px;font-size:.8rem;}
+.lp-li .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* Mulligan */
+.mull{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;background:rgba(5,8,28,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+.mull h2{font-family:var(--display);font-weight:400;font-size:1.5rem;text-align:center;}
+.mull p{color:var(--text-2);font-weight:700;font-size:.88rem;text-align:center;max-width:420px;}
+.mull .cards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:820px;}
+.mull .slot.out .lc{filter:brightness(.45) grayscale(.6);transform:translateY(8px);}
+.mull .slot.out::after{content:"Put back";position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);padding:3px 8px;border-radius:8px;background:#ff5c6c;color:#fff;font-size:.72rem;font-weight:900;white-space:nowrap;z-index:2;pointer-events:none;}
+.mull .btn{min-width:220px;}
+
+/* Loading / offline */
+.lp-load{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;padding:24px;text-align:center;}
+.lp-load .spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:var(--gilt);animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.libline{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);font-size:.85rem;font-weight:700;color:var(--text-2);}
+.libline .ico{color:var(--gilt);}
+.libline.err{background:rgba(255,77,94,.12);color:#ffc0c6;}
+.libline .grow{flex:1;min-width:0;}
+.libline .btn{min-height:36px;}
+
+/* Deck pick + deck builder */
+.dk{max-width:720px;margin:0 auto;padding:4px 16px calc(var(--safe-b) + 24px);display:flex;flex-direction:column;gap:12px;}
+.dk h1{font-family:var(--display);font-weight:400;font-size:1.7rem;}
+.dk-seat{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);}
+.dk-seat .grow{min-width:0;flex:1;}
+.dk-seat b{display:block;}
+.dk-seat small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
+.inkdots{display:inline-flex;gap:3px;vertical-align:middle;}
+.inkdots i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);}
+.dk-opt{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:var(--text);text-align:left;font-weight:800;}
+.dk-opt.on{background:color-mix(in srgb,var(--gilt) 26%,transparent);box-shadow:inset 0 0 0 2px var(--gilt);}
+.dk-opt .grow{flex:1;min-width:0;}
+.dk-opt small{display:block;color:var(--text-3);font-weight:700;font-size:.75rem;}
+.dk-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.dk-h{font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:10px 2px 6px;}
+
+.bld{display:flex;flex-direction:column;height:var(--avail,calc(100dvh - 64px));padding:0 calc(10px + env(safe-area-inset-right,0px)) 0 calc(10px + env(safe-area-inset-left,0px));max-width:1100px;margin:0 auto;}
+.bld-top{flex:none;display:flex;gap:8px;align-items:center;padding:2px 0 8px;}
+.bld-top .input{flex:1;min-width:0;min-height:44px;}
+.bld-top .cnt{flex:none;font-family:var(--display);font-size:1.15rem;padding:0 4px;white-space:nowrap;}
+.bld-top .cnt.ok{color:#8ff0a8;}
+.bld-msg{flex:none;font-size:.78rem;font-weight:800;color:#ffb3b3;padding:0 2px 6px;min-height:1px;}
+.bld-msg.ok{color:#a5f3c5;}
+.bld-tabs{flex:none;display:none;}
+.bld-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;}
+.bld-pool,.bld-deck{min-height:0;display:flex;flex-direction:column;}
+.bld-filters{flex:none;display:flex;flex-direction:column;gap:6px;padding-bottom:6px;}
+.bld-filters .row1{display:flex;gap:6px;}
+.bld-filters .input{min-height:42px;flex:1;min-width:0;}
+.fchips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.fchips::-webkit-scrollbar{display:none;}
+.fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.8rem;}
+.fchip.on{background:var(--gilt);color:#2b1a00;}
+.fchip .dot{width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}
+.bld-grid{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;align-content:start;padding:2px 2px 16px;}
+.pc{position:relative;--cu:132px;aspect-ratio:.716;border-radius:6px;overflow:hidden;background:#1d1a2c;box-shadow:0 3px 8px rgba(0,0,0,.4);border:0;padding:0;}
+.pc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.pc .face{--cu:132px;}
+.pc .n{position:absolute;right:4px;top:4px;min-width:24px;height:24px;border-radius:12px;background:var(--gilt);color:#2b1a00;font-weight:900;font-size:.85rem;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.pc .nmb{position:absolute;left:0;right:0;bottom:0;padding:12px 5px 4px;background:linear-gradient(180deg,transparent,rgba(10,8,24,.92) 45%);color:#fff;font-size:.68rem;font-weight:900;line-height:1.1;text-align:left;}
+.pc .nmb small{display:block;font-weight:700;font-size:.6rem;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pc.dim{opacity:.4;}
+.bld-more{grid-column:1/-1;}
+.bld-deck .list{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;padding-bottom:12px;}
+.drow{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:10px;background:rgba(255,255,255,.05);}
+.drow .hc{flex:none;width:24px;height:26px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;font-family:var(--display);font-size:.85rem;background:#2a2440;}
+.drow .hc.ink{background:linear-gradient(160deg,var(--gilt-2),var(--gilt) 45%,var(--gilt-3));color:#2b1a00;}
+.drow .grow{flex:1;min-width:0;line-height:1.1;border:0;background:none;color:inherit;text-align:left;padding:0;}
+.drow .grow b{display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drow .grow small{display:block;font-size:.7rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.drow .q{display:flex;align-items:center;gap:2px;}
+.drow .q button{width:34px;height:34px;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:var(--text);font-weight:900;font-size:1.1rem;}
+.drow .q b{width:20px;text-align:center;font-family:var(--display);}
+.curve{flex:none;display:flex;align-items:flex-end;gap:4px;height:58px;padding:4px 2px 0;}
+.curve div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;font-size:.62rem;font-weight:800;color:var(--text-3);}
+.curve i{display:block;width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--gilt-2),var(--gilt-3));min-height:2px;}
+@media (max-width:760px){
+  .bld-tabs{display:flex;gap:6px;padding-bottom:6px;}
+  .bld-tabs .fchip{flex:1;justify-content:center;}
+  .bld-body{grid-template-columns:minmax(0,1fr);}
+  .bld-body.tab-pool .bld-deck,.bld-body.tab-deck .bld-pool{display:none;}
+  .bld-grid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));}
+}
+</style>
+</head>
+<body>
+<main id="app" class="stage full"></main>
+<script>
+(function () {
+  'use strict';
+  // History: this file records under 'lorcana-play'; the keep-score lore
+  // counter (lorcana.html) records under 'lorcana'. Past games shows both.
+  var KEY = 'lorcana-play', OTHER = 'lorcana', SAVE = 'lorcana_play_state', WIN = 20;
+  // Device-only storage (never synced): card library cache, saved decks, last picks
+  var CACHE = 'lorcana_cards_v1', DECKS = 'lorcana_decks_v1', LAST = 'lorcana_play_lastdecks';
+  var API = 'https://api.lorcast.com/v0', API2 = 'https://api.lorcana-api.com';
+  var INKS = ['Amber', 'Amethyst', 'Emerald', 'Ruby', 'Sapphire', 'Steel'];
+  var INKC = { Amber: '#f2b01e', Amethyst: '#8a4bb0', Emerald: '#2e9a4c', Ruby: '#d0213f', Sapphire: '#1679c0', Steel: '#9aa8b4' };
+  var app = document.getElementById('app');
+  var el = Kit.el, esc = Kit.esc;
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function num(v) { if (v == null || v === '') return null; var n = Number(v); return isFinite(n) ? n : null; }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+  function seeded(seed) { var s = 0; for (var i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) | 0; return function () { s = (s * 1664525 + 1013904223) | 0; return ((s >>> 0) % 100000) / 100000; }; }
+
+  // ── Card symbols and keyword marks (line art, no emoji) ─────────────────
+  var SV = {
+    I: '<path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z" fill="currentColor" stroke="none"/>',
+    E: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v5h-5"/>',
+    S: '<path d="M12 2l2.1 6.4 6.4-1.6-4.4 5.2 4.4 5.2-6.4-1.6L12 22l-2.1-6.4-6.4 1.6 4.4-5.2-4.4-5.2 6.4 1.6z" fill="currentColor" stroke="none"/>',
+    W: '<path d="M12 2.5l7.5 3v6c0 4.5-3.2 8.3-7.5 10-4.3-1.7-7.5-5.5-7.5-10v-6z" fill="currentColor" stroke="none"/>',
+    L: '<path d="M12 2.5l7 9.5-7 9.5-7-9.5z" fill="currentColor" stroke="none"/>',
+    C: '<circle cx="12" cy="12" r="7" fill="currentColor" stroke="none"/>'
+  };
+  function sym(k, cls) { return '<svg class="' + (cls || 'sym') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (SV[k] || SV.C) + '</svg>'; }
+  var KWI = {
+    evasive: '<path d="M20 3C11 3 5 8 4 20c3-4 6-6 10-7l-3-1c4-1 7-3 9-9z"/>',
+    bodyguard: '<path d="M12 3l7 2.8v5.6c0 4.2-3 7.8-7 9.6-4-1.8-7-5.4-7-9.6V5.8z"/>',
+    ward: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/>',
+    rush: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    challenger: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/>',
+    resist: '<path d="M12 3l7 2.8v5.6c0 4.2-3 7.8-7 9.6-4-1.8-7-5.4-7-9.6V5.8z"/><path d="M9 12h6"/>',
+    reckless: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+    support: '<path d="M12 20V5"/><path d="m5 12 7-7 7 7"/>',
+    singer: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    vanish: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3 3"/>',
+    alert: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    boost: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M12 9v6M9 12h6"/>',
+    shift: '<path d="M7 17 17 7"/><path d="M8 7h9v9"/>'
+  };
+  function kwIcon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (KWI[k] || KWI.ward) + '</svg>'; }
+  // Tools in the "Apply effect" box
+  var TI = {
+    draw: '<rect x="4" y="3" width="11" height="15" rx="2"/><path d="M9 21h9a2 2 0 0 0 2-2V8"/>',
+    lore: SV.L.replace('fill="currentColor" stroke="none"', ''),
+    dmg: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5"/><path d="M12 16h.01"/>',
+    heal: '<path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/>',
+    banish: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',
+    exert: SV.E,
+    hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
+    ink: SV.I.replace('fill="currentColor" stroke="none"', ''),
+    stat: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    kw: KWI.evasive,
+    look: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    discard: '<rect x="5" y="4" width="12" height="16" rx="2"/><path d="M9 4V2h10a2 2 0 0 1 2 2v14"/>',
+    toss: '<path d="M4 20 20 4"/><rect x="3" y="3" width="8" height="11" rx="1.5"/>',
+    free: '<path d="M7 4v16l13-8z"/>',
+    deck: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6"/>',
+    inkr: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'
+  };
+  function ti(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (TI[k] || TI.stat) + '</svg>'; }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Card library: Lorcast API (fallback lorcana-api.com), cached on the device
+  // ═════════════════════════════════════════════════════════════════════════
+  // Compact card used everywhere in this file:
+  //   {id, n:name, v:version, c:cost, k:inkable, ink:[..], ty:[types], cl:[classifications],
+  //    tx:text, kwl:[keyword names from the API], s, w, l, mv:move cost, r:rarity,
+  //    set:set code, no:collector number, im:{s:small image, l:large image}}
+  // fromLorcast() is the ONLY place that knows Lorcast's field names.
+  function fromLorcast(c) {
+    if (!c || !c.name) return null;
+    var types = [].concat(c.type || c.types || []).map(String);
+    var inks = Array.isArray(c.inks) && c.inks.length ? c.inks : c.ink ? String(c.ink).split(/\s*[\/,-]\s*|\s+and\s+/) : [];
+    var iu = c.image_uris || {}, im = iu.digital || iu;
+    return {
+      id: String(c.id), n: String(c.name), v: c.version ? String(c.version) : '', c: num(c.cost),
+      k: !!(c.inkwell != null ? c.inkwell : c.inkable), ink: inks.map(function (x) { return String(x).trim(); }).filter(Boolean),
+      ty: types, cl: Array.isArray(c.classifications) ? c.classifications.map(String) : [],
+      tx: c.text ? String(c.text) : '', kwl: Array.isArray(c.keywords) ? c.keywords.map(String) : [],
+      s: num(c.strength), w: num(c.willpower), l: num(c.lore), mv: num(c.move_cost),
+      r: c.rarity ? String(c.rarity) : '', set: c.set ? String(c.set.code || c.set.id || '') : '',
+      no: c.collector_number != null ? String(c.collector_number) : '',
+      im: { s: im.small || im.normal || im.large || '', l: im.large || im.normal || im.small || '' }
+    };
+  }
+  // Fallback source (https://api.lorcana-api.com/bulk/cards)
+  function fromLorcanaApi(c) {
+    if (!c || !c.Name) return null;
+    var nm = String(c.Name), i = nm.indexOf(' - ');
+    var ty = String(c.Type || '').split(/\s*-\s*/).filter(Boolean);
+    var cls = Array.isArray(c.Classifications) ? c.Classifications : c.Classifications ? String(c.Classifications).split(/\s*,\s*/) : [];
+    return {
+      id: 'la_' + String(c.Unique_ID || (c.Set_Num + '-' + c.Card_Num)), n: i > 0 ? nm.slice(0, i) : nm, v: i > 0 ? nm.slice(i + 3) : '',
+      c: num(c.Cost), k: !!c.Inkable, ink: String(c.Color || '').split(/\s*[,\/-]\s*/).filter(Boolean), ty: ty, cl: cls,
+      tx: String(c.Body_Text || '').replace(/\s*\n\s*/g, '\n'), kwl: [], s: num(c.Strength), w: num(c.Willpower), l: num(c.Lore), mv: num(c.Move_Cost),
+      r: String(c.Rarity || ''), set: String(c.Set_Num || c.Set_ID || ''), no: String(c.Card_Num || ''), im: { s: c.Image || '', l: c.Image || '' }
+    };
+  }
+  // Card text uses {I} ink, {E} exert, {S} strength, {W} willpower, {L} lore.
+  // Some sources print the glyphs themselves; normalize to the braces form.
+  var GLYPH = { '⬡': '{I}', '¤': '{S}', '⟳': '{E}', '◊': '{L}', '⛉': '{W}', '◉': '{C}' };
+  function normText(t) { return String(t || '').replace(/[⬡¤⟳◊⛉◉]/g, function (g) { return GLYPH[g]; }); }
+
+  // Derived fields: main type, song, full name, keywords (K), effects
+  var TYPES = ['character', 'action', 'item', 'location'];
+  function prep(o) {
+    var d = {}; for (var k in o) d[k] = o[k];
+    d.tx = normText(d.tx);
+    var tl = (d.ty || []).map(function (x) { return String(x).toLowerCase(); });
+    d.t = TYPES.filter(function (t) { return tl.indexOf(t) >= 0; })[0] || (tl.indexOf('song') >= 0 ? 'action' : '');
+    d.song = tl.indexOf('song') >= 0 || (d.cl || []).indexOf('Song') >= 0 || /sing this song/i.test(d.tx);
+    d.full = d.n + (d.v ? ' - ' + d.v : '');
+    d.K = parseKw(d);
+    return d;
+  }
+
+  // ── Keywords ─────────────────────────────────────────────────────────────
+  var KWRE = /^(Universal Shift|[A-Z][a-z]+ Shift|Shift|Evasive|Bodyguard|Support|Ward|Rush|Boost|Challenger|Singer|Sing Together|Resist|Reckless|Alert|Vanish)\b(?:\s*:)?\s*([+\-]?\d+)?/;
+  var KWKEY = { 'Evasive': 'evasive', 'Bodyguard': 'bodyguard', 'Support': 'support', 'Ward': 'ward', 'Rush': 'rush', 'Boost': 'boost', 'Challenger': 'challenger',
+    'Singer': 'singer', 'Sing Together': 'singTogether', 'Resist': 'resist', 'Reckless': 'reckless', 'Alert': 'alert', 'Vanish': 'vanish' };
+  var KWNAME = { evasive: 'Evasive', bodyguard: 'Bodyguard', support: 'Support', ward: 'Ward', rush: 'Rush', boost: 'Boost', challenger: 'Challenger', singer: 'Singer',
+    singTogether: 'Sing Together', resist: 'Resist', reckless: 'Reckless', alert: 'Alert', vanish: 'Vanish', shift: 'Shift' };
+  var KWHELP = {
+    evasive: 'Only characters with Evasive (or Alert) can challenge this character.',
+    bodyguard: 'May enter play exerted. An opposing character who challenges must choose a Bodyguard if able.',
+    support: 'When this character quests, you may add its strength to another chosen character this turn.',
+    ward: 'Opponents can’t choose this character except to challenge.',
+    rush: 'Can challenge the turn it’s played.',
+    boost: 'Once during your turn, pay the ink to put the top card of your deck facedown under this card.',
+    challenger: 'Gets extra strength while challenging.',
+    singer: 'Counts as this cost when singing songs.',
+    singTogether: 'Any number of your characters with this much total cost may exert to sing this song for free.',
+    resist: 'Damage dealt to this card is reduced by this much.',
+    reckless: 'Can’t quest, and must challenge each turn if able.',
+    alert: 'Can challenge as if it had Evasive.',
+    vanish: 'When an opponent chooses this character for an action, banish it.',
+    shift: 'Pay the Shift cost to play this on top of one of your characters with the same name. It keeps that card’s state.'
+  };
+  function parseKw(d) {
+    var K = { extra: [] }, lines = String(d.tx || '').split(/\n+/);
+    lines.forEach(function (line) {
+      var L = line.trim(); if (!L) return;
+      if (/^\(.*\)$/.test(L)) return;                        // reminder text only, e.g. song cost
+      var head = L.split('(')[0], parts = head.split(/\s*,\s*/), hit = false;
+      parts.forEach(function (p, i) {
+        if (i > 0 && !hit) return;
+        var m = p.trim().match(KWRE); if (!m) return;
+        hit = true;
+        var name = m[1], n = m[2] != null ? Math.abs(parseInt(m[2], 10)) : null;
+        if (/Shift$/.test(name)) {
+          var sh = { cost: n || 0, names: [], any: /^Universal/.test(name), cls: null, discard: null };
+          var pre = name.replace(/\s*Shift$/, ''); if (pre && pre !== 'Universal') sh.cls = pre;
+          var rem = (L.match(/\(([^)]*)\)/) || [])[1] || '';
+          var nm = rem.match(/named ([^.)]+?)\s*\.?$/) || rem.match(/named ([^.)]+)/);
+          if (nm) sh.names = nm[1].split(/\s*,\s*|\s+or\s+/).map(function (x) { return x.trim(); }).filter(Boolean);
+          if (/any (one )?of your characters/i.test(rem)) sh.any = true;
+          var cm = rem.match(/your ([A-Z][\w' ]+?) characters/); if (cm && !sh.any) sh.cls = sh.cls || cm[1];
+          var dm = head.match(/Discard (a|an|one|two|\d+) ?(song|action|character|item|location)? cards?/i);
+          if (dm) sh.discard = { n: nOf(dm[1]), type: dm[2] ? dm[2].toLowerCase() : null };
+          if (!sh.names.length && !sh.any && !sh.cls) sh.names = [d.n];
+          K.shift = sh;
+        } else {
+          var key = KWKEY[name];
+          K[key] = n != null ? n : true;
+        }
+      });
+      if (!hit) K.extra.push(L);
+    });
+    (d.kwl || []).forEach(function (name) {
+      if (/Shift$/.test(name)) { if (!K.shift) K.shift = { cost: d.c || 0, names: [d.n], any: /^Universal/.test(name), cls: null, discard: null }; return; }
+      var key = KWKEY[name]; if (!key || K[key] != null) return;
+      var m = d.tx.match(new RegExp(name + '\\s*\\+?(\\d+)'));
+      K[key] = m ? parseInt(m[1], 10) : true;
+    });
+    ['challenger', 'resist', 'singer', 'singTogether', 'boost'].forEach(function (k) { if (K[k] === true) K[k] = 1; });
+    K.vanilla = !K.extra.length;
+    // Simple effects the computer can do and the effect box can suggest
+    if (d.t === 'action') K.fx = parseEffects(K.extra.join(' '));
+    K.onPlay = null;
+    K.extra.forEach(function (L) {
+      var m = L.match(/When you play this (?:character|item|location),\s*(?:you may\s+)?(.+)$/i);
+      if (m) { var f = parseEffects(m[1]); if (f.fx.length) K.onPlay = f; }
+    });
+    K.exertAbility = /\{E\}\s*(?:,[^—-]*)?[—-]/.test(d.tx);
+    return K;
+  }
+  var NUMW = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };
+  function nOf(s) { s = String(s).toLowerCase(); return NUMW[s] != null ? NUMW[s] : parseInt(s, 10) || 1; }
+
+  // Plain sentences we can turn into one-tap effects. Anything else on a card
+  // is resolved by hand with the effect box.
+  function parseEffects(text) {
+    var out = [], miss = 0;
+    String(text || '').replace(/\([^)]*\)/g, ' ').replace(/^[A-Z0-9'’!?,.\-– ]{3,}?\s(?=[A-Z][a-z])/, '').split(/\.\s*/).forEach(function (raw) {
+      var s = raw.trim().toLowerCase().replace(/\s+/g, ' ').replace(/^then,?\s*/, '');
+      if (!s) return;
+      var m, f = null;
+      var side = function (x) { return x ? 'opp' : 'any'; };
+      if ((m = s.match(/^(?:you )?draw (a|an|one|two|three|four|\d+) cards?$/))) f = { op: 'draw', n: nOf(m[1]), who: 'me' };
+      else if ((m = s.match(/^each player draws (a|an|one|two|three|\d+) cards?$/))) f = { op: 'draw', n: nOf(m[1]), who: 'both' };
+      else if ((m = s.match(/^chosen player draws (a|an|one|two|three|four|five|\d+) cards?$/))) f = { op: 'draw', n: nOf(m[1]), who: 'me' };
+      else if ((m = s.match(/^(?:you )?gain (\d+) lore$/))) f = { op: 'lore', n: +m[1], who: 'me' };
+      else if ((m = s.match(/^(?:each|chosen) opponent loses (\d+) lore$/))) f = { op: 'lore', n: -m[1], who: 'opp' };
+      else if ((m = s.match(/^deal (\d+) damage to chosen (opposing )?character( or location)?$/))) f = { op: 'damage', n: +m[1], tgt: { side: side(m[2]), types: m[3] ? ['character', 'location'] : ['character'] } };
+      else if ((m = s.match(/^deal (\d+) damage to chosen location$/))) f = { op: 'damage', n: +m[1], tgt: { side: 'any', types: ['location'] } };
+      else if ((m = s.match(/^deal (\d+) damage to each opposing character$/))) f = { op: 'damage', n: +m[1], all: 'opp' };
+      else if ((m = s.match(/^banish chosen (opposing )?(character|item|location|item or location)(?: with (\d+) \{s\} or less| with cost (\d+) or less| with (\d+) \{s\} or more)?$/))) {
+        f = { op: 'banish', tgt: { side: side(m[1]), types: m[2].split(' or '), maxS: m[3] ? +m[3] : null, maxC: m[4] ? +m[4] : null, minS: m[5] ? +m[5] : null } };
+      }
+      else if ((m = s.match(/^return chosen (opposing )?character(?: with cost (\d+) or less)? to (?:their player's|its player's|your) hand$/))) f = { op: 'bounce', tgt: { side: side(m[1]), types: ['character'], maxC: m[2] ? +m[2] : null } };
+      else if ((m = s.match(/^remove up to (\d+) damage from chosen (character|location|character or location)$/))) f = { op: 'heal', n: +m[1], tgt: { side: 'mine', types: m[2].split(' or ') } };
+      else if ((m = s.match(/^remove up to (\d+) damage from each of your characters$/))) f = { op: 'heal', n: +m[1], all: 'me' };
+      else if ((m = s.match(/^exert chosen opposing character$/))) f = { op: 'exert', tgt: { side: 'opp', types: ['character'] } };
+      else if ((m = s.match(/^ready chosen character$/))) f = { op: 'ready', tgt: { side: 'mine', types: ['character'] } };
+      else if ((m = s.match(/^chosen character gets \+(\d+) \{s\} this turn$/))) f = { op: 'pump', n: +m[1], stat: 's', tgt: { side: 'mine', types: ['character'] } };
+      else if ((m = s.match(/^chosen (opposing )?character gets -(\d+) \{s\} (?:this turn|until the start of your next turn)$/))) f = { op: 'pump', n: -m[2], stat: 's', tgt: { side: 'opp', types: ['character'] } };
+      else if ((m = s.match(/^put chosen (opposing )?character into (?:their|its) player's inkwell facedown(?: and exerted)?$/))) f = { op: 'toInk', tgt: { side: side(m[1]), types: ['character'] } };
+      else if (s === 'banish all characters') f = { op: 'banishAll' };
+      if (f) out.push(f); else miss++;
+    });
+    return { fx: out, all: out.length > 0 && miss === 0 };
+  }
+  function fxLabel(f) {
+    var n = Math.abs(f.n || 0);
+    switch (f.op) {
+      case 'draw': return f.who === 'both' ? 'Each player draws ' + plural(n, 'card') : 'Draw ' + plural(n, 'card');
+      case 'lore': return f.n > 0 ? 'Gain ' + n + ' lore' : 'Opponent loses ' + n + ' lore';
+      case 'damage': return f.all ? 'Deal ' + n + ' damage to each opposing character' : 'Deal ' + n + ' damage to chosen ' + (f.tgt.side === 'opp' ? 'opposing ' : '') + f.tgt.types.join(' or ');
+      case 'banish': return 'Banish chosen ' + (f.tgt.side === 'opp' ? 'opposing ' : '') + f.tgt.types.join(' or ') + (f.tgt.maxS != null ? ' (' + f.tgt.maxS + ' strength or less)' : f.tgt.maxC != null ? ' (cost ' + f.tgt.maxC + ' or less)' : f.tgt.minS != null ? ' (' + f.tgt.minS + ' strength or more)' : '');
+      case 'bounce': return 'Return chosen ' + (f.tgt.side === 'opp' ? 'opposing ' : '') + 'character to its hand' + (f.tgt.maxC != null ? ' (cost ' + f.tgt.maxC + ' or less)' : '');
+      case 'heal': return f.all ? 'Remove up to ' + n + ' damage from each of your characters' : 'Remove up to ' + n + ' damage from chosen ' + f.tgt.types.join(' or ');
+      case 'exert': return 'Exert chosen opposing character';
+      case 'ready': return 'Ready chosen character';
+      case 'pump': return 'Chosen character gets ' + (f.n > 0 ? '+' : '-') + n + ' strength this turn';
+      case 'toInk': return 'Put chosen character into its player’s inkwell';
+      case 'banishAll': return 'Banish all characters';
+    }
+    return f.op;
+  }
+
+  // ── Loading and caching ─────────────────────────────────────────────────
+  var DB = { cards: [], byId: {}, unique: [], byFull: {}, sets: [], status: 'idle', src: '', at: 0, note: '', subs: [] };
+  function dbNotify() { DB.subs.slice().forEach(function (f) { try { f(); } catch (e) { console.warn(e); } }); }
+  function idbOpen() {
+    return new Promise(function (res, rej) {
+      if (!window.indexedDB) return rej(new Error('no indexedDB'));
+      var r; try { r = indexedDB.open('lorcana_play', 1); } catch (e) { return rej(e); }
+      r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+      r.onblocked = function () { rej(new Error('blocked')); };
+    });
+  }
+  function idbDo(mode, fn) {
+    return idbOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('kv', mode), q = fn(tx.objectStore('kv'));
+        tx.oncomplete = function () { res(q && q.result); db.close(); };
+        tx.onerror = tx.onabort = function () { rej(tx.error); db.close(); };
+      });
+    });
+  }
+  function cacheGet() {
+    return idbDo('readonly', function (st) { return st.get(CACHE); }).catch(function () { return null; }).then(function (v) {
+      if (v && v.cards) return v;
+      return lsGet(CACHE, null);
+    });
+  }
+  function cachePut(v) {
+    return idbDo('readwrite', function (st) { return st.put(v, CACHE); }).catch(function () { lsSet(CACHE, v); });
+  }
+  function fetchJSON(url, ms) {
+    var ctl = window.AbortController ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctl) ctl.abort(); }, ms || 25000);
+    return fetch(url, { signal: ctl ? ctl.signal : undefined, headers: { Accept: 'application/json' } }).then(function (r) {
+      clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url); return r.json();
+    }, function (e) { clearTimeout(t); throw e; });
+  }
+  function pause(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function loadLorcast(progress) {
+    return fetchJSON(API + '/sets').then(function (j) {
+      var sets = (Array.isArray(j) ? j : j.results || j.data || []).filter(function (s) { return s && (s.id || s.code); });
+      if (!sets.length) throw new Error('No sets');
+      var all = [], i = 0, meta = [];
+      function next() {
+        if (i >= sets.length) return all;
+        var s = sets[i++]; progress('Downloading cards: ' + (s.name || s.code) + ' (' + i + ' of ' + sets.length + ')');
+        meta.push({ code: String(s.code || ''), name: s.name || '' });
+        return fetchJSON(API + '/sets/' + encodeURIComponent(s.id || s.code) + '/cards').then(function (cj) {
+          var arr = Array.isArray(cj) ? cj : cj.results || cj.data || [];
+          arr.forEach(function (c) { var o = fromLorcast(c); if (o) { if (!o.set) o.set = String(s.code || ''); all.push(o); } });
+          return pause(90).then(next);
+        });
+      }
+      return next().then(function (cards) { return { cards: cards, sets: meta, src: 'Lorcast' }; });
+    });
+  }
+  function loadLorcanaApi(progress) {
+    progress('Trying the backup card source…');
+    return fetchJSON(API2 + '/bulk/cards', 45000).catch(function () { return fetchJSON(API2 + '/cards/all', 45000); }).then(function (j) {
+      var arr = Array.isArray(j) ? j : j.results || j.data || [];
+      var cards = arr.map(fromLorcanaApi).filter(Boolean), seen = {}, sets = [];
+      arr.forEach(function (c) { var k = String(c.Set_Num || ''); if (k && !seen[k]) { seen[k] = 1; sets.push({ code: k, name: c.Set_Name || 'Set ' + k }); } });
+      if (!cards.length) throw new Error('empty');
+      return { cards: cards, sets: sets, src: 'lorcana-api.com' };
+    });
+  }
+  var RAR = { common: 1, uncommon: 2, rare: 3, super_rare: 4, 'super rare': 4, legendary: 5 };
+  function useLibrary(v) {
+    var byId = {}, byFull = {}, list = [];
+    (v.cards || []).forEach(function (o) {
+      var d = prep(o);
+      if (!d.t || d.c == null || d.c < 0) return;              // quest boss cards and odd entries
+      if (/^Q/i.test(d.set)) return;                            // Illumineer's Quest (co-op) cards
+      byId[d.id] = d; list.push(d);
+      (byFull[d.full.toLowerCase()] = byFull[d.full.toLowerCase()] || []).push(d);
+    });
+    // One entry per full name for the deck builder: the plainest printing
+    var uniq = Object.keys(byFull).map(function (k) {
+      return byFull[k].slice().sort(function (a, b) { return (RAR[String(a.r).toLowerCase()] || 9) - (RAR[String(b.r).toLowerCase()] || 9) || setOrd(a.set) - setOrd(b.set); })[0];
+    });
+    uniq.sort(function (a, b) { return a.c - b.c || a.full.localeCompare(b.full); });
+    DB.cards = list; DB.byId = byId; DB.byFull = byFull; DB.unique = uniq; DB.sets = v.sets || [];
+    DB.src = v.src || ''; DB.at = v.at || Date.now(); DB.status = list.length ? 'ready' : 'error';
+    if (!list.length) DB.note = 'The card list came back empty.';
+  }
+  function setOrd(s) { var n = parseInt(s, 10); return isFinite(n) ? n : 99; }
+  function download(progress) {
+    return loadLorcast(progress).catch(function (e) { console.warn('Lorcast failed', e); return loadLorcanaApi(progress); });
+  }
+  DB.load = function (force) {
+    if (DB.loading) return DB.loading;
+    DB.status = 'loading'; DB.note = 'Opening the card library…'; dbNotify();
+    function progress(t) { DB.note = t; dbNotify(); }
+    DB.loading = cacheGet().then(function (v) {
+      if (v && v.cards && v.cards.length && !force) {
+        useLibrary(v); dbNotify();
+        // Refresh in the background every few days when online
+        if (Date.now() - (v.at || 0) > 3 * 864e5 && navigator.onLine !== false) {
+          download(function () {}).then(function (nv) { nv.at = Date.now(); if (nv.cards.length >= v.cards.length * 0.9) { cachePut(nv); useLibrary(nv); dbNotify(); } }).catch(function () {});
+        }
+        return;
+      }
+      return download(progress).then(function (nv) {
+        nv.at = Date.now(); useLibrary(nv);
+        if (DB.status === 'ready') cachePut(nv);
+        dbNotify();
+      }).catch(function (e) {
+        console.warn('Card download failed', e);
+        if (v && v.cards && v.cards.length) { useLibrary(v); dbNotify(); return; }
+        DB.status = 'error';
+        DB.note = navigator.onLine === false ? 'You’re offline. Lorcana needs the internet once to download the cards, then it works offline.' : 'Couldn’t reach the card library right now.';
+        dbNotify();
+      });
+    }).then(function () { DB.loading = null; }, function () { DB.loading = null; });
+    return DB.loading;
+  };
+  function inkOf(d) { return (d.ink && d.ink.length ? d.ink : []); }
+  function inkDots(inks) { return '<span class="inkdots">' + inks.map(function (i) { return '<i style="--c:' + (INKC[i] || '#888') + '" title="' + esc(i) + '"></i>'; }).join('') + '</span>'; }
+
+  //@@JS2@@
+})();
+</script>
+</body>
+</html>

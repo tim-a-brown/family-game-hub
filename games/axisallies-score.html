@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axis &amp; Allies Table</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+/* Axis & Allies 1942 Second Edition: table companion for the real board game */
+#app{max-width:720px;}
+#app.wide{max-width:1180px;}
+.plq{display:inline-grid;place-items:center;flex:none;min-width:40px;height:26px;padding:0 6px;border-radius:7px;background:var(--c);color:#fff;
+  font:900 .7rem/1 var(--font);letter-spacing:.06em;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.3);text-shadow:0 1px 0 rgba(0,0,0,.35);}
+.plq.lt{color:#2a1c08;text-shadow:none;}
+.plq.big{min-width:52px;height:34px;font-size:.85rem;border-radius:9px;}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px;}
+.sh .label{margin:0;}
+.sh button{border:0;background:none;color:var(--text-2);font-weight:800;font-size:.85rem;padding:8px 4px;}
+
+/* ── Home ─────────────────────────────────────────────────────────────── */
+.home{display:grid;gap:16px;}
+.home .col{display:flex;flex-direction:column;gap:16px;min-width:0;}
+.tcard{position:relative;border-radius:18px;padding:12px 14px 6px 16px;overflow:hidden;}
+.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--c);}
+.tcard .th{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;margin-bottom:4px;}
+.tcard .who{display:flex;align-items:center;gap:10px;min-width:0;}
+.tcard .pn{font-size:1.5rem;line-height:1;color:#1d1b2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tcard .pp{font-family:var(--hand);font-size:1.15rem;line-height:1.1;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tcard .pp.lost{color:#b3261e;}
+.tcard .rd{flex:none;text-align:right;line-height:1;}
+.tcard .rd small{display:block;font:900 .62rem/1 var(--font);letter-spacing:.14em;text-transform:uppercase;color:#7a7360;}
+.tcard .rd b{font-family:var(--display);font-weight:400;font-size:2rem;color:#1d1b2e;}
+.phases{list-style:none;margin:0;padding:0;}
+.phases li{height:40px;}
+.phases button{display:flex;align-items:center;gap:10px;width:100%;height:40px;border:0;background:none;padding:0 4px;text-align:left;color:#3a3a4a;}
+.phases .bx{display:grid;place-items:center;flex:none;width:22px;height:22px;border:2px solid #6c6a7c;border-radius:5px;color:#1f7a3d;}
+.phases .bx .ico{width:18px;height:18px;stroke-width:3.2;}
+.phases .nm{font-family:var(--hand);font-size:1.32rem;color:var(--ink);}
+.phases li.done .nm{color:#8c8a98;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(140,30,30,.5);}
+.phases li.done .bx{border-color:#1f7a3d;}
+.phases li.on button{background:linear-gradient(90deg,color-mix(in srgb,var(--c) 30%,transparent),transparent 85%);border-radius:8px;}
+.phases li.on .nm{color:#1d1b2e;font-weight:700;}
+.phases li.on .bx{border-color:#1d1b2e;background:rgba(255,255,255,.6);}
+.phases .n{margin-left:auto;font:800 .78rem/1 var(--font);color:#6c6a7c;}
+.todo{display:flex;flex-direction:column;gap:10px;}
+.todo .tip{color:var(--text-2);font-size:.92rem;padding:0 4px;}
+.todo .tip b{color:var(--text);}
+.todo .row2{display:flex;gap:10px;}
+.todo .row2 .btn{flex:1;}
+.bought{display:flex;flex-wrap:wrap;gap:6px;padding:0 4px;}
+.bought span{padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-weight:800;font-size:.86rem;}
+.next{min-height:62px;font-size:1.15rem;}
+.next small{display:block;font-size:.75rem;opacity:.75;font-weight:800;}
+.next .tx{display:flex;flex-direction:column;line-height:1.15;}
+
+.bank{display:flex;flex-direction:column;gap:6px;}
+.pw{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:62px;padding:8px 14px 8px 12px;border:0;border-radius:16px;
+  background:rgba(255,255,255,.06);color:var(--text);text-align:left;box-shadow:inset 0 0 0 2px transparent;transition:transform .12s var(--spring),background .2s;}
+.pw:active{transform:scale(.98);}
+.pw.on{background:color-mix(in srgb,var(--c) 22%,rgba(255,255,255,.05));box-shadow:inset 0 0 0 2px var(--c);}
+.pw .nm{flex:1;min-width:0;}
+.pw .nm b{display:block;font-weight:900;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pw .nm small{display:block;font-weight:700;font-size:.8rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pw .nm small em{font-style:normal;color:#ff8a8a;font-weight:900;}
+.pw .ipc{text-align:right;flex:none;}
+.pw .ipc b{display:block;font-family:var(--display);font-weight:400;font-size:1.75rem;line-height:1;font-variant-numeric:tabular-nums;}
+.pw .ipc small{display:block;font-size:.72rem;font-weight:800;color:var(--text-3);}
+.pw .ipc small i{font-style:normal;color:var(--green);}
+.pw.bump .ipc b{animation:bump .6s var(--spring);}
+@keyframes bump{40%{transform:scale(1.3);color:var(--yellow);}}
+.side-lbl{font-size:.68rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin:6px 4px 0;}
+
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tool{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 12px;border:0;border-radius:16px;background:rgba(255,255,255,.07);color:var(--text);text-align:left;transition:transform .12s var(--spring);}
+.tool:active{transform:scale(.96);}
+.tool .ic{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.09);color:var(--accent);}
+.tool .ic .ico{width:20px;height:20px;}
+.tool b{display:block;font-size:.95rem;font-weight:900;line-height:1.15;}
+.tool small{display:block;font-size:.74rem;font-weight:700;color:var(--text-3);line-height:1.2;}
+.tool.hot{background:color-mix(in srgb,var(--accent) 22%,rgba(255,255,255,.05));}
+
+.vcbar{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;border-radius:16px;background:rgba(255,255,255,.06);color:var(--text);text-align:left;}
+.vcbar .vs{flex:1;display:flex;flex-direction:column;gap:6px;}
+.vcbar .tt{display:flex;justify-content:space-between;font-weight:900;font-size:.9rem;}
+.vcbar .tt span:last-child{color:var(--text-3);font-weight:800;}
+.vcmeter{position:relative;display:flex;height:12px;border-radius:6px;overflow:hidden;background:rgba(0,0,0,.3);}
+.vcmeter i{display:block;height:100%;}
+.vcmeter .ax{background:linear-gradient(180deg,#8a8f94,#5a5e62);}
+.vcmeter .al{background:linear-gradient(180deg,#5d8fd6,#2f5fa8);margin-left:auto;}
+.vcmeter .goal{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--yellow);}
+
+.log{display:flex;flex-direction:column;gap:2px;}
+.log .e{display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.9rem;}
+.log .e .plq{min-width:40px;height:22px;font-size:.62rem;}
+.log .e .r{flex:none;width:28px;color:var(--text-3);font-weight:900;font-size:.75rem;padding-top:3px;}
+.log .e span:last-child{color:var(--text-2);font-weight:600;line-height:1.35;}
+.log .none{color:var(--text-3);font-size:.9rem;padding:6px 4px;}
+
+/* ── Sub views (battle, buy, bombing) ─────────────────────────────────── */
+.vbar{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
+.vbar h2{flex:1;min-width:0;font-size:1.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vbar .btn-sm{padding:0 12px 0 8px;gap:4px;}
+.vbar .btn-sm .ico{width:18px;height:18px;}
+.where{margin:10px 0 12px;}
+.pchips{display:flex;gap:5px;flex-wrap:wrap;}
+.pchips button{border:0;padding:0;background:none;border-radius:9px;opacity:.42;transition:opacity .15s,transform .15s var(--spring);}
+.pchips button .plq{height:32px;min-width:44px;}
+.pchips button.on{opacity:1;transform:translateY(-1px);}
+.pchips button.on .plq{box-shadow:0 0 0 2px #fff,inset 0 -3px 0 rgba(0,0,0,.25);}
+.pchips button:disabled{opacity:.15;}
+
+.sides{display:grid;gap:12px;}
+.side{border-radius:18px;padding:12px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 45%,transparent);}
+.side .sdh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.side .role{font-family:var(--display);font-size:1.25rem;}
+.side .role small{display:block;font:800 .74rem/1.2 var(--font);color:var(--text-3);}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:7px;}
+.tile{position:relative;}
+.tile .tadd{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:66px;padding:7px 9px;border:0;border-radius:13px;background:rgba(0,0,0,.22);color:var(--text-2);text-align:left;transition:transform .1s var(--spring),background .15s;}
+.tile .tadd:active{transform:scale(.94);}
+.tile .tn{font-weight:900;font-size:.82rem;line-height:1.1;}
+.tile .tv{font-weight:800;font-size:.68rem;color:var(--text-3);margin-top:1px;}
+.tile .tc{position:absolute;right:9px;bottom:5px;font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1;color:var(--text-3);opacity:.5;}
+.tile.has .tadd{background:color-mix(in srgb,var(--c) 30%,rgba(0,0,0,.2));color:var(--text);}
+.tile.has .tc{color:#fff;opacity:1;}
+.tile .tsub{position:absolute;right:4px;top:4px;width:30px;height:30px;border:0;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;font-size:1.2rem;font-weight:900;line-height:1;display:none;}
+.tile.has .tsub{display:grid;place-items:center;}
+.tile .tsub::before{content:"";position:absolute;inset:-6px;}
+.side .bmb{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.14);}
+.side .bmb .label{margin-bottom:6px;}
+
+.odds{margin:14px 0;padding:12px 14px;border-radius:16px;background:rgba(0,0,0,.25);}
+.odds .ot{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:900;}
+.odds .ot small{color:var(--text-3);font-weight:800;font-size:.75rem;}
+.odds .obar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:8px 0;background:rgba(255,255,255,.08);}
+.odds .obar i{display:block;height:100%;transition:width .4s var(--ease);}
+.odds .ol{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;font-weight:800;color:var(--text-2);}
+.odds .ol span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;background:var(--c);vertical-align:0;}
+.odds .on{color:var(--text-3);font-size:.75rem;font-weight:700;margin-top:6px;}
+.odds.busy .obar{opacity:.5;}
+
+/* The dice tray */
+.fight{display:grid;gap:12px;}
+.trayw{border-radius:24px;padding:9px;}
+.tray{position:relative;border-radius:17px;overflow:hidden;display:flex;flex-direction:column;min-height:300px;}
+.half{position:relative;flex:1;display:flex;flex-direction:column;padding:10px 12px;min-height:130px;}
+.half .hh{display:flex;align-items:center;gap:8px;}
+.half .hh .t{flex:1;min-width:0;font-weight:900;font-size:.88rem;color:rgba(255,255,255,.85);line-height:1.15;}
+.half .hh .t small{display:block;font-weight:700;font-size:.74rem;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.half .hits{flex:none;text-align:right;font-family:var(--display);color:#fff;font-size:1.9rem;line-height:1;opacity:0;transition:opacity .3s;}
+.half .hits small{display:block;font:900 .6rem/1 var(--font);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.half .hits.zero{color:rgba(255,255,255,.55);}
+.half.landed .hits{opacity:1;animation:pop .45s var(--spring);}
+.groups{flex:1;display:flex;flex-wrap:wrap;align-content:center;gap:10px 18px;padding:8px 0 4px;}
+.grp{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.grp .gl{display:flex;align-items:baseline;gap:6px;font-size:.72rem;font-weight:900;color:rgba(255,255,255,.75);white-space:nowrap;}
+.grp .gl em{font-style:normal;color:rgba(255,255,255,.5);font-weight:800;}
+.grp .gl .gh{color:#ffd166;opacity:0;transition:opacity .3s;}
+.half.landed .grp .gl .gh{opacity:1;}
+.grp .dd{display:flex;flex-wrap:wrap;gap:6px;max-width:100%;}
+.tray .die{--ds:var(--dsz,40px);pointer-events:none;}
+.tray .dw{display:block;border-radius:calc(var(--dsz,40px) * .22);transition:transform .25s var(--spring),opacity .3s,filter .3s;}
+.half.landed .dw.miss{opacity:.55;filter:saturate(.4) brightness(.85);}
+.half.landed .dw.hit{transform:translateY(-3px);}
+.half.landed .dw.hit .die{box-shadow:0 0 0 3px #e3263c,0 0 16px rgba(227,38,60,.75),0 8px 12px rgba(0,0,0,.45);}
+.tray .ready{flex:1;display:grid;place-items:center;text-align:center;font-family:var(--display);font-size:1.05rem;color:rgba(255,255,255,.4);padding:6px 10px;}
+.tray .mid{position:relative;height:0;border-top:2px dashed rgba(255,255,255,.16);z-index:2;}
+.tray .mid span{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);padding:4px 12px;border-radius:999px;background:rgba(0,0,0,.45);font:900 .7rem/1.2 var(--font);letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8);white-space:nowrap;}
+.forces{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.forces span{padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.28);font-weight:800;font-size:.74rem;color:rgba(255,255,255,.85);}
+.forces span.gone{opacity:.45;text-decoration:line-through;}
+.ctl{display:flex;flex-direction:column;gap:10px;}
+.ctl .row2{display:flex;gap:10px;}
+.ctl .row2 .btn{flex:1;}
+.roll{min-height:64px;font-size:1.2rem;}
+.cas{border-radius:16px;padding:12px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 50%,transparent);}
+.cas .ch{display:flex;align-items:center;gap:8px;font-weight:800;margin-bottom:8px;}
+.cas .ch b{color:#ff8a8a;}
+.cas .cn{font-size:.78rem;color:var(--text-3);font-weight:700;margin:-2px 0 8px;}
+.cas .cmsg{font-size:.82rem;font-weight:800;margin-top:8px;color:var(--green);}
+.cas .cmsg.bad{color:#ff8a8a;}
+.ctile{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 10px;border-radius:12px;background:rgba(0,0,0,.22);}
+.ctile .cnm{flex:1;min-width:0;font-weight:800;font-size:.84rem;line-height:1.15;}
+.ctile .cnm small{display:block;color:var(--text-3);font-size:.7rem;}
+.ctile .stp{display:flex;align-items:center;gap:2px;}
+.ctile .stp button{width:36px;height:36px;border:0;border-radius:50%;background:var(--surface-3);color:var(--text);font-size:1.2rem;font-weight:900;line-height:1;}
+.ctile .stp button:disabled{opacity:.3;}
+.ctile .stp output{min-width:26px;text-align:center;font-weight:900;font-size:1.1rem;}
+.ctile.on{background:color-mix(in srgb,#e3263c 28%,rgba(0,0,0,.2));}
+.ctiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
+.result{border-radius:18px;padding:16px;text-align:center;background:rgba(255,255,255,.06);}
+.result h3{font-family:var(--display);font-weight:400;font-size:1.6rem;color:var(--yellow);margin-bottom:4px;}
+.result p{color:var(--text-2);font-weight:700;}
+.result .ls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;text-align:left;}
+.result .ls div{padding:10px;border-radius:12px;background:rgba(0,0,0,.22);font-size:.84rem;font-weight:700;color:var(--text-2);}
+.result .ls b{display:flex;align-items:center;gap:6px;color:var(--text);margin-bottom:4px;}
+.result .ls .plq{min-width:36px;height:20px;font-size:.6rem;}
+.chipbtns{display:flex;flex-wrap:wrap;gap:6px;}
+.chipbtns .chip{min-height:40px;}
+.stamp{position:absolute;left:50%;top:50%;z-index:6;pointer-events:none;font-family:var(--display);font-size:clamp(2rem,10vw,3rem);letter-spacing:.05em;color:#e3263c;white-space:nowrap;
+  border:5px solid #e3263c;border-radius:12px;padding:0 14px;line-height:1.2;background:rgba(255,255,255,.05);text-shadow:0 2px 0 rgba(0,0,0,.25);
+  transform:translate(-50%,-50%) rotate(-11deg);animation:stamp .38s cubic-bezier(.2,1.6,.4,1) both;}
+.stamp.win{color:#ffd166;border-color:#ffd166;}
+@keyframes stamp{0%{transform:translate(-50%,-50%) rotate(-22deg) scale(2.4);opacity:0;}60%{opacity:1;}100%{transform:translate(-50%,-50%) rotate(-11deg) scale(1);opacity:1;}}
+.trayw.thud{animation:thud .45s;}
+@keyframes thud{0%,100%{transform:none;}20%{transform:translate(-6px,2px);}45%{transform:translate(5px,-2px);}70%{transform:translate(-3px,1px);}}
+
+/* Purchase */
+.buy{display:grid;gap:8px;}
+.urow{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border-radius:14px;background:rgba(255,255,255,.06);}
+.urow.on{background:color-mix(in srgb,var(--accent) 18%,rgba(255,255,255,.05));}
+.urow .un{flex:1;min-width:0;}
+.urow .un b{display:block;font-weight:900;font-size:.98rem;}
+.urow .un small{display:block;font-size:.74rem;font-weight:700;color:var(--text-3);line-height:1.3;}
+.urow .un small + small{color:var(--text-2);opacity:.75;}
+.urow .cost{flex:none;width:44px;text-align:right;font-family:var(--display);font-size:1.25rem;color:var(--yellow);}
+.urow .cost small{display:block;font:800 .6rem/1 var(--font);color:var(--text-3);letter-spacing:.08em;}
+.stp2{display:flex;align-items:center;gap:2px;padding:3px;border-radius:999px;background:rgba(0,0,0,.28);}
+.stp2 button{width:40px;height:40px;border:0;border-radius:50%;background:var(--surface-3);color:var(--text);font-size:1.3rem;font-weight:900;line-height:1;}
+.stp2 button:disabled{opacity:.3;}
+.stp2 output{min-width:30px;text-align:center;font-weight:900;font-size:1.15rem;}
+.cart{position:sticky;bottom:0;z-index:5;margin:12px -16px 0;padding:12px 16px calc(var(--safe-b) + 12px + var(--corner-y));background:linear-gradient(180deg,rgba(20,16,41,0),rgba(20,16,41,.94) 22%);}
+.cart .tot{display:flex;justify-content:space-between;align-items:baseline;font-weight:900;margin:0 2px 8px;}
+.cart .tot b{font-family:var(--display);font-weight:400;font-size:1.5rem;}
+.cart .tot .over{color:#ff8a8a;}
+.note{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);color:var(--text-2);font-size:.86rem;font-weight:700;}
+.note.warn{background:color-mix(in srgb,var(--red) 18%,transparent);color:#ffc2c8;}
+
+/* Sheets */
+.fld{margin:12px 0 0;}
+.fld .label{margin-bottom:6px;}
+.vcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;}
+.vcity{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 10px;border:0;border-radius:12px;background:rgba(255,255,255,.06);color:var(--text);font-weight:800;font-size:.9rem;text-align:left;}
+.vcity i{flex:none;width:12px;height:12px;border-radius:50%;}
+.vcity.axis i{background:#8a8f94;box-shadow:0 0 0 3px rgba(138,143,148,.3);}
+.vcity.allies i{background:#5d8fd6;box-shadow:0 0 0 3px rgba(93,143,214,.3);}
+.vcity small{margin-left:auto;font-size:.68rem;color:var(--text-3);font-weight:900;text-transform:uppercase;letter-spacing:.06em;}
+.adj{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:8px 0;}
+.adj .v{font-family:var(--display);font-size:1.8rem;min-width:60px;text-align:center;}
+.adj .chipbtns .chip{min-width:52px;justify-content:center;}
+.frow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06);margin-bottom:6px;}
+.frow .fn{flex:1;min-width:0;font-weight:800;font-size:.92rem;}
+.frow .fn small{display:block;color:var(--text-3);font-size:.74rem;}
+.assign{display:flex;flex-direction:column;gap:10px;margin:8px 0 16px;}
+.arow{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:rgba(255,255,255,.06);flex-wrap:wrap;}
+.arow .an{display:flex;align-items:center;gap:8px;min-width:150px;font-weight:900;}
+.arow .chipbtns{flex:1;}
+
+/* Phones */
+@media (max-width:440px){ .stp2 button{width:36px;height:36px;} .stp2 output{min-width:24px;} .urow{gap:8px;} }
+@media (max-width:380px){ .tiles{grid-template-columns:repeat(3,1fr);} .tile .tn{font-size:.76rem;} }
+
+/* iPad portrait and up */
+@media (min-width:700px){
+  .sides{grid-template-columns:1fr 1fr;}
+  .tiles{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));}
+  .tools{grid-template-columns:repeat(3,1fr);}
+  .tray{min-height:420px;}
+  .half{padding:14px 16px;}
+  .tray{--dsz:48px;}
+  .pw{min-height:68px;}
+  .pw .ipc b{font-size:2rem;}
+  .buy{grid-template-columns:1fr 1fr;}
+  .cart{margin:12px 0 0;border-radius:18px;}
+}
+/* Wide screens (iPad landscape, laptop): two columns */
+@media (min-width:900px) and (orientation:landscape){
+  .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:20px;}
+  .tools{grid-template-columns:1fr 1fr;}
+  .fight{grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);align-items:start;}
+  .fight .trayw{position:sticky;top:64px;}
+  .tray{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px);}
+  .bset{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;}
+  .bset .odds{margin:0 0 12px;}
+  .bset .rail{position:sticky;top:64px;}
+  .sides{grid-template-columns:1fr 1fr;}
+  .buy{grid-template-columns:1fr 1fr 1fr;}
+}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, ic = Kit.icon, app = document.getElementById('app');
+  var KEY = 'axisallies-score', SAVE = 'axisallies_score_state';
+
+  // ── Game data: Axis & Allies 1942 Second Edition ───────────────────────────
+  var ORDER = ['ger', 'sov', 'jpn', 'uk', 'usa'];   // official order of play
+  var POW = {
+    ger: { n: 'Germany',        ab: 'GER',  s: 'axis',   c: '#5f6468', inc: 41, capT: 'Germany',               city: 'Berlin',     capV: 10 },
+    sov: { n: 'Soviet Union',   ab: 'USSR', s: 'allies', c: '#9c2f36', inc: 24, capT: 'Russia',                city: 'Moscow',     capV: 8 },
+    jpn: { n: 'Japan',          ab: 'JPN',  s: 'axis',   c: '#e0922b', inc: 30, capT: 'Japan',                 city: 'Tokyo',      capV: 8 },
+    uk:  { n: 'United Kingdom', ab: 'UK',   s: 'allies', c: '#c4a06a', inc: 31, capT: 'United Kingdom',        city: 'London',     capV: 8, lt: 1 },
+    usa: { n: 'United States',  ab: 'USA',  s: 'allies', c: '#6b843a', inc: 42, capT: 'Eastern United States', city: 'Washington', capV: 12 }
+  };
+  var SIDE = { axis: 'Axis', allies: 'Allies' };
+  var PHASES = [
+    { n: 'Purchase & repair', d: 'Buy new units and repair damaged factories. You pay now and place them later.' },
+    { n: 'Combat move', d: 'Move units into enemy territories and sea zones you want to attack. Planes need a safe place to land afterward.' },
+    { n: 'Conduct combat', d: 'Fight each battle one at a time. Roll them here, or roll real dice and use the board.' },
+    { n: 'Noncombat move', d: 'Move units that did not fight, and land your planes in friendly territories or on carriers.' },
+    { n: 'Mobilize new units', d: 'Place the units you bought at factories you have held since the start of your turn. Ships go in a sea zone next to the factory.' },
+    { n: 'Collect income', d: 'Take IPCs equal to your income, as long as you still hold your capital.' }
+  ];
+  // Units: cost, attack, defense, move
+  var U = {
+    inf:  { n: 'Infantry',   p: 'Infantry',   cost: 3,  a: 1, d: 2, m: 1, land: 1 },
+    art:  { n: 'Artillery',  p: 'Artillery',  cost: 4,  a: 2, d: 2, m: 1, land: 1 },
+    tank: { n: 'Tank',       p: 'Tanks',      cost: 6,  a: 3, d: 3, m: 2, land: 1 },
+    aa:   { n: 'AA gun',     p: 'AA guns',    cost: 5,  a: 0, d: 0, m: 1, land: 1 },
+    ftr:  { n: 'Fighter',    p: 'Fighters',   cost: 10, a: 3, d: 4, m: 4, air: 1 },
+    bmb:  { n: 'Bomber',     p: 'Bombers',    cost: 12, a: 4, d: 1, m: 6, air: 1 },
+    sub:  { n: 'Submarine',  p: 'Submarines', cost: 6,  a: 2, d: 1, m: 2, sea: 1 },
+    tra:  { n: 'Transport',  p: 'Transports', cost: 7,  a: 0, d: 0, m: 2, sea: 1 },
+    dd:   { n: 'Destroyer',  p: 'Destroyers', cost: 8,  a: 2, d: 2, m: 2, sea: 1 },
+    cru:  { n: 'Cruiser',    p: 'Cruisers',   cost: 12, a: 3, d: 3, m: 2, sea: 1 },
+    cv:   { n: 'Carrier',    p: 'Carriers',   cost: 14, a: 1, d: 2, m: 2, sea: 1 },
+    bb:   { n: 'Battleship', p: 'Battleships', cost: 20, a: 4, d: 4, m: 2, sea: 1 },
+    ic:   { n: 'Industrial complex', p: 'Industrial complexes', cost: 15, a: 0, d: 0, m: 0 }
+  };
+  var UNOTE = {
+    inf: 'Attacks at 2 when paired with an artillery', art: 'Boosts one attacking infantry to 2',
+    aa: 'Fires at up to 3 attacking planes, hits on 1', ftr: 'Can land on a carrier', bmb: 'Can bomb factories',
+    sub: 'Surprise strike unless a destroyer is there', tra: 'Carries 2 land units, cannot fight', dd: 'Stops sub tricks, lets planes hit subs',
+    cru: 'Can bombard the shore', cv: 'Holds 2 fighters', bb: 'Takes 2 hits, can bombard the shore', ic: 'Builds units, up to the territory value'
+  };
+  var LAND_ATT = ['inf', 'art', 'tank', 'ftr', 'bmb'], LAND_DEF = ['inf', 'art', 'tank', 'aa', 'ftr', 'bmb'];
+  var SEA_ATT = ['sub', 'dd', 'cru', 'cv', 'bb', 'tra', 'ftr', 'bmb'], SEA_DEF = ['sub', 'dd', 'cru', 'cv', 'bb', 'tra', 'ftr'];
+  var BUY = ['inf', 'art', 'tank', 'aa', 'ftr', 'bmb', 'sub', 'tra', 'dd', 'cru', 'cv', 'bb', 'ic'];
+  // Cheapest first when taking casualties (a battleship's first hit is free; transports always last)
+  var LOSS = ['inf', 'art', 'tank', 'sub', 'dd', 'ftr', 'bmb', 'cru', 'cv', 'bb'];
+  // The 18 victory cities and who holds them at the start of the 1942 scenario
+  var CITIES = [
+    ['Berlin', 'axis'], ['Paris', 'axis'], ['Rome', 'axis'], ['Warsaw', 'axis'], ['Tokyo', 'axis'], ['Shanghai', 'axis'], ['Manila', 'axis'], ['Hong Kong', 'axis'],
+    ['Moscow', 'allies'], ['Leningrad', 'allies'], ['Stalingrad', 'allies'], ['London', 'allies'], ['Ottawa', 'allies'], ['Calcutta', 'allies'], ['Sydney', 'allies'],
+    ['Washington', 'allies'], ['San Francisco', 'allies'], ['Honolulu', 'allies']
+  ];
+  var VAL_CHIPS = [1, 2, 3, 4, 5, 6, 8, 10, 12];
+  // Usual splits: player index for each power
+  var SPLITS = {
+    2: { ger: 0, jpn: 0, sov: 1, uk: 1, usa: 1 },
+    3: { ger: 0, jpn: 0, sov: 1, usa: 1, uk: 2 },
+    4: { ger: 0, sov: 1, usa: 1, jpn: 2, uk: 3 },
+    5: { ger: 0, sov: 1, jpn: 2, uk: 3, usa: 4 }
+  };
+
+  var RULES =
+    '<p class="goal">Play <b>Axis &amp; Allies 1942 (Second Edition)</b> on the real board. This page is your banker, turn tracker and dice tower. The Axis (Germany, Japan) and the Allies (Soviet Union, United Kingdom, United States) race to hold enough <b>victory cities</b>.</p>' +
+    '<h3>Turn order</h3><p>Every round goes <b>Germany, Soviet Union, Japan, United Kingdom, United States</b>. Each power plays a whole turn in six phases. Tap <b>Next phase</b> as you go.</p>' +
+    '<ol><li><b>Purchase &amp; repair:</b> spend IPCs on new units and fix bomb damage (1 IPC per damage marker).</li>' +
+    '<li><b>Combat move:</b> move into the places you want to attack.</li>' +
+    '<li><b>Conduct combat:</b> fight each battle.</li>' +
+    '<li><b>Noncombat move:</b> move everything else and land your planes.</li>' +
+    '<li><b>Mobilize:</b> place what you bought at your factories (no more than the territory\'s value, minus damage).</li>' +
+    '<li><b>Collect income:</b> take IPCs equal to your income, but only if you still hold your capital.</li></ol>' +
+    '<h3>Money</h3><p>Each power starts with IPCs equal to its income: Germany 41, Soviet Union 24, Japan 30, United Kingdom 31, United States 42. When a territory changes hands, move its value from the loser\'s income to the winner\'s (tap <b>Territory taken</b>).</p>' +
+    '<p>If you capture an enemy <b>capital</b>, you take all the IPCs they have saved. A power without its capital cannot buy units or collect income until it gets the capital back.</p>' +
+    '<h3>Battles</h3><p>Each combat round, every unit rolls one die. A roll equal to or lower than its number is a hit (attack number when attacking, defense number when defending). Each side picks its own casualties, then the attacker either keeps fighting or retreats.</p><ul>' +
+    '<li><b>Artillery</b> lets one attacking infantry hit on 2.</li>' +
+    '<li><b>AA guns</b> shoot once, before the battle, at up to 3 attacking planes each, hitting on 1.</li>' +
+    '<li><b>Shore bombardment:</b> in an amphibious attack, battleships (4) and cruisers (3) fire once before the first round. Units they hit still fire back that round.</li>' +
+    '<li><b>Battleships</b> take two hits to sink. The first hit just damages them.</li>' +
+    '<li><b>Submarines</b> get a surprise strike: they fire first and their hits are removed before the enemy can shoot back, unless the enemy has a <b>destroyer</b>. Subs cannot hit planes. Planes cannot hit subs unless their side has a destroyer in the battle. Subs may submerge to leave the battle.</li>' +
+    '<li><b>Transports</b> cannot fight. They are lost last, and if they are left alone with enemy warships or planes they are all sunk.</li>' +
+    '<li>To capture a territory, at least one of your <b>land units</b> must survive. Planes alone cannot take it.</li></ul>' +
+    '<p>The <b>odds</b> number plays the battle out thousands of times, losing the cheapest units first and never retreating. It is a guide, not a promise.</p>' +
+    '<h3>Strategic bombing</h3><p>Bombers can attack a factory instead of fighting. The factory\'s own anti-aircraft fire rolls one die per bomber and hits on 1. Each bomber that gets through rolls one die of damage. A factory can hold up to twice its territory\'s value in damage.</p>' +
+    '<h3>Winning</h3><p>At the end of each full round (after the United States), count victory cities. A side that holds the number you picked in setup (13, 15 or all 18) wins. There are no National Objectives in this edition.</p>';
+
+  Kit.init({
+    id: KEY, title: 'Axis & Allies',
+    theme: { felt: ['#5a6440', '#3d4629', '#2b321c'], wood: ['#7a5636', '#4a311d'] },
+    onNew: function () { S = null; UNDO = []; clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'users', label: 'Who plays which power', onClick: function () { if (S) assignSheet(); } },
+      { icon: 'trophy', label: 'End the game', onClick: function () { if (S) endSheet(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: ['axisallies'], title: 'Axis & Allies: past games' }); } }
+    ],
+    rules: RULES
+  });
+
+  // ── State, save, undo ─────────────────────────────────────────────────────
+  var S = null, UNDO = [], anim = null;
+  function J(o) { return JSON.parse(JSON.stringify(o)); }
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: UNDO.slice(-25) })); } catch (e) {}
+    if (!S.over) Kit.resume.set('Round ' + S.round + ' · ' + POW[ORDER[S.cur]].n, { keys: [SAVE] });
+  }
+  function load() {
+    try { var o = JSON.parse(localStorage.getItem(SAVE)); if (o && o.S && o.S.v === 1) { UNDO = o.U || []; return o.S; } } catch (e) {}
+    return null;
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function snap() { UNDO.push(JSON.stringify(S)); if (UNDO.length > 25) UNDO.shift(); }
+  function undo() {
+    if (!S || !UNDO.length) { Kit.toast('Nothing to undo'); return; }
+    S = JSON.parse(UNDO.pop()); anim = null; save(); render(); Kit.sfx('whoosh'); Kit.toast('Undone');
+  }
+  function log(pk, t) { S.log.unshift({ r: S.round, p: pk, t: t }); if (S.log.length > 200) S.log.length = 200; }
+  function note(w, t) { S.notes.push({ w: w, t: t }); }
+  function cur() { return ORDER[S.cur]; }
+  function plq(k, cls) { var P = POW[k]; return '<span class="plq' + (P.lt ? ' lt' : '') + (cls ? ' ' + cls : '') + '" style="--c:' + P.c + '">' + P.ab + '</span>'; }
+  function playerOf(k) { var p = S.players[S.pw[k].pl]; return p ? p.name : ''; }
+  function enemies(k) { return ORDER.filter(function (x) { return POW[x].s !== POW[k].s; }); }
+  function vcCount(side) { var n = 0; for (var c in S.vc) if (S.vc[c] === side) n++; return n; }
+  function pl(n, w) { return n + ' ' + (n === 1 ? w : w + 's'); }
+  function unitList(u, keys) {
+    var out = [];
+    (keys || Object.keys(U)).forEach(function (t) { if (u[t]) out.push(u[t] + ' ' + (u[t] === 1 ? U[t].n : U[t].p).toLowerCase()); });
+    return out.join(', ');
+  }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; app.className = 'stage';
+    Kit.setup(app, {
+      title: 'Axis & Allies 1942',
+      intro: 'A table companion for the real board game: IPC bank, turn tracker and battle dice.',
+      players: { min: 2, max: 5, count: 2, label: "Who's playing?" },
+      options: [
+        { id: 'vic', label: 'Victory condition', help: 'How many of the 18 victory cities one side must hold at the end of a full round to win.',
+          choices: [[13, '13 cities', 'Projection of Power: the usual game.'], [15, '15 cities', 'Honorable Surrender: a longer game.'], [18, 'All 18', 'Total Victory: you must hold every victory city.']], value: 13 },
+        { id: 'split', label: 'Who plays which power', help: 'Usual splits: 2 players, one is Germany and Japan, the other is all three Allies. 3 players: Germany and Japan; Soviet Union and United States; United Kingdom. 4 players: Germany; Soviet Union and United States; Japan; United Kingdom. 5 players: one power each.',
+          choices: [['std', 'Usual split', 'Powers are shared out the usual way for your number of players.'], ['pick', 'Choose', 'You pick who plays each power on the next screen.']], value: 'std' }
+      ],
+      start: 'Next',
+      onStart: function (cfg) {
+        var n = cfg.players.length, sp = SPLITS[n];
+        var map = {}; ORDER.forEach(function (k) { map[k] = sp[k]; });
+        if (cfg.options.split === 'pick') assignScreen(cfg, map);
+        else start(cfg, map);
+      }
+    });
+  }
+
+  function assignScreen(cfg, map) {
+    app.innerHTML = '';
+    var wrap = el('div', { class: 'setup' });
+    wrap.appendChild(el('div', { class: 'setup-hero' }, [el('h1', { text: 'Who plays which power?' }), el('p', { text: 'Tap a name for each power. Everyone needs at least one.' })]));
+    var box = el('div', { class: 'assign' }), msg = el('p', { class: 'note', text: '' }), go;
+    function paint() {
+      box.innerHTML = '';
+      ORDER.forEach(function (k) {
+        var row = el('div', { class: 'arow' }, [el('div', { class: 'an', html: plq(k) + '<span>' + POW[k].n + '</span>' })]);
+        var ch = el('div', { class: 'chipbtns' });
+        cfg.players.forEach(function (p, i) {
+          ch.appendChild(el('button', { type: 'button', class: 'chip' + (map[k] === i ? ' on' : ''), text: p.name, onclick: function () { map[k] = i; Kit.sfx('tap'); paint(); } }));
+        });
+        row.appendChild(ch); box.appendChild(row);
+      });
+      var missing = cfg.players.filter(function (p, i) { return !ORDER.some(function (k) { return map[k] === i; }); });
+      msg.textContent = missing.length ? missing.map(function (p) { return p.name; }).join(' and ') + ' still needs a power.' : 'Ready. Germany goes first.';
+      msg.className = 'note' + (missing.length ? ' warn' : '');
+      if (go) go.disabled = !!missing.length;
+    }
+    go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Start the game', onclick: function () { start(cfg, map); } });
+    wrap.appendChild(box); wrap.appendChild(msg); wrap.appendChild(el('div', { style: { height: '12px' } })); wrap.appendChild(go);
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Back', onclick: showSetup }));
+    app.appendChild(wrap); paint(); window.scrollTo(0, 0);
+  }
+
+  function start(cfg, map) {
+    var pw = {};
+    ORDER.forEach(function (k) { pw[k] = { pl: map[k], bank: POW[k].inc, inc: POW[k].inc, cap: true, capBy: null }; });
+    var vc = {}; CITIES.forEach(function (c) { vc[c[0]] = c[1]; });
+    S = {
+      v: 1, started: Date.now(), vic: Number(cfg.options.vic) || 13,
+      players: cfg.players.map(function (p) { return { name: p.name }; }),
+      pw: pw, round: 1, cur: 0, phase: 0, bought: {}, vc: vc,
+      factories: ORDER.map(function (k) { return { name: POW[k].capT, val: POW[k].capV, own: k, dmg: 0 }; }),
+      log: [], notes: [], st: { battles: 0, dice: 0, bigBattle: 0, spent: {}, captured: 0 },
+      view: 'home', battle: null, cart: null, sbr: null, over: false
+    };
+    S.factories.push({ name: 'Western United States', val: 10, own: 'usa', dmg: 0 });
+    log('ger', 'Game started. ' + S.players.map(function (p, i) { return p.name + ': ' + ORDER.filter(function (k) { return map[k] === i; }).map(function (k) { return POW[k].n; }).join(' & '); }).join('; '));
+    UNDO = []; Kit.gameStart();
+    save(); render(); window.scrollTo(0, 0);
+  }
+
+  // ── Battle engine (shared by the dice roller and the odds simulation) ─────
+  function blank() { var o = { bbD: 0 }; for (var t in U) o[t] = 0; return o; }
+  function addU(a, b) { var o = J(a); for (var t in U) o[t] += (b && b[t]) || 0; return o; }
+  function cls(t) { return U[t].air ? 'A' : t === 'sub' ? 'S' : 'O'; }
+  function slots(u, t) { return t === 'bb' ? 2 * u.bb - u.bbD : (t === 'aa' || t === 'ic') ? 0 : u[t]; }
+  function caps(u, noTra) {
+    var c = { A: 0, S: 0, O: 0 };
+    for (var t in U) { if (t === 'aa' || t === 'ic' || (noTra && t === 'tra')) continue; c[cls(t)] += slots(u, t); }
+    return c;
+  }
+  // Hit pools: s = submarine hits (not planes), a = plane hits without a destroyer (not subs),
+  // g = anything, x = AA fire (planes only)
+  var POOLS = { x: ['A'], s: ['S', 'O'], a: ['A', 'O'], g: ['A', 'S', 'O'] };
+  var PK = ['x', 's', 'a', 'g'], TK = ['A', 'S', 'O'];
+  function maxflow(h, c) {
+    var N = 9, cap = [], i, j;
+    for (i = 0; i < N; i++) { cap.push([0, 0, 0, 0, 0, 0, 0, 0, 0]); }
+    PK.forEach(function (p, i) { cap[0][1 + i] = h[p] || 0; POOLS[p].forEach(function (t) { cap[1 + i][5 + TK.indexOf(t)] = 9999; }); });
+    TK.forEach(function (t, j) { cap[5 + j][8] = c[t] || 0; });
+    var f = 0;
+    for (;;) {
+      var par = [-1, -1, -1, -1, -1, -1, -1, -1, -1], q = [0]; par[0] = 0;
+      while (q.length && par[8] < 0) { var v = q.shift(); for (j = 0; j < N; j++) if (par[j] < 0 && cap[v][j] > 0) { par[j] = v; q.push(j); } }
+      if (par[8] < 0) break;
+      var b = 9999; for (j = 8; j !== 0; j = par[j]) b = Math.min(b, cap[par[j]][j]);
+      for (j = 8; j !== 0; j = par[j]) { cap[par[j]][j] -= b; cap[j][par[j]] += b; }
+      f += b;
+    }
+    return f;
+  }
+  var PERMS = (function () { var out = []; (function p(a, r) { if (!r.length) out.push(a); r.forEach(function (x, i) { p(a.concat([x]), r.slice(0, i).concat(r.slice(i + 1))); }); })([], PK); return out; })();
+  function greedy(u, h, order) {
+    var c = blank(), free = u.bb - u.bbD, left = {}, n = 0;
+    for (var t in U) left[t] = slots(u, t);
+    order.forEach(function (p) {
+      var k = h[p] || 0, ok = POOLS[p];
+      while (k > 0) {
+        var pick = null;
+        if (free > 0 && ok.indexOf('O') >= 0) { free--; pick = 'bb'; }
+        else {
+          for (var i = 0; i < LOSS.length && !pick; i++) { var t = LOSS[i]; if (left[t] > 0 && ok.indexOf(cls(t)) >= 0) pick = t; }
+          if (!pick && left.tra > 0 && ok.indexOf('O') >= 0) pick = 'tra';
+        }
+        if (!pick) break;
+        left[pick]--; c[pick]++; n++; k--;
+      }
+    });
+    return { c: c, n: n };
+  }
+  // Suggested casualties: cheapest first, a battleship's free first hit before anything
+  function suggest(u, h) {
+    var g = greedy(u, h, PK), need = maxflow(h, caps(u));
+    if (g.n >= need) return g.c;
+    for (var i = 0; i < PERMS.length; i++) { var t = greedy(u, h, PERMS[i]); if (t.n >= need) return t.c; if (t.n > g.n) g = t; }
+    return g.c;
+  }
+  function casTotal(c) { var n = 0; for (var t in U) n += c[t] || 0; return n; }
+  function checkCas(u, h, c) {
+    var need = maxflow(h, caps(u)), sum = casTotal(c);
+    for (var t in U) if ((c[t] || 0) > slots(u, t)) return 'Too many ' + U[t].p.toLowerCase() + '.';
+    if (sum < need) return 'Pick ' + (need - sum) + ' more.';
+    if (sum > need) return 'That is ' + (sum - need) + ' too many.';
+    var cc = { A: c.ftr + c.bmb, S: c.sub, O: sum - c.ftr - c.bmb - c.sub };
+    if (maxflow(h, cc) < sum) {
+      if (h.x && cc.A < (h.x || 0)) return 'AA hits must be taken by planes.';
+      if (cc.A && h.s) return 'Submarine hits cannot sink planes.';
+      if (cc.S) return 'Planes cannot hit subs without a destroyer.';
+      return 'Those hits cannot be taken that way.';
+    }
+    var need0 = maxflow(h, caps(u, true));
+    if (c.tra !== Math.max(0, need - need0)) return 'Transports are taken last.';
+    return '';
+  }
+  function applyCas(u, c) {
+    for (var t in U) {
+      var k = c[t] || 0; if (!k) continue;
+      if (t === 'bb') { var dm = Math.min(k, u.bb - u.bbD); u.bbD += dm; var sink = k - dm; u.bb -= sink; u.bbD -= sink; }
+      else u[t] -= k;
+    }
+  }
+  function alive(u) { var n = 0; for (var t in U) if (t !== 'aa' && t !== 'ic') n += u[t]; return n; }
+  function landLeft(u) { return u.inf + u.art + u.tank; }
+  function canHit(me, opp, role) {
+    var c = caps(opp);
+    for (var t in U) {
+      if (!me[t] || t === 'aa' || t === 'ic') continue;
+      if (!(role === 'a' ? U[t].a : U[t].d)) continue;
+      if (t === 'sub') { if (c.S + c.O) return true; }
+      else if (U[t].air) { if (c.A + c.O || (me.dd && c.S)) return true; }
+      else if (c.A + c.S + c.O) return true;
+    }
+    return false;
+  }
+  function outcome(a, d) {
+    var an = alive(a), dn = alive(d), n;
+    if (!an && !dn) return { r: 'both' };
+    if (!dn) return { r: 'a' };
+    if (!an) return { r: 'd' };
+    if (d.tra && dn === d.tra && canHit(a, d, 'a')) { n = d.tra; d.tra = 0; return { r: 'a', tra: 'def', n: n }; }
+    if (a.tra && an === a.tra && canHit(d, a, 'd')) { n = a.tra; a.tra = 0; return { r: 'd', tra: 'att', n: n }; }
+    if (!canHit(a, d, 'a') && !canHit(d, a, 'd')) return { r: 'stale' };
+    return null;
+  }
+  function needSurprise(a, d) { return (a.sub > 0 && !d.dd) || (d.sub > 0 && !a.dd); }
+  function needOpen(kind, a, d, bomb) { return kind === 'land' && ((d.aa > 0 && a.ftr + a.bmb > 0) || bomb.bb > 0 || bomb.cru > 0); }
+  function openGroups(a, d, bomb) {
+    var gA = [], gD = [], sh = Math.min(a.ftr + a.bmb, 3 * d.aa);
+    if (sh) gD.push({ t: 'aa', n: sh, hit: 1, pool: 'x' });
+    if (bomb.bb) gA.push({ t: 'bb', n: bomb.bb, hit: 4, pool: 'g', bomb: 1 });
+    if (bomb.cru) gA.push({ t: 'cru', n: bomb.cru, hit: 3, pool: 'g', bomb: 1 });
+    return { a: gA, d: gD };
+  }
+  function fireGroups(me, opp, role, step) {
+    var g = [], oppDD = opp.dd > 0, myDD = me.dd > 0;
+    ['inf', 'art', 'tank', 'sub', 'dd', 'cru', 'cv', 'bb', 'ftr', 'bmb'].forEach(function (t) {
+      var n = me[t]; if (!n) return;
+      var v = role === 'a' ? U[t].a : U[t].d; if (!v) return;
+      if (t === 'sub') { if ((step === 'surprise') === !oppDD) g.push({ t: t, n: n, hit: v, pool: 's' }); return; }
+      if (step !== 'fire') return;
+      if (t === 'inf' && role === 'a' && me.art > 0) {
+        var sup = Math.min(n, me.art);
+        g.push({ t: 'inf', n: sup, hit: 2, pool: 'g', sup: 1 });
+        if (n - sup) g.push({ t: 'inf', n: n - sup, hit: 1, pool: 'g' });
+        return;
+      }
+      g.push({ t: t, n: n, hit: v, pool: U[t].air ? (myDD ? 'g' : 'a') : 'g' });
+    });
+    return g;
+  }
+  function poolHits(groups) { var h = { x: 0, s: 0, a: 0, g: 0 }; groups.forEach(function (g) { h[g.pool] += g.hits; }); return h; }
+  function costOf(u) { var n = 0; for (var t in U) if (t !== 'ic') n += (u[t] || 0) * U[t].cost; return n; }
+
+  // ── Odds: play the battle out thousands of times ─────────────────────────
+  function rollHits(groups) { groups.forEach(function (g) { var h = 0; for (var i = 0; i < g.n; i++) if (Math.random() * 6 < g.hit) h++; g.hits = h; }); return poolHits(groups); }
+  function simOne(a, d, kind, bomb, ghost, skipSur) {
+    var o;
+    if (!ghost && bomb && needOpen(kind, a, d, bomb)) {
+      var og = openGroups(a, d, bomb), hA = rollHits(og.d), hD = rollHits(og.a);
+      var cA = suggest(a, hA), cD = suggest(d, hD); applyCas(a, cA); applyCas(d, cD); ghost = cD;
+    }
+    for (var r = 0; r < 80; r++) {
+      if (!ghost) { o = outcome(a, d); if (o) return o; }
+      if (!skipSur && needSurprise(a, d)) {
+        var sA = rollHits(fireGroups(a, d, 'a', 'surprise')), sD = rollHits(fireGroups(d, a, 'd', 'surprise'));
+        var c1 = suggest(d, sA), c2 = suggest(a, sD); applyCas(d, c1); applyCas(a, c2);
+        if (!ghost) { o = outcome(a, d); if (o) return o; }
+      }
+      skipSur = false;
+      var dm = ghost ? addU(d, ghost) : d;
+      var fA = rollHits(fireGroups(a, d, 'a', 'fire')), fD = rollHits(fireGroups(dm, a, 'd', 'fire'));
+      var c3 = suggest(d, fA), c4 = suggest(a, fD); applyCas(d, c3); applyCas(a, c4);
+      ghost = null;
+    }
+    return outcome(a, d) || { r: 'stale' };
+  }
+  // st: {bomb, ghost, skipSur} describes where the battle stands
+  function simulate(a0, d0, kind, st, N) {
+    var res = { a: 0, d: 0, both: 0, stale: 0, take: 0, aLoss: 0, dLoss: 0, n: N };
+    var ca = costOf(a0), cd = costOf(d0);
+    for (var i = 0; i < N; i++) {
+      var a = J(a0), d = J(d0), o = simOne(a, d, kind, st.bomb, st.ghost ? J(st.ghost) : null, st.skipSur);
+      res[o.r]++;
+      if (o.r === 'a' && (kind === 'sea' || landLeft(a) > 0)) res.take++;
+      res.aLoss += ca - costOf(a); res.dLoss += cd - costOf(d);
+    }
+    return res;
+  }
+  window.__aa = { simulate: simulate, blank: blank, suggest: suggest, checkCas: checkCas, maxflow: maxflow, caps: caps };
+
+  var oddsT = 0, oddsKey = '';
+  function oddsFor(B) {
+    var a = B.att.u, d = B.def.u;
+    if (!alive(a) || (!alive(d) && !d.aa)) return null;
+    var mid = B.stage === 'fight' && (B.next !== 'open' || B.round > 1);
+    return simulate(a, d, B.kind, { bomb: mid ? null : B.bomb, ghost: mid ? B.ghost : null, skipSur: mid && B.mid }, 3000);
+  }
+  function scheduleOdds() {
+    var B = S && S.battle; if (!B) return;
+    var box = app.querySelector('.odds'); if (!box) return;
+    var k = JSON.stringify([B.kind, B.att, B.def, B.bomb, B.stage, B.next, B.ghost]);
+    if (k === oddsKey && box.dataset.done) return;
+    box.classList.add('busy');
+    clearTimeout(oddsT);
+    oddsT = setTimeout(function () {
+      var r = oddsFor(B); oddsKey = k;
+      var b2 = app.querySelector('.odds'); if (!b2) return;
+      b2.classList.remove('busy'); b2.dataset.done = '1';
+      b2.innerHTML = oddsHTML(r, B);
+      if (r && B.stage === 'setup') B.odds0 = Math.round(100 * (B.kind === 'land' ? r.take : r.a) / r.n);
+    }, 140);
+  }
+  function oddsHTML(r, B) {
+    var A = POW[B.att.p], D = POW[B.def.p];
+    if (!r) return '<div class="ot"><span>Odds</span><small>Add units to both sides</small></div>';
+    function pc(x) { return Math.round(100 * x / r.n); }
+    var take = B.kind === 'land' ? r.take : r.a, airOnly = r.a - (B.kind === 'land' ? r.take : r.a);
+    var hold = r.d + r.stale + airOnly;
+    var h = '<div class="ot"><span>' + (B.kind === 'land' ? A.n + ' takes it: ' : A.n + ' wins: ') + pc(take) + '%</span><small>' + (B.stage === 'fight' ? 'from here' : 'odds') + '</small></div>';
+    h += '<div class="obar"><i style="width:' + pc(take) + '%;background:' + A.c + '"></i><i style="width:' + pc(r.both) + '%;background:#8a8a99"></i><i style="width:' + pc(hold) + '%;background:' + D.c + '"></i></div>';
+    h += '<div class="ol"><span style="--c:' + A.c + '">' + (B.kind === 'land' ? 'Captured ' : 'Attacker wins ') + pc(take) + '%</span>' +
+      (r.both ? '<span style="--c:#8a8a99">Both wiped out ' + pc(r.both) + '%</span>' : '') +
+      '<span style="--c:' + D.c + '">' + D.n + ' holds ' + pc(hold) + '%</span></div>';
+    var extra = 'Average losses: attacker ' + Math.round(r.aLoss / r.n) + ' IPCs, defender ' + Math.round(r.dLoss / r.n) + ' IPCs.';
+    if (B.kind === 'land' && airOnly / r.n > 0.03) extra += ' Planes alone can\'t capture it (' + pc(airOnly) + '% end with only planes).';
+    return h + '<div class="on">' + extra + '</div>';
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────────────────
+  function render() {
+    if (!S) return;
+    var v = S.view;
+    if (v === 'battle' && !S.battle) v = S.view = 'home';
+    if (v === 'buy' && !S.cart) v = S.view = 'home';
+    if (v === 'bomb' && !S.sbr) v = S.view = 'home';
+    app.className = 'stage' + (v === 'buy' ? '' : ' wide');
+    if (v === 'home') renderHome();
+    else if (v === 'battle') renderBattle();
+    else if (v === 'buy') renderBuy();
+    else if (v === 'bomb') renderBomb();
+  }
+
+  function renderHome() {
+    var k = cur(), P = POW[k], pw = S.pw[k], ph = PHASES[S.phase];
+    var h = '<div class="home"><div class="col">';
+    h += '<section class="tcard paper" style="--c:' + P.c + '"><div class="th"><div class="who">' + plq(k, 'big') +
+      '<div style="min-width:0"><div class="pn display">' + P.n + '</div><div class="pp' + (pw.cap ? '' : ' lost') + '">' + esc(playerOf(k)) + (pw.cap ? '' : ' · capital lost') + '</div></div></div>' +
+      '<div class="rd"><small>Round</small><b>' + S.round + '</b></div></div><ol class="phases">';
+    PHASES.forEach(function (p, i) {
+      h += '<li class="' + (i < S.phase ? 'done' : i === S.phase ? 'on' : '') + '"><button type="button" data-act="phase" data-i="' + i + '"><span class="bx">' + (i < S.phase ? ic('check') : '') + '</span><span class="nm">' + p.n + '</span>' +
+        (i === 5 ? '<span class="n">' + (pw.cap ? '+' + pw.inc : 'none') + '</span>' : '') + '</button></li>';
+    });
+    h += '</ol></section>';
+    // What to do now
+    h += '<div class="todo"><p class="tip">' + ph.d + '</p>';
+    if (S.phase === 0) h += pw.cap ? '<button type="button" class="btn btn-soft btn-block" data-act="buy">' + ic('coins') + '<span>Buy units for ' + P.n + '</span></button>'
+      : '<p class="note warn">' + P.n + '\'s capital is held by ' + POW[pw.capBy || enemies(k)[0]].n + ', so it cannot buy units this turn.</p>';
+    if (S.phase === 2) h += '<div class="row2"><button type="button" class="btn btn-soft" data-act="battle">' + ic('dice') + '<span>Battle</span></button><button type="button" class="btn btn-soft" data-act="bomb">' + ic('flame') + '<span>Bombing raid</span></button></div>';
+    if (S.phase === 4) {
+      var b = S.bought || {}, any = Object.keys(b).filter(function (t) { return b[t]; });
+      h += any.length ? '<div class="bought">' + any.map(function (t) { return '<span>' + b[t] + ' ' + (b[t] === 1 ? U[t].n : U[t].p) + '</span>'; }).join('') + '</div>' : '<p class="tip">Nothing was bought this turn.</p>';
+    }
+    var nx = S.phase < 5 ? '<span class="tx"><span>Next phase</span><small>' + PHASES[S.phase + 1].n + '</small></span>'
+      : '<span class="tx"><span>' + (pw.cap ? 'Collect ' + pw.inc + ' IPCs' : 'End turn, no income') + '</span><small>Then ' + (S.cur === 4 ? 'round ' + (S.round + 1) + ': Germany' : POW[ORDER[S.cur + 1]].n) + '</small></span>';
+    h += '<button type="button" class="btn btn-primary btn-lg btn-block next" data-act="next">' + nx + ic('right') + '</button></div>';
+    // Tools
+    h += '<section class="tools">' +
+      tool('battle', 'dice', 'Battle', 'Roll a battle', S.phase === 2) +
+      tool('buy', 'coins', 'Buy units', 'Price list', S.phase === 0) +
+      tool('terr', 'swap', 'Territory taken', 'Move income') +
+      tool('bomb', 'flame', 'Bombing raid', 'Hit a factory', false) +
+      tool('capital', 'home', 'Capital captured', 'Take their IPCs') +
+      tool('vc', 'trophy', 'Victory cities', 'Who holds what') +
+      '</section></div>';
+    // Right column: bank, victory cities, log
+    h += '<div class="col"><section class="bank"><div class="sh"><span class="label">IPC bank</span><button type="button" data-act="fact">Factories</button></div>';
+    ['axis', 'allies'].forEach(function (sd) {
+      h += '<div class="side-lbl">' + SIDE[sd] + '</div>';
+      ORDER.filter(function (x) { return POW[x].s === sd; }).forEach(function (x) {
+        var q = S.pw[x];
+        h += '<button type="button" class="pw' + (x === k ? ' on' : '') + '" data-act="power" data-k="' + x + '" style="--c:' + POW[x].c + '">' + plq(x) +
+          '<span class="nm"><b>' + POW[x].n + '</b><small>' + esc(playerOf(x)) + (q.cap ? '' : ' · <em>capital lost</em>') + '</small></span>' +
+          '<span class="ipc"><b>' + q.bank + '</b><small>IPCs · <i>+' + q.inc + '</i></small></span></button>';
+      });
+    });
+    h += '</section>';
+    var ax = vcCount('axis'), al = vcCount('allies');
+    h += '<button type="button" class="vcbar" data-act="vc"><span class="vs"><span class="tt"><span>Axis ' + ax + ' · Allies ' + al + '</span><span>' + S.vic + ' to win</span></span>' +
+      '<span class="vcmeter"><i class="ax" style="width:' + (ax / 18 * 100) + '%"></i><i class="al" style="width:' + (al / 18 * 100) + '%"></i><span class="goal" style="left:' + (S.vic / 18 * 100) + '%"></span></span></span>' + ic('right') + '</button>';
+    h += '<section><div class="sh"><span class="label">Game log</span>' + (S.log.length > 8 ? '<button type="button" data-act="logall">Show all</button>' : '') + '</div><div class="log">' + logHTML(8) + '</div></section>';
+    h += '</div></div>';
+    app.innerHTML = h;
+  }
+  function tool(act, icon, t, sub, hot) {
+    return '<button type="button" class="tool' + (hot ? ' hot' : '') + '" data-act="' + act + '"><span class="ic">' + ic(icon) + '</span><span><b>' + t + '</b><small>' + sub + '</small></span></button>';
+  }
+  function logHTML(n) {
+    if (!S.log.length) return '<p class="none">Nothing yet.</p>';
+    return S.log.slice(0, n || 999).map(function (e) {
+      return '<div class="e"><span class="r">R' + e.r + '</span>' + plq(e.p) + '<span>' + esc(e.t) + '</span></div>';
+    }).join('');
+  }
+  function vbar(title) {
+    return '<div class="vbar"><button type="button" class="btn btn-soft btn-sm" data-act="home">' + ic('back') + '<span>Turn</span></button><h2>' + title + '</h2></div>';
+  }
+
+  // ── Battle view ───────────────────────────────────────────────────────────
+  function newBattle(kind) {
+    var k = cur(), e = enemies(k);
+    return { kind: kind || 'land', where: '', stage: 'setup', att: { p: k, u: blank() }, def: { p: e[0], u: blank() }, bomb: { bb: 0, cru: 0 },
+      round: 1, next: 'open', phase: 'roll', mid: false, ghost: null, last: null, pend: null, out: { a: 0, d: 0 }, res: null, odds0: null, dice: 0 };
+  }
+  function renderBattle() {
+    var B = S.battle, h = '';
+    h += vbar((B.kind === 'land' ? 'Land battle' : 'Sea battle') + (B.where ? ' · ' + esc(B.where) : ''));
+    if (B.stage === 'setup') h += battleSetup(B); else h += battleFight(B);
+    app.innerHTML = h;
+    var w = app.querySelector('.where');
+    if (w) w.addEventListener('input', function () { B.where = w.value.slice(0, 30); save(); });
+    if (B.stage !== 'setup' && anim) runAnim();
+    if (B.stage === 'setup' || (B.stage === 'fight' && B.phase !== 'cas')) scheduleOdds();
+  }
+  function battleSetup(B) {
+    var h = '<div class="bset"><div>';
+    h += '<div class="seg"><button type="button" data-act="b-kind" data-v="land" class="' + (B.kind === 'land' ? 'on' : '') + '">Land battle</button><button type="button" data-act="b-kind" data-v="sea" class="' + (B.kind === 'sea' ? 'on' : '') + '">Sea battle</button></div>';
+    h += '<input class="input where" maxlength="30" placeholder="Where? (optional)" value="' + esc(B.where) + '" autocomplete="off">';
+    h += '<div class="sides">' + sideCard(B, 'att') + sideCard(B, 'def') + '</div></div>';
+    var ok = alive(B.att.u) > 0 && (alive(B.def.u) > 0 || B.def.u.aa > 0);
+    h += '<div class="rail"><div class="odds"></div><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="b-start"' + (ok ? '' : ' disabled') + '>' + ic('dice') + '<span>To battle!</span></button>' +
+      '<button type="button" class="btn btn-ghost btn-block" data-act="b-clear">Clear units</button></div></div>';
+    return h;
+  }
+  function sideCard(B, sd) {
+    var S2 = B[sd], P = POW[S2.p], att = sd === 'att';
+    var keys = B.kind === 'land' ? (att ? LAND_ATT : LAND_DEF) : (att ? SEA_ATT : SEA_DEF);
+    var other = POW[B[att ? 'def' : 'att'].p].s;
+    var h = '<section class="side" style="--c:' + P.c + '"><div class="sdh"><span class="role">' + (att ? 'Attacker' : 'Defender') + '<small>' + P.n + '</small></span><div class="pchips">';
+    ORDER.forEach(function (k) { h += '<button type="button" data-act="b-pow" data-side="' + sd + '" data-k="' + k + '" class="' + (S2.p === k ? 'on' : '') + '" aria-label="' + POW[k].n + '">' + plq(k) + '</button>'; });
+    void other;
+    h += '</div></div><div class="tiles">';
+    keys.forEach(function (t) { h += tileHTML(sd, t, S2.u[t], att ? U[t].a : U[t].d, att, P.c); });
+    h += '</div>';
+    if (att && B.kind === 'land') {
+      h += '<div class="bmb"><div class="label">Shore bombardment (amphibious attack only)</div><div class="tiles">' +
+        tileHTML('bomb', 'bb', B.bomb.bb, 4, true, P.c) + tileHTML('bomb', 'cru', B.bomb.cru, 3, true, P.c) + '</div></div>';
+    }
+    return h + '</section>';
+  }
+  function tileHTML(sd, t, n, v, att, c) {
+    var sub = t === 'aa' ? 'Fires first, 1' : (att ? 'Attack ' : 'Defense ') + v + (t === 'bb' ? ', 2 hits' : '');
+    if (t === 'tra') sub = 'No attack';
+    if (sd === 'bomb') sub = 'Bombard ' + v;
+    return '<div class="tile' + (n ? ' has' : '') + '" style="--c:' + c + '"><button type="button" class="tadd" data-act="b-add" data-side="' + sd + '" data-t="' + t + '" aria-label="Add ' + U[t].n + '"><span class="tn">' + U[t].n + '</span><span class="tv">' + sub + '</span><b class="tc">' + n + '</b></button>' +
+      '<button type="button" class="tsub" data-act="b-sub" data-side="' + sd + '" data-t="' + t + '" aria-label="Remove ' + U[t].n + '">−</button></div>';
+  }
+  function forcesHTML(u, start, keys) {
+    var out = '';
+    keys.forEach(function (t) {
+      if (!start[t] && !u[t]) return;
+      var label = (u[t] || 0) + ' ' + ((u[t] === 1 ? U[t].n : U[t].p));
+      if (t === 'bb' && u.bbD) label += ' (' + u.bbD + ' damaged)';
+      out += '<span class="' + (u[t] ? '' : 'gone') + '">' + (u[t] ? label : start[t] + ' ' + (start[t] === 1 ? U[t].n : U[t].p)) + '</span>';
+    });
+    return out;
+  }
+  function stepLabel(B) {
+    if (B.next === 'open') {
+      var g = openGroups(B.att.u, B.def.u, B.bomb);
+      return g.d.length && g.a.length ? 'AA fire & bombardment' : g.d.length ? 'AA fire' : 'Shore bombardment';
+    }
+    if (B.next === 'surprise') return 'Sub surprise strike';
+    return 'Round ' + B.round;
+  }
+  function battleFight(B) {
+    var A = POW[B.att.p], D = POW[B.def.p], L = B.last;
+    var keysA = B.kind === 'land' ? LAND_ATT : SEA_ATT, keysD = B.kind === 'land' ? LAND_DEF : SEA_DEF;
+    var h = '<div class="fight"><div class="trayw wood"><div class="tray felt-in" style="--dsz:' + dsz(L) + '">';
+    function half(sd, P, role, groups, u, st, keys) {
+      var hits = groups ? groups.reduce(function (s, g) { return s + g.hits; }, 0) : 0;
+      var x = '<div class="half ' + sd + (anim ? '' : ' landed') + '"><div class="hh">' + plq(sd === 'att' ? B.att.p : B.def.p) + '<span class="t">' + role + ' · ' + P.n + '<small>' + (alive(u) || u.aa ? '' : 'No units left') + '</small></span>' +
+        (groups ? '<span class="hits' + (hits ? '' : ' zero') + '"><small>Hits</small>' + hits + '</span>' : '') + '</div>';
+      if (groups && groups.length) {
+        x += '<div class="groups">';
+        groups.forEach(function (g) {
+          var lbl = g.t === 'aa' ? 'AA fire' : g.bomb ? U[g.t].n + ' bombard' : (g.n === 1 ? U[g.t].n : U[g.t].p) + (g.sup ? ' + artillery' : '');
+          var gh = g.dice.filter(function (v) { return v <= g.hit; }).length;
+          x += '<div class="grp"><div class="gl"><span>' + lbl + '</span><em>hits on ' + (g.hit === 1 ? '1' : '1–' + g.hit) + '</em><span class="gh">' + (gh ? pl(gh, 'hit') : '') + '</span></div><div class="dd">' +
+            g.dice.map(function (v) { return '<span class="dw ' + (v <= g.hit ? 'hit' : 'miss') + '">' + Kit.die(v).outerHTML + '</span>'; }).join('') + '</div></div>';
+        });
+        x += '</div>';
+      } else if (groups) {
+        x += '<div class="ready">No dice this time</div>';
+      } else x += '<div class="ready">' + (B.stage === 'done' ? '' : 'Ready') + '</div>';
+      x += '<div class="forces">' + forcesHTML(u, st, keys) + '</div></div>';
+      return x;
+    }
+    var st = B.start || {};
+    h += half('def', D, 'Defender', L ? L.def : null, B.def.u, st.def || B.def.u, keysD);
+    var mid = B.stage === 'done' ? 'Battle over' : L ? (L.step === 'open' ? 'Opening fire' : L.step === 'surprise' ? 'Surprise strike · round ' + L.round : 'Round ' + L.round) : 'Round 1';
+    h += '<div class="mid"><span>' + mid + '</span></div>';
+    h += half('att', A, 'Attacker', L ? L.att : null, B.att.u, st.att || B.att.u, keysA);
+    if (B.stage === 'done' && B.res) h += '<div class="stamp' + (B.res.r === 'a' ? ' win' : '') + '"' + (anim ? ' style="animation-delay:.9s"' : '') + '>' + stampText(B) + '</div>';
+    h += '</div></div><div class="ctl">';
+    if (B.stage === 'done') h += resultHTML(B);
+    else if (B.phase === 'cas') h += casHTML(B);
+    else {
+      h += '<button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="b-roll">' + ic('dice') + '<span>Roll: ' + stepLabel(B) + '</span></button>';
+      var extra = '';
+      if (B.round > 1 && !B.mid && B.next !== 'open') extra += '<button type="button" class="btn btn-soft" data-act="b-retreat">Attacker retreats</button>';
+      if (B.next !== 'open' && !B.mid) {
+        if (B.att.u.sub && !B.def.u.dd) extra += '<button type="button" class="btn btn-soft" data-act="b-sub-out" data-side="att">' + A.ab + ' subs submerge</button>';
+        if (B.def.u.sub && !B.att.u.dd) extra += '<button type="button" class="btn btn-soft" data-act="b-sub-out" data-side="def">' + D.ab + ' subs submerge</button>';
+      }
+      if (extra) h += '<div class="row2">' + extra + '</div>';
+      h += '<div class="odds"></div>';
+      if (B.next === 'open' && B.round === 1) h += '<p class="note">Before round 1: ' + openNote(B) + '</p>';
+      else if (B.next === 'surprise') h += '<p class="note">' + surpriseNote(B) + '</p>';
+    }
+    h += '</div></div>';
+    return h;
+  }
+  function openNote(B) {
+    var g = openGroups(B.att.u, B.def.u, B.bomb), out = [];
+    if (g.d.length) out.push('AA guns fire ' + pl(g.d[0].n, 'shot') + ' at the attacking planes, hitting on 1');
+    if (g.a.length) out.push('ships bombard the shore; anything they hit still fires back in round 1');
+    return out.join('. ') + '.';
+  }
+  function surpriseNote(B) {
+    var a = B.att.u, d = B.def.u, w = [];
+    if (a.sub && !d.dd) w.push(POW[B.att.p].n);
+    if (d.sub && !a.dd) w.push(POW[B.def.p].n);
+    return w.join(' and ') + ' submarines fire first. Their hits are removed before the other side shoots back.';
+  }
+  function dsz(L) {
+    var n = 0;
+    if (L) [].concat(L.att, L.def).forEach(function (g) { n = Math.max(n, g.dice.length); });
+    var wide = innerWidth >= 700;
+    if (!L) return wide ? '48px' : '40px';
+    var tot = L ? [].concat(L.att, L.def).reduce(function (s, g) { return s + g.dice.length; }, 0) : 0;
+    if (wide) return tot > 40 ? '34px' : tot > 24 ? '40px' : '48px';
+    return tot > 36 ? '26px' : tot > 20 ? '30px' : tot > 12 ? '34px' : '40px';
+  }
+  function stampText(B) {
+    var r = B.res.r;
+    return r === 'a' ? (B.kind === 'land' && !landLeft(B.att.u) ? 'Cleared' : B.kind === 'land' ? 'Captured' : 'Victory') : r === 'd' ? 'Held' : r === 'both' ? 'Wiped out' : r === 'retreat' ? 'Retreat' : 'Stalemate';
+  }
+  function resultText(B) {
+    var A = POW[B.att.p].n, D = POW[B.def.p].n, r = B.res.r, w = B.where ? ' ' + B.where : '';
+    if (r === 'a') {
+      if (B.kind === 'land') return landLeft(B.att.u) ? A + ' captures' + (w || ' the territory') + '.' : A + ' wiped out the defenders, but only planes are left, so ' + D + ' keeps' + (w || ' the territory') + '.';
+      return A + ' wins the sea battle' + (w ? ' in' + w : '') + '.';
+    }
+    if (r === 'd') return D + ' holds' + (w || '') + '.';
+    if (r === 'both') return 'Both sides were wiped out.' + (B.kind === 'land' ? ' ' + D + ' keeps' + (w || ' the territory') + '.' : '');
+    if (r === 'retreat') return A + ' retreats. ' + D + ' holds' + (w || '') + '.';
+    return 'Neither side can hit the other, so the battle ends.';
+  }
+  function resultHTML(B) {
+    var la = costOf(B.start.att) - costOf(B.att.u) - B.out.a * U.sub.cost, ld = costOf(B.start.def) - costOf(B.def.u) - B.out.d * U.sub.cost;
+    var keysA = B.kind === 'land' ? LAND_ATT : SEA_ATT, keysD = B.kind === 'land' ? LAND_DEF : SEA_DEF;
+    function lost(st, u, out) { var c = {}; for (var t in U) c[t] = Math.max(0, (st[t] || 0) - (u[t] || 0) - (t === 'sub' ? out : 0)); return c; }
+    var lA = unitList(lost(B.start.att, B.att.u, B.out.a), keysA) || 'nothing', lD = unitList(lost(B.start.def, B.def.u, B.out.d), keysD) || 'nothing';
+    var h = '<div class="result"><h3>' + stampText(B) + '</h3><p>' + esc(resultText(B)) + '</p>';
+    if (B.res.tra) h += '<p>' + pl(B.res.n, 'unescorted transport') + ' sunk.</p>';
+    h += '<div class="ls"><div><b>' + plq(B.att.p) + ' lost ' + la + ' IPCs</b>' + lA + '</div><div><b>' + plq(B.def.p) + ' lost ' + ld + ' IPCs</b>' + lD + '</div></div></div>';
+    h += '<div class="row2"><button type="button" class="btn btn-soft" data-act="b-again">New battle</button><button type="button" class="btn btn-primary" data-act="b-done">Done</button></div>';
+    return h;
+  }
+  function casHTML(B) {
+    var p = B.pend, h = '', ok = true;
+    ['def', 'att'].forEach(function (sd) {
+      var c = p[sd]; if (!c) return;
+      var side = B[sd], u = side.u, P = POW[side.p], msg = checkCas(u, c.h, c.c);
+      if (msg) ok = false;
+      var keys = (B.kind === 'land' ? (sd === 'att' ? LAND_ATT : LAND_DEF) : (sd === 'att' ? SEA_ATT : SEA_DEF)).filter(function (t) { return slots(u, t) > 0; });
+      h += '<div class="cas" style="--c:' + P.c + '"><div class="ch">' + plq(side.p) + '<span>' + P.n + ' takes <b>' + pl(c.req, 'hit') + '</b></span></div>';
+      var notes = [];
+      if (c.h.x) notes.push('AA hits must go to planes.');
+      if (c.h.s && (u.ftr || u.bmb)) notes.push('Sub hits can\'t go to planes.');
+      if (c.h.a && u.sub) notes.push('Plane hits can\'t go to subs (no destroyer).');
+      if (u.bb) notes.push('A battleship\'s first hit only damages it.');
+      if (sd === 'def' && p.step === 'open' && B.round === 1) notes.push('These units still fire back in round 1.');
+      if (notes.length) h += '<p class="cn">' + notes.join(' ') + '</p>';
+      h += '<div class="ctiles">';
+      keys.forEach(function (t) {
+        var n = c.c[t] || 0, max = slots(u, t);
+        var sub = t === 'bb' ? (u.bb - u.bbD) + ' fresh, ' + u.bbD + ' damaged' : 'of ' + u[t];
+        h += '<div class="ctile' + (n ? ' on' : '') + '"><span class="cnm">' + (t === 'bb' ? 'Battleship hits' : U[t].p) + '<small>' + sub + '</small></span><span class="stp">' +
+          '<button type="button" data-act="c-sub" data-side="' + sd + '" data-t="' + t + '"' + (n ? '' : ' disabled') + ' aria-label="Fewer">−</button><output>' + n + '</output>' +
+          '<button type="button" data-act="c-add" data-side="' + sd + '" data-t="' + t + '"' + (n < max ? '' : ' disabled') + ' aria-label="More">+</button></span></div>';
+      });
+      h += '</div><p class="cmsg' + (msg ? ' bad' : '') + '">' + (msg || 'Ready') + '</p></div>';
+    });
+    h += '<button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="c-ok"' + (ok ? '' : ' disabled') + '>' + ic('check') + '<span>Remove casualties</span></button>';
+    return h;
+  }
+
+  // Dice tumble onto the felt, then the hits light up
+  function runAnim() {
+    var tray = app.querySelector('.tray'); if (!tray) { anim = null; return; }
+    var tr = tray.getBoundingClientRect(), info = anim; anim = null;
+    var all = tray.querySelectorAll('.half'), halves = [];
+    all.forEach(function (hv) { if (!hv.classList.contains('landed')) halves.push(hv); });
+    halves.forEach(function (hv) {
+      var hi = hv === all[0] ? 0 : 1;
+      var dice = hv.querySelectorAll('.dw');
+      var fromY = hi === 0 ? tr.top - 40 : tr.bottom + 40;   // defender rolls from the far side, attacker from near
+      dice.forEach(function (d, k) {
+        var r = d.getBoundingClientRect(), dx = (tr.left + tr.width * (0.3 + Math.random() * 0.4)) - (r.left + r.width / 2), dy = fromY - (r.top + r.height / 2);
+        var spin = (Math.random() > .5 ? 1 : -1) * (300 + Math.random() * 400), rot = Math.round((Math.random() - .5) * 24);
+        if (d.animate) d.animate([
+          { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + spin + 'deg) scale(.5)', opacity: 0 },
+          { offset: .18, opacity: 1 },
+          { offset: .65, transform: 'translate(' + (-dx * .06) + 'px,' + (-dy * .05) + 'px) rotate(' + (rot - spin * .05) + 'deg) scale(1.06)' },
+          { offset: .84, transform: 'translate(0,-3px) rotate(' + (rot + 3) + 'deg)' },
+          { transform: 'rotate(' + rot + 'deg)', opacity: 1 }
+        ], { duration: 620 + Math.min(k, 14) * 22 + Math.random() * 90, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'both' });
+        d.style.setProperty('--rot', rot + 'deg');
+      });
+    });
+    Kit.sfx('roll'); Kit.haptic('medium');
+    setTimeout(function () { Kit.sfx('roll'); }, 180);
+    setTimeout(function () {
+      halves.forEach(function (hv) { hv.classList.add('landed'); });
+      if (!info) return;
+      var tA = info.a, tD = info.d;
+      if (info.label === '') { Kit.sfx(tA ? 'bad' : 'good'); Kit.haptic(tA ? 'heavy' : 'light'); }
+      else if (tA + tD === 0) { Kit.callout('All miss', '#c9c1e6'); Kit.sfx('tap'); }
+      else { Kit.callout(info.label ? info.label : (tA + ' – ' + tD)); Kit.sfx(tA + tD >= 4 ? 'good' : 'chip'); Kit.haptic(tA + tD >= 4 ? 'heavy' : 'light'); }
+      var w = app.querySelector('.trayw'); if (w && tA + tD >= 4) { w.classList.remove('thud'); void w.offsetWidth; w.classList.add('thud'); }
+    }, 800);
+  }
+
+  // Battle actions
+  function startBattle() {
+    var B = S.battle;
+    if (!alive(B.att.u) || (!alive(B.def.u) && !B.def.u.aa)) { Kit.toast('Add units to both sides'); return; }
+    snap();
+    if (B.kind === 'sea') B.bomb = { bb: 0, cru: 0 };
+    B.start = { att: J(B.att.u), def: J(B.def.u) };
+    B.stage = 'fight'; B.round = 1; B.phase = 'roll'; B.mid = false; B.last = null;
+    B.next = needOpen(B.kind, B.att.u, B.def.u, B.bomb) ? 'open' : needSurprise(B.att.u, B.def.u) ? 'surprise' : 'fire';
+    Kit.sfx('whoosh'); Kit.haptic('medium');
+    save(); render(); window.scrollTo(0, 0);
+  }
+  function rollStep() {
+    var B = S.battle; if (!B || B.stage !== 'fight' || B.phase !== 'roll') return;
+    snap();
+    var a = B.att.u, d = B.def.u, step = B.next, gA, gD;
+    if (step === 'open') { var og = openGroups(a, d, B.bomb); gA = og.a; gD = og.d; }
+    else {
+      gA = fireGroups(a, d, 'a', step);
+      gD = fireGroups(B.ghost && step === 'fire' ? addU(d, B.ghost) : d, a, 'd', step);
+    }
+    var rig = window.__aaRig; window.__aaRig = null;
+    [gA, gD].forEach(function (gs, si) {
+      gs.forEach(function (g) {
+        g.dice = []; for (var i = 0; i < g.n; i++) g.dice.push(rig && rig[si] && rig[si].length ? rig[si].shift() : 1 + Math.floor(Math.random() * 6));
+        g.hits = g.dice.filter(function (v) { return v <= g.hit; }).length;
+        B.dice += g.n; S.st.dice += g.n;
+      });
+    });
+    var hD = poolHits(gA), hA = poolHits(gD);
+    var reqD = maxflow(hD, caps(d)), reqA = maxflow(hA, caps(a));
+    B.last = { step: step, round: B.round, att: gA, def: gD };
+    B.pend = { step: step, att: reqA ? { h: hA, req: reqA, c: suggest(a, hA) } : null, def: reqD ? { h: hD, req: reqD, c: suggest(d, hD) } : null };
+    var tA = gA.reduce(function (s, g) { return s + g.hits; }, 0), tD = gD.reduce(function (s, g) { return s + g.hits; }, 0);
+    anim = { a: tA, d: tD, label: step === 'open' && gD.length && !gA.length ? (tD ? pl(tD, 'plane') + ' shot down!' : 'AA missed') : null };
+    if (!reqA && !reqD) { B.phase = 'roll'; advance(B); }
+    else B.phase = 'cas';
+    save(); render();
+    if (B.stage === 'done') setTimeout(function () { celebrateBattle(B); }, 800);
+  }
+  function advance(B) {
+    var p = B.pend, a = B.att.u, d = B.def.u, step = p ? p.step : B.next;
+    if (p) {
+      if (p.att) applyCas(a, p.att.c);
+      if (p.def) applyCas(d, p.def.c);
+    }
+    if (step === 'open') { B.ghost = p && p.def ? p.def.c : null; B.next = needSurprise(a, d) ? 'surprise' : 'fire'; B.mid = false; }
+    else if (step === 'surprise') { B.next = 'fire'; B.mid = true; }
+    else { B.ghost = null; B.mid = false; B.round++; B.next = needSurprise(a, d) ? 'surprise' : 'fire'; }
+    B.pend = null; B.phase = 'roll';
+    var ghostLeft = B.ghost && casTotal(B.ghost) > 0;
+    if (!ghostLeft) { var o = outcome(a, d); if (o) endBattle(o); }
+  }
+  function confirmCas() {
+    var B = S.battle; if (!B || B.phase !== 'cas') return;
+    var p = B.pend;
+    var bad = ['att', 'def'].some(function (sd) { return p[sd] && checkCas(B[sd].u, p[sd].h, p[sd].c); });
+    if (bad) { Kit.toast('Check the casualties'); return; }
+    snap();
+    advance(B);
+    Kit.sfx('flip'); Kit.haptic('light');
+    save(); render();
+    if (B.stage === 'done') celebrateBattle(B);
+  }
+  function endBattle(o) {
+    var B = S.battle;
+    B.stage = 'done'; B.res = o; B.phase = 'done';
+    var A = POW[B.att.p], D = POW[B.def.p];
+    var la = costOf(B.start.att) - costOf(B.att.u) - B.out.a * U.sub.cost, ld = costOf(B.start.def) - costOf(B.def.u) - B.out.d * U.sub.cost;
+    S.st.battles++;
+    log(B.att.p, 'Battle' + (B.where ? ' in ' + B.where : '') + ' vs ' + D.n + ': ' + resultText(B) + ' Losses ' + la + ' vs ' + ld + ' IPCs.');
+    var size = alive(B.start.att) + alive(B.start.def);
+    if (size > S.st.bigBattle && size >= 10) { S.st.bigBattle = size; S.notes = S.notes.filter(function (n) { return !n.big; }); S.notes.push({ w: 3, big: 1, t: 'Biggest battle: ' + A.n + ' vs ' + D.n + (B.where ? ' at ' + B.where : '') + ' in round ' + S.round + ', ' + size + ' units' }); }
+    var win = o.r === 'a' && (B.kind === 'sea' || landLeft(B.att.u));
+    if (B.odds0 != null && win && B.odds0 <= 30) note(4, A.n + ' won' + (B.where ? ' at ' + B.where : ' a battle') + ' with only a ' + B.odds0 + '% chance');
+    if (B.odds0 != null && o.r === 'd' && B.odds0 >= 80) note(4, D.n + ' held' + (B.where ? ' ' + B.where : '') + ' against ' + B.odds0 + '% odds');
+  }
+  function celebrateBattle(B) {
+    setTimeout(function () {
+      var r = B.res.r;
+      if (r === 'a') { Kit.sfx('win'); Kit.haptic('success'); }
+      else if (r === 'd') { Kit.sfx('good'); Kit.haptic('success'); }
+      else { Kit.sfx('lose'); }
+    }, 120);
+  }
+  function retreat() {
+    var B = S.battle; snap();
+    endBattle({ r: 'retreat' }); Kit.sfx('whoosh'); save(); render();
+  }
+  function submerge(sd) {
+    var B = S.battle, u = B[sd].u; if (!u.sub) return;
+    snap();
+    B.out[sd === 'att' ? 'a' : 'd'] += u.sub;
+    Kit.toast(pl(u.sub, 'submarine') + ' submerged'); u.sub = 0;
+    var o = outcome(B.att.u, B.def.u);
+    if (o) endBattle(o);
+    else B.next = needSurprise(B.att.u, B.def.u) ? 'surprise' : 'fire';
+    Kit.sfx('whoosh'); save(); render();
+  }
+
+  // ── Purchase view ─────────────────────────────────────────────────────────
+  function openBuy(k) {
+    k = k || cur();
+    S.cart = { p: k, u: {}, rep: {} }; S.view = 'buy'; save(); render(); window.scrollTo(0, 0);
+  }
+  function cartCost(c) {
+    var n = 0; for (var t in c.u) n += c.u[t] * U[t].cost;
+    for (var f in c.rep) n += c.rep[f];
+    return n;
+  }
+  function renderBuy() {
+    var c = S.cart, k = c.p, P = POW[k], pw = S.pw[k], cost = cartCost(c), left = pw.bank - cost;
+    var h = vbar('Buy units');
+    h += '<div class="pchips" style="margin-bottom:10px">' + ORDER.map(function (x) { return '<button type="button" data-act="cart-pow" data-k="' + x + '" class="' + (x === k ? 'on' : '') + '" aria-label="' + POW[x].n + '">' + plq(x) + '</button>'; }).join('') + '</div>';
+    if (!pw.cap) h += '<p class="note warn" style="margin-bottom:10px">' + P.n + ' does not hold its capital, so it cannot buy or repair until it gets it back.</p>';
+    h += '<div class="buy">';
+    BUY.forEach(function (t) {
+      var n = c.u[t] || 0, u = U[t];
+      var stats = t === 'ic' ? 'On land you held all turn' : 'Att ' + u.a + ' · Def ' + u.d + ' · Move ' + u.m;
+      h += '<div class="urow' + (n ? ' on' : '') + '"><span class="cost">' + u.cost + '<small>IPC</small></span><span class="un"><b>' + u.n + '</b><small>' + stats + '</small><small>' + (UNOTE[t] || '') + '</small></span>' +
+        '<span class="stp2"><button type="button" data-act="cart-sub" data-t="' + t + '"' + (n ? '' : ' disabled') + ' aria-label="One less">−</button><output>' + n + '</output><button type="button" data-act="cart-add" data-t="' + t + '"' + (pw.cap && left >= u.cost ? '' : ' disabled') + ' aria-label="One more">+</button></span></div>';
+    });
+    h += '</div>';
+    var fs = S.factories.map(function (f, i) { return { f: f, i: i }; }).filter(function (x) { return x.f.own === k; });
+    if (fs.length) {
+      h += '<div class="sh" style="margin-top:16px"><span class="label">Factories and repairs</span></div>';
+      fs.forEach(function (x) {
+        var r = c.rep[x.i] || 0, f = x.f;
+        h += '<div class="frow"><span class="fn">' + esc(f.name) + '<small>Can place ' + Math.max(0, f.val - f.dmg + r) + ' of ' + f.val + ' units' + (f.dmg ? ' · ' + (f.dmg - r) + ' damage left' : ' · no damage') + '</small></span>' +
+          (f.dmg ? '<span class="stp2"><button type="button" data-act="rep-sub" data-i="' + x.i + '"' + (r ? '' : ' disabled') + '>−</button><output>' + r + '</output><button type="button" data-act="rep-add" data-i="' + x.i + '"' + (r < f.dmg && left >= 1 && pw.cap ? '' : ' disabled') + '>+</button></span>' : '') + '</div>';
+      });
+    }
+    h += '<div class="cart"><div class="tot"><span>Total <b>' + cost + '</b></span><span class="' + (left < 0 ? 'over' : '') + '">' + P.n + ' keeps ' + left + ' of ' + pw.bank + '</span></div>' +
+      '<button type="button" class="btn btn-primary btn-lg btn-block" data-act="cart-ok"' + (cost && left >= 0 && pw.cap ? '' : ' disabled') + '>' + ic('coins') + '<span>' + (cost ? 'Pay ' + cost + ' IPCs' : 'Pick units to buy') + '</span></button></div>';
+    app.innerHTML = h;
+  }
+  function buyNow() {
+    var c = S.cart, k = c.p, pw = S.pw[k], cost = cartCost(c);
+    if (!cost || cost > pw.bank || !pw.cap) return;
+    snap();
+    pw.bank -= cost;
+    var parts = [];
+    BUY.forEach(function (t) { var n = c.u[t] || 0; if (n) parts.push(n + ' ' + (n === 1 ? U[t].n : U[t].p).toLowerCase()); });
+    var rep = 0; for (var f in c.rep) { var r = c.rep[f]; if (r) { S.factories[f].dmg -= r; rep += r; } }
+    if (rep) parts.push('repaired ' + rep + ' damage');
+    if (k === cur()) { S.bought = S.bought || {}; for (var t in c.u) S.bought[t] = (S.bought[t] || 0) + c.u[t]; }
+    S.st.spent[k] = (S.st.spent[k] || 0) + cost;
+    log(k, 'Bought ' + parts.join(', ') + ' for ' + cost + ' IPCs (' + pw.bank + ' left)');
+    if (cost >= 60) note(2, POW[k].n + ' spent ' + cost + ' IPCs in one turn in round ' + S.round);
+    S.cart = null; S.view = 'home';
+    Kit.sfx('chip'); setTimeout(function () { Kit.sfx('chip'); }, 90); Kit.haptic('success');
+    save(); render(); bump(k);
+  }
+  function bump(k) {
+    var b = app.querySelector('.pw[data-k="' + k + '"]'); if (!b) return;
+    b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+  }
+
+  // ── Strategic bombing ─────────────────────────────────────────────────────
+  function openBomb() {
+    var k = cur(), e = enemies(k), f = S.factories.findIndex(function (x) { return POW[x.own].s !== POW[k].s; });
+    S.sbr = { p: k, f: f, n: 1, stage: 'setup', aa: [], dmg: [], shot: 0, dealt: 0 }; void e;
+    S.view = 'bomb'; save(); render(); window.scrollTo(0, 0);
+  }
+  function renderBomb() {
+    var R = S.sbr, P = POW[R.p], f = S.factories[R.f];
+    var h = vbar('Bombing raid');
+    if (R.stage === 'setup') {
+      h += '<div class="fld"><div class="label">Bombers from</div><div class="pchips">' + ORDER.map(function (x) { return '<button type="button" data-act="sbr-pow" data-k="' + x + '" class="' + (x === R.p ? 'on' : '') + '" aria-label="' + POW[x].n + '">' + plq(x) + '</button>'; }).join('') + '</div></div>';
+      h += '<div class="fld"><div class="label">Target factory</div><div class="chipbtns">';
+      S.factories.forEach(function (x, i) {
+        if (POW[x.own].s === P.s) return;
+        h += '<button type="button" class="chip' + (i === R.f ? ' on' : '') + '" data-act="sbr-f" data-i="' + i + '">' + esc(x.name) + ' <span class="n">' + x.dmg + '/' + (2 * x.val) + '</span></button>';
+      });
+      h += '<button type="button" class="chip" data-act="fact">+ Add factory</button></div></div>';
+      h += '<div class="fld"><div class="label">Bombers</div><div class="adj"><span class="stp2"><button type="button" data-act="sbr-n" data-d="-1"' + (R.n > 1 ? '' : ' disabled') + '>−</button><output>' + R.n + '</output><button type="button" data-act="sbr-n" data-d="1">+</button></span>' +
+        '<span class="muted" style="flex:1;font-size:.86rem;font-weight:700">' + (f ? esc(f.name) + ' can take ' + (2 * f.val - f.dmg) + ' more damage (max ' + 2 * f.val + ').' : 'Pick a factory.') + '</span></div></div>';
+      h += '<p class="note" style="margin-top:12px">The factory\'s anti-aircraft fire rolls one die per bomber and hits on 1. Each bomber that gets through rolls one die of damage.</p>';
+      h += '<div style="height:12px"></div><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-go"' + (f ? '' : ' disabled') + '>' + ic('flame') + '<span>Start the raid</span></button>';
+      app.innerHTML = h; return;
+    }
+    var D = POW[f.own];
+    h += '<div class="fight"><div class="trayw wood"><div class="tray felt-in" style="--dsz:' + (innerWidth >= 700 ? '52px' : '42px') + '">';
+    h += '<div class="half def' + (anim && R.last === 'aa' ? '' : ' landed') + '"><div class="hh">' + plq(f.own) + '<span class="t">' + esc(f.name) + ' factory<small>AA fire, hits on 1</small></span>' +
+      (R.aa.length ? '<span class="hits' + (R.shot ? '' : ' zero') + '"><small>Shot down</small>' + R.shot + '</span>' : '') + '</div>';
+    h += R.aa.length ? '<div class="groups"><div class="grp"><div class="dd">' + R.aa.map(function (v) { return '<span class="dw ' + (v === 1 ? 'hit' : 'miss') + '">' + Kit.die(v).outerHTML + '</span>'; }).join('') + '</div></div></div>' : '<div class="ready">Ready</div>';
+    h += '</div><div class="mid"><span>' + (R.stage === 'done' ? 'Raid over' : 'Bombing raid') + '</span></div><div class="half att' + (anim && R.last === 'dmg' ? '' : ' landed') + '"><div class="hh">' + plq(R.p) + '<span class="t">' + P.n + ' bombers<small>' + pl(R.n, 'bomber') + (R.shot ? ', ' + (R.n - R.shot) + ' got through' : '') + '</small></span>' +
+      (R.dmg.length ? '<span class="hits"><small>Damage</small>' + R.dealt + '</span>' : '') + '</div>';
+    h += R.dmg.length ? '<div class="groups"><div class="grp"><div class="dd">' + R.dmg.map(function (v) { return '<span class="dw hit">' + Kit.die(v).outerHTML + '</span>'; }).join('') + '</div></div></div>' : '<div class="ready">' + (R.stage === 'done' ? 'No bombers got through' : '') + '</div>';
+    h += '</div>' + (R.stage === 'done' ? '<div class="stamp' + (R.dealt ? ' win' : '') + '"' + (anim ? ' style="animation-delay:.9s"' : '') + '>' + (R.dealt ? R.dealt + ' damage' : 'Safe') + '</div>' : '') + '</div></div><div class="ctl">';
+    if (R.stage === 'aa') h += '<button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-roll">' + ic('dice') + '<span>Roll anti-aircraft fire</span></button>';
+    else if (R.stage === 'dmg') h += '<p class="note">' + pl(R.n - R.shot, 'bomber') + ' got through.</p><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-roll">' + ic('dice') + '<span>Roll damage</span></button>';
+    else {
+      h += '<div class="result"><h3>' + (R.dealt ? R.dealt + ' damage' : 'No damage') + '</h3><p>' + esc(f.name) + ' now has ' + f.dmg + ' damage (max ' + 2 * f.val + '). ' + D.n + ' pays 1 IPC per damage to repair it, and it can only place ' + Math.max(0, f.val - f.dmg) + ' units until then.</p></div>';
+      h += '<div class="row2"><button type="button" class="btn btn-soft" data-act="bomb">Another raid</button><button type="button" class="btn btn-primary" data-act="home">Done</button></div>';
+    }
+    h += '</div></div>';
+    app.innerHTML = h;
+    if (anim) runAnim();
+  }
+  function sbrRoll() {
+    var R = S.sbr, f = S.factories[R.f];
+    snap();
+    var rig = window.__aaRig; window.__aaRig = null;
+    function d6() { return rig && rig.length ? rig.shift() : 1 + Math.floor(Math.random() * 6); }
+    if (R.stage === 'aa') {
+      R.aa = []; for (var i = 0; i < R.n; i++) R.aa.push(d6());
+      R.shot = R.aa.filter(function (v) { return v === 1; }).length;
+      R.stage = R.shot >= R.n ? 'done' : 'dmg';
+      R.last = 'aa'; anim = { a: 0, d: R.shot, label: R.shot ? pl(R.shot, 'bomber') + ' shot down!' : 'All bombers through' };
+      if (R.stage === 'done') log(R.p, 'Bombing raid on ' + f.name + ': all ' + pl(R.n, 'bomber') + ' shot down');
+    } else if (R.stage === 'dmg') {
+      R.dmg = []; for (var j = 0; j < R.n - R.shot; j++) R.dmg.push(d6());
+      var tot = R.dmg.reduce(function (s, v) { return s + v; }, 0), room = 2 * f.val - f.dmg;
+      R.dealt = Math.min(tot, room); f.dmg += R.dealt; R.stage = 'done';
+      R.last = 'dmg'; anim = { a: R.dealt, d: 0, label: '' };
+      log(R.p, 'Bombed ' + f.name + ' (' + POW[f.own].n + '): ' + R.dealt + ' damage' + (tot > room ? ' (capped)' : '') + (R.shot ? ', ' + pl(R.shot, 'bomber') + ' shot down' : '') + '. Factory damage now ' + f.dmg);
+      if (R.dealt >= 10) note(3, POW[R.p].n + ' bombed ' + f.name + ' for ' + R.dealt + ' damage');
+    }
+    save(); render();
+  }
+
+  // ── Sheets: power, territory, capital, victory cities, factories, log ────
+  function powerSheet(k) {
+    var P = POW[k], q = S.pw[k], dr = { bank: q.bank, inc: q.inc, pl: q.pl }, s;
+    var node = el('div');
+    function paint() {
+      node.innerHTML = '';
+      [['bank', 'IPCs in the bank'], ['inc', 'Income each turn']].forEach(function (x) {
+        var row = el('div', { class: 'fld' }, [el('div', { class: 'label', text: x[1] })]);
+        var adj = el('div', { class: 'adj' });
+        var ch = el('div', { class: 'chipbtns' });
+        [-10, -5, -1].forEach(function (d) { ch.appendChild(el('button', { type: 'button', class: 'chip', text: String(d), onclick: function () { dr[x[0]] = Math.max(0, dr[x[0]] + d); Kit.sfx('tap'); paint(); } })); });
+        adj.appendChild(ch);
+        adj.appendChild(el('span', { class: 'v', text: String(dr[x[0]]) }));
+        var ch2 = el('div', { class: 'chipbtns' });
+        [1, 5, 10].forEach(function (d) { ch2.appendChild(el('button', { type: 'button', class: 'chip', text: '+' + d, onclick: function () { dr[x[0]] += d; Kit.sfx('tap'); paint(); } })); });
+        adj.appendChild(ch2); row.appendChild(adj); node.appendChild(row);
+      });
+      var who = el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Played by' })]), wc = el('div', { class: 'chipbtns' });
+      S.players.forEach(function (p, i) { wc.appendChild(el('button', { type: 'button', class: 'chip' + (dr.pl === i ? ' on' : ''), text: p.name, onclick: function () { dr.pl = i; Kit.sfx('tap'); paint(); } })); });
+      who.appendChild(wc); node.appendChild(who);
+      var cap = el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Capital: ' + P.capT })]);
+      if (q.cap) cap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: ic('home') + '<span>' + P.capT + ' was captured</span>', onclick: function () { s.close(); capitalSheet(k); } }));
+      else cap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: ic('home') + '<span>' + P.capT + ' was liberated</span>', onclick: function () { s.close(); liberateSheet(k); } }));
+      node.appendChild(cap);
+    }
+    paint();
+    s = Kit.sheet({ title: P.n, node: node, actions: [
+      { label: 'Save', primary: true, onClick: function () {
+        if (dr.bank === q.bank && dr.inc === q.inc && dr.pl === q.pl) return;
+        snap();
+        var parts = [];
+        if (dr.bank !== q.bank) parts.push('bank ' + q.bank + ' → ' + dr.bank);
+        if (dr.inc !== q.inc) parts.push('income ' + q.inc + ' → ' + dr.inc);
+        if (dr.pl !== q.pl) parts.push('now played by ' + S.players[dr.pl].name);
+        q.bank = dr.bank; q.inc = dr.inc; q.pl = dr.pl;
+        log(k, 'Adjusted: ' + parts.join(', ')); Kit.sfx('good'); save(); render(); bump(k);
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+
+  function chipRow(list, val, onPick, lab) {
+    var c = el('div', { class: 'chipbtns' });
+    list.forEach(function (v) {
+      c.appendChild(el('button', { type: 'button', class: 'chip' + (String(v) === String(val) ? ' on' : ''), html: lab ? lab(v) : esc(String(v)), onclick: function () { Kit.sfx('tap'); onPick(v); } }));
+    });
+    return c;
+  }
+  function powChips(list, val, onPick) {
+    var c = el('div', { class: 'pchips' });
+    list.forEach(function (k) { c.appendChild(el('button', { type: 'button', class: k === val ? 'on' : '', 'aria-label': POW[k].n, html: plq(k), onclick: function () { Kit.sfx('tap'); onPick(k); } })); });
+    return c;
+  }
+
+  function terrSheet() {
+    var k = cur(), d = { to: k, from: enemies(k)[0], v: 2, name: '', city: '' }, s;
+    var node = el('div'), name = el('input', { class: 'input', maxlength: 30, placeholder: 'Territory name (optional)', autocomplete: 'off' });
+    name.addEventListener('input', function () { d.name = name.value.trim(); });
+    var body = el('div');
+    function paint() {
+      body.innerHTML = '';
+      body.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Taken by' }), powChips(ORDER, d.to, function (x) { d.to = x; if (POW[d.from].s === POW[x].s) d.from = enemies(x)[0]; paint(); })]));
+      body.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Taken from' }), powChips(enemies(d.to), d.from, function (x) { d.from = x; paint(); })]));
+      body.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'IPC value printed on the territory' }), chipRow([0].concat(VAL_CHIPS), d.v, function (v) { d.v = v; paint(); })]));
+      var cities = CITIES.filter(function (c) { return S.vc[c[0]] === POW[d.from].s; }).map(function (c) { return c[0]; });
+      body.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Victory city there?' }), chipRow([''].concat(cities), d.city, function (v) { d.city = v; paint(); }, function (v) { return v ? esc(v) : 'None'; })]));
+      body.appendChild(el('p', { class: 'note', style: { 'margin-top': '12px' }, text: POW[d.to].n + ' income ' + S.pw[d.to].inc + ' → ' + (S.pw[d.to].inc + d.v) + '.  ' + POW[d.from].n + ' income ' + S.pw[d.from].inc + ' → ' + Math.max(0, S.pw[d.from].inc - d.v) + '.' }));
+    }
+    node.appendChild(name); node.appendChild(body); paint();
+    s = Kit.sheet({ title: 'Territory changed hands', node: node, actions: [
+      { label: 'Move the income', primary: true, onClick: function () {
+        snap();
+        S.pw[d.to].inc += d.v; S.pw[d.from].inc = Math.max(0, S.pw[d.from].inc - d.v);
+        if (d.city) S.vc[d.city] = POW[d.to].s;
+        log(d.to, 'Took ' + (d.name || 'a territory') + ' (' + d.v + ') from ' + POW[d.from].n + (d.city ? ', with the victory city ' + d.city : '') + '. Income ' + S.pw[d.to].inc);
+        if (d.city) note(2, POW[d.to].n + ' took ' + d.city + ' in round ' + S.round);
+        Kit.sfx('good'); Kit.haptic('success'); save(); render(); bump(d.to);
+        if (d.city) Kit.callout(d.city + '!');
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+
+  function capitalSheet(pre) {
+    var targets = ORDER.filter(function (k) { return S.pw[k].cap; });
+    if (!targets.length) { Kit.toast('Every capital is already captured'); return; }
+    var d = { lost: pre && S.pw[pre].cap ? pre : null, by: cur(), v: 0, move: true };
+    if (!d.lost) d.lost = targets.filter(function (k) { return POW[k].s !== POW[cur()].s; })[0] || targets[0];
+    if (POW[d.by].s === POW[d.lost].s) d.by = enemies(d.lost)[0];
+    d.v = POW[d.lost].capV;
+    var node = el('div');
+    function paint() {
+      node.innerHTML = '';
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Whose capital fell?' }), powChips(targets, d.lost, function (x) { d.lost = x; d.v = POW[x].capV; if (POW[d.by].s === POW[x].s) d.by = enemies(x)[0]; paint(); })]));
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Captured by' }), powChips(enemies(d.lost), d.by, function (x) { d.by = x; paint(); })]));
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Also move ' + POW[d.lost].capT + '\'s income (check the board)' }), chipRow([0].concat(VAL_CHIPS), d.v, function (v) { d.v = v; paint(); })]));
+      node.appendChild(el('p', { class: 'note warn', style: { 'margin-top': '12px' }, html: '<b>' + POW[d.by].n + '</b> takes all <b>' + S.pw[d.lost].bank + ' IPCs</b> from ' + POW[d.lost].n + '. ' + POW[d.lost].n + ' cannot buy units or collect income until ' + POW[d.lost].capT + ' is liberated. ' + POW[d.lost].city + ' goes to the ' + SIDE[POW[d.by].s] + '.' }));
+    }
+    paint();
+    Kit.sheet({ title: 'Capital captured', node: node, actions: [
+      { label: 'Capture it', danger: true, onClick: function () {
+        snap();
+        var L = S.pw[d.lost], B = S.pw[d.by], amt = L.bank;
+        B.bank += amt; L.bank = 0; L.cap = false; L.capBy = d.by;
+        L.inc = Math.max(0, L.inc - d.v); B.inc += d.v;
+        S.vc[POW[d.lost].city] = POW[d.by].s;
+        S.st.captured++;
+        log(d.by, 'Captured ' + POW[d.lost].capT + ' and took ' + amt + ' IPCs from ' + POW[d.lost].n);
+        note(5, POW[d.by].n + ' captured ' + POW[d.lost].city + ' in round ' + S.round + ' and took ' + amt + ' IPCs');
+        Kit.sfx('win'); Kit.haptic('heavy'); save(); render(); bump(d.by);
+        Kit.callout(POW[d.lost].city + ' falls!', POW[d.by].c);
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+  function liberateSheet(k) {
+    var L = S.pw[k], occ = L.capBy || enemies(k)[0], d = { v: POW[k].capV };
+    var node = el('div');
+    function paint() {
+      node.innerHTML = '';
+      node.appendChild(el('p', { class: 'muted', text: POW[k].capT + ' is back in friendly hands. ' + POW[k].n + ' can buy and collect income again. IPCs that were taken are not returned.' }));
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Move its income back from ' + POW[occ].n }), chipRow([0].concat(VAL_CHIPS), d.v, function (v) { d.v = v; paint(); })]));
+    }
+    paint();
+    Kit.sheet({ title: POW[k].capT + ' liberated', node: node, actions: [
+      { label: 'Liberate', primary: true, onClick: function () {
+        snap();
+        L.cap = true; L.capBy = null; L.inc += d.v; S.pw[occ].inc = Math.max(0, S.pw[occ].inc - d.v);
+        S.vc[POW[k].city] = POW[k].s;
+        log(k, POW[k].capT + ' liberated from ' + POW[occ].n);
+        note(4, POW[k].city + ' was liberated in round ' + S.round);
+        Kit.sfx('win'); save(); render(); Kit.callout(POW[k].city + ' is free!');
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+
+  function vcSheet() {
+    var dr = J(S.vc), node = el('div'), head = el('p', { class: 'note' });
+    function paint() {
+      node.innerHTML = '';
+      var ax = 0, al = 0; for (var c in dr) { if (dr[c] === 'axis') ax++; else al++; }
+      head.innerHTML = '<b>Axis ' + ax + '</b> · <b>Allies ' + al + '</b>. A side needs ' + S.vic + ' at the end of a round to win. Tap a city to change who holds it.';
+      node.appendChild(head);
+      var g = el('div', { class: 'vcgrid', style: { 'margin-top': '10px' } });
+      CITIES.forEach(function (c) {
+        var sd = dr[c[0]];
+        g.appendChild(el('button', { type: 'button', class: 'vcity ' + sd, html: '<i></i><span>' + c[0] + '</span><small>' + SIDE[sd] + '</small>', onclick: function () { dr[c[0]] = sd === 'axis' ? 'allies' : 'axis'; Kit.sfx('tap'); paint(); } }));
+      });
+      node.appendChild(g);
+    }
+    paint();
+    Kit.sheet({ title: 'Victory cities', node: node, actions: [
+      { label: 'Save', primary: true, onClick: function () {
+        var ch = CITIES.filter(function (c) { return dr[c[0]] !== S.vc[c[0]]; });
+        if (!ch.length) return;
+        snap();
+        ch.forEach(function (c) { S.vc[c[0]] = dr[c[0]]; log(cur(), c[0] + ' now held by the ' + SIDE[dr[c[0]]]); });
+        Kit.sfx('good'); save(); render();
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+
+  function factSheet() {
+    var dr = J(S.factories), node = el('div'), add = { name: '', val: 2, own: cur() };
+    function paint() {
+      node.innerHTML = '';
+      node.appendChild(el('p', { class: 'muted', style: { 'margin-bottom': '10px' }, text: 'Factories can take damage up to twice their territory value. Each damage point lowers how many units they can place and costs 1 IPC to repair.' }));
+      dr.forEach(function (f, i) {
+        node.appendChild(el('div', { class: 'frow' }, [
+          el('span', { html: plq(f.own) }),
+          el('span', { class: 'fn', html: esc(f.name) + '<small>Value ' + f.val + ' · damage ' + f.dmg + ' of ' + 2 * f.val + '</small>' }),
+          el('span', { class: 'stp2' }, [
+            el('button', { type: 'button', text: '−', disabled: f.dmg <= 0, 'aria-label': 'Less damage', onclick: function () { f.dmg--; paint(); } }),
+            el('output', { text: String(f.dmg) }),
+            el('button', { type: 'button', text: '+', disabled: f.dmg >= 2 * f.val, 'aria-label': 'More damage', onclick: function () { f.dmg++; paint(); } })
+          ]),
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + f.name, html: ic('close'), onclick: function () { dr.splice(i, 1); paint(); } })
+        ]));
+      });
+      var inp = el('input', { class: 'input', maxlength: 26, placeholder: 'New factory: territory name', value: add.name, autocomplete: 'off' });
+      inp.addEventListener('input', function () { add.name = inp.value; });
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Add a factory' }), inp]));
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Owner' }), powChips(ORDER, add.own, function (k) { add.own = k; paint(); })]));
+      node.appendChild(el('div', { class: 'fld' }, [el('div', { class: 'label', text: 'Territory value' }), chipRow(VAL_CHIPS, add.val, function (v) { add.val = v; paint(); })]));
+      node.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', style: { 'margin-top': '10px' }, html: ic('plus') + '<span>Add factory</span>', onclick: function () {
+        if (!add.name.trim()) { Kit.toast('Type the territory name'); return; }
+        dr.push({ name: add.name.trim(), val: add.val, own: add.own, dmg: 0 }); add.name = ''; Kit.sfx('pop'); paint();
+      } }));
+    }
+    paint();
+    Kit.sheet({ title: 'Factories', node: node, actions: [
+      { label: 'Save', primary: true, onClick: function () {
+        if (JSON.stringify(dr) === JSON.stringify(S.factories)) return;
+        snap(); S.factories = dr; log(cur(), 'Factories updated'); save(); render();
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+
+  function assignSheet() {
+    var dr = {}, node = el('div'), msg = el('p', { class: 'note' });
+    ORDER.forEach(function (k) { dr[k] = S.pw[k].pl; });
+    function paint() {
+      node.innerHTML = '';
+      var box = el('div', { class: 'assign' });
+      ORDER.forEach(function (k) {
+        box.appendChild(el('div', { class: 'arow' }, [el('div', { class: 'an', html: plq(k) + '<span>' + POW[k].n + '</span>' }),
+          chipRow(S.players.map(function (p, i) { return i; }), dr[k], function (i) { dr[k] = i; paint(); }, function (i) { return esc(S.players[i].name); })]));
+      });
+      var missing = S.players.filter(function (p, i) { return !ORDER.some(function (k) { return dr[k] === i; }); });
+      msg.textContent = missing.length ? missing.map(function (p) { return p.name; }).join(' and ') + ' has no power. They will just watch.' : 'Everyone has a power.';
+      node.appendChild(box); node.appendChild(msg);
+    }
+    paint();
+    Kit.sheet({ title: 'Who plays which power', node: node, actions: [
+      { label: 'Save', primary: true, onClick: function () {
+        var ch = ORDER.filter(function (k) { return dr[k] !== S.pw[k].pl; });
+        if (!ch.length) return;
+        snap();
+        ch.forEach(function (k) { S.pw[k].pl = dr[k]; log(k, 'Now played by ' + S.players[dr[k]].name); });
+        Kit.sfx('good'); save(); render();
+      } },
+      { label: 'Cancel', cls: 'btn-ghost' }
+    ] });
+  }
+
+  function endSheet() {
+    var ax = vcCount('axis'), al = vcCount('allies');
+    Kit.sheet({ title: 'End the game', html: '<p class="muted">Axis hold ' + ax + ' victory cities, Allies hold ' + al + '. Who won?</p>', actions: [
+      { label: 'The Axis win', cls: 'btn-soft', onClick: function () { finish('axis', 'agreed'); } },
+      { label: 'The Allies win', cls: 'btn-soft', onClick: function () { finish('allies', 'agreed'); } },
+      { label: 'Stop, no winner', cls: 'btn-ghost', onClick: function () { finish(null, 'stopped'); } }
+    ] });
+  }
+
+  // ── Turn flow ─────────────────────────────────────────────────────────────
+  function nextPhase() {
+    var k = cur(), pw = S.pw[k];
+    snap();
+    if (S.phase < 5) { S.phase++; Kit.sfx('flip'); Kit.haptic('light'); save(); render(); return; }
+    if (pw.cap) { pw.bank += pw.inc; log(k, 'Collected ' + pw.inc + ' IPCs (bank ' + pw.bank + ')'); }
+    else log(k, 'No income: ' + POW[k].capT + ' is held by ' + POW[pw.capBy || enemies(k)[0]].n);
+    S.bought = {}; S.phase = 0;
+    var endRound = S.cur === 4;
+    S.cur = (S.cur + 1) % 5;
+    if (endRound) S.round++;
+    save(); render();
+    if (pw.cap) { Kit.sfx('chip'); setTimeout(function () { Kit.sfx('chip'); }, 80); Kit.haptic('success'); Kit.callout('+' + pw.inc + ' IPCs', POW[k].c === '#5f6468' ? '#c9ced2' : POW[k].c); bump(k); }
+    if (endRound) setTimeout(roundCheck, 700);
+    else setTimeout(function () { Kit.toast(POW[cur()].n + "'s turn"); }, 300);
+  }
+  function roundCheck() {
+    var r = S.round - 1, ax = vcCount('axis'), al = vcCount('allies');
+    var side = ax >= S.vic ? 'axis' : al >= S.vic ? 'allies' : null;
+    if (!side) { Kit.toast('Round ' + S.round + ': Germany\'s turn'); return; }
+    Kit.confirm('The ' + SIDE[side] + ' hold ' + (side === 'axis' ? ax : al) + ' victory cities', { ok: 'The ' + SIDE[side] + ' win', cancel: 'Keep playing', body: 'That is enough to win at the end of round ' + r + '. If the cities are out of date, keep playing and fix them first.' })
+      .then(function (ok) { if (ok) finish(side, 'cities'); });
+  }
+  function finish(side, how) {
+    if (!S) return;
+    var ax = vcCount('axis'), al = vcCount('allies');
+    var sideOfPlayer = S.players.map(function (p, i) { var ks = ORDER.filter(function (k) { return S.pw[k].pl === i; }); return ks.length ? POW[ks[0]].s : null; });
+    var winners = side ? S.players.filter(function (p, i) { return sideOfPlayer[i] === side; }).map(function (p) { return p.name; }) : [];
+    var hl = S.notes.slice().sort(function (a, b) { return b.w - a.w; }).map(function (n) { return n.t; }).slice(0, 5);
+    if (side) hl.unshift('The ' + SIDE[side] + ' won after ' + pl(S.round - (S.cur === 0 && S.phase === 0 ? 1 : 0), 'round') + ', holding ' + (side === 'axis' ? ax : al) + ' victory cities');
+    if (S.st.battles) hl.push(pl(S.st.battles, 'battle') + ' rolled here, ' + S.st.dice + ' dice in all');
+    var rich = ORDER.slice().sort(function (a, b) { return (S.st.spent[b] || 0) - (S.st.spent[a] || 0); })[0];
+    if (S.st.spent[rich]) hl.push(POW[rich].n + ' spent the most: ' + S.st.spent[rich] + ' IPCs');
+    Kit.record(KEY, {
+      started: S.started, mode: (side ? SIDE[side] + ' win' : 'Unfinished') + ' · ' + S.vic + ' cities',
+      players: S.players.map(function (p, i) { var sd = sideOfPlayer[i]; return { name: p.name, score: sd === 'axis' ? ax : al }; }),
+      winner: winners.length ? winners.join(' & ') : null,
+      summary: side ? 'The ' + SIDE[side] + ' won · ' + ax + '–' + al + ' cities' : 'Stopped in round ' + S.round,
+      highlights: hl.slice(0, 6),
+      meta: { powers: ORDER.map(function (k) { return { k: k, by: S.players[S.pw[k].pl] ? S.players[S.pw[k].pl].name : '', bank: S.pw[k].bank, inc: S.pw[k].inc }; }) }
+    });
+    S.over = true; clearSave();
+    var rank = S.players.map(function (p, i) { return { name: p.name + ' (' + ORDER.filter(function (k) { return S.pw[k].pl === i; }).map(function (k) { return POW[k].ab; }).join(', ') + ')', score: sideOfPlayer[i] ? SIDE[sideOfPlayer[i]] : '', w: sideOfPlayer[i] === side ? 0 : 1 }; })
+      .sort(function (a, b) { return a.w - b.w; });
+    Kit.win({ title: side ? 'The ' + SIDE[side] + ' win!' : 'Game stopped', sub: side ? (side === 'axis' ? ax : al) + ' victory cities after round ' + Math.max(1, S.round - (S.cur === 0 && S.phase === 0 ? 1 : 0)) : 'Saved to past games', rank: rank, lose: !side,
+      again: function () { S = null; UNDO = []; showSetup(); }, againLabel: 'New game',
+      extra: [{ label: 'Past games', onClick: function () { S = null; showSetup(); Kit.history(KEY, { keys: ['axisallies'], title: 'Axis & Allies: past games' }); } }] });
+  }
+
+  // ── Clicks ────────────────────────────────────────────────────────────────
+  app.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]'); if (!b || !app.contains(b) || b.disabled || !S) return;
+    var a = b.dataset.act, B = S.battle;
+    switch (a) {
+      case 'next': nextPhase(); break;
+      case 'phase': { var i = +b.dataset.i; if (i === S.phase) return; snap(); S.phase = i; Kit.sfx('tap'); save(); render(); break; }
+      case 'home':
+        if (S.view === 'battle' && B && B.stage === 'done') S.battle = null;
+        if (S.view === 'bomb' && S.sbr && S.sbr.stage === 'done') S.sbr = null;
+        if (S.view === 'buy') S.cart = null;
+        S.view = 'home'; Kit.sfx('tap'); save(); render(); window.scrollTo(0, 0); break;
+      case 'battle':
+        if (!B || B.stage === 'done') S.battle = newBattle(B ? B.kind : 'land');
+        S.view = 'battle'; Kit.sfx('pop'); save(); render(); window.scrollTo(0, 0); break;
+      case 'buy': openBuy(); Kit.sfx('pop'); break;
+      case 'bomb': openBomb(); Kit.sfx('pop'); break;
+      case 'terr': terrSheet(); break;
+      case 'capital': capitalSheet(); break;
+      case 'vc': vcSheet(); break;
+      case 'fact': factSheet(); break;
+      case 'power': powerSheet(b.dataset.k); break;
+      case 'logall': Kit.sheet({ title: 'Game log', html: '<div class="log">' + logHTML() + '</div>', actions: [{ label: 'Close', cls: 'btn-soft' }] }); break;
+      // battle setup
+      case 'b-kind': B.kind = b.dataset.v; B.att.u = blank(); B.def.u = blank(); B.bomb = { bb: 0, cru: 0 }; Kit.sfx('tap'); save(); render(); break;
+      case 'b-pow': {
+        var sd = b.dataset.side, k = b.dataset.k, other = sd === 'att' ? 'def' : 'att';
+        B[sd].p = k; if (POW[B[other].p].s === POW[k].s) B[other].p = enemies(k)[0];
+        Kit.sfx('tap'); save(); render(); break;
+      }
+      case 'b-add': case 'b-sub': {
+        var d = a === 'b-add' ? 1 : -1, t = b.dataset.t, side = b.dataset.side;
+        var o = side === 'bomb' ? B.bomb : B[side].u;
+        o[t] = Math.max(0, Math.min(99, (o[t] || 0) + d));
+        Kit.sfx(d > 0 ? 'tick' : 'tap'); Kit.haptic('tick'); save();
+        // update just the tile (keeps the page from jumping)
+        var tile = b.closest('.tile'); tile.classList.toggle('has', o[t] > 0); tile.querySelector('.tc').textContent = o[t];
+        var go = app.querySelector('[data-act="b-start"]'); if (go) go.disabled = !(alive(B.att.u) > 0 && (alive(B.def.u) > 0 || B.def.u.aa > 0));
+        scheduleOdds(); break;
+      }
+      case 'b-clear': B.att.u = blank(); B.def.u = blank(); B.bomb = { bb: 0, cru: 0 }; Kit.sfx('tap'); save(); render(); break;
+      case 'b-start': startBattle(); break;
+      case 'b-roll': rollStep(); break;
+      case 'b-retreat': retreat(); break;
+      case 'b-sub-out': submerge(b.dataset.side); break;
+      case 'b-again': S.battle = newBattle(B.kind); S.battle.att.p = B.att.p; S.battle.def.p = B.def.p; Kit.sfx('pop'); save(); render(); window.scrollTo(0, 0); break;
+      case 'b-done': S.battle = null; S.view = 'home'; Kit.sfx('tap'); save(); render(); window.scrollTo(0, 0); break;
+      case 'c-add': case 'c-sub': {
+        var c = B.pend[b.dataset.side].c, tt = b.dataset.t;
+        c[tt] = Math.max(0, (c[tt] || 0) + (a === 'c-add' ? 1 : -1));
+        Kit.sfx('tap'); save(); renderKeep(); break;
+      }
+      case 'c-ok': confirmCas(); break;
+      // purchase
+      case 'cart-pow': S.cart = { p: b.dataset.k, u: {}, rep: {} }; Kit.sfx('tap'); save(); render(); break;
+      case 'cart-add': case 'cart-sub': { var u2 = S.cart.u, t2 = b.dataset.t; u2[t2] = Math.max(0, (u2[t2] || 0) + (a === 'cart-add' ? 1 : -1)); Kit.sfx(a === 'cart-add' ? 'chip' : 'tap'); save(); renderKeep(); break; }
+      case 'rep-add': case 'rep-sub': { var rp = S.cart.rep, fi = b.dataset.i; rp[fi] = Math.max(0, (rp[fi] || 0) + (a === 'rep-add' ? 1 : -1)); Kit.sfx('tap'); save(); renderKeep(); break; }
+      case 'cart-ok': buyNow(); break;
+      // bombing
+      case 'sbr-pow': { var R = S.sbr; R.p = b.dataset.k; if (R.f >= 0 && S.factories[R.f] && POW[S.factories[R.f].own].s === POW[R.p].s) R.f = S.factories.findIndex(function (x) { return POW[x.own].s !== POW[R.p].s; }); Kit.sfx('tap'); save(); render(); break; }
+      case 'sbr-f': S.sbr.f = +b.dataset.i; Kit.sfx('tap'); save(); render(); break;
+      case 'sbr-n': S.sbr.n = Math.max(1, Math.min(30, S.sbr.n + +b.dataset.d)); Kit.sfx('tap'); save(); render(); break;
+      case 'sbr-go': if (S.factories[S.sbr.f]) { snap(); S.sbr.stage = 'aa'; Kit.sfx('whoosh'); save(); render(); } break;
+      case 'sbr-roll': sbrRoll(); break;
+    }
+  });
+  // Re-render without losing the scroll position (long lists)
+  function renderKeep() { var y = window.scrollY; render(); window.scrollTo(0, y); }
+
+  // Re-size dice when the screen turns
+  var rz = 0;
+  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (S && (S.view === 'battle' || S.view === 'bomb')) { anim = null; render(); } }, 200); });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  S = load();
+  if (S && !S.over) { render(); } else { S = null; showSetup(); }
+})();
+</script>
+</body>
+</html>
