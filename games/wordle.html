@@ -42,7 +42,7 @@ body{overflow:hidden;}
 .key{flex:1;max-width:44px;height:56px;border:0;border-radius:10px;background:rgba(255,255,255,.14);color:var(--text);
   font-weight:900;font-size:1.05rem;box-shadow:0 3px 0 rgba(0,0,0,.35);transition:transform .06s, background .3s;}
 .key:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
-.key.wide{max-width:66px;flex:1.5;font-size:.8rem;}
+.key.wide{max-width:66px;flex:1.5;font-size:.72rem;letter-spacing:-.02em;}
 .key.hit{background:var(--hit);color:#05290f;}
 .key.near{background:var(--near);color:#2b1a00;}
 .key.miss{background:#2a2348;color:#7d74a6;}
@@ -74,6 +74,14 @@ body{overflow:hidden;}
   .key{max-width:56px;height:66px;font-size:1.3rem;border-radius:12px;}
   .key.wide{max-width:90px;font-size:.95rem;}
 }
+
+/* QWERTY keyboard: every key is one tenth of the row, rows centered (like a phone keyboard) */
+.kb .r,.kb .kr{--kg:5px;gap:var(--kg);justify-content:center;}
+.kb .r .key,.kb .kr .key{flex:0 1 calc((100% - 9 * var(--kg)) / 10);min-width:0;}
+.kb .r .key.wide,.kb .kr .key.bs,.kb .kspc{flex:0 1 calc((100% - 9 * var(--kg)) / 10 * 1.5);}
+.kb .kspc{visibility:hidden;}
+@media (min-width:700px){.kb .r,.kb .kr{--kg:7px;}}
+.key .ico{width:22px;height:22px;display:block;margin:auto;}
 </style>
 </head>
 <body>
@@ -315,7 +323,8 @@ body{overflow:hidden;}
       var r = el('div', { class: 'r' });
       line.split('').forEach(function (k) {
         var label = k === '+' ? 'ENTER' : k === '-' ? '⌫' : k, val = k === '+' ? 'ENTER' : k === '-' ? 'BACK' : k;
-        var b = el('button', { type: 'button', class: 'key' + (k === '+' || k === '-' ? ' wide' : ''), text: label, 'aria-label': val === 'BACK' ? 'Delete' : val });
+        var b = el('button', { type: 'button', class: 'key' + (k === '+' || k === '-' ? ' wide' : ''), 'aria-label': val === 'BACK' ? 'Delete' : val });
+        if (k === '-') b.innerHTML = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>'; else b.textContent = label;
         b.addEventListener('click', function () { type(val); });
         keys[val] = b; r.appendChild(b);
       });
