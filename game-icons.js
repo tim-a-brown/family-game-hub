@@ -105,7 +105,13 @@ var GameIcon = (function () {
     },
     cubehopper: function (c) { function cube(x, y, top) { return path('M' + x + ' ' + y + 'l4 -2.3 4 2.3 -4 2.3z', top) + path('M' + x + ' ' + y + 'l4 2.3v4.6l-4 -2.3z', K, ' opacity=".55"') + path('M' + (x + 8) + ' ' + y + 'l-4 2.3v4.6l4 -2.3z', K, ' opacity=".3"'); } return cube(8, 6, Y) + cube(4, 12.6, c) + cube(12, 12.6, Y) + circ(12, 3.2, 1.8, O); },
     paddleball: function (c) { return rect(2.5, 6, 3, 12, 1.5, W) + rect(18.5, 6, 3, 12, 1.5, c) + rect(11.5, 2, 1, 20, .5, W, ' opacity=".35"') + rect(13, 9, 3.4, 3.4, .6, W); },
-    lrc: function (c) { return rect(2, 6, 12, 12, 2.5, W, ' stroke="' + K + '" stroke-width="1.2"') + txt('L', 8, R, 12.6, 15) + rect(12, 4, 10, 10, 2.2, c) + txt('C', 17, W, 9.6, 12.2) + circ(18, 19, 2.6, Y) + circ(18, 19, 1.4, O); },
+    lrc: function (c) {   // the L, C and R dice fanned out, and a chip being passed left and right
+      function die(x, y, rot, t, tc) { return '<g transform="rotate(' + rot + ' ' + (x + 3.7) + ' ' + (y + 3.7) + ')">' + rect(x, y, 7.4, 7.4, 1.7, W, ' stroke="' + K + '" stroke-width="1"') + txt(t, 6.2, tc, y + 3.9, x + 3.7) + '</g>'; }
+      var arrow = ' stroke="' + K + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
+      return die(0.9, 7.6, -14, 'L', K) + die(15.7, 7.6, 14, 'R', K) + die(8.3, 3.2, 0, 'C', R) +
+        circ(12, 19.4, 2.7, c, ' stroke="' + K + '" stroke-width="1"') + circ(12, 19.4, 1.3, W) +
+        path('M6.6 17.5 4.4 19.4 6.6 21.3M4.6 19.4H8', null, arrow) + path('M17.4 17.5 19.6 19.4 17.4 21.3M19.4 19.4H16', null, arrow);
+    },
     farkle: function (c) { return rect(2, 8, 11, 11, 2.4, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-10 7.5 13.5)"') + circ(5, 11, 1.2, K) + circ(7.5, 13.5, 1.2, K) + circ(10, 16, 1.2, K) + rect(11, 3, 11, 11, 2.4, c, ' transform="rotate(12 16.5 8.5)"') + circ(16.5, 8.5, 1.4, W); },
     go: function () {   // a corner of a Go board with black and white stones
       var t = rect(1.5, 1.5, 21, 21, 2, '#e3b46a', ' stroke="' + K + '" stroke-width="1"');
