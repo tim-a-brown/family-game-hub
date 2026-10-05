@@ -790,7 +790,7 @@ body{background:
       aim.x += stepX; aim.a += stepX / R;     // the chip rolls along the top as you slide it
       aim.lift += ((aim.grab ? 1 : 0) - aim.lift) * Math.min(1, dt * 14);
     } else if (mode === 'press') {
-      var tp = Math.min(1, (performance.now() - aim.t0) / 150);
+      var tp = Math.min(1, (performance.now() - aim.t0) / (Math.abs(aim.fling || 0) > 0.6 ? 40 : 150));
       var d2 = aim.tx - aim.x; aim.x += d2 * Math.min(1, dt * 20); aim.a += d2 * Math.min(1, dt * 20) / R;
       aim.lift = Math.max(0, aim.lift0 * (1 - tp));
       if (tp >= 1) { aim.a += (aim.tx - aim.x) / R; aim.x = aim.tx; launch(); }
@@ -827,11 +827,30 @@ body{background:
       e.preventDefault();
       try { cv.setPointerCapture(e.pointerId); } catch (er) {}
       if (mode === 'enter') mode = 'aim';
-      aim.grab = true; aim.tx = clampAim(toUnits(e));
+      aim.grab = true; aim.tx = clampAim(toUnits(e)); aim.trail = [{ x: toUnits(e), t: performance.now() }]; aim.fling = 0;
       ac(); Kit.haptic('light'); kick();
     });
-    cv.addEventListener('pointermove', function (e) { if (aim.grab) { aim.tx = clampAim(toUnits(e)); kick(); } });
-    cv.addEventListener('pointerup', function (e) { if (!aim.grab) return; aim.grab = false; aim.tx = clampAim(toUnits(e)); release(); });
+    cv.addEventListener('pointermove', function (e) {
+      if (!aim.grab) return;
+      var u = toUnits(e), now = performance.now();
+      aim.tx = clampAim(u);
+      (aim.trail = aim.trail || []).push({ x: u, t: now });
+      while (aim.trail.length > 2 && now - aim.trail[0].t > 90) aim.trail.shift();
+      kick();
+    });
+    cv.addEventListener('pointerup', function (e) {
+      if (!aim.grab) return; aim.grab = false; aim.tx = clampAim(toUnits(e));
+      // Sideways swipe speed at the moment of release (board units per second):
+      // the chip keeps that momentum, like letting go of a real chip mid-slide
+      var tr = aim.trail || [], now = performance.now();
+      while (tr.length > 2 && now - tr[0].t > 90) tr.shift();
+      aim.fling = 0;
+      if (tr.length >= 2 && now - tr[tr.length - 1].t < 60) {
+        var dt = (tr[tr.length - 1].t - tr[0].t) / 1000;
+        if (dt > 0.008) aim.fling = Math.max(-9, Math.min(9, (tr[tr.length - 1].x - tr[0].x) / dt));
+      }
+      release();
+    });
     cv.addEventListener('pointercancel', function () { aim.grab = false; kick(); });
     cv.addEventListener('keydown', function (e) {
       if (!canAim()) return;
@@ -849,8 +868,10 @@ body{background:
   function release() {
     if (mode !== 'aim') return;
     // Settle onto a drop mark if you let go close to one
+    var flung = Math.abs(aim.fling || 0) > 0.6;
     var nearest = Math.round(aim.tx - 0.5) + 0.5;
-    if (Math.abs(nearest - aim.tx) < 0.16) aim.tx = clampAim(nearest);
+    if (!flung && Math.abs(nearest - aim.tx) < 0.16) aim.tx = clampAim(nearest);
+    if (flung) aim.x = aim.tx;
     mode = 'press'; aim.t0 = performance.now(); aim.lift0 = Math.max(aim.lift, 0.6);
     P().aim = aim.tx;
     Kit.haptic('medium');
@@ -858,6 +879,10 @@ body{background:
   }
   function launch() {
     chip = newChip(aim.x, Math.random); chip.a = aim.a;
+    // Carry the swipe's momentum into the drop (a little friction from the board face)
+    var fl = Math.abs(aim.fling || 0) > 0.6 ? aim.fling * 0.75 : 0;
+    if (fl) { chip.vx += fl; chip.w = fl / R * 0.6; }
+    aim.fling = 0;
     mode = 'drop'; acc = 0;
     dom.frame.classList.remove('chase');
     Kit.sfx('tap');
