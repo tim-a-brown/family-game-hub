@@ -204,6 +204,18 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .lz-card img.port{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
 .lz-card .face{--cu:inherit;}
+.lz-in{touch-action:pan-y;}
+.lz.noanim{transition:none;}
+.lz-card.in-r{animation:lzInR .24s ease-out;}
+.lz-card.in-l{animation:lzInL .24s ease-out;}
+@keyframes lzInR{from{transform:translateX(38%) rotate(3deg);opacity:.2}}
+@keyframes lzInL{from{transform:translateX(-38%) rotate(-3deg);opacity:.2}}
+.lz-nav{position:fixed;top:calc(var(--safe-t) + 14px + min(52vh,104vw,520px) / 2);transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;display:grid;place-items:center;
+  background:rgba(20,18,40,.72);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.45);z-index:2;}
+.lz-nav .ico{width:22px;height:22px;}
+.lz-nav.l{left:calc(var(--corner-x) + 10px);}.lz-nav.r{right:calc(var(--corner-x) + 10px);}
+.lz-nav:disabled{opacity:.25;}
+.lz-pos{float:right;margin:4px 0 0 10px;font-size:.78rem;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
 .lz-info{width:100%;background:var(--bg-2);border-radius:20px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);}
 .lz-info h2{font-family:var(--serif);font-size:1.3rem;font-weight:700;}
 .lz-info .ver{font-family:var(--serif);font-style:italic;color:var(--text-2);margin-top:1px;}
@@ -2216,14 +2228,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     if (!ks.length) return '';
     return '<p class="rem" style="margin-top:8px">' + ks.map(function (k) { return '<b>' + KWNAME[k] + ':</b> ' + esc(KWHELP[k]); }).join('<br>') + '</p>';
   }
-  function zoomShell(d, infoHTML, acts, whys) {
+  // nav (optional): { i, n, dir, go(step) } lets you swipe (or use the arrows) through a list of cards
+  function zoomShell(d, infoHTML, acts, whys, nav) {
+    var swapping = nav && nav.dir && $$('.lz').length;
     closeZoom();
-    var ov = el('div', { class: 'lz', role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    var ov = el('div', { class: 'lz' + (swapping ? ' noanim show' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
-    var card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') });
+    var card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : '') });
     card.appendChild(artEl(d, true));
     inner.appendChild(card);
-    var info = el('div', { class: 'lz-info', html: infoHTML });
+    var info = el('div', { class: 'lz-info', html: (nav && nav.n > 1 ? '<div class="lz-pos">' + (nav.i + 1) + ' of ' + nav.n + '</div>' : '') + infoHTML });
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' });
       acts.forEach(function (a) { g.appendChild(el('button', { type: 'button', class: 'btn ' + (a.primary ? 'btn-primary' : 'btn-soft') + (a.full ? ' full' : ''), disabled: a.ok === false, html: a.label, onclick: function () { closeZoom(); a.go(); } })); });
@@ -2234,10 +2248,39 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     ov.appendChild(inner);
     ov.appendChild(el('button', { type: 'button', class: 'icon-btn lz-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeZoom }));
     ov.addEventListener('click', function (e) { if (e.target === ov || e.target === inner) closeZoom(); });
-    document.addEventListener('keydown', function esck(e) { if (e.key === 'Escape') { closeZoom(); document.removeEventListener('keydown', esck); } });
+    document.addEventListener('keydown', function esck(e) {
+      if (!ov.isConnected) { document.removeEventListener('keydown', esck); return; }
+      if (e.key === 'Escape') { closeZoom(); document.removeEventListener('keydown', esck); }
+      else if (nav && nav.n > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { document.removeEventListener('keydown', esck); nav.go(e.key === 'ArrowRight' ? 1 : -1); }
+    });
+    if (nav && nav.n > 1) {
+      var bl = el('button', { type: 'button', class: 'lz-nav l', 'aria-label': 'Previous card', html: Kit.icon('back'), disabled: nav.i <= 0 ? '' : null, onclick: function (e) { e.stopPropagation(); nav.go(-1); } });
+      var br = el('button', { type: 'button', class: 'lz-nav r', 'aria-label': 'Next card', html: Kit.icon('right'), disabled: nav.i >= nav.n - 1 ? '' : null, onclick: function (e) { e.stopPropagation(); nav.go(1); } });
+      if (nav.i <= 0) bl.disabled = true; if (nav.i >= nav.n - 1) br.disabled = true;
+      ov.appendChild(bl); ov.appendChild(br);
+      // Swipe the card sideways to move through the list; it follows your finger
+      var sw = null;
+      card.addEventListener('pointerdown', function (e) { sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false }; });
+      card.addEventListener('pointermove', function (e) {
+        if (!sw || e.pointerId !== sw.id) return;
+        var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+        if (!sw.h && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; try { card.setPointerCapture(e.pointerId); } catch (x) {} }
+        if (sw.h) { card.style.transition = 'none'; card.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 40) + 'deg)'; }
+      });
+      function swEnd(e) {
+        if (!sw) return;
+        var dx = e.clientX - sw.x, h = sw.h; sw = null;
+        if (!h) return;
+        var step = dx < -60 ? 1 : dx > 60 ? -1 : 0;
+        if (step && ((step > 0 && nav.i < nav.n - 1) || (step < 0 && nav.i > 0))) { nav.go(step); return; }
+        card.style.transition = 'transform .2s var(--spring)'; card.style.transform = '';
+      }
+      card.addEventListener('pointerup', swEnd);
+      card.addEventListener('pointercancel', swEnd);
+    }
     document.body.appendChild(ov);
-    requestAnimationFrame(function () { ov.classList.add('show'); });
-    Kit.sfx('flip');
+    if (!swapping) requestAnimationFrame(function () { ov.classList.add('show'); });
+    Kit.sfx(swapping ? 'tap' : 'flip');
     return ov;
   }
   function openZoom(u) {
@@ -2567,8 +2610,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     box.innerHTML = S.log.slice().reverse().map(function (l) { return '<p' + (l.p >= 0 ? ' style="border-left:3px solid ' + S.P[l.p].color + ';padding-left:8px"' : '') + '>' + esc(l.t) + '</p>'; }).join('') || '<p>Nothing yet.</p>';
     Kit.sheet({ title: 'Game log', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
-  function zoomDef(d, acts) {
-    zoomShell(d, '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || []);
+  function zoomDef(d, acts, nav) {
+    zoomShell(d, '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -2702,12 +2745,13 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       }
       dirty = true; paintDeck(); paintGrid(true);
     }
-    function cardZoom(d) {
-      var have = count(d);
+    // list: the cards you opened this one from (the search grid or your deck), so you can swipe through them
+    function cardZoom(d, list, dir) {
+      var have = count(d), i = list ? list.indexOf(d) : -1;
       zoomDef(d, [
-        { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d); } },
-        { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d); } }
-      ]);
+        { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
+        { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
+      ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); } } : null);
     }
     function paintGrid(keepScroll) {
       var st = grid.scrollTop, list = DB.unique.filter(matches);
@@ -2722,7 +2766,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
         b.appendChild(plus);
-        b.addEventListener('click', function () { cardZoom(d); });
+        b.addEventListener('click', function () { cardZoom(d, list); });
         grid.appendChild(b);
       });
       if (!list.length) grid.appendChild(el('p', { class: 'muted bld-more', text: 'No cards match these filters.' }));
@@ -2746,7 +2790,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
         var d = x.d;
         dlist.appendChild(el('div', { class: 'drow' }, [
           el('span', { class: 'hc' + (d.k ? ' ink' : ''), text: String(d.c) }),
-          el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + ' ' + esc((d.v ? d.v + ' · ' : '') + (d.song ? 'Song' : d.t)) })]),
+          el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d, cs.map(function (y) { return y.d; })); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + ' ' + esc((d.v ? d.v + ' · ' : '') + (d.song ? 'Song' : d.t)) })]),
           el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }), el('button', { type: 'button', text: '+', 'aria-label': 'Add one', onclick: function () { addCard(d, 1); } })])
         ]));
       });
