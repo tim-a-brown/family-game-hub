@@ -10,7 +10,16 @@
 const ArcadeHi = (function(){
   const MAX = 15;
 
-  function load(key){ try{return JSON.parse(localStorage.getItem('hi_'+key)||'[]');}catch(e){return [];} }
+  // Read the board, skipping any entry without a real score (a bad entry
+  // used to show up as "NaN"), highest first
+  function load(key){
+    let list = [];
+    try{ list = JSON.parse(localStorage.getItem('hi_'+key)||'[]'); }catch(e){ return []; }
+    if(!Array.isArray(list)) return [];
+    return list.filter(e=>e && isFinite(Number(e.score)) && e.score !== null && e.score !== '')
+      .map(e=>Object.assign({}, e, { score: Number(e.score), name: String(e.name || '???') }))
+      .sort((a,b)=>b.score-a.score);
+  }
   function save(key,list){ try{localStorage.setItem('hi_'+key,JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('hi_'+key);}catch(e){} }
 
   function qualifies(key, score){

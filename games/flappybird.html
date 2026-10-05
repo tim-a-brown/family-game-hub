@@ -266,7 +266,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var who = 'Player', birdPick = 'random', live = false;
   var session = { runs: 0, best: 0 }, runStart = 0, lastPipeY = 0, deathCause = '', bestAtStart = 0, lastFlight = null;
   function hiList() { try { return JSON.parse(localStorage.getItem('hi_' + HI) || '[]'); } catch (e) { return []; } }
-  function best() { var b = 0; try { b = +localStorage.getItem('flappyBest') || 0; } catch (e) {} var l = hiList(); return Math.max(b, l.length ? l[0].score : 0); }
+  function best() {
+    var b = 0; try { b = parseInt(localStorage.getItem('flappyBest'), 10) || 0; } catch (e) {}
+    hiList().forEach(function (e) { var v = Number(e && e.score); if (isFinite(v) && v > b) b = v; });
+    return b;
+  }
 
   function toReady() {
     var names = Object.keys(THEMES);
@@ -286,7 +290,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
   function flap() {
     if (state !== 'play' || paused || countdown) return;
-    bird.vy = FLAP; bird.wingT = 0; bird.flapAt = t; Snd.flap();
+    bird.vy = Math.min(bird.vy * 0.25, 0) + FLAP * 0.9 * 0.6; bird.boost = 0.07; bird.wingT = 0; bird.flapAt = t; Snd.flap();
   }
   function spawnPipe(x) {
     var top = 64 + GAP / 2, bot = H - GROUND - 40 - GAP / 2, maxJump = Math.max(90, (bot - top) * .55);
@@ -303,12 +307,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (countdown) { countdown -= DT; if (countdown <= 0) { countdown = 0; overlay(); } else { var n = Math.ceil(countdown / .6); if (n !== shownCount) { shownCount = n; overlay(); } } return; }
     if (state === 'play') {
       scroll += SPEED * DT;
-      bird.vy = Math.min(MAXFALL, bird.vy + GRAV * DT);
+      // Flight: the flap is a quick burst of lift, the bird hangs a moment at
+      // the top of each hop, and the fall eases toward top speed (air drag)
+      if (bird.boost > 0) { bird.vy += (FLAP * 0.9 - bird.vy) * Math.min(1, DT * 30); bird.boost -= DT; }
+      var g = GRAV * (Math.abs(bird.vy) < 70 ? 0.8 : 1);
+      if (bird.vy > 0) g *= Math.max(0.05, 1 - (bird.vy / MAXFALL) * (bird.vy / MAXFALL));
+      bird.vy = Math.min(MAXFALL, bird.vy + g * DT);
       bird.y += bird.vy * DT;
       bird.wingT += DT * (bird.vy < 0 ? 2.2 : 1);
-      // Tilt: snaps up on a flap, then noses down once falling fast
-      var target = bird.vy < 160 ? -24 : Math.min(90, -24 + (bird.vy - 160) * .42);
-      bird.ang += (target - bird.ang) * (target < bird.ang ? .35 : .09);
+      // Tilt follows the flight on a soft spring: noses up on a flap, levels
+      // off at the top, and dives as it picks up speed
+      var target = bird.vy < 0 ? -26 : Math.min(88, -26 + bird.vy * .2 + Math.max(0, bird.vy - 220) * .3);
+      bird.angV = (bird.angV || 0) + ((target - bird.ang) * 160 - (bird.angV || 0) * 19) * DT;
+      bird.ang += bird.angV * DT;
       // Pipes
       for (var i = 0; i < pipes.length; i++) pipes[i].x -= SPEED * DT;
       if (pipes.length && pipes[0].x < -PIPE_W - 10) pipes.shift();
@@ -351,7 +362,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function finish() {
     var oldBest = bestAtStart, isBest = score > 0 && score > oldBest;
     session.runs++; session.best = Math.max(session.best, score);
-    try { if (score > (+localStorage.getItem('flappyBest') || 0)) localStorage.setItem('flappyBest', String(score)); } catch (e) {}
+    try { if (score > (parseInt(localStorage.getItem('flappyBest'), 10) || 0)) localStorage.setItem('flappyBest', String(score)); } catch (e) {}
     lastFlight = { score: score, medal: medalFor(score), isBest: isBest, oldBest: oldBest };
     if (score > 0) {
       var m = medalFor(score), hl = [];
