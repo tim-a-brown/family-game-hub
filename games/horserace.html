@@ -44,8 +44,9 @@
 .pstrip .lb{position:absolute;left:8px;top:0;bottom:0;display:flex;align-items:center;font-size:.6rem;font-weight:900;letter-spacing:.12em;color:#8d8678;text-transform:uppercase;}
 .pstrip .sc{position:absolute;top:5px;width:30px;height:24px;border-radius:5px;display:grid;place-items:center;font:400 1rem/1 var(--display);transition:left .45s var(--ease);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.3);}
 .pstrip .sc.mine::after{content:"";position:absolute;left:3px;right:3px;bottom:-4px;height:3px;border-radius:2px;background:#ffd54a;}
-.call{min-height:58px;display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:16px;background:linear-gradient(#221b3e,#18132d);box-shadow:inset 0 0 0 1px var(--line-2);}
+.call{width:100%;border:0;color:inherit;text-align:left;font:inherit;cursor:pointer;min-height:58px;display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:16px;background:linear-gradient(#221b3e,#18132d);box-shadow:inset 0 0 0 1px var(--line-2);}
 .call .ico{width:22px;height:22px;flex:none;color:#ffd54a;}
+.call .ico-wrap{display:flex;flex:none;}
 .call p{margin:0;font:400 1.15rem/1.2 var(--display);letter-spacing:.01em;}
 .call p.new{animation:rise .35s var(--ease);}
 
@@ -392,6 +393,40 @@
   function clothSpan(post) { return '<span class="cl" style="' + clothStyle(post) + '">' + post + '</span>'; }
 
   // ── Sound: crowd roar, gate bell, hoofbeats (own WebAudio graph) ────────
+  // ── Announcer: the race calls, spoken with the device's own voice ─────
+  var VO = (function () {
+    var ok = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined', voice = null;
+    function pick() {
+      if (!ok || voice) return;
+      var vs = speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang); });
+      if (!vs.length) return;
+      var score = function (v) { var n = v.name; return (/en[-_]US/i.test(v.lang) ? 4 : /en[-_](GB|AU|IE)/i.test(v.lang) ? 2 : 0) + (/premium|enhanced|natural|neural/i.test(n) ? 6 : 0) + (/Alex|Samantha|Evan|Nathan|Aaron|Daniel|Google US/i.test(n) ? 2 : 0) + (v.localService ? 1 : 0) - (/Novelty|Bells|Bubbles|Whisper|Zarvox|Trinoids|Bahh|Boing|Jester|Organ|Cellos|Bad News|Good News|Albert|Fred|Junior|Ralph|Kathy|Superstar|Wobble/i.test(n) ? 20 : 0); };
+      voice = vs.sort(function (a, b) { return score(b) - score(a); })[0];
+    }
+    if (ok) { try { speechSynthesis.addEventListener('voiceschanged', function () { voice = null; pick(); }); } catch (e) {} }
+    function on() {
+      try { if (localStorage.getItem('gn_sound') === '0') return false; } catch (e) {}
+      return !S || !S.opt || S.opt.voice !== 'off';
+    }
+    function clean(t) { return String(t).replace(/(\d)½/g, '$1 and a half').replace(/½/g, 'a half').replace(/!/g, '!'); }
+    // Big moments (the start, the stretch, the finish) cut in; small ones wait their turn or are dropped
+    function say(t, big) {
+      if (!ok || !on()) return;
+      pick();
+      var ss = window.speechSynthesis;
+      if (ss.speaking || ss.pending) { if (!big) return; ss.cancel(); }
+      var u = new SpeechSynthesisUtterance(clean(t));
+      if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-US';
+      u.rate = big ? 1.12 : 1.08; u.pitch = 1.05; u.volume = 1;
+      ss.speak(u);
+    }
+    // iPhone only lets a page talk after a tap; call this from one
+    function prime() { if (!ok || !on()) return; pick(); try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {} }
+    function stop() { if (ok) try { speechSynthesis.cancel(); } catch (e) {} }
+    window.addEventListener('pagehide', stop);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); });
+    return { say: say, prime: prime, stop: stop, ok: ok };
+  })();
   var AU = (function () {
     var a = null, roar = null, roarG = null, nb = null, hb = null;
     function on() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
@@ -914,7 +949,7 @@
       }
     }
     function nm(i) { return F.horses[i].name; }
-    function say(txt, force) { if (!force && t - lastCall < 1.1) return false; lastCall = t; if (callFn) callFn(txt); return true; }
+    function say(txt, force) { if (!force && t - lastCall < 1.1) return false; lastCall = t; if (callFn) callFn(txt, !!force); return true; }
     function calls(xs) {
       if (!race || t <= 0) return;
       var o = xs.map(function (x, i) { return i; }).sort(function (a, b) { return xs[b] - xs[a]; });
@@ -1019,7 +1054,7 @@
   Kit.init({
     id: 'horserace', confirmNew: false,
     theme: { felt: ['#2f7d3a', '#1f5c29', '#16451e'], wood: ['#7a5232', '#4e321c'] },
-    onNew: function () { newGame(); },
+    onNew: function () { VO.stop(); newGame(); },
     undo: function () { undoChip(); },
     menu: [
       { icon: 'coins', label: function () { return S && S.mode === 'pass' ? 'End session now' : 'Cash out (end session)'; }, onClick: function () { endSession(); } },
@@ -1048,7 +1083,7 @@
       '<li><b>Exacta and Quinella</b> come from the chance of that pair finishing 1-2, less 12%. <b>Trifecta</b> from the chance of that exact 1-2-3, less 15%.</li>' +
       '<li>Prices are rounded down a little and capped at 5,000 to 1. Payouts are rounded to the nearest dollar.</li></ul>' +
       '<p>The results board shows <b>$2 payouts</b>, like the board at a real track: "Win $9.00" means a $2 Win ticket brings back $9.</p>' +
-      '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the whole field on the strip below it, and the little map of the oval. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p>' +
+      '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the whole field on the strip below it, and the little map of the oval. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off.</p>' +
       '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races.</p>' +
       '<p><b>Pass and play</b>: everyone gets their own stake of play money (your casino bankroll is not touched). Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>'
   });
@@ -1090,6 +1125,8 @@
           choices: [['6', '6', 'A smaller field, so picking the winner is a bit easier.'], ['8', '8', 'A full field, with bigger prices on Exacta and Trifecta bets.'], ['mix', '6 to 8', 'A different number of horses in every race.']] },
         { id: 'pace', label: 'Race length', value: 'full', help: 'How long each race takes to watch. You can always skip to the finish.',
           choices: [['quick', 'Quick', 'About 15 seconds a race.'], ['full', 'Full', 'About 22 seconds a race, with more time for lead changes.']] },
+        { id: 'voice', label: 'Announcer', value: 'on', help: 'Calls the race out loud: the start, lead changes, the stretch and the winner. Uses your device’s voice. Tap the call box during a race to turn it on or off.',
+          choices: [['on', 'On', 'The race is called out loud.'], ['off', 'Off', 'Calls show on screen only.']] },
         { id: 'races', label: 'Races', value: 5, when: function (m) { return m === 'pass'; }, help: 'How many races the session lasts. The richest player after the last race wins.',
           choices: [[3, '3'], [5, '5'], [8, '8']] },
         { id: 'stake', label: 'Starting money', value: 100, when: function (m) { return m === 'pass'; }, help: 'Play money each player starts with. Your casino bankroll is not used.',
@@ -1103,7 +1140,7 @@
     var pass = mode === 'pass' && players.length > 1;
     S = {
       v: 1, mode: pass ? 'pass' : 'solo', started: Date.now(),
-      opt: { field: o.field || 'mix', pace: o.pace || 'full', races: +o.races || 5, stake: +o.stake || 100 },
+      opt: { field: o.field || 'mix', pace: o.pace || 'full', races: +o.races || 5, stake: +o.stake || 100, voice: o.voice === 'off' ? 'off' : 'on' },
       players: players.map(function (p, i) { return { name: p.name, color: p.color || Kit.color(i), stack: pass ? (+o.stake || 100) : null, net: 0, wagered: 0, ret: 0, best: null, hits: 0, broke: 0 }; }),
       raceNo: 0, log: [], notes: [], startBank: Casino.balance(), hi: Casino.balance(), cfgPlayers: players.map(function (p) { return { name: p.name, color: p.color }; })
     };
@@ -1139,7 +1176,14 @@
     app = colA;
     app.appendChild(el('div', { class: 'tw wood' }, [twIn, R.strip]));
     R.callP = el('p', { text: '' });
-    R.call = el('div', { class: 'call race-only keep' }, [el('span', { html: Kit.icon('sound') }), R.callP]);
+    R.callIco = el('span', { class: 'ico-wrap', html: Kit.icon(S.opt.voice === 'off' ? 'mute' : 'sound') });
+    R.call = el('button', { type: 'button', class: 'call race-only keep', 'aria-label': 'Announcer on or off' }, [R.callIco, R.callP]);
+    R.call.addEventListener('click', function () {
+      S.opt.voice = S.opt.voice === 'off' ? 'on' : 'off'; save();
+      R.callIco.innerHTML = Kit.icon(S.opt.voice === 'off' ? 'mute' : 'sound');
+      if (S.opt.voice === 'off') VO.stop(); else VO.prime();
+      Kit.toast(S.opt.voice === 'off' ? 'Announcer off' : 'Announcer on'); Kit.haptic('light');
+    });
     app.appendChild(R.call);
     // Bank strip
     R.bank = el('div', { class: 'bank' });
@@ -1391,7 +1435,7 @@
       R.goB = el('button', { type: 'button', class: 'btn btn-primary go', onclick: doneBetting });
       inner.appendChild(R.pk); inner.appendChild(R.tray); inner.appendChild(el('div', { class: 'acts' }, [R.undoB, R.clrB, R.goB]));
     } else if (kind === 'race') {
-      R.goB = el('button', { type: 'button', class: 'btn btn-soft go', html: Kit.icon('right') + '<span>Skip to the finish</span>', onclick: function () { if (RV) RV.skip(); } });
+      R.goB = el('button', { type: 'button', class: 'btn btn-soft go', html: Kit.icon('right') + '<span>Skip to the finish</span>', onclick: function () { VO.stop(); if (RV) RV.skip(); } });
       inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
     } else {
       var last = !solo() && (S.raceNo >= S.opt.races || allBroke());
@@ -1453,6 +1497,7 @@
     S.race = { seed: Math.floor(r() * 2147483647), order: order, gaps: gaps, photo: gaps[0] < 0.35, Tw: Tw, clock: 69.4 + r() * 3.2 + (F.cond === 'Sloppy' || F.cond === 'Yielding' ? 1.2 : 0), settled: false };
     S.phase = 'race';
     save();
+    VO.prime();
     Kit.sfx('pop'); Kit.haptic('medium');
     app.className = 'stage hr ph-race';
     paintBank();
@@ -1466,7 +1511,8 @@
     buildStrip();
     RV.run(function () { onRaceDone(); }, function (xs) { paintStrip(RV.ranksAt(xs)); }, setCall);
   }
-  function setCall(txt) {
+  function setCall(txt, big) {
+    VO.say(txt, big || /wins it|gets up/.test(txt));
     if (!R.callP) return;
     R.callP.textContent = txt; R.callP.classList.remove('new'); void R.callP.offsetWidth; R.callP.classList.add('new');
   }
