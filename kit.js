@@ -482,6 +482,9 @@
     var l = n.toLowerCase();
     return !CPU_NAMES.some(function (c) { return c.toLowerCase() === l; });
   }
+  // Board games record "Tim (White)" so history shows who had which side; the
+  // person is still just "Tim".
+  function baseName(n) { return String(n || '').replace(/\s*\([^()]{1,12}\)\s*$/, '').trim(); }
   function hiddenNames() { try { return JSON.parse(lsGet('gn_hidden_names', '[]')) || []; } catch (e) { return []; } }
   function nameCounts() { try { return JSON.parse(lsGet('gn_name_counts', '{}')) || {}; } catch (e) { return {}; } }
   function countPlays(list) {
@@ -504,7 +507,7 @@
         if (!Array.isArray(list)) continue;
         list.forEach(function (e) {
           (e && Array.isArray(e.players) ? e.players : []).forEach(function (p) {
-            var n = String((p && (p.name || p)) || '').trim();
+            var n = baseName((p && (p.name || p)) || '');
             if (isPersonName(n)) { var key = n.toLowerCase(); seen[key] = seen[key] || { n: n, c: 0 }; seen[key].c++; }
           });
         });
@@ -514,8 +517,14 @@
   }
   function knownNames() {
     var hidden = hiddenNames().map(function (x) { return x.toLowerCase(); });
-    var fp = fpRead(), have = {}, hist = historyNames(), changed = false;
-    fp.forEach(function (n) { have[n.toLowerCase()] = true; });
+    var fp = [], have = {}, hist = historyNames(), changed = false;
+    // Fold "Tim (White)" back into "Tim" (older games added these as separate people)
+    fpRead().forEach(function (n) {
+      var b = baseName(n), k = b.toLowerCase();
+      if (b !== n) changed = true;
+      if (!b || have[k]) { changed = true; return; }
+      have[k] = true; fp.push(b);
+    });
     Object.keys(hist).forEach(function (k) {
       if (!have[k] && hidden.indexOf(k) < 0) { fp.push(hist[k].n); have[k] = true; changed = true; }
     });
