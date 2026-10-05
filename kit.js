@@ -1040,9 +1040,9 @@
     return new Promise(function (resolve) {
       var c = o.color || 'var(--accent)';
       var R = 46, CIRC = 2 * Math.PI * R;
-      var ring = '<svg class="k-ho-ring" viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="' + R + '" class="tr"/><circle cx="54" cy="54" r="' + R + '" class="pg" style="stroke-dasharray:' + CIRC + ';stroke-dashoffset:' + CIRC + '"/></svg>';
+      var ring = '<svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="' + R + '" class="tr"/><circle cx="54" cy="54" r="' + R + '" class="pg" style="stroke-dasharray:' + CIRC + ';stroke-dashoffset:' + CIRC + '"/></svg>';
       var btn = el('button', { type: 'button', class: 'k-ho-btn', 'aria-label': 'Hold for 3 seconds to show your ' + (o.what || 'cards') }, [
-        el('span', { html: ring }), el('span', { class: 'k-ho-ic', html: icon('eye') })
+        el('span', { class: 'k-ho-ring', html: ring }), el('span', { class: 'k-ho-ic', html: icon('eye') })
       ]);
       var HINT = o.hint || ('Hold for 3 seconds to see your ' + (o.what || 'cards'));
       var hint = el('div', { class: 'k-ho-hint', text: HINT });
