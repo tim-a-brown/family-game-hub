@@ -127,14 +127,6 @@ button.hole{cursor:pointer;}
 .dragpeg{position:fixed;z-index:300;pointer-events:none;--pg:40px;margin:-20px 0 0 -20px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));}
 .hole.over::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #fff;}
 
-/* Pass-the-phone screen */
-.privacy{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:90px 28px 40px;text-align:center;
-  background:radial-gradient(120% 80% at 50% 30%,#2e2420,#120d0b);animation:rise .3s var(--ease) both;}
-.privacy .ph{width:84px;height:84px;border-radius:24px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:#ffd88a;}
-.privacy .ph .ico{width:44px;height:44px;}
-.privacy h2{font-family:var(--display);font-weight:400;font-size:2rem;}
-.privacy p{color:var(--text-2);max-width:300px;line-height:1.4;}
-.privacy .btn{min-width:240px;}
 .rules .kx{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin:0 2px;}
 .rules .kx.b{background:#e0242f;box-shadow:0 0 0 1px #888;}
 .rules .kx.w{background:#f2eee4;box-shadow:0 0 0 1px #888;}
@@ -233,7 +225,7 @@ button.hole{cursor:pointer;}
       '<li>Repeats count fairly: guess two reds when the code has one red, and only one of them earns a little peg.</li></ul>' +
       '<p>Four red pegs (five on Hard) means you cracked it. The shield flips open either way at the end.</p>' +
       '<h3>Two players</h3><ul>' +
-      '<li>One player sets the code in secret while the other looks away, then hands over the phone.</li>' +
+      '<li>One player sets the code in secret while the other looks away, then hands over the phone. Hold the button for 3 seconds to take your turn.</li>' +
       '<li>The codemaker scores <b>1 point for every guess</b> the breaker makes, plus <b>1 bonus point</b> if the code is never cracked.</li>' +
       '<li>Swap roles every round. Play 2, 4 or 6 rounds; most points wins.</li></ul>' +
       '<h3>Computer breaks</h3><p>You set a code and watch the computer crack it, one guess at a time. It plays a clever strategy: on Classic it never needs more than 5 guesses.</p>' +
@@ -789,15 +781,21 @@ button.hole{cursor:pointer;}
     }
     return box;
   }
+  // Two players: cover the screen until the next player holds to go on
+  var hoOpen = false;
   function renderPrivacy() {
-    var ps = S.players, making = S.pass === 'make', who = making ? ps[S.maker] : ps[S.breaker], other = making ? ps[S.breaker] : ps[S.maker];
-    var box = el('div', { class: 'privacy' }, [
-      el('div', { class: 'ph', html: Kit.icon('phone') }),
-      el('h2', { text: 'Pass to ' + who.name }),
-      el('p', { text: making ? who.name + ' makes the secret code for round ' + (S.round + 1) + '. ' + other.name + ', look away!' : other.name + "'s code is hidden. " + who.name + ', crack it in ' + S.R + ' guesses or fewer.' }),
-      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: "I'm " + who.name + (making ? ': set the code' : ': start guessing'), onclick: function () { S.pass = null; Kit.sfx('pop'); if (making) shieldAnim = 'open'; save(); render(); } })
-    ]);
-    app.appendChild(box);
+    if (hoOpen) return;
+    hoOpen = true;
+    var ps = S.players, making = S.pass === 'make', wi = making ? S.maker : S.breaker, who = ps[wi], other = making ? ps[S.breaker] : ps[S.maker];
+    Kit.handoff({
+      name: who.name, color: Kit.color(wi), what: making ? 'code' : 'board',
+      msg: making ? who.name + ' makes the secret code for round ' + (S.round + 1) + '. ' + other.name + ', look away!' : other.name + "'s code is hidden. " + who.name + ', crack it in ' + S.R + ' guesses or fewer.'
+    }).then(function () {
+      hoOpen = false;
+      if (!S || !S.pass) return;
+      var mk = S.pass === 'make';
+      S.pass = null; if (mk) shieldAnim = 'open'; save(); render();
+    });
   }
 
   // Board height: keep the tray on screen; the rows scroll inside the board
@@ -874,6 +872,8 @@ button.hole{cursor:pointer;}
       if (S.log.length < S.round + 1) endRound();
       else if (S.log.length >= S.total) finish();
     } else {
+      // Two players: the half-set code stays hidden until the codemaker holds to see it
+      if (S.mode === '2p' && S.phase === 'make') S.pass = 'make';
       if (S.phase === 'make' && !S.pass) shieldAnim = 'open';
       save(); render(); cpuTurn();
     }

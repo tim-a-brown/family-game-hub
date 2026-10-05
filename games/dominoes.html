@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dominoes</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+/* ── Page frame: one screen, no scrolling during play ─────────────────── */
+#app.stage.dmapp{max-width:none;padding:0 12px calc(var(--safe-b) + 8px);}
+.dw{height:calc(100dvh - var(--barh,60px) - var(--safe-b) - 10px);min-height:520px;max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.pan{display:contents;}
+.dw .scores{order:0;margin:0;padding:2px 0 0;gap:6px;}
+.dw .tbl{order:1;}
+.dw .status{order:2;}
+.dw .rack{order:3;}
+.dw .score{min-width:0;flex:1 1 0;padding:5px 8px 6px;}
+.dw .score .nm{max-width:100%;font-size:.76rem;display:flex;align-items:center;gap:4px;}
+.dw .score .nm .ico{width:12px;height:12px;flex:none;}
+.dw .score .pt{font-size:1.25rem;}
+.dw .score .sub{font-size:.66rem;white-space:nowrap;}
+.dw .score.tgt{flex:0 0 auto;min-width:62px;background:transparent;border-color:rgba(255,255,255,.08);border-style:dashed;}
+.dw .score.tgt .pt{font-size:1rem;color:var(--text-2);}
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+.tbl{position:relative;flex:1 1 auto;min-height:0;border-radius:24px;}
+.tbl>.felt-in{position:absolute;inset:9px;border-radius:17px;overflow:hidden;}
+.plq{position:absolute;left:8px;right:8px;top:6px;height:46px;display:flex;justify-content:center;align-items:flex-start;gap:6px;pointer-events:none;z-index:3;}
+.plq .slot{flex:1 1 0;min-width:0;display:flex;}
+.plq .slot.l{justify-content:flex-start;} .plq .slot.c{justify-content:center;} .plq .slot.r{justify-content:flex-end;}
+.pq{--c:#fff;position:relative;max-width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 9px 5px;border-radius:12px;background:rgba(0,0,0,.24);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);transition:box-shadow .25s,background .25s;}
+.pq .nm{display:flex;align-items:center;gap:5px;max-width:100%;font-weight:800;font-size:.76rem;line-height:1.1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.pq .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pq .nm .ico{width:12px;height:12px;flex:none;opacity:.75;}
+.pq .nm i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;}
+.pq .bk{display:flex;align-items:flex-end;height:18px;padding-left:2px;}
+.pq .bk .dm{--tw:8px;margin-left:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.5),inset 1px 1px 0 rgba(255,255,255,.25),0 1px 1px rgba(0,0,0,.4);}
+.pq .bk b{margin-left:5px;font-size:.72rem;font-weight:900;color:rgba(255,255,255,.75);}
+.pq.on{background:color-mix(in srgb,var(--c) 26%,rgba(0,0,0,.3));box-shadow:0 0 0 2px var(--c),0 0 16px color-mix(in srgb,var(--c) 55%,transparent);}
+.pq .say,.rk-say{position:absolute;left:50%;top:calc(100% + 6px);z-index:9;transform:translateX(-50%);padding:4px 11px;border-radius:12px;background:#fff;color:#1d1b2e;font-weight:900;font-size:.82rem;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.35);animation:say 1.7s var(--ease) forwards;pointer-events:none;}
+.pq .say::before{content:"";position:absolute;left:50%;top:-5px;margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom-color:#fff;}
+.rk-say{top:auto;bottom:calc(100% + 8px);}
+@keyframes say{0%{opacity:0;transform:translate(-50%,6px) scale(.7);}12%{opacity:1;transform:translate(-50%,0) scale(1.05);}20%{transform:translate(-50%,0) scale(1);}82%{opacity:1;}100%{opacity:0;}}
+.think{display:inline-flex;gap:2px;margin-left:2px;}
+.think i{width:4px!important;height:4px!important;border-radius:50%;background:#fff!important;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+.layer{position:absolute;left:8px;right:8px;top:58px;bottom:44px;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.5));}
+.layer .dm{position:absolute;transition:left .4s var(--ease),top .4s var(--ease),width .4s var(--ease),height .4s var(--ease),transform .4s var(--ease);}
+.layer .dm.nt{transition:none;}
+.layer .dm.spin{box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.9),0 0 0 2px rgba(255,214,120,.55);}
+.layer .dm.last{box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.9),0 0 0 2px rgba(255,255,255,.75);}
+.ghost{position:absolute;z-index:4;border-radius:7px;border:2px dashed #ffe58a;background:rgba(255,229,138,.2);box-shadow:0 0 14px rgba(255,229,138,.7);animation:gpulse 1s ease-in-out infinite alternate;cursor:pointer;}
+.ghost::after{content:"";position:absolute;inset:-10px;}
+.ghost.hot{background:rgba(255,229,138,.5);border-style:solid;}
+.ghost b{position:absolute;inset:0;display:grid;place-items:center;font:400 1.1rem/1 var(--display);color:#fff;text-shadow:0 1px 3px #000;}
+@keyframes gpulse{from{opacity:.55;}to{opacity:1;}}
+.bone{position:absolute;left:12px;bottom:8px;z-index:3;display:flex;align-items:center;gap:8px;border:0;padding:4px 10px 4px 6px;border-radius:12px;background:rgba(0,0,0,.2);color:#fff;font-weight:800;font-size:.8rem;min-height:36px;}
+.bone .pile{position:relative;width:34px;height:26px;}
+.bone .pile .dm{--tw:11px;position:absolute;}
+.bone.go{cursor:pointer;animation:bglow 1s ease-in-out infinite alternate;}
+@keyframes bglow{to{box-shadow:0 0 0 2px #ffe58a,0 0 14px rgba(255,229,138,.7);}}
+.bone.none{opacity:.55;}
+.ends{position:absolute;right:12px;bottom:8px;z-index:3;display:flex;align-items:baseline;gap:6px;padding:5px 12px;border-radius:12px;color:#3a2606;
+  background:linear-gradient(180deg,#f6dc8e,#c99a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(0,0,0,.2),0 3px 8px rgba(0,0,0,.35);font-weight:900;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;}
+.ends b{font:400 1.25rem/1 var(--display);letter-spacing:0;}
+.ends.hit{animation:bounce .6s var(--spring);}
+.hlabel{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:2;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45);white-space:nowrap;pointer-events:none;}
+
+/* ── Domino tiles: ivory face, black pips, center bar, brass pin ─────── */
+.dm{--tw:30px;position:relative;flex:none;display:flex;flex-direction:column;width:var(--tw);height:calc(var(--tw) * 2);border-radius:calc(var(--tw) * .17);
+  background:linear-gradient(135deg,#fffef8 0%,#f7f0dd 55%,#e9dec4 100%);
+  box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.95),inset -1px -2px 2px rgba(120,95,55,.22);}
+.dm .hf{flex:1 1 0;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:calc(var(--tw) * .13);}
+.dm .hf i{width:74%;height:74%;margin:auto;border-radius:50%;visibility:hidden;
+  background:radial-gradient(circle at 38% 32%,#4a4540 0%,#0b0a09 62%);box-shadow:inset 0 1px 1px rgba(0,0,0,.8),0 .5px 0 rgba(255,255,255,.8);}
+.dm .hf[data-v="1"] i:nth-child(5),
+.dm .hf[data-v="2"] i:nth-child(3),.dm .hf[data-v="2"] i:nth-child(7),
+.dm .hf[data-v="3"] i:nth-child(3),.dm .hf[data-v="3"] i:nth-child(5),.dm .hf[data-v="3"] i:nth-child(7),
+.dm .hf[data-v="4"] i:nth-child(1),.dm .hf[data-v="4"] i:nth-child(3),.dm .hf[data-v="4"] i:nth-child(7),.dm .hf[data-v="4"] i:nth-child(9),
+.dm .hf[data-v="5"] i:nth-child(1),.dm .hf[data-v="5"] i:nth-child(3),.dm .hf[data-v="5"] i:nth-child(5),.dm .hf[data-v="5"] i:nth-child(7),.dm .hf[data-v="5"] i:nth-child(9),
+.dm .hf[data-v="6"] i:nth-child(1),.dm .hf[data-v="6"] i:nth-child(3),.dm .hf[data-v="6"] i:nth-child(4),.dm .hf[data-v="6"] i:nth-child(6),.dm .hf[data-v="6"] i:nth-child(7),.dm .hf[data-v="6"] i:nth-child(9){visibility:visible;}
+.dm::before{content:"";position:absolute;left:11%;right:11%;top:50%;height:max(1px,calc(var(--tw) * .045));transform:translateY(-50%);border-radius:1px;
+  background:linear-gradient(180deg,rgba(60,45,25,.55),rgba(255,255,255,.7));}
+.dm .pin{position:absolute;left:50%;top:50%;width:calc(var(--tw) * .2);height:calc(var(--tw) * .2);transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff6cf 0%,#e2b54c 40%,#9a6a18 100%);box-shadow:0 .5px 1px rgba(0,0,0,.5),inset 0 -.5px 0 rgba(0,0,0,.3);}
+.dm.back{background:linear-gradient(135deg,#4a403a 0%,#2a2420 55%,#191512 100%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.5),inset 1px 1px 0 rgba(255,255,255,.18);}
+.dm.back .hf{visibility:hidden;}
+.dm.back::before{background:rgba(255,255,255,.08);}
+.dm.mini .hf,.dm.mini::before{display:none;}
+.dm.mini .pin{width:3px;height:3px;}
+
+/* ── Status line ──────────────────────────────────────────────────────── */
+.status{display:flex;align-items:center;gap:8px;min-height:46px;}
+.msg{flex:1;min-width:0;display:flex;align-items:center;gap:9px;font-weight:900;font-size:1rem;line-height:1.2;}
+.msg .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent);}
+.msg small{display:block;font-weight:700;font-size:.8rem;color:var(--text-2);}
+.acts{display:flex;gap:6px;flex:none;}
+.acts .btn{min-height:44px;padding:0 14px;font-size:.92rem;gap:6px;}
+.acts .btn .ico{width:18px;height:18px;}
+
+/* ── Your rack ────────────────────────────────────────────────────────── */
+.rack{position:relative;flex:none;border-radius:16px;padding:14px 10px 12px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:8px 6px;
+  background:repeating-linear-gradient(92deg,rgba(255,255,255,.05) 0 2px,transparent 2px 9px),linear-gradient(180deg,#8a5428,#5e3517);
+  box-shadow:inset 0 2px 0 rgba(255,220,180,.25),inset 0 -5px 0 rgba(0,0,0,.3),0 10px 20px rgba(0,0,0,.4);transition:box-shadow .25s;}
+.rack::after{content:"";position:absolute;left:8px;right:8px;bottom:6px;height:5px;border-radius:3px;background:rgba(0,0,0,.25);box-shadow:0 1px 0 rgba(255,220,180,.18);pointer-events:none;}
+.rack.on{box-shadow:inset 0 2px 0 rgba(255,220,180,.25),inset 0 -5px 0 rgba(0,0,0,.3),0 0 0 2px var(--c,#ffc83d),0 0 18px color-mix(in srgb,var(--c,#ffc83d) 50%,transparent);}
+.rack .dm{cursor:pointer;border:0;padding:0;touch-action:none;transition:transform .2s var(--spring),filter .2s,opacity .2s;box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.95),inset -1px -2px 2px rgba(120,95,55,.22),0 3px 4px rgba(0,0,0,.45);}
+.rack .dm.sel{transform:translateY(-9px);box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),0 0 0 3px #ffd84a,0 0 14px rgba(255,216,74,.7),0 10px 12px rgba(0,0,0,.45);}
+.rack .dm.no{filter:brightness(.72) saturate(.6);}
+.rack .dm.drag{opacity:.25;}
+.rack .dm.dealin{animation:dealin .45s var(--ease) both;}
+.rack .dm.flipin{animation:flipin .35s var(--ease) both;}
+@keyframes dealin{from{transform:translateY(-60px) rotate(-12deg) scale(.6);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes flipin{0%{transform:scaleX(0);}100%{transform:none;}}
+.rack .lbl{position:absolute;left:12px;top:-1px;transform:translateY(-55%);padding:2px 9px;border-radius:999px;background:#5e3517;color:#f6dcb8;font-size:.68rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 2px 4px rgba(0,0,0,.35);white-space:nowrap;max-width:70%;overflow:hidden;text-overflow:ellipsis;}
+.rack .lbl b{color:#fff;}
+.rack .empty{color:#f6dcb8;font-weight:800;font-size:.9rem;opacity:.8;}
+.fly{position:fixed;z-index:60;pointer-events:none;margin:0;}
+.drag-dm{position:fixed;z-index:70;pointer-events:none;transform:translate(-50%,-50%) scale(1.08);filter:drop-shadow(0 10px 10px rgba(0,0,0,.5));}
+.tbl.bump{animation:bump .25s ease-out;}
+@keyframes bump{40%{transform:translateY(1.5px);}}
+
+/* ── Hand-over sheet ──────────────────────────────────────────────────── */
+.hres .head{text-align:center;font-weight:800;color:var(--text-2);margin:-4px 0 12px;}
+.hres .head b{color:var(--yellow);}
+.hres .row2{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.07);}
+.hres .row2 .who{width:84px;flex:none;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hres .row2 .tl{flex:1;display:flex;flex-wrap:wrap;gap:4px;min-height:30px;align-items:center;}
+.hres .row2 .tl .dm{--tw:17px;}
+.hres .row2 .tl em{font-style:normal;color:var(--green);font-weight:800;font-size:.85rem;}
+.hres .row2 .pp{width:52px;text-align:right;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text-2);}
+.hres .row2 .pp small{display:block;font-size:.66rem;color:var(--text-3);font-weight:800;}
+.hres .tot{display:flex;gap:8px;margin-top:14px;}
+.hres .tot>div{flex:1;text-align:center;padding:8px 6px;border-radius:12px;background:rgba(255,255,255,.06);}
+.hres .tot .n{font-size:.75rem;font-weight:800;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hres .tot .v{font-size:1.4rem;font-weight:900;font-variant-numeric:tabular-nums;}
+.hres .tot .g{font-size:.75rem;font-weight:900;color:var(--green);}
+
+/* ── iPad and desktop ─────────────────────────────────────────────────── */
+@media (min-width:700px) and (orientation:portrait){
+  .dw{max-width:720px;gap:12px;}
+  .dw .score{padding:7px 10px 8px;} .dw .score .nm{font-size:.86rem;} .dw .score .pt{font-size:1.5rem;}
+  .pq .nm{font-size:.9rem;} .pq .bk .dm{--tw:10px;} .plq{height:54px;} .layer{top:66px;}
+  .msg{font-size:1.15rem;} .msg small{font-size:.9rem;}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .dw{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:minmax(0,1fr) auto;gap:12px 20px;}
+  .pan{display:flex;flex-direction:column;gap:14px;grid-column:2;grid-row:1 / span 2;padding-top:4px;}
+  .dw .tbl{grid-column:1;grid-row:1;}
+  .dw .rack{grid-column:1;grid-row:2;}
+  .dw .scores{flex-direction:column;overflow:visible;}
+  .dw .score{flex:none;flex-direction:row;justify-content:space-between;padding:10px 14px;gap:10px;}
+  .dw .score .nm{font-size:.95rem;flex:1;}
+  .dw .score .pt{font-size:1.5rem;order:3;}
+  .dw .score .sub{font-size:.75rem;}
+  .dw .score.on{transform:translateX(-3px);}
+  .status{flex-direction:column;align-items:stretch;gap:12px;}
+  .msg{font-size:1.15rem;} .msg small{font-size:.9rem;}
+  .acts{flex-direction:column;} .acts .btn{min-height:50px;}
+  .pq .nm{font-size:.88rem;} .pq .bk .dm{--tw:10px;}
+}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var KEY = 'dominoes', SAVE = 'dominoes_state';
+  var VNAME = { draw: 'Draw', block: 'Block', fives: 'All Fives' };
+  var TARGETS = { draw: { short: 100, long: 150 }, block: { short: 100, long: 150 }, fives: { short: 150, long: 250 } };
+  var NUMW = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
+  var DNAME = ['blank', 'one', 'two', 'three', 'four', 'five', 'six'];
+
+  // ── Small helpers ─────────────────────────────────────────────────────────
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function last(a) { return a[a.length - 1]; }
+  function tid(t) { var a = Math.min(t[0], t[1]), b = Math.max(t[0], t[1]); return a * 7 + b; }
+  function pips(t) { return t[0] + t[1]; }
+  function isDbl(t) { return t[0] === t[1]; }
+  function tname(t) { return isDbl(t) ? 'double ' + DNAME[t[0]] : t[0] + '-' + t[1]; }
+  function handPips(h) { return h.reduce(function (s, t) { return s + pips(t); }, 0); }
+  function round5(x) { return Math.round(x / 5) * 5; }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
+  function fullSet() { var s = []; for (var a = 0; a <= 6; a++) for (var b = a; b <= 6; b++) s.push([a, b]); return s; }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S = {mode, variant, target, teams, players:[{name,cpu,color,hand:[[a,b]..]}], score:[per side],
+  //   hand, bone:[tiles], line:{root:{t:[w,e]}, arms:{E,W,N,S:[{t:[in,out]}]}, spin}|null,
+  //   cur, viewer, passes, phase:'deal'|'play'|'handend'|'over', last:{p,id,pts}, lacks:[[values]..],
+  //   handPts:[per side], rounds:[[per side]..], res:{..hand result}, undo, undoBy, hl:{..}, started}
+  var S = null, SPD = 1, tok = 0, lock = false, sel = -1;
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set(VNAME[S.variant] + ' · hand ' + S.hand + ' · ' + S.score.join('–'), { keys: [SAVE] });
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function later(fn, ms) { var t = tok; setTimeout(function () { if (t === tok && S) fn(); }, Math.max(0, ms * SPD)); }
+  function nSides() { return S.teams ? 2 : S.players.length; }
+  function sideOf(i) { return S.teams ? i % 2 : i; }
+  function sideName(s) {
+    if (!S.teams) return S.players[s].name;
+    return S.players.filter(function (p, i) { return i % 2 === s; }).map(function (p) { return p.name; }).join(' & ');
+  }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function firstHuman() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i; return 0; }
+  function who(i) { return S.players[i].name; }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Rules engine
+  // ═════════════════════════════════════════════════════════════════════════
+  function ends(L) {
+    if (!L) return [];
+    var r = L.root, A = L.arms, out = [];
+    out.push({ end: 'E', v: A.E.length ? last(A.E).t[1] : r.t[1] });
+    out.push({ end: 'W', v: A.W.length ? last(A.W).t[1] : r.t[0] });
+    if (L.spin && A.E.length && A.W.length) {
+      out.push({ end: 'N', v: A.N.length ? last(A.N).t[1] : r.t[0] });
+      out.push({ end: 'S', v: A.S.length ? last(A.S).t[1] : r.t[0] });
+    }
+    return out;
+  }
+  // All Fives: total of the open ends (a double at an end counts both halves;
+  // the spinner counts both halves until both of its long sides are played)
+  function endCount(L) {
+    if (!L) return 0;
+    var r = L.root, A = L.arms, s = 0;
+    if (L.spin) { if (!A.E.length || !A.W.length) s += r.t[0] * 2; }
+    else { if (!A.E.length) s += r.t[1]; if (!A.W.length) s += r.t[0]; }
+    ['E', 'W', 'N', 'S'].forEach(function (k) {
+      var a = A[k]; if (!a.length) return;
+      var t = last(a).t; s += t[0] === t[1] ? t[0] * 2 : t[1];
+    });
+    return s;
+  }
+  function playScore(L) { if (S.variant !== 'fives') return 0; var c = endCount(L); return c > 0 && c % 5 === 0 ? c : 0; }
+  function place(L, t, end) {
+    if (!L) {
+      return { root: { t: [t[0], t[1]] }, arms: { E: [], W: [], N: [], S: [] }, spin: S.variant === 'fives' && isDbl(t) };
+    }
+    L = clone(L);
+    var v = ends(L).filter(function (e) { return e.end === end; })[0].v;
+    var o = t[0] === v ? [t[0], t[1]] : [t[1], t[0]];
+    L.arms[end].push({ t: o });
+    if (S.variant === 'fives' && !L.spin && isDbl(o)) reroot(L, end);
+    return L;
+  }
+  // The first double in All Fives becomes the spinner: rebuild the line around it
+  function reroot(L, X) {
+    var arm = L.arms[X], sp = arm.pop(), back = [];
+    for (var j = arm.length - 1; j >= 0; j--) back.push({ t: [arm[j].t[1], arm[j].t[0]] });
+    var r = L.root.t;
+    if (X === 'W') { L.arms.E = back.concat([{ t: [r[0], r[1]] }], L.arms.E); L.arms.W = []; }
+    else { L.arms.W = back.concat([{ t: [r[1], r[0]] }], L.arms.W); L.arms.E = []; }
+    L.root = { t: sp.t }; L.spin = true;
+  }
+  function onLine(L) {
+    if (!L) return [];
+    var a = [L.root.t];
+    ['E', 'W', 'N', 'S'].forEach(function (k) { L.arms[k].forEach(function (x) { a.push(x.t); }); });
+    return a;
+  }
+  function legalFor(pi) {
+    var h = S.players[pi].hand, es = ends(S.line), out = [];
+    h.forEach(function (t) { es.forEach(function (e) { if (t[0] === e.v || t[1] === e.v) out.push({ t: t, end: e.end, v: e.v }); }); });
+    return out;
+  }
+  // Moves that lead to the same open ends and score are the same move: keep one
+  function distinct(ms) {
+    var seen = {}, out = [];
+    ms.forEach(function (m) {
+      var L2 = place(S.line, m.t, m.end);
+      var k = tid(m.t) + '|' + playScore(L2) + '|' + ends(L2).map(function (e) { return e.v; }).sort().join(',') + '|' + (L2.spin && S.line.arms.N ? (L2.arms.E.length && L2.arms.W.length ? 'o' : 'c') : '');
+      if (seen[k]) { var o = seen[k]; if (S.line.arms[m.end].length < S.line.arms[o.end].length) { out[out.indexOf(o)] = m; seen[k] = m; } return; }
+      seen[k] = m; out.push(m);
+    });
+    return out;
+  }
+  function canDraw() { return S.variant !== 'block' && S.bone.length > 0; }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Layout: the line snakes around corners to stay on the table.
+  // Units: a tile is 1 × 2. The root (lead tile or spinner) sits at (0,0).
+  // Each arm is a little turtle: it runs straight until the next tile would
+  // leave its region, turns a corner, then runs back the other way.
+  // ═════════════════════════════════════════════════════════════════════════
+  var DV = { E: [1, 0], W: [-1, 0], N: [0, -1], S: [0, 1] };
+  var ROT = { N: 0, E: 90, S: 180, W: -90 };
+  var OPP = { E: 'W', W: 'E', N: 'S', S: 'N' };
+  var EPS = 0.01;
+  function rectOf(g) { return { x0: g.cx - g.w / 2, x1: g.cx + g.w / 2, y0: g.cy - g.h / 2, y1: g.cy + g.h / 2 }; }
+  function overlap(a, b) { return a.x0 < b.x1 - EPS && b.x0 < a.x1 - EPS && a.y0 < b.y1 - EPS && b.y0 < a.y1 - EPS; }
+  function geom(st, kind, d2, dbl) {
+    var P = st.P, dv = DV[st.d], c, horiz;
+    if (kind === 's') {
+      horiz = dv[1] === 0;
+      if (dbl) return { cx: P[0] + .5 * dv[0], cy: P[1] + .5 * dv[1], w: horiz ? 1 : 2, h: horiz ? 2 : 1, rot: horiz ? 0 : 90, np: [P[0] + dv[0], P[1] + dv[1]], nd: st.d, cross: true };
+      return { cx: P[0] + dv[0], cy: P[1] + dv[1], w: horiz ? 2 : 1, h: horiz ? 1 : 2, rot: ROT[OPP[st.d]], np: [P[0] + 2 * dv[0], P[1] + 2 * dv[1]], nd: st.d };
+    }
+    var d2v = DV[d2], M;
+    if (kind === 't') M = [P[0] + .5 * dv[0], P[1] + .5 * dv[1]];
+    else { var off = st.cx + .5; M = [P[0] - .5 * dv[0] + off * d2v[0], P[1] - .5 * dv[1] + off * d2v[1]]; }   // hook beside the last half
+    horiz = d2v[1] === 0;
+    return { cx: M[0] + .5 * d2v[0], cy: M[1] + .5 * d2v[1], w: horiz ? 2 : 1, h: horiz ? 1 : 2, rot: ROT[OPP[d2]], np: [M[0] + 1.5 * d2v[0], M[1] + 1.5 * d2v[1]], nd: d2 };
+  }
+  function regionOK(arm, r, spin, RR) {
+    if (!spin) {
+      if (arm === 'E') return r.y0 >= -1 - EPS && (r.y0 >= 1 - EPS || r.x0 >= RR.x1 - EPS);
+      return r.y1 <= 1 + EPS && (r.y1 <= -1 + EPS || r.x1 <= RR.x0 + EPS);
+    }
+    if (arm === 'E') return r.x0 >= .5 - EPS && r.y0 >= -1 - EPS && (r.y1 <= 1 + EPS || r.x0 >= 1 - EPS);
+    if (arm === 'S') return r.y0 >= 1 - EPS && r.x1 <= 1 + EPS;
+    if (arm === 'W') return r.x1 <= -.5 + EPS && r.y1 <= 1 + EPS && (r.y0 >= -1 - EPS || r.x1 <= -1 + EPS);
+    return r.y1 <= -1 + EPS && r.x0 >= -1 - EPS;
+  }
+  // Try to place the next tile for one arm. relax: 0 strict, 1 ignore regions, 2 anything
+  function stepArm(st, ctx, dbl, relax) {
+    var tries = st.mode === 'run'
+      ? [['s'], ['t', st.pd], ['h', st.pd], ['t', OPP[st.pd]], ['h', OPP[st.pd]]]
+      : [['t', OPP[st.lastMain]], ['h', OPP[st.lastMain]], ['s'], ['t', st.lastMain], ['h', st.lastMain]];
+    for (var i = 0; i < tries.length; i++) {
+      var k = tries[i][0], d2 = tries[i][1];
+      var g = geom(st, k, d2, dbl && k === 's'), r = rectOf(g);
+      if (relax < 2) {
+        if (r.x0 < -ctx.W / 2 - EPS || r.x1 > ctx.W / 2 + EPS || r.y0 < -ctx.H / 2 - EPS || r.y1 > ctx.H / 2 + EPS) continue;
+        if (relax < 1 && !regionOK(st.arm, r, ctx.spin, ctx.RR)) continue;
+        if (ctx.rects.some(function (q) { return overlap(q, r); })) continue;
+      }
+      var ns = { arm: st.arm, P: g.np, d: g.nd, pd: st.pd, cx: g.cross ? 1 : .5, mode: st.mode, lastMain: st.lastMain };
+      if (k !== 's') {
+        if (d2 === st.pd || d2 === OPP[st.pd]) { ns.mode = 'corner'; if (st.mode === 'run') ns.lastMain = st.d; }
+        else ns.mode = 'run';
+      }
+      return { g: g, r: r, st: ns };
+    }
+    return relax < 2 ? null : null;
+  }
+  function layout(L, W, H, relax) {
+    var out = { ok: true, items: [], st: {}, rects: [] };
+    if (!L) return out;
+    var rt = L.root.t, rd = isDbl(rt);
+    var root = rd ? { cx: 0, cy: 0, w: 1, h: 2, rot: 0 } : { cx: 0, cy: 0, w: 2, h: 1, rot: -90 };
+    var RR = rectOf(root);
+    out.rects.push(RR);
+    out.items.push({ id: tid(rt), a: rt[0], b: rt[1], cx: 0, cy: 0, w: root.w, h: root.h, rot: root.rot, spin: L.spin, root: true });
+    var ctx = { W: W, H: H, spin: L.spin, RR: RR, rects: out.rects };
+    var pd = L.spin ? { E: 'S', S: 'W', W: 'N', N: 'E' } : { E: 'S', W: 'N' };
+    var starts = { E: [RR.x1, 0], W: [RR.x0, 0], N: [0, RR.y0], S: [0, RR.y1] };
+    Object.keys(pd).forEach(function (arm) {
+      var st = { arm: arm, P: starts[arm], d: arm, pd: pd[arm], cx: (arm === 'E' || arm === 'W') ? (rd ? 1 : .5) : .5, mode: 'run', lastMain: arm };
+      (L.arms[arm] || []).forEach(function (x) {
+        if (!out.ok && relax < 2) return;
+        var res = stepArm(st, ctx, isDbl(x.t), relax);
+        if (!res) { out.ok = false; return; }
+        out.rects.push(res.r);
+        out.items.push({ id: tid(x.t), a: x.t[0], b: x.t[1], cx: res.g.cx, cy: res.g.cy, w: res.g.w, h: res.g.h, rot: res.g.rot, cross: !!res.g.cross });
+        st = res.st;
+      });
+      out.st[arm] = st;
+    });
+    out.ctx = ctx;
+    return out;
+  }
+  function nextSlot(lay, end, dbl) {
+    var st = lay.st[end]; if (!st) return null;
+    var res = stepArm(st, lay.ctx, dbl, 0) || stepArm(st, lay.ctx, dbl, 1) || stepArm(st, lay.ctx, dbl, 2);
+    return res;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Kit shell, rules, setup
+  // ═════════════════════════════════════════════════════════════════════════
+  Kit.init({
+    id: 'dominoes',
+    theme: { felt: ['#1b7a52', '#0f5638', '#0a4129'], wood: ['#7b4a26', '#4b2a13'] },
+    onNew: function () { tok++; clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Dominoes: past games' }); } }],
+    rules:
+      '<p class="goal">Match the dots on your tiles to the open ends of the line. Get rid of all your tiles first to win the hand, and score the dots left in everyone else\'s hands.</p>' +
+      '<h3>The tiles</h3><ul><li>A double-six set has 28 tiles. Each tile has two ends with 0 (blank) to 6 dots.</li>' +
+      '<li>A <b>double</b> has the same number on both ends, like 4-4. Doubles are laid crosswise.</li></ul>' +
+      '<h3>Starting</h3><ul><li>With 2 players everyone gets 7 tiles. With 3 or 4 players everyone gets 5. The rest go face down in the <b>boneyard</b>.</li>' +
+      '<li>Whoever has the highest double puts it down first. If nobody has a double, the heaviest tile starts.</li>' +
+      '<li>Then play goes around the table, one tile each turn.</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Play a tile that matches an open end: a 6 goes next to a 6.</li>' +
+      '<li>Tap a tile to play it. If it fits in more than one place, glowing spots show where it can go: tap the one you want. You can also drag the tile there.</li>' +
+      '<li>The line turns corners when it reaches the edge of the table.</li></ul>' +
+      '<h3>Can\'t play?</h3><ul><li><b>Draw</b>: take tiles from the boneyard one at a time until one fits. If the boneyard is empty, you pass.</li>' +
+      '<li><b>Block</b>: no boneyard. If nothing fits, you pass.</li>' +
+      '<li><b>All Fives</b>: you draw, like the Draw game.</li></ul>' +
+      '<h3>Winning a hand</h3><ul><li>Play your last tile and shout <b>Domino!</b> You score all the dots left in your opponents\' hands.</li>' +
+      '<li>If nobody can play, the game is <b>blocked</b>. Everyone counts their dots: the lowest count wins and scores the other players\' dots. A tie scores nothing.</li></ul>' +
+      '<h3>All Fives (Muggins)</h3><ul><li>Add up the open ends after you play. If the total is 5, 10, 15, 20 and so on, you score it right away.</li>' +
+      '<li>A double at an end counts both halves (a 6-6 at the end counts 12).</li>' +
+      '<li>The first double is the <b>spinner</b>. Once both of its long sides have tiles, you can play on its other two sides too, so the line has four ends.</li>' +
+      '<li>The spinner counts both halves until both of its long sides are played on.</li>' +
+      '<li>Hand points are rounded to the nearest 5.</li></ul>' +
+      '<h3>The match</h3><ul><li>Keep dealing new hands until someone reaches the target: 100 or 150 points (All Fives: 150 or 250).</li>' +
+      '<li><b>Partners</b> (4 players): you team up with the player across from you and share a score. When either of you dominoes, your team scores both opponents\' dots.</li></ul>' +
+      '<h3>Pass and play</h3><p>Your tiles are secret. Between turns a screen asks you to pass the device. The next player holds the button for 3 seconds to see their tiles.</p>' +
+      '<h3>Undo</h3><p>Undo takes back the tile you just played, as long as the next player hasn\'t moved yet.</p>'
+  });
+
+  function showSetup() {
+    tok++; S = null; sel = -1; lock = false;
+    app.className = 'stage';
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 3 computer players' },
+        { id: 'pp', icon: 'users', title: 'Pass & play', desc: '2 to 4 people on one phone, tiles kept secret' },
+        { id: 'mix', icon: 'sparkle', title: 'People + computers', desc: 'Friends and robots at one table' }
+      ],
+      options: [
+        { id: 'variant', label: 'Game', value: 'draw', choices: [
+          ['draw', 'Draw', 'If you can\'t play, take tiles from the boneyard until one fits.'],
+          ['block', 'Block', 'No drawing. If you can\'t play, you pass.'],
+          ['fives', 'All Fives', 'Score points during play whenever the open ends add up to 5, 10, 15 and so on. The first double is a spinner with four sides.']] },
+        { id: 'target', label: 'Play to', value: 'short', help: 'How many points win the match.', choices: [
+          ['short', 'Shorter', '100 points (150 in All Fives).'],
+          ['long', 'Longer', '150 points (250 in All Fives).']] },
+        { id: 'teams', label: 'Partners (4 players)', value: 'off', help: 'With 4 players you can team up with the player sitting across from you.', choices: [
+          ['off', 'On your own', 'Each player keeps their own score.'],
+          ['on', 'Partners across', 'You and the player across share a score.']] },
+        { id: 'cpus', label: 'Computer players', value: 1, help: 'How many computer players join the people.', choices: [[1, '1'], [2, '2'], [3, '3']], when: function (m) { return m === 'mix'; } }
+      ],
+      players: {
+        min: 1, max: 4, count: 2,
+        range: function (m) { return m === 'mix' ? [1, 3] : [2, 4]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : false; }
+      },
+      onStart: function (cfg) {
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+        if (cfg.mode === 'mix') {
+          var want = Math.min(+cfg.options.cpus || 1, 4 - players.length);
+          if (want < (+cfg.options.cpus || 1)) Kit.toast('The table seats 4, so ' + want + (want === 1 ? ' computer joins' : ' computers join'));
+          Kit.cpuNames(want, players.map(function (p) { return p.name; }), 8).forEach(function (n) { players.push({ name: n, cpu: true }); });
+        }
+        players.forEach(function (p, i) { p.color = Kit.color(i); });
+        var teams = cfg.options.teams === 'on';
+        if (teams && players.length !== 4) { Kit.toast('Partners need 4 players'); teams = false; }
+        var v = cfg.options.variant || 'draw';
+        newMatch({ mode: cfg.mode, variant: v, target: TARGETS[v][cfg.options.target === 'long' ? 'long' : 'short'], teams: teams, players: players });
+      }
+    });
+  }
+
+  function newMatch(o) {
+    tok++; sel = -1; lock = false;
+    S = {
+      v: 1, mode: o.mode, variant: o.variant, target: o.target, teams: !!o.teams,
+      players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, color: p.color, hand: [] }; }),
+      score: [], hand: 0, bone: [], line: null, cur: 0, viewer: 0, passes: 0, phase: 'deal',
+      last: null, lacks: [], handPts: [], rounds: [], res: null, undo: null, undoBy: -1, started: Date.now(),
+      hl: { dom: {}, spare: null, bigPlay: null, block: null, bigHand: null, draw: null, fives: {} }
+    };
+    for (var i = 0; i < nSides(); i++) S.score.push(0);
+    S.viewer = firstHuman();
+    Kit.gameStart();
+    buildUI();
+    deal();
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Hand flow
+  // ═════════════════════════════════════════════════════════════════════════
+  function deal() {
+    var n = S.players.length, per = n === 2 ? 7 : 5, set = shuffle(fullSet());
+    S.hand++; S.line = null; S.passes = 0; S.last = null; S.res = null; S.undo = null; S.undoBy = -1; sel = -1;
+    S.players.forEach(function (p) {
+      p.hand = set.splice(0, per).sort(function (a, b) { return (b[1] + b[0] * 0.01) - (a[1] + a[0] * 0.01) || b[0] - a[0]; });
+      p.drew = 0;
+    });
+    if (window.__domDeal) { var dd = window.__domDeal; window.__domDeal = null; S.players.forEach(function (p, i) { if (dd[i]) p.hand = dd[i]; }); set = fullSet().filter(function (t) { return !S.players.some(function (p) { return p.hand.some(function (h) { return tid(h) === tid(t); }); }); }); shuffle(set); }
+    S.bone = set;
+    S.lacks = S.players.map(function () { return []; });
+    S.handPts = []; for (var i = 0; i < nSides(); i++) S.handPts.push(0);
+    S.phase = 'deal';
+    save(); paint({ deal: true });
+    Kit.sfx('deal');
+    later(function () { Kit.sfx('deal'); }, 160);
+    later(lead, 950);
+  }
+  function lead() {
+    var best = null;
+    S.players.forEach(function (p, pi) {
+      p.hand.forEach(function (t) {
+        var k = isDbl(t) ? 100 + t[0] : pips(t) + Math.max(t[0], t[1]) * 0.01;
+        if (!best || k > best.k) best = { k: k, pi: pi, t: t };
+      });
+    });
+    S.cur = best.pi; S.phase = 'play';
+    var txt = isDbl(best.t) ? who(best.pi) + ' leads the ' + tname(best.t) : 'Nobody has a double. ' + who(best.pi) + ' leads ' + tname(best.t);
+    if (who(best.pi) === 'You') txt = txt.replace('You leads', 'You lead');
+    say(best.pi, isDbl(best.t) ? cap(tname(best.t)) : 'No doubles: ' + tname(best.t));
+    doPlay(best.pi, best.t, null, { lead: true });
+  }
+  function beginTurn() {
+    if (!S || S.phase !== 'play') return;
+    sel = -1;
+    var p = S.players[S.cur];
+    save(); paint();
+    if (p.cpu) { later(cpuTurn, 720); return; }
+    if (humans() > 1 && S.viewer !== S.cur) {
+      // let everyone see the last play (and allow Undo) before covering the tiles
+      if (S.last && !S.players[S.last.p].cpu && S.viewer >= 0) later(handoff, 1100); else handoff();
+      return;
+    }
+    paint();
+  }
+  var handing = false;
+  function handoff() {
+    if (handing || !S || S.phase !== 'play' || S.players[S.cur].cpu || S.viewer === S.cur) return;
+    handing = true; S.viewer = -1; S.undo = null; S.undoBy = -1; save(); paint();
+    var t = tok, i = S.cur, p = S.players[i];
+    var lm = S.last && S.last.p !== i ? lastLine() : '';
+    Kit.handoff({ name: p.name, color: p.color, what: 'tiles', msg: lm }).then(function () {
+      handing = false;
+      if (t !== tok || !S || S.cur !== i || S.phase !== 'play') return;
+      S.viewer = i; if (S.undoBy !== i) { S.undo = null; S.undoBy = -1; } save(); paint({ fresh: true });
+    });
+  }
+  function lastLine() {
+    var l = S.last; if (!l) return '';
+    if (l.pass) return who(l.p) + ' passed.';
+    return who(l.p) + ' played the ' + tname(l.t) + (l.pts ? ' for ' + l.pts + ' points.' : '.');
+  }
+  function next() {
+    if (!S || S.phase !== 'play') return;
+    S.cur = (S.cur + 1) % S.players.length;
+    beginTurn();
+  }
+  function clearUndoIfOther(pi) { if (S.undo && pi !== S.undoBy) { S.undo = null; S.undoBy = -1; } }
+
+  function doPlay(pi, t, end, o) {
+    o = o || {};
+    if (!S || S.phase !== 'play' || lock) return;
+    var P = S.players[pi], hi = -1;
+    P.hand.forEach(function (h, k) { if (tid(h) === tid(t)) hi = k; });
+    if (hi < 0) return;
+    if (!o.lead && S.line && !ends(S.line).some(function (e) { return e.end === end && (t[0] === e.v || t[1] === e.v); })) return;
+    clearUndoIfOther(pi);
+    if (!P.cpu && !o.lead) { var snap = clone(S); snap.undo = null; snap.undoBy = -1; S.undo = JSON.stringify(snap); S.undoBy = pi; }
+    // where it flies from
+    var from = sourceRect(pi, tid(t));
+    P.hand.splice(hi, 1);
+    S.line = place(S.line, t, end);
+    S.passes = 0;
+    var pts = o.lead && S.variant === 'fives' ? (pips(t) % 5 === 0 && pips(t) > 0 ? pips(t) : 0) : playScore(S.line);
+    if (pts) {
+      S.score[sideOf(pi)] += pts; S.handPts[sideOf(pi)] += pts;
+      S.hl.fives[pi] = (S.hl.fives[pi] || 0) + pts;
+      if (!S.hl.bigPlay || pts > S.hl.bigPlay.pts) S.hl.bigPlay = { name: who(pi), pts: pts, hand: S.hand };
+    }
+    S.last = { p: pi, id: tid(t), t: t, pts: pts };
+    sel = -1; lock = true;
+    save(); paint({ fly: { id: tid(t), from: from, cpu: P.cpu && pi !== S.viewer } });
+    var dur = 430;
+    later(function () {
+      clack(); Kit.haptic('light');
+      bump();
+      if (pts) {
+        later(function () {
+          Kit.callout('+' + pts + '!', P.color); Kit.sfx('good'); Kit.haptic('medium'); say(pi, '+' + pts);
+          var es = document.querySelector('.ends'); if (es) { es.classList.remove('hit'); void es.offsetWidth; es.classList.add('hit'); }
+        }, 120);
+      }
+    }, dur);
+    later(function () {
+      lock = false; paintStatus();
+      if (S.score[sideOf(pi)] >= S.target) { S.phase = 'handend'; S.res = handResult('match', pi); save(); later(function () { finishMatch(); }, 900); return; }
+      if (!P.hand.length) { endHand('domino', pi); return; }
+      later(next, pts ? 650 : P.cpu ? 120 : 280);
+    }, dur + 60);
+  }
+  function drawOne(pi) {
+    if (!S || S.phase !== 'play' || lock || !canDraw()) return false;
+    var P = S.players[pi];
+    clearUndoIfOther(pi);
+    if (!P.drewTurn) { noteLacks(pi); }
+    P.drewTurn = (P.drewTurn || 0) + 1;
+    var t = S.bone.pop(); P.hand.push(t);
+    P.drew = (P.drew || 0) + 1;
+    if (!S.hl.draw || P.drewTurn > S.hl.draw.n) S.hl.draw = { name: who(pi), n: P.drewTurn, hand: S.hand };
+    lock = true; save();
+    var from = boneRect();
+    paint({ drawn: tid(t), drawer: pi });
+    Kit.sfx('flip');
+    flyBack(from, destRect(pi, tid(t)), function () { lock = false; paint({ drawn: tid(t), drawer: pi, reveal: true }); });
+    return true;
+  }
+  function noteLacks(pi) {
+    ends(S.line).forEach(function (e) { if (S.lacks[pi].indexOf(e.v) < 0) S.lacks[pi].push(e.v); });
+  }
+  function pass(pi) {
+    if (!S || S.phase !== 'play' || lock) return;
+    clearUndoIfOther(pi);
+    noteLacks(pi);
+    S.passes++;
+    S.last = { p: pi, pass: true };
+    say(pi, 'Pass'); Kit.sfx('tap');
+    S.players[pi].drewTurn = 0;
+    if (S.passes >= S.players.length) { save(); later(function () { endHand('block', -1); }, 700); return; }
+    save(); later(next, 650);
+  }
+
+  // ── Hand end ──────────────────────────────────────────────────────────────
+  function handResult(kind, wi) {
+    var n = S.players.length, pp = S.players.map(function (p) { return handPips(p.hand); });
+    var r = { kind: kind, wi: wi, side: -1, pts: 0, pips: pp, hands: S.players.map(function (p) { return p.hand.slice(); }) };
+    if (kind === 'match') { r.side = sideOf(wi); return r; }
+    if (kind === 'domino') r.side = sideOf(wi);
+    else {
+      var lo = Math.min.apply(null, pp), lows = [];
+      pp.forEach(function (x, i) { if (x === lo) lows.push(i); });
+      var sides = lows.map(sideOf).filter(function (s, k, a) { return a.indexOf(s) === k; });
+      if (sides.length === 1) { r.side = sides[0]; r.wi = lows[0]; r.low = lo; }
+    }
+    if (r.side >= 0) {
+      for (var i = 0; i < n; i++) if (sideOf(i) !== r.side) r.pts += pp[i];
+      if (S.variant === 'fives') r.pts = round5(r.pts);
+    }
+    return r;
+  }
+  function endHand(kind, wi) {
+    if (!S || S.phase !== 'play') return;
+    var r = handResult(kind, wi);
+    S.res = r; S.phase = 'handend'; S.undo = null; S.undoBy = -1;
+    if (r.side >= 0 && r.pts) { S.score[r.side] += r.pts; S.handPts[r.side] += r.pts; }
+    S.rounds.push(S.handPts.slice());
+    // highlights
+    if (kind === 'domino') {
+      S.hl.dom[wi] = (S.hl.dom[wi] || 0) + 1;
+      var spare = Math.min.apply(null, S.players.map(function (p, i) { return sideOf(i) === r.side ? 99 : p.hand.length; }));
+      if (spare < 99 && (!S.hl.spare || spare > S.hl.spare.n)) S.hl.spare = { name: who(wi), n: spare, hand: S.hand };
+    } else if (r.side >= 0 && (!S.hl.block || r.low < S.hl.block.pips)) S.hl.block = { name: who(r.wi), pips: r.low, hand: S.hand };
+    if (r.side >= 0 && (!S.hl.bigHand || r.pts > S.hl.bigHand.pts)) S.hl.bigHand = { name: sideName(r.side), pts: r.pts, hand: S.hand };
+    save(); paint();
+    if (kind === 'domino') {
+      Kit.callout('Domino!', S.players[wi].color); Kit.sfx('good'); Kit.haptic('success');
+      if (!S.players[wi].cpu || (S.teams && S.players.some(function (p, i) { return !p.cpu && sideOf(i) === r.side; }))) Kit.confetti({ count: 90 });
+    } else { Kit.callout('Blocked!'); Kit.sfx('bad'); }
+    later(showHandSheet, 1500);
+  }
+  var handSheet = null;
+  function showHandSheet() {
+    if (!S || S.phase !== 'handend' || !S.res) return;
+    if (handSheet) return;
+    var r = S.res, over = S.score.some(function (x) { return x >= S.target; });
+    var box = el('div', { class: 'hres' });
+    var head;
+    if (r.kind === 'domino') head = '<b>' + Kit.esc(who(r.wi)) + '</b> ' + (who(r.wi) === 'You' ? 'domino' : 'dominoes') + (r.pts ? ' and ' + (S.teams ? 'the team scores ' : 'scores ') + '<b>' + r.pts + '</b>' : '');
+    else if (r.side >= 0) head = 'Lowest count: <b>' + Kit.esc(who(r.wi)) + '</b> with ' + r.low + (r.low === 1 ? ' dot' : ' dots') + (r.pts ? ', scores <b>' + r.pts + '</b>' : '');
+    else head = 'A tie for the lowest count. Nobody scores.';
+    box.appendChild(el('div', { class: 'head', html: head }));
+    S.players.forEach(function (p, i) {
+      var tl = el('div', { class: 'tl' });
+      if (!r.hands[i].length) tl.appendChild(el('em', { text: 'Domino!' }));
+      r.hands[i].forEach(function (t) { tl.appendChild(tile(t[0], t[1], 'hz')); });
+      box.appendChild(el('div', { class: 'row2' }, [
+        el('div', { class: 'who', text: p.name, style: { color: p.color } }), tl,
+        el('div', { class: 'pp', html: r.pips[i] + '<small>' + (r.pips[i] === 1 ? 'dot' : 'dots') + '</small>' })
+      ]));
+    });
+    var tot = el('div', { class: 'tot' });
+    for (var s = 0; s < nSides(); s++) {
+      tot.appendChild(el('div', null, [el('div', { class: 'n', text: sideName(s) }), el('div', { class: 'v', text: String(S.score[s]) }),
+        el('div', { class: 'g', text: S.handPts[s] ? '+' + S.handPts[s] + ' this hand' : ' ' })]));
+    }
+    box.appendChild(tot);
+    box.appendChild(el('p', { class: 'muted', style: { 'text-align': 'center', 'margin-top': '10px', 'font-size': '.85rem' }, text: over ? 'The match is over.' : 'First to ' + S.target + ' wins the match.' }));
+    var title = r.kind === 'domino' ? 'Domino!' : 'Blocked game';
+    var t = tok, go = false;
+    function proceed() { handSheet = null; if (go || t !== tok) return; go = true; if (over) finishMatch(); else deal(); }
+    handSheet = Kit.sheet({ title: 'Hand ' + S.hand + ': ' + title, node: box, actions: [{ label: over ? 'See the results' : 'Deal the next hand', primary: true, onClick: proceed }], onClose: function () { setTimeout(proceed, 0); } });
+    if (!humans()) later(function () { if (handSheet) handSheet.close(); }, 1800);
+  }
+
+  // ── Match end ─────────────────────────────────────────────────────────────
+  function finishMatch() {
+    if (!S || S.phase === 'over') return;
+    if (S.res && S.res.kind === 'match') S.rounds.push(S.handPts.slice());
+    S.phase = 'over'; tok++;
+    var best = 0; for (var s = 1; s < nSides(); s++) if (S.score[s] > S.score[best]) best = s;
+    var wname = sideName(best);
+    var hl = [], H = S.hl;
+    var domCount = Object.keys(H.dom).map(function (i) { return { name: who(+i), n: H.dom[i] }; }).sort(function (a, b) { return b.n - a.n; });
+    if (H.spare && H.spare.n > 0) hl.push(H.spare.name + (H.spare.name === 'You' ? ' dominoed' : ' dominoed') + ' with ' + H.spare.n + (H.spare.n === 1 ? ' tile' : ' tiles') + ' to spare in hand ' + H.spare.hand);
+    if (H.bigPlay && H.bigPlay.pts >= 10) hl.push(H.bigPlay.name + ' scored ' + H.bigPlay.pts + ' in one play');
+    if (H.block) hl.push('Blocked game: ' + H.block.name + ' won with ' + H.block.pips + (H.block.pips === 1 ? ' pip' : ' pips'));
+    if (domCount.length && domCount[0].n >= 2) hl.push(domCount[0].name + ' dominoed ' + (domCount[0].n === 2 ? 'twice' : domCount[0].n + ' times'));
+    if (H.bigHand && H.bigHand.pts >= 15) hl.push('Biggest hand: ' + H.bigHand.name + ' scored ' + H.bigHand.pts + ' in hand ' + H.bigHand.hand);
+    if (H.draw && H.draw.n >= 4) hl.push(H.draw.name + ' drew ' + H.draw.n + ' tiles from the boneyard in one turn');
+    if (S.variant === 'fives') {
+      var fv = Object.keys(H.fives).map(function (i) { return { name: who(+i), n: H.fives[i] }; }).sort(function (a, b) { return b.n - a.n; })[0];
+      if (fv && fv.n >= 20) hl.push(fv.name + ' made ' + fv.n + ' points from fives during play');
+    }
+    hl.unshift(wname + ' won ' + S.score[best] + ' to ' + S.score.filter(function (x, i) { return i !== best; }).join(' to ') + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'));
+    var players = S.players.map(function (p, i) { return { name: p.name, score: S.score[sideOf(i)], cpu: p.cpu }; });
+    var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : S.mode === 'mix' ? ', with computers' : '');
+    Kit.record(KEY, {
+      started: S.started, mode: modeName, players: players, winner: wname,
+      summary: wname + ' won · ' + VNAME[S.variant],
+      rounds: { labels: S.rounds.map(function (r, i) { return 'Hand ' + (i + 1); }), scores: S.rounds.map(function (r) { return S.players.map(function (p, i) { return r[sideOf(i)]; }); }) },
+      highlights: hl.slice(0, 6)
+    });
+    clearSave(); paint();
+    var rank = [];
+    for (s = 0; s < nSides(); s++) rank.push({ name: sideName(s), score: S.score[s], color: S.players[s].color });
+    rank.sort(function (a, b) { return b.score - a.score; });
+    var winHumans = S.players.some(function (p, i) { return !p.cpu && sideOf(i) === best; });
+    var lose = humans() > 0 && !winHumans;
+    var again = { mode: S.mode, variant: S.variant, target: S.target, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
+    Kit.win({
+      icon: lose ? 'bot' : 'trophy',
+      title: S.teams ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
+      sub: VNAME[S.variant] + ' to ' + S.target + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'),
+      rank: rank, lose: lose,
+      again: function () { newMatch(again); },
+      extra: [{ label: 'Change players', onClick: showSetup }]
+    });
+  }
+
+  // ── Undo: take back your last tile before the next player moves ──────────
+  function undo() {
+    if (!S || !S.players) return;
+    if (S.phase === 'over') return Kit.toast('The game is over');
+    if (!S.undo) return Kit.toast(S.phase === 'play' && S.last && !S.players[S.last.p].cpu && S.last.p !== S.cur ? 'The next player already moved' : 'Nothing to undo');
+    tok++; lock = false; sel = -1; handing = false;
+    var snap = JSON.parse(S.undo); S = snap; S.undo = null; S.undoBy = -1;
+    S.viewer = S.cur;
+    Kit.sfx('whoosh'); Kit.toast('Tile taken back');
+    save(); buildUI(); paint(); beginTurn();
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Computer player: dump heavy tiles, keep options open, block when ahead,
+  // chase fives. Uses only what it can see (its hand, the line, who drew/passed).
+  // ═════════════════════════════════════════════════════════════════════════
+  function cpuTurn() {
+    if (!S || S.phase !== 'play') return;
+    if (lock) { later(cpuTurn, 120); return; }
+    var pi = S.cur, P = S.players[pi];
+    var ms = legalFor(pi);
+    if (!ms.length) {
+      if (canDraw()) { drawOne(pi); later(cpuTurn, 520); return; }
+      pass(pi); return;
+    }
+    P.drewTurn = 0;
+    var m = cpuChoose(pi, distinct(ms));
+    doPlay(pi, m.t, m.end);
+  }
+  function cpuChoose(pi, ms) {
+    var P = S.players[pi], n = S.players.length;
+    var known = {}; onLine(S.line).concat(P.hand).forEach(function (t) { known[tid(t)] = 1; });
+    var unknown = fullSet().filter(function (t) { return !known[tid(t)]; });
+    var opps = [], partner = -1;
+    S.players.forEach(function (q, i) { if (i === pi) return; if (sideOf(i) === sideOf(pi)) partner = i; else opps.push(i); });
+    var nxt = (pi + 1) % n;
+    var myPips = handPips(P.hand), oppTiles = Math.min.apply(null, opps.map(function (i) { return S.players[i].hand.length; }));
+    var ahead = P.hand.length - 1 < oppTiles || S.score[sideOf(pi)] > Math.max.apply(null, S.score.filter(function (x, s) { return s !== sideOf(pi); }));
+    var best = null, bs = -1e9;
+    ms.forEach(function (m) {
+      var L2 = place(S.line, m.t, m.end);
+      var rest = P.hand.filter(function (t) { return tid(t) !== tid(m.t); });
+      var e2 = ends(L2).map(function (e) { return e.v; });
+      var s = pips(m.t) * 1.0 + (isDbl(m.t) ? 3 : 0);
+      var playable = rest.filter(function (t) { return e2.some(function (v) { return t[0] === v || t[1] === v; }); }).length;
+      s += playable * 1.6 + (rest.length && !playable ? -6 : 0);
+      var vals = {}; rest.forEach(function (t) { vals[t[0]] = 1; vals[t[1]] = 1; });
+      s += Object.keys(vals).length * 0.5;
+      // Which ends can the others still match? (tiles we can't see)
+      var live = e2.filter(function (v) { return unknown.some(function (t) { return t[0] === v || t[1] === v; }); });
+      var nextLacks = S.lacks[nxt] || [];
+      var blocksNext = e2.every(function (v) { return nextLacks.indexOf(v) >= 0 || live.indexOf(v) < 0; });
+      if (sideOf(nxt) !== sideOf(pi)) { if (blocksNext) s += ahead ? 9 : 3; }
+      else if (blocksNext) s -= 4;
+      if (!live.length && playable) s += ahead ? 12 : 2;
+      if (S.variant === 'fives') {
+        s += playScore(L2) * 1.7;
+        // what could the next opponent score off this?
+        var threat = 0, cnt = 0;
+        if (sideOf(nxt) !== sideOf(pi)) unknown.forEach(function (t) {
+          var mx = 0;
+          ends(L2).forEach(function (e) { if (t[0] === e.v || t[1] === e.v) { var L3 = place(L2, t, e.end); mx = Math.max(mx, playScore(L3)); } });
+          threat += mx; cnt++;
+        });
+        if (cnt) s -= (threat / cnt) * Math.min(5, S.players[nxt].hand.length) * 0.55;
+      }
+      s += Math.random() * 1.5;
+      if (s > bs) { bs = s; best = m; }
+    });
+    return best;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Rendering
+  // ═════════════════════════════════════════════════════════════════════════
+  function tile(a, b, cls) {
+    var d = el('div', { class: 'dm' + (cls ? ' ' + cls : '') });
+    var h1 = el('div', { class: 'hf', 'data-v': a }), h2 = el('div', { class: 'hf', 'data-v': b });
+    for (var i = 0; i < 9; i++) { h1.appendChild(document.createElement('i')); h2.appendChild(document.createElement('i')); }
+    d.appendChild(h1); d.appendChild(h2); d.appendChild(el('b', { class: 'pin' }));
+    if (cls && cls.indexOf('hz') >= 0) { d.style.transform = 'rotate(-90deg)'; d.style.margin = 'calc(var(--tw) * -.5) calc(var(--tw) * .5)'; }
+    d.setAttribute('aria-label', a === b ? 'Double ' + a : a + ' and ' + b);
+    return d;
+  }
+  function back(cls) { var d = tile(0, 0, 'back' + (cls ? ' ' + cls : '')); d.setAttribute('aria-label', 'Face-down tile'); return d; }
+
+  var dw, scoresEl, tblEl, feltEl, plqEl, layerEl, boneEl, endsEl, hlabelEl, statusEl, msgEl, actsEl, rackEl;
+  var nodes = {};
+  function buildUI() {
+    app.innerHTML = ''; app.className = 'stage dmapp';
+    nodes = {};
+    dw = el('div', { class: 'dw' });
+    var pan = el('div', { class: 'pan' });
+    scoresEl = el('div', { class: 'scores' });
+    statusEl = el('div', { class: 'status' });
+    msgEl = el('div', { class: 'msg' }); actsEl = el('div', { class: 'acts' });
+    statusEl.appendChild(msgEl); statusEl.appendChild(actsEl);
+    pan.appendChild(scoresEl); pan.appendChild(statusEl);
+    tblEl = el('div', { class: 'tbl wood' });
+    feltEl = el('div', { class: 'felt-in' });
+    plqEl = el('div', { class: 'plq' });
+    layerEl = el('div', { class: 'layer' });
+    boneEl = el('button', { type: 'button', class: 'bone', 'aria-label': 'Boneyard', onclick: function () { humanDraw(); } });
+    endsEl = el('div', { class: 'ends' });
+    hlabelEl = el('div', { class: 'hlabel' });
+    feltEl.appendChild(plqEl); feltEl.appendChild(layerEl); feltEl.appendChild(boneEl); feltEl.appendChild(endsEl); feltEl.appendChild(hlabelEl);
+    feltEl.addEventListener('click', onFelt);
+    tblEl.appendChild(feltEl);
+    rackEl = el('div', { class: 'rack' });
+    dw.appendChild(pan); dw.appendChild(tblEl); dw.appendChild(rackEl);
+    app.appendChild(dw);
+    setBarH();
+  }
+  function setBarH() {
+    var b = document.querySelector('.gbar');
+    document.documentElement.style.setProperty('--barh', (b ? b.offsetHeight : 60) + 'px');
+  }
+
+  function paint(o) {
+    o = o || {};
+    if (!S || !dw) return;
+    paintScores(); paintSeats(o); paintStatus(); paintRack(o); paintBoard(o);
+  }
+  function paintScores() {
+    scoresEl.innerHTML = '';
+    var curSide = S.phase === 'play' ? sideOf(S.cur) : -1, top = Math.max.apply(null, S.score);
+    for (var s = 0; s < nSides(); s++) {
+      var members = S.players.map(function (p, i) { return i; }).filter(function (i) { return sideOf(i) === s; });
+      var tiles = members.map(function (i) { return S.players[i].hand.length; });
+      var sub = S.teams ? 'Team ' + (s + 1) : tiles[0] + (tiles[0] === 1 ? ' tile' : ' tiles');
+      var p0 = S.players[members[0]];
+      scoresEl.appendChild(el('div', { class: 'score' + (s === curSide ? ' on' : '') + (top > 0 && S.score[s] === top ? ' lead' : ''), style: { '--c': p0.color } }, [
+        el('div', { class: 'nm', html: (!S.teams && p0.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(sideName(s)) + '</span>' }),
+        el('div', { class: 'pt', text: String(S.score[s]) }),
+        el('div', { class: 'sub', text: sub })
+      ]));
+    }
+    scoresEl.appendChild(el('div', { class: 'score tgt' }, [el('div', { class: 'nm', text: 'Hand ' + S.hand }), el('div', { class: 'pt', text: String(S.target) }), el('div', { class: 'sub', text: VNAME[S.variant] })]));
+  }
+  function viewerIdx() { return S.viewer >= 0 ? S.viewer : (S.players[S.cur].cpu ? firstHuman() : S.cur); }
+  function seatSlots() {
+    var n = S.players.length, v = viewerIdx(), out = {};
+    var pos = n === 2 ? ['c'] : n === 3 ? ['l', 'r'] : ['l', 'c', 'r'];
+    for (var r = 1; r < n; r++) out[(v + r) % n] = pos[r - 1];
+    return out;
+  }
+  var plqNodes = {};
+  function paintSeats(o) {
+    plqEl.innerHTML = ''; plqNodes = {};
+    var map = seatSlots(), slots = {};
+    ['l', 'c', 'r'].forEach(function (k) {
+      if (!Object.keys(map).some(function (i) { return map[i] === k; })) return;
+      slots[k] = el('div', { class: 'slot ' + k }); plqEl.appendChild(slots[k]);
+    });
+    Object.keys(map).forEach(function (k) {
+      var i = +k, p = S.players[i], on = S.phase === 'play' && S.cur === i;
+      var bk = el('div', { class: 'bk' });
+      var cnt = p.hand.length, show = Math.min(cnt, 9);
+      for (var j = 0; j < show; j++) { var b = back('mini'); if (o.deal) { b.classList.add('pop'); b.style.animationDelay = (j * 60 + i * 20) + 'ms'; } bk.appendChild(b); }
+      bk.appendChild(el('b', { text: String(cnt) }));
+      var nm = el('div', { class: 'nm', html: '<i></i>' + (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' + (on && p.cpu ? '<span class="think"><i></i><i></i><i></i></span>' : '') });
+      var q = el('div', { class: 'pq' + (on ? ' on' : ''), style: { '--c': p.color } }, [nm, bk]);
+      plqNodes[i] = q;
+      slots[map[k]].appendChild(q);
+      addBubble(i);
+    });
+  }
+  // Speech bubbles survive repaints: they are re-attached until they expire
+  var bubbles = {};
+  function say(pi, text) { bubbles[pi] = { text: text, t: Date.now() }; addBubble(pi); }
+  function addBubble(pi) {
+    var b = bubbles[pi]; if (!b) return;
+    var age = Date.now() - b.t; if (age > 1650) { delete bubbles[pi]; return; }
+    var host = plqNodes[pi], cls = 'say';
+    if (!host) { host = rackEl; cls = 'rk-say'; }
+    if (!host) return;
+    var old = host.querySelector('.' + cls); if (old) old.remove();
+    var n = el('div', { class: cls, text: b.text }); n.style.animationDelay = (-age) + 'ms';
+    host.appendChild(n); setTimeout(function () { n.remove(); }, 1700 - age);
+  }
+  function myTurn() { return S && S.phase === 'play' && !S.players[S.cur].cpu && S.viewer === S.cur && !lock; }
+  function paintStatus() {
+    msgEl.innerHTML = ''; actsEl.innerHTML = '';
+    var cur = S.players[S.cur], line = '', sub = '', col = cur.color;
+    if (S.phase === 'deal') { line = 'Dealing hand ' + S.hand; sub = VNAME[S.variant] + ' · first to ' + S.target; }
+    else if (S.phase === 'handend' || S.phase === 'over') {
+      var r = S.res; line = r && r.kind === 'domino' ? who(r.wi) + (who(r.wi) === 'You' ? ' domino!' : ' dominoes!') : r && r.kind === 'match' ? sideName(r.side) + ' reached ' + S.target + '!' : 'Blocked!';
+      sub = S.phase === 'over' ? 'Match over' : 'Counting the dots…';
+      if (r && r.side >= 0) col = S.players[r.side].color;
+    } else if (cur.cpu) {
+      if (lock && S.last && S.last.p === S.cur && !S.last.pass) { line = lastLine().replace(/\.$/, ''); sub = S.players[S.cur].hand.length + ' tiles left'; }
+      else { line = cur.name + ' is thinking'; sub = S.last && S.last.p !== S.cur ? lastLine() : ''; }
+    } else if (S.viewer !== S.cur) {
+      line = 'Pass to ' + cur.name; sub = 'Their tiles stay hidden until they hold the button';
+    } else {
+      var ms = legalFor(S.cur);
+      if (ms.length) {
+        line = cur.name === 'You' || humans() === 1 ? 'Your turn' : Kit.poss(cur.name) + ' turn';
+        sub = sel >= 0 ? 'Tap a glowing spot to place it' : 'Tap a tile to play it';
+        if (S.variant === 'fives' && S.line) sub += ' · ends total ' + endCount(S.line);
+      } else if (canDraw()) {
+        line = 'Nothing fits'; sub = 'Draw from the boneyard until a tile fits';
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('plus') + '<span>Draw</span>', onclick: function () { humanDraw(); } }));
+      } else {
+        line = 'Nothing fits'; sub = S.variant === 'block' ? 'In Block you pass' : 'The boneyard is empty, so you pass';
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('right') + '<span>Pass</span>', onclick: function () { if (myTurn()) pass(S.cur); } }));
+      }
+    }
+    if (S.undo && S.phase === 'play' && !lock && S.last && S.last.p === S.undoBy && S.viewer === S.undoBy) {
+      actsEl.insertBefore(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('undo') + '<span>Undo</span>', onclick: function () { undo(); } }), actsEl.firstChild);
+    }
+    msgEl.style.setProperty('--c', col);
+    msgEl.appendChild(el('span', { class: 'dot' }));
+    msgEl.appendChild(el('span', null, [document.createTextNode(line), sub ? el('small', { text: sub }) : null]));
+  }
+  function rackSize(n) {
+    var w = rackEl.clientWidth - 20, big = Math.min(innerWidth, innerHeight) >= 700;
+    var maxW = big ? 50 : 40, gap = 6, rows = 1;
+    var tw = Math.min(maxW, (w - (n - 1) * gap) / Math.max(n, 1));
+    if (tw < 30 && n > 1) { rows = 2; var per = Math.ceil(n / 2); tw = Math.min(maxW, (w - (per - 1) * gap) / per); }
+    return { tw: Math.max(20, Math.floor(tw)), rows: rows };
+  }
+  function paintRack(o) {
+    rackEl.innerHTML = '';
+    var v = viewerIdx(), P = S.players[v];
+    var hidden = S.viewer < 0 || (humans() > 1 && S.viewer !== v);
+    var turn = S.phase === 'play' && S.cur === v && !hidden;
+    rackEl.classList.toggle('on', turn);
+    rackEl.style.setProperty('--c', P.color);
+    var sz = rackSize(Math.max(P.hand.length, S.players.length === 2 ? 7 : 5));
+    rackEl.style.minHeight = (sz.tw * 2 * sz.rows + (sz.rows - 1) * 8 + 26) + 'px';
+    rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : (P.name === 'You' || humans() <= 1 ? 'Your tiles' : '<b>' + Kit.esc(P.name) + '</b>’s tiles') }));
+    var ms = turn && !lock ? legalFor(v) : [];
+    var fit = {}; ms.forEach(function (m) { fit[tid(m.t)] = 1; });
+    if (!P.hand.length) rackEl.appendChild(el('div', { class: 'empty', text: 'No tiles left' }));
+    P.hand.forEach(function (t, k) {
+      var id = tid(t), d = hidden ? back() : tile(t[0], t[1]);
+      d.style.setProperty('--tw', sz.tw + 'px');
+      d.setAttribute('data-id', id);
+      if (!hidden) {
+        d.setAttribute('role', 'button'); d.tabIndex = 0;
+        if (sel === id) d.classList.add('sel');
+        if (ms.length && !fit[id]) d.classList.add('no');
+        d.addEventListener('pointerdown', function (e) { onRackDown(e, t, d); });
+        d.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapTile(t, d); } });
+      }
+      if (o.deal) { d.classList.add('dealin'); d.style.animationDelay = (k * 70) + 'ms'; }
+      if (o.drawn === id && o.drawer === v) { if (o.reveal) d.classList.add('flipin'); else d.style.visibility = 'hidden'; }
+      if (o.fly && o.fly.id === id) d.style.visibility = 'hidden';
+      rackEl.appendChild(d);
+    });
+    addBubble(v);
+  }
+
+  // ── Board ────────────────────────────────────────────────────────────────
+  var curLay = null, curXf = null, ghostEls = [];
+  function areaSize() { return { w: layerEl.clientWidth, h: layerEl.clientHeight }; }
+  function computeLayout() {
+    var A = areaSize(), maxU = Math.min(innerWidth, innerHeight) >= 700 ? 62 : 46;
+    var u = Math.max(14, Math.min(A.w / 9.6, A.h / 9.6, maxU));
+    var lay = null;
+    for (var k = 0; k < 7; k++) {
+      lay = layout(S.line, A.w / u - .3, A.h / u - .3, 0);
+      if (lay.ok) break;
+      u *= .88;
+    }
+    if (!lay.ok) lay = layout(S.line, A.w / u - .3, A.h / u - .3, 1);
+    if (!lay.ok) lay = layout(S.line, A.w / u - .3, A.h / u - .3, 2);
+    lay.u = u;
+    return lay;
+  }
+  function paintBoard(o) {
+    var A = areaSize();
+    // plaque band height varies (iPad): keep the layer below it
+    var lay = computeLayout(); curLay = lay;
+    // bounding box: placed tiles plus the next slot at each open end
+    var bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    function grow(r) { bx0 = Math.min(bx0, r.x0); bx1 = Math.max(bx1, r.x1); by0 = Math.min(by0, r.y0); by1 = Math.max(by1, r.y1); }
+    lay.rects.forEach(grow);
+    var openEnds = ends(S.line);
+    if (S.line) {
+      openEnds.forEach(function (e) { var ns = nextSlot(lay, e.end, false); if (ns) grow(ns.r); });
+      if (S.line.spin) ['N', 'S'].forEach(function (k) { if (!openEnds.some(function (e) { return e.end === k; })) { var ns = nextSlot(lay, k, false); if (ns) grow(ns.r); } });
+    }
+    if (bx0 > bx1) { bx0 = -1; bx1 = 1; by0 = -1; by1 = 1; }
+    var m = .4; bx0 -= m; bx1 += m; by0 -= m; by1 += m;
+    var s = Math.min(lay.u * 1.3, A.w / (bx1 - bx0), A.h / (by1 - by0));
+    var ox = A.w / 2 - (bx0 + bx1) / 2 * s, oy = A.h / 2 - (by0 + by1) / 2 * s;
+    curXf = { s: s, ox: ox, oy: oy };
+    var seen = {};
+    var lastId = S.last && !S.last.pass ? S.last.id : -1;
+    lay.items.forEach(function (it) {
+      seen[it.id] = 1;
+      var nd = nodes[it.id], fresh = false;
+      if (!nd || nd._a !== it.a || nd._b !== it.b) {
+        if (nd) nd.remove();
+        nd = tile(it.a, it.b); nd._a = it.a; nd._b = it.b; nd.classList.add('nt');
+        layerEl.appendChild(nd); nodes[it.id] = nd; fresh = true;
+      }
+      nd.classList.toggle('spin', !!it.spin);
+      nd.classList.toggle('last', it.id === lastId && S.phase === 'play');
+      var cx = ox + it.cx * s, cy = oy + it.cy * s;
+      nd.style.setProperty('--tw', s + 'px');
+      nd.style.left = (cx - s / 2) + 'px'; nd.style.top = (cy - s) + 'px';
+      nd.style.transform = 'rotate(' + it.rot + 'deg)';
+      if (fresh) {
+        void nd.offsetWidth; nd.classList.remove('nt');
+        if (o.fly && o.fly.id === it.id) flyIn(nd, it, o.fly, s);
+      }
+    });
+    Object.keys(nodes).forEach(function (id) { if (!seen[id]) { nodes[id].remove(); delete nodes[id]; } });
+    // Ghost targets for the selected tile
+    ghostEls.forEach(function (g) { g.remove(); }); ghostEls = [];
+    if (sel >= 0 && myTurn()) {
+      var t = S.players[S.cur].hand.filter(function (h) { return tid(h) === sel; })[0];
+      if (t) distinct(legalFor(S.cur).filter(function (mv) { return tid(mv.t) === sel; })).forEach(function (mv) {
+        var v = mv.v, oth = t[0] === v ? t[1] : t[0];
+        var ns = nextSlot(lay, mv.end, isDbl(t)); if (!ns) return;
+        var r = ns.r, g = el('div', { class: 'ghost', style: { left: (ox + r.x0 * s) + 'px', top: (oy + r.y0 * s) + 'px', width: ((r.x1 - r.x0) * s) + 'px', height: ((r.y1 - r.y0) * s) + 'px' } });
+        var pts = S.variant === 'fives' ? playScore(place(S.line, t, mv.end)) : 0;
+        if (pts) g.appendChild(el('b', { text: '+' + pts }));
+        g._mv = mv;
+        g.addEventListener('click', function (e) { e.stopPropagation(); if (myTurn()) humanPlay(mv); });
+        layerEl.appendChild(g); ghostEls.push(g);
+      });
+    }
+    // Boneyard and ends
+    boneEl.innerHTML = '';
+    var pile = el('div', { class: 'pile' }), nb = Math.min(S.bone.length, 4);
+    for (var i = 0; i < nb; i++) { var b = back('mini'); b.style.setProperty('--tw', '11px'); b.style.left = (i * 6) + 'px'; b.style.top = (i % 2 ? 3 : 0) + 'px'; b.style.transform = 'rotate(' + (i % 2 ? 90 : 84) + 'deg)'; pile.appendChild(b); }
+    boneEl.appendChild(pile);
+    boneEl.appendChild(el('span', { text: S.variant === 'block' ? 'Block: no drawing' : S.bone.length ? S.bone.length + ' in the boneyard' : 'Boneyard empty' }));
+    var canD = myTurn() && !legalFor(S.cur).length && canDraw();
+    boneEl.classList.toggle('go', canD);
+    boneEl.classList.toggle('none', S.variant === 'block' || !S.bone.length);
+    boneEl.disabled = !canD;
+    endsEl.style.display = S.variant === 'fives' && S.line ? '' : 'none';
+    if (S.variant === 'fives' && S.line) endsEl.innerHTML = 'Ends <b>' + endCount(S.line) + '</b>';
+  }
+  function flyIn(nd, it, f, s) {
+    if (!nd.animate) return;
+    var r = nd.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var from = f.from || { x: cx, y: cy - 120, w: s };
+    var dx = from.x - cx, dy = from.y - cy, k = (from.w || s) / s, r0 = f.cpu ? it.rot + (Math.random() * 40 - 20) : 0;
+    nd.animate([
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + r0 + 'deg) scale(' + k + ')', offset: 0 },
+      { transform: 'translate(' + dx * .35 + 'px,' + (dy * .35 - 18) + 'px) rotate(' + (it.rot * .7 + r0 * .3) + 'deg) scale(' + (1.12) + ')', offset: .6 },
+      { transform: 'rotate(' + it.rot + 'deg) scale(1)', offset: 1 }
+    ], { duration: 430 * SPD, easing: 'cubic-bezier(.3,.6,.35,1)' });
+  }
+  function sourceRect(pi, id) {
+    if (pi === viewerIdx() && S.viewer === pi) {
+      var n = rackEl && rackEl.querySelector('.dm[data-id="' + id + '"]');
+      if (n) { var r = n.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; }
+    }
+    var q = plqNodes[pi] || rackEl;
+    if (q) { var rq = q.getBoundingClientRect(); return { x: rq.left + rq.width / 2, y: rq.top + rq.height / 2, w: 14 }; }
+    return null;
+  }
+  function boneRect() { var r = boneEl.getBoundingClientRect(); return { x: r.left + 22, y: r.top + r.height / 2, w: 11 }; }
+  function destRect(pi, id) {
+    if (pi === viewerIdx() && S.viewer === pi) {
+      var n = rackEl.querySelector('.dm[data-id="' + id + '"]');
+      if (n) { var r = n.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; }
+    }
+    var q = plqNodes[pi];
+    if (q) { var rq = q.getBoundingClientRect(); return { x: rq.left + rq.width / 2, y: rq.top + rq.height - 10, w: 9 }; }
+    var rr = rackEl.getBoundingClientRect(); return { x: rr.left + rr.width / 2, y: rr.top + rr.height / 2, w: 30 };
+  }
+  function flyBack(from, to, done) {
+    var b = back('fly'), w0 = from.w || 11;
+    b.style.setProperty('--tw', w0 + 'px');
+    b.style.left = (from.x - w0 / 2) + 'px'; b.style.top = (from.y - w0) + 'px';
+    document.body.appendChild(b);
+    var dur = 380 * SPD;
+    if (b.animate) b.animate([
+      { transform: 'rotate(90deg) scale(1)' },
+      { transform: 'translate(' + (to.x - from.x) * .5 + 'px,' + ((to.y - from.y) * .5 - 30) + 'px) rotate(30deg) scale(' + (1 + (to.w / w0 - 1) * .6) + ')' },
+      { transform: 'translate(' + (to.x - from.x) + 'px,' + (to.y - from.y) + 'px) rotate(0deg) scale(' + (to.w / w0) + ')' }
+    ], { duration: dur, easing: 'cubic-bezier(.3,.6,.35,1)', fill: 'forwards' });
+    var t = tok;
+    setTimeout(function () { b.remove(); if (t === tok && S) done(); }, dur + 20);
+  }
+  function bump() { if (!tblEl) return; tblEl.classList.remove('bump'); void tblEl.offsetWidth; tblEl.classList.add('bump'); }
+
+  // ── Clack: two ivory tiles meeting (local; the kit has no clack sound) ────
+  var actx = null;
+  function clack() {
+    try { if (localStorage.getItem('gn_sound') === '0') return; } catch (e) {}
+    try {
+      var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      actx = actx || new C(); if (actx.state === 'suspended') actx.resume();
+      var t = actx.currentTime;
+      [[0, .5, 2600], [0.028, .22, 3400]].forEach(function (c) {
+        var n = Math.floor(actx.sampleRate * 0.03), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+        for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 4);
+        var src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+        f.type = 'bandpass'; f.frequency.value = c[2]; f.Q.value = 1.6; g.gain.value = c[1];
+        src.buffer = buf; src.connect(f); f.connect(g); g.connect(actx.destination); src.start(t + c[0]);
+      });
+      var o = actx.createOscillator(), og = actx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(1900, t); o.frequency.exponentialRampToValueAtTime(900, t + .05);
+      og.gain.setValueAtTime(.0001, t); og.gain.exponentialRampToValueAtTime(.12, t + .003); og.gain.exponentialRampToValueAtTime(.0001, t + .06);
+      o.connect(og); og.connect(actx.destination); o.start(t); o.stop(t + .07);
+    } catch (e) {}
+  }
+
+  // ── Input ────────────────────────────────────────────────────────────────
+  function humanPlay(mv) {
+    if (!myTurn()) return;
+    S.players[S.cur].drewTurn = 0;
+    doPlay(S.cur, mv.t, mv.end);
+  }
+  function humanDraw() {
+    if (!myTurn() || legalFor(S.cur).length || !canDraw()) return;
+    drawOne(S.cur);
+  }
+  function tapTile(t, d) {
+    if (!myTurn()) { if (S && S.phase === 'play' && S.players[S.cur].cpu) Kit.toast('Wait for ' + who(S.cur)); return; }
+    var all = legalFor(S.cur);
+    var ms = distinct(all.filter(function (m) { return tid(m.t) === tid(t); }));
+    if (!ms.length) {
+      Kit.sfx('bad'); Kit.haptic('error');
+      if (d) { d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake'); }
+      Kit.toast(all.length ? 'That tile doesn’t fit an open end' : canDraw() ? 'Nothing fits. Draw from the boneyard' : 'Nothing fits. You pass');
+      return;
+    }
+    if (ms.length === 1) { humanPlay(ms[0]); return; }
+    sel = sel === tid(t) ? -1 : tid(t);
+    Kit.sfx('tick'); Kit.haptic('tick');
+    paint();
+  }
+  function onFelt(e) {
+    if (e.target.closest('.ghost') || e.target.closest('.bone')) return;
+    if (sel >= 0) { sel = -1; paint(); }
+  }
+  var drag = null;
+  function onRackDown(e, t, d) {
+    if (e.button > 0 || drag) return;
+    drag = { t: t, d: d, x: e.clientX, y: e.clientY, moved: false, ghost: null, pid: e.pointerId };
+    window.addEventListener('pointermove', onRackMove);
+    window.addEventListener('pointerup', onRackUp);
+    window.addEventListener('pointercancel', onRackCancel);
+  }
+  function unbind() { window.removeEventListener('pointermove', onRackMove); window.removeEventListener('pointerup', onRackUp); window.removeEventListener('pointercancel', onRackCancel); }
+  function onRackMove(e) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && dx * dx + dy * dy < 64) return;
+    if (!drag.moved) {
+      if (!myTurn()) return;
+      var ms = legalFor(S.cur).filter(function (m) { return tid(m.t) === tid(drag.t); });
+      if (!ms.length) return;
+      drag.moved = true;
+      sel = tid(drag.t); paint();
+      var d0 = rackEl.querySelector('.dm[data-id="' + sel + '"]'); if (d0) { d0.classList.add('drag'); drag.d = d0; }
+      drag.ghost = tile(drag.t[0], drag.t[1], 'drag-dm');
+      drag.ghost.style.setProperty('--tw', (d0 ? d0.getBoundingClientRect().width : 36) + 'px');
+      document.body.appendChild(drag.ghost);
+    }
+    e.preventDefault();
+    drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
+    var hit = ghostAt(e.clientX, e.clientY);
+    ghostEls.forEach(function (g) { g.classList.toggle('hot', g === hit); });
+  }
+  function ghostAt(x, y) {
+    var best = null, bd = 1e9;
+    ghostEls.forEach(function (g) {
+      var r = g.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, dd = Math.hypot(cx - x, cy - y);
+      var lim = Math.max(48, Math.max(r.width, r.height) * .9);
+      if (dd < lim && dd < bd) { bd = dd; best = g; }
+    });
+    return best;
+  }
+  function onRackUp(e) {
+    var dg = drag;
+    if (!dg || e.pointerId !== dg.pid) return;
+    drag = null; unbind();
+    if (!dg.moved) { tapTile(dg.t, dg.d); return; }
+    if (dg.ghost) dg.ghost.remove();
+    var hit = ghostAt(e.clientX, e.clientY);
+    if (!hit && ghostEls.length === 1) {
+      var fr = feltEl.getBoundingClientRect();
+      if (e.clientX > fr.left && e.clientX < fr.right && e.clientY > fr.top && e.clientY < fr.bottom) hit = ghostEls[0];
+    }
+    if (hit && hit._mv && myTurn()) { humanPlay(hit._mv); return; }
+    if (dg.d) dg.d.classList.remove('drag');
+    paint();
+  }
+  function onRackCancel(e) { var dg = drag; drag = null; unbind(); if (dg && dg.ghost) dg.ghost.remove(); if (S) paint(); }
+  document.addEventListener('keydown', function (e) {
+    if (!S || document.querySelector('.k-scrim') || document.querySelector('.k-ho')) return;
+    if (e.key === 'Escape' && sel >= 0) { sel = -1; paint(); }
+    if ((e.key === 'd' || e.key === 'D') && myTurn()) humanDraw();
+  });
+  var rT = 0;
+  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && dw) { setBarH(); paint(); } }, 80); });
+
+  // ── Test hooks ───────────────────────────────────────────────────────────
+  window.__dom = {
+    state: function () { return S; }, legal: function () { return S ? distinct(legalFor(S.cur)) : []; }, lock: function () { return lock; },
+    speed: function (x) { SPD = x; },
+    play: function (i) { var m = distinct(legalFor(S.cur))[i]; if (m && myTurn()) { humanPlay(m); return true; } return false; },
+    draw: humanDraw, pass: function () { if (myTurn()) pass(S.cur); },
+    allCpu: function () { S.players.forEach(function (p) { p.cpu = true; }); tok++; lock = false; save(); buildUI(); resumeFlow(); },
+    load: function (st) { tok++; lock = false; sel = -1; S = st; buildUI(); resumeFlow(); },
+    layout: function (L, W, H, r) { return layout(L, W, H, r || 0); }, ends: ends, endCount: endCount, place: function (L, t, e) { return place(L, t, e); }
+  };
+
+  function resumeFlow() {
+    if (!S) return;
+    handing = false;
+    paint();
+    if (S.phase === 'deal') { if (!S.line) later(lead, 400); else { S.phase = 'play'; beginTurn(); } }
+    else if (S.phase === 'play') {
+      if (!S.players[S.cur].cpu && humans() > 1) { S.viewer = -1; handoff(); }
+      else beginTurn();
+    }
+    else if (S.phase === 'handend') { if (S.res && S.res.kind === 'match') finishMatch(); else showHandSheet(); }
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.players && saved.players.length && saved.phase !== 'over') { S = saved; buildUI(); resumeFlow(); }
+  else showSetup();
+})();
+</script>
+</body>
+</html>

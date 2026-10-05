@@ -1022,7 +1022,9 @@
   // Covers the screen with "Pass to <name>". The player must press and HOLD
   // the button for 3 seconds (hold: ms) before the cover lifts and their
   // hidden cards/tiles show for their turn. Letting go early resets it.
-  // Call it again before the next player's turn.
+  // Call it again before the next player's turn. The cover sits under the game
+  // bar so the menu (Undo, New game) still works; opts.hint replaces the hint
+  // text; Kit.handoff.close() removes an open cover without revealing.
   function handoff(o) {
     o = o || {};
     var HOLD = o.hold || 3000;
@@ -1033,7 +1035,8 @@
       var btn = el('button', { type: 'button', class: 'k-ho-btn', 'aria-label': 'Hold for 3 seconds to show your ' + (o.what || 'cards') }, [
         el('span', { html: ring }), el('span', { class: 'k-ho-ic', html: icon('eye') })
       ]);
-      var hint = el('div', { class: 'k-ho-hint', text: 'Hold for 3 seconds to see your ' + (o.what || 'cards') });
+      var HINT = o.hint || ('Hold for 3 seconds to see your ' + (o.what || 'cards'));
+      var hint = el('div', { class: 'k-ho-hint', text: HINT });
       var cover = el('div', { class: 'k-ho', role: 'dialog', 'aria-modal': 'true', style: { '--ho': c } }, [
         el('div', { class: 'k-ho-in' }, [
           el('div', { class: 'k-ho-av', style: { '--c': c }, text: String(o.name || '?').charAt(0).toUpperCase() }),
@@ -1043,8 +1046,9 @@
           btn, hint
         ])
       ]);
+      var old = doc.querySelector('.k-ho'); if (old) old.remove();
       doc.body.appendChild(cover);
-      requestAnimationFrame(function () { cover.classList.add('show'); });
+      cover.classList.add('show');
       var pg = cover.querySelector('.pg'), t0 = 0, raf = 0, done = false, lastTick = 0;
       function frame(t) {
         if (!t0) t0 = t;
@@ -1066,7 +1070,7 @@
         cancelAnimationFrame(raf); btn.classList.remove('holding');
         pg.style.transition = 'stroke-dashoffset .25s'; pg.style.strokeDashoffset = String(CIRC);
         setTimeout(function () { pg.style.transition = ''; }, 260);
-        hint.textContent = 'Hold for 3 seconds to see your ' + (o.what || 'cards');
+        hint.textContent = HINT;
       }
       function finish() {
         done = true; haptic('success'); sfx('pop');
@@ -1083,6 +1087,8 @@
       btn.addEventListener('keyup', function (e) { if (e.key === ' ' || e.key === 'Enter') stop(); });
     });
   }
+
+  handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,

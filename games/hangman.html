@@ -111,7 +111,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
   .pic svg{max-height:420px;}
 }
 .next{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
-/* Hand-off and secret word screens */
+/* Pass-to-guesser and secret word screens */
 .cover{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px 10px;}
 .cover .big{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.08);color:var(--text-2);}
 .cover .big .ico{width:40px;height:40px;}
@@ -588,9 +588,17 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opa
       el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: btn, onclick: fn })]);
     app.appendChild(c);
   }
+  // The word writer holds to start, so the guesser can't see the word being typed
+  var hoOpen = false;
   function coverSet() {
+    if (hoOpen) return;
+    hoOpen = true;
     var W = S.W, setter = S.players[W.setter].name, guesser = S.players[W.guesser].name;
-    cover('eye', 'Pass to ' + setter, '<b>' + Kit.esc(guesser) + '</b>, no peeking! ' + Kit.esc(setter) + ' is about to write a secret word.', "I'm " + setter, function () { S.phase = 'set'; save(); render(); });
+    Kit.handoff({ name: setter, color: Kit.color(W.setter), what: 'word', msg: guesser + ', no peeking! ' + setter + ' is about to write a secret word.' }).then(function () {
+      hoOpen = false;
+      if (!S || S.phase !== 'cover-set') return;
+      S.phase = 'set'; save(); render();
+    });
   }
   function coverGuess() {
     var W = S.W, guesser = S.players[W.guesser].name;
