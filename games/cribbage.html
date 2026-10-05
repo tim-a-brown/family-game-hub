@@ -679,6 +679,18 @@
     return !S.revealed || S.viewer !== a;
   }
   function reveal() { S.viewer = actor(); S.revealed = true; Kit.sfx('flip'); save(); render(); }
+  // Pass and play: cover the table until the next player holds to see their hand
+  var hoFor = -1;
+  function askHandoff() {
+    var a = actor();
+    if (hoFor === a) return;
+    hoFor = a;
+    Kit.handoff({ name: nm(a), color: Kit.color(a), what: 'cards' }).then(function () {
+      hoFor = -1;
+      if (!S || S.phase === 'over') return;
+      if (needCover() && actor() === a) reveal(); else paintAll();
+    });
+  }
 
   // ── Board (persistent SVG) ──────────────────────────────────────────────
   var boardEl = null, pegNodes = [[], []], scEls = [];
@@ -923,14 +935,7 @@
   function paintBar() {
     barEl.innerHTML = '';
     if (S.phase === 'over') return;
-    if (needCover()) {
-      var a = actor();
-      barEl.appendChild(el('div', { class: 'passcard' }, [
-        el('span', { class: 'hint', text: 'Pass the phone to ' + nm(a) }),
-        el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('eye') + '<span>Show ' + Kit.esc(nm(a)) + "'s cards</span>", onclick: reveal })
-      ]));
-      return;
-    }
+    if (needCover()) { hint('Pass the phone to ' + Kit.esc(nm(actor()))); askHandoff(); return; }
     if (S.phase === 'cutdeal') {
       if (!S.cutCards) barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('cards') + '<span>Cut for deal</span>', onclick: cutForDeal }));
       else {

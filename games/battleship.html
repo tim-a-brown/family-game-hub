@@ -113,14 +113,6 @@
 .pbtns{display:flex;gap:8px;margin-top:12px;}
 .pbtns .btn{flex:1;white-space:nowrap;}
 
-/* Pass-the-phone screen */
-.privacy{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:90px 28px 40px;text-align:center;
-  background:radial-gradient(120% 80% at 50% 30%,#1d2a3c,#0c1220);animation:rise .3s var(--ease) both;}
-.privacy .ph{width:84px;height:84px;border-radius:24px;display:grid;place-items:center;background:rgba(255,255,255,.08);color:#8fd0ff;}
-.privacy .ph .ico{width:44px;height:44px;}
-.privacy h2{font-family:var(--display);font-weight:400;font-size:2rem;}
-.privacy p{color:var(--text-2);max-width:300px;line-height:1.4;}
-.privacy .btn{min-width:240px;}
 
 /* Landscape iPad: the main grid on the left, everything else in a column beside it */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
@@ -167,7 +159,7 @@
       '<h3>Winning</h3><p>The first player to sink the whole enemy fleet wins.</p>' +
       '<h3>Tips</h3><ul><li>Spread your shots in a checkerboard pattern. Every ship covers at least two squares, so you won\'t miss any.</li>' +
       '<li>After a hit, try the squares next to it to find which way the ship runs.</li></ul>' +
-      '<h3>Pass and play</h3><p>Each player places ships in secret. Between turns a screen asks you to pass the phone, so nobody peeks.</p>'
+      '<h3>Pass and play</h3><p>Each player places ships in secret. Between turns a screen asks you to pass the phone. Hold the button for 3 seconds to see your fleet, so nobody peeks.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -589,17 +581,19 @@
     app.classList.toggle('bs-battle', S.phase !== 'place');
     if (S.phase === 'place') renderPlace(); else renderBattle();
   }
+  // Pass and play: cover the screen until the next player holds to see their fleet
+  var hoOpen = false;
   function renderPrivacy() {
+    if (hoOpen) return;
+    hoOpen = true;
     var v = viewer(), name = S.players[v].name, placing = S.phase === 'place';
-    var txt = placing ? (v === 1 ? name + ' places their ships next. ' + S.players[0].name + ', no peeking!' : '') :
-      (S.log ? 'Last shot: ' + S.log.replace(/^You/, S.players[1 - v].name) + '. ' : '') + 'Hand the phone to ' + name + ' and look away.';
-    var box = el('div', { class: 'privacy' }, [
-      el('div', { class: 'ph', html: Kit.icon('phone') }),
-      el('h2', { text: 'Pass to ' + name }),
-      el('p', { text: txt }),
-      el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: "I'm " + name + ': ' + (placing ? 'place ships' : 'show my fleet'), onclick: function () { S.pass = false; Kit.sfx('pop'); save(); render(); } })
-    ]);
-    app.appendChild(box);
+    var msg = placing ? (v === 1 ? name + ' places their ships next. ' + S.players[0].name + ', no peeking!' : name + ' places their ships.') :
+      (S.log ? 'Last shot: ' + S.log.replace(/^You/, S.players[1 - v].name) + '.' : '');
+    Kit.handoff({ name: name, color: Kit.color(v), what: 'ships', msg: msg }).then(function () {
+      hoOpen = false;
+      if (!S || !S.pass) return;
+      S.pass = false; save(); render();
+    });
   }
   function renderPlace() {
     var v = S.placing, f = S.fleets[v], p = S.players[v];
@@ -706,7 +700,7 @@
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.fleets && saved.players && saved.phase !== 'over') {
     S = saved; busy = false;
-    if (S.mode === '2p' && S.phase === 'battle') S.pass = true;
+    if (S.mode === '2p') S.pass = true;
     render(); maybeCpu();
   } else showSetup();
 })();
