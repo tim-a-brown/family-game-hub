@@ -152,7 +152,12 @@ var GameIcon = (function () {
     blackjack: function (c) { return txt('21', 15, c, 12.5); },
     poker: function () { return path(SPADE, K); },
     roulette: function () { var s = ''; for (var i = 0; i < 10; i++) { var a1 = i * Math.PI / 5, a2 = (i + 1) * Math.PI / 5; s += path('M12 12L' + (12 + 10 * Math.cos(a1)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a1)).toFixed(2) + 'A10 10 0 0 1 ' + (12 + 10 * Math.cos(a2)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a2)).toFixed(2) + 'z', i % 2 ? K : R); } return s + circ(12, 12, 4, '#1d7a4a') + circ(12, 12, 1.5, Y); },
-    slots: function () { return txt('7', 22, R, 12.5); },
+    slots: function () {   // a pair of cherries, the classic slot symbol
+      return line('M7 13C8.4 8.6 11.4 5.4 15.6 3', '#2f8a3a', 2.2) + line('M16.8 13.4C16.6 9.6 16.6 6.4 15.6 3', '#2f8a3a', 2.2) +
+        path('M15.6 3c2.8-2 6-1.6 7.8.4-2.6 1.8-5.6 1.8-7.8-.4z', G) +
+        circ(7, 17.6, 5.4, R) + circ(17, 18.2, 5.4, R) +
+        circ(5.2, 15.8, 1.5, W, ' opacity=".8"') + circ(15.2, 16.4, 1.5, W, ' opacity=".8"');
+    },
     craps: function () { return rect(1.5, 6, 11, 11, 2.5, R, ' transform="rotate(-12 7 11.5)"') + circ(4.6, 9.4, 1.1, W) + circ(7, 11.6, 1.1, W) + circ(9.4, 13.8, 1.1, W) + rect(11.5, 7, 11, 11, 2.5, K, ' transform="rotate(10 17 12.5)"') + circ(15, 10.4, 1.1, W) + circ(19.2, 14.6, 1.1, W); },
     baccarat: function (c) { return txt('9', 22, c, 12.5); },
     threecardpoker: function (c) { return rect(2, 5, 9, 14, 1.8, c, ' transform="rotate(-16 6 12)"') + rect(7.5, 4, 9, 14, 1.8, K) + rect(13, 5, 9, 14, 1.8, R, ' transform="rotate(16 17 12)"'); },
