@@ -211,6 +211,12 @@
 .trayw.thud{animation:thud .45s;}
 @keyframes thud{0%,100%{transform:none;}20%{transform:translate(-6px,2px);}45%{transform:translate(5px,-2px);}70%{transform:translate(-3px,1px);}}
 
+/* Main battle button docked at the bottom on phones and portrait iPad, inside the rounded corners */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:14px calc(16px + var(--corner-x)) calc(var(--safe-b) + 10px + var(--corner-y));
+  background:linear-gradient(180deg,rgba(20,16,41,0),rgba(20,16,41,.92) 30%);}
+.dock .btn{max-width:688px;margin:0 auto;}
+.fight{padding-bottom:84px;}
+
 /* Purchase */
 .buy{display:grid;gap:8px;}
 .urow{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border-radius:14px;background:rgba(255,255,255,.06);}
@@ -248,8 +254,9 @@
 .frow .fn{flex:1;min-width:0;font-weight:800;font-size:.92rem;}
 .frow .fn small{display:block;color:var(--text-3);font-size:.74rem;}
 .assign{display:flex;flex-direction:column;gap:10px;margin:8px 0 16px;}
-.arow{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:rgba(255,255,255,.06);flex-wrap:wrap;}
-.arow .an{display:flex;align-items:center;gap:8px;min-width:150px;font-weight:900;}
+.arow{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06);}
+.arow .an{display:flex;align-items:center;gap:8px;font-weight:900;}
+@media (min-width:700px){ .arow{flex-direction:row;align-items:center;} .arow .an{min-width:190px;} }
 .arow .chipbtns{flex:1;}
 
 /* Phones */
@@ -272,9 +279,12 @@
 /* Wide screens (iPad landscape, laptop): two columns */
 @media (min-width:900px) and (orientation:landscape){
   .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:20px;}
-  .tools{grid-template-columns:1fr 1fr;}
+  .tools{grid-template-columns:repeat(3,1fr);}
+  .tool{padding:8px 10px;gap:8px;}
   .fight{grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);align-items:start;}
   .fight .trayw{position:sticky;top:64px;}
+  .fight{padding-bottom:0;}
+  .dock{position:static;padding:0;background:none;}
   .tray{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px);}
   .bset{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;}
   .bset .odds{margin:0 0 12px;}
@@ -873,7 +883,7 @@
     if (B.stage === 'done') h += resultHTML(B);
     else if (B.phase === 'cas') h += casHTML(B);
     else {
-      h += '<button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="b-roll">' + ic('dice') + '<span>Roll: ' + stepLabel(B) + '</span></button>';
+      h += '<div class="dock"><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="b-roll">' + ic('dice') + '<span>Roll: ' + stepLabel(B) + '</span></button></div>';
       var extra = '';
       if (B.round > 1 && !B.mid && B.next !== 'open') extra += '<button type="button" class="btn btn-soft" data-act="b-retreat">Attacker retreats</button>';
       if (B.next !== 'open' && !B.mid) {
@@ -960,7 +970,7 @@
       });
       h += '</div><p class="cmsg' + (msg ? ' bad' : '') + '">' + (msg || 'Ready') + '</p></div>';
     });
-    h += '<button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="c-ok"' + (ok ? '' : ' disabled') + '>' + ic('check') + '<span>Remove casualties</span></button>';
+    h += '<div class="dock"><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="c-ok"' + (ok ? '' : ' disabled') + '>' + ic('check') + '<span>Remove casualties</span></button></div>';
     return h;
   }
 
@@ -991,6 +1001,11 @@
     setTimeout(function () { Kit.sfx('roll'); }, 180);
     setTimeout(function () {
       halves.forEach(function (hv) { hv.classList.add('landed'); });
+      var cas = app.querySelector('.cas');
+      if (cas && innerWidth < 900) setTimeout(function () {
+        var top = cas.getBoundingClientRect().top;
+        if (top > innerHeight * 0.62) window.scrollTo({ top: window.scrollY + top - innerHeight * 0.5, behavior: 'smooth' });
+      }, 700);
       if (!info) return;
       var tA = info.a, tD = info.d;
       if (info.label === '') { Kit.sfx(tA ? 'bad' : 'good'); Kit.haptic(tA ? 'heavy' : 'light'); }
@@ -1190,8 +1205,8 @@
       (R.dmg.length ? '<span class="hits"><small>Damage</small>' + R.dealt + '</span>' : '') + '</div>';
     h += R.dmg.length ? '<div class="groups"><div class="grp"><div class="dd">' + R.dmg.map(function (v) { return '<span class="dw hit">' + Kit.die(v).outerHTML + '</span>'; }).join('') + '</div></div></div>' : '<div class="ready">' + (R.stage === 'done' ? 'No bombers got through' : '') + '</div>';
     h += '</div>' + (R.stage === 'done' ? '<div class="stamp' + (R.dealt ? ' win' : '') + '"' + (anim ? ' style="animation-delay:.9s"' : '') + '>' + (R.dealt ? R.dealt + ' damage' : 'Safe') + '</div>' : '') + '</div></div><div class="ctl">';
-    if (R.stage === 'aa') h += '<button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-roll">' + ic('dice') + '<span>Roll anti-aircraft fire</span></button>';
-    else if (R.stage === 'dmg') h += '<p class="note">' + pl(R.n - R.shot, 'bomber') + ' got through.</p><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-roll">' + ic('dice') + '<span>Roll damage</span></button>';
+    if (R.stage === 'aa') h += '<div class="dock"><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-roll">' + ic('dice') + '<span>Roll AA fire</span></button></div>';
+    else if (R.stage === 'dmg') h += '<p class="note">' + pl(R.n - R.shot, 'bomber') + ' got through.</p><div class="dock"><button type="button" class="btn btn-primary btn-lg btn-block roll" data-act="sbr-roll">' + ic('dice') + '<span>Roll damage</span></button></div>';
     else {
       h += '<div class="result"><h3>' + (R.dealt ? R.dealt + ' damage' : 'No damage') + '</h3><p>' + esc(f.name) + ' now has ' + f.dmg + ' damage (max ' + 2 * f.val + '). ' + D.n + ' pays 1 IPC per damage to repair it, and it can only place ' + Math.max(0, f.val - f.dmg) + ' units until then.</p></div>';
       h += '<div class="row2"><button type="button" class="btn btn-soft" data-act="bomb">Another raid</button><button type="button" class="btn btn-primary" data-act="home">Done</button></div>';
