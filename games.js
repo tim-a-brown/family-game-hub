@@ -47,8 +47,7 @@ var GAMES = [
   { id: 'sandlot',     name: 'Sandlot',      color: '#000', cat: 'specialty', min: 1, max: 4, tag: 'Baseball card battles with your old cards', play: 'sandlot' },
   { id: 'lorcana',     name: 'Lorcana',      color: '#a855f7', cat: 'specialty', min: 1, max: 4, tag: 'Real cards and art, vs the computer or pass & play', play: 'lorcana-play', score: 'lorcana',
     launch: [
-      { icon: 'phone', title: 'Play on this device', desc: 'You against the computer, with the real cards', file: 'lorcana-play.html?mode=cpu' },
-      { icon: 'users', title: 'Pass and play', desc: 'Two players share this device. Hands stay hidden', file: 'lorcana-play.html?mode=pass' },
+      { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play, with the real cards', file: 'lorcana-play.html' },
       { icon: 'book', title: 'Card library', desc: 'Browse every card, by ink, cost or film', file: 'lorcana-play.html?library=1' },
       { icon: 'pencil', title: 'Keep score', desc: 'Playing with real cards? Track the lore here', file: 'lorcana' }
     ] },
