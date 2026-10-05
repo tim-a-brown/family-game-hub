@@ -129,6 +129,8 @@
 .spinbtn{overflow:hidden;font-family:var(--display);font-weight:400;font-size:1.35rem!important;letter-spacing:.04em;}
 .spinbtn .pw{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.15),rgba(255,255,255,.55));transform-origin:left;transform:scaleX(0);}
 .spinbtn .lb{position:relative;}
+.spinbtn.full .pw{animation:pwfull .26s ease-in-out infinite alternate;}
+@keyframes pwfull{from{background:linear-gradient(90deg,rgba(255,255,255,.2),rgba(255,255,255,.55));}to{background:linear-gradient(90deg,rgba(255,120,60,.35),rgba(255,255,255,.85));}}
 .info{display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;padding:0 10px;border-radius:var(--r);
   background:rgba(255,255,255,.06);font-weight:900;color:var(--text);text-align:center;}
 .info b{color:var(--yellow);font-family:var(--display);font-weight:400;font-size:1.35rem;}
@@ -245,6 +247,8 @@
       ding: function () { tone(1568, 0, 1.3, 'sine', 0.16); tone(3136, 0, 0.5, 'sine', 0.045); tone(2349, 0, 0.8, 'triangle', 0.025); },
       touch: function () { tone(760, 0, 0.08, 'triangle', 0.06); noise(0, 0.03, 0.05, 3000); },
       click: function () { noise(0, 0.016, 0.16, 2200); tone(1900, 0, 0.018, 'square', 0.016); },
+      // Peg on rubber flapper: v is the impact speed; harder hits are louder and brighter
+      peg: function (v) { var k = clamp((v || 1) / 2.5, 0.06, 1); noise(0, 0.01 + 0.012 * k, 0.03 + 0.17 * k, 1300 + 1500 * k); tone(900 + 1100 * k, 0, 0.016 + 0.01 * k, 'square', 0.004 + 0.014 * k); },
       buzz: function () { tone(110, 0, 0.6, 'square', 0.06); tone(117, 0, 0.6, 'sawtooth', 0.05); },
       bankrupt: function () { tone(98, 0, 1.0, 'sawtooth', 0.07); tone(104, 0, 1.0, 'square', 0.05); tone(392, 0.12, 1.4, 'sawtooth', 0.05, 60); },
       lose: function () { tone(262, 0, 0.3, 'triangle', 0.1, 200); tone(196, 0.22, 0.55, 'triangle', 0.1, 140); },
@@ -257,7 +261,7 @@
       horn: function () { tone(220, 0, 1.0, 'sawtooth', 0.06); tone(277, 0, 1.0, 'sawtooth', 0.05); tone(330, 0, 1.0, 'sawtooth', 0.04); },
       chime: function () { [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, i * 0.07, 0.55, 'sine', 0.08); }); }
     };
-    return function (n) { if (!on()) return; try { FX[n](); } catch (e) {} };
+    return function (n, a) { if (!on()) return; try { FX[n](a); } catch (e) {} };
   })();
 
   // ── Puzzles (family-friendly, real show categories) ─────────────────────
@@ -367,17 +371,69 @@
   function wait(ms) { var e = epoch; return new Promise(function (res, rej) { setTimeout(function () { if (e === epoch) res(); else rej(CANCEL); }, ms * SPD); }); }
   function run(fn) { Promise.resolve().then(fn).catch(function (err) { if (err !== CANCEL) console.error(err); }); }
 
+  // Wheel physics. Units: wheel radius = 1, seconds, wheel inertia = 1.
+  // The wheel turns on a bearing (friction + a little air drag). 24 pegs sit on the rim at the wedge
+  // corners. The flapper is a rubber pointer hinged above the wheel: a damped rotational spring that
+  // stiffens near centre and goes soft as it bends. Pegs and flapper touch through a stiff, slightly
+  // lossy contact, so every peg pushes the flapper aside, costs the wheel energy, and the flapper
+  // snaps back into the next wedge. Fixed 1/600 s steps keep it stable and repeatable. The result is
+  // read off the wheel angle once everything has come to rest.
+  var WP = { Iw: 1, HP: 1.22, FL: 0.285, RP: 0.925, PR: 0.024, kf: 0.3, Kp: 0.1, bs: 0.08, If: 0.0003, cf: 0.007,
+    kc: 300, cc: 0.5, mu: 0.05, F0: 0.25, F1: 0.04, Cd: 0.01, Fs: 0.03, W1: 0.08 };
+  var W_MIN = 3.4, W_MAX = 7.3, SIM_H = 1 / 600, SIM_CAP = 40;
+  function omegaFor(power) { return (W_MIN + (W_MAX - W_MIN) * clamp(power || 0, 0, 1)) * (0.96 + Math.random() * 0.08); }
+  function makeSim() {
+    var N = 24, A = Math.PI * 2 / N, P = WP, s = { th: 0, om: 0, b: 0, bv: 0, t: 0, touch: false, rest: 0 };
+    function hw(u) { return 0.05 * (1 - u) + 0.010 * u; }
+    // kin: the wheel is moved by hand, so contact forces act on the flapper only
+    function step(h, onHit, kin) {
+      var th = s.th, om = s.om, b = s.b, bv = s.bv, L = P.FL;
+      var base = ((th % A) + A) % A, tw = 0, tb = 0, touching = false, sb = Math.sin(b), cb = Math.cos(b);
+      for (var k = -2; k <= 1; k++) {
+        var ph = base + k * A; if (ph < -0.6 || ph > 0.6) continue;
+        var sp = Math.sin(ph), cp = Math.cos(ph), rx = P.RP * sp, ry = P.HP - P.RP * cp; // peg, relative to the hinge
+        var u = (rx * sb + ry * cb) / L; u = u < 0 ? 0 : u > 1 ? 1 : u;
+        var dx = rx - u * L * sb, dy = ry - u * L * cb, d = Math.sqrt(dx * dx + dy * dy), rc = P.PR + hw(u);
+        if (d >= rc || d < 1e-9) continue;
+        touching = true;
+        var nx = dx / d, ny = dy / d;
+        var vx = om * P.RP * cp - bv * u * L * cb, vy = om * P.RP * sp + bv * u * L * sb; // peg velocity relative to flapper
+        var vn = vx * nx + vy * ny;
+        if (!s.touch && onHit) onHit(-vn);
+        var F = P.kc * (rc - d) + (vn < 0 ? -P.cc * vn : 0);
+        var Ft = -P.mu * F * Math.tanh((vx * -ny + vy * nx) / 0.05);
+        var fx = F * nx - Ft * ny, fy = F * ny + Ft * nx;
+        tw += P.RP * (fx * cp + fy * sp);
+        tb -= u * L * (fx * cb - fy * sb);
+      }
+      s.touch = touching;
+      if (!kin) {
+        var ao = Math.abs(om), fr = (P.Fs + (P.F0 - P.Fs) * Math.min(1, ao / P.W1)) * Math.tanh(om / 0.01) + P.F1 * om + P.Cd * om * ao;
+        s.om = om + (tw - fr) / P.Iw * h;
+      }
+      s.bv = bv + (tb - P.kf * b - P.Kp * Math.tanh(b / P.bs) - P.cf * bv) / P.If * h;
+      s.th = th + s.om * h; s.b = b + s.bv * h;
+      if (s.b > 1.2) { s.b = 1.2; if (s.bv > 0) s.bv *= -0.3; } else if (s.b < -1.2) { s.b = -1.2; if (s.bv < 0) s.bv *= -0.3; }
+      s.t += h;
+      if (!touching && Math.abs(s.om) < 0.004 && Math.abs(s.b) < 0.006 && Math.abs(s.bv) < 0.08) s.rest += h; else s.rest = 0;
+      return s.rest > 0.12;
+    }
+    function index() { var a = ((-s.th) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); return Math.floor(a / A) % N; }
+    function pegGap() { var x = ((s.th % A) + A) % A; return Math.min(x, A - x); }
+    return { s: s, step: step, index: index, pegGap: pegGap };
+  }
+
   var Wheel = (function () {
-    var N = 24, A = Math.PI * 2 / N, Z = A * 0.3, KC = 11, F0 = 0.2, F1 = 0.1, H = 1 / 240;
-    var cv, g, C = 300, dpr = 1, R = 120, off = null, wedges = [], theta = 0, omega = 0, dir = 1, contact = false;
-    var flap = 0, flapV = 0, glow = -1, glowT0 = 0, raf = 0, last = 0, acc = 0, spinning = null, spinT0 = 0, lastClick = 0, lastHap = 0;
+    var N = 24, A = Math.PI * 2 / N, H = SIM_H;
+    var cv, g, C = 300, dpr = 1, R = 120, off = null, wedges = [], sim = makeSim(), st = sim.s;
+    var glow = -1, glowT0 = 0, raf = 0, last = 0, acc = 0, spinning = null, lastClick = 0, lastHap = 0, power = null;
     var drag = null, hooks = {};
     function mount(canvas, h) {
       cv = canvas; g = cv.getContext('2d'); hooks = h || {};
       cv.addEventListener('pointerdown', function (e) {
         if (spinning || !hooks.canFlick || !hooks.canFlick()) return;
         e.preventDefault();
-        drag = { last: angleOf(e), s: [[performance.now(), theta]] };
+        drag = { last: angleOf(e), th: st.th, s: [[performance.now(), st.th]] };
         try { cv.setPointerCapture(e.pointerId); } catch (x) {}
         if (hooks.onGrab) hooks.onGrab();
         kick();
@@ -386,8 +442,8 @@
         if (!drag) return;
         var a = angleOf(e), da = a - drag.last;
         if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
-        drag.last = a; theta += da;
-        var now = performance.now(); drag.s.push([now, theta]);
+        drag.last = a; drag.th += da;
+        var now = performance.now(); drag.s.push([now, drag.th]);
         while (drag.s.length > 2 && now - drag.s[0][0] > 120) drag.s.shift();
       });
       function up() {
@@ -412,10 +468,14 @@
       buildOff(); draw();
     }
     function setWedges(w) { wedges = w; glow = -1; buildOff(); draw(); }
-    function setAngle(a) { theta = a || 0; glow = -1; draw(); }
-    function indexAt() { var a = ((-theta) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); return Math.floor(a / A) % N; }
-    function rel() { var d = ((theta % A) + A) % A; if (d > A / 2) d -= A; return d; }
-    function zone() { var d = rel(); if (dir > 0) return d > -Z && d < 0 ? (d + Z) / Z : 0; return d < Z && d > 0 ? (Z - d) / Z : 0; }
+    // Restore a saved angle. Keep the pointer clear of the pegs (inside the same wedge) so the
+    // flapper hangs free; older saves could stop right on a peg.
+    function setAngle(a) {
+      a = a || 0; var x = ((a % A) + A) % A, m = 0.07;
+      if (x < m) a += m - x; else if (x > A - m) a -= x - (A - m);
+      st.th = a; st.om = 0; st.b = 0; st.bv = 0; st.touch = false; glow = -1; draw();
+    }
+    function indexAt() { return sim.index(); }
 
     function light(w) { return w.t === 'lose' || w.t === 'free' || w.t === 'env' || w.top || w.c === '#fbd331'; }
     function wedgeFill(o, w, i) {
@@ -514,13 +574,20 @@
       var ring = g.createRadialGradient(cx, cy, R * 0.98, cx, cy, R * 1.14);
       ring.addColorStop(0, '#0a0c2c'); ring.addColorStop(0.5, '#262a72'); ring.addColorStop(1, '#0b0d33');
       g.beginPath(); g.arc(cx, cy, R * 1.13, 0, Math.PI * 2); g.fillStyle = ring; g.fill();
-      var nb = 40, mode = spinning ? 'chase' : glow >= 0 && now - glowT0 < 2600 ? 'flash' : 'idle', step = Math.floor(now / (spinning ? 70 : 520));
+      var nb = 40, mode = power !== null ? 'power' : spinning ? 'chase' : glow >= 0 && now - glowT0 < 2600 ? 'flash' : 'idle', step = Math.floor(now / (spinning ? 70 : 520));
+      var full = power !== null && power >= 1, blink = Math.floor(now / 140) % 2 === 0;
       for (i = 0; i < nb; i++) {
-        var on = mode === 'chase' ? (i + step) % 4 === 0 : mode === 'flash' ? Math.floor(now / 160) % 2 === 0 : (i + step) % 2 === 0;
         var ba = i * Math.PI * 2 / nb, bx = cx + Math.cos(ba) * R * 1.075, by = cy + Math.sin(ba) * R * 1.075, br = R * 0.02;
-        if (on) { g.fillStyle = 'rgba(255,214,110,.28)'; g.beginPath(); g.arc(bx, by, br * 2.3, 0, Math.PI * 2); g.fill(); }
-        g.fillStyle = on ? '#fff3c4' : '#5d5230'; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
+        var on, col = '#fff3c4', halo = 'rgba(255,214,110,.28)';
+        if (mode === 'power') {
+          // The marquee doubles as the power meter: it fills from the bottom up both sides
+          var fr = (1 - Math.sin(ba)) / 2; on = fr <= power + 0.001 && (!full || blink);
+          col = fr < 0.5 ? '#fff3c4' : fr < 0.8 ? '#ffc94a' : '#ff6a3d'; halo = fr < 0.8 ? 'rgba(255,200,90,.35)' : 'rgba(255,100,60,.4)';
+        } else on = mode === 'chase' ? (i + step) % 4 === 0 : mode === 'flash' ? Math.floor(now / 160) % 2 === 0 : (i + step) % 2 === 0;
+        if (on) { g.fillStyle = halo; g.beginPath(); g.arc(bx, by, br * 2.3, 0, Math.PI * 2); g.fill(); }
+        g.fillStyle = on ? col : '#5d5230'; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
       }
+      var theta = st.th;
       if (off) {
         var sz = off.width / dpr;
         g.save(); g.translate(cx, cy); g.rotate(theta); g.drawImage(off, -sz / 2, -sz / 2, sz, sz); g.restore();
@@ -534,62 +601,83 @@
       var gl = g.createRadialGradient(cx - R * 0.4, cy - R * 0.5, R * 0.05, cx - R * 0.2, cy - R * 0.3, R * 1.1);
       gl.addColorStop(0, 'rgba(255,255,255,.16)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = gl; g.beginPath(); g.arc(cx, cy, R * 0.97, 0, Math.PI * 2); g.fill();
-      // Flapper: pivot above the rim, tip reaches between the pegs
-      var px = cx, py = cy - R * 1.16, L = R * 0.31;
-      g.save(); g.translate(px, py); g.rotate(-flap * 0.55 * dir);
-      var fg = g.createLinearGradient(-R * 0.06, 0, R * 0.06, 0); fg.addColorStop(0, '#a50f16'); fg.addColorStop(0.5, '#ff5148'); fg.addColorStop(1, '#8e0b12');
-      g.beginPath(); g.moveTo(-R * 0.058, 0); g.lineTo(R * 0.058, 0); g.lineTo(R * 0.013, L); g.lineTo(-R * 0.013, L); g.closePath();
+      drawFlapper(cx, cy - R * WP.HP);
+    }
+    // The flapper bends like rubber: the root stays nearly upright and the tip carries the deflection
+    function flapperPath(o, L, b) {
+      var tx = L * Math.sin(b), ty = L * Math.cos(b), qx = 0.55 * L * Math.sin(0.08 * b), qy = 0.55 * L * Math.cos(0.08 * b);
+      var n = 14, lft = [], rgt = [], i;
+      for (i = 0; i <= n; i++) {
+        var t = i / n, u = 1 - t;
+        var x = 2 * u * t * qx + t * t * tx, y = 2 * u * t * qy + t * t * ty;
+        var dx = 2 * u * qx + 2 * t * (tx - qx), dy = 2 * u * qy + 2 * t * (ty - qy), dl = Math.sqrt(dx * dx + dy * dy) || 1;
+        var w = R * (0.056 * (1 - t) + 0.011 * t), nx = -dy / dl * w, ny = dx / dl * w;
+        lft.push([x + nx, y + ny]); rgt.push([x - nx, y - ny]);
+      }
+      o.beginPath(); o.moveTo(lft[0][0], lft[0][1]);
+      for (i = 1; i <= n; i++) o.lineTo(lft[i][0], lft[i][1]);
+      o.quadraticCurveTo(tx + (tx - qx) * 0.06, ty + (ty - qy) * 0.06, rgt[n][0], rgt[n][1]);
+      for (i = n - 1; i >= 0; i--) o.lineTo(rgt[i][0], rgt[i][1]);
+      o.closePath();
+      return { tx: tx, ty: ty, qx: qx, qy: qy };
+    }
+    function drawFlapper(px, py) {
+      var L = R * WP.FL, b = st.b;
+      g.save(); g.translate(px + R * 0.018, py + R * 0.03);
+      flapperPath(g, L, b); g.fillStyle = 'rgba(0,0,0,.35)'; g.fill(); g.restore();
+      g.save(); g.translate(px, py);
+      var k = flapperPath(g, L, b), ga = 0.6 * b, gx = Math.cos(ga) * R * 0.06, gy = -Math.sin(ga) * R * 0.06;
+      var fg = g.createLinearGradient(-gx, -gy, gx, gy); fg.addColorStop(0, '#a50f16'); fg.addColorStop(0.5, '#ff5148'); fg.addColorStop(1, '#8e0b12');
       g.fillStyle = fg; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#3a0306'; g.stroke();
+      // sheen along the bend
+      g.beginPath(); g.moveTo(-R * 0.012, R * 0.04); g.quadraticCurveTo(k.qx - R * 0.01, k.qy, k.tx * 0.92 - R * 0.004, k.ty * 0.92);
+      g.lineWidth = Math.max(1, R * 0.01); g.lineCap = 'round'; g.strokeStyle = 'rgba(255,190,180,.45)'; g.stroke();
       var cg = g.createRadialGradient(-R * 0.02, -R * 0.02, 1, 0, 0, R * 0.065); cg.addColorStop(0, '#fff6cf'); cg.addColorStop(0.5, '#e2b440'); cg.addColorStop(1, '#7a5610');
-      g.beginPath(); g.arc(0, 0, R * 0.065, 0, Math.PI * 2); g.fillStyle = cg; g.fill(); g.strokeStyle = '#4a3305'; g.stroke();
+      g.beginPath(); g.arc(0, 0, R * 0.065, 0, Math.PI * 2); g.fillStyle = cg; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#4a3305'; g.stroke();
       g.restore();
     }
-    function passed(now) {
-      if (now - lastClick > 38) { lastClick = now; snd('click'); }
-      if (hooks.haptics && hooks.haptics() && now - lastHap > 90) { lastHap = now; Kit.haptic('tick'); }
+    // A peg strikes the flapper: louder and brighter the harder it hits (v in wheel radii per second)
+    function hit(v, now) {
+      if (v < 0.04 || now - lastClick < 28) return;
+      lastClick = now; snd('peg', v);
+      if (v > 0.25 && hooks.haptics && hooks.haptics() && now - lastHap > 90) { lastHap = now; Kit.haptic('tick'); }
     }
-    function physics(h, now) {
-      var d0 = rel(), p = zone();
-      if (p > 0) { if (omega * dir > 0) contact = true; } else contact = false;
-      if (!contact) p = 0;
-      var om0 = omega, a = 0;
-      if (omega !== 0) a -= (omega > 0 ? 1 : -1) * (F0 + F1 * Math.abs(omega));
-      a -= dir * KC * p;
-      omega += a * h;
-      if (p === 0 && om0 !== 0 && (omega > 0) !== (om0 > 0)) omega = 0;
-      theta += omega * h;
-      var d1 = rel();
-      if ((dir > 0 && d0 < 0 && d1 >= 0 && d0 > -A / 4) || (dir < 0 && d0 > 0 && d1 <= 0 && d0 < A / 4)) passed(now);
-      if (p > 0) { flap = p; flapV = 0; } else spring(h);
-    }
-    function spring(h) { flapV += (-420 * flap - 13 * flapV) * h; flap += flapV * h; }
     function loop(now) {
       raf = 0;
       var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+      var hf = function (v) { hit(v, now); }, j, k;
       if (spinning) {
-        if (spinning.e !== epoch) { var sp = spinning; spinning = null; omega = 0; sp.reject(CANCEL); }
+        if (spinning.e !== epoch) { var sp = spinning; spinning = null; st.om = 0; sp.reject(CANCEL); }
         else {
           acc += dt / SPD; var stopped = false;
-          while (acc >= H) { physics(H, now); acc -= H; if (Math.abs(omega) < 0.012 && !(contact && zone() > 0)) { stopped = true; break; } }
-          if (stopped || now - spinT0 > 30000) {
-            omega = 0; glow = indexAt(); glowT0 = now; var res = spinning; spinning = null; res.resolve(glow);
-          }
+          while (acc >= H) { acc -= H; if (sim.step(H, hf) || st.t > SIM_CAP) { stopped = true; break; } }
+          if (stopped) { st.om = 0; acc = 0; glow = indexAt(); glowT0 = now; var res = spinning; spinning = null; res.resolve(glow); }
         }
-      } else { var k = Math.round(dt / SPD / H); for (var j = 0; j < Math.min(k, 60); j++) spring(H); }
+      } else if (drag) {
+        // The wheel follows the finger; pegs still knock the flapper as they pass
+        k = Math.max(1, Math.min(60, Math.round(dt / H))); st.om = clamp((drag.th - st.th) / (k * H), -30, 30);
+        for (j = 0; j < k; j++) sim.step(H, hf, true);
+        st.om = 0;
+      } else {
+        st.om = 0; k = Math.min(60, Math.round(dt / SPD / H));
+        for (j = 0; j < k; j++) sim.step(H, hf, true);
+      }
       draw(now);
-      if (spinning || drag || Math.abs(flap) > 0.003 || Math.abs(flapV) > 0.02 || (glow >= 0 && now - glowT0 < 2700)) raf = requestAnimationFrame(loop);
+      if (spinning || drag || power !== null || Math.abs(st.b) > 0.002 || Math.abs(st.bv) > 0.02 || (glow >= 0 && now - glowT0 < 2700)) raf = requestAnimationFrame(loop);
     }
     function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }
     function spin(w0) {
       return new Promise(function (resolve, reject) {
-        omega = w0; dir = w0 >= 0 ? 1 : -1; contact = false; glow = -1; acc = 0; spinT0 = performance.now();
+        st.om = w0; st.t = 0; st.rest = 0; glow = -1; acc = 0; power = null;
         spinning = { resolve: resolve, reject: reject, e: epoch };
         kick();
       });
     }
     return {
       mount: mount, resize: resize, setWedges: setWedges, setAngle: setAngle, spin: spin,
-      wedge: function (i) { return wedges[i]; }, angle: function () { return theta; },
+      wedge: function (i) { return wedges[i]; }, angle: function () { return st.th; },
+      power: function (p) { power = p == null ? null : clamp(p, 0, 1); kick(); if (power === null) draw(); },
+      flapper: function () { return { b: st.b, bv: st.bv, om: st.om, th: st.th, touch: st.touch }; },
       clearGlow: function () { glow = -1; draw(); }, busy: function () { return !!spinning || !!drag; }
     };
   })();
@@ -859,20 +947,45 @@
     return b;
   }
   function info(html) { return el('div', { class: 'info', html: html }); }
+  // Hold to spin: power builds over 1.6 s (shown on the button and the wheel's marquee) and
+  // pulses at full. Let go to spin; a quick tap is a gentle spin. Works for the button and Space.
+  var HOLD_MS = 1600, hold = { on: false, t0: 0, raf: 0, go: null, full: false };
+  function holdPow() { var x = Math.min(1, (performance.now() - hold.t0) / HOLD_MS); return x * (2 - x); }
+  function holdBar() { return shell && shell.acts.querySelector('.spinbtn'); }
+  function holdTick() {
+    if (!hold.on) return;
+    var p = holdPow(), b = holdBar();
+    if (b) { b.firstChild.style.transform = 'scaleX(' + p.toFixed(3) + ')'; b.classList.toggle('full', p >= 1); }
+    if (p >= 1 && !hold.full) { hold.full = true; Kit.haptic('light'); }
+    Wheel.power(p);
+    hold.raf = requestAnimationFrame(holdTick);
+  }
+  function holdStart(go) {
+    if (hold.on) return;
+    hold.on = true; hold.full = false; hold.go = go; hold.t0 = performance.now();
+    setCam('wheel'); Kit.haptic('light'); snd('touch'); holdTick();
+  }
+  function holdEnd(cancel) {
+    if (!hold.on) return;
+    var p = holdPow(), go = hold.go, b = holdBar();
+    hold.on = false; hold.go = null; cancelAnimationFrame(hold.raf); Wheel.power(null);
+    if (b) b.classList.remove('full');
+    if (cancel) { if (b) b.firstChild.style.transform = 'scaleX(0)'; if (!ui.busy) setCam('wide'); return; }
+    go(p);
+  }
+  window.addEventListener('blur', function () { holdEnd(true); });
   function spinButton(label, enabled, go) {
     var b = el('button', { type: 'button', class: 'btn btn-yellow spinbtn', html: '<span class="pw"></span><span class="lb">' + label + '</span>' });
     b.disabled = !enabled;
-    var pw = b.firstChild, t0 = 0, raf = 0, holding = false, viaPointer = false;
-    function pow() { return Math.min(1, (performance.now() - t0) / 1100); }
-    function tick() { pw.style.transform = 'scaleX(' + pow() + ')'; if (holding) raf = requestAnimationFrame(tick); }
+    var viaPointer = false;
     b.addEventListener('pointerdown', function (e) {
       if (b.disabled) return;
-      holding = true; viaPointer = true; t0 = performance.now();
+      viaPointer = true;
       try { b.setPointerCapture(e.pointerId); } catch (x) {}
-      setCam('wheel'); Kit.haptic('light'); tick();
+      holdStart(go);
     });
-    b.addEventListener('pointerup', function () { if (!holding) return; holding = false; cancelAnimationFrame(raf); go(Math.max(0.12, pow())); });
-    b.addEventListener('pointercancel', function () { holding = false; cancelAnimationFrame(raf); pw.style.transform = 'scaleX(0)'; if (!ui.busy) setCam('wide'); });
+    b.addEventListener('pointerup', function () { holdEnd(false); });
+    b.addEventListener('pointercancel', function () { holdEnd(true); });
     b.addEventListener('click', function () { if (viaPointer) { viaPointer = false; return; } if (!b.disabled) go(0.6); });
     return b;
   }
@@ -1068,7 +1181,9 @@
       case 'tuwon': run(async function () { await wait(500); continueAfterTossup(); }); break;
       case 'bonusIntro': if (p.cpu) run(async function () { ui.busy = true; paintDeck(); await wait(1100); await bonusSpin(0.3 + Math.random() * 0.6); }); break;
       case 'bonusPick': if (p.cpu) run(cpuBonusPicks); else if (S.bonus.picks.length >= 4) run(bonusRevealPicks); break;
-      case 'bonusReady': if (p.cpu) run(cpuBonus); break;
+      case 'bonusReady':
+        if (!blankIdx().length) { run(function () { return bonusEnd(true); }); break; }   // puzzle already filled in
+        if (p.cpu) run(cpuBonus); break;
     }
   }
 
@@ -1106,7 +1221,8 @@
       setTimeout(function () { if (!ui.busy) setCam('wide'); }, 600);
       return;
     }
-    var w0 = (om > 0 ? 1 : -1) * clamp(Math.abs(om) * 0.8, 6, 9.6);
+    // Flick speed sets the spin: a lazy flick still makes a full turn, a hard one is a big spin
+    var w0 = (om > 0 ? 1 : -1) * clamp(Math.abs(om) * 0.7, W_MIN, W_MAX * 1.05) * (0.97 + Math.random() * 0.06);
     if (m === 'main') run(function () { return doSpin(null, w0); }); else run(function () { return bonusSpin(null, w0); });
   }
   async function doSpin(power, w0) {
@@ -1115,7 +1231,7 @@
     setCam('wheel'); host(vb(p.name, 'spins…', 'spin…'));
     if (!p.cpu) Kit.haptic('medium');
     await wait(p.cpu ? 650 : 200);
-    var idx = await Wheel.spin(w0 || 6 + 3.4 * power);
+    var idx = await Wheel.spin(w0 || omegaFor(power));
     await landed(idx);
   }
   async function landed(idx) {
@@ -1236,7 +1352,16 @@
   // ── Solving on the board (humans) ─────────────────────────────────────────
   function openSolve(who, ctx) {
     if (!S) return;
-    var b = blankIdx(); if (!b.length) return;
+    var b = blankIdx();
+    if (!b.length) {
+      // Every letter is already showing (e.g. the bonus picks filled the puzzle):
+      // tapping Solve simply solves it instead of opening an empty board.
+      if (ui.clock) { ui.clock.done = true; }
+      if (ctx === 'main') { snapshot(); run(function () { return humanSolved(who, true, null); }); }
+      else if (ctx === 'tossup') run(function () { return tossupAnswer(who, true, null); });
+      else run(function () { stopClock(); return bonusAnswer(true, null); });
+      return;
+    }
     ui.solve = { who: who, ctx: ctx, fill: {}, cur: b[0] };
     ui.vowel = false; setCam('wide');
     snd('pop');
@@ -1452,7 +1577,7 @@
     ui.busy = true; paintDeck(); setCam('wheel');
     host(vb(S.players[S.cur].name, 'spins', 'spin') + ' for an envelope…');
     await wait(300);
-    await Wheel.spin(w0 || 6 + 3.4 * power);
+    await Wheel.spin(w0 || omegaFor(power));
     S.angle = Wheel.angle();
     var R = 'RSTLNE', idxs = letterIdx().filter(function (i) { return R.indexOf(S.pz.text[i]) >= 0; });
     S.bonus.env = wpick(ENVELOPES); S.used = R; idxs.forEach(function (i) { S.rev[i] = true; });
@@ -1494,7 +1619,10 @@
     host(idxs.length ? "Let's see…" : 'None of those are in the puzzle!');
     await wait(700);
     if (idxs.length) await revealLetters(idxs, { together: true }); else { snd('buzz'); await wait(900); }
-    ui.busy = false; proceed();
+    ui.busy = false;
+    // The picked letters finished the puzzle: that's a win, no clock needed
+    if (!blankIdx().length) { host('The letters filled the whole puzzle!'); await wait(900); return bonusEnd(true); }
+    proceed();
   }
   function stopClock() { if (ui.clock) ui.clock.done = true; ui.clock = null; ui.clockEl = null; }
   function startClock(plan) {
@@ -1636,8 +1764,13 @@
     else if (k === 'Backspace' && ui.solve) { e.preventDefault(); backspace(); }
     else if (k === 'Enter' && ui.solve) { e.preventDefault(); submitSolve(); }
     else if (k === 'Escape' && ui.solve) { cancelSolve(); }
-    else if (k === ' ' && canFlick()) { e.preventDefault(); var m = canFlick(); var pw = 0.45 + Math.random() * 0.4; run(function () { return m === 'main' ? doSpin(pw) : bonusSpin(pw); }); }
+    else if (k === ' ') {
+      e.preventDefault();
+      var m = canFlick();
+      if (m && !e.repeat && !hold.on) holdStart(function (pw) { if (canFlick() !== m) return; run(function () { return m === 'main' ? doSpin(pw) : bonusSpin(pw); }); });
+    }
   });
+  document.addEventListener('keyup', function (e) { if (e.key === ' ' && hold.on) { e.preventDefault(); holdEnd(false); } });
 
   function undo() {
     if (!S || !undoStack.length) {
@@ -1661,6 +1794,15 @@
     proceed();
   } else showSetup();
 
+  // Test hook: run one spin headlessly with the same physics the wheel uses
+  window.__wofSim = function (o) {
+    o = o || {};
+    var sm = makeSim(), th0 = o.th0 != null ? o.th0 : Math.random() * Math.PI * 2, w0 = o.w0 || omegaFor(o.power), hits = 0, maxB = 0, settled = false;
+    sm.s.th = th0; sm.s.om = w0;
+    while (sm.s.t < SIM_CAP) { if (sm.step(SIM_H, function () { hits++; })) { settled = true; break; } if (Math.abs(sm.s.b) > maxB) maxB = Math.abs(sm.s.b); }
+    return { idx: sm.index(), t: sm.s.t, gap: sm.pegGap(), rot: (sm.s.th - th0) / (Math.PI * 2), settled: settled, touch: sm.s.touch, hits: hits, maxB: maxB, w0: w0 };
+  };
+  window.__wofSim.params = { W_MIN: W_MIN, W_MAX: W_MAX, H: SIM_H, wedgeHalf: Math.PI / 24 };
   window.__wof = { wheel: Wheel, state: function () { return S; }, layout: layoutPuzzle, puzzles: PUZZLES, bonusOK: bonusOK };
 })();
 </script>
