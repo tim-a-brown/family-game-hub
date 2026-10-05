@@ -38,14 +38,14 @@ var Spin = (function () {
     '.sp-chips .chip.fav.on{color:#2b1a00;}.sp-chips .chip.fav.on .ico{color:#2b1a00;}' +
     '.sp-chips .chip.all{--cc:#fff;}.sp-chips .chip.all.on{color:var(--bg);}.sp-chips .chip.all.on .ico{color:var(--bg);}' +
     '.sp-n{font-size:.8rem;font-weight:800;color:var(--text-3);display:flex;align-items:center;gap:8px;min-height:22px;}' +
-    '.sp-n button{border:0;background:none;color:var(--accent-2,#9db4ff);font:inherit;font-weight:900;padding:2px 4px;display:inline-flex;align-items:center;gap:4px;}' +
+    '.sp-n{flex-wrap:wrap;column-gap:4px;row-gap:0;}.sp-n button{white-space:nowrap;border:0;background:none;color:var(--accent-2,#9db4ff);font:inherit;font-weight:900;padding:2px 4px;display:inline-flex;align-items:center;gap:4px;}' +
     '.sp-n button .ico{width:14px;height:14px;}' +
     '.sp-stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}' +
     '.sp-wrap{position:relative;flex:none;touch-action:none;user-select:none;-webkit-user-select:none;}' +
     '.sp-wrap canvas{display:block;width:100%;height:100%;filter:drop-shadow(0 14px 24px rgba(0,0,0,.55));}' +
     '.sp-spin{position:relative;overflow:hidden;--pw:0%;}.sp-spin::before{content:"";position:absolute;inset:0;width:var(--pw);background:rgba(255,255,255,.45);pointer-events:none;}' +
     '.sp-spin.full::before{animation:sp-blink .25s steps(2) infinite;}@keyframes sp-blink{50%{opacity:.2}}' +
-    '.sp-spin>*{position:relative;}.sp-go{flex-direction:column;align-items:center;}.sp-hint{font-size:.76rem;font-weight:800;color:var(--text-3);}' +
+    '.sp-spin>*{position:relative;}.sp-go{flex-direction:column;align-items:center;}.sp-hint{white-space:nowrap;font-size:.74rem;font-weight:800;color:var(--text-3);}' +
     '.sp-go{flex:none;width:min(100%,360px);display:flex;gap:6px;}' +
     '.sp-go .btn{width:100%;}' +
     '.sp-empty{color:var(--text-3);font-weight:800;text-align:center;padding:20px;}' +
@@ -66,6 +66,7 @@ var Spin = (function () {
     var f = load();
     f.cats = Array.isArray(f.cats) ? f.cats : [];   // [] = every type
     f.who = f.who || 'any'; f.fav = !!f.fav;
+    f.off = Array.isArray(f.off) ? f.off : [];   // games taken off the wheel (hold a wedge)
 
     var root = el('div', { class: 'sp', role: 'dialog', 'aria-label': 'Spin for a game' });
     var xb = el('button', { type: 'button', class: 'sp-x', 'aria-label': 'Close', html: Kit.icon('close') });
@@ -78,6 +79,7 @@ var Spin = (function () {
     // ── Filters ───────────────────────────────────────────────────────────
     var WHO = [['any', 'Any', 'users'], ['1', 'Solo', 'user'], ['2', 'Two', 'users'], ['3', '3+', 'users']];
     function fits(g) {
+      if (f.off.indexOf(g.id) >= 0) return false;
       if (f.fav && !o.isFav(g)) return false;
       if (f.cats.length && f.cats.indexOf(g.cat) < 0) return false;
       if (f.who !== 'any') {
@@ -137,16 +139,23 @@ var Spin = (function () {
       if (spinning) return;
       pool = GAMES.filter(function (g) { return g.cat !== 'tools' && fits(g); });
       if (!keep) wedges = spread(shuffle(pool.slice()).slice(0, MAXW));
+      else wedges = wedges.filter(function (g) { return pool.indexOf(g) >= 0; });
       nLine.innerHTML = '';
       var txt = !pool.length ? 'No games match these filters' :
-        pool.length > MAXW ? MAXW + ' of ' + pool.length + ' games on the wheel' : pool.length + (pool.length === 1 ? ' game' : ' games') + ' on the wheel';
+        pool.length > MAXW ? MAXW + ' of ' + pool.length + ' on the wheel' : pool.length + (pool.length === 1 ? ' game' : ' games') + ' on the wheel';
       nLine.appendChild(el('span', { text: txt }));
       if (pool.length > MAXW) {
         var sh = el('button', { type: 'button', html: Kit.icon('shuffle') + '<span>New mix</span>' });
         sh.addEventListener('click', function () { Kit.sfx('flip'); fill(); });
         nLine.appendChild(sh);
       }
-      setAngle(Math.random() * Math.PI * 2); picked = -1;
+      if (f.off.length) {
+        var bb = el('button', { type: 'button', html: Kit.icon('undo') + '<span>Bring back ' + f.off.length + '</span>', title: f.off.map(function (id) { var g = findGame(id); return g ? g.name : id; }).join(', ') });
+        bb.addEventListener('click', function () { f.off = []; store(f); Kit.sfx('good'); Kit.toast('Every game is back on the wheel'); fill(); });
+        nLine.appendChild(bb);
+      }
+      if (!keep) setAngle(Math.random() * Math.PI * 2); else setAngle(st.th);
+      picked = -1;
       clearResult(); showControls();
       draw();
     }
@@ -307,6 +316,12 @@ var Spin = (function () {
         c.save(); c.beginPath(); c.moveTo(CX, CY); c.arc(CX, CY, Ri, off + win * w, off + (win + 1) * w); c.closePath();
         c.lineWidth = 3 * dpr; c.strokeStyle = '#ffd34d'; c.shadowColor = '#ffd34d'; c.shadowBlur = 14 * dpr; c.stroke(); c.restore();
       }
+      if (holdW >= 0 && holdP > 0) {
+        c.save(); c.beginPath(); c.moveTo(CX, CY); c.arc(CX, CY, Ri * (0.2 + 0.8 * holdP), off + holdW * w, off + (holdW + 1) * w); c.closePath();
+        c.fillStyle = 'rgba(15,8,30,' + (0.35 + 0.4 * holdP) + ')'; c.fill();
+        c.beginPath(); c.moveTo(CX, CY); c.arc(CX, CY, Ri, off + holdW * w, off + (holdW + 1) * w); c.closePath();
+        c.lineWidth = 3 * dpr; c.strokeStyle = 'rgba(255,107,107,' + (0.4 + 0.6 * holdP) + ')'; c.stroke(); c.restore();
+      }
       hub(); flapper();
     }
     function hub() {
@@ -394,15 +409,47 @@ var Spin = (function () {
       var r = cv.getBoundingClientRect(), k = r.width / cv.width;
       return Math.atan2(e.clientY - (r.top + CY * k), e.clientX - (r.left + CX * k));
     }
+    // Hold a wedge to take that game off the wheel (remembered on this device)
+    var hold = null, holdW = -1, holdP = 0;
+    function wedgeUnder(e) {
+      var r = cv.getBoundingClientRect(), k = cv.width / r.width;
+      var dx = (e.clientX - r.left) * k - CX, dy = (e.clientY - r.top) * k - CY;
+      if (Math.sqrt(dx * dx + dy * dy) > R || Math.sqrt(dx * dx + dy * dy) < R * .17) return -1;
+      var ph = Math.atan2(dx, -dy), a = ((ph - st.th) % (2 * Math.PI) + 4 * Math.PI) % (2 * Math.PI);
+      return Math.floor(a / A()) % n();
+    }
+    function holdTick() {
+      if (!hold) return;
+      holdP = Math.min(1, (performance.now() - hold.t0) / 650);
+      draw();
+      if (holdP >= 1) { var i = holdW; endHold(); takeOff(i); return; }
+      hold.raf = requestAnimationFrame(holdTick);
+    }
+    function endHold() { if (hold) cancelAnimationFrame(hold.raf); hold = null; holdW = -1; holdP = 0; draw(); }
+    function takeOff(i) {
+      var g = wedges[i]; if (!g) return;
+      drag = null;
+      f.off.push(g.id); store(f);
+      Kit.sfx('flip'); Kit.haptic('success');
+      pool = pool.filter(function (x) { return x !== g; });
+      wedges.splice(i, 1);
+      var spare = pool.filter(function (x) { return wedges.indexOf(x) < 0; });
+      if (spare.length) wedges.splice(i, 0, spare[Math.floor(Math.random() * spare.length)]);
+      Kit.toast(g.name + ' is off the wheel');
+      fill(true);
+    }
     cv.addEventListener('pointerdown', function (e) {
       if (spinning || !n()) return;
       e.preventDefault();
+      var wi = wedgeUnder(e);
+      if (wi >= 0) { hold = { t0: performance.now(), x: e.clientX, y: e.clientY, raf: 0 }; holdW = wi; holdP = 0; hold.raf = requestAnimationFrame(holdTick); }
       drag = { last: angleOf(e), th: st.th, s: [[performance.now(), st.th]] };
       try { cv.setPointerCapture(e.pointerId); } catch (x) {}
       if (picked >= 0) { picked = -1; clearResult(); showControls(); }
       kick();
     });
     cv.addEventListener('pointermove', function (e) {
+      if (hold && Math.abs(e.clientX - hold.x) + Math.abs(e.clientY - hold.y) > 10) endHold();
       if (!drag) return;
       var a = angleOf(e), da = a - drag.last;
       if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
@@ -411,6 +458,7 @@ var Spin = (function () {
       while (drag.s.length > 2 && now - drag.s[0][0] > 120) drag.s.shift();
     });
     function release() {
+      if (hold) endHold();
       if (!drag) return;
       var sm = drag.s, now = performance.now(); drag = null;
       var a = sm[0], b = sm[sm.length - 1], dt = (b[0] - a[0]) / 1000;
@@ -418,7 +466,7 @@ var Spin = (function () {
       if (Math.abs(om) > 1.5) spin(Math.sign(om) * Math.max(W_MIN, Math.min(W_MAX * 1.1, Math.abs(om))) * (0.96 + Math.random() * 0.08));
     }
     cv.addEventListener('pointerup', release);
-    cv.addEventListener('pointercancel', function () { drag = null; });
+    cv.addEventListener('pointercancel', function () { drag = null; if (hold) endHold(); });
 
     // Hold Spin to build power (same feel as Wheel of Fortune); a tap is a good, random spin
     var power = null, pT0 = 0, pBtn = null, pRaf = 0;
@@ -449,7 +497,7 @@ var Spin = (function () {
       b.addEventListener('pointercancel', function () { if (power !== null) powerUp(); });
       b.addEventListener('click', function (e) { if (e.detail === 0) spin(); });   // keyboard
       ctl.appendChild(b);
-      if (!spinning) ctl.appendChild(el('div', { class: 'sp-hint', text: 'Hold for a bigger spin, or flick the wheel' }));
+      if (!spinning) ctl.appendChild(el('div', { class: 'sp-hint', text: 'Hold Spin for power · hold a slice to remove it' }));
     }
     var rb = null;
     function clearResult() { if (rb) { rb.remove(); rb = null; } ctl.style.visibility = ''; }
