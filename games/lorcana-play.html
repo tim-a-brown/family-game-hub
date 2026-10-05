@@ -277,6 +277,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .mull .slot.out .lc{filter:brightness(.45) grayscale(.6);transform:translateY(8px);}
 .mull .slot.out::after{content:"Put back";position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);padding:3px 8px;border-radius:8px;background:#ff5c6c;color:#fff;font-size:.72rem;font-weight:900;white-space:nowrap;z-index:2;pointer-events:none;}
 .mull .btn{min-width:220px;}
+.mull .mcard{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.mull .mtog{border:0;border-radius:999px;padding:5px 10px;font:inherit;font-size:.74rem;font-weight:900;background:rgba(255,255,255,.12);color:var(--text);white-space:nowrap;}
+.mull .mtog.on{background:#ff5c6c;color:#fff;}
+.mull .slot.out::after{display:none;}
 
 /* Loading / offline */
 .lp-load{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;padding:24px;text-align:center;}
@@ -1955,15 +1959,27 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     var box = el('div', { class: 'mull' }), cards = el('div', { class: 'cards' });
     var W = Math.min(820, host.parentNode.clientWidth - 24), H = host.parentNode.clientHeight;
     var per = W < 520 ? 4 : 7, rows = Math.ceil(p.hand.length / per);
-    var cu = Math.min((W - (per - 1) * 8) / per / 0.716, (H - 190) / rows - 8, 230);
+    var cu = Math.min((W - (per - 1) * 8) / per / 0.716, (H - 190) / rows - 40, 230);
     cards.style.setProperty('--cu', Math.floor(cu) + 'px');
-    p.hand.forEach(function (u) { cards.appendChild(slotFor(u, 'mull')); });
+    p.hand.forEach(function (u) {
+      var sl = slotFor(u, 'mull'), wrap = el('div', { class: 'mcard' }, [sl]);
+      // Quick toggle under each card; tapping the card itself opens it full size
+      wrap.appendChild(el('button', { type: 'button', class: 'mtog' + (ui.mullSel[u] ? ' on' : ''), text: ui.mullSel[u] ? 'Putting back' : 'Put back', 'aria-pressed': String(!!ui.mullSel[u]),
+        onclick: function (e) { e.stopPropagation(); ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); } }));
+      cards.appendChild(wrap);
+    });
     var n = p.hand.filter(function (u) { return ui.mullSel[u]; }).length;
     box.appendChild(el('h2', { text: (p.name === 'You' ? 'Your' : p.name + '’s') + ' opening hand' }));
-    box.appendChild(el('p', { text: 'Tap cards to put them on the bottom of your deck. You draw that many new cards, then your deck is shuffled. You can do this once.' }));
+    box.appendChild(el('p', { text: 'Tap a card to see it full size. Mark the ones to put back: they go on the bottom of your deck, you draw that many new cards, then your deck is shuffled. You can do this once.' }));
     box.appendChild(cards);
     box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', 'data-act': 'mull', text: n ? 'Put back ' + n + ', draw ' + n : 'Keep this hand' }));
     host.appendChild(box);
+  }
+  function mullZoom(u, dir) {
+    if (!S || S.phase !== 'mull') return;
+    var hand = S.P[S.mullWho].hand, i = hand.indexOf(u), out = !!ui.mullSel[u];
+    zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); mullZoom(u); } }],
+      { i: i, n: hand.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); } });
   }
   function render() {
     if (!S) return;
@@ -2161,7 +2177,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   }
   function onTap(u, ctx) {
     if (!S || !S.cards[u]) return;
-    if (ctx === 'mull') { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); return; }
+    if (ctx === 'mull') { mullZoom(u); return; }
     if (ui.pick) {
       var p = ui.pick;
       if (p.ok(u)) {
