@@ -221,7 +221,7 @@
     rules:
       '<p class="goal">Race all four of your marbles around the board and into your home row. You move by playing cards. First one (or first team) with every marble home wins.</p>' +
       '<p>This is the card game families call <b>Marbles</b>, <b>Cards &amp; Marbles</b>, <b>Tock</b> or <b>Pegs and Jokers</b>. Aggravation and Wahoo (with a die) are in setup under <b>Rules</b>.</p>' +
-      '<h3>The cards</h3><p>A normal deck plus 2 Jokers. Everyone gets <b>5 cards</b>. On your turn, play <b>one card</b> and move <b>one marble</b>. When everyone is out of cards, deal 5 more.</p>' +
+      '<h3>The cards</h3><p>A normal deck plus 2 Jokers (you can turn the Jokers off in setup). Everyone gets <b>5 cards</b>. On your turn, play <b>one card</b> and move <b>one marble</b>. When everyone is out of cards, deal 5 more.</p>' +
       '<ul><li><b>Ace:</b> move a marble out of base onto your start hole, or move 1.</li>' +
       '<li><b>King:</b> move out of base, or move 13.</li>' +
       '<li><b>Queen:</b> move 12.</li>' +
@@ -282,6 +282,9 @@
         { id: 'king', label: 'King', help: 'What a King lets you do in the card game.', value: '13', when: function () { return rulesNow() === 'cards'; }, choices: [
           ['13', 'Out or 13', 'The usual rule: bring a marble out, or move 13.'],
           ['out', 'Out only', 'A King can only bring a marble out of base.']] },
+        { id: 'jokers', label: 'Jokers', help: 'Whether the 2 Jokers are shuffled into the deck.', value: 'on', when: function () { return rulesNow() === 'cards'; }, choices: [
+          ['on', 'With Jokers', 'The usual deck: 2 Jokers that bring a marble out or jump onto a rival and send it home.'],
+          ['off', 'No Jokers', 'A plain 52-card deck. Only Aces and Kings bring marbles out.']] },
         { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
       ],
       players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
@@ -300,7 +303,7 @@
           return b >= 0 ? { name: bots[b] || 'Computer ' + (b + 1), cpu: true, color: p.color } : { name: p.name, cpu: !!p.cpu, color: p.color };
         });
         var n = players.length, teams = cfg.options.partners === 'on' && (n === 4 || n === 6);
-        start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', teams: teams, players: players });
+        start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', jokers: cfg.options.jokers || 'on', teams: teams, players: players });
       }
     });
     // Family game: blank seats become computer players
@@ -331,7 +334,7 @@
       cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null
     };
     if (S.rules === 'cards') {
-      S.king = o.king || '13'; S.deck = []; S.hands = S.players.map(function () { return []; });
+      S.king = o.king || '13'; S.jokers = o.jokers || 'on'; S.deck = []; S.hands = S.players.map(function () { return []; });
       S.pile = []; S.lastCard = S.players.map(function () { return null; }); S.pend = null; S.deals = 0; S.line = '';
       S.phase = 'play'; S.viewer = humans() === 1 ? firstHuman() : -1;
     }
@@ -554,7 +557,7 @@
   var RANK_ORDER = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'JK'];
   function newDeck() {
     var d = Cards.deck();
-    d.push({ r: 'JK', s: 'r', id: 'j0' }, { r: 'JK', s: 'b', id: 'j1' });
+    if (S.jokers !== 'off') d.push({ r: 'JK', s: 'r', id: 'j0' }, { r: 'JK', s: 'b', id: 'j1' });
     return Cards.shuffle(d);
   }
   function cardName(c) {
@@ -986,7 +989,7 @@
       .sort(function (a, b) { return b.pr - a.pr; });
     var humansL = S.players.filter(function (p) { return !p.cpu; });
     var lose = humansL.length > 0 && w.team.every(function (i) { return S.players[i].cpu; });
-    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
+    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: names.length > 1 ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
@@ -1114,7 +1117,7 @@
       handEl = el('div', { class: 'chand mh' });
       col.appendChild(handEl);
     }
-    col.appendChild(el('div', { class: 'rulechip', text: RULES[S.rules] + (S.teams ? ' · partners across' : '') + (cards && S.king === 'out' ? ' · King: out only' : '') + ' · ' + (S.B === 4 ? 'cross board' : 'six-sided board') }));
+    col.appendChild(el('div', { class: 'rulechip', text: RULES[S.rules] + (S.teams ? ' · partners across' : '') + (cards && S.king === 'out' ? ' · King: out only' : '') + (cards && S.jokers === 'off' ? ' · no Jokers' : '') + ' · ' + (S.B === 4 ? 'cross board' : 'six-sided board') }));
     app.appendChild(col);
     paint();
   }
