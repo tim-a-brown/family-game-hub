@@ -22,6 +22,10 @@
   background:linear-gradient(180deg,#3b6bff,#2649d6);box-shadow:inset 0 -8px 0 rgba(0,0,0,.2), 0 10px 0 #1b3399, 0 20px 30px rgba(0,0,0,.35);
   touch-action:manipulation;
 }
+.face{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;
+  background:linear-gradient(180deg,#3b6bff,#2649d6);box-shadow:inset 0 -8px 0 rgba(0,0,0,.2), inset 0 2px 0 rgba(255,255,255,.18);
+  -webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;}
+.face.hidden{visibility:hidden;}
 .col{display:grid;grid-template-rows:repeat(6,1fr);gap:6px;border:0;padding:0;background:none;border-radius:14px;}
 .col:focus-visible{outline:3px solid #fff;}
 .hole{position:relative;aspect-ratio:1;border-radius:50%;background:#140f2e;box-shadow:inset 0 5px 8px rgba(0,0,0,.6);overflow:visible;}
@@ -347,7 +351,10 @@
         boardEl.appendChild(col);
       })(c);
     }
+    faceEl = el('div', { class: 'face hidden' });
+    boardEl.appendChild(faceEl);
     wrap.appendChild(boardEl);
+    requestAnimationFrame(paintFace);
     wrap.appendChild(el('div', { class: 'legs' }, [el('i'), el('i')]));
     app.appendChild(wrap);
     app.appendChild(el('div', { class: 'series', text: 'Series  ' + S.wins[0] + ' – ' + S.wins[1] + (S.wins[2] ? '  ·  ' + S.wins[2] + ' draws' : '') }));
@@ -355,6 +362,24 @@
     paintTurn();
     if (S.line) paintWin();
   }
+  // The blue front panel sits in front of the discs, with the 42 holes cut
+  // out of it, so a falling or bouncing disc passes behind the plastic.
+  var faceEl = null;
+  function paintFace() {
+    if (!faceEl || !boardEl || !boardEl.isConnected) return;
+    var br = boardEl.getBoundingClientRect(), w = br.width, h = br.height;
+    if (!w || !h) return;
+    var d = 'M0 0H' + w.toFixed(1) + 'V' + h.toFixed(1) + 'H0Z';
+    boardEl.querySelectorAll('.hole').forEach(function (ho) {
+      var hb = ho.getBoundingClientRect(), rr = hb.width / 2 - 0.5, cx = hb.left - br.left + hb.width / 2, cy = hb.top - br.top + hb.height / 2;
+      d += 'M' + (cx - rr).toFixed(1) + ' ' + cy.toFixed(1) + 'a' + rr.toFixed(1) + ' ' + rr.toFixed(1) + ' 0 1 0 ' + (2 * rr).toFixed(1) + ' 0a' + rr.toFixed(1) + ' ' + rr.toFixed(1) + ' 0 1 0 ' + (-2 * rr).toFixed(1) + ' 0Z';
+    });
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" viewBox="0 0 ' + w.toFixed(1) + ' ' + h.toFixed(1) + '"><path fill-rule="evenodd" d="' + d + '"/></svg>';
+    var url = 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '")';
+    faceEl.style.webkitMaskImage = url; faceEl.style.maskImage = url;
+    faceEl.classList.remove('hidden');
+  }
+  window.addEventListener('resize', function () { requestAnimationFrame(paintFace); });
   function hover(c) {
     var p = S && S.players[S.cur];
     ghosts.forEach(function (g, i) { g.className = 'ghost' + (i === c && !S.over && !p.cpu ? ' show disc ' + p.disc : ''); g.style.position = 'relative'; });
