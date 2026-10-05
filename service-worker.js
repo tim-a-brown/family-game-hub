@@ -91,6 +91,7 @@ const PRECACHE_URLS = [
   '/games/horserace.html',
   '/games/dominoes.html',
   '/games/go.html',
+  '/games/marblesolitaire.html',
   '/games/farkle.html',
   '/games/lrc.html',
   '/games/cubehopper.html',

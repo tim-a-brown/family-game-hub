@@ -54,7 +54,7 @@ var GAMES = [
   { id: 'chinesecheckers', name: 'Chinese Checkers', color: '#b91c1c', cat: 'board', min: 1, max: 6, tag: 'Hop your marbles across the star', play: 'chinesecheckers' },
   { id: 'codebreaker', name: 'Mastermind', color: '#000', cat: 'board', min: 1, max: 2, tag: 'Crack the secret color code', play: 'codebreaker' },
   { id: 'dominoes',    name: 'Dominoes',     color: '#000', cat: 'board', min: 1, max: 4, tag: 'Match the ends, block your rivals', play: 'dominoes' },
-  { id: 'marbles',     name: 'Marbles',      color: '#7c3aed', cat: 'board', min: 2, max: 6, tag: 'Aggravation and Wahoo: race home, bump rivals', play: 'marbles' },
+  { id: 'marbles',     name: 'Marbles',      color: '#7c3aed', cat: 'board', min: 2, max: 6, tag: 'Race home with cards or dice, bump rivals', play: 'marbles' },
   { id: 'go',          name: 'Go',           color: '#000', cat: 'board', min: 1, max: 2, tag: 'Surround territory, capture stones', play: 'go' },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello' },
   { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon' },
@@ -74,6 +74,7 @@ var GAMES = [
 
   // ── Puzzles ──────────────────────────────────────────────────────────────
   { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048' },
+  { id: 'marblesolitaire', name: 'Marble Solitaire', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Jump marbles until only one is left', play: 'marblesolitaire' },
   { id: 'slidepuzzle', name: 'Slide Puzzle', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Slide the tiles back in order', play: 'slidepuzzle' },
   { id: 'sudoku',      name: 'Sudoku',       color: '#3b82f6', cat: 'puzzle', min: 1, max: 1, tag: 'Fill the grid, 1 to 9', play: 'sudoku' },
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'puzzle', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
