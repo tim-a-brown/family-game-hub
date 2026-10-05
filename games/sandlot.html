@@ -293,12 +293,12 @@
     // c: {pitches, rally, hot, hitrun, noSS}
     function dist(H, P, c) {
       c = c || {};
-      var b = hit(H), p = pit(P), over = Math.max(0, (c.pitches || 0) - p.lim);
+      var b = hit(H), p = pit(P), over = Math.min(45, Math.max(0, (c.pitches || 0) - p.lim));   // a gassed arm stops getting worse after 45 extra pitches
       var q = clamp(p.era * (1 + over * .012) / L.era, .25, 3);
       var pw = Math.min(1, b.hr / 35);
       var bb = L.bb * (.75 + .55 * pw) * Math.pow(q, .5) * (1 + over * .008) * (c.rally ? 1.15 : 1);
       var hbp = L.hbp;
-      var batK = clamp((1 + .7 * (Math.min(b.hr, 50) / 30 - .45)) * (1 - 3 * (b.a - L.avg)), .45, 1.8);
+      var batK = clamp((1 + .45 * (Math.min(b.hr, 50) / 30 - .5)) * (1 - 3 * (b.a - L.avg)), .45, 1.8);
       var k = L.k * batK * Math.pow(p.k9 / L.k9, .8) * (1 - Math.min(.4, over * .008)) * (c.hitrun ? .7 : 1);
       var avg = log5(b.a, clamp(L.avg * 1.035 * Math.pow(q, .42), .12, .4), L.avg) + (c.rally ? .04 : 0) + (c.hot ? .03 : 0);
       var ab = 1 - bb - hbp, h = avg * ab;
@@ -736,7 +736,7 @@
     while (hitters.length < 9) hitters.push(newPlayer(t, 'h', { name: 'Sandlot kid ' + (hitters.length + 1), kind: 'kid', avg: DEF.kidH.avg, hr: DEF.kidH.hr, sb: DEF.kidH.sb }).id);
     var nine = hitters.slice(0, 9), order = smartOrder(nine);
     T.lineup = order; T.bench = hitters.slice(9);
-    if (!pit.length) pit.push(newPlayer(t, 'p', { name: 'Sandlot kid', kind: 'kid', era: DEF.kidP.era, so: DEF.kidP.so, ip: DEF.kidP.ip }).id);
+    if (!pit.length) pit.push(newPlayer(t, 'p', { name: 'Kid pitcher', kind: 'kid', era: DEF.kidP.era, so: DEF.kidP.so, ip: DEF.kidP.ip }).id);
     pit.sort(function (x, y) { var a = ENG.pit(S.P[x]), b = ENG.pit(S.P[y]); return (b.lim >= 95) - (a.lim >= 95) || pq(x) - pq(y); });
     T.pitchers = [pit[0] || null, pit[1] || null, pit[2] || null];
   }
@@ -869,7 +869,7 @@
       T.slug.forEach(function (x, i) { if (!x) { T.slug[i] = newPlayer(t, 'h', { name: 'Sandlot kid ' + (i + 1), kind: 'kid', hr: 6 + Math.floor(Math.random() * 18) }).id; n++; } });
     } else {
       T.lineup.forEach(function (x, i) { if (!x) { T.lineup[i] = newPlayer(t, 'h', { name: 'Sandlot kid ' + (i + 1), kind: 'kid', avg: DEF.kidH.avg, hr: DEF.kidH.hr, sb: DEF.kidH.sb }).id; n++; } });
-      if (!T.pitchers[0]) { T.pitchers[0] = newPlayer(t, 'p', { name: 'Sandlot kid', kind: 'kid', era: DEF.kidP.era, so: DEF.kidP.so, ip: DEF.kidP.ip }).id; n++; }
+      if (!T.pitchers[0]) { T.pitchers[0] = newPlayer(t, 'p', { name: 'Kid pitcher', kind: 'kid', era: DEF.kidP.era, so: DEF.kidP.so, ip: DEF.kidP.ip }).id; n++; }
     }
     if (!n) { undoStack.pop(); return Kit.toast('No empty spots to fill'); }
     Kit.sfx('deal'); Kit.toast(n + ' sandlot kid' + (n > 1 ? 's' : '') + ' joined'); save(); renderRoster();
@@ -979,7 +979,7 @@
     });
     function paintQuick() {
       quick.innerHTML = '';
-      quick.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (forced === 'rookie' ? 'btn-yellow' : 'btn-soft'), text: 'Rookie card (no stats)', onclick: function () { forced = forced === 'rookie' ? '' : 'rookie'; Kit.sfx('pop'); paintFields(); } }));
+      quick.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (forced === 'rookie' ? 'btn-yellow' : 'btn-soft'), text: 'Rookie card', onclick: function () { forced = forced === 'rookie' ? '' : 'rookie'; Kit.sfx('pop'); paintFields(); } }));
       if (kind === 'lineup' || kind === 'bench') quick.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (forced === 'pbat' ? 'btn-yellow' : 'btn-soft'), text: 'Pitcher batting', onclick: function () { forced = forced === 'pbat' ? '' : 'pbat'; Kit.sfx('pop'); paintFields(); } }));
       if (kind === 'pitchers') quick.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (forced === 'emergency' ? 'btn-yellow' : 'btn-soft'), text: 'Hitter pitching', onclick: function () { forced = forced === 'emergency' ? '' : 'emergency'; Kit.sfx('pop'); paintFields(); } }));
     }
@@ -1006,11 +1006,11 @@
       } else {
         F.forEach(function (f) { data[f.k] = fromDigits(f.k, v[f.k]); if (f.opt) data[f.k + 'Set'] = data[f.k] != null; });
         var R = role === 'p' ? DEF.rookieP : DEF.rookieH, blanks = 0;
-        F.forEach(function (f) { if (data[f.k] == null) { data[f.k] = R[f.k]; if (!f.opt) blanks++; } });
+        F.forEach(function (f) { if (data[f.k] == null && !f.opt) { data[f.k] = R[f.k]; blanks++; } });
         if (blanks === F.filter(function (f) { return !f.opt; }).length) kd = 'rookie';
         else if (blanks) Kit.toast('Rookie numbers used for the blank box');
         if (role === 'h') { data.avg = Math.min(.999, data.avg); data.hr = Math.min(80, data.hr); }
-        else { data.era = Math.max(.5, Math.min(27, data.era)); data.so = Math.min(450, data.so); if (data.ipSet) data.ip = Math.max(1, data.ip); }
+        else { data.era = Math.max(.5, Math.min(27, data.era)); data.so = Math.min(450, data.so); if (data.ipSet) data.ip = Math.max(1, data.ip); else data.ip = null; }
       }
       data.kind = kd;
       if (p) { for (var k2 in data) p[k2] = data[k2]; }
@@ -1087,7 +1087,7 @@
 
   // ── Ballpark drawing ──────────────────────────────────────────────────────
   var HOME = { x: 250, y: 410 }, BASE = [{ x: 320.7, y: 339.3 }, { x: 250, y: 268.6 }, { x: 179.3, y: 339.3 }], MOUND = { x: 250, y: 341 };
-  var BOX = { x: 226, y: 404 };
+  var BOX = { x: 224, y: 402 };
   function fenceFt(a) { return 400 - 70 * Math.pow(Math.min(45, Math.abs(a)) / 45, 1.5); }
   function spot(a, ft) { var r = ft * .91, rad = a * Math.PI / 180; return { x: HOME.x + r * Math.sin(rad), y: HOME.y - r * Math.cos(rad) }; }
   function fieldSVG() {
@@ -1111,7 +1111,6 @@
     var lpole = spot(-45, fenceFt(45)), rpole = spot(45, fenceFt(45));
     s += '<line x1="' + HOME.x + '" y1="' + HOME.y + '" x2="' + lpole.x.toFixed(1) + '" y2="' + lpole.y.toFixed(1) + '" stroke="#fff" stroke-width="2" opacity=".85"/>' +
       '<line x1="' + HOME.x + '" y1="' + HOME.y + '" x2="' + rpole.x.toFixed(1) + '" y2="' + rpole.y.toFixed(1) + '" stroke="#fff" stroke-width="2" opacity=".85"/>';
-    s += '<rect x="235" y="398" width="9" height="16" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7"/><rect x="256" y="398" width="9" height="16" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7"/>';
     BASE.forEach(function (b) { s += '<rect x="' + (b.x - 5.5) + '" y="' + (b.y - 5.5) + '" width="11" height="11" fill="#fff" transform="rotate(45 ' + b.x + ' ' + b.y + ')" rx="1"/>'; });
     s += '<polygon points="245,406 255,406 255,410.5 250,414 245,410.5" fill="#fff"/>';
     var cf = spot(0, 400), lf = spot(-45, 330), rf = spot(45, 330);
@@ -1273,10 +1272,11 @@
     if (markU != null && S.last && S.last.d) d = S.last.d;
     V.chart.innerHTML = '';
     if (!d) return;
-    var sg = segs(d), lab = [];
+    var sg = segs(d), lab = [], W = V.chart.clientWidth || 340;
     sg.forEach(function (x) {
+      var px = x.v * W, full = px >= x.g.l.length * 6.2 + 6;
       var pct = Math.round(x.v * 100);
-      V.chart.appendChild(el('span', { class: 'sg' + (hitKey === x.g.k ? ' hit' : ''), style: { width: (x.v * 100).toFixed(2) + '%', background: x.g.c }, text: x.v > .075 ? x.g.l : x.v > .045 ? x.g.l.charAt(0) : '' }));
+      V.chart.appendChild(el('span', { class: 'sg' + (hitKey === x.g.k ? ' hit' : ''), style: { width: (x.v * 100).toFixed(2) + '%', background: x.g.c }, text: full ? x.g.l : px >= 11 ? (x.g.k === 'W' ? 'BB' : x.g.l.charAt(0)) : '' }));
       lab.push(x.g.l + ' ' + pct + '%');
     });
     V.chart.setAttribute('aria-label', 'Swing chart: ' + lab.join(', '));
@@ -1887,7 +1887,7 @@
     Object.keys(S.st).forEach(function (id) {
       var s = S.st[id], p = S.P[id]; if (!p) return;
       if (p.role === 'p' && s.k >= 7) add(nm(id) + ' struck out ' + s.k);
-      if (p.role === 'h' && s.h >= 3) add(nm(id) + ' went ' + s.h + ' for ' + s.ab + (s.rbi >= 3 ? ' with ' + s.rbi + ' RBI' : ''));
+      if (p.role === 'h' && s.h >= 4) add(nm(id) + ' went ' + s.h + ' for ' + s.ab + (s.rbi >= 3 ? ' with ' + s.rbi + ' RBI' : ''));
       if (p.role === 'h' && s.rbi >= 4 && s.h < 3) add(nm(id) + ' drove in ' + s.rbi + ' runs');
       if (p.role === 'h' && s.sb >= 2) add(nm(id) + ' stole ' + s.sb + ' bases');
     });
@@ -1896,6 +1896,7 @@
     if (S.rallyAt && S.rallyRuns >= 2) add(Kit.poss(S.teams[S.rallyAt.t].name) + ' Rally Cap sparked a ' + S.rallyRuns + '-run ' + ord(S.rallyAt.i));
     var ch = (S.ev || []).filter(function (e) { return e.k === 'trick' && e.c === 'challenge'; });
     if (ch.length) add(S.teams[ch[0].t].name + ' won a replay with a Manager card');
+    Object.keys(S.st).forEach(function (id) { var s = S.st[id], p = S.P[id]; if (p && p.role === 'h' && s.h === 3) add(nm(id) + ' went 3 for ' + s.ab + (s.rbi >= 3 ? ' with ' + s.rbi + ' RBI' : '')); });
     if (!hl.length) {
       var top = null; Object.keys(S.st).forEach(function (id) { var s = S.st[id]; if (S.P[id] && S.P[id].role === 'h' && s.h && (!top || s.h > S.st[top].h)) top = id; });
       if (top) add(nm(top) + ' led the way with ' + S.st[top].h + ' hits');

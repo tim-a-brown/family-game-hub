@@ -155,6 +155,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .face::after{content:"";position:absolute;inset:calc(var(--cu) * .025);border-radius:calc(var(--cu) * .04);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--ink-c,#888) 80%,#fff);pointer-events:none;}
 .face .fn{margin-top:calc(var(--cu) * .24);font-family:var(--serif);font-weight:700;font-size:max(9px,calc(var(--cu) * .105));line-height:1.05;}
 .face .fv{font-family:var(--serif);font-style:italic;font-size:max(8px,calc(var(--cu) * .08));opacity:.85;line-height:1.05;}
+.slot .face .ft{display:none;}
+.slot .face .fn{margin-top:calc(var(--cu) * .3);}
 .face .ft{margin-top:3px;font-size:max(7px,calc(var(--cu) * .07));line-height:1.15;opacity:.8;overflow:hidden;flex:1;}
 /* Card back (our own design) */
 .lback{background:
@@ -252,6 +254,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lp-li .grow small{display:block;font-size:.75rem;color:var(--text-3);}
 .lp-li .btn{min-height:36px;padding:0 10px;font-size:.8rem;}
 .lp-li .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;}
+.lp-li.wrap{flex-wrap:wrap;}
+.lp-li.wrap > .seg,.lp-li.wrap > .acts{flex:1 1 100%;justify-content:flex-start;}
 
 /* Mulligan */
 .mull{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;background:rgba(5,8,28,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
@@ -306,8 +310,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.8rem;}
 .fchip.on{background:var(--gilt);color:#2b1a00;}
 .fchip .dot{width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}
-.bld-grid{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;align-content:start;padding:2px 2px 16px;}
-.pc{position:relative;--cu:132px;aspect-ratio:.716;border-radius:6px;overflow:hidden;background:#1d1a2c;box-shadow:0 3px 8px rgba(0,0,0,.4);border:0;padding:0;}
+.bld-grid{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;grid-auto-rows:max-content;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;align-content:start;padding:2px 2px 16px;}
+.pc{position:relative;--cu:132px;height:0;padding:0 0 139.7%!important;border-radius:6px;overflow:hidden;background:#1d1a2c;box-shadow:0 3px 8px rgba(0,0,0,.4);border:0;padding:0;}
 .pc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .pc .face{--cu:132px;}
 .pc .n{position:absolute;right:4px;top:4px;min-width:24px;height:24px;border-radius:12px;background:var(--gilt);color:#2b1a00;font-weight:900;font-size:.85rem;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.5);}
@@ -705,7 +709,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
         console.warn('Card download failed', e);
         if (v && v.cards && v.cards.length) { useLibrary(v); dbNotify(); return; }
         DB.status = 'error';
-        DB.note = navigator.onLine === false ? 'You’re offline. Lorcana needs the internet once to download the cards, then it works offline.' : 'Couldn’t reach the card library right now.';
+        DB.note = navigator.onLine === false ? 'You’re offline. Lorcana needs the internet once to download the cards, then it works offline.' : 'Couldn’t reach the card library. Check the internet connection and try again.';
         dbNotify();
       });
     }).then(function () { DB.loading = null; }, function () { DB.loading = null; });
@@ -957,7 +961,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   var A = {
     ink: function (pi, u) {
       var p = S.P[pi]; p.hand.splice(p.hand.indexOf(u), 1); resetCard(u); C(u).ex = false; p.ink.push(u); p.inked = true;
-      S.st[pi].inked++; log(p.name + ' put ' + nm(u) + ' into the inkwell', pi);
+      S.st[pi].inked++; log(p.name + ' put a card into the inkwell', pi);   // facedown: no name
     },
     play: function (pi, u, o) {
       o = o || {};
@@ -1545,7 +1549,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   }
   function lastMoves(pi) { // what the other player did, for the hand-off screen
     var out = [];
-    for (var i = S.log.length - 1; i >= 0 && out.length < 2; i--) { var l = S.log[i]; if (l.p === pi) break; if (l.p >= 0) out.unshift(l.t); }
+    for (var i = S.log.length - 1; i >= 0 && out.length < 2; i--) { var l = S.log[i]; if (l.p === pi) break; if (l.p >= 0 && !/ended their turn$/.test(l.t)) out.unshift(l.t); }
     return out.join('. ');
   }
   function handoff() {
@@ -1914,7 +1918,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   }
   function controlsHTML(vertical) {
     var my = canAct(), cpuT = S.phase === 'play' && S.P[S.cur].cpu;
-    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : 'Waiting';
+    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : S.step === 'begin' ? 'Next turn…' : 'Waiting';
     var idle = my && !S.P[S.cur].board.some(function (u) { return canQuest(u) || (canChallenger(u) && defenders(u).length); }) && !S.P[S.cur].hand.some(function (u) { return canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u); });
     var fxOn = S.phase === 'play' && S.viewer >= 0 && !S.P[S.viewer].cpu && !finishing;
     var fxb = '<button type="button" class="btn btn-soft btn-fx' + (ui.hint && fxOn ? ' attn' : '') + '" data-act="fx"' + (fxOn ? '' : ' disabled') + '>' + Kit.icon('sparkle') + '<span class="lg">Apply effect</span><span class="sm">Effect</span></button>';
@@ -2500,7 +2504,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       var r = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]);
       r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
       r.appendChild(seg([['top', 'Top'], ['bottom', 'Bottom'], ['hand', 'Hand'], ['discard', 'Discard']], 'top', function (x) { dest[u] = x; }));
-      r.style.flexWrap = 'wrap';
+      r.classList.add('wrap');
       list.appendChild(r);
     });
     node.appendChild(el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Top of the deck is first. Choose where each card goes.' }));
@@ -2539,7 +2543,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     }
     P.discard.slice().reverse().forEach(function (u) {
       var d = DD(u);
-      var r = el('div', { class: 'lp-li', style: { 'flex-wrap': 'wrap' } }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
+      var r = el('div', { class: 'lp-li wrap' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
         el('div', { class: 'acts' }, [['hand', 'Hand'], ['play', 'Play'], ['ink', 'Ink'], ['top', 'Deck top'], ['bottom', 'Bottom']].map(function (a) { return el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: a[1], onclick: function () { move(u, a[0]); } }); }))]);
       r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
       list.appendChild(r);
