@@ -38,6 +38,10 @@
 .spot .die.bad{box-shadow:0 0 0 3px var(--red),0 0 16px rgba(255,77,94,.6),0 10px 14px rgba(0,0,0,.45);}
 .spot .die.dead{filter:brightness(.8);}
 .spot .die.hint{animation:hint 1.2s ease-in-out infinite;}
+/* Dice that can't score this roll sit back a little; tapping one gives a no-shake */
+.spot .die.cant{filter:saturate(.55) brightness(.78);}
+.spot .die.nope{animation:nope .38s ease-in-out;}
+@keyframes nope{20%{transform:translateX(-5px) rotate(-6deg);}50%{transform:translateX(5px) rotate(5deg);}80%{transform:translateX(-3px) rotate(-2deg);}}
 @keyframes hint{50%{box-shadow:0 0 0 3px rgba(255,255,255,.55),0 8px 12px rgba(0,0,0,.45);}}
 .zone .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 80px;font-family:var(--display);font-size:1.25rem;line-height:1.15;color:rgba(255,255,255,.5);pointer-events:none;}
 
@@ -151,7 +155,7 @@
     '<h3>The end</h3><p>When someone banks 10,000 or more, everyone else gets <b>one last turn</b> to beat them. Highest score wins.</p>';
 
   Kit.init({
-    id: KEY,
+    id: KEY, mark: false,   // the logo is two dice, which looked like real dice left on the felt
     theme: { felt: ['#26508e', '#173766', '#0f274b'], wood: ['#8a5530', '#5c3519'] },
     onNew: function () { token++; lock = false; undoStack = []; clearSave(); showSetup(); },
     undo: function () { undo(); },
@@ -223,6 +227,17 @@
     if (sel.length === 6 && scoreOf(sel.map(function (i) { return S.dice[i].v; }), S.rules.dbl) > 0) return [];
     return sel.filter(function (i) { var v = S.dice[i].v; return v !== 1 && v !== 5 && c[v] < 3; });
   }
+
+  // Which of the dice on the table can be part of a score this roll, and how
+  // a tap groups them: a 1 or 5 on its own, every die of a three-or-more of a
+  // kind together, or all six for a straight / three pairs / etc.
+  function onTable() { return S.dice.map(function (d, i) { return i; }).filter(function (i) { return !S.dice[i].kept && S.dice[i].v; }); }
+  function tableInfo() {
+    var live = onTable(), vals = live.map(function (i) { return S.dice[i].v; }), c = counts(vals);
+    var whole = live.length === 6 && ['a straight', 'three pairs', 'four of a kind and a pair', 'two triplets'].indexOf(combo(vals, S.rules.dbl)) >= 0 && scoreOf(vals, S.rules.dbl) > 0;
+    return { live: live, c: c, whole: whole };
+  }
+  function canScore(i, info) { var v = S.dice[i].v; return info.whole || v === 1 || v === 5 || info.c[v] >= 3; }
 
   // ── State ────────────────────────────────────────────────────────────────
   // S = {mode, rules:{dbl,entry,target,pen}, players:[{name,cpu,color,score,on,fk,risk,st}],
@@ -638,7 +653,7 @@
     var cup = el('button', { type: 'button', class: 'cup' + (mine && (S.phase === 'start' || (S.phase === 'pick' && selScore() > 0)) ? ' ready' : ''), 'aria-label': 'Roll the dice', onclick: function () { roll(); } },
       [el('span', { class: 'body' }), el('span', { class: 'rim' })]);
     zone.appendChild(cup);
-    var sel = S.phase === 'pick' ? selIdx() : [], dead = sel.length ? deadIdx(sel) : [];
+    var sel = S.phase === 'pick' ? selIdx() : [], dead = sel.length ? deadIdx(sel) : [], tinfo = S.phase === 'pick' ? tableInfo() : null;
     var anyLive = false;
     S.dice.forEach(function (d, i) {
       if (d.kept || !d.v) return;
@@ -646,6 +661,7 @@
       var die = Kit.die(d.v);
       if (d.sel) die.classList.add('held');
       if (dead.indexOf(i) >= 0) die.classList.add('bad');
+      if (tinfo && !d.sel && !canScore(i, tinfo)) die.classList.add('cant');
       if (S.phase === 'farkle') die.classList.add('dead');
       die.addEventListener('click', function () { tapDie(i); });
       die.setAttribute('aria-label', 'Die showing ' + d.v + (d.sel ? ', set aside' : ''));
@@ -676,10 +692,15 @@
     var why = '';
     if (live && !p.cpu) {
       if (S.phase === 'start') why = S.hot ? '' : 'Roll all six dice';
-      else if (S.phase === 'pick') why = sel.length ? (ss > 0 ? 'Roll the rest, or bank' : 'Only scoring dice can be set aside') : 'Tap the dice you want to keep';
+      else if (S.phase === 'pick') {
+        var restN = liveIdx().length - sel.length;
+        why = !sel.length ? 'Tap the dice to keep: 1s, 5s or three of a kind'
+          : ss > 0 ? (restN ? 'Roll the other ' + restN + ' to push your luck, or bank your points' : 'Hot dice! Roll all six again, or bank')
+          : 'Tap a die again to put it back';
+      }
     }
     if (live && S.rules.entry && !p.on && S.phase === 'pick' && ss > 0 && S.turn + ss < S.rules.entry) why = 'Need ' + fmt(S.rules.entry) + ' in one turn to get on the board';
-    var em = el('em', { text: ss > 0 ? '+' + fmt(ss) + ' selected' : sel.length ? 'no score' : '' });
+    var em = el('em', { text: ss > 0 ? '+' + fmt(ss) + ' kept' : '' });
     if (sel.length && ss <= 0) em.classList.add('no');
     app.appendChild(el('div', { class: 'readout' }, [
       el('div', { style: { minWidth: 0 } }, [
@@ -691,7 +712,7 @@
 
     // Buttons
     var left = liveIdx().length - sel.length; if (S.phase === 'pick' && left === 0 && ss > 0) left = 6;
-    var rollLbl = S.phase === 'start' ? 'Roll 6 dice' : S.phase === 'pick' ? (ss > 0 ? 'Roll ' + left + (left === 1 ? ' die' : ' dice') : 'Roll') : 'Roll';
+    var rollLbl = S.phase === 'start' ? 'Roll 6 dice' : S.phase === 'pick' ? (ss > 0 ? 'Roll ' + left + (left === 1 ? ' die' : ' dice') : 'Keep dice first') : 'Roll';
     var rollSub = S.phase === 'pick' && ss > 0 && liveIdx().length === sel.length ? 'hot dice!' : '';
     var rb = el('button', { type: 'button', class: 'btn btn-primary', onclick: function () { roll(); } }, [el('span', { text: rollLbl }), rollSub ? el('small', { text: rollSub }) : null]);
     var need = S.rules.entry && !p.on && S.turn + ss < S.rules.entry;
@@ -710,8 +731,20 @@
   function tapDie(i) {
     if (!S || lock || S.phase !== 'pick' || P().cpu) return;
     var d = S.dice[i]; if (d.kept) return;
-    d.sel = !d.sel;
-    Kit.sfx(d.sel ? 'pop' : 'tap'); Kit.haptic('light');
+    var info = tableInfo();
+    if (!canScore(i, info)) {
+      var dn = app.querySelector('.spot[data-i="' + i + '"] .die');
+      if (dn) { dn.classList.remove('nope'); void dn.offsetWidth; dn.classList.add('nope'); }
+      Kit.sfx('bad'); Kit.haptic('error');
+      Kit.toast(d.v + 's only score as three of a kind', 1800);
+      return;
+    }
+    var on = !d.sel, group;
+    if (info.whole) group = info.live;                                   // straight, three pairs…
+    else if (d.v !== 1 && d.v !== 5) group = info.live.filter(function (j) { return S.dice[j].v === d.v; });   // the whole set
+    else group = [i];
+    group.forEach(function (j) { S.dice[j].sel = on; });
+    Kit.sfx(on ? 'pop' : 'tap'); Kit.haptic('light');
     save(); render();
   }
 
