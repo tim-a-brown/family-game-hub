@@ -107,6 +107,17 @@ var GameIcon = (function () {
     paddleball: function (c) { return rect(2.5, 6, 3, 12, 1.5, W) + rect(18.5, 6, 3, 12, 1.5, c) + rect(11.5, 2, 1, 20, .5, W, ' opacity=".35"') + rect(13, 9, 3.4, 3.4, .6, W); },
     lrc: function (c) { return rect(2, 6, 12, 12, 2.5, W, ' stroke="' + K + '" stroke-width="1.2"') + txt('L', 8, R, 12.6, 15) + rect(12, 4, 10, 10, 2.2, c) + txt('C', 17, W, 9.6, 12.2) + circ(18, 19, 2.6, Y) + circ(18, 19, 1.4, O); },
     farkle: function (c) { return rect(2, 8, 11, 11, 2.4, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-10 7.5 13.5)"') + circ(5, 11, 1.2, K) + circ(7.5, 13.5, 1.2, K) + circ(10, 16, 1.2, K) + rect(11, 3, 11, 11, 2.4, c, ' transform="rotate(12 16.5 8.5)"') + circ(16.5, 8.5, 1.4, W); },
+    go: function () {   // a corner of a Go board with black and white stones
+      var t = rect(1.5, 1.5, 21, 21, 2, '#e3b46a', ' stroke="' + K + '" stroke-width="1"');
+      for (var i = 0; i < 4; i++) t += line('M' + (5 + i * 4.67) + ' 4.5v15M4.5 ' + (5 + i * 4.67) + 'h15', '#6b4a1f', .8);
+      return t + circ(9.67, 9.67, 3.2, K) + circ(14.33, 14.33, 3.2, W, ' stroke="' + K + '" stroke-width=".9"') + circ(14.33, 9.67, 3.2, K) + circ(9.6, 8.6, .9, W, ' opacity=".35"');
+    },
+    marblesolitaire: function (c) {   // the cross-shaped peg board with one empty hole in the middle
+      var t = path('M8 1.5h8v6.5h6.5v8H16v6.5H8V16H1.5V8H8z', '#b07a3e', ' stroke="' + K + '" stroke-width="1"');
+      var cells = [[10,4],[14,4],[10,8],[14,8],[4,10],[8,10],[16,10],[20,10],[4,14],[8,14],[16,14],[20,14],[10,16],[14,16],[10,20],[14,20]];
+      cells.forEach(function (p, i) { t += circ(p[0] + .0, p[1] + .0, 1.7, [B, R, Y, G][i % 4]); });
+      return t + circ(12, 12, 1.6, '#00000055');
+    },
     mahjong4: function () { return rect(4, 1.5, 16, 21, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.4"') + txt('中', 13, R, 12.5); },
 
     // Dice & luck

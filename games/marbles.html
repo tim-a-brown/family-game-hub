@@ -9,14 +9,16 @@
 <script src="../games.js"></script>
 <script src="../game-icons.js"></script>
 <script src="../kit.js"></script>
+<script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
 .mcol{max-width:max(320px,min(520px,calc(100dvh - 250px)));margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+.mcol.cm{max-width:max(300px,min(520px,calc(100dvh - 392px)));gap:8px;}
 
 /* Player chips */
 .chips{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px;}
-.pc{--c:#fff;display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0;min-height:46px;padding:5px 8px;border-radius:12px;background:rgba(255,255,255,.05);border:2px solid transparent;transition:border-color .2s,background .2s;}
+.pc{--c:#fff;position:relative;display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0;min-height:46px;padding:5px 8px;border-radius:12px;background:rgba(255,255,255,.05);border:2px solid transparent;transition:border-color .2s,background .2s;}
 .pc.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);}
 .pc .nm{display:flex;align-items:center;gap:6px;font-weight:800;font-size:.86rem;line-height:1.1;min-width:0;}
 .pc .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -26,6 +28,9 @@
 .pc .pips i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.13);box-shadow:inset 0 1px 1px rgba(0,0,0,.5);flex:none;}
 .pc .pips i.h{background:var(--c);box-shadow:inset 0 -1px 1px rgba(0,0,0,.3);}
 .pc .pips em{font-style:normal;margin-left:4px;overflow:hidden;text-overflow:ellipsis;}
+.pc.lcp{padding-right:38px;}
+.pc .lc{position:absolute;right:6px;top:50%;transform:translateY(-50%) rotate(4deg);--cw:26px;}
+.pc .lc .pcard{box-shadow:0 1px 3px rgba(0,0,0,.4);}
 
 /* Wooden board */
 .board{position:relative;width:100%;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
@@ -52,10 +57,12 @@
 .tgt{position:absolute;width:calc(var(--ms) * 1.15);aspect-ratio:1;margin-left:calc(var(--ms) * -.575);margin-top:calc(var(--ms) * -.575);border-radius:50%;pointer-events:none;z-index:4;
   border:2px dashed #ffe58a;background:rgba(255,229,138,.18);animation:spin 3s linear infinite;}
 .tgt.cap{border-color:#ff6b6b;background:rgba(255,80,80,.22);}
-.tgt b{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:calc(var(--ms) * .5);color:#fff;text-shadow:0 1px 2px #000;animation:spin 3s linear infinite reverse;}
+.tgt.swap{border-color:#8fd3ff;background:rgba(120,200,255,.22);}
+.tgt b{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:calc(var(--mpx,20px) * .62);line-height:1;color:#fff;text-shadow:0 1px 2px #000;animation:spin 3s linear infinite reverse;}
+.tgt b .ico{width:70%;height:70%;filter:drop-shadow(0 1px 1px #000);}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* Dice tray */
+/* Dice tray / card tray */
 .tray{border-radius:22px;padding:7px;}
 .tray-in{position:relative;border-radius:16px;display:flex;align-items:center;gap:12px;padding:10px 12px;min-height:88px;}
 .cup{width:76px;height:76px;flex:none;border-radius:50%;display:grid;place-items:center;border:0;padding:0;
@@ -70,27 +77,57 @@
 .msg .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent);}
 .msg small{display:block;font-weight:700;font-size:.78rem;color:rgba(255,255,255,.72);text-shadow:none;}
 .opts{display:flex;flex-wrap:wrap;gap:6px;}
+.opts:empty{display:none;}
 .opts .btn{flex:1 1 auto;min-height:42px;padding:0 12px;font-size:.88rem;}
+.cm .opts .btn{min-height:40px;padding:4px 10px;font-size:.84rem;line-height:1.15;}
 .opts .btn.cap{--b:#e5484d;--b-ink:#fff;--b-lip:#9c2227;}
 .think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
 .think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
 @keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
 .rulechip{text-align:center;font-size:.76rem;font-weight:800;color:var(--text-3);}
 
+/* Cards: deck + discard pile in the tray, your hand below */
+.piles{position:relative;flex:none;display:flex;align-items:center;gap:8px;}
+.deck{position:relative;--cw:38px;width:44px;height:58px;}
+.deck .pcard{position:absolute;left:0;top:0;}
+.deck .pcard:nth-child(2){left:2px;top:-2px;}
+.deck .pcard:nth-child(3){left:4px;top:-4px;}
+.deck .dn{position:absolute;right:-6px;bottom:-6px;z-index:3;min-width:22px;height:20px;padding:0 5px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;font-weight:900;display:grid;place-items:center;}
+.pile{position:relative;--cw:50px;width:66px;height:76px;}
+.pile .pcard{position:absolute;left:8px;top:3px;transition:none;}
+.pile .pcard.top{box-shadow:0 0 0 2px var(--pc,#ffe58a),0 6px 14px rgba(0,0,0,.4);}
+.pile .ph,.deck .ph{position:absolute;inset:3px 8px;border-radius:6px;border:2px dashed rgba(255,255,255,.22);}
+.chand.mh{--cw:clamp(58px,16.4vw,76px);padding-top:18px;margin-top:-4px;}
+.chand.mh .pcard{transition:transform .18s var(--ease),filter .2s;}
+.chand.mh .pcard.sel{transform:translateY(-14px);}
+.chand.mh.off .pcard{filter:brightness(.82);}
+.chand .hidetag{position:absolute;left:50%;top:50%;transform:translate(-50%,-30%);z-index:3;padding:5px 12px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:.8rem;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.chand .hidetag .ico{width:15px;height:15px;}
+.pcard.jk{--ink:#6b2bd1;}
+.pcard.jk.red{--ink:#d81e3a;}
+.pcard.jk .big .ico{width:52%;height:auto;stroke-width:2.4;}
+.pcard.jk .ix .ico{width:calc(var(--cw) * .2);height:calc(var(--cw) * .2);stroke-width:3;}
+.pcard.jk .lbl{font-size:calc(var(--cw) * .13);}
+
 /* iPad: bigger board in portrait; landscape puts the players, die tray and rules beside the board */
 @media (min-width:700px) and (orientation:portrait){
   #app.stage.ipl{max-width:760px;}
   .mcol{max-width:min(712px,calc(100dvh - 340px));}
+  .mcol.cm{max-width:min(712px,calc(100dvh - 500px));}
   .cup{width:88px;height:88px;}
   .cup .die{--ds:56px;}
+  .chand.mh{--cw:86px;}
+  .pile{--cw:58px;width:76px;height:86px;}
 }
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
   #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
-  .mcol{max-width:none;display:grid;grid-template-columns:auto minmax(280px,340px);grid-template-rows:auto auto auto 1fr;
-    grid-template-areas:"b c" "b t" "b r" "b .";column-gap:28px;row-gap:12px;justify-content:center;align-items:start;}
+  .mcol,.mcol.cm{max-width:none;display:grid;grid-template-columns:auto minmax(280px,360px);grid-template-rows:auto auto auto auto 1fr;
+    grid-template-areas:"b c" "b t" "b h" "b r" "b .";column-gap:28px;row-gap:12px;justify-content:center;align-items:start;}
   .mcol>.chips{grid-area:c;grid-template-columns:1fr;}
-  .mcol>.board{grid-area:b;width:auto;height:min(calc(100dvh - 80px - var(--safe-t) - var(--safe-b)),calc((100vw - 420px) / var(--ar,1)));}
+  .mcol.cm>.chips{grid-template-columns:1fr 1fr;}
+  .mcol>.board{grid-area:b;width:auto;height:min(calc(100dvh - 80px - var(--safe-t) - var(--safe-b)),calc((100vw - 440px) / var(--ar,1)));}
   .mcol>.tray{grid-area:t;}
+  .mcol>.chand{grid-area:h;--cw:76px;}
   .mcol>.rulechip{grid-area:r;text-align:left;}
   .tray-in{flex-wrap:wrap;}
 }
@@ -104,7 +141,7 @@
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'marbles', SAVE = 'marbles_state';
   var SEG = 14, CEN = 999;
-  var RULES = { agg: 'Aggravation', wahoo: 'Wahoo', plain: 'Wahoo, no center' };
+  var RULES = { cards: 'Cards & Marbles', agg: 'Aggravation', wahoo: 'Wahoo', plain: 'Wahoo, no center' };
   var NEUTRAL = '#e8dcc2';
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -144,11 +181,14 @@
 
   // ── State ────────────────────────────────────────────────────────────────
   // S = {mode, rules, teams, B, players:[{name,cpu,color,arm,m:[4 positions],st}], cur,
-  //      phase:'roll'|'move'|'moved'|'over', die, sixRun, turns, started, hist:[snapshots], last}
+  //      phase:'roll'|'move'|'moved'|'play'|'over', die, sixRun, turns, started, hist:[snapshots], last}
+  // Cards rules add: king ('13'|'out'), deck, hands:[[card]], pile:[{c,pi}], lastCard:[card],
+  //      viewer (whose hand is showing, -1 = hidden), pend (second half of a split 7), deals, line.
   // Marble position: -1 base, 0..N-1 steps from your start hole, N..N+3 home, CEN centre.
   var S = null, SPD = 1, tok = 0, lock = false, sel = -1;
   function G() { return geo(S.B); }
   function N() { return SEG * S.B; }
+  function isCards() { return S && S.rules === 'cards'; }
   function save() {
     if (!S) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
@@ -162,55 +202,90 @@
   function startAbs(arm) { return arm * SEG + 7; }
   function isStar(t) { return t % SEG === SEG - 1; }
   function absOf(pi, p) { return (startAbs(S.players[pi].arm) + p) % N(); }
-  function homeCount(pi) { var n = N(); return S.players[pi].m.filter(function (p) { return p >= n && p !== CEN; }).length; }
-  function allHome(pi) { return homeCount(pi) === 4; }
+  function relOf(pi, abs) { var n = N(); return ((abs - startAbs(S.players[pi].arm)) % n + n) % n; }
+  function homeCount(pi, pl) { var n = N(); return (pl || S.players)[pi].m.filter(function (p) { return p >= n && p !== CEN; }).length; }
+  function allHome(pi, pl) { return homeCount(pi, pl) === 4; }
   function progress(pi) { var n = N(); return S.players[pi].m.reduce(function (a, p) { return a + (p === -1 ? 0 : p === CEN ? n / 2 : p); }, 0); }
-  function mover(pi) { return S.teams && allHome(pi) ? partnerOf(pi) : pi; }
+  function mover(pi, pl) { return S.teams && allHome(pi, pl) ? partnerOf(pi) : pi; }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function firstHuman() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i; return -1; }
+  function who(i) { return S.players[i].name; }
 
   // ── Rules text ───────────────────────────────────────────────────────────
   Kit.init({
     id: 'marbles', mark: false,
-    theme: { wood: ['#8a5530', '#5a3318'] },
-    onNew: function () { tok++; clearSave(); showSetup(); },
+    theme: { wood: ['#8a5530', '#5a3318'], back: ['#22406e', '#c9963a'] },
+    onNew: function () { tok++; Kit.handoff.close(); clearSave(); showSetup(); },
     undo: function () { undo(); },
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Marbles: past games' }); } }],
     rules:
-      '<p class="goal">Race all four of your marbles around the board and into your home row. First one home wins.</p>' +
-      '<h3>Getting out</h3><ul><li>Your marbles start in your painted <b>base</b>.</li>' +
-      '<li>Roll a <b>1 or a 6</b> to move a marble out onto your <b>start hole</b> (the painted ring). That uses the whole roll.</li>' +
-      '<li>Rolling a <b>6</b> always gives you another roll.</li></ul>' +
-      '<h3>Moving</h3><ul><li>Move one marble <b>clockwise</b> the number you rolled.</li>' +
-      '<li>You <b>can\'t jump or land on your own marbles</b>. You can jump other players\' marbles.</li>' +
-      '<li>If you can\'t move, your turn passes. If you can move, you must.</li></ul>' +
-      '<h3>Aggravate!</h3><p>Land <b>exactly</b> on another player\'s marble and it goes all the way back to their base.</p>' +
-      '<h3>Going home</h3><ul><li>After almost a full lap, turn up the painted home row in your own arm.</li>' +
-      '<li>You need the <b>exact number</b> to move in. You can\'t jump marbles in your home row.</li></ul>' +
-      '<h3>Shortcuts (Aggravation)</h3><ul>' +
-      '<li><b>Stars:</b> the star holes sit in the inside corners. If a marble <b>starts its turn on a star</b>, it may hop clockwise from star to star. Each hop counts as one, then keep going along the track with what\'s left.</li>' +
-      '<li><b>Center hole:</b> it counts as one step past any star, so you need the exact number to land in it.</li>' +
-      '<li>You can only leave the center by rolling a <b>1</b>. Then you hop out to <b>any star</b> you like.</li></ul>' +
-      '<h3>Wahoo rules</h3><ul><li><b>Wahoo:</b> the same race with no star hops. The center hole still works.</li>' +
-      '<li><b>Wahoo, no center:</b> no shortcuts at all.</li></ul>' +
-      '<h3>Partners</h3><ul><li>With 4 or 6 players you can play as partners: you team up with the player straight across.</li>' +
-      '<li>You can jump your partner but not land on them.</li>' +
-      '<li>Once all your marbles are home, you keep rolling and move your <b>partner\'s</b> marbles.</li>' +
-      '<li>The first team with all eight marbles home wins.</li></ul>' +
+      '<p class="goal">Race all four of your marbles around the board and into your home row. You move by playing cards. First one (or first team) with every marble home wins.</p>' +
+      '<p>This is the card game families call <b>Marbles</b>, <b>Cards &amp; Marbles</b>, <b>Tock</b> or <b>Pegs and Jokers</b>. Aggravation and Wahoo (with a die) are in setup under <b>Rules</b>.</p>' +
+      '<h3>The cards</h3><p>A normal deck plus 2 Jokers (you can turn the Jokers off in setup). Everyone gets <b>5 cards</b>. On your turn, play <b>one card</b> and move <b>one marble</b>. When everyone is out of cards, deal 5 more.</p>' +
+      '<ul><li><b>Ace:</b> move a marble out of base onto your start hole, or move 1.</li>' +
+      '<li><b>King:</b> move out of base, or move 13.</li>' +
+      '<li><b>Queen:</b> move 12.</li>' +
+      '<li><b>Jack:</b> swap one of your marbles with another player\'s marble on the track, or move 11.</li>' +
+      '<li><b>Joker:</b> move out of base, or jump one of your marbles onto any other player\'s marble on the track and send it back to its base.</li>' +
+      '<li><b>4:</b> move <b>backward</b> 4.</li>' +
+      '<li><b>7:</b> move 7, or <b>split</b> it between two marbles (like 3 and 4).</li>' +
+      '<li><b>2, 3, 5, 6, 8, 9, 10:</b> move forward that many.</li></ul>' +
+      '<h3>Moving</h3><ul><li>Marbles go <b>clockwise</b> around the track, then turn up your own home row.</li>' +
+      '<li>You <b>can\'t jump your own marbles</b>. You can jump other players\' marbles.</li>' +
+      '<li>Land <b>exactly</b> on another player\'s marble and it goes back to its base ("sent home").</li>' +
+      '<li>A marble sitting on <b>its own start hole</b> is safe. Nobody can land on it or jump past it.</li>' +
+      '<li>You need the <b>exact count</b> to move into your home row.</li>' +
+      '<li><b>Backing up trick:</b> a 4 from just past your start hole puts your marble right by your home row.</li>' +
+      '<li>If none of your cards can move anything, you throw away one card and your turn ends.</li></ul>' +
+      '<h3>Partners</h3><ul><li>With 4 or 6 players you can play as partners with the player straight across.</li>' +
+      '<li>You can jump your partner\'s marbles but not land on them, and you can use part of a 7 on your partner\'s marble.</li>' +
+      '<li>Once all four of your marbles are home, you play your cards to move your <b>partner\'s</b> marbles.</li>' +
+      '<li>The first team with every marble home wins.</li></ul>' +
+      '<h3>Family rules (exactly what this game does)</h3><ul>' +
+      '<li>Only the Ace, King and Joker get a marble out of base.</li>' +
+      '<li>The Jack can swap with any marble not on a base, in a home row, or on its own start hole. Swapping never sends anyone home.</li>' +
+      '<li>The Joker can only jump a marble that is already on the track.</li>' +
+      '<li>A split 7 can\'t go backward and both halves must be used. You can\'t split onto one marble twice.</li>' +
+      '<li>Backward moves never go into a home row.</li>' +
+      '<li>Setup choice: a King can be <b>out or 13</b> (usual) or <b>out only</b>.</li>' +
+      '<li>When the deck runs low it\'s shuffled with all the played cards.</li></ul>' +
+      '<h3>Dice rules: Aggravation and Wahoo</h3><ul>' +
+      '<li>Roll a <b>1 or a 6</b> to move a marble out. A 6 gives you another roll.</li>' +
+      '<li>Move one marble the number you rolled. If you can move, you must.</li>' +
+      '<li><b>Aggravation:</b> if a marble <b>starts its turn on a star</b> (inside corner) it may hop star to star; each hop counts as one. The <b>center hole</b> counts as one step past any star; leave it only with a 1, hopping out to any star.</li>' +
+      '<li><b>Wahoo:</b> no star hops; the center hole still works. <b>Wahoo, no center:</b> no shortcuts.</li></ul>' +
       '<h3>Boards</h3><p>Two to four players use the cross board. Five or six players use the six-sided board.</p>'
   });
 
   // ── Setup ────────────────────────────────────────────────────────────────
   var setupObs = null;
+  function savedRules() {
+    try { var s = JSON.parse(localStorage.getItem('gn_setup_marbles') || '{}'); return (s.options && s.options.ruleset) || 'cards'; } catch (e) { return 'cards'; }
+  }
   function showSetup() {
-    tok++; S = null; sel = -1; lock = false;
+    tok++; S = null; sel = -1; lock = false; ui.card = null; ui.sel = null;
+    Kit.handoff.close();
     app.classList.remove('ipl');
-    var st = Kit.setup(app, {
+    var st = null;
+    function rulesNow() { return st ? st.state.options.ruleset : savedRules(); }
+    st = Kit.setup(app, {
       modes: [
         { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against computer players' },
         { id: 'mix', icon: 'users', title: 'Family game', desc: 'Pass the phone. Leave a seat blank for a computer player' }
       ],
       options: [
-        { id: 'rules', label: 'Rules', value: 'agg', choices: [['agg', 'Aggravation', 'Star holes let you hop around the corners, and the center hole is a shortcut.'], ['wahoo', 'Wahoo', 'No star hops, but the center hole shortcut still works.'], ['plain', 'No center', 'No shortcuts at all: just race around the track.']] },
-        { id: 'teams', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'off', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
+        { id: 'ruleset', label: 'Rules', help: 'Which version of Marbles to play.', value: 'cards', choices: [
+          ['cards', 'Cards', 'The usual family game: play cards to move. No center hole.'],
+          ['agg', 'Aggravation', 'Roll a die. Star holes let you hop the corners, and the center hole is a shortcut.'],
+          ['wahoo', 'Wahoo', 'Roll a die. No star hops, but the center hole shortcut still works.'],
+          ['plain', 'Plain', 'Wahoo with no center hole. Roll a die. No shortcuts at all: just race around the track.']] },
+        { id: 'king', label: 'King', help: 'What a King lets you do in the card game.', value: '13', when: function () { return rulesNow() === 'cards'; }, choices: [
+          ['13', 'Out or 13', 'The usual rule: bring a marble out, or move 13.'],
+          ['out', 'Out only', 'A King can only bring a marble out of base.']] },
+        { id: 'jokers', label: 'Jokers', help: 'Whether the 2 Jokers are shuffled into the deck.', value: 'on', when: function () { return rulesNow() === 'cards'; }, choices: [
+          ['on', 'With Jokers', 'The usual deck: 2 Jokers that bring a marble out or jump onto a rival and send it home.'],
+          ['off', 'No Jokers', 'A plain 52-card deck. Only Aces and Kings bring marbles out.']] },
+        { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
       ],
       players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
@@ -227,9 +302,8 @@
           var b = blanks.indexOf(i);
           return b >= 0 ? { name: bots[b] || 'Computer ' + (b + 1), cpu: true, color: p.color } : { name: p.name, cpu: !!p.cpu, color: p.color };
         });
-        var n = players.length, teams = cfg.options.teams === 'on';
-        if (teams && n !== 4 && n !== 6) { Kit.toast('Partners need 4 or 6 players'); teams = false; }
-        start({ mode: cfg.mode, rules: cfg.options.rules || 'agg', teams: teams, players: players });
+        var n = players.length, teams = cfg.options.partners === 'on' && (n === 4 || n === 6);
+        start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', jokers: cfg.options.jokers || 'on', teams: teams, players: players });
       }
     });
     // Family game: blank seats become computer players
@@ -247,23 +321,31 @@
     hint();
   }
   function armsFor(n) { return n === 2 ? [0, 2] : n === 3 ? [0, 1, 2] : n === 4 ? [0, 1, 2, 3] : n === 5 ? [0, 1, 2, 3, 4] : [0, 1, 2, 3, 4, 5]; }
+  function newStats() { return { agg: {}, got: 0, centre: 0, star: 0, maxSix: 0, turns: 0, home: 0, jk: {}, swaps: 0, back4: 0, split2: 0, discards: 0 }; }
   function start(o) {
-    tok++; sel = -1; lock = false;
+    tok++; sel = -1; lock = false; ui.card = null; ui.sel = null;
+    Kit.handoff.close();
     var n = o.players.length, arms = armsFor(n);
     S = {
       mode: o.mode, rules: o.rules, teams: !!o.teams, B: n <= 4 ? 4 : 6,
       players: o.players.map(function (p, i) {
-        return { name: p.name, cpu: !!p.cpu, color: p.color, arm: arms[i], m: [-1, -1, -1, -1],
-          st: { agg: {}, got: 0, centre: 0, star: 0, maxSix: 0, turns: 0, home: 0 } };
+        return { name: p.name, cpu: !!p.cpu, color: p.color, arm: arms[i], m: [-1, -1, -1, -1], st: newStats() };
       }),
       cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null
     };
+    if (S.rules === 'cards') {
+      S.king = o.king || '13'; S.jokers = o.jokers || 'on'; S.deck = []; S.hands = S.players.map(function () { return []; });
+      S.pile = []; S.lastCard = S.players.map(function () { return null; }); S.pend = null; S.deals = 0; S.line = '';
+      S.phase = 'play'; S.viewer = humans() === 1 ? firstHuman() : -1;
+    }
     Kit.gameStart();
-    render(); beginTurn();
+    render();
+    if (isCards()) cBegin(); else beginTurn();
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // Moves. A move: {o: owner index, mi, from, to, kind, path:[tokens], cap:{pi,mi}|null}
+  // DICE RULES (Aggravation / Wahoo). Unchanged from the dice-only version.
+  // Moves: {o: owner index, mi, from, to, kind, path:[tokens], cap:{pi,mi}|null}
   // Path tokens: {b:mi} base hole, {p:q} position q for the owner, {c:1} centre.
   // ═════════════════════════════════════════════════════════════════════════
   function occMap() {
@@ -336,7 +418,7 @@
   }
   function legal() { if (!S || S.phase !== 'move') return []; return gen(mover(S.cur), S.die); }
 
-  // ── Turn flow ────────────────────────────────────────────────────────────
+  // ── Dice turn flow ───────────────────────────────────────────────────────
   function P() { return S.players[S.cur]; }
   function beginTurn() {
     if (!S || S.phase === 'over') return;
@@ -378,16 +460,16 @@
     S.cur = (S.cur + 1) % S.players.length;
     beginTurn();
   }
+  function snapshot() { var snap = JSON.parse(JSON.stringify(S)); snap.hist = []; S.hist.push(JSON.stringify(snap)); if (S.hist.length > 12) S.hist.shift(); }
   function doMove(m, byCpu) {
     if (!S || S.phase !== 'move' || lock) return;
     var ok = legal().filter(function (x) { return x.o === m.o && x.mi === m.mi && x.to === m.to; })[0];
     if (!ok) return;
     m = ok;
-    if (!byCpu) { var snap = JSON.parse(JSON.stringify(S)); snap.hist = []; S.hist.push(JSON.stringify(snap)); if (S.hist.length > 12) S.hist.shift(); }
-    var n = N(), me = P(), owner = S.players[m.o];
-    var fromXY = tokXY(m.o, m.path[0]);
-    var capFrom = null, victim = null;
-    if (m.cap) { victim = S.players[m.cap.pi]; capFrom = tokXY(m.o, m.path[m.path.length - 1]); }
+    if (!byCpu) snapshot();
+    var me = P(), owner = S.players[m.o];
+    var victim = null;
+    if (m.cap) victim = S.players[m.cap.pi];
     owner.m[m.mi] = m.to;
     if (m.cap) {
       victim.m[m.cap.mi] = -1;
@@ -399,7 +481,7 @@
     S.last = { o: m.o, mi: m.mi };
     S.phase = 'moved'; sel = -1; lock = true;
     save(); paint();
-    var dur = animate(m, fromXY, capFrom);
+    var dur = animate(m, 0);
     var after = function () {
       lock = false;
       if (m.kind === 'out') { Kit.sfx('pop'); }
@@ -411,13 +493,13 @@
     };
     laterRaw(after, dur + 60 * SPD);
   }
-  function winner() {
-    if (!S.teams) { for (var i = 0; i < S.players.length; i++) if (allHome(i)) return { team: [i] }; return null; }
-    for (var j = 0; j < S.players.length / 2; j++) if (allHome(j) && allHome(partnerOf(j))) return { team: [j, partnerOf(j)] };
+  function winner(pl) {
+    if (!S.teams) { for (var i = 0; i < S.players.length; i++) if (allHome(i, pl)) return { team: [i] }; return null; }
+    for (var j = 0; j < S.players.length / 2; j++) if (allHome(j, pl) && allHome(partnerOf(j), pl)) return { team: [j, partnerOf(j)] };
     return null;
   }
 
-  // ── Computer player ──────────────────────────────────────────────────────
+  // ── Dice computer player ─────────────────────────────────────────────────
   function danger(owner, t) {
     var n = N(), d = 0;
     S.players.forEach(function (Q, qi) {
@@ -466,15 +548,385 @@
     doMove(best, true);
   }
 
-  // ── Undo: back to just before the last move a person made (same roll) ────
+  // ═════════════════════════════════════════════════════════════════════════
+  // CARD RULES (Cards & Marbles / Tock / Pegs and Jokers)
+  // A step: {o, mi, from, to, path, cap:{pi,mi}|null, kind:'out'|'track'|'home'|'inhome'|'back'|'swap'|'joker', other}
+  // A move: {c: card, steps:[step] or [step, step] for a split 7}
+  // pl: a players-like array [{m:[...]}] so moves can be tried on a copy.
+  // ═════════════════════════════════════════════════════════════════════════
+  var RANK_ORDER = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'JK'];
+  function newDeck() {
+    var d = Cards.deck();
+    if (S.jokers !== 'off') d.push({ r: 'JK', s: 'r', id: 'j0' }, { r: 'JK', s: 'b', id: 'j1' });
+    return Cards.shuffle(d);
+  }
+  function cardName(c) {
+    if (!c) return '';
+    if (c.r === 'JK') return 'Joker';
+    return ({ A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' }[c.r] || c.r);
+  }
+  function cardShort(c) { return c.r === 'JK' ? 'Joker' : c.r + ({ s: '♠', h: '♥', d: '♦', c: '♣' }[c.s] || ''); }
+  function aCard(c) { var nm = cardName(c); return (/^[A8]/.test(nm) ? 'an ' : 'a ') + nm; }
+  function spec(c) {
+    switch (c.r) {
+      case 'JK': return { out: 1, joker: 1 };
+      case 'A': return { out: 1, fwd: 1 };
+      case 'K': return { out: 1, fwd: S.king === 'out' ? 0 : 13 };
+      case 'Q': return { fwd: 12 };
+      case 'J': return { swap: 1, fwd: 11 };
+      case '4': return { back: 4 };
+      case '7': return { split: 1, fwd: 7 };
+      default: return { fwd: +c.r };
+    }
+  }
+  function copyPl(pl) { return pl.map(function (P) { return { m: P.m.slice() }; }); }
+  function cOcc(pl) {
+    var occ = {}, n = N();
+    pl.forEach(function (P, pi) { P.m.forEach(function (p, mi) { if (p >= 0 && p < n) occ[absOf(pi, p)] = { pi: pi, mi: mi, prot: p === 0 }; }); });
+    return occ;
+  }
+  // Move marble (oi, mi) d holes: dir 1 forward (may enter home), -1 backward (track only)
+  function walkC(pl, oi, mi, d, dir, occ) {
+    var M = pl[oi].m, p = M[mi], n = N();
+    if (p < 0 || p === CEN) return null;
+    if (dir < 0 && p >= n) return null;
+    occ = occ || cOcc(pl);
+    var path = [{ p: p }], q = p, cap = null;
+    for (var s = 1; s <= d; s++) {
+      if (dir > 0) {
+        q = p + s;
+        if (q > n + 3) return null;
+        if (q >= n) { if (M.some(function (x, j) { return j !== mi && x === q; })) return null; path.push({ p: q }); continue; }
+      } else q = ((p - s) % n + n) % n;
+      var o = occ[absOf(oi, q)];
+      path.push({ p: q });
+      if (s < d) { if (o && (o.pi === oi || o.prot)) return null; }
+      else if (o) { if (friendly(o.pi, oi) || o.prot) return null; cap = { pi: o.pi, mi: o.mi }; }
+    }
+    var kind = dir < 0 ? 'back' : p >= n ? 'inhome' : q >= n ? 'home' : 'track';
+    return { o: oi, mi: mi, from: p, to: q, path: path, cap: cap, kind: kind, n: d };
+  }
+  function outStep(pl, oi, mi, occ) {
+    var o = (occ || cOcc(pl))[absOf(oi, 0)];
+    if (o && (friendly(o.pi, oi) || o.prot)) return null;
+    return { o: oi, mi: mi, from: -1, to: 0, path: [{ b: mi }, { p: 0 }], cap: o ? { pi: o.pi, mi: o.mi } : null, kind: 'out' };
+  }
+  function applyStep(pl, st) {
+    pl[st.o].m[st.mi] = st.to;
+    if (st.cap) pl[st.cap.pi].m[st.cap.mi] = -1;
+    if (st.other) pl[st.other.pi].m[st.other.mi] = st.other.to;
+  }
+  function teamOf(me) { return S.teams ? [me, partnerOf(me)] : [me]; }
+  // Every legal way to play card c for the player whose turn it is
+  function cardMoves(c, pl, cur) {
+    pl = pl || S.players; cur = cur == null ? S.cur : cur;
+    var me = mover(cur, pl), sp = spec(c), out = [], n = N(), occ = cOcc(pl), M = pl[me].m;
+    M.forEach(function (p, mi) {
+      var s;
+      if (p === -1) {
+        if (sp.out && (s = outStep(pl, me, mi, occ))) out.push({ c: c, steps: [s] });
+        return;
+      }
+      if (sp.fwd && !sp.split && (s = walkC(pl, me, mi, sp.fwd, 1, occ))) out.push({ c: c, steps: [s] });
+      if (sp.back && (s = walkC(pl, me, mi, sp.back, -1, occ))) out.push({ c: c, steps: [s] });
+      if ((sp.swap || sp.joker) && p < n) {
+        var ab = absOf(me, p);
+        pl.forEach(function (Q, qi) {
+          if (friendly(qi, me)) return;
+          Q.m.forEach(function (q, qmi) {
+            if (q < 0 || q >= n || q === 0) return;
+            var aq = absOf(qi, q), to = relOf(me, aq);
+            if (sp.swap) out.push({ c: c, steps: [{ o: me, mi: mi, from: p, to: to, path: [{ p: p }, { p: to }], cap: null, kind: 'swap', other: { pi: qi, mi: qmi, from: q, to: relOf(qi, ab) } }] });
+            else out.push({ c: c, steps: [{ o: me, mi: mi, from: p, to: to, path: [{ p: p }, { p: to }], cap: { pi: qi, mi: qmi }, kind: 'joker' }] });
+          });
+        });
+      }
+    });
+    if (sp.split) {
+      var team = teamOf(me), ms = [];
+      team.forEach(function (ti) { pl[ti].m.forEach(function (p, mi) { if (p >= 0) ms.push([ti, mi]); }); });
+      ms.forEach(function (X) {
+        for (var a = 1; a <= 7; a++) {
+          var s1 = walkC(pl, X[0], X[1], a, 1, occ); if (!s1) continue;
+          if (a === 7) { if (X[0] === me) out.push({ c: c, steps: [s1] }); continue; }
+          var pl2 = copyPl(pl); applyStep(pl2, s1);
+          var occ2 = cOcc(pl2);
+          ms.forEach(function (Y) {
+            if (Y[0] === X[0] && Y[1] === X[1]) return;
+            if (X[0] !== me && Y[0] !== me) return;
+            if (pl2[Y[0]].m[Y[1]] < 0) return;
+            var s2 = walkC(pl2, Y[0], Y[1], 7 - a, 1, occ2);
+            if (s2) out.push({ c: c, steps: [s1, s2] });
+          });
+        }
+      });
+    }
+    return out;
+  }
+  // Second half of a split 7: S.pend = {c, left, o, mi, first}
+  function pendMoves() {
+    var pd = S.pend, me = mover(S.cur), out = [];
+    teamOf(me).forEach(function (ti) {
+      if (pd.o !== me && ti !== me) return;
+      S.players[ti].m.forEach(function (p, mi) {
+        if (ti === pd.o && mi === pd.mi) return;
+        var s = walkC(S.players, ti, mi, pd.left, 1); if (s) out.push({ c: pd.c, steps: [s], second: true });
+      });
+    });
+    return out;
+  }
+  function hand(pi) { return S.hands[pi == null ? S.cur : pi]; }
+  function allPlays(pi) {
+    var out = [];
+    hand(pi).forEach(function (c) { out = out.concat(cardMoves(c, S.players, pi)); });
+    return out;
+  }
+  function sortHand(h) { h.sort(function (a, b) { return RANK_ORDER.indexOf(a.r) - RANK_ORDER.indexOf(b.r) || (a.s < b.s ? -1 : a.s > b.s ? 1 : 0); }); return h; }
+
+  // ── Card turn flow ───────────────────────────────────────────────────────
+  var handing = false;
+  function myHandShown() { return S && S.viewer === S.cur && !S.players[S.cur].cpu; }
+  function cBegin() {
+    if (!S || S.phase === 'over') return;
+    S.phase = 'play'; ui.card = null; ui.sel = null; ui.discard = null;
+    if (S.hands.every(function (h) { return !h.length; })) { deal(); return; }
+    save(); paint();
+    var p = S.players[S.cur];
+    if (p.cpu) { later(cpuCards, 700); return; }
+    if (humans() > 1 && S.viewer !== S.cur) {
+      // let everyone see the last move before covering the cards
+      var lastHuman = S.lastBy != null && S.lastBy >= 0 && !S.players[S.lastBy].cpu;
+      if (lastHuman) later(handoff, 1000); else handoff();
+      return;
+    }
+    if (humans() === 1) S.viewer = S.cur;
+    afterReveal();
+  }
+  function handoff() {
+    if (handing || !S || S.phase !== 'play' || S.players[S.cur].cpu || S.viewer === S.cur) return;
+    handing = true; S.viewer = -1; save(); paint();
+    var t = tok, i = S.cur, p = S.players[i];
+    Kit.handoff({ name: p.name, color: p.color, what: 'cards', msg: S.line || '' }).then(function () {
+      handing = false;
+      if (t !== tok || !S || S.cur !== i || S.phase !== 'play') return;
+      S.viewer = i; save(); afterReveal(true);
+    });
+  }
+  function afterReveal(fresh) {
+    paint();
+    if (fresh) flyDeal(false);
+    if (!allPlays(S.cur).length && !S.pend) { Kit.sfx('bad'); }
+  }
+  function deal() {
+    var n = S.players.length;
+    if (S.deck.length < 5 * n) { S.deck = newDeck(); S.pile = []; }
+    for (var k = 0; k < 5; k++) for (var i = 0; i < n; i++) S.hands[(S.cur + i) % n].push(S.deck.shift());
+    S.hands.forEach(sortHand);
+    S.deals++;
+    Kit.sfx('deal');
+    save(); paint();
+    if (S.viewer >= 0) flyDeal(true);
+    later(function () {
+      if (!S || S.phase !== 'play') return;
+      var p = S.players[S.cur];
+      if (p.cpu) { paint(); later(cpuCards, 650); return; }
+      if (humans() > 1 && S.viewer !== S.cur) { handoff(); return; }
+      if (humans() === 1) S.viewer = S.cur;
+      afterReveal();
+    }, S.deals > 1 ? 700 : 450);
+  }
+  function flyDeal(sound) {
+    if (!handEl || !deckEl) return;
+    var cs = handEl.querySelectorAll('.pcard:not(.back)');
+    if (!cs.length) return;
+    cs.forEach(function (c, i) {
+      c.style.opacity = '0';
+      setTimeout(function () {
+        if (!c.isConnected) return;
+        c.style.opacity = '';
+        Cards.fly(c, deckEl, { ms: Math.max(10, 320 * SPD) });
+        if (sound && i) Kit.sfx('tick');
+      }, i * 80 * SPD);
+    });
+  }
+  function cNext() {
+    if (!S || S.phase === 'over') return;
+    var w = winner(); if (w) { S.phase = 'over'; save(); finish(w); return; }
+    if (humans() > 1 && !S.players[S.cur].cpu) S.viewer = -1;
+    S.cur = (S.cur + 1) % S.players.length;
+    cBegin();
+  }
+  function takeCard(pi, c) {
+    var h = S.hands[pi], k = h.findIndex(function (x) { return x.id === c.id; });
+    if (k >= 0) h.splice(k, 1);
+    S.pile = S.pile.filter(function (x) { return x.pi !== pi; });
+    S.pile.push({ c: c, pi: pi });
+    S.lastCard[pi] = c;
+  }
+  function sameStep(a, b) {
+    return a.o === b.o && a.mi === b.mi && a.to === b.to && a.kind === b.kind &&
+      (!a.other === !b.other) && (!a.other || (a.other.pi === b.other.pi && a.other.mi === b.other.mi)) &&
+      (!a.cap === !b.cap) && (!a.cap || (a.cap.pi === b.cap.pi && a.cap.mi === b.cap.mi));
+  }
+  function stepLine(st, c) {
+    var me = S.players[S.cur], o = S.players[st.o];
+    var whose = st.o === S.cur ? '' : ' ' + Kit.poss(o.name).replace('Your', 'your');
+    if (st.kind === 'out') return 'brought a marble out' + (st.cap ? ' and sent ' + who(st.cap.pi) + ' home' : '');
+    if (st.kind === 'swap') return 'swapped with ' + who(st.other.pi);
+    if (st.kind === 'joker') return 'sent ' + who(st.cap.pi) + ' home';
+    if (st.kind === 'back') return 'went back 4' + (st.cap ? ' and sent ' + who(st.cap.pi) + ' home' : '');
+    if (st.kind === 'home') return 'moved' + whose + ' a marble home';
+    return 'moved' + whose + ' ' + st.n + (st.cap ? ' and sent ' + who(st.cap.pi) + ' home' : '');
+  }
+  function verbFor(name) { return name === 'You' ? '' : 's'; }
+  // Play a whole move (or the first half of a split 7 when half=true)
+  function playMove(mv, o) {
+    o = o || {};
+    if (!S || S.phase !== 'play' || lock) return;
+    var me = S.players[S.cur], st0 = mv.steps[0];
+    if (!o.cpu && !mv.second) snapshot();
+    var fromRect = o.fromRect || null;
+    if (!mv.second) { takeCard(S.cur, mv.c); me.st.turns++; S.turns++; }
+    var steps = o.half ? [st0] : mv.steps;
+    steps.forEach(function (st) {
+      applyStep(S.players, st);
+      if (st.cap) {
+        me.st.agg[st.cap.pi] = (me.st.agg[st.cap.pi] || 0) + 1; S.players[st.cap.pi].st.got++;
+        if (st.kind === 'joker') me.st.jk[st.cap.pi] = (me.st.jk[st.cap.pi] || 0) + 1;
+      }
+      if (st.kind === 'swap') me.st.swaps++;
+      if (st.kind === 'back' && st.to > st.from) me.st.back4++;
+      if (st.kind === 'home') me.st.home++;
+    });
+    // Split 7 bringing two marbles home
+    var homes = function (st) { return st.from < N() && st.to >= N(); };
+    if (!o.half && mv.steps.length === 2 && homes(mv.steps[0]) && homes(mv.steps[1])) me.st.split2++;
+    if (mv.second && S.pend && homes(S.pend.first) && homes(st0)) me.st.split2++;
+    var nm = me.name, verb = nm === 'You' ? 'You' : nm;
+    if (o.half) {
+      S.pend = { c: mv.c, left: 7 - st0.n, o: st0.o, mi: st0.mi, first: st0 };
+      S.line = verb + ' played a 7: ' + stepLine(st0) + ', ' + S.pend.left + ' to go';
+    } else if (mv.second) {
+      S.line = verb + ' split a 7: ' + stepLine(S.pend.first) + ', then ' + stepLine(st0);
+      S.pend = null;
+    } else {
+      S.line = verb + ' played ' + aCard(mv.c) + ' and ' + steps.map(function (s) { return stepLine(s); }).join(', then ');
+    }
+    S.lastBy = S.cur;
+    S.last = { o: st0.o, mi: st0.mi };
+    S.phase = o.half ? 'play' : 'moved'; ui.card = null; ui.sel = null; ui.discard = null; lock = true;
+    save(); paint();
+    if (!mv.second) flyToPile(fromRect);
+    Kit.sfx('flip');
+    var t = 0, jk = false;
+    steps.forEach(function (st) { if (st.kind === 'joker') jk = true; t = animStep(st, t); });
+    if (jk) laterRaw(function () { Kit.callout('Joker!', me.color); }, 80 * SPD);
+    laterRaw(function () {
+      lock = false;
+      var last = steps[steps.length - 1];
+      if (steps.some(function (s) { return s.kind === 'out'; })) Kit.sfx('pop');
+      if (steps.some(function (s) { return s.kind === 'home' || s.kind === 'inhome'; })) { Kit.sfx('good'); Kit.haptic('light'); }
+      if (o.half) { save(); paint(); return; }
+      var w = winner();
+      if (w) { S.phase = 'over'; save(); later(function () { finish(w); }, 500); return; }
+      later(cNext, steps.some(function (s) { return s.cap; }) ? 600 : 250);
+    }, t + 60 * SPD);
+  }
+  function discard(c, o) {
+    o = o || {};
+    if (!S || S.phase !== 'play' || lock) return;
+    if (!o.cpu) snapshot();
+    var me = S.players[S.cur];
+    takeCard(S.cur, c); me.st.discards++; me.st.turns++; S.turns++;
+    S.line = (me.name === 'You' ? 'You' : me.name) + ' couldn\'t move and threw away ' + aCard(c);
+    S.lastBy = S.cur;
+    S.phase = 'moved'; ui.card = null; ui.sel = null; ui.discard = null; lock = true;
+    save(); paint(); flyToPile(o.fromRect || null);
+    Kit.sfx('tap');
+    later(function () { lock = false; cNext(); }, o.cpu ? 900 : 500);
+  }
+  function flyToPile(fromRect) {
+    if (!pileEl) return;
+    var top = pileEl.querySelector('.pcard.top'); if (!top) return;
+    var src = fromRect ? { getBoundingClientRect: function () { return fromRect; } } : chipsEl && chipsEl.children[S.cur];
+    if (src) Cards.fly(top, src, { ms: Math.max(10, 380 * SPD), rot: -20 });
+  }
+
+  // ── Card computer player ─────────────────────────────────────────────────
+  function threat(pl, owner, abs) {
+    var n = N(), t = 0;
+    pl.forEach(function (Q, qi) {
+      if (friendly(qi, owner)) return;
+      Q.m.forEach(function (q) {
+        if (q === -1) { if (absOf(qi, 0) === abs) t += 0.5; return; }
+        if (q >= n) return;
+        var dist = (abs - absOf(qi, q) + n) % n;
+        if (dist >= 1 && dist <= 13 && dist !== 4 && q + dist <= n - 1) t += dist <= 7 ? 0.4 : 0.3;
+        else if (dist === n - 4) t += 0.3;
+      });
+    });
+    return t;
+  }
+  function evalPl(pl, side) {
+    var n = N(), s = 0;
+    pl.forEach(function (Q, qi) {
+      var mine = friendly(qi, side);
+      Q.m.forEach(function (p) {
+        var v = p === -1 ? 0 : p >= n ? n + 22 + (p - n) * 2 : 12 + p;
+        if (mine) {
+          s += v;
+          if (p > 0 && p < n) s -= threat(pl, qi, absOf(qi, p)) * (8 + p * 0.4);
+        } else s -= v * 0.9;
+      });
+    });
+    if (winner(pl)) { var w = winner(pl); s += w.team.indexOf(side) >= 0 ? 5000 : -5000; }
+    return s;
+  }
+  function cardCost(c, mv, pl) {
+    var me = mover(S.cur, pl), inBase = pl[me].m.some(function (p) { return p === -1; }), first = mv.steps[0];
+    switch (c.r) {
+      case 'JK': return first.kind === 'out' ? 34 : 16;
+      case 'J': return first.kind === 'swap' ? 14 : 12;
+      case 'A': case 'K': return inBase && first.kind !== 'out' ? 9 : 2;
+      case '7': return 5;
+      case '4': return 3;
+      default: return 0;
+    }
+  }
+  function keepValue(c) { return { JK: 100, J: 60, '7': 50, A: 45, K: 44, '4': 40 }[c.r] || (13 - Math.min(12, +c.r || 12)); }
+  function cpuCards() {
+    if (!S || S.phase !== 'play' || lock || !S.players[S.cur].cpu) return;
+    var plays = allPlays(S.cur);
+    if (!plays.length) {
+      var h = hand().slice().sort(function (a, b) { return keepValue(a) - keepValue(b); });
+      if (h.length) discard(h[0], { cpu: true }); else cNext();
+      return;
+    }
+    var base = evalPl(S.players, S.cur), best = null, bs = -1e9;
+    plays.forEach(function (mv) {
+      var pl = copyPl(S.players);
+      mv.steps.forEach(function (st) { applyStep(pl, st); });
+      var v = evalPl(pl, S.cur) - base - cardCost(mv.c, mv, S.players) + Math.random() * 3;
+      if (v > bs) { bs = v; best = mv; }
+    });
+    playMove(best, { cpu: true });
+  }
+
+  // ── Undo: back to just before the last move a person made ────────────────
   function undo() {
     if (!S || !S.players) return;
     if (S.phase === 'over') return Kit.toast('The game is over');
     if (!S.hist || !S.hist.length) return Kit.toast('Nothing to undo');
-    tok++; lock = false; sel = -1;
+    tok++; lock = false; sel = -1; handing = false; ui.card = null; ui.sel = null; ui.discard = null;
     var hist = S.hist, snap = JSON.parse(hist.pop());
     snap.hist = hist; S = snap;
     Kit.sfx('whoosh'); Kit.toast('Move taken back');
+    if (isCards()) {
+      Kit.handoff.close();
+      if (humans() > 1) S.viewer = -1;
+      save(); render(); cBegin();
+      return;
+    }
     save(); render(); afterRoll();
   }
 
@@ -483,28 +935,45 @@
   function times(k) { return k === 1 ? 'once' : k === 2 ? 'twice' : (NUM[k] || k) + ' times'; }
   function finish(w) {
     S.phase = 'over'; tok++;
+    Kit.handoff.close();
+    var cards = isCards();
     var names = w.team.map(function (i) { return S.players[i].name; });
     var wname = names.join(' & ');
-    var verb = S.rules === 'agg' ? 'aggravated' : 'sent';
     var hl = [], pairs = [];
     S.players.forEach(function (p, i) {
       Object.keys(p.st.agg).forEach(function (v) { pairs.push({ a: p.name, b: S.players[v].name, k: p.st.agg[v] }); });
     });
     pairs.sort(function (x, y) { return y.k - x.k; });
-    pairs.slice(0, 2).forEach(function (x) {
-      if (x.k >= 2 || pairs.length <= 2) hl.push(S.rules === 'agg' ? x.a + ' aggravated ' + x.b + ' ' + times(x.k) : x.a + ' sent ' + x.b + ' back to base ' + times(x.k));
-    });
-    var most = S.players.slice().sort(function (a, b) { return b.st.got - a.st.got; })[0];
-    if (most.st.got >= 3) hl.push(most.name + ' got sent back to base ' + times(most.st.got));
     function top(f) { return S.players.slice().sort(function (a, b) { return f(b) - f(a); })[0]; }
-    var six = top(function (p) { return p.st.maxSix; });
-    if (six.st.maxSix >= 3) hl.push(six.name + ' rolled ' + (NUM[six.st.maxSix] || six.st.maxSix) + ' 6s in a row');
-    var cen = top(function (p) { return p.st.centre; });
-    if (cen.st.centre) hl.push(cen.name + ' took the center shortcut ' + times(cen.st.centre));
-    var str = top(function (p) { return p.st.star; });
-    if (str.st.star >= 2) hl.push(str.name + ' hopped the star shortcuts ' + times(str.st.star));
     var wp = S.players[w.team[0]];
-    hl.unshift(wname + (w.team.length > 1 ? ' got all eight marbles home' : ' got all four marbles home') + ' in ' + wp.st.turns + ' turns');
+    hl.push(wname + (w.team.length > 1 ? ' got all eight marbles home' : ' got all four marbles home') + ' in ' + wp.st.turns + ' turns');
+    if (cards) {
+      var jks = [];
+      S.players.forEach(function (p) { Object.keys(p.st.jk || {}).forEach(function (v) { jks.push({ a: p.name, b: S.players[v].name, k: p.st.jk[v] }); }); });
+      jks.sort(function (x, y) { return y.k - x.k; });
+      jks.slice(0, 2).forEach(function (x) { hl.push(x.a + ' sent ' + x.b + ' home with a Joker' + (x.k > 1 ? ' ' + times(x.k) : '')); });
+      var sp7 = top(function (p) { return p.st.split2 || 0; });
+      if (sp7.st.split2) hl.push(sp7.name + ' split a 7 to bring two marbles home' + (sp7.st.split2 > 1 ? ' ' + times(sp7.st.split2) : ''));
+      pairs.slice(0, 1).forEach(function (x) { if (x.k >= 2) hl.push(x.a + ' sent ' + x.b + ' home ' + times(x.k)); });
+      var b4 = top(function (p) { return p.st.back4 || 0; });
+      if (b4.st.back4) hl.push(b4.name + ' backed up with a 4 to sneak past start' + (b4.st.back4 > 1 ? ' ' + times(b4.st.back4) : ''));
+      var sw = top(function (p) { return p.st.swaps || 0; });
+      if (sw.st.swaps >= 2) hl.push(sw.name + ' swapped places with a Jack ' + times(sw.st.swaps));
+      var dc = top(function (p) { return p.st.discards || 0; });
+      if (dc.st.discards >= 3) hl.push(dc.name + ' got stuck and threw away ' + dc.st.discards + ' cards');
+    } else {
+      pairs.slice(0, 2).forEach(function (x) {
+        if (x.k >= 2 || pairs.length <= 2) hl.push(S.rules === 'agg' ? x.a + ' aggravated ' + x.b + ' ' + times(x.k) : x.a + ' sent ' + x.b + ' back to base ' + times(x.k));
+      });
+      var six = top(function (p) { return p.st.maxSix; });
+      if (six.st.maxSix >= 3) hl.push(six.name + ' rolled ' + (NUM[six.st.maxSix] || six.st.maxSix) + ' 6s in a row');
+      var cen = top(function (p) { return p.st.centre; });
+      if (cen.st.centre) hl.push(cen.name + ' took the center shortcut ' + times(cen.st.centre));
+      var str = top(function (p) { return p.st.star; });
+      if (str.st.star >= 2) hl.push(str.name + ' hopped the star shortcuts ' + times(str.st.star));
+    }
+    var most = top(function (p) { return p.st.got; });
+    if (most.st.got >= 3) hl.push(most.name + ' got sent back to base ' + times(most.st.got));
     if (!pairs.length) hl.push('Nobody got ' + (S.rules === 'agg' ? 'aggravated' : 'sent home') + ' all game');
     var score = function (i) { return homeCount(i); };
     var players = S.players.map(function (p, i) { return { name: p.name, score: score(i), cpu: p.cpu }; });
@@ -518,9 +987,9 @@
     clearSave(); paint();
     var rank = S.players.map(function (p, i) { return { name: p.name, score: score(i) + ' home', color: p.color, pr: score(i) * 1000 + progress(i) + (w.team.indexOf(i) >= 0 ? 1e6 : 0) }; })
       .sort(function (a, b) { return b.pr - a.pr; });
-    var humans = S.players.filter(function (p) { return !p.cpu; });
-    var lose = humans.length > 0 && w.team.every(function (i) { return S.players[i].cpu; });
-    var setup0 = { mode: S.mode, rules: S.rules, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
+    var humansL = S.players.filter(function (p) { return !p.cpu; });
+    var lose = humansL.length > 0 && w.team.every(function (i) { return S.players[i].cpu; });
+    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: names.length > 1 ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
@@ -534,7 +1003,8 @@
   // ═════════════════════════════════════════════════════════════════════════
   // Rendering
   // ═════════════════════════════════════════════════════════════════════════
-  var boardEl, layerEl, chipsEl, trayMsg, trayOpts, cupEl, dieEl;
+  var boardEl, layerEl, chipsEl, trayMsg, trayOpts, cupEl, dieEl, handEl, deckEl, pileEl;
+  var ui = { card: null, sel: null, discard: null, glow: [], targets: [] };
   function tokXY(oi, t) {
     var g = G(), arm = S.players[oi].arm;
     if (t.c) return [0, 0];
@@ -558,7 +1028,7 @@
     return null;
   }
   function boardSVG() {
-    var g = G(), B = S.B, W = g.W, H = g.H, s = [];
+    var g = G(), B = S.B, W = g.W, H = g.H, s = [], centreOn = S.rules === 'agg' || S.rules === 'wahoo';
     s.push('<svg viewBox="' + f(-W / 2) + ' ' + f(-H / 2) + ' ' + f(W) + ' ' + f(H) + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">');
     s.push('<defs>' +
       '<linearGradient id="mw" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#e2b47a"/><stop offset=".55" stop-color="#cf9a5c"/><stop offset="1" stop-color="#b37c42"/></linearGradient>' +
@@ -597,9 +1067,9 @@
       var ax = bc[0] + ux * (dl - .95), ay = bc[1] + uy * (dl - .95);
       s.push('<path d="M' + f(ax + ux * .28) + ' ' + f(ay + uy * .28) + 'L' + f(ax - uy * .2) + ' ' + f(ay + ux * .2) + 'L' + f(ax + uy * .2) + ' ' + f(ay - ux * .2) + 'Z" fill="' + col + '" fill-opacity="' + op + '"/>');
     }
-    // Stars and centre
+    // Stars and centre (dice rules only)
     if (S.rules === 'agg') for (var k = 0; k < B; k++) { var st = g.track[k * SEG + SEG - 1]; s.push('<path d="' + starPath(st[0], st[1], .72, .32) + '" fill="#f6d77a" stroke="#8a5a14" stroke-opacity=".55" stroke-width=".05" stroke-linejoin="round"/>'); }
-    if (S.rules !== 'plain') s.push('<circle r=".82" fill="#f6d77a" stroke="#8a5a14" stroke-opacity=".55" stroke-width=".05"/><circle r=".58" fill="none" stroke="#8a5a14" stroke-opacity=".45" stroke-width=".05"/>');
+    if (centreOn) s.push('<circle r=".82" fill="#f6d77a" stroke="#8a5a14" stroke-opacity=".55" stroke-width=".05"/><circle r=".58" fill="none" stroke="#8a5a14" stroke-opacity=".45" stroke-width=".05"/>');
     // Drilled holes
     function hole(p, r) {
       r = r || .3;
@@ -608,7 +1078,7 @@
     g.track.forEach(function (p) { s.push(hole(p)); });
     g.home.forEach(function (h) { h.forEach(function (p) { s.push(hole(p)); }); });
     g.base.forEach(function (h) { h.forEach(function (p) { s.push(hole(p)); }); });
-    if (S.rules !== 'plain') s.push(hole([0, 0], .36));
+    if (centreOn) s.push(hole([0, 0], .36));
     s.push('</svg>');
     return s.join('');
   }
@@ -616,7 +1086,7 @@
   function render() {
     if (!S) return;
     app.innerHTML = ''; app.classList.add('ipl');
-    var g = G(), col = el('div', { class: 'mcol' });
+    var g = G(), cards = isCards(), col = el('div', { class: 'mcol' + (cards ? ' cm' : '') });
     chipsEl = el('div', { class: 'chips' });
     col.appendChild(chipsEl);
     boardEl = el('div', { class: 'board', style: { 'aspect-ratio': g.W.toFixed(3) + ' / ' + g.H.toFixed(3), '--ar': (g.W / g.H).toFixed(4), '--ms': (g.ms / g.W * 100).toFixed(3) + '%' } });
@@ -627,16 +1097,27 @@
     col.appendChild(boardEl);
     var tray = el('div', { class: 'tray wood' });
     var tin = el('div', { class: 'felt-in tray-in' });
-    dieEl = Kit.die(S.die || 1); dieEl.tabIndex = -1;
-    cupEl = el('button', { type: 'button', class: 'cup', 'aria-label': 'Roll the die', onclick: function () { humanRoll(); } }, [dieEl]);
-    tin.appendChild(cupEl);
+    cupEl = dieEl = deckEl = pileEl = handEl = null;
+    if (cards) {
+      deckEl = el('div', { class: 'deck', 'aria-label': 'Deck' });
+      pileEl = el('div', { class: 'pile', 'aria-label': 'Played cards' });
+      tin.appendChild(el('div', { class: 'piles' }, [deckEl, pileEl]));
+    } else {
+      dieEl = Kit.die(S.die || 1); dieEl.tabIndex = -1;
+      cupEl = el('button', { type: 'button', class: 'cup', 'aria-label': 'Roll the die', onclick: function () { humanRoll(); } }, [dieEl]);
+      tin.appendChild(cupEl);
+    }
     var side = el('div', { class: 'tside' });
     trayMsg = el('div', { class: 'msg' }); trayOpts = el('div', { class: 'opts' });
     side.appendChild(trayMsg); side.appendChild(trayOpts);
     tin.appendChild(side);
     tray.appendChild(tin);
     col.appendChild(tray);
-    col.appendChild(el('div', { class: 'rulechip', text: RULES[S.rules] + (S.teams ? ' · partners across' : '') + ' · ' + (S.B === 4 ? 'cross board' : 'six-sided board') }));
+    if (cards) {
+      handEl = el('div', { class: 'chand mh' });
+      col.appendChild(handEl);
+    }
+    col.appendChild(el('div', { class: 'rulechip', text: RULES[S.rules] + (S.teams ? ' · partners across' : '') + (cards && S.king === 'out' ? ' · King: out only' : '') + (cards && S.jokers === 'off' ? ' · no Jokers' : '') + ' · ' + (S.B === 4 ? 'cross board' : 'six-sided board') }));
     app.appendChild(col);
     paint();
   }
@@ -650,11 +1131,21 @@
     dieEl.classList.add('rolling');
   }
   function glass(color) { return '<span class="mb gm" style="--c:' + color + ';position:relative;margin:0;width:15px;--ms:15px;font-size:4px"></span>'; }
+  function cardEl(c, cls) {
+    if (c.r === 'JK') {
+      var j = Kit.cardFace({ html: Kit.icon('star'), label: 'Joker', corner: false, cls: 'jk' + (c.s === 'r' ? ' red' : '') + (cls ? ' ' + cls : ''), aria: 'Joker' });
+      var ix = Kit.icon('star');
+      j.insertAdjacentHTML('afterbegin', '<span class="ix">' + ix + '</span>');
+      j.dataset.id = c.id;
+      return j;
+    }
+    var k = Kit.card(c.r, c.s, { cls: cls });
+    k.dataset.id = c.id;
+    return k;
+  }
 
-  function paint() {
-    if (!S || !layerEl) return;
-    var n = N(), cur = P(), ms = (S.phase === 'move' && !lock && !cur.cpu) ? legal() : [];
-    // Chips
+  function paintChips() {
+    var cur = P(), cards = isCards();
     var cols = S.players.length <= 3 ? S.players.length : S.players.length === 4 ? 2 : 3;
     chipsEl.style.setProperty('--n', cols);
     chipsEl.innerHTML = '';
@@ -663,23 +1154,37 @@
       var pips = el('div', { class: 'pips' });
       var hc = homeCount(i);
       for (var k = 0; k < 4; k++) pips.appendChild(el('i', { class: k < hc ? 'h' : '' }));
+      var busy = cards ? (lock || S.phase !== 'play') : (lock || S.phase !== 'move');
       if (S.teams) pips.appendChild(el('em', { text: 'Team ' + (i % (S.players.length / 2) + 1) }));
-      else if (on && p.cpu && (lock || S.phase !== 'move')) pips.appendChild(el('em', { html: '<span class="think"><i></i><i></i><i></i></span>' }));
-      chipsEl.appendChild(el('div', { class: 'pc' + (on ? ' on' : ''), style: { '--c': p.color } }, [
-        el('div', { class: 'nm', html: glass(p.color) + (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), pips
+      else if (on && p.cpu && busy) pips.appendChild(el('em', { html: '<span class="think"><i></i><i></i><i></i></span>' }));
+      var lc = null;
+      if (cards && S.lastCard[i]) { lc = el('div', { class: 'lc', title: 'Last card played' }, [cardEl(S.lastCard[i])]); }
+      chipsEl.appendChild(el('div', { class: 'pc' + (on ? ' on' : '') + (cards ? ' lcp' : ''), style: { '--c': p.color } }, [
+        el('div', { class: 'nm', html: glass(p.color) + (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), pips, lc
       ]));
     });
-    // Marbles
+  }
+  function paintMarbles(canMove, selKey) {
     layerEl.innerHTML = '';
-    var canMove = {}, selMoves = [];
-    ms.forEach(function (m) { canMove[m.o + ':' + m.mi] = 1; if (m.mi === sel) selMoves.push(m); });
+    var gg = G(); if (boardEl.clientWidth) boardEl.style.setProperty('--mpx', (boardEl.clientWidth * gg.ms / gg.W).toFixed(1) + 'px');
+    var any = Object.keys(canMove).length > 0;
     S.players.forEach(function (p, pi) {
       p.m.forEach(function (pos, mi) {
         var xy = pct(posXY(pi, mi)), k = pi + ':' + mi;
-        var d = el('div', { class: 'mb' + (canMove[k] ? ' can' : '') + (canMove[k] && sel === mi ? ' sel' : '') + (ms.length && !canMove[k] ? ' dim' : ''), 'data-k': k, style: { '--c': p.color, left: xy[0] + '%', top: xy[1] + '%' } });
+        var d = el('div', { class: 'mb' + (canMove[k] ? ' can' : '') + (canMove[k] && selKey === k ? ' sel' : '') + (any && !canMove[k] ? ' dim' : ''), 'data-k': k, style: { '--c': p.color, left: xy[0] + '%', top: xy[1] + '%' } });
         layerEl.appendChild(d);
       });
     });
+  }
+
+  function paint() {
+    if (!S || !layerEl) return;
+    if (isCards()) return paintCards();
+    var cur = P(), ms = (S.phase === 'move' && !lock && !cur.cpu) ? legal() : [];
+    paintChips();
+    var canMove = {}, selMoves = [];
+    ms.forEach(function (m) { canMove[m.o + ':' + m.mi] = 1; if (m.mi === sel) selMoves.push(m); });
+    paintMarbles(canMove, sel >= 0 ? mover(S.cur) + ':' + sel : null);
     var multi = selMoves.length > 1;
     selMoves.forEach(function (m, i) {
       var xy = pct(tokXY(m.o, m.path[m.path.length - 1]));
@@ -711,6 +1216,10 @@
         sub = mover(S.cur) !== S.cur ? 'Moving ' + S.players[mover(S.cur)].name + '\'s marbles' : ms.some(function (m) { return m.cap; }) ? 'You can aggravate someone!' : '';
       }
     } else line = (who === 'You' ? 'Your' : Kit.poss(who)) + ' turn';
+    setMsg(line, sub);
+  }
+  function setMsg(line, sub) {
+    trayMsg.innerHTML = '';
     trayMsg.appendChild(el('span', { class: 'dot' }));
     trayMsg.appendChild(el('span', null, [document.createTextNode(line), sub ? el('small', { text: sub }) : null]));
   }
@@ -724,11 +1233,153 @@
     return 'Along the track' + cap;
   }
 
+  // ── Card rendering ───────────────────────────────────────────────────────
+  // Moves the person can make right now, grouped by the first marble/target
+  function cChoices() {
+    var out = { moves: [], glow: {}, groups: [] };
+    if (!S || S.phase !== 'play' || lock || !myHandShown()) return out;
+    var cc = ui.card && cardById(ui.card);
+    var moves = S.pend ? pendMoves() : cc ? cardMoves(cc) : [];
+    out.moves = moves;
+    moves.forEach(function (m) { var s = m.steps[0]; out.glow[s.o + ':' + s.mi] = 1; });
+    if (ui.sel) {
+      moves.forEach(function (m) {
+        var s = m.steps[0]; if (s.o + ':' + s.mi !== ui.sel) return;
+        var g = out.groups.filter(function (x) { return sameStep(x.step, s); })[0];
+        if (!g) out.groups.push(g = { step: s, moves: [] });
+        g.moves.push(m);
+      });
+    }
+    return out;
+  }
+  function cardById(id) { return hand().filter(function (c) { return c.id === id; })[0] || null; }
+  function groupLabel(g, isSeven) {
+    var s = g.step, cap = s.cap && s.kind !== 'joker' ? ', send ' + who(s.cap.pi) + ' home' : '';
+    var split = g.moves.some(function (m) { return m.steps.length > 1; });
+    if (s.kind === 'out') return 'Move out' + cap;
+    if (s.kind === 'swap') return 'Swap with ' + who(s.other.pi);
+    if (s.kind === 'joker') return 'Jump on ' + who(s.cap.pi);
+    if (s.kind === 'back') return 'Back 4' + cap;
+    if (isSeven && !S.pend) return split ? 'Move ' + s.n + ', then ' + (7 - s.n) + ' with another' + cap : 'Move all 7' + (s.kind === 'home' ? ' into home' : '') + cap;
+    if (s.kind === 'home' || s.kind === 'inhome') return 'Move ' + s.n + ' into home';
+    return 'Move ' + s.n + cap;
+  }
+  function paintCards() {
+    var cur = P(), ch = cChoices(), mine = myHandShown();
+    paintChips();
+    ui.glow = []; ui.targets = [];
+    paintMarbles(ch.glow, ui.sel);
+    Object.keys(ch.glow).forEach(function (k) { var a = k.split(':'); ui.glow.push({ o: +a[0], mi: +a[1], xy: posXY(+a[0], +a[1]) }); });
+    var c7 = S.pend || (ui.card && cardById(ui.card) && cardById(ui.card).r === '7');
+    var multi = ch.groups.length > 1;
+    ch.groups.forEach(function (g, i) {
+      var s = g.step, xy = tokXY(s.o, { p: s.to });
+      ui.targets.push({ xy: xy, g: g });
+      var lab = s.kind === 'swap' ? el('b', { html: Kit.icon('swap') }) : c7 && s.kind !== 'out' ? el('b', { text: String(s.n) }) : multi ? el('b', { text: String(i + 1) }) : null;
+      var p = pct(xy);
+      layerEl.appendChild(el('div', { class: 'tgt' + (s.kind === 'swap' ? ' swap' : s.cap ? ' cap' : ''), style: { left: p[0] + '%', top: p[1] + '%' } }, [lab]));
+    });
+    // Deck and pile
+    deckEl.innerHTML = '';
+    var dn = S.deck.length;
+    for (var k = 0; k < Math.min(3, Math.ceil(dn / 8)); k++) deckEl.appendChild(Kit.card('A', 's', { back: true }));
+    if (!dn) deckEl.appendChild(el('div', { class: 'ph' }));
+    deckEl.appendChild(el('span', { class: 'dn', text: String(dn) }));
+    pileEl.innerHTML = '';
+    if (!S.pile.length) pileEl.appendChild(el('div', { class: 'ph' }));
+    S.pile.forEach(function (x, i) {
+      var top = i === S.pile.length - 1, rot = ((x.pi * 37) % 23) - 11, dx = ((x.pi * 13) % 9) - 4;
+      var c = cardEl(x.c, top ? 'top' : '');
+      c.style.transform = 'translate(' + dx + 'px,' + (top ? 0 : 2) + 'px) rotate(' + rot + 'deg)';
+      c.style.setProperty('--pc', S.players[x.pi].color);
+      pileEl.appendChild(c);
+    });
+    // Hand
+    paintHand(ch);
+    // Tray text
+    trayOpts.innerHTML = '';
+    trayMsg.style.setProperty('--c', cur.color);
+    var nm = cur.name, line = '', sub = '';
+    var helping = mover(S.cur) !== S.cur ? 'You\'re home! Your cards move ' + Kit.poss(who(mover(S.cur))).replace('Your', 'your') + ' marbles' : '';
+    if (S.phase === 'over') line = 'Game over';
+    else if (cur.cpu) {
+      line = nm + (lock ? ' is moving' : ' is thinking');
+      sub = S.line && S.lastBy !== S.cur ? S.line : '';
+      if (lock && S.lastBy === S.cur) sub = S.line;
+    } else if (!mine) {
+      line = Kit.poss(nm) + ' turn';
+      sub = humans() > 1 ? 'Pass to ' + nm : '';
+    } else if (lock) {
+      line = (nm === 'You' ? 'You' : nm) + ' moved'; sub = S.line;
+    } else if (S.pend) {
+      line = 'Now move ' + S.pend.left + ' with another marble';
+      sub = ui.sel ? (multi ? '' : 'Tap the glowing hole') : 'Tap a glowing marble';
+    } else {
+      var plays = allPlays(S.cur);
+      if (!plays.length) {
+        var dc = ui.discard && cardById(ui.discard);
+        line = 'No card can move';
+        sub = dc ? 'Throw away the ' + cardShort(dc) + '?' : 'Tap a card to throw away';
+        if (dc) trayOpts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', html: Kit.icon('trash') + '<span>Throw away ' + Kit.esc(cardShort(dc)) + '</span>', onclick: function () { humanDiscard(); } }));
+      } else if (!ui.card) {
+        line = (nm === 'You' ? 'Your' : Kit.poss(nm)) + ' turn: pick a card';
+        sub = helping || (S.line && S.lastBy !== S.cur ? S.line : 'Then tap a glowing marble');
+      } else {
+        var cc = cardById(ui.card);
+        line = cardName(cc) + ': ' + (ui.sel ? (multi ? 'pick where' : 'tap the glowing hole') : 'tap a glowing marble');
+        sub = helping || cardHelp(cc);
+        if (ui.sel && multi) {
+          sub = '';
+          ch.groups.forEach(function (g, i) {
+            trayOpts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm' + (g.step.cap ? ' cap' : ''), text: (i + 1) + '. ' + groupLabel(g, cc.r === '7'), onclick: function () { Kit.sfx('tap'); chooseGroup(g); } }));
+          });
+        }
+      }
+    }
+    setMsg(line, sub);
+    if (S.pend && mine && !lock && ui.sel && multi) {
+      ch.groups.forEach(function (g, i) {
+        trayOpts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm' + (g.step.cap ? ' cap' : ''), text: (i + 1) + '. ' + groupLabel(g, true), onclick: function () { Kit.sfx('tap'); chooseGroup(g); } }));
+      });
+    }
+  }
+  function cardHelp(c) {
+    var sp = spec(c);
+    if (c.r === 'JK') return 'Bring a marble out, or jump onto a rival and send it home';
+    if (c.r === 'J') return 'Swap with a rival marble, or move 11';
+    if (c.r === '7') return 'Move 7, or split it between two marbles';
+    if (c.r === '4') return 'Moves backward 4';
+    if (sp.out) return sp.fwd ? 'Bring a marble out, or move ' + sp.fwd : 'Bring a marble out';
+    return 'Move ' + sp.fwd;
+  }
+  function paintHand(ch) {
+    if (!handEl) return;
+    handEl.innerHTML = '';
+    var mine = myHandShown(), v = S.viewer, showIdx = mine ? S.cur : (humans() === 1 && v >= 0 ? v : -1);
+    var active = mine && !lock && S.phase === 'play' && !S.pend;
+    var noPlays = active && !allPlays(S.cur).length;
+    handEl.classList.toggle('off', !mine || S.phase !== 'play');
+    if (showIdx < 0) {
+      var cnt = S.hands[S.cur] ? S.hands[S.cur].length : 0;
+      for (var i = 0; i < cnt; i++) handEl.appendChild(Kit.card('A', 's', { back: true }));
+      if (cnt && S.phase === 'play' && !S.players[S.cur].cpu) handEl.appendChild(el('div', { class: 'hidetag', html: Kit.icon('eye') + '<span>' + Kit.esc(Kit.poss(who(S.cur))) + ' cards are hidden</span>' }));
+    } else {
+      S.hands[showIdx].forEach(function (c) {
+        var playable = active && (noPlays || cardMoves(c).length > 0);
+        var selc = active && (ui.card === c.id || ui.discard === c.id);
+        var n = cardEl(c, (active ? 'play' : '') + (active && !playable ? ' dim' : '') + (selc ? ' sel' : ''));
+        if (active) n.addEventListener('click', function () { onCard(c, n); });
+        handEl.appendChild(n);
+      });
+    }
+    requestAnimationFrame(function () { if (handEl) Cards.fan(handEl, { gap: 8 }); });
+  }
+
   // ── Animation ────────────────────────────────────────────────────────────
-  function animate(m, fromXY, capXY) {
+  function animate(m, delay) {
+    delay = delay || 0;
     var g = G(), node = layerEl.querySelector('[data-k="' + m.o + ':' + m.mi + '"]');
     var pts = m.path.map(function (t) { return tokXY(m.o, t); });
-    pts[0] = fromXY;
     var end = pts[pts.length - 1], total = 0, segs = [];
     for (var i = 1; i < pts.length; i++) {
       var dx = pts[i][0] - pts[i - 1][0], dy = pts[i][1] - pts[i - 1][1], dist = Math.sqrt(dx * dx + dy * dy);
@@ -745,14 +1396,15 @@
         acc += segs[i - 1];
         frames.push({ transform: tf(pts[i]), offset: Math.min(1, acc / total) });
       }
-      node.animate(frames, { duration: total, easing: 'linear' });
-      setTimeout(function () { if (node) node.classList.remove('fly'); }, total + 20);
+      node.animate(frames, { duration: total, delay: delay, easing: 'linear', fill: 'backwards' });
+      setTimeout(function () { if (node) node.classList.remove('fly'); }, delay + total + 20);
     }
     // Click on each hole
     acc = 0;
-    segs.forEach(function (t, i) { acc += t; var at = acc; setTimeout(function () { Kit.sfx(i === segs.length - 1 ? 'chip' : 'tick'); }, at); });
-    if (!m.cap) return total;
+    segs.forEach(function (t, i) { acc += t; var at = delay + acc; setTimeout(function () { Kit.sfx(i === segs.length - 1 ? 'chip' : 'tick'); }, at); });
+    if (!m.cap) return delay + total;
     // The victim arcs back to its base
+    var capXY = end;
     var vnode = layerEl.querySelector('[data-k="' + m.cap.pi + ':' + m.cap.mi + '"]');
     var vb = posXY(m.cap.pi, m.cap.mi), dur = 650 * SPD;
     if (vnode && vnode.animate) {
@@ -760,15 +1412,33 @@
       var vf = function (p, lift, sc) { return 'translate(' + ((p[0] - vb[0]) / g.ms * 100).toFixed(2) + '%,' + ((p[1] - vb[1] - (lift || 0)) / g.ms * 100).toFixed(2) + '%) scale(' + (sc || 1) + ')'; };
       var mid2 = [(capXY[0] + vb[0]) / 2, (capXY[1] + vb[1]) / 2];
       vnode.animate([{ transform: vf(capXY) }, { transform: vf(capXY, .25, .9), offset: .08 }, { transform: vf(mid2, 3.2, 1.45), offset: .5 }, { transform: vf(vb, 0, 1), offset: .88 }, { transform: vf(vb, .15, 1.05), offset: .94 }, { transform: vf(vb) }],
-        { duration: dur, delay: total, easing: 'ease-in-out', fill: 'backwards' });
+        { duration: dur, delay: delay + total, easing: 'ease-in-out', fill: 'backwards' });
     }
     laterRaw(function () {
-      Kit.callout(S.rules === 'agg' ? 'Aggravated!' : 'Wahoo!', S.players[S.cur].color);
+      Kit.callout(isCards() ? (m.kind === 'joker' ? 'Joker!' : 'Sent home!') : S.rules === 'agg' ? 'Aggravated!' : 'Wahoo!', S.players[S.cur].color);
       bonk(); Kit.haptic('heavy');
       if (boardEl) { boardEl.classList.remove('shake'); void boardEl.offsetWidth; boardEl.classList.add('shake'); }
-    }, total);
-    return total + dur;
+    }, delay + total);
+    return delay + total + dur;
   }
+  // A Jack swap: both marbles arc past each other
+  function animSwap(st, delay) {
+    var g = G(), dur = 620 * SPD;
+    [[st.o, st.mi, tokXY(st.o, { p: st.from }), tokXY(st.o, { p: st.to }), 1], [st.other.pi, st.other.mi, tokXY(st.other.pi, { p: st.other.from }), tokXY(st.other.pi, { p: st.other.to }), -1]].forEach(function (a) {
+      var node = layerEl.querySelector('[data-k="' + a[0] + ':' + a[1] + '"]'); if (!node || !node.animate) return;
+      var from = a[2], end = a[3], mid = [(from[0] + end[0]) / 2, (from[1] + end[1]) / 2];
+      var dx = end[0] - from[0], dy = end[1] - from[1], L = Math.sqrt(dx * dx + dy * dy) || 1, bow = Math.min(2.2, L * .25) * a[4];
+      mid = [mid[0] - dy / L * bow, mid[1] + dx / L * bow];
+      function tf(p, sc) { return 'translate(' + ((p[0] - end[0]) / g.ms * 100).toFixed(2) + '%,' + ((p[1] - end[1]) / g.ms * 100).toFixed(2) + '%) scale(' + (sc || 1) + ')'; }
+      node.classList.add('fly');
+      node.animate([{ transform: tf(from) }, { transform: tf(mid, 1.3), offset: .5 }, { transform: tf(end) }], { duration: dur, delay: delay, easing: 'ease-in-out', fill: 'backwards' });
+      setTimeout(function () { node.classList.remove('fly'); }, delay + dur + 20);
+    });
+    setTimeout(function () { Kit.sfx('whoosh'); }, delay);
+    setTimeout(function () { Kit.sfx('chip'); Kit.haptic('medium'); }, delay + dur);
+    return delay + dur;
+  }
+  function animStep(st, delay) { return st.kind === 'swap' ? animSwap(st, delay) : animate(st, delay); }
   // A woody "bonk" (local; the kit has no bonk sound)
   var actx = null;
   function bonk() {
@@ -790,11 +1460,13 @@
   // ── Input ────────────────────────────────────────────────────────────────
   function canAct() { return S && !lock && S.phase === 'move' && !P().cpu; }
   function humanRoll() {
-    if (!S || lock || S.phase !== 'roll' || P().cpu) return;
+    if (!S || isCards() || lock || S.phase !== 'roll' || P().cpu) return;
     roll();
   }
   function onBoard(e) {
-    if (e.button > 0 || !canAct()) return;
+    if (e.button > 0) return;
+    if (isCards()) return onBoardCards(e);
+    if (!canAct()) return;
     var g = G(), rc = boardEl.getBoundingClientRect();
     var x = (e.clientX - rc.left) / rc.width * g.W - g.W / 2, y = (e.clientY - rc.top) / rc.height * g.H - g.H / 2;
     var ms = legal(); if (!ms.length) return;
@@ -820,14 +1492,82 @@
     sel = sel === best.mi ? -1 : best.mi;
     Kit.sfx('tick'); Kit.haptic('tick'); paint();
   }
+  // Cards: tap a card, then a glowing marble, then (if needed) a glowing hole
+  function canPlay() { return S && isCards() && !lock && S.phase === 'play' && myHandShown(); }
+  function onCard(c, node) {
+    if (!canPlay() || S.pend) return;
+    Kit.sfx('tick'); Kit.haptic('tick');
+    if (!allPlays(S.cur).length) { ui.discard = ui.discard === c.id ? null : c.id; paint(); return; }
+    if (!cardMoves(c).length) { Kit.toast('The ' + cardName(c) + ' can\'t move anything right now', 1400); return; }
+    if (ui.card === c.id) { ui.card = null; ui.sel = null; paint(); return; }
+    ui.card = c.id; ui.sel = null;
+    autoSelect();
+    paint();
+  }
+  // Only one marble can use this card: pick it straight away
+  function autoSelect() {
+    var ch = cChoices(), keys = Object.keys(ch.glow);
+    if (keys.length === 1) ui.sel = keys[0];
+  }
+  function handRect(id) {
+    var n = handEl && handEl.querySelector('.pcard[data-id="' + id + '"]');
+    return n ? n.getBoundingClientRect() : null;
+  }
+  function humanDiscard() {
+    if (!canPlay() || !ui.discard) return;
+    var c = cardById(ui.discard); if (!c) return;
+    discard(c, { fromRect: handRect(c.id) });
+  }
+  function chooseGroup(g) {
+    if (!canPlay()) return;
+    var rect = ui.card ? handRect(ui.card) : null;
+    var whole = g.moves.filter(function (m) { return m.steps.length === 1; })[0];
+    if (whole) { playMove(whole, { fromRect: rect }); return; }
+    // First half of a split 7
+    playMove(g.moves[0], { half: true, fromRect: rect });
+  }
+  function onBoardCards(e) {
+    if (!canPlay()) return;
+    var g = G(), rc = boardEl.getBoundingClientRect();
+    var x = (e.clientX - rc.left) / rc.width * g.W - g.W / 2, y = (e.clientY - rc.top) / rc.height * g.H - g.H / 2;
+    function d2(p) { return (p[0] - x) * (p[0] - x) + (p[1] - y) * (p[1] - y); }
+    // A target hole?
+    if (ui.sel && ui.targets.length) {
+      var hits = ui.targets.filter(function (t) { return d2(t.xy) < .75 * .75; });
+      if (hits.length === 1) { chooseGroup(hits[0].g); return; }
+      if (hits.length > 1) { Kit.toast('Pick from the list below', 1200); return; }
+    }
+    // A glowing marble?
+    var best = null, bd = 1.3 * 1.3;
+    ui.glow.forEach(function (gm) { var dd = d2(gm.xy); if (dd < bd) { bd = dd; best = gm; } });
+    if (!best) {
+      if (!ui.card && !S.pend) Kit.toast('Pick a card first', 1100);
+      else if (ui.sel) { ui.sel = null; paint(); }
+      return;
+    }
+    var key = best.o + ':' + best.mi;
+    ui.sel = key;
+    var ch = cChoices();
+    if (ch.groups.length === 1 && ch.groups[0].step.kind === 'out') { chooseGroup(ch.groups[0]); return; }
+    if (ch.groups.length === 1 && ch.groups[0].moves.length === 1 && !S.pend && (cardById(ui.card) || {}).r !== '7') { chooseGroup(ch.groups[0]); return; }
+    Kit.sfx('tick'); Kit.haptic('tick'); paint();
+  }
   document.addEventListener('keydown', function (e) {
-    if (!S || document.querySelector('.k-scrim')) return;
+    if (!S || document.querySelector('.k-scrim') || document.querySelector('.k-ho')) return;
+    if (isCards()) {
+      if (/^[1-9]$/.test(e.key) && canPlay() && ui.sel) {
+        var ch = cChoices(), g = ch.groups[+e.key - 1];
+        if (g) chooseGroup(g);
+      }
+      return;
+    }
     if ((e.key === ' ' || e.key === 'Enter' || e.key === 'r') && S.phase === 'roll') { e.preventDefault(); humanRoll(); }
     else if (/^[1-9]$/.test(e.key) && canAct() && sel >= 0) {
       var opts = legal().filter(function (m) { return m.mi === sel; }), m = opts[+e.key - 1];
       if (m) doMove(m);
     }
   });
+  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl, { gap: 8 }); });
 
   // ── Test hooks ───────────────────────────────────────────────────────────
   window.__marbles = {
@@ -835,12 +1575,25 @@
     speed: function (x) { SPD = x; }, lock: function () { return lock; },
     move: function (i) { var m = legal()[i]; if (m) doMove(m); return !!m; },
     roll: humanRoll,
-    load: function (st) { tok++; lock = false; sel = -1; S = st; render(); resumeFlow(); },
-    allCpu: function () { S.players.forEach(function (p) { p.cpu = true; }); tok++; lock = false; render(); resumeFlow(); }
+    load: function (st) { tok++; lock = false; sel = -1; handing = false; ui.card = null; ui.sel = null; Kit.handoff.close(); S = st; S.hist = S.hist || []; render(); resumeFlow(); },
+    allCpu: function () { S.players.forEach(function (p) { p.cpu = true; }); tok++; lock = false; handing = false; Kit.handoff.close(); if (isCards()) S.viewer = -1; render(); resumeFlow(); },
+    // cards
+    cardMoves: function (c) { return cardMoves(c); }, plays: function () { return allPlays(S.cur); },
+    ui: function () { return ui; }, choices: function () { return cChoices(); },
+    play: function (mv, half) { playMove(mv, { half: !!half }); }
   };
 
   function resumeFlow() {
     if (!S) return;
+    handing = false;
+    if (isCards()) {
+      if (S.phase === 'over') { var wc = winner(); if (wc) finish(wc); return; }
+      if (S.phase === 'moved') { S.phase = 'play'; cNext(); return; }
+      if (!S.players[S.cur].cpu && humans() > 1) S.viewer = -1;
+      if (S.pend) { save(); paint(); if (S.players[S.cur].cpu) { S.pend = null; cNext(); } else if (humans() > 1) handoff(); return; }
+      cBegin();
+      return;
+    }
     if (S.phase === 'roll') beginTurn();
     else if (S.phase === 'move') { paint(); afterRoll(); }
     else if (S.phase === 'moved') nextTurn();

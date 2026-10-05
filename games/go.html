@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+.go-col{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+
+/* Player bars: stone, name, and the wooden bowl that holds their prisoners */
+.pbar{--c:var(--accent);display:flex;align-items:center;gap:10px;min-height:52px;padding:5px 8px 5px 10px;border-radius:14px;background:rgba(255,255,255,.05);border:2px solid transparent;transition:border-color .2s, background .2s;}
+.pbar.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .nm span{overflow:hidden;text-overflow:ellipsis;}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbar.on .sub{color:var(--c);}
+.tok{width:28px;height:28px;border-radius:50%;flex:none;}
+.tok.b,.mini.b{background:radial-gradient(circle at 36% 30%,#6a6a72 0%,#2b2b30 32%,#0c0c0e 72%);box-shadow:0 2px 3px rgba(0,0,0,.55);}
+.tok.w,.mini.w{background:radial-gradient(circle at 36% 30%,#ffffff 0%,#f4f1ea 42%,#cfc8b8 100%);box-shadow:0 2px 3px rgba(0,0,0,.5);}
+.pris{display:flex;align-items:center;gap:7px;flex:none;}
+.pris .n{font-size:1.35rem;font-weight:900;font-variant-numeric:tabular-nums;min-width:1.4ch;text-align:right;line-height:1;}
+.pris .n.bump{animation:pop .45s var(--spring);}
+.pris .lb{font-size:.62rem;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;text-align:right;line-height:1.1;}
+/* Go-ke: a lathe-turned wooden bowl seen from above */
+.bowl{position:relative;width:42px;height:42px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 50% 50%,transparent 0 55%,rgba(0,0,0,.25) 56%,transparent 60%),
+    repeating-radial-gradient(circle at 46% 44%,rgba(90,50,15,.18) 0 1.5px,transparent 1.5px 4px),
+    radial-gradient(circle at 38% 32%,#d79a58,#a5652c 55%,#6d3d17);
+  box-shadow:0 3px 6px rgba(0,0,0,.5),inset 0 1px 1px rgba(255,255,255,.25);}
+.bowl::before{content:"";position:absolute;inset:6px;border-radius:50%;
+  background:radial-gradient(circle at 50% 40%,#7a4a22,#4c2b10 70%);box-shadow:inset 0 3px 6px rgba(0,0,0,.6);}
+.bowl i{position:absolute;width:11px;height:11px;border-radius:50%;z-index:1;}
+.bowl i.b{background:radial-gradient(circle at 36% 30%,#6a6a72,#1a1a1e 65%);box-shadow:0 1px 1px rgba(0,0,0,.6);}
+.bowl i.w{background:radial-gradient(circle at 36% 30%,#fff,#ddd7ca 75%);box-shadow:0 1px 1px rgba(0,0,0,.5);}
+.bowl.thud{animation:thud .3s ease-out;}
+@keyframes thud{40%{transform:scale(1.12);}}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The goban: a thick block of kaya with ink lines */
+.goban{position:relative;aspect-ratio:1;border-radius:6px;margin-bottom:8px;
+  background:var(--kaya,linear-gradient(160deg,#e6bd72,#d6a65a));background-size:cover;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 30px rgba(120,70,20,.18),0 2px 0 #c38f48,0 5px 0 #a8762f,0 8px 0 #8a5d22,0 18px 30px rgba(0,0,0,.55);
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;}
+.goban.shake{animation:shake .4s;}
+.goban svg.lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.goban svg.lines line{stroke:#2b1a0b;stroke-opacity:.82;stroke-width:1;vector-effect:non-scaling-stroke;}
+.goban svg.lines line.e{stroke-width:1.7;}
+.goban svg.lines circle{fill:#2b1a0b;fill-opacity:.9;}
+.lay{position:absolute;inset:0;pointer-events:none;}
+.st{position:absolute;border-radius:50%;}
+.st.b{background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,.34) 0,rgba(255,255,255,0) 22%),
+    radial-gradient(circle at 40% 36%,#4a4a50 0%,#232327 40%,#0a0a0b 78%);
+  box-shadow:.06em .1em .14em rgba(0,0,0,.55),inset -.04em -.06em .1em rgba(0,0,0,.6);}
+.st.w{background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,1) 0,rgba(255,255,255,0) 30%),
+    repeating-linear-gradient(-28deg,rgba(150,140,120,0) 0 9%,rgba(150,140,120,.07) 9% 11%),
+    radial-gradient(circle at 42% 38%,#fbfaf6 0%,#ece7dc 55%,#c9c1b0 100%);
+  box-shadow:.06em .1em .14em rgba(0,0,0,.45),inset -.04em -.06em .1em rgba(120,105,80,.35);}
+.lay.stones{font-size:var(--fs,16px);}
+.st.new{animation:place .2s cubic-bezier(.5,0,.9,.6);}
+@keyframes place{0%{transform:translate(-4%,-18%) scale(1.14);box-shadow:.3em .5em .5em rgba(0,0,0,.35);}100%{transform:none;}}
+.st.lastm::after{content:"";position:absolute;left:30%;top:30%;width:40%;height:40%;box-sizing:border-box;border-radius:50%;border:max(1.5px,.09em) solid;}
+.st.b.lastm::after{border-color:rgba(255,255,255,.85);}
+.st.w.lastm::after{border-color:rgba(20,20,20,.8);}
+.st.atari{box-shadow:0 0 0 max(1.5px,.08em) rgba(255,70,60,.95),0 0 .45em .12em rgba(255,50,40,.75),.06em .1em .14em rgba(0,0,0,.5);animation:atari 1.2s ease-in-out infinite;}
+@keyframes atari{50%{box-shadow:0 0 0 max(1.5px,.08em) rgba(255,70,60,.6),0 0 .2em 0 rgba(255,50,40,.3),.06em .1em .14em rgba(0,0,0,.5);}}
+.st.dead{opacity:.42;filter:saturate(.6);}
+.st.ghost{opacity:.5;box-shadow:none;transition:left .06s, top .06s;}
+.st.ghost.pv{opacity:.72;animation:pv 1s ease-in-out infinite;}
+@keyframes pv{50%{opacity:.45;}}
+.xh{position:absolute;background:var(--accent);opacity:.55;pointer-events:none;}
+.tm{position:absolute;border-radius:12%;}
+.tm.b{background:#141416;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.tm.w{background:#f7f4ec;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
+.fly{position:fixed;z-index:400;border-radius:50%;pointer-events:none;font-size:16px;}
+
+.turn{margin:0;min-height:34px;text-align:center;}
+.turn span:last-child{min-width:0;}
+.acts{display:flex;gap:10px;justify-content:center;}
+.acts .btn{flex:1;max-width:180px;}
+.acts .btn.ic{flex:0 0 auto;width:52px;padding:0;}
+.acts .btn[disabled]{opacity:.45;}
+.go-col.end>.info{display:none;}
+.info{font-size:.78rem;font-weight:700;color:var(--text-3);text-align:center;}
+
+/* Score sheet for the end of the game */
+.sc{border-radius:12px;padding:8px 12px 10px;font-variant-numeric:tabular-nums;}
+.sc.paper{background:linear-gradient(180deg,#fffaf0,#f3ead6);}
+.sc table{width:100%;border-collapse:collapse;}
+.sc table{table-layout:auto;}
+.sc th,.sc td{padding:2px 3px;text-align:center;white-space:nowrap;}
+.sc th:first-child,.sc td:first-child{text-align:left;}
+.sc thead th{font-family:var(--font);font-size:.62rem;font-weight:800;color:#6b604c;text-transform:uppercase;letter-spacing:0;}
+.sc td{font-family:var(--hand);font-size:1.15rem;color:var(--ink);border-top:1px dashed rgba(60,80,160,.22);line-height:1.15;}
+.sc td:first-child{font-family:var(--font);font-size:.85rem;font-weight:800;color:#2a2a3a;max-width:6.5em;overflow:hidden;text-overflow:ellipsis;}
+.sc td:first-child .mini{display:inline-block;width:13px;height:13px;border-radius:50%;vertical-align:-2px;margin-right:6px;}
+.sc td.t{font-size:1.3rem;padding-left:6px;font-weight:700;border-left:2px solid rgba(40,40,60,.35);}
+.sc .res{font-family:var(--display);color:#2a2a3a;font-size:1.05rem;text-align:center;margin-top:4px;}
+.sc .wait{color:#6b604c;font-weight:700;text-align:center;padding:16px 0;}
+
+/* Rules diagrams */
+.dgs{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;margin:6px 0 4px;}
+.dg{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:150px;}
+.dg svg{display:block;border-radius:6px;box-shadow:0 3px 8px rgba(0,0,0,.35);}
+.dg small{font-size:.78rem;color:var(--text-2);text-align:center;line-height:1.25;}
+
+/* iPad portrait: bigger board */
+@media (min-width:700px) and (orientation:portrait){
+  #app.stage.ipl{max-width:none;}
+  .go-col{max-width:min(700px,calc(100dvh - 450px));}
+  .pbar{min-height:58px;}
+  .pbar .nm{font-size:1.05rem;}
+  .pbar .sub{font-size:.8rem;}
+  .info{font-size:.85rem;}
+}
+/* Landscape (iPad, desktop, phones on their side): board left, panel right */
+@media (orientation:landscape) and (min-width:640px){
+  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 10px);padding-left:calc(16px + var(--corner-x));padding-right:calc(16px + var(--corner-x));}
+  .go-col{--bsz:min(calc(100dvh - 82px - var(--safe-t) - var(--safe-b)),calc(100vw - 2 * var(--corner-x) - 360px));max-width:none;height:calc(var(--bsz) + 8px);
+    display:grid;grid-template-columns:var(--bsz) minmax(250px,320px);grid-template-rows:max-content max-content max-content minmax(0,1fr) max-content max-content;
+    grid-template-areas:"b t" "b s" "b i" "b x" "b a" "b p";column-gap:22px;row-gap:8px;justify-content:center;}
+  .go-col>.goban{grid-area:b;width:var(--bsz);}
+  .go-col>.pbar.top{grid-area:t;}
+  .go-col>.pbar.bot{grid-area:p;}
+  .go-col>.turn{grid-area:s;justify-content:flex-start;text-align:left;}
+  .go-col>.info{grid-area:i;text-align:left;}
+  .go-col>.scw{grid-area:x;align-self:start;min-height:0;overflow:auto;}
+  .go-col>.acts{grid-area:a;}
+  .acts .btn{max-width:none;}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:500px){
+  .go-col{--bsz:min(calc(100dvh - 84px - var(--safe-t) - var(--safe-b)),calc(100vw - 2 * var(--corner-x) - 330px));row-gap:6px;}
+  .pbar{min-height:44px;padding:3px 8px;}
+  .bowl{width:34px;height:34px;}
+  .bowl::before{inset:5px;}
+  .bowl i{width:9px;height:9px;}
+  .turn{min-height:28px;font-size:.95rem;}
+  .sc{padding:4px 10px 6px;}
+  .sc td{font-size:1rem;}
+  .sc tr.tot td{font-size:1.15rem;}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .go-col{grid-template-columns:var(--bsz) minmax(280px,330px);column-gap:28px;row-gap:10px;}
+  .pbar{min-height:60px;}
+  .pbar .nm{font-size:1.05rem;}
+  .bowl{width:48px;height:48px;}
+  .bowl::before{inset:7px;}
+  .bowl i{width:12px;height:12px;}
+}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+/*ENGINE-START*/
+// ═══════════════════════════════════════════════════════════════════════════
+// Go engine. Pure code, no DOM: it also runs inside a Web Worker (toString).
+// Boards are padded: (n+2)^2 points with an EDGE border. Colours: 1 black,
+// 2 white. Chains are kept incrementally (circular stone lists + pseudo
+// liberties), which makes Monte Carlo playouts fast.
+// ═══════════════════════════════════════════════════════════════════════════
+function GoEngine() {
+  'use strict';
+  var EDGE = 3, GEO = {};
+  var MAXA = 21 * 21;
+  var mark = new Int32Array(MAXA), stamp = 0, cmark = new Int32Array(MAXA), cstamp = 0;
+  var libPt = 0, afterSize = 0;
+  var rs = (Date.now() ^ 0x5bd1e995) | 0 || 7;
+  function rnd() { rs ^= rs << 13; rs ^= rs >>> 17; rs ^= rs << 5; return (rs >>> 0) / 4294967296; }
+
+  function geo(n) {
+    if (GEO[n]) return GEO[n];
+    var W = n + 2, A = W * W, pts = new Int16Array(n * n), p2i = new Int16Array(A), line = new Int8Array(A), r, c;
+    p2i.fill(-1);
+    for (r = 0; r < n; r++) for (c = 0; c < n; c++) {
+      var p = (r + 1) * W + c + 1; pts[r * n + c] = p; p2i[p] = r * n + c;
+      line[p] = 1 + Math.min(r, c, n - 1 - r, n - 1 - c);
+    }
+    return (GEO[n] = { n: n, W: W, A: A, pts: pts, p2i: p2i, line: line, D: [1, -1, W, -W], DG: [W + 1, W - 1, -W + 1, -W - 1] });
+  }
+  function make(n) {
+    var g = geo(n), A = g.A;
+    var b = { n: n, g: g, col: new Int8Array(A), nxt: new Int16Array(A), chn: new Int16Array(A), lib: new Int16Array(A), sz: new Int16Array(A),
+      emp: new Int16Array(n * n), eix: new Int16Array(A), ne: 0, ko: 0, toPlay: 1, passes: 0, last: 0, last2: 0, mv: 0, cap1: 0, cap2: 0 };
+    b.col.fill(EDGE);
+    for (var k = 0; k < n * n; k++) { var p = g.pts[k]; b.col[p] = 0; b.eix[p] = b.ne; b.emp[b.ne++] = p; }
+    return b;
+  }
+  function copyTo(a, b) {
+    b.col.set(a.col); b.nxt.set(a.nxt); b.chn.set(a.chn); b.lib.set(a.lib); b.sz.set(a.sz); b.emp.set(a.emp); b.eix.set(a.eix);
+    b.ne = a.ne; b.ko = a.ko; b.toPlay = a.toPlay; b.passes = a.passes; b.last = a.last; b.last2 = a.last2; b.mv = a.mv; b.cap1 = a.cap1; b.cap2 = a.cap2;
+  }
+  function delEmpty(b, p) { var k = b.eix[p], q = b.emp[--b.ne]; b.emp[k] = q; b.eix[q] = k; }
+  function addEmpty(b, p) { b.eix[p] = b.ne; b.emp[b.ne++] = p; }
+  function merge(b, r1, r2) {
+    var chn = b.chn, nxt = b.nxt, sz = b.sz, t;
+    if (sz[r1] < sz[r2]) { t = r1; r1 = r2; r2 = t; }
+    var s = r2; do { chn[s] = r1; s = nxt[s]; } while (s !== r2);
+    t = nxt[r1]; nxt[r1] = nxt[r2]; nxt[r2] = t;
+    sz[r1] += sz[r2]; b.lib[r1] += b.lib[r2];
+  }
+  function removeChain(b, r, out) {
+    var col = b.col, nxt = b.nxt, D = b.g.D, s = r, d, q, cq;
+    do { col[s] = 0; addEmpty(b, s); if (out) out.push(s); s = nxt[s]; } while (s !== r);
+    s = r;
+    do {
+      for (d = 0; d < 4; d++) { q = s + D[d]; cq = col[q]; if (cq === 1 || cq === 2) b.lib[b.chn[q]]++; }
+      s = nxt[s];
+    } while (s !== r);
+  }
+  // Build a board from a plain array (index r*n+c, 0 empty, 1 black, 2 white)
+  function fromArr(arr, n, toPlay, koI) {
+    var b = make(n), g = b.g, col = b.col, chn = b.chn, k, p, d;
+    for (k = 0; k < n * n; k++) if (arr[k]) { p = g.pts[k]; delEmpty(b, p); col[p] = arr[k]; chn[p] = p; b.nxt[p] = p; b.sz[p] = 1; b.lib[p] = 0; }
+    for (k = 0; k < n * n; k++) if (arr[k]) {
+      p = g.pts[k];
+      if (col[p - 1] === col[p] && chn[p - 1] !== chn[p]) merge(b, chn[p], chn[p - 1]);
+      if (col[p - g.W] === col[p] && chn[p - g.W] !== chn[p]) merge(b, chn[p], chn[p - g.W]);
+    }
+    for (k = 0; k < n * n; k++) if (arr[k]) { p = g.pts[k]; for (d = 0; d < 4; d++) if (col[p + g.D[d]] === 0) b.lib[chn[p]]++; }
+    b.toPlay = toPlay || 1; b.ko = koI >= 0 ? g.pts[koI] : 0;
+    return b;
+  }
+  function toArr(b) { var g = b.g, out = []; for (var k = 0; k < b.n * b.n; k++) out.push(b.col[g.pts[k]]); return out; }
+
+  // Play p (0 = pass) for b.toPlay. The caller checks legality first.
+  function play(b, p, out) {
+    var c = b.toPlay, o = 3 - c;
+    if (!p) { b.passes++; b.ko = 0; b.last2 = b.last; b.last = 0; b.toPlay = o; b.mv++; return 0; }
+    var col = b.col, chn = b.chn, lib = b.lib, D = b.g.D, d, q, cq, cap = 0, capPt = 0;
+    delEmpty(b, p); col[p] = c; chn[p] = p; b.nxt[p] = p; b.sz[p] = 1; lib[p] = 0;
+    for (d = 0; d < 4; d++) { q = p + D[d]; cq = col[q]; if (cq === 0) lib[p]++; else if (cq !== EDGE) lib[chn[q]]--; }
+    for (d = 0; d < 4; d++) { q = p + D[d]; if (col[q] === c && chn[q] !== chn[p]) merge(b, chn[p], chn[q]); }
+    for (d = 0; d < 4; d++) { q = p + D[d]; if (col[q] === o && lib[chn[q]] <= 0) { cap += b.sz[chn[q]]; capPt = q; removeChain(b, chn[q], out); } }
+    var r = chn[p];
+    b.ko = cap === 1 && b.sz[r] === 1 && lib[r] === 1 ? capPt : 0;
+    if (c === 1) b.cap1 += cap; else b.cap2 += cap;
+    b.passes = 0; b.last2 = b.last; b.last = p; b.toPlay = o; b.mv++;
+    return cap;
+  }
+  // 0 legal, 1 occupied, 2 suicide, 3 ko
+  function why(b, p) {
+    var col = b.col, D = b.g.D, c = b.toPlay, d, e, q, cq, r, k;
+    if (col[p] !== 0) return 1;
+    if (p === b.ko) return 3;
+    for (d = 0; d < 4; d++) if (col[p + D[d]] === 0) return 0;
+    for (d = 0; d < 4; d++) {
+      q = p + D[d]; cq = col[q]; if (cq === EDGE) continue;
+      r = b.chn[q]; k = 0;
+      for (e = 0; e < 4; e++) { var qq = p + D[e]; if (col[qq] === cq && b.chn[qq] === r) k++; }
+      if (cq === c) { if (b.lib[r] > k) return 0; } else if (b.lib[r] === k) return 0;
+    }
+    return 2;
+  }
+  function legal(b, p) { return why(b, p) === 0; }
+  // An "eye" for c: all four neighbours are c (or the edge), and not a false eye
+  function isEye(b, p, c) {
+    var col = b.col, g = b.g, d, cq, bad = 0, edge = 0;
+    for (d = 0; d < 4; d++) { cq = col[p + g.D[d]]; if (cq !== c && cq !== EDGE) return false; }
+    for (d = 0; d < 4; d++) { cq = col[p + g.DG[d]]; if (cq === EDGE) edge = 1; else if (cq === 3 - c) bad++; }
+    return bad + edge < 2;
+  }
+  // Real liberties of chain r, counting up to max. libPt = first one found.
+  function libsCount(b, r, max) {
+    var col = b.col, D = b.g.D, s = r, n = 0, d, q;
+    stamp++;
+    do {
+      for (d = 0; d < 4; d++) {
+        q = s + D[d];
+        if (col[q] === 0 && mark[q] !== stamp) { mark[q] = stamp; if (!n) libPt = q; n++; if (n >= max) return n; }
+      }
+      s = b.nxt[s];
+    } while (s !== r);
+    return n;
+  }
+  // Liberties of the chain c would have after playing p (up to max; captures count as max).
+  function libsAfter(b, p, c, max) {
+    var col = b.col, chn = b.chn, D = b.g.D, n = 0, d, e, q, cq, r, s, k;
+    stamp++; cstamp++; mark[p] = stamp; afterSize = 1;
+    for (d = 0; d < 4; d++) {
+      q = p + D[d]; cq = col[q];
+      if (cq === 0) { if (mark[q] !== stamp) { mark[q] = stamp; n++; } }
+      else if (cq === 3 - c) {
+        r = chn[q]; k = 0;
+        for (e = 0; e < 4; e++) { var qq = p + D[e]; if (col[qq] === cq && chn[qq] === r) k++; }
+        if (b.lib[r] === k) { afterSize += 0; return max; }
+      }
+    }
+    for (d = 0; d < 4; d++) {
+      q = p + D[d];
+      if (col[q] !== c) continue;
+      r = chn[q]; if (cmark[r] === cstamp) continue; cmark[r] = cstamp;
+      s = r;
+      do {
+        afterSize++;
+        for (e = 0; e < 4; e++) { var t = s + D[e]; if (col[t] === 0 && mark[t] !== stamp) { mark[t] = stamp; n++; } }
+        s = b.nxt[s];
+      } while (s !== r);
+    }
+    return n < max ? n : max;
+  }
+
+  // ── Playout policy: answer ataris near the last move, else random ──────────
+  var cand = new Int16Array(128);
+  function policyMove(b) {
+    var c = b.toPlay, o = 3 - c, last = b.last, col = b.col, chn = b.chn, D = b.g.D, d, e, q, r, nc = 0, s, lp;
+    if (last && col[last] === o) {
+      r = chn[last];
+      if (libsCount(b, r, 2) === 1 && legal(b, libPt)) cand[nc++] = libPt;
+      for (d = 0; d < 4; d++) {
+        q = last + D[d];
+        if (col[q] !== c) continue;
+        r = chn[q];
+        if (libsCount(b, r, 2) !== 1) continue;
+        lp = libPt;
+        // capture something next to the threatened chain...
+        if (b.sz[r] < 12) {
+          s = r;
+          do {
+            for (e = 0; e < 4; e++) {
+              var t = s + D[e];
+              if (col[t] === o && libsCount(b, chn[t], 2) === 1 && nc < 120 && legal(b, libPt)) cand[nc++] = libPt;
+            }
+            s = b.nxt[s];
+          } while (s !== r);
+        }
+        // ...or run away if that gives it room
+        if (legal(b, lp) && libsAfter(b, lp, c, 3) >= 2 && nc < 120) cand[nc++] = lp;
+      }
+      if (nc) return cand[(rnd() * nc) | 0];
+    }
+    return randomMove(b);
+  }
+  function randomMove(b) {
+    var ne = b.ne, c = b.toPlay, emp = b.emp;
+    if (!ne) return 0;
+    var i = (rnd() * ne) | 0;
+    for (var k = 0; k < ne; k++) {
+      var p = emp[i]; if (++i === ne) i = 0;
+      if (isEye(b, p, c) || !legal(b, p)) continue;
+      // Don't throw away a chain of 2+ stones by filling its last liberty
+      if (libsAfter(b, p, c, 2) < 2 && afterSize >= 2) continue;
+      return p;
+    }
+    return 0;
+  }
+  // Black minus white on a finished playout (area scoring; every empty point is an eye)
+  function areaScore(b, own) {
+    var col = b.col, g = b.g, D = g.D, s = 0, k, p, v, d, cq, bl, wh;
+    for (k = 0; k < b.n * b.n; k++) {
+      p = g.pts[k]; v = col[p];
+      if (v === 1) { s++; if (own) own[k]++; }
+      else if (v === 2) { s--; if (own) own[k]--; }
+      else {
+        bl = 0; wh = 0;
+        for (d = 0; d < 4; d++) { cq = col[p + D[d]]; if (cq === 1) bl = 1; else if (cq === 2) wh = 1; }
+        if (bl && !wh) { s++; if (own) own[k]++; } else if (wh && !bl) { s--; if (own) own[k]--; }
+      }
+    }
+    return s;
+  }
+  function runPlayout(b, maxMv, seqP, seqC, len) {
+    while (b.passes < 2 && b.mv < maxMv) {
+      var c = b.toPlay, p = policyMove(b);
+      play(b, p, null);
+      if (p && seqP && len < seqP.length) { seqP[len] = p; seqC[len] = c; len++; }
+    }
+    return len;
+  }
+
+  // ── Monte Carlo tree search with RAVE and heuristic priors ────────────────
+  function Node(mv, c) { this.mv = mv; this.c = c; this.n = 0; this.w = 0; this.rn = 0; this.rw = 0; this.pn = 0; this.pw = 0; this.kids = null; }
+  function prior(b, p, nd) {
+    var c = b.toPlay, o = 3 - c, col = b.col, chn = b.chn, g = b.g, D = g.D, d, q, r, v = 0.5, pn = 10, n = b.n;
+    var cap = 0, save = false;
+    for (d = 0; d < 4; d++) {
+      q = p + D[d];
+      if (col[q] === o) { r = chn[q]; if (libsCount(b, r, 2) === 1) cap = Math.max(cap, b.sz[r]); }
+      else if (col[q] === c) { r = chn[q]; if (libsCount(b, r, 2) === 1) save = true; }
+    }
+    var la = libsAfter(b, p, c, 3), size = afterSize;
+    if (cap) { v = cap >= 3 ? 0.95 : 0.85; pn = 30; }
+    else if (save && la >= 2) { v = la >= 3 ? 0.9 : 0.75; pn = 25; }
+    else if (la <= 1) { v = size >= 3 ? 0.03 : 0.12; pn = 30; }
+    else {
+      // empty-board shape: avoid the first two lines when nothing is nearby
+      var line = g.line[p], near = 0, rr, cc, pr = (p / g.W) | 0, pc = p % g.W;
+      for (rr = -2; rr <= 2 && !near; rr++) for (cc = -2; cc <= 2; cc++) {
+        if (Math.abs(rr) + Math.abs(cc) > 3) continue;
+        var t = (pr + rr) * g.W + pc + cc;
+        if (pr + rr >= 1 && pr + rr <= n && pc + cc >= 1 && pc + cc <= n && (col[t] === 1 || col[t] === 2)) { near = 1; break; }
+      }
+      if (n >= 9) {
+        if (line === 1) v = near ? 0.38 : 0.12;
+        else if (line === 2) v = near ? 0.5 : 0.35;
+        else if (line === 3) v = near ? 0.58 : 0.62;
+        else if (line === 4) v = near ? 0.56 : 0.58;
+        else v = near ? 0.55 : 0.5;
+      }
+      if (la === 2 && size >= 3) v -= 0.05;
+      if (b.last) {
+        var lr = (b.last / g.W) | 0, lc = b.last % g.W;
+        if (Math.abs(lr - pr) <= 1 && Math.abs(lc - pc) <= 1) v += 0.08;
+        else if (Math.abs(lr - pr) + Math.abs(lc - pc) <= 3) v += 0.04;
+      }
+    }
+    nd.pn = pn; nd.pw = pn * v;
+  }
+  function expand(nd, b) {
+    var kids = [], c = b.toPlay, emp = b.emp;
+    for (var k = 0; k < b.ne; k++) {
+      var p = emp[k];
+      if (isEye(b, p, c) || !legal(b, p)) continue;
+      var ch = new Node(p, c); prior(b, p, ch); kids.push(ch);
+    }
+    if (!kids.length) kids.push(new Node(0, c));
+    nd.kids = kids;
+  }
+  var RAVEK = 1 / 3000;
+  function pick(nd) {
+    var kids = nd.kids, best = kids[0], bv = -1, lg = Math.log(nd.n + 1);
+    for (var i = 0; i < kids.length; i++) {
+      var ch = kids[i], n = ch.n + ch.pn, q = (ch.w + ch.pw) / n, v;
+      if (ch.rn > 0) { var beta = ch.rn / (ch.rn + n + ch.rn * n * RAVEK); v = (1 - beta) * q + beta * (ch.rw / ch.rn); }
+      else v = q;
+      v += 0.12 * Math.sqrt(lg / (n + 1));
+      if (v > bv) { bv = v; best = ch; }
+    }
+    return best;
+  }
+  function search(rb, o) {
+    var n = rb.n, N2 = n * n, komi = o.komi, t0 = Date.now(), time = o.time || 1000, maxSims = o.sims || 1e9;
+    var root = new Node(0, 3 - rb.toPlay), b = make(n), own = new Float32Array(N2), sims = 0;
+    var seqP = new Int16Array(N2 * 4), seqC = new Int8Array(N2 * 4), fS = new Int32Array(b.g.A), fC = new Int8Array(b.g.A), fstamp = 0;
+    var maxMv = rb.mv + N2 * 3, path = [];
+    expand(root, rb);
+    while (sims < maxSims) {
+      if ((sims & 31) === 0 && Date.now() - t0 > time) break;
+      copyTo(rb, b);
+      var nd = root, len = 0; path.length = 0; path.push(root);
+      while (nd.kids && b.passes < 2) {
+        nd = pick(nd); play(b, nd.mv, null);
+        seqP[len] = nd.mv; seqC[len] = nd.c; len++;
+        path.push(nd);
+      }
+      if (!nd.kids && nd.n >= 1 && b.passes < 2) {
+        expand(nd, b);
+        nd = pick(nd); play(b, nd.mv, null);
+        seqP[len] = nd.mv; seqC[len] = nd.c; len++;
+        path.push(nd);
+      }
+      var depth = len;
+      len = runPlayout(b, maxMv, seqP, seqC, len);
+      var sc = areaScore(b, own) - komi, bw = sc > 0 ? 1 : 0, i, k, ch;
+      for (i = 0; i < path.length; i++) { var x = path[i]; x.n++; x.w += x.c === 1 ? bw : 1 - bw; }
+      // AMAF: credit every child move that the same colour played later in this game
+      fstamp++;
+      k = path.length - 1;
+      while (k > depth) k--;
+      for (i = len - 1; i >= 0; i--) {
+        var mp = seqP[i]; if (mp) { fS[mp] = fstamp; fC[mp] = seqC[i]; }
+        while (k >= 0 && k === i) {
+          var pn = path[k];
+          if (pn.kids) {
+            var tc = 3 - pn.c, res = tc === 1 ? bw : 1 - bw;
+            for (var j = 0; j < pn.kids.length; j++) { ch = pn.kids[j]; if (ch.mv && fS[ch.mv] === fstamp && fC[ch.mv] === tc) { ch.rn++; ch.rw += res; } }
+          }
+          k--;
+        }
+      }
+      sims++;
+    }
+    for (var q = 0; q < N2; q++) own[q] /= Math.max(1, sims);
+    return { root: root, own: own, sims: sims, ms: Date.now() - t0 };
+  }
+
+  // Choose a move for the side to play. Returns {move: index or -1 to pass, ...}
+  function genmove(arr, n, o) {
+    var rb = fromArr(arr, n, o.toPlay, o.ko);
+    rb.passes = o.passes || 0; rb.mv = o.mv || 0;
+    rb.last = o.last >= 0 ? rb.g.pts[o.last] : 0;
+    var c = rb.toPlay, me = c === 1 ? 1 : -1;
+    var res = search(rb, o), root = res.root, own = res.own, N2 = n * n, k;
+    var kids = root.kids.filter(function (ch) { return ch.mv; });
+    if (!kids.length) return { move: -1, why: 'no moves', sims: res.sims, ms: res.ms };
+    kids.sort(function (a, b) { return b.n - a.n; });
+    var best = kids[0];
+    if (o.temp && kids.length > 1) {
+      // Easy: pick among the moves it looked at, in proportion to how much it liked them
+      var tot = 0, pool = kids.slice(0, 8);
+      pool.forEach(function (ch) { tot += Math.pow(ch.n, 1 / o.temp); });
+      var x = rnd() * tot;
+      for (k = 0; k < pool.length; k++) { x -= Math.pow(pool[k].n, 1 / o.temp); if (x <= 0) { best = pool[k]; break; } }
+    }
+    var wr = best.n ? best.w / best.n : 0.5;
+    // Expected final score from my point of view (ownership + komi)
+    var est = 0; for (k = 0; k < N2; k++) est += own[k];
+    est = (est - o.komi) * me;
+    var unsettled = 0, bi = rb.g.p2i[best.mv];
+    for (k = 0; k < N2; k++) if (Math.abs(own[k]) < 0.7) unsettled++;
+    var bestOwn = own[bi] * me;
+    var out = { move: bi, wr: wr, sims: res.sims, ms: res.ms, est: est, unsettled: unsettled };
+    if (o.passes >= 1) {
+      // The other player passed: pass too if that wins, or if nothing useful is left
+      if (est > 0 && wr > 0.4) { out.move = -1; out.why = 'winning'; }
+      else if (!unsettled || wr < 0.05) { out.move = -1; out.why = 'nothing left'; }
+    } else if (!unsettled && Math.abs(bestOwn) > 0.7) { out.move = -1; out.why = 'settled'; }
+    if (o.mv > N2 * 3) { out.move = -1; out.why = 'too long'; }
+    return out;
+  }
+
+  // Estimate which stones are dead at the end: play the game out many times
+  function deadStones(arr, n, o) {
+    o = o || {};
+    var rb = fromArr(arr, n, 1, -1), b = make(n), N2 = n * n, own = new Float32Array(N2), sims = 0, t0 = Date.now(), k;
+    var maxMv = N2 * 3;
+    while (sims < (o.sims || 3000) && Date.now() - t0 < (o.time || 900)) {
+      copyTo(rb, b); b.toPlay = sims & 1 ? 2 : 1; b.mv = 0;
+      runPlayout(b, maxMv, null, null, 0);
+      areaScore(b, own); sims++;
+    }
+    for (k = 0; k < N2; k++) own[k] /= Math.max(1, sims);
+    var dead = [], g = rb.g, seen = {};
+    for (k = 0; k < N2; k++) {
+      var p = g.pts[k], c = rb.col[p];
+      if (!c || seen[rb.chn[p]]) continue;
+      var r = rb.chn[p], s = r, tot = 0, cnt = 0, stones = [];
+      seen[r] = 1;
+      do { var i = g.p2i[s]; tot += own[i]; cnt++; stones.push(i); s = rb.nxt[s]; } while (s !== r);
+      var avg = tot / cnt * (c === 1 ? 1 : -1);
+      if (avg < -0.2) dead = dead.concat(stones);
+    }
+    return { dead: dead, own: Array.prototype.slice.call(own), sims: sims };
+  }
+
+  // ── Helpers for the page (plain arrays) ───────────────────────────────────
+  // Try a move. -> {ok, why, arr, caps:[indices], ko:index|-1}
+  function tryPlay(arr, n, i, color, koI) {
+    var b = fromArr(arr, n, color, koI), p = b.g.pts[i], w = why(b, p);
+    if (w) return { ok: false, why: ['', 'occupied', 'suicide', 'ko'][w] };
+    var out = [];
+    play(b, p, out);
+    return { ok: true, arr: toArr(b), caps: out.map(function (q) { return b.g.p2i[q]; }), ko: b.ko ? b.g.p2i[b.ko] : -1 };
+  }
+  // Stones whose chain has exactly one liberty
+  function ataris(arr, n) {
+    var b = fromArr(arr, n, 1, -1), g = b.g, out = [], seen = {};
+    for (var k = 0; k < n * n; k++) {
+      var p = g.pts[k]; if (!b.col[p]) continue;
+      var r = b.chn[p];
+      if (seen[r] == null) seen[r] = libsCount(b, r, 2) === 1;
+      if (seen[r]) out.push(k);
+    }
+    return out;
+  }
+  // The chain (connected same-colour stones) through index i
+  function chainOf(arr, n, i) {
+    var b = fromArr(arr, n, 1, -1), g = b.g, p = g.pts[i], out = [];
+    if (!b.col[p]) return out;
+    var r = b.chn[p], s = r; do { out.push(g.p2i[s]); s = b.nxt[s]; } while (s !== r);
+    return out;
+  }
+  // Final count. dead = indices of dead stones; rule 'area' | 'territory'.
+  function score(arr, n, o) {
+    var a = arr.slice(), N2 = n * n, deadB = 0, deadW = 0, i, k;
+    (o.dead || []).forEach(function (i) { if (a[i] === 1) deadB++; else if (a[i] === 2) deadW++; a[i] = 0; });
+    var owner = [], seen = [], stones = [0, 0, 0], terr = [0, 0, 0];
+    for (i = 0; i < N2; i++) { owner.push(0); seen.push(0); if (a[i]) stones[a[i]]++; }
+    for (i = 0; i < N2; i++) {
+      if (a[i] || seen[i]) continue;
+      var stack = [i], region = [], touch = 0; seen[i] = 1;
+      while (stack.length) {
+        var x = stack.pop(), r = (x / n) | 0, c = x % n; region.push(x);
+        var nb = [];
+        if (r > 0) nb.push(x - n); if (r < n - 1) nb.push(x + n); if (c > 0) nb.push(x - 1); if (c < n - 1) nb.push(x + 1);
+        for (k = 0; k < nb.length; k++) {
+          var y = nb[k];
+          if (a[y]) touch |= a[y];
+          else if (!seen[y]) { seen[y] = 1; stack.push(y); }
+        }
+      }
+      if (touch === 1 || touch === 2) { terr[touch] += region.length; region.forEach(function (x) { owner[x] = touch; }); }
+    }
+    var komi = o.komi || 0, hc = o.rule === 'area' && o.hcap >= 2 ? o.hcap : 0;
+    var pris = [0, (o.caps ? o.caps[1] : 0) + deadW, (o.caps ? o.caps[2] : 0) + deadB];
+    var total = o.rule === 'area' ? [0, stones[1] + terr[1], stones[2] + terr[2] + komi + hc] : [0, terr[1] + pris[1], terr[2] + pris[2] + komi];
+    return { owner: owner, terr: terr, stones: stones, pris: pris, dead: [0, deadB, deadW], komi: komi, hc: hc, total: total, rule: o.rule };
+  }
+  function stars(n) {
+    var a = n <= 9 ? 2 : 3, z = n - 1 - a, m = (n - 1) / 2;
+    if (n >= 15) return [[a, a], [a, m], [a, z], [m, a], [m, m], [m, z], [z, a], [z, m], [z, z]];
+    return [[a, a], [a, z], [z, a], [z, z], [m, m]];
+  }
+  // Handicap stones in the standard order (top right and bottom left first)
+  function handicap(n, h) {
+    var a = n <= 9 ? 2 : 3, z = n - 1 - a, m = (n - 1) / 2, P;
+    var TR = [a, z], BL = [z, a], BR = [z, z], TL = [a, a], C = [m, m], L = [m, a], R = [m, z], T = [a, m], B = [z, m];
+    P = { 2: [TR, BL], 3: [TR, BL, BR], 4: [TR, BL, BR, TL], 5: [TR, BL, BR, TL, C], 6: [TR, BL, BR, TL, L, R], 7: [TR, BL, BR, TL, L, R, C], 8: [TR, BL, BR, TL, L, R, T, B], 9: [TR, BL, BR, TL, L, R, T, B, C] }[h] || [];
+    return P.map(function (rc) { return rc[0] * n + rc[1]; });
+  }
+  return { make: make, fromArr: fromArr, toArr: toArr, play: play, why: why, legal: legal, isEye: isEye, search: search, genmove: genmove,
+    deadStones: deadStones, tryPlay: tryPlay, ataris: ataris, chainOf: chainOf, score: score, stars: stars, handicap: handicap, areaScore: areaScore, runPlayout: runPlayout, policyMove: policyMove };
+}
+/*ENGINE-END*/
+
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'go_state', KEY = 'go';
+  var BLACK = 1, WHITE = 2;
+  var E = GoEngine();
+
+  // ── Worker: the computer thinks off the main thread ──────────────────────
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function run(d) { return d.cmd === 'dead' ? E.deadStones(d.arr, d.n, d.o) : E.genmove(d.arr, d.n, d.o); }
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var src = 'var E=(' + GoEngine.toString() + ')();onmessage=function(e){var d=e.data;postMessage({id:d.id,res:d.cmd==="dead"?E.deadStones(d.arr,d.n,d.o):E.genmove(d.arr,d.n,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(run(p.d)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(d, cb) {
+    var id = ++reqId, w = getWorker();
+    d.id = id; pending = { id: id, cb: cb, d: d };
+    if (w) w.postMessage(d);
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(run(d)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+
+  // ── Stone-on-wood "tock" (synthesized; respects the sound setting) ─────────
+  var actx = null;
+  function soundOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
+  function audio() {
+    if (!actx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; try { actx = new C(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  document.addEventListener('pointerdown', function () { if (soundOn()) audio(); }, { passive: true });
+  function tock(vol, delay) {
+    if (!soundOn()) return;
+    var a = audio(); if (!a) return;
+    try {
+      var t = a.currentTime + (delay || 0), v = vol == null ? 1 : vol;
+      var len = Math.floor(a.sampleRate * 0.03), buf = a.createBuffer(1, len, a.sampleRate), dd = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) dd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
+      var src = a.createBufferSource(), bp = a.createBiquadFilter(), g1 = a.createGain();
+      src.buffer = buf; bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.4; g1.gain.value = 0.55 * v;
+      src.connect(bp); bp.connect(g1); g1.connect(a.destination); src.start(t);
+      [[820, 0.07, 0.22], [1630, 0.035, 0.08], [380, 0.09, 0.12]].forEach(function (f) {
+        var o = a.createOscillator(), g = a.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f[0], t); o.frequency.exponentialRampToValueAtTime(f[0] * 0.92, t + f[1]);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(f[2] * v, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + f[1]);
+        o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + f[1] + 0.02);
+      });
+    } catch (e) {}
+  }
+
+  // ── Kaya wood texture, drawn once ─────────────────────────────────────────
+  function kaya() {
+    try {
+      var S = 720, cv = document.createElement('canvas'); cv.width = cv.height = S;
+      var x = cv.getContext('2d'), seed = 11;
+      function r() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+      var g = x.createLinearGradient(0, 0, S, S);
+      g.addColorStop(0, '#ebc47c'); g.addColorStop(0.45, '#e2b66b'); g.addColorStop(1, '#d7a65a');
+      x.fillStyle = g; x.fillRect(0, 0, S, S);
+      // broad soft bands
+      for (var i = 0; i < 14; i++) {
+        var bx = r() * S, bw = 20 + r() * 70;
+        var gg = x.createLinearGradient(bx - bw, 0, bx + bw, 0);
+        var tone = r() < 0.5 ? '170,105,40' : '255,225,160', al = 0.05 + r() * 0.07;
+        gg.addColorStop(0, 'rgba(' + tone + ',0)'); gg.addColorStop(0.5, 'rgba(' + tone + ',' + al + ')'); gg.addColorStop(1, 'rgba(' + tone + ',0)');
+        x.fillStyle = gg; x.fillRect(bx - bw, 0, bw * 2, S);
+      }
+      // fine straight grain with a gentle wave
+      for (i = 0; i < 220; i++) {
+        var x0 = r() * S, a = 0.03 + r() * 0.09, w = 0.4 + r() * 1.3, amp = 2 + r() * 7, f = 0.003 + r() * 0.006, ph = r() * 6.3;
+        x.strokeStyle = (r() < 0.75 ? 'rgba(140,80,25,' : 'rgba(255,236,190,') + a + ')';
+        x.lineWidth = w; x.beginPath();
+        for (var y = -10; y <= S + 10; y += 10) { var xx = x0 + Math.sin(y * f + ph) * amp + Math.sin(y * f * 2.7 + ph * 2) * amp * 0.3; if (y < 0) x.moveTo(xx, y); else x.lineTo(xx, y); }
+        x.stroke();
+      }
+      return 'url(' + cv.toDataURL('image/jpeg', 0.86) + ')';
+    } catch (e) { return ''; }
+  }
+  var KAYA = kaya();
+  if (KAYA) document.documentElement.style.setProperty('--kaya', KAYA + ' center/cover, linear-gradient(160deg,#e6bd72,#d6a65a)');
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = {mode, level, n, komi, hcap, rule, atari, players:[{name,cpu,color}], b:[n*n], turn, ko, last,
+  //      caps:[0,b,w], passes, mv, hist:[], phase:'play'|'mark'|'over', dead:[], big:{c,n,mv}, kos, started}
+  var S = null, epoch = 0;
+  var LEVELS = {
+    easy: { 9: { time: 450, sims: 350, temp: 1 }, 13: { time: 600, sims: 450, temp: 1 }, 19: { time: 800, sims: 600, temp: 1 } },
+    normal: { 9: { time: 1000 }, 13: { time: 1500 }, 19: { time: 2000 } },
+    hard: { 9: { time: 2000 }, 13: { time: 2600 }, 19: { time: 3200 } }
+  };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var RULE_NAME = { area: 'Area scoring', territory: 'Territory scoring' };
+  function save() {
+    try {
+      var o = {}; for (var k in S) if (k !== 'busy' && k !== 'counting') o[k] = S[k];
+      localStorage.setItem(SAVE, JSON.stringify(o));
+    } catch (e) {}
+    if (S && S.phase !== 'over') Kit.resume.set(S.phase === 'mark' ? 'Counting' : S.mv ? 'Move ' + (S.mv + 1) : 'Ready');
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(c) { return S.players[0].color === c ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function cname(c) { return c === BLACK ? 'Black' : 'White'; }
+  function effKomi() { return S.komi + (S.rule === 'area' && S.hcap >= 2 ? S.hcap : 0); }
+  function fmt(x) { return String(x); }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+  // ── Rules (with tiny board diagrams) ─────────────────────────────────────
+  function dg(rows, cap) {
+    var h = rows.length, w = rows[0].length, u = 22, pad = 13, W = (w - 1) * u + pad * 2, H = (h - 1) * u + pad * 2;
+    var s = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+      '<defs><radialGradient id="dgb" cx=".38" cy=".32" r=".7"><stop offset="0" stop-color="#5a5a60"/><stop offset=".45" stop-color="#222226"/><stop offset="1" stop-color="#050506"/></radialGradient>' +
+      '<radialGradient id="dgw" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#ece7dc"/><stop offset="1" stop-color="#c4bba8"/></radialGradient></defs>' +
+      '<rect width="' + W + '" height="' + H + '" rx="6" fill="#e2b66b"/>';
+    for (var r = 0; r < h; r++) s += '<line x1="' + pad + '" x2="' + (W - pad) + '" y1="' + (pad + r * u) + '" y2="' + (pad + r * u) + '" stroke="#3a2510" stroke-width="1"/>';
+    for (var c = 0; c < w; c++) s += '<line y1="' + pad + '" y2="' + (H - pad) + '" x1="' + (pad + c * u) + '" x2="' + (pad + c * u) + '" stroke="#3a2510" stroke-width="1"/>';
+    rows.forEach(function (row, r) {
+      for (var c = 0; c < w; c++) {
+        var ch = row[c], x = pad + c * u, y = pad + r * u;
+        if (ch === 'x' || ch === 'X') s += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="url(#dgb)"/>';
+        if (ch === 'o' || ch === 'O') s += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="url(#dgw)" stroke="#9c927e" stroke-width=".6"/>';
+        if (ch === 'X') s += '<circle cx="' + x + '" cy="' + y + '" r="4.5" fill="none" stroke="#fff" stroke-width="1.6"/>';
+        if (ch === 'O') s += '<circle cx="' + x + '" cy="' + y + '" r="4.5" fill="none" stroke="#111" stroke-width="1.6"/>';
+        if (ch === '*') s += '<circle cx="' + x + '" cy="' + y + '" r="4" fill="#2f8f5b"/>';
+        if (ch === '!') s += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="url(#dgb)" opacity=".45"/>';
+        if (ch === 'e') s += '<rect x="' + (x - 4) + '" y="' + (y - 4) + '" width="8" height="8" rx="1" fill="#141416"/>';
+      }
+    });
+    return '<div class="dg">' + s + '</svg><small>' + cap + '</small></div>';
+  }
+  var RULES =
+    '<p class="goal">Surround more of the board than the other player. Fence off empty space with your stones, and capture stones that get trapped.</p>' +
+    '<h3>Taking turns</h3><ul>' +
+    '<li><b>Black goes first</b>, then you take turns. Put one stone on any empty <b>crossing</b> of the lines (not inside the squares).</li>' +
+    '<li>Stones never move. They only leave the board when they are captured.</li>' +
+    '<li>You can <b>pass</b> instead of playing. When both players pass in a row, the game is over.</li></ul>' +
+    '<h3>Liberties and capturing</h3>' +
+    '<div class="dgs">' + dg(['.....', '..*..', '.*x*.', '..*..', '.....'], 'This stone has 4 <b>liberties</b>: the empty points next to it (the dots).') +
+    dg(['.....', '..x..', '.xo*.', '..x..', '.....'], 'White has one liberty left. That\'s called <b>atari</b>. Black plays on the dot to capture.') + '</div>' +
+    '<ul><li>Stones touching along the lines join into a <b>group</b> and share their liberties.</li>' +
+    '<li>When you fill a group\'s <b>last</b> liberty, it is captured. Take those stones off: they are your <b>prisoners</b> and go in your bowl.</li>' +
+    '<li>A red glow warns you when a group is in atari (you can turn this off in setup).</li></ul>' +
+    '<h3>No suicide</h3><ul><li>You can\'t play where your stone would have no liberties, <b>unless</b> that move captures something (then it gets liberties back).</li></ul>' +
+    '<h3>Eyes keep a group alive</h3>' +
+    '<div class="dgs">' + dg(['.......', '.xxxxx.', '.x.x.x.', '.xxxxx.', '.......'], 'Two separate holes, called <b>eyes</b>. White can\'t fill both at once, so this group can never be captured.') + '</div>' +
+    '<ul><li>A group with <b>two eyes is safe forever</b>. A group that can\'t make two eyes will usually be captured in the end.</li></ul>' +
+    '<h3>Ko: no instant take-backs</h3>' +
+    '<div class="dgs">' + dg(['.xo..', 'xo*o.', '.xo..'], 'Black captures the white stone by playing on the dot.') +
+    dg(['.xo..', 'x.Xo.', '.xo..'], 'Now White may <b>not</b> capture back right away. White must play somewhere else first.') + '</div>' +
+    '<ul><li>This rule stops the game from going back and forth forever.</li></ul>' +
+    '<h3>The end and the score</h3><ul>' +
+    '<li>When both players pass, the computer guesses which stones are <b>dead</b> (stuck inside the other player\'s area with no way to make two eyes). Tap a group to change it, then tap <b>Count score</b>.</li>' +
+    '<li>Little squares show whose <b>territory</b> each empty point is.</li>' +
+    '<li><b>Area scoring</b> (Chinese, the default): 1 point for every stone you have on the board, plus 1 for every empty point you surround.</li>' +
+    '<li><b>Territory scoring</b> (Japanese): 1 point for every empty point you surround, plus 1 for every prisoner you took (dead stones count too). Both ways almost always pick the same winner.</li>' +
+    '<li><b>Komi</b>: White gets extra points (6.5 normally) for going second. The half point means there are no ties.</li>' +
+    '<li><b>Handicap</b>: a weaker player can take Black and start with 2 to 9 stones on the dots. Then White moves first and komi is 0.5. With area scoring White also gets 1 point per handicap stone.</li></ul>' +
+    '<h3>Playing on a phone or iPad</h3><ul><li>Tap a point to see a see-through stone there, then <b>tap it again</b> (or press <b>Place</b>) to play it. With a mouse, just click.</li>' +
+    '<li><b>Undo</b> takes back your last move (and the computer\'s answer).</li></ul>' +
+    '<h3>Tips</h3><ul><li>Start in the corners, then the sides. It takes fewer stones to fence off a corner.</li>' +
+    '<li>Keep your groups connected, and give them room to make two eyes.</li>' +
+    '<li>If a group is in atari and running away only leads to more atari, it may be time to let it go.</li><li>New to Go? Start on <b>9×9</b> against Easy.</li></ul>';
+
+  Kit.init({
+    id: 'go', mark: false, color: '#d9a650',
+    onNew: function () { epoch++; cancelThink(); clearSave(); showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Go: past games' }); } },
+      { icon: 'close', label: 'Resign', onClick: function () { resign(); } }
+    ],
+    rules: RULES
+  });
+
+  function showSetup() {
+    S = null; pv = -1;
+    app.classList.remove('ipl');
+    Kit.setup(app, {
+      modes: [
+        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
+        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one phone' }
+      ],
+      options: [
+        { id: 'level', label: 'Computer skill', value: 'normal', when: function (m) { return m === 'cpu'; },
+          help: 'How hard the computer tries.',
+          choices: [['easy', 'Easy', 'Thinks quickly and makes plenty of mistakes. Good for learning.'], ['normal', 'Normal', 'Thinks for about a second. A fair fight for most beginners.'], ['hard', 'Hard', 'Thinks longer and fights hard. Expect to lose a few.']] },
+        { id: 'side', label: 'You play', value: 'b', when: function (m) { return m === 'cpu'; },
+          help: 'Black always moves first, unless there are handicap stones.',
+          choices: [['b', 'Black', 'You move first (or get the handicap stones).'], ['w', 'White', 'The computer plays Black and gets any handicap stones.']] },
+        { id: 'size', label: 'Board size', value: 9,
+          help: 'Bigger boards make longer games.',
+          choices: [[9, '9×9', 'Quick games, about 15 minutes. Best for learning and for phones.'], [13, '13×13', 'A middle-sized game, about 30 minutes.'], [19, '19×19', 'The full-size board. A long game, best on an iPad or computer.']] },
+        { id: 'hcap', label: 'Handicap stones', value: 0,
+          help: 'Free Black stones placed on the dots at the start, to help a newer player. White then moves first.',
+          choices: [[0, '0', 'No handicap: an even game.'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6'], [7, '7'], [8, '8'], [9, '9']] },
+        { id: 'komi', label: 'Komi', value: 6.5,
+          help: 'Bonus points for White, who moves second. With handicap stones komi is always 0.5.',
+          choices: [[0.5, '0.5', 'Just enough to stop ties.'], [5.5, '5.5', 'The old standard.'], [6.5, '6.5', 'The usual amount today.'], [7.5, '7.5', 'Used with Chinese rules.']] },
+        { id: 'rule', label: 'Scoring', value: 'area',
+          help: 'How points are counted at the end. Both almost always pick the same winner.',
+          choices: [['area', 'Area', 'Chinese rules: your stones on the board plus the empty points you surround.'], ['territory', 'Territory', 'Japanese rules: the empty points you surround plus the stones you captured.']] },
+        { id: 'atari', label: 'Atari warnings', value: 'on',
+          help: 'A red glow on any group that is one move from being captured.',
+          choices: [['on', 'On', 'Helpful while you learn.'], ['off', 'Off', 'Spot the danger yourself.']] }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, label: "Who's playing? (first is Black)" },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK, o = cfg.options;
+        var hcap = +o.hcap || 0;
+        S = {
+          mode: cfg.mode, level: o.level || 'normal', n: +o.size || 9, hcap: hcap, komi: hcap >= 2 ? 0.5 : +o.komi || 6.5,
+          rule: o.rule === 'territory' ? 'territory' : 'area', atari: o.atari !== 'off',
+          players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, color: i === 0 ? hs : 3 - hs }; })
+        };
+        newGame();
+      }
+    });
+  }
+  function newGame(swap) {
+    epoch++; cancelThink(); pv = -1;
+    if (swap && !vsCpu() && !S.hcap) S.players.forEach(function (p) { p.color = 3 - p.color; });
+    var N2 = S.n * S.n; S.b = []; for (var i = 0; i < N2; i++) S.b.push(0);
+    if (S.hcap >= 2) E.handicap(S.n, S.hcap).forEach(function (i) { S.b[i] = BLACK; });
+    S.turn = S.hcap >= 2 ? WHITE : BLACK; S.ko = -1; S.last = -1; S.caps = [0, 0, 0]; S.passes = 0; S.mv = 0; S.lastPass = 0;
+    S.hist = []; S.phase = 'play'; S.dead = null; S.big = null; S.kos = 0; S.started = Date.now(); S.busy = false; S.result = null;
+    Kit.gameStart(); save(); build(); paint(); maybeCpu();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap(byCpu) {
+    return { b: S.b.join(''), turn: S.turn, ko: S.ko, last: S.last, caps: S.caps.slice(), passes: S.passes, mv: S.mv, lastPass: S.lastPass, big: S.big, kos: S.kos, cpu: !!byCpu };
+  }
+  function restore(h) {
+    S.b = h.b.split('').map(Number); S.turn = h.turn; S.ko = h.ko; S.last = h.last; S.caps = h.caps; S.passes = h.passes; S.mv = h.mv;
+    S.lastPass = h.lastPass; S.big = h.big; S.kos = h.kos;
+  }
+  var WHY = { suicide: 'No liberties there: that stone would be captured straight away', ko: 'Ko! You can\'t take back right away. Play somewhere else first', occupied: '' };
+  // i = board index, or -1 to pass
+  function move(i, byCpu) {
+    if (!S || S.phase !== 'play') return false;
+    var c = S.turn, res = null;
+    if (i >= 0) {
+      res = E.tryPlay(S.b, S.n, i, c, S.ko);
+      if (!res.ok) { if (WHY[res.why]) { Kit.toast(WHY[res.why]); Kit.haptic('error'); } return false; }
+    }
+    S.hist.push(snap(byCpu));
+    pv = -1;
+    var anim = null;
+    if (i < 0) {
+      S.passes++; S.ko = -1; S.last = -1; S.lastPass = c; S.mv++; S.turn = 3 - c;
+      Kit.sfx('tap'); Kit.haptic('light');
+      if (S.passes >= 2) { save(); paint(); enterMark(); return true; }
+      var p = pl(c);
+      Kit.callout((p.name === 'You' ? 'You pass' : p.name + ' passes'));
+    } else {
+      anim = { i: i, caps: res.caps, c: c, from: capRects(res.caps) };
+      S.b = res.arr; S.ko = res.ko; S.last = i; S.passes = 0; S.lastPass = 0; S.mv++; S.turn = 3 - c;
+      var n = res.caps.length;
+      if (n) {
+        S.caps[c] += n;
+        if (!S.big || n > S.big.n) S.big = { c: c, n: n, mv: S.mv };
+        if (res.ko >= 0) S.kos++;
+      }
+      tock(1);
+      Kit.haptic(n >= 3 ? 'medium' : 'light');
+      if (n >= 5) setTimeout(function () { Kit.callout(n + ' stones captured!'); Kit.sfx('good'); }, 300);
+      else if (n) setTimeout(function () { Kit.sfx('pop'); }, 260);
+    }
+    save(); paint(anim);
+    var my = epoch;
+    setTimeout(function () { if (my === epoch) maybeCpu(); }, anim && anim.caps.length ? 450 : 120);
+    return true;
+  }
+  function maybeCpu() {
+    if (!S || S.phase !== 'play' || S.busy || !pl(S.turn).cpu) return;
+    S.busy = true; paintStatus();
+    var t0 = Date.now(), my = epoch, myMv = S.mv, lv = (LEVELS[S.level] || LEVELS.normal)[S.n] || { time: 1000 };
+    var o = { toPlay: S.turn, ko: S.ko, komi: effKomi(), passes: S.passes, last: S.last, mv: S.mv, time: lv.time, sims: lv.sims, temp: lv.temp };
+    think({ cmd: 'move', arr: S.b.slice(), n: S.n, o: o }, function (res) {
+      if (!S || my !== epoch || S.mv !== myMv) return;
+      setTimeout(function () {
+        if (!S || my !== epoch || S.mv !== myMv) return;
+        S.busy = false;
+        if (window.__goLog) window.__goLog.push({ mv: S.mv, c: S.turn, res: { move: res.move, wr: res.wr, sims: res.sims, ms: res.ms, est: res.est, why: res.why, unsettled: res.unsettled } });
+        if (!move(res && res.move >= 0 ? res.move : -1, true)) move(-1, true);
+      }, Math.max(0, 550 - (Date.now() - t0)));
+    });
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.phase === 'over') return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    epoch++; cancelThink(); S.busy = false; S.counting = false;
+    var h;
+    while (S.hist.length) { h = S.hist.pop(); if (!cpu || !h.cpu) break; }
+    restore(h); S.phase = 'play'; S.dead = null; pv = -1;
+    Kit.sfx('whoosh'); save(); paint(); maybeCpu();
+  }
+  function resign() {
+    if (!S || !S.b || S.phase === 'over') return Kit.toast('No game in progress');
+    var hu = S.players.filter(function (p) { return !p.cpu; }), c = hu.length === 1 ? hu[0].color : S.turn;
+    Kit.confirm(pl(c).name + ' resigns?', { ok: 'Resign', danger: true, body: pl(3 - c).name + ' will win this game.' }).then(function (ok) {
+      if (!ok) return;
+      epoch++; cancelThink(); S.busy = false;
+      finish({ resign: c });
+    });
+  }
+
+  // ── End of game: mark dead stones, then count ─────────────────────────────
+  function enterMark() {
+    S.phase = 'mark'; S.dead = null; S.counting = true; pv = -1;
+    document.querySelectorAll('.k-callout').forEach(function (x) { x.remove(); });
+    Kit.callout('Both passed: time to count');
+    save(); paint();
+    var my = epoch;
+    think({ cmd: 'dead', arr: S.b.slice(), n: S.n, o: { komi: effKomi(), time: S.n >= 19 ? 1400 : 900 } }, function (res) {
+      if (!S || my !== epoch || S.phase !== 'mark') return;
+      S.dead = res && res.dead ? res.dead : []; S.counting = false;
+      save(); paint();
+      if (!S.players.some(function (p) { return !p.cpu; })) setTimeout(function () { if (my === epoch && S.phase === 'mark') finish(); }, 800);
+    });
+  }
+  function toggleDead(i) {
+    if (!S || S.phase !== 'mark' || S.counting || !S.b[i]) return;
+    var ch = E.chainOf(S.b, S.n, i), isDead = S.dead.indexOf(i) >= 0;
+    if (isDead) S.dead = S.dead.filter(function (x) { return ch.indexOf(x) < 0; });
+    else S.dead = S.dead.concat(ch);
+    tock(0.6); Kit.haptic('light'); save(); paint();
+  }
+  function keepPlaying() {
+    if (!S || S.phase !== 'mark') return;
+    epoch++; cancelThink(); S.phase = 'play'; S.dead = null; S.counting = false; S.passes = 0;
+    Kit.toast('Back to the game. Two passes in a row end it again.');
+    save(); paint(); maybeCpu();
+  }
+  function currentScore() { return E.score(S.b, S.n, { dead: S.dead || [], rule: S.rule, komi: S.komi, caps: S.caps, hcap: S.hcap }); }
+  function finish(o) {
+    o = o || {};
+    epoch++; cancelThink(); S.busy = false; pv = -1;
+    var sc = o.resign ? null : currentScore(), winC, margin = 0;
+    if (o.resign) winC = 3 - o.resign;
+    else { winC = sc.total[1] > sc.total[2] ? BLACK : WHITE; margin = Math.abs(sc.total[1] - sc.total[2]); }
+    S.phase = 'over'; S.result = { win: winC, margin: margin, resign: o.resign || 0 };
+    var winner = pl(winC), loser = pl(3 - winC);
+    var hl = [];
+    hl.push(o.resign ? loser.name + ' resigned after ' + plural(S.mv, 'move') : winner.name + ' (' + cname(winC) + ') won by ' + fmt(margin) + ' points');
+    var dead = sc ? sc.dead : [0, 0, 0];
+    [BLACK, WHITE].forEach(function (c) { if (S.caps[c] >= 1) hl.push(pl(c).name + ' captured ' + plural(S.caps[c], 'stone')); });
+    if (S.big && S.big.n >= 3) hl.push(pl(S.big.c).name + ' made a big capture of ' + S.big.n + ' stones on move ' + S.big.mv);
+    if (sc && dead[1] + dead[2]) hl.push(plural(dead[1] + dead[2], 'dead stone') + ' came off at the end');
+    if (sc) {
+      var tc = sc.terr[1] >= sc.terr[2] ? BLACK : WHITE;
+      if (sc.terr[tc] >= 5) hl.push(pl(tc).name + ' surrounded ' + sc.terr[tc] + ' points of territory');
+    }
+    if (S.kos >= 2) hl.push('A ko fight: ' + S.kos + ' ko captures back and forth');
+    var setupBits = S.n + '×' + S.n + (S.hcap >= 2 ? ', ' + S.hcap + '-stone handicap' : '') + ', komi ' + S.komi + ', ' + RULE_NAME[S.rule].toLowerCase();
+    if (hl.length < 6) hl.push('Played on ' + setupBits + (vsCpu() ? ' vs the ' + LEVEL_NAME[S.level] + ' computer' : '') + ' in ' + plural(S.mv, 'move'));
+    Kit.record(KEY, {
+      started: S.started,
+      mode: (vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play') + ' · ' + S.n + '×' + S.n,
+      players: [BLACK, WHITE].map(function (c) { var p = pl(c); return { name: p.name + ' (' + cname(c) + ')', score: sc ? sc.total[c] : (c === winC ? 1 : 0), cpu: p.cpu }; }),
+      winner: winner.name + ' (' + cname(winC) + ')',
+      summary: o.resign ? winner.name + ' won by resignation' : winner.name + ' won by ' + fmt(margin),
+      highlights: hl, meta: { size: S.n, komi: S.komi, handicap: S.hcap, rule: S.rule, moves: S.mv }
+    });
+    clearSave();
+    paint();
+    setTimeout(function () {
+      var lose = vsCpu() && winner.cpu;
+      Kit.win({
+        icon: lose ? 'bot' : 'trophy',
+        title: lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
+        sub: o.resign ? loser.name + ' resigned' : cname(winC) + ' wins by ' + fmt(margin) + ' points',
+        rank: sc ? [winC, 3 - winC].map(function (c) { return { name: pl(c).name, score: sc.total[c], color: c === BLACK ? '#8b8b96' : '#f1efe9' }; }) : null,
+        lose: !!lose, againLabel: 'Play again',
+        again: function () { newGame(true); },
+        extra: [{ label: 'View the board', onClick: function () {} }],
+        closeLabel: 'Back to games'
+      });
+    }, o.resign ? 300 : 900);
+  }
+
+  // ── Layout ───────────────────────────────────────────────────────────────
+  var col, topBar, botBar, bd, stonesL, terrL, hlL, ghost, xh, xv, turnEl, infoEl, scw, acts, pv = -1, hov = -1, touch = null;
+  function pct(k) { return k * 100 / (S.n + 0.5) + '%'; }
+  function place(node, i, size) {
+    var r = (i / S.n) | 0, c = i % S.n, s = size || 0.96;
+    node.style.left = pct(0.75 + c - s / 2); node.style.top = pct(0.75 + r - s / 2);
+    node.style.width = node.style.height = pct(s);
+  }
+  function build() {
+    app.innerHTML = ''; app.classList.add('ipl');
+    col = el('div', { class: 'go-col' });
+    topBar = el('div', { class: 'pbar top' }); botBar = el('div', { class: 'pbar bot' });
+    bd = el('div', { class: 'goban', role: 'grid', 'aria-label': S.n + ' by ' + S.n + ' Go board' });
+    var n = S.n, V = n + 0.5, a = 0.75, z = 0.75 + n - 1, svg = '<svg class="lines" viewBox="0 0 ' + V + ' ' + V + '" aria-hidden="true">';
+    for (var k = 0; k < n; k++) {
+      var e = k === 0 || k === n - 1 ? ' class="e"' : '';
+      svg += '<line' + e + ' x1="' + a + '" x2="' + z + '" y1="' + (a + k) + '" y2="' + (a + k) + '"/>';
+      svg += '<line' + e + ' y1="' + a + '" y2="' + z + '" x1="' + (a + k) + '" x2="' + (a + k) + '"/>';
+    }
+    E.stars(n).forEach(function (rc) { svg += '<circle cx="' + (a + rc[1]) + '" cy="' + (a + rc[0]) + '" r="' + (n >= 19 ? 0.13 : 0.1) + '"/>'; });
+    bd.innerHTML = svg + '</svg>';
+    terrL = el('div', { class: 'lay terr' }); stonesL = el('div', { class: 'lay stones' }); hlL = el('div', { class: 'lay hl' });
+    xh = el('div', { class: 'xh', hidden: true }); xv = el('div', { class: 'xh', hidden: true }); ghost = el('div', { class: 'st ghost', hidden: true });
+    hlL.appendChild(xh); hlL.appendChild(xv); hlL.appendChild(ghost);
+    bd.appendChild(terrL); bd.appendChild(stonesL); bd.appendChild(hlL);
+    bindBoard();
+    turnEl = el('div', { class: 'turn' });
+    infoEl = el('div', { class: 'info' });
+    scw = el('div', { class: 'scw' });
+    acts = el('div', { class: 'acts' });
+    col.appendChild(topBar); col.appendChild(bd); col.appendChild(botBar);
+    col.appendChild(turnEl); col.appendChild(acts); col.appendChild(infoEl); col.appendChild(scw);
+    app.appendChild(col);
+    fitFont();
+  }
+  // Stone shading is sized in em: keep the font size near one stone's size
+  function fitFont() { if (bd && S) stonesL.style.setProperty('--fs', Math.max(8, bd.clientWidth / (S.n + 0.5) * 0.9) + 'px'); }
+  window.addEventListener('resize', function () { fitFont(); });
+
+  function capRects(list) {
+    var out = [];
+    if (!stonesL) return out;
+    list.forEach(function (i) { var s = stonesL.querySelector('.st[data-i="' + i + '"]'); if (s) out.push({ i: i, r: s.getBoundingClientRect(), cls: s.classList.contains('b') ? 'b' : 'w' }); });
+    return out;
+  }
+  function paint(anim) {
+    if (!S || !S.b || !bd) return;
+    var n = S.n, N2 = n * n, sc = S.phase !== 'play' && S.dead ? currentScore() : null;
+    var at = {}; if (S.atari && S.phase === 'play') E.ataris(S.b, n).forEach(function (i) { at[i] = 1; });
+    var dead = {}; (S.phase !== 'play' && S.dead ? S.dead : []).forEach(function (i) { dead[i] = 1; });
+    stonesL.innerHTML = ''; terrL.innerHTML = '';
+    for (var i = 0; i < N2; i++) {
+      var v = S.b[i];
+      if (v) {
+        var s = el('div', { class: 'st ' + (v === BLACK ? 'b' : 'w') + (at[i] ? ' atari' : '') + (dead[i] ? ' dead' : '') + (i === S.last && S.phase === 'play' ? ' lastm' : '') + (anim && anim.i === i ? ' new' : ''), 'data-i': i });
+        place(s, i); stonesL.appendChild(s);
+      }
+      if (sc && sc.owner[i]) { var t = el('div', { class: 'tm ' + (sc.owner[i] === BLACK ? 'b' : 'w') }); place(t, i, 0.32); terrL.appendChild(t); }
+    }
+    hideGhost();
+    if (pv >= 0) showGhost(pv, true);
+    paintBars(anim); paintStatus(); paintActs(); paintInfo(sc);
+    if (anim && anim.from.length) flyCaptures(anim);
+  }
+  function bowlHtml(c) {
+    // c's bowl holds the stones c captured (the other colour)
+    var k = Math.min(9, S.caps[c]), cls = c === BLACK ? 'w' : 'b', out = '';
+    var spots = [[16, 15], [22, 21], [12, 22], [20, 12], [25, 15], [15, 9], [9, 15], [18, 26], [26, 23]];
+    for (var j = 0; j < k; j++) out += '<i class="' + cls + '" style="left:' + (spots[j][0] / 42 * 100 - 13) + '%;top:' + (spots[j][1] / 42 * 100 - 13) + '%"></i>';
+    return out;
+  }
+  function paintBars(anim) {
+    var hu = S.players.filter(function (p) { return !p.cpu; }), bs = hu.length === 1 ? hu[0].color : BLACK;
+    bar(topBar, 3 - bs, anim); bar(botBar, bs, anim);
+  }
+  function bar(node, c, anim) {
+    var p = pl(c), on = S.phase === 'play' && S.turn === c;
+    node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
+    node.style.setProperty('--c', c === BLACK ? '#a9a9b3' : '#f4f1e8');
+    var sub;
+    if (on && p.cpu && S.busy) sub = '<span class="think">Thinking <i></i><i></i><i></i></span>';
+    else if (S.phase === 'play' && S.lastPass === c) sub = cname(c) + ' · passed';
+    else sub = cname(c) + (S.hcap >= 2 && c === BLACK ? ' · ' + S.hcap + ' handicap' : '') + (c === WHITE ? ' · komi ' + S.komi : '') + (on ? ' · to play' : '');
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'tok ' + (c === BLACK ? 'b' : 'w') }));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    var bump = anim && anim.c === c && anim.caps.length;
+    node.appendChild(el('div', { class: 'pris', 'aria-label': S.caps[c] + ' prisoners' }, [
+      el('div', null, [el('div', { class: 'n' + (bump ? ' bump' : ''), text: String(S.caps[c]) }), el('div', { class: 'lb', text: 'caught' })]),
+      el('div', { class: 'bowl', 'data-c': c, html: bowlHtml(c) })
+    ]));
+  }
+  function paintStatus() {
+    if (!turnEl || !S) return;
+    paintBarsLite();
+    var p = pl(S.turn), txt, color = S.turn === BLACK ? '#c4c4cf' : '#f4f1e8', dot = true;
+    if (S.phase === 'over') {
+      var r = S.result; dot = false;
+      txt = r ? (r.resign ? pl(r.win).name + ' wins: ' + pl(r.resign).name + ' resigned' : (pl(r.win).name === 'You' ? 'You win' : pl(r.win).name + ' wins') + ' by ' + fmt(r.margin)) : 'Game over';
+      color = 'var(--accent)';
+    } else if (S.phase === 'mark') {
+      txt = S.counting ? 'Finding dead stones…' : 'Tap a group to mark it dead or alive';
+      color = 'var(--accent)';
+    } else if (p.cpu) txt = S.busy ? p.name + ' is thinking…' : p.name + ' to play';
+    else if (pv >= 0) txt = 'Tap again to place';
+    else if (S.lastPass && S.lastPass !== S.turn) txt = (pl(S.lastPass).name === 'You' ? 'You' : pl(S.lastPass).name) + ' passed. ' + (p.name === 'You' ? 'Pass' : p.name + ', pass') + ' to end, or play on';
+    else txt = Kit.poss(p.name) + ' turn' + (vsCpu() ? '' : ' (' + cname(S.turn) + ')');
+    turnEl.innerHTML = ''; turnEl.style.setProperty('--c', color);
+    if (dot) turnEl.appendChild(el('span', { class: 'dot' }));
+    turnEl.appendChild(el('span', { text: txt }));
+  }
+  // Only refresh the "thinking" line in the bars (keeps bowls untouched)
+  function paintBarsLite() {
+    [topBar, botBar].forEach(function (node) {
+      if (!node || !node.firstChild) return;
+      var c = node.querySelector('.tok.b') ? BLACK : WHITE, p = pl(c), on = S.phase === 'play' && S.turn === c, sub = node.querySelector('.sub');
+      node.classList.toggle('on', on);
+      if (sub && on && p.cpu && S.busy) sub.innerHTML = '<span class="think">Thinking <i></i><i></i><i></i></span>';
+    });
+  }
+  function paintActs() {
+    acts.innerHTML = '';
+    var human = S.phase === 'play' && !pl(S.turn).cpu && !S.busy;
+    if (S.phase === 'play') {
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Pass', disabled: !human, onclick: function () { if (canAct()) { move(-1); } } }));
+      if (touchy()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Place', disabled: !(human && pv >= 0), onclick: function () { if (pv >= 0 && canAct()) move(pv); } }));
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm ic', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: undo }));
+    } else if (S.phase === 'mark') {
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Keep playing', onclick: keepPlaying }));
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Count score', disabled: !!S.counting, onclick: function () { finish(); } }));
+    } else {
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } }));
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'New game', onclick: function () { epoch++; cancelThink(); clearSave(); showSetup(); } }));
+    }
+  }
+  function paintInfo(sc) {
+    col.classList.toggle('end', S.phase !== 'play');
+    infoEl.textContent = S.n + '×' + S.n + ' · ' + RULE_NAME[S.rule] + ' · Komi ' + S.komi + (S.hcap >= 2 ? ' · Handicap ' + S.hcap : '') + (S.phase === 'play' ? ' · Move ' + (S.mv + 1) : '');
+    scw.innerHTML = '';
+    if (S.phase === 'play') return;
+    var card = el('div', { class: 'sc paper' });
+    if (!sc) { card.appendChild(el('div', { class: 'wait', text: S.result && S.result.resign ? pl(S.result.resign).name + ' resigned.' : 'Counting…' })); scw.appendChild(card); return; }
+    var area = S.rule === 'area';
+    function cell(c) {
+      var p = pl(c), parts = [sc.terr[c], area ? sc.stones[c] : sc.pris[c], c === WHITE ? sc.komi + sc.hc : '–'];
+      return '<tr><td><span class="mini ' + (c === BLACK ? 'b' : 'w') + '"></span>' + Kit.esc(p.name) + '</td><td>' + parts.join('</td><td>') + '</td><td class="t">' + sc.total[c] + '</td></tr>';
+    }
+    var h = '<table><thead><tr><th></th><th>Territory</th><th>' + (area ? 'Stones' : 'Prisoners') + '</th><th>' + (sc.hc ? 'Komi + hcp' : 'Komi') + '</th><th>Total</th></tr></thead><tbody>' + cell(BLACK) + cell(WHITE) + '</tbody></table>';
+    var lead = sc.total[1] > sc.total[2] ? BLACK : WHITE, m = Math.abs(sc.total[1] - sc.total[2]);
+    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + ' · ' + RULE_NAME[S.rule].toLowerCase() + '</div>';
+    card.innerHTML = h;
+    scw.appendChild(card);
+  }
+
+  // ── Captured stones lift off and fly into the capturer's bowl ─────────────
+  function flyCaptures(anim) {
+    var bowl = col.querySelector('.bowl[data-c="' + anim.c + '"]');
+    if (!bowl || !document.body.animate) return;
+    var br = bowl.getBoundingClientRect(), list = anim.from.slice(0, 24);
+    list.forEach(function (f, k) {
+      var s = el('div', { class: 'fly st ' + f.cls });
+      s.style.left = f.r.left + 'px'; s.style.top = f.r.top + 'px'; s.style.width = f.r.width + 'px'; s.style.height = f.r.height + 'px';
+      document.body.appendChild(s);
+      var dx = br.left + br.width / 2 - (f.r.left + f.r.width / 2), dy = br.top + br.height / 2 - (f.r.top + f.r.height / 2);
+      var sc = Math.max(0.3, 12 / Math.max(1, f.r.width));
+      var a = s.animate([
+        { transform: 'translate(0,0) scale(1)', boxShadow: '1px 2px 3px rgba(0,0,0,.5)', offset: 0 },
+        { transform: 'translate(0,-10px) scale(1.18)', boxShadow: '6px 12px 14px rgba(0,0,0,.4)', offset: 0.22 },
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')', boxShadow: '1px 1px 2px rgba(0,0,0,.5)', offset: 1 }
+      ], { duration: 560, delay: 60 + k * 45, easing: 'cubic-bezier(.45,0,.3,1)', fill: 'forwards' });
+      a.onfinish = function () { s.remove(); if (k < 6) tock(0.35, 0); bowl.classList.remove('thud'); void bowl.offsetWidth; bowl.classList.add('thud'); };
+      setTimeout(function () { s.remove(); }, 2000 + k * 50);
+    });
+  }
+
+  // ── Board input: hover ghost with a mouse; tap to preview, tap again to place on touch
+  function touchy() { return (navigator.maxTouchPoints || 0) > 0 || !finePointer(); }
+  function finePointer() { try { return matchMedia('(hover:hover) and (pointer:fine)').matches; } catch (e) { return true; } }
+  function canAct() { return S && S.phase === 'play' && !S.busy && !pl(S.turn).cpu; }
+  function pointAt(e) {
+    var r = bd.getBoundingClientRect(), u = r.width / (S.n + 0.5);
+    var c = Math.round((e.clientX - r.left) / u - 0.75), rr = Math.round((e.clientY - r.top) / u - 0.75);
+    if (c < 0 || rr < 0 || c >= S.n || rr >= S.n) return -1;
+    return rr * S.n + c;
+  }
+  function showGhost(i, isPv) {
+    if (i < 0 || !S) return hideGhost();
+    ghost.hidden = false; ghost.className = 'st ghost ' + (S.turn === BLACK ? 'b' : 'w') + (isPv ? ' pv' : '');
+    place(ghost, i);
+    if (isPv && S.n >= 9) {
+      var r = (i / S.n) | 0, c = i % S.n, th = Math.max(2, bd.clientWidth / 300) + 'px';
+      xh.hidden = false; xv.hidden = false;
+      xh.style.left = pct(0.75); xh.style.width = pct(S.n - 1); xh.style.top = 'calc(' + pct(0.75 + r) + ' - ' + parseFloat(th) / 2 + 'px)'; xh.style.height = th;
+      xv.style.top = pct(0.75); xv.style.height = pct(S.n - 1); xv.style.left = 'calc(' + pct(0.75 + c) + ' - ' + parseFloat(th) / 2 + 'px)'; xv.style.width = th;
+    } else { xh.hidden = true; xv.hidden = true; }
+  }
+  function hideGhost() { if (ghost) { ghost.hidden = true; xh.hidden = true; xv.hidden = true; } }
+  function setPreview(i, quiet) {
+    if (i < 0 || S.b[i]) { if (pv >= 0) { pv = -1; hideGhost(); paintStatus(); paintActs(); } return; }
+    var w = E.tryPlay(S.b, S.n, i, S.turn, S.ko);
+    if (!w.ok) { if (!quiet && WHY[w.why]) { Kit.toast(WHY[w.why]); Kit.haptic('error'); } pv = -1; hideGhost(); paintStatus(); paintActs(); return; }
+    if (pv !== i) Kit.haptic('tick');
+    pv = i; showGhost(i, true); paintStatus(); paintActs();
+  }
+  function bindBoard() {
+    bd.addEventListener('pointermove', function (e) {
+      if (!S) return;
+      if (e.pointerType === 'mouse') {
+        if (!canAct()) return hideGhost();
+        var i = pointAt(e);
+        if (i !== hov) { hov = i; if (i >= 0 && !S.b[i]) showGhost(i, false); else hideGhost(); }
+      } else if (touch && canAct()) {
+        var j = pointAt(e);
+        if (j !== touch.i) { touch.moved = true; touch.i = j; if (j >= 0 && !S.b[j]) { pv = -1; showGhost(j, true); } }
+      }
+    });
+    bd.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { hov = -1; if (pv < 0) hideGhost(); } });
+    bd.addEventListener('pointerdown', function (e) {
+      if (!S || e.pointerType === 'mouse' || e.button) return;
+      e.preventDefault();
+      touch = { i: pointAt(e), start: pointAt(e), wasPv: pv, moved: false };
+      try { bd.setPointerCapture(e.pointerId); } catch (er) {}
+      if (canAct() && touch.i >= 0 && !S.b[touch.i] && touch.i !== pv) showGhost(touch.i, true);
+    });
+    bd.addEventListener('pointercancel', function () { touch = null; if (pv >= 0) showGhost(pv, true); else hideGhost(); });
+    bd.addEventListener('pointerup', function (e) {
+      if (!S) return;
+      var i = pointAt(e);
+      if (S.phase === 'mark') { touch = null; if (i >= 0) toggleDead(i); return; }
+      if (e.pointerType === 'mouse') {
+        if (e.button) return;
+        if (!canAct() || i < 0) return;
+        if (S.b[i]) return;
+        hideGhost(); hov = -1; move(i); return;
+      }
+      var t = touch; touch = null;
+      if (!canAct()) return;
+      if (t && !t.moved && i >= 0 && i === t.wasPv) { move(i); return; }
+      setPreview(i);
+    });
+    bd.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
+
+  // Test hooks
+  window.__go = {
+    E: E, state: function () { return S; },
+    set: function (arr, turn, extra) { epoch++; cancelThink(); S.busy = false; S.b = arr.slice(); S.turn = turn || BLACK; S.hist = []; S.last = -1; S.ko = -1; S.phase = 'play'; S.passes = 0; S.lastPass = 0; S.dead = null; if (extra) for (var k in extra) S[k] = extra[k]; save(); paint(); maybeCpu(); },
+    move: function (i) { return move(i); }, pass: function () { return move(-1); }, finish: function () { finish(); }, undo: undo, toggle: toggleDead
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && saved.phase && saved.phase !== 'over') {
+    S = saved; S.busy = false; S.counting = false;
+    build(); paint();
+    if (S.phase === 'mark' && !S.dead) enterMark();
+    else maybeCpu();
+  } else showSetup();
+})();
+</script>
+</body>
+</html>
