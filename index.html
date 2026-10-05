@@ -360,7 +360,7 @@ document.addEventListener('visibilitychange', function () {
   }
 
   // ── Launch (with "phone or real game?" for games that have a scorekeeper) ─
-  function go(file) { Kit.sfx('pop'); location.href = 'games/' + file + '.html'; }
+  function go(file) { Kit.sfx('pop'); location.href = 'games/' + (/\.html/.test(file) ? file : file + '.html'); }
   function launch(g) {
     Kit.haptic('light');
     if (!g.score) return go(g.play);
@@ -373,8 +373,11 @@ document.addEventListener('visibilitychange', function () {
       ]));
     }
     var board = g.cat === 'board';
-    opt('phone', 'Play on this ' + (/iPad/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent)) ? 'iPad' : 'phone'), board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play);
-    opt('pencil', board ? 'Table companion' : 'Keep score', board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score);
+    if (g.launch) g.launch.forEach(function (o) { opt(o.icon, o.title, o.desc, o.file); });
+    else {
+      opt('phone', 'Play on this device', board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play);
+      opt('pencil', board ? 'Table companion' : 'Keep score', board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score);
+    }
     box.insertBefore(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span>' + Kit.esc(g.tag) + '</span></div>' }), box.firstChild);
     s = Kit.sheet({ node: box });
   }

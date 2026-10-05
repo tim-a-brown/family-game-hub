@@ -667,7 +667,7 @@
   // ── Setup screen ──────────────────────────────────────────────────────────
   // Kit.setup(rootEl, {
   //   modes:   [{id, icon, title, desc}]       icon = a Kit.icon name           optional mode cards
-  //   mode:    default mode id
+  //   mode:    default mode id (modeLocked: true = use it even if a different mode was picked last time)
   //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats', seatLabel}
   //   options: [{id, label, choices:[[value,label],...], value, help}]  segmented pickers
   //            help: plain-language explanation shown by a tappable "?" next to
@@ -687,7 +687,7 @@
     var P = o.players || null;
     var saved = {};
     try { saved = JSON.parse(lsGet('gn_setup_' + (game ? game.id : pageKey()), '{}')) || {}; } catch (e) {}
-    if (saved.mode && o.modes && o.modes.some(function (m) { return m.id === saved.mode; })) state.mode = saved.mode;
+    if (saved.mode && !o.modeLocked && o.modes && o.modes.some(function (m) { return m.id === saved.mode; })) state.mode = saved.mode;
     (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
     var bots = cpuNames(8);

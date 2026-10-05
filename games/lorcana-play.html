@@ -371,6 +371,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .bld-msg{flex:none;font-size:.78rem;font-weight:800;color:#ffb3b3;padding:0 2px 6px;min-height:1px;}
 .bld-msg.ok{color:#a5f3c5;}
 .bld-tabs{flex:none;display:none;}
+.bld.lib .bld-body{grid-template-columns:minmax(0,1fr) !important;}
+.bld.lib .bld-deck,.bld.lib .bld-tabs,.bld.lib .bld-msg{display:none !important;}
+.bld.lib .bld-pool{display:flex !important;}
+.bld-top h2.libt{flex:1;min-width:0;font-family:var(--display);font-size:1.25rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bld.lib .bld-top .cnt{display:none;}
 .bld-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;}
 .bld-pool,.bld-deck{min-height:0;display:flex;flex-direction:column;}
 .bld-filters{flex:none;display:flex;flex-direction:column;gap:6px;padding-bottom:6px;}
@@ -2390,6 +2395,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     menu: [
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: past games' }); } },
       { icon: 'cards', label: 'Deck builder', onClick: function () { openBuilderFromMenu(); } },
+      { icon: 'book', label: 'Card library', onClick: function () { openBuilderFromMenu(true); } },
       { icon: 'book', label: 'Game log', onClick: function () { showLog(); } },
       { icon: 'sparkle', label: 'Fix something by hand', onClick: function () { if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'sync', label: 'Update card library', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } }
@@ -2451,10 +2457,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     tok++; ui.screen = 'setup'; closeOverlays(); Kit.handoff.close();
     document.documentElement.classList.remove('lp-on'); app.className = 'stage';
     var st = Kit.setup(app, {
-      title: 'Lorcana',
+      title: 'Lorcana', mode: ui.launchMode || undefined, modeLocked: !!ui.launchMode,
       modes: [
         { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against a computer player' },
-        { id: 'pass', icon: 'users', title: 'Pass & play', desc: 'Two players share the phone. Your hand stays hidden from the other player' }
+        { id: 'pass', icon: 'users', title: 'Pass & play', desc: 'Two players share this device. Your hand stays hidden from the other player' }
       ],
       players: { min: 2, max: 2, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       options: [
@@ -3809,25 +3815,27 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   // ═════════════════════════════════════════════════════════════════════════
   // Deck builder
   // ═════════════════════════════════════════════════════════════════════════
-  function openBuilderFromMenu() {
+  function openBuilderFromMenu(library) {
     var inGame = S && S.phase !== 'over' && ui.screen === 'game';
     var from = ui.screen;
     showBuilder(null, function () {
       if (inGame && S) { ui.screen = 'game'; app.innerHTML = ''; resumeFlow(); }
       else if (from === 'decks' && lastCfg) showDeckPick(lastCfg);
       else showSetup();
-    });
+    }, { library: !!library });
   }
-  function showBuilder(deckId, back) {
+  // o.library: just browse every card (no deck being edited)
+  function showBuilder(deckId, back, o) {
+    var lib = !!(o && o.library);
     tok++; ui.screen = 'builder'; closeOverlays(); Kit.handoff.close();
     document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
     layoutVars();
     app.innerHTML = '';
     if (DB.status !== 'ready') {
-      var wait = el('div', { class: 'lp-load' }, [el('h2', { class: 'display', text: 'Deck builder' }), libLine(),
+      var wait = el('div', { class: 'lp-load' }, [el('h2', { class: 'display', text: lib ? 'Card library' : 'Deck builder' }), libLine(),
         el('button', { type: 'button', class: 'btn btn-ghost', text: 'Back', onclick: back })]);
       app.appendChild(wait);
-      var sub = function () { if (!wait.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } if (DB.status === 'ready') { DB.subs.splice(DB.subs.indexOf(sub), 1); showBuilder(deckId, back); } };
+      var sub = function () { if (!wait.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } if (DB.status === 'ready') { DB.subs.splice(DB.subs.indexOf(sub), 1); showBuilder(deckId, back, o); } };
       DB.subs.push(sub);
       if (DB.status === 'error' || DB.status === 'idle') DB.load();
       return;
@@ -3847,7 +3855,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       var all = savedDecks().filter(function (d) { return d.id !== deck.id; }); all.unshift(deck); storeDecks(all);
       dirty = false; Kit.toast('Saved ' + deck.name); Kit.sfx('good');
     }
-    var top = el('div', { class: 'bld-top' }, [
+    var top = lib ? el('div', { class: 'bld-top' }, [
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: back }), el('h2', { class: 'libt', text: 'Card library' }), cnt,
+      el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Build a deck', onclick: function () { showBuilder(null, function () { showBuilder(null, back, o); }); } })])
+      : el('div', { class: 'bld-top' }, [
       el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: leave }), nameIn, cnt,
       el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Save', onclick: function () { saveDeck(); } })]);
     var tabs = el('div', { class: 'bld-tabs' });
@@ -3861,7 +3872,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
-    var wrap = el('div', { class: 'bld' }, [top, msg, tabs, body]);
+    var wrap = el('div', { class: 'bld' + (lib ? ' lib' : '') }, [top, msg, tabs, body]);
     app.appendChild(wrap);
     function chip(label, on, click, dot) { return el('button', { type: 'button', class: 'fchip' + (on ? ' on' : ''), html: (dot ? '<i class="dot" style="--c:' + dot + '"></i>' : '') + esc(label), onclick: function () { Kit.sfx('tap'); click(); } }); }
     function paintChips() {
@@ -3881,7 +3892,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       if (f.set && String(d.set) !== f.set) return false;
       if (f.inkable && !d.k) return false;
       if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
-      if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ')).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
+      if (f.story && storyOf(d) !== f.story) return false;
+      if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
       return true;
     }
     function count(d) { return copiesByFull(deck.cards, d.full); }
@@ -3902,7 +3914,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     // list: the cards you opened this one from (the search grid or your deck), so you can swipe through them
     function cardZoom(d, list, dir) {
       var have = count(d), i = list ? list.indexOf(d) : -1;
-      zoomDef(d, [
+      zoomDef(d, lib ? [] : [
         { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
         { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
       ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
@@ -3915,20 +3927,22 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
         var b = el('div', { class: 'pc', role: 'button', tabindex: '0', 'aria-label': d.full + (n ? ', ' + n + ' in deck' : '') });
         b.appendChild(artEl(d, false));
         b.appendChild(el('div', { class: 'nmb', html: esc(d.n) + (d.v ? '<small>' + esc(d.v) + '</small>' : '') }));
-        if (n) b.appendChild(el('span', { class: 'n', text: String(n) }));
+        if (n && !lib) b.appendChild(el('span', { class: 'n', text: String(n) }));
         b.appendChild(el('span', { class: 'cost' + (d.k ? ' ink' : ''), style: { '--cu': '120px' }, text: String(d.c) }));
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
-        b.appendChild(plus);
+        if (!lib) b.appendChild(plus);
         b.addEventListener('click', function () { cardZoom(d, list); });
         grid.appendChild(b);
       });
       if (!list.length) grid.appendChild(el('p', { class: 'muted bld-more', text: 'No cards match these filters.' }));
       if (list.length > f.shown) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - f.shown) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
       if (keepScroll) grid.scrollTop = st;
+      if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + ' cards';
     }
     function paintDeck() {
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards), cs = deckCards(deck.cards);
+      if (lib) return;
       cnt.textContent = n + '/60'; cnt.className = 'cnt' + (pr.length ? '' : ' ok');
       msg.textContent = pr.length ? pr[0] : 'Ready to play: ' + deckInks(deck.cards).join(' & ');
       msg.className = 'bld-msg' + (pr.length ? '' : ' ok');
@@ -3965,16 +3979,21 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       var sets = DB.sets.filter(function (s) { return codes[s.code]; });
       Object.keys(codes).forEach(function (c) { if (!sets.some(function (s) { return s.code === c; })) sets.push({ code: c, name: 'Set ' + c }); });
       sets.forEach(function (s) { setSel.appendChild(el('option', { value: s.code, text: s.name + (s.name.indexOf(s.code) < 0 ? ' (' + s.code + ')' : ''), selected: f.set === s.code })); });
+      var stSel = el('select', { class: 'input' }), stories = {};
+      DB.unique.forEach(function (d) { var x = storyOf(d); if (x) stories[x] = 1; });
+      stSel.appendChild(el('option', { value: '', text: 'Every film and show' }));
+      Object.keys(stories).sort().forEach(function (x) { stSel.appendChild(el('option', { value: x, text: x, selected: f.story === x })); });
       kwSel.appendChild(el('option', { value: '', text: 'Any keyword' }));
       ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].forEach(function (k) { kwSel.appendChild(el('option', { value: k, text: KWNAME[k], selected: f.kw === k })); });
       node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Set' }), setSel]));
+      node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Film or show' }), stSel]));
       node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Keyword' }), kwSel]));
       var ik = { v: f.inkable }, ft = { v: f.fit };
       node.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: 'Inkable only' }), seg([[0, 'Any'], [1, 'Inkable']], f.inkable ? 1 : 0, function (x) { ik.v = !!+x; })]));
       node.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { ft.v = !!+x; })]));
       Kit.sheet({ title: 'Filters', node: node, actions: [
-        { label: 'Apply', primary: true, cls: 'btn-primary', onClick: function () { f.set = setSel.value; f.kw = kwSel.value; f.inkable = ik.v; f.fit = ft.v; f.shown = 60; moreBtn.textContent = (f.set || f.kw || f.inkable || f.fit) ? 'Filters on' : 'Filters'; paintGrid(); } },
-        { label: 'Clear', cls: 'btn-ghost', onClick: function () { f.set = ''; f.kw = ''; f.inkable = false; f.fit = false; moreBtn.textContent = 'Filters'; paintGrid(); } }] });
+        { label: 'Apply', primary: true, cls: 'btn-primary', onClick: function () { f.set = setSel.value; f.story = stSel.value; f.kw = kwSel.value; f.inkable = ik.v; f.fit = ft.v; f.shown = 60; moreBtn.textContent = (f.set || f.story || f.kw || f.inkable || f.fit) ? 'Filters on' : 'Filters'; paintGrid(); } },
+        { label: 'Clear', cls: 'btn-ghost', onClick: function () { f.set = ''; f.story = ''; f.kw = ''; f.inkable = false; f.fit = false; moreBtn.textContent = 'Filters'; paintGrid(); } }] });
     }
     paintChips(); paintDeck(); paintGrid();
   }
@@ -4004,7 +4023,15 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   });
   DB.load();
   (function () {
-    var saved = lsGet(SAVE, null);
+    var q = new URLSearchParams(location.search), saved = lsGet(SAVE, null);
+    if (q.get('mode')) ui.launchMode = q.get('mode') === 'pass' ? 'pass' : 'cpu';
+    if (q.get('library')) {
+      showBuilder(null, function () {
+        history.replaceState(null, '', location.pathname);
+        if (saved && saved.P && saved.phase && saved.phase !== 'over') { S = saved; S.hist = S.hist || []; uidN = S.uidN || 0; app.innerHTML = ''; resumeFlow(); } else showSetup();
+      }, { library: true });
+      return;
+    }
     if (saved && saved.P && saved.P.length === 2 && saved.defs && saved.cards && saved.phase && saved.phase !== 'over') {
       S = saved; S.hist = S.hist || []; uidN = S.uidN || 0; resumeFlow();
     } else showSetup();
