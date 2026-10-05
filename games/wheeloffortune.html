@@ -727,7 +727,7 @@
     }
     var host = el('div', { class: 'host', 'aria-live': 'polite' });
     var acts = el('div', { class: 'acts' }), kb = el('div', { class: 'kb' }), keys = {};
-    var bs = el('button', { type: 'button', class: 'key bs', 'aria-label': 'Delete', html: Kit.icon('back'), onclick: function () { backspace(); } });
+    var bs = el('button', { type: 'button', class: 'key bs', 'aria-label': 'Delete', html: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>', onclick: function () { backspace(); } });
     ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].forEach(function (rowL, ri) {
       var row = el('div', { class: 'kr' });
       if (ri === 2) row.appendChild(el('span', { class: 'kspc', 'aria-hidden': 'true' }));
@@ -967,8 +967,9 @@
       k.classList.toggle('miss', showUsed && S.pz.text.indexOf(L) < 0);
       k.classList.toggle('picked', S.phase === 'bonusPick' && S.bonus.picks.indexOf(L) >= 0);
     });
-    shell.bs.classList.toggle('ghost', !s);
-    shell.bs.disabled = !s || ui.busy;
+    // Delete is always on the keyboard; it works while solving and while picking bonus letters
+    var canPickBack = S.phase === 'bonusPick' && human && S.bonus.picks.length > 0;
+    shell.bs.disabled = !((s && !ui.busy) || canPickBack);
   }
 
   // ── Show effects ──────────────────────────────────────────────────────────
@@ -1250,6 +1251,10 @@
     paintBoard(); paintDeck();
   }
   function backspace() {
+    var p0 = S.players[S.cur];
+    if (!ui.solve && S.phase === 'bonusPick' && p0 && !p0.cpu && !ui.busy && S.bonus.picks.length) {
+      S.bonus.picks = S.bonus.picks.slice(0, -1); snd('blip'); save(); paintDeck(); return;
+    }
     var s = ui.solve; if (!s || ui.busy) return;
     var b = blankIdx(), k = b.indexOf(s.cur);
     if (s.fill[s.cur]) delete s.fill[s.cur];

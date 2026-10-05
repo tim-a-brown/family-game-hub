@@ -92,20 +92,20 @@
 .acts .btn{flex:1;max-width:180px;}
 .acts .btn.ic{flex:0 0 auto;width:52px;padding:0;}
 .acts .btn[disabled]{opacity:.45;}
+.go-col.end>.info{display:none;}
 .info{font-size:.78rem;font-weight:700;color:var(--text-3);text-align:center;}
 
 /* Score sheet for the end of the game */
 .sc{border-radius:12px;padding:8px 12px 10px;font-variant-numeric:tabular-nums;}
 .sc.paper{background:linear-gradient(180deg,#fffaf0,#f3ead6);}
-.sc table{width:100%;border-collapse:collapse;font-size:.95rem;}
-.sc th,.sc td{padding:3px 4px;text-align:right;}
+.sc table{width:100%;border-collapse:collapse;}
+.sc th,.sc td{padding:2px 4px;text-align:center;white-space:nowrap;}
 .sc th:first-child,.sc td:first-child{text-align:left;}
-.sc thead th{font-family:var(--font);font-size:.78rem;font-weight:800;color:#5b5140;}
-.sc thead th .mini{display:inline-block;width:13px;height:13px;border-radius:50%;vertical-align:-2px;margin-right:5px;}
-.sc td{font-family:var(--hand);font-size:1.15rem;color:var(--ink);border-top:1px dashed rgba(60,80,160,.18);line-height:1.1;}
-.sc td:first-child{font-family:var(--font);font-size:.8rem;font-weight:700;color:#6b604c;}
-.sc tr.tot td{border-top:2px solid rgba(40,40,60,.5);font-size:1.35rem;font-weight:700;}
-.sc tr.tot td:first-child{font-size:.85rem;font-weight:900;color:#2a2a3a;}
+.sc thead th{font-family:var(--font);font-size:.68rem;font-weight:800;color:#6b604c;text-transform:uppercase;letter-spacing:.03em;}
+.sc td{font-family:var(--hand);font-size:1.25rem;color:var(--ink);border-top:1px dashed rgba(60,80,160,.22);line-height:1.15;}
+.sc td:first-child{font-family:var(--font);font-size:.85rem;font-weight:800;color:#2a2a3a;max-width:7.5em;overflow:hidden;text-overflow:ellipsis;}
+.sc td:first-child .mini{display:inline-block;width:13px;height:13px;border-radius:50%;vertical-align:-2px;margin-right:6px;}
+.sc td.t{font-size:1.45rem;font-weight:700;border-left:2px solid rgba(40,40,60,.35);}
 .sc .res{font-family:var(--display);color:#2a2a3a;font-size:1.05rem;text-align:center;margin-top:4px;}
 .sc .wait{color:#6b604c;font-weight:700;text-align:center;padding:16px 0;}
 
@@ -932,6 +932,7 @@ function GoEngine() {
   // ── End of game: mark dead stones, then count ─────────────────────────────
   function enterMark() {
     S.phase = 'mark'; S.dead = null; S.counting = true; pv = -1;
+    document.querySelectorAll('.k-callout').forEach(function (x) { x.remove(); });
     Kit.callout('Both passed: time to count');
     save(); paint();
     var my = epoch;
@@ -986,8 +987,6 @@ function GoEngine() {
       highlights: hl, meta: { size: S.n, komi: S.komi, handicap: S.hcap, rule: S.rule, moves: S.mv }
     });
     clearSave();
-    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    Kit.resume.clear();
     paint();
     setTimeout(function () {
       var lose = vsCpu() && winner.cpu;
@@ -995,7 +994,7 @@ function GoEngine() {
         icon: lose ? 'bot' : 'trophy',
         title: lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
         sub: o.resign ? loser.name + ' resigned' : cname(winC) + ' wins by ' + fmt(margin) + ' points',
-        rank: sc ? [winC, 3 - winC].map(function (c) { return { name: pl(c).name, score: sc.total[c], color: c === BLACK ? '#2a2a30' : '#f1efe9' }; }) : null,
+        rank: sc ? [winC, 3 - winC].map(function (c) { return { name: pl(c).name, score: sc.total[c], color: c === BLACK ? '#8b8b96' : '#f1efe9' }; }) : null,
         lose: !!lose, againLabel: 'Play again',
         again: function () { newGame(true); },
         extra: [{ label: 'View the board', onClick: function () {} }],
@@ -1129,7 +1128,7 @@ function GoEngine() {
     var human = S.phase === 'play' && !pl(S.turn).cpu && !S.busy;
     if (S.phase === 'play') {
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Pass', disabled: !human, onclick: function () { if (canAct()) { move(-1); } } }));
-      if (!finePointer()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Place', disabled: !(human && pv >= 0), onclick: function () { if (pv >= 0 && canAct()) move(pv); } }));
+      if (touchy()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Place', disabled: !(human && pv >= 0), onclick: function () { if (pv >= 0 && canAct()) move(pv); } }));
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm ic', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: undo }));
     } else if (S.phase === 'mark') {
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Keep playing', onclick: keepPlaying }));
@@ -1140,23 +1139,20 @@ function GoEngine() {
     }
   }
   function paintInfo(sc) {
+    col.classList.toggle('end', S.phase !== 'play');
     infoEl.textContent = S.n + '×' + S.n + ' · ' + RULE_NAME[S.rule] + ' · Komi ' + S.komi + (S.hcap >= 2 ? ' · Handicap ' + S.hcap : '') + (S.phase === 'play' ? ' · Move ' + (S.mv + 1) : '');
     scw.innerHTML = '';
     if (S.phase === 'play') return;
     var card = el('div', { class: 'sc paper' });
     if (!sc) { card.appendChild(el('div', { class: 'wait', text: S.result && S.result.resign ? pl(S.result.resign).name + ' resigned.' : 'Counting…' })); scw.appendChild(card); return; }
     var area = S.rule === 'area';
-    function row(label, b, w, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td>' + b + '</td><td>' + w + '</td></tr>'; }
-    var h = '<table><thead><tr><th></th><th><span class="mini b"></span>' + Kit.esc(pl(BLACK).name) + '</th><th><span class="mini w"></span>' + Kit.esc(pl(WHITE).name) + '</th></tr></thead><tbody>';
-    h += row('Territory', sc.terr[1], sc.terr[2]);
-    if (area) h += row('Stones', sc.stones[1], sc.stones[2]);
-    else h += row('Prisoners', sc.pris[1], sc.pris[2]);
-    h += row('Komi', '–', sc.komi);
-    if (sc.hc) h += row('Handicap', '–', sc.hc);
-    h += row('Total', sc.total[1], sc.total[2], 'tot');
-    h += '</tbody></table>';
+    function cell(c) {
+      var p = pl(c), parts = [sc.terr[c], area ? sc.stones[c] : sc.pris[c], c === WHITE ? sc.komi + sc.hc : '–'];
+      return '<tr><td><span class="mini ' + (c === BLACK ? 'b' : 'w') + '"></span>' + Kit.esc(p.name) + '</td><td>' + parts.join('</td><td>') + '</td><td class="t">' + sc.total[c] + '</td></tr>';
+    }
+    var h = '<table><thead><tr><th></th><th>Territory</th><th>' + (area ? 'Stones' : 'Prisoners') + '</th><th>' + (sc.hc ? 'Komi + hcp' : 'Komi') + '</th><th>Total</th></tr></thead><tbody>' + cell(BLACK) + cell(WHITE) + '</tbody></table>';
     var lead = sc.total[1] > sc.total[2] ? BLACK : WHITE, m = Math.abs(sc.total[1] - sc.total[2]);
-    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + '</div>';
+    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + ' · ' + RULE_NAME[S.rule].toLowerCase() + '</div>';
     card.innerHTML = h;
     scw.appendChild(card);
   }
@@ -1183,6 +1179,7 @@ function GoEngine() {
   }
 
   // ── Board input: hover ghost with a mouse; tap to preview, tap again to place on touch
+  function touchy() { return (navigator.maxTouchPoints || 0) > 0 || !finePointer(); }
   function finePointer() { try { return matchMedia('(hover:hover) and (pointer:fine)').matches; } catch (e) { return true; } }
   function canAct() { return S && S.phase === 'play' && !S.busy && !pl(S.turn).cpu; }
   function pointAt(e) {
