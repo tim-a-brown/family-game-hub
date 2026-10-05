@@ -86,11 +86,11 @@
   background:radial-gradient(circle at 35% 30%,#fff3b0,#e2b33a 60%,#b07b10);}
 
 /* Wheel */
-.wheelbox{position:relative;width:min(74vw,280px);aspect-ratio:1;margin:22px 0 14px;}
+.wheelbox{position:relative;width:min(74vw,280px);aspect-ratio:1;margin:46px 0 14px;touch-action:none;}
+.flap{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:3;filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));}
 #sBox{flex-direction:column;}
 .wheel{width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 8px #3b2414, 0 0 0 11px #c9a227, 0 14px 30px rgba(0,0,0,.5);will-change:transform;}
 .wheel text{font-family:var(--font);font-weight:900;fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:3px;}
-.pointer{position:absolute;top:-14px;left:50%;width:34px;height:42px;margin-left:-17px;z-index:2;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));}
 .hub{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;z-index:2;
   background:radial-gradient(circle at 35% 30%,#fff3b0,#d9a21b 60%,#8a5a00);box-shadow:0 3px 6px rgba(0,0,0,.45);}
 .winner{min-height:1.9rem;margin:-4px 0 10px;text-align:center;font-family:var(--display);font-size:1.5rem;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.4);opacity:0;transition:opacity .3s;}
@@ -193,9 +193,11 @@
   <section class="pane" data-p="spin" hidden>
     <div class="tray wood"><div class="felt-in" id="sBox">
       <div class="wheelbox" id="wheelbox">
-        <svg class="pointer" viewBox="0 0 34 42"><path d="M17 41 2 8a15 15 0 0 1 30 0z" fill="#fff8e1" stroke="#8a5a00" stroke-width="2.5" stroke-linejoin="round"/><circle cx="17" cy="11" r="4.5" fill="#c8102e"/></svg>
         <svg class="wheel" id="wheel" viewBox="-150 -150 300 300"></svg>
         <div class="hub"></div>
+        <svg class="flap" id="flap" viewBox="-150 -150 300 300" aria-hidden="true"><defs><linearGradient id="flg" x1="0" x2="1"><stop offset="0" stop-color="#a50f16"/><stop offset=".5" stop-color="#ff5148"/><stop offset="1" stop-color="#8e0b12"/></linearGradient>
+          <radialGradient id="flh" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fff6cf"/><stop offset=".5" stop-color="#e2b440"/><stop offset="1" stop-color="#7a5610"/></radialGradient></defs>
+          <path id="flapP" fill="url(#flg)" stroke="#3a0306" stroke-width="1.5"/><circle cx="0" cy="-183" r="9.75" fill="url(#flh)" stroke="#4a3305" stroke-width="1.5"/></svg>
       </div>
       <div class="empty" id="sEmpty" hidden>Pick at least two<br>players below</div>
     </div></div>
@@ -435,42 +437,159 @@
       var x0 = R * Math.cos(a0), y0 = R * Math.sin(a0), x1 = R * Math.cos(a1), y1 = R * Math.sin(a1);
       svg += '<path d="M0 0L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + 'A' + R + ' ' + R + ' 0 ' + (a > 180 ? 1 : 0) + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + 'Z" fill="' + colorAt(i, n) + '" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>';
       var mid = i * a + a / 2 - 90, label = nm.length > 11 ? nm.slice(0, 10) + '…' : nm;
-      svg += '<text transform="rotate(' + mid.toFixed(2) + ') translate(' + (R - 16) + ' 0)" text-anchor="end" dominant-baseline="central" font-size="' + fs + '">' + esc(label) + '</text>';
+      svg += '<text transform="rotate(' + mid.toFixed(2) + ') translate(' + (R - 22) + ' 0)" text-anchor="end" dominant-baseline="central" font-size="' + fs + '">' + esc(label) + '</text>';
     });
     // pegs round the rim
-    for (var i = 0; i < n; i++) { var pa = (i * a - 90) * Math.PI / 180; svg += '<circle cx="' + (R - 5) * Math.cos(pa) + '" cy="' + (R - 5) * Math.sin(pa) + '" r="3.5" fill="#f7d774" stroke="#8a5a00" stroke-width="1"/>'; }
+    for (var i = 0; i < n; i++) { var pa = (i * a - 90) * Math.PI / 180; svg += '<circle cx="' + (R * 0.925) * Math.cos(pa) + '" cy="' + (R * 0.925) * Math.sin(pa) + '" r="4.2" fill="#f7d774" stroke="#8a5a00" stroke-width="1"/>'; }
     wheel.innerHTML = svg;
-    wheel.style.transform = 'rotate(' + angle + 'deg)';
+    if (!st) return;   // physics not set up yet (first paint)
+    if (!spinning) { var Aw = A(), x = ((st.th % Aw) + Aw) % Aw, mm = Math.min(0.07, Aw * 0.3); if (x < mm) st.th += mm - x; else if (x > Aw - mm) st.th -= x - (Aw - mm); }
+    paintWheel();
   }
-  function spin() {
+  // Same wheel physics as Wheel of Fortune (wheel radius = 1, seconds): pegs
+  // on the rim at every slice edge, a rubber flapper hinged above the wheel
+  // that bends as pegs hit it, and the result is read where the wheel stops.
+  var P = { HP: 1.22, FL: 0.285, RP: 0.925, PR: 0.024, kf: 0.3, Kp: 0.1, bs: 0.08, If: 0.0003, cf: 0.007,
+    kc: 300, cc: 0.5, mu: 0.05, F0: 0.25, F1: 0.04, Cd: 0.01, Fs: 0.03, W1: 0.08 };
+  var W_MIN = 3.4, W_MAX = 7.3, H = 1 / 600;
+  var st = { th: 0, om: 0, b: 0, bv: 0, t: 0, touch: false, rest: 0 }, raf = 0, last = 0, acc = 0, drag = null;
+  function A() { return Math.PI * 2 / Math.max(2, wheelNames.length); }
+  function hw(u) { return 0.05 * (1 - u) + 0.010 * u; }
+  function step(h, onHit, kin) {
+    var Aw = A(), th = st.th, om = st.om, b = st.b, bv = st.bv, L = P.FL;
+    var base = ((th % Aw) + Aw) % Aw, tw = 0, tb = 0, touching = false, sb = Math.sin(b), cb = Math.cos(b);
+    for (var k = -2; k <= 1; k++) {
+      var ph = base + k * Aw; if (ph < -0.6 || ph > 0.6) continue;
+      var sp = Math.sin(ph), cp = Math.cos(ph), rx = P.RP * sp, ry = P.HP - P.RP * cp;
+      var u = (rx * sb + ry * cb) / L; u = u < 0 ? 0 : u > 1 ? 1 : u;
+      var dx = rx - u * L * sb, dy = ry - u * L * cb, d = Math.sqrt(dx * dx + dy * dy), rc = P.PR + hw(u);
+      if (d >= rc || d < 1e-9) continue;
+      touching = true;
+      var nx = dx / d, ny = dy / d;
+      var vx = om * P.RP * cp - bv * u * L * cb, vy = om * P.RP * sp + bv * u * L * sb, vn = vx * nx + vy * ny;
+      if (!st.touch && onHit) onHit(-vn);
+      var F = P.kc * (rc - d) + (vn < 0 ? -P.cc * vn : 0), Ft = -P.mu * F * Math.tanh((vx * -ny + vy * nx) / 0.05);
+      var fx = F * nx - Ft * ny, fy = F * ny + Ft * nx;
+      tw += P.RP * (fx * cp + fy * sp); tb -= u * L * (fx * cb - fy * sb);
+    }
+    st.touch = touching;
+    if (!kin) {
+      var ao = Math.abs(om), fr = (P.Fs + (P.F0 - P.Fs) * Math.min(1, ao / P.W1)) * Math.tanh(om / 0.01) + P.F1 * om + P.Cd * om * ao;
+      st.om = om + (tw - fr) * h;
+    }
+    st.bv = bv + (tb - P.kf * b - P.Kp * Math.tanh(b / P.bs) - P.cf * bv) / P.If * h;
+    st.th = th + st.om * h; st.b = b + st.bv * h;
+    if (st.b > 1.2) { st.b = 1.2; if (st.bv > 0) st.bv *= -0.3; } else if (st.b < -1.2) { st.b = -1.2; if (st.bv < 0) st.bv *= -0.3; }
+    st.t += h;
+    if (!touching && Math.abs(st.om) < 0.004 && Math.abs(st.b) < 0.006 && Math.abs(st.bv) < 0.08) st.rest += h; else st.rest = 0;
+    return st.rest > 0.12;
+  }
+  function wedgeAt() { var a = ((-st.th) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); return Math.floor(a / A()) % wheelNames.length; }
+  // The flapper bends like rubber: the root stays nearly upright and the tip carries the bend
+  function paintFlap() {
+    var R = 150, L = R * P.FL, b = st.b, px = 0, py = -R * P.HP;
+    var tx = L * Math.sin(b), ty = L * Math.cos(b), qx = 0.55 * L * Math.sin(0.08 * b), qy = 0.55 * L * Math.cos(0.08 * b);
+    var m = 14, lft = [], rgt = [], i;
+    for (i = 0; i <= m; i++) {
+      var t = i / m, u = 1 - t, x = 2 * u * t * qx + t * t * tx, y = 2 * u * t * qy + t * t * ty;
+      var dx = 2 * u * qx + 2 * t * (tx - qx), dy = 2 * u * qy + 2 * t * (ty - qy), dl = Math.sqrt(dx * dx + dy * dy) || 1;
+      var wd = R * (0.056 * (1 - t) + 0.011 * t), nx = -dy / dl * wd, ny = dx / dl * wd;
+      lft.push((px + x + nx).toFixed(1) + ' ' + (py + y + ny).toFixed(1)); rgt.push((px + x - nx).toFixed(1) + ' ' + (py + y - ny).toFixed(1));
+    }
+    var d = 'M' + lft.join('L') + 'Q' + (px + tx + (tx - qx) * 0.06).toFixed(1) + ' ' + (py + ty + (ty - qy) * 0.06).toFixed(1) + ' ' + rgt[m] + 'L' + rgt.slice(0, m).reverse().join('L') + 'Z';
+    $('flapP').setAttribute('d', d);
+  }
+  function paintWheel() { angle = st.th * 180 / Math.PI; wheel.style.transform = 'rotate(' + angle + 'deg)'; paintFlap(); }
+  var ac = null, lastClick = 0, lastHap = 0;
+  function pegSound(v) {
+    try { if (localStorage.getItem('gn_sound') === '0') return; } catch (e) {}
+    try {
+      if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return; ac = new C(); }
+      if (ac.state === 'suspended') ac.resume();
+      var k = Math.max(0.06, Math.min(1, v / 2.5)), t = ac.currentTime;
+      var nN = Math.floor(ac.sampleRate * (0.01 + 0.012 * k)), buf = ac.createBuffer(1, nN, ac.sampleRate), dd = buf.getChannelData(0);
+      for (var i = 0; i < nN; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / nN);
+      var src = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.value = 1300 + 1500 * k; g.gain.value = 0.03 + 0.17 * k;
+      src.buffer = buf; src.connect(f); f.connect(g); g.connect(ac.destination); src.start(t);
+      var o = ac.createOscillator(), og = ac.createGain(), dur = 0.016 + 0.01 * k;
+      o.type = 'square'; o.frequency.value = 900 + 1100 * k;
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.004 + 0.014 * k, t + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + dur + 0.03);
+    } catch (e) {}
+  }
+  function hit(v, now) {
+    if (v < 0.04 || now - lastClick < 28) return;
+    lastClick = now; pegSound(v);
+    if (v > 0.25 && now - lastHap > 90) { lastHap = now; Kit.haptic('tick'); }
+  }
+  function loop(now) {
+    raf = 0;
+    var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+    var hf = function (v) { hit(v, now); }, j, k;
+    if (spinning) {
+      acc += dt; var stopped = false;
+      while (acc >= H) { acc -= H; if (step(H, hf) || st.t > 40) { stopped = true; break; } }
+      if (stopped) { st.om = 0; acc = 0; landed(); }
+    } else if (drag) {
+      k = Math.max(1, Math.min(60, Math.round(dt / H))); st.om = Math.max(-30, Math.min(30, (drag.th - st.th) / (k * H)));
+      for (j = 0; j < k; j++) step(H, hf, true);
+      st.om = 0;
+    } else {
+      st.om = 0; k = Math.min(60, Math.round(dt / H));
+      for (j = 0; j < k; j++) step(H, hf, true);
+    }
+    paintWheel();
+    if (spinning || drag || Math.abs(st.b) > 0.002 || Math.abs(st.bv) > 0.02) raf = requestAnimationFrame(loop);
+  }
+  function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }
+  function landed() {
+    spinning = false; setBtns();
+    var who = wheelNames[wedgeAt()];
+    $('winner').textContent = who + (who === 'You' ? ' go first!' : ' goes first!'); $('winner').classList.add('show');
+    Kit.callout(who + '!'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti();
+  }
+  function spin(om) {
     if (spinning) return;
     var names = selected();
     if (names.length < 2) { Kit.toast('Pick at least two players'); Kit.haptic('error'); return; }
     drawWheel();
     spinning = true; setBtns();
     $('winner').classList.remove('show');
-    var n = wheelNames.length, a = 360 / n, win = rint(n), off = a * (0.15 + Math.random() * 0.7);
-    var start = angle, base = start - (((start % 360) + 360) % 360);
-    var target = base + 360 * (5 + rint(3)) + (360 - (win * a + off));
-    if (target - start < 360 * 4) target += 360;
-    var dur = 4200 + Math.random() * 1200, t0 = performance.now(), lastSeg = Math.floor(((360 - (((start % 360) + 360) % 360)) % 360) / a);
+    var p = 0.2 + Math.random() * 0.45;   // fewer pegs than Wheel of Fortune, so a gentler push keeps spins short
+    st.om = typeof om === 'number' ? om : (W_MIN + (W_MAX - W_MIN) * p) * (0.96 + Math.random() * 0.08);
+    st.t = 0; st.rest = 0; acc = 0;
     Kit.sfx('whoosh'); Kit.haptic('medium');
-    (function frame(now) {
-      var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
-      angle = start + (target - start) * e;
-      wheel.style.transform = 'rotate(' + angle + 'deg)';
-      var under = ((360 - (((angle % 360) + 360) % 360)) % 360), seg = Math.floor(under / a);
-      if (seg !== lastSeg) { lastSeg = seg; Kit.sfx('tick'); Kit.haptic('tick'); }
-      if (p < 1) return requestAnimationFrame(frame);
-      spinning = false; setBtns();
-      var who = wheelNames[win];
-      $('winner').textContent = who + (who === 'You' ? ' go first!' : ' goes first!'); $('winner').classList.add('show');
-      Kit.callout(who + '!'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti();
-    })(t0);
+    kick();
   }
+  // Flick the wheel by hand; a plain tap spins it
+  function angleOf(e) { var r = wheel.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); }
+  $('wheelbox').addEventListener('pointerdown', function (e) {
+    if (spinning || wheelNames.length < 2) return;
+    e.preventDefault();
+    drag = { last: angleOf(e), th: st.th, s: [[performance.now(), st.th]], moved: 0 };
+    try { $('wheelbox').setPointerCapture(e.pointerId); } catch (x) {}
+    kick();
+  });
+  $('wheelbox').addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var a = angleOf(e), da = a - drag.last;
+    if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+    drag.last = a; drag.th += da; drag.moved += Math.abs(da);
+    var now = performance.now(); drag.s.push([now, drag.th]);
+    while (drag.s.length > 2 && now - drag.s[0][0] > 120) drag.s.shift();
+  });
+  $('wheelbox').addEventListener('pointerup', function () {
+    if (!drag) return;
+    var sm = drag.s, now = performance.now(), moved = drag.moved; drag = null;
+    var a = sm[0], b = sm[sm.length - 1], dt = (b[0] - a[0]) / 1000;
+    var om = dt > 0.008 && now - b[0] < 150 ? (b[1] - a[1]) / dt : 0;
+    if (Math.abs(om) > 1.5) spin(Math.sign(om) * Math.max(W_MIN, Math.min(W_MAX * 1.1, Math.abs(om))) * (0.96 + Math.random() * 0.08));
+    else if (moved < 0.05) spin();
+  });
+  $('wheelbox').addEventListener('pointercancel', function () { drag = null; });
   $('sBox').appendChild(el('div', { class: 'winner', id: 'winner' }));
-  $('sGo').addEventListener('click', spin);
-  $('wheelbox').addEventListener('click', spin);
+  $('sGo').addEventListener('click', function () { spin(); });
 
   // ── Teams ────────────────────────────────────────────────────────────────
   var TEAM = [['Red', '#ff4d5e'], ['Blue', '#4da3ff'], ['Green', '#3ddc84'], ['Gold', '#ffc83d'], ['Purple', '#9b7bff'], ['Orange', '#ff8a3d']];
