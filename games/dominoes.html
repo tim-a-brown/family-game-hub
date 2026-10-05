@@ -200,7 +200,7 @@
   //   hand, bone:[tiles], line:{root:{t:[w,e]}, arms:{E,W,N,S:[{t:[in,out]}]}, spin}|null,
   //   cur, viewer, passes, phase:'deal'|'play'|'handend'|'over', last:{p,id,pts}, lacks:[[values]..],
   //   handPts:[per side], rounds:[[per side]..], res:{..hand result}, undo, undoBy, hl:{..}, started}
-  var S = null, SPD = 1, tok = 0, lock = false, sel = -1;
+  var S = null, SPD = 1, tok = 0, lock = false, sel = -1, done = false;   // done: this turn's move is made
   function save() {
     if (!S) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
@@ -510,7 +510,7 @@
   }
   function beginTurn() {
     if (!S || S.phase !== 'play') return;
-    sel = -1;
+    sel = -1; done = false;
     var p = S.players[S.cur];
     save(); paint();
     if (p.cpu) { later(cpuTurn, 720); return; }
@@ -566,7 +566,7 @@
       if (!S.hl.bigPlay || pts > S.hl.bigPlay.pts) S.hl.bigPlay = { name: who(pi), pts: pts, hand: S.hand };
     }
     S.last = { p: pi, id: tid(t), t: t, pts: pts };
-    sel = -1; lock = true;
+    sel = -1; lock = true; done = true;
     save(); paint({ fly: { id: tid(t), from: from, cpu: P.cpu && pi !== S.viewer } });
     var dur = 430;
     later(function () {
@@ -609,7 +609,7 @@
     if (!S || S.phase !== 'play' || lock) return;
     clearUndoIfOther(pi);
     noteLacks(pi);
-    S.passes++;
+    S.passes++; done = true;
     S.last = { p: pi, pass: true };
     say(pi, 'Pass'); Kit.sfx('tap');
     S.players[pi].drewTurn = 0;
@@ -708,7 +708,7 @@
       var fv = Object.keys(H.fives).map(function (i) { return { name: who(+i), n: H.fives[i] }; }).sort(function (a, b) { return b.n - a.n; })[0];
       if (fv && fv.n >= 20) hl.push(fv.name + ' made ' + fv.n + ' points from fives during play');
     }
-    hl.unshift(wname + ' won ' + S.score[best] + ' to ' + S.score.filter(function (x, i) { return i !== best; }).join(' to ') + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'));
+    hl.unshift(wname + ' won ' + S.score[best] + ' to ' + S.score.filter(function (x, i) { return i !== best; }).sort(function (a, b) { return b - a; }).join(' to ') + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'));
     var players = S.players.map(function (p, i) { return { name: p.name, score: S.score[sideOf(i)], cpu: p.cpu }; });
     var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : S.mode === 'mix' ? ', with computers' : '');
     Kit.record(KEY, {
@@ -915,7 +915,7 @@
     var n = el('div', { class: cls, text: b.text }); n.style.animationDelay = (-age) + 'ms';
     host.appendChild(n); setTimeout(function () { n.remove(); }, 1700 - age);
   }
-  function myTurn() { return S && S.phase === 'play' && !S.players[S.cur].cpu && S.viewer === S.cur && !lock; }
+  function myTurn() { return S && S.phase === 'play' && !S.players[S.cur].cpu && S.viewer === S.cur && !lock && !done; }
   function paintStatus() {
     msgEl.innerHTML = ''; actsEl.innerHTML = '';
     var cur = S.players[S.cur], line = '', sub = '', col = cur.color;
@@ -1246,7 +1246,7 @@
 
   function resumeFlow() {
     if (!S) return;
-    handing = false;
+    handing = false; done = false;
     paint();
     if (S.phase === 'deal') { if (!S.line) later(lead, 400); else { S.phase = 'play'; beginTurn(); } }
     else if (S.phase === 'play') {
