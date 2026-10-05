@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marble Solitaire</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+body{overflow-x:hidden;}
+.ms{max-width:560px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 10px + var(--corner-y));}
+.play{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"hud" "board" "tip" "tools";justify-items:center;align-content:center;
+  min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 74px - var(--corner-y));padding-bottom:1vh;}
+.play > *{width:min(100%, 520px, calc(100dvh - var(--safe-t) - var(--safe-b) - 292px));min-width:min(100%,300px);}
+.hud{grid-area:hud;}.bwrap{grid-area:board;}.tip{grid-area:tip;}.tools{grid-area:tools;}
+@media (min-width:700px) and (min-height:900px) and (orientation:portrait){
+  .ms{max-width:760px;}
+  .play > *{width:min(100%, 660px, calc(100dvh - var(--safe-t) - var(--safe-b) - 330px));}
+  .plaque b{font-size:1.8rem;}
+  .tool{min-height:62px;font-size:.8rem;}
+}
+/* On its side (phones and iPads): board on the left, plaques and tools on the right */
+@media (orientation:landscape) and (min-width:600px){
+  .ms{max-width:none;padding-left:max(16px, env(safe-area-inset-left));padding-right:calc(max(16px, env(safe-area-inset-right)) + var(--corner-x));}
+  .play{grid-template-columns:auto minmax(240px,320px);grid-template-rows:1fr auto auto auto 1fr;grid-template-areas:"board ." "board hud" "board tip" "board tools" "board .";column-gap:clamp(18px,4vw,48px);row-gap:14px;
+    justify-content:center;align-content:center;align-items:center;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 70px - var(--corner-y));}
+  .play > *{width:100%;min-width:0;}
+  .play > .bwrap{width:min(calc(100dvh - var(--safe-t) - var(--safe-b) - 112px), calc(100vw - 420px), 700px);}
+  .play > .tools{grid-template-columns:1fr 1fr;grid-auto-flow:row;}
+  .tip{min-height:44px;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .gbar{padding-top:calc(var(--safe-t) + 3px);padding-bottom:3px;}
+  .play{min-height:calc(100dvh - var(--safe-t) - 70px - var(--corner-y));row-gap:8px;}
+  .ms{padding-bottom:calc(var(--safe-b) + 4px);}
+  .play > .bwrap{width:min(calc(100dvh - var(--safe-t) - 84px), calc(100vw - 380px));}
+  .plaque{padding:4px 6px 5px;}
+  .plaque b{font-size:1.25rem;}
+  .tool{min-height:44px;}
+  .tip{font-size:.78rem;min-height:36px;}
+  .bwrap{padding-bottom:0;}
+  .plate{display:none;}
+}
+
+/* Brass plaques (same family as Slide Puzzle) */
+.hud{display:flex;gap:8px;align-items:stretch;margin:2px 0 10px;}
+.plaque{flex:1;min-width:0;position:relative;border-radius:12px;padding:6px 8px 7px;text-align:center;
+  background:linear-gradient(180deg,#f6e7b8,#d9b968 55%,#c39a42);color:#4a3205;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -2px 0 rgba(0,0,0,.18), 0 3px 0 #8a6420, 0 8px 16px rgba(0,0,0,.35);}
+.plaque::before,.plaque::after{content:"";position:absolute;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff6d0,#8a6420);}
+.plaque::before{left:6px;}.plaque::after{right:6px;}
+.plaque small{display:block;font-size:.64rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.plaque b{display:block;font-family:var(--display);font-weight:400;font-size:1.5rem;line-height:1.05;font-variant-numeric:tabular-nums;text-shadow:0 1px 0 rgba(255,255,255,.5);white-space:nowrap;}
+.plaque b i{font-style:normal;font-size:.72rem;font-family:var(--font);font-weight:900;opacity:.75;margin-left:3px;letter-spacing:.02em;}
+.plaque.bump b{animation:pbump .35s var(--spring);}
+@keyframes pbump{40%{transform:scale(1.18);}}
+
+/* The turned wooden board */
+.bwrap{position:relative;}
+.bd{position:relative;width:100%;aspect-ratio:1;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.bd > svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 14px 20px rgba(0,0,0,.55));}
+.layer{position:absolute;inset:0;}
+.bwrap{padding-bottom:22px;}
+.plate{position:absolute;left:50%;bottom:0;transform:translateX(-50%);padding:2px 14px;border-radius:4px;white-space:nowrap;pointer-events:none;
+  background:linear-gradient(180deg,#f3e2ae,#cfa94e 60%,#b48a35);color:#4a3205;font-size:.6rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 1px 0 rgba(0,0,0,.4), 0 3px 6px rgba(0,0,0,.35);}
+
+/* Glass marbles */
+.mb{--c:#e0393e;position:absolute;width:8%;aspect-ratio:1;margin:-4% 0 0 -4%;border-radius:50%;pointer-events:none;z-index:2;
+  background:
+    radial-gradient(circle at 32% 26%,rgba(255,255,255,.95) 0 7%,rgba(255,255,255,0) 20%),
+    radial-gradient(circle at 70% 78%,rgba(255,255,255,.45) 0 6%,rgba(255,255,255,0) 22%),
+    radial-gradient(circle at 42% 38%,color-mix(in srgb,var(--c) 50%,#fff) 0%,var(--c) 44%,color-mix(in srgb,var(--c) 45%,#000) 100%);
+  box-shadow:0 .12em .2em rgba(0,0,0,.55),inset 0 -.14em .22em rgba(0,0,0,.32);font-size:max(4px, 1.1vmin);
+  transition:filter .2s, opacity .3s;}
+.mb::after{content:"";position:absolute;inset:16%;border-radius:50%;opacity:.42;mix-blend-mode:screen;transform:rotate(var(--sw,0deg));
+  background:conic-gradient(from 30deg,transparent 0 16%,rgba(255,255,255,.8) 20% 26%,transparent 30% 60%,rgba(255,255,255,.6) 64% 69%,transparent 73%);}
+.mb.milk{background:
+    radial-gradient(circle at 32% 26%,rgba(255,255,255,.95) 0 7%,rgba(255,255,255,0) 20%),
+    radial-gradient(circle at 46% 40%,#ffffff 0%,#ece6da 50%,#b8ad9a 100%);}
+.mb.milk::after{opacity:.75;mix-blend-mode:normal;background:conic-gradient(from 10deg,transparent 0 12%,var(--c) 15% 22%,transparent 26% 58%,var(--c) 61% 67%,transparent 71%);}
+.mb.tray{z-index:1;}
+.mb.sel{z-index:6;transform:scale(1.16);box-shadow:0 .45em .5em rgba(0,0,0,.5),inset 0 -.14em .22em rgba(0,0,0,.32),0 0 0 .22em rgba(255,255,255,.9),0 0 .9em rgba(255,255,255,.6);}
+.mb.drag{z-index:8;transition:none;}
+.mb.air{z-index:7;}
+.mb.hint{z-index:5;animation:mhint 1s ease-in-out infinite;}
+@keyframes mhint{50%{box-shadow:0 .12em .2em rgba(0,0,0,.55),inset 0 -.14em .22em rgba(0,0,0,.32),0 0 0 .25em #ffd34d,0 0 1.2em .3em rgba(255,211,77,.85);}}
+.mb.nope{animation:mnope .32s ease-out;}
+@keyframes mnope{25%{translate:-14% 0;}55%{translate:10% 0;}80%{translate:-4% 0;}}
+.mb.last{animation:mlast 1.4s ease-in-out infinite;z-index:6;}
+@keyframes mlast{50%{box-shadow:0 .12em .2em rgba(0,0,0,.55),0 0 0 .3em rgba(255,226,120,.9),0 0 1.6em .6em rgba(255,215,90,.8);}}
+/* Where the chosen marble can land */
+.tgt{position:absolute;width:9.6%;aspect-ratio:1;margin:-4.8% 0 0 -4.8%;border-radius:50%;pointer-events:none;z-index:3;
+  border:2px dashed #ffe58a;background:radial-gradient(circle,rgba(255,229,138,.35),rgba(255,229,138,.08) 70%);box-shadow:0 0 12px rgba(255,229,138,.55);animation:tspin 3.2s linear infinite;}
+.tgt.over{border-style:solid;background:rgba(255,229,138,.45);transform:scale(1.12);}
+.tgt.hint{border-color:#ffd34d;border-width:3px;}
+@keyframes tspin{to{rotate:360deg;}}
+.pickme{position:absolute;width:9.6%;aspect-ratio:1;margin:-4.8% 0 0 -4.8%;border-radius:50%;pointer-events:none;z-index:3;border:2px solid rgba(255,229,138,.0);animation:pk 1.6s ease-in-out infinite;}
+@keyframes pk{50%{border-color:rgba(255,229,138,.7);box-shadow:0 0 10px rgba(255,229,138,.5);}}
+
+/* Tools: clean chrome under the board */
+.tools{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:4px;}
+.tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;border:0;border-radius:14px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.72rem;white-space:nowrap;transition:transform .12s var(--spring), background .15s;}
+.tool .ico{width:22px;height:22px;}
+.tool:active{transform:scale(.93);background:rgba(255,255,255,.14);}
+.tool:disabled{opacity:.35;}
+.tool.on{background:var(--accent);color:var(--accent-ink);}
+.tool.busy .ico{animation:think 1s ease-in-out infinite;}
+.tool.glow{box-shadow:0 0 0 2px #ffd34d inset;color:#ffe58a;}
+@keyframes think{50%{opacity:.3;transform:scale(.85);}}
+.tip{margin-top:12px;text-align:center;font-size:.86rem;font-weight:700;color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;line-height:1.25;}
+.tip .ico{width:16px;height:16px;flex:none;}
+.tip.warn{color:#ffb08a;}
+.tip.good{color:#9be3b0;}
+
+/* Setup: little board pictures */
+.setup .mode .e svg.mini{width:34px;height:34px;}
+.pv{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:16px;background:rgba(0,0,0,.2);}
+.pv svg{flex:none;width:96px;height:96px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));}
+.pv .tx b{display:block;font-size:1rem;}
+.pv .tx small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;line-height:1.3;margin-top:2px;}
+.hx{display:flex;gap:12px;align-items:center;margin-top:10px;}
+.hx svg{width:92px;height:92px;flex:none;}
+.hx small{color:var(--text-3);font-weight:700;font-size:.8rem;}
+.rules .scale{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0 4px;}
+.rules .scale b{font-family:var(--display);font-weight:400;}
+.bests td,.bests th{padding:7px 4px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08);}
+.bests th{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+</style>
+</head>
+<body>
+<main class="ms" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), $ = function (id) { return document.getElementById(id); };
+  var KEY = 'marblesolitaire', SAVE = 'marblesolitaire_state';
+
+  // ── Engine: board geometry and the solver (also runs inside a worker) ─────
+  function MSEngine(PAGC) {
+    var GEO = {};
+    // shape: 'english' (33-hole cross), 'european' (37), 'triangle' (15)
+    function geo(shape) {
+      if (GEO[shape]) return GEO[shape];
+      var holes = [], at = {}, i, r, c, tri = shape === 'triangle';
+      if (tri) {
+        for (r = 0; r < 5; r++) for (c = 0; c <= r; c++) { at[r + ',' + c] = holes.length; holes.push({ r: r, c: c, x: (c - r / 2) * 1.45, y: (r - 8 / 3) * 1.45 * 0.8660254 }); }
+      } else {
+        for (r = 0; r < 7; r++) for (c = 0; c < 7; c++) {
+          var on = (r >= 2 && r <= 4) || (c >= 2 && c <= 4) || (shape === 'european' && (r === 1 || r === 5) && (c === 1 || c === 5));
+          if (on) { at[r + ',' + c] = holes.length; holes.push({ r: r, c: c, x: c - 3, y: r - 3 }); }
+        }
+      }
+      var n = holes.length;
+      var dirs = tri ? [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1]] : [[0, 1], [0, -1], [1, 0], [-1, 0]];
+      var jumps = [];
+      holes.forEach(function (h, a) {
+        dirs.forEach(function (d) {
+          var b = at[(h.r + d[0]) + ',' + (h.c + d[1])], t = at[(h.r + 2 * d[0]) + ',' + (h.c + 2 * d[1])];
+          if (b != null && t != null) jumps.push([a, b, t]);
+        });
+      });
+      // Symmetries of the board, as permutations of hole numbers
+      var syms = [];
+      if (tri) {
+        [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]].forEach(function (p) {
+          syms.push(holes.map(function (h) { var v = [h.r - h.c, h.c, 4 - h.r], w = [v[p[0]], v[p[1]], v[p[2]]]; return at[(4 - w[2]) + ',' + w[1]]; }));
+        });
+      } else {
+        for (var k = 0; k < 8; k++) {
+          syms.push(holes.map(function (h) {
+            var y = h.r - 3, x = h.c - 3, t;
+            for (var q = 0; q < (k & 3); q++) { t = x; x = -y; y = t; }
+            if (k & 4) x = -x;
+            return at[(y + 3) + ',' + (x + 3)];
+          }));
+        }
+      }
+      // Two 3-colourings: every jump covers three different colours, so the
+      // parity pattern of the colour counts never changes ("position class").
+      var colour = holes.map(function (h) {
+        return tri ? [(h.r + h.c) % 3, ((h.r - 2 * h.c) % 3 + 3) % 3] : [(h.r + h.c) % 3, ((h.r - h.c) % 3 + 3) % 3];
+      });
+      var seed = 12345;
+      function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed & 0x3ffffff; }
+      var zA = [], zB = [];
+      for (i = 0; i < n; i++) { zA.push(rnd()); zB.push(rnd()); }
+      var g = { shape: shape, holes: holes, at: at, n: n, jumps: jumps, syms: syms, colour: colour, center: tri ? -1 : at['3,3'],
+        ZA: syms.map(function (p) { return p.map(function (x) { return zA[x]; }); }),
+        ZB: syms.map(function (p) { return p.map(function (x) { return zB[x]; }); }), pag: [] };
+      // Pagoda functions (see solve) are stored for one hole of each symmetry family
+      for (i = 0; i < n; i++) g.pag.push([]);
+      var PC = PAGC && PAGC[shape];
+      if (PC) Object.keys(PC).forEach(function (rk) {
+        var done = {};
+        syms.forEach(function (p) {
+          var t = p[+rk]; if (done[t]) return; done[t] = 1;
+          PC[rk].forEach(function (str) { var w = new Float64Array(n); for (var x = 0; x < n; x++) w[p[x]] = str.charCodeAt(x) - 50; g.pag[t].push(w); });
+        });
+      });
+      GEO[shape] = g;
+      return g;
+    }
+    function sig(g, b) {
+      var a = [0, 0, 0], c = [0, 0, 0];
+      for (var i = 0; i < g.n; i++) if (b[i]) { a[g.colour[i][0]]++; c[g.colour[i][1]]++; }
+      return ((a[0] + a[1]) & 1) + '' + ((a[1] + a[2]) & 1) + ((c[0] + c[1]) & 1) + ((c[1] + c[2]) & 1);
+    }
+    // Holes where a lone last marble could possibly end up
+    function finishes(g, b) {
+      var s = sig(g, b), out = [], one = new Uint8Array(g.n);
+      for (var i = 0; i < g.n; i++) { one[i] = 1; if (sig(g, one) === s) out.push(i); one[i] = 0; }
+      return out;
+    }
+    function legal(g, b) {
+      var out = [];
+      g.jumps.forEach(function (j) { if (b[j[0]] && b[j[1]] && !b[j[2]]) out.push(j); });
+      return out;
+    }
+
+    // Positions are keyed by a Zobrist hash (two 26-bit halves), taking the
+    // smallest over the symmetries that keep the set of finishing holes.
+    //
+    // Endgame table: by peg-solitaire duality, a position with k marbles can
+    // be cleared to one marble on hole t exactly when its complement can be
+    // reached from "every hole full except t" in k-1 jumps. A short
+    // breadth-first search from those starts lists every winnable small
+    // position; the depth-first search runs down to that size, looks the
+    // answer up, and remembers bigger positions it has proven hopeless.
+    function HSet(bits) {
+      var cap = 1 << bits, mask = cap - 1, A = new Int32Array(cap), B = new Int32Array(cap), size = 0;
+      function slot(a, b) { return (a ^ Math.imul(b, 0x9E3779B1)) & mask; }
+      function has(a, b) { for (var x = slot(a, b); ; x = (x + 1) & mask) { if (B[x] === 0) return false; if (B[x] === b && A[x] === a) return true; } }
+      function grow() {
+        var oa = A, ob = B; cap <<= 1; mask = cap - 1; A = new Int32Array(cap); B = new Int32Array(cap); size = 0;
+        for (var i = 0; i < oa.length; i++) if (ob[i]) add(oa[i], ob[i]);
+      }
+      function add(a, b) {
+        if (size * 10 > cap * 6) grow();
+        for (var x = slot(a, b); ; x = (x + 1) & mask) { if (B[x] === 0) { A[x] = a; B[x] = b; size++; return true; } if (B[x] === b && A[x] === a) return false; }
+      }
+      return { has: has, add: add, size: function () { return size; } };
+    }
+    var CTX = {}, ctxOrder = [];
+    function context(g, fins) {
+      var id = g.shape + '|' + fins.join(',');
+      if (CTX[id]) return CTX[id];
+      // Keep at most two sets of tables in memory
+      while (ctxOrder.length >= 2) delete CTX[ctxOrder.shift()];
+      ctxOrder.push(id);
+      var n = g.n, fs = {}; fins.forEach(function (f) { fs[f] = 1; });
+      var keep = g.syms.map(function (p, s) { return s; }).filter(function (s) { return fins.every(function (f) { return fs[g.syms[s][f]]; }); });
+      var S = keep.length, Z1 = new Int32Array(S * n), Z2 = new Int32Array(S * n), F1 = new Int32Array(S), F2 = new Int32Array(S);
+      keep.forEach(function (sy, s) { for (var i = 0; i < n; i++) { Z1[s * n + i] = g.ZA[sy][i]; Z2[s * n + i] = g.ZB[sy][i]; F1[s] ^= g.ZA[sy][i]; F2[s] ^= g.ZB[sy][i]; } });
+      var c = { id: id, g: g, n: n, fins: fins, S: S, Z1: Z1, Z2: Z2, F1: F1, F2: F2, db: HSet(12), K: 1, fr: null, frN: 0,
+        FA: new Int32Array(1 << 21), FB: new Int32Array(1 << 21) };
+      // Level 0: every hole full except a finishing hole (complement: one marble there)
+      var seen = HSet(4), buf = new Uint8Array(fins.length * n), cnt = 0, ha = new Int32Array(S), hb = new Int32Array(S);
+      fins.forEach(function (t) {
+        var b = buf.subarray(cnt * n, cnt * n + n);
+        for (var i = 0; i < n; i++) b[i] = i === t ? 0 : 1;
+        hashOf(c, b, ha, hb); canonOf(c, ha, hb, false);
+        if (seen.add(KA, KB)) { canonOf(c, ha, hb, true); c.db.add(KA, KB); cnt++; }
+      });
+      c.fr = buf; c.frN = cnt;
+      CTX[id] = c;
+      return c;
+    }
+    function hashOf(c, b, ha, hb) {
+      var n = c.n, s, i;
+      for (s = 0; s < c.S; s++) { ha[s] = 0; hb[s] = 0; }
+      for (i = 0; i < n; i++) if (b[i]) for (s = 0; s < c.S; s++) { ha[s] ^= c.Z1[s * n + i]; hb[s] ^= c.Z2[s * n + i]; }
+    }
+    var KA = 0, KB = 0;
+    function canonOf(c, ha, hb, comp) {
+      var a, b2;
+      KA = 0x7fffffff; KB = 0x7fffffff;
+      for (var s = 0; s < c.S; s++) {
+        a = comp ? ha[s] ^ c.F1[s] : ha[s]; b2 = comp ? hb[s] ^ c.F2[s] : hb[s];
+        if (a < KA || (a === KA && b2 < KB)) { KA = a; KB = b2; }
+      }
+      KB |= 0x4000000;
+    }
+    // One more breadth-first level: the table then covers one more marble
+    function growDB(c) {
+      var g = c.g, n = c.n, J = g.jumps, S = c.S, seen = HSet(12), cap = Math.max(64, c.frN * 4), out = new Uint8Array(cap * n), cnt = 0;
+      var ha = new Int32Array(S), hb = new Int32Array(S), ca = new Int32Array(S), cb = new Int32Array(S);
+      for (var k = 0; k < c.frN; k++) {
+        var b = c.fr.subarray(k * n, k * n + n);
+        hashOf(c, b, ha, hb);
+        for (var m = 0; m < J.length; m++) {
+          var j = J[m];
+          if (!b[j[0]] || !b[j[1]] || b[j[2]]) continue;
+          for (var s = 0; s < S; s++) {
+            var o = s * n;
+            ca[s] = ha[s] ^ c.Z1[o + j[0]] ^ c.Z1[o + j[1]] ^ c.Z1[o + j[2]];
+            cb[s] = hb[s] ^ c.Z2[o + j[0]] ^ c.Z2[o + j[1]] ^ c.Z2[o + j[2]];
+          }
+          canonOf(c, ca, cb, false);
+          if (!seen.add(KA, KB)) continue;
+          canonOf(c, ca, cb, true); c.db.add(KA, KB);
+          if (cnt === cap) { var bigger = new Uint8Array(cap * 2 * n); bigger.set(out); out = bigger; cap *= 2; }
+          var nb = out.subarray(cnt * n, cnt * n + n);
+          nb.set(b); nb[j[0]] = 0; nb[j[1]] = 0; nb[j[2]] = 1; cnt++;
+        }
+      }
+      c.fr = out; c.frN = cnt; c.K++;
+    }
+    var STOP = {};
+    function triDist(a, b) { var dr = a.r - b.r, dc = a.c - b.c; return dr * dc > 0 ? Math.max(Math.abs(dr), Math.abs(dc)) : Math.abs(dr) + Math.abs(dc); }
+    // solve(shape, board[], {target, view, maxNodes, ms})
+    //   -> {moves:[[from, over, to], ...]} a line down to one marble,
+    //      {none:true} no line exists, or {gaveUp:true} out of budget (call
+    //      again: proven-hopeless positions are remembered between calls).
+    function solve(shape, b0, o) {
+      o = o || {};
+      var g = geo(shape), n = g.n, b = new Uint8Array(n), i, count = 0;
+      for (i = 0; i < n; i++) { b[i] = b0[i] ? 1 : 0; count += b[i]; }
+      if (!count) return { none: true, nodes: 0 };
+      var fins = finishes(g, b);
+      if (o.target != null) fins = fins.indexOf(o.target) >= 0 ? [o.target] : [];
+      if (!fins.length) return { none: true, nodes: 0 };
+      var c = context(g, fins), t0 = Date.now(), deadline = o.ms ? t0 + o.ms : 0;
+      // Grow the endgame table while it stays a sensible size
+      var dbMax = o.dbMax || 900000;
+      while (c.K < count && c.frN && c.db.size() < dbMax && c.frN * 6 + c.db.size() < dbMax * 1.3) {
+        growDB(c);
+        if (deadline && Date.now() > deadline) return { gaveUp: true, nodes: 0 };
+      }
+      var MASK = (1 << 21) - 1, FA = c.FA, FBk = c.FB, K = c.K, db = c.db, S = c.S, Z1 = c.Z1, Z2 = c.Z2;
+      var ha = new Int32Array(S), hb = new Int32Array(S);
+      hashOf(c, b, ha, hb);
+      // Jump order: the plain order, or as if the board were turned (o.view):
+      // trying several views in turn finds lines much sooner on hard positions.
+      var J = g.jumps, NJ = J.length, JA = new Int8Array(NJ), JB = new Int8Array(NJ), JT = new Int8Array(NJ);
+      var ord = J.map(function (j, m) { return m; });
+      if (o.view) {
+        var p = g.syms[o.view % g.syms.length], idx = {};
+        J.forEach(function (j, m) { idx[j[0] + ',' + j[1]] = m; });
+        var pri = J.map(function (j) { return idx[p[j[0]] + ',' + p[j[1]]]; });
+        ord.sort(function (x, y) { return pri[x] - pri[y]; });
+      }
+      ord.forEach(function (k, m) { JA[m] = J[k][0]; JB[m] = J[k][1]; JT[m] = J[k][2]; });
+      // Pagodas: weights that can never go up on a jump, worth 1 when a lone
+      // marble sits on the finishing hole. If every pagoda for a hole adds up
+      // to less than 1, that hole is out of reach. Conway's golden-ratio
+      // weights plus a few found by linear programming (PAGC).
+      var rows = [], owner = [];
+      fins.forEach(function (t, fi) {
+        var th = g.holes[t], w = new Float64Array(n);
+        for (var q = 0; q < n; q++) { var h = g.holes[q]; w[q] = Math.pow(0.6180339887, g.shape === 'triangle' ? triDist(h, th) : Math.abs(h.r - th.r) + Math.abs(h.c - th.c)); }
+        rows.push(w); owner.push(fi);
+        g.pag[t].forEach(function (pw) { rows.push(pw); owner.push(fi); });
+      });
+      var NP = rows.length, NF = fins.length, PV = new Float64Array(NP * n), ps = new Float64Array(NP), PO = new Int8Array(owner), dead = new Uint8Array(NF);
+      rows.forEach(function (w, k) { for (var q = 0; q < n; q++) { PV[k * n + q] = w[q]; if (b[q]) ps[k] += w[q]; } });
+      function alive() {
+        var f;
+        for (f = 0; f < NF; f++) dead[f] = 0;
+        for (var k = 0; k < NP; k++) if (ps[k] < 0.999999) dead[PO[k]] = 1;
+        for (f = 0; f < NF; f++) if (!dead[f]) return true;
+        return false;
+      }
+      function pmove(a, cc, t, sg) { for (var k = 0, z = 0; k < NP; k++, z += n) ps[k] += sg * (PV[z + t] - PV[z + a] - PV[z + cc]); }
+      var nodes = 0, maxNodes = o.maxNodes || 1e9, path = [];
+      function flip(i) { for (var s = 0, z = i; s < S; s++, z += n) { ha[s] ^= Z1[z]; hb[s] ^= Z2[z]; } }
+      function canon() {
+        KA = ha[0]; KB = hb[0];
+        for (var s = 1; s < S; s++) if (ha[s] < KA || (ha[s] === KA && hb[s] < KB)) { KA = ha[s]; KB = hb[s]; }
+        KB |= 0x4000000;
+      }
+      function failed() {
+        var x = (KA ^ Math.imul(KB, 0x9E3779B1)) & MASK;
+        for (var q = 0; q < 6; q++) { var y = (x + q) & MASK; if (FBk[y] === 0) return false; if (FBk[y] === KB && FA[y] === KA) return true; }
+        return false;
+      }
+      function remember(a, bk) {
+        var x = (a ^ Math.imul(bk, 0x9E3779B1)) & MASK;
+        for (var q = 0; q < 6; q++) { var y = (x + q) & MASK; if (FBk[y] === 0) { FA[y] = a; FBk[y] = bk; return; } }
+        FA[x] = a; FBk[x] = bk;
+      }
+      function dfs(left) {
+        canon();
+        if (left <= K) return db.has(KA, KB);
+        if (failed() || !alive()) return false;
+        var myA = KA, myB = KB;
+        if (++nodes > maxNodes) throw STOP;
+        if (deadline && (nodes & 511) === 0 && Date.now() > deadline) throw STOP;
+        for (var m = 0; m < NJ; m++) {
+          var a = JA[m], cc = JB[m], t = JT[m];
+          if (!b[a] || !b[cc] || b[t]) continue;
+          b[a] = 0; b[cc] = 0; b[t] = 1; flip(a); flip(cc); flip(t); pmove(a, cc, t, 1);
+          path.push(m);
+          var ok = dfs(left - 1);
+          b[a] = 1; b[cc] = 1; b[t] = 0; flip(a); flip(cc); flip(t); pmove(a, cc, t, -1);
+          if (ok) return true;
+          path.pop();
+        }
+        remember(myA, myB);
+        return false;
+      }
+      // Inside the table: keep picking a jump that stays in it
+      function tail() {
+        for (var left = count - path.length; left > 1; left--) {
+          var found = -1;
+          for (var m = 0; m < NJ && found < 0; m++) {
+            var a = JA[m], cc = JB[m], t = JT[m];
+            if (!b[a] || !b[cc] || b[t]) continue;
+            b[a] = 0; b[cc] = 0; b[t] = 1; flip(a); flip(cc); flip(t);
+            canon();
+            if (db.has(KA, KB)) found = m;
+            else { b[a] = 1; b[cc] = 1; b[t] = 0; flip(a); flip(cc); flip(t); }
+          }
+          if (found < 0) return false;
+          path.push(found);
+        }
+        return true;
+      }
+      try {
+        if (!dfs(count)) return { none: true, nodes: nodes };
+        for (i = 0; i < n; i++) b[i] = b0[i] ? 1 : 0;
+        hashOf(c, b, ha, hb);
+        path.forEach(function (m) { b[JA[m]] = 0; b[JB[m]] = 0; b[JT[m]] = 1; flip(JA[m]); flip(JB[m]); flip(JT[m]); });
+        if (!tail()) return { gaveUp: true, nodes: nodes };
+        return { moves: path.map(function (m) { return [JA[m], JB[m], JT[m]]; }), nodes: nodes };
+      } catch (e) { if (e === STOP) return { gaveUp: true, nodes: nodes }; throw e; }
+    }
+    return { geo: geo, legal: legal, solve: solve, finishes: finishes };
+  }
+
+  // Runs a solve in small slices so a newer request can replace it: tries
+  // the eight board "views" in turn with doubling budgets. With a center
+  // goal it looks for a center finish first, then for any single marble.
+  function MSRunner(E, send, sliceMs) {
+    var job = null, timer = null;
+    function start(j) {
+      clearTimeout(timer);
+      job = j; j.t0 = Date.now(); j.phase = j.center != null && j.center >= 0 ? 'center' : 'any';
+      j.view = 0; j.budget = 20000; j.used = 0;
+      timer = setTimeout(step, 0);
+    }
+    function nextPhase(j) { j.phase = 'any'; j.view = 0; j.budget = 20000; j.used = 0; j.tAny = Date.now(); }
+    function step() {
+      var j = job; if (!j) return;
+      var r = E.solve(j.shape, j.b, { target: j.phase === 'center' ? j.center : null, view: j.view, maxNodes: Math.max(1, j.budget - j.used), ms: sliceMs });
+      j.used += r.nodes;
+      if (r.moves) { job = null; send({ id: j.id, key: j.key, moves: r.moves, center: j.phase === 'center' }); return; }
+      if (r.none) {
+        if (j.phase === 'center') nextPhase(j);
+        else { job = null; send({ id: j.id, key: j.key, none: true, centerTried: j.center != null && j.center >= 0 }); return; }
+      } else {
+        var el = Date.now() - j.t0;
+        if (j.phase === 'center' && el > j.cap * 0.35) nextPhase(j);
+        else if (el > j.cap) { job = null; send({ id: j.id, key: j.key, gaveUp: true }); return; }
+        else if (j.used >= j.budget) { j.used = 0; j.view++; if (j.view >= 8) { j.view = 0; j.budget *= 2; } }
+      }
+      timer = setTimeout(step, 0);
+    }
+    return { start: start, stop: function () { clearTimeout(timer); job = null; } };
+  }
+
+  // Pagoda weights found offline by linear programming (one row per weight
+  // table; character code minus 50 = weight, one character per hole).
+  var PAGC = {"english":{"0":["341323042424023323230424240343121","332222143323122222221433231222332","323323222222223323322222222323121","332222323323122222223233231222332","332332222222223332322222222332132","323222233233223323322222222323121","341233143424032323230424240323141","323323222222232323322222222323121"],"1":["232232222222223232322222222232222","232232042424022222220424240222242","232222132323122222221323231232222","332222323323122222223233231332222","232222132323122222221323231222232","132332222222223332322222222332132","231233222222223233232222222233222","030424132323142424421323231434020"],"3":["121323222222232323232222222323121","132332132323133332332222222332132","121323222222232323322222222323121","121323222222223323322222222323121","121323222222223323232222222323121","222332222222223332322222222332222","141323042424032323320424240323141","121323222222232323323232332222323"],"4":["222232132323122222221323231232222","222232222222223232322222222232222","132332222222232332322222222332222","232232042424022222220424240222242","222232132323122222221323231222232","121333222222223333232222222333121","020434222222224434422222222434020","020434222222242434242222222434020"],"8":["040525053434124424240424240424040","020525233232324424332222222424020","332222143323132332320424241332132","342222053424022222220534240222342","332222323323122222223233231222332","130424143323124424421323231424030","323222233232323323232222222323121","332222143323122222221433231222332"],"9":["222232132323122222221323231232222","020434132323142424421323231434020","222232132323122222221323231222232","232222132323122222221323231222232","222232132323233232322222222232222","232222132323122222221323231232222","042433132334142434242334240334240","030424132323133434332222222434020"],"16":["020534143323142434330424240424040","020434222222242434422222222434020","222232222222223232322222222232222","121333222222232333322222222333121","233222232332323233232222222233231","132332222222232332322222222332222","242222042424023232320424240222242","121333132323132333321323231323131"]},"european":{"0":["3323233214333232222222143332313232232","3232323322222223232332222222223233121","3232323222222223232323222222223232121","3500424005352502333424042435013231142","3410424004242404242424042424004240040","3322332322222223233232222222223323222","3232222223323232332323222222233232121","3411323104242402332332053435004240141"],"1":["1322332322222223233233323323122222332","1302334104242402333424042434113231142","0311433213232314243332132323114332031","1300424114332314242424143323105341020","2322222213232312222222132323122222232","1312323213232312332332132323123332121","1300424114332313233424143323104241130","1311323113232313232323132323113231131"],"3":["1213323222222222332323222222233232121","2223232313232312222222132323122222232","1213433213232314243323233233215341031","1313323113232313232323132323113231131","0303424113232314242424132323114341020","1213333213232313232323132323113231131","2223323123323322222222233233213231222","0403424004242404242424042424004240040"],"4":["1302334104242403233424143424004240140","1213323222222222332323222222233232121","1312323113232312332323132323123231131","1311323113232313232323132323113231131","1411323104242402332334042433223323143","2222323132323322222222323233223231222","1212323322222223232332222222223233121","1213343304242402332323042424013231141"],"5":["1302334104242402333424053424004240140","1212333322222223233332222222223333121","2223233222222222323323222222232332222","1212333213232313232323132323113231131","0201434313232314242442132323114243030","2223232313232312222222132323122222232","0201434113232314242424132323114341020","0201434113232314242424132323114241030"],"10":["2311323114332312332323132323123231131","3232222232323233232323222222223232121","3322222214332312222222143323122222332","3322222232332312222222323323122222332","3232222232323323232332222222223233121","1400424014342403233424042424023341130","1212433232332313232323323323123231231","0201534123332314242424132323114241030"],"11":["2322222213232312222222132323122222232","1311323113232313232323132323113231131","0301424113232314242424132323114341020","0201434113232314242424132323114341020","1311323213232313232332132323113232131","0201434313232314242442132323114243030","3233233232333233333323222222233332121","2322222213232312222222132323132323222"],"18":["2223233222222222323323222222232332222","1212333213232313233323132323113231131","1212333222222223233323222222223332121","2222332322222223233232222222223323222","2223233222222222323323222222232332231","2422222204242402323232042424022222242","2224242404242402323232042424022222242","0400424004242404243424042424004240040"]}};
+  var E = MSEngine(PAGC);
+
+  // ── Solver plumbing: a worker when possible, small slices otherwise ───────
+  var worker = null, workerOk = true, mainRunner = null, rq = 0, pend = null, cache = {};
+  function onResult(m) {
+    if (!pend || m.id !== pend.id) return;
+    var p = pend; pend = null;
+    cache[m.key] = m;
+    // Every position along the found line is solved too
+    if (m.moves && m.moves.length) {
+      var b = p.b.slice();
+      for (var i = 0; i < m.moves.length - 1; i++) {
+        var mv = m.moves[i]; b[mv[0]] = 0; b[mv[1]] = 0; b[mv[2]] = 1;
+        cache[p.shape + ':' + b.join('')] = { moves: m.moves.slice(i + 1), center: m.center, key: p.shape + ':' + b.join('') };
+      }
+    }
+    p.cbs.forEach(function (cb) { cb(m); });
+  }
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var src = 'var PAGC=' + JSON.stringify(PAGC) + ';' + MSEngine.toString() + MSRunner.toString() +
+        'var R=MSRunner(MSEngine(PAGC),function(m){postMessage(m);},250);onmessage=function(e){R.start(e.data);};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { onResult(e.data); };
+      worker.onerror = function () {
+        workerOk = false; worker = null;
+        if (pend) { var p = pend; pend = null; ask(p.b, p.shape, p.center, null, p.cbs); }
+      };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  // ask(board, shape, centerHole, cb): calls back with {moves, center} | {none} | {gaveUp}
+  function ask(b, shape, center, cb, cbs) {
+    var key = shape + ':' + b.join('');
+    var c = cache[key];
+    if (c && !c.gaveUp) { if (cb) cb(c); (cbs || []).forEach(function (f) { f(c); }); return; }
+    if (pend && pend.key === key) { if (cb) pend.cbs.push(cb); return; }
+    pend = { id: ++rq, key: key, b: b.slice(), shape: shape, center: center, cbs: (cbs || []).concat(cb ? [cb] : []) };
+    var job = { id: pend.id, key: key, shape: shape, b: b.slice(), center: center, cap: 20000 };
+    var w = getWorker();
+    if (w) w.postMessage(job);
+    else { if (!mainRunner) mainRunner = MSRunner(E, onResult, 25); mainRunner.start(job); }
+  }
+
+  // ── Boards ────────────────────────────────────────────────────────────────
+  var CROSS = { cross: ['1,3', '2,2', '2,3', '2,4', '3,3', '4,3'],
+    plus: ['1,3', '2,3', '3,1', '3,2', '3,3', '3,4', '3,5', '4,3', '5,3'],
+    pyramid: ['1,3', '2,2', '2,3', '2,4', '3,1', '3,2', '3,3', '3,4', '3,5', '4,0', '4,1', '4,2', '4,3', '4,4', '4,5', '4,6'],
+    arrow: ['0,3', '1,2', '1,3', '1,4', '2,1', '2,2', '2,3', '2,4', '2,5', '3,3', '4,3', '5,2', '5,3', '5,4', '6,2', '6,3', '6,4'] };
+  var BOARDS = {
+    english: { shape: 'english', name: 'English', sub: '33 holes', goal: 'center' },
+    european: { shape: 'european', name: 'European', sub: '37 holes', empty: '2,3' },
+    triangle: { shape: 'triangle', name: 'Triangle', sub: '15 holes', pick: true, cb: true },
+    cross: { shape: 'english', name: 'Cross', sub: 'Warm-up', warm: true, fill: CROSS.cross, goal: 'center' },
+    plus: { shape: 'english', name: 'Plus', sub: 'Warm-up', warm: true, fill: CROSS.plus, goal: 'center' },
+    pyramid: { shape: 'english', name: 'Pyramid', sub: 'Warm-up', warm: true, fill: CROSS.pyramid, goal: 'center' },
+    arrow: { shape: 'english', name: 'Arrow', sub: 'Warm-up', warm: true, fill: CROSS.arrow, goal: 'center' }
+  };
+  var ORDER = ['english', 'european', 'triangle', 'cross', 'plus', 'pyramid', 'arrow'];
+  function startLayout(id) {
+    var B = BOARDS[id], g = E.geo(B.shape), b = [];
+    for (var i = 0; i < g.n; i++) b.push(B.fill ? 0 : 1);
+    if (B.fill) B.fill.forEach(function (rc) { b[g.at[rc]] = 1; });
+    else if (B.goal === 'center') b[g.center] = 0;
+    else if (B.empty) b[g.at[B.empty]] = 0;
+    return b;
+  }
+
+  // Mixed glass: classic marble colors, one milky "cat's eye" style
+  var PAL = ['#e0393e', '#2f7fd8', '#26a65b', '#f2b233', '#8e5bd6', '#19b3ad', '#f07c2c', '#e2558f', '#3b4bd0'];
+  var MILK = 9;
+
+  // ── Sound: wooden knock, glass clink, rolling (local; tuned for marbles) ──
+  var actx = null;
+  function soundOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
+  function ac() {
+    if (!actx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; try { actx = new C(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function noiseBuf(a, dur, shape) {
+    var n = Math.max(1, Math.floor(a.sampleRate * dur)), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * shape(i / n);
+    return buf;
+  }
+  function knock(v) {   // marble dropping into a drilled hole
+    if (!soundOn()) return; var a = ac(); if (!a) return;
+    try {
+      v = v || 1;
+      var t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.07);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22 * v, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.13);
+      var s = a.createBufferSource(), f = a.createBiquadFilter(), g2 = a.createGain();
+      s.buffer = noiseBuf(a, 0.03, function (x) { return Math.pow(1 - x, 4); });
+      f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 1.2; g2.gain.value = 0.35 * v;
+      s.connect(f); f.connect(g2); g2.connect(a.destination); s.start(t);
+    } catch (e) {}
+  }
+  function clink(v, delay) {   // glass on glass
+    if (!soundOn()) return; var a = ac(); if (!a) return;
+    try {
+      v = v || 1; var t = a.currentTime + (delay || 0);
+      [[2900 + Math.random() * 500, 0.09], [4700 + Math.random() * 600, 0.05], [6900, 0.025]].forEach(function (p) {
+        var o = a.createOscillator(), g = a.createGain();
+        o.type = 'sine'; o.frequency.value = p[0];
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(p[1] * v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.18);
+      });
+    } catch (e) {}
+  }
+  function rumble(dur) {   // rolling along the wooden groove
+    if (!soundOn()) return; var a = ac(); if (!a) return;
+    try {
+      var t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+      s.buffer = noiseBuf(a, dur, function (x) { return Math.sin(Math.PI * Math.min(1, x * 1.4)) * (0.6 + 0.4 * Math.sin(x * 90)); });
+      f.type = 'lowpass'; f.frequency.value = 520; g.gain.value = 0.22;
+      s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
+    } catch (e) {}
+  }
+  function lift() { if (!soundOn()) return; var a = ac(); if (!a) return; try { var t = a.currentTime, o = a.createOscillator(), g = a.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(900, t); o.frequency.exponentialRampToValueAtTime(1300, t + 0.05); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07); o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.08); } catch (e) {} }
+
+  // ── Kit shell ─────────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'marblesolitaire', mark: false,
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
+      { icon: 'sync', label: 'Restart this board', onClick: function () { restart(); } },
+      { icon: 'chart', label: 'Best results', onClick: function () { showBests(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Marble Solitaire: past games', extra: histExtra }); } }
+    ],
+    rules:
+      '<p class="goal">Jump marbles over each other and take them off the board, until only <b>one marble</b> is left. On the English board and the warm-ups, the perfect finish is that last marble sitting in the <b>center hole</b>.</p>' +
+      '<h3>How to jump</h3><ul>' +
+      '<li>A marble jumps <b>straight over a marble right next to it</b> and lands in the <b>empty hole</b> just past it.</li>' +
+      '<li>The marble you jumped over comes off the board.</li>' +
+      '<li>On the cross boards, jump <b>across or up and down</b>, never diagonally. On the triangle you can also jump along the slanted sides.</li>' +
+      '<li>One marble can make several jumps in a row: each one counts as a move.</li>' +
+      '<li>The game ends when <b>no jumps are left</b>. Count the marbles still on the board: fewer is better.</li></ul>' +
+      '<h3>Playing here</h3><ul>' +
+      '<li><b>Tap a marble</b> and the holes it can jump to glow. <b>Tap a glowing hole</b> to jump.</li>' +
+      '<li>Or <b>drag</b> the marble to the hole, or <b>swipe</b> it the way you want it to jump.</li>' +
+      '<li><b>Undo</b> takes back as many moves as you like. <b>Restart</b> puts every marble back.</li>' +
+      '<li><b>Hint</b> lights up a jump that can still lead to one marble. Tap Hint again to make it. If there is no way left, it tells you.</li></ul>' +
+      '<h3>Boards</h3><ul>' +
+      '<li><b>English:</b> the classic cross with 33 holes. Start with only the center empty. Finish with one marble in the center for a perfect game.</li>' +
+      '<li><b>European:</b> 37 holes, with an extra hole in each inside corner. Starting with the center empty can never get down to one marble on this board, so the empty hole starts just above the center. Any single marble is a perfect finish.</li>' +
+      '<li><b>Triangle:</b> the 15-hole game on the tables at Cracker Barrel. You choose which marble to take out first. Jumps go along all three directions.</li>' +
+      '<li><b>Warm-ups:</b> small puzzles on the English board (Cross, Plus, Pyramid, Arrow). Each one finishes in the center. Great for learning.</li></ul>' +
+      '<h3>How did you do?</h3><p>Cracker Barrel\'s triangle scale:</p>' +
+      '<div class="scale"><b>1 left</b><span>You\'re genius</span><b>2 left</b><span>You\'re purty smart</span><b>3 left</b><span>You\'re just plain dumb</span><b>4 or more</b><span>You\'re just plain eg-no-ra-moose</span></div>' +
+      '<p>On the cross boards: 1 in the center is perfect, then 1 left is genius, 2 excellent, 3 very good, 4 good, 5 not bad.</p>' +
+      '<h3>Tips</h3><ul><li>Work from the outside in. Clear the ends of the arms first.</li>' +
+      '<li>Don\'t leave a marble all alone far from the others: nothing can reach it.</li>' +
+      '<li>Keep the middle busy until the end.</li></ul>' +
+      '<p>Best results only count games finished without hints.</p>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // S: {board, holes:[marble id or -1], col:[palette index per id], tray:[ids], moves,
+  //     U:[{f,o,t,id,cid} | {pick:h,id}], phase:'pick'|'play'|'over', first, hints, undos,
+  //     restarts, chain, bestChain, started, startHole}
+  var S = null, G = null, B = null, lock = 0, sel = -1, hintMv = null, hintWait = false, tipMsg = null;
+  function filled() { return S.holes.map(function (x) { return x >= 0 ? 1 : 0; }); }
+  function left() { var n = 0; S.holes.forEach(function (x) { if (x >= 0) n++; }); return n; }
+  function centerHole() { return B.goal === 'center' ? G.center : -1; }
+  function legalAll() { return E.legal(G, filled()); }
+  function jumpsFrom(h) { var b = filled(); return G.jumps.filter(function (j) { return j[0] === h && b[j[1]] && !b[j[2]]; }); }
+  function hist() { try { return GameHistory.load(KEY); } catch (e) { return []; } }
+  // Best finish for a board (games without hints): fewest marbles, then center
+  function best(id) {
+    var bst = null;
+    hist().forEach(function (e) {
+      if (!e || e.board !== id || e.hints || typeof e.left !== 'number') return;
+      if (!bst || e.left < bst.left || (e.left === bst.left && e.center && !bst.center)) bst = { left: e.left, center: !!e.center };
+    });
+    return bst;
+  }
+  function bestText(bs, long) {
+    if (!bs) return long ? 'No finish yet' : '–';
+    if (bs.left === 1 && bs.center) return long ? '1 marble, in the center' : '1';
+    return long ? bs.left + (bs.left === 1 ? ' marble' : ' marbles') : String(bs.left);
+  }
+  function save() {
+    if (!S || S.phase === 'over') return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.moves || S.phase === 'pick') Kit.resume.set(B.name + ' · ' + left() + ' marbles left'); else Kit.resume.clear();
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+
+  // ── Board pictures (SVG) ──────────────────────────────────────────────────
+  function f3(v) { return (+v).toFixed(3); }
+  var RG = 4.3; // radius of the gutter ring the marbles roll into
+  function boardSVG(shape, opt) {
+    opt = opt || {};
+    var g = E.geo(shape), s = [], u = opt.uid || 'b';
+    s.push('<svg viewBox="-5 -5 10 10" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"' + (opt.cls ? ' class="' + opt.cls + '"' : '') + '><defs>' +
+      '<radialGradient id="' + u + 'w" cx=".42" cy=".36" r=".72"><stop offset="0" stop-color="#e2ad6c"/><stop offset=".55" stop-color="#c88a4a"/><stop offset="1" stop-color="#9b6230"/></radialGradient>' +
+      '<radialGradient id="' + u + 'h" cx=".5" cy=".36" r=".64"><stop offset="0" stop-color="#120802"/><stop offset=".7" stop-color="#261205"/><stop offset="1" stop-color="#4a2a10"/></radialGradient>' +
+      (opt.mini ? '' : '<filter id="' + u + 'n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.05 0.9" numOctaves="3" seed="11" result="n"/>' +
+        '<feColorMatrix in="n" values="0 0 0 0 .38  0 0 0 0 .2  0 0 0 0 .07  0 0 0 -1.7 1.05"/><feComposite in2="SourceGraphic" operator="in"/></filter>') +
+      '</defs>');
+    // Turned disc: wood, grain, lathe rings, a bevelled lip
+    s.push('<circle r="4.92" fill="#5e3517"/>');
+    s.push('<circle r="4.84" fill="url(#' + u + 'w)"/>');
+    if (!opt.mini) s.push('<circle r="4.84" fill="#000" filter="url(#' + u + 'n)" opacity=".5"/>');
+    if (!opt.mini) for (var k = 0; k < 9; k++) s.push('<circle r="' + f3(0.6 + k * 0.42) + '" fill="none" stroke="' + (k % 2 ? '#fff4de' : '#5a3010') + '" stroke-opacity="' + (k % 2 ? .06 : .07) + '" stroke-width=".05"/>');
+    s.push('<circle r="4.8" fill="none" stroke="#fff3dc" stroke-opacity=".32" stroke-width=".07"/>');
+    // The gutter: a carved channel all the way round
+    s.push('<circle r="' + f3(RG + .5) + '" fill="none" stroke="#fff1d6" stroke-opacity=".28" stroke-width=".05"/>');
+    s.push('<circle r="' + RG + '" fill="none" stroke="#2a1405" stroke-width=".9"/>');
+    s.push('<circle r="' + f3(RG - .2) + '" fill="none" stroke="#120802" stroke-opacity=".55" stroke-width=".35"/>');
+    s.push('<circle r="' + f3(RG + .3) + '" fill="none" stroke="#6a3c18" stroke-opacity=".7" stroke-width=".14"/>');
+    s.push('<circle r="' + f3(RG - .47) + '" fill="none" stroke="#f6dcb0" stroke-opacity=".35" stroke-width=".05"/>');
+    // Center inlay for boards that finish in the middle
+    if (opt.goal && g.center >= 0) s.push('<circle r=".52" fill="none" stroke="#e6c46a" stroke-width=".07" stroke-opacity=".85"/><circle r=".6" fill="none" stroke="#5a3010" stroke-opacity=".35" stroke-width=".03"/>');
+    // Drilled holes
+    g.holes.forEach(function (h) {
+      s.push('<circle cx="' + f3(h.x) + '" cy="' + f3(h.y + .04) + '" r=".37" fill="#fff3dc" fill-opacity=".34"/><circle cx="' + f3(h.x) + '" cy="' + f3(h.y) + '" r=".35" fill="url(#' + u + 'h)"/>');
+    });
+    // Mini pictures: little marbles straight in the SVG
+    if (opt.dots) opt.dots.forEach(function (d) {
+      var h = g.holes[d.h];
+      s.push('<circle cx="' + f3(h.x) + '" cy="' + f3(h.y) + '" r=".42" fill="' + d.c + '"/><circle cx="' + f3(h.x - .13) + '" cy="' + f3(h.y - .15) + '" r=".13" fill="#fff" fill-opacity=".75"/>');
+    });
+    s.push('</svg>');
+    return s.join('');
+  }
+  function miniFor(id, b, uid) {
+    var B0 = BOARDS[id], g = E.geo(B0.shape), dots = [];
+    b = b || startLayout(id);
+    var k = 0;
+    for (var i = 0; i < g.n; i++) if (b[i]) dots.push({ h: i, c: PAL[(k++ * 4 + i) % PAL.length] });
+    return boardSVG(B0.shape, { mini: true, dots: dots, goal: B0.goal === 'center', uid: uid || ('m' + id) });
+  }
+
+  // Mode-card icon: a wooden disc with the hole pattern (and marbles for a warm-up)
+  function iconSVG(id) {
+    var B0 = BOARDS[id], g = E.geo(B0.shape), b = B0.warm ? startLayout(id) : null, s = '<svg class="mini" viewBox="-5 -5 10 10" aria-hidden="true"><circle r="4.9" fill="#7a4a22"/><circle r="4.6" fill="#d39a58"/>';
+    g.holes.forEach(function (h, i) {
+      var on = b && b[i];
+      s += '<circle cx="' + f3(h.x * 1.12) + '" cy="' + f3(h.y * 1.12) + '" r="' + (on ? .55 : .42) + '" fill="' + (on ? PAL[i % 8] : '#3a1e0a') + '"/>';
+    });
+    return s + '</svg>';
+  }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  var setupObs = null;
+  function showSetup() {
+    if (setupObs) { setupObs.disconnect(); setupObs = null; }
+    S = null; sel = -1; hintMv = null; lock = 0;
+    app.className = 'ms';
+    function bdesc(id, t) { var bs = best(id); return t + (bs ? ' · best ' + bestText(bs, true) : ''); }
+    var bestWarm = ['cross', 'plus', 'pyramid', 'arrow'].filter(function (k) { return best(k); }).length;
+    var su = Kit.setup(app, {
+      intro: 'Jump marbles until only one is left',
+      modes: [
+        { id: 'english', icon: 'plus', title: 'English board', desc: bdesc('english', '33 holes. The classic cross') },
+        { id: 'european', icon: 'board', title: 'European board', desc: bdesc('european', '37 holes. Harder') },
+        { id: 'triangle', icon: 'play', title: 'Triangle', desc: bdesc('triangle', '15 holes. The Cracker Barrel game') },
+        { id: 'warm', icon: 'lightbulb', title: 'Warm-ups', desc: 'Small puzzles to learn on' + (bestWarm ? ' · ' + bestWarm + ' of 4 solved' : '') }
+      ],
+      mode: 'english',
+      options: [
+        { id: 'warm', label: 'Warm-up puzzle', when: function (m) { return m === 'warm'; },
+          help: 'Each puzzle starts with only a few marbles. Finish with one marble in the center.',
+          choices: [['cross', 'Cross', 'The easiest: 6 marbles in a cross.'], ['plus', 'Plus', '9 marbles in a plus sign.'], ['pyramid', 'Pyramid', '16 marbles in a pyramid.'], ['arrow', 'Arrow', '17 marbles shaped like an arrow. The hardest warm-up.']], value: 'cross' }
+      ],
+      start: "Let's play!",
+      onStart: function (cfg) {
+        if (setupObs) { setupObs.disconnect(); setupObs = null; }
+        newGame(cfg.mode === 'warm' ? (cfg.options.warm || 'cross') : cfg.mode);
+      }
+    });
+    var pv = el('div', { class: 'pv' });
+    function paint() {
+      if (setupObs) setupObs.disconnect();
+      // Board pictures in the mode cards
+      su.el.querySelectorAll('.mode').forEach(function (m, i) {
+        var id = ['english', 'european', 'triangle', 'cross'][i], e = m.querySelector('.e');
+        if (e && id && !e.querySelector('svg.mini')) e.innerHTML = iconSVG(id);
+      });
+      var mode = su.state.mode, id = mode === 'warm' ? (su.state.options.warm || 'cross') : mode, B0 = BOARDS[id];
+      var cnt = startLayout(id).filter(Boolean).length, bs = best(id);
+      pv.innerHTML = miniFor(id, null, 'pv');
+      pv.appendChild(el('div', { class: 'tx' }, [
+        el('b', { text: B0.name + (B0.warm ? ' warm-up' : ' board') }),
+        el('small', { text: (B0.pick ? '15 marbles. You take one out first' : cnt + ' marbles') + ' · ' + (B0.goal === 'center' ? 'finish in the center' : 'finish with one') }),
+        el('small', { text: 'Best: ' + bestText(bs, true) })
+      ]));
+      var stack = su.el.querySelector('.stack');
+      if (stack && pv.parentNode !== stack) stack.appendChild(pv);
+      if (setupObs) setupObs.observe(su.el, { childList: true, subtree: true });
+    }
+    setupObs = new MutationObserver(function () { paint(); });
+    paint();
+    setupObs.observe(su.el, { childList: true, subtree: true });
+  }
+
+  function newGame(id) {
+    if (!BOARDS[id]) id = 'english';
+    var B0 = BOARDS[id], b = startLayout(id), n = b.filter(Boolean).length;
+    // Mixed colors, shuffled, about the same number of each
+    var cols = [];
+    for (var i = 0; i < n; i++) cols.push(i % 10 === 9 ? MILK : i % PAL.length);
+    for (i = cols.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = cols[i]; cols[i] = cols[j]; cols[j] = t; }
+    var holes = [], id2 = 0;
+    b.forEach(function (x) { holes.push(x ? id2++ : -1); });
+    S = { v: 1, board: id, holes: holes, start: holes.slice(), col: cols, tray: [], moves: 0, U: [], phase: B0.pick ? 'pick' : 'play',
+      hints: 0, undos: 0, restarts: 0, chain: 0, bestChain: 0, last: -1, started: Date.now(), startHole: -1 };
+    Kit.gameStart();
+    build(); save();
+    Kit.sfx('roll'); Kit.haptic('medium');
+  }
+  function restart() {
+    if (!S || S.phase === 'over') return;
+    if (!S.U.length) { Kit.toast('Already at the start'); return; }
+    Kit.confirm('Start this board over?', { ok: 'Restart', body: 'Every marble goes back on the board.' }).then(function (ok) {
+      if (!ok || !S) return;
+      S.holes = S.start.slice(); S.tray = []; S.moves = 0; S.U = []; S.restarts++; S.chain = 0; S.last = -1;
+      S.phase = B.pick ? 'pick' : 'play'; S.startHole = -1;
+      sel = -1; clearHint(); layout(true); paint(); updHud(); save(); prefetch();
+      Kit.sfx('whoosh'); rumble(0.5);
+    });
+  }
+
+  // ── Building the table ────────────────────────────────────────────────────
+  var bd = null, layer = null, els = {}, tgtEls = [];
+  function build() {
+    B = BOARDS[S.board]; G = E.geo(B.shape);
+    app.className = 'ms'; app.innerHTML = '';
+    sel = -1; hintMv = null; lock = 0;
+    var play = el('div', { class: 'play' });
+    play.appendChild(el('div', { class: 'hud' }, [
+      el('div', { class: 'plaque', id: 'pqLeft' }, [el('small', { text: 'Marbles' }), el('b', { id: 'nLeft', text: '0' })]),
+      el('div', { class: 'plaque', id: 'pqMoves' }, [el('small', { text: 'Moves' }), el('b', { id: 'nMoves', text: '0' })]),
+      el('div', { class: 'plaque' }, [el('small', { text: 'Best' }), el('b', { id: 'nBest', text: '–' })])
+    ]));
+    var wrap = el('div', { class: 'bwrap' });
+    bd = el('div', { class: 'bd', id: 'bd', role: 'application', 'aria-label': B.name + ' marble solitaire board' });
+    bd.innerHTML = boardSVG(B.shape, { goal: B.goal === 'center' });
+    layer = el('div', { class: 'layer' });
+    bd.appendChild(layer);
+    wrap.appendChild(bd);
+    wrap.appendChild(el('div', { class: 'plate', text: B.name + ' · ' + (B.warm ? 'warm-up' : B.sub) }));
+    play.appendChild(wrap);
+    play.appendChild(el('div', { class: 'tip', id: 'tip' }));
+    var tools = el('div', { class: 'tools' });
+    function tool(id, ic, label, fn) { var b = el('button', { type: 'button', class: 'tool', id: id, html: Kit.icon(ic) + '<span>' + label + '</span>', onclick: fn }); tools.appendChild(b); return b; }
+    tool('tUndo', 'undo', 'Undo', function () { undo(); });
+    tool('tHint', 'lightbulb', 'Hint', function () { hint(); });
+    tool('tRestart', 'sync', 'Restart', function () { restart(); });
+    tool('tNew', 'tiles', 'Boards', function () {
+      if (S && S.moves && S.phase !== 'over') Kit.confirm('Choose another board?', { ok: 'Choose a board', body: 'This game will be lost.' }).then(function (ok) { if (ok) showSetup(); });
+      else showSetup();
+    });
+    play.appendChild(tools);
+    app.appendChild(play);
+    // Marbles
+    els = {};
+    S.col.forEach(function (c, id) {
+      var m = el('div', { class: 'mb' + (c === MILK ? ' milk' : ''), style: { '--c': c === MILK ? PAL[(id * 3) % 8] : PAL[c], '--sw': ((id * 67) % 360) + 'deg' } });
+      els[id] = m; layer.appendChild(m);
+    });
+    layout(true);
+    bindInput();
+    paint(); updHud();
+    prefetch();
+  }
+  function pct(x, y) { return [(x + 5) * 10, (y + 5) * 10]; }
+  function holeXY(h) { var o = G.holes[h]; return [o.x, o.y]; }
+  // Tray slots fill from the bottom of the gutter, alternating sides
+  function slotAngle(k) {
+    var cap = S.col.length, d = Math.min(0.84 / RG, 2 * Math.PI / (cap + 1));
+    return Math.PI / 2 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * d;
+  }
+  function slotXY(k) { var a = slotAngle(k); return [Math.cos(a) * RG, Math.sin(a) * RG]; }
+  function place(m, xy) { var p = pct(xy[0], xy[1]); m.style.left = p[0] + '%'; m.style.top = p[1] + '%'; }
+  function layout() {
+    var where = {};
+    S.holes.forEach(function (id, h) { if (id >= 0) where[id] = { h: h }; });
+    S.tray.forEach(function (id, k) { where[id] = { k: k }; });
+    Object.keys(els).forEach(function (id) {
+      var m = els[id], w = where[id];
+      m.getAnimations && m.getAnimations().forEach(function (a) { a.cancel(); });
+      m.style.transform = '';
+      if (!w) { m.style.display = 'none'; return; }
+      m.style.display = '';
+      if (w.h != null) { place(m, holeXY(w.h)); m.classList.remove('tray'); }
+      else { place(m, slotXY(w.k)); m.classList.add('tray'); m.style.transform = 'scale(.9) rotate(' + (w.k * 53 % 360) + 'deg)'; }
+    });
+  }
+  // Highlights: selection, landing holes, hint
+  function paint() {
+    if (!S || !layer) return;
+    tgtEls.forEach(function (t) { t.remove(); }); tgtEls = [];
+    Object.keys(els).forEach(function (id) { els[id].classList.remove('sel', 'hint', 'last'); });
+    if (S.phase === 'pick') {
+      setTip(Kit.icon('hand') + '<span>Tap a marble to take it out first</span>');
+    } else if (S.phase === 'play') {
+      if (sel >= 0 && S.holes[sel] >= 0) {
+        els[S.holes[sel]].classList.add('sel');
+        jumpsFrom(sel).forEach(function (j) { addTgt(j[2], ''); });
+      }
+      if (hintMv) {
+        var hm = S.holes[hintMv[0]];
+        if (hm >= 0) els[hm].classList.add('hint');
+        if (!(sel === hintMv[0])) addTgt(hintMv[2], 'hint'); else tgtEls.forEach(function (t) { if (+t.dataset.h === hintMv[2]) t.classList.add('hint'); });
+      }
+      if (!tipMsg) {
+        if (sel >= 0) setTip(Kit.icon('hand') + '<span>' + (isTouch() ? 'Tap a glowing hole, or drag the marble there' : 'Click a glowing hole, or drag the marble there') + '</span>');
+        else if (!S.moves) setTip(Kit.icon('hand') + '<span>' + (isTouch() ? 'Tap a marble to see where it can jump' : 'Click a marble to see where it can jump') + '</span>');
+        else setTip('<span>' + left() + ' marbles left' + (B.goal === 'center' ? ' · aim for the center' : '') + '</span>');
+      }
+    }
+    updHud();
+  }
+  function isTouch() { return matchMedia('(pointer:coarse)').matches; }
+  function addTgt(h, cls) {
+    var p = pct.apply(null, holeXY(h));
+    var t = el('div', { class: 'tgt ' + cls, 'data-h': h, style: { left: p[0] + '%', top: p[1] + '%' } });
+    layer.appendChild(t); tgtEls.push(t);
+  }
+  function setTip(html, cls) { var t = $('tip'); if (!t) return; t.className = 'tip' + (cls ? ' ' + cls : ''); t.innerHTML = html; }
+  function say(html, cls, ms) {
+    tipMsg = { html: html, cls: cls }; setTip(html, cls);
+    clearTimeout(say.t);
+    if (ms) say.t = setTimeout(function () { tipMsg = null; paint(); }, ms);
+  }
+  function quiet() { clearTimeout(say.t); tipMsg = null; }
+  function updHud() {
+    if (!S) return;
+    var a = $('nLeft'); if (a) a.textContent = String(left());
+    var m = $('nMoves'); if (m) m.textContent = String(S.moves);
+    var bs = best(S.board), be = $('nBest');
+    if (be) be.innerHTML = bs ? Kit.esc(bestText(bs)) + (bs.left === 1 && bs.center ? '<i>center</i>' : bs.left === 1 ? '<i>marble</i>' : '<i>left</i>') : '–';
+    var u = $('tUndo'); if (u) u.disabled = !S.U.length || S.phase === 'over';
+    var h = $('tHint'); if (h) h.disabled = S.phase === 'over';
+    var r = $('tRestart'); if (r) r.disabled = !S.U.length || S.phase === 'over';
+  }
+  function bump(id) { var p = $(id); if (!p) return; p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); }
+
+  // ── Animation helpers (Web Animations, offsets in pixels) ─────────────────
+  function unit() { return bd ? bd.clientWidth / 10 : 30; }
+  function ease(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+  // Keyframes from a path function p(t) -> [x, y, scale, rotate] in board units, relative to the final spot
+  function run(m, fn, ms, endXY, baseTf) {
+    var u = unit(), frames = [], N = 18;
+    for (var i = 0; i <= N; i++) {
+      var t = i / N, p = fn(t);
+      frames.push({ transform: 'translate(' + ((p[0] - endXY[0]) * u).toFixed(2) + 'px,' + ((p[1] - endXY[1]) * u).toFixed(2) + 'px) scale(' + (p[2] || 1).toFixed(3) + ') rotate(' + (p[3] || 0).toFixed(1) + 'deg)', offset: t });
+    }
+    frames[N].transform = baseTf || 'none';
+    try { return m.animate(frames, { duration: ms, easing: 'linear' }); } catch (e) { return null; }
+  }
+  // The jumping marble arcs over its neighbor
+  function arcJump(m, from, to, ms, start) {
+    var a = holeXY(from), c = holeXY(to), s0 = start || a;
+    place(m, c);
+    m.classList.add('air');
+    var an = run(m, function (t) {
+      var e = ease(t), h = Math.sin(Math.PI * t);
+      return [s0[0] + (c[0] - s0[0]) * e, s0[1] + (c[1] - s0[1]) * e - h * 0.55, 1 + h * 0.34 + (start ? 0.16 * (1 - t) : 0), 0];
+    }, ms, c);
+    setTimeout(function () { m.classList.remove('air'); }, ms);
+    return an;
+  }
+  // The jumped marble pops up, drops into the gutter and rolls to its slot
+  function rollToTray(m, from, k, delay) {
+    var a = holeXY(from), slot = slotXY(k), ta = slotAngle(k);
+    var ha = Math.hypot(a[0], a[1]) > 0.2 ? Math.atan2(a[1], a[0]) : ta;
+    var da = ta - ha; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    var exit = [Math.cos(ha) * RG, Math.sin(ha) * RG], outD = Math.hypot(exit[0] - a[0], exit[1] - a[1]), arcD = Math.abs(da) * RG;
+    var ms = 520 + 160 * outD / 3 + 420 * Math.abs(da) / Math.PI, p1 = 0.2, p2 = p1 + 0.8 * outD / (outD + arcD + 0.001);
+    var spin = 0, baseTf = 'scale(.9) rotate(' + (k * 53 % 360) + 'deg)';
+    setTimeout(function () {
+      if (!m.isConnected) return;
+      place(m, slot); m.classList.add('air', 'tray');
+      run(m, function (t) {
+        if (t < p1) { var q = t / p1, h = Math.sin(Math.PI * q * .5); return [a[0], a[1] - h * 0.35, 1 + h * 0.32, 0]; }
+        if (t < p2) {
+          var q2 = (t - p1) / (p2 - p1), e = q2 * q2;
+          spin = q2 * outD * 140;
+          return [a[0] + (exit[0] - a[0]) * e, a[1] - 0.35 * (1 - e) + (exit[1] - a[1]) * e, 1.32 - 0.42 * e, spin];
+        }
+        var q3 = easeOut((t - p2) / (1 - p2)), ang = ha + da * q3;
+        return [Math.cos(ang) * RG, Math.sin(ang) * RG, 0.9, outD * 140 + Math.sign(da || 1) * q3 * arcD * 140 + (k * 53 % 360) * q3];
+      }, ms, slot, baseTf);
+      m.style.transform = baseTf;
+      setTimeout(function () { m.classList.remove('air'); }, ms * p2);
+      setTimeout(function () { knock(0.35); }, ms * p2 * 0.95);
+      rumble(ms * (1 - p2) / 1000);
+      setTimeout(function () { clink(k ? 1 : 0.6); Kit.haptic('tick'); }, ms - 30);
+    }, delay || 0);
+    return ms + (delay || 0);
+  }
+
+  // ── Moves ─────────────────────────────────────────────────────────────────
+  function busy() { return !S || lock > Date.now() || document.querySelector('.k-scrim,.k-win'); }
+  function doMove(j, o) {
+    o = o || {};
+    var a = j[0], over = j[1], t = j[2], id = S.holes[a], cid = S.holes[over];
+    if (id < 0 || cid < 0 || S.holes[t] >= 0) return false;
+    quiet();
+    var follows = hintMv && hintMv[0] === a && hintMv[2] === t;
+    S.U.push({ f: a, o: over, t: t, id: id, cid: cid, ch: S.chain, lst: S.last });
+    S.holes[a] = -1; S.holes[over] = -1; S.holes[t] = id;
+    var k = S.tray.length; S.tray.push(cid);
+    S.moves++;
+    S.chain = S.last === a ? S.chain + 1 : 1; S.last = t;
+    if (S.chain > S.bestChain) S.bestChain = S.chain;
+    sel = -1; hintMv = null;
+    if (!follows) hintWait = false;
+    var m = els[id], cm = els[cid], ms = 380;
+    m.classList.remove('sel', 'drag', 'hint');
+    lift();
+    arcJump(m, a, t, ms, o.start);
+    rollToTray(cm, over, k, ms * 0.45);
+    setTimeout(function () { knock(1); Kit.haptic('light'); }, ms - 20);
+    lock = Date.now() + ms;
+    paint(); bump('pqLeft'); bump('pqMoves'); save();
+    if (!legalAll().length) { S.phase = 'over'; updHud(); lock = Date.now() + 99999; setTimeout(finish, ms + 650); }
+    else { prefetch(); if (S.chain >= 3 && S.chain > (o.prevChain || 0)) say(Kit.icon('sparkle') + '<span>' + S.chain + ' jumps in a row!</span>', 'good', 1600); }
+    return true;
+  }
+  function pickOut(h) {
+    var id = S.holes[h]; if (id < 0) return;
+    S.U.push({ pick: h, id: id });
+    S.holes[h] = -1; S.tray.push(id); S.phase = 'play'; S.startHole = h;
+    var m = els[id];
+    lift();
+    rollToTray(m, h, 0, 0);
+    lock = Date.now() + 250;
+    paint(); bump('pqLeft'); save(); prefetch();
+    Kit.haptic('light');
+  }
+  function undo() {
+    if (!S || S.phase === 'over' || busy()) return;
+    var u = S.U.pop();
+    if (!u) { Kit.toast('Nothing to undo'); return; }
+    quiet(); sel = -1; hintMv = null; hintWait = false;
+    if (u.pick != null) {
+      S.holes[u.pick] = u.id; S.tray.pop(); S.phase = 'pick'; S.startHole = -1;
+      backFromTray(els[u.id], u.pick, S.tray.length);
+    } else {
+      S.holes[u.t] = -1; S.holes[u.f] = u.id; S.holes[u.o] = u.cid; S.tray.pop();
+      S.moves = Math.max(0, S.moves - 1); S.chain = u.ch || 0; S.last = u.lst == null ? -1 : u.lst;
+      arcJump(els[u.id], u.t, u.f, 340);
+      backFromTray(els[u.cid], u.o, S.tray.length);
+      setTimeout(function () { knock(0.8); }, 330);
+    }
+    S.undos++;
+    lock = Date.now() + 360;
+    paint(); updHud(); save(); prefetch();
+    Kit.haptic('light');
+  }
+  function backFromTray(m, h, k) {
+    var s = slotXY(k), c = holeXY(h);
+    place(m, c); m.classList.remove('tray'); m.style.transform = '';
+    m.classList.add('air');
+    run(m, function (t) { var e = ease(t), hh = Math.sin(Math.PI * t); return [s[0] + (c[0] - s[0]) * e, s[1] + (c[1] - s[1]) * e - hh * 0.6, 0.9 + 0.1 * e + hh * 0.3, (1 - e) * 200]; }, 420, c);
+    setTimeout(function () { m.classList.remove('air'); }, 420);
+  }
+  function nope(h) {
+    var id = S.holes[h]; if (id < 0) return;
+    var m = els[id]; m.classList.remove('nope'); void m.offsetWidth; m.classList.add('nope');
+    Kit.haptic('light');
+    say('<span>That marble has nothing to jump over right now</span>', 'warn', 1800);
+  }
+
+  // ── Input: tap, drag, swipe ───────────────────────────────────────────────
+  var drag = null, keysBound = false;
+  function holeAt(cx, cy, r) {
+    var rc = bd.getBoundingClientRect(), x = (cx - rc.left) / rc.width * 10 - 5, y = (cy - rc.top) / rc.height * 10 - 5, best = -1, bd2 = (r || 0.62) * (r || 0.62);
+    G.holes.forEach(function (h, i) { var d = (h.x - x) * (h.x - x) + (h.y - y) * (h.y - y); if (d < bd2) { bd2 = d; best = i; } });
+    return best;
+  }
+  function bindInput() {
+    bd.addEventListener('pointerdown', function (e) {
+      ac();
+      if (busy() || S.phase === 'over') return;
+      var h = holeAt(e.clientX, e.clientY);
+      if (S.phase === 'pick') { if (h >= 0 && S.holes[h] >= 0) pickOut(h); return; }
+      if (h < 0) { if (sel >= 0) { sel = -1; paint(); } return; }
+      if (S.holes[h] >= 0) {
+        var js = jumpsFrom(h);
+        if (!js.length) { sel = -1; paint(); nope(h); return; }
+        var wasSel = sel === h;
+        sel = h; quiet(); paint(); if (!wasSel) { lift(); Kit.haptic('tick'); }
+        drag = { h: h, id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: Date.now(), moved: false, wasSel: wasSel };
+        try { bd.setPointerCapture(e.pointerId); } catch (x) {}
+      } else if (sel >= 0) {
+        var j = jumpsFrom(sel).filter(function (q) { return q[2] === h; })[0];
+        if (j) doMove(j);
+        else { sel = -1; paint(); }
+      }
+    });
+    bd.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      drag.moved = true;
+      var m = els[S.holes[drag.h]]; if (!m) return;
+      m.classList.add('drag');
+      m.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.22)';
+      var over = holeAt(e.clientX, e.clientY, 0.7);
+      tgtEls.forEach(function (t) { t.classList.toggle('over', +t.dataset.h === over); });
+    });
+    function end(e, cancel) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null;
+      var m = els[S.holes[d.h]];
+      if (!d.moved) { if (d.wasSel) { sel = -1; paint(); } return; }
+      var dx = e.clientX - d.x0, dy = e.clientY - d.y0, js = jumpsFrom(d.h), j = null;
+      if (!cancel) {
+        var over = holeAt(e.clientX, e.clientY, 0.7);
+        j = js.filter(function (q) { return q[2] === over; })[0] || null;
+        // A quick flick: the jump that points the way it was swiped
+        if (!j && Math.hypot(dx, dy) > 18) {
+          var bestC = 0.8, len = Math.hypot(dx, dy);
+          js.forEach(function (q) {
+            var a = G.holes[q[0]], t = G.holes[q[2]], vx = t.x - a.x, vy = t.y - a.y, vl = Math.hypot(vx, vy);
+            var cs = (vx * dx + vy * dy) / (vl * len);
+            if (cs > bestC) { bestC = cs; j = q; }
+          });
+          if (j && Date.now() - d.t0 > 650 && Math.hypot(dx, dy) < unit() * 1.2) j = null;   // slow, short drags snap back
+        }
+      }
+      if (j) {
+        var u = unit(), a = holeXY(d.h);
+        m.style.transform = '';
+        doMove(j, { start: [a[0] + dx / u, a[1] + dy / u] });
+      } else if (m) {
+        m.classList.remove('drag');
+        var a2 = holeXY(d.h), u2 = unit();
+        m.style.transform = '';
+        run(m, function (t) { var e2 = easeOut(t); return [a2[0] + dx / u2 * (1 - e2), a2[1] + dy / u2 * (1 - e2), 1 + 0.22 * (1 - e2), 0]; }, 200, a2);
+        paint();
+      }
+    }
+    bd.addEventListener('pointerup', function (e) { end(e, false); });
+    bd.addEventListener('pointercancel', function (e) { end(e, true); });
+    bd.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+    if (keysBound) return; keysBound = true;
+    document.addEventListener('keydown', function (e) {
+      if (!S || document.querySelector('.k-scrim,.k-win')) return;
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'h' || e.key === 'H') hint();
+      else if (e.key === 'u' || e.key === 'Backspace') undo();
+      else if (e.key === 'Escape' && sel >= 0) { sel = -1; paint(); }
+    });
+    window.addEventListener('resize', function () { if (S && bd && !drag) layout(); });
+  }
+
+  // ── Hints ─────────────────────────────────────────────────────────────────
+  function prefetch() {
+    if (!S || S.phase !== 'play') return;
+    ask(filled(), B.shape, centerHole(), null);
+  }
+  function clearHint() { hintMv = null; hintWait = false; var h = $('tHint'); if (h) h.classList.remove('busy'); }
+  function hint() {
+    if (!S || S.phase === 'over' || busy()) return;
+    if (S.phase === 'pick') {
+      var top = G.at['0,0'], id = S.holes[top];
+      if (id >= 0) { els[id].classList.add('hint'); setTimeout(function () { if (els[id]) els[id].classList.remove('hint'); }, 2400); }
+      say(Kit.icon('lightbulb') + '<span>Any marble works on the triangle. The top one is the classic start.</span>', '', 3200);
+      return;
+    }
+    // Second tap on Hint makes the hinted jump
+    if (hintMv) { var hm = hintMv; if (S.holes[hm[0]] >= 0 && S.holes[hm[1]] >= 0 && S.holes[hm[2]] < 0) { doMove(hm); return; } }
+    if (hintWait) return;
+    var b = filled(), key = B.shape + ':' + b.join('');
+    hintWait = true;
+    var hb = $('tHint'); if (hb) hb.classList.add('busy');
+    var t0 = Date.now(), slow = setTimeout(function () { if (hintWait) say(Kit.icon('lightbulb') + '<span>Thinking…</span>'); }, 350);
+    ask(b, B.shape, centerHole(), function (r) {
+      clearTimeout(slow);
+      var hb2 = $('tHint'); if (hb2) hb2.classList.remove('busy');
+      if (!hintWait || !S || S.phase !== 'play' || B.shape + ':' + filled().join('') !== key) { hintWait = false; return; }
+      hintWait = false; quiet();
+      if (r.moves && r.moves.length) {
+        hintMv = r.moves[0].slice(); sel = -1;
+        S.hints++; save();
+        Kit.sfx('pop'); Kit.haptic('light');
+        if (B.goal === 'center' && !r.center) say(Kit.icon('lightbulb') + '<span>The center is out of reach now, but you can still get down to one marble</span>', 'warn', 4000);
+        else say(Kit.icon('lightbulb') + '<span>Jump the glowing marble into the ringed hole. Tap Hint again to do it.</span>', '', 4000);
+        paint();
+      } else if (r.none) {
+        hintMv = null; paint();
+        Kit.sfx('bad'); Kit.haptic('error');
+        say(Kit.icon('meh') + '<span>No way to one marble from here. Undo a move or two and try another way.</span>', 'warn');
+        var u = $('tUndo'); if (u) { u.classList.add('glow'); setTimeout(function () { u.classList.remove('glow'); }, 3000); }
+      } else {
+        say(Kit.icon('meh') + '<span>Couldn\'t find a way to one marble from here. It may be a dead end: try Undo.</span>', 'warn', 6000);
+      }
+    });
+  }
+
+  // ── Finish ────────────────────────────────────────────────────────────────
+  var CB = ["You're genius", "You're purty smart", "You're just plain dumb", "You're just plain eg-no-ra-moose"];
+  function rating(n, center) {
+    if (B.cb) return CB[Math.min(n, 4) - 1];
+    if (B.warm) return n === 1 ? (center ? 'Solved!' : 'One left, but not in the center') : n + ' marbles left';
+    if (n === 1) return center && B.goal === 'center' ? 'Perfect: marble master!' : 'Genius!';
+    return ['', '', 'Excellent', 'Very good', 'Good', 'Not bad'][n] || 'Keep practicing';
+  }
+  function triHoleName(h) {
+    var o = G.holes[h], r = o.r, c = o.c;
+    if (r === 0) return 'the top marble';
+    if ((r === 4 && c === 0) || (r === 4 && c === 4)) return 'a bottom corner marble';
+    if (r === 4 || c === 0 || c === r) return 'an edge marble';
+    return 'a middle marble';
+  }
+  function finish() {
+    var n = left(), lastH = -1;
+    S.holes.forEach(function (id, h) { if (id >= 0) lastH = h; });
+    var center = n === 1 && lastH === G.center && G.center >= 0;
+    var perfect = n === 1 && (B.goal === 'center' ? center : true);
+    var prev = best(S.board), clean = !S.hints;
+    var better = clean && (!prev || n < prev.left || (n === prev.left && center && !prev.center));
+    var rt = rating(n, center), hl = [];
+    if (center) hl.push('Finished with 1 marble in the center!');
+    else if (n === 1) hl.push('Finished with 1 marble on the ' + B.name + (B.warm ? ' warm-up' : ' board'));
+    else hl.push('Left ' + n + ' marbles on the ' + B.name + (B.warm ? ' warm-up' : ' board'));
+    if (B.cb) hl.push('Cracker Barrel says: ' + rt);
+    if (B.pick && S.startHole >= 0) hl.push('Took out ' + triHoleName(S.startHole) + ' first');
+    if (better && prev) hl.push('New best on ' + B.name + ': ' + bestText({ left: n, center: center }, true) + ' (old best ' + bestText(prev, true) + ')');
+    else if (better && n <= 3) hl.push('First finish on ' + B.name + ' without hints');
+    if (S.bestChain >= 3) hl.push('One marble made ' + S.bestChain + ' jumps in a row');
+    if (S.hints) hl.push('Used ' + S.hints + (S.hints === 1 ? ' hint' : ' hints'));
+    if (S.undos) hl.push('Took back ' + S.undos + (S.undos === 1 ? ' move' : ' moves'));
+    var finalB = filled();
+    Kit.record(KEY, {
+      started: S.started, mode: B.name + (B.warm ? ' warm-up' : ''),
+      players: [{ name: 'You', score: n }], winner: null, lowWins: true,
+      summary: (n === 1 ? '1 marble' + (center ? ' · center' : '') : n + ' marbles left') + ' · ' + B.name, badge: B.name,
+      highlights: hl.slice(0, 6),
+      meta: { board: S.board, left: n, center: center, perfect: perfect, moves: S.moves, hints: S.hints, undos: S.undos, restarts: S.restarts,
+        chain: S.bestChain, startHole: S.startHole, final: finalB.join('') }
+    });
+    clearSave();
+    updHud();
+    var lastId = lastH >= 0 ? S.holes[lastH] : -1;
+    if (perfect && lastId >= 0) { els[lastId].classList.add('last'); Kit.sfx('good'); }
+    setTip('<span>' + rt + '</span>', perfect ? 'good' : '');
+    setTimeout(function () { Kit.callout(perfect ? (center ? 'Perfect!' : 'One left!') : n + ' left'); }, perfect ? 350 : 0);
+    var id = S.board;
+    setTimeout(function () {
+      Kit.win({
+        icon: perfect ? 'trophy' : n <= 3 ? 'star' : 'meh', lose: !perfect,
+        title: B.cb ? rt + (n === 1 ? '!' : '') : perfect ? (center ? 'Perfect!' : 'One marble left!') : rt,
+        sub: (n === 1 ? '1 marble left' + (center ? ', in the center' : '') : n + ' marbles left') + ' · ' + S.moves + ' moves' +
+          (B.cb && n > 1 ? ' · leave one and you\'re genius' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : '') + (better && prev ? ' · new best!' : ''),
+        againLabel: 'Play ' + B.name + ' again', again: function () { newGame(id); },
+        extra: [{ label: 'Choose a board', onClick: showSetup }]
+      });
+    }, perfect ? 1900 : 1300);
+  }
+
+  function histExtra(e) {
+    if (!e || !BOARDS[e.board] || typeof e.final !== 'string') return null;
+    var b = e.final.split('').map(Number);
+    return el('div', { class: 'hx', html: miniFor(e.board, b, 'h' + (e._date || Math.random()).toString(36).replace('.', '')) + '<small>Where the marbles ended up' + (e.chain >= 3 ? '<br>Longest run of jumps: ' + e.chain : '') + '</small>' });
+  }
+  function showBests() {
+    var rows = ORDER.map(function (id) {
+      var all = hist().filter(function (e) { return e && e.board === id; }), bs = best(id);
+      return '<tr><td>' + BOARDS[id].name + (BOARDS[id].warm ? ' <span class="dim">warm-up</span>' : '') + '</td><td>' + all.length + '</td><td>' + Kit.esc(bs ? bestText(bs, true) : '–') + '</td></tr>';
+    }).join('');
+    Kit.sheet({ title: 'Best results', html: '<p class="muted" style="margin-bottom:10px">Fewest marbles left, from your past games without hints.</p><table class="bests" style="width:100%;border-collapse:collapse;font-weight:800"><tr><th>Board</th><th>Played</th><th>Best</th></tr>' + rows + '</table>', actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // Test hook
+  window.__ms = {
+    S: function () { return S; }, E: E, G: function () { return G; }, legal: function () { return legalAll(); },
+    move: function (f, t) { var j = jumpsFrom(f).filter(function (q) { return q[2] === t; })[0]; return j ? doMove(j) : false; },
+    pick: function (h) { if (S && S.phase === 'pick') pickOut(h); },
+    hint: hint, hintMove: function () { return hintMv; }, cache: cache, newGame: newGame, unlock: function () { lock = 0; }
+  };
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.v === 1 && BOARDS[saved.board] && Array.isArray(saved.holes) && saved.holes.length === E.geo(BOARDS[saved.board].shape).n &&
+      Array.isArray(saved.col) && Array.isArray(saved.tray) && saved.phase !== 'over') {
+    S = saved; S.U = S.U || []; Kit.gameStart(); build();
+    if (S.phase === 'play' && !legalAll().length) { S.phase = 'over'; setTimeout(finish, 400); }
+    else save();
+  } else showSetup();
+})();
+</script>
+</body>
+</html>
