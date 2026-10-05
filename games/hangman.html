@@ -47,8 +47,8 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
 .pill.hot .ico{color:var(--orange);}
 /* Chalkboard */
 /* The board loses light and colour step by step */
-.frame{border-radius:16px;padding:9px;flex:1;display:flex;min-height:0;
-  filter:brightness(calc(1 - var(--dread) * .3)) saturate(calc(1 - var(--dread) * .7));}
+.frame{border-radius:16px;padding:9px;flex:1;display:flex;min-height:0;}
+.frame.tense{filter:brightness(calc(1 - var(--dread) * .3)) saturate(calc(1 - var(--dread) * .7));}
 @keyframes jolt{0%,100%{transform:none;}15%{transform:translate(-8px,3px);}32%{transform:translate(7px,-3px);}50%{transform:translate(-5px,2px);}70%{transform:translate(3px,-1px);}85%{transform:translate(-1px,0);}}
 .slate{position:relative;flex:1;border-radius:8px;padding:24px 22px 22px;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;
   background:
@@ -135,7 +135,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
 .dust i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:rgba(244,241,230,.55);filter:blur(1.5px);
   animation:puff .6s ease-out both;}
 @keyframes puff{0%{opacity:.9;transform:translate(0,0) scale(.4);}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.8);}}
-.lt.red{color:#ff8f8f;}
+.lt.red{color:#ff6f6f;text-shadow:0 0 12px rgba(255,60,60,.35);}
 .lt.red span{display:inline-block;animation:reveal .55s cubic-bezier(.3,.7,.4,1) both;}
 @keyframes reveal{0%{opacity:0;transform:scale(1.6);filter:blur(3px);}60%{opacity:1;filter:none;}100%{transform:none;}}
 .lt.wave span{display:inline-block;animation:wave .6s var(--spring) both;}
@@ -146,7 +146,8 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
 /* Actions + keyboard */
 .acts{display:flex;justify-content:center;gap:8px;margin:10px 0 8px;}
 .acts .btn{min-height:40px;}
-.kb{display:flex;flex-direction:column;gap:6px;user-select:none;}
+/* Clear the rounded screen corners (kit vars are 0 on desktop) */
+.kb{display:flex;flex-direction:column;gap:6px;user-select:none;padding:0 calc(var(--corner-x) / 2) var(--corner-y);}
 .kb .r{display:flex;justify-content:center;gap:5px;}
 .key{position:relative;flex:1;max-width:42px;height:50px;border:0;border-radius:9px;background:rgba(255,255,255,.14);color:var(--text);
   font-weight:900;font-size:1.1rem;box-shadow:0 3px 0 rgba(0,0,0,.35);transition:transform .06s, background .3s, color .3s;}
@@ -155,7 +156,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
 .key.miss{background:#2a2348;color:#6d6496;box-shadow:none;}
 .key.miss::after{content:"";position:absolute;left:22%;right:22%;top:50%;height:2px;background:#ff6b6b;transform:rotate(-30deg);border-radius:2px;}
 .key:disabled{cursor:default;}
-@media (max-height:720px){.key{height:44px;}.pic{min-height:120px;}}
+@media (max-height:720px){.key{height:44px;}.pic{min-height:120px;}.pic svg{max-height:200px;}}
 /* Tablets: bigger slate drawing, chalk and keys */
 @media (min-width:700px) and (min-height:700px){
   .hm{max-width:760px;}
@@ -782,7 +783,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       slate.appendChild(el('div', { class: 'banner', style: { color: W.won ? '#ffe28a' : '#ff8f8f', 'animation-delay': fresh && fresh.rv ? (fresh.rv.end + 300) + 'ms' : null }, html: Kit.esc(ttl) + '<small>' + Kit.esc(sub) + '</small>' }));
     }
     slate.appendChild(wordEl());
-    app.appendChild(el('div', { class: 'frame wood' }, [slate]));
+    app.appendChild(el('div', { class: 'frame wood' + (W.over ? '' : ' tense') }, [slate]));
     var dread = W.over ? (W.won ? 0 : fresh && fresh.lose ? 1 : 0.5) : W.misses / max;
     setDread(dread);
     if (S.phase === 'result') {
