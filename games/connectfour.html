@@ -217,7 +217,6 @@
   // A disc falls under gravity from above the board, clacks onto the disc (or
   // floor) below, bounces a couple of times, and rattles side to side in its
   // slot before settling. The disc it lands on gets a small knock too.
-  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function clack(v) {
     try { if (localStorage.getItem('gn_sound') === '0') return; } catch (e) {}
     try {
@@ -236,7 +235,7 @@
   }
   function fallDisc(d, r, c, done) {
     var hole = cells[r][c], H = hole.offsetHeight + 6;
-    if (reduceMotion || !H) { clack(0.6); Kit.haptic('light'); done(); return; }
+    if (!H) { clack(0.6); Kit.haptic('light'); done(); return; }
     var y = -((r + 1) * H + H * 0.75), v = 0, g = H * 95, x = 0, xv = 0, rot = 0, rv = 0, sq = 0;
     var bounces = 0, last = performance.now(), quiet = 0;
     var vRef = Math.sqrt(2 * g * 6.75 * H);   // speed of a drop from the very top
