@@ -89,6 +89,7 @@ const PRECACHE_URLS = [
   '/games/codebreaker.html',
   '/games/slidepuzzle.html',
   '/games/horserace.html',
+  '/games/dominoes.html',
   '/games/farkle.html',
   '/games/lrc.html',
   '/games/cubehopper.html',

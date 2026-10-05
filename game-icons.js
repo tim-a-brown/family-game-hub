@@ -167,7 +167,11 @@ var GameIcon = (function () {
         '<text x="12" y="18.4" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-style="italic" font-weight="700" font-size="18.5" fill="' + Y + '">9</text>';
     },
     threecardpoker: function (c) { return rect(2, 5, 9, 14, 1.8, c, ' transform="rotate(-16 6 12)"') + rect(7.5, 4, 9, 14, 1.8, K) + rect(13, 5, 9, 14, 1.8, R, ' transform="rotate(16 17 12)"'); },
-    paigow: function () {   // a classic ivory domino, tilted: three | five
+    paigow: function () {   // Pai Gow means "make nine": a red seal with a gold 九
+      return rect(2.5, 2.5, 19, 19, 4, R, ' stroke="' + K + '" stroke-width="1.2"') + rect(4.6, 4.6, 14.8, 14.8, 2.4, 'none', ' stroke="' + Y + '" stroke-width="1"') +
+        '<text x="12" y="16.6" text-anchor="middle" font-family="\'Songti SC\',\'STSong\',\'Noto Serif CJK SC\',\'Noto Serif SC\',serif" font-weight="700" font-size="14.5" fill="' + Y + '">九</text>';
+    },
+    dominoes: function () {   // a classic ivory domino, tilted: three | five
       var t = rect(.6, 6.2, 22.8, 11.6, 2.6, CREAM, ' stroke="' + K + '" stroke-width="1.4"') + line('M12 7.6v8.8', K, 1.2);
       [[3.6, 9], [6.3, 12], [9, 15]].forEach(function (p) { t += circ(p[0], p[1], 1.25, K); });
       [[15, 9], [21, 9], [18, 12], [15, 15], [21, 15]].forEach(function (p) { t += circ(p[0], p[1], 1.25, p[0] === 18 ? R : K); });
