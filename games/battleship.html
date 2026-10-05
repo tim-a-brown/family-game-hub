@@ -102,11 +102,12 @@
 .lastshot{min-height:20px;text-align:center;font-size:.85rem;font-weight:800;color:var(--text-2);margin-top:8px;}
 
 /* Placement */
-.dock{display:flex;flex-wrap:wrap;gap:10px 14px;justify-content:center;align-items:center;min-height:calc(var(--cell,32px) * 1 + 10px);margin:14px 0 4px;padding:10px;border-radius:14px;background:rgba(0,0,0,.18);box-shadow:inset 0 1px 4px rgba(0,0,0,.35);}
+.dock{display:flex;flex-wrap:wrap;gap:22px 14px;padding-bottom:22px !important;justify-content:center;align-items:center;min-height:calc(var(--cell,32px) * 1 + 10px);margin:14px 0 4px;padding:10px;border-radius:14px;background:rgba(0,0,0,.18);box-shadow:inset 0 1px 4px rgba(0,0,0,.35);}
 .dock .dship{position:relative;height:var(--cell,32px);touch-action:none;cursor:grab;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.45));}
 .dock .dship.sel{filter:drop-shadow(0 0 4px #ffe066) drop-shadow(0 2px 2px rgba(0,0,0,.5));}
 .dock .dship.lift{opacity:.25;}
 .dock .dship svg{width:100%;height:100%;display:block;}
+.dock .dship::after{content:attr(data-n);position:absolute;left:0;right:0;top:100%;margin-top:2px;text-align:center;font-size:.66rem;font-weight:800;letter-spacing:.04em;color:var(--text-3);white-space:nowrap;filter:none;}
 .dock .done{font-weight:800;color:var(--text-3);font-size:.9rem;display:flex;align-items:center;gap:6px;}
 .dock .done .ico{color:var(--green);}
 .phint{text-align:center;color:var(--text-2);font-size:.88rem;margin:4px 0 10px;}
@@ -232,32 +233,57 @@
   function coord(x) { return ROWS[Math.floor(x / N)] + (x % N + 1); }
 
   // ── Ship drawing (grey plastic hull with peg holes) ───────────────────────
-  function shipSvg(k, h, opts) {
-    opts = opts || {};
-    var L = SHIPS[k].s, W = L * 100, sub = k === 3;
-    var t = sub ? 22 : 12, b = 100 - t;
-    var pts = [['M', 4, 50], ['C', 14, t + 10, 30, t, 60, t], ['L', W - 30, t + 2], ['Q', W - 5, t + 4, W - 5, 50], ['Q', W - 5, b - 4, W - 30, b - 2], ['L', 60, b], ['C', 30, b, 14, b - 10, 4, 50], ['Z']];
-    function P(list) {
-      return list.map(function (s) {
-        var o = s[0];
-        for (var i = 1; i < s.length; i += 2) o += (i > 1 ? ' ' : '') + (h ? s[i] + ' ' + s[i + 1] : s[i + 1] + ' ' + s[i]);
-        return o;
-      }).join(' ');
-    }
-    function R(x, y, w, hh, rx, fill) { return h ? '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + hh + '" rx="' + rx + '" fill="' + fill + '"/>' : '<rect x="' + y + '" y="' + x + '" width="' + hh + '" height="' + w + '" rx="' + rx + '" fill="' + fill + '"/>'; }
+  // Each ship is drawn top-down, bow to the right, in its own silhouette so
+  // the type reads at a glance. Vertical ships are the same drawing turned.
+  function shipSvg(k, h) {
+    var L = SHIPS[k].s, W = L * 100;
     var id = 'g' + k + (h ? 'h' : 'v');
-    var g = h ? 'x1="0" y1="0" x2="0" y2="1"' : 'x1="0" y1="0" x2="1" y2="0"';
-    var s = '<svg viewBox="0 0 ' + (h ? W + ' 100' : '100 ' + W) + '" preserveAspectRatio="none"><defs><linearGradient id="' + id + '" ' + g + '><stop offset="0" stop-color="#c9cfd5"/><stop offset=".45" stop-color="#9aa2aa"/><stop offset="1" stop-color="#6a727a"/></linearGradient></defs>';
-    s += '<path d="' + P(pts) + '" fill="url(#' + id + ')" stroke="#4a5158" stroke-width="3"/>';
-    // Raised deck and a bit of superstructure between the holes
-    s += R(46, 36, W - 86, 28, 12, 'rgba(255,255,255,.16)');
-    if (k === 0) s += R(W * 0.55 - 14, t + 2, 28, 16, 3, '#7d858d') + R(70, 49, W - 140, 2, 1, 'rgba(255,255,255,.35)');
-    else if (k === 3) s += R(W * 0.5 - 14, 30, 28, 40, 10, '#7a828a');
-    else for (var j = 1; j < L; j++) s += R(j * 100 - 9, 38, 18, 24, 4, '#828a92');
-    for (var i = 0; i < L; i++) {
-      var cx = 50 + i * 100;
-      s += h ? '<circle cx="' + cx + '" cy="50" r="11" fill="#3a4148"/><circle cx="' + cx + '" cy="52" r="8" fill="#22282e"/>' : '<circle cx="50" cy="' + cx + '" r="11" fill="#3a4148"/><circle cx="52" cy="' + cx + '" r="8" fill="#22282e"/>';
+    var DK = '#353b41', MID = '#5f676f', DET = '#4f575f', LT = 'rgba(255,255,255,.28)';
+    function rect(x, y, w, hh, rx, fill, extra) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + hh + '" rx="' + (rx || 0) + '" fill="' + fill + '"' + (extra || '') + '/>'; }
+    function circ(cx, cy, r, fill, extra) { return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + fill + '"' + (extra || '') + '/>'; }
+    function path(d, fill, extra) { return '<path d="' + d + '" fill="' + fill + '"' + (extra || '') + '/>'; }
+    // A gun turret: round mount with twin barrels pointing toward dir (+1 bow, -1 stern)
+    function turret(cx, r, dir, len) {
+      var bl = len || r * 1.7, x0 = cx + dir * r * 0.4, x1 = cx + dir * (r + bl);
+      return rect(Math.min(x0, x1), 50 - r * 0.42, Math.abs(x1 - x0), r * 0.26, 2, DK) +
+        rect(Math.min(x0, x1), 50 + r * 0.16, Math.abs(x1 - x0), r * 0.26, 2, DK) +
+        circ(cx, 50, r, MID, ' stroke="' + DK + '" stroke-width="2.5"') + circ(cx - 2, 47, r * 0.45, LT);
     }
+    var hull = '', top = '';
+    if (k === 0) {
+      // Carrier: wide flat flight deck, angled bow, island on the starboard side
+      hull = 'M6 14 L' + (W - 60) + ' 10 L' + (W - 6) + ' 34 L' + (W - 6) + ' 66 L' + (W - 60) + ' 90 L6 86 Z';
+      top = path('M20 22 L' + (W - 70) + ' 19 L' + (W - 22) + ' 38 L' + (W - 22) + ' 62 L' + (W - 70) + ' 81 L20 78 Z', 'rgba(40,46,52,.35)') +
+        '<line x1="30" y1="50" x2="' + (W - 40) + '" y2="50" stroke="rgba(255,255,255,.55)" stroke-width="2.4" stroke-dasharray="14 10"/>' +
+        path('M40 72 L' + (W * 0.55) + ' 30', 'none', ' stroke="rgba(255,255,255,.4)" stroke-width="2"') +
+        rect(W * 0.6, 2, 70, 16, 4, MID, ' stroke="' + DK + '" stroke-width="2.5"') + rect(W * 0.6 + 44, 5, 12, 10, 2, DK);
+    } else if (k === 1) {
+      // Battleship: long pointed bow, broad beam, three big turrets and a tall bridge
+      hull = 'M6 30 Q6 12 40 12 L' + (W - 110) + ' 12 Q' + (W - 30) + ' 16 ' + (W - 4) + ' 50 Q' + (W - 30) + ' 84 ' + (W - 110) + ' 88 L40 88 Q6 88 6 70 Z';
+      top = rect(60, 30, W - 150, 40, 14, 'rgba(255,255,255,.12)') +
+        turret(100, 17, -1) + turret(300, 17, 1) +
+        rect(170, 30, 60, 40, 8, MID, ' stroke="' + DK + '" stroke-width="2.5"') + circ(214, 50, 8, DK) + rect(178, 36, 22, 28, 4, LT);
+    } else if (k === 2) {
+      // Cruiser: slimmer hull, bridge with one funnel, one forward turret
+      hull = 'M8 34 Q8 18 36 18 L' + (W - 90) + ' 18 Q' + (W - 24) + ' 22 ' + (W - 4) + ' 50 Q' + (W - 24) + ' 78 ' + (W - 90) + ' 82 L36 82 Q8 82 8 66 Z';
+      top = turret(200, 14, 1) +
+        rect(76, 34, 48, 32, 8, MID, ' stroke="' + DK + '" stroke-width="2.5"') + rect(84, 40, 14, 20, 7, DK) + rect(104, 40, 12, 20, 3, LT);
+    } else if (k === 3) {
+      // Submarine: rounded cigar hull, conning tower with dive planes, cross tail
+      hull = 'M24 50 Q24 26 70 25 L' + (W - 60) + ' 25 Q' + (W - 6) + ' 26 ' + (W - 6) + ' 50 Q' + (W - 6) + ' 74 ' + (W - 60) + ' 75 L70 75 Q24 74 24 50 Z';
+      top = path('M4 32 L26 46 L26 54 L4 68 Z', MID, ' stroke="' + DK + '" stroke-width="2"') +
+        rect(W * 0.5 - 6, 14, 12, 72, 4, DET) +
+        rect(W * 0.5 - 30, 38, 60, 24, 12, MID, ' stroke="' + DK + '" stroke-width="2.5"') + rect(W * 0.5 - 22, 42, 20, 6, 3, LT);
+    } else {
+      // Destroyer: narrow, sharp bow, small bridge and a single quick-fire gun
+      hull = 'M6 36 Q6 22 30 22 L' + (W - 70) + ' 22 Q' + (W - 18) + ' 26 ' + (W - 2) + ' 50 Q' + (W - 18) + ' 74 ' + (W - 70) + ' 78 L30 78 Q6 78 6 64 Z';
+      top = turret(100, 11, 1, 18) + rect(16, 38, 18, 24, 5, MID, ' stroke="' + DK + '" stroke-width="2"') + rect(170, 46, 22, 8, 3, DET);
+    }
+    var holes = '';
+    for (var i = 0; i < L; i++) holes += circ(50 + i * 100, 50, 11, '#3a4148') + circ(50 + i * 100, 52, 8, '#22282e');
+    var body = '<path d="' + hull + '" fill="url(#' + id + ')" stroke="' + DK + '" stroke-width="3" stroke-linejoin="round"/>' + top + holes;
+    var s = '<svg viewBox="0 0 ' + (h ? W + ' 100' : '100 ' + W) + '" preserveAspectRatio="none"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#c9cfd5"/><stop offset=".45" stop-color="#9aa2aa"/><stop offset="1" stop-color="#6a727a"/></linearGradient></defs>';
+    s += h ? body : '<g transform="translate(100 0) rotate(90)">' + body + '</g>';
     return s + '</svg>';
   }
 
@@ -611,7 +637,7 @@
     var dock = el('div', { class: 'dock' }), any = false;
     f.forEach(function (sh, k) {
       if (sh) return; any = true;
-      var d = el('div', { class: 'dship' + (sel === k ? ' sel' : ''), html: shipSvg(k, true), 'aria-label': SHIPS[k].n });
+      var d = el('div', { class: 'dship' + (sel === k ? ' sel' : ''), html: shipSvg(k, true), 'aria-label': SHIPS[k].n, 'data-n': SHIPS[k].n + ' · ' + SHIPS[k].s });
       d.style.width = 'calc(var(--cell,32px) * ' + SHIPS[k].s + ')';
       d.addEventListener('pointerdown', function (e) { startDrag(e, k, false, d); });
       dock.appendChild(d);
