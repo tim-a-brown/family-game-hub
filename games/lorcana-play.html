@@ -209,11 +209,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz.noanim{transition:none;}
 .lz-card.in-r{animation:lzInR .24s ease-out;}
 .lz{overflow-x:hidden;}
-.lz-flow{position:relative;width:100%;display:flex;justify-content:center;perspective:1100px;--cu:min(52vh,104vw,520px);}
+.lz-flow{position:relative;width:100%;display:flex;justify-content:center;perspective:1100px;--cu:min(52vh,104vw,520px);--fx:.46;touch-action:pan-y;}
 .lz-side{position:absolute;top:0;left:50%;width:calc(var(--cu) * .716);height:var(--cu);margin-left:calc(var(--cu) * -.358);padding:0;border:0;border-radius:calc(var(--cu) * .045);overflow:hidden;background:#1d1a2c;box-shadow:0 12px 34px rgba(0,0,0,.6);cursor:pointer;transition:transform .3s var(--ease),opacity .3s;}
 .lz-side img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .lz-side .face{--cu:inherit;}
-.lz-side::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.38);}
+.lz-side::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.38);opacity:var(--dim,1);}
 .lz-side.l1{transform:translateX(calc(var(--cu) * -.46)) rotateY(48deg) scale(.82);z-index:0;}
 .lz-side.r1{transform:translateX(calc(var(--cu) * .46)) rotateY(-48deg) scale(.82);z-index:0;}
 .lz-side.l2{transform:translateX(calc(var(--cu) * -.78)) rotateY(55deg) scale(.68);z-index:-1;opacity:.75;}
@@ -261,6 +261,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   .lz-side.l1{transform:translateX(calc(var(--cu) * -.34)) rotateY(50deg) scale(.82);}
   .lz-side.r1{transform:translateX(calc(var(--cu) * .34)) rotateY(-50deg) scale(.82);}
   .lz-side.l2,.lz-side.r2{display:none;}
+  .lz-flow{--fx:.34;}
 }
 
 /* Sheets used by this game */
@@ -3326,6 +3327,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   // ═════════════════════════════════════════════════════════════════════════
   // Zoom: the card, big, with its full text and what you can do with it
   // ═════════════════════════════════════════════════════════════════════════
+  var flowSlid = false;
   function closeZoom() { $$('.lz').forEach(function (z) { z.remove(); }); }
   function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
   function rulesHTML(d) {
@@ -3384,20 +3386,43 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   // opt: { modal: no close button and the backdrop doesn't close it; tapClose: any tap closes it, then onClose }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
-    var swapping = nav && nav.dir && $$('.lz').length;
+    var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid; flowSlid = false;
     closeZoom();
     var ov = el('div', { class: 'lz' + (swapping ? ' noanim show' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
-    var card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : '') });
+    var card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping && !slid ? (nav.dir > 0 ? ' in-r' : ' in-l') : '') });
     card.appendChild(artEl(d, true));
     // Coverflow: the neighbors sit angled behind the card; tap one to go to it
-    var flow = el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') });
+    var flow = el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }), sides = [];
     if (nav && nav.peek && nav.n > 1) [-2, -1, 1, 2].forEach(function (k) {
       var pd = nav.peek(k); if (!pd) return;
-      var sd = el('button', { type: 'button', class: 'lz-side ' + (k < 0 ? 'l' : 'r') + Math.abs(k), 'aria-label': pd.full, onclick: function (e) { e.stopPropagation(); nav.go(k); } });
+      var sd = el('button', { type: 'button', class: 'lz-side ' + (k < 0 ? 'l' : 'r') + Math.abs(k), 'aria-label': pd.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - dragAt < 350) return; slide(k); } });
       sd.appendChild(artEl(pd, true));
-      flow.appendChild(sd);
+      flow.appendChild(sd); sides.push({ el: sd, k: k });
     });
+    // Where a card sits at position p (0 = in front, -1 = just left, 1 = just right…).
+    // Dragging moves every card along this path together, so the neighbors swing in.
+    var CU = 0, FX = 0.46, dragAt = 0;
+    function measure() { CU = card.offsetHeight || 400; FX = parseFloat(getComputedStyle(flow).getPropertyValue('--fx')) || 0.46; }
+    function pose(p) {
+      var a = Math.abs(p), sg = p < 0 ? -1 : 1, x, r, sc, o = 1;
+      if (a <= 1) { x = a * FX; r = a * 48; sc = 1 - a * 0.18; } else { x = FX + (a - 1) * FX * 0.7; r = 48 + (a - 1) * 7; sc = Math.max(0.4, 0.82 - (a - 1) * 0.14); o = Math.max(0, 1 - (a - 1) * 0.3); }
+      return { t: 'translateX(' + (sg * x * CU).toFixed(1) + 'px) rotateY(' + (-sg * r).toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')', z: 10 - Math.round(a * 3), o: o };
+    }
+    function place(f, ms) {
+      var tr = ms ? 'transform ' + ms + 'ms cubic-bezier(.25,.8,.3,1),opacity ' + ms + 'ms' : 'none';
+      var items = [{ el: card, k: 0 }].concat(sides);
+      items.forEach(function (it) { var q = pose(it.k + f); it.el.style.transition = tr; it.el.style.transform = q.t; it.el.style.zIndex = q.z; if (it.el !== card) { it.el.style.opacity = q.o; it.el.style.setProperty('--dim', Math.min(1, Math.abs(it.k + f)).toFixed(2)); } });
+    }
+    function unplace() { [card].concat(sides.map(function (x) { return x.el; })).forEach(function (n) { n.style.transition = ''; n.style.transform = ''; n.style.zIndex = ''; n.style.opacity = ''; n.style.removeProperty('--dim'); }); }
+    // Glide everything one (or two) places over, then show that card
+    function slide(step) {
+      var j = nav.i + step; if (j < 0 || j >= nav.n) return;
+      if (!sides.length) { nav.go(step); return; }
+      measure(); place(0, 0); void card.offsetWidth;
+      place(-step, 240);
+      setTimeout(function () { flowSlid = true; nav.go(step); }, 240);
+    }
     flow.appendChild(card);
     inner.appendChild(flow);
     var info = el('div', { class: 'lz-info', html: (nav && nav.n > 1 ? '<div class="lz-pos">' + (nav.i + 1) + ' of ' + nav.n + '</div>' : '') + infoHTML });
@@ -3417,32 +3442,45 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       if (!ov.isConnected) { document.removeEventListener('keydown', esck); return; }
       if (opt.modal) return;
       if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { ov.remove(); if (opt.onClose) opt.onClose(); document.removeEventListener('keydown', esck); }
-      else if (nav && nav.n > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { document.removeEventListener('keydown', esck); nav.go(e.key === 'ArrowRight' ? 1 : -1); }
+      else if (nav && nav.n > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { document.removeEventListener('keydown', esck); slide(e.key === 'ArrowRight' ? 1 : -1); }
     });
     if (nav && nav.n > 1) {
-      var bl = el('button', { type: 'button', class: 'lz-nav l', 'aria-label': 'Previous card', html: Kit.icon('back'), disabled: nav.i <= 0 ? '' : null, onclick: function (e) { e.stopPropagation(); nav.go(-1); } });
-      var br = el('button', { type: 'button', class: 'lz-nav r', 'aria-label': 'Next card', html: Kit.icon('right'), disabled: nav.i >= nav.n - 1 ? '' : null, onclick: function (e) { e.stopPropagation(); nav.go(1); } });
+      var bl = el('button', { type: 'button', class: 'lz-nav l', 'aria-label': 'Previous card', html: Kit.icon('back'), disabled: nav.i <= 0 ? '' : null, onclick: function (e) { e.stopPropagation(); slide(-1); } });
+      var br = el('button', { type: 'button', class: 'lz-nav r', 'aria-label': 'Next card', html: Kit.icon('right'), disabled: nav.i >= nav.n - 1 ? '' : null, onclick: function (e) { e.stopPropagation(); slide(1); } });
       if (nav.i <= 0) bl.disabled = true; if (nav.i >= nav.n - 1) br.disabled = true;
       ov.appendChild(bl); ov.appendChild(br);
       // Swipe the card sideways to move through the list; it follows your finger
-      var sw = null;
-      card.addEventListener('pointerdown', function (e) { sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false }; });
-      card.addEventListener('pointermove', function (e) {
+      var sw = null, grab = sides.length ? flow : card;
+      function amount(dx) {
+        var f = dx / (FX * CU);
+        if ((f < 0 && nav.i >= nav.n - 1) || (f > 0 && nav.i <= 0)) f *= 0.25;   // nothing more that way: resist
+        return Math.max(-1.3, Math.min(1.3, f));
+      }
+      grab.addEventListener('pointerdown', function (e) { sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, t: Date.now() }; });
+      grab.addEventListener('pointermove', function (e) {
         if (!sw || e.pointerId !== sw.id) return;
         var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
-        if (!sw.h && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; try { card.setPointerCapture(e.pointerId); } catch (x) {} }
-        if (sw.h) { card.style.transition = 'none'; card.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 40) + 'deg)'; }
+        if (!sw.h && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; measure(); try { grab.setPointerCapture(e.pointerId); } catch (x) {} }
+        if (!sw.h) return;
+        if (sides.length) place(amount(dx), 0);
+        else { card.style.transition = 'none'; card.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 40) + 'deg)'; }
       });
       function swEnd(e) {
         if (!sw) return;
-        var dx = e.clientX - sw.x, h = sw.h; sw = null;
+        var dx = e.clientX - sw.x, h = sw.h, fast = Math.abs(dx) / Math.max(1, Date.now() - sw.t) > 0.5; sw = null;
         if (!h) return;
-        var step = dx < -60 ? 1 : dx > 60 ? -1 : 0;
-        if (step && ((step > 0 && nav.i < nav.n - 1) || (step < 0 && nav.i > 0))) { nav.go(step); return; }
-        card.style.transition = 'transform .2s var(--spring)'; card.style.transform = '';
+        dragAt = Date.now();
+        var f = sides.length ? amount(dx) : 0;
+        var step = sides.length ? (f < -0.35 || (fast && dx < -30) ? 1 : f > 0.35 || (fast && dx > 30) ? -1 : 0) : (dx < -60 ? 1 : dx > 60 ? -1 : 0);
+        if (step && ((step > 0 && nav.i < nav.n - 1) || (step < 0 && nav.i > 0))) {
+          if (!sides.length) { nav.go(step); return; }
+          place(-step, 200); setTimeout(function () { flowSlid = true; nav.go(step); }, 200); return;
+        }
+        if (sides.length) { place(0, 220); setTimeout(unplace, 240); }
+        else { card.style.transition = 'transform .2s var(--spring)'; card.style.transform = ''; }
       }
-      card.addEventListener('pointerup', swEnd);
-      card.addEventListener('pointercancel', swEnd);
+      grab.addEventListener('pointerup', swEnd);
+      grab.addEventListener('pointercancel', swEnd);
     }
     document.body.appendChild(ov);
     if (!swapping) requestAnimationFrame(function () { ov.classList.add('show'); });
