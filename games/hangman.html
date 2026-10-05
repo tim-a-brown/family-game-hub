@@ -12,14 +12,30 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-:root{--chalk:#f4f1e6;--dread:0;}
+/* --dread runs 0..1 with the misses; registered so every effect built on it eases */
+@property --dread{syntax:'<number>';inherits:true;initial-value:0;}
+:root{--chalk:#f4f1e6;--dread:0;transition:--dread 1.1s ease;}
+:root.lift{transition:--dread 2.2s ease;}
 body{overflow-x:hidden;}
-/* The room darkens as misses pile up */
-body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opacity:calc(var(--dread) * .5);transition:opacity .8s;
-  background:radial-gradient(90% 70% at 50% 40%, transparent 30%, rgba(5,2,15,.85) 100%);}
-/* Last life: the edges of the room pulse red with the heartbeat */
-body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 38%, rgba(150,8,30,.6) 100%);animation:redpulse 1.1s ease-in-out infinite;}
-@keyframes redpulse{0%,100%{opacity:.5;}12%{opacity:1;}28%{opacity:.7;}42%{opacity:.95;}}
+/* A cold vignette closes in from the edges as misses pile up */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;opacity:min(1, calc(var(--dread) * 1.6));
+  background:
+    linear-gradient(90deg, rgba(3,9,24,.62), transparent calc(6% + var(--dread) * 24%)), linear-gradient(270deg, rgba(3,9,24,.62), transparent calc(6% + var(--dread) * 24%)),
+    linear-gradient(180deg, rgba(3,9,24,.62), transparent calc(4% + var(--dread) * 14%)), linear-gradient(0deg, rgba(3,9,24,.62), transparent calc(4% + var(--dread) * 14%));}
+/* Last life: a faint red pulse at the edges, in time with the heartbeat */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:41;opacity:0;transition:opacity .6s;
+  background:
+    linear-gradient(90deg, rgba(170,14,34,.38), transparent 22%), linear-gradient(270deg, rgba(170,14,34,.38), transparent 22%),
+    linear-gradient(180deg, rgba(170,14,34,.38), transparent 12%), linear-gradient(0deg, rgba(170,14,34,.38), transparent 12%);}
+body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
+@keyframes redpulse{0%,100%{opacity:.3;}14%{opacity:.8;}30%{opacity:.4;}44%{opacity:.65;}}
+/* Wrong guess: a red flash at the edges */
+.hurt{position:fixed;inset:0;pointer-events:none;z-index:42;opacity:0;animation:hurt .6s ease-out forwards;
+  background:
+    linear-gradient(90deg, rgba(235,26,46,.5), transparent 24%), linear-gradient(270deg, rgba(235,26,46,.5), transparent 24%),
+    linear-gradient(180deg, rgba(235,26,46,.5), transparent 14%), linear-gradient(0deg, rgba(235,26,46,.5), transparent 14%);}
+@keyframes hurt{0%{opacity:0;}10%{opacity:1;}100%{opacity:0;}}
+.hm.jolt{animation:jolt .34s cubic-bezier(.3,.7,.4,1);}
 .hm{display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 10px);min-height:calc(100dvh - var(--safe-t) - 58px);}
 .hm .scores{margin-bottom:0;padding-bottom:6px;}
 .hud{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;flex-wrap:wrap;}
@@ -30,9 +46,10 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 .pill.hot{background:color-mix(in srgb,var(--orange) 22%,transparent);color:var(--orange);}
 .pill.hot .ico{color:var(--orange);}
 /* Chalkboard */
-.frame{border-radius:16px;padding:9px;flex:1;display:flex;min-height:0;}
-.frame.jolt{animation:jolt .42s cubic-bezier(.3,.7,.4,1);}
-@keyframes jolt{0%,100%{transform:none;}18%{transform:translate(-7px,4px) rotate(-.9deg);}40%{transform:translate(6px,-2px) rotate(.7deg);}65%{transform:translate(-3px,1px) rotate(-.25deg);}}
+/* The board loses light and colour step by step */
+.frame{border-radius:16px;padding:9px;flex:1;display:flex;min-height:0;
+  filter:brightness(calc(1 - var(--dread) * .3)) saturate(calc(1 - var(--dread) * .7));}
+@keyframes jolt{0%,100%{transform:none;}15%{transform:translate(-8px,3px);}32%{transform:translate(7px,-3px);}50%{transform:translate(-5px,2px);}70%{transform:translate(3px,-1px);}85%{transform:translate(-1px,0);}}
 .slate{position:relative;flex:1;border-radius:8px;padding:24px 22px 22px;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;
   background:
     radial-gradient(60% 40% at 25% 30%, rgba(255,255,255,.05), transparent 70%),
@@ -43,7 +60,6 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");}
 .slate::after{content:"";pointer-events:none;position:absolute;left:8%;right:8%;bottom:-2px;height:9px;border-radius:4px 4px 0 0;z-index:2;
   background:linear-gradient(180deg,#7a5a3a,#5a3f26);box-shadow:0 -1px 0 rgba(255,255,255,.12) inset;}
-.slate.shake{animation:shake .35s;}
 .topline{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-family:var(--hand);color:rgba(244,241,230,.75);font-size:1.1rem;line-height:1.1;}
 .topline .miss{color:#ff9d9d;text-align:right;}
 /* The "wrong" tray: missed letters land here and crack */
@@ -57,50 +73,52 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 @keyframes crackin{0%{transform:scale(1.7) rotate(-14deg);}40%{transform:scale(.9) rotate(5deg);}70%{transform:rotate(-3deg) translateX(1px);}100%{transform:none;}}
 @keyframes crackline{from{clip-path:inset(0 0 100% 0);}to{clip-path:inset(0 0 0 0);}}
 .flyL{position:fixed;left:0;top:0;z-index:70;pointer-events:none;font-family:var(--hand);color:#ff9d9d;line-height:1;text-shadow:0 3px 8px rgba(0,0,0,.55);will-change:transform;}
-/* ── Stage: spotlight, curtains, valance ── */
-.spot{position:absolute;z-index:1;left:50%;top:40%;width:200%;height:200%;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;opacity:.12;
-  background:radial-gradient(closest-side, rgba(255,232,170,.12), rgba(255,232,170,.05) 45%, rgba(3,6,12,.86) 100%);
-  box-shadow:0 0 0 200vmax rgba(3,6,12,.86);
-  transition:left .9s var(--ease), top .9s var(--ease), width .9s var(--ease), height .9s var(--ease), opacity .9s var(--ease);}
-.bloom{position:absolute;left:-30%;right:-30%;top:-30%;bottom:-30%;z-index:1;pointer-events:none;opacity:0;
-  background:radial-gradient(closest-side, rgba(255,226,138,.5), rgba(255,226,138,.16) 45%, transparent 75%);animation:bloom 1.9s ease-out .35s both;}
-@keyframes bloom{0%{opacity:0;transform:scale(.35);}25%{opacity:1;}100%{opacity:0;transform:scale(1.15);}}
-.cur{position:absolute;top:0;bottom:0;width:51%;z-index:4;pointer-events:none;transform:scaleX(.06);transition:transform 1.15s cubic-bezier(.55,0,.25,1);
-  background:
-    linear-gradient(180deg, rgba(0,0,0,.25), transparent 18%, transparent 62%, rgba(0,0,0,.45)),
-    repeating-linear-gradient(90deg, #4f0a14 0, #7d1724 6%, #a52637 10.5%, #8a1a29 14%, #5c0c17 20%);
-  box-shadow:inset 0 0 18px rgba(0,0,0,.45);}
-.cur.l{left:0;transform-origin:0 50%;}
-.cur.r{right:0;transform-origin:100% 50%;}
-.slate.cl .cur{transform:none;}
-/* After a loss, one spotlight stays on the closed curtain where the answer is */
-.pool{position:absolute;left:0;right:0;bottom:0;height:50%;z-index:4;pointer-events:none;opacity:0;transition:opacity 1s .5s;
-  background:radial-gradient(62% 46% at 50% 74%, rgba(255,222,160,.24), rgba(255,222,160,.08) 55%, transparent 75%);}
-.slate.lost.cl .pool{opacity:1;}
-.val{position:absolute;left:0;right:0;top:0;height:21px;z-index:6;pointer-events:none;
-  background:
-    linear-gradient(180deg,#5a0c17,#8a1a29) top/100% 8px no-repeat,
-    linear-gradient(90deg, transparent, rgba(214,170,82,.75) 8%, rgba(214,170,82,.75) 92%, transparent) 0 7px/100% 1.5px no-repeat,
-    radial-gradient(closest-side, #8a1a29 0 90%, transparent 100%) 0 -12px/30px 32px repeat-x;
-  filter:drop-shadow(0 3px 3px rgba(0,0,0,.55));}
-/* Loss: the word and banner stay in front of the closed curtain */
-.slate.cl .lt{color:#fff6e6;text-shadow:0 2px 6px rgba(0,0,0,.7);}
-.slate.cl .lt.red{color:#ffc0b0;}
-.slate.cl .lt::after{background:rgba(255,236,200,.75);}
-.slate.cl .banner{color:#ffc9bc!important;text-shadow:0 3px 0 rgba(0,0,0,.5), 0 0 18px rgba(0,0,0,.6);}
+/* ── Light on the board: a warm lamp that fades, flickers in the storm, and comes back ── */
+.lamp{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:calc(1 - var(--dread) * .85);
+  background:radial-gradient(80% 58% at 50% 0%, rgba(255,226,160,.17), rgba(255,226,160,.05) 50%, transparent 80%);}
+.slate.storm .lamp{animation:flicker 4.6s steps(1,end) infinite;}
+@keyframes flicker{0%,100%{opacity:.2;}7%{opacity:.04;}9%{opacity:.24;}31%{opacity:.12;}33%{opacity:.02;}35%{opacity:.18;}62%{opacity:.22;}64%{opacity:.06;}66%{opacity:.2;}}
+.slate.warm .lamp{animation:warmup .75s ease-out;}
+@keyframes warmup{30%{opacity:1;filter:brightness(1.8) saturate(1.4);}}
+/* Dark creeping in from the edges of the board */
+.shade{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:var(--dread);
+  background:radial-gradient(95% 85% at 50% 45%, transparent 35%, rgba(2,6,10,.6) 100%);}
+/* Lightning in the last two misses */
+.bolt{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;background:linear-gradient(180deg, rgba(205,225,255,.42), rgba(205,225,255,.12));}
+.slate.flash .bolt{animation:bolt .9s linear;}
+@keyframes bolt{0%{opacity:0;}6%{opacity:1;}12%{opacity:.15;}20%{opacity:.75;}40%{opacity:0;}100%{opacity:0;}}
+/* Loss: the lights go nearly out, the answer shows in red, then the board fades back */
+.dark{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;background:rgba(1,3,6,.88);transition:opacity 1.8s ease;}
+.slate.out .dark{opacity:1;transition:opacity .25s ease-in;}
+.slate.out .lt::after{background:rgba(244,241,230,.35);}
+/* Win: warm light floods back in */
+.dawn{position:absolute;left:-30%;right:-30%;top:-45%;bottom:-20%;z-index:1;pointer-events:none;opacity:0;
+  background:radial-gradient(closest-side, rgba(255,214,140,.42), rgba(255,214,140,.12) 50%, transparent 75%);animation:dawn 2.6s ease-out .3s both;}
+@keyframes dawn{0%{opacity:0;transform:scale(.4);}30%{opacity:1;}100%{opacity:.35;transform:scale(1.1);}}
 .pic{flex:1;min-height:150px;display:flex;align-items:center;justify-content:center;position:relative;}
 .pic svg{height:100%;max-height:260px;width:auto;max-width:100%;overflow:visible;}
 .ch{fill:none;stroke-linecap:round;stroke-linejoin:round;}
-.ch.new{stroke-dasharray:1 1;stroke-dashoffset:1;animation:draw .45s cubic-bezier(.4,0,.6,1) forwards;}
+.ch.new{stroke-dasharray:1 1;stroke-dashoffset:1;animation:draw .5s linear forwards;}
 .ch.new.slow{animation-duration:1.4s;}
-@keyframes draw{to{stroke-dashoffset:0;}}
+/* Urgent, stuttering chalk: quick lunges with tiny catches */
+@keyframes draw{0%{stroke-dashoffset:1;}22%{stroke-dashoffset:.66;}30%{stroke-dashoffset:.64;}52%{stroke-dashoffset:.3;}60%{stroke-dashoffset:.28;}82%{stroke-dashoffset:.04;}100%{stroke-dashoffset:0;}}
+/* Balloons strain against the wind, harder as the misses climb */
+.bals{transform-box:view-box;transform-origin:100px 150px;animation:sway calc(3.4s - var(--t,0) * 1.9s) ease-in-out infinite alternate;}
+@keyframes sway{from{transform:rotate(calc(-1deg - var(--t,0) * 5deg));}to{transform:rotate(calc(1deg + var(--t,0) * 5deg)) translateY(calc(var(--t,0) * -3px));}}
+.gustw{transform-box:view-box;transform-origin:100px 172px;}
+.gustw.go{animation:gust .9s cubic-bezier(.3,.7,.4,1);}
+@keyframes gust{0%,100%{transform:none;}22%{transform:translateX(9px) rotate(7deg);}50%{transform:translateX(-4px) rotate(-3deg);}75%{transform:translateX(2px) rotate(1deg);}}
+@media (prefers-reduced-motion:reduce){
+  .slate.storm .lamp,.slate.warm .lamp,.slate.flash .bolt,body.lastlife::before,.bals,.gustw.go,.hero.go,.hero.go .upper,.hm.jolt,.dawn{animation:none!important;}
+  .dawn{opacity:.35;}
+}
 .clue{position:relative;z-index:2;font-family:var(--hand);color:#ffe28a;text-align:center;font-size:1.15rem;line-height:1.2;margin:2px 4px 4px;min-height:0;}
-/* Freed figure: hops for joy, then takes a bow */
-.hero.go{animation:hop .5s ease-out .5s 2 both;}
+/* Freed figure: drops from the rope to the ground, then lets out a big breath */
+.hero.go{animation:freed 1s cubic-bezier(.55,0,.7,1) .45s both;}
 .hero .upper{transform-box:view-box;transform-origin:172px 178px;}
-.hero.go .upper{animation:bow 2.3s ease-in-out 1.55s both;}
-@keyframes hop{0%,100%{transform:translateY(0);}45%{transform:translateY(-12px);}}
-@keyframes bow{0%,100%{transform:none;}18%,40%{transform:rotate(-52deg);}55%{transform:none;}70%,84%{transform:rotate(-52deg);}}
+.hero.go .upper{animation:exhale 1.8s ease-in-out 1.5s both;}
+@keyframes freed{0%{transform:translate(-42px,-70px);opacity:0;}10%{opacity:1;}60%{transform:translate(-14px,0);}72%{transform:translate(-10px,-6px);}86%{transform:translate(-4px,0);}100%{transform:none;}}
+@keyframes exhale{0%,100%{transform:none;}35%{transform:scale(1.05,1.07);}70%{transform:scale(.98,.95) translateY(2px);}}
 .stars path{opacity:0;animation:twinkle 1.6s ease-in-out infinite both;}
 @keyframes twinkle{0%,100%{opacity:.15;transform:scale(.7);}50%{opacity:1;transform:none;}}
 .stars path{transform-box:fill-box;transform-origin:center;}
@@ -265,19 +283,20 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   function letters(w) { return w.replace(/[^A-Z]/g, '').split('').filter(function (c, i, a) { return a.indexOf(c) === i; }); }
   function maxMiss() { return DIFF[S.diff].max; }
 
-  // ── Stage effects: timers we can cancel, reduced motion ───────────────────
+  // ── Effects: timers we can cancel, reduced motion ───────────────────
   var RM = false; try { RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
   var fxT = [];
   function later(fn, ms) { var t = setTimeout(function () { var i = fxT.indexOf(t); if (i >= 0) fxT.splice(i, 1); fn(); }, ms); fxT.push(t); return t; }
-  function clearFx() { fxT.forEach(clearTimeout); fxT = []; if (beat === -1) beat = null; document.querySelectorAll('.flyL').forEach(function (n) { n.remove(); }); }
+  function clearFx() { fxT.forEach(clearTimeout); fxT = []; document.querySelectorAll('.flyL,.hurt').forEach(function (n) { n.remove(); }); }
 
-  // ── Theatre sounds: synthesized with WebAudio, off when the kit sound is off ─
+  // ── Sounds: synthesized with WebAudio, off when the kit sound is off ─────
   var AC = null, NB = null;
+  function soundOn() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
   function au() {
-    try { if (localStorage.getItem('gn_sound') === '0') return null; } catch (e) {}
+    if (!soundOn()) return null;
     try {
       if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); }
-      if (AC.state === 'suspended') AC.resume();
+      if (AC.state === 'suspended' && !document.hidden) AC.resume();
       if (!NB) { var n = AC.sampleRate * 3; NB = AC.createBuffer(1, n, AC.sampleRate); var d = NB.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
       return AC;
     } catch (e) { return null; }
@@ -292,10 +311,11 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     if (lp) { var f2 = a.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = lp; g.connect(f2); out = f2; }
     out.connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
   }
-  // Filtered noise; env is a list of [time, gain] points
-  function hiss(a, t0, dur, ftype, freq, q, env) {
+  // Filtered noise; env is a list of [time, gain] points; sweep is an optional [from, to] filter glide
+  function hiss(a, t0, dur, ftype, freq, q, env, sweep) {
     var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
     s.buffer = NB; f.type = ftype; f.frequency.value = freq; f.Q.value = q || 1;
+    if (sweep) { f.frequency.setValueAtTime(sweep[0], t); f.frequency.exponentialRampToValueAtTime(sweep[1], t + dur); }
     g.gain.setValueAtTime(0.0001, t);
     env.forEach(function (p) { g.gain.linearRampToValueAtTime(p[1], t + p[0]); });
     s.connect(f); f.connect(g); g.connect(a.destination);
@@ -310,6 +330,13 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
       hiss(a, 0, dur + 0.05, 'bandpass', 3400, 1.4, env);
       hiss(a, 0, dur + 0.05, 'bandpass', 1300, 2.5, env.map(function (p) { return [p[0], p[1] * 0.45]; }));
     },
+    // Wrong guess: a sharp hit with a sour, clashing stab under it
+    hit: function (a) {
+      hiss(a, 0, 0.12, 'highpass', 2200, 0.7, [[0.003, 0.22], [0.04, 0.05], [0.12, 0.0001]]);
+      note(a, 110, 0, 0.45, 'sine', 0.34, 36);
+      note(a, 233, 0.005, 0.38, 'sawtooth', 0.05, 220, 1400);
+      note(a, 247, 0.005, 0.38, 'sawtooth', 0.05, 233, 1400);
+    },
     crack: function (a) {
       hiss(a, 0, 0.09, 'highpass', 1700, 0.7, [[0.004, 0.2], [0.03, 0.05], [0.09, 0.0001]]);
       note(a, 190, 0, 0.12, 'triangle', 0.09, 80);
@@ -322,47 +349,109 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
       note(a, P[Math.min(i, P.length - 1)], 0.01, 0.42, 'sine', 0.085);
       note(a, P[Math.min(i, P.length - 1)] * 2.01, 0.01, 0.2, 'sine', 0.025);
     },
-    drum: function (a, vol) {
-      note(a, 105, 0, 0.55, 'sine', vol || 0.28, 42);
-      hiss(a, 0, 0.18, 'lowpass', 380, 0.8, [[0.004, (vol || 0.28) * 0.5], [0.18, 0.0001]]);
+    // Right guess: a soft warm swell, a little breath of relief
+    relief: function (a) { note(a, 262, 0.02, 0.7, 'sine', 0.04); note(a, 330, 0.06, 0.7, 'sine', 0.03); },
+    heart: function (a, fast) { var v = fast ? 0.34 : 0.22; note(a, 70, 0, 0.16, 'sine', v, 42); note(a, 60, 0.17, 0.14, 'sine', v * 0.7, 38); },
+    // Low, heavy hits for the loss
+    thud: function (a) {
+      note(a, 64, 0, 1.3, 'sine', 0.55, 26); note(a, 41, 0, 1.6, 'sine', 0.3, 24);
+      hiss(a, 0, 0.6, 'lowpass', 260, 0.7, [[0.01, 0.3], [0.6, 0.0001]]);
     },
-    drumroll: function (a) {
-      for (var t = 0; t < 1.15; t += 0.045) {
-        var v = 0.02 + 0.06 * (t / 1.15);
-        hiss(a, t, 0.05, 'bandpass', 1900, 0.8, [[0.003, v], [0.045, 0.0001]]);
-      }
-      SND.drum(a, 0.22); later(function () { snd('drum', 0.3); }, 1180);
+    low: function (a) { note(a, 82, 0, 0.42, 'sine', 0.26, 46); note(a, 164, 0, 0.22, 'triangle', 0.04, 120); },
+    // Distant thunder
+    rumble: function (a, v) {
+      v = v || 0.12;
+      hiss(a, 0, 2.2, 'lowpass', 150, 0.6, [[0.06, v], [0.4, v * 0.55], [0.7, v * 0.8], [2.2, 0.0001]]);
+      note(a, 38, 0, 1.6, 'sine', v * 0.8, 30);
     },
-    heart: function (a) { note(a, 72, 0, 0.16, 'sine', 0.26, 44); note(a, 62, 0.19, 0.14, 'sine', 0.18, 40); },
-    curtain: function (a, dur) {
-      var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime;
-      s.buffer = NB; f.type = 'lowpass'; f.Q.value = 0.6;
-      f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(1500, t + dur * 0.6); f.frequency.exponentialRampToValueAtTime(500, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + dur * 0.35); g.gain.linearRampToValueAtTime(0.0001, t + dur);
-      s.connect(f); f.connect(g); g.connect(a.destination); s.start(t, Math.random() * Math.max(0, 2.9 - dur), dur + 0.05);
+    // A rope creaking under strain
+    creak: function (a) {
+      var n = 9 + Math.floor(Math.random() * 6), t = 0;
+      for (var i = 0; i < n; i++) { t += 0.02 + i * 0.006; hiss(a, t, 0.025, 'bandpass', 950 + Math.random() * 300, 9, [[0.002, 0.07], [0.025, 0.0001]]); }
+      note(a, 118, 0, t + 0.1, 'sawtooth', 0.012, 92, 700);
     },
-    // A small crowd: a swell of voices and a patter of applause
-    cheer: function (a) {
-      hiss(a, 0, 2.4, 'bandpass', 850, 0.6, [[0.35, 0.07], [1.0, 0.05], [2.4, 0.0001]]);
-      hiss(a, 0, 2.4, 'bandpass', 1700, 1.5, [[0.3, 0.035], [1.2, 0.02], [2.4, 0.0001]]);
-      for (var i = 0; i < 46; i++) {
-        var t = 0.05 + Math.random() * 2.1, v = (0.03 + Math.random() * 0.05) * (t < 1.4 ? 1 : 0.5);
-        hiss(a, t, 0.03, 'bandpass', 1500 + Math.random() * 1500, 1.2, [[0.002, v], [0.03, 0.0001]]);
-      }
-    },
-    fanfare: function (a) {
-      [[523, 0, 0.13], [523, 0.14, 0.13], [523, 0.28, 0.13], [784, 0.42, 0.7]].forEach(function (n) {
-        note(a, n[0], n[1], n[2] + 0.06, 'sawtooth', 0.05, null, 2400);
-        note(a, n[0] / 2, n[1], n[2] + 0.06, 'sawtooth', 0.035, null, 1400);
-        note(a, n[0] * 1.5, n[1], n[2], 'triangle', 0.025);
-      });
+    // A gust of wind
+    gust: function (a, v) { v = v || 0.07; hiss(a, 0, 1.1, 'bandpass', 500, 0.9, [[0.3, v], [0.6, v * 0.7], [1.1, 0.0001]], [280, 1100]); },
+    // Win: the rope is cut, a big exhale, then a short bright sting
+    snip: function (a) { hiss(a, 0, 0.06, 'highpass', 3500, 0.8, [[0.002, 0.2], [0.06, 0.0001]]); note(a, 2300, 0, 0.05, 'triangle', 0.04, 1600); },
+    exhale: function (a) { hiss(a, 0, 1.3, 'lowpass', 1600, 0.7, [[0.2, 0.12], [0.55, 0.08], [1.3, 0.0001]], [2200, 220]); },
+    sting: function (a) {
+      [[392, 0], [523, 0.09], [659, 0.18]].forEach(function (n) { note(a, n[0], n[1], 0.2, 'triangle', 0.07); });
+      [523, 659, 784, 1047].forEach(function (f) { note(a, f, 0.28, 1.1, 'sawtooth', 0.026, null, 2600); note(a, f, 0.28, 1.1, 'triangle', 0.035); });
+      note(a, 131, 0.28, 1.1, 'sawtooth', 0.04, null, 900);
     }
   };
   function snd(name, x) { var a = au(); if (!a) return; try { SND[name](a, x); } catch (e) {} }
 
+  // ── Mood: a low drone and wind that grow with the misses ─────────────────
+  // The drone starts as a quiet open fifth; with each miss it gets louder, brighter and
+  // slides toward a tritone, with a clashing note fading in under it.
+  var AMB = null;
+  function ambience(lvl, fade) {
+    var a = lvl == null ? null : au();
+    if (!a) {
+      if (AMB) {
+        var m = AMB; AMB = null;
+        try { var t = m.a.currentTime; m.g.gain.cancelScheduledValues(t); m.g.gain.setValueAtTime(m.g.gain.value, t); m.g.gain.linearRampToValueAtTime(0.0001, t + (fade || 0.8)); } catch (e) {}
+        setTimeout(function () { m.src.forEach(function (n) { try { n.stop(); } catch (e) {} }); try { m.g.disconnect(); } catch (e) {} }, (fade || 0.8) * 1000 + 200);
+      }
+      return;
+    }
+    try {
+      if (!AMB) {
+        var g = a.createGain(); g.gain.value = 0.0001; g.connect(a.destination);
+        var lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.Q.value = 0.9; lp.connect(g);
+        var src = [];
+        var osc = function (type, f, vol) { var o = a.createOscillator(), og = a.createGain(); o.type = type; o.frequency.value = f; og.gain.value = vol; o.connect(og); og.connect(lp); o.start(); src.push(o); return { o: o, g: og }; };
+        var root = osc('sawtooth', 55, 0.3), fifth = osc('sawtooth', 82.4, 0.22), sour = osc('sawtooth', 58.3, 0), sub = osc('sine', 27.5, 0.6);
+        fifth.o.detune.value = 6;
+        // Wind: looping noise through a moving band, with a slow swell
+        var w = a.createBufferSource(); w.buffer = NB; w.loop = true;
+        var bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 0.7;
+        var wg = a.createGain(); wg.gain.value = 0.2;
+        var lfo = a.createOscillator(), lg = a.createGain(); lfo.frequency.value = 0.13; lg.gain.value = 0.12; lfo.connect(lg); lg.connect(wg.gain);
+        var lfo2 = a.createOscillator(), lg2 = a.createGain(); lfo2.frequency.value = 0.07; lg2.gain.value = 160; lfo2.connect(lg2); lg2.connect(bp.frequency);
+        w.connect(bp); bp.connect(wg); wg.connect(g); w.start(); lfo.start(); lfo2.start(); src.push(w, lfo, lfo2);
+        AMB = { a: a, g: g, lp: lp, fifth: fifth, sour: sour, wg: wg, src: src };
+      }
+      var t2 = a.currentTime, M = AMB;
+      M.g.gain.setTargetAtTime(0.012 + 0.05 * Math.pow(lvl, 1.3), t2, 0.5);
+      M.lp.frequency.setTargetAtTime(150 + 520 * lvl, t2, 0.6);
+      M.fifth.o.frequency.setTargetAtTime(82.4 - 4.6 * lvl, t2, 0.8);
+      M.sour.g.gain.setTargetAtTime(0.32 * Math.pow(lvl, 1.5), t2, 0.6);
+      M.wg.gain.setTargetAtTime(0.18 + 0.55 * lvl, t2, 0.6);
+    } catch (e) {}
+  }
+  // Every so often: a rope creak or gust, and lightning in the last two misses
+  var moodT = null;
+  function moodTick() {
+    var W = S && S.W, on = !!(W && !W.over && S.phase === 'play');
+    if (!on) { clearInterval(moodT); moodT = null; ambience(null); return; }
+    if (!soundOn()) ambience(null); else if (!AMB) syncMood();
+    var lvl = W.misses / maxMiss(), left = maxMiss() - W.misses;
+    if (lvl >= 0.3 && Math.random() < 0.12 + lvl * 0.15) {
+      if (S.theme === 'balloons') { snd('gust', 0.03 + lvl * 0.05); gustAnim(); } else snd('creak');
+    }
+    if (left <= 2 && Math.random() < 0.18) {
+      var sl = app.querySelector('.slate');
+      if (sl && !RM) { sl.classList.remove('flash'); void sl.offsetWidth; sl.classList.add('flash'); }
+      later(function () { snd('rumble', 0.07 + Math.random() * 0.06); }, 300 + Math.random() * 900);
+    }
+  }
+  function syncMood() {
+    var W = S && S.W, on = !!(W && !W.over && S.phase === 'play');
+    if (!on) { ambience(null); return; }
+    ambience(W.misses / maxMiss());
+    if (!moodT) moodT = setInterval(moodTick, 2200);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!AC) return;
+    try { if (document.hidden) AC.suspend(); else if (soundOn()) AC.resume(); } catch (e) {}
+  });
+
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    clearFx(); stopBeat(); setDread(0); S = null; lastSpot = null; clearSave();
+    clearFx(); stopBeat(); setDread(0); S = null; syncMood(); clearSave();
     var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
     if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
     var st = Kit.setup(app, {
@@ -408,12 +497,12 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     return { word: word, clue: clue || '', cat: cat || '', setter: setter, guesser: guesser, guessed: [], misses: 0, missed: [], clueShown: false, over: false, won: false, wholeWord: false };
   }
   function nextWord() {
-    undoStack = []; fresh = null; setDread(0); clearFx(); stopBeat(); lastSpot = null;
+    undoStack = []; fresh = null; setDread(0); clearFx(); stopBeat();
     if (S.mode === 'solo') {
       var p = pool(), o = p[rnd(p.length)];
       S.used.push(o.w);
       S.W = newW(o.w, o.clue, o.cat, -1, 0);
-      S.phase = 'play'; fresh = { open: true };
+      S.phase = 'play';
     } else {
       var setter = S.wi % 2;
       S.W = newW('', '', '', setter, 1 - setter);
@@ -429,7 +518,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     if (!undoStack.length) return Kit.toast('Nothing to undo');
     clearFx(); stopBeat();
     var u = JSON.parse(undoStack.pop()); S.W = u.W; S.streak = u.streak; fresh = null;
-    Kit.sfx('whoosh'); Kit.toast('Guess taken back'); save(); render(); syncBeat();
+    Kit.sfx('whoosh'); Kit.toast('Guess taken back'); save(); render(); syncBeat(); syncMood();
   }
   function guess(L) {
     var W = S.W;
@@ -452,7 +541,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     fresh = { miss: W.misses, missL: L || null, last: last };
     Kit.haptic(last ? 'heavy' : 'error');
     save(); render();
-    if (last) lose(); else syncBeat(W.misses === maxMiss() - 1 ? 1750 : 0);
+    if (last) lose(); else { syncBeat(700); syncMood(); }
   }
   function solveSheet() {
     var W = S.W; if (!W || W.over || busy) return;
@@ -490,61 +579,62 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     if (S.mode === 'solo') setLifeStreak(lifeStreak() + 1);
     S.log.push({ w: W.word, cat: W.cat, won: true, misses: W.misses, max: maxMiss(), pts: pts, guesser: W.guesser, setter: W.setter, clue: W.clueShown, whole: W.wholeWord, guesses: W.guessed.length });
     fresh = { win: true, hit: L || null };
-    S.phase = 'result'; setDread(0);
+    S.phase = 'result';
+    // The darkness lifts slowly
+    document.documentElement.classList.add('lift'); later(function () { document.documentElement.classList.remove('lift'); }, 2400);
+    ambience(null, 1.4);
     save(); render();
     busy = true;
     Kit.haptic('success');
-    // The last letters slam in, then the lights come up and the crowd cheers
+    // The last letters slam in, the rope is cut, a big breath out, then a bright sting
     var nHit = L ? W.word.split(L).length - 1 : 0, t0 = Math.max(300, nHit * 110 + 180);
-    later(function () { Kit.sfx('win'); Kit.confetti({ count: 90 }); snd('cheer'); }, t0 + 150);
+    later(function () { snd(S.theme === 'balloons' ? 'gust' : 'snip', 0.05); }, t0 + 100);
+    later(function () { snd('exhale'); }, t0 + 250);
+    later(function () { snd('sting'); Kit.confetti({ count: 90 }); }, t0 + 700);
     var s = S.mode === 'solo' ? lifeStreak() : S.streak, left = maxMiss() - W.misses;
     var run = s >= 10 ? 'Legendary! ' + s + ' in a row' : s >= 5 ? 'On fire! ' + s + ' in a row' : s >= 2 ? s + ' in a row!' : null;
     var first = left === 1 ? 'Close call!' : run || (W.misses === 0 ? 'Flawless!' : left === 2 ? 'That was close!' : 'Saved!');
-    later(function () { Kit.callout(first); }, t0 + 350);
-    if (run && first !== run) later(function () { Kit.callout(run); }, t0 + 1850);
-    if (s >= 2) later(function () { snd('fanfare'); }, t0 + 900);
+    later(function () { Kit.callout(first); }, t0 + 650);
+    if (run && first !== run) later(function () { Kit.callout(run); }, t0 + 2150);
     later(function () { busy = false; }, 1200);
   }
   function lose() {
-    var W = S.W; W.over = true; W.won = false; stopBeat();
+    var W = S.W; W.over = true; W.won = false;
     var stump = S.mode === 'duel' ? 5 : 0;
     if (stump) S.scores[W.setter] += stump;
     S.streak = 0; if (S.mode === 'solo') setLifeStreak(0);
     S.log.push({ w: W.word, cat: W.cat, won: false, misses: W.misses, max: maxMiss(), pts: 0, stump: stump, guesser: W.guesser, setter: W.setter, clue: W.clueShown, guesses: W.guessed.length });
     save();
-    busy = true;
-    // The final stroke is drawn slowly under a single spotlight, then a drum hit
-    later(function () { snd('drum', 0.34); Kit.haptic('heavy'); var sl = app.querySelector('.slate'); if (sl) { sl.classList.remove('shake'); void sl.offsetWidth; sl.classList.add('shake'); } }, 1400);
+    busy = true; ambience(1);
+    // The final stroke is drawn slowly while the heart races, then one heavy thud and the lights go out
+    later(function () {
+      stopBeat(); snd('thud'); ambience(null, 2.5); Kit.haptic('heavy');
+      var sl = app.querySelector('.slate'); if (sl) sl.classList.add('out');
+      jolt();
+    }, 1400);
     later(function () { fresh = { lose: true }; S.phase = 'result'; save(); render(); }, 1700);
     later(function () { busy = false; }, 1750);
   }
   function afterWord() {
     if (busy) return;
-    function go() { S.wi++; if (S.wi >= S.perGame) return finish(); nextWord(); }
-    // Bring the curtain down before the next act
-    var sl = app.querySelector('.slate');
-    if (!sl || sl.classList.contains('cl') || RM) return go();
-    clearFx(); busy = true;
-    sl.querySelectorAll('.cur').forEach(function (c) { c.style.transitionDuration = '.55s'; });
-    sl.classList.add('cl'); snd('curtain', 0.55);
-    later(function () { busy = false; go(); }, 600);
+    S.wi++; if (S.wi >= S.perGame) return finish(); nextWord();
   }
 
-  // ── Heartbeat on the last life ────────────────────────────────────────────
-  var beat = null;
+  // ── Heartbeat: starts with two misses left, races on the last one ────────
+  var beatT = null;
+  function beatOn() { var W = S && S.W; return !!(W && S.phase === 'play' && !W.won && maxMiss() - W.misses <= 2); }
   function syncBeat(delay) {
-    var W = S && S.W, on = !!(W && !W.over && S.phase === 'play' && W.misses === maxMiss() - 1);
-    if (!on) return stopBeat();
-    document.body.classList.add('lastlife');
-    if (beat) return;
-    beat = -1;
-    later(function () {
-      if (beat !== -1) return;
-      var b = function () { snd('heart'); Kit.haptic('tick'); };
-      b(); beat = setInterval(b, 1100);
+    if (!beatOn()) return stopBeat();
+    document.body.classList.toggle('lastlife', maxMiss() - S.W.misses <= 1);
+    if (beatT) return;
+    beatT = setTimeout(function tick() {
+      if (!beatOn()) { beatT = null; return; }
+      var fast = maxMiss() - S.W.misses <= 1;
+      snd('heart', fast); if (fast) Kit.haptic('tick');
+      beatT = setTimeout(tick, fast ? 640 : 1150);
     }, delay || 0);
   }
-  function stopBeat() { if (beat && beat !== -1) clearInterval(beat); beat = null; document.body.classList.remove('lastlife'); }
+  function stopBeat() { clearTimeout(beatT); beatT = null; document.body.classList.remove('lastlife'); }
   function setDread(v) { document.documentElement.style.setProperty('--dread', String(v)); }
 
   // ── Chalk drawing ─────────────────────────────────────────────────────────
@@ -559,12 +649,21 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     for (var k = 0; k <= 28; k++) { var a = a0 + (Math.PI * 2 + .3) * k / 28, rr = rad * (1 + (r() - .5) * .06); d += (k ? ' L' : 'M') + f1(cx + Math.cos(a) * rr) + ' ' + f1(cy + Math.sin(a) * rr); }
     return d;
   }
+  // A hurried, jagged chalk line: short segments that wobble off the straight path
+  function jag(r, x1, y1, x2, y2, amp) {
+    var dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy), n = Math.max(3, Math.round(len / 9)), nx = -dy / len, ny = dx / len, d = '';
+    for (var k = 0; k <= n; k++) {
+      var t = k / n, o = k && k < n ? (r() - 0.5) * 2 * (amp || 2) : 0;
+      d += (k ? ' L' : 'M') + f1(x1 + dx * t + nx * o) + ' ' + f1(y1 + dy * t + ny * o);
+    }
+    return d;
+  }
   function path(d, col, w, cls) { return '<path class="ch ' + (cls || '') + '" pathLength="1" stroke="' + (col || '#f4f1e6') + '" stroke-width="' + (w || 4) + '" d="' + d + '"/>'; }
   // Classic: 10 strokes. Fewer allowed misses means the first strokes are already drawn.
   function classicParts(r) {
     return [
       ln(r, 18, 205, 152, 205), ln(r, 48, 205, 48, 18), ln(r, 42, 20, 140, 20) + ' ' + ln(r, 48, 58, 86, 20), ln(r, 130, 20, 130, 46),
-      circ(r, 130, 62, 16), ln(r, 130, 78, 130, 132), ln(r, 130, 92, 106, 116), ln(r, 130, 92, 154, 116), ln(r, 130, 132, 112, 170), ln(r, 130, 132, 148, 170)
+      circ(r, 130, 62, 16), jag(r, 130, 78, 130, 132, 1.1), jag(r, 130, 92, 106, 116, 1.4), jag(r, 130, 92, 154, 116, 1.4), jag(r, 130, 132, 112, 170, 1.4), jag(r, 130, 132, 148, 170, 1.4)
     ];
   }
   function picture() {
@@ -582,7 +681,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
       if (!freed) {
         for (i = 4; i < shown; i++) { var nw = newMiss && i === shown - 1; out += path(parts[i], W.over ? '#ff9d9d' : '#f4f1e6', 3.6, nw ? 'new' + (isLast ? ' slow' : '') : ''); }
       } else {
-        // Freed: the figure breaks loose, hops for joy beside the gallows and takes a bow
+        // Freed: the rope is cut and the figure drops safely to the ground beside the gallows
         var r2 = rng(seed + 9), cls = fresh && fresh.win ? 'new' : '', go = fresh && fresh.win && !RM ? ' go' : '';
         out += '<g class="hero' + go + '"><g class="upper">' + path(circ(r2, 172, 132, 13), '#ffe28a', 3.6, cls) + path(ln(r2, 172, 145, 172, 178), '#ffe28a', 3.6, cls) +
           path(ln(r2, 172, 156, 152, 146) + ' ' + ln(r2, 172, 156, 192, 146), '#ffe28a', 3.6, cls) +
@@ -597,7 +696,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     var COLS = ['#ffb3c2', '#9fd3ff', '#ffe28a', '#b6f0a8', '#d8b8ff', '#ffc999', '#9ff0e0', '#ffb3c2', '#9fd3ff', '#ffe28a'];
     var left = max - W.misses, sink = W.over && !W.won ? 30 : (W.misses / max) * 16, fly = W.over && W.won;
     out += '<g filter="url(#chalk)">' + path(ln(r, 10, 207, 190, 207), 'rgba(244,241,230,.6)', 3) + '</g>';
-    var g = '<g filter="url(#chalk)">';
+    var g = '<g class="gustw"><g filter="url(#chalk)"><g class="bals" style="--t:' + (W.over ? 0 : f1(W.misses / max)) + '">';
     for (var b = max - 1; b >= 0; b--) {
       var p = P[b], alive = b < left, justPopped = newMiss && b === left;
       if (alive) {
@@ -610,13 +709,14 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
         g += path(burst, COLS[b], 2.4, 'new');
       }
     }
+    g += '</g>';
     // Basket and passenger
     g += path(ln(r, 82, 146, 118, 146) + ' ' + ln(r, 118, 146, 113, 172) + ' ' + ln(r, 113, 172, 87, 172) + ' ' + ln(r, 87, 172, 82, 146), '#e2b37a', 3.6);
     g += path(ln(r, 84, 156, 116, 156), 'rgba(226,179,122,.7)', 2);
     g += path(circ(r, 100, 133, 7), W.over && !W.won ? '#ff9d9d' : '#f4f1e6', 3);
     g += path(ln(r, 100, 140, 100, 147) + (fly ? ' M100 143 L89 132 M100 143 L111 132' : ' M100 143 L91 148 M100 143 L109 148'), '#f4f1e6', 3);
     if (fly) g += path('M96 134 Q100 138 104 134', '#f4f1e6', 2);
-    g += '</g>';
+    g += '</g></g>';
     var anim = fly && fresh && fresh.win ? ' style="animation:floataway 2.6s cubic-bezier(.5,0,.8,.4) .5s forwards"' : fly ? ' style="transform:translateY(-260px)"' : ' style="transform:translateY(' + sink + 'px);transition:transform ' + (W.over ? '.35s cubic-bezier(.6,0,1,.6)' : '.8s var(--ease)') + '"';
     out += '<g class="flyer"' + anim + '>' + g + '</g>';
     // Up, up and away into the night sky
@@ -655,13 +755,12 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
       hud.appendChild(el('span', { class: 'pill' + (ls >= 3 ? ' hot' : ''), html: Kit.icon('flame') + '<b>' + ls + '</b>in a row' }));
       app.appendChild(hud);
     }
-    // The stage: spotlight, curtains (closed at the start of a word and after a loss), valance
-    var lostNow = S.phase === 'result' && !W.won;
-    var slate = el('div', { class: 'slate' + (lostNow ? ' lost' : '') + ((lostNow && !(fresh && fresh.lose)) || (fresh && fresh.open) ? ' cl' : '') });
-    slate.appendChild(el('div', { class: 'spot' }));
-    if (fresh && fresh.win && !RM) slate.appendChild(el('div', { class: 'bloom' }));
-    slate.appendChild(el('div', { class: 'cur l' })); slate.appendChild(el('div', { class: 'cur r' })); slate.appendChild(el('div', { class: 'pool' })); slate.appendChild(el('div', { class: 'val' }));
-    var max = maxMiss(), left = max - W.misses;
+    // The board: a lamp overhead, dark creeping in from the edges, lightning near the end
+    var max = maxMiss(), left = max - W.misses, storm = S.phase === 'play' && !W.over && left <= 2;
+    var slate = el('div', { class: 'slate' + (storm ? ' storm' : '') + (fresh && fresh.lose ? ' out' : '') });
+    slate.appendChild(el('div', { class: 'lamp' }));
+    if (fresh && fresh.win) slate.appendChild(el('div', { class: 'dawn' }));
+    slate.appendChild(el('div', { class: 'shade' })); slate.appendChild(el('div', { class: 'bolt' })); slate.appendChild(el('div', { class: 'dark' }));
     var tray;
     if (W.missed.length) {
       tray = el('span', { class: 'miss tray', 'aria-label': 'Wrong letters: ' + W.missed.join(', ') });
@@ -684,7 +783,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     }
     slate.appendChild(wordEl());
     app.appendChild(el('div', { class: 'frame wood' }, [slate]));
-    var dread = W.over ? (W.won ? 0 : 1) : W.misses / max;
+    var dread = W.over ? (W.won ? 0 : fresh && fresh.lose ? 1 : 0.5) : W.misses / max;
     setDread(dread);
     if (S.phase === 'result') {
       var nx = el('div', { class: 'next' });
@@ -732,30 +831,6 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     });
     return wrap;
   }
-  // ── Spotlight: wide and soft at first, narrowing on the figure as misses climb ─
-  var lastSpot = null;
-  function spotTarget(sl) {
-    var W = S.W, R = sl.getBoundingClientRect();
-    if (S.phase === 'result' && !W.won) {
-      var wr = sl.querySelector('.word').getBoundingClientRect();
-      return { x: wr.left + wr.width / 2 - R.left, y: wr.top + wr.height / 2 - R.top, w: wr.width + 110, h: wr.height * 2.2 + 40, o: 0.94 };
-    }
-    var pr = (sl.querySelector('.pic svg') || sl).getBoundingClientRect();
-    var cx = pr.left + pr.width / 2 - R.left, cy = pr.top + pr.height / 2 - R.top, big = Math.max(R.width, R.height) * 2.4;
-    if (S.phase === 'result') return { x: cx, y: cy, w: big, h: big, o: 0 };
-    var ratio = Math.min(1, W.misses / maxMiss()), tight = Math.max(pr.width, pr.height) * 1.2 + 30;
-    var d = big - (big - tight) * Math.pow(ratio, 0.6);
-    return { x: cx, y: cy, w: d, h: d, o: 0.1 + 0.84 * Math.pow(ratio, 1.25) };
-  }
-  function placeSpot(sl, delay) {
-    var sp = sl && sl.querySelector('.spot'); if (!sp) return;
-    var t = spotTarget(sl);
-    function set(o) { sp.style.left = o.x + 'px'; sp.style.top = o.y + 'px'; sp.style.width = o.w + 'px'; sp.style.height = o.h + 'px'; sp.style.opacity = String(o.o); }
-    if (lastSpot) { sp.style.transition = 'none'; set(lastSpot); void sp.offsetWidth; sp.style.transition = ''; }
-    if (delay) later(function () { set(t); }, delay); else set(t);
-    lastSpot = t;
-  }
-  window.addEventListener('resize', function () { var sl = app.querySelector('.slate'); if (sl && S && S.W) { lastSpot = null; placeSpot(sl); } });
   // A missed letter flies from its key into the "wrong" tray
   function flyLetter(L, slot, done) {
     var key = null; app.querySelectorAll('.key').forEach(function (k) { if (k.textContent === L) key = k; });
@@ -779,26 +854,31 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     for (var k = 0; k < 6; k++) { var b = el('i'); b.style.setProperty('--dx', ((k - 2.5) * 9 + (Math.random() - 0.5) * 6) + 'px'); b.style.setProperty('--dy', (-4 - Math.random() * 10) + 'px'); d.appendChild(b); }
     c.appendChild(d); later(function () { d.remove(); }, 700);
   }
-  function jolt() { var fr = app.querySelector('.frame'); if (fr && !RM) { fr.classList.remove('jolt'); void fr.offsetWidth; fr.classList.add('jolt'); } }
+  function jolt() { if (RM) return; app.classList.remove('jolt'); void app.offsetWidth; app.classList.add('jolt'); later(function () { app.classList.remove('jolt'); }, 400); }
+  function hurt() { var h = el('div', { class: 'hurt' }); document.body.appendChild(h); setTimeout(function () { h.remove(); }, 700); }
+  function gustAnim() { var g = app.querySelector('.gustw'); if (!g || RM) return; g.classList.remove('go'); void g.getBoundingClientRect(); g.classList.add('go'); }
   function afterPaint() {
     var sl = app.querySelector('.slate'), f = fresh; fresh = null;
-    if (!sl) return;
-    placeSpot(sl, f && f.win ? 330 : f && f.lose ? 150 : 0);
-    if (!f) return;
-    if (f.open) later(function () { sl.classList.remove('cl'); snd('curtain', 1.15); }, 220);
+    if (!sl || !f) return;
     if (f.hit) {
+      // Relief: the lamp warms up for a moment
+      sl.classList.add('warm'); later(function () { sl.classList.remove('warm'); }, 800);
+      snd('relief');
       sl.querySelectorAll('.lt.slam').forEach(function (c, i) { later(function () { snd('slam', i); dust(c); }, i * 110 + 200); });
     }
     if (f.miss) {
-      snd('scratch', f.last ? 1.4 : 0.45);
+      snd('hit'); hurt(); jolt();
+      if (S.theme === 'balloons') { snd('gust', 0.05 + 0.06 * S.W.misses / maxMiss()); gustAnim(); }
+      else snd('scratch', f.last ? 1.4 : 0.5);
       var slot = f.missL ? sl.querySelector('.ml.new') : null;
-      var land = function () { if (slot) { slot.classList.remove('new'); slot.classList.add('land'); } snd('crack'); jolt(); };
+      var land = function () { if (slot) { slot.classList.remove('new'); slot.classList.add('land'); } snd('crack'); };
       if (slot) flyLetter(f.missL, slot, land); else later(land, 400);
-      if (!f.last && S.W.misses === maxMiss() - 1) later(function () { Kit.callout('Down to the wire!', '#ff9d9d'); snd('drumroll'); }, 520);
+      if (!f.last && S.W.misses === maxMiss() - 1) later(function () { Kit.callout('Down to the wire!', '#ff9d9d'); snd('rumble', 0.14); }, 520);
     }
     if (f.lose && f.rv) {
-      for (var i = 0; i < f.rv.n; i++) (function (i) { later(function () { snd('drum', 0.2); Kit.haptic('light'); }, f.rv.start + i * f.rv.step + 60); })(i);
-      later(function () { sl.classList.add('cl'); snd('curtain', 1.2); Kit.sfx('lose'); }, f.rv.end + 150);
+      // The answer appears in red, one low hit per letter, then the board fades back
+      for (var i = 0; i < f.rv.n; i++) (function (i) { later(function () { snd('low'); Kit.haptic('light'); }, f.rv.start + i * f.rv.step + 60); })(i);
+      later(function () { sl.classList.remove('out'); setDread(0.5); }, f.rv.end + 250);
     }
   }
   function keyboard() {
@@ -840,7 +920,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   function coverGuess() {
     var W = S.W, guesser = S.players[W.guesser].name;
     cover('hand', 'Pass to ' + guesser, 'The secret word is ready: ' + W.word.replace(/[^A-Z]/g, '').length + ' letters' + (W.word.indexOf(' ') >= 0 ? ', ' + W.word.split(' ').length + ' words' : '') + '.', "I'm ready to guess", function () {
-      S.phase = 'play'; fresh = { open: true }; lastSpot = null; save(); render();
+      S.phase = 'play'; save(); render(); syncMood();
     });
   }
   function setWord() {
@@ -879,7 +959,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 
   // ── The end ───────────────────────────────────────────────────────────────
   function finish() {
-    S.phase = 'over'; clearFx(); stopBeat(); setDread(0);
+    S.phase = 'over'; clearFx(); stopBeat(); setDread(0); syncMood();
     var P = S.players, solo = S.mode === 'solo', hl = [], L = S.log;
     if (solo) {
       var won = L.filter(function (x) { return x.won; });
@@ -934,7 +1014,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     if (S.phase === 'set') S.phase = 'cover-set';
     // A word that was mid-ending when the page closed: show its result
     if (S.phase === 'play' && S.W.over) S.phase = 'result';
-    render(); syncBeat();
+    render(); syncBeat(); syncMood();
   } else showSetup();
   window.__hm = { state: function () { return S; }, words: WORDS };
 })();
