@@ -298,6 +298,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     lockPiece();
   }
   function doHold() {
+    if (G && G.classic) return;
     if (!canAct() || G.holdUsed) { if (G && G.holdUsed && canAct()) Kit.sfx('bad'); return; }
     var t = G.cur.t, h = G.hold;
     G.hold = t; G.holdUsed = true; G.stats.holds++;
@@ -423,7 +424,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       v: 1, board: G.board.map(function (r) { return r.map(function (v) { return v || '.'; }).join(''); }),
       queue: G.queue, hold: G.hold, holdUsed: G.holdUsed, cur: G.cur ? G.cur.t : G.pendingType || null,
       score: G.score, lines: G.lines, level: G.level, startLevel: G.startLevel, b2b: G.b2b, b2bRun: G.b2bRun, combo: G.combo,
-      stats: G.stats, perLevel: G.perLevel, started: G.started, who: G.who, playMs: G.playMs
+      stats: G.stats, perLevel: G.perLevel, started: G.started, who: G.who, playMs: G.playMs, classic: !!G.classic
     };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     Kit.resume.set('Level ' + G.level + ' · ' + fmt(G.score) + ' points');
@@ -450,7 +451,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<li><b>Flick up</b>, tap the <b>Hold</b> box, or press <b>Hold</b> to save the block for later. You can swap once per block.</li>' +
       '<li>The buttons under the board do the same things. Hold an arrow to keep sliding.</li>' +
       '<li>Keyboard: arrows move, Up or X turns, Z turns the other way, Space drops, C or Shift holds, P pauses.</li></ul>' +
-      '<h3>Helpers</h3><ul><li>The see-through shadow shows where the block will land.</li><li>The <b>Next</b> column shows the next five blocks. You always get all seven shapes before any repeats.</li>' +
+      '<h3>Classic or Modern</h3><p>Pick in setup. <b>Classic</b> plays like the original Game Boy and NES Tetris: no Hold, no landing shadow, and only the next block is shown. <b>Modern</b> adds those helpers.</p>' +
+      '<h3>Helpers (Modern)</h3><ul><li>The see-through shadow shows where the block will land.</li><li>The <b>Next</b> column shows the next five blocks. You always get all seven shapes before any repeats.</li>' +
       '<li>A block that lands can still slide or turn for half a second before it locks.</li></ul>' +
       '<h3>Points</h3><ul><li>1 row: 100 · 2 rows: 300 · 3 rows: 500 · <b>4 rows (a Tetris)</b>: 800. All times your level.</li>' +
       '<li><b>T-spin</b>: twist the T block into a tight gap for big points (up to 1,600 × level).</li>' +
@@ -467,11 +469,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     Kit.setup(app, {
       intro: 'Stack the blocks, clear the lines',
       options: [{ id: 'start', label: 'Starting level', help: 'Blocks fall faster at higher levels, and every line is worth more points.',
-        choices: [[1, '1', 'A gentle start. Best for learning.'], [5, '5', 'Already quick. Good if you know the moves.'], [10, '10', 'Fast! For confident players.'], [15, '15', 'Very fast. Experts only.']], value: 1 }],
+        choices: [[1, '1', 'A gentle start. Best for learning.'], [5, '5', 'Already quick. Good if you know the moves.'], [10, '10', 'Fast! For confident players.'], [15, '15', 'Very fast. Experts only.']], value: 1 },
+        { id: 'style', label: 'Style', help: 'Modern Tetris has Hold, a landing shadow and five pieces of preview. Classic plays like the original Game Boy and NES versions.', value: 'modern',
+          choices: [['modern', 'Modern', 'Hold a piece for later, see where it will land, and see the next five pieces.'], ['classic', 'Classic', 'Like the original: no Hold, no landing shadow, and only the next piece is shown.']] }],
       players: { min: 1, max: 1, count: 1, label: 'Player' },
       start: 'Play',
       onStart: function (cfg) {
-        startGame({ who: cfg.players[0] ? cfg.players[0].name : 'Player', startLevel: +cfg.options.start || 1 });
+        startGame({ who: cfg.players[0] ? cfg.players[0].name : 'Player', startLevel: +cfg.options.start || 1, classic: cfg.options.style === 'classic' });
       }
     });
     window.scrollTo(0, 0);
@@ -502,6 +506,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     hintEl = el('div', { class: 'ar-hint ar-desk', text: 'Arrows move · Up turns · Space drops · C holds · P pauses' });
     app.appendChild(wrapEl); app.appendChild(ctlEl); app.appendChild(hintEl);
     press(kHold, function () { doHold(); });
+    if (G && G.classic) { kHold.style.display = 'none'; hintEl.textContent = 'Arrows move · Up turns · Space drops · P pauses'; }
     press(kRot, function () { rotate(1); });
     press(kDrop, function () { hardDrop(); });
     press(kL, function () { dasStart(-1); }, function () { dasStop(-1); });
@@ -664,7 +669,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function startGame(cfg, saved) {
     if (!saved) musicReset();
     G = {
-      who: cfg.who || 'Player', startLevel: cfg.startLevel || 1, board: newBoard(), queue: [], hold: null, holdUsed: false, cur: null,
+      who: cfg.who || 'Player', startLevel: cfg.startLevel || 1, classic: !!cfg.classic, board: newBoard(), queue: [], hold: null, holdUsed: false, cur: null,
       score: 0, lines: 0, level: cfg.startLevel || 1, b2b: false, b2bRun: 0, combo: -1, phase: 'ready', readyT: 0, over: false,
       stats: { tetris: 0, tspins: 0, bestTspin: 0, maxCombo: 0, b2b: 0, maxB2b: 0, pc: 0, pieces: 0, holds: 0, rotations: 0, clears: [0, 0, 0, 0, 0], bestMove: 0, bestMoveName: '', maxLevel: cfg.startLevel || 1 },
       perLevel: {}, started: Date.now(), playMs: 0, action: null
@@ -672,7 +677,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var curType = null;
     if (saved) {
       G.board = saved.board.map(function (s) { return s.split('').map(function (c) { return c === '.' ? '' : c; }); });
-      G.queue = saved.queue || []; G.hold = saved.hold || null; G.holdUsed = !!saved.holdUsed;
+      G.classic = !!saved.classic; G.queue = saved.queue || []; G.hold = saved.hold || null; G.holdUsed = !!saved.holdUsed;
       G.score = saved.score || 0; G.lines = saved.lines || 0; G.level = saved.level || 1; G.startLevel = saved.startLevel || 1;
       G.b2b = !!saved.b2b; G.b2bRun = saved.b2bRun || 0; G.combo = saved.combo == null ? -1 : saved.combo;
       G.stats = Object.assign(G.stats, saved.stats || {}); G.perLevel = saved.perLevel || {}; G.started = saved.started || Date.now();
@@ -866,9 +871,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function drawSide() {
     var lx = 0.1 * C, w = (SIDE - 0.1) * C, top = wellY();
     // HOLD
-    panel(lx, top, w, 3.3 * C);
-    label('HOLD', lx + w / 2, top + 0.55 * C, Math.round(C * 0.55), 'rgba(214,200,255,.7)');
-    if (G.hold) miniPiece(G.hold, lx + w / 2, top + 2.0 * C, C * 0.62, G.holdUsed ? 0.45 : 1);
+    if (!G.classic) {
+      panel(lx, top, w, 3.3 * C);
+      label('HOLD', lx + w / 2, top + 0.55 * C, Math.round(C * 0.55), 'rgba(214,200,255,.7)');
+      if (G.hold) miniPiece(G.hold, lx + w / 2, top + 2.0 * C, C * 0.62, G.holdUsed ? 0.45 : 1);
+    }
     // Action text (TETRIS / T-SPIN / COMBO)
     if (G.action) {
       var a = G.action, al = Math.min(1, a.life / 0.4), pop = 1 + Math.max(0, (a.life - a.max + 0.15) / 0.15) * 0.25, y = top + 4.4 * C;
@@ -887,7 +894,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var rx = (SIDE + GAP * 2 + 10) * C, nh = 10.4 * C;
     panel(rx, top, w, nh);
     label('NEXT', rx + w / 2, top + 0.55 * C, Math.round(C * 0.55), 'rgba(214,200,255,.7)');
-    for (var i = 0; i < 5 && i < G.queue.length; i++) {
+    for (var i = 0; i < (G.classic ? 1 : 5) && i < G.queue.length; i++) {
       var sz = i === 0 ? C * 0.62 : C * 0.5, cy = i === 0 ? top + 2.0 * C : top + 2.75 * C + i * 1.65 * C;
       miniPiece(G.queue[i], rx + w / 2, cy, sz, 1);
     }
@@ -964,7 +971,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var gy = p.y; while (fits(p.t, p.r, p.x, gy + 1)) gy++;
       var cs = CELLS[p.t][p.r];
       g.strokeStyle = COLORS[p.t]; g.globalAlpha = 0.55; g.lineWidth = Math.max(1.5, C * 0.08);
-      cs.forEach(function (c) {
+      if (!G.classic) cs.forEach(function (c) {
         var px = X + (p.x + c[0]) * C, py = Y + (gy + c[1] - HID) * C;
         g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(px + 1, py + 1, C - 2, C - 2);
         rr(g, px + C * 0.08, py + C * 0.08, C * 0.84, C * 0.84, C * 0.12); g.stroke();
@@ -1001,7 +1008,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       g.save(); g.translate(X + WW / 2, Y + WH * 0.42); var sc = 1 + 0.25 * (1 - Math.min(1, k2 * 3)); g.scale(sc, sc);
       g.shadowColor = '#000'; g.shadowBlur = 12; label(txt, 0, 0, Math.round(C * 1.6), txt === 'GO!' ? '#4fd65a' : '#ffd45a'); g.restore();
       if (G.stats.pieces === 0 && TOUCH) {
-        ['Tap to turn', 'Drag to slide', 'Flick down to drop', 'Flick up to hold'].forEach(function (t, i) { label(t, X + WW / 2, Y + WH * 0.56 + i * C * 0.95, Math.round(C * 0.62), 'rgba(255,255,255,.8)'); });
+        (G.classic ? ['Tap to turn', 'Drag to slide', 'Flick down to drop'] : ['Tap to turn', 'Drag to slide', 'Flick down to drop', 'Flick up to hold']).forEach(function (t, i) { label(t, X + WW / 2, Y + WH * 0.56 + i * C * 0.95, Math.round(C * 0.62), 'rgba(255,255,255,.8)'); });
       }
     }
     // Banners
