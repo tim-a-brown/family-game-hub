@@ -240,11 +240,21 @@
 /* iPad landscape: ballpark on the left, scoreboard and controls on the right */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
   .stage.sl-on{max-width:1240px;}
-  .sl{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(360px,1fr);grid-template-rows:auto auto auto minmax(0,1fr) auto;
+  .sl{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(380px,1fr);grid-template-rows:auto auto auto minmax(0,1fr) auto;
     grid-template-areas:"fld sb" "fld mu" "fld mb" "fld mv" "fld go";column-gap:18px;row-gap:10px;}
   .sl .sb,.sl .dz{grid-area:sb;} .sl .fieldbox{grid-area:fld;min-height:0;} .sl .mu,.sl .dslug{grid-area:mu;} .sl .mb{grid-area:mb;}
   .sl .mv{grid-area:mv;align-self:end;} .sl .go{grid-area:go;}
   .ls td{height:30px;line-height:30px;font-size:1.25rem;}
+  .sl .mv{align-self:center;}
+  .bc{padding:14px 16px 14px 17px;}
+  .bc .nm{font-size:1.75rem;} .bc .st{font-size:1.25rem;} .bc .td{font-size:.9rem;margin-top:2px;}
+  .chart{height:34px;} .chart .sg{font-size:.78rem;}
+  .mb{padding:10px 12px 12px;}
+  .tick{font-size:1.45rem;min-height:2.6em;}
+  .mvb{min-height:62px;font-size:1.05rem;}
+  .mvr .who{width:44px;height:44px;font-size:1.05rem;}
+  .go{min-height:72px;font-size:1.9rem;}
+  .dslug .balls i{width:22px;height:22px;}
 }
 </style>
 </head>
@@ -556,7 +566,7 @@
     '<h3>Tired arms</h3><p>The pitcher’s card shows his pitch count. Starters (100+ innings on the back) last about 95 pitches, relievers about 40, then they get hit harder every pitch. Watch the arm meter.</p>' +
     '<h3>Glove twist</h3><p>If you tag positions from the card fronts, the app checks your defense: <b>no catcher</b> in your lineup means runners steal more easily on you, and <b>no shortstop</b> means more errors.</p>' +
     '<h3>Winning</h3><p>Play 3, 6 or 9 innings. A coin flip decides who bats last (the home team). Tied after the last inning? Extra innings. If the home team takes the lead in its last turn at bat, it’s a walk-off win!</p>' +
-    '<h3>Home Run Derby</h3><p>A 5-minute slugfest that needs only the HR number. Each manager picks 3 to 5 sluggers from their cards. Each slugger swings until he makes his outs (any swing that isn’t a home run is an out). More HR on the back means more power. A 450-foot <b>moonshot</b> earns a bonus swing. Most home runs wins; a tie goes to a swing-off.</p>' +
+    '<h3>Home Run Derby</h3><p>A 5-minute slugfest that needs only the HR number. Each manager picks 3 to 5 sluggers from their cards. Each slugger swings until he makes his outs (any swing that isn’t a home run is an out). More HR on the back means more power. A 450-foot <b>moonshot</b> earns a bonus swing (up to 3 per slugger). Most home runs wins; a tie goes to a swing-off.</p>' +
     '<h3>Oops?</h3><p><b>Undo</b> in the menu takes back your last move. The dice are fair: undoing a pitch and pitching again rolls the same dice, so a Challenge card is the only way to re-roll.</p>';
 
   Kit.init({
@@ -1029,9 +1039,8 @@
     if (kind === 'slug') { for (var j = i + 1; j < T.slug.length; j++) if (!T.slug[j]) return { kind: 'slug', i: j }; return nextEmpty(t); }
     if (kind === 'lineup') { for (var a = i + 1; a < 9; a++) if (!T.lineup[a]) return { kind: 'lineup', i: a }; }
     if (kind === 'bench') return null;
-    var n = nextEmpty(t);
-    if (n && kind === 'pitchers' && n.kind === 'pitchers' && n.i <= i) return null;
-    return n;
+    if (kind === 'pitchers') { for (var b = i + 1; b < 3; b++) if (!T.pitchers[b]) return { kind: 'pitchers', i: b }; return null; }
+    return nextEmpty(t);
   }
   // Typing on a laptop keyboard works too
   document.addEventListener('keydown', function (e) {
@@ -1094,10 +1103,16 @@
     var fence = [], track = [], a, p;
     for (a = -45; a <= 45; a += 3) { p = spot(a, fenceFt(a)); fence.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
     for (a = 45; a >= -45; a -= 3) { p = spot(a, fenceFt(a) - 15); track.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
-    var lp = spot(-45, 160), rp = spot(45, 160);
+    var lp = spot(-45, 160), rp = spot(45, 160), stands = [];
+    for (a = -45; a <= 45; a += 3) { p = spot(a, fenceFt(a) + 6); stands.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
+    for (a = 45; a >= -45; a -= 3) { p = spot(a, fenceFt(a) + 380); stands.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
+    var crowd = ['#c9b79a', '#8d6e5a', '#e0d3c0', '#6b7a8f', '#b04a4a', '#3f5f8a', '#d9a441'], dots = '';
+    for (var k = 0; k < 18; k++) dots += '<circle cx="' + (k % 6 * 4 + 2) + '" cy="' + (Math.floor(k / 6) * 4 + 2) + '" r="1.25" fill="' + crowd[(k * 5 + (k >> 1)) % crowd.length] + '" opacity=".75"/>';
     var s = '<svg class="fld" viewBox="0 18 500 412" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
-      '<defs><pattern id="mow" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 410)"><rect width="17" height="34" fill="rgba(255,255,255,.055)"/></pattern>' +
+      '<defs><pattern id="crowd" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#2a3138"/>' + dots + '</pattern>' +
+      '<pattern id="mow" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 410)"><rect width="17" height="34" fill="rgba(255,255,255,.055)"/></pattern>' +
       '<radialGradient id="dirt" cx="50%" cy="80%" r="70%"><stop offset="0" stop-color="#d39a62"/><stop offset="1" stop-color="#b47a45"/></radialGradient></defs>' +
+      '<polygon points="' + stands.join(' ') + '" fill="url(#crowd)"/>' +
       '<polygon points="' + HOME.x + ',' + HOME.y + ' ' + fence.join(' ') + '" fill="#3f9a43"/>' +
       '<polygon points="' + HOME.x + ',' + HOME.y + ' ' + fence.join(' ') + '" fill="url(#mow)"/>' +
       '<polygon points="' + fence.join(' ') + ' ' + track.join(' ') + '" fill="#b98653" opacity=".9"/>' +
@@ -1121,6 +1136,15 @@
 
   // ── Build the play screen once, then paint() updates it ──────────────────
   var V = null;
+  // Tall boxes show more of the grandstand instead of empty felt
+  var ro = window.ResizeObserver ? new ResizeObserver(function () { fitField(); }) : null;
+  function fitField() {
+    if (!V || !V.svg) return;
+    var w = V.svg.clientWidth, h = V.svg.clientHeight; if (!w || !h) return;
+    var vh = Math.max(412, Math.min(620, 500 * h / w)), top = 430 - vh;
+    V.svg.setAttribute('viewBox', '0 ' + top.toFixed(0) + ' 500 ' + vh.toFixed(0));
+  }
+  function watchField() { if (ro && V && V.svg) { ro.disconnect(); ro.observe(V.svg); } fitField(); }
   function buildPlay() {
     app.innerHTML = ''; app.classList.add('sl-on');
     V = { tok: {} };
@@ -1145,6 +1169,7 @@
     var st = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     st.textContent = '.dm{font:900 11px var(--font,sans-serif);fill:rgba(255,255,255,.55);text-anchor:middle;}';
     V.svg.appendChild(st);
+    watchField();
   }
 
   function paint() {
@@ -1274,7 +1299,7 @@
     if (!d) return;
     var sg = segs(d), lab = [], W = V.chart.clientWidth || 340;
     sg.forEach(function (x) {
-      var px = x.v * W, full = px >= x.g.l.length * 6.2 + 6;
+      var px = x.v * W, full = px >= x.g.l.length * (W > 480 ? 9.5 : 6.6) + 6;
       var pct = Math.round(x.v * 100);
       V.chart.appendChild(el('span', { class: 'sg' + (hitKey === x.g.k ? ' hit' : ''), style: { width: (x.v * 100).toFixed(2) + '%', background: x.g.c }, text: full ? x.g.l : px >= 11 ? (x.g.k === 'W' ? 'BB' : x.g.l.charAt(0)) : '' }));
       lab.push(x.g.l + ' ' + pct + '%');
@@ -1311,7 +1336,7 @@
     function rowFor(t, kids) {
       var T = S.teams[t];
       var r = el('div', { class: 'mvr' }, [el('span', { class: 'who', style: { '--c': T.color }, title: T.name, text: T.name.charAt(0).toUpperCase() })]);
-      if (T.cpu) { r.appendChild(el('span', { class: 'cpu', html: Kit.icon('bot') + '<span>' + esc(T.name) + ' is managing ' + (t === bt ? 'the hitters' : 'the pitching') + '</span>' })); r.appendChild(el('button', { type: 'button', class: 'mvb', style: { flex: '0 0 auto', padding: '0 14px' }, text: 'Box score', onclick: openBox })); }
+      if (T.cpu) { r.appendChild(el('span', { class: 'cpu', html: Kit.icon('bot') + '<span>' + esc(T.name) + ' is managing</span>' })); if (t !== bt) r.appendChild(el('button', { type: 'button', class: 'mvb', style: { flex: '0 0 auto', padding: '0 14px' }, text: 'Box score', onclick: openBox })); }
       else kids.forEach(function (k) { r.appendChild(k); });
       return r;
     }
@@ -1996,6 +2021,7 @@
     var st = document.createElementNS(NS, 'style');
     st.textContent = '.dm{font:900 11px var(--font,sans-serif);fill:rgba(255,255,255,.55);text-anchor:middle;}';
     V.svg.appendChild(st);
+    watchField();
   }
   function paintDerby() {
     if (!V || !S.d) return;
@@ -2042,8 +2068,9 @@
       ft = Math.round(fenceFt(a) + 3 + Math.pow(r(), 1.5) * (35 + 75 * pw)); kind = 'hr';
       if (S.d.off) s.off++; else s.hr++;
       s.long = Math.max(s.long, ft);
-      if (ft >= 450) { s.moon++; S.d.bonus++; }
-      text = ft >= 450 ? 'MOONSHOT! ' + nmz + ' hits it ' + ft + ' feet! Bonus swing!' : oneOf(['Gone! ' + ft + ' feet to ' + fieldName(a) + '!', nmz + ' launches one ' + ft + ' feet!', 'See ya! ' + ft + ' feet!', 'Way back... gone! ' + ft + ' feet.']);
+      var gotBonus = false;
+      if (ft >= 450) { s.moon++; if (S.d.bonus < 3) { S.d.bonus++; gotBonus = true; } }
+      text = ft >= 450 ? 'MOONSHOT! ' + nmz + ' hits it ' + ft + ' feet!' + (gotBonus ? ' Bonus swing!' : '') : oneOf(['Gone! ' + ft + ' feet to ' + fieldName(a) + '!', nmz + ' launches one ' + ft + ' feet!', 'See ya! ' + ft + ' feet!', 'Way back... gone! ' + ft + ' feet.']);
     } else {
       var x = r();
       S.d.outs++;
