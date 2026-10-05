@@ -440,8 +440,44 @@
     if (t.wood) { set('--wood-a', t.wood[0]); set('--wood-b', t.wood[1]); }
   }
 
+  // ── Hold the page still when the whole game fits ───────────────────────
+  // On a phone it's easy to drag the whole game up or down by accident (and
+  // iOS rubber-bands it). When the page fits the screen we lock it in place;
+  // anything that really scrolls (setup screens taller than the screen,
+  // sheets, word lists) keeps scrolling.
+  var fitLock = false, fitRaf = 0;
+  function checkFit() {
+    fitRaf = 0;
+    var se = doc.scrollingElement || root, fits = se.scrollHeight <= window.innerHeight + 2;
+    if (fits && window.scrollY > 0) window.scrollTo(0, 0);
+    if (fits !== fitLock) { fitLock = fits; root.classList.toggle('k-fit', fits); }
+  }
+  function queueFit() { if (!fitRaf) fitRaf = requestAnimationFrame(checkFit); }
+  function scrollerFor(t) {
+    for (var n = t; n && n !== doc.body && n !== root; n = n.parentElement) {
+      if (n.nodeType !== 1) continue;
+      var cs = getComputedStyle(n), oy = cs.overflowY, ox = cs.overflowX;
+      if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n;
+      if ((ox === 'auto' || ox === 'scroll') && n.scrollWidth > n.clientWidth + 1) return n;
+    }
+    return null;
+  }
+  function startFitLock() {
+    queueFit();
+    window.addEventListener('resize', queueFit);
+    window.addEventListener('orientationchange', function () { setTimeout(queueFit, 250); });
+    if (window.ResizeObserver) new ResizeObserver(queueFit).observe(doc.body);
+    if (window.MutationObserver) new MutationObserver(queueFit).observe(doc.body, { childList: true, subtree: true });
+    doc.addEventListener('touchmove', function (e) {
+      if (!fitLock || e.touches.length > 1) return;   // pinch-zoom still works
+      if (scrollerFor(e.target)) return;
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+  }
+
   function init(o) {
     opts = o || {};
+    startFitLock();
     game = findGameSafe(opts.id || pageKey());
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
