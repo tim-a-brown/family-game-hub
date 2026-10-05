@@ -163,6 +163,49 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sSoft() { osc('sine', 180, 0, 0.03, 0.03); }
   function sHard() { osc('sine', 150, 0, 0.18, 0.28, { to: 45 }); noise(0, 0.12, 0.14, 'lowpass', 600); }
   function sLock() { osc('triangle', 190, 0, 0.07, 0.07); noise(0, 0.04, 0.05, 'bandpass', 1800); }
+  // ═══ Music: Korobeiniki (the Tetris theme), a 19th-century folk tune ═══
+  // Lead and bass in 8th-note steps: section A twice, then the slow B part,
+  // looping. Tempo rises with the level. Toggle in the menu ('tetris_music').
+  var MUSIC = (function () {
+    var A = [[76,2],[71,1],[72,1],[74,2],[72,1],[71,1], [69,2],[69,1],[72,1],[76,2],[74,1],[72,1],
+             [71,3],[72,1],[74,2],[76,2], [72,2],[69,2],[69,2],[0,2],
+             [0,1],[74,2],[77,1],[81,2],[79,1],[77,1], [76,3],[72,1],[76,2],[74,1],[72,1],
+             [71,2],[71,1],[72,1],[74,2],[76,2], [72,2],[69,2],[69,2],[0,2]];
+    var B = [[76,4],[72,4],[74,4],[71,4],[72,4],[69,4],[68,4],[71,4],
+             [76,4],[72,4],[74,4],[71,4],[72,2],[76,2],[81,4],[80,8]];
+    var bassA = [40,45,44,45,38,36,43,45], bassB = [45,44,45,40,45,44,45,40];
+    var lead = [], bass = [];
+    function addLead(list) { list.forEach(function (n) { lead.push({ m: n[0], len: n[1] }); for (var i = 1; i < n[1]; i++) lead.push(null); }); }
+    function addBass(roots) { roots.forEach(function (rt) { for (var i = 0; i < 8; i++) bass.push(i % 2 ? rt + 12 : rt); }); }
+    addLead(A); addBass(bassA); addLead(A); addBass(bassA); addLead(B); addBass(bassB);
+    return { lead: lead, bass: bass, n: lead.length };
+  })();
+  var music = { step: 0, next: null, gain: null, timer: 0 };
+  function musicOn() { try { return localStorage.getItem('tetris_music') !== '0'; } catch (e) { return true; } }
+  function musicPlaying() { return musicOn() && view === 'game' && G && !G.over && !paused && G.phase !== 'ready' && document.visibilityState === 'visible'; }
+  function musicTick() {
+    if (!musicPlaying()) { music.next = null; return; }
+    var a = ac(); if (!a || a.state !== 'running') { music.next = null; return; }
+    if (!music.gain) { music.gain = a.createGain(); music.gain.gain.value = 0.55; music.gain.connect(master); }
+    var bpm = Math.min(200, 132 + (G.level - 1) * 5), stepDur = 30 / bpm;
+    if (music.next == null || music.next < a.currentTime) music.next = a.currentTime + 0.06;
+    while (music.next < a.currentTime + 0.2) {
+      var i = music.step % MUSIC.n, L = MUSIC.lead[i], Bn = MUSIC.bass[i], t = music.next;
+      if (L && L.m) note(a, 'square', mtof(L.m), t, L.len * stepDur * 0.92, 0.05, 2600);
+      if (Bn) note(a, 'triangle', mtof(Bn), t, stepDur * 0.8, 0.11, 0);
+      music.step++; music.next += stepDur;
+    }
+  }
+  function note(a, type, f, t, dur, vol, lp) {
+    var n = a.createOscillator(), g = a.createGain(), out = n;
+    n.type = type; n.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.setValueAtTime(vol * 0.8, t + Math.max(0.01, dur - 0.04)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    if (lp) { var f2 = a.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = lp; n.connect(f2); out = f2; }
+    out.connect(g); g.connect(music.gain); n.start(t); n.stop(t + dur + 0.05);
+  }
+  function musicReset() { music.step = 0; music.next = null; }
+  music.timer = setInterval(musicTick, 40);
   function sHold() { osc('sine', 520, 0, 0.12, 0.06, { to: 300 }); noise(0, 0.06, 0.03, 'bandpass', 1600); }
   function sClear(n, tsp) {
     var base = [0, 72, 74, 76, 79][n];
@@ -395,7 +438,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     onNew: function () { clearSave(); showSetup(); },
     menu: [
       { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show('tetris', 'Tetris'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Tetris: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Tetris: past games' }); } },
+      { icon: 'sound', label: 'Music on / off', onClick: function () { var on = !musicOn(); try { localStorage.setItem('tetris_music', on ? '1' : '0'); } catch (e) {} Kit.toast(on ? 'Music on' : 'Music off'); } }
     ],
     rules:
       '<p class="goal">Stack the falling blocks and fill whole rows. A full row disappears. Keep going as long as you can!</p>' +
@@ -618,6 +662,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
   function startGame(cfg, saved) {
+    if (!saved) musicReset();
     G = {
       who: cfg.who || 'Player', startLevel: cfg.startLevel || 1, board: newBoard(), queue: [], hold: null, holdUsed: false, cur: null,
       score: 0, lines: 0, level: cfg.startLevel || 1, b2b: false, b2bRun: 0, combo: -1, phase: 'ready', readyT: 0, over: false,
