@@ -105,6 +105,12 @@ var GameIcon = (function () {
     },
     cubehopper: function (c) { function cube(x, y, top) { return path('M' + x + ' ' + y + 'l4 -2.3 4 2.3 -4 2.3z', top) + path('M' + x + ' ' + y + 'l4 2.3v4.6l-4 -2.3z', K, ' opacity=".55"') + path('M' + (x + 8) + ' ' + y + 'l-4 2.3v4.6l4 -2.3z', K, ' opacity=".3"'); } return cube(8, 6, Y) + cube(4, 12.6, c) + cube(12, 12.6, Y) + circ(12, 3.2, 1.8, O); },
     paddleball: function (c) { return rect(2.5, 6, 3, 12, 1.5, W) + rect(18.5, 6, 3, 12, 1.5, c) + rect(11.5, 2, 1, 20, .5, W, ' opacity=".35"') + rect(13, 9, 3.4, 3.4, .6, W); },
+    sandlot: function (c) {   // a vintage baseball card, tilted, with a ball in front
+      return '<g transform="rotate(-8 10 12)">' + rect(3.5, 2.5, 12.5, 17.5, 1.6, CREAM, ' stroke="' + K + '" stroke-width="1"') +
+        rect(5, 4, 9.5, 10, 1, c) + rect(5, 15.2, 9.5, 1.6, .8, R) + rect(5, 17.6, 6, 1, .5, S) + '</g>' +
+        circ(16.6, 16.4, 4.6, W, ' stroke="' + K + '" stroke-width="1"') +
+        path('M13.6 13.2c1.4 1 2 2.4 2 3.4s-.6 2.4-2 3.4M19.6 13.2c-1.4 1-2 2.4-2 3.4s.6 2.4 2 3.4', null, ' stroke="' + R + '" stroke-width="1" stroke-linecap="round"');
+    },
     axisallies: function (c) {   // a plastic tank piece with a white star, over a strip of map
       var star = 'M12 6.1l1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z';
       return rect(2.5, 13.2, 19, 5.6, 2.8, K) + circ(5.4, 16, 1.5, S) + circ(9.1, 16, 1.5, S) + circ(12.8, 16, 1.5, S) + circ(16.5, 16, 1.5, S) + circ(19.4, 16, 1.2, S) +
