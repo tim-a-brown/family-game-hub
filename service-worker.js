@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v71-2026-10-05-axis-allies';
+const CACHE_VERSION = 'v72-2026-10-05-lorcana-play';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -93,6 +93,7 @@ const PRECACHE_URLS = [
   '/games/dominoes.html',
   '/games/go.html',
   '/games/axisallies.html',
+  '/games/lorcana-play.html',
   '/games/axisallies-score.html',
   '/games/marblesolitaire.html',
   '/games/farkle.html',
