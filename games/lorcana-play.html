@@ -12,6 +12,7 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="lorcana-stories.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    Disney Lorcana, played on one device. Real card data and art are loaded at
@@ -207,6 +208,19 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-in{touch-action:pan-y;}
 .lz.noanim{transition:none;}
 .lz-card.in-r{animation:lzInR .24s ease-out;}
+.lz{overflow-x:hidden;}
+.lz-flow{position:relative;width:100%;display:flex;justify-content:center;perspective:1100px;--cu:min(52vh,104vw,520px);}
+.lz-side{position:absolute;top:0;left:50%;width:calc(var(--cu) * .716);height:var(--cu);margin-left:calc(var(--cu) * -.358);padding:0;border:0;border-radius:calc(var(--cu) * .045);overflow:hidden;background:#1d1a2c;box-shadow:0 12px 34px rgba(0,0,0,.6);cursor:pointer;transition:transform .3s var(--ease),opacity .3s;}
+.lz-side img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.lz-side .face{--cu:inherit;}
+.lz-side::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.38);}
+.lz-side.l1{transform:translateX(calc(var(--cu) * -.46)) rotateY(48deg) scale(.82);z-index:0;}
+.lz-side.r1{transform:translateX(calc(var(--cu) * .46)) rotateY(-48deg) scale(.82);z-index:0;}
+.lz-side.l2{transform:translateX(calc(var(--cu) * -.78)) rotateY(55deg) scale(.68);z-index:-1;opacity:.75;}
+.lz-side.r2{transform:translateX(calc(var(--cu) * .78)) rotateY(-55deg) scale(.68);z-index:-1;opacity:.75;}
+.lz-flow .lz-card{z-index:1;}
+.lz-story{float:right;margin:4px 0 6px 12px;max-width:48%;text-align:right;font-family:var(--serif);font-style:italic;font-size:1rem;line-height:1.15;color:var(--gilt);}
+.lz-story small{display:block;font-family:var(--font);font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:2px;}
 .lz-card.in-l{animation:lzInL .24s ease-out;}
 @keyframes lzInR{from{transform:translateX(38%) rotate(3deg);opacity:.2}}
 @keyframes lzInL{from{transform:translateX(-38%) rotate(-3deg);opacity:.2}}
@@ -241,6 +255,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   .lz-card{--cu:min(82vh,560px);}
   .lz-card.loc{--cu:min(60vw,70vh,620px);}
   .lz-info{max-width:430px;}
+  .lz-flow{--cu:min(82vh,560px);width:auto;flex:none;}
+  .lz-flow:has(.lz-side){--cu:min(74vh,500px);padding:0 calc(var(--cu) * .2);}
+  .lz-flow:has(.lz-side) .lz-card{--cu:min(74vh,500px);}
+  .lz-side.l1{transform:translateX(calc(var(--cu) * -.34)) rotateY(50deg) scale(.82);}
+  .lz-side.r1{transform:translateX(calc(var(--cu) * .34)) rotateY(-50deg) scale(.82);}
+  .lz-side.l2,.lz-side.r2{display:none;}
 }
 
 /* Sheets used by this game */
@@ -484,7 +504,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       s: num(c.strength), w: num(c.willpower), l: num(c.lore), mv: num(c.move_cost),
       r: c.rarity ? String(c.rarity) : '', set: c.set ? String(c.set.code || c.set.id || '') : '',
       no: c.collector_number != null ? String(c.collector_number) : '',
-      im: { s: im.small || im.normal || im.large || '', l: im.large || im.normal || im.small || '' }
+      im: { s: im.small || im.normal || im.large || '', l: im.large || im.normal || im.small || '' },
+      st: String(c.franchise || c.story || c.movie || '')
     };
   }
   // Fallback source (https://api.lorcana-api.com/bulk/cards)
@@ -497,7 +518,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       id: 'la_' + String(c.Unique_ID || (c.Set_Num + '-' + c.Card_Num)), n: i > 0 ? nm.slice(0, i) : nm, v: i > 0 ? nm.slice(i + 3) : '',
       c: num(c.Cost), k: !!c.Inkable, ink: String(c.Color || '').split(/\s*[,\/-]\s*/).filter(Boolean), ty: ty, cl: cls,
       tx: String(c.Body_Text || '').replace(/\s*\n\s*/g, '\n'), kwl: [], s: num(c.Strength), w: num(c.Willpower), l: num(c.Lore), mv: num(c.Move_Cost),
-      r: String(c.Rarity || ''), set: String(c.Set_Num || c.Set_ID || ''), no: String(c.Card_Num || ''), im: { s: c.Image || '', l: c.Image || '' }
+      r: String(c.Rarity || ''), set: String(c.Set_Num || c.Set_ID || ''), no: String(c.Card_Num || ''), im: { s: c.Image || '', l: c.Image || '' }, st: String(c.Franchise || '')
     };
   }
   // Card text uses {I} ink, {E} exert, {S} strength, {W} willpower, {L} lore.
@@ -987,7 +1008,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 
   // ── Loading and caching ─────────────────────────────────────────────────
   var DB = { cards: [], byId: {}, unique: [], byFull: {}, sets: [], status: 'idle', src: '', at: 0, note: '', subs: [] };
-  function dbNotify() { DB.subs.slice().forEach(function (f) { try { f(); } catch (e) { console.warn(e); } }); }
+  function dbNotify() { setTimeout(fillStories, 4000); DB.subs.slice().forEach(function (f) { try { f(); } catch (e) { console.warn(e); } }); }
   function idbOpen() {
     return new Promise(function (res, rej) {
       if (!window.indexedDB) return rej(new Error('no indexedDB'));
@@ -1072,6 +1093,28 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     if (!list.length) DB.note = 'The card list came back empty.';
   }
   function setOrd(s) { var n = parseInt(s, 10); return isFinite(n) ? n : 99; }
+  // ── Which film or show a card is from ──
+  // Bundled list (lorcana-stories.js), plus names from the backup card source for
+  // newer sets, fetched once in the background and kept on the device.
+  var STORYX = 'lorcana_story_x', storyX = lsGet(STORYX, null) || { at: 0, m: {} };
+  function storyOf(d) {
+    if (!d) return '';
+    var s = d.st || '', L = window.LORC_STORY, k = String(d.n || '').toLowerCase();
+    if (!s && L) { var vi = L.v[k + '|' + String(d.v || '').toLowerCase()]; s = vi != null ? L.s[vi] : L.n[k] != null ? L.s[L.n[k]] : ''; }
+    if (!s) s = storyX.m[k] || '';
+    return s && s !== 'Lorcana' ? s : '';
+  }
+  var storyTried = false;
+  function fillStories() {
+    if (storyTried || DB.status !== 'ready') return; storyTried = true;
+    var missing = DB.unique.filter(function (d) { return d.t === 'character' && !storyOf(d); });
+    if (!missing.length || Date.now() - (storyX.at || 0) < 3 * 864e5) return;
+    fetchJSON(API2 + '/bulk/cards', 45000).then(function (j) {
+      var arr = Array.isArray(j) ? j : j.results || j.data || [], m = storyX.m || {};
+      arr.forEach(function (c) { if (!c || !c.Name || !c.Franchise) return; var nm = String(c.Name), i = nm.indexOf(' - '); m[(i > 0 ? nm.slice(0, i) : nm).toLowerCase()] = String(c.Franchise); });
+      storyX = { at: Date.now(), m: m }; lsSet(STORYX, storyX);
+    }).catch(function () { storyX.at = Date.now(); lsSet(STORYX, storyX); });
+  }
   function download(progress) {
     return loadLorcast(progress).catch(function (e) { console.warn('Lorcast failed', e); return loadLorcanaApi(progress); });
   }
@@ -2506,7 +2549,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   }
 
   var uidN = 0;
-  function compactOf(d) { return { id: d.id, n: d.n, v: d.v, c: d.c, k: d.k, ink: d.ink, ty: d.ty, cl: d.cl, tx: d.tx, kwl: d.kwl, s: d.s, w: d.w, l: d.l, mv: d.mv, r: d.r, set: d.set, no: d.no, im: d.im }; }
+  function compactOf(d) { return { id: d.id, n: d.n, v: d.v, c: d.c, k: d.k, ink: d.ink, ty: d.ty, cl: d.cl, tx: d.tx, kwl: d.kwl, s: d.s, w: d.w, l: d.l, mv: d.mv, r: d.r, set: d.set, no: d.no, im: d.im, st: d.st }; }
   function newSt() { return { q: 0, ql: 0, big: null, ban: 0, lost: 0, played: 0, songs: [], shifts: [], loc: 0, chal: 0, kills: [], inked: 0, turns: 0, fx: 0 }; }
   function newGame(cfg, choices) {
     tok++; closeOverlays(); Kit.handoff.close(); DEF = {}; uidN = 0; finishing = false;
@@ -3017,7 +3060,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     if (!S || S.phase !== 'mull') return;
     var hand = S.P[S.mullWho].hand, i = hand.indexOf(u), out = !!ui.mullSel[u];
     zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); mullZoom(u); } }],
-      { i: i, n: hand.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); } });
+      { i: i, n: hand.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; } });
   }
   function render() {
     if (!S) return;
@@ -3341,7 +3384,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     var inner = el('div', { class: 'lz-in' });
     var card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : '') });
     card.appendChild(artEl(d, true));
-    inner.appendChild(card);
+    // Coverflow: the neighbors sit angled behind the card; tap one to go to it
+    var flow = el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') });
+    if (nav && nav.peek && nav.n > 1) [-2, -1, 1, 2].forEach(function (k) {
+      var pd = nav.peek(k); if (!pd) return;
+      var sd = el('button', { type: 'button', class: 'lz-side ' + (k < 0 ? 'l' : 'r') + Math.abs(k), 'aria-label': pd.full, onclick: function (e) { e.stopPropagation(); nav.go(k); } });
+      sd.appendChild(artEl(pd, true));
+      flow.appendChild(sd);
+    });
+    flow.appendChild(card);
+    inner.appendChild(flow);
     var info = el('div', { class: 'lz-info', html: (nav && nav.n > 1 ? '<div class="lz-pos">' + (nav.i + 1) + ' of ' + nav.n + '</div>' : '') + infoHTML });
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' });
@@ -3391,9 +3443,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     Kit.sfx(swapping ? 'tap' : 'flip');
     return ov;
   }
-  function openZoom(u) {
+  function openZoom(u, dir) {
     var d = DD(u), z = zoneOf(u), acts = [], whys = [];
-    var info = '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '<div class="meta">' + defMeta(d) + '</div>' + statusHTML(u, z) +
+    var info = headHTML(d) + '<div class="meta">' + defMeta(d) + '</div>' + statusHTML(u, z) +
       '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
     var c = C(u), pi = S.cur, my = canAct() && c.o === pi;
     // Only what you can do right now becomes a button
@@ -3426,11 +3478,17 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
         acts.push({ label: Kit.icon('sparkle') + '<span>' + esc(ab.name ? 'Use ' + titleCase(ab.name) + ' by hand' : 'Apply this card’s text by hand') + '</span>', full: true, go: function () { manualAb(u, ab, c.o, function () {}); } });
       });
     }
-    zoomShell(d, info, acts, my ? whys.slice(0, 1) : null);
+    // Your own hand: swipe through it
+    var nav = null;
+    if (z && z.z === 'hand' && handShown(z.pi)) {
+      var hand = S.P[z.pi].hand, hi = hand.indexOf(u);
+      nav = { i: hi, n: hand.length, dir: dir || 0, go: function (step) { var j = hi + step; if (j >= 0 && j < hand.length) openZoom(hand[j], step); }, peek: function (k) { var x = hand[hi + k]; return x ? DD(x) : null; } };
+    }
+    zoomShell(d, info, acts, my ? whys.slice(0, 1) : null, nav);
   }
   function showReveal(u, how) {
     var d = DD(u), p = S.P[C(u).o];
-    var ov = zoomShell(d, '<div class="lz-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + (how && /^Used/.test(how) ? '' : ' played') + '</div><h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') +
+    var ov = zoomShell(d, '<div class="lz-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + (how && /^Used/.test(how) ? '' : ' played') + '</div>' + headHTML(d) +
       (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div><p class="lz-tap">Tap to continue</p>', [], null, null, { tapClose: true });
     ov.classList.add('reveal');
     Kit.haptic('light');
@@ -3702,8 +3760,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     box.innerHTML = S.log.slice().reverse().map(function (l) { return '<p' + (l.p >= 0 ? ' style="border-left:3px solid ' + S.P[l.p].color + ';padding-left:8px"' : '') + '>' + esc(l.t) + '</p>'; }).join('') || '<p>Nothing yet.</p>';
     Kit.sheet({ title: 'Game log', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
+  function headHTML(d) {
+    var st = storyOf(d);
+    return (st ? '<div class="lz-story"><small>From</small>' + esc(st) + '</div>' : '') + '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '');
+  }
   function zoomDef(d, acts, nav) {
-    zoomShell(d, '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
+    zoomShell(d, headHTML(d) + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -3843,7 +3905,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       zoomDef(d, [
         { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
         { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
-      ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); } } : null);
+      ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
     }
     function paintGrid(keepScroll) {
       var st = grid.scrollTop, list = DB.unique.filter(matches);
