@@ -117,6 +117,28 @@
 .ck-verdict.bad{background:color-mix(in srgb,var(--red) 16%,transparent);color:#ffc2c8;}
 .ck-verdict b{font-family:var(--display);font-weight:400;font-size:1.3rem;display:block;margin-bottom:2px;color:#fff;}
 .ck-acts{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+
+.bcol{display:contents;}
+/* ── iPad portrait: bigger cage, ball and called board ── */
+@media (min-width:700px) and (orientation:portrait){
+  .stage{max-width:680px;}
+  .machine{--cw2:220px;}
+  .ball.big{--s:150px;}
+  .fl,.fc{height:40px;font-size:1.05rem;}
+  .frow{grid-template-columns:34px repeat(15,1fr);gap:3px;}
+  .frow + .frow{margin-top:4px;}
+}
+/* ── Wide landscape (iPad, laptop): machine and buttons on the left, called board on the right ── */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  .stage:has(> .bcol){max-width:1120px;display:flex;align-items:flex-start;gap:26px;}
+  .bcol{display:block;}
+  .bcol.a{flex:0 1 460px;min-width:380px;}
+  .bcol.b{flex:1 1 0;min-width:0;padding-top:4px;}
+  .machine{--cw2:min(190px,calc(100dvh - 520px));}
+  .fl,.fc{height:clamp(30px,calc((100dvh - 230px) / 5 - 6px),64px);font-size:1.1rem;}
+  .frow{grid-template-columns:32px repeat(15,1fr);gap:3px;}
+  .frow + .frow{margin-top:5px;}
+}
 </style>
 </head>
 <body>
@@ -221,6 +243,10 @@
       R.recent
     ]);
     R.machine = el('section', { class: 'machine wood' }, [felt]);
+    // Two columns on wide landscape screens (display:contents everywhere else)
+    var app0 = app, colA = el('div', { class: 'bcol a' }), colB = el('div', { class: 'bcol b' });
+    app0.appendChild(colA); app0.appendChild(colB);
+    app = colA;
     app.appendChild(R.machine);
 
     R.undo = el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Undo last call', html: icon('undo'), onclick: function () { undo(); } });
@@ -241,6 +267,7 @@
     } });
     var check = el('button', { type: 'button', class: 'chip checkbtn', html: icon('check') + '<span>Check a card</span>', onclick: function () { openCheck(); } });
     app.appendChild(el('div', { class: 'opts' }, [R.voice, R.every, check]));
+    app = colB;
 
     R.pat = el('button', { type: 'button', class: 'patbtn', onclick: function () { choosePattern(); } });
     app.appendChild(el('div', { class: 'bhead' }, [el('div', { class: 'label', text: 'Called numbers' }), R.pat]));
@@ -258,6 +285,7 @@
     app.appendChild(board);
     R.foot = el('div', { class: 'bfoot' });
     app.appendChild(R.foot);
+    app = app0;
 
     cage = makeCage(canvas);
     cage.fill(S.pool);

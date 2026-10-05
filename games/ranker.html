@@ -142,6 +142,16 @@
 .snack span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .snack button{flex:none;border:0;border-radius:999px;min-height:40px;padding:0 16px;background:#1a1033;color:#fff;font-weight:900;}
 .gbar .icon-btn.lists .ico{width:22px;height:22px;}
+
+.rcol{display:contents;}
+/* ── Wide landscape (iPad, laptop): title and podium on the left, the list on the right ── */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  #app.stage{max-width:1120px;display:flex;align-items:flex-start;gap:28px;}
+  .rcol{display:block;}
+  .rcol.a{flex:1 1 0;min-width:0;position:sticky;top:64px;}
+  .rcol.b{flex:1 1 0;min-width:0;padding-top:6px;}
+  .foot-in{max-width:1120px;padding-left:calc(50% + 14px);}
+}
 </style>
 </head>
 <body>
@@ -387,16 +397,19 @@
   // ── Layout ────────────────────────────────────────────────────────────
   var titleEl = el('h1', { class: 'rk-title', contenteditable: 'true', spellcheck: 'false', 'aria-label': 'List name' });
   var dotEl = el('span', { class: 'rk-dot' }), statusEl = el('span');
-  app.appendChild(el('div', { class: 'rk-head' }, [titleEl, el('div', { class: 'rk-status' }, [dotEl, statusEl])]));
+  // Two columns on wide landscape screens (display:contents everywhere else)
+  var colA = el('div', { class: 'rcol a' }), colB = el('div', { class: 'rcol b' });
+  app.appendChild(colA); app.appendChild(colB);
+  colA.appendChild(el('div', { class: 'rk-head' }, [titleEl, el('div', { class: 'rk-status' }, [dotEl, statusEl])]));
   var podEl = el('div', { class: 'pod' });
-  app.appendChild(el('section', { class: 'podium wood', 'aria-label': 'Top three' }, [el('div', { class: 'felt-in' }, [podEl])]));
-  var dupHost = el('div'); app.appendChild(dupHost);
-  var listEl = el('div', { class: 'rk-list' }); app.appendChild(listEl);
+  colA.appendChild(el('section', { class: 'podium wood', 'aria-label': 'Top three' }, [el('div', { class: 'felt-in' }, [podEl])]));
+  var dupHost = el('div'); colB.appendChild(dupHost);
+  var listEl = el('div', { class: 'rk-list' }); colB.appendChild(listEl);
   var addInput = el('input', { class: 'input', type: 'text', placeholder: 'Add an item', maxlength: 120, autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'New item' });
   var addBtn = el('button', { type: 'button', class: 'btn btn-soft', html: icon('plus') + '<span>Add</span>', onclick: function () { tryAdd(true); } });
-  app.appendChild(el('div', { class: 'add' }, [addInput, addBtn]));
-  var suggestHost = el('div'); app.appendChild(suggestHost);
-  var hintEl = el('p', { class: 'hint' }); app.appendChild(hintEl);
+  colB.appendChild(el('div', { class: 'add' }, [addInput, addBtn]));
+  var suggestHost = el('div'); colB.appendChild(suggestHost);
+  var hintEl = el('p', { class: 'hint' }); colB.appendChild(hintEl);
 
   var saveBtn = el('button', { type: 'button', class: 'btn btn-primary', onclick: function () { if (!saveBtn.disabled) saveList(); } });
   var shareBtn = el('button', { type: 'button', class: 'btn btn-soft share', 'aria-label': 'Share', html: icon('share') + '<span>Share</span>', onclick: function () { openShare(); } });
