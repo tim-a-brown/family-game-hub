@@ -572,8 +572,15 @@ document.addEventListener('visibilitychange', function () {
     return b;
   }
 
+  // Games with a save from the last week, as shown in Keep playing: id -> file to open
+  function goingGames() {
+    var m = {}, week = Date.now() - 7 * 864e5, map = {};
+    try { map = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {}
+    Object.keys(map).forEach(function (id) { var g = findGame(id), r = map[id]; if (g && r && r.ts > week) m[id] = r.file || g.play; });
+    return m;
+  }
   // Surprise: a raffle wheel of games, with its own filters (spin.js)
-  $('surprise').addEventListener('click', function () { Kit.sfx('pop'); Kit.haptic('light'); Spin.open({ launch: launch, isFav: isFav }); });
+  $('surprise').addEventListener('click', function () { Kit.sfx('pop'); Kit.haptic('light'); Spin.open({ launch: launch, isFav: isFav, going: goingGames }); });
   $('logo').innerHTML = Kit.icon('dice'); $('surprise-ic').innerHTML = Kit.icon('shuffle');
   $('logo').addEventListener('click', function () { Kit.sfx('pop'); Kit.confetti({ count: 60 }); });
 

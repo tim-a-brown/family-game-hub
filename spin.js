@@ -36,6 +36,7 @@ var Spin = (function () {
     '.sp-chips .chip.on .ico{color:#fff;}' +
     '.sp-chips .chip.fav{--cc:var(--yellow);}' +
     '.sp-chips .chip.fav.on{color:#2b1a00;}.sp-chips .chip.fav.on .ico{color:#2b1a00;}' +
+    '.sp-chips .chip.going{--cc:#5eead4;}.sp-chips .chip.going.on{color:#06302b;}.sp-chips .chip.going.on .ico{color:#06302b;}' +
     '.sp-chips .chip.all{--cc:#fff;}.sp-chips .chip.all.on{color:var(--bg);}.sp-chips .chip.all.on .ico{color:var(--bg);}' +
     '.sp-n{font-size:.8rem;font-weight:800;color:var(--text-3);display:flex;align-items:center;gap:8px;min-height:22px;}' +
     '.sp-n{flex-wrap:wrap;column-gap:4px;row-gap:0;}.sp-n button{white-space:nowrap;border:0;background:none;color:var(--accent-2,#9db4ff);font:inherit;font-weight:900;padding:2px 4px;display:inline-flex;align-items:center;gap:4px;}' +
@@ -65,7 +66,8 @@ var Spin = (function () {
     if (!document.getElementById('sp-css')) { var st = document.createElement('style'); st.id = 'sp-css'; st.textContent = css; document.head.appendChild(st); }
     var f = load();
     f.cats = Array.isArray(f.cats) ? f.cats : [];   // [] = every type
-    f.who = f.who || 'any'; f.fav = !!f.fav;
+    f.who = f.who || 'any'; f.fav = !!f.fav; f.going = !!f.going;
+    var going = o.going ? o.going() : {};
     f.off = Array.isArray(f.off) ? f.off : [];   // games taken off the wheel (hold a wedge)
 
     var root = el('div', { class: 'sp', role: 'dialog', 'aria-label': 'Spin for a game' });
@@ -81,6 +83,7 @@ var Spin = (function () {
     function fits(g) {
       if (f.off.indexOf(g.id) >= 0) return false;
       if (f.fav && !o.isFav(g)) return false;
+      if (f.going && !going[g.id]) return false;
       if (f.cats.length && f.cats.indexOf(g.cat) < 0) return false;
       if (f.who !== 'any') {
         var n = +f.who, max = g.max === 0 ? 99 : g.max;
@@ -107,6 +110,8 @@ var Spin = (function () {
       }
       chip('all', 'All types', 'tiles', 'all', null, !f.cats.length, function () { f.cats = []; changed(); });
       chip('fav', 'Favorites', 'star', 'fav', null, f.fav, function () { f.fav = !f.fav; changed(); });
+      var nGo = Object.keys(going).length;
+      if (nGo || f.going) chip('going', 'In progress' + (nGo ? ' (' + nGo + ')' : ''), 'history', 'going', null, f.going, function () { f.going = !f.going; changed(); });
       GAME_CATS.forEach(function (c) {
         if (c.id === 'tools') return;   // scorekeepers and timers aren't games to spin for
         var on = f.cats.indexOf(c.id) >= 0;
@@ -141,7 +146,7 @@ var Spin = (function () {
       if (!keep) wedges = spread(shuffle(pool.slice()).slice(0, MAXW));
       else wedges = wedges.filter(function (g) { return pool.indexOf(g) >= 0; });
       nLine.innerHTML = '';
-      var txt = !pool.length ? 'No games match these filters' :
+      var txt = !pool.length ? (f.going && !Object.keys(going).length ? 'No games in progress right now' : 'No games match these filters') :
         pool.length > MAXW ? MAXW + ' of ' + pool.length + ' on the wheel' : pool.length + (pool.length === 1 ? ' game' : ' games') + ' on the wheel';
       nLine.appendChild(el('span', { text: txt }));
       if (pool.length > MAXW) {
@@ -508,8 +513,9 @@ var Spin = (function () {
         el('span', { html: GameIcon(g.id), style: { display: 'contents' } }),
         el('span', { class: 'tx' }, [el('b', { text: g.name }), el('small', { text: g.tag })])
       ]);
-      var play = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('play') + '<span>Play ' + Kit.esc(g.name) + '</span>' });
-      play.addEventListener('click', function () { o.launch(g); });
+      var res = going[g.id];
+      var play = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon(res ? 'history' : 'play') + '<span>' + (res ? 'Resume ' : 'Play ') + Kit.esc(g.name) + '</span>' });
+      play.addEventListener('click', function () { if (res) { Kit.sfx('pop'); location.href = 'games/' + res + '.html'; } else o.launch(g); });
       var again = el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('shuffle') + '<span>Spin again</span>' });
       again.addEventListener('click', function () { spin(); });
       var nope = el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('close') + '<span>Not this one</span>' });
