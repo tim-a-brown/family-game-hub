@@ -58,7 +58,7 @@
   border:2px dashed #ffe58a;background:rgba(255,229,138,.18);animation:spin 3s linear infinite;}
 .tgt.cap{border-color:#ff6b6b;background:rgba(255,80,80,.22);}
 .tgt.swap{border-color:#8fd3ff;background:rgba(120,200,255,.22);}
-.tgt b{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:calc(var(--ms) * .5);color:#fff;text-shadow:0 1px 2px #000;animation:spin 3s linear infinite reverse;}
+.tgt b{position:absolute;inset:0;display:grid;place-items:center;font-weight:900;font-size:calc(var(--mpx,20px) * .62);line-height:1;color:#fff;text-shadow:0 1px 2px #000;animation:spin 3s linear infinite reverse;}
 .tgt b .ico{width:70%;height:70%;filter:drop-shadow(0 1px 1px #000);}
 @keyframes spin{to{transform:rotate(360deg);}}
 
@@ -79,6 +79,7 @@
 .opts{display:flex;flex-wrap:wrap;gap:6px;}
 .opts:empty{display:none;}
 .opts .btn{flex:1 1 auto;min-height:42px;padding:0 12px;font-size:.88rem;}
+.cm .opts .btn{min-height:40px;padding:4px 10px;font-size:.84rem;line-height:1.15;}
 .opts .btn.cap{--b:#e5484d;--b-ink:#fff;--b-lip:#9c2227;}
 .think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
 .think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
@@ -839,7 +840,6 @@
     S.phase = 'moved'; ui.card = null; ui.sel = null; ui.discard = null; lock = true;
     save(); paint(); flyToPile(o.fromRect || null);
     Kit.sfx('tap');
-    if (o.cpu) Kit.toast(me.name + ' can\'t move: throws away ' + aCard(c), 1400);
     later(function () { lock = false; cNext(); }, o.cpu ? 900 : 500);
   }
   function flyToPile(fromRect) {
@@ -1163,6 +1163,7 @@
   }
   function paintMarbles(canMove, selKey) {
     layerEl.innerHTML = '';
+    var gg = G(); if (boardEl.clientWidth) boardEl.style.setProperty('--mpx', (boardEl.clientWidth * gg.ms / gg.W).toFixed(1) + 'px');
     var any = Object.keys(canMove).length > 0;
     S.players.forEach(function (p, pi) {
       p.m.forEach(function (pos, mi) {
@@ -1309,7 +1310,7 @@
       line = (nm === 'You' ? 'You' : nm) + ' moved'; sub = S.line;
     } else if (S.pend) {
       line = 'Now move ' + S.pend.left + ' with another marble';
-      sub = ui.sel ? 'Tap a glowing hole' : 'Tap a glowing marble';
+      sub = ui.sel ? (multi ? '' : 'Tap the glowing hole') : 'Tap a glowing marble';
     } else {
       var plays = allPlays(S.cur);
       if (!plays.length) {
@@ -1325,6 +1326,7 @@
         line = cardName(cc) + ': ' + (ui.sel ? (multi ? 'pick where' : 'tap the glowing hole') : 'tap a glowing marble');
         sub = helping || cardHelp(cc);
         if (ui.sel && multi) {
+          sub = '';
           ch.groups.forEach(function (g, i) {
             trayOpts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm' + (g.step.cap ? ' cap' : ''), text: (i + 1) + '. ' + groupLabel(g, cc.r === '7'), onclick: function () { Kit.sfx('tap'); chooseGroup(g); } }));
           });
