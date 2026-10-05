@@ -28,9 +28,6 @@
 .disc{position:absolute;inset:6%;border-radius:50%;box-shadow:inset 0 -5px 0 rgba(0,0,0,.2), inset 0 4px 0 rgba(255,255,255,.35);}
 .disc.r{background:var(--red-disc);}
 .disc.y{background:var(--yel-disc);}
-.disc.fall{animation:fall var(--t,.4s) cubic-bezier(.5,0,.75,0) both, land .3s var(--spring) var(--t,.4s);}
-@keyframes fall{from{transform:translateY(var(--from));}to{transform:translateY(0);}}
-@keyframes land{0%{transform:scaleY(.85) scaleX(1.08);}100%{transform:none;}}
 .disc.win{animation:winpulse .8s ease-in-out infinite alternate;box-shadow:0 0 0 4px #fff, 0 0 22px #fff;}
 @keyframes winpulse{to{transform:scale(1.1);}}
 .legs{display:flex;justify-content:space-between;margin:0 18px;}
@@ -203,26 +200,85 @@
     if (r < 0) { Kit.haptic('error'); Kit.sfx('bad'); boardEl.classList.remove('shake'); void boardEl.offsetWidth; boardEl.classList.add('shake'); return; }
     var who = S.cur + 1;
     S.grid[r][c] = who; S.moves.push(c);
-    var d = el('div', { class: 'disc fall ' + S.players[S.cur].disc });
-    d.style.setProperty('--from', 'calc(' + (-(r + 1) * 100) + '% - ' + ((r + 1) * 6 + 50) + 'px)');
-    d.style.setProperty('--t', (0.18 + r * 0.06) + 's');
+    var d = el('div', { class: 'disc ' + S.players[S.cur].disc });
     cells[r][c].appendChild(d);
     Kit.sfx('pop');
-    setTimeout(function () { Kit.sfx('tap'); Kit.haptic('light'); }, (180 + r * 60));
-    var line = findLine(S.grid, who);
-    if (line) {
-      S.over = true; S.line = line; S.wins[S.cur]++; S.first = 1 - S.first;
-      setTimeout(function () { paintWin(); }, 250 + r * 60);
-      setTimeout(function () { endGame(S.cur); }, 1300 + r * 60);
-    } else if (full(S.grid)) {
-      S.over = true; S.wins[2]++; S.first = 1 - S.first;
-      setTimeout(function () { endGame(-1); }, 700);
-    } else {
-      S.cur = 1 - S.cur;
-      paintTurn();
-      setTimeout(maybeCpu, 200 + r * 60);
-    }
+    var line = findLine(S.grid, who), me = S.cur;
+    if (line) { S.over = true; S.line = line; S.wins[S.cur]++; S.first = 1 - S.first; S.busy = true; }
+    else if (full(S.grid)) { S.over = true; S.wins[2]++; S.first = 1 - S.first; S.busy = true; }
+    else { S.cur = 1 - S.cur; paintTurn(); }
     save();
+    fallDisc(d, r, c, function () {
+      if (line) { paintWin(); setTimeout(function () { S.busy = false; endGame(me); }, 1000); }
+      else if (S.over) setTimeout(function () { S.busy = false; endGame(-1); }, 500);
+      else setTimeout(maybeCpu, 120);
+    });
+  }
+  // A disc falls under gravity from above the board, clacks onto the disc (or
+  // floor) below, bounces a couple of times, and rattles side to side in its
+  // slot before settling. The disc it lands on gets a small knock too.
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function clack(v) {
+    try { if (localStorage.getItem('gn_sound') === '0') return; } catch (e) {}
+    try {
+      var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      var a = clack.ac || (clack.ac = new C()); if (a.state === 'suspended') a.resume();
+      var k = Math.max(0.08, Math.min(1, v)), t = a.currentTime;
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(900 + 500 * k, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.05);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.02 + 0.09 * k, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.09);
+      var lo = a.createOscillator(), lg = a.createGain();
+      lo.type = 'sine'; lo.frequency.setValueAtTime(190, t); lo.frequency.exponentialRampToValueAtTime(110, t + 0.08);
+      lg.gain.setValueAtTime(0.0001, t); lg.gain.exponentialRampToValueAtTime(0.03 + 0.12 * k, t + 0.004); lg.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+      lo.connect(lg); lg.connect(a.destination); lo.start(t); lo.stop(t + 0.12);
+    } catch (e) {}
+  }
+  function fallDisc(d, r, c, done) {
+    var hole = cells[r][c], H = hole.offsetHeight + 6;
+    if (reduceMotion || !H) { clack(0.6); Kit.haptic('light'); done(); return; }
+    var y = -((r + 1) * H + H * 0.75), v = 0, g = H * 95, x = 0, xv = 0, rot = 0, rv = 0, sq = 0;
+    var bounces = 0, last = performance.now(), quiet = 0;
+    var vRef = Math.sqrt(2 * g * 6.75 * H);   // speed of a drop from the very top
+    var below = r + 1 < ROWS ? cells[r + 1][c].querySelector('.disc') : null;
+    d.style.willChange = 'transform';
+    function frame(now) {
+      var dt = Math.min(0.032, (now - last) / 1000); last = now;
+      var steps = 4, h = dt / steps;
+      for (var i = 0; i < steps; i++) {
+        v += g * h; y += v * h;
+        if (y >= 0) {
+          var hit = v / vRef;
+          y = 0;
+          if (hit > 0.06 && bounces < 4) {
+            clack(hit); bounces++;
+            if (bounces === 1) {
+              Kit.haptic(hit > 0.5 ? 'medium' : 'light');
+              if (below) knock(below, hit);
+              if (hit > 0.6) { boardEl.style.transform = 'translateY(' + (2 * hit).toFixed(1) + 'px)'; setTimeout(function () { boardEl.style.transform = ''; }, 70); }
+            }
+            v = -v * (bounces === 1 ? 0.3 : 0.24);
+            sq = Math.min(0.16, 0.2 * hit);
+            xv += (Math.random() < 0.5 ? -1 : 1) * H * (2 + 3 * Math.random()) * hit; rv += (Math.random() < 0.5 ? -1 : 1) * (250 + 300 * Math.random()) * hit;
+          } else v = 0;
+        }
+        // Side rattle in the slot: a stiff, damped spring
+        xv += (-x * 900 - xv * 18) * h; x += xv * h; x = Math.max(-H * 0.05, Math.min(H * 0.05, x));
+        rv += (-rot * 700 - rv * 16) * h; rot += rv * h;
+        sq *= Math.pow(0.00002, h);
+      }
+      d.style.transform = 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px) rotate(' + rot.toFixed(2) + 'deg) scale(' + (1 + sq * 0.6).toFixed(3) + ',' + (1 - sq).toFixed(3) + ')';
+      var still = y === 0 && v === 0 && Math.abs(x) < 0.2 && Math.abs(xv) < 2 && Math.abs(rot) < 0.2 && sq < 0.004;
+      quiet = still ? quiet + dt : 0;
+      if (quiet > 0.04) { d.style.transform = ''; d.style.willChange = ''; done(); return; }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  function knock(el2, hit) {
+    if (!el2.animate) return;
+    var k = Math.min(1, hit);
+    el2.animate([{ transform: 'none' }, { transform: 'translateY(' + (2.5 * k).toFixed(1) + 'px) scale(1.04,.94)' }, { transform: 'translateY(-' + (0.8 * k).toFixed(1) + 'px)' }, { transform: 'none' }], { duration: 260, easing: 'ease-out' });
   }
   function undo() {
     if (!S || !S.moves.length || S.over) return Kit.toast('Nothing to undo');
