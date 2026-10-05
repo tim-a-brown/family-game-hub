@@ -713,7 +713,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.pc) h.push(st.pc === 1 ? 'Perfect clear! Wiped the whole board' : st.pc + ' perfect clears');
     if (st.bestMove >= 800 && st.bestMoveName !== 'tetris' && h.length < 6) h.push('Best move: ' + st.bestMoveName + ' for ' + fmt(st.bestMove));
     var lvls = Object.keys(G.perLevel).map(Number).sort(function (a, b) { return a - b; });
-    var hiList = []; try { hiList = JSON.parse(localStorage.getItem('hi_tetris') || '[]'); } catch (e) {}
+    var hiList = ArcadeHi.list('tetris');
     var prevBest = hiList.length ? hiList[0].score : 0;
     Kit.record(KEY, {
       started: G.started, mode: 'Marathon' + (G.startLevel > 1 ? ' from level ' + G.startLevel : ''),
@@ -927,7 +927,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   var bestCache = null;
   function bestShort() {
-    if (bestCache == null) { try { var l = JSON.parse(localStorage.getItem('hi_tetris') || '[]'); bestCache = l.length ? l[0].score : 0; } catch (e) { bestCache = 0; } }
+    if (bestCache == null) { bestCache = ArcadeHi.best('tetris'); }
     var b = Math.max(bestCache, G.score);
     return b >= 100000 ? Math.floor(b / 1000) + 'k' : fmt(b);
   }
