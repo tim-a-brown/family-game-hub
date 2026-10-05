@@ -358,7 +358,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    stopBeat(); setDread(0); S = null; clearSave();
+    clearFx(); stopBeat(); setDread(0); S = null; lastSpot = null; clearSave();
     var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
     if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
     var st = Kit.setup(app, {
@@ -404,19 +404,18 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     return { word: word, clue: clue || '', cat: cat || '', setter: setter, guesser: guesser, guessed: [], misses: 0, missed: [], clueShown: false, over: false, won: false, wholeWord: false };
   }
   function nextWord() {
-    undoStack = []; fresh = null; setDread(0); stopBeat();
+    undoStack = []; fresh = null; setDread(0); clearFx(); stopBeat(); lastSpot = null;
     if (S.mode === 'solo') {
       var p = pool(), o = p[rnd(p.length)];
       S.used.push(o.w);
       S.W = newW(o.w, o.clue, o.cat, -1, 0);
-      S.phase = 'play';
+      S.phase = 'play'; fresh = { open: true };
     } else {
       var setter = S.wi % 2;
       S.W = newW('', '', '', setter, 1 - setter);
       S.phase = 'cover-set';
     }
     save(); render();
-    if (S.phase === 'play') Kit.sfx('whoosh');
   }
 
   // ── Guessing ──────────────────────────────────────────────────────────────
@@ -424,6 +423,7 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   function undo() {
     if (!S || S.phase !== 'play' || !S.W || S.W.over) return Kit.toast(S && S.W && S.W.over ? 'This word is finished' : 'Nothing to undo');
     if (!undoStack.length) return Kit.toast('Nothing to undo');
+    clearFx(); stopBeat();
     var u = JSON.parse(undoStack.pop()); S.W = u.W; S.streak = u.streak; fresh = null;
     Kit.sfx('whoosh'); Kit.toast('Guess taken back'); save(); render(); syncBeat();
   }
@@ -434,8 +434,8 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
     W.guessed.push(L);
     if (W.word.indexOf(L) >= 0) {
       fresh = { hit: L };
-      Kit.sfx('pop'); Kit.haptic('light');
-      if (letters(W.word).every(function (c) { return W.guessed.indexOf(c) >= 0; })) return win();
+      Kit.haptic('light');
+      if (letters(W.word).every(function (c) { return W.guessed.indexOf(c) >= 0; })) return win(L);
       save(); render();
     } else {
       miss(L);
@@ -444,13 +444,11 @@ body.lastlife::after{background:radial-gradient(95% 75% at 50% 40%, transparent 
   function miss(L) {
     var W = S.W;
     W.misses++; if (L) W.missed.push(L);
-    fresh = { miss: W.misses };
     var last = W.misses >= maxMiss();
+    fresh = { miss: W.misses, missL: L || null, last: last };
     Kit.haptic(last ? 'heavy' : 'error');
-    if (!last) Kit.sfx('bad');
     save(); render();
-    var sl = app.querySelector('.slate'); if (sl) { sl.classList.remove('shake'); void sl.offsetWidth; sl.classList.add('shake'); }
-    if (last) lose(); else syncBeat();
+    if (last) lose(); else syncBeat(W.misses === maxMiss() - 1 ? 1750 : 0);
   }
   function solveSheet() {
     var W = S.W; if (!W || W.over || busy) return;
