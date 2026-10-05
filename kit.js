@@ -192,27 +192,35 @@
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
   }
-  function noise(t0, dur, vol, hp) {
+  // Short burst of filtered noise. Band-passed (not high-passed) with a fast
+  // exponential fade, so it reads as paper or wood rather than a cymbal.
+  // sweep: optional end frequency for a gentle swoosh.
+  function noise(t0, dur, vol, freq, q, sweep) {
     var a = ctx(); if (!a) return;
-    var n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
-    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-    var s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter(), t = a.currentTime + t0;
-    f.type = 'highpass'; f.frequency.value = hp || 1200;
-    g.gain.value = vol || 0.12; s.buffer = b; s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
+    var n = Math.max(1, Math.floor(a.sampleRate * dur)), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    var s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter(), lp = a.createBiquadFilter(), t = a.currentTime + t0;
+    f.type = 'bandpass'; f.frequency.setValueAtTime(freq || 1200, t); f.Q.value = q || 1;
+    if (sweep) f.frequency.exponentialRampToValueAtTime(sweep, t + dur);
+    lp.type = 'lowpass'; lp.frequency.value = 4200;   // keep the fizz off the top
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.05, t + Math.min(0.006, dur / 4));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.buffer = b; s.connect(f); f.connect(lp); lp.connect(g); g.connect(a.destination); s.start(t); s.stop(t + dur + 0.02);
   }
   var SFX = {
     tap: function () { tone(660, 0, 0.06, 'triangle', 0.07); },
     pop: function () { tone(520, 0, 0.09, 'sine', 0.12, 980); },
-    flip: function () { noise(0, 0.08, 0.1, 2500); },
-    deal: function () { noise(0, 0.06, 0.08, 3200); tone(300, 0, 0.04, 'triangle', 0.03); },
+    flip: function () { noise(0, 0.05, 0.06, 1500, 0.8); tone(210, 0, 0.05, 'sine', 0.035); },
+    deal: function () { noise(0, 0.035, 0.05, 1900, 0.9); tone(260, 0, 0.035, 'sine', 0.03); },
     chip: function () { tone(1800, 0, 0.05, 'square', 0.03); tone(2400, 0.03, 0.05, 'square', 0.025); },
-    roll: function () { for (var i = 0; i < 6; i++) noise(i * 0.05, 0.04, 0.09, 800 + i * 200); },
+    roll: function () { for (var i = 0; i < 5; i++) { noise(i * 0.055 + Math.random() * 0.015, 0.03, 0.07, 650 + Math.random() * 500, 2.2); tone(170 + Math.random() * 60, i * 0.055, 0.03, 'sine', 0.03); } },
     good: function () { tone(660, 0, 0.1, 'triangle', 0.1); tone(990, 0.08, 0.14, 'triangle', 0.1); },
     bad: function () { tone(300, 0, 0.18, 'sawtooth', 0.05, 160); },
     tick: function () { tone(1200, 0, 0.03, 'square', 0.025); },
     win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, i * 0.09, 0.22, 'triangle', 0.11); }); tone(1319, 0.38, 0.5, 'triangle', 0.09); },
     lose: function () { [392, 330, 262].forEach(function (f, i) { tone(f, i * 0.16, 0.25, 'triangle', 0.08); }); },
-    whoosh: function () { noise(0, 0.25, 0.07, 600); }
+    whoosh: function () { noise(0, 0.22, 0.035, 350, 0.7, 1100); }
   };
   function sfx(name) { if (!soundOn()) return; try { (SFX[name] || SFX.tap)(); } catch (e) {} }
 
