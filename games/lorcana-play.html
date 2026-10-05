@@ -690,7 +690,573 @@ body{background:radial-gradient(120% 70% at 50% -10%,#24306e 0%,rgba(36,48,110,0
   function inkOf(d) { return (d.ink && d.ink.length ? d.ink : []); }
   function inkDots(inks) { return '<span class="inkdots">' + inks.map(function (i) { return '<i style="--c:' + (INKC[i] || '#888') + '" title="' + esc(i) + '"></i>'; }).join('') + '</span>'; }
 
-  //@@JS2@@
+  // ═════════════════════════════════════════════════════════════════════════
+  // Decks
+  // ═════════════════════════════════════════════════════════════════════════
+  // Saved deck: {id, name, cards:{cardId: count}, at}
+  function savedDecks() { var a = lsGet(DECKS, []); return Array.isArray(a) ? a.filter(function (d) { return d && d.cards; }) : []; }
+  function storeDecks(a) { if (!lsSet(DECKS, a)) Kit.toast('Couldn’t save decks: storage is full'); }
+  function deckCards(cards) { // [{d, n}] for cards known to the library
+    var out = [];
+    Object.keys(cards || {}).forEach(function (id) { var d = DB.byId[id]; if (d && cards[id] > 0) out.push({ d: d, n: cards[id] }); });
+    return out.sort(function (a, b) { return a.d.c - b.d.c || a.d.full.localeCompare(b.d.full); });
+  }
+  function deckInks(cards) { var s = {}; deckCards(cards).forEach(function (x) { inkOf(x.d).forEach(function (i) { s[i] = 1; }); }); return INKS.filter(function (i) { return s[i]; }); }
+  function deckCount(cards) { var n = 0; for (var k in cards) n += cards[k] || 0; return n; }
+  // Official deck rules: at least 60 cards, at most 4 copies of a card with
+  // the same full name, cards of one or two ink colors.
+  function deckProblems(cards) {
+    var p = [], n = deckCount(cards), inks = deckInks(cards), by = {};
+    deckCards(cards).forEach(function (x) { var k = x.d.full.toLowerCase(); by[k] = (by[k] || 0) + x.n; });
+    if (n < 60) p.push('Needs ' + (60 - n) + ' more ' + (60 - n === 1 ? 'card' : 'cards') + ' (60 minimum)');
+    Object.keys(by).forEach(function (k) { if (by[k] > 4) p.push('Only 4 copies of ' + DB.byFull[k][0].full + ' allowed'); });
+    if (inks.length > 2) p.push('Too many inks: ' + inks.join(', ') + ' (2 at most)');
+    var missing = Object.keys(cards || {}).filter(function (id) { return !DB.byId[id]; }).length;
+    if (missing) p.push(plural(missing, 'card') + ' not in the card library');
+    return p;
+  }
+  function copiesByFull(cards, full) { var n = 0; (DB.byFull[full.toLowerCase()] || []).forEach(function (d) { n += cards[d.id] || 0; }); return n; }
+
+  // Value of a character for deck building and the computer
+  function kwValue(K) {
+    return (K.evasive ? 1.1 : 0) + (K.ward ? 0.8 : 0) + (K.bodyguard ? 0.5 : 0) + (K.rush ? 0.5 : 0) + (K.support ? 0.3 : 0) +
+      (K.challenger || 0) * 0.3 + (K.resist || 0) * 0.6 + (K.alert ? 0.3 : 0) + (K.reckless ? -0.8 : 0) + (K.vanish ? -0.3 : 0);
+  }
+  // Quick deck: two inks, a sensible cost curve, mostly characters plus a few
+  // songs and actions with simple effects. Seeded so each pairing is the same
+  // deck every time (Random uses a random seed).
+  var CURVE = [[1, 6], [2, 12], [3, 12], [4, 10], [5, 8], [6, 6], [7, 6]];
+  function quickDeck(inks, seed) {
+    var rnd = seeded(seed || inks.join('+'));
+    var pool = DB.unique.filter(function (d) {
+      var di = inkOf(d); if (!di.length || !di.every(function (i) { return inks.indexOf(i) >= 0; })) return false;
+      return d.c >= 1 && d.c <= 9 && (d.t === 'character' || (d.t === 'action' && d.K.fx && d.K.fx.all && d.K.fx.fx[0].op !== 'banishAll') || (d.t === 'location' && d.l > 0));
+    });
+    pool.forEach(function (d) {
+      var sc;
+      if (d.t === 'character') sc = ((d.s || 0) * 0.55 + (d.w || 0) * 0.5 + (d.l || 0) * 1.7 + kwValue(d.K) + (d.K.onPlay ? 1 : 0)) / Math.max(1, d.c) * 2 + (d.K.vanilla ? 0.35 : 0) + (d.K.shift ? 0.3 : 0);
+      else if (d.t === 'location') sc = ((d.l || 0) * 1.6 + (d.w || 0) * 0.15) / Math.max(1, d.c) * 2 - 0.4;
+      else sc = 1.6 + (d.song ? 0.4 : 0) - d.c * 0.08;
+      d._q = sc + (d.k ? 0.45 : -0.2) + rnd() * 1.1;
+    });
+    var deck = {}, total = 0, used = {}, actions = 0, locs = 0;
+    function add(d, n) { n = Math.min(n, 60 - total); if (n <= 0) return 0; deck[d.id] = (deck[d.id] || 0) + n; total += n; used[d.full] = (used[d.full] || 0) + n; return n; }
+    function pickFrom(list, want) {
+      var turn = 0;
+      list.sort(function (a, b) { return b._q - a._q; });
+      var byInk = inks.map(function (ink) { return list.filter(function (d) { return inkOf(d).indexOf(ink) >= 0; }); });
+      var got = 0, guard = 0;
+      while (got < want && guard++ < 80) {
+        var src = byInk[turn % byInk.length]; turn++;
+        var d = null;
+        for (var i = 0; i < src.length; i++) {
+          var x = src[i]; if ((used[x.full] || 0) >= 4) continue;
+          if (x.t === 'action' && actions >= 8) continue;
+          if (x.t === 'location' && locs >= 3) continue;
+          d = x; break;
+        }
+        if (!d) { if (byInk.every(function (s) { return s.every(function (x) { return (used[x.full] || 0) >= 4; }); })) break; continue; }
+        var n = add(d, Math.min(4 - (used[d.full] || 0), want - got, d.t === 'location' ? 2 : d.c >= 7 ? 2 : 4));
+        if (d.t === 'action') actions += n; if (d.t === 'location') locs += n;
+        got += n;
+      }
+      return got;
+    }
+    var carry = 0;
+    CURVE.forEach(function (b) {
+      var cost = b[0], list = pool.filter(function (d) { return cost === 7 ? d.c >= 7 : d.c === cost; });
+      var want = b[1] + carry; carry = want - pickFrom(list, want);
+    });
+    if (total < 60) pickFrom(pool.slice(), 60 - total);
+    var name = inks.join(' & ');
+    return { name: name, cards: deck };
+  }
+  function pairings() { var out = []; for (var i = 0; i < INKS.length; i++) for (var j = i + 1; j < INKS.length; j++) out.push([INKS[i], INKS[j]]); return out; }
+  // Deck choice for a seat: {kind:'quick', inks:[a,b]} | {kind:'saved', id} | {kind:'random'}
+  function resolveDeck(ch) {
+    if (ch && ch.kind === 'saved') {
+      var d = savedDecks().filter(function (x) { return x.id === ch.id; })[0];
+      if (d && !deckProblems(d.cards).length) return { name: d.name, cards: d.cards };
+    }
+    if (ch && ch.kind === 'quick' && ch.inks) return quickDeck(ch.inks);
+    var p = pairings()[Math.floor(Math.random() * 15)];
+    var q = quickDeck(p, 'r' + Math.random());
+    q.name = 'Random: ' + q.name; return q;
+  }
+  function choiceLabel(ch) {
+    if (!ch || ch.kind === 'random') return { name: 'Random deck', sub: 'Two random inks, built for you', inks: [] };
+    if (ch.kind === 'quick') return { name: ch.inks.join(' & '), sub: 'Quick deck', inks: ch.inks };
+    var d = savedDecks().filter(function (x) { return x.id === ch.id; })[0];
+    if (!d) return { name: 'Random deck', sub: 'Saved deck not found', inks: [] };
+    var pr = DB.status === 'ready' ? deckProblems(d.cards) : [];
+    return { name: d.name, sub: pr.length ? 'Not ready: ' + pr[0] : 'Your deck · ' + deckCount(d.cards) + ' cards', inks: DB.status === 'ready' ? deckInks(d.cards) : [], bad: !!pr.length };
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Rules engine
+  // ═════════════════════════════════════════════════════════════════════════
+  // S = {v, mode:'cpu'|'pass', started, turn, cur, first, phase:'mull'|'play'|'over', step:'begin'|'main',
+  //      P:[{name, cpu, color, deck:'name', lore, deckL:[uid], hand:[uid], ink:[uid], discard:[uid], board:[uid], inked}],
+  //      cards:{uid:{id, o, ex, dmg, dry, at, under:[uid], mods:[{s,w,l,kw,n,until}], bt}},
+  //      defs:{id: compact card}, log:[{t,p}], st:[stats], rl:[[lore per round]], viewer, mull:[bool,bool], hist:[snapshots]}
+  var S = null, DEF = {};
+  function D(id) {
+    var d = DEF[id]; if (d) return d;
+    var o = (S && S.defs[id]) || DB.byId[id]; if (!o) return null;
+    d = o.K ? o : prep(o); DEF[id] = d; return d;
+  }
+  function C(u) { return S.cards[u]; }
+  function DD(u) { return D(S.cards[u].id); }
+  function opp(pi) { return 1 - pi; }
+  function nm(u) { return DD(u).n; }
+  function modSum(u, k) { var t = 0; (C(u).mods || []).forEach(function (x) { if (x[k]) t += x[k]; }); return t; }
+  function hasKw(u, k) { if (DD(u).K[k]) return true; return (C(u).mods || []).some(function (x) { return x.kw === k; }); }
+  function kwN(u, k) {
+    var n = DD(u).K[k]; n = typeof n === 'number' ? n : 0;
+    (C(u).mods || []).forEach(function (x) { if (x.kw === k) n += x.n || 0; });
+    return n;
+  }
+  function STR(u, ch) { return Math.max(0, (DD(u).s || 0) + modSum(u, 's') + (ch ? kwN(u, 'challenger') : 0)); }
+  function WP(u) { return Math.max(0, (DD(u).w || 0) + modSum(u, 'w')); }
+  function LORE(u) { return Math.max(0, (DD(u).l || 0) + modSum(u, 'l')); }
+  function isChar(u) { return DD(u).t === 'character'; }
+  function isLoc(u) { return DD(u).t === 'location'; }
+  function inkReady(pi) { return S.P[pi].ink.filter(function (u) { return !C(u).ex; }).length; }
+  function payInk(pi, n) { var p = S.P[pi]; for (var i = 0; i < p.ink.length && n > 0; i++) { var c = C(p.ink[i]); if (!c.ex) { c.ex = true; n--; } } }
+  function resetCard(u) { var c = C(u); c.ex = false; c.dmg = 0; c.dry = false; c.at = null; c.mods = []; c.under = []; c.bt = 0; }
+  function zoneOf(u) {
+    for (var pi = 0; pi < 2; pi++) {
+      var p = S.P[pi];
+      var zs = ['hand', 'board', 'ink', 'discard', 'deckL'];
+      for (var z = 0; z < zs.length; z++) if (p[zs[z]].indexOf(u) >= 0) return { z: zs[z], pi: pi };
+    }
+    for (var k in S.cards) if ((S.cards[k].under || []).indexOf(u) >= 0) return { z: 'under', pi: S.cards[k].o, host: k };
+    return null;
+  }
+  function pull(u) { // take a card out of wherever it is
+    var z = zoneOf(u); if (!z) return null;
+    if (z.z === 'board') leavePlay(u);
+    else if (z.z === 'under') { var h = C(z.host).under; h.splice(h.indexOf(u), 1); }
+    else { var a = S.P[z.pi][z.z]; a.splice(a.indexOf(u), 1); }
+    return z;
+  }
+  function leavePlay(u) {
+    var c = C(u), p = S.P[c.o], i = p.board.indexOf(u);
+    if (i >= 0) p.board.splice(i, 1);
+    (c.under || []).forEach(function (x) { resetCard(x); S.P[C(x).o].discard.push(x); });
+    if (isLoc(u)) [0, 1].forEach(function (pi) { S.P[pi].board.forEach(function (x) { if (C(x).at === u) C(x).at = null; }); });
+    resetCard(u);
+  }
+  function log(t, pi) { S.log.push({ t: t, p: pi == null ? -1 : pi }); if (S.log.length > 120) S.log.splice(0, S.log.length - 120); }
+  function roundIx() { return Math.floor((S.turn - 1) / 2); }
+  function gainLore(pi, n) {
+    var p = S.P[pi], before = p.lore;
+    p.lore = Math.max(0, p.lore + n);
+    var d = p.lore - before;
+    if (d && S.turn > 0) { var r = roundIx(); while (S.rl.length <= r) S.rl.push([0, 0]); S.rl[r][pi] += d; }
+    if (d > 0) fx.lore(pi, d);
+    return d;
+  }
+  function draw(pi, n) {
+    var p = S.P[pi], got = 0;
+    for (var i = 0; i < n; i++) { if (!p.deckL.length) break; p.hand.push(p.deckL.shift()); got++; }
+    return got;
+  }
+  function banish(u) { var o = C(u).o; leavePlay(u); S.P[o].discard.push(u); }
+  // Anything with damage at or over its willpower is banished
+  function checkBanish() {
+    var out = [];
+    [0, 1].forEach(function (pi) { S.P[pi].board.forEach(function (u) { if ((isChar(u) || isLoc(u)) && C(u).dmg > 0 && C(u).dmg >= WP(u)) out.push(u); }); });
+    out.forEach(function (u) { fx.banish(u); banish(u); log(nm(u) + ' was banished', C(u).o); S.st[C(u).o].lost++; });
+    return out;
+  }
+  function dealDamage(u, n) { var d = Math.max(0, n - kwN(u, 'resist')); C(u).dmg += d; if (d) fx.hit(u); return d; }
+
+  // ── Legality ─────────────────────────────────────────────────────────────
+  function canInk(pi, u) { return !S.P[pi].inked && S.P[pi].hand.indexOf(u) >= 0 && !!DD(u).k; }
+  function canPlay(pi, u) { var d = DD(u); return S.P[pi].hand.indexOf(u) >= 0 && !!d.t && inkReady(pi) >= (d.c || 0); }
+  function canQuest(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && c.dry && !hasKw(u, 'reckless'); }
+  function canChallenger(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && (c.dry || hasKw(u, 'rush')); }
+  function defenders(att) {
+    var o = opp(C(att).o), evOK = hasKw(att, 'evasive') || hasKw(att, 'alert'), list = [];
+    S.P[o].board.forEach(function (u) {
+      if (isLoc(u)) list.push(u);
+      else if (isChar(u) && C(u).ex && (!hasKw(u, 'evasive') || evOK)) list.push(u);
+    });
+    if (list.some(function (u) { return isChar(u) && hasKw(u, 'bodyguard'); })) list = list.filter(function (u) { return isLoc(u) || hasKw(u, 'bodyguard'); });
+    return list;
+  }
+  function blockedReason(att, def) {
+    if (isLoc(def)) return '';
+    if (!C(def).ex) return DD(def).n + ' is ready. Only exerted characters can be challenged.';
+    if (hasKw(def, 'evasive') && !(hasKw(att, 'evasive') || hasKw(att, 'alert'))) return DD(def).n + ' has Evasive. Only characters with Evasive can challenge it.';
+    var o = C(def).o;
+    if (!hasKw(def, 'bodyguard') && S.P[o].board.some(function (u) { return isChar(u) && C(u).ex && hasKw(u, 'bodyguard') && (!hasKw(u, 'evasive') || hasKw(att, 'evasive') || hasKw(att, 'alert')); })) return 'You must challenge a Bodyguard first.';
+    return '';
+  }
+  function shiftTargets(u) {
+    var d = DD(u), sh = d.K.shift; if (!sh || d.t !== 'character') return [];
+    return S.P[C(u).o].board.filter(function (t) {
+      var dt = DD(t); if (dt.t !== 'character') return false;
+      if (sh.any) return true;
+      if (sh.cls && (dt.cl || []).indexOf(sh.cls) >= 0) return true;
+      return sh.names.some(function (n) { return n.toLowerCase() === dt.n.toLowerCase(); });
+    });
+  }
+  function shiftDiscards(u) { // cards in hand that can pay a "Shift: Discard ..." cost
+    var sh = DD(u).K.shift, pi = C(u).o;
+    return S.P[pi].hand.filter(function (x) { if (x === u) return false; var dx = DD(x); if (!sh.discard.type) return true; return sh.discard.type === 'song' ? dx.song : dx.t === sh.discard.type; });
+  }
+  function canShift(u) {
+    var sh = DD(u).K.shift; if (!sh || !shiftTargets(u).length) return false;
+    if (sh.discard) return shiftDiscards(u).length >= sh.discard.n;
+    return inkReady(C(u).o) >= sh.cost;
+  }
+  function singVal(u) { return kwN(u, 'singer') || DD(u).c || 0; }
+  function canSingWith(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && c.dry; }
+  function singersFor(song) {
+    var d = DD(song), pi = C(song).o;
+    return S.P[pi].board.filter(function (u) { return canSingWith(u) && (d.K.singTogether ? true : singVal(u) >= d.c); });
+  }
+  function canSing(song) {
+    var d = DD(song); if (!d.song || S.P[C(song).o].hand.indexOf(song) < 0) return false;
+    var ss = singersFor(song);
+    if (d.K.singTogether) return ss.reduce(function (a, u) { return a + singVal(u); }, 0) >= d.K.singTogether || ss.some(function (u) { return singVal(u) >= d.c; });
+    return ss.length > 0;
+  }
+  function canMove(u, loc) {
+    var c = C(u); return isChar(u) && isLoc(loc) && c.o === S.cur && C(loc).o === c.o && c.at !== loc && S.P[c.o].board.indexOf(u) >= 0 && inkReady(c.o) >= (DD(loc).mv || 0);
+  }
+  function canBoost(u) { var c = C(u), n = DD(u).K.boost; return !!n && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && c.bt !== S.turn && inkReady(c.o) >= n && S.P[c.o].deckL.length > 0; }
+  function recklessPending(pi) {
+    return S.P[pi].board.filter(function (u) { return hasKw(u, 'reckless') && canChallenger(u) && defenders(u).length; })[0] || null;
+  }
+
+  // ── Actions (pure state changes; the UI adds motion, sound and undo) ────
+  var A = {
+    ink: function (pi, u) {
+      var p = S.P[pi]; p.hand.splice(p.hand.indexOf(u), 1); resetCard(u); C(u).ex = false; p.ink.push(u); p.inked = true;
+      S.st[pi].inked++; log(p.name + ' put ' + nm(u) + ' into the inkwell', pi);
+    },
+    play: function (pi, u, o) {
+      o = o || {};
+      var p = S.P[pi], d = DD(u), how = '';
+      p.hand.splice(p.hand.indexOf(u), 1);
+      if (o.sing && o.sing.length) {
+        o.sing.forEach(function (s) { C(s).ex = true; });
+        how = ' (sung by ' + o.sing.map(nm).join(' and ') + ')';
+        S.st[pi].songs.push(d.n);
+      } else if (o.shift) {
+        var sh = d.K.shift;
+        if (sh.discard) (o.discard || []).forEach(function (x) { p.hand.splice(p.hand.indexOf(x), 1); resetCard(x); p.discard.push(x); });
+        else payInk(pi, sh.cost);
+      } else if (!o.free) payInk(pi, Math.max(0, (d.c || 0) - (o.less || 0)));
+      resetCard(u);
+      if (d.t === 'action') {
+        p.discard.push(u);
+        log(p.name + ' played ' + d.n + how, pi);
+      } else {
+        var c = C(u);
+        if (o.shift) {
+          var t = C(o.shift), ti = p.board.indexOf(o.shift);
+          c.ex = t.ex; c.dmg = t.dmg; c.dry = t.dry; c.at = t.at; c.mods = t.mods || [];
+          c.under = (t.under || []).concat([o.shift]);
+          t.under = []; t.mods = []; t.ex = false; t.dmg = 0; t.at = null;
+          p.board[ti] = u;
+          S.st[pi].shifts.push(d.n);
+          log(p.name + ' shifted ' + d.full + ' onto ' + DD(o.shift).full, pi);
+        } else {
+          p.board.push(u);
+          c.dry = d.t !== 'character';
+          if (d.t === 'character' && o.exerted) c.ex = true;
+          log(p.name + ' played ' + d.full + (o.exerted ? ' exerted (Bodyguard)' : '') + (o.free ? ' for free' : o.less ? ' for ' + o.less + ' less' : ''), pi);
+        }
+      }
+      S.st[pi].played++;
+    },
+    quest: function (pi, u) {
+      C(u).ex = true;
+      var n = LORE(u), st = S.st[pi];
+      log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + plural(n, 'lore'), pi);
+      gainLore(pi, n);
+      st.q++; st.ql += n;
+      if (!st.big || n > st.big.n) st.big = { n: n, name: DD(u).full };
+      return n;
+    },
+    challenge: function (pi, a, t) {
+      C(a).ex = true;
+      var loc = isLoc(t), sa = STR(a, true), sd = loc ? 0 : STR(t, false);
+      log(S.P[pi].name + '’s ' + nm(a) + ' challenged ' + nm(t), pi);
+      var dt = dealDamage(t, sa), da = dealDamage(a, sd);
+      var aw = DD(a).full, tn = DD(t).full;
+      var out = checkBanish(), st = S.st[pi];
+      st.chal++;
+      if (out.indexOf(t) >= 0) { st.ban++; st.kills.push(aw + ' banished ' + tn); }
+      return { dt: dt, da: da, banished: out };
+    },
+    move: function (pi, u, loc) {
+      payInk(pi, DD(loc).mv || 0); C(u).at = loc;
+      log(S.P[pi].name + ' moved ' + nm(u) + ' to ' + DD(loc).n, pi);
+    },
+    boost: function (pi, u) {
+      var p = S.P[pi]; payInk(pi, DD(u).K.boost); var x = p.deckL.shift(); resetCard(x); C(u).under.push(x); C(u).bt = S.turn;
+      log(p.name + ' boosted ' + nm(u), pi);
+    },
+    support: function (pi, from, to) {
+      var n = STR(from); if (!n) return;
+      C(to).mods.push({ s: n, until: S.turn, why: 'Support' });
+      log(nm(from) + ' gave ' + nm(to) + ' +' + n + ' strength (Support)', pi);
+    }
+  };
+  // Start of turn: Ready, Set, Draw
+  function beginTurn() {
+    var pi = S.cur, p = S.P[pi];
+    S.step = 'main'; p.inked = false;
+    p.board.forEach(function (u) { C(u).ex = false; });
+    p.ink.forEach(function (u) { C(u).ex = false; });
+    p.board.forEach(function (u) { if (isChar(u)) C(u).dry = true; });
+    var locL = 0; p.board.forEach(function (u) { if (isLoc(u)) locL += LORE(u); });
+    if (locL) { gainLore(pi, locL); S.st[pi].loc += locL; log(p.name + ' gained ' + plural(locL, 'lore') + ' from locations', pi); }
+    if (p.lore >= WIN) return;
+    if (S.turn === 1 && pi === S.first) { log(p.name + ' goes first and skips the first draw', pi); return; }
+    if (!p.deckL.length) { S.loser = pi; log(p.name + ' had to draw from an empty deck', pi); return; }
+    draw(pi, 1);
+  }
+  function endTurnState() {
+    var t = S.turn;
+    for (var k in S.cards) { var c = S.cards[k]; if (c.mods && c.mods.length) c.mods = c.mods.filter(function (m) { return m.until !== t; }); }
+    checkBanish();
+    S.st[S.cur].turns++;
+    S.cur = opp(S.cur); S.turn++; S.step = 'begin';
+  }
+  function winner() {
+    if (S.loser != null) return { pi: opp(S.loser), how: 'deck' };
+    var a = S.P[0].lore >= WIN, b = S.P[1].lore >= WIN;
+    if (a && b) return { pi: S.cur, how: 'lore' };
+    if (a) return { pi: 0, how: 'lore' };
+    if (b) return { pi: 1, how: 'lore' };
+    return null;
+  }
+
+  // ── Effects used by the effect box (human) and the computer ─────────────
+  function sideOK(u, actor, side) { var o = C(u).o; return side === 'any' || (side === 'opp' ? o !== actor : side === 'mine' ? o === actor : true); }
+  function fxTargets(f, actor) {
+    var t = f.tgt; if (!t) return [];
+    var out = [];
+    [0, 1].forEach(function (pi) {
+      S.P[pi].board.forEach(function (u) {
+        var d = DD(u);
+        if (t.types.indexOf(d.t) < 0 || !sideOK(u, actor, t.side)) return;
+        if (t.maxS != null && STR(u) > t.maxS) return;
+        if (t.minS != null && STR(u) < t.minS) return;
+        if (t.maxC != null && (d.c || 0) > t.maxC) return;
+        out.push(u);
+      });
+    });
+    return out;
+  }
+  // Apply one parsed effect. target: a card uid (for "chosen"), or null.
+  function applyFx(f, actor, target) {
+    var me = S.P[actor], them = S.P[opp(actor)], said = [];
+    function owner(u) { return S.P[C(u).o].name + '’s ' + nm(u); }
+    switch (f.op) {
+      case 'draw':
+        (f.who === 'both' ? [actor, opp(actor)] : [actor]).forEach(function (pi) { var g = draw(pi, f.n); said.push(S.P[pi].name + ' drew ' + plural(g, 'card')); });
+        break;
+      case 'lore':
+        if (f.n > 0) { gainLore(actor, f.n); said.push(me.name + ' gained ' + plural(f.n, 'lore')); }
+        else { var lost = -gainLore(opp(actor), f.n); said.push(them.name + ' lost ' + plural(lost, 'lore')); }
+        break;
+      case 'damage':
+        if (f.all) them.board.filter(isChar).forEach(function (u) { dealDamage(u, f.n); });
+        else if (target) { var dd = dealDamage(target, f.n); said.push(owner(target) + ' took ' + dd + ' damage'); }
+        break;
+      case 'banish': if (target) { said.push(owner(target) + ' was banished'); fx.banish(target); banish(target); S.st[C(target).o].lost++; } break;
+      case 'bounce': if (target) { said.push(owner(target) + ' went back to hand'); var o = C(target).o; leavePlay(target); S.P[o].hand.push(target); } break;
+      case 'heal':
+        if (f.all) me.board.forEach(function (u) { C(u).dmg = Math.max(0, C(u).dmg - f.n); });
+        else if (target) { C(target).dmg = Math.max(0, C(target).dmg - f.n); said.push(nm(target) + ' healed'); }
+        break;
+      case 'exert': if (target) { C(target).ex = true; said.push(owner(target) + ' was exerted'); } break;
+      case 'ready': if (target) { C(target).ex = false; said.push(nm(target) + ' was readied'); } break;
+      case 'pump': if (target) { C(target).mods.push({ s: f.n, until: S.turn }); said.push(nm(target) + ' got ' + (f.n > 0 ? '+' : '') + f.n + ' strength this turn'); } break;
+      case 'toInk': if (target) { var o2 = C(target).o; leavePlay(target); C(target).ex = true; S.P[o2].ink.push(target); said.push(owner(target) + ' went into the inkwell'); } break;
+      case 'banishAll': [0, 1].forEach(function (pi) { S.P[pi].board.filter(isChar).forEach(function (u) { banish(u); }); }); said.push('All characters were banished'); break;
+    }
+    checkBanish();
+    return said.join('. ');
+  }
+  // Vanish: when an opponent chooses this character for an action, banish it
+  function vanishCheck(target, actor, srcIsAction) {
+    if (srcIsAction && target && C(target).o !== actor && isChar(target) && hasKw(target, 'vanish') && S.P[C(target).o].board.indexOf(target) >= 0) {
+      log(nm(target) + ' vanished (Vanish)', C(target).o); fx.banish(target); banish(target); S.st[C(target).o].lost++; return true;
+    }
+    return false;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Computer opponent: plays by the keywords (plus the simplest action text)
+  // ═════════════════════════════════════════════════════════════════════════
+  function cardValue(u) {
+    var d = DD(u);
+    if (d.t === 'location') return LORE(u) * 2.4 + WP(u) * 0.2 + 0.5;
+    if (d.t !== 'character') return 0.5;
+    return LORE(u) * 2.2 + STR(u) * 0.6 + WP(u) * 0.45 + kwValue(d.K) + (d.c || 0) * 0.15;
+  }
+  function defValue(d) { // value of a card in hand, before it is played
+    if (d.t === 'location') return (d.l || 0) * 2.4 + (d.w || 0) * 0.2 + 0.5;
+    if (d.t !== 'character') return 0.5;
+    return (d.l || 0) * 2.2 + (d.s || 0) * 0.6 + (d.w || 0) * 0.45 + kwValue(d.K) + (d.c || 0) * 0.15;
+  }
+  // What an action (or a "when you play" ability) is worth to the computer,
+  // with the targets it would choose. Never targets Ward characters.
+  function fxPlan(list, pi) {
+    var v = 0, plan = [], o = opp(pi), me = S.P[pi], them = S.P[o];
+    for (var i = 0; i < list.length; i++) {
+      var f = list[i], best = null, bv = 0;
+      var targets = f.tgt ? fxTargets({ tgt: { side: f.tgt.side === 'any' && /damage|banish|bounce|exert|toInk/.test(f.op) ? 'opp' : f.tgt.side === 'any' ? 'mine' : f.tgt.side, types: f.tgt.types, maxS: f.tgt.maxS, maxC: f.tgt.maxC, minS: f.tgt.minS } }, pi) : [];
+      targets = targets.filter(function (u) { return C(u).o === pi || !hasKw(u, 'ward'); });
+      switch (f.op) {
+        case 'draw': bv = me.deckL.length > f.n + 4 ? 1.3 * f.n : -1; if (f.who === 'both') bv *= 0.3; break;
+        case 'lore': bv = f.n > 0 ? 2.3 * f.n : 2 * Math.min(-f.n, them.lore); break;
+        case 'damage':
+          if (f.all) { them.board.filter(isChar).forEach(function (u) { var d = Math.max(0, f.n - kwN(u, 'resist')); bv += C(u).dmg + d >= WP(u) ? cardValue(u) : d * 0.25; }); break; }
+          targets.forEach(function (u) { var d = Math.max(0, f.n - kwN(u, 'resist')), x = C(u).dmg + d >= WP(u) && d > 0 ? cardValue(u) + 0.5 : d * 0.25; if (x > bv) { bv = x; best = u; } });
+          break;
+        case 'banish': targets.forEach(function (u) { var x = cardValue(u) + 0.5; if (x > bv) { bv = x; best = u; } }); break;
+        case 'bounce': targets.forEach(function (u) { var x = cardValue(u) * 0.6 + (DD(u).c || 0) * 0.3; if (x > bv) { bv = x; best = u; } }); break;
+        case 'toInk': targets.forEach(function (u) { var x = cardValue(u) - 0.3; if (x > bv) { bv = x; best = u; } }); break;
+        case 'exert': targets.forEach(function (u) { if (C(u).ex) return; var x = 0.4 + STR(u) * 0.2; if (x > bv) { bv = x; best = u; } }); break;
+        case 'heal':
+          if (f.all) me.board.forEach(function (u) { bv += Math.min(f.n, C(u).dmg) * 0.45; });
+          else targets.forEach(function (u) { var x = Math.min(f.n, C(u).dmg) * 0.5 * (cardValue(u) > 3 ? 1.4 : 1); if (x > bv) { bv = x; best = u; } });
+          break;
+        case 'banishAll':
+          bv = them.board.filter(isChar).reduce(function (a, u) { return a + cardValue(u); }, 0) - me.board.filter(isChar).reduce(function (a, u) { return a + cardValue(u); }, 0) - 2;
+          break;
+        default: bv = 0;
+      }
+      if (f.tgt && !best && f.op !== 'heal') return { v: -1, plan: [] };   // nothing to choose
+      if (f.op === 'heal' && !f.all && !best) bv = 0;
+      v += bv; plan.push({ f: f, t: best });
+    }
+    return { v: v, plan: plan };
+  }
+  function cpuUsable(d) { return d.t === 'character' || d.t === 'location' || (d.t === 'action' && d.K.fx && d.K.fx.all); }
+  function cpuInkPick(pi) {
+    var p = S.P[pi], n = p.ink.length;
+    var cand = p.hand.filter(function (u) { return DD(u).k; });
+    if (!cand.length || n >= 11) return null;
+    if (n >= 7 && p.hand.length <= 2 && cand.every(function (u) { return cpuUsable(DD(u)) && DD(u).c <= n + 1; })) return null;
+    var seen = {};
+    p.hand.forEach(function (u) { seen[DD(u).full] = (seen[DD(u).full] || 0) + 1; });
+    var best = null, bk = 1e9;
+    cand.forEach(function (u) {
+      var d = DD(u), k = cpuUsable(d) ? defValue(d) : -3;
+      if (seen[d.full] > 1) k -= 1;
+      if (d.c > n + 3) k -= 1.5;
+      if (d.c <= n + 1) k += 0.8;
+      if (d.K.shift && p.board.some(function (b) { return isChar(b) && DD(b).n === d.n; })) k += 2;
+      if (k < bk) { bk = k; best = u; }
+    });
+    return best;
+  }
+  function questValue(u) { return canQuest(u) ? LORE(u) * 2.2 : 0; }
+  function cpuPlays(pi) {
+    var p = S.P[pi], ink = inkReady(pi), opts = [], oppReady = S.P[opp(pi)].board.some(function (u) { return isChar(u); });
+    p.hand.forEach(function (u) {
+      var d = DD(u);
+      if (d.t === 'character' && d.K.shift && canShift(u)) {
+        shiftTargets(u).forEach(function (t) {
+          var sh = d.K.shift, o = { shift: t };
+          if (sh.discard) {
+            var pay = shiftDiscards(u).sort(function (a, b) { return defValue(DD(a)) - defValue(DD(b)); }).slice(0, sh.discard.n);
+            if (pay.some(function (x) { return defValue(DD(x)) > 6; })) return;
+            o.discard = pay;
+          }
+          opts.push({ k: 'play', u: u, o: o, v: defValue(d) + 1.5 - (sh.discard ? 1 : 0) + (C(t).ex ? 0 : 0.5), cost: sh.discard ? 0 : sh.cost });
+        });
+      }
+      if ((d.t === 'character' || d.t === 'location') && (d.c || 0) <= ink) {
+        var o2 = {};
+        if (d.K.bodyguard && p.board.some(isChar) && oppReady) o2.exerted = true;
+        opts.push({ k: 'play', u: u, o: o2, v: defValue(d), cost: d.c || 0 });
+      }
+      if (d.t === 'action' && d.K.fx && d.K.fx.all) {
+        var pl = fxPlan(d.K.fx.fx, pi); if (pl.v <= 1) return;
+        if (d.song && canSing(u)) {
+          var ss = singersFor(u).sort(function (a, b) { return questValue(a) - questValue(b) || singVal(a) - singVal(b); });
+          var group = [];
+          if (d.K.singTogether) { var tot = 0; for (var i = 0; i < ss.length && tot < d.K.singTogether; i++) { group.push(ss[i]); tot += singVal(ss[i]); } if (tot < d.K.singTogether) group = []; }
+          else group = ss.slice(0, 1);
+          if (group.length) {
+            var loss = group.reduce(function (a, x) { return a + questValue(x); }, 0);
+            if (pl.v - loss > 0.6) opts.push({ k: 'play', u: u, o: { sing: group }, plan: pl.plan, v: pl.v - loss + 0.4, cost: 0 });
+          }
+        }
+        if ((d.c || 0) <= ink) opts.push({ k: 'play', u: u, o: {}, plan: pl.plan, v: pl.v, cost: d.c || 0 });
+      }
+    });
+    if (!opts.length) return null;
+    opts.forEach(function (x) { x.sc = x.v + x.cost * 0.35; });
+    opts.sort(function (a, b) { return b.sc - a.sc; });
+    return opts[0].v > 0.5 ? opts[0] : null;
+  }
+  function challengeScore(a, t) {
+    var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
+    var killT = dA > 0 && C(t).dmg + dA >= WP(t), killA = dD > 0 && C(a).dmg + dD >= WP(a);
+    var vT = loc ? LORE(t) * 2.6 + 1 : cardValue(t), vA = cardValue(a);
+    var sc = (killT ? vT + 0.6 : dA * (loc ? 0.5 : 0.25)) - (killA ? vA : dD * 0.15) - questValue(a) * 0.55;
+    // Racing: if the opponent is close to winning, removing questers matters more
+    if (killT && !loc && S.P[C(t).o].lore >= 14) sc += LORE(t) * 0.8;
+    return sc;
+  }
+  function cpuChallenge(pi) {
+    var best = null;
+    S.P[pi].board.forEach(function (a) {
+      if (!canChallenger(a)) return;
+      var reck = hasKw(a, 'reckless');
+      defenders(a).forEach(function (t) {
+        var sc = challengeScore(a, t) + (reck ? 50 : 0);
+        if (!best || sc > best.sc) best = { k: 'chal', u: a, t: t, sc: sc };
+      });
+    });
+    return best && best.sc > 0.35 ? best : null;
+  }
+  function cpuQuest(pi) {
+    var q = S.P[pi].board.filter(function (u) { return canQuest(u) && LORE(u) > 0; });
+    if (!q.length) return null;
+    q.sort(function (a, b) { return LORE(b) - LORE(a); });
+    return { k: 'quest', u: q[0] };
+  }
+  function cpuChoose(pi) {
+    var p = S.P[pi];
+    // Can win right now by questing? Do it.
+    var ql = p.board.filter(function (u) { return canQuest(u); }).reduce(function (a, u) { return a + LORE(u); }, 0);
+    if (p.lore + ql >= WIN) return cpuQuest(pi);
+    if (!p.inked) { var ik = cpuInkPick(pi); if (ik) return { k: 'ink', u: ik }; }
+    var pl = cpuPlays(pi); if (pl) return pl;
+    var ch = cpuChallenge(pi); if (ch) return ch;
+    return cpuQuest(pi);
+  }
+  function cpuSupportTarget(pi, from) {
+    var others = S.P[pi].board.filter(function (u) { return u !== from && isChar(u); });
+    if (!others.length) return null;
+    var ready = others.filter(function (u) { return canChallenger(u) && defenders(u).length; });
+    return (ready.length ? ready : others).sort(function (a, b) { return STR(b) - STR(a); })[0];
+  }
+  function cpuMulligan(pi) {
+    var p = S.P[pi], back = [], inkables = p.hand.filter(function (u) { return DD(u).k; }).length, cheap = 0;
+    p.hand.slice().sort(function (a, b) { return DD(a).c - DD(b).c; }).forEach(function (u) {
+      var d = DD(u);
+      if (d.c <= 3 && cpuUsable(d)) { cheap++; return; }
+      if (d.c >= 5 || !cpuUsable(d) || (!d.k && inkables < 3)) back.push(u);
+    });
+    if (cheap >= 3) back = back.filter(function (u) { return DD(u).c >= 6 || !cpuUsable(DD(u)); });
+    return back;
+  }
+
+  //@@JS4@@
 })();
 </script>
 </body>
