@@ -2376,7 +2376,7 @@ function garrison(p) {
   if (capT == null || S.own[capT] !== p) return keep;
   var thr = threatTo(capT, p), d = 0;
   var here = S.units.filter(function (u) { return u.t === capT && u.o === p && U[u.k].dom === 'L'; }).sort(function (a, b) { return U[b.k].d - U[a.k].d || U[a.k].a - U[b.k].a; });
-  for (var i = 0; i < here.length && d < thr * 0.9; i++) { keep[here[i].i] = 1; d += U[here[i].k].d + 0.5; }
+  for (var i = 0; i < here.length && d < thr * 1.2; i++) { keep[here[i].i] = 1; d += U[here[i].k].d + 0.5; }
   return keep;
 }
 function targetValue(t, p) {
@@ -2426,7 +2426,7 @@ async function aiCombat(p) {
     var here = S.units.filter(function (u) { return u.t === t && u.o === p && u.on == null; }).map(function (u) { return { k: u.k, h: u.h }; });
     var all = here.concat(pool.map(function (u) { return { k: u.k, h: u.h }; }));
     var best = simOdds(all, defK, { land: landT, n: 160 });
-    var need = (TER[t][4] & 4) ? 0.6 : landT ? 0.72 : 0.68;
+    var need = (TER[t][4] & 4) ? 0.6 : landT ? (p === 'su' ? 0.8 : 0.72) : 0.68;
     if (best.win < need) continue;
     var pick = [], att = here.slice();
     for (var i = 0; i < pool.length; i++) {
@@ -2812,7 +2812,7 @@ function unitTable() {
 }
 var RULES =
   '<p class="goal">It’s spring 1942. The <b>Axis</b> (Germany and Japan) fight the <b>Allies</b> (Soviet Union, United Kingdom and United States). Hold enough <b>victory cities</b> (gold stars on the map) at the end of a round to win.</p>' +
-  '<h3>A turn</h3><p>Powers take turns in order: <b>Germany, Soviet Union, Japan, United Kingdom, United States</b> (setup can switch to the Soviet Union going first). Each turn has six steps:</p><ol>' +
+  '<h3>A turn</h3><p>Powers take turns in order: <b>Soviet Union, Germany, United Kingdom, Japan, United States</b>, the official order (setup can switch to Germany going first). Each turn has six steps:</p><ol>' +
   '<li><b>Buy</b> units with IPCs (your money). You can also repair bomb damage on your factories (1 IPC per point).</li>' +
   '<li><b>Attack moves.</b> Move units into enemy territories or sea zones you want to fight. Land units stop when they enter enemy land. Tanks can roll through an empty enemy territory (a blitz) and keep going.</li>' +
   '<li><b>Battles.</b> Every place you moved into with enemies is a battle. Roll dice!</li>' +
@@ -2875,7 +2875,7 @@ function showSetup() {
         ['total', 'Total', 'Hold all 13 victory cities.'],
         ['caps', 'Capitals', 'Allies take Berlin and Tokyo; Axis take two of London, Moscow and Washington.']] },
       { id: 'limit', label: 'Round limit', value: '0', help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
-      { id: 'order', label: 'Turn order', value: 'de', help: 'Who moves first each round.', choices: [['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States.'], ['su', 'Soviets first', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order in the TripleA version of this map.']] },
+      { id: 'order', label: 'Turn order', value: 'su', help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] }
     ],

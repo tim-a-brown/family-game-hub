@@ -304,7 +304,7 @@
   var KEY = 'axisallies-score', SAVE = 'axisallies_score_state';
 
   // ── Game data: Axis & Allies 1942 Second Edition ───────────────────────────
-  var ORDER = ['ger', 'sov', 'jpn', 'uk', 'usa'];   // official order of play
+  var ORDER = ['sov', 'ger', 'uk', 'jpn', 'usa'];   // official 1942 Second Edition order of play
   var POW = {
     ger: { n: 'Germany',        ab: 'GER',  s: 'axis',   c: '#5f6468', inc: 41, capT: 'Germany',               city: 'Berlin',     capV: 10 },
     sov: { n: 'Soviet Union',   ab: 'USSR', s: 'allies', c: '#9c2f36', inc: 24, capT: 'Russia',                city: 'Moscow',     capV: 8 },
@@ -348,12 +348,15 @@
   var BUY = ['inf', 'art', 'tank', 'aa', 'ftr', 'bmb', 'sub', 'tra', 'dd', 'cru', 'cv', 'bb', 'ic'];
   // Cheapest first when taking casualties (a battleship's first hit is free; transports always last)
   var LOSS = ['inf', 'art', 'tank', 'sub', 'dd', 'ftr', 'bmb', 'cru', 'cv', 'bb'];
-  // The 18 victory cities and who holds them at the start of the 1942 scenario
+  // The 13 victory cities of 1942 Second Edition and who holds them at the start
+  // (same list as the playable game, games/axisallies.html)
   var CITIES = [
-    ['Berlin', 'axis'], ['Paris', 'axis'], ['Rome', 'axis'], ['Warsaw', 'axis'], ['Tokyo', 'axis'], ['Shanghai', 'axis'], ['Manila', 'axis'], ['Hong Kong', 'axis'],
-    ['Moscow', 'allies'], ['Leningrad', 'allies'], ['Stalingrad', 'allies'], ['London', 'allies'], ['Ottawa', 'allies'], ['Calcutta', 'allies'], ['Sydney', 'allies'],
-    ['Washington', 'allies'], ['San Francisco', 'allies'], ['Honolulu', 'allies']
+    ['Berlin', 'axis'], ['Paris', 'axis'], ['Rome', 'axis'], ['Tokyo', 'axis'], ['Shanghai', 'axis'], ['Manila', 'axis'],
+    ['Moscow', 'allies'], ['Leningrad', 'allies'], ['London', 'allies'], ['Calcutta', 'allies'], ['Washington', 'allies'], ['San Francisco', 'allies'], ['Honolulu', 'allies']
   ];
+  var NC = CITIES.length;
+  var WIN = { std: { axis: 9, allies: 10 }, quick: { axis: 8, allies: 9 }, total: { axis: 13, allies: 13 } };
+  function need(side) { return S.need ? S.need[side] : (S.vic || 13); }
   var VAL_CHIPS = [1, 2, 3, 4, 5, 6, 8, 10, 12];
   // Usual splits: player index for each power
   var SPLITS = {
@@ -365,7 +368,7 @@
 
   var RULES =
     '<p class="goal">Play <b>Axis &amp; Allies 1942 (Second Edition)</b> on the real board. This page is your banker, turn tracker and dice tower. The Axis (Germany, Japan) and the Allies (Soviet Union, United Kingdom, United States) race to hold enough <b>victory cities</b>.</p>' +
-    '<h3>Turn order</h3><p>Every round goes <b>Germany, Soviet Union, Japan, United Kingdom, United States</b>. Each power plays a whole turn in six phases. Tap <b>Next phase</b> as you go.</p>' +
+    '<h3>Turn order</h3><p>Every round goes <b>Soviet Union, Germany, United Kingdom, Japan, United States</b>, the official 1942 Second Edition order. Each power plays a whole turn in six phases. Tap <b>Next phase</b> as you go.</p>' +
     '<ol><li><b>Purchase &amp; repair:</b> spend IPCs on new units and fix bomb damage (1 IPC per damage marker).</li>' +
     '<li><b>Combat move:</b> move into the places you want to attack.</li>' +
     '<li><b>Conduct combat:</b> fight each battle.</li>' +
@@ -384,7 +387,7 @@
     '<li>To capture a territory, at least one of your <b>land units</b> must survive. Planes alone cannot take it.</li></ul>' +
     '<p>The <b>odds</b> number plays the battle out thousands of times, losing the cheapest units first and never retreating. It is a guide, not a promise.</p>' +
     '<h3>Strategic bombing</h3><p>Bombers can attack a factory instead of fighting. The factory\'s own anti-aircraft fire rolls one die per bomber and hits on 1. Each bomber that gets through rolls one die of damage. A factory can hold up to twice its territory\'s value in damage.</p>' +
-    '<h3>Winning</h3><p>At the end of each full round (after the United States), count victory cities. A side that holds the number you picked in setup (13, 15 or all 18) wins. There are no National Objectives in this edition.</p>';
+    '<h3>Winning</h3><p>At the end of each full round (after the United States), count victory cities. There are 13 victory cities. In the standard game the Axis win with 9 and the Allies with 10 (setup also has Quick: 8 and 9, and Total: all 13). There are no National Objectives in this edition.</p>';
 
   Kit.init({
     id: KEY, title: 'Axis & Allies',
@@ -439,8 +442,8 @@
       intro: 'A table companion for the real board game: IPC bank, turn tracker and battle dice.',
       players: { min: 2, max: 5, count: 2, label: "Who's playing?" },
       options: [
-        { id: 'vic', label: 'Victory condition', help: 'How many of the 18 victory cities one side must hold at the end of a full round to win.',
-          choices: [[13, '13 cities', 'Projection of Power: the usual game.'], [15, '15 cities', 'Honorable Surrender: a longer game.'], [18, 'All 18', 'Total Victory: you must hold every victory city.']], value: 13 },
+        { id: 'vic', label: 'Victory condition', help: 'How many of the 13 victory cities a side must hold at the end of a full round to win.',
+          choices: [['std', 'Standard', 'The usual game: the Axis need 9 victory cities, the Allies need 10.'], ['quick', 'Quick', 'A shorter game: the Axis need 8, the Allies need 9.'], ['total', 'Total', 'A side must hold all 13 victory cities.']], value: 'std' },
         { id: 'split', label: 'Who plays which power', help: 'Usual splits: 2 players, one is Germany and Japan, the other is all three Allies. 3 players: Germany and Japan; Soviet Union and United States; United Kingdom. 4 players: Germany; Soviet Union and United States; Japan; United Kingdom. 5 players: one power each.',
           choices: [['std', 'Usual split', 'Powers are shared out the usual way for your number of players.'], ['pick', 'Choose', 'You pick who plays each power on the next screen.']], value: 'std' }
       ],
@@ -485,7 +488,7 @@
     ORDER.forEach(function (k) { pw[k] = { pl: map[k], bank: POW[k].inc, inc: POW[k].inc, cap: true, capBy: null }; });
     var vc = {}; CITIES.forEach(function (c) { vc[c[0]] = c[1]; });
     S = {
-      v: 1, started: Date.now(), vic: Number(cfg.options.vic) || 13,
+      v: 1, started: Date.now(), need: WIN[cfg.options.vic] || WIN.std,
       players: cfg.players.map(function (p) { return { name: p.name }; }),
       pw: pw, round: 1, cur: 0, phase: 0, bought: {}, vc: vc,
       factories: ORDER.map(function (k) { return { name: POW[k].capT, val: POW[k].capV, own: k, dmg: 0 }; }),
@@ -740,7 +743,7 @@
       h += any.length ? '<div class="bought">' + any.map(function (t) { return '<span>' + b[t] + ' ' + (b[t] === 1 ? U[t].n : U[t].p) + '</span>'; }).join('') + '</div>' : '<p class="tip">Nothing was bought this turn.</p>';
     }
     var nx = S.phase < 5 ? '<span class="tx"><span>Next phase</span><small>' + PHASES[S.phase + 1].n + '</small></span>'
-      : '<span class="tx"><span>' + (pw.cap ? 'Collect ' + pw.inc + ' IPCs' : 'End turn, no income') + '</span><small>Then ' + (S.cur === 4 ? 'round ' + (S.round + 1) + ': Germany' : POW[ORDER[S.cur + 1]].n) + '</small></span>';
+      : '<span class="tx"><span>' + (pw.cap ? 'Collect ' + pw.inc + ' IPCs' : 'End turn, no income') + '</span><small>Then ' + (S.cur === 4 ? 'round ' + (S.round + 1) + ': ' + POW[ORDER[0]].n : POW[ORDER[S.cur + 1]].n) + '</small></span>';
     h += '<button type="button" class="btn btn-primary btn-lg btn-block next" data-act="next">' + nx + ic('right') + '</button></div>';
     // Tools
     h += '<section class="tools">' +
@@ -764,8 +767,8 @@
     });
     h += '</section>';
     var ax = vcCount('axis'), al = vcCount('allies');
-    h += '<button type="button" class="vcbar" data-act="vc"><span class="vs"><span class="tt"><span>Axis ' + ax + ' · Allies ' + al + '</span><span>' + S.vic + ' to win</span></span>' +
-      '<span class="vcmeter"><i class="ax" style="width:' + (ax / 18 * 100) + '%"></i><i class="al" style="width:' + (al / 18 * 100) + '%"></i><span class="goal" style="left:' + (S.vic / 18 * 100) + '%"></span></span></span>' + ic('right') + '</button>';
+    h += '<button type="button" class="vcbar" data-act="vc"><span class="vs"><span class="tt"><span>Axis ' + ax + ' · Allies ' + al + '</span><span>Need ' + need('axis') + ' / ' + need('allies') + '</span></span>' +
+      '<span class="vcmeter"><i class="ax" style="width:' + (ax / NC * 100) + '%"></i><i class="al" style="width:' + (al / NC * 100) + '%"></i><span class="goal" style="left:' + (need('axis') / NC * 100) + '%"></span></span></span>' + ic('right') + '</button>';
     h += '<section><div class="sh"><span class="label">Game log</span>' + (S.log.length > 8 ? '<button type="button" data-act="logall">Show all</button>' : '') + '</div><div class="log">' + logHTML(8) + '</div></section>';
     h += '</div></div>';
     app.innerHTML = h;
@@ -1379,7 +1382,7 @@
     function paint() {
       node.innerHTML = '';
       var ax = 0, al = 0; for (var c in dr) { if (dr[c] === 'axis') ax++; else al++; }
-      head.innerHTML = '<b>Axis ' + ax + '</b> · <b>Allies ' + al + '</b>. A side needs ' + S.vic + ' at the end of a round to win. Tap a city to change who holds it.';
+      head.innerHTML = '<b>Axis ' + ax + '</b> · <b>Allies ' + al + '</b>. At the end of a round the Axis need ' + need('axis') + ' and the Allies need ' + need('allies') + ' to win. Tap a city to change who holds it.';
       node.appendChild(head);
       var g = el('div', { class: 'vcgrid', style: { 'margin-top': '10px' } });
       CITIES.forEach(function (c) {
@@ -1492,7 +1495,7 @@
   }
   function roundCheck() {
     var r = S.round - 1, ax = vcCount('axis'), al = vcCount('allies');
-    var side = ax >= S.vic ? 'axis' : al >= S.vic ? 'allies' : null;
+    var side = ax >= need('axis') ? 'axis' : al >= need('allies') ? 'allies' : null;
     if (!side) { Kit.toast('Round ' + S.round + ': Germany\'s turn'); return; }
     Kit.confirm('The ' + SIDE[side] + ' hold ' + (side === 'axis' ? ax : al) + ' victory cities', { ok: 'The ' + SIDE[side] + ' win', cancel: 'Keep playing', body: 'That is enough to win at the end of round ' + r + '. If the cities are out of date, keep playing and fix them first.' })
       .then(function (ok) { if (ok) finish(side, 'cities'); });
@@ -1508,7 +1511,7 @@
     var rich = ORDER.slice().sort(function (a, b) { return (S.st.spent[b] || 0) - (S.st.spent[a] || 0); })[0];
     if (S.st.spent[rich]) hl.push(POW[rich].n + ' spent the most: ' + S.st.spent[rich] + ' IPCs');
     Kit.record(KEY, {
-      started: S.started, mode: (side ? SIDE[side] + ' win' : 'Unfinished') + ' · ' + S.vic + ' cities',
+      started: S.started, mode: (side ? SIDE[side] + ' win' : 'Unfinished') + ' · Axis ' + need('axis') + ' / Allies ' + need('allies') + ' cities',
       players: S.players.map(function (p, i) { var sd = sideOfPlayer[i]; return { name: p.name, score: sd === 'axis' ? ax : al }; }),
       winner: winners.length ? winners.join(' & ') : null,
       summary: side ? 'The ' + SIDE[side] + ' won · ' + ax + '–' + al + ' cities' : 'Stopped in round ' + S.round,

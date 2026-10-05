@@ -55,6 +55,7 @@ var GAMES = [
   { id: 'codebreaker', name: 'Mastermind', color: '#000', cat: 'board', min: 1, max: 2, tag: 'Crack the secret color code', play: 'codebreaker' },
   { id: 'dominoes',    name: 'Dominoes',     color: '#000', cat: 'board', min: 1, max: 4, tag: 'Match the ends, block your rivals', play: 'dominoes' },
   { id: 'marbles',     name: 'Marbles',      color: '#7c3aed', cat: 'board', min: 2, max: 6, tag: 'Race home with cards or dice, bump rivals', play: 'marbles' },
+  { id: 'axisallies',  name: 'Axis & Allies', color: '#000', cat: 'board', min: 1, max: 5, tag: 'Command the armies of 1942 and win the war', play: 'axisallies', score: 'axisallies-score' },
   { id: 'go',          name: 'Go',           color: '#000', cat: 'board', min: 1, max: 2, tag: 'Surround territory, capture stones', play: 'go' },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello' },
   { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon' },
