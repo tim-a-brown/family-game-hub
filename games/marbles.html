@@ -221,7 +221,7 @@
     rules:
       '<p class="goal">Race all four of your marbles around the board and into your home row. You move by playing cards. First one (or first team) with every marble home wins.</p>' +
       '<p>This is the card game families call <b>Marbles</b>, <b>Cards &amp; Marbles</b>, <b>Tock</b> or <b>Pegs and Jokers</b>. Aggravation and Wahoo (with a die) are in setup under <b>Rules</b>.</p>' +
-      '<h3>The cards</h3><p>A normal deck plus 2 Jokers (you can turn the Jokers off in setup). Everyone gets <b>5 cards</b>. On your turn, play <b>one card</b> and move <b>one marble</b>. When everyone is out of cards, deal 5 more.</p>' +
+      '<h3>The cards</h3><p>A normal deck plus 2 Jokers (you can turn the Jokers off in setup). Everyone gets <b>5 cards</b>. On your turn, play <b>one card</b> and move <b>one marble</b>. When everyone is out of cards, deal 5 more.</p><p>With the <b>5, 4, 3, 2, 1</b> deal (in setup), each hand is one card smaller. After the 1-card hand the deck is reshuffled, the deal passes to the next player, and it starts again at 5.</p>' +
       '<ul><li><b>Ace:</b> move a marble out of base onto your start hole, or move 1.</li>' +
       '<li><b>King:</b> move out of base, or move 13.</li>' +
       '<li><b>Queen:</b> move 12.</li>' +
@@ -285,6 +285,9 @@
         { id: 'jokers', label: 'Jokers', help: 'Whether the 2 Jokers are shuffled into the deck.', value: 'on', when: function () { return rulesNow() === 'cards'; }, choices: [
           ['on', 'With Jokers', 'The usual deck: 2 Jokers that bring a marble out or jump onto a rival and send it home.'],
           ['off', 'No Jokers', 'A plain 52-card deck. Only Aces and Kings bring marbles out.']] },
+        { id: 'deal', label: 'Deal', help: 'How many cards everyone gets each hand.', value: '5', when: function () { return rulesNow() === 'cards'; }, choices: [
+          ['5', '5 every hand', 'Everyone gets 5 cards every time the hands run out.'],
+          ['shrink', '5, 4, 3, 2, 1', 'Hands shrink: 5 cards, then 4, 3, 2 and 1. Then the deck is reshuffled, the deal passes to the next player, and it starts again at 5.']] },
         { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
       ],
       players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
@@ -303,7 +306,7 @@
           return b >= 0 ? { name: bots[b] || 'Computer ' + (b + 1), cpu: true, color: p.color } : { name: p.name, cpu: !!p.cpu, color: p.color };
         });
         var n = players.length, teams = cfg.options.partners === 'on' && (n === 4 || n === 6);
-        start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', jokers: cfg.options.jokers || 'on', teams: teams, players: players });
+        start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', jokers: cfg.options.jokers || 'on', deal: cfg.options.deal || '5', teams: teams, players: players });
       }
     });
     // Family game: blank seats become computer players
@@ -334,7 +337,7 @@
       cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null
     };
     if (S.rules === 'cards') {
-      S.king = o.king || '13'; S.jokers = o.jokers || 'on'; S.deck = []; S.hands = S.players.map(function () { return []; });
+      S.king = o.king || '13'; S.jokers = o.jokers || 'on'; S.dealMode = o.deal || '5'; S.deck = []; S.hands = S.players.map(function () { return []; });
       S.pile = []; S.lastCard = S.players.map(function () { return null; }); S.pend = null; S.deals = 0; S.line = '';
       S.phase = 'play'; S.viewer = humans() === 1 ? firstHuman() : -1;
     }
@@ -718,9 +721,15 @@
     if (!allPlays(S.cur).length && !S.pend) { Kit.sfx('bad'); }
   }
   function deal() {
-    var n = S.players.length;
-    if (S.deck.length < 5 * n) { S.deck = newDeck(); S.pile = []; }
-    for (var k = 0; k < 5; k++) for (var i = 0; i < n; i++) S.hands[(S.cur + i) % n].push(S.deck.shift());
+    var n = S.players.length, size = 5, newCycle = false;
+    if (S.dealMode === 'shrink') {
+      var idx = (S.deals || 0) % 5; size = 5 - idx;
+      // After the 1-card hand: fresh shuffle and the deal moves one seat on
+      if (idx === 0 && S.deals > 0) { newCycle = true; S.deck = newDeck(); S.pile = []; S.cur = (S.cur + 1) % n; }
+    }
+    if (S.deck.length < size * n) { S.deck = newDeck(); S.pile = []; }
+    if (S.dealMode === 'shrink') { S.line = (newCycle ? 'New deal: ' : '') + size + (size === 1 ? ' card' : ' cards') + ' each'; if (S.deals > 0) Kit.toast(S.line, 1500); }
+    for (var k = 0; k < size; k++) for (var i = 0; i < n; i++) S.hands[(S.cur + i) % n].push(S.deck.shift());
     S.hands.forEach(sortHand);
     S.deals++;
     Kit.sfx('deal');
@@ -989,7 +998,7 @@
       .sort(function (a, b) { return b.pr - a.pr; });
     var humansL = S.players.filter(function (p) { return !p.cpu; });
     var lose = humansL.length > 0 && w.team.every(function (i) { return S.players[i].cpu; });
-    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
+    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, deal: S.dealMode, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: names.length > 1 ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
@@ -1117,7 +1126,7 @@
       handEl = el('div', { class: 'chand mh' });
       col.appendChild(handEl);
     }
-    col.appendChild(el('div', { class: 'rulechip', text: RULES[S.rules] + (S.teams ? ' · partners across' : '') + (cards && S.king === 'out' ? ' · King: out only' : '') + (cards && S.jokers === 'off' ? ' · no Jokers' : '') + ' · ' + (S.B === 4 ? 'cross board' : 'six-sided board') }));
+    col.appendChild(el('div', { class: 'rulechip', text: RULES[S.rules] + (S.teams ? ' · partners across' : '') + (cards && S.king === 'out' ? ' · King: out only' : '') + (cards && S.jokers === 'off' ? ' · no Jokers' : '') + (cards && S.dealMode === 'shrink' ? ' · deal 5-4-3-2-1' : '') + ' · ' + (S.B === 4 ? 'cross board' : 'six-sided board') }));
     app.appendChild(col);
     paint();
   }
