@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v82-2026-10-05-lorcana-menu';
+const CACHE_VERSION = 'v83-2026-10-05-fresh-files';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -220,7 +220,9 @@ self.addEventListener('fetch', (event) => {
       const timer = setTimeout(() => {
         fromCache().then((c) => { if (c && !settled) { settled = true; resolve(c); } });
       }, 3500);
-      fetch(req)
+      // no-cache: always ask the server (a quick "not modified" when nothing changed),
+      // so the browser's own cache can't hold back a new release
+      fetch(req, { cache: 'no-cache' })
         .then((resp) => {
           if (resp && resp.status === 200 && resp.type !== 'opaqueredirect') {
             const clone = resp.clone();
