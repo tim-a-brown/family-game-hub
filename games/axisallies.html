@@ -1054,11 +1054,21 @@ function casValid(list, h, cas, need) {
   cas.forEach(function (c) { var u = byId(c.id); if (isAir(u)) air++; else if (u.k === 'sub') sub++; if (u.k === 'tra') tra++; });
   if (air > h.a + h.g || sub > h.s + h.g) return false;
   if (Math.max(0, air - h.a) + Math.max(0, sub - h.s) > h.g) return false;
-  if (tra) {
-    var nonTra = list.filter(function (u) { return u.k !== 'tra'; }).reduce(function (a, u) { return a + (u.k === 'bb' && !u.h ? 2 : 1); }, 0);
-    if (cas.length - tra < nonTra) return false;
-  }
+  // Transports go last: only once no other unit could have taken those hits
+  // (planes can't hit submarines, submarines can't hit planes)
+  if (tra && cas.length - tra < maxNonTransport(list, h)) return false;
   return true;
+}
+function maxNonTransport(list, h) {
+  var air = 0, sub = 0, oth = 0;
+  list.forEach(function (u) { if (u.k === 'tra') return; var n = u.k === 'bb' && !u.h ? 2 : 1; if (isAir(u)) air += n; else if (u.k === 'sub') sub += n; else oth += n; });
+  var hs = h.s || 0, ha = h.a || 0, hg = h.g || 0, t;
+  t = Math.min(hs, sub); sub -= t; hs -= t;
+  t = Math.min(ha, air); air -= t; ha -= t;
+  var used = (h.s || 0) - hs + (h.a || 0) - ha;
+  t = Math.min(hs, oth); oth -= t; used += t;
+  t = Math.min(ha, oth); oth -= t; used += t;
+  return used + Math.min(hg, air + sub + oth);
 }
 function slotsFor(list) { var o = {}; list.forEach(function (u) { o[u.k] = (o[u.k] || 0) + (u.k === 'bb' && !u.h ? 2 : 1); }); return o; }
 function applyCas(B, v, cas) {
