@@ -167,7 +167,12 @@ var GameIcon = (function () {
         '<text x="12" y="18.4" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-style="italic" font-weight="700" font-size="18.5" fill="' + Y + '">9</text>';
     },
     threecardpoker: function (c) { return rect(2, 5, 9, 14, 1.8, c, ' transform="rotate(-16 6 12)"') + rect(7.5, 4, 9, 14, 1.8, K) + rect(13, 5, 9, 14, 1.8, R, ' transform="rotate(16 17 12)"'); },
-    paigow: function (c) { return rect(1.5, 4, 11, 16, 2, W, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(-10 7 12)"') + txt('A', 9, R, 11.5, 6.5) + rect(11.5, 4, 11, 16, 2, W, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(10 17 12)"') + txt('K', 9, K, 12.5, 17.3); },
+    paigow: function () {   // a Chinese domino tile (Pai Gow's roots): red four over white six
+      var t = rect(5.2, .8, 13.6, 22.4, 2.8, K, ' stroke="' + W + '" stroke-width=".9"') + line('M7.2 12h9.6', W, 1);
+      [[9.2, 4.4], [14.8, 4.4], [9.2, 8.8], [14.8, 8.8]].forEach(function (p) { t += circ(p[0], p[1], 1.7, R); });
+      [[9.2, 14.6], [14.8, 14.6], [9.2, 17.4], [14.8, 17.4], [9.2, 20.2], [14.8, 20.2]].forEach(function (p) { t += circ(p[0], p[1], 1.25, W); });
+      return t;
+    },
 
     // Arcade (screen base; bright marks)
     tetris: function () { var q = function (x, y, c) { return rect(x, y, 4.6, 4.6, 1, c); }; return q(4, 2, P) + q(9, 2, P) + q(14, 2, P) + q(9, 7, P) + q(4, 13, O) + q(4, 18, O) + q(9, 18, O) + q(14, 13, Y) + q(19, 13, Y) + q(14, 18, Y) + q(19, 18, Y); },
