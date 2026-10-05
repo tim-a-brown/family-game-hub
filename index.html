@@ -19,6 +19,7 @@
 <script src="players.js"></script>
 <script src="hist.js"></script>
 <script src="casino.js"></script>
+<script src="spin.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
@@ -274,7 +275,7 @@ document.addEventListener('visibilitychange', function () {
         <input class="input" id="q" type="search" placeholder="Find a game" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Find a game">
         <button class="x" id="qx" type="button" aria-label="Clear search">✕</button>
       </div>
-      <button class="btn btn-yellow surprise" id="surprise" type="button" aria-label="Surprise me: pick a random game"><span class="d" id="surprise-ic"></span><span class="lbl">Surprise</span></button>
+      <button class="btn btn-yellow surprise" id="surprise" type="button" aria-label="Surprise me: spin a wheel to pick a game"><span class="d" id="surprise-ic"></span><span class="lbl">Surprise</span></button>
     </div>
     <div class="chips" id="chips" role="tablist" aria-label="Categories"></div>
   </div>
@@ -571,28 +572,8 @@ document.addEventListener('visibilitychange', function () {
     return b;
   }
 
-  // Surprise me: shuffle a spotlight across the visible tiles, then launch one
-  var spinning = false;
-  $('surprise').addEventListener('click', function () {
-    if (spinning) return;
-    var tiles = Array.prototype.slice.call(document.querySelectorAll('#list .g'));
-    if (!tiles.length) return;
-    spinning = true;
-    var pick = tiles[Math.floor(Math.random() * tiles.length)];
-    var steps = 14, i = 0, prev = null;
-    (function hop() {
-      if (prev) prev.classList.remove('spot');
-      var t = i < steps ? tiles[Math.floor(Math.random() * tiles.length)] : pick;
-      t.classList.add('spot'); prev = t; Kit.sfx('tick'); Kit.haptic('tick');
-      if (i === steps) {
-        t.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        Kit.sfx('good');
-        setTimeout(function () { t.classList.remove('spot'); spinning = false; launch(findGame(t.dataset.id)); }, 700);
-        return;
-      }
-      i++; setTimeout(hop, 60 + i * 12);
-    })();
-  });
+  // Surprise: a raffle wheel of games, with its own filters (spin.js)
+  $('surprise').addEventListener('click', function () { Kit.sfx('pop'); Kit.haptic('light'); Spin.open({ launch: launch, isFav: isFav }); });
   $('logo').innerHTML = Kit.icon('dice'); $('surprise-ic').innerHTML = Kit.icon('shuffle');
   $('logo').addEventListener('click', function () { Kit.sfx('pop'); Kit.confetti({ count: 60 }); });
 
