@@ -159,7 +159,12 @@ var GameIcon = (function () {
         circ(5.2, 15.8, 1.5, W, ' opacity=".8"') + circ(15.2, 16.4, 1.5, W, ' opacity=".8"');
     },
     craps: function () { return rect(1.5, 6, 11, 11, 2.5, R, ' transform="rotate(-12 7 11.5)"') + circ(4.6, 9.4, 1.1, W) + circ(7, 11.6, 1.1, W) + circ(9.4, 13.8, 1.1, W) + rect(11.5, 7, 11, 11, 2.5, K, ' transform="rotate(10 17 12.5)"') + circ(15, 10.4, 1.1, W) + circ(19.2, 14.6, 1.1, W); },
-    baccarat: function (c) { return txt('9', 22, c, 12.5); },
+    baccarat: function () {   // a natural nine: an elegant gold 9 on a dark card with diamond pips
+      var d = function (x, y, r) { return path('M' + x + ' ' + (y - r) + 'l' + r * .7 + ' ' + r + '-' + r * .7 + ' ' + r + '-' + r * .7 + '-' + r + 'z', R); };
+      return rect(3.6, .8, 16.8, 22.4, 2.6, K, ' stroke="' + Y + '" stroke-width="1.2"') +
+        '<text x="12" y="18.4" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-style="italic" font-weight="700" font-size="18.5" fill="' + Y + '">9</text>' +
+        d(6.8, 4.6, 1.8) + d(17.2, 19.4, 1.8);
+    },
     threecardpoker: function (c) { return rect(2, 5, 9, 14, 1.8, c, ' transform="rotate(-16 6 12)"') + rect(7.5, 4, 9, 14, 1.8, K) + rect(13, 5, 9, 14, 1.8, R, ' transform="rotate(16 17 12)"'); },
     paigow: function (c) { return rect(1.5, 4, 11, 16, 2, W, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(-10 7 12)"') + txt('A', 9, R, 11.5, 6.5) + rect(11.5, 4, 11, 16, 2, W, ' stroke="' + K + '" stroke-width="1.4" transform="rotate(10 17 12)"') + txt('K', 9, K, 12.5, 17.3); },
 
