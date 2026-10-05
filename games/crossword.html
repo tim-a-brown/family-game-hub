@@ -129,6 +129,13 @@ body{overflow:hidden;display:flex;flex-direction:column;}
   .clues{grid-column:2;grid-row:2;max-height:none;}
   .kb{grid-column:2;grid-row:3;}
 }
+
+/* QWERTY keyboard: every key is one tenth of the row, rows centered (like a phone keyboard) */
+.kb .r,.kb .kr{--kg:5px;gap:var(--kg);justify-content:center;}
+.kb .r .key,.kb .kr .key{flex:0 1 calc((100% - 9 * var(--kg)) / 10);min-width:0;}
+.kb .r .key.wide,.kb .kr .key.bs,.kb .kspc{flex:0 1 calc((100% - 9 * var(--kg)) / 10 * 1.5);}
+.kb .kspc{visibility:hidden;}
+@media (min-width:700px){.kb .r,.kb .kr{--kg:7px;}}
 </style>
 </head>
 <body>
@@ -443,14 +450,12 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     var kb = $('kb');
     ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM-'].forEach(function (row, ri) {
       var r = el('div', { class: 'r' });
-      if (ri === 1) r.appendChild(el('span', { class: 'half' }));
-      if (ri === 2) r.appendChild(el('span', { class: 'half' }));
+      if (ri === 2) r.appendChild(el('span', { class: 'kspc', 'aria-hidden': 'true' }));
       row.split('').forEach(function (k) {
         var b = el('button', { type: 'button', class: 'key' + (k === '-' ? ' wide' : ''), 'aria-label': k === '-' ? 'Delete' : k, html: k === '-' ? '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H8.5L2 12l6.5 7H21a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m11 9 6 6M17 9l-6 6"/></svg>' : k });
         b.addEventListener('pointerdown', function (e) { e.preventDefault(); if (k === '-') back(); else type(k); });
         r.appendChild(b);
       });
-      if (ri === 1) r.appendChild(el('span', { class: 'half' }));
       kb.appendChild(r);
     });
   })();

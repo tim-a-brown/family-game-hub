@@ -135,8 +135,6 @@
 .buzz{font-family:var(--display);font-weight:400;font-size:1.3rem!important;letter-spacing:.03em;}
 .kb{display:flex;flex-direction:column;gap:5px;padding:0 calc(var(--corner-x) / 2);}
 .kb .kr{display:flex;justify-content:center;gap:5px;}
-.kb .kr .key{flex:0 1 calc((100% - 45px) / 10);min-width:0;}
-.kb .kr .key.bs{flex-basis:calc((100% - 45px) / 10 * 1.5);}
 .key{min-height:42px;padding:0;border:0;border-radius:9px;font-weight:900;font-size:1.1rem;color:#1b1340;
   background:linear-gradient(180deg,#fbf9ff,#ddd6f3);box-shadow:0 3px 0 #8f86b8;transition:transform .08s, opacity .15s;}
 .key.v{background:linear-gradient(180deg,#e7f4ff,#a9d3ff);box-shadow:0 3px 0 #5a8cc2;}
@@ -190,6 +188,13 @@
 .show.desk .key{min-height:46px;}
 .show.desk .cat{font-size:.95rem;}
 @media (min-width:700px) and (max-width:959px){ .key{min-height:52px;font-size:1.3rem;} }
+
+/* QWERTY keyboard: every key is one tenth of the row, rows centered (like a phone keyboard) */
+.kb .r,.kb .kr{--kg:5px;gap:var(--kg);justify-content:center;}
+.kb .r .key,.kb .kr .key{flex:0 1 calc((100% - 9 * var(--kg)) / 10);min-width:0;}
+.kb .r .key.wide,.kb .kr .key.bs,.kb .kspc{flex:0 1 calc((100% - 9 * var(--kg)) / 10 * 1.5);}
+.kb .kspc{visibility:hidden;}
+@media (min-width:700px){.kb .r,.kb .kr{--kg:7px;}}
 </style>
 </head>
 <body>
@@ -725,6 +730,7 @@
     var bs = el('button', { type: 'button', class: 'key bs', 'aria-label': 'Delete', html: Kit.icon('back'), onclick: function () { backspace(); } });
     ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].forEach(function (rowL, ri) {
       var row = el('div', { class: 'kr' });
+      if (ri === 2) row.appendChild(el('span', { class: 'kspc', 'aria-hidden': 'true' }));
       rowL.split('').forEach(function (L) {
         var b = el('button', { type: 'button', class: 'key' + (VOW.indexOf(L) >= 0 ? ' v' : ''), text: L, onclick: function () { Kit.haptic('light'); pressKey(L); } });
         keys[L] = b; row.appendChild(b);
