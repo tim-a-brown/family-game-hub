@@ -118,7 +118,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 <script>
 (function () {
   'use strict';
-  var HI = 'flappy', KEY = 'flappybird';
+  var HI = 'flappy', KEY = 'flappybird', wild = false;
   var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var $ = function (id) { return document.getElementById(id); };
   var PI = Math.PI, TAU = PI * 2;
@@ -292,11 +292,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (state !== 'play' || paused || countdown) return;
     bird.vy = Math.min(bird.vy * 0.25, 0) + FLAP * 0.9 * 0.6; bird.boost = 0.07; bird.wingT = 0; bird.flapAt = t; Snd.flap();
   }
+  // Classic: every pipe the same. Wild: widths and openings vary, and the
+  // openings slowly tighten as the score climbs.
   function spawnPipe(x) {
-    var top = 64 + GAP / 2, bot = H - GROUND - 40 - GAP / 2, maxJump = Math.max(90, (bot - top) * .55);
+    var w = PIPE_W, gap = GAP;
+    if (wild) {
+      w = Math.round(40 + Math.random() * 46);
+      gap = Math.round(Math.max(96, Math.min(146, 132 - Math.min(score, 40) * 0.7 + (Math.random() * 2 - 1) * 16)));
+    }
+    var top = 64 + gap / 2, bot = H - GROUND - 40 - gap / 2, maxJump = Math.max(90, (bot - top) * .55);
+    // a tight opening right after a big jump is unfair: keep those closer together
+    if (wild && gap < 110) maxJump *= 0.75;
     var y = lastPipeY + (Math.random() * 2 - 1) * maxJump;
     y = Math.max(top, Math.min(bot, y)); lastPipeY = y;
-    pipes.push({ x: x, y: y, passed: false });
+    pipes.push({ x: x, y: y, w: w, g: gap, passed: false });
   }
 
   // ═══ Update (fixed 120 Hz for smooth physics) ═══════════════════════════
@@ -322,20 +331,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       bird.ang += bird.angV * DT;
       // Pipes
       for (var i = 0; i < pipes.length; i++) pipes[i].x -= SPEED * DT;
-      if (pipes.length && pipes[0].x < -PIPE_W - 10) pipes.shift();
+      if (pipes.length && pipes[0].x < -pipes[0].w - 10) pipes.shift();
       var lastP = pipes[pipes.length - 1];
-      if (lastP && lastP.x < W - SPACING + PIPE_W) spawnPipe(lastP.x + SPACING);
+      if (lastP && lastP.x < W - SPACING + PIPE_W) spawnPipe(lastP.x + SPACING + (lastP.w - PIPE_W));
       pipes.forEach(function (p) {
-        if (!p.passed && p.x + PIPE_W / 2 < bird.x) { p.passed = true; score++; Snd.point(); Kit.haptic('tick'); if (score % 10 === 0) Kit.callout(score + '!', '#ffd84a'); }
+        if (!p.passed && p.x + p.w / 2 < bird.x) { p.passed = true; score++; Snd.point(); Kit.haptic('tick'); if (score % 10 === 0) Kit.callout(score + '!', '#ffd84a'); }
       });
       // Collisions
       if (bird.y + BR >= H - GROUND) { bird.y = H - GROUND - BR; die('ground'); return; }
       if (bird.y < -40) bird.y = -40;
       for (var j = 0; j < pipes.length; j++) {
         var p = pipes[j];
-        if (bird.x + BR < p.x - 3 || bird.x - BR > p.x + PIPE_W + 3) continue;
-        if (hitRect(p.x, -100, PIPE_W, p.y - GAP / 2 + 100) || hitRect(p.x, p.y + GAP / 2, PIPE_W, H) ||
-            hitRect(p.x - 3, p.y - GAP / 2 - 24, PIPE_W + 6, 24) || hitRect(p.x - 3, p.y + GAP / 2, PIPE_W + 6, 24)) { die('pipe'); return; }
+        var pw = p.w, pg = p.g;
+        if (bird.x + BR < p.x - 3 || bird.x - BR > p.x + pw + 3) continue;
+        if (hitRect(p.x, -100, pw, p.y - pg / 2 + 100) || hitRect(p.x, p.y + pg / 2, pw, H) ||
+            hitRect(p.x - 3, p.y - pg / 2 - 24, pw + 6, 24) || hitRect(p.x - 3, p.y + pg / 2, pw + 6, 24)) { die('pipe'); return; }
       }
     } else if (state === 'dead') {
       deadT += DT;
@@ -370,6 +380,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       if (m) hl.push('Earned a ' + MEDALS[m - 1].n.toLowerCase() + ' medal');
       if (isBest) hl.push('New high score' + (oldBest ? ' (old best ' + oldBest + ')' : ''));
       if (session.runs > 1) hl.push('Flight ' + session.runs + ' this sitting, best of the sitting: ' + session.best);
+      if (wild) hl.push('Wild pipes');
       hl.push('Flying ' + (themeName === 'day' ? 'by day' : themeName === 'dusk' ? 'at sunset' : 'at night'));
       try {
         Kit.record(KEY, {
@@ -410,12 +421,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (state === 'play' || (state === 'dead' && !cardShown)) bigScore(score);
   }
   function drawPipe(p) {
-    var top = p.y - GAP / 2, bot = p.y + GAP / 2, x = Math.round(p.x * SC) / SC;
-    g.drawImage(layers.pipe, x, -2, PIPE_W, top - 22);
-    g.drawImage(layers.cap, x - 3, top - 24, PIPE_W + 6, 24);
-    g.drawImage(layers.pipe, x, bot + 22, PIPE_W, H - GROUND - bot - 20);
-    g.drawImage(layers.cap, x - 3, bot, PIPE_W + 6, 24);
-    g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(x, top, PIPE_W, 3); g.fillRect(x, bot + 24, PIPE_W, 3);
+    var pw = p.w, top = p.y - p.g / 2, bot = p.y + p.g / 2, x = Math.round(p.x * SC) / SC;
+    g.drawImage(layers.pipe, x, -2, pw, top - 22);
+    g.drawImage(layers.cap, x - 3, top - 24, pw + 6, 24);
+    g.drawImage(layers.pipe, x, bot + 22, pw, H - GROUND - bot - 20);
+    g.drawImage(layers.cap, x - 3, bot, pw + 6, 24);
+    g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(x, top, pw, 3); g.fillRect(x, bot + 24, pw, 3);
   }
   function drawBird() {
     var b = bird, frame = Math.floor(b.wingT / .085) % 4, wingUp = [-1, 0, 1, 0][frame];
@@ -484,7 +495,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     bind('ov-who', showSetup);
     bind('ov-resume', function () { resume(); });
     bind('ov-again', function () { Snd.swoosh(); toReady(); });
-    bind('ov-hi', function () { ArcadeHi.show(HI, 'Flappy Bird'); });
+    bind('ov-hi', function () { ArcadeHi.show(HI, wild ? 'Flappy Bird (Wild)' : 'Flappy Bird'); });
     bind('ov-past', showPast);
     if (state === 'over') countUp(lastFlight.score);
   }
@@ -547,7 +558,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     theme: { wood: ['#4a7f3a', '#2c5222'] },
     onNew: showSetup, confirmNew: false,
     menu: [
-      { icon: 'trophy', label: 'High scores', onClick: function () { pause(); ArcadeHi.show(HI, 'Flappy Bird'); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { pause(); ArcadeHi.show(HI, wild ? 'Flappy Bird (Wild)' : 'Flappy Bird'); } },
       { icon: 'history', label: 'Past flights', onClick: function () { pause(); showPast(); } }
     ],
     rules:
@@ -569,12 +580,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     Kit.setup($('app'), {
       intro: 'Tap to flap through the pipes',
       options: [{ id: 'bird', label: 'Bird', help: 'Pick the color of your bird. Surprise me picks a new one each flight.',
-        choices: [['0', 'Yellow'], ['1', 'Blue'], ['2', 'Red'], ['random', 'Surprise me']], value: '0' }],
+        choices: [['0', 'Yellow'], ['1', 'Blue'], ['2', 'Red'], ['random', 'Surprise me']], value: '0' },
+        { id: 'pipes', label: 'Pipes', help: 'Classic is the original game: every pipe and opening is the same size. Wild mixes up pipe widths and opening sizes, and the openings get tighter as your score climbs. Wild keeps its own high scores.',
+          choices: [['classic', 'Classic'], ['wild', 'Wild']], value: 'classic' }],
       players: { min: 1, max: 1, count: 1, label: 'Player' },
       start: 'Fly',
       onStart: function (cfg) {
         who = (cfg.players[0] && cfg.players[0].name) || 'Player';
         birdPick = String((cfg.options || {}).bird || '0');
+        wild = (cfg.options || {}).pipes === 'wild'; HI = wild ? 'flappywild' : 'flappy';
         session = { runs: 0, best: 0 }; lastFlight = null;
         var app = $('app'); app.className = ''; app.innerHTML = '';
         document.documentElement.classList.add('ar-on');
