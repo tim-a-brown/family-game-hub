@@ -157,7 +157,7 @@
   Kit.init({
     id: KEY, mark: false,   // the logo is two dice, which looked like real dice left on the felt
     theme: { felt: ['#26508e', '#173766', '#0f274b'], wood: ['#8a5530', '#5c3519'] },
-    onNew: function () { token++; lock = false; undoStack = []; clearSave(); showSetup(); },
+    onNew: function () { token++; lock = false; inCup = []; undoStack = []; clearSave(); showSetup(); },
     undo: function () { undo(); },
     menu: [
       { icon: 'chart', label: 'Scoring chart', onClick: function () { chart(); } },
@@ -282,7 +282,7 @@
   }
 
   function start(cfg) {
-    token++; lock = false; undoStack = [];
+    token++; lock = false; inCup = []; undoStack = [];
     var o = cfg.options || {};
     S = {
       mode: cfg.mode,
@@ -334,6 +334,7 @@
     return pts;
   }
 
+  var inCup = [];   // dice drawn hidden until the cup tips them out
   function roll(fromCpu) {
     if (!canRoll()) return;
     if (!fromCpu && P().cpu) return;
@@ -359,6 +360,7 @@
     }
     save();
     lock = true;
+    inCup = idx.slice();
     render();
     var cup = app.querySelector('.cup');
     if (hot) flame();
@@ -368,6 +370,7 @@
     later(function () {
       if (cup) { cup.classList.remove('shaking'); cup.classList.add('tip'); }
       Kit.sfx('roll');
+      inCup = [];
       tumble(idx);
       later(function () {
         lock = false;
@@ -388,7 +391,7 @@
     var cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2;
     idx.forEach(function (i, k) {
       var sp = zone.querySelector('.spot[data-i="' + i + '"]'); if (!sp) return;
-      sp.style.visibility = '';
+      sp.style.opacity = '';
       var d = S.dice[i], tx = zr.left + d.x / 100 * zr.width, ty = zr.top + d.y / 100 * zr.height;
       var dx = cx - tx, dy = cy - ty, spin = (Math.random() > .5 ? 1 : -1) * (360 + Math.random() * 360);
       if (sp.animate) sp.animate([
@@ -590,7 +593,7 @@
       S.dice.forEach(function (d) { d.sel = false; }); save(); render(); Kit.toast('Selection cleared'); return;
     }
     if (!undoStack.length) return Kit.toast('Nothing to undo. Rolls can\'t be taken back.');
-    token++; lock = false;
+    token++; lock = false; inCup = [];
     S = JSON.parse(undoStack.pop());
     document.querySelectorAll('.flypts').forEach(function (n) { n.remove(); });
     Kit.sfx('whoosh'); Kit.toast('Bank taken back'); save(); render(); maybeCpu();
@@ -666,7 +669,7 @@
       die.addEventListener('click', function () { tapDie(i); });
       die.setAttribute('aria-label', 'Die showing ' + d.v + (d.sel ? ', set aside' : ''));
       var sp = el('div', { class: 'spot', 'data-i': i, style: { left: d.x + '%', top: d.y + '%', transform: 'rotate(' + d.r + 'deg)' } }, [die]);
-      if (lock && S.phase !== 'banked') sp.style.visibility = 'hidden';
+      if (inCup.indexOf(i) >= 0) sp.style.opacity = '0';   // still in the cup, about to tumble out
       zone.appendChild(sp);
     });
     if (!anyLive && S.phase === 'start') {
