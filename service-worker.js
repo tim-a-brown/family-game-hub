@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v72-2026-10-05-lorcana-play';
+const CACHE_VERSION = 'v73-2026-10-05-sandlot';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -94,6 +94,7 @@ const PRECACHE_URLS = [
   '/games/go.html',
   '/games/axisallies.html',
   '/games/lorcana-play.html',
+  '/games/sandlot.html',
   '/games/axisallies-score.html',
   '/games/marblesolitaire.html',
   '/games/farkle.html',

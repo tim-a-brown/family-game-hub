@@ -44,6 +44,7 @@ var GAMES = [
   { id: 'pyramid',     name: 'Pyramid',      color: '#f59e0b', cat: 'cards', min: 1, max: 1, tag: 'Pair cards that add to 13', play: 'pyramid' },
   { id: 'jokerrun',    name: 'Balatro',      color: '#e11d48', cat: 'cards', min: 1, max: 1, tag: 'Poker hands, wild jokers, beat the blinds', play: 'jokerrun' },
   { id: 'pokersquares',name: 'Poker Squares', color: '#ef4444', cat: 'cards', min: 1, max: 1, tag: 'Build ten poker hands on a 5×5 grid', play: 'pokersquares' },
+  { id: 'sandlot',     name: 'Sandlot',      color: '#000', cat: 'specialty', min: 1, max: 4, tag: 'Baseball card battles with your old cards', play: 'sandlot' },
   { id: 'lorcana',     name: 'Lorcana',      color: '#a855f7', cat: 'specialty', min: 1, max: 4, tag: 'Real cards and art, vs the computer or pass & play', play: 'lorcana-play', score: 'lorcana' },
 
   // ── Board ────────────────────────────────────────────────────────────────
