@@ -149,7 +149,14 @@ var GameIcon = (function () {
     minigolf: function () { return '<ellipse cx="12" cy="20.5" rx="8" ry="2.5" fill="' + K + '" opacity=".25"/>' + line('M10 20V2.5', K, 1.8) + path('M10.8 2.5l9 3.5-9 3.5z', R) + circ(16, 19.5, 1.9, W, ' stroke="' + K + '" stroke-width="1"'); },
 
     // Casino (chip base)
-    blackjack: function (c) { return txt('21', 15, c, 12.5); },
+    blackjack: function () {   // blackjack! a jack and the ace of spades, with a gold 21 pill
+      var spade = 'M15 6.2c-2.6 2.4-4.6 3.9-4.6 6 0 1.4 1.1 2.4 2.4 2.4.7 0 1.2-.2 1.6-.6-.1 1-.5 1.8-1.2 2.4h3.6c-.7-.6-1.1-1.4-1.2-2.4.4.4.9.6 1.6.6 1.3 0 2.4-1 2.4-2.4 0-2.1-2-3.6-4.6-6z';
+      return rect(1.6, 3.2, 11, 15.6, 2, R, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-14 7 11)"') +
+        '<text x="6.4" y="12.4" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-weight="700" font-size="9" fill="' + W + '" transform="rotate(-14 7 11)">J</text>' +
+        rect(8.6, 2.2, 12.4, 17, 2.2, W, ' stroke="' + K + '" stroke-width="1.3" transform="rotate(8 15 11)"') +
+        '<g transform="rotate(8 15 11)">' + txt('A', 5.4, K, 5.6, 11.4) + path(spade, K) + '</g>' +
+        rect(6.5, 16.8, 11, 6.4, 3.2, Y, ' stroke="' + K + '" stroke-width="1"') + txt('21', 6, K, 20.2, 12);
+    },
     poker: function () { return path(SPADE, K); },
     roulette: function () { var s = ''; for (var i = 0; i < 10; i++) { var a1 = i * Math.PI / 5, a2 = (i + 1) * Math.PI / 5; s += path('M12 12L' + (12 + 10 * Math.cos(a1)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a1)).toFixed(2) + 'A10 10 0 0 1 ' + (12 + 10 * Math.cos(a2)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a2)).toFixed(2) + 'z', i % 2 ? K : R); } return s + circ(12, 12, 4, '#1d7a4a') + circ(12, 12, 1.5, Y); },
     slots: function () {   // a pair of cherries, the classic slot symbol
