@@ -27,7 +27,7 @@
     return m;
   }
   var vp = meta('viewport');
-  vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+  vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
   meta('theme-color', '#0b0d12');
   meta('apple-mobile-web-app-capable', 'yes');
   meta('mobile-web-app-capable', 'yes');

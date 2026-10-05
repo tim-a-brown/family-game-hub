@@ -38,11 +38,11 @@
     if (!m) { m = doc.createElement('meta'); m.name = name; doc.head.appendChild(m); }
     m.content = content;
   }
-  meta('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+  meta('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
   meta('theme-color', '#141029');
   meta('apple-mobile-web-app-capable', 'yes');
   meta('mobile-web-app-capable', 'yes');
-  meta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+  meta('apple-mobile-web-app-status-bar-style', 'black');
   if (!doc.querySelector('link[rel="manifest"]')) {
     var mf = doc.createElement('link'); mf.rel = 'manifest'; mf.href = '/manifest.json'; doc.head.appendChild(mf);
   }
