@@ -239,6 +239,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-ttl{flex:1;min-width:0;}
 .lz-story{flex:0 1 auto;max-width:52%;margin-top:6px;text-align:right;font-family:var(--serif);font-style:italic;font-size:.98rem;line-height:1.2;color:var(--gilt);text-wrap:balance;}
 .lz-story .nw{white-space:nowrap;}
+.lz-bm{flex:none;width:40px;height:40px;margin:-4px -6px 0 0;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;color:var(--text-3);}
+.lz-bm .ico{width:22px;height:22px;}
+.lz-bm.on{color:var(--gilt-2);}
+.lz-bm.on .ico{fill:currentColor;}
+.lz-info>.lz-bm{float:right;margin:-6px -8px 0 6px;}
+.pc .bmk{position:absolute;right:10px;top:-2px;width:18px;height:26px;color:var(--gilt-2);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));pointer-events:none;}
+.bld:not(.lib) .pc .bmk{right:44px;}
+.pc .bmk .ico{width:100%;height:100%;fill:currentColor;stroke:#2b1a00;stroke-width:1;}
+.fchip.bm-chip .ico{width:15px;height:15px;vertical-align:-3px;margin-right:4px;}
+.fchip.bm-chip.on .ico{fill:currentColor;}
 .lz-card.in-l{animation:lzInL .24s ease-out;}
 @keyframes lzInR{from{transform:translateX(38%) rotate(3deg);opacity:.2}}
 @keyframes lzInL{from{transform:translateX(-38%) rotate(-3deg);opacity:.2}}
@@ -1206,6 +1216,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Decks
   // ═════════════════════════════════════════════════════════════════════════
   // Saved deck: {id, name, cards:{cardId: count}, at}
+  // Bookmarked cards, by full name (so every printing of a card counts), kept on this device
+  var MARKS = 'lorcana_marks_v1', marks = lsGet(MARKS, null) || {};
+  function markKey(d) { return String(d && (d.full || d.n) || '').toLowerCase(); }
+  function isMarked(d) { return !!marks[markKey(d)]; }
+  function markCount() { return Object.keys(marks).length; }
+  function toggleMark(d) {
+    var k = markKey(d); if (!k) return false;
+    if (marks[k]) delete marks[k]; else marks[k] = Date.now();
+    lsSet(MARKS, marks);
+    Kit.sfx(marks[k] ? 'pop' : 'tap'); Kit.haptic('light');
+    Kit.toast(marks[k] ? 'Bookmarked ' + d.n : 'Bookmark removed');
+    if (ui.onMark) ui.onMark();
+    return !!marks[k];
+  }
   function savedDecks() { var a = lsGet(DECKS, []); return Array.isArray(a) ? a.filter(function (d) { return d && d.cards; }) : []; }
   function storeDecks(a) { if (!lsSet(DECKS, a)) Kit.toast('Couldn’t save decks: storage is full'); }
   function deckCards(cards) { // [{d, n}] for cards known to the library
@@ -2478,6 +2502,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       '<h3>Card abilities</h3><p>Card abilities work by themselves. When you play a character its “when you play” ability goes off, questing sets off “whenever this character quests”, and the same for challenges, banishing, and the start and end of your turn. Always-on abilities (like “your other characters get +1 strength”) change the numbers on the table. Paid abilities (like “exert, 2 ink: draw a card”) show up as a button on the card when you can afford them.</p>' +
       '<p>When an ability needs a choice, only the cards you’re allowed to pick light up. Optional abilities ask first. When the computer plays a card, it’s shown to you full size until you tap.</p>' +
       '<p>A few cards have unusual wording the game can’t run yet. When one of those goes off, you see the card with its text and only the tools that fit it (for example “Deal damage” and “Draw cards”). Tap Done when you’ve followed it. The menu’s <b>Fix something by hand</b> covers anything else.</p>' +
+      '<h3>Bookmarks</h3><p>Open any card, in a game, the card library or the deck builder, and tap the bookmark next to its name. In the library and deck builder, the Bookmarked chip shows just those cards. Bookmarks are kept on this device.</p>' +
       '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks, with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
       '<h3>Winning</h3><p>First to 20 lore wins. If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
       '<p class="muted">Card data and art come from Lorcast (lorcast.com). The card list is saved on this device. A copy of every card picture is kept on the site’s own Google Cloud storage, so cards keep their art even if Lorcast goes away.</p>'
@@ -3480,6 +3505,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       info.appendChild(g);
     }
     inner.appendChild(info);
+    // Bookmark this card (works anywhere a card is shown big)
+    var bm = el('button', { type: 'button', class: 'lz-bm' + (isMarked(d) ? ' on' : ''), 'aria-pressed': String(isMarked(d)), 'aria-label': 'Bookmark ' + d.full, title: 'Bookmark', html: Kit.icon('bookmark'), onclick: function (e) {
+      e.stopPropagation(); var on = toggleMark(d); bm.classList.toggle('on', on); bm.setAttribute('aria-pressed', String(on));
+    } });
+    var hd = info.querySelector('.lz-head'); if (hd) hd.appendChild(bm); else info.insertBefore(bm, info.firstChild);
     var stb = info.querySelector('.lz-story.tap');
     if (stb) stb.addEventListener('click', function (e) { e.stopPropagation(); if (ui.storyPick) ui.storyPick(stb.getAttribute('data-story')); });
     ov.appendChild(inner);
@@ -4018,7 +4048,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, cost: null, type: null, set: '', kw: '', inkable: false, fit: false, shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, cost: null, type: null, set: '', kw: '', inkable: false, fit: false, marked: false, shown: 60, tab: 'pool' };
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
     nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
     var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
@@ -4075,8 +4105,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     // In the big card view, tap "From …" to see every card from that film
     ui.storyPick = function (x) { closeZoom(); setStory(x); };
+    // Bookmarks change from the big card view: keep the chip count and grid up to date
+    ui.onMark = function () { if (!wrap.isConnected) { ui.onMark = null; return; } paintChips(); paintGrid(true); };
     function paintChips() {
       storyChips.innerHTML = '';
+      var mc = markCount();
+      storyChips.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + 'Bookmarked' + (mc ? ' (' + mc + ')' : ''), onclick: function () {
+        Kit.sfx('tap');
+        if (!f.marked && !mc) { Kit.toast('Open any card and tap its bookmark to save it here'); return; }
+        f.marked = !f.marked; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
+      } }));
       storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.story ? ' on' : ''), html: Kit.icon('search') + '<span>' + esc(f.story || 'Film or show') + '</span>' + (f.story ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.story) setStory(''); else pickStory(); } }));
       storyCounts().slice(0, 14).forEach(function (x) { if (x.s === f.story) return; storyChips.appendChild(chip(x.s, false, function () { setStory(x.s); })); });
       storyChips.appendChild(chip('More…', false, pickStory));
@@ -4097,6 +4135,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.inkable && !d.k) return false;
       if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
       if (f.story && storyOf(d) !== f.story) return false;
+      if (f.marked && !isMarked(d)) return false;
       if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
       return true;
     }
@@ -4132,6 +4171,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         b.appendChild(artEl(d, false));
         b.appendChild(el('div', { class: 'nmb', html: esc(d.n) + (d.v ? '<small>' + esc(d.v) + '</small>' : '') }));
         if (n && !lib) b.appendChild(el('span', { class: 'n', text: String(n) }));
+        if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
         b.appendChild(el('span', { class: 'cost' + (d.k ? ' ink' : ''), style: { '--cu': '120px' }, text: String(d.c) }));
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
