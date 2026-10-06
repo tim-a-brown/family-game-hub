@@ -592,8 +592,8 @@ html.lorc .k-sheet h2{font-family:var(--serif);font-weight:700;font-size:1.45rem
   background:linear-gradient(90deg,rgba(227,189,98,0),rgba(227,189,98,.7) 30%,rgba(227,189,98,.7) 70%,rgba(227,189,98,0)) center bottom/80% 1px no-repeat;position:relative;}
 html.lorc .k-sheet h2::after{content:'';position:absolute;left:50%;bottom:-4px;width:8px;height:8px;margin-left:-4px;background:#e3bd62;transform:rotate(45deg);box-shadow:0 0 6px rgba(246,196,80,.8);}
 html.lorc .k-sheet .k-acts .btn{min-height:52px;border-radius:14px;font-family:var(--display);font-size:1.1rem;font-weight:400;letter-spacing:.01em;}
-html.lorc .k-sheet .k-acts .btn-primary{color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e8c56f 45%,#c9973a);box-shadow:inset 0 0 0 1.5px #fff2c4,inset 0 -2px 0 rgba(120,80,10,.35),0 4px 0 #7a5413,0 8px 18px rgba(227,189,98,.3);}
-html.lorc .k-sheet .k-acts .btn-soft,html.lorc .k-sheet .k-acts .btn-ghost{color:#f6e1a8;background:linear-gradient(180deg,#3a2f63,#241c45);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 4px 0 #120d26;}
+html.lorc .k-sheet .k-acts .btn-primary,html.lorc .k-sheet .da-name .btn-primary{color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e8c56f 45%,#c9973a);box-shadow:inset 0 0 0 1.5px #fff2c4,inset 0 -2px 0 rgba(120,80,10,.35),0 4px 0 #7a5413,0 8px 18px rgba(227,189,98,.3);}
+html.lorc .k-sheet .k-acts .btn-soft,html.lorc .k-sheet .k-acts .btn-ghost,html.lorc .k-sheet .da-name .btn-soft{color:#f6e1a8;background:linear-gradient(180deg,#3a2f63,#241c45);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 4px 0 #120d26;}
 html.lorc .k-sheet .k-acts{position:sticky;background:linear-gradient(180deg,rgba(20,15,44,0),#140f2c 30%);}
 html.lorc .k-sheet .lp-li,html.lorc .k-sheet .dk-opt{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(227,189,98,.16);border-radius:14px;}
 html.lorc .k-sheet .lp-li.on,html.lorc .k-sheet .st-row.on,html.lorc .k-sheet .dk-opt.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 14px rgba(227,189,98,.25);}
@@ -625,6 +625,13 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .coin:disabled{opacity:.3;cursor:default;}
 .da-new{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;margin-top:4px;border-radius:14px;border:1.5px dashed rgba(227,189,98,.55);background:rgba(227,189,98,.05);color:#f6e1a8;font-weight:900;font-size:.98rem;cursor:pointer;}
 .da-new .ico{width:18px;height:18px;}
+.da-name{margin-top:4px;padding:12px;border-radius:14px;border:1.5px solid rgba(227,189,98,.55);background:rgba(227,189,98,.06);}
+.da-name .label{font-size:.78rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--gilt);margin-bottom:8px;}
+.da-name .row{display:flex;gap:8px;align-items:center;}
+.da-name .input{flex:1;min-width:0;min-height:44px;}
+.da-name .btn{min-height:44px;border-radius:12px;font-family:var(--display);font-weight:400;}
+.da-name .input:focus{outline:none;border-color:var(--gilt);box-shadow:0 0 0 3px rgba(227,189,98,.25);}
+@media (max-width:420px){.da-name .row{flex-wrap:wrap;}.da-name .input{flex-basis:100%;}.da-name .btn{flex:1;}}
 .lp-li{display:flex;align-items:center;gap:10px;padding:6px;border-radius:12px;background:rgba(255,255,255,.05);}
 .lp-li .mini{flex:none;width:40px;height:56px;border-radius:4px;background-size:cover;background-position:center 15%;position:relative;overflow:hidden;}
 .lp-li .grow{min-width:0;}
@@ -5623,10 +5630,21 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
               el('button', { type: 'button', class: 'coin add', html: '+', 'aria-label': 'Add one to ' + dk.name, disabled: have >= 4, onclick: function () { change(dk, 1); } })])
           ]));
         });
-        node.appendChild(el('button', { type: 'button', class: 'da-new', html: Kit.icon('plus') + '<span>New deck with this card</span>', onclick: function () {
-          putDeck({ id: 'd' + Date.now().toString(36), name: d.n + ' deck', cards: (function () { var c = {}; c[d.id] = 1; return c; })() }); Kit.sfx('good'); Kit.toast('New deck: ' + d.n + ' deck'); paint();
-        } }));
+        if (naming) {
+          // Name the new deck first (the card's name is a starting point)
+          var nin = el('input', { class: 'input', type: 'text', value: d.n + ' deck', maxlength: '60', 'aria-label': 'New deck name', placeholder: 'Deck name' });
+          var mk = function () {
+            var name = nin.value.trim() || d.n + ' deck', nd = { id: 'd' + Date.now().toString(36), name: name, cards: {} }; nd.cards[d.id] = 1;
+            order = null; naming = false; putDeck(nd); Kit.sfx('good'); Kit.toast('New deck: ' + name); paint();
+          };
+          nin.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); mk(); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); naming = false; paint(); } });
+          node.appendChild(el('div', { class: 'da-name' }, [el('div', { class: 'label', text: 'Name your new deck' }), el('div', { class: 'row' }, [nin,
+            el('button', { type: 'button', class: 'btn btn-soft', text: 'Cancel', onclick: function () { naming = false; paint(); } }),
+            el('button', { type: 'button', class: 'btn btn-primary', text: 'Create', onclick: mk })])]));
+          setTimeout(function () { nin.focus(); nin.select(); }, 30);
+        } else node.appendChild(el('button', { type: 'button', class: 'da-new', html: Kit.icon('plus') + '<span>New deck with this card</span>', onclick: function () { naming = true; Kit.sfx('tap'); paint(); } }));
       }
+      var naming = false;
       paint();
       sh = Kit.sheet({ title: 'Add to a deck', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }], onClose: function () { if (done) done(); } });
     }
