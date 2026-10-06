@@ -222,7 +222,11 @@
     tick: function () { tone(1200, 0, 0.03, 'square', 0.025); },
     win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, i * 0.09, 0.22, 'triangle', 0.11); }); tone(1319, 0.38, 0.5, 'triangle', 0.09); },
     lose: function () { [392, 330, 262].forEach(function (f, i) { tone(f, i * 0.16, 0.25, 'triangle', 0.08); }); },
-    whoosh: function () { noise(0, 0.22, 0.035, 350, 0.7, 1100); }
+    whoosh: function () { noise(0, 0.22, 0.035, 350, 0.7, 1100); },
+    clash: function () { noise(0, 0.09, 0.11, 3200, 1.5); tone(1250, 0, 0.12, 'square', 0.03, 900); tone(2600, 0.01, 0.2, 'triangle', 0.04, 2100); },
+    sparkle: function () { [1320, 1760, 2350].forEach(function (f, i) { tone(f, i * 0.06, 0.14, 'sine', 0.05); }); },
+    splash: function () { noise(0, 0.16, 0.07, 900, 1.2, 300); tone(180, 0, 0.12, 'sine', 0.06, 90); },
+    boom: function () { noise(0, 0.32, 0.08, 240, 0.8, 90); tone(95, 0, 0.28, 'sine', 0.09, 45); }
   };
   function sfx(name) { if (!soundOn()) return; try { (SFX[name] || SFX.tap)(); } catch (e) {} }
 
