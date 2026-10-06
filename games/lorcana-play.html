@@ -5807,7 +5807,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
     }
-    if (nav && nav.n > 1) (F ? F.el : inner.lastChild).appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
+    if (nav && nav.n > 1) {
+      // The strip is reused as you move between cards, so replace its counter rather than stacking another
+      var posHost = F ? F.el : inner.lastChild, oldPos = posHost.querySelectorAll('.lz-pos');
+      for (var pi2 = 0; pi2 < oldPos.length; pi2++) oldPos[pi2].remove();
+      posHost.appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
+    }
     var info = el('div', { class: 'lz-info', html: infoHTML });
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' }), row = el('div', { class: 'acts-row' });
@@ -5975,6 +5980,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       hint.className = 'fc-hint show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : '');
       hint.style.setProperty('--pr', pr.toFixed(2));
       zoneOn('show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : ''), pr);
+      var inf = dn && F.ov && F.ov.querySelector('.lz-info');
+      if (inf) { var ir = inf.getBoundingClientRect(), zr = zone.getBoundingClientRect(); hint.style.top = Math.max(8, Math.min(zr.height - 60, ir.top - zr.top - 24)) + 'px'; hint.style.bottom = 'auto'; }
+      else { hint.style.top = ''; hint.style.bottom = ''; }
       var what = dn ? 'add to a deck' : d && isMarked(d) ? 'remove bookmark' : 'bookmark';
       hint.innerHTML = '<i>' + (dn ? DECK_ICO2 : Kit.icon('bookmark')) + '</i><span>' + (now ? 'Let go to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
     }
