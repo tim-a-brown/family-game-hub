@@ -231,8 +231,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-fc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
 .lz-fc .face{--cu:inherit;}
 .lz-fc::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.42);opacity:var(--dim,1);pointer-events:none;}
-.lz-story{float:right;margin:4px 0 6px 12px;max-width:48%;text-align:right;font-family:var(--serif);font-style:italic;font-size:1rem;line-height:1.15;color:var(--gilt);}
-.lz-story small{display:block;font-family:var(--font);font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:2px;}
+.lz-head{display:flex;align-items:flex-start;gap:12px;}
+.lz-ttl{flex:1;min-width:0;}
+.lz-story{flex:0 1 auto;max-width:52%;margin-top:6px;text-align:right;font-family:var(--serif);font-style:italic;font-size:.98rem;line-height:1.2;color:var(--gilt);text-wrap:balance;}
+.lz-story .nw{white-space:nowrap;}
 .lz-card.in-l{animation:lzInL .24s ease-out;}
 @keyframes lzInR{from{transform:translateX(38%) rotate(3deg);opacity:.2}}
 @keyframes lzInL{from{transform:translateX(-38%) rotate(-3deg);opacity:.2}}
@@ -3914,7 +3916,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function headHTML(d) {
     var st = storyOf(d);
     var tap = st && ui.screen === 'builder' && ui.storyPick;
-    return (st ? (tap ? '<button type="button" class="lz-story tap" data-story="' + esc(st) + '"><small>From</small><span>' + esc(st) + '</span>' + Kit.icon('right') + '</button>' : '<div class="lz-story"><small>From</small>' + esc(st) + '</div>') : '') + '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '');
+    // Name on the left, film on the right; the arrow stays with the film's last word
+    var words = esc(st).split(' '), last = words.pop();
+    var stHTML = !st ? '' : tap ? '<button type="button" class="lz-story tap" data-story="' + esc(st) + '">' + (words.length ? words.join(' ') + ' ' : '') + '<span class="nw">' + last + Kit.icon('right') + '</span></button>' : '<div class="lz-story">' + esc(st) + '</div>';
+    return '<div class="lz-head"><div class="lz-ttl"><h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '</div>' + stHTML + '</div>';
   }
   function zoomDef(d, acts, nav) {
     zoomShell(d, headHTML(d) + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
