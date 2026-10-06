@@ -446,6 +446,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rtext{margin-top:10px;font-size:.95rem;line-height:1.45;}
 .rtext p{margin:0 0 7px;}
 .rtext .ab{font-weight:900;letter-spacing:.02em;}
+.rtext .abl{display:flex;align-items:baseline;gap:10px;margin:10px 0 2px;}
+.rtext .abl:first-child{margin-top:0;}
+.rtext .abl .ab{flex:1;min-width:0;font-size:.74rem;letter-spacing:.06em;line-height:1.25;}
+.rtext .abl .setno{flex:none;font-size:.74rem;font-weight:800;color:var(--text-3);letter-spacing:.02em;}
+.rtext .abl + p{margin-top:0;}
 .rtext .kw{font-weight:900;color:var(--gilt-2);}
 .rtext .rem{color:var(--text-2);font-style:italic;}
 .rtext .flav{font-family:var(--serif);font-style:italic;font-size:1.02rem;line-height:1.4;color:var(--text-2);}
@@ -3912,19 +3917,31 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var flowSlid = false, flowChain = null, flowKeep = null;
   function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); }
   function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
+  // Card text. A named ability ("TIME TO MOVE IT!") gets its own small line with
+  // the instructions under it; the set and card number sit right-aligned on the
+  // first of those lines.
+  var ABRE = /^((?:[A-Z0-9’'!?,.\-–&]+\s){1,8}?)(?=[A-Z{][a-z{]|\{|[A-Z][a-z])/;
   function rulesHTML(d) {
     var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
+    var setNo = d.set ? '<small class="setno">Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '', first = true;
+    function head(name) { var h = '<div class="abl"><span class="ab">' + (name ? esc(name) : '') + '</span>' + (first ? setNo : '') + '</div>'; first = false; return h; }
+    function fmt(t) {
+      var h = esc(t).replace(/\(([^)]*)\)/g, '<span class="rem">($1)</span>');
+      return h.replace(/\{([IESWLC])\}/g, function (x, k) { return sym(k); });
+    }
     // No rules text: show the card's flavour quote instead (in italics)
-    if (!lines.length) return d.fl ? '<p class="flav">' + esc(d.fl.trim()).replace(/\n+/g, '<br>') + '</p>' : '<p class="rem">No card text.</p>';
-    return lines.map(function (L) {
-      var h = esc(L.trim());
-      h = h.replace(/\(([^)]*)\)/g, '<span class="rem">($1)</span>');
-      var m = L.trim().match(KWRE);
-      if (m) h = h.replace(/^([^<(]+)/, '<span class="kw">$1</span>');
-      else h = h.replace(/^((?:[A-Z0-9’'!?,.\-–&]+\s){1,8}?)(?=[A-Z{][a-z{]|\{|[A-Z][a-z])/, '<span class="ab">$1</span>');
-      h = h.replace(/\{([IESWLC])\}/g, function (x, k) { return sym(k); });
-      return '<p>' + h + '</p>';
-    }).join('');
+    if (!lines.length) return (setNo ? head('') : '') + (d.fl ? '<p class="flav">' + esc(d.fl.trim()).replace(/\n+/g, '<br>') + '</p>' : '<p class="rem">No card text.</p>');
+    var out = '';
+    lines.forEach(function (L) {
+      L = L.trim();
+      var m = !L.match(KWRE) && L.match(ABRE);
+      if (m) { out += head(m[1].trim()) + '<p>' + fmt(L.slice(m[1].length)) + '</p>'; return; }
+      if (first && setNo) out += head('');
+      var h = fmt(L);
+      if (L.match(KWRE)) h = h.replace(/^([^<(]+)/, '<span class="kw">$1</span>');
+      out += '<p>' + h + '</p>';
+    });
+    return out;
   }
   // Stat plate: the card's numbers as game pieces, always in the same slots.
   // Left: cost hexagon (gold with an inkwell ring when inkable) and ink gem(s).
@@ -3955,7 +3972,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     R += '</div>';
     var type = (d.song ? 'Action · Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (d.cl && d.cl.length ? ' · ' + d.cl.filter(function (x) { return x !== 'Song'; }).join(' · ') : '');
     var c1 = INKC[inks[0]] || '#4a3f75', c2 = INKC[inks[1] || inks[0]] || c1;
-    return '<div class="sp' + (lsGet(CAPS, false) ? ' cap' : '') + '" style="--p1:' + c1 + ';--p2:' + c2 + '" role="button" tabindex="0" aria-expanded="' + !!lsGet(CAPS, false) + '" aria-label="Card stats. Tap to ' + (lsGet(CAPS, false) ? 'hide' : 'show') + ' labels">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span>' + (d.set ? '<small>Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '') + '</div>';
+    return '<div class="sp' + (lsGet(CAPS, false) ? ' cap' : '') + '" style="--p1:' + c1 + ';--p2:' + c2 + '" role="button" tabindex="0" aria-expanded="' + !!lsGet(CAPS, false) + '" aria-label="Card stats. Tap to ' + (lsGet(CAPS, false) ? 'hide' : 'show') + ' labels">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span></div>';
   }
   function statusHTML(u, z) {
     if (!z || z.z !== 'board') return '';
