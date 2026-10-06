@@ -23,6 +23,14 @@ jobs:
       # (keeps the bundled list if LorcanaJSON can't be reached)
       - name: Refresh Lorcana film list
         run: node scripts/build-lorcana-stories.js
+      # Copy any new Lorcana card pictures to Firebase Storage (Google Cloud),
+      # so the game still has art if Lorcast goes away. Never blocks the deploy.
+      - name: Back up Lorcana card art
+        run: node scripts/mirror-lorcana-art.js
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v96-2026-10-06-sandlot-lookup';
+const CACHE_VERSION = 'v97-2026-10-06-art-on-cloud';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -142,16 +142,6 @@ const PRECACHE_URLS = [
   '/games/yahtzee.html',
 ];
 
-// Card art kept for offline use (Lorcana). Capped so it can't grow forever:
-// past the limit, the pictures saved longest ago are dropped first.
-const ART_CACHE = 'lorcana-art-v1';
-const ART_MAX = 4000;
-let artPuts = 0;
-function trimArt(cache) {
-  if (++artPuts % 40) return Promise.resolve();
-  return cache.keys().then((keys) => Promise.all(keys.slice(0, Math.max(0, keys.length - ART_MAX)).map((k) => cache.delete(k))));
-}
-
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -172,7 +162,8 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((names) =>
       Promise.all(
         names
-          .filter((n) => n.startsWith('game-night-') && n !== CACHE_NAME)
+          // (lorcana-art-*: card art used to be saved on the device; it's on Google Cloud now)
+          .filter((n) => (n.startsWith('game-night-') && n !== CACHE_NAME) || n.startsWith('lorcana-art-'))
           .map((n) => caches.delete(n))
       )
     ).then(() => self.clients.claim())
@@ -193,17 +184,6 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('identitytoolkit')
   ) {
-    return;
-  }
-
-  // Lorcana card art: keep a copy of every card picture that's been shown, so
-  // cards still look right offline or if the card site ever goes away. This
-  // cache survives app updates (it isn't a game-night-* cache).
-  if (url.hostname === 'cards.lorcast.io' || /lorcana/i.test(url.hostname) && req.destination === 'image') {
-    event.respondWith(caches.open(ART_CACHE).then((cache) => cache.match(req).then((hit) => hit || fetch(req).then((resp) => {
-      if (resp && (resp.ok || resp.type === 'opaque')) cache.put(req, resp.clone()).then(() => trimArt(cache)).catch(() => {});
-      return resp;
-    }))).catch(() => fetch(req)));
     return;
   }
 

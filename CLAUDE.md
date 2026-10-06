@@ -62,5 +62,7 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
   separately with the service account
   (`npx firebase-tools deploy --only firestore:rules --project familygames-da3e5`)
   and tell Tim.
+- **`storage.rules` changed**: same, `--only storage`. Firebase Storage holds only the
+  Lorcana card-art backup (`lorcana/`), filled by `scripts/mirror-lorcana-art.js` in deploy.yml.
 - Files that must not be public go in Firebase's `hosting.ignore` (`firebase.json`).
 - Never print or commit `FIREBASE_SERVICE_ACCOUNT` or any Dropbox secret.
