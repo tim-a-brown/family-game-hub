@@ -201,7 +201,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-in{width:100%;max-width:560px;padding:calc(var(--safe-t) + 14px) 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;gap:12px;}
 .lz-card{position:relative;--cu:min(52vh,104vw,520px);width:calc(var(--cu) * .716);height:var(--cu);flex:none;border-radius:calc(var(--cu) * .045);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);transform:scale(.92);transition:transform .25s var(--spring);background:#1d1a2c;}
 .lz.show .lz-card{transform:none;}
-.lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);}
+.lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);--bw:var(--cu);}
+/* The cost corner of a sideways location, cut from the upright card image (bw = width of the sideways card) */
+.costup{position:absolute;z-index:2;left:calc(var(--bw) * .8605);top:calc(var(--bw) * .0055);width:calc(var(--bw) * .125);height:calc(var(--bw) * .125);border-radius:50%;pointer-events:none;
+  background-repeat:no-repeat;background-size:calc(var(--bw) * .716) var(--bw);background-position:calc(var(--bw) * -.0055) calc(var(--bw) * -.0145);}
 .lz-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .lz-card img.port{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
 .lz-card .face{--cu:inherit;}
@@ -226,7 +229,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-fc.front{box-shadow:0 18px 50px rgba(0,0,0,.7);cursor:default;}
 /* Locations lie sideways: a landscape box a little narrower than the strip, and
    art that comes as a portrait image is turned to fit (as on the table) */
-.lz-fc.loc{--lw:calc(var(--cu) * .92);width:var(--lw);height:calc(var(--lw) * .716);margin-left:calc(var(--lw) * -.5);top:calc((var(--cu) - var(--lw) * .716) / 2);}
+.lz-fc.loc{--lw:calc(var(--cu) * .92);--bw:var(--lw);width:var(--lw);height:calc(var(--lw) * .716);margin-left:calc(var(--lw) * -.5);top:calc((var(--cu) - var(--lw) * .716) / 2);}
 .lz-fc.loc img.port{width:calc(var(--lw) * .716);height:var(--lw);inset:auto;left:50%;top:50%;margin:calc(var(--lw) / -2) 0 0 calc(var(--lw) * -.358);transform:rotate(90deg);}
 .lz-fc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
 .lz-fc .face{--cu:inherit;}
@@ -2898,7 +2901,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var img = document.createElement('img');
     img.alt = d.full; img.decoding = 'async'; img.draggable = false;
     img.onerror = function () { imgBad[src] = 1; if (img.parentNode) img.parentNode.replaceChild(faceEl(d), img); };
-    if (d.t === 'location') img.onload = function () { if (img.naturalHeight > img.naturalWidth) img.classList.add('port'); };
+    if (d.t === 'location') img.onload = function () {
+      if (img.naturalHeight <= img.naturalWidth) return;
+      img.classList.add('port');
+      // Big views: the printed cost would read sideways, so show that corner of the
+      // original (upright) card image on top of it
+      if (big && img.parentNode && !img.parentNode.querySelector('.costup')) {
+        var cu = document.createElement('i'); cu.className = 'costup'; cu.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")';
+        img.parentNode.appendChild(cu);
+      }
+    };
     img.src = src;
     return img;
   }
