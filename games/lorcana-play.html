@@ -394,7 +394,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-ics .lz-bm{margin:0;}
 .lz-head .lz-bm.tall{align-self:center;width:38px;height:46px;margin:0 -4px 0 -6px;padding:0;border-radius:8px;}
 .lz-bm.tall .rib{width:30px;height:42px;}
-.lz-bm.tall.on .rib path{fill:currentColor;}
+.lz-bm.tall .rib .gild{display:none;}
+.lz-bm.tall.on{color:#e3bd62;}
+.lz-bm.tall.on .rib{filter:drop-shadow(0 0 5px rgba(246,220,149,.55)) drop-shadow(0 2px 3px rgba(0,0,0,.45));}
+.lz-bm.tall.on .rib .rb{fill:url(#lz-rib-g);stroke:#fbe7a6;stroke-width:1.1;}
+.lz-bm.tall.on .rib .gild{display:inline;}
+.lz-bm.tall.on .rib .glint{animation:ribglint 3.6s ease-in-out infinite;}
+@keyframes ribglint{0%,50%{transform:skewX(-20deg) translateX(0);}80%,100%{transform:skewX(-20deg) translateX(62px);}}
+@media (prefers-reduced-motion:reduce){.lz-bm.tall.on .rib .glint{animation:none;opacity:0;}}
+.lz-bm.tall.pop .rib{animation:ribpop .45s cubic-bezier(.3,1.6,.5,1);}
+@keyframes ribpop{0%{transform:scale(.8);}100%{transform:scale(1);}}
 .lz-bm.tall:active{transform:scale(.95);}
 /* Add to deck: a small gilded pill under the bookmark */
 .lz-ics .lz-dk{margin:2px 6px 0 0;width:auto;height:28px;padding:0 10px 0 8px;gap:5px;display:flex;align-items:center;border-radius:999px;white-space:nowrap;
@@ -5634,7 +5643,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return CLSRE;
   }
   var DECK_ICO2 = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7.5" y="3.5" width="11" height="15" rx="2"/><path d="M5.5 6.5v12a2 2 0 0 0 2 2h8"/></svg>';
-  var RIBBON = '<svg class="rib" viewBox="0 0 30 42" aria-hidden="true"><path d="M4.5 2.5h21v37L15 31.5 4.5 39.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+  // Bookmark ribbon: an outline when off; gilded (gold leaf, stitched edge, a slow glint) when on
+  var RIBBON = '<svg class="rib" viewBox="0 0 30 42" aria-hidden="true"><defs>' +
+    '<linearGradient id="lz-rib-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4cf"/><stop offset=".28" stop-color="#f1cf7a"/><stop offset=".55" stop-color="#d6a440"/><stop offset=".8" stop-color="#f4d98c"/><stop offset="1" stop-color="#a8781f"/></linearGradient>' +
+    '<linearGradient id="lz-rib-s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+    '<clipPath id="lz-rib-c"><path d="M4.5 2.5h21v37L15 31.5 4.5 39.5z"/></clipPath></defs>' +
+    '<path class="rb" d="M4.5 2.5h21v37L15 31.5 4.5 39.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
+    '<g class="gild" clip-path="url(#lz-rib-c)"><path d="M7.4 5.3h15.2v28.4L15 28 7.4 33.7z" fill="none" stroke="#8a5a14" stroke-opacity=".4" stroke-width=".55" stroke-dasharray="1 1.1"/>' +
+    '<path d="M6 3.6h18" stroke="#fffbe8" stroke-opacity=".8" stroke-width=".8"/><rect class="glint" x="-16" y="-4" width="12" height="52" fill="url(#lz-rib-s)"/></g></svg>';
   function rulesHTML(d) {
     var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
     var setNo = d.set ? '<small class="setno">Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '', first = true;
@@ -5806,6 +5822,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Bookmark this card (works anywhere a card is shown big)
     var bm = el('button', { type: 'button', class: 'lz-bm' + (isMarked(d) ? ' on' : ''), 'aria-pressed': String(isMarked(d)), 'aria-label': 'Bookmark ' + d.full, title: 'Bookmark', html: Kit.icon('bookmark'), onclick: function (e) {
       e.stopPropagation(); var on = toggleMark(d); bm.classList.toggle('on', on); bm.setAttribute('aria-pressed', String(on));
+      bm.classList.remove('pop'); if (on) { void bm.offsetWidth; bm.classList.add('pop'); }
     } });
     // Bookmark: a ribbon down the left of the film / name / version block
     var hd = info.querySelector('.lz-head');
