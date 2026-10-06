@@ -1,0 +1,18 @@
+# Temporary: fetches Kenney CC0 audio into sounds-src/ on this working branch.
+# Removed once the game sounds are built.
+name: Fetch CC0 sounds
+on:
+  push:
+    branches: [claude/happy-hamilton-8hf2d3]
+    paths: [scripts/fetch-sounds.sh]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/fetch-sounds.sh
+      - run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add sounds-src && git commit -m "Staging: Kenney CC0 audio packs" && git push origin HEAD:${GITHUB_REF_NAME}
