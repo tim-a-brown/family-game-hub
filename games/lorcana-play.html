@@ -440,6 +440,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .fc-zone::after{content:'';position:absolute;left:0;right:0;height:3px;opacity:calc(var(--pr) * .85);transform:scaleX(var(--pr));transform-origin:50% 50%;transition:opacity .08s linear,transform .08s linear;background:linear-gradient(90deg,transparent,var(--gilt-2) 30%,#fff6d8 50%,var(--gilt-2) 70%,transparent);box-shadow:0 0 18px 4px rgba(246,220,149,.45);}
 .fc-zone.up::after{top:0;}.fc-zone.dn::after{bottom:0;}
 .fc-zone.armed{opacity:1;}.fc-zone.armed::after{opacity:1;transform:scaleX(1);height:4px;}
+.fc-zone.dn.at{bottom:0;height:auto;background:linear-gradient(180deg,transparent 0,rgba(8,6,20,.92) 34px,rgba(8,6,20,.88) 45%,rgba(8,6,20,.7) 100%);}
+.fc-zone.dn.at::after{bottom:auto;top:34px;}
 .fc-zone.fade{opacity:0;transition:opacity .5s ease .1s;}
 
 .fc-zone.up .fc-hint{top:calc(var(--safe-t, 0px) + 18px);}.fc-zone.dn .fc-hint{bottom:calc(var(--safe-b, 0px) + 120px);}
@@ -5979,10 +5981,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       armed = now;
       hint.className = 'fc-hint show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : '');
       hint.style.setProperty('--pr', pr.toFixed(2));
-      zoneOn('show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : ''), pr);
-      var inf = dn && F.ov && F.ov.querySelector('.lz-info');
-      if (inf) { var ir = inf.getBoundingClientRect(), zr = zone.getBoundingClientRect(); hint.style.top = Math.max(8, Math.min(zr.height - 60, ir.top - zr.top - 24)) + 'px'; hint.style.bottom = 'auto'; }
-      else { hint.style.top = ''; hint.style.bottom = ''; }
+      // Swiping down: the band, glow line and label all start at the top edge of the card details
+      var inf = dn && F.ov && F.ov.querySelector('.lz-info'), ir = inf && inf.getBoundingClientRect();
+      var at = ir && ir.top > 60 && ir.top < innerHeight - 80;
+      zoneOn('show ' + (dn ? 'dn' : 'up') + (at ? ' at' : '') + (now ? ' armed' : ''), pr);
+      zone.style.top = at ? Math.round(ir.top - 34) + 'px' : '';
+      hint.style.top = at ? '10px' : ''; hint.style.bottom = at ? 'auto' : '';
       var what = dn ? 'add to a deck' : d && isMarked(d) ? 'remove bookmark' : 'bookmark';
       hint.innerHTML = '<i>' + (dn ? DECK_ICO2 : Kit.icon('bookmark')) + '</i><span>' + (now ? 'Let go to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
     }
