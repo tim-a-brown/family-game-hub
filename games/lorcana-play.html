@@ -238,7 +238,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-nav .ico{width:22px;height:22px;}
 .lz-nav.l{left:calc(var(--corner-x) + 10px);}.lz-nav.r{right:calc(var(--corner-x) + 10px);}
 .lz-nav:disabled{opacity:.25;}
-.lz-pos{float:right;margin:4px 0 0 10px;font-size:.78rem;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.lz-pos{position:absolute;left:50%;bottom:-30px;transform:translateX(-50%);z-index:150;padding:3px 10px;border-radius:999px;background:rgba(10,8,28,.7);font-size:.74rem;font-weight:800;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none;}
+.lz-flow:has(.lz-pos){margin-bottom:26px;}
 .lz-info{width:100%;background:var(--bg-2);border-radius:20px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);}
 .lz-info h2{font-family:var(--serif);font-size:1.3rem;font-weight:700;}
 .lz-info .ver{font-family:var(--serif);font-style:italic;color:var(--text-2);margin-top:1px;}
@@ -1144,11 +1145,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function fillStories() {
     if (storyTried || DB.status !== 'ready') return; storyTried = true;
     var missing = DB.unique.filter(function (d) { return !storyOf(d); });
-    if (!missing.length || Date.now() - (storyX.at || 0) < 2 * 864e5) return;
+    if (!missing.length || Date.now() - (storyX.at || 0) < (storyX.ok ? 2 * 864e5 : 36e5)) return;
     var m = storyX.m || {};
     function put(name, ver, st) { if (!name || !st) return; var k = skey(name); m[k + '|' + skey(ver)] = String(st); if (!m[k]) m[k] = String(st); }
-    function save() { storyX = { at: Date.now(), m: m }; lsSet(STORYX, storyX); dbNotifyQuiet(); }
-    fetchJSON('https://lorcanajson.org/files/current/en/allCards.json', 60000).then(function (j) {
+    function save() { storyX = { at: Date.now(), ok: 1, m: m }; lsSet(STORYX, storyX); dbNotifyQuiet(); }
+    fetchJSON('https://lorcanajson.org/files/current/en/allCards.json', 120000).then(function (j) {
       (j.cards || j || []).forEach(function (c) { if (c && c.story) put(c.name, c.version, c.story); });
       save();
     }).catch(function () {
@@ -1156,7 +1157,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         (Array.isArray(j) ? j : j.results || j.data || []).forEach(function (c) { if (!c || !c.Name || !c.Franchise) return; var nm = String(c.Name), i = nm.indexOf(' - '); put(i > 0 ? nm.slice(0, i) : nm, i > 0 ? nm.slice(i + 3) : '', c.Franchise); });
         save();
       });
-    }).catch(function () { storyX.at = Date.now(); lsSet(STORYX, storyX); });
+    }).catch(function () { storyX.at = Date.now(); storyX.ok = 0; lsSet(STORYX, storyX); });
   }
   function dbNotifyQuiet() { DB.subs.slice().forEach(function (f) { try { f(); } catch (e) {} }); }
   function download(progress) {
@@ -3440,7 +3441,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
     }
-    var info = el('div', { class: 'lz-info', html: (nav && nav.n > 1 ? '<div class="lz-pos">' + (nav.i + 1) + ' of ' + nav.n + '</div>' : '') + infoHTML });
+    if (nav && nav.n > 1) (F ? F.el : inner.lastChild).appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
+    var info = el('div', { class: 'lz-info', html: infoHTML });
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' });
       acts.forEach(function (a) { if (a.ok === false) return; g.appendChild(el('button', { type: 'button', class: 'btn ' + (a.primary ? 'btn-primary' : 'btn-soft') + (a.full ? ' full' : ''), html: a.label, onclick: function () { closeZoom(); a.go(); } })); });
