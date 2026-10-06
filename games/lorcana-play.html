@@ -732,15 +732,28 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .tsize .lg .ico{width:20px;height:20px;}
 .tsize input{width:min(150px,26vw);accent-color:var(--gilt);}
 .colbtn{display:none;flex:none;}
-.ctrow{display:contents;}
+.adv{display:flex;flex-direction:column;gap:14px;}
+.adv .label{margin-bottom:6px;}
+.adv .fchips{flex-wrap:wrap;overflow:visible;}
+.adv .lp-list{gap:6px;}
+.adv-pick{display:flex;align-items:center;gap:10px;}
+.adv-pick .ico{width:18px;height:18px;flex:none;color:var(--text-3);}
+.adv-pick small{color:var(--text-3);max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.adv-pick.on small{color:var(--gilt-2);font-weight:800;}
+.adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.adv-tog .label{margin:0;}
+.flowpanel .adv{margin-top:14px;}
+.flowpanel .row1 .btn,.flowpanel .colbtn{display:none!important;}
+.btn.fon{box-shadow:inset 0 0 0 2px var(--gilt);color:var(--gilt-2);}
+.bld-grid.tiny{gap:4px;}
+.bld-grid.tiny .pc{border-radius:4px;}
+.bld-grid.tiny .pc .nmb{display:none;}
+.bld-grid.tiny .pc .cost{--cu:70px!important;min-width:13px;min-height:14px;font-size:.62rem;}
+.bld-grid.tiny .pc .bmk{right:3px;width:11px;height:16px;}
 @media (max-width:699px){
   .bld.lib .bld-top .tsize{display:none;}
   .bld.lib .colbtn{display:inline-flex;}
   .bld.lib .bld-top h2.libt{font-size:1.4rem;}
-  .bld.lib .ctrow{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
-  .bld.lib .ctrow::-webkit-scrollbar{display:none;}
-  .bld.lib .ctrow .fchips{flex:none;overflow:visible;padding-bottom:0;}
-  .flowpanel .ctrow{display:contents;}
 }
 .bld.lib .bld-grid .pc .nmb{font-size:clamp(.66rem,calc(var(--tile,92px) * .0075rem),.95rem);}
 .bld.lib .bld-grid .pc .nmb small{font-size:.86em;}
@@ -6455,7 +6468,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Tile size (remembered on this device)
     var TILE = 'lorc_tile', tile = +lsGet(TILE, 0) || (window.innerWidth >= 700 ? 130 : 120);
     var sizer = el('label', { class: 'tsize', title: 'Card size' }, [el('span', { class: 'sm', html: Kit.icon('tiles') }), el('input', { type: 'range', min: '64', max: '240', step: '4', value: String(tile), 'aria-label': 'Card size' }), el('span', { class: 'lg', html: Kit.icon('tiles') })]);
-    var COLS = 'lorc_cols', cols = +lsGet(COLS, 0) || 3;
+    var COLS = 'lorc_cols2', cols = +lsGet(COLS, 0) || 4;
+    if ([4, 6, 8].indexOf(cols) < 0) cols = 4;
     var phoneLib = function () { return window.innerWidth < 700; };
     var colBtn = el('button', { type: 'button', class: 'icon-btn colbtn', 'aria-label': 'Card size: ' + cols + ' across', title: 'Card size', html: Kit.icon('tiles') });
     var top = lib ? el('div', { class: 'bld-top' }, [
@@ -6479,13 +6493,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         var bc = $('.bm-chip', wrap), lo = Math.ceil(bc && bc.offsetWidth ? bc.offsetWidth : 120), W = grid.clientWidth || 300, hi = Math.max(lo, Math.min(240, W - 6));
         rng.min = String(lo); rng.max = String(hi);
         var t = Math.max(lo, Math.min(hi, tile));
-        // Phones: a button picks how many cards across (never narrower than the Bookmarked chip)
-        if (phoneLib()) { var mc = Math.max(1, Math.floor((W - 4 + 8) / (lo + 8))); cols = Math.min(cols, mc); t = Math.floor((W - 4 - (cols - 1) * 8) / cols); }
+        // Phones: a button switches between 4, 6 and 8 cards across
+        var tiny = false;
+        if (phoneLib()) { var gap = cols > 4 ? 4 : 8; t = Math.floor((W - 4 - (cols - 1) * gap) / cols); tiny = cols > 4; }
+        grid.classList.toggle('tiny', tiny);
         rng.value = String(t); grid.style.setProperty('--tile', t + 'px');
       };
       colBtn.onclick = function () {
-        var bc = $('.bm-chip', wrap), lo = Math.ceil(bc && bc.offsetWidth ? bc.offsetWidth : 120), mc = Math.max(1, Math.floor(((grid.clientWidth || 300) - 4 + 8) / (lo + 8)));
-        cols = cols <= 1 ? Math.min(3, mc) : cols - 1; lsSet(COLS, cols); Kit.sfx('tap'); fitTile();
+        cols = cols === 4 ? 6 : cols === 6 ? 8 : 4; lsSet(COLS, cols); Kit.sfx('tap'); fitTile(); paintGrid(true);
         colBtn.setAttribute('aria-label', 'Card size: ' + cols + ' across');
       };
       rng.addEventListener('input', function () { tile = +this.value; grid.style.setProperty('--tile', tile + 'px'); lsSet(TILE, tile); });
@@ -6494,7 +6509,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var row1 = el('div', { class: 'row1' }, [search, moreBtn]);
     if (lib) row1.appendChild(colBtn);
-    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, inkChips, el('div', { class: 'ctrow' }, [costChips, typeChips])]), grid]);
+    // Always on show: search, bookmarks, saved decks and cost. Everything else lives in Filters.
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, costChips]), grid]);
+    var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
+    var setSel = el('select', { class: 'input', 'aria-label': 'Set' });
+    setSel.addEventListener('change', function () { f.set = setSel.value; f.shown = 60; paintChips(); paintGrid(); });
+    var advSec = function (t, n) { return el('div', null, [el('div', { class: 'label', text: t }), n]); };
+    var adv = el('div', { class: 'adv' }, [advSec('Ink', inkChips), advSec('Card type', typeChips), advSec('Film, character or classification', pickRows), advSec('Keyword', kwChips), advSec('Set', setSel), togs]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
@@ -6601,9 +6622,29 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       } }));
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
       storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } }));
-      storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.story ? ' on' : ''), html: Kit.icon('search') + '<span>' + esc(f.story || 'Film or show') + '</span>' + (f.story ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.story) setStory(''); else pickStory(); } }));
-      storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.chr ? ' on' : ''), html: Kit.icon('user') + '<span>' + esc(f.chr || 'Character') + '</span>' + (f.chr ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.chr) setChar(''); else pickChar(); } }));
-      storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.cls ? ' on' : ''), html: Kit.icon('star') + '<span>' + esc(f.cls || 'Classification') + '</span>' + (f.cls ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.cls) setCls(''); else pickCls(); } }));
+      // Filters menu: pickers, keywords, set and toggles
+      pickRows.innerHTML = '';
+      [['search', 'Film or show', f.story, pickStory], ['user', 'Character', f.chr, pickChar], ['star', 'Classification', f.cls, pickCls]].forEach(function (r) {
+        pickRows.appendChild(el('button', { type: 'button', class: 'lp-li st-row adv-pick' + (r[2] ? ' on' : ''), onclick: function () { Kit.sfx('tap'); r[3](); } }, [
+          el('span', { html: Kit.icon(r[0]) }), el('b', { class: 'grow', text: r[1] }), el('small', { text: r[2] || 'Any' })]));
+      });
+      kwChips.innerHTML = '';
+      ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].forEach(function (k) {
+        kwChips.appendChild(chip(KWNAME[k], f.kw === k, function () { f.kw = f.kw === k ? '' : k; f.shown = 60; paintChips(); paintGrid(); }));
+      });
+      if (!setSel.options.length) {
+        setSel.appendChild(el('option', { value: '', text: 'All sets' }));
+        var codes = {}; DB.unique.forEach(function (d) { codes[d.set] = 1; });
+        var sets = DB.sets.filter(function (x) { return codes[x.code]; });
+        Object.keys(codes).forEach(function (c) { if (!sets.some(function (x) { return x.code === c; })) sets.push({ code: c, name: 'Set ' + c }); });
+        sets.forEach(function (x) { setSel.appendChild(el('option', { value: x.code, text: x.name + (x.name.indexOf(x.code) < 0 ? ' (' + x.code + ')' : '') })); });
+      }
+      setSel.value = f.set || '';
+      togs.innerHTML = '';
+      togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Inkable only' }), seg([[0, 'Any'], [1, 'Inkable']], f.inkable ? 1 : 0, function (x) { f.inkable = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
+      if (!lib) togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { f.fit = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
+      var na = advCount();
+      moreBtn.textContent = na ? 'Filters · ' + na : 'Filters'; moreBtn.classList.toggle('fon', !!na);
       inkChips.innerHTML = ''; INKS.forEach(function (i) { var ch = chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }); ch.insertAdjacentHTML('afterbegin', inkIcon(i)); ch.classList.add('ink-chip'); inkChips.appendChild(ch); });
       costChips.innerHTML = ''; costChips.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
       [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { costChips.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
@@ -6737,6 +6778,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var FILTER_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
     var fpCatch = null;
     var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
+    function advCount() {
+      var n = 0; if (f.story) n++; if (f.chr) n++; if (f.cls) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++; if (f.fit) n++;
+      return n + INKS.filter(function (i) { return f.inks[i]; }).length;
+    }
+    function clearAdv() { f.story = ''; f.chr = ''; f.cls = ''; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.fit = false; f.inks = {}; f.shown = 60; paintChips(); paintGrid(); Kit.sfx('tap'); }
     function activeFilters() {
       var n = 0; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.story) n++; if (f.chr) n++; if (f.cls) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
@@ -6756,7 +6802,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         el('div', { class: 'fp-top' }, [el('b', { text: 'Filter cards' }), fpCount,
           el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Clear', onclick: function () { clearFilters(); } }),
           el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Done', onclick: closeFilterPanel })]),
-        fl]);
+        fl, adv]);
       // Phones: the panel comes in from the right; the strip of card view still showing closes it
       fpCatch = el('div', { class: 'fp-catch', 'aria-hidden': 'true', onclick: function (e) { e.stopPropagation(); closeFilterPanel(); } });
       var sx = null;
@@ -6781,7 +6827,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.story = ''; f.chr = ''; f.cls = ''; f.cost = null; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.story = ''; f.chr = ''; f.cls = ''; f.cost = null; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
@@ -6798,7 +6844,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var st = grid.scrollTop, list = DB.unique.filter(matches);
       if (fpanel) refreshFlow(list);
       grid.innerHTML = '';
-      list.slice(0, f.shown).forEach(function (d) {
+      var lim = f.shown * (grid.classList.contains('tiny') ? 2 : 1);
+      list.slice(0, lim).forEach(function (d) {
         var n = count(d);
         var b = el('div', { class: 'pc', role: 'button', tabindex: '0', 'aria-label': d.full + (n ? ', ' + n + ' in deck' : '') });
         b.appendChild(artEl(d, false));
@@ -6813,7 +6860,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         grid.appendChild(b);
       });
       if (!list.length) grid.appendChild(el('p', { class: 'muted bld-more', text: 'No cards match these filters.' }));
-      if (list.length > f.shown) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - f.shown) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
+      if (list.length > lim) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - lim) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
       if (keepScroll) grid.scrollTop = st;
       if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + ' cards';
     }
@@ -6850,27 +6897,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       } }));
     }
     function moreFilters() {
-      var node = el('div', { class: 'tb-form' }), setSel = el('select', { class: 'input' }), kwSel = el('select', { class: 'input' });
-      setSel.appendChild(el('option', { value: '', text: 'All sets' }));
-      var codes = {}; DB.unique.forEach(function (d) { codes[d.set] = 1; });
-      var sets = DB.sets.filter(function (s) { return codes[s.code]; });
-      Object.keys(codes).forEach(function (c) { if (!sets.some(function (s) { return s.code === c; })) sets.push({ code: c, name: 'Set ' + c }); });
-      sets.forEach(function (s) { setSel.appendChild(el('option', { value: s.code, text: s.name + (s.name.indexOf(s.code) < 0 ? ' (' + s.code + ')' : ''), selected: f.set === s.code })); });
-      var stSel = el('select', { class: 'input' }), stories = {};
-      DB.unique.forEach(function (d) { var x = storyOf(d); if (x) stories[x] = 1; });
-      stSel.appendChild(el('option', { value: '', text: 'Every film and show' }));
-      Object.keys(stories).sort().forEach(function (x) { stSel.appendChild(el('option', { value: x, text: x, selected: f.story === x })); });
-      kwSel.appendChild(el('option', { value: '', text: 'Any keyword' }));
-      ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].forEach(function (k) { kwSel.appendChild(el('option', { value: k, text: KWNAME[k], selected: f.kw === k })); });
-      node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Set' }), setSel]));
-      node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Film or show' }), stSel]));
-      node.appendChild(el('div', null, [el('div', { class: 'label', text: 'Keyword' }), kwSel]));
-      var ik = { v: f.inkable }, ft = { v: f.fit };
-      node.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: 'Inkable only' }), seg([[0, 'Any'], [1, 'Inkable']], f.inkable ? 1 : 0, function (x) { ik.v = !!+x; })]));
-      node.appendChild(el('div', { class: 'tb-row' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { ft.v = !!+x; })]));
-      Kit.sheet({ title: 'Filters', node: node, actions: [
-        { label: 'Apply', primary: true, cls: 'btn-primary', onClick: function () { f.set = setSel.value; f.story = stSel.value; f.kw = kwSel.value; f.inkable = ik.v; f.fit = ft.v; f.shown = 60; moreBtn.textContent = (f.set || f.story || f.kw || f.inkable || f.fit) ? 'Filters on' : 'Filters'; paintGrid(); } },
-        { label: 'Clear', cls: 'btn-ghost', onClick: function () { f.set = ''; f.story = ''; f.kw = ''; f.inkable = false; f.fit = false; moreBtn.textContent = 'Filters'; paintGrid(); } }] });
+      Kit.sheet({ title: 'Filters', node: adv, actions: [
+        { label: 'Clear these', cls: 'btn-ghost', keep: true, onClick: clearAdv },
+        { label: 'Done', cls: 'btn-primary' }] });
     }
     paintChips(); paintDeck(); paintGrid();
   }
