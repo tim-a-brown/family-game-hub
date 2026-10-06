@@ -1062,7 +1062,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // ── Who an effect points at ──
     function tgt(p0) {
       var p = clean(p0).replace(/[.,]$/, '').replace(/ (character|item|location) card\b/i, ' $1'), m, t = { side: 'any', types: [], f: {} };
-      if (/^(each of them|all of them|those characters)$/i.test(p)) return { sel: 'prev' };
+      if (/^(each of them|all of them|those characters|the (?:exerted|chosen|moved|banished|challenging) character|that character|them)$/i.test(p)) return { sel: 'prev' };
+      if ((m = p.match(/^any number of chosen (.+)$/i))) { var an = tgt('chosen ' + m[1]); if (an) { an.upTo = 99; return an; } }
+      if ((m = p.match(/^(?:another )?(\d+|two|three) chosen (.+)$/i))) { var nn = tgt((/^another/i.test(p) ? 'another ' : '') + 'chosen ' + m[2]); if (nn) { nn.exact = N(m[1]); nn.upTo = N(m[1]); return nn; } }
+      if ((m = p.match(new RegExp('^chosen (' + CLS + ') of yours$')))) return { sel: 'chosen', side: 'mine', types: ['character'], f: { cls: m[1] } };
+      if ((m = p.match(/^an? (character|item|location) (?:of yours )?here$/i))) return { sel: 'chosen', side: 'mine', types: [m[1].toLowerCase()], f: { here: 1 } };
       // "the highest cost character each opposing player has in play", "the opposing character with the lowest cost"
       if ((m = p.match(/^the (highest|lowest) cost character each opposing player has in play$/i)) || (m = p.match(/^the opposing character with the (highest|lowest) cost$/i)) || (m = p.match(/^the character with the (highest|lowest) cost each (?:opponent|illumineer) has in play$/i))) return { sel: 'all', side: 'opp', types: ['character'], f: {}, pick: m[1].toLowerCase() === 'highest' ? 'maxC' : 'minC' };
       p = p.replace(/^all your /i, 'all of your ');
@@ -1106,6 +1110,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         else if ((m = p.match(/^with (\d+) \{S\} or less each\b/i))) t.f.maxS = +m[1];
         else if ((m = p.match(/^with cost (\d+) or less each\b/i))) t.f.maxC = +m[1];
         else if ((m = p.match(/^each\b/i))) { /* "… each" */ }
+        else if ((m = p.match(/^with less \{S\} than that character\b/i))) t.f.lessSPrev = 1;
         else if ((m = p.match(/^with damage\b/i))) t.f.damaged = 1;
         else if ((m = p.match(/^named (.+?)(?= with\b|$)/i))) t.f.named = m[1].replace(/\s+or\s+/g, '|').trim();
         else return null;
@@ -1200,6 +1205,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if ((m = c.match(new RegExp('^(?:they\'re|he\'s|she\'s|it\'s) an? (' + CLS + ') character$')))) return { k: 'chosenIs', cls: m[1] };
       if (/^you removed damage this way$/i.test(c)) return { k: 'lastPos' };
       if (/^it's the second card they've drawn this turn$/i.test(c)) return { k: 'tt', what: 'oppDrawn', eq: 2 };
+      if (/^(?:he|she|it|this character) had a card under (?:him|her|it)$/i.test(c)) return { k: 'hadUnder', who: 'src' };
+      if (/^that character had a card under them$/i.test(c)) return { k: 'hadUnder', who: 'prev' };
+      if ((m = c.match(new RegExp('^the moved character is an? (' + CLS + ')(?: character)?$')))) return { k: 'ctxCls', key: 'mover', cls: m[1] };
+      if ((m = c.match(new RegExp('^(?:that card is|you discarded) an? (' + CLS + ') character card$'))) || (m = c.match(new RegExp('^an? (' + CLS + ') character card is discarded this way$')))) return { k: 'lastCardIs', cls: m[1] };
+      if (/^this card is in your discard$/i.test(c)) return { k: 'srcIn', zone: 'discard' };
+      if ((m = c.match(/^you have (?:a|an|another) character with (singer|evasive|support|bodyguard|ward|rush|reckless|resist|challenger|boost) in play$/i))) return { k: 'have', n: 1, type: 'character', kw: m[1].toLowerCase() };
       if ((m = c.match(/^the challenging character has (\d+) \{S\} or more$/i))) return { k: 'ctxStr', key: 'att', min: +m[1] };
       if ((m = c.match(/^you have (\d+) \{I\} or less$/i))) return { k: 'ink', max: +m[1] };
       if ((m = c.match(/^you have a character named (.+?) in play$/i))) return { k: 'have', n: 1, type: 'character', named: m[1] };
@@ -1225,6 +1236,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if ((m = p.match(/^(?:opposing )?(damaged |exerted )?character (?:opponents have|of theirs|your opponents have) in play$/i)) || (m = p.match(/^opposing (damaged |exerted )?character in play$/i)) || (m = p.match(/^(damaged |exerted )?character opponents have in play$/i))) return { k: 'oppBoard', damaged: /damaged/i.test(m[1] || ''), exerted: /exerted/i.test(m[1] || '') };
       if ((m = p.match(/^opposing character with (\d+) \{S\}$/i))) return { k: 'oppBoard', strEq: +m[1] };
       if (/^1 damage on them$/i.test(p)) return { k: 'tgtDmg' };
+      if (/^character that sang this song$/i.test(p)) return { k: 'sang' };
       if (/^1 damage on (?:him|her|it|them|this character)$/i.test(p)) return { k: 'selfDmg' };
       if ((m = p.match(/^card that was under (?:him|her|them|it)$/i))) return { k: 'wasUnder' };
       if (/^1 damage on opposing characters$/i.test(p)) return { k: 'oppDmg' };
@@ -1283,9 +1295,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // "a character card", "up to 2 item cards with cost 2 or less", "all Puppy character cards", "a card named X", "this card"
     function cardDesc(p0) {
       var p = clean(p0), m, o = { n: 1 };
-      if ((m = p.match(/^(a|an|one|another|up to \w+|all|any number of|\d+|two|three)\s+/i))) { var w = m[1].toLowerCase(); if (w === 'all') o.all = 1; else if (w === 'any number of') { o.n = 99; o.upTo = 1; } else if (/^up to/.test(w)) { o.n = N(w.replace('up to ', '')); o.upTo = 1; } else o.n = N(w); if (w === 'another') o.other = 1; p = p.slice(m[0].length); }
+      if ((m = p.match(/^(a|an|one|another|up to \w+|all|any number of|\d+|two|three|chosen)\s+/i))) { var w = m[1].toLowerCase(); if (w === 'all') o.all = 1; else if (w === 'any number of') { o.n = 99; o.upTo = 1; } else if (/^up to/.test(w)) { o.n = N(w.replace('up to ', '')); o.upTo = 1; } else o.n = N(w); if (w === 'another') o.other = 1; p = p.slice(m[0].length); }
       else return null;
-      if ((m = p.match(new RegExp('^(' + CLS + ') (?=character)')))) { o.cls = m[1]; p = p.slice(m[0].length); }
+      if ((m = p.match(new RegExp('^(' + CLS + ') (?=character|cards?\\b)')))) { o.cls = m[1]; p = p.slice(m[0].length); }
       if ((m = p.match(/^(character|item|action|song|location)(?: or (character|item|action|song|location))? (?=card)/i))) { o.type = m[2] ? m[1].toLowerCase() + '|' + m[2].toLowerCase() : m[1].toLowerCase(); p = p.slice(m[0].length); }
       if (!(m = p.match(/^cards?\b/i))) return null;
       p = p.slice(m[0].length).trim();
@@ -1311,7 +1323,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       // same meaning, other words
       s = s.replace(/^you gain (\d+) lore/i, 'gain $1 lore').replace(/^each opposing player /i, 'each opponent ').replace(/^all opponents lose /i, 'each opponent loses ')
         .replace(/^have (each|chosen) opponent choose and discard /i, '$1 opponent chooses and discards ').replace(/^each player discards their hand and draws (\w+) cards$/i, 'each player discards their hand, then each player draws $1 cards')
-        .replace(/^(deal|remove) (\d+) damage each (to|from) /i, '$1 $2 damage $3 ').replace(/ \(.*?\)$/, '');
+        .replace(/^(deal|remove) (\d+) damage each (to|from) /i, '$1 $2 damage $3 ').replace(/ \(.*?\)$/, '')
+        .replace(/ equal to that number/i, ' equal to the number counted').replace(/^\{E\} /, 'exert ').replace(/ doesn't ready at the start/i, " can't ready at the start")
+        .replace(/^if you have a character here gain /i, 'if you have a character here, gain ').replace(/^the next time they challenge another character this turn, /i, 'whenever they challenge another character this turn, ');
+      if ((m = s.match(/^(for the rest of this turn|until the start of your next turn), (?!whenever)(.+)$/i))) s = m[2] + ' ' + m[1].toLowerCase();
+      if ((m = s.match(/^while this (?:item|location|character) is in play, (.+)$/i)) || (m = s.match(/^(.+?) while this (?:item|location|character) is in play$/i))) { var wl = sentence(m[1]); if (wl) { wl.forEach(function (e) { e.dur = 'whileSrc'; }); return wl; } return null; }
+      if ((m = s.match(/^otherwise, (.+)$/i))) { var ow = seq(m[1].charAt(0).toUpperCase() + m[1].slice(1)); if (ow) { ow.forEach(function (e) { e.otherwise = 1; }); return ow; } return null; }
+      if ((m = s.match(/^if you do and (.+?), (.+)$/i))) { var dc = condAll(m[1]), dr = dc && sentence(m[2]); if (dr) { dr.forEach(function (e) { e.dep = 1; e.cond = e.cond ? { k: 'all', list: [e.cond, dc] } : dc; }); return dr; } return null; }
+      var durTail = (s.match(/ (this turn|for the rest of this turn|until the start of your next turn|during their next turn)$/i) || [])[0] || '';
+      if ((m = s.slice(0, s.length - durTail.length).match(/^(they|he|she|it|this character|each player|each opponent|chosen character|chosen opposing character|your characters|your other characters) (.+?)(?:,)? and (can't .+|gets? .+|gains? .+|takes? .+|draws? .+|loses? .+|must .+)$/i))) {
+        var s1 = sentence(m[1] + ' ' + m[2] + durTail), s2 = s1 && sentence(m[1] + ' ' + m[3] + durTail);
+        if (s1 && s2) { s2.forEach(function (e) { if (e.t && e.t.sel === 'chosen') e.t = { sel: 'prev' }; }); return s1.concat(s2); }
+      }
+      if ((m = s.match(/^(each player|each opponent) (.+?), then (discards? .+|draws? .+|gains? .+|chooses? .+)$/i))) { var c1 = sentence(m[1] + ' ' + m[2]), c2 = c1 && sentence(m[1] + ' ' + m[3]); if (c2) return c1.concat(c2); }
+      if (/, then /i.test(s) && !/^you may|^name a card/i.test(s)) { var tp2 = s.split(/, then /i), tr = []; for (var ti2 = 0; ti2 < tp2.length && tr; ti2++) { var x2 = sentence(tp2[ti2]); tr = x2 ? tr.concat(x2) : null; } if (tr && tr.length) return tr; }
       // "If X, Y instead": a better version of the effect before it
       if ((m = s.match(/^if (.+?), (.+?) instead$/i))) { var ic = condAll(m[1]), ie = ic && sentence(m[2]); if (ie) return [{ op: 'alt', cond: ic, fx: ie }]; return null; }
       // "For each opponent who doesn't, …" / "If they don't, …": only when the step before didn't happen
@@ -1341,7 +1366,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         if (a1 && a2) { a2.forEach(function (e) { if (e.t && e.t.sel === 'chosen') e.t = { sel: 'prev' }; }); return out(a1.concat(a2)); }
       }
       // "for each X, Y" → Y, counted
-      if ((m = s.match(/^for each (.+?), (.+)$/i)) && per(m[1]) && !/^you pay/i.test(m[2])) { var fe = sentence(m[2]); if (fe) { var pc0 = per(m[1]); fe.forEach(function (e) { e.per = pc0; }); return out(fe); } }
+      if ((m = s.match(/^for each (.+?), (.+)$/i)) && per(m[1]) && !/to play this/i.test(m[2])) { var fe = sentence(m[2]) || seq(m[2].charAt(0).toUpperCase() + m[2].slice(1)); if (fe) { var pc0 = per(m[1]); fe.forEach(function (e) { e.per = pc0; }); return out(fe); } }
       if ((m = s.match(/^(.+?) unless (.+)$/i)) && !/pays? \d+ \{I\}$/i.test(s)) { var uc = condAll(m[2]), ue = uc && sentence(m[1]); if (ue) { ue.forEach(function (e) { e.cond = e.cond ? { k: 'all', list: [e.cond, notCond(uc)] } : notCond(uc); }); return out(ue); } }
       // amounts: "gain 1 lore for each …", "equal to …"
       if ((m = s.match(/^gain (\d+) lore for each (.+)$/i)) && per(m[2])) return out({ op: 'lore', n: +m[1], per: per(m[2]) });
@@ -1368,6 +1393,47 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         inTmp = true; var tab; try { tab = line(ttxt.replace(/ this turn$/i, '') + ', ' + m[2], {}, 300); } finally { inTmp = false; }
         if (tab.ok && tab.kind && tab.kind !== 'static') return out(who2 ? { op: 'grant', ab: tab, t: { sel: 'prev' }, dur: 'turn' } : { op: 'tmpTrig', ab: tab });
       }
+      // targetless follow-ups ("…, remove up to 4 damage instead")
+      if ((m = s.match(/^remove (?:up to )?(\d+) damage$/i))) return out({ op: 'heal', n: +m[1], t: { sel: 'prev' } });
+      if ((m = s.match(/^remove (\d+) damage from (.+)$/i)) && (T = tgt(m[2]))) return out({ op: 'heal', n: +m[1], t: T });
+      if ((m = s.match(/^deal (\d+) damage$/i))) return out({ op: 'damage', n: +m[1], t: { sel: 'prev' } });
+      if ((m = s.match(/^deal the same amount of damage to (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'damage', n: 1, t: T, amt: { k: 'last' } });
+      if ((m = s.match(/^deal damage equal to (?:their|its|his|her) \{S\} to (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'damage', n: 1, t: T, amt: { k: 'prevStat', st: 's' } });
+      if ((m = s.match(new RegExp('^(.+?) counts? as having \\+(\\d+) cost to sing songs' + DUR + '$', 'i'))) && (T = tgt(m[1]))) return out({ op: 'singPlus', n: +m[2], t: T, dur: m[3] ? dur(m[3]) : null });
+      if ((m = s.match(/^(.+?) can't challenge and must quest (?:during their next turn if able|if able during their next turn)$/i)) && (T = tgt(m[1]))) return out([{ op: 'cant', what: 'challenge', t: T, dur: 'their' }, { op: 'mustQuest', t: { sel: 'prev' }, dur: 'their' }]);
+      if ((m = s.match(/^each opponent can't ready more than (\w+) of their characters at the start of their next turn$/i))) return out({ op: 'readyMax', n: N(m[1]) });
+      if ((m = s.match(/^each opponent chooses and discards a card for each card that was under (?:him|her|them|it)$/i))) return out({ op: 'discard', n: 1, who: 'opp', per: { k: 'wasUnder' } });
+      if ((m = s.match(/^each player chooses one of their characters and puts (?:them|it|that card) into their inkwell facedown and exerted$/i))) return out([{ op: 'oppChoose', what: 'ink' }, { op: 'selfChoose', what: 'ink' }]);
+      if ((m = s.match(/^each player gains (\d+) lore$/i))) return out({ op: 'lore', n: +m[1], who: 'both' });
+      if ((m = s.match(/^each opponent may draw (a|an|one|\d+) cards?$/i))) return out({ op: 'draw', n: N(m[1]), who: 'opp' });
+      if ((m = s.match(/^exert (.+?) and all other opposing characters with the same name$/i)) && (T = tgt(m[1]))) return out({ op: 'exert', t: T, sameName: 1 });
+      if ((m = s.match(/^(.+?) loses (evasive|reckless|ward|bodyguard|rush|challenger|resist|support)( this turn)?$/i)) && (T = tgt(m[1]))) return out({ op: 'loseKw', kw: m[2].toLowerCase(), t: T, dur: 'turn' });
+      if ((m = s.match(/^(?:this turn, )?you may ink an additional card(?: this turn)?$/i))) return out({ op: 'extraInk' });
+      if ((m = s.match(/^the next time (?:they|he|she|it) would be dealt damage (?:they|he|she|it) takes? no damage instead(.*)$/i))) return out({ op: 'shield', t: { sel: 'prev' }, dur: 'next' });
+      if ((m = s.match(/^opponents can't play (actions|actions or items|items)(?: until the start of your next turn)?$/i))) return out({ op: 'oppCantPlay', types: m[1].toLowerCase().replace(/s\b/g, '').split(' or '), dur: 'next' });
+      if ((m = s.match(/^play (?:a|an) (character|item|song|action) with the same name as (this character|the banished character) for free$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), sameAs: /banished/i.test(m[2]) ? 'sac' : 'self', from: 'hand' });
+      if ((m = s.match(/^play (?:a|an) (character|item|song|action)(?: card)? with cost (?:up to (\d+) more than the banished character|equal to or less than the (?:exerted|chosen) character's cost|the same cost or less)(?: from your discard)? for free$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxCRel: m[2] ? 'sac' : 'prev', plus: m[2] ? +m[2] : 0, from: /from your discard/i.test(s) ? 'discard' : 'hand' });
+      if ((m = s.match(/^play an? (item|character|action|song) from your hand or discard with cost (\d+) or less for free, exerted$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxC: +m[2], from: 'both', ex: true });
+      if ((m = s.match(/^play (?:a|an) (song|action|character|item)(?: card)? with cost (\d+) or less from your discard for free, then put (?:it|that \w+ card) on the bottom of your deck instead of into your discard$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxC: +m[2], from: 'discard', bottomAfter: 1 });
+      if ((m = s.match(/^play (?:that song|that character|him|her|it|that card) (?:again )?(?:from your discard )?for free$/i))) return out({ op: 'playThat' });
+      if ((m = s.match(/^play (?:her|him|this character)(?: for free)? and (?:she|he|it) enters play exerted$/i))) return out({ op: 'playSelf', ex: true });
+      if ((m = s.match(/^put all cards from under (.+?) on the bottom of their player's deck in a random order$/i)) && (T = tgt(m[1]))) return out({ op: 'underBottom', t: T });
+      if ((m = s.match(/^put this character facedown under (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'selfUnder', t: T });
+      if ((m = s.match(/^put a card from the top of your deck facedown under (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'under', t: T });
+      if ((m = s.match(/^put that card from your discard into your inkwell facedown and exerted$/i))) return out({ op: 'thatToInk' });
+      if ((m = s.match(/^choose and discard (a|an|any number of) (.+?) cards?$/i))) { var dd2 = pickDesc(m[2] + ' card'); if (dd2) return out({ op: 'discard', n: /any number/i.test(m[1]) ? 99 : 1, upTo: /any number/i.test(m[1]) ? 1 : 0, who: 'me', ftype: dd2.type, fcls: dd2.cls || null }); }
+      if ((m = s.match(/^choose and discard (?:that many|that number of) cards$/i))) return out({ op: 'discard', n: 1, amt: { k: 'last' }, who: 'me' });
+      if ((m = s.match(/^choose (up to \w+|\d+|three|two) cards from chosen opponent's discard and (shuffle them into their deck|put them on the bottom of their deck)$/i))) return out({ op: 'discMove', n: /up to/i.test(m[1]) ? N(m[1].replace(/up to /i, '')) : N(m[1]), upTo: /up to/i.test(m[1]) ? 1 : 0, from: 'opp', to: /shuffle/i.test(m[2]) ? 'shuffle' : 'bottom' });
+      if ((m = s.match(/^put the top (\w+) cards? of chosen player's deck into their discard$/i))) return out({ op: 'mill', n: N(m[1]), who: 'chosenPlayer' });
+      if ((m = s.match(/^gain lore equal to the \{L\} of a character card in your discard$/i))) return out({ op: 'lore', n: 1, amt: { k: 'maxDiscL' } });
+      if ((m = s.match(/^move (a character of yours|up to (\w+) (?:characters of yours|of your characters)|any number of your characters|(?:him|her) and one of your other characters|one of your other characters) to (a location|the same location|that location) for free$/i))) return out({ op: 'moveFree', n: /any number/i.test(m[1]) ? 99 : m[2] ? N(m[2]) : /and one of your other/i.test(m[1]) ? 2 : 1, self: /^(him|her) and/i.test(m[1]), other: /other/i.test(m[1]), same: /same|that/i.test(m[3]), there: /that location/i.test(m[3]) });
+      if ((m = s.match(/^(they|he|she|this character) may move (?:to a location|there) for free$/i))) return out({ op: 'moveFree', n: 1, who: /this character/i.test(m[1]) ? 'self' : 'prev', there: /there/i.test(s) });
+      if ((m = s.match(/^move all damage counters from all other characters to (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'gatherDmg', all: 1, t: T });
+      if ((m = s.match(/^move 1 damage counter from each damaged character you have in play to (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'gatherDmg', mine: 1, t: T });
+      if ((m = s.match(/^choose an opposing character and move 1 damage from each other character to them$/i))) return out({ op: 'gatherDmg', each: 1, t: tgt('chosen opposing character') });
+      if (/^name a card, then reveal the top card of your deck$/i.test(s)) return out({ op: 'nameReveal' });
+      if (/^name a card$/i.test(s)) return out({ op: 'nameCard' });
+      if ((m = s.match(/^return all character cards with that name from your discard to your hand$/i))) return out({ op: 'mod', set: { thenReturnNamed: 1 } });
       // "Choose X and ready them" → "Ready chosen X"; "Choose a character." on its own
       if ((m = s.match(/^choose (.+?) and (ready|exert|banish|deal \d+ damage to|return) (?:them|him|her|it)(.*)$/i))) {
         var ch = m[1].replace(/^one of your (\w+)s$/i, 'chosen $1 of yours').replace(/^an? (.+?) of yours$/i, 'chosen $1 of yours').replace(/^an? (opposing |exerted |damaged )?(character|item|location)$/i, 'chosen $1$2');
@@ -1483,7 +1549,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if ((m = s.match(/^banish (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'banish', t: T });
       if ((m = s.match(/^(exert|ready) (.+)$/i)) && (T = tgt(m[2]))) return out({ op: m[1].toLowerCase(), t: T });
       if ((m = s.match(/^put the top card of your deck into your inkwell facedown(?: and exerted)?$/i))) return out({ op: 'inkTop' });
-      if ((m = s.match(/^put (.+?) into (?:their|its|your|his|her) (?:player's |owner's )?inkwell facedown(?: and exerted)?$/i)) && (T = tgt(m[1]))) return out({ op: 'toInk', t: T, ready: !/exerted/i.test(s) });
+      if ((m = s.match(/^put (.+?) into (?:their|its|your|his|her) (?:players?'s? |owners?'s? )?inkwells? facedown(?: and exerted)?$/i)) && (T = tgt(m[1]))) return out({ op: 'toInk', t: T, ready: !/exerted/i.test(s) });
       if ((m = s.match(/^shuffle (.+?) into (?:their|its|your) (?:player's |owner's )?deck$/i)) && (T = tgt(m[1]))) return out({ op: 'tuck', t: T });
       // stats, keywords, restrictions
       if ((m = s.match(/^(.+?) (?:gets?|get) ([+-]\d+) \{([SWL])\} for each (.+)$/i)) && (T = tgt(m[1]))) { var pc = per(m[4]); if (pc) { var sp = {}; sp[m[3].toLowerCase()] = +m[2]; return out({ op: 'stat', st: sp, t: T, dur: null, per: pc }); } }
@@ -1513,7 +1579,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if ((m = s.match(/^look at the top card of your deck and put it on either the top or the bottom of your deck$/i))) return out({ op: 'look', n: 1, rest: 'choose', done: 1 });
       if (/^reveal the top card of your deck$/i.test(s)) return out({ op: 'look', n: 1, reveal: 1 });
       if ((m = s.match(new RegExp('^reveal the top ' + NUM + ' cards of your deck$', 'i')))) return out({ op: 'look', n: N(m[1]), reveal: 1 });
-      if ((m = s.match(new RegExp('^(?:you may )?look at the top (?:' + NUM + ' cards?|card) of (chosen player\'s|each opponent\'s) deck$', 'i')))) return out({ op: 'look', n: m[1] ? N(m[1]) : 1, who: /each opponent/i.test(m[2]) ? 'opp' : 'chosenPlayer', rest: 'top' });
+      if ((m = s.match(new RegExp('^(?:you may )?look at the top (?:' + NUM + ' cards?|card) of (chosen player\'s|each opponent\'s) deck$', 'i')))) return out({ op: 'look', n: m[1] ? N(m[1]) : 1, who: /each opponent/i.test(m[2]) ? 'opp' : 'chosenPlayer', rest: 'top', done: /each opponent/i.test(m[2]) ? 1 : 0 });
       // the opponent picks
       if ((m = s.match(/^each opponent chooses and (exerts|banishes|readies) one of their (ready |exerted |damaged )?characters$/i))) return out({ op: 'oppChoose', what: m[1].toLowerCase(), f: m[2] ? m[2].trim().toLowerCase() : null });
       if ((m = s.match(/^each opponent chooses one of their characters and (?:deals (\d+) damage to (?:them|it|that character)|returns (?:that card|them|it) to their hand|puts (?:that card|them|it) into their inkwell facedown(?: and exerted)?)$/i))) return out({ op: 'oppChoose', what: m[1] ? 'damage' : /returns/i.test(s) ? 'bounce' : 'ink', n: m[1] ? +m[1] : 0 });
@@ -1601,7 +1667,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           }
         }
         if (!r) {
-          var sp = ss[i].replace(/[.]$/, '').split(/,?\s+(?:then|and then)\s+|\s+and\s+(?=(?:gain|draw|deal|banish|exert|ready|return|remove|they|he|she|it|each|chosen|this|you)\b)/i);
+          var sp = ss[i].replace(/[.]$/, '').split(/,?\s+(?:then|and then)\s+|\s+and\s+(?=(?:gain|draw|deal|banish|exert|ready|return|remove|give|they|he|she|it|each|chosen|this|you)\b)/i);
           if (sp.length > 1) { r = []; for (var j = 0; j < sp.length; j++) { var x = sentence(sp[j]); if (!x) { r = null; break; } if (j > 0 && /^(they|he|she|it)\b/i.test(sp[j])) x.forEach(function (e) { if (e.t && e.t.sel === 'prev') {} }); r = r.concat(x); } }
         }
         if (!r) { fail = ss[i]; return null; }
@@ -1610,12 +1676,23 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           if (!pv) { fail = ss[i]; return null; }
           pv.alt = { cond: r[0].cond, fx: r[0].fx }; continue;
         }
+        if (r[0].otherwise) {
+          var pc2 = null; for (var pk2 = out.length - 1; pk2 >= 0 && !pc2; pk2--) if (out[pk2].cond) pc2 = out[pk2].cond;
+          if (!pc2) { fail = ss[i]; return null; }
+          r.forEach(function (e) { delete e.otherwise; e.cond = e.cond ? { k: 'all', list: [e.cond, notCond(pc2)] } : notCond(pc2); });
+        }
         if (r[0].op === 'mod') {
           var pm = out[out.length - 1]; if (!pm) { fail = ss[i]; return null; }
           for (var mk in r[0].set) pm[mk] = r[0].set[mk]; continue;
         }
         out = out.concat(r);
         var last = r[r.length - 1];
+        if (last.op === 'nameReveal') {
+          var nx = ss[i + 1] && clean(ss[i + 1]).replace(/[.!]$/, ''), nm2;
+          if (nx && (nm2 = nx.match(/^if it's the named card, put (?:that card|it) into your hand(?: and gain (\d+) lore)?$/i))) { last.lore = nm2[1] ? +nm2[1] : 0; i++; nx = ss[i + 1] && clean(ss[i + 1]).replace(/[.!]$/, ''); }
+          else { fail = ss[i + 1] || ss[i]; return null; }
+          if (nx && /^otherwise, put it on the top of your deck$/i.test(nx)) i++;
+        }
         if (last.op === 'look' && !last.done) { var used = lookTail(last, ss.slice(i + 1)); if (used < 0) return null; i += used; }
       }
       return out;
@@ -1779,7 +1856,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if ((m = body.match(/^During your turn,\s*/i))) { ab.cond = { k: 'myTurn' }; body = body.slice(m[0].length); }
       else if ((m = body.match(/^During (?:an |each )?opponents?'?s?'? turns?,\s*/i))) { ab.cond = { k: 'oppTurn' }; body = body.slice(m[0].length); }
       if ((m = body.match(/^While (.+?),\s*(?=[A-Za-z])/i))) {
-        var wc = condAll(m[1]); if (!wc) { ab.kind = 'static'; return ab; }
+        var wc = condAll(m[1]); if (!wc) { fail = 'WHILE ' + m[1]; ab.kind = 'static'; return ab; }
         ab.cond = ab.cond ? { k: 'all', list: [ab.cond, wc] } : wc; body = body.slice(m[0].length);
       }
       if ((m = body.match(/^Once (?:during|per) (?:your )?turn,\s*/i))) { ab.once = true; body = body.slice(m[0].length); }
@@ -1841,12 +1918,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         body = clean(body.replace(/\([^)]*\)/g, ' '));
         var costRules = [];
         body = body.split(/(?<=[.!])\s+(?=[A-Z])/).filter(function (x) { if (/you pay \d+ \{I\} less to play this action/i.test(x)) { costRules.push(x); return false; } return true; }).join(' ');
+        fail = '';
         var ab = { i: 0, name: '', text: clean(d.tx), kind: 'action', fx: body ? seq(body) : [], ok: false };
-        ab.ok = !!ab.fx; out.push(ab);
+        ab.ok = !!ab.fx; if (!ab.ok) ab.why = fail; out.push(ab);
         costRules.forEach(function (x, j) { var sf = staticFx(x); out.push({ i: 50 + j, name: '', text: x, kind: 'static', fx: sf, ok: !!sf }); });
         return out;
       }
-      (d.K ? d.K.extra : lines).forEach(function (L, i) { if (String(L).trim() && !/^\(.*\)$/.test(String(L).trim())) out.push(line(L, d, i)); });
+      (d.K ? d.K.extra : lines).forEach(function (L, i) { if (String(L).trim() && !/^\(.*\)$/.test(String(L).trim())) { fail = ''; var a = line(L, d, i); if (!a.ok) a.why = fail || ('(trigger) ' + a.text); out.push(a); } });
       return out;
     }
     return { parse: parse, seq: seq, tgt: tgt, cond: condAll, sentence: sentence, why: function (d) { var o = []; String(d.tx || '').split(/\n+/); parse(d).forEach(function (a) { if (!a.ok) { fail = ''; if (d.t === 'action') seq(clean(a.text.replace(/\([^)]*\)/g, ' '))); else line(a.text, d, a.i); o.push(fail || '(trigger) ' + a.text); } }); return o; } };
@@ -2206,7 +2284,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function opp(pi) { return 1 - pi; }
   function nm(u) { return DD(u).n; }
   function modSum(u, k) { var t = 0; (C(u).mods || []).forEach(function (x) { if (x[k]) t += x[k]; }); return t + (stx(u)[k] || 0); }
-  function hasKw(u, k) { if (DD(u).K[k]) return true; if ((C(u).mods || []).some(function (x) { return x.kw === k; })) return true; return stx(u).kw[k] != null; }
+  function hasKw(u, k) { if ((C(u).mods || []).some(function (x) { return x.nokw === k; })) return false; if (DD(u).K[k]) return true; if ((C(u).mods || []).some(function (x) { return x.kw === k; })) return true; return stx(u).kw[k] != null; }
   function kwN(u, k) {
     var n = DD(u).K[k]; n = typeof n === 'number' ? n : 0;
     (C(u).mods || []).forEach(function (x) { if (x.kw === k) n += x.n || 0; });
@@ -2240,6 +2318,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var c = C(u), p = S.P[c.o], i = p.board.indexOf(u);
     if (i >= 0) { var gr = abs(u).filter(function (a) { return a.i >= 200; }); S.lastGrant = S.lastGrant || {}; if (gr.length) S.lastGrant[u] = gr; else delete S.lastGrant[u]; }
     if (i >= 0) p.board.splice(i, 1);
+    // effects that last "while this item is in play" end now; remember what was under it
+    for (var k0 in S.cards) { var ck = S.cards[k0]; if (ck.mods && ck.mods.length) ck.mods = ck.mods.filter(function (m) { return m.whileSrc !== u; }); }
+    S.lastUnder = S.lastUnder || {}; S.lastUnder[u] = (c.under || []).length;
     S.lastAt = S.lastAt || {}; if (c.at) S.lastAt[u] = c.at; else delete S.lastAt[u];
     (c.under || []).forEach(function (x) { resetCard(x); S.P[C(x).o].discard.push(x); });
     if (isLoc(u)) [0, 1].forEach(function (pi) { S.P[pi].board.forEach(function (x) { if (C(x).at === u) C(x).at = null; }); });
@@ -2289,6 +2370,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function dealDamage(u, n) {
     if (cant(u, 'dmg') || (clashing && cant(u, 'chalDmg')) || (!clashing && cant(u, 'dmgOutsideChal'))) return 0;
     if (clashing && clashAt && clashAt.shield && clashAt.shield.indexOf(u) >= 0) return 0;
+    var sh = (C(u).mods || []).filter(function (m) { return m.shield; })[0];
+    if (sh && n > 0) { C(u).mods.splice(C(u).mods.indexOf(sh), 1); fx.num(u, 'No damage', 'buff'); return 0; }
+    var fs = staticOp(u, 'firstShield'); if (fs && n > 0) { var Tf = TT(); Tf.fshield = Tf.fshield || []; if (Tf.fshield.indexOf(u) < 0) { Tf.fshield.push(u); fx.num(u, 'No damage', 'buff'); return 0; } }
+    // "Whenever one of your other characters would be dealt damage, put that many damage counters on this character instead"
+    var rd = S.P[C(u).o].board.filter(function (x) { return x !== u && !!staticOp(x, 'redirectDmg'); })[0];
+    if (rd && n > 0 && isChar(u)) { var dn = Math.max(0, n - kwN(u, 'resist')); C(rd).dmg += dn; fx.num(rd, '-' + dn, 'dmg'); return 0; }
     var d = Math.max(0, n - kwN(u, 'resist')); C(u).dmg += d;
     if (d) { fx.hit(u); TT().dmg[C(u).o] = 1; emit('damaged', { u: u, n: d }); }
     return d;
@@ -2296,8 +2383,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function noteBanish(u) { var T = TT(); T.ban++; if (clashing) { T.banChal++; T.banChalOf[C(u).o]++; } }
 
   // ── Legality ─────────────────────────────────────────────────────────────
-  function canInk(pi, u) { return !S.P[pi].inked && S.P[pi].hand.indexOf(u) >= 0 && !!DD(u).k; }
-  function canPlay(pi, u) { var d = DD(u); return S.P[pi].hand.indexOf(u) >= 0 && !!d.t && inkReady(pi) >= playCost(pi, u) && !playBlocked(pi, u); }
+  function extraInk(pi) { var n = (TT().extraInk || [0, 0])[pi]; S.P[pi].board.forEach(function (x) { var e = staticOp(x, 'extraInk'); if (e) n++; }); return n; }
+  function inksLeft(pi) { return 1 + extraInk(pi) - ((TT().handInk || [0, 0])[pi]); }
+  function canInk(pi, u) { return inksLeft(pi) > 0 && S.P[pi].hand.indexOf(u) >= 0 && (!!DD(u).k || allInkable(pi)); }
+  function allInkable(pi) { return S.P[pi].board.some(function (x) { return !!staticOp(x, 'allInk'); }); }
+  // "Opponents can't play actions until the start of your next turn"
+  function playLocked(pi, u) {
+    var d = DD(u), ty = d.song ? ['action', 'song'] : [d.t];
+    return (S.pmods || []).some(function (m) { return m.pi === pi && m.cantPlay && S.turn < m.untilStart && m.cantPlay.some(function (t) { return ty.indexOf(t) >= 0; }); }) ||
+      S.P[opp(pi)].board.some(function (x) { var e = staticOp(x, 'oppCantPlay'); return e && e.types.some(function (t) { return ty.indexOf(t) >= 0; }); });
+  }
+  function canPlay(pi, u) { var d = DD(u); return S.P[pi].hand.indexOf(u) >= 0 && !!d.t && inkReady(pi) >= playCost(pi, u) && !playBlocked(pi, u) && !playLocked(pi, u); }
   function canQuest(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && c.dry && !hasKw(u, 'reckless') && !cant(u, 'quest'); }
   function canChallenger(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && (c.dry || hasKw(u, 'rush')) && !cant(u, 'challenge'); }
   function defenders(att) {
@@ -2337,7 +2433,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (sh.discard) return shiftDiscards(u).length >= sh.discard.n;
     return inkReady(C(u).o) >= sh.cost;
   }
-  function singVal(u) { return kwN(u, 'singer') || DD(u).c || 0; }
+  function singVal(u) { return (kwN(u, 'singer') || DD(u).c || 0) + modSum(u, 'sing'); }
   function canSingWith(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && c.dry && !cant(u, 'sing'); }
   function singersFor(song) {
     var d = DD(song), pi = C(song).o;
@@ -2353,6 +2449,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var c = C(u); return isChar(u) && isLoc(loc) && c.o === S.cur && C(loc).o === c.o && c.at !== loc && S.P[c.o].board.indexOf(u) >= 0 && inkReady(c.o) >= moveCost(u, loc) && !cant(u, 'move');
   }
   function canBoost(u) { var c = C(u), n = DD(u).K.boost; return !!n && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && c.bt !== S.turn && inkReady(c.o) >= n && S.P[c.o].deckL.length > 0; }
+  function mustQuestPending(pi) { return S.P[pi].board.filter(function (u) { return (C(u).mods || []).some(function (m) { return m.must === 'quest'; }) && canQuest(u); })[0] || null; }
   function recklessPending(pi) {
     return S.P[pi].board.filter(function (u) { return hasKw(u, 'reckless') && canChallenger(u) && defenders(u).length; })[0] || null;
   }
@@ -2360,7 +2457,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // ── Actions (pure state changes; the UI adds motion, sound and undo) ────
   var A = {
     ink: function (pi, u) {
-      var p = S.P[pi]; p.hand.splice(p.hand.indexOf(u), 1); resetCard(u); C(u).ex = false; p.ink.push(u); p.inked = true;
+      var p = S.P[pi]; p.hand.splice(p.hand.indexOf(u), 1); resetCard(u); C(u).ex = S.P[opp(pi)].board.some(function (x) { return !!staticOp(x, 'oppInkEx'); }); p.ink.push(u); p.inked = true;
+      var Ti = TT(); Ti.handInk = Ti.handInk || [0, 0]; Ti.handInk[pi]++;
       S.st[pi].inked++; log(p.name + ' put a card into the inkwell', pi, p.name + ' put ' + DD(u).full + ' into the inkwell');   // facedown: only its owner sees the name
     },
     play: function (pi, u, o) {
@@ -2378,7 +2476,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       } else if (!o.free) { payInk(pi, Math.max(0, cost - (o.less || 0))); if (pl) S.less.splice(pl.i, 1); }
       resetCard(u);
       if (d.t === 'action') {
-        p.discard.push(u);
+        if (o.bottomAfter) p.deckL.push(u); else p.discard.push(u);
         log(p.name + ' played ' + d.n + how, pi);
       } else {
         var c = C(u);
@@ -2443,7 +2541,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var pi = S.cur, p = S.P[pi];
     S.step = 'main'; p.inked = false;
     for (var k in S.cards) { var cc = S.cards[k]; if (cc.mods && cc.mods.length) cc.mods = cc.mods.filter(function (m) { return !(m.untilStart && m.untilStart <= S.turn); }); }
-    p.board.forEach(function (u) { if (!cant(u, 'ready')) C(u).ex = false; });
+    var rmax = (S.pmods || []).filter(function (m) { return m.pi === pi && m.readyMax != null && m.turn === S.turn; })[0];
+    var toReady = p.board.filter(function (u) { return !cant(u, 'ready'); });
+    if (rmax) { var chars = toReady.filter(function (u) { return isChar(u) && C(u).ex; }).sort(function (a, b) { return LORE(b) - LORE(a); }); var keep = chars.slice(0, rmax.n); toReady = toReady.filter(function (u) { return !isChar(u) || !C(u).ex || keep.indexOf(u) >= 0; }); }
+    toReady.forEach(function (u) { C(u).ex = false; });
     p.ink.forEach(function (u) { C(u).ex = false; });
     p.board.forEach(function (u) { if (isChar(u)) { if (!C(u).dry) fx.dried(u); C(u).dry = true; } });
     var locL = 0; p.board.forEach(function (u) { if (isLoc(u)) locL += LORE(u); });
@@ -2528,6 +2629,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (f.under && !(c.under && c.under.length)) return false;
     if (f.chalTT && (TT().chd || []).indexOf(u) < 0) return false;
     if (f.maxCbyS && src && S.cards[src] && (d.c || 0) > STR(src)) return false;
+    if (f.lessSPrev && fitsPrev && S.cards[fitsPrev] && STR(u) >= (onBoard(fitsPrev) ? STR(fitsPrev) : DD(fitsPrev).s || 0)) return false;
     if (f.maxS != null && STR(u) > f.maxS) return false;
     if (f.minS != null && STR(u) < f.minS) return false;
     if (f.maxW != null && WP(u) > f.maxW) return false;
@@ -2600,6 +2702,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'oppLore': return O.lore >= cd.min;
       case 'lore': return P.lore >= cd.min;
       case 'ink': return (cd.min == null || P.ink.length >= cd.min) && (cd.max == null || P.ink.length <= cd.max);
+      case 'hadUnder': { var hu = cd.who === 'prev' ? (ctx && ctx.st && ctx.st.prev && ctx.st.prev[0]) : src; return !!(hu && ((S.lastUnder && S.lastUnder[hu]) || (S.cards[hu] && onBoard(hu) && C(hu).under.length))); }
+      case 'ctxCls': { var cc = ctx && ctx[cd.key]; return !!(cc && S.cards[cc] && hasCls(cc, cd.cls)); }
+      case 'lastCardIs': { var lc = ctx && ctx.st && ctx.st.lastCard; return !!(lc && S.cards[lc] && hasCls(lc, cd.cls)); }
+      case 'srcIn': { var zz = S.cards[src] && zoneOf(src); return !!(zz && zz.z === cd.zone); }
       case 'ctxStr': { var cu = ctx && ctx[cd.key]; return !!(cu && S.cards[cu] && STR(cu) >= cd.min); }
       case 'lastPos': return !!(ctx && ctx.st && ctx.st.last > 0);
       case 'oppInkMore': return O.ink.length > P.ink.length;
@@ -2635,8 +2741,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'disc': return P.discard.filter(function (u) { var d = DD(u); return (!pc.type || (pc.type === 'song' ? d.song : d.t === pc.type)) && (!pc.cls || hasCls(u, pc.cls)); }).length;
       case 'oppHand': return O.hand.length;
       case 'last': return st && st.last || 0;
+      case 'sang': return st && st.ctx && st.ctx.sang || 0;
       case 'tgtDmg': return st && st.x && S.cards[st.x] ? C(st.x).dmg : (S.cards[src] ? C(src).dmg : 0);
-      case 'wasUnder': return st && st.ctx && st.ctx.under != null ? st.ctx.under : 0;
+      case 'wasUnder': return S.lastUnder && S.lastUnder[src] != null ? S.lastUnder[src] : (S.cards[src] ? (C(src).under || []).length : 0);
     }
     return 0;
   }
@@ -2649,6 +2756,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'prevDmg': return pk && S.cards[pk] ? C(pk).dmg : 0;
       case 'prevCost': return pk && S.cards[pk] ? DD(pk).c || 0 : 0;
       case 'locStat': { var at = S.cards[src] && C(src).at; return at && S.cards[at] ? LORE(at) : 0; }
+      case 'maxDiscL': return S.P[st.pi].discard.reduce(function (a, u) { return isChar(u) ? Math.max(a, DD(u).l || 0) : a; }, 0);
       case 'lastCardStat': return st.lastCard && S.cards[st.lastCard] ? (a.st === 's' ? DD(st.lastCard).s || 0 : DD(st.lastCard).l || 0) : 0;
     }
     return perCount(a, src, st.pi, st);
@@ -2669,24 +2777,25 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return a;
   }
   // ── Always-on abilities (worked out fresh whenever a number is needed) ──
-  var stxBusy = false, NOSTX = { s: 0, w: 0, l: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [] };
+  var stxBusy = false, NOSTX = { s: 0, w: 0, l: 0, sing: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [] };
   function stx(u) {
     if (stxBusy || !S || !onBoard(u)) return NOSTX;
     stxBusy = true;
-    var acc = { s: 0, w: 0, l: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [] };
+    var acc = { s: 0, w: 0, l: 0, sing: 0, kw: {}, cant: {}, can: {}, grant: [], cls: [] };
     try {
       inPlayAll().forEach(function (x) {
         var px = C(x).o;
         abs(x).forEach(function (a) {
           if (a.kind !== 'static' || !a.ok || !a.fx || !condOK(a.cond, x, px)) return;
           a.fx.forEach(function (e) {
-            if (!e.t || ['stat', 'kw', 'cant', 'can', 'grant', 'clsAdd'].indexOf(e.op) < 0) return;
+            if (!e.t || ['stat', 'kw', 'cant', 'can', 'grant', 'clsAdd', 'singPlus'].indexOf(e.op) < 0) return;
             if (e.t.sel === 'ctx' ? !(clashAt && clashAt[e.t.key === 'att' ? 'a' : 't'] === u && clashAt[e.t.key === 'att' ? 't' : 'a'] === x) : e.t.sel === 'self' || e.t.sel === 'prev' ? u !== x : !(e.t.sel === 'all' && fits(u, e.t, x, px))) return;
             if (e.cond && !condOK(e.cond, x, px)) return;
             if (e.op === 'stat') { var mult = e.per ? perCount(e.per, x, px) : 1; if (e.amt) mult *= amtVal(e.amt, { src: x, pi: px }); for (var k in e.st) acc[k] += e.st[k] * mult; }
             else if (e.op === 'kw') acc.kw[e.kw] = (acc.kw[e.kw] || 0) + (e.n || 0) * (e.per ? perCount(e.per, x, px) : 1);
             else if (e.op === 'cant') acc.cant[e.what] = 1;
             else if (e.op === 'grant') acc.grant.push(e.ab);
+            else if (e.op === 'singPlus') acc.sing += e.n;
             else if (e.op === 'clsAdd') acc.cls.push(e.cls);
             else acc.can[e.what] = 1;
           });
@@ -2702,8 +2811,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function can(u, w) { return (C(u).mods || []).some(function (m) { return m.can === w; }) || !!stx(u).can[w]; }
   // How long a timed effect lasts → fields for a mod
-  function untilFor(dur, pi, target) {
+  function untilFor(dur, pi, target, src) {
     var nextOf = function (p) { return S.cur === p ? S.turn + 2 : S.turn + 1; };
+    if (dur === 'whileSrc') return { whileSrc: src };
     if (dur === 'next') return { untilStart: nextOf(pi) };
     if (dur === 'their') return { until: nextOf(C(target).o) };
     if (dur === 'mynext') return { until: nextOf(pi) };
@@ -2891,7 +3001,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         break;
       case 'healed': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['healed'], o.pi, { healed: u }, function (a) { return !(a.trig && a.trig.mine) || C(u).o === o.pi; }); }); break;
       case 'damaged': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['damaged'], px, { hurt: u, n: o.n }, function (a) { var t = a.trig || {}; if (t.self) return x === u; if (!isChar(u)) return false; if (t.side === 'opp' ? px === pi : px !== pi) return false; return !t.cls || hasCls(u, t.cls); }); }); break;
-      case 'turnStart': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['turnStart'], o.pi, {}); }); break;
+      case 'turnStart':
+        S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['turnStart'], o.pi, {}); });
+        S.P[o.pi].discard.slice().forEach(function (x) { trig(x, ['turnStart'], o.pi, {}, function (a) { return JSON.stringify(a.cond || '').indexOf('srcIn') >= 0; }); });
+        break;
       case 'turnEnd': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['turnEnd'], o.pi, {}); }); break;
       case 'readied': trig(u, ['readied'], pi, {}); break;
       case 'moved': trig(u, ['moved'], pi, {}); if (C(u).at && S.cards[C(u).at]) trig(C(u).at, ['movedHere'], pi, { mover: u }, function (a) { var t = a.trig || {}; return (t.minS == null || STR(u) >= t.minS) && (!t.fromLoc || !!o.from); }); break;
@@ -3044,13 +3157,21 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
 
   // One effect: choose (if needed), then do it. cb(did)
+  var fitsPrev = null;
   function doEff(e, st, asked, cb) {
+    fitsPrev = st.prev && st.prev[0];
     var pi = st.pi, human = ctlHuman(pi), d = DD(st.src), title = abTitle(st.src, st.ab);
     var optional = e.may && !asked;
     if (e.t && e.t.sel === 'chosen') {
       var legal = legalTargets(e.t, st.src, pi);
       if (!legal.length) { if (human) Kit.toast(title + ': nothing can be chosen'); return cb(false); }
       if (!human) {
+        if (e.t.upTo > 1) {
+          var ranked = legal.map(function (u) { return { u: u, v: cpuEffOn(e, u, pi) }; }).sort(function (a, b) { return b.v - a.v; });
+          var take = ranked.filter(function (r, i) { return e.t.exact ? i < e.t.exact : r.v > 0; }).slice(0, e.t.upTo).map(function (r) { return r.u; });
+          if (!take.length) return cb(false);
+          return applyChosen(e, st, take, cb);
+        }
         var best = cpuBestTarget(e, legal, st);
         if (!best || (optional && best.v <= 0)) return cb(false);
         return applyChosen(e, st, [best.u], cb);
@@ -3062,7 +3183,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         bad: function (x) { return C(x).o !== pi && hasKw(x, 'ward') && fits(x, e.t, st.src, pi) ? nm(x) + ' has Ward: effects can’t choose it' : ''; },
         skip: optional || e.t.upTo ? 'Skip' : null, must: !(optional || e.t.upTo),
         cancel: function () { cb(false); },
-        multi: multi ? { need: function (sel) { return sel.length >= 1 && sel.length <= e.t.upTo; }, label: function (sel) { return 'Done (' + sel.length + '/' + e.t.upTo + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
+        multi: multi ? { need: function (sel) { return e.t.exact ? sel.length === Math.min(e.t.exact, legal.length) : sel.length >= 1 && sel.length <= e.t.upTo; }, label: function (sel) { return 'Done (' + sel.length + '/' + e.t.upTo + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
         done: function (x) { applyChosen(e, st, [x], cb); }
       });
       return;
@@ -3080,6 +3201,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       list.forEach(function (x) { if (st.ab.kind === 'action' && vanishCheck(x, st.pi, true)) gone.push(x); });
     });
     list = list.filter(function (x) { return gone.indexOf(x) < 0; });
+    if (e.sameName && list[0]) S.P[C(list[0]).o].board.forEach(function (y) { if (y !== list[0] && isChar(y) && nm(y) === nm(list[0]) && list.indexOf(y) < 0) list.push(y); });
+    if (e.op === 'banish') st.last = list.length;
     if (e.op === 'choose' && e.keep) { st.pick = list; return cb(true); }
     st.prev = list;
     st.ctx.x = list[0];
@@ -3094,6 +3217,28 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     e = altOf(e, st);
     var pi = st.pi, P = S.P[pi], O = S.P[opp(pi)], human = ctlHuman(pi);
     switch (e.op) {
+      case 'readyMax': S.pmods = (S.pmods || []).filter(function (m) { return m.turn == null || m.turn >= S.turn; }); S.pmods.push({ pi: opp(pi), readyMax: e.n, turn: S.turn + 1 }); st.said.push(O.name + ' can ready only ' + e.n + ' character next turn'); return cb(true);
+      case 'oppCantPlay': S.pmods = S.pmods || []; S.pmods.push({ pi: opp(pi), cantPlay: e.types, untilStart: S.cur === pi ? S.turn + 2 : S.turn + 1 }); st.said.push(O.name + ' can’t play ' + e.types.join(' or ') + 's until ' + P.name + '’s next turn'); return cb(true);
+      case 'extraInk': { var Tx = TT(); Tx.extraInk = Tx.extraInk || [0, 0]; Tx.extraInk[pi]++; st.said.push(P.name + ' may put another card into the inkwell this turn'); render(); return cb(true); }
+      case 'selfChoose': { var e2c = {}; for (var kc in e) e2c[kc] = e[kc]; e2c.self = 1; return oppChooseFx(e2c, st, cb); }
+      case 'playThat': {
+        var pt = st.ctx.song || st.lastCard || (st.prev && st.prev[0]); if (!pt || !S.cards[pt]) return cb(false);
+        var pz = zoneOf(pt); if (!pz || pz.pi !== pi || (pz.z !== 'discard' && pz.z !== 'hand')) return cb(false);
+        if (pz.z === 'discard') { P.discard.splice(P.discard.indexOf(pt), 1); P.hand.push(pt); leftDisc(pi, pt, false); }
+        runAction({ k: 'play', u: pt, o: { free: true } }, !ctlHuman(pi), true); return cb(true);
+      }
+      case 'playSelf': {
+        var sz = zoneOf(st.src); if (!sz || sz.z !== 'discard') return cb(false);
+        P.discard.splice(P.discard.indexOf(st.src), 1); P.hand.push(st.src); leftDisc(pi, st.src, false);
+        runAction({ k: 'play', u: st.src, o: { free: true, exerted: !!e.ex } }, !ctlHuman(pi), true); return cb(true);
+      }
+      case 'thatToInk': {
+        var ti = st.lastCard || (st.prev && st.prev[0]); var tz = ti && zoneOf(ti); if (!tz || tz.z !== 'discard') return cb(false);
+        act(function () { var W = S.P[tz.pi]; W.discard.splice(W.discard.indexOf(ti), 1); resetCard(ti); C(ti).ex = true; W.ink.push(ti); leftDisc(tz.pi, ti, false); inked(tz.pi); });
+        st.said.push('put ' + DD(ti).n + ' into the inkwell'); return cb(true);
+      }
+      case 'moveFree': return moveFreeFx(e, st, optional, cb);
+      case 'nameCard': case 'nameReveal': return nameFx(e, st, optional, cb);
       case 'tmpTrig': S.tmpAbs = (S.tmpAbs || []).filter(function (t) { return t.turn === S.turn; }); S.tmpAbs.push({ src: st.src, pi: pi, ab: e.ab, turn: S.turn }); st.said.push('this turn: ' + e.ab.text.replace(/\.$/, '').toLowerCase()); return cb(true);
       case 'later': S.later = (S.later || []).filter(function (t) { return t.turn >= S.turn; }); S.later.push({ src: st.src, pi: pi, fx: e.fx, turn: S.turn, uids: (st.prev || []).slice(), name: abTitle(st.src, st.ab) }); return cb(true);
       case 'count': st.last = amtVal(e.amt, st); st.said.push('counted ' + st.last); return cb(true);
@@ -3123,6 +3268,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       }
       case 'lore': {
         var ln = effN(e, st);
+        if (e.who === 'both') { act(function () { questing = true; gainLore(pi, ln); gainLore(opp(pi), ln); questing = false; }); st.said.push('each player gained ' + ln + ' lore'); return cb(true); }
         if (e.who === 'prevOwner') { var po = st.prev && st.prev[0] && S.cards[st.prev[0]] ? C(st.prev[0]).o : null; if (po == null) return cb(false); act(function () { questing = true; gainLore(po, ln); questing = false; }); st.said.push(S.P[po].name + ' gained ' + ln + ' lore'); return cb(true); }
         if (ln > 0) { act(function () { questing = true; gainLore(pi, ln); questing = false; fx.loreFrom(st.src, pi, ln); }); st.said.push(P.name + ' gained ' + ln + ' lore'); }
         else if (ln < 0) { if (e.ifMore && O.lore <= P.lore) return cb(false); var lost = 0; act(function () { lost = -gainLore(opp(pi), ln); }); fx.lose(opp(pi), lost); st.last = lost; st.said.push(O.name + ' lost ' + lost + ' lore'); }
@@ -3135,8 +3281,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         noUndo(); return cb(any);
       }
       case 'mill': {
+        if (e.who === 'chosenPlayer' && !st.whoPicked) return pickPlayer(st, 'Whose deck?', function (w) { var e2 = {}; for (var k in e) e2[k] = e[k]; e2.who = w === pi ? 'me' : 'opp'; applyAuto(e2, st, cb, optional); });
         var mw = e.who === 'opp' ? [opp(pi)] : e.who === 'both' ? [pi, opp(pi)] : [pi], moved = 0;
-        act(function () { mw.forEach(function (w) { var W = S.P[w], k = 0; for (; k < e.n && W.deckL.length; k++) { var x = W.deckL.shift(); resetCard(x); W.discard.push(x); moved++; } st.said.push(W.name + ' put ' + plural(k, 'card') + ' from the top of their deck into their discard'); fx.drawn(w); }); });
+        act(function () { mw.forEach(function (w) { var W = S.P[w], k = 0; for (; k < e.n && W.deckL.length; k++) { var x = W.deckL.shift(); resetCard(x); W.discard.push(x); st.lastCard = x; moved++; } st.said.push(W.name + ' put ' + plural(k, 'card') + ' from the top of their deck into their discard'); fx.drawn(w); }); });
         noUndo(); return cb(moved > 0);
       }
       case 'drawTo': {
@@ -3195,7 +3342,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'ready': if (!inPlay) return; c.ex = false; fx.pillar(x); st.said.push(nm(x) + ' was readied'); emit('readied', { u: x }); break;
       case 'stat': {
         if (!inPlay) return;
-        var m = untilFor(e.dur || 'turn', pi, x), sm = (e.amt || e.per) ? effN(e, st, x) : 1, vs = {};
+        var m = untilFor(e.dur || 'turn', pi, x, st.src), sm = (e.amt || e.per) ? effN(e, st, x) : 1, vs = {};
         for (var k in e.st) vs[k] = e.st[k] * sm;
         if (e.alt && e.alt.st && condOK(e.alt.cond, st.src, pi, { x: x })) for (var k2 in e.alt.st) vs[k2] = e.alt.st[k2];
         if (!Object.keys(vs).some(function (k) { return vs[k]; })) return;
@@ -3205,12 +3352,27 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         st.said.push(nm(x) + ' got ' + Object.keys(vs).map(function (k) { return (vs[k] > 0 ? '+' : '') + vs[k] + ' ' + { s: 'strength', w: 'willpower', l: 'lore' }[k]; }).join(' and ') + durText(e.dur || 'turn'));
         break;
       }
-      case 'kw': { if (!inPlay) return; var m2 = untilFor(e.dur || 'turn', pi, x); m2.kw = e.kw; m2.n = (e.n || 0) * (e.per ? perCount(e.per, st.src, pi, st) : 1); m2.why = abTitle(st.src, st.ab); c.mods.push(m2); fx.emblem(x, e.kw); fx.num(x, KWNAME[e.kw] + (e.n ? ' +' + e.n : ''), 'buff'); st.said.push(nm(x) + ' gained ' + KWNAME[e.kw] + durText(e.dur || 'turn')); break; }
-      case 'cant': { if (!inPlay || e.what === 'chalDmgNow') return; var m3 = untilFor(e.dur || 'turn', pi, x); m3.cant = e.what; m3.why = abTitle(st.src, st.ab); c.mods.push(m3); fx.chains(x); fx.num(x, 'Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'act', bechal: 'be challenged', sing: 'sing', move: 'move', dmg: 'be damaged', chalDmg: 'be hurt in challenges' }[e.what], 'debuff'); st.said.push(effText({ op: 'cant', what: e.what, t: { sel: 'prev' }, dur: e.dur }).replace(/^That card/, nm(x))); break; }
-      case 'can': { if (!inPlay) return; var m4 = untilFor(e.dur || 'turn', pi, x); m4.can = e.what; c.mods.push(m4); fx.xglint(x); fx.num(x, 'Can challenge ready', 'buff'); break; }
+      case 'kw': { if (!inPlay) return; var m2 = untilFor(e.dur || 'turn', pi, x, st.src); m2.kw = e.kw; m2.n = (e.n || 0) * (e.per ? perCount(e.per, st.src, pi, st) : 1); m2.why = abTitle(st.src, st.ab); c.mods.push(m2); fx.emblem(x, e.kw); fx.num(x, KWNAME[e.kw] + (e.n ? ' +' + e.n : ''), 'buff'); st.said.push(nm(x) + ' gained ' + KWNAME[e.kw] + durText(e.dur || 'turn')); break; }
+      case 'cant': { if (!inPlay || e.what === 'chalDmgNow') return; var m3 = untilFor(e.dur || 'turn', pi, x, st.src); m3.cant = e.what; m3.why = abTitle(st.src, st.ab); c.mods.push(m3); fx.chains(x); fx.num(x, 'Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'act', bechal: 'be challenged', sing: 'sing', move: 'move', dmg: 'be damaged', chalDmg: 'be hurt in challenges' }[e.what], 'debuff'); st.said.push(effText({ op: 'cant', what: e.what, t: { sel: 'prev' }, dur: e.dur }).replace(/^That card/, nm(x))); break; }
+      case 'can': { if (!inPlay) return; var m4 = untilFor(e.dur || 'turn', pi, x, st.src); m4.can = e.what; c.mods.push(m4); fx.xglint(x); fx.num(x, 'Can challenge ready', 'buff'); break; }
       case 'toInk': { var o2 = c.o; leaving[x] = 'ink'; fx.ink(o2, inkColor(x)); if (inPlay) leavePlay(x); else pull(x); resetCard(x); C(x).ex = !e.ready; S.P[o2].ink.push(x); st.said.push(who + ' went into the inkwell'); break; }
-      case 'grant': { if (!inPlay) return; var mg = untilFor(e.dur || 'turn', pi, x); mg.grant = e.ab; mg.why = abTitle(st.src, st.ab); c.mods.push(mg); fx.rune(x, '#f6e1a8'); st.said.push(nm(x) + ' gained an ability' + durText(e.dur || 'turn')); break; }
-      case 'clsAdd': { if (!inPlay) return; var mc = untilFor(e.dur || 'turn', pi, x); mc.cls = e.cls; c.mods.push(mc); st.said.push(nm(x) + ' became a ' + e.cls); break; }
+      case 'singPlus': { if (!inPlay) return; var ms = untilFor(e.dur || 'turn', pi, x, st.src); ms.sing = e.n; c.mods.push(ms); fx.num(x, '+' + e.n + ' to sing', 'buff'); st.said.push(nm(x) + ' counts as cost +' + e.n + ' for singing'); break; }
+      case 'mustQuest': { if (!inPlay) return; var mq = untilFor(e.dur || 'their', pi, x, st.src); mq.must = 'quest'; c.mods.push(mq); st.said.push(nm(x) + ' must quest next turn if able'); break; }
+      case 'loseKw': { if (!inPlay) return; var mk = untilFor(e.dur || 'turn', pi, x, st.src); mk.nokw = e.kw; c.mods.push(mk); st.said.push(nm(x) + ' lost ' + KWNAME[e.kw]); break; }
+      case 'shield': { if (!inPlay) return; var mh = untilFor(e.dur || 'next', pi, x, st.src); mh.shield = 1; c.mods.push(mh); fx.rune(x, '#bfe3ff'); st.said.push(nm(x) + ' will take no damage the next time'); break; }
+      case 'underBottom': { var ub = (c.under || []).splice(0); shuffle(ub).forEach(function (y) { resetCard(y); S.P[C(y).o].deckL.push(y); }); if (ub.length) st.said.push(plural(ub.length, 'card') + ' from under ' + nm(x) + ' went to the bottom of the deck'); break; }
+      case 'selfUnder': { if (!inPlay || !onBoard(st.src) || x === st.src) return; leavePlay(st.src); resetCard(st.src); c.under.push(st.src); TT().under[pi]++; st.said.push(DD(st.src).n + ' went under ' + nm(x)); emit('under', { u: x, pi: pi }); break; }
+      case 'gatherDmg': {
+        if (!inPlay) return; var gsum = 0;
+        inPlayAll().forEach(function (y) {
+          if (y === x || !isChar(y) && !isLoc(y)) return; var cy = C(y); if (!cy.dmg) return;
+          if (e.mine && cy.o !== pi) return;
+          var mv = e.all ? cy.dmg : 1; cy.dmg -= mv; gsum += mv; fx.num(y, '+' + mv, 'heal');
+        });
+        c.dmg += gsum; st.last = gsum; if (gsum) { fx.slash(x); fx.num(x, '-' + gsum, 'dmg'); } st.said.push('moved ' + plural(gsum, 'damage counter') + ' onto ' + nm(x)); break;
+      }
+      case 'grant': { if (!inPlay) return; var mg = untilFor(e.dur || 'turn', pi, x, st.src); mg.grant = e.ab; mg.why = abTitle(st.src, st.ab); c.mods.push(mg); fx.rune(x, '#f6e1a8'); st.said.push(nm(x) + ' gained an ability' + durText(e.dur || 'turn')); break; }
+      case 'clsAdd': { if (!inPlay) return; var mc = untilFor(e.dur || 'turn', pi, x, st.src); mc.cls = e.cls; c.mods.push(mc); st.said.push(nm(x) + ' became a ' + e.cls); break; }
       case 'bottom': { var ob = c.o; leaving[x] = 'tuck'; fx.drawn(ob); if (inPlay) leavePlay(x); else pull(x); resetCard(x); S.P[ob].deckL.push(x); st.said.push(who + ' went to the bottom of the deck'); break; }
       case 'tuck': { var o3 = c.o; leaving[x] = 'tuck'; fx.drawn(o3); if (inPlay) leavePlay(x); else pull(x); resetCard(x); S.P[o3].deckL.push(x); shuffle(S.P[o3].deckL); st.said.push(who + ' was shuffled into the deck'); break; }
     }
@@ -3243,9 +3405,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (e.who === 'att') { var ap = st.ctx.att && S.cards[st.ctx.att] ? C(st.ctx.att).o : null; if (ap == null) return cb(false); var e3 = {}; for (var k3 in e) e3[k3] = e[k3]; e3.who = ap === st.pi ? 'me' : 'opp'; return discardFx(e3, st, optional, cb); }
     if (e.who === 'most') { var mx = Math.max(S.P[0].hand.length, S.P[1].hand.length), ws = [0, 1].filter(function (w) { return S.P[w].hand.length === mx && mx > 0; }); if (!ws.length) return cb(false); var em = {}; for (var k4 in e) em[k4] = e[k4]; em.who = ws.length === 2 ? 'both' : ws[0] === st.pi ? 'me' : 'opp'; return discardFx(em, st, optional, cb); }
     if (e.who === 'prevOwner') { var po2 = st.prev && st.prev[0] && S.cards[st.prev[0]] ? C(st.prev[0]).o : null; if (po2 == null) return cb(false); var ep = {}; for (var k5 in e) ep[k5] = e[k5]; ep.who = po2 === st.pi ? 'me' : 'opp'; return discardFx(ep, st, optional, cb); }
+    if (e.amt || e.per) { var eN = {}; for (var k6 in e) eN[k6] = e[k6]; eN.n = Math.max(0, effN(e, st)); delete eN.amt; delete eN.per; if (!eN.n) return cb(false); return discardFx(eN, st, optional, cb); }
     var pi = st.pi, who = e.who === 'opp' ? opp(pi) : pi, P = S.P[who];
     if (noDiscard(who)) { st.said.push(P.name + ' didn’t have to discard'); return cb(false); }
-    var pool = P.hand.filter(function (u) { if (!e.ftype) return true; var d = DD(u); return e.ftype === 'non-character' ? d.t !== 'character' : e.ftype === 'song' ? d.song : d.t === e.ftype; });
+    var pool = P.hand.filter(function (u) { var d = DD(u); if (e.fcls && !hasCls(u, e.fcls)) return false; if (!e.ftype) return true; return e.ftype.split('|').some(function (t) { return t === 'non-character' ? d.t !== 'character' : t === 'song' ? d.song : d.t === t; }); });
     if (!pool.length) { if (e.who === 'opp' && e.mine) st.said.push(P.name + ' had nothing to discard'); return cb(false); }
     var n = Math.min(e.n, pool.length);
     function fin(sel) { if (!sel.length) { st.said.push(P.name + ' chose not to discard'); return cb(false); } act(function () { sel.forEach(function (x) { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); P.discard.push(x); }); }); noUndo(); st.last = sel.length; st.lastCard = sel[0]; emit('discarded', { pi: who, n: sel.length }); st.said.push(P.name + ' discarded ' + sel.map(function (x) { return DD(x).full; }).join(', ')); cb(true); }
@@ -3258,8 +3421,77 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var worst = function () { return pool.slice().sort(function (a, b) { return handValue(a) - handValue(b); }).slice(0, n); };
     if (S.P[chooser].cpu) return fin(e.who === 'opp' && e.mine ? pool.slice().sort(function (a, b) { return handValue(b) - handValue(a); }).slice(0, n) : worst());
+    if (e.upTo) {
+      if (S.P[chooser].cpu) return fin(pool.filter(function (u) { return handValue(u) < 1; }).slice(0, n));
+      return privately(chooser, function (back) { chooseFromList('Choose up to ' + plural(n, 'card') + ' to discard', pool, n, function (sel) { back(function () { fin(sel); }); }, { cancel: function () { back(function () { fin([]); }); }, skip: true, min: 1 }); });
+    }
     var title = (chooser === who ? (who === pi ? '' : P.name + ': ') + 'choose ' + plural(n, 'card') + ' to discard' : P.name + '’s hand: choose ' + plural(n, 'card') + ' to discard');
     privately(chooser, function (back) { chooseFromList(title, pool, n, function (sel) { back(function () { fin(sel); }); }, { cancel: function () { back(function () { fin(worst()); }); }, must: true }); });
+  }
+  // Move characters to a location for free
+  function moveFreeFx(e, st, optional, cb) {
+    var pi = st.pi, P = S.P[pi], locs = P.board.filter(isLoc);
+    var fixedLoc = e.there ? (st.ctx.played && S.cards[st.ctx.played] && isLoc(st.ctx.played) ? st.ctx.played : S.cards[st.src] && C(st.src).at) : null;
+    if (e.there && !fixedLoc) return cb(false);
+    if (!locs.length && !fixedLoc) { if (ctlHuman(pi) && !optional) Kit.toast(abTitle(st.src, st.ab) + ': you have no locations'); return cb(false); }
+    var must = e.who === 'self' || e.self ? [st.src] : e.who === 'prev' ? (st.prev || []).slice(0, 1) : [];
+    var pool = P.board.filter(function (u) { return isChar(u) && (!e.other || u !== st.src) && must.indexOf(u) < 0 && !cant(u, 'move'); });
+    function finish(chars, loc) {
+      chars = chars.filter(function (u) { return S.cards[u] && onBoard(u) && C(u).at !== loc; });
+      if (!chars.length) return cb(false);
+      act(function () { chars.forEach(function (u) { var from = C(u).at; C(u).at = loc; emit('moved', { u: u, from: from }); }); });
+      Kit.sfx('whoosh'); st.said.push('moved ' + chars.map(nm).join(' and ') + ' to ' + DD(loc).n + ' for free'); cb(true);
+    }
+    function pickLoc(chars) {
+      if (fixedLoc) return finish(chars, fixedLoc);
+      var choices = locs.filter(function (l) { return chars.some(function (u) { return C(u).at !== l; }); });
+      if (!choices.length) return cb(false);
+      if (!ctlHuman(pi)) return finish(chars, choices.sort(function (a, b) { return LORE(b) - LORE(a); })[0]);
+      if (choices.length === 1) return finish(chars, choices[0]);
+      startPick({ title: abTitle(st.src, st.ab) + ': move to which location?', src: st.src, ok: function (x) { return choices.indexOf(x) >= 0; }, must: true, done: function (l) { finish(chars, l); } });
+    }
+    var extra = e.n - must.length;
+    if (extra <= 0 || !pool.length) return must.length ? pickLoc(must) : cb(false);
+    if (!ctlHuman(pi)) { var mv = pool.filter(function (u) { return !C(u).at; }).sort(function (a, b) { return LORE(b) - LORE(a); }).slice(0, extra); if (!mv.length && !must.length) return cb(false); return pickLoc(must.concat(mv)); }
+    startPick({ title: abTitle(st.src, st.ab) + ': ' + (extra > 1 ? 'choose up to ' + (extra > 20 ? 'any number of' : extra) + ' characters to move' : 'choose a character to move'), src: st.src,
+      ok: function (x) { return pool.indexOf(x) >= 0; }, skip: 'Skip', cancel: function () { if (must.length) pickLoc(must); else cb(false); },
+      multi: extra > 1 ? { need: function (sel) { return sel.length >= 1 && sel.length <= extra; }, label: function (sel) { return 'Done (' + sel.length + ')'; }, go: function (sel) { pickLoc(must.concat(sel)); } } : null,
+      done: function (x) { pickLoc(must.concat([x])); } });
+  }
+  // "Name a card": pick any card name
+  function nameFx(e, st, optional, cb) {
+    var pi = st.pi, P = S.P[pi];
+    function go(name) {
+      if (!name) return cb(false);
+      st.said.push(P.name + ' named ' + name);
+      if (e.op === 'nameCard') {
+        // Blast from Your Past: every character card with that name in your discard comes back
+        var back = P.discard.filter(function (u) { return isChar(u) && DD(u).n === name; });
+        act(function () { back.forEach(function (u) { P.discard.splice(P.discard.indexOf(u), 1); resetCard(u); P.hand.push(u); leftDisc(pi, u, true); }); });
+        st.said.push(plural(back.length, 'card') + ' returned to hand'); return cb(true);
+      }
+      var top = P.deckL[0]; if (!top) return cb(false);
+      var hitIt = DD(top).n === name;
+      act(function () { if (hitIt) { P.deckL.shift(); P.hand.push(top); if (e.lore) { questing = true; gainLore(pi, e.lore); questing = false; } } });
+      st.said.push('revealed ' + DD(top).full + (hitIt ? ': a match!' + (e.lore ? ' +' + e.lore + ' lore' : '') : ', no match'));
+      if (ctlHuman(pi) || humans() > 0) showReveal(top, hitIt ? 'It’s the named card' : 'Not ' + name, hitIt ? 'Match' : 'Revealed', hitIt ? 'Into ' + P.name + '’s hand' + (e.lore ? ' · +' + e.lore + ' lore' : '') : 'Back on top of the deck');
+      noUndo(); cb(true);
+    }
+    if (!ctlHuman(pi)) {
+      // the computer names the card it holds most copies of in its deck (it can't see the order)
+      var cnt = {}; (e.op === 'nameCard' ? P.discard.filter(isChar) : P.deckL).forEach(function (u) { var n2 = DD(u).n; cnt[n2] = (cnt[n2] || 0) + 1; });
+      var bestN = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; })[0]; return go(bestN);
+    }
+    var names = {}; DB.unique.forEach(function (d) { names[d.n] = 1; }); var all = Object.keys(names).sort();
+    var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search card names', 'aria-label': 'Search card names' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh, done = false;
+    function paint() {
+      var t = skey(q.value); list.innerHTML = ''; var shown = 0;
+      all.forEach(function (n2) { if (t && skey(n2).indexOf(t) < 0) return; if (++shown > 60) return; list.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { done = true; sh.close(); go(n2); } }, [el('b', { class: 'grow', text: n2 })])); });
+    }
+    q.addEventListener('input', paint); paint();
+    node.appendChild(el('div', { class: 'abhead', html: abHeadHTML(st.src, st.ab) })); node.appendChild(q); node.appendChild(list);
+    sh = Kit.sheet({ title: 'Name a card', node: node, dismissible: false, actions: optional ? [{ label: 'Skip', cls: 'btn-ghost' }] : [], onClose: function () { if (!done) cb(false); } });
+    setTimeout(function () { q.focus(); }, 60);
   }
   // "chosen player": you or the opponent
   function pickPlayer(st, title, go) {
@@ -3303,7 +3535,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   // Cards out of a discard pile: to hand, deck (top/bottom/shuffled) or inkwell
   function discMoveFx(e, st, optional, cb) {
-    var pi = st.pi, piles = e.from === 'me' ? [pi] : [pi, opp(pi)], pool = [];
+    var pi = st.pi, piles = e.from === 'me' ? [pi] : e.from === 'opp' ? [opp(pi)] : [pi, opp(pi)], pool = [];
     piles.forEach(function (w) { S.P[w].discard.forEach(function (u) { if (descFits(u, e, st.src)) pool.push(u); }); });
     if (!pool.length) { if (ctlHuman(pi) && !optional) Kit.toast(abTitle(st.src, st.ab) + ': nothing in the discard fits'); return cb(false); }
     var n = e.all ? pool.length : Math.min(e.n || 1, pool.length);
@@ -3364,12 +3596,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     chooseFromList(abTitle(st.src, st.ab) + ': return ' + plural(n, 'card') + ' to your hand', pool, n, fin, { cancel: function () { cb(false); }, skip: optional || /up to/i.test(st.ab.text) });
   }
   function playFreeFx(e, st, optional, cb) {
-    var pi = st.pi, P = S.P[pi], zone = e.from === 'discard' ? P.discard : P.hand;
-    var pool = zone.filter(function (u) { var d = DD(u); if (e.type === 'song' ? !d.song : d.t !== e.type) return false; if (e.cls && !hasCls(u, e.cls)) return false; if (e.named && !named(u, e.named.replace(/\s+or\s+/g, '|'))) return false; if (e.maxC != null && (d.c || 0) > e.maxC) return false; return !playBlocked(pi, u); });
+    var pi = st.pi, P = S.P[pi], zone = e.from === 'discard' ? P.discard : e.from === 'both' ? P.hand.concat(P.discard) : P.hand;
+    var ref = e.sameAs === 'self' ? st.src : e.sameAs === 'sac' || e.maxCRel === 'sac' ? st.ctx.sac : e.maxCRel === 'prev' ? (st.prev && st.prev[0]) : null;
+    var relC = ref && S.cards[ref] ? (DD(ref).c || 0) + (e.plus || 0) : null;
+    var pool = zone.filter(function (u) { var d = DD(u); if (e.type === 'song' ? !d.song : d.t !== e.type) return false;
+      if (e.sameAs && (!ref || !S.cards[ref] || d.n !== DD(ref).n || u === ref)) return false;
+      if (e.maxCRel && (relC == null || (d.c || 0) > relC)) return false; if (e.cls && !hasCls(u, e.cls)) return false; if (e.named && !named(u, e.named.replace(/\s+or\s+/g, '|'))) return false; if (e.maxC != null && (d.c || 0) > e.maxC) return false; return !playBlocked(pi, u); });
     if (!pool.length) { if (ctlHuman(pi)) Kit.toast(abTitle(st.src, st.ab) + ': nothing fits'); return cb(false); }
     function fin(x) {
-      if (e.from === 'discard') { P.discard.splice(P.discard.indexOf(x), 1); P.hand.push(x); leftDisc(pi, x, false); }
-      runAction({ k: 'play', u: x, o: { free: true, exerted: e.ex } }, !ctlHuman(pi), true);
+      if (P.discard.indexOf(x) >= 0) { P.discard.splice(P.discard.indexOf(x), 1); P.hand.push(x); leftDisc(pi, x, false); }
+      runAction({ k: 'play', u: x, o: { free: true, exerted: e.ex, bottomAfter: e.bottomAfter } }, !ctlHuman(pi), true);
       cb(true);
     }
     if (!ctlHuman(pi)) { var b = pool.slice().sort(function (a, c) { return defValue(DD(c)) - defValue(DD(a)); })[0]; if (optional && defValue(DD(b)) <= 0.5) return cb(false); return fin(b); }
@@ -3434,7 +3670,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     s = Kit.sheet({ title: 'Top ' + plural(top.length, 'card') + ' of your deck', node: node, dismissible: false, onClose: function () { if (!fin) done(take, null); } });
   }
   function oppChooseFx(e, st, cb) {
-    var pi = st.pi, o = opp(pi), O = S.P[o];
+    var pi = st.pi, o = e.self ? pi : opp(pi), O = S.P[o];
     var pool = O.board.filter(function (u) { return isChar(u) && (e.f === 'ready' ? !C(u).ex : e.f === 'exerted' ? C(u).ex : e.f === 'damaged' ? C(u).dmg > 0 : true); });
     if (!pool.length) return cb(false);
     var eff = { exerts: { op: 'exert' }, banishes: { op: 'banish' }, readies: { op: 'ready' }, damage: { op: 'damage', n: e.n }, bounce: { op: 'bounce' }, ink: { op: 'toInk' }, bottom: { op: 'bottom' } }[e.what];
@@ -3713,7 +3949,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Can win right now by questing? Do it.
     var ql = p.board.filter(function (u) { return canQuest(u); }).reduce(function (a, u) { return a + LORE(u); }, 0);
     if (p.lore + ql >= WIN) return cpuQuest(pi);
-    if (!p.inked) { var ik = cpuInkPick(pi); if (ik) return { k: 'ink', u: ik }; }
+    var mq = mustQuestPending(pi); if (mq) return { k: 'quest', u: mq };
+    if (inksLeft(pi) > 0) { var ik = cpuInkPick(pi); if (ik) return { k: 'ink', u: ik }; }
     var pl = cpuPlays(pi); if (pl) return pl;
     var ab = cpuAbility(pi); if (ab) return ab;
     var ch = cpuChallenge(pi); if (ch) return ch;
@@ -4038,6 +4275,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (!canAct()) return;
     var r = recklessPending(S.cur);
     if (r) { Kit.toast(nm(r) + ' is Reckless and must challenge first'); Kit.sfx('bad'); flash(r); return; }
+    var mq = mustQuestPending(S.cur);
+    if (mq) { Kit.toast(nm(mq) + ' must quest this turn if able'); Kit.sfx('bad'); flash(mq); return; }
     ui.hint = null; ui.pick = null;
     Kit.sfx('whoosh');
     endTurn();
@@ -4085,7 +4324,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           Kit.sfx(a.o && a.o.sing ? 'good' : 'deal');
           if (d.t !== 'action') fx.summon(a.u, !!(a.o && a.o.shift));
           if (d.song) fx.notes(a.o && a.o.sing);
-          if (d.t === 'action' && d.A && d.A[0]) Q.push({ src: a.u, ab: d.A[0], pi: pi, ctx: {} });
+          if (d.t === 'action' && d.A && d.A[0]) Q.push({ src: a.u, ab: d.A[0], pi: pi, ctx: { sang: (a.o && a.o.sing || []).length } });
           emit('play', { u: a.u, shifted: !!(a.o && a.o.shift), base: a.o && a.o.shift, sing: a.o && a.o.sing });
           // the action resolves before anything it set off
           if (d.t === 'action') { var ai = -1; Q.forEach(function (q, i) { if (q.src === a.u && q.ab.kind === 'action') ai = i; }); if (ai > 0) Q.unshift(Q.splice(ai, 1)[0]); }
