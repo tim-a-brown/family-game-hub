@@ -111,15 +111,6 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lc{transition:transform .3s var(--ease),filter .25s,box-shadow .2s,width .3s var(--ease),height .3s var(--ease),margin .3s var(--ease);}
 .slot.loc .lc{width:var(--cu);height:calc(var(--cu) * .716);margin:calc(var(--cu) * -.358) 0 0 calc(var(--cu) / -2);}
 .slot.loc .lc img.port{width:calc(var(--cu) * .716);height:var(--cu);left:50%;top:50%;margin:calc(var(--cu) / -2) 0 0 calc(var(--cu) * -.358);transform:rotate(90deg);}
-.slot.dry .lc{filter:saturate(.8) brightness(.93);}
-/* Drying: wet ink. A cool sheen keeps sweeping across, with a Drying tag */
-.slot.dry .lc::after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
-  background:linear-gradient(115deg,rgba(120,190,255,0) 36%,rgba(170,220,255,.34) 46%,rgba(255,255,255,.5) 50%,rgba(170,220,255,.34) 54%,rgba(120,190,255,0) 64%) 0 0/300% 100%;
-  box-shadow:inset 0 0 0 2px rgba(150,210,255,.6),inset 0 0 calc(var(--cu) * .16) rgba(110,180,255,.38);animation:wet 2.6s linear infinite;}
-@keyframes wet{from{background-position:150% 0;}to{background-position:-150% 0;}}
-.wet{position:absolute;left:50%;top:calc(var(--cu) * .035);z-index:4;transform:translateX(-50%);display:inline-flex;align-items:center;gap:2px;padding:1px 6px 1px 4px;border-radius:999px;
-  background:rgba(14,48,92,.88);color:#d4ebff;font-weight:900;font-size:max(8px,calc(var(--cu) * .072));line-height:1.35;white-space:nowrap;box-shadow:0 0 0 1px rgba(160,215,255,.65),0 2px 6px rgba(0,0,0,.4);pointer-events:none;}
-.wet svg{width:1.05em;height:1.05em;fill:#9fd2ff;}
 .slot.dried .lc{animation:dried .9s ease-out;}
 @keyframes dried{0%{box-shadow:0 0 0 2px rgba(160,215,255,.9),0 0 0 0 rgba(160,215,255,.8);}60%{box-shadow:0 0 0 3px #d4ebff,0 0 24px 8px rgba(160,215,255,.55);}100%{box-shadow:0 2px 0 rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.45);}}
 /* Opponent's cards turned to face them (menu option) */
@@ -147,7 +138,116 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 @keyframes shock{0%{transform:scale(.3);opacity:1;}100%{transform:scale(4.2);opacity:0;}}
 .smoke{position:fixed;z-index:251;pointer-events:none;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:radial-gradient(circle,rgba(70,60,80,.7),rgba(70,60,80,0) 70%);filter:blur(2px);opacity:0;animation:smoke 1.3s ease-out forwards;}
 @keyframes smoke{0%{opacity:.85;transform:translate(0,0) scale(.6);}100%{opacity:0;transform:translate(var(--dx),-70px) scale(2.2);}}
-@media (prefers-reduced-motion:reduce){.slot.dry .lc::after{animation:none;}.lp-board.shake{animation:none;}}
+/* ── Ink magic: one visual language for everything that happens to a card ──
+   Lorcana's magic is glowing ink. Effects use the acting card's ink colour
+   (--inkc / --rc) with gold glimmers. */
+/* Exert and ready tip over with a little spring */
+.lc > img,.lc > .face{transition:transform .5s cubic-bezier(.34,1.5,.6,1);}
+/* Drying: still-wet ink. Gloss, ink pooled at the foot of the card, slow drips */
+.slot.dry .lc{filter:saturate(.92) brightness(.97);}
+.slot.dry .lc::after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(ellipse 55% 30% at 28% 16%,rgba(255,255,255,.3),rgba(255,255,255,0) 70%),
+    linear-gradient(115deg,rgba(255,255,255,0) 40%,rgba(255,255,255,.26) 49%,rgba(255,255,255,0) 58%) 0 0/300% 100%,
+    linear-gradient(to top,color-mix(in srgb,var(--inkc) 78%,transparent) 0,color-mix(in srgb,var(--inkc) 30%,transparent) 8%,transparent 18%);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--inkc) 75%,#fff),inset 0 0 calc(var(--cu) * .15) color-mix(in srgb,var(--inkc) 50%,transparent);
+  animation:wet 3.4s linear infinite;}
+@keyframes wet{from{background-position:0 0,150% 0,0 0;}to{background-position:0 0,-150% 0,0 0;}}
+.drips{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit;}
+.drips::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(var(--cu) * .04);opacity:.92;
+  background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--inkc) 80%,#fff) 0,var(--inkc) 45%,color-mix(in srgb,var(--inkc) 75%,#000) 62%,transparent 66%) 0 0/calc(var(--cu) * .075) 100% repeat-x;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
+.drips i{position:absolute;top:calc(var(--cu) * .02);left:16%;width:calc(var(--cu) * .052);height:0;border-radius:0 0 999px 999px;opacity:0;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--inkc) 70%,#000),var(--inkc) 40%,color-mix(in srgb,var(--inkc) 55%,#fff) 58%,var(--inkc) 75%);
+  animation:drip 4.4s cubic-bezier(.55,0,.65,1) infinite;}
+.drips i::after{content:'';position:absolute;left:50%;bottom:calc(var(--cu) * -.034);width:calc(var(--cu) * .062);height:calc(var(--cu) * .072);margin-left:calc(var(--cu) * -.031);
+  border-radius:50% 50% 50% 50%/60% 60% 42% 42%;background:inherit;box-shadow:inset -1px -2px 2px rgba(0,0,0,.28),inset 1px 1px 2px rgba(255,255,255,.55);}
+.drips i:nth-child(2){left:56%;width:calc(var(--cu) * .04);animation-delay:1.5s;animation-duration:5.1s;}
+.drips i:nth-child(3){left:81%;animation-delay:2.8s;animation-duration:4.8s;}
+@keyframes drip{0%{height:0;opacity:0;}8%{opacity:.95;}60%{height:calc(var(--cu) * .22);}86%{height:calc(var(--cu) * .27);opacity:.95;}100%{height:calc(var(--cu) * .29);opacity:0;}}
+/* Ink dried: a varnish glint sweeps across */
+.slot.dried .lc::before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(115deg,rgba(255,236,170,0) 38%,rgba(255,244,205,.9) 50%,rgba(255,236,170,0) 62%) 0 0/300% 100%;animation:glint .85s ease-out forwards;}
+@keyframes glint{from{background-position:150% 0;}to{background-position:-150% 0;}}
+.twk{position:fixed;z-index:335;pointer-events:none;width:18px;height:18px;margin:-9px 0 0 -9px;background:radial-gradient(circle,#fff 0,#fff3c9 35%,#f6c450 60%);
+  clip-path:polygon(50% 0,59% 41%,100% 50%,59% 59%,50% 100%,41% 59%,0 50%,41% 41%);animation:twk .75s ease-out forwards;}
+@keyframes twk{0%{transform:scale(0) rotate(0);}45%{transform:scale(1.25) rotate(45deg);}100%{transform:scale(0) rotate(90deg);}}
+/* Bound by an ability (can't quest / challenge / ready…): chains across the card while it lasts */
+.chains{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit;}
+.chains::before,.chains::after{content:'';position:absolute;left:-25%;right:-25%;top:50%;height:calc(var(--cu) * .075);margin-top:calc(var(--cu) * -.037);
+  background:radial-gradient(ellipse 46% 40% at 50% 50%,transparent 48%,#e3e8ff 53%,#9aa3e0 66%,rgba(60,66,120,.9) 72%,transparent 76%) 0 0/calc(var(--cu) * .1) 100% repeat-x;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.8)) drop-shadow(0 0 4px rgba(150,165,255,.75));transform:rotate(32deg);}
+.chains::after{transform:rotate(-32deg);}
+.slot.snap .chains::before{animation:chainIn .5s cubic-bezier(.2,1.4,.4,1);}
+.slot.snap .chains::after{animation:chainIn2 .5s .08s cubic-bezier(.2,1.4,.4,1) backwards;}
+@keyframes chainIn{from{transform:rotate(32deg) scaleX(1.8);opacity:0;}}
+@keyframes chainIn2{from{transform:rotate(-32deg) scaleX(1.8);opacity:0;}}
+/* Stats changed by abilities glow */
+.ov .st .up{text-shadow:0 0 6px rgba(143,240,168,.8),0 1px 2px #000;}
+.ov .st .dn{text-shadow:0 0 6px rgba(255,143,143,.8),0 1px 2px #000;}
+/* Rune circle (play, shift, boosts) */
+.rune{position:fixed;z-index:248;pointer-events:none;color:var(--rc,#f6e1a8);filter:drop-shadow(0 0 6px var(--rc,#f6c450));animation:rune 1s ease-out forwards;}
+.rune svg{width:100%;height:100%;fill:none;stroke:currentColor;}
+@keyframes rune{0%{transform:scale(.35) rotate(-40deg);opacity:0;}30%{opacity:1;}100%{transform:scale(1.18) rotate(30deg);opacity:0;}}
+/* A card inked into play: the ink washes away from the bottom up */
+.inkveil{position:absolute;inset:0;z-index:6;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--inkc) 55%,#fff) 0,var(--inkc) 45%,color-mix(in srgb,var(--inkc) 60%,#000) 100%);
+  -webkit-mask:linear-gradient(to top,transparent 42%,#000 58%) 0 0/100% 260%;mask:linear-gradient(to top,transparent 42%,#000 58%) 0 0/100% 260%;
+  animation:veil .9s cubic-bezier(.5,0,.4,1) forwards;}
+@keyframes veil{from{-webkit-mask-position:0 0;mask-position:0 0;}to{-webkit-mask-position:0 100%;mask-position:0 100%;}}
+.slot.summon .lc{animation:summon .9s ease-out;}
+@keyframes summon{0%{transform:rotate(var(--rot,0deg)) scale(1.08);box-shadow:0 0 0 2px var(--inkc),0 0 28px 8px color-mix(in srgb,var(--inkc) 70%,transparent);}100%{transform:rotate(var(--rot,0deg));}}
+.mote{position:fixed;z-index:330;pointer-events:none;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--mc,#7dffa6);box-shadow:0 0 8px 2px var(--mc,#7dffa6);}
+/* Damage from an ability: ink claw slashes */
+.slash{position:fixed;z-index:330;pointer-events:none;overflow:visible;}
+.slash path{fill:none;stroke:#ff5252;stroke-width:7;stroke-linecap:round;filter:drop-shadow(0 0 4px rgba(255,60,60,.9));}
+/* Weakened: colour drains out */
+.slot.drained .lc{animation:drained 1s ease-out;}
+@keyframes drained{25%{filter:grayscale(.85) brightness(.75) hue-rotate(-20deg);}}
+/* Forced to exert: binding bands, then a heavy landing */
+.band{position:fixed;z-index:330;pointer-events:none;height:9px;margin-top:-4.5px;border-radius:5px;background:linear-gradient(90deg,transparent,var(--rc,#a98bff) 15%,#efe6ff 50%,var(--rc,#a98bff) 85%,transparent);box-shadow:0 0 12px var(--rc,#a98bff);transform-origin:left center;}
+.slot.thud .lc{animation:thud .55s cubic-bezier(.3,1.6,.5,1);}
+@keyframes thud{0%{transform:rotate(var(--rot,0deg)) translateY(-9%) scale(1.05);}100%{transform:rotate(var(--rot,0deg));}}
+/* Readied: a column of light */
+.pillar{position:fixed;z-index:330;pointer-events:none;background:linear-gradient(to top,rgba(255,240,190,0),rgba(255,240,190,.75) 40%,rgba(255,255,255,.95) 55%,rgba(255,240,190,0));filter:blur(1px);transform-origin:bottom center;animation:pillar .8s ease-out forwards;}
+@keyframes pillar{0%{transform:scaleY(0) scaleX(.6);opacity:1;}50%{transform:scaleY(1) scaleX(1);opacity:.9;}100%{transform:scaleY(1.1) scaleX(.2);opacity:0;}}
+/* Keyword gained: its emblem pops, then settles onto the card */
+.emblem{position:fixed;z-index:335;pointer-events:none;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;display:grid;place-items:center;color:var(--gilt-2);
+  background:radial-gradient(circle,#2a2150,#120d2a);box-shadow:0 0 0 2px #e3bd62,0 0 0 5px rgba(227,189,98,.25),0 0 26px 6px rgba(246,196,80,.55);}
+.emblem svg{width:60%;height:60%;}
+.hexshield{position:fixed;z-index:331;pointer-events:none;color:#9fd8ff;filter:drop-shadow(0 0 8px #6cc4ff);animation:hexs .9s ease-out forwards;}
+.hexshield svg{width:100%;height:100%;fill:rgba(130,200,255,.12);stroke:currentColor;stroke-width:2.5;}
+@keyframes hexs{0%{transform:scale(.6);opacity:0;}35%{transform:scale(1.05);opacity:1;}100%{transform:scale(1.15);opacity:0;}}
+.slot.floaty .lc{animation:floaty 1s ease-in-out;}
+@keyframes floaty{40%{transform:rotate(var(--rot,0deg)) translateY(-10%);box-shadow:0 18px 22px rgba(0,0,0,.45);}}
+.slot.steel .lc::before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(115deg,rgba(200,215,230,0) 38%,rgba(235,242,250,.85) 50%,rgba(200,215,230,0) 62%) 0 0/300% 100%;animation:glint .7s ease-out forwards;}
+.streak{position:fixed;z-index:330;pointer-events:none;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,236,170,0),#fff3c9);box-shadow:0 0 8px rgba(246,196,80,.8);}
+/* Returned to hand: a swirl where it stood */
+.vortex{position:fixed;z-index:249;pointer-events:none;border-radius:50%;
+  background:conic-gradient(from 0deg,rgba(160,200,255,0),rgba(160,200,255,.85),rgba(255,255,255,.95),rgba(160,200,255,0) 70%);
+  -webkit-mask:radial-gradient(circle,transparent 30%,#000 34%,#000 60%,transparent 64%);mask:radial-gradient(circle,transparent 30%,#000 34%,#000 60%,transparent 64%);animation:vortex .8s ease-in forwards;}
+@keyframes vortex{0%{transform:scale(1.2) rotate(0);opacity:0;}25%{opacity:1;}100%{transform:scale(.1) rotate(540deg);opacity:0;}}
+/* Into the inkwell: the card melts into a drop of its ink */
+.flyer.inkflow .lc{transition:border-radius .42s ease-in,filter .42s;border-radius:50%!important;filter:blur(1px) saturate(1.4);}
+.flyer.inkflow .lc::after{content:'';position:absolute;inset:0;z-index:7;background:var(--ic);opacity:0;animation:inkfill .42s ease-in forwards;box-shadow:none;}
+@keyframes inkfill{to{opacity:.95;}}
+.flyer.tuckflow .lc{transition:filter .45s;filter:brightness(.35);}
+.pile.riffle{animation:riffle .45s ease;}
+@keyframes riffle{30%{transform:translateY(-3px) rotate(-4deg);}60%{transform:translateY(-1px) rotate(3deg);}}
+/* Songs: notes rise from the singers */
+.note{position:fixed;z-index:330;pointer-events:none;width:22px;height:22px;margin:-11px 0 0 -11px;color:#f6e1a8;filter:drop-shadow(0 0 6px rgba(246,196,80,.9));}
+.note svg{width:100%;height:100%;}
+/* Ability source: gilded ribbon with the ability's name */
+.abtag{border-radius:4px;padding:5px 18px;background:linear-gradient(180deg,#6b4a0c,#3a2603 55%,#2c1d02);border:1.5px solid #e3bd62;
+  box-shadow:0 0 0 3px rgba(43,26,0,.92),0 0 0 4.5px rgba(227,189,98,.55),0 0 22px rgba(246,196,80,.35),0 8px 18px rgba(0,0,0,.6);font-family:var(--serif);font-style:italic;font-weight:700;letter-spacing:.02em;}
+@keyframes abtag{0%{opacity:0;transform:translate(-50%,0) scaleX(.05);}14%{opacity:1;transform:translate(-50%,-14px) scaleX(1.06);}22%{transform:translate(-50%,-18px) scaleX(1);}78%{opacity:1;transform:translate(-50%,-30px);}100%{opacity:0;transform:translate(-50%,-44px);}}
+/* Comet: an ability's magic travelling to its target */
+.comet{position:fixed;z-index:332;pointer-events:none;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:radial-gradient(circle,#fff 0,color-mix(in srgb,var(--rc) 50%,#fff) 30%,var(--rc) 55%,transparent 72%);box-shadow:0 0 14px 5px color-mix(in srgb,var(--rc) 70%,transparent);}
+/* Lore: gold lore diamonds */
+.orb{background:none;box-shadow:none;width:18px;height:18px;margin:-9px 0 0 -9px;filter:drop-shadow(0 0 6px rgba(246,196,80,.95)) drop-shadow(0 0 2px #fff);}
+.orb::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#fff 0,#fff1c2 30%,#f6c450 60%,#b8862a);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);}
+.orb.drain::before{background:linear-gradient(135deg,#bbb,#6b6478 60%,#3a3446);}
+.orb.drain{filter:drop-shadow(0 0 4px rgba(120,100,160,.8));}
+@media (prefers-reduced-motion:reduce){.slot.dry .lc::after,.drips i{animation:none;}.lp-board.shake{animation:none;}}
 .slot.sel .lc{box-shadow:0 0 0 3px var(--gilt-2),0 0 18px rgba(246,225,168,.8);}
 .slot.can .lc{box-shadow:0 0 0 2px rgba(246,225,168,.75),0 4px 10px rgba(0,0,0,.45);}
 .slot.tgt .lc{box-shadow:0 0 0 3px #ff6b6b,0 0 16px rgba(255,107,107,.85);animation:tgt 1s ease-in-out infinite;}
@@ -1450,6 +1550,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function draw(pi, n) {
     var p = S.P[pi], got = 0;
     for (var i = 0; i < n; i++) { if (!p.deckL.length) break; p.hand.push(p.deckL.shift()); got++; }
+    if (got) fx.drawn(pi);
     return got;
   }
   function banish(u) { var o = C(u).o; leavePlay(u); S.P[o].discard.push(u); }
@@ -2032,7 +2133,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         noUndo(); return cb(true);
       }
       case 'lore': {
-        if (e.n > 0) { act(function () { gainLore(pi, e.n); }); st.said.push(P.name + ' gained ' + e.n + ' lore'); }
+        if (e.n > 0) { act(function () { questing = true; gainLore(pi, e.n); questing = false; fx.loreFrom(st.src, pi, e.n); }); st.said.push(P.name + ' gained ' + e.n + ' lore'); }
         else { if (e.ifMore && O.lore <= P.lore) return cb(false); var lost = 0; act(function () { lost = -gainLore(opp(pi), e.n); }); fx.lose(opp(pi), lost); st.said.push(O.name + ' lost ' + lost + ' lore'); }
         return cb(true);
       }
@@ -2072,24 +2173,25 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (!S.cards[x]) return;
     var pi = st.pi, c = C(x), who = S.P[c.o].name + '’s ' + nm(x), z = zoneOf(x), inPlay = z && z.z === 'board';
     switch (e.op) {
-      case 'damage': if (!inPlay) return; var dd = e.counters ? (c.dmg += e.n, e.n) : dealDamage(x, e.n); fx.num(x, '-' + dd, 'dmg'); st.said.push(who + ' took ' + dd + ' damage'); break;
-      case 'heal': if (!inPlay) return; var hn = Math.min(c.dmg, e.n); c.dmg -= hn; if (hn) { fx.num(x, '+' + hn, 'heal'); st.said.push('removed ' + hn + ' damage from ' + nm(x)); } break;
+      case 'damage': if (!inPlay) return; var dd = e.counters ? (c.dmg += e.n, e.n) : dealDamage(x, e.n); fx.slash(x); fx.num(x, '-' + dd, 'dmg'); st.said.push(who + ' took ' + dd + ' damage'); break;
+      case 'heal': if (!inPlay) return; var hn = Math.min(c.dmg, e.n); c.dmg -= hn; if (hn) { fx.mend(x); fx.num(x, '+' + hn, 'heal'); st.said.push('removed ' + hn + ' damage from ' + nm(x)); } break;
       case 'banish': if (!inPlay) return; st.said.push(who + ' was banished'); banishCard(x, { by: st.src }); break;
-      case 'bounce': { var o = c.o; if (inPlay) leavePlay(x); else pull(x); S.P[o].hand.push(x); st.said.push(who + ' returned to hand'); break; }
-      case 'exert': if (!inPlay) return; c.ex = true; st.said.push(who + ' was exerted'); break;
-      case 'ready': if (!inPlay) return; c.ex = false; st.said.push(nm(x) + ' was readied'); emit('readied', { u: x }); break;
+      case 'bounce': { var o = c.o; if (inPlay) { fx.vortex(rectOf(x)); leaving[x] = 'bounce'; leavePlay(x); } else pull(x); S.P[o].hand.push(x); st.said.push(who + ' returned to hand'); break; }
+      case 'exert': if (!inPlay) return; c.ex = true; fx.forceEx(x); st.said.push(who + ' was exerted'); break;
+      case 'ready': if (!inPlay) return; c.ex = false; fx.pillar(x); st.said.push(nm(x) + ' was readied'); emit('readied', { u: x }); break;
       case 'stat': {
         if (!inPlay) return;
         var m = untilFor(e.dur || 'turn', pi, x); for (var k in e.st) m[k] = e.st[k]; m.why = abTitle(st.src, st.ab); c.mods.push(m);
+        if (Object.keys(e.st).some(function (k) { return e.st[k] < 0; })) fx.drain(x); else fx.rune(x, '#f6e1a8');
         fx.num(x, Object.keys(e.st).map(function (k) { return (e.st[k] > 0 ? '+' : '') + e.st[k] + ' ' + { s: '¤', w: '⛉', l: '◊' }[k]; }).join(' '), Object.keys(e.st).some(function (k) { return e.st[k] < 0; }) ? 'debuff' : 'buff');
         st.said.push(nm(x) + ' got ' + Object.keys(e.st).map(function (k) { return (e.st[k] > 0 ? '+' : '') + e.st[k] + ' ' + { s: 'strength', w: 'willpower', l: 'lore' }[k]; }).join(' and ') + durText(e.dur || 'turn'));
         break;
       }
-      case 'kw': { if (!inPlay) return; var m2 = untilFor(e.dur || 'turn', pi, x); m2.kw = e.kw; m2.n = e.n || 0; m2.why = abTitle(st.src, st.ab); c.mods.push(m2); fx.num(x, KWNAME[e.kw] + (e.n ? ' +' + e.n : ''), 'buff'); st.said.push(nm(x) + ' gained ' + KWNAME[e.kw] + durText(e.dur || 'turn')); break; }
-      case 'cant': { if (!inPlay) return; var m3 = untilFor(e.dur || 'turn', pi, x); m3.cant = e.what; m3.why = abTitle(st.src, st.ab); c.mods.push(m3); fx.num(x, 'Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'act', bechal: 'be challenged', sing: 'sing' }[e.what], 'debuff'); st.said.push(effText({ op: 'cant', what: e.what, t: { sel: 'prev' }, dur: e.dur }).replace(/^That card/, nm(x))); break; }
-      case 'can': { if (!inPlay) return; var m4 = untilFor(e.dur || 'turn', pi, x); m4.can = e.what; c.mods.push(m4); fx.num(x, 'Can challenge ready', 'buff'); break; }
-      case 'toInk': { var o2 = c.o; if (inPlay) leavePlay(x); else pull(x); resetCard(x); C(x).ex = !e.ready; S.P[o2].ink.push(x); st.said.push(who + ' went into the inkwell'); break; }
-      case 'tuck': { var o3 = c.o; if (inPlay) leavePlay(x); else pull(x); resetCard(x); S.P[o3].deckL.push(x); shuffle(S.P[o3].deckL); st.said.push(who + ' was shuffled into the deck'); break; }
+      case 'kw': { if (!inPlay) return; var m2 = untilFor(e.dur || 'turn', pi, x); m2.kw = e.kw; m2.n = e.n || 0; m2.why = abTitle(st.src, st.ab); c.mods.push(m2); fx.emblem(x, e.kw); fx.num(x, KWNAME[e.kw] + (e.n ? ' +' + e.n : ''), 'buff'); st.said.push(nm(x) + ' gained ' + KWNAME[e.kw] + durText(e.dur || 'turn')); break; }
+      case 'cant': { if (!inPlay) return; var m3 = untilFor(e.dur || 'turn', pi, x); m3.cant = e.what; m3.why = abTitle(st.src, st.ab); c.mods.push(m3); fx.chains(x); fx.num(x, 'Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'act', bechal: 'be challenged', sing: 'sing' }[e.what], 'debuff'); st.said.push(effText({ op: 'cant', what: e.what, t: { sel: 'prev' }, dur: e.dur }).replace(/^That card/, nm(x))); break; }
+      case 'can': { if (!inPlay) return; var m4 = untilFor(e.dur || 'turn', pi, x); m4.can = e.what; c.mods.push(m4); fx.xglint(x); fx.num(x, 'Can challenge ready', 'buff'); break; }
+      case 'toInk': { var o2 = c.o; leaving[x] = 'ink'; fx.ink(o2, inkColor(x)); if (inPlay) leavePlay(x); else pull(x); resetCard(x); C(x).ex = !e.ready; S.P[o2].ink.push(x); st.said.push(who + ' went into the inkwell'); break; }
+      case 'tuck': { var o3 = c.o; leaving[x] = 'tuck'; fx.drawn(o3); if (inPlay) leavePlay(x); else pull(x); resetCard(x); S.P[o3].deckL.push(x); shuffle(S.P[o3].deckL); st.said.push(who + ' was shuffled into the deck'); break; }
     }
   }
   function banishCard(x, ctx) {
@@ -2849,10 +2951,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var pi = a.k === 'play' || a.k === 'ink' ? C(a.u).o : S.cur, pre = byCpu || nested ? null : snapshot(), d = DD(a.u), res = null, tWasDamaged = false;
     var over = act(function () {
       switch (a.k) {
-        case 'ink': A.ink(pi, a.u); Kit.sfx('flip'); fx.ink(pi, INKC[inkOf(d)[0]] || '#e3bd62'); break;
+        case 'ink': leaving[a.u] = 'ink'; A.ink(pi, a.u); Kit.sfx('flip'); fx.ink(pi, INKC[inkOf(d)[0]] || '#e3bd62'); break;
         case 'play':
           A.play(pi, a.u, a.o || {});
           Kit.sfx(a.o && a.o.sing ? 'good' : 'deal');
+          if (d.t !== 'action') fx.summon(a.u, !!(a.o && a.o.shift));
+          if (d.song) fx.notes(a.o && a.o.sing);
           if (d.t === 'action' && d.A && d.A[0]) Q.push({ src: a.u, ab: d.A[0], pi: pi, ctx: {} });
           emit('play', { u: a.u, shifted: !!(a.o && a.o.shift), sing: a.o && a.o.sing });
           // the action resolves before anything it set off
@@ -3036,6 +3140,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (!node || node._id !== C(u).id) {
       node = el('div', { class: 'slot' });
       node._id = C(u).id;
+      node.style.setProperty('--inkc', inkColor(u));
       var lc = el('div', { class: 'lc' });
       lc.appendChild(artEl(DD(u), false));
       var ovs = el('div', { class: 'ovs' });
@@ -3067,7 +3172,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (board) {
       var ks = kwList(u);
       if (ks.length) h += '<div class="kws">' + ks.slice(0, 4).map(function (k) { return '<i title="' + KWNAME[k] + '">' + kwIcon(k) + '</i>'; }).join('') + '</div>';
-      if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="wet" title="Drying: can’t quest, challenge or sing until its owner’s next turn"><svg viewBox="0 0 24 24"><path d="M12 2.5c-3.6 5-6.5 8.6-6.5 12a6.5 6.5 0 0 0 13 0c0-3.4-2.9-7-6.5-12z"/></svg>' + (hasKw(u, 'rush') ? 'Rush' : 'Drying') + '</span>';
+      if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="drips" aria-hidden="true"><i></i><i></i><i></i></span>';
+      if ((c.mods || []).some(function (m) { return m.cant; })) h += '<span class="chains" aria-hidden="true"></span>';
       if (c.dmg) h += '<span class="dmg">' + c.dmg + '</span>';
       if (c.at && S.cards[c.at]) h += '<span class="tagl">at ' + esc(DD(c.at).n) + '</span>';
       if (c.under && c.under.length) h += '<span class="ucount" title="Cards under">' + c.under.length + '</span>';
@@ -3078,6 +3184,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     else st = '<span style="font-family:var(--font);font-weight:800;font-size:.8em;opacity:.8">' + (d.song ? 'Song' : d.t === 'item' ? 'Item' : 'Action') + '</span>';
     h += '<div class="ov"><span class="nm">' + esc(d.n) + '</span><span class="st">' + st + '</span></div>';
     if (node._h !== h) { node._ovs.innerHTML = h; node._h = h; }
+    node.title = d.t === 'character' && board && !c.dry && S.phase === 'play' ? 'Ink still drying: can’t quest, challenge or sing until its owner’s next turn' + (hasKw(u, 'rush') ? ' (Rush: can challenge now)' : '') : '';
     var und = node.querySelector(':scope > .under');
     if (board && c.under && c.under.length) { if (!und) node.insertBefore(el('div', { class: 'under', html: '<div class="lback"></div>' }), node.firstChild); }
     else if (und) und.remove();
@@ -3254,7 +3361,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // A card's ability goes off: the card glows and its ability name rises from it
     flare: function (u, name) { fxq.push(function () {
       var s = $('.lp .slot[data-uid="' + u + '"]'), r = s ? s.getBoundingClientRect() : null;
-      if (s) { s.classList.remove('abfire'); void s.offsetWidth; s.classList.add('abfire'); }
+      if (s) { s.classList.remove('abfire'); void s.offsetWidth; s.classList.add('abfire'); for (var q = 0; q < 8; q++) { var an = q / 8 * Math.PI * 2; twinkle(r.left + r.width / 2 + Math.cos(an) * r.width * 0.62, r.top + r.height / 2 + Math.sin(an) * r.height * 0.58, q * 45); } }
       var tag = el('div', { class: 'abtag', text: name });
       var mid = $('.lp-mid'), mr = mid ? mid.getBoundingClientRect() : { left: 0, width: window.innerWidth, top: window.innerHeight / 2 };
       tag.style.left = (r ? r.left + r.width / 2 : mr.left + mr.width / 2) + 'px'; tag.style.top = (r ? r.top + 4 : mr.top) + 'px';
@@ -3263,14 +3370,21 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       Kit.sfx('good');
     }); render(); },
     // A spark travels from the card to what it affects
-    beam: function (from, to) { (to || []).forEach(function (t, i) {
-      var a = $('.lp .slot[data-uid="' + from + '"]'), b = $('.lp .slot[data-uid="' + t + '"]'); if (!b) return;
-      var ra = a ? a.getBoundingClientRect() : $('.lp-mid').getBoundingClientRect(), rb = b.getBoundingClientRect();
-      var sp = el('div', { class: 'spark' }); sp.style.left = (ra.left + ra.width / 2) + 'px'; sp.style.top = (ra.top + ra.height / 2) + 'px';
-      document.body.appendChild(sp);
-      setTimeout(function () { requestAnimationFrame(function () { sp.style.transform = 'translate(' + (rb.left + rb.width / 2 - ra.left - ra.width / 2) + 'px,' + (rb.top + rb.height / 2 - ra.top - ra.height / 2) + 'px) scale(1.4)'; sp.style.opacity = '.2'; }); }, i * 70);
-      setTimeout(function () { sp.remove(); }, 420 + i * 70);
-    }); },
+    beam: function (from, to) {
+      var col = from && S.cards[from] ? inkColor(from) : '#f6e1a8';
+      (to || []).forEach(function (t, i) {
+        var a = from && slotEl(from), b = slotEl(t); if (!b) return;
+        var A = mid(a ? a.getBoundingClientRect() : ($('.lp-mid') || b).getBoundingClientRect()), B = mid(b.getBoundingClientRect());
+        var dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy) || 1, bend = 34 * (i % 2 ? -1 : 1), mx = dx / 2 - dy / len * bend, my = dy / 2 + dx / len * bend;
+        for (var k = 0; k < 6; k++) {
+          var c = el('div', { class: 'comet' }); c.style.setProperty('--rc', col); place(c, A.x, A.y); document.body.appendChild(c);
+          var sc = 1 - k * 0.14;
+          if (c.animate) c.animate([{ transform: 'translate(0,0) scale(' + sc * 0.6 + ')', opacity: k ? 0.6 - k * 0.08 : 1 }, { transform: 'translate(' + mx + 'px,' + my + 'px) scale(' + sc + ')', opacity: k ? 0.6 - k * 0.08 : 1, offset: 0.5 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc * 1.3 + ')', opacity: 0 }], { duration: 320, delay: i * 70 + k * 22, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'both' });
+          setTimeout((function (x) { return function () { x.remove(); }; })(c), 420 + i * 70 + k * 22);
+        }
+        setTimeout(function () { spray(B, col, 6, 26, 0); }, 300 + i * 70);
+      });
+    },
     num: function (u, text, kind) { fxq.push(function () {
       var s = $('.lp .slot[data-uid="' + u + '"]'); if (!s) return;
       if (kind === 'heal' || kind === 'buff') { s.classList.remove('glowg'); void s.offsetWidth; s.classList.add(kind === 'heal' ? 'glowg' : 'glowb'); setTimeout(function () { s.classList.remove('glowg', 'glowb'); }, 900); }
@@ -3278,17 +3392,18 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       f.style.left = (r.left + r.width / 2) + 'px'; f.style.top = (r.top + r.height * 0.4) + 'px';
       document.body.appendChild(f); setTimeout(function () { f.remove(); }, 1300);
     }); },
-    lose: function (pi, n) { if (n) fxq.push(function () { var r = $('.lore[data-p="' + pi + '"]'); if (r) floatText(r, '−' + n); }); },
-    // Quest: the card rises in gold and sparks of lore arc over to the lore ring
-    quest: function (u, pi, n) { fxq.push(function () {
-      var s = slotEl(u), ring = $('.lore[data-p="' + pi + '"]'); if (!ring) return;
-      if (s) { s.classList.remove('questing'); void s.offsetWidth; s.classList.add('questing'); setTimeout(function () { s.classList.remove('questing'); }, 900); }
-      var a = mid(s ? s.getBoundingClientRect() : ring.getBoundingClientRect()), b = mid(ring.getBoundingClientRect()), k = Math.max(1, Math.min(5, n));
-      Kit.sfx('sparkle');
-      for (var i = 0; i < k; i++) flyOrb(a, b, 160 + i * 95, i === k - 1 ? function () {
-        ring.classList.remove('bump'); void ring.offsetWidth; ring.classList.add('bump'); floatText(ring, '+' + n); Kit.sfx('good'); Kit.haptic('light');
-      } : null);
+    lose: function (pi, n) { if (n) fxq.push(function () {
+      var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; floatText(r, '−' + n);
+      var c = mid(r.getBoundingClientRect());
+      for (var i = 0; i < Math.min(5, n); i++) { var o = el('div', { class: 'orb drain' }); place(o, c.x, c.y); document.body.appendChild(o); var dx = (Math.random() - 0.5) * 70;
+        if (o.animate) o.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: 'translate(' + dx + 'px,60px) scale(.4) rotate(90deg)', opacity: 0 }], { duration: 750, delay: i * 90, easing: 'cubic-bezier(.5,0,.8,.6)', fill: 'both' });
+        setTimeout((function (x) { return function () { x.remove(); }; })(o), 900 + i * 90); }
     }); },
+    // Quest: the card rises in gold and sparks of lore arc over to the lore ring
+    quest: function (u, pi, n) {
+      fxq.push(function () { var s = slotEl(u); if (s) { s.classList.remove('questing'); void s.offsetWidth; s.classList.add('questing'); setTimeout(function () { s.classList.remove('questing'); }, 900); } });
+      fx.loreFrom(u, pi, n);
+    },
     // Challenge: the attacker lunges into the defender; impact, shards, damage on both
     clash: function (a, t, ra, rt, res) { fxq.push(function () {
       var sa = slotEl(a), sb = slotEl(t), A = sa ? mid(sa.getBoundingClientRect()) : mid(ra), T = sb ? mid(sb.getBoundingClientRect()) : mid(rt);
@@ -3331,13 +3446,146 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         Kit.sfx('splash');
       }, calm() ? 0 : 380);
     }); },
-    // A character's ink has dried at the start of its owner's turn
+    // A character's ink has dried at the start of its owner's turn: a varnish glint and twinkles
     dried: function (u) { fxq.push(function () {
       var s = slotEl(u); if (!s) return;
       s.classList.remove('dried'); void s.offsetWidth; s.classList.add('dried'); setTimeout(function () { s.classList.remove('dried'); }, 950);
+      var r = s.getBoundingClientRect();
+      for (var i = 0; i < 3; i++) twinkle(r.left + r.width * (0.2 + Math.random() * 0.6), r.top + r.height * (0.15 + Math.random() * 0.6), 120 + i * 140);
+    }); },
+    // ── What abilities do to a card ──
+    // Damage: three ink claw slashes and a spray
+    slash: function (u) { fxq.push(function () {
+      var r = rectOf(u); if (!r) return;
+      var b = el('div', { class: 'slash', html: '<svg viewBox="0 0 100 140" preserveAspectRatio="none" width="100%" height="100%"><path pathLength="1" d="M22 18 L74 120"/><path pathLength="1" d="M44 10 L92 100"/><path pathLength="1" d="M8 44 L50 132"/></svg>' });
+      place(b, r.left, r.top, r.width, r.height); document.body.appendChild(b);
+      $$('path', b).forEach(function (p, i) { p.style.strokeDasharray = '1'; p.style.strokeDashoffset = '1'; if (p.animate) p.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 170, delay: i * 75, easing: 'ease-out', fill: 'forwards' }); else p.style.strokeDashoffset = '0'; });
+      fade(b, 420, 380);
+      spray(mid(r), '#ff5252', 7, 50, 260);
+    }); },
+    // Damage removed: green-gold motes rise through the card
+    mend: function (u) { fxq.push(function () {
+      var r = rectOf(u); if (!r) return;
+      for (var i = 0; i < 10; i++) rise(r.left + r.width * (0.15 + Math.random() * 0.7), r.bottom - r.height * 0.1, -r.height * (0.55 + Math.random() * 0.35), i % 3 ? '#7dffa6' : '#f6e1a8', i * 60);
+    }); },
+    // Weakened: the colour is drawn out of the card in cold wisps
+    drain: function (u) { fxq.push(function () {
+      var s = slotEl(u); if (!s) return;
+      s.classList.remove('drained'); void s.offsetWidth; s.classList.add('drained'); setTimeout(function () { s.classList.remove('drained'); }, 1000);
+      var r = s.getBoundingClientRect(), c = mid(r);
+      for (var i = 0; i < 9; i++) { var a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, d = r.height * (0.4 + Math.random() * 0.4); mote(c.x + (Math.random() - 0.5) * r.width * 0.5, c.y + (Math.random() - 0.5) * r.height * 0.4, Math.cos(a) * d, Math.sin(a) * d, '#9ec8ff', i * 50, 800); }
+    }); },
+    // Strengthened (or shifted, or boosted): a rune circle turns under the card
+    rune: function (u, col) { fxq.push(function () { var r = rectOf(u); if (r) runeAt(mid(r), Math.max(r.width, r.height) * 1.35, col); }); },
+    // Forced to exert: binding bands snap round it and it lands hard
+    forceEx: function (u) { fxq.push(function () {
+      var s = slotEl(u); if (!s) return;
+      s.classList.remove('thud'); void s.offsetWidth; s.classList.add('thud'); setTimeout(function () { s.classList.remove('thud'); }, 600);
+      var r = s.getBoundingClientRect();
+      [0.36, 0.66].forEach(function (f, i) {
+        var b = el('div', { class: 'band' }); place(b, r.left - r.width * 0.12, r.top + r.height * f, r.width * 1.24, null); document.body.appendChild(b);
+        if (b.animate) b.animate([{ transform: 'scaleX(0)', opacity: 1 }, { transform: 'scaleX(1)', opacity: 1, offset: 0.35 }, { transform: 'scaleX(1) scaleY(.4)', opacity: 0 }], { duration: 720, delay: i * 90, easing: 'ease-out', fill: 'both' });
+        setTimeout(function () { b.remove(); }, 850);
+      });
+      Kit.sfx('chip'); Kit.haptic('light');
+    }); },
+    // Readied by an ability: a column of light lifts it
+    pillar: function (u) { fxq.push(function () {
+      var r = rectOf(u); if (!r) return;
+      var p = el('div', { class: 'pillar' }); place(p, r.left + r.width * 0.15, r.bottom - r.height * 1.7, r.width * 0.7, r.height * 1.7); document.body.appendChild(p); setTimeout(function () { p.remove(); }, 820);
+      for (var i = 0; i < 4; i++) twinkle(r.left + r.width * (0.25 + Math.random() * 0.5), r.top + r.height * (0.2 + Math.random() * 0.5), 150 + i * 110);
+      Kit.sfx('sparkle');
+    }); },
+    // Keyword gained: its emblem pops over the card, then settles into the keyword column
+    emblem: function (u, kw) { fxq.push(function () {
+      var s = slotEl(u); if (!s) return;
+      var r = s.getBoundingClientRect(), c = mid(r), cu = parseFloat(getComputedStyle(s).getPropertyValue('--cu')) || r.height;
+      var e = el('div', { class: 'emblem', html: kwIcon(kw) }); place(e, c.x, c.y); document.body.appendChild(e);
+      var tx = r.left + cu * 0.095 - c.x, ty = r.top + cu * 0.33 - c.y;
+      if (e.animate) e.animate([{ transform: 'scale(0) rotate(-30deg)', opacity: 0 }, { transform: 'scale(1.25) rotate(6deg)', opacity: 1, offset: 0.22 }, { transform: 'scale(1) rotate(0)', opacity: 1, offset: 0.34 }, { transform: 'scale(1)', opacity: 1, offset: 0.62 }, { transform: 'translate(' + tx + 'px,' + ty + 'px) scale(.3)', opacity: 0.2 }], { duration: 1250, easing: 'cubic-bezier(.3,0,.3,1)', fill: 'forwards' });
+      setTimeout(function () { e.remove(); }, 1300);
+      if (kw === 'ward' || kw === 'bodyguard') { var h = el('div', { class: 'hexshield', html: '<svg viewBox="0 0 100 100"><polygon points="50,3 93,27 93,73 50,97 7,73 7,27"/></svg>' }), z = Math.max(r.width, r.height) * 1.08; if (kw === 'bodyguard') h.style.color = '#f6e1a8'; place(h, c.x - z / 2, c.y - z / 2, z, z); document.body.appendChild(h); setTimeout(function () { h.remove(); }, 950); }
+      else if (kw === 'evasive') { s.classList.remove('floaty'); void s.offsetWidth; s.classList.add('floaty'); setTimeout(function () { s.classList.remove('floaty'); }, 1050); for (var i = 0; i < 5; i++) mote(r.left + r.width * Math.random(), r.bottom, (Math.random() - 0.5) * 30, -r.height * 0.5, '#ffffff', i * 80, 900); }
+      else if (kw === 'resist') { s.classList.remove('steel'); void s.offsetWidth; s.classList.add('steel'); setTimeout(function () { s.classList.remove('steel'); }, 750); }
+      else if (kw === 'rush' || kw === 'challenger' || kw === 'reckless') streaks(r, kw === 'reckless' ? '#ff8f6b' : '#fff3c9');
+      else runeAt(c, Math.max(r.width, r.height) * 1.3, '#f6e1a8');
+      Kit.sfx('sparkle');
+    }); },
+    // Can't quest / challenge / ready…: chains snap across it (they stay while the effect lasts)
+    chains: function (u) { fxq.push(function () {
+      var s = slotEl(u); if (!s) return;
+      s.classList.remove('snap'); void s.offsetWidth; s.classList.add('snap'); setTimeout(function () { s.classList.remove('snap'); }, 700);
+      Kit.sfx('chip'); Kit.haptic('light');
+    }); },
+    // Can challenge ready characters: crossed blades of light
+    xglint: function (u) { fxq.push(function () {
+      var r = rectOf(u); if (!r) return; var c = mid(r), L = Math.hypot(r.width, r.height) * 0.9;
+      [35, -35].forEach(function (deg, i) {
+        var g = el('div', { class: 'streak' }); place(g, c.x - L / 2, c.y, L, null); g.style.transformOrigin = 'center'; document.body.appendChild(g);
+        if (g.animate) g.animate([{ transform: 'rotate(' + deg + 'deg) scaleX(0)', opacity: 1 }, { transform: 'rotate(' + deg + 'deg) scaleX(1)', opacity: 1, offset: 0.4 }, { transform: 'rotate(' + deg + 'deg) scaleX(1)', opacity: 0 }], { duration: 650, delay: i * 90, fill: 'both' });
+        setTimeout(function () { g.remove(); }, 800);
+      });
+    }); },
+    // Returned to hand: a swirl where it stood
+    vortex: function (r) { if (!r) return; fxq.push(function () { var z = Math.max(r.width, r.height) * 1.1, v = el('div', { class: 'vortex' }); place(v, r.left + r.width / 2 - z / 2, r.top + r.height / 2 - z / 2, z, z); document.body.appendChild(v); setTimeout(function () { v.remove(); }, 820); Kit.sfx('whoosh'); }); },
+    // Played: the card is inked into being, the ink washing away from the bottom up over a rune
+    summon: function (u, shift) { fxq.push(function () {
+      var s = slotEl(u); if (!s || calm()) return;
+      var lc = $('.lc', s), col = inkColor(u), r = s.getBoundingClientRect(), c = mid(r);
+      if (lc) { var v = el('i', { class: 'inkveil' }); lc.appendChild(v); setTimeout(function () { v.remove(); }, 950); }
+      s.classList.remove('summon'); void s.offsetWidth; s.classList.add('summon'); setTimeout(function () { s.classList.remove('summon'); }, 950);
+      runeAt(c, Math.max(r.width, r.height) * 1.45, shift ? '#f6e1a8' : col);
+      for (var i = 0; i < 10; i++) { var a = Math.random() * Math.PI * 2, d = r.height * (0.65 + Math.random() * 0.3); mote(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, -Math.cos(a) * d, -Math.sin(a) * d, col, i * 30, 520); }
+    }); },
+    // A song: notes rise from whoever sang it
+    notes: function (us) { fxq.push(function () {
+      var from = (us && us.length ? us.map(rectOf).filter(Boolean) : []); if (!from.length) { var m = $('.lp-mid'); if (m) from = [m.getBoundingClientRect()]; }
+      from.forEach(function (r, j) { for (var i = 0; i < 4; i++) {
+        var n = el('div', { class: 'note', html: NOTE_SVG }), x = r.left + r.width * (0.25 + Math.random() * 0.5), y = r.top + r.height * 0.45, sw = (Math.random() < 0.5 ? -1 : 1) * (14 + Math.random() * 12);
+        place(n, x, y); document.body.appendChild(n);
+        if (n.animate) n.animate([{ transform: 'translate(0,0) scale(.4) rotate(0)', opacity: 0 }, { transform: 'translate(' + sw + 'px,-30px) scale(1) rotate(-10deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(' + (-sw * 0.5) + 'px,-62px) scale(1) rotate(10deg)', opacity: 1, offset: 0.65 }, { transform: 'translate(' + sw + 'px,-92px) scale(.8)', opacity: 0 }], { duration: 1200, delay: j * 120 + i * 140, easing: 'ease-out', fill: 'both' });
+        setTimeout((function (x) { return function () { x.remove(); }; })(n), 1400 + j * 120 + i * 140);
+      } });
+    }); },
+    // Cards drawn: the deck riffles
+    drawn: function (pi) { fxq.push(function () { var d = $('.lp [data-z="deck-' + pi + '"]'); if (d) { d.classList.remove('riffle'); void d.offsetWidth; d.classList.add('riffle'); } }); },
+    // Lore from an ability: diamonds fly from the card to the lore ring
+    loreFrom: function (src, pi, n) { fxq.push(function () {
+      var ring = $('.lore[data-p="' + pi + '"]'); if (!ring) return;
+      var s = src && slotEl(src), a = mid(s ? s.getBoundingClientRect() : ($('.lp-mid') || ring).getBoundingClientRect()), b = mid(ring.getBoundingClientRect()), k = Math.max(1, Math.min(5, n));
+      Kit.sfx('sparkle');
+      for (var i = 0; i < k; i++) flyOrb(a, b, 120 + i * 95, i === k - 1 ? function () { ring.classList.remove('bump'); void ring.offsetWidth; ring.classList.add('bump'); floatText(ring, '+' + n); Kit.sfx('good'); } : null);
     }); }
   };
-  var clashing = false, questing = false;
+  var clashing = false, questing = false, leaving = {};
+  // ── Little pieces the effects are built from ──
+  var NOTE_SVG = '<svg viewBox="0 0 24 24"><ellipse cx="8" cy="17.5" rx="4.2" ry="3.1" transform="rotate(-22 8 17.5)" fill="currentColor"/><path d="M11.6 17V3.2c1.6 2.6 6.2 3.2 6.8 7.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  var RUNE_SVG = (function () {
+    function hex(r, rot) { var p = []; for (var i = 0; i < 6; i++) { var a = (i * 60 + rot) * Math.PI / 180; p.push((50 + r * Math.cos(a)).toFixed(1) + ',' + (50 + r * Math.sin(a)).toFixed(1)); } return p.join(' '); }
+    var t = ''; for (var i = 0; i < 24; i++) { var a = i * 15 * Math.PI / 180, r0 = i % 2 ? 43 : 41; t += '<line x1="' + (50 + r0 * Math.cos(a)).toFixed(1) + '" y1="' + (50 + r0 * Math.sin(a)).toFixed(1) + '" x2="' + (50 + 46 * Math.cos(a)).toFixed(1) + '" y2="' + (50 + 46 * Math.sin(a)).toFixed(1) + '" stroke-width=".8"/>'; }
+    return '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" stroke-width="1.6"/><circle cx="50" cy="50" r="38" stroke-width=".7" stroke-dasharray="1.5 2.5"/>' + t +
+      '<polygon points="' + hex(33, 30) + '" stroke-width="1.3"/><polygon points="' + hex(33, 0) + '" stroke-width=".6"/><circle cx="50" cy="50" r="9" stroke-width="1"/></svg>';
+  })();
+  function inkColor(u) { return INKC[inkOf(DD(u))[0]] || '#e3bd62'; }
+  function place(n, x, y, w, h) { n.style.left = x + 'px'; n.style.top = y + 'px'; if (w != null) n.style.width = w + 'px'; if (h != null) n.style.height = h + 'px'; return n; }
+  function fade(n, delay, dur) { setTimeout(function () { if (n.animate) n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, fill: 'forwards' }); setTimeout(function () { n.remove(); }, dur); }, delay); }
+  // A small glowing dot that drifts by (dx, dy) and fades
+  function mote(x, y, dx, dy, col, delay, dur) {
+    var m = el('i', { class: 'mote' }); m.style.setProperty('--mc', col); place(m, x, y); document.body.appendChild(m);
+    if (m.animate && !calm()) m.animate([{ transform: 'translate(0,0) scale(.6)', opacity: 0 }, { transform: 'translate(' + dx * 0.2 + 'px,' + dy * 0.2 + 'px) scale(1)', opacity: 1, offset: 0.2 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.4)', opacity: 0 }], { duration: dur || 700, delay: delay || 0, easing: 'ease-out', fill: 'both' });
+    setTimeout(function () { m.remove(); }, (delay || 0) + (dur || 700) + 30);
+  }
+  function rise(x, y, dy, col, delay) { mote(x, y, (Math.random() - 0.5) * 16, dy, col, delay, 900); }
+  function spray(P, col, n, dist, delay) { setTimeout(function () { for (var i = 0; i < n; i++) { var a = Math.random() * Math.PI * 2, d = dist * (0.5 + Math.random() * 0.6); mote(P.x, P.y, Math.cos(a) * d, Math.sin(a) * d + 12, col, 0, 420); } }, delay || 0); }
+  function twinkle(x, y, delay) { setTimeout(function () { var t = el('i', { class: 'twk' }); place(t, x, y); document.body.appendChild(t); setTimeout(function () { t.remove(); }, 760); }, delay || 0); }
+  function runeAt(c, size, col) { if (calm()) return; var r = el('div', { class: 'rune', html: RUNE_SVG }); r.style.setProperty('--rc', col || '#f6e1a8'); place(r, c.x - size / 2, c.y - size / 2, size, size); document.body.appendChild(r); setTimeout(function () { r.remove(); }, 1020); }
+  function streaks(r, col) {
+    for (var i = 0; i < 4; i++) {
+      var g = el('div', { class: 'streak' }); g.style.background = 'linear-gradient(90deg,rgba(255,255,255,0),' + col + ')'; place(g, r.left - r.width * 0.3, r.top + r.height * (0.2 + i * 0.2), r.width * 0.9, null); document.body.appendChild(g);
+      if (g.animate) g.animate([{ transform: 'translateX(0) scaleX(.2)', opacity: 0 }, { transform: 'translateX(' + r.width * 0.4 + 'px) scaleX(1)', opacity: 1, offset: 0.4 }, { transform: 'translateX(' + r.width * 0.9 + 'px) scaleX(.3)', opacity: 0 }], { duration: 480, delay: i * 70, easing: 'ease-out', fill: 'both' });
+      setTimeout((function (x) { return function () { x.remove(); }; })(g), 520 + i * 70);
+    }
+  }
   function calm() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function slotEl(u) { return $('.lp .slot[data-uid="' + u + '"]'); }
   function rectOf(u) { var s = slotEl(u); return s ? s.getBoundingClientRect() : null; }
@@ -3385,8 +3633,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
       var sc = Math.max(0.3, Math.min(2, from.width / r.width));
       if (!b) sc = Math.min(sc, 0.6);
+      var spin = leaving[u] === 'bounce' ? ' rotate(-540deg)' : ''; delete leaving[u];
       n.style.transition = 'none';
-      n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')';
+      n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')' + spin;
       n.style.zIndex = 20;
       requestAnimationFrame(function () { requestAnimationFrame(function () {
         n.style.transition = 'transform .42s cubic-bezier(.2,.8,.25,1)'; n.style.transform = '';
@@ -3398,14 +3647,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (now[u] || !S.cards[u]) return;
       var b = before.u[u];
       if (dissolving[u]) { var dl = dissolving[u]; delete dissolving[u]; burn(b, dl > 1 ? dl : 0); return; }
-      var zk = zoneKey(u), tn = zk && $('.lp [data-z="' + zk + '"]'); if (!tn) return;
+      var zk = zoneKey(u), tn = zk && $('.lp [data-z="' + zk + '"]'), lv = leaving[u]; delete leaving[u]; if (!tn) return;
       var tr = tn.getBoundingClientRect();
       var g = b.n.cloneNode(true); g.className = b.n.className + ' flyer'; g.removeAttribute('data-uid');
       g.style.cssText = 'position:fixed;left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;margin:0;transition:transform .45s cubic-bezier(.4,0,.2,1),opacity .45s;z-index:250;' + (b.n.style.getPropertyValue('--cu') ? '' : '');
       var cu = b.cu || getComputedStyle(b.n).getPropertyValue('--cu'); if (cu) g.style.setProperty('--cu', cu);
       document.body.appendChild(g);
       var dx = (tr.left + tr.width / 2) - (b.r.left + b.r.width / 2), dy = (tr.top + tr.height / 2) - (b.r.top + b.r.height / 2);
-      requestAnimationFrame(function () { requestAnimationFrame(function () { g.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.25)'; g.style.opacity = '0.2'; }); });
+      var how = /^ink-/.test(zk) ? 'inkflow' : /^deck-/.test(zk) ? 'tuckflow' : '', turn = lv === 'bounce' ? ' rotate(540deg)' : '';
+      if (how === 'inkflow') { g.style.setProperty('--ic', inkColor(u)); g.style.transitionTimingFunction = 'cubic-bezier(.5,0,.6,1)'; }
+      requestAnimationFrame(function () { requestAnimationFrame(function () { if (how) g.classList.add(how); g.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + (how === 'inkflow' ? '.18' : '.25') + ')' + turn; g.style.opacity = how === 'inkflow' ? '0.9' : '0.2'; }); });
       setTimeout(function () { g.remove(); }, 480);
     });
   }
@@ -4523,7 +4774,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     run: function (a) { runAction(a); }, end: humanEnd, cpuChoose: cpuChoose, defenders: defenders, AB: AB, stx: stx, cant: cant, useAb: useAb, abUseWhy: abUseWhy, quiet: quiet, Q: function () { return Q; }, playCost: playCost, canPlay: canPlay, canQuest: canQuest,
     canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
     allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
-    STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck
+    STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck,
+    // tests: apply one ability effect to a card, as if from src
+    hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
   };
 })();
 </script>
