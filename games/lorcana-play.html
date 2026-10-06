@@ -729,6 +729,17 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .tsize .ico{width:14px;height:14px;}
 .tsize .lg .ico{width:20px;height:20px;}
 .tsize input{width:min(150px,26vw);accent-color:var(--gilt);}
+.colbtn{display:none;flex:none;}
+.ctrow{display:contents;}
+@media (max-width:699px){
+  .bld.lib .bld-top .tsize{display:none;}
+  .bld.lib .colbtn{display:inline-flex;}
+  .bld.lib .bld-top h2.libt{font-size:1.4rem;}
+  .bld.lib .ctrow{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+  .bld.lib .ctrow::-webkit-scrollbar{display:none;}
+  .bld.lib .ctrow .fchips{flex:none;overflow:visible;padding-bottom:0;}
+  .flowpanel .ctrow{display:contents;}
+}
 .bld.lib .bld-grid .pc .nmb{font-size:clamp(.66rem,calc(var(--tile,92px) * .0075rem),.95rem);}
 .bld.lib .bld-grid .pc .nmb small{font-size:.86em;}
 .bld-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;}
@@ -6431,6 +6442,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Tile size (remembered on this device)
     var TILE = 'lorc_tile', tile = +lsGet(TILE, 0) || (window.innerWidth >= 700 ? 130 : 120);
     var sizer = el('label', { class: 'tsize', title: 'Card size' }, [el('span', { class: 'sm', html: Kit.icon('tiles') }), el('input', { type: 'range', min: '64', max: '240', step: '4', value: String(tile), 'aria-label': 'Card size' }), el('span', { class: 'lg', html: Kit.icon('tiles') })]);
+    var COLS = 'lorc_cols', cols = +lsGet(COLS, 0) || 3;
+    var phoneLib = function () { return window.innerWidth < 700; };
+    var colBtn = el('button', { type: 'button', class: 'icon-btn colbtn', 'aria-label': 'Card size: ' + cols + ' across', title: 'Card size', html: Kit.icon('tiles') });
     var top = lib ? el('div', { class: 'bld-top' }, [
       el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: back }), el('h2', { class: 'libt', text: 'Card library' }), cnt, sizer,
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Build a deck', onclick: function () { showBuilder(null, function () { showBuilder(null, back, o); }); } })])
@@ -6449,15 +6463,25 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var rng = sizer.querySelector('input');
       // Smallest tile = the width of the "Bookmarked" chip (any narrower looks cramped); largest = one card across
       var fitTile = function () {
-        var bc = $('.bm-chip', wrap), lo = Math.ceil(bc && bc.offsetWidth ? bc.offsetWidth : 120), hi = Math.max(lo, Math.min(240, (grid.clientWidth || 300) - 6));
+        var bc = $('.bm-chip', wrap), lo = Math.ceil(bc && bc.offsetWidth ? bc.offsetWidth : 120), W = grid.clientWidth || 300, hi = Math.max(lo, Math.min(240, W - 6));
         rng.min = String(lo); rng.max = String(hi);
-        var t = Math.max(lo, Math.min(hi, tile)); rng.value = String(t); grid.style.setProperty('--tile', t + 'px');
+        var t = Math.max(lo, Math.min(hi, tile));
+        // Phones: a button picks how many cards across (never narrower than the Bookmarked chip)
+        if (phoneLib()) { var mc = Math.max(1, Math.floor((W - 4 + 8) / (lo + 8))); cols = Math.min(cols, mc); t = Math.floor((W - 4 - (cols - 1) * 8) / cols); }
+        rng.value = String(t); grid.style.setProperty('--tile', t + 'px');
+      };
+      colBtn.onclick = function () {
+        var bc = $('.bm-chip', wrap), lo = Math.ceil(bc && bc.offsetWidth ? bc.offsetWidth : 120), mc = Math.max(1, Math.floor(((grid.clientWidth || 300) - 4 + 8) / (lo + 8)));
+        cols = cols <= 1 ? Math.min(3, mc) : cols - 1; lsSet(COLS, cols); Kit.sfx('tap'); fitTile();
+        colBtn.setAttribute('aria-label', 'Card size: ' + cols + ' across');
       };
       rng.addEventListener('input', function () { tile = +this.value; grid.style.setProperty('--tile', tile + 'px'); lsSet(TILE, tile); });
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
       window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
     }
-    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [el('div', { class: 'row1' }, [search, moreBtn]), storyChips, inkChips, costChips, typeChips]), grid]);
+    var row1 = el('div', { class: 'row1' }, [search, moreBtn]);
+    if (lib) row1.appendChild(colBtn);
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, inkChips, el('div', { class: 'ctrow' }, [costChips, typeChips])]), grid]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);

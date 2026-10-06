@@ -517,6 +517,7 @@
     doc.addEventListener('touchmove', function (e) {
       if (!fitLock || e.touches.length > 1) return;   // pinch-zoom still works
       if (scrollerFor(e.target)) return;
+      if (e.target.closest && e.target.closest('input[type="range"]')) return;   // sliders need the drag
       if (e.cancelable) e.preventDefault();
     }, { passive: false });
   }
