@@ -399,6 +399,29 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-info h2{font-family:var(--serif);font-size:1.3rem;font-weight:700;}
 .lz-info .ver{font-family:var(--serif);font-style:italic;color:var(--text-2);margin-top:1px;}
 .lz-info .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+/* Stat plate in the card details */
+.sp{display:flex;align-items:flex-start;gap:4px;margin-top:10px;padding:8px 10px 6px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);}
+.sp .grp{display:flex;gap:4px;align-items:flex-start;}
+.sp .grp.r{margin-left:auto;}
+.sp .grp:not(.r){gap:12px;}
+.sb{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:40px;}
+.sb .sh{position:relative;width:40px;height:40px;display:grid;place-items:center;}
+.sb .sh > svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
+.sb b{position:relative;font-family:var(--display);font-size:1.3rem;font-weight:400;line-height:1;color:#241a08;}
+.sb-cost b{color:#2b1a00;}
+.sb-cost:not([title="Inkable"]) b,.sb-mv b{color:#fff;}
+.sb-s b{font-size:1.2rem;}
+.sb-w b{margin-top:-2px;}
+.sb small{font-size:.58rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
+.sb-cost[title="Inkable"] small{color:var(--gilt-2);}
+.sb-ink .gems{display:flex;justify-content:center;width:auto;min-width:40px;}
+.sb-ink .gems svg{position:relative;width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) drop-shadow(0 0 6px color-mix(in srgb,var(--g) 60%,transparent));}
+.sb.off{opacity:.16;}
+.sb.up b{color:#0f7a37;}.sb.dn b{color:#c0262d;}
+.sb.up .sh > svg{filter:drop-shadow(0 0 6px rgba(125,255,166,.9));}.sb.dn .sh > svg{filter:drop-shadow(0 0 6px rgba(255,107,107,.9));}
+.tl{display:flex;align-items:baseline;gap:10px;margin-top:7px;font-size:.82rem;font-weight:800;color:var(--text-2);letter-spacing:.01em;}
+.tl span{flex:1;min-width:0;}
+.tl small{flex:none;font-size:.72rem;font-weight:800;color:var(--text-3);}
 .chipx{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.08);font-size:.78rem;font-weight:800;}
 .chipx .dot{width:9px;height:9px;border-radius:50%;background:var(--c);}
 .chipx svg{width:13px;height:13px;}
@@ -3838,16 +3861,35 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return '<p>' + h + '</p>';
     }).join('');
   }
-  function defMeta(d) {
-    var h = '';
-    inkOf(d).forEach(function (i) { h += '<span class="chipx"><i class="dot" style="--c:' + INKC[i] + '"></i>' + esc(i) + '</span>'; });
-    h += '<span class="chipx">' + sym('I') + ' Cost ' + (d.c || 0) + '</span>';
-    h += '<span class="chipx' + (d.k ? ' good' : '') + '">' + (d.k ? 'Inkable' : 'Can’t be inked') + '</span>';
-    h += '<span class="chipx">' + esc(d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (d.cl && d.cl.length ? ' · ' + esc(d.cl.filter(function (x) { return x !== 'Song'; }).join(' · ')) : '') + '</span>';
-    if (d.t === 'character') h += '<span class="chipx">' + sym('S') + (d.s || 0) + ' strength</span><span class="chipx">' + sym('W') + (d.w || 0) + ' willpower</span><span class="chipx">' + sym('L') + (d.l || 0) + ' lore</span>';
-    if (d.t === 'location') h += '<span class="chipx">' + sym('W') + (d.w || 0) + ' willpower</span><span class="chipx">' + sym('L') + (d.l || 0) + ' lore</span><span class="chipx">Move cost ' + (d.mv || 0) + '</span>';
-    if (d.set) h += '<span class="chipx">Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</span>';
-    return h;
+  // Stat plate: the card's numbers as game pieces, always in the same slots.
+  // Left: cost hexagon (gold with an inkwell ring when inkable) and ink gem(s).
+  // Right: strength, willpower, lore (locations: willpower, lore, move cost).
+  // On the table (u given) the numbers are the current ones, green/red when changed.
+  function defMeta(d, u) {
+    var inks = inkOf(d), live = u && S && S.cards[u] && onBoard(u);
+    function badge(kind, svg, val, cap, base, off) {
+      var cls = off ? ' off' : live && base != null && val !== base ? (val > base ? ' up' : ' dn') : '';
+      return '<div class="sb sb-' + kind + cls + '" title="' + esc({ Str: 'Strength', Will: 'Willpower', 'No ink': 'Can’t be put in the inkwell', Inkable: 'Inkable' }[cap] || cap) + '"><span class="sh">' + svg + '<b>' + (off ? '' : val) + '</b></span><small>' + esc(cap) + '</small></div>';
+    }
+    var HEX = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
+      (d.k ? '<circle cx="20" cy="20" r="18.5" fill="none" stroke="#e3bd62" stroke-width="1.6" stroke-dasharray="3 2.2"/>' : '') +
+      '<path d="M20 4.5l13.4 7.75v15.5L20 35.5 6.6 27.75v-15.5z" fill="' + (d.k ? 'url(#gk)' : '#2a2440') + '" stroke="' + (d.k ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.6"/></svg>';
+    var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(function (i, k) {
+      return '<svg viewBox="0 0 40 40" style="--g:' + INKC[i] + ';' + (k ? 'margin-left:-14px' : '') + '"><path d="M20 3l14 9-5 22H11L6 12z" fill="var(--g)" stroke="rgba(255,255,255,.75)" stroke-width="1.4"/><path d="M20 3l14 9H6z" fill="rgba(255,255,255,.35)"/><path d="M6 12h28L20 34z" fill="rgba(0,0,0,.18)"/></svg>';
+    }).join('') + '</span>' : '';
+    var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.5L24.7 8.7L33.1 6.9L31.3 15.3L38.5 20.0L31.3 24.7L33.1 33.1L24.7 31.3L20.0 38.5L15.3 31.3L6.9 33.1L8.7 24.7L1.5 20.0L8.7 15.3L6.9 6.9L15.3 8.7z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+    var SHIELD = '<svg viewBox="0 0 40 40"><path d="M20 3.5l13 4.8v10c0 7.6-5.4 14-13 17.2C12.4 32.3 7 25.9 7 18.3v-10z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+    var DIAMOND = '<svg viewBox="0 0 40 40"><path d="M20 2.5L34 20 20 37.5 6 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1.5" stroke-linejoin="round"/><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs></svg>';
+    var MOVE = '<svg viewBox="0 0 40 40"><path d="M20 6l12 7v14l-12 7-12-7V13z" fill="#2a2440" stroke="#9fd2ff" stroke-width="1.6"/></svg>';
+    var L = '<div class="grp">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') +
+      (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>';
+    var R = '<div class="grp r">';
+    if (d.t === 'location') R += badge('w', SHIELD, live ? WP(u) : d.w || 0, 'Will', d.w || 0) + badge('l', DIAMOND, live ? LORE(u) : d.l || 0, 'Lore', d.l || 0) + badge('mv', MOVE, d.mv || 0, 'Move');
+    else { var ch = d.t === 'character';
+      R += badge('s', STAR, ch ? (live ? STR(u) : d.s || 0) : 0, 'Str', d.s || 0, !ch) + badge('w', SHIELD, ch ? (live ? WP(u) : d.w || 0) : 0, 'Will', d.w || 0, !ch) + badge('l', DIAMOND, ch ? (live ? LORE(u) : d.l || 0) : 0, 'Lore', d.l || 0, !ch); }
+    R += '</div>';
+    var type = (d.song ? 'Action · Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (d.cl && d.cl.length ? ' · ' + d.cl.filter(function (x) { return x !== 'Song'; }).join(' · ') : '');
+    return '<div class="sp">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span>' + (d.set ? '<small>Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '') + '</div>';
   }
   function statusHTML(u, z) {
     if (!z || z.z !== 'board') return '';
@@ -4054,7 +4096,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function openZoom(u, dir) {
     var d = DD(u), z = zoneOf(u), acts = [], whys = [];
-    var info = headHTML(d) + '<div class="meta">' + defMeta(d) + '</div>' + statusHTML(u, z) +
+    var info = headHTML(d) + defMeta(d, u) + (statusHTML(u, z) ? '<div class="meta">' + statusHTML(u, z) + '</div>' : '') +
       '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
     var c = C(u), pi = S.cur, my = canAct() && c.o === pi;
     // Only what you can do right now becomes a button
@@ -4097,7 +4139,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function showReveal(u, how) {
     var d = DD(u), p = S.P[C(u).o];
-    var ov = zoomShell(d, '<div class="lz-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + (how && /^Used/.test(how) ? '' : ' played') + '</div>' + headHTML(d) +
+    var ov = zoomShell(d, '<div class="lz-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + (how && /^Used/.test(how) ? '' : ' played') + '</div>' + headHTML(d) + defMeta(d, u) +
       (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div><p class="lz-tap">Tap to continue</p>', [], null, null, { tapClose: true });
     ov.classList.add('reveal');
     Kit.haptic('light');
@@ -4378,7 +4420,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return '<div class="lz-head"><div class="lz-ttl"><h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '') + '</div>' + stHTML + '</div>';
   }
   function zoomDef(d, acts, nav) {
-    zoomShell(d, headHTML(d) + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
+    zoomShell(d, headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
   }
 
   // ═════════════════════════════════════════════════════════════════════════
