@@ -400,7 +400,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-info .ver{font-family:var(--serif);font-style:italic;color:var(--text-2);margin-top:1px;}
 .lz-info .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 /* Stat plate in the card details */
-.sp{display:flex;align-items:flex-start;gap:4px;margin-top:10px;padding:8px 10px 6px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);}
+.sp{--d1:color-mix(in srgb,var(--p1) 46%,#120d26);--d2:color-mix(in srgb,var(--p2) 46%,#120d26);display:flex;align-items:flex-start;gap:4px;margin-top:10px;padding:8px 10px 6px;border-radius:14px;
+  /* the card's ink colour; two inks meet on a 45° diagonal in the middle */
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 55%,rgba(0,0,0,.18)),linear-gradient(45deg,var(--d1) 0%,var(--d1) 44%,var(--d2) 56%,var(--d2) 100%);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--p1) 40%,#e3bd62),inset 0 1px 0 rgba(255,255,255,.15),0 4px 14px rgba(0,0,0,.3);}
+.sp .sb small{color:rgba(255,255,255,.72);}
 .sp .grp{display:flex;gap:4px;align-items:flex-start;}
 .sp .grp.r{margin-left:auto;}
 .sp .grp:not(.r){gap:12px;}
@@ -3911,7 +3915,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       R += badge('s', STAR, ch ? (live ? STR(u) : d.s || 0) : 0, 'Str', d.s || 0, !ch) + badge('w', SHIELD, ch ? (live ? WP(u) : d.w || 0) : 0, 'Will', d.w || 0, !ch) + badge('l', DIAMOND, ch ? (live ? LORE(u) : d.l || 0) : 0, 'Lore', d.l || 0, !ch); }
     R += '</div>';
     var type = (d.song ? 'Action · Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (d.cl && d.cl.length ? ' · ' + d.cl.filter(function (x) { return x !== 'Song'; }).join(' · ') : '');
-    return '<div class="sp' + (lsGet(CAPS, false) ? ' cap' : '') + '" role="button" tabindex="0" aria-expanded="' + !!lsGet(CAPS, false) + '" aria-label="Card stats. Tap to ' + (lsGet(CAPS, false) ? 'hide' : 'show') + ' labels">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span>' + (d.set ? '<small>Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '') + '</div>';
+    var c1 = INKC[inks[0]] || '#4a3f75', c2 = INKC[inks[1] || inks[0]] || c1;
+    return '<div class="sp' + (lsGet(CAPS, false) ? ' cap' : '') + '" style="--p1:' + c1 + ';--p2:' + c2 + '" role="button" tabindex="0" aria-expanded="' + !!lsGet(CAPS, false) + '" aria-label="Card stats. Tap to ' + (lsGet(CAPS, false) ? 'hide' : 'show') + ' labels">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span>' + (d.set ? '<small>Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '') + '</div>';
   }
   function statusHTML(u, z) {
     if (!z || z.z !== 'board') return '';
