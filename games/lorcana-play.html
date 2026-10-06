@@ -1721,14 +1721,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Names differ a little between sources (curly vs straight apostrophes, accents), so compare a plain form
   function skey(s) { s = String(s || '').toLowerCase(); try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {} return s.replace(/[’‘`]/g, "'").replace(/[^a-z0-9']+/g, ' ').trim(); }
   // Newer cards neither source knows yet
-  var STORY_FIX = { 'dante': 'Coco', 'miguel': 'Coco', 'miguel rivera': 'Coco', 'hector': 'Coco', 'imelda': 'Coco', 'mama imelda': 'Coco', 'pepita': 'Coco', 'ernesto de la cruz': 'Coco', 'mama coco': 'Coco' };
+  var STORY_FIX = { 'dante': 'Coco', 'miguel': 'Coco', 'miguel rivera': 'Coco', 'hector': 'Coco', 'imelda': 'Coco', 'mama imelda': 'Coco', 'pepita': 'Coco', 'ernesto de la cruz': 'Coco', 'mama coco': 'Coco',
+    // versions of Mickey's gang that come from one particular film or short
+    'mickey mouse|wayward sorcerer': "The Sorcerer's Apprentice", 'mickey mouse|steamboat pilot': 'Steamboat Willie' };
   function storyOf(d) {
     if (!d) return '';
     var s = d.st || '', L = window.LORC_STORY, k = skey(d.n), kv = k + '|' + skey(d.v);
     if (!s) s = storyX.m[kv] || '';
     if (!s && L) { var vi = L.v[kv]; s = vi != null ? L.s[vi] : L.n[k] != null ? L.s[L.n[k]] : ''; }
     if (!s) s = storyX.m[k] || '';
-    if (!s) s = STORY_FIX[k] || '';
+    if (!s || GENERIC.test(s)) s = STORY_FIX[kv] || s || STORY_FIX[k] || '';
     // Team-up cards ("Aladdin & Genie", "Huey, Dewey and Louie"): use the characters' own film
     if (!s && /&|,| and /.test(d.n)) {
       var parts = String(d.n).split(/\s*&\s*|\s*,\s*|\s+and\s+/);
@@ -1736,11 +1738,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     // The catch-all names ("Classic Disney", "Mickey Mouse & Friends") lose to a specific film when one is known (Golden Harp → Mickey and the Beanstalk)
     if (GENERIC.test(s) && L) { var vi2 = L.v[kv], sp = vi2 != null ? L.s[vi2] : L.n[k] != null ? L.s[L.n[k]] : ''; if (sp && !GENERIC.test(sp) && sp !== 'Lorcana') s = sp; }
-    if (GENERIC.test(s) || MICKEY_GANG[k]) s = 'Mickey and Friends';   // Mickey as Bob Cratchit is still Mickey
+    if (GENERIC.test(s)) s = 'Mickey and Friends';
     return s === 'Lorcana' ? '' : canonStory(s);
   }
-  // The core gang: every version of them (musketeer, Bob Cratchit, tailor…) counts as Mickey and Friends
-  var MICKEY_GANG = { 'mickey mouse': 1, 'minnie mouse': 1, 'donald duck': 1, 'daisy duck': 1, 'goofy': 1, 'pluto': 1, 'pete': 1, 'clarabelle': 1, 'horace': 1, 'chip': 0 };
   var GENERIC = /^(classic disney|mickey mouse (?:&|and) friends|mickey and friends)$/i;
   // One spelling per film: "The Princess And The Frog" / "Princess and the Frog" → "The Princess and
   // the Frog", "Raya" → "Raya and the Last Dragon". The bundled list's spelling wins.
