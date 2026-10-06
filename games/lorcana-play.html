@@ -435,6 +435,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rtext .ab{font-weight:900;letter-spacing:.02em;}
 .rtext .kw{font-weight:900;color:var(--gilt-2);}
 .rtext .rem{color:var(--text-2);font-style:italic;}
+.rtext .flav{font-family:var(--serif);font-style:italic;font-size:1.02rem;line-height:1.4;color:var(--text-2);}
 .sym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.17em;}
 .lz-acts{margin-top:14px;}
 .acts-row{display:flex;gap:8px;width:100%;}
@@ -725,7 +726,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       r: c.rarity ? String(c.rarity) : '', set: c.set ? String(c.set.code || c.set.id || '') : '',
       no: c.collector_number != null ? String(c.collector_number) : '',
       im: { s: im.small || im.normal || im.large || '', l: im.large || im.normal || im.small || '' },
-      st: String(c.franchise || c.story || c.movie || '')
+      st: String(c.franchise || c.story || c.movie || ''), fl: c.flavor_text ? String(c.flavor_text) : ''
     };
   }
   // Fallback source (https://api.lorcana-api.com/bulk/cards)
@@ -738,7 +739,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       id: 'la_' + String(c.Unique_ID || (c.Set_Num + '-' + c.Card_Num)), n: i > 0 ? nm.slice(0, i) : nm, v: i > 0 ? nm.slice(i + 3) : '',
       c: num(c.Cost), k: !!c.Inkable, ink: String(c.Color || '').split(/\s*[,\/-]\s*/).filter(Boolean), ty: ty, cl: cls,
       tx: String(c.Body_Text || '').replace(/\s*\n\s*/g, '\n'), kwl: [], s: num(c.Strength), w: num(c.Willpower), l: num(c.Lore), mv: num(c.Move_Cost),
-      r: String(c.Rarity || ''), set: String(c.Set_Num || c.Set_ID || ''), no: String(c.Card_Num || ''), im: { s: c.Image || '', l: c.Image || '' }, st: String(c.Franchise || '')
+      r: String(c.Rarity || ''), set: String(c.Set_Num || c.Set_ID || ''), no: String(c.Card_Num || ''), im: { s: c.Image || '', l: c.Image || '' }, st: String(c.Franchise || ''), fl: String(c.Flavor_Text || '')
     };
   }
   // Card text uses {I} ink, {E} exert, {S} strength, {W} willpower, {L} lore.
@@ -1358,6 +1359,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function download(progress) {
     return loadLorcast(progress).catch(function (e) { console.warn('Lorcast failed', e); return loadLorcanaApi(progress); });
   }
+  var LIBFMT = 2;   // bump when the saved card fields change
   DB.load = function (force) {
     if (DB.loading) return DB.loading;
     DB.status = 'loading'; DB.note = 'Opening the card library…'; dbNotify();
@@ -1366,13 +1368,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (v && v.cards && v.cards.length && !force) {
         useLibrary(v); dbNotify();
         // Refresh in the background every few days when online
-        if (Date.now() - (v.at || 0) > 3 * 864e5 && navigator.onLine !== false) {
-          download(function () {}).then(function (nv) { nv.at = Date.now(); if (nv.cards.length >= v.cards.length * 0.9) { cachePut(nv); useLibrary(nv); dbNotify(); } }).catch(function () {});
+        // (also when the saved list is an older format, e.g. from before flavour quotes were kept)
+        if ((Date.now() - (v.at || 0) > 3 * 864e5 || v.fmt !== LIBFMT) && navigator.onLine !== false) {
+          download(function () {}).then(function (nv) { nv.at = Date.now(); nv.fmt = LIBFMT; if (nv.cards.length >= v.cards.length * 0.9) { cachePut(nv); useLibrary(nv); dbNotify(); } }).catch(function () {});
         }
         return;
       }
       return download(progress).then(function (nv) {
-        nv.at = Date.now(); useLibrary(nv);
+        nv.at = Date.now(); nv.fmt = LIBFMT; useLibrary(nv);
         if (DB.status === 'ready') cachePut(nv);
         dbNotify();
       }).catch(function (e) {
@@ -2832,7 +2835,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
 
   var uidN = 0;
-  function compactOf(d) { return { id: d.id, n: d.n, v: d.v, c: d.c, k: d.k, ink: d.ink, ty: d.ty, cl: d.cl, tx: d.tx, kwl: d.kwl, s: d.s, w: d.w, l: d.l, mv: d.mv, r: d.r, set: d.set, no: d.no, im: d.im, st: d.st }; }
+  function compactOf(d) { return { id: d.id, n: d.n, v: d.v, c: d.c, k: d.k, ink: d.ink, ty: d.ty, cl: d.cl, tx: d.tx, kwl: d.kwl, s: d.s, w: d.w, l: d.l, mv: d.mv, r: d.r, set: d.set, no: d.no, im: d.im, st: d.st, fl: d.fl }; }
   function newSt() { return { q: 0, ql: 0, big: null, ban: 0, lost: 0, played: 0, songs: [], shifts: [], loc: 0, chal: 0, kills: [], inked: 0, turns: 0, fx: 0 }; }
   function newGame(cfg, choices) {
     tok++; closeOverlays(); Kit.handoff.close(); DEF = {}; uidN = 0; finishing = false;
@@ -3867,7 +3870,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
   function rulesHTML(d) {
     var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
-    if (!lines.length) return '<p class="rem">No card text.</p>';
+    // No rules text: show the card's flavour quote instead (in italics)
+    if (!lines.length) return d.fl ? '<p class="flav">' + esc(d.fl.trim()).replace(/\n+/g, '<br>') + '</p>' : '<p class="rem">No card text.</p>';
     return lines.map(function (L) {
       var h = esc(L.trim());
       h = h.replace(/\(([^)]*)\)/g, '<span class="rem">($1)</span>');
