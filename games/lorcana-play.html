@@ -1734,8 +1734,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var parts = String(d.n).split(/\s*&\s*|\s*,\s*|\s+and\s+/);
       for (var i = 0; i < parts.length && !s; i++) { var pk = skey(parts[i]); if (!pk) continue; s = storyX.m[pk] || (L && L.n[pk] != null ? L.s[L.n[pk]] : ''); }
     }
+    // The catch-all names ("Classic Disney", "Mickey Mouse & Friends") lose to a specific film when one is known (Golden Harp → Mickey and the Beanstalk)
+    if (GENERIC.test(s) && L) { var vi2 = L.v[kv], sp = vi2 != null ? L.s[vi2] : L.n[k] != null ? L.s[L.n[k]] : ''; if (sp && !GENERIC.test(sp) && sp !== 'Lorcana') s = sp; }
+    if (GENERIC.test(s)) s = 'Mickey and Friends';
     return s === 'Lorcana' ? '' : canonStory(s);
   }
+  var GENERIC = /^(classic disney|mickey mouse (?:&|and) friends|mickey and friends)$/i;
   // One spelling per film: "The Princess And The Frog" / "Princess and the Frog" → "The Princess and
   // the Frog", "Raya" → "Raya and the Last Dragon". The bundled list's spelling wins.
   var storyCanon = null, storyCache = {};
@@ -5783,7 +5787,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     run: function (a) { runAction(a); }, end: humanEnd, cpuChoose: cpuChoose, defenders: defenders, AB: AB, stx: stx, cant: cant, useAb: useAb, abUseWhy: abUseWhy, quiet: quiet, Q: function () { return Q; }, playCost: playCost, canPlay: canPlay, canQuest: canQuest,
     canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
     allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
-    STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, deEnt: deEnt, showLog: showLog,
+    STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
     // tests: apply one ability effect to a card, as if from src
     hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
   };
