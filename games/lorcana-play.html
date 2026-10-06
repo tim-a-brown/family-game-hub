@@ -392,6 +392,13 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .bld-filters{flex:none;display:flex;flex-direction:column;gap:6px;padding-bottom:6px;}
 .bld-filters .row1{display:flex;gap:6px;}
 .bld-filters .input{min-height:42px;flex:1;min-width:0;}
+.fchip.st-pick .ico{width:15px;height:15px;}
+.fchip.st-pick.on{background:var(--gilt);color:#2b1a00;}
+.fchip.st-pick .x{font-style:normal;font-size:1.05rem;margin-left:2px;}
+.st-row{border:0;color:inherit;text-align:left;width:100%;}
+.st-row.on{box-shadow:inset 0 0 0 2px var(--gilt);}
+.st-row small{color:var(--text-3);font-weight:700;}
+button.lz-story{border:0;background:none;padding:0;cursor:pointer;text-decoration:underline dotted rgba(227,189,98,.5);text-underline-offset:3px;}
 .fchips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
 .fchips::-webkit-scrollbar{display:none;}
 .fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.8rem;}
@@ -3433,6 +3440,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
       info.appendChild(g);
     }
     inner.appendChild(info);
+    var stb = info.querySelector('.lz-story.tap');
+    if (stb) stb.addEventListener('click', function (e) { e.stopPropagation(); if (ui.storyPick) ui.storyPick(stb.getAttribute('data-story')); });
     ov.appendChild(inner);
     if (!opt.modal && !opt.tapClose) ov.appendChild(el('button', { type: 'button', class: 'icon-btn lz-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeZoom }));
     if (opt.modal) ov.classList.add('modal');
@@ -3891,7 +3900,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   }
   function headHTML(d) {
     var st = storyOf(d);
-    return (st ? '<div class="lz-story"><small>From</small>' + esc(st) + '</div>' : '') + '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '');
+    var tap = st && ui.screen === 'builder' && ui.storyPick;
+    return (st ? (tap ? '<button type="button" class="lz-story tap" data-story="' + esc(st) + '"><small>From · see all</small>' + esc(st) + '</button>' : '<div class="lz-story"><small>From</small>' + esc(st) + '</div>') : '') + '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '');
   }
   function zoomDef(d, acts, nav) {
     zoomShell(d, headHTML(d) + '<div class="meta">' + defMeta(d) + '</div><div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
@@ -3989,16 +3999,44 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
     var search = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
     var t0 = 0; search.addEventListener('input', function () { clearTimeout(t0); t0 = setTimeout(function () { f.q = search.value.trim().toLowerCase(); f.shown = 60; paintGrid(); }, 160); });
     var moreBtn = el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Filters', onclick: moreFilters });
-    var inkChips = el('div', { class: 'fchips' }), costChips = el('div', { class: 'fchips' }), typeChips = el('div', { class: 'fchips' });
+    var inkChips = el('div', { class: 'fchips' }), costChips = el('div', { class: 'fchips' }), typeChips = el('div', { class: 'fchips' }), storyChips = el('div', { class: 'fchips' });
     var grid = el('div', { class: 'bld-grid' });
-    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [el('div', { class: 'row1' }, [search, moreBtn]), inkChips, costChips, typeChips]), grid]);
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [el('div', { class: 'row1' }, [search, moreBtn]), storyChips, inkChips, costChips, typeChips]), grid]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
     var wrap = el('div', { class: 'bld' + (lib ? ' lib' : '') }, [top, msg, tabs, body]);
     app.appendChild(wrap);
     function chip(label, on, click, dot) { return el('button', { type: 'button', class: 'fchip' + (on ? ' on' : ''), html: (dot ? '<i class="dot" style="--c:' + dot + '"></i>' : '') + esc(label), onclick: function () { Kit.sfx('tap'); click(); } }); }
+    // Film or show: the most common ones as chips, plus a searchable list of all of them
+    var storyCount = null;
+    function storyCounts() {
+      if (storyCount) return storyCount;
+      var c = {}; DB.unique.forEach(function (d) { var x = storyOf(d); if (x) c[x] = (c[x] || 0) + 1; });
+      return (storyCount = Object.keys(c).map(function (k) { return { s: k, n: c[k] }; }).sort(function (a, b) { return b.n - a.n || a.s.localeCompare(b.s); }));
+    }
+    function setStory(x) { f.story = x || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; storyChips.scrollLeft = 0; Kit.sfx('tap'); }
+    function pickStory() {
+      var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search films and shows', 'aria-label': 'Search films and shows' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh;
+      function paint() {
+        var t = skey(q.value); list.innerHTML = '';
+        if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story ? '' : ' on'), onclick: function () { sh.close(); setStory(''); } }, [el('b', { class: 'grow', text: 'Every film and show' })]));
+        storyCounts().forEach(function (x) {
+          if (t && skey(x.s).indexOf(t) < 0) return;
+          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story === x.s ? ' on' : ''), onclick: function () { sh.close(); setStory(x.s); } }, [el('b', { class: 'grow', text: x.s }), el('small', { text: plural(x.n, 'card') })]));
+        });
+      }
+      q.addEventListener('input', paint); paint();
+      node.appendChild(q); node.appendChild(list);
+      sh = Kit.sheet({ title: 'Film or show', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    }
+    // In the big card view, tap "From …" to see every card from that film
+    ui.storyPick = function (x) { closeZoom(); setStory(x); };
     function paintChips() {
+      storyChips.innerHTML = '';
+      storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.story ? ' on' : ''), html: Kit.icon('search') + '<span>' + esc(f.story || 'Film or show') + '</span>' + (f.story ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.story) setStory(''); else pickStory(); } }));
+      storyCounts().slice(0, 14).forEach(function (x) { if (x.s === f.story) return; storyChips.appendChild(chip(x.s, false, function () { setStory(x.s); })); });
+      storyChips.appendChild(chip('More…', false, pickStory));
       inkChips.innerHTML = ''; INKS.forEach(function (i) { inkChips.appendChild(chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }, INKC[i])); });
       costChips.innerHTML = ''; costChips.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
       [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { costChips.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
