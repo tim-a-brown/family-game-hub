@@ -424,7 +424,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   background:rgba(20,16,41,.88);color:var(--gilt-2);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.7),0 4px 14px rgba(0,0,0,.45);}
 .fc-hint i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--gilt) calc(var(--pr) * 360deg),rgba(227,189,98,.18) 0);color:#2b1a00;}
 .fc-hint i .ico,.fc-hint i svg{width:16px;height:16px;}
-.fc-hint.up{top:6px;}.fc-hint.dn{bottom:6px;}
+.fc-zone{--pr:0;position:fixed;left:0;right:0;height:36vh;z-index:300;pointer-events:none;opacity:0;transition:opacity .2s;}
+.fc-zone.up{top:0;background:linear-gradient(180deg,rgba(8,6,20,.97) 0%,rgba(8,6,20,.9) 34%,rgba(8,6,20,.5) 62%,transparent 100%);}
+.fc-zone.dn{bottom:0;height:52vh;background:linear-gradient(0deg,rgba(8,6,20,.97) 0%,rgba(8,6,20,.9) 34%,rgba(8,6,20,.5) 62%,transparent 100%);}
+.fc-zone.show{opacity:calc(var(--pr) * .95);}
+.fc-zone::after{content:'';position:absolute;left:0;right:0;height:3px;opacity:0;transition:opacity .15s;background:linear-gradient(90deg,transparent,var(--gilt-2),transparent);box-shadow:0 0 18px 4px rgba(246,220,149,.45);}
+.fc-zone.up::after{top:0;}.fc-zone.dn::after{bottom:0;}
+.fc-zone.armed{opacity:1;}.fc-zone.armed::after{opacity:1;}
+.fc-zone.fade{opacity:0;transition:opacity .5s ease .1s;}
+
+.fc-zone.up .fc-hint{top:calc(var(--safe-t, 0px) + 18px);}.fc-zone.dn .fc-hint{bottom:calc(var(--safe-b, 0px) + 120px);}
 .fc-hint.show{opacity:calc(.55 + var(--pr) * .45);transform:translateX(-50%) scale(calc(.86 + var(--pr) * .14));}
 .fc-hint.armed{background:linear-gradient(180deg,#f6dc95,#d9a94a 55%,#b9852c);color:#2b1a00;box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 22px rgba(246,220,149,.55);transform:translateX(-50%) scale(1.06);}
 .fc-hint.armed i{background:#2b1a00;color:var(--gilt-2);}
@@ -5917,7 +5926,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var sw = null;
     F.el.addEventListener('pointerdown', function (e) { stop(); sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, v: false, p0: F.pos, pts: [] }; });
     // Up and down on the front card: swipe up to bookmark it, down to add it to a deck
-    var hint = el('div', { class: 'fc-hint' }); F.el.appendChild(hint);
+    // The label sits in a dark band at the screen edge; the card slides into it as you swipe
+    var hint = el('div', { class: 'fc-hint' }), zone = el('div', { class: 'fc-zone' }, [hint]);
+    function zoneOn(cls, pr) {
+      if (!zone.isConnected) (F.ov || document.body).appendChild(zone);
+      zone.className = 'fc-zone' + (cls ? ' ' + cls : ''); zone.style.setProperty('--pr', (pr || 0).toFixed(2));
+    }
     var VT = 160, armed = 0, hintT = 0;
     // The card stretches after your finger with rubber-band resistance; the label grows
     // as you near the trigger point and turns solid gold when letting go will do it
@@ -5929,12 +5943,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var pr = Math.min(1, a / VT), d = defAt(j);
       b.style.transition = 'none';
       b.style.transform = pose(j - F.pos).t + ' translateY(' + rb.toFixed(1) + 'px) rotateX(' + (-rb * 0.06).toFixed(2) + 'deg) scale(' + (1 - pr * 0.04).toFixed(3) + ')';
-      if (!can || a < 12) { hint.className = 'fc-hint'; armed = 0; return; }
+      if (!can || a < 12) { hint.className = 'fc-hint'; zoneOn('', 0); armed = 0; return; }
       var now = pr >= 1 ? (dn ? 2 : 1) : 0;
       if (now && now !== armed) { Kit.haptic('light'); Kit.sfx('tick'); }
       armed = now;
       hint.className = 'fc-hint show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : '');
       hint.style.setProperty('--pr', pr.toFixed(2));
+      zoneOn('show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : ''), pr);
       var what = dn ? 'add to a deck' : d && isMarked(d) ? 'remove bookmark' : 'bookmark';
       hint.innerHTML = '<i>' + (dn ? DECK_ICO2 : Kit.icon('bookmark')) + '</i><span>' + (now ? 'Let go to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
     }
@@ -5969,8 +5984,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         var dy = (e && e.clientY != null ? e.clientY : s.y) - s.y, j0 = Math.round(F.pos), d = defAt(j0);
         var fire = !!armed && e.type !== 'pointercancel' && !!d; armed = 0;
         hint.className = 'fc-hint' + (fire ? ' done ' + (dy < 0 ? 'up' : 'dn') : '');
+        zoneOn(fire ? 'fade ' + (dy < 0 ? 'up' : 'dn') : (dy < 0 ? 'up' : 'dn'), 0);
         springBack(j0, fire, dy < 0 ? -1 : 1);
-        clearTimeout(hintT); hintT = setTimeout(function () { hint.className = 'fc-hint'; }, 700);
+        clearTimeout(hintT); hintT = setTimeout(function () { hint.className = 'fc-hint'; zoneOn('', 0); }, 700);
         if (!fire) return;
         if (dy < -VT) {
           var on = toggleMark(d); Kit.haptic('light'); Kit.sfx(on ? 'good' : 'tap');
