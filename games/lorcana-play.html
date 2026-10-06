@@ -422,7 +422,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sb small{max-height:0;opacity:0;overflow:hidden;transition:max-height .22s ease,opacity .18s;font-size:.58rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
 .sb-cost[title="Inkable"] small{color:var(--gilt-2);}
 .sb-ink .gems{display:flex;justify-content:center;width:auto;min-width:40px;}
+.inkico{display:inline-block;flex:none;width:calc(var(--ih,16px) * .87);height:var(--ih,16px);background:url(lorcana-inks.webp) 0 0/600% 100% no-repeat;vertical-align:-.28em;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55));}
+.inkdots .inkico{--ih:16px;margin-right:2px;border-radius:0;box-shadow:none;}
+.ink-chip .inkico{--ih:17px;margin-right:5px;}
 .sb-ink .gems{height:40px;align-items:center;}
+.sb-ink .inkico{--ih:24px;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.85)) drop-shadow(0 2px 3px rgba(0,0,0,.5));}
+.sb-ink .inkico + .inkico{margin-left:-3px;}
 .sb-ink .gems svg{position:relative;width:17px;height:17px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) drop-shadow(0 0 6px color-mix(in srgb,var(--g) 60%,transparent));}
 .sb.off{opacity:.16;}
 .sp{cursor:pointer;-webkit-tap-highlight-color:transparent;}
@@ -571,7 +576,6 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .dk-seat b{display:block;}
 .dk-seat small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
 .inkdots{display:inline-flex;gap:3px;vertical-align:middle;}
-.inkdots i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);}
 .dk-opt{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:var(--text);text-align:left;font-weight:800;}
 .dk-opt.on{background:color-mix(in srgb,var(--gilt) 26%,transparent);box-shadow:inset 0 0 0 2px var(--gilt);}
 .dk-opt .grow{flex:1;min-width:0;}
@@ -1427,7 +1431,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return DB.loading;
   };
   function inkOf(d) { return (d.ink && d.ink.length ? d.ink : []); }
-  function inkDots(inks) { return '<span class="inkdots">' + inks.map(function (i) { return '<i style="--c:' + (INKC[i] || '#888') + '" title="' + esc(i) + '"></i>'; }).join('') + '</span>'; }
+  // The real ink symbols, cut from the cards (games/lorcana-inks.webp, one per ink in INKS order)
+  function inkIcon(i) { var k = INKS.indexOf(i); if (k < 0) return ''; return '<i class="inkico" role="img" aria-label="' + esc(i) + '" title="' + esc(i) + '" style="background-position:' + (k * 20) + '% 0"></i>'; }
+  function inkDots(inks) { return '<span class="inkdots">' + inks.map(inkIcon).join('') + '</span>'; }
 
   // ═════════════════════════════════════════════════════════════════════════
   // Decks
@@ -3934,9 +3940,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var HEX = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
       (d.k ? '<circle cx="20" cy="20" r="18.5" fill="none" stroke="#e3bd62" stroke-width="1.6" stroke-dasharray="3 2.2"/>' : '') +
       '<path d="M20 4.5l13.4 7.75v15.5L20 35.5 6.6 27.75v-15.5z" fill="' + (d.k ? 'url(#gk)' : '#2a2440') + '" stroke="' + (d.k ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.6"/></svg>';
-    var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(function (i, k) {
-      return '<svg viewBox="0 0 40 40" style="--g:' + INKC[i] + ';' + (k ? 'margin-left:-6px' : '') + '"><path d="M20 3l14 9-5 22H11L6 12z" fill="var(--g)" stroke="rgba(255,255,255,.75)" stroke-width="1.4"/><path d="M20 3l14 9H6z" fill="rgba(255,255,255,.35)"/><path d="M6 12h28L20 34z" fill="rgba(0,0,0,.18)"/></svg>';
-    }).join('') + '</span>' : '';
+    var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(inkIcon).join('') + '</span>' : '';
     var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.5L24.7 8.7L33.1 6.9L31.3 15.3L38.5 20.0L31.3 24.7L33.1 33.1L24.7 31.3L20.0 38.5L15.3 31.3L6.9 33.1L8.7 24.7L1.5 20.0L8.7 15.3L6.9 6.9L15.3 8.7z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
     var SHIELD = '<svg viewBox="0 0 40 40"><path d="M20 3.5l13 4.8v10c0 7.6-5.4 14-13 17.2C12.4 32.3 7 25.9 7 18.3v-10z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
     var DIAMOND = '<svg viewBox="0 0 40 40"><path d="M20 2.5L34 20 20 37.5 6 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1.5" stroke-linejoin="round"/><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs></svg>';
@@ -4752,7 +4756,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
       storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } }));
       storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.story ? ' on' : ''), html: Kit.icon('search') + '<span>' + esc(f.story || 'Film or show') + '</span>' + (f.story ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.story) setStory(''); else pickStory(); } }));
-      inkChips.innerHTML = ''; INKS.forEach(function (i) { inkChips.appendChild(chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }, INKC[i])); });
+      inkChips.innerHTML = ''; INKS.forEach(function (i) { var ch = chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }); ch.insertAdjacentHTML('afterbegin', inkIcon(i)); ch.classList.add('ink-chip'); inkChips.appendChild(ch); });
       costChips.innerHTML = ''; costChips.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
       [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { costChips.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
       typeChips.innerHTML = ''; [['character', 'Characters'], ['action', 'Actions'], ['song', 'Songs'], ['item', 'Items'], ['location', 'Locations']].forEach(function (t) {

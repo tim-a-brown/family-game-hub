@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v113-2026-10-06-lorcana-header';
+const CACHE_VERSION = 'v114-2026-10-06-lorcana-ink-icons';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -136,6 +136,7 @@ const PRECACHE_URLS = [
   '/games/axisallies.html',
   '/games/lorcana-play.html',
   '/games/lorcana-stories.js',
+  '/games/lorcana-inks.webp',
   '/games/sandlot.html',
   '/games/axisallies-score.html',
   '/games/marblesolitaire.html',
