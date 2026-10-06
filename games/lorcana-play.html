@@ -431,10 +431,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sb .sh{position:relative;width:40px;height:40px;display:grid;place-items:center;}
 .sb .sh > svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
 .sb b{position:relative;font-family:var(--display);font-size:1.3rem;font-weight:400;line-height:1;color:#241a08;}
-.sb-cost b{color:#2b1a00;}
-.sb-cost:not([title="Inkable"]) b,.sb-mv b{color:#fff;}
-.sb-s b{font-size:1.2rem;}
-.sb-w b{margin-top:-2px;}
+.sb-cost b,.sb-mv b{color:#f3ead2;font-size:1.15rem;}
+.sb-s b{font-size:1.1rem;color:#1c1f26;}
+.sb-w b{margin-top:-3px;color:#fff;}
+.sb-l b{color:#f6e1a8;font-size:1rem;}
 .sb small{max-height:0;opacity:0;overflow:hidden;transition:max-height .22s ease,opacity .18s;font-size:.58rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
 .sb-cost[title="Inkable"] small{color:var(--gilt-2);}
 .sb-ink .gems{display:flex;justify-content:center;width:auto;min-width:40px;}
@@ -449,7 +449,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sp{cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .sp.cap .sb small{max-height:14px;opacity:1;}
 .sp .sb{gap:0;}.sp.cap .sb{gap:3px;}
-.sb.up b{color:#0f7a37;}.sb.dn b{color:#c0262d;}
+.sb.up b{color:#7dffa6;}.sb.dn b{color:#ff8a8a;}
+.sb-s.up b{color:#0f7a37;}.sb-s.dn b{color:#c0262d;}
 .sb.up .sh > svg{filter:drop-shadow(0 0 6px rgba(125,255,166,.9));}.sb.dn .sh > svg{filter:drop-shadow(0 0 6px rgba(255,107,107,.9));}
 .tl{display:block;margin-top:7px;font-size:.82rem;font-weight:800;color:var(--text-2);letter-spacing:.01em;}
 .tl span{display:block;}
@@ -743,6 +744,12 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .adv-pick.on small{color:var(--gilt-2);font-weight:800;}
 .adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .adv-tog .label{margin:0;}
+.adv .kws{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.adv .kws .fchip{justify-content:center;}
+.picksel{flex-wrap:wrap;overflow:visible;margin-bottom:10px;}
+.pk-row .ck{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);color:#2b1a00;}
+.pk-row.on .ck{background:var(--gilt);box-shadow:none;}
+.pk-row .ck .ico{width:15px;height:15px;}
 .flowpanel .adv{margin-top:14px;}
 .flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips,.flowpanel .adv-dup{display:none!important;}
 .fchip.fclear{background:rgba(196,110,96,.16);color:#e9a596;box-shadow:inset 0 0 0 1.5px rgba(214,134,118,.5);}
@@ -761,6 +768,7 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
   .inkrow{gap:8px;}
   .adv .types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
   .adv .types .fchip{justify-content:center;}
+  .adv .kws{grid-template-columns:repeat(3,minmax(0,1fr));}
   .inkrow .ink-r{padding-left:9px;}
   .inkk .fchip{padding:0 8px;}
   .inkrow .fchips .fchip{padding:0 9px;}
@@ -5643,13 +5651,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var cls = off ? ' off' : live && base != null && val !== base ? (val > base ? ' up' : ' dn') : '';
       return '<div class="sb sb-' + kind + cls + '" title="' + esc({ Str: 'Strength', Will: 'Willpower', 'No ink': 'Can’t be put in the inkwell', Inkable: 'Inkable' }[cap] || cap) + '"><span class="sh">' + svg + '<b>' + (off ? '' : val) + '</b></span><small>' + esc(cap) + '</small></div>';
     }
+    // Shapes drawn after the printed card: cost hexagon (in a gold ring when inkable), strength
+    // coin on a spiked star, willpower heater shield, lore diamond
+    var HEXP = 'M20 7l11.26 6.5v13L20 33l-11.26-6.5v-13z', HEXI = 'M20 9.6l9 5.2v10.4l-9 5.2-9-5.2V14.8z';
     var HEX = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
-      (d.k ? '<circle cx="20" cy="20" r="18.5" fill="none" stroke="#e3bd62" stroke-width="1.6" stroke-dasharray="3 2.2"/>' : '') +
-      '<path d="M20 4.5l13.4 7.75v15.5L20 35.5 6.6 27.75v-15.5z" fill="' + (d.k ? 'url(#gk)' : '#2a2440') + '" stroke="' + (d.k ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.6"/></svg>';
+      (d.k ? '<circle cx="20" cy="20" r="19" fill="url(#gk)" stroke="#fff2c4" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#7a5618" stroke-width="1" stroke-dasharray="1.3 1.5"/>' : '') +
+      '<path d="' + HEXP + '" fill="#1d1a2c" stroke="' + (d.k ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.4" stroke-linejoin="round"/><path d="' + HEXI + '" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/></svg>';
     var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(inkIcon).join('') + '</span>' : '';
-    var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.5L24.7 8.7L33.1 6.9L31.3 15.3L38.5 20.0L31.3 24.7L33.1 33.1L24.7 31.3L20.0 38.5L15.3 31.3L6.9 33.1L8.7 24.7L1.5 20.0L8.7 15.3L6.9 6.9L15.3 8.7z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-    var SHIELD = '<svg viewBox="0 0 40 40"><path d="M20 3.5l13 4.8v10c0 7.6-5.4 14-13 17.2C12.4 32.3 7 25.9 7 18.3v-10z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-    var DIAMOND = '<svg viewBox="0 0 40 40"><path d="M20 2.5L34 20 20 37.5 6 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1.5" stroke-linejoin="round"/><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs></svg>';
+    var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
+    var SHIELD = '<svg viewBox="0 0 40 40"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
+    var DIAMOND = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs><path d="M20 1.5L33 20 20 38.5 7 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1" stroke-linejoin="round"/><path d="M20 6.5L29.5 20 20 33.5 10.5 20z" fill="#1d1a2c"/></svg>';
     var MOVE = '<svg viewBox="0 0 40 40"><path d="M20 6l12 7v14l-12 7-12-7V13z" fill="#2a2440" stroke="#9fd2ff" stroke-width="1.6"/></svg>';
     // Cost on the left, ink gem(s) centred between it and the stats
     var L = '<div class="grp">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') + '</div>' +
@@ -6478,7 +6489,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, cost: null, type: null, set: '', kw: '', inkable: false, fit: false, marked: false, deck: '', chr: '', cls: '', shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], shown: 60, tab: 'pool' };
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
     nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
     var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
@@ -6538,7 +6549,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks and cost. Everything else lives in Filters.
     var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, costChips, onChips]), grid]);
-    var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
+    var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips kws' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
     var advSec = function (t, n, cls) { return el('div', cls ? { class: cls } : null, [el('div', { class: 'label', text: t }), n]); };
     // Copies of the always-on filters, so the menu holds everything (the cover-flow panel already shows the originals)
     var advQ = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
@@ -6573,101 +6584,78 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var out = {}; savedDecks().forEach(function (dk) { if (f.deck !== '*' && dk.id !== f.deck) return; for (var id in dk.cards) { var x = DB.byId[id]; if (x && dk.cards[id] > 0) out[x.full.toLowerCase()] = 1; } });
       return out;
     }
-    function setStory(x) { f.story = x || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; storyChips.scrollLeft = 0; Kit.sfx('tap'); }
-    function pickStory() {
-      var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search films and shows', 'aria-label': 'Search films and shows' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh;
+    // Filters are OR within a group (cost 2 or 3; Toy Story or Coco) and AND across groups
+    function refilter() { f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; }
+    function togF(key, k) { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else a.push(k); refilter(); }
+    function setOnly(key, k) { f[key] = k ? [k] : []; refilter(); Kit.sfx('tap'); }
+    // A picker that stays open: tap rows to add or remove; what's picked sits at the top with an ×
+    function multiPick(o) {
+      var all = o.items(), node = el('div'), sel = el('div', { class: 'fchips picksel' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } });
+      var q = el('input', { class: 'input', type: 'search', placeholder: o.ph, 'aria-label': o.ph });
+      function lab(k) { for (var i = 0; i < all.length; i++) if (all[i].k === k) return all[i].label; return k; }
       function paint() {
-        var t = skey(q.value); list.innerHTML = '';
-        if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story ? '' : ' on'), onclick: function () { sh.close(); setStory(''); } }, [el('b', { class: 'grow', text: 'Every film and show' })]));
-        var studios = { Disney: 0, Pixar: 0 }; DB.unique.forEach(function (d) { studios[studioOf(d)]++; });
-        [['Disney', 'Everything that isn’t Pixar'], ['Pixar', 'Toy Story, The Incredibles, Coco…']].forEach(function (x) {
-          if (t && skey(x[0]).indexOf(t) < 0) return;
-          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story === x[0] ? ' on' : ''), onclick: function () { sh.close(); setStory(x[0]); } }, [
-            el('div', { class: 'grow' }, [el('b', { text: x[0] }), el('small', { style: { display: 'block' }, text: x[1] })]), el('small', { text: plural(studios[x[0]], 'card') })]));
+        var cur = f[o.key], t = skey(q.value), shown = 0;
+        sel.innerHTML = '';
+        cur.forEach(function (k) { sel.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-label': 'Remove ' + lab(k), html: '<span>' + esc(lab(k)) + '</span><i class="x">×</i>', onclick: function () { Kit.sfx('tap'); togF(o.key, k); paint(); } })); });
+        sel.style.display = cur.length ? '' : 'none';
+        list.innerHTML = '';
+        all.forEach(function (x) {
+          if (t && skey(x.label + ' ' + (x.find || '')).indexOf(t) < 0) return;
+          if (++shown > (o.max || 500)) return;
+          var on = cur.indexOf(x.k) >= 0;
+          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row pk-row' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () { Kit.sfx('tap'); togF(o.key, x.k); paint(); } }, [
+            el('span', { class: 'ck', html: on ? Kit.icon('check') : '' }),
+            el('div', { class: 'grow' }, [el('b', { text: x.label }), x.sub ? el('small', { style: { display: 'block' }, text: x.sub }) : null]),
+            el('small', { text: x.n })]));
         });
-        storyCounts().forEach(function (x) {
-          if (t && skey(x.s).indexOf(t) < 0) return;
-          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story === x.s ? ' on' : ''), onclick: function () { sh.close(); setStory(x.s); } }, [el('b', { class: 'grow', text: x.s }), el('small', { text: plural(x.n, 'card') })]));
-        });
+        if (!shown) list.appendChild(el('p', { class: 'muted', text: 'Nothing matches.' }));
       }
       q.addEventListener('input', paint); paint();
-      node.appendChild(q); node.appendChild(list);
-      sh = Kit.sheet({ title: 'Film or show', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+      node.appendChild(sel); node.appendChild(q); node.appendChild(list);
+      Kit.sheet({ title: o.title, node: node, actions: [
+        { label: 'Clear', cls: 'btn-ghost', keep: true, onClick: function () { f[o.key] = []; refilter(); paint(); } },
+        { label: 'Close', cls: 'btn-primary' }] });
     }
-    // Character: every version of one character, whatever film or show it's from
-    function setChar(x) { f.chr = x || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; storyChips.scrollLeft = 0; Kit.sfx('tap'); }
-    // Classification: Toy, Hero, Princess, Alien… across every film and show
-    function setCls(x) { f.cls = x || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; storyChips.scrollLeft = storyChips.scrollWidth; Kit.sfx('tap'); }
+    function pickStory() {
+      multiPick({ title: 'Film or show', ph: 'Search films and shows', key: 'stories', items: function () {
+        var studios = { Disney: 0, Pixar: 0 }; DB.unique.forEach(function (d) { studios[studioOf(d)]++; });
+        return [{ k: 'Disney', label: 'Disney', sub: 'Everything that isn’t Pixar', n: plural(studios.Disney, 'card') }, { k: 'Pixar', label: 'Pixar', sub: 'Toy Story, The Incredibles, Coco…', n: plural(studios.Pixar, 'card') }]
+          .concat(storyCounts().map(function (x) { return { k: x.s, label: x.s, n: plural(x.n, 'card') }; }));
+      } });
+    }
     function clsCounts() {
       var c = {};
       DB.unique.forEach(function (d) { (d.cl || []).forEach(function (k) { if (k === 'Song') return; c[k] = (c[k] || 0) + 1; }); });
       return Object.keys(c).map(function (k) { return { s: k, n: c[k] }; }).sort(function (a, b) { return a.s.localeCompare(b.s); });
     }
     function pickCls() {
-      var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search classifications', 'aria-label': 'Search classifications' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh, all = clsCounts();
-      function paint() {
-        var t = skey(q.value); list.innerHTML = '';
-        if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.cls ? '' : ' on'), onclick: function () { sh.close(); setCls(''); } }, [el('b', { class: 'grow', text: 'Every classification' })]));
-        all.forEach(function (x) {
-          if (t && skey(x.s).indexOf(t) < 0) return;
-          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.cls === x.s ? ' on' : ''), onclick: function () { sh.close(); setCls(x.s); } }, [el('b', { class: 'grow', text: x.s }), el('small', { text: plural(x.n, 'card') })]));
-        });
-      }
-      q.addEventListener('input', paint); paint();
-      node.appendChild(q); node.appendChild(list);
-      sh = Kit.sheet({ title: 'Classification', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+      multiPick({ title: 'Classification', ph: 'Search classifications', key: 'clss', items: function () { return clsCounts().map(function (x) { return { k: x.s, label: x.s, n: plural(x.n, 'card') }; }); } });
     }
-    // Card set: a searchable list like the others, newest first
     function setName(code) { var x = DB.sets.filter(function (y) { return y.code === code; })[0]; return x ? x.name : 'Set ' + code; }
-    function setCls2(code) { f.set = code || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; Kit.sfx('tap'); }
     function pickSet() {
-      var c = {}; DB.unique.forEach(function (d) { c[d.set] = (c[d.set] || 0) + 1; });
-      var all = Object.keys(c).map(function (k) { return { code: k, name: setName(k), n: c[k] }; }).sort(function (a, b) { return setOrd(b.code) - setOrd(a.code) || b.code.localeCompare(a.code); });
-      var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search sets', 'aria-label': 'Search sets' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh;
-      function paint() {
-        var t = skey(q.value); list.innerHTML = '';
-        if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.set ? '' : ' on'), onclick: function () { sh.close(); setCls2(''); } }, [el('b', { class: 'grow', text: 'Every set' })]));
-        all.forEach(function (x) {
-          if (t && skey(x.name + ' ' + x.code).indexOf(t) < 0) return;
-          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.set === x.code ? ' on' : ''), onclick: function () { sh.close(); setCls2(x.code); } }, [
-            el('div', { class: 'grow' }, [el('b', { text: x.name }), el('small', { style: { display: 'block' }, text: /^\d+$/.test(x.code) ? 'Set ' + x.code : x.code })]), el('small', { text: plural(x.n, 'card') })]));
-        });
-      }
-      q.addEventListener('input', paint); paint();
-      node.appendChild(q); node.appendChild(list);
-      sh = Kit.sheet({ title: 'Card set', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+      multiPick({ title: 'Card set', ph: 'Search sets', key: 'sets', items: function () {
+        var c = {}; DB.unique.forEach(function (d) { c[d.set] = (c[d.set] || 0) + 1; });
+        return Object.keys(c).sort(function (a, b) { return setOrd(b) - setOrd(a) || b.localeCompare(a); }).map(function (k) { var nm2 = setName(k), sub = /^\d+$/.test(k) ? 'Set ' + k : k; return { k: k, label: nm2, sub: sub, find: sub, n: plural(c[k], 'card') }; });
+      } });
     }
-    ui.clsPick = function (x) { if (!fpanel) closeZoom(); setCls(x); };
-    ui.typePick = function (t) { if (!fpanel) closeZoom(); f.type = t; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; Kit.sfx('tap'); };
     function charCounts() {
       var c = {};
       DB.unique.forEach(function (d) { if (d.t !== 'character') return; var k = d.n; if (!c[k]) c[k] = { s: k, n: 0, st: {} }; c[k].n++; var so = storyOf(d); if (so) c[k].st[so] = 1; });
       return Object.keys(c).map(function (k) { return c[k]; }).sort(function (a, b) { return b.n - a.n || a.s.localeCompare(b.s); });
     }
     function pickChar() {
-      var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search characters', 'aria-label': 'Search characters' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh, all = charCounts();
-      function paint() {
-        var t = skey(q.value); list.innerHTML = '';
-        if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.chr ? '' : ' on'), onclick: function () { sh.close(); setChar(''); } }, [el('b', { class: 'grow', text: 'Every character' })]));
-        var shown = 0;
-        all.forEach(function (x) {
-          if (t && skey(x.s).indexOf(t) < 0) return;
-          if (++shown > 150) return;
-          var films = Object.keys(x.st);
-          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.chr === x.s ? ' on' : ''), onclick: function () { sh.close(); setChar(x.s); } }, [
-            el('div', { class: 'grow' }, [el('b', { text: x.s }), films.length ? el('small', { style: { display: 'block' }, text: films.length > 2 ? films.slice(0, 2).join(', ') + ' + ' + (films.length - 2) + ' more' : films.join(', ') }) : null]),
-            el('small', { text: plural(x.n, 'version') })]));
-        });
-      }
-      q.addEventListener('input', paint); paint();
-      node.appendChild(q); node.appendChild(list);
-      sh = Kit.sheet({ title: 'Character', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+      multiPick({ title: 'Character', ph: 'Search characters', key: 'chrs', max: 150, items: function () {
+        return charCounts().map(function (x) { var films = Object.keys(x.st); return { k: x.s, label: x.s, sub: films.length > 2 ? films.slice(0, 2).join(', ') + ' + ' + (films.length - 2) + ' more' : films.join(', '), n: plural(x.n, 'version') }; });
+      } });
     }
-    // In the big card view, tap "From …" to see every card from that film
-    ui.storyPick = function (x) { if (!fpanel) closeZoom(); setStory(x); };
-    ui.charPick = function (x) { if (!fpanel) closeZoom(); setChar(x); };
+    // Tapping a name, film, type or classification in the big card view shows just those cards
+    ui.clsPick = function (x) { if (!fpanel) closeZoom(); setOnly('clss', x); };
+    ui.typePick = function (t) { if (!fpanel) closeZoom(); setOnly('types', t); };
+    ui.storyPick = function (x) { if (!fpanel) closeZoom(); setOnly('stories', x); };
+    ui.charPick = function (x) { if (!fpanel) closeZoom(); setOnly('chrs', x); };
     // Bookmarks change from the big card view: keep the chip count and grid up to date
     ui.onMark = function () { if (!wrap.isConnected) { ui.onMark = null; return; } paintChips(); paintGrid(true); };
+    var TYPE_NAMES = { character: 'Characters', action: 'Actions', song: 'Songs', item: 'Items', location: 'Locations' };
     function paintChips() {
       storyChips.innerHTML = ''; advTop.innerHTML = '';
       var mc = markCount();
@@ -6682,13 +6670,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
-      [['search', 'Film or show', f.story, pickStory], ['user', 'Character', f.chr, pickChar], ['star', 'Classification', f.cls, pickCls], ['book', 'Card set', f.set ? setName(f.set) : '', pickSet]].forEach(function (r) {
+      var sumOf = function (a, fn) { fn = fn || function (x) { return x; }; return !a.length ? '' : a.length === 1 ? fn(a[0]) : a.length === 2 ? fn(a[0]) + ', ' + fn(a[1]) : fn(a[0]) + ' + ' + (a.length - 1) + ' more'; };
+      [['search', 'Film or show', sumOf(f.stories), pickStory], ['user', 'Character', sumOf(f.chrs), pickChar], ['star', 'Classification', sumOf(f.clss), pickCls], ['book', 'Card set', sumOf(f.sets, setName), pickSet]].forEach(function (r) {
         pickRows.appendChild(el('button', { type: 'button', class: 'lp-li st-row adv-pick' + (r[2] ? ' on' : ''), onclick: function () { Kit.sfx('tap'); r[3](); } }, [
           el('span', { html: Kit.icon(r[0]) }), el('b', { class: 'grow', text: r[1] }), el('small', { text: r[2] || 'Any' })]));
       });
       kwChips.innerHTML = '';
       ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].sort(function (a, b) { return KWNAME[a].localeCompare(KWNAME[b]); }).forEach(function (k) {
-        kwChips.appendChild(chip(KWNAME[k], f.kw === k, function () { f.kw = f.kw === k ? '' : k; f.shown = 60; paintChips(); paintGrid(); }));
+        kwChips.appendChild(chip(KWNAME[k], f.kws.indexOf(k) >= 0, function () { togF('kws', k); }));
       });
       // Inkable: any, inkable, or not inkable
       inkK.innerHTML = '';
@@ -6701,15 +6690,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       onChips.innerHTML = '';
       var offs = [];
       INKS.forEach(function (i) { if (f.inks[i]) offs.push([i, function () { f.inks[i] = false; }, inkIcon(i)]); });
-      if (f.type) offs.push([{ character: 'Characters', action: 'Actions', song: 'Songs', item: 'Items', location: 'Locations' }[f.type], function () { f.type = null; }]);
-      if (f.story) offs.push([f.story, function () { f.story = ''; }]);
-      if (f.chr) offs.push([f.chr, function () { f.chr = ''; }]);
-      if (f.cls) offs.push([f.cls, function () { f.cls = ''; }]);
-      if (f.kw) offs.push([KWNAME[f.kw], function () { f.kw = ''; }]);
-      if (f.set) offs.push([setName(f.set), function () { f.set = ''; }]);
+      var offIn = function (key, fn) { f[key].forEach(function (k) { offs.push([fn ? fn(k) : k, function () { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); }]); }); };
+      offIn('types', function (t) { return TYPE_NAMES[t]; }); offIn('stories'); offIn('chrs'); offIn('clss'); offIn('kws', function (k) { return KWNAME[k]; }); offIn('sets', setName);
       if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable' : 'Inkable', function () { f.inkable = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
-      var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + (f.cost != null ? 1 : 0);
+      var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + f.costs.length;
       if (any > 1 || (any && offs.length)) onChips.appendChild(el('button', { type: 'button', class: 'fchip fclear', text: 'Clear all', onclick: clearFilters }));
       offs.forEach(function (o) {
         onChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-label': 'Remove filter: ' + o[0], html: (o[2] || '') + '<span>' + esc(o[0]) + '</span><i class="x">×</i>', onclick: function () { o[1](); f.shown = 60; Kit.sfx('tap'); paintChips(); paintGrid(); } }));
@@ -6720,26 +6705,26 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       inkChips.innerHTML = ''; INKS.forEach(function (i) { var ch = chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }); ch.insertAdjacentHTML('afterbegin', inkIcon(i)); ch.classList.add('ink-chip'); inkChips.appendChild(ch); });
       [costChips, advCost].forEach(function (box) {
         box.innerHTML = '';
-        [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { box.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
+        [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { box.appendChild(chip(c === 8 ? '8+' : String(c), f.costs.indexOf(c) >= 0, function () { togF('costs', c); })); });
       });
       if (document.activeElement !== advQ) advQ.value = search.value;
-      typeChips.innerHTML = ''; [['character', 'Characters'], ['action', 'Actions'], ['song', 'Songs'], ['item', 'Items'], ['location', 'Locations']].forEach(function (t) {
-        typeChips.appendChild(chip(t[1], f.type === t[0], function () { f.type = f.type === t[0] ? null : t[0]; f.shown = 60; paintChips(); paintGrid(); }));
+      typeChips.innerHTML = ''; Object.keys(TYPE_NAMES).forEach(function (t) {
+        typeChips.appendChild(chip(TYPE_NAMES[t], f.types.indexOf(t) >= 0, function () { togF('types', t); }));
       });
     }
     function matches(d) {
       var di = inkOf(d), on = INKS.filter(function (i) { return f.inks[i]; });
       if (on.length && !di.some(function (i) { return on.indexOf(i) >= 0; })) return false;
       if (f.fit) { var dk = deckInks(deck.cards); if (dk.length === 2 && !di.every(function (i) { return dk.indexOf(i) >= 0; })) return false; }
-      if (f.cost != null && (f.cost === 8 ? d.c < 8 : d.c !== f.cost)) return false;
-      if (f.type) { if (f.type === 'song' ? !d.song : f.type === 'action' ? d.t !== 'action' || d.song : d.t !== f.type) return false; }
-      if (f.set && String(d.set) !== f.set) return false;
+      if (f.costs.length && !f.costs.some(function (c) { return c === 8 ? d.c >= 8 : d.c === c; })) return false;
+      if (f.types.length && !f.types.some(function (t) { return t === 'song' ? d.song : t === 'action' ? d.t === 'action' && !d.song : d.t === t; })) return false;
+      if (f.sets.length && f.sets.indexOf(String(d.set)) < 0) return false;
       if (f.inkable === 1 && !d.k) return false;
       if (f.inkable === 2 && d.k) return false;
-      if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
-      if (f.story && (f.story === 'Pixar' || f.story === 'Disney' ? studioOf(d) !== f.story : storyOf(d) !== f.story)) return false;
-      if (f.chr && d.n !== f.chr) return false;
-      if (f.cls && (d.cl || []).indexOf(f.cls) < 0) return false;
+      if (f.kws.length && !f.kws.some(function (k) { return k === 'shift' ? d.K.shift : d.K[k]; })) return false;
+      if (f.stories.length && !f.stories.some(function (x) { return x === 'Pixar' || x === 'Disney' ? studioOf(d) === x : storyOf(d) === x; })) return false;
+      if (f.chrs.length && f.chrs.indexOf(d.n) < 0) return false;
+      if (f.clss.length && !f.clss.some(function (x) { return (d.cl || []).indexOf(x) >= 0; })) return false;
       if (f.deck && !(deckSet || (deckSet = deckNames()))[d.full.toLowerCase()]) return false;
       if (f.marked && !isMarked(d)) return false;
       if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
@@ -6855,11 +6840,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var fpCatch = null;
     var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
     function advCount() {
-      var n = 0; if (f.story) n++; if (f.chr) n++; if (f.cls) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++; if (f.fit) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.types.length + f.sets.length + f.kws.length; if (f.inkable) n++; if (f.fit) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function activeFilters() {
-      var n = 0; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.story) n++; if (f.chr) n++; if (f.cls) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.inkable) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function filterBtn() {
@@ -6902,7 +6887,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.story = ''; f.chr = ''; f.cls = ''; f.cost = null; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.fit = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
