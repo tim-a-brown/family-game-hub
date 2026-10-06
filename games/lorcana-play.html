@@ -603,6 +603,23 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 button.lz-story{border:0;background:none;padding:0;cursor:pointer;}
 button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;opacity:.85;}
 .fchips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+/* Filter panel over the big card view */
+.lz-filt{position:fixed;left:calc(12px + env(safe-area-inset-left,0px));top:calc(var(--safe-t) + 10px);z-index:3;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;
+  background:rgba(20,18,40,.78);color:#fff;font-weight:800;font-size:.92rem;box-shadow:0 4px 14px rgba(0,0,0,.45);}
+.lz-filt .ico{width:22px;height:22px;}
+.lz-filt.open{background:var(--gilt);color:#2b1a00;}
+.lz-filt b{position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;padding:0 5px;box-shadow:0 0 0 2px #141029;border-radius:10px;background:var(--gilt);color:#2b1a00;font-size:.75rem;display:grid;place-items:center;}
+.lz-filt.on,.lz-filt.open{box-shadow:0 0 0 2px var(--gilt),0 4px 14px rgba(0,0,0,.45);}
+.flowpanel{position:fixed;left:0;right:0;bottom:0;z-index:430;max-height:56vh;max-height:56dvh;overflow:auto;overscroll-behavior:contain;padding:10px 14px calc(var(--safe-b) + 14px);
+  background:var(--bg-2);border-radius:22px 22px 0 0;box-shadow:0 -12px 32px rgba(0,0,0,.55),inset 0 1px 0 rgba(227,189,98,.4);transform:translateY(105%);transition:transform .3s var(--spring);}
+.flowpanel.show{transform:none;}
+@media (min-width:700px){.flowpanel{left:50%;right:auto;width:600px;margin-left:-300px;}}
+.fp-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.fp-top b{font-size:1.05rem;}
+.fp-n{flex:1;min-width:0;color:var(--text-3);font-weight:800;font-size:.85rem;}
+.fp-n.none{color:#ff9a9a;}
+.flowfilt .k-scrim{z-index:450;}
+.flowfilt .lz{padding-bottom:56vh;}
 .fchips::-webkit-scrollbar{display:none;}
 .fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.8rem;}
 .fchip.on{background:var(--gilt);color:#2b1a00;}
@@ -4690,7 +4707,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       sh = Kit.sheet({ title: 'Film or show', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     }
     // In the big card view, tap "From …" to see every card from that film
-    ui.storyPick = function (x) { closeZoom(); setStory(x); };
+    ui.storyPick = function (x) { if (!fpanel) closeZoom(); setStory(x); };
     // Bookmarks change from the big card view: keep the chip count and grid up to date
     ui.onMark = function () { if (!wrap.isConnected) { ui.onMark = null; return; } paintChips(); paintGrid(true); };
     function paintChips() {
@@ -4743,13 +4760,71 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // list: the cards you opened this one from (the search grid or your deck), so you can swipe through them
     function cardZoom(d, list, dir) {
       var have = count(d), i = list ? list.indexOf(d) : -1;
+      curZoom = { d: d, list: list };
       zoomDef(d, lib ? [] : [
         { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
         { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
       ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
+      if (list) filterBtn();
+    }
+    // ── Filtering without leaving the big card view ──
+    // The library's own filter controls move into a panel over the card view
+    // (and back when it closes); every change re-deals the cards you swipe through.
+    var FILTER_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
+    var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
+    function activeFilters() {
+      var n = 0; if (f.q) n++; if (f.marked) n++; if (f.story) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
+      return n + INKS.filter(function (i) { return f.inks[i]; }).length;
+    }
+    function filterBtn() {
+      var ov = $('.lz'); if (!ov) return;
+      var old = $('.lz-filt', ov); if (old) old.remove();
+      var n = activeFilters();
+      ov.appendChild(el('button', { type: 'button', class: 'lz-filt' + (n ? ' on' : '') + (fpanel ? ' open' : ''), 'aria-label': 'Filter cards' + (n ? ', ' + n + ' on' : ''), html: FILTER_ICO + (n ? '<b>' + n + '</b>' : ''), title: 'Filter cards',
+        onclick: function (e) { e.stopPropagation(); if (fpanel) closeFilterPanel(); else openFilterPanel(); } }));
+    }
+    function openFilterPanel() {
+      var fl = $('.bld-filters'); if (!fl || fpanel) return;
+      fpHome = { parent: fl.parentNode, next: fl.nextSibling };
+      fpCount = el('span', { class: 'fp-n' });
+      fpanel = el('div', { class: 'flowpanel', role: 'dialog', 'aria-label': 'Filter cards' }, [
+        el('div', { class: 'fp-top' }, [el('b', { text: 'Filter cards' }), fpCount,
+          el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Clear', onclick: function () { clearFilters(); } }),
+          el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Done', onclick: closeFilterPanel })]),
+        fl]);
+      document.body.appendChild(fpanel); document.documentElement.classList.add('flowfilt');
+      requestAnimationFrame(function () { fpanel.classList.add('show'); });
+      countText(DB.unique.filter(matches).length);
+      // closing the card view closes the panel too
+      fpObs = new MutationObserver(function () { if (!$('.lz')) closeFilterPanel(); });
+      fpObs.observe(document.body, { childList: true });
+      filterBtn(); Kit.sfx('tap');
+    }
+    function closeFilterPanel() {
+      if (!fpanel) return;
+      if (fpObs) { fpObs.disconnect(); fpObs = null; }
+      var fl = $('.bld-filters', fpanel);
+      if (fl && fpHome && fpHome.parent.isConnected) fpHome.parent.insertBefore(fl, fpHome.next && fpHome.next.parentNode === fpHome.parent ? fpHome.next : null);
+      var p = fpanel; fpanel = null; document.documentElement.classList.remove('flowfilt');
+      p.classList.remove('show'); setTimeout(function () { p.remove(); }, 300);
+      filterBtn();
+    }
+    function clearFilters() {
+      f.q = ''; search.value = ''; f.marked = false; f.story = ''; f.cost = null; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.inks = {}; f.shown = 60;
+      paintChips(); paintGrid(); Kit.sfx('tap');
+    }
+    function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
+    // Re-deal the card view from the filtered list, staying on the same card if it's still there
+    function refreshFlow(list) {
+      countText(list.length);
+      if (!list.length || !$('.lz')) { filterBtn(); return; }
+      var cur = curZoom && curZoom.d, idx = cur ? list.indexOf(cur) : -1;
+      if (curZoom && curZoom.list && curZoom.list.length === list.length && curZoom.list.every(function (x, k) { return x === list[k]; })) { filterBtn(); return; }
+      cardZoom(idx >= 0 ? cur : list[0], list, 1e-9);
     }
     function paintGrid(keepScroll) {
       var st = grid.scrollTop, list = DB.unique.filter(matches);
+      if (fpanel) refreshFlow(list);
       grid.innerHTML = '';
       list.slice(0, f.shown).forEach(function (d) {
         var n = count(d);
