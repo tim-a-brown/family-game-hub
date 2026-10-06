@@ -442,6 +442,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .fc-zone.armed{opacity:1;}.fc-zone.armed::after{opacity:1;transform:scaleX(1);height:4px;}
 .fc-zone.dn.at{bottom:0;height:auto;background:linear-gradient(180deg,transparent 0,rgba(8,6,20,.92) 34px,rgba(8,6,20,.88) 45%,rgba(8,6,20,.7) 100%);}
 .fc-zone.dn.at::after{bottom:auto;top:34px;}
+.fc-zone.up.at{top:0;background:linear-gradient(0deg,transparent 0,rgba(8,6,20,.92) 34px,rgba(8,6,20,.88) 55%,rgba(8,6,20,.7) 100%);}
+.fc-zone.up.at::after{top:auto;bottom:34px;}
 .fc-zone.fade{opacity:0;transition:opacity .5s ease .1s;}
 
 .fc-zone.up .fc-hint{top:calc(var(--safe-t, 0px) + 18px);}.fc-zone.dn .fc-hint{bottom:calc(var(--safe-b, 0px) + 120px);}
@@ -5981,14 +5983,25 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       armed = now;
       hint.className = 'fc-hint show ' + (dn ? 'dn' : 'up') + (now ? ' armed' : '');
       hint.style.setProperty('--pr', pr.toFixed(2));
-      // Swiping down: the band, glow line and label all start at the top edge of the card details
-      var inf = dn && F.ov && F.ov.querySelector('.lz-info'), ir = inf && inf.getBoundingClientRect();
-      var at = ir && ir.top > 60 && ir.top < innerHeight - 80;
+      // Up and down mirror each other: the glow line sits the same distance above the card as below it
+      // (below = the top edge of the card details); the band covers everything past the line, the label sits on it
+      var lineY = edgeY(dn), at = lineY != null;
       zoneOn('show ' + (dn ? 'dn' : 'up') + (at ? ' at' : '') + (now ? ' armed' : ''), pr);
-      zone.style.top = at ? Math.round(ir.top - 34) + 'px' : '';
-      hint.style.top = at ? '10px' : ''; hint.style.bottom = at ? 'auto' : '';
+      if (at && dn) { zone.style.top = Math.round(lineY - 34) + 'px'; zone.style.height = ''; hint.style.top = '10px'; hint.style.bottom = 'auto'; }
+      else if (at) { zone.style.top = '0px'; zone.style.height = Math.round(lineY + 34) + 'px'; hint.style.top = 'auto'; hint.style.bottom = '10px'; }
+      else { zone.style.top = ''; zone.style.height = ''; hint.style.top = ''; hint.style.bottom = ''; }
       var what = dn ? 'add to a deck' : d && isMarked(d) ? 'remove bookmark' : 'bookmark';
       hint.innerHTML = '<i>' + (dn ? DECK_ICO2 : Kit.icon('bookmark')) + '</i><span>' + (now ? 'Let go to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
+    }
+    // Where the trigger line goes: the card's resting edges are measured when the swipe starts
+    var cardR = null;
+    function edgeY(dn) {
+      if (!cardR) return null;
+      var inf = F.ov && F.ov.querySelector('.lz-info'), ir = inf && inf.getBoundingClientRect();
+      var gap = ir && ir.top > cardR.bottom - 40 && ir.top < innerHeight - 80 ? Math.max(8, ir.top - cardR.bottom) : 24;
+      if (!dn) return Math.max(28, cardR.top - gap);   // no room above? hug the top of the screen
+      var y = cardR.bottom + gap;
+      return y < innerHeight - 56 ? y : null;
     }
     // Spring the card home with a little overshoot (and a nudge in the swipe direction when it fires)
     function springBack(j, fired, dir) {
@@ -6005,7 +6018,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (sw.v) { if (e.cancelable) e.preventDefault(); vDrag(dy); return; }
       if (!sw.h) {
         if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; measure(); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} }
-        else if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.4) { sw.v = true; measure(); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} vDrag(dy); return; }
+        else if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.4) { sw.v = true; measure(); var fb = F.items[Math.round(F.pos)]; cardR = fb ? fb.getBoundingClientRect() : null; try { F.el.setPointerCapture(e.pointerId); } catch (x) {} vDrag(dy); return; }
         else return;
       }
       sw.pts.push({ x: e.clientX, t: performance.now() }); if (sw.pts.length > 8) sw.pts.shift();
