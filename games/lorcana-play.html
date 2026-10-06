@@ -547,6 +547,26 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rv-verb::before,.rv-verb::after{content:'';position:absolute;top:50%;width:22px;height:1.5px;background:linear-gradient(90deg,rgba(227,189,98,0),#e3bd62);}
 .rv-verb::before{left:0;}
 .rv-verb::after{right:0;transform:scaleX(-1);}
+.rv-fx{margin-top:6px;padding:4px 14px;border-radius:999px;background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 1px rgba(227,189,98,.35);color:#fff3d0;font-weight:800;font-size:.95rem;text-align:center;}
+.rv-bar{flex:none;position:sticky;bottom:0;z-index:300;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;padding:14px 16px calc(var(--safe-b) + 10px);background:linear-gradient(180deg,rgba(6,5,18,0),rgba(6,5,18,.92) 30%);}
+.rv-row{display:flex;gap:10px;width:min(520px,100%);}
+.rv-bar .rv-go{position:static;margin:0;flex:1.6;width:auto;}
+.rv-skip{flex:1;min-height:52px;border:0;border-radius:14px;font-family:var(--display);font-size:1rem;color:#f6e1a8;cursor:pointer;background:linear-gradient(180deg,#3a2f63,#241c45);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 4px 0 #120d26;}
+.rv-fast{flex:none;display:flex;align-items:center;gap:8px;margin:0;padding:4px 10px;border:0;border-radius:999px;background:rgba(10,8,28,.6);color:var(--text-2);font-size:.78rem;font-weight:700;cursor:pointer;}
+.rv-fast .sw{position:relative;width:28px;height:16px;border-radius:8px;background:rgba(255,255,255,.18);flex:none;transition:background .2s;}
+.rv-fast .sw::after{content:'';position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .2s;}
+.rv-fast.on .sw{background:var(--gilt);}
+.rv-fast.on .sw::after{transform:translateX(12px);}
+.rv-also{margin-bottom:6px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-size:.82rem;text-align:center;max-width:100%;}
+.rv-also b{font-family:var(--display);font-weight:400;letter-spacing:.04em;text-transform:uppercase;color:#f1cf78;margin-right:4px;}
+.rv-also span{margin-left:4px;}
+.rv-ticks{position:fixed;left:50%;top:calc(var(--safe-t) + 64px);transform:translateX(-50%);z-index:430;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(560px,calc(100% - 24px));}
+.rv-tick{display:flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border-radius:999px;background:linear-gradient(180deg,#2a2152,#1a1438);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45),0 8px 22px rgba(0,0,0,.5);color:#fff3d0;font-size:.85rem;animation:tickIn .28s var(--spring);}
+.rv-tick b{font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;color:#f1cf78;}
+.rv-tick span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rv-tick .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;}
+.rv-tick.out{opacity:0;transform:translateY(-6px);transition:opacity .35s,transform .35s;}
+@keyframes tickIn{from{opacity:0;transform:translateY(-8px) scale(.96);}}
 .rv-go{flex:none;position:sticky;bottom:calc(var(--safe-b) + 14px);z-index:300;width:min(460px,calc(100% - 32px));min-height:52px;margin:4px 16px calc(var(--safe-b) + 14px);border:0;border-radius:14px;font-family:var(--display);font-size:1.15rem;color:#2b1a00;cursor:pointer;
   background:linear-gradient(180deg,#fbe9b7,#e8c56f 45%,#c9973a);box-shadow:inset 0 0 0 1.5px #fff2c4,inset 0 -2px 0 rgba(120,80,10,.35),0 4px 0 #7a5413,0 8px 18px rgba(227,189,98,.3);}
 .rv-go:active{transform:translateY(2px);box-shadow:inset 0 0 0 1.5px #fff2c4,0 2px 0 #7a5413;}
@@ -1179,6 +1199,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if ((m = c.match(/^a character named (.+?) is chosen$/i)) || (m = c.match(/^the chosen character is named (.+)$/i)) || (m = c.match(/^that character is named (.+)$/i))) return { k: 'chosenIs', named: m[1] };
       if ((m = c.match(new RegExp('^(?:they\'re|he\'s|she\'s|it\'s) an? (' + CLS + ') character$')))) return { k: 'chosenIs', cls: m[1] };
       if (/^you removed damage this way$/i.test(c)) return { k: 'lastPos' };
+      if (/^it's the second card they've drawn this turn$/i.test(c)) return { k: 'tt', what: 'oppDrawn', eq: 2 };
+      if ((m = c.match(/^the challenging character has (\d+) \{S\} or more$/i))) return { k: 'ctxStr', key: 'att', min: +m[1] };
       if ((m = c.match(/^you have (\d+) \{I\} or less$/i))) return { k: 'ink', max: +m[1] };
       if ((m = c.match(/^you have a character named (.+?) in play$/i))) return { k: 'have', n: 1, type: 'character', named: m[1] };
       if ((m = c.match(/^you don't have an? ([A-Z][\w'-]+) character in play$/))) return { k: 'not', c: { k: 'have', n: 1, type: 'character', cls: m[1] } };
@@ -1703,7 +1725,37 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       [/^when(?:ever)? you play a second action in a turn,\s*/i, ['playCard'], { type: 'action', nth: 2 }],
       [/^when(?:ever)? an opponent plays a (character|song),\s*/i, ['oppPlay'], { typeM: 1 }],
       [/^when(?:ever)? one or more of your characters sings? a song,\s*/i, ['sings'], { any: 1 }],
-      [/^when(?:ever)? you move a character (?:with (\d+) \{S\} or more )?here,\s*/i, ['movedHere'], { minS: 1 }]
+      [/^when(?:ever)? you move a character (?:with (\d+) \{S\} or more )?here,\s*/i, ['movedHere'], { minS: 1 }],
+      [/^when you move a character here from a location,\s*/i, ['movedHere'], { fromLoc: 1 }],
+      [/^the first time you move a character here,\s*/i, ['movedHere'], { first: 1 }],
+      [/^when(?:ever)? an opposing character (?:becomes|is) exerted,\s*/i, ['exerted'], { side: 'opp' }],
+      [/^when(?:ever)? this character exerts,\s*/i, ['exerted'], { self: 1 }],
+      [/^when(?:ever)? you discard a card,\s*/i, ['discarded'], { mine: 1 }],
+      [/^when(?:ever)? your opponent discards 1 or more cards,\s*/i, ['discarded'], { opp: 1 }],
+      [/^when(?:ever)? one of your (other )?characters is returned to your hand from play,\s*/i, ['bounced'], { mine: 1 }],
+      [/^when(?:ever)? one of your opponents' characters, items, or locations is returned to their hand from play,\s*/i, ['bounced'], { opp: 1 }],
+      [/^when(?:ever)? an opponent chooses this character for an action or ability,\s*/i, ['chosenBy']],
+      [/^(?:twice during your turn, )?when(?:ever)? this character is chosen for an action or an item's ability,\s*/i, ['chosenBy'], { any: 1 }],
+      [/^when(?:ever)? one of your characters is chosen for support,\s*/i, ['supported']],
+      [/^when(?:ever)? you use the boost ability of a character,\s*/i, ['boosted']],
+      [/^when(?:ever)? you return an? (?:([A-Z][\w-]+) )?character card from your discard to your hand,\s*/, ['fromDisc'], { cls: 1 }],
+      [/^when(?:ever)? a card leaves your discard,\s*/i, ['leftDisc']],
+      [/^when(?:ever)? they draw a card while this character is exerted,\s*/i, ['drew'], { opp: 1, selfEx: 1 }],
+      [/^when(?:ever)? an opponent draws a card during their turn,\s*/i, ['drew'], { opp: 1, theirTurn: 1 }],
+      [/^when(?:ever)? you play a character with (bodyguard|evasive|ward|rush|support|reckless),\s*/i, ['playCard'], { type: 'character', kwM: 1 }],
+      [/^when(?:ever)? you play a character or location with boost,\s*/i, ['playCard'], { types: 'character|location', kw: 'boost' }],
+      [/^when(?:ever)? you play an action while this character is exerted,\s*/i, ['playCard'], { type: 'action', selfEx: 1 }],
+      [/^when(?:ever)? another character is played,\s*/i, ['anyPlayed']],
+      [/^when(?:ever)? a character of yours named (.+?) quests,\s*/i, ['anyQuest'], { named: 1 }],
+      [/^when(?:ever)? one of your ([A-Z][\w-]+ )?characters quests while at a location,\s*/i, ['anyQuest'], { cls: 1, atLoc: 1 }],
+      [/^when(?:ever)? a damaged character challenges another character,\s*/i, ['anyChallenge'], { anySide: 1, attDamaged: 1 }],
+      [/^when(?:ever)? a character with (\d+) \{S\} or more challenges another character while here,\s*/i, ['anyChallenge'], { here: 1, minS: 1 }],
+      [/^when(?:ever)? this character is dealt damage,\s*/i, ['damaged'], { self: 1 }],
+      [/^when(?:ever)? this character deals damage to another character in a challenge,\s*/i, ['challenge'], { dealt: 1 }],
+      [/^when(?:ever)? (?:a character challenges this location|this location is challenged),\s*/i, ['challenged']],
+      [/^when you play a ([A-Z][\w-]+) character on this card,\s*/, ['shiftOn'], { cls: 1 }],
+      [/^when you play this character and whenever (?:he|she|they) banish(?:es)? another character in a challenge(?: during your turn)?,\s*/i, ['play', 'kills']],
+      [/^when(?:ever)? one of your (other )?([A-Z][\w-]+) characters banishes another character in a challenge,\s*/, ['anyKills'], { cls: 2 }]
     ];
 
     function line(L0, d, i) {
@@ -1725,7 +1777,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       }
       if ((m = body.match(/^Once (?:during|per) (?:your )?turn,\s*/i))) { ab.once = true; body = body.slice(m[0].length); }
       if ((m = body.match(/^During your turn,\s*/i))) { ab.cond = { k: 'myTurn' }; body = body.slice(m[0].length); }
-      else if ((m = body.match(/^During (?:an )?opponents?'?s?'? turns?,\s*/i))) { ab.cond = { k: 'oppTurn' }; body = body.slice(m[0].length); }
+      else if ((m = body.match(/^During (?:an |each )?opponents?'?s?'? turns?,\s*/i))) { ab.cond = { k: 'oppTurn' }; body = body.slice(m[0].length); }
       if ((m = body.match(/^While (.+?),\s*(?=[A-Za-z])/i))) {
         var wc = condAll(m[1]); if (!wc) { ab.kind = 'static'; return ab; }
         ab.cond = ab.cond ? { k: 'all', list: [ab.cond, wc] } : wc; body = body.slice(m[0].length);
@@ -1758,6 +1810,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         if (ab.kind === 'under') ab.trig.other = /other/i.test(tm[0]) ? 1 : 0;
         if (ab.kind === 'anyChallenge' && ab.trig.dmg) { ab.trig.damaged = 1; delete ab.trig.dmg; }
         if (o.kwM && tm[o.kwM]) { ab.trig.kw = tm[o.kwM].toLowerCase(); delete ab.trig.kwM; }
+        if (o.first) ab.once = true;
+        if (/^when(?:ever)? one of your other/i.test(tm[0])) ab.trig.other = 1;
         if (ab.kind === 'anyChallenged' && ab.trig.under) ab.trig.under = 1;
         if (ab.kind === 'anyChallenged' && /or locations/i.test(tm[0])) ab.trig.loc = 1;
         body = body.slice(tm[0].length);
@@ -2205,7 +2259,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function draw(pi, n) {
     var p = S.P[pi], got = 0;
-    for (var i = 0; i < n; i++) { if (!p.deckL.length) break; p.hand.push(p.deckL.shift()); got++; emit('drew', { pi: pi }); }
+    for (var i = 0; i < n; i++) { if (!p.deckL.length) break; p.hand.push(p.deckL.shift()); got++; if (S.phase === 'play') { var Td = TT(); Td.drawn = Td.drawn || [0, 0]; Td.drawn[pi]++; } emit('drew', { pi: pi }); }
     if (got) fx.drawn(pi);
     return got;
   }
@@ -2217,11 +2271,26 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     out.forEach(function (u) { fx.banish(u); banish(u); log(nm(u) + ' was banished', C(u).o); S.st[C(u).o].lost++; noteBanish(u); emit('banish', { u: u, chal: clashing }); });
     return out;
   }
+  // A card left a discard pile (to hand when toHand)
+  function leftDisc(pi, u, toHand) { TT().leftDisc++; emit('leftDisc', { pi: pi, u: u }); if (toHand) emit('fromDisc', { pi: pi, u: u }); }
+  // What moving to a location costs, after "pay less to move" and "may move here for free"
+  function moveCost(u, loc) {
+    var n = DD(loc).mv || 0, pi = C(u).o;
+    S.P[pi].board.forEach(function (x) { abs(x).forEach(function (a) { if (a.kind === 'static' && a.ok && a.fx && condOK(a.cond, x, pi)) a.fx.forEach(function (e) {
+      if (e.op !== 'moveLess' || !condOK(e.cond, x, pi)) return;
+      if (e.here && x !== loc) return;
+      if (e.self && x !== u) return;
+      if (e.t && !fits(u, e.t, x, pi)) return;
+      n -= e.free ? 99 : e.n;
+    }); }); });
+    return Math.max(0, n);
+  }
+  function exertEv(u) { if (S.cards[u]) emit('exerted', { u: u }); }
   function dealDamage(u, n) {
     if (cant(u, 'dmg') || (clashing && cant(u, 'chalDmg')) || (!clashing && cant(u, 'dmgOutsideChal'))) return 0;
     if (clashing && clashAt && clashAt.shield && clashAt.shield.indexOf(u) >= 0) return 0;
     var d = Math.max(0, n - kwN(u, 'resist')); C(u).dmg += d;
-    if (d) { fx.hit(u); TT().dmg[C(u).o] = 1; emit('damaged', { u: u }); }
+    if (d) { fx.hit(u); TT().dmg[C(u).o] = 1; emit('damaged', { u: u, n: d }); }
     return d;
   }
   function noteBanish(u) { var T = TT(); T.ban++; if (clashing) { T.banChal++; T.banChalOf[C(u).o]++; } }
@@ -2281,7 +2350,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return ss.length > 0;
   }
   function canMove(u, loc) {
-    var c = C(u); return isChar(u) && isLoc(loc) && c.o === S.cur && C(loc).o === c.o && c.at !== loc && S.P[c.o].board.indexOf(u) >= 0 && inkReady(c.o) >= (DD(loc).mv || 0) && !cant(u, 'move');
+    var c = C(u); return isChar(u) && isLoc(loc) && c.o === S.cur && C(loc).o === c.o && c.at !== loc && S.P[c.o].board.indexOf(u) >= 0 && inkReady(c.o) >= moveCost(u, loc) && !cant(u, 'move');
   }
   function canBoost(u) { var c = C(u), n = DD(u).K.boost; return !!n && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && c.bt !== S.turn && inkReady(c.o) >= n && S.P[c.o].deckL.length > 0; }
   function recklessPending(pi) {
@@ -2299,7 +2368,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var p = S.P[pi], d = DD(u), how = '', cost = playCost(pi, u), pl = pendingLess(pi, u);
       p.hand.splice(p.hand.indexOf(u), 1);
       if (o.sing && o.sing.length) {
-        o.sing.forEach(function (s) { C(s).ex = true; });
+        o.sing.forEach(function (s) { C(s).ex = true; exertEv(s); });
         how = ' (sung by ' + o.sing.map(nm).join(' and ') + ')';
         S.st[pi].songs.push(d.n);
       } else if (o.shift) {
@@ -2334,7 +2403,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var T = TT(); T.played[pi]++; if (d.t === 'action') T.action[pi]++; if (d.song) T.song[pi]++; if (d.t === 'character') { T.char[pi]++; T.cls[pi].push(u); T.big[pi] = Math.max(T.big[pi], d.c || 0); }
     },
     quest: function (pi, u) {
-      C(u).ex = true;
+      C(u).ex = true; exertEv(u);
       var n = LORE(u), st = S.st[pi];
       log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + n + ' lore', pi);
       gainLore(pi, n);
@@ -2343,7 +2412,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return n;
     },
     challenge: function (pi, a, t) {
-      C(a).ex = true;
+      C(a).ex = true; exertEv(a);
       clashAt = { a: a, t: t, shield: chalShields(a, t) };
       var loc = isLoc(t), sa = STR(a, true), sd = loc ? 0 : STR(t, false);
       log(S.P[pi].name + '’s ' + nm(a) + ' challenged ' + nm(t), pi);
@@ -2356,16 +2425,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return { dt: dt, da: da, banished: out };
     },
     move: function (pi, u, loc) {
-      payInk(pi, DD(loc).mv || 0); C(u).at = loc;
+      payInk(pi, moveCost(u, loc)); S.moveFrom = C(u).at; C(u).at = loc;
       log(S.P[pi].name + ' moved ' + nm(u) + ' to ' + DD(loc).n, pi);
     },
     boost: function (pi, u) {
-      var p = S.P[pi]; payInk(pi, DD(u).K.boost); var x = p.deckL.shift(); resetCard(x); C(u).under.push(x); C(u).bt = S.turn; TT().under[pi]++; emit('under', { u: u, pi: pi });
+      var p = S.P[pi]; payInk(pi, DD(u).K.boost); var x = p.deckL.shift(); resetCard(x); C(u).under.push(x); C(u).bt = S.turn; TT().under[pi]++; emit('under', { u: u, pi: pi }); emit('boosted', { u: u, pi: pi });
       log(p.name + ' boosted ' + nm(u), pi);
     },
     support: function (pi, from, to) {
       var n = STR(from); if (!n) return;
-      C(to).mods.push({ s: n, until: S.turn, why: 'Support' });
+      C(to).mods.push({ s: n, until: S.turn, why: 'Support' }); emit('supported', { u: to, pi: pi });
       log(nm(from) + ' gave ' + nm(to) + ' +' + n + ' strength (Support)', pi);
     }
   };
@@ -2498,6 +2567,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           case 'playedCls': v = T.cls[pi].filter(function (u) { return S.cards[u] && hasCls(u, cd.cls); }).length; break;
           case 'bigPlay': v = T.big[pi] >= cd.min ? 1 : 0; return !!v;
           case 'inked': v = T.inked[pi]; break; case 'under': v = T.under[pi]; break; case 'leftDisc': v = T.leftDisc; break;
+          case 'oppDrawn': v = (T.drawn || [0, 0])[opp(pi)]; break;
           case 'questOther': v = T.quest[pi].filter(function (u) { return u !== src; }).length; break;
           default: v = 0;
         }
@@ -2530,6 +2600,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'oppLore': return O.lore >= cd.min;
       case 'lore': return P.lore >= cd.min;
       case 'ink': return (cd.min == null || P.ink.length >= cd.min) && (cd.max == null || P.ink.length <= cd.max);
+      case 'ctxStr': { var cu = ctx && ctx[cd.key]; return !!(cu && S.cards[cu] && STR(cu) >= cd.min); }
       case 'lastPos': return !!(ctx && ctx.st && ctx.st.last > 0);
       case 'oppInkMore': return O.ink.length > P.ink.length;
       case 'oppHave': case 'meHave':
@@ -2727,10 +2798,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
             if (t.named && !named(u, t.named)) return false;
             if (t.maxC != null && (d.c || 0) > t.maxC) return false;
             if (t.minS != null && STR(u) < t.minS) return false;
+            if (t.types && t.types.split('|').indexOf(d.t) < 0) return false;
+            if (t.kw && !hasKw(u, t.kw)) return false;
+            if (t.selfEx && !C(x).ex) return false;
             if (t.nth && TT().action[pi] !== t.nth) return false;
             return true;
           });
         });
+        inPlayAll().forEach(function (x) { if (x !== u) trig(x, ['anyPlayed'], C(x).o, { played: u }); });
+        if (o.base && S.cards[o.base]) trig(o.base, ['shiftOn'], pi, {}, function (a) { return !(a.trig && a.trig.cls) || hasCls(u, a.trig.cls); });
         S.P[opp(pi)].board.forEach(function (x) { trig(x, ['oppPlay'], opp(pi), { played: u }, function (a) { var t = a.trig || {}; return (!t.song || d.song) && (!t.type || d.t === t.type); }); });
         (o.sing || []).forEach(function (s) { trig(s, ['sings'], pi, { song: u }, function (a) { return !(a.trig && a.trig.any); }); });
         if (o.sing && o.sing.length) S.P[pi].board.forEach(function (x) { trig(x, ['sings'], pi, { song: u }, function (a) { return !!(a.trig && a.trig.any); }); });
@@ -2738,17 +2814,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       }
       case 'quest':
         trig(u, ['quest'], pi, {}, function (a) { return (!(a.trig && a.trig.atLoc) || !!C(u).at) && !(a.trig && a.trig.minS != null && STR(u) < a.trig.minS); });
-        watchers(pi).forEach(function (x) { if (x !== u) trig(x, ['anyQuest'], pi, { quester: u }, function (a) { return !(a.trig && a.trig.cls) || hasCls(u, a.trig.cls); }); });
+        watchers(pi).forEach(function (x) { if (x !== u) trig(x, ['anyQuest'], pi, { quester: u }, function (a) { var t = a.trig || {}; return (!t.cls || hasCls(u, t.cls)) && (!t.named || named(u, t.named)) && (!t.atLoc || !!C(u).at); }); });
         if (C(u).at && S.cards[C(u).at]) trig(C(u).at, ['hereQuest'], pi, { quester: u });
         break;
       case 'chal': {
         var a = o.u, t = o.t, ctx = { att: a, def: t };
-        trig(a, ['challenge'], C(a).o, ctx, function (ab) { return (!(ab.trig && ab.trig.damaged) || o.tWasDamaged) && !(ab.trig && ab.trig.defMaxS != null && STR(t) > ab.trig.defMaxS); });
+        ctx.n = o.dt || 0;
+        trig(a, ['challenge'], C(a).o, ctx, function (ab) { var tg = ab.trig || {}; return (!tg.damaged || o.tWasDamaged) && !(tg.defMaxS != null && STR(t) > tg.defMaxS) && (!tg.defCls || hasCls(t, tg.defCls)) && (!tg.dealt || o.dt > 0) && !ab.fx.every(function (e) { return e.what === 'chalDmgNow'; }); });
+        S.P[C(t).o].board.forEach(function (x) { trig(x, ['anyChallenge'], C(t).o, ctx, function (ab) { return !!(ab.trig && ab.trig.anySide) && (!ab.trig.attDamaged || o.aWasDamaged); }); });
         watchers(C(a).o).forEach(function (x) {
           trig(x, ['anyChallenge'], C(a).o, ctx, function (ab) {
             var tg = ab.trig || {};
             if (tg.kw && !hasKw(a, tg.kw)) return false;
-            if (tg.here) return C(a).at === x;
+            if (tg.anySide) return x !== a && (!tg.attDamaged || o.aWasDamaged);
+            if (tg.here) return C(a).at === x && (tg.minS == null || STR(a) >= tg.minS);
             if (x === a && !tg.self) return false;
             if (tg.named && x !== a && !named(a, tg.named)) return false;
             if (tg.cls && !hasCls(a, tg.cls)) return false;
@@ -2769,7 +2848,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         });
         if (o.out.indexOf(t) >= 0) {
           trig(a, ['kills'], C(a).o, ctx); trig(t, ['banishedDef', 'banishedChal'], C(t).o, ctx);
-          watchers(C(a).o).forEach(function (x) { trig(x, ['anyKills'], C(a).o, ctx, function (ab) { if (ab.trig && ab.trig.here) return C(a).at === x; return x !== a || !(ab.trig && ab.trig.other); }); });
+          watchers(C(a).o).forEach(function (x) { trig(x, ['anyKills'], C(a).o, ctx, function (ab) { if (ab.trig && ab.trig.here) return C(a).at === x; if (ab.trig && ab.trig.cls && !hasCls(a, ab.trig.cls)) return false; return x !== a || !(ab.trig && ab.trig.other); }); });
         }
         if (o.out.indexOf(a) >= 0) trig(a, ['banishedChal'], C(a).o, ctx);
         break;
@@ -2796,14 +2875,26 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         break;
       }
       case 'inked': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['inked'], o.pi, {}); }); break;
+      case 'exerted': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['exerted'], px, { exd: u }, function (a) { var t = a.trig || {}; if (t.self) return x === u; if (t.side === 'opp') return px !== C(u).o && isChar(u); return true; }); }); break;
+      case 'discarded': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['discarded'], px, { n: o.n }, function (a) { var t = a.trig || {}; return t.opp ? px !== o.pi : px === o.pi; }); }); break;
+      case 'bounced': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['bounced'], px, { gone: u }, function (a) { var t = a.trig || {}; if (t.opp) return px !== o.pi; return px === o.pi && !(t.other && x === u) && isChar(u); }); }); break;
+      case 'chosenBy': trig(u, ['chosenBy'], C(u).o, {}, function (a) { return (a.trig && a.trig.any) || o.by !== C(u).o; }); break;
+      case 'supported': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['supported'], o.pi, { target: u }); }); break;
+      case 'boosted': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['boosted'], o.pi, { host: u }); }); break;
+      case 'fromDisc': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['fromDisc'], o.pi, { played: u }, function (a) { var t = a.trig || {}; return isChar(u) && (!t.cls || hasCls(u, t.cls)); }); }); break;
+      case 'leftDisc': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['leftDisc'], o.pi, {}); }); break;
+      case 'shiftOn': break;
       case 'under': S.P[pi].board.slice().forEach(function (x) { trig(x, ['under'], pi, { host: u }, function (a) { var t = a.trig || {}; return t.self ? x === u : !(t.other && x === u); }); }); break;
-      case 'drew': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['drew'], o.pi, {}); }); break;
+      case 'drew':
+        S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['drew'], o.pi, {}, function (a) { return !(a.trig && a.trig.opp); }); });
+        S.P[opp(o.pi)].board.slice().forEach(function (x) { trig(x, ['drew'], opp(o.pi), {}, function (a) { var t = a.trig || {}; if (!t.opp) return false; if (t.theirTurn && S.cur !== o.pi) return false; if (t.selfEx && !C(x).ex) return false; return true; }); });
+        break;
       case 'healed': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['healed'], o.pi, { healed: u }, function (a) { return !(a.trig && a.trig.mine) || C(u).o === o.pi; }); }); break;
-      case 'damaged': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['damaged'], px, { hurt: u }, function (a) { var t = a.trig || {}; if (!isChar(u)) return false; if (t.side === 'opp' ? px === pi : px !== pi) return false; return !t.cls || hasCls(u, t.cls); }); }); break;
+      case 'damaged': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['damaged'], px, { hurt: u, n: o.n }, function (a) { var t = a.trig || {}; if (t.self) return x === u; if (!isChar(u)) return false; if (t.side === 'opp' ? px === pi : px !== pi) return false; return !t.cls || hasCls(u, t.cls); }); }); break;
       case 'turnStart': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['turnStart'], o.pi, {}); }); break;
       case 'turnEnd': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['turnEnd'], o.pi, {}); }); break;
       case 'readied': trig(u, ['readied'], pi, {}); break;
-      case 'moved': trig(u, ['moved'], pi, {}); if (C(u).at && S.cards[C(u).at]) trig(C(u).at, ['movedHere'], pi, { mover: u }, function (a) { return !(a.trig && a.trig.minS != null) || STR(u) >= a.trig.minS; }); break;
+      case 'moved': trig(u, ['moved'], pi, {}); if (C(u).at && S.cards[C(u).at]) trig(C(u).at, ['movedHere'], pi, { mover: u }, function (a) { var t = a.trig || {}; return (t.minS == null || STR(u) >= t.minS) && (!t.fromLoc || !!o.from); }); break;
     }
   }
   function pumpQ() {
@@ -2840,8 +2931,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return done();
     }
     if (!ab.fx || !ab.fx.length) return done();
-    var cx = it.ctx || {}, pv = cx.gone || cx.played || cx.quester || cx.healed || cx.hurt || cx.mover || null;
-    var st = { src: src, pi: pi, ab: ab, ctx: cx, prev: cx.prevList ? cx.prevList.filter(function (u) { return !!S.cards[u]; }) : pv && S.cards[pv] ? [pv] : null, did: true, said: [], last: 0 };
+    var cx = it.ctx || {}, pv = cx.gone || cx.played || cx.quester || cx.healed || cx.hurt || cx.mover || cx.exd || cx.target || cx.host || null;
+    var st = { src: src, pi: pi, ab: ab, ctx: cx, prev: cx.prevList ? cx.prevList.filter(function (u) { return !!S.cards[u]; }) : pv && S.cards[pv] ? [pv] : null, did: true, said: [], last: cx.n || 0 };
     fx.flare(src, abTitle(src, ab));
     // An optional ability with no choices on the table: ask first
     var first = ab.fx[0];
@@ -2856,6 +2947,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     later(function () { runFx(ab.fx, 0, st, finish); }, 520);
     function finish() {
       if (st.said.length) log(DD(src).n + (ab.name ? ' · ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
+      // what the computer's abilities did, so nothing slips by
+      if (st.said.length && !ctlHuman(pi) && humans() > 0) ticker(S.P[pi], abTitle(src, ab), st.said.join(' · ').replace(/^\w/, function (c) { return c.toUpperCase(); }));
       done();
     }
   }
@@ -2990,6 +3083,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (e.op === 'choose' && e.keep) { st.pick = list; return cb(true); }
     st.prev = list;
     st.ctx.x = list[0];
+    list.forEach(function (x) { if (onBoard(x)) emit('chosenBy', { u: x, by: st.pi }); });
     if (e.op === 'choose') { fx.beam(st.src, list); return cb(true); }
     if (!list.length) return cb(true);
     fx.beam(st.src, list);
@@ -3053,7 +3147,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'selfBack': {
         var sp = S.cards[st.src] ? zoneOf(st.src) : null;
         if (!sp || sp.z !== 'discard') return cb(false);
-        act(function () { var Pw = S.P[sp.pi]; Pw.discard.splice(Pw.discard.indexOf(st.src), 1); Pw.hand.push(st.src); TT().leftDisc++; }); st.said.push(DD(st.src).n + ' returned to ' + S.P[sp.pi].name + '’s hand'); return cb(true);
+        act(function () { var Pw = S.P[sp.pi]; Pw.discard.splice(Pw.discard.indexOf(st.src), 1); Pw.hand.push(st.src); leftDisc(sp.pi, st.src, true); }); st.said.push(DD(st.src).n + ' returned to ' + S.P[sp.pi].name + '’s hand'); return cb(true);
       }
       case 'inkAll': { var iwh = e.who === 'both' ? [pi, opp(pi)] : [pi]; act(function () { iwh.forEach(function (w) { S.P[w].ink.forEach(function (x) { C(x).ex = !e.ready; }); }); }); st.said.push((e.who === 'both' ? 'Every player' : P.name) + (e.ready ? ' readied' : ' exerted') + ' all their ink'); fx.ink(pi, '#e3bd62'); return cb(true); }
       case 'handInk': return handInkFx(e, st, optional, cb);
@@ -3096,8 +3190,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'under': { if (!inPlay) return; var Pu = S.P[pi]; if (!Pu.deckL.length) return; var ux = Pu.deckL.shift(); resetCard(ux); c.under.push(ux); TT().under[pi]++; fx.rune(x, '#f6e1a8'); st.said.push('put a card under ' + nm(x)); emit('under', { u: x, pi: pi }); break; }
       case 'underHand': { var ul = (c.under || []).splice(0); ul.forEach(function (y) { resetCard(y); S.P[pi].hand.push(y); }); if (ul.length) st.said.push(S.P[pi].name + ' put ' + plural(ul.length, 'card') + ' from under ' + nm(x) + ' into their hand'); break; }
       case 'banish': if (!inPlay) return; st.said.push(who + ' was banished'); banishCard(x, { by: st.src }); break;
-      case 'bounce': { var o = c.o; if (inPlay) { fx.vortex(rectOf(x)); leaving[x] = 'bounce'; leavePlay(x); } else pull(x); S.P[o].hand.push(x); st.said.push(who + ' returned to hand'); break; }
-      case 'exert': if (!inPlay) return; c.ex = true; fx.forceEx(x); st.said.push(who + ' was exerted'); break;
+      case 'bounce': { var o = c.o; if (inPlay) { fx.vortex(rectOf(x)); leaving[x] = 'bounce'; leavePlay(x); } else { var bz = zoneOf(x); pull(x); if (bz && bz.z === 'discard') leftDisc(o, x, true); } S.P[o].hand.push(x); st.said.push(who + ' returned to hand'); if (inPlay) emit('bounced', { u: x, pi: o }); break; }
+      case 'exert': if (!inPlay) return; var wasEx = c.ex; c.ex = true; if (!wasEx) exertEv(x); fx.forceEx(x); st.said.push(who + ' was exerted'); break;
       case 'ready': if (!inPlay) return; c.ex = false; fx.pillar(x); st.said.push(nm(x) + ' was readied'); emit('readied', { u: x }); break;
       case 'stat': {
         if (!inPlay) return;
@@ -3224,8 +3318,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           else if (e.to === 'shuffle') { W.deckL.push(x); shuffle(W.deckL); }
           else if (e.to === 'ink') { C(x).ex = true; W.ink.push(x); inked(o); }
         });
-        TT().leftDisc += sel.length;
       });
+      sel.forEach(function (x) { leftDisc(C(x).o, x, e.to === 'hand'); });
       st.last = sel.length;
       st.said.push(S.P[pi].name + ' moved ' + sel.map(function (x) { return DD(x).full; }).join(', ') + ' from the discard to ' + { hand: 'hand', top: 'the top of the deck', bottom: 'the bottom of the deck', shuffle: 'the deck', ink: 'the inkwell' }[e.to]);
       cb(true);
@@ -3264,7 +3358,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var pi = st.pi, P = S.P[pi];
     var pool = P.discard.filter(function (u) { var d = DD(u); if (e.type) { var ty = e.type.split(' '); var base = ty[ty.length - 1]; if (base === 'song' ? !d.song : d.t !== base) return false; if (ty.length > 1 && !hasCls(u, ty[0])) return false; } if (e.named && !named(u, e.named.replace(/\s+or\s+/g, '|'))) return false; if (e.maxC != null && (d.c || 0) > e.maxC) return false; return true; });
     if (!pool.length) { if (ctlHuman(pi)) Kit.toast(abTitle(st.src, st.ab) + ': nothing in the discard fits'); return cb(false); }
-    function fin(sel) { act(function () { sel.forEach(function (x) { P.discard.splice(P.discard.indexOf(x), 1); resetCard(x); P.hand.push(x); }); }); st.said.push(P.name + ' returned ' + sel.map(function (x) { return DD(x).full; }).join(', ') + ' to hand'); cb(true); }
+    function fin(sel) { act(function () { sel.forEach(function (x) { P.discard.splice(P.discard.indexOf(x), 1); resetCard(x); P.hand.push(x); leftDisc(pi, x, true); }); }); st.said.push(P.name + ' returned ' + sel.map(function (x) { return DD(x).full; }).join(', ') + ' to hand'); cb(true); }
     var n = Math.min(e.n || 1, pool.length);
     if (!ctlHuman(pi)) return fin(pool.slice().sort(function (a, b) { return defValue(DD(b)) - defValue(DD(a)); }).slice(0, n));
     chooseFromList(abTitle(st.src, st.ab) + ': return ' + plural(n, 'card') + ' to your hand', pool, n, fin, { cancel: function () { cb(false); }, skip: optional || /up to/i.test(st.ab.text) });
@@ -3274,7 +3368,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var pool = zone.filter(function (u) { var d = DD(u); if (e.type === 'song' ? !d.song : d.t !== e.type) return false; if (e.cls && !hasCls(u, e.cls)) return false; if (e.named && !named(u, e.named.replace(/\s+or\s+/g, '|'))) return false; if (e.maxC != null && (d.c || 0) > e.maxC) return false; return !playBlocked(pi, u); });
     if (!pool.length) { if (ctlHuman(pi)) Kit.toast(abTitle(st.src, st.ab) + ': nothing fits'); return cb(false); }
     function fin(x) {
-      if (e.from === 'discard') { P.discard.splice(P.discard.indexOf(x), 1); P.hand.push(x); }
+      if (e.from === 'discard') { P.discard.splice(P.discard.indexOf(x), 1); P.hand.push(x); leftDisc(pi, x, false); }
       runAction({ k: 'play', u: x, o: { free: true, exerted: e.ex } }, !ctlHuman(pi), true);
       cb(true);
     }
@@ -3419,7 +3513,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var c = C(u), pi = c.o, cost = ab.cost || {}, pre = byCpu ? null : snapshot();
     function pay(disc) {
       act(function () {
-        if (cost.ex) c.ex = true;
+        if (cost.ex) { c.ex = true; exertEv(u); }
         if (cost.ink) payInk(pi, cost.ink);
         (disc || []).forEach(function (x) { var P = S.P[pi]; P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); P.discard.push(x); });
         log(S.P[pi].name + ' used ' + DD(u).n + ': ' + abTitle(u, ab), pi);
@@ -3660,6 +3754,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       { icon: 'share', label: 'Export or import decks', onClick: function () { deckFiles(); } },
       { icon: 'swap', label: 'Turn opponent’s cards around', onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } },
       { icon: 'book', label: 'Game log', onClick: function () { showLog(); } },
+      { icon: 'play', label: 'Fast mode (computer moves as banners)', onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
       { icon: 'sparkle', label: 'Fix something by hand', onClick: function () { if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'sync', label: 'Update card library', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } }
     ],
@@ -3973,7 +4068,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     S.cpuN = (S.cpuN || 0) + 1;
     var pi = S.cur, a = S.cpuN > 60 ? null : cpuChoose(pi);
     if (!a) { S.cpuN = 0; endTurn(); return; }
-    if (a.k === 'ab') { showReveal(a.u, 'Used ' + abTitle(a.u, a.ab)); useAb(a.u, a.ab, true); }
+    if (a.k === 'ab') { cpuShow(a.u, 'Ability', 'Used ' + abTitle(a.u, a.ab), abTitle(a.u, a.ab)); useAb(a.u, a.ab, true); }
     else runAction(a, true);
     if (S && S.phase === 'play') later(cpuStep, 820 + Math.random() * 300);
   }
@@ -3981,6 +4076,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // ── Doing things (human or computer) ────────────────────────────────────
   function runAction(a, byCpu, nested) {
     var pi = a.k === 'play' || a.k === 'ink' ? C(a.u).o : S.cur, pre = byCpu || nested ? null : snapshot(), d = DD(a.u), res = null, tWasDamaged = false;
+    var paid = a.k === 'play' ? (a.o && (a.o.sing || a.o.free) ? 0 : a.o && a.o.shift ? (d.K.shift && !d.K.shift.discard ? d.K.shift.cost : 0) : playCost(pi, a.u)) : 0, lore0 = S.P[pi].lore;
     var over = act(function () {
       switch (a.k) {
         case 'ink': leaving[a.u] = 'ink'; A.ink(pi, a.u); Kit.sfx('flip'); fx.ink(pi, INKC[inkOf(d)[0]] || '#e3bd62'); inked(pi); break;
@@ -3990,19 +4086,19 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           if (d.t !== 'action') fx.summon(a.u, !!(a.o && a.o.shift));
           if (d.song) fx.notes(a.o && a.o.sing);
           if (d.t === 'action' && d.A && d.A[0]) Q.push({ src: a.u, ab: d.A[0], pi: pi, ctx: {} });
-          emit('play', { u: a.u, shifted: !!(a.o && a.o.shift), sing: a.o && a.o.sing });
+          emit('play', { u: a.u, shifted: !!(a.o && a.o.shift), base: a.o && a.o.shift, sing: a.o && a.o.sing });
           // the action resolves before anything it set off
           if (d.t === 'action') { var ai = -1; Q.forEach(function (q, i) { if (q.src === a.u && q.ab.kind === 'action') ai = i; }); if (ai > 0) Q.unshift(Q.splice(ai, 1)[0]); }
           break;
         case 'quest': questing = true; var qn = A.quest(pi, a.u); questing = false; fx.quest(a.u, pi, qn); emit('quest', { u: a.u }); break;
         case 'chal':
-          tWasDamaged = C(a.t).dmg > 0;
+          tWasDamaged = C(a.t).dmg > 0; var aWasDamaged = C(a.u).dmg > 0;
           var ra = rectOf(a.u), rt = rectOf(a.t);
           clashing = true; try { res = A.challenge(pi, a.u, a.t); } finally { clashing = false; }
           Kit.sfx('whoosh'); fx.clash(a.u, a.t, ra, rt, res);
-          emit('chal', { u: a.u, t: a.t, out: res.banished, tWasDamaged: tWasDamaged });
+          emit('chal', { u: a.u, t: a.t, out: res.banished, tWasDamaged: tWasDamaged, aWasDamaged: aWasDamaged, dt: res.dt });
           break;
-        case 'move': A.move(pi, a.u, a.t); Kit.sfx('whoosh'); emit('moved', { u: a.u }); break;
+        case 'move': A.move(pi, a.u, a.t); Kit.sfx('whoosh'); emit('moved', { u: a.u, from: S.moveFrom }); break;
         case 'boost': A.boost(pi, a.u); Kit.sfx('flip'); break;
       }
     });
@@ -4011,7 +4107,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (over || !S || S.phase !== 'play') return;
     if (res && res.banished.length) { var bt = res.banished.indexOf(a.t) >= 0; setTimeout(function () { Kit.callout(bt ? 'Banished!' : 'Ouch!', '#ff8f8f'); }, 330); }
     // The computer's cards are shown to you, big, until you tap
-    if (byCpu && a.k === 'play' && humans() > 0) showReveal(a.u, a.o && a.o.sing ? 'Sung by ' + a.o.sing.map(nm).join(' and ') : a.o && a.o.shift ? 'Shifted onto ' + DD(a.o.shift).full : a.o && a.o.free ? 'Played for free' : '');
+    if (byCpu && humans() > 0) {
+      if (a.k === 'play') cpuShow(a.u, a.o && a.o.sing ? 'Sung' : a.o && a.o.shift ? 'Shifted' : 'Played', a.o && a.o.sing ? 'Sung by ' + a.o.sing.map(nm).join(' and ') : a.o && a.o.shift ? 'Shifted onto ' + DD(a.o.shift).full : '', a.o && a.o.free ? 'Free' : paid ? 'Paid ' + paid + ' ink' : a.o && a.o.sing ? 'No ink paid' : 'Free');
+      else if (a.k === 'quest') cpuShow(a.u, 'Quested', '', '+' + (S.P[pi].lore - lore0) + ' lore · ' + S.P[pi].name + ' has ' + S.P[pi].lore);
+      else if (a.k === 'chal' && res) cpuShow(a.u, 'Challenged', 'Challenged ' + DD(a.t).full, (isLoc(a.t) ? 'Dealt ' + res.dt + ' damage to ' + nm(a.t) : 'Dealt ' + res.dt + ' · took ' + res.da) + (res.banished.length ? ' · Banished ' + res.banished.map(nm).join(' and ') : ''));
+      else if (a.k === 'move') cpuShow(a.u, 'Moved', '', 'To ' + DD(a.t).n);
+      else if (a.k === 'boost') cpuShow(a.u, 'Boosted', '', 'Put a card under ' + nm(a.u));
+      else if (a.k === 'ink') ticker(S.P[pi], 'Inked', 'A card, facedown');
+    }
     // Support
     if (a.k === 'quest' && hasKw(a.u, 'support') && STR(a.u) > 0) {
       if (byCpu) { var to = cpuSupportTarget(pi, a.u); if (to) act(function () { A.support(pi, a.u, to); }); }
@@ -5254,14 +5357,36 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
   }
   // The computer's card, big, with what it just did across the top and a Continue button below
-  function showReveal(u, how, verb) {
+  // How the computer's moves are shown: a card to acknowledge, or a passing banner (fast mode / skip this turn)
+  var FAST = 'lorc_fast';
+  function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
+  function cpuShow(u, verb, how, effect) {
+    if (!S || !S.cards[u]) return;
+    if (quickMoves()) return ticker(S.P[C(u).o], verb, DD(u).full + (effect ? ' · ' + effect : ''));
+    showReveal(u, how, verb, effect);
+  }
+  function ticker(p, verb, text) {
+    var open = $('.lz.reveal .rv-head');
+    if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + esc(text) }), open.firstChild); return; }
+    var box = $('.rv-ticks') || document.body.appendChild(el('div', { class: 'rv-ticks', 'aria-live': 'polite' }));
+    var t = el('div', { class: 'rv-tick', html: '<i class="dot" style="--c:' + p.color + '"></i><b>' + esc(verb) + '</b><span>' + esc(text) + '</span>' });
+    box.appendChild(t); while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 2600);
+  }
+  function showReveal(u, how, verb, effect) {
     var d = DD(u), p = S.P[C(u).o];
     verb = verb || (/^Used/.test(how || '') ? 'Ability' : /^Sung/.test(how || '') ? 'Sung' : /^Shifted/.test(how || '') ? 'Shifted' : 'Played');
     var ov = zoomShell(d, headHTML(d) + defMeta(d, u) +
       (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div>', [], null, null, { tapClose: true });
     ov.classList.add('reveal');
-    ov.insertBefore(el('div', { class: 'rv-head', html: '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' }), ov.firstChild);
-    ov.appendChild(el('button', { type: 'button', class: 'rv-go', text: 'Continue' }));
+    var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
+    ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + esc(effect) + '</span>' : '') }), ov.firstChild);
+    var row = el('div', { class: 'rv-row' }, [
+      el('button', { type: 'button', class: 'rv-skip', text: 'Skip this turn', title: 'Show the rest of this turn as quick banners', onclick: function () { S.skipTurn = S.turn; } }),
+      el('button', { type: 'button', class: 'rv-go', text: 'Continue' })
+    ]);
+    var fastBtn = el('button', { type: 'button', class: 'rv-fast', 'aria-pressed': 'false', title: 'Show the computer’s moves as banners instead of stopping for each one', html: '<i class="sw"></i>Fast mode', onclick: function (e) { e.stopPropagation(); var on = !lsGet(FAST, false); lsSet(FAST, on); fastBtn.setAttribute('aria-pressed', String(on)); fastBtn.classList.toggle('on', on); Kit.sfx('tap'); } });
+    ov.appendChild(el('div', { class: 'rv-bar' }, [row, fastBtn]));
     Kit.haptic('light');
   }
 
