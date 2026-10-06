@@ -406,7 +406,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--p1) 40%,#e3bd62),inset 0 1px 0 rgba(255,255,255,.15),0 4px 14px rgba(0,0,0,.3);}
 .sp .sb small{color:rgba(255,255,255,.72);}
 .sp .grp{display:flex;gap:4px;align-items:flex-start;}
-.sp .grp.r{margin-left:auto;}
+.sp .mid{flex:1;display:flex;justify-content:center;min-width:0;}
 .sp .grp:not(.r){gap:12px;}
 .sb{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:40px;}
 .sb .sh{position:relative;width:40px;height:40px;display:grid;place-items:center;}
@@ -419,7 +419,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sb small{max-height:0;opacity:0;overflow:hidden;transition:max-height .22s ease,opacity .18s;font-size:.58rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
 .sb-cost[title="Inkable"] small{color:var(--gilt-2);}
 .sb-ink .gems{display:flex;justify-content:center;width:auto;min-width:40px;}
-.sb-ink .gems svg{position:relative;width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) drop-shadow(0 0 6px color-mix(in srgb,var(--g) 60%,transparent));}
+.sb-ink .gems{height:40px;align-items:center;}
+.sb-ink .gems svg{position:relative;width:17px;height:17px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) drop-shadow(0 0 6px color-mix(in srgb,var(--g) 60%,transparent));}
 .sb.off{opacity:.16;}
 .sp{cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .sp.cap .sb small{max-height:14px;opacity:1;}
@@ -3901,14 +3902,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       (d.k ? '<circle cx="20" cy="20" r="18.5" fill="none" stroke="#e3bd62" stroke-width="1.6" stroke-dasharray="3 2.2"/>' : '') +
       '<path d="M20 4.5l13.4 7.75v15.5L20 35.5 6.6 27.75v-15.5z" fill="' + (d.k ? 'url(#gk)' : '#2a2440') + '" stroke="' + (d.k ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.6"/></svg>';
     var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(function (i, k) {
-      return '<svg viewBox="0 0 40 40" style="--g:' + INKC[i] + ';' + (k ? 'margin-left:-14px' : '') + '"><path d="M20 3l14 9-5 22H11L6 12z" fill="var(--g)" stroke="rgba(255,255,255,.75)" stroke-width="1.4"/><path d="M20 3l14 9H6z" fill="rgba(255,255,255,.35)"/><path d="M6 12h28L20 34z" fill="rgba(0,0,0,.18)"/></svg>';
+      return '<svg viewBox="0 0 40 40" style="--g:' + INKC[i] + ';' + (k ? 'margin-left:-6px' : '') + '"><path d="M20 3l14 9-5 22H11L6 12z" fill="var(--g)" stroke="rgba(255,255,255,.75)" stroke-width="1.4"/><path d="M20 3l14 9H6z" fill="rgba(255,255,255,.35)"/><path d="M6 12h28L20 34z" fill="rgba(0,0,0,.18)"/></svg>';
     }).join('') + '</span>' : '';
     var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.5L24.7 8.7L33.1 6.9L31.3 15.3L38.5 20.0L31.3 24.7L33.1 33.1L24.7 31.3L20.0 38.5L15.3 31.3L6.9 33.1L8.7 24.7L1.5 20.0L8.7 15.3L6.9 6.9L15.3 8.7z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
     var SHIELD = '<svg viewBox="0 0 40 40"><path d="M20 3.5l13 4.8v10c0 7.6-5.4 14-13 17.2C12.4 32.3 7 25.9 7 18.3v-10z" fill="#f3ead2" stroke="#b8933e" stroke-width="1.5" stroke-linejoin="round"/></svg>';
     var DIAMOND = '<svg viewBox="0 0 40 40"><path d="M20 2.5L34 20 20 37.5 6 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1.5" stroke-linejoin="round"/><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs></svg>';
     var MOVE = '<svg viewBox="0 0 40 40"><path d="M20 6l12 7v14l-12 7-12-7V13z" fill="#2a2440" stroke="#9fd2ff" stroke-width="1.6"/></svg>';
-    var L = '<div class="grp">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') +
-      (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>';
+    // Cost on the left, ink gem(s) centred between it and the stats
+    var L = '<div class="grp">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') + '</div>' +
+      '<div class="mid">' + (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>';
     var R = '<div class="grp r">';
     if (d.t === 'location') R += badge('w', SHIELD, live ? WP(u) : d.w || 0, 'Will', d.w || 0) + badge('l', DIAMOND, live ? LORE(u) : d.l || 0, 'Lore', d.l || 0) + badge('mv', MOVE, d.mv || 0, 'Move');
     else { var ch = d.t === 'character';
