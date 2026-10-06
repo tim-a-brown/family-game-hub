@@ -298,7 +298,7 @@
     var closed = false;
     function close(fromCancel) {
       if (closed) return; closed = true;
-      scrim.classList.remove('show');
+      scrim.classList.remove('show'); scrim.style.pointerEvents = 'none';
       doc.removeEventListener('keydown', onKey);
       setTimeout(function () { scrim.remove(); }, 300);
       if (fromCancel === true && o.onCancel) o.onCancel();
