@@ -392,8 +392,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-ics{align-items:flex-end;}
 .lz-head h2.chr-tap{cursor:pointer;text-decoration:underline dotted rgba(246,220,149,.45);text-underline-offset:4px;text-decoration-thickness:1px;}
 .lz-ics .lz-bm{margin:0;}
+.lz-head .lz-bm.tall{align-self:stretch;width:30px;height:auto;min-height:48px;margin:0 -4px 0 -6px;padding:1px 2px;border-radius:8px;}
+.lz-bm.tall .rib{width:24px;height:100%;}
+.lz-bm.tall.on .rib path{fill:currentColor;}
+.lz-bm.tall:active{transform:scale(.95);}
 /* Add to deck: a small gilded pill under the bookmark */
-.lz-ics .lz-dk{margin:2px 8px 0 0;width:auto;height:28px;padding:0 10px 0 8px;gap:5px;display:flex;align-items:center;border-radius:999px;white-space:nowrap;
+.lz-ics .lz-dk{margin:2px 6px 0 0;width:auto;height:28px;padding:0 10px 0 8px;gap:5px;display:flex;align-items:center;border-radius:999px;white-space:nowrap;
   background:linear-gradient(180deg,#f6dc95,#d9a94a 55%,#b9852c);color:#2b1a00;font-size:.74rem;font-weight:900;letter-spacing:.01em;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(90,50,0,.35),0 2px 6px rgba(0,0,0,.35);}
 .lz-ics .lz-dk .ico{width:15px;height:15px;}
@@ -414,6 +418,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-nav:disabled{opacity:.25;}
 .lz-pos{position:absolute;left:50%;bottom:-30px;transform:translateX(-50%);z-index:150;padding:3px 10px;border-radius:999px;background:rgba(10,8,28,.7);font-size:.74rem;font-weight:800;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none;}
 .lz-flow:has(.lz-pos){margin-bottom:26px;}
+.lz-flow.strip{touch-action:none;}
+.fc-hint{position:absolute;left:50%;z-index:200;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-weight:900;font-size:.85rem;white-space:nowrap;pointer-events:none;opacity:0;transform:translateX(-50%) scale(.9);transition:opacity .15s,transform .15s;
+  background:linear-gradient(180deg,#f6dc95,#d9a94a 55%,#b9852c);color:#2b1a00;box-shadow:0 4px 14px rgba(0,0,0,.45);}
+.fc-hint .ico,.fc-hint svg{width:16px;height:16px;}
+.fc-hint.up{top:4px;}.fc-hint.dn{bottom:4px;}
+.fc-hint.show{opacity:1;transform:translateX(-50%) scale(1);}
 .lz-info{width:100%;background:var(--bg-2);border-radius:20px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);}
 .lz-info h2{font-family:var(--serif);font-size:1.3rem;font-weight:700;}
 .lz-info .ver{font-family:var(--serif);font-style:italic;color:var(--text-2);margin-top:1px;}
@@ -432,6 +442,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sb .sh > svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
 .sb b{position:relative;font-family:var(--display);font-size:1.3rem;font-weight:400;line-height:1;color:#241a08;}
 .sb-cost b,.sb-mv b{color:#f3ead2;font-size:1.15rem;}
+.sb-mv b{margin-top:10px;font-size:1rem;}
 .sb-s b{font-size:1.1rem;color:#1c1f26;}
 .sb-w b{margin-top:-3px;color:#fff;}
 .sb-l b{color:#f6e1a8;font-size:1rem;}
@@ -895,11 +906,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 
   // ── Card symbols and keyword marks (line art, no emoji) ─────────────────
   var SV = {
-    I: '<path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z" fill="currentColor" stroke="none"/>',
-    E: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v5h-5"/>',
-    S: '<path d="M12 2l2.1 6.4 6.4-1.6-4.4 5.2 4.4 5.2-6.4-1.6L12 22l-2.1-6.4-6.4 1.6 4.4-5.2-4.4-5.2 6.4 1.6z" fill="currentColor" stroke="none"/>',
-    W: '<path d="M12 2.5l7.5 3v6c0 4.5-3.2 8.3-7.5 10-4.3-1.7-7.5-5.5-7.5-10v-6z" fill="currentColor" stroke="none"/>',
-    L: '<path d="M12 2.5l7 9.5-7 9.5-7-9.5z" fill="currentColor" stroke="none"/>',
+    // Drawn after the printed glyphs: ink = open hexagon, exert = hexagon with a turning arrow,
+    // strength = sun ring, willpower = filled heater shield, lore = hollow four-point gem
+    I: '<path d="M12 2.6l8.1 4.7v9.4L12 21.4l-8.1-4.7V7.3z" stroke-width="2.2"/>',
+    E: '<defs><mask id="lsym-ex"><rect width="24" height="24" fill="#fff"/><g fill="none" stroke="#000" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M16.6 12.6a4.7 4.7 0 1 1-1.6-4.3"/><path d="M15.6 5.5v3.3h-3.3"/></g></mask></defs><path d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8z" fill="currentColor" stroke="none" mask="url(#lsym-ex)"/>',
+    S: '<circle cx="12" cy="12" r="5.6" stroke-width="2.3"/><path d="M14.30 4.80L12.00 0.70L9.70 4.80zM18.72 8.54L19.99 4.01L15.46 5.28zM19.20 14.30L23.30 12.00L19.20 9.70zM15.46 18.72L19.99 19.99L18.72 15.46zM9.70 19.20L12.00 23.30L14.30 19.20zM5.28 15.46L4.01 19.99L8.54 18.72zM4.80 9.70L0.70 12.00L4.80 14.30zM8.54 5.28L4.01 4.01L5.28 8.54z" fill="currentColor" stroke="none"/>',
+    W: '<path d="M4 3h16v8.2c0 5.2-3.7 9-8 10.8-4.3-1.8-8-5.6-8-10.8z" fill="currentColor" stroke="none"/>',
+    L: '<path fill-rule="evenodd" d="M12 1.2Q13.6 10.4 22.8 12 13.6 13.6 12 22.8 10.4 13.6 1.2 12 10.4 10.4 12 1.2zM12 8.8 15.2 12 12 15.2 8.8 12z" fill="currentColor" stroke="none"/>',
     C: '<circle cx="12" cy="12" r="7" fill="currentColor" stroke="none"/>'
   };
   function sym(k, cls) { return '<svg class="' + (cls || 'sym') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (SV[k] || SV.C) + '</svg>'; }
@@ -5606,6 +5619,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     CLSRE = all.length ? new RegExp('\\b((?:' + all.join('|') + ')s?)\\b', 'g') : null;
     return CLSRE;
   }
+  var DECK_ICO2 = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7.5" y="3.5" width="11" height="15" rx="2"/><path d="M5.5 6.5v12a2 2 0 0 0 2 2h8"/></svg>';
+  var RIBBON = '<svg class="rib" viewBox="0 0 24 60" preserveAspectRatio="none" aria-hidden="true"><path d="M4 2.5h16v55l-8-9-8 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
   function rulesHTML(d) {
     var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
     var setNo = d.set ? '<small class="setno">Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '', first = true;
@@ -5613,12 +5628,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function fmt(t, plain) {
       // Bold what matters (outside the reminder text in brackets): actions,
       // keywords, numbers with what they count, and named characters
-      var h = esc(t).split(/(\([^)]*\))/).map(function (part) {
+      // (apostrophes become ’ first, so bolding numbers can't break the escaped &#39;)
+      var h = esc(t).replace(/&#39;/g, '’').split(/(\([^)]*\))/).map(function (part) {
         if (/^\(/.test(part)) return '<span class="rem">' + part + '</span>';
         if (plain) return part;
         return part
           .replace(/\bnamed ((?:[A-Z][\w’'.\-]*)(?:\s+(?:[A-Z][\w’'.\-]*|the|of|and|de))*)/g, 'named <b class="em">$1</b>')
-          .replace(/([+−\-]?\d+(?:\s*\{[ISWLC]\})?(?:\s+(?:or\s+)?(?:less|more|damage|lore|cards?|strength|willpower))?)/g, '<b class="em">$1</b>')
+          .replace(/([+−\-]?\d+(?:\s*\{[ISWLC]\})?(?:\s+(?:or\s+)?(?:less|more|damage|lore|cards?|strength|willpower))?)/g, function (m, g, off, str) { return str.charAt(off - 1) === '#' ? m : '<b class="em">' + m + '</b>'; })
           .replace(/\b(banish(?:es|ed)?|exert(?:s|ed)?|ready|readies|readied|draws?|discards?|deals?|returns?|shuffles?|sing(?:s)?)\b/gi, '<b class="em">$1</b>')
           .replace(/\b(Sing Together|Ward|Evasive|Rush|Bodyguard|Challenger|Resist|Support|Singer|Shift|Reckless|Vanish|Alert|Boost)\b/g, '<b class="em kwe">$1</b>')
           // Classifications (Toy, Hero, Princess…), skipping text already in bold
@@ -5661,7 +5677,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
     var SHIELD = '<svg viewBox="0 0 40 40"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
     var DIAMOND = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs><path d="M20 1.5L33 20 20 38.5 7 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1" stroke-linejoin="round"/><path d="M20 6.5L29.5 20 20 33.5 10.5 20z" fill="#1d1a2c"/></svg>';
-    var MOVE = '<svg viewBox="0 0 40 40"><path d="M20 6l12 7v14l-12 7-12-7V13z" fill="#2a2440" stroke="#9fd2ff" stroke-width="1.6"/></svg>';
+    var MOVE = '<svg viewBox="0 0 40 40"><path d="M13.5 2.5h13L20 9z" fill="#eef0f3"/><path d="M6.5 12.5 20 18.5l13.5-6v14.2L20 37 6.5 26.7z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.5" stroke-linejoin="round"/><path d="M9.3 16.6 20 21.4l10.7-4.8v8.8L20 33.6 9.3 25.4z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
     // Cost on the left, ink gem(s) centred between it and the stats
     var L = '<div class="grp">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') + '</div>' +
       '<div class="mid">' + (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>';
@@ -5777,7 +5793,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var bm = el('button', { type: 'button', class: 'lz-bm' + (isMarked(d) ? ' on' : ''), 'aria-pressed': String(isMarked(d)), 'aria-label': 'Bookmark ' + d.full, title: 'Bookmark', html: Kit.icon('bookmark'), onclick: function (e) {
       e.stopPropagation(); var on = toggleMark(d); bm.classList.toggle('on', on); bm.setAttribute('aria-pressed', String(on));
     } });
-    var hd = info.querySelector('.lz-head'); if (hd) hd.appendChild(el('div', { class: 'lz-ics' }, [bm])); else info.insertBefore(bm, info.firstChild);
+    // Bookmark: a ribbon down the left of the film / name / version block
+    var hd = info.querySelector('.lz-head');
+    if (hd) { bm.classList.add('tall'); bm.innerHTML = RIBBON; hd.insertBefore(bm, hd.firstChild); hd.appendChild(el('div', { class: 'lz-ics' })); }
+    else info.insertBefore(bm, info.firstChild);
     var stb = info.querySelector('.lz-story.tap');
     if (stb) stb.addEventListener('click', function (e) { e.stopPropagation(); if (ui.storyPick) ui.storyPick(stb.getAttribute('data-story')); });
     ov.appendChild(inner);
@@ -5891,12 +5910,25 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     };
     // Dragging: every card follows your finger
     var sw = null;
-    F.el.addEventListener('pointerdown', function (e) { stop(); sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, p0: F.pos, pts: [] }; });
+    F.el.addEventListener('pointerdown', function (e) { stop(); sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, v: false, p0: F.pos, pts: [] }; });
+    // Up and down on the front card: swipe up to bookmark it, down to add it to a deck
+    var hint = el('div', { class: 'fc-hint' }); F.el.appendChild(hint);
+    var VT = 70;
+    function vDrag(dy) {
+      var b = F.items[Math.round(F.pos)]; if (!b) return;
+      var q = pose(Math.round(F.pos) - F.pos), lim = Math.max(-140, Math.min(140, dy));
+      b.style.transform = q.t + ' translateY(' + (lim * 0.6).toFixed(1) + 'px)';
+      var d = defAt(Math.round(F.pos)), up = dy < -VT, dn = dy > VT && ui.flowDeck;
+      hint.className = 'fc-hint' + (up ? ' up show' : dn ? ' dn show' : '');
+      hint.innerHTML = up ? Kit.icon('bookmark') + (d && isMarked(d) ? 'Remove bookmark' : 'Bookmark') : dn ? DECK_ICO2 + 'Add to deck' : '';
+    }
     F.el.addEventListener('pointermove', function (e) {
       if (!sw || e.pointerId !== sw.id) return;
       var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+      if (sw.v) { if (e.cancelable) e.preventDefault(); vDrag(dy); return; }
       if (!sw.h) {
         if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; measure(); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} }
+        else if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.4) { sw.v = true; measure(); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} vDrag(dy); return; }
         else return;
       }
       sw.pts.push({ x: e.clientX, t: performance.now() }); if (sw.pts.length > 8) sw.pts.shift();
@@ -5907,6 +5939,18 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function end(e) {
       if (!sw) return;
       var s = sw; sw = null;
+      if (s.v) {
+        F.dragAt = Date.now(); hint.className = 'fc-hint';
+        var dy = (e && e.clientY != null ? e.clientY : s.y) - s.y, d = defAt(Math.round(F.pos));
+        F.render();
+        if (!d || e.type === 'pointercancel') return;
+        if (dy < -VT) {
+          var on = toggleMark(d); Kit.haptic('light'); Kit.sfx(on ? 'good' : 'tap');
+          var bmb = F.ov && F.ov.querySelector('.lz-bm'); if (bmb) { bmb.classList.toggle('on', on); bmb.setAttribute('aria-pressed', String(on)); }
+          Kit.toast(on ? 'Bookmarked ' + d.n : 'Bookmark removed');
+        } else if (dy > VT && ui.flowDeck) { Kit.sfx('tap'); ui.flowDeck(d); }
+        return;
+      }
       if (!s.h) return;
       F.dragAt = Date.now();
       // speed at release, in cards per millisecond (positive = toward later cards)
@@ -6756,6 +6800,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
       if (list) filterBtn();
       // Library: a small deck button beside the bookmark, with how many of your decks hold this card
+      ui.flowDeck = lib ? function (dd) { closeZoom(); deckAdder(dd, function () { cardZoom(dd, list); }); } : null;
       if (lib) {
         // Tap the name to see every version of this character
         var h2 = d.t === 'character' && $('.lz .lz-head h2');
