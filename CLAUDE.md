@@ -11,6 +11,8 @@ Shared code:
   which file is "play" vs "keep score"). Home screen and kit both read it.
 - `sync.js` (Firestore sync, PIN sign-in), `hist.js` (game history),
   `players.js` (frequent players), `casino.js` (bankroll), `arcade-hi.js`.
+- `sounds/`: recorded game sounds (Kenney CC0 packs) used by `Kit.sfx`, built by
+  `scripts/build-sounds.py`; synthesized fallbacks live in `kit.js`.
 - Legacy: `shared.css` + `app.js` are still used by games not yet rebuilt.
 
 Synced storage keys must never change: `hi_*`, `gh_*`, `casino_bank`,

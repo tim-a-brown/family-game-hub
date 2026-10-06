@@ -228,7 +228,47 @@
     splash: function () { noise(0, 0.16, 0.07, 900, 1.2, 300); tone(180, 0, 0.12, 'sine', 0.06, 90); },
     boom: function () { noise(0, 0.32, 0.08, 240, 0.8, 90); tone(95, 0, 0.28, 'sine', 0.09, 45); }
   };
-  function sfx(name) { if (!soundOn()) return; try { (SFX[name] || SFX.tap)(); } catch (e) {} }
+  // Recorded sounds (Kenney's CC0 packs, built by scripts/build-sounds.py) live in
+  // /sounds as name-1.mp3, name-2.mp3…: real cards, chips, dice, strings, metal and
+  // glass. Each play picks a different take and nudges its pitch a little so
+  // repeats don't sound canned. The synthesized versions above stand in until
+  // the files have loaded, or if they can't load.
+  var TAKES = { tap: 3, tick: 2, pop: 2, flip: 4, deal: 3, chip: 4, roll: 3, whoosh: 3, good: 2, bad: 2, win: 2, lose: 2, clash: 2, sparkle: 2, boom: 2, splash: 2 };
+  var GAIN = { tap: 0.26, tick: 0.2, pop: 0.3, flip: 0.6, deal: 0.55, chip: 0.5, roll: 0.75, whoosh: 0.32, good: 0.3, bad: 0.26, win: 0.45, lose: 0.4, clash: 0.55, sparkle: 0.5, boom: 0.55, splash: 0.45 };
+  var MELODIC = { good: 1, bad: 1, win: 1, lose: 1 };
+  var SND_BASE = (function () { try { return new URL('sounds/', (document.currentScript && document.currentScript.src) || location.href).href; } catch (e) { return '/sounds/'; } })();
+  var bufs = {}, lastTake = {}, sndLoading = false;
+  function loadSounds() {
+    if (sndLoading) return; sndLoading = true;
+    var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OC || !window.fetch) return;
+    var dec; try { dec = new OC(1, 1, 44100); } catch (e) { return; }
+    Object.keys(TAKES).forEach(function (n) {
+      bufs[n] = [];
+      for (var i = 1; i <= TAKES[n]; i++) (function (n, i) {
+        fetch(SND_BASE + n + '-' + i + '.mp3').then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+          .then(function (b) { return new Promise(function (res, rej) { var pr = dec.decodeAudioData(b, res, rej); if (pr && pr.catch) pr.catch(rej); }); })
+          .then(function (buf) { bufs[n][i - 1] = buf; }).catch(function () {});
+      })(n, i);
+    });
+  }
+  function playSample(name) {
+    var list = bufs[name], a; if (!list) return false;
+    var ok = []; for (var i = 0; i < list.length; i++) if (list[i]) ok.push(i);
+    if (!ok.length || !(a = ctx())) return false;
+    if (ok.length > 1) ok = ok.filter(function (i) { return i !== lastTake[name]; });
+    var k = ok[Math.floor(Math.random() * ok.length)]; lastTake[name] = k;
+    var src = a.createBufferSource(), g = a.createGain();
+    src.buffer = list[k];
+    src.playbackRate.value = MELODIC[name] ? 1 : 0.95 + Math.random() * 0.1;
+    g.gain.value = (GAIN[name] || 0.4) * (0.9 + Math.random() * 0.2);
+    src.connect(g); g.connect(a.destination); src.start();
+    return true;
+  }
+  function soundsLoaded() { var o = {}; Object.keys(bufs).forEach(function (n) { o[n] = bufs[n].filter(Boolean).length; }); return o; }
+  function sfx(name) { if (!soundOn()) return; loadSounds(); try { if (!playSample(name)) (SFX[name] || SFX.tap)(); } catch (e) {} }
+  // Fetch the recordings early (decoding needs no tap), so the first sound is the real one
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { if (soundOn()) setTimeout(loadSounds, 400); });
+  else setTimeout(function () { if (soundOn()) loadSounds(); }, 400);
 
   // ── Toast & callout ───────────────────────────────────────────────────────
   var toastEl = null, toastT = null;
@@ -1151,7 +1191,7 @@
 
   window.Kit = {
     init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
-    confetti: confetti, sfx: sfx, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
+    confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
     resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };

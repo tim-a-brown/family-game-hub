@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v101-2026-10-06-lorcana-ink-magic';
+const CACHE_VERSION = 'v102-2026-10-06-recorded-sounds';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -41,6 +41,47 @@ const PRECACHE_URLS = [
   '/icon-512.png',
   '/apple-touch-icon.png',
   '/favicon.png',
+  // Game sounds (recorded, CC0)
+  '/sounds/bad-1.mp3',
+  '/sounds/bad-2.mp3',
+  '/sounds/boom-1.mp3',
+  '/sounds/boom-2.mp3',
+  '/sounds/chip-1.mp3',
+  '/sounds/chip-2.mp3',
+  '/sounds/chip-3.mp3',
+  '/sounds/chip-4.mp3',
+  '/sounds/clash-1.mp3',
+  '/sounds/clash-2.mp3',
+  '/sounds/deal-1.mp3',
+  '/sounds/deal-2.mp3',
+  '/sounds/deal-3.mp3',
+  '/sounds/flip-1.mp3',
+  '/sounds/flip-2.mp3',
+  '/sounds/flip-3.mp3',
+  '/sounds/flip-4.mp3',
+  '/sounds/good-1.mp3',
+  '/sounds/good-2.mp3',
+  '/sounds/lose-1.mp3',
+  '/sounds/lose-2.mp3',
+  '/sounds/pop-1.mp3',
+  '/sounds/pop-2.mp3',
+  '/sounds/roll-1.mp3',
+  '/sounds/roll-2.mp3',
+  '/sounds/roll-3.mp3',
+  '/sounds/sparkle-1.mp3',
+  '/sounds/sparkle-2.mp3',
+  '/sounds/splash-1.mp3',
+  '/sounds/splash-2.mp3',
+  '/sounds/tap-1.mp3',
+  '/sounds/tap-2.mp3',
+  '/sounds/tap-3.mp3',
+  '/sounds/tick-1.mp3',
+  '/sounds/tick-2.mp3',
+  '/sounds/whoosh-1.mp3',
+  '/sounds/whoosh-2.mp3',
+  '/sounds/whoosh-3.mp3',
+  '/sounds/win-1.mp3',
+  '/sounds/win-2.mp3',
   // Every game
   '/games/2048.html',
   '/games/asteroids.html',
