@@ -5969,7 +5969,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     };
     // Dragging: every card follows your finger
     var sw = null;
-    F.el.addEventListener('pointerdown', function (e) { stop(); sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, v: false, p0: F.pos, pts: [] }; });
+    F.el.addEventListener('pointerdown', function (e) { stop(); stopTip(); sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, v: false, p0: F.pos, pts: [] }; });
     // Up and down on the front card: swipe up to bookmark it, down to add it to a deck
     // The label sits in a dark band at the screen edge; the card slides into it as you swipe
     var hint = el('div', { class: 'fc-hint' }), zone = el('div', { class: 'fc-zone' }, [hint]);
@@ -6015,13 +6015,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return y < innerHeight - 56 ? y : null;
     }
     // First visit: the card bobs up then down, showing what each swipe does
+    var tipT = [];
     F.tip = function () {
-      var j = Math.round(F.pos), b = F.items[j]; if (!b) return;
+      var j = Math.round(F.pos), b = F.items[j]; if (!b || sw || Date.now() - F.dragAt < 1500) return;
       cardR = b.getBoundingClientRect();
       vDrag(-VT * 0.55);
-      setTimeout(function () { if (b.isConnected) vDrag(VT * 0.55); }, 1300);
-      setTimeout(function () { hint.className = 'fc-hint'; zoneOn('', 0); springBack(j, false, 1); }, 2700);
+      tipT.push(setTimeout(function () { if (b.isConnected && !sw) vDrag(VT * 0.55); }, 1300));
+      tipT.push(setTimeout(function () { if (sw) return; hint.className = 'fc-hint'; zoneOn('', 0); springBack(j, false, 1); }, 2700));
     };
+    function stopTip() { if (!tipT.length) return; tipT.forEach(clearTimeout); tipT = []; hint.className = 'fc-hint'; zoneOn('', 0); }
     // Spring the card home with a little overshoot (and a nudge in the swipe direction when it fires)
     function springBack(j, fired, dir) {
       var b = F.items[j]; if (!b) return;
