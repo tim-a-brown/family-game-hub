@@ -378,6 +378,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-story .ico{width:.9em;height:.9em;vertical-align:-.1em;margin-left:2px;}
 .lz-ttl h2{text-wrap:balance;}
 .lz-story .nw{white-space:nowrap;}
+.lz-dk{position:relative;flex:none;width:40px;height:40px;margin:-4px -2px 0 0;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;color:var(--text-3);cursor:pointer;}
+.lz-dk .ico{width:23px;height:23px;}
+.lz-dk b{position:absolute;right:-3px;top:-2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;display:grid;place-items:center;font-size:.68rem;font-weight:900;line-height:1;background:rgba(255,255,255,.14);color:var(--text-2);box-shadow:0 0 0 2px var(--bg-2);}
+.lz-dk.in{color:var(--gilt-2);}
+.lz-dk.in b{background:var(--gilt);color:#2b1a00;}
 .lz-bm{flex:none;width:40px;height:40px;margin:-4px -6px 0 0;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;color:var(--text-3);}
 .lz-bm .ico{width:22px;height:22px;}
 .lz-bm.on{color:var(--gilt-2);}
@@ -4873,14 +4878,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var have = count(d), i = list ? list.indexOf(d) : -1;
       curZoom = { d: d, list: list };
       var inN = lib ? savedDecks().filter(function (dk) { return copiesByFull(dk.cards, d.full) > 0; }).length : 0;
-      zoomDef(d, lib ? [
-        { label: 'Add to a deck · ' + (inN ? 'In ' + plural(inN, 'deck') : 'Not in a deck yet'), primary: true, go: function () { deckAdder(d, function () { cardZoom(d, list); }); } }
-      ] : [
+      zoomDef(d, lib ? [] : [
         { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
         { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
       ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
       if (list) filterBtn();
+      // Library: a small deck button beside the bookmark, with how many of your decks hold this card
+      if (lib) {
+        var hd = $('.lz .lz-head'), bmk = hd && $('.lz-bm', hd);
+        if (hd) hd.insertBefore(el('button', { type: 'button', class: 'lz-dk' + (inN ? ' in' : ''), title: inN ? 'In ' + plural(inN, 'of your decks') + ': add or remove' : 'Add to a deck',
+          'aria-label': inN ? 'In ' + plural(inN, 'deck') + '. Add to a deck' : 'Add to a deck',
+          html: DECK_ICO + '<b>' + (inN || '+') + '</b>', onclick: function (e) { e.stopPropagation(); closeZoom(); deckAdder(d, function () { cardZoom(d, list); }); } }), bmk || null);
+      }
     }
+    var DECK_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7.5" y="3.5" width="11" height="15" rx="2"/><path d="M5.5 6.5v12a2 2 0 0 0 2 2h8"/></svg>';
     // Library: put this card into any of your saved decks (or start one with it)
     function deckAdder(d, done) {
       var node = el('div', { class: 'da' }), sh, order = null;
