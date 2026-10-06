@@ -12,7 +12,13 @@
 //   signOut()                  -> void
 //   continueAsGuest()          -> void
 //   onReady(cb)                -> called once sync completes
-//   noteWrite(key)             -> call after any hi_/gh_ localStorage write
+//   noteWrite(key)             -> call after any hi_/gh_/lorcana_ localStorage write
+//
+// Lorcana decks and bookmarks sync too (cloud field `lorcana`). Local keys:
+//   lorcana_decks_v1 [{id,name,cards,at}]   lorcana_decks_del {id: deletedAt}
+//   lorcana_marks_v1 {card: markedAt}        lorcana_marks_del {card: removedAt}
+// Each deck and each bookmark goes by its own timestamp, so edits, deletes and
+// un-bookmarks on one device carry over to the others.
 (function(){
   'use strict';
   var LS = window.localStorage;
@@ -70,7 +76,7 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc() };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -91,6 +97,42 @@
       }
     }
     return out;
+  }
+
+  // ── Lorcana decks + bookmarks ─────────────────────────────────────────
+  var LORC_KEYS = { decks: 'lorcana_decks_v1', ddel: 'lorcana_decks_del', marks: 'lorcana_marks_v1', mdel: 'lorcana_marks_del' };
+  function lsJSON(k){ try{ var v = LS.getItem(k); return v == null ? null : JSON.parse(v); }catch(e){ return null; } }
+  function scanLorc(){
+    var o = {}, any = false;
+    Object.keys(LORC_KEYS).forEach(function(f){ var v = lsJSON(LORC_KEYS[f]); if(v != null) any = true; o[f] = v; });
+    if(!any) return null;
+    return { decks: asArray(o.decks), ddel: o.ddel || {}, marks: o.marks || {}, mdel: o.mdel || {} };
+  }
+  function maxMap(a, b){
+    var out = {};
+    [a || {}, b || {}].forEach(function(m){ Object.keys(m).forEach(function(k){ var t = Number(m[k]) || 0; if(!(out[k] >= t)) out[k] = t; }); });
+    return out;
+  }
+  function mergeLorc(a, b){
+    if(!a && !b) return null;
+    a = a || {}; b = b || {};
+    var ddel = maxMap(a.ddel, b.ddel), byId = {};
+    asArray(a.decks).concat(asArray(b.decks)).forEach(function(d){
+      if(!d || !d.id || !d.cards) return;
+      var ex = byId[d.id];
+      if(!ex || (d.at || 0) > (ex.at || 0)) byId[d.id] = d;
+    });
+    var decks = Object.keys(byId).map(function(k){ return byId[k]; })
+      .filter(function(d){ return !(ddel[d.id] >= (d.at || 0)); })
+      .sort(function(x, y){ return (y.at || 0) - (x.at || 0); });
+    var on = maxMap(a.marks, b.marks), off = maxMap(a.mdel, b.mdel), marks = {}, mdel = {};
+    Object.keys(on).forEach(function(k){ if(!(off[k] >= on[k])) marks[k] = on[k]; });
+    Object.keys(off).forEach(function(k){ if(!marks[k]) mdel[k] = off[k]; });
+    return { decks: decks, ddel: ddel, marks: marks, mdel: mdel };
+  }
+  function writeLorc(l){
+    if(!l) return;
+    Object.keys(LORC_KEYS).forEach(function(f){ try{ LS.setItem(LORC_KEYS[f], JSON.stringify(l[f] || (f === 'decks' ? [] : {}))); }catch(e){} });
   }
 
   // ── Merge strategies ──────────────────────────────────────────────────
@@ -153,6 +195,7 @@
     Object.keys(remote.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(keys).forEach(function(k){ out.gh[k] = mergeGh(local.gh&&local.gh[k], remote.gh&&remote.gh[k]); });
     out.rklists = mergeRkLists(local.rklists, remote.rklists);
+    out.lorc = mergeLorc(local.lorc, remote.lorc);
     // Favorites: newest favsAt timestamp wins the whole list. This lets
     // deletions propagate — unfavoriting bumps the local timestamp, and on
     // next sync that version supersedes any stale cloud copy. Prior behavior
@@ -214,6 +257,9 @@
     if(snap.favsAt){
       try{ LS.setItem('fav_games_updated_at', String(snap.favsAt)); }catch(e){}
     }
+    // Merge again with what's on the device right now, so a deck or bookmark
+    // changed while the cloud was being read isn't overwritten
+    if(snap.lorc) writeLorc(mergeLorc(snap.lorc, scanLorc()));
   }
 
   // ── Firestore sanitization ────────────────────────────────────────────────
@@ -277,14 +323,14 @@
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, isNew:false});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, isNew:false});
     return ref.get().then(function(doc){
       if(!doc.exists){
         console.log('[sync] pull: cloud doc empty (first sync)');
-        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, isNew:true};
+        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, isNew:false };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -343,6 +389,8 @@
       doc.favs = sanitizeForFirestore(snap.favs);
       doc.favsAt = snap.favsAt || Date.now();
     }
+    // Lorcana decks + bookmarks: only when this device has any (merge:true keeps the cloud copy otherwise)
+    if(snap.lorc) doc.lorcana = sanitizeForFirestore(snap.lorc);
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
@@ -354,6 +402,15 @@
     // and pushes before device B's newly-saved data lands — merge:false
     // would wipe the cloud field entirely.
     return ref.set(doc, { merge: true }).catch(function(err){
+      // Rules that don't allow `lorcana` yet would refuse the whole save:
+      // save everything else instead of losing it
+      if(doc.lorcana && err && err.code === 'permission-denied'){
+        console.warn('[sync] cloud refused lorcana field; saving the rest');
+        delete doc.lorcana;
+        return ref.set(doc, { merge: true });
+      }
+      throw err;
+    }).catch(function(err){
       // Log detailed error for diagnostics
       console.error('[sync] ref.set failed', err && err.code, err && err.message, err);
       throw err;
@@ -445,7 +502,7 @@
 
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()) schedulePush();
   }
 
@@ -489,7 +546,8 @@
           gh: remote.gh || {},
           bank: remote.bank,
           rklists: remote.rklists,
-          favs: remote.favs
+          favs: remote.favs,
+          lorc: remote.lorc ? mergeLorc(remote.lorc, null) : null
         });
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}

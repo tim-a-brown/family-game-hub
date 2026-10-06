@@ -14,7 +14,8 @@ Shared code:
 - Legacy: `shared.css` + `app.js` are still used by games not yet rebuilt.
 
 Synced storage keys must never change: `hi_*`, `gh_*`, `casino_bank`,
-`rklists`, `fav_games`.
+`rklists`, `fav_games`, `lorcana_decks_v1`, `lorcana_decks_del`,
+`lorcana_marks_v1`, `lorcana_marks_del`.
 
 ## How Tim works with Claude
 
