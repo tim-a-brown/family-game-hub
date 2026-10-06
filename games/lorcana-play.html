@@ -5548,6 +5548,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // the instructions under it; the set and card number sit right-aligned on the
   // first of those lines.
   var ABRE = /^((?:[A-Z0-9’'!?,.\-–&]+\s){1,8}?)(?=[A-Z{][a-z{]|\{|[A-Z][a-z])/;
+  var CLSRE = null;
+  function clsRe() {
+    if (CLSRE || !DB.unique || !DB.unique.length) return CLSRE;
+    var seen = {};
+    DB.unique.forEach(function (x) { (x.cl || []).forEach(function (c) { if (/^[A-Z]/.test(c)) seen[c] = 1; }); });
+    var all = Object.keys(seen).sort(function (a, b) { return b.length - a.length; }).map(function (c) { return c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); });
+    CLSRE = all.length ? new RegExp('\\b((?:' + all.join('|') + ')s?)\\b', 'g') : null;
+    return CLSRE;
+  }
   function rulesHTML(d) {
     var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
     var setNo = d.set ? '<small class="setno">Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '', first = true;
@@ -5562,7 +5571,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           .replace(/\bnamed ((?:[A-Z][\w’'.\-]*)(?:\s+(?:[A-Z][\w’'.\-]*|the|of|and|de))*)/g, 'named <b class="em">$1</b>')
           .replace(/([+−\-]?\d+(?:\s*\{[ISWLC]\})?(?:\s+(?:or\s+)?(?:less|more|damage|lore|cards?|strength|willpower))?)/g, '<b class="em">$1</b>')
           .replace(/\b(banish(?:es|ed)?|exert(?:s|ed)?|ready|readies|readied|draws?|discards?|deals?|returns?|shuffles?|sing(?:s)?)\b/gi, '<b class="em">$1</b>')
-          .replace(/\b(Sing Together|Ward|Evasive|Rush|Bodyguard|Challenger|Resist|Support|Singer|Shift|Reckless|Vanish|Alert|Boost)\b/g, '<b class="em kwe">$1</b>');
+          .replace(/\b(Sing Together|Ward|Evasive|Rush|Bodyguard|Challenger|Resist|Support|Singer|Shift|Reckless|Vanish|Alert|Boost)\b/g, '<b class="em kwe">$1</b>')
+          // Classifications (Toy, Hero, Princess…), skipping text already in bold
+          .split(/(<b[^>]*>.*?<\/b>)/).map(function (seg) { var re = clsRe(); return /^<b/.test(seg) || !re ? seg : seg.replace(re, '<b class="em">$1</b>'); }).join('');
       }).join('');
       return h.replace(/\{([IESWLC])\}/g, function (x, k) { return sym(k); });
     }
@@ -6877,6 +6888,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
     // tests: apply one ability effect to a card, as if from src
     // tests: queue one ability as if it had triggered, and run the queue
+    rulesHTML: rulesHTML,
     fire: function (src, ab, pi, ctx) { Q.push({ src: src, ab: ab, pi: pi, ctx: ctx || {} }); pumpQ(); },
     hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
   };
