@@ -620,6 +620,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .fp-n.none{color:#ff9a9a;}
 .flowfilt .k-scrim{z-index:450;}
 .flowfilt .lz{padding-bottom:56vh;}
+.fp-catch{display:none;}
+@media (max-width:699px){
+  .flowpanel{left:auto;top:0;bottom:0;right:0;width:calc(100% - 56px);max-height:none;border-radius:22px 0 0 22px;padding:calc(var(--safe-t) + 14px) 14px calc(var(--safe-b) + 16px);
+    transform:translateX(105%);box-shadow:-16px 0 36px rgba(0,0,0,.6),inset 1px 0 0 rgba(227,189,98,.45);}
+  .flowpanel.show{transform:none;}
+  .flowpanel .fchips{flex-wrap:wrap;overflow:visible;}
+  .flowpanel .fp-top{flex-wrap:wrap;}
+  .flowpanel .fp-top b{flex:1 0 100%;font-size:1.15rem;}
+  .flowfilt .lz{padding-bottom:0;}
+  .fp-catch{display:block;position:fixed;left:0;top:0;bottom:0;width:56px;z-index:429;}
+}
 .fchips::-webkit-scrollbar{display:none;}
 .fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.8rem;}
 .fchip.on{background:var(--gilt);color:#2b1a00;}
@@ -4786,6 +4797,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // The library's own filter controls move into a panel over the card view
     // (and back when it closes); every change re-deals the cards you swipe through.
     var FILTER_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
+    var fpCatch = null;
     var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
     function activeFilters() {
       var n = 0; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.story) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
@@ -4807,7 +4819,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Clear', onclick: function () { clearFilters(); } }),
           el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Done', onclick: closeFilterPanel })]),
         fl]);
-      document.body.appendChild(fpanel); document.documentElement.classList.add('flowfilt');
+      // Phones: the panel comes in from the right; the strip of card view still showing closes it
+      fpCatch = el('div', { class: 'fp-catch', 'aria-hidden': 'true', onclick: function (e) { e.stopPropagation(); closeFilterPanel(); } });
+      var sx = null;
+      fpanel.addEventListener('pointerdown', function (e) { sx = { x: e.clientX, y: e.clientY }; });
+      fpanel.addEventListener('pointerup', function (e) { if (!sx) return; var dx = e.clientX - sx.x, dy = e.clientY - sx.y; sx = null; if (dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && innerWidth < 700) closeFilterPanel(); });
+      document.body.appendChild(fpCatch); document.body.appendChild(fpanel); document.documentElement.classList.add('flowfilt');
       requestAnimationFrame(function () { fpanel.classList.add('show'); });
       countText(DB.unique.filter(matches).length);
       // closing the card view closes the panel too
@@ -4821,6 +4838,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var fl = $('.bld-filters', fpanel);
       if (fl && fpHome && fpHome.parent.isConnected) fpHome.parent.insertBefore(fl, fpHome.next && fpHome.next.parentNode === fpHome.parent ? fpHome.next : null);
       var p = fpanel; fpanel = null; document.documentElement.classList.remove('flowfilt');
+      if (fpCatch) { fpCatch.remove(); fpCatch = null; }
       p.classList.remove('show'); setTimeout(function () { p.remove(); }, 300);
       filterBtn();
     }
