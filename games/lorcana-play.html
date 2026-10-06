@@ -2480,7 +2480,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       '<p>A few cards have unusual wording the game can’t run yet. When one of those goes off, you see the card with its text and only the tools that fit it (for example “Deal damage” and “Draw cards”). Tap Done when you’ve followed it. The menu’s <b>Fix something by hand</b> covers anything else.</p>' +
       '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks, with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
       '<h3>Winning</h3><p>First to 20 lore wins. If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
-      '<p class="muted">Card data and art come from Lorcast (lorcast.com) and are saved on this device so the game works offline after the first download.</p>'
+      '<p class="muted">Card data and art come from Lorcast (lorcast.com). The card list is saved on this device, and so is the art for every card you look at and every deck you save or play, so those cards keep their pictures offline.</p>'
   });
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -2606,6 +2606,18 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var uidN = 0;
   function compactOf(d) { return { id: d.id, n: d.n, v: d.v, c: d.c, k: d.k, ink: d.ink, ty: d.ty, cl: d.cl, tx: d.tx, kwl: d.kwl, s: d.s, w: d.w, l: d.l, mv: d.mv, r: d.r, set: d.set, no: d.no, im: d.im, st: d.st }; }
   function newSt() { return { q: 0, ql: 0, big: null, ban: 0, lost: 0, played: 0, songs: [], shifts: [], loc: 0, chal: 0, kills: [], inked: 0, turns: 0, fx: 0 }; }
+  // Save the art for a set of cards on this device (the service worker keeps
+  // every card picture it loads), a few at a time in the background
+  function keepArt(defs) {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+    var urls = [], seen = {};
+    defs.forEach(function (d) { if (!d || !d.im) return; [d.im.s, d.im.l].forEach(function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } }); });
+    (function next() {
+      var batch = urls.splice(0, 6); if (!batch.length) return;
+      var left = batch.length;
+      batch.forEach(function (u) { var im = new Image(); im.decoding = 'async'; im.onload = im.onerror = function () { if (!--left) setTimeout(next, 150); }; im.src = u; });
+    })();
+  }
   function newGame(cfg, choices) {
     tok++; closeOverlays(); Kit.handoff.close(); DEF = {}; uidN = 0; finishing = false;
     var decks = cfg.players.map(function (p, i) { return resolveDeck(choices[i]); });
@@ -2622,6 +2634,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       S.P.push({ name: p.name, cpu: !!p.cpu, color: p.color, deck: dk.name, lore: 0, deckL: list, hand: [], ink: [], discard: [], board: [], inked: false });
     });
     S.uidN = uidN;
+    keepArt(Object.keys(S.defs).map(D));
     var f = cfg.options && cfg.options.first;
     S.first = f === 'p1' ? 0 : f === 'p2' ? 1 : Math.random() < 0.5 ? 0 : 1;
     S.cur = S.first;
@@ -4018,6 +4031,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       deck.name = (nameIn.value || '').trim() || 'My deck'; deck.at = Date.now();
       var all = savedDecks().filter(function (d) { return d.id !== deck.id; }); all.unshift(deck); storeDecks(all);
       dirty = false; Kit.toast('Saved ' + deck.name); Kit.sfx('good');
+      keepArt(deckCards(deck.cards).map(function (x) { return x.d; }));
     }
     var top = lib ? el('div', { class: 'bld-top' }, [
       el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: back }), el('h2', { class: 'libt', text: 'Card library' }), cnt,
