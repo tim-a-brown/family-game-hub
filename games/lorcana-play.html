@@ -6561,6 +6561,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       sh = Kit.sheet({ title: 'Classification', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     }
     ui.clsPick = function (x) { if (!fpanel) closeZoom(); setCls(x); };
+    ui.typePick = function (t) { if (!fpanel) closeZoom(); f.type = t; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; Kit.sfx('tap'); };
     function charCounts() {
       var c = {};
       DB.unique.forEach(function (d) { if (d.t !== 'character') return; var k = d.n; if (!c[k]) c[k] = { s: k, n: 0, st: {} }; c[k].n++; var so = storyOf(d); if (so) c[k].st[so] = 1; });
@@ -6658,10 +6659,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         var h2 = d.t === 'character' && $('.lz .lz-head h2');
         if (h2 && ui.charPick) { h2.classList.add('chr-tap'); h2.title = 'Every ' + d.n + ' card'; h2.addEventListener('click', function (e) { e.stopPropagation(); ui.charPick(d.n); }); }
         var tl = $('.lz .tl span');
-        if (tl && d.cl && d.cl.length && ui.clsPick) {
+        if (tl && ui.clsPick) {
           tl.textContent = '';
-          tl.appendChild(document.createTextNode(d.song ? 'Action · Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)));
-          d.cl.filter(function (x) { return x !== 'Song'; }).forEach(function (x) {
+          // Card type links to the type chips (Characters, Actions, Songs…); classifications to the Classification filter
+          var tyBtn = function (label, ty, sep) { if (sep) tl.appendChild(document.createTextNode(' · ')); tl.appendChild(el('button', { type: 'button', class: 'cls-tap', title: 'Every ' + label.toLowerCase() + ' card', text: label, onclick: function (e) { e.stopPropagation(); ui.typePick(ty); } })); };
+          if (d.song) { tyBtn('Action', 'action'); tyBtn('Song', 'song', true); } else tyBtn(d.t.charAt(0).toUpperCase() + d.t.slice(1), d.t);
+          (d.cl || []).filter(function (x) { return x !== 'Song'; }).forEach(function (x) {
             tl.appendChild(document.createTextNode(' · '));
             tl.appendChild(el('button', { type: 'button', class: 'cls-tap', title: 'Every ' + x + ' card', text: x, onclick: function (e) { e.stopPropagation(); ui.clsPick(x); } }));
           });
