@@ -735,6 +735,7 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .adv{display:flex;flex-direction:column;gap:14px;}
 .adv .label{margin-bottom:6px;}
 .adv .fchips{flex-wrap:wrap;overflow:visible;}
+.adv > .lp-list{gap:6px;}
 .adv .lp-list{gap:6px;}
 .adv-pick{display:flex;align-items:center;gap:10px;}
 .adv-pick .ico{width:18px;height:18px;flex:none;color:var(--text-3);}
@@ -744,7 +745,21 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .adv-tog .label{margin:0;}
 .flowpanel .adv{margin-top:14px;}
 .flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips,.flowpanel .adv-dup{display:none!important;}
-.fchip.fclear{background:rgba(255,77,94,.16);color:#ff8a95;box-shadow:inset 0 0 0 1.5px rgba(255,77,94,.55);}
+.fchip.fclear{background:rgba(196,110,96,.16);color:#e9a596;box-shadow:inset 0 0 0 1.5px rgba(214,134,118,.5);}
+.btn.btn-clear{--b:#4a2a36;--b-ink:#f0b2a4;--b-lip:#2a1620;box-shadow:inset 0 0 0 1.5px rgba(214,134,118,.45);}
+.inkrow{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
+.inkrow .fchips{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;flex:0 1 auto;}
+.inkk{display:flex;flex-direction:column;gap:5px;flex:none;}
+.inkk .fchip{justify-content:center;}
+.inkrow .fchips{flex:1 1 auto;min-width:0;}
+.inkrow .fchip{min-width:0;overflow:hidden;white-space:nowrap;}
+@media (max-width:560px){
+  .inkrow{gap:4px;}
+  .inkrow .fchips{grid-template-columns:repeat(3,auto);gap:3px;}
+  .inkrow .fchip{font-size:.68rem;padding:0 5px;gap:3px;}
+  .inkrow .fchip .ico,.inkrow .fchip svg{width:15px;height:15px;}
+  .inkk{gap:5px;}
+}
 .onchips .x{font-style:normal;margin-left:2px;opacity:.75;}
 .btn.fon{box-shadow:inset 0 0 0 2px var(--gilt);color:var(--gilt-2);}
 .bld-grid.tiny{gap:4px;}
@@ -6518,14 +6533,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Always on show: search, bookmarks, saved decks and cost. Everything else lives in Filters.
     var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, costChips, onChips]), grid]);
     var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
-    var setSel = el('select', { class: 'input', 'aria-label': 'Set' });
-    setSel.addEventListener('change', function () { f.set = setSel.value; f.shown = 60; paintChips(); paintGrid(); });
     var advSec = function (t, n, cls) { return el('div', cls ? { class: cls } : null, [el('div', { class: 'label', text: t }), n]); };
     // Copies of the always-on filters, so the menu holds everything (the cover-flow panel already shows the originals)
     var advQ = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
     advQ.addEventListener('input', function () { search.value = advQ.value; search.dispatchEvent(new Event('input')); });
     var advTop = el('div', { class: 'fchips' }), advCost = el('div', { class: 'fchips' });
-    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Cost', advCost, 'adv-dup'), advSec('Ink', inkChips), advSec('Card type', typeChips), advSec('Film, character or classification', pickRows), advSec('Keyword', kwChips), advSec('Set', setSel), togs]);
+    var inkK = el('div', { class: 'inkk' });
+    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Cost', advCost, 'adv-dup'), advSec('Ink', el('div', { class: 'inkrow' }, [inkChips, inkK])), advSec('Card type', typeChips), pickRows, advSec('Keyword', kwChips), togs]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
@@ -6597,6 +6611,26 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       node.appendChild(q); node.appendChild(list);
       sh = Kit.sheet({ title: 'Classification', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     }
+    // Card set: a searchable list like the others, newest first
+    function setName(code) { var x = DB.sets.filter(function (y) { return y.code === code; })[0]; return x ? x.name : 'Set ' + code; }
+    function setCls2(code) { f.set = code || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; Kit.sfx('tap'); }
+    function pickSet() {
+      var c = {}; DB.unique.forEach(function (d) { c[d.set] = (c[d.set] || 0) + 1; });
+      var all = Object.keys(c).map(function (k) { return { code: k, name: setName(k), n: c[k] }; }).sort(function (a, b) { return setOrd(b.code) - setOrd(a.code) || b.code.localeCompare(a.code); });
+      var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search sets', 'aria-label': 'Search sets' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh;
+      function paint() {
+        var t = skey(q.value); list.innerHTML = '';
+        if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.set ? '' : ' on'), onclick: function () { sh.close(); setCls2(''); } }, [el('b', { class: 'grow', text: 'Every set' })]));
+        all.forEach(function (x) {
+          if (t && skey(x.name + ' ' + x.code).indexOf(t) < 0) return;
+          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.set === x.code ? ' on' : ''), onclick: function () { sh.close(); setCls2(x.code); } }, [
+            el('div', { class: 'grow' }, [el('b', { text: x.name }), el('small', { style: { display: 'block' }, text: /^\d+$/.test(x.code) ? 'Set ' + x.code : x.code })]), el('small', { text: plural(x.n, 'card') })]));
+        });
+      }
+      q.addEventListener('input', paint); paint();
+      node.appendChild(q); node.appendChild(list);
+      sh = Kit.sheet({ title: 'Card set', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    }
     ui.clsPick = function (x) { if (!fpanel) closeZoom(); setCls(x); };
     ui.typePick = function (t) { if (!fpanel) closeZoom(); f.type = t; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; Kit.sfx('tap'); };
     function charCounts() {
@@ -6642,7 +6676,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
-      [['search', 'Film or show', f.story, pickStory], ['user', 'Character', f.chr, pickChar], ['star', 'Classification', f.cls, pickCls]].forEach(function (r) {
+      [['search', 'Film or show', f.story, pickStory], ['user', 'Character', f.chr, pickChar], ['star', 'Classification', f.cls, pickCls], ['book', 'Card set', f.set ? setName(f.set) : '', pickSet]].forEach(function (r) {
         pickRows.appendChild(el('button', { type: 'button', class: 'lp-li st-row adv-pick' + (r[2] ? ' on' : ''), onclick: function () { Kit.sfx('tap'); r[3](); } }, [
           el('span', { html: Kit.icon(r[0]) }), el('b', { class: 'grow', text: r[1] }), el('small', { text: r[2] || 'Any' })]));
       });
@@ -6650,16 +6684,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].forEach(function (k) {
         kwChips.appendChild(chip(KWNAME[k], f.kw === k, function () { f.kw = f.kw === k ? '' : k; f.shown = 60; paintChips(); paintGrid(); }));
       });
-      if (!setSel.options.length) {
-        setSel.appendChild(el('option', { value: '', text: 'All sets' }));
-        var codes = {}; DB.unique.forEach(function (d) { codes[d.set] = 1; });
-        var sets = DB.sets.filter(function (x) { return codes[x.code]; });
-        Object.keys(codes).forEach(function (c) { if (!sets.some(function (x) { return x.code === c; })) sets.push({ code: c, name: 'Set ' + c }); });
-        sets.forEach(function (x) { setSel.appendChild(el('option', { value: x.code, text: x.name + (x.name.indexOf(x.code) < 0 ? ' (' + x.code + ')' : '') })); });
-      }
-      setSel.value = f.set || '';
+      // Inkable: any, inkable, or not inkable
+      inkK.innerHTML = '';
+      [[0, 'Any'], [1, 'Inkable'], [2, 'Not inkable']].forEach(function (o) {
+        inkK.appendChild(chip(o[1], (f.inkable || 0) === o[0], function () { f.inkable = o[0]; f.shown = 60; paintChips(); paintGrid(); }));
+      });
       togs.innerHTML = '';
-      togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Inkable only' }), seg([[0, 'Any'], [1, 'Inkable']], f.inkable ? 1 : 0, function (x) { f.inkable = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
       if (!lib) togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { f.fit = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
       // Active menu filters, shown on the results with an × to turn each off
       onChips.innerHTML = '';
@@ -6670,8 +6700,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.chr) offs.push([f.chr, function () { f.chr = ''; }]);
       if (f.cls) offs.push([f.cls, function () { f.cls = ''; }]);
       if (f.kw) offs.push([KWNAME[f.kw], function () { f.kw = ''; }]);
-      if (f.set) offs.push([(DB.sets.filter(function (x) { return x.code === f.set; })[0] || { name: 'Set ' + f.set }).name, function () { f.set = ''; }]);
-      if (f.inkable) offs.push(['Inkable', function () { f.inkable = false; }]);
+      if (f.set) offs.push([setName(f.set), function () { f.set = ''; }]);
+      if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable' : 'Inkable', function () { f.inkable = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
       var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + (f.cost != null ? 1 : 0);
       if (any > 1 || (any && offs.length)) onChips.appendChild(el('button', { type: 'button', class: 'fchip fclear', text: 'Clear all', onclick: clearFilters }));
@@ -6698,7 +6728,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.cost != null && (f.cost === 8 ? d.c < 8 : d.c !== f.cost)) return false;
       if (f.type) { if (f.type === 'song' ? !d.song : f.type === 'action' ? d.t !== 'action' || d.song : d.t !== f.type) return false; }
       if (f.set && String(d.set) !== f.set) return false;
-      if (f.inkable && !d.k) return false;
+      if (f.inkable === 1 && !d.k) return false;
+      if (f.inkable === 2 && d.k) return false;
       if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
       if (f.story && (f.story === 'Pixar' || f.story === 'Disney' ? studioOf(d) !== f.story : storyOf(d) !== f.story)) return false;
       if (f.chr && d.n !== f.chr) return false;
@@ -6936,7 +6967,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     function moreFilters() {
       Kit.sheet({ title: 'Filters', node: adv, actions: [
-        { label: 'Clear all', cls: 'btn-red', keep: true, onClick: clearFilters },
+        { label: 'Clear all', cls: 'btn-clear', keep: true, onClick: clearFilters },
         { label: 'Done', cls: 'btn-primary' }] });
     }
     paintChips(); paintDeck(); paintGrid();
