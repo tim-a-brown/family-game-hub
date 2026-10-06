@@ -412,11 +412,14 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sb-cost:not([title="Inkable"]) b,.sb-mv b{color:#fff;}
 .sb-s b{font-size:1.2rem;}
 .sb-w b{margin-top:-2px;}
-.sb small{font-size:.58rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
+.sb small{max-height:0;opacity:0;overflow:hidden;transition:max-height .22s ease,opacity .18s;font-size:.58rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}
 .sb-cost[title="Inkable"] small{color:var(--gilt-2);}
 .sb-ink .gems{display:flex;justify-content:center;width:auto;min-width:40px;}
 .sb-ink .gems svg{position:relative;width:34px;height:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) drop-shadow(0 0 6px color-mix(in srgb,var(--g) 60%,transparent));}
 .sb.off{opacity:.16;}
+.sp{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sp.cap .sb small{max-height:14px;opacity:1;}
+.sp .sb{gap:0;}.sp.cap .sb{gap:3px;}
 .sb.up b{color:#0f7a37;}.sb.dn b{color:#c0262d;}
 .sb.up .sh > svg{filter:drop-shadow(0 0 6px rgba(125,255,166,.9));}.sb.dn .sh > svg{filter:drop-shadow(0 0 6px rgba(255,107,107,.9));}
 .tl{display:block;margin-top:7px;font-size:.82rem;font-weight:800;color:var(--text-2);letter-spacing:.01em;}
@@ -3879,6 +3882,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Left: cost hexagon (gold with an inkwell ring when inkable) and ink gem(s).
   // Right: strength, willpower, lore (locations: willpower, lore, move cost).
   // On the table (u given) the numbers are the current ones, green/red when changed.
+  var CAPS = 'lorcana_stat_labels';
   function defMeta(d, u) {
     var inks = inkOf(d), live = u && S && S.cards[u] && onBoard(u);
     function badge(kind, svg, val, cap, base, off) {
@@ -3903,7 +3907,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       R += badge('s', STAR, ch ? (live ? STR(u) : d.s || 0) : 0, 'Str', d.s || 0, !ch) + badge('w', SHIELD, ch ? (live ? WP(u) : d.w || 0) : 0, 'Will', d.w || 0, !ch) + badge('l', DIAMOND, ch ? (live ? LORE(u) : d.l || 0) : 0, 'Lore', d.l || 0, !ch); }
     R += '</div>';
     var type = (d.song ? 'Action · Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (d.cl && d.cl.length ? ' · ' + d.cl.filter(function (x) { return x !== 'Song'; }).join(' · ') : '');
-    return '<div class="sp">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span>' + (d.set ? '<small>Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '') + '</div>';
+    return '<div class="sp' + (lsGet(CAPS, false) ? ' cap' : '') + '" role="button" tabindex="0" aria-expanded="' + !!lsGet(CAPS, false) + '" aria-label="Card stats. Tap to ' + (lsGet(CAPS, false) ? 'hide' : 'show') + ' labels">' + L + R + '</div><div class="tl"><span>' + esc(type) + '</span>' + (d.set ? '<small>Set ' + esc(d.set) + (d.no ? ' · #' + esc(d.no) : '') + '</small>' : '') + '</div>';
   }
   function statusHTML(u, z) {
     if (!z || z.z !== 'board') return '';
@@ -3985,6 +3989,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       info.appendChild(g);
     }
     inner.appendChild(info);
+    // Tap the stat plate to show or hide its labels (remembered)
+    info.addEventListener('click', function (e) {
+      var sp = e.target.closest('.sp'); if (!sp) return;
+      e.stopPropagation(); var on = !sp.classList.contains('cap'); lsSet(CAPS, on);
+      $$('.sp').forEach(function (x) { x.classList.toggle('cap', on); x.setAttribute('aria-expanded', String(on)); x.setAttribute('aria-label', 'Card stats. Tap to ' + (on ? 'hide' : 'show') + ' labels'); });
+      Kit.sfx('tap');
+    });
+    info.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('sp')) { e.preventDefault(); e.target.click(); } });
     // Bookmark this card (works anywhere a card is shown big)
     var bm = el('button', { type: 'button', class: 'lz-bm' + (isMarked(d) ? ' on' : ''), 'aria-pressed': String(isMarked(d)), 'aria-label': 'Bookmark ' + d.full, title: 'Bookmark', html: Kit.icon('bookmark'), onclick: function (e) {
       e.stopPropagation(); var on = toggleMark(d); bm.classList.toggle('on', on); bm.setAttribute('aria-pressed', String(on));
