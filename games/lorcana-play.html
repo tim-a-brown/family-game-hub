@@ -373,7 +373,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-fc::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.42);opacity:var(--dim,1);pointer-events:none;}
 .lz-head{display:flex;align-items:flex-start;gap:12px;}
 .lz-ttl{flex:1;min-width:0;}
-.lz-story{flex:0 1 auto;max-width:52%;margin-top:6px;text-align:right;font-family:var(--serif);font-style:italic;font-size:.98rem;line-height:1.2;color:var(--gilt);text-wrap:balance;}
+.lz-story{flex:0 1 auto;max-width:52%;margin-top:6px;text-align:center;font-family:var(--serif);font-style:italic;font-size:.98rem;line-height:1.2;color:var(--gilt);text-wrap:balance;}
 .lz-story .nw{white-space:nowrap;}
 .lz-bm{flex:none;width:40px;height:40px;margin:-4px -6px 0 0;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;color:var(--text-3);}
 .lz-bm .ico{width:22px;height:22px;}
@@ -598,6 +598,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .fchip.st-pick.on{background:var(--gilt);color:#2b1a00;}
 .fchip.st-pick .x{font-style:normal;font-size:1.05rem;margin-left:2px;}
 .st-row{border:0;color:inherit;text-align:left;width:100%;}
+.da-row.in{box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.6);border-radius:12px;}
+.da-row .q button:disabled{opacity:.3;}
 .st-row.on{box-shadow:inset 0 0 0 2px var(--gilt);}
 .st-row small{color:var(--text-3);font-weight:700;}
 button.lz-story{border:0;background:none;padding:0;cursor:pointer;}
@@ -4787,11 +4789,53 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function cardZoom(d, list, dir) {
       var have = count(d), i = list ? list.indexOf(d) : -1;
       curZoom = { d: d, list: list };
-      zoomDef(d, lib ? [] : [
+      var inN = lib ? savedDecks().filter(function (dk) { return copiesByFull(dk.cards, d.full) > 0; }).length : 0;
+      zoomDef(d, lib ? [
+        { label: 'Add to a deck · ' + (inN ? 'In ' + plural(inN, 'deck') : 'Not in a deck yet'), primary: true, go: function () { deckAdder(d, function () { cardZoom(d, list); }); } }
+      ] : [
         { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
         { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
       ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
       if (list) filterBtn();
+    }
+    // Library: put this card into any of your saved decks (or start one with it)
+    function deckAdder(d, done) {
+      var node = el('div', { class: 'stack', style: { gap: '6px' } }), sh, order = null;
+      function deckOk(dk, n) {
+        if (n > 0) {
+          if (copiesByFull(dk.cards, d.full) >= 4) return '4 copies is the most a deck can have';
+          var inks = deckInks(dk.cards), di = inkOf(d);
+          if (di.some(function (i) { return inks.indexOf(i) < 0; }) && inks.concat(di.filter(function (i) { return inks.indexOf(i) < 0; })).length > 2) return dk.name + ' already uses ' + inks.join(' & ');
+        }
+        return '';
+      }
+      function change(dk, n) {
+        var why = deckOk(dk, n); if (why) { Kit.toast(why); Kit.sfx('bad'); return; }
+        if (n > 0) dk.cards[d.id] = (dk.cards[d.id] || 0) + 1;
+        else { var ids = (DB.byFull[d.full.toLowerCase()] || [d]).map(function (x) { return x.id; }).filter(function (id) { return dk.cards[id]; }); if (!ids.length) return; var id = ids[ids.length - 1]; if (--dk.cards[id] <= 0) delete dk.cards[id]; }
+        putDeck(dk); Kit.sfx(n > 0 ? 'pop' : 'tap'); paint();
+      }
+      function paint() {
+        node.innerHTML = '';
+        // keep rows where they were while you tap (saving moves a deck to the top)
+        var mine = savedDecks(); if (!order) order = mine.map(function (x) { return x.id; });
+        mine.sort(function (x, y) { var i = order.indexOf(x.id), j = order.indexOf(y.id); return (i < 0 ? -1 : i) - (j < 0 ? -1 : j); });
+        if (!mine.length) node.appendChild(el('p', { class: 'muted', text: 'You don’t have any saved decks yet.' }));
+        mine.forEach(function (dk) {
+          var have = copiesByFull(dk.cards, d.full), cnt = deckCount(dk.cards);
+          node.appendChild(el('div', { class: 'drow da-row' + (have ? ' in' : '') }, [
+            el('span', { html: inkDots(deckInks(dk.cards)) }),
+            el('div', { class: 'grow' }, [el('b', { text: dk.name }), el('small', { text: cnt + ' cards' + (have ? ' · ' + have + ' of this' : '') })]),
+            el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one from ' + dk.name, disabled: !have, onclick: function () { change(dk, -1); } }), el('b', { text: String(have) }),
+              el('button', { type: 'button', text: '+', 'aria-label': 'Add one to ' + dk.name, onclick: function () { change(dk, 1); } })])
+          ]));
+        });
+        node.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', style: { 'margin-top': '6px' }, html: Kit.icon('plus') + '<span>New deck with this card</span>', onclick: function () {
+          putDeck({ id: 'd' + Date.now().toString(36), name: d.n + ' deck', cards: (function () { var c = {}; c[d.id] = 1; return c; })() }); Kit.sfx('good'); Kit.toast('New deck: ' + d.n + ' deck'); paint();
+        } }));
+      }
+      paint();
+      sh = Kit.sheet({ title: 'Add ' + d.n + (d.v ? ' – ' + d.v : '') + ' to a deck', node: node, actions: [{ label: 'Done', cls: 'btn-primary' }], onClose: function () { if (done) done(); } });
     }
     // ── Filtering without leaving the big card view ──
     // The library's own filter controls move into a panel over the card view
