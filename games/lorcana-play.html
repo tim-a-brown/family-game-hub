@@ -4651,7 +4651,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, cost: null, type: null, set: '', kw: '', inkable: false, fit: false, marked: false, shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, cost: null, type: null, set: '', kw: '', inkable: false, fit: false, marked: false, deck: '', shown: 60, tab: 'pool' };
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
     nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
     var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
@@ -4691,6 +4691,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var c = {}; DB.unique.forEach(function (d) { var x = storyOf(d); if (x) c[x] = (c[x] || 0) + 1; });
       return (storyCount = Object.keys(c).map(function (k) { return { s: k, n: c[k] }; }).sort(function (a, b) { return b.n - a.n || a.s.localeCompare(b.s); }));
     }
+    // Only cards that are in one of your saved decks ('*' = any of them)
+    function setDeckFilter(id) { f.deck = id || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; }
+    function pickDeckFilter() {
+      var mine = savedDecks(), node = el('div', { class: 'lp-list' }), sh;
+      if (!mine.length) { Kit.toast('No saved decks yet. Build one in the deck builder.'); return; }
+      node.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { sh.close(); setDeckFilter('*'); } }, [el('b', { class: 'grow', text: 'In any saved deck' }), el('small', { text: plural(mine.length, 'deck') })]));
+      mine.forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.deck === dk.id ? ' on' : ''), onclick: function () { sh.close(); setDeckFilter(dk.id); } }, [el('span', { html: inkDots(deckInks(dk.cards)) }), el('b', { class: 'grow', text: dk.name }), el('small', { text: deckCount(dk.cards) + ' cards' })])); });
+      sh = Kit.sheet({ title: 'Cards in a saved deck', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
+    }
+    var deckSet = null;
+    function deckNames() {
+      var out = {}; savedDecks().forEach(function (dk) { if (f.deck !== '*' && dk.id !== f.deck) return; for (var id in dk.cards) { var x = DB.byId[id]; if (x && dk.cards[id] > 0) out[x.full.toLowerCase()] = 1; } });
+      return out;
+    }
     function setStory(x) { f.story = x || ''; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; storyChips.scrollLeft = 0; Kit.sfx('tap'); }
     function pickStory() {
       var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search films and shows', 'aria-label': 'Search films and shows' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh;
@@ -4718,9 +4732,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         if (!f.marked && !mc) { Kit.toast('Open any card and tap its bookmark to save it here'); return; }
         f.marked = !f.marked; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
       } }));
+      var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
+      storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } }));
       storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.story ? ' on' : ''), html: Kit.icon('search') + '<span>' + esc(f.story || 'Film or show') + '</span>' + (f.story ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.story) setStory(''); else pickStory(); } }));
-      storyCounts().slice(0, 14).forEach(function (x) { if (x.s === f.story) return; storyChips.appendChild(chip(x.s, false, function () { setStory(x.s); })); });
-      storyChips.appendChild(chip('More…', false, pickStory));
       inkChips.innerHTML = ''; INKS.forEach(function (i) { inkChips.appendChild(chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }, INKC[i])); });
       costChips.innerHTML = ''; costChips.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
       [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { costChips.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
@@ -4738,6 +4752,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.inkable && !d.k) return false;
       if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
       if (f.story && storyOf(d) !== f.story) return false;
+      if (f.deck && !(deckSet || (deckSet = deckNames()))[d.full.toLowerCase()]) return false;
       if (f.marked && !isMarked(d)) return false;
       if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
       return true;
@@ -4773,7 +4788,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var FILTER_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
     var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
     function activeFilters() {
-      var n = 0; if (f.q) n++; if (f.marked) n++; if (f.story) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
+      var n = 0; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.story) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function filterBtn() {
@@ -4810,7 +4825,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.story = ''; f.cost = null; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.story = ''; f.cost = null; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
@@ -4823,6 +4838,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       cardZoom(idx >= 0 ? cur : list[0], list, 1e-9);
     }
     function paintGrid(keepScroll) {
+      deckSet = null;
       var st = grid.scrollTop, list = DB.unique.filter(matches);
       if (fpanel) refreshFlow(list);
       grid.innerHTML = '';
