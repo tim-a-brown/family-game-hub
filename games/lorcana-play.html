@@ -743,7 +743,8 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .adv-tog .label{margin:0;}
 .flowpanel .adv{margin-top:14px;}
-.flowpanel .row1 .btn,.flowpanel .colbtn{display:none!important;}
+.flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips{display:none!important;}
+.onchips .x{font-style:normal;margin-left:2px;opacity:.75;}
 .btn.fon{box-shadow:inset 0 0 0 2px var(--gilt);color:var(--gilt-2);}
 .bld-grid.tiny{gap:4px;}
 .bld-grid.tiny .pc{border-radius:4px;}
@@ -6509,8 +6510,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var row1 = el('div', { class: 'row1' }, [search, moreBtn]);
     if (lib) row1.appendChild(colBtn);
+    var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks and cost. Everything else lives in Filters.
-    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, costChips]), grid]);
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, storyChips, costChips, onChips]), grid]);
     var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
     var setSel = el('select', { class: 'input', 'aria-label': 'Set' });
     setSel.addEventListener('change', function () { f.set = setSel.value; f.shown = 60; paintChips(); paintGrid(); });
@@ -6643,6 +6645,23 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       togs.innerHTML = '';
       togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Inkable only' }), seg([[0, 'Any'], [1, 'Inkable']], f.inkable ? 1 : 0, function (x) { f.inkable = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
       if (!lib) togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { f.fit = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
+      // Active menu filters, shown on the results with an × to turn each off
+      onChips.innerHTML = '';
+      var offs = [];
+      INKS.forEach(function (i) { if (f.inks[i]) offs.push([i, function () { f.inks[i] = false; }, inkIcon(i)]); });
+      if (f.type) offs.push([{ character: 'Characters', action: 'Actions', song: 'Songs', item: 'Items', location: 'Locations' }[f.type], function () { f.type = null; }]);
+      if (f.story) offs.push([f.story, function () { f.story = ''; }]);
+      if (f.chr) offs.push([f.chr, function () { f.chr = ''; }]);
+      if (f.cls) offs.push([f.cls, function () { f.cls = ''; }]);
+      if (f.kw) offs.push([KWNAME[f.kw], function () { f.kw = ''; }]);
+      if (f.set) offs.push([(DB.sets.filter(function (x) { return x.code === f.set; })[0] || { name: 'Set ' + f.set }).name, function () { f.set = ''; }]);
+      if (f.inkable) offs.push(['Inkable', function () { f.inkable = false; }]);
+      if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
+      if (offs.length > 1) onChips.appendChild(el('button', { type: 'button', class: 'fchip', text: 'Clear all', onclick: clearAdv }));
+      offs.forEach(function (o) {
+        onChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-label': 'Remove filter: ' + o[0], html: (o[2] || '') + '<span>' + esc(o[0]) + '</span><i class="x">×</i>', onclick: function () { o[1](); f.shown = 60; Kit.sfx('tap'); paintChips(); paintGrid(); } }));
+      });
+      onChips.style.display = offs.length ? '' : 'none';
       var na = advCount();
       moreBtn.textContent = na ? 'Filters · ' + na : 'Filters'; moreBtn.classList.toggle('fon', !!na);
       inkChips.innerHTML = ''; INKS.forEach(function (i) { var ch = chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }); ch.insertAdjacentHTML('afterbegin', inkIcon(i)); ch.classList.add('ink-chip'); inkChips.appendChild(ch); });
