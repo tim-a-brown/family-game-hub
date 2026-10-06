@@ -743,7 +743,8 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .adv-tog .label{margin:0;}
 .flowpanel .adv{margin-top:14px;}
-.flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips{display:none!important;}
+.flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips,.flowpanel .adv-dup{display:none!important;}
+.fchip.fclear{background:rgba(255,77,94,.16);color:#ff8a95;box-shadow:inset 0 0 0 1.5px rgba(255,77,94,.55);}
 .onchips .x{font-style:normal;margin-left:2px;opacity:.75;}
 .btn.fon{box-shadow:inset 0 0 0 2px var(--gilt);color:var(--gilt-2);}
 .bld-grid.tiny{gap:4px;}
@@ -2208,6 +2209,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var STORY_FIX = { 'dante': 'Coco', 'miguel': 'Coco', 'miguel rivera': 'Coco', 'hector': 'Coco', 'imelda': 'Coco', 'mama imelda': 'Coco', 'pepita': 'Coco', 'ernesto de la cruz': 'Coco', 'mama coco': 'Coco',
     // versions of Mickey's gang that come from one particular film or short
     'mickey mouse|wayward sorcerer': "The Sorcerer's Apprentice", 'mickey mouse|steamboat pilot': 'Steamboat Willie' };
+  // Studio groups offered at the top of the Film or show list
+  var PIXAR = /^(Toy Story|The Incredibles|Incredibles|Brave|Coco|Monsters,? Inc|Finding (Nemo|Dory)|Ratatouille|WALL-E|Up|Cars|Inside Out|Luca|Turning Red|Elemental|Onward|Soul|A Bug's Life|Elio|Lightyear|The Good Dinosaur)\b/i;
+  function studioOf(d) { return PIXAR.test(storyOf(d)) ? 'Pixar' : 'Disney'; }
   function storyOf(d) {
     if (!d) return '';
     var s = d.st || '', L = window.LORC_STORY, k = skey(d.n), kv = k + '|' + skey(d.v);
@@ -6516,8 +6520,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
     var setSel = el('select', { class: 'input', 'aria-label': 'Set' });
     setSel.addEventListener('change', function () { f.set = setSel.value; f.shown = 60; paintChips(); paintGrid(); });
-    var advSec = function (t, n) { return el('div', null, [el('div', { class: 'label', text: t }), n]); };
-    var adv = el('div', { class: 'adv' }, [advSec('Ink', inkChips), advSec('Card type', typeChips), advSec('Film, character or classification', pickRows), advSec('Keyword', kwChips), advSec('Set', setSel), togs]);
+    var advSec = function (t, n, cls) { return el('div', cls ? { class: cls } : null, [el('div', { class: 'label', text: t }), n]); };
+    // Copies of the always-on filters, so the menu holds everything (the cover-flow panel already shows the originals)
+    var advQ = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
+    advQ.addEventListener('input', function () { search.value = advQ.value; search.dispatchEvent(new Event('input')); });
+    var advTop = el('div', { class: 'fchips' }), advCost = el('div', { class: 'fchips' });
+    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Cost', advCost, 'adv-dup'), advSec('Ink', inkChips), advSec('Card type', typeChips), advSec('Film, character or classification', pickRows), advSec('Keyword', kwChips), advSec('Set', setSel), togs]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
@@ -6551,6 +6559,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       function paint() {
         var t = skey(q.value); list.innerHTML = '';
         if (!t) list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story ? '' : ' on'), onclick: function () { sh.close(); setStory(''); } }, [el('b', { class: 'grow', text: 'Every film and show' })]));
+        var studios = { Disney: 0, Pixar: 0 }; DB.unique.forEach(function (d) { studios[studioOf(d)]++; });
+        [['Disney', 'Everything that isn’t Pixar'], ['Pixar', 'Toy Story, The Incredibles, Coco…']].forEach(function (x) {
+          if (t && skey(x[0]).indexOf(t) < 0) return;
+          list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story === x[0] ? ' on' : ''), onclick: function () { sh.close(); setStory(x[0]); } }, [
+            el('div', { class: 'grow' }, [el('b', { text: x[0] }), el('small', { style: { display: 'block' }, text: x[1] })]), el('small', { text: plural(studios[x[0]], 'card') })]));
+        });
         storyCounts().forEach(function (x) {
           if (t && skey(x.s).indexOf(t) < 0) return;
           list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.story === x.s ? ' on' : ''), onclick: function () { sh.close(); setStory(x.s); } }, [el('b', { class: 'grow', text: x.s }), el('small', { text: plural(x.n, 'card') })]));
@@ -6615,15 +6629,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Bookmarks change from the big card view: keep the chip count and grid up to date
     ui.onMark = function () { if (!wrap.isConnected) { ui.onMark = null; return; } paintChips(); paintGrid(true); };
     function paintChips() {
-      storyChips.innerHTML = '';
+      storyChips.innerHTML = ''; advTop.innerHTML = '';
       var mc = markCount();
-      storyChips.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + 'Bookmarked' + (mc ? ' (' + mc + ')' : ''), onclick: function () {
+      [storyChips, advTop].forEach(function (box) {
+      box.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + 'Bookmarked' + (mc ? ' (' + mc + ')' : ''), onclick: function () {
         Kit.sfx('tap');
         if (!f.marked && !mc) { Kit.toast('Open any card and tap its bookmark to save it here'); return; }
         f.marked = !f.marked; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
       } }));
+      });
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
-      storyChips.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } }));
+      [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
       [['search', 'Film or show', f.story, pickStory], ['user', 'Character', f.chr, pickChar], ['star', 'Classification', f.cls, pickCls]].forEach(function (r) {
@@ -6657,16 +6673,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.set) offs.push([(DB.sets.filter(function (x) { return x.code === f.set; })[0] || { name: 'Set ' + f.set }).name, function () { f.set = ''; }]);
       if (f.inkable) offs.push(['Inkable', function () { f.inkable = false; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
-      if (offs.length > 1) onChips.appendChild(el('button', { type: 'button', class: 'fchip', text: 'Clear all', onclick: clearAdv }));
+      var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + (f.cost != null ? 1 : 0);
+      if (any > 1 || (any && offs.length)) onChips.appendChild(el('button', { type: 'button', class: 'fchip fclear', text: 'Clear all', onclick: clearFilters }));
       offs.forEach(function (o) {
         onChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-label': 'Remove filter: ' + o[0], html: (o[2] || '') + '<span>' + esc(o[0]) + '</span><i class="x">×</i>', onclick: function () { o[1](); f.shown = 60; Kit.sfx('tap'); paintChips(); paintGrid(); } }));
       });
-      onChips.style.display = offs.length ? '' : 'none';
+      onChips.style.display = onChips.children.length ? '' : 'none';
       var na = advCount();
       moreBtn.textContent = na ? 'Filters · ' + na : 'Filters'; moreBtn.classList.toggle('fon', !!na);
       inkChips.innerHTML = ''; INKS.forEach(function (i) { var ch = chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }); ch.insertAdjacentHTML('afterbegin', inkIcon(i)); ch.classList.add('ink-chip'); inkChips.appendChild(ch); });
-      costChips.innerHTML = ''; costChips.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
-      [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { costChips.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
+      [costChips, advCost].forEach(function (box) {
+        box.innerHTML = ''; box.appendChild(chip('Any cost', f.cost == null, function () { f.cost = null; paintChips(); paintGrid(); }));
+        [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { box.appendChild(chip(c === 8 ? '8+' : String(c), f.cost === c, function () { f.cost = f.cost === c ? null : c; f.shown = 60; paintChips(); paintGrid(); })); });
+      });
+      if (document.activeElement !== advQ) advQ.value = search.value;
       typeChips.innerHTML = ''; [['character', 'Characters'], ['action', 'Actions'], ['song', 'Songs'], ['item', 'Items'], ['location', 'Locations']].forEach(function (t) {
         typeChips.appendChild(chip(t[1], f.type === t[0], function () { f.type = f.type === t[0] ? null : t[0]; f.shown = 60; paintChips(); paintGrid(); }));
       });
@@ -6680,7 +6700,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.set && String(d.set) !== f.set) return false;
       if (f.inkable && !d.k) return false;
       if (f.kw) { if (f.kw === 'shift' ? !d.K.shift : !d.K[f.kw]) return false; }
-      if (f.story && storyOf(d) !== f.story) return false;
+      if (f.story && (f.story === 'Pixar' || f.story === 'Disney' ? studioOf(d) !== f.story : storyOf(d) !== f.story)) return false;
       if (f.chr && d.n !== f.chr) return false;
       if (f.cls && (d.cl || []).indexOf(f.cls) < 0) return false;
       if (f.deck && !(deckSet || (deckSet = deckNames()))[d.full.toLowerCase()]) return false;
@@ -6801,7 +6821,6 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var n = 0; if (f.story) n++; if (f.chr) n++; if (f.cls) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++; if (f.fit) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
-    function clearAdv() { f.story = ''; f.chr = ''; f.cls = ''; f.type = null; f.set = ''; f.kw = ''; f.inkable = false; f.fit = false; f.inks = {}; f.shown = 60; paintChips(); paintGrid(); Kit.sfx('tap'); }
     function activeFilters() {
       var n = 0; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.story) n++; if (f.chr) n++; if (f.cls) n++; if (f.cost != null) n++; if (f.type) n++; if (f.set) n++; if (f.kw) n++; if (f.inkable) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
@@ -6881,7 +6900,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (!list.length) grid.appendChild(el('p', { class: 'muted bld-more', text: 'No cards match these filters.' }));
       if (list.length > lim) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - lim) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
       if (keepScroll) grid.scrollTop = st;
-      if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + ' cards';
+      if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + (list.length === 1 ? ' card' : ' cards');
     }
     function paintDeck() {
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards), cs = deckCards(deck.cards);
@@ -6917,7 +6936,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     function moreFilters() {
       Kit.sheet({ title: 'Filters', node: adv, actions: [
-        { label: 'Clear these', cls: 'btn-ghost', keep: true, onClick: clearAdv },
+        { label: 'Clear all', cls: 'btn-red', keep: true, onClick: clearFilters },
         { label: 'Done', cls: 'btn-primary' }] });
     }
     paintChips(); paintDeck(); paintGrid();
