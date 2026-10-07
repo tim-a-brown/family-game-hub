@@ -6614,10 +6614,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var remeasure = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
     // the scroll animation runs on the details panel; when it finishes (or a beat later if it never fires) the next step runs
     var after = function (cls, fn) {
-      ov._rolling = true; ov.classList.add(cls);
-      var fin = function () { if (!ov._rolling) return; ov._rolling = false; info.removeEventListener('animationend', onEnd); ov.classList.remove(cls); fn(); };
+      // each roll has its own token, so a late backup timer from an earlier roll can't finish this one
+      var id = ov._rolling = (ov._rollN = (ov._rollN || 0) + 1); ov.classList.add(cls);
+      var fin = function () { if (ov._rolling !== id) return; ov._rolling = 0; clearTimeout(tm); info.removeEventListener('animationend', onEnd); ov.classList.remove(cls); fn(); };
       var onEnd = function (e) { if (e.target === info && e.animationName === 'lzRoll') fin(); };
-      info.addEventListener('animationend', onEnd); setTimeout(fin, 1100);
+      info.addEventListener('animationend', onEnd); var tm = setTimeout(fin, 1100);
     };
     ui.lzMin = min;
     // the roll keeps the width of the panel it rolled up from, and its slant tips the edge by tan(3.5°) of half that width
