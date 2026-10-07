@@ -14,6 +14,7 @@
 <script src="../players.js"></script>
 <script src="lorcana-stories.js"></script>
 <style>
+@font-face{font-family:'Great Vibes';src:url('../fonts/great-vibes.woff2') format('woff2');font-display:swap;}
 /* ═══════════════════════════════════════════════════════════════════════════
    Disney Lorcana, played on one device. Real card data and art are loaded at
    runtime from the Lorcast API (never copied into this repo) and cached on
@@ -304,10 +305,33 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* Phones: details folded away, the card as big as the screen allows */
 @media not all and (min-width:900px) and (orientation:landscape){
   .lz.lz-min .lz-in > .lz-info{display:none;}
-  .lz.lz-min .lz-flow,.lz.lz-min .lz-card{--cu:min(80vh,128vw,820px);}
+  .lz.lz-min .lz-flow,.lz.lz-min .lz-card{--cu:min(calc(80vh - 60px),128vw,820px);}
+  /* Folding the details rolls them up like a scroll: a parchment roller travels down the panel taking the text
+     with it, then rests under the card with the card's name written along it. Unfolding runs it backwards. */
+  .lz.lz-rolling .lz-in > .lz-info{animation:lzRoll .55s cubic-bezier(.55,0,.5,1) forwards;}
+  .lz.lz-unroll .lz-in > .lz-info{animation:lzRoll .55s cubic-bezier(.55,0,.5,1) reverse both;}
+  .lz.lz-rolling .lz-in > .lz-info::after,.lz.lz-unroll .lz-in > .lz-info::after{content:attr(data-title);position:absolute;left:-8px;right:-8px;top:0;height:44px;z-index:30;pointer-events:none;
+    display:flex;align-items:center;justify-content:center;padding:0 26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-family:'Great Vibes',var(--serif);font-size:1.7rem;color:#4a2c10;background:var(--scroll);border-radius:10px;box-shadow:var(--scroll-sh);}
+  .lz.lz-rolling .lz-in > .lz-info::after{animation:lzRoller .55s cubic-bezier(.55,0,.5,1) forwards;}
+  .lz.lz-unroll .lz-in > .lz-info::after{animation:lzRoller .55s cubic-bezier(.55,0,.5,1) reverse both;}
+  .lz.lz-min .lz-roll{display:flex;}
+  .lz:not(.lz-min) .lz-roll{display:none;}
   .lz.lz-min .lz-in{min-height:100%;justify-content:center;}
   .lz.lz-min .lz-nav{opacity:0;pointer-events:none;}
 }
+/* The rolled-up details scroll (phones) */
+.lz{--scroll:radial-gradient(ellipse 14px 60% at 4px 50%,#7a4f22,#3d2510 70%,transparent 72%) left center/18px 100% no-repeat,radial-gradient(ellipse 14px 60% at 14px 50%,#7a4f22,#3d2510 70%,transparent 72%) right center/18px 100% no-repeat,
+    linear-gradient(180deg,#5b3d1c 0%,#b08650 9%,#ecd8a8 28%,#fbf1d6 46%,#e8d29f 66%,#a37b46 87%,#4a3116 100%);
+  --scroll-sh:0 8px 16px rgba(0,0,0,.5),inset 0 0 0 1px rgba(74,44,16,.35);}
+@keyframes lzRoll{from{clip-path:inset(0 -10px 0 -10px round 20px);}to{clip-path:inset(calc(100% - 44px) -10px 0 -10px round 20px);}}
+@keyframes lzRoller{from{top:0;}to{top:calc(100% - 44px);}}
+.lz-roll{display:none;position:relative;z-index:200;align-self:center;align-items:center;justify-content:center;width:min(88vw,400px);height:44px;margin-top:12px;padding:0 28px;border:0;border-radius:10px;cursor:pointer;
+  background:var(--scroll);box-shadow:var(--scroll-sh);font:inherit;-webkit-tap-highlight-color:transparent;animation:lzRollIn .3s ease-out;}
+.lz-roll span{font-family:'Great Vibes',var(--serif);font-size:1.7rem;line-height:1;color:#4a2c10;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 0 rgba(255,250,235,.6);}
+.lz-roll:active{transform:scale(.98);}
+@keyframes lzRollIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){.lz-roll{animation:none;}}
 /* Card back (our own design) */
 .lback{background:
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'%3E%3Crect x='5' y='5' width='90' height='130' rx='8' fill='none' stroke='%23e3bd62' stroke-width='2'/%3E%3Crect x='10' y='10' width='80' height='120' rx='5' fill='none' stroke='%23e3bd62' stroke-opacity='.4'/%3E%3Ccircle cx='50' cy='70' r='27' fill='none' stroke='%23f6e1a8' stroke-opacity='.35'/%3E%3Cpolygon points='50,46 71,58 71,82 50,94 29,82 29,58' fill='none' stroke='%23f6e1a8' stroke-width='3'/%3E%3Cpath d='M50 55c7 9 9 15 9 19a9 9 0 0 1-18 0c0-4 2-10 9-19z' fill='%23e3bd62'/%3E%3Cpath d='M50 20l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM50 104l2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%23f6e1a8' fill-opacity='.7'/%3E%3C/svg%3E") center/100% 100% no-repeat,
@@ -711,13 +735,18 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 @keyframes spsheen{0%{transform:translateX(-120%) skewX(-20deg);}15%,100%{transform:translateX(330%) skewX(-20deg);}}
 @media (prefers-reduced-motion:reduce){.sp::before{animation:none;display:none;}}
 .sp.cap .sb small{max-height:14px;opacity:1;}
-/* With the labels hidden they take no width, and the ink box hugs its symbols, so the rarity circle
-   sits midway between what you actually see (one ink or two, any stats) */
-.sp:not(.cap) .sb small{position:absolute;}
-.sp:not(.cap) .sb-ink,.sp:not(.cap) .sb-ink .gems{min-width:0;}
+/* The labels hang under their icons and take no width, so nothing moves when they're shown; the ink box
+   hugs its symbol, so the rarity circle sits midway between the ink and the stats */
+.sp{transition:padding-bottom .22s ease;}
+.sp.cap{padding-bottom:24px;}
+.sp .sb{position:relative;gap:0;}
+.sp .sb small{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font-size:.5rem;letter-spacing:.02em;line-height:1.15;text-align:center;}
+.sp.cap .sb small{max-height:24px;}
+/* the ink name runs right, into the open space before the rarity */
+.sp .sb-ink small{left:0;transform:none;text-align:left;}
+.sp .sb-ink,.sp .sb-ink .gems{min-width:0;}
 /* A second ink hangs off to the right without taking width, so the rarity stays put for dual-ink cards */
-.sp:not(.cap) .sb-ink .inkico + .inkico{margin-right:calc(3px - var(--ih) * .87);}
-.sp .sb{gap:0;}.sp.cap .sb{gap:3px;}
+.sp .sb-ink .inkico + .inkico{margin-right:calc(3px - var(--ih) * .87);}
 .sb.up b{color:#7dffa6;}.sb.dn b{color:#ff8a8a;}
 .sb-s.up b{color:#0f7a37;}.sb-s.dn b{color:#c0262d;}
 .sb.up .sh > svg{filter:drop-shadow(0 0 6px rgba(125,255,166,.9));}.sb.dn .sh > svg{filter:drop-shadow(0 0 6px rgba(255,107,107,.9));}
@@ -5464,47 +5493,55 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
   function printsSorted(d) { return printingsOf(d).slice().sort(function (a, b) { return (PR_ORDER[rarKey(a)] || 6) - (PR_ORDER[rarKey(b)] || 6) || setOrd(a.set) - setOrd(b.set); }); }
   function prLabel(p, list) { var n = prRarName(p.r) || 'Card'; return list.filter(function (x) { return prRarName(x.r) === n; }).length > 1 ? n + ' · Set ' + p.set : n; }
-  // The rarity marks as printed at the bottom of the cards (drawn to match): Common a grey crescent, Uncommon a
+  // The rarity marks as printed at the bottom of the cards (drawn to match): Common a grey disc and swirl, Uncommon a
   // white open book, Rare a bronze notched triangle, Super Rare a silver art-deco fan, Legendary a gold
   // pentagon, Enchanted a rainbow hexagon, Epic two gold overlapping outlines, Iconic a gold ring and orbit; promos a gold star
   var RSYM = (function () {
     function g(id, stops, x2, y2) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="' + (x2 == null ? 1 : x2) + '" y2="' + (y2 == null ? 1 : y2) + '">' + stops.map(function (s, i) { return '<stop offset="' + (i / (stops.length - 1)).toFixed(2) + '" stop-color="' + s + '"/>'; }).join('') + '</linearGradient>'; }
     // the fine honeycomb dots printed on the Legendary and Enchanted marks
-    function dots(id, c, o) { return '<pattern id="' + id + '" width="2.6" height="2.25" patternUnits="userSpaceOnUse"><circle cx=".65" cy=".56" r=".5" fill="' + c + '" fill-opacity="' + o + '"/><circle cx="1.95" cy="1.69" r=".5" fill="' + c + '" fill-opacity="' + o + '"/></pattern>'; }
+    function dots(id, c, o) { return '<pattern id="' + id + '" width="3.4" height="2.94" patternUnits="userSpaceOnUse"><circle cx=".85" cy=".73" r=".78" fill="' + c + '" fill-opacity="' + o + '"/><circle cx="2.55" cy="2.2" r=".78" fill="' + c + '" fill-opacity="' + o + '"/></pattern>'; }
     var D = '#0d0b14';
     var GOLD = ['#fff4c4', '#ecc860', '#b98a22'];
     return {
       // a grey disc; a second disc set up and to the right, and a swirl closing off the lower-left
       common: '<defs>' + g('rsC', ['#d4d6da', '#a9acb2', '#8e9198']) + '</defs><circle cx="12" cy="12" r="9.2" fill="url(#rsC)"/>' +
-        '<path d="M14 3.2A6.8 6.8 0 1 0 19.9 13.4M3 12.9c1.4 3.6 5.6 5.2 9.8 4.2" fill="none" stroke="' + D + '" stroke-width="1.15" stroke-linecap="round"/>',
+        '<path d="M13.1 3.1C10 5.3 8.8 9.1 9.3 12.3c.5 3.3 3.1 6.4 6.3 8.1M3.2 13.6c1.8 3 5.4 4.8 9.2 5" fill="none" stroke="' + D + '" stroke-width="1.1" stroke-linecap="round"/>',
+
       // a white open book: a dark spine down the middle that forks into the curled lower pages
-      uncommon: '<path d="M3.2 3.4h7.1c.4 1 1 1.5 1.7 1.5s1.3-.5 1.7-1.5h7.1v14.1L12 21.2l-8.8-3.7z" fill="#fbfbfb"/>' +
-        '<path d="M12 4.6v16.2M12 15.4c-1.6-2.5-4.9-3.6-8.8-3.3M12 15.4c1.6-2.5 4.9-3.6 8.8-3.3" fill="none" stroke="' + D + '" stroke-width="1.15"/>',
+      uncommon: '<path d="M2.6 2.6 12 5l9.4-2.4v14.2L12 21.4l-9.4-4.6z" fill="#fbfbfb"/>' +
+        '<path d="M12 4.4v17.4M12 17.4C10.5 13.8 7.1 11.7 2.6 11.6M12 17.4c1.5-3.6 4.9-5.7 9.4-5.8" fill="none" stroke="' + D + '" stroke-width="1.1"/>',
+
       // a bronze triangle cut by a pointed arch: the two arcs rise from the middle of the base to the sides
       rare: '<defs>' + g('rsR', ['#ffc58a', '#dc8a43', '#9a5420'], 0.3, 1) + '</defs><path d="M12 2.6 22.2 20.6H1.8z" fill="url(#rsR)"/>' +
         '<path d="M11.1 20.8c0-4.3-1.4-8.1-4.4-9.7M12.9 20.8c0-4.3 1.4-8.1 4.4-9.7" fill="none" stroke="' + D + '" stroke-width="1.15"/>',
       // a silver art-deco fan: a diamond with ribs fanning up from the base, and a small cut tip beneath
       'super rare': '<defs>' + g('rsS', ['#ffffff', '#c6ccd4', '#7c8591', '#d9dde3'], 1, 0.6) + '</defs>' +
-        '<path d="M12 2.2 21.4 11.6l-6.9 6.1H9.5l-6.9-6.1z" fill="url(#rsS)"/><path d="M9.9 18.6h4.2L12 21.4z" fill="url(#rsS)"/>' +
-        '<path d="M12 2.8v14.9M10.6 17.7C8.6 14.6 7.4 10.4 7.4 6.9M13.4 17.7c2-3.1 3.2-7.3 3.2-10.8" fill="none" stroke="' + D + '" stroke-width="1"/>',
+        '<path d="M12 2.2 22 11.4l-7.6 6.4H9.6L2 11.4z" fill="url(#rsS)"/><path d="M9.8 18.6h4.4c-.5 1.3-1.2 2.2-2.2 2.9-1-.7-1.7-1.6-2.2-2.9z" fill="url(#rsS)"/>' +
+        '<path d="M12 2.8v15M10.6 17.8c-.3-4.6-1.2-8-3.6-11.2M13.4 17.8c.3-4.6 1.2-8 3.6-11.2" fill="none" stroke="' + D + '" stroke-width="1"/>',
+
       // a gold pentagon with the honeycomb dots
-      legendary: '<defs>' + g('rsL', ['#fff3c2', '#e9c552', '#b48419']) + dots('rsl', '#7a560c', '.32') + '</defs>' +
-        '<path d="M12 2.4 21.6 9.4 17.9 20.8H6.1L2.4 9.4z" fill="url(#rsL)"/><path d="M12 2.4 21.6 9.4 17.9 20.8H6.1L2.4 9.4z" fill="url(#rsl)"/>',
+      legendary: '<defs>' + g('rsL', ['#fff3c2', '#e9c552', '#b48419']) + dots('rsl', '#6e4d08', '.4') + '</defs>' +
+        '<path d="M12 1.6 22.4 9.2l-4 12.4H5.6L1.6 9.2z" fill="url(#rsL)"/><path d="M12 1.6 22.4 9.2l-4 12.4H5.6L1.6 9.2z" fill="url(#rsl)"/>',
+
       // a rainbow hexagon (point up) with a dark diamond in the middle, and the honeycomb dots
-      enchanted: '<defs><linearGradient id="rsE" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#5fd0f2"/><stop offset=".55" stop-color="#ff3d4f"/><stop offset=".8" stop-color="#b65bd6"/><stop offset="1" stop-color="#6b5bd6"/></linearGradient>' +
-        '<linearGradient id="rsF" x1="0" y1="1" x2=".6" y2="0"><stop offset="0" stop-color="#e9b64a"/><stop offset=".6" stop-color="#f3e3b8" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' + dots('rse', '#2a1f4a', '.28') + '</defs>' +
-        '<path d="M12 1.8 21 7v10l-9 5.2L3 17V7zm0 6.3L8.1 12l3.9 3.9 3.9-3.9z" fill="url(#rsE)" fill-rule="evenodd"/>' +
-        '<path d="M12 1.8 21 7v10l-9 5.2L3 17V7zm0 6.3L8.1 12l3.9 3.9 3.9-3.9z" fill="url(#rsF)" fill-rule="evenodd"/>' +
-        '<path d="M12 1.8 21 7v10l-9 5.2L3 17V7zm0 6.3L8.1 12l3.9 3.9 3.9-3.9z" fill="url(#rse)" fill-rule="evenodd"/>',
+      enchanted: '<defs><clipPath id="rsk"><path d="M12 1 21.8 6.6v10.8L12 23l-9.8-5.6V6.6z"/></clipPath><filter id="rsb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>' + dots('rse', '#2a1f4a', '.3') + '</defs>' +
+        // six colour wedges blurred into each other: silver, cyan, red, violet, lilac, gold round from the top-left
+        '<g clip-path="url(#rsk)"><g filter="url(#rsb)"><path d="M12 12 12-2-1 5z" fill="#f2f0ec"/><path d="M12 12 12-2 25 5z" fill="#3cc4f0"/><path d="M12 12 25 5v14z" fill="#ff3046"/><path d="M12 12 25 19 12 26z" fill="#c54fc4"/><path d="M12 12 12 26-1 19z" fill="#a98ad6"/><path d="M12 12-1 19V5z" fill="#e6bb52"/></g>' +
+        '<rect width="24" height="24" fill="url(#rse)"/></g><path d="M12 7.4 17 11.8 12 16.2 7 11.8z" fill="' + D + '"/>',
+
       // two gold outlines, each a round back with a pointed front, one overlapping the other
-      epic: '<defs>' + g('rsP', GOLD) + '</defs><g fill="none" stroke="url(#rsP)" stroke-width="1.5" stroke-linejoin="miter">' +
-        '<path d="M9.6 3.4C6.3 4.6 4.3 8 4.3 12s2 7.4 5.3 8.6L14 12z"/><path d="M14.4 3.4C11.1 4.6 9.1 8 9.1 12s2 7.4 5.3 8.6L20.6 12z"/><path d="M12 7.6 16.2 12 12 16.4"/></g>',
+      epic: '<defs>' + g('rsP', GOLD) + '</defs><g fill="none" stroke="url(#rsP)" stroke-width="1.6" stroke-linejoin="miter" stroke-miterlimit="8">' +
+        '<path d="M6.8 2.6A11.9 11.9 0 0 0 6.8 21.4L16.2 12z"/><path d="M12.2 2.6A11.9 11.9 0 0 0 12.2 21.4L21.6 12z"/></g>',
+
       // a gold ring with a four-point star at its heart and an orbit swung across it
-      iconic: '<defs>' + g('rsI', GOLD) + '</defs><g fill="none" stroke-linecap="round">' +
-        '<circle cx="12" cy="12" r="7.6" stroke="url(#rsI)" stroke-width="1.5"/>' +
-        '<ellipse cx="12" cy="12" rx="10.2" ry="4.2" transform="rotate(-45 12 12)" stroke="' + D + '" stroke-width="2.6"/>' +
-        '<ellipse cx="12" cy="12" rx="10.2" ry="4.2" transform="rotate(-45 12 12)" stroke="url(#rsI)" stroke-width="1.1"/></g>' +
-        '<path d="M12 8.3c.5 2.1 1.6 3.2 3.7 3.7-2.1.5-3.2 1.6-3.7 3.7-.5-2.1-1.6-3.2-3.7-3.7 2.1-.5 3.2-1.6 3.7-3.7z" fill="url(#rsI)"/>',
+      iconic: '<defs>' + g('rsI', GOLD) + '</defs><g fill="none" stroke="url(#rsI)">' +
+        '<circle cx="12" cy="12" r="8.3" stroke-width="1.3"/>' +
+        // the main orbit, with its pointed ends poking out of the ring, and a fainter one crossing it
+        '<ellipse cx="12" cy="12" rx="9" ry="4.3" transform="rotate(-35 12 12)" stroke-width="1.1"/>' +
+        '<ellipse cx="12" cy="12" rx="7.6" ry="3.4" transform="rotate(50 12 12)" stroke-width=".7" stroke-opacity=".6"/></g>' +
+        '<path d="M21.5 5.3 19.5 7.9 18.4 6.3zM2.5 18.7 5.6 17.7 4.5 16.1z" fill="url(#rsI)"/>' +
+        '<path d="M12 8.6c.4 1.9 1.4 3 3.2 3.4-1.8.4-2.8 1.5-3.2 3.4-.4-1.9-1.4-3-3.2-3.4 1.8-.4 2.8-1.5 3.2-3.4z" fill="url(#rsI)"/>',
+
       special: '<defs>' + g('rsX', GOLD) + '</defs><path d="m12 3 2.6 6 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.2 1.4-6.3L3 9.6l6.4-.6z" fill="url(#rsX)"/>'
     };
   })();
@@ -5522,7 +5559,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var list = printingsOf(d), multi = list.length > 1, nm = prRarName(a.r);
     return '<button type="button" class="sb sb-rar' + (multi ? ' multi' : '') + '"' + (multi ? ' data-rpick="1" aria-haspopup="listbox"' : ' tabindex="-1" disabled') +
       ' aria-label="Rarity: ' + esc(nm) + (multi ? '. ' + list.length + ' printings: tap to choose the art' : '') + '" title="' + esc(nm) + (multi ? ': choose the art' : '') + '">' +
-      '<span class="sh rcirc">' + rarSym(rk) + (multi ? '<b class="rc-n">' + list.length + '</b>' : '') + '</span><small>' + esc(nm) + '</small></button>';
+      '<span class="sh rcirc">' + rarSym(rk) + (multi ? '<b class="rc-n">' + list.length + '</b>' : '') + '</span><small>' + esc(nm).replace(' ', '<br>') + '</small></button>';
   }
   // Scroll the little wheel up and down: whatever sits in the middle is the art (the card swaps as it lands)
   function rarPick(btn, d, ov) {
@@ -6399,7 +6436,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Cost on the left, ink gem(s) centred between it and the stats
     // Cost with its ink right beside it; the rarity in the space between them and the stats (tap it to choose the art)
     var L = '<div class="grp lc2">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') +
-      (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>' +
+      (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + inks.map(esc).join('<br>') + '</small></div>' : '') + '</div>' +
       '<div class="mid">' + rarBtnHTML(d) + '</div>';
     var R = '<div class="grp r">';
     if (d.t === 'location') R += badge('w', SHIELD, live ? WP(u) : d.w || 0, 'Will', d.w || 0) + badge('l', DIAMOND, live ? LORE(u) : d.l || 0, 'Lore', d.l || 0) + badge('mv', MOVE, d.mv || 0, 'Move');
@@ -6547,10 +6584,26 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Phones: tap the big card to fold the details away so the card fills the screen; tap again to bring them back
   function phoneZoom() { return !(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches); }
   function toggleLzMin(ov) {
-    ui.lzMin = !ov.classList.contains('lz-min');
-    ov.classList.toggle('lz-min', ui.lzMin);
+    if (ov._rolling) return;
+    var min = !ov.classList.contains('lz-min'), info = ov.querySelector('.lz-in > .lz-info');
+    var still = !info || (window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches);
+    var remeasure = function () { if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure(); };
+    // the scroll animation runs on the details panel; when it finishes (or a beat later if it never fires) the next step runs
+    var after = function (cls, fn) {
+      ov._rolling = true; ov.classList.add(cls);
+      var fin = function () { if (!ov._rolling) return; ov._rolling = false; info.removeEventListener('animationend', onEnd); ov.classList.remove(cls); fn(); };
+      var onEnd = function (e) { if (e.target === info && e.animationName === 'lzRoll') fin(); };
+      info.addEventListener('animationend', onEnd); setTimeout(fin, 800);
+    };
+    ui.lzMin = min;
     Kit.sfx('tap'); if (Kit.haptic) Kit.haptic('light');
-    if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+    if (min) {
+      if (still) { ov.classList.add('lz-min'); remeasure(); return; }
+      after('lz-rolling', function () { ov.classList.add('lz-min'); remeasure(); });
+    } else {
+      ov.classList.remove('lz-min'); remeasure();
+      if (!still) after('lz-unroll', function () {});
+    }
   }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
@@ -6587,6 +6640,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       info.appendChild(g);
     }
     inner.appendChild(info);
+    // Phones: the details rolled up into a scroll under the card, the card's name written along it; tap to unroll
+    info.setAttribute('data-title', d.n || d.full);
+    if (!opt.tapClose) inner.appendChild(el('button', { type: 'button', class: 'lz-roll', 'aria-label': 'Show the card details', html: '<span>' + esc(d.n || d.full) + '</span>', onclick: function (e) { e.stopPropagation(); toggleLzMin(ov); } }));
     // Tap the stat plate to show or hide its labels (remembered)
     info.addEventListener('click', function (e) {
       var rb = e.target.closest('[data-rpick]'); if (rb) { e.stopPropagation(); rarPick(rb, d, ov); return; }

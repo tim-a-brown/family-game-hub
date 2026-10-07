@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v209-2026-10-07-rarity-faithful';
+const CACHE_VERSION = 'v210-2026-10-07-scroll-details';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -30,6 +30,7 @@ const PRECACHE_URLS = [
   '/data/wordle-words.js',
   '/fonts/lilita-one.woff2',
   '/fonts/patrick-hand.woff2',
+  '/fonts/great-vibes.woff2',
   '/app.js',
   '/sync.js',
   '/hist.js',
