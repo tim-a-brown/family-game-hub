@@ -361,8 +361,18 @@ document.addEventListener('visibilitychange', function () {
 
   // ── Launch (with "phone or real game?" for games that have a scorekeeper) ─
   function go(file) { Kit.sfx('pop'); location.href = 'games/' + (/\.html/.test(file) ? file : file + '.html'); }
+  // Lorcana's cards lean and catch the light with the phone's tilt: iPhone asks for motion access
+  // from a tap, so ask when Lorcana is tapped here (once; a yes is remembered for the game).
+  function askMotion() {
+    try {
+      if (localStorage.getItem('lorc_tilt') || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') return;
+      localStorage.setItem('lorc_tilt_asked', '1');
+      DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') localStorage.setItem('lorc_tilt', '1'); }).catch(function () {});
+    } catch (e) {}
+  }
   function launch(g) {
     Kit.haptic('light');
+    if (g.id === 'lorcana') askMotion();
     if (!g.score) return go(g.play);
     Kit.sfx('pop');
     var box = el('div', { class: 'pick' });
