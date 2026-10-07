@@ -3468,6 +3468,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function pumpQ() {
     if (qBusy) return;
+    if (S && S.mode === 'online' && !NET.owner) return;   // the device running the game resolves abilities (queued ones go back with the answer)
     if (!S || S.phase !== 'play' || finishing) { Q = []; flushWait(); return; }
     if ($('.lz.reveal') || handing) { later(pumpQ, 250); return; }
     var it = Q.shift();
@@ -3499,7 +3500,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (!condOK(ab.cond, src, pi, it.ctx)) return done();
     if (ab.once) { S.once = S.once || {}; var key = src + ':' + ab.i; if (S.once[key] === S.turn) return done(); S.once[key] = S.turn; }
     if (!ab.ok) {
-      if (S.mode === 'online' && pi !== NET.seat) { log(DD(src).n + ': ' + S.P[pi].name + ' can apply this ability by hand on their turn', pi); return done(); }
+      // online, and it's the other player's card: the hand tools open on their device, and what they do comes back here
+      if (netWho(pi) != null) return netAsk('manual', { src: src, ab: abMin(ab) }, function (v) { if (v.st) netAdopt(v.st); (v.q || []).forEach(function (it) { Q.push(it); }); done(); });
       if (ctlHuman(pi)) return manualAb(src, ab, pi, done);
       return done();
     }
@@ -7647,8 +7649,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'sheet': abilitySheet(d.src, d.ab, d.acts.map(function (a, i) { return { label: a.label, primary: a.primary, full: a.full, go: function () { ans({ i: i }); } }; }), { sub: d.sub }); break;
       case 'look': lookSheet({ src: d.src, ab: d.ab }, d.top, d.pk, function (u) { return d.ok.indexOf(u) >= 0; }, d.rest, function (take, order) { ans({ take: take, order: order }); }); break;
       case 'name': nameSheet(d.src, d.ab, d.opt, function (n) { ans({ name: n }); }); break;
+      // their card's ability, applied by hand here; the whole table goes back with the answer
+      case 'manual': openToolbox(d.src, { ab: d.ab, only: toolsFor(d.ab.text), who: NET.seat, done: function () { var q = Q.splice(0); ans({ st: snapshot(), q: q }); } }); break;
       default: ans({ c: 1 });
     }
+  }
+  // The table as the other device left it after applying an ability by hand
+  function netAdopt(st) {
+    var s = JSON.parse(st), before = captureRects();
+    s.defs = S.defs; s.hist = []; s.viewer = NET.seat;
+    S = s; uidN = Math.max(uidN, S.uidN || 0); DEF = {};
+    render(); animateFrom(before); save();
   }
   // A new copy of the game from the other device
   function netApply(d) {
@@ -7683,7 +7694,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // the answer to my question
     if (NET.owner && NET.pend && d.an && d.an.id === NET.pend.id) {
       var p = NET.pend; NET.pend = null; noUndo();
-      NET.ref.update({ pr: null }).catch(netErr);
+      NET.ref.update({ pr: null, an: null }).catch(netErr);
       render(); p.cb(JSON.parse(d.an.v));
     }
     // the game, from the other device (or this one's last copy, after a reload)
