@@ -344,6 +344,22 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   background-position:calc(50% - clamp(-1, var(--tx,0), 1) * 42%) calc(50% - clamp(-1, var(--ty,0), 1) * 42%);
   opacity:calc((.25 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .2) * var(--sw,1));}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
+/* Foil rarity mark (bottom centre of the card): its own small glint that swings round faster than the card's sheen,
+   tinted by rarity, plus a tiny star twinkle now and then */
+.rglint{--g1:#fff3c4;--g2:#f6c84a;position:absolute;left:50%;top:95.9%;width:9.5%;aspect-ratio:1;transform:translate(-50%,-50%);z-index:4;pointer-events:none;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,250,232,.55) 0,rgba(255,250,232,0) 42%),conic-gradient(from calc(var(--tx,0) * 170deg - var(--ty,0) * 130deg),transparent 0deg,var(--g1) 26deg,transparent 66deg,transparent 146deg,var(--g2) 186deg,rgba(255,255,255,.9) 200deg,transparent 240deg,transparent 360deg);
+  -webkit-mask:radial-gradient(circle,#000 30%,transparent 68%);mask:radial-gradient(circle,#000 30%,transparent 68%);mix-blend-mode:screen;
+  opacity:calc((.3 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .7) * var(--sw,1));}
+[data-r="rare"] > .rglint{--g1:#ffd9b0;--g2:#e0995a;}
+[data-r="super rare"] > .rglint{--g1:#ffffff;--g2:#cfe0ff;}
+[data-r="epic"] > .rglint,[data-r="enchanted"] > .rglint,[data-r="iconic"] > .rglint{
+  background:radial-gradient(circle,rgba(255,255,255,.5) 0,rgba(255,255,255,0) 42%),conic-gradient(from calc(var(--tx,0) * 170deg - var(--ty,0) * 130deg),#ff9ad5,#ffe28a,#9dffb0,#8ad8ff,#c39bff,#ff9ad5);}
+.rglint::after{content:'';position:absolute;left:62%;top:6%;width:70%;height:70%;transform:translate(-50%,-50%) scale(0);
+  background:radial-gradient(circle,#fff 0 7%,rgba(255,255,255,0) 9%),linear-gradient(0deg,transparent 46%,rgba(255,255,255,.9) 50%,transparent 54%),linear-gradient(90deg,transparent 46%,rgba(255,255,255,.9) 50%,transparent 54%);
+  -webkit-mask:radial-gradient(circle,#000 12%,transparent 50%);mask:radial-gradient(circle,#000 12%,transparent 50%);animation:twinkle 4.6s ease-in-out infinite;}
+@keyframes twinkle{0%,80%,100%{transform:translate(-50%,-50%) scale(0) rotate(0deg);}88%{transform:translate(-50%,-50%) scale(1) rotate(45deg);}}
+.lz-fc:not(.focus) .rglint{opacity:calc((.3 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .7) * var(--sw,0));}
+@media (prefers-reduced-motion:reduce){.rglint::after{animation:none;}}
 .lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);--bw:var(--cu);}
 /* The cost corner of a sideways location, cut from the upright card image (bw = width of the sideways card) */
 .costup{position:absolute;z-index:2;left:calc(var(--bw) * .864);top:calc(var(--bw) * .009);width:calc(var(--bw) * .118);height:calc(var(--bw) * .118);border-radius:50%;pointer-events:none;
@@ -422,11 +438,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 @keyframes ribpop{0%{transform:translateY(-10px) scale(.8);}100%{transform:none;}}
 .lz-bm.tall:active{transform:scale(.95);}
 /* Add to deck: a round gilded button on the right, a counterweight to the bookmark ribbon on the left */
-.lz-head .lz-ics{align-self:center;margin:0 -4px 0 0;}
-.lz-ics .lz-dk{position:relative;margin:0;width:40px;height:40px;padding:0;display:grid;place-items:center;border-radius:50%;border:1.5px solid transparent;
+.lz-head .lz-ics{align-self:center;margin:0 6px 0 2px;}
+.lz-ics .lz-dk{position:relative;margin:0;width:46px;height:46px;padding:0;display:grid;place-items:center;border-radius:50%;border:1.5px solid transparent;
   background:radial-gradient(circle at 50% 35%,rgba(70,52,24,.9),rgba(20,14,34,.95) 70%) padding-box,linear-gradient(135deg,#fff3c4,#c8922f 35%,#f6dc95 55%,#8a5e1c 85%) border-box;
   color:var(--gilt-2);box-shadow:0 3px 10px rgba(0,0,0,.45),0 0 14px rgba(227,189,98,.2);}
-.lz-ics .lz-dk .ico{width:24px;height:24px;filter:drop-shadow(0 0 3px rgba(246,220,149,.45));}
+.lz-ics .lz-dk .ico{width:30px;height:30px;filter:drop-shadow(0 0 3px rgba(246,220,149,.45));}
 .lz-ics .lz-dk.in{background:radial-gradient(circle at 50% 35%,#fff6d8,#f6dc95 40%,#c8922f 90%) padding-box,linear-gradient(135deg,#fff3c4,#c8922f 35%,#f6dc95 55%,#8a5e1c 85%) border-box;color:#2b1a00;}
 .lz-ics .lz-dk.in .ico{filter:none;}
 .lz-ics .lz-dk b{position:absolute;right:-5px;top:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;font-size:.66rem;font-weight:900;display:grid;place-items:center;
@@ -1063,6 +1079,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .fchips::-webkit-scrollbar{display:none;}
 .fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:0;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.8rem;}
 .fchip.on{background:var(--gilt);color:#2b1a00;}
+/* Filters that are on carry a faint glimmer: a soft band of light drifts across now and then (staggered, so it doesn't march) */
+.fchip.on,.iwt.on,.adv-pick.on,.pk-row.on,.sort-row.on{position:relative;overflow:hidden;isolation:isolate;}
+.fchip.on::after,.iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,252,236,.22) 47%,rgba(255,255,255,.38) 50%,rgba(255,252,236,.22) 53%,transparent 60%) no-repeat;background-size:300% 100%;background-position:100% 0;
+  animation:glim 7s linear infinite;}
+.iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after,.inkk .fchip.on::after{opacity:.45;}
+.fchip.on:nth-child(3n+2)::after,.pk-row.on:nth-child(3n+2)::after{animation-delay:1.3s;}
+.fchip.on:nth-child(3n)::after,.pk-row.on:nth-child(3n)::after{animation-delay:2.6s;}
+.adv-pick.on:nth-child(even)::after{animation-delay:1.9s;}
+@keyframes glim{0%,74%{background-position:100% 0;}100%{background-position:0 0;}}
+@media (prefers-reduced-motion:reduce){.fchip.on::after,.iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after{animation:none;opacity:0;}}
 .fchip .dot{width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}
 .bld-grid{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;grid-auto-rows:max-content;grid-template-columns:repeat(auto-fill,minmax(min(var(--tile,92px),100%),1fr));gap:8px;align-content:start;padding:2px 2px 16px;}
 .pc{position:relative;--cu:132px;height:0;padding:0 0 139.7%!important;border-radius:6px;overflow:hidden;background:#1d1a2c;box-shadow:0 3px 8px rgba(0,0,0,.4);border:0;padding:0;}
@@ -6079,6 +6106,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     ov.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { tiltT.x = 0; tiltT.y = 0; } });
     if (!tiltT.raf) tiltT.raf = requestAnimationFrame(tiltFrame);
   }
+  var GLINT_R = /^(rare|super rare|legendary|epic|enchanted|iconic)$/;
+  function rarKey(d) { return String((d && d.r) || '').toLowerCase().replace(/_/g, ' ').trim(); }
   function tiltFrame() {
     var ov = tiltT.ov;
     if (!ov || !ov.isConnected) { if (tiltT.el) { tiltT.el.style.rotate = ''; } tiltT.el = null; tiltT.raf = 0; return; }
@@ -6090,7 +6119,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var x = tiltT.cx, y = tiltT.cy, mag = Math.min(1, Math.sqrt(x * x + y * y));
     cards.forEach(function (t) {
       var w = flow ? (t._near || 0) : 1;
-      if (!t.querySelector(':scope > .tsheen')) { if (w < 0.01) return; t.appendChild(el('i', { class: 'tsheen', 'aria-hidden': 'true' })); }
+      if (!t.querySelector(':scope > .tsheen')) {
+        if (w < 0.01) return;
+        t.appendChild(el('i', { class: 'tsheen', 'aria-hidden': 'true' }));
+        // the printed rarity mark is foil on the better cards: it gets its own, livelier glint
+        if (GLINT_R.test(t.getAttribute('data-r') || '') && !t.classList.contains('loc')) t.appendChild(el('i', { class: 'rglint', 'aria-hidden': 'true' }));
+      }
       var m = mag * w;
       t.style.rotate = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '';
       // swiping swings or lifts the card too: the light slides with that as well
@@ -6113,7 +6147,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       F.cur = nav; F.ov = ov;
       inner.appendChild(F.el);
     } else {
-      card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : '') });
+      card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(d) });
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
     }
@@ -6231,7 +6265,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function item(j) {
       var it = F.items[j]; if (it) return it;
       var d = defAt(j); if (!d) return null;
-      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : ''), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; F.settle(j); } });
+      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : ''), 'data-r': rarKey(d), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; F.settle(j); } });
       b.appendChild(artEl(d, true));
       F.el.appendChild(b);
       return (F.items[j] = b);
@@ -7378,7 +7412,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       }
     }
     var DECK_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7.5" y="3.5" width="11" height="15" rx="2"/><path d="M5.5 6.5v12a2 2 0 0 0 2 2h8"/></svg>';
-    var DECK_ADD_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M5.2 6.6 3.6 17.4a1.6 1.6 0 0 0 1.35 1.82l2.3.34" opacity=".6"/><rect x="7.5" y="3.2" width="11.5" height="16.6" rx="1.8"/><path d="M13.25 8.2v7.6M9.45 12h7.6" stroke-width="2"/></svg>';
+    var DECK_ADD_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M5.6 6.4 4 17.2a1.6 1.6 0 0 0 1.35 1.82l2.2.32" opacity=".7"/><rect x="7.6" y="3" width="11.6" height="17" rx="1.9"/><path d="M13.4 8.2v7.6M9.6 12h7.6" stroke-width="2.3"/></svg>';
     // Library: put this card into any of your saved decks (or start one with it)
     // Why a card can't go into a deck ('' when it can)
     function deckWhy(dk, d) {
