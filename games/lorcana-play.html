@@ -6944,8 +6944,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       // Single-ink or dual-ink cards
       // Inkable: any, inkable, or not inkable
       inkK.innerHTML = '';
-      [[0, 'Any'], [1, 'Inkable'], [2, 'Not inkable']].forEach(function (o) {
-        inkK.appendChild(chip(o[1], (f.inkable || 0) === o[0], function () { f.inkable = o[0]; f.shown = 60; paintChips(); paintGrid(); }));
+      // Two switches, both on to start: turn one off to see only the other kind
+      [[1, 'Inkable'], [2, 'Not inkable']].forEach(function (o) {
+        var on = !f.inkable || f.inkable === o[0];
+        inkK.appendChild(chip(o[1], on, function () {
+          if (on && f.inkable === o[0]) { Kit.toast('One of these has to stay on'); return; }
+          f.inkable = on ? 3 - o[0] : 0; f.shown = 60; paintChips(); paintGrid();
+        }));
       });
       togs.innerHTML = '';
       if (!lib) togs.appendChild(el('div', { class: 'adv-tog' }, [el('div', { class: 'label', text: 'Only my deck’s inks' }), seg([[0, 'Off'], [1, 'On']], f.fit ? 1 : 0, function (x) { f.fit = !!+x; f.shown = 60; paintChips(); paintGrid(); })]));
@@ -6955,7 +6960,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       INKS.forEach(function (i) { if (f.inks[i]) offs.push([i, function () { f.inks[i] = false; }, inkIcon(i)]); });
       var offIn = function (key, fn) { f[key].forEach(function (k) { offs.push([fn ? fn(k) : k, function () { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); }]); }); };
       offIn('types', function (t) { return TYPE_NAMES[t]; }); offIn('stories'); offIn('chrs'); offIn('clss'); offIn('kws', function (k) { return KWNAME[k]; }); offIn('sets', setName); f.rars.forEach(function (k) { offs.push([k, function () { var i = f.rars.indexOf(k); if (i >= 0) f.rars.splice(i, 1); }, rarIcon(k)]); });
-      if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable' : 'Inkable', function () { f.inkable = 0; }]);
+      if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable only' : 'Inkable only', function () { f.inkable = 0; }]);
       if (f.dual) offs.push(['Dual ink', function () { f.dual = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
       var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + f.costs.length;
