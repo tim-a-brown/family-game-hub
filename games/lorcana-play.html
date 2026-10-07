@@ -672,6 +672,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   background:radial-gradient(circle,rgba(20,14,36,1) 58%,transparent 60%),conic-gradient(var(--gilt-2) calc(var(--pr) * 360deg),rgba(227,189,98,.22) 0);
   box-shadow:0 0 0 1px rgba(227,189,98,.35),0 0 calc(var(--pr) * 16px) rgba(246,220,149,.45);}
 .fc-hint i .ico,.fc-hint i svg{width:16px;height:16px;}
+.fc-hint i.h-bm svg{width:12px;height:17px;}
+.fc-hint i.h-dk{border-radius:9px;width:30px;height:38px;}
 .fc-zone{--pr:0;position:fixed;left:0;right:0;height:36vh;z-index:300;pointer-events:none;opacity:0;transition:opacity .2s;}
 .fc-zone.up{top:0;background:linear-gradient(180deg,rgba(8,6,20,.97) 0%,rgba(8,6,20,.9) 34%,rgba(8,6,20,.5) 62%,transparent 100%);}
 .fc-zone.dn{bottom:0;height:52vh;background:linear-gradient(0deg,rgba(8,6,20,.97) 0%,rgba(8,6,20,.9) 34%,rgba(8,6,20,.5) 62%,transparent 100%);}
@@ -683,10 +685,23 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .fc-zone.dn.at::after{bottom:auto;top:34px;}
 .fc-zone.up.at{top:0;background:linear-gradient(0deg,transparent 0,rgba(8,6,20,.92) 34px,rgba(8,6,20,.88) 55%,rgba(8,6,20,.7) 100%);}
 .fc-zone.up.at::after{top:auto;bottom:34px;}
-.lz-snack{position:fixed;left:50%;bottom:calc(var(--safe-b, 0px) + 18px);z-index:440;display:flex;align-items:center;gap:4px;max-width:calc(100vw - 24px);padding:6px 6px 6px 16px;border-radius:999px;
+.lz-snack{position:fixed;left:50%;bottom:calc(var(--safe-b, 0px) + 18px);z-index:440;display:flex;align-items:center;gap:4px;width:max-content;max-width:calc(100vw - 24px);padding:6px 6px 6px 16px;border-radius:999px;
   background:rgba(20,16,41,.96);color:var(--text);font-weight:800;font-size:.86rem;box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.55),0 8px 24px rgba(0,0,0,.5);
   opacity:0;transform:translate(-50%,16px);transition:opacity .2s,transform .3s cubic-bezier(.3,1.5,.5,1);}
 .lz-snack.show{opacity:1;transform:translate(-50%,0);}
+.lz-snack .sn-ic{flex:none;display:grid;place-items:center;width:28px;height:28px;margin:0 8px 0 -10px;color:#2b1a00;
+  background:radial-gradient(circle at 35% 30%,#fff6d8,#f6dc95 40%,#c8922f 85%);box-shadow:0 0 0 1px #fff3c4,0 0 10px rgba(246,220,149,.45);}
+.lz-snack .sn-ic svg{width:15px;height:15px;}
+/* bookmark: a round medallion with the ribbon; deck: a card-shaped one with the deck and plus */
+.lz-snack.k-bm .sn-ic{border-radius:50%;}
+.lz-snack.k-bm .sn-ic svg{width:11px;height:15px;}
+.lz-snack.k-dk .sn-ic{border-radius:7px;width:24px;height:30px;}
+.lz-snack span.two{display:flex;flex-direction:column;line-height:1.15;}
+.lz-snack span.two b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lz-snack span.two small{font-size:.72rem;font-weight:700;color:var(--text-3);}
+.lz-snack.k-dk button{padding:8px 10px;}
+.lz-snack.k-dk{box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.55),0 8px 24px rgba(0,0,0,.5);}
+.lz-snack.k-bm{box-shadow:inset 0 0 0 1.5px rgba(246,220,149,.75),0 0 18px rgba(246,220,149,.18),0 8px 24px rgba(0,0,0,.5);}
 .lz-snack span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:6px;}
 .lz-snack button{flex:none;border:0;border-radius:999px;padding:8px 12px;background:transparent;color:var(--gilt-2);font-weight:900;font-size:.82rem;cursor:pointer;}
 .lz-snack button:first-of-type{background:rgba(227,189,98,.14);}
@@ -2959,7 +2974,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (marks[k]) { delete marks[k]; del[k] = Date.now(); } else { marks[k] = Date.now(); delete del[k]; }
     lsSet(MARKS, marks); lsSet(MARKS_DEL, del); synced(MARKS);
     Kit.sfx(marks[k] ? 'pop' : 'tap'); Kit.haptic('light');
-    Kit.toast(marks[k] ? 'Bookmarked ' + d.n : 'Bookmark removed');
+    if ($('.lz')) notePill('bm', marks[k] ? 'Bookmarked ' + d.n : 'Bookmark removed');
+    else Kit.toast(marks[k] ? 'Bookmarked ' + d.n : 'Bookmark removed');
     if (ui.onMark) ui.onMark();
     return !!marks[k];
   }
@@ -6520,6 +6536,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     '<path class="rb" d="M4.5 2.5h21v37L15 31.5 4.5 39.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>' +
     '<g class="gild" clip-path="url(#lz-rib-c)"><path d="M7.4 5.3h15.2v28.4L15 28 7.4 33.7z" fill="none" stroke="#8a5a14" stroke-opacity=".4" stroke-width=".55" stroke-dasharray="1 1.1"/>' +
     '<path d="M6 3.6h18" stroke="#fffbe8" stroke-opacity=".8" stroke-width=".8"/><rect class="glint" x="-16" y="-4" width="12" height="52" fill="url(#lz-rib-s)"/></g></svg>';
+  // The confirmation pill over the card view: the same dark gilt pill for both, led by the icon you tapped on the
+  // card (the bookmark ribbon, or the deck with a plus), each in its own little medallion
+  var RIB_MINI = '<svg viewBox="0 0 30 42" aria-hidden="true"><path d="M4.5 2.5h21v37L15 31.5 4.5 39.5z" fill="currentColor"/></svg>';
+  var pillEl = null, pillT = 0;
+  function notePill(kind, msg, acts) {
+    if (pillEl) pillEl.remove();
+    var ic = kind === 'bm' ? RIB_MINI : DECK_ADD_SVG;
+    pillEl = el('div', { class: 'lz-snack ' + (kind === 'bm' ? 'k-bm' : 'k-dk'), role: 'status', 'aria-label': (kind === 'bm' ? '' : 'Added to ') + (Array.isArray(msg) ? msg.join(', ') : msg) }, [el('i', { class: 'sn-ic', html: ic }), Array.isArray(msg) ? el('span', { class: 'two', html: '<b>' + esc(msg[0]) + '</b><small>' + esc(msg[1]) + '</small>' }) : el('span', { text: msg })]);
+    (acts || []).forEach(function (a) { pillEl.appendChild(el('button', { type: 'button', text: a[0], onclick: function (e) { e.stopPropagation(); hide(); a[1](); } })); });
+    var me = pillEl; function hide() { me.classList.remove('show'); setTimeout(function () { me.remove(); }, 250); }
+    ($('.lz') || document.body).appendChild(me);
+    requestAnimationFrame(function () { me.classList.add('show'); });
+    clearTimeout(pillT); pillT = setTimeout(hide, kind === 'bm' ? 2600 : 4500);
+  }
   function rulesHTML(d) {
     var lines = String(d.tx || '').split(/\n+/).filter(function (x) { return x.trim(); });
     var pa = artOf(d) || d, setNo = pa.set ? '<small class="setno">Set ' + esc(pa.set) + (pa.no ? ' · #' + esc(pa.no) : '') + '</small>' : '', first = true;
@@ -7001,7 +7031,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         else { hint.style.top = 'calc(var(--safe-t, 0px) + 18px)'; hint.style.bottom = 'auto'; }
       }
       var what = dn ? 'add to a deck' : d && isMarked(d) ? 'remove bookmark' : 'bookmark';
-      hint.innerHTML = '<i>' + (dn ? DECK_ICO2 : Kit.icon('bookmark')) + '</i><span>' + (now ? 'Release to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
+      hint.innerHTML = '<i class="' + (dn ? 'h-dk' : 'h-bm') + '">' + (dn ? DECK_ADD_SVG : RIB_MINI) + '</i><span>' + (now ? 'Release to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
     }
     // Where the trigger line goes: the card's resting edges are measured when the swipe starts
     var cardR = null;
@@ -8194,7 +8224,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (why) { snack(why, [['Pick a deck', pick]]); Kit.sfx('bad'); return; }
       dk.cards[d.id] = (dk.cards[d.id] || 0) + 1; putDeck(dk);
       Kit.sfx('pop'); Kit.haptic('medium'); refreshDeckPill(d);
-      snack('Added to ' + dk.name + ' · ' + copiesByFull(dk.cards, d.full) + ' of ' + copyLimit(d), [
+      snack([dk.name, copiesByFull(dk.cards, d.full) + ' of ' + copyLimit(d) + ' in this deck'], [   // the deck-and-plus medallion says "added"
         ['Undo', function () {
           var k = savedDecks().filter(function (x) { return x.id === dk.id; })[0]; if (!k || !k.cards[d.id]) return;
           if (--k.cards[d.id] <= 0) delete k.cards[d.id]; putDeck(k); refreshDeckPill(d); Kit.sfx('tap');
@@ -8202,16 +8232,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         ['Other deck', pick]]);
     }
     // A small bar with actions, over the card view
-    var snackEl = null, snackT = 0;
-    function snack(msg, acts) {
-      if (snackEl) snackEl.remove();
-      snackEl = el('div', { class: 'lz-snack', role: 'status' }, [el('span', { text: msg })]);
-      (acts || []).forEach(function (a) { snackEl.appendChild(el('button', { type: 'button', text: a[0], onclick: function (e) { e.stopPropagation(); hide(); a[1](); } })); });
-      var me = snackEl; function hide() { me.classList.remove('show'); setTimeout(function () { me.remove(); }, 250); }
-      ($('.lz') || document.body).appendChild(me);
-      requestAnimationFrame(function () { me.classList.add('show'); });
-      clearTimeout(snackT); snackT = setTimeout(hide, 4500);
-    }
+    function snack(msg, acts) { notePill('dk', msg, acts); }
     // ── Filtering without leaving the big card view ──
     // The library's own filter controls move into a panel over the card view
     // (and back when it closes); every change re-deals the cards you swipe through.
