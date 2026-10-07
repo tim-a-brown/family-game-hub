@@ -6629,13 +6629,35 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       info.style.setProperty('--tilt', ((w / 2 + 10) * Math.tan(3.5 * Math.PI / 180)).toFixed(1) + 'px');
     }
     Kit.sfx('tap'); if (Kit.haptic) Kit.haptic('light');
-    if (min) {
-      if (still) { ov.classList.add('lz-min'); remeasure(); return; }
-      after('lz-rolling', function () { ov.classList.add('lz-min'); remeasure(); });
-    } else {
-      ov.classList.remove('lz-min'); remeasure();
-      if (!still) after('lz-unroll', function () {});
+    if (still) { ov.classList.toggle('lz-min', min); remeasure(); return; }
+    // The card grows (or shrinks) in step with the roll: measure it in both layouts, then animate between them
+    var cardOf = function () { return ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card'); };
+    var snap = function (on) { ov.classList.toggle('lz-min', on); remeasure(); var c = cardOf(); return c && c.getBoundingClientRect(); };
+    // (both measured in one go, before anything paints; then the open layout stays for the roll to run over)
+    var st = ov.scrollTop, open = snap(false), shut = snap(true);
+    snap(false); ov.scrollTop = st;
+    var card = cardOf(), flow = card && card.closest('.lz-flow'), grow = null;
+    if (flow && open && shut && open.width) {
+      var fr = flow.getBoundingClientRect();
+      flow.style.transformOrigin = (open.left - fr.left) + 'px ' + (open.top - fr.top) + 'px';
+      var tf = 'translate(' + (shut.left - open.left).toFixed(1) + 'px,' + (shut.top - open.top).toFixed(1) + 'px) scale(' + (shut.width / open.width).toFixed(4) + ')';
+      grow = flow.animate(min ? [{ transform: 'none' }, { transform: tf }] : [{ transform: tf }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.4,0,.3,1)', fill: 'forwards' });
     }
+    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } };
+    if (min) {
+      after('lz-rolling', function () {
+        // the roller ends at the foot of the panel; the rolled scroll glides from there to its place under the card
+        var ir = info.getBoundingClientRect();
+        ov.classList.add('lz-min'); remeasure(); settle();
+        var roll = ov.querySelector('.lz-roll');
+        if (roll && ir.width) {
+          var rr = roll.getBoundingClientRect(), slant = getComputedStyle(ov).getPropertyValue('--slant').trim() || '-3.5deg';
+          var dx = (ir.left + ir.right) / 2 - (rr.left + rr.right) / 2, dy = ir.bottom - 22 - (rr.top + rr.bottom) / 2;
+          roll.style.animation = 'none';
+          roll.animate([{ transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) rotate(' + slant + ')' }, { transform: 'rotate(' + slant + ')' }], { duration: 380, easing: 'cubic-bezier(.3,0,.2,1)' });
+        }
+      });
+    } else after('lz-unroll', settle);
   }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
