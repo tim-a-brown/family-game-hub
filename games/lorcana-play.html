@@ -5404,7 +5404,21 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Many cards have more than one printing (an Enchanted full-art, an Epic, a promo). They play the same, so
   // the library keeps one tile per card; the card view lets you pick the art, remembered per card (this device)
   // and used everywhere: library, decks, the table. A setting shows the special art wherever there is one.
-  var ARTK = 'lorc_art', FANCYK = 'lorc_fancy', ART = lsGet(ARTK, null) || {}, FANCY = !!lsGet(FANCYK, false);
+  // Saved to the PIN with decks and bookmarks (sync.js): {card: [printingId or '' for the standard art, at]}, {on, at}
+  var ARTK = 'lorcana_art_v1', FANCYK = 'lorcana_fancy_v1', ART = {}, FANCY = false;
+  function loadArt() {
+    var raw = lsGet(ARTK, null);
+    if (!raw) {   // choices made before they synced
+      var old = lsGet('lorc_art', null); raw = {};
+      if (old) { Object.keys(old).forEach(function (k) { raw[k] = [old[k], Date.now()]; }); lsSet(ARTK, raw); synced(ARTK); }
+    }
+    ART = {}; Object.keys(raw).forEach(function (k) { if (raw[k] && raw[k][0]) ART[k] = raw[k][0]; });
+    var fz = lsGet(FANCYK, null); FANCY = fz ? !!fz.on : !!lsGet('lorc_fancy', false);
+  }
+  loadArt();
+  function saveArt(k) { var raw = lsGet(ARTK, null) || {}; raw[k] = [ART[k] || '', Date.now()]; lsSet(ARTK, raw); synced(ARTK); }
+  // Another device changed something: pick up its art choices and bookmarks
+  document.addEventListener('fghsync:updated', function () { loadArt(); marks = lsGet(MARKS, null) || {}; artChanged(); if (ui.onMark) ui.onMark(); });
   var PR_SPECIAL = { enchanted: 4, iconic: 3, epic: 2 };
   function prSpecial(d) { return PR_SPECIAL[rarKey(d)] || 0; }
   function printingsOf(d) { return (d && d.full && DB.byFull[String(d.full).toLowerCase()]) || (d ? [d] : []); }
@@ -5429,10 +5443,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   // Pick a printing from the card view: swap the picture in place, remember it, repaint whatever shows the card
   function setPrint(ov, d, id) {
-    var k = String(d.full).toLowerCase(), plain = printingsOf(d)[0];
-    var dflt = (function () { var keep = ART[k]; delete ART[k]; var a = artOf(d); if (keep) ART[k] = keep; return a; })();
-    if (dflt && dflt.id === id) delete ART[k]; else ART[k] = id;
-    lsSet(ARTK, ART);
+    var k = String(d.full).toLowerCase();
+    ART[k] = id;   // kept even when it's the standard art, so the special-art setting doesn't override your pick
+    saveArt(k);
     var a = artOf(d), card = ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card');
     if (card) {
       var old = card.querySelector(':scope > img, :scope > .face'); var fresh = artEl(d, true);
@@ -5446,7 +5459,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     artChanged();
   }
   function artChanged() { slotCache = {}; if (ui.onArt) ui.onArt(); if (S && ui.screen === 'game') render(); }
-  function setFancy(on) { FANCY = !!on; lsSet(FANCYK, FANCY); artChanged(); }
+  function setFancy(on) { FANCY = !!on; lsSet(FANCYK, { on: FANCY, at: Date.now() }); synced(FANCYK); artChanged(); }
   function artEl(d, big) {
     d = artOf(d) || d;
     // Every picture that could show this card, best first: this size from Lorcast, its copy on Google Cloud,

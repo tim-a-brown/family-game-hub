@@ -19,6 +19,7 @@
 // Lorcana decks and bookmarks sync too (cloud field `lorcana`). Local keys:
 //   lorcana_decks_v1 [{id,name,cards,at}]   lorcana_decks_del {id: deletedAt}
 //   lorcana_marks_v1 {card: markedAt}        lorcana_marks_del {card: removedAt}
+//   lorcana_art_v1 {card: [printingId, at]}  lorcana_fancy_v1 {on, at}   (card art choices)
 // Each deck and each bookmark goes by its own timestamp, so edits, deletes and
 // un-bookmarks on one device carry over to the others.
 (function(){
@@ -102,13 +103,13 @@
   }
 
   // ── Lorcana decks + bookmarks ─────────────────────────────────────────
-  var LORC_KEYS = { decks: 'lorcana_decks_v1', ddel: 'lorcana_decks_del', marks: 'lorcana_marks_v1', mdel: 'lorcana_marks_del' };
+  var LORC_KEYS = { decks: 'lorcana_decks_v1', ddel: 'lorcana_decks_del', marks: 'lorcana_marks_v1', mdel: 'lorcana_marks_del', art: 'lorcana_art_v1', fancy: 'lorcana_fancy_v1' };
   function lsJSON(k){ try{ var v = LS.getItem(k); return v == null ? null : JSON.parse(v); }catch(e){ return null; } }
   function scanLorc(){
     var o = {}, any = false;
     Object.keys(LORC_KEYS).forEach(function(f){ var v = lsJSON(LORC_KEYS[f]); if(v != null) any = true; o[f] = v; });
     if(!any) return null;
-    return { decks: asArray(o.decks), ddel: o.ddel || {}, marks: o.marks || {}, mdel: o.mdel || {} };
+    return { decks: asArray(o.decks), ddel: o.ddel || {}, marks: o.marks || {}, mdel: o.mdel || {}, art: o.art || {}, fancy: o.fancy || null };
   }
   function maxMap(a, b){
     var out = {};
@@ -130,11 +131,16 @@
     var on = maxMap(a.marks, b.marks), off = maxMap(a.mdel, b.mdel), marks = {}, mdel = {};
     Object.keys(on).forEach(function(k){ if(!(off[k] >= on[k])) marks[k] = on[k]; });
     Object.keys(off).forEach(function(k){ if(!marks[k]) mdel[k] = off[k]; });
-    return { decks: decks, ddel: ddel, marks: marks, mdel: mdel };
+    // Card art choices {card: [printingId or '' for the standard art, at]} and the special-art setting {on, at}:
+    // the latest change wins, card by card
+    var art = {};
+    [a.art || {}, b.art || {}].forEach(function(m){ Object.keys(m).forEach(function(k){ var v = m[k]; if(!Array.isArray(v)) return; if(!art[k] || (Number(v[1]) || 0) > (Number(art[k][1]) || 0)) art[k] = [String(v[0] || ''), Number(v[1]) || 0]; }); });
+    var fa = a.fancy, fb = b.fancy, fancy = fa && fb ? ((fb.at || 0) > (fa.at || 0) ? fb : fa) : (fa || fb || null);
+    return { decks: decks, ddel: ddel, marks: marks, mdel: mdel, art: art, fancy: fancy };
   }
   function writeLorc(l){
     if(!l) return;
-    Object.keys(LORC_KEYS).forEach(function(f){ try{ LS.setItem(LORC_KEYS[f], JSON.stringify(l[f] || (f === 'decks' ? [] : {}))); }catch(e){} });
+    Object.keys(LORC_KEYS).forEach(function(f){ try{ LS.setItem(LORC_KEYS[f], JSON.stringify(l[f] || (f === 'decks' ? [] : f === 'fancy' ? null : {}))); }catch(e){} });
   }
 
   // ── Merge strategies ──────────────────────────────────────────────────
@@ -504,7 +510,7 @@
 
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()) schedulePush();
   }
 
