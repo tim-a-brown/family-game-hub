@@ -2466,7 +2466,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Newer cards neither source knows yet
   var STORY_FIX = { 'dante': 'Coco', 'miguel': 'Coco', 'miguel rivera': 'Coco', 'hector': 'Coco', 'imelda': 'Coco', 'mama imelda': 'Coco', 'pepita': 'Coco', 'ernesto de la cruz': 'Coco', 'mama coco': 'Coco',
     // versions of Mickey's gang that come from one particular film or short
-    'mickey mouse|wayward sorcerer': "The Sorcerer's Apprentice", 'mickey mouse|steamboat pilot': 'Steamboat Willie' };
+    'mickey mouse|wayward sorcerer': "The Sorcerer's Apprentice", 'mickey mouse|steamboat pilot': 'Steamboat Willie',
+    // cards the film list hasn't tagged yet
+    'air drop': 'TaleSpin' };
   // Studio groups offered at the top of the Film or show list
   var PIXAR = /^(Toy Story|The Incredibles|Incredibles|Brave|Coco|Monsters,? Inc|Finding (Nemo|Dory)|Ratatouille|WALL-E|Up|Cars|Inside Out|Luca|Turning Red|Elemental|Onward|Soul|A Bug's Life|Elio|Lightyear|The Good Dinosaur)\b/i;
   function studioOf(d) { return PIXAR.test(storyOf(d)) ? 'Pixar' : 'Disney'; }
@@ -2484,6 +2486,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     // The catch-all names ("Classic Disney", "Mickey Mouse & Friends") lose to a specific film when one is known (Golden Harp → Mickey and the Beanstalk)
     if (GENERIC.test(s) && L) { var vi2 = L.v[kv], sp = vi2 != null ? L.s[vi2] : L.n[k] != null ? L.s[L.n[k]] : ''; if (sp && !GENERIC.test(sp) && sp !== 'Lorcana') s = sp; }
+    // Still nothing: the character quoted in the flavor text ("…coming right to us!" –Dumptruck → TaleSpin)
+    if (!s && d.fl) {
+      var qm = String(d.fl).match(/[—–]\s*([A-Z][^—–\n"”:]{1,40}?)\s*$/);
+      if (qm) { var qk = skey(qm[1]); s = storyX.m[qk] || (L && L.n[qk] != null ? L.s[L.n[qk]] : '') || STORY_FIX[qk] || ''; }
+    }
     if (GENERIC.test(s)) s = 'Mickey and Friends';
     return s === 'Lorcana' ? '' : canonStory(s);
   }
