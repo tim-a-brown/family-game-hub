@@ -5226,8 +5226,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (S.mode === 'cpu') S.viewer = humanIx();
       startTurn(); return;
     }
+    if (S.mode === 'online') return netMull();
     S.mullWho = pi; ui.mullSel = {};
-    if (S.mode === 'online' && pi !== NET.seat) return netHand(pi);   // their opening hand, on their device
     if (S.P[pi].cpu) {
       save(); render();
       later(function () { act(function () { doMull(pi, cpuMulligan(pi)); }); later(mullNext, 700); }, 700);
@@ -5235,6 +5235,23 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     if (S.mode === 'pass' && S.viewer !== pi) { S.viewer = -1; save(); render(); later(handoff, 300); return; }
     S.viewer = pi; save(); render();
+  }
+  // Online, both players choose their opening hands at once: this device (running the game) shows its own hand and
+  // asks the other device for theirs; play starts when both are in
+  function netMull() {
+    if (!NET.owner) return;
+    var me = NET.seat, o = opp(me);
+    if (!S.mull[o] && !NET.pend) {
+      if (S.mull[me]) S.mullWho = o;
+      netAsk('mull', {}, function (v) {
+        if (!S || S.phase !== 'mull' || S.mull[o]) return;
+        var hand = S.P[o].hand, back = (v && v.back || []).filter(function (u) { return hand.indexOf(u) >= 0; });
+        act(function () { doMull(o, back); });
+        later(mullNext, 300);
+      });
+    }
+    if (!S.mull[me]) { S.mullWho = me; S.viewer = me; save(); render(); return; }
+    S.mullWho = o; S.viewer = me; save(); render();   // mine's done: waiting for theirs
   }
   function doMull(pi, back) {
     var p = S.P[pi];
@@ -5245,6 +5262,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     log(p.name + (back.length ? ' put back ' + plural(back.length, 'card') + ' and drew ' + back.length : ' kept their opening hand'), pi);
   }
   function humanMull() {
+    if (S.mode === 'online' && ui.netMull) {   // the other device asked for my opening hand
+      var mine = S.P[NET.seat].hand.filter(function (u) { return ui.mullSel[u]; }), send = ui.netMull;
+      ui.netMull = null; ui.mullSel = {}; Kit.sfx(mine.length ? 'deal' : 'pop'); render(); send({ back: mine });
+      return;
+    }
     var pi = S.mullWho, back = S.P[pi].hand.filter(function (u) { return ui.mullSel[u]; });
     ui.mullSel = {};
     act(function () { doMull(pi, back); });
@@ -5376,7 +5398,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       else if (a.k === 'chal' && res) oppShow(a.u, 'Challenged', 'Challenged ' + DD(a.t).full, (isLoc(a.t) ? 'Dealt ' + res.dt + ' damage to ' + nm(a.t) : 'Dealt ' + res.dt + ' · took ' + res.da) + (res.banished.length ? ' · Banished ' + res.banished.map(nm).join(' and ') : ''));
       else if (a.k === 'move') oppShow(a.u, 'Moved', '', 'To ' + DD(a.t).n);
       else if (a.k === 'boost') oppShow(a.u, 'Boosted', '', 'Put a card under ' + nm(a.u));
-      else if (a.k === 'ink') oppTick(pi, 'Inked', 'A card, facedown');
+      // inking is shown to the other player (the card's inkwell mark proves it can be inked), then it goes in facedown
+      else if (a.k === 'ink') oppShow(a.u, 'Inked', 'Into the inkwell, facedown', 'Inkable');
     }
     // Support
     if (a.k === 'quest' && hasKw(a.u, 'support') && STR(a.u) > 0) {
@@ -5904,7 +5927,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function renderMull() {
     var host = $('.mull-host'); host.innerHTML = '';
     if (!S || S.phase !== 'mull' || S.mullWho == null) return;
-    var pi = S.mullWho, p = S.P[pi];
+    var pi = mullPi(), p = S.P[pi];
+    // online, on the device that isn't running the game: my hand while I'm choosing, otherwise waiting for the other player
+    if (S.mode === 'online' && !NET.owner && !ui.netMull) {
+      host.appendChild(el('div', { class: 'mull', style: { background: 'rgba(5,8,28,.45)' } }, [el('p', { text: S.mull[NET.seat] ? 'Waiting for ' + S.P[opp(NET.seat)].name + '…' : 'Dealing…' })]));
+      return;
+    }
     if (p.cpu || !handShown(pi)) {
       host.appendChild(el('div', { class: 'mull', style: { background: 'rgba(5,8,28,.45)' } }, [el('p', { text: p.cpu ? p.name + ' is choosing an opening hand…' : 'Waiting for ' + p.name + '…' })]));
       return;
@@ -5922,15 +5950,18 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       cards.appendChild(wrap);
     });
     var n = p.hand.filter(function (u) { return ui.mullSel[u]; }).length;
-    box.appendChild(el('h2', { text: (p.name === 'You' ? 'Your' : p.name + '’s') + ' opening hand' }));
+    // pass-and-play names whose hand it is (the device changes hands); otherwise it's always yours
+    box.appendChild(el('h2', { text: (S.mode === 'pass' && p.name !== 'You' ? p.name + '’s' : 'Your') + ' opening hand' }));
     box.appendChild(el('p', { text: 'Tap a card to see it full size. Mark the ones to put back: they go on the bottom of your deck, you draw that many new cards, then your deck is shuffled. You can do this once.' }));
     box.appendChild(cards);
     box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', 'data-act': 'mull', text: n ? 'Put back ' + n + ', draw ' + n : 'Keep this hand' }));
     host.appendChild(box);
   }
+  // whose opening hand this device is showing
+  function mullPi() { return S.mode === 'online' && ui.netMull ? NET.seat : S.mullWho; }
   function mullZoom(u, dir) {
     if (!S || S.phase !== 'mull') return;
-    var hand = S.P[S.mullWho].hand, i = hand.indexOf(u), out = !!ui.mullSel[u];
+    var hand = S.P[mullPi()].hand, i = hand.indexOf(u), out = !!ui.mullSel[u];
     zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); mullZoom(u); } }],
       { i: i, n: hand.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; } });
   }
@@ -8347,6 +8378,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       case 'sheet': abilitySheet(d.src, d.ab, d.acts.map(function (a, i) { return { label: a.label, primary: a.primary, full: a.full, go: function () { ans({ i: i }); } }; }), { sub: d.sub }); break;
       case 'look': lookSheet({ src: d.src, ab: d.ab }, d.top, d.pk, function (u) { return d.ok.indexOf(u) >= 0; }, d.rest, function (take, order) { ans({ take: take, order: order }); }); break;
       case 'name': nameSheet(d.src, d.ab, d.opt, function (n) { ans({ name: n }); }); break;
+      case 'mull': ui.netMull = ans; ui.mullSel = {}; render(); break;
       // their card's ability, applied by hand here; the whole table goes back with the answer
       case 'manual': openToolbox(d.src, { ab: d.ab, only: toolsFor(d.ab.text), who: NET.seat, done: function () { var q = Q.splice(0); ans({ st: snapshot(), q: q }); } }); break;
       default: ans({ c: 1 });
