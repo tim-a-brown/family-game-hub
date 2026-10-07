@@ -6859,7 +6859,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     body.appendChild(pool); body.appendChild(dpane);
     var wrap = el('div', { class: 'bld' + (lib ? ' lib' : '') }, [top, msg, tabs, body]);
     // The game bar's back arrow leaves the library or deck builder (one back arrow, not two)
-    Kit.onBack = function () { if (!wrap.isConnected) { Kit.onBack = null; return false; } Kit.onBack = null; if (lib) back(); else leave(); return true; };
+    // (opened straight from the games list: back goes back there, not into a saved game)
+    Kit.onBack = function () { if (!wrap.isConnected || (lib && o && o.fromHub)) { Kit.onBack = null; return false; } Kit.onBack = null; if (lib) back(); else leave(); return true; };
     app.appendChild(wrap);
     function chip(label, on, click, dot) { return el('button', { type: 'button', class: 'fchip' + (on ? ' on' : ''), html: (dot ? '<i class="dot" style="--c:' + dot + '"></i>' : '') + esc(label), onclick: function () { Kit.sfx('tap'); click(); } }); }
     // Film or show: the most common ones as chips, plus a searchable list of all of them
@@ -7389,7 +7390,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       showBuilder(null, function () {
         history.replaceState(null, '', location.pathname);
         if (saved && saved.P && saved.phase && saved.phase !== 'over') { S = saved; S.hist = S.hist || []; uidN = S.uidN || 0; app.innerHTML = ''; resumeFlow(); } else showSetup();
-      }, { library: true });
+      }, { library: true, fromHub: true });
       return;
     }
     if (saved && saved.P && saved.P.length === 2 && saved.defs && saved.cards && saved.phase && saved.phase !== 'over') {
