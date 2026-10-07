@@ -148,7 +148,7 @@ var GameIcon = (function () {
         var a1 = i * Math.PI / 3, a2 = (i + 1) * Math.PI / 3;
         s += path('M12 12L' + (12 + 10 * Math.cos(a1)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a1)).toFixed(2) + 'A10 10 0 0 1 ' + (12 + 10 * Math.cos(a2)).toFixed(2) + ' ' + (12 + 10 * Math.sin(a2)).toFixed(2) + 'z', cols[i]);
       }
-      return s + circ(12, 12, 2.6, W) + path('M12 0l2.4 3.6h-4.8z', K);
+      return s + circ(12, 12, 2.6, W) + path('M9.6 0h4.8L12 3.8z', K);   // the pointer, pointing down into the wheel
     },
     dealornodeal: function (c) { return path('M8.5 7V5.2A1.7 1.7 0 0 1 10.2 3.5h3.6a1.7 1.7 0 0 1 1.7 1.7V7', 'none', ' stroke="' + K + '" stroke-width="2"') + rect(2, 7, 20, 13.5, 2.5, c) + rect(2, 11.5, 20, 2.2, 0, K, ' opacity=".25"') + rect(10.4, 10.5, 3.2, 4.2, .8, Y); },
     shellgame: function (c) { return path('M1.5 16a4.2 4.2 0 0 1 8.4 0z', c) + path('M14.1 16a4.2 4.2 0 0 1 8.4 0z', c) + path('M7.8 12a4.2 4.2 0 0 1 8.4 0z', K) + circ(12, 15.6, 2.2, R) + rect(1, 17.5, 22, 1.6, .8, K, ' opacity=".2"'); },
