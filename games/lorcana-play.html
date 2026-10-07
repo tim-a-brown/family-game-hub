@@ -466,8 +466,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-info .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 /* Stat plate in the card details */
 .sp{--d1:color-mix(in srgb,var(--p1) 46%,#120d26);--d2:color-mix(in srgb,var(--p2) 46%,#120d26);display:flex;align-items:flex-start;gap:4px;margin-top:10px;padding:8px 10px 6px;border-radius:14px;
-  /* the card's ink colour; two inks meet on a 45° diagonal in the middle */
-  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 55%,rgba(0,0,0,.18)),linear-gradient(45deg,var(--d1) 0%,var(--d1) 44%,var(--d2) 56%,var(--d2) 100%);
+  /* the card's ink colour; two inks blend across a wide diagonal band in the middle */
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 55%,rgba(0,0,0,.18)),linear-gradient(135deg,var(--d1) 0%,var(--d1) 28%,var(--d2) 72%,var(--d2) 100%);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--p1) 40%,#e3bd62),inset 0 1px 0 rgba(255,255,255,.15),0 4px 14px rgba(0,0,0,.3);}
 .sp .sb small{color:rgba(255,255,255,.72);}
 .sp .grp{display:flex;gap:4px;align-items:flex-start;}
@@ -2452,7 +2452,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // the same full name, cards of one or two ink colors.
   // Most cards: 4 copies. Some say otherwise ("up to 99 copies", "only 2 copies", "any number")
   function copyLimit(d) { var lim = 4; ((d && d.A) || []).forEach(function (a) { (a.fx || []).forEach(function (e) { if (e.op === 'deckRule') lim = e.max; }); }); return lim; }
-  function deckProblems(cards) {
+  // Casual decks (deck.casual) may use more than 2 inks; everything else follows the standard rules
+  function deckProblems(cards, casual) {
     var p = [], n = deckCount(cards), inks = deckInks(cards), by = {};
     deckCards(cards).forEach(function (x) { var k = x.d.full.toLowerCase(); by[k] = (by[k] || 0) + x.n; });
     if (n < 60) p.push('Needs ' + (60 - n) + ' more ' + (60 - n === 1 ? 'card' : 'cards') + ' (60 minimum)');
@@ -2460,10 +2461,19 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var d0 = DB.byFull[k][0], lim = 4; (d0.A || []).forEach(function (a) { (a.fx || []).forEach(function (e) { if (e.op === 'deckRule') lim = e.max; }); });
       if (by[k] > lim) p.push('Only ' + lim + ' copies of ' + d0.full + ' allowed');
     });
-    if (inks.length > 2) p.push('Too many inks: ' + inks.join(', ') + ' (2 at most)');
+    if (inks.length > 2 && !casual) p.push('Too many inks: ' + inks.join(', ') + ' (2 at most)');
     var missing = Object.keys(cards || {}).filter(function (id) { return !DB.byId[id]; }).length;
     if (missing) p.push(plural(missing, 'card') + ' not in the card library');
     return p;
+  }
+  // Would this card bring a deck past 2 inks?
+  function inkClash(cards, d) { var inks = deckInks(cards), di = inkOf(d); return di.some(function (i) { return inks.indexOf(i) < 0; }) && inks.concat(di.filter(function (i) { return inks.indexOf(i) < 0; })).length > 2; }
+  function isCasual(d) { return !!(d && d.casual && DB.status === 'ready' && deckInks(d.cards).length > 2); }
+  // Ask before a deck goes past 2 inks (shown above the card view too)
+  function askCasual(dk) {
+    var pr = Kit.confirm('Make ' + (dk.name || 'this deck') + ' a casual deck?', { body: 'Lorcana decks use 2 inks at most. A casual deck can use more. You can still play it here, but it isn’t tournament legal.', ok: 'Make it casual', cancel: 'Keep 2 inks' });
+    var scs = document.querySelectorAll('.k-scrim'); if (scs.length) scs[scs.length - 1].style.zIndex = 450;
+    return pr;
   }
   function copiesByFull(cards, full) { var n = 0; (DB.byFull[full.toLowerCase()] || []).forEach(function (d) { n += cards[d.id] || 0; }); return n; }
 
@@ -2523,7 +2533,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function resolveDeck(ch) {
     if (ch && ch.kind === 'saved') {
       var d = savedDecks().filter(function (x) { return x.id === ch.id; })[0];
-      if (d && !deckProblems(d.cards).length) return { name: d.name, cards: d.cards };
+      if (d && !deckProblems(d.cards, d.casual).length) return { name: d.name, cards: d.cards };
     }
     if (ch && ch.kind === 'quick' && ch.inks) return quickDeck(ch.inks);
     var p = pairings()[Math.floor(Math.random() * 15)];
@@ -2535,8 +2545,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (ch.kind === 'quick') return { name: ch.inks.join(' & '), sub: 'Quick deck', inks: ch.inks };
     var d = savedDecks().filter(function (x) { return x.id === ch.id; })[0];
     if (!d) return { name: 'Random deck', sub: 'Saved deck not found', inks: [] };
-    var pr = DB.status === 'ready' ? deckProblems(d.cards) : [];
-    return { name: d.name, sub: pr.length ? 'Not ready: ' + pr[0] : 'Your deck · ' + deckCount(d.cards) + ' cards', inks: DB.status === 'ready' ? deckInks(d.cards) : [], bad: !!pr.length };
+    var pr = DB.status === 'ready' ? deckProblems(d.cards, d.casual) : [];
+    return { name: d.name, sub: pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual deck · ' : 'Your deck · ') + deckCount(d.cards) + ' cards', inks: DB.status === 'ready' ? deckInks(d.cards) : [], bad: !!pr.length };
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -4475,7 +4485,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       '<p>When an ability needs a choice, only the cards you’re allowed to pick light up. Optional abilities ask first. When the computer plays a card, it’s shown to you full size until you tap.</p>' +
       '<p>A few cards have unusual wording the game can’t run yet. When one of those goes off, you see the card with its text and only the tools that fit it (for example “Deal damage” and “Draw cards”). Tap Done when you’ve followed it. The menu’s <b>Fix something by hand</b> covers anything else.</p>' +
       '<h3>Bookmarks</h3><p>Open any card, in a game, the card library or the deck builder, and tap the bookmark next to its name. In the library and deck builder, the Bookmarked chip shows just those cards. Bookmarks and saved decks go with your PIN to every device you sign in on. To share decks or back them up, use Export or import decks in the menu: it saves a simple text file with lines like “4 Elsa - Snow Queen”, and reads lists in that format from other Lorcana sites too.</p>' +
-      '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks, with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
+      '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks (or more, if you make it a casual deck), with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
       '<h3>Winning</h3><p>First to 20 lore wins. If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
       '<p class="muted">Card data and art come from Lorcast (lorcast.com). The card list is saved on this device. A copy of every card picture is kept on the site’s own Google Cloud storage, so cards keep their art even if Lorcast goes away.</p>'
   });
@@ -4581,12 +4591,22 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var mine = savedDecks();
     node.appendChild(el('div', { class: 'dk-h', text: 'Your decks' }));
+    // Casual (3+ ink) decks: a filter to show standard decks, casual ones, or both
+    var hasCasual = mine.some(isCasual), dkf = hasCasual ? lsGet('lorc_dk_filter', 'all') : 'all';
+    if (hasCasual) {
+      var fr = el('div', { class: 'fchips', style: { 'margin-bottom': '8px' } });
+      [['all', 'All decks'], ['std', 'Standard (1–2 inks)'], ['cas', 'Casual (3+ inks)']].forEach(function (o) {
+        fr.appendChild(el('button', { type: 'button', class: 'fchip' + (dkf === o[0] ? ' on' : ''), text: o[1], onclick: function () { lsSet('lorc_dk_filter', o[0]); s.close(); reopen(); } }));
+      });
+      node.appendChild(fr);
+      mine = mine.filter(function (d) { return dkf === 'all' || (dkf === 'cas') === isCasual(d); });
+    }
     if (!mine.length) node.appendChild(el('p', { class: 'muted', text: 'No saved decks yet. Build one, or start from a quick deck.' }));
     var list = el('div', { class: 'stack', style: { gap: '6px' } });
     mine.forEach(function (d) {
-      var pr = DB.status === 'ready' ? deckProblems(d.cards) : [];
+      var pr = DB.status === 'ready' ? deckProblems(d.cards, d.casual) : [];
       var edit = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', html: Kit.icon('pencil'), 'aria-label': 'Edit ' + d.name, onclick: function (e) { e.stopPropagation(); s.close(); showBuilder(d.id, function () { reopen(); }); } });
-      list.appendChild(opt({ kind: 'saved', id: d.id }, d.name, pr.length ? 'Not ready: ' + pr[0] : deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit));
+      list.appendChild(opt({ kind: 'saved', id: d.id }, d.name, pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual · ' : '') + deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit));
     });
     node.appendChild(list);
     node.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-block', style: { 'margin-top': '6px' }, html: Kit.icon('share') + '<span>Export or import decks</span>', onclick: function () { s.close(); deckFiles(function () { showDeckPick(lastCfg); }); } }));
@@ -6014,6 +6034,23 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var y = cardR.bottom + gap;
       return y < innerHeight - 56 ? y : null;
     }
+    // Letting go of an up/down swipe (finger or trackpad): act if it reached the line or was a quick flick
+    function vEnd(dy, cancel, flick) {
+      F.dragAt = Date.now();
+      var j0 = Math.round(F.pos), d = defAt(j0);
+      flick = flick && (dy < 0 || !!ui.flowDeck);
+      var fire = (!!armed || flick) && !cancel && !!d; armed = 0;
+      hint.className = 'fc-hint' + (fire ? ' done ' + (dy < 0 ? 'up' : 'dn') : '');
+      zoneOn(fire ? 'fade ' + (dy < 0 ? 'up' : 'dn') : (dy < 0 ? 'up' : 'dn'), 0);
+      springBack(j0, fire, dy < 0 ? -1 : 1);
+      clearTimeout(hintT); hintT = setTimeout(function () { hint.className = 'fc-hint'; zoneOn('', 0); }, 700);
+      if (!fire) return;
+      if (dy < 0) {
+        // The confirmation is the ribbon itself: it pops in gold (or goes back to an outline)
+        var on = toggleMark(d); Kit.haptic('light'); Kit.sfx(on ? 'good' : 'tap');
+        var bmb = F.ov && F.ov.querySelector('.lz-bm'); if (bmb) { bmb.classList.toggle('on', on); bmb.setAttribute('aria-pressed', String(on)); bmb.classList.remove('pop'); void bmb.offsetWidth; if (on) bmb.classList.add('pop'); }
+      } else if (ui.flowDeck) ui.flowDeck(d);
+    }
     // First visit: the card bobs up then down, showing what each swipe does
     var tipT = [];
     F.tip = function () {
@@ -6051,27 +6088,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (!sw) return;
       var s = sw; sw = null;
       if (s.v) {
-        F.dragAt = Date.now();
-        var dy = (e && e.clientY != null ? e.clientY : s.y) - s.y, j0 = Math.round(F.pos), d = defAt(j0);
+        var dy = (e && e.clientY != null ? e.clientY : s.y) - s.y;
         // A quick flick past halfway counts too
         var vy = 0, nowT = performance.now(), f0 = null;
         for (var pi3 = s.pts.length - 1; pi3 >= 0; pi3--) { if (nowT - s.pts[pi3].t > 100) break; f0 = s.pts[pi3]; }
         if (f0 && nowT - f0.t > 6) vy = (s.pts[s.pts.length - 1].y - f0.y) / (nowT - f0.t);
-        var flick = Math.abs(dy) >= VT * 0.5 && Math.abs(vy) > 0.8 && (vy > 0) === (dy > 0) && (dy < 0 || !!ui.flowDeck);
-        var fire = (!!armed || flick) && e.type !== 'pointercancel' && !!d; armed = 0;
-        hint.className = 'fc-hint' + (fire ? ' done ' + (dy < 0 ? 'up' : 'dn') : '');
-        zoneOn(fire ? 'fade ' + (dy < 0 ? 'up' : 'dn') : (dy < 0 ? 'up' : 'dn'), 0);
-        springBack(j0, fire, dy < 0 ? -1 : 1);
-        clearTimeout(hintT); hintT = setTimeout(function () { hint.className = 'fc-hint'; zoneOn('', 0); }, 700);
-        if (!fire) return;
-        if (dy < 0) {
-          // The confirmation is the ribbon itself: it pops in gold (or goes back to an outline)
-          var on = toggleMark(d); Kit.haptic('light'); Kit.sfx(on ? 'good' : 'tap');
-          var bmb = F.ov && F.ov.querySelector('.lz-bm'); if (bmb) { bmb.classList.toggle('on', on); bmb.setAttribute('aria-pressed', String(on)); bmb.classList.remove('pop'); void bmb.offsetWidth; if (on) bmb.classList.add('pop'); }
-        } else if (ui.flowDeck) ui.flowDeck(d);
+        vEnd(dy, e.type === 'pointercancel', Math.abs(dy) >= VT * 0.5 && Math.abs(vy) > 0.8 && (vy > 0) === (dy > 0));
         return;
       }
       if (!s.h) return;
+
       F.dragAt = Date.now();
       // speed at release, in cards per millisecond (positive = toward later cards)
       var v = 0, now = performance.now(), first = null, pts = s.pts;
@@ -6086,7 +6112,19 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     F.el.addEventListener('pointercancel', end);
     // Trackpad (two-finger swipe on a Mac): the strip follows the fingers, then settles on the nearest card
     var wt = 0, wv = 0, wlast = 0;
+    // Two fingers up or down on a trackpad, over the cards: same as swiping the front card
+    var wy = 0, wyT = 0;
+    function wheelV(e) {
+      var k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 400 : 1;
+      e.preventDefault(); stop(); stopTip();
+      if (!wy) { var fb = F.items[Math.round(F.pos)]; cardR = fb ? fb.getBoundingClientRect() : null; }
+      wy -= e.deltaY * k; wy = Math.max(-VT * 1.6, Math.min(VT * 1.6, wy));
+      vDrag(wy);
+      clearTimeout(wyT); wyT = setTimeout(function () { var dy = wy; wy = 0; vEnd(dy, false, false); }, 160);
+      return true;
+    }
     F.wheel = function (e) {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey && !e.ctrlKey && (wy || F.el.contains(e.target))) return wheelV(e);
       var dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
       if (!dx) return false;
       e.preventDefault(); stop(); if (!CU) measure();
@@ -6653,7 +6691,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], shown: 60, tab: 'pool' };
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
     nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
     var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
@@ -6740,7 +6778,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var mine = savedDecks(), node = el('div', { class: 'lp-list' }), sh;
       if (!mine.length) { Kit.toast('No saved decks yet. Build one in the deck builder.'); return; }
       node.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { sh.close(); setDeckFilter('*'); } }, [el('b', { class: 'grow', text: 'In any saved deck' }), el('small', { text: plural(mine.length, 'deck') })]));
-      mine.forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.deck === dk.id ? ' on' : ''), onclick: function () { sh.close(); setDeckFilter(dk.id); } }, [el('span', { html: inkDots(deckInks(dk.cards)) }), el('b', { class: 'grow', text: dk.name }), el('small', { text: deckCount(dk.cards) + ' cards' })])); });
+      mine.forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.deck === dk.id ? ' on' : ''), onclick: function () { sh.close(); setDeckFilter(dk.id); } }, [el('span', { html: inkDots(deckInks(dk.cards)) }), el('b', { class: 'grow', text: dk.name }), el('small', { text: (isCasual(dk) ? 'Casual · ' : '') + deckCount(dk.cards) + ' cards' })])); });
       sh = Kit.sheet({ title: 'Cards in a saved deck', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
     }
     var deckSet = null;
@@ -6802,6 +6840,22 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         return Object.keys(c).sort(function (a, b) { return setOrd(b) - setOrd(a) || b.localeCompare(a); }).map(function (k) { var nm2 = setName(k), sub = /^\d+$/.test(k) ? 'Set ' + k : k; return { k: k, label: nm2, sub: sub, find: sub, n: plural(c[k], 'card') }; });
       } });
     }
+    // Rarity, in the order the game ranks them; special printings after
+    var RAR_ORDER = ['Common', 'Uncommon', 'Rare', 'Super Rare', 'Legendary', 'Epic', 'Enchanted', 'Iconic', 'Special', 'Promo'];
+    var RAR_SUB = { Epic: 'Cards with an Epic printing', Enchanted: 'Cards with a full-art Enchanted printing', Iconic: 'Cards with an Iconic printing', Special: 'Cards with a promo or other special printing' };
+    // Every rarity a card is printed in (an Uncommon may also have an Epic or Enchanted printing)
+    function rarsOf(d) {
+      if (d._rars) return d._rars;
+      var o = {}; (DB.byFull[d.full.toLowerCase()] || [d]).forEach(function (x) { if (x.r) o[x.r] = 1; }); if (d.r) o[d.r] = 1;
+      return (d._rars = Object.keys(o));
+    }
+    function pickRar() {
+      multiPick({ title: 'Rarity', ph: 'Search rarities', key: 'rars', items: function () {
+        var c = {}; DB.unique.forEach(function (d) { rarsOf(d).forEach(function (r) { c[r] = (c[r] || 0) + 1; }); });
+        return Object.keys(c).sort(function (a, b) { var i = RAR_ORDER.indexOf(a), j = RAR_ORDER.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || a.localeCompare(b); })
+          .map(function (k) { return { k: k, label: k, sub: RAR_SUB[k] || '', n: plural(c[k], 'card') }; });
+      } });
+    }
     function charCounts() {
       var c = {};
       DB.unique.forEach(function (d) { if (d.t !== 'character') return; var k = d.n; if (!c[k]) c[k] = { s: k, n: 0, st: {} }; c[k].n++; var so = storyOf(d); if (so) c[k].st[so] = 1; });
@@ -6835,7 +6889,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
       var sumOf = function (a, fn) { fn = fn || function (x) { return x; }; return !a.length ? '' : a.length === 1 ? fn(a[0]) : a.length === 2 ? fn(a[0]) + ', ' + fn(a[1]) : fn(a[0]) + ' + ' + (a.length - 1) + ' more'; };
-      [['search', 'Film or show', sumOf(f.stories), pickStory], ['user', 'Character', sumOf(f.chrs), pickChar], ['star', 'Classification', sumOf(f.clss), pickCls], ['book', 'Card set', sumOf(f.sets, setName), pickSet]].forEach(function (r) {
+      [['search', 'Film or show', sumOf(f.stories), pickStory], ['user', 'Character', sumOf(f.chrs), pickChar], ['star', 'Classification', sumOf(f.clss), pickCls], ['book', 'Card set', sumOf(f.sets, setName), pickSet], ['sparkle', 'Rarity', sumOf(f.rars), pickRar]].forEach(function (r) {
         pickRows.appendChild(el('button', { type: 'button', class: 'lp-li st-row adv-pick' + (r[2] ? ' on' : ''), onclick: function () { Kit.sfx('tap'); r[3](); } }, [
           el('span', { html: Kit.icon(r[0]) }), el('b', { class: 'grow', text: r[1] }), el('small', { text: r[2] || 'Any' })]));
       });
@@ -6855,7 +6909,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var offs = [];
       INKS.forEach(function (i) { if (f.inks[i]) offs.push([i, function () { f.inks[i] = false; }, inkIcon(i)]); });
       var offIn = function (key, fn) { f[key].forEach(function (k) { offs.push([fn ? fn(k) : k, function () { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); }]); }); };
-      offIn('types', function (t) { return TYPE_NAMES[t]; }); offIn('stories'); offIn('chrs'); offIn('clss'); offIn('kws', function (k) { return KWNAME[k]; }); offIn('sets', setName);
+      offIn('types', function (t) { return TYPE_NAMES[t]; }); offIn('stories'); offIn('chrs'); offIn('clss'); offIn('kws', function (k) { return KWNAME[k]; }); offIn('sets', setName); offIn('rars');
       if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable' : 'Inkable', function () { f.inkable = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
       var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + f.costs.length;
@@ -6879,7 +6933,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function matches(d) {
       var di = inkOf(d), on = INKS.filter(function (i) { return f.inks[i]; });
       if (on.length && !di.some(function (i) { return on.indexOf(i) >= 0; })) return false;
-      if (f.fit) { var dk = deckInks(deck.cards); if (dk.length === 2 && !di.every(function (i) { return dk.indexOf(i) >= 0; })) return false; }
+      if (f.fit) { var dk = deckInks(deck.cards); if (dk.length >= (deck.casual ? 3 : 2) && !di.every(function (i) { return dk.indexOf(i) >= 0; })) return false; }
       if (f.costs.length && !f.costs.some(function (c) { return c === 8 ? d.c >= 8 : d.c === c; })) return false;
       if (f.types.length && !f.types.some(function (t) { return t === 'song' ? d.song : t === 'action' ? d.t === 'action' && !d.song : d.t === t; })) return false;
       if (f.sets.length && f.sets.indexOf(String(d.set)) < 0) return false;
@@ -6889,6 +6943,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.stories.length && !f.stories.some(function (x) { return x === 'Pixar' || x === 'Disney' ? studioOf(d) === x : storyOf(d) === x; })) return false;
       if (f.chrs.length && f.chrs.indexOf(d.n) < 0) return false;
       if (f.clss.length && !f.clss.some(function (x) { return (d.cl || []).indexOf(x) >= 0; })) return false;
+      if (f.rars.length && !rarsOf(d).some(function (r) { return f.rars.indexOf(r) >= 0; })) return false;
       if (f.deck && !(deckSet || (deckSet = deckNames()))[d.full.toLowerCase()]) return false;
       if (f.marked && !isMarked(d)) return false;
       if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
@@ -6900,7 +6955,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (n > 0) {
         if (have >= copyLimit(d)) { Kit.toast(copyLimit(d) + ' copies of this card at most'); Kit.sfx('bad'); return; }
         var inks = deckInks(deck.cards), di = inkOf(d);
-        if (di.some(function (i) { return inks.indexOf(i) < 0; }) && inks.concat(di.filter(function (i) { return inks.indexOf(i) < 0; })).length > 2) { Kit.toast('A deck can use 2 inks at most (' + inks.join(' & ') + ')'); Kit.sfx('bad'); return; }
+        if (!deck.casual && inkClash(deck.cards, d)) { askCasual(deck).then(function (y) { if (y) { deck.casual = true; dirty = true; addCard(d, n); } }); return; }
         deck.cards[d.id] = (deck.cards[d.id] || 0) + 1; Kit.sfx('pop');
       } else {
         var ids = (DB.byFull[d.full.toLowerCase()] || [d]).map(function (x) { return x.id; }).filter(function (id) { return deck.cards[id]; });
@@ -6949,8 +7004,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Why a card can't go into a deck ('' when it can)
     function deckWhy(dk, d) {
       if (copiesByFull(dk.cards, d.full) >= copyLimit(d)) return copyLimit(d) + ' copies is the most a deck can have';
-      var inks = deckInks(dk.cards), di = inkOf(d);
-      if (di.some(function (i) { return inks.indexOf(i) < 0; }) && inks.concat(di.filter(function (i) { return inks.indexOf(i) < 0; })).length > 2) return dk.name + ' already uses ' + inks.join(' & ');
+      if (!dk.casual && inkClash(dk.cards, d)) return 'ink';
       return '';
     }
     var LASTDK = 'lorc_last_deck', SWIPE_TIP = 'lorc_swipe_tip';
@@ -6958,7 +7012,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var node = el('div', { class: 'da' }), sh, order = null;
       function deckOk(dk, n) { return n > 0 ? deckWhy(dk, d) : ''; }
       function change(dk, n) {
-        var why = deckOk(dk, n); if (why) { Kit.toast(why); Kit.sfx('bad'); return; }
+        var why = deckOk(dk, n);
+        if (why === 'ink') { askCasual(dk).then(function (y) { if (y) { dk.casual = true; change(dk, n); } }); return; }
+        if (why) { Kit.toast(why); Kit.sfx('bad'); return; }
         if (n > 0) { dk.cards[d.id] = (dk.cards[d.id] || 0) + 1; lsSet(LASTDK, dk.id); }
         else { var ids = (DB.byFull[d.full.toLowerCase()] || [d]).map(function (x) { return x.id; }).filter(function (id) { return dk.cards[id]; }); if (!ids.length) return; var id = ids[ids.length - 1]; if (--dk.cards[id] <= 0) delete dk.cards[id]; }
         putDeck(dk); Kit.sfx(n > 0 ? 'pop' : 'tap'); paint();
@@ -6977,7 +7033,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           for (var k = 0; k < 4; k++) pips += '<i class="' + (k < have ? 'on' : '') + '"></i>';
           node.appendChild(el('div', { class: 'da-row' + (have ? ' in' : '') }, [
             el('span', { class: 'da-ink', html: inkDots(deckInks(dk.cards)) || '' }),
-            el('div', { class: 'grow' }, [el('b', { text: dk.name }), el('small', { html: cnt + ' cards' })]),
+            el('div', { class: 'grow' }, [el('b', { text: dk.name }), el('small', { html: (isCasual(dk) ? 'Casual · ' : '') + cnt + ' cards' })]),
             el('span', { class: 'da-pips', title: have + ' of 4 copies', html: pips }),
             el('div', { class: 'da-q' }, [el('button', { type: 'button', class: 'coin', html: '&minus;', 'aria-label': 'Remove one from ' + dk.name, disabled: !have, onclick: function () { change(dk, -1); } }),
               el('button', { type: 'button', class: 'coin add', html: '+', 'aria-label': 'Add one to ' + dk.name, disabled: have >= copyLimit(d), onclick: function () { change(dk, 1); } })])
@@ -7017,6 +7073,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var pick = function () { deckAdder(d, function () { refreshDeckPill(d); }, true); };
       if (!dk) { pick(); return; }
       var why = deckWhy(dk, d);
+      if (why === 'ink') { askCasual(dk).then(function (y) { if (y) { dk.casual = true; putDeck(dk); quickAdd(d); } else pick(); }); return; }
       if (why) { snack(why, [['Pick a deck', pick]]); Kit.sfx('bad'); return; }
       dk.cards[d.id] = (dk.cards[d.id] || 0) + 1; putDeck(dk);
       Kit.sfx('pop'); Kit.haptic('medium'); refreshDeckPill(d);
@@ -7045,11 +7102,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var fpCatch = null;
     var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
     function advCount() {
-      var n = f.stories.length + f.chrs.length + f.clss.length + f.types.length + f.sets.length + f.kws.length; if (f.inkable) n++; if (f.fit) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.inkable) n++; if (f.fit) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function activeFilters() {
-      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.inkable) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.inkable) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function filterBtn() {
@@ -7092,7 +7149,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
@@ -7130,10 +7187,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + (list.length === 1 ? ' card' : ' cards');
     }
     function paintDeck() {
-      var n = deckCount(deck.cards), pr = deckProblems(deck.cards), cs = deckCards(deck.cards);
+      var n = deckCount(deck.cards), pr = deckProblems(deck.cards, deck.casual), cs = deckCards(deck.cards);
       if (lib) return;
       cnt.textContent = n + '/60'; cnt.className = 'cnt' + (pr.length ? '' : ' ok');
-      msg.textContent = pr.length ? pr[0] : 'Ready to play: ' + deckInks(deck.cards).join(' & ');
+      msg.textContent = pr.length ? pr[0] : (isCasual(deck) ? 'Casual deck, ready to play: ' : 'Ready to play: ') + deckInks(deck.cards).join(' & ');
       msg.className = 'bld-msg' + (pr.length ? '' : ' ok');
       tabs.innerHTML = '';
       tabs.appendChild(chip('Cards', f.tab === 'pool', function () { f.tab = 'pool'; body.className = 'bld-body tab-pool'; paintDeck(); }));
