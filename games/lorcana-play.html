@@ -295,6 +295,19 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .slot .face .ft{display:none;}
 .slot .face .fn{margin-top:calc(var(--cu) * .3);}
 .face .ft{margin-top:3px;font-size:max(7px,calc(var(--cu) * .07));line-height:1.15;opacity:.8;overflow:hidden;flex:1;}
+/* Big views: the fallback face's lettering scaled for a full-size card, the text fading out if it runs long */
+.lz-card .face .fn,.lz-fc .face .fn{margin-top:calc(var(--cu) * .16);font-size:calc(var(--cu) * .072);}
+.lz-card .face .fv,.lz-fc .face .fv{font-size:calc(var(--cu) * .046);margin-top:2px;}
+.lz-card .face .ft,.lz-fc .face .ft{margin-top:calc(var(--cu) * .03);font-size:calc(var(--cu) * .032);line-height:1.35;min-height:0;
+  -webkit-mask:linear-gradient(180deg,#000 82%,transparent);mask:linear-gradient(180deg,#000 82%,transparent);}
+.face{overflow:hidden;}
+/* Phones: details folded away, the card as big as the screen allows */
+@media not all and (min-width:900px) and (orientation:landscape){
+  .lz.lz-min .lz-in > .lz-info{display:none;}
+  .lz.lz-min .lz-flow,.lz.lz-min .lz-card{--cu:min(80vh,128vw,820px);}
+  .lz.lz-min .lz-in{min-height:100%;justify-content:center;}
+  .lz.lz-min .lz-nav{opacity:0;pointer-events:none;}
+}
 /* Card back (our own design) */
 .lback{background:
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'%3E%3Crect x='5' y='5' width='90' height='130' rx='8' fill='none' stroke='%23e3bd62' stroke-width='2'/%3E%3Crect x='10' y='10' width='80' height='120' rx='5' fill='none' stroke='%23e3bd62' stroke-opacity='.4'/%3E%3Ccircle cx='50' cy='70' r='27' fill='none' stroke='%23f6e1a8' stroke-opacity='.35'/%3E%3Cpolygon points='50,46 71,58 71,82 50,94 29,82 29,58' fill='none' stroke='%23f6e1a8' stroke-width='3'/%3E%3Cpath d='M50 55c7 9 9 15 9 19a9 9 0 0 1-18 0c0-4 2-10 9-19z' fill='%23e3bd62'/%3E%3Cpath d='M50 20l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM50 104l2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%23f6e1a8' fill-opacity='.7'/%3E%3C/svg%3E") center/100% 100% no-repeat,
@@ -474,6 +487,78 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .bld:not(.lib) .pc .bmk{right:44px;}
 .pc .bmk .ico{width:100%;height:100%;fill:currentColor;stroke:#2b1a00;stroke-width:1;}
 .fchip.bm-chip .ico{width:15px;height:15px;vertical-align:-3px;margin-right:4px;}
+/* ── New Release ── */
+/* Library tile: a gilded "New" sash across the top-right corner, light running along it */
+.pc .newc{position:absolute;top:0;right:0;width:42px;height:42px;overflow:hidden;pointer-events:none;z-index:3;border-top-right-radius:8px;}
+.pc .newc i{position:absolute;top:7px;right:-22px;width:72px;padding:1px 0;transform:rotate(45deg);text-align:center;font-family:var(--serif);font-style:italic;font-weight:700;font-size:.58rem;letter-spacing:.04em;color:#2b1a00;
+  background:linear-gradient(100deg,#b9852c 0%,#f6dc95 34%,#fffbea 48%,#f6dc95 62%,#b9852c 100%);background-size:260% 100%;background-position:100% 0;
+  box-shadow:0 1px 4px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(90,50,0,.4);animation:newsash 4s ease-in-out infinite;}
+@keyframes newsash{0%,58%{background-position:100% 0;}100%{background-position:-60% 0;}}
+.bld-grid.tiny .pc .newc{width:28px;height:28px;}
+.bld-grid.tiny .pc .newc i{top:4px;right:-24px;width:64px;font-size:.42rem;padding:0;}
+.pc.isnew .bmk{right:34px;}
+.bld-grid.tiny .pc.isnew .bmk{right:22px;}
+.fchip.nr-chip .ico{width:15px;height:15px;vertical-align:-3px;margin-right:4px;color:var(--gilt-2);}
+.fchip.nr-chip.on .ico{color:#2b1a00;}
+/* The pack */
+.np{position:fixed;inset:0;z-index:470;display:grid;place-items:center;background:radial-gradient(80% 60% at 50% 45%,rgba(40,24,80,.9),rgba(6,4,16,.96));opacity:0;transition:opacity .35s;overflow:hidden;}
+.np.show{opacity:1;}.np.closing{opacity:0;pointer-events:none;}
+.np-stage{position:relative;width:min(92vw,520px);height:min(92vh,760px);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.np-pack{--w:min(58vw,250px);position:relative;width:var(--w);height:calc(var(--w) * 1.55);padding:0;border:0;border-radius:10px;cursor:pointer;color:#fff6dc;
+  background:linear-gradient(115deg,#24124a 0%,#3b2378 18%,#7a3f8f 32%,#c99a3a 44%,#f6dc95 50%,#c99a3a 56%,#2f5aa0 70%,#2a1458 86%,#24124a 100%);background-size:320% 320%;
+  box-shadow:0 0 0 2px rgba(246,220,149,.55),0 24px 60px rgba(0,0,0,.65),0 0 60px rgba(227,189,98,.18);animation:npfoil 7s ease-in-out infinite,npbob 3.4s ease-in-out infinite;
+  transition:transform .6s cubic-bezier(.5,0,.7,.4) .2s,opacity .5s ease .3s;}
+@keyframes npfoil{0%,100%{background-position:0% 30%;}50%{background-position:100% 70%;}}
+@keyframes npbob{0%,100%{translate:0 -6px;rotate:-1.2deg;}50%{translate:0 6px;rotate:1.2deg;}}
+.np-pack::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.35) 48%,rgba(255,255,255,.55) 50%,rgba(255,255,255,.35) 52%,transparent 62%) no-repeat;background-size:300% 100%;animation:npshine 3.8s ease-in-out infinite;}
+@keyframes npshine{0%,55%{background-position:100% 0;}100%{background-position:0 0;}}
+.np-face{position:absolute;inset:13% 9% 9%;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
+  background:radial-gradient(90% 70% at 50% 40%,rgba(14,8,32,.8),rgba(14,8,32,.45));box-shadow:inset 0 0 0 1px rgba(246,220,149,.5);}
+.np-emb{width:42%;filter:drop-shadow(0 0 12px rgba(246,220,149,.45));}
+.np-emb svg{width:100%;height:auto;display:block;}
+.np-t1{font-family:var(--display);font-size:calc(var(--w) * .13);line-height:1;letter-spacing:.02em;background:linear-gradient(180deg,#fffbea,#f6dc95 45%,#c8922f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
+.np-t2{font-family:var(--serif);font-style:italic;font-size:calc(var(--w) * .07);color:#f6dc95;padding:0 8px;}
+.np-t3{font-weight:900;font-size:calc(var(--w) * .056);letter-spacing:.08em;text-transform:uppercase;color:rgba(255,246,220,.75);}
+/* the crimped seal at the top (it tears off) and bottom */
+.np-seal,.np-crimp{position:absolute;left:0;right:0;height:9%;background:linear-gradient(180deg,#f6dc95,#c8922f 60%,#8a5e1c);}
+.np-seal{top:0;border-radius:10px 10px 0 0;transform-origin:20% 100%;transition:transform .55s cubic-bezier(.3,.6,.4,1),opacity .55s;}
+.np-seal::after,.np-crimp::before{content:'';position:absolute;left:0;right:0;height:7px;background:linear-gradient(135deg,transparent 50%,#24124a 50%) 0 0/10px 7px,linear-gradient(225deg,transparent 50%,#24124a 50%) 0 0/10px 7px;opacity:.55;}
+.np-seal::after{bottom:-1px;}
+.np-seal::before{content:'';position:absolute;left:6%;right:6%;top:50%;border-top:1.5px dashed rgba(43,26,0,.55);}
+.np-crimp{bottom:0;border-radius:0 0 10px 10px;}
+.np-crimp::before{top:-1px;transform:scaleY(-1);}
+.np-pack.shake{animation:npshake .42s ease-in-out;}
+@keyframes npshake{0%,100%{rotate:0deg;}20%{rotate:-4deg;}40%{rotate:4deg;}60%{rotate:-3deg;}80%{rotate:2deg;}}
+.np.open .np-seal{transform:translate(-30%,-160%) rotate(-28deg);opacity:0;}
+.np.open .np-pack{transform:translateY(55%) scale(.92);opacity:0;pointer-events:none;animation:none;}
+.np-hint{margin-top:22px;font-family:var(--serif);font-style:italic;color:rgba(246,220,149,.85);transition:opacity .3s;animation:nphint 2.2s ease-in-out infinite;}
+@keyframes nphint{0%,100%{opacity:.55;}50%{opacity:1;}}
+.np.open .np-hint{opacity:0;animation:none;}
+.np-later{margin-top:14px;border:0;background:none;color:rgba(255,246,220,.6);font-family:var(--serif);font-style:italic;font-size:.95rem;cursor:pointer;padding:8px 14px;}
+.np-stage > .np-later{position:absolute;bottom:2%;}
+.np.open .np-stage > .np-later{display:none;}
+/* light pouring out as it opens */
+.np-burst{position:absolute;left:50%;top:44%;width:60vmin;height:60vmin;margin:-30vmin 0 0 -30vmin;border-radius:50%;pointer-events:none;opacity:0;transform:scale(.2);
+  background:radial-gradient(circle,rgba(255,251,234,.95) 0%,rgba(246,220,149,.55) 22%,rgba(200,146,47,.18) 45%,transparent 66%);}
+.np.open .np-burst{animation:npburst 1.1s ease-out .05s forwards;}
+@keyframes npburst{0%{opacity:0;transform:scale(.2);}25%{opacity:1;}100%{opacity:.25;transform:scale(1.9);}}
+/* the cards fan up out of the pack */
+.np-fan{position:absolute;left:50%;top:46%;width:min(40vw,190px);height:calc(min(40vw,190px) / .716);margin:calc(min(40vw,190px) / -.716 / 2) 0 0 calc(min(40vw,190px) / -2);pointer-events:none;}
+.np-card{position:absolute;inset:0;border-radius:6%;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.6),0 0 0 1px rgba(246,220,149,.35);opacity:0;transform:translateY(40%) scale(.7);
+  transition:transform .75s cubic-bezier(.2,1.4,.4,1) var(--d),opacity .35s ease var(--d);cursor:pointer;}
+.np-card img,.np-card .face{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.np-card .face{--cu:200px;}
+.np.open .np-fan{pointer-events:auto;}
+.np.open .np-card{opacity:1;transform:translate(var(--x),var(--y)) rotate(var(--r));}
+.np-cta{position:absolute;bottom:3%;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .4s ease 1.1s,transform .4s ease 1.1s;}
+.np.open .np-cta{opacity:1;transform:none;pointer-events:auto;}
+.np-cta h2{font-family:var(--serif);font-weight:700;font-size:1.7rem;color:#fff6dc;text-shadow:0 2px 10px rgba(0,0,0,.6);}
+.np-cta p{margin:0 0 8px;font-family:var(--serif);font-style:italic;color:rgba(246,220,149,.85);padding:0 16px;}
+.np-go{min-width:min(80vw,320px);height:54px;border:1.5px solid #fff3c4;border-radius:999px;cursor:pointer;font-family:var(--display);font-size:1.25rem;letter-spacing:.02em;color:#2b1a00;
+  background:linear-gradient(180deg,#fff3c4,#f6dc95 35%,#d9a94a 70%,#b9852c);box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 24px rgba(246,220,149,.35),inset 0 1px 0 rgba(255,255,255,.7);}
+.np-go:active{transform:scale(.97);}
+@media (prefers-reduced-motion:reduce){.np-pack,.np-pack::after,.np-hint,.pc .newc i{animation:none;}}
+
 .fchip.bm-chip.on .ico{fill:currentColor;}
 .lz-card.in-l{animation:lzInL .24s ease-out;}
 @keyframes lzInR{from{transform:translateX(38%) rotate(3deg);opacity:.2}}
@@ -2602,15 +2687,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     DB.loading = cacheGet().then(function (v) {
       if (v && v.cards && v.cards.length && !force) {
         useLibrary(v); dbNotify();
-        // Refresh in the background every few days when online
+        // Refresh in the background once a day when online (new cards show as a New Release pack)
         // (also when the saved list is an older format, e.g. from before flavour quotes were kept)
-        if ((Date.now() - (v.at || 0) > 3 * 864e5 || v.fmt !== LIBFMT) && navigator.onLine !== false) {
-          download(function () {}).then(function (nv) { nv.at = Date.now(); nv.fmt = LIBFMT; if (nv.cards.length >= v.cards.length * 0.9) { cachePut(nv); useLibrary(nv); dbNotify(); } }).catch(function () {});
+        if ((Date.now() - (v.at || 0) > 864e5 || v.fmt !== LIBFMT) && navigator.onLine !== false) {
+          download(function () {}).then(function (nv) { nv.at = Date.now(); nv.fmt = LIBFMT; if (nv.cards.length >= v.cards.length * 0.9) { cachePut(nv); useLibrary(nv); noteNewCards(v, nv); dbNotify(); } }).catch(function () {});
         }
         return;
       }
       return download(progress).then(function (nv) {
-        nv.at = Date.now(); nv.fmt = LIBFMT; useLibrary(nv);
+        nv.at = Date.now(); nv.fmt = LIBFMT; useLibrary(nv); noteNewCards(v, nv);
         if (DB.status === 'ready') cachePut(nv);
         dbNotify();
       }).catch(function (e) {
@@ -2623,6 +2708,104 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }).then(function () { DB.loading = null; }, function () { DB.loading = null; });
     return DB.loading;
   };
+  // ── New Release: cards Lorcast added since this device last looked ────────────
+  // When a refresh of the card list brings cards we haven't seen (by full name, so a reprint isn't "new"),
+  // they're remembered for 30 days: a pack opens on the next calm screen, the library marks them with a
+  // gilded corner, and Filters gets a New Release switch.
+  var NEWREL = 'lorc_newrel', NR_DAYS = 30;
+  var NR_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.9 4.6 3.9 7.6 8.5 8.5-4.6.9-7.6 3.9-8.5 8.5-.9-4.6-3.9-7.6-8.5-8.5 4.6-.9 7.6-3.9 8.5-8.5z"/><path d="M19 15.5c.3 1.6 1.3 2.6 2.9 2.9-1.6.3-2.6 1.3-2.9 2.9-.3-1.6-1.3-2.6-2.9-2.9 1.6-.3 2.6-1.3 2.9-2.9z" opacity=".7"/></svg>';
+  function nrKey(o) { return String((o.n || '') + (o.v ? ' - ' + o.v : '')).toLowerCase(); }
+  function nrGet() {
+    var r = lsGet(NEWREL, null) || {}; r.m = r.m || {}; r.pend = r.pend || [];
+    var cut = Date.now() - NR_DAYS * 864e5;
+    Object.keys(r.m).forEach(function (k) { if (r.m[k] < cut) delete r.m[k]; });
+    r.pend = r.pend.filter(function (k) { return r.m[k]; });
+    return r;
+  }
+  var NR = nrGet();
+  function isNewCard(d) { var t = d && NR.m[String(d.full || '').toLowerCase()]; return !!t && Date.now() - t < NR_DAYS * 864e5; }
+  function newCards() { return DB.unique.filter(isNewCard); }
+  function noteNewCards(old, nv) {
+    if (!old || !old.cards || !old.cards.length || !nv || !nv.cards) return;
+    var had = {}; old.cards.forEach(function (o) { had[nrKey(o)] = 1; });
+    var fresh = {}; nv.cards.forEach(function (o) { var k = nrKey(o); if (k && !had[k]) fresh[k] = 1; });
+    var ks = Object.keys(fresh);
+    if (!ks.length || ks.length > nv.cards.length * 0.4) return;   // nothing new, or the old list came from elsewhere
+    NR = nrGet();
+    ks.forEach(function (k) { if (!NR.m[k]) NR.m[k] = Date.now(); if (NR.pend.indexOf(k) < 0) NR.pend.push(k); });
+    lsSet(NEWREL, NR);
+    setTimeout(maybeNewPack, 400);
+  }
+  // Show the pack when nothing else is going on (not mid-game, no card or sheet open)
+  function maybeNewPack() {
+    if (!NR.pend.length || DB.status !== 'ready' || $('.np')) return;
+    if (['setup', 'builder', 'lobby', 'decks'].indexOf(ui.screen) < 0 || $('.lz') || $('.k-scrim')) return;
+    var want = {}; NR.pend.forEach(function (k) { want[k] = 1; });
+    var list = DB.unique.filter(function (d) { return want[String(d.full || '').toLowerCase()]; });
+    NR.pend = []; lsSet(NEWREL, NR);
+    if (list.length) newPack(list);
+  }
+  function nrSetLabel(list) {
+    var codes = {}; list.forEach(function (d) { codes[d.set] = (codes[d.set] || 0) + 1; });
+    var ks = Object.keys(codes).sort(function (a, b) { return codes[b] - codes[a]; });
+    var st = DB.sets.filter(function (x) { return x.code === ks[0]; })[0];
+    var nm = st ? st.name : /^\d+$/.test(ks[0]) ? 'Set ' + ks[0] : ks[0];
+    return ks.length > 1 ? nm + ' and more' : nm;
+  }
+  var NP_EMBLEM = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 3l25 14.5v29L32 61 7 46.5v-29z" fill="rgba(20,12,40,.55)" stroke="url(#npg)" stroke-width="2.4"/><path d="M32 13l16.5 9.5v19L32 51 15.5 41.5v-19z" fill="none" stroke="url(#npg)" stroke-width="1" opacity=".6"/>' +
+    '<path d="M32 18c1.6 7.6 6.4 12.4 14 14-7.6 1.6-12.4 6.4-14 14-1.6-7.6-6.4-12.4-14-14 7.6-1.6 12.4-6.4 14-14z" fill="url(#npg)"/><defs><linearGradient id="npg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#9c6b1e"/></linearGradient></defs></svg>';
+  // The pack: it floats; tap it and the seal tears off, light bursts out and the new cards fan up out of it
+  function newPack(list) {
+    var n = list.length, setNm = nrSetLabel(list), opened = false;
+    var pack = el('button', { type: 'button', class: 'np-pack', 'aria-label': 'Open the new pack: ' + plural(n, 'new card') }, [
+      el('div', { class: 'np-seal' }),
+      el('div', { class: 'np-face' }, [
+        el('div', { class: 'np-emb', html: NP_EMBLEM }),
+        el('div', { class: 'np-t1', text: 'New Release' }),
+        el('div', { class: 'np-t2', text: setNm }),
+        el('div', { class: 'np-t3', text: plural(n, 'new card') })]),
+      el('div', { class: 'np-crimp' })]);
+    var burst = el('div', { class: 'np-burst' }), fan = el('div', { class: 'np-fan' });
+    var hint = el('p', { class: 'np-hint', text: 'Tap the pack to open it' });
+    var later = el('button', { type: 'button', class: 'np-later', text: 'Not now', onclick: function () { close(); } });
+    var cta = el('div', { class: 'np-cta' }, [
+      el('h2', { text: plural(n, 'New Card') }), el('p', { text: setNm + ' · marked New in the library for a month' }),
+      el('button', { type: 'button', class: 'np-go', text: 'See the New Cards', onclick: function () { close(); seeNew(); } }),
+      el('button', { type: 'button', class: 'np-later', text: 'Later', onclick: function () { close(); } })]);
+    var stage = el('div', { class: 'np-stage' }, [burst, fan, pack, hint, cta, later]);
+    var ov = el('div', { class: 'np', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'New cards' }, [stage]);
+    document.body.appendChild(ov);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
+    Kit.sfx('pop');
+    // Up to five of the new cards fan out (the rarest first, they're the fun ones)
+    var RW = { enchanted: 9, iconic: 9, epic: 8, legendary: 7, 'super rare': 6, rare: 5, uncommon: 2, common: 1 };
+    var show = list.slice().sort(function (a, b) { return (RW[rarKey(b)] || 0) - (RW[rarKey(a)] || 0); }).slice(0, 5);
+    var m = show.length;
+    show.forEach(function (d, i) {
+      var c = el('div', { class: 'np-card' }); c.appendChild(artEl(d, false));
+      var off = i - (m - 1) / 2;
+      c.style.setProperty('--x', (off * 22) + '%'); c.style.setProperty('--r', (off * 9) + 'deg'); c.style.setProperty('--y', (-34 + Math.abs(off) * 4) + '%');
+      c.style.setProperty('--d', (0.18 + i * 0.09) + 's'); c.style.zIndex = String(10 - Math.round(Math.abs(off)));
+      c.addEventListener('click', function () { if (opened) { close(); seeNew(d); } });
+      fan.appendChild(c);
+    });
+    function open() {
+      if (opened) return; opened = true;
+      Kit.haptic && Kit.haptic('medium');
+      pack.classList.add('shake');
+      setTimeout(function () {
+        ov.classList.add('open'); Kit.sfx('deal');
+        setTimeout(function () { Kit.sfx('good'); }, 450);
+      }, 420);
+    }
+    pack.addEventListener('click', open);
+    function close() { ov.classList.remove('show'); ov.classList.add('closing'); setTimeout(function () { ov.remove(); }, 380); }
+    function seeNew(d) {
+      if (ui.screen === 'builder' && ui.libNew) return ui.libNew(d);
+      var back = ui.screen === 'lobby' ? showLobby : showSetup;
+      showBuilder(null, back, { library: true, newrel: true, openNew: d || true });
+    }
+  }
   function inkOf(d) { return (d.ink && d.ink.length ? d.ink : []); }
   // The real ink symbols, cut from the cards (games/lorcana-inks.webp, one per ink in INKS order)
   function inkIcon(i) { var k = INKS.indexOf(i); if (k < 0) return ''; return '<i class="inkico" role="img" aria-label="' + esc(i) + '" title="' + esc(i) + '" style="background-position:' + (k * 20) + '% 0"></i>'; }
@@ -4365,7 +4548,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // ── Screens: the card, big, with only what you can do ──
   function abHeadHTML(src, ab) {
     var d = DD(src);
-    return '<span class="abart">' + (d.im && d.im.s && !imgBad[d.im.s] ? '<img src="' + esc(d.im.l || d.im.s) + '" alt="">' : '') + '</span><div class="abtx"><b>' + esc(d.full) + '</b>' + (ab.name ? '<div class="abn">' + esc(titleCase(ab.name)) + '</div>' : '') + '<div class="rtext">' + abilityHTML(ab) + '</div></div>';
+    return '<span class="abart">' + (d.im && d.im.s && !imgIsBad(d.im.s) ? '<img src="' + esc(d.im.l || d.im.s) + '" alt="">' : '') + '</span><div class="abtx"><b>' + esc(d.full) + '</b>' + (ab.name ? '<div class="abn">' + esc(titleCase(ab.name)) + '</div>' : '') + '<div class="rtext">' + abilityHTML(ab) + '</div></div>';
   }
   function abilityHTML(ab) {
     var h = esc(ab.text.replace(/^[A-Z0-9'’!?,.&\-– ]{3,}?\s(?=[A-Z{][a-z{]|\{|\d+ \{I\})/, ''));
@@ -4776,6 +4959,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     });
     var start = $('.k-start', st.el);
     st.el.insertBefore(libLine(), start);
+    setTimeout(maybeNewPack, 900);
   }
   function lastChoices(cfg) {
     var L = lsGet(LAST, {}) || {};
@@ -5199,16 +5383,24 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function backupOf(u) {
     try { var a = new URL(u); return a.hostname === 'cards.lorcast.io' ? ART_BACKUP + encodeURIComponent('lorcana' + a.pathname) + '?alt=media' : ''; } catch (e) { return ''; }
   }
+  // A picture that failed is skipped for a minute, then tried again (a dropped connection shouldn't blank it for good)
+  function imgIsBad(u) { var t = imgBad[u]; return !!t && Date.now() - t < 60000; }
   function artEl(d, big) {
-    var orig = big ? (d.im && (d.im.l || d.im.s)) : (d.im && (d.im.s || d.im.l)), bk = backupOf(orig);
-    // Lorcast first; if it can't serve the picture, the copy on Google Cloud
-    var src = orig && imgBad[orig] ? bk : orig;
-    if (!src || imgBad[src]) return faceEl(d);
+    // Every picture that could show this card, best first: this size from Lorcast, its copy on Google Cloud,
+    // the other size, then the card's other printings. The text face only if none of them load.
+    var srcs = [], seen = {};
+    function addSrc(u) { if (u && !seen[u]) { seen[u] = 1; srcs.push(u); var b = backupOf(u); if (b && !seen[b]) { seen[b] = 1; srcs.push(b); } } }
+    if (d.im) { if (big) { addSrc(d.im.l); addSrc(d.im.s); } else { addSrc(d.im.s); addSrc(d.im.l); } }
+    (DB.byFull[String(d.full || '').toLowerCase()] || []).forEach(function (x) { if (x !== d && x.im) addSrc(big ? x.im.l || x.im.s : x.im.s || x.im.l); });
+    var k = 0; while (k < srcs.length && imgIsBad(srcs[k])) k++;
+    if (k >= srcs.length) return faceEl(d);
+    var src = srcs[k];
     var img = document.createElement('img');
     img.alt = d.full; img.decoding = 'async'; img.draggable = false;
     img.onerror = function () {
-      imgBad[src] = 1;
-      if (src === orig && bk && !imgBad[bk]) { src = bk; img.src = bk; return; }
+      imgBad[src] = Date.now();
+      while (++k < srcs.length && imgIsBad(srcs[k])) {}
+      if (k < srcs.length) { src = srcs[k]; img.src = src; return; }
       if (img.parentNode) img.parentNode.replaceChild(faceEl(d), img);
     };
     if (d.t === 'location') img.onload = function () {
@@ -5323,7 +5515,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var faceUp = p.deckL.length && boardOp(null, 'topFaceUp');
     h += '<button type="button" class="pile' + (p.deckL.length ? '' : ' empty') + '" data-z="deck-' + pi + '" data-tap="deck" aria-label="Deck: ' + p.deckL.length + ' cards">' + (faceUp ? miniArt(DD(p.deckL[0])) : p.deckL.length ? '<i class="lback"></i>' : '') + '<span class="n">' + p.deckL.length + '</span></button>';
     var top1 = p.discard[p.discard.length - 1], mini = '';
-    if (top1) { var dd = DD(top1); mini = dd.im && dd.im.s && !imgBad[dd.im.s] ? '<i class="mini" style="background-image:url(&quot;' + esc(dd.im.s) + '&quot;)"></i>' : '<i class="mini" style="background:' + (INKC[inkOf(dd)[0]] || '#555') + '"></i>'; }
+    if (top1) { var dd = DD(top1); mini = dd.im && dd.im.s && !imgIsBad(dd.im.s) ? '<i class="mini" style="background-image:url(&quot;' + esc(dd.im.s) + '&quot;)"></i>' : '<i class="mini" style="background:' + (INKC[inkOf(dd)[0]] || '#555') + '"></i>'; }
     h += '<button type="button" class="pile' + (p.discard.length ? '' : ' empty') + '" data-z="disc-' + pi + '" data-tap="disc" aria-label="Discard pile: ' + p.discard.length + ' cards">' + mini + '<span class="n">' + p.discard.length + '</span></button>';
     h += loreRing(pi, mine);
     host.innerHTML = h;
@@ -6160,12 +6352,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     });
     tiltT.raf = requestAnimationFrame(tiltFrame);
   }
+  // Phones: tap the big card to fold the details away so the card fills the screen; tap again to bring them back
+  function phoneZoom() { return !(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches); }
+  function toggleLzMin(ov) {
+    ui.lzMin = !ov.classList.contains('lz-min');
+    ov.classList.toggle('lz-min', ui.lzMin);
+    Kit.sfx('tap'); if (Kit.haptic) Kit.haptic('light');
+    if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+  }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
     var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid, keep = slid ? flowKeep : null;
     flowSlid = false; flowKeep = null;
     closeZoom();
-    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (ui.lzMin && phoneZoom() ? ' lz-min' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
     var F = null, card = null;
     if (nav && nav.peek && nav.n > 1) {
@@ -6176,6 +6376,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(d) });
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
+      if (!opt.tapClose) card.addEventListener('click', function (e) { if (phoneZoom()) { e.stopPropagation(); toggleLzMin(ov); } });
     }
     if (nav && nav.n > 1) {
       // The strip is reused as you move between cards, so replace its counter rather than stacking another
@@ -6291,7 +6492,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function item(j) {
       var it = F.items[j]; if (it) return it;
       var d = defAt(j); if (!d) return null;
-      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : ''), 'data-r': rarKey(d), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; F.settle(j); } });
+      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : ''), 'data-r': rarKey(d), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; if (j === F.focus && phoneZoom() && F.ov) { toggleLzMin(F.ov); return; } F.settle(j); } });
       b.appendChild(artEl(d, true));
       F.el.appendChild(b);
       return (F.items[j] = b);
@@ -6314,6 +6515,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz) pz.textContent = (idx + 1) + ' of ' + n; Kit.sfx('tick'); }
     };
     function stop() { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; }
+    F.remeasure = function () { CU = 0; F.render(); };
     // Glide pos to a card. Longer trips take a little longer and ease out.
     F.settle = function (target, v) {
       target = Math.max(0, Math.min(n - 1, Math.round(target)));
@@ -6601,7 +6803,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // Apply effect: quick tools for everything printed on the cards
   // ═════════════════════════════════════════════════════════════════════════
   function miniArt(d) {
-    if (d.im && d.im.s && !imgBad[d.im.s]) return '<i class="mini" style="background-image:url(&quot;' + esc(d.im.s) + '&quot;)"></i>';
+    if (d.im && d.im.s && !imgIsBad(d.im.s)) return '<i class="mini" style="background-image:url(&quot;' + esc(d.im.s) + '&quot;)"></i>';
     return '<i class="mini" style="background:' + (INKC[inkOf(d)[0]] || '#555') + '"></i>';
   }
   function stepper(v, min, max, on) {
@@ -7046,7 +7248,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], dual: 0, shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], dual: 0, newrel: false, shown: 60, tab: 'pool' };
+    if (o && o.newrel && newCards().length) f.newrel = true;
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
     nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
     var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
@@ -7264,6 +7467,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       } }));
       });
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
+      var nrc = newCards().length;
+      if (nrc || f.newrel) [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); });
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
@@ -7386,6 +7591,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.rars.length && !rarsOf(d).some(function (r) { return f.rars.indexOf(r) >= 0; })) return false;
       if (f.deck && !(deckSet || (deckSet = deckNames()))[d.full.toLowerCase()]) return false;
       if (f.marked && !isMarked(d)) return false;
+      if (f.newrel && !isNewCard(d)) return false;
       if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
       return true;
     }
@@ -7547,7 +7753,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function activeFilters() {
-      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.inkable) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.inkable) n++; if (f.newrel) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function filterBtn() {
@@ -7590,7 +7796,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.newrel = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
@@ -7615,6 +7821,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         b.appendChild(artEl(d, false));
         b.appendChild(el('div', { class: 'nmb', html: esc(d.n) + (d.v ? '<small>' + esc(d.v) + '</small>' : '') }));
         if (n && !lib) b.appendChild(el('span', { class: 'n', text: String(n) }));
+        if (lib && isNewCard(d)) { b.classList.add('isnew'); b.appendChild(el('span', { class: 'newc', 'aria-hidden': 'true', html: '<i>New</i>' })); }
         if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
         b.appendChild(el('span', { class: 'cost' + (d.k ? ' ink' : ''), style: { '--cu': '120px' }, text: String(d.c) }));
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
@@ -7672,6 +7879,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       doneText(DB.unique.filter(matches).length);
     }
     paintChips(); paintDeck(); paintGrid();
+    // New Release: jump to the new cards (from the pack), switching the filter on
+    function openNewCards(d) {
+      f.newrel = true; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
+      var list = sortCards(DB.unique.filter(matches)), first = d && d.full && list.indexOf(d) >= 0 ? d : list[0];
+      if (first) setTimeout(function () { cardZoom(first, list); }, 120);
+    }
+    if (lib) ui.libNew = function (d) { if (!wrap.isConnected) { ui.libNew = null; return; } openNewCards(d); };
+    if (lib && o && o.openNew) openNewCards(o.openNew === true ? null : o.openNew);
+    if (lib) setTimeout(maybeNewPack, 900);
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -7993,6 +8209,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
             el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: function () { netJoin(r.code, me); } })]));
         });
       }, function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
+      setTimeout(maybeNewPack, 900);
     }).catch(function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
   }
 
