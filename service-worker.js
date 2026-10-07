@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v229-2026-10-07-tile-font';
+const CACHE_VERSION = 'v230-2026-10-07-bungee';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -31,6 +31,7 @@ const PRECACHE_URLS = [
   '/fonts/lilita-one.woff2',
   '/fonts/patrick-hand.woff2',
   '/fonts/great-vibes.woff2',
+  '/fonts/bungee.woff2',
   '/app.js',
   '/sync.js',
   '/hist.js',

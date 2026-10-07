@@ -119,7 +119,9 @@ document.addEventListener('visibilitychange', function () {
 .g .go:active .gicon{transform:scale(.9) rotate(-6deg);}
 .g:hover .gicon{transform:rotate(-4deg) scale(1.05);}
 .g .txt{flex:1;min-width:0;}
-.g .txt b{display:block;font-family:var(--display);font-weight:400;letter-spacing:.015em;font-size:1.12rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@font-face{font-family:'Bungee';src:url('fonts/bungee.woff2') format('woff2');font-display:swap;}
+/* game names: Bungee, arcade-sign caps */
+.g .txt b{display:block;font-family:'Bungee',var(--display);font-weight:400;letter-spacing:0;font-size:1.12rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .g .txt small{display:block;margin-top:2px;font-size:.84rem;font-weight:600;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .g .meta{flex:none;display:flex;align-items:center;gap:4px;font-size:.8rem;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
 .g .meta .ico{width:15px;height:15px;}
@@ -558,10 +560,16 @@ document.addEventListener('visibilitychange', function () {
     $('empty').classList.toggle('show', !vis.length);
     markWraps();
   }
-  // Tiles whose name runs to two lines: the icon steps down and in so the name stays on the shade, clear of the art
+  // Tiles whose name runs to two lines: the icon steps down and in so the name stays on the shade, clear of the art.
+  // (Also fits over-wide names.)
   function markWraps() {
     document.querySelectorAll('.tiles .g').forEach(function (g) {
       var b = g.querySelector('.txt b'); if (!b) return;
+      // a name too wide for the tile, or longer than two lines (Bungee is broad): shrink it just enough to fit, never below 70%
+      b.style.fontSize = '';
+      var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
+      while ((b.scrollWidth > b.clientWidth || b.scrollHeight > b.clientHeight + 2) && fs > fs0 * .7) { fs -= .5; b.style.fontSize = fs + 'px'; }
+      if (fs < fs0) b.style.fontSize = (fs - .5) + 'px';   // a hair of room, so high-density screens don't clip the last letter
       var lh = parseFloat(getComputedStyle(b).lineHeight) || 16;
       g.classList.toggle('wrap2', b.offsetHeight > lh * 1.4);
     });
