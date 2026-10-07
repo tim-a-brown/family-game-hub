@@ -850,7 +850,25 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .tsize{display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--text-3);}
 .tsize .ico{width:14px;height:14px;}
 .tsize .lg .ico{width:20px;height:20px;}
-.tsize input{width:min(150px,26vw);accent-color:var(--gilt);}
+.tsize .sm,.tsize .lg{color:var(--gilt);opacity:.75;display:grid;}
+/* Card size slider: a gold coin on a fine track that fills with gold up to it */
+.tsize input{--v:50%;width:min(150px,26vw);height:22px;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer;}
+.tsize input::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,#c8922f,#f6dc95 var(--v),rgba(255,255,255,.12) var(--v));box-shadow:inset 0 1px 1px rgba(0,0,0,.4);}
+.tsize input::-moz-range-track{height:4px;border-radius:2px;background:rgba(255,255,255,.12);}
+.tsize input::-moz-range-progress{height:4px;border-radius:2px;background:linear-gradient(90deg,#c8922f,#f6dc95);}
+.tsize input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:1.5px solid #fff3c4;
+  background:radial-gradient(circle at 35% 30%,#fff6d8,#f6dc95 35%,#c8922f 80%);box-shadow:0 0 0 2px rgba(43,26,0,.55),0 2px 6px rgba(0,0,0,.5),0 0 10px rgba(246,220,149,.35);}
+.tsize input::-moz-range-thumb{width:16px;height:16px;border-radius:50%;border:1.5px solid #fff3c4;background:radial-gradient(circle at 35% 30%,#fff6d8,#f6dc95 35%,#c8922f 80%);box-shadow:0 0 0 2px rgba(43,26,0,.55),0 2px 6px rgba(0,0,0,.5);}
+.tsize input:active::-webkit-slider-thumb{transform:scale(1.12);}
+.tsize input:focus-visible{outline:none;}
+.tsize input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px rgba(43,26,0,.55),0 0 0 4px var(--gilt);}
+/* Scrollbars: a slim gilt rail rather than the system grey */
+html.lorc ::-webkit-scrollbar{width:10px;height:10px;}
+html.lorc ::-webkit-scrollbar-track{background:transparent;}
+html.lorc ::-webkit-scrollbar-thumb{border:3px solid transparent;border-radius:6px;background:linear-gradient(180deg,#f6dc95,#c8922f) padding-box;opacity:.7;}
+html.lorc ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#fff3c4,#d9a94a) padding-box;}
+html.lorc ::-webkit-scrollbar-corner{background:transparent;}
+@supports (-moz-appearance:none){html.lorc *{scrollbar-width:thin;scrollbar-color:#c8922f transparent;}}
 .colbtn{display:none;flex:none;}
 .bld-filters .row1{align-items:center;}
 .bld-filters .row1 .colbtn{width:60px;height:44px;border-radius:22px;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);}
@@ -1011,9 +1029,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .fside-l .fchips.ovf{mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);}
 .flt-btn span{max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sortbox{display:flex;flex-direction:column;gap:6px;}
+.sort-tip{margin:0 0 10px;text-align:center;font-family:var(--serif);font-style:italic;color:var(--text-2);}
 .sort-row{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:var(--text);text-align:left;font:inherit;}
-.sort-row b{flex:1;font-weight:800;}
-.sort-row span{color:var(--gilt-2);font-weight:700;font-size:.9rem;}
+.sort-row b{flex:1;font-family:var(--serif);font-weight:700;font-size:1.08rem;letter-spacing:.01em;color:#fff6dc;}
+.sort-row span{font-family:var(--serif);font-style:italic;color:var(--gilt-2);font-weight:700;font-size:.95rem;}
 .sort-row i{font-style:normal;color:var(--gilt-2);font-weight:900;width:14px;text-align:center;}
 .sort-row.on{background:color-mix(in srgb,var(--gilt) 22%,transparent);box-shadow:inset 0 0 0 2px var(--gilt);}
 .lz-filt.open{background:var(--gilt);color:#2b1a00;}
@@ -7004,13 +7023,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         var tiny = false;
         if (phoneLib()) { var gap = cols > 4 ? 4 : 8; t = Math.floor((W - 4 - (cols - 1) * gap) / cols); tiny = cols > 4; }
         grid.classList.toggle('tiny', tiny);
-        rng.value = String(t); grid.style.setProperty('--tile', t + 'px');
+        rng.value = String(t); grid.style.setProperty('--tile', t + 'px'); rngFill();
       };
       colBtn.onclick = function () {
         cols = cols === 4 ? 6 : cols === 6 ? 8 : 4; lsSet(COLS, cols); Kit.sfx('tap'); fitTile(); paintGrid(true);
         colBtn.setAttribute('aria-label', 'Card size: ' + cols + ' across');
       };
-      rng.addEventListener('input', function () { tile = +this.value; grid.style.setProperty('--tile', tile + 'px'); lsSet(TILE, tile); });
+      var rngFill = function () { rng.style.setProperty('--v', ((rng.value - rng.min) / Math.max(1, rng.max - rng.min) * 100).toFixed(1) + '%'); };
+      rng.addEventListener('input', function () { tile = +this.value; grid.style.setProperty('--tile', tile + 'px'); lsSet(TILE, tile); rngFill(); });
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
       window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
     }
@@ -7229,9 +7249,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         typeChips.appendChild(chip(TYPE_NAMES[t], f.types.indexOf(t) >= 0, function () { togF('types', t); }));
       });
     }
-    // ── Sort: cost (the usual order), name, ink, strength, willpower, lore, newest set, rarity ──
-    var SORTK = 'lorc_sort', srt = lsGet(SORTK, null) || { k: 'cost', dir: 1 };
-    var SORTS = [['cost', 'Cost', 'Low to high', 'High to low'], ['name', 'Name', 'A to Z', 'Z to A'], ['ink', 'Ink', 'Amber to Steel', 'Steel to Amber'],
+    // ── Sort: name A to Z (the usual order), cost, ink, strength, willpower, lore, newest set, rarity ──
+    var SORTK = 'lorc_sort', srt = lsGet(SORTK, null) || { k: 'name', dir: 1 };
+    var SORTS = [['name', 'Name', 'A to Z', 'Z to A'], ['cost', 'Cost', 'Low to high', 'High to low'], ['ink', 'Ink', 'Amber to Steel', 'Steel to Amber'],
       ['s', 'Strength', 'Low to high', 'High to low'], ['w', 'Willpower', 'Low to high', 'High to low'], ['l', 'Lore', 'Low to high', 'High to low'],
       ['set', 'Set', 'Oldest first', 'Newest first'], ['rar', 'Rarity', 'Common first', 'Rarest first']];
     var SORT_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/></svg>';
@@ -7245,7 +7265,6 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     function sortCards(list) {
       var k = srt.k, dir = srt.dir;
-      if (k === 'cost' && dir === 1) return list;   // the library's own order
       if (k === 'name') return list.slice().sort(function (a, b) { return dir * a.full.localeCompare(b.full); });
       return list.slice().sort(function (a, b) {
         var x = sortVal(a, k), y = sortVal(b, k);
@@ -7255,7 +7274,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       });
     }
     function paintSort() {
-      var on = !(srt.k === 'cost' && srt.dir === 1), o = SORTS.filter(function (x) { return x[0] === srt.k; })[0] || SORTS[0];
+      var on = !(srt.k === 'name' && srt.dir === 1), o = SORTS.filter(function (x) { return x[0] === srt.k; })[0] || SORTS[0];
       sortBtn.innerHTML = SORT_ICO + '<span>' + (on ? esc(o[1]) : 'Sort') + '</span>'; sortBtn.classList.toggle('on', on);
       [storyChips, costChips].forEach(function (r) { r.classList.toggle('ovf', r.scrollWidth > r.clientWidth + 2 && r.scrollLeft + r.clientWidth < r.scrollWidth - 2); });
       sortBtn.setAttribute('aria-label', 'Sort: ' + o[1] + ', ' + (srt.dir === 1 ? o[2] : o[3]).toLowerCase());
@@ -7273,8 +7292,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         });
       }
       paint();
-      sh = Kit.sheet({ title: 'Sort cards', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Tap again to reverse the order.' }), box]), actions: [
-        { label: 'Reset to cost', cls: 'btn-ghost', keep: true, onClick: function () { srt = { k: 'cost', dir: 1 }; lsSet(SORTK, srt); f.shown = 60; paint(); paintGrid(); } },
+      sh = Kit.sheet({ title: 'Sort cards', node: el('div', null, [el('p', { class: 'sort-tip', text: 'Tap again to reverse the order.' }), box]), actions: [
+        { label: 'Reset to name, A to Z', cls: 'btn-ghost', keep: true, onClick: function () { srt = { k: 'name', dir: 1 }; lsSet(SORTK, srt); f.shown = 60; paint(); paintGrid(); } },
         { label: 'Done', cls: 'btn-primary' }] });
     }
     function matches(d) {
