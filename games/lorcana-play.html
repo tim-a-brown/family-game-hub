@@ -337,6 +337,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-in{width:100%;max-width:560px;padding:calc(var(--safe-t) + 14px) 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;gap:12px;}
 .lz-card{position:relative;--cu:min(52vh,104vw,520px);width:calc(var(--cu) * .716);height:var(--cu);flex:none;border-radius:calc(var(--cu) * .045);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);transform:scale(.92);transition:transform .25s var(--spring);background:#1d1a2c;}
 .lz.show .lz-card{transform:none;}
+/* Tilt sheen: a faint band of light that slides as the card leans */
+.tsheen{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 44%,rgba(255,236,190,.2) 50%,rgba(255,255,255,.08) 56%,transparent 70%);
+  background-size:260% 260%;background-position:calc(50% - var(--tx,0) * 40%) calc(50% - var(--ty,0) * 40%);opacity:calc(.35 + (var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .65);}
+.lz-fc:not(.front) .tsheen{display:none;}
+@media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
 .lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);--bw:var(--cu);}
 /* The cost corner of a sideways location, cut from the upright card image (bw = width of the sideways card) */
 .costup{position:absolute;z-index:2;left:calc(var(--bw) * .864);top:calc(var(--bw) * .009);width:calc(var(--bw) * .118);height:calc(var(--bw) * .118);border-radius:50%;pointer-events:none;
@@ -5916,6 +5922,63 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (main === 'Sing it for free') { main = 'Sing'; sub = sub || 'Free'; }
     return { text: text, main: main, sub: sub, icon: icon };
   }
+  // ── A faint sheen on the card in focus that follows the phone's tilt (or the pointer) ──
+  // The card leans a few degrees with the device and a soft band of light slides across it.
+  var tiltT = { x: 0, y: 0, cx: 0, cy: 0, base: null, raf: 0, ov: null, el: null, listening: false, asked: false };
+  function onOrient(e) {
+    if (e.beta == null || e.gamma == null) return;
+    var land = Math.abs(window.orientation || (screen.orientation && screen.orientation.angle) || 0) === 90;
+    var b = land ? e.gamma : e.beta, g = land ? -e.beta : e.gamma;
+    if (!tiltT.base) tiltT.base = { b: b, g: g };
+    // drift the resting angle slowly toward how the phone is being held
+    tiltT.base.b += (b - tiltT.base.b) * 0.01; tiltT.base.g += (g - tiltT.base.g) * 0.01;
+    tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 18));
+    tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 18));
+  }
+  function listenOrient() {
+    if (tiltT.listening || !('DeviceOrientationEvent' in window)) return;
+    tiltT.listening = true; window.addEventListener('deviceorientation', onOrient);
+  }
+  function askOrient() {
+    // iPhone asks once, on a tap, before it shares motion
+    if (tiltT.asked || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') return;
+    tiltT.asked = true;
+    DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') { lsSet('lorc_tilt', 1); listenOrient(); } }).catch(function () {});
+  }
+  function cardTilt(ov) {
+    tiltT.ov = ov; tiltT.base = null;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      if (lsGet('lorc_tilt', 0)) { listenOrient(); } else ov.addEventListener('pointerup', askOrient, { once: true });
+    } else listenOrient();
+    // mouse and trackpad: the card follows the pointer instead
+    ov.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !tiltT.el) return;
+      var r = tiltT.el.getBoundingClientRect();
+      tiltT.x = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width * 0.8)));
+      tiltT.y = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height * 0.8)));
+    });
+    ov.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { tiltT.x = 0; tiltT.y = 0; } });
+    if (!tiltT.raf) tiltT.raf = requestAnimationFrame(tiltFrame);
+  }
+  function tiltFrame() {
+    var ov = tiltT.ov;
+    if (!ov || !ov.isConnected) { if (tiltT.el) { tiltT.el.style.rotate = ''; } tiltT.el = null; tiltT.raf = 0; return; }
+    var t = ov.querySelector('.lz-fc.front') || ov.querySelector('.lz-card');
+    if (t !== tiltT.el) {
+      if (tiltT.el) tiltT.el.style.rotate = '';
+      tiltT.el = t;
+      if (t && !t.querySelector(':scope > .tsheen')) t.appendChild(el('i', { class: 'tsheen', 'aria-hidden': 'true' }));
+    }
+    // ease toward the target so it feels weighty rather than jittery
+    tiltT.cx += (tiltT.x - tiltT.cx) * 0.12; tiltT.cy += (tiltT.y - tiltT.cy) * 0.12;
+    if (t) {
+      var x = tiltT.cx, y = tiltT.cy, mag = Math.min(1, Math.sqrt(x * x + y * y));
+      t.style.rotate = mag > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (mag * 6).toFixed(2) + 'deg' : '';
+      t.style.setProperty('--tx', x.toFixed(3)); t.style.setProperty('--ty', y.toFixed(3));
+    }
+    tiltT.raf = requestAnimationFrame(tiltFrame);
+  }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
     var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid, keep = slid ? flowKeep : null;
@@ -6019,6 +6082,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       }
     }
     document.body.appendChild(ov);
+    cardTilt(ov);
     if (F) F.render();
     if (!swapping && !keep) requestAnimationFrame(function () { ov.classList.add('show'); });
     Kit.sfx(swapping || keep ? 'tap' : 'flip');
