@@ -13,6 +13,8 @@
 //   continueAsGuest()          -> void
 //   onReady(cb)                -> called once sync completes
 //   noteWrite(key)             -> call after any hi_/gh_/lorcana_ localStorage write
+//   isPin()                    -> true when signed in with a PIN
+//   db()                       -> Promise<firestore> (Lorcana online tables)
 //
 // Lorcana decks and bookmarks sync too (cloud field `lorcana`). Local keys:
 //   lorcana_decks_v1 [{id,name,cards,at}]   lorcana_decks_del {id: deletedAt}
@@ -626,7 +628,9 @@
   }
 
   window.FGHSync = {
-    mode: mode, pin: pin, label: label,
+    mode: mode, pin: pin, label: label, isPin: isPin,
+    // Firestore handle for features beyond the PIN doc (Lorcana online tables)
+    db: function(){ return ensureFirebase().then(function(f){ return f.db; }); },
     signInWithPin: signInWithPin,
     setLabel: setLabel,
     signOut: signOut,

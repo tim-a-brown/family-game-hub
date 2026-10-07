@@ -781,6 +781,17 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .dk-opt{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:var(--text);text-align:left;font-weight:800;}
 .dk-opt.on{background:color-mix(in srgb,var(--gilt) 26%,transparent);box-shadow:inset 0 0 0 2px var(--gilt);}
 .dk-opt .grow{flex:1;min-width:0;}
+.net-wait{gap:10px;}
+.net-wait .spin,.net-room .spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--gilt);animation:spin 1s linear infinite;}
+.net-room{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);}
+.net-room .grow{flex:1;min-width:0;}
+.net-room b{display:block;}
+.net-room small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
+.net-code{font-family:var(--display);font-size:2.6rem;letter-spacing:.18em;color:var(--gilt);text-align:center;margin:6px 0;}
+.net-join{display:flex;gap:8px;}
+.net-join .input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-weight:800;}
+.net-note{color:var(--text-3);font-size:.9rem;margin:0;}
+.net-h{color:var(--gilt);font-family:var(--serif);font-style:italic;font-size:1.05rem;margin:8px 0 0;}
 .dk-opt small{display:block;color:var(--text-3);font-weight:700;font-size:.75rem;}
 .dk-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .dk-h{font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:10px 2px 6px;}
@@ -2624,6 +2635,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function pairings() { var out = []; for (var i = 0; i < INKS.length; i++) for (var j = i + 1; j < INKS.length; j++) out.push([INKS[i], INKS[j]]); return out; }
   // Deck choice for a seat: {kind:'quick', inks:[a,b]} | {kind:'saved', id} | {kind:'random'}
   function resolveDeck(ch) {
+    if (ch && ch.kind === 'inline' && ch.cards) return { name: ch.name, cards: ch.cards };   // online: the other device's deck
     if (ch && ch.kind === 'saved') {
       var d = savedDecks().filter(function (x) { return x.id === ch.id; })[0];
       if (d && !deckProblems(d.cards, d.casual).length) return { name: d.name, cards: d.cards };
@@ -3446,7 +3458,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if ($('.lz.reveal') || handing) { later(pumpQ, 250); return; }
     var it = Q.shift();
     if (!it) { flushWait(); return; }
-    qBusy = true;
+    qBusy = true; decPi = it.pi;
     var t = tok;
     resolveAb(it, function () { if (t !== tok) return; qBusy = false; render(); later(pumpQ, 160); });
   }
@@ -3455,6 +3467,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function quiet() { return !qBusy && !Q.length; }
   function resetQ() { Q = []; qBusy = false; qWait = []; }
   function ctlHuman(pi) { return !S.P[pi].cpu; }
+  // Online: whose choice the next screen is. Abilities belong to whoever owns them; privately() and a few
+  // effects name the player outright; otherwise it's the player whose turn it is.
+  var decPi = null, forcePi = null;
   function abTitle(src, ab) { return ab.name ? titleCase(ab.name) : DD(src).n; }
   function titleCase(s) {
     return String(s).toLowerCase().split(/(\s+|-)/).map(function (w, i) {
@@ -3470,6 +3485,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (!condOK(ab.cond, src, pi, it.ctx)) return done();
     if (ab.once) { S.once = S.once || {}; var key = src + ':' + ab.i; if (S.once[key] === S.turn) return done(); S.once[key] = S.turn; }
     if (!ab.ok) {
+      if (S.mode === 'online' && pi !== NET.seat) { log(DD(src).n + ': ' + S.P[pi].name + ' can apply this ability by hand on their turn', pi); return done(); }
       if (ctlHuman(pi)) return manualAb(src, ab, pi, done);
       return done();
     }
@@ -3491,7 +3507,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function finish() {
       if (st.said.length) log(DD(src).n + (ab.name ? ' · ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
       // what the computer's abilities did, so nothing slips by
-      if (st.said.length && !ctlHuman(pi) && humans() > 0) ticker(S.P[pi], abTitle(src, ab), st.said.join(' · ').replace(/^\w/, function (c) { return c.toUpperCase(); }));
+      if (st.said.length && (S.mode === 'online' || (!ctlHuman(pi) && humans() > 0))) oppTick(pi, abTitle(src, ab), st.said.join(' · ').replace(/^\w/, function (c) { return c.toUpperCase(); }));
       done();
     }
   }
@@ -3594,6 +3610,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (e.t && e.t.upToPer) { var cnt = perCount(e.t.upToPer, st.src, st.pi, st); if (!cnt) return cb(false); var e2 = {}; for (var k in e) e2[k] = e[k]; e2.t = {}; for (var k2 in e.t) e2.t[k2] = e.t[k2]; delete e2.t.upToPer; e2.t.upTo = cnt; e = e2; }
     var pi = st.pi, human = ctlHuman(pi), d = DD(st.src), title = abTitle(st.src, st.ab);
     var optional = e.may && !asked;
+    decPi = pi;
     if (e.t && e.t.sel === 'chosen') {
       var legal = legalTargets(e.t, st.src, pi);
       if (!legal.length) { if (human) Kit.toast(title + ': nothing can be chosen'); return cb(false); }
@@ -3681,7 +3698,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         return abilitySheet(st.src, st.ab, [
           { label: 'Put ' + DD(dc).n + ' on the bottom', primary: true, go: function () { if (!dn2) { dn2 = true; doIt(true); } } },
           { label: 'Let ' + P.name + ' draw ' + e.n, go: function () { if (!dn2) { dn2 = true; doIt(false); } } }
-        ], { sub: Ow.name + ', your choice', who: S.mode === 'pass' ? Ow.name : '' });
+        ], { sub: Ow.name + ', your choice', who: S.mode === 'pass' ? Ow.name : '', dec: owner });
       }
       case 'discardTo': {
         var tp = st.ctx.tp != null ? st.ctx.tp : S.cur, over = S.P[tp].hand.length - e.n;
@@ -3993,6 +4010,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var cnt = {}; (e.op === 'nameCard' ? P.discard.filter(isChar) : P.deckL).forEach(function (u) { var n2 = DD(u).n; cnt[n2] = (cnt[n2] || 0) + 1; });
       var bestN = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; })[0]; return go(bestN);
     }
+    if (netWho() != null) return netAsk('name', { src: st.src, ab: abMin(st.ab), opt: !!optional }, function (v) { go(v.name || null); });
+    nameSheet(st.src, st.ab, optional, go);
+  }
+  function nameSheet(src, ab, optional, go) {
     var names = {}; DB.unique.forEach(function (d) { names[d.n] = 1; }); var all = Object.keys(names).sort();
     var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search card names', 'aria-label': 'Search card names' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh, done = false;
     function paint() {
@@ -4000,8 +4021,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       all.forEach(function (n2) { if (t && skey(n2).indexOf(t) < 0) return; if (++shown > 60) return; list.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { done = true; sh.close(); go(n2); } }, [el('b', { class: 'grow', text: n2 })])); });
     }
     q.addEventListener('input', paint); paint();
-    node.appendChild(el('div', { class: 'abhead', html: abHeadHTML(st.src, st.ab) })); node.appendChild(q); node.appendChild(list);
-    sh = Kit.sheet({ title: 'Name a card', node: node, dismissible: false, actions: optional ? [{ label: 'Skip', cls: 'btn-ghost' }] : [], onClose: function () { if (!done) cb(false); } });
+    node.appendChild(el('div', { class: 'abhead', html: abHeadHTML(src, ab) })); node.appendChild(q); node.appendChild(list);
+    sh = Kit.sheet({ title: 'Name a card', node: node, dismissible: false, actions: optional ? [{ label: 'Skip', cls: 'btn-ghost' }] : [], onClose: function () { if (!done) go(null); } });
     setTimeout(function () { q.focus(); }, 60);
   }
   // "chosen player": you or the opponent
@@ -4092,6 +4113,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function handValue(u) { var d = DD(u); return (cpuUsable(d) ? defValue(d) : -2) - ((d.c || 0) > S.P[C(u).o].ink.length + 3 ? 1 : 0); }
   // Pass & play: hidden choices happen on the right player's screen
   function privately(pi, fn) {
+    if (S.mode === 'online') { var pv = forcePi; forcePi = pi; try { return fn(function (k) { k(); }); } finally { forcePi = pv; } }
     if (S.mode !== 'pass' || S.viewer === pi || S.P[pi].cpu) return fn(function (k) { k(); });
     var me = S.viewer;
     Kit.handoff({ name: S.P[pi].name, color: S.P[pi].color, what: 'cards', msg: 'You need to make a choice' }).then(function () {
@@ -4129,7 +4151,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       cb(true);
     }
     if (!ctlHuman(pi)) { var b = pool.slice().sort(function (a, c) { return defValue(DD(c)) - defValue(DD(a)); })[0]; if (optional && defValue(DD(b)) <= 0.5) return cb(false); return fin(b); }
-    chooseFromList(abTitle(st.src, st.ab) + ': play a card for free', pool, 1, function (sel) { fin(sel[0]); }, { cancel: function () { cb(false); }, skip: true });
+    chooseFromList(abTitle(st.src, st.ab) + ': play a card for free', pool, 1, function (sel) { fin(sel[0]); }, { cancel: function () { cb(false); }, skip: true, dec: pi });
   }
   function lookFx(e, st, optional, cb) {
     if (e.who === 'chosenPlayer' && !st.whoPicked) return pickPlayer(st, 'Whose deck?', function (w) { var e2 = {}; for (var k in e) e2[k] = e[k]; e2.who = w === st.pi ? null : 'opp'; lookFx(e2, st, optional, cb); });
@@ -4165,6 +4187,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   // Look at the top cards: take what the card allows, the rest goes where it says
   function lookSheet(st, top, pk, ok, rest, done) {
+    if (netWho() != null) return netAsk('look', { src: st.src, ab: abMin(st.ab), top: top, pk: pk || null, ok: top.filter(ok), rest: rest || null }, function (v) { done(v.take || [], v.order || null); });
     var take = [], dest = {}, node = el('div'), list = el('div', { class: 'lp-list' }), s, fin = false;
     top.forEach(function (u) { dest[u] = 'top'; });
     var restTxt = { bottom: 'The rest go on the bottom of your deck.', top: 'The rest go back on top.', discard: 'The rest go to your discard.', ink: 'The rest go into your inkwell.', choose: 'Choose top or bottom for each card.', topdisc: 'Choose top of the deck or the discard.', hand: 'If you don’t play it, it goes into your hand.' }[rest] || '';
@@ -4200,7 +4223,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var eff = { exerts: { op: 'exert' }, banishes: { op: 'banish' }, readies: { op: 'ready' }, damage: { op: 'damage', n: e.n }, bounce: { op: 'bounce' }, ink: { op: 'toInk' }, bottom: { op: 'bottom' } }[e.what];
     function fin(x) { act(function () { hit(eff, st, x); checkBanishAll(); }); cb(true); }
     if (O.cpu) return fin(pool.slice().sort(function (a, b) { return cardValue(a) - cardValue(b); })[0]);
-    startPick({ title: O.name + ': choose one of your characters (' + effText(eff).replace(/ that card$/, '').replace(/^Deal (\d+) damage to/, '$1 damage') + ')', src: st.src, ok: function (x) { return pool.indexOf(x) >= 0; }, must: true, done: fin });
+    startPick({ title: O.name + ': choose one of your characters (' + effText(eff).replace(/ that card$/, '').replace(/^Deal (\d+) damage to/, '$1 damage') + ')', src: st.src, ok: function (x) { return pool.indexOf(x) >= 0; }, must: true, done: fin, dec: o });
   }
   function modalFx(e, st, cb) {
     var pi = st.pi;
@@ -4226,6 +4249,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // A full-size card with the ability text and a short list of buttons. Nothing else.
   function abilitySheet(src, ab, acts, o) {
     o = o || {};
+    if (netWho(o.dec) != null) {
+      netAsk('sheet', { src: src, ab: abMin(ab), acts: acts.map(function (a) { return { label: a.label, primary: !!a.primary, full: !!a.full }; }), sub: o.sub || '' }, function (v) { var a = acts[v.i]; if (a && a.go) a.go(); });
+      return null;
+    }
     var d = DD(src);
     var info = (o.who ? '<div class="lz-who">' + esc(o.who) + '</div>' : '') + '<h2>' + esc(ab && ab.name ? titleCase(ab.name) : d.n) + '</h2>' + (ab && ab.name ? '<div class="ver">' + esc(d.full) + '</div>' : '') +
       (ab ? '<div class="rtext abline">' + abilityHTML(ab) + '</div>' : '') + (o.sub ? '<p class="lz-sub">' + esc(o.sub) + '</p>' : '');
@@ -4238,7 +4265,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     abilitySheet(src, ab, [
       { label: 'Use it', primary: true, go: function () { if (!done) { done = true; cb(true); } } },
       { label: 'Skip', go: function () { if (!done) { done = true; cb(false); } } }
-    ], { sub: what ? 'Optional: ' + what : 'This ability is optional.', who: S.mode === 'pass' ? S.P[pi].name : '' });
+    ], { sub: what ? 'Optional: ' + what : 'This ability is optional.', who: S.mode === 'pass' ? S.P[pi].name : '', dec: pi });
   }
   // Text the game can't run yet: show the card and just the tools its wording needs
   var TOOLHINT = [
@@ -4535,7 +4562,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   Kit.init({
     id: 'lorcana-play', title: 'Lorcana', mark: false,
     theme: { felt: ['#2f4a8f', '#1d2f66', '#13204a'], back: ['#1b2560', '#e3bd62'], wood: ['#6b4a2c', '#43291a'] },
-    onNew: function () { tok++; resetQ(); Kit.handoff.close(); closeOverlays(); clearSave(); S = null; showSetup(); },
+    onNew: function () { tok++; resetQ(); Kit.handoff.close(); closeOverlays(); if (S && S.mode === 'online') { netLeave(); S = null; showLobby(); return; } clearSave(); S = null; showSetup(); },
     undo: function () { undo(); },
     menu: [
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: past games' }); } },
@@ -4545,12 +4572,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       { icon: 'swap', label: 'Turn opponent’s cards around', onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } },
       { icon: 'book', label: 'Game log', onClick: function () { showLog(); } },
       { icon: 'play', label: 'Fast mode (computer moves as banners)', onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
-      { icon: 'sparkle', label: 'Fix something by hand', onClick: function () { if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
+      { icon: 'sparkle', label: 'Fix something by hand', onClick: function () { if (S && S.mode === 'online' && !canAct()) Kit.toast('You can fix things on your own turn'); else if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'sync', label: 'Update card library', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } }
     ],
     rules:
       '<p class="goal">Be the first to collect <b>20 lore</b>. You get lore by sending your characters on quests.</p>' +
       '<p>This is the Disney Lorcana trading card game with the real cards. Play the computer, or pass the phone between two players (your hand is hidden while the other person has it).</p>' +
+      '<p><b>Play online</b> (from the Lorcana menu on the home screen): two devices, each signed in with its own PIN and using its own deck. One player opens a table, the other joins. Each of you sees the table from your own side. When a card makes the other player choose something during your turn, the question pops up on their device.</p>' +
       '<h3>Your turn</h3><ol>' +
       '<li><b>Ready, Set, Draw.</b> Your exerted (turned sideways) cards stand back up, your new characters are ready to act, your locations give you their lore, and you draw a card. The very first player skips that first draw.</li>' +
       '<li><b>Ink.</b> Once per turn you may put a card with the swirly ink symbol (a gold ring around its cost) facedown into your <b>inkwell</b>. Each card there is 1 ink.</li>' +
@@ -4671,7 +4699,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     ui.onDecks = function () { if (!wrap.isConnected) { ui.onDecks = null; return; } paint(); };
     window.scrollTo(0, 0);
   }
-  function pickDeck(p, cur, done) {
+  function pickDeck(p, cur, done, back) {
     var node = el('div'), s;
     function opt(ch, name, sub, inks, extra) {
       var on = JSON.stringify(ch) === JSON.stringify(cur);
@@ -4709,14 +4737,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     paintMine();
     node.appendChild(empty);
     node.appendChild(list);
-    node.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-block', style: { 'margin-top': '6px' }, html: Kit.icon('share') + '<span>Export or import decks</span>', onclick: function () { s.close(); deckFiles(function () { showDeckPick(lastCfg); }); } }));
+    node.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-block', style: { 'margin-top': '6px' }, html: Kit.icon('share') + '<span>Export or import decks</span>', onclick: function () { s.close(); deckFiles(function () { reopen(); }); } }));
     node.appendChild(el('div', { class: 'dk-h', text: 'Quick decks (built for you)' }));
     var g = el('div', { class: 'dk-grid' });
     pairings().forEach(function (pr) { g.appendChild(opt({ kind: 'quick', inks: pr }, pr.join(' & '), '', pr)); });
     node.appendChild(g);
     node.appendChild(el('div', { class: 'dk-h', text: 'Surprise' }));
     node.appendChild(opt({ kind: 'random' }, 'Random deck', 'Two random inks, different every game', []));
-    function reopen() { showDeckPick(lastCfg); }
+    function reopen() { if (back) back(); else showDeckPick(lastCfg); }
     s = Kit.sheet({ title: 'Deck for ' + p.name, node: node, actions: [
       { label: 'Build a new deck', cls: 'btn-soft', onClick: function () { showBuilder(null, reopen); } },
       { label: 'Cancel', cls: 'btn-ghost' }] });
@@ -4745,6 +4773,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     S.first = f === 'p1' ? 0 : f === 'p2' ? 1 : Math.random() < 0.5 ? 0 : 1;
     S.cur = S.first;
     if (S.mode === 'cpu') S.viewer = humanIx();
+    if (S.mode === 'online') S.viewer = NET.seat;
     draw(0, 7); draw(1, 7);
     log(S.P[0].name + ' (' + S.P[0].deck + ') vs ' + S.P[1].name + ' (' + S.P[1].deck + ')');
     log(S.P[S.first].name + ' goes first', S.first);
@@ -4759,11 +4788,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function humanIx() { return S.P[0].cpu ? 1 : 0; }
   function bottomPi() {
     if (S.mode === 'cpu') return humanIx();
+    if (S.mode === 'online') return NET.seat;
     if (S.phase === 'mull') return S.mullWho != null ? S.mullWho : S.first;
     return S.viewer >= 0 ? S.viewer : S.cur;
   }
   function handShown(pi) { return S.viewer === pi && !S.P[pi].cpu; }
-  function canAct() { return !!S && S.phase === 'play' && S.step === 'main' && !S.P[S.cur].cpu && S.viewer === S.cur && !handing && !finishing && quiet(); }
+  function canAct() { return !!S && S.phase === 'play' && S.step === 'main' && !S.P[S.cur].cpu && S.viewer === S.cur && !handing && !finishing && quiet() && !(S.mode === 'online' && (!NET.owner || NET.pend)); }
   function meIx() { return S.mode === 'cpu' ? humanIx() : S.viewer; }
 
   // ── Opening hands ────────────────────────────────────────────────────────
@@ -4776,12 +4806,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       startTurn(); return;
     }
     S.mullWho = pi; ui.mullSel = {};
+    if (S.mode === 'online' && pi !== NET.seat) return netHand(pi);   // their opening hand, on their device
     if (S.P[pi].cpu) {
       save(); render();
       later(function () { act(function () { doMull(pi, cpuMulligan(pi)); }); later(mullNext, 700); }, 700);
       return;
     }
-    if (humans() === 2 && S.viewer !== pi) { S.viewer = -1; save(); render(); later(handoff, 300); return; }
+    if (S.mode === 'pass' && S.viewer !== pi) { S.viewer = -1; save(); render(); later(handoff, 300); return; }
     S.viewer = pi; save(); render();
   }
   function doMull(pi, back) {
@@ -4803,8 +4834,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // ── Turn flow ────────────────────────────────────────────────────────────
   function startTurn() {
     if (!S || S.phase !== 'play') return;
+    if (S.mode === 'online' && S.cur !== NET.seat) return netHand(S.cur);   // their turn runs on their device
     S.hist = []; ui.hint = null; ui.pick = null;
-    if (humans() === 2) S.viewer = -1;
+    if (S.mode === 'pass') S.viewer = -1;
+    if (S.mode === 'online') { Kit.callout('Your turn'); Kit.haptic && Kit.haptic('medium'); }
     act(function () { beginTurn(); });
     if (!S || S.phase !== 'play') return;
     phaseAnim();
@@ -4813,9 +4846,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function afterBegin() {
     if (!S || S.phase !== 'play' || finishing) return;
     var p = S.P[S.cur];
-    Kit.resume.set('Turn ' + S.turn + ' · ' + S.P[0].name + ' ' + S.P[0].lore + ', ' + S.P[1].name + ' ' + S.P[1].lore);
+    if (S.mode !== 'online') Kit.resume.set('Turn ' + S.turn + ' · ' + S.P[0].name + ' ' + S.P[0].lore + ', ' + S.P[1].name + ' ' + S.P[1].lore);
     if (p.cpu) { fireStart(); later(cpuStep, 1300); return; }
-    if (humans() === 2 && S.viewer !== S.cur) { later(handoff, 650); return; }
+    if (S.mode === 'pass' && S.viewer !== S.cur) { later(handoff, 650); return; }
     S.viewer = S.cur; render(); fireStart();
   }
   // "At the start of your turn" abilities, once the right player is looking
@@ -4916,13 +4949,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (over || !S || S.phase !== 'play') return;
     if (res && res.banished.length) { var bt = res.banished.indexOf(a.t) >= 0; setTimeout(function () { Kit.callout(bt ? 'Banished!' : 'Ouch!', '#ff8f8f'); }, 330); }
     // The computer's cards are shown to you, big, until you tap
-    if (byCpu && humans() > 0) {
-      if (a.k === 'play') cpuShow(a.u, a.o && a.o.sing ? 'Sung' : a.o && a.o.shift ? 'Shifted' : 'Played', a.o && a.o.sing ? 'Sung by ' + a.o.sing.map(nm).join(' and ') : a.o && a.o.shift ? 'Shifted onto ' + DD(a.o.shift).full : '', a.o && a.o.free ? 'Free' : paid ? 'Paid ' + paid + ' ink' : a.o && a.o.sing ? 'No ink paid' : 'Free');
-      else if (a.k === 'quest') cpuShow(a.u, 'Quested', '', '+' + (S.P[pi].lore - lore0) + ' lore · ' + S.P[pi].name + ' has ' + S.P[pi].lore);
-      else if (a.k === 'chal' && res) cpuShow(a.u, 'Challenged', 'Challenged ' + DD(a.t).full, (isLoc(a.t) ? 'Dealt ' + res.dt + ' damage to ' + nm(a.t) : 'Dealt ' + res.dt + ' · took ' + res.da) + (res.banished.length ? ' · Banished ' + res.banished.map(nm).join(' and ') : ''));
-      else if (a.k === 'move') cpuShow(a.u, 'Moved', '', 'To ' + DD(a.t).n);
-      else if (a.k === 'boost') cpuShow(a.u, 'Boosted', '', 'Put a card under ' + nm(a.u));
-      else if (a.k === 'ink') ticker(S.P[pi], 'Inked', 'A card, facedown');
+    if ((byCpu && humans() > 0) || S.mode === 'online') {
+      if (a.k === 'play') oppShow(a.u, a.o && a.o.sing ? 'Sung' : a.o && a.o.shift ? 'Shifted' : 'Played', a.o && a.o.sing ? 'Sung by ' + a.o.sing.map(nm).join(' and ') : a.o && a.o.shift ? 'Shifted onto ' + DD(a.o.shift).full : '', a.o && a.o.free ? 'Free' : paid ? 'Paid ' + paid + ' ink' : a.o && a.o.sing ? 'No ink paid' : 'Free');
+      else if (a.k === 'quest') oppShow(a.u, 'Quested', '', '+' + (S.P[pi].lore - lore0) + ' lore · ' + S.P[pi].name + ' has ' + S.P[pi].lore);
+      else if (a.k === 'chal' && res) oppShow(a.u, 'Challenged', 'Challenged ' + DD(a.t).full, (isLoc(a.t) ? 'Dealt ' + res.dt + ' damage to ' + nm(a.t) : 'Dealt ' + res.dt + ' · took ' + res.da) + (res.banished.length ? ' · Banished ' + res.banished.map(nm).join(' and ') : ''));
+      else if (a.k === 'move') oppShow(a.u, 'Moved', '', 'To ' + DD(a.t).n);
+      else if (a.k === 'boost') oppShow(a.u, 'Boosted', '', 'Put a card under ' + nm(a.u));
+      else if (a.k === 'ink') oppTick(pi, 'Inked', 'A card, facedown');
     }
     // Support
     if (a.k === 'quest' && hasKw(a.u, 'support') && STR(a.u) > 0) {
@@ -4991,6 +5024,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function undo() {
     if (!S || S.phase !== 'play') return Kit.toast(S && S.phase === 'mull' ? 'Nothing to undo yet' : 'Nothing to undo');
     if (S.P[S.cur].cpu) return Kit.toast('Wait for ' + S.P[S.cur].name + ' to finish');
+    if (S.mode === 'online' && (!NET.owner || S.cur !== NET.seat || NET.pend)) return Kit.toast(NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : 'You can take back moves on your own turn');
     if (!S.hist || !S.hist.length) return Kit.toast('Nothing to undo this turn');
     tok++; closeOverlays(); resetQ();
     var h = S.hist, d = S.defs, s = JSON.parse(h.pop());
@@ -5002,6 +5036,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function save() {
     if (!S || S.phase === 'over') return;
+    if (S.mode === 'online') { netPush(); return; }   // online games live in the table doc, not this device's save
     try { localStorage.setItem(SAVE, JSON.stringify(S)); }
     catch (e) { try { var h = S.hist; S.hist = []; localStorage.setItem(SAVE, JSON.stringify(S)); S.hist = h; } catch (e2) {} }
     if (S.phase === 'play') Kit.resume.set('Turn ' + S.turn + ' · ' + S.P[0].name + ' ' + S.P[0].lore + ', ' + S.P[1].name + ' ' + S.P[1].lore);
@@ -5218,6 +5253,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function paintMid() {
     var mid = $('.lp-mid'); if (!mid || !S) return;
+    if (S.mode === 'online' && NET.pend && !ui.pick) { mid.innerHTML = '<div class="lp-pick net-wait"><i class="spin"></i><span>' + esc(S.P[opp(NET.seat)].name) + ' is choosing…</span></div>'; return; }
     if (ui.pick) {
       var pk = ui.pick, sd = pk.src && S.cards[pk.src] ? DD(pk.src) : null;
       var h = '<div class="lp-pick">' + (sd ? '<button type="button" class="pk-art" data-act="pick-src" aria-label="See ' + esc(sd.full) + '">' + miniArt(sd) + '</button>' : '') + '<span>' + esc(pk.title) + '</span>';
@@ -5234,7 +5270,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function controlsHTML(vertical) {
     var my = canAct(), cpuT = S.phase === 'play' && S.P[S.cur].cpu;
-    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : S.step === 'begin' ? 'Next turn…' : 'Waiting';
+    var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : S.mode === 'online' && NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : S.mode === 'online' && S.cur !== NET.seat ? S.P[S.cur].name + '’s turn' : S.step === 'begin' ? 'Next turn…' : 'Waiting';
     var idle = my && !S.P[S.cur].board.some(function (u) { return canQuest(u) || (canChallenger(u) && defenders(u).length); }) && !S.P[S.cur].hand.some(function (u) { return canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u); });
     var fxb = '';
     var end = '<button type="button" class="btn btn-primary btn-end' + (idle ? ' attn' : '') + (vertical ? ' btn-block btn-lg' : ' grow') + '" data-act="end"' + (my ? '' : ' disabled') + '>' + esc(endLabel) + '</button>';
@@ -5762,7 +5798,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     openZoom(u);
   }
-  function startPick(o) { o.sel = []; ui.pick = o; Kit.sfx('tap'); render(); if (o.src) flash(o.src); }
+  function startPick(o) {
+    if (netWho(o.dec) != null) return netAskPick(o);
+    o.sel = []; ui.pick = o; Kit.sfx('tap'); render(); if (o.src) flash(o.src);
+  }
 
   // ═════════════════════════════════════════════════════════════════════════
   // Zoom: the card, big, with its full text and what you can do with it
@@ -6591,6 +6630,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function handVisibleTo(pi) { return S.mode === 'cpu' ? pi === humanIx() : pi === S.viewer; }
   function chooseFromList(title, uids, n, cb, o) {
     o = o || {};
+    if (netWho(o.dec) != null) return netAsk('list', { title: title, uids: uids, n: n, min: o.min || null, must: !!o.must, skip: !!o.skip }, function (v) { if (v.c) { if (o.cancel) o.cancel(); return; } cb(v.sel || []); });
     var sel = [], node = el('div'), s, list = el('div', { class: 'lp-list' }), done = false;
     var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { 'margin-top': '10px' }, text: 'Choose ' + n, onclick: function () { if (done || sel.length < (o.min || n) || sel.length > n) return; done = true; s.close(); cb(sel); } });
     function paint() {
@@ -6729,15 +6769,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     [0, 1].forEach(function (i) { if (S.st[i].loc >= 3) hl.push(S.P[i].name + ' collected ' + S.st[i].loc + ' lore from locations'); });
     hl.push(S.P[0].name + ' played ' + S.P[0].deck + '; ' + S.P[1].name + ' played ' + S.P[1].deck);
     var labels = S.rl.map(function (r, i) { return 'R' + (i + 1); });
+    var online = S.mode === 'online';
+    if (online) netOver(w);
     Kit.record(KEY, {
-      started: S.started, mode: S.mode === 'cpu' ? 'vs computer' : 'pass & play',
+      started: S.started, mode: S.mode === 'cpu' ? 'vs computer' : online ? 'online' : 'pass & play',
       players: S.P.map(function (p) { return { name: p.name, score: p.lore, cpu: p.cpu }; }), winner: wp.name,
       rounds: S.rl.length ? { labels: labels, scores: S.rl.map(function (r) { return [r[0], r[1]]; }) } : null,
       highlights: hl.slice(0, 6), summary: wp.name + ' won · ' + S.P[0].lore + ' – ' + S.P[1].lore
     });
     var cfg = S.cfg, choices = S.choices;
-    clearSave(); render();
-    var lose = S.mode === 'cpu' && wp.cpu;
+    if (!online) clearSave();
+    render();
+    var lose = S.mode === 'cpu' ? wp.cpu : online && w.pi !== NET.seat;
+    if (online) { Kit.win({ icon: 'trophy', lose: lose, title: lose ? wp.name + ' wins' : 'You win!', sub: w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
+      rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }), again: function () { showLobby(); } }); return; }
     Kit.win({
       icon: lose ? 'bot' : 'trophy', lose: lose,
       title: wp.name === 'You' ? 'You win!' : wp.name + ' wins!',
@@ -7435,6 +7480,319 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
 
   // ═════════════════════════════════════════════════════════════════════════
+  // Online: two devices, one table
+  // ═════════════════════════════════════════════════════════════════════════
+  // A table is one Firestore doc (lorcanaRooms/{code}). The device whose turn it is runs the game and
+  // writes it to the doc as it goes; the other device draws the same table from its own seat. At the
+  // end of a turn (and for opening hands) the doc names who runs the game next. When the other player
+  // has to choose something mid-turn (their own ability, a discard), the question goes into the doc
+  // and the answer comes back the same way.
+  var NETK = 'lorc_online', NETME = 'lorc_net_me';
+  var NET = { seat: null, owner: false, ref: null, unsub: null, lobbyOff: null, seq: 0, synced: false, pend: null, pn: 0, answered: {}, showing: null, feedSeen: 0, feedMax: 0, defs: null, next: null, pt: 0, dealt: false, errAt: 0 };
+  NET.dev = lsGet('lorc_dev', '') || (function () { var d = Math.random().toString(36).slice(2, 10); lsSet('lorc_dev', d); return d; })();
+  function netErr(e) { console.warn(e); if (Date.now() - NET.errAt > 8000) { NET.errAt = Date.now(); Kit.toast('Connection problem: ' + (e && e.message || e)); } }
+  // Is this choice someone else's (and so a question for their device)? Returns their seat, or null.
+  function netWho(dec) {
+    if (!S || S.mode !== 'online' || !NET.owner) return null;
+    var w = dec != null ? dec : forcePi != null ? forcePi : qBusy && decPi != null ? decPi : S.cur;
+    return w === NET.seat ? null : w;
+  }
+  function abMin(ab) { return ab ? { name: ab.name || '', text: ab.text || '' } : null; }
+  function netPush(now, extra) {
+    if (!NET.ref || (!NET.owner && !extra)) return;
+    clearTimeout(NET.pt);
+    var ref = NET.ref, go = function () {
+      if (!S || NET.ref !== ref) return;
+      var d = { st: snapshot(), seq: ++NET.seq, owner: NET.owner ? NET.seat : NET.next, at: Date.now(), by: NET.dev };
+      if (extra) for (var k in extra) d[k] = extra[k];
+      ref.update(d).catch(netErr);
+    };
+    if (now) go(); else NET.pt = setTimeout(go, 280);
+  }
+  // Hand the game to the other device (their opening hand, or their turn)
+  function netHand(seat) {
+    tok++; resetQ(); NET.owner = false; NET.next = seat; NET.pend = null;
+    S.viewer = NET.seat; ui.pick = null; ui.hint = null;
+    render();
+    netPush(true, {});
+  }
+  // What happened, for the other device to show (the card played, an ability's result)
+  function netFeed(k, a) { NET.feedMax = Math.max(NET.feedMax, S.feedN || 0) + 1; S.feedN = NET.feedMax; S.feed = (S.feed || []).concat([{ n: S.feedN, k: k, a: a }]).slice(-10); }
+  function oppShow(u, verb, how, eff) {
+    if (S.mode !== 'online') return cpuShow(u, verb, how, eff);
+    netFeed('s', [u, verb, how || '', eff || '']);
+    if (S.cards[u] && C(u).o !== NET.seat) cpuShow(u, verb, how, eff);   // their card, played during my turn
+  }
+  function oppTick(pi, verb, text) {
+    if (S.mode !== 'online') return ticker(S.P[pi], verb, text);
+    netFeed('t', [pi, verb, text]);
+    if (pi !== NET.seat) ticker(S.P[pi], verb, text);
+  }
+  function netShowFeed(f) {
+    var a = f.a;
+    if (f.k === 's') {
+      if (!S.cards[a[0]]) return;
+      if (C(a[0]).o === NET.seat || $('.lz.reveal') || $('.k-scrim') || ui.pick) ticker(S.P[C(a[0]).o], a[1], DD(a[0]).full + (a[3] ? ' · ' + a[3] : ''));
+      else cpuShow(a[0], a[1], a[2], a[3]);
+    } else if (f.k === 't') ticker(S.P[a[0]], a[1], a[2]);
+  }
+  // Ask the other device; cb(answer) runs here when it comes back
+  function netAsk(k, d, cb) {
+    var id = NET.dev + '.' + Date.now().toString(36) + '.' + (++NET.pn);
+    NET.pend = { id: id, cb: cb };
+    render();
+    netPush(true, { pr: { id: id, seat: opp(NET.seat), k: k, d: JSON.stringify(d) }, an: null });
+  }
+  function netAskPick(o) {
+    var all = Object.keys(S.cards), okL = all.filter(function (x) { try { return !!o.ok(x); } catch (e) { return false; } }), bad = {};
+    if (o.bad) all.forEach(function (x) { try { var r = o.bad(x); if (r) bad[x] = r; } catch (e) {} });
+    var m = null;
+    if (o.multi) {
+      m = { need: [], lab: [] };
+      for (var k = 0; k <= okL.length; k++) { var sel = okL.slice(0, k); try { m.need.push(!!o.multi.need(sel)); m.lab.push(String(o.multi.label(sel))); } catch (e) { m.need.push(k > 0); m.lab.push('Done (' + k + ')'); } }
+    }
+    netAsk('pick', { title: o.title, src: o.src || null, ok: okL, bad: bad, skip: o.skip || null, must: !!o.must, multi: m }, function (v) {
+      if (v.c) { if (o.cancel) o.cancel(); return; }
+      if (v.sel && o.multi) return o.multi.go(v.sel);
+      if (v.x != null) o.done(v.x);
+    });
+  }
+  // The other device asked me something: show the same screen it would have shown
+  function netPrompt(pr) {
+    if (NET.showing === pr.id || NET.answered[pr.id]) return;
+    if ($('.lz.reveal')) { setTimeout(function () { if (NET.pr && NET.pr.id === pr.id) netPrompt(pr); }, 400); return; }
+    NET.showing = pr.id;
+    var d = JSON.parse(pr.d), ref = NET.ref;
+    function ans(v) {
+      if (NET.answered[pr.id] || !ref) return;
+      NET.answered[pr.id] = 1; NET.showing = null;
+      ref.update({ an: { id: pr.id, v: JSON.stringify(v) } }).catch(netErr);
+      render();
+    }
+    Kit.sfx('pop'); if (Kit.haptic) Kit.haptic('light');
+    switch (pr.k) {
+      case 'pick':
+        startPick({ title: d.title, src: d.src, ok: function (x) { return d.ok.indexOf(x) >= 0; }, bad: function (x) { return d.bad[x] || ''; }, skip: d.skip, must: d.must,
+          cancel: function () { ans({ c: 1 }); },
+          multi: d.multi ? { need: function (sel) { return !!d.multi.need[sel.length]; }, label: function (sel) { return d.multi.lab[sel.length] || 'Done (' + sel.length + ')'; }, go: function (sel) { ans({ sel: sel }); } } : null,
+          done: function (x) { ans({ x: x }); } });
+        break;
+      case 'list': chooseFromList(d.title, d.uids, d.n, function (sel) { ans({ sel: sel }); }, { min: d.min || undefined, must: d.must, skip: d.skip, cancel: function () { ans({ c: 1 }); } }); break;
+      case 'sheet': abilitySheet(d.src, d.ab, d.acts.map(function (a, i) { return { label: a.label, primary: a.primary, full: a.full, go: function () { ans({ i: i }); } }; }), { sub: d.sub }); break;
+      case 'look': lookSheet({ src: d.src, ab: d.ab }, d.top, d.pk, function (u) { return d.ok.indexOf(u) >= 0; }, d.rest, function (take, order) { ans({ take: take, order: order }); }); break;
+      case 'name': nameSheet(d.src, d.ab, d.opt, function (n) { ans({ name: n }); }); break;
+      default: ans({ c: 1 });
+    }
+  }
+  // A new copy of the game from the other device
+  function netApply(d) {
+    if (d.defs && !NET.defs) NET.defs = JSON.parse(d.defs);
+    var s = JSON.parse(d.st), first = !S || S.mode !== 'online' || ui.screen !== 'game';
+    NET.seq = d.seq; NET.synced = true;
+    s.defs = NET.defs || {}; s.hist = []; s.viewer = NET.seat;
+    if (S && S.skipTurn != null && S.skipTurn === s.turn) s.skipTurn = S.skipTurn;
+    var over = s.phase === 'over'; if (over) s.phase = 'play';
+    var before = first ? null : captureRects();
+    if (first) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); DEF = {}; app.innerHTML = ''; ui.pick = null; ui.hint = null; ui.mullSel = {}; Kit.gameStart(); }
+    ui.screen = 'game';
+    S = s; uidN = S.uidN || 0;
+    render(); if (before) animateFrom(before);
+    if (first) NET.feedSeen = S.feedN || 0;
+    else (S.feed || []).forEach(function (f) { if (f.n > NET.feedSeen) netShowFeed(f); });
+    NET.feedSeen = Math.max(NET.feedSeen, S.feedN || 0); NET.feedMax = Math.max(NET.feedMax, NET.feedSeen);
+    if (over && d.w) { finish(d.w); return; }
+    if (d.owner === NET.seat && !NET.owner) {
+      NET.owner = true;
+      if (d.pr) NET.ref.update({ pr: null }).catch(netErr);   // a question left over from before a reload
+      resumeFlow();
+    }
+  }
+  function netOnDoc(sn) {
+    if (!NET.ref || sn.ref.id !== NET.ref.id) return;
+    if (!sn.exists) { var playing = ui.screen === 'game'; netStop(true); Kit.toast(playing ? 'The table was closed' : 'The other player closed the table'); S = null; showLobby(); return; }
+    var d = sn.data();
+    NET.pr = d.pr || null;
+    if (d.status === 'closed' && d.by !== NET.dev) { var who = S && S.P ? S.P[opp(NET.seat)].name : 'The other player'; netStop(true); S = null; Kit.toast(who + ' left the game'); showLobby(); return; }
+    if (ui.screen === 'netwait' && !d.st) { if (NET.seat === 0 && d.status === 'joined' && d.guest) netDeal(d); return; }
+    // the answer to my question
+    if (NET.owner && NET.pend && d.an && d.an.id === NET.pend.id) {
+      var p = NET.pend; NET.pend = null; noUndo();
+      NET.ref.update({ pr: null }).catch(netErr);
+      render(); p.cb(JSON.parse(d.an.v));
+    }
+    // the game, from the other device (or this one's last copy, after a reload)
+    if (d.st && d.seq > NET.seq && (d.by !== NET.dev || !NET.synced)) netApply(d);
+    else if (d.st && !NET.synced) netApply(d);
+    if (!S || S.mode !== 'online') return;
+    // a question for me
+    if (!NET.owner && d.pr && d.pr.seat === NET.seat) netPrompt(d.pr);
+    else if (NET.showing && (!d.pr || d.pr.id !== NET.showing)) { NET.showing = null; closeOverlays(); render(); }
+  }
+  function netListen(ref, seat) {
+    lobbyOff();
+    if (NET.unsub) NET.unsub();
+    NET.ref = ref; NET.seat = seat; NET.owner = false; NET.seq = 0; NET.synced = false; NET.pend = null; NET.showing = null; NET.dealt = false; NET.defs = null; NET.answered = {};
+    lsSet(NETK, { code: ref.id, seat: seat, at: Date.now() });
+    NET.unsub = ref.onSnapshot(netOnDoc, netErr);
+  }
+  function netStop(forget) {
+    if (NET.unsub) { NET.unsub(); NET.unsub = null; }
+    clearTimeout(NET.pt); NET.ref = null; NET.owner = false; NET.pend = null; NET.showing = null;
+    if (forget) try { localStorage.removeItem(NETK); } catch (e) {}
+  }
+  function netOver(w) { if (NET.owner) netPush(true, { w: w, status: 'over' }); netStop(true); }
+  function netLeave() { var r = NET.ref; if (r) r.update({ status: 'closed', at: Date.now(), by: NET.dev }).catch(function () {}); netStop(true); }
+  function lobbyOff() { if (NET.lobbyOff) { NET.lobbyOff(); NET.lobbyOff = null; } }
+  function netDb() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
+  function roomCol(db) { return db.collection('lorcanaRooms'); }
+  // Your name and deck for online play
+  function netMe() { var m = lsGet(NETME, null) || {}; if (!m.name) m.name = (Kit.knownNames && Kit.knownNames()[0]) || ''; if (!m.deck) m.deck = (lsGet(LAST, {}) || {}).s0 || { kind: 'random' }; return m; }
+  function netDeck(me) {
+    if (DB.status !== 'ready') { Kit.toast(DB.status === 'error' ? 'The card library isn’t downloaded yet' : 'Still loading the cards…'); return null; }
+    if (!me.name) { Kit.toast('Pick your name first'); return null; }
+    var lab = choiceLabel(me.deck);
+    if (lab.bad) { Kit.toast(lab.name + ' isn’t a legal deck yet'); return null; }
+    var dk = resolveDeck(me.deck);
+    return { name: dk.name, cards: dk.cards };
+  }
+  function netCode() { var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ', c = ''; for (var i = 0; i < 4; i++) c += A.charAt(Math.floor(Math.random() * A.length)); return c; }
+  function netHost(me) {
+    var dk = netDeck(me); if (!dk) return;
+    netDb().then(function (db) {
+      var tries = 0;
+      (function attempt() {
+        var ref = roomCol(db).doc(netCode());
+        ref.get().then(function (sn) {
+          if (sn.exists && Date.now() - (sn.data().at || 0) < 12 * 3600e3 && ++tries < 6) return attempt();
+          return ref.set({ host: { name: me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk) }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
+            .then(function () { netListen(ref, 0); netWaitScreen(ref.id, true); });
+        }).catch(netErr);
+      })();
+    }).catch(netErr);
+  }
+  function netJoin(code, me) {
+    var dk = netDeck(me); if (!dk) return;
+    code = String(code || '').trim().toUpperCase();
+    if (!/^[A-Z]{4}$/.test(code)) { Kit.toast('Table codes are 4 letters'); return; }
+    netDb().then(function (db) {
+      var ref = roomCol(db).doc(code);
+      return db.runTransaction(function (tx) {
+        return tx.get(ref).then(function (sn) {
+          if (!sn.exists) throw new Error('No open table with code ' + code);
+          var d = sn.data();
+          if (d.host && d.host.dev === NET.dev) throw new Error('That’s your own table. Join it from the other device.');
+          if (d.status !== 'waiting') throw new Error('That table already has two players');
+          tx.update(ref, { guest: { name: me.name === d.host.name ? me.name + ' 2' : me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk) }, status: 'joined', at: Date.now(), by: NET.dev });
+        });
+      }).then(function () { netListen(ref, 1); netWaitScreen(code, false); });
+    }).catch(function (e) { Kit.toast(e.message || String(e)); });
+  }
+  // Both players are in: the host deals (shuffles both decks) and the game starts
+  function netDeal(d) {
+    if (NET.dealt) return; NET.dealt = true;
+    var hd = JSON.parse(d.host.deck), gd = JSON.parse(d.guest.deck);
+    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random' } };
+    NET.owner = true; NET.synced = true; NET.seq = d.seq || 0;
+    newGame(cfg, [{ kind: 'inline', name: hd.name, cards: hd.cards }, { kind: 'inline', name: gd.name, cards: gd.cards }]);
+    NET.defs = S.defs;
+    netPush(true, { defs: JSON.stringify(S.defs), status: 'playing' });
+  }
+  function netRejoin(mine) {
+    return netDb().then(function (db) {
+      var ref = roomCol(db).doc(mine.code);
+      return ref.get().then(function (sn) {
+        var d = sn.exists ? sn.data() : null;
+        if (!d || d.status === 'over' || d.status === 'closed' || (mine.seat === 1 && !d.guest)) { try { localStorage.removeItem(NETK); } catch (e) {} return false; }
+        netListen(ref, mine.seat);
+        if (!d.st) netWaitScreen(ref.id, mine.seat === 0);
+        return true;
+      });
+    });
+  }
+  function netWaitScreen(code, host) {
+    tok++; ui.screen = 'netwait'; closeOverlays(); Kit.handoff.close();
+    document.documentElement.classList.remove('lp-on'); app.className = 'stage full'; app.innerHTML = '';
+    var wrap = el('div', { class: 'dk' });
+    wrap.appendChild(el('h1', { text: host ? 'Your table is open' : 'Joining the table' }));
+    if (host) { wrap.appendChild(el('p', { class: 'net-note', style: { 'text-align': 'center' }, text: 'Table code' })); wrap.appendChild(el('div', { class: 'net-code', text: code })); }
+    wrap.appendChild(el('div', { class: 'net-room' }, [el('i', { class: 'spin' }), el('div', { class: 'grow' }, [
+      el('b', { text: host ? 'Waiting for the other player' : 'Waiting for the cards to be dealt' }),
+      el('small', { text: host ? 'On their device: Lorcana, then Play online. Your table shows up there, or they can type the code.' : 'The game starts in a moment.' })])]));
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: host ? 'Close the table' : 'Leave', onclick: function () {
+      var r = NET.ref; netStop(true);
+      if (r) (host ? r.delete() : r.update({ guest: null, status: 'waiting', at: Date.now(), by: NET.dev })).catch(function () {});
+      showLobby();
+    } }));
+    app.appendChild(wrap);
+    window.scrollTo(0, 0);
+  }
+  function showLobby() {
+    tok++; resetQ(); netStop(false); lobbyOff(); ui.screen = 'lobby'; closeOverlays(); Kit.handoff.close(); S = null;
+    document.documentElement.classList.remove('lp-on'); app.className = 'stage full'; app.innerHTML = '';
+    var wrap = el('div', { class: 'dk' });
+    wrap.appendChild(el('h1', { text: 'Play online' }));
+    app.appendChild(wrap);
+    if (!window.FGHSync || !FGHSync.isPin || !FGHSync.isPin()) {
+      wrap.appendChild(el('p', { class: 'net-note', text: 'Online play finds the other player through your PINs. Sign in with your PIN on the home screen, then come back here. The other player signs in with theirs on their device.' }));
+      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Go to the home screen', onclick: function () { Kit.home(); } }));
+      return;
+    }
+    var mine = lsGet(NETK, null);
+    if (mine && mine.code) {
+      var back = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>Back to your game</span>', onclick: function () {
+        netRejoin(mine).then(function (ok) { if (!ok) { Kit.toast('That game has ended'); showLobby(); } }).catch(netErr);
+      } });
+      wrap.appendChild(back);
+    }
+    wrap.appendChild(el('p', { class: 'net-note', text: 'Each of you plays on your own device with your own deck, like sitting across the table. One of you opens a table; the other joins it.' }));
+    wrap.appendChild(libLine());
+    var me = netMe(), seats = el('div', { class: 'stack' });
+    function keep() { lsSet(NETME, me); }
+    function paint() {
+      seats.innerHTML = '';
+      seats.appendChild(el('div', { class: 'dk-seat' }, [
+        el('span', { class: 'avatar', style: { '--c': Kit.color(0) }, text: (me.name || '?').charAt(0).toUpperCase() }),
+        el('div', { class: 'grow' }, [el('b', { text: me.name || 'Who’s playing?' }), el('small', { text: 'Your name at the table' })]),
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: me.name ? 'Change' : 'Pick', onclick: function () { Kit.pickName(function (n) { me.name = n; keep(); paint(); }); } })]));
+      var lab = choiceLabel(me.deck);
+      seats.appendChild(el('div', { class: 'dk-seat' }, [
+        el('span', { class: 'avatar', style: { '--c': 'var(--gilt)' }, html: Kit.icon('cards') }),
+        el('div', { class: 'grow' }, [el('b', { text: lab.name }), el('small', { html: (lab.inks.length ? inkDots(lab.inks) + ' ' : '') + esc(lab.sub) })]),
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: function () { pickDeck({ name: me.name || 'you' }, me.deck, function (ch) { me.deck = ch; keep(); paint(); }, showLobby); } })]));
+    }
+    paint();
+    wrap.appendChild(seats);
+    var sub = function () { if (!seats.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
+    DB.subs.push(sub);
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function () { netHost(me); } }));
+    wrap.appendChild(el('h2', { class: 'net-h', text: 'Tables waiting for a player' }));
+    var rooms = el('div', { class: 'stack' }, [el('p', { class: 'net-note', text: 'Looking for open tables…' })]);
+    wrap.appendChild(rooms);
+    var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
+    wrap.appendChild(el('div', { class: 'net-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function () { netJoin(code.value, me); } })]));
+    window.scrollTo(0, 0);
+    netDb().then(function (db) {
+      if (ui.screen !== 'lobby' || !rooms.isConnected) return;
+      NET.lobbyOff = roomCol(db).where('status', '==', 'waiting').limit(40).onSnapshot(function (qs) {
+        if (!rooms.isConnected) { lobbyOff(); return; }
+        var list = [];
+        qs.forEach(function (doc) { var d = doc.data(); if (d.host && d.host.dev !== NET.dev && Date.now() - (d.at || 0) < 6 * 3600e3) list.push({ code: doc.id, d: d }); });
+        list.sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
+        rooms.innerHTML = '';
+        if (!list.length) rooms.appendChild(el('p', { class: 'net-note', text: 'No open tables yet. When the other player opens one, it shows up here.' }));
+        list.forEach(function (r) {
+          var dk = {}; try { dk = JSON.parse(r.d.host.deck); } catch (e) {}
+          var inks = DB.status === 'ready' && dk.cards ? deckInks(dk.cards) : [];
+          rooms.appendChild(el('div', { class: 'net-room' }, [
+            el('span', { class: 'avatar', style: { '--c': Kit.color(1) }, text: (r.d.host.name || '?').charAt(0).toUpperCase() }),
+            el('div', { class: 'grow' }, [el('b', { text: r.d.host.name + '’s table' }), el('small', { html: (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ' · code ' + r.code) })]),
+            el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: function () { netJoin(r.code, me); } })]));
+        });
+      }, function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
+    }).catch(function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
   // Boot
   // ═════════════════════════════════════════════════════════════════════════
   function resumeFlow() {
@@ -7448,7 +7806,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var w = winner(); if (w) { render(); finish(w); return; }
     if (S.step === 'begin') { render(); startTurn(); return; }
     if (S.step === 'ending') { render(); endTurn(); return; }
-    if (humans() === 2) S.viewer = -1;
+    if (S.mode === 'pass') S.viewer = -1;
+    if (S.mode === 'online') S.viewer = NET.seat;
     render();
     afterBegin();
   }
@@ -7471,6 +7830,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   (function () {
     var q = new URLSearchParams(location.search), saved = lsGet(SAVE, null);
     if (q.get('mode')) ui.launchMode = q.get('mode') === 'pass' ? 'pass' : 'cpu';
+    if (q.get('online')) {
+      var mine = lsGet(NETK, null);
+      if (mine && mine.code && window.FGHSync && FGHSync.isPin && FGHSync.isPin()) netRejoin(mine).then(function (ok) { if (!ok) showLobby(); }).catch(function () { showLobby(); });
+      else showLobby();
+      return;
+    }
     if (q.get('library')) {
       showBuilder(null, function () {
         history.replaceState(null, '', location.pathname);
@@ -7491,6 +7856,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     load: function (st) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); S = st; DEF = {}; S.hist = S.hist || []; resumeFlow(); },
     run: function (a) { runAction(a); }, end: humanEnd, cpuChoose: cpuChoose, defenders: defenders, AB: AB, stx: stx, cant: cant, useAb: useAb, abUseWhy: abUseWhy, quiet: quiet, Q: function () { return Q; }, playCost: playCost, canPlay: canPlay, canQuest: canQuest,
     canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
+    net: NET, lobby: function () { showLobby(); },
     allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
     STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
     // tests: apply one ability effect to a card, as if from src

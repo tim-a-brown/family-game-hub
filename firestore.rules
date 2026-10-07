@@ -36,7 +36,22 @@ service cloud.firestore {
         ]);
     }
 
-    // Default deny — nothing outside /pins/{pinId} is accessible.
+    // Lorcana online tables: one doc per table, a 4-letter code. Two devices
+    // (two PINs) share it: the table owner writes the game, the other writes
+    // answers to choices. Same PIN-style model: knowing the code is access.
+    match /lorcanaRooms/{code} {
+      allow get: if code.matches('^[A-Z]{4}$');
+      // the lobby lists open tables (small queries only)
+      allow list: if request.query.limit <= 50;
+      allow delete: if code.matches('^[A-Z]{4}$');
+      allow create, update: if code.matches('^[A-Z]{4}$')
+        && request.resource.data.keys().hasOnly([
+          'host', 'guest', 'status', 'at', 'seq', 'owner',
+          'st', 'defs', 'pr', 'an', 'w', 'by'
+        ]);
+    }
+
+    // Default deny — nothing else is accessible.
     match /{document=**} {
       allow read, write: if false;
     }
