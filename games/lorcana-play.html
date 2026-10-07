@@ -346,6 +346,22 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* Phones: a touch brighter (small screens, held at arm's length) */
 @media (hover:none){.tsheen{opacity:calc((.36 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .3) * var(--sw,1));}}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
+/* Whisper cards: stronger light, a pearly iridescent wash that shifts with tilt, and fine sparkles drifting up */
+.whisper > .tsheen{opacity:calc((.42 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .34) * var(--sw,1));}
+.wshim{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:color-dodge;
+  background:linear-gradient(125deg,rgba(255,120,200,.0) 10%,rgba(255,140,210,.28) 24%,rgba(255,226,140,.3) 38%,rgba(140,255,220,.26) 52%,rgba(150,190,255,.3) 66%,rgba(220,150,255,.26) 80%,rgba(255,140,210,0) 94%);
+  background-size:260% 260%;background-repeat:no-repeat;
+  background-position:calc(50% + clamp(-1, var(--tx,0), 1) * 60%) calc(50% + clamp(-1, var(--ty,0), 1) * 60%);
+  opacity:calc((.42 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .4) * var(--sw,1));animation:wbreathe 6s ease-in-out infinite;}
+@keyframes wbreathe{0%,100%{filter:hue-rotate(0deg);}50%{filter:hue-rotate(40deg);}}
+.wspark{position:absolute;inset:0;z-index:4;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;opacity:calc(.85 * var(--sw,1));
+  background-image:radial-gradient(circle at 30% 40%,rgba(255,255,255,.95) 0 1.1px,rgba(255,255,255,.25) 2px,transparent 3.2px),radial-gradient(circle at 70% 20%,rgba(255,236,190,.95) 0 1.4px,rgba(255,236,190,.3) 2.4px,transparent 4px),radial-gradient(circle at 20% 75%,rgba(220,235,255,.9) 0 .9px,transparent 1.8px);
+  background-size:79px 113px,131px 97px,173px 151px;background-position:0 0,47px 29px,91px 63px;
+  -webkit-mask:linear-gradient(180deg,#000 0,rgba(0,0,0,.75) 55%,rgba(0,0,0,.25) 80%,transparent);mask:linear-gradient(180deg,#000 0,rgba(0,0,0,.75) 55%,rgba(0,0,0,.25) 80%,transparent);
+  animation:wdrift 14s linear infinite,wtwinkle 3.2s ease-in-out infinite;}
+@keyframes wdrift{from{background-position:0 0,47px 29px,91px 63px;}to{background-position:-79px -226px,178px -165px,-82px -239px;}}
+@keyframes wtwinkle{0%,100%{opacity:calc(.55 * var(--sw,1));}50%{opacity:calc(.95 * var(--sw,1));}}
+@media (prefers-reduced-motion:reduce){.wshim,.wspark{animation:none;}}
 /* Foil rarity mark (bottom centre of the card): its own small glint that swings round faster than the card's sheen,
    tinted by rarity, plus a tiny star twinkle now and then */
 .rglint{--g1:#fff3c4;--g2:#f6c84a;position:absolute;left:50%;top:95.9%;width:9.5%;aspect-ratio:1;transform:translate(-50%,-50%);z-index:4;pointer-events:none;border-radius:50%;
@@ -6118,6 +6134,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (!tiltT.raf) tiltT.raf = requestAnimationFrame(tiltFrame);
   }
   var GLINT_R = /^(rare|super rare|legendary|epic|enchanted|iconic)$/;
+  function isWhisper(d) { return !!(d && d.cl && d.cl.indexOf('Whisper') >= 0); }
   function rarKey(d) { return String((d && d.r) || '').toLowerCase().replace(/_/g, ' ').trim(); }
   function tiltFrame() {
     var ov = tiltT.ov;
@@ -6135,6 +6152,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         t.appendChild(el('i', { class: 'tsheen', 'aria-hidden': 'true' }));
         // the printed rarity mark is foil on the better cards: it gets its own, livelier glint
         if (GLINT_R.test(t.getAttribute('data-r') || '') && !t.classList.contains('loc')) t.appendChild(el('i', { class: 'rglint', 'aria-hidden': 'true' }));
+        // Whisper cards: a pearly shimmer and drifting sparkles on top
+        if (t.classList.contains('whisper')) { t.appendChild(el('i', { class: 'wshim', 'aria-hidden': 'true' })); t.appendChild(el('i', { class: 'wspark', 'aria-hidden': 'true' })); }
       }
       var m = mag * w;
       t.style.rotate = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '';
@@ -6158,7 +6177,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       F.cur = nav; F.ov = ov;
       inner.appendChild(F.el);
     } else {
-      card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(d) });
+      card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(d) });
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
     }
@@ -6276,7 +6295,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     function item(j) {
       var it = F.items[j]; if (it) return it;
       var d = defAt(j); if (!d) return null;
-      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : ''), 'data-r': rarKey(d), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; F.settle(j); } });
+      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : ''), 'data-r': rarKey(d), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; F.settle(j); } });
       b.appendChild(artEl(d, true));
       F.el.appendChild(b);
       return (F.items[j] = b);
