@@ -359,13 +359,28 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* Phones: a touch brighter (small screens, held at arm's length) */
 @media (hover:none){.tsheen{opacity:calc((.36 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .3) * var(--sw,1));}}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
-/* Printings: the art choices under the card name (rarity gem + name) */
-.prints{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 2px;}
-.prints .pr-l{font-family:var(--serif);font-style:italic;color:var(--text-3);font-size:.9rem;margin-right:2px;}
-.pr-b{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px 0 9px;border:0;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.07);color:var(--text-2);font-weight:800;font-size:.78rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
-.pr-b .rgem{width:11px;height:11px;margin:0;}
-.pr-b.on{background:rgba(227,189,98,.16);color:var(--gilt-2);box-shadow:inset 0 0 0 1.5px var(--gilt);}
-.pr-b:active{transform:scale(.96);}
+/* Rarity on the stat plate: a gem in a circle; a gilt ring and a count when there's art to choose */
+.sb-rar{border:0;background:none;padding:0;font:inherit;color:inherit;cursor:default;}
+.sb-rar .rcirc{width:36px;height:36px;margin:2px;border-radius:50%;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.16),rgba(10,8,24,.6));box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 2px 6px rgba(0,0,0,.4);}
+.sb-rar .rgem{width:15px;height:15px;margin:0;}
+.sb-rar.multi{cursor:pointer;}
+.sb-rar.multi .rcirc{box-shadow:inset 0 0 0 1.5px var(--gilt),0 2px 8px rgba(0,0,0,.45),0 0 12px rgba(246,220,149,.3);}
+.sb-rar.multi:active .rcirc{transform:scale(.92);}
+.sb-rar .rc-n{position:absolute;right:-4px;top:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;display:grid;place-items:center;font-size:.62rem;font-weight:900;color:#2b1a00;background:linear-gradient(180deg,#f6dc95,#c8922f);box-shadow:0 0 0 1.5px rgba(18,13,38,.9);}
+/* The art wheel */
+.rp-scrim{position:fixed;inset:0;z-index:480;background:rgba(6,4,16,.35);opacity:0;transition:opacity .2s;}
+.rp-scrim.show{opacity:1;}
+.rp{position:fixed;padding:6px;border-radius:18px;background:linear-gradient(180deg,#272050,#161130);box-shadow:0 0 0 1.5px rgba(227,189,98,.6),0 16px 40px rgba(0,0,0,.6);transform:scale(.92);transition:transform .22s cubic-bezier(.3,1.5,.5,1);}
+.rp-scrim.show .rp{transform:none;}
+.rp::before{content:'';position:absolute;left:6px;right:6px;top:50%;height:46px;margin-top:-23px;border-radius:12px;background:rgba(227,189,98,.14);box-shadow:inset 0 0 0 1.5px var(--gilt);pointer-events:none;}
+.rp-wheel{position:relative;height:138px;overflow-y:auto;scroll-snap-type:y mandatory;padding:46px 0;box-sizing:border-box;scrollbar-width:none;overscroll-behavior:contain;
+  -webkit-mask:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);}
+.rp-wheel::-webkit-scrollbar{display:none;}
+.rp-i{height:46px;scroll-snap-align:center;display:flex;align-items:center;gap:10px;padding:0 14px;cursor:pointer;font-family:var(--serif);font-weight:700;font-size:1rem;color:rgba(255,246,220,.6);transition:color .15s;}
+.rp-i .rgem{width:14px;height:14px;margin:0;}
+.rp-i span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rp-i small{font-family:var(--font);font-size:.72rem;color:var(--text-3);}
+.rp-i.on{color:#fff6dc;}
 /* Enchanted / Epic / Iconic art: a stronger rainbow foil than Whisper's pearl */
 .foil > .wshim{mix-blend-mode:color-dodge;background:linear-gradient(125deg,rgba(255,90,190,0) 8%,rgba(255,110,200,.4) 22%,rgba(255,215,90,.42) 36%,rgba(90,255,190,.38) 50%,rgba(90,170,255,.42) 64%,rgba(200,120,255,.4) 78%,rgba(255,90,190,0) 92%);
   background-size:240% 240%;background-repeat:no-repeat;opacity:calc((.5 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .45) * var(--sw,1));}
@@ -657,6 +672,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sp .grp{display:flex;gap:4px;align-items:flex-start;}
 .sp .mid{flex:1;display:flex;justify-content:center;min-width:0;}
 .sp .grp:not(.r){gap:12px;}
+.sp .grp.lc2{gap:2px;}
 .sb{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:40px;}
 .sb .sh{position:relative;width:40px;height:40px;display:grid;place-items:center;}
 .sb .sh > svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
@@ -5431,15 +5447,47 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return d.id && list.some(function (p) { return p.id === d.id; }) ? d : (DB.unique.filter(function (u) { return u.full === d.full; })[0] || d);
   }
   function prRarName(r) { return String(r || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
-  function printsHTML(d) {
-    var list = printingsOf(d); if (list.length < 2) return '';
-    var RO = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
-    list = list.slice().sort(function (a, b) { return (RO[rarKey(a)] || 6) - (RO[rarKey(b)] || 6) || setOrd(a.set) - setOrd(b.set); });
-    var cur = artOf(d), names = {}; list.forEach(function (p) { var n = prRarName(p.r); names[n] = (names[n] || 0) + 1; });
-    return '<div class="prints" role="group" aria-label="Choose the art"><span class="pr-l">Art</span>' + list.map(function (p) {
-      var n = prRarName(p.r) || 'Card', lab = names[n] > 1 ? n + ' · Set ' + p.set : n, on = p.id === cur.id;
-      return '<button type="button" class="pr-b' + (on ? ' on' : '') + '" data-print="' + esc(p.id) + '" aria-pressed="' + on + '" title="' + esc(lab + (p.no ? ' · #' + p.no : '')) + '"><i class="rgem r-' + rarKey(p).replace(/\s+/g, '-') + '" aria-hidden="true"></i><span>' + esc(lab) + '</span></button>';
-    }).join('') + '</div>';
+  var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
+  function printsSorted(d) { return printingsOf(d).slice().sort(function (a, b) { return (PR_ORDER[rarKey(a)] || 6) - (PR_ORDER[rarKey(b)] || 6) || setOrd(a.set) - setOrd(b.set); }); }
+  function prLabel(p, list) { var n = prRarName(p.r) || 'Card'; return list.filter(function (x) { return prRarName(x.r) === n; }).length > 1 ? n + ' · Set ' + p.set : n; }
+  // The rarity on the stat plate: a gem in a circle. With more than one printing it's a button (a gilt ring and a count)
+  function rarBtnHTML(d) {
+    var a = artOf(d) || d, rk = rarKey(a); if (!rk) return '';
+    var list = printingsOf(d), multi = list.length > 1, nm = prRarName(a.r);
+    return '<button type="button" class="sb sb-rar' + (multi ? ' multi' : '') + '"' + (multi ? ' data-rpick="1" aria-haspopup="listbox"' : ' tabindex="-1" disabled') +
+      ' aria-label="Rarity: ' + esc(nm) + (multi ? '. ' + list.length + ' printings: tap to choose the art' : '') + '" title="' + esc(nm) + (multi ? ': choose the art' : '') + '">' +
+      '<span class="sh rcirc"><i class="rgem r-' + rk.replace(/\s+/g, '-') + '" aria-hidden="true"></i>' + (multi ? '<b class="rc-n">' + list.length + '</b>' : '') + '</span><small>' + esc(nm) + '</small></button>';
+  }
+  // Scroll the little wheel up and down: whatever sits in the middle is the art (the card swaps as it lands)
+  function rarPick(btn, d, ov) {
+    var list = printsSorted(d), cur = (artOf(d) || d).id, IH = 46, at = Math.max(0, list.map(function (p) { return p.id; }).indexOf(cur));
+    var scrim = el('div', { class: 'rp-scrim' }), box = el('div', { class: 'rp', role: 'listbox', 'aria-label': 'Choose the art' }), wheel = el('div', { class: 'rp-wheel' });
+    list.forEach(function (p, i) {
+      wheel.appendChild(el('div', { class: 'rp-i' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at), html: '<i class="rgem r-' + rarKey(p).replace(/\s+/g, '-') + '" aria-hidden="true"></i><span>' + esc(prLabel(p, list)) + '</span>' + (p.no ? '<small>#' + esc(p.no) + '</small>' : ''),
+        onclick: function (e) { e.stopPropagation(); wheel.scrollTo({ top: i * IH, behavior: 'smooth' }); } }));
+    });
+    box.appendChild(wheel); scrim.appendChild(box); document.body.appendChild(scrim);
+    var r = btn.getBoundingClientRect(), bw = Math.min(240, innerWidth - 24);
+    box.style.width = bw + 'px';
+    box.style.left = Math.max(12, Math.min(innerWidth - bw - 12, r.left + r.width / 2 - bw / 2)) + 'px';
+    box.style.top = Math.max(12, Math.min(innerHeight - IH * 3 - 24, r.top + r.height / 2 - IH * 1.5 - 6)) + 'px';
+    wheel.scrollTop = at * IH;
+    requestAnimationFrame(function () { scrim.classList.add('show'); });
+    Kit.sfx('tap');
+    var t = 0;
+    wheel.addEventListener('scroll', function () {
+      clearTimeout(t);
+      t = setTimeout(function () {
+        var i = Math.max(0, Math.min(list.length - 1, Math.round(wheel.scrollTop / IH)));
+        if (i === at) return; at = i;
+        $$('.rp-i', wheel).forEach(function (x, k) { x.classList.toggle('on', k === i); x.setAttribute('aria-selected', String(k === i)); });
+        Kit.sfx('tick'); setPrint(ov, d, list[i].id);
+      }, 110);
+    }, { passive: true });
+    function close() { scrim.classList.remove('show'); setTimeout(function () { scrim.remove(); }, 220); document.removeEventListener('keydown', key, true); }
+    function key(e) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); close(); } if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); wheel.scrollTo({ top: Math.max(0, Math.min(list.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1))) * IH, behavior: 'smooth' }); } }
+    document.addEventListener('keydown', key, true);
+    scrim.addEventListener('click', function (e) { if (e.target === scrim) { e.stopPropagation(); close(); } });
   }
   // Pick a printing from the card view: swap the picture in place, remember it, repaint whatever shows the card
   function setPrint(ov, d, id) {
@@ -5453,9 +5501,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       $$(':scope > .tsheen, :scope > .rglint, :scope > .wshim, :scope > .wspark', card).forEach(function (x) { x.remove(); });
       card.setAttribute('data-r', rarKey(a)); card.classList.toggle('foil', !!prSpecial(a));
     }
-    $$('.pr-b', ov).forEach(function (b) { var on = b.getAttribute('data-print') === a.id; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+    $$('.sb-rar', ov).forEach(function (b) { b.outerHTML = rarBtnHTML(d); });
     var sn = ov.querySelector('.setno'); if (sn) sn.textContent = 'Set ' + a.set + (a.no ? ' · #' + a.no : '');
-    Kit.sfx('flip'); if (Kit.haptic) Kit.haptic('light');
+    if (Kit.haptic) Kit.haptic('light');
     artChanged();
   }
   function artChanged() { slotCache = {}; if (ui.onArt) ui.onArt(); if (S && ui.screen === 'game') render(); }
@@ -6283,8 +6331,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var DIAMOND = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs><path d="M20 1.5L33 20 20 38.5 7 20z" fill="url(#gk2)" stroke="#fff2c4" stroke-width="1" stroke-linejoin="round"/><path d="M20 6.5L29.5 20 20 33.5 10.5 20z" fill="#1d1a2c"/></svg>';
     var MOVE = '<svg viewBox="0 0 40 40"><path d="M7 3.5 20 9.5l13-6v3.2L20 12.7 7 6.7z" fill="#eef0f3"/><path d="M7 11 20 17l13-6v13.5c0 3.4-1.6 5.4-4.4 7.2L20 37.5l-8.6-5.8C8.6 29.9 7 27.9 7 24.5z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.5" stroke-linejoin="round"/></svg>';
     // Cost on the left, ink gem(s) centred between it and the stats
-    var L = '<div class="grp">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') + '</div>' +
-      '<div class="mid">' + (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>';
+    // Cost with its ink right beside it; the rarity in the space between them and the stats (tap it to choose the art)
+    var L = '<div class="grp lc2">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') +
+      (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + esc(inks.join('/')) + '</small></div>' : '') + '</div>' +
+      '<div class="mid">' + rarBtnHTML(d) + '</div>';
     var R = '<div class="grp r">';
     if (d.t === 'location') R += badge('w', SHIELD, live ? WP(u) : d.w || 0, 'Will', d.w || 0) + badge('l', DIAMOND, live ? LORE(u) : d.l || 0, 'Lore', d.l || 0) + badge('mv', MOVE, d.mv || 0, 'Move');
     else { var ch = d.t === 'character';
@@ -6444,7 +6494,6 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (ui.lzMin && phoneZoom() ? ' lz-min' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
     var F = null, card = null;
-    ov.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-print]'); if (b) { e.stopPropagation(); setPrint(ov, d, b.getAttribute('data-print')); } });
     if (nav && nav.peek && nav.n > 1) {
       F = keep && keep.n === nav.n ? keep : makeFlow(nav);
       F.cur = nav; F.ov = ov;
@@ -6474,6 +6523,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     inner.appendChild(info);
     // Tap the stat plate to show or hide its labels (remembered)
     info.addEventListener('click', function (e) {
+      var rb = e.target.closest('[data-rpick]'); if (rb) { e.stopPropagation(); rarPick(rb, d, ov); return; }
       var sp = e.target.closest('.sp'); if (!sp) return;
       e.stopPropagation(); var on = !sp.classList.contains('cap'); lsSet(CAPS, on);
       $$('.sp').forEach(function (x) { x.classList.toggle('cap', on); x.setAttribute('aria-expanded', String(on)); x.setAttribute('aria-label', 'Card stats. Tap to ' + (on ? 'hide' : 'show') + ' labels'); });
@@ -6789,7 +6839,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   function openZoom(u, dir) {
     var d = DD(u), z = zoneOf(u), acts = [], whys = [];
-    var info = headHTML(d) + printsHTML(d) + defMeta(d, u) + statusHTML(u, z) +
+    var info = headHTML(d) + defMeta(d, u) + statusHTML(u, z) +
       '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
     var c = C(u), pi = S.cur, my = canAct() && c.o === pi;
     // Only what you can do right now becomes a button
@@ -7165,7 +7215,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     return '<div class="lz-head"><div class="lz-ttl">' + stHTML + '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '<div class="ver" aria-hidden="true">&nbsp;</div>') + '</div></div>';
   }
   function zoomDef(d, acts, nav) {
-    zoomShell(d, headHTML(d) + printsHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
+    zoomShell(d, headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
   }
 
   // ═════════════════════════════════════════════════════════════════════════
