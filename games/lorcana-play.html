@@ -889,6 +889,22 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rv-also{margin-bottom:6px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-size:.82rem;text-align:center;max-width:100%;}
 .rv-also b{font-family:var(--display);font-weight:400;letter-spacing:.04em;text-transform:uppercase;color:#f1cf78;margin-right:4px;}
 .rv-also span{margin-left:4px;}
+.lz-feed{position:fixed;left:50%;top:calc(var(--safe-t) + 10px);transform:translateX(-50%);z-index:425;width:min(520px,calc(100% - 128px));display:flex;flex-direction:column;gap:4px;pointer-events:none;
+  padding:8px 12px;border-radius:16px;background:linear-gradient(180deg,rgba(42,33,82,.94),rgba(26,20,56,.94));box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.4),0 8px 22px rgba(0,0,0,.5);color:#fff3d0;font-size:.8rem;}
+.lz.has-feed .lz-in{padding-top:calc(var(--safe-t) + var(--feedh,96px) + 22px);transition:padding-top .2s;}
+.lzf-st{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.lzf-st > b{font-family:var(--display);font-weight:400;letter-spacing:.04em;color:#f1cf78;}
+.lzf-st > span{color:var(--text-3);font-weight:800;}
+.lzf-st .lzf-l{margin-left:auto;color:#fff3d0;display:inline-flex;align-items:center;gap:5px;}
+.lzf-st .lzf-l b{color:#f1cf78;font-size:.9rem;}
+.lzf-st .lzf-l em{font-style:normal;color:var(--text-3);}
+.lzf-ev{display:flex;flex-direction:column;gap:2px;}
+.lzf-e{display:flex;align-items:center;gap:7px;min-width:0;opacity:.75;animation:tickIn .28s var(--spring);}
+.lzf-e:last-child{opacity:1;}
+.lzf-e b{font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;color:#f1cf78;flex:none;}
+.lzf-e span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.lz-feed .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;}
+@media (max-width:420px){.lz-feed{width:calc(100% - 112px);}}
 .rv-ticks{position:fixed;left:50%;top:calc(var(--safe-t) + 64px);transform:translateX(-50%);z-index:430;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(560px,calc(100% - 24px));}
 .rv-tick{display:flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border-radius:999px;background:linear-gradient(180deg,#2a2152,#1a1438);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45),0 8px 22px rgba(0,0,0,.5);color:#fff3d0;font-size:.85rem;animation:tickIn .28s var(--spring);}
 .rv-tick b{font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;color:#f1cf78;}
@@ -5976,7 +5992,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     renderStrip($('.lp-strip.bot', lp), b, false);
     renderBoard($('.lp-board.top', lp), t);
     renderBoard($('.lp-board.bot', lp), b);
-    paintMid(); renderHand(b); renderBar(); renderMull();
+    paintMid(); renderHand(b); renderBar(); renderMull(); lzFeed();
     lp.classList.toggle('picking', !!ui.pick);
     fitBoards(); fitHand();
     var q = fxq; fxq = []; q.forEach(function (f) { try { f(); } catch (e) {} });
@@ -6846,6 +6862,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       }
     }
     document.body.appendChild(ov);
+    if (!opt.tapClose) lzFeed();
     cardTilt(ov);
     if (F) F.render();
     if (!swapping && !keep) requestAnimationFrame(function () { ov.classList.add('show'); });
@@ -7153,10 +7170,40 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
   function cpuShow(u, verb, how, effect) {
     if (!S || !S.cards[u]) return;
+    if (feedTime() && $('.lz:not(.reveal)')) return ticker(S.P[C(u).o], verb, DD(u).full + (effect ? ' · ' + effect : ''));   // don't pull them out of their own cards
     if (quickMoves()) return ticker(S.P[C(u).o], verb, DD(u).full + (effect ? ' · ' + effect : ''));
     showReveal(u, how, verb, effect);
   }
+  // Looking through your cards while it's the other player's turn: a status panel above the cards keeps the game in
+  // view (whose turn, the lore, their latest moves) without interrupting what you're looking at
+  function feedTime() { return !!S && ui.screen === 'game' && S.phase === 'play' && (S.mode === 'online' ? S.cur !== NET.seat : S.mode === 'cpu' && S.P[S.cur].cpu); }
+  function lzFeed() {
+    var ov = $('.lz:not(.reveal)'); if (!ov) return null;
+    var f = $('.lz-feed', ov);
+    if (!feedTime()) { if (f) { f.remove(); ov.classList.remove('has-feed'); } return null; }
+    if (!f) {
+      f = el('div', { class: 'lz-feed', 'aria-live': 'polite' }, [el('div', { class: 'lzf-st' }), el('div', { class: 'lzf-ev' })]);
+      ov.appendChild(f); ov.classList.add('has-feed');
+      // what they've done so far this turn
+      var done = [];
+      for (var i = S.log.length - 1; i >= 0 && done.length < 3; i--) { var l = S.log[i]; if (l.p !== S.cur || /ended their turn$|opening hand$/.test(l.t)) break; done.unshift(l); }
+      done.forEach(function (l) { feedLine(f, S.P[l.p], '', l.t); });
+    }
+    var c = S.P[S.cur];
+    $('.lzf-st', f).innerHTML = '<i class="dot" style="--c:' + c.color + '"></i><b>' + esc(c.name) + '’s turn</b><span>Turn ' + S.turn + '</span>' +
+      '<span class="lzf-l" title="Lore">' + S.P.map(function (p) { return '<i class="dot" style="--c:' + p.color + '"></i><b>' + p.lore + '</b>'; }).join('<em>·</em>') + '</span>';
+    // the cards sit just below the panel, however tall it is
+    requestAnimationFrame(function () { if (f.isConnected) ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
+    return f;
+  }
+  function feedLine(f, p, verb, text) {
+    var ev = $('.lzf-ev', f);
+    ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + esc(text) + '</span>' }));
+    while (ev.children.length > 3) ev.removeChild(ev.firstChild);
+    var ov = f.closest('.lz'); if (ov) requestAnimationFrame(function () { ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
+  }
   function ticker(p, verb, text) {
+    var lf = lzFeed(); if (lf) { feedLine(lf, p, verb, text); return; }
     var open = $('.lz.reveal .rv-head');
     if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + esc(text) }), open.firstChild); return; }
     var box = $('.rv-ticks') || document.body.appendChild(el('div', { class: 'rv-ticks', 'aria-live': 'polite' }));
