@@ -411,6 +411,8 @@
   var opts = {};
   function goHome() {
     sfx('tap');
+    // A game can take over the bar's back button for a screen of its own (Kit.onBack returns true when it handled it)
+    try { if (window.Kit && typeof Kit.onBack === 'function' && Kit.onBack() === true) return; } catch (e) {}
     var ref = doc.referrer;
     try {
       var u = new URL(ref);

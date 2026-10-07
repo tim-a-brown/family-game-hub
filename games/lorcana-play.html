@@ -793,6 +793,9 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .tsize .lg .ico{width:20px;height:20px;}
 .tsize input{width:min(150px,26vw);accent-color:var(--gilt);}
 .colbtn{display:none;flex:none;}
+.bld-filters .row1{align-items:center;}
+.bld-filters .row1 .colbtn{width:60px;height:44px;border-radius:22px;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);}
+.bld-filters .row1 .colbtn .ico{width:20px;height:20px;}
 .adv{display:flex;flex-direction:column;gap:14px;}
 .adv .label{margin-bottom:6px;}
 .adv .fchips{flex-wrap:wrap;overflow:visible;}
@@ -936,9 +939,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 /* Library: the filter button sits to the right of the saved and cost rows, as tall as both */
 .fside{display:flex;gap:10px;align-items:stretch;}
 .fside-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
-.flt-btn{position:relative;flex:none;align-self:center;width:76px;height:76px;border:0;border-radius:50%;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;
+.flt-btn{position:relative;flex:none;align-self:center;width:60px;height:60px;border:0;border-radius:50%;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;
   background:rgba(255,255,255,.08);color:var(--text);font-weight:800;font-size:.68rem;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),0 4px 12px rgba(0,0,0,.3);}
-.flt-btn .ico{width:24px;height:24px;}
+.flt-btn .ico{width:20px;height:20px;}
 .flt-btn.on{color:var(--gilt-2);box-shadow:inset 0 0 0 2px var(--gilt),0 4px 14px rgba(0,0,0,.4);}
 .flt-btn b{position:absolute;right:-2px;top:-2px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--gilt);color:#2b1a00;font-size:.78rem;display:grid;place-items:center;box-shadow:0 0 0 2px var(--bg-2);}
 .flt-btn:active{transform:scale(.95);}
@@ -6804,10 +6807,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var phoneLib = function () { return window.innerWidth < 700; };
     var colBtn = el('button', { type: 'button', class: 'icon-btn colbtn', 'aria-label': 'Card size: ' + cols + ' across', title: 'Card size', html: Kit.icon('tiles') });
     var top = lib ? el('div', { class: 'bld-top' }, [
-      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: back }), el('h2', { class: 'libt', text: 'Card library' }), cnt, sizer,
+      el('h2', { class: 'libt', text: 'Card library' }), cnt, sizer,
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Build a deck', onclick: function () { showBuilder(null, function () { showBuilder(null, back, o); }); } })])
       : el('div', { class: 'bld-top' }, [
-      el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Back', html: Kit.icon('back'), onclick: leave }), nameIn, cnt,
+      nameIn, cnt,
       el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Save', onclick: function () { saveDeck(); } })]);
     var tabs = el('div', { class: 'bld-tabs' });
     var body = el('div', { class: 'bld-body tab-pool' });
@@ -6855,6 +6858,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
     var wrap = el('div', { class: 'bld' + (lib ? ' lib' : '') }, [top, msg, tabs, body]);
+    // The game bar's back arrow leaves the library or deck builder (one back arrow, not two)
+    Kit.onBack = function () { if (!wrap.isConnected) { Kit.onBack = null; return false; } Kit.onBack = null; if (lib) back(); else leave(); return true; };
     app.appendChild(wrap);
     function chip(label, on, click, dot) { return el('button', { type: 'button', class: 'fchip' + (on ? ' on' : ''), html: (dot ? '<i class="dot" style="--c:' + dot + '"></i>' : '') + esc(label), onclick: function () { Kit.sfx('tap'); click(); } }); }
     // Film or show: the most common ones as chips, plus a searchable list of all of them
