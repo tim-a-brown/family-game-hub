@@ -335,18 +335,18 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   --scroll-body:linear-gradient(180deg,#5b3d1c 0%,#ad834c 9%,#e8d3a1 28%,#f6ead0 46%,#e2cb96 66%,#9c7442 86%,#4a3116 100%);
   --scroll-sh:0 8px 16px rgba(0,0,0,.5),inset 0 0 0 1px rgba(74,44,16,.35);--slant:-3.5deg;}
 /* L is the roller's front edge (12px down to the bottom of the panel), h its thickness (12px to 44px); the paper is gone
-   above the roller, the line tipping ±12px across the panel by the end */
+   above the roller, the line tipping across the panel to match the roller's slant (--tilt, set from the panel's width) */
 @keyframes lzRoll{
   from{clip-path:polygon(-10px -1px,calc(100% + 10px) -1px,calc(100% + 10px) 100%,-10px 100%);}
-  50%{clip-path:polygon(-10px calc(50% - 17px),calc(100% + 10px) calc(50% - 29px),calc(100% + 10px) 100%,-10px 100%);}
-  to{clip-path:polygon(-10px calc(100% - 33px),calc(100% + 10px) calc(100% - 57px),calc(100% + 10px) 100%,-10px 100%);}}
+  50%{clip-path:polygon(-10px calc(50% - 23px + var(--tilt,12px) / 2),calc(100% + 10px) calc(50% - 23px - var(--tilt,12px) / 2),calc(100% + 10px) 100%,-10px 100%);}
+  to{clip-path:polygon(-10px calc(100% - 45px + var(--tilt,12px)),calc(100% + 10px) calc(100% - 45px - var(--tilt,12px)),calc(100% + 10px) 100%,-10px 100%);}}
 @keyframes lzRoller{
   from{top:0;height:12px;transform:rotate(0deg);background-position:0 0,0 0,0 0;color:transparent;}
   50%{top:calc(50% - 22px);height:28px;transform:rotate(-1.75deg);color:transparent;}
   80%{color:transparent;}
   to{top:calc(100% - 44px);height:44px;transform:rotate(var(--slant));background-position:0 0,0 70px,0 0;color:rgba(74,44,14,.8);}}
 @keyframes lzCurl{from{top:12px;transform:rotate(0deg);}50%{top:calc(50% + 6px);transform:rotate(-1.75deg);}to{top:100%;transform:rotate(var(--slant));}}
-.lz-roll{display:none;position:relative;z-index:200;align-self:center;align-items:center;justify-content:center;width:min(88vw,400px);height:44px;margin-top:14px;padding:0 30px;border:0;border-radius:7px/50%;cursor:pointer;
+.lz-roll{display:none;position:relative;z-index:200;align-self:center;align-items:center;justify-content:center;width:var(--roll-w,min(88vw,400px));height:44px;margin-top:14px;padding:0 30px;border:0;border-radius:7px/50%;cursor:pointer;
   transform:rotate(var(--slant));
   /* aged parchment: foxing and tea-coloured stains over the rolled paper */
   background:var(--scroll-ends),
@@ -6623,6 +6623,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       info.addEventListener('animationend', onEnd); setTimeout(fin, 1100);
     };
     ui.lzMin = min;
+    // the roll keeps the width of the panel it rolled up from, and its slant tips the edge by tan(3.5°) of half that width
+    if (info && info.offsetWidth) {
+      var w = info.offsetWidth; ui.rollW = w + 16; ov.style.setProperty('--roll-w', ui.rollW + 'px');
+      info.style.setProperty('--tilt', ((w / 2 + 10) * Math.tan(3.5 * Math.PI / 180)).toFixed(1) + 'px');
+    }
     Kit.sfx('tap'); if (Kit.haptic) Kit.haptic('light');
     if (min) {
       if (still) { ov.classList.add('lz-min'); remeasure(); return; }
@@ -6639,6 +6644,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     closeZoom();
     var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (ui.lzMin && phoneZoom() ? ' lz-min' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
+    if (ui.rollW) ov.style.setProperty('--roll-w', ui.rollW + 'px');
     var F = null, card = null;
     if (nav && nav.peek && nav.n > 1) {
       F = keep && keep.n === nav.n ? keep : makeFlow(nav);
