@@ -372,6 +372,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-fc .face{--cu:inherit;}
 .lz-fc::after{content:'';position:absolute;inset:0;background:rgba(6,5,18,.42);opacity:var(--dim,1);pointer-events:none;}
 .lz-head{display:flex;align-items:flex-start;gap:12px;}
+.lz-head.inkglow{position:relative;isolation:isolate;padding-bottom:10px;}
+.lz-head.inkglow::before{content:'';position:absolute;z-index:-1;pointer-events:none;left:-18px;right:-18px;bottom:-16px;height:160%;
+  -webkit-mask-image:linear-gradient(0deg,transparent 0,#000 26px);mask-image:linear-gradient(0deg,transparent 0,#000 26px);
+  background:radial-gradient(60% 75% at 22% 88%,color-mix(in srgb,var(--g1) 38%,transparent),transparent 72%),radial-gradient(60% 75% at 78% 88%,color-mix(in srgb,var(--g2) 38%,transparent),transparent 72%);}
 .lz-ttl{flex:1;min-width:0;}
 .lz-story{display:block;max-width:100%;margin:0 0 3px;padding:0;border:0;background:none;text-align:left;font-family:var(--serif);font-style:italic;font-size:.9rem;line-height:1.2;color:var(--gilt);letter-spacing:.01em;}
 .lz-story.tap{cursor:pointer;}
@@ -5872,7 +5876,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     } });
     // Bookmark: a ribbon down the left of the film / name / version block
     var hd = info.querySelector('.lz-head');
-    if (hd) { bm.classList.add('tall'); bm.innerHTML = RIBBON; hd.insertBefore(bm, hd.firstChild); hd.appendChild(el('div', { class: 'lz-ics' })); }
+    if (hd) {
+      bm.classList.add('tall'); bm.innerHTML = RIBBON; hd.insertBefore(bm, hd.firstChild); hd.appendChild(el('div', { class: 'lz-ics' }));
+      // The card's ink glows up from under the name (two inks: one each side)
+      var hik = inkOf(d), hc1 = INKC[hik[0]] || '#4a3f75', hc2 = INKC[hik[1] || hik[0]] || hc1;
+      hd.classList.add('inkglow'); hd.style.setProperty('--g1', hc1); hd.style.setProperty('--g2', hc2);
+    }
     else info.insertBefore(bm, info.firstChild);
     var stb = info.querySelector('.lz-story.tap');
     if (stb) stb.addEventListener('click', function (e) { e.stopPropagation(); if (ui.storyPick) ui.storyPick(stb.getAttribute('data-story')); });
