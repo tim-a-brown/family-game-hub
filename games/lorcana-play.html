@@ -4615,25 +4615,32 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (extra) b.appendChild(extra);
       return b;
     }
-    var mine = savedDecks();
+    var all = savedDecks();
     node.appendChild(el('div', { class: 'dk-h', text: 'Your decks' }));
-    // Casual (3+ ink) decks: a filter to show standard decks, casual ones, or both
-    var hasCasual = mine.some(isCasual), dkf = hasCasual ? lsGet('lorc_dk_filter', 'all') : 'all';
-    if (hasCasual) {
-      var fr = el('div', { class: 'fchips', style: { 'margin-bottom': '8px' } });
+    // Casual (3+ ink) decks: a filter to show standard decks, casual ones, or both (changes the list in place)
+    var hasCasual = all.some(isCasual), dkf = hasCasual ? lsGet('lorc_dk_filter', 'all') : 'all';
+    var fr = el('div', { class: 'fchips', style: { 'margin-bottom': '8px' } });
+    var empty = el('p', { class: 'muted' }), list = el('div', { class: 'stack', style: { gap: '6px' } });
+    function paintFr() {
+      fr.innerHTML = '';
       [['all', 'All decks'], ['std', 'Standard (1–2 inks)'], ['cas', 'Casual (3+ inks)']].forEach(function (o) {
-        fr.appendChild(el('button', { type: 'button', class: 'fchip' + (dkf === o[0] ? ' on' : ''), text: o[1], onclick: function () { lsSet('lorc_dk_filter', o[0]); s.close(); reopen(); } }));
+        fr.appendChild(el('button', { type: 'button', class: 'fchip' + (dkf === o[0] ? ' on' : ''), text: o[1], onclick: function () { dkf = o[0]; lsSet('lorc_dk_filter', dkf); Kit.sfx('tap'); paintFr(); paintMine(); } }));
       });
-      node.appendChild(fr);
-      mine = mine.filter(function (d) { return dkf === 'all' || (dkf === 'cas') === isCasual(d); });
     }
-    if (!mine.length) node.appendChild(el('p', { class: 'muted', text: 'No saved decks yet. Build one, or start from a quick deck.' }));
-    var list = el('div', { class: 'stack', style: { gap: '6px' } });
-    mine.forEach(function (d) {
-      var pr = DB.status === 'ready' ? deckProblems(d.cards, d.casual) : [];
-      var edit = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', html: Kit.icon('pencil'), 'aria-label': 'Edit ' + d.name, onclick: function (e) { e.stopPropagation(); s.close(); showBuilder(d.id, function () { reopen(); }); } });
-      list.appendChild(opt({ kind: 'saved', id: d.id }, d.name, pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual · ' : '') + deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit));
-    });
+    function paintMine() {
+      var mine = all.filter(function (d) { return dkf === 'all' || (dkf === 'cas') === isCasual(d); });
+      list.innerHTML = '';
+      empty.textContent = !all.length ? 'No saved decks yet. Build one, or start from a quick deck.' : 'No ' + (dkf === 'cas' ? 'casual' : 'standard') + ' decks.';
+      empty.style.display = mine.length ? 'none' : '';
+      mine.forEach(function (d) {
+        var pr = DB.status === 'ready' ? deckProblems(d.cards, d.casual) : [];
+        var edit = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', html: Kit.icon('pencil'), 'aria-label': 'Edit ' + d.name, onclick: function (e) { e.stopPropagation(); s.close(); showBuilder(d.id, function () { reopen(); }); } });
+        list.appendChild(opt({ kind: 'saved', id: d.id }, d.name, pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual · ' : '') + deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit));
+      });
+    }
+    if (hasCasual) { paintFr(); node.appendChild(fr); }
+    paintMine();
+    node.appendChild(empty);
     node.appendChild(list);
     node.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-block', style: { 'margin-top': '6px' }, html: Kit.icon('share') + '<span>Export or import decks</span>', onclick: function () { s.close(); deckFiles(function () { showDeckPick(lastCfg); }); } }));
     node.appendChild(el('div', { class: 'dk-h', text: 'Quick decks (built for you)' }));
