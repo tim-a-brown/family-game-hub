@@ -6993,6 +6993,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (at && dn) { zone.style.top = Math.round(lineY - 34) + 'px'; zone.style.height = ''; hint.style.top = '10px'; hint.style.bottom = 'auto'; }
       else if (at) { zone.style.top = '0px'; zone.style.height = Math.round(lineY + 34) + 'px'; hint.style.top = 'auto'; hint.style.bottom = '10px'; }
       else { zone.style.top = ''; zone.style.height = ''; hint.style.top = ''; hint.style.bottom = ''; }
+      // Swiping down, your thumb covers the bottom of the screen: the label shows up top, where the bookmark one does
+      hint.style.position = '';
+      if (dn) {
+        var upY = edgeY(false); hint.style.position = 'fixed';
+        if (upY != null) { hint.style.top = 'auto'; hint.style.bottom = Math.round(window.innerHeight - upY - 24) + 'px'; }
+        else { hint.style.top = 'calc(var(--safe-t, 0px) + 18px)'; hint.style.bottom = 'auto'; }
+      }
       var what = dn ? 'add to a deck' : d && isMarked(d) ? 'remove bookmark' : 'bookmark';
       hint.innerHTML = '<i>' + (dn ? DECK_ICO2 : Kit.icon('bookmark')) + '</i><span>' + (now ? 'Release to ' + what : (dn ? 'Swipe down to ' : 'Swipe up to ') + what) + '</span>';
     }
