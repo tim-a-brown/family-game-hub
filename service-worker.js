@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v230-2026-10-07-bungee';
+const CACHE_VERSION = 'v231-2026-10-07-art-cache';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -186,6 +186,45 @@ const PRECACHE_URLS = [
   '/games/yahtzee.html',
 ];
 
+// Lorcana card art kept on the device for speed: the first pages of the card library and every card in a
+// saved deck (the game sends the list), plus pictures as they're shown. Capped; past the limit the ones saved
+// longest ago go first. Its own cache, so releases don't clear it. (Lorcast, or the copy on Google Cloud, serve the rest.)
+const ART_CACHE = 'lorc-art-1';
+const ART_MAX = 800;
+let artPuts = 0;
+function isArt(url) {
+  return url.hostname === 'cards.lorcast.io' ||
+    (url.hostname === 'firebasestorage.googleapis.com' && url.pathname.indexOf('/o/lorcana') >= 0);
+}
+function trimArt(cache, force) {
+  if (!force && ++artPuts % 25) return Promise.resolve();
+  return cache.keys().then((keys) => Promise.all(keys.slice(0, Math.max(0, keys.length - ART_MAX)).map((k) => cache.delete(k))));
+}
+function artFetch(req) {
+  return caches.open(ART_CACHE).then((cache) => cache.match(req.url).then((hit) => hit || fetch(req).then((resp) => {
+    if (resp && (resp.ok || resp.type === 'opaque')) { const c = resp.clone(); cache.put(req.url, c).then(() => trimArt(cache)).catch(() => {}); }
+    return resp;
+  })));
+}
+// Fetch and keep a list of pictures, a few at a time (readable copies where the server allows, sealed ones otherwise)
+function warmArt(urls) {
+  return caches.open(ART_CACHE).then((cache) => {
+    const q = urls.slice(0, ART_MAX);
+    const one = () => {
+      const u = q.shift(); if (!u) return Promise.resolve();
+      return cache.match(u).then((hit) => hit ? null : fetch(u, { mode: 'cors', credentials: 'omit' })
+        .catch(() => fetch(u, { mode: 'no-cors', credentials: 'omit' }))
+        .then((resp) => { if (resp && (resp.ok || resp.type === 'opaque')) return cache.put(u, resp); }))
+        .catch(() => {}).then(one);
+    };
+    return Promise.all([one(), one(), one(), one()]).then(() => trimArt(cache, true));
+  });
+}
+self.addEventListener('message', (event) => {
+  const d = event.data || {};
+  if (d.type === 'lorc-warm' && Array.isArray(d.urls)) event.waitUntil(warmArt(d.urls.filter((u) => { try { return isArt(new URL(u)); } catch (e) { return false; } })));
+});
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -219,6 +258,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
 
   if (req.method !== 'GET') return;
+
+  // Lorcana card art: from the device when we have it
+  if (isArt(url)) { event.respondWith(artFetch(req)); return; }
 
   // Skip Firebase/Firestore/Google APIs — need fresh data
   if (

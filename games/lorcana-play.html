@@ -1218,6 +1218,8 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 }
 .onchips .x{font-style:normal;margin-left:2px;opacity:.75;}
 .btn.fon{box-shadow:inset 0 0 0 2px var(--gilt);color:var(--gilt-2);}
+/* cards off the screen aren't laid out or painted until they scroll near (opens the library much faster on a phone) */
+.bld-grid .pc{content-visibility:auto;contain-intrinsic-size:auto 120px auto 200px;}
 .bld-grid.tiny{gap:4px;}
 .bld-grid.tiny .pc{border-radius:4px;}
 .bld-grid.tiny .pc .nmb{display:none;}
@@ -2963,8 +2965,29 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function savedDecks() { var a = lsGet(DECKS, []); return Array.isArray(a) ? a.filter(function (d) { return d && d.cards; }) : []; }
   function storeDecks(a) { if (!lsSet(DECKS, a)) Kit.toast('Couldn’t save decks: storage is full'); else synced(DECKS); }
   // Save (or replace) one deck, newest first
+  // Keep card pictures on the device (the service worker holds them): the first three pages of the card library
+  // (60, then two more pages of 90) and every card in a saved deck, at both sizes. Sent once the cards are ready,
+  // after a pause so it doesn't compete with what's on screen; again for a deck when it's saved.
+  function artWarm(cards) {
+    var sw = navigator.serviceWorker && navigator.serviceWorker.controller; if (!sw || !cards.length) return;
+    var urls = [], seen = {};
+    cards.forEach(function (c) { var a = artOf(c.d) || c.d; if (!a.im) return; (c.big ? [a.im.s, a.im.l] : [a.im.s]).forEach(function (u) { if (u && !seen[u]) { seen[u] = 1; urls.push(u); } }); });
+    try { sw.postMessage({ type: 'lorc-warm', urls: urls }); } catch (e) {}
+  }
+  function deckCards(deck) { return Object.keys(deck.cards || {}).map(function (id) { return DB.byId[id]; }).filter(Boolean).map(function (d) { return { d: d, big: true }; }); }
+  var artWarmed = false;
+  function artWarmAll() {
+    if (artWarmed || DB.status !== 'ready') return; artWarmed = true;
+    var go = function () {
+      var lib = DB.unique.slice().sort(function (a, b) { return a.full.localeCompare(b.full); }).slice(0, 240).map(function (d) { return { d: d }; });
+      var decks = []; savedDecks().forEach(function (dk) { decks = decks.concat(deckCards(dk)); });
+      artWarm(decks.concat(lib));   // decks first: those are the pictures you'll want most
+    };
+    setTimeout(function () { if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 4000 }); else go(); }, 2500);
+  }
+  DB.subs.push(artWarmAll);
   function putDeck(deck) {
-    deck.at = Date.now();
+    deck.at = Date.now(); setTimeout(function () { artWarm(deckCards(deck)); }, 1500);
     var del = lsGet(DECKS_DEL, null) || {}; if (del[deck.id]) { delete del[deck.id]; lsSet(DECKS_DEL, del); }
     storeDecks([deck].concat(savedDecks().filter(function (d) { return d.id !== deck.id; })));
   }
@@ -7674,6 +7697,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var sub = function () { if (!wait.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } if (DB.status === 'ready') { DB.subs.splice(DB.subs.indexOf(sub), 1); showBuilder(deckId, back, o); } };
       DB.subs.push(sub);
       if (DB.status === 'error' || DB.status === 'idle') DB.load();
+      return;
+    }
+    // Building the library takes a moment on a phone: show its screen first (so the tap answers at once), then build
+    if (!(o && o._go)) {
+      var opening = el('div', { class: 'lp-load' }, [el('h2', { class: 'display', text: lib ? 'Card library' : 'Deck builder' }), el('p', { class: 'muted', text: 'Opening…' })]);
+      app.appendChild(opening);
+      var t0 = tok;
+      requestAnimationFrame(function () { setTimeout(function () { if (tok !== t0 || !opening.isConnected) return; showBuilder(deckId, back, Object.assign({}, o || {}, { _go: 1 })); }, 16); });
       return;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
