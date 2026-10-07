@@ -6632,8 +6632,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var cardOf = function () { return ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card'); };
     var snap = function (on) { ov.classList.toggle('lz-min', on); remeasure(); var c = cardOf(); return c && c.getBoundingClientRect(); };
     // (both measured in one go, before anything paints; then the open layout stays for the roll to run over)
-    var st = ov.scrollTop, open = snap(false), shut = snap(true);
+    var rollAt = function () { var rl = ov.querySelector('.lz-roll'), q = rl && rl.getBoundingClientRect(); return q && q.width ? { x: (q.left + q.right) / 2, y: (q.top + q.bottom) / 2 } : null; };
+    var st = ov.scrollTop, open = snap(false), shut = snap(true), rollEnd = rollAt();
     snap(false); ov.scrollTop = st;
+    // The details panel drifts as it rolls so the roller comes to rest exactly where the rolled scroll lies: no second move
+    var drift = null, ir0 = info.getBoundingClientRect();
+    if (rollEnd && ir0.width) {
+      var tr = 'translate(' + (rollEnd.x - (ir0.left + ir0.right) / 2).toFixed(1) + 'px,' + (rollEnd.y - (ir0.bottom - 22)).toFixed(1) + 'px)';
+      drift = info.animate(min ? [{ transform: 'none' }, { transform: tr }] : [{ transform: tr }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
+    }
     var card = cardOf(), flow = card && card.closest('.lz-flow'), grow = null;
     if (flow && open && shut && open.width) {
       var fr = flow.getBoundingClientRect();
@@ -6641,19 +6648,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var tf = 'translate(' + (shut.left - open.left).toFixed(1) + 'px,' + (shut.top - open.top).toFixed(1) + 'px) scale(' + (shut.width / open.width).toFixed(4) + ')';
       grow = flow.animate(min ? [{ transform: 'none' }, { transform: tf }] : [{ transform: tf }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
     }
-    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } };
+    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (drift) drift.cancel(); };
     if (min) {
       after('lz-rolling', function () {
-        // the roller ends at the foot of the panel; the rolled scroll glides from there to its place under the card
-        var ir = info.getBoundingClientRect();
+        var roll = ov.querySelector('.lz-roll'); if (roll) roll.style.animation = 'none';
         ov.classList.add('lz-min'); remeasure(); settle();
-        var roll = ov.querySelector('.lz-roll');
-        if (roll && ir.width) {
-          var rr = roll.getBoundingClientRect(), slant = getComputedStyle(ov).getPropertyValue('--slant').trim() || '-3.5deg';
-          var dx = (ir.left + ir.right) / 2 - (rr.left + rr.right) / 2, dy = ir.bottom - 22 - (rr.top + rr.bottom) / 2;
-          roll.style.animation = 'none';
-          roll.animate([{ transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) rotate(' + slant + ')' }, { transform: 'rotate(' + slant + ')' }], { duration: 380, easing: 'cubic-bezier(.3,0,.2,1)' });
-        }
       });
     } else after('lz-unroll', settle);
   }
