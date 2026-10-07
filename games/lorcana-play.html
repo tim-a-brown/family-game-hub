@@ -341,8 +341,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .tsheen{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
   background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.14) 34%,rgba(255,244,210,.62) 46%,rgba(255,255,255,.7) 50%,rgba(200,225,255,.48) 54%,rgba(255,255,255,.14) 64%,transparent 78%);
   background-size:220% 220%;background-position:calc(50% - var(--tx,0) * 42%) calc(50% - var(--ty,0) * 42%);
-  opacity:calc(.5 + (var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .5);transition:opacity .2s;}
-.lz-fc:not(.focus) .tsheen{display:none;}
+  opacity:calc((.25 + (var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .25) * var(--sw,1));}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
 .lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);--bw:var(--cu);}
 /* The cost corner of a sideways location, cut from the upright card image (bw = width of the sideways card) */
@@ -6005,22 +6004,22 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function tiltFrame() {
     var ov = tiltT.ov;
     if (!ov || !ov.isConnected) { if (tiltT.el) { tiltT.el.style.rotate = ''; } tiltT.el = null; tiltT.raf = 0; return; }
-    var t = ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card');
-    if (t !== tiltT.el) {
-      if (tiltT.el) tiltT.el.style.rotate = '';
-      tiltT.el = t;
-      if (t && !t.querySelector(':scope > .tsheen')) t.appendChild(el('i', { class: 'tsheen', 'aria-hidden': 'true' }));
-    }
-    // ease toward the target so it feels weighty rather than jittery
-    tiltT.cx += (tiltT.x - tiltT.cx) * 0.12; tiltT.cy += (tiltT.y - tiltT.cy) * 0.12;
-    if (t) {
-      var x = tiltT.cx, y = tiltT.cy, mag = Math.min(1, Math.sqrt(x * x + y * y));
-      t.style.rotate = mag > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (mag * 6).toFixed(2) + 'deg' : '';
+    // In the card library every card near the middle carries the light, weighted by how close it is,
+    // so it slides from one card to the next as they pass instead of jumping when one settles
+    var flow = ov.querySelector('.lz-flow'), cards = flow ? $$('.lz-fc', flow) : [ov.querySelector('.lz-card')].filter(Boolean);
+    tiltT.el = (flow && flow.querySelector('.lz-fc.front')) || cards[0] || null;
+    tiltT.cx += (tiltT.x - tiltT.cx) * 0.12; tiltT.cy += (tiltT.y - tiltT.cy) * 0.12;   // eased, so it feels weighty
+    var x = tiltT.cx, y = tiltT.cy, mag = Math.min(1, Math.sqrt(x * x + y * y));
+    cards.forEach(function (t) {
+      var w = flow ? (t._near || 0) : 1;
+      if (!t.querySelector(':scope > .tsheen')) { if (w < 0.01) return; t.appendChild(el('i', { class: 'tsheen', 'aria-hidden': 'true' })); }
+      var m = mag * w;
+      t.style.rotate = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '';
       // swiping swings or lifts the card too: the light slides with that as well
-      tiltT.sx += ((t._swing || 0) * -1.3 - tiltT.sx) * 0.35; tiltT.sy += ((t._lift || 0) * 0.9 - tiltT.sy) * 0.25;
-      var sx = Math.max(-1.4, Math.min(1.4, x + tiltT.sx)), sy = Math.max(-1.4, Math.min(1.4, y + tiltT.sy));
-      t.style.setProperty('--tx', sx.toFixed(3)); t.style.setProperty('--ty', sy.toFixed(3));
-    }
+      t._sx = (t._sx || 0) + ((t._swing || 0) * -1.3 - (t._sx || 0)) * 0.35; t._sy = (t._sy || 0) + ((t._lift || 0) * 0.9 - (t._sy || 0)) * 0.25;
+      var sx = Math.max(-1.4, Math.min(1.4, x + t._sx)), sy = Math.max(-1.4, Math.min(1.4, y + t._sy));
+      t.style.setProperty('--tx', sx.toFixed(3)); t.style.setProperty('--ty', sy.toFixed(3)); t.style.setProperty('--sw', w.toFixed(3));
+    });
     tiltT.raf = requestAnimationFrame(tiltFrame);
   }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
@@ -6171,6 +6170,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         // the card in focus keeps its tilt and sheen while it's dragged, until another card settles
         b.classList.toggle('focus', j === F.focus);
         b._swing = Math.max(-1, Math.min(1, j - F.pos));   // how far it has swung sideways (the sheen follows)
+        b._near = Math.max(0, 1 - Math.abs(j - F.pos));   // the sheen and tilt hand over smoothly as cards pass the middle
       }
       var idx = Math.round(F.pos);
       if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz) pz.textContent = (idx + 1) + ' of ' + n; Kit.sfx('tick'); }
@@ -6216,7 +6216,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var rb = (dn ? 1 : -1) * (a < VT ? a * 0.55 : VT * 0.55 + (a - VT) * 0.2);
       var pr = Math.min(1, a / VT), d = defAt(j);
       b.style.transition = 'none'; b._lift = Math.max(-1, Math.min(1, rb / 90));
-      b.style.transform = pose(j - F.pos).t + ' translateY(' + rb.toFixed(1) + 'px) rotateX(' + (-rb * 0.06).toFixed(2) + 'deg) scale(' + (1 - pr * 0.04).toFixed(3) + ')';
+      b.style.transform = pose(j - F.pos).t + ' translateY(' + rb.toFixed(1) + 'px) rotateX(' + Math.max(-20, Math.min(20, -rb * 0.18)).toFixed(2) + 'deg) scale(' + (1 - pr * 0.04).toFixed(3) + ')';
       if (!can || a < 12) { hint.className = 'fc-hint'; zoneOn('', 0); armed = 0; return; }
       var now = pr >= 1 ? (dn ? 2 : 1) : 0;
       if (now && now !== armed) { Kit.haptic('light'); Kit.sfx('tick'); }
