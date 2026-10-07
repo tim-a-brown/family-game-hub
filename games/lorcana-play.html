@@ -422,6 +422,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rsym{display:inline-grid;place-items:center;flex:none;width:16px;height:16px;vertical-align:-3px;}
 .rsym svg{width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55));overflow:visible;}
 .fchip .rsym{width:14px;height:14px;margin-right:4px;}
+.rsyms{display:inline-flex;align-items:center;gap:1px;flex:none;}
+.rsyms .rsym{margin:0;}
+.fchip .rsyms{margin-right:4px;}
 .rp-i .rsym{width:18px;height:18px;}
 .pk-ic .rsym{width:18px;height:18px;}
 /* The art wheel */
@@ -1148,7 +1151,7 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 .pk-row .ck{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);color:#2b1a00;}
 .pk-row.on .ck{background:var(--gilt);box-shadow:none;}
 .pk-row .ck .ico{width:15px;height:15px;}
-.pk-ic{flex:none;display:grid;place-items:center;width:22px;}
+.pk-ic{flex:none;display:grid;place-items:center;min-width:22px;}
 .pk-note{font-size:.78rem;margin:10px 2px 0;}
 /* Rarity gems: tier colours; the special printings shimmer */
 .rgem{position:relative;display:inline-block;flex:none;width:15px;height:15px;transform:rotate(45deg);border-radius:3px;overflow:hidden;vertical-align:-2px;margin-right:2px;
@@ -5527,9 +5530,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
   function printsSorted(d) { return printingsOf(d).slice().sort(function (a, b) { return (PR_ORDER[rarKey(a)] || 6) - (PR_ORDER[rarKey(b)] || 6) || setOrd(a.set) - setOrd(b.set); }); }
   function prLabel(p, list) { var n = prRarName(p.r) || 'Card'; return list.filter(function (x) { return prRarName(x.r) === n; }).length > 1 ? n + ' · Set ' + p.set : n; }
-  // The rarity marks as printed at the bottom of the cards (drawn to match): Common a grey disc and swirl, Uncommon a
+  // The rarity marks as printed at the bottom of the cards (drawn to match; Legendary and Enchanted have an older
+  // and a newer mark, and promos one per series): Common a grey disc and swirl, Uncommon a
   // white open book, Rare a bronze notched triangle, Super Rare a silver art-deco fan, Legendary a gold
-  // pentagon, Enchanted a rainbow hexagon, Epic a rainbow fan, Iconic a rainbow octagon with a round hole; promos a gold ring and star
+  // pentagon, Enchanted a rainbow hexagon, Epic a rainbow fan, Iconic a rainbow octagon closed like an aperture; promos their series mark
   var RSYM = (function () {
     function g(id, stops, x2, y2) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="' + (x2 == null ? 1 : x2) + '" y2="' + (y2 == null ? 1 : y2) + '">' + stops.map(function (s, i) { return '<stop offset="' + (i / (stops.length - 1)).toFixed(2) + '" stop-color="' + s + '"/>'; }).join('') + '</linearGradient>'; }
     // the fine honeycomb dots printed on the Legendary and Enchanted marks
@@ -5553,37 +5557,58 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         '<path d="M12 2.2 22 11.4l-7.6 6.4H9.6L2 11.4z" fill="url(#rsS)"/><path d="M9.8 18.6h4.4c-.5 1.3-1.2 2.2-2.2 2.9-1-.7-1.7-1.6-2.2-2.9z" fill="url(#rsS)"/>' +
         '<path d="M12 2.8v15M10.6 17.8c-.3-4.6-1.2-8-3.6-11.2M13.4 17.8c.3-4.6 1.2-8 3.6-11.2" fill="none" stroke="' + D + '" stroke-width="1"/>',
 
-      // a gold pentagon with the honeycomb dots
+      // Legendary (set 9 on): a gold pentagon with the honeycomb dots
       legendary: '<defs>' + g('rsL', ['#fff3c2', '#e9c552', '#b48419']) + dots('rsl', '#6e4d08', '.4') + '</defs>' +
         '<path d="M12 1.6 22.4 9.2l-4 12.4H5.6L1.6 9.2z" fill="url(#rsL)"/><path d="M12 1.6 22.4 9.2l-4 12.4H5.6L1.6 9.2z" fill="url(#rsl)"/>',
-
-      // a rainbow hexagon (point up) with a dark diamond in the middle, and the honeycomb dots
+      // Legendary (sets 1-8): a polished gold pentagon cut by fine dark lines, two fanning down from the top and one off each shoulder
+      'legendary old': '<defs>' + g('rsL', ['#fff0b0', '#f1c843', '#b07a12', '#f6d66a']) + '<clipPath id="rsm"><path d="M12 1.6 22.4 9.2l-4 12.4H5.6L1.6 9.2z"/></clipPath></defs><path d="M12 1.6 22.4 9.2l-4 12.4H5.6L1.6 9.2z" fill="url(#rsL)"/>' +
+        '<path clip-path="url(#rsm)" d="M11.6 1.8C10.2 8.6 8.8 15 8.2 22M12.4 1.8c1.4 6.8 2.8 13.2 3.4 20.2M11.2 2.4C7.6 5.4 4.6 8.8 1.8 13M12.8 2.4c3.6 3 6.6 6.4 9.4 10.6" fill="none" stroke="' + D + '" stroke-width="1.05"/>',
+      // Enchanted (set 9 on): a rainbow hexagon, point up, with a dark diamond in the middle and the honeycomb dots
       enchanted: '<defs><clipPath id="rsk"><path d="M12 1 21.8 6.6v10.8L12 23l-9.8-5.6V6.6z"/></clipPath><filter id="rsb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>' + dots('rse', '#2a1f4a', '.3') + '</defs>' +
-        // six colour wedges blurred into each other: silver, cyan, red, violet, lilac, gold round from the top-left
-        '<g clip-path="url(#rsk)"><g filter="url(#rsb)"><path d="M12 12 12-2-1 5z" fill="#f2f0ec"/><path d="M12 12 12-2 25 5z" fill="#3cc4f0"/><path d="M12 12 25 5v14z" fill="#ff3046"/><path d="M12 12 25 19 12 26z" fill="#c54fc4"/><path d="M12 12 12 26-1 19z" fill="#a98ad6"/><path d="M12 12-1 19V5z" fill="#e6bb52"/></g>' +
-        '<rect width="24" height="24" fill="url(#rse)"/></g><path d="M12 7.4 17 11.8 12 16.2 7 11.8z" fill="' + D + '"/>',
-
-      // two gold outlines, each a round back with a pointed front, one overlapping the other
+        '<g clip-path="url(#rsk)"><g filter="url(#rsb)"><path d="M12 12 12-2-1 5z" fill="#f2f0ec"/><path d="M12 12 12-2 25 5z" fill="#3cc4f0"/><path d="M12 12 25 5v14z" fill="#ff3046"/><path d="M12 12 25 19 12 26z" fill="#c54fc4"/><path d="M12 12 12 26-1 19z" fill="#a98ad6"/><path d="M12 12-1 19V5z" fill="#e6bb52"/></g><rect width="24" height="24" fill="url(#rse)"/></g><path d="M12 7.4 17 11.8 12 16.2 7 11.8z" fill="' + D + '"/>',
+      // Enchanted (sets 1-8): the same hexagon in deeper inks, cut by slashes at the top left and an open diamond
+      'enchanted old': '<defs><clipPath id="rsk"><path d="M12 1 21.8 6.6v10.8L12 23l-9.8-5.6V6.6z"/></clipPath><filter id="rsb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>' +
+        '<g clip-path="url(#rsk)"><g filter="url(#rsb)"><path d="M12 12 12-2-1 5z" fill="#f2603e"/><path d="M12 12 12-2 25 5z" fill="#a6d64a"/><path d="M12 12 25 5v14z" fill="#36c99a"/><path d="M12 12 25 19 12 26z" fill="#3b8ff0"/><path d="M12 12 12 26-1 19z" fill="#7d5ade"/><path d="M12 12-1 19V5z" fill="#f0a83c"/></g><rect width="24" height="24" fill="rgba(10,6,24,.2)"/></g>' +
+        '<path d="M13 6.6 19.6 12 13 17.4 6.6 12z" fill="' + D + '"/><path d="M5.6 5.8l.9 5.4M8.4 4.3l.9 4.9M19.6 13.4l2.4.4" fill="none" stroke="' + D + '" stroke-width="1"/>',
       // Epic: a rainbow fan (a dome narrowing to a point), with the honeycomb dots
       epic: '<defs><clipPath id="rsq"><path d="M3.2 11.6a8.8 8.8 0 0 1 17.6 0c-1.6 3.8-6.2 5.8-8.8 10.2-2.6-4.4-7.2-6.4-8.8-10.2z"/></clipPath><filter id="rsb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>' + dots('rse', '#2a1f4a', '.3') + '</defs>' +
         '<g clip-path="url(#rsq)"><g filter="url(#rsb)"><path d="M12 13 12-2-2 6z" fill="#f4f2ee"/><path d="M12 13 12-2 26 6z" fill="#36c0ee"/><path d="M12 13 26 6v12z" fill="#ff3046"/><path d="M12 13 26 18 12 26z" fill="#c54fc4"/><path d="M12 13 12 26-2 18z" fill="#9a6ad0"/><path d="M12 13-2 18V6z" fill="#f0c74a"/></g>' +
         '<rect width="24" height="24" fill="url(#rse)"/></g>',
-      // Iconic: a rainbow octagon with a round hole at its heart (traced from Pocahontas - Peacekeeper), the same inks and dots
+      // Iconic: a rainbow octagon closed like a camera aperture, its blades swirling in to a dark centre
       iconic: '<defs><clipPath id="rsk"><path d="M8.3 2.6h7.4l5.7 5.7v7.4l-5.7 5.7H8.3l-5.7-5.7V8.3z"/></clipPath><filter id="rsb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>' + dots('rse', '#2a1f4a', '.3') + '</defs>' +
-        '<g clip-path="url(#rsk)"><g filter="url(#rsb)"><path d="M12 12 12-2-1 5z" fill="#f2f0ec"/><path d="M12 12 12-2 25 5z" fill="#3cc4f0"/><path d="M12 12 25 5v14z" fill="#ff3046"/><path d="M12 12 25 19 12 26z" fill="#c54fc4"/><path d="M12 12 12 26-1 19z" fill="#a98ad6"/><path d="M12 12-1 19V5z" fill="#e6bb52"/></g>' +
-        '<rect width="24" height="24" fill="url(#rse)"/></g><circle cx="12" cy="12" r="4.3" fill="' + D + '"/>',
-      // Promos (the gold mark printed on the C1 promos): a gold ring with a four-point star and an orbit swung across it
+        '<g clip-path="url(#rsk)"><g filter="url(#rsb)"><path d="M12 12 12-2-1 5z" fill="#f2f0ec"/><path d="M12 12 12-2 25 5z" fill="#3cc4f0"/><path d="M12 12 25 5v14z" fill="#ff3046"/><path d="M12 12 25 19 12 26z" fill="#c54fc4"/><path d="M12 12 12 26-1 19z" fill="#a98ad6"/><path d="M12 12-1 19V5z" fill="#e6bb52"/></g><rect width="24" height="24" fill="url(#rse)"/>' +
+        '<path d="M12.0 8.7Q15.8 4.8 23.3 10.0M14.9 10.3Q20.2 11.7 19.4 20.8M14.9 13.7Q16.3 19.0 8.1 22.8M12.0 15.3Q8.2 19.2 0.7 14.0M9.1 13.7Q3.8 12.3 4.6 3.2M9.1 10.3Q7.7 5.0 15.9 1.2" fill="none" stroke="' + D + '" stroke-width="1.05"/></g><circle cx="12" cy="12" r="3.4" fill="' + D + '"/>',
+      // Promos carry their series' mark. Organised play (and the default): a gold ring with a four-point star and an orbit
       special: '<defs>' + g('rsI', GOLD) + '</defs><g fill="none" stroke="url(#rsI)">' +
         '<circle cx="12" cy="12" r="8.3" stroke-width="1.3"/>' +
-        // the main orbit, with its pointed ends poking out of the ring, and a fainter one crossing it
         '<ellipse cx="12" cy="12" rx="9" ry="4.3" transform="rotate(-35 12 12)" stroke-width="1.1"/>' +
         '<ellipse cx="12" cy="12" rx="7.6" ry="3.4" transform="rotate(50 12 12)" stroke-width=".7" stroke-opacity=".6"/></g>' +
         '<path d="M21.5 5.3 19.5 7.9 18.4 6.3zM2.5 18.7 5.6 17.7 4.5 16.1z" fill="url(#rsI)"/>' +
-        '<path d="M12 8.6c.4 1.9 1.4 3 3.2 3.4-1.8.4-2.8 1.5-3.2 3.4-.4-1.9-1.4-3-3.2-3.4 1.8-.4 2.8-1.5 3.2-3.4z" fill="url(#rsI)"/>'
+        '<path d="M12 8.6c.4 1.9 1.4 3 3.2 3.4-1.8.4-2.8 1.5-3.2 3.4-.4-1.9-1.4-3-3.2-3.4 1.8-.4 2.8-1.5 3.2-3.4z" fill="url(#rsI)"/>',
+      // Numbered promos (P sets and the like): two gold outlines, each a round back with a pointed front, one over the other
+      'special p': '<defs>' + g('rsP', GOLD) + '</defs><g fill="none" stroke="url(#rsP)" stroke-width="1.6" stroke-linejoin="miter" stroke-miterlimit="8">' +
+        '<path d="M6.8 2.6A11.9 11.9 0 0 0 6.8 21.4L16.2 12z"/><path d="M12.2 2.6A11.9 11.9 0 0 0 12.2 21.4L21.6 12z"/></g>',
+      // Illumineer's Quest cards: a gold ring around a four-point star whose points touch it
+      'special q': '<defs>' + g('rsQ', GOLD) + '</defs><circle cx="12" cy="12" r="8.9" fill="none" stroke="url(#rsQ)" stroke-width="1.8"/>' +
+        '<path d="M12 3.6c.8 5.4 3 7.6 8.4 8.4-5.4.8-7.6 3-8.4 8.4-.8-5.4-3-7.6-8.4-8.4 5.4-.8 7.6-3 8.4-8.4z" fill="url(#rsQ)"/>'
     };
   })();
-  function rarSym(r) {
+  // Which mark a printing carries: Legendary and Enchanted were redrawn from set 9 on; promos show their series' mark
+  // (Illumineer's Quest sets Q*, organised play cp/C*/PD*, and the numbered promo sets)
+  function rarVariant(r, set) {
     var k = String(r || '').replace(/_/g, ' ').toLowerCase().trim(); if (k === 'promo') k = 'special';
+    var sv = String(set == null ? '' : set);
+    if ((k === 'legendary' || k === 'enchanted') && /^\d+$/.test(sv) && +sv < 9) return k + ' old';
+    if (k === 'special' && sv) return /^q/i.test(sv) ? 'special q' : /^(cp|c\d|pd)/i.test(sv) ? 'special' : 'special p';
+    return k;
+  }
+  // every mark a rarity has had, side by side (for the rarity filter, which covers them all)
+  function rarSymAll(r) {
+    var k = rarVariant(r), ks = k === 'legendary' || k === 'enchanted' ? [k + ' old', k] : k === 'special' ? ['special p', 'special', 'special q'] : [k];
+    return ks.length > 1 ? '<span class="rsyms">' + ks.map(function (x) { return rarSym(x); }).join('') + '</span>' : rarSym(k);
+  }
+  function rarSym(r, set) {
+    var k = rarVariant(r, set);
     var body = RSYM[k] || RSYM.special;
     // gradient ids must be unique per copy on the page
     var u = 'r' + (rarSym.n = (rarSym.n || 0) + 1);
@@ -5596,14 +5621,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var list = printingsOf(d), multi = list.length > 1, nm = prRarName(a.r);
     return '<button type="button" class="sb sb-rar' + (multi ? ' multi' : '') + '"' + (multi ? ' data-rpick="1" aria-haspopup="listbox"' : ' tabindex="-1" disabled') +
       ' aria-label="Rarity: ' + esc(nm) + (multi ? '. ' + list.length + ' printings: tap to choose the art' : '') + '" title="' + esc(nm) + (multi ? ': choose the art' : '') + '">' +
-      '<span class="sh rcirc">' + rarSym(rk) + (multi ? '<b class="rc-n">' + list.length + '</b>' : '') + '</span><small>' + esc(nm).replace(' ', '<br>') + '</small></button>';
+      '<span class="sh rcirc">' + rarSym(rk, a.set) + (multi ? '<b class="rc-n">' + list.length + '</b>' : '') + '</span><small>' + esc(nm).replace(' ', '<br>') + '</small></button>';
   }
   // Scroll the little wheel up and down: whatever sits in the middle is the art (the card swaps as it lands)
   function rarPick(btn, d, ov) {
     var list = printsSorted(d), cur = (artOf(d) || d).id, IH = 46, at = Math.max(0, list.map(function (p) { return p.id; }).indexOf(cur));
     var scrim = el('div', { class: 'rp-scrim' }), box = el('div', { class: 'rp', role: 'listbox', 'aria-label': 'Choose the art' }), wheel = el('div', { class: 'rp-wheel' });
     list.forEach(function (p, i) {
-      wheel.appendChild(el('div', { class: 'rp-i' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at), html: rarSym(rarKey(p)) + '<span>' + esc(prLabel(p, list)) + '</span>' + (p.no ? '<small>#' + esc(p.no) + '</small>' : ''),
+      wheel.appendChild(el('div', { class: 'rp-i' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at), html: rarSym(rarKey(p), p.set) + '<span>' + esc(prLabel(p, list)) + '</span>' + (p.no ? '<small>#' + esc(p.no) + '</small>' : ''),
         onclick: function (e) { e.stopPropagation(); wheel.scrollTo({ top: i * IH, behavior: 'smooth' }); } }));
     });
     box.appendChild(wheel); scrim.appendChild(box); document.body.appendChild(scrim);
@@ -7736,7 +7761,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // The source spells some rarities oddly ("Super_rare"): tidy them for display and matching
     function rarName(r) { return String(r || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
     // A small gem in each rarity's colour; the special printings shimmer
-    function rarIcon(r) { return rarSym(rarName(r)); }
+    function rarIcon(r) { return rarSymAll(rarName(r)); }
     // Every rarity a card is printed in (an Uncommon may also have an Epic or Enchanted printing)
     function rarsOf(d) {
       if (d._rars) return d._rars;
