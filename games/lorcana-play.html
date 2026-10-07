@@ -6795,8 +6795,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var advQ = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
     advQ.addEventListener('input', function () { search.value = advQ.value; search.dispatchEvent(new Event('input')); });
     var advTop = el('div', { class: 'fchips' }), advCost = el('div', { class: 'fchips' });
-    var inkK = el('div', { class: 'inkk' }), dualRow = el('div', { class: 'fchips dualrow' });
-    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Cost', advCost, 'adv-dup'), el('div', { class: 'inkrow' }, [advSec('Ink', inkChips, 'ink-l'), advSec('Inkwell', inkK, 'ink-r')]), dualRow, advSec('Card type', typeChips), pickRows, advSec('Keyword', kwChips), togs]);
+    var inkK = el('div', { class: 'inkk' });
+    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Cost', advCost, 'adv-dup'), el('div', { class: 'inkrow' }, [advSec('Ink', inkChips, 'ink-l'), advSec('Inkwell', inkK, 'ink-r')]), advSec('Card type', typeChips), pickRows, advSec('Keyword', kwChips), togs]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
@@ -6942,12 +6942,6 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         kwChips.appendChild(chip(KWNAME[k], f.kws.indexOf(k) >= 0, function () { togF('kws', k); }));
       });
       // Single-ink or dual-ink cards
-      dualRow.innerHTML = '';
-      [[0, 'Any ink count'], [1, 'Single ink'], [2, 'Dual ink']].forEach(function (o) {
-        var c = chip(o[1], (f.dual || 0) === o[0], function () { f.dual = o[0]; f.shown = 60; paintChips(); paintGrid(); });
-        if (o[0] === 2) c.insertAdjacentHTML('afterbegin', '<i class="dualdot"></i>');
-        dualRow.appendChild(c);
-      });
       // Inkable: any, inkable, or not inkable
       inkK.innerHTML = '';
       [[0, 'Any'], [1, 'Inkable'], [2, 'Not inkable']].forEach(function (o) {
@@ -6962,7 +6956,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var offIn = function (key, fn) { f[key].forEach(function (k) { offs.push([fn ? fn(k) : k, function () { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); }]); }); };
       offIn('types', function (t) { return TYPE_NAMES[t]; }); offIn('stories'); offIn('chrs'); offIn('clss'); offIn('kws', function (k) { return KWNAME[k]; }); offIn('sets', setName); f.rars.forEach(function (k) { offs.push([k, function () { var i = f.rars.indexOf(k); if (i >= 0) f.rars.splice(i, 1); }, rarIcon(k)]); });
       if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable' : 'Inkable', function () { f.inkable = 0; }]);
-      if (f.dual) offs.push([f.dual === 2 ? 'Dual ink' : 'Single ink', function () { f.dual = 0; }]);
+      if (f.dual) offs.push(['Dual ink', function () { f.dual = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
       var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + f.costs.length;
       if (any > 1 || (any && offs.length)) onChips.appendChild(el('button', { type: 'button', class: 'fchip fclear', text: 'Clear all', onclick: clearFilters }));
@@ -6973,6 +6967,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var na = advCount();
       moreBtn.textContent = na ? 'Filters · ' + na : 'Filters'; moreBtn.classList.toggle('fon', !!na);
       inkChips.innerHTML = ''; INKS.forEach(function (i) { var ch = chip(i, f.inks[i], function () { f.inks[i] = !f.inks[i]; f.shown = 60; paintChips(); paintGrid(); }); ch.insertAdjacentHTML('afterbegin', inkIcon(i)); ch.classList.add('ink-chip'); inkChips.appendChild(ch); });
+      // Dual ink sits under the six inks: on its own it shows two-ink cards; with two inks picked, just that pair
+      var dch = chip('Dual ink', f.dual === 2, function () { f.dual = f.dual === 2 ? 0 : 2; f.shown = 60; paintChips(); paintGrid(); });
+      dch.insertAdjacentHTML('afterbegin', '<i class="dualdot"></i>'); dch.classList.add('ink-chip'); inkChips.appendChild(dch);
       [costChips, advCost].forEach(function (box) {
         box.innerHTML = '';
         [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { box.appendChild(chip(c === 8 ? '8+' : String(c), f.costs.indexOf(c) >= 0, function () { togF('costs', c); })); });
