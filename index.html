@@ -351,7 +351,9 @@ document.addEventListener('visibilitychange', function () {
   var tiles = get('gn_home_view', 'tiles') !== 'list';
   function row(g) {
     var fav = isFav(g);
-    var r = el('div', { class: 'g', 'data-id': g.id, style: { '--c': g.color } });
+    // the tile frame is one colour per section (the icon keeps the game's own shade)
+    var cat = GAME_CATS.filter(function (x) { return x.id === g.cat; })[0];
+    var r = el('div', { class: 'g', 'data-id': g.id, style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color } });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + players(g) + ' players' }, [
       el('span', { html: GameIcon(g.id, { bare: tiles }), style: { display: 'contents' } }),
       el('span', { class: 'txt' }, [el('b', { text: g.name, class: /\S{10,}/.test(g.name) ? 'long' : g.name.length > 11 ? 'two' : '' }), el('small', { text: g.tag })].concat(tiles ? [badge(g)] : [])),

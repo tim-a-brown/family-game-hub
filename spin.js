@@ -298,7 +298,8 @@ var Spin = (function () {
         c.beginPath(); c.moveTo(CX + Math.cos(a) * Ri * .18, CY + Math.sin(a) * Ri * .18); c.lineTo(CX + Math.cos(a) * Ri, CY + Math.sin(a) * Ri); c.stroke();
       }
       // Names, reading outward from the hub, inside the ring of pegs
-      var outer = R * .86, maxLen = outer - R * .22, arcH = 2 * R * .62 * Math.sin(w / 2);
+      // names sit out toward the pegs, starting clear of the hub (Bungee is broad, so room near the hub matters)
+      var outer = R * .885, maxLen = outer - R * .31, arcH = 2 * R * .64 * Math.sin(w / 2);
       for (i = 0; i < N; i++) {
         var mid = off + (i + .5) * w, name = wedges[i].name;
         c.save(); c.translate(CX, CY); c.rotate(mid);
