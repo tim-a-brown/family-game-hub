@@ -341,7 +341,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .tsheen{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
   background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 44%,rgba(255,236,190,.2) 50%,rgba(255,255,255,.08) 56%,transparent 70%);
   background-size:260% 260%;background-position:calc(50% - var(--tx,0) * 40%) calc(50% - var(--ty,0) * 40%);opacity:calc(.35 + (var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .65);}
-.lz-fc:not(.front) .tsheen{display:none;}
+.lz-fc:not(.focus) .tsheen{display:none;}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
 .lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);--bw:var(--cu);}
 /* The cost corner of a sideways location, cut from the upright card image (bw = width of the sideways card) */
@@ -5964,7 +5964,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function tiltFrame() {
     var ov = tiltT.ov;
     if (!ov || !ov.isConnected) { if (tiltT.el) { tiltT.el.style.rotate = ''; } tiltT.el = null; tiltT.raf = 0; return; }
-    var t = ov.querySelector('.lz-fc.front') || ov.querySelector('.lz-card');
+    var t = ov.querySelector('.lz-fc.focus') || ov.querySelector('.lz-card');
     if (t !== tiltT.el) {
       if (tiltT.el) tiltT.el.style.rotate = '';
       tiltT.el = t;
@@ -6097,7 +6097,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var lastFlow = null;
   function makeFlow(nav0) {
     var base = nav0.i, peek = nav0.peek, n = nav0.n;
-    var F = { n: n, pos: base, items: {}, cur: nav0, el: el('div', { class: 'lz-flow strip' }), raf: 0, at: base, dragAt: 0 };
+    var F = { n: n, pos: base, focus: base, items: {}, cur: nav0, el: el('div', { class: 'lz-flow strip' }), raf: 0, at: base, dragAt: 0 };
     lastFlow = F;
     var CU = 0, FX = 0.46, WIN = 3;
     function defAt(j) { return peek(j - base); }
@@ -6124,6 +6124,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         var q = pose(j - F.pos);
         b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2));
         b.classList.toggle('front', Math.abs(j - F.pos) < 0.5);
+        // the card in focus keeps its tilt and sheen while it's dragged, until another card settles
+        b.classList.toggle('focus', j === F.focus);
       }
       var idx = Math.round(F.pos);
       if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz) pz.textContent = (idx + 1) + ' of ' + n; Kit.sfx('tick'); }
@@ -6144,7 +6146,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         F.pos = from + dist * (dist ? ease(t) : 1);
         F.render();
         if (t < 1) { F.raf = requestAnimationFrame(frame); return; }
-        F.raf = 0; F.pos = target; F.render();
+        F.raf = 0; F.pos = target; F.focus = target; F.render();
         var nav = F.cur;
         if (target !== nav.i && F.ov && F.ov.isConnected) { flowSlid = true; flowKeep = F; nav.go(target - nav.i); }
       })(t0);
