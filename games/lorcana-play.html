@@ -800,7 +800,28 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .adv .lp-list{gap:6px;}
 .adv-pick{display:flex;align-items:center;gap:10px;}
 .adv-pick .ico{width:18px;height:18px;flex:none;color:var(--text-3);}
-.adv-pick small{color:var(--text-3);max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.adv-pick .grow{min-width:0;}
+.adv-pick b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.adv-pick small{display:block;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.74rem;}
+/* Pickers down the left, inks down the middle, cost in two columns on the right */
+.fgrid{display:grid;grid-template-columns:minmax(0,1.5fr) auto auto;gap:12px;align-items:start;}
+.fgrid > div{min-width:0;}
+.fg-picks .lp-list{gap:6px;}
+.fg-picks .adv-pick{padding:8px 10px;gap:8px;min-height:48px;}
+.fg-ink .fchips{display:flex;flex-direction:column;flex-wrap:nowrap;gap:5px;}
+.fg-ink .fchip{justify-content:flex-start;white-space:nowrap;}
+.fg-cost{padding-left:10px;border-left:1px solid rgba(227,189,98,.22);}
+.fg-cost .fchips{display:grid;grid-template-columns:repeat(2,minmax(36px,1fr));gap:5px;}
+.fg-cost .fchip{justify-content:center;padding:0 6px;}
+@media (max-width:560px){
+  .fgrid{gap:8px;}
+  .fg-picks .adv-pick{padding:7px 8px;gap:6px;}
+  .fg-picks .adv-pick b{font-size:.84rem;}
+  .fg-ink .fchip{padding:0 8px;font-size:.76rem;gap:4px;}
+  .fg-cost{padding-left:7px;}
+  .fg-cost .fchip{padding:0 4px;min-width:34px;}
+}
+.flowpanel .fgrid{grid-template-columns:minmax(0,1.5fr) auto;}
 .adv-pick.on small{color:var(--gilt-2);font-weight:800;}
 .adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .adv-tog .label{margin:0;}
@@ -839,12 +860,12 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .inkrow .fchips{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;flex:0 1 auto;}
 .inkrow .ink-l{flex:1 1 auto;min-width:0;}
 .inkrow .ink-r{flex:none;padding-left:12px;border-left:1px solid rgba(227,189,98,.22);}
-.inkk{display:inline-flex;gap:2px;padding:3px;border-radius:14px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(227,189,98,.2);}
+.inkk{display:inline-flex;gap:0;padding:3px;border-radius:999px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(227,189,98,.2);}
 .inkk .fchip{padding:0 14px;}
 /* Cost: two columns down the right of the inks */
 .inkrow .ink-r .fchips{display:grid;grid-template-columns:repeat(2,minmax(40px,1fr));gap:5px;}
 .inkrow .ink-r .fchip{justify-content:center;padding:0 8px;}
-.inkk .fchip{justify-content:center;background:transparent;border-radius:11px;min-height:30px;}
+.inkk .fchip{justify-content:center;background:transparent;border-radius:999px;min-height:30px;}
 .inkk .fchip.on{background:rgba(227,189,98,.16);color:var(--gilt-2);box-shadow:inset 0 0 0 1.5px var(--gilt);}
 .inkrow .fchips{min-width:0;}
 .inkrow .fchip{min-width:0;overflow:hidden;white-space:nowrap;}
@@ -6800,7 +6821,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     advQ.addEventListener('input', function () { search.value = advQ.value; search.dispatchEvent(new Event('input')); });
     var advTop = el('div', { class: 'fchips' }), advCost = el('div', { class: 'fchips' });
     var inkK = el('div', { class: 'inkk' });
-    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Inkwell', inkK, 'inkw'), el('div', { class: 'inkrow' }, [advSec('Ink', inkChips, 'ink-l'), advSec('Cost', advCost, 'ink-r adv-dup')]), advSec('Card type', typeChips), pickRows, advSec('Keyword', kwChips), togs]);
+    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), advSec('Saved', advTop, 'adv-dup'), advSec('Inkwell', inkK, 'inkw'), el('div', { class: 'fgrid' }, [el('div', { class: 'fg-picks' }, [pickRows]), advSec('Ink', inkChips, 'fg-ink'), advSec('Cost', advCost, 'fg-cost adv-dup')]), advSec('Keyword', kwChips), togs]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
@@ -6861,6 +6882,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       Kit.sheet({ title: o.title, node: node, actions: [
         { label: 'Clear', cls: 'btn-ghost', keep: true, onClick: function () { f[o.key] = []; refilter(); paint(); } },
         { label: 'Close', cls: 'btn-primary' }] });
+    }
+    function pickType() {
+      multiPick({ title: 'Card type', ph: '', key: 'types', noSearch: true, items: function () {
+        var c = {}; DB.unique.forEach(function (d) { var t = d.song ? 'song' : d.t; c[t] = (c[t] || 0) + 1; });
+        return Object.keys(TYPE_NAMES).map(function (t) { return { k: t, label: TYPE_NAMES[t], n: plural(c[t] || 0, 'card') }; });
+      } });
     }
     function pickStory() {
       multiPick({ title: 'Film or show', ph: 'Search films and shows', key: 'stories', items: function () {
@@ -6937,9 +6964,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
       var sumOf = function (a, fn) { fn = fn || function (x) { return x; }; return !a.length ? '' : a.length === 1 ? fn(a[0]) : a.length === 2 ? fn(a[0]) + ', ' + fn(a[1]) : fn(a[0]) + ' + ' + (a.length - 1) + ' more'; };
-      [['search', 'Film or show', sumOf(f.stories), pickStory], ['user', 'Character', sumOf(f.chrs), pickChar], ['star', 'Classification', sumOf(f.clss), pickCls], ['book', 'Card set', sumOf(f.sets, setName), pickSet], ['sparkle', 'Rarity', sumOf(f.rars), pickRar]].forEach(function (r) {
+      [['cards', 'Card type', sumOf(f.types, function (t) { return TYPE_NAMES[t]; }), pickType], ['search', 'Film or show', sumOf(f.stories), pickStory], ['user', 'Character', sumOf(f.chrs), pickChar], ['star', 'Classification', sumOf(f.clss), pickCls], ['book', 'Card set', sumOf(f.sets, setName), pickSet], ['sparkle', 'Rarity', sumOf(f.rars), pickRar]].forEach(function (r) {
         pickRows.appendChild(el('button', { type: 'button', class: 'lp-li st-row adv-pick' + (r[2] ? ' on' : ''), onclick: function () { Kit.sfx('tap'); r[3](); } }, [
-          el('span', { html: Kit.icon(r[0]) }), el('b', { class: 'grow', text: r[1] }), el('small', { text: r[2] || 'Any' })]));
+          el('span', { html: Kit.icon(r[0]) }), el('div', { class: 'grow' }, [el('b', { text: r[1] }), el('small', { text: r[2] || 'Any' })])]));
       });
       kwChips.innerHTML = '';
       ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].sort(function (a, b) { return KWNAME[a].localeCompare(KWNAME[b]); }).forEach(function (k) {
