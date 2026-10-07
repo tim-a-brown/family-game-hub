@@ -966,6 +966,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .flt-btn b{position:absolute;right:-2px;top:-2px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--gilt);color:#2b1a00;font-size:.78rem;display:grid;place-items:center;box-shadow:0 0 0 2px var(--bg-2);}
 .flt-btn:active{transform:scale(.95);}
 .flowpanel .flt-btn{display:none!important;}
+.fside{gap:8px;}
+.fside .flt-btn{width:56px;height:56px;}
+/* a row that runs past the buttons scrolls sideways and fades at the edge, so it reads as more */
+.fside-l .fchips.ovf{mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);}
+.flt-btn span{max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sortbox{display:flex;flex-direction:column;gap:6px;}
+.sort-row{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:var(--text);text-align:left;font:inherit;}
+.sort-row b{flex:1;font-weight:800;}
+.sort-row span{color:var(--gilt-2);font-weight:700;font-size:.9rem;}
+.sort-row i{font-style:normal;color:var(--gilt-2);font-weight:900;width:14px;text-align:center;}
+.sort-row.on{background:color-mix(in srgb,var(--gilt) 22%,transparent);box-shadow:inset 0 0 0 2px var(--gilt);}
 .lz-filt.open{background:var(--gilt);color:#2b1a00;}
 .lz-filt b{position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;padding:0 5px;box-shadow:0 0 0 2px #141029;border-radius:10px;background:var(--gilt);color:#2b1a00;font-size:.75rem;display:grid;place-items:center;}
 .lz-filt.on,.lz-filt.open{box-shadow:0 0 0 2px var(--gilt),0 4px 14px rgba(0,0,0,.45);}
@@ -6937,6 +6948,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var search = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
     var t0 = 0; search.addEventListener('input', function () { clearTimeout(t0); t0 = setTimeout(function () { f.q = search.value.trim().toLowerCase(); f.shown = 60; paintGrid(); }, 160); });
     var moreBtn = el('button', { type: 'button', class: 'flt-btn', 'aria-label': 'Filters', title: 'Filters', onclick: moreFilters });
+    var sortBtn = el('button', { type: 'button', class: 'flt-btn', 'aria-label': 'Sort', title: 'Sort', onclick: function () { sortMenu(); } });
     var inkChips = el('div', { class: 'fchips' }), costChips = el('div', { class: 'fchips' }), typeChips = el('div', { class: 'fchips types' }), storyChips = el('div', { class: 'fchips' });
     var grid = el('div', { class: 'bld-grid' });
     if (lib) {
@@ -6965,7 +6977,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (lib) row1.appendChild(colBtn);
     var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks and cost. Everything else lives in Filters.
-    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips, costChips]), moreBtn]), onChips]), grid]);
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips, costChips]), sortBtn, moreBtn]), onChips]), grid]);
+    [storyChips, costChips].forEach(function (r) { r.addEventListener('scroll', function () { r.classList.toggle('ovf', r.scrollLeft + r.clientWidth < r.scrollWidth - 2); }, { passive: true }); });
     var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips kwgrid' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
     var advSec = function (t, n, cls) { return el('div', cls ? { class: cls } : null, [el('div', { class: 'label', text: t }), n]); };
     // Copies of the always-on filters, so the menu holds everything (the cover-flow panel already shows the originals)
@@ -7174,6 +7187,54 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       typeChips.innerHTML = ''; Object.keys(TYPE_NAMES).forEach(function (t) {
         typeChips.appendChild(chip(TYPE_NAMES[t], f.types.indexOf(t) >= 0, function () { togF('types', t); }));
       });
+    }
+    // ── Sort: cost (the usual order), name, ink, strength, willpower, lore, newest set, rarity ──
+    var SORTK = 'lorc_sort', srt = lsGet(SORTK, null) || { k: 'cost', dir: 1 };
+    var SORTS = [['cost', 'Cost', 'Low to high', 'High to low'], ['name', 'Name', 'A to Z', 'Z to A'], ['ink', 'Ink', 'Amber to Steel', 'Steel to Amber'],
+      ['s', 'Strength', 'Low to high', 'High to low'], ['w', 'Willpower', 'Low to high', 'High to low'], ['l', 'Lore', 'Low to high', 'High to low'],
+      ['set', 'Set', 'Oldest first', 'Newest first'], ['rar', 'Rarity', 'Common first', 'Rarest first']];
+    var SORT_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/></svg>';
+    function sortVal(d, k) {
+      if (k === 'cost') return d.c || 0;
+      if (k === 'ink') return INKS.indexOf(inkOf(d)[0]);
+      if (k === 's' || k === 'w' || k === 'l') return d[k] == null || d[k] === '' ? null : +d[k];
+      if (k === 'set') return setOrd(d.set) === 99 ? null : setOrd(d.set);
+      if (k === 'rar') { var i = RAR_ORDER.indexOf(rarName(d.r)); return i < 0 ? null : i; }
+      return 0;
+    }
+    function sortCards(list) {
+      var k = srt.k, dir = srt.dir;
+      if (k === 'cost' && dir === 1) return list;   // the library's own order
+      if (k === 'name') return list.slice().sort(function (a, b) { return dir * a.full.localeCompare(b.full); });
+      return list.slice().sort(function (a, b) {
+        var x = sortVal(a, k), y = sortVal(b, k);
+        if (x == null || y == null) { if (x != null) return -1; if (y != null) return 1; }   // cards without the stat go last
+        else if (x !== y) return dir * (x - y);
+        return (a.c || 0) - (b.c || 0) || a.full.localeCompare(b.full);
+      });
+    }
+    function paintSort() {
+      var on = !(srt.k === 'cost' && srt.dir === 1), o = SORTS.filter(function (x) { return x[0] === srt.k; })[0] || SORTS[0];
+      sortBtn.innerHTML = SORT_ICO + '<span>' + (on ? esc(o[1]) : 'Sort') + '</span>'; sortBtn.classList.toggle('on', on);
+      [storyChips, costChips].forEach(function (r) { r.classList.toggle('ovf', r.scrollWidth > r.clientWidth + 2 && r.scrollLeft + r.clientWidth < r.scrollWidth - 2); });
+      sortBtn.setAttribute('aria-label', 'Sort: ' + o[1] + ', ' + (srt.dir === 1 ? o[2] : o[3]).toLowerCase());
+    }
+    function sortMenu() {
+      var box = el('div', { class: 'sortbox' }), sh;
+      function paint() {
+        box.innerHTML = '';
+        SORTS.forEach(function (o) {
+          var cur = srt.k === o[0];
+          box.appendChild(el('button', { type: 'button', class: 'sort-row' + (cur ? ' on' : ''), 'aria-pressed': String(cur), onclick: function () {
+            srt = { k: o[0], dir: cur ? -srt.dir : o[0] === 'set' || o[0] === 'rar' ? -1 : 1 };
+            lsSet(SORTK, srt); Kit.sfx('tap'); f.shown = 60; paint(); paintGrid();
+          } }, [el('b', { text: o[1] }), el('span', { text: cur ? (srt.dir === 1 ? o[2] : o[3]) : '' }), el('i', { html: cur ? (srt.dir === 1 ? '&#8593;' : '&#8595;') : '' })]));
+        });
+      }
+      paint();
+      sh = Kit.sheet({ title: 'Sort cards', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Tap again to reverse the order.' }), box]), actions: [
+        { label: 'Reset to cost', cls: 'btn-ghost', keep: true, onClick: function () { srt = { k: 'cost', dir: 1 }; lsSet(SORTK, srt); f.shown = 60; paint(); paintGrid(); } },
+        { label: 'Done', cls: 'btn-primary' }] });
     }
     function matches(d) {
       var di = inkOf(d), on = INKS.filter(function (i) { return f.inks[i]; });
@@ -7410,7 +7471,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     function paintGrid(keepScroll) {
       deckSet = null;
-      var st = grid.scrollTop, list = DB.unique.filter(matches);
+      var st = grid.scrollTop, list = sortCards(DB.unique.filter(matches));
+      paintSort();
       if (fpanel) refreshFlow(list);
       grid.innerHTML = '';
       var lim = f.shown * (grid.classList.contains('tiny') ? 2 : 1);

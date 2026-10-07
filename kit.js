@@ -317,10 +317,49 @@
       body.appendChild(acts);
     }
     scrim.addEventListener('click', function (e) { if (e.target === scrim && o.dismissible !== false) close(true); });
+    if (o.dismissible !== false) sheetDrag(body, close);
     doc.addEventListener('keydown', onKey);
     doc.body.appendChild(scrim);
     requestAnimationFrame(function () { requestAnimationFrame(function () { scrim.classList.add('show'); }); });
     return { close: close, el: body };
+  }
+  // Pull a sheet down by its handle or title to close it (the rest of the sheet scrolls as usual)
+  function sheetDrag(body, close) {
+    var st = null;
+    body.addEventListener('pointerdown', function (e) {
+      if (e.button > 0 || (e.target.closest && e.target.closest('button,input,select,textarea,a'))) return;
+      var r = body.getBoundingClientRect(), h = body.querySelector(':scope > h2'), hb = h ? h.getBoundingClientRect().bottom + 8 : r.top + 48;
+      if (e.clientY > Math.max(hb, r.top + 48)) return;
+      st = { y: e.clientY, id: e.pointerId, dy: 0, on: false, pts: [] };
+    });
+    body.addEventListener('pointermove', function (e) {
+      if (!st || e.pointerId !== st.id) return;
+      var dy = e.clientY - st.y;
+      if (!st.on) {
+        if (Math.abs(dy) < 6) return;
+        if (dy < 0) { st = null; return; }
+        st.on = true; body.style.transition = 'none';
+        try { body.setPointerCapture(e.pointerId); } catch (x) {}
+      }
+      st.dy = Math.max(0, dy);
+      st.pts.push({ y: e.clientY, t: performance.now() }); if (st.pts.length > 6) st.pts.shift();
+      body.style.transform = 'translateY(' + st.dy.toFixed(1) + 'px)';
+    });
+    function end(e) {
+      if (!st || e.pointerId !== st.id) return;
+      var s = st; st = null;
+      if (!s.on) return;
+      var a = s.pts[0], b = s.pts[s.pts.length - 1], v = a && b && b.t > a.t ? (b.y - a.y) / (b.t - a.t) : 0;
+      if (s.dy > Math.min(140, body.offsetHeight * 0.3) || (v > 0.5 && s.dy > 24)) {
+        body.style.transition = 'transform .22s ease-in';
+        body.style.transform = 'translateY(' + Math.max(body.offsetHeight, 200) + 'px)';
+        haptic('light'); close(true);
+      } else {
+        body.style.transition = 'transform .32s cubic-bezier(.3,1.4,.5,1)'; body.style.transform = '';
+        setTimeout(function () { body.style.transition = ''; }, 340);
+      }
+    }
+    body.addEventListener('pointerup', end); body.addEventListener('pointercancel', end);
   }
   function confirmSheet(msg, o) {
     o = o || {};
