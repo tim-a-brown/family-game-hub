@@ -343,6 +343,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   background-size:220% 220%;background-repeat:no-repeat;
   background-position:calc(50% - clamp(-1, var(--tx,0), 1) * 42%) calc(50% - clamp(-1, var(--ty,0), 1) * 42%);
   opacity:calc((.25 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .2) * var(--sw,1));}
+/* Phones: a touch brighter (small screens, held at arm's length) */
+@media (hover:none){.tsheen{opacity:calc((.36 + min(1, var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .3) * var(--sw,1));}}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
 /* Foil rarity mark (bottom centre of the card): its own small glint that swings round faster than the card's sheen,
    tinted by rarity, plus a tiny star twinkle now and then */
@@ -6079,13 +6081,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var tiltT = { x: 0, y: 0, cx: 0, cy: 0, sx: 0, sy: 0, base: null, raf: 0, ov: null, el: null, listening: false, asked: false };
   function onOrient(e) {
     if (e.beta == null || e.gamma == null) return;
+    tiltT.got = true;
     var land = Math.abs(window.orientation || (screen.orientation && screen.orientation.angle) || 0) === 90;
     var b = land ? e.gamma : e.beta, g = land ? -e.beta : e.gamma;
     if (!tiltT.base) tiltT.base = { b: b, g: g };
     // drift the resting angle slowly toward how the phone is being held
     tiltT.base.b += (b - tiltT.base.b) * 0.003; tiltT.base.g += (g - tiltT.base.g) * 0.003;
-    tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 14));
-    tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 14));
+    tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 11));
+    tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 11));
   }
   function listenOrient() {
     if (tiltT.listening || !('DeviceOrientationEvent' in window)) return;
@@ -8007,7 +8010,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   // so it appears on the first tap anywhere in the game (once; a yes is remembered).
   (function () {
     if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') { listenOrient(); return; }
-    if (lsGet('lorc_tilt', 0)) { listenOrient(); return; }
+    if (lsGet('lorc_tilt', 0)) {
+      listenOrient();
+      // iPhone can forget the yes between pages (the home screen asked): if no motion arrives, ask again on the
+      // first tap. When it's already allowed, iPhone answers straight away without showing anything.
+      setTimeout(function () {
+        if (tiltT.got) return;
+        var again = function () { document.removeEventListener('touchend', again, true); document.removeEventListener('click', again, true); tiltT.asked = false; askOrient(); };
+        document.addEventListener('touchend', again, true); document.addEventListener('click', again, true);
+      }, 1500);
+      return;
+    }
     if (lsGet('lorc_tilt_asked', 0)) return;   // already asked when Lorcana was tapped on the home screen
     // opened some other way (a saved link): ask on the first tap instead
     var go = function () { document.removeEventListener('touchend', go, true); document.removeEventListener('click', go, true); askOrient(); };
