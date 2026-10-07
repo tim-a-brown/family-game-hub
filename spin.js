@@ -270,6 +270,9 @@ var Spin = (function () {
       var t = amt < 0 ? 0 : 255, p = Math.abs(amt);
       return 'rgb(' + Math.round(r + (t - r) * p) + ',' + Math.round(g + (t - g) * p) + ',' + Math.round(b + (t - b) * p) + ')';
     }
+    function WFONT(px) { return '400 ' + px + "px 'Bungee', system-ui, -apple-system, sans-serif"; }
+    // the wheel is drawn on a canvas, so draw it again once the font has arrived
+    if (document.fonts && document.fonts.load) document.fonts.load("20px 'Bungee'").then(function () { try { draw(); } catch (e) {} }).catch(function () {});
     function draw() {
       var Sz = cv.width, N = n(), c = ctx;
       c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, Sz, Sz);
@@ -300,9 +303,10 @@ var Spin = (function () {
         var mid = off + (i + .5) * w, name = wedges[i].name;
         c.save(); c.translate(CX, CY); c.rotate(mid);
         var fs = Math.min(arcH * .62, 17 * dpr, R * .09);
-        c.font = '800 ' + fs + 'px system-ui, -apple-system, sans-serif';
+        // Bungee (the game-name font on the home screen), shrunk to fit a long name
+        c.font = WFONT(fs);
         var tw = c.measureText(name).width;
-        if (tw > maxLen) { fs *= maxLen / tw; c.font = '800 ' + fs + 'px system-ui, -apple-system, sans-serif'; }
+        if (tw > maxLen) { fs *= maxLen / tw; c.font = WFONT(fs); }
         c.textAlign = 'right'; c.textBaseline = 'middle';
         c.fillStyle = (win >= 0 && win !== i) ? 'rgba(255,255,255,.45)' : '#fff';
         c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 3 * dpr; c.shadowOffsetY = 1 * dpr;
