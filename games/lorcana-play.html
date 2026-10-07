@@ -7294,6 +7294,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (list.length > lim) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - lim) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
       if (keepScroll) grid.scrollTop = st;
       if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + (list.length === 1 ? ' card' : ' cards');
+      doneText(list.length);
     }
     function paintDeck() {
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards, deck.casual), cs = deckCards(deck.cards);
@@ -7327,10 +7328,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         Kit.confirm('Delete ' + deck.name + '?', { ok: 'Delete', danger: true }).then(function (y) { if (!y) return; dropDeck(deck.id); dirty = false; back(); });
       } }));
     }
+    // Done shows how many cards the filters leave (kept up to date as you tap)
+    var doneBtn = null;
+    function doneText(n) { if (doneBtn && doneBtn.isConnected) doneBtn.textContent = 'Done · ' + (n ? n.toLocaleString() + (n === 1 ? ' card' : ' cards') : 'no cards'); }
     function moreFilters() {
       Kit.sheet({ title: 'Filters', node: adv, actions: [
         { label: 'Clear all', cls: 'btn-clear', keep: true, onClick: clearFilters },
         { label: 'Done', cls: 'btn-primary' }] });
+      var bs = document.querySelectorAll('.k-sheet .k-acts .btn-primary'); doneBtn = bs[bs.length - 1];
+      doneText(DB.unique.filter(matches).length);
     }
     paintChips(); paintDeck(); paintGrid();
   }
