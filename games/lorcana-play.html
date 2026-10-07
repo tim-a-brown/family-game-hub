@@ -7458,6 +7458,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); });
   });
   DB.load();
+  // Motion for the card sheen: ask as soon as Lorcana opens. iPhone only allows the prompt from a tap,
+  // so it appears on the first tap anywhere in the game (once; a yes is remembered).
+  (function () {
+    if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') { listenOrient(); return; }
+    if (lsGet('lorc_tilt', 0)) { listenOrient(); return; }
+    var go = function () { document.removeEventListener('touchend', go, true); document.removeEventListener('click', go, true); askOrient(); };
+    document.addEventListener('touchend', go, true); document.addEventListener('click', go, true);
+  })();
   (function () {
     var q = new URLSearchParams(location.search), saved = lsGet(SAVE, null);
     if (q.get('mode')) ui.launchMode = q.get('mode') === 'pass' ? 'pass' : 'cpu';
