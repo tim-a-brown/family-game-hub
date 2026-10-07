@@ -339,8 +339,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz.show .lz-card{transform:none;}
 /* Tilt sheen: a faint band of light that slides as the card leans */
 .tsheen{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
-  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 44%,rgba(255,236,190,.2) 50%,rgba(255,255,255,.08) 56%,transparent 70%);
-  background-size:260% 260%;background-position:calc(50% - var(--tx,0) * 40%) calc(50% - var(--ty,0) * 40%);opacity:calc(.35 + (var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .65);}
+  background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.14) 34%,rgba(255,244,210,.62) 46%,rgba(255,255,255,.7) 50%,rgba(200,225,255,.48) 54%,rgba(255,255,255,.14) 64%,transparent 78%);
+  background-size:220% 220%;background-position:calc(50% - var(--tx,0) * 42%) calc(50% - var(--ty,0) * 42%);
+  opacity:calc(.5 + (var(--tx,0) * var(--tx,0) + var(--ty,0) * var(--ty,0)) * .5);transition:opacity .2s;}
 .lz-fc:not(.focus) .tsheen{display:none;}
 @media (prefers-reduced-motion:reduce){.tsheen{display:none;}}
 .lz-card.loc{width:var(--cu);height:calc(var(--cu) * .716);--cu:min(92vw,62vh,560px);--bw:var(--cu);}
@@ -5931,9 +5932,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var b = land ? e.gamma : e.beta, g = land ? -e.beta : e.gamma;
     if (!tiltT.base) tiltT.base = { b: b, g: g };
     // drift the resting angle slowly toward how the phone is being held
-    tiltT.base.b += (b - tiltT.base.b) * 0.01; tiltT.base.g += (g - tiltT.base.g) * 0.01;
-    tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 18));
-    tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 18));
+    tiltT.base.b += (b - tiltT.base.b) * 0.003; tiltT.base.g += (g - tiltT.base.g) * 0.003;
+    tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 14));
+    tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 14));
   }
   function listenOrient() {
     if (tiltT.listening || !('DeviceOrientationEvent' in window)) return;
@@ -5943,13 +5944,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // iPhone asks once, on a tap, before it shares motion
     if (tiltT.asked || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') return;
     tiltT.asked = true;
-    DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') { lsSet('lorc_tilt', 1); listenOrient(); } }).catch(function () {});
+    DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') { lsSet('lorc_tilt', 1); listenOrient(); } }).catch(function () { tiltT.asked = false; });
   }
   function cardTilt(ov) {
     tiltT.ov = ov; tiltT.base = null;
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      if (lsGet('lorc_tilt', 0)) { listenOrient(); } else ov.addEventListener('pointerup', askOrient, { once: true });
+      // Safari only shows its motion prompt from a tap (touchend / click)
+      if (lsGet('lorc_tilt', 0)) { listenOrient(); } else { ov.addEventListener('touchend', askOrient); ov.addEventListener('click', askOrient); }
     } else listenOrient();
     // mouse and trackpad: the card follows the pointer instead
     ov.addEventListener('pointermove', function (e) {
