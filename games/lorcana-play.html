@@ -788,6 +788,19 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .ls-c.on{opacity:1;transform:translateY(-3px) scale(1.15);box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.6);}
 .ls-c.on.can{box-shadow:0 0 0 2px #f6e1a8,0 0 10px rgba(246,200,90,.7);}
 .ls-c{position:relative;}
+.lz-qty{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;}
+.lz-qty .qb{width:56px;height:52px;border:0;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.1);color:var(--text);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);cursor:pointer;}
+.lz-qty .qb b{font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1;}
+.lz-qty .qb.add{background:linear-gradient(180deg,#f6dc95,#e3bd62 60%,#c8922f);color:#2b1a00;box-shadow:0 3px 10px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,243,196,.7);}
+.lz-qty .qb.del{color:#f08a8a;}
+.lz-qty .qb.del .ico{width:22px;height:22px;}
+.lz-qty .qb:disabled{opacity:.3;cursor:default;}
+.lz-qty .qb:not(:disabled):active{transform:scale(.94);}
+.lz-qty .qn{min-width:70px;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.lz-qty .qn b{font-family:var(--display);font-weight:400;font-size:1.9rem;line-height:1;color:var(--text);}
+.lz-qty .pips{display:flex;gap:5px;}
+.lz-qty .pips i{width:9px;height:12px;border-radius:2px;background:rgba(255,255,255,.14);}
+.lz-qty .pips i.on{background:#e3bd62;box-shadow:0 0 6px rgba(227,189,98,.6);}
 .ls-c.picked{opacity:1;box-shadow:0 0 0 2px var(--gilt),0 0 10px rgba(246,200,90,.6);}
 .ls-ck{position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;background:var(--gilt);color:#2b1a00;}
 .ls-ck svg{width:10px;height:10px;}
@@ -8215,12 +8228,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
             html: miniArt(DD(x)) + (pk && pk.sel.indexOf(x) >= 0 ? '<i class="ls-ck">' + Kit.icon('check') + '</i>' : ''), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(strip);
+      } else if (nav.defs && nav.n <= 60) {
+        // Deck builder: your deck as a strip of little cards (the full search list keeps a plain counter)
+        var dstrip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': 'Card ' + (nav.i + 1) + ' of ' + nav.n });
+        nav.defs.forEach(function (x, j) {
+          dstrip.appendChild(el('button', { type: 'button', class: 'ls-c can' + (j === nav.i ? ' on' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': x.full, html: miniArt(x),
+            onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
+        });
+        posHost.appendChild(dstrip);
+        setTimeout(function () { var on = dstrip.querySelector('.on'); if (on) dstrip.scrollLeft = on.offsetLeft - dstrip.clientWidth / 2 + on.offsetWidth / 2; }, 0);
       } else posHost.appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
     }
     var info = el('div', { class: 'lz-info', html: infoHTML });
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' }), row = el('div', { class: 'acts-row' });
-      acts.forEach(function (a) { if (a.ok === false) return; var pt = actParts(a);
+      acts.forEach(function (a) { if (a.qty) { row.appendChild(qtyCtl(a.qty)); return; } if (a.ok === false) return; var pt = actParts(a);
         row.appendChild(el('button', { type: 'button', class: 'act' + (a.primary ? ' pri' : ''), 'aria-label': pt.text, html: '<i class="ai">' + pt.icon + '</i><span class="al">' + esc(pt.main) + '</span>' + (pt.sub ? '<small>' + esc(pt.sub) + '</small>' : ''), onclick: function () { closeZoom(); a.go(); } })); });
       if (row.children.length > 3) row.classList.add('many');
       g.appendChild(row);
@@ -9081,6 +9103,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // Film as a small gold line above the name, so the name gets the full width
     return '<div class="lz-head"><div class="lz-ttl">' + stHTML + '<h2>' + esc(d.n) + '</h2>' + (d.v ? '<div class="ver">' + esc(d.v) + '</div>' : '<div class="ver" aria-hidden="true">&nbsp;</div>') + '</div></div>';
   }
+  // Copies in a deck, changed in place (the card view stays open): − (a trash can at 1), the count over four pips, +
+  // (greyed out at the limit). q = {get, full, add(delta)}
+  function qtyCtl(q) {
+    var box = el('div', { class: 'lz-qty' });
+    function paint() {
+      var n = q.get(), max = q.max || 4, full = q.full();
+      box.innerHTML = '';
+      box.appendChild(el('button', { type: 'button', class: 'qb' + (n === 1 ? ' del' : ''), disabled: !n, 'aria-label': n === 1 ? 'Remove from deck' : 'Remove one', html: n === 1 ? Kit.icon('trash') : '<b>−</b>', onclick: function () { q.add(-1); Kit.haptic('light'); paint(); } }));
+      var pips = ''; if (max <= 4) for (var i = 0; i < max; i++) pips += '<i' + (i < n ? ' class="on"' : '') + '></i>';
+      box.appendChild(el('div', { class: 'qn', 'aria-live': 'polite', 'aria-label': n + ' in deck', html: '<b>' + n + '</b>' + (pips ? '<span class="pips">' + pips + '</span>' : '') }));
+      box.appendChild(el('button', { type: 'button', class: 'qb add', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', html: '<b>+</b>', onclick: function () { q.add(1); Kit.haptic('light'); paint(); } }));
+    }
+    paint(); return box;
+  }
   function zoomDef(d, acts, nav) {
     zoomShell(d, headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts || [], null, nav);
   }
@@ -9761,9 +9797,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       curZoom = { d: d, list: list };
       var inN = lib ? savedDecks().filter(function (dk) { return copiesByFull(dk.cards, d.full) > 0; }).length : 0;
       zoomDef(d, lib ? [] : [
-        { label: '−  Remove one', ok: have > 0, go: function () { addCard(d, -1); cardZoom(d, list); } },
-        { label: '+  Add one (' + have + ' of 4)', primary: true, ok: have < 4, go: function () { addCard(d, 1); cardZoom(d, list); } }
-      ], list && i >= 0 ? { i: i, n: list.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
+        { qty: { get: function () { return count(d); }, max: copyLimit(d), full: function () { return copiesByFull(deck.cards, d.full) >= copyLimit(d); }, add: function (k) { addCard(d, k); } } }
+      ], list && i >= 0 ? { i: i, n: list.length, defs: list, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
       if (list) filterBtn();
       // Library: a small deck button beside the bookmark, with how many of your decks hold this card
       ui.flowDeck = lib ? function (dd) { quickAdd(dd); } : null;
