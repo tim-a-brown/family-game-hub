@@ -1246,7 +1246,6 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
   .fg-ink,.fg-cost{padding-left:7px;}
   .fg-cost .fchip{padding:0 4px;min-width:38px;}
 }
-.flowpanel .fgrid{grid-template-columns:minmax(0,1.5fr) auto;}
 .adv-pick.on small{color:var(--gilt-2);font-weight:800;}
 .adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .adv-tog .label{margin:0;}
@@ -1278,7 +1277,16 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 .dualrow .fchip{gap:6px;}
 .dualdot{width:14px;height:10px;border-radius:5px;background:linear-gradient(90deg,#f2b01e 50%,#1679c0 50%);box-shadow:0 0 0 1px rgba(255,255,255,.3);}
 .flowpanel .adv{margin-top:14px;}
-.flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips,.flowpanel .adv-dup{display:none!important;}
+.flowpanel .row1 .btn,.flowpanel .colbtn,.flowpanel .onchips{display:none!important;}
+/* Stats: one line per stat, the stat bar's mark at the head of it, numbers as round chips like Cost */
+.statf{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(227,189,98,.16);}
+.sf-row{display:flex;align-items:center;gap:8px;}
+.sf-row + .sf-row{padding-top:6px;border-top:1px solid rgba(227,189,98,.12);}
+.sf-ic{flex:none;position:relative;display:flex;flex-direction:column;align-items:center;width:36px;}
+.sf-ic svg{width:26px;height:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));}
+.sf-ic small{margin-top:1px;font-size:.56rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+.sf-chips{flex:1;min-width:0;display:flex;flex-wrap:nowrap;gap:5px;overflow:visible;}
+.sf-chips .fchip{flex:0 0 calc((100% - 35px) / 8);min-width:0;justify-content:center;padding:0 2px;min-height:34px;}
 .fchip.fclear{background:rgba(196,110,96,.16);color:#e9a596;box-shadow:inset 0 0 0 1.5px rgba(214,134,118,.5);}
 .btn.btn-clear{--b:#4a2a36;--b-ink:#f0b2a4;--b-lip:#2a1620;box-shadow:inset 0 0 0 1.5px rgba(214,134,118,.45);}
 .inkrow{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
@@ -1372,10 +1380,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 @media (min-width:700px) and (orientation:portrait){.lz-flow{--cu:min(56vh,104vw,680px);}.lz-in{max-width:760px;}}
 
 .fp-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.fp-top b{font-size:1.05rem;}
+.fp-top b{font-family:var(--serif);font-weight:700;font-size:1.35rem;color:#fff6dc;}
+html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,98,.13),rgba(227,189,98,0) 60%),linear-gradient(180deg,#272050,#1a1438 55%,#140f2c);}
+.flowpanel .fp-top .btn-primary{color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e8c56f 45%,#c9973a);box-shadow:inset 0 0 0 1.5px #fff2c4,0 3px 0 #7a5413;}
+.flowpanel .fp-top{padding-bottom:12px;margin-bottom:6px;background:linear-gradient(90deg,rgba(227,189,98,0),rgba(227,189,98,.7) 30%,rgba(227,189,98,.7) 70%,rgba(227,189,98,0)) center bottom/90% 1px no-repeat;}
 .fp-n{flex:1;min-width:0;color:var(--text-3);font-weight:800;font-size:.85rem;}
 .fp-n.none{color:#ff9a9a;}
-.flowfilt .k-scrim{z-index:450;}
+.flowfilt .k-scrim,.flowsheet .k-scrim{z-index:450;}
 
 .fp-catch{display:none;}
 /* Phones and tablets: the filters slide up as a sheet like the library's own Filters sheet, over a shade; tap the shade
@@ -7449,6 +7460,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     '<circle cx="20" cy="20" r="19" fill="url(#gkw)" stroke="#fff2c4" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#7a5618" stroke-width="1" stroke-dasharray="1.3 1.5"/>' +
     '<path d="M20 7l11.26 6.5v13L20 33l-11.26-6.5v-13z" fill="#1d1a2c" stroke="#fff2c4" stroke-width="1.4" stroke-linejoin="round"/><path d="M20 9.6l9 5.2v10.4l-9 5.2-9-5.2V14.8z" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/></svg>';
   var LOREMARK = '<svg viewBox="6 0 28 40" aria-hidden="true"><defs><linearGradient id="gkl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs><path d="M20 1.5L33 20 20 38.5 7 20z" fill="url(#gkl)" stroke="#fff2c4" stroke-width="1" stroke-linejoin="round"/><path d="M20 6.5L29.5 20 20 33.5 10.5 20z" fill="#1d1a2c"/></svg>';
+  // The library's stat filters (top value means "and up"), drawn with the stat bar's own marks
+  var PK_MOVE = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 3.5 20 9.5l13-6v3.2L20 12.7 7 6.7z" fill="#eef0f3"/><path d="M7 11 20 17l13-6v13.5c0 3.4-1.6 5.4-4.4 7.2L20 37.5l-8.6-5.8C8.6 29.9 7 27.9 7 24.5z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  var STATF = [
+    { key: 'strs', f: 's', name: 'Strength', short: 'Str', vals: [0, 1, 2, 3, 4, 5, 6, 7], top: 7, ico: PK_STAR },
+    { key: 'wils', f: 'w', name: 'Willpower', short: 'Will', vals: [1, 2, 3, 4, 5, 6, 7, 8], top: 8, ico: PK_SHIELD },
+    { key: 'lors', f: 'l', name: 'Lore', short: 'Lore', vals: [0, 1, 2, 3, 4], top: 4, ico: LOREMARK.replace('viewBox="6 0 28 40"', 'viewBox="0 0 40 40"') },
+    { key: 'movs', f: 'mv', name: 'Move cost', short: 'Move', vals: [0, 1, 2, 3], top: 3, ico: PK_MOVE, loc: true }
+  ];
   function markHTML(cls, svg, n, label) { return '<span class="rv-mk ' + cls + '" role="img" aria-label="' + n + ' ' + label + '">' + svg + '<b>' + n + '</b></span>'; }
   // Ink and lore amounts in the reveal header drawn as the printed marks: "Paid 9 ink", "+1 lore · Chappie has 3"
   function fxHTML(effect) {
@@ -7961,7 +7980,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], dual: 0, newrel: false, manual: false, shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, costs: [], strs: [], wils: [], lors: [], movs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], dual: 0, newrel: false, manual: false, shown: 60, tab: 'pool' };
     if (o && o.newrel && newCards().length) f.newrel = true;
     if (o && o.manualNew) { f.newrel = true; f.manual = true; }
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
@@ -8033,7 +8052,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     advQ.addEventListener('input', function () { search.value = advQ.value; search.dispatchEvent(new Event('input')); });
     var advTop = el('div', { class: 'fchips' }), advCost = el('div', { class: 'fchips' });
     var inkK = el('div', { class: 'inkk iw' });
-    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), el('div', { class: 'savedrow' }, [advSec('Saved', advTop, 'adv-dup sv-l'), advSec('Inkwell', inkK, 'inkw')]), el('div', { class: 'fgrid' }, [el('div', { class: 'fg-col fg-picks' }, [el('div', { class: 'label', text: 'Details' }), pickRows]), el('div', { class: 'fg-col fg-ink' }, [el('div', { class: 'label', text: 'Ink' }), inkChips]), el('div', { class: 'fg-col fg-cost adv-dup' }, [el('div', { class: 'label', text: 'Cost' }), advCost])]), advSec('Keyword', kwChips), togs]);
+    // Stats: strength, willpower, lore and move cost, each on its own line behind the mark from the card's stat bar
+    var statBoxes = {}, statRows = el('div', { class: 'statf' });
+    STATF.forEach(function (sf) {
+      statBoxes[sf.key] = el('div', { class: 'fchips sf-chips' });
+      statRows.appendChild(el('div', { class: 'sf-row sf-' + sf.key }, [el('span', { class: 'sf-ic', title: sf.name, html: sf.ico + '<small>' + sf.short + '</small>' }), statBoxes[sf.key]]));
+    });
+    var adv = el('div', { class: 'adv' }, [advSec('Search', advQ, 'adv-dup'), el('div', { class: 'savedrow' }, [advSec('Saved', advTop, 'adv-dup sv-l'), advSec('Inkwell', inkK, 'inkw')]), el('div', { class: 'fgrid' }, [el('div', { class: 'fg-col fg-picks' }, [el('div', { class: 'label', text: 'Details' }), pickRows]), el('div', { class: 'fg-col fg-ink' }, [el('div', { class: 'label', text: 'Ink' }), inkChips]), el('div', { class: 'fg-col fg-cost adv-dup' }, [el('div', { class: 'label', text: 'Cost' }), advCost])]), advSec('Stats', statRows, 'sf-sec'), advSec('Keyword', kwChips), togs]);
     var curve = el('div', { class: 'curve' }), dlist = el('div', { class: 'list' }), dfoot = el('div', { class: 'stack', style: { gap: '6px', 'padding-bottom': 'calc(var(--safe-b) + 8px)' } });
     var dpane = el('div', { class: 'bld-deck' }, [curve, el('div', { class: 'muted', style: { 'font-size': '.75rem', margin: '2px 2px 6px' }, html: '' }), dlist, dfoot]);
     body.appendChild(pool); body.appendChild(dpane);
@@ -8066,6 +8091,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     // Filters are OR within a group (cost 2 or 3; Toy Story or Coco) and AND across groups
     function refilter() { f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; }
+    function statN() { return f.strs.length + f.wils.length + f.lors.length + f.movs.length; }
     function togF(key, k) { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else a.push(k); refilter(); }
     function setOnly(key, k) { f[key] = k ? [k] : []; refilter(); Kit.sfx('tap'); }
     // A picker that stays open: tap rows to add or remove; what's picked sits at the top with an ×
@@ -8240,6 +8266,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       INKS.forEach(function (i) { if (f.inks[i]) offs.push([i, function () { f.inks[i] = false; }, inkIcon(i)]); });
       var offIn = function (key, fn) { f[key].forEach(function (k) { offs.push([fn ? fn(k) : k, function () { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); }]); }); };
       offIn('types', function (t) { return TYPE_NAMES[t]; }); offIn('stories', storyLabel); offIn('chrs'); offIn('clss'); offIn('kws', function (k) { return KWNAME[k]; }); offIn('sets', setName); f.rars.forEach(function (k) { offs.push([k, function () { var i = f.rars.indexOf(k); if (i >= 0) f.rars.splice(i, 1); }, rarIcon(k)]); });
+      STATF.forEach(function (sf) { offIn(sf.key, function (c) { return sf.name + ' ' + c + (c === sf.top ? '+' : ''); }); });
       if (f.inkable) offs.push([f.inkable === 2 ? 'Not inkable only' : 'Inkable only', function () { f.inkable = 0; }]);
       if (f.dual) offs.push(['Dual ink', function () { f.dual = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
@@ -8260,6 +8287,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       [costChips, advCost].forEach(function (box) {
         box.innerHTML = '';
         [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (c) { box.appendChild(chip(c === 8 ? '8+' : String(c), f.costs.indexOf(c) >= 0, function () { togF('costs', c); })); });
+      });
+      STATF.forEach(function (sf) {
+        var box = statBoxes[sf.key]; box.innerHTML = '';
+        sf.vals.forEach(function (c) { box.appendChild(chip(c === sf.top ? c + '+' : String(c), f[sf.key].indexOf(c) >= 0, function () { togF(sf.key, c); })); });
       });
       if (document.activeElement !== advQ) advQ.value = search.value;
       typeChips.innerHTML = ''; Object.keys(TYPE_NAMES).forEach(function (t) {
@@ -8318,6 +8349,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (on.length && !di.some(function (i) { return on.indexOf(i) >= 0; })) return false;
       if (f.fit) { var dk = deckInks(deck.cards); if (dk.length >= (deck.casual ? 3 : 2) && !di.every(function (i) { return dk.indexOf(i) >= 0; })) return false; }
       if (f.costs.length && !f.costs.some(function (c) { return c === 8 ? d.c >= 8 : d.c === c; })) return false;
+      // stats: the top chip is "and up"; cards without that stat (actions, items) drop out
+      for (var si = 0; si < STATF.length; si++) { var sf = STATF[si], sv = d[sf.f], pk = f[sf.key];
+        if (pk.length && (sv == null || (sf.loc && d.t !== 'location') || !pk.some(function (c) { return c === sf.top ? sv >= c : sv === c; }))) return false; }
       if (f.types.length && !f.types.some(function (t) { return t === 'song' ? d.song : t === 'action' ? d.t === 'action' && !d.song : d.t === t; })) return false;
       if (f.sets.length && f.sets.indexOf(String(d.set)) < 0) return false;
       // Single or dual ink; with Dual and two inks picked, only that exact pair
@@ -8479,31 +8513,39 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // (and back when it closes); every change re-deals the cards you swipe through.
     var FILTER_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
     var fpCatch = null;
-    var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null;
+    var curZoom = null, fpanel = null, fpHome = null, fpCount = null, fpObs = null, fsLive = null;
     function advCount() {
-      var n = f.stories.length + f.chrs.length + f.clss.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.inkable) n++; if (f.dual) n++; if (f.fit) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.types.length + f.sets.length + f.kws.length + f.rars.length + statN(); if (f.inkable) n++; if (f.dual) n++; if (f.fit) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function activeFilters() {
-      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.q) n++; if (f.marked) n++; if (f.manual) n++; if (f.deck) n++; if (f.inkable) n++; if (f.newrel) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length + statN(); if (f.q) n++; if (f.marked) n++; if (f.manual) n++; if (f.deck) n++; if (f.inkable) n++; if (f.newrel) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function filterBtn() {
       var ov = $('.lz'); if (!ov) return;
       var old = $('.lz-filt', ov); if (old) old.remove();
       var n = activeFilters();
-      ov.appendChild(el('button', { type: 'button', class: 'lz-filt' + (n ? ' on' : '') + (fpanel ? ' open' : ''), 'aria-label': 'Filter cards' + (n ? ', ' + n + ' on' : ''), html: FILTER_ICO + (n ? '<b>' + n + '</b>' : ''), title: 'Filter cards',
-        onclick: function (e) { e.stopPropagation(); if (fpanel) closeFilterPanel(); else openFilterPanel(); } }));
+      ov.appendChild(el('button', { type: 'button', class: 'lz-filt' + (n ? ' on' : '') + (fpanel || fsLive ? ' open' : ''), 'aria-label': 'Filter cards' + (n ? ', ' + n + ' on' : ''), html: FILTER_ICO + (n ? '<b>' + n + '</b>' : ''), title: 'Filter cards',
+        onclick: function (e) { e.stopPropagation(); if (fpanel) closeFilterPanel(); else if (fsLive) fsLive.close(); else openFilterPanel(); } }));
     }
     function openFilterPanel() {
+      // Phones and tablets: the very same Filters sheet as the library's (look, layout and swipe-down), over the card
+      // view, which re-deals behind it as you tap
+      if (!(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches)) {
+        if (fsLive) return;
+        document.documentElement.classList.add('flowsheet');
+        fsLive = moreFilters(function () { fsLive = null; document.documentElement.classList.remove('flowsheet'); filterBtn(); });
+        filterBtn(); Kit.sfx('tap'); return;
+      }
       var fl = $('.bld-filters'); if (!fl || fpanel) return;
       fpHome = { parent: fl.parentNode, next: fl.nextSibling };
       fpCount = el('span', { class: 'fp-n' });
       fpanel = el('div', { class: 'flowpanel', role: 'dialog', 'aria-label': 'Filter cards' }, [
-        el('div', { class: 'fp-top' }, [el('b', { text: 'Filter cards' }), fpCount,
+        el('div', { class: 'fp-top' }, [el('b', { text: 'Filters' }), fpCount,
           el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Clear', onclick: function () { clearFilters(); } }),
           el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Done', onclick: closeFilterPanel })]),
-        fl, adv]);
+        adv]);
       // Phones and tablets: the panel slides up as a sheet over a shade; tapping the shade closes it
       fpCatch = el('div', { class: 'fp-catch', 'aria-hidden': 'true', onclick: function (e) { e.stopPropagation(); closeFilterPanel(); } });
       var sx = null;
@@ -8531,7 +8573,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn(); flowRefit();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.newrel = false; f.manual = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.newrel = false; f.manual = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.strs = []; f.wils = []; f.lors = []; f.movs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
@@ -8547,7 +8589,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       deckSet = null;
       var st = grid.scrollTop, list = sortCards(DB.unique.filter(matches));
       paintSort();
-      if (fpanel) refreshFlow(list);
+      if (fpanel || fsLive) refreshFlow(list);
       grid.innerHTML = '';
       var lim = f.shown * (grid.classList.contains('tiny') ? 2 : 1);
       list.slice(0, lim).forEach(function (d) {
@@ -8606,13 +8648,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // Done shows how many cards the filters leave (kept up to date as you tap)
     var doneBtn = null;
     function doneText(n) { if (doneBtn && doneBtn.isConnected) doneBtn.textContent = 'Done · ' + (n ? n.toLocaleString() + (n === 1 ? ' card' : ' cards') : 'no cards'); }
-    function moreFilters() {
-      Kit.sheet({ title: 'Filters', node: adv, actions: [
+    function moreFilters(onClose) {
+      var sh0 = Kit.sheet({ title: 'Filters', node: adv, onClose: onClose, actions: [
         { label: 'Clear all', cls: 'btn-clear', keep: true, onClick: clearFilters },
         { label: 'Done', cls: 'btn-primary' }] });
       var bs = document.querySelectorAll('.k-sheet .k-acts .btn-primary'); doneBtn = bs[bs.length - 1];
       var sh = doneBtn && doneBtn.closest('.k-sheet'); if (sh) sh.classList.add('fsheet');   // taller, with its buttons side by side
       doneText(DB.unique.filter(matches).length);
+      return sh0;
     }
     paintChips(); paintDeck(); paintGrid();
     // New Release: jump to the new cards (from the pack), switching the filter on
