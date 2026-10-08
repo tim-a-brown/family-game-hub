@@ -1675,10 +1675,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   background:linear-gradient(90deg,color-mix(in srgb,var(--ty) 22%,transparent),color-mix(in srgb,var(--ty) 7%,rgba(255,255,255,.03)) 60%);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--ty) 75%,transparent);}
 .drow .q button.max,.drow .q button:disabled{opacity:.3;cursor:default;}
 .drow button.odds{border:0;cursor:help;}
-.bld-msg.ok{display:flex;align-items:center;gap:8px;}
-.bld-msg .rdy{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#3fbf6a;color:#06210f;box-shadow:0 0 8px rgba(63,191,106,.55);}
-.bld-msg .rdy .ico{width:13px;height:13px;stroke-width:3;}
-.bld-msg .inkdots .inkico{--ih:18px;}
+.bld-msg.ok:empty{display:none;}
+
 .dkey{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
 .dkey .dk-ink{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);color:var(--gilt-2);}
 .dkey .dk-ink svg{width:18px;height:18px;}
@@ -10123,10 +10121,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function paintDeck() {
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards, deck.casual), cs = deckCards(deck.cards);
       if (lib) return;
+      // Ready to play: the count turns green (the line under the name is only for what still needs fixing)
       cnt.textContent = n + '/60'; cnt.className = 'cnt' + (pr.length ? '' : ' ok');
-      // Ready: a green check and the deck's inks (plus a Casual tag); otherwise what still needs fixing
-      if (pr.length) msg.textContent = pr[0];
-      else { var di = deckInks(deck.cards); msg.innerHTML = '<span class="rdy" title="Ready to play">' + Kit.icon('check') + '</span>' + inkDots(di) + (isCasual(deck) ? '<i class="dkm-tag">Casual</i>' : ''); msg.setAttribute('aria-label', 'Ready to play: ' + di.join(' & ')); }
+      cnt.setAttribute('title', pr.length ? pr[0] : 'Ready to play: ' + deckInks(deck.cards).join(' & '));
+      msg.textContent = pr.length ? pr[0] : '';
       msg.className = 'bld-msg' + (pr.length ? '' : ' ok');
       tabs.innerHTML = '';
       tabs.appendChild(chip('Cards', f.tab === 'pool', function () { f.tab = 'pool'; body.className = 'bld-body tab-pool'; paintDeck(); }));
