@@ -7391,7 +7391,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (nav.list && S) {
         // In a game: the hand (or that side of the table) as a strip of little cards, this one raised, the ones you can
         // use right now edged in gold; tap one to go to it
-        var strip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': (nav.ctx === 'hand' ? 'Hand' : 'Table') + ': card ' + (nav.i + 1) + ' of ' + nav.n });
+        var strip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': ({ hand: 'Hand', board: 'Table', mull: 'Opening hand', discard: 'Discard pile' }[nav.ctx] || 'Cards') + ': card ' + (nav.i + 1) + ' of ' + nav.n });
         nav.list.forEach(function (x, j) {
           if (!S.cards[x]) return;
           strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : '') + (nav.ctx === 'mull' && ui.mullSel[x] ? ' out' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
@@ -7541,7 +7541,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         b._near = Math.max(0, 1 - Math.abs(j - F.pos));   // the sheen and tilt hand over smoothly as cards pass the middle
       }
       var idx = Math.round(F.pos);
-      if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz) pz.textContent = (idx + 1) + ' of ' + n; Kit.sfx('tick'); }
+      if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz && pz.classList.contains('lz-strip')) $$('.ls-c', pz).forEach(function (t, k) { t.classList.toggle('on', k === idx); }); else if (pz) pz.textContent = (idx + 1) + ' of ' + n; Kit.sfx('tick'); }
     };
     function stop() { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; }
     F.remeasure = function () { CU = 0; F.render(); };
