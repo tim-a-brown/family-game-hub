@@ -9336,13 +9336,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function netCode() { var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ', c = ''; for (var i = 0; i < 4; i++) c += A.charAt(Math.floor(Math.random() * A.length)); return c; }
   function netHost(me) {
     var dk = netDeck(me); if (!dk) return;
+    if (me.casual === 'no' && deckInks(dk.cards).length > 2) { Kit.toast('Your deck is a casual deck, and this table doesn’t allow them. Pick another deck or allow casual decks.'); Kit.sfx('bad'); return; }
     netDb().then(function (db) {
       var tries = 0;
       (function attempt() {
         var ref = roomCol(db).doc(netCode());
         ref.get().then(function (sn) {
           if (sn.exists && Date.now() - (sn.data().at || 0) < 12 * 3600e3 && ++tries < 6) return attempt();
-          return ref.set({ host: { name: me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20 }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
+          return ref.set({ host: { name: me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, casual: me.casual === 'no' ? 'no' : 'yes' }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
             .then(function () { netListen(ref, 0); netWaitScreen(ref.id, true); });
         }).catch(netErr);
       })();
@@ -9360,6 +9361,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           var d = sn.data();
           if (d.host && d.host.dev === NET.dev) throw new Error('That’s your own table. Join it from the other device.');
           if (d.status !== 'waiting') throw new Error('That table already has two players');
+          if (d.host.casual === 'no' && deckInks(dk.cards).length > 2) throw new Error(d.host.name + '’s table doesn’t allow casual decks. Pick a deck with one or two inks to join.');
           tx.update(ref, { guest: { name: me.name === d.host.name ? me.name + ' 2' : me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat() }, status: 'joined', at: Date.now(), by: NET.dev });
         });
       }).then(function () { netListen(ref, 1); netWaitScreen(code, false); });
@@ -9369,7 +9371,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function netDeal(d) {
     if (NET.dealt) return; NET.dealt = true;
     var hd = JSON.parse(d.host.deck), gd = JSON.parse(d.guest.deck);
-    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random', goal: String(d.host.goal || 20) } };
+    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random', goal: String(d.host.goal || 20), decks: d.host.casual === 'no' ? 'no' : 'yes' } };
     NET.owner = true; NET.synced = true; NET.seq = d.seq || 0;
     newGame(cfg, [{ kind: 'inline', name: hd.name, cards: hd.cards }, { kind: 'inline', name: gd.name, cards: gd.cards }]);
     NET.defs = S.defs;
@@ -9443,6 +9445,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // the table you open plays to this much lore (whoever joins plays to the same)
     wrap.appendChild(el('div', { class: 'dk-seat net-goal' }, [el('div', { class: 'grow' }, [el('b', { text: 'Lore to win' }), el('small', { text: 'For a table you open' })]),
       seg([['20', '20'], ['50', '50']], String(me.goal || 20), function (v) { me.goal = +v; keep(); })]));
+    wrap.appendChild(el('div', { class: 'dk-seat net-goal' }, [el('div', { class: 'grow' }, [el('b', { text: 'Casual decks' }), el('small', { text: 'More than two inks, at a table you open' })]),
+      seg([['yes', 'Allowed'], ['no', 'Not allowed']], me.casual === 'no' ? 'no' : 'yes', function (v) { me.casual = v; keep(); })]));
     var sub = function () { if (!seats.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
     DB.subs.push(sub);
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function () { netHost(me); } }));
@@ -9466,7 +9470,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           var inks = DB.status === 'ready' && dk.cards ? deckInks(dk.cards) : [];
           rooms.appendChild(el('div', { class: 'net-room' }, [
             el('span', { class: 'avatar', style: { '--c': Kit.color(1) }, text: (r.d.host.name || '?').charAt(0).toUpperCase() }),
-            el('div', { class: 'grow' }, [el('b', { text: r.d.host.name + '’s table' }), el('small', { html: (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ' · code ' + r.code + (+r.d.host.goal === 50 ? ' · to 50 lore' : '')) })]),
+            el('div', { class: 'grow' }, [el('b', { text: r.d.host.name + '’s table' }), el('small', { html: (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ' · code ' + r.code + (+r.d.host.goal === 50 ? ' · to 50 lore' : '') + (r.d.host.casual === 'no' ? ' · no casual decks' : '')) })]),
             el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: function () { netJoin(r.code, me); } })]));
         });
       }, function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
