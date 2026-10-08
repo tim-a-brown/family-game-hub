@@ -1671,7 +1671,31 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .pc.dim{opacity:.4;}
 .bld-more{grid-column:1/-1;}
 .bld-deck .list{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;padding-bottom:12px;}
-.drow{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:10px;background:rgba(255,255,255,.05);}
+.drow{--ty:#888;display:flex;align-items:center;gap:8px;padding:4px 6px 4px 8px;border-radius:10px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--ty) 22%,transparent),color-mix(in srgb,var(--ty) 7%,rgba(255,255,255,.03)) 60%);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--ty) 75%,transparent);}
+.drow .q button.max,.drow .q button:disabled{opacity:.3;cursor:default;}
+.drow button.odds{border:0;cursor:help;}
+.bld-msg.ok{display:flex;align-items:center;gap:8px;}
+.bld-msg .rdy{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#3fbf6a;color:#06210f;box-shadow:0 0 8px rgba(63,191,106,.55);}
+.bld-msg .rdy .ico{width:13px;height:13px;stroke-width:3;}
+.bld-msg .inkdots .inkico{--ih:18px;}
+.dkey{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
+.dkey .dk-ink{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);color:var(--gilt-2);}
+.dkey .dk-ink svg{width:18px;height:18px;}
+.dkey .dk-ty{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--text-3);}
+.dkey .dk-ty i{width:10px;height:10px;border-radius:3px;background:var(--ty);box-shadow:0 0 6px color-mix(in srgb,var(--ty) 60%,transparent);}
+.dkey .dk-ty b{font-family:var(--display);font-weight:400;font-size:.85rem;color:var(--text);}
+.otip{position:fixed;z-index:9999;display:none;flex-direction:column;gap:10px;padding:12px 14px;border-radius:14px;background:#1b1631;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 0 0 1px rgba(227,189,98,.35);pointer-events:none;}
+.otip.show{display:flex;}
+.ot-row{display:flex;align-items:center;gap:12px;}
+.ot-deck{width:64px;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px;}
+.ot-deck i{aspect-ratio:5/7;border-radius:1.5px;background:rgba(255,255,255,.16);}
+.ot-deck i.on{background:#e3bd62;box-shadow:0 0 6px rgba(227,189,98,.8);}
+.ot-hand{width:64px;height:40px;position:relative;}
+.ot-hand i{position:absolute;left:24px;bottom:0;width:16px;height:24px;border-radius:2.5px;background:linear-gradient(160deg,#3a3060,#241c44);box-shadow:inset 0 0 0 1px rgba(227,189,98,.5);transform-origin:50% 160%;transform:rotate(var(--r));}
+.ot-ring{width:36px;height:36px;flex:none;margin-left:-6px;}
+.ot-v b{display:block;font-family:var(--display);font-weight:400;font-size:1.05rem;color:var(--gilt-2);line-height:1.1;}
+.ot-v small{font-size:.66rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);}
 .drow .odds{flex:none;min-width:44px;text-align:center;font-family:var(--display);font-size:.8rem;color:var(--gilt-2);background:rgba(227,189,98,.1);box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);border-radius:999px;padding:3px 7px;line-height:1.1;}
 .drow .odds small{display:block;font-family:var(--font);font-size:.58rem;font-weight:800;color:var(--text-3);letter-spacing:.02em;}
 .dsort{display:flex;align-items:center;gap:6px;margin:2px 2px 6px;}
@@ -1696,8 +1720,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .bld.seldrag .pc{-webkit-touch-callout:none;}
 .hmenu .k-list button{width:100%;}
 
-.drow .hc{flex:none;width:24px;height:26px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;font-family:var(--display);font-size:.85rem;background:#2a2440;}
-.drow .hc.ink{background:linear-gradient(160deg,var(--gilt-2),var(--gilt) 45%,var(--gilt-3));color:#2b1a00;}
+.drow .hc{flex:none;width:30px;height:30px;}
+.drow .hc svg{width:100%;height:100%;display:block;}
 .drow .grow{flex:1;min-width:0;line-height:1.1;border:0;background:none;color:inherit;text-align:left;padding:0;}
 .drow .grow b{display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .drow .grow small{display:block;font-size:.7rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -10067,6 +10091,32 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (selSet) selPaint();
       doneText(list.length);
     }
+    // Card types for the deck list tints and key (songs apart from other actions)
+    var TY_ORDER = ['character', 'action', 'song', 'item', 'location'];
+    var TY_COL = { character: '#6f8cff', action: '#e8893a', song: '#c56be0', item: '#3fbf8a', location: '#e25f6b' };
+    var TY_NAME = { character: 'Characters', action: 'Actions', song: 'Songs', item: 'Items', location: 'Locations' };
+    function tyKey(d) { return d.song ? 'song' : TY_COL[d.t] ? d.t : 'action'; }
+    // The odds badge explained in pictures: the next draw as 1 lit card among N, the opening hand as 7 cards and a ring
+    var tipEl = null, tipFor = null;
+    function oddsTip(b, odds, pct) {
+      function show() {
+        if (!tipEl) { tipEl = el('div', { class: 'otip', role: 'tooltip' }); document.body.appendChild(tipEl); }
+        tipFor = b;
+        var N = Math.max(1, Math.min(60, odds)), cells = '';
+        for (var i = 0; i < N; i++) cells += '<i' + (i === 0 ? ' class="on"' : '') + '></i>';
+        var hand = ''; for (var j = 0; j < 7; j++) hand += '<i style="--r:' + ((j - 3) * 7) + 'deg"></i>';
+        var C = 2 * Math.PI * 15;
+        tipEl.innerHTML = '<div class="ot-row"><div class="ot-deck" style="--n:' + Math.ceil(Math.sqrt(N * 1.6)) + '">' + cells + '</div><div class="ot-v"><b>1 in ' + odds + '</b><small>next draw</small></div></div>' +
+          '<div class="ot-row"><div class="ot-hand">' + hand + '</div><svg class="ot-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="#e3bd62" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + (C * pct / 100).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 18 18)"/></svg><div class="ot-v"><b>' + pct + '%</b><small>opening hand</small></div></div>';
+        var r = b.getBoundingClientRect(); tipEl.classList.add('show');
+        var w = tipEl.offsetWidth, h = tipEl.offsetHeight, x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)), y = r.top - h - 8;
+        if (y < 8) y = r.bottom + 8;
+        tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+      }
+      function hide() { if (tipEl && tipFor === b) { tipEl.classList.remove('show'); tipFor = null; } }
+      b.addEventListener('mouseenter', show); b.addEventListener('mouseleave', hide); b.addEventListener('blur', hide);
+      b.addEventListener('click', function (e) { e.stopPropagation(); if (tipFor === b) hide(); else { show(); setTimeout(function () { document.addEventListener('pointerdown', function off(ev) { if (ev.target !== b) { hide(); } document.removeEventListener('pointerdown', off, true); }, true); }, 0); } });
+    }
     // Chance of at least one of k copies among the first h cards of an n-card deck
     // (a deck of 7 or fewer is all in the opening hand)
     function openOdds(n, k, h) { if (k <= 0 || n <= 0) return 0; h = Math.min(h, n); var p = 1; for (var i = 0; i < h; i++) p *= Math.max(0, n - k - i) / (n - i); return 1 - p; }
@@ -10074,35 +10124,51 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards, deck.casual), cs = deckCards(deck.cards);
       if (lib) return;
       cnt.textContent = n + '/60'; cnt.className = 'cnt' + (pr.length ? '' : ' ok');
-      msg.textContent = pr.length ? pr[0] : (isCasual(deck) ? 'Casual deck, ready to play: ' : 'Ready to play: ') + deckInks(deck.cards).join(' & ');
+      // Ready: a green check and the deck's inks (plus a Casual tag); otherwise what still needs fixing
+      if (pr.length) msg.textContent = pr[0];
+      else { var di = deckInks(deck.cards); msg.innerHTML = '<span class="rdy" title="Ready to play">' + Kit.icon('check') + '</span>' + inkDots(di) + (isCasual(deck) ? '<i class="dkm-tag">Casual</i>' : ''); msg.setAttribute('aria-label', 'Ready to play: ' + di.join(' & ')); }
       msg.className = 'bld-msg' + (pr.length ? '' : ' ok');
       tabs.innerHTML = '';
       tabs.appendChild(chip('Cards', f.tab === 'pool', function () { f.tab = 'pool'; body.className = 'bld-body tab-pool'; paintDeck(); }));
       tabs.appendChild(chip('Deck (' + n + ')', f.tab === 'deck', function () { f.tab = 'deck'; body.className = 'bld-body tab-deck'; paintDeck(); }));
       var by = {}, mx = 1; cs.forEach(function (x) { var k = Math.min(8, x.d.c || 0); by[k] = (by[k] || 0) + x.n; mx = Math.max(mx, by[k]); });
       curve.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8].map(function (c) { return '<div><span>' + (by[c] || 0) + '</span><i style="height:' + Math.round((by[c] || 0) / mx * 34) + 'px"></i><span>' + (c === 8 ? '8+' : c) + '</span></div>'; }).join('');
-      var ink = cs.reduce(function (a, x) { return a + (x.d.k ? x.n : 0); }, 0), chars = cs.reduce(function (a, x) { return a + (x.d.t === 'character' ? x.n : 0); }, 0);
-      dpane.children[1].textContent = n ? ink + ' inkable · ' + chars + ' characters · ' + (n - chars) + ' other' : 'Tap + on a card to add it. 60 cards, 1 or 2 inks, up to 4 of each.';
+      // Under the curve: inkable count on a little gold coin, then a key to the row tints (one chip per card type in the deck)
+      var ink = cs.reduce(function (a, x) { return a + (x.d.k ? x.n : 0); }, 0), tyN = {};
+      cs.forEach(function (x) { var k = tyKey(x.d); tyN[k] = (tyN[k] || 0) + x.n; });
+      var sum = dpane.children[1]; sum.innerHTML = '';
+      if (!n) sum.textContent = 'Tap + on a card to add it. 60 cards, 1 or 2 inks, up to 4 of each.';
+      else {
+        sum.className = 'muted dkey';
+        sum.appendChild(el('span', { class: 'dk-ink', title: ink + ' inkable', html: costSVG(true) + '<b>' + ink + '</b>' }));
+        TY_ORDER.forEach(function (k) { if (tyN[k]) sum.appendChild(el('span', { class: 'dk-ty', style: { '--ty': TY_COL[k] }, title: tyN[k] + ' ' + TY_NAME[k].toLowerCase(), html: '<i></i><b>' + tyN[k] + '</b> ' + TY_NAME[k] })); });
+      }
       dlist.innerHTML = '';
       // sort the list; each row shows the odds the next card you draw is one of these (copies : deck size) and the chance of one in your opening 7
-      var ds = lsGet(DSORT, 'cost');
-      if (cs.length) dlist.appendChild(el('div', { class: 'dsort' }, [el('span', { class: 'label', text: 'Sort' }), seg([['cost', 'Cost'], ['name', 'Name'], ['qty', 'Copies'], ['type', 'Type'], ['ink', 'Ink']], ds, function (v) { lsSet(DSORT, v); paintDeck(); })]));
+      // Tap the sort that's on again to reverse it ('-cost' = high to low); an arrow shows which way
+      var dsv = String(lsGet(DSORT, 'cost')), dd = dsv.charAt(0) === '-' ? -1 : 1, ds = dsv.replace(/^-/, '');
+      if (cs.length) dlist.appendChild(el('div', { class: 'dsort' }, [el('span', { class: 'label', text: 'Sort' }), seg([['cost', 'Cost'], ['name', 'Name'], ['qty', 'Copies'], ['type', 'Type'], ['ink', 'Ink']].map(function (o) { return o[0] === ds ? [o[0], o[1] + (dd > 0 ? ' ↑' : ' ↓')] : o; }), ds, function (v) { lsSet(DSORT, v === ds ? (dd > 0 ? '-' : '') + v : v); paintDeck(); })]));
       var tyO = { character: 0, action: 1, item: 2, location: 3 };
       cs = cs.slice().sort(function (a, b) {
         var A = a.d, B = b.d, byName = A.full.localeCompare(B.full), byCost = (A.c || 0) - (B.c || 0);
-        if (ds === 'name') return byName;
-        if (ds === 'qty') return b.n - a.n || byCost || byName;
-        if (ds === 'type') return (tyO[A.t] - tyO[B.t]) || (A.song === B.song ? 0 : A.song ? 1 : -1) || byCost || byName;
-        if (ds === 'ink') return INKS.indexOf(inkOf(A)[0]) - INKS.indexOf(inkOf(B)[0]) || byCost || byName;
-        return byCost || byName;
+        if (ds === 'name') return dd * byName;
+        if (ds === 'qty') return dd * (b.n - a.n) || byCost || byName;
+        if (ds === 'type') return dd * ((tyO[A.t] - tyO[B.t]) || (A.song === B.song ? 0 : A.song ? 1 : -1)) || byCost || byName;
+        if (ds === 'ink') return dd * (INKS.indexOf(inkOf(A)[0]) - INKS.indexOf(inkOf(B)[0])) || byCost || byName;
+        return dd * byCost || byName;
       });
       cs.forEach(function (x) {
         var d = x.d, odds = n ? Math.round(n / x.n) : 0, open7 = n ? Math.round(openOdds(n, x.n, 7) * 100) : 0;
-        dlist.appendChild(el('div', { class: 'drow' }, [
-          el('span', { class: 'hc' + (d.k ? ' ink' : ''), text: String(d.c) }),
-          el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d, cs.map(function (y) { return y.d; })); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + ' ' + esc((d.v ? d.v + ' · ' : '') + (d.song ? 'Song' : d.t)) })]),
-          el('span', { class: 'odds', title: 'Next draw: 1 in ' + odds + ' · in your opening 7 cards: ' + open7 + '%', 'aria-label': 'Odds 1 in ' + odds + ', ' + open7 + ' percent in the opening hand', html: '1:' + odds + '<small>' + open7 + '% open</small>' }),
-          el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }), el('button', { type: 'button', text: '+', 'aria-label': 'Add one', onclick: function () { addCard(d, 1); } })])
+        var full = copiesByFull(deck.cards, d.full) >= copyLimit(d);
+        var ob = el('button', { type: 'button', class: 'odds', 'aria-label': 'Odds: 1 in ' + odds + ' on the next draw, ' + open7 + ' percent in the opening hand', html: '1:' + odds + '<small>' + open7 + '% open</small>' });
+        oddsTip(ob, odds, open7);
+        // The row is tinted by card type (see the key above the list)
+        dlist.appendChild(el('div', { class: 'drow', style: { '--ty': TY_COL[tyKey(d)] }, title: TY_NAME[tyKey(d)].replace(/s$/, '') }, [
+          el('span', { class: 'hc', html: costSVG(d.k, d.c || 0, 19, '#f3ead2') }),
+          el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d, cs.map(function (y) { return y.d; })); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + (d.v ? ' ' + esc(d.v) : '') })]),
+          ob,
+          el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }),
+            el('button', { type: 'button', text: '+', class: full ? 'max' : '', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', onclick: function () { addCard(d, 1); } })])
         ]));
       });
       dfoot.innerHTML = '';
