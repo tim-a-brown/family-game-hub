@@ -1,0 +1,55 @@
+# Weekly Lorcana card check. Every Monday morning (Denver time) it refreshes the saved card list and art backup,
+# runs every card through the game's own rules code, and keeps one GitHub issue up to date with any cards whose
+# abilities the game can't run on its own yet (assigned to Tim, so GitHub emails him). Nothing on the site changes.
+# Run it any time from the Actions tab (Run workflow).
+name: Lorcana card check
+
+on:
+  schedule:
+    - cron: '47 14 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: lorcana-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      # Same step as the deploy: saves Lorcast's full card list (and any new card art) to Firebase Storage
+      - name: Refresh saved card list and art backup
+        run: node scripts/mirror-lorcana-art.js
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Check every card against the game's rules
+        run: node scripts/check-lorcana-abilities.js
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          n=$(cat lorcana-check.count)
+          title="Lorcana: $n card abilities to wire up"
+          gh label create lorcana-check --color C9A227 --description "Weekly Lorcana card check" 2>/dev/null || true
+          num=$(gh issue list --state open --label lorcana-check --json number --jq '.[0].number // empty')
+          if [ "$n" -gt 0 ]; then
+            if [ -z "$num" ]; then
+              gh issue create --title "$title" --body-file lorcana-check.md --label lorcana-check --assignee "${{ github.repository_owner }}"
+            else
+              old=$(gh issue view "$num" --json title --jq .title)
+              gh issue edit "$num" --title "$title" --body-file lorcana-check.md
+              if [ "$old" != "$title" ]; then gh issue comment "$num" --body "The list changed: now $n cards. The issue description is up to date."; fi
+            fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" --comment "Every card runs automatically in the game now."
+          fi
+          echo "$n cards need wiring" >> "$GITHUB_STEP_SUMMARY"

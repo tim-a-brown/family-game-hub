@@ -54,6 +54,16 @@ Tim plans and requests changes in chat, proofs them on a preview URL, then says
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
 
+## Lorcana card updates
+
+- Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to
+  Firebase Storage `lorcana/data/cards.json` (public): `https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/lorcana%2Fdata%2Fcards.json?alt=media`.
+- The weekly Action runs `scripts/check-lorcana-abilities.js`, which runs every card through the game's own rules
+  code (the `// ==RULES==` … `// ==/ABIL==` part of `games/lorcana-play.html`; keep those markers) and keeps one
+  GitHub issue (label `lorcana-check`) listing cards the game can't run on its own yet.
+- "Wire up the Lorcana cards in the weekly check issue": read that issue or the saved card list, extend the
+  parser/engine, check new screens and animations with Tim before building them, then preview as usual.
+
 ## Rules for every change
 
 - **Bump `CACHE_VERSION`** in `service-worker.js` on every release. Installed copies
