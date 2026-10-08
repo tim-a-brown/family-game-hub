@@ -8836,23 +8836,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function discZoom(pi, u, dir) {
     var pile = S.P[pi].discard.slice().reverse(), i = pile.indexOf(u); if (i < 0) return;
-    var dpa = discPlayAct(pi, u);
-    zoomDef(DD(u), dpa && dpa.ok ? [{ label: dpa.label, primary: true, go: dpa.go }] : [], { i: i, n: pile.length, list: pile, ctx: 'discard', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < pile.length) discZoom(pi, pile[j], step); }, peek: function (k) { var x = pile[i + k]; return x ? DD(x) : null; } });
+    var dpa = discPlayAct(pi, u), dacts = [], P = S.P[pi];
+    if (dpa && dpa.ok) dacts.push({ label: dpa.label, primary: true, go: dpa.go });
+    if (canAct() && pi === S.cur && !P.cpu && !!boardOp(pi, 'inkFromDisc') && inksLeft(pi) > 0 && (DD(u).k || allInkable(pi))) dacts.push({ label: 'Put into inkwell', go: function () { inkFromDiscard(pi, u); } });
+    zoomDef(DD(u), dacts, { i: i, n: pile.length, list: pile, ctx: 'discard', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < pile.length) discZoom(pi, pile[j], step); }, peek: function (k) { var x = pile[i + k]; return x ? DD(x) : null; } });
   }
+  // The discard pile opens as a card carousel (newest on top), with a thumbnail strip of the whole pile
   function showDiscard(pi) {
-    var P = S.P[pi], sh;
+    var P = S.P[pi];
     if (!P.discard.length) { Kit.toast(P.name + '’s discard pile is empty'); return; }
-    var list = el('div', { class: 'lp-list' }), canDiscInk = canAct() && pi === S.cur && !P.cpu && !!boardOp(pi, 'inkFromDisc') && inksLeft(pi) > 0;
-    P.discard.slice().reverse().forEach(function (u) {
-      var d = DD(u);
-      var row = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]);
-      row.style.cursor = 'pointer';
-      row.addEventListener('click', function (e) { if (e.target.closest('button')) return; sh.close(); discZoom(pi, u); });
-      var dpa = discPlayAct(pi, u); if (dpa && dpa.ok) row.appendChild(el('button', { type: 'button', class: 'btn btn-sm btn-primary', text: 'Play', onclick: function () { sh.close(); dpa.go(); } }));
-      if (canDiscInk && (d.k || allInkable(pi))) row.appendChild(el('button', { type: 'button', class: 'btn btn-sm btn-soft', text: 'Ink it', onclick: function () { sh.close(); inkFromDiscard(pi, u); } }));
-      list.appendChild(row);
-    });
-    sh = Kit.sheet({ title: P.name + '’s Discard Pile (' + P.discard.length + ')', node: list, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    discZoom(pi, P.discard[P.discard.length - 1]);
   }
   // "You can ink cards from your discard"
   function inkFromDiscard(pi, u) {
