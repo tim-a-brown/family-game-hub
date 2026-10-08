@@ -226,7 +226,9 @@
     clash: function () { noise(0, 0.09, 0.11, 3200, 1.5); tone(1250, 0, 0.12, 'square', 0.03, 900); tone(2600, 0.01, 0.2, 'triangle', 0.04, 2100); },
     sparkle: function () { [1320, 1760, 2350].forEach(function (f, i) { tone(f, i * 0.06, 0.14, 'sine', 0.05); }); },
     splash: function () { noise(0, 0.16, 0.07, 900, 1.2, 300); tone(180, 0, 0.12, 'sine', 0.06, 90); },
-    boom: function () { noise(0, 0.32, 0.08, 240, 0.8, 90); tone(95, 0, 0.28, 'sine', 0.09, 45); }
+    boom: function () { noise(0, 0.32, 0.08, 240, 0.8, 90); tone(95, 0, 0.28, 'sine', 0.09, 45); },
+    // A dull, soft card brush (no click): low-pitched paper noise with a faint body, for card carousels
+    slide: function () { noise(0, 0.05, 0.03, 480 + Math.random() * 80, 0.9, 300); tone(130, 0, 0.04, 'sine', 0.018); }
   };
   // Recorded sounds (Kenney's CC0 packs, built by scripts/build-sounds.py) live in
   // /sounds as name-1.mp3, name-2.mp3…: real cards, chips, dice, strings, metal and
