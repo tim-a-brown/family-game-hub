@@ -62,6 +62,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lore{position:relative;flex:none;width:44px;height:44px;border:0;padding:0;background:none;color:#fff;}
 .lore svg{width:100%;height:100%;transform:rotate(-90deg);}
 .lore .tk{fill:none;stroke-width:5;}
+.lore.near::before{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:0 0 0 2px rgba(246,225,168,.9),0 0 14px rgba(246,200,90,.75);animation:loreNear 1.6s ease-in-out infinite;}
+.lore.mine .near-t{top:auto;bottom:calc(100% + 8px);}
+@keyframes loreNear{0%,100%{opacity:.35;transform:scale(.96);}50%{opacity:1;transform:scale(1.04);}}
+@media (prefers-reduced-motion:reduce){.lore.near::before{animation:none;opacity:.8;}}
+.lore .near-t{position:absolute;z-index:5;right:-6px;top:calc(100% + 8px);padding:1px 6px;border-radius:999px;white-space:nowrap;font-style:normal;font-size:.56rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e3bd62);box-shadow:0 2px 6px rgba(0,0,0,.45);}
 .lore b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:400;font-size:1.15rem;text-shadow:0 1px 2px rgba(0,0,0,.6);}
 .lore.bump b{animation:lbump .5s var(--spring);}
 @keyframes lbump{40%{transform:scale(1.45);color:var(--gilt-2);}}
@@ -979,6 +984,21 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 @keyframes tapPulse{50%{opacity:.45;}}
 @media (min-width:900px) and (orientation:landscape){.lz.reveal .lz-card{--cu:min(68vh,640px);}}
 .lp-pick .pk-art{flex:none;border:0;padding:0;background:none;width:30px;height:42px;border-radius:4px;overflow:hidden;}
+.pk-prev{gap:8px!important;}
+@media (min-width:600px){.pk-chal.pk-prev .pk-vs{display:grid;}}
+.pk-chal.pk-prev .pk-vs{display:none;flex:none;place-items:center;width:22px;height:22px;color:#ffe9a8;}
+.pk-chal.pk-prev > .pk-art:first-child{display:none;}
+@media (min-width:600px){.pk-chal.pk-prev > .pk-art:first-child{display:block;}}
+.pk-chal.pk-prev .pk-vs svg{width:20px;height:20px;}
+.pk-chal.pk-prev .pk-tx{flex:1 1 auto;}
+.pk-chal.pk-prev .pk-tx b{font-family:var(--font);font-weight:900;font-size:.9rem;letter-spacing:0;color:#fff3cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pk-chal.pk-prev .pk-tx b.good{color:#9df0b8;}
+.pk-chal.pk-prev .pk-tx small{font-size:.74rem;color:rgba(255,243,207,.8);}
+.pk-chal.pk-prev .pk-tx small.bad{color:#ffaaaa;}
+.pk-chal.pk-prev .pk-go{flex:none;margin-left:auto;padding:0 14px;color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e8c56f 45%,#c9973a);box-shadow:inset 0 0 0 1.5px #fff2c4,0 3px 0 #7a5413;}
+.pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
+.pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
+.pk-chal.pk-prev > :first-child{margin-left:0!important;}
 .lp-pick.pk-chal{top:-9px;bottom:-9px;justify-content:center;gap:10px;border-radius:12px;box-shadow:0 0 0 1.5px rgba(246,225,168,.55),0 6px 18px rgba(0,0,0,.45);}
 .pk-chal .pk-st{flex:none;display:flex;gap:4px;}
 .pk-chal .pk-st i{position:relative;font-style:normal;display:flex;align-items:center;justify-content:center;width:36px;height:36px;}
@@ -5060,6 +5080,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     opts.sort(function (a, b) { return b.sc - a.sc; });
     return opts[0].v > 0.5 ? opts[0] : null;
   }
+  // What a challenge would do, in words (the same sums the computer uses; abilities that step in may change it)
+  function chalPreview(a, t) {
+    var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
+    var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
+    return { killT: killT, killA: killA,
+      t: killT ? 'Banishes ' + nm(t) : dA ? nm(t) + ' −' + dA + ' · ' + (lT - dA) + ' left' : nm(t) + ' unhurt',
+      a: killA ? nm(a) + ' banished too' : dD ? nm(a) + ' −' + dD + ' · ' + (lA - dD) + ' left' : nm(a) + ' unhurt' };
+  }
   function challengeScore(a, t) {
     var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
     var killT = dA > 0 && C(t).dmg + dA >= WP(t), killA = dD > 0 && C(a).dmg + dD >= WP(a);
@@ -5150,6 +5178,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       { section: 'Cards & decks', icon: 'sync', label: 'Check for new cards', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } },
       { icon: 'sparkle', label: 'Prioritize special art', toggle: function () { return FANCY; }, onClick: function () { setFancy(!FANCY); Kit.sfx('tap'); Kit.toast(FANCY ? 'Showing Enchanted and Epic art wherever a card has it' : 'Showing the standard art (cards you picked keep your choice)'); } },
       { icon: 'play', label: 'Fast mode', toggle: function () { return !!lsGet('lorc_fast', false); }, onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
+      { icon: 'lightbulb', label: 'Gameplay hints', toggle: function () { return hintsOn(); }, onClick: function () { var on = !hintsOn(); lsSet('lorc_hints', on); if (S && ui.screen === 'game') render(); Kit.sfx('tap'); Kit.toast(on ? 'Hints on: challenge previews, end-of-turn check, and a glow on characters that can still act' : 'Hints off'); } },
       { icon: 'swap', label: 'Flip opponents’ cards', toggle: function () { return !!flipOpp; }, onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } }
     ],
     rules:
@@ -5480,12 +5509,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (S.phase === 'play' && pi === S.cur) fireStart();
     });
   }
-  function humanEnd() {
+  function humanEnd(sure) {
     if (!canAct()) return;
     var r = recklessPending(S.cur);
     if (r) { Kit.toast(nm(r) + ' is Reckless and must challenge first'); Kit.sfx('bad'); flash(r); return; }
     var mq = mustQuestPending(S.cur);
     if (mq) { Kit.toast(nm(mq) + ' must quest this turn if able'); Kit.sfx('bad'); flash(mq); return; }
+    // Hints: a quick check when there's lore still to quest for, or no card inked this turn
+    if (sure !== true && hintsOn()) {
+      var P0 = S.P[S.cur], qs = P0.board.filter(function (u) { return canQuest(u); }), lq = qs.reduce(function (n, u) { return n + LORE(u); }, 0);
+      var inkable = inksLeft(S.cur) > 0 && P0.hand.some(function (u) { return canInk(S.cur, u); }), why = [];
+      if (lq > 0) why.push('You can still quest for <b>' + lq + ' lore</b> with ' + listNames(qs.map(nm)) + '.');
+      if (inkable && !(TT().handInk || [0, 0])[S.cur]) why.push('You haven’t put a card in your inkwell this turn.');
+      if (why.length) {
+        Kit.sfx('tap');
+        Kit.confirm('End your turn?', { body: why.join('<br>'), ok: 'End turn', cancel: 'Keep playing' }).then(function (y) { if (y) humanEnd(true); });
+        return;
+      }
+    }
     ui.hint = null; ui.pick = null;
     Kit.sfx('whoosh');
     endTurn();
@@ -5612,7 +5653,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var ds = defenders(u);
     if (!canChallenger(u)) { Kit.toast(C(u).ex ? nm(u) + ' is exerted' : nm(u) + ' is still drying'); return; }
     if (!ds.length) { Kit.toast('Nothing to challenge. Only exerted characters (or locations) can be challenged.'); return; }
-    startPick({ title: 'Challenge with ' + nm(u) + ' (' + STR(u, true) + ' strength): pick a target', chal: u, src: u, ok: function (x) { return ds.indexOf(x) >= 0; },
+    startPick({ title: 'Challenge with ' + nm(u) + ' (' + STR(u, true) + ' strength): pick a target', chal: u, src: u, preview: true, ok: function (x) { return ds.indexOf(x) >= 0; },
       bad: function (x) { if (C(x).o !== C(u).o && S.P[C(x).o].board.indexOf(x) >= 0) return blockedReason(u, x); return ''; },
       done: function (x) { runAction({ k: 'chal', u: u, t: x }); } });
   }
@@ -5963,9 +6004,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     if (ui.pick && ctx !== 'mull') {
       if (ui.pick.ok(u)) cls += C(u).o === meIxSafe() ? ' tgt-ok' : ' tgt';
-      if (ui.pick.multi && ui.pick.sel.indexOf(u) >= 0) cls += ' sel';
+      if ((ui.pick.multi && ui.pick.sel.indexOf(u) >= 0) || ui.pick.pre === u) cls += ' sel';
     }
     if (ctx === 'hand' && canAct() && !ui.pick && (canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u))) cls += ' can';
+    // Hints: your characters that can still quest or challenge this turn glow like your playable cards
+    if (board && c.o === S.cur && hintsOn() && canAct() && !ui.pick && (canQuest(u) || (canChallenger(u) && defenders(u).length))) cls += ' can';
     if (ctx === 'mull' && ui.mullSel[u]) cls += ' out';
     if (ui.hint === u && board) cls += ' sel';
     node.className = cls; node.dataset.uid = u; node.dataset.ctx = ctx;
@@ -5981,8 +6024,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (c.under && c.under.length) h += '<span class="ucount" title="Cards under">' + c.under.length + '</span>';
     }
     var st = '';
-    if (d.t === 'character') st = statSpan('S', board ? STR(u) : d.s || 0, d.s || 0) + statSpan('W', board ? WP(u) : d.w || 0, d.w || 0) + statSpan('L', board ? LORE(u) : d.l || 0, d.l || 0);
-    else if (d.t === 'location') st = statSpan('W', board ? WP(u) : d.w || 0, d.w || 0) + statSpan('L', board ? LORE(u) : d.l || 0, d.l || 0) + '<span>' + (d.mv || 0) + sym('I', '') + '</span>';
+    // on the table, willpower is what's left after damage (red when it's below the printed number)
+    if (d.t === 'character') st = statSpan('S', board ? STR(u) : d.s || 0, d.s || 0) + statSpan('W', board ? Math.max(0, WP(u) - (c.dmg || 0)) : d.w || 0, d.w || 0) + statSpan('L', board ? LORE(u) : d.l || 0, d.l || 0);
+    else if (d.t === 'location') st = statSpan('W', board ? Math.max(0, WP(u) - (c.dmg || 0)) : d.w || 0, d.w || 0) + statSpan('L', board ? LORE(u) : d.l || 0, d.l || 0) + '<span>' + (d.mv || 0) + sym('I', '') + '</span>';
     else st = '<span style="font-family:var(--font);font-weight:800;font-size:.8em;opacity:.8">' + (d.song ? 'Song' : d.t === 'item' ? 'Item' : 'Action') + '</span>';
     h += '<div class="ov"><span class="nm">' + esc(d.n) + '</span><span class="st">' + st + '</span></div>';
     if (node._h !== h) { node._ovs.innerHTML = h; node._h = h; }
@@ -6005,7 +6049,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var a0 = i / 20 * 2 * Math.PI + 0.05, a1 = (i + 1) / 20 * 2 * Math.PI - 0.05;
       segs += '<path class="tk" d="M' + (22 + r * Math.cos(a0)).toFixed(2) + ' ' + (22 + r * Math.sin(a0)).toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + (22 + r * Math.cos(a1)).toFixed(2) + ' ' + (22 + r * Math.sin(a1)).toFixed(2) + '" stroke="' + (i < L ? col : 'rgba(255,255,255,.16)') + '"/>';
     }
-    return '<button type="button" class="lore" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of 20 lore"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b></button>';
+    // within 4 of winning: the ring pulses and says how many are left
+    var need = S.phase === 'play' || S.phase === 'mull' ? needLore(pi) - L : 99, near = need > 0 && need <= 4;
+    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of 20 lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b>' + (near ? '<i class="near-t">' + need + ' to win</i>' : '') + '</button>';
   }
   function renderStrip(host, pi, top) {
     var p = S.P[pi], turn = S.phase === 'play' && S.cur === pi, mine = pi === bottomPi();
@@ -6085,9 +6131,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // Challenging: the challenger's strength (with Challenger) and the willpower it has left, as the printed marks
       var cu = pk.chal && S.cards[pk.chal] ? pk.chal : null, wl = cu ? Math.max(0, WP(cu) - (C(cu).dmg || 0)) : 0, sv = cu ? STR(cu, true) : 0;
       function vsBase(v, b) { return v > b ? 'up' : v < b ? 'dn' : ''; }   // green above the printed number, red below
+      // a target tapped once (hints on): what the challenge would do, with Challenge to go ahead
+      var pre = cu && pk.pre && S.cards[pk.pre] && pk.ok(pk.pre) ? chalPreview(cu, pk.pre) : null;
+      if (pre) {
+        mid.innerHTML = '<div class="lp-pick pk-chal pk-prev" aria-live="polite">' + art + '<i class="pk-vs" aria-hidden="true">' + ACT_SWORDS + '</i>' +
+          '<button type="button" class="pk-art" data-act="pick-tgt" aria-label="See ' + esc(DD(pk.pre).full) + '">' + miniArt(DD(pk.pre)) + '</button>' +
+          '<span class="pk-tx"><b class="' + (pre.killT ? 'good' : '') + '">' + esc(pre.t) + '</b><small class="' + (pre.killA ? 'bad' : '') + '">' + esc(pre.a) + '</small></span>' +
+          '<button type="button" class="btn btn-primary btn-sm pk-go" data-act="pick-conf">Challenge</button>' +
+          '<button type="button" class="pk-x" data-act="pick-cancel" aria-label="Cancel">' + Kit.icon('close') + '</button></div>';
+        return;
+      }
       var h = cu ? '<div class="lp-pick pk-chal" aria-label="' + esc(pk.title) + '">' + art +
           '<span class="pk-st"><i class="' + vsBase(sv, DD(cu).s || 0) + '" title="Strength">' + PK_STAR + '<b>' + sv + '</b></i><i class="' + vsBase(wl, DD(cu).w || 0) + '" title="Willpower left">' + PK_SHIELD + '<b>' + wl + '</b></i></span>' +
-          '<span class="pk-tx"><small>' + esc(nm(cu)) + '</small><b>Pick a target</b></span>'
+          '<span class="pk-tx"><small>' + esc(nm(cu)) + (hintsOn() ? ' · tap a target to preview' : '') + '</small><b>Pick a target</b></span>'
         : '<div class="lp-pick">' + art + '<span>' + esc(pk.title) + '</span>';
       if (pk.multi) h += '<button type="button" class="btn btn-primary btn-sm" data-act="pick-go"' + (pk.multi.need(pk.sel) ? '' : ' disabled') + '>' + esc(pk.multi.label(pk.sel)) + '</button>';
       if (pk.skip) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-skip">' + esc(pk.skip) + '</button>';
@@ -6529,9 +6585,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (b) {
       var a = b.dataset.act;
       if (a === 'end') humanEnd();
+      else if (a === 'pick-tgt') { if (ui.pick && ui.pick.pre && S.cards[ui.pick.pre]) zoomDef(DD(ui.pick.pre)); }
       else if (a === 'pick-src') { if (ui.pick && ui.pick.src && S.cards[ui.pick.src]) zoomDef(DD(ui.pick.src)); }
       else if (a === 'log') showLog();
       else if (a === 'pick-cancel' || a === 'pick-skip') { var p = ui.pick; ui.pick = null; render(); if (p && p.cancel) p.cancel(); }
+      else if (a === 'pick-conf') { var pc = ui.pick; if (pc && pc.pre && S.cards[pc.pre] && pc.ok(pc.pre)) { ui.pick = null; render(); pc.done(pc.pre); } }
       else if (a === 'pick-go') { var q = ui.pick; if (q && q.multi && q.multi.need(q.sel)) { ui.pick = null; render(); q.multi.go(q.sel); } }
       else if (a === 'mull') humanMull();
       return;
@@ -6632,6 +6690,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var p = ui.pick;
       if (p.ok(u)) {
         if (p.multi) { var i = p.sel.indexOf(u); if (i >= 0) p.sel.splice(i, 1); else p.sel.push(u); Kit.sfx('tap'); render(); return; }
+        if (p.preview && hintsOn() && p.pre !== u) { p.pre = u; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
         ui.pick = null; render(); p.done(u); return;
       }
       Kit.toast((p.bad && p.bad(u)) || 'Choose one of the glowing cards, or Cancel'); return;
@@ -7414,11 +7473,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // The computer's card, big, with what it just did across the top and a Continue button below
   // How the computer's moves are shown: a card to acknowledge, or a passing banner (fast mode / skip this turn)
   var FAST = 'lorc_fast';
+  // Gameplay hints (on unless turned off in the menu): the challenge preview, the end-of-turn check and the glow on
+  // characters that can still act
+  function listNames(a) { return a.length < 2 ? esc(a[0] || '') : a.slice(0, -1).map(esc).join(', ') + ' and ' + esc(a[a.length - 1]); }
+  function hintsOn() { return lsGet('lorc_hints', true) !== false; }
   function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
   function cpuShow(u, verb, how, effect) {
     if (!S || !S.cards[u]) return;
-    if (feedTime() && $('.lz:not(.reveal)')) return ticker(S.P[C(u).o], verb, DD(u).full + (effect ? ' · ' + effect : ''));   // don't pull them out of their own cards
-    if (quickMoves()) return ticker(S.P[C(u).o], verb, DD(u).full + (effect ? ' · ' + effect : ''));
+    if (feedTime() && $('.lz:not(.reveal)')) return ticker(S.P[C(u).o], verb, DD(u).n + (effect ? ' · ' + effect : ''));   // don't pull them out of their own cards
+    if (quickMoves()) return ticker(S.P[C(u).o], verb, DD(u).n + (effect ? ' · ' + effect : ''));
     showReveal(u, how, verb, effect);
   }
   // Looking through your cards while it's the other player's turn: a status panel above the cards keeps the game in
@@ -7445,16 +7508,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function feedLine(f, p, verb, text) {
     var ev = $('.lzf-ev', f);
-    ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + esc(text) + '</span>' }));
+    ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + fxHTML(text) + '</span>' }));
     while (ev.children.length > 3) ev.removeChild(ev.firstChild);
     var ov = f.closest('.lz'); if (ov) requestAnimationFrame(function () { ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
   }
   function ticker(p, verb, text) {
     var lf = lzFeed(); if (lf) { feedLine(lf, p, verb, text); return; }
     var open = $('.lz.reveal .rv-head');
-    if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + esc(text) }), open.firstChild); return; }
+    if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + fxHTML(text) }), open.firstChild); return; }
     var box = $('.rv-ticks') || document.body.appendChild(el('div', { class: 'rv-ticks', 'aria-live': 'polite' }));
-    var t = el('div', { class: 'rv-tick', html: '<i class="dot" style="--c:' + p.color + '"></i><b>' + esc(verb) + '</b><span>' + esc(text) + '</span>' });
+    var t = el('div', { class: 'rv-tick', html: '<i class="dot" style="--c:' + p.color + '"></i><b>' + esc(verb) + '</b><span>' + fxHTML(text) + '</span>' });
     box.appendChild(t); while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 2600);
   }
@@ -8743,7 +8806,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var a = f.a;
     if (f.k === 's') {
       if (!S.cards[a[0]]) return;
-      if (C(a[0]).o === NET.seat || $('.lz.reveal') || $('.k-scrim') || ui.pick) ticker(S.P[C(a[0]).o], a[1], DD(a[0]).full + (a[3] ? ' · ' + a[3] : ''));
+      if (C(a[0]).o === NET.seat || $('.lz.reveal') || $('.k-scrim') || ui.pick) ticker(S.P[C(a[0]).o], a[1], DD(a[0]).n + (a[3] ? ' · ' + a[3] : ''));
       else cpuShow(a[0], a[1], a[2], a[3]);
     } else if (f.k === 't') ticker(S.P[a[0]], a[1], a[2]);
   }
