@@ -1521,18 +1521,18 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 .bld-grid .pc > .cost.coin{left:.6cqw;top:1cqw;width:19.5cqw;height:19.5cqw;min-width:0;min-height:0;clip-path:none;border-radius:50%;background:none;
   font-size:10.5cqw;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
 /* Card library: 1.2x, growing down and right from the same top-left corner */
-.bld.lib .bld-grid .pc > .cost.coin{width:23.4cqw;height:23.4cqw;font-size:12.6cqw;}
+.bld .bld-grid .pc > .cost.coin{width:23.4cqw;height:23.4cqw;font-size:12.6cqw;}
 .bld-grid .pc > .cost.coin svg{position:absolute;inset:0;width:100%;height:100%;}
 .bld-grid .pc > .cost.coin b{position:relative;font-weight:400;}
 .bld-grid.tiny .pc .bmk{right:3px;width:11px;height:16px;}
 @media (max-width:699px){
-  .bld.lib .bld-top .tsize{display:none;}
-  .bld.lib .colbtn{display:inline-flex;}
+  .bld .tsize{display:none;}
+  .bld .colbtn{display:inline-flex;}
   .bld.lib .bld-top h2.libt{font-size:1.4rem;}
 }
-.bld.lib .bld-grid .pc .nmb{font-size:clamp(10px,calc(var(--tile,92px) * .1),14px);}
+.bld .bld-grid .pc .nmb{font-size:clamp(10px,calc(var(--tile,92px) * .1),14px);}
 .bld.lib .bld-grid .pc .nmb small{font-size:.86em;}
-.bld-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;}
+.bld-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:10px;}
 .bld-pool,.bld-deck{min-height:0;display:flex;flex-direction:column;}
 .bld-filters{flex:none;display:flex;flex-direction:column;gap:6px;padding-bottom:6px;}
 .bld-filters .row1{display:flex;gap:6px;}
@@ -1566,10 +1566,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .fside .flt-btn{width:56px;height:56px;}
 /* a row that runs past the buttons scrolls sideways and fades at the edge, so it reads as more */
 /* Library: Bookmarked and Saved deck side by side beside Select, stacking only when there isn't room */
-.bld.lib .bld-filters .row1{gap:8px;}
-.bld.lib .row1 .flt-btn{width:50px;height:50px;font-size:.68rem;}
-.bld.lib .row1 .flt-btn .ico{width:18px;height:18px;}
-.bld.lib .row1 .sfield{flex:1;min-width:0;}
+.bld .bld-filters .row1{gap:8px;}
+.bld .row1 .flt-btn{width:50px;height:50px;font-size:.68rem;}
+.bld .row1 .flt-btn .ico{width:18px;height:18px;}
+.bld .row1 .sfield{flex:1;min-width:0;}
+.bld:not(.lib) .fside{align-items:center;}
+.bsize{flex:none;display:flex;align-items:center;}
+.bsize .tsize{margin-left:0;}
+.bsize .colbtn{width:52px;height:36px;border-radius:18px;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);}
+.bsize .colbtn .ico{width:18px;height:18px;}
+.bld-grid.tiny .pc .pc-add{width:22px!important;height:22px!important;right:2px!important;top:2px!important;}
+.bld-grid.tiny .pc .pc-add .ico{width:13px;height:13px;}
 .bld.lib .bld-top{gap:6px;}
 .bld.lib .bld-top .grow{flex:1;}
 .bld.lib .bld-top .tsize{margin-left:0;}
@@ -9330,7 +9337,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // Library: a round Select button like Sort and Filters, and the saved-deck chip on its own row under Bookmarked
     var selBtn = el('button', { type: 'button', class: 'flt-btn', onclick: function () { Kit.sfx('tap'); if (selSet) selEnd(); else selStart(); } });
     var grid = el('div', { class: 'bld-grid' });
-    if (lib) {
+    // Card size (library and deck builder alike): a slider, or 4 / 6 / 8 across on a phone
+    {
       grid.style.setProperty('--tile', tile + 'px');
       var rng = sizer.querySelector('input');
       // Smallest tile = the width of the "Bookmarked" chip (any narrower looks cramped); largest = one card across
@@ -9353,12 +9361,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
       window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
     }
-    // Library: Select, then search, then Sort and Filters, all on one row
-    var row1 = el('div', { class: 'row1' }, lib ? [selBtn, sfield, sortBtn, moreBtn] : [sfield]);
+    // Library: Select, then search, then Sort and Filters, all on one row (the deck builder: the same, less Select)
+    var row1 = el('div', { class: 'row1' }, lib ? [selBtn, sfield, sortBtn, moreBtn] : [sfield, sortBtn, moreBtn]);
     var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks (and cost in the deck builder). Everything else lives in Filters.
     var row2 = costChips;
-    var fside = lib ? el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips])]) : el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips, row2]), sortBtn, moreBtn]);
+    // Quick chips under the search; the deck builder keeps its card size control at the end of this row
+    var fside = el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips])].concat(lib ? [] : [el('div', { class: 'bsize' }, [sizer, colBtn])]));
     var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, fside, onChips]), grid]);
     [storyChips, row2].forEach(function (r) { r.addEventListener('scroll', function () { r.classList.toggle('ovf', r.scrollLeft + r.clientWidth < r.scrollWidth - 2); }, { passive: true }); });
     var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips kwgrid' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
@@ -9557,8 +9566,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // New Release (while there are new cards): in the quick chips, and first among the keywords in the Filters sheet,
       // marked as something new with a gilt outline and a soft shimmer, not filled in the way a chip that's on is
       var nrChip = function (box, kw) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (kw ? ' nr-kw' : '') + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc && !kw ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); };
-      // Library: New Release leads the row, before Bookmarked
-      if (lib && (nrc || f.newrel)) nrChip(storyChips);
+      // New Release leads the row, before Bookmarked
+      if (nrc || f.newrel) nrChip(storyChips);
       [storyChips, advTop].forEach(function (box) {
       box.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + '<span>Bookmarked' + (mc ? ' (' + mc + ')' : '') + '</span>', onclick: function () {
         Kit.sfx('tap');
@@ -9568,7 +9577,6 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
       if (lib) { selBtn.innerHTML = Kit.icon('check') + '<span>Select</span>'; selBtn.classList.toggle('on', !!selSet); selBtn.setAttribute('aria-pressed', String(!!selSet)); selBtn.setAttribute('aria-label', selSet ? 'Stop selecting' : 'Select cards'); selBtn.title = selSet ? 'Stop selecting' : 'Select cards'; }
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
-      if (!lib && (nrc || f.newrel)) nrChip(storyChips);
       if (f.manual) storyChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-pressed': 'true', html: Kit.icon('pencil') + '<span>Needs a hand</span><i class="x" style="font-style:normal;margin-left:4px">×</i>', onclick: function () { Kit.sfx('tap'); f.manual = false; f.shown = 60; paintChips(); paintGrid(); } }));
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
