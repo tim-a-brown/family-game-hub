@@ -773,6 +773,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .ls-c.ex{transform:rotate(90deg) scale(.8);}
 .ls-c.on{opacity:1;transform:translateY(-3px) scale(1.15);box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.6);}
 .ls-c.on.can{box-shadow:0 0 0 2px #f6e1a8,0 0 10px rgba(246,200,90,.7);}
+.ls-c.out{opacity:.3;filter:grayscale(1);transform:translateY(5px) scale(.9);}
+.ls-c.on.out{opacity:.85;transform:translateY(2px) scale(1.05);}
 .ls-c.on.ex{transform:translateY(-3px) rotate(90deg) scale(.95);}
 .lz-flow.strip{touch-action:none;}
 .fc-hint{--pr:0;position:absolute;left:50%;z-index:200;display:flex;align-items:center;gap:10px;padding:10px 30px;white-space:nowrap;pointer-events:none;opacity:0;
@@ -6433,7 +6435,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!S || S.phase !== 'mull') return;
     var hand = S.P[mullPi()].hand, i = hand.indexOf(u), out = !!ui.mullSel[u];
     zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); mullZoom(u); } }],
-      { i: i, n: hand.length, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; } });
+      { i: i, n: hand.length, list: hand.slice(), ctx: 'mull', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; } });
   }
   function render() {
     if (!S) return;
@@ -7392,7 +7394,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var strip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': (nav.ctx === 'hand' ? 'Hand' : 'Table') + ': card ' + (nav.i + 1) + ' of ' + nav.n });
         nav.list.forEach(function (x, j) {
           if (!S.cards[x]) return;
-          strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
+          strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : '') + (nav.ctx === 'mull' && ui.mullSel[x] ? ' out' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
             html: miniArt(DD(x)), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(strip);
@@ -7574,6 +7576,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       zone.className = 'fc-zone' + (cls ? ' ' + cls : ''); zone.style.setProperty('--pr', (pr || 0).toFixed(2));
     }
     var VT = 160, armed = 0, hintT = 0;
+    // Swipe up to bookmark / down to add to a deck are for browsing the library; in a game the card only moves sideways
+    function vOK() { return !(S && ui.screen === 'game'); }
     // The card stretches after your finger with rubber-band resistance; the label grows
     // as you near the trigger point and turns solid gold when letting go will do it
     function vDrag(dy) {
@@ -7637,7 +7641,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // First visit: the card bobs up then down, showing what each swipe does
     var tipT = [];
     F.tip = function () {
-      var j = Math.round(F.pos), b = F.items[j]; if (!b || sw || Date.now() - F.dragAt < 1500) return;
+      var j = Math.round(F.pos), b = F.items[j]; if (!b || sw || Date.now() - F.dragAt < 1500 || !vOK()) return;
       cardR = b.getBoundingClientRect();
       vDrag(-VT * 0.55);
       tipT.push(setTimeout(function () { if (b.isConnected && !sw) vDrag(VT * 0.55); }, 1300));
@@ -7659,7 +7663,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (sw.v) { if (e.cancelable) e.preventDefault(); sw.pts.push({ y: e.clientY, t: performance.now() }); if (sw.pts.length > 8) sw.pts.shift(); vDrag(dy); return; }
       if (!sw.h) {
         if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; measure(); try { F.el.setPointerCapture(e.pointerId); } catch (x) {} }
-        else if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.4) { sw.v = true; measure(); var fb = F.items[Math.round(F.pos)]; cardR = fb ? fb.getBoundingClientRect() : null; try { F.el.setPointerCapture(e.pointerId); } catch (x) {} vDrag(dy); return; }
+        else if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.4 && vOK()) { sw.v = true; measure(); var fb = F.items[Math.round(F.pos)]; cardR = fb ? fb.getBoundingClientRect() : null; try { F.el.setPointerCapture(e.pointerId); } catch (x) {} vDrag(dy); return; }
         else return;
       }
       sw.pts.push({ x: e.clientX, t: performance.now() }); if (sw.pts.length > 8) sw.pts.shift();
@@ -7707,7 +7711,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       return true;
     }
     F.wheel = function (e) {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey && !e.ctrlKey && (wy || F.el.contains(e.target))) return wheelV(e);
+      if (vOK() && Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey && !e.ctrlKey && (wy || F.el.contains(e.target))) return wheelV(e);
       var dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
       if (!dx) return false;
       e.preventDefault(); stop(); if (!CU) measure();
@@ -7815,6 +7819,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function usableNow(u, ctx) {
     if (!S || !S.cards[u] || !canAct()) return false;
     if (ctx === 'hand') return C(u).o === S.cur && (canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u));
+    if (ctx !== 'board') return false;
     return C(u).o === S.cur && hintsOn() && (canQuest(u) || (canChallenger(u) && defenders(u).length > 0));
   }
   function hintsOn() { return lsGet('lorc_hints', true) !== false; }
@@ -8186,6 +8191,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     node.appendChild(list);
     s = Kit.sheet({ title: P.name + '’s Discard Pile', node: node, actions: [{ label: 'Close', cls: 'btn-soft', onClick: after }] });
   }
+  // A discard pile, big, newest first, with the strip of the whole pile underneath
+  function discZoom(pi, u, dir) {
+    var pile = S.P[pi].discard.slice().reverse(), i = pile.indexOf(u); if (i < 0) return;
+    zoomDef(DD(u), [], { i: i, n: pile.length, list: pile, ctx: 'discard', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < pile.length) discZoom(pi, pile[j], step); }, peek: function (k) { var x = pile[i + k]; return x ? DD(x) : null; } });
+  }
   function showDiscard(pi) {
     var P = S.P[pi], sh;
     if (!P.discard.length) { Kit.toast(P.name + '’s discard pile is empty'); return; }
@@ -8193,7 +8203,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     P.discard.slice().reverse().forEach(function (u) {
       var d = DD(u);
       var row = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]);
-      row.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function (e) { if (e.target.closest('button')) return; sh.close(); discZoom(pi, u); });
       if (canDiscInk && (d.k || allInkable(pi))) row.appendChild(el('button', { type: 'button', class: 'btn btn-sm btn-soft', text: 'Ink it', onclick: function () { sh.close(); inkFromDiscard(pi, u); } }));
       list.appendChild(row);
     });
