@@ -1408,6 +1408,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     transform:translateX(105%);box-shadow:-16px 0 36px rgba(0,0,0,.6),inset 1px 0 0 rgba(227,189,98,.45);}
   .flowpanel.show{transform:none;}
   .flowfilt .lz{padding-bottom:0;padding-right:min(440px,38vw);transition:padding-right .3s var(--spring);}
+  .bld{transition:margin .3s var(--spring),max-width .3s var(--spring);}
+  .flowlib .bld{max-width:none;margin:0 min(440px,38vw) 0 0;}
   /* the strip sizes itself from the screen width, so take the panel's width out of it too */
   .flowfilt .lz-flow.strip{--cu:min(calc(100vh - 90px),calc((98vw - 440px - min(440px,38vw)) / 1.45),900px);}
 }
@@ -8538,36 +8540,33 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         fsLive = moreFilters(function () { fsLive = null; document.documentElement.classList.remove('flowsheet'); filterBtn(); });
         filterBtn(); Kit.sfx('tap'); return;
       }
-      var fl = $('.bld-filters'); if (!fl || fpanel) return;
-      fpHome = { parent: fl.parentNode, next: fl.nextSibling };
+      if (fpanel) return;
+      // Desktop: one Filters panel down the right edge wherever it's opened (library, deck builder or the card view);
+      // what's behind it moves over and keeps updating as you tap
+      var fromCard = !!$('.lz');
       fpCount = el('span', { class: 'fp-n' });
-      fpanel = el('div', { class: 'flowpanel', role: 'dialog', 'aria-label': 'Filter cards' }, [
+      fpanel = el('div', { class: 'flowpanel', role: 'dialog', 'aria-label': 'Filters' }, [
         el('div', { class: 'fp-top' }, [el('b', { text: 'Filters' }), fpCount,
           el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Clear', onclick: function () { clearFilters(); } }),
           el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Done', onclick: closeFilterPanel })]),
         adv]);
-      // Phones and tablets: the panel slides up as a sheet over a shade; tapping the shade closes it
-      fpCatch = el('div', { class: 'fp-catch', 'aria-hidden': 'true', onclick: function (e) { e.stopPropagation(); closeFilterPanel(); } });
-      var sx = null;
-      fpanel.addEventListener('pointerdown', function (e) { sx = { x: e.clientX, y: e.clientY }; });
-      // swipe the sheet down (from its top, or when it's scrolled to the top) to close it
-      fpanel.addEventListener('pointerup', function (e) { if (!sx) return; var dx = e.clientX - sx.x, dy = e.clientY - sx.y; sx = null; if (dy > 70 && Math.abs(dy) > Math.abs(dx) * 1.5 && fpanel && fpanel.scrollTop <= 0) closeFilterPanel(); });
-      document.body.appendChild(fpCatch); document.body.appendChild(fpanel); document.documentElement.classList.add('flowfilt');
-      requestAnimationFrame(function () { fpanel.classList.add('show'); fpCatch.classList.add('show'); });
+      document.body.appendChild(fpanel); document.documentElement.classList.add('flowfilt');
+      if (!fromCard) document.documentElement.classList.add('flowlib');
+      requestAnimationFrame(function () { if (fpanel) fpanel.classList.add('show'); });
       countText(DB.unique.filter(matches).length);
-      // closing the card view closes the panel too
-      fpObs = new MutationObserver(function () { if (!$('.lz')) closeFilterPanel(); });
-      fpObs.observe(document.body, { childList: true });
-      filterBtn(); Kit.sfx('tap'); flowRefit();
+      // opened over a card: closing the card view closes the panel too
+      if (fromCard) { fpObs = new MutationObserver(function () { if (!$('.lz')) closeFilterPanel(); }); fpObs.observe(document.body, { childList: true }); }
+      document.addEventListener('keydown', fpKey);
+      filterBtn(); paintChips(); Kit.sfx('tap'); flowRefit();
     }
+    function fpKey(e) { if (e.key === 'Escape' && fpanel && !$('.lz')) closeFilterPanel(); }
     // the card view's space changes when the panel opens or closes beside it (desktop): lay the strip out again
     function flowRefit() { [0, 320].forEach(function (t) { setTimeout(function () { if (lastFlow && lastFlow.ov && lastFlow.ov.isConnected && lastFlow.remeasure) lastFlow.remeasure(); }, t); }); }
     function closeFilterPanel() {
       if (!fpanel) return;
       if (fpObs) { fpObs.disconnect(); fpObs = null; }
-      var fl = $('.bld-filters', fpanel);
-      if (fl && fpHome && fpHome.parent.isConnected) fpHome.parent.insertBefore(fl, fpHome.next && fpHome.next.parentNode === fpHome.parent ? fpHome.next : null);
-      var p = fpanel; fpanel = null; document.documentElement.classList.remove('flowfilt');
+      document.removeEventListener('keydown', fpKey);
+      var p = fpanel; fpanel = null; document.documentElement.classList.remove('flowfilt'); document.documentElement.classList.remove('flowlib');
       if (fpCatch) { var fc = fpCatch; fc.classList.remove('show'); setTimeout(function () { fc.remove(); }, 260); fpCatch = null; }
       p.classList.remove('show'); setTimeout(function () { p.remove(); }, 300);
       filterBtn(); flowRefit();
@@ -8649,6 +8648,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var doneBtn = null;
     function doneText(n) { if (doneBtn && doneBtn.isConnected) doneBtn.textContent = 'Done · ' + (n ? n.toLocaleString() + (n === 1 ? ' card' : ' cards') : 'no cards'); }
     function moreFilters(onClose) {
+      if (typeof onClose !== 'function' && window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches) {
+        if (fpanel) closeFilterPanel(); else openFilterPanel();
+        return null;
+      }
       var sh0 = Kit.sheet({ title: 'Filters', node: adv, onClose: typeof onClose === 'function' ? onClose : null, actions: [
         { label: 'Clear all', cls: 'btn-clear', keep: true, onClick: clearFilters },
         { label: 'Done', cls: 'btn-primary' }] });
