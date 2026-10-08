@@ -464,30 +464,47 @@
     sfx('pop');
     sheet({ title: 'How to play', html: '<div class="rules">' + opts.rules + '</div>', actions: [{ label: 'Got it', primary: true }] });
   }
+  // The game menu, in groups: the game itself, the game's own sections (opts.menu items can name a section),
+  // settings as on/off switches (items with a toggle function, plus Sound), then help and leaving
   function menu() {
     sfx('pop');
     var list = el('div', { class: 'k-list' });
-    var s;
-    function item(ic, label, fn, cls) {
-      list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { sfx('tap'); s.close(); fn(); } },
-        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { text: label })]));
+    var s, groups = [], byName = {};
+    function group(name) { if (!byName[name]) { byName[name] = []; groups.push(name); } return byName[name]; }
+    function item(g, ic, label, fn, cls, sub) {
+      group(g).push(el('button', { type: 'button', class: cls || '', onclick: function () { sfx('tap'); s.close(); fn(); } },
+        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : []))]));
     }
-    if (opts.onNew) item('sparkle', 'New game', function () {
+    function toggle(g, ic, label, sub, get, set) {
+      var b = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(!!get()) },
+        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : [])), el('i', { class: 'sw' })]);
+      b.onclick = function () { set(); b.setAttribute('aria-checked', String(!!get())); haptic('light'); };
+      group(g).push(b);
+    }
+    var G = 'Game';
+    if (opts.onNew) item(G, 'sparkle', 'New game', function () {
       if (opts.confirmNew === false) return opts.onNew();
       confirmSheet('Start a new game?', { ok: 'New game', body: 'The current game will be lost.' }).then(function (ok) { if (ok) opts.onNew(); });
     });
-    if (opts.undo) item('undo', 'Undo', opts.undo);
-    (opts.menu || []).forEach(function (m) { item(m.icon || 'sparkle', typeof m.label === 'function' ? m.label() : m.label, m.onClick, m.cls); });
-    if (opts.rules) item('book', 'How to play', rules);
-    item('users', 'Frequent players', function () { managePlayers(); });
-    if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item('chart', 'Bankroll history', function () { Casino.showHistory(); });
-    item(soundOn() ? 'sound' : 'mute', soundOn() ? 'Sound: on' : 'Sound: off', function () {
-      lsSet('gn_sound', soundOn() ? '0' : '1'); toast(soundOn() ? 'Sound on' : 'Sound off'); sfx('good');
+    if (opts.undo) item(G, 'undo', 'Undo', opts.undo);
+    (opts.menu || []).forEach(function (m) {
+      if (m.when && !m.when()) return;
+      var g = m.toggle ? 'Settings' : m.section || G;
+      if (m.toggle) toggle(g, m.icon || 'sparkle', m.label, m.sub, m.toggle, m.onClick);
+      else item(g, m.icon || 'sparkle', typeof m.label === 'function' ? m.label() : m.label, m.onClick, m.cls, m.sub);
     });
-    if (game) item('star', isFav() ? 'Remove from favorites' : 'Add to favorites', function () {
+    if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
+    toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
+    var M = 'More';
+    if (opts.rules) item(M, 'book', 'How to play', rules);
+    item(M, 'users', 'Frequent players', function () { managePlayers(); });
+    if (game) item(M, 'star', isFav() ? 'Remove from favorites' : 'Add to favorites', function () {
       var on = toggleFav(); toast(on ? 'Added to favorites' : 'Removed from favorites'); haptic('success');
     });
-    item('home', 'All games', goHome);
+    item(M, 'home', 'All games', goHome);
+    groups.forEach(function (g) {
+      list.appendChild(el('div', { class: 'k-grp' }, [el('h3', { text: g })].concat(byName[g])));
+    });
     s = sheet({ title: game ? game.name : 'Menu', node: list });
   }
 

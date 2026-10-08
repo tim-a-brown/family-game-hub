@@ -1015,6 +1015,7 @@ html.lorc .k-sheet.fsheet .k-acts{flex-direction:row;gap:10px;margin-top:12px;}
 html.lorc .k-sheet.fsheet .k-acts .btn{min-height:44px;padding-top:0;padding-bottom:0;}
 html.lorc .k-sheet.fsheet .k-acts .btn-clear{flex:0 0 36%;}
 html.lorc .k-sheet.fsheet .k-acts .btn-primary{flex:1;}
+html.lorc .k-list button.tg[aria-checked="true"] .sw{background:linear-gradient(180deg,#f1cf78,#c9973a);}
 html.lorc .k-sheet .k-acts{position:sticky;background:linear-gradient(180deg,rgba(20,15,44,0),#140f2c 30%);}
 html.lorc .k-sheet .lp-li,html.lorc .k-sheet .dk-opt{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(227,189,98,.16);border-radius:14px;}
 html.lorc .k-sheet .lp-li.on,html.lorc .k-sheet .st-row.on,html.lorc .k-sheet .dk-opt.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 14px rgba(227,189,98,.25);}
@@ -5082,16 +5083,16 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     onNew: function () { tok++; resetQ(); Kit.handoff.close(); closeOverlays(); if (S && S.mode === 'online') { netLeave(); S = null; showLobby(); return; } clearSave(); S = null; showSetup(); },
     undo: function () { undo(); },
     menu: [
+      { icon: 'book', label: 'Game log', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { showLog(); } },
+      { icon: 'pencil', label: 'Fix something by hand', sub: 'Move cards, change lore or damage', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { if (S && S.mode === 'online' && !canAct()) Kit.toast('You can fix things on your own turn'); else if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: Past Games' }); } },
-      { icon: 'cards', label: 'Deck builder', onClick: function () { openBuilderFromMenu(); } },
-      { icon: 'book', label: 'Card library', onClick: function () { openBuilderFromMenu(true); } },
-      { icon: 'share', label: 'Export or import decks', onClick: function () { deckFiles(); } },
-      { icon: 'swap', label: 'Turn opponent’s cards around', onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } },
-      { icon: 'book', label: 'Game log', onClick: function () { showLog(); } },
-      { icon: 'sparkle', label: 'Special art (Enchanted, Epic) when a card has it', onClick: function () { setFancy(!FANCY); Kit.sfx('tap'); Kit.toast(FANCY ? 'Showing Enchanted and Epic art wherever a card has it' : 'Showing the standard art (cards you picked keep your choice)'); } },
-      { icon: 'play', label: 'Fast mode (computer moves as banners)', onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
-      { icon: 'sparkle', label: 'Fix something by hand', onClick: function () { if (S && S.mode === 'online' && !canAct()) Kit.toast('You can fix things on your own turn'); else if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
-      { icon: 'sync', label: 'Update card library', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } }
+      { section: 'Cards & decks', icon: 'book', label: 'Card library', onClick: function () { openBuilderFromMenu(true); } },
+      { section: 'Cards & decks', icon: 'cards', label: 'Deck builder', onClick: function () { openBuilderFromMenu(); } },
+      { section: 'Cards & decks', icon: 'share', label: 'Export or import decks', onClick: function () { deckFiles(); } },
+      { section: 'Cards & decks', icon: 'sync', label: 'Update card library', sub: 'Check Lorcast for new cards now', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } },
+      { icon: 'sparkle', label: 'Special art', sub: 'Enchanted, Epic or Iconic art', toggle: function () { return FANCY; }, onClick: function () { setFancy(!FANCY); Kit.sfx('tap'); Kit.toast(FANCY ? 'Showing Enchanted and Epic art wherever a card has it' : 'Showing the standard art (cards you picked keep your choice)'); } },
+      { icon: 'play', label: 'Fast mode', sub: 'Computer moves as banners', toggle: function () { return !!lsGet('lorc_fast', false); }, onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
+      { icon: 'swap', label: 'Flip opponent’s cards', sub: 'Like sitting across a table', toggle: function () { return !!flipOpp; }, onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } }
     ],
     rules:
       '<p class="goal">Be the first to collect <b>20 lore</b>. You get lore by sending your characters on quests.</p>' +
