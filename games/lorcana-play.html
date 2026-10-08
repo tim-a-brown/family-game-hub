@@ -1515,6 +1515,7 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 .bld-grid.tiny{gap:4px;}
 .bld-grid.tiny .pc{border-radius:4px;}
 .bld-grid.tiny .pc .nmb{display:none;}
+.bld-grid:not(.tiny) .pc.real > .cost{display:none;}
 .bld-grid.tiny .pc .cost{--cu:70px!important;min-width:13px;min-height:14px;font-size:.62rem;}
 .bld-grid.tiny .pc .bmk{right:3px;width:11px;height:16px;}
 @media (max-width:699px){
@@ -10022,6 +10023,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (lib && isNewCard(d)) { b.classList.add('isnew'); b.appendChild(el('span', { class: 'newc', 'aria-hidden': 'true', html: '<i>New</i>' })); }
         if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
         b.appendChild(el('span', { class: 'cost' + (d.k ? ' ink' : ''), style: { '--cu': '120px' }, text: String(d.c) }));
+        // Once the real card picture shows, its printed cost is right there: the drawn badge steps aside
+        // (kept for locations, whose cost prints sideways, for text faces, and on tiny tiles where print is too small)
+        var im = d.t !== 'location' && b.querySelector('img');
+        if (im) { var real = function () { if (im.naturalWidth) b.classList.add('real'); }; if (im.complete) real(); else im.addEventListener('load', real); }
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
         if (!lib) b.appendChild(plus);
