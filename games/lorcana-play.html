@@ -773,6 +773,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .ls-c.ex{transform:rotate(90deg) scale(.8);}
 .ls-c.on{opacity:1;transform:translateY(-3px) scale(1.15);box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.6);}
 .ls-c.on.can{box-shadow:0 0 0 2px #f6e1a8,0 0 10px rgba(246,200,90,.7);}
+.ls-c{position:relative;}
+.ls-c.picked{opacity:1;box-shadow:0 0 0 2px var(--gilt),0 0 10px rgba(246,200,90,.6);}
+.ls-ck{position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;background:var(--gilt);color:#2b1a00;}
+.ls-ck svg{width:10px;height:10px;}
 .ls-c.out{opacity:.3;filter:grayscale(1);transform:translateY(5px) scale(.9);}
 .ls-c.on.out{opacity:.85;transform:translateY(2px) scale(1.05);}
 .ls-c.on.ex{transform:translateY(-3px) rotate(90deg) scale(.95);}
@@ -1111,6 +1115,13 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .cl-ck svg{width:16px;height:16px;}
 html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 14px rgba(227,189,98,.25);}
 .dk-opt.dk-off{opacity:.45;filter:saturate(.3);cursor:default;}
+.cp-head{display:flex;align-items:center;gap:10px;width:100%;max-width:520px;margin:0 auto 10px;padding:8px 12px;border-radius:14px;color:#fff3d0;
+  background:linear-gradient(180deg,rgba(60,44,12,.9),rgba(30,22,8,.9));box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.6),0 6px 18px rgba(0,0,0,.45);position:relative;z-index:210;}
+.cp-head .cp-src{flex:none;width:30px;height:42px;border-radius:4px;overflow:hidden;}
+.cp-head .cp-src:empty{display:none;}
+.cp-head .cp-src .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
+.cp-head b{display:block;font-weight:800;font-size:.88rem;line-height:1.2;}
+.cp-head small{display:block;font-size:.72rem;color:rgba(255,243,208,.7);}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
@@ -4235,7 +4246,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       done();
     }
   }
+  var fxSrc = null;   // the card whose ability is running (its picture heads any card choice it asks for)
   function runFx(list, i, st, done) {
+    if (st && st.src) fxSrc = st.src;
     if (!S || S.phase !== 'play' || finishing) return done();
     if (i >= list.length) return done();
     var e = list[i];
@@ -4738,7 +4751,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var bestN = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; })[0]; return go(bestN);
     }
     if (netWho() != null) return netAsk('name', { src: st.src, ab: abMin(st.ab), opt: !!optional }, function (v) { go(v.name || null); });
-    nameSheet(st.src, st.ab, optional, go, e.op === 'nameCard' ? P.discard.filter(isChar) : null);
+    var hint = e.op === 'nameCard' ? P.discard.filter(isChar) : P.deckL.slice(), seen = {}, reps = [];
+    hint.forEach(function (u) { var n2 = DD(u).n; if (!seen[n2]) { seen[n2] = 1; reps.push(u); } });
+    reps.sort(function (a, b) { return DD(a).n.localeCompare(DD(b).n); });
+    if (!reps.length) return nameSheet(st.src, st.ab, optional, go, null);
+    cardPick({ title: abTitle(st.src, st.ab) + ': name a card' + (e.op === 'nameCard' ? ' (from your discard)' : ' (names in your deck)'), src: st.src, uids: reps, verb: 'Name',
+      done: function (x) { go(DD(x[0]).n); }, cancelLabel: 'Search any name',
+      cancel: function () { nameSheet(st.src, st.ab, optional, go, hint); } });
   }
   function nameSheet(src, ab, optional, go, hint) {
     var names = {}; DB.unique.forEach(function (d) { names[d.n] = 1; }); var all = Object.keys(names).sort();
@@ -4923,33 +4942,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Look at the top cards: take what the card allows, the rest goes where it says
   function lookSheet(st, top, pk, ok, rest, done) {
     if (netWho() != null) return netAsk('look', { src: st.src, ab: abMin(st.ab), top: top, pk: pk || null, ok: top.filter(ok), rest: rest || null }, function (v) { done(v.take || [], v.order || null); });
-    var take = [], dest = {}, node = el('div'), list = el('div', { class: 'lp-list' }), s, fin = false;
-    top.forEach(function (u) { dest[u] = 'top'; });
-    var restTxt = { bottom: 'The rest go on the bottom of your deck.', top: 'The rest go back on top.', discard: 'The rest go to your discard.', ink: 'The rest go into your inkwell.', choose: 'Choose top or bottom for each card.', topdisc: 'Choose top of the deck or the discard.', hand: 'If you don’t play it, it goes into your hand.' }[rest] || '';
-    node.appendChild(el('div', { class: 'abhead', html: abHeadHTML(st.src, st.ab) }));
-    var tip = el('p', { class: 'muted', style: { margin: '0 0 10px' } });
-    node.appendChild(tip); node.appendChild(list);
-    var go = el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { 'margin-top': '10px' }, onclick: function () {
-      if (fin) return; fin = true; s.close();
-      done(take, rest === 'choose' || rest === 'topdisc' ? { top: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] === 'top'; }), bottom: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] === 'bottom'; }) } : null);
-    } });
-    function paint() {
-      list.innerHTML = '';
-      tip.textContent = (pk ? 'You may take ' + (pk.n > 1 ? 'up to ' + pk.n + ' cards' : 'one card') + (pk.type ? ' (' + pk.type + (pk.maxC != null ? ', cost ' + pk.maxC + ' or less' : '') + ')' : '') + (pk.play ? ' and play it for free' : ' into your hand') + '. ' : '') + restTxt;
-      top.forEach(function (u) {
-        var d = DD(u), on = take.indexOf(u) >= 0, can = ok(u);
-        var r = el('div', { class: 'lp-li wrap', style: on ? { 'box-shadow': 'inset 0 0 0 2px var(--gilt)' } : null }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]);
-        r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
-        if (can) r.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-soft'), text: on ? (pk.play ? 'Playing' : 'Taking') : (pk.play ? 'Play it' : 'Take'), onclick: function () { var i = take.indexOf(u); if (i >= 0) take.splice(i, 1); else { if (take.length >= pk.n) take.shift(); take.push(u); } Kit.sfx('tap'); paint(); } }));
-        if (rest === 'choose' && !on) r.appendChild(seg([['top', 'Top'], ['bottom', 'Bottom']], dest[u], function (x) { dest[u] = x; }));
-        if (rest === 'topdisc' && !on) r.appendChild(seg([['top', 'Top'], ['bottom', 'Discard']], dest[u], function (x) { dest[u] = x; }));
-        list.appendChild(r);
-      });
-      go.textContent = 'Done';
-    }
-    paint();
-    node.appendChild(go);
-    s = Kit.sheet({ title: 'Top ' + plural(top.length, 'Card') + ' of Your Deck', node: node, dismissible: false, onClose: function () { if (!fin) done(take, null); } });
+    var dest = {}; top.forEach(function (u) { dest[u] = 'top'; });
+    var rt = { bottom: 'the rest go on the bottom', top: 'the rest go back on top', discard: 'the rest go to your discard', ink: 'the rest go into your inkwell', choose: 'top or bottom for each', topdisc: 'top or discard for each' }[rest] || '';
+    var title = abTitle(st.src, st.ab) + ': ' + (pk ? (pk.play ? 'play ' : 'take ') + (pk.n > 1 ? 'up to ' + pk.n : 'one') + (pk.type ? ' ' + pk.type : '') + (pk.maxC != null ? ' (cost ' + pk.maxC + ' or less)' : '') : 'the top ' + plural(top.length, 'card')) + (rt ? '; ' + rt : '');
+    cardPick({ title: title, src: st.src, uids: top, n: pk ? pk.n || 1 : 0, min: 0, verb: pk && pk.play ? 'Play' : 'Take',
+      can: function (u) { return !!pk && ok(u); }, why: function () { return pk ? 'This one can’t be taken.' : ''; },
+      acts: rest === 'choose' || rest === 'topdisc' ? function (u) { var other = rest === 'topdisc' ? 'discard' : 'bottom', lab = { top: 'top of the deck', bottom: 'bottom of the deck', discard: 'discard' };
+        return [{ label: 'Goes on ' + lab[dest[u]] + ' · tap to change', go: function () { dest[u] = dest[u] === 'top' ? other : 'top'; Kit.sfx('tap'); } }]; } : null,
+      done: function (take) { done(take, rest === 'choose' || rest === 'topdisc' ? { top: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] === 'top'; }), bottom: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] !== 'top'; }) } : null); } });
   }
   function oppChooseFx(e, st, cb) {
     var pi = st.pi, o = e.self ? pi : opp(pi), O = S.P[o];
@@ -7219,7 +7219,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       /^Play exerted/.test(t) ? sym('W', 'aic') : /^Play/.test(t) ? Kit.icon('play') : /^Sing/.test(t) ? NOTE_SVG : /^Shift/.test(t) ? Kit.icon('cards') :
       /inkwell/i.test(t) ? sym('I', 'aic') : /^Quest/.test(t) ? sym('L', 'aic') : /^Challenge/.test(t) ? ACT_SWORDS : /^Move/.test(t) ? ACT_PIN :
       /^Boost/.test(t) ? Kit.icon('plus') : /yourself|by hand/.test(t) ? Kit.icon('hand') : /^Remove/.test(t) ? ACT_MINUS : /^Add/.test(t) ? Kit.icon('plus') :
-      /back/i.test(t) ? Kit.icon('undo') : /^Keep/.test(t) ? Kit.icon('check') : Kit.icon('sparkle');
+      /back/i.test(t) ? Kit.icon('undo') : /^(Keep|Choose|Chosen|Take|Taking|Done|Name)/.test(t) ? Kit.icon('check') : /^(Cancel|Skip)/.test(t) ? Kit.icon('close') :
+      /^(Goes on|Search)/.test(t) ? Kit.icon(/^Search/.test(t) ? 'search' : 'swap') : Kit.icon('sparkle');
     if (main === 'Put into inkwell') main = 'Ink it';
     if (main === 'Move to a location') main = 'Move';
     if (main === 'Sing it for free') { main = 'Sing'; sub = sub || 'Free'; }
@@ -7408,8 +7409,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var strip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': ({ hand: 'Hand', board: 'Table', mull: 'Opening hand', discard: 'Discard pile' }[nav.ctx] || 'Cards') + ': card ' + (nav.i + 1) + ' of ' + nav.n });
         nav.list.forEach(function (x, j) {
           if (!S.cards[x]) return;
-          strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : '') + (nav.ctx === 'mull' && ui.mullSel[x] ? ' out' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
-            html: miniArt(DD(x)), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
+          var pk = nav.ctx === 'pick' && nav.pick;
+          strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : '') + (nav.ctx === 'mull' && ui.mullSel[x] ? ' out' : '') +
+              (pk && pk.sel.indexOf(x) >= 0 ? ' picked' : '') + (pk && !pk.can(x) ? ' out' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
+            html: miniArt(DD(x)) + (pk && pk.sel.indexOf(x) >= 0 ? '<i class="ls-ck">' + Kit.icon('check') + '</i>' : ''), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(strip);
       } else posHost.appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
@@ -8121,32 +8124,39 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       onClose: function () { if (!working && o.done) { var f = o.done; o.done = null; f(); } } });
   }
   function handVisibleTo(pi) { return S.mode === 'cpu' ? pi === humanIx() : pi === S.viewer; }
+  // ── Choosing cards, big: the options as a swipeable row of full cards with their details underneath, the ability
+  // asking at the top and the whole set as a strip of thumbnails (chosen ones checked, ones that can't be chosen dimmed)
+  // o: { title, src, ab, uids, n, min, can(u), why(u), verb, done(sel), cancel, skip, acts(u) }
+  function cardPick(o) {
+    var sel = o.sel || [], n = o.n || 1, min = o.min != null ? o.min : n, fin = false, single = n === 1 && min <= 1 && !o.acts;
+    var can = o.can || function () { return true; };
+    function finish(x) { if (fin) return; fin = true; closeZoom(); Kit.sfx('pop'); o.done(x); }
+    function stop() { if (fin) return; fin = true; closeZoom(); if (o.cancel) o.cancel(); }
+    function show(i, dir) {
+      var u = o.uids[i], d = DD(u), on = sel.indexOf(u) >= 0, ok = can(u), acts = [], whys = [];
+      if (ok && single) acts.push({ label: (o.verb || 'Choose') + ' ' + d.n, primary: true, full: true, go: function () { finish([u]); } });
+      else if (ok) acts.push({ label: on ? 'Chosen · tap to undo' : (o.verb || 'Choose') + ' this card', primary: !on, full: true, go: function () {
+        var k = sel.indexOf(u); if (k >= 0) sel.splice(k, 1); else { if (sel.length >= n) sel.shift(); sel.push(u); } Kit.sfx('tap'); show(i); } });
+      else if (o.why) whys.push(o.why(u));
+      if (o.acts) o.acts(u).forEach(function (a) { var g0 = a.go; a.go = function () { g0(); show(i); }; acts.push(a); });
+      if (single && min === 0 && !o.cancel && !o.skip) acts.push({ label: 'Skip · take none', go: function () { finish([]); } });
+      if (!single) acts.push({ label: 'Done · ' + sel.length + (n > 1 ? ' of ' + n : '') + ' chosen', primary: sel.length >= min, ok: sel.length >= min, go: function () { finish(sel.slice()); } });
+      if (o.cancel || o.skip) acts.push({ label: o.cancelLabel || (o.skip ? 'Skip' : 'Cancel'), go: stop });
+      var nav = { i: i, n: o.uids.length, list: o.uids, ctx: 'pick', pick: { sel: sel, can: can }, dir: dir || 0,
+        go: function (step) { var j = i + step; if (j >= 0 && j < o.uids.length) show(j, step); }, peek: function (k) { var x = o.uids[i + k]; return x ? DD(x) : null; } };
+      var ov = zoomShell(d, headHTML(d) + defMeta(d, u) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts, whys, nav, { modal: true, onClose: function () { if (!fin) setTimeout(function () { if (!fin) show(i); }, 0); } });
+      // what's asking, pinned above the cards
+      var head = el('div', { class: 'cp-head' }, [el('span', { class: 'cp-src', html: o.src && S.cards[o.src] ? miniArt(DD(o.src)) : '' }),
+        el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') : 'Swipe to look through them' })])]);
+      var lin = ov && $('.lz-in', ov); if (lin) lin.insertBefore(head, lin.firstChild);
+    }
+    var first = o.uids.map(can).indexOf(true); show(first >= 0 ? first : 0, 0);
+  }
   function chooseFromList(title, uids, n, cb, o) {
     o = o || {};
     if (netWho(o.dec) != null) return netAsk('list', { title: title, uids: uids, n: n, min: o.min || null, must: !!o.must, skip: !!o.skip }, function (v) { if (v.c) { if (o.cancel) o.cancel(); return; } cb(v.sel || []); });
-    var sel = [], node = el('div'), s, list = el('div', { class: 'lp-list' }), done = false;
-    var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { 'margin-top': '10px' }, text: 'Choose ' + n, onclick: function () { if (done || sel.length < (o.min || n) || sel.length > n) return; done = true; s.close(); cb(sel); } });
-    function paint() {
-      list.innerHTML = '';
-      uids.forEach(function (u) {
-        var d = DD(u), on = sel.indexOf(u) >= 0;
-        // tap the row to choose it (one to choose: that's it); tap the little card to see it big
-        var row = el('div', { class: 'lp-li cl-row' + (on ? ' on' : ''), role: 'button', tabindex: '0', onclick: function () {
-            if (n === 1 && (o.min || 1) === 1) { if (done) return; done = true; s.close(); Kit.sfx('tap'); cb([u]); return; }
-            var i = sel.indexOf(u); if (i >= 0) sel.splice(i, 1); else { if (sel.length >= n) sel.shift(); sel.push(u); }
-            Kit.sfx('tap'); paint(); } }, [
-          el('span', { class: 'cl-art', html: miniArt(d) }),
-          el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
-          el('i', { class: 'cl-ck', 'aria-hidden': 'true', html: on ? Kit.icon('check') : '' })
-        ]);
-        row.querySelector('.cl-art').addEventListener('click', function (ev) { ev.stopPropagation(); zoomDef(d); });
-        list.appendChild(row);
-      });
-      btn.disabled = sel.length < (o.min || n) || sel.length > n; btn.textContent = n === 1 ? 'Choose' : 'Choose ' + n + ' (' + sel.length + ')';
-    }
-    paint();
-    node.appendChild(list); if (!(n === 1 && (o.min || 1) === 1)) node.appendChild(btn);
-    s = Kit.sheet({ title: title, node: node, dismissible: !o.must, actions: o.must ? [] : [{ label: o.skip ? 'Skip' : 'Cancel', cls: 'btn-ghost' }], onClose: function () { if (!done && o.cancel) o.cancel(); } });
+    var src = o.src || (fxSrc && S.cards[fxSrc] ? fxSrc : null);
+    cardPick({ title: title, src: src, uids: uids, n: n, min: o.min || n, done: cb, cancel: o.must ? null : function () { if (o.cancel) o.cancel(); }, skip: !o.must && !!o.skip });
   }
   function lookTop(who, n, note, after) {
     var P = S.P[who], top = P.deckL.slice(0, n);
