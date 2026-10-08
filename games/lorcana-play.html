@@ -1711,17 +1711,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .drow button.odds{border:0;cursor:help;}
 .bld-msg.ok:empty{display:none;}
 
-.dkey{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;}
+.dkey{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:2px;white-space:nowrap;overflow:hidden;}
+.dkey b{display:inline-block;min-width:1.2em;text-align:right;font-variant-numeric:tabular-nums;}
+.dkey > span{flex:none;}
+.dkey svg,.dkey i{flex:none;}
+.dkey .zero{opacity:.35;}
+.dkey .zero i{box-shadow:none;}
 .dkey .dk-ink.no{color:var(--text-2);}
-.dkey .dk-ty small{font-size:.58rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-left:1px;}
+.dkey .dk-ty small{font-size:.5rem;font-weight:900;letter-spacing:.02em;text-transform:uppercase;color:var(--text-3);margin-left:1px;}
 .drow .q button.del{display:grid;place-items:center;color:#f08a8a;}
 .drow .q button.del .ico{width:12px;height:12px;}
 .drow .q button .ico{width:12px;height:12px;}
 .dkey .dk-ink{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);color:var(--gilt-2);}
-.dkey .dk-ink svg{width:16px;height:16px;}
-.dkey .dk-ty{display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--text-3);}
-.dkey .dk-ty i{width:10px;height:10px;border-radius:3px;background:var(--ty);box-shadow:0 0 6px color-mix(in srgb,var(--ty) 60%,transparent);}
-.dkey .dk-ty b{font-family:var(--display);font-weight:400;font-size:.85rem;color:var(--text);}
+.dkey .dk-ink svg{width:15px;height:15px;}
+.dkey .dk-ty{display:inline-flex;align-items:center;gap:2px;font-size:.72rem;color:var(--text-3);}
+.dkey .dk-ty i{width:9px;height:9px;border-radius:3px;background:var(--ty);box-shadow:0 0 6px color-mix(in srgb,var(--ty) 60%,transparent);}
+.dkey .dk-ty b{font-family:var(--display);font-weight:400;font-size:.8rem;color:var(--text);}
 .otip{position:fixed;z-index:9999;display:none;flex-direction:column;gap:10px;padding:12px 14px;border-radius:14px;background:#1b1631;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 0 0 1px rgba(227,189,98,.35);pointer-events:none;}
 .otip.show{display:flex;}
 .ot-row{display:flex;align-items:center;gap:12px;}
@@ -10233,9 +10238,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!n) sum.textContent = 'Tap + on a card to add it. 60 cards, 1 or 2 inks, up to 4 of each.';
       else {
         sum.className = 'muted dkey';
-        sum.appendChild(el('span', { class: 'dk-ink', title: ink + ' inkable', html: costSVG(true) + '<b>' + ink + '</b>' }));
-        sum.appendChild(el('span', { class: 'dk-ink no', title: (n - ink) + ' not inkable', html: costSVG(false) + '<b>' + (n - ink) + '</b>' }));
-        TY_ORDER.forEach(function (k) { if (tyN[k]) sum.appendChild(el('span', { class: 'dk-ty', style: { '--ty': TY_COL[k] }, title: plural(tyN[k], TY_NAME[k].replace(/s$/, '').toLowerCase()), html: '<i></i><b>' + tyN[k] + '</b><small>' + TY_SHORT[k] + '</small>' })); });
+        sum.appendChild(el('span', { class: 'dk-ink' + (ink ? '' : ' zero'), title: ink + ' inkable', html: costSVG(true) + '<b>' + ink + '</b>' }));
+        sum.appendChild(el('span', { class: 'dk-ink no' + (n - ink ? '' : ' zero'), title: (n - ink) + ' not inkable', html: costSVG(false) + '<b>' + (n - ink) + '</b>' }));
+        // Every type, always (dimmed at 0), so the key reads the same for every deck
+        TY_ORDER.forEach(function (k) { tyN[k] = tyN[k] || 0; sum.appendChild(el('span', { class: 'dk-ty' + (tyN[k] ? '' : ' zero'), style: { '--ty': TY_COL[k] }, title: plural(tyN[k], TY_NAME[k].replace(/s$/, '').toLowerCase()), html: '<i></i><b>' + tyN[k] + '</b><small>' + TY_SHORT[k] + '</small>' })); });
       }
       dlist.innerHTML = '';
       // sort the list; each row shows the odds the next card you draw is one of these (copies : deck size) and the chance of one in your opening 7
