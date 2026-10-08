@@ -967,6 +967,19 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 @keyframes tapPulse{50%{opacity:.45;}}
 @media (min-width:900px) and (orientation:landscape){.lz.reveal .lz-card{--cu:min(68vh,640px);}}
 .lp-pick .pk-art{flex:none;border:0;padding:0;background:none;width:30px;height:42px;border-radius:4px;overflow:hidden;}
+.lp-pick.pk-chal{top:-9px;bottom:-9px;justify-content:center;gap:10px;border-radius:12px;box-shadow:0 0 0 1.5px rgba(246,225,168,.55),0 6px 18px rgba(0,0,0,.45);}
+.pk-chal .pk-st{flex:none;display:flex;gap:4px;}
+.pk-chal .pk-st i{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;}
+.pk-chal .pk-st svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
+.pk-chal .pk-st b{position:relative;font-family:var(--display);font-size:1.05rem;line-height:1;}
+.pk-chal .pk-st i:first-child b{color:#1d1a2c;}
+.pk-chal .pk-st i:last-child b{color:#fff;margin-top:-3px;}
+.pk-chal .pk-st i.hurt b{color:#ff9a9a;}
+.pk-chal .pk-tx{flex:0 1 auto;display:flex;flex-direction:column;min-width:0;}
+.pk-chal .pk-tx small{font-size:.72rem;font-weight:700;color:rgba(255,243,207,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pk-chal .pk-tx b{font-family:var(--display);font-size:1.1rem;letter-spacing:.02em;color:#ffe9a8;white-space:nowrap;}
+.pk-chal>:first-child{margin-left:auto;}
+.pk-chal .btn{margin-left:auto;}
 .lp-pick .pk-art .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
 .slot.abfire .lc{animation:abfire 1.15s ease-out;}
 @keyframes abfire{0%{box-shadow:0 0 0 0 rgba(246,225,168,.95);transform:rotate(var(--rot,0deg)) scale(1);}35%{box-shadow:0 0 0 4px #f6e1a8,0 0 30px 10px rgba(246,196,80,.75);transform:rotate(var(--rot,0deg)) scale(1.07);}100%{box-shadow:0 0 0 0 rgba(246,225,168,0);transform:rotate(var(--rot,0deg)) scale(1);}}
@@ -5562,7 +5575,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var ds = defenders(u);
     if (!canChallenger(u)) { Kit.toast(C(u).ex ? nm(u) + ' is exerted' : nm(u) + ' is still drying'); return; }
     if (!ds.length) { Kit.toast('Nothing to challenge. Only exerted characters (or locations) can be challenged.'); return; }
-    startPick({ title: 'Challenge with ' + nm(u) + ' (' + STR(u, true) + ' strength): pick a target', ok: function (x) { return ds.indexOf(x) >= 0; },
+    startPick({ title: 'Challenge with ' + nm(u) + ' (' + STR(u, true) + ' strength): pick a target', chal: u, src: u, ok: function (x) { return ds.indexOf(x) >= 0; },
       bad: function (x) { if (C(x).o !== C(u).o && S.P[C(x).o].board.indexOf(x) >= 0) return blockedReason(u, x); return ''; },
       done: function (x) { runAction({ k: 'chal', u: u, t: x }); } });
   }
@@ -6024,12 +6037,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     delete row.dataset.z;
     p.hand.forEach(function (u) { row.appendChild(slotFor(u, 'hand')); });
   }
+  var PK_STAR = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
+  var PK_SHIELD = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
   function paintMid() {
     var mid = $('.lp-mid'); if (!mid || !S) return;
     if (S.mode === 'online' && NET.pend && !ui.pick) { mid.innerHTML = '<div class="lp-pick net-wait"><i class="spin"></i><span>' + esc(S.P[opp(NET.seat)].name) + ' is choosing…</span></div>'; return; }
     if (ui.pick) {
       var pk = ui.pick, sd = pk.src && S.cards[pk.src] ? DD(pk.src) : null;
-      var h = '<div class="lp-pick">' + (sd ? '<button type="button" class="pk-art" data-act="pick-src" aria-label="See ' + esc(sd.full) + '">' + miniArt(sd) + '</button>' : '') + '<span>' + esc(pk.title) + '</span>';
+      var art = sd ? '<button type="button" class="pk-art" data-act="pick-src" aria-label="See ' + esc(sd.full) + '">' + miniArt(sd) + '</button>' : '';
+      // Challenging: the challenger's strength (with Challenger) and the willpower it has left, as the printed marks
+      var cu = pk.chal && S.cards[pk.chal] ? pk.chal : null, wl = cu ? Math.max(0, WP(cu) - (C(cu).dmg || 0)) : 0;
+      var h = cu ? '<div class="lp-pick pk-chal" aria-label="' + esc(pk.title) + '">' + art +
+          '<span class="pk-st" title="Strength"><i>' + PK_STAR + '<b>' + STR(cu, true) + '</b></i><i' + (C(cu).dmg ? ' class="hurt"' : '') + ' title="Willpower left">' + PK_SHIELD + '<b>' + wl + '</b></i></span>' +
+          '<span class="pk-tx"><small>' + esc(nm(cu)) + '</small><b>Pick a target</b></span>'
+        : '<div class="lp-pick">' + art + '<span>' + esc(pk.title) + '</span>';
       if (pk.multi) h += '<button type="button" class="btn btn-primary btn-sm" data-act="pick-go"' + (pk.multi.need(pk.sel) ? '' : ' disabled') + '>' + esc(pk.multi.label(pk.sel)) + '</button>';
       if (pk.skip) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-skip">' + esc(pk.skip) + '</button>';
       else if (!pk.must) h += '<button type="button" class="btn btn-soft btn-sm" data-act="pick-cancel">Cancel</button>';
