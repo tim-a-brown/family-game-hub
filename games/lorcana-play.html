@@ -916,13 +916,15 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rv-fx{margin-top:6px;padding:4px 14px;border-radius:999px;background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 1px rgba(227,189,98,.35);color:#fff3d0;font-weight:800;font-size:.95rem;text-align:center;}
 .rv-bar{flex:none;position:sticky;bottom:0;z-index:300;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;padding:14px 16px calc(var(--safe-b) + 10px);background:linear-gradient(180deg,rgba(6,5,18,0),rgba(6,5,18,.92) 30%);}
 .rv-row{display:flex;gap:10px;width:min(520px,100%);}
-.rv-bar .rv-go{position:static;margin:0;flex:1.6;width:auto;}
-.rv-skip{flex:1;min-height:52px;border:0;border-radius:14px;font-family:var(--display);font-size:1rem;color:#f6e1a8;cursor:pointer;background:linear-gradient(180deg,#3a2f63,#241c45);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 4px 0 #120d26;}
-.rv-fast{flex:none;display:flex;align-items:center;gap:8px;margin:0;padding:4px 10px;border:0;border-radius:999px;background:rgba(10,8,28,.6);color:var(--text-2);font-size:.78rem;font-weight:700;cursor:pointer;}
-.rv-fast .sw{position:relative;width:28px;height:16px;border-radius:8px;background:rgba(255,255,255,.18);flex:none;transition:background .2s;}
-.rv-fast .sw::after{content:'';position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .2s;}
-.rv-fast.on .sw{background:var(--gilt);}
-.rv-fast.on .sw::after{transform:translateX(12px);}
+.rv-bar .rv-go{position:static;margin:0;flex:0 0 52%;width:auto;}
+.rv-row button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+.rv-skip{flex:1;min-width:0;padding:0 8px;white-space:nowrap;min-height:52px;border:0;border-radius:14px;font-family:var(--display);font-size:1rem;color:#f6e1a8;cursor:pointer;background:linear-gradient(180deg,#3a2f63,#241c45);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 4px 0 #120d26;}
+.rv-fast{flex:none;display:flex;align-items:center;justify-content:center;gap:3px;min-height:52px;margin:0;padding:0 11px;border:0;border-radius:14px;font-family:var(--display);font-size:.92rem;color:#f6e1a8;cursor:pointer;background:linear-gradient(180deg,#3a2f63,#241c45);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 4px 0 #120d26;}
+.rv-fast svg{width:17px;height:17px;flex:none;}
+.rv-skip:active,.rv-fast:active{transform:translateY(2px);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 2px 0 #120d26;}
+.hold-tip{position:fixed;z-index:2000;max-width:min(280px,calc(100vw - 16px));padding:8px 12px;border-radius:10px;background:#f6ecd0;color:#241a05;font-size:.82rem;font-weight:600;line-height:1.3;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;}
+.hold-tip.on{opacity:1;transform:none;}
+.hold-tip::after{content:'';position:absolute;top:100%;left:calc(var(--ax) - 6px);border:6px solid transparent;border-top-color:#f6ecd0;}
 .rv-also{margin-bottom:6px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-size:.82rem;text-align:center;max-width:100%;}
 .rv-also b{font-family:var(--display);font-weight:400;letter-spacing:.04em;text-transform:uppercase;color:#f1cf78;margin-right:4px;}
 .rv-also span{margin-left:4px;}
@@ -5504,7 +5506,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       else if (a.k === 'move') oppShow(a.u, 'Moved', '', 'To ' + DD(a.t).n);
       else if (a.k === 'boost') oppShow(a.u, 'Boosted', '', 'Put a card under ' + nm(a.u));
       // inking is shown to the other player (the card's inkwell mark proves it can be inked), then it goes in facedown
-      else if (a.k === 'ink') oppShow(a.u, 'Inked', 'Into the inkwell, facedown', 'Inkable');
+      else if (a.k === 'ink') oppShow(a.u, 'Inked', '', '');
     }
     // Support
     if (a.k === 'quest' && hasKw(a.u, 'support') && STR(a.u) > 0) {
@@ -7352,12 +7354,33 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
     ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + esc(effect) + '</span>' : '') }), ov.firstChild);
     var row = el('div', { class: 'rv-row' }, [
-      el('button', { type: 'button', class: 'rv-skip', text: 'Skip this turn', title: 'Show the rest of this turn as quick banners', onclick: function () { S.skipTurn = S.turn; } }),
-      el('button', { type: 'button', class: 'rv-go', text: 'Continue' })
+      holdTip(el('button', { type: 'button', class: 'rv-skip', text: 'Next turn', onclick: function () { S.skipTurn = S.turn; } }), 'Skip ahead: the rest of this turn shows as quick banners'),
+      holdTip(el('button', { type: 'button', class: 'rv-fast', 'aria-label': 'Fast mode', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5v13L11.5 12zM12 5.5v13L20.5 12z" fill="currentColor"/></svg>Fast', onclick: function () { lsSet(FAST, true); Kit.sfx('tap'); Kit.toast('Fast mode on: moves show as banners. Turn it off in the menu.'); } }), 'Fast mode: from now on, moves show as banners instead of stopping here'),
+      holdTip(el('button', { type: 'button', class: 'rv-go', text: 'Continue' }), 'Close this card and keep watching')
     ]);
-    var fastBtn = el('button', { type: 'button', class: 'rv-fast', 'aria-pressed': 'false', title: 'Show the computer’s moves as banners instead of stopping for each one', html: '<i class="sw"></i>Fast mode', onclick: function (e) { e.stopPropagation(); var on = !lsGet(FAST, false); lsSet(FAST, on); fastBtn.setAttribute('aria-pressed', String(on)); fastBtn.classList.toggle('on', on); Kit.sfx('tap'); } });
-    ov.appendChild(el('div', { class: 'rv-bar' }, [row, fastBtn]));
+    ov.appendChild(el('div', { class: 'rv-bar' }, [row]));
     Kit.haptic('light');
+  }
+  // Press and hold a button to see what it does; the tap that ends the hold doesn't press it
+  function holdTip(btn, text) {
+    var t = null, shown = null;
+    function hide() { clearTimeout(t); t = null; if (shown) { var s = shown; shown = null; s.classList.remove('on'); setTimeout(function () { s.remove(); }, 200); } }
+    btn.addEventListener('pointerdown', function () {
+      hide();
+      t = setTimeout(function () {
+        var r = btn.getBoundingClientRect();
+        shown = document.body.appendChild(el('div', { class: 'hold-tip', role: 'tooltip', text: text }));
+        var w = shown.offsetWidth, x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+        shown.style.left = x + 'px'; shown.style.top = (r.top - shown.offsetHeight - 10) + 'px';
+        shown.style.setProperty('--ax', (r.left + r.width / 2 - x) + 'px');
+        requestAnimationFrame(function () { if (shown) shown.classList.add('on'); });
+        btn._held = true; Kit.haptic('light');
+      }, 450);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (k) { btn.addEventListener(k, function () { clearTimeout(t); if (shown) setTimeout(hide, 900); }); });
+    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function (e) { if (btn._held) { btn._held = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    return btn;
   }
 
   // ═════════════════════════════════════════════════════════════════════════
