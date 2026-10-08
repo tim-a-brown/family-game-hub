@@ -7870,12 +7870,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var CAPS = 'lorcana_stat_labels';
   // The cost coin, as on the printed card: a hexagon in a gold ring (with thin aperture arcs) when inkable, a black ring when not.
   // Used in card details and on the library and deck builder tiles.
-  function costSVG(ink) {
+  // With n, the number is drawn in the SVG on the hexagon's exact centre (Lilita digits are 0.69em tall, so the
+  // baseline sits 0.345em below centre): CSS text centring shifts with each browser's font metrics.
+  function costSVG(ink, n, fs, col) {
     var HEXP = 'M20 7l11.26 6.5v13L20 33l-11.26-6.5v-13z', HEXI = 'M20 9.6l9 5.2v10.4l-9 5.2-9-5.2V14.8z';
     return '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
       (ink ? '<circle cx="20" cy="20" r="19" fill="url(#gk)" stroke="#fff2c4" stroke-width=".8"/><path d="M20.00 6.80A14 14 0 0 1 31.33 5.50M31.43 13.40A14 14 0 0 1 38.22 22.56M31.43 26.60A14 14 0 0 1 26.89 37.06M20.00 33.20A14 14 0 0 1 8.67 34.50M8.57 26.60A14 14 0 0 1 1.78 17.44M8.57 13.40A14 14 0 0 1 13.11 2.94" fill="none" stroke="#7a5618" stroke-width=".75" stroke-linecap="round"/><circle cx="20" cy="20" r="18.2" fill="none" stroke="#7a5618" stroke-opacity=".6" stroke-width=".5"/>'
         : '<circle cx="20" cy="20" r="19" fill="#0d0b14" stroke="#5a566a" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#3a3648" stroke-width="1"/>') +
-      '<path d="' + HEXP + '" fill="#1d1a2c" stroke="' + (ink ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.4" stroke-linejoin="round"/><path d="' + HEXI + '" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/></svg>';
+      '<path d="' + HEXP + '" fill="#1d1a2c" stroke="' + (ink ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.4" stroke-linejoin="round"/><path d="' + HEXI + '" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/>' +
+      (n == null ? '' : '<text x="20" y="' + (20 + 0.345 * (fs || 18)).toFixed(2) + '" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="' + (fs || 18) + '" fill="' + (col || '#f3ead2') + '" style="paint-order:stroke" stroke="rgba(0,0,0,.35)" stroke-width=".6">' + n + '</text>') + '</svg>';
   }
   function defMeta(d, u) {
     var inks = inkOf(d), live = u && S && S.cards[u] && onBoard(u);
@@ -7885,7 +7888,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     // Shapes drawn after the printed card: cost hexagon (in a gold ring when inkable), strength
     // coin on a spiked star, willpower heater shield, lore diamond
-    var HEX = costSVG(d.k);
+    var HEX = costSVG(d.k, d.c || 0, 18.4);
     var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(inkIcon).join('') + '</span>' : '';
     var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
     var SHIELD = '<svg viewBox="0 0 40 40"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
@@ -7893,7 +7896,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var MOVE = '<svg viewBox="0 0 40 40"><path d="M7 3.5 20 9.5l13-6v3.2L20 12.7 7 6.7z" fill="#eef0f3"/><path d="M7 11 20 17l13-6v13.5c0 3.4-1.6 5.4-4.4 7.2L20 37.5l-8.6-5.8C8.6 29.9 7 27.9 7 24.5z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.5" stroke-linejoin="round"/></svg>';
     // Cost on the left, ink gem(s) centred between it and the stats
     // Cost with its ink right beside it; the rarity in the space between them and the stats (tap it to choose the art)
-    var L = '<div class="grp lc2">' + badge('cost', HEX, d.c || 0, d.k ? 'Inkable' : 'No ink') +
+    var L = '<div class="grp lc2">' + badge('cost', HEX, '', d.k ? 'Inkable' : 'No ink') +
       (gem ? '<div class="sb sb-ink" title="' + esc(inks.join(' & ')) + '">' + gem + '<small>' + inks.map(esc).join('<br>') + '</small></div>' : '') + '</div>' +
       '<div class="mid">' + rarBtnHTML(d) + '</div>';
     var R = '<div class="grp r">';
@@ -10035,7 +10038,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (n && !lib) b.appendChild(el('span', { class: 'n', text: String(n) }));
         if (lib && isNewCard(d)) { b.classList.add('isnew'); b.appendChild(el('span', { class: 'newc', 'aria-hidden': 'true', html: '<i>New</i>' })); }
         if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
-        b.appendChild(el('span', { class: 'cost coin' + (d.k ? ' ink' : ''), html: costSVG(d.k) + '<b>' + (d.c || 0) + '</b>' }));
+        b.appendChild(el('span', { class: 'cost coin' + (d.k ? ' ink' : ''), html: costSVG(d.k, d.c || 0, 21.5, '#fff'), 'aria-label': 'Cost ' + (d.c || 0) }));
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
         if (!lib) b.appendChild(plus);
@@ -10057,7 +10060,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       doneText(list.length);
     }
     // Chance of at least one of k copies among the first h cards of an n-card deck
-    function openOdds(n, k, h) { if (k <= 0) return 0; var p = 1; for (var i = 0; i < h; i++) p *= Math.max(0, n - k - i) / (n - i); return 1 - p; }
+    // (a deck of 7 or fewer is all in the opening hand)
+    function openOdds(n, k, h) { if (k <= 0 || n <= 0) return 0; h = Math.min(h, n); var p = 1; for (var i = 0; i < h; i++) p *= Math.max(0, n - k - i) / (n - i); return 1 - p; }
     function paintDeck() {
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards, deck.casual), cs = deckCards(deck.cards);
       if (lib) return;
