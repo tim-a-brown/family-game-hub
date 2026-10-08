@@ -471,10 +471,13 @@ document.addEventListener('visibilitychange', function () {
         if (!drag) return;
         if (!drag.on) {
           if (Math.abs(e.clientX - x0) < 6 && Math.abs(e.clientY - y0) < 6) return;
-          drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(e.pointerId); } catch (x) {}
-          var r = t.getBoundingClientRect(); drag.gx = x0 - r.left; drag.gy = y0 - r.top; Kit.haptic('light');
-          // the grid's spots, fixed for this drag (tiles sliding between them can't confuse where you are)
+          // the grid's spots (their centres, page coordinates), fixed for this drag: tiles sliding between them
+          // can't confuse where you are, and centres don't move with the wiggle or the lift's zoom
           drag.slots = Array.prototype.map.call(list.children, function (k) { var b = k.getBoundingClientRect(); return { x: b.left + b.width / 2 + scrollX, y: b.top + b.height / 2 + scrollY }; });
+          var c0 = drag.slots[Array.prototype.indexOf.call(list.children, t)];
+          drag.gx = x0 + scrollX - c0.x; drag.gy = y0 + scrollY - c0.y;   // where you grabbed it, from its centre
+          drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(e.pointerId); } catch (x) {}
+          Kit.haptic('light');
         }
         e.preventDefault();
         // the nearest spot to the finger: move this tile there, the others sliding over to make room
@@ -493,8 +496,9 @@ document.addEventListener('visibilitychange', function () {
           });
           Kit.haptic('light');
         }
-        var r2 = t.getBoundingClientRect(), cur = (t.style.translate || '0px 0px').split(' ').map(parseFloat);
-        t.style.translate = (e.clientX - drag.gx - (r2.left - (cur[0] || 0))) + 'px ' + (e.clientY - drag.gy - (r2.top - (cur[1] || 0))) + 'px';
+        // keep the tile under the finger: offset from the centre of the spot it now sits in
+        var home = drag.slots[Array.prototype.indexOf.call(list.children, t)];
+        t.style.translate = (px - drag.gx - home.x) + 'px ' + (py - drag.gy - home.y) + 'px';
       });
       function end() {
         if (timer) { clearTimeout(timer); timer = 0; }
