@@ -8157,20 +8157,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var ACT_SWORDS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 6.5L18 3h3v3l-3.5 8.5"/><path d="M5 14l4 4M7 17l-3 3-1-1 3-3"/></svg>';
   var ACT_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6.4-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.6 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.3"/></svg>';
   var ACT_MINUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg>';
-  // Bodyguard's two plays: a card standing up (ready) and a card turned sideways (exerted)
+  // Bodyguard's two plays: a card standing up (ready) and the game's exert symbol (exerted)
   var ACT_READY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="7" y="3.5" width="10" height="17" rx="2"/></svg>';
-  var ACT_EXERTED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="10" rx="2"/></svg>';
   function actParts(a) {
     var text = String(a.label).replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().replace(/^[+−-]\s*/, '');
     var parts = text.split(' · '), main = parts[0], sub = parts.slice(1).join(' · ');
     var m = /^(Add one|Play exerted) \((.+)\)$/.exec(main); if (m) { main = m[1]; sub = sub || m[2]; }
     var t = text, icon =
-      /^Play exerted/.test(t) ? ACT_EXERTED : /^Play ready/.test(t) ? ACT_READY : /^Play/.test(t) ? Kit.icon('play') : /^Sing/.test(t) ? NOTE_SVG : /^Shift/.test(t) ? Kit.icon('cards') :
+      /^Play exerted/.test(t) ? sym('E', 'aic') : /^Play ready/.test(t) ? ACT_READY : /^Play/.test(t) ? Kit.icon('play') : /^Sing/.test(t) ? NOTE_SVG : /^Shift/.test(t) ? Kit.icon('cards') :
       /inkwell/i.test(t) ? sym('I', 'aic') : /^Quest/.test(t) ? sym('L', 'aic') : /^Challenge/.test(t) ? ACT_SWORDS : /^Move/.test(t) ? ACT_PIN :
       /^Boost/.test(t) ? Kit.icon('plus') : /yourself|by hand/.test(t) ? Kit.icon('hand') : /^Remove/.test(t) ? ACT_MINUS : /^Add/.test(t) ? Kit.icon('plus') :
       /back/i.test(t) ? Kit.icon('undo') : /^(Keep|Choose|Chosen|Take|Taking|Done|Name)/.test(t) ? Kit.icon('check') : /^(Cancel|Skip)/.test(t) ? Kit.icon('close') :
       /^(Goes on|Search)/.test(t) ? Kit.icon(/^Search/.test(t) ? 'search' : 'swap') : Kit.icon('sparkle');
-    if (main === 'Play ready' || main === 'Play exerted') main = 'Play';   // Bodyguard pair: the card icon (upright / turned) tells them apart
+    if (main === 'Play ready' || main === 'Play exerted') main = 'Play';   // Bodyguard pair: the icon (upright card / exert symbol) tells them apart
     if (main === 'Put into inkwell') main = 'Ink it';
     if (main === 'Move to a location') main = 'Move';
     if (main === 'Sing it for free') { main = 'Sing'; sub = sub || 'Free'; }
