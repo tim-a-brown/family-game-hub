@@ -6749,12 +6749,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function snapshot() { var h = S.hist, d = S.defs, ph = S.prevHist; S.hist = undefined; S.defs = undefined; S.prevHist = undefined; var s = JSON.stringify(S); S.hist = h; S.defs = d; S.prevHist = ph; return s; }
   function pushUndo(s) { S.hist.push(s); if (S.hist.length > 12) S.hist.shift(); }
   // Revealing hidden cards (draws, deck reveals) used to lock in the turn. For now Undo can always go back, so the
-  // game's mechanics can be tried again; only online games (where the other player has seen it) still lock in.
+  // game's mechanics can be tried again (online games have no Undo at all).
   function noUndo() { if (S && S.mode === 'online') S.hist = []; }
   function undo() {
     if (!S || S.phase !== 'play') return Kit.toast(S && S.phase === 'mull' ? 'Nothing to undo yet' : 'Nothing to undo');
     if (S.P[S.cur].cpu) return Kit.toast('Wait for ' + S.P[S.cur].name + ' to finish');
-    if (S.mode === 'online' && (!NET.owner || S.cur !== NET.seat || NET.pend)) return Kit.toast(NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : 'You can take back moves on your own turn');
+    if (S.mode === 'online') return Kit.toast('Moves can’t be taken back in online games');
     // Nothing left this turn: against the computer, step back into your previous turn (its turn is undone with it)
     var back = (!S.hist || !S.hist.length) && S.mode === 'cpu' && S.prevHist && S.prevHist.length ? S.P[opp(S.cur)] : null;
     if ((!S.hist || !S.hist.length) && !back) return Kit.toast('Nothing to undo this turn');
