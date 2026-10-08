@@ -1324,12 +1324,23 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .dk-opt small{display:block;color:var(--text-3);font-weight:700;font-size:.75rem;}
 .dk-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .dkm .dk-opt{padding:12px 6px 12px 14px;}
-.dkm .dk-opt .grow > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.dkm-edit{color:var(--text-3);display:grid;place-items:center;}
+.dkm .dk-opt{gap:12px;}
+.dkm-inks{flex:none;width:54px;display:flex;justify-content:center;color:var(--text-3);}
+.dkm-inks .inkdots{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;}
+.dkm-inks .inkdots .inkico{margin:0;}
+.dkm-name{display:flex;align-items:center;gap:8px;min-width:0;}
+.dkm-name > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dkm-tag{flex:none;font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;color:var(--gilt-2);box-shadow:inset 0 0 0 1px rgba(246,220,149,.45);}
+.dkm-meter{display:flex;align-items:center;gap:8px;margin-top:6px;max-width:220px;}
+.dkm-meter i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;}
+.dkm-meter i b{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#c8922f,#f6dc95);}
+.dkm-meter em{flex:none;font-style:normal;font-size:.75rem;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:4px;}
+.dkm-meter.full em{color:#8ff0a8;}
+.dkm-meter.full .ico{width:14px;height:14px;}
+.dkm .dkm-warn{margin-top:4px;color:#f2b866;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lp-div{height:1px;margin:6px 10px;background:linear-gradient(90deg,transparent,rgba(246,220,149,.35),transparent);flex:none;}
 .dkm .dk-opt .btn{flex:none;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;display:grid;place-items:center;color:var(--text-2);}
 .dkm .dk-opt .btn:active{background:rgba(255,255,255,.1);}
-.dkm-edit .ico{width:16px;height:16px;}
 .dk-h{font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:10px 2px 6px;}
 
 .bld{display:flex;flex-direction:column;height:var(--avail,calc(100dvh - 64px));padding:0 calc(10px + env(safe-area-inset-right,0px)) 0 calc(10px + env(safe-area-inset-left,0px));max-width:1100px;margin:0 auto;}
@@ -9208,13 +9219,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       empty.style.display = mine.length ? 'none' : '';
       list.innerHTML = '';
       mine.forEach(function (d) {
-        var pr = ready ? deckProblems(d.cards, d.casual) : [];
-        var sub = (isCasual(d) ? 'Casual · ' : '') + plural(deckCount(d.cards), 'card') + (pr.length ? ' · Not ready: ' + pr[0] : '');
+        // Inks in a small block, the name (with a Casual tag), then a 60-card meter until the deck is full
+        var pr = ready ? deckProblems(d.cards, d.casual) : [], n = deckCount(d.cards);
+        var other = pr.filter(function (x) { return !/more cards? \(60 minimum\)/.test(x); })[0];
+        var meter = n < 60 ? el('span', { class: 'dkm-meter', title: (60 - n) + ' more to a full deck' }, [el('i', {}, [el('b', { style: { width: Math.round(n / 60 * 100) + '%' } })]), el('em', { text: n + '/60' })])
+          : el('span', { class: 'dkm-meter full' }, [el('em', { html: Kit.icon('check') + n + ' cards' })]);
         var more = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', 'aria-label': 'More for ' + d.name, title: 'Copy or delete', html: Kit.icon('more'), onclick: function (e) { e.stopPropagation(); Kit.sfx('tap'); menu(d); } });
-        list.appendChild(el('button', { type: 'button', class: 'dk-opt', 'aria-label': 'Edit ' + d.name, onclick: function () { Kit.sfx('tap'); showBuilder(d.id, again); } }, [
-          ready && deckCards(d.cards).length ? el('span', { html: inkDots(deckInks(d.cards)) }) : el('span', { html: Kit.icon('cards') }),
-          el('span', { class: 'grow' }, [el('span', { text: d.name }), el('small', { text: sub })]),
-          el('span', { class: 'dkm-edit', html: Kit.icon('pencil'), 'aria-hidden': 'true' }), more]));
+        list.appendChild(el('button', { type: 'button', class: 'dk-opt', 'aria-label': 'Edit ' + d.name + ', ' + n + ' cards' + (pr.length ? ', not ready: ' + pr[0] : ''), onclick: function () { Kit.sfx('tap'); showBuilder(d.id, again); } }, [
+          el('span', { class: 'dkm-inks', html: ready && deckCards(d.cards).length ? inkDots(deckInks(d.cards)) : Kit.icon('cards') }),
+          el('span', { class: 'grow' }, [el('span', { class: 'dkm-name' }, [el('span', { text: d.name }), isCasual(d) ? el('i', { class: 'dkm-tag', text: 'Casual' }) : null]), meter,
+            other ? el('small', { class: 'dkm-warn', text: other }) : null]), more]));
       });
     }
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: Kit.icon('share') + '<span>Export or import decks</span>', onclick: function () { deckFiles(paint); } }));
