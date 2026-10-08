@@ -1546,8 +1546,24 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .fside .flt-btn{width:56px;height:56px;}
 /* a row that runs past the buttons scrolls sideways and fades at the edge, so it reads as more */
 /* Library: Bookmarked and Saved deck side by side beside Select, stacking only when there isn't room */
-.bld.lib .fside-l{flex-direction:row;flex-wrap:wrap;align-items:center;align-content:center;column-gap:5px;}
-.bld.lib .fside-l > .fchips{flex:0 1 auto;max-width:100%;min-width:0;}
+.bld.lib .bld-filters .row1{gap:8px;}
+.bld.lib .row1 .flt-btn{width:50px;height:50px;font-size:.68rem;}
+.bld.lib .row1 .flt-btn .ico{width:18px;height:18px;}
+.bld.lib .row1 .sfield{flex:1;min-width:0;}
+.bld.lib .bld-top{gap:6px;}
+.bld.lib .bld-top .grow{flex:1;}
+.bld.lib .bld-top .tsize{margin-left:0;}
+.bld.lib .bld-top .deck-io{margin-left:0;}
+.bld.lib .bld-top .colbtn{width:52px;height:36px;border-radius:18px;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);}
+.bld.lib .bld-top .colbtn .ico{width:18px;height:18px;}
+.build-dk.dkm-go .ico{width:16px;height:16px;}
+@media (max-width:520px){
+  .bld.lib .bld-top{gap:5px;}
+  .bld.lib .bld-top .colbtn{width:44px;}
+  .bld.lib .build-dk{gap:4px;padding:0 9px 0 3px;font-size:.78rem;}
+  .bld.lib .build-dk i{width:24px;height:24px;}
+  .bld.lib .row1 .sfield .input{font-size:.92rem;padding-left:12px;padding-right:36px;}
+}
 .fside-l .fchips.ovf{mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);}
 .flt-btn span{max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sortbox{display:flex;flex-direction:column;gap:6px;}
@@ -9256,11 +9272,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if ([4, 6, 8].indexOf(cols) < 0) cols = 4;
     var phoneLib = function () { return window.innerWidth < 700; };
     var colBtn = el('button', { type: 'button', class: 'icon-btn colbtn', 'aria-label': 'Card size: ' + cols + ' across', title: 'Card size', html: Kit.icon('tiles') });
+    // Library top row: card size on the left; export/import, Deck Manager and Build Deck on the right
     var top = lib ? el('div', { class: 'bld-top' }, [
-      el('h2', { class: 'libt', text: 'Card Library' }), cnt, sizer,
-      el('button', { type: 'button', class: 'build-dk', 'aria-label': 'Build a Deck', title: 'Build a Deck', html: '<i>' + DECK_ADD_SVG + '</i><span>Build a Deck</span>', onclick: function () { showBuilder(null, function () { showBuilder(null, back, o); }); } }),
-      // beside it: export your decks or import a deck file / pasted list
-      el('button', { type: 'button', class: 'deck-io', 'aria-label': 'Export or import decks', title: 'Export or import decks', html: Kit.icon('share'), onclick: function () { deckFiles(function () { paintChips(); paintGrid(true); }); } })])
+      sizer, colBtn, cnt, el('span', { class: 'grow' }),
+      el('button', { type: 'button', class: 'deck-io', 'aria-label': 'Export or import decks', title: 'Export or import decks', html: Kit.icon('share'), onclick: function () { deckFiles(function () { paintChips(); paintGrid(true); }); } }),
+      el('button', { type: 'button', class: 'build-dk dkm-go', 'aria-label': 'Deck Manager', title: 'Deck Manager', html: '<i>' + Kit.icon('cards') + '</i><span>Deck Manager</span>', onclick: function () { showDeckManager(function () { showBuilder(null, back, o); }); } }),
+      el('button', { type: 'button', class: 'build-dk', 'aria-label': 'Build Deck', title: 'Build Deck', html: '<i>' + DECK_ADD_SVG + '</i><span>Build Deck</span>', onclick: function () { showBuilder(null, function () { showBuilder(null, back, o); }); } })])
       : el('div', { class: 'bld-top' }, [
       nameIn, cnt,
       el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Save', onclick: function () { saveDeck(); } })]);
@@ -9275,7 +9292,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var sortBtn = el('button', { type: 'button', class: 'flt-btn', 'aria-label': 'Sort', title: 'Sort', onclick: function () { sortMenu(); } });
     var inkChips = el('div', { class: 'fchips' }), costChips = el('div', { class: 'fchips' }), typeChips = el('div', { class: 'fchips types' }), storyChips = el('div', { class: 'fchips' });
     // Library: a round Select button like Sort and Filters, and the saved-deck chip on its own row under Bookmarked
-    var deckRow = el('div', { class: 'fchips' }), selBtn = el('button', { type: 'button', class: 'flt-btn', onclick: function () { Kit.sfx('tap'); if (selSet) selEnd(); else selStart(); } });
+    var selBtn = el('button', { type: 'button', class: 'flt-btn', onclick: function () { Kit.sfx('tap'); if (selSet) selEnd(); else selStart(); } });
     var grid = el('div', { class: 'bld-grid' });
     if (lib) {
       grid.style.setProperty('--tile', tile + 'px');
@@ -9300,12 +9317,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
       window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
     }
-    var row1 = el('div', { class: 'row1' }, [sfield]);
-    if (lib) row1.appendChild(colBtn);
+    // Library: Select, then search, then Sort and Filters, all on one row
+    var row1 = el('div', { class: 'row1' }, lib ? [selBtn, sfield, sortBtn, moreBtn] : [sfield]);
     var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks (and cost in the deck builder). Everything else lives in Filters.
-    var row2 = lib ? deckRow : costChips;
-    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, el('div', { class: 'fside' }, [lib ? selBtn : null, el('div', { class: 'fside-l' }, [storyChips, row2]), sortBtn, moreBtn]), onChips]), grid]);
+    var row2 = costChips;
+    var fside = lib ? el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips])]) : el('div', { class: 'fside' }, [el('div', { class: 'fside-l' }, [storyChips, row2]), sortBtn, moreBtn]);
+    var pool = el('div', { class: 'bld-pool' }, [el('div', { class: 'bld-filters' }, [row1, fside, onChips]), grid]);
     [storyChips, row2].forEach(function (r) { r.addEventListener('scroll', function () { r.classList.toggle('ovf', r.scrollLeft + r.clientWidth < r.scrollWidth - 2); }, { passive: true }); });
     var pickRows = el('div', { class: 'lp-list' }), kwChips = el('div', { class: 'fchips kwgrid' }), togs = el('div', { class: 'stack', style: { gap: '10px' } });
     var advSec = function (t, n, cls) { return el('div', cls ? { class: cls } : null, [el('div', { class: 'label', text: t }), n]); };
@@ -9497,8 +9515,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var IW_NO = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4l13.9 8v16L20 36 6.1 28V12z" fill="#4b3f82" stroke="#1a1430" stroke-width="4.2" stroke-linejoin="round"/><path d="M20 4l13.9 8v16L20 36 6.1 28V12z" fill="none" stroke="#f6dc95" stroke-width="2.2" stroke-linejoin="round"/></svg>';
     var TYPE_NAMES = { character: 'Characters', action: 'Actions', song: 'Songs', item: 'Items', location: 'Locations' };
     function paintChips() {
-      storyChips.innerHTML = ''; advTop.innerHTML = ''; deckRow.innerHTML = '';
-      var mc = markCount();
+      storyChips.innerHTML = ''; advTop.innerHTML = '';
+      var mc = markCount(), nrc = newCards().length;
+      // New Release (while there are new cards): in the quick chips, and first among the keywords in the Filters sheet,
+      // marked as something new with a gilt outline and a soft shimmer, not filled in the way a chip that's on is
+      var nrChip = function (box, kw) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (kw ? ' nr-kw' : '') + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc && !kw ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); };
+      // Library: New Release leads the row, before Bookmarked
+      if (lib && (nrc || f.newrel)) nrChip(storyChips);
       [storyChips, advTop].forEach(function (box) {
       box.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + '<span>Bookmarked' + (mc ? ' (' + mc + ')' : '') + '</span>', onclick: function () {
         Kit.sfx('tap');
@@ -9508,13 +9531,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
       if (lib) { selBtn.innerHTML = Kit.icon('check') + '<span>Select</span>'; selBtn.classList.toggle('on', !!selSet); selBtn.setAttribute('aria-pressed', String(!!selSet)); selBtn.setAttribute('aria-label', selSet ? 'Stop selecting' : 'Select cards'); selBtn.title = selSet ? 'Stop selecting' : 'Select cards'; }
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
-      var nrc = newCards().length;
-      // New Release (while there are new cards): in the quick chips, and first among the keywords in the Filters sheet,
-      // marked as something new with a gilt outline and a soft shimmer, not filled in the way a chip that's on is
-      var nrChip = function (box, kw) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (kw ? ' nr-kw' : '') + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc && !kw ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); };
-      if (nrc || f.newrel) nrChip(storyChips);
+      if (!lib && (nrc || f.newrel)) nrChip(storyChips);
       if (f.manual) storyChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-pressed': 'true', html: Kit.icon('pencil') + '<span>Needs a hand</span><i class="x" style="font-style:normal;margin-left:4px">×</i>', onclick: function () { Kit.sfx('tap'); f.manual = false; f.shown = 60; paintChips(); paintGrid(); } }));
-      [lib ? deckRow : storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
+      [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
       var sumOf = function (a, fn) { fn = fn || function (x) { return x; }; return !a.length ? '' : a.length === 1 ? fn(a[0]) : a.length === 2 ? fn(a[0]) + ', ' + fn(a[1]) : fn(a[0]) + ' + ' + (a.length - 1) + ' more'; };
