@@ -788,6 +788,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .ls-c.on{opacity:1;transform:translateY(-3px) scale(1.15);box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.6);}
 .ls-c.on.can{box-shadow:0 0 0 2px #f6e1a8,0 0 10px rgba(246,200,90,.7);}
 .ls-c{position:relative;}
+.lz-src{position:sticky;left:0;z-index:1;flex:none;align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;margin-right:4px;border-radius:999px;
+  font-size:.62rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:var(--text-2);background:rgba(20,16,41,.92);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.lz-src .ico{width:12px;height:12px;}
+.lz-src.deck{color:var(--gilt-2);box-shadow:inset 0 0 0 1px rgba(227,189,98,.45);}
+.lz-pos:not(.lz-strip){display:inline-flex;align-items:center;gap:6px;}
+.lz-pos:not(.lz-strip) .lz-src{margin-right:0;}
 .lz-qty{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;}
 .lz-qty .qb{width:56px;height:52px;border:0;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.1);color:var(--text);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);cursor:pointer;}
 .lz-qty .qb b{font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1;}
@@ -8231,13 +8237,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       } else if (nav.defs && nav.n <= 60) {
         // Deck builder: your deck as a strip of little cards (the full search list keeps a plain counter)
         var dstrip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': 'Card ' + (nav.i + 1) + ' of ' + nav.n });
+        if (nav.src) dstrip.appendChild(srcTag(nav.src));
         nav.defs.forEach(function (x, j) {
           dstrip.appendChild(el('button', { type: 'button', class: 'ls-c can' + (j === nav.i ? ' on' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': x.full, html: miniArt(x),
             onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(dstrip);
         setTimeout(function () { var on = dstrip.querySelector('.on'); if (on) dstrip.scrollLeft = on.offsetLeft - dstrip.clientWidth / 2 + on.offsetWidth / 2; }, 0);
-      } else posHost.appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
+      } else posHost.appendChild(el('div', { class: 'lz-pos' }, [nav.src ? srcTag(nav.src) : null, el('span', { class: 'ct', text: (nav.i + 1) + ' of ' + nav.n.toLocaleString() })]));
     }
     var info = el('div', { class: 'lz-info', html: infoHTML });
     if (acts && acts.length) {
@@ -8380,7 +8387,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         b._near = Math.max(0, 1 - Math.abs(j - F.pos));   // the sheen and tilt hand over smoothly as cards pass the middle
       }
       var idx = Math.round(F.pos);
-      if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz && pz.classList.contains('lz-strip')) $$('.ls-c', pz).forEach(function (t, k) { t.classList.toggle('on', k === idx); }); else if (pz) pz.textContent = (idx + 1) + ' of ' + n; Kit.sfx('tick'); }
+      if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz && pz.classList.contains('lz-strip')) $$('.ls-c', pz).forEach(function (t, k) { t.classList.toggle('on', k === idx); }); else if (pz) (pz.querySelector('.ct') || pz).textContent = (idx + 1) + ' of ' + n.toLocaleString(); Kit.sfx('tick'); }
     };
     function stop() { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; }
     F.remeasure = function () { CU = 0; F.render(); };
@@ -9105,12 +9112,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // Copies in a deck, changed in place (the card view stays open): − (a trash can at 1), the count over four pips, +
   // (greyed out at the limit). q = {get, full, add(delta)}
+  // Which cards the card view is stepping through: your deck, or the cards to choose from
+  function srcTag(k) {
+    var deckIco = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="12" height="17" rx="2"/><path d="M4.5 6.5v12a2 2 0 0 0 2 2h9"/></svg>';
+    return el('span', { class: 'lz-src ' + k, html: (k === 'deck' ? deckIco : Kit.icon('search')) + '<span>' + ({ deck: 'Your deck', lib: 'Card library', pool: 'All cards' }[k]) + '</span>' });
+  }
   function qtyCtl(q) {
     var box = el('div', { class: 'lz-qty' });
     function paint() {
       var n = q.get(), max = q.max || 4, full = q.full();
       box.innerHTML = '';
-      box.appendChild(el('button', { type: 'button', class: 'qb' + (n === 1 ? ' del' : ''), disabled: !n, 'aria-label': n === 1 ? 'Remove from deck' : 'Remove one', html: n === 1 ? Kit.icon('trash') : '<b>−</b>', onclick: function () { q.add(-1); Kit.haptic('light'); paint(); } }));
+      box.appendChild(el('button', { type: 'button', class: 'qb' + (n === 1 ? ' del' : ''), disabled: !n, 'aria-label': n === 1 ? 'Remove from deck' : 'Remove one', html: n === 1 ? Kit.icon('trash') : '<b>−</b>', onclick: function () { q.add(-1); Kit.haptic('light'); if (!q.get() && q.onEmpty) q.onEmpty(); else paint(); } }));
       var pips = ''; if (max <= 4) for (var i = 0; i < max; i++) pips += '<i' + (i < n ? ' class="on"' : '') + '></i>';
       box.appendChild(el('div', { class: 'qn', 'aria-live': 'polite', 'aria-label': n + ' in deck', html: '<b>' + n + '</b>' + (pips ? '<span class="pips">' + pips + '</span>' : '') }));
       box.appendChild(el('button', { type: 'button', class: 'qb add', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', html: '<b>+</b>', onclick: function () { q.add(1); Kit.haptic('light'); paint(); } }));
@@ -9797,8 +9809,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       curZoom = { d: d, list: list };
       var inN = lib ? savedDecks().filter(function (dk) { return copiesByFull(dk.cards, d.full) > 0; }).length : 0;
       zoomDef(d, lib ? [] : [
-        { qty: { get: function () { return count(d); }, max: copyLimit(d), full: function () { return copiesByFull(deck.cards, d.full) >= copyLimit(d); }, add: function (k) { addCard(d, k); } } }
-      ], list && i >= 0 ? { i: i, n: list.length, defs: list, dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
+        { qty: { get: function () { return count(d); }, max: copyLimit(d), full: function () { return copiesByFull(deck.cards, d.full) >= copyLimit(d); }, add: function (k) { addCard(d, k); },
+          // Stepping through your deck: the trash can takes the card out of it, and the view moves on to the next one
+          onEmpty: list && list.src === 'deck' ? function () {
+            var at = list.indexOf(d); if (at >= 0) list.splice(at, 1);
+            if (!list.length) { closeZoom(); return; }
+            cardZoom(list[Math.min(Math.max(at, 0), list.length - 1)], list, 1);
+          } : null } }
+      ], list && i >= 0 ? { i: i, n: list.length, defs: list, src: list.src === 'deck' ? 'deck' : lib ? 'lib' : 'pool', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < list.length) cardZoom(list[j], list, step); }, peek: function (k) { return list[i + k] || null; } } : null);
       if (list) filterBtn();
       // Library: a small deck button beside the bookmark, with how many of your decks hold this card
       ui.flowDeck = lib ? function (dd) { quickAdd(dd); } : null;
@@ -10204,7 +10222,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         // The row is tinted by card type (see the key above the list)
         dlist.appendChild(el('div', { class: 'drow', style: { '--ty': TY_COL[tyKey(d)] }, title: TY_NAME[tyKey(d)].replace(/s$/, '') }, [
           el('span', { class: 'hc', html: costSVG(d.k, d.c || 0, 19, '#f3ead2') }),
-          el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d, cs.map(function (y) { return y.d; })); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + (d.v ? ' ' + esc(d.v) : '') })]),
+          el('button', { type: 'button', class: 'grow', onclick: function () { var dl = cs.map(function (y) { return y.d; }); dl.src = 'deck'; cardZoom(d, dl); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + (d.v ? ' ' + esc(d.v) : '') })]),
           ob,
           el('div', { class: 'q' }, [el('button', { type: 'button', class: x.n === 1 ? 'del' : '', html: x.n === 1 ? Kit.icon('trash') : '−', 'aria-label': x.n === 1 ? 'Remove from deck' : 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }),
             el('button', { type: 'button', text: '+', class: full ? 'max' : '', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', onclick: function () { addCard(d, 1); } })])
