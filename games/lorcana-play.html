@@ -1323,6 +1323,12 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .net-h{color:var(--gilt);font-family:var(--serif);font-style:italic;font-size:1.05rem;margin:8px 0 0;}
 .dk-opt small{display:block;color:var(--text-3);font-weight:700;font-size:.75rem;}
 .dk-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.dkm .dk-opt{padding:12px 6px 12px 14px;}
+.dkm .dk-opt .grow > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dkm-edit{color:var(--text-3);display:grid;place-items:center;}
+.dkm .dk-opt .btn{flex:none;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;display:grid;place-items:center;color:var(--text-2);}
+.dkm .dk-opt .btn:active{background:rgba(255,255,255,.1);}
+.dkm-edit .ico{width:16px;height:16px;}
 .dk-h{font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:10px 2px 6px;}
 
 .bld{display:flex;flex-direction:column;height:var(--avail,calc(100dvh - 64px));padding:0 calc(10px + env(safe-area-inset-right,0px)) 0 calc(10px + env(safe-area-inset-left,0px));max-width:1100px;margin:0 auto;}
@@ -6013,7 +6019,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       { icon: 'pencil', label: 'Fix something by hand', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { if (S && S.mode === 'online' && !canAct()) Kit.toast('You can fix things on your own turn'); else if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: Past Games' }); } },
       { section: 'Cards & decks', icon: 'book', label: 'Card library', onClick: function () { openBuilderFromMenu(true); } },
-      { section: 'Cards & decks', icon: 'cards', label: 'Deck builder', onClick: function () { openBuilderFromMenu(); } },
+      { section: 'Cards & decks', icon: 'cards', label: 'Deck manager', onClick: function () { openBuilderFromMenu(false, true); } },
       { section: 'Cards & decks', icon: 'share', label: 'Export or import decks', onClick: function () { deckFiles(); } },
       { section: 'Cards & decks', icon: 'sync', label: 'Check for new cards', onClick: function () { DB.load(true).then(function () { Kit.toast(DB.status === 'ready' ? DB.cards.length + ' cards ready' : 'Couldn’t update the cards'); }); } },
       { icon: 'sparkle', label: 'Prioritize special art', toggle: function () { return FANCY; }, onClick: function () { setFancy(!FANCY); Kit.sfx('tap'); Kit.toast(FANCY ? 'Showing Enchanted and Epic art wherever a card has it' : 'Showing the standard art (cards you picked keep your choice)'); } },
@@ -6053,7 +6059,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       '<p>When an ability needs a choice, only the cards you’re allowed to pick light up. Optional abilities ask first. When the computer plays a card, it’s shown to you full size until you tap.</p>' +
       '<p>A few cards have unusual wording the game can’t run yet. When one of those goes off, you see the card with its text and only the tools that fit it (for example “Deal damage” and “Draw cards”). Tap Done when you’ve followed it. The menu’s <b>Fix something by hand</b> covers anything else.</p>' +
       '<h3>Bookmarks</h3><p>Open any card, in a game, the card library or the deck builder, and tap the bookmark next to its name. In the library and deck builder, the Bookmarked chip shows just those cards. Bookmarks and saved decks go with your PIN to every device you sign in on. To share decks or back them up, use Export or import decks in the menu: it saves a simple text file with lines like “4 Elsa - Snow Queen”, and reads lists in that format from other Lorcana sites too.</p>' +
-      '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks (or more, if you make it a casual deck), with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
+      '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks (or more, if you make it a casual deck), with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own: Deck manager in the menu lists your decks, with New deck to start one. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
       '<h3>Winning</h3><p>First to 20 lore wins (50 in a long game). If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
       '<p class="muted">Card data and art come from Lorcast (lorcast.com). The card list is saved on this device. A copy of every card picture is kept on the site’s own Google Cloud storage, so cards keep their art even if Lorcast goes away.</p>'
   });
@@ -6149,8 +6155,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       rememberChoices(cfg, choices); newGame(cfg, choices);
     } });
     wrap.appendChild(go);
-    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: Kit.icon('cards') + '<span>Deck builder</span>', onclick: function () {
-      showBuilder(null, function () { showDeckPick(cfg, choices); });
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: Kit.icon('cards') + '<span>Deck manager</span>', onclick: function () {
+      showDeckManager(function () { showDeckPick(cfg, choices); });
     } }));
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: Kit.icon('users') + '<span>Change players</span>', onclick: showSetup }));
     app.appendChild(wrap);
@@ -9122,14 +9128,78 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // ═════════════════════════════════════════════════════════════════════════
   // Deck builder
   // ═════════════════════════════════════════════════════════════════════════
-  function openBuilderFromMenu(library) {
+  function openBuilderFromMenu(library, manager) {
     var inGame = S && S.phase !== 'over' && ui.screen === 'game';
     var from = ui.screen;
-    showBuilder(null, function () {
+    var back = function () {
       if (inGame && S) { ui.screen = 'game'; app.innerHTML = ''; resumeFlow(); }
       else if (from === 'decks' && lastCfg) showDeckPick(lastCfg);
       else showSetup();
-    }, { library: !!library });
+    };
+    if (manager) showDeckManager(back); else showBuilder(null, back, { library: !!library });
+  }
+  // ── Deck manager: every saved deck (tap to edit; ⋯ to copy or delete), plus New deck and export/import ──
+  function showDeckManager(back) {
+    tok++; ui.screen = 'decks-mgr'; closeOverlays(); Kit.handoff.close();
+    document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
+    app.innerHTML = '';
+    var again = function () { showDeckManager(back); };
+    var wrap = el('div', { class: 'dk dkm' });
+    wrap.appendChild(el('h1', { text: 'My Decks' }));
+    wrap.appendChild(libLine());
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('plus') + '<span>New deck</span>', onclick: function () { Kit.sfx('tap'); showBuilder(null, again); } }));
+    var head = el('div', { class: 'dk-h' }), fr = el('div', { class: 'fchips' }), list = el('div', { class: 'stack', style: { gap: '6px' } }), empty = el('p', { class: 'muted' });
+    wrap.appendChild(head); wrap.appendChild(fr); wrap.appendChild(empty); wrap.appendChild(list);
+    var dkf = lsGet('lorc_dk_filter', 'all');
+    function menu(d) {
+      var node = el('div', { class: 'hmenu' }), sh, lst = el('div', { class: 'k-list' });
+      function item(ic, t, fn) { lst.appendChild(el('button', { type: 'button', onclick: function () { sh.close(); setTimeout(fn, 60); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t })])); }
+      item('pencil', 'Edit deck', function () { showBuilder(d.id, again); });
+      item('cards', 'Make a copy', function () {
+        var names = savedDecks().map(function (x) { return x.name.toLowerCase(); }), nm = (d.name + ' copy').slice(0, 32), i = 2;
+        while (names.indexOf(nm.toLowerCase()) >= 0) nm = (d.name.slice(0, 26) + ' copy ' + i++);
+        putDeck({ id: 'd' + Date.now().toString(36), name: nm, cards: JSON.parse(JSON.stringify(d.cards)), casual: d.casual || undefined });
+        Kit.sfx('good'); Kit.toast('Made ' + nm); paint();
+      });
+      item('trash', 'Delete deck', function () {
+        Kit.confirm('Delete ' + d.name + '?', { ok: 'Delete', danger: true }).then(function (y) { if (!y) return; dropDeck(d.id); Kit.sfx('tap'); Kit.toast('Deleted ' + d.name); paint(); });
+      });
+      node.appendChild(el('div', { class: 'da-head' }, [el('div', { class: 'grow' }, [el('b', { text: d.name }), el('i', { text: plural(deckCount(d.cards), 'card') })])]));
+      node.appendChild(lst);
+      sh = Kit.sheet({ title: '', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
+    }
+    function paint() {
+      if (!wrap.isConnected) return;
+      var all = savedDecks(), ready = DB.status === 'ready', hasCasual = ready && all.some(isCasual);
+      if (!hasCasual) dkf = 'all';
+      head.textContent = all.length ? 'Your decks (' + all.length + ')' : 'Your decks';
+      fr.innerHTML = ''; fr.style.display = hasCasual ? '' : 'none';
+      if (hasCasual) [['all', 'All decks'], ['std', 'Standard (1–2 inks)'], ['cas', 'Casual (3+ inks)']].forEach(function (o) {
+        fr.appendChild(el('button', { type: 'button', class: 'fchip' + (dkf === o[0] ? ' on' : ''), text: o[1], onclick: function () { dkf = o[0]; lsSet('lorc_dk_filter', dkf); Kit.sfx('tap'); paint(); } }));
+      });
+      var mine = all.filter(function (d) { return dkf === 'all' || (dkf === 'cas') === isCasual(d); });
+      empty.textContent = !all.length ? 'No saved decks yet. Tap New deck to build one, or import a deck list below.' : 'No ' + (dkf === 'cas' ? 'casual' : 'standard') + ' decks.';
+      empty.style.display = mine.length ? 'none' : '';
+      list.innerHTML = '';
+      mine.forEach(function (d) {
+        var pr = ready ? deckProblems(d.cards, d.casual) : [];
+        var sub = (isCasual(d) ? 'Casual · ' : '') + plural(deckCount(d.cards), 'card') + (pr.length ? ' · Not ready: ' + pr[0] : '');
+        var more = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', 'aria-label': 'More for ' + d.name, title: 'Copy or delete', html: Kit.icon('more'), onclick: function (e) { e.stopPropagation(); Kit.sfx('tap'); menu(d); } });
+        list.appendChild(el('button', { type: 'button', class: 'dk-opt', 'aria-label': 'Edit ' + d.name, onclick: function () { Kit.sfx('tap'); showBuilder(d.id, again); } }, [
+          ready && deckCards(d.cards).length ? el('span', { html: inkDots(deckInks(d.cards)) }) : el('span', { html: Kit.icon('cards') }),
+          el('span', { class: 'grow' }, [el('span', { text: d.name }), el('small', { text: sub })]),
+          el('span', { class: 'dkm-edit', html: Kit.icon('pencil'), 'aria-hidden': 'true' }), more]));
+      });
+    }
+    wrap.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: Kit.icon('share') + '<span>Export or import decks</span>', onclick: function () { deckFiles(paint); } }));
+    // The game bar's back arrow leaves the deck manager
+    Kit.onBack = function () { if (!wrap.isConnected) { Kit.onBack = null; return false; } Kit.onBack = null; back(); return true; };
+    app.appendChild(wrap);
+    paint();
+    var sub = function () { if (!wrap.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
+    DB.subs.push(sub);
+    ui.onDecks = function () { if (!wrap.isConnected) { ui.onDecks = null; return; } paint(); };
+    window.scrollTo(0, 0);
   }
   // o.library: just browse every card (no deck being edited)
   // A deck with a plus: Add to deck (card details) and Build a Deck (library)
