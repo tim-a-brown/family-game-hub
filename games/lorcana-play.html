@@ -400,6 +400,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-in{width:100%;max-width:560px;padding:calc(var(--safe-t) + 14px) 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;gap:12px;}
 .lz-card{position:relative;--cu:min(52vh,104vw,520px);width:calc(var(--cu) * .716);height:var(--cu);flex:none;border-radius:calc(var(--cu) * .045);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);transform:scale(.92);transition:transform .25s var(--spring);background:#1d1a2c;}
 .lz.show .lz-card{transform:none;}
+.lz-card.exerted{rotate:90deg;scale:.716;transition:transform .25s var(--spring),rotate .65s cubic-bezier(.45,0,.55,1),scale .65s cubic-bezier(.45,0,.55,1);}
 /* Tilt sheen: a faint band of light that slides as the card leans */
 .tsheen{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
   background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.14) 34%,rgba(255,244,210,.62) 46%,rgba(255,255,255,.7) 50%,rgba(200,225,255,.48) 54%,rgba(255,255,255,.14) 64%,transparent 78%);
@@ -7378,6 +7379,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     ]);
     ov.appendChild(el('div', { class: 'rv-bar' }, [row]));
     Kit.haptic('light');
+    // Questing, challenging or an exert ability: once the card is up, turn it sideways the way it is on the table.
+    // An ability's reveal comes just before it is paid for, so check after that
+    var wasEx = !!(S.cards[u] && C(u).ex);
+    if (/^(Quested|Challenged|Ability)$/.test(verb)) setTimeout(function () {
+      var card = $('.lz-card', ov);
+      if (!card || !ov.isConnected || !S || !S.cards[u] || !C(u).ex || (verb === 'Ability' && wasEx)) return;
+      card.classList.add('exerted'); Kit.haptic('light');
+    }, 500);
   }
   // Press and hold a button to see what it does; the tap that ends the hold doesn't press it
   function holdTip(btn, text) {
