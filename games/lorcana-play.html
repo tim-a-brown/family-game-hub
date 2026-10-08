@@ -63,6 +63,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lore svg{width:100%;height:100%;transform:rotate(-90deg);}
 .lore .tk{fill:none;stroke-width:5;}
 .lore.near::before{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:0 0 0 2px rgba(246,225,168,.9),0 0 14px rgba(246,200,90,.75);animation:loreNear 1.6s ease-in-out infinite;}
+.lore .near-t.goal{color:#fff;background:linear-gradient(180deg,#c0485a,#8a2232);}
 .lore.mine .near-t{top:auto;bottom:calc(100% + 8px);}
 @keyframes loreNear{0%,100%{opacity:.35;transform:scale(.96);}50%{opacity:1;transform:scale(1.04);}}
 @media (prefers-reduced-motion:reduce){.lore.near::before{animation:none;opacity:.8;}}
@@ -995,7 +996,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rv-ticks{position:fixed;left:50%;top:calc(var(--safe-t) + 64px);transform:translateX(-50%);z-index:430;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(560px,calc(100% - 24px));}
 .rv-tick{display:flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border-radius:999px;background:linear-gradient(180deg,#2a2152,#1a1438);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.45),0 8px 22px rgba(0,0,0,.5);color:#fff3d0;font-size:.85rem;animation:tickIn .28s var(--spring);}
 .rv-tick b{font-family:var(--display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;color:#f1cf78;}
-.rv-tick span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rv-tick span{min-width:0;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.25;}
+.rv-tick{border-radius:18px;}
 .rv-tick .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;}
 .rv-tick.out{opacity:0;transform:translateY(-6px);transition:opacity .35s,transform .35s;}
 @keyframes tickIn{from{opacity:0;transform:translateY(-8px) scale(.96);}}
@@ -1027,6 +1029,13 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sv{white-space:nowrap;}
 .sv-up{color:#8ff0a8;}
 .sv-dn{color:#ff8f8f;}
+.cl-row{cursor:pointer;}
+.cl-art{flex:none;width:40px;height:56px;border-radius:5px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.2),0 2px 6px rgba(0,0,0,.4);}
+.cl-art .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
+.cl-ck{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.3);color:#2b1a00;}
+.cl-row.on .cl-ck{background:var(--gilt);box-shadow:none;}
+.cl-ck svg{width:16px;height:16px;}
+html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 14px rgba(227,189,98,.25);}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
@@ -3611,7 +3620,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Vanish: when an opponent chooses this character for an action, banish it
   function vanishCheck(target, actor, srcIsAction) {
     if (srcIsAction && target && C(target).o !== actor && isChar(target) && hasKw(target, 'vanish') && S.P[C(target).o].board.indexOf(target) >= 0) {
-      log(nm(target) + ' vanished (Vanish)', C(target).o); fx.banish(target); banish(target); S.st[C(target).o].lost++; return true;
+      log(nm(target) + ' vanished (Vanish)', C(target).o);
+      // say it out loud: the card is gone the moment it's chosen, before the action does anything
+      if (humans() > 0) { var vn = nm(target), vp = S.P[C(target).o]; setTimeout(function () { Kit.callout('Vanished!', '#c9a8ff'); }, 250); ticker(vp, 'Vanish', vn + ' was chosen, so it’s banished'); }
+      fx.banish(target); banish(target); S.st[C(target).o].lost++; return true;
     }
     return false;
   }
@@ -4314,7 +4326,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var shown = [], hitU = null;
         while (P.deckL.length && !hitU) { var tu = P.deckL.shift(); shown.push(tu); if (descFits(tu, e, st.src) && (!e.cls || hasCls(tu, e.cls))) hitU = tu; }
         act(function () { if (hitU) { shown.splice(shown.indexOf(hitU), 1); P.hand.push(hitU); } shown.forEach(function (u) { P.deckL.push(u); }); shuffle(P.deckL); });
-        noUndo(); st.said.push(P.name + ' revealed ' + plural(shown.length + (hitU ? 1 : 0), 'card') + (hitU ? ' and took ' + DD(hitU).full : '')); return cb(!!hitU);
+        noUndo(); st.said.push(P.name + ' revealed ' + plural(shown.length + (hitU ? 1 : 0), 'card') + (hitU ? ' and took ' + DD(hitU).full : ''));
+        if (humans() > 0) ticker(P, 'Revealed', shown.map(function (u) { return DD(u).n; }).concat(hitU ? ['→ ' + DD(hitU).n + ' to hand'] : ['no match']).join(' · '));
+        if (hitU && (ctlHuman(pi) || humans() > 0)) showReveal(hitU, 'Revealed ' + plural(shown.length + 1, 'card') + ' to find it; the rest were shuffled back', 'Found', 'Into ' + P.name + '’s hand');
+        return cb(!!hitU);
       }
       case 'inkTrim': {
         act(function () { [pi, opp(pi)].forEach(function (w) { var W = S.P[w]; while (W.ink.length > e.n) { var ix = Math.floor(Math.random() * W.ink.length), u = W.ink.splice(ix, 1)[0]; resetCard(u); W.hand.push(u); } }); });
@@ -4644,14 +4659,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var bestN = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; })[0]; return go(bestN);
     }
     if (netWho() != null) return netAsk('name', { src: st.src, ab: abMin(st.ab), opt: !!optional }, function (v) { go(v.name || null); });
-    nameSheet(st.src, st.ab, optional, go);
+    nameSheet(st.src, st.ab, optional, go, e.op === 'nameCard' ? P.discard.filter(isChar) : null);
   }
-  function nameSheet(src, ab, optional, go) {
+  function nameSheet(src, ab, optional, go, hint) {
     var names = {}; DB.unique.forEach(function (d) { names[d.n] = 1; }); var all = Object.keys(names).sort();
+    // the names that can actually pay off come first ("In your discard"), then everything else
+    var sug = []; (hint || []).forEach(function (u) { var n2 = DD(u).n; if (sug.indexOf(n2) < 0) sug.push(n2); }); sug.sort();
+    if (sug.length) all = sug.concat(all.filter(function (n2) { return sug.indexOf(n2) < 0; }));
     var node = el('div'), q = el('input', { class: 'input', type: 'search', placeholder: 'Search card names', 'aria-label': 'Search card names' }), list = el('div', { class: 'lp-list', style: { 'margin-top': '10px' } }), sh, done = false;
     function paint() {
       var t = skey(q.value); list.innerHTML = ''; var shown = 0;
-      all.forEach(function (n2) { if (t && skey(n2).indexOf(t) < 0) return; if (++shown > 60) return; list.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { done = true; sh.close(); go(n2); } }, [el('b', { class: 'grow', text: n2 })])); });
+      all.forEach(function (n2, i) {
+        if (t && skey(n2).indexOf(t) < 0) return; if (++shown > 60) return;
+        var isSug = sug.indexOf(n2) >= 0;
+        if (!t && sug.length && (i === 0 || i === sug.length)) list.appendChild(el('div', { class: 'dk-h', text: i === 0 ? 'In your discard' : 'Every other name' }));
+        list.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (isSug ? ' on' : ''), onclick: function () { done = true; sh.close(); go(n2); } }, [el('b', { class: 'grow', text: n2 })].concat(isSug ? [el('small', { text: plural(hint.filter(function (u) { return DD(u).n === n2; }).length, 'card') })] : [])));
+      });
     }
     q.addEventListener('input', paint); paint();
     node.appendChild(el('div', { class: 'abhead', html: abHeadHTML(src, ab) })); node.appendChild(q); node.appendChild(list);
@@ -6097,8 +6120,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       segs += '<path class="tk" d="M' + (22 + r * Math.cos(a0)).toFixed(2) + ' ' + (22 + r * Math.sin(a0)).toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + (22 + r * Math.cos(a1)).toFixed(2) + ' ' + (22 + r * Math.sin(a1)).toFixed(2) + '" stroke="' + (i < L ? col : 'rgba(255,255,255,.16)') + '"/>';
     }
     // within 4 of winning: the ring pulses and says how many are left
-    var need = S.phase === 'play' || S.phase === 'mull' ? needLore(pi) - L : 99, near = need > 0 && need <= 4;
-    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of 20 lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b>' + (near ? '<i class="near-t">' + need + ' to win</i>' : '') + '</button>';
+    var need = S.phase === 'play' || S.phase === 'mull' ? needLore(pi) - L : 99, near = need > 0 && need <= 4, goal = needLore(pi);
+    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of ' + goal + ' lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b>' + (near ? '<i class="near-t">' + need + ' to win</i>' : goal !== 20 ? '<i class="near-t goal">needs ' + goal + '</i>' : '') + '</button>';
   }
   function renderStrip(host, pi, top) {
     var p = S.P[pi], turn = S.phase === 'play' && S.cur === pi, mine = pi === bottomPi();
@@ -7848,20 +7871,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       list.innerHTML = '';
       uids.forEach(function (u) {
         var d = DD(u), on = sel.indexOf(u) >= 0;
-        var row = el('div', { class: 'lp-li', style: on ? { 'box-shadow': 'inset 0 0 0 2px var(--gilt)' } : null }, [
-          el('span', { html: miniArt(d) }),
-          el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
-          el('button', { type: 'button', class: 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-soft'), text: on ? 'Chosen' : 'Choose', onclick: function () {
+        // tap the row to choose it (one to choose: that's it); tap the little card to see it big
+        var row = el('div', { class: 'lp-li cl-row' + (on ? ' on' : ''), role: 'button', tabindex: '0', onclick: function () {
+            if (n === 1 && (o.min || 1) === 1) { if (done) return; done = true; s.close(); Kit.sfx('tap'); cb([u]); return; }
             var i = sel.indexOf(u); if (i >= 0) sel.splice(i, 1); else { if (sel.length >= n) sel.shift(); sel.push(u); }
-            Kit.sfx('tap'); paint(); } })
+            Kit.sfx('tap'); paint(); } }, [
+          el('span', { class: 'cl-art', html: miniArt(d) }),
+          el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
+          el('i', { class: 'cl-ck', 'aria-hidden': 'true', html: on ? Kit.icon('check') : '' })
         ]);
-        row.querySelector('.mini') && row.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
+        row.querySelector('.cl-art').addEventListener('click', function (ev) { ev.stopPropagation(); zoomDef(d); });
         list.appendChild(row);
       });
       btn.disabled = sel.length < (o.min || n) || sel.length > n; btn.textContent = n === 1 ? 'Choose' : 'Choose ' + n + ' (' + sel.length + ')';
     }
     paint();
-    node.appendChild(list); node.appendChild(btn);
+    node.appendChild(list); if (!(n === 1 && (o.min || 1) === 1)) node.appendChild(btn);
     s = Kit.sheet({ title: title, node: node, dismissible: !o.must, actions: o.must ? [] : [{ label: o.skip ? 'Skip' : 'Cancel', cls: 'btn-ghost' }], onClose: function () { if (!done && o.cancel) o.cancel(); } });
   }
   function lookTop(who, n, note, after) {
