@@ -841,21 +841,24 @@
         }, [el('span', { class: 'e', html: icon(m.icon || 'sparkle') }), el('span', { class: 'tx' }, [el('span', { class: 't', text: m.title }), el('span', { class: 'd', text: devWord(m.desc || '') })]), el('span', { class: 'ok', html: icon('check') })]));
       });
     }
+    // op.choices can be a function of (player count, mode), e.g. "who goes first" offering each seat
+    function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode) : op.choices; }
     function renderOptions() {
       optsBox.innerHTML = '';
       (o.options || []).forEach(function (op) {
         if (op.when && !op.when(state.mode)) return;
-        var seg = el('div', { class: 'seg' });
-        op.choices.forEach(function (c) {
+        var seg = el('div', { class: 'seg' }), choices = choicesOf(op);
+        if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
+        choices.forEach(function (c) {
           seg.appendChild(el('button', {
             type: 'button', class: String(state.options[op.id]) === String(c[0]) ? 'on' : '', text: c[1],
             onclick: function () { state.options[op.id] = c[0]; sfx('tap'); renderOptions(); }
           }));
         });
         var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]);
-        var cur = op.choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
+        var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
         var note = devWord([op.help, cur && cur[2]].filter(Boolean).join(' '));
-        var hasHelp = op.help || op.choices.some(function (c) { return c[2]; });
+        var hasHelp = op.help || choices.some(function (c) { return c[2]; });
         var box = el('div', { class: 'k-opt' + (openHelp[op.id] ? ' help-on' : '') }, [lab, seg]);
         if (hasHelp) {
           lab.appendChild(el('button', { type: 'button', class: 'k-q', 'aria-label': 'What does ' + op.label + ' mean?', 'aria-expanded': String(!!openHelp[op.id]), text: '?',
@@ -867,11 +870,11 @@
     }
     function renderSeats() {
       seatsBox.innerHTML = '';
-      renderOptions();
-      if (!P) return;
+      if (!P) { renderOptions(); return; }
       var r = range(), cpu = cpuFor();
       if (!state.count) state.count = Math.min(r[1], Math.max(r[0], saved.count || P.count || r[0]));
       state.count = Math.min(r[1], Math.max(r[0], state.count));
+      renderOptions();
       var head = el('div', { class: 'row' }, [el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" })]);
       if (r[1] > r[0]) {
         var out = el('output', { text: String(state.count) });
@@ -915,9 +918,46 @@
             } }));
           }
           row.appendChild(field);
+          // Two or more people (no computer seats): a handle to drag a player up or down the order
+          if (!cpu && state.count > 1) row.appendChild(grip(row, i));
           seatsBox.appendChild(row);
         })(i);
       }
+    }
+    var GRIP = '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>';
+    function moveSeat(from, to) {
+      if (to === from || to < 0 || to >= state.count) return;
+      while (names.length < state.count) names.push('');
+      var n = names.splice(from, 1)[0]; names.splice(to, 0, n);
+      sfx('pop'); haptic('light'); renderSeats();
+    }
+    function grip(row, i) {
+      var g = el('button', { type: 'button', class: 'seat-grip', 'aria-label': 'Move player ' + (i + 1) + ' (drag, or use the arrow keys)', title: 'Drag to reorder', html: GRIP });
+      var y0 = 0, rows = null, step = 0, to = i, on = false;
+      g.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); var t = i + (e.key === 'ArrowUp' ? -1 : 1); moveSeat(i, t); var again = seatsBox.querySelectorAll('.seat-grip')[t]; if (again) again.focus(); }
+      });
+      g.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (x) {}
+        rows = Array.prototype.slice.call(seatsBox.querySelectorAll('.seat'));
+        step = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight + 10;
+        y0 = e.clientY; to = i; on = true; row.classList.add('drag'); haptic('light');
+      });
+      g.addEventListener('pointermove', function (e) {
+        if (!on) return;
+        var dy = e.clientY - y0, t = Math.max(0, Math.min(rows.length - 1, i + Math.round(dy / step)));
+        row.style.transform = 'translateY(' + dy + 'px)';
+        if (t !== to) { to = t; haptic('light'); }
+        rows.forEach(function (rw, j) { if (j === i) return; var sh = (j > i && j <= to) ? -step : (j < i && j >= to) ? step : 0; rw.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
+      });
+      function end() {
+        if (!on) return; on = false;
+        rows.forEach(function (rw) { rw.style.transform = ''; }); row.classList.remove('drag');
+        if (to !== i) moveSeat(i, to);
+      }
+      g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+      return g;
     }
 
     var startBtn = el('button', {

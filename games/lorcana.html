@@ -216,9 +216,9 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Lorcana: past games' }); } }
     ],
     rules:
-      '<p class="goal">Play Disney Lorcana with your real cards and keep track of <b>lore</b> here. The first player to reach <b>20 lore</b> wins right away.</p>' +
+      '<p class="goal">Play Disney Lorcana with your real cards and keep track of <b>lore</b> here. The first player to reach <b>20 lore</b> wins right away (or <b>50</b>, if you pick the long game).</p>' +
       '<h3>Getting ready</h3><ul><li>Each player shuffles a 60-card deck and draws <b>7 cards</b>.</li><li>You may put any number of cards from your hand on the bottom of your deck and draw that many again (once).</li>' +
-      '<li>This app picks who goes first. The first player <b>skips their draw</b> on their very first turn.</li></ul>' +
+      '<li>Pick who goes first, or let the app choose. The first player <b>skips their draw</b> on their very first turn.</li></ul>' +
       '<h3>On your turn</h3><ol><li><b>Ready:</b> stand up (ready) all your exerted cards.</li><li><b>Set:</b> check effects that happen at the start of your turn.</li><li><b>Draw</b> a card.</li>' +
       '<li><b>Main phase</b>, in any order: put <b>one</b> card with the ink symbol into your inkwell, play characters, items and actions by paying ink, <b>quest</b> and <b>challenge</b>.</li><li>Tap <b>End turn</b> here when you are done.</li></ol>' +
       '<h3>Getting lore</h3><ul><li><b>Quest:</b> exert (turn sideways) a dry character to gain the lore shown on it. Characters are "drying" the turn they are played and can\'t quest yet.</li>' +
@@ -246,11 +246,16 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     Kit.setup(app, {
       players: { min: 2, max: 4, count: 2 },
       options: [
-        { id: 'first', label: 'Who goes first?', value: 'random', choices: [['random', 'Pick at random', 'The app picks who starts.'], ['p1', 'Player 1', 'The first name in the list goes first.']] },
-        { id: 'ink', label: 'Ink counters', help: 'Ink is the cards you put in your inkwell to pay for other cards.', value: 'on', choices: [['on', 'On', 'Show a counter for each player’s ink as well as their lore.'], ['off', 'Off', 'Only track lore.']] },
+        // Random, or any seat (the choices follow the number of players)
+        { id: 'first', label: 'Who goes first?', value: 'random', choices: function (n) {
+          var c = [['random', 'Random', 'The app picks who starts.']];
+          for (var i = 1; i <= Math.max(2, n); i++) c.push(['p' + i, n > 2 ? String(i) : 'Player ' + i, 'Player ' + i + ' on the list goes first.']);
+          return c;
+        } },
+        { id: 'goal', label: 'Lore to win', value: '20', choices: [['20', '20', 'The standard game.'], ['50', '50', 'A long game: more turns and bigger boards.']] },
         { id: 'seat', label: 'Seating', value: 'around', choices: [['around', 'Around the table', 'Players across from you see their scores the right way up.'], ['facing', 'All facing me', 'Every score faces the same way, for when the phone sits in front of one person.']] }
       ],
-      intro: 'Lore tracker for the card game. First to 20 lore wins.',
+      intro: 'Lore tracker for the card game. First to 20 lore wins (or 50 in a long game).',
       start: 'Begin the story',
       onStart: function (cfg) {
         start(cfg.players.map(function (p, i) { return { name: p.name, col: DEF_INK[i] }; }), cfg.options);
@@ -258,11 +263,11 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     });
   }
   function start(players, o) {
-    var first = o.first === 'p1' ? 0 : Math.floor(Math.random() * players.length);
+    var pk = /^p(\d)$/.exec(o.first || ''), first = pk && +pk[1] <= players.length ? +pk[1] - 1 : Math.floor(Math.random() * players.length);
     S = {
       players: players.map(function (p) { return { name: p.name, lore: 0, ink: 0, col: p.col || 'amethyst' }; }),
-      turn: first, first: first, turnNo: 1, ink: o.ink !== 'off', seat: o.seat === 'facing' ? 'facing' : 'around',
-      opts: { first: o.first, ink: o.ink, seat: o.seat }, log: [], started: Date.now(), over: false
+      turn: first, first: first, turnNo: 1, ink: true, seat: o.seat === 'facing' ? 'facing' : 'around', goal: +o.goal === 50 ? 50 : 20,
+      opts: { first: o.first, goal: o.goal, seat: o.seat }, log: [], started: Date.now(), over: false
     };
     undoStack = []; Kit.gameStart();
     save(); render();
@@ -422,7 +427,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
   function pickLore(p) {
     if (S.over) return;
     var grid = el('div', { class: 'setlore' }), s;
-    for (var v = 0; v <= 20; v++) (function (v) {
+    for (var v = 0; v <= WIN; v++) (function (v) {
       grid.appendChild(el('button', { type: 'button', class: S.players[p].lore === v ? 'on' : '', text: String(v), onclick: function () { s.close(); setLore(p, v); } }));
     })(v);
     s = Kit.sheet({ title: 'Set ' + S.players[p].name + "'s lore", node: grid, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
@@ -437,7 +442,9 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     if (n === 3) return around ? [[0, 'bot', 1, 0], [1, 'bot', 2, 0], [2, 'top', 0, 1]] : [[0, 'top', 0, 0], [1, 'bot', 1, 0], [2, 'bot', 2, 0]];
     return around ? [[0, 'bot', 1, 0], [1, 'bot', 2, 0], [2, 'top', 2, 1], [3, 'top', 1, 1]] : [[0, 'top', 1, 0], [1, 'top', 2, 0], [2, 'bot', 1, 0], [3, 'bot', 2, 0]];
   }
+  function trackStep() { return WIN > 20 ? 2 : 1; }
   function render() {
+    WIN = (S && S.goal) || 20;
     if (!S) return;
     app.className = '';
     app.innerHTML = '';
@@ -490,8 +497,9 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
       el('button', { type: 'button', class: 'lbtn plus', 'aria-label': 'Gain 2 lore', text: '+2', onclick: function () { lore(p, 2); } }),
       el('button', { type: 'button', class: 'lbtn plus', 'aria-label': 'Gain 3 lore', text: '+3', onclick: function () { lore(p, 3); } })
     ]));
-    P.track = el('div', { class: 'lc-track', 'aria-hidden': 'true' });
-    for (var i = 0; i < WIN; i++) P.track.appendChild(el('i'));
+    // One diamond per lore point (20), or per 2 lore in a 50 game
+    P.track = el('div', { class: 'lc-track', 'aria-hidden': 'true', style: { 'grid-template-columns': 'repeat(' + Math.ceil(WIN / trackStep()) + ',1fr)' } });
+    for (var i = 0; i < Math.ceil(WIN / trackStep()); i++) P.track.appendChild(el('i'));
     inn.appendChild(P.track);
     if (S.ink) {
       P.ink = el('span', { class: 'iv' });
@@ -508,7 +516,7 @@ body::after{transform:translate(23%,31%) scale(1.1);animation-delay:-2.5s;opacit
     P.gem.querySelector('b').textContent = String(pl.lore);
     P.gem.classList.toggle('near', pl.lore >= WIN - 5 && pl.lore < WIN);
     P.minus.disabled = pl.lore <= 0;
-    Array.prototype.forEach.call(P.track.children, function (n, i) { n.classList.toggle('on', i < pl.lore); });
+    Array.prototype.forEach.call(P.track.children, function (n, i) { n.classList.toggle('on', (i + 1) * trackStep() <= pl.lore); });
     if (P.ink) P.ink.innerHTML = '<span style="color:' + inkOf(pl.col).c + '">' + DROP + '</span><span>' + pl.ink + '</span><small>ink</small>';
     if (delta) {
       P.gem.classList.remove('pop'); void P.gem.offsetWidth; P.gem.classList.add('pop');
