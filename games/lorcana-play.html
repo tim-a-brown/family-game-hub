@@ -974,7 +974,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .pk-chal .pk-st b{position:relative;font-family:var(--display);font-size:1.05rem;font-weight:400;font-style:normal;line-height:1;}
 .pk-chal .pk-st i:first-child b{color:#1d1a2c;}
 .pk-chal .pk-st i:last-child b{color:#fff;margin-top:-3px;}
-.pk-chal .pk-st i.hurt b{color:#ff9a9a;}
+.pk-chal .pk-st i:first-child.up b{color:#12893c;}.pk-chal .pk-st i:first-child.dn b{color:#c8202f;}
+.pk-chal .pk-st i:last-child.up b{color:#7dffa6;}.pk-chal .pk-st i:last-child.dn b{color:#ff8f8f;}
 .pk-chal .pk-tx{flex:0 1 auto;display:flex;flex-direction:column;min-width:0;}
 .pk-chal .pk-tx small{font-size:.72rem;font-weight:700;color:rgba(255,243,207,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pk-chal .pk-tx b{font-family:var(--display);font-size:1.1rem;letter-spacing:.02em;color:#ffe9a8;white-space:nowrap;}
@@ -6046,9 +6047,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var pk = ui.pick, sd = pk.src && S.cards[pk.src] ? DD(pk.src) : null;
       var art = sd ? '<button type="button" class="pk-art" data-act="pick-src" aria-label="See ' + esc(sd.full) + '">' + miniArt(sd) + '</button>' : '';
       // Challenging: the challenger's strength (with Challenger) and the willpower it has left, as the printed marks
-      var cu = pk.chal && S.cards[pk.chal] ? pk.chal : null, wl = cu ? Math.max(0, WP(cu) - (C(cu).dmg || 0)) : 0;
+      var cu = pk.chal && S.cards[pk.chal] ? pk.chal : null, wl = cu ? Math.max(0, WP(cu) - (C(cu).dmg || 0)) : 0, sv = cu ? STR(cu, true) : 0;
+      function vsBase(v, b) { return v > b ? 'up' : v < b ? 'dn' : ''; }   // green above the printed number, red below
       var h = cu ? '<div class="lp-pick pk-chal" aria-label="' + esc(pk.title) + '">' + art +
-          '<span class="pk-st" title="Strength"><i>' + PK_STAR + '<b>' + STR(cu, true) + '</b></i><i' + (C(cu).dmg ? ' class="hurt"' : '') + ' title="Willpower left">' + PK_SHIELD + '<b>' + wl + '</b></i></span>' +
+          '<span class="pk-st"><i class="' + vsBase(sv, DD(cu).s || 0) + '" title="Strength">' + PK_STAR + '<b>' + sv + '</b></i><i class="' + vsBase(wl, DD(cu).w || 0) + '" title="Willpower left">' + PK_SHIELD + '<b>' + wl + '</b></i></span>' +
           '<span class="pk-tx"><small>' + esc(nm(cu)) + '</small><b>Pick a target</b></span>'
         : '<div class="lp-pick">' + art + '<span>' + esc(pk.title) + '</span>';
       if (pk.multi) h += '<button type="button" class="btn btn-primary btn-sm" data-act="pick-go"' + (pk.multi.need(pk.sel) ? '' : ' disabled') + '>' + esc(pk.multi.label(pk.sel)) + '</button>';
