@@ -452,7 +452,9 @@ document.addEventListener('visibilitychange', function () {
     return s;
   }
   // ── Favorites: press and hold a tile to make them wiggle, then drag to rearrange (like a phone's home screen) ──
-  var wiggling = false;
+  var wiggling = false, wigIdle = 0;
+  // Eight seconds of wiggling with nothing lifted or dragged: arranging ends by itself
+  function idleWiggle() { clearTimeout(wigIdle); if (wiggling) wigIdle = setTimeout(function () { if (wiggling && !document.querySelector('.sec.favs .g.lift')) stopWiggle(); else idleWiggle(); }, 8000); }
   function arrangeable(sec, head, list) {
     var done = el('button', { type: 'button', class: 'wig-done', text: 'Done', onclick: function (e) { e.stopPropagation(); stopWiggle(); } });
     head.appendChild(done);
@@ -475,6 +477,7 @@ document.addEventListener('visibilitychange', function () {
         var c0 = drag.slots[Array.prototype.indexOf.call(list.children, t)];
         drag.gx = x0 + scrollX - c0.x; drag.gy = y0 + scrollY - c0.y;   // where you grabbed it, from its centre
         drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(pid); } catch (x) {}
+        clearTimeout(wigIdle);
       }
       // a finger on a lifted tile drags it, never the page
       t.addEventListener('touchmove', function (e) { if (drag || sec.classList.contains('wiggle')) e.preventDefault(); }, { passive: false });
@@ -514,7 +517,7 @@ document.addEventListener('visibilitychange', function () {
         t._held = true;
         t.style.transition = 'translate .2s ease'; t.style.translate = '';
         setTimeout(function () { t.style.transition = ''; t.classList.remove('lift'); }, 220);
-        saveFavOrder(list); Kit.sfx('tap');
+        saveFavOrder(list); Kit.sfx('tap'); idleWiggle();
       }
       t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
       t.addEventListener('contextmenu', function (e) { if (sec.classList.contains('wiggle') || t._held) e.preventDefault(); });
@@ -523,11 +526,11 @@ document.addEventListener('visibilitychange', function () {
     });
   }
   function startWiggle(sec) {
-    if (wiggling) return; wiggling = true; sec.classList.add('wiggle'); Kit.sfx('pop');
+    if (wiggling) return; wiggling = true; sec.classList.add('wiggle'); Kit.sfx('pop'); idleWiggle();
     setTimeout(function () { document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', esc); }, 0);
   }
   function stopWiggle() {
-    wiggling = false; document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', esc);
+    wiggling = false; clearTimeout(wigIdle); document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', esc);
     document.querySelectorAll('.sec.favs.wiggle').forEach(function (x) { x.classList.remove('wiggle'); });
     Kit.sfx('tap');
   }
