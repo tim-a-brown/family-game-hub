@@ -1597,6 +1597,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .bsize .colbtn .ico{width:18px;height:18px;}
 .pc .pc-add{position:absolute;right:4px;top:4px;width:34px;height:34px;padding:0;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6);cursor:pointer;}
 .pc .pc-add.pc-sub{right:42px;}
+.bld-grid .pc.tyglow{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--ty) 85%,transparent),0 0 10px color-mix(in srgb,var(--ty) 55%,transparent),0 3px 8px rgba(0,0,0,.4);}
+.bld-grid .pc.tyglow.sel{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--ty) 85%,transparent),0 0 10px color-mix(in srgb,var(--ty) 55%,transparent);}
 .pc .pc-add b{font-family:var(--display);font-weight:400;font-size:1.35rem;line-height:1;margin-top:-2px;}
 .pc .pc-add:disabled{cursor:default;background:rgba(20,16,41,.85);box-shadow:0 0 0 1.5px rgba(255,255,255,.18);color:rgba(255,255,255,.28);}
 .bld-grid.tiny .pc .pc-add{width:22px!important;height:22px!important;right:2px!important;top:2px!important;}
@@ -10206,8 +10208,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (lib && isNewCard(d)) { b.classList.add('isnew'); b.appendChild(el('span', { class: 'newc', 'aria-hidden': 'true', html: '<i>New</i>' })); }
         if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
         b.appendChild(el('span', { class: 'cost coin' + (d.k ? ' ink' : ''), html: costSVG(d.k, d.c || 0, 21.5, '#fff'), 'aria-label': 'Cost ' + (d.c || 0) }));
-        // Deck builder: − and + in the top corner (− greyed at 0, + greyed at the card's limit)
+        // Deck builder: − and + in the top corner (− greyed at 0, + greyed at the card's limit), and a thin glow in the
+        // card type's colour (the same colours as the type chart and the deck list rows)
         if (!lib) {
+          b.classList.add('tyglow'); b.style.setProperty('--ty', TY_COL[tyKey(d)]);
           var atMax = copiesByFull(deck.cards, d.full) >= copyLimit(d);
           b.appendChild(el('button', { type: 'button', class: 'pc-add pc-sub', 'aria-label': 'Remove one ' + d.full, disabled: !n, html: QMINUS, onclick: function (e) { e.stopPropagation(); addCard(d, -1); } }));
           b.appendChild(el('button', { type: 'button', class: 'pc-add', 'aria-label': atMax ? d.full + ': at the limit' : 'Add ' + d.full, disabled: atMax, html: QPLUS, onclick: function (e) { e.stopPropagation(); addCard(d, 1); } }));
