@@ -6074,7 +6074,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       box._mounted = true;
       box.className = 'libline' + (DB.status === 'error' ? ' err' : '');
       if (DB.status === 'ready') {
-        box.innerHTML = Kit.icon('check') + '<span class="grow">Card library ready: ' + DB.cards.length.toLocaleString() + ' cards' + (DB.src ? ' from ' + esc(DB.src) : '') + '. Saved for offline play.</span>';
+        // "3,408 cards / 14 sets from Lorcast. Last sync: 10/08/26" (numbered sets only, not promos)
+        var nSets = (DB.sets || []).filter(function (x) { return /^\d+$/.test(String(x.code)); }).length, at = new Date(DB.at || Date.now()), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+        box.innerHTML = Kit.icon('check') + '<span class="grow">' + DB.cards.length.toLocaleString() + ' cards / ' + nSets + ' sets' + (DB.src ? ' from ' + esc(DB.src) : '') + '. Last sync: ' + p2(at.getMonth() + 1) + '/' + p2(at.getDate()) + '/' + String(at.getFullYear()).slice(2) + '</span>';
         // New cards with abilities the game can't run by itself yet (they still play: "Do it yourself" covers them)
         var nm = newManual();
         if (nm.length) box.appendChild(el('div', { class: 'libline-nm' }, [el('span', { text: plural(nm.length, 'new card') + ' with abilities the game can’t run by itself yet' }),
