@@ -167,6 +167,15 @@
   .stage.hr.ph-bet .prog{margin-bottom:10px;}
   .rail-in{max-width:760px;}
 }
+.vo-tip{margin:0 0 12px;font-size:.88rem;line-height:1.45;color:var(--text-2);}
+.vo-tip b{color:var(--text);}
+.vo-list{display:flex;flex-direction:column;gap:6px;}
+.vo-row{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:8px 14px;border:0;border-radius:12px;background:var(--bg-2);color:var(--text);font:inherit;font-weight:700;text-align:left;cursor:pointer;box-shadow:inset 0 0 0 1.5px transparent;}
+.vo-row .vo-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vo-row small{flex:none;font-weight:600;color:var(--text-3);}
+.vo-row .vo-q{flex:none;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:800;background:rgba(227,189,98,.18);color:#e8c56f;}
+.vo-row .vo-q.best{background:rgba(125,240,166,.15);color:#8fe6ad;}
+.vo-row.on{box-shadow:inset 0 0 0 2px var(--accent,#e8c56f);}
 </style>
 </head>
 <body>
@@ -395,37 +404,74 @@
   // ── Sound: crowd roar, gate bell, hoofbeats (own WebAudio graph) ────────
   // ── Announcer: the race calls, spoken with the device's own voice ─────
   var VO = (function () {
-    var ok = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined', voice = null;
+    var ok = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined', voice = null, VKEY = 'hr_voice';
+    // Best first: the downloadable Enhanced / Premium voices, then the good standard ones; never the novelty voices
+    function score(v) { var n = v.name; return (/en[-_]US/i.test(v.lang) ? 4 : /en[-_](GB|AU|IE)/i.test(v.lang) ? 2 : 0) + (/premium/i.test(n) ? 8 : /enhanced|natural|neural/i.test(n) ? 6 : 0) + (/Evan|Nathan|Alex|Aaron|Tom|Daniel|Arthur|Samantha|Zoe|Ava|Google US/i.test(n) ? 2 : 0) + (v.localService ? 1 : 0) - (/Novelty|Bells|Bubbles|Whisper|Zarvox|Trinoids|Bahh|Boing|Jester|Organ|Cellos|Bad News|Good News|Albert|Fred|Junior|Ralph|Kathy|Superstar|Wobble|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley/i.test(n) ? 20 : 0); }
+    function voices() { if (!ok) return []; return speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang) && score(v) > -5; }).sort(function (a, b) { return score(b) - score(a); }); }
+    function chosen() { try { return localStorage.getItem(VKEY) || ''; } catch (e) { return ''; } }
     function pick() {
       if (!ok || voice) return;
-      var vs = speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang); });
-      if (!vs.length) return;
-      var score = function (v) { var n = v.name; return (/en[-_]US/i.test(v.lang) ? 4 : /en[-_](GB|AU|IE)/i.test(v.lang) ? 2 : 0) + (/premium|enhanced|natural|neural/i.test(n) ? 6 : 0) + (/Alex|Samantha|Evan|Nathan|Aaron|Daniel|Google US/i.test(n) ? 2 : 0) + (v.localService ? 1 : 0) - (/Novelty|Bells|Bubbles|Whisper|Zarvox|Trinoids|Bahh|Boing|Jester|Organ|Cellos|Bad News|Good News|Albert|Fred|Junior|Ralph|Kathy|Superstar|Wobble/i.test(n) ? 20 : 0); };
-      voice = vs.sort(function (a, b) { return score(b) - score(a); })[0];
+      var vs = voices(); if (!vs.length) return;
+      var want = chosen();
+      voice = (want && vs.filter(function (v) { return v.voiceURI === want || v.name === want; })[0]) || vs[0];
     }
     if (ok) { try { speechSynthesis.addEventListener('voiceschanged', function () { voice = null; pick(); }); } catch (e) {} }
     function on() {
       try { if (localStorage.getItem('gn_sound') === '0') return false; } catch (e) {}
       return !S || !S.opt || S.opt.voice !== 'off';
     }
-    function clean(t) { return String(t).replace(/(\d)½/g, '$1 and a half').replace(/½/g, 'a half').replace(/!/g, '!'); }
+    function clean(t) { return String(t).replace(/(\d)½/g, '$1 and a half').replace(/½/g, 'a half').replace(/\.\.\./g, '.').replace(/!/g, '!'); }
+    // heat 0..1 (how far into the race, and how big the moment): a real caller starts measured and ends near shouting,
+    // so the voice speeds up and lifts as the race goes on
+    function speak(t, heat, v) {
+      var u = new SpeechSynthesisUtterance(clean(t));
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+      heat = Math.max(0, Math.min(1, heat || 0));
+      u.rate = 1 + heat * 0.24; u.pitch = 1 + heat * 0.16; u.volume = 1;
+      speechSynthesis.speak(u);
+    }
     // Big moments (the start, the stretch, the finish) cut in; small ones wait their turn or are dropped
-    function say(t, big) {
+    function say(t, big, heat) {
       if (!ok || !on()) return;
       pick();
       var ss = window.speechSynthesis;
       if (ss.speaking || ss.pending) { if (!big) return; ss.cancel(); }
-      var u = new SpeechSynthesisUtterance(clean(t));
-      if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-US';
-      u.rate = big ? 1.12 : 1.08; u.pitch = 1.05; u.volume = 1;
-      ss.speak(u);
+      speak(t, heat, voice);
+    }
+    // Choose the announcer: every English voice on this device, best first, each one tried out as you tap it
+    function chooser() {
+      var vs = voices(), cur = (pick(), voice), box = document.createElement('div');
+      var good = vs.some(function (v) { return /premium|enhanced|natural|neural/i.test(v.name); });
+      var tip = document.createElement('p'); tip.className = 'vo-tip';
+      tip.innerHTML = (good ? 'Tap a voice to hear it. To add more voices:' : 'Tap a voice to hear it. <b>For a much better announcer</b>, download an Enhanced or Premium voice.') +
+        ' On iPhone: <b>Settings › Accessibility › Spoken Content › Voices › English</b>, then pick one like Evan (Enhanced), Nathan (Enhanced) or Zoe (Premium). Come back here and it shows up in this list.';
+      box.appendChild(tip);
+      var list = document.createElement('div'); list.className = 'vo-list'; box.appendChild(list);
+      if (!vs.length) { var none = document.createElement('p'); none.className = 'vo-tip'; none.textContent = ok ? 'No English voices found on this device yet.' : 'This browser can’t speak out loud.'; list.appendChild(none); }
+      vs.forEach(function (v, i) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'vo-row' + (cur && v.voiceURI === cur.voiceURI ? ' on' : '');
+        var q = /premium/i.test(v.name) ? 'Premium' : /enhanced|natural|neural/i.test(v.name) ? 'Enhanced' : '';
+        b.innerHTML = '<span class="vo-n"></span>' + (q ? '<span class="vo-q">' + q + '</span>' : '') + (i === 0 ? '<span class="vo-q best">Best</span>' : '') + '<small></small>';
+        b.querySelector('.vo-n').textContent = v.name.replace(/\s*\((Enhanced|Premium)\)/i, '');
+        b.querySelector('small').textContent = v.lang;
+        b.addEventListener('click', function () {
+          try { localStorage.setItem(VKEY, v.voiceURI || v.name); } catch (e) {}
+          voice = v;
+          [].forEach.call(list.children, function (x) { x.classList.toggle('on', x === b); });
+          try { speechSynthesis.cancel(); } catch (e) {}
+          speak("And they're off! " + NAMES[Math.floor(Math.random() * NAMES.length)] + ' breaks on top!', 0.6, v);
+          Kit.haptic('light');
+        });
+        list.appendChild(b);
+      });
+      Kit.sheet({ title: 'Announcer voice', node: box, actions: [{ label: 'Done', primary: true }], onClose: function () { try { speechSynthesis.cancel(); } catch (e) {} } });
     }
     // iPhone only lets a page talk after a tap; call this from one
     function prime() { if (!ok || !on()) return; pick(); try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {} }
     function stop() { if (ok) try { speechSynthesis.cancel(); } catch (e) {} }
     window.addEventListener('pagehide', stop);
     document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); });
-    return { say: say, prime: prime, stop: stop, ok: ok };
+    return { say: say, prime: prime, stop: stop, ok: ok, chooser: chooser };
   })();
   var AU = (function () {
     var a = null, roar = null, roarG = null, nb = null, hb = null;
@@ -949,7 +995,7 @@
       }
     }
     function nm(i) { return F.horses[i].name; }
-    function say(txt, force) { if (!force && t - lastCall < 1.1) return false; lastCall = t; if (callFn) callFn(txt, !!force); return true; }
+    function say(txt, force) { if (!force && t - lastCall < 1.1) return false; lastCall = t; if (callFn) callFn(txt, !!force, race && race.Tw ? t / race.Tw : 0); return true; }
     function calls(xs) {
       if (!race || t <= 0) return;
       var o = xs.map(function (x, i) { return i; }).sort(function (a, b) { return xs[b] - xs[a]; });
@@ -1059,6 +1105,7 @@
     menu: [
       { icon: 'coins', label: function () { return S && S.mode === 'pass' ? 'End session now' : 'Cash out (end session)'; }, onClick: function () { endSession(); } },
       { icon: 'history', label: 'Past races', onClick: function () { Kit.history(HKEY, { title: 'Horse Race: past sessions' }); } },
+      { icon: 'sound', label: 'Announcer voice', onClick: function () { VO.chooser(); } },
       { icon: 'sync', label: 'Reset bankroll to $1,000', onClick: resetBank }
     ],
     rules:
@@ -1083,7 +1130,7 @@
       '<li><b>Exacta and Quinella</b> come from the chance of that pair finishing 1-2, less 12%. <b>Trifecta</b> from the chance of that exact 1-2-3, less 15%.</li>' +
       '<li>Prices are rounded down a little and capped at 5,000 to 1. Payouts are rounded to the nearest dollar.</li></ul>' +
       '<p>The results board shows <b>$2 payouts</b>, like the board at a real track: "Win $9.00" means a $2 Win ticket brings back $9.</p>' +
-      '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the whole field on the strip below it, and the little map of the oval. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off.</p>' +
+      '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the whole field on the strip below it, and the little map of the oval. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off. Choose its voice from <b>Announcer voice</b> in the menu; on iPhone, downloading an Enhanced or Premium voice makes it sound much better.</p>' +
       '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races.</p>' +
       '<p><b>Pass and play</b>: everyone gets their own stake of play money (your casino bankroll is not touched). Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>'
   });
@@ -1125,7 +1172,7 @@
           choices: [['6', '6', 'A smaller field, so picking the winner is a bit easier.'], ['8', '8', 'A full field, with bigger prices on Exacta and Trifecta bets.'], ['mix', '6 to 8', 'A different number of horses in every race.']] },
         { id: 'pace', label: 'Race length', value: 'full', help: 'How long each race takes to watch. You can always skip to the finish.',
           choices: [['quick', 'Quick', 'About 15 seconds a race.'], ['full', 'Full', 'About 22 seconds a race, with more time for lead changes.']] },
-        { id: 'voice', label: 'Announcer', value: 'on', help: 'Calls the race out loud: the start, lead changes, the stretch and the winner. Uses your device’s voice. Tap the call box during a race to turn it on or off.',
+        { id: 'voice', label: 'Announcer', value: 'on', help: 'Calls the race out loud: the start, lead changes, the stretch and the winner. Uses your device’s voice: pick which one under Announcer voice in the menu. Tap the call box during a race to turn it on or off.',
           choices: [['on', 'On', 'The race is called out loud.'], ['off', 'Off', 'Calls show on screen only.']] },
         { id: 'races', label: 'Races', value: 5, when: function (m) { return m === 'pass'; }, help: 'How many races the session lasts. The richest player after the last race wins.',
           choices: [[3, '3'], [5, '5'], [8, '8']] },
@@ -1511,8 +1558,10 @@
     buildStrip();
     RV.run(function () { onRaceDone(); }, function (xs) { paintStrip(RV.ranksAt(xs)); }, setCall);
   }
-  function setCall(txt, big) {
-    VO.say(txt, big || /wins it|gets up/.test(txt));
+  function setCall(txt, big, prog) {
+    // how worked up the caller is: calm in the gate, building down the backstretch, flat out in the stretch and at the wire
+    var heat = /in the gate/.test(txt) ? 0 : /wins it|gets up|Photo finish/.test(txt) ? 1 : /stretch they come|flying|drawing clear|digs in/.test(txt) ? 0.85 : /they're off/.test(txt) ? 0.55 : 0.25 + Math.min(1, prog || 0) * 0.5;
+    VO.say(txt, big || /wins it|gets up/.test(txt), heat);
     if (!R.callP) return;
     R.callP.textContent = txt; R.callP.classList.remove('new'); void R.callP.offsetWidth; R.callP.classList.add('new');
   }
