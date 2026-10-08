@@ -1353,6 +1353,14 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 @supports (-moz-appearance:none){html.lorc *{scrollbar-width:thin;scrollbar-color:#c8922f transparent;}}
 .colbtn{display:none;flex:none;}
 .bld-filters .row1{align-items:center;}
+/* Search box with its own × to clear just the text */
+.sfield{position:relative;flex:1;min-width:0;display:flex;}
+.sfield .input{flex:1;min-width:0;padding-right:46px;}
+.sfield input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;display:none;}
+.sfield .sclear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;padding:0;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;}
+.sfield .sclear svg{width:14px;height:14px;}
+.sfield.has .sclear{display:flex;}
+.sfield .sclear:active{background:rgba(255,255,255,.22);}
 .bld-filters .row1 .colbtn{width:60px;height:44px;border-radius:22px;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);}
 .bld-filters .row1 .colbtn .ico{width:20px;height:20px;}
 .adv{display:flex;flex-direction:column;gap:14px;}
@@ -8637,7 +8645,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var tabs = el('div', { class: 'bld-tabs' });
     var body = el('div', { class: 'bld-body tab-pool' });
     var search = el('input', { class: 'input', type: 'search', placeholder: 'Search name, text, or classification', 'aria-label': 'Search cards' });
-    var t0 = 0; search.addEventListener('input', function () { clearTimeout(t0); t0 = setTimeout(function () { f.q = search.value.trim().toLowerCase(); f.shown = 60; paintGrid(); }, 160); });
+    var sclear = el('button', { type: 'button', class: 'sclear', 'aria-label': 'Clear search', title: 'Clear search', html: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' });
+    var sfield = el('div', { class: 'sfield' }, [search, sclear]);
+    var t0 = 0; search.addEventListener('input', function () { sfield.classList.toggle('has', !!search.value); clearTimeout(t0); t0 = setTimeout(function () { var was = !!f.q; f.q = search.value.trim().toLowerCase(); f.shown = 60; if (was !== !!f.q) paintChips(); paintGrid(); }, 160); });
+    sclear.addEventListener('click', function () { search.value = ''; Kit.sfx('tap'); search.dispatchEvent(new Event('input')); search.focus(); });
     var moreBtn = el('button', { type: 'button', class: 'flt-btn', 'aria-label': 'Filters', title: 'Filters', onclick: moreFilters });
     var sortBtn = el('button', { type: 'button', class: 'flt-btn', 'aria-label': 'Sort', title: 'Sort', onclick: function () { sortMenu(); } });
     var inkChips = el('div', { class: 'fchips' }), costChips = el('div', { class: 'fchips' }), typeChips = el('div', { class: 'fchips types' }), storyChips = el('div', { class: 'fchips' });
@@ -8665,7 +8676,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
       window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
     }
-    var row1 = el('div', { class: 'row1' }, [search]);
+    var row1 = el('div', { class: 'row1' }, [sfield]);
     if (lib) row1.appendChild(colBtn);
     var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks and cost. Everything else lives in Filters.
@@ -8914,7 +8925,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (f.dual) offs.push(['Dual ink', function () { f.dual = 0; }]);
       if (f.fit) offs.push(['My deck’s inks', function () { f.fit = false; }]);
       var any = offs.length + (f.q ? 1 : 0) + (f.marked ? 1 : 0) + (f.deck ? 1 : 0) + f.costs.length;
-      if (any > 1 || (any && offs.length)) onChips.appendChild(el('button', { type: 'button', class: 'fchip fclear', text: 'Clear all', onclick: clearFilters }));
+      if (any) onChips.appendChild(el('button', { type: 'button', class: 'fchip fclear', text: 'Clear all', onclick: clearFilters }));
       offs.forEach(function (o) {
         onChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-label': 'Remove filter: ' + o[0], html: (o[2] || '') + '<span>' + esc(o[0]) + '</span><i class="x">×</i>', onclick: function () { o[1](); f.shown = 60; Kit.sfx('tap'); paintChips(); paintGrid(); } }));
       });
@@ -9213,7 +9224,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       filterBtn(); flowRefit();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.newrel = false; f.manual = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.strs = []; f.wils = []; f.lors = []; f.movs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; sfield.classList.remove('has'); f.marked = false; f.newrel = false; f.manual = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.strs = []; f.wils = []; f.lors = []; f.movs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
