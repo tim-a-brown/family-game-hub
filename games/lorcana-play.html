@@ -307,6 +307,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 @media not all and (min-width:900px) and (orientation:landscape){
   .lz.lz-min .lz-in > .lz-info{display:none;}
   .lz.lz-min .lz-flow,.lz.lz-min .lz-card{--cu:min(calc(80vh - 60px),128vw,820px);}
+  /* locations lie sideways: as wide as the screen allows, not as tall */
+  .lz.lz-min .lz-card.loc{--cu:min(calc(100vw - 24px),62vh,560px);}
+  .lz.lz-min .lz-fc.loc{--lw:min(calc(var(--cu) * .92),calc(100vw - 24px));}
   /* Folding the details rolls them up like a scroll: a parchment roller travels down the panel taking the text
      with it, then rests under the card with the card's name written along it. Unfolding runs it backwards. */
   /* Eased in and out, the left corner leading, so it ends at the same slant as the rolled-up scroll */
@@ -355,7 +358,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   box-shadow:var(--scroll-sh);font:inherit;-webkit-tap-highlight-color:transparent;animation:lzRollIn .25s ease-out;}
 .lz-roll span{display:block;max-width:100%;font-family:'Great Vibes',var(--serif);font-size:1.25rem;line-height:1.3;color:rgba(74,44,14,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 0 1.2px rgba(74,44,14,.55),0 1px 0 rgba(255,246,220,.35);mix-blend-mode:multiply;}
-.lz-roll{gap:6px;color:rgba(74,44,14,.8);}
+.lz-roll{gap:6px;padding:0 22px;color:rgba(74,44,14,.8);}
 .lz-roll span{flex:0 1 auto;min-width:0;}
 .lz-roll .rm{flex:none;position:relative;display:flex;align-items:center;justify-content:center;width:27px;height:27px;font-style:normal;mix-blend-mode:multiply;}
 .lz-roll .rm svg{position:absolute;inset:0;width:100%;height:100%;}
@@ -6957,6 +6960,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     else if (d.t === 'location') h += (d.mv ? mk('move', d.mv, 'rm-m') : '') + mk('shield', d.w || 0, 'rm-w') + (d.l ? mk('lore', d.l, 'rm-l') : '');
     return h;
   }
+  // Long names ("Graveyard of Christmas Future") shrink a little to stay on one line with the marks
+  function fitRoll(b) {
+    var sp = b && b.querySelector('span'); if (!sp || !sp.clientWidth) return;
+    sp.style.fontSize = '';
+    for (var fs = parseFloat(getComputedStyle(sp).fontSize), n = 0; sp.scrollWidth > sp.clientWidth + 1 && n < 8; n++) { fs -= 1; sp.style.fontSize = fs + 'px'; }
+  }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
     var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid, keep = slid ? flowKeep : null;
@@ -6998,7 +7007,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     inner.appendChild(info);
     // Phones: the details rolled up into a scroll under the card, the card's name written along it; tap to unroll
     info.setAttribute('data-title', d.n || d.full);
-    if (!opt.tapClose) inner.appendChild(el('button', { type: 'button', class: 'lz-roll', 'aria-label': 'Show the card details', html: rollHTML(d), onclick: function (e) { e.stopPropagation(); toggleLzMin(ov); } }));
+    if (!opt.tapClose) {
+      var rollB = el('button', { type: 'button', class: 'lz-roll', 'aria-label': 'Show the card details', html: rollHTML(d), onclick: function (e) { e.stopPropagation(); toggleLzMin(ov); } });
+      inner.appendChild(rollB);
+      // it is only laid out once rolled up, so fit the name when it first shows
+      if (window.ResizeObserver) new ResizeObserver(function () { fitRoll(rollB); }).observe(rollB);
+    }
     // Tap the stat plate to show or hide its labels (remembered)
     info.addEventListener('click', function (e) {
       var rb = e.target.closest('[data-rpick]'); if (rb) { e.stopPropagation(); rarPick(rb, d, ov); return; }
@@ -9017,6 +9031,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // tests: queue one ability as if it had triggered, and run the queue
     rulesHTML: rulesHTML,
     fire: function (src, ab, pi, ctx) { Q.push({ src: src, ab: ab, pi: pi, ctx: ctx || {} }); pumpQ(); },
+    rollHTML: rollHTML, fitRoll: fitRoll,
     hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
   };
 })();
