@@ -8169,6 +8169,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // Phones: tap the big card to fold the details away so the card fills the screen; tap again to bring them back
   function phoneZoom() { return !(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches); }
+  // Press and hold a card (not a tap) to roll the details away for a bigger look, and again to bring them back
+  function holdRoll(elm, getOv, ok) {
+    var t = 0, x0 = 0, y0 = 0;
+    elm.addEventListener('pointerdown', function (e) { if (e.button > 0 || !phoneZoom() || (ok && !ok())) return; x0 = e.clientX; y0 = e.clientY;
+      t = setTimeout(function () { t = 0; var ov = getOv(); if (!ov) return; elm._held = Date.now(); Kit.haptic('medium'); toggleLzMin(ov); }, 450); });
+    elm.addEventListener('pointermove', function (e) { if (t && (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10)) { clearTimeout(t); t = 0; } });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (k) { elm.addEventListener(k, function () { if (t) { clearTimeout(t); t = 0; } }); });
+    elm.addEventListener('contextmenu', function (e) { if (phoneZoom()) e.preventDefault(); });
+  }
   function toggleLzMin(ov) {
     if (ov._rolling) return;
     var min = !ov.classList.contains('lz-min'), info = ov.querySelector('.lz-in > .lz-info');
@@ -8254,7 +8263,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid, keep = slid ? flowKeep : null;
     flowSlid = false; flowKeep = null;
     closeZoom();
-    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (ui.lzMin && phoneZoom() ? ' lz-min' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + '', role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
     if (ui.rollW) ov.style.setProperty('--roll-w', ui.rollW + 'px');
     var F = null, card = null;
@@ -8266,7 +8275,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(artOf(d)) });
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
-      if (!opt.tapClose) card.addEventListener('click', function (e) { if (phoneZoom()) { e.stopPropagation(); toggleLzMin(ov); } });
+      if (!opt.tapClose) { holdRoll(card, function () { return ov; }); card.addEventListener('click', function (e) { if (phoneZoom()) e.stopPropagation(); }); }
     }
     if (nav && nav.n > 1) {
       // The strip is reused as you move between cards, so replace its counter rather than stacking another
@@ -8417,7 +8426,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function item(j) {
       var it = F.items[j]; if (it) return it;
       var d = defAt(j); if (!d) return null;
-      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : ''), 'data-r': rarKey(artOf(d)), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350) return; if (j === F.focus && phoneZoom() && F.ov) { toggleLzMin(F.ov); return; } F.settle(j); } });
+      var b = el('button', { type: 'button', class: 'lz-fc' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : ''), 'data-r': rarKey(artOf(d)), 'aria-label': d.full, onclick: function (e) { e.stopPropagation(); if (Date.now() - F.dragAt < 350 || Date.now() - (b._held || 0) < 600) return; if (j === F.focus) return; F.settle(j); } });
+      holdRoll(b, function () { return F.ov; }, function () { return j === F.focus; });
       b.appendChild(artEl(d, true));
       F.el.appendChild(b);
       return (F.items[j] = b);
