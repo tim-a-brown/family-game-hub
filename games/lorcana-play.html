@@ -1518,11 +1518,10 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 /* Grid tiles: the cost is a coin sized to the card, sitting exactly over the printed inkwell (same spot on every card,
    locations included) with a bigger number than the print: gold rim for inkable cards, pewter for the rest */
 .bld-grid .pc{container-type:inline-size;}
-.bld-grid .pc > .cost{left:-.4cqw;top:.4cqw;width:21cqw;height:21cqw;min-width:0;min-height:0;clip-path:none;border-radius:50%;
-  font-size:12.5cqw;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);
-  background:radial-gradient(circle,#2c2546 0 56%,#1a1530 60% 63%,#9aa0b4 66%,#5d6274 80%,#2a2a36 86% 100%);
-  box-shadow:0 1px 3px rgba(0,0,0,.6);}
-.bld-grid .pc > .cost.ink{color:#fff;background:radial-gradient(circle,#2c2546 0 56%,#1a1530 60% 63%,#fff1c2 66%,#e3bd62 74%,#a8761f 84%,#3a2a0c 88% 100%);}
+.bld-grid .pc > .cost.coin{left:.6cqw;top:1cqw;width:19.5cqw;height:19.5cqw;min-width:0;min-height:0;clip-path:none;border-radius:50%;background:none;
+  font-size:10.5cqw;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
+.bld-grid .pc > .cost.coin svg{position:absolute;inset:0;width:100%;height:100%;}
+.bld-grid .pc > .cost.coin b{position:relative;font-weight:400;}
 .bld-grid.tiny .pc .bmk{right:3px;width:11px;height:16px;}
 @media (max-width:699px){
   .bld.lib .bld-top .tsize{display:none;}
@@ -7867,6 +7866,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Right: strength, willpower, lore (locations: willpower, lore, move cost).
   // On the table (u given) the numbers are the current ones, green/red when changed.
   var CAPS = 'lorcana_stat_labels';
+  // The cost coin, as on the printed card: a hexagon in a gold ring when inkable, a black ring when not.
+  // Used in card details and on the library and deck builder tiles.
+  function costSVG(ink) {
+    var HEXP = 'M20 7l11.26 6.5v13L20 33l-11.26-6.5v-13z', HEXI = 'M20 9.6l9 5.2v10.4l-9 5.2-9-5.2V14.8z';
+    return '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
+      (ink ? '<circle cx="20" cy="20" r="19" fill="url(#gk)" stroke="#fff2c4" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#7a5618" stroke-width="1" stroke-dasharray="1.3 1.5"/>'
+        : '<circle cx="20" cy="20" r="19" fill="#0d0b14" stroke="#5a566a" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#3a3648" stroke-width="1"/>') +
+      '<path d="' + HEXP + '" fill="#1d1a2c" stroke="' + (ink ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.4" stroke-linejoin="round"/><path d="' + HEXI + '" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/></svg>';
+  }
   function defMeta(d, u) {
     var inks = inkOf(d), live = u && S && S.cards[u] && onBoard(u);
     function badge(kind, svg, val, cap, base, off) {
@@ -7875,10 +7883,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     // Shapes drawn after the printed card: cost hexagon (in a gold ring when inkable), strength
     // coin on a spiked star, willpower heater shield, lore diamond
-    var HEXP = 'M20 7l11.26 6.5v13L20 33l-11.26-6.5v-13z', HEXI = 'M20 9.6l9 5.2v10.4l-9 5.2-9-5.2V14.8z';
-    var HEX = '<svg viewBox="0 0 40 40"><defs><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
-      (d.k ? '<circle cx="20" cy="20" r="19" fill="url(#gk)" stroke="#fff2c4" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#7a5618" stroke-width="1" stroke-dasharray="1.3 1.5"/>' : '') +
-      '<path d="' + HEXP + '" fill="#1d1a2c" stroke="' + (d.k ? '#fff2c4' : '#e3bd62') + '" stroke-width="1.4" stroke-linejoin="round"/><path d="' + HEXI + '" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/></svg>';
+    var HEX = costSVG(d.k);
     var gem = inks.length ? '<span class="sh gems">' + inks.slice(0, 2).map(inkIcon).join('') + '</span>' : '';
     var STAR = '<svg viewBox="0 0 40 40"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
     var SHIELD = '<svg viewBox="0 0 40 40"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
@@ -10028,7 +10033,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (n && !lib) b.appendChild(el('span', { class: 'n', text: String(n) }));
         if (lib && isNewCard(d)) { b.classList.add('isnew'); b.appendChild(el('span', { class: 'newc', 'aria-hidden': 'true', html: '<i>New</i>' })); }
         if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
-        b.appendChild(el('span', { class: 'cost' + (d.k ? ' ink' : ''), style: { '--cu': '120px' }, text: String(d.c) }));
+        b.appendChild(el('span', { class: 'cost coin' + (d.k ? ' ink' : ''), html: costSVG(d.k) + '<b>' + (d.c || 0) + '</b>' }));
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
         if (!lib) b.appendChild(plus);
