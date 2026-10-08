@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v296-2026-10-08-pagella-online-casual';
+const CACHE_VERSION = 'v297-2026-10-08-wilds-unknown-abilities';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION

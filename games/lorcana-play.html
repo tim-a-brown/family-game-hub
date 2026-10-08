@@ -1930,6 +1930,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         else if ((m = p.match(/^each\b/i))) { /* "… each" */ }
         else if ((m = p.match(/^with less \{S\} than that character\b/i))) t.f.lessSPrev = 1;
         else if ((m = p.match(/^with damage\b/i))) t.f.damaged = 1;
+        else if ((m = p.match(/^not named (.+?)(?= with\b|$)/i))) t.f.notNamed = m[1].trim();
+        else if ((m = p.match(/^with total \{S\} (\d+) or less\b/i))) t.totalS = +m[1];
         else if ((m = p.match(/^named (.+?)(?= with\b|$)/i))) t.f.named = m[1].replace(/\s+or\s+/g, '|').trim();
         else return null;
         p = p.slice(m[0].length).trim();
@@ -1943,6 +1945,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var c = clean(c0).replace(/,$/, ''), m;
       if ((m = c.match(/^you have (a|an|another) (?:([A-Z][\w'-]+) )?(character|item|location) named (.+?)(?: in play)?$/i))) return { k: 'have', n: 1, type: m[3].toLowerCase(), named: m[4], other: /another/i.test(m[1]) };
       if ((m = c.match(new RegExp('^you have (a|an|another) (?:(' + CLS + ') )?(character|item|location)(?: in play)?(?: with (\\d+) \\{S\\} or more)?(?: in play)?(?: here)?$', 'i')))) return { k: 'have', n: 1, type: m[3].toLowerCase(), cls: m[2] || null, minS: m[4] ? +m[4] : null, other: /another/i.test(m[1]), here: / here$/i.test(c) };
+      // set 12: what happened this turn, willpower, either/both classes
+      if ((m = c.match(/^you(?:'ve)? played (another|a) character this turn$/i))) return { k: 'tt', what: /another/i.test(m[1]) ? 'charOther' : 'char' };
+      if ((m = c.match(/^(\w+) or more (other )?cards were put into your discard this turn$/i))) return { k: 'tt', what: 'discIn', min: N(m[1]), other: !!m[2] };
+      if (/^you removed damage from a character this turn$/i.test(c)) return { k: 'tt', what: 'healBy' };
+      if (/^you removed (?:1 or more )?damage from one of your characters this turn$/i.test(c)) return { k: 'tt', what: 'healMine' };
+      if ((m = c.match(/^a character named (.+?) was banished this turn$/i))) return { k: 'tt', what: 'banNamed', named: m[1] };
+      if ((m = c.match(new RegExp('^one of your (?:(' + CLS + ') )?characters was banished this turn$')))) return { k: 'tt', what: 'banMine', cls: m[1] || null };
+      if ((m = c.match(/^you have (\w+) or more exerted characters(?: in play)?$/i))) return { k: 'have', n: N(m[1]), type: 'character', ex: 1 };
+      if ((m = c.match(/^you have (a|an|another) character with (\d+) \{W\} or more(?: in play)?$/i))) return { k: 'have', n: 1, type: 'character', minW: +m[2], other: /another/i.test(m[1]) };
+      if ((m = c.match(new RegExp('^you have (a|an|another) (' + CLS + ') character or (?:a|an|another) (' + CLS + ') character in play$')))) return { k: 'anyOf', list: [{ k: 'have', n: 1, type: 'character', cls: m[2], other: m[1] === 'another' }, { k: 'have', n: 1, type: 'character', cls: m[3], other: m[1] === 'another' }] };
+      if ((m = c.match(new RegExp('^you have (?:a|an) (' + CLS + ') character and (?:a|an) (' + CLS + ') character in play$')))) return { k: 'all', list: [{ k: 'have', n: 1, type: 'character', cls: m[1] }, { k: 'have', n: 1, type: 'character', cls: m[2] }] };
+      if (/^an opponent has more characters in play than you$/i.test(c)) return { k: 'oppMoreChars' };
+      if (/^a character sang this song$/i.test(c)) return { k: 'sangN', min: 1 };
+      if (/^you have only 1 character here$/i.test(c)) return { k: 'have', n: 1, eq: 1, type: 'character', here: true };
+      if ((m = c.match(/^this character has (\d+) or more damage$/i))) return { k: 'self', minDmg: +m[1] };
+      if ((m = c.match(new RegExp('^you have (\\w+) or more (other )?(?:(' + CLS + ') )?(characters|items|locations)(?: in play)?(?: here)?$')))) return { k: 'have', n: N(m[1]), type: m[4].toLowerCase().replace(/s$/, ''), cls: m[3] || null, other: !!m[2], here: / here$/i.test(c) };
       if ((m = c.match(/^you have (\w+) or more (other )?(?:([A-Z][\w'-]+) )?(characters|items|locations)(?: in play)?(?: here)?$/i))) return { k: 'have', n: N(m[1]), type: m[4].toLowerCase().replace(/s$/, ''), cls: m[3] || null, other: !!m[2], here: / here$/i.test(c) };
       if ((m = c.match(/^you have (\w+) or more cards in your hand$/i))) return { k: 'hand', min: N(m[1]) };
       if ((m = c.match(/^you have (\w+) or fewer cards in your hand$/i))) return { k: 'hand', max: N(m[1]) };
@@ -2059,6 +2077,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = p.match(/^(?:opposing )?(damaged |exerted )?character (?:opponents have|of theirs|your opponents have) in play$/i)) || (m = p.match(/^opposing (damaged |exerted )?character in play$/i)) || (m = p.match(/^(damaged |exerted )?character opponents have in play$/i))) return { k: 'oppBoard', damaged: /damaged/i.test(m[1] || ''), exerted: /exerted/i.test(m[1] || '') };
       if ((m = p.match(/^opposing character with (\d+) \{S\}$/i))) return { k: 'oppBoard', strEq: +m[1] };
       if (/^1 damage on them$/i.test(p)) return { k: 'tgtDmg' };
+      if (/^1 damage removed$/i.test(p)) return { k: 'last' };
       if (/^character that sang this song$/i.test(p)) return { k: 'sang' };
       if (/^character you moved$/i.test(p)) return { k: 'last' };
       if (/^opposing character banished in a challenge this turn$/i.test(p)) return { k: 'banChalOpp' };
@@ -2084,10 +2103,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       if (/^(?:this character's|his|her|its|their) \{S\}$/i.test(p)) return { k: 'selfStat', st: 's' };
       if (/^(?:this character's|his|her|its|their) \{L\}$/i.test(p)) return { k: 'selfStat', st: 'l' };
+      if (/^(?:this character's|his|her|its) \{W\}$/i.test(p)) return { k: 'selfStat', st: 'w' };
       if (/^(?:the )?damage on (?:him|her|it|them|this character)$/i.test(p)) return { k: 'selfDmg' };
       if (/^the damage on (?:that character|them)$|^that character's damage$/i.test(p)) return { k: 'prevDmg' };
       if (/^(?:that character's|their|the chosen character's|the exerted character's) \{L\}$/i.test(p)) return { k: 'prevStat', st: 'l' };
       if (/^(?:that character's|their|the chosen character's) \{S\}$/i.test(p)) return { k: 'prevStat', st: 's' };
+      if (/^(?:that character's|their|the chosen character's) \{W\}$/i.test(p)) return { k: 'prevStat', st: 'w' };
       if (/^(?:that location's) \{L\}$/i.test(p)) return { k: 'locStat', st: 'l' };
       if (/^the (?:lore lost|amount of lore lost) this way$|^the lore lost$|^the number counted$/i.test(p)) return { k: 'last' };
       if (/^the discarded character's \{L\}$/i.test(p)) return { k: 'lastCardStat', st: 'l' };
@@ -2105,6 +2126,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       return null;
     }
     function condAll(c0) { // "A and B"
+      var whole = cond(c0); if (whole) return whole;
       var parts = clean(c0).split(/\s+and\s+(?=you |this |he |she |it |there|an? |none )/i), out = [];
       for (var i = 0; i < parts.length; i++) { var x = cond(parts[i]); if (!x) return null; out.push(x); }
       return out.length === 1 ? out[0] : { k: 'all', list: out };
@@ -2135,7 +2157,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       return o;
     }
-    var inTmp = false;
+    var inTmp = false, inList = false;
     var QAB = [];   // abilities quoted inside other text ("gains "{E} — Draw a card"")
     function quoted(s) {
       return s.replace(/"([^"]+)"/g, function (all, q) { var ab = line(q.replace(/\.$/, ''), {}, 200 + QAB.length); if (!ab.ok) return all; QAB.push(ab); return 'QAB' + (QAB.length - 1); });
@@ -2149,7 +2171,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         .replace(/^have (each|chosen) opponent choose and discard /i, '$1 opponent chooses and discards ').replace(/^each player discards their hand and draws (\w+) cards$/i, 'each player discards their hand, then each player draws $1 cards')
         .replace(/^(deal|remove) (\d+) damage each (to|from) /i, '$1 $2 damage $3 ').replace(/ \(.*?\)$/, '')
         .replace(/\byou may also /i, 'you may ').replace(/ may also /i, ' can ').replace(/ equal to that number/i, ' equal to the number counted').replace(/^\{E\} /, 'exert ').replace(/ doesn't ready at the start/i, " can't ready at the start")
-        .replace(/^if you have a character here gain /i, 'if you have a character here, gain ').replace(/^the next time they challenge another character this turn, /i, 'whenever they challenge another character this turn, ');
+        .replace(/^if you have a character here gain /i, 'if you have a character here, gain ').replace(/\byou may play or shift /i, 'you may play ').replace(/^((?:you may )?)add (his|her|its) \{W\} to (.+?)'s \{S\}(.*)$/i, '$1$3 gets +{S} equal to $2 {W}$4').replace(/^the next time they challenge another character this turn, /i, 'whenever they challenge another character this turn, ');
       if ((m = s.match(/^(for the rest of this turn|until the start of your next turn), (?!whenever)(.+)$/i))) s = m[2] + ' ' + m[1].toLowerCase();
       if ((m = s.match(/^while this (?:item|location|character) is in play, (.+)$/i)) || (m = s.match(/^(.+?) while this (?:item|location|character) is in play$/i))) { var wl = sentence(m[1]); if (wl) { wl.forEach(function (e) { e.dur = 'whileSrc'; }); return wl; } return null; }
       if ((m = s.match(/^otherwise, put it on the (top|bottom) of your deck$/i))) return [{ op: 'mod2', set: { elseTo: m[1].toLowerCase() } }];
@@ -2251,6 +2273,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = s.match(/^(?:you may )?choose and discard a card with \{C\} to play this character for free and he enters play exerted$/i))) return out([{ op: 'discard', n: 1, who: 'me', inkable: 1, may: 1 }, { op: 'playSelf', ex: true, dep: 1 }]);
       if ((m = s.match(/^(?:if you do, )?put that card on the bottom of your deck instead of into your discard$/i))) return out({ op: 'mod', set: { bottomAfter: 1 } });
       if ((m = s.match(/^draw (\w+) cards unless that character's player puts that card on the bottom of their deck$/i))) return out({ op: 'dealOrDraw', n: N(m[1]) });
+      // set 12
+      if ((m = s.match(/^(?:you )?discard (a|an|one|\d+) cards? at random$/i))) return out({ op: 'discard', n: N(m[1]), who: 'me', random: 1 });
+      if ((m = s.match(/^each player loses (\d+) lore$/i))) return out({ op: 'lore', n: -m[1], who: 'both' });
+      if ((m = s.match(/^each opponent gains (\d+) lore$/i))) return out({ op: 'lore', n: +m[1], who: 'opp' });
+      if ((m = s.match(/^banish (.+?) and all other (?:items|locations|characters)(?: or (?:items|locations|characters))* with the same name$/i)) && (T = tgt(m[1]))) return out({ op: 'banish', t: T, sameName: 1 });
+      if (/^look at chosen opponent's hand$/i.test(s)) return out({ op: 'reveal' });
+      if ((m = s.match(/^each player shuffles all (character|item|action|location) cards from their discard into their deck$/i))) return out({ op: 'discShuffleAll', type: m[1].toLowerCase() });
+      if ((m = s.match(/^each player may put up to (\w+) cards from their discard into their inkwell facedown and exerted$/i))) return out({ op: 'discInkEach', n: N(m[1]) });
+      if ((m = s.match(/^each player chooses (\w+) of their characters and puts them into their inkwell facedown and exerted$/i))) { var ec = []; for (var ei = 0; ei < N(m[1]); ei++) ec.push({ op: 'oppChoose', what: 'ink' }); for (ei = 0; ei < N(m[1]); ei++) ec.push({ op: 'selfChoose', what: 'ink' }); return out(ec); }
+      if (/^chosen opponent chooses (?:3|three) of their characters and returns one of those cards to their hand, puts one on the bottom of their deck, and puts one on the top of their deck$/i.test(s)) return out({ op: 'scatter' });
+      if ((m = s.match(/^move all damage from (.+?) to (.+)$/i))) { var A2 = tgt(m[1]), B2 = tgt(m[2]); if (A2 && B2) return out({ op: 'moveDmg', n: 99, t: A2, t2: B2 }); }
       // targetless follow-ups ("…, remove up to 4 damage instead")
       if ((m = s.match(/^remove (?:up to )?(\d+) damage$/i))) return out({ op: 'heal', n: +m[1], t: { sel: 'prev' } });
       if ((m = s.match(/^remove (\d+) damage from (.+)$/i)) && (T = tgt(m[2]))) return out({ op: 'heal', n: +m[1], t: T });
@@ -2271,7 +2304,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = s.match(/^opponents can't play (actions|actions or items|items)(?: until the start of your next turn)?$/i))) return out({ op: 'oppCantPlay', types: m[1].toLowerCase().replace(/s\b/g, '').split(' or '), dur: 'next' });
       if ((m = s.match(/^play (?:a|an) (character|item|song|action) with the same name as (this character|the banished character) for free$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), sameAs: /banished/i.test(m[2]) ? 'sac' : 'self', from: 'hand' });
       if ((m = s.match(/^play (?:a|an) (character|item|song|action)(?: card)? with (?:cost (?:up to (\d+) more than the banished character|equal to or less than the (?:exerted|chosen) character's cost)|the same cost or less)(?: from your discard)? for free$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxCRel: m[2] ? 'sac' : 'prev', plus: m[2] ? +m[2] : 0, from: /from your discard/i.test(s) ? 'discard' : 'hand' });
-      if ((m = s.match(/^play an? (item|character|action|song) from your hand or discard with cost (\d+) or less for free, exerted$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxC: +m[2], from: 'both', ex: true });
+      if ((m = s.match(/^play an? (item|character|action|song|location) from your hand or discard with cost (\d+) or less for free(, exerted)?$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxC: +m[2], from: 'both', ex: !!m[3] });
       if ((m = s.match(/^play (?:a|an) (song|action|character|item)(?: card)? with cost (\d+) or less from your discard for free, then put (?:it|that \w+ card) on the bottom of your deck instead of into your discard$/i))) return out({ op: 'playFree', type: m[1].toLowerCase(), maxC: +m[2], from: 'discard', bottomAfter: 1 });
       if ((m = s.match(/^play (?:that song|that character|him|her|it|that card) (?:again )?(?:from your discard )?for free$/i))) return out({ op: 'playThat' });
       if ((m = s.match(/^play (?:her|him|this character)(?: for free)? and (?:she|he|it) enters play exerted$/i))) return out({ op: 'playSelf', ex: true });
@@ -2330,6 +2363,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = s.match(/^each opponent chooses one of their characters and puts that card on the bottom of their deck$/i))) return out({ op: 'oppChoose', what: 'bottom' });
       if ((m = s.match(/^(?:chosen|each) opponent chooses one of their characters and returns (?:that card|them|it) to their hand$/i))) return out({ op: 'oppChoose', what: 'bounce' });
       if ((m = s.match(/^(?:you may )?pay (\d+) \{I\} less for the next (character|item|action|location) you play this turn$/i))) return out({ op: 'costLess', n: +m[1], type: m[2].toLowerCase() });
+      if ((m = s.match(/^(?:you )?pay (\d+) \{I\} less for the next (character|item|action|location) or (character|item|action|location) you play this turn$/i))) return out({ op: 'costLess', n: +m[1], type: m[2].toLowerCase() + '|' + m[3].toLowerCase() });
       if ((m = s.match(/^search your deck for (.+?) and reveal (?:it|that card) to all players$/i))) { var sds = m[1].split(/ or (?=an? )/).map(cardDesc); if (sds.every(Boolean)) { var so = sds.length === 1 ? sds[0] : { n: 1, any: sds }; so.op = 'search'; return out(so); } }
       if (/^(?:put that card into your hand(?:,? and|,)? (?:then )?shuffle your deck|then,? shuffle your deck|shuffle your deck)$/i.test(s)) return out({ op: 'mod', set: {} });
       if (/^shuffle your deck and put that card on top of it$/i.test(s)) return out({ op: 'mod', set: { to: 'top' } });
@@ -2375,7 +2409,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       if ((m = s.match(new RegExp('^(.+?) may challenge ready characters' + DUR + '$', 'i'))) && (T = tgt(m[1]))) return out({ op: 'can', what: 'chalReady', t: T, dur: dur(m[2]) });
       if ((m = s.match(new RegExp('^(.+?) (?:can\'t be dealt damage|takes? no damage from challenges)' + DUR + '$', 'i'))) && (T = tgt(m[1]))) return out({ op: 'cant', what: /challenges/i.test(s) ? 'chalDmg' : 'dmg', t: T, dur: dur(m[2]) });
-      if ((m = s.match(/^(.+?) can't ready at the start of (?:your|their|its) turns?$/i)) && (T = tgt(m[1]))) return out({ op: 'cant', what: 'ready', t: T, dur: null });
+      if ((m = s.match(/^(.+?) can't ready at the start of (?:your|their|its|their players') turns?$/i)) && (T = tgt(m[1]))) return out({ op: 'cant', what: 'ready', t: T, dur: null });
       if ((m = s.match(/^(.+?) can't (?:exert to )?sing songs$/i)) && (T = tgt(m[1]))) return out({ op: 'cant', what: 'sing', t: T, dur: null });
       if ((m = s.match(/^(.+?) can't move to locations$/i)) && (T = tgt(m[1]))) return out({ op: 'cant', what: 'move', t: T, dur: null });
       if ((m = s.match(/^(.+?) can't be challenged by (.+)$/i)) && (T = tgt(m[1]))) { var by = tgt('each ' + m[2].replace(/^characters\b/i, 'characters')); if (!by) by = tgt('each ' + m[2]); if (by) return out({ op: 'noChal', t: T, by: by }); }
@@ -2399,11 +2433,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = s.match(/^put (\d+|a|an|one) damage counters? on (.+)$/i)) && (T = tgt(m[2]))) return out({ op: 'damage', n: N(m[1]), t: T, counters: 1 });
       if ((m = s.match(/^remove up to (\d+) damage from (.+)$/i)) && (T = tgt(m[2]))) return out({ op: 'heal', n: +m[1], t: T });
       if ((m = s.match(/^remove all damage from (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'heal', n: 99, t: T });
-      if ((m = s.match(/^move (?:up to )?(\d+|one|a) damage(?: counters?)? from (.+?) to (.+)$/i))) { var A1 = tgt(m[2]), B1 = tgt(m[3]); if (A1 && B1) return out({ op: 'moveDmg', n: N(m[1]), t: A1, t2: B1, upTo: /up to/i.test(s) }); }
+      if ((m = s.match(/^move (?:up to )?(\d+|one|a) damage(?: counters?)? from (.+?) to (.+)$/i)) && !/^move all/i.test(s)) { var A1 = tgt(m[2]), B1 = tgt(m[3]); if (A1 && B1) return out({ op: 'moveDmg', n: N(m[1]), t: A1, t2: B1, upTo: /up to/i.test(s) }); }
       // removal and movement
-      if ((m = s.match(/^return (.+?) card(?:s)? (?:named (.+?) )?(?:with cost (\d+) or less )?from your discard(?: pile)? to your hand$/i))) {
+      if ((m = s.match(/^return (.+?) card(?:s)? (?:named (.+?) )?(?:with cost (\d+) or less )?(?:with (\d+) \{W\} or more )?from your discard(?: pile)? to your hand$/i))) {
         var rq = m[1].toLowerCase().match(/^(a|an|up to \w+|one) ?(character|item|action|song|location|floodborn character|[a-z]+ character)?$/);
-        if (rq) return out({ op: 'fromDiscard', n: /up to/.test(rq[1]) ? N(rq[1].replace('up to ', '')) : 1, type: rq[2] || null, named: m[2] || null, maxC: m[3] ? +m[3] : null });
+        if (rq) return out({ op: 'fromDiscard', n: /up to/.test(rq[1]) ? N(rq[1].replace('up to ', '')) : 1, type: rq[2] || null, named: m[2] || null, maxC: m[3] ? +m[3] : null, minW: m[4] ? +m[4] : null });
       }
       if ((m = s.match(/^return (.+?) to (?:their|its|your|his|her) (?:players?'s? |owners?'s? )?hands?$/i)) && (T = tgt(m[1]))) return out({ op: 'bounce', t: T });
       if ((m = s.match(/^banish (.+)$/i)) && (T = tgt(m[1]))) return out({ op: 'banish', t: T });
@@ -2431,7 +2465,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = s.match(/^(.+?) (?:gains?|gets?) reckless during (?:their|its) next turn$/i)) && (T = tgt(m[1]))) return out({ op: 'kw', kw: 'reckless', n: 0, t: T, dur: 'their' });
       // playing cards
       if ((m = s.match(/^you pay (\d+) \{I\} less for the next (character|item|action|location|song)?\s?(?:card )?you play this turn$/i))) return out({ op: 'costLess', n: +m[1], type: m[2] ? m[2].toLowerCase() : null });
-      if ((m = s.match(/^play (?:a|an) ([A-Z][\w-]+ )?(character|item|action|song|location)(?: card)?(?: named (.+?))?(?: with cost (\d+) or less)?( from your discard)? for free(?:,? (?:and )?(?:they|it|she|he) enters? play exerted)?$/i))) return out({ op: 'playFree', cls: m[1] ? m[1].trim() : null, type: m[2].toLowerCase(), named: m[3] || null, maxC: m[4] ? +m[4] : null, from: m[5] ? 'discard' : 'hand', ex: /exerted$/i.test(s) });
+      if ((m = s.match(/^play (?:a|an) ((?:Seven Dwarfs|[A-Z][\w-]+) )?(character|item|action|song|location)(?: card)?(?: named (.+?))?(?: with cost (\d+) or less)?( from your discard)? for free(?:,? (?:and )?(?:they|it|she|he) enters? play exerted)?$/i))) return out({ op: 'playFree', cls: m[1] ? m[1].trim() : null, type: m[2].toLowerCase(), named: m[3] || null, maxC: m[4] ? +m[4] : null, from: m[5] ? 'discard' : 'hand', ex: /exerted$/i.test(s) });
       // the top of the deck
       if ((m = s.match(new RegExp('^look at the top ' + NUM + ' cards? of your deck$', 'i')))) return out({ op: 'look', n: N(m[1]) });
       if ((m = s.match(/^look at the top card of your deck$/i))) return out({ op: 'look', n: 1 });
@@ -2443,6 +2477,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // the opponent picks
       if ((m = s.match(/^each opponent chooses and (exerts|banishes|readies) one of their (ready |exerted |damaged )?characters$/i))) return out({ op: 'oppChoose', what: m[1].toLowerCase(), f: m[2] ? m[2].trim().toLowerCase() : null });
       if ((m = s.match(/^each opponent chooses one of their characters and (?:deals (\d+) damage to (?:them|it|that character)|returns (?:that card|them|it) to their hand|puts (?:that card|them|it) into their inkwell facedown(?: and exerted)?)$/i))) return out({ op: 'oppChoose', what: m[1] ? 'damage' : /returns/i.test(s) ? 'bounce' : 'ink', n: m[1] ? +m[1] : 0 });
+      // "A, B, and C" / "A and B" as one effect list (an "if …" before it covers every part)
+      if (/,\s+(?:and\s+)?(?=(?:gain|draw|deal|banish|exert|ready|return|remove)\b)|\s+and\s+(?=(?:gain|draw|deal|banish|exert|ready|return|remove)\b)/i.test(s) && !inList) {
+        var lp = s.split(/,\s+(?:and\s+)?(?=(?:gain|draw|deal|banish|exert|ready|return|remove)\b)|\s+and\s+(?=(?:gain|draw|deal|banish|exert|ready|return|remove)\b)/i), lr = [];
+        inList = true;
+        try { for (var li = 0; li < lp.length && lr; li++) { var lx = sentence(lp[li]); lr = lx ? lr.concat(lx) : null; } } finally { inList = false; }
+        if (lr && lr.length) { var lc = pre.cond; var lo = out(lr); if (lc) lo.forEach(function (e) { e.cond = e.cond && e.cond !== lc ? { k: 'all', list: [e.cond, lc] } : lc; }); return lo; }
+      }
       // "A to B" with no "you may": A is the price (a chosen card of yours), B the payoff
       if (!pre.may && / to /.test(s)) {
         var tp = s.split(/ to /);
@@ -2475,7 +2516,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var may = /^you may /i.test(s); s = s.replace(/^you may /i, '');
         if ((m = s.match(/^put (?:any number of them|them) on the top or the bottom of your deck(?: in any order)?$/i))) { f.rest = 'choose'; used++; continue; }
         if ((m = s.match(/^put (\d+|two|three) into your hand$/i))) { f.pick = { n: N(m[1]), type: null, exact: 1 }; used++; continue; }
-        if ((m = s.match(/^put it on top of their deck or into their discard$/i))) { f.rest = 'topdisc'; used++; continue; }
+        if ((m = s.match(/^put it on (?:either )?(?:the )?top of (?:their|your) deck or into (?:their|your) discard$/i))) { f.rest = 'topdisc'; used++; continue; }
+        if ((m = s.match(/^reveal an? (.+?) card or an? (.+?) and put it into your hand$/i)) && pickDesc(m[1] + ' card') && pickDesc(m[2])) { f.pick = { n: 1, type: null, may: may, any: [pickDesc(m[1] + ' card'), pickDesc(m[2])] }; used++; continue; }
         if ((m = s.match(/^put one on the top of (?:your|their) deck and the (?:other|rest) on the bottom(?: of (?:your|their) deck)?(?: in any order)?$/i))) { f.rest = 'choose'; used++; continue; }
         if ((m = s.match(/^(?:you may )?play it as if it were in your hand$/i))) { f.pick = { n: 1, type: null, may: true, play: true, paid: true }; used++; continue; }
         if ((m = s.match(/^if it's an? (.+?), put it into your hand and repeat this effect$/i)) && pickDesc(m[1])) { var rp = pickDesc(m[1]); rp.n = 1; rp.repeat = 1; f.pick = rp; used++; continue; }
@@ -2600,8 +2642,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = c.match(/^you pay (\d+) \{I\} less to play this (?:character|item|location|action|song) for each (.+)$/i)) && per(m[2])) return [{ op: 'selfLess', n: +m[1], per: per(m[2]) }];
       if ((m = c.match(/^if this is your first turn and you're not the first player, you pay (\d+) \{I\} less to play this (?:character|item|location|action)$/i))) return [{ op: 'selfLess', n: +m[1], cond: { k: 'secondFirst' } }];
       if ((m = c.match(/^if (.+?), you pay (\d+) \{I\} less to play this (?:character|item|location|action|song)$/i))) { var cd = condAll(m[1]); if (cd) return [{ op: 'selfLess', n: +m[2], cond: cd }]; return null; }
-      if ((m = c.match(/^you can't play this (?:character|item|location|action|song) unless (.+)$/i))) { var cd2 = condAll(m[1]); if (cd2) return [{ op: 'playReq', cond: cd2 }]; return null; }
+      if ((m = c.match(/^you can't play this (?:character|item|location|action|song) unless (.+?)\.?$/i))) { var cd2 = condAll(m[1]); if (cd2) return [{ op: 'playReq', cond: cd2 }]; return null; }
       if ((m = c.match(/^(.+?) can challenge ready characters$/i)) && (T = tgt(m[1]))) return [{ op: 'can', what: 'chalReady', t: T }];
+      // set 12
+      if ((m = c.match(/^this character can't (quest|challenge|quest or challenge) unless you pay (\d+) \{I\}(?: \(.*\))?$/i))) return [{ op: 'actTax', n: +m[2], what: m[1].toLowerCase() === 'quest' ? 'quest' : m[1].toLowerCase() === 'challenge' ? 'challenge' : 'qc' }];
+      if (/^this character can quest the turn (?:he|she|it|they)'s played$|^this character can quest the turn (?:he|she|it) is played$/i.test(c)) return [{ op: 'questDry' }];
+      if (/^during challenges, your characters deal damage with their \{W\} instead of their \{S\}$/i.test(c)) return [{ op: 'wpDmg' }];
+      if ((m = c.match(/^you may put an? (?:([A-Z][\w'-]+) )?(character|item|action|location) card from your discard on the bottom of your deck to play this character for free$/i))) return [{ op: 'altPlay', discBottom: { cls: m[1] || null, type: m[2] } }];
+      if ((m = c.match(/^opponents can't play (actions|items) with cost (\d+) or more$/i))) return [{ op: 'oppCantPlay', types: [m[1].toLowerCase().replace(/s$/, '')], minC: +m[2] }];
       c = quoted(c);
       if ((m = c.match(/^characters (get|gain|count) (.+?) while here$/i))) c = 'Characters here ' + m[1] + ' ' + m[2];
       if ((m = c.match(/^(.+?) (gets?|gains?) (.+?) while here$/i)) && tgt(m[1]) && tgt(m[1]).types) c = m[1] + ' here ' + m[2] + ' ' + m[3];
@@ -2634,7 +2682,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if ((m = c.match(/^you pay (\d+) \{I\} less to move your characters to a location$/i))) return [{ op: 'moveLess', n: +m[1] }];
       if ((m = c.match(/^(?:you may )?pay (\d+) \{I\} less to move this character to a location$/i))) return [{ op: 'moveLess', n: +m[1], self: 1 }];
       if ((m = c.match(/^you pay (\d+) \{I\} less to move a character of yours here$/i))) return [{ op: 'moveLess', n: +m[1], here: 1 }];
-      if ((m = c.match(/^(.+?) may move here for free$/i)) && tgt(m[1])) return [{ op: 'moveLess', free: 1, here: 1, t: tgt(m[1]) }];
+      if ((m = c.match(/^(.+?) (?:may|can) move here for free$/i)) && tgt(m[1])) return [{ op: 'moveLess', free: 1, here: 1, t: tgt(m[1]) }];
       if ((m = c.match(/^you pay (\d+) \{I\} less to play characters using their shift ability$/i))) return [{ op: 'shiftLess', n: +m[1], aura: 1 }];
       if ((m = c.match(/^for each (.+?), you pay (\d+) \{I\} less to play this character using (?:her|his|its|their) shift ability$/i)) && per(m[1])) return [{ op: 'shiftLess', n: +m[2], per: per(m[1]) }];
       if ((m = c.match(/^this card gains shift (\d+) \{I\}$/i))) return [{ op: 'shiftSet', n: +m[1] }];
@@ -2645,7 +2693,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (/^each opposing player can't gain lore unless one of their characters has challenged this turn$/i.test(c)) return [{ op: 'oppNoLoreUnlessChal' }];
       if ((m = c.match(/^opponents can't play (actions|items|actions or items)$/i))) return [{ op: 'oppCantPlay', types: m[1].toLowerCase().replace(/s\b/g, '').split(' or ') }];
       if (/^the first time this character would take damage, (?:she|he|it|they) takes? no damage instead$/i.test(c)) return [{ op: 'firstShield' }];
-      if (/^you (?:can|may) play this character for free$/i.test(c)) return [{ op: 'freePlay' }];
+      if (/^you (?:can|may) play this (?:character|card|item|location|action|song) for free$/i.test(c)) return [{ op: 'freePlay' }];
       if ((m = c.match(/^you may play this character for free if (.+)$/i))) { var fc = condAll(m[1]); if (fc) return [{ op: 'freePlay', cond: fc }]; return null; }
       if (/^you can't lose lore$/i.test(c)) return [{ op: 'noLoseLore' }];
       if (/^you may ink an additional card$/i.test(c)) return [{ op: 'extraInk' }];
@@ -2743,7 +2791,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       [/^when you move a character here from a location,\s*/i, ['movedHere'], { fromLoc: 1 }],
       [/^the first time you move a character here,\s*/i, ['movedHere'], { first: 1 }],
       [/^when(?:ever)? an opposing character (?:becomes|is) exerted,\s*/i, ['exerted'], { side: 'opp' }],
-      [/^when(?:ever)? this character exerts,\s*/i, ['exerted'], { self: 1 }],
+      [/^when(?:ever)? this character (?:exerts|becomes exerted),\s*/i, ['exerted'], { self: 1 }],
+      [/^when(?:ever)? you pay (\d+) \{I\} or less to play a card,\s*/i, ['playCard'], { maxPaid: 1 }],
+      [/^when(?:ever)? a character moves here,\s*/i, ['movedHere']],
+      [/^when(?:ever)? one of your actions deals damage to an opposing character,\s*/i, ['damaged'], { byAction: 1 }],
+      [/^when(?:ever)? an opposing character challenges(?: another character| one of your characters)?,\s*/i, ['anyChallenge'], { oppSide: 1 }],
+      [/^when(?:ever)? a location is challenged and banished,\s*/i, ['anyBanished'], { locChal: 1 }],
+      [/^when(?:ever)? you remove damage from (one of your characters|a character),\s*/i, ['healed']],
       [/^when(?:ever)? you discard a card,\s*/i, ['discarded'], { mine: 1 }],
       [/^when(?:ever)? your opponent discards 1 or more cards,\s*/i, ['discarded'], { opp: 1 }],
       [/^when(?:ever)? one of your (other )?characters is returned to your hand from play,\s*/i, ['bounced'], { mine: 1 }],
@@ -2815,6 +2869,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         ab.cond = ab.cond ? { k: 'all', list: [ab.cond, wc] } : wc; body = body.slice(m[0].length);
       }
       if ((m = body.match(/^Once (?:during|per) (?:your )?turn,\s*/i))) { ab.once = true; body = body.slice(m[0].length); }
+      if (ab.cond && ab.cond.here && (m = body.match(/^(?:they|he|she) (gets?|gains?) (.+)$/i))) body = 'Your characters here ' + m[1].replace(/s$/, '') + ' ' + m[2];
+      if ((m = body.match(/^This character may enter play exerted(?: to (.+?))?\.?$/i))) {
+        ab.kind = 'play'; ab.trig = {};
+        var ent = m[1] ? seq(m[1].charAt(0).toUpperCase() + m[1].slice(1)) : [];
+        if (!ent) return ab;
+        ab.fx = [{ op: 'enterEx', may: 1 }].concat(ent.map(function (e) { e.dep = 1; return e; })); ab.ok = true; return ab;
+      }
       body = body.replace(/^(when(?:ever)?) (?:he|she|they|it) (?=quests|challenges|is |sings|moves|banishes)/i, '$1 this character ').replace(/^when you play this card,/i, 'When you play this character,');
       for (var k = 0; k < TRIG.length; k++) {
         var tm = body.match(TRIG[k][0]);
@@ -2825,10 +2886,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         for (var q in o) ab.trig[q] = o[q];
         if (/another|your other/i.test(tm[0])) ab.trig.other = 1;
         // opts that name a match group (number) take their value from it
-        ['cls', 'named', 'minS', 'maxC', 'defMaxS', 'defCls', 'typeM', 'dmg', 'under', 'side'].forEach(function (q) { if (typeof o[q] === 'number') { if (tm[o[q]]) ab.trig[q] = tm[o[q]].trim(); else delete ab.trig[q]; } });
+        ['cls', 'named', 'minS', 'maxC', 'defMaxS', 'defCls', 'typeM', 'dmg', 'under', 'side', 'maxPaid'].forEach(function (q) { if (typeof o[q] === 'number') { if (tm[o[q]]) ab.trig[q] = tm[o[q]].trim(); else delete ab.trig[q]; } });
         if (o.cls === 1 && TRIG[k][1][0] === 'playCard' && tm[1]) ab.trig.cls = tm[1].trim();
         if (ab.trig.typeM) { ab.trig.type = ab.trig.typeM.toLowerCase(); if (ab.trig.type === 'song') { delete ab.trig.type; ab.trig.song = 1; } delete ab.trig.typeM; }
-        ['minS', 'maxC', 'defMaxS'].forEach(function (q) { if (ab.trig[q] != null) ab.trig[q] = +ab.trig[q]; });
+        ['minS', 'maxC', 'defMaxS', 'maxPaid'].forEach(function (q) { if (ab.trig[q] != null) ab.trig[q] = +ab.trig[q]; });
+        if (o.locChal) ab.trig = { side: 'any', type: 'location', chal: true };
+        if (o.byAction) ab.trig = { side: 'opp', byAction: 1 };
         if (ab.trig.cls) ab.trig.cls = ab.trig.cls.replace(/ $/, '');
         if (ab.kind === 'anyBanished') {
           var bt = tm[0].toLowerCase();
@@ -2882,7 +2945,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var body = lines.map(function (L) { return L.replace(/^\s*Sing Together \d+\s*/i, ''); }).filter(function (L) { L = L.trim(); return L && !/^\(.*\)$/.test(L) && !/^Shift\b/.test(L); }).join(' ');
         body = clean(body.replace(/\([^)]*\)/g, ' '));
         var costRules = [];
-        body = body.split(/(?<=[.!])\s+(?=[A-Z])/).filter(function (x) { if (/you pay \d+ \{I\} less to play this action/i.test(x)) { costRules.push(x); return false; } return true; }).join(' ');
+        body = body.split(/(?<=[.!])\s+(?=[A-Z])/).filter(function (x) { if (/you pay \d+ \{I\} less to play this action|^you can't play this action unless/i.test(x)) { costRules.push(x); return false; } return true; }).join(' ');
         fail = '';
         var ab = { i: 0, name: '', text: clean(d.tx), kind: 'action', fx: body ? seq(body) : [], ok: false };
         ab.ok = !!ab.fx; if (!ab.ok) ab.why = fail; out.push(ab);
@@ -3451,7 +3514,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     resetCard(u);
   }
   // priv: fuller text only that player may see (e.g. which card they inked)
-  function youFix(t) { return /^You /.test(t) ? t.replace(/^You goes\b/, 'You go').replace(/^You skips\b/, 'You skip').replace(/^You has\b/, 'You have').replace(/ and skips /, ' and skip ') : t; }
+  // A player called "You" (the computer game's human, or anyone who picks that name) needs the right grammar
+  // wherever a sentence is built from a name: "You have", not "You has"; "Your", not "You’s"
+  var YOU_V = { has: 'have', is: 'are', was: 'were', does: 'do', goes: 'go', wins: 'win', skips: 'skip', reveals: 'reveal', draws: 'draw', gains: 'gain', loses: 'lose',
+    chooses: 'choose', needs: 'need', plays: 'play', puts: 'put', takes: 'take', gets: 'get', keeps: 'keep', reaches: 'reach', moves: 'move', pays: 'pay', sings: 'sing', quests: 'quest',
+    challenges: 'challenge', discards: 'discard', returns: 'return', names: 'name', looks: 'look', uses: 'use', 'isn\u2019t': 'aren\u2019t', 'doesn\u2019t': 'don\u2019t', "isn't": "aren't", "doesn't": "don't" };
+  function youFix(t) {
+    if (t == null || !/\bYou\b/.test(t)) return t;
+    return String(t).replace(/\bYou[\u2019']s\b/g, 'Your').replace(/\byou[\u2019']s\b/g, 'your')
+      .replace(/\b(You) ([A-Za-z\u2019']+)/g, function (m, y, v) { var k = v.toLowerCase(); return YOU_V[k] ? y + ' ' + YOU_V[k] : m; })
+      .replace(/ and (skips|draws|gains|takes|puts|plays) /g, function (m, v) { return ' and ' + YOU_V[v] + ' '; });
+  }
   function log(t, pi, priv) { S.log.push({ t: youFix(t), p: pi == null ? -1 : pi, priv: priv ? youFix(priv) : undefined }); if (S.log.length > 120) S.log.splice(0, S.log.length - 120); }
   function roundIx() { return Math.floor((S.turn - 1) / 2); }
   function gainLore(pi, n) {
@@ -3479,7 +3552,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return out;
   }
   // A card left a discard pile (to hand when toHand)
-  function leftDisc(pi, u, toHand) { TT().leftDisc++; emit('leftDisc', { pi: pi, u: u }); if (toHand) emit('fromDisc', { pi: pi, u: u }); }
+  function leftDisc(pi, u, toHand) { var T = TT(); T.leftDisc++; if (T.discBase && (T.discBase[pi] || []).indexOf(u) < 0 && T.discOut) T.discOut[pi]++; emit('leftDisc', { pi: pi, u: u }); if (toHand) emit('fromDisc', { pi: pi, u: u }); }
   // What moving to a location costs, after "pay less to move" and "may move here for free"
   function moveCost(u, loc) {
     var n = DD(loc).mv || 0, pi = C(u).o;
@@ -3508,10 +3581,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var rd = S.P[C(u).o].board.filter(function (x) { return x !== u && !!staticOp(x, 'redirectDmg'); })[0];
     if (rd && n > 0 && isChar(u)) { var dn = Math.max(0, n - kwN(u, 'resist')); C(rd).dmg += dn; fx.num(rd, '-' + dn, 'dmg'); return 0; }
     var d = Math.max(0, n - kwN(u, 'resist')); C(u).dmg += d;
-    if (d) { fx.hit(u); TT().dmg[C(u).o] = 1; emit('damaged', { u: u, n: d }); }
+    if (d) { fx.hit(u); TT().dmg[C(u).o] = 1; emit('damaged', { u: u, n: d, by: dmgBy }); }
     return d;
   }
-  function noteBanish(u) { var T = TT(); T.ban++; if (clashing) { T.banChal++; T.banChalOf[C(u).o]++; } }
+  var dmgBy = null;   // the card whose effect is dealing damage right now
+  function noteBanish(u) { var T = TT(); T.ban++; if (T.banU) { T.banU.push(u); T.banN.push(DD(u).n); } if (clashing) { T.banChal++; T.banChalOf[C(u).o]++; } }
 
   // ── Legality ─────────────────────────────────────────────────────────────
   function extraInk(pi) { var n = (TT().extraInk || [0, 0])[pi]; S.P[pi].board.forEach(function (x) { var e = staticOp(x, 'extraInk'); if (e) n++; }); return n; }
@@ -3522,11 +3596,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function playLocked(pi, u) {
     var d = DD(u), ty = d.song ? ['action', 'song'] : [d.t];
     return (S.pmods || []).some(function (m) { return m.pi === pi && m.cantPlay && S.turn < m.untilStart && m.cantPlay.some(function (t) { return ty.indexOf(t) >= 0; }); }) ||
-      S.P[opp(pi)].board.some(function (x) { var e = staticOp(x, 'oppCantPlay'); return e && e.types.some(function (t) { return ty.indexOf(t) >= 0; }); });
+      S.P[opp(pi)].board.some(function (x) { var e = staticOp(x, 'oppCantPlay'); return e && e.types.some(function (t) { return ty.indexOf(t) >= 0; }) && (e.minC == null || (d.c || 0) >= e.minC); });
   }
   function canPlay(pi, u) { var d = DD(u); return S.P[pi].hand.indexOf(u) >= 0 && !!d.t && inkReady(pi) >= playCost(pi, u) && !playBlocked(pi, u) && !playLocked(pi, u); }
-  function canQuest(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && c.dry && !hasKw(u, 'reckless') && !cant(u, 'quest'); }
-  function canChallenger(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && (c.dry || hasKw(u, 'rush')) && !cant(u, 'challenge') && !(boardOp(null, 'oneChal') && (TT().chal[0] + TT().chal[1]) > 0); }
+  function canQuest(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && (c.dry || !!staticOp(u, 'questDry')) && !hasKw(u, 'reckless') && !cant(u, 'quest') && inkReady(c.o) >= taxOf(u, 'quest'); }
+  function canChallenger(u) { var c = C(u); return isChar(u) && c.o === S.cur && S.P[c.o].board.indexOf(u) >= 0 && !c.ex && (c.dry || hasKw(u, 'rush')) && !cant(u, 'challenge') && inkReady(c.o) >= taxOf(u, 'challenge') && !(boardOp(null, 'oneChal') && (TT().chal[0] + TT().chal[1]) > 0); }
   function defenders(att) {
     var o = opp(C(att).o), evOK = hasKw(att, 'evasive') || hasKw(att, 'alert'), rdy = can(att, 'chalReady'), list = [];
     S.P[o].board.forEach(function (u) {
@@ -3612,6 +3686,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (sh.discard) (o.discard || []).forEach(function (x) { p.hand.splice(p.hand.indexOf(x), 1); resetCard(x); p.discard.push(x); });
         else payInk(pi, shiftCost(u));
       } else if (!o.free) { payInk(pi, Math.max(0, cost - (o.less || 0))); if (pl) S.less.splice(pl.i, 1); }
+      S.paidLast = o.sing && o.sing.length || o.free || (o.shift && d.K.shift && d.K.shift.discard) ? null : o.shift ? shiftCost(u) : Math.max(0, cost - (o.less || 0));
       resetCard(u);
       if (d.t === 'action') {
         if (o.bottomAfter) p.deckL.push(u); else p.discard.push(u);
@@ -3640,6 +3715,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var T = TT(); T.played[pi]++; if (d.t === 'action') T.action[pi]++; if (d.song) T.song[pi]++; if (d.t === 'character') { T.char[pi]++; T.cls[pi].push(u); T.big[pi] = Math.max(T.big[pi], d.c || 0); }
     },
     quest: function (pi, u) {
+      var qt = taxOf(u, 'quest'); if (qt) { payInk(pi, qt); log(S.P[pi].name + ' paid ' + qt + ' ink for ' + nm(u) + ' to quest', pi); }
       C(u).ex = true; exertEv(u);
       var n = LORE(u), st = S.st[pi];
       log(S.P[pi].name + ' quested with ' + nm(u) + ' for ' + n + ' lore', pi);
@@ -3649,11 +3725,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       return n;
     },
     challenge: function (pi, a, t) {
+      var ct = taxOf(a, 'challenge'); if (ct) { payInk(pi, ct); log(S.P[pi].name + ' paid ' + ct + ' ink for ' + nm(a) + ' to challenge', pi); }
       C(a).ex = true; exertEv(a);
       clashAt = { a: a, t: t, shield: chalShields(a, t) };
       chalBoosts(a, t);
       if (!isLoc(t)) S.P[C(t).o].board.forEach(function (x) { var tx = staticOp(x, 'chalTax'); if (!tx || !C(x).ex) return; if (inkReady(pi) >= tx.n) { payInk(pi, tx.n); log(S.P[pi].name + ' paid ' + tx.n + ' ink for ' + nm(x) + '’s ability', pi); } else C(a).mods.push({ s: -tx.s, until: S.turn, why: abTitle(x, { name: '' }) }); });
-      var loc = isLoc(t), sa = STR(a, true), sd = loc ? 0 : STR(t, false);
+      var loc = isLoc(t), sa = hitPow(a, true), sd = loc ? 0 : hitPow(t, false);
       log(S.P[pi].name + '’s ' + nm(a) + ' challenged ' + nm(t), pi);
       var dt = dealDamage(t, sa), da = dealDamage(a, sd);
       var aw = DD(a).full, tn = DD(t).full;
@@ -3680,7 +3757,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   };
   // Start of turn: Ready, Set, Draw
   function beginTurn() {
-    var pi = S.cur, p = S.P[pi];
+    var pi = S.cur, p = S.P[pi]; TT();
     S.step = 'main'; p.inked = false;
     for (var k in S.cards) { var cc = S.cards[k]; if (cc.mods && cc.mods.length) cc.mods = cc.mods.filter(function (m) { return !(m.untilStart && m.untilStart <= S.turn); }); }
     var rmax = (S.pmods || []).filter(function (m) { return m.pi === pi && m.readyMax != null && m.turn === S.turn; })[0];
@@ -3752,9 +3829,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // What has happened this turn (for "if … this turn" text)
   function TT() {
-    if (!S.tt || S.tt.turn !== S.turn) S.tt = { turn: S.turn, ban: 0, banChal: 0, banChalOf: [0, 0], chal: [0, 0], dmg: [0, 0], song: [0, 0], action: [0, 0], played: [0, 0], char: [0, 0], cls: [[], []], big: [0, 0], inked: [0, 0], under: [0, 0], leftDisc: 0, quest: [[], []] };
+    if (!S.tt || S.tt.turn !== S.turn) S.tt = { turn: S.turn, ban: 0, banChal: 0, banChalOf: [0, 0], chal: [0, 0], dmg: [0, 0], song: [0, 0], action: [0, 0], played: [0, 0], char: [0, 0], cls: [[], []], big: [0, 0], inked: [0, 0], under: [0, 0], leftDisc: 0, quest: [[], []],
+      discBase: S.P.map(function (p) { return p.discard.slice(); }), discOut: [0, 0], healBy: [0, 0], healMine: [0, 0], banU: [], banN: [] };
     return S.tt;
   }
+  // Cards put into pi's discard this turn (those still there, plus any that came and went)
+  function discIn(pi, excl) { var T = TT(), base = (T.discBase || [[], []])[pi] || []; return S.P[pi].discard.filter(function (u) { return base.indexOf(u) < 0 && u !== excl; }).length + ((T.discOut || [0, 0])[pi] || 0); }
+  // "can't quest or challenge unless you pay 1 {I}": what acting costs this character
+  function taxOf(u, w) { var e = staticOp(u, 'actTax'); return e && (e.what === 'qc' || e.what === w) ? e.n : 0; }
+  // Damage a character deals in a challenge ("deal damage with their {W} instead of their {S}")
+  function hitPow(u, att) { return S.cards[u] && boardOp(C(u).o, 'wpDmg') ? WP(u) : STR(u, att); }
   var clashAt = null; // {a, t} while a challenge is being worked out
   // Does card u fit a target description, from the point of view of player pi and source card src?
   function fits(u, t, src, pi) {
@@ -3769,6 +3853,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (f.ready && c.ex) return false;
     if (f.cls && !hasCls(u, f.cls)) return false;
     if (f.named && !named(u, f.named)) return false;
+    if (f.notNamed && named(u, f.notNamed)) return false;
     if (f.here && c.at !== src) return false;
     if (f.atLoc && !c.at) return false;
     if (f.kw && !hasKw(u, f.kw)) return false;
@@ -3800,6 +3885,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     switch (cd.k) {
       case 'all': return cd.list.every(function (x) { return condOK(x, src, pi, ctx); });
       case 'not': return !condOK(cd.c, src, pi, ctx);
+      case 'anyOf': return cd.list.some(function (x) { return condOK(x, src, pi, ctx); });
+      case 'oppMoreChars': return O.board.filter(isChar).length > P.board.filter(isChar).length;
       case 'any': return inPlayAll().some(function (u) { return DD(u).t === cd.type && (!cd.cls || hasCls(u, cd.cls)); });
       case 'disc': return P.discard.filter(function (u) { var d = DD(u); return (!cd.type || (cd.type === 'song' ? d.song : d.t === cd.type)) && (!cd.cls || hasCls(u, cd.cls)) && (!cd.named || named(u, cd.named)); }).length >= (cd.n || 1);
       case 'more': return cd.what === 'hand' ? P.hand.length > O.hand.length : P.board.filter(function (u) { return DD(u).t === cd.what; }).length > O.board.filter(function (u) { return DD(u).t === cd.what; }).length;
@@ -3823,6 +3910,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           case 'oppDrawn': v = (T.drawn || [0, 0])[opp(pi)]; break;
           case 'underSelf': v = (T.underOn || []).indexOf(src) >= 0 ? 1 : 0; break;
           case 'questOther': v = T.quest[pi].filter(function (u) { return u !== src; }).length; break;
+          case 'charOther': v = T.cls[pi].filter(function (u) { return u !== src; }).length; break;
+          case 'discIn': v = discIn(pi, cd.other ? src : null); break;
+          case 'healBy': v = (T.healBy || [0, 0])[pi]; break; case 'healMine': v = (T.healMine || [0, 0])[pi]; break;
+          case 'banNamed': v = (T.banN || []).filter(function (n) { return String(cd.named).toLowerCase().split(/\s+or\s+|\|/).indexOf(n.toLowerCase()) >= 0; }).length; break;
+          case 'banMine': v = (T.banU || []).filter(function (u) { return S.cards[u] && C(u).o === pi && (!cd.cls || hasCls(u, cd.cls)); }).length; break;
           default: v = 0;
         }
         if (cd.eq != null) return v === cd.eq;
@@ -3839,6 +3931,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           if (cd.cls && !hasCls(u, cd.cls)) return false;
           if (cd.named && !named(u, cd.named.replace(/\s+or\s+/g, '|'))) return false;
           if (cd.minS != null && STR(u) < cd.minS) return false;
+          if (cd.minW != null && WP(u) < cd.minW) return false;
           if (cd.here && C(u).at !== src) return false;
           if (cd.under && !(C(u).under && C(u).under.length)) return false;
           if (cd.kw && !hasKw(u, cd.kw)) return false;
@@ -3847,7 +3940,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           if (!cd.type && !(d.t === 'character' || d.t === 'location')) return false;
           return true;
         }).length;
-        return m >= (cd.n || 1);
+        return cd.eq ? m === cd.n : m >= (cd.n || 1);
       case 'hand': return (cd.min == null || P.hand.length >= cd.min) && (cd.max == null || P.hand.length <= cd.max);
       case 'oppHandMore': return O.hand.length > P.hand.length;
       case 'oppLoreMore': return O.lore > P.lore;
@@ -3877,6 +3970,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (cd.atLoc && !c.at) return false;
         if (cd.minS != null && STR(src) < cd.minS) return false;
         if (cd.under && !(c.under && c.under.length)) return false;
+        if (cd.minDmg != null && c.dmg < cd.minDmg) return false;
         return true;
     }
     return false;
@@ -3908,7 +4002,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function amtVal(a, st) {
     var src = st.src, pk = (st.pick && st.pick[0]) || (st.prev && st.prev[0]);
     switch (a.k) {
-      case 'selfStat': return S.cards[src] ? (a.st === 's' ? STR(src) : LORE(src)) : 0;
+      case 'selfStat': return S.cards[src] ? (a.st === 's' ? STR(src) : a.st === 'w' ? WP(src) : LORE(src)) : 0;
       case 'prevStat': return pk && S.cards[pk] ? (a.st === 's' ? STR(pk) : a.st === 'w' ? WP(pk) : LORE(pk)) : 0;
       case 'prevDmg': return pk && S.cards[pk] ? C(pk).dmg : 0;
       case 'prevCost': return pk && S.cards[pk] ? DD(pk).c || 0 : 0;
@@ -3987,7 +4081,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function pendingLess(pi, u) {
     var d = DD(u), best = null;
-    (S.less || []).forEach(function (x, i) { if (x.pi === pi && x.turn === S.turn && (!x.type || x.type === d.t || (x.type === 'song' && d.song)) && (!x.cls || hasCls(u, x.cls)) && (!best || x.n > best.n)) best = { n: x.n, i: i }; });
+    (S.less || []).forEach(function (x, i) { if (x.pi === pi && x.turn === S.turn && (!x.type || x.type.split('|').indexOf(d.t) >= 0 || (x.type === 'song' && d.song)) && (!x.cls || hasCls(u, x.cls)) && (!best || x.n > best.n)) best = { n: x.n, i: i }; });
     return best;
   }
   function playCostOf(pi, u) { return playCost(pi, u); }
@@ -4091,6 +4185,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
             if (t.kw && !hasKw(u, t.kw)) return false;
             if (t.selfEx && !C(x).ex) return false;
             if (t.nth && TT().action[pi] !== t.nth) return false;
+            if (t.maxPaid != null && (S.paidLast == null || S.paidLast > t.maxPaid)) return false;
             return true;
           });
         });
@@ -4110,10 +4205,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var a = o.u, t = o.t, ctx = { att: a, def: t };
         ctx.n = o.dt || 0;
         trig(a, ['challenge'], C(a).o, ctx, function (ab) { var tg = ab.trig || {}; return (!tg.damaged || o.tWasDamaged) && !(tg.defMaxS != null && STR(t) > tg.defMaxS) && (!tg.defCls || hasCls(t, tg.defCls)) && (!tg.dealt || o.dt > 0) && !ab.fx.every(function (e) { return e.what === 'chalDmgNow'; }); });
-        S.P[C(t).o].board.forEach(function (x) { trig(x, ['anyChallenge'], C(t).o, ctx, function (ab) { return !!(ab.trig && ab.trig.anySide) && (!ab.trig.attDamaged || o.aWasDamaged); }); });
+        S.P[C(t).o].board.forEach(function (x) { trig(x, ['anyChallenge'], C(t).o, ctx, function (ab) { return !!(ab.trig && (ab.trig.anySide || ab.trig.oppSide)) && (!ab.trig.attDamaged || o.aWasDamaged); }); });
         watchers(C(a).o).forEach(function (x) {
           trig(x, ['anyChallenge'], C(a).o, ctx, function (ab) {
             var tg = ab.trig || {};
+            if (tg.oppSide) return false;
             if (tg.kw && !hasKw(a, tg.kw)) return false;
             if (tg.anySide) return x !== a && (!tg.attDamaged || o.aWasDamaged);
             if (tg.here) return C(a).at === x && (tg.minS == null || STR(a) >= tg.minS);
@@ -4178,8 +4274,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['drew'], o.pi, {}, function (a) { return !(a.trig && a.trig.opp); }); });
         S.P[opp(o.pi)].board.slice().forEach(function (x) { trig(x, ['drew'], opp(o.pi), {}, function (a) { var t = a.trig || {}; if (!t.opp) return false; if (t.theirTurn && S.cur !== o.pi) return false; if (t.selfEx && !C(x).ex) return false; return true; }); });
         break;
-      case 'healed': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['healed'], o.pi, { healed: u }, function (a) { return !(a.trig && a.trig.mine) || C(u).o === o.pi; }); }); break;
-      case 'damaged': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['damaged'], px, { hurt: u, n: o.n }, function (a) { var t = a.trig || {}; if (t.self) return x === u; if (!isChar(u)) return false; if (t.side === 'opp' ? px === pi : px !== pi) return false; return !t.cls || hasCls(u, t.cls); }); }); break;
+      case 'healed': S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['healed'], o.pi, { healed: u, n: o.n || 0 }, function (a) { return !(a.trig && a.trig.mine) || C(u).o === o.pi; }); }); break;
+      case 'damaged': inPlayAll().forEach(function (x) { var px = C(x).o; trig(x, ['damaged'], px, { hurt: u, n: o.n }, function (a) { var t = a.trig || {}; if (t.self) return x === u; if (!isChar(u)) return false; if (t.byAction && !(o.by && S.cards[o.by] && DD(o.by).t === 'action' && C(o.by).o === px)) return false; if (t.side === 'opp' ? px === pi : px !== pi) return false; return !t.cls || hasCls(u, t.cls); }); }); break;
       case 'turnStart':
         S.P[o.pi].board.slice().forEach(function (x) { trig(x, ['turnStart'], o.pi, {}); });
         S.P[o.pi].discard.slice().forEach(function (x) { trig(x, ['turnStart'], o.pi, {}, function (a) { return JSON.stringify(a.cond || '').indexOf('srcIn') >= 0; }); });
@@ -4290,7 +4386,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     switch (e.op) {
       case 'draw': return e.who === 'both' ? 'Each player draws ' + plural(n, 'card') : e.who === 'opp' ? 'Each opponent draws ' + plural(n, 'card') : 'Draw ' + plural(n, 'card');
       case 'discard': return e.who === 'opp' ? (e.random ? 'Opponent discards ' + plural(n, 'card') + ' at random' : e.mine ? 'Choose a card from the opponent’s hand to discard' : 'Opponent discards ' + plural(n, 'card')) : 'Choose and discard ' + plural(n, 'card');
-      case 'lore': return e.n > 0 ? 'Gain ' + n + ' lore' : 'Opponent loses ' + n + ' lore';
+      case 'lore': return e.who === 'both' ? 'Each player ' + (e.n > 0 ? 'gains ' : 'loses ') + n + ' lore' : e.who === 'opp' ? 'Each opponent gains ' + n + ' lore' : e.n > 0 ? 'Gain ' + n + ' lore' : 'Opponent loses ' + n + ' lore';
       case 'damage': return (e.counters ? 'Put ' + n + ' damage on ' : 'Deal ' + n + ' damage to ') + tg;
       case 'heal': return (n >= 99 ? 'Remove all damage from ' : 'Remove up to ' + n + ' damage from ') + tg;
       case 'banish': return 'Banish ' + tg;
@@ -4323,6 +4419,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'moveDmg': return 'Move ' + plural(n, 'damage') + ' from ' + tg + ' to ' + tgtText(e.t2);
       case 'modal': return 'Choose one';
       case 'reveal': return 'Opponent reveals their hand';
+      case 'enterEx': return 'Enter play exerted';
+      case 'discInkEach': return 'Each player may put up to ' + e.n + ' cards from their discard into their inkwell';
+      case 'scatter': return 'Opponent sends 3 of their characters to hand, top and bottom of deck';
+      case 'discShuffleAll': return 'Each player shuffles their ' + e.type + ' cards from the discard into their deck';
     }
     return e.op;
   }
@@ -4333,17 +4433,18 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (t.sel === 'prev') return 'that card';
     if (t.sel === 'ctx') return t.key === 'att' ? 'the challenging character' : 'the challenged character';
     var f = t.f || {}, w = [];
-    if (t.sel === 'chosen') w.push(t.upTo ? 'up to ' + t.upTo + ' chosen' : f.other ? 'another chosen' : 'chosen');
+    if (t.sel === 'chosen') w.push(t.upTo >= 99 ? 'any number of chosen' : t.upTo ? 'up to ' + t.upTo + ' chosen' : f.other ? 'another chosen' : 'chosen');
     else w.push(t.side === 'mine' ? (f.other ? 'your other' : 'your') : 'each');
     if (t.side === 'opp') w.push('opposing');
     ['damaged', 'exerted', 'ready', 'undamaged'].forEach(function (k) { if (f[k]) w.push(k); });
     if (f.cls) w.push(f.cls);
-    w.push(t.types.join(' or ') + (t.sel === 'all' && t.side === 'mine' ? 's' : ''));
+    w.push(t.types.join(' or ') + ((t.sel === 'all' && t.side === 'mine') || t.upTo > 1 ? 's' : ''));
     if (t.sel === 'chosen' && t.side === 'mine') w.push('of yours');
     if (f.named) w.push('named ' + f.named.replace(/\|/g, ' or '));
     if (f.maxS != null) w.push('with ' + f.maxS + ' strength or less'); if (f.minS != null) w.push('with ' + f.minS + ' strength or more');
     if (f.maxC != null) w.push('with cost ' + f.maxC + ' or less');
     if (f.here) w.push('here');
+    if (t.totalS != null) w.push('with total strength ' + t.totalS + ' or less');
     return w.join(' ');
   }
 
@@ -4362,6 +4463,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (e.t.upTo > 1) {
           var ranked = legal.map(function (u) { return { u: u, v: cpuEffOn(e, u, pi) }; }).sort(function (a, b) { return b.v - a.v; });
           var take = ranked.filter(function (r, i) { return e.t.exact ? i < e.t.exact : r.v > 0; }).slice(0, e.t.upTo).map(function (r) { return r.u; });
+          if (e.t.totalS != null) { var tot = 0; take = take.filter(function (u) { if (tot + STR(u) > e.t.totalS) return false; tot += STR(u); return true; }); }
           if (!take.length) return cb(false);
           return applyChosen(e, st, take, cb);
         }
@@ -4376,7 +4478,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         bad: function (x) { return C(x).o !== pi && hasKw(x, 'ward') && fits(x, e.t, st.src, pi) ? nm(x) + ' has Ward: effects can’t choose it' : ''; },
         skip: optional || e.t.upTo ? 'Skip' : null, must: !(optional || e.t.upTo),
         cancel: function () { cb(false); },
-        multi: multi ? { need: function (sel) { return e.t.exact ? sel.length === Math.min(e.t.exact, legal.length) : sel.length >= 1 && sel.length <= e.t.upTo; }, label: function (sel) { return 'Done (' + sel.length + '/' + e.t.upTo + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
+        multi: multi ? { need: function (sel) { if (e.t.totalS != null && sel.reduce(function (a, u) { return a + STR(u); }, 0) > e.t.totalS) return false; return e.t.exact ? sel.length === Math.min(e.t.exact, legal.length) : sel.length >= 1 && sel.length <= e.t.upTo; },
+          label: function (sel) { if (e.t.totalS != null) { var ts = sel.reduce(function (a, u) { return a + STR(u); }, 0); return ts > e.t.totalS ? 'Too much strength: ' + ts + ' of ' + e.t.totalS : 'Done · ' + ts + ' of ' + e.t.totalS + ' strength'; } return 'Done (' + sel.length + '/' + e.t.upTo + ')'; }, go: function (sel) { applyChosen(e, st, sel, cb); } } : null,
         done: function (x) { applyChosen(e, st, [x], cb); }
       });
       return;
@@ -4394,7 +4497,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       list.forEach(function (x) { if (st.ab.kind === 'action' && vanishCheck(x, st.pi, true)) gone.push(x); });
     });
     list = list.filter(function (x) { return gone.indexOf(x) < 0; });
-    if (e.sameName && list[0]) S.P[C(list[0]).o].board.forEach(function (y) { if (y !== list[0] && isChar(y) && nm(y) === nm(list[0]) && list.indexOf(y) < 0) list.push(y); });
+    if (e.sameName && list[0]) inPlayAll().forEach(function (y) { if (y !== list[0] && (isChar(list[0]) ? isChar(y) && C(y).o === C(list[0]).o : DD(y).t === 'item' || DD(y).t === 'location') && fits(y, e.t, st.src, st.pi) && DD(y).n === DD(list[0]).n && list.indexOf(y) < 0) list.push(y); });
     if (e.op === 'banish') st.last = list.length;
     if (e.op === 'choose' && e.keep) { st.pick = list; return cb(true); }
     st.prev = list;
@@ -4477,6 +4580,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'tmpTrig': S.tmpAbs = (S.tmpAbs || []).filter(function (t) { return t.turn === S.turn; }); S.tmpAbs.push({ src: st.src, pi: pi, ab: e.ab, turn: S.turn }); st.said.push('this turn: ' + e.ab.text.replace(/\.$/, '').toLowerCase()); return cb(true);
       case 'later': S.later = (S.later || []).filter(function (t) { return t.turn >= S.turn; }); S.later.push({ src: st.src, pi: pi, fx: e.fx, turn: S.turn, uids: (st.prev || []).slice(), name: abTitle(st.src, st.ab) }); return cb(true);
       case 'count': st.last = amtVal(e.amt, st); st.said.push('counted ' + st.last); return cb(true);
+      case 'enterEx': { if (!onBoard(st.src)) return cb(false); act(function () { C(st.src).ex = true; }); fx.forceEx(st.src); st.said.push(nm(st.src) + ' entered play exerted'); return cb(true); }
+      case 'discShuffleAll': {
+        var moved2 = 0;
+        act(function () { [pi, opp(pi)].forEach(function (w) { var W = S.P[w], take = W.discard.filter(function (u) { return DD(u).t === e.type; }); take.forEach(function (u) { W.discard.splice(W.discard.indexOf(u), 1); resetCard(u); W.deckL.push(u); leftDisc(w, u, false); moved2++; }); if (take.length) shuffle(W.deckL); st.said.push(W.name + ' shuffled ' + plural(take.length, e.type + ' card') + ' into their deck'); }); });
+        noUndo(); return cb(moved2 > 0);
+      }
+      case 'discInkEach': return discInkEachFx(e, st, cb);
+      case 'scatter': return scatterFx(e, st, cb);
       case 'mod': return cb(true);
       case 'handAll': {
         var hl = P.hand.slice(); if (!hl.length) return cb(false);
@@ -4503,7 +4614,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       case 'lore': {
         var ln = effN(e, st);
-        if (e.who === 'both') { act(function () { questing = true; gainLore(pi, ln); gainLore(opp(pi), ln); questing = false; }); st.said.push('each player gained ' + ln + ' lore'); return cb(true); }
+        if (e.who === 'both') { act(function () { questing = true; gainLore(pi, ln); gainLore(opp(pi), ln); questing = false; }); if (ln < 0) { fx.lose(pi, -ln); fx.lose(opp(pi), -ln); } st.said.push(ln < 0 ? 'each player lost ' + (-ln) + ' lore' : 'each player gained ' + ln + ' lore'); return cb(true); }
+        if (e.who === 'opp') { act(function () { questing = true; gainLore(opp(pi), ln); questing = false; }); st.said.push(O.name + ' gained ' + ln + ' lore'); return cb(true); }
         if (e.who === 'prevOwner') { var po = st.prev && st.prev[0] && S.cards[st.prev[0]] ? C(st.prev[0]).o : null; if (po == null) return cb(false); act(function () { questing = true; gainLore(po, ln); questing = false; }); st.said.push(S.P[po].name + ' gained ' + ln + ' lore'); return cb(true); }
         if (ln > 0) { act(function () { questing = true; gainLore(pi, ln); questing = false; fx.loreFrom(st.src, pi, ln); }); st.said.push(P.name + ' gained ' + ln + ' lore'); }
         else if (ln < 0) { if (e.ifMore && O.lore <= P.lore) return cb(false); var lost = 0; act(function () { lost = -gainLore(opp(pi), ln); }); fx.lose(opp(pi), lost); st.last = lost; st.said.push(O.name + ' lost ' + lost + ' lore'); }
@@ -4567,8 +4679,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!S.cards[x]) return;
     var pi = st.pi, c = C(x), who = S.P[c.o].name + '’s ' + nm(x), z = zoneOf(x), inPlay = z && z.z === 'board';
     switch (e.op) {
-      case 'damage': { if (!inPlay) return; var en = effN(e, st, x); if (en <= 0) return; var dd = e.counters ? (c.dmg += en, en) : dealDamage(x, en); st.last = (st.last || 0) + dd; fx.slash(x); fx.num(x, '-' + dd, 'dmg'); st.said.push(who + ' took ' + dd + ' damage'); break; }
-      case 'heal': if (!inPlay || boardOp(null, 'noHeal')) return; var hn = Math.min(c.dmg, effN(e, st, x)); c.dmg -= hn; if (hn) { st.last = (st.last || 0) + hn; fx.mend(x); fx.num(x, '+' + hn, 'heal'); st.said.push('removed ' + hn + ' damage from ' + nm(x)); emit('healed', { u: x, pi: pi }); } break;
+      case 'damage': { if (!inPlay) return; var en = effN(e, st, x); if (en <= 0) return; dmgBy = st.src; var dd; try { dd = e.counters ? (c.dmg += en, en) : dealDamage(x, en); } finally { dmgBy = null; } st.last = (st.last || 0) + dd; fx.slash(x); fx.num(x, '-' + dd, 'dmg'); st.said.push(who + ' took ' + dd + ' damage'); break; }
+      case 'heal': if (!inPlay || boardOp(null, 'noHeal')) return; var hn = Math.min(c.dmg, effN(e, st, x)); c.dmg -= hn; if (hn) { st.last = (st.last || 0) + hn; fx.mend(x); fx.num(x, '+' + hn, 'heal'); st.said.push('removed ' + hn + ' damage from ' + nm(x)); var Th = TT(); if (Th.healBy) { Th.healBy[pi] += hn; if (c.o === pi) Th.healMine[pi] += hn; } emit('healed', { u: x, pi: pi, n: hn }); } break;
       case 'under': { if (!inPlay) return; var Pu = S.P[pi]; if (!Pu.deckL.length) return; var ux = Pu.deckL.shift(); resetCard(ux); c.under.push(ux); TT().under[pi]++; (TT().underOn = TT().underOn || []).push(x); fx.rune(x, '#f6e1a8'); st.said.push('put a card under ' + nm(x)); emit('under', { u: x, pi: pi }); break; }
       case 'underHand': { var ul = (c.under || []).splice(0); ul.forEach(function (y) { resetCard(y); S.P[pi].hand.push(y); }); if (ul.length) st.said.push(S.P[pi].name + ' put ' + plural(ul.length, 'card') + ' from under ' + nm(x) + ' into their hand'); break; }
       case 'banish': if (!inPlay) return; st.said.push(who + ' was banished'); banishCard(x, { by: st.src }); break;
@@ -4624,16 +4736,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 
   // ── Effects with their own little screens ──
   function moveDamage(e, st, optional, cb) {
-    var pi = st.pi, from = legalTargets(e.t, st.src, pi).filter(function (u) { return C(u).dmg > 0; });
+    var pi = st.pi, pool = function (t) { return t.sel === 'self' ? (onBoard(st.src) ? [st.src] : []) : legalTargets(t, st.src, pi); };
+    var from = pool(e.t).filter(function (u) { return C(u).dmg > 0; });
     if (!from.length) return cb(false);
+    if (e.t.sel === 'self' && !ctlHuman(pi) && optional && !(e.t2.side === 'opp')) return cb(false);
     function go(a) {
-      var to = legalTargets(e.t2, st.src, pi).filter(function (u) { return u !== a; });
+      var to = pool(e.t2).filter(function (u) { return u !== a; });
       if (!to.length) return cb(false);
       function fin(b) { act(function () { var n = Math.min(e.n, C(a).dmg); C(a).dmg -= n; C(b).dmg += n; fx.num(a, '+' + n, 'heal'); fx.num(b, '-' + n, 'dmg'); st.said.push('moved ' + plural(n, 'damage') + ' from ' + nm(a) + ' to ' + nm(b)); checkBanishAll(); }); cb(true); }
+      if (to.length === 1 && e.t2.sel === 'self') return fin(to[0]);
       if (!ctlHuman(pi)) return fin(to.sort(function (x, y) { return cardValue(y) - cardValue(x); })[0]);
       startPick({ title: abTitle(st.src, st.ab) + ': move damage to which character?', src: st.src, ok: function (x) { return to.indexOf(x) >= 0; }, must: true, done: fin });
     }
-    if (!ctlHuman(pi)) { var mine = from.filter(function (u) { return C(u).o === pi; }); if (!mine.length && optional) return cb(false); return go((mine.length ? mine : from)[0]); }
+    if (from.length === 1 && e.t.sel === 'self') return go(from[0]);
+    if (!ctlHuman(pi)) { var mine = from.filter(function (u) { return C(u).o === pi && u !== st.src; }); if (!mine.length && optional) return cb(false); return go((mine.length ? mine : from)[0]); }
     startPick({ title: abTitle(st.src, st.ab) + ': move damage from which character?', src: st.src, ok: function (x) { return from.indexOf(x) >= 0; }, skip: optional ? 'Skip' : null, must: !optional, cancel: function () { cb(false); }, done: go });
   }
   function discardFx(e, st, optional, cb) {
@@ -4884,7 +5000,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function fromDiscardFx(e, st, optional, cb) {
     var pi = st.pi, P = S.P[pi];
-    var pool = P.discard.filter(function (u) { var d = DD(u); if (e.type) { var ty = e.type.split(' '); var base = ty[ty.length - 1]; if (base === 'song' ? !d.song : d.t !== base) return false; if (ty.length > 1 && !hasCls(u, ty[0])) return false; } if (e.named && !named(u, e.named.replace(/\s+or\s+/g, '|'))) return false; if (e.maxC != null && (d.c || 0) > e.maxC) return false; return true; });
+    var pool = P.discard.filter(function (u) { var d = DD(u); if (e.type) { var ty = e.type.split(' '); var base = ty[ty.length - 1]; if (base === 'song' ? !d.song : d.t !== base) return false; if (ty.length > 1 && !hasCls(u, ty[0])) return false; } if (e.named && !named(u, e.named.replace(/\s+or\s+/g, '|'))) return false; if (e.maxC != null && (d.c || 0) > e.maxC) return false; if (e.minW != null && (d.w || 0) < e.minW) return false; return true; });
     if (!pool.length) { if (ctlHuman(pi)) Kit.toast(abTitle(st.src, st.ab) + ': nothing in the discard fits'); return cb(false); }
     function fin(sel) { act(function () { sel.forEach(function (x) { P.discard.splice(P.discard.indexOf(x), 1); resetCard(x); P.hand.push(x); leftDisc(pi, x, true); }); }); st.said.push(P.name + ' returned ' + sel.map(function (x) { return DD(x).full; }).join(', ') + ' to hand'); cb(true); }
     var n = Math.min(e.n || 1, pool.length);
@@ -4918,7 +5034,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (e.who === 'chosenPlayer' && !st.whoPicked) return pickPlayer(st, 'Whose deck?', function (w) { var e2 = {}; for (var k in e) e2[k] = e[k]; e2.who = w === st.pi ? null : 'opp'; lookFx(e2, st, optional, cb); });
     var pi = st.pi, P = S.P[e.who === 'opp' ? opp(pi) : pi], top = P.deckL.slice(0, e.amt ? Math.max(0, effN(e, st)) : e.n);
     if (!top.length) return cb(false);
-    var pk = e.pick, ok = function (u) { if (!pk) return false; var d = DD(u); if (pk.type) { var ty = pk.type.replace(/ card$/, '').split(/ or |\|/); if (!ty.some(function (t) { var w = t.split(' '), base = w[w.length - 1]; if (base === 'card') return true; if (base === 'song' ? !d.song : d.t !== base) return false; return w.length < 2 || hasCls(u, w[0]); })) return false; } if (pk.cls && !hasCls(u, pk.cls)) return false; if (pk.named && !named(u, pk.named)) return false; if (pk.sameLast && !(st.lastCard && S.cards[st.lastCard] && DD(st.lastCard).n === d.n)) return false; if (pk.maxC != null && (d.c || 0) > pk.maxC && !(pk.orNamed && named(u, pk.orNamed))) return false; if (pk.paid && !(inkReady(pi) >= playCost(pi, u) && d.t)) return false; return true; };
+    var pk = e.pick, ok = function (u) { if (!pk) return false; if (pk.any) return descFits(u, pk, st.src); var d = DD(u); if (pk.type) { var ty = pk.type.replace(/ card$/, '').split(/ or |\|/); if (!ty.some(function (t) { var w = t.split(' '), base = w[w.length - 1]; if (base === 'card') return true; if (base === 'song' ? !d.song : d.t !== base) return false; return w.length < 2 || hasCls(u, w[0]); })) return false; } if (pk.cls && !hasCls(u, pk.cls)) return false; if (pk.named && !named(u, pk.named)) return false; if (pk.sameLast && !(st.lastCard && S.cards[st.lastCard] && DD(st.lastCard).n === d.n)) return false; if (pk.maxC != null && (d.c || 0) > pk.maxC && !(pk.orNamed && named(u, pk.orNamed))) return false; if (pk.paid && !(inkReady(pi) >= playCost(pi, u) && d.t)) return false; return true; };
     if (pk && pk.all) { var allTake = top.filter(ok), e3 = {}; for (var k3 in e) e3[k3] = e[k3]; e3.pick = null; return (function () { act(function () { P.deckL.splice(0, top.length); allTake.forEach(function (u) { P.hand.push(u); }); var rest = top.filter(function (u) { return allTake.indexOf(u) < 0; }); if (e.rest === 'top') P.deckL = rest.concat(P.deckL); else if (e.rest === 'discard') rest.forEach(function (u) { P.discard.push(u); }); else P.deckL = P.deckL.concat(rest); }); noUndo(); st.said.push(P.name + ' revealed ' + plural(top.length, 'card') + ' and took ' + plural(allTake.length, 'card')); cb(true); })(); }
     function fin(take, order) {
       act(function () {
@@ -4958,6 +5074,49 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         return [{ label: 'Goes on ' + lab[dest[u]] + ' · tap to change', go: function () { dest[u] = dest[u] === 'top' ? other : 'top'; Kit.sfx('tap'); } }]; } : null,
       done: function (take) { done(take, rest === 'choose' || rest === 'topdisc' ? { top: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] === 'top'; }), bottom: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] !== 'top'; }) } : null); } });
   }
+  function discInkEachFx(e, st, cb) {
+    var pi = st.pi, order = [pi, opp(pi)], any = false;
+    function one(i) {
+      if (i >= order.length) return cb(any);
+      var w = order[i], W = S.P[w], pool = W.discard.slice();
+      function fin(sel) {
+        if (sel.length) { any = true; act(function () { sel.forEach(function (x) { W.discard.splice(W.discard.indexOf(x), 1); resetCard(x); C(x).ex = true; W.ink.push(x); leftDisc(w, x, false); inked(w); }); }); fx.ink(w, '#e3bd62'); }
+        st.said.push(W.name + ' put ' + plural(sel.length, 'card') + ' from their discard into their inkwell');
+        later(function () { one(i + 1); }, 200);
+      }
+      if (!pool.length) return one(i + 1);
+      var n = Math.min(e.n, pool.length);
+      if (W.cpu) return fin(pool.slice().sort(function (a, b) { return defValue(DD(a)) - defValue(DD(b)); }).slice(0, n));
+      privately(w, function (back) { chooseFromList(W.name + ': put up to ' + plural(n, 'card') + ' from your discard into your inkwell', pool, n, function (sel) { back(function () { fin(sel); }); }, { cancel: function () { back(function () { fin([]); }); }, skip: true, min: 1, dec: w }); });
+    }
+    one(0);
+  }
+  // The Family Scattered: the opponent picks 3 of their characters; one goes to their hand, one to the bottom of their deck, one on top
+  function scatterFx(e, st, cb) {
+    var pi = st.pi, o = opp(pi), O = S.P[o], pool = O.board.filter(isChar);
+    if (!pool.length) return cb(false);
+    var steps = [{ op: 'bounce', label: 'return to your hand' }, { op: 'bottom', label: 'put on the bottom of your deck' }, { op: 'top', label: 'put on the top of your deck' }].slice(0, Math.min(3, pool.length));
+    function put(step, x) {
+      act(function () {
+        if (step.op === 'top') { leaving[x] = 'tuck'; fx.drawn(o); leavePlay(x); resetCard(x); O.deckL.unshift(x); st.said.push(nm(x) + ' went on top of ' + O.name + '’s deck'); }
+        else hit({ op: step.op }, st, x);
+      });
+    }
+    if (O.cpu) {
+      var byVal = pool.slice().sort(function (a, b) { return cardValue(b) - cardValue(a); }).slice(0, steps.length);
+      // best back to hand, worst to the bottom, the middle one on top
+      var plan = steps.length === 3 ? [byVal[0], byVal[2], byVal[1]] : byVal;
+      steps.forEach(function (sp, i) { put(sp, plan[i]); });
+      noUndo(); return cb(true);
+    }
+    var left = pool.slice();
+    (function next(i) {
+      if (i >= steps.length) { noUndo(); return cb(true); }
+      if (left.length === 1 && i === steps.length - 1) { put(steps[i], left[0]); return next(i + 1); }
+      startPick({ title: O.name + ': choose a character to ' + steps[i].label + ' (' + (i + 1) + ' of ' + steps.length + ')', src: st.src, ok: function (x) { return left.indexOf(x) >= 0; }, must: true, dec: o,
+        done: function (x) { left.splice(left.indexOf(x), 1); put(steps[i], x); render(); later(function () { next(i + 1); }, 250); } });
+    })(0);
+  }
   function oppChooseFx(e, st, cb) {
     var pi = st.pi, o = e.self ? pi : opp(pi), O = S.P[o];
     var pool = O.board.filter(function (u) { return isChar(u) && (e.f === 'ready' ? !C(u).ex : e.f === 'exerted' ? C(u).ex : e.f === 'damaged' ? C(u).dmg > 0 : true); });
@@ -4969,7 +5128,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function modalFx(e, st, cb) {
     var pi = st.pi;
-    var opts = e.opts.map(function (list, i) { return { i: i, list: list, label: e.labels[i], ok: list.every(function (x) { return !(x.t && x.t.sel === 'chosen' && !x.may && !x.t.upTo) || legalTargets(x.t, st.src, pi).length; }) }; }).filter(function (o) { return o.ok; });
+    var opts = e.opts.map(function (list, i) { return { i: i, list: list, label: e.labels[i], ok: !(list[0] && list[0].cond && !condOK(list[0].cond, st.src, pi, Object.assign({ st: st }, st.ctx))) && list.every(function (x) { return !(x.t && x.t.sel === 'chosen' && !x.may && !x.t.upTo) || legalTargets(x.t, st.src, pi).length; }) }; }).filter(function (o) { return o.ok; });
     if (!opts.length) return cb(false);
     function go(o) { runFx(o.list, 0, st, function () { cb(true); }); }
     if (!ctlHuman(pi)) { var best = opts.map(function (o) { return { o: o, v: cpuPlanVal(o.list, st.src, pi) }; }).sort(function (a, b) { return b.v - a.v; })[0]; if (e.may && best.v <= 0) return cb(false); return go(best.o); }
@@ -5121,7 +5280,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     switch (e.op) {
       case 'draw': return e.who === 'opp' ? -1 : (P.deckL.length > n + 4 ? 1.3 * n : -1) * (e.who === 'both' ? 0.3 : 1);
       case 'discard': return e.who === 'opp' ? 0.8 * n : -0.6 * n;
-      case 'lore': return n > 0 ? 2.3 * n : 2 * Math.min(-n, O.lore);
+      case 'lore': if (e.who === 'both') return n > 0 ? 0 : 2 * (Math.min(-n, O.lore) - Math.min(-n, P.lore)); if (e.who === 'opp') return -2.3 * n; return n > 0 ? 2.3 * n : 2 * Math.min(-n, O.lore);
+      case 'enterEx': { var rest = (st.ab && st.ab.fx || []).filter(function (x) { return x !== e; }); return rest.length && cpuPlanVal(rest, st.src, pi) > 0.6 ? 1 : -1; }
+      case 'discInkEach': return 1.2;
+      case 'scatter': return 2;
+      case 'discShuffleAll': return 0.2;
       case 'inkTop': return P.ink.length < 8 ? 1.2 : 0.2;
       case 'costLess': return 0.3;
       case 'payInk': return -0.4 * n;
@@ -5237,7 +5400,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // A changed stat in a line of text: its mark, then the change, green when it goes up and red when it goes down
   function sv(k, name, html, dir) { return '<span class="sv' + (dir > 0 ? ' sv-up' : dir < 0 ? ' sv-dn' : '') + '">' + si(k, name) + html + '</span>'; }
   function chalPreview(a, t) {
-    var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
+    var loc = isLoc(t), dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
     var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
     return { killT: killT, killA: killA,
       // willpower before → after, behind its mark ("Druun ⛉ 3→1"); HTML
@@ -5245,7 +5408,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + sv('w', 'Willpower', lA + '→' + (lA - dD), -1) : esc(nm(a)) + ' unhurt' };
   }
   function challengeScore(a, t) {
-    var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
+    var loc = isLoc(t), dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
     var killT = dA > 0 && C(t).dmg + dA >= WP(t), killA = dD > 0 && C(a).dmg + dD >= WP(a);
     var vT = loc ? LORE(t) * 2.6 + 1 : cardValue(t), vA = cardValue(a);
     var sc = (killT ? vT + 0.6 : dA * (loc ? 0.5 : 0.25)) - (killA ? vA : dD * 0.15) - questValue(a) * 0.55;
@@ -5727,7 +5890,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     S.cpuN = (S.cpuN || 0) + 1;
     var pi = S.cur, a = S.cpuN > 60 ? null : cpuChoose(pi);
     if (!a) { S.cpuN = 0; endTurn(); return; }
-    if (a.k === 'ab') { cpuShow(a.u, 'Ability', 'Used ' + abTitle(a.u, a.ab), abTitle(a.u, a.ab)); useAb(a.u, a.ab, true); }
+    if (a.k === 'ab') { if (humans() > 0 || S.mode === 'online') cpuShow(a.u, 'Ability', 'Used ' + abTitle(a.u, a.ab), abTitle(a.u, a.ab)); useAb(a.u, a.ab, true); }
     else runAction(a, true);
     if (S && S.phase === 'play') later(cpuStep, 820 + Math.random() * 300);
   }
@@ -7789,6 +7952,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       abs(u).forEach(function (a) { if (a.kind === 'static' && a.ok && a.fx && condOK(a.cond, u, pi)) a.fx.forEach(function (e) {
         if (e.op !== 'altPlay') return;
         if (e.exItems) { var its = S.P[pi].board.filter(function (x) { return DD(x).t === 'item' && !C(x).ex; }); add('Play free · exert ' + e.exItems + ' items', its.length >= e.exItems && !playBlocked(pi, u) && !playLocked(pi, u), '', function () { act(function () { its.slice(0, e.exItems).forEach(function (x) { C(x).ex = true; exertEv(x); }); }); runAction({ k: 'play', u: u, o: { free: true } }); }); }
+        if (e.discBottom) { var db2 = S.P[pi].discard.filter(function (x) { var dx = DD(x); return dx.t === e.discBottom.type && (!e.discBottom.cls || hasCls(x, e.discBottom.cls)); }); add('Play free · ' + (e.discBottom.cls ? e.discBottom.cls + ' ' : '') + e.discBottom.type + ' from discard to deck bottom', db2.length > 0 && !playBlocked(pi, u) && !playLocked(pi, u), db2.length ? '' : 'No ' + (e.discBottom.cls || '') + ' ' + e.discBottom.type + ' in your discard.', function () { chooseFromList('Put which card on the bottom of your deck to play ' + d.n + ' for free?', db2, 1, function (sel) { if (!sel[0]) return; var P2 = S.P[pi]; act(function () { P2.discard.splice(P2.discard.indexOf(sel[0]), 1); resetCard(sel[0]); P2.deckL.push(sel[0]); leftDisc(pi, sel[0], false); }); runAction({ k: 'play', u: u, o: { free: true } }); }, { skip: true, cancel: function () {} }); }); }
         if (e.sacItem) { var it2 = S.P[pi].board.filter(function (x) { return DD(x).t === 'item'; }); add('Play free · banish an item', it2.length > 0 && !playBlocked(pi, u) && !playLocked(pi, u), '', function () { startPick({ title: 'Banish which item to play ' + d.n + ' for free?', ok: function (x) { return it2.indexOf(x) >= 0; }, skip: 'Cancel', cancel: function () {}, done: function (x) { act(function () { banishCard(x, {}); }); runAction({ k: 'play', u: u, o: { free: true } }); } }); }); }
       }); });
     }
@@ -7800,9 +7964,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     if (my && z.z === 'board') {
       if (d.t === 'character') {
-        add('Quest · +' + LORE(u) + ' lore', canQuest(u), c.ex ? 'Exerted.' : !c.dry ? 'Drying: it can quest next turn.' : hasKw(u, 'reckless') ? 'Reckless characters can’t quest.' : cant(u, 'quest') ? 'Can’t quest right now.' : '', function () { runAction({ k: 'quest', u: u }); }, { primary: true });
+        var qTax = taxOf(u, 'quest'), cTax = taxOf(u, 'challenge');
+        add('Quest · +' + LORE(u) + ' lore' + (qTax ? ' · pay ' + qTax + ' ink' : ''), canQuest(u), c.ex ? 'Exerted.' : !c.dry && !staticOp(u, 'questDry') ? 'Drying: it can quest next turn.' : qTax && inkReady(pi) < qTax ? 'Needs ' + qTax + ' ink to quest.' : hasKw(u, 'reckless') ? 'Reckless characters can’t quest.' : cant(u, 'quest') ? 'Can’t quest right now.' : '', function () { runAction({ k: 'quest', u: u }); }, { primary: true });
         var ds = canChallenger(u) ? defenders(u) : [];
-        add('Challenge', canChallenger(u) && ds.length > 0, '', function () { humanChallenge(u); });
+        add('Challenge' + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u) && ds.length > 0, cTax && inkReady(pi) < cTax && !c.ex ? 'Needs ' + cTax + ' ink to challenge.' : '', function () { humanChallenge(u); });
         if (S.P[pi].board.some(isLoc)) add('Move to a location', S.P[pi].board.some(function (l) { return canMove(u, l); }), '', function () { humanMove(u); });
         if (d.K.boost) add('Boost · ' + d.K.boost + ' ink', canBoost(u), '', function () { runAction({ k: 'boost', u: u }); });
       }
@@ -7880,12 +8045,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return f;
   }
   function feedLine(f, p, verb, text) {
+    text = youFix(text);
     var ev = $('.lzf-ev', f);
     ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + fxHTML(text) + '</span>' }));
     while (ev.children.length > 3) ev.removeChild(ev.firstChild);
     var ov = f.closest('.lz'); if (ov) requestAnimationFrame(function () { ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
   }
+  // every message the game shows goes through the same grammar fix
+  if (!Kit._youWrapped) { Kit._youWrapped = 1; ['toast', 'callout'].forEach(function (k) { var f = Kit[k]; Kit[k] = function (m) { var a = [].slice.call(arguments); a[0] = youFix(m); return f.apply(Kit, a); }; }); }
   function ticker(p, verb, text) {
+    text = youFix(text);
     var lf = lzFeed(); if (lf) { feedLine(lf, p, verb, text); return; }
     var open = $('.lz.reveal .rv-head');
     if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + fxHTML(text) }), open.firstChild); return; }
