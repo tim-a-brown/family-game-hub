@@ -270,6 +270,27 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .slot.flash .lc{animation:flash .6s ease;}
 @keyframes flash{30%{filter:brightness(2) saturate(1.4);}}
 .slot.hitd .lc{animation:hit .45s ease;}
+/* Card moves with character */
+.slot.revive .lc{animation:revive 1.05s ease-out;}
+@keyframes revive{0%{box-shadow:0 0 0 2px #7dffa6,0 0 26px 8px rgba(125,255,166,.75);filter:brightness(1.5) saturate(1.2);}60%{box-shadow:0 0 0 2px rgba(246,225,168,.8),0 0 16px 4px rgba(246,225,168,.45);}100%{box-shadow:0 4px 10px rgba(0,0,0,.45);filter:none;}}
+.slot.tucked .lc{animation:tucked .7s ease-out;}
+@keyframes tucked{0%{transform:translateY(-6px);}35%{transform:translateY(3px);box-shadow:0 0 0 2px #f6e1a8,0 0 18px rgba(246,225,168,.7);}100%{transform:none;}}
+.ucount.pop{animation:upop .5s cubic-bezier(.3,1.8,.5,1);}
+@keyframes upop{0%{transform:scale(.4);}100%{transform:scale(1);}}
+[data-z^="disc-"].thud{animation:thud .42s ease-out;}
+@keyframes thud{0%{transform:scale(1);}30%{transform:scale(.9) translateY(3px);}70%{transform:scale(1.06);}100%{transform:none;}}
+.flyer.casting{filter:drop-shadow(0 0 14px var(--ic)) drop-shadow(0 0 30px var(--ic)) brightness(1.15);}
+.flyer.lback-face .lc{filter:brightness(.6);}
+.mill-c .lback{position:absolute;inset:0;border-radius:5px;box-shadow:0 3px 8px rgba(0,0,0,.5);}
+.slot.sway{animation:sway 1.2s ease-in-out;}
+@keyframes sway{0%,100%{transform:none;}20%{transform:rotate(-4deg) translateY(-3px);}45%{transform:rotate(4deg) translateY(-5px);}70%{transform:rotate(-3deg) translateY(-2px);}}
+.slot.hop{animation:hop .5s cubic-bezier(.3,1.6,.5,1);}
+@keyframes hop{0%,100%{transform:none;}40%{transform:translateY(-14px) scale(1.04);}}
+.slot.arrive .lc{animation:arrive .8s ease-out;}
+@keyframes arrive{0%{box-shadow:0 0 0 2px #f6e1a8,0 0 24px 6px rgba(246,225,168,.7);}100%{box-shadow:0 4px 10px rgba(0,0,0,.45);}}
+.trail{position:fixed;z-index:240;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;pointer-events:none;background:#fff8e0;box-shadow:0 0 8px 3px var(--ic,#f6e1a8);opacity:0;animation:trail .85s ease-out both;}
+@keyframes trail{0%{opacity:0;transform:scale(.3);}25%{opacity:1;transform:scale(1.1);}100%{opacity:0;transform:scale(.6);}}
+@media (prefers-reduced-motion:reduce){.slot.revive .lc,.slot.tucked .lc,.slot.sway,.slot.hop,.slot.arrive .lc,.trail,[data-z^="disc-"].thud{animation:none!important;}}
 @keyframes hit{20%{transform:translateX(-4px) rotate(var(--rot,0deg));}40%{transform:translateX(4px) rotate(var(--rot,0deg));}60%{transform:translateX(-2px) rotate(var(--rot,0deg));}}
 /* Overlay: name + stats, readable at any size */
 .ov{position:absolute;left:0;right:0;bottom:0;padding:calc(var(--cu) * .03) calc(var(--cu) * .03) calc(var(--cu) * .025);
@@ -4419,7 +4440,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'mill': {
         if (e.who === 'chosenPlayer' && !st.whoPicked) return pickPlayer(st, 'Whose deck?', function (w) { var e2 = {}; for (var k in e) e2[k] = e[k]; e2.who = w === pi ? 'me' : 'opp'; applyAuto(e2, st, cb, optional); });
         var mw = e.who === 'opp' ? [opp(pi)] : e.who === 'both' ? [pi, opp(pi)] : [pi], moved = 0;
-        act(function () { mw.forEach(function (w) { var W = S.P[w], k = 0; for (; k < e.n && W.deckL.length; k++) { var x = W.deckL.shift(); resetCard(x); W.discard.push(x); st.lastCard = x; moved++; } st.said.push(W.name + ' put ' + plural(k, 'card') + ' from the top of their deck into their discard'); fx.drawn(w); }); });
+        act(function () { mw.forEach(function (w) { var W = S.P[w], k = 0; for (; k < e.n && W.deckL.length; k++) { var x = W.deckL.shift(); resetCard(x); W.discard.push(x); st.lastCard = x; moved++; } st.said.push(W.name + ' put ' + plural(k, 'card') + ' from the top of their deck into their discard'); fx.drawn(w); fx.mill(w, k); }); });
         noUndo(); return cb(moved > 0);
       }
       case 'drawTo': {
@@ -5640,10 +5661,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       switch (a.k) {
         case 'ink': leaving[a.u] = 'ink'; A.ink(pi, a.u); Kit.sfx('flip'); fx.ink(pi, INKC[inkOf(d)[0]] || '#e3bd62'); inked(pi); break;
         case 'play':
+          if (d.t === 'action') leaving[a.u] = 'cast';
           A.play(pi, a.u, a.o || {});
           Kit.sfx(a.o && a.o.sing ? 'good' : 'deal');
           if (d.t !== 'action') fx.summon(a.u, !!(a.o && a.o.shift));
           if (d.song) fx.notes(a.o && a.o.sing);
+          if (a.o && a.o.shift) fx.shiftDrop(a.u);
           if (d.t === 'action' && d.A && d.A[0]) Q.push({ src: a.u, ab: d.A[0], pi: pi, ctx: { sang: (a.o && a.o.sing || []).length } });
           emit('play', { u: a.u, shifted: !!(a.o && a.o.shift), base: a.o && a.o.shift, sing: a.o && a.o.sing });
           // the action resolves before anything it set off
@@ -5657,7 +5680,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           Kit.sfx('whoosh'); fx.clash(a.u, a.t, ra, rt, res);
           emit('chal', { u: a.u, t: a.t, out: res.banished, tWasDamaged: tWasDamaged, aWasDamaged: aWasDamaged, dt: res.dt });
           break;
-        case 'move': A.move(pi, a.u, a.t); Kit.sfx('whoosh'); emit('moved', { u: a.u, from: S.moveFrom }); break;
+        case 'move': A.move(pi, a.u, a.t); Kit.sfx('whoosh'); fx.travel(a.u, a.t); emit('moved', { u: a.u, from: S.moveFrom }); break;
         case 'boost': A.boost(pi, a.u); Kit.sfx('flip'); break;
       }
     });
@@ -6484,8 +6507,35 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       runeAt(c, Math.max(r.width, r.height) * 1.45, shift ? '#f6e1a8' : col);
       for (var i = 0; i < 10; i++) { var a = Math.random() * Math.PI * 2, d = r.height * (0.65 + Math.random() * 0.3); mote(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, -Math.cos(a) * d, -Math.sin(a) * d, col, i * 30, 520); }
     }); },
+    // Shift: the new card slams down on the one beneath, and the table shakes
+    shiftDrop: function (u) { fxq.push(function () {
+      var s = slotEl(u); if (!s || calm()) return;
+      if (s.animate) s.animate([{ transform: 'translateY(-46px) scale(1.25)', opacity: 0.4 }, { transform: 'translateY(4px) scale(.97)', opacity: 1, offset: 0.7 }, { transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.5,0,.3,1)' });
+      setTimeout(function () { var bd = s.closest('.lp-board'); pulse(bd, 'shake', 400); var r = s.getBoundingClientRect(); spray({ x: r.left + r.width / 2, y: r.bottom - 6 }, '#f6e1a8', 12, 60, 0); Kit.haptic('medium'); Kit.sfx('clash'); }, 330);
+    }); },
+    // Milled: cards flick off the top of the deck one after another and land on the discard pile
+    mill: function (pi, n) { if (n > 0) fxq.push(function () {
+      var dk = $('.lp [data-z="deck-' + pi + '"]'), ds = $('.lp [data-z="disc-' + pi + '"]'); if (!dk || !ds || calm()) return;
+      var a = dk.getBoundingClientRect(), b = ds.getBoundingClientRect();
+      for (var i = 0; i < Math.min(n, 6); i++) (function (i) {
+        var g = el('div', { class: 'flyer mill-c' }, [el('i', { class: 'lback' })]); g.style.cssText = 'position:fixed;left:' + a.left + 'px;top:' + a.top + 'px;width:' + a.width + 'px;height:' + a.height + 'px;z-index:250;';
+        document.body.appendChild(g);
+        var dx = b.left - a.left, dy = b.top - a.top;
+        if (g.animate) g.animate([{ transform: 'none' }, { transform: 'translate(' + dx * 0.5 + 'px,' + (dy - 46) + 'px) rotate(' + (90 + i * 25) + 'deg) scale(1.15)', offset: 0.5 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (180 + i * 8) + 'deg)' }], { duration: 420, delay: i * 110, easing: 'cubic-bezier(.45,0,.4,1)', fill: 'both' });
+        setTimeout(function () { g.remove(); pulse(ds, 'thud', 420); Kit.sfx('flip'); }, 430 + i * 110);
+      })(i);
+    }); },
+    // Moving to a location: a trail of light from the character to the location, a hop, and the location answers
+    travel: function (u, loc) { fxq.push(function () {
+      var a = rectOf(u), b = rectOf(loc); if (!a || !b || calm()) return;
+      var A = mid(a), B = mid(b), col = inkColor(loc);
+      for (var i = 1; i <= 7; i++) { var t = i / 8, dot = el('i', { class: 'trail' }); dot.style.setProperty('--ic', col); place(dot, A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t - Math.sin(t * Math.PI) * 30); dot.style.animationDelay = (i * 45) + 'ms'; document.body.appendChild(dot); setTimeout((function (x) { return function () { x.remove(); }; })(dot), 900 + i * 45); }
+      pulse(slotEl(u), 'hop', 500);
+      setTimeout(function () { var ls = slotEl(loc); pulse(ls, 'arrive', 800); runeAt(B, Math.max(b.width, b.height) * 1.2, col); }, 380);
+    }); },
     // A song: notes rise from whoever sang it
     notes: function (us) { fxq.push(function () {
+      (us || []).forEach(function (x) { pulse(slotEl(x), 'sway', 1200); });
       var from = (us && us.length ? us.map(rectOf).filter(Boolean) : []); if (!from.length) { var m = $('.lp-mid'); if (m) from = [m.getBoundingClientRect()]; }
       from.forEach(function (r, j) { for (var i = 0; i < 4; i++) {
         var n = el('div', { class: 'note', html: NOTE_SVG }), x = r.left + r.width * (0.25 + Math.random() * 0.5), y = r.top + r.height * 0.45, sw = (Math.random() < 0.5 ? -1 : 1) * (14 + Math.random() * 12);
@@ -6581,6 +6631,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var sc = Math.max(0.3, Math.min(2, from.width / r.width));
       if (!b) sc = Math.min(sc, 0.6);
       var spin = leaving[u] === 'bounce' ? ' rotate(-540deg)' : ''; delete leaving[u];
+      // where it came from gives it a flourish: back from the discard, or taken out of the inkwell
+      var bz = before.zk[u] || '';
+      if (!calm() && /^disc-/.test(bz)) { var rv = n; setTimeout(function () { rv.classList.remove('revive'); void rv.offsetWidth; rv.classList.add('revive'); setTimeout(function () { rv.classList.remove('revive'); }, 1100); }, 80); reviveAt(from); }
+      if (!calm() && /^ink-/.test(bz)) inkRipple(from, inkColor(u));
       n.style.transition = 'none';
       n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')' + spin;
       n.style.zIndex = 20;
@@ -6594,8 +6648,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (now[u] || !S.cards[u]) return;
       var b = before.u[u];
       if (dissolving[u]) { var dl = dissolving[u]; delete dissolving[u]; burn(b, dl > 1 ? dl : 0); return; }
-      var zk = zoneKey(u), tn = zk && $('.lp [data-z="' + zk + '"]'), lv = leaving[u]; delete leaving[u]; if (!tn) return;
+      var zk = zoneKey(u), tn = zk && $('.lp [data-z="' + zk + '"]'), lv = leaving[u]; delete leaving[u];
+      var zz = zoneOf(u), bz2 = before.zk[u] || '';
+      // under another card (Boost and the like): it slides beneath that card
+      if (zz && zz.z === 'under') { var host = slotEl(zz.host); if (host && !calm()) { tuckUnder(b, host); return; } }
+      if (!tn) return;
       var tr = tn.getBoundingClientRect();
+      if (!calm() && /^disc-/.test(zk)) {
+        if (lv === 'cast') { castAction(b, tr, inkColor(u)); return; }
+        if (/^deck-/.test(bz2)) { tossTo(b, tr, millN++ * 70, true); setTimeout(function () { millN = 0; }, 600); return; }
+        tossTo(b, tr, 0, false); return;
+      }
       var g = b.n.cloneNode(true); g.className = b.n.className + ' flyer'; g.removeAttribute('data-uid');
       g.style.cssText = 'position:fixed;left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;margin:0;transition:transform .45s cubic-bezier(.4,0,.2,1),opacity .45s;z-index:250;' + (b.n.style.getPropertyValue('--cu') ? '' : '');
       var cu = b.cu || getComputedStyle(b.n).getPropertyValue('--cu'); if (cu) g.style.setProperty('--cu', cu);
@@ -6607,6 +6670,52 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       setTimeout(function () { g.remove(); }, 480);
     });
   }
+  // ── Card moves with character ──
+  var millN = 0;
+  function ghostOf(b, z) {
+    var g = b.n.cloneNode(true); g.className = b.n.className + ' flyer'; g.removeAttribute('data-uid');
+    g.style.cssText = 'position:fixed;left:' + b.r.left + 'px;top:' + b.r.top + 'px;width:' + b.r.width + 'px;height:' + b.r.height + 'px;margin:0;z-index:' + (z || 250) + ';';
+    var cu = b.cu || getComputedStyle(b.n).getPropertyValue('--cu'); if (cu) g.style.setProperty('--cu', cu);
+    document.body.appendChild(g); return g;
+  }
+  function pulse(node, cls, ms) { if (!node) return; node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); setTimeout(function () { node.classList.remove(cls); }, ms || 600); }
+  // Discarded: tossed in an arc with a spin, landing on the pile with a thump (milled cards flick off the deck in a row)
+  function tossTo(b, tr, delay, mill) {
+    var g = ghostOf(b), dx = (tr.left + tr.width / 2) - (b.r.left + b.r.width / 2), dy = (tr.top + tr.height / 2) - (b.r.top + b.r.height / 2);
+    var lift = Math.min(-40, dy * 0.5 - 70), rot = (dx >= 0 ? 1 : -1) * (mill ? 160 : 250), sc = Math.max(0.2, Math.min(0.5, tr.width / b.r.width));
+    g.style.opacity = '1';
+    if (!g.animate) { g.remove(); return; }
+    g.animate([{ transform: 'translate(0,0) rotate(0) scale(1)' }, { transform: 'translate(' + dx * 0.5 + 'px,' + lift + 'px) rotate(' + rot * 0.55 + 'deg) scale(' + (sc + 0.35) + ')', offset: 0.45 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(' + rot + 'deg) scale(' + sc + ')' }], { duration: mill ? 420 : 560, delay: delay, easing: 'cubic-bezier(.45,0,.4,1)', fill: 'both' });
+    setTimeout(function () { g.remove(); var pile = $('.lp [data-z="' + zkAt(tr) + '"]'); pulse(pile, 'thud', 420); if (!mill || !millN) Kit.sfx('flip'); }, (mill ? 420 : 560) + delay);
+  }
+  function zkAt(tr) { var best = null; $$('.lp [data-z^="disc-"]').forEach(function (n) { var r = n.getBoundingClientRect(); if (Math.abs(r.left - tr.left) < 2 && Math.abs(r.top - tr.top) < 2) best = n.dataset.z; }); return best || ''; }
+  // An action: the card rises to the middle of the table, flares in its ink, then drops into the discard
+  function castAction(b, tr, col) {
+    var g = ghostOf(b, 260), m = $('.lp-mid'), mr = m ? m.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+    var cx = mr.left + mr.width / 2, cy = mr.top + mr.height / 2, dx = cx - (b.r.left + b.r.width / 2), dy = cy - (b.r.top + b.r.height / 2);
+    var ex = (tr.left + tr.width / 2) - (b.r.left + b.r.width / 2), ey = (tr.top + tr.height / 2) - (b.r.top + b.r.height / 2);
+    g.style.setProperty('--ic', col); g.classList.add('casting');
+    if (!g.animate) { g.remove(); return; }
+    g.animate([{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(1.5)', offset: 0.35 }, { transform: 'translate(' + dx + 'px,' + (dy - 6) + 'px) scale(1.55)', offset: 0.62 },
+      { transform: 'translate(' + ex + 'px,' + ey + 'px) scale(.25) rotate(180deg)', opacity: 0.6 }], { duration: 1200, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' });
+    setTimeout(function () { runeAt({ x: cx, y: cy }, b.r.height * 2.2, col); spray({ x: cx, y: cy }, col, 14, 70, 0); Kit.sfx('good'); }, 420);
+    setTimeout(function () { g.remove(); pulse($('.lp [data-z="' + zkAt(tr) + '"]'), 'thud', 420); }, 1200);
+  }
+  // Under another card: it flies over, shrinks and slides in beneath it; the card it went under glows
+  function tuckUnder(b, host) {
+    var hr = host.getBoundingClientRect(), g = ghostOf(b, 15), dx = (hr.left + hr.width / 2) - (b.r.left + b.r.width / 2), dy = (hr.top + hr.height / 2) - (b.r.top + b.r.height / 2);
+    var sc = Math.max(0.3, Math.min(1.1, hr.width / b.r.width));
+    g.classList.add('lback-face');
+    if (!g.animate) { g.remove(); return; }
+    g.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: 'translate(' + dx + 'px,' + (dy - hr.height * 0.6) + 'px) scale(' + sc + ') rotate(-8deg)', opacity: 1, offset: 0.55 },
+      { transform: 'translate(' + (dx + 6) + 'px,' + (dy - 6) + 'px) scale(' + sc * 0.96 + ')', opacity: 0 }], { duration: 640, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' });
+    setTimeout(function () { g.remove(); pulse(host, 'tucked', 700); var cnt = $('.ucount', host); pulse(cnt, 'pop', 500); runeAt(mid(hr), Math.max(hr.width, hr.height) * 1.2, '#f6e1a8'); Kit.sfx('flip'); }, 600);
+  }
+  // Back from the discard: green-gold light lifts off the pile
+  function reviveAt(r) { if (!r) return; for (var i = 0; i < 9; i++) rise(r.left + r.width * (0.1 + Math.random() * 0.8), r.bottom, -r.height * (1.2 + Math.random()), i % 2 ? '#7dffa6' : '#f6e1a8', i * 45); Kit.sfx('good'); }
+  // Out of the inkwell: a ripple in the ink
+  function inkRipple(r, col) { if (!r) return; var w = el('div', { class: 'inksplash' }); w.style.setProperty('--ic', col); w.style.left = (r.left + r.width / 2) + 'px'; w.style.top = (r.top + r.height / 2) + 'px'; document.body.appendChild(w); setTimeout(function () { w.remove(); }, 620); }
   // Banished: the card flares, crumbles into embers and fades
   function burn(b, delay) {
     if (delay) {
