@@ -1110,6 +1110,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .cl-row.on .cl-ck{background:var(--gilt);box-shadow:none;}
 .cl-ck svg{width:16px;height:16px;}
 html.lorc .k-sheet .lp-li.cl-row.on{box-shadow:inset 0 0 0 2px var(--gilt),0 0 14px rgba(227,189,98,.25);}
+.dk-opt.dk-off{opacity:.45;filter:saturate(.3);cursor:default;}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
@@ -3474,7 +3475,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return Math.max(0, n);
   }
   function boardOp(pi, op) { var hit = null; (pi == null ? inPlayAll() : S.P[pi].board).forEach(function (x) { if (!hit) hit = staticOp(x, op); }); return hit; }
-  function needLore(pi) { var e = boardOp(opp(pi), 'needLore'); return e ? e.n : WIN; }
+  // Lore to win: 20 (the standard game) or 50 (a long game, picked in setup). Cards that raise it (Donald Duck's
+  // "opponents need 25") raise it by the same amount in a long game
+  function goalLore() { var g = S && S.cfg && S.cfg.options ? +S.cfg.options.goal : 0; return g === 50 ? 50 : WIN; }
+  function needLore(pi) { var e = boardOp(opp(pi), 'needLore'), g = goalLore(); return e ? e.n + (g - WIN) : g; }
   function exertEv(u) { if (S.cards[u]) emit('exerted', { u: u }); }
   function dealDamage(u, n) {
     if (cant(u, 'dmg') || (clashing && cant(u, 'chalDmg')) || (!clashing && cant(u, 'dmgOutsideChal'))) return 0;
@@ -5239,7 +5243,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var vT = loc ? LORE(t) * 2.6 + 1 : cardValue(t), vA = cardValue(a);
     var sc = (killT ? vT + 0.6 : dA * (loc ? 0.5 : 0.25)) - (killA ? vA : dD * 0.15) - questValue(a) * 0.55;
     // Racing: if the opponent is close to winning, removing questers matters more
-    if (killT && !loc && S.P[C(t).o].lore >= 14) sc += LORE(t) * 0.8;
+    if (killT && !loc && S.P[C(t).o].lore >= needLore(C(t).o) - 6) sc += LORE(t) * 0.8;
     return sc;
   }
   function cpuChallenge(pi) {
@@ -5328,7 +5332,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       { icon: 'swap', label: 'Flip opponents’ cards', toggle: function () { return !!flipOpp; }, onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } }
     ],
     rules:
-      '<p class="goal">Be the first to collect <b>20 lore</b>. You get lore by sending your characters on quests.</p>' +
+      '<p class="goal">Be the first to collect <b>20 lore</b> (or 50, if you chose a long game in setup). You get lore by sending your characters on quests.</p>' +
       '<p>This is the Disney Lorcana trading card game with the real cards. Play the computer, or pass the phone between two players (your hand is hidden while the other person has it).</p>' +
       '<p><b>Play online</b> (from the Lorcana menu on the home screen): two devices, each signed in with its own PIN and using its own deck. One player opens a table, the other joins. Each of you sees the table from your own side. When a card makes the other player choose something during your turn, the question pops up on their device.</p>' +
       '<h3>Your turn</h3><ol>' +
@@ -5359,7 +5363,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       '<p>A few cards have unusual wording the game can’t run yet. When one of those goes off, you see the card with its text and only the tools that fit it (for example “Deal damage” and “Draw cards”). Tap Done when you’ve followed it. The menu’s <b>Fix something by hand</b> covers anything else.</p>' +
       '<h3>Bookmarks</h3><p>Open any card, in a game, the card library or the deck builder, and tap the bookmark next to its name. In the library and deck builder, the Bookmarked chip shows just those cards. Bookmarks and saved decks go with your PIN to every device you sign in on. To share decks or back them up, use Export or import decks in the menu: it saves a simple text file with lines like “4 Elsa - Snow Queen”, and reads lists in that format from other Lorcana sites too.</p>' +
       '<h3>Decks</h3><p>A deck is at least 60 cards, from one or two inks (or more, if you make it a casual deck), with at most 4 copies of any card (same name and version). Pick a quick deck for any two inks, a random one, or build your own in the deck builder. Each player starts with 7 cards and may put any of them on the bottom of the deck once, draw that many again, and shuffle.</p>' +
-      '<h3>Winning</h3><p>First to 20 lore wins. If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
+      '<h3>Winning</h3><p>First to 20 lore wins (50 in a long game). If you must draw at the start of your turn and your deck is empty, you lose.</p>' +
       '<p class="muted">Card data and art come from Lorcast (lorcast.com). The card list is saved on this device. A copy of every card picture is kept on the site’s own Google Cloud storage, so cards keep their art even if Lorcast goes away.</p>'
   });
 
@@ -5400,7 +5404,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       players: { min: 2, max: 2, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       options: [
         { id: 'first', label: 'Who goes first', help: 'The first player skips their first draw, as in the real game.', value: 'random', choices: [
-          ['random', 'Random', 'A coin flip decides.'], ['p1', 'Player 1', 'The first name on the list goes first.'], ['p2', 'Player 2', 'The second name on the list goes first.']] }
+          ['random', 'Random', 'A coin flip decides.'], ['p1', 'Player 1', 'The first name on the list goes first.'], ['p2', 'Player 2', 'The second name on the list goes first.']] },
+        { id: 'goal', label: 'Lore to win', help: 'How much lore wins the game.', value: '20', choices: [
+          ['20', '20', 'The standard game.'], ['50', '50', 'A long game: more turns, bigger boards, more of your deck in play.']] },
+        { id: 'decks', label: 'Casual decks', help: 'Casual decks use more than two inks. They’re fun, but not allowed in standard play.', value: 'yes', choices: [
+          ['yes', 'Allowed', 'Any saved deck can be played.'], ['no', 'Not allowed', 'Only standard decks (one or two inks).']] }
       ],
       intro: 'The Disney Lorcana card game, with the real cards',
       start: 'Choose decks',
@@ -5419,10 +5427,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     cfg.players.forEach(function (p, i) { if (p.cpu) L.cpu = ch[i]; else L['s' + i] = ch[i]; });
     lsSet(LAST, L);
   }
+  function casualOK(cfg) { return !(cfg && cfg.options && cfg.options.decks === 'no'); }
   function showDeckPick(cfg, choices) {
-    tok++; ui.screen = 'decks'; closeOverlays();
+    tok++; ui.screen = 'decks'; closeOverlays(); ui.noCasual = !casualOK(cfg);
+    // a casual deck picked last time isn't allowed in this game: back to a random deck
+    choices = (choices || lastChoices(cfg)).map(function (ch) { var d = ch && ch.kind === 'saved' ? savedDecks().filter(function (x) { return x.id === ch.id; })[0] : null; return d && ui.noCasual && isCasual(d) ? { kind: 'random' } : ch; });
     document.documentElement.classList.remove('lp-on'); app.className = 'stage full';
-    choices = choices || lastChoices(cfg);
     app.innerHTML = '';
     var wrap = el('div', { class: 'dk' });
     wrap.appendChild(el('h1', { text: 'Choose Decks' }));
@@ -5471,6 +5481,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     var all = savedDecks();
     node.appendChild(el('div', { class: 'dk-h', text: 'Your decks' }));
+    if (ui.noCasual && all.some(isCasual)) node.appendChild(el('p', { class: 'muted', style: { margin: '-2px 2px 8px', 'font-size': '.85rem' }, text: 'Casual decks are turned off for this game.' }));
     // Casual (3+ ink) decks: a filter to show standard decks, casual ones, or both (changes the list in place)
     var hasCasual = all.some(isCasual), dkf = hasCasual ? lsGet('lorc_dk_filter', 'all') : 'all';
     var fr = el('div', { class: 'fchips', style: { 'margin-bottom': '8px' } });
@@ -5489,7 +5500,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       mine.forEach(function (d) {
         var pr = DB.status === 'ready' ? deckProblems(d.cards, d.casual) : [];
         var edit = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', html: Kit.icon('pencil'), 'aria-label': 'Edit ' + d.name, onclick: function (e) { e.stopPropagation(); s.close(); showBuilder(d.id, function () { reopen(); }); } });
-        list.appendChild(opt({ kind: 'saved', id: d.id }, d.name, pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual · ' : '') + deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit));
+        var blocked = ui.noCasual && isCasual(d);
+        var ob = opt({ kind: 'saved', id: d.id }, d.name, blocked ? 'Casual · not allowed in this game' : pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual · ' : '') + deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit);
+        if (blocked) { ob.disabled = true; ob.classList.add('dk-off'); }
+        list.appendChild(ob);
       });
     }
     if (hasCasual) { paintFr(); node.appendChild(fr); }
@@ -6255,14 +6269,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return out;
   }
   function loreRing(pi, drop) {
-    var L = S.P[pi].lore, r = 18, segs = '', col = L >= 15 ? '#f6e1a8' : S.P[pi].color;
+    var L = S.P[pi].lore, r = 18, segs = '', G = needLore(pi), col = L >= G - 5 ? '#f6e1a8' : S.P[pi].color, lit = Math.round(Math.min(1, L / G) * 20);
     for (var i = 0; i < 20; i++) {
       var a0 = i / 20 * 2 * Math.PI + 0.05, a1 = (i + 1) / 20 * 2 * Math.PI - 0.05;
-      segs += '<path class="tk" d="M' + (22 + r * Math.cos(a0)).toFixed(2) + ' ' + (22 + r * Math.sin(a0)).toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + (22 + r * Math.cos(a1)).toFixed(2) + ' ' + (22 + r * Math.sin(a1)).toFixed(2) + '" stroke="' + (i < L ? col : 'rgba(255,255,255,.16)') + '"/>';
+      segs += '<path class="tk" d="M' + (22 + r * Math.cos(a0)).toFixed(2) + ' ' + (22 + r * Math.sin(a0)).toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + (22 + r * Math.cos(a1)).toFixed(2) + ' ' + (22 + r * Math.sin(a1)).toFixed(2) + '" stroke="' + (i < lit ? col : 'rgba(255,255,255,.16)') + '"/>';
     }
     // within 4 of winning: the ring pulses and says how many are left
     var need = S.phase === 'play' || S.phase === 'mull' ? needLore(pi) - L : 99, near = need > 0 && need <= 4, goal = needLore(pi);
-    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of ' + goal + ' lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b>' + (near ? '<i class="near-t">' + need + ' to win</i>' : goal !== 20 ? '<i class="near-t goal">needs ' + goal + '</i>' : '') + '</button>';
+    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of ' + goal + ' lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b>' + (near ? '<i class="near-t">' + need + ' to win</i>' : goal !== goalLore() ? '<i class="near-t goal">needs ' + goal + '</i>' : '') + '</button>';
   }
   function renderStrip(host, pi, top) {
     var p = S.P[pi], turn = S.phase === 'play' && S.cur === pi, mine = pi === bottomPi();
@@ -6913,7 +6927,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     else if (k === 'disc') showDiscard(pi);
     else if (k === 'deck') { if (S.P[pi].deckL.length && boardOp(null, 'topFaceUp')) zoomDef(DD(S.P[pi].deckL[0])); else Kit.toast(S.P[pi].name + ': ' + plural(S.P[pi].deckL.length, 'card') + ' left in deck'); }
     else if (k === 'ink') Kit.toast(S.P[pi].name + ': ' + inkReady(pi) + ' of ' + S.P[pi].ink.length + ' ink ready' + (canAct() && pi === S.cur ? (S.P[pi].inked ? '. You already inked this turn.' : '. Drag a card here to ink it.') : ''));
-    else if (k === 'lore') Kit.toast(S.P[pi].name + ' has ' + S.P[pi].lore + ' of 20 lore');
+    else if (k === 'lore') Kit.toast(S.P[pi].name + ' has ' + S.P[pi].lore + ' of ' + needLore(pi) + ' lore');
   }
   function onDown(e) {
     if (e.button != null && e.button > 0) return;
@@ -9311,7 +9325,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var ref = roomCol(db).doc(netCode());
         ref.get().then(function (sn) {
           if (sn.exists && Date.now() - (sn.data().at || 0) < 12 * 3600e3 && ++tries < 6) return attempt();
-          return ref.set({ host: { name: me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat() }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
+          return ref.set({ host: { name: me.name, pin: FGHSync.pin(), dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20 }, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev })
             .then(function () { netListen(ref, 0); netWaitScreen(ref.id, true); });
         }).catch(netErr);
       })();
@@ -9338,7 +9352,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function netDeal(d) {
     if (NET.dealt) return; NET.dealt = true;
     var hd = JSON.parse(d.host.deck), gd = JSON.parse(d.guest.deck);
-    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random' } };
+    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random', goal: String(d.host.goal || 20) } };
     NET.owner = true; NET.synced = true; NET.seq = d.seq || 0;
     newGame(cfg, [{ kind: 'inline', name: hd.name, cards: hd.cards }, { kind: 'inline', name: gd.name, cards: gd.cards }]);
     NET.defs = S.defs;
@@ -9409,6 +9423,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     paint();
     wrap.appendChild(seats);
+    // the table you open plays to this much lore (whoever joins plays to the same)
+    wrap.appendChild(el('div', { class: 'dk-seat net-goal' }, [el('div', { class: 'grow' }, [el('b', { text: 'Lore to win' }), el('small', { text: 'For a table you open' })]),
+      seg([['20', '20'], ['50', '50']], String(me.goal || 20), function (v) { me.goal = +v; keep(); })]));
     var sub = function () { if (!seats.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
     DB.subs.push(sub);
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function () { netHost(me); } }));
@@ -9432,7 +9449,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           var inks = DB.status === 'ready' && dk.cards ? deckInks(dk.cards) : [];
           rooms.appendChild(el('div', { class: 'net-room' }, [
             el('span', { class: 'avatar', style: { '--c': Kit.color(1) }, text: (r.d.host.name || '?').charAt(0).toUpperCase() }),
-            el('div', { class: 'grow' }, [el('b', { text: r.d.host.name + '’s table' }), el('small', { html: (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ' · code ' + r.code) })]),
+            el('div', { class: 'grow' }, [el('b', { text: r.d.host.name + '’s table' }), el('small', { html: (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ' · code ' + r.code + (+r.d.host.goal === 50 ? ' · to 50 lore' : '')) })]),
             el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: function () { netJoin(r.code, me); } })]));
         });
       }, function (e) { rooms.innerHTML = ''; rooms.appendChild(el('p', { class: 'net-note', text: 'Couldn’t reach the tables: ' + (e.message || e) })); });
