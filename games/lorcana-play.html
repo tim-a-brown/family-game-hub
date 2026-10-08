@@ -1616,6 +1616,28 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .bld-more{grid-column:1/-1;}
 .bld-deck .list{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;padding-bottom:12px;}
 .drow{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:10px;background:rgba(255,255,255,.05);}
+.drow .odds{flex:none;min-width:44px;text-align:center;font-family:var(--display);font-size:.8rem;color:var(--gilt-2);background:rgba(227,189,98,.1);box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);border-radius:999px;padding:3px 7px;line-height:1.1;}
+.drow .odds small{display:block;font-family:var(--font);font-size:.58rem;font-weight:800;color:var(--text-3);letter-spacing:.02em;}
+.dsort{display:flex;align-items:center;gap:6px;margin:2px 2px 6px;}
+.dsort .label{margin:0;font-size:.7rem;}
+.dsort .seg{flex:1;}
+.dsort .seg button{padding:6px 4px;font-size:.72rem;}
+/* Library: press and hold a card for its menu; Select mode picks many cards at once */
+.bld.lib .pc{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+.pc.hold{transform:scale(.96);transition:transform .25s ease;}
+.pc .selk{position:absolute;inset:0;display:none;border-radius:inherit;box-shadow:inset 0 0 0 3px var(--gilt);background:rgba(20,16,41,.25);pointer-events:none;}
+.pc .selk i{position:absolute;right:6px;top:6px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--gilt);color:#2b1a00;}
+.pc .selk i .ico{width:16px;height:16px;}
+.bld.selmode .pc .selo{position:absolute;right:6px;top:6px;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.85);background:rgba(0,0,0,.35);pointer-events:none;}
+.pc.sel .selk{display:block;}
+.selbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b,0px) + 12px);z-index:60;width:min(560px,calc(100% - 24px));display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;border-radius:18px;background:rgba(28,22,52,.97);box-shadow:0 10px 30px rgba(0,0,0,.5),inset 0 0 0 1px rgba(227,189,98,.35);}
+.selbar .sb-top,.selbar .sb-acts{display:flex;align-items:center;gap:8px;}
+.selbar .sb-top b{flex:1;font-family:var(--display);font-size:1.05rem;color:var(--gilt-2);white-space:nowrap;}
+.selbar .sb-acts .btn{flex:1;min-height:42px;white-space:nowrap;}
+.selbar .sb-acts .btn-primary{flex:1.6;}
+.bld.selmode .bld-grid{padding-bottom:150px;}
+.hmenu .k-list button{width:100%;}
+
 .drow .hc{flex:none;width:24px;height:26px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;font-family:var(--display);font-size:.85rem;background:#2a2440;}
 .drow .hc.ink{background:linear-gradient(160deg,var(--gilt-2),var(--gilt) 45%,var(--gilt-3));color:#2b1a00;}
 .drow .grow{flex:1;min-width:0;line-height:1.1;border:0;background:none;color:inherit;text-align:left;padding:0;}
@@ -9403,6 +9425,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         f.marked = !f.marked; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
       } }));
       });
+      if (lib) storyChips.appendChild(el('button', { type: 'button', class: 'fchip' + (selSet ? ' on' : ''), 'aria-pressed': String(!!selSet), html: Kit.icon('check') + '<span>' + (selSet ? 'Selecting' : 'Select') + '</span>', onclick: function () { Kit.sfx('tap'); if (selSet) selEnd(); else selStart(); } }));
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
       var nrc = newCards().length;
       // New Release (while there are new cards): in the quick chips, and first among the keywords in the Filters sheet,
@@ -9605,7 +9628,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!dk.casual && inkClash(dk.cards, d)) return 'ink';
       return '';
     }
-    var LASTDK = 'lorc_last_deck', SWIPE_TIP = 'lorc_swipe_tip';
+    var LASTDK = 'lorc_last_deck', SWIPE_TIP = 'lorc_swipe_tip', DSORT = 'lorc_deck_sort';
     function deckAdder(d, done, over) {
       var node = el('div', { class: 'da' }), sh, order = null;
       function deckOk(dk, n) { return n > 0 ? deckWhy(dk, d) : ''; }
@@ -9758,6 +9781,67 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (curZoom && curZoom.list && curZoom.list.length === list.length && curZoom.list.every(function (x, k) { return x === list[k]; })) { filterBtn(); return; }
       cardZoom(idx >= 0 ? cur : list[0], list, 1e-9);
     }
+    // ── Press and hold a library card: a short menu of what you can do with it ──
+    function holdable(b, fire) {
+      var t = 0, x0 = 0, y0 = 0;
+      function stop() { clearTimeout(t); t = 0; b.classList.remove('hold'); }
+      b.addEventListener('pointerdown', function (e) { if (e.button > 0) return; x0 = e.clientX; y0 = e.clientY; b.classList.add('hold'); t = setTimeout(function () { t = 0; b.classList.remove('hold'); b._held = true; Kit.haptic('medium'); fire(); }, 480); });
+      b.addEventListener('pointermove', function (e) { if (t && (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10)) stop(); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (k) { b.addEventListener(k, function () { if (t) stop(); }); });
+      b.addEventListener('contextmenu', function (e) { e.preventDefault(); if (!b._held) { b._held = true; fire(); } });
+    }
+    function cardMenu(d, list) {
+      var node = el('div', { class: 'hmenu' }), sh, lst = el('div', { class: 'k-list' });
+      var lastId = lsGet(LASTDK, ''), last = savedDecks().filter(function (x) { return x.id === lastId; })[0];
+      node.appendChild(el('div', { class: 'da-head' }, [el('span', { class: 'da-art', html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.n }), d.v ? el('i', { text: d.v }) : null])]));
+      function item(ic, t, fn) { lst.appendChild(el('button', { type: 'button', onclick: function () { sh.close(); setTimeout(fn, 60); } }, [el('span', { class: 'ic', html: ic.charAt(0) === '<' ? ic : Kit.icon(ic) }), el('span', { text: t })])); }
+      if (last) item('plus', 'Add one to ' + last.name + ' (' + copiesByFull(last.cards, d.full) + ' in it)', function () { quickAdd(d); });
+      item(DECK_ICO, last ? 'Add to another deck…' : 'Add to a deck…', function () { deckAdder(d, function () { paintGrid(true); }); });
+      item('bookmark', isMarked(d) ? 'Remove bookmark' : 'Bookmark', function () { toggleMark(d); Kit.toast(isMarked(d) ? 'Bookmarked ' + d.n : 'Bookmark removed'); paintChips(); paintGrid(true); });
+      item('check', 'Select this card and more…', function () { selStart(d); });
+      item('eye', 'View card', function () { cardZoom(d, list); });
+      node.appendChild(lst);
+      sh = Kit.sheet({ title: '', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
+    }
+    // ── Select mode: pick cards (or every card the filters show), then add one of each to a deck ──
+    var selSet = null, selBar = null;
+    function selCount() { return selSet ? Object.keys(selSet).length : 0; }
+    function selStart(d) { selSet = {}; if (d) selSet[d.id] = 1; wrap.classList.add('selmode'); paintChips(); paintGrid(true); selPaint(); }
+    function selEnd() { selSet = null; wrap.classList.remove('selmode'); if (selBar) { selBar.remove(); selBar = null; } paintChips(); paintGrid(true); }
+    function selToggle(d, b) { if (selSet[d.id]) delete selSet[d.id]; else selSet[d.id] = 1; b.classList.toggle('sel', !!selSet[d.id]); Kit.sfx('tap'); selPaint(); }
+    function selPaint() {
+      if (!selSet) return;
+      if (!selBar) { selBar = el('div', { class: 'selbar', role: 'region', 'aria-label': 'Selected cards' }); wrap.appendChild(selBar); }
+      var n = selCount(), all = DB.unique.filter(matches), allOn = all.length && all.every(function (d) { return selSet[d.id]; });
+      selBar.innerHTML = '';
+      selBar.appendChild(el('div', { class: 'sb-top' }, [el('b', { text: n ? plural(n, 'card') + ' selected' : 'Tap cards to select them' }),
+        el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Done', onclick: selEnd })]));
+      selBar.appendChild(el('div', { class: 'sb-acts' }, [
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: allOn ? 'Clear' : 'Select all ' + all.length.toLocaleString(), title: allOn ? 'Unselect everything' : 'Every card the search and filters show, not just the ones on screen', onclick: function () { if (allOn) selSet = {}; else all.forEach(function (d) { selSet[d.id] = 1; }); Kit.sfx('tap'); paintGrid(true); selPaint(); } }),
+        el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add 1 each to a deck', disabled: !n, onclick: selAdd })]));
+    }
+    function selAdd() {
+      var picked = Object.keys(selSet).map(function (id) { return DB.byId[id]; }).filter(Boolean);
+      if (!picked.length) return;
+      var node = el('div', { class: 'dk-grid' }), sh;
+      function into(dk, isNew) {
+        sh.close();
+        var before = JSON.stringify(dk.cards), cards = {}; for (var k in dk.cards) cards[k] = dk.cards[k];
+        var all = picked.slice(), added = 0, full = 0;
+        var go = function () {
+          all.forEach(function (d) { if (copiesByFull(cards, d.full) >= copyLimit(d)) { full++; return; } cards[d.id] = (cards[d.id] || 0) + 1; added++; });
+          dk.cards = cards; putDeck(dk); lsSet(LASTDK, dk.id); Kit.sfx(added ? 'good' : 'bad');
+          notePill('dk', [dk.name, 'Added ' + plural(added, 'card') + (full ? ' · ' + full + ' already at the limit' : '')], added && !isNew ? [['Undo', function () { var k2 = savedDecks().filter(function (x) { return x.id === dk.id; })[0]; if (!k2) return; k2.cards = JSON.parse(before); putDeck(k2); Kit.sfx('tap'); paintGrid(true); }]] : []);
+          selEnd();
+        };
+        var test = {}; for (var k1 in cards) test[k1] = cards[k1]; picked.forEach(function (d) { test[d.id] = (test[d.id] || 0) + 1; });
+        if (!dk.casual && deckInks(test).length > 2) return askCasual(dk).then(function (y) { if (!y) return; dk.casual = true; go(); });
+        go();
+      }
+      savedDecks().forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'dk-opt', html: (inkDots(deckInks(dk.cards)) || '') + '<span class="grow">' + esc(dk.name) + '</span><small>' + deckCount(dk.cards) + ' cards</small>', onclick: function () { into(dk); } })); });
+      node.appendChild(el('button', { type: 'button', class: 'dk-opt', html: Kit.icon('plus') + '<span class="grow">New deck with these ' + picked.length + '</span>', onclick: function () { into({ id: 'd' + Date.now().toString(36), name: 'New deck', cards: {} }, true); } }));
+      sh = Kit.sheet({ title: 'Add ' + plural(picked.length, 'card') + ' to…', node: node, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+    }
     function paintGrid(keepScroll) {
       deckSet = null;
       var st = grid.scrollTop, list = sortCards(DB.unique.filter(matches));
@@ -9777,15 +9861,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
         if (!lib) b.appendChild(plus);
-        b.addEventListener('click', function () { cardZoom(d, list); });
+        if (lib) { b.appendChild(el('span', { class: 'selo', 'aria-hidden': 'true' })); b.appendChild(el('span', { class: 'selk', 'aria-hidden': 'true', html: '<i>' + Kit.icon('check') + '</i>' })); if (selSet && selSet[d.id]) b.classList.add('sel'); }
+        b.addEventListener('click', function () {
+          if (b._held) { b._held = false; return; }
+          if (selSet) { selToggle(d, b); return; }
+          cardZoom(d, list);
+        });
+        if (lib) holdable(b, function () { cardMenu(d, list); });
         grid.appendChild(b);
       });
       if (!list.length) grid.appendChild(el('p', { class: 'muted bld-more', text: 'No cards match these filters.' }));
       if (list.length > lim) grid.appendChild(el('button', { type: 'button', class: 'btn btn-soft bld-more', text: 'Show more (' + (list.length - lim) + ' left)', onclick: function () { f.shown += 90; paintGrid(true); } }));
       if (keepScroll) grid.scrollTop = st;
       if (lib) search.placeholder = 'Search ' + list.length.toLocaleString() + (list.length === 1 ? ' card' : ' cards');
+      if (selSet) selPaint();
       doneText(list.length);
     }
+    // Chance of at least one of k copies among the first h cards of an n-card deck
+    function openOdds(n, k, h) { if (k <= 0) return 0; var p = 1; for (var i = 0; i < h; i++) p *= Math.max(0, n - k - i) / (n - i); return 1 - p; }
     function paintDeck() {
       var n = deckCount(deck.cards), pr = deckProblems(deck.cards, deck.casual), cs = deckCards(deck.cards);
       if (lib) return;
@@ -9800,11 +9893,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var ink = cs.reduce(function (a, x) { return a + (x.d.k ? x.n : 0); }, 0), chars = cs.reduce(function (a, x) { return a + (x.d.t === 'character' ? x.n : 0); }, 0);
       dpane.children[1].textContent = n ? ink + ' inkable · ' + chars + ' characters · ' + (n - chars) + ' other' : 'Tap + on a card to add it. 60 cards, 1 or 2 inks, up to 4 of each.';
       dlist.innerHTML = '';
+      // sort the list; each row shows the odds the next card you draw is one of these (copies : deck size) and the chance of one in your opening 7
+      var ds = lsGet(DSORT, 'cost');
+      if (cs.length) dlist.appendChild(el('div', { class: 'dsort' }, [el('span', { class: 'label', text: 'Sort' }), seg([['cost', 'Cost'], ['name', 'Name'], ['qty', 'Copies'], ['type', 'Type'], ['ink', 'Ink']], ds, function (v) { lsSet(DSORT, v); paintDeck(); })]));
+      var tyO = { character: 0, action: 1, item: 2, location: 3 };
+      cs = cs.slice().sort(function (a, b) {
+        var A = a.d, B = b.d, byName = A.full.localeCompare(B.full), byCost = (A.c || 0) - (B.c || 0);
+        if (ds === 'name') return byName;
+        if (ds === 'qty') return b.n - a.n || byCost || byName;
+        if (ds === 'type') return (tyO[A.t] - tyO[B.t]) || (A.song === B.song ? 0 : A.song ? 1 : -1) || byCost || byName;
+        if (ds === 'ink') return INKS.indexOf(inkOf(A)[0]) - INKS.indexOf(inkOf(B)[0]) || byCost || byName;
+        return byCost || byName;
+      });
       cs.forEach(function (x) {
-        var d = x.d;
+        var d = x.d, odds = n ? Math.round(n / x.n) : 0, open7 = n ? Math.round(openOdds(n, x.n, 7) * 100) : 0;
         dlist.appendChild(el('div', { class: 'drow' }, [
           el('span', { class: 'hc' + (d.k ? ' ink' : ''), text: String(d.c) }),
           el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d, cs.map(function (y) { return y.d; })); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + ' ' + esc((d.v ? d.v + ' · ' : '') + (d.song ? 'Song' : d.t)) })]),
+          el('span', { class: 'odds', title: 'Next draw: 1 in ' + odds + ' · in your opening 7 cards: ' + open7 + '%', 'aria-label': 'Odds 1 in ' + odds + ', ' + open7 + ' percent in the opening hand', html: '1:' + odds + '<small>' + open7 + '% open</small>' }),
           el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }), el('button', { type: 'button', text: '+', 'aria-label': 'Add one', onclick: function () { addCard(d, 1); } })])
         ]));
       });
