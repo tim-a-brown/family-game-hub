@@ -1005,6 +1005,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lp-list{display:flex;flex-direction:column;gap:6px;}
 /* Status tokens on a card's details (Ready, Exerted, Drying, damage, effects) */
 .stts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.lz-head .lz-ics:has(.stts-top){align-self:flex-start;margin:2px 0 0 auto;}
+.lz-ics .stts-top{flex-direction:column;align-items:flex-end;gap:5px;margin:0;}
+.lz-ics .stts-top .stt{padding:3px 10px 3px 4px;font-size:.74rem;white-space:nowrap;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+.lz-ics .stts-top .stt i{width:20px;height:20px;}
+.lz-ics .stts-top .stt i svg{width:13px;height:13px;}
 .stt{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 5px;border-radius:999px;font-size:.78rem;font-weight:800;letter-spacing:.01em;line-height:1.2;color:#efe6ff;
   background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);}
 .stt i{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-style:normal;background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 1px currentColor;}
@@ -6734,9 +6739,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function stt(kind, ico, text, style) { return '<span class="stt ' + kind + '"' + (style ? ' style="' + style + '"' : '') + '><i>' + (STT_ICO[ico] || ico) + '</i>' + text + '</span>'; }
   function statusHTML(u, z) {
     if (!z || z.z !== 'board') return '';
-    var c = C(u), d = DD(u), h = '';
-    if (d.t === 'character' || d.t === 'item') h += c.ex ? stt('s-exd', 'ex', 'Exerted') : stt('s-rdy', 'ready', 'Ready');
-    if (d.t === 'character' && !c.dry) h += stt('s-wet', 'drop', hasKw(u, 'rush') ? 'Drying · Rush: can challenge' : 'Drying · can’t quest, challenge or sing yet', '--ic:' + inkColor(u));
+    var c = C(u), d = DD(u), h = '', top = '';
+    // Ready / exerted / drying sit up in the top-right corner of the details (where Add to deck is in the library);
+    // press and hold for what they mean
+    if (d.t === 'character' || d.t === 'item') top += c.ex ? stt('s-exd', 'ex', 'Exerted') : stt('s-rdy', 'ready', 'Ready');
+    if (d.t === 'character' && !c.dry) top += stt('s-wet', 'drop', hasKw(u, 'rush') ? 'Drying · Rush' : 'Drying', '--ic:' + inkColor(u));
     if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage · ' + Math.max(0, WP(u) - c.dmg) + ' willpower left');
     if (c.at && S.cards[c.at]) h += stt('s-loc', 'pin', 'At ' + esc(DD(c.at).full));
     if (c.under && c.under.length) h += stt('s-und', 'stack', plural(c.under.length, 'card') + ' under it');
@@ -6750,7 +6757,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var when = m.until === 'perm' ? '' : m.untilStart ? ' until ' + (S.cur === C(u).o ? 'your' : 'their') + ' next turn' : m.until > S.turn ? ' next turn' : ' this turn';
       h += stt(bad ? 's-bad' : 's-good', m.cant ? 'chain' : bad ? 'down' : 'up', esc(parts.join(', ') + when + (m.why ? ' · ' + m.why : '')));
     });
-    return h ? '<div class="stts">' + h + '</div>' : '';
+    return (top ? '<div class="stts stts-top">' + top + '</div>' : '') + (h ? '<div class="stts">' + h + '</div>' : '');
+  }
+  var STT_TIP = { 's-rdy': 'Ready: it can quest, challenge or use its abilities', 's-exd': 'Exerted: it has been used this turn. It readies at the start of its owner’s turn', 's-wet': 'Drying: played this turn, so it can’t quest, challenge or sing until next turn' };
+  function statusToCorner(ov) {
+    var st = ov && $('.stts-top', ov), ics = ov && $('.lz-head .lz-ics', ov); if (!st || !ics) return;
+    ics.insertBefore(st, ics.firstChild);
+    $$('.stt', st).forEach(function (t) { var k = Object.keys(STT_TIP).filter(function (x) { return t.classList.contains(x); })[0]; if (k) holdTip(t, k === 's-wet' && /Rush/.test(t.textContent) ? 'Drying: played this turn. It can’t quest or sing yet, but Rush lets it challenge' : STT_TIP[k]); });
   }
   function kwHelpHTML(d, u) {
     var ks = Object.keys(KWHELP).filter(function (k) {
@@ -7329,7 +7342,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var bd = boardOrder(z.pi), bi = bd.indexOf(u);
       if (bi >= 0) nav = { i: bi, n: bd.length, dir: dir || 0, go: function (step) { var j = bi + step; if (j >= 0 && j < bd.length) openZoom(bd[j], step); }, peek: function (k) { var x = bd[bi + k]; return x ? DD(x) : null; } };
     }
-    zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
+    var zov = zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
+    statusToCorner(zov);
   }
   // The computer's card, big, with what it just did across the top and a Continue button below
   // How the computer's moves are shown: a card to acknowledge, or a passing banner (fast mode / skip this turn)
