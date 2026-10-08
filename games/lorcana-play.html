@@ -73,6 +73,13 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lp-strip.turn-on .lp-who b{color:var(--gilt-2);}
 .lore{position:relative;flex:none;width:44px;height:44px;border:0;padding:0;background:none;color:#fff;}
 .lore svg{width:100%;height:100%;transform:rotate(-90deg);}
+/* a light running once round the lore ring (a bright wedge on a ring mask, spun 360° in about a third of a second) */
+.lore-sweep{position:fixed;z-index:330;border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 0deg,rgba(255,240,190,0) 0deg,rgba(255,240,190,0) 250deg,rgba(255,236,170,.95) 345deg,#fff 360deg);
+  -webkit-mask:radial-gradient(circle,transparent 58%,#000 60% 72%,transparent 74%);mask:radial-gradient(circle,transparent 58%,#000 60% 72%,transparent 74%);
+  filter:drop-shadow(0 0 4px rgba(246,220,149,.9));animation:loreSweep .32s cubic-bezier(.4,0,.6,1) forwards,loreSweepOut .2s .3s ease-out forwards;}
+@keyframes loreSweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes loreSweepOut{to{opacity:0}}
 .lore .tk{fill:none;stroke-width:5;}
 .lore.near::before{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:0 0 0 2px rgba(246,225,168,.9),0 0 14px rgba(246,200,90,.75);animation:loreNear 1.6s ease-in-out infinite;}
 .lore .near-t.goal{color:#fff;background:linear-gradient(180deg,#c0485a,#8a2232);}
@@ -7380,7 +7387,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var fx = {
     // ink drops: the droplet by the inkwell bumps, and the change floats up from it
     drops: function (pi, n) { fxq.push(function () { var r = $('.inkz[data-z="ink-' + pi + '"] .dr') || $('.inkz[data-z="ink-' + pi + '"]'); if (!r) return; r.classList.remove('bump', 'spend'); void r.offsetWidth; r.classList.add(n > 0 ? 'bump' : 'spend'); floatText(r, (n > 0 ? '+' : '−') + Math.abs(n)); }); Kit.sfx(n > 0 ? 'pop' : 'chip'); },
-    lore: function (pi, n) { if (questing) return; fxq.push(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); floatText(r, '+' + n); }); },
+    lore: function (pi, n) { if (questing) return; fxq.push(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); loreGlow(r); floatText(r, '+' + n); }); },
     hit: function (u) { if (clashing) return; fxq.push(function () { $$('.slot[data-uid="' + u + '"]').forEach(function (s) { s.classList.remove('hitd'); void s.offsetWidth; s.classList.add('hitd'); }); }); },
     banish: function (u) { Kit.haptic('heavy'); dissolving[u] = clashing ? 290 : 1; },
     // A card's ability goes off: the card glows and its ability name rises from it
@@ -7606,7 +7613,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var ring = $('.lore[data-p="' + pi + '"]'); if (!ring) return;
       var s = src && slotEl(src), a = mid(s ? s.getBoundingClientRect() : ($('.lp-mid') || ring).getBoundingClientRect()), b = mid(ring.getBoundingClientRect()), k = Math.max(1, Math.min(5, n));
       Kit.sfx('sparkle');
-      for (var i = 0; i < k; i++) flyOrb(a, b, 120 + i * 95, i === k - 1 ? function () { ring.classList.remove('bump'); void ring.offsetWidth; ring.classList.add('bump'); floatText(ring, '+' + n); Kit.sfx('good'); } : null);
+      for (var i = 0; i < k; i++) flyOrb(a, b, 120 + i * 95, i === k - 1 ? function () { ring.classList.remove('bump'); void ring.offsetWidth; ring.classList.add('bump'); loreGlow(ring); floatText(ring, '+' + n); Kit.sfx('good'); } : null);
     }); }
   };
   var clashing = false, questing = false, leaving = {};
@@ -7629,6 +7636,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function rise(x, y, dy, col, delay) { mote(x, y, (Math.random() - 0.5) * 16, dy, col, delay, 900); }
   function spray(P, col, n, dist, delay) { setTimeout(function () { for (var i = 0; i < n; i++) { var a = Math.random() * Math.PI * 2, d = dist * (0.5 + Math.random() * 0.6); mote(P.x, P.y, Math.cos(a) * d, Math.sin(a) * d + 12, col, 0, 420); } }, delay || 0); }
+  // Lore gained: a quick light runs once round the ring, then a little sparkle at the top
+  function loreGlow(ring) {
+    if (!ring || calm()) return;
+    // drawn over the ring in its own layer, so a redraw of the table can't cut it short (and measured from the ring
+    // that's on screen now: the table may have been redrawn since this one was found)
+    var live = !ring.isConnected && ring.dataset && $('.lore[data-p="' + ring.dataset.p + '"]'); if (live) ring = live;
+    var r = ring.getBoundingClientRect(); if (!r.width) return;
+    var g = el('i', { class: 'lore-sweep', 'aria-hidden': 'true' });
+    place(g, r.left - 3, r.top - 3, r.width + 6, r.height + 6); document.body.appendChild(g);
+    setTimeout(function () {
+      for (var q = 0; q < 5; q++) { var an = -Math.PI / 2 + (q - 2) * 0.5; twinkle(r.left + r.width / 2 + Math.cos(an) * r.width * 0.55, r.top + r.height / 2 + Math.sin(an) * r.height * 0.55, q * 25); }
+    }, 300);
+    setTimeout(function () { g.remove(); }, 560);
+  }
   function twinkle(x, y, delay) { setTimeout(function () { var t = el('i', { class: 'twk' }); place(t, x, y); document.body.appendChild(t); setTimeout(function () { t.remove(); }, 760); }, delay || 0); }
   function runeAt(c, size, col) { if (calm()) return; var r = el('div', { class: 'rune', html: RUNE_SVG }); r.style.setProperty('--rc', col || '#f6e1a8'); place(r, c.x - size / 2, c.y - size / 2, size, size); document.body.appendChild(r); setTimeout(function () { r.remove(); }, 1020); }
   function streaks(r, col) {
