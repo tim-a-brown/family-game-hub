@@ -17,7 +17,7 @@
 //   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}
 //   Kit.confirm(msg, {ok, danger})             -> Promise<bool>
 //   Kit.toast(msg)   Kit.callout(text)         quick feedback
-//   Kit.confetti()   Kit.sfx(name)   Kit.haptic(kind)
+//   Kit.confetti()   Kit.sfx(name, vol?)   Kit.haptic(kind)
 //   Kit.card(rank, suit, {back, cls})          playing-card element
 //   Kit.die(value)                             die element
 //   Kit.color(i)                               player colour for seat i
@@ -251,7 +251,7 @@
       })(n, i);
     });
   }
-  function playSample(name) {
+  function playSample(name, vol) {
     var list = bufs[name], a; if (!list) return false;
     var ok = []; for (var i = 0; i < list.length; i++) if (list[i]) ok.push(i);
     if (!ok.length || !(a = ctx())) return false;
@@ -260,12 +260,13 @@
     var src = a.createBufferSource(), g = a.createGain();
     src.buffer = list[k];
     src.playbackRate.value = MELODIC[name] ? 1 : 0.95 + Math.random() * 0.1;
-    g.gain.value = (GAIN[name] || 0.4) * (0.9 + Math.random() * 0.2);
+    g.gain.value = (GAIN[name] || 0.4) * (vol == null ? 1 : vol) * (0.9 + Math.random() * 0.2);
     src.connect(g); g.connect(a.destination); src.start();
     return true;
   }
   function soundsLoaded() { var o = {}; Object.keys(bufs).forEach(function (n) { o[n] = bufs[n].filter(Boolean).length; }); return o; }
-  function sfx(name) { if (!soundOn()) return; loadSounds(); try { if (!playSample(name)) (SFX[name] || SFX.tap)(); } catch (e) {} }
+  // vol: an optional 0–1 multiplier for quieter uses of a sound (the synthesized fallback skips very quiet ones)
+  function sfx(name, vol) { if (!soundOn()) return; loadSounds(); try { if (!playSample(name, vol) && !(vol != null && vol < 0.5)) (SFX[name] || SFX.tap)(); } catch (e) {} }
   // Fetch the recordings early (decoding needs no tap), so the first sound is the real one
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { if (soundOn()) setTimeout(loadSounds, 400); });
   else setTimeout(function () { if (soundOn()) loadSounds(); }, 400);
