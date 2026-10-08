@@ -10086,17 +10086,27 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function selStart(d) { selSet = {}; if (d) selSet[d.id] = 1; wrap.classList.add('selmode'); paintChips(); paintGrid(true); selPaint(); }
     function selEnd() { selSet = null; wrap.classList.remove('selmode'); if (selBar) { selBar.remove(); selBar = null; } paintChips(); paintGrid(true); }
     function selToggle(d, b) { if (selSet[d.id]) delete selSet[d.id]; else selSet[d.id] = 1; b.classList.toggle('sel', !!selSet[d.id]); Kit.sfx('tap'); selPaint(); }
-    // Select mode: drag across cards to select (or unselect) them all at once. On a touch screen a drag that starts
-    // sideways selects and an up-and-down one still scrolls; near the top or bottom edge the grid scrolls along.
+    // Select mode: drag from one card to another to select (or unselect) every card between them, in grid order,
+    // like a shift-click range (Photos-style); dragging back shrinks the range and restores the cards it leaves.
+    // On a touch screen a drag that starts sideways selects and an up-and-down one still scrolls; near the top or
+    // bottom edge the grid scrolls along.
     (function () {
       var drag = null;
       function cardAt(x, y) { var t = document.elementFromPoint(x, y), c = t && t.closest ? t.closest('.pc') : null; return c && grid.contains(c) ? c : null; }
       function mark(c) {
-        if (!c || !c._d || drag.seen.indexOf(c) >= 0) return;
-        drag.seen.push(c);
-        var on = !!selSet[c._d.id]; if (on === drag.on) return;
-        if (drag.on) selSet[c._d.id] = 1; else delete selSet[c._d.id];
-        c.classList.toggle('sel', drag.on); Kit.haptic('light'); selPaint();
+        if (!c || !c._d || c === drag.last) return;
+        drag.last = c;
+        var tiles = Array.prototype.slice.call(grid.querySelectorAll('.pc')), a = tiles.indexOf(drag.first), b = tiles.indexOf(c);
+        if (a < 0 || b < 0) return;
+        var lo = Math.min(a, b), hi = Math.max(a, b), changed = false;
+        tiles.forEach(function (t, j) {
+          if (!t._d) return;
+          var id = t._d.id, want = j >= lo && j <= hi ? drag.on : !!drag.before[id];
+          if (!!selSet[id] === want) return;
+          if (want) selSet[id] = 1; else delete selSet[id];
+          t.classList.toggle('sel', want); changed = true;
+        });
+        if (changed) { Kit.haptic('light'); selPaint(); }
       }
       function edge() {
         if (!drag || !drag.live) return;
@@ -10107,7 +10117,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       grid.addEventListener('pointerdown', function (e) {
         if (!selSet || e.button > 0) return;
         var c = cardAt(e.clientX, e.clientY); if (!c) return;
-        drag = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, first: c, on: !selSet[c._d.id], seen: [], live: false, touch: e.pointerType === 'touch' };
+        var before = {}; for (var k in selSet) before[k] = 1;
+        drag = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, first: c, last: null, before: before, on: !selSet[c._d.id], live: false, touch: e.pointerType === 'touch' };
       });
       grid.addEventListener('pointermove', function (e) {
         if (!drag) return;
