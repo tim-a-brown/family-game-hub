@@ -481,14 +481,20 @@
       b.onclick = function () { set(); b.setAttribute('aria-checked', String(!!get())); haptic('light'); };
       group(g).push(b);
     }
-    var G = 'Game';
-    if (opts.onNew) item(G, 'sparkle', 'New game', function () {
+    var G = 'Game', top = [];
+    // New game, Undo and Past games sit side by side across the top
+    function tile(ic, label, fn) {
+      top.push(el('button', { type: 'button', class: 'k-tile', onclick: function () { sfx('tap'); s.close(); fn(); } },
+        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { text: label })]));
+    }
+    if (opts.onNew) tile('sparkle', 'New game', function () {
       if (opts.confirmNew === false) return opts.onNew();
       confirmSheet('Start a new game?', { ok: 'New game', body: 'The current game will be lost.' }).then(function (ok) { if (ok) opts.onNew(); });
     });
-    if (opts.undo) item(G, 'undo', 'Undo', opts.undo);
+    if (opts.undo) tile('undo', 'Undo', opts.undo);
     (opts.menu || []).forEach(function (m) {
       if (m.when && !m.when()) return;
+      if (m.top || m.label === 'Past games') { tile(m.icon || 'history', m.label, m.onClick); return; }
       var g = m.toggle ? 'Settings' : m.section || G;
       if (m.toggle) toggle(g, m.icon || 'sparkle', m.label, m.sub, m.toggle, m.onClick);
       else item(g, m.icon || 'sparkle', typeof m.label === 'function' ? m.label() : m.label, m.onClick, m.cls, m.sub);
@@ -502,6 +508,7 @@
       var on = toggleFav(); toast(on ? 'Added to favorites' : 'Removed from favorites'); haptic('success');
     });
     item(M, 'home', 'All games', goHome);
+    if (top.length) list.appendChild(el('div', { class: 'k-tiles' }, top));
     groups.forEach(function (g) {
       list.appendChild(el('div', { class: 'k-grp' }, [el('h3', { text: g })].concat(byName[g])));
     });
