@@ -687,6 +687,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-nav:disabled{opacity:.25;}
 .lz-pos{position:absolute;left:50%;bottom:-30px;transform:translateX(-50%);z-index:150;padding:3px 10px;border-radius:999px;background:rgba(10,8,28,.7);font-size:.74rem;font-weight:800;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none;}
 .lz-flow:has(.lz-pos){margin-bottom:26px;}
+.lz-pos.lz-strip{pointer-events:auto;display:flex;align-items:flex-end;gap:4px;max-width:calc(100vw - 32px);overflow-x:auto;scrollbar-width:none;padding:4px 8px;bottom:-40px;border-radius:12px;}
+.lz-flow:has(.lz-strip){margin-bottom:40px;}
+.lz-strip::-webkit-scrollbar{display:none;}
+.ls-c{flex:none;width:20px;height:28px;padding:0;border:0;border-radius:4px;overflow:hidden;background:#222;opacity:.6;box-shadow:0 0 0 1px rgba(255,255,255,.25);transition:transform .15s,opacity .15s;}
+.ls-c .mini{display:block;width:100%;height:100%;background-size:cover;background-position:center;}
+.ls-c.can{opacity:.85;box-shadow:0 0 0 1.5px rgba(246,225,168,.9);}
+.ls-c.ex{transform:rotate(90deg) scale(.8);}
+.ls-c.on{opacity:1;transform:translateY(-3px) scale(1.15);box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.6);}
+.ls-c.on.can{box-shadow:0 0 0 2px #f6e1a8,0 0 10px rgba(246,200,90,.7);}
+.ls-c.on.ex{transform:translateY(-3px) rotate(90deg) scale(.95);}
 .lz-flow.strip{touch-action:none;}
 .fc-hint{--pr:0;position:absolute;left:50%;z-index:200;display:flex;align-items:center;gap:10px;padding:10px 30px;white-space:nowrap;pointer-events:none;opacity:0;
   transform:translateX(-50%) scale(.85);transition:opacity .15s,transform .25s cubic-bezier(.3,1.6,.5,1);
@@ -959,6 +969,17 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lzf-st > span{color:var(--text-3);font-weight:800;}
 .lzf-st .lzf-l{margin-left:auto;color:#fff3d0;display:inline-flex;align-items:center;gap:5px;}
 .lzf-st .lzf-l b{color:#f1cf78;font-size:.9rem;}
+.lzf-st .lzf-l b.near{padding:0 5px;border-radius:999px;color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e3bd62);}
+.lz-peek{position:fixed;left:calc(env(safe-area-inset-left,0px) + 12px);top:calc(var(--safe-t) + 12px);z-index:440;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none;}
+.lz.peeking{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
+.lz.peeking > :not(.lz-peek){opacity:0!important;pointer-events:none;transition:opacity .12s;}
+.lz.peeking .lz-peek{background:var(--gilt);color:#2b1a00;}
+.lzf-ink{display:inline-flex;align-items:center;gap:3px;color:var(--text-2)!important;}
+.lzf-ink svg{width:15px;height:15px;fill:rgba(227,189,98,.25);stroke:#e3bd62;stroke-width:3;stroke-linejoin:round;}
+.lzf-ink b{color:#fff3d0;font-size:.9rem;}
+.lzf-ink small{margin-left:-3px;font-size:.78rem;font-weight:800;}
+.lzf-st{flex-wrap:nowrap!important;white-space:nowrap;}
+.lzf-st > b{overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .lzf-st .lzf-l em{font-style:normal;color:var(--text-3);}
 .lzf-ev{display:flex;flex-direction:column;gap:2px;}
 .lzf-e{display:flex;align-items:center;gap:7px;min-width:0;opacity:.75;animation:tickIn .28s var(--spring);}
@@ -6872,6 +6893,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return (top ? '<div class="stts stts-top">' + top + '</div>' : '') + (h ? '<div class="stts">' + h + '</div>' : '');
   }
   var STT_TIP = { 's-rdy': 'Ready: it can quest, challenge or use its abilities', 's-exd': 'Exerted: it has been used this turn. It readies at the start of its owner’s turn', 's-wet': 'Drying: played this turn, so it can’t quest, challenge or sing until next turn' };
+  // Hold the eye (top left) to see the table under the card view; let go to come back to the same card
+  function addPeek(ov) {
+    if (!ov || !S || ui.screen !== 'game') return;
+    var b = el('button', { type: 'button', class: 'icon-btn lz-peek', 'aria-label': 'Hold to see the table', title: 'Hold to see the table', html: Kit.icon('eye') });
+    var on = function (e) { e.preventDefault(); e.stopPropagation(); ov.classList.add('peeking'); try { b.setPointerCapture(e.pointerId); } catch (x) {} Kit.haptic('light'); };
+    var off = function () { ov.classList.remove('peeking'); };
+    b.addEventListener('pointerdown', on);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (k) { b.addEventListener(k, off); });
+    b.addEventListener('click', function (e) { e.stopPropagation(); });
+    b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    b.addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); ov.classList.add('peeking'); } });
+    b.addEventListener('keyup', off);
+    ov.appendChild(b);
+  }
   function statusToCorner(ov) {
     var st = ov && $('.stts-top', ov), ics = ov && $('.lz-head .lz-ics', ov); if (!st || !ics) return;
     ics.insertBefore(st, ics.firstChild);
@@ -7084,7 +7119,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // The strip is reused as you move between cards, so replace its counter rather than stacking another
       var posHost = F ? F.el : inner.lastChild, oldPos = posHost.querySelectorAll('.lz-pos');
       for (var pi2 = 0; pi2 < oldPos.length; pi2++) oldPos[pi2].remove();
-      posHost.appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
+      if (nav.list && S) {
+        // In a game: the hand (or that side of the table) as a strip of little cards, this one raised, the ones you can
+        // use right now edged in gold; tap one to go to it
+        var strip = el('div', { class: 'lz-pos lz-strip', role: 'tablist', 'aria-label': (nav.ctx === 'hand' ? 'Hand' : 'Table') + ': card ' + (nav.i + 1) + ' of ' + nav.n });
+        nav.list.forEach(function (x, j) {
+          if (!S.cards[x]) return;
+          strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
+            html: miniArt(DD(x)), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
+        });
+        posHost.appendChild(strip);
+      } else posHost.appendChild(el('div', { class: 'lz-pos', text: (nav.i + 1) + ' of ' + nav.n }));
     }
     var info = el('div', { class: 'lz-info', html: infoHTML });
     if (acts && acts.length) {
@@ -7483,14 +7528,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var nav = null;
     if (z && z.z === 'hand' && handShown(z.pi)) {
       var hand = S.P[z.pi].hand, hi = hand.indexOf(u);
-      nav = { i: hi, n: hand.length, dir: dir || 0, go: function (step) { var j = hi + step; if (j >= 0 && j < hand.length) openZoom(hand[j], step); }, peek: function (k) { var x = hand[hi + k]; return x ? DD(x) : null; } };
+      nav = { i: hi, n: hand.length, list: hand.slice(), ctx: 'hand', dir: dir || 0, go: function (step) { var j = hi + step; if (j >= 0 && j < hand.length) openZoom(hand[j], step); }, peek: function (k) { var x = hand[hi + k]; return x ? DD(x) : null; } };
     } else if (z && z.z === 'board') {
       // Cards in play, either side, ready, exerted or drying: swipe through them in the order they sit on the table
       var bd = boardOrder(z.pi), bi = bd.indexOf(u);
-      if (bi >= 0) nav = { i: bi, n: bd.length, dir: dir || 0, go: function (step) { var j = bi + step; if (j >= 0 && j < bd.length) openZoom(bd[j], step); }, peek: function (k) { var x = bd[bi + k]; return x ? DD(x) : null; } };
+      if (bi >= 0) nav = { i: bi, n: bd.length, list: bd.slice(), ctx: 'board', dir: dir || 0, go: function (step) { var j = bi + step; if (j >= 0 && j < bd.length) openZoom(bd[j], step); }, peek: function (k) { var x = bd[bi + k]; return x ? DD(x) : null; } };
     }
     var zov = zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
     statusToCorner(zov);
+    addPeek(zov);
   }
   // The computer's card, big, with what it just did across the top and a Continue button below
   // How the computer's moves are shown: a card to acknowledge, or a passing banner (fast mode / skip this turn)
@@ -7498,6 +7544,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Gameplay hints (on unless turned off in the menu): the challenge preview, the end-of-turn check and the glow on
   // characters that can still act
   function listNames(a) { return a.length < 2 ? esc(a[0] || '') : a.slice(0, -1).map(esc).join(', ') + ' and ' + esc(a[a.length - 1]); }
+  // Can this card be used right now (played, inked, quested, challenged with)? Drives the gold edges
+  function usableNow(u, ctx) {
+    if (!S || !S.cards[u] || !canAct()) return false;
+    if (ctx === 'hand') return C(u).o === S.cur && (canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u));
+    return C(u).o === S.cur && hintsOn() && (canQuest(u) || (canChallenger(u) && defenders(u).length > 0));
+  }
   function hintsOn() { return lsGet('lorc_hints', true) !== false; }
   function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
   function cpuShow(u, verb, how, effect) {
@@ -7512,7 +7564,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function lzFeed() {
     var ov = $('.lz:not(.reveal)'); if (!ov) return null;
     var f = $('.lz-feed', ov);
-    if (!feedTime()) { if (f) { f.remove(); ov.classList.remove('has-feed'); } return null; }
+    // In a game, every card view keeps the table in sight: whose turn, your ink, the lore (and on the other
+    // player's turn, their latest moves under it)
+    if (!(S && ui.screen === 'game' && S.phase === 'play')) { if (f) { f.remove(); ov.classList.remove('has-feed'); } return null; }
     if (!f) {
       f = el('div', { class: 'lz-feed', 'aria-live': 'polite' }, [el('div', { class: 'lzf-st' }), el('div', { class: 'lzf-ev' })]);
       ov.appendChild(f); ov.classList.add('has-feed');
@@ -7521,9 +7575,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       for (var i = S.log.length - 1; i >= 0 && done.length < 3; i--) { var l = S.log[i]; if (l.p !== S.cur || /ended their turn$|opening hand$/.test(l.t)) break; done.unshift(l); }
       done.forEach(function (l) { feedLine(f, S.P[l.p], '', l.t); });
     }
-    var c = S.P[S.cur];
-    $('.lzf-st', f).innerHTML = '<i class="dot" style="--c:' + c.color + '"></i><b>' + esc(c.name) + '’s turn</b><span>Turn ' + S.turn + '</span>' +
-      '<span class="lzf-l" title="Lore">' + S.P.map(function (p) { return '<i class="dot" style="--c:' + p.color + '"></i><b>' + p.lore + '</b>'; }).join('<em>·</em>') + '</span>';
+    var c = S.P[S.cur], me = meIxSafe(), P = S.P[me], ir = P.ink.filter(function (x) { return !C(x).ex; }).length;
+    $('.lzf-st', f).innerHTML = '<i class="dot" style="--c:' + c.color + '"></i><b>' + (S.cur === me && !c.cpu ? 'Your turn' : esc(c.name) + '’s turn') + '</b><span class="lzf-t">T' + S.turn + '</span>' +
+      '<span class="lzf-ink" title="Your ink: ' + ir + ' ready of ' + P.ink.length + '"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4l14 8v16l-14 8-14-8V12z"/></svg><b>' + ir + '</b><small>/' + P.ink.length + '</small></span>' +
+      '<span class="lzf-l" title="Lore">' + S.P.map(function (p, pi) { var nd = needLore(pi) - p.lore; return '<i class="dot" style="--c:' + p.color + '"></i><b' + (nd > 0 && nd <= 4 ? ' class="near" title="' + nd + ' to win"' : '') + '>' + p.lore + '</b>'; }).join('<em>·</em>') + '</span>';
     // the cards sit just below the panel, however tall it is
     requestAnimationFrame(function () { if (f.isConnected) ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
     return f;
