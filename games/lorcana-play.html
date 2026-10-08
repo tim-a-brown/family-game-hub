@@ -1083,7 +1083,9 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .lp-load{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;padding:24px;text-align:center;}
 .lp-load .spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:var(--gilt);animation:spin 1s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.libline{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);font-size:.85rem;font-weight:700;color:var(--text-2);}
+.libline-nm{flex-basis:100%;display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:var(--gilt-2);font-weight:700;font-size:.85rem;}
+.libline-nm span{flex:1;min-width:0;}
+.libline{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);font-size:.85rem;font-weight:700;color:var(--text-2);}
 .libline .ico{color:var(--gilt);}
 .libline.err{background:rgba(255,77,94,.12);color:#ffc0c6;}
 .libline .grow{flex:1;min-width:0;}
@@ -2838,7 +2840,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function fillStories() {
     if (storyTried || DB.status !== 'ready') return; storyTried = true;
     var missing = DB.unique.filter(function (d) { return !storyOf(d); });
-    if (!missing.length || Date.now() - (storyX.at || 0) < (storyX.ok ? 2 * 864e5 : 36e5)) return;
+    // a new card without its film yet: ask again every few hours (the film lists catch up a few days after a release)
+    var wait = missing.some(isNewCard) ? 6 * 36e5 : storyX.ok ? 2 * 864e5 : 36e5;
+    if (!missing.length || Date.now() - (storyX.at || 0) < wait) return;
     var m = storyX.m || {};
     function put(name, ver, st) { if (!name || !st) return; var k = skey(name); m[k + '|' + skey(ver)] = String(st); if (!m[k]) m[k] = String(st); }
     function save() { storyX = { at: Date.now(), ok: 1, m: m }; lsSet(STORYX, storyX); dbNotifyQuiet(); }
@@ -2902,6 +2906,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var NR = nrGet();
   function isNewCard(d) { var t = d && NR.m[String(d.full || '').toLowerCase()]; return !!t && Date.now() - t < NR_DAYS * 864e5; }
   function newCards() { return DB.unique.filter(isNewCard); }
+  function newManual() { return newCards().filter(function (d) { return d.K && !d.K.auto; }); }
   function noteNewCards(old, nv) {
     if (!old || !old.cards || !old.cards.length || !nv || !nv.cards) return;
     var had = {}; old.cards.forEach(function (o) { had[nrKey(o)] = 1; });
@@ -2911,6 +2916,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     NR = nrGet();
     ks.forEach(function (k) { if (!NR.m[k]) NR.m[k] = Date.now(); if (NR.pend.indexOf(k) < 0) NR.pend.push(k); });
     lsSet(NEWREL, NR);
+    storyTried = false; storyX.at = 0;   // look up the new cards' films straight away
     setTimeout(maybeNewPack, 400);
   }
   // Show the pack when nothing else is going on (not mid-game, no card or sheet open)
@@ -5132,7 +5138,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (!box.isConnected && box._mounted) { DB.subs.splice(DB.subs.indexOf(paint), 1); return; }
       box._mounted = true;
       box.className = 'libline' + (DB.status === 'error' ? ' err' : '');
-      if (DB.status === 'ready') box.innerHTML = Kit.icon('check') + '<span class="grow">Card library ready: ' + DB.cards.length.toLocaleString() + ' cards' + (DB.src ? ' from ' + esc(DB.src) : '') + '. Saved for offline play.</span>';
+      if (DB.status === 'ready') {
+        box.innerHTML = Kit.icon('check') + '<span class="grow">Card library ready: ' + DB.cards.length.toLocaleString() + ' cards' + (DB.src ? ' from ' + esc(DB.src) : '') + '. Saved for offline play.</span>';
+        // New cards with abilities the game can't run by itself yet (they still play: "Do it yourself" covers them)
+        var nm = newManual();
+        if (nm.length) box.appendChild(el('div', { class: 'libline-nm' }, [el('span', { text: plural(nm.length, 'new card') + ' with abilities the game can’t run by itself yet' }),
+          el('button', { type: 'button', class: 'btn btn-sm btn-soft', text: 'See them', onclick: function () { var from = ui.screen; showBuilder(null, function () { if (from === 'decks' && lastCfg) showDeckPick(lastCfg); else showSetup(); }, { library: true, manualNew: true }); } })]));
+      }
       else if (DB.status === 'error') {
         box.innerHTML = Kit.icon('sync') + '<span class="grow">' + esc(DB.note) + '</span>';
         box.appendChild(el('button', { type: 'button', class: 'btn btn-sm btn-soft', text: 'Try again', onclick: function () { DB.load(true); } }));
@@ -7805,8 +7817,9 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     var orig = deckId ? savedDecks().filter(function (d) { return d.id === deckId; })[0] : null;
     var deck = orig ? JSON.parse(JSON.stringify(orig)) : { id: 'd' + Date.now().toString(36), name: 'My deck', cards: {} };
-    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], dual: 0, newrel: false, shown: 60, tab: 'pool' };
+    var dirty = false, f = { q: '', inks: {}, costs: [], types: [], sets: [], kws: [], inkable: 0, fit: false, marked: false, deck: '', stories: [], chrs: [], clss: [], rars: [], dual: 0, newrel: false, manual: false, shown: 60, tab: 'pool' };
     if (o && o.newrel && newCards().length) f.newrel = true;
+    if (o && o.manualNew) { f.newrel = true; f.manual = true; }
     var nameIn = el('input', { class: 'input', value: deck.name, maxlength: 32, 'aria-label': 'Deck name', placeholder: 'Deck name' });
     nameIn.addEventListener('input', function () { deck.name = nameIn.value; dirty = true; });
     var cnt = el('span', { class: 'cnt' }), msg = el('div', { class: 'bld-msg' });
@@ -7954,7 +7967,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
         var studios = { Disney: 0, Pixar: 0 }; DB.unique.forEach(function (d) { studios[studioOf(d)]++; });
         return [{ k: 'Disney', label: 'Disney', sub: 'Everything that isn’t Pixar', n: plural(studios.Disney, 'card') }, { k: 'Pixar', label: 'Pixar', sub: 'Toy Story, The Incredibles, Coco…', n: plural(studios.Pixar, 'card') }]
           .concat(storyCounts().map(function (x) { return { k: x.s, label: x.s, n: plural(x.n, 'card') }; }))
-          .concat([{ k: NOFILM, label: 'No Film or Show', sub: 'Lorcana’s own cards', find: 'none lorcana', n: plural(DB.unique.filter(function (d) { return !storyOf(d); }).length, 'card') }]);
+          .concat([{ k: NOFILM, label: 'No Film or Show', sub: 'Lorcana’s own cards, and new cards not filled in yet', find: 'none lorcana', n: plural(DB.unique.filter(function (d) { return !storyOf(d); }).length, 'card') }]);
       } });
     }
     function clsCounts() {
@@ -7964,6 +7977,26 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     }
     function pickCls() {
       multiPick({ title: 'Classification', ph: 'Search classifications', key: 'clss', items: function () { return clsCounts().map(function (x) { return { k: x.s, label: x.s, n: plural(x.n, 'card') }; }); } });
+    }
+    // The keyword filter is built from the cards themselves, so a keyword new to Lorcana shows up when its cards do
+    // (the game's own keywords by their key; Puppy Shift and Universal Shift count as Shift; anything else by its name)
+    function kwKey(name) {
+      var n = String(name || '').trim(); if (!n) return '';
+      if (/shift$/i.test(n)) return 'shift';
+      for (var k in KWNAME) if (KWNAME[k].toLowerCase() === n.toLowerCase()) return k;
+      return 'x:' + n;
+    }
+    function kwList() {
+      var seen = {};
+      DB.unique.forEach(function (d) {
+        (d.kwl || []).forEach(function (n) { var k = kwKey(n); if (k) seen[k] = 1; });
+        for (var k in KWNAME) if (d.K && d.K[k]) seen[k] = 1;
+      });
+      return Object.keys(seen).map(function (k) { return { k: k, label: KWNAME[k] || k.slice(2) }; }).sort(function (a, b) { return a.label.localeCompare(b.label); });
+    }
+    function kwHas(d, k) {
+      if (k.indexOf('x:') === 0) return (d.kwl || []).some(function (n) { return String(n).toLowerCase() === k.slice(2).toLowerCase(); });
+      return !!(d.K && d.K[k]) || (d.kwl || []).some(function (n) { return kwKey(n) === k; });
     }
     function setName(code) { var x = DB.sets.filter(function (y) { return y.code === code; })[0]; return x ? x.name : 'Set ' + code; }
     function pickSet() {
@@ -8031,6 +8064,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       // marked as something new with a gilt outline and a soft shimmer, not filled in the way a chip that's on is
       var nrChip = function (box, kw) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (kw ? ' nr-kw' : '') + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc && !kw ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); };
       if (nrc || f.newrel) nrChip(storyChips);
+      if (f.manual) storyChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-pressed': 'true', html: Kit.icon('pencil') + '<span>Needs a hand</span><i class="x" style="font-style:normal;margin-left:4px">×</i>', onclick: function () { Kit.sfx('tap'); f.manual = false; f.shown = 60; paintChips(); paintGrid(); } }));
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
@@ -8041,8 +8075,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       });
       kwChips.innerHTML = '';
       if (nrc || f.newrel) nrChip(kwChips, true);
-      ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].sort(function (a, b) { return KWNAME[a].localeCompare(KWNAME[b]); }).forEach(function (k) {
-        kwChips.appendChild(chip(KWNAME[k], f.kws.indexOf(k) >= 0, function () { togF('kws', k); }));
+      kwList().forEach(function (o) {
+        kwChips.appendChild(chip(o.label, f.kws.indexOf(o.k) >= 0, function () { togF('kws', o.k); }));
       });
       // Single-ink or dual-ink cards
       // Inkable: any, inkable, or not inkable
@@ -8146,7 +8180,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.dual) { if ((di.length === 2) !== (f.dual === 2)) return false; if (f.dual === 2 && on.length === 2 && !on.every(function (i) { return di.indexOf(i) >= 0; })) return false; }
       if (f.inkable === 1 && !d.k) return false;
       if (f.inkable === 2 && d.k) return false;
-      if (f.kws.length && !f.kws.some(function (k) { return k === 'shift' ? d.K.shift : d.K[k]; })) return false;
+      if (f.kws.length && !f.kws.some(function (k) { return kwHas(d, k); })) return false;
       if (f.stories.length && !f.stories.some(function (x) { return x === 'Pixar' || x === 'Disney' ? studioOf(d) === x : x === NOFILM ? !storyOf(d) : storyOf(d) === x; })) return false;
       if (f.chrs.length && f.chrs.indexOf(d.n) < 0) return false;
       if (f.clss.length && !f.clss.some(function (x) { return (d.cl || []).indexOf(x) >= 0; })) return false;
@@ -8154,6 +8188,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (f.deck && !(deckSet || (deckSet = deckNames()))[d.full.toLowerCase()]) return false;
       if (f.marked && !isMarked(d)) return false;
       if (f.newrel && !isNewCard(d)) return false;
+      if (f.manual && d.K && d.K.auto) return false;
       if (f.q) { var hay = (d.full + ' ' + d.tx + ' ' + (d.cl || []).join(' ') + ' ' + storyOf(d)).toLowerCase(); if (f.q.split(/\s+/).some(function (w) { return hay.indexOf(w) < 0; })) return false; }
       return true;
     }
@@ -8306,7 +8341,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function activeFilters() {
-      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.q) n++; if (f.marked) n++; if (f.deck) n++; if (f.inkable) n++; if (f.newrel) n++;
+      var n = f.stories.length + f.chrs.length + f.clss.length + f.costs.length + f.types.length + f.sets.length + f.kws.length + f.rars.length; if (f.q) n++; if (f.marked) n++; if (f.manual) n++; if (f.deck) n++; if (f.inkable) n++; if (f.newrel) n++;
       return n + INKS.filter(function (i) { return f.inks[i]; }).length;
     }
     function filterBtn() {
@@ -8352,7 +8387,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       filterBtn(); flowRefit();
     }
     function clearFilters() {
-      f.q = ''; search.value = ''; f.marked = false; f.newrel = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
+      f.q = ''; search.value = ''; f.marked = false; f.newrel = false; f.manual = false; f.deck = ''; f.stories = []; f.chrs = []; f.clss = []; f.costs = []; f.types = []; f.sets = []; f.kws = []; f.rars = []; f.dual = 0; f.inkable = 0; f.fit = false; f.inks = {}; f.shown = 60;
       paintChips(); paintGrid(); Kit.sfx('tap');
     }
     function countText(n) { if (fpCount) { fpCount.textContent = n ? n.toLocaleString() + ' ' + (n === 1 ? 'card' : 'cards') : 'No cards match'; fpCount.classList.toggle('none', !n); } }
