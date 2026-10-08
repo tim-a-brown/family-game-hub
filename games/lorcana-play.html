@@ -6748,7 +6748,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // ── Undo and saving ──────────────────────────────────────────────────────
   function snapshot() { var h = S.hist, d = S.defs, ph = S.prevHist; S.hist = undefined; S.defs = undefined; S.prevHist = undefined; var s = JSON.stringify(S); S.hist = h; S.defs = d; S.prevHist = ph; return s; }
   function pushUndo(s) { S.hist.push(s); if (S.hist.length > 12) S.hist.shift(); }
-  function noUndo() { if (S) S.hist = []; }
+  // Revealing hidden cards (draws, deck reveals) used to lock in the turn. For now Undo can always go back, so the
+  // game's mechanics can be tried again; only online games (where the other player has seen it) still lock in.
+  function noUndo() { if (S && S.mode === 'online') S.hist = []; }
   function undo() {
     if (!S || S.phase !== 'play') return Kit.toast(S && S.phase === 'mull' ? 'Nothing to undo yet' : 'Nothing to undo');
     if (S.P[S.cur].cpu) return Kit.toast('Wait for ' + S.P[S.cur].name + ' to finish');
