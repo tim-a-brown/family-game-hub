@@ -790,6 +790,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .ls-c.on{opacity:1;transform:translateY(-3px) scale(1.15);box-shadow:0 0 0 2px #fff,0 3px 8px rgba(0,0,0,.6);}
 .ls-c.on.can{box-shadow:0 0 0 2px #f6e1a8,0 0 10px rgba(246,200,90,.7);}
 .ls-c{position:relative;}
+.rvc-row{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;padding:4px 0 2px;}
+.rvc{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;}
+.rvc-who{display:flex;align-items:center;gap:6px;font-weight:900;font-size:.85rem;}
+.rvc-card{position:relative;width:min(36vw,150px);aspect-ratio:5/7;border-radius:8px;overflow:hidden;background:#1d1a2c;box-shadow:0 8px 22px rgba(0,0,0,.5);}
+.rvc-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.rvc-cost{position:absolute;top:24px;left:-6px;width:36px;height:36px;}
+.rvc-cost svg{width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
+.rvc-tag{font-size:.72rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--text-2);}
+.rvc-tag.good{background:rgba(227,189,98,.2);color:var(--gilt-2);box-shadow:inset 0 0 0 1px rgba(227,189,98,.5);}
+.rvc-sub{text-align:center;margin:10px 0 0;font-size:.85rem;}
 .lz-src{position:sticky;left:0;z-index:1;flex:none;align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;margin-right:4px;border-radius:999px;
   font-size:.62rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:var(--text-2);background:rgba(20,16,41,.92);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
 .lz-src .ico{width:12px;height:12px;}
@@ -5139,6 +5149,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var tops = [pi, opp(pi)].map(function (w) { return S.P[w].deckL[0] || null; }), hiC = -1;
         tops.forEach(function (x) { if (x) hiC = Math.max(hiC, DD(x).c || 0); });
         if (hiC < 0) return cb(false);
+        // Show both revealed cards (and where each is going) before anything moves
+        if (!st.shownTC && humans() > 0) {
+          st.shownTC = true;
+          return revealCards(st.src, [pi, opp(pi)].map(function (w, i) { var x = tops[i]; return x ? { pi: w, u: x, tag: (DD(x).c || 0) === hiC ? 'To hand' : 'To bottom', good: (DD(x).c || 0) === hiC } : null; }).filter(Boolean),
+            'Highest cost goes to its player’s hand', function () { applyAuto(e, st, cb, optional); });
+        }
         act(function () { [pi, opp(pi)].forEach(function (w, i) { var x = tops[i]; if (!x) return; var W = S.P[w]; W.deckL.shift(); if ((DD(x).c || 0) === hiC) W.hand.push(x); else W.deckL.push(x); }); });
         noUndo(); fx.drawn(pi); fx.drawn(opp(pi));
         var line2 = [pi, opp(pi)].map(function (w, i) { var x = tops[i]; return x ? S.P[w].name + ': ' + DD(x).n + ' (cost ' + (DD(x).c || 0) + ')' + ((DD(x).c || 0) === hiC ? ' → hand' : ' → bottom') : S.P[w].name + ': no card'; });
@@ -5390,6 +5406,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function topRevealFx(e, st, cb) {
     var pi = st.pi, whos = e.who === 'opp' ? [opp(pi)] : e.who === 'both' ? [pi, opp(pi)] : e.who === 'prevOwner' ? (st.prev && st.prev[0] && S.cards[st.prev[0]] ? [C(st.prev[0]).o] : []) : [pi];
     if (!whos.length) return cb(false);
+    // Show what's revealed (and what happens to it) before anything moves
+    if (!st.shownTR && humans() > 0) {
+      var rows = whos.map(function (w) {
+        var W = S.P[w], top = !e.shuffle && W.deckL[0]; if (!top) return null;
+        var ok = e.take && descFits(top, e.take, st.src) && (!e.take.cls || hasCls(top, e.take.cls));
+        return { pi: w, u: top, tag: ok ? (e.mode === 'play' ? 'Played' : 'To hand') : e.take && e.miss === 'bottom' ? 'To bottom' : e.take ? 'Stays on top' : '', good: !!ok };
+      }).filter(Boolean);
+      if (rows.length) { st.shownTR = true; return revealCards(st.src, rows, '', function () { topRevealFx(e, st, cb); }); }
+    }
     var seen = [];
     act(function () {
       whos.forEach(function (w) {
@@ -5803,6 +5828,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return h;
   }
   // A full-size card with the ability text and a short list of buttons. Nothing else.
+  // Cards an ability reveals, face up side by side with whose they are and where they're going, until Continue
+  function revealCards(src, rows, sub, done) {
+    var box = el('div', { class: 'rvc-row' });
+    rows.forEach(function (r) {
+      var c = el('div', { class: 'rvc' }), art = el('div', { class: 'rvc-card' });
+      art.appendChild(artEl(DD(r.u), false));
+      c.appendChild(el('div', { class: 'rvc-who', html: '<i class="dot" style="--c:' + S.P[r.pi].color + '"></i>' + esc(S.P[r.pi].name) }));
+      c.appendChild(art);
+      c.appendChild(el('div', { class: 'rvc-cost', html: costSVG(!!DD(r.u).k, DD(r.u).c || 0, 18.4) }));
+      if (r.tag) c.appendChild(el('div', { class: 'rvc-tag' + (r.good ? ' good' : ''), text: r.tag }));
+      c.addEventListener('click', function () { zoomDef(DD(r.u)); });
+      box.appendChild(c);
+    });
+    var ab = src && S.cards[src] ? DD(src) : null, fin = false;
+    Kit.sfx('flip');
+    Kit.sheet({ title: (ab ? ab.n + ': ' : '') + 'Revealed', node: el('div', {}, [box, sub ? el('p', { class: 'muted rvc-sub', text: sub }) : null]),
+      actions: [{ label: 'Continue', cls: 'btn-primary' }], dismissible: true, onClose: function () { if (!fin) { fin = true; setTimeout(done, 60); } } });
+  }
   function abilitySheet(src, ab, acts, o) {
     o = o || {};
     if (netWho(o.dec) != null) {
