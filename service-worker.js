@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v290-2026-10-08-location-pads';
+const CACHE_VERSION = 'v291-2026-10-08-sofia-sans';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -33,6 +33,7 @@ const PRECACHE_URLS = [
   '/fonts/great-vibes.woff2',
   '/fonts/bungee.woff2',
   '/fonts/sofia-sans-condensed.woff2',
+  '/fonts/sofia-sans.woff2',
   '/app.js',
   '/sync.js',
   '/hist.js',
