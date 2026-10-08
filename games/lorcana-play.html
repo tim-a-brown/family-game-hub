@@ -433,17 +433,18 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rp-scrim.show{opacity:1;}
 .rp{position:fixed;padding:6px;border-radius:18px;background:linear-gradient(180deg,#272050,#161130);box-shadow:0 0 0 1.5px rgba(227,189,98,.6),0 16px 40px rgba(0,0,0,.6);transform:scale(.92);transition:transform .22s cubic-bezier(.3,1.5,.5,1);}
 .rp-scrim.show .rp{transform:none;}
-.rp::before{content:'';position:absolute;left:6px;right:6px;top:50%;height:46px;margin-top:-23px;border-radius:12px;background:rgba(227,189,98,.14);box-shadow:inset 0 0 0 1.5px var(--gilt);pointer-events:none;}
-.rp-wheel{position:relative;height:138px;overflow-y:auto;scroll-snap-type:y mandatory;padding:46px 0;box-sizing:border-box;scrollbar-width:none;overscroll-behavior:contain;
+.rp::before{content:'';position:absolute;left:6px;right:6px;top:50%;height:58px;margin-top:-29px;border-radius:12px;background:rgba(227,189,98,.14);box-shadow:inset 0 0 0 1.5px var(--gilt);pointer-events:none;}
+.rp-wheel{position:relative;height:174px;overflow-y:auto;scroll-snap-type:y mandatory;padding:58px 0;box-sizing:border-box;scrollbar-width:none;overscroll-behavior:contain;
   -webkit-mask:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);}
 .rp-wheel::-webkit-scrollbar{display:none;}
-.rp-i{height:46px;scroll-snap-align:center;display:flex;align-items:center;gap:10px;padding:0 14px;cursor:pointer;font-family:var(--serif);font-weight:700;font-size:1rem;color:rgba(255,246,220,.6);transition:color .15s;}
+.rp-i{height:58px;scroll-snap-align:center;display:flex;align-items:center;gap:10px;padding:0 14px;cursor:pointer;font-family:var(--serif);font-weight:700;font-size:1rem;color:rgba(255,246,220,.6);transition:color .15s;}
 .rp-i .rgem{width:14px;height:14px;margin:0;}
 .rp-i span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* the rarity, with the printing's number as on the card in small type beneath it */
 .rp-i .rp-t{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.1;}
 .rp-i .rp-t span{flex:none;}
-.rp-i small{display:block;margin-top:2px;font-family:var(--font);font-size:10.5px;font-weight:700;letter-spacing:.01em;color:var(--text-3);white-space:nowrap;}
+.rp-i small.il{font-weight:600;font-style:italic;margin-top:1px;}
+.rp-i small{display:block;margin-top:1px;font-family:var(--font);font-size:10.5px;font-weight:700;letter-spacing:.01em;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rp-i.on{color:#fff6dc;}
 /* Enchanted / Epic / Iconic art: a stronger rainbow foil than Whisper's pearl */
 .foil > .wshim{mix-blend-mode:color-dodge;background:linear-gradient(125deg,rgba(255,90,190,0) 8%,rgba(255,110,200,.4) 22%,rgba(255,215,90,.42) 36%,rgba(90,255,190,.38) 50%,rgba(90,170,255,.42) 64%,rgba(200,120,255,.4) 78%,rgba(255,90,190,0) 92%);
@@ -1497,6 +1498,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       s: num(c.strength), w: num(c.willpower), l: num(c.lore), mv: num(c.move_cost),
       r: c.rarity ? String(c.rarity) : '', set: c.set ? String(c.set.code || c.set.id || '') : '',
       no: c.collector_number != null ? String(c.collector_number) : '',
+      lg: c.lang ? String(c.lang).toUpperCase() : '', il: Array.isArray(c.illustrators) ? c.illustrators.join(', ') : '',
       im: { s: im.small || im.normal || im.large || '', l: im.large || im.normal || im.small || '' },
       st: String(c.franchise || c.story || c.movie || ''), fl: c.flavor_text ? String(c.flavor_text) : ''
     };
@@ -2853,7 +2855,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   function download(progress) {
     return loadLorcast(progress).catch(function (e) { console.warn('Lorcast failed', e); return loadLorcanaApi(progress); });
   }
-  var LIBFMT = 2;   // bump when the saved card fields change
+  var LIBFMT = 3;   // bump when the saved card fields change
   DB.load = function (force) {
     if (DB.loading) return DB.loading;
     DB.status = 'loading'; DB.note = 'Opening the card library…'; dbNotify();
@@ -5638,16 +5640,20 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (FANCY) { var best = list.slice().sort(function (a, b) { return prSpecial(b) - prSpecial(a); })[0]; if (prSpecial(best)) return best; }
     return d.id && list.some(function (p) { return p.id === d.id; }) ? d : (DB.unique.filter(function (u) { return u.full === d.full; })[0] || d);
   }
-  // A printing's number as on the card: #47/204 · Set 2 (the main set's size; Enchanteds and the like are numbered past it)
+  // A printing's details as printed in the card's bottom left: 47/204 · EN · Set 2, and the artist (the main set's size;
+  // Enchanteds and the like are numbered past it)
   var SETSIZE = null;
   function setSize(set) {
-    if (!SETSIZE) { SETSIZE = {}; DB.cards.forEach(function (c) { var n = parseInt(c.no, 10), k = String(c.set); if (n && n <= 204 && /^\d+$/.test(k)) SETSIZE[k] = Math.max(SETSIZE[k] || 0, n); }); }
+    if (!SETSIZE) { SETSIZE = {}; DB.cards.forEach(function (c) { var n = parseInt(c.no, 10), k = String(c.set); if (n && n <= 204 && k) SETSIZE[k] = Math.max(SETSIZE[k] || 0, n); }); }
     return SETSIZE[String(set)] || 0;
   }
   function prNumHTML(p) {
     if (!p.no && !p.set) return '';
-    var tot = setSize(p.set), n = p.no ? '#' + esc(p.no) + (tot ? '/' + tot : '') : '';
-    return '<small>' + n + (p.set ? (n ? ' · ' : '') + 'Set ' + esc(p.set) : '') + '</small>';
+    var tot = setSize(p.set), bits = [];
+    if (p.no) bits.push(esc(p.no) + (tot ? '/' + tot : ''));
+    if (p.lg) bits.push(esc(p.lg));
+    if (p.set) bits.push('Set ' + esc(p.set));
+    return (p.il ? '<small class="il">' + esc(p.il) + '</small>' : '') + '<small>' + bits.join(' · ') + '</small>';
   }
   function prRarName(r) { return String(r || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
@@ -5759,7 +5765,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   }
   // Scroll the little wheel up and down: whatever sits in the middle is the art (the card swaps as it lands)
   function rarPick(btn, d, ov) {
-    var list = printsSorted(d), cur = (artOf(d) || d).id, IH = 46, at = Math.max(0, list.map(function (p) { return p.id; }).indexOf(cur));
+    var list = printsSorted(d), cur = (artOf(d) || d).id, IH = 58, at = Math.max(0, list.map(function (p) { return p.id; }).indexOf(cur));
     var scrim = el('div', { class: 'rp-scrim' }), box = el('div', { class: 'rp', role: 'listbox', 'aria-label': 'Choose the art' }), wheel = el('div', { class: 'rp-wheel' });
     list.forEach(function (p, i) {
       wheel.appendChild(el('div', { class: 'rp-i' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at), html: rarSym(rarKey(p), p.set) + '<div class="rp-t"><span>' + esc(prRarName(p.r) || 'Card') + '</span>' + prNumHTML(p) + '</div>',
