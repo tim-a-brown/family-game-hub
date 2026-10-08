@@ -440,7 +440,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rp-i{height:46px;scroll-snap-align:center;display:flex;align-items:center;gap:10px;padding:0 14px;cursor:pointer;font-family:var(--serif);font-weight:700;font-size:1rem;color:rgba(255,246,220,.6);transition:color .15s;}
 .rp-i .rgem{width:14px;height:14px;margin:0;}
 .rp-i span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rp-i small{font-family:var(--font);font-size:.72rem;color:var(--text-3);}
+/* the rarity, with the printing's number as on the card in small type beneath it */
+.rp-i .rp-t{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.1;}
+.rp-i .rp-t span{flex:none;}
+.rp-i small{display:block;margin-top:2px;font-family:var(--font);font-size:10.5px;font-weight:700;letter-spacing:.01em;color:var(--text-3);white-space:nowrap;}
 .rp-i.on{color:#fff6dc;}
 /* Enchanted / Epic / Iconic art: a stronger rainbow foil than Whisper's pearl */
 .foil > .wshim{mix-blend-mode:color-dodge;background:linear-gradient(125deg,rgba(255,90,190,0) 8%,rgba(255,110,200,.4) 22%,rgba(255,215,90,.42) 36%,rgba(90,255,190,.38) 50%,rgba(90,170,255,.42) 64%,rgba(200,120,255,.4) 78%,rgba(255,90,190,0) 92%);
@@ -2757,6 +2760,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     });
     uniq.sort(function (a, b) { return a.c - b.c || a.full.localeCompare(b.full); });
     DB.cards = list; DB.byId = byId; DB.byFull = byFull; DB.unique = uniq; DB.sets = v.sets || [];
+    if (typeof SETSIZE !== 'undefined') SETSIZE = null;
     DB.src = v.src || ''; DB.at = v.at || Date.now(); DB.status = list.length ? 'ready' : 'error';
     if (!list.length) DB.note = 'The card list came back empty.';
   }
@@ -5634,6 +5638,17 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (FANCY) { var best = list.slice().sort(function (a, b) { return prSpecial(b) - prSpecial(a); })[0]; if (prSpecial(best)) return best; }
     return d.id && list.some(function (p) { return p.id === d.id; }) ? d : (DB.unique.filter(function (u) { return u.full === d.full; })[0] || d);
   }
+  // A printing's number as on the card: #47/204 · Set 2 (the main set's size; Enchanteds and the like are numbered past it)
+  var SETSIZE = null;
+  function setSize(set) {
+    if (!SETSIZE) { SETSIZE = {}; DB.cards.forEach(function (c) { var n = parseInt(c.no, 10), k = String(c.set); if (n && n <= 204 && /^\d+$/.test(k)) SETSIZE[k] = Math.max(SETSIZE[k] || 0, n); }); }
+    return SETSIZE[String(set)] || 0;
+  }
+  function prNumHTML(p) {
+    if (!p.no && !p.set) return '';
+    var tot = setSize(p.set), n = p.no ? '#' + esc(p.no) + (tot ? '/' + tot : '') : '';
+    return '<small>' + n + (p.set ? (n ? ' · ' : '') + 'Set ' + esc(p.set) : '') + '</small>';
+  }
   function prRarName(r) { return String(r || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
   function printsSorted(d) { return printingsOf(d).slice().sort(function (a, b) { return (PR_ORDER[rarKey(a)] || 6) - (PR_ORDER[rarKey(b)] || 6) || setOrd(a.set) - setOrd(b.set); }); }
@@ -5747,7 +5762,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var list = printsSorted(d), cur = (artOf(d) || d).id, IH = 46, at = Math.max(0, list.map(function (p) { return p.id; }).indexOf(cur));
     var scrim = el('div', { class: 'rp-scrim' }), box = el('div', { class: 'rp', role: 'listbox', 'aria-label': 'Choose the art' }), wheel = el('div', { class: 'rp-wheel' });
     list.forEach(function (p, i) {
-      wheel.appendChild(el('div', { class: 'rp-i' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at), html: rarSym(rarKey(p), p.set) + '<span>' + esc(prLabel(p, list)) + '</span>' + (p.no ? '<small>#' + esc(p.no) + '</small>' : ''),
+      wheel.appendChild(el('div', { class: 'rp-i' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': String(i === at), html: rarSym(rarKey(p), p.set) + '<div class="rp-t"><span>' + esc(prRarName(p.r) || 'Card') + '</span>' + prNumHTML(p) + '</div>',
         onclick: function (e) { e.stopPropagation(); wheel.scrollTo({ top: i * IH, behavior: 'smooth' }); } }));
     });
     box.appendChild(wheel); scrim.appendChild(box); document.body.appendChild(scrim);
