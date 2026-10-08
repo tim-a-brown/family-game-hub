@@ -1594,7 +1594,13 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 .bsize .tsize{margin-left:0;}
 .bsize .colbtn{width:52px;height:36px;border-radius:18px;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);}
 .bsize .colbtn .ico{width:18px;height:18px;}
+.pc .pc-add{position:absolute;right:4px;top:4px;width:34px;height:34px;padding:0;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6);cursor:pointer;}
+.pc .pc-add.pc-sub{right:42px;}
+.pc .pc-add b{font-family:var(--display);font-weight:400;font-size:1.35rem;line-height:1;margin-top:-2px;}
+.pc .pc-add:disabled{cursor:default;background:rgba(20,16,41,.85);box-shadow:0 0 0 1.5px rgba(255,255,255,.18);color:rgba(255,255,255,.28);}
 .bld-grid.tiny .pc .pc-add{width:22px!important;height:22px!important;right:2px!important;top:2px!important;}
+.bld-grid.tiny .pc .pc-add.pc-sub{right:27px!important;}
+.bld-grid.tiny .pc .pc-add b{font-size:.95rem;}
 .bld-grid.tiny .pc .pc-add .ico{width:13px;height:13px;}
 .bld.lib .bld-top{gap:6px;}
 .bld.lib .bld-top .grow{flex:1;}
@@ -10149,9 +10155,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (lib && isNewCard(d)) { b.classList.add('isnew'); b.appendChild(el('span', { class: 'newc', 'aria-hidden': 'true', html: '<i>New</i>' })); }
         if (isMarked(d)) b.appendChild(el('span', { class: 'bmk', html: Kit.icon('bookmark') }));
         b.appendChild(el('span', { class: 'cost coin' + (d.k ? ' ink' : ''), html: costSVG(d.k, d.c || 0, 21.5, '#fff'), 'aria-label': 'Cost ' + (d.c || 0) }));
-        var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
-        plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
-        if (!lib) b.appendChild(plus);
+        // Deck builder: − and + in the top corner (− greyed at 0, + greyed at the card's limit)
+        if (!lib) {
+          var atMax = copiesByFull(deck.cards, d.full) >= copyLimit(d);
+          b.appendChild(el('button', { type: 'button', class: 'pc-add pc-sub', 'aria-label': 'Remove one ' + d.full, disabled: !n, html: '<b>−</b>', onclick: function (e) { e.stopPropagation(); addCard(d, -1); } }));
+          b.appendChild(el('button', { type: 'button', class: 'pc-add', 'aria-label': atMax ? d.full + ': at the limit' : 'Add ' + d.full, disabled: atMax, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } }));
+        }
         { b.appendChild(el('span', { class: 'selo', 'aria-hidden': 'true' })); b.appendChild(el('span', { class: 'selk', 'aria-hidden': 'true', html: '<i>' + Kit.icon('check') + '</i>' })); if (selSet && selSet[d.id]) b.classList.add('sel'); }
         b.addEventListener('click', function () {
           if (b._held) { b._held = false; return; }
