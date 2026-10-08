@@ -182,6 +182,14 @@ document.addEventListener('visibilitychange', function () {
 .sec.favs .sec-h h2{color:var(--yellow);}
 .sec.favs .sec-h .ico{color:var(--yellow);fill:var(--yellow);}
 .sec.favs + .sec{margin-top:28px;}
+/* Arranging favorites: the tiles wiggle; drag one to a new spot; Done (or a tap outside) ends it */
+.sec.favs .wig-done{display:none;margin-left:auto;border:0;border-radius:999px;padding:6px 14px;background:var(--yellow);color:#2b1a00;font-weight:900;font-size:.85rem;cursor:pointer;}
+.sec.favs.wiggle .wig-done{display:inline-block;}
+.sec.favs.wiggle .list > .g{animation:wig .26s ease-in-out infinite alternate;animation-delay:var(--wd,0ms);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab;}
+.sec.favs.wiggle .list > .g.lift{animation:none;z-index:5;transform:scale(1.08);box-shadow:0 12px 28px rgba(0,0,0,.5);cursor:grabbing;}
+.sec.favs .list > .g{-webkit-touch-callout:none;}
+@keyframes wig{from{transform:rotate(-1.6deg)}to{transform:rotate(1.6deg)}}
+@media (prefers-reduced-motion:reduce){.sec.favs.wiggle .list > .g{animation:none;outline:2px dashed rgba(255,200,61,.6);outline-offset:-2px;}}
 
 /* Keep playing: compact overview, 5-6 games visible at once */
 .cont-w{position:relative;min-width:0;display:flex;align-items:stretch;touch-action:pan-y;--rv:0;}
@@ -316,6 +324,12 @@ document.addEventListener('visibilitychange', function () {
     var f = favList();
     return [g.play, g.score, g.id].some(function (k) { return k && f.indexOf('games/' + k + '.html') >= 0; });
   }
+  // Where a game sits in your favorites (the order you arranged them in)
+  function favIndex(g) {
+    var f = favList(), best = 1e9;
+    [g.play, g.score, g.id].forEach(function (k) { var i = k ? f.indexOf('games/' + k + '.html') : -1; if (i >= 0 && i < best) best = i; });
+    return best;
+  }
   function toggleFav(g) {
     var f = favList(), keys = [g.play, g.score, g.id].filter(Boolean).map(function (k) { return 'games/' + k + '.html'; });
     var on = isFav(g);
@@ -425,15 +439,101 @@ document.addEventListener('visibilitychange', function () {
     });
   }
 
-  function section(title, ic, games, extra) {
-    var s = el('section', { class: 'sec' });
+  function section(title, ic, games, extra, favs) {
+    var s = el('section', { class: 'sec' + (favs ? ' favs' : '') });
     var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: String(games.length) })]);
     if (extra) h.appendChild(extra);
     s.appendChild(h);
     var list = el('div', { class: 'list' + (tiles ? ' tiles' : '') });
-    games.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g) { list.appendChild(row(g)); });
+    // Favorites keep the order you arranged them in; other sections are A to Z
+    games.slice().sort(favs ? function (a, b) { return favIndex(a) - favIndex(b); } : function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g) { list.appendChild(row(g)); });
     s.appendChild(list);
+    if (favs) arrangeable(s, h, list);
     return s;
+  }
+  // ── Favorites: press and hold a tile to make them wiggle, then drag to rearrange (like a phone's home screen) ──
+  var wiggling = false;
+  function arrangeable(sec, head, list) {
+    var done = el('button', { type: 'button', class: 'wig-done', text: 'Done', onclick: function (e) { e.stopPropagation(); stopWiggle(); } });
+    head.appendChild(done);
+    if (wiggling) sec.classList.add('wiggle');
+    Array.prototype.forEach.call(list.children, function (t, i) {
+      t.style.setProperty('--wd', (-(i * 97) % 300) + 'ms');   // each tile wiggles a little out of step
+      var timer = 0, x0 = 0, y0 = 0, drag = null;
+      t.addEventListener('pointerdown', function (e) {
+        if (e.button > 0 || e.target.closest('.fav')) return;
+        x0 = e.clientX; y0 = e.clientY;
+        if (sec.classList.contains('wiggle')) { drag = { id: e.pointerId, on: false }; return; }
+        timer = setTimeout(function () { timer = 0; t._held = true; startWiggle(sec); Kit.haptic('medium'); }, 480);
+      });
+      t.addEventListener('pointermove', function (e) {
+        if (timer && (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10)) { clearTimeout(timer); timer = 0; }
+        if (!drag) return;
+        if (!drag.on) {
+          if (Math.abs(e.clientX - x0) < 6 && Math.abs(e.clientY - y0) < 6) return;
+          drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(e.pointerId); } catch (x) {}
+          var r = t.getBoundingClientRect(); drag.gx = x0 - r.left; drag.gy = y0 - r.top; Kit.haptic('light');
+          // the grid's spots, fixed for this drag (tiles sliding between them can't confuse where you are)
+          drag.slots = Array.prototype.map.call(list.children, function (k) { var b = k.getBoundingClientRect(); return { x: b.left + b.width / 2 + scrollX, y: b.top + b.height / 2 + scrollY }; });
+        }
+        e.preventDefault();
+        // the nearest spot to the finger: move this tile there, the others sliding over to make room
+        var px = e.clientX + scrollX, py = e.clientY + scrollY, to = 0, bd = 1e12;
+        drag.slots.forEach(function (sl, j) { var d = (sl.x - px) * (sl.x - px) + (sl.y - py) * (sl.y - py); if (d < bd) { bd = d; to = j; } });
+        var kids = Array.prototype.slice.call(list.children), from = kids.indexOf(t);
+        if (to !== from) {
+          var before = {}; kids.forEach(function (k) { if (k !== t) before[k.dataset.id] = k.getBoundingClientRect(); });
+          var rest = kids.filter(function (k) { return k !== t; });
+          list.insertBefore(t, rest[to] || null);
+          kids.forEach(function (k) {
+            if (k === t || !before[k.dataset.id]) return;
+            var a = before[k.dataset.id], b = k.getBoundingClientRect();
+            k.style.transition = 'none'; k.style.translate = (a.left - b.left) + 'px ' + (a.top - b.top) + 'px';
+            requestAnimationFrame(function () { k.style.transition = 'translate .22s ease'; k.style.translate = ''; });
+          });
+          Kit.haptic('light');
+        }
+        var r2 = t.getBoundingClientRect(), cur = (t.style.translate || '0px 0px').split(' ').map(parseFloat);
+        t.style.translate = (e.clientX - drag.gx - (r2.left - (cur[0] || 0))) + 'px ' + (e.clientY - drag.gy - (r2.top - (cur[1] || 0))) + 'px';
+      });
+      function end() {
+        if (timer) { clearTimeout(timer); timer = 0; }
+        if (!drag) return;
+        var was = drag.on; drag = null;
+        if (!was) return;
+        t._held = true;
+        t.style.transition = 'translate .2s ease'; t.style.translate = '';
+        setTimeout(function () { t.style.transition = ''; t.classList.remove('lift'); }, 220);
+        saveFavOrder(list); Kit.sfx('tap');
+      }
+      t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
+      t.addEventListener('contextmenu', function (e) { if (sec.classList.contains('wiggle') || t._held) e.preventDefault(); });
+      // while arranging (or right after a hold), a tap doesn't open the game
+      t.addEventListener('click', function (e) { if (t._held || sec.classList.contains('wiggle')) { if (!e.target.closest('.fav')) { e.stopPropagation(); e.preventDefault(); } t._held = false; } }, true);
+    });
+  }
+  function startWiggle(sec) {
+    if (wiggling) return; wiggling = true; sec.classList.add('wiggle'); Kit.sfx('pop');
+    setTimeout(function () { document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', esc); }, 0);
+  }
+  function stopWiggle() {
+    wiggling = false; document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', esc);
+    document.querySelectorAll('.sec.favs.wiggle').forEach(function (x) { x.classList.remove('wiggle'); });
+    Kit.sfx('tap');
+  }
+  function outside(e) { if (!e.target.closest('.sec.favs')) stopWiggle(); }
+  function esc(e) { if (e.key === 'Escape') stopWiggle(); }
+  // The shown favorites go back into the saved list in their new order (favorites hidden by a filter keep their spots)
+  function saveFavOrder(list) {
+    var f = favList(), byId = {};
+    GAMES.forEach(function (g) { byId[g.id] = g; });
+    var shown = Array.prototype.map.call(list.children, function (t) { return byId[t.dataset.id]; }).filter(Boolean);
+    var hrefOf = function (g) { return [g.play, g.score, g.id].filter(Boolean).map(function (k) { return 'games/' + k + '.html'; }).filter(function (h) { return f.indexOf(h) >= 0; })[0]; };
+    var hrefs = shown.map(hrefOf).filter(Boolean), slots = [];
+    f.forEach(function (h, i) { if (hrefs.indexOf(h) >= 0) slots.push(i); });
+    slots.forEach(function (i, k) { f[i] = hrefs[k]; });
+    set('fav_games', JSON.stringify(f)); set('fav_games_updated_at', String(Date.now()));
+    try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('fav_games'); } catch (e) {}
   }
   function bankBadge() {
     var b = Casino.balance();
@@ -548,13 +648,13 @@ document.addEventListener('visibilitychange', function () {
     var vis = visibleGames();
     if (state.cat === 'all') {
       var favs = vis.filter(isFav);
-      if (favs.length && !state.q) { var fs = section('Favorites', 'star', favs); fs.classList.add('favs'); list.appendChild(fs); }
+      if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
       GAME_CATS.forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
         if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : null));
       });
     } else if (state.cat === 'fav') {
-      list.appendChild(section('Favorites', 'star', vis.filter(isFav)));
+      list.appendChild(section('Favorites', 'star', vis.filter(isFav), null, true));
     } else {
       var c = GAME_CATS.filter(function (x) { return x.id === state.cat; })[0];
       list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), c.id === 'casino' ? bankBadge() : null));
