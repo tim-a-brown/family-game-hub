@@ -5,6 +5,9 @@
 // never deletes anything. Any failure just leaves the copies as they were.
 //   FIREBASE_SERVICE_ACCOUNT='{...json key...}' node scripts/mirror-lorcana-art.js
 // The game reads the copies from lorcana/<path on cards.lorcast.io>.
+// Also saves Lorcast's full card list (every set, every card, as Lorcast sends
+// it) to lorcana/data/cards.json, so the card text the live site plays with can
+// be checked against the game's ability rules.
 const crypto = require('crypto');
 const BUCKET = process.env.ART_BUCKET || 'familygames-da3e5.firebasestorage.app';
 const API = 'https://api.lorcast.com/v0';
@@ -44,15 +47,23 @@ async function token(key) {
   // Every card picture Lorcast has (same list the game downloads)
   const sj = await json(API + '/sets', { headers: UA });
   const sets = (Array.isArray(sj) ? sj : sj.results || []).filter((s) => s && (s.id || s.code));
-  const urls = new Set();
+  const urls = new Set(), data = { at: new Date().toISOString(), sets, cards: {} };
   for (const s of sets) {
     const cj = await json(API + '/sets/' + encodeURIComponent(s.id || s.code) + '/cards', { headers: UA });
+    data.cards[String(s.code || s.id)] = Array.isArray(cj) ? cj : cj.results || [];
     for (const c of Array.isArray(cj) ? cj : cj.results || []) {
       const iu = (c && c.image_uris) || {}, im = iu.digital || iu;
       for (const u of [im.small, im.normal, im.large]) if (u) urls.add(u);
     }
     await sleep(120);
   }
+
+  // The card list (replaced every deploy)
+  try {
+    const body = JSON.stringify(data), n = Object.values(data.cards).reduce((a, l) => a + l.length, 0);
+    await json('https://storage.googleapis.com/upload/storage/v1/b/' + BUCKET + '/o?uploadType=media&fields=name&name=' + encodeURIComponent('lorcana/data/cards.json'), { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body });
+    console.log('lorcana cards: saved ' + n + ' cards from ' + sets.length + ' sets');
+  } catch (e) { console.log('lorcana cards: list not saved (' + e.message + ')'); }
 
   const todo = [...urls].map((u) => ({ u, name: 'lorcana' + new URL(u).pathname })).filter((x) => !have.has(x.name));
   console.log('lorcana art: ' + have.size + ' already copied, ' + todo.length + ' new of ' + urls.size);
