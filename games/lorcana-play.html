@@ -1364,7 +1364,7 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 
 .bld{display:flex;flex-direction:column;height:var(--avail,calc(100dvh - 64px));padding:0 calc(10px + env(safe-area-inset-right,0px)) 0 calc(10px + env(safe-area-inset-left,0px));max-width:1100px;margin:0 auto;}
 .bld-top{flex:none;display:flex;gap:8px;align-items:center;padding:2px 0 8px;}
-.bld-top .input{flex:1;min-width:0;min-height:44px;}
+.bld-top .input{flex:1;min-width:0;min-height:44px;font-weight:800;}
 .bld-top .cnt{flex:none;font-family:var(--display);font-size:1.15rem;padding:0 4px;white-space:nowrap;}
 .bld-top .cnt.ok{color:#8ff0a8;}
 .bld-msg{flex:none;font-size:.78rem;font-weight:800;color:#ffb3b3;padding:0 2px 6px;min-height:1px;}
@@ -1737,6 +1737,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .selbar .sb-acts .btn{flex:1;min-height:42px;white-space:nowrap;}
 .selbar .sb-acts .btn-primary{flex:1.6;}
 .bld.selmode .bld-grid{padding-bottom:150px;}
+.bld.selmode .pc .pc-add{display:none!important;}
 .bld.selmode .bld-grid{touch-action:pan-y;-webkit-user-select:none;user-select:none;}
 .bld.seldrag .pc{-webkit-touch-callout:none;}
 .hmenu .k-list button{width:100%;}
@@ -9435,8 +9436,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       requestAnimationFrame(function () { requestAnimationFrame(fitTile); });
       window.addEventListener('resize', function rs() { if (!wrap.isConnected) { window.removeEventListener('resize', rs); return; } fitTile(); });
     }
-    // Library: Select, then search, then Sort and Filters, all on one row (the deck builder: the same, less Select)
-    var row1 = el('div', { class: 'row1' }, lib ? [selBtn, sfield, sortBtn, moreBtn] : [sfield, sortBtn, moreBtn]);
+    // Select, then search, then Sort and Filters, all on one row (library and deck builder alike)
+    var row1 = el('div', { class: 'row1' }, [selBtn, sfield, sortBtn, moreBtn]);
     var onChips = el('div', { class: 'fchips onchips' });
     // Always on show: search, bookmarks, saved decks (and cost in the deck builder). Everything else lives in Filters.
     var row2 = costChips;
@@ -9649,7 +9650,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         f.marked = !f.marked; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
       } }));
       });
-      if (lib) { selBtn.innerHTML = Kit.icon('check') + '<span>Select</span>'; selBtn.classList.toggle('on', !!selSet); selBtn.setAttribute('aria-pressed', String(!!selSet)); selBtn.setAttribute('aria-label', selSet ? 'Stop selecting' : 'Select cards'); selBtn.title = selSet ? 'Stop selecting' : 'Select cards'; }
+      { selBtn.innerHTML = Kit.icon('check') + '<span>Select</span>'; selBtn.classList.toggle('on', !!selSet); selBtn.setAttribute('aria-pressed', String(!!selSet)); selBtn.setAttribute('aria-label', selSet ? 'Stop selecting' : 'Select cards'); selBtn.title = selSet ? 'Stop selecting' : 'Select cards'; }
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
       if (f.manual) storyChips.appendChild(el('button', { type: 'button', class: 'fchip on', 'aria-pressed': 'true', html: Kit.icon('pencil') + '<span>Needs a hand</span><i class="x" style="font-style:normal;margin-left:4px">×</i>', onclick: function () { Kit.sfx('tap'); f.manual = false; f.shown = 60; paintChips(); paintGrid(); } }));
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
@@ -10035,7 +10036,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function selToggle(d, b) { if (selSet[d.id]) delete selSet[d.id]; else selSet[d.id] = 1; b.classList.toggle('sel', !!selSet[d.id]); Kit.sfx('tap'); selPaint(); }
     // Select mode: drag across cards to select (or unselect) them all at once. On a touch screen a drag that starts
     // sideways selects and an up-and-down one still scrolls; near the top or bottom edge the grid scrolls along.
-    if (lib) (function () {
+    (function () {
       var drag = null;
       function cardAt(x, y) { var t = document.elementFromPoint(x, y), c = t && t.closest ? t.closest('.pc') : null; return c && grid.contains(c) ? c : null; }
       function mark(c) {
@@ -10080,17 +10081,31 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function selPaint() {
       if (!selSet) return;
       if (!selBar) { selBar = el('div', { class: 'selbar', role: 'region', 'aria-label': 'Selected cards' }); wrap.appendChild(selBar); }
+      // Deck builder: centred over the card grid, clear of the deck list beside it
+      if (!lib) { var gr = grid.getBoundingClientRect(); if (gr.width) { selBar.style.left = (gr.left + gr.width / 2) + 'px'; selBar.style.width = Math.min(560, gr.width - 16) + 'px'; } }
       var n = selCount(), all = DB.unique.filter(matches), allOn = all.length && all.every(function (d) { return selSet[d.id]; });
       selBar.innerHTML = '';
       selBar.appendChild(el('div', { class: 'sb-top' }, [el('b', { text: n ? plural(n, 'card') + ' selected' : 'Tap cards, or drag across them, to select' }),
         el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Done', onclick: selEnd })]));
       selBar.appendChild(el('div', { class: 'sb-acts' }, [
         el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: allOn ? 'Clear' : 'Select all ' + all.length.toLocaleString(), title: allOn ? 'Unselect everything' : 'Every card the search and filters show, not just the ones on screen', onclick: function () { if (allOn) selSet = {}; else all.forEach(function (d) { selSet[d.id] = 1; }); Kit.sfx('tap'); paintGrid(true); selPaint(); } }),
-        el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add 1 each to a deck', disabled: !n, onclick: selAdd })]));
+        el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: lib ? 'Add 1 each to a deck' : 'Add 1 each', disabled: !n, onclick: selAdd })]));
     }
     function selAdd() {
       var picked = Object.keys(selSet).map(function (id) { return DB.byId[id]; }).filter(Boolean);
       if (!picked.length) return;
+      // Deck builder: straight into the deck being edited (one each, up to each card's limit)
+      if (!lib) {
+        var go2 = function () {
+          var added = 0, full = 0;
+          picked.forEach(function (d) { if (copiesByFull(deck.cards, d.full) >= copyLimit(d)) { full++; return; } deck.cards[d.id] = (deck.cards[d.id] || 0) + 1; added++; });
+          dirty = true; Kit.sfx(added ? 'good' : 'bad'); Kit.toast('Added ' + plural(added, 'card') + (full ? ' · ' + full + ' already at the limit' : ''));
+          selEnd(); paintDeck();
+        };
+        var test = {}; for (var k0 in deck.cards) test[k0] = deck.cards[k0]; picked.forEach(function (d) { test[d.id] = (test[d.id] || 0) + 1; });
+        if (!deck.casual && deckInks(test).length > 2) return askCasual(deck).then(function (y) { if (!y) return; deck.casual = true; go2(); });
+        return go2();
+      }
       var node = el('div', { class: 'dk-grid' }), sh;
       function into(dk, isNew) {
         sh.close();
@@ -10129,7 +10144,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var plus = el('button', { type: 'button', class: 'pc-add', 'aria-label': 'Add ' + d.full, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } });
         plus.style.cssText = 'position:absolute;right:4px;top:4px;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6)';
         if (!lib) b.appendChild(plus);
-        if (lib) { b.appendChild(el('span', { class: 'selo', 'aria-hidden': 'true' })); b.appendChild(el('span', { class: 'selk', 'aria-hidden': 'true', html: '<i>' + Kit.icon('check') + '</i>' })); if (selSet && selSet[d.id]) b.classList.add('sel'); }
+        { b.appendChild(el('span', { class: 'selo', 'aria-hidden': 'true' })); b.appendChild(el('span', { class: 'selk', 'aria-hidden': 'true', html: '<i>' + Kit.icon('check') + '</i>' })); if (selSet && selSet[d.id]) b.classList.add('sel'); }
         b.addEventListener('click', function () {
           if (b._held) { b._held = false; return; }
           if (selSet) { selToggle(d, b); return; }
