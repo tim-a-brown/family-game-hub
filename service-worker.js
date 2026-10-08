@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v258-2026-10-08-menu-top-row';
+const CACHE_VERSION = 'v259-2026-10-08-text-13';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
