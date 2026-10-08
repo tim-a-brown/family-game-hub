@@ -443,7 +443,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* the rarity, with the printing's number as on the card in small type beneath it */
 .rp-i .rp-t{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.1;}
 .rp-i .rp-t span{flex:none;}
-.rp-i small.il{font-weight:600;font-style:italic;margin-top:1px;}
+.rp-i small.sn{color:var(--gilt-2);opacity:.8;}
+.rp-i small i{font-weight:600;}
 .rp-i small{display:block;margin-top:1px;font-family:var(--font);font-size:10.5px;font-weight:700;letter-spacing:.01em;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rp-i.on{color:#fff6dc;}
 /* Enchanted / Epic / Iconic art: a stronger rainbow foil than Whisper's pearl */
@@ -5640,7 +5641,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     if (FANCY) { var best = list.slice().sort(function (a, b) { return prSpecial(b) - prSpecial(a); })[0]; if (prSpecial(best)) return best; }
     return d.id && list.some(function (p) { return p.id === d.id; }) ? d : (DB.unique.filter(function (u) { return u.full === d.full; })[0] || d);
   }
-  // A printing's details as printed in the card's bottom left: 47/204 · EN · Set 2, and the artist (the main set's size;
+  // A printing's details as printed in the card's bottom left: 47/204 · EN · the set's name, and the artist (the main set's size;
   // Enchanteds and the like are numbered past it)
   var SETSIZE = null;
   function setSize(set) {
@@ -5652,8 +5653,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var tot = setSize(p.set), bits = [];
     if (p.no) bits.push(esc(p.no) + (tot ? '/' + tot : ''));
     if (p.lg) bits.push(esc(p.lg));
-    if (p.set) bits.push('Set ' + esc(p.set));
-    return (p.il ? '<small class="il">' + esc(p.il) + '</small>' : '') + '<small>' + bits.join(' · ') + '</small>';
+    // the set by name (Rise of the Floodborn) on its own line, then the artist and the printed number beneath
+    var sx = p.set ? DB.sets.filter(function (y) { return y.code === p.set; })[0] : null, sn = p.set ? (sx && sx.name ? sx.name : 'Set ' + p.set) : '';
+    if (p.il) bits.push('<i>' + esc(p.il) + '</i>');
+    return (sn ? '<small class="sn">' + esc(sn) + '</small>' : '') + '<small>' + bits.join(' · ') + '</small>';
   }
   function prRarName(r) { return String(r || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
