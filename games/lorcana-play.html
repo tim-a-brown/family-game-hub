@@ -1716,9 +1716,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .dleft{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
 .dleft .curve{height:50px;}
 .dink{justify-content:flex-end!important;gap:12px!important;}
-.dink .dk-inks{flex:none;display:grid!important;grid-template-columns:repeat(3,15px);grid-auto-rows:15px;gap:2px!important;align-self:center;margin-right:auto;}
-.dink .dk-inks .inkico{--ih:15px;margin:0;}
-.dink .dk-inks .inkgap{width:15px;height:15px;}
+.dink .dk-inks{flex:1 1 0;min-width:0;display:flex!important;flex-direction:row!important;justify-content:center;align-items:center;gap:0!important;align-self:center;}
+.dink .dk-inks .inkico{--ih:22px;flex:none;margin:0 0 0 3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
+.dink .dk-inks .inkico:first-child{margin-left:0;}
 .dink .dk-ink{min-width:44px;}
 .dtype{flex:none;display:flex;align-items:center;gap:8px;}
 .donut{position:relative;width:74px;height:74px;flex:none;}
@@ -10266,10 +10266,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       dtop.style.display = n ? '' : 'none';
       inkRow.innerHTML = ''; tyBox.innerHTML = '';
       if (n) {
-        // The deck's inks in a fixed 3 x 2 block (same spot whether it holds 1 ink or 6), then the inkable counts
-        var dInks = deckInks(deck.cards), blk = '';
-        for (var ii = 0; ii < 6; ii++) blk += dInks[ii] ? inkIcon(dInks[ii]) : '<i class="inkgap"></i>';
-        inkRow.appendChild(el('span', { class: 'dk-inks', title: dInks.join(' & '), html: blk }));
+        // The deck's inks in one row, centred in the space left of the counts (overlapping a little if many won't fit)
+        var dInks = deckInks(deck.cards), ib = el('span', { class: 'dk-inks', title: dInks.join(' & '), html: dInks.map(inkIcon).join('') });
+        inkRow.appendChild(ib);
+        requestAnimationFrame(function () {
+          var k = dInks.length, W = ib.clientWidth, w = 22; if (k < 2 || !W) return;
+          var gap = Math.min(3, (W - k * w) / (k - 1));
+          Array.prototype.forEach.call(ib.children, function (c, j) { c.style.marginLeft = j ? gap + 'px' : '0'; });
+        });
         inkRow.appendChild(el('span', { class: 'dk-ink' + (ink ? '' : ' zero'), title: ink + ' inkable', html: '<span class="tp">' + costSVG(true) + '<b>' + ink + '</b></span><small>Ink</small>' }));
         inkRow.appendChild(el('span', { class: 'dk-ink no' + (n - ink ? '' : ' zero'), title: (n - ink) + ' not inkable', html: '<span class="tp">' + costSVG(false) + '<b>' + (n - ink) + '</b></span><small>No ink</small>' }));
         // Card types: a donut (the deck size in the hole) and a key of all five (dimmed at 0), matching the row tints below
