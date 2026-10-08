@@ -913,9 +913,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rv-verb::before,.rv-verb::after{content:'';position:absolute;top:50%;width:22px;height:1.5px;background:linear-gradient(90deg,rgba(227,189,98,0),#e3bd62);}
 .rv-verb::before{left:0;}
 .rv-verb::after{right:0;transform:scaleX(-1);}
-.rv-ink{position:relative;display:inline-flex;align-items:center;justify-content:center;width:1.9em;height:1.9em;margin:-.35em 0 -.35em .2em;vertical-align:middle;}
-.rv-ink svg{position:absolute;inset:0;width:100%;height:100%;}
-.rv-ink b{position:relative;font-family:var(--display);font-size:.9em;color:#fff;}
+.rv-mk{position:relative;display:inline-flex;align-items:center;justify-content:center;width:1.9em;height:1.9em;margin:-.35em 0 -.35em .2em;vertical-align:middle;}
+.rv-mk svg{position:absolute;inset:0;width:100%;height:100%;}
+.rv-mk b{position:relative;font-family:var(--display);font-size:.9em;color:#fff;}
+.rv-lore{width:1.45em;height:2.05em;margin:-.4em .1em -.4em .15em;}
+.rv-lore b{font-size:.9em;}
 .rv-fx{margin-top:6px;padding:4px 14px;border-radius:999px;background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 1px rgba(227,189,98,.35);color:#fff3d0;font-weight:800;font-size:.95rem;text-align:center;}
 .rv-bar{flex:none;position:sticky;bottom:0;z-index:300;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;padding:14px 16px calc(var(--safe-b) + 10px);background:linear-gradient(180deg,rgba(6,5,18,0),rgba(6,5,18,.92) 30%);}
 .rv-row{display:flex;gap:10px;width:min(520px,100%);}
@@ -7352,6 +7354,15 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var INKWELL = '<svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="gkw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e1a8"/><stop offset=".5" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs>' +
     '<circle cx="20" cy="20" r="19" fill="url(#gkw)" stroke="#fff2c4" stroke-width=".8"/><circle cx="20" cy="20" r="16.4" fill="none" stroke="#7a5618" stroke-width="1" stroke-dasharray="1.3 1.5"/>' +
     '<path d="M20 7l11.26 6.5v13L20 33l-11.26-6.5v-13z" fill="#1d1a2c" stroke="#fff2c4" stroke-width="1.4" stroke-linejoin="round"/><path d="M20 9.6l9 5.2v10.4l-9 5.2-9-5.2V14.8z" fill="none" stroke="#e3bd62" stroke-opacity=".55" stroke-width=".8"/></svg>';
+  var LOREMARK = '<svg viewBox="6 0 28 40" aria-hidden="true"><defs><linearGradient id="gkl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbeec5"/><stop offset=".55" stop-color="#e3bd62"/><stop offset="1" stop-color="#a77a26"/></linearGradient></defs><path d="M20 1.5L33 20 20 38.5 7 20z" fill="url(#gkl)" stroke="#fff2c4" stroke-width="1" stroke-linejoin="round"/><path d="M20 6.5L29.5 20 20 33.5 10.5 20z" fill="#1d1a2c"/></svg>';
+  function markHTML(cls, svg, n, label) { return '<span class="rv-mk ' + cls + '" role="img" aria-label="' + n + ' ' + label + '">' + svg + '<b>' + n + '</b></span>'; }
+  // Ink and lore amounts in the reveal header drawn as the printed marks: "Paid 9 ink", "+1 lore · Chappie has 3"
+  function fxHTML(effect) {
+    var h = esc(effect).replace(/(\d+) ink\b/g, function (m, n) { return markHTML('rv-ink', INKWELL, n, 'ink'); });
+    if (/\blore\b/.test(effect)) h = h.replace(/([+−-]?)(\d+) lore\b/g, function (m, s, n) { return s + markHTML('rv-lore', LOREMARK, n, 'lore'); })
+      .replace(/( has )(\d+)$/, function (m, w, n) { return w + markHTML('rv-lore', LOREMARK, n, 'lore'); });
+    return h;
+  }
   function showReveal(u, how, verb, effect) {
     var d = DD(u), p = S.P[C(u).o];
     verb = verb || (/^Used/.test(how || '') ? 'Ability' : /^Sung/.test(how || '') ? 'Sung' : /^Shifted/.test(how || '') ? 'Shifted' : 'Played');
@@ -7359,7 +7370,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       (how ? '<p class="lz-sub">' + esc(how) + '</p>' : '') + '<div class="rtext">' + rulesHTML(d) + '</div>', [], null, null, { tapClose: true });
     ov.classList.add('reveal');
     var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
-    ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + esc(effect).replace(/(\d+) ink\b/g, function (m, n) { return '<span class="rv-ink" role="img" aria-label="' + n + ' ink">' + INKWELL + '<b>' + n + '</b></span>'; }) + '</span>' : '') }), ov.firstChild);
+    ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + fxHTML(effect) + '</span>' : '') }), ov.firstChild);
     var row = el('div', { class: 'rv-row' }, [
       holdTip(el('button', { type: 'button', class: 'rv-skip', text: 'Next turn', onclick: function () { S.skipTurn = S.turn; } }), 'Skip ahead: the rest of this turn shows as quick banners'),
       holdTip(el('button', { type: 'button', class: 'rv-fast', 'aria-label': 'Fast mode', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5v13L11.5 12zM12 5.5v13L20.5 12z" fill="currentColor"/></svg>Fast', onclick: function () { lsSet(FAST, true); Kit.sfx('tap'); Kit.toast('Fast mode on: moves show as banners. Turn it off in the menu.'); } }), 'Fast mode: from now on, moves show as banners instead of stopping here'),
