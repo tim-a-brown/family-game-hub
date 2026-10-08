@@ -464,20 +464,26 @@ document.addEventListener('visibilitychange', function () {
         if (e.button > 0 || e.target.closest('.fav')) return;
         x0 = e.clientX; y0 = e.clientY;
         if (sec.classList.contains('wiggle')) { drag = { id: e.pointerId, on: false }; return; }
-        timer = setTimeout(function () { timer = 0; t._held = true; startWiggle(sec); Kit.haptic('medium'); }, 480);
+        var pid = e.pointerId;
+        // Held still: everything starts wiggling and this tile lifts under your finger, ready to drag (no letting go first)
+        timer = setTimeout(function () { timer = 0; t._held = true; startWiggle(sec); Kit.haptic('medium'); drag = { id: pid, on: false }; lift(pid); }, 480);
       });
+      function lift(pid) {
+        // the grid's spots (their centres, page coordinates), fixed for this drag: tiles sliding between them
+        // can't confuse where you are, and centres don't move with the wiggle or the lift's zoom
+        drag.slots = Array.prototype.map.call(list.children, function (k) { var b = k.getBoundingClientRect(); return { x: b.left + b.width / 2 + scrollX, y: b.top + b.height / 2 + scrollY }; });
+        var c0 = drag.slots[Array.prototype.indexOf.call(list.children, t)];
+        drag.gx = x0 + scrollX - c0.x; drag.gy = y0 + scrollY - c0.y;   // where you grabbed it, from its centre
+        drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(pid); } catch (x) {}
+      }
+      // a finger on a lifted tile drags it, never the page
+      t.addEventListener('touchmove', function (e) { if (drag || sec.classList.contains('wiggle')) e.preventDefault(); }, { passive: false });
       t.addEventListener('pointermove', function (e) {
         if (timer && (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10)) { clearTimeout(timer); timer = 0; }
         if (!drag) return;
         if (!drag.on) {
           if (Math.abs(e.clientX - x0) < 6 && Math.abs(e.clientY - y0) < 6) return;
-          // the grid's spots (their centres, page coordinates), fixed for this drag: tiles sliding between them
-          // can't confuse where you are, and centres don't move with the wiggle or the lift's zoom
-          drag.slots = Array.prototype.map.call(list.children, function (k) { var b = k.getBoundingClientRect(); return { x: b.left + b.width / 2 + scrollX, y: b.top + b.height / 2 + scrollY }; });
-          var c0 = drag.slots[Array.prototype.indexOf.call(list.children, t)];
-          drag.gx = x0 + scrollX - c0.x; drag.gy = y0 + scrollY - c0.y;   // where you grabbed it, from its centre
-          drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(e.pointerId); } catch (x) {}
-          Kit.haptic('light');
+          lift(e.pointerId); Kit.haptic('light');
         }
         e.preventDefault();
         // the nearest spot to the finger: move this tile there, the others sliding over to make room
