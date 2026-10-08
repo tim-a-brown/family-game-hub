@@ -1712,7 +1712,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .bld-msg.ok:empty{display:none;}
 
 .dkey{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:2px;white-space:nowrap;overflow:hidden;}
-.dkey b{display:inline-block;min-width:1.2em;text-align:right;font-variant-numeric:tabular-nums;}
+/* each count: icon or colour and the number on top, a short label centred underneath */
+.dkey > span{display:inline-flex!important;flex-direction:column;align-items:center;gap:2px!important;}
+.dkey .tp{display:inline-flex;align-items:center;gap:3px;}
+.dkey b{display:inline-block;min-width:1.2em;text-align:left;font-variant-numeric:tabular-nums;}
+.dkey small{font-size:.5rem!important;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);font-family:var(--font);margin:0!important;}
 .dkey > span{flex:none;}
 .dkey svg,.dkey i{flex:none;}
 .dkey .zero{opacity:.35;}
@@ -10238,10 +10242,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!n) sum.textContent = 'Tap + on a card to add it. 60 cards, 1 or 2 inks, up to 4 of each.';
       else {
         sum.className = 'muted dkey';
-        sum.appendChild(el('span', { class: 'dk-ink' + (ink ? '' : ' zero'), title: ink + ' inkable', html: costSVG(true) + '<b>' + ink + '</b>' }));
-        sum.appendChild(el('span', { class: 'dk-ink no' + (n - ink ? '' : ' zero'), title: (n - ink) + ' not inkable', html: costSVG(false) + '<b>' + (n - ink) + '</b>' }));
+        sum.appendChild(el('span', { class: 'dk-ink' + (ink ? '' : ' zero'), title: ink + ' inkable', html: '<span class="tp">' + costSVG(true) + '<b>' + ink + '</b></span><small>Ink</small>' }));
+        sum.appendChild(el('span', { class: 'dk-ink no' + (n - ink ? '' : ' zero'), title: (n - ink) + ' not inkable', html: '<span class="tp">' + costSVG(false) + '<b>' + (n - ink) + '</b></span><small>No ink</small>' }));
         // Every type, always (dimmed at 0), so the key reads the same for every deck
-        TY_ORDER.forEach(function (k) { tyN[k] = tyN[k] || 0; sum.appendChild(el('span', { class: 'dk-ty' + (tyN[k] ? '' : ' zero'), style: { '--ty': TY_COL[k] }, title: plural(tyN[k], TY_NAME[k].replace(/s$/, '').toLowerCase()), html: '<i></i><b>' + tyN[k] + '</b><small>' + TY_SHORT[k] + '</small>' })); });
+        TY_ORDER.forEach(function (k) { tyN[k] = tyN[k] || 0; sum.appendChild(el('span', { class: 'dk-ty' + (tyN[k] ? '' : ' zero'), style: { '--ty': TY_COL[k] }, title: plural(tyN[k], TY_NAME[k].replace(/s$/, '').toLowerCase()), html: '<span class="tp"><i></i><b>' + tyN[k] + '</b></span><small>' + TY_SHORT[k] + '</small>' })); });
       }
       dlist.innerHTML = '';
       // sort the list; each row shows the odds the next card you draw is one of these (copies : deck size) and the chance of one in your opening 7
