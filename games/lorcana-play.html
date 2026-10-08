@@ -3206,7 +3206,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (ui.onMark) ui.onMark();
     return !!marks[k];
   }
-  function savedDecks() { var a = lsGet(DECKS, []); return Array.isArray(a) ? a.filter(function (d) { return d && d.cards; }) : []; }
+  // a deck with three or more inks can only be a casual deck, whoever saved it and however (older imports didn't say so)
+  function savedDecks() { var a = lsGet(DECKS, []); return Array.isArray(a) ? a.filter(function (d) { return d && d.cards; }).map(function (d) { if (!d.casual && DB.status === 'ready' && deckInks(d.cards).length > 2) d.casual = true; return d; }) : []; }
   function storeDecks(a) { if (!lsSet(DECKS, a)) Kit.toast('Couldn’t save decks: storage is full'); else synced(DECKS); }
   // Save (or replace) one deck, newest first
   // Keep card pictures on the device (the service worker holds them): the first three pages of the card library
