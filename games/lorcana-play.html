@@ -1677,10 +1677,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .drow button.odds{border:0;cursor:help;}
 .bld-msg.ok:empty{display:none;}
 
-.dkey{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
+.dkey{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;}
+.dkey .dk-ink.no{color:var(--text-2);}
+.dkey .dk-ty small{font-size:.58rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-left:1px;}
+.drow .q button.del{display:grid;place-items:center;color:#f08a8a;}
+.drow .q button.del .ico{width:16px;height:16px;}
 .dkey .dk-ink{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);color:var(--gilt-2);}
-.dkey .dk-ink svg{width:18px;height:18px;}
-.dkey .dk-ty{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--text-3);}
+.dkey .dk-ink svg{width:16px;height:16px;}
+.dkey .dk-ty{display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--text-3);}
 .dkey .dk-ty i{width:10px;height:10px;border-radius:3px;background:var(--ty);box-shadow:0 0 6px color-mix(in srgb,var(--ty) 60%,transparent);}
 .dkey .dk-ty b{font-family:var(--display);font-weight:400;font-size:.85rem;color:var(--text);}
 .otip{position:fixed;z-index:9999;display:none;flex-direction:column;gap:10px;padding:12px 14px;border-radius:14px;background:#1b1631;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 0 0 1px rgba(227,189,98,.35);pointer-events:none;}
@@ -10093,6 +10097,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var TY_ORDER = ['character', 'action', 'song', 'item', 'location'];
     var TY_COL = { character: '#6f8cff', action: '#e8893a', song: '#c56be0', item: '#3fbf8a', location: '#e25f6b' };
     var TY_NAME = { character: 'Characters', action: 'Actions', song: 'Songs', item: 'Items', location: 'Locations' };
+    var TY_SHORT = { character: 'Char', action: 'Action', song: 'Song', item: 'Item', location: 'Loc' };
     function tyKey(d) { return d.song ? 'song' : TY_COL[d.t] ? d.t : 'action'; }
     // The odds badge explained in pictures: the next draw as 1 lit card among N, the opening hand as 7 cards and a ring
     var tipEl = null, tipFor = null;
@@ -10139,7 +10144,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       else {
         sum.className = 'muted dkey';
         sum.appendChild(el('span', { class: 'dk-ink', title: ink + ' inkable', html: costSVG(true) + '<b>' + ink + '</b>' }));
-        TY_ORDER.forEach(function (k) { if (tyN[k]) sum.appendChild(el('span', { class: 'dk-ty', style: { '--ty': TY_COL[k] }, title: tyN[k] + ' ' + TY_NAME[k].toLowerCase(), html: '<i></i><b>' + tyN[k] + '</b> ' + TY_NAME[k] })); });
+        sum.appendChild(el('span', { class: 'dk-ink no', title: (n - ink) + ' not inkable', html: costSVG(false) + '<b>' + (n - ink) + '</b>' }));
+        TY_ORDER.forEach(function (k) { if (tyN[k]) sum.appendChild(el('span', { class: 'dk-ty', style: { '--ty': TY_COL[k] }, title: plural(tyN[k], TY_NAME[k].replace(/s$/, '').toLowerCase()), html: '<i></i><b>' + tyN[k] + '</b><small>' + TY_SHORT[k] + '</small>' })); });
       }
       dlist.innerHTML = '';
       // sort the list; each row shows the odds the next card you draw is one of these (copies : deck size) and the chance of one in your opening 7
@@ -10165,7 +10171,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           el('span', { class: 'hc', html: costSVG(d.k, d.c || 0, 19, '#f3ead2') }),
           el('button', { type: 'button', class: 'grow', onclick: function () { cardZoom(d, cs.map(function (y) { return y.d; })); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + (d.v ? ' ' + esc(d.v) : '') })]),
           ob,
-          el('div', { class: 'q' }, [el('button', { type: 'button', text: '−', 'aria-label': 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }),
+          el('div', { class: 'q' }, [el('button', { type: 'button', class: x.n === 1 ? 'del' : '', html: x.n === 1 ? Kit.icon('trash') : '−', 'aria-label': x.n === 1 ? 'Remove from deck' : 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }),
             el('button', { type: 'button', text: '+', class: full ? 'max' : '', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', onclick: function () { addCard(d, 1); } })])
         ]));
       });
