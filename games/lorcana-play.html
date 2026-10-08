@@ -1101,8 +1101,11 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lzf-st > b{font-family:var(--display);font-weight:400;letter-spacing:.04em;color:#f1cf78;}
 .lzf-st > span{color:var(--text-3);font-weight:800;}
 .lzf-st .lzf-l{margin-left:auto;color:#fff3d0;display:inline-flex;align-items:center;gap:5px;}
-.lzf-st .lzf-l b{color:#f1cf78;font-size:.9rem;}
-.lzf-st .lzf-l b.near{padding:0 5px;border-radius:999px;color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e3bd62);}
+.lzf-dm{position:relative;display:inline-grid;place-items:center;width:26px;height:34px;margin:-6px 0;}
+.lzf-dm svg{position:absolute;inset:0;width:100%;height:100%;}
+.lzf-dm svg path{fill:color-mix(in srgb,var(--c) 30%,#140f2c);stroke:var(--c);stroke-width:2.2;stroke-linejoin:round;}
+.lzf-dm b{position:relative;font-family:var(--display);font-weight:400;font-size:.88rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+.lzf-dm.near svg path{stroke:#f6dc95;filter:drop-shadow(0 0 4px rgba(246,220,149,.8));}
 .lz-peek{position:fixed;left:calc(env(safe-area-inset-left,0px) + 12px);top:calc(var(--safe-t) + 12px);z-index:440;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none;}
 .lz.peeking{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
 .lz.peeking > :not(.lz-peek){opacity:0!important;pointer-events:none;transition:opacity .12s;}
@@ -8816,7 +8819,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var c = S.P[S.cur], me = meIxSafe(), P = S.P[me], ir = P.ink.filter(function (x) { return !C(x).ex; }).length;
     $('.lzf-st', f).innerHTML = '<i class="dot" style="--c:' + c.color + '"></i><b>' + (S.cur === me && !c.cpu ? 'Your turn' : esc(c.name) + '’s turn') + '</b><span class="lzf-t">T' + S.turn + '</span>' +
       '<span class="lzf-ink" title="Your ink: ' + ir + ' ready of ' + P.ink.length + '"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4l14 8v16l-14 8-14-8V12z"/></svg><b>' + ir + '</b><small>/' + P.ink.length + '</small></span>' +
-      '<span class="lzf-l" title="Lore">' + S.P.map(function (p, pi) { var nd = needLore(pi) - p.lore; return '<i class="dot" style="--c:' + p.color + '"></i><b' + (nd > 0 && nd <= 4 ? ' class="near" title="' + nd + ' to win"' : '') + '>' + p.lore + '</b>'; }).join('<em>·</em>') + '</span>';
+      '<span class="lzf-l" title="Lore">' + S.P.map(function (p, pi) { var nd = needLore(pi) - p.lore;
+        // each player's lore in a diamond of their colour (glowing gold when they're close to winning)
+        return '<span class="lzf-dm' + (nd > 0 && nd <= 4 ? ' near' : '') + '" style="--c:' + p.color + '" title="' + esc(p.name) + ': ' + p.lore + ' lore' + (nd > 0 && nd <= 4 ? ', ' + nd + ' to win' : '') + '"><svg viewBox="0 0 30 40" aria-hidden="true"><path d="M15 1.5 28.5 20 15 38.5 1.5 20z"/></svg><b>' + p.lore + '</b></span>'; }).join('') + '</span>';
     // the cards sit just below the panel, however tall it is
     requestAnimationFrame(function () { if (f.isConnected) ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
     return f;
