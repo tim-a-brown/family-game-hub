@@ -830,6 +830,15 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rtext .flav{font-family:var(--serif);font-style:italic;font-size:1.02rem;line-height:1.4;color:var(--text-2);}
 .sym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.17em;}
 .lz-acts{margin-top:14px;}
+/* phones, during a game: the action bar between the card and the details, a compact row (icon beside the label) */
+.lz-acts.out{width:100%;margin-top:0;position:relative;z-index:200;}
+.lz-acts.out .act{flex-direction:row;gap:8px;min-height:48px;padding:6px 10px;}
+.lz-acts.out .act .ai{width:26px;height:26px;flex:none;}
+.lz-acts.out .act .al{text-align:left;}
+.lz-acts.out .act small{flex:none;max-width:40%;}
+.lz-acts.out .acts-row.many .act{min-height:46px;padding:5px 6px;gap:5px;}
+.lz-acts.out .why{margin-top:6px;}
+.lz.has-acts:not(.lz-min) .lz-flow,.lz.has-acts:not(.lz-min) .lz-card{--cu:min(44vh,94vw,460px);}
 .acts-row{display:flex;gap:8px;width:100%;}
 .act{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:70px;padding:8px 6px 7px;border:0;border-radius:14px;cursor:pointer;
   color:#f6e1a8;background:linear-gradient(180deg,#3a2f63,#241c45 60%,#1b1536);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.55),inset 0 1px 0 rgba(255,255,255,.12),0 4px 0 #120d26,0 8px 16px rgba(0,0,0,.35);
@@ -6860,8 +6869,11 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       if (row.children.length > 3) row.classList.add('many');
       g.appendChild(row);
       if (whys && whys.length) g.appendChild(el('div', { class: 'why', text: whys.join(' ') }));
-      info.appendChild(g);
+      // Phones: the actions sit between the card and its details (in reach, and the card a little shorter to make room)
+      if (phoneZoom()) { g.classList.add('out'); ov.classList.add('has-acts'); }
+      else info.appendChild(g);
     }
+    if (g && g.classList.contains('out')) inner.appendChild(g);
     inner.appendChild(info);
     // Phones: the details rolled up into a scroll under the card, the card's name written along it; tap to unroll
     info.setAttribute('data-title', d.n || d.full);
