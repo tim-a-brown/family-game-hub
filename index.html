@@ -691,12 +691,15 @@ document.addEventListener('visibilitychange', function () {
   var GH_GAME = { sol: 'solitaire', fc: 'freecell', ht: 'hearts', sp: 'spades', gin: 'gin-rummy', rm: 'gin-rummy', eu: 'euchre',
     wz: 'wizard', f7: 'flip7', fivecrwns: 'five-crowns', rk: 'rook', p10: 'phase10', mg: 'minigolf', dond: 'dealornodeal',
     wof: 'wheeloffortune', c4: 'connectfour', cs_sc: 'scorecard', sc: 'scorecard', mj4: 'mahjong4' };
+  // Synced gh_ keys that aren't game results: the casino bankroll ledger (bets and top-ups) and a one-time cleanup flag
+  var GH_SKIP = { casino_ledger: 1, dedup_v1: 1 };
   function recentGames() {
     var rows = [];
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
-        var key = k.slice(3), g = findGame(GH_GAME[key] || key);
+        var key = k.slice(3); if (GH_SKIP[key]) continue;
+        var g = findGame(GH_GAME[key] || key);
         var list = JSON.parse(localStorage.getItem(k) || '[]');
         if (!Array.isArray(list)) continue;
         list.forEach(function (e) { if (e && e._date) rows.push({ key: key, g: g, e: e }); });
