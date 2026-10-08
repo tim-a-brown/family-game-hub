@@ -999,6 +999,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .si{display:inline-block;width:.95em;height:.95em;margin:0 .14em 0 0;vertical-align:-.12em;fill:currentColor;}
 .stt .si{width:1.05em;height:1.05em;}
 .stt-t{min-width:0;}
+.sv{white-space:nowrap;}
+.sv-up{color:#8ff0a8;}
+.sv-dn{color:#ff8f8f;}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
@@ -5097,13 +5100,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     l: '<path d="M20 1.5L33 20 20 38.5 7 20z"/>'
   };
   function si(k, name) { return '<svg class="si si-' + k + '" viewBox="0 0 40 40" role="img" aria-label="' + name + '"><title>' + name + '</title>' + SI[k] + '</svg>'; }
+  // A changed stat in a line of text: its mark, then the change, green when it goes up and red when it goes down
+  function sv(k, name, html, dir) { return '<span class="sv' + (dir > 0 ? ' sv-up' : dir < 0 ? ' sv-dn' : '') + '">' + si(k, name) + html + '</span>'; }
   function chalPreview(a, t) {
     var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
     var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
     return { killT: killT, killA: killA,
       // willpower before → after, behind its mark ("Druun ⛉ 3→1"); HTML
-      t: killT ? 'Banishes ' + esc(nm(t)) : dA ? esc(nm(t)) + ' ' + si('w', 'Willpower') + lT + '→' + (lT - dA) : esc(nm(t)) + ' unhurt',
-      a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + si('w', 'Willpower') + lA + '→' + (lA - dD) : esc(nm(a)) + ' unhurt' };
+      t: killT ? 'Banishes ' + esc(nm(t)) : dA ? esc(nm(t)) + ' ' + sv('w', 'Willpower', lT + '→' + (lT - dA), -1) : esc(nm(t)) + ' unhurt',
+      a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + sv('w', 'Willpower', lA + '→' + (lA - dD), -1) : esc(nm(a)) + ' unhurt' };
   }
   function challengeScore(a, t) {
     var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
@@ -6851,12 +6856,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // press and hold for what they mean
     if (d.t === 'character' || d.t === 'item') top += c.ex ? stt('s-exd', 'ex', 'Exerted') : stt('s-rdy', 'ready', 'Ready');
     if (d.t === 'character' && !c.dry) top += stt('s-wet', 'drop', hasKw(u, 'rush') ? 'Drying · Rush' : 'Drying', '--ic:' + inkColor(u));
-    if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage · ' + si('w', 'Willpower') + WP(u) + '→' + Math.max(0, WP(u) - c.dmg));
+    if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage · ' + sv('w', 'Willpower', WP(u) + '→' + Math.max(0, WP(u) - c.dmg), -1));
     if (c.at && S.cards[c.at]) h += stt('s-loc', 'pin', 'At ' + esc(DD(c.at).full));
     if (c.under && c.under.length) h += stt('s-und', 'stack', plural(c.under.length, 'card') + ' under it');
     (c.mods || []).forEach(function (m) {
       var parts = [];
-      if (m.s) parts.push(si('s', 'Strength') + (m.s > 0 ? '+' : '−') + Math.abs(m.s)); if (m.w) parts.push(si('w', 'Willpower') + (m.w > 0 ? '+' : '−') + Math.abs(m.w)); if (m.l) parts.push(si('l', 'Lore') + (m.l > 0 ? '+' : '−') + Math.abs(m.l));
+      if (m.s) parts.push(sv('s', 'Strength', (m.s > 0 ? '+' : '−') + Math.abs(m.s), m.s)); if (m.w) parts.push(sv('w', 'Willpower', (m.w > 0 ? '+' : '−') + Math.abs(m.w), m.w)); if (m.l) parts.push(sv('l', 'Lore', (m.l > 0 ? '+' : '−') + Math.abs(m.l), m.l));
       if (m.kw) parts.push(KWNAME[m.kw] + (m.n ? ' +' + m.n : ''));
       if (m.cant) parts.push('Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'quest or challenge', bechal: 'be challenged', sing: 'sing' }[m.cant]);
       if (m.can) parts.push('Can challenge ready characters');
