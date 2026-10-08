@@ -350,7 +350,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .kws{position:absolute;left:calc(var(--cu) * .02);top:calc(var(--cu) * .26);display:flex;flex-direction:column;gap:2px;pointer-events:none;}
 .kws i{width:max(14px,calc(var(--cu) * .15));height:max(14px,calc(var(--cu) * .15));border-radius:50%;display:grid;place-items:center;background:rgba(10,8,24,.82);color:var(--gilt-2);box-shadow:0 0 0 1px rgba(246,225,168,.5);}
 .kws svg{width:72%;height:72%;}
-.tagl{position:absolute;left:0;right:0;top:0;padding:1px 3px;font-size:max(8px,calc(var(--cu) * .075));font-weight:900;text-align:center;color:#2b1a00;background:rgba(246,225,168,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+.locgrp{display:flex;align-items:center;gap:var(--gap,6px);padding:5px;border-radius:12px;
+  background:radial-gradient(120% 140% at 0 50%,color-mix(in srgb,var(--lc) 38%,transparent),color-mix(in srgb,var(--lc) 16%,transparent) 70%),rgba(6,5,18,.38);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lc) 70%,#fff 10%),inset 0 0 0 3px rgba(255,255,255,.08),0 4px 14px rgba(0,0,0,.35);}
+.locgrp:not(.busy){padding:0;background:none;box-shadow:none;}
+/* the characters stand on the location's ground: a soft lit edge where they meet it */
+.locgrp.busy > .slot.loc{box-shadow:6px 0 14px -6px color-mix(in srgb,var(--lc) 80%,transparent);}
 .under{position:absolute;inset:0;transform:translate(4px,-4px);border-radius:calc(var(--cu) * .05);pointer-events:none;}
 .under .lback{position:absolute;inset:0;border-radius:inherit;}
 .ucount{position:absolute;right:calc(var(--cu) * .03);top:calc(var(--cu) * .03);min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#141029;color:var(--gilt-2);font-size:.65rem;font-weight:900;display:grid;place-items:center;box-shadow:0 0 0 1px var(--gilt);}
@@ -6216,7 +6221,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (d.t === 'character' && !c.dry && S.phase === 'play') h += '<span class="drips" aria-hidden="true"><i></i><i></i><i></i></span>';
       if ((c.mods || []).some(function (m) { return m.cant; })) h += '<span class="chains" aria-hidden="true"></span>';
       if (c.dmg) h += '<span class="dmg">' + c.dmg + '</span>';
-      if (c.at && S.cards[c.at]) h += '<span class="tagl">at ' + esc(DD(c.at).n) + '</span>';
+
       if (c.under && c.under.length) h += '<span class="ucount" title="Cards under">' + c.under.length + '</span>';
     }
     var st = '';
@@ -6226,6 +6231,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     else st = '<span style="font-family:var(--font);font-weight:800;font-size:.8em;opacity:.8">' + (d.song ? 'Song' : d.t === 'item' ? 'Item' : 'Action') + '</span>';
     h += '<div class="ov"><span class="nm">' + esc(d.n) + '</span><span class="st">' + st + '</span></div>';
     if (node._h !== h) { node._ovs.innerHTML = h; node._h = h; }
+    if (board) node.setAttribute('aria-label', d.full + (c.at && S.cards[c.at] ? ', at ' + DD(c.at).full : ''));
     node.title = d.t === 'character' && board && !c.dry && S.phase === 'play' ? 'Ink still drying: can’t quest, challenge or sing until its owner’s next turn' + (hasKw(u, 'rush') ? ' (Rush: can challenge now)' : '') : '';
     var und = node.querySelector(':scope > .under');
     if (board && c.under && c.under.length) { if (!und) node.insertBefore(el('div', { class: 'under', html: '<div class="lback"></div>' }), node.firstChild); }
@@ -6276,7 +6282,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (mine) host.dataset.drop = 'board'; else delete host.dataset.drop;
     host.innerHTML = '';
     if (!order.length) { host.appendChild(el('div', { class: 'empty-msg', text: mine ? (S.P[pi].cpu ? '' : 'Your characters, items and locations go here') : S.P[pi].name + '’s side of the table' })); return; }
-    order.forEach(function (u) { host.appendChild(slotFor(u, 'board')); });
+    // A location is a place on the table: a pad in its ink colour, the location card on it and the characters
+    // there standing beside it on the same pad (where a character is shows by where it stands, not by a label)
+    order.forEach(function (u) {
+      if (isLoc(u)) {
+        var g = el('div', { class: 'locgrp', 'data-loc': u, style: { '--lc': inkColor(u) } });
+        g.appendChild(slotFor(u, 'board'));
+        order.forEach(function (x) { if (isChar(x) && C(x).at === u) g.appendChild(slotFor(x, 'board')); });
+        g.classList.toggle('busy', g.children.length > 1);
+        host.appendChild(g); return;
+      }
+      if (isChar(u) && C(u).at && S.cards[C(u).at] && order.indexOf(C(u).at) >= 0) return;   // already on its location's pad
+      host.appendChild(slotFor(u, 'board'));
+    });
   }
   function fitCu(W, H, fs, gap, maxCu) {
     function fits(cu) {
@@ -6291,7 +6309,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function fitBoards() {
     $$('.lp-board').forEach(function (b) {
-      var slots = $$(':scope > .slot', b), W = b.clientWidth - 12, H = b.clientHeight - 12;
+      var slots = $$('.slot', b), pads = $$('.locgrp.busy', b).length, W = b.clientWidth - 12 - pads * 14, H = b.clientHeight - 12 - (pads ? 12 : 0);
       var fs = slots.map(function (s) { return s.classList.contains('wide') ? 1 : 0.716; });
       var cu = fitCu(W, H, fs, 6, Math.min(H, window.innerWidth >= 700 ? 200 : 150));
       b.style.setProperty('--cu', cu + 'px');
