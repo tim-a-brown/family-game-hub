@@ -1326,6 +1326,7 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .dkm .dk-opt{padding:12px 6px 12px 14px;}
 .dkm .dk-opt .grow > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dkm-edit{color:var(--text-3);display:grid;place-items:center;}
+.lp-div{height:1px;margin:6px 10px;background:linear-gradient(90deg,transparent,rgba(246,220,149,.35),transparent);flex:none;}
 .dkm .dk-opt .btn{flex:none;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;display:grid;place-items:center;color:var(--text-2);}
 .dkm .dk-opt .btn:active{background:rgba(255,255,255,.1);}
 .dkm-edit .ico{width:16px;height:16px;}
@@ -9365,6 +9366,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var mine = savedDecks(), node = el('div', { class: 'lp-list' }), sh;
       if (!mine.length) { Kit.toast('No saved decks yet. Tap New Deck to build one.'); return; }
       node.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { sh.close(); setDeckFilter('*'); } }, [el('span', { html: inkDots(INKS.filter(function (i) { return mine.some(function (dk) { return deckInks(dk.cards).indexOf(i) >= 0; }); })) }), el('b', { class: 'grow', text: 'In any saved deck' }), el('small', { text: plural(mine.length, 'deck') + ', ' + plural(Object.keys(mine.reduce(function (u, dk) { for (var id in dk.cards) { var x = DB.byId[id]; if (x && dk.cards[id] > 0) u[x.full.toLowerCase()] = 1; } return u; }, {})).length, 'card') })]));
+      node.appendChild(el('div', { class: 'lp-div', role: 'separator' }));
       mine.forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.deck === dk.id ? ' on' : ''), onclick: function () { sh.close(); setDeckFilter(dk.id); } }, [el('span', { html: inkDots(deckInks(dk.cards)) }), el('b', { class: 'grow', text: dk.name }), el('small', { text: (isCasual(dk) ? 'Casual · ' : '') + deckCount(dk.cards) + ' cards' })])); });
       sh = Kit.sheet({ title: 'Cards in a Saved Deck', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
     }
