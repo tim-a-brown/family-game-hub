@@ -586,6 +586,13 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .bld-grid.tiny .pc.isnew .bmk{right:22px;}
 .fchip.nr-chip .ico{width:15px;height:15px;vertical-align:-3px;margin-right:4px;color:var(--gilt-2);}
 .fchip.nr-chip.on .ico{color:#2b1a00;}
+/* New Release leading the keywords: two cells wide, a gilt outline with light running along it (it's news, not a chip that's on) */
+.adv .kwgrid .nr-kw{grid-column:span 2;position:relative;overflow:hidden;background:rgba(227,189,98,.07);color:var(--gilt-2);
+  box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.6),0 0 14px rgba(227,189,98,.14);}
+.adv .kwgrid .nr-kw::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,246,216,.22) 50%,transparent 65%) no-repeat;background-size:250% 100%;animation:nrsheen 4.5s ease-in-out infinite;}
+@keyframes nrsheen{0%,55%{background-position:120% 0;}100%{background-position:-120% 0;}}
+@media (prefers-reduced-motion:reduce){.adv .kwgrid .nr-kw::after{animation:none;}}
+.adv .kwgrid .nr-kw.on{background:var(--gilt);color:#2b1a00;box-shadow:none;}
 /* The pack */
 .np{position:fixed;inset:0;z-index:470;display:grid;place-items:center;background:radial-gradient(80% 60% at 50% 45%,rgba(40,24,80,.9),rgba(6,4,16,.96));opacity:0;transition:opacity .35s;overflow:hidden;}
 .np.show{opacity:1;}.np.closing{opacity:0;pointer-events:none;}
@@ -1164,6 +1171,9 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 .savedrow .inkw .inkk{flex:1;min-height:0;}
 .savedrow .sv-l{flex:1;min-width:0;}
 .savedrow .sv-l .fchips{flex-direction:column;align-items:stretch;flex-wrap:nowrap;}
+.savedrow .sv-l .fchip{justify-content:flex-start;gap:6px;padding:0 8px 0 10px;font-size:.78rem;}
+.savedrow .sv-l .fchip .ico{width:16px;height:16px;margin:0;vertical-align:0;flex:none;}
+.savedrow .sv-l .fchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .savedrow .inkw{flex:none;}
 .inkk.iw{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0;background:none;box-shadow:none;}
 .iwt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:84px;padding:4px 12px;white-space:nowrap;border:0;border-radius:14px;cursor:pointer;
@@ -7970,7 +7980,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       storyChips.innerHTML = ''; advTop.innerHTML = '';
       var mc = markCount();
       [storyChips, advTop].forEach(function (box) {
-      box.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + 'Bookmarked' + (mc ? ' (' + mc + ')' : ''), onclick: function () {
+      box.appendChild(el('button', { type: 'button', class: 'fchip bm-chip' + (f.marked ? ' on' : ''), 'aria-pressed': String(f.marked), html: Kit.icon('bookmark') + '<span>Bookmarked' + (mc ? ' (' + mc + ')' : '') + '</span>', onclick: function () {
         Kit.sfx('tap');
         if (!f.marked && !mc) { Kit.toast('Open any card and tap its bookmark to save it here'); return; }
         f.marked = !f.marked; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0;
@@ -7978,7 +7988,10 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       });
       var dkName = f.deck === '*' ? 'In any saved deck' : f.deck ? ((savedDecks().filter(function (x) { return x.id === f.deck; })[0] || {}).name || 'Saved deck') : '';
       var nrc = newCards().length;
-      if (nrc || f.newrel) [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); });
+      // New Release (while there are new cards): in the quick chips, and first among the keywords in the Filters sheet,
+      // marked as something new with a gilt outline and a soft shimmer, not filled in the way a chip that's on is
+      var nrChip = function (box, kw) { box.appendChild(el('button', { type: 'button', class: 'fchip nr-chip' + (kw ? ' nr-kw' : '') + (f.newrel ? ' on' : ''), 'aria-pressed': String(f.newrel), html: NR_ICO + '<span>New Release</span>' + (nrc && !kw ? ' (' + nrc + ')' : ''), onclick: function () { Kit.sfx('tap'); f.newrel = !f.newrel; f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; } })); };
+      if (nrc || f.newrel) nrChip(storyChips);
       [storyChips, advTop].forEach(function (box) { box.appendChild(el('button', { type: 'button', class: 'fchip st-pick' + (f.deck ? ' on' : ''), 'aria-pressed': String(!!f.deck), html: Kit.icon('cards') + '<span>' + esc(dkName || 'Saved deck') + '</span>' + (f.deck ? '<i class="x">×</i>' : ''), onclick: function () { Kit.sfx('tap'); if (f.deck) setDeckFilter(''); else pickDeckFilter(); } })); });
       // Filters menu: pickers, keywords, set and toggles
       pickRows.innerHTML = '';
@@ -7988,6 +8001,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
           el('span', { html: Kit.icon(r[0]) }), el('div', { class: 'grow' }, [el('b', { text: r[1] }), el('small', { text: r[2] || 'Any' })])]));
       });
       kwChips.innerHTML = '';
+      if (nrc || f.newrel) nrChip(kwChips, true);
       ['shift', 'evasive', 'bodyguard', 'ward', 'rush', 'challenger', 'resist', 'reckless', 'support', 'singer', 'singTogether', 'boost', 'alert', 'vanish'].sort(function (a, b) { return KWNAME[a].localeCompare(KWNAME[b]); }).forEach(function (k) {
         kwChips.appendChild(chip(KWNAME[k], f.kws.indexOf(k) >= 0, function () { togF('kws', k); }));
       });
