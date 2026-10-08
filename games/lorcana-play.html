@@ -996,6 +996,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .pk-chal.pk-prev .pk-tx small{font-size:.74rem;color:rgba(255,243,207,.8);}
 .pk-chal.pk-prev .pk-tx small.bad{color:#ffaaaa;}
 .pk-chal.pk-prev .pk-go{flex:none;margin-left:auto;padding:0 14px;color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e8c56f 45%,#c9973a);box-shadow:inset 0 0 0 1.5px #fff2c4,0 3px 0 #7a5413;}
+.si{display:inline-block;width:.95em;height:.95em;margin:0 .14em 0 0;vertical-align:-.12em;fill:currentColor;}
+.stt .si{width:1.05em;height:1.05em;}
+.stt-t{min-width:0;}
 .pk-chal.pk-prev .pk-x{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.25);color:#fff3cf;}
 .pk-chal.pk-prev .pk-x svg{width:16px;height:16px;}
 .pk-chal.pk-prev > :first-child{margin-left:0!important;}
@@ -5087,13 +5090,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return opts[0].v > 0.5 ? opts[0] : null;
   }
   // What a challenge would do, in words (the same sums the computer uses; abilities that step in may change it)
+  // Small stat marks that sit in a line of text, in its colour: strength, willpower, lore
+  var SI = {
+    s: '<path d="M20 1l5.1 6.8 8.3-1.2-1.2 8.3L39 20l-6.8 5.1 1.2 8.3-8.3-1.2L20 39l-5.1-6.8-8.3 1.2 1.2-8.3L1 20l6.8-5.1-1.2-8.3 8.3 1.2z"/>',
+    w: '<path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z"/>',
+    l: '<path d="M20 1.5L33 20 20 38.5 7 20z"/>'
+  };
+  function si(k, name) { return '<svg class="si si-' + k + '" viewBox="0 0 40 40" role="img" aria-label="' + name + '"><title>' + name + '</title>' + SI[k] + '</svg>'; }
   function chalPreview(a, t) {
     var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
     var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
     return { killT: killT, killA: killA,
-      // willpower before → after ("Druun 3→1")
-      t: killT ? 'Banishes ' + nm(t) : dA ? nm(t) + ' ' + lT + '→' + (lT - dA) : nm(t) + ' unhurt',
-      a: killA ? nm(a) + ' banished too' : dD ? nm(a) + ' ' + lA + '→' + (lA - dD) : nm(a) + ' unhurt' };
+      // willpower before → after, behind its mark ("Druun ⛉ 3→1"); HTML
+      t: killT ? 'Banishes ' + esc(nm(t)) : dA ? esc(nm(t)) + ' ' + si('w', 'Willpower') + lT + '→' + (lT - dA) : esc(nm(t)) + ' unhurt',
+      a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + si('w', 'Willpower') + lA + '→' + (lA - dD) : esc(nm(a)) + ' unhurt' };
   }
   function challengeScore(a, t) {
     var loc = isLoc(t), dA = Math.max(0, STR(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, STR(t) - kwN(a, 'resist'));
@@ -6143,7 +6153,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (pre) {
         mid.innerHTML = '<div class="lp-pick pk-chal pk-prev" aria-live="polite">' + art + '<i class="pk-vs" aria-hidden="true">' + ACT_SWORDS + '</i>' +
           '<button type="button" class="pk-art" data-act="pick-tgt" aria-label="See ' + esc(DD(pk.pre).full) + '">' + miniArt(DD(pk.pre)) + '</button>' +
-          '<span class="pk-tx"><b class="' + (pre.killT ? 'good' : '') + '">' + esc(pre.t) + '</b><small class="' + (pre.killA ? 'bad' : '') + '">' + esc(pre.a) + '</small></span>' +
+          '<span class="pk-tx"><b class="' + (pre.killT ? 'good' : '') + '">' + pre.t + '</b><small class="' + (pre.killA ? 'bad' : '') + '">' + pre.a + '</small></span>' +
           '<button type="button" class="btn btn-primary btn-sm pk-go" data-act="pick-conf">Challenge</button>' +
           '<button type="button" class="pk-x" data-act="pick-cancel" aria-label="Cancel">' + Kit.icon('close') + '</button></div>';
         return;
@@ -6833,7 +6843,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     down: '<svg viewBox="0 0 20 20"><path d="M10 17l6-7h-4V3H8v7H4z" fill="currentColor"/></svg>',
     chain: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="10" rx="4.5" ry="3"/><ellipse cx="13" cy="10" rx="4.5" ry="3"/></svg>'
   };
-  function stt(kind, ico, text, style) { return '<span class="stt ' + kind + '"' + (style ? ' style="' + style + '"' : '') + '><i>' + (STT_ICO[ico] || ico) + '</i>' + text + '</span>'; }
+  function stt(kind, ico, text, style) { return '<span class="stt ' + kind + '"' + (style ? ' style="' + style + '"' : '') + '><i>' + (STT_ICO[ico] || ico) + '</i><span class="stt-t">' + text + '</span></span>'; }
   function statusHTML(u, z) {
     if (!z || z.z !== 'board') return '';
     var c = C(u), d = DD(u), h = '', top = '';
@@ -6841,18 +6851,18 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // press and hold for what they mean
     if (d.t === 'character' || d.t === 'item') top += c.ex ? stt('s-exd', 'ex', 'Exerted') : stt('s-rdy', 'ready', 'Ready');
     if (d.t === 'character' && !c.dry) top += stt('s-wet', 'drop', hasKw(u, 'rush') ? 'Drying · Rush' : 'Drying', '--ic:' + inkColor(u));
-    if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage · ' + Math.max(0, WP(u) - c.dmg) + ' willpower left');
+    if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage · ' + si('w', 'Willpower') + WP(u) + '→' + Math.max(0, WP(u) - c.dmg));
     if (c.at && S.cards[c.at]) h += stt('s-loc', 'pin', 'At ' + esc(DD(c.at).full));
     if (c.under && c.under.length) h += stt('s-und', 'stack', plural(c.under.length, 'card') + ' under it');
     (c.mods || []).forEach(function (m) {
       var parts = [];
-      if (m.s) parts.push((m.s > 0 ? '+' : '') + m.s + ' strength'); if (m.w) parts.push((m.w > 0 ? '+' : '') + m.w + ' willpower'); if (m.l) parts.push((m.l > 0 ? '+' : '') + m.l + ' lore');
+      if (m.s) parts.push(si('s', 'Strength') + (m.s > 0 ? '+' : '−') + Math.abs(m.s)); if (m.w) parts.push(si('w', 'Willpower') + (m.w > 0 ? '+' : '−') + Math.abs(m.w)); if (m.l) parts.push(si('l', 'Lore') + (m.l > 0 ? '+' : '−') + Math.abs(m.l));
       if (m.kw) parts.push(KWNAME[m.kw] + (m.n ? ' +' + m.n : ''));
       if (m.cant) parts.push('Can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready', qc: 'quest or challenge', bechal: 'be challenged', sing: 'sing' }[m.cant]);
       if (m.can) parts.push('Can challenge ready characters');
       var bad = m.cant || m.s < 0 || m.w < 0 || m.l < 0;
       var when = m.until === 'perm' ? '' : m.untilStart ? ' until ' + (S.cur === C(u).o ? 'your' : 'their') + ' next turn' : m.until > S.turn ? ' next turn' : ' this turn';
-      h += stt(bad ? 's-bad' : 's-good', m.cant ? 'chain' : bad ? 'down' : 'up', esc(parts.join(', ') + when + (m.why ? ' · ' + m.why : '')));
+      h += stt(bad ? 's-bad' : 's-good', m.cant ? 'chain' : bad ? 'down' : 'up', parts.join(', ') + esc(when + (m.why ? ' · ' + m.why : '')));   // parts are our own words and marks; the ability name is escaped
     });
     return (top ? '<div class="stts stts-top">' + top + '</div>' : '') + (h ? '<div class="stts">' + h + '</div>' : '');
   }
