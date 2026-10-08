@@ -355,6 +355,15 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   box-shadow:var(--scroll-sh);font:inherit;-webkit-tap-highlight-color:transparent;animation:lzRollIn .25s ease-out;}
 .lz-roll span{display:block;max-width:100%;font-family:'Great Vibes',var(--serif);font-size:1.25rem;line-height:1.3;color:rgba(74,44,14,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 0 1.2px rgba(74,44,14,.55),0 1px 0 rgba(255,246,220,.35);mix-blend-mode:multiply;}
+.lz-roll{gap:6px;color:rgba(74,44,14,.8);}
+.lz-roll span{flex:0 1 auto;min-width:0;}
+.lz-roll .rm{flex:none;position:relative;display:flex;align-items:center;justify-content:center;width:27px;height:27px;font-style:normal;mix-blend-mode:multiply;}
+.lz-roll .rm svg{position:absolute;inset:0;width:100%;height:100%;}
+.lz-roll .rm b{position:relative;font-family:var(--display);font-weight:400;font-size:.86rem;line-height:1;}
+.lz-roll .rm-c{margin-right:2px;}
+.lz-roll .rm-s{margin-left:4px;}
+.lz-roll .rm-w b{margin-top:-2px;}
+.lz-roll .rm-m b{margin-top:6px;font-size:.66rem;}
 .lz-roll:active{transform:rotate(var(--slant)) scale(.98);}
 @keyframes lzRollIn{from{opacity:0;}to{opacity:1;}}
 @media (prefers-reduced-motion:reduce){.lz-roll{animation:none;}}
@@ -837,7 +846,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .sym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.17em;}
 .lz-acts{margin-top:14px;}
 /* phones, during a game: the action bar between the card and the details, a compact row (icon beside the label) */
-.lz-acts.out{width:100%;margin-top:0;position:relative;z-index:200;}
+.lz-acts.out{width:100%;margin-top:0;position:relative;z-index:210;}
 .lz-acts.out .act{flex-direction:row;gap:8px;min-height:48px;padding:6px 10px;}
 .lz-acts.out .act .ai{width:26px;height:26px;flex:none;}
 .lz-acts.out .act .al{text-align:left;}
@@ -1563,9 +1572,12 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       return ENT[e.toLowerCase()] != null ? ENT[e.toLowerCase()] : m;
     });
   }
+  // Names misspelled in the card data, put right (bookmarks saved under the old spelling still count: see markKeys)
+  var NAME_FIX = { 'Russel': 'Russell' };
   function prep(o) {
     var d = {}; for (var k in o) d[k] = o[k];
     d.n = deEnt(d.n); d.v = deEnt(d.v); d.fl = deEnt(d.fl); d.st = deEnt(d.st);
+    if (NAME_FIX[d.n]) { d.was = d.n + (d.v ? ' - ' + d.v : ''); d.n = NAME_FIX[d.n]; }
     if (d.cl) d.cl = d.cl.map(deEnt);
     d.tx = normText(deEnt(d.tx));
     var tl = (d.ty || []).map(function (x) { return String(x).toLowerCase(); });
@@ -2809,7 +2821,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     // versions of Mickey's gang that come from one particular film or short
     'mickey mouse|wayward sorcerer': "The Sorcerer's Apprentice", 'mickey mouse|steamboat pilot': 'Steamboat Willie',
     // cards the film list hasn't tagged yet
-    'air drop': 'TaleSpin', 'abigail callaghan': 'Big Hero 6' };
+    'air drop': 'TaleSpin', 'abigail callaghan': 'Big Hero 6', 'russell': 'Up', 'russel': 'Up' };
   // Studio groups offered at the top of the Film or show list
   var PIXAR = /^(Toy Story|The Incredibles|Incredibles|Brave|Coco|Monsters,? Inc|Finding (Nemo|Dory)|Ratatouille|WALL-E|Up|Cars|Inside Out|Luca|Turning Red|Elemental|Onward|Soul|A Bug's Life|Elio|Lightyear|The Good Dinosaur)\b/i;
   function studioOf(d) { return PIXAR.test(storyOf(d)) ? 'Pixar' : 'Disney'; }
@@ -3036,12 +3048,14 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   var MARKS = 'lorcana_marks_v1', MARKS_DEL = 'lorcana_marks_del', DECKS_DEL = 'lorcana_decks_del', marks = lsGet(MARKS, null) || {};
   function synced(k) { try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); } catch (e) {} }
   function markKey(d) { return String(d && (d.full || d.n) || '').toLowerCase(); }
-  function isMarked(d) { return !!marks[markKey(d)]; }
+  function oldKey(d) { return d && d.was ? String(d.was).toLowerCase() : null; }
+  function isMarked(d) { var o = oldKey(d); return !!marks[markKey(d)] || !!(o && marks[o]); }
   function markCount() { return Object.keys(marks).length; }
   function toggleMark(d) {
     var k = markKey(d); if (!k) return false;
     var del = lsGet(MARKS_DEL, null) || {};
-    if (marks[k]) { delete marks[k]; del[k] = Date.now(); } else { marks[k] = Date.now(); delete del[k]; }
+    var o = oldKey(d);
+    if (marks[k] || (o && marks[o])) { delete marks[k]; del[k] = Date.now(); if (o && marks[o]) { delete marks[o]; del[o] = Date.now(); } } else { marks[k] = Date.now(); delete del[k]; }
     lsSet(MARKS, marks); lsSet(MARKS_DEL, del); synced(MARKS);
     Kit.sfx(marks[k] ? 'pop' : 'tap'); Kit.haptic('light');
     if ($('.lz')) notePill('bm', marks[k] ? 'Bookmarked ' + d.n : 'Bookmark removed');
@@ -6896,7 +6910,8 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     var snap = function (on) { ov.classList.toggle('lz-min', on); remeasure(); var c = cardOf(); return c && c.getBoundingClientRect(); };
     // (both measured in one go, before anything paints; then the open layout stays for the roll to run over)
     var rollAt = function () { var rl = ov.querySelector('.lz-roll'), q = rl && rl.getBoundingClientRect(); return q && q.width ? { x: (q.left + q.right) / 2, y: (q.top + q.bottom) / 2 } : null; };
-    var st = ov.scrollTop, open = snap(false), shut = snap(true), rollEnd = rollAt();
+    var actsEl = ov.querySelector('.lz-acts.out'), actsAt = function () { var q = actsEl && actsEl.getBoundingClientRect(); return q && q.height ? q.top : null; };
+    var st = ov.scrollTop, open = snap(false), actsOpen = actsAt(), shut = snap(true), rollEnd = rollAt(), actsShut = actsAt();
     snap(false); ov.scrollTop = st;
     // The details panel drifts as it rolls so the roller comes to rest exactly where the rolled scroll lies: no second move
     var drift = null, ir0 = info.getBoundingClientRect();
@@ -6911,13 +6926,36 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
       var tf = 'translate(' + (shut.left - open.left).toFixed(1) + 'px,' + (shut.top - open.top).toFixed(1) + 'px) scale(' + (shut.width / open.width).toFixed(4) + ')';
       grow = flow.animate(min ? [{ transform: 'none' }, { transform: tf }] : [{ transform: tf }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
     }
-    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (drift) drift.cancel(); };
+    // the action buttons ride down (or up) with the card's bottom edge, on the same ease
+    var glide = null;
+    if (actsEl && actsOpen != null && actsShut != null && Math.abs(actsShut - actsOpen) > 1) {
+      var ta = 'translateY(' + (actsShut - actsOpen).toFixed(1) + 'px)';
+      glide = actsEl.animate(min ? [{ transform: 'none' }, { transform: ta }] : [{ transform: ta }, { transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
+    }
+    var settle = function () { if (grow) { grow.cancel(); flow.style.transformOrigin = ''; } if (drift) drift.cancel(); if (glide) glide.cancel(); };
     if (min) {
       after('lz-rolling', function () {
         var roll = ov.querySelector('.lz-roll'); if (roll) roll.style.animation = 'none';
         ov.classList.add('lz-min'); remeasure(); settle();
       });
     } else after('lz-unroll', settle);
+  }
+  // The rolled-up scroll's label, inked onto the paper in one colour: the cost (ringed when inkable) before the name,
+  // the printed stats after it
+  var RM = {
+    hex: '<path d="M20 5l13 7.5v15L20 35 7 27.5v-15z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>',
+    ring: '<circle cx="20" cy="20" r="18.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M20 7.6l10.8 6.2v12.4L20 32.4 9.2 26.2V13.8z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>',
+    star: '<path d="M20 2l4.6 6.3 7.7-1.1-1.1 7.7L37.5 20l-6.3 4.6 1.1 7.7-7.7-1.1L20 38l-4.6-6.3-7.7 1.1 1.1-7.7L2.5 20l6.3-4.6-1.1-7.7 7.7 1.1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    shield: '<path d="M7 5h26v14c0 8.2-6 13.5-13 16.3C13 32.5 7 27.2 7 19z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>',
+    lore: '<path d="M20 2.5L32 20 20 37.5 8 20z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>',
+    move: '<path d="M7 4.5 20 10.5l13-6v3.2L20 13.7 7 7.7z" fill="currentColor"/><path d="M7 12 20 18l13-6v12.5c0 3.4-1.6 5.4-4.4 7.2L20 37l-8.6-5.3C8.6 29.9 7 27.9 7 24.5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>'
+  };
+  function rollHTML(d) {
+    function mk(k, n, cls) { return '<i class="rm' + (cls ? ' ' + cls : '') + '"><svg viewBox="0 0 40 40" aria-hidden="true">' + RM[k] + '</svg><b>' + n + '</b></i>'; }
+    var h = mk(d.k ? 'ring' : 'hex', d.c || 0, 'rm-c') + '<span>' + esc(d.n || d.full) + '</span>';
+    if (d.t === 'character') h += mk('star', d.s || 0, 'rm-s') + mk('shield', d.w || 0, 'rm-w') + mk('lore', d.l || 0, 'rm-l');
+    else if (d.t === 'location') h += (d.mv ? mk('move', d.mv, 'rm-m') : '') + mk('shield', d.w || 0, 'rm-w') + (d.l ? mk('lore', d.l, 'rm-l') : '');
+    return h;
   }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
@@ -6960,7 +6998,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
     inner.appendChild(info);
     // Phones: the details rolled up into a scroll under the card, the card's name written along it; tap to unroll
     info.setAttribute('data-title', d.n || d.full);
-    if (!opt.tapClose) inner.appendChild(el('button', { type: 'button', class: 'lz-roll', 'aria-label': 'Show the card details', html: '<span>' + esc(d.n || d.full) + '</span>', onclick: function (e) { e.stopPropagation(); toggleLzMin(ov); } }));
+    if (!opt.tapClose) inner.appendChild(el('button', { type: 'button', class: 'lz-roll', 'aria-label': 'Show the card details', html: rollHTML(d), onclick: function (e) { e.stopPropagation(); toggleLzMin(ov); } }));
     // Tap the stat plate to show or hide its labels (remembered)
     info.addEventListener('click', function (e) {
       var rb = e.target.closest('[data-rpick]'); if (rb) { e.stopPropagation(); rarPick(rb, d, ov); return; }
