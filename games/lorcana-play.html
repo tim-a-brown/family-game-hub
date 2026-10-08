@@ -1249,9 +1249,9 @@ html.lorc ::-webkit-scrollbar-corner{background:transparent;}
 .adv-pick.on small{color:var(--gilt-2);font-weight:800;}
 .adv-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .adv-tog .label{margin:0;}
-/* keywords: as many columns as fit at a comfortable width; long ones ("Sing Together") take two */
+/* keywords: as many equal columns as fit; a label too long for its pill ("Sing Together" on a small phone) gets a
+   slightly smaller font rather than a bigger pill */
 .adv .kwgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));grid-auto-flow:row dense;gap:6px;}
-.adv .kwgrid .kw-long{grid-column:span 2;}
 .adv .kwgrid .fchip{justify-content:center;white-space:nowrap;padding:0 6px;}
 .picksel{flex-wrap:wrap;overflow:visible;margin-bottom:10px;}
 .pk-row .ck{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);color:#2b1a00;}
@@ -8094,6 +8094,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     // Filters are OR within a group (cost 2 or 3; Toy Story or Coco) and AND across groups
     function refilter() { f.shown = 60; paintChips(); paintGrid(); grid.scrollTop = 0; }
+    // Keyword pills all share one text size: if the longest label ("Sing Together") would sit closer than 8px to its
+    // pill's ends, every label steps down together, so no pill looks different from the rest
+    function kwFit() {
+      var cs = $$('.fchip', kwChips).filter(function (c) { return !c.classList.contains('nr-kw'); });
+      cs.forEach(function (c) { c.style.fontSize = ''; });
+      if (!cs.length || !cs[0].clientWidth) return;
+      var base = parseFloat(getComputedStyle(cs[0]).fontSize), fs = base;
+      cs.forEach(function (c) {
+        var rng = document.createRange(); rng.selectNodeContents(c);
+        var tw = rng.getBoundingClientRect().width, room = c.clientWidth - 16;
+        if (tw > room) fs = Math.min(fs, base * room / tw);
+      });
+      if (fs < base) { fs = Math.max(10.5, Math.floor(fs * 10) / 10); cs.forEach(function (c) { c.style.fontSize = fs + 'px'; }); }
+    }
+    function kwFitSoon() { requestAnimationFrame(kwFit); }
+    if (window.ResizeObserver) new ResizeObserver(kwFitSoon).observe(kwChips);
     function statN() { return f.strs.length + f.wils.length + f.lors.length + f.movs.length; }
     function togF(key, k) { var a = f[key], i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else a.push(k); refilter(); }
     function setOnly(key, k) { f[key] = k ? [k] : []; refilter(); Kit.sfx('tap'); }
@@ -8248,8 +8264,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
       kwChips.innerHTML = '';
       if (nrc || f.newrel) nrChip(kwChips, true);
+      kwFitSoon();
       kwList().forEach(function (o) {
-        var kc = chip(o.label, f.kws.indexOf(o.k) >= 0, function () { togF('kws', o.k); }); if (String(o.label).length > 11) kc.classList.add('kw-long'); kwChips.appendChild(kc);
+        kwChips.appendChild(chip(o.label, f.kws.indexOf(o.k) >= 0, function () { togF('kws', o.k); }));
       });
       // Single-ink or dual-ink cards
       // Inkable: any, inkable, or not inkable
