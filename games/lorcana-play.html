@@ -800,6 +800,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 
 .lz-qty .qb.del{color:#f08a8a;}
 .lz-qty .qb.del .ico{width:22px;height:22px;}
+.lz-qty .qb .ico{width:24px;height:24px;}
 .lz-qty .qb:disabled{cursor:default;color:rgba(255,255,255,.28);box-shadow:0 0 0 2px rgba(255,255,255,.18);}
 .lz-qty .qb:not(:disabled):active{transform:scale(.94);}
 .lz-qty .qn{min-width:70px;display:flex;flex-direction:column;align-items:center;gap:5px;}
@@ -1714,7 +1715,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .dkey .dk-ink.no{color:var(--text-2);}
 .dkey .dk-ty small{font-size:.58rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-left:1px;}
 .drow .q button.del{display:grid;place-items:center;color:#f08a8a;}
-.drow .q button.del .ico{width:16px;height:16px;}
+.drow .q button.del .ico{width:14px;height:14px;}
+.drow .q button .ico{width:14px;height:14px;}
 .dkey .dk-ink{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);color:var(--gilt-2);}
 .dkey .dk-ink svg{width:16px;height:16px;}
 .dkey .dk-ty{display:inline-flex;align-items:center;gap:3px;font-size:.72rem;color:var(--text-3);}
@@ -1762,7 +1764,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .drow .grow b{display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .drow .grow small{display:block;font-size:.7rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .drow .q{display:flex;align-items:center;gap:4px;}
-.drow .q button{width:32px;height:32px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6);font-family:var(--display);font-weight:400;font-size:1.25rem;line-height:1;}
+.drow .q button{width:26px;height:26px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(20,16,41,.85);color:var(--gilt-2);box-shadow:0 0 0 1.5px rgba(227,189,98,.6);font-family:var(--display);font-weight:400;font-size:1.25rem;line-height:1;}
 .drow .q b{width:20px;text-align:center;font-family:var(--display);}
 .curve{flex:none;display:flex;align-items:flex-end;gap:4px;height:58px;padding:4px 2px 0;}
 .curve div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;font-size:.62rem;font-weight:800;color:var(--text-3);}
@@ -9127,6 +9129,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // Copies in a deck, changed in place (the card view stays open): − (a trash can at 1), the count over four pips, +
   // (greyed out at the limit). q = {get, full, add(delta)}
+  // − and + drawn as lines on a 24 grid, so they sit dead centre in their circles (text glyphs ride high or low with the font)
+  var QMINUS = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+  var QPLUS = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   // Which cards the card view is stepping through: your deck, or the cards to choose from
   function srcTag(k) {
     var deckIco = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="7" y="3" width="12" height="17" rx="2"/><path d="M4.5 6.5v12a2 2 0 0 0 2 2h9"/></svg>';
@@ -9137,10 +9142,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function paint() {
       var n = q.get(), max = q.max || 4, full = q.full();
       box.innerHTML = '';
-      box.appendChild(el('button', { type: 'button', class: 'qb' + (n === 1 ? ' del' : ''), disabled: !n, 'aria-label': n === 1 ? 'Remove from deck' : 'Remove one', html: n === 1 ? Kit.icon('trash') : '<b>−</b>', onclick: function () { q.add(-1); Kit.haptic('light'); if (!q.get() && q.onEmpty) q.onEmpty(); else paint(); } }));
+      box.appendChild(el('button', { type: 'button', class: 'qb' + (n === 1 ? ' del' : ''), disabled: !n, 'aria-label': n === 1 ? 'Remove from deck' : 'Remove one', html: n === 1 ? Kit.icon('trash') : QMINUS, onclick: function () { q.add(-1); Kit.haptic('light'); if (!q.get() && q.onEmpty) q.onEmpty(); else paint(); } }));
       var pips = ''; if (max <= 4) for (var i = 0; i < max; i++) pips += '<i' + (i < n ? ' class="on"' : '') + '></i>';
       box.appendChild(el('div', { class: 'qn', 'aria-live': 'polite', 'aria-label': n + ' in deck', html: '<b>' + n + '</b>' + (pips ? '<span class="pips">' + pips + '</span>' : '') }));
-      box.appendChild(el('button', { type: 'button', class: 'qb add', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', html: '<b>+</b>', onclick: function () { q.add(1); Kit.haptic('light'); paint(); } }));
+      box.appendChild(el('button', { type: 'button', class: 'qb add', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', html: QPLUS, onclick: function () { q.add(1); Kit.haptic('light'); paint(); } }));
     }
     paint(); return box;
   }
@@ -10158,8 +10163,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         // Deck builder: − and + in the top corner (− greyed at 0, + greyed at the card's limit)
         if (!lib) {
           var atMax = copiesByFull(deck.cards, d.full) >= copyLimit(d);
-          b.appendChild(el('button', { type: 'button', class: 'pc-add pc-sub', 'aria-label': 'Remove one ' + d.full, disabled: !n, html: '<b>−</b>', onclick: function (e) { e.stopPropagation(); addCard(d, -1); } }));
-          b.appendChild(el('button', { type: 'button', class: 'pc-add', 'aria-label': atMax ? d.full + ': at the limit' : 'Add ' + d.full, disabled: atMax, html: Kit.icon('plus'), onclick: function (e) { e.stopPropagation(); addCard(d, 1); } }));
+          b.appendChild(el('button', { type: 'button', class: 'pc-add pc-sub', 'aria-label': 'Remove one ' + d.full, disabled: !n, html: QMINUS, onclick: function (e) { e.stopPropagation(); addCard(d, -1); } }));
+          b.appendChild(el('button', { type: 'button', class: 'pc-add', 'aria-label': atMax ? d.full + ': at the limit' : 'Add ' + d.full, disabled: atMax, html: QPLUS, onclick: function (e) { e.stopPropagation(); addCard(d, 1); } }));
         }
         { b.appendChild(el('span', { class: 'selo', 'aria-hidden': 'true' })); b.appendChild(el('span', { class: 'selk', 'aria-hidden': 'true', html: '<i>' + Kit.icon('check') + '</i>' })); if (selSet && selSet[d.id]) b.classList.add('sel'); }
         b.addEventListener('click', function () {
@@ -10256,8 +10261,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           el('span', { class: 'hc', html: costSVG(d.k, d.c || 0, 19, '#f3ead2') }),
           el('button', { type: 'button', class: 'grow', onclick: function () { var dl = cs.map(function (y) { return y.d; }); dl.src = 'deck'; cardZoom(d, dl); } }, [el('b', { text: d.n }), el('small', { html: inkDots(inkOf(d)) + (d.v ? ' ' + esc(d.v) : '') })]),
           ob,
-          el('div', { class: 'q' }, [el('button', { type: 'button', class: x.n === 1 ? 'del' : '', html: x.n === 1 ? Kit.icon('trash') : '−', 'aria-label': x.n === 1 ? 'Remove from deck' : 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }),
-            el('button', { type: 'button', text: '+', class: full ? 'max' : '', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', onclick: function () { addCard(d, 1); } })])
+          el('div', { class: 'q' }, [el('button', { type: 'button', class: x.n === 1 ? 'del' : '', html: x.n === 1 ? Kit.icon('trash') : QMINUS, 'aria-label': x.n === 1 ? 'Remove from deck' : 'Remove one', onclick: function () { addCard(d, -1); } }), el('b', { text: String(x.n) }),
+            el('button', { type: 'button', html: QPLUS, class: full ? 'max' : '', disabled: full, 'aria-label': full ? 'At the limit' : 'Add one', onclick: function () { addCard(d, 1); } })])
         ]));
       });
       dfoot.innerHTML = '';
