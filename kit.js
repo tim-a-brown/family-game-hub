@@ -693,14 +693,17 @@
   }
   function playsOf(n) { var k = String(n).toLowerCase(), h = historyNames(); return (nameCounts()[k] || 0) + (h[k] ? h[k].c : 0); }
 
-  // Sheet: pick one of the regulars (most played on top), or type a new name.
+  // Sheet: pick one of the regulars (the 5 who play most on top, then everyone else A to Z), or type a new name.
   function pickName(onPick, o) {
     o = o || {};
     var taken = (o.taken || []).map(function (x) { return String(x || '').toLowerCase(); });
     var box = el('div', { class: 'k-names' }), s;
     var names = knownNames();
     if (!names.length) box.appendChild(el('p', { class: 'muted', text: 'No frequent players yet. Type a name below and it will be saved for next time.' }));
-    names.forEach(function (n) {
+    var top = names.length > 6 ? names.slice(0, 5) : names, rest = names.length > 6 ? names.slice(5).sort(function (a, b) { return a.localeCompare(b); }) : [];
+    if (rest.length) box.appendChild(el('div', { class: 'label', style: { margin: '0 2px' }, text: 'Most frequent' }));
+    top.concat(rest).forEach(function (n, j) {
+      if (rest.length && j === top.length) box.appendChild(el('div', { class: 'label', style: { margin: '10px 2px 0' }, text: 'Everyone else' }));
       var used = taken.indexOf(n.toLowerCase()) >= 0;
       box.appendChild(el('button', { type: 'button', class: 'k-name' + (used ? ' used' : ''), disabled: used, onclick: function () { s.close(); sfx('pop'); haptic('light'); onPick(n); } }, [
         el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }),
@@ -901,9 +904,6 @@
             } }));
           } else {
             inp.addEventListener('input', function () { names[i] = inp.value; clr.hidden = !inp.value; });
-            // Re-offer the frequent-player chips once a typed name is settled
-            // (only the chips are rebuilt, so focus in another seat is kept)
-            inp.addEventListener('change', function () { renderQuick(); });
             var clr = el('button', { type: 'button', class: 'seat-clear', 'aria-label': 'Clear name', html: icon('close'), onclick: function () {
               names[i] = ''; sfx('tap'); haptic('light'); renderSeats();
               var again = seatsBox.querySelectorAll('input')[i]; if (again) again.focus();
@@ -918,36 +918,7 @@
           seatsBox.appendChild(row);
         })(i);
       }
-      quickBox = el('div'); seatsBox.appendChild(quickBox); renderQuick();
     }
-    var quickBox = null;
-    // One-tap names: frequent players plus everyone in past game history
-    function renderQuick() {
-      if (!quickBox) return;
-      quickBox.innerHTML = '';
-      var cpu = cpuFor();
-      var taken = names.slice(0, state.count).map(function (n) { return String(n || '').trim().toLowerCase(); });
-      var pool = knownNames().filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
-      if (pool.length) {
-        quickBox.appendChild(el('div', { class: 'label', style: { margin: '6px 0 0' }, text: 'Frequent players' }));
-        var quick = el('div', { class: 'quick' });
-        pool.slice(0, 4).forEach(function (n) {
-          quick.appendChild(el('button', {
-            type: 'button', class: 'chip name', onclick: function () {
-              var cpuNow = cpuFor(), r2 = range(), slot = -1;
-              for (var j = 0; j < state.count; j++) {
-                var isCpuSeat = cpuNow === 'seats' ? j > 0 : (cpuNow && j > 0);
-                if (!isCpuSeat && !String(names[j] || '').trim()) { slot = j; break; }
-              }
-              if (slot < 0 && !cpuNow && state.count < r2[1]) { slot = state.count; state.count++; }
-              if (slot < 0) { Kit.toast('All seats are full'); return; }
-              names[slot] = n; sfx('pop'); haptic('light'); renderSeats();
-            }
-          }, [el('span', { class: 'avatar sm', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }), el('span', { text: n })]));
-        });
-        quickBox.appendChild(quick);
-      }
-        }
 
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
