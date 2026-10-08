@@ -10137,7 +10137,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!lib) { var gr = grid.getBoundingClientRect(); if (gr.width) { selBar.style.left = (gr.left + gr.width / 2) + 'px'; selBar.style.width = Math.min(560, gr.width - 16) + 'px'; } }
       var n = selCount(), all = DB.unique.filter(matches), allOn = all.length && all.every(function (d) { return selSet[d.id]; });
       selBar.innerHTML = '';
+      // Unselect everything (stays in select mode), beside Done
       selBar.appendChild(el('div', { class: 'sb-top' }, [el('b', { text: n ? plural(n, 'card') + ' selected' : 'Tap cards, or drag across them, to select' }),
+        n ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Unselect all', onclick: function () { selSet = {}; Kit.sfx('tap'); paintGrid(true); selPaint(); } }) : null,
         el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Done', onclick: selEnd })]));
       selBar.appendChild(el('div', { class: 'sb-acts' }, [
         el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: allOn ? 'Clear' : 'Select all ' + all.length.toLocaleString(), title: allOn ? 'Unselect everything' : 'Every card the search and filters show, not just the ones on screen', onclick: function () { if (allOn) selSet = {}; else all.forEach(function (d) { selSet[d.id] = 1; }); Kit.sfx('tap'); paintGrid(true); selPaint(); } }),
