@@ -4258,8 +4258,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     toReady.forEach(function (u) { C(u).ex = false; });
     p.ink.forEach(function (u) { C(u).ex = false; });
     p.board.forEach(function (u) { if (isChar(u)) { if (!C(u).dry) fx.dried(u); C(u).dry = true; } });
-    var locL = 0; p.board.forEach(function (u) { if (isLoc(u)) locL += LORE(u); });
-    if (locL) { gainLore(pi, locL); S.st[pi].loc += locL; log(p.name + ' gained ' + locL + ' lore from locations', pi); }
+    var locL = 0, locN = []; p.board.forEach(function (u) { if (isLoc(u) && LORE(u) > 0) { locL += LORE(u); locN.push(DD(u).n); } });
+    if (locL) { gainLore(pi, locL); S.st[pi].loc += locL; log(p.name + ' gained ' + locL + ' lore from ' + (locN.length > 1 ? locN.slice(0, -1).join(', ') + ' and ' + locN[locN.length - 1] : locN[0]), pi); }
     if (p.lore >= needLore(pi)) return;
     if (boardOp(pi, 'skipDraw')) { log(p.name + ' skips the draw', pi); return; }
     if (S.turn === 1 && pi === S.first) { log(p.name + ' goes first and skips the first draw', pi); return; }
@@ -6532,6 +6532,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function startTurn() {
     if (!S || S.phase !== 'play') return;
     if (S.mode === 'online' && S.cur !== NET.seat) return netHand(S.cur);   // their turn runs on their device
+    // Against the computer, your last turn's moves are kept when its turn starts, so Undo can still reach them later
+    if (S.mode === 'cpu') { var prevP = S.P[opp(S.cur)]; if (prevP && !prevP.cpu) S.prevHist = S.hist || []; }
+    else S.prevHist = undefined;
     S.hist = []; ui.hint = null; ui.pick = null;
     if (S.mode === 'pass') S.viewer = -1;
     if (S.mode === 'online') { Kit.callout('Your turn'); Kit.haptic && Kit.haptic('medium'); }
@@ -6743,27 +6746,29 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     startPick({ title: 'Move ' + nm(u) + ' to which location?', ok: function (x) { return ok.indexOf(x) >= 0; }, done: function (x) { runAction({ k: 'move', u: u, t: x }); } });
   }
   // ── Undo and saving ──────────────────────────────────────────────────────
-  function snapshot() { var h = S.hist, d = S.defs; S.hist = undefined; S.defs = undefined; var s = JSON.stringify(S); S.hist = h; S.defs = d; return s; }
+  function snapshot() { var h = S.hist, d = S.defs, ph = S.prevHist; S.hist = undefined; S.defs = undefined; S.prevHist = undefined; var s = JSON.stringify(S); S.hist = h; S.defs = d; S.prevHist = ph; return s; }
   function pushUndo(s) { S.hist.push(s); if (S.hist.length > 12) S.hist.shift(); }
   function noUndo() { if (S) S.hist = []; }
   function undo() {
     if (!S || S.phase !== 'play') return Kit.toast(S && S.phase === 'mull' ? 'Nothing to undo yet' : 'Nothing to undo');
     if (S.P[S.cur].cpu) return Kit.toast('Wait for ' + S.P[S.cur].name + ' to finish');
     if (S.mode === 'online' && (!NET.owner || S.cur !== NET.seat || NET.pend)) return Kit.toast(NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : 'You can take back moves on your own turn');
-    if (!S.hist || !S.hist.length) return Kit.toast('Nothing to undo this turn');
+    // Nothing left this turn: against the computer, step back into your previous turn (its turn is undone with it)
+    var back = (!S.hist || !S.hist.length) && S.mode === 'cpu' && S.prevHist && S.prevHist.length ? S.P[opp(S.cur)] : null;
+    if ((!S.hist || !S.hist.length) && !back) return Kit.toast('Nothing to undo this turn');
     tok++; closeOverlays(); resetQ();
-    var h = S.hist, d = S.defs, s = JSON.parse(h.pop());
-    s.hist = h; s.defs = d;
+    var h = back ? S.prevHist : S.hist, d = S.defs, s = JSON.parse(h.pop());
+    s.hist = h; s.defs = d; s.prevHist = back ? undefined : S.prevHist;
     var before = captureRects();
     S = s; ui.pick = null; ui.hint = null;
     render(); animateFrom(before); save();
-    Kit.sfx('whoosh'); Kit.toast('Move taken back');
+    Kit.sfx('whoosh'); Kit.toast(back ? 'Back to your last move (' + back.name + '’s turn undone)' : 'Move taken back');
   }
   function save() {
     if (!S || S.phase === 'over') return;
     if (S.mode === 'online') { netPush(); return; }   // online games live in the table doc, not this device's save
     try { localStorage.setItem(SAVE, JSON.stringify(S)); }
-    catch (e) { try { var h = S.hist; S.hist = []; localStorage.setItem(SAVE, JSON.stringify(S)); S.hist = h; } catch (e2) {} }
+    catch (e) { try { var h = S.hist, ph = S.prevHist; S.hist = []; S.prevHist = undefined; localStorage.setItem(SAVE, JSON.stringify(S)); S.hist = h; S.prevHist = ph; } catch (e2) {} }
     if (S.phase === 'play') Kit.resume.set('Turn ' + S.turn + ' · ' + S.P[0].name + ' ' + S.P[0].lore + ', ' + S.P[1].name + ' ' + S.P[1].lore);
     else Kit.resume.set('Opening hands');
   }
@@ -8850,7 +8855,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function feedLine(f, p, verb, text) {
     text = youFix(text);
     var ev = $('.lzf-ev', f);
-    ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + fxHTML(text) + '</span>' }));
+    ev.appendChild(el('div', { class: 'lzf-e', html: '<i class="dot" style="--c:' + p.color + '"></i>' + (verb ? '<b>' + esc(verb) + '</b>' : '') + '<span>' + esc(text) + '</span>' }));   // plain words in this small feed
     while (ev.children.length > 3) ev.removeChild(ev.firstChild);
     var ov = f.closest('.lz'); if (ov) requestAnimationFrame(function () { ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
   }
