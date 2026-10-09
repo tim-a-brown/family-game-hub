@@ -126,6 +126,23 @@
     music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5.2-6.1C9.6 14.4 12 13 13 12"/>',
     minus: '<path d="M5 12h14"/>',
+    bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+    cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+    coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2"/><path d="M10 2v2"/><path d="M14 2v2"/>',
+    compass: '<circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-1.8 5.4-5.4 1.8 1.8-5.4z"/>',
+    gem: '<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
+    feather: '<path d="M20.2 12.2a6 6 0 0 0-8.5-8.5L5 10.5V19h8.5z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/>',
+    flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+    flower: '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/>',
+    gamepad: '<path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect x="2" y="6" width="20" height="12" rx="2"/>',
+    ghost: '<path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+    key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    mountain: '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>',
+    snowflake: '<path d="M2 12h20"/><path d="M12 2v20"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
+    smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/>',
+    target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    anchor: '<path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><circle cx="12" cy="5" r="3"/>',
     link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
     inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/>',
     play: '<path d="M7 4v16l13-8z"/>',
@@ -1288,7 +1305,8 @@
   // colour, or a photo. Photos they've uploaded stay in their gallery to swap back to. Stored in fgh_avatars and
   // synced through the PIN (sync.js). Shown by Kit.avatar.el / .html wherever a player's avatar appears.
   var AV_KEY = 'fgh_avatars', AV_MAX = 8, AV_PX = 192;
-  var AV_ICONS = ['star', 'heart', 'crown', 'sparkle', 'flame', 'moon', 'sun', 'paw', 'rocket', 'music', 'leaf', 'trophy', 'dice', 'cards', 'book', 'lightbulb'];
+  var AV_ICONS = ['star', 'heart', 'crown', 'sparkle', 'flame', 'moon', 'sun', 'paw', 'rocket', 'music', 'leaf', 'trophy', 'dice', 'cards', 'book', 'lightbulb',
+    'bolt', 'cloud', 'coffee', 'compass', 'gem', 'feather', 'flag', 'flower', 'gamepad', 'ghost', 'globe', 'key', 'mountain', 'snowflake', 'smile', 'target', 'anchor'];
   var AV_COLORS = ['#ffc83d', '#ff7a59', '#ff5d8f', '#b583ff', '#5b8cff', '#3cc8e8', '#3ddc97', '#9ad94a', '#f2f4f8', '#2a2440'];
   function avKey(n) { return String(n || '').trim().toLowerCase(); }
   function avAll() { try { var v = JSON.parse(lsGet(AV_KEY, '{}')); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
