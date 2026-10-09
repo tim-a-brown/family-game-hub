@@ -156,10 +156,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     combo: function (n) { osc('triangle', mtof(72 + n * 2), 0, 0.15, 0.1); osc('triangle', mtof(79 + n * 2), 0.08, 0.22, 0.1); },
     save: function () { osc('triangle', mtof(76), 0, 0.15, 0.08); osc('triangle', mtof(81), 0.1, 0.26, 0.08); },
     lock: function () { osc('sine', 220, 0, 0.3, 0.2, { to: 110 }); [64, 67, 71].forEach(function (m, i) { osc('triangle', mtof(m), 0.1 + i * 0.08, 0.2, 0.07); }); },
+    thunder: function () { noise(0, 0.25, 0.3, 'lowpass', 900, 0.7); noise(0.1, 2, 0.3, 'lowpass', 160, 0.8); osc('sine', 48, 0.05, 1.6, 0.18, { to: 30 }); },
+    cannon: function () { noise(0, 0.5, 0.45, 'lowpass', 700, 0.7); osc('sine', 90, 0, 0.5, 0.4, { to: 35 }); noise(0, 0.08, 0.3, 'highpass', 3000, 0.7); },
     award: function () { [72, 79, 84].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.07, 0.22, 0.08); }); },
     start: function () { [60, 67, 72, 76, 79].forEach(function (m, i) { osc('square', mtof(m), i * 0.08, 0.14, 0.035, { lp: 2600 }); }); }
   };
-  function snd(name, a) { try { if (ac()) SND[name](a); } catch (e) {} }
+  function snd(name, a) { try { var bs = G && G.board.snds; if (bs && bs[name]) { if (ac()) bs[name](a); return; } if (SND[name] && ac()) SND[name](a); } catch (e) {} }
 
   // ═══ Dot-matrix display ═══════════════════════════════════════════════════
   // A 160×32 display. Content is drawn in white on a little canvas, read back
@@ -319,7 +321,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     T.scoop = function (x, y, ang, id, o) {
       o = o || {};
       T.wall(ellPts(x, y, 17, 17, ang + 72, ang + 288, 14), { kind: 'metal', t: 2.5 });
-      var s = { x: x, y: y, id: id, cr: 19, scoop: true, ex: o.ex || 0, ey: o.ey || 600, hold: o.hold || 0.9, ang: ang }; T.saucers.push(s); return s;
+      var s = { x: x, y: y, id: id, cr: 22, scoop: true, ex: o.ex || 0, ey: o.ey || 600, hold: o.hold || 0.9, ang: ang }; T.saucers.push(s); return s;
     };
     // ramp: the ball leaves the playfield at the mouth, follows pts and drops off the end.
     T.ramp = function (id, pts, o) {
@@ -329,7 +331,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var L = cum[cum.length - 1], p0 = pts[0], p1 = pts[3], pn = pts[pts.length - 1], pm = pts[pts.length - 4];
       var d0 = [p1[0] - p0[0], p1[1] - p0[1]], l0 = Math.hypot(d0[0], d0[1]); d0 = [d0[0] / l0, d0[1] / l0];
       var dE = [pn[0] - pm[0], pn[1] - pm[1]], lE = Math.hypot(dE[0], dE[1]); dE = [dE[0] / lE, dE[1] / lE];
-      var r = { id: id, pts: pts, cum: cum, L: L, up: L * (o.up || 0.4), dec: o.dec || 1300, acc: o.acc || 500, d0: d0, dE: dE, w: o.w || 30, col: o.col || 'rgba(160,220,255,', rail: o.rail, lockAt: o.lockAt, label: o.label, z: o.z || 0, minExit: o.minExit || 300 };
+      var r = { id: id, pts: pts, cum: cum, L: L, up: L * (o.up || 0.4), dec: o.dec || 1300, acc: o.acc || 500, d0: d0, dE: dE, w: o.w || 30, col: o.col || 'rgba(160,220,255,', rail: o.rail, lockAt: o.lockAt, label: o.label, z: o.z || 0, minExit: o.minExit || 300, style: o.style || 'plastic', h: o.h || 36, neon: o.neon };
       T.ramps.push(r);
       var nx = -d0[1], ny = d0[0], hw = r.w / 2 + 2;
       var l = T.line(p0[0] + nx * hw, p0[1] + ny * hw, p0[0] - nx * hw, p0[1] - ny * hw, id, d0[0], d0[1]); l.ramp = r;
@@ -374,6 +376,8 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     T.lane(23, 632, 'outL'); T.lane(53, 612, 'inL'); T.lane(315, 612, 'inR'); T.lane(345, 632, 'outR');
     // the shared inserts: bonus multipliers and shoot again
     ['2x', '3x', '4x', '5x'].forEach(function (t, i) { T.lamp('bx' + (i + 2), 136 + i * 32, 604 - (i === 1 || i === 2 ? 6 : 0), { sh: 'c', r: 9.5, txt: t.toUpperCase(), col: o.bx || '#ffc83d', sz: 7.5 }); });
+    T.lamp('inLa', 53, 642, { sh: 'a', w: 12, h: 18, col: '#ffffff' }); T.lamp('inRa', 315, 642, { sh: 'a', w: 12, h: 18, col: '#ffffff' });
+    T.lamp('outLa', 23, 604, { sh: 'c', r: 5, col: '#ff4058' }); T.lamp('outRa', 345, 604, { sh: 'c', r: 5, col: '#ff4058' });
     T.lamp('again', 184, 658, { sh: 'r', w: 46, h: 15, txt: 'SHOOT AGAIN', col: '#ff4058', sz: 5.6 });
   }
   function leftOrbit(T, a1) { var g = [[46, 470]].concat(ellPts(200, 230, 154, 182, 180, a1 || 238, 12)); T.wall(g, { kind: 'guide', t: 3 }); T.post(46, 470, 5); return g; }
@@ -508,6 +512,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (b.ramp) { stepRamp(b, dt); continue; }
       if (b.noRamp > 0) b.noRamp -= dt;
       b.vy += GRAV * dt;
+      if (G.board.force) G.board.force(G, b, dt);
       // magnets pull a nearby ball in once it is close
       for (i = 0; i < T.magnets.length; i++) {
         var mg = T.magnets[i];
@@ -618,7 +623,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Game rules shared by every table ═════════════════════════════════════
-  var fx = { parts: [], pops: [] };
+  var fx = { parts: [], pops: [], rings: [] };
   function R(name) { var f = G && G.board[name]; if (!f) return undefined; return f.apply(null, [G].concat([].slice.call(arguments, 1))); }
   function cnt(k, n) { G.st[k] = (G.st[k] || 0) + (n || 1); G.pb[k] = (G.pb[k] || 0) + (n || 1); }
   function add(pts, x, y, col) {
@@ -635,6 +640,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function msg(text, sub, o) {
     o = o || {};
     var m = { text: text, sub: sub || '', t: 0, dur: o.dur || 1.6, style: o.style || 'zoom' };
+    if (G.board.creep && (m.style === 'slide' || m.style === 'zoom')) m.style = 'creep';
     if (o.now) { G.dq = [m]; G.dm = null; }
     else { G.dq.push(m); if (G.dq.length > 4) G.dq.splice(0, G.dq.length - 4); }
   }
@@ -642,6 +648,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function flash(col, a) { G.flashC = col || '#fff'; G.flash = Math.max(G.flash, a || 0.5); }
   function big(text, sub, col) {
     msg(text, sub, { style: 'jackpot', dur: 2.2, now: true }); show('flash', 1.6); flash(col || '#fff', 0.55); G.shake = Math.max(G.shake, 1);
+    G.wash = { c: col || '#ffffff', a: 0.75 };
     Kit.haptic('success');
   }
   function bxUp() {
@@ -741,7 +748,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     switch (o.kind) {
       case 'bumper':
         if (!o.kicked) return; o.kicked = false;
-        o.flash = 1; snd('pop'); cnt('pop'); add(500, o.x, o.y - o.r - 6);
+        o.flash = 1; snd('pop'); cnt('pop'); add(500, o.x, o.y - o.r - 6); fx.rings.push({ x: o.x, y: o.y, r: o.r, life: 0.45, max: 0.45, c: G.board.pal.spark || '#fff' });
         burst(b.x, b.y, G.board.pal.spark || '#fff', 7, 200); G.shake = Math.max(G.shake, 0.18); Kit.haptic('light');
         b.lastHit = o.id; R('hit', o.id, b, o);
         if (G.skill) skillCheck('hit', o.id);
@@ -868,6 +875,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function newGame(boardId, balls, who) {
     var bd = BOARDS[boardId] || BOARDS.nebula;
+    ambStop();
     T = Table(); bd.build(T);
     G = {
       board: bd, id: bd.id, who: who || 'Player', balls0: balls || 3, ballNo: 1, extra: 0, score: 0, time: 0,
@@ -878,12 +886,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       show: null, flash: 0, flashC: '#fff', shake: 0, bonus: null, overT: 0, started: Date.now(),
       stats: { stuck: 0, esc: 0, maxStill: 0, at: [] }
     };
-    fx.parts = []; fx.pops = [];
+    fx.parts = []; fx.pops = []; fx.rings = [];
     R('init');
     Kit.gameStart();
     buildView();
     snd('start');
-    msg(bd.name.toUpperCase(), 'BALL 1 OF ' + G.balls0, { style: 'zoom', dur: 2 });
+    msg(bd.name.toUpperCase(), bd.intro || 'BALL 1 OF ' + G.balls0, { style: 'zoom', dur: 2.2 });
     startBall();
     kick();
   }
@@ -896,6 +904,9 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.multT > 0) { G.multT -= dt; if (G.multT <= 0) { G.mult = G.multBase; R('multEnd'); } }
     G.tiltM = Math.max(0, G.tiltM - dt * 0.4);
     G.shake = Math.max(0, G.shake - dt * 3); G.flash = Math.max(0, G.flash - dt * 2.2);
+    if (G.wash) { G.wash.a -= dt * 0.9; if (G.wash.a <= 0) G.wash = null; }
+    var trail = G.board.trail ? G.board.trail(G) : null; G.trailC = trail;
+    G.balls.forEach(function (b) { if (!trail || b.plunger || b.held) { b.tr = null; return; } (b.tr = b.tr || []).push([b.x, b.y, ballHeight(b)]); if (b.tr.length > 18) b.tr.shift(); });
     if (G.show) { G.show.t += dt; if (G.show.t > G.show.dur) G.show = null; }
     // DMD queue
     if (G.dm) { G.dm.t += dt; if (G.dm.t >= G.dm.dur) G.dm = null; }
@@ -992,6 +1003,11 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.restore();
   }
 
+  function mouth(T, cx, y) {
+    T.wall([[cx - 18, y + 46], [cx - 18, y - 8]], { kind: 'guide', t: 3 }); T.wall([[cx + 18, y + 46], [cx + 18, y - 8]], { kind: 'guide', t: 3 });
+    T.post(cx - 18, y + 48, 5); T.post(cx + 18, y + 48, 5);
+    T.wall([[cx - 18, y - 8], [cx, y - 20], [cx + 18, y - 8]], { kind: 'guide', t: 3, draw: false });
+  }
   var BOARDS = {};
 
   // ─── Nebula Run ───────────────────────────────────────────────────────────
@@ -1007,16 +1023,31 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       T.scoop(296, 330, 150, 'worm', { ex: -380, ey: 250, hold: 0.9 }); scoopFill(T, 296, 330, 321);
       'STAR'.split('').forEach(function (c, i) { var y = 300 + i * 32; T.target(53, y, 53, y + 24, 'st' + i); T.lamp('st' + i, 74, y + 12, { sh: 'r', w: 15, h: 22, txt: c, col: '#e040fb', sz: 10 }); });
       T.line(8, 400, 46, 400, 'orbL', 0, -1); T.line(324, 400, 360, 400, 'orbR', 0, -1);
-      T.lamp('orbL', 27, 440, { sh: 'a', w: 22, h: 34, col: '#22d3ee' });
-      T.lamp('orbR', 342, 440, { sh: 'a', w: 22, h: 34, col: '#22d3ee' });
-      T.lamp('worm', 258, 368, { sh: 'a', w: 26, h: 38, col: '#e040fb', rot: 0.9 });
+      T.lamp('orbL', 27, 440, { sh: 'a', w: 22, h: 34, col: '#22d3ee', lbl: 'ORBIT' });
+      T.lamp('orbR', 342, 440, { sh: 'a', w: 22, h: 34, col: '#22d3ee', lbl: 'ORBIT' });
+      T.lamp('worm', 258, 368, { sh: 'a', w: 26, h: 38, col: '#e040fb', rot: 0.9, lbl: 'LOCK' });
       T.lamp('lk1', 236, 400, { sh: 'c', r: 6, col: '#22d3ee' }); T.lamp('lk2', 250, 412, { sh: 'c', r: 6, col: '#22d3ee' });
       T.lamp('eb', 226, 344, { sh: 'r', w: 30, h: 13, txt: 'EXTRA', col: '#ff4058', sz: 6 });
       T.lamp('jp', 184, 300, { sh: 'r', w: 62, h: 18, txt: 'JACKPOT', col: '#ffd45a', sz: 8.5 });
       T.lamp('ring', 202, 168, { sh: 'ring', r: 62, col: '#e040fb' });
+      mouth(T, 125, 380);
+      T.ramp('tube', [[125, 380], [126, 300], [150, 228], [198, 172], [246, 124], [292, 112], [332, 150], [346, 236], [343, 400], [332, 500], [318, 560]], { w: 28, up: 0.3, style: 'tube', h: 46, label: 'HYPER TUBE', z: 2 });
+      T.lamp('tubeA', 125, 452, { sh: 'a', w: 26, h: 36, col: '#22d3ee', lbl: 'TUBE' });
+      for (var op = 0; op < 6; op++) T.lamp('op' + op, 124 + op * 24, 540, { sh: 'c', r: 5.5, col: '#e040fb' });
+      T.turn = { x: 190, y: 384, r: 24, ang: 0 };
+      T.lamp('bh', 184, 262, { sh: 'r', w: 62, h: 14, txt: 'BLACK HOLE', col: '#e040fb', sz: 6.5 });
       T.lamp('sjL', 27, 476, { sh: 'c', r: 5, col: '#ffd45a' }); T.lamp('sjR', 342, 476, { sh: 'c', r: 5, col: '#ffd45a' });
     },
-    init: function (G) { G.b = { star: [0, 0, 0, 0], lockLit: true, locks: 0, orbits: 0, jp: 100000, superLit: false, jps: 0 }; },
+    init: function (G) { G.b = { star: [0, 0, 0, 0], lockLit: true, locks: 0, orbits: 0, jp: 100000, superLit: false, jps: 0, tubes: 0, bhT: 0, bh: [184, 350], bhCool: 0, bhHits: 0 }; },
+    ramp: function (G, id, b) {
+      var B = G.b; B.tubes++; combo(id);
+      if (G.mb) { jackpot(B.jp); B.jp += 25000; return; }
+      var p = add(15000, b.x, b.y, '#8fe8ff');
+      if (B.tubes % 3 === 0) { startBlackHole(G); return; }
+      if (B.tubes % 2 === 0 && !B.lockLit) { B.lockLit = true; msg('HYPER TUBE', 'LOCK IS LIT', { style: 'slide' }); }
+      else if (G.combo < 2) msg('HYPER TUBE', fmt(p), { style: 'slide' });
+    },
+    rampLit: function (G) { return G.mb || (!G.b.lockLit && G.b.tubes % 2 === 1); },
     hit: function (G, id) {
       var m = /^st(\d)$/.exec(id); if (!m) return;
       var b = G.b, k = +m[1];
@@ -1050,6 +1081,23 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       add(10000); msg('WORMHOLE', 'S-T-A-R LIGHTS LOCK', { style: 'slide' }); return { hold: 0.7 };
     },
     mbEnd: function (G) { G.b.superLit = false; },
+    force: function (G, b, dt) {
+      var tt = T.turn, dx = b.x - tt.x, dy = b.y - tt.y;
+      if (dx * dx + dy * dy < tt.r * tt.r) { var w = G.b.bhT > 0 ? 13 : 6; b.vx += (-w * dy - b.vx) * 2.4 * dt; b.vy += (w * dx - b.vy) * 2.4 * dt; }
+      var B = G.b; if (B.bhT > 0 && B.bhCool <= 0) {
+        var sx = B.bh[0] - b.x, sy = B.bh[1] - b.y, d2 = sx * sx + sy * sy, d = Math.sqrt(d2);
+        if (d < 170) { var a = Math.min(2600, 2.4e6 / (d2 + 900)); b.vx += sx / d * a * dt; b.vy += sy / d * a * dt; }
+        if (d < 15) { B.bhCool = 1.3; B.bhHits++; var an = -PI / 2 + (Math.random() - 0.5) * 2; b.vx = Math.cos(an) * 1250; b.vy = Math.sin(an) * 1250; jackpot(75000 + 25000 * B.bhHits, 'EVENT HORIZON'); burst(b.x, b.y, '#e9b8ff', 26, 320); }
+      }
+    },
+    update: function (G, dt) {
+      var B = G.b, tt = T.turn; tt.ang += (B.bhT > 0 ? 13 : 6) * dt;
+      if (B.bhCool > 0) B.bhCool -= dt;
+      if (B.bhT > 0) { B.bhT -= dt; var k = G.time; B.bh = [196 + 55 * Math.sin(k * 0.7), 350 + 70 * Math.sin(k * 0.43 + 1)]; if (B.bhT <= 0) msg('BLACK HOLE', 'COLLAPSED', { style: 'slide' }); }
+    },
+    ballEnd: function (G) { G.b.bhT = 0; },
+    trail: function (G) { return G.b.bhT > 0 ? '#c060ff' : G.mb ? '#40e0ff' : null; },
+    modes: { blackhole: function (G) { startBlackHole(G); }, multiball: function (G) { G.b.locks = 2; G.b.lockLit = true; } },
     lamp: function (G, id) {
       var B = G.b, m = /^st(\d)$/.exec(id);
       if (m) return B.star[+m[1]] ? 1 : 0;
@@ -1062,15 +1110,19 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         case 'eb': return G.ebLit ? 3 : 0;
         case 'jp': return G.mb ? 2 : 0;
         case 'ring': return G.mb ? 2 : 0;
+        case 'bh': return B.bhT > 0 ? 2 : B.tubes % 3 === 2 ? 3 : 0;
+        case 'tubeA': return G.mb ? 2 : (!B.lockLit && B.tubes % 2 === 1) ? 3 : 0;
       }
+      m = /^op(\d)$/.exec(id); if (m) return B.orbits > +m[1] ? 1 : B.orbits === +m[1] ? 3 : 0;
     },
     status: function (G) {
       var B = G.b;
+      if (B.bhT > 0) return 'BLACK HOLE ' + Math.ceil(B.bhT) + '  FALL IN FOR EVENT HORIZON';
       if (G.mb) return B.superLit ? 'SUPER JACKPOT AT THE ORBITS' : 'JACKPOT AT THE WORMHOLE';
       if (B.lockLit) return 'WORMHOLE LOCK IS LIT';
       return 'SPELL S-T-A-R TO LIGHT LOCK  ' + B.locks + '/2 LOCKED';
     },
-    bonus: function (G) { return [['PLANETS', pbn('pop'), 200], ['STARS', pbn('su'), 1000], ['ORBITS', pbn('orb'), 4000], ['JACKPOTS', pbn('jp'), 25000]]; },
+    bonus: function (G) { return [['PLANETS', pbn('pop'), 200], ['STARS', pbn('su'), 1000], ['ORBITS', pbn('orb'), 4000], ['HYPER TUBE', pbn('rp'), 5000], ['JACKPOTS', pbn('jp'), 25000]]; },
     paint: function (g, rng) {
       vgrad(g, ['#06061c', '#0c0a2c', '#160d3d', '#0b0822']);
       glow(g, 90, 200, 190, '224,64,251', 0.22); glow(g, 320, 430, 200, '34,211,238', 0.18); glow(g, 170, 610, 170, '120,80,255', 0.2); glow(g, 260, 90, 140, '255,90,180', 0.15);
@@ -1090,19 +1142,63 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       // warp lines from the centre
       g.strokeStyle = 'rgba(140,200,255,.07)'; g.lineWidth = 1;
       for (var k = 0; k < 28; k++) { var a = k / 28 * TAU; g.beginPath(); g.moveTo(184 + Math.cos(a) * 60, 470 + Math.sin(a) * 60); g.lineTo(184 + Math.cos(a) * 420, 470 + Math.sin(a) * 420); g.stroke(); }
-      logo(g, 'NEBULA', 184, 452, 40, 'Bungee, ' + DMDFONT, '#e8fbff', '#e040fb', 'rgba(34,211,238,.9)', -0.06);
-      logo(g, 'RUN', 196, 490, 30, 'Bungee, ' + DMDFONT, '#22d3ee', '#1a0b3a', 'rgba(224,64,251,.8)', -0.06);
+      logo(g, 'NEBULA', 214, 452, 34, 'Bungee, ' + DMDFONT, '#e8fbff', '#e040fb', 'rgba(34,211,238,.9)', -0.06);
+      logo(g, 'RUN', 224, 486, 26, 'Bungee, ' + DMDFONT, '#22d3ee', '#1a0b3a', 'rgba(224,64,251,.8)', -0.06);
       decal(g, 'WORMHOLE', 268, 302, 7.5, '#f5c4ff', -0.5);
     },
     draw: function (g, G, t) {
       // a little moon orbiting the planet bumpers
       var a = t * 0.8, x = 202 + Math.cos(a) * 70, y = 168 + Math.sin(a) * 24;
       g.fillStyle = 'rgba(180,230,255,.85)'; g.beginPath(); g.arc(x, y, 3.2, 0, TAU); g.fill(); glow(g, x, y, 12, '160,230,255', 0.35);
+      // warp-speed streaks during multiball
+      if (G && G.mb) {
+        g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (var k = 0; k < 46; k++) {
+          var an = k * 2.399, p = ((t * (0.55 + (k % 5) * 0.08)) + k * 0.137) % 1, r0 = 20 + p * p * 520, len = 8 + p * 60;
+          g.strokeStyle = k % 3 ? 'rgba(140,220,255,' + (p * 0.6).toFixed(2) + ')' : 'rgba(230,140,255,' + (p * 0.6).toFixed(2) + ')'; g.lineWidth = 0.6 + p * 1.8;
+          g.beginPath(); g.moveTo(184 + Math.cos(an) * r0, 330 + Math.sin(an) * r0); g.lineTo(184 + Math.cos(an) * (r0 + len), 330 + Math.sin(an) * (r0 + len)); g.stroke();
+        }
+        g.restore();
+      }
+      // the turntable
+      var tt = T.turn;
+      g.save(); g.translate(tt.x, tt.y);
+      g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.arc(1.5, 2.5, tt.r + 1, 0, TAU); g.fill();
+      var dg = g.createRadialGradient(-6, -6, 2, 0, 0, tt.r); dg.addColorStop(0, '#d9e2ff'); dg.addColorStop(0.6, '#7b86b0'); dg.addColorStop(1, '#3a4166'); g.fillStyle = dg; g.beginPath(); g.arc(0, 0, tt.r, 0, TAU); g.fill();
+      g.rotate(tt.ang);
+      for (var s = 0; s < 6; s++) { g.rotate(PI / 3); g.fillStyle = s % 2 ? 'rgba(224,64,251,.55)' : 'rgba(34,211,238,.55)'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, tt.r - 2, 0, PI / 6); g.closePath(); g.fill(); }
+      g.restore();
+      g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1.2; g.beginPath(); g.arc(tt.x, tt.y, tt.r, 0, TAU); g.stroke();
+      g.fillStyle = '#e8eeff'; g.beginPath(); g.arc(tt.x, tt.y, 4, 0, TAU); g.fill();
+      // the black hole: lensed stars swirl round a moving singularity
+      if (G && G.b.bhT > 0) {
+        var bx = G.b.bh[0], by = G.b.bh[1], fade = Math.min(1, G.b.bhT, (25 - G.b.bhT) * 2);
+        g.save(); g.globalAlpha = fade;
+        var dk = g.createRadialGradient(bx, by, 4, bx, by, 120); dk.addColorStop(0, 'rgba(0,0,0,.85)'); dk.addColorStop(0.35, 'rgba(10,0,25,.45)'); dk.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = dk; g.fillRect(bx - 120, by - 120, 240, 240);
+        g.globalCompositeOperation = 'lighter';
+        for (var q = 0; q < 60; q++) {
+          var rr = 18 + (q * 37 % 100), w2 = 30 / rr, an2 = q * 1.7 + t * w2 * 3;
+          g.strokeStyle = 'rgba(' + (q % 2 ? '200,170,255' : '150,220,255') + ',' + (0.25 + (100 - rr) / 160).toFixed(2) + ')'; g.lineWidth = 1.1;
+          g.beginPath(); g.arc(bx, by, rr, an2, an2 + 0.25 + 6 / rr); g.stroke();
+        }
+        g.save(); g.translate(bx, by); g.rotate(t * 2); g.scale(1, 0.38);
+        var ad = g.createRadialGradient(0, 0, 10, 0, 0, 34); ad.addColorStop(0, 'rgba(255,200,120,0)'); ad.addColorStop(0.45, 'rgba(255,160,90,.75)'); ad.addColorStop(0.7, 'rgba(230,80,255,.5)'); ad.addColorStop(1, 'rgba(120,60,255,0)');
+        g.fillStyle = ad; g.beginPath(); g.arc(0, 0, 34, 0, TAU); g.fill(); g.restore();
+        g.globalCompositeOperation = 'source-over';
+        g.fillStyle = '#000'; g.beginPath(); g.arc(bx, by, 11, 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(255,220,180,.9)'; g.lineWidth = 1.5; g.beginPath(); g.arc(bx, by, 12.5, 0, TAU); g.stroke();
+        g.restore();
+      }
     }
   };
+  function startBlackHole(G) {
+    var B = G.b; if (B.bhT > 0) return;
+    B.bhT = 25; B.bhHits = 0; B.bhCool = 1; cnt('mode'); cnt('bh');
+    big('BLACK HOLE', 'GRAVITY IS BENDING', '#c060ff'); Kit.callout('BLACK HOLE', '#d9a0ff'); snd('multi'); ballSave(6);
+  }
 
   // ─── Pirate's Cove ────────────────────────────────────────────────────────
-  var WHEEL = ['25,000', 'BONUS X', '50,000', 'LIGHT LOCK', 'EXTRA BALL', 'BALL SAVE', 'GOLD RUSH', '100,000'];
+  var WHEEL = ['STORM', 'BONUS X', '50,000', 'LIGHT LOCK', 'EXTRA BALL', 'BALL SAVE', 'GOLD RUSH', '100,000'];
   BOARDS.pirate = {
     id: 'pirate', name: "Pirate's Cove", short: 'PIRATE', diff: 3,
     desc: 'Ramp the ship to lock balls; the treasure chest spins the wheel.',
@@ -1112,38 +1208,68 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       baseTable(T, { bx: '#fbbf24' });
       leftOrbit(T); rightOrbit(T);
       T.wall([[88, 445], [88, 330], [46, 300]], { kind: 'guide', t: 3 }); T.post(88, 447, 5);
-      T.ramp('ramp', [[67, 410], [67, 300], [74, 200], [102, 124], [160, 78], [240, 70], [300, 96], [334, 154], [342, 240], [342, 400], [332, 500], [318, 560]], { w: 30, up: 0.3, lockAt: 0.43, label: 'SHIP RAMP', rail: '#e8d39a' });
+      T.ramp('ramp', [[67, 410], [67, 300], [74, 200], [102, 124], [160, 78], [240, 70], [300, 96], [334, 154], [342, 240], [342, 400], [332, 500], [318, 560]], { w: 30, up: 0.3, lockAt: 0.43, label: 'SHIP RAMP', rail: '#e8d39a', h: 44, col: 'rgba(170,230,255,' });
+      for (var rq = 0; rq < 3; rq++) T.lamp('rq' + rq, 104 + rq * 16, 470 + rq * 8, { sh: 'd', r: 5, col: '#fbbf24' });
       T.bumper(158, 192, 19, 'pop'); T.bumper(222, 172, 19, 'pop');
       T.scoop(290, 300, 150, 'chest', { ex: -360, ey: 260, hold: 0.8 }); scoopFill(T, 290, 300, 321);
       'GOLD'.split('').forEach(function (c, i) { var cx = 142 + i * 28; T.drop(cx - 11, 356, cx + 11, 356, 'g' + i, 'gold', { txt: c }); T.lamp('g' + i, cx, 380, { sh: 'c', r: 8, txt: c, col: '#fbbf24', sz: 8 }); });
       T.line(8, 400, 46, 400, 'orbL', 0, -1); T.line(324, 400, 360, 400, 'orbR', 0, -1);
-      T.lamp('rampA', 67, 452, { sh: 'a', w: 26, h: 38, col: '#fbbf24' });
+      T.lamp('rampA', 67, 452, { sh: 'a', w: 26, h: 38, col: '#fbbf24', lbl: 'SHIP' });
       T.lamp('lk1', 67, 488, { sh: 'c', r: 6, txt: '', col: '#ff4058' });
-      T.lamp('chestA', 254, 340, { sh: 'a', w: 26, h: 38, col: '#fbbf24', rot: 0.9 });
+      T.lamp('chestA', 254, 340, { sh: 'a', w: 26, h: 38, col: '#fbbf24', rot: 0.9, lbl: 'CHEST' });
+      T.scoop(72, 506, 40, 'cannon', { ex: 380, ey: 320, hold: 0.5 });
+      T.lamp('cannonA', 108, 540, { sh: 'a', w: 22, h: 30, col: '#ff7a3d', rot: -0.78, lbl: 'CANNON' });
+      T.lamp('storm', 184, 444, { sh: 'r', w: 50, h: 14, txt: 'STORM', col: '#7dd3fc', sz: 7 });
       T.lamp('rush', 184, 420, { sh: 'r', w: 64, h: 16, txt: 'GOLD RUSH', col: '#ffd45a', sz: 8 });
       T.lamp('eb', 228, 312, { sh: 'r', w: 30, h: 13, txt: 'EXTRA', col: '#ff4058', sz: 6 });
       T.lamp('orbL', 27, 440, { sh: 'a', w: 22, h: 34, col: '#38bdf8' }); T.lamp('orbR', 342, 440, { sh: 'a', w: 22, h: 34, col: '#38bdf8' });
     },
-    init: function (G) { G.b = { lockLit: false, locked: 0, chestLit: true, ramps: 0, wheel: { ang: 0, spd: 0, on: false }, jp: 150000, award: '' }; },
-    bank: function (G) { if (!G.mb) { G.b.lockLit = true; msg('GOLD COMPLETE', 'SHIP LOCK IS LIT', { style: 'slide' }); } else msg('GOLD COMPLETE', '25,000', { style: 'slide' }); snd('award'); },
+    init: function (G) { G.b = { lockLit: false, locked: 0, chestLit: true, ramps: 0, wheel: { ang: 0, spd: 0, on: false }, jp: 150000, award: '', cannonLit: false, orbs: 0, cannon: null, aim: -0.85, shotT: 0, stormT: 0, golds: 0, boltT: 2 }; },
+    hit: function (G, id) { if (G.b.shotT > 0 && !/^sl/.test(id)) directHit(G); },
+    flip: function (G) { if (G.b.cannon) G.b.cannon.fire = true; },
+    force: function (G, b, dt) { if (G.b.stormT > 0) b.vx += 360 * Math.sin(G.time * 1.15) * dt; },
+    modes: { storm: function (G) { startStorm(G); }, cannon: function (G) { G.b.cannonLit = true; } },
+    bank: function (G) { G.b.golds++; if (G.b.shotT > 0) directHit(G); if (G.b.golds % 3 === 0) later(1.6, function () { if (G && G.state === 'play') startStorm(G); }); if (!G.mb) { G.b.lockLit = true; msg('GOLD COMPLETE', 'SHIP LOCK IS LIT', { style: 'slide' }); } else msg('GOLD COMPLETE', '25,000', { style: 'slide' }); snd('award'); },
     rampin: function (G, id, b) { if (G.b.lockLit && !G.mb) b.ramp.lock = true; },
     ramp: function (G, id, b) {
       var B = G.b; B.ramps++;
-      combo('ramp');
+      combo('ramp'); if (B.shotT > 0) directHit(G);
       if (G.mb) { jackpot(B.jp); B.jp += 25000; return; }
       var p = add(10000, b.x, b.y, '#ffe08a');
       if (B.ramps % 3 === 0 && !B.chestLit) { B.chestLit = true; msg('SHIP RAMP', 'TREASURE CHEST IS LIT', { style: 'slide' }); } else if (G.combo < 2) msg('SHIP RAMP', fmt(p), { style: 'slide' });
       if (B.ramps === 8) lightExtra();
     },
-    orbit: null,
-    line: function (G, id, b) { if (id === 'orbL' || id === 'orbR') { cnt('orb'); var p = add(5000, b.x, b.y - 20); combo(id); if (G.combo < 2) msg('SEA LANE', fmt(p), { style: 'slide' }); } },
+    rampLit: function (G) { return G.mb || G.b.lockLit; },
+    line: function (G, id, b) { if (id === 'orbL' || id === 'orbR') { cnt('orb'); var p = add(5000, b.x, b.y - 20); combo(id); G.b.orbs++; if (G.b.orbs % 2 === 0 && !G.b.cannonLit) { G.b.cannonLit = true; msg('CANNON', 'IS LOADED', { style: 'slide' }); } else if (G.combo < 2) msg('SEA LANE', fmt(p), { style: 'slide' }); } },
     saucer: function (G, id) {
       var B = G.b;
+      if (id === 'cannon') {
+        if (B.cannonLit && !B.cannon) { B.cannonLit = false; B.cannon = { t: 0, fire: false }; msg('CANNON READY', 'FLIP TO FIRE', { style: 'flash', now: true, dur: 2 }); return { hold: 99 }; }
+        add(5000); msg('CANNON', 'SEA LANES LOAD IT', { style: 'slide' }); return { hold: 0.5 };
+      }
+      if (B.shotT > 0) directHit(G);
       if (B.chestLit) { B.chestLit = false; B.wheel.spd = 9 + Math.random() * 3.5; B.wheel.on = true; cnt('wheel'); msg('TREASURE', 'SPINNING THE WHEEL', { style: 'slide', now: true, dur: 2.4 }); return { hold: 3.6 }; }
       add(5000); msg('TREASURE CHEST', 'SHIP RAMPS LIGHT IT', { style: 'slide' }); return { hold: 0.6 };
     },
     update: function (G, dt) {
       var B = G.b, w = B.wheel;
+      if (B.shotT > 0) B.shotT -= dt;
+      if (B.cannon) {
+        var cn = B.cannon; cn.t += dt; B.aim = -0.85 + 0.6 * Math.sin(cn.t * 2.3);
+        var cb = G.balls.filter(function (x) { return x.held && x.held.o.id === 'cannon'; })[0];
+        if (!cb) B.cannon = null;
+        else if (cn.fire || cn.t > 5 || G.tilted) {
+          var v = 1750; cb.held = null; cb.tr = null; cb.x = 72 + Math.cos(B.aim) * 37; cb.y = 506 + Math.sin(B.aim) * 37; cb.vx = Math.cos(B.aim) * v; cb.vy = Math.sin(B.aim) * v; cb.noCap.cannon = 0.8; cb.stillT = 0;
+          B.cannon = null; B.shotT = 2.2; cnt('cannon'); add(10000); snd('cannon'); Kit.haptic('heavy'); G.shake = 1.2; flash('#ffd8a0', 0.35);
+          for (var k = 0; k < 18; k++) part(cb.x, cb.y, Math.cos(B.aim + (Math.random() - 0.5)) * 220, Math.sin(B.aim + (Math.random() - 0.5)) * 220, k % 2 ? '#ffb060' : '#cfc8bd', 0.6, 3);
+          msg('FIRE!', 'HIT SOMETHING', { style: 'flash', now: true, dur: 1.2 });
+        }
+      }
+      if (B.stormT > 0) {
+        B.stormT -= dt; B.boltT -= dt;
+        if (B.boltT <= 0) { B.boltT = 2.5 + Math.random() * 3.5; flash('#dbeaff', 0.7); snd('thunder'); G.shake = Math.max(G.shake, 0.4); }
+        if (B.stormT <= 0) msg('THE STORM', 'HAS PASSED', { style: 'slide' });
+      }
       if (w.spd > 0) {
         var a0 = w.ang; w.ang += w.spd * dt; w.spd *= Math.exp(-1.05 * dt);
         if (Math.floor(a0 / (TAU / 8)) !== Math.floor(w.ang / (TAU / 8))) snd('wheel');
@@ -1168,13 +1294,18 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         case 'rampA': return G.mb ? 2 : B.lockLit ? 3 : 0;
         case 'lk1': return B.locked ? 1 : 0;
         case 'chestA': return B.chestLit ? 3 : 0;
-        case 'rush': return G.multT > 0 ? 2 : 0;
+        case 'rq0': case 'rq1': case 'rq2': return B.chestLit ? 1 : (B.ramps % 3) > +id.charAt(2) ? 1 : (B.ramps % 3) === +id.charAt(2) ? 3 : 0;
+        case 'rush': return G.multT > 0 && !(B.stormT > 0) ? 2 : 0;
+        case 'storm': return B.stormT > 0 ? 2 : B.golds % 3 === 2 ? 3 : 0;
+        case 'cannonA': return B.cannon ? 2 : B.cannonLit ? 3 : 0;
         case 'eb': return G.ebLit ? 3 : 0;
         case 'orbL': case 'orbR': return (G.time - G.lastShotT < 4.5 && G.lastShot !== id) ? 3 : 0;
       }
     },
     status: function (G) {
       var B = G.b;
+      if (B.cannon) return 'FLIP TO FIRE THE CANNON';
+      if (B.stormT > 0) return 'STORM ' + Math.ceil(B.stormT) + '  DOUBLE SCORES  HOLD ON';
       if (G.mb) return 'BROADSIDE: JACKPOT AT THE SHIP RAMP';
       if (G.multT > 0) return 'GOLD RUSH  ' + Math.ceil(G.multT) + '  DOUBLE SCORES';
       if (B.lockLit) return 'SHIP LOCK IS LIT';
@@ -1226,8 +1357,37 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       g.fillStyle = '#e8c068'; g.beginPath(); g.arc(0, 0, 7, 0, TAU); g.fill();
       g.restore();
       g.fillStyle = '#ffd45a'; g.beginPath(); g.moveTo(x - 6, y - r - 8); g.lineTo(x + 6, y - r - 8); g.lineTo(x, y - r + 4); g.closePath(); g.fill();
+      // the cannon
+      var aim = G ? G.b.aim : -0.85;
+      g.save(); g.translate(72, 506);
+      g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.ellipse(4, 6, 20, 9, 0.3, 0, TAU); g.fill();
+      g.fillStyle = '#4a2c12'; g.fillRect(-14, 4, 28, 8); g.fillStyle = '#2a170a'; [-9, 9].forEach(function (wx) { g.beginPath(); g.arc(wx, 12, 5, 0, TAU); g.fill(); });
+      g.rotate(aim);
+      var cg = g.createLinearGradient(0, -6, 0, 6); cg.addColorStop(0, '#6a6a72'); cg.addColorStop(0.4, '#2c2c34'); cg.addColorStop(1, '#101014');
+      g.fillStyle = cg; g.beginPath(); g.moveTo(-8, -7); g.lineTo(34, -5); g.lineTo(34, 5); g.lineTo(-8, 7); g.closePath(); g.fill();
+      g.fillStyle = '#c99a3e'; g.fillRect(2, -7, 3, 14); g.fillRect(28, -6, 3, 12); g.fillStyle = '#000'; g.beginPath(); g.ellipse(34, 0, 1.5, 4.5, 0, 0, TAU); g.fill();
+      g.restore();
+      if (G && G.b.cannon) glow(g, 72 + Math.cos(aim) * 40, 506 + Math.sin(aim) * 40, 16, '255,140,60', 0.5 + 0.3 * Math.sin(t * 12));
       if (G && G.b.locked) { var lp = rampPos(T.ramps[0], T.ramps[0].L * T.ramps[0].lockAt); drawBall(g, lp[0], lp[1], 1, true); }
     }
+  };
+  function directHit(G) { G.b.shotT = 0; cnt('direct'); jackpot(50000, 'DIRECT HIT'); }
+  function startStorm(G) {
+    var B = G.b; if (B.stormT > 0) return;
+    B.stormT = 25; B.boltT = 0.6; G.mult = 2; G.multT = 25; cnt('mode'); cnt('storm');
+    big('STORM!', 'HOLD ON TIGHT', '#7dd3fc'); Kit.callout('STORM', '#9ad8ff'); snd('multi');
+  }
+  BOARDS.pirate.drawOver = function (g, G, t) {
+    var B = G.b; if (!(B.stormT > 0)) return;
+    var fade = Math.min(1, B.stormT, (25 - B.stormT) * 1.5), sway = Math.sin(t * 1.15) * 30;
+    g.fillStyle = 'rgba(8,20,45,' + (0.28 * fade).toFixed(2) + ')'; g.fillRect(0, 0, TW, TH);
+    g.strokeStyle = 'rgba(190,225,255,' + (0.42 * fade).toFixed(2) + ')'; g.lineWidth = 1;
+    g.beginPath();
+    for (var k = 0; k < 110; k++) { var sp = 820 + (k % 4) * 90, y = ((k * 61.7 + t * sp) % 840) - 20, x = ((k * 97.13) % 380) + 10 - y * 0.08 + sway; g.moveTo(x, y); g.lineTo(x - 4, y + 16); }
+    g.stroke();
+    // swell: a slow band of light rolling across the table
+    var wy = 400 + Math.sin(t * 1.15) * 300, wg = g.createLinearGradient(0, wy - 60, 0, wy + 60); wg.addColorStop(0, 'rgba(120,200,255,0)'); wg.addColorStop(0.5, 'rgba(120,200,255,' + (0.1 * fade).toFixed(2) + ')'); wg.addColorStop(1, 'rgba(120,200,255,0)');
+    g.fillStyle = wg; g.fillRect(0, wy - 60, TW, 120);
   };
   function wheelAward(G) {
     var w = G.b.wheel, seg = ((Math.round(-w.ang / (TAU / 8)) % 8) + 8) % 8, a = WHEEL[seg];
@@ -1239,155 +1399,403 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       case 'EXTRA BALL': if (G.ebGot < 2) { G.ebLit = true; collectExtra(); return; } add(100000); break;
       case 'BALL SAVE': ballSave(15); break;
       case 'GOLD RUSH': G.mult = 2; G.multT = 20; break;
+      case 'STORM': later(2, function () { if (G && G.state === 'play') startStorm(G); }); break;
       default: add(+a.replace(/,/g, ''));
     }
     big(a, 'TREASURE AWARD', '#ffd45a'); snd('award');
   }
 
   // ─── Haunted Manor ────────────────────────────────────────────────────────
+  // Cold, foggy and flickering. Mechanisms: a captive ball in the crypt, a
+  // drifting ghost, a magnet, a bookcase that swings open on the third knock
+  // to reveal a secret scoop, and a twisted iron wireform over the graveyard.
+  // Showpiece: LIGHTS OUT, where only the ball's lantern glow and the flippers
+  // can be seen.
+  var MANOR_WIN = [[104, 188], [124, 188], [158, 176], [174, 176], [194, 176], [210, 176], [234, 190], [262, 202], [127, 128], [236, 122], [158, 206], [210, 206], [184, 150]];
+  function manorPath(g) {
+    g.beginPath(); g.moveTo(92, 238); g.lineTo(92, 172); g.lineTo(84, 172); g.lineTo(110, 146); g.lineTo(118, 146); g.lineTo(118, 118); g.lineTo(112, 118); g.lineTo(130, 74); g.lineTo(148, 118); g.lineTo(142, 118); g.lineTo(142, 148);
+    g.lineTo(152, 148); g.lineTo(152, 136); g.lineTo(158, 136); g.lineTo(158, 144); g.lineTo(184, 124); g.lineTo(212, 146); g.lineTo(224, 146); g.lineTo(224, 106); g.lineTo(218, 106); g.lineTo(240, 58); g.lineTo(262, 106); g.lineTo(256, 106);
+    g.lineTo(256, 166); g.lineTo(284, 186); g.lineTo(278, 186); g.lineTo(278, 238); g.closePath();
+  }
+  function bareTree(g, x, y, len, ang, w, depth, rng) {
+    if (depth <= 0 || len < 3) return;
+    var x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len, bend = (rng() - 0.5) * len * 0.6;
+    g.strokeStyle = '#06050a'; g.lineWidth = w; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo((x + x2) / 2 + Math.cos(ang + PI / 2) * bend, (y + y2) / 2 + Math.sin(ang + PI / 2) * bend, x2, y2); g.stroke();
+    var n = rng() < 0.35 ? 3 : 2;
+    for (var i = 0; i < n; i++) bareTree(g, x2, y2, len * (0.62 + rng() * 0.2), ang + (rng() - 0.5) * 1.3 + (i - (n - 1) / 2) * 0.5, w * 0.62, depth - 1, rng);
+  }
+  function tombstone(g, x, y, s, kind, rng) {
+    g.save(); g.translate(x, y); g.rotate((rng() - 0.5) * 0.25);
+    var gr = g.createLinearGradient(-s, -s * 2, s, 0); gr.addColorStop(0, '#5a5868'); gr.addColorStop(1, '#25232e');
+    g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.ellipse(4, 2, s * 1.2, 3.5, 0, 0, TAU); g.fill();
+    g.fillStyle = gr; g.beginPath();
+    if (kind === 'cross') { g.rect(-s * 0.25, -s * 2.3, s * 0.5, s * 2.3); g.rect(-s * 0.8, -s * 1.8, s * 1.6, s * 0.45); }
+    else if (kind === 'obelisk') { g.moveTo(-s * 0.5, 0); g.lineTo(-s * 0.35, -s * 2.2); g.lineTo(0, -s * 2.7); g.lineTo(s * 0.35, -s * 2.2); g.lineTo(s * 0.5, 0); g.closePath(); }
+    else { g.moveTo(-s, 0); g.lineTo(-s, -s * 1.2); g.arc(0, -s * 1.2, s, PI, TAU); g.lineTo(s, 0); g.closePath(); }
+    g.fill();
+    g.strokeStyle = 'rgba(10,8,14,.9)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(-s * 0.2, -s * 1.9); g.lineTo(s * 0.1, -s * 1.3); g.lineTo(-s * 0.15, -s * 0.9); g.lineTo(s * 0.3, -s * 0.3); g.stroke();
+    g.fillStyle = 'rgba(110,150,110,.45)'; for (var i = 0; i < 5; i++) { g.beginPath(); g.arc((rng() - 0.5) * s * 1.6, -rng() * s * 0.8, 1 + rng() * 1.5, 0, TAU); g.fill(); }
+    g.restore();
+  }
+  var fogTex = null;
+  function fogTexture() {
+    if (fogTex) return fogTex;
+    var c = document.createElement('canvas'); c.width = 256; c.height = 96; var g = c.getContext('2d'), rng = mkRng(77);
+    for (var i = 0; i < 46; i++) {
+      var x = rng() * 256, y = 20 + rng() * 56, r = 14 + rng() * 26;
+      [x, x - 256, x + 256].forEach(function (xx) { var gr = g.createRadialGradient(xx, y, 0, xx, y, r); gr.addColorStop(0, 'rgba(190,215,205,.22)'); gr.addColorStop(1, 'rgba(190,215,205,0)'); g.fillStyle = gr; g.fillRect(xx - r, y - r, r * 2, r * 2); });
+    }
+    fogTex = c; return c;
+  }
+  var darkCv = null;
+  function hauntSfx(name) {
+    return {
+      pop: function () { if (!rl('pop', 0.05)) return; osc('sine', 220, 0, 0.5, 0.16, { to: 210 }); osc('sine', 330, 0, 0.35, 0.06); osc('sine', 110, 0, 0.18, 0.2, { to: 60 }); },
+      sling: function () { if (!rl('sl', 0.06)) return; noise(0, 0.12, 0.16, 'bandpass', 700, 0.8); osc('sine', 120, 0, 0.1, 0.14, { to: 70 }); },
+      ghost: function () { var a = ac(); if (!a) return; var o = a.createOscillator(), lfo = a.createOscillator(), lg = a.createGain(), g = a.createGain(), t = a.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(260, t + 1.1); lfo.frequency.value = 6; lg.gain.value = 22; lfo.connect(lg); lg.connect(o.frequency); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2); o.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t + 1.25); lfo.stop(t + 1.25); },
+      jackpot: function () { [57, 60, 64, 69].forEach(function (m, i) { osc('sawtooth', mtof(m), i * 0.04, 1.4, 0.03, { lp: 1400 }); osc('triangle', mtof(m - 12), 0, 1.4, 0.05); }); osc('triangle', mtof(81), 0.5, 1, 0.05); noise(0, 1.2, 0.05, 'bandpass', 400, 0.6); },
+      drain: function () { osc('sine', 500, 0, 1.4, 0.09, { to: 120 }); osc('sine', 503, 0.05, 1.4, 0.05, { to: 118 }); osc('sine', 70, 0, 0.9, 0.12, { to: 40 }); },
+      award: function () { [69, 72, 76].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.1, 0.5, 0.06); }); },
+      thunder: function () { noise(0, 0.25, 0.3, 'lowpass', 900, 0.7); noise(0.1, 2.2, 0.32, 'lowpass', 160, 0.8); osc('sine', 48, 0.05, 1.8, 0.2, { to: 30 }); },
+      creak: function () { osc('sawtooth', 95, 0, 0.9, 0.025, { to: 62, lp: 520 }); osc('sawtooth', 101, 0.05, 0.8, 0.018, { to: 70, lp: 600 }); },
+      knock: function () { [0, 0.16, 0.32].slice(0, 1).forEach(function (d) { osc('sine', 140, d, 0.12, 0.3, { to: 80 }); noise(d, 0.06, 0.25, 'lowpass', 700, 1); }); },
+      door: function () { osc('sawtooth', 70, 0, 1.2, 0.04, { to: 120, lp: 500 }); osc('sawtooth', 140, 0.1, 1, 0.025, { to: 90, lp: 700 }); noise(0, 1.1, 0.06, 'bandpass', 300, 1.5); },
+      dark: function () { osc('sine', 300, 0, 1.4, 0.1, { to: 60 }); noise(0, 0.3, 0.2, 'lowpass', 300, 1); }
+    }[name];
+  }
+  // wind: looping filtered noise, shaped over time
+  var amb = null;
+  function ambStart() {
+    var a = ac(); if (!a || amb) return;
+    if (!noiseBuf) noise(0, 0.01, 0.0001);
+    if (!noiseBuf) return;
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 0.9; g.gain.value = 0.0001;
+    s.connect(f); f.connect(g); g.connect(master); s.start();
+    g.gain.setTargetAtTime(0.05, a.currentTime, 1.5);
+    amb = { s: s, f: f, g: g, t: 0 };
+  }
+  function ambStop() { if (!amb) return; try { amb.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.2); amb.s.stop(AC.currentTime + 1); } catch (e) {} amb = null; }
+  function ambTick(dt) {
+    if (!amb || !AC) return;
+    amb.t -= dt;
+    if (amb.t <= 0) { amb.t = 1.5 + Math.random() * 2.5; try { amb.f.frequency.setTargetAtTime(260 + Math.random() * 520, AC.currentTime, 1.2); amb.g.gain.setTargetAtTime(0.025 + Math.random() * 0.05, AC.currentTime, 1.2); } catch (e) {} }
+  }
+  function bats(G, n, x, y) {
+    var B = G.b; B.bats = B.bats || [];
+    for (var i = 0; i < n; i++) {
+      var a = -PI / 2 + (Math.random() - 0.5) * 2.4, v = 90 + Math.random() * 120, tw = Math.random() < 0.5 ? [130, 76] : [240, 60];
+      B.bats.push({ x: x == null ? tw[0] : x, y: y == null ? tw[1] : y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, ph: Math.random() * TAU, life: 2.5 + Math.random() * 1.5, s: 0.7 + Math.random() * 0.6 });
+    }
+    if (B.bats.length > 40) B.bats.splice(0, B.bats.length - 40);
+  }
+  function lightning(G, big) {
+    var B = G.b; B.light = 1; B.nextL = (B.darkT > 0 ? 3 : 8) + Math.random() * (B.darkT > 0 ? 3 : 9);
+    var x = 60 + Math.random() * 250, y = 0, pts = [[x, y]];
+    while (y < 120) { x += (Math.random() - 0.5) * 34; y += 10 + Math.random() * 16; pts.push([x, y]); }
+    B.bolt = pts;
+    snd('thunder'); if (big || Math.random() < 0.45) bats(G, 4 + Math.floor(Math.random() * 4));
+  }
   BOARDS.haunted = {
-    id: 'haunted', name: 'Haunted Manor', short: 'HAUNTED', diff: 3,
-    desc: 'Catch the drifting ghost, crack the crypt, beware the magnet.',
-    pal: { rail: '#d9cff0', guide: '#8b5cf6', sling: 'rgba(110,60,190,.8)', slingEdge: '#c4b5fd', flip: '#f3eaff', flipRub: '#4ade80', cap: ['#4ade80', '#14532d'], capTop: '#8b5cf6',
-      target: '#86efac', ramp: 'rgba(190,170,255,', spark: '#b9ffcc', apron: ['#241238', '#0f0720'], apronText: '#b9ffcc', ball: [235, 245, 235], lamp: '#86efac' },
+    id: 'haunted', name: 'Haunted Manor', short: 'HAUNTED', diff: 3, creep: true,
+    desc: 'Catch the ghost, knock on the bookcase, and survive Lights Out.',
+    pal: { rail: '#b9b4c8', guide: '#5b4a7a', sling: 'rgba(60,52,80,.9)', slingEdge: '#9fd4b4', flip: '#e6ece8', flipRub: '#5fae86', cap: ['#7fb59a', '#1d3a2c'], capTop: '#6b5a8a',
+      target: '#9fd4b4', ramp: 'rgba(170,200,190,', spark: '#cfe9dc', apron: ['#1a1622', '#0a080e'], apronText: '#9fd4b4', ball: [222, 230, 226], lamp: '#7fd4a4' },
     build: function (T) {
-      baseTable(T, { bx: '#86efac' });
+      baseTable(T, { bx: '#7fd4a4' });
       leftOrbit(T);
       // the crypt: captive ball channel next to the left orbit
       T.wall([[46, 250], [72, 250]], { kind: 'metal', t: 2.5 }); T.wall([[46, 236], [80, 252]], { kind: 'metal', t: 2.5 }); T.wall([[72, 250], [72, 344]], { kind: 'metal', t: 2.5 });
       T.post(51, 349, 3); T.post(67, 349, 3);
       T.captive(59, 263, 346, 'crypt');
-      T.lamp('cr1', 92, 300, { sh: 'c', r: 5, col: '#86efac' }); T.lamp('cr2', 92, 316, { sh: 'c', r: 5, col: '#86efac' }); T.lamp('cr3', 92, 332, { sh: 'c', r: 5, col: '#86efac' });
+      T.lamp('cr1', 92, 300, { sh: 'c', r: 5, col: '#7fd4a4' }); T.lamp('cr2', 92, 316, { sh: 'c', r: 5, col: '#7fd4a4' }); T.lamp('cr3', 92, 332, { sh: 'c', r: 5, col: '#7fd4a4' });
       T.lamp('eb', 59, 376, { sh: 'r', w: 28, h: 12, txt: 'EXTRA', col: '#ff4058', sz: 5.6 });
+      // the secret passage: a scoop behind a bookcase door
+      T.scoop(100, 205, 45, 'secret', { ex: 330, ey: 250, hold: 1.2 });
+      T.door = T.seg(119, 199, 96, 224, { kind: 'target', id: 'door', e: 0.25, t: 3.5 }); T.door.open = 0;
+      T.lamp('door', 134, 236, { sh: 'a', w: 22, h: 30, col: '#c4b5fd', rot: -0.8, lbl: 'KNOCK' });
+      T.lamp('k1', 146, 258, { sh: 'c', r: 4, col: '#c4b5fd' }); T.lamp('k2', 154, 266, { sh: 'c', r: 4, col: '#c4b5fd' }); T.lamp('k3', 162, 274, { sh: 'c', r: 4, col: '#c4b5fd' });
       // the ghost drifts across the middle
-      T.mover('ghost', 17, function (t, m) { return [190 + 70 * Math.sin(t * 0.5), 252 + 14 * Math.sin(t * 1.3 + 1)]; });
+      T.mover('ghost', 17, function (t) { return [190 + 70 * Math.sin(t * 0.5), 252 + 14 * Math.sin(t * 1.3 + 1)]; });
       T.bumper(150, 130, 18, 'pop'); T.bumper(208, 112, 18, 'pop'); T.bumper(182, 172, 18, 'pop');
       // B-O-O bank on the right
       T.wall([[300, 286], [358, 271]], { kind: 'guide', t: 3 }); T.wall([[318, 372], [358, 384]], { kind: 'guide', t: 3 });
       T.wall([[300, 286], [318, 372]], { kind: 'metal', t: 2, draw: false });
-      T.art.push({ k: 'block', pts: [[300, 286], [358, 271], [358, 384], [318, 372]], col: 'rgba(139,92,246,.55)' });
+      T.art.push({ k: 'block', pts: [[300, 286], [358, 271], [358, 384], [318, 372]], col: 'rgba(70,58,96,.75)' });
       [[0.06, 0.34], [0.37, 0.63], [0.66, 0.94]].forEach(function (f, i) {
         var ax = 300 + 18 * f[0], ay = 286 + 86 * f[0], bx = 300 + 18 * f[1], by = 286 + 86 * f[1];
         T.target(ax - 3, ay + 0.6, bx - 3, by + 0.6, 'boo' + i);
-        T.lamp('boo' + i, (ax + bx) / 2 - 22, (ay + by) / 2 + 4, { sh: 'c', r: 8, txt: 'BOO'.charAt(i), col: '#86efac', sz: 8 });
+        T.lamp('boo' + i, (ax + bx) / 2 - 22, (ay + by) / 2 + 4, { sh: 'c', r: 8, txt: 'BOO'.charAt(i), col: '#7fd4a4', sz: 8 });
       });
       T.magnet(184, 396, 44, 'magnet');
-      T.lamp('mag', 184, 396, { sh: 'ring', r: 24, col: '#86efac' });
+      T.lamp('mag', 184, 396, { sh: 'ring', r: 24, col: '#7fd4a4' });
       T.lamp('gh1', 152, 322, { sh: 'c', r: 7, txt: '1', col: '#c4b5fd', sz: 7 }); T.lamp('gh2', 184, 330, { sh: 'c', r: 7, txt: '2', col: '#c4b5fd', sz: 7 }); T.lamp('gh3', 216, 322, { sh: 'c', r: 7, txt: '3', col: '#c4b5fd', sz: 7 });
       T.lamp('mid', 184, 452, { sh: 'r', w: 66, h: 16, txt: 'MIDNIGHT', col: '#ffd45a', sz: 8 });
-      T.line(8, 400, 46, 400, 'orbL', 0, -1); T.lamp('orbL', 27, 440, { sh: 'a', w: 22, h: 34, col: '#86efac' });
+      T.lamp('dark', 184, 474, { sh: 'r', w: 66, h: 14, txt: 'LIGHTS OUT', col: '#c4b5fd', sz: 7 });
+      T.line(8, 400, 46, 400, 'orbL', 0, -1); T.lamp('orbL', 27, 440, { sh: 'a', w: 22, h: 34, col: '#7fd4a4', lbl: 'HALL' });
+      // twisted iron wireform: up from mid-right, over the graveyard, down to the left inlane
+      mouth(T, 290, 445);
+      T.ramp('spirit', [[290, 445], [288, 392], [262, 360], [222, 360], [186, 390], [156, 440], [126, 490], [96, 526], [70, 548], [54, 566]], { w: 26, up: 0.3, style: 'iron', h: 44, z: 2 });
+      T.lamp('spiritA', 290, 520, { sh: 'a', w: 24, h: 32, col: '#7fd4a4', lbl: 'SPIRIT WALK' });
     },
-    init: function (G) { G.b = { gh: 0, caps: 0, crypt: 0, boo: [0, 0, 0], magLit: false, midT: 0, gone: 0 }; },
+    snds: { pop: hauntSfx('pop'), sling: hauntSfx('sling'), ghost: hauntSfx('ghost'), jackpot: hauntSfx('jackpot'), drain: hauntSfx('drain'), award: hauntSfx('award'), thunder: hauntSfx('thunder'), creak: hauntSfx('creak'), knock: hauntSfx('knock'), door: hauntSfx('door'), dark: hauntSfx('dark') },
+    intro: 'ENTER IF YOU DARE',
+    modes: { lightsout: function (G) { BOARDS.haunted.saucer(G, 'secret'); }, door: function (G) { openDoor(G); }, midnight: function (G) { G.b.midT = 30; G.b.mjp = 100000; } },
+    init: function (G) { G.b = { gh: 0, caps: 0, crypt: 0, boo: [0, 0, 0], magLit: false, midT: 0, gone: 0, knocks: 0, doorOpen: false, darkT: 0, dark: 0, light: 0, nextL: 5, bats: [], creakT: 6, wail: 0, mjp: 100000, walks: 0 }; },
     hit: function (G, id, b, o) {
       var B = G.b, m = /^boo(\d)$/.exec(id);
       if (id === 'pop') { if (B.midT > 0) add(2000); return; }
+      if (id === 'door') {
+        if (B.doorOpen) return;
+        B.knocks++; add(2500, o.x1 + 8, o.y1 + 4); snd('knock'); G.shake = Math.max(G.shake, 0.4);
+        var need = Math.min(9, 3 + 2 * (B.darks || 0));
+        if (B.knocks >= need) openDoor(G); else msg('KNOCK ' + B.knocks, B.knocks === need - 1 ? 'ONCE MORE...' : 'WHO IS THERE?', { style: 'creep' });
+        return;
+      }
       if (m) {
         B.boo[+m[1]] = 1;
-        if (B.boo.every(Boolean)) { B.boo = [0, 0, 0]; add(20000); cnt('boo'); if (!B.magLit) { B.magLit = true; T.magnets[0].on = true; msg('B-O-O', 'THE MAGNET IS LIT', { style: 'slide' }); } else msg('B-O-O', '20,000', { style: 'slide' }); snd('award'); }
+        if (B.boo.every(Boolean)) { B.boo = [0, 0, 0]; add(20000); cnt('boo'); if (!B.magLit) { B.magLit = true; msg('B-O-O', 'THE MAGNET STIRS', { style: 'creep' }); } else msg('B-O-O', '20,000', { style: 'creep' }); snd('award'); }
         return;
       }
       if (id === 'ghost') {
         if (B.gone > 0) return;
-        snd('ghost'); flash('#b9ffcc', 0.25); burst(o.x, o.y, '#d9ffe0', 14, 220);
-        if (B.midT > 0) { jackpot(B.mjp, 'GHOST JACKPOT'); B.mjp += 25000; B.gone = 2.2; return; }
-        B.gh++; add(5000 * B.gh, o.x, o.y - 24, '#d9ffe0');
-        if (B.gh >= 3) {
-          B.gh = 0; B.caps++; cnt('ghost'); B.gone = 3;
-          var p = add(50000 * B.caps); big('GHOST CAPTURED', fmt(p), '#b9ffcc');
-          if (B.caps % 3 === 0) later(2.2, function () { if (!G || G.state !== 'play') return; B.midT = 30; B.mjp = 100000; ballSave(10); big('MIDNIGHT', 'GHOSTS ARE JACKPOTS', '#ffd45a'); Kit.callout('MIDNIGHT', '#ffd45a'); cnt('mode'); snd('multi'); });
-        } else { B.gone = 0.9; msg('GHOST', (3 - B.gh) + (B.gh === 2 ? ' MORE HIT' : ' MORE HITS'), { style: 'slide' }); }
+        snd('ghost'); B.wail = 1.2; flash('#9fd4b4', 0.3); burst(o.x, o.y, '#d9ffe0', 16, 220);
+        if (B.midT > 0 || B.darkT > 0) { jackpot(B.darkT > 0 ? 25000 + B.mjp : B.mjp, B.darkT > 0 ? 'GHOST IN THE DARK' : 'GHOST JACKPOT'); B.mjp += 10000; B.gone = 3; bats(G, 5, o.x, o.y); return; }
+        ghostHit(G, o.x, o.y);
       }
     },
+    ramp: function (G, id, b) {
+      var B = G.b; B.walks++; combo(id); bats(G, 3, b.x, b.y);
+      if (B.midT > 0 || B.darkT > 0) { jackpot(40000, 'SPIRIT JACKPOT'); return; }
+      var p = add(15000, b.x, b.y, '#cfe9dc');
+      if (B.gone <= 0) { ghostHit(G, null, null, true); if (G.combo < 2) msg('SPIRIT WALK', 'THE GHOST WEAKENS', { style: 'creep' }); }
+      else if (G.combo < 2) msg('SPIRIT WALK', fmt(p), { style: 'creep' });
+    },
+    rampLit: function (G) { return G.b.midT > 0 || G.b.darkT > 0; },
     captive: function (G) {
       var B = G.b; if (G.time - (B.cryptT || -9) < 0.5) return; B.cryptT = G.time;
       if (G.ebLit) { collectExtra(); return; }
       B.crypt++; cnt('crypt'); var p = add(15000);
-      msg('CRYPT ' + B.crypt, fmt(p), { style: 'slide' });
+      msg('CRYPT ' + B.crypt, fmt(p), { style: 'creep' });
       if (B.crypt % 3 === 0) bxUp();
       if (B.crypt === 4) lightExtra();
     },
     magnet: function (G, id, b) {
       var B = G.b; B.magLit = false; cnt('mag');
-      var opts = ['25,000', 'BONUS X', 'BALL SAVE', 'GHOST HIT'], a = opts[Math.floor(Math.random() * opts.length)];
+      var opts = ['25,000', 'BONUS X', 'BALL SAVE', 'GHOST HIT', 'KNOCK KNOCK'], a = opts[Math.floor(Math.random() * opts.length)];
       add(35000);
-      if (a === 'BONUS X') bxUp(); else if (a === 'BALL SAVE') ballSave(12); else if (a === 'GHOST HIT') B.gh = Math.min(2, B.gh + 1); else add(25000);
-      big('POSSESSED', a, '#86efac'); show('chase', 1.4);
+      if (a === 'BONUS X') bxUp(); else if (a === 'BALL SAVE') ballSave(12); else if (a === 'GHOST HIT') B.gh = Math.min(2, B.gh + 1); else if (a === 'KNOCK KNOCK') openDoor(G); else add(25000);
+      big('POSSESSED', a, '#9fd4b4'); show('chase', 1.4); bats(G, 6, 184, 396);
     },
-    line: function (G, id, b) { if (id === 'orbL') { cnt('orb'); var p = add(7500, b.x, b.y - 20); combo(id); if (G.combo < 2) msg('HAUNTED HALL', fmt(p), { style: 'slide' }); } },
+    saucer: function (G, id) {
+      var B = G.b;
+      if (id !== 'secret') return;
+      if (!B.doorOpen || B.darkT > 0 || B.closeT > 0) { add(5000); return { hold: 0.4 }; }
+      add(25000);
+      if (G.ebLit) collectExtra();
+      B.darkT = 25; B.closeT = 3; B.darks = (B.darks || 0) + 1; B.mjp = Math.max(B.mjp, 50000); cnt('dark'); cnt('mode');
+      G.mult = 2; G.multT = 25; ballSave(6);
+      big('LIGHTS OUT', 'EVERYTHING SCORES 2X', '#c4b5fd'); snd('dark'); Kit.callout('LIGHTS OUT', '#c4b5fd');
+      later(1.2, function () { if (G && G.b.darkT > 0) lightning(G, true); });
+      return { hold: 1.6 };
+    },
+    line: function (G, id, b) { if (id === 'orbL') { cnt('orb'); var p = add(7500, b.x, b.y - 20); combo(id); if (G.combo < 2) msg('HAUNTED HALL', fmt(p), { style: 'creep' }); } },
     update: function (G, dt) {
       var B = G.b, gh = T.movers[0];
+      ambStart(); ambTick(dt);
       if (B.gone > 0) B.gone -= dt;
-      gh.solid = B.gone <= 0; gh.alpha = B.gone > 0 ? 0.25 : 1;
-      if (B.midT > 0) { B.midT -= dt; if (B.midT <= 0) msg('MIDNIGHT', 'IS OVER', { style: 'slide' }); }
+      if (B.wail > 0) B.wail -= dt;
+      gh.solid = B.gone <= 0; gh.alpha = B.gone > 0 ? Math.max(0.08, 0.3 - B.gone * 0.1) : 0.62 + 0.38 * Math.sin(G.time * 0.9) * Math.sin(G.time * 0.37);
+      if (B.midT > 0) { B.midT -= dt; if (B.midT <= 0) msg('MIDNIGHT', 'THE CLOCK STOPS', { style: 'creep' }); }
+      if (B.darkT > 0) { B.darkT -= dt; if (B.darkT <= 0) { msg('LIGHTS ON', 'YOU SURVIVED', { style: 'creep' }); snd('award'); } }
+      B.dark += ((B.darkT > 0 ? 1 : 0) - B.dark) * Math.min(1, dt * 2.5);
       T.magnets[0].on = B.magLit && !G.tilted;
+      // the bookcase swings shut again once the ball has gone
+      if (B.closeT > 0) { B.closeT -= dt; if (B.closeT <= 0) { var near = G.balls.some(function (x) { return Math.hypot(x.x - 107, x.y - 212) < 45; }); if (near) B.closeT = 0.5; else { B.doorOpen = false; B.knocks = 0; } } }
+      T.door.open += ((B.doorOpen ? 1 : 0) - T.door.open) * Math.min(1, dt * 3);
+      T.door.on = T.door.open < 0.4;
+      // weather and wildlife
+      B.light = Math.max(0, B.light - dt * 2.4);
+      B.nextL -= dt; if (B.nextL <= 0 && G.state === 'play') lightning(G);
+      B.creakT -= dt; if (B.creakT <= 0) { B.creakT = 6 + Math.random() * 9; snd('creak'); }
+      B.bats.forEach(function (bt) { bt.ph += dt * 22; bt.x += bt.vx * dt; bt.y += bt.vy * dt; bt.vx += (Math.random() - 0.5) * 300 * dt; bt.vy += (Math.random() - 0.55) * 200 * dt; bt.life -= dt; });
+      B.bats = B.bats.filter(function (bt) { return bt.life > 0 && bt.y > -30 && bt.x > -30 && bt.x < 430; });
     },
-    ballEnd: function (G) { G.b.midT = 0; },
+    ballEnd: function (G) { G.b.midT = 0; G.b.darkT = 0; },
     lamp: function (G, id) {
       var B = G.b, m = /^boo(\d)$/.exec(id);
       if (m) return B.boo[+m[1]] ? 1 : 0;
       m = /^gh(\d)$/.exec(id); if (m) return B.midT > 0 ? 2 : B.gh >= +m[1] ? 1 : B.gh === +m[1] - 1 ? 3 : 0;
       m = /^cr(\d)$/.exec(id); if (m) return (B.crypt % 3) >= +m[1] ? 1 : 0;
+      m = /^k(\d)$/.exec(id); if (m) { var nd = Math.min(9, 3 + 2 * (B.darks || 0)); return B.doorOpen ? 2 : B.knocks * 3 / nd >= +m[1] ? 1 : 0; }
       switch (id) {
         case 'mag': return B.magLit ? 2 : 0;
         case 'mid': return B.midT > 0 ? 2 : 0;
+        case 'dark': return B.darkT > 0 ? 2 : B.doorOpen ? 3 : 0;
+        case 'door': return B.doorOpen ? 2 : 3;
         case 'eb': return G.ebLit ? 3 : 0;
+        case 'spiritA': return B.midT > 0 || B.darkT > 0 ? 2 : B.gone <= 0 ? 3 : 0;
         case 'orbL': return (G.time - G.lastShotT < 4.5 && G.lastShot !== id) ? 3 : 0;
       }
     },
     status: function (G) {
       var B = G.b;
+      if (B.darkT > 0) return 'LIGHTS OUT ' + Math.ceil(B.darkT) + '  EVERYTHING SCORES 2X';
       if (B.midT > 0) return 'MIDNIGHT ' + Math.ceil(B.midT) + '  HIT THE GHOST';
+      if (B.doorOpen) return 'THE SECRET PASSAGE IS OPEN';
       if (B.magLit) return 'THE MAGNET IS LIT';
-      return 'GHOST: ' + (3 - B.gh) + ' HITS TO CAPTURE';
+      return 'GHOST: ' + (3 - B.gh) + ' HITS TO CAPTURE   KNOCK ON THE BOOKCASE';
     },
-    bonus: function (G) { return [['GHOSTS', pbn('ghost'), 25000], ['CRYPT', pbn('crypt'), 5000], ['TOMBSTONES', pbn('pop'), 200], ['SPOOKS', pbn('su'), 1000]]; },
+    bonus: function (G) { return [['GHOSTS', pbn('ghost'), 25000], ['CRYPT', pbn('crypt'), 5000], ['SPIRIT WALKS', pbn('rp'), 5000], ['TOMBSTONES', pbn('pop'), 200], ['SPOOKS', pbn('su'), 1000]]; },
     paint: function (g, rng) {
-      vgrad(g, ['#1c1033', '#170c2b', '#120923', '#0b0614']);
-      stars(g, rng, 90, 0, 360, 'rgba(230,220,255,');
-      glow(g, 292, 112, 110, '220,255,210', 0.22);
-      g.fillStyle = '#eef6d8'; g.beginPath(); g.arc(292, 112, 30, 0, TAU); g.fill();
-      g.fillStyle = 'rgba(160,170,140,.35)'; [[284, 104, 6], [300, 120, 4], [296, 100, 3]].forEach(function (c) { g.beginPath(); g.arc(c[0], c[1], c[2], 0, TAU); g.fill(); });
-      // mansion silhouette
-      g.fillStyle = '#0a0612';
-      g.beginPath(); g.moveTo(96, 236); g.lineTo(96, 170); g.lineTo(120, 150); g.lineTo(120, 120); g.lineTo(132, 102); g.lineTo(144, 120); g.lineTo(144, 150); g.lineTo(184, 130); g.lineTo(226, 150); g.lineTo(226, 110); g.lineTo(240, 92); g.lineTo(254, 110); g.lineTo(254, 170); g.lineTo(276, 186); g.lineTo(276, 236); g.closePath(); g.fill();
-      g.fillStyle = 'rgba(255,214,90,.75)';
-      [[106, 190], [126, 190], [160, 176], [176, 176], [196, 176], [212, 176], [236, 190], [262, 202], [129, 132], [237, 124], [160, 206], [212, 206]].forEach(function (w, i) { if (i % 3 !== 2) g.fillRect(w[0], w[1], 6, 9); });
-      // fog
-      for (var i = 0; i < 9; i++) glow(g, 30 + i * 42, 470 + (i % 3) * 18, 60, '140,255,170', 0.06);
-      // tombstones
-      [[90, 548, 14], [140, 556, 11], [232, 552, 12], [280, 546, 14]].forEach(function (s) {
-        g.fillStyle = '#2a2140'; g.beginPath(); g.moveTo(s[0] - s[2], s[1] + 10); g.lineTo(s[0] - s[2], s[1] - s[2] * 0.6); g.arc(s[0], s[1] - s[2] * 0.6, s[2], PI, TAU); g.lineTo(s[0] + s[2], s[1] + 10); g.closePath(); g.fill();
-        g.strokeStyle = 'rgba(200,190,240,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(s[0] - 4, s[1] - 6); g.lineTo(s[0] + 4, s[1] - 6); g.moveTo(s[0], s[1] - 11); g.lineTo(s[0], s[1]); g.stroke();
-      });
+      vgrad(g, ['#12171c', '#11151e', '#100e19', '#08070c']);
+      stars(g, rng, 70, 0, 300, 'rgba(210,220,230,');
+      glow(g, 296, 108, 140, '190,215,205', 0.2);
+      g.fillStyle = '#d9e0d4'; g.beginPath(); g.arc(296, 108, 30, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(140,150,140,.4)'; [[288, 100, 6], [304, 116, 4], [300, 96, 3], [282, 118, 2.5]].forEach(function (c) { g.beginPath(); g.arc(c[0], c[1], c[2], 0, TAU); g.fill(); });
+      // clouds across the moon
+      [[280, 122, 46, 7], [320, 96, 34, 5], [240, 70, 60, 8], [70, 60, 70, 9]].forEach(function (c) { g.fillStyle = 'rgba(14,14,22,.75)'; g.beginPath(); g.ellipse(c[0], c[1], c[2], c[3], -0.05, 0, TAU); g.fill(); });
+      // distant hills
+      g.fillStyle = '#0c0f14'; g.beginPath(); g.moveTo(8, 250); g.quadraticCurveTo(80, 210, 150, 236); g.quadraticCurveTo(240, 200, 360, 232); g.lineTo(360, 260); g.lineTo(8, 260); g.fill();
+      // the manor, with dark windows (they flicker on in draw)
+      g.fillStyle = '#060509'; manorPath(g); g.fill();
+      g.strokeStyle = 'rgba(160,150,190,.18)'; g.lineWidth = 1; g.stroke();
+      MANOR_WIN.forEach(function (w) { g.fillStyle = 'rgba(60,50,30,.8)'; g.fillRect(w[0], w[1], 6, 9); });
+      // gnarled bare trees
+      bareTree(g, 26, 300, 46, -1.25, 6, 6, rng); bareTree(g, 340, 560, 52, -1.85, 7, 6, rng); bareTree(g, 290, 250, 30, -1.4, 4, 5, rng);
+      // fog bands on the ground
+      for (var i = 0; i < 10; i++) glow(g, 20 + i * 38, 470 + (i % 3) * 22, 60, '150,180,170', 0.07);
+      // iron graveyard fence
+      g.strokeStyle = 'rgba(20,18,26,.95)'; g.lineWidth = 1.6;
+      g.beginPath(); g.moveTo(76, 520); g.lineTo(292, 520); g.moveTo(76, 532); g.lineTo(292, 532); g.stroke();
+      for (var fx2 = 78; fx2 < 292; fx2 += 9) { g.beginPath(); g.moveTo(fx2, 538); g.lineTo(fx2, 512); g.stroke(); g.fillStyle = '#14121a'; g.beginPath(); g.moveTo(fx2 - 2, 512); g.lineTo(fx2, 507); g.lineTo(fx2 + 2, 512); g.fill(); }
+      // cracked tombstones
+      tombstone(g, 96, 562, 11, 'round', rng); tombstone(g, 132, 568, 9, 'cross', rng); tombstone(g, 236, 566, 10, 'obelisk', rng); tombstone(g, 274, 560, 12, 'round', rng); tombstone(g, 184, 548, 8, 'round', rng);
       // cobweb in the top-left corner
-      g.strokeStyle = 'rgba(220,220,255,.18)'; g.lineWidth = 0.8;
-      for (var a = 0; a < 6; a++) { var an = PI / 2 + a * PI / 10; g.beginPath(); g.moveTo(24, 120); g.lineTo(24 + Math.cos(an - PI) * -0 + Math.cos(an) * 70, 120 + Math.sin(an) * -70 + 0); g.stroke(); }
-      logo(g, 'HAUNTED', 184, 500, 30, 'Cinzel, Georgia, serif', '#e9ffe9', '#2a0f40', 'rgba(130,255,160,.8)', 0);
-      logo(g, 'MANOR', 184, 530, 22, 'Cinzel, Georgia, serif', '#c4b5fd', '#140822', 'rgba(170,130,255,.7)', 0);
-      decal(g, 'CRYPT', 59, 238, 7.5, '#b9ffcc');
-      decal(g, 'POSSESS', 184, 430, 7, '#b9ffcc');
+      g.strokeStyle = 'rgba(200,210,220,.16)'; g.lineWidth = 0.7;
+      var cx = 14, cy = 236;
+      for (var a = 0; a < 7; a++) { var an = -PI / 2 + a * PI / 12; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(an) * 70, cy + Math.sin(an) * 70); g.stroke(); }
+      for (var rr = 14; rr < 70; rr += 12) { g.beginPath(); for (var a2 = 0; a2 < 7; a2++) { var an2 = -PI / 2 + a2 * PI / 12, r2 = rr - (a2 % 2) * 3; if (a2) g.lineTo(cx + Math.cos(an2) * r2, cy + Math.sin(an2) * r2); else g.moveTo(cx + Math.cos(an2) * r2, cy + Math.sin(an2) * r2); } g.stroke(); }
+      logo(g, 'HAUNTED', 184, 498, 30, 'Cinzel, Georgia, serif', '#dfe8e2', '#120a1c', 'rgba(130,200,160,.7)', 0);
+      logo(g, 'MANOR', 184, 526, 21, 'Cinzel, Georgia, serif', '#a99bc8', '#0c0712', 'rgba(150,120,200,.6)', 0);
+      decal(g, 'CRYPT', 59, 238, 7.5, '#9fd4b4');
+      decal(g, 'POSSESS', 184, 430, 7, '#9fd4b4');
+      decal(g, 'SECRET PASSAGE', 100, 168, 6.5, '#c4b5fd', -0.1);
+    },
+    paintTop: function (g) {
+      // cold vignette over the whole table
+      var vg = g.createRadialGradient(184, 380, 160, 184, 400, 470); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(4,2,10,.62)');
+      g.fillStyle = vg; g.fillRect(0, 0, TW, TH);
     },
     draw: function (g, G, t) {
-      var gh = T.movers[0], x = gh.x, y = gh.y, a = gh.alpha == null ? 1 : gh.alpha;
-      if (!G) { x = 190; y = 252; }
-      g.save(); g.globalAlpha = a;
-      glow(g, x, y, 36, '160,255,190', 0.35);
-      var bob = Math.sin(t * 4) * 1.5;
-      g.fillStyle = 'rgba(240,255,244,.92)';
-      g.beginPath(); g.moveTo(x - 15, y + 15 + bob); g.lineTo(x - 15, y - 2); g.arc(x, y - 2, 15, PI, TAU); g.lineTo(x + 15, y + 15 + bob);
-      for (var i = 0; i < 4; i++) g.quadraticCurveTo(x + 15 - i * 7.5 - 3.75, y + (i % 2 ? 20 : 10) + bob, x + 15 - (i + 1) * 7.5, y + 15 + bob);
-      g.closePath(); g.fill();
-      g.fillStyle = '#1a0f2e'; g.beginPath(); g.ellipse(x - 5, y - 4, 2.6, 3.6, 0, 0, TAU); g.ellipse(x + 5, y - 4, 2.6, 3.6, 0, 0, TAU); g.fill();
-      g.beginPath(); g.ellipse(x, y + 5, 3, 2.2, 0, 0, TAU); g.fill();
+      var B = G ? G.b : { light: 0, gone: 0, wail: 0 };
+      // flickering windows
+      MANOR_WIN.forEach(function (w, i) {
+        var f = 0.5 + 0.5 * Math.sin(t * (3 + i * 0.7) + i * 1.7) * Math.sin(t * 1.3 + i), on = (i * 7 + Math.floor(t * 0.25)) % 5 !== 0;
+        if (!on) return;
+        g.fillStyle = 'rgba(255,' + (190 + (f * 40 | 0)) + ',90,' + (0.45 + f * 0.5).toFixed(2) + ')'; g.fillRect(w[0], w[1], 6, 9);
+        g.fillStyle = 'rgba(40,20,0,.8)'; g.fillRect(w[0] + 2.6, w[1], 0.8, 9); g.fillRect(w[0], w[1] + 4, 6, 0.8);
+      });
+      // lightning: the sky flashes and the manor stands out black
+      if (B.light > 0) {
+        g.fillStyle = 'rgba(210,225,255,' + (B.light * 0.55).toFixed(2) + ')'; g.fillRect(8, 0, 352, 250);
+        g.fillStyle = '#000'; manorPath(g); g.fill();
+        if (B.bolt && B.light > 0.55) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(220,235,255,.9)'; g.lineWidth = 2; g.shadowColor = '#bcd4ff'; g.shadowBlur = 12; g.beginPath(); B.bolt.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); g.stroke(); g.restore(); }
+      }
+      // candles among the graves
+      [[112, 556], [252, 554], [160, 572], [214, 574]].forEach(function (c, i) {
+        var fl = 0.7 + 0.3 * Math.sin(t * 13 + i * 3) * Math.sin(t * 7.3 + i);
+        g.fillStyle = '#d8d0b8'; g.fillRect(c[0] - 2, c[1] - 7, 4, 7);
+        glow(g, c[0], c[1] - 10, 18 * fl, '255,170,70', 0.35);
+        g.fillStyle = '#ffd27a'; g.beginPath(); g.moveTo(c[0], c[1] - 15 - fl * 3); g.quadraticCurveTo(c[0] + 2.6, c[1] - 9, c[0], c[1] - 7.5); g.quadraticCurveTo(c[0] - 2.6, c[1] - 9, c[0], c[1] - 15 - fl * 3); g.fill();
+      });
+      // drifting fog layers
+      var fg = fogTexture(), o1 = (t * 9) % 400, o2 = (t * 5) % 400;
+      g.globalAlpha = 0.5; g.drawImage(fg, -o1, 430, 400, 150); g.drawImage(fg, 400 - o1, 430, 400, 150);
+      g.globalAlpha = 0.3; g.drawImage(fg, o2 - 400, 230, 400, 110); g.drawImage(fg, o2, 230, 400, 110); g.globalAlpha = 1;
+      // the bookcase over the secret passage
+      var d = T.door, op = d.open || 0;
+      g.save(); g.translate(d.x2, d.y2); g.rotate(Math.atan2(d.y1 - d.y2, d.x1 - d.x2) - op * 1.9);
+      var L = d.len + 4;
+      g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(2, -4, L, 11);
+      g.fillStyle = '#4a2c16'; g.fillRect(0, -5, L, 10); g.fillStyle = '#2a170a'; g.fillRect(0, -5, L, 2);
+      var cols = ['#7a2020', '#24486a', '#6a5a20', '#2f5a34', '#5a2a5a'];
+      for (var k = 0; k < 8; k++) { g.fillStyle = cols[k % 5]; g.fillRect(2 + k * (L - 4) / 8, -3, (L - 4) / 8 - 0.8, 6.5); }
       g.restore();
       // the magnet coil
       var mg = T.magnets[0], on = G && mg.on;
-      g.strokeStyle = on ? 'rgba(160,255,190,' + (0.5 + 0.4 * Math.sin(t * 10)).toFixed(2) + ')' : 'rgba(180,170,210,.45)'; g.lineWidth = 2;
+      g.strokeStyle = on ? 'rgba(160,255,190,' + (0.5 + 0.4 * Math.sin(t * 10)).toFixed(2) + ')' : 'rgba(150,150,170,.45)'; g.lineWidth = 2;
       g.beginPath(); g.arc(mg.x, mg.y, 12, 0, TAU); g.stroke(); g.beginPath(); g.arc(mg.x, mg.y, 6, 0, TAU); g.stroke();
+      // the ghost: fades in and out, glowing eyes, a wispy tail that trails behind it
+      var gh = T.movers[0], x = G ? gh.x : 190, y = G ? gh.y : 252, a = gh.alpha == null ? 1 : gh.alpha, dir = G && gh.vx < 0 ? 1 : -1, wail = B.wail > 0;
+      g.save(); g.globalAlpha = Math.max(0, Math.min(1, a));
+      glow(g, x, y, 42, '140,220,170', 0.28);
+      var gr = g.createLinearGradient(0, y - 18, 0, y + 30); gr.addColorStop(0, 'rgba(235,250,240,.95)'); gr.addColorStop(0.55, 'rgba(190,225,210,.7)'); gr.addColorStop(1, 'rgba(160,210,190,0)');
+      g.fillStyle = gr; g.beginPath();
+      g.moveTo(x - 15, y + 4); g.arc(x, y - 3, 15, PI, TAU); g.lineTo(x + 15, y + 4);
+      var sw = Math.sin(t * 5) * 4;
+      g.bezierCurveTo(x + 14, y + 16, x + dir * 10 + sw, y + 22, x + dir * 20 + sw, y + 34);
+      g.bezierCurveTo(x + dir * 4 + sw, y + 26, x - 6, y + 22, x - 15, y + 4);
+      g.closePath(); g.fill();
+      // arms reaching out
+      g.strokeStyle = 'rgba(220,240,230,.55)'; g.lineWidth = 3; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(x - 13, y + 2); g.quadraticCurveTo(x - 22, y + 2 + Math.sin(t * 3) * 3, x - 26, y - 4); g.moveTo(x + 13, y + 2); g.quadraticCurveTo(x + 22, y + 2 - Math.sin(t * 3) * 3, x + 26, y - 4); g.stroke();
+      g.fillStyle = '#05070a'; g.beginPath(); g.ellipse(x - 5.5, y - 5, 3.4, 4.6, 0.2, 0, TAU); g.ellipse(x + 5.5, y - 5, 3.4, 4.6, -0.2, 0, TAU); g.fill();
+      g.save(); g.globalCompositeOperation = 'lighter'; glow(g, x - 5.5, y - 4.5, 7, '120,255,170', 0.9); glow(g, x + 5.5, y - 4.5, 7, '120,255,170', 0.9); g.restore();
+      g.fillStyle = '#b6ffd0'; g.beginPath(); g.arc(x - 5.5, y - 4.5, 1.3, 0, TAU); g.arc(x + 5.5, y - 4.5, 1.3, 0, TAU); g.fill();
+      g.fillStyle = '#05070a'; g.beginPath(); g.ellipse(x, y + 5, wail ? 3.8 : 2.4, wail ? 5.5 : 2, 0, 0, TAU); g.fill();
+      g.restore();
       // the crypt's captive ball
-      var c = T.captives[0]; drawBall(g, c.x, c.y, 1, false, [210, 255, 220]);
+      var c = T.captives[0]; drawBall(g, c.x, c.y, 1, false, [200, 220, 210]);
+    },
+    // above everything: bats, then Lights Out
+    drawOver: function (g, G, t) {
+      var B = G.b;
+      B.bats.forEach(function (bt) {
+        var w = Math.sin(bt.ph) * 5 * bt.s, s = bt.s;
+        g.fillStyle = '#0a0810'; g.strokeStyle = 'rgba(150,130,190,.5)'; g.lineWidth = 0.6;
+        g.beginPath(); g.moveTo(bt.x, bt.y); g.quadraticCurveTo(bt.x - 5 * s, bt.y - 4 * s - w, bt.x - 11 * s, bt.y - w); g.quadraticCurveTo(bt.x - 6 * s, bt.y + 1, bt.x, bt.y + 2 * s);
+        g.quadraticCurveTo(bt.x + 6 * s, bt.y + 1, bt.x + 11 * s, bt.y - w); g.quadraticCurveTo(bt.x + 5 * s, bt.y - 4 * s - w, bt.x, bt.y); g.fill(); g.stroke();
+      });
+      if (B.dark > 0.02) drawDark(g, G, t, B.dark, B.light);
     }
   };
+  function openDoor(G) {
+    var B = G.b; if (B.doorOpen) return;
+    B.doorOpen = true; add(25000);
+    big('THE BOOKCASE OPENS', 'SHOOT THE SECRET PASSAGE', '#c4b5fd'); snd('door'); bats(G, 6, 104, 200);
+  }
+  function ghostHit(G, x, y, quiet) {
+    var B = G.b;
+    B.gh++; if (x != null) add(5000 * B.gh, x, y - 24, '#d9ffe0');
+    if (B.gh >= 3) {
+      B.gh = 0; B.caps++; cnt('ghost'); B.gone = 3; B.wail = 1.4;
+      var p = add(50000 * B.caps); big('GHOST CAPTURED', fmt(p), '#9fd4b4'); bats(G, 7);
+      if (B.caps % 3 === 0) later(2.2, function () { if (!G || G.state !== 'play') return; B.midT = 30; B.mjp = 50000; ballSave(10); big('MIDNIGHT', 'THE DEAD AWAKEN', '#ffd45a'); Kit.callout('MIDNIGHT', '#ffd45a'); cnt('mode'); snd('multi'); bats(G, 10); });
+    } else { B.gone = 0.9; if (!quiet) msg('BOO!', (3 - B.gh) + (B.gh === 2 ? ' MORE HIT' : ' MORE HITS'), { style: 'creep' }); }
+  }
+  // Lights Out: everything goes black except a lantern glow round each ball,
+  // the flippers and faint hints of lit inserts. Lightning lifts the dark.
+  function drawDark(g, G, t, amt, light) {
+    var W = Math.round(TW * S), H = Math.round(TH * S);
+    if (!darkCv || darkCv.width !== W || darkCv.height !== H) { darkCv = document.createElement('canvas'); darkCv.width = W; darkCv.height = H; }
+    var c = darkCv.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, W, H);
+    c.fillStyle = 'rgba(1,1,4,' + (amt * 0.96 * (1 - light * 0.75)).toFixed(3) + ')'; c.fillRect(0, 0, W, H);
+    c.setTransform(S, 0, 0, S, 0, 0); c.globalCompositeOperation = 'destination-out';
+    function hole(x, y, r, a) { var gr = c.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(0,0,0,' + a + ')'); gr.addColorStop(0.45, 'rgba(0,0,0,' + a * 0.8 + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(x - r, y - r, r * 2, r * 2); }
+    G.balls.forEach(function (b) { hole(b.x, b.y, 82, 1); });
+    T.flips.forEach(function (f) { hole(f.x + Math.cos(f.a) * f.len * 0.5, f.y + Math.sin(f.a) * f.len * 0.5, 44, 0.75); });
+    T.lamps.forEach(function (l) { if (lampState(l, t) > 0.5) hole(l.x, l.y, 16, 0.55); });
+    var gh = T.movers[0]; hole(gh.x, gh.y - 4, 22, 0.5 * (gh.alpha || 0));
+    c.globalCompositeOperation = 'source-over';
+    g.drawImage(darkCv, 0, 0, TW, TH);
+    // warm lantern tint round the ball
+    g.save(); g.globalCompositeOperation = 'lighter';
+    G.balls.forEach(function (b) { glow(g, b.x, b.y, 60, '255,200,120', 0.12 * amt); });
+    g.restore();
+  }
 
   // ─── Jungle Temple ────────────────────────────────────────────────────────
   BOARDS.jungle = {
@@ -1401,19 +1809,29 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       T.wall([[102, 405], [102, 304]], { kind: 'guide', t: 3 }); T.wall([[140, 405], [140, 304]], { kind: 'guide', t: 3 }); T.post(102, 407, 5); T.post(140, 407, 5);
       T.wall([[234, 405], [234, 304]], { kind: 'guide', t: 3 }); T.wall([[272, 405], [272, 304]], { kind: 'guide', t: 3 }); T.post(234, 407, 5); T.post(272, 407, 5);
       T.wall([[102, 304], [121, 290], [140, 304]], { kind: 'guide', t: 3, draw: false }); T.wall([[234, 304], [253, 290], [272, 304]], { kind: 'guide', t: 3, draw: false });
-      T.ramp('rampL', [[121, 362], [121, 250], [118, 168], [100, 112], [70, 94], [42, 114], [30, 172], [32, 240], [38, 288]], { w: 30, up: 0.38, label: 'VINE RAMP', z: 1, minExit: 120 });
-      T.ramp('rampR', [[253, 362], [253, 250], [258, 172], [284, 112], [322, 98], [346, 132], [350, 222], [346, 330], [342, 440], [332, 510], [318, 560]], { w: 30, up: 0.3, label: 'TEMPLE RAMP' });
+      T.ramp('rampL', [[121, 362], [121, 250], [118, 168], [100, 112], [70, 94], [42, 114], [30, 172], [32, 240], [38, 288]], { w: 28, up: 0.38, z: 1, minExit: 120, style: 'wire', h: 42 });
+      T.ramp('rampR', [[253, 362], [253, 250], [258, 172], [284, 112], [322, 98], [346, 132], [350, 222], [346, 330], [342, 440], [332, 510], [318, 560]], { w: 30, up: 0.3, label: 'TEMPLE RAMP', h: 44, col: 'rgba(190,255,200,' });
+      for (var cq = 0; cq < 5; cq++) T.lamp('cq' + cq, 136 + cq * 24, 574, { sh: 'c', r: 5.5, col: '#f59e0b' });
       T.bumper(160, 106, 18, 'pop'); T.bumper(222, 98, 18, 'pop');
       T.scoop(184, 196, 90, 'idol', { ex: -320, ey: 300, hold: 0.9 });
+      T.gate2 = T.seg(164, 211, 204, 211, { kind: 'target', id: 'gate', t: 4, e: 0.3 });
+      T.idolT = T.circ(184, 432, 12, { kind: 'mover', id: 'idolT', e: 0.5 }); T.idolT.on = false;
       'JADE'.split('').forEach(function (c, i) { var cx = 157 + i * 20; T.drop(cx - 8, 300, cx + 8, 300, 'j' + i, 'jade', { txt: c }); T.lamp('j' + i, cx, 322, { sh: 'c', r: 7.5, txt: c, col: '#34d399', sz: 7.5 }); });
       T.post(300, 236, 6); T.post(312, 430, 6); T.post(76, 450, 6);
-      T.lamp('rampL', 121, 444, { sh: 'a', w: 26, h: 38, col: '#f59e0b' });
-      T.lamp('rampR', 253, 444, { sh: 'a', w: 26, h: 38, col: '#f59e0b' });
+      T.lamp('rampL', 121, 444, { sh: 'a', w: 26, h: 38, col: '#f59e0b', lbl: 'VINES' });
+      T.lamp('rampR', 253, 444, { sh: 'a', w: 26, h: 38, col: '#f59e0b', lbl: 'TEMPLE' });
       T.lamp('idol', 184, 246, { sh: 'a', w: 24, h: 34, col: '#34d399' });
       T.lamp('run', 184, 360, { sh: 'r', w: 72, h: 16, txt: 'TEMPLE RUN', col: '#ffd45a', sz: 8 });
       T.lamp('eb', 184, 384, { sh: 'r', w: 30, h: 12, txt: 'EXTRA', col: '#ff4058', sz: 5.6 });
     },
-    init: function (G) { G.b = { idolLit: false, runT: 0, ramps: 0, jp: 75000 }; },
+    init: function (G) { G.b = { idolLit: false, runT: 0, ramps: 0, jp: 75000, gate: 0, rise: 0, idolDown: 0 }; },
+    hit: function (G, id) {
+      var B = G.b;
+      if (id === 'gate') { msg('THE GATE IS SHUT', 'J-A-D-E OPENS IT', { style: 'slide' }); return; }
+      if (id === 'idolT' && B.rise > 0.8) { B.idolDown = 2.5; cnt('idol'); jackpot(100000, 'IDOL STRIKE'); burst(184, 432, '#ffd45a', 24, 260); }
+    },
+    trail: function (G) { return G.b.runT > 0 ? '#ff8a2e' : null; },
+    modes: { temple: function (G) { startRun(G); } },
     ramp: function (G, id, b) {
       var B = G.b; B.ramps++;
       var n = combo(id);
@@ -1422,15 +1840,21 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (n < 2) msg(id === 'rampL' ? 'VINE RAMP' : 'TEMPLE RAMP', fmt(p), { style: 'slide' });
       if (B.ramps === 6) lightExtra();
     },
+    rampLit: function (G) { return G.b.runT > 0; },
     bank: function (G) { G.b.idolLit = true; msg('JADE COMPLETE', 'THE IDOL IS LIT', { style: 'slide' }); bxUp(); snd('award'); },
     saucer: function (G) {
       var B = G.b;
       if (G.ebLit) collectExtra();
       if (B.runT > 0) { jackpot(150000, 'IDOL JACKPOT'); return { hold: 1.2 }; }
-      if (B.idolLit) { B.idolLit = false; B.runT = 30; B.jp = 75000; ballSave(10); cnt('mode'); big('TEMPLE RUN', 'RAMPS ARE JACKPOTS', '#ffd45a'); Kit.callout('TEMPLE RUN', '#ffd45a'); snd('multi'); return { hold: 1.8 }; }
+      if (B.idolLit) { startRun(G); return { hold: 1.8 }; }
       add(10000); msg('IDOL', 'J-A-D-E LIGHTS IT', { style: 'slide' }); return { hold: 0.7 };
     },
-    update: function (G, dt) { var B = G.b; if (B.runT > 0) { B.runT -= dt; if (B.runT <= 0) msg('TEMPLE RUN', 'IS OVER', { style: 'slide' }); } },
+    update: function (G, dt) {
+      var B = G.b, open = B.idolLit || B.runT > 0 || G.ebLit;
+      B.gate += ((open ? 1 : 0) - B.gate) * Math.min(1, dt * 3); T.gate2.on = B.gate < 0.5;
+      if (B.idolDown > 0) B.idolDown -= dt;
+      B.rise += ((B.runT > 0 && B.idolDown <= 0 ? 1 : 0) - B.rise) * Math.min(1, dt * 2.5); T.idolT.on = B.rise > 0.8;
+      if (B.runT > 0) { B.runT -= dt; if (B.runT <= 0) msg('TEMPLE RUN', 'IS OVER', { style: 'slide' }); } },
     ballEnd: function (G) { G.b.runT = 0; },
     lamp: function (G, id) {
       var B = G.b, m = /^j(\d)$/.exec(id);
@@ -1439,6 +1863,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         case 'rampL': case 'rampR': return B.runT > 0 ? 2 : (G.time - G.lastShotT < 4.5 && G.lastShot !== id) ? 3 : 0;
         case 'idol': return B.runT > 0 ? 2 : B.idolLit ? 3 : 0;
         case 'run': return B.runT > 0 ? 2 : 0;
+        case 'cq0': case 'cq1': case 'cq2': case 'cq3': case 'cq4': return (G.time - G.lastShotT < 4.5 ? G.combo : 0) > +id.charAt(2) ? 1 : 0;
         case 'eb': return G.ebLit ? 3 : 0;
       }
     },
@@ -1477,14 +1902,62 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       logo(g, 'TEMPLE', 184, 540, 22, 'Bungee, ' + DMDFONT, '#86efac', '#08240f', 'rgba(80,220,120,.6)', 0);
     },
     draw: function (g, G, t) {
+      var B = G ? G.b : { gate: 0, rise: 0, idolLit: false, runT: 0 };
       // the golden idol over the scoop
-      var x = 184, y = 160, on = G && (G.b.idolLit || G.b.runT > 0);
+      var x = 184, y = 160, on = B.idolLit || B.runT > 0;
       if (on) glow(g, x, y + 8, 40, '255,210,90', 0.35 + 0.15 * Math.sin(t * 6));
       g.fillStyle = '#d4a017'; g.beginPath(); g.arc(x, y - 8, 7, 0, TAU); g.fill();
       g.fillRect(x - 6, y - 3, 12, 12);
       g.fillStyle = '#7a5a08'; g.fillRect(x - 3.5, y - 10, 2, 2); g.fillRect(x + 1.5, y - 10, 2, 2);
+      // torches on the temple corners
+      [[92, 226], [276, 226]].forEach(function (p, i) {
+        var f = 0.75 + 0.25 * Math.sin(t * 14 + i * 2) * Math.sin(t * 9.1 + i);
+        g.fillStyle = '#3a2a14'; g.fillRect(p[0] - 2, p[1] - 4, 4, 14); g.fillStyle = '#6b5a3a'; g.fillRect(p[0] - 4, p[1] - 6, 8, 3);
+        glow(g, p[0], p[1] - 12, 34 * f, '255,150,40', 0.4);
+        g.fillStyle = '#ffb347'; g.beginPath(); g.moveTo(p[0], p[1] - 22 - f * 5); g.quadraticCurveTo(p[0] + 5, p[1] - 12, p[0], p[1] - 7); g.quadraticCurveTo(p[0] - 5, p[1] - 12, p[0], p[1] - 22 - f * 5); g.fill();
+        g.fillStyle = '#fff1b0'; g.beginPath(); g.ellipse(p[0], p[1] - 11, 1.8, 3.5, 0, 0, TAU); g.fill();
+      });
+      // stone gate across the idol scoop: sinks into the floor when it opens
+      var gh = (1 - B.gate) * 13;
+      if (gh > 0.5) {
+        g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(164, 211 - gh + 3, 44, gh + 3);
+        var sg = g.createLinearGradient(0, 211 - gh, 0, 215); sg.addColorStop(0, '#a3a98f'); sg.addColorStop(1, '#4e5444');
+        g.fillStyle = sg; g.fillRect(162, 211 - gh, 44, gh + 4);
+        g.strokeStyle = 'rgba(30,35,25,.7)'; g.lineWidth = 0.8; g.strokeRect(162, 211 - gh, 44, gh + 4); g.beginPath(); g.moveTo(177, 211 - gh); g.lineTo(177, 215); g.moveTo(192, 211 - gh); g.lineTo(192, 215); g.stroke();
+      }
+      // the idol that rises from the floor during Temple Run
+      if (B.rise > 0.02) {
+        var k = B.rise, iy = 432;
+        g.fillStyle = 'rgba(0,0,0,' + (0.5 * k).toFixed(2) + ')'; g.beginPath(); g.ellipse(187, iy + 5, 15, 7, 0, 0, TAU); g.fill();
+        g.fillStyle = '#2a2016'; g.beginPath(); g.ellipse(184, iy + 2, 16, 8, 0, 0, TAU); g.fill();
+        glow(g, 184, iy - 6, 34 * k, '255,200,80', 0.45 * k);
+        g.save(); g.translate(184, iy); g.scale(k, k);
+        var ig = g.createLinearGradient(-10, -20, 10, 4); ig.addColorStop(0, '#fff2a8'); ig.addColorStop(0.5, '#e0a81c'); ig.addColorStop(1, '#7a5200');
+        g.fillStyle = ig; g.beginPath(); g.arc(0, -16, 7, 0, TAU); g.fill(); g.fillRect(-8, -10, 16, 13); g.fillRect(-11, -6, 22, 4);
+        g.fillStyle = '#5a3a00'; g.fillRect(-4, -18, 2.2, 2.2); g.fillRect(2, -18, 2.2, 2.2); g.fillRect(-3, -13, 6, 1.4);
+        g.restore();
+      }
+    },
+    drawOver: function (g, G, t) {
+      var B = G.b; if (!(B.runT > 0)) return;
+      var p = 1 - B.runT / 30, fade = Math.min(1, B.runT, (30 - B.runT) * 2);
+      var vg = g.createRadialGradient(184, 420, 140, 184, 420, 460); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(120,50,0,' + ((0.35 + 0.12 * Math.sin(t * 5)) * fade).toFixed(2) + ')');
+      g.fillStyle = vg; g.fillRect(0, 0, TW, TH);
+      // vines creep in from the sides as the clock runs down
+      [[8, 230, 1], [8, 470, 1], [360, 300, -1], [360, 520, -1]].forEach(function (v, i) {
+        var len = 30 + p * 150, steps = Math.floor(len / 6);
+        g.strokeStyle = 'rgba(40,140,60,.9)'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(v[0], v[1]);
+        var px = v[0], py = v[1];
+        for (var s = 1; s <= steps; s++) { px = v[0] + v[2] * s * 6; py = v[1] + Math.sin(s * 0.45 + i + t * 1.5) * 9; g.lineTo(px, py); }
+        g.stroke();
+        for (var s2 = 2; s2 <= steps; s2 += 3) { var lx = v[0] + v[2] * s2 * 6, ly = v[1] + Math.sin(s2 * 0.45 + i + t * 1.5) * 9; g.fillStyle = s2 % 2 ? '#3fb950' : '#2f9e44'; g.save(); g.translate(lx, ly); g.rotate(s2 + i); g.beginPath(); g.ellipse(4, 0, 5.5, 2.4, 0, 0, TAU); g.fill(); g.restore(); }
+      });
     }
   };
+  function startRun(G) {
+    var B = G.b; B.idolLit = false; B.runT = 30; B.jp = 75000; B.idolDown = 0; ballSave(10); cnt('mode');
+    big('TEMPLE RUN', 'RAMPS ARE JACKPOTS', '#ffd45a'); Kit.callout('TEMPLE RUN', '#ffd45a'); snd('multi');
+  }
 
   // ─── Neon Nights ──────────────────────────────────────────────────────────
   BOARDS.neon = {
@@ -1501,14 +1974,24 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       T.spinner(11, 330, 43, 330, 'spin');
       [0, 1, 2].forEach(function (i) { var y = 300 + i * 30; T.drop(316, y, 316, y + 24, 'd' + i, 'neon'); T.lamp('d' + i, 296, y + 12, { sh: 'd', r: 6, col: '#fb923c' }); });
       T.scoop(184, 330, 90, 'od', { ex: -260, ey: 330, hold: 0.8 });
+      mouth(T, 262, 310);
+      T.ramp('loop', [[262, 310], [263, 250], [258, 196], [238, 164], [190, 150], [142, 160], [112, 194], [98, 240], [86, 320], [76, 420], [66, 500], [55, 562]], { w: 26, up: 0.32, style: 'neon', h: 48, neon: ['#ff2e9a', '#22d3ee'], z: 2 });
+      T.lamp('loopA', 262, 384, { sh: 'a', w: 24, h: 34, col: '#ff2e9a', lbl: 'NEON LOOP' });
+      for (var nq = 0; nq < 3; nq++) T.lamp('ns' + nq, 160 + nq * 24, 576, { sh: 'd', r: 6, col: '#22d3ee' });
       T.line(8, 420, 46, 420, 'orbL', 0, -1); T.line(324, 420, 360, 420, 'orbR', 0, -1);
-      T.lamp('orbL', 27, 456, { sh: 'a', w: 22, h: 34, col: '#22d3ee' }); T.lamp('orbR', 342, 456, { sh: 'a', w: 22, h: 34, col: '#22d3ee' });
+      T.lamp('orbL', 27, 456, { sh: 'a', w: 22, h: 34, col: '#22d3ee', lbl: 'ORBIT' }); T.lamp('orbR', 342, 456, { sh: 'a', w: 22, h: 34, col: '#22d3ee', lbl: 'ORBIT' });
       T.lamp('spin', 27, 372, { sh: 'r', w: 30, h: 12, txt: 'SPIN', col: '#fb923c', sz: 6.5 });
       T.lamp('od', 184, 378, { sh: 'a', w: 26, h: 36, col: '#22d3ee' });
       T.lamp('odT', 184, 412, { sh: 'r', w: 70, h: 16, txt: 'OVERDRIVE', col: '#22d3ee', sz: 8 });
       T.lamp('eb', 184, 436, { sh: 'r', w: 30, h: 12, txt: 'EXTRA', col: '#ff4058', sz: 5.6 });
+      T.lamp('beat', 184, 458, { sh: 'r', w: 66, h: 14, txt: 'SYNTHWAVE', col: '#ff2e9a', sz: 7 });
+      T.lamp('kickL', 23, 676, { sh: 'r', w: 18, h: 9, txt: 'KICK', col: '#22d3ee', sz: 4.6 });
     },
-    init: function (G) { G.b = { lit: [0, 0, 0, 0], sets: 0, odLit: false, spinT: 0, jp: 100000, sk: 0 }; },
+    init: function (G) { G.b = { lit: [0, 0, 0, 0], sets: 0, odLit: false, spinT: 0, jp: 100000, sk: 0, kick: true, loops: 0, beatLit: false, beatT: 0, beatPh: 0, beatN: 0, pulse: 0 }; },
+    ballStart: function (G) { G.b.kick = true; },
+    hit: function (G, id, b) { onBeat(G, b); },
+    trail: function (G) { return G.b.beatT > 0 || G.mb ? '#28d8ff' : '#ff2e9a'; },
+    modes: { beat: function (G) { startBeat(G); }, overdrive: function (G) { G.b.odLit = true; } },
     serve: function (G) { G.b.sk = Math.floor(Math.random() * 4); },
     flip: function (G, side) {
       var B = G.b;
@@ -1517,7 +2000,10 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     },
     skill: function (G, type, id) { if (type === 'lane' && /^n\d$/.test(id)) return +id.charAt(1) === G.b.sk; if (type === 'line') return undefined; return false; },
     lane: function (G, id, b, o) {
+      var B0 = G.b;
+      if (id === 'outL' && B0.kick && b && !G.tilted) { B0.kick = false; burst(b.x, b.y, '#22d3ee', 14, 200); b.x = 53; b.y = 646; b.vx = 0; b.vy = -1650; b.sIn = {}; b.tr = null; burst(53, 646, '#22d3ee', 14, 200); cnt('kick'); add(5000); msg('KICKBACK', 'BACK IN PLAY', { style: 'flash', now: true, dur: 1.2 }); snd('launch', 1); G.shake = 0.8; Kit.haptic('heavy'); return; }
       var m = /^n(\d)$/.exec(id); if (!m) return;
+      onBeat(G, b);
       var B = G.b, i = +m[1]; cnt('lanes'); snd('lane');
       if (!B.lit[i]) { B.lit[i] = 1; add(1000, o.x, o.y - 16); } else add(250);
       if (B.lit.every(Boolean)) {
@@ -1527,12 +2013,21 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         if (B.sets % 3 === 0 && !G.mb) { B.odLit = true; msg('OVERDRIVE', 'IS LIT', { style: 'slide' }); }
       }
     },
+    ramp: function (G, id, b) {
+      var B = G.b; combo(id); cnt('loop'); B.loops++;
+      if (B.loops % 2 === 0) { B.kick = true; if (!B.beatLit && !(B.beatT > 0)) { B.beatLit = true; later(1.8, function () { if (G && G.state === 'play') msg('SYNTHWAVE', 'IS LIT AT THE CENTRE', { style: 'slide' }); }); } }
+      if (G.mb) { jackpot(B.jp); B.jp += 25000; return; }
+      var p = add(15000, b.x, b.y, '#ffc2e8'), k = B.lit.indexOf(0);
+      if (k >= 0) { msg('NEON LOOP', 'LIGHTS ' + 'NEON'.charAt(k), { style: 'slide' }); BOARDS.neon.lane(G, 'n' + k, b, { x: b.x, y: b.y }); }
+      else if (G.combo < 2) msg('NEON LOOP', fmt(p), { style: 'slide' });
+    },
     spinVal: function (G) { return G.b.spinT > 0 ? 1000 : 100; },
     bank: function (G) { G.b.spinT = 30; msg('SPINNER LIT', '1,000 A SPIN', { style: 'slide' }); snd('award'); },
     saucer: function (G) {
       var B = G.b;
       if (G.ebLit) collectExtra();
       if (B.odLit && !G.mb) { B.odLit = false; B.jp = 100000; multiball(2, null, 'OVERDRIVE'); G.mult = 2; G.multT = 0; return { hold: 1.5 }; }
+      if (B.beatLit && !(B.beatT > 0)) { startBeat(G); return { hold: 1.2 }; }
       add(7500); msg('OVERDRIVE', B.odLit ? 'IS LIT' : 'SPELL N-E-O-N 3 TIMES', { style: 'slide' }); return { hold: 0.6 };
     },
     line: function (G, id, b) {
@@ -1541,14 +2036,26 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (G.mb) { jackpot(G.b.jp); G.b.jp += 25000; } else if (G.combo < 2) msg('ORBIT', fmt(p), { style: 'slide' });
     },
     mbEnd: function (G) { G.mult = G.multBase; },
-    update: function (G, dt) { if (G.b.spinT > 0) G.b.spinT -= dt; },
-    ballEnd: function (G) { G.mult = G.multBase; },
+    update: function (G, dt) {
+      var B = G.b; if (B.spinT > 0) B.spinT -= dt;
+      B.pulse = Math.max(0, B.pulse - dt * 4);
+      if (B.beatT > 0) {
+        B.beatT -= dt; B.beatPh += dt / BEAT;
+        if (B.beatPh >= 1) { B.beatPh -= 1; B.beatN++; beatHit(G); }
+        if (B.beatT <= 0) { G.mult = G.multBase; msg('SYNTHWAVE', 'FADES OUT', { style: 'slide' }); }
+      }
+    },
+    ballEnd: function (G) { G.mult = G.multBase; G.b.beatT = 0; },
     lamp: function (G, id) {
       var B = G.b, m = /^n(\d)$/.exec(id);
       if (m) { var i = +m[1]; if ((G.waitPlunge || G.skill) && i === B.sk) return 2; return B.lit[i] ? 1 : 0; }
       m = /^d(\d)$/.exec(id); if (m) return T.banks.neon[+m[1]].up ? 0 : 1;
       switch (id) {
         case 'spin': return B.spinT > 0 ? 2 : 0;
+        case 'outLa': return B.kick ? 1 : 0;
+        case 'beat': return B.beatT > 0 ? 2 : B.beatLit ? 3 : 0;
+        case 'loopA': return G.mb ? 2 : B.lit.indexOf(0) >= 0 ? 3 : 0;
+        case 'ns0': case 'ns1': case 'ns2': return (B.sets % 3) > +id.charAt(2) || B.odLit ? 1 : 0;
         case 'od': return G.mb ? 2 : B.odLit ? 3 : 0;
         case 'odT': return G.mb ? 2 : B.odLit ? 1 : 0;
         case 'orbL': case 'orbR': return G.mb ? 2 : (G.time - G.lastShotT < 4.5 && G.lastShot !== id) ? 3 : 0;
@@ -1558,12 +2065,14 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     status: function (G) {
       var B = G.b;
       if (G.waitPlunge) return 'SKILL SHOT: LANE ' + 'NEON'.charAt(B.sk) + '  FLIPPERS MOVE IT';
+      if (B.beatT > 0) return 'SYNTHWAVE ' + Math.ceil(B.beatT) + '  HIT ON THE BEAT';
       if (G.mb) return 'OVERDRIVE: JACKPOTS AT THE ORBITS';
+      if (B.beatLit) return 'SYNTHWAVE IS LIT AT THE CENTRE';
       if (B.odLit) return 'OVERDRIVE IS LIT';
       if (B.spinT > 0) return 'SPINNER LIT ' + Math.ceil(B.spinT);
       return 'SPELL N-E-O-N  ' + B.sets + ' DONE';
     },
-    bonus: function (G) { return [['NEON LANES', pbn('lanes'), 1000], ['SPINS', pbn('spin'), 100], ['DROPS', pbn('dt'), 1000], ['POPS', pbn('pop'), 200]]; },
+    bonus: function (G) { return [['NEON LOOPS', pbn('rp'), 5000], ['NEON LANES', pbn('lanes'), 1000], ['SPINS', pbn('spin'), 100], ['DROPS', pbn('dt'), 1000], ['POPS', pbn('pop'), 200]]; },
     paint: function (g, rng) {
       vgrad(g, ['#160222', '#2a0838', '#1c0629', '#0d0216']);
       stars(g, rng, 80, 0, 300, 'rgba(255,220,255,');
@@ -1584,6 +2093,48 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       logo(g, 'NIGHTS', 196, 542, 24, 'Bungee, ' + DMDFONT, '#22d3ee', '#1c0629', 'rgba(34,211,238,1)', -0.08);
       decal(g, 'SPINNER', 27, 300, 6.5, '#ffd1f0', -PI / 2);
     }
+  };
+  var BEAT = 60 / 128;
+  function onBeat(G, b) {
+    var B = G.b; if (!(B.beatT > 0)) return;
+    if (Math.min(B.beatPh, 1 - B.beatPh) < 0.24) { cnt('beat'); add(5000); if (b) pop(b.x, b.y - 26, 'ON BEAT', '#ff9be0'); B.pulse = 1; }
+  }
+  function beatHit(G) {
+    var B = G.b, n = B.beatN; B.pulse = 1; G.show = { kind: 'beat', t: 0, dur: BEAT * 0.9 }; G.beatN = n;
+    if (!ac()) return;
+    osc('sine', 150, 0, 0.16, 0.3, { to: 42 });
+    noise(BEAT / 2, 0.035, 0.08, 'highpass', 7000, 0.7);
+    var bass = [33, 33, 36, 31, 33, 33, 38, 36][n % 8];
+    osc('sawtooth', mtof(bass + 12), 0, BEAT * 0.8, 0.045, { lp: 700 }); osc('sawtooth', mtof(bass + 12), BEAT / 2, BEAT * 0.4, 0.03, { lp: 900 });
+    if (n % 4 === 0) [57, 60, 64].forEach(function (m) { osc('triangle', mtof(m + (n % 8 ? 2 : 0)), 0, BEAT * 1.6, 0.025); });
+    if (n % 2 === 1) noise(0, 0.08, 0.12, 'bandpass', 1800, 1.2);
+  }
+  function startBeat(G) {
+    var B = G.b; B.beatLit = false; B.beatT = 30; B.beatPh = 0.95; cnt('mode'); G.mult = 2; G.multT = 0; ballSave(6);
+    big('SYNTHWAVE', 'HIT ON THE BEAT', '#ff2e9a'); Kit.callout('SYNTHWAVE', '#ff7ad1');
+  }
+  BOARDS.neon.draw = function (g, G, t) {
+    var B = G ? G.b : { beatT: 0, pulse: 0, kick: true };
+    // kickback piston at the foot of the left outlane
+    g.fillStyle = '#3a3048'; g.fillRect(17, 690, 12, 14); g.fillStyle = B.kick ? '#22d3ee' : '#5a5a6a'; g.fillRect(15, 686, 16, 5);
+    if (B.kick) glow(g, 23, 688, 14, '34,211,238', 0.4);
+    if (!(B.beatT > 0)) return;
+    var fade = Math.min(1, B.beatT, (30 - B.beatT) * 2), sc = (G.time * 1.4) % 1;
+    // the grid floor scrolls toward you and the sun throbs
+    g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,90,220,' + (0.45 * fade).toFixed(2) + ')'; g.lineWidth = 1.4;
+    for (var i = 0; i < 14; i++) { var yy = 268 + Math.pow((i + sc) / 14, 1.9) * 532; g.beginPath(); g.moveTo(8, yy); g.lineTo(360, yy); g.stroke(); }
+    glow(g, 184, 240, 90 + B.pulse * 50, '255,120,60', (0.25 + B.pulse * 0.35) * fade);
+    g.restore();
+  };
+  BOARDS.neon.drawOver = function (g, G, t) {
+    var B = G.b; if (!(B.beatT > 0)) return;
+    var fade = Math.min(1, B.beatT, (30 - B.beatT) * 2);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    var wg = g.createRadialGradient(184, 420, 60, 184, 420, 500); wg.addColorStop(0, 'rgba(255,40,170,0)'); wg.addColorStop(1, 'rgba(255,40,170,' + (0.32 * B.pulse * fade).toFixed(2) + ')');
+    g.fillStyle = wg; g.fillRect(0, 0, TW, TH);
+    // equaliser bars along the top
+    for (var k = 0; k < 16; k++) { var h = (0.3 + 0.7 * Math.abs(Math.sin(k * 1.7 + G.time * 3))) * (8 + B.pulse * 26); g.fillStyle = k % 2 ? 'rgba(34,211,238,' + (0.5 * fade).toFixed(2) + ')' : 'rgba(255,46,154,' + (0.5 * fade).toFixed(2) + ')'; g.fillRect(64 + k * 15, 262 - h, 10, h); }
+    g.restore();
   };
   var BOARD_IDS = ['nebula', 'pirate', 'haunted', 'jungle', 'neon'];
 
@@ -1671,6 +2222,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var sg = g.createLinearGradient(360, 0, 392, 0); sg.addColorStop(0, 'rgba(255,255,255,.04)'); sg.addColorStop(0.5, 'rgba(255,255,255,.1)'); sg.addColorStop(1, 'rgba(255,255,255,.02)'); g.fillStyle = sg; g.fillRect(362, 262, 28, 540);
     // inlane / outlane / sling area tint
     T.lamps.forEach(function (l) { if (!l.top) drawLamp(g, l, 0); });
+    T.lamps.forEach(function (l) { if (!l.lbl) return; var ang = l.rot || 0, d = (l.h || l.r * 2 || 16) / 2 + 7; decal(g, l.lbl, l.x - Math.sin(ang) * d, l.y + Math.cos(ang) * d, 6, '#ffffff', 0); });
     // rollover wires
     T.lanes.forEach(function (ln) {
       if (!ln.wire) return;
@@ -1727,21 +2279,8 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // above the balls: ramps, apron
   function paintTop(g, bd) {
     var P = bd.pal;
-    T.ramps.slice().sort(function (a, b) { return a.z - b.z; }).forEach(function (r) {
-      var L = [], Rr = [], n = r.pts.length, hw = r.w / 2;
-      for (var i = 0; i < n; i++) {
-        var a = r.pts[Math.max(0, i - 1)], b = r.pts[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
-        L.push([r.pts[i][0] + nx * hw, r.pts[i][1] + ny * hw]); Rr.push([r.pts[i][0] - nx * hw, r.pts[i][1] - ny * hw]);
-      }
-      // drop shadow, clear floor, rails
-      g.save(); g.translate(5, 7); g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); L.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); for (var k = n - 1; k >= 0; k--) g.lineTo(Rr[k][0], Rr[k][1]); g.closePath(); g.fill(); g.restore();
-      g.fillStyle = (P.ramp || r.col) + '0.20)'; g.beginPath(); L.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); for (var k2 = n - 1; k2 >= 0; k2--) g.lineTo(Rr[k2][0], Rr[k2][1]); g.closePath(); g.fill();
-      // ribs
-      g.strokeStyle = (P.ramp || r.col) + '0.35)'; g.lineWidth = 1;
-      for (var j = 4; j < n; j += 5) { g.beginPath(); g.moveTo(L[j][0], L[j][1]); g.lineTo(Rr[j][0], Rr[j][1]); g.stroke(); }
-      railStroke(g, L, 4, P, 'metal', r.rail); railStroke(g, Rr, 4, P, 'metal', r.rail);
-      if (r.label) { var m = r.pts[Math.floor(n * 0.16)], m2 = r.pts[Math.floor(n * 0.16) + 2]; decal(g, r.label, m[0], m[1], 6.5, '#fff', Math.atan2(m2[1] - m[1], m2[0] - m[0]) + (m2[1] < m[1] ? PI / 2 : -PI / 2)); }
-    });
+    paintRamps(g, bd);
+    if (bd.paintTop) bd.paintTop(g);
     // apron
     g.save();
     g.beginPath(); g.moveTo(8, 744); g.lineTo(62, 744); g.quadraticCurveTo(100, 744, 112, 762); g.lineTo(256, 762); g.quadraticCurveTo(268, 744, 306, 744); g.lineTo(360, 744); g.lineTo(360, 800); g.lineTo(8, 800); g.closePath();
@@ -1761,10 +2300,10 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.fillStyle = '#121016'; g.fillRect(362, 792, 28, 8);
   }
 
-  function drawBall(g, x, y, sc, high, tint) {
+  function drawBall(g, x, y, sc, high, tint, h) {
     var r = BR * (sc || 1), c = tint || (G ? G.board.pal.ball : [235, 240, 250]);
-    var off = high ? 8 : 2.5;
-    g.fillStyle = 'rgba(0,0,0,' + (high ? 0.25 : 0.4) + ')'; g.beginPath(); g.ellipse(x + off, y + off + 1, r * 1.02, r * 0.92, 0, 0, TAU); g.fill();
+    var ox = high ? 2.5 + (h || 0) * SHX : 2.5, oy = high ? 3 + (h || 0) * SHY : 3.5;
+    g.fillStyle = 'rgba(0,0,0,' + (high ? 0.3 : 0.4) + ')'; g.beginPath(); g.ellipse(x + ox, y + oy, r * 1.02, r * 0.92, 0, 0, TAU); g.fill();
     var gr = g.createRadialGradient(x - r * 0.35, y - r * 0.42, r * 0.08, x, y, r);
     gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'); gr.addColorStop(0.65, 'rgb(' + (c[0] * 0.55 | 0) + ',' + (c[1] * 0.56 | 0) + ',' + (c[2] * 0.6 | 0) + ')'); gr.addColorStop(1, 'rgb(' + (c[0] * 0.22 | 0) + ',' + (c[1] * 0.22 | 0) + ',' + (c[2] * 0.25 | 0) + ')');
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
@@ -1790,12 +2329,13 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var s = G.show, k = s.t / s.dur;
       if (s.kind === 'flash') return Math.floor(s.t * 10) % 2 ? 1 : 0;
       if (s.kind === 'sweep') return Math.abs(l.y - (820 - k * 900)) < 70 ? 1 : 0;
+      if (s.kind === 'beat') return (((l.x * 7 + l.y * 3) / 37 | 0) + (G.beatN || 0)) % 2 ? 1 : 0.1;
       if (s.kind === 'chase') { var a = Math.atan2(l.y - 400, l.x - 184); return Math.sin(a * 2 - s.t * 14) > 0.4 ? 1 : 0; }
     }
     var id = l.id, v;
     if (/^bx\d$/.test(id)) v = G.bx >= +id.charAt(2) ? 1 : 0;
     else if (id === 'again') v = G.extra > 0 ? 1 : G.saveT > 0 ? (G.saveT < 2 ? 2 : 3) : 0;
-    else v = R('lamp', id) || 0;
+    else { v = R('lamp', id); if (v == null) v = id === 'inLa' || id === 'inRa' ? (G.time - G.lastShotT < 4.5 ? 3 : 0) : id === 'outLa' || id === 'outRa' ? (G.saveT > 0 ? 3 : 0) : 0; }
     if (v === 2) return Math.floor(t * 8) % 2 ? 1 : 0.15;
     if (v === 3) return Math.floor(t * 2.6) % 2 ? 1 : 0.12;
     return v;
@@ -1872,12 +2412,21 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var on = !!(b.ramp);
       if (on !== high) return;
       if (b.plunger) { drawBall(g, b.x, b.y + (G.waitPlunge ? G.pull * 11 : 0), 1, false); return; }
+      if (b.tr && b.tr.length > 2 && G.trailC) {
+        g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+        for (var q = 1; q < b.tr.length; q++) { var k = q / b.tr.length; g.strokeStyle = G.trailC; g.globalAlpha = k * 0.55; g.lineWidth = BR * 1.5 * k; g.beginPath(); g.moveTo(b.tr[q - 1][0], b.tr[q - 1][1]); g.lineTo(b.tr[q][0], b.tr[q][1]); g.stroke(); }
+        g.restore();
+      }
       if (b.held && b.held.mag) { glow(g, b.x, b.y, 30, '160,255,190', 0.35); }
-      drawBall(g, b.x, b.y, on ? 1.08 : 1, on);
+      var h = on ? ballHeight(b) : 0;
+      drawBall(g, b.x, b.y, 1 + h / 260, on, null, h);
     });
   }
   function drawFx(g) {
     g.save(); g.globalCompositeOperation = 'lighter';
+    fx.rings.forEach(function (r) { var k = 1 - r.life / r.max; g.globalAlpha = (1 - k) * 0.8; g.strokeStyle = r.c; g.lineWidth = 3 * (1 - k) + 0.5; g.beginPath(); g.arc(r.x, r.y, r.r + k * 34, 0, TAU); g.stroke(); });
+    g.globalAlpha = 1;
+    if (G && G.wash) { var wg = g.createRadialGradient(184, 400, 40, 184, 400, 520); wg.addColorStop(0, G.wash.c); wg.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = Math.max(0, G.wash.a) * 0.45; g.fillStyle = wg; g.fillRect(0, 0, TW, TH); g.globalAlpha = 1; }
     fx.parts.forEach(function (p) { g.globalAlpha = Math.max(0, p.life / p.max); g.fillStyle = p.c; g.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); });
     g.restore(); g.globalAlpha = 1;
     g.font = '900 11px ' + DMDFONT; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -1889,6 +2438,8 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fx.parts = fx.parts.filter(function (p) { return p.life > 0; });
     fx.pops.forEach(function (p) { p.life -= dt; p.y -= 26 * dt; });
     fx.pops = fx.pops.filter(function (p) { return p.life > 0; });
+    fx.rings.forEach(function (p) { p.life -= dt; });
+    fx.rings = fx.rings.filter(function (p) { return p.life > 0; });
   }
 
   // ── DMD scenes ──
@@ -1920,6 +2471,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
       var x = 80, y = m.sub ? 11 : 16, sz = m.sub ? 17 : 21;
       if (m.style === 'slide') x = 80 + Math.max(0, 1 - m.t / 0.18) * 160;
+      if (m.style === 'creep') {
+        // flickering, with dots dripping off the letters
+        if (Math.random() < 0.12) g.fillStyle = '#666';
+        for (var dd = 0; dd < 10; dd++) { var dx2 = (dd * 37 + 11) % 150 + 5, dl = ((m.t * 14 + dd * 3) % 9); g.fillStyle = '#999'; g.fillRect(dx2, (m.sub ? 18 : 25) + dl, 1, 1); }
+        g.fillStyle = Math.random() < 0.1 ? '#555' : '#fff';
+      }
       if (m.style === 'zoom' || m.style === 'jackpot') { var z = Math.min(1, 0.25 + m.t / 0.22 * 0.75); g.save(); g.translate(80, y); g.scale(z, z); bigText(g, m.text, 0, 0, sz); g.restore(); }
       else bigText(g, m.text, x, y, sz);
       if (m.sub) { if (m.style === 'jackpot') g.fillStyle = '#fff'; smallText(g, m.sub, x, 23, 'center'); }
@@ -1937,6 +2494,126 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     else { var off = (t * 32) % (w + 60); smallText(g, st, DOTW - off, 25); smallText(g, st, DOTW - off + w + 60, 25); }
   }
   var touchUI = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+  // ═══ Raised ramps ═════════════════════════════════════════════════════════
+  // A ramp climbs from its mouth, runs raised over the playfield and comes
+  // down to its exit. Its height along the path sets how far its shadow falls
+  // and how big the ball looks on it. Drawn in layers: playfield, the ramp's
+  // shadow (over anything rolling underneath), then the raised rails.
+  var SHX = 0.32, SHY = 0.5;
+  function smoothstep(x) { return x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x); }
+  function rampHeight(r, s) { var u = s / r.L, H = r.h || 36; return H * Math.min(smoothstep(u / 0.2), smoothstep((1 - u) / 0.16)); }
+  function rampGeo(r) {
+    if (r.geo) return r.geo;
+    var L = [], Rr = [], C = r.pts, hs = [], n = C.length, hw = r.w / 2;
+    for (var i = 0; i < n; i++) {
+      var a = C[Math.max(0, i - 1)], b = C[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+      L.push([C[i][0] + nx * hw, C[i][1] + ny * hw]); Rr.push([C[i][0] - nx * hw, C[i][1] - ny * hw]); hs.push(rampHeight(r, r.cum[i]));
+    }
+    function sh(p, i) { return [p[0] + hs[i] * SHX, p[1] + hs[i] * SHY]; }
+    r.geo = { L: L, R: Rr, C: C, hs: hs, sL: L.map(sh), sR: Rr.map(sh), sC: C.map(sh) };
+    return r.geo;
+  }
+  function poly(g, A, B) { g.beginPath(); A.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); for (var k = B.length - 1; k >= 0; k--) g.lineTo(B[k][0], B[k][1]); g.closePath(); }
+  function line(g, A, from, to) { g.beginPath(); for (var i = from || 0; i < (to || A.length); i++) { if (i > (from || 0)) g.lineTo(A[i][0], A[i][1]); else g.moveTo(A[i][0], A[i][1]); } }
+  function offsetPath(A, B, k) { return A.map(function (p, i) { return [p[0] + (B[i][0] - p[0]) * k, p[1] + (B[i][1] - p[1]) * k]; }); }
+  // supports: every so often, a strut from the floor up to the rail
+  function supports(g, r, col) {
+    var G2 = rampGeo(r), n = G2.C.length, last = -99;
+    for (var i = 0; i < n; i++) {
+      if (G2.hs[i] < 12 || r.cum[i] - last < 64) continue; last = r.cum[i];
+      [[G2.L, G2.sL], [G2.R, G2.sR]].forEach(function (pr) {
+        var top = pr[0][i], bot = pr[1][i];
+        g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 3.2; g.beginPath(); g.moveTo(bot[0], bot[1]); g.lineTo(top[0], top[1]); g.stroke();
+        g.strokeStyle = col || '#9aa1b2'; g.lineWidth = 1.8; g.beginPath(); g.moveTo(bot[0], bot[1]); g.lineTo(top[0], top[1]); g.stroke();
+        g.fillStyle = '#2a2a33'; g.beginPath(); g.ellipse(bot[0], bot[1], 3.2, 2.2, 0, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.arc(top[0], top[1], 1.4, 0, TAU); g.fill();
+      });
+    }
+  }
+  function paintRampShadows(g) {
+    T.ramps.forEach(function (r) {
+      var G2 = rampGeo(r);
+      g.fillStyle = 'rgba(0,0,0,.13)'; poly(g, offsetPath(G2.sL, G2.sR, -0.18), offsetPath(G2.sR, G2.sL, -0.18)); g.fill();
+      g.fillStyle = r.style === 'wire' || r.style === 'iron' ? 'rgba(0,0,0,.16)' : 'rgba(0,0,0,.26)'; poly(g, G2.sL, G2.sR); g.fill();
+      if (r.style === 'wire' || r.style === 'iron' || r.style === 'neon') {
+        g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2.4; line(g, G2.sL); g.stroke(); line(g, G2.sR); g.stroke();
+      }
+    });
+  }
+  function wireStroke(g, A, dark, light, w) {
+    line(g, A); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = dark; g.lineWidth = w + 1.2; g.stroke();
+    g.strokeStyle = light; g.lineWidth = w * 0.6; g.stroke();
+    g.save(); g.translate(-0.4, -0.5); line(g, A); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = Math.max(0.5, w * 0.22); g.stroke(); g.restore();
+  }
+  function paintRamp(g, r, P) {
+    var G2 = rampGeo(r), n = G2.C.length, st = r.style || 'plastic', i;
+    if (st === 'plastic') {
+      supports(g, r, r.rail || P.rail);
+      g.fillStyle = (r.col || P.ramp) + '0.22)'; poly(g, G2.L, G2.R); g.fill();
+      // flanges just outside each rail
+      g.fillStyle = 'rgba(255,255,255,.10)'; poly(g, G2.L, offsetPath(G2.L, G2.R, -0.18)); g.fill(); poly(g, G2.R, offsetPath(G2.R, G2.L, -0.18)); g.fill();
+      g.strokeStyle = (r.col || P.ramp) + '0.45)'; g.lineWidth = 1;
+      for (i = 4; i < n; i += 5) { g.beginPath(); g.moveTo(G2.L[i][0], G2.L[i][1]); g.lineTo(G2.R[i][0], G2.R[i][1]); g.stroke(); }
+      railStroke(g, G2.L, 4, P, 'metal', r.rail); railStroke(g, G2.R, 4, P, 'metal', r.rail);
+    } else if (st === 'tube') {
+      supports(g, r, '#c9e8ff');
+      g.fillStyle = 'rgba(200,240,255,.10)'; poly(g, G2.L, G2.R); g.fill();
+      for (i = 3; i < n; i += 4) { g.strokeStyle = 'rgba(220,250,255,.22)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(G2.L[i][0], G2.L[i][1]); g.quadraticCurveTo(G2.C[i][0] - 2, G2.C[i][1] - 3, G2.R[i][0], G2.R[i][1]); g.stroke(); }
+      g.strokeStyle = 'rgba(220,250,255,.65)'; g.lineWidth = 1.6; line(g, G2.L); g.stroke(); line(g, G2.R); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.32)'; g.lineWidth = 3; line(g, offsetPath(G2.L, G2.R, 0.22)); g.stroke();
+      g.strokeStyle = 'rgba(120,220,255,.25)'; g.lineWidth = 1; line(g, offsetPath(G2.R, G2.L, 0.15)); g.stroke();
+      // metal end collars
+      [2, n - 3].forEach(function (k) { g.strokeStyle = '#c9d6ff'; g.lineWidth = 3; g.beginPath(); g.moveTo(G2.L[k][0], G2.L[k][1]); g.lineTo(G2.R[k][0], G2.R[k][1]); g.stroke(); });
+    } else if (st === 'wire' || st === 'iron') {
+      var iron = st === 'iron', dark = iron ? '#120f16' : '#3a3f4c', light = iron ? '#6a6178' : '#e8ecf4';
+      supports(g, r, iron ? '#4a4252' : '#aab2c2');
+      var b1 = offsetPath(G2.L, G2.R, 0.3), b2 = offsetPath(G2.R, G2.L, 0.3);
+      // clips that hold the wires together
+      for (i = 2; i < n; i += 3) {
+        g.strokeStyle = iron ? 'rgba(90,80,100,.9)' : 'rgba(200,206,220,.75)'; g.lineWidth = 1.1;
+        g.beginPath(); g.moveTo(G2.L[i][0], G2.L[i][1]); g.quadraticCurveTo(G2.C[i][0] + (G2.sC[i][0] - G2.C[i][0]) * 0.15, G2.C[i][1] + 5, G2.R[i][0], G2.R[i][1]); g.stroke();
+        if (iron && i % 6 === 2) { var dx = G2.L[i][0] - G2.R[i][0], dy = G2.L[i][1] - G2.R[i][1], l = Math.hypot(dx, dy) || 1; [G2.L[i], G2.R[i]].forEach(function (p, k) { var sg = k ? -1 : 1; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] + dx / l * 5 * sg, p[1] + dy / l * 5 * sg); g.stroke(); }); }
+      }
+      wireStroke(g, b1, dark, light, 1.6); wireStroke(g, b2, dark, light, 1.6);
+      wireStroke(g, G2.L, dark, light, 2.4); wireStroke(g, G2.R, dark, light, 2.4);
+      if (iron) {
+        // twisted strands wound round each top rail
+        [G2.L, G2.R].forEach(function (A, k) {
+          g.strokeStyle = 'rgba(150,140,170,.7)'; g.lineWidth = 0.8; g.beginPath();
+          for (var j = 0; j < n; j++) { var a = A[Math.max(0, j - 1)], b = A[Math.min(n - 1, j + 1)], tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1, w = Math.sin(r.cum[j] / 5 + k) * 1.8; var x = A[j][0] - ty / tl * w, y = A[j][1] + tx / tl * w; if (j) g.lineTo(x, y); else g.moveTo(x, y); }
+          g.stroke();
+        });
+      }
+    } else if (st === 'neon') {
+      supports(g, r, '#5a2a70');
+      g.fillStyle = 'rgba(40,0,60,.35)'; poly(g, G2.L, G2.R); g.fill();
+      g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+      [[G2.L, r.neon ? r.neon[0] : '#ff2e9a'], [G2.R, r.neon ? r.neon[1] : '#22d3ee']].forEach(function (x) {
+        line(g, x[0]); g.strokeStyle = x[1]; g.globalAlpha = 0.16; g.lineWidth = 12; g.stroke(); g.globalAlpha = 0.35; g.lineWidth = 6; g.stroke(); g.globalAlpha = 1; g.lineWidth = 2.6; g.stroke();
+        g.strokeStyle = '#ffffff'; g.globalAlpha = 0.8; g.lineWidth = 1; g.stroke(); g.globalAlpha = 1;
+      });
+      g.restore();
+      for (i = 6; i < n; i += 8) { g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.arc(G2.L[i][0], G2.L[i][1], 1.3, 0, TAU); g.arc(G2.R[i][0], G2.R[i][1], 1.3, 0, TAU); g.fill(); }
+    }
+    if (r.label && st !== 'wire' && st !== 'iron') { var m = r.pts[Math.floor(n * 0.16)], m2 = r.pts[Math.floor(n * 0.16) + 2]; decal(g, r.label, m[0], m[1], 6.5, '#fff', Math.atan2(m2[1] - m[1], m2[0] - m[0]) + (m2[1] < m[1] ? PI / 2 : -PI / 2)); }
+  }
+  function paintRamps(g, bd) { T.ramps.slice().sort(function (a, b) { return a.z - b.z; }).forEach(function (r) { paintRamp(g, r, bd.pal); }); }
+  // moving light along neon / lit ramps (above the static rails)
+  function drawRampLights(g, t) {
+    T.ramps.forEach(function (r) {
+      if (r.style !== 'neon' && !(G && R('rampLit', r.id))) return;
+      var G2 = rampGeo(r), n = G2.C.length;
+      g.save(); g.globalCompositeOperation = 'lighter';
+      for (var k = 0; k < 4; k++) {
+        var s = ((t * 260) + k * r.L / 4) % r.L, p = rampPos(r, s), col = r.style === 'neon' ? (k % 2 ? '255,90,200' : '80,230,255') : '255,240,180';
+        glow(g, p[0], p[1], 14, col, 0.55);
+      }
+      g.restore();
+    });
+  }
+  function ballHeight(b) { return b.ramp ? rampHeight(b.ramp.r, b.ramp.s) : 0; }
 
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   var view = 'none', paused = false, curBoard = BOARDS.nebula;
@@ -1967,11 +2644,11 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<li><b>Extra ball:</b> each table lights it somewhere. Collect it to play the same ball again.</li>' +
       '<li><b>Combos:</b> make big shots (ramps, orbits) one after another, quickly, for combo points.</li>' +
       '<li>Pop bumpers, slingshots, inlanes and outlanes all score. The display at the top shows your score, the ball, and what to shoot next.</li></ul>' +
-      '<h3>Nebula Run</h3><p>The first lock starts lit; after that, hit all four <b>S-T-A-R</b> targets to light it again. Shoot the <b>wormhole</b> to lock a ball. The third lock starts <b>3-ball multiball</b>: the wormhole is the jackpot, and after two jackpots an orbit scores the <b>super jackpot</b>. Orbits light the extra ball.</p>' +
-      '<h3>Pirate&rsquo;s Cove</h3><p>Knock down the <b>G-O-L-D</b> drop targets to light the ship lock, then make the <b>ship ramp</b> to lock a ball on the ship. Lock again for <b>Broadside</b> 2-ball multiball with jackpots on the ramp. Ramps light the <b>treasure chest</b>: shoot it to spin the <b>treasure wheel</b> for a prize.</p>' +
-      '<h3>Haunted Manor</h3><p>The <b>ghost</b> drifts across the middle: hit it three times to capture it. Capture three ghosts for <b>Midnight</b>, when every ghost hit is a jackpot. Knock the captive ball in the <b>crypt</b> up its tunnel to raise your bonus and light the extra ball. Spell <b>B-O-O</b> to light the <b>magnet</b>, which grabs the ball, spins it and throws it back with a surprise award.</p>' +
-      '<h3>Jungle Temple</h3><p>Two ramps: the <b>vine ramp</b> (left) feeds the <b>upper flipper</b>, the <b>temple ramp</b> (right) feeds your right flipper. Shoot them back to back for combos. Clear <b>J-A-D-E</b> to light the <b>idol</b>, then shoot it to start <b>Temple Run</b>: 30 seconds where every ramp is a jackpot.</p>' +
-      '<h3>Neon Nights</h3><p>Roll through the four lanes at the top to spell <b>N-E-O-N</b>. The flippers move the lit lanes (<b>lane change</b>). Each N-E-O-N raises the bonus multiplier; three of them light <b>Overdrive</b> 2-ball multiball at the centre scoop. Drop all three targets to light the <b>spinner</b>. <b>Skill shot:</b> when you launch, one lane flashes. Land the ball in it for 50,000.</p>'
+      '<h3>Nebula Run</h3><p>The first lock starts lit; after that, hit all four <b>S-T-A-R</b> targets to light it again. Shoot the <b>wormhole</b> to lock a ball. The third lock starts <b>3-ball multiball</b> (watch for warp speed): the wormhole is the jackpot, and after two jackpots an orbit scores the <b>super jackpot</b>. The clear <b>hyper tube</b> ramp climbs over the planets and drops you at the right flipper; every second tube lights the lock, every third starts <b>Black Hole</b>: a moving singularity bends the ball toward it, and falling in scores an <b>event horizon</b> jackpot. The spinning <b>turntable</b> in the middle flings the ball sideways.</p>' +
+      '<h3>Pirate&rsquo;s Cove</h3><p>Knock down the <b>G-O-L-D</b> drop targets to light the ship lock, then make the raised <b>ship ramp</b> to lock a ball on the ship. Lock again for <b>Broadside</b> 2-ball multiball with jackpots on the ramp. Ramps light the <b>treasure chest</b>: shoot it to spin the <b>treasure wheel</b>. Two sea-lane orbits load the <b>cannon</b>: shoot the ball into it, watch the barrel swing, and flip to fire. Hit something straight away for a <b>direct hit</b>. Every third G-O-L-D (or the wheel) brings a <b>Storm</b>: rain, lightning, a swell that sways the ball, and double scores.</p>' +
+      '<h3>Haunted Manor</h3><p>The <b>ghost</b> drifts across the middle: hit it three times to capture it. Capture three ghosts for <b>Midnight</b>, when every ghost hit is a jackpot. The twisted iron <b>spirit walk</b> ramp climbs over the graveyard to your left flipper and weakens the ghost. Knock the captive ball in the <b>crypt</b> to raise your bonus and light the extra ball. Spell <b>B-O-O</b> to light the <b>magnet</b>, which grabs the ball and throws it back with a surprise. <b>Knock</b> on the bookcase three times and it swings open: shoot the <b>secret passage</b> behind it for <b>Lights Out</b>. The table goes dark except a glow round your ball and the flippers, lightning shows the way, and everything scores 2X. Each time, the bookcase takes a few more knocks.</p>' +
+      '<h3>Jungle Temple</h3><p>Two raised ramps: the wire <b>vine ramp</b> (left) feeds the <b>upper flipper</b>, the <b>temple ramp</b> (right) feeds your right flipper. Shoot them back to back for combos. A <b>stone gate</b> blocks the <b>idol</b>: clear <b>J-A-D-E</b> and the gate sinks. Shoot the idol to start <b>Temple Run</b>: 30 seconds where every ramp is a jackpot, a golden idol rises in the middle for <b>idol strikes</b>, and the vines creep in as time runs out.</p>' +
+      '<h3>Neon Nights</h3><p>Roll through the four lanes at the top to spell <b>N-E-O-N</b>. The flippers move the lit lanes (<b>lane change</b>). The glowing <b>neon loop</b> ramp arcs over the bumpers to your left flipper and lights the next letter. Each N-E-O-N raises the bonus multiplier; three of them light <b>Overdrive</b> 2-ball multiball at the centre scoop. Every second loop lights <b>Synthwave</b> at the centre: the table pulses to the beat and anything you hit on the beat scores extra. The <b>kickback</b> in the left outlane saves one drain per ball (loops relight it). Drop all three targets to light the <b>spinner</b>. <b>Skill shot:</b> when you launch, one lane flashes. Land in it for 50,000.</p>'
   });
 
   // ═══ Setup: table select ══════════════════════════════════════════════════
@@ -2020,7 +2697,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var g = cv.getContext('2d'), k = cv.width / TW;
     g.setTransform(k, 0, 0, k, 0, 0);
     g.fillStyle = '#000'; g.fillRect(0, 0, TW, TH);
-    paintStatic(g, bd); drawDynamic(g, 0.3); paintTop(g, bd);
+    paintStatic(g, bd); drawDynamic(g, 0.3); paintRampShadows(g); paintTop(g, bd);
     g.setTransform(1, 0, 0, 1, 0, 0);
     T = keepT; curBoard = keepB;
   }
@@ -2043,7 +2720,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('20px Bungee'), document.fonts.load('700 20px Cinzel')]).then(function () { layers = null; if (paused || !raf) render(G ? G.time : 0); }).catch(function () {});
   }
   function leaveGame() {
-    view = 'none'; paused = false; G = null;
+    view = 'none'; paused = false; G = null; ambStop();
     root.classList.remove('pb-on');
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -2069,9 +2746,11 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var g = bg.getContext('2d'); g.scale(W / TW, H / TH); paintStatic(g, bd);
     var top = document.createElement('canvas'); top.width = W; top.height = H;
     g = top.getContext('2d'); g.scale(W / TW, H / TH); paintTop(g, bd);
+    var shade = document.createElement('canvas'); shade.width = W; shade.height = H;
+    g = shade.getContext('2d'); g.scale(W / TW, H / TH); paintRampShadows(g);
     var band = document.createElement('canvas'); band.width = W; band.height = Math.round(DH * S);
     g = band.getContext('2d'); g.scale(S, S); paintBand(g, bd);
-    layers = { bg: bg, top: top, band: band };
+    layers = { bg: bg, top: top, band: band, shade: shade };
   }
   function paintBand(g, bd) {
     var gr = g.createLinearGradient(0, 0, 0, DH); gr.addColorStop(0, '#24202c'); gr.addColorStop(1, '#0c0a10');
@@ -2102,9 +2781,13 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.drawImage(layers.bg, 0, 0, TW, TH);
     drawDynamic(g, t);
     drawBalls(g, false);
+    if (T.ramps.length) g.drawImage(layers.shade, 0, 0, TW, TH);
     g.drawImage(layers.top, 0, 0, TW, TH);
+    if (G.board.drawTop) G.board.drawTop(g, G, t);
+    drawRampLights(g, t);
     drawBalls(g, true);
     drawFx(g);
+    if (G.board.drawOver) G.board.drawOver(g, G, t);
     if (G.waitPlunge) drawLaunchHint(g, t);
     if (dbg) drawDebug(g);
     if (G.flash > 0) { g.globalAlpha = G.flash * 0.3; g.fillStyle = G.flashC; g.fillRect(0, 0, TW, TH); g.globalAlpha = 1; }
@@ -2275,7 +2958,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var g0 = G, bd = G.board, key = 'pinball_' + bd.id, sc = G.score, st = G.st;
     var hiL = ArcadeHi.list(key);
     var bb = G.ballScores.length ? Math.max.apply(null, G.ballScores) : sc;
-    var f = {}; ['pop', 'sl', 'su', 'dt', 'bank', 'orb', 'spin', 'lanes', 'in', 'out', 'lock', 'wheel', 'ghost', 'crypt', 'mag', 'boo', 'star', 'neon', 'mode', 'save', 'warn', 'tilt', 'award'].forEach(function (k) { if (st[k]) f[k] = st[k]; });
+    var f = {}; ['pop', 'sl', 'su', 'dt', 'bank', 'orb', 'spin', 'lanes', 'in', 'out', 'lock', 'wheel', 'ghost', 'crypt', 'mag', 'boo', 'star', 'neon', 'mode', 'save', 'warn', 'tilt', 'award', 'dark', 'bh', 'storm', 'cannon', 'direct', 'idol', 'beat', 'kick', 'loop'].forEach(function (k) { if (st[k]) f[k] = st[k]; });
     var detail = {
       b: bd.id, bl: G.balls0, bs: G.ballScores.join(','), dr: G.drains.join(''), bb: bb,
       jp: st.jp || 0, mb: st.mb || 0, eb: st.eb || 0, bx: G.bxMax, rp: st.rp || 0, cb: st.cb || 0, sk: st.sk || 0, f: f,
@@ -2314,6 +2997,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     });
   }
   function gameOver() {
+    ambStop();
     G.state = 'over'; G.overT = 0; G.balls = [];
     msg('GAME OVER', '', { now: true, dur: 9 });
     snd('drain');
@@ -2348,8 +3032,9 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     },
     run: function (sec) { var n = Math.round(sec / DT), fr = 0; for (var i = 0; i < n && G && G.state !== 'over'; i++) { syncFlips(); step(DT); if (++fr >= 8) { update(DT * 8); fr = 0; } } return this.get(); },
     finishNow: function () { if (G && G.state === 'over') { G.overT = 9; update(0.01); } },
-    place: function (x, y, vx, vy) { var b = G.balls[0]; if (!b) b = addBall(x, y, 0, 0); b.plunger = false; b.held = null; b.ramp = null; b.x = x; b.y = y; b.vx = vx || 0; b.vy = vy || 0; G.waitPlunge = false; if (G.state === 'serve') G.state = 'play'; },
+    place: function (x, y, vx, vy) { var b = G.balls[0]; if (!b) b = addBall(x, y, 0, 0); b.plunger = false; b.held = null; b.ramp = null; b.tr = null; b.x = x; b.y = y; b.vx = vx || 0; b.vy = vy || 0; G.waitPlunge = false; if (G.state === 'serve') G.state = 'play'; },
     set: function (k, v) { G.b[k] = v; },
+    mode: function (name) { var m = G.board.modes && G.board.modes[name]; if (m) { m(G); return true; } return false; },
     game: function () { return G; }, table: function () { return T; }
   };
 
