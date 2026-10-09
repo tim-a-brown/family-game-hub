@@ -382,51 +382,128 @@
 
   // ═════════════ Slots ═════════════
   var SLOT_SPRITE = "<defs><radialGradient id=\"czg-cherry\" cx=\".35\" cy=\".3\" r=\".75\"><stop offset=\"0\" stop-color=\"#ff8a94\"/><stop offset=\".5\" stop-color=\"#d4142c\"/><stop offset=\"1\" stop-color=\"#6e0412\"/></radialGradient><linearGradient id=\"czg-leaf\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#7cc444\"/><stop offset=\"1\" stop-color=\"#2e7a1c\"/></linearGradient><linearGradient id=\"czg-bar\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#3a3a40\"/><stop offset=\".5\" stop-color=\"#121216\"/><stop offset=\"1\" stop-color=\"#000\"/></linearGradient><linearGradient id=\"czg-seven\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#ff6a6a\"/><stop offset=\".5\" stop-color=\"#d10f22\"/><stop offset=\"1\" stop-color=\"#7a0612\"/></linearGradient><linearGradient id=\"czg-gold\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fff3b0\"/><stop offset=\".45\" stop-color=\"#f4c430\"/><stop offset=\"1\" stop-color=\"#a9740c\"/></linearGradient><linearGradient id=\"czg-gem\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#b8ecff\"/><stop offset=\".45\" stop-color=\"#3b9be6\"/><stop offset=\"1\" stop-color=\"#0c4a96\"/></linearGradient><radialGradient id=\"czg-plum\" cx=\".35\" cy=\".3\" r=\".8\"><stop offset=\"0\" stop-color=\"#c58cff\"/><stop offset=\".5\" stop-color=\"#6a2bb8\"/><stop offset=\"1\" stop-color=\"#2d0b5c\"/></radialGradient><radialGradient id=\"czg-orange\" cx=\".35\" cy=\".3\" r=\".8\"><stop offset=\"0\" stop-color=\"#ffd08a\"/><stop offset=\".5\" stop-color=\"#ff8a1e\"/><stop offset=\"1\" stop-color=\"#b44a00\"/></radialGradient><radialGradient id=\"czg-lemon\" cx=\".35\" cy=\".3\" r=\".85\"><stop offset=\"0\" stop-color=\"#fffbd0\"/><stop offset=\".5\" stop-color=\"#ffe03a\"/><stop offset=\"1\" stop-color=\"#c9a000\"/></radialGradient></defs><symbol id=\"czsy-CH\" viewBox=\"0 0 100 100\"><path d=\"M31 64 Q38 36 63 15\" fill=\"none\" stroke=\"#2f6b1c\" stroke-width=\"4.5\" stroke-linecap=\"round\"/><path d=\"M70 60 Q66 36 63 15\" fill=\"none\" stroke=\"#2f6b1c\" stroke-width=\"4.5\" stroke-linecap=\"round\"/><path d=\"M63 15 Q78 3 93 13 Q80 26 63 15Z\" fill=\"url(#czg-leaf)\"/><circle cx=\"30\" cy=\"70\" r=\"18\" fill=\"url(#czg-cherry)\"/><circle cx=\"70\" cy=\"65\" r=\"18\" fill=\"url(#czg-cherry)\"/><ellipse cx=\"23\" cy=\"62\" rx=\"5\" ry=\"3\" fill=\"#fff\" opacity=\".7\" transform=\"rotate(-35 23 62)\"/><ellipse cx=\"63\" cy=\"57\" rx=\"5\" ry=\"3\" fill=\"#fff\" opacity=\".7\" transform=\"rotate(-35 63 57)\"/></symbol><symbol id=\"czsy-B1\" viewBox=\"0 0 100 100\"><rect x=\"8\" y=\"35\" width=\"84\" height=\"30\" rx=\"7\" fill=\"url(#czg-bar)\" stroke=\"#e0ad2a\" stroke-width=\"3\"/><text x=\"50\" y=\"57.5\" text-anchor=\"middle\" font-family=\"Arial Black,Arial,Helvetica,sans-serif\" font-weight=\"900\" font-size=\"20\" fill=\"#fff\" letter-spacing=\"3\">BAR</text></symbol><symbol id=\"czsy-B2\" viewBox=\"0 0 100 100\"><rect x=\"8\" y=\"20\" width=\"84\" height=\"27\" rx=\"6\" fill=\"url(#czg-bar)\" stroke=\"#e0ad2a\" stroke-width=\"3\"/><rect x=\"8\" y=\"53\" width=\"84\" height=\"27\" rx=\"6\" fill=\"url(#czg-bar)\" stroke=\"#e0ad2a\" stroke-width=\"3\"/><text x=\"50\" y=\"40\" text-anchor=\"middle\" font-family=\"Arial Black,Arial,Helvetica,sans-serif\" font-weight=\"900\" font-size=\"18\" fill=\"#fff\" letter-spacing=\"3\">BAR</text><text x=\"50\" y=\"73\" text-anchor=\"middle\" font-family=\"Arial Black,Arial,Helvetica,sans-serif\" font-weight=\"900\" font-size=\"18\" fill=\"#fff\" letter-spacing=\"3\">BAR</text></symbol><symbol id=\"czsy-B3\" viewBox=\"0 0 100 100\"><rect x=\"8\" y=\"8\" width=\"84\" height=\"25\" rx=\"6\" fill=\"url(#czg-bar)\" stroke=\"#e0ad2a\" stroke-width=\"3\"/><rect x=\"8\" y=\"38\" width=\"84\" height=\"25\" rx=\"6\" fill=\"url(#czg-bar)\" stroke=\"#e0ad2a\" stroke-width=\"3\"/><rect x=\"8\" y=\"68\" width=\"84\" height=\"25\" rx=\"6\" fill=\"url(#czg-bar)\" stroke=\"#e0ad2a\" stroke-width=\"3\"/><text x=\"50\" y=\"26.5\" text-anchor=\"middle\" font-family=\"Arial Black,Arial,Helvetica,sans-serif\" font-weight=\"900\" font-size=\"16\" fill=\"#fff\" letter-spacing=\"3\">BAR</text><text x=\"50\" y=\"56.5\" text-anchor=\"middle\" font-family=\"Arial Black,Arial,Helvetica,sans-serif\" font-weight=\"900\" font-size=\"16\" fill=\"#fff\" letter-spacing=\"3\">BAR</text><text x=\"50\" y=\"86.5\" text-anchor=\"middle\" font-family=\"Arial Black,Arial,Helvetica,sans-serif\" font-weight=\"900\" font-size=\"16\" fill=\"#fff\" letter-spacing=\"3\">BAR</text></symbol><symbol id=\"czsy-S7\" viewBox=\"0 0 100 100\"><path d=\"M19 13 H83 V27 C67 44 57 63 53 89 H31 C34 66 44 47 59 31 H19 Z\" fill=\"url(#czg-seven)\" stroke=\"#f3c341\" stroke-width=\"4.5\" stroke-linejoin=\"round\"/><path d=\"M24 17 H78 V21 H24 Z\" fill=\"#fff\" opacity=\".35\"/><path d=\"M60 35 C50 48 43 62 40 80\" fill=\"none\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\".25\"/></symbol><symbol id=\"czsy-BE\" viewBox=\"0 0 100 100\"><path d=\"M50 10c-4 0-7 3-7 7v2C30 23 26 37 26 51c0 11-4 17-11 22h70c-7-5-11-11-11-22 0-14-4-28-17-32v-2c0-4-3-7-7-7z\" fill=\"url(#czg-gold)\" stroke=\"#8a5a00\" stroke-width=\"2.5\"/><rect x=\"12\" y=\"71\" width=\"76\" height=\"10\" rx=\"5\" fill=\"url(#czg-gold)\" stroke=\"#8a5a00\" stroke-width=\"2.5\"/><circle cx=\"50\" cy=\"87\" r=\"7.5\" fill=\"url(#czg-gold)\" stroke=\"#8a5a00\" stroke-width=\"2.5\"/><path d=\"M36 30c-4 6-5 14-5 22\" stroke=\"#fff8d8\" stroke-width=\"4.5\" fill=\"none\" stroke-linecap=\"round\" opacity=\".75\"/></symbol><symbol id=\"czsy-D\" viewBox=\"0 0 100 100\"><polygon points=\"50,90 6,37 25,14 75,14 94,37\" fill=\"url(#czg-gem)\" stroke=\"#0a3f78\" stroke-width=\"3\" stroke-linejoin=\"round\"/><polygon points=\"6,37 94,37 75,14 25,14\" fill=\"#d6f3ff\" opacity=\".45\"/><polygon points=\"25,14 37,37 50,14\" fill=\"#fff\" opacity=\".6\"/><polygon points=\"50,14 63,37 75,14\" fill=\"#fff\" opacity=\".3\"/><polygon points=\"37,37 50,90 63,37\" fill=\"#fff\" opacity=\".22\"/><polyline points=\"6,37 25,14 37,37 50,14 63,37 75,14 94,37\" fill=\"none\" stroke=\"#0a3f78\" stroke-width=\"1.6\" opacity=\".55\"/><polyline points=\"37,37 50,90 63,37\" fill=\"none\" stroke=\"#0a3f78\" stroke-width=\"1.6\" opacity=\".45\"/><path d=\"M80 6l2.4 5.6L88 14l-5.6 2.4L80 22l-2.4-5.6L72 14l5.6-2.4z\" fill=\"#fff\"/></symbol><symbol id=\"czsy-W\" viewBox=\"0 0 100 100\"><use href=\"#czsy-D\"/></symbol><symbol id=\"czsy-PL\" viewBox=\"0 0 100 100\"><path d=\"M52 22 Q54 12 60 8\" fill=\"none\" stroke=\"#5a3a1a\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M56 16 Q72 6 84 16 Q70 26 56 16Z\" fill=\"url(#czg-leaf)\"/><ellipse cx=\"50\" cy=\"57\" rx=\"31\" ry=\"34\" fill=\"url(#czg-plum)\"/><path d=\"M50 26 Q42 56 50 90\" fill=\"none\" stroke=\"#2a0a50\" stroke-width=\"2\" opacity=\".45\"/><ellipse cx=\"36\" cy=\"43\" rx=\"7\" ry=\"4\" fill=\"#fff\" opacity=\".55\" transform=\"rotate(-40 36 43)\"/></symbol><symbol id=\"czsy-OR\" viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"55\" r=\"34\" fill=\"url(#czg-orange)\"/><g fill=\"#b85200\" opacity=\".28\"><circle cx=\"40\" cy=\"62\" r=\"1.6\"/><circle cx=\"58\" cy=\"70\" r=\"1.6\"/><circle cx=\"66\" cy=\"50\" r=\"1.6\"/><circle cx=\"48\" cy=\"78\" r=\"1.6\"/><circle cx=\"72\" cy=\"66\" r=\"1.6\"/><circle cx=\"30\" cy=\"54\" r=\"1.6\"/></g><path d=\"M50 22 Q60 6 78 12 Q68 26 50 22Z\" fill=\"url(#czg-leaf)\"/><circle cx=\"50\" cy=\"22\" r=\"3\" fill=\"#5a3a1a\"/><ellipse cx=\"36\" cy=\"40\" rx=\"7\" ry=\"4\" fill=\"#fff\" opacity=\".55\" transform=\"rotate(-40 36 40)\"/></symbol><symbol id=\"czsy-LE\" viewBox=\"0 0 100 100\"><path d=\"M7 52 Q10 47 15 46 C20 26 40 20 50 20 C60 20 80 26 85 46 Q90 47 93 52 Q90 57 85 58 C80 78 60 84 50 84 C40 84 20 78 15 58 Q10 57 7 52Z\" fill=\"url(#czg-lemon)\" stroke=\"#b08a00\" stroke-width=\"2\"/><ellipse cx=\"36\" cy=\"38\" rx=\"9\" ry=\"4\" fill=\"#fff\" opacity=\".6\" transform=\"rotate(-20 36 38)\"/></symbol>";
-  var SLOT_NAMES = { classic: 'Diamond Sevens', five: 'Royal Fruits' }, LINE_COLORS = ['#ffd45a', '#ff5c9a', '#4da3ff', '#3ddc84', '#ff8a3d', '#b89bff', '#2fd3c0', '#ff4d5e', '#e8e8f0', '#c6e14a'];
-  var SPLUR = { D: 'Diamonds', W: 'Diamonds', S7: 'Sevens', B3: 'Triple Bars', B2: 'Double Bars', B1: 'Bars', BE: 'Bells', CH: 'Cherries', PL: 'Plums', OR: 'Oranges', LE: 'Lemons' };
+  var SLOT_NAMES = { classic: 'Diamond Sevens', five: 'Royal Fruits', buffalo: 'Buffalo Stampede', cleo: "Cleo's Gold", dragon: "Dragon's Fortune" };
+  var LINE_COLORS = ['#ffd45a', '#ff5c9a', '#4da3ff', '#3ddc84', '#ff8a3d', '#b89bff', '#2fd3c0', '#ff4d5e', '#e8e8f0', '#c6e14a',
+    '#ffa8d8', '#7fd1ff', '#ffe08a', '#9dffb0', '#ff9f6b', '#d6b8ff', '#5ff0df', '#ff7a7a', '#ffffff', '#e4ff7a', '#ffb3b3', '#a0c4ff', '#ffd6a5', '#caffbf', '#bdb2ff'];
+  var SPLUR = { D: 'Diamonds', W: 'Diamonds', S7: 'Sevens', B3: 'Triple Bars', B2: 'Double Bars', B1: 'Bars', BE: 'Bells', CH: 'Cherries', PL: 'Plums', OR: 'Oranges', LE: 'Lemons',
+    BU: 'Buffalo', EA: 'Eagles', CO: 'Cougars', WO: 'Wolves', EL: 'Elk', A: 'Aces', K: 'Kings', Q: 'Queens', J: 'Jacks', T: 'Tens', N: 'Nines',
+    QN: 'Cleos', SB: 'Scarabs', EY: 'Eyes', AN: 'Ankhs', LO: 'Lotuses', DR: 'Dragons', KO: 'Koi', LA: 'Lanterns', CN: 'Coins' };
   var SNAME = { D: 'Diamond', W: 'Diamond', S7: 'Seven', B3: 'Triple Bar', B2: 'Double Bar', B1: 'Bar', BE: 'Bell', CH: 'Cherry', PL: 'Plum', OR: 'Orange', LE: 'Lemon' };
+  // Each machine's reel colours: cabinet, reel, cell text
+  var SLOT_SKIN = { classic: ['linear-gradient(180deg,#8a1020,#4a0710)', '#fbf8f0'], five: ['linear-gradient(180deg,#8a1020,#4a0710)', '#fbf8f0'],
+    buffalo: ['linear-gradient(180deg,#e08a3a,#5e0f2c)', '#331709'], cleo: ['linear-gradient(180deg,#173a96,#0b1d55)', '#f6e7bf'], dragon: ['linear-gradient(180deg,#7a0a0a,#2a0303)', '#240404'] };
+  // The video machines' symbols, simplified for the history page
+  var NEW_SPRITE = '<defs><linearGradient id="czg-au" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#f0bf2c"/><stop offset="1" stop-color="#9a6a08"/></linearGradient>' +
+    '<radialGradient id="czg-fire" cx=".45" cy=".42" r=".6"><stop offset="0" stop-color="#fffbe0"/><stop offset=".4" stop-color="#ffd23f"/><stop offset=".75" stop-color="#ff6a1a"/><stop offset="1" stop-color="#b3190a"/></radialGradient></defs>' +
+    '<symbol id="czsy-BU" viewBox="0 0 100 100"><path d="M28 40C11 42 2 30 6 10c4 14 13 19 26 19zM72 40c17 2 26-10 22-30-4 14-13 19-26 19z" fill="#e9dcbc"/><path d="M50 11C30 11 18 24 18 44c0 26 14 50 32 52 18-2 32-26 32-52 0-20-12-33-32-33z" fill="#4a2913"/><path d="M50 34c-9 0-13 8-12 18 1 14 4 26 5 32 1 6 13 6 14 0 1-6 4-18 5-32 1-10-3-18-12-18z" fill="#8a5a30"/><circle cx="37" cy="50" r="4" fill="#000"/><circle cx="63" cy="50" r="4" fill="#000"/><ellipse cx="50" cy="83" rx="9" ry="6" fill="#2b170b"/></symbol>' +
+    '<symbol id="czsy-EA" viewBox="0 0 100 100"><path d="M10 99c2-22 11-37 26-43l28 2c11 8 15 24 15 41z" fill="#5a3818"/><path d="M29 63C18 48 21 25 42 15c16-8 35-2 41 11 2 4 2 8 0 12L67 46c-7 11-19 19-38 17z" fill="#f4f6f8"/><path d="M76 23c11-2 21 5 21 18 0 6-4 10-9 10 2-6 0-10-6-10l-14 4z" fill="#f4b400"/><circle cx="66" cy="28" r="3.5" fill="#120a00"/></symbol>' +
+    '<symbol id="czsy-CO" viewBox="0 0 100 100"><path d="M20 34l5-25 18 15zM80 34l-5-25-18 15z" fill="#a8723c"/><path d="M50 15C29 15 16 30 16 48c0 19 13 37 34 43 21-6 34-24 34-43 0-18-13-33-34-33z" fill="#c98b4a"/><path d="M37 62c0-9 7-11 13-7 6-4 13-2 13 7 0 11-6 19-13 19s-13-8-13-19z" fill="#f6e9d4"/><path d="M43 57h14l-7 8z" fill="#c76b5f"/><ellipse cx="37" cy="44" rx="6" ry="3.5" fill="#a6dc4e"/><ellipse cx="63" cy="44" rx="6" ry="3.5" fill="#a6dc4e"/></symbol>' +
+    '<symbol id="czsy-WO" viewBox="0 0 100 100"><path d="M23 36l4-31 18 21zM77 36l-4-31-18 21z" fill="#7e8792"/><path d="M50 17c-19 0-31 13-31 29 0 12 6 20 14 26l9 18 8 5 8-5 9-18c8-6 14-14 14-26 0-16-12-29-31-29z" fill="#a3abb5"/><path d="M39 54c0-7 7-9 11-5 4-4 11-2 11 5l-4 30-7 5-7-5z" fill="#eef0f3"/><ellipse cx="50" cy="81" rx="6" ry="4.5" fill="#14171b"/><circle cx="38" cy="45" r="3" fill="#ffb627"/><circle cx="62" cy="45" r="3" fill="#ffb627"/></symbol>' +
+    '<symbol id="czsy-EL" viewBox="0 0 100 100"><path d="M40 31C33 22 29 13 31 3M34 19L21 13M37 26L25 28M60 31c7-9 11-18 9-28M66 19l13-6M63 26l12 2" stroke="#e9dcbc" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M50 26c-10 0-16 6-16 16 0 14 6 28 8 40 1 10 15 10 16 0 2-12 8-26 8-40 0-10-6-16-16-16z" fill="#a8703c"/><circle cx="40" cy="48" r="3" fill="#120800"/><circle cx="60" cy="48" r="3" fill="#120800"/></symbol>' +
+    '<symbol id="czsy-SU" viewBox="0 0 100 100"><rect x="5" y="6" width="90" height="88" rx="13" fill="#ff8a3c"/><circle cx="50" cy="52" r="21" fill="#ffe680"/><path d="M5 64h12l4-9h14l4 9h19l5-13h17l4 13h11v30H5z" fill="#3a1226"/><text x="50" y="87" text-anchor="middle" font-family="Bungee,Impact,sans-serif" font-size="20" fill="#fff4cf">WILD</text></symbol>' +
+    '<symbol id="czsy-GC" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="url(#czg-au)"/><circle cx="50" cy="50" r="36" fill="none" stroke="#9a6a08" stroke-width="3"/><path d="M22 58c-2-8 2-14 8-15 2-8 10-13 20-13 12 0 24 6 28 18l-2 12h-4l-1-7h-10l-2 8h-4l-1-8H41l-2 8h-4l-1-8c-5 1-9 3-11 6z" fill="#a8740a"/></symbol>' +
+    '<symbol id="czsy-QN" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="12" fill="#173a96" stroke="url(#czg-au)" stroke-width="4"/><path d="M37 26c8-8 26-8 32 1l2 7c-15-4-24 6-22 27 0 10 2 18 4 25H26c2-13 0-25 0-37 0-11 4-18 11-23z" fill="#141018"/><path d="M58 30c8 0 14 6 15 14l3 6-3 2 1 4-3 3 1 3c-1 3-4 4-8 4-2 4-6 6-10 6l-2 10H40l2-16c-4-6-4-16-2-24 2-8 10-12 18-12z" fill="#d49a6a"/><path d="M39 30c8-8 24-8 32-1l-2 5c-8-6-19-6-27 0z" fill="url(#czg-au)"/></symbol>' +
+    '<symbol id="czsy-SB" viewBox="0 0 100 100"><path d="M37 50C21 39 8 43 3 52c8 0 15 4 19 8-8 2-13 9-13 16 11-5 21-9 28-12zM63 50c16-11 29-7 34 2-8 0-15 4-19 8 8 2 13 9 13 16-11-5-21-9-28-12z" fill="url(#czg-au)"/><ellipse cx="50" cy="58" rx="16" ry="21" fill="#1fa392"/><circle cx="50" cy="17" r="11" fill="#e2381c"/></symbol>' +
+    '<symbol id="czsy-EY" viewBox="0 0 100 100"><rect x="7" y="9" width="86" height="82" rx="14" fill="#173a96"/><path d="M17 46c13-14 45-16 64-2-17 9-47 13-64 2z" fill="#fff" stroke="#ffd76a" stroke-width="4"/><circle cx="49" cy="44" r="8" fill="#101018"/><path d="M19 33c16-10 44-10 63-2M44 54l-6 22M57 54c2 11 6 19 14 19 6 0 8-7 3-11" stroke="#ffd76a" stroke-width="4" fill="none" stroke-linecap="round"/></symbol>' +
+    '<symbol id="czsy-AN" viewBox="0 0 100 100"><path fill-rule="evenodd" d="M50 6C37 6 31 17 33 29c2 8 7 14 12 17H22v11h22v38h12V57h22V46H55c5-3 10-9 12-17 2-12-4-23-17-23zm0 11c6 0 8 6 7 12s-5 12-7 14c-2-2-6-8-7-14s1-12 7-12z" fill="url(#czg-au)"/></symbol>' +
+    '<symbol id="czsy-LO" viewBox="0 0 100 100"><path d="M50 78C30 78 14 68 8 52c16 2 30 10 42 26zM50 78c20 0 36-10 42-26-16 2-30 10-42 26zM50 78C34 70 24 52 26 30c12 8 22 26 24 48zM50 78c16-8 26-26 24-48-12 8-22 26-24 48z" fill="#ff9cc6"/><path d="M50 78c-10-16-10-42 0-64 10 22 10 48 0 64z" fill="#ffc2dc" stroke="#c2366f"/></symbol>' +
+    '<symbol id="czsy-SP" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#2a1c06" stroke="url(#czg-au)" stroke-width="4"/><path d="M50 12c-16 0-23 11-25 25l-9 42 19-5 2-13c4 10 22 10 26 0l2 13 19 5-9-42c-2-14-9-25-25-25z" fill="url(#czg-au)"/><path d="M50 26c-10 0-14 8-14 18 0 14 6 22 14 24 8-2 14-10 14-24 0-10-4-18-14-18z" fill="#e9cf8a"/></symbol>' +
+    '<symbol id="czsy-DR" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#b8100f" stroke="url(#czg-au)" stroke-width="4"/><path d="M24 62c-3-14 5-26 19-30 8-8 20-9 28-3l12 2c6 2 8 8 4 12l-10 2 8 6c2 4-2 6-6 4l-12-2c-6 8-16 14-26 14-8 4-16 2-17-5z" fill="url(#czg-au)"/><circle cx="68" cy="35" r="2.5" fill="#c0120e"/></symbol>' +
+    '<symbol id="czsy-KO" viewBox="0 0 100 100"><path d="M79 18c12 2 16 15 10 26-8 15-26 22-41 28-8 4-14 9-18 14l-6-4-12-4 14-8c8-10 18-22 30-34 9-10 15-18 23-18z" fill="#fff4ea" stroke="#d2601a" stroke-width="2"/><path d="M62 38c5-7 16-7 20-1-4 7-15 9-20 1zM46 60c4-8 14-10 18-6-4 8-12 12-18 6z" fill="#ff5a1f"/></symbol>' +
+    '<symbol id="czsy-LA" viewBox="0 0 100 100"><rect x="27" y="16" width="46" height="9" rx="4" fill="url(#czg-au)"/><ellipse cx="50" cy="50" rx="36" ry="28" fill="#e2301c"/><rect x="29" y="74" width="42" height="9" rx="4" fill="url(#czg-au)"/><path d="M44 88h12l-2 11h-8z" fill="#d81e1e"/></symbol>' +
+    '<symbol id="czsy-CN" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="url(#czg-au)"/><rect x="38" y="38" width="24" height="24" rx="2" fill="#6e0a0a" stroke="#7a5200" stroke-width="3"/></symbol>' +
+    '<symbol id="czsy-FB" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#ff6a1a" opacity=".6"/><circle cx="50" cy="50" r="38" fill="url(#czg-fire)"/></symbol>';
+  var RANKS = { A: 'A', K: 'K', Q: 'Q', J: 'J', T: '10', N: '9' };
+  var RANK_COL = { b: { A: '#14a39b', K: '#d4321e', Q: '#e08a00', J: '#4f9e2a', T: '#7a3fd0', N: '#2a6fd0' }, c: { A: '#2a5ad8', K: '#13998a', Q: '#c42a2a', J: '#3f8e22', T: '#7a3fd0', N: '#c46a00' }, d: { A: '#1fae6a', K: '#e2342a', Q: '#3a8ae0', J: '#9a5ae0', T: '#f08a20' } };
+  var RANK_FONT = { b: "Georgia,serif", c: 'Cinzel,Georgia,serif', d: "Bungee,Impact,sans-serif" };
+  function rankSprite() {
+    var s = '';
+    Object.keys(RANK_COL).forEach(function (p) {
+      Object.keys(RANK_COL[p]).forEach(function (k) {
+        var t = RANKS[k], fs = t.length > 1 ? 56 : 68;
+        s += '<symbol id="czsy-' + p + '-' + k + '" viewBox="0 0 100 100"><text x="50" y="' + (50 + fs * 0.36) + '" text-anchor="middle" font-family="' + RANK_FONT[p] + '" font-weight="900" font-size="' + fs + '" fill="' + RANK_COL[p][k] + '" stroke="#fff4d6" stroke-width="3" paint-order="stroke"' + (t.length > 1 ? ' textLength="78" lengthAdjust="spacingAndGlyphs"' : '') + '>' + t + '</text></symbol>';
+      });
+    });
+    return s;
+  }
   function spriteOnce() {
     if (document.getElementById('cz-slot-sprite')) return;
     var d = document.createElement('div'); d.id = 'cz-slot-sprite'; d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
-    d.innerHTML = '<svg width="0" height="0" aria-hidden="true" focusable="false">' + SLOT_SPRITE + '</svg>'; document.body.appendChild(d);
+    d.innerHTML = '<svg width="0" height="0" aria-hidden="true" focusable="false">' + SLOT_SPRITE + NEW_SPRITE + rankSprite() + '</svg>'; document.body.appendChild(d);
   }
-  function reelsPic(x) {
+  function symRef(m, k) { return RANKS[k] && m !== 'classic' && m !== 'five' ? 'czsy-' + m.charAt(0) + '-' + k : 'czsy-' + k; }
+  function cash(n) { return n >= 10000 ? '$' + (Math.round(n / 100) / 10) + 'K' : '$' + Math.round(n).toLocaleString('en-US'); }
+  function fbText(v, tb) { return /^\d+$/.test(String(v)) ? cash(+v * (tb || 1)) : String(v); }
+  function pairs(s) { var o = {}; String(s || '').split(' ').filter(Boolean).forEach(function (x) { var i = x.indexOf(':'); o[x.slice(0, i)] = x.slice(i + 1); }); return o; }
+  function reelsPic(x, m) {
     spriteOnce();
-    var rows = (x.g || []).map(function (r) { return String(r).split(','); }), n = rows[0] ? rows[0].length : 3;
-    var cs = 100, gap = 6, W = n * cs + (n - 1) * gap, H = 3 * cs;
+    var rows = (x.g || []).map(function (r) { return String(r).split(','); }), n = rows[0] ? rows[0].length : 3, nr = rows.length || 3;
+    var cs = 100, gap = 6, W = n * cs + (n - 1) * gap, H = nr * cs, skin = SLOT_SKIN[m] || SLOT_SKIN.classic;
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The reels">';
-    for (var c = 0; c < n; c++) s += '<rect x="' + c * (cs + gap) + '" y="0" width="' + cs + '" height="' + H + '" rx="10" fill="#fbf8f0"/>';
-    var lit = {}; (x.w || []).forEach(function (w) { String(w.l).split('').forEach(function (r, i) { if (String(w.c).indexOf(String(i)) >= 0) lit[r + ',' + i] = 1; }); });
+    for (var c = 0; c < n; c++) s += '<rect x="' + c * (cs + gap) + '" y="0" width="' + cs + '" height="' + H + '" rx="10" fill="' + skin[1] + '"/>';
+    var lit = {};
+    (x.w || []).forEach(function (w) {
+      if (w.l != null) String(w.l).split('').forEach(function (r, i) { if (String(w.c).indexOf(String(i)) >= 0) lit[r + ',' + i] = 1; });
+      if (w.p) String(w.p).split(' ').forEach(function (rc) { lit[rc.charAt(0) + ',' + rc.charAt(1)] = 1; });
+    });
+    var fb = pairs(x.fb), wm = pairs(x.wm);
     rows.forEach(function (row, r) { row.forEach(function (k, c) {
       var px = c * (cs + gap), py = r * cs;
-      if (lit[r + ',' + c]) s += '<rect x="' + (px + 3) + '" y="' + (py + 3) + '" width="' + (cs - 6) + '" height="' + (cs - 6) + '" rx="10" fill="#fff1b8"/>';
-      if (k && k !== '_') s += '<use href="#czsy-' + k + '" x="' + (px + 12) + '" y="' + (py + 12) + '" width="' + (cs - 24) + '" height="' + (cs - 24) + '"/>';
+      if (lit[r + ',' + c]) s += '<rect x="' + (px + 3) + '" y="' + (py + 3) + '" width="' + (cs - 6) + '" height="' + (cs - 6) + '" rx="10" fill="' + (m === 'classic' || m === 'five' || m === 'cleo' ? '#fff1b8' : 'rgba(255,214,90,.35)') + '" stroke="#ffc83d" stroke-width="4"/>';
+      if (k && k !== '_') s += '<use href="#' + symRef(m, k) + '" x="' + (px + 10) + '" y="' + (py + 10) + '" width="' + (cs - 20) + '" height="' + (cs - 20) + '"/>';
+      var key = '' + r + c;
+      if (fb[key] != null) s += '<text x="' + (px + cs / 2) + '" y="' + (py + cs / 2 + 7) + '" text-anchor="middle" font-family="Bungee,Impact,sans-serif" font-size="' + (/^\d+$/.test(fb[key]) ? 21 : 16) + '" fill="#fff" stroke="#7a1000" stroke-width="4" paint-order="stroke">' + fbText(fb[key], x.tb) + '</text>';
+      if (wm[key]) s += '<rect x="' + (px + cs - 40) + '" y="' + (py + 4) + '" width="36" height="22" rx="7" fill="#ffc83d"/><text x="' + (px + cs - 22) + '" y="' + (py + 21) + '" text-anchor="middle" font-size="16" font-weight="900" fill="#3a1200" font-family="system-ui">' + wm[key] + 'x</text>';
     }); });
     (x.w || []).forEach(function (w, i) {
+      if (w.l == null) return;
       var pts = String(w.l).split('').map(function (r, c) { return (c * (cs + gap) + cs / 2) + ',' + (+r * cs + cs / 2); }).join(' ');
-      s += '<polyline points="' + pts + '" fill="none" stroke="' + LINE_COLORS[(w.li != null ? w.li : i) % 10] + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>';
+      s += '<polyline points="' + pts + '" fill="none" stroke="' + LINE_COLORS[(w.li != null ? w.li : i) % LINE_COLORS.length] + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>';
     });
     return s + '</svg>';
   }
-  function spinShot(ui, x, title) {
-    var nre = x.g && x.g[0] ? String(x.g[0]).split(',').length : 3;
-    var kids = [ui.el('div', { class: 'cz-reels', style: { 'max-width': (nre === 3 ? 250 : 340) + 'px' }, html: reelsPic(x) })];
-    kids.push(ui.el('div', { class: 'cz-sub', html: '<b style="color:var(--text)">' + ui.esc(title) + '</b> · spin ' + x.no + ' · bet ' + ui.money(x.tb) + (x.ln ? ' on ' + x.ln + ' line' + (x.ln === 1 ? '' : 's') : '') + (x.a ? ' · paid <b style="color:#4ade80">' + ui.money(x.a) + '</b>' : ' · no win') }));
-    if (x.w && x.w.length) kids.push(ui.log(x.w.map(function (w, i) { return { t: w.t + ' · ' + ui.money(w.a), c: LINE_COLORS[(w.li != null ? w.li : i) % 10] }; })));
+  // Hold & Spin board: 15 spots, values left where the fireballs locked
+  function hsPic(hs, tb) {
+    spriteOnce();
+    var v = String(hs.v || '').split(','), cs = 100, gap = 6, W = 5 * cs + 4 * gap, H = 3 * cs + 2 * gap;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Hold and Spin">';
+    for (var i = 0; i < 15; i++) {
+      var r = Math.floor(i / 5), c = i % 5, px = c * (cs + gap), py = r * (cs + gap), x = v[i];
+      s += '<rect x="' + px + '" y="' + py + '" width="' + cs + '" height="' + cs + '" rx="10" fill="#240404" stroke="' + (x ? '#ffc83d' : 'rgba(255,200,80,.25)') + '" stroke-width="3"/>';
+      if (x) s += '<use href="#czsy-FB" x="' + (px + 8) + '" y="' + (py + 8) + '" width="' + (cs - 16) + '" height="' + (cs - 16) + '"/><text x="' + (px + cs / 2) + '" y="' + (py + cs / 2 + 7) + '" text-anchor="middle" font-family="Bungee,Impact,sans-serif" font-size="' + (/^\d+$/.test(x) ? 21 : 16) + '" fill="#fff" stroke="#7a1000" stroke-width="4" paint-order="stroke">' + fbText(x, tb) + '</text>';
+    }
+    return s + '</svg>';
+  }
+  function spinShot(ui, x, title, m) {
+    var nre = x.g && x.g[0] ? String(x.g[0]).split(',').length : 3, skin = SLOT_SKIN[m] || SLOT_SKIN.classic;
+    var kids = [ui.el('div', { class: 'cz-reels', style: { 'max-width': (nre === 3 ? 250 : 340) + 'px', background: skin[0] }, html: reelsPic(x, m) })];
+    var how = x.wy ? ' · 1024 ways' : x.ln ? ' on ' + x.ln + ' line' + (x.ln === 1 ? '' : 's') : '';
+    kids.push(ui.el('div', { class: 'cz-sub', html: '<b style="color:var(--text)">' + ui.esc(title) + '</b> · spin ' + x.no + ' · bet ' + ui.money(x.tb) + how + (x.a ? ' · paid <b style="color:#4ade80">' + ui.money(x.a) + '</b>' : ' · no win') }));
+    if (x.w && x.w.length) kids.push(ui.log(x.w.map(function (w, i) { return { t: w.t + ' · ' + ui.money(w.a), c: w.l != null ? LINE_COLORS[(w.li != null ? w.li : i) % LINE_COLORS.length] : '#ffc83d' }; })));
+    if (x.fs) kids.push(ui.el('div', { class: 'cz-sub', html: '<b style="color:var(--text)">' + (m === 'buffalo' ? 'Free games' : 'Free spins') + ':</b> ' + x.fs.n + ' played' + (x.fs.r ? ', retriggered ' + x.fs.r + (x.fs.r === 1 ? ' time' : ' times') : '') + ', paid <b style="color:#4ade80">' + ui.money(x.fs.a) + '</b>' }));
+    if (x.hs) {
+      kids.push(ui.el('div', { class: 'cz-reels', style: { 'max-width': '340px', background: skin[0] }, html: hsPic(x.hs, x.tb) }));
+      kids.push(ui.el('div', { class: 'cz-sub', html: '<b style="color:var(--text)">Hold &amp; Spin:</b> ' + x.hs.n + ' fireballs' + (x.jp ? ' · ' + ui.esc(String(x.jp).split(',').join(' + ')) + ' jackpot' : '') + ', paid <b style="color:#4ade80">' + ui.money(x.hs.a) + '</b>' }));
+    }
     return ui.wrap(kids);
+  }
+  function comboName(k) {
+    var m = /^(.+?)(\d)$/.exec(k), W = ['', 'One', 'Two', 'Three', 'Four', 'Five'];
+    if (k === 'DD') return 'Two Diamonds'; if (k === 'DDD') return 'Three Diamonds'; if (k === 'ANYBAR') return 'Any three bars';
+    if (!m) return k;
+    var n = +m[2], s = m[1];
+    return W[n] + ' ' + (n === 1 && SNAME[s] ? SNAME[s] : SPLUR[s] || s);
   }
   R('slots', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var out = [], net = (d.won || 0) - (d.bet || 0);
-    out.push(bankStats(ui, d.bank, net, [['Spins', d.spins], ['Winning spins', d.spins ? d.hits + ' of ' + d.spins : null]]));
-    if (d.big) out.push(ui.section('Biggest win', spinShot(ui, d.big, ui.money(d.big.a) + ' win'), { icon: 'trophy' }));
-    if (d.last) out.push(ui.section('Last spin', spinShot(ui, d.last, 'Last spin')));
+    var out = [], net = (d.won || 0) - (d.bet || 0), m = d.m || 'classic';
+    out.push(bankStats(ui, d.bank, net, [['Spins', d.spins], ['Winning spins', d.spins ? d.hits + ' of ' + d.spins : null],
+      [m === 'buffalo' ? 'Free games' : 'Free spins', d.fs ? d.fs : null], ['Hold & Spin', d.hs ? d.hs : null]]));
+    if (d.jps) out.push(ui.section('Jackpots', ui.chips(['GRAND', 'MAJOR', 'MINOR', 'MINI'].filter(function (k) { return d.jps[k]; }).map(function (k) { return { t: k + ' ×' + d.jps[k], on: k === 'GRAND' }; })), { icon: 'star' }));
+    if (d.big) out.push(ui.section('Biggest win', spinShot(ui, d.big, ui.money(d.big.a) + ' win', m), { icon: 'trophy' }));
+    if (d.last) out.push(ui.section('Last spin', spinShot(ui, d.last, 'Last spin', m)));
     var cb = d.combos ? Object.keys(d.combos).filter(function (k) { return d.combos[k]; }).sort(function (a, b) { return d.combos[b] - d.combos[a]; }) : [];
-    if (cb.length) out.push(ui.section('What lined up', ui.chips(cb.slice(0, 12).map(function (k) {
-      var m = /^(.+)(\d)$/.exec(k), W = ['', 'One', 'Two', 'Three', 'Four', 'Five'];
-      var nm = k === 'DD' ? 'Two Diamonds' : k === 'DDD' ? 'Three Diamonds' : k === 'ANYBAR' ? 'Any three bars' : m && SNAME[m[1]] ? W[+m[2]] + ' ' + (m[2] === '1' ? SNAME[m[1]] : SPLUR[m[1]]) : k;
-      return nm + ' ×' + d.combos[k];
-    }))));
+    if (cb.length) out.push(ui.section('What lined up', ui.chips(cb.slice(0, 12).map(function (k) { return comboName(k) + ' ×' + d.combos[k]; }))));
     return ui.wrap(out);
   });
 
