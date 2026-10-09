@@ -1368,23 +1368,34 @@
     if (!cur.c) cur.c = AV_COLORS[0];
     var prev = el('span', { class: 'avatar xl' }), body = el('div', { class: 'av-ed' }), s;
     var file = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+    // crop a photo again: from its original when this device has it, otherwise from the saved circle (zoom in only)
+    function recrop(p) {
+      avOrig(p.id).then(function (b) {
+        avCrop(b || p.d, function (d, at) {
+          photos = photos.map(function (x) { return x.id === p.id ? Object.assign({}, x, { d: d, at: Date.now(), crop: b ? at : x.crop }) : x; });
+          sfx('good'); paint();
+        }, { again: true, init: b ? p.crop : null });
+      });
+    }
+    prev.addEventListener('click', function () { var ph = cur.k === 'photo' && photos.filter(function (x) { return x.id === cur.id; })[0]; if (ph) recrop(ph); });
     function paint() {
       var ph = cur.k === 'photo' && photos.filter(function (x) { return x.id === cur.id; })[0];
       prev.innerHTML = ph ? '<img class="av-img" src="' + ph.d + '" alt="">' : cur.k === 'icon' ? icon(cur.i) : esc(name.charAt(0).toUpperCase());
       prev.classList.toggle('av-photo', !!ph); prev.style.setProperty('--c', cur.c); prev.style.color = ph ? '' : inkFor(cur.c);
       body.innerHTML = '';
-      body.appendChild(el('div', { class: 'av-top' }, [prev, el('div', { class: 'av-who' }, [el('b', { text: name }), el('small', { text: 'Shows wherever ' + name + ' plays' })])]));
+      prev.classList.toggle('av-adj', !!ph); prev.setAttribute('role', ph ? 'button' : 'img'); prev.setAttribute('aria-label', ph ? 'Adjust this photo' : name);
+      body.appendChild(el('div', { class: 'av-top' }, [prev, el('div', { class: 'av-who' }, [el('b', { text: name }), el('small', { text: ph ? 'Tap the picture to move or zoom it' : 'Shows wherever ' + name + ' plays' })])]));
       // photos
       body.appendChild(el('div', { class: 'label', text: 'Photos' }));
       var pr = el('div', { class: 'av-grid' });
       pr.appendChild(el('button', { type: 'button', class: 'av-tile av-up', 'aria-label': 'Upload a photo', html: icon('camera') + '<small>Upload</small>', onclick: function () { file.click(); } }));
       photos.forEach(function (p) {
         var on = cur.k === 'photo' && cur.id === p.id;
-        var t = el('button', { type: 'button', class: 'av-tile' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': 'Use this photo', html: '<img src="' + p.d + '" alt="">', onclick: function () { cur = { k: 'photo', id: p.id, c: cur.c }; sfx('tap'); paint(); } });
+        var t = el('button', { type: 'button', class: 'av-tile' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': 'Use this photo', html: '<img src="' + p.d + '" alt="">', onclick: function () { if (on) return recrop(p); cur = { k: 'photo', id: p.id, c: cur.c }; sfx('tap'); paint(); } });
         t.appendChild(el('span', { class: 'av-del', role: 'button', 'aria-label': 'Remove this photo', html: icon('close'), onclick: function (e) {
           e.stopPropagation();
           confirmSheet('Remove this photo from ' + poss(name) + ' photos?', { ok: 'Remove', danger: true }).then(function (ok) {
-            if (!ok) return; photos = photos.filter(function (x) { return x.id !== p.id; }); if (cur.k === 'photo' && cur.id === p.id) cur = { k: 'letter', c: cur.c }; paint();
+            if (!ok) return; photos = photos.filter(function (x) { return x.id !== p.id; }); avOrig(p.id, null); if (cur.k === 'photo' && cur.id === p.id) cur = { k: 'letter', c: cur.c }; paint();
           });
         } }));
         pr.appendChild(t);
@@ -1408,10 +1419,12 @@
     }
     file.addEventListener('change', function () {
       var f = file.files && file.files[0]; file.value = ''; if (!f) return;
-      avCrop(f, function (d) {
-        var p = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), d: d, at: Date.now() };
+      avCrop(f, function (d, at, keep) {
+        var p = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), d: d, at: Date.now(), crop: at };
+        if (keep) keep.then(function (b) { if (b) avOrig(p.id, b); });
+        var gone = photos.slice(AV_MAX - 1); gone.forEach(function (x) { avOrig(x.id, null); });
         photos = [p].concat(photos).slice(0, AV_MAX); cur = { k: 'photo', id: p.id, c: cur.c }; sfx('good'); paint();
-      });
+      }, { keep: true });
     });
     paint();
     s = sheet({ title: 'Avatar', node: el('div', null, [body, file]), actions: [
@@ -1532,26 +1545,51 @@
   var GH_SKIP = { casino_ledger: 1, dedup_v1: 1 };
   function histGameId(key) { return GH_GAME[key] || key; }
 
-  // Crop a photo to a circle: drag to move it, pinch / scroll / the slider to zoom. Hands back a small square JPEG.
-  function avCrop(f, done) {
-    var url = URL.createObjectURL(f), img = new Image();
-    img.onerror = function () { URL.revokeObjectURL(url); toast('That picture couldn’t be opened'); };
+  // Originals of uploaded photos stay on this device (IndexedDB), so a photo can be cropped again from the whole
+  // picture; only the small cropped circle (and where it was cut from) syncs.
+  var avDB = null;
+  function avStore() {
+    if (avDB) return avDB;
+    avDB = new Promise(function (ok, no) {
+      try { var rq = indexedDB.open('fgh_avatar', 1); rq.onupgradeneeded = function () { rq.result.createObjectStore('orig'); }; rq.onsuccess = function () { ok(rq.result); }; rq.onerror = function () { no(rq.error); }; } catch (e) { no(e); }
+    });
+    return avDB;
+  }
+  function avOrig(id, blob) {
+    return avStore().then(function (db) { return new Promise(function (ok) {
+      var tx = db.transaction('orig', blob === undefined ? 'readonly' : 'readwrite'), st = tx.objectStore('orig');
+      var rq = blob === undefined ? st.get(id) : blob === null ? st.delete(id) : st.put(blob, id);
+      rq.onsuccess = function () { ok(blob === undefined ? rq.result || null : true); }; rq.onerror = function () { ok(null); };
+    }); }).catch(function () { return null; });
+  }
+
+  // Crop a photo to a circle: drag to move it, pinch / scroll / the slider to zoom. Hands back a small square JPEG,
+  // where it was cut from ({u, v, z}: the circle's centre as a fraction of the picture, and the zoom) and, for a new
+  // upload (o.keep), a sized-down copy of the whole picture to crop again later.
+  function avCrop(src, done, o) {
+    o = o || {};
+    var url = typeof src === 'string' ? src : URL.createObjectURL(src), own = typeof src !== 'string', img = new Image();
+    img.onerror = function () { if (own) URL.revokeObjectURL(url); toast('That picture couldn’t be opened'); };
     img.onload = function () {
       var W = img.naturalWidth, H = img.naturalHeight; if (!W || !H) return img.onerror();
       var ov = el('div', { class: 'av-crop', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Crop your photo' });
       var stage = el('div', { class: 'avc-stage' }), pic = el('img', { class: 'avc-img', src: url, alt: '', draggable: 'false' }), ring = el('div', { class: 'avc-ring' });
       var zoom = el('input', { type: 'range', min: '1', max: '4', step: '0.01', value: '1', 'aria-label': 'Zoom' });
       stage.appendChild(pic); stage.appendChild(ring);
-      ov.appendChild(el('div', { class: 'avc-head', text: 'Move and zoom to fit the circle' }));
+      ov.appendChild(el('div', { class: 'avc-head', text: o.again ? 'Move and zoom to adjust' : 'Move and zoom to fit the circle' }));
       ov.appendChild(stage);
       ov.appendChild(el('div', { class: 'avc-zoom' }, [el('span', { html: icon('minus') }), zoom, el('span', { html: icon('plus') })]));
       var acts = el('div', { class: 'avc-acts' }, [
         el('button', { type: 'button', class: 'btn btn-ghost grow', text: 'Cancel', onclick: function () { finish(false); } }),
-        el('button', { type: 'button', class: 'btn btn-primary grow', text: 'Use photo', onclick: function () { finish(true); } })]);
+        el('button', { type: 'button', class: 'btn btn-primary grow', text: o.again ? 'Done' : 'Use photo', onclick: function () { finish(true); } })]);
       ov.appendChild(acts);
       doc.body.appendChild(ov);
-      var S = 0, D = 0, base = 1, z = 1, x = 0, y = 0;
-      function measure() { S = stage.clientWidth; D = S * 0.84; base = D / Math.min(W, H); pic.style.width = (W * base) + 'px'; pic.style.height = (H * base) + 'px'; clamp(); draw(); }
+      var S = 0, D = 0, base = 1, z = 1, x = 0, y = 0, placed = false;
+      function measure() {
+        S = stage.clientWidth; D = S * 0.84; base = D / Math.min(W, H); pic.style.width = (W * base) + 'px'; pic.style.height = (H * base) + 'px';
+        if (!placed && o.init) { z = Math.max(1, Math.min(4, o.init.z || 1)); var sc = base * z; x = (W / 2 - o.init.u * W) * sc; y = (H / 2 - o.init.v * H) * sc; }
+        placed = true; clamp(); draw();
+      }
       function clamp() { var sc = base * z, mx = Math.max(0, (W * sc - D) / 2), my = Math.max(0, (H * sc - D) / 2); x = Math.max(-mx, Math.min(mx, x)); y = Math.max(-my, Math.min(my, y)); }
       function draw() { pic.style.transform = 'translate(-50%,-50%) translate(' + x + 'px,' + y + 'px) scale(' + z + ')'; zoom.value = String(z); }
       function setZ(nz) { z = Math.max(1, Math.min(4, nz)); clamp(); draw(); }
@@ -1576,15 +1614,23 @@
       requestAnimationFrame(function () { ov.classList.add('show'); measure(); });
       function finish(ok) {
         window.removeEventListener('resize', measure);
-        var out = null;
+        var out = null, at = null;
         if (ok) {
-          var sc = base * z, side = D / sc, sx = W / 2 - x / sc - side / 2, sy = H / 2 - y / sc - side / 2;
+          var sc = base * z, side = D / sc, cxI = W / 2 - x / sc, cyI = H / 2 - y / sc;
           var cv = el('canvas'); cv.width = cv.height = AV_PX;
-          var cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, sx, sy, side, side, 0, 0, AV_PX, AV_PX);
+          var cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, cxI - side / 2, cyI - side / 2, side, side, 0, 0, AV_PX, AV_PX);
           try { out = cv.toDataURL('image/jpeg', 0.82); } catch (e) { out = null; }
+          at = { u: +(cxI / W).toFixed(4), v: +(cyI / H).toFixed(4), z: +z.toFixed(3) };
         }
-        ov.classList.remove('show'); setTimeout(function () { ov.remove(); URL.revokeObjectURL(url); }, 250);
-        if (out) done(out);
+        var keep = null;
+        if (out && o.keep) {
+          // the whole picture, at most 1600 px on its long side, for cropping again
+          var k = Math.min(1, 1600 / Math.max(W, H)), kc = el('canvas'); kc.width = Math.round(W * k); kc.height = Math.round(H * k);
+          kc.getContext('2d').drawImage(img, 0, 0, kc.width, kc.height);
+          keep = new Promise(function (r) { try { kc.toBlob(function (b) { r(b); }, 'image/jpeg', 0.86); } catch (e) { r(null); } });
+        }
+        ov.classList.remove('show'); setTimeout(function () { ov.remove(); if (own) URL.revokeObjectURL(url); }, 250);
+        if (out) done(out, at, keep);
       }
     };
     img.src = url;
