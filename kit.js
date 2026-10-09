@@ -1099,7 +1099,8 @@
   // ── Game records & history ────────────────────────────────────────────────
   // Kit.record(key, {players:[{name,score,cpu}], winner, lowWins, mode,
   //   rounds:{labels:[..], scores:[[p0,p1..],..]}   points scored each round
-  //   highlights:['Cam shot the moon in round 4', ..], meta:{..game extras}})
+  //   highlights:['Cam shot the moon in round 4', ..], meta:{..game extras},
+  //   detail:{..} what the history detail view shows (hist-view.js): keep it small, no arrays inside arrays})
   // Saves to gh_<key> through GameHistory (synced). Kit.gameStart() marks the
   // start time so the record knows how long the game took.
   var startedAt = Date.now();
@@ -1122,6 +1123,10 @@
     entry._summary = r.summary || (winner ? winner + ' won' : players.length > 1 ? 'Tie game' : 'Finished') +
       (ranked.length > 1 ? ' · ' + ranked.map(function (p) { return p.score; }).join(' – ') : ranked.length === 1 ? ' · ' + ranked[0].score : '');
     entry._badge = r.badge || '';
+    if (r.detail) {
+      // it syncs: a detail that got too big is left out rather than crowding everyone's history
+      try { var dj = JSON.stringify(r.detail); if (dj.length <= 6000) entry.dt = JSON.parse(dj); else console.warn('[record] detail too big, skipped', key, dj.length); } catch (e) {}
+    }
     try { GameHistory.save(key, entry); } catch (e) {}
     return entry;
   }
@@ -1137,6 +1142,8 @@
   // Older records used different field names; map what we can.
   function normalize(e) {
     e = e || {};
+    if (window.HistView) e = HistView.unpack(e);
+    else if (e.rounds && e.rounds.scores) e = Object.assign({}, e, { rounds: Object.assign({}, e.rounds, { scores: e.rounds.scores.map(function (row) { return Array.isArray(row) ? row : row && typeof row === 'object' ? Object.keys(row).sort(function (a, b) { return a.slice(1) - b.slice(1); }).map(function (k) { return row[k]; }) : []; }) }) });
     var players = e.players;
     if (!players && Array.isArray(e.names)) players = e.names.map(function (n, i) { return { name: n, score: e.totals ? e.totals[i] : undefined }; });
     return { players: Array.isArray(players) ? players.map(function (p) { return typeof p === 'string' ? { name: p } : p; }) : [],
@@ -1183,6 +1190,8 @@
       });
       box.appendChild(st);
     } else if (n.summary) box.appendChild(el('div', { class: 'k-hd-sum', text: n.summary }));
+    // the game's own view: final board, cards, scorecard... (hist/*.js)
+    if (window.HistView) { var gv = HistView.render(e, o.game || e.game); if (gv) box.appendChild(gv); }
     if (n.highlights.length) {
       var hl = el('ul', { class: 'k-hd-hl' });
       n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + esc(h) + '</span>' })); });
@@ -1208,7 +1217,19 @@
     return box;
   }
   // Kit.history(key, {title, extra(entry) -> Node}) opens the past-games sheet.
+  // The detail views (hist-view.js + hist/*.js), loaded the first time a history is opened
+  var hvLoading = null;
+  function loadHistView() {
+    if (hvLoading) return hvLoading;
+    var base = (function () { try { return new URL('.', (doc.querySelector('script[src*="kit.js"]') || {}).src || location.href).href; } catch (e) { return ''; } })();
+    function add(src) { return new Promise(function (res) { var sc = doc.createElement('script'); sc.src = base + src; sc.onload = sc.onerror = function () { res(); }; doc.head.appendChild(sc); }); }
+    hvLoading = (window.HistView ? Promise.resolve() : add('hist-view.js')).then(function () {
+      return Promise.all(((window.HistView && HistView.files) || []).map(add));
+    });
+    return hvLoading;
+  }
   function history(key, o) {
+    if (!window.HistView || !HistView.ready) { var a = arguments; return loadHistView().then(function () { if (window.HistView) HistView.ready = true; history.apply(null, a); }); }
     o = o || {};
     var list = []; try { list = GameHistory.load(key); } catch (e) {}
     if (o.keys) o.keys.forEach(function (k) { try { list = list.concat(GameHistory.load(k)); } catch (e) {} });
@@ -1817,7 +1838,7 @@
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
-    resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
+    resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();

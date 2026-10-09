@@ -307,7 +307,10 @@
     Kit.record('c4', {
       started: S.started, mode: vsCpu ? 'vs Computer' : 'Two players',
       players: S.players.map(function (q, i) { return { name: q.name, score: i === winner ? 1 : 0, cpu: q.cpu }; }),
-      winner: p ? p.name : null, summary: p ? p.name + ' won in ' + S.moves.length + ' moves' : 'Draw', highlights: hl
+      winner: p ? p.name : null, summary: p ? p.name + ' won in ' + S.moves.length + ' moves' : 'Draw', highlights: hl,
+      // history view: the final board (rows top to bottom, 1/2 = whose disc), the four in a row, every move by column
+      detail: { grid: S.grid.map(function (r) { return r.join('').replace(/0/g, '.'); }), line: S.line ? S.line.map(function (q) { return q[0] + ',' + q[1]; }) : [],
+        moves: S.moves.join(''), discs: S.players.map(function (q) { return q.disc; }).join(''), first: 1 - S.first, series: S.wins.slice(), level: vsCpu ? S.level : '' }
     });
     var lose = p && p.cpu;
     Kit.win({

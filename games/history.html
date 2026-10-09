@@ -154,7 +154,8 @@ function delPicked() {
   });
 }
 function detail(r) {
-  var node = el('div', null, [Kit.historyDetail(r.e)]);
+  if (!window.HistView || !HistView.ready) { Kit.loadHistView().then(function () { if (window.HistView) HistView.ready = true; detail(r); }); return; }
+  var node = el('div', null, [Kit.historyDetail(r.e, { game: r.gid })]);
   var acts = [{ label: 'Close', cls: 'btn-soft' }];
   if (r.from && window.FGHSync && FGHSync.linkNotMe) acts.unshift({ label: 'Not me', cls: 'btn-ghost', onClick: function () {
     Kit.confirm('Not you? This game leaves your history, and ' + (r.from.by || 'the sender') + '’s copy stops counting it as yours.', { ok: 'Not me', danger: true }).then(function (ok) { if (!ok) return; FGHSync.linkNotMe(r.key, r.e); Kit.toast('Removed'); paint(); });
@@ -165,6 +166,7 @@ function detail(r) {
   Kit.sheet({ title: title(r), node: node, actions: acts });
 }
 paint();
+Kit.loadHistView().then(function () { if (window.HistView) HistView.ready = true; });
 window.addEventListener('fghlinks', function () { if (!selecting) paint(); });
 document.addEventListener('fghsync:updated', function () { if (!selecting) paint(); });
 if (window.FGHSync && FGHSync.linkPoll) FGHSync.linkPoll(true);

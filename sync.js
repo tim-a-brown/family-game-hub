@@ -441,6 +441,19 @@
     }, 1500);
   }
 
+  // The cloud keeps one document per PIN (1 MB at most). If it grows near that, the oldest games lose their
+  // detail view (dt) in the cloud copy first; every device keeps the full detail it already has.
+  function fitDoc(doc){
+    try{
+      var LIMIT = 850000, size = JSON.stringify(doc).length;
+      if(size <= LIMIT || !doc.gh) return;
+      var all = [];
+      Object.keys(doc.gh).forEach(function(k){ (doc.gh[k] || []).forEach(function(e){ if(e && e.dt) all.push(e); }); });
+      all.sort(function(a, b){ return (a._date || 0) - (b._date || 0); });
+      for(var i = 0; i < all.length && size > LIMIT; i++){ size -= JSON.stringify(all[i].dt).length + 6; delete all[i].dt; }
+      console.warn('[sync] cloud copy near its size limit: left out the detail of ' + i + ' older games');
+    }catch(e){}
+  }
   function pushNow(){
     var ref = cloudRef(); if(!ref) return Promise.resolve();
     var snap = scanLocal();
@@ -475,6 +488,7 @@
       hi_keys: Object.keys(snap.hi||{}).length,
       gh_keys: Object.keys(snap.gh||{}).length
     });
+    fitDoc(doc);
     // merge:true means fields not in `doc` are preserved on the cloud side.
     // This prevents the race where device A has empty local for some field
     // and pushes before device B's newly-saved data lands — merge:false

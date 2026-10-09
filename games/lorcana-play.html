@@ -10010,6 +10010,25 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // End of the game
   // ═════════════════════════════════════════════════════════════════════════
   function endPill() { ui.results = null; }
+  // What the game history shows: each player's deck (name, inks), what was on their board at the end
+  // (with the card art), and how they played. Kept small: it syncs.
+  function histDetail(w) {
+    var LCP = 'https://cards.lorcast.io/';
+    function card(u) {
+      var d = DD(u), im = (d.im && (d.im.s || d.im.l)) || '';
+      if (im.indexOf(LCP) === 0) im = im.slice(LCP.length); else if (im.length > 160) im = '';
+      var t = String(d.ty || '').toLowerCase();
+      return { n: d.full, i: im, x: S.cards[u].ex ? 1 : 0, t: /location/.test(t) ? 'l' : /item/.test(t) ? 'i' : 'c' };
+    }
+    return { how: w.how, turns: S.turn, first: S.first, p: S.P.map(function (p, i) {
+      var st = S.st[i], inks = {};
+      p.deckL.concat(p.hand, p.ink, p.discard, p.board).forEach(function (u) { if (S.cards[u]) inkOf(DD(u)).forEach(function (k) { inks[k] = 1; }); });
+      var ch = S.choices && S.choices[i];
+      return { d: p.deck, kd: ch ? ch.kind || '' : '', k: INKS.filter(function (k) { return inks[k]; }), b: p.board.slice(0, 10).map(card),
+        q: st.q, ql: st.ql, ban: st.ban, lost: st.lost, pl: st.played, ink: st.inked, ch: st.chal, so: st.songs.slice(0, 3), sh: st.shifts.slice(0, 3),
+        big: st.big ? { n: st.big.name, l: st.big.n } : null, loc: st.loc };
+    }) };
+  }
   function finish(w) {
     if (!S || S.phase === 'over') return;
     S.phase = 'over'; tok++; finishing = false; handing = false;
@@ -10032,7 +10051,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       started: S.started, mode: S.mode === 'cpu' ? 'vs computer' : online ? 'online' : 'pass & play',
       players: S.P.map(function (p) { return { name: p.name, score: p.lore, cpu: p.cpu }; }), winner: wp.name,
       rounds: S.rl.length ? { labels: labels, scores: S.rl.map(function (r) { return [r[0], r[1]]; }) } : null,
-      highlights: hl.slice(0, 6), summary: wp.name + ' won · ' + S.P[0].lore + ' – ' + S.P[1].lore
+      highlights: hl.slice(0, 6), summary: wp.name + ' won · ' + S.P[0].lore + ' – ' + S.P[1].lore,
+      detail: histDetail(w)
     });
     var cfg = S.cfg, choices = S.choices;
     if (!online) clearSave();
