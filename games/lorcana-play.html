@@ -5278,8 +5278,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'draw': {
         var dn = effN(e, st) + (e.plus || 0), who = e.who === 'chosenPlayers' ? (st.players || []) : e.who === 'both' ? [pi, opp(pi)] : e.who === 'opp' ? [opp(pi)] : e.who === 'prevOwner' ? (st.prev && st.prev[0] && S.cards[st.prev[0]] ? [C(st.prev[0]).o] : []) : [pi];
         if (dn <= 0 || !who.length) return cb(false);
-        act(function () { who.forEach(function (w) { var g = draw(w, dn); st.said.push(S.P[w].name + ' drew ' + plural(g, 'card')); }); });
-        noUndo(); return cb(true);
+        var drawn = [];
+        act(function () { who.forEach(function (w) { var h0 = S.P[w].hand.length, g = draw(w, dn); st.said.push(S.P[w].name + ' drew ' + plural(g, 'card')); S.P[w].hand.slice(h0).forEach(function (x) { drawn.push({ pi: w, u: x }); }); }); });
+        noUndo();
+        // the cards you drew, shown to you (only to the player who drew them) before the ability goes on
+        var mine = drawn.filter(function (r) { return !S.P[r.pi].cpu && handVisibleTo(r.pi) && S.cards[r.u] && S.P[r.pi].hand.indexOf(r.u) >= 0; });
+        if (mine.length && mine.length <= 6) return revealCards(st.src, mine, '', function () { cb(true); }, 'You Drew');
+        return cb(true);
       }
       case 'lore': {
         var ln = effN(e, st);
@@ -5436,7 +5441,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!pool.length) { if (e.who === 'opp' && e.mine) st.said.push(P.name + ' had nothing to discard'); return cb(false); }
     var n = Math.min(e.n, pool.length);
     function fin(sel) { if (!sel.length) { st.said.push(P.name + ' chose not to discard'); return cb(false); } act(function () { sel.forEach(function (x) { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); P.discard.push(x); }); }); noUndo(); st.last = sel.length; st.lastCard = sel[0]; noteDiscards(who, sel); emit('discarded', { pi: who, n: sel.length }); st.said.push(P.name + ' discarded ' + sel.map(function (x) { return DD(x).full; }).join(', ')); cb(true); }
-    if (e.random || e.all) return fin(e.all ? pool.slice() : shuffle(pool.slice()).slice(0, n));
+    if (e.random && !e.all) {
+      // at random: the card that lands in the discard is shown to the table before the ability goes on
+      var rnd = shuffle(pool.slice()).slice(0, n), cb0 = cb;
+      if (humans()) cb = function (r) { revealCards(st.src, rnd.map(function (x) { return { pi: who, u: x }; }), '', function () { cb0(r); }, 'Random Discard'); };
+      return fin(rnd);
+    }
+    if (e.all) return fin(pool.slice());
     var chooser = e.who === 'opp' && e.mine ? pi : who;
     // "each opponent may choose and discard": their call
     if (e.oppMay) {
@@ -5894,7 +5905,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // A full-size card with the ability text and a short list of buttons. Nothing else.
   // Cards an ability reveals, face up side by side with whose they are and where they're going, until Continue
-  function revealCards(src, rows, sub, done) {
+  function revealCards(src, rows, sub, done, what) {
     var box = el('div', { class: 'rvc-row' });
     rows.forEach(function (r) {
       var c = el('div', { class: 'rvc' }), art = el('div', { class: 'rvc-card' });
@@ -5908,7 +5919,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     });
     var ab = src && S.cards[src] ? DD(src) : null, fin = false;
     Kit.sfx('flip');
-    Kit.sheet({ title: (ab ? ab.n + ': ' : '') + 'Revealed', node: el('div', {}, [box, sub ? el('p', { class: 'muted rvc-sub', text: sub }) : null]),
+    Kit.sheet({ title: (ab ? ab.n + ': ' : '') + (what || 'Revealed'), node: el('div', {}, [box, sub ? el('p', { class: 'muted rvc-sub', text: sub }) : null]),
       actions: [{ label: 'Continue', cls: 'btn-primary' }], dismissible: true, onClose: function () { if (!fin) { fin = true; setTimeout(done, 60); } } });
   }
   function abilitySheet(src, ab, acts, o) {
