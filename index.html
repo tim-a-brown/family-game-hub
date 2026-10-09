@@ -254,6 +254,7 @@ document.addEventListener('visibilitychange', function () {
 .pick button{display:flex;align-items:center;gap:14px;padding:16px;border:0;border-radius:var(--r-lg);text-align:left;color:var(--text);
   background:var(--surface-2);box-shadow:0 5px 0 rgba(0,0,0,.3);transition:transform .1s, box-shadow .1s;}
 .pick button:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.3);}
+.pick-note{margin:2px 4px 0;font-size:.82rem;line-height:1.35;}
 .pick button.resume{box-shadow:inset 0 0 0 2px var(--yellow);}
 .pick button.resume .e{background:var(--yellow);color:#16102e;}
 .pick .e{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.08);color:var(--text-2);flex:none;}
@@ -427,7 +428,9 @@ document.addEventListener('visibilitychange', function () {
     else if (g.score) {
       opt('phone', (live ? 'New game: ' : '') + 'Play on this device', board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play + nw);
       opt('pencil', (live ? 'New: ' : '') + (board ? 'Table companion' : 'Keep score'), board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score + nw);
-    } else opt('sparkle', 'New game', 'Start over. The game in progress ends.', g.play + nw);
+    } else opt('sparkle', 'New game', 'Start over. The unfinished game is dropped; it isn’t saved to anyone’s history, linked players included.', g.play + nw);
+    // several ways to play: say the same once, under the choices
+    if (live && (g.launch || g.score)) box.appendChild(el('p', { class: 'muted pick-note', text: 'Starting a new game drops the unfinished one; it isn’t saved to anyone’s history, linked players included.' }));
     box.insertBefore(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span>' + Kit.esc(g.tag) + '</span></div>' }), box.firstChild);
     s = Kit.sheet({ node: box });
   }
