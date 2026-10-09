@@ -341,7 +341,7 @@
       });
       var nodes = [ui.table(['', 'AB', 'R', 'H', 'HR', 'RBI', 'BB', 'K'], rows, { foot: ['Team'].concat(tot), cls: 'sx-box' })];
       if (T.p && T.p.length) nodes.push(ui.table(['Pitching', 'IP', 'H', 'R', 'BB', 'K', 'HR', 'PC'], T.p.map(function (s) { var a = s.split('|'); return [short(a[0], 15), Math.floor(a[1] / 3) + '.' + a[1] % 3].concat(a.slice(2)); })));
-      out.push(ui.section(T.n + ' box score', nodes));
+      out.push(ui.section('Box score: ' + T.n, nodes));
     });
     if (d.plays && d.plays.length) {
       var aw = 1 - d.home;
