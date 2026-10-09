@@ -8847,6 +8847,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // In a game, every card view keeps the table in sight: whose turn, your ink, the lore (and on the other
     // player's turn, their latest moves under it)
     if (!(S && ui.screen === 'game' && S.phase === 'play')) { if (f) { f.remove(); ov.classList.remove('has-feed'); } return null; }
+    var fresh = !f;
     if (!f) {
       f = el('div', { class: 'lz-feed', 'aria-live': 'polite' }, [el('div', { class: 'lzf-st' }), el('div', { class: 'lzf-ev' })]);
       ov.appendChild(f); ov.classList.add('has-feed');
@@ -8861,7 +8862,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       '<span class="lzf-l" title="Lore">' + S.P.map(function (p, pi) { var nd = needLore(pi) - p.lore;
         // each player's lore in a diamond of their colour (glowing gold when they're close to winning)
         return '<span class="lzf-dm' + (nd > 0 && nd <= 4 ? ' near' : '') + '" style="--c:' + p.color + '" title="' + esc(p.name) + ': ' + p.lore + ' lore' + (nd > 0 && nd <= 4 ? ', ' + nd + ' to win' : '') + '"><svg viewBox="0 0 30 40" aria-hidden="true"><path d="M15 1.5 28.5 20 15 38.5 1.5 20z"/></svg><b>' + p.lore + '</b></span>'; }).join('') + '</span>';
-    // the cards sit just below the panel, however tall it is
+    // the cards sit just below the panel, however tall it is. A fresh card view (each swipe in the carousel builds one)
+    // takes its height straight away with no slide, so the cards don't drop and spring back as each one settles
+    if (fresh) { var fin = $('.lz-in', ov); if (fin) fin.style.transition = 'none'; ov.style.setProperty('--feedh', f.offsetHeight + 'px'); if (fin) { void fin.offsetHeight; fin.style.transition = ''; } }
     requestAnimationFrame(function () { if (f.isConnected) ov.style.setProperty('--feedh', f.offsetHeight + 'px'); });
     return f;
   }
