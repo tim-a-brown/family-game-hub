@@ -50,7 +50,13 @@ document.addEventListener('visibilitychange', function () {
 .me:active{transform:scale(.9);}
 .me.has-av .av-img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
 .me.has-av .ico{width:56%;height:56%;}
-.me-row{align-items:center;margin-bottom:6px;}
+.acct-name{width:100%;border:0;background:none;color:var(--text);font:inherit;font-weight:900;font-size:1.35rem;padding:4px 0;border-bottom:1.5px dashed rgba(255,255,255,.18);border-radius:0;outline:none;}
+.acct-name:focus{border-bottom-color:var(--yellow);}
+.acct-name::placeholder{color:var(--text-3);}
+.acct-d{display:flex;align-items:center;gap:6px;margin-top:6px;color:var(--text-2);font-size:.86rem;}
+.acct-d span{min-width:0;}
+.acct-ed{flex:none;width:28px;height:28px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--surface-3);color:var(--text-2);cursor:pointer;}
+.acct-ed .ico{width:14px;height:14px;}
 .syncdot{position:relative;}
 .syncdot::after{content:"";position:absolute;right:1px;top:1px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:var(--text-3);}
 .syncdot.s-synced::after{background:var(--green);}
@@ -753,7 +759,8 @@ document.addEventListener('visibilitychange', function () {
     var h = new Date().getHours();
     var greet = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
     var lbl = mode === 'pin' && window.FGHSync ? FGHSync.label() : '';
-    $('hi').textContent = greet + (lbl ? ', ' + lbl : '');
+    var who = (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : '') || lbl;
+    $('hi').textContent = greet + (who ? ', ' + who : '');
     // your avatar (by your name) when you've set one; otherwise the account's initials
     var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : null, me = $('me');
     if (mn && Kit.avatar && Kit.avatar.has(mn)) {
@@ -779,44 +786,31 @@ document.addEventListener('visibilitychange', function () {
   $('me').addEventListener('click', function () {
     Kit.sfx('pop');
     var lbl = mode === 'pin' ? (FGHSync.label() || '') : '';
-    var node = el('div');
-    node.appendChild(el('div', { class: 'acct' }, [
-      el('span', { class: 'avatar lg', text: $('me').textContent }),
-      el('div', null, [
-        el('div', { class: 't', text: mode === 'pin' ? (lbl || 'Your family') : 'Guest' }),
-        el('div', { class: 'd', text: mode === 'pin' ? 'PIN ' + FGHSync.pin() + ' · scores sync across devices' : 'Scores stay on this device' })
-      ])
-    ]));
-    var s;
-    // You: your name and avatar (shown wherever you play)
+    var node = el('div'), s;
+    // One header: you (avatar + name, both editable here), with the account underneath
     var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : '';
-    var myIn = el('input', { class: 'input', maxlength: 14, placeholder: 'Your name', value: mn || '', autocomplete: 'off' });
-    function editMine() {
-      var v = myIn.value.trim(); if (!v) { Kit.toast('Type your name first'); myIn.focus(); return; }
-      if (v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; }
-      s.close(); Kit.avatar.edit(v, refreshWho);
-    }
-    myIn.addEventListener('change', function () { var v = myIn.value.trim(); if (v && v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; refreshWho(); } });
-    node.appendChild(el('div', { class: 'label', text: 'You' }));
-    node.appendChild(el('div', { class: 'row me-row' }, [
-      el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change your avatar', onclick: editMine }, [Kit.avatar.el(mn || '?', null, 'var(--surface-3)')]),
-      myIn, el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Avatar', onclick: editMine })]));
-    if (mode === 'pin') {
-      var inp = el('input', { class: 'input', maxlength: 24, placeholder: 'Name, e.g. Brown Family', value: lbl, autocomplete: 'off' });
-      node.appendChild(el('div', { class: 'label', text: 'Name on the home screen' }));
-      node.appendChild(el('div', { class: 'row' }, [inp, el('button', {
-        type: 'button', class: 'btn btn-primary btn-sm', text: 'Save', onclick: function () {
-          if (FGHSync.setLabel) FGHSync.setLabel(inp.value.trim());
-          refreshWho(); Kit.toast('Saved'); s.close();
-        }
-      })]));
-    }
+    var myIn = el('input', { class: 'acct-name', maxlength: 14, placeholder: 'Your name', value: mn || '', autocomplete: 'off', 'aria-label': 'Your name' });
+    function saveName() { var v = myIn.value.trim(); if (v && v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; refreshWho(); } return v; }
+    myIn.addEventListener('change', saveName);
+    myIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') myIn.blur(); });
+    function editMine() { var v = saveName() || mn; if (!v) { Kit.toast('Type your name first'); myIn.focus(); return; } s.close(); Kit.avatar.edit(v, refreshWho); }
+    var acct = el('div', { class: 'acct-d' }, [el('span', { text: mode === 'pin' ? (lbl || 'Your family') + ' · PIN ' + FGHSync.pin() : 'Guest · scores stay on this device' })]);
+    if (mode === 'pin') acct.appendChild(el('button', { type: 'button', class: 'acct-ed', 'aria-label': 'Rename your family', html: Kit.icon('pencil'), onclick: function () {
+      var inp = el('input', { class: 'input', maxlength: 24, placeholder: 'e.g. Brown Family', value: lbl, autocomplete: 'off' }), s2;
+      function go() { if (FGHSync.setLabel) FGHSync.setLabel(inp.value.trim()); refreshWho(); Kit.toast('Saved'); s2.close(); s.close(); }
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+      s2 = Kit.sheet({ title: 'Family name', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Shown on every device signed in with PIN ' + FGHSync.pin() + '.' }), inp]),
+        actions: [{ label: 'Save', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    } }));
+    node.appendChild(el('div', { class: 'acct' }, [
+      el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change your avatar', onclick: editMine }, [Kit.avatar.el(mn || '?', 'lg', 'var(--surface-3)')]),
+      el('div', { class: 'grow', style: { 'min-width': '0' } }, [myIn, acct])
+    ]));
     var list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
     function item(ic, t, fn, cls) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t })])); }
     var nPend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending().length : 0;
     if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
     item('history', 'Game history', function () { location.href = 'games/history.html'; });
-    item('history', 'Recent games', recentGames);
     if (mode === 'pin') item('link', 'Share my profile', function () { Kit.links.profile(); });
     item('users', 'Frequent players', function () { Kit.managePlayers(); });
     item(get('gn_sound', '1') === '1' ? 'sound' : 'mute', 'Sound: ' + (get('gn_sound', '1') === '1' ? 'on' : 'off'), function () {
