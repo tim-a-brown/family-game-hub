@@ -116,6 +116,16 @@
     tiles: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
     rows: '<rect x="3" y="4" width="5" height="5" rx="1.5"/><rect x="3" y="15" width="5" height="5" rx="1.5"/><path d="M11.5 6.5H21M11.5 17.5H21"/>',
     star: '<path d="M12 2.5l2.9 5.9 6.6 1-4.8 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.5 9.4l6.6-1z"/>',
+    // avatar marks (paths after Lucide, ISC licence)
+    crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/>',
+    heart: '<path d="M12 20s-7.5-4.6-9.2-9.3A4.8 4.8 0 0 1 12 7.3a4.8 4.8 0 0 1 9.2 3.4C19.5 15.4 12 20 12 20z"/>',
+    moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    paw: '<circle cx="6.5" cy="9.5" r="1.8"/><circle cx="10" cy="5.8" r="1.8"/><circle cx="14" cy="5.8" r="1.8"/><circle cx="17.5" cy="9.5" r="1.8"/><path d="M12 11.5c-3 0-5.5 3.2-5.5 5.6 0 1.6 1.3 2.4 2.8 2.4 1.2 0 1.8-.7 2.7-.7s1.5.7 2.7.7c1.5 0 2.8-.8 2.8-2.4 0-2.4-2.5-5.6-5.5-5.6z"/>',
+    rocket: '<path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22 22 0 0 1-4 2z"/><path d="M9 12H4s.6-3 2-4c1.6-1.1 5 0 5 0"/><path d="M12 15v5s3-.6 4-2c1.1-1.6 0-5 0-5"/>',
+    music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5.2-6.1C9.6 14.4 12 13 13 12"/>',
+    minus: '<path d="M5 12h14"/>',
     play: '<path d="M7 4v16l13-8z"/>',
     trash: '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>',
     plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
@@ -712,7 +722,7 @@
       if (rest.length && j === top.length) box.appendChild(el('div', { class: 'label', style: { margin: '10px 2px 0' }, text: 'Everyone else' }));
       var used = taken.indexOf(n.toLowerCase()) >= 0;
       box.appendChild(el('button', { type: 'button', class: 'k-name' + (used ? ' used' : ''), disabled: used, onclick: function () { s.close(); sfx('pop'); haptic('light'); onPick(n); } }, [
-        el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }),
+        avEl(n, null, 'var(--surface-3)'),
         el('span', { class: 'grow', text: n }),
         used ? el('span', { class: 'dim', text: 'playing' }) : null
       ]));
@@ -743,7 +753,7 @@
       names.forEach(function (n) {
         var p = playsOf(n);
         list.appendChild(el('div', { class: 'k-name' }, [
-          el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, text: n.charAt(0).toUpperCase() }),
+          el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change ' + poss(n) + ' avatar', title: 'Change avatar', onclick: function () { avatarEdit(n, paint); } }, [avEl(n, null, 'var(--surface-3)')]),
           el('span', { class: 'grow' }, [el('span', { text: n }), p ? el('small', { class: 'k-plays', text: p + (p === 1 ? ' game' : ' games') }) : null]),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + n, html: icon('pencil'), onclick: function () {
             var inp = el('input', { class: 'input', maxlength: 14, value: n, autocomplete: 'off' }), s2;
@@ -1006,7 +1016,7 @@
       o.rank.forEach(function (p, i) {
         rk.appendChild(el('div', null, [
           el('span', { class: 'place', text: String(i + 1) }),
-          el('span', { class: 'avatar sm', style: { '--c': p.color || playerColor(i) }, text: (p.name || '?').charAt(0).toUpperCase() }),
+          p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color || playerColor(i) }, html: icon('bot') }) : avEl(p.name || '?', 'sm', p.color || playerColor(i)),
           el('span', { text: p.name }),
           el('span', { class: 'p', text: p.score == null ? '' : String(p.score) })
         ]));
@@ -1108,7 +1118,7 @@
         var won = n.winner && x.p.name === n.winner;
         st.appendChild(el('div', { class: 'k-hd-p' + (won ? ' won' : '') }, [
           el('span', { class: 'place', text: String(rank + 1) }),
-          el('span', { class: 'avatar sm', style: { '--c': playerColor(x.i) }, html: x.p.cpu ? icon('bot') : esc((x.p.name || '?').charAt(0).toUpperCase()) }),
+          x.p.cpu ? el('span', { class: 'avatar sm', style: { '--c': playerColor(x.i) }, html: icon('bot') }) : avEl(x.p.name || '?', 'sm', playerColor(x.i)),
           el('span', { class: 'grow', text: x.p.name || 'Player' }),
           won ? el('span', { class: 'crown', html: icon('trophy') }) : null,
           el('span', { class: 'sc', text: x.p.score == null ? '' : String(x.p.score) })
@@ -1270,11 +1280,169 @@
     });
   }
 
+  // ── Avatars ───────────────────────────────────────────────────────────────
+  // Each person (by name, so "Tim" is the same Tim in every game) can have an avatar: their initial or a mark on a
+  // colour, or a photo. Photos they've uploaded stay in their gallery to swap back to. Stored in fgh_avatars and
+  // synced through the PIN (sync.js). Shown by Kit.avatar.el / .html wherever a player's avatar appears.
+  var AV_KEY = 'fgh_avatars', AV_MAX = 8, AV_PX = 192;
+  var AV_ICONS = ['star', 'heart', 'crown', 'sparkle', 'flame', 'moon', 'sun', 'paw', 'rocket', 'music', 'leaf', 'trophy', 'dice', 'cards', 'book', 'lightbulb'];
+  var AV_COLORS = ['#ffc83d', '#ff7a59', '#ff5d8f', '#b583ff', '#5b8cff', '#3cc8e8', '#3ddc97', '#9ad94a', '#f2f4f8', '#2a2440'];
+  function avKey(n) { return String(n || '').trim().toLowerCase(); }
+  function avAll() { try { var v = JSON.parse(lsGet(AV_KEY, '{}')); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function avRec(name) { var r = avAll()[avKey(name)]; return r && r.cur ? r : null; }
+  function avPut(name, rec) {
+    var all = avAll(); rec.name = String(name).trim(); rec.at = Date.now(); all[avKey(name)] = rec;
+    lsSet(AV_KEY, JSON.stringify(all));
+    try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(AV_KEY); } catch (e) {}
+    avRefresh();
+  }
+  // inner HTML of an avatar circle for this person, or null when they haven't set one
+  function avHTML(name) {
+    var r = avRec(name); if (!r) return null;
+    var c = r.cur;
+    if (c.k === 'photo') { var ph = (r.photos || []).filter(function (x) { return x.id === c.id; })[0]; return ph ? '<img class="av-img" src="' + ph.d + '" alt="">' : null; }
+    if (c.k === 'icon') return icon(c.i);
+    return esc(String(r.name || name).charAt(0).toUpperCase());
+  }
+  function avColor(name) { var r = avRec(name); return r && r.cur.k !== 'photo' ? r.cur.c || null : null; }
+  // fill an avatar element for a person (keeps the fallback when they have none); it updates when they change it
+  function avFill(node, name, fallback, color) {
+    var h = avHTML(name), c = avColor(name);
+    node.setAttribute('data-av', name || '');
+    node._avFb = node._avFb || { html: fallback != null ? fallback : node.innerHTML, c: color || node.style.getPropertyValue('--c') };
+    node.innerHTML = h || node._avFb.html;
+    node.classList.toggle('av-photo', !!(h && h.indexOf('<img') === 0));
+    var cc = c || node._avFb.c; if (cc) node.style.setProperty('--c', cc); if (c) node.style.color = inkFor(c); else node.style.color = '';
+    return node;
+  }
+  function avEl(name, cls, color, fallback) {
+    return avFill(el('span', { class: 'avatar' + (cls ? ' ' + cls : ''), style: color ? { '--c': color } : null }), name, fallback != null ? fallback : esc(String(name || '?').charAt(0).toUpperCase()), color);
+  }
+  function avRefresh() { Array.prototype.forEach.call(doc.querySelectorAll('[data-av]'), function (n) { if (n._avFb) avFill(n, n.getAttribute('data-av')); }); try { window.dispatchEvent(new CustomEvent('kit-avatar')); } catch (e) {} }
+  window.addEventListener('storage', function (e) { if (e.key === AV_KEY) avRefresh(); });
+
+  // The avatar editor: a big preview, the marks and colours, and your photos (upload, or tap an old one)
+  function avatarEdit(name, onDone) {
+    name = String(name || '').trim(); if (!name) return;
+    var r0 = avRec(name), photos = (r0 && r0.photos || []).slice();
+    var cur = r0 ? JSON.parse(JSON.stringify(r0.cur)) : { k: 'letter', c: AV_COLORS[0] };
+    if (!cur.c) cur.c = AV_COLORS[0];
+    var prev = el('span', { class: 'avatar xl' }), body = el('div', { class: 'av-ed' }), s;
+    var file = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+    function paint() {
+      var ph = cur.k === 'photo' && photos.filter(function (x) { return x.id === cur.id; })[0];
+      prev.innerHTML = ph ? '<img class="av-img" src="' + ph.d + '" alt="">' : cur.k === 'icon' ? icon(cur.i) : esc(name.charAt(0).toUpperCase());
+      prev.classList.toggle('av-photo', !!ph); prev.style.setProperty('--c', cur.c); prev.style.color = ph ? '' : inkFor(cur.c);
+      body.innerHTML = '';
+      body.appendChild(el('div', { class: 'av-top' }, [prev, el('div', { class: 'av-who' }, [el('b', { text: name }), el('small', { text: 'Shows wherever ' + name + ' plays' })])]));
+      // photos
+      body.appendChild(el('div', { class: 'label', text: 'Photos' }));
+      var pr = el('div', { class: 'av-grid' });
+      pr.appendChild(el('button', { type: 'button', class: 'av-tile av-up', 'aria-label': 'Upload a photo', html: icon('camera') + '<small>Upload</small>', onclick: function () { file.click(); } }));
+      photos.forEach(function (p) {
+        var on = cur.k === 'photo' && cur.id === p.id;
+        var t = el('button', { type: 'button', class: 'av-tile' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': 'Use this photo', html: '<img src="' + p.d + '" alt="">', onclick: function () { cur = { k: 'photo', id: p.id, c: cur.c }; sfx('tap'); paint(); } });
+        t.appendChild(el('span', { class: 'av-del', role: 'button', 'aria-label': 'Remove this photo', html: icon('close'), onclick: function (e) {
+          e.stopPropagation();
+          confirmSheet('Remove this photo from ' + poss(name) + ' photos?', { ok: 'Remove', danger: true }).then(function (ok) {
+            if (!ok) return; photos = photos.filter(function (x) { return x.id !== p.id; }); if (cur.k === 'photo' && cur.id === p.id) cur = { k: 'letter', c: cur.c }; paint();
+          });
+        } }));
+        pr.appendChild(t);
+      });
+      body.appendChild(pr);
+      // marks
+      body.appendChild(el('div', { class: 'label', text: 'Or a mark' }));
+      var mr = el('div', { class: 'av-grid marks' });
+      [{ k: 'letter' }].concat(AV_ICONS.map(function (i) { return { k: 'icon', i: i }; })).forEach(function (m) {
+        var on = cur.k === m.k && (m.k === 'letter' || cur.i === m.i);
+        mr.appendChild(el('button', { type: 'button', class: 'av-tile mk' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': m.k === 'letter' ? 'Initial' : m.i,
+          style: { '--c': cur.c, color: inkFor(cur.c) }, html: m.k === 'letter' ? '<b>' + esc(name.charAt(0).toUpperCase()) + '</b>' : icon(m.i),
+          onclick: function () { cur = { k: m.k, i: m.i, c: cur.c }; sfx('tap'); paint(); } }));
+      });
+      body.appendChild(mr);
+      var cr = el('div', { class: 'av-cols' });
+      AV_COLORS.forEach(function (c) {
+        cr.appendChild(el('button', { type: 'button', class: 'av-col' + (cur.c === c ? ' on' : ''), 'aria-label': 'Colour', style: { background: c }, onclick: function () { cur.c = c; if (cur.k === 'photo') cur = { k: 'letter', c: c }; sfx('tap'); paint(); } }));
+      });
+      body.appendChild(cr);
+    }
+    file.addEventListener('change', function () {
+      var f = file.files && file.files[0]; file.value = ''; if (!f) return;
+      avCrop(f, function (d) {
+        var p = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), d: d, at: Date.now() };
+        photos = [p].concat(photos).slice(0, AV_MAX); cur = { k: 'photo', id: p.id, c: cur.c }; sfx('good'); paint();
+      });
+    });
+    paint();
+    s = sheet({ title: 'Avatar', node: el('div', null, [body, file]), actions: [
+      { label: 'Save', primary: true, onClick: function () { avPut(name, { cur: cur, photos: photos }); toast('Avatar saved'); if (onDone) onDone(); } },
+      { label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+
+  // Crop a photo to a circle: drag to move it, pinch / scroll / the slider to zoom. Hands back a small square JPEG.
+  function avCrop(f, done) {
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onerror = function () { URL.revokeObjectURL(url); toast('That picture couldn’t be opened'); };
+    img.onload = function () {
+      var W = img.naturalWidth, H = img.naturalHeight; if (!W || !H) return img.onerror();
+      var ov = el('div', { class: 'av-crop', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Crop your photo' });
+      var stage = el('div', { class: 'avc-stage' }), pic = el('img', { class: 'avc-img', src: url, alt: '', draggable: 'false' }), ring = el('div', { class: 'avc-ring' });
+      var zoom = el('input', { type: 'range', min: '1', max: '4', step: '0.01', value: '1', 'aria-label': 'Zoom' });
+      stage.appendChild(pic); stage.appendChild(ring);
+      ov.appendChild(el('div', { class: 'avc-head', text: 'Move and zoom to fit the circle' }));
+      ov.appendChild(stage);
+      ov.appendChild(el('div', { class: 'avc-zoom' }, [el('span', { html: icon('minus') }), zoom, el('span', { html: icon('plus') })]));
+      var acts = el('div', { class: 'avc-acts' }, [
+        el('button', { type: 'button', class: 'btn btn-ghost grow', text: 'Cancel', onclick: function () { finish(false); } }),
+        el('button', { type: 'button', class: 'btn btn-primary grow', text: 'Use photo', onclick: function () { finish(true); } })]);
+      ov.appendChild(acts);
+      doc.body.appendChild(ov);
+      var S = 0, D = 0, base = 1, z = 1, x = 0, y = 0;
+      function measure() { S = stage.clientWidth; D = S * 0.84; base = D / Math.min(W, H); pic.style.width = (W * base) + 'px'; pic.style.height = (H * base) + 'px'; clamp(); draw(); }
+      function clamp() { var sc = base * z, mx = Math.max(0, (W * sc - D) / 2), my = Math.max(0, (H * sc - D) / 2); x = Math.max(-mx, Math.min(mx, x)); y = Math.max(-my, Math.min(my, y)); }
+      function draw() { pic.style.transform = 'translate(-50%,-50%) translate(' + x + 'px,' + y + 'px) scale(' + z + ')'; zoom.value = String(z); }
+      function setZ(nz) { z = Math.max(1, Math.min(4, nz)); clamp(); draw(); }
+      zoom.addEventListener('input', function () { setZ(parseFloat(zoom.value) || 1); });
+      stage.addEventListener('wheel', function (e) { e.preventDefault(); setZ(z * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+      var pts = {}, last = null, pinch = null;
+      stage.addEventListener('pointerdown', function (e) { stage.setPointerCapture(e.pointerId); pts[e.pointerId] = { x: e.clientX, y: e.clientY }; last = { x: e.clientX, y: e.clientY }; pinch = null; });
+      stage.addEventListener('pointermove', function (e) {
+        if (!pts[e.pointerId]) return; pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var ids = Object.keys(pts);
+        if (ids.length >= 2) {
+          var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (pinch) setZ(pinch.z * d / pinch.d); else pinch = { d: d || 1, z: z };
+          return;
+        }
+        if (last) { x += e.clientX - last.x; y += e.clientY - last.y; clamp(); draw(); }
+        last = { x: e.clientX, y: e.clientY };
+      });
+      function up(e) { delete pts[e.pointerId]; pinch = null; var ids = Object.keys(pts); last = ids.length ? pts[ids[0]] : null; }
+      stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+      window.addEventListener('resize', measure);
+      requestAnimationFrame(function () { ov.classList.add('show'); measure(); });
+      function finish(ok) {
+        window.removeEventListener('resize', measure);
+        var out = null;
+        if (ok) {
+          var sc = base * z, side = D / sc, sx = W / 2 - x / sc - side / 2, sy = H / 2 - y / sc - side / 2;
+          var cv = el('canvas'); cv.width = cv.height = AV_PX;
+          var cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, sx, sy, side, side, 0, 0, AV_PX, AV_PX);
+          try { out = cv.toDataURL('image/jpeg', 0.82); } catch (e) { out = null; }
+        }
+        ov.classList.remove('show'); setTimeout(function () { ov.remove(); URL.revokeObjectURL(url); }, 250);
+        if (out) done(out);
+      }
+    };
+    img.src = url;
+  }
+
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
-    confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
+    confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };

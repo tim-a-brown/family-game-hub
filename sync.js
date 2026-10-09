@@ -20,6 +20,8 @@
 //   lorcana_decks_v1 [{id,name,cards,at}]   lorcana_decks_del {id: deletedAt}
 //   lorcana_marks_v1 {card: markedAt}        lorcana_marks_del {card: removedAt}
 //   lorcana_art_v1 {card: [printingId, at]}  lorcana_fancy_v1 {on, at}   (card art choices)
+// Player avatars sync too (cloud field `avatars`, local key fgh_avatars): {nameLowercase: {name, cur, photos, at}};
+// each person goes by their own timestamp.
 // Each deck and each bookmark goes by its own timestamp, so edits, deletes and
 // un-bookmarks on one device carry over to the others.
 (function(){
@@ -79,7 +81,7 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc() };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -95,6 +97,8 @@
         try{ out.rklists = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fav_games'){
         try{ out.favs = JSON.parse(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'fgh_avatars'){
+        try{ out.avatars = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fav_games_updated_at'){
         try{ out.favsAt = parseInt(LS.getItem(k)) || null; }catch(e){}
       }
@@ -204,6 +208,7 @@
     Object.keys(keys).forEach(function(k){ out.gh[k] = mergeGh(local.gh&&local.gh[k], remote.gh&&remote.gh[k]); });
     out.rklists = mergeRkLists(local.rklists, remote.rklists);
     out.lorc = mergeLorc(local.lorc, remote.lorc);
+    out.avatars = mergeAvatars(local.avatars, remote.avatars);
     // Favorites: newest favsAt timestamp wins the whole list. This lets
     // deletions propagate — unfavoriting bumps the local timestamp, and on
     // next sync that version supersedes any stale cloud copy. Prior behavior
@@ -246,6 +251,15 @@
     return { lists: lists };
   }
 
+  // Avatars: each person's newest version wins (their whole record: current choice and photos)
+  function mergeAvatars(a, b){
+    if(!a && !b) return null;
+    var out = {};
+    [a || {}, b || {}].forEach(function(src){
+      Object.keys(src).forEach(function(k){ var r = src[k]; if(!r || typeof r !== 'object') return; if(!out[k] || (r.at || 0) > (out[k].at || 0)) out[k] = r; });
+    });
+    return out;
+  }
   function writeSnapshotToLocal(snap){
     Object.keys(snap.hi||{}).forEach(function(k){
       try{ LS.setItem('hi_'+k, JSON.stringify(snap.hi[k])); }catch(e){}
@@ -268,6 +282,11 @@
     // Merge again with what's on the device right now, so a deck or bookmark
     // changed while the cloud was being read isn't overwritten
     if(snap.lorc) writeLorc(mergeLorc(snap.lorc, scanLorc()));
+    if(snap.avatars){
+      var av = mergeAvatars(snap.avatars, lsJSON('fgh_avatars'));
+      try{ LS.setItem('fgh_avatars', JSON.stringify(av)); }catch(e){}
+      try{ window.dispatchEvent(new StorageEvent('storage', { key: 'fgh_avatars' })); }catch(e){}
+    }
   }
 
   // ── Firestore sanitization ────────────────────────────────────────────────
@@ -331,14 +350,14 @@
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, isNew:false});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, isNew:false});
     return ref.get().then(function(doc){
       if(!doc.exists){
         console.log('[sync] pull: cloud doc empty (first sync)');
-        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, isNew:true};
+        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, isNew:false };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -399,6 +418,7 @@
     }
     // Lorcana decks + bookmarks: only when this device has any (merge:true keeps the cloud copy otherwise)
     if(snap.lorc) doc.lorcana = sanitizeForFirestore(snap.lorc);
+    if(snap.avatars) doc.avatars = sanitizeForFirestore(snap.avatars);
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
@@ -412,6 +432,14 @@
     return ref.set(doc, { merge: true }).catch(function(err){
       // Rules that don't allow `lorcana` yet would refuse the whole save:
       // save everything else instead of losing it
+      if(doc.avatars && err && err.code === 'permission-denied'){
+        console.warn('[sync] cloud refused avatars field; saving the rest');
+        delete doc.avatars;
+        return ref.set(doc, { merge: true }).catch(function(err2){
+          if(doc.lorcana && err2 && err2.code === 'permission-denied'){ delete doc.lorcana; return ref.set(doc, { merge: true }); }
+          throw err2;
+        });
+      }
       if(doc.lorcana && err && err.code === 'permission-denied'){
         console.warn('[sync] cloud refused lorcana field; saving the rest');
         delete doc.lorcana;
@@ -510,7 +538,7 @@
 
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()) schedulePush();
   }
 
@@ -555,7 +583,8 @@
           bank: remote.bank,
           rklists: remote.rklists,
           favs: remote.favs,
-          lorc: remote.lorc ? mergeLorc(remote.lorc, null) : null
+          lorc: remote.lorc ? mergeLorc(remote.lorc, null) : null,
+          avatars: remote.avatars
         });
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}

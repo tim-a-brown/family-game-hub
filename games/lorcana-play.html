@@ -149,6 +149,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .mat-sil .ms-av{--sz:min(44cqh,150px);width:var(--sz);height:var(--sz);flex:none;border-radius:50%;display:grid;place-items:center;
   background:rgba(0,0,0,.16);box-shadow:inset 0 3px 10px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.08);
   font-family:'Cinzel',var(--serif);font-weight:700;font-size:calc(var(--sz) * .56);line-height:1;color:rgba(0,0,0,.24);text-shadow:0 1px 0 rgba(255,255,255,.08);}
+.mat-sil .ms-av .av-img{width:100%;height:100%;border-radius:50%;object-fit:cover;filter:grayscale(1) contrast(1.15) brightness(.7);mix-blend-mode:multiply;opacity:.42;}   /* a photo, pressed in like the rest */
 .mat-sil .ms-av svg{width:58%;height:58%;color:rgba(0,0,0,.26);filter:drop-shadow(0 1px 0 rgba(255,255,255,.08));}
 .mat-sil .ms-nm{font-family:'Cinzel',var(--serif);font-weight:700;font-size:min(10cqh,2.1rem);line-height:1.1;letter-spacing:.06em;color:rgba(0,0,0,.26);text-shadow:0 1px 0 rgba(255,255,255,.08);
   max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -7457,7 +7458,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var rd = wellReady(pi), tot = p.ink.length, hx = '', dn0 = dropsOf(pi), dn = numShown('drop' + pi, dn0), dnH = rollNum('drop' + pi, dn, true);
     if (tot <= 10) { for (var i = 0; i < tot; i++) hx += '<i class="hx' + (i < rd ? '' : ' used') + '"></i>'; }
     var inkCan = mine && canAct() && !p.inked && p.hand.some(function (u) { return DD(u).k; });
-    var h = '<div class="lp-who"><span class="avatar" style="--c:' + p.color + '">' + (p.cpu ? Kit.icon('bot') : esc(p.name.charAt(0).toUpperCase())) + '</span><span class="nm"><b>' + esc(p.name) + '</b><small>' + subH + '</small></span></div>';
+    var avh = !p.cpu && Kit.avatar ? Kit.avatar.html(p.name) : null, avc = avh && Kit.avatar.color(p.name);
+    var h = '<div class="lp-who"><span class="avatar' + (avh && !avc ? ' av-photo' : '') + '" style="--c:' + (avc || p.color) + '">' + (p.cpu ? Kit.icon('bot') : avh || esc(p.name.charAt(0).toUpperCase())) + '</span><span class="nm"><b>' + esc(p.name) + '</b><small>' + subH + '</small></span></div>';
     if (top || !handShown(pi)) { var nb = Math.min(p.hand.length, window.innerWidth < 600 ? 3 : 6), bk = ''; for (var j = 0; j < nb; j++) bk += '<i class="lback"></i>'; if (top) h += '<div class="ohand" data-z="hand-' + pi + '">' + bk + '<span>' + p.hand.length + '</span></div>'; }
     h += '<button type="button" class="inkz' + (inkCan ? ' can' : '') + '" data-z="ink-' + pi + '" data-tap="ink"' + (mine ? ' data-drop="ink"' : '') + ' aria-label="Inkwell: ' + rd + ' of ' + tot + ' ready' + (dn ? ', ' + plural(dn, 'ink drop') : '') + '"><span class="hexes">' + hx + '</span><i class="hx hx1' + (rd ? '' : ' used') + '"></i><span class="ct">' + rd + '/' + tot + '<small>ink</small></span>' + (dn || dn0 ? '<span class="dr" title="' + plural(dn0, 'ink drop') + ': each pays 1 ink">' + DROP + (dn ? dnH : '<b></b>') + '</span>' : '') + '</button>';
     var faceUp = p.deckL.length && topFaceUp(pi);
@@ -7480,7 +7482,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!order.length) {
       var P0 = S.P[pi];
       host.appendChild(el('div', { class: 'mat-sil' + (!!flipOpp && !mine ? ' flip' : ''), 'aria-label': P0.name + '’s side of the table' }, [
-        el('div', { class: 'ms-av', html: P0.cpu ? Kit.icon('bot') : esc(P0.name.charAt(0).toUpperCase()) }),
+        el('div', { class: 'ms-av', html: P0.cpu ? Kit.icon('bot') : (Kit.avatar && Kit.avatar.html(P0.name)) || esc(P0.name.charAt(0).toUpperCase()) }),
         el('div', { class: 'ms-nm', text: P0.name })]));
       return;
     }
@@ -7724,6 +7726,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     zoomDef(DD(u), [{ label: out ? 'Keep this card' : 'Put this card back', primary: !out, full: true, go: function () { ui.mullSel[u] = !ui.mullSel[u]; Kit.sfx('tap'); render(); mullZoom(u); } }],
       { i: i, n: hand.length, list: hand.slice(), ctx: 'mull', dir: dir || 0, go: function (step) { var j = i + step; if (j >= 0 && j < hand.length) mullZoom(hand[j], step); }, peek: function (k) { var x = hand[i + k]; return x ? DD(x) : null; } });
   }
+  window.addEventListener('kit-avatar', function () { if (S && ui.screen === 'game') render(); });   // someone changed their avatar
   function render() {
     if (!S) return;
     document.documentElement.classList.add('lp-on');

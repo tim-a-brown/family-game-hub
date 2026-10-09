@@ -48,6 +48,9 @@ document.addEventListener('visibilitychange', function () {
 .me{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:0;flex:none;
   background:var(--surface-3);color:var(--text);font-weight:900;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);}
 .me:active{transform:scale(.9);}
+.me.has-av .av-img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.me.has-av .ico{width:56%;height:56%;}
+.me-row{align-items:center;margin-bottom:6px;}
 .syncdot{position:relative;}
 .syncdot::after{content:"";position:absolute;right:1px;top:1px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:var(--text-3);}
 .syncdot.s-synced::after{background:var(--green);}
@@ -751,12 +754,20 @@ document.addEventListener('visibilitychange', function () {
     var greet = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
     var lbl = mode === 'pin' && window.FGHSync ? FGHSync.label() : '';
     $('hi').textContent = greet + (lbl ? ', ' + lbl : '');
-    $('me').textContent = mode === 'pin' ? initials(lbl) : 'G';
+    // your avatar (by your name) when you've set one; otherwise the account's initials
+    var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : null, me = $('me');
+    if (mn && Kit.avatar && Kit.avatar.has(mn)) {
+      me.innerHTML = Kit.avatar.html(mn); me.classList.add('has-av');
+      me.style.background = Kit.avatar.color(mn) || '#000'; me.style.color = Kit.avatar.color(mn) ? '#16102e' : '';
+    } else {
+      me.textContent = mode === 'pin' ? initials(lbl) : 'G'; me.classList.remove('has-av'); me.style.background = ''; me.style.color = '';
+    }
   }
+  window.addEventListener('kit-avatar', refreshWho);
   refreshWho();
   if (mode === 'pin' && window.FGHSync) {
     $('me').classList.add('syncdot');
-    if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { $('me').className = 'me syncdot s-' + s.state; });
+    if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { var hv = $('me').classList.contains('has-av'); $('me').className = 'me syncdot s-' + s.state + (hv ? ' has-av' : ''); });
     if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); render(); });
   }
   $('me').addEventListener('click', function () {
@@ -771,6 +782,19 @@ document.addEventListener('visibilitychange', function () {
       ])
     ]));
     var s;
+    // You: your name and avatar (shown wherever you play)
+    var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : '';
+    var myIn = el('input', { class: 'input', maxlength: 14, placeholder: 'Your name', value: mn || '', autocomplete: 'off' });
+    function editMine() {
+      var v = myIn.value.trim(); if (!v) { Kit.toast('Type your name first'); myIn.focus(); return; }
+      if (v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; }
+      s.close(); Kit.avatar.edit(v, refreshWho);
+    }
+    myIn.addEventListener('change', function () { var v = myIn.value.trim(); if (v && v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; refreshWho(); } });
+    node.appendChild(el('div', { class: 'label', text: 'You' }));
+    node.appendChild(el('div', { class: 'row me-row' }, [
+      el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change your avatar', onclick: editMine }, [Kit.avatar.el(mn || '?', null, 'var(--surface-3)')]),
+      myIn, el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Avatar', onclick: editMine })]));
     if (mode === 'pin') {
       var inp = el('input', { class: 'input', maxlength: 24, placeholder: 'Name, e.g. Brown Family', value: lbl, autocomplete: 'off' });
       node.appendChild(el('div', { class: 'label', text: 'Name on the home screen' }));
