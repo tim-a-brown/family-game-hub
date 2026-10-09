@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v453-2026-10-09-linked-players';
+const CACHE_VERSION = 'v454-2026-10-09-hiscores-cabinet';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -161,6 +161,8 @@ const PRECACHE_URLS = [
   '/games/phase10.html',
   '/games/players.html',
   '/games/history.html',
+  '/games/hiscores.html',
+  '/fonts/press-start-2p.woff2',
   '/games/plinko.html',
   '/games/poker.html',
   '/games/pokersquares.html',

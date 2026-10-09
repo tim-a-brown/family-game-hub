@@ -186,7 +186,7 @@
       if(seen[k]) return false; seen[k] = 1; return true;
     });
     all.sort(function(x,y){ return hiScore(y) - hiScore(x); });
-    return all.slice(0, 15);
+    return all.slice(0, 50);   // top 50 per arcade game
   }
 
   function mergeGh(a, b){

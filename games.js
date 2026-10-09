@@ -136,7 +136,8 @@ var GAMES = [
   { id: 'bingo',       name: 'Bingo Caller', color: '#e11d48', cat: 'tools', min: 1, max: 0, tag: 'Draw balls and call BINGO', play: 'bingo' },
   { id: 'ranker',      name: 'Ranker',       color: '#eab308', cat: 'tools', min: 1, max: 0, tag: 'Rank anything, settle debates', play: 'ranker' },
   { id: 'players',     name: 'Frequent Players',      color: '#6366f1', cat: 'tools', min: 1, max: 0, tag: 'The names you play with most', play: 'players' },
-  { id: 'history',     name: 'Game History',          color: '#0ea5a4', cat: 'tools', min: 1, max: 0, tag: 'Every game you’ve finished', play: 'history' }
+  { id: 'history',     name: 'Game History',          color: '#0ea5a4', cat: 'tools', min: 1, max: 0, tag: 'Every game you’ve finished', play: 'history' },
+  { id: 'hiscores',    name: 'High Scores',           color: '#f5c842', cat: 'tools', min: 1, max: 0, tag: 'Top 50 for every arcade game', play: 'hiscores' }
 ];
 
 // Section colour families: shade each game's colour from its section's hue,

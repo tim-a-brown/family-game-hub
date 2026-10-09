@@ -8,7 +8,7 @@
  *     - returns a button element that opens the leaderboard
  */
 const ArcadeHi = (function(){
-  const MAX = 15;
+  const MAX = 50;
 
   // Read the board, skipping any entry without a real score (a bad entry
   // used to show up as "NaN"), highest first
@@ -348,6 +348,9 @@ const ArcadeHi = (function(){
   return {
     // The cleaned-up board (real scores only, highest first) and the top score
     list(key){ return load(key); },
+    // this device's board plus linked players' best scores: [{name, score, date, mine, who}]
+    board(key){ return merged(key); },
+    max: MAX,
     best(key){ const l = load(key); return l.length ? l[0].score : 0; },
     check(key, score, onDone){
       if(score>0 && qualifies(key, score)){

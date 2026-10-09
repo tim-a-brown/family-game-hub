@@ -112,6 +112,9 @@ document.addEventListener('visibilitychange', function () {
 .sec-h h2{font-size:1.25rem;}
 .sec-h .ico{width:22px;height:22px;color:var(--text-3);}
 .sec-h .n{font-weight:800;color:var(--text-3);font-size:.9rem;}
+.sec-h .hs-link{margin-left:auto;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 13px;border:0;border-radius:999px;background:rgba(255,200,61,.14);color:var(--yellow);font:inherit;font-weight:800;font-size:.84rem;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,200,61,.3);}
+.sec-h .hs-link .ico{width:16px;height:16px;color:var(--yellow);}
+.sec-h .hs-link:active{transform:scale(.96);}
 .sec-h .bank{margin-left:auto;display:flex;align-items:center;gap:6px;font-weight:900;color:var(--green);}
 .sec-h .bank .bank-amt{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--green);font:inherit;font-weight:900;padding:4px 2px;cursor:pointer;}
 .sec-h .bank .bank-amt .ico{width:16px;height:16px;}
@@ -567,6 +570,10 @@ document.addEventListener('visibilitychange', function () {
     set('fav_games', JSON.stringify(f)); set('fav_games_updated_at', String(Date.now()));
     try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('fav_games'); } catch (e) {}
   }
+  // Arcade: the high scores cabinet (every arcade game's top 50 on one screen)
+  function hiLink() {
+    return el('button', { type: 'button', class: 'hs-link', html: Kit.icon('trophy') + '<span>High scores</span>', onclick: function () { go('hiscores'); } });
+  }
   function bankBadge() {
     var b = Casino.balance();
     var box = el('span', { class: 'bank' }, [
@@ -683,13 +690,13 @@ document.addEventListener('visibilitychange', function () {
       if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
       GAME_CATS.forEach(function (c) {
         var gs = vis.filter(function (g) { return g.cat === c.id; });
-        if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : null));
+        if (gs.length) list.appendChild(section(c.name, c.id, gs, c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : null));
       });
     } else if (state.cat === 'fav') {
       list.appendChild(section('Favorites', 'star', vis.filter(isFav), null, true));
     } else {
       var c = GAME_CATS.filter(function (x) { return x.id === state.cat; })[0];
-      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), c.id === 'casino' ? bankBadge() : null));
+      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), c.id === 'casino' ? bankBadge() : c.id === 'arcade' ? hiLink() : null));
     }
     $('empty').classList.toggle('show', !vis.length);
     markWraps();
