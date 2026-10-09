@@ -1023,6 +1023,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz.lz-fit:not(.lz-min) .lz-flow,.lz.lz-fit:not(.lz-min) .lz-card:not(.loc){--cu:min(44vh,94vw,460px,var(--cufit))!important;}
 .acts-row{display:flex;gap:8px;width:100%;}
 .act.act-ghost{visibility:hidden;pointer-events:none;}
+/* Play, greyed: not enough ink yet. The pips are the cost, lit for each ink you have ready */
+.act.off{cursor:default;color:var(--text-3);background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.22);}
+.act.off:active{transform:none;}
+.act.off .ai{opacity:.45;}
+.act.off .al{color:rgba(255,246,220,.5);}
+.act .pips{display:flex;gap:3px;justify-content:center;align-items:center;margin-top:3px;max-width:none;overflow:visible;}
+.act .pips .pip{flex:none;width:12px;height:14px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:rgba(227,189,98,.2);}
+.act .pips .pip.on{background:linear-gradient(180deg,#f6e1a8,#c9973a);}
+.act .pips em{font-style:normal;font-weight:900;color:var(--gilt-2);}
+.act .pips em.pn{margin-left:5px;font-size:.72rem;color:rgba(246,225,168,.7);}
 /* Hand filter and sort, under the strip of little cards: the library's round Sort button and its chips */
 .lz-hf{position:relative;z-index:211;display:flex;align-items:center;gap:10px;width:100%;max-width:560px;margin:-2px 0 2px;}
 .lz-hf .flt-btn{width:50px;height:50px;font-size:.66rem;}
@@ -8425,6 +8435,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     sp.style.fontSize = '';
     for (var fs = parseFloat(getComputedStyle(sp).fontSize), n = 0; sp.scrollWidth > sp.clientWidth + 1 && n < 8; n++) { fs -= 1; sp.style.fontSize = fs + 'px'; }
   }
+  // A Play button you can't use yet: greyed, with one ink pip per point of cost, the ones you have ready lit
+  function offBtn(o) {
+    var pips = '';
+    if (o.cost <= 12) for (var i = 0; i < o.cost; i++) pips += '<i class="pip' + (i < o.have ? ' on' : '') + '"></i>';
+    if (o.cost <= 12) pips += '<em class="pn">' + o.have + '/' + o.cost + '</em>';
+    else pips = '<em>' + o.have + ' / ' + o.cost + '</em>';
+    return el('button', { type: 'button', class: 'act off', disabled: true, 'aria-label': 'Play: needs ' + o.cost + ' ink, you have ' + o.have + ' ready',
+      html: '<i class="ai">' + Kit.icon('play') + '</i><span class="alw"><span class="al">Play</span><small class="pips" aria-hidden="true">' + pips + '</small></span>' });
+  }
   function fitLz(ov) {
     if (!ov || !ov.isConnected || !phoneZoom() || !S || ui.screen !== 'game' || ov.classList.contains('lz-min') || ov.classList.contains('reveal')) return;
     var over = ov.scrollHeight - ov.clientHeight;
@@ -8510,7 +8529,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' }), row = el('div', { class: 'acts-row' });
-      acts.forEach(function (a) { if (a.qty) { row.appendChild(qtyCtl(a.qty)); return; } if (a.ok === false) return; var pt = actParts(a);
+      acts.forEach(function (a) { if (a.qty) { row.appendChild(qtyCtl(a.qty)); return; } if (a.ok === false) return;
+        if (a.off) { row.appendChild(offBtn(a.off)); return; }
+        var pt = actParts(a);
         row.appendChild(el('button', { type: 'button', class: 'act' + (a.primary ? ' pri' : ''), 'aria-label': pt.text, html: '<i class="ai">' + pt.icon + '</i>' + (pt.subHTML ? '<span class="alw"><span class="al">' + esc(pt.main) + '</span><small class="cst">Cost:' + pt.subHTML + '</small></span>' : '<span class="al">' + esc(pt.main) + '</span>' + (pt.sub ? '<small>' + esc(pt.sub) + '</small>' : '')), onclick: function () { closeZoom(); a.go(); } })); });
       if (row.children.length > 3) row.classList.add('many');
       g.appendChild(row);
@@ -8873,7 +8894,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (my && z.z === 'hand') {
       var cost = playCost(pi, u), blocked = playBlocked(pi, u), need = blocked || 'Needs ' + cost + ' ink (you have ' + inkReady(pi) + ' ready).';
       var bg = d.t === 'character' && d.K.bodyguard;
-      add((bg ? 'Play ready · ' : 'Play · ') + cost + ' ink', canPlay(pi, u), d.song && (canSing(u) || singWhy(u)) ? '' : need, function () { humanPlay(u, {}); }, { primary: true });
+      // Short of ink: Play stays in the row, greyed, with the cost as ink pips (gold = ready, dim = still missing)
+      if (!canPlay(pi, u) && !blocked && inkReady(pi) < cost && !(d.song && canSing(u))) acts.push({ label: 'Play · ' + cost + ' ink', off: { cost: cost, have: inkReady(pi) }, go: function () {} });
+      else add((bg ? 'Play ready · ' : 'Play · ') + cost + ' ink', canPlay(pi, u), d.song && (canSing(u) || singWhy(u)) ? '' : need, function () { humanPlay(u, {}); }, { primary: true });
       if (dropsOf(pi) && cost > 0 && dropBonus(d)) add('Play · spend an ink drop', canPlay(pi, u), '', function () { humanPlay(u, { useDrop: true }); }, { full: true });
       if (d.t === 'action' && d.song) add('Sing it for free', canSing(u), singWhy(u), function () { humanSing(u); }, { primary: !canPlay(pi, u) });
       if (bg) add('Play exerted · ' + cost + ' ink', canPlay(pi, u), '', function () { humanPlay(u, { exerted: true }); }, { primary: true });   // Bodyguard: same cost, enters exerted
