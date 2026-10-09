@@ -970,7 +970,7 @@ body{background:
         var w0 = pullToSpin(om);
         if (!w0) {
           if (om < -1.5) Kit.toast('Pull it down to spin');
-          else if (om > 0.6) { Kit.toast('Give it a bigger pull!'); Kit.haptic('error'); }
+          else if (om > 0.15) { Kit.toast('Give it a bigger pull!'); Kit.haptic('error'); }
           return;
         }
         doSpin(w0);
@@ -979,8 +979,8 @@ body{background:
     });
     if (S.wangle == null) S.wangle = Math.random() * Math.PI * 2;
     BW.setAngle(S.wangle);
-    wheelLayout();
     paintWheelUI();
+    wheelLayout();
   }
   function wheelLayout() {
     if (!BW || !dom.wf || !dom.wf.isConnected) return;
@@ -1007,7 +1007,7 @@ body{background:
     dom.hint.style.setProperty('--c', p.color);
     dom.act.innerHTML = '';
     if (!p.wheel) {
-      dom.hint.innerHTML = Kit.icon('hand') + '<span>' + (multi ? '<b>' + Kit.esc(p.name) + '</b>: ' : '') + 'swipe down on the wheel to spin</span>';
+      dom.hint.innerHTML = Kit.icon('hand') + '<span>' + (multi ? '<b>' + Kit.esc(p.name) + '</b>: swipe down to spin' : 'swipe down on the wheel to spin') + '</span>';
       dom.act.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: '<span>Spin</span>', disabled: wheelBusy, onclick: function () { if (canSpin()) doSpin(buttonSpin()); } }));
     } else {
       var n = nextSpinner();
@@ -1422,6 +1422,7 @@ body{background:
     paintShow(); paintHint();
     kick();
   }
+  // test hook: board mode and the chip in play
   window._pkdbg = function () { return { mode: mode, chip: chip && { x: chip.x, y: chip.y, t: chip.t, done: chip.done }, raf: raf, acc: acc, aim: aim }; };
   function canAim() { return S && S.phase === 'drop' && (mode === 'aim' || mode === 'enter'); }
   function toUnits(e) { var b = cv.getBoundingClientRect(); return (e.clientX - b.left) / b.width * WU - WALL; }

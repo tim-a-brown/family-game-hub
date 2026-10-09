@@ -261,7 +261,7 @@
 
 /* ── The room behind the machine ─────────────────────────────────────────── */
 body.in-scene{background:transparent;}
-body.in-scene .stage{overflow-x:clip;}
+body.in-scene .stage{overflow:clip;}
 html:has(body.in-scene){overflow-x:hidden;}
 .scene{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:#05040a;}
 .sc-hold{position:absolute;left:-30px;top:-30px;will-change:transform;}
@@ -354,7 +354,7 @@ body.in-scene .below .btn{background:rgba(12,10,22,.72);color:#fff;-webkit-backd
 .bankrow .pill .ico{width:16px;height:16px;}
 .bankrow .pill.ic{padding:6px 8px;}
 .rig,.rig-classic{position:relative;padding:0!important;}
-.scaler{position:absolute;left:50%;top:10px;transform-origin:50% 0;}
+.scaler{position:absolute;left:50%;top:18px;transform-origin:50% 0;}
 .box3d.cab{position:relative;background:none!important;box-shadow:none!important;padding:0!important;border-radius:0!important;}
 .box3d.cab::after{display:none;}
 .bodycv{position:absolute;left:-90px;top:-90px;pointer-events:none;z-index:0;max-width:none;}
@@ -1122,11 +1122,13 @@ body.in-scene .below .btn{background:rgba(12,10,22,.72);color:#fff;-webkit-backd
   // ── Card ranks for the video machines, drawn once into the sprite ─────────
   var RANK_TXT = { A: 'A', K: 'K', Q: 'Q', J: 'J', T: '10', N: '9' };
   var RANK_STYLE = {
-    b: { font: "Georgia,'Times New Roman',serif", w: 900, line: '#fff1cf', dark: '#2a1206', size: 72,
+    b: { font: "Georgia,'Times New Roman',serif", w: 900, line: '#fff1cf', dark: '#1a0802', size: 72, edge: '#4a2208',
+      metal: [[0, '#fff0d0'], [0.28, '#e8a868'], [0.5, '#8a4a1a'], [0.58, '#b8703a'], [0.78, '#f0b878'], [1, '#5a2a0a']],
       c: { A: ['#7ff7ea', '#0c7a76'], K: ['#ff8a72', '#a3150c'], Q: ['#ffe07a', '#c46a00'], J: ['#b6f27e', '#2f7d1a'], T: ['#dcb6ff', '#5b2aa8'], N: ['#9ad0ff', '#1d58b0'] } },
     c: { font: 'Cinzel,Georgia,serif', w: 700, line: '#ffd76a', dark: '#08133a', size: 70,
       c: { A: ['#7fa8ff', '#173a96'], K: ['#7ff0d8', '#0f7f74'], Q: ['#ff8a8a', '#a3150c'], J: ['#a6ee72', '#2f7d1a'], T: ['#d2a8ff', '#5b2aa8'], N: ['#ffc070', '#b45a00'] } },
-    d: { font: "Bungee,'Lilita One',Impact,sans-serif", w: 400, line: '#ffe08a', dark: '#1a0202', size: 62,
+    d: { font: "Bungee,'Lilita One',Impact,sans-serif", w: 400, line: '#ffe08a', dark: '#2a0202', size: 62, edge: '#6a3a00',
+      metal: [[0, '#fffbe6'], [0.3, '#ffd45a'], [0.52, '#a86a08'], [0.6, '#d8a02a'], [0.8, '#fff0a8'], [1, '#7a4a00']],
       c: { A: ['#9ff2c3', '#0b6b3f'], K: ['#ff8a72', '#a3150c'], Q: ['#8cc8ff', '#1d58b0'], J: ['#d2a8ff', '#5b2aa8'], T: ['#ffc070', '#b45a00'] } }
   };
   (function () {
@@ -1136,13 +1138,15 @@ body.in-scene .below .btn{background:rgba(12,10,22,.72);color:#fff;-webkit-backd
       Object.keys(st.c).forEach(function (k) {
         var id = p + '-' + k, t = RANK_TXT[k], two = t.length > 1, fs = two ? st.size * 0.8 : st.size;
         var attrs = 'x="50" y="' + (50 + fs * 0.36).toFixed(1) + '" text-anchor="middle" font-family="' + st.font + '" font-weight="' + st.w + '" font-size="' + fs.toFixed(1) + '"' + (two ? ' textLength="80" lengthAdjust="spacingAndGlyphs"' : '');
-        s += '<linearGradient id="gr-' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".22" stop-color="' + st.c[k][0] + '"/><stop offset="1" stop-color="' + st.c[k][1] + '"/></linearGradient>';
+        s += '<linearGradient id="gr-' + id + '" x1="0" y1="0" x2="0" y2="1">' + (st.metal ? st.metal.map(function (m) { return '<stop offset="' + m[0] + '" stop-color="' + m[1] + '"/>'; }).join('')
+          : '<stop offset="0" stop-color="#fff"/><stop offset=".22" stop-color="' + st.c[k][0] + '"/><stop offset="1" stop-color="' + st.c[k][1] + '"/>') + '</linearGradient>';
         s += '<clipPath id="gc-' + id + '"><rect x="0" y="0" width="100" height="' + (50 - fs * 0.05).toFixed(1) + '"/></clipPath>';
         s += '<symbol id="sy-' + id + '" viewBox="0 0 100 100">' +
           '<g transform="translate(1.5 4)" opacity=".55"><text ' + attrs + ' fill="#000" stroke="#000" stroke-width="11" stroke-linejoin="round">' + t + '</text></g>' +
           '<text ' + attrs + ' fill="' + st.dark + '" stroke="' + st.dark + '" stroke-width="11" stroke-linejoin="round">' + t + '</text>' +
-          '<g transform="translate(0 2.2)"><text ' + attrs + ' fill="' + st.c[k][1] + '" stroke="' + st.c[k][1] + '" stroke-width="3.5" stroke-linejoin="round">' + t + '</text></g>' +
-          '<text ' + attrs + ' fill="url(#gr-' + id + ')" stroke="' + st.line + '" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke">' + t + '</text>' +
+          '<g transform="translate(0 2.2)"><text ' + attrs + ' fill="' + (st.edge || st.c[k][1]) + '" stroke="' + (st.edge || st.c[k][1]) + '" stroke-width="3.5" stroke-linejoin="round">' + t + '</text></g>' +
+          '<text ' + attrs + ' fill="url(#gr-' + id + ')" stroke="' + (st.metal ? st.c[k][0] : st.line) + '" stroke-width="' + (st.metal ? 3.2 : 2.6) + '" stroke-linejoin="round" paint-order="stroke">' + t + '</text>' +
+          (st.metal ? '<text ' + attrs + ' fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8" transform="translate(-.6 -.8)">' + t + '</text>' : '') +
           '<text ' + attrs + ' fill="#fff" opacity=".33" clip-path="url(#gc-' + id + ')">' + t + '</text></symbol>';
       });
     });
@@ -1997,11 +2001,11 @@ body.in-scene .below .btn{background:rgba(12,10,22,.72);color:#fff;-webkit-backd
     dom.scaler.style.transform = 'translateX(-50%)';
     var nw = dom.cab.offsetWidth, nh = dom.scaler.offsetHeight;
     var top = dom.rig.getBoundingClientRect().top + (window.scrollY || 0);
-    var availH = vh - top - 44, k = Math.min((wide ? 0.9 : 0.8) * vw / nw, availH / nh, wide ? 1.15 : 1.25);
+    var availH = vh - top - 52, k = Math.min((wide ? 0.9 : vw >= 700 ? 0.7 : 0.8) * vw / nw, availH / nh, wide ? 1.15 : 1.25);
     k = Math.max(0.45, k);
     dom.k = k;
     dom.scaler.style.transform = 'translateX(-50%) scale(' + k.toFixed(4) + ')';
-    dom.rig.style.height = Math.ceil(nh * k + 10) + 'px';
+    dom.rig.style.height = Math.ceil(nh * k + 18) + 'px';
     if (dom.handle) dom.handle.place();
     drawBody(Scene._tilt.x, Scene._tilt.y);
   }
@@ -2735,7 +2739,7 @@ body.in-scene .below .btn{background:rgba(12,10,22,.72);color:#fff;-webkit-backd
       { el: c.querySelector('.p-base'), d: 100, col: mat.base, top: false },
       { el: c.querySelector('.shelf'), d: 46, col: mat.side, top: mat.shelf },
       { el: c.querySelector('.p-screen'), d: 90, col: mat.side, top: false },
-      { el: c.querySelector('.p-top'), d: 110, col: mat.side, top: mat.top }
+      { el: c.querySelector('.p-top'), d: 110, col: mat.side, top: mat.top, rt: M.id === 'classic' ? 40 : 52 }
     ];
     // floor: contact shadow and ambient occlusion, pushed back and to the side the box leans
     var base = rect(parts[0].el), bl = back(base.x, base.y + base.h, 0, -110), br = back(base.x + base.w, base.y + base.h, 0, -110);
@@ -2744,25 +2748,37 @@ body.in-scene .below .btn{background:rgba(12,10,22,.72);color:#fff;-webkit-backd
     g.addColorStop(0, 'rgba(0,0,0,.85)'); g.addColorStop(0.45, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     x.save(); x.translate(sx, sy); x.scale(1, 0.16); x.translate(-sx, -sy); x.fillStyle = g; x.beginPath(); x.arc(sx, sy, base.w * 0.75, 0, 7); x.fill(); x.restore();
     x.fillStyle = 'rgba(0,0,0,.55)'; x.beginPath(); x.ellipse(sx, sy - 2, base.w * 0.56, 7, 0, 0, 7); x.fill();
+    // Each part is its front outline (rounded corners included) pushed back into the room; only the
+    // faces turned toward the viewer are drawn, shaded by which way they face.
+    function outline(r, rt, rb) {
+      var pts = [], i, n = 7;
+      pts.push([r.x, r.y + r.h - rb]);
+      for (i = 0; i <= n; i++) { var a1 = Math.PI + i / n * Math.PI / 2; pts.push([r.x + rt + Math.cos(a1) * rt, r.y + rt + Math.sin(a1) * rt]); }
+      for (i = 0; i <= n; i++) { var a2 = -Math.PI / 2 + i / n * Math.PI / 2; pts.push([r.x + r.w - rt + Math.cos(a2) * rt, r.y + rt + Math.sin(a2) * rt]); }
+      pts.push([r.x + r.w, r.y + r.h - rb]);
+      return pts;
+    }
+    function mix(c1, c2, t) { var a = parseInt(c1.slice(1), 16), b = parseInt(c2.slice(1), 16); function ch(sh) { return Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t); } return 'rgb(' + ch(16) + ',' + ch(8) + ',' + ch(0) + ')'; }
     parts.forEach(function (p) {
       if (!p.el) return;
-      var r = rect(p.el), z0 = p.fwd || 0, z1 = z0 - p.d, rad = 6;
-      var fTR = [r.x + r.w, r.y + rad], fBR = [r.x + r.w, r.y + r.h - rad], fTL = [r.x, r.y + rad], fBL = [r.x, r.y + r.h - rad];
-      var bTR = back(fTR[0], fTR[1], 0, -p.d), bBR = back(fBR[0], fBR[1], 0, -p.d), bTL = back(fTL[0], fTL[1], 0, -p.d), bBL = back(fBL[0], fBL[1], 0, -p.d);
-      var right = bTR[0] > fTR[0];
-      var s1 = right ? [fTR, bTR, bBR, fBR] : [fTL, bTL, bBL, fBL];
-      poly(s1, lg(s1[0], s1[1], p.col[0], p.col[1]));
-      // a shadow down the side where the part above overhangs it
-      x.strokeStyle = 'rgba(0,0,0,.35)'; x.lineWidth = 1; x.beginPath(); x.moveTo(s1[1][0], s1[1][1]); x.lineTo(s1[2][0], s1[2][1]); x.stroke();
-      // chrome trim along the front edge
-      x.strokeStyle = mat.trim; x.globalAlpha = 0.65; x.lineWidth = 1.6; x.beginPath(); x.moveTo(s1[0][0] + (right ? 1 : -1), s1[0][1]); x.lineTo(s1[3][0] + (right ? 1 : -1), s1[3][1]); x.stroke(); x.globalAlpha = 1;
-      if (p.top) {   // a top surface you can see: the top box lid and the button shelf
-        var tL = [r.x + rad, r.y], tR = [r.x + r.w - rad, r.y], bl2 = back(tL[0], tL[1], 0, -p.d), br2 = back(tR[0], tR[1], 0, -p.d);
-        if (bl2[1] < tL[1]) {
-          var tp = [tL, tR, br2, bl2]; poly(tp, lg([0, tL[1]], [0, bl2[1]], p.top[0], p.top[1]));
-          x.strokeStyle = 'rgba(255,255,255,.7)'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(tL[0], tL[1] + 0.5); x.lineTo(tR[0], tR[1] + 0.5); x.stroke();
-        }
+      var r = rect(p.el), rt = p.rt || 6, rb = 6, pts = outline(r, rt, rb), topC = p.top || [mix(p.col[0], '#ffffff', 0.25), p.col[1]];
+      for (var i = 0; i < pts.length - 1; i++) {
+        var f0 = pts[i], f1 = pts[i + 1], dx = f1[0] - f0[0], dy = f1[1] - f0[1], L = Math.hypot(dx, dy) || 1, nx = dy / L, ny = -dx / L;
+        if (nx * vx + ny * vy <= 0.002) continue;
+        var b0 = back(f0[0], f0[1], 0, -p.d), b1 = back(f1[0], f1[1], 0, -p.d);
+        var up = Math.max(0, -ny), side = 1 - up;
+        var fc = mix(p.col[0], topC[0], up), bc = mix(p.col[1], topC[1], up);
+        x.beginPath(); x.moveTo(f0[0], f0[1]); x.lineTo(f1[0], f1[1]); x.lineTo(b1[0], b1[1]); x.lineTo(b0[0], b0[1]); x.closePath();
+        x.fillStyle = lg(f0, b0, fc, bc); x.fill(); x.strokeStyle = x.fillStyle; x.lineWidth = 0.6; x.stroke();
       }
+      // a bright trim line along the front edge where it catches the light
+      x.strokeStyle = mat.trim; x.globalAlpha = 0.55; x.lineWidth = 1.4; x.beginPath();
+      var started = false;
+      for (var j = 0; j < pts.length - 1; j++) {
+        var g0 = pts[j], g1 = pts[j + 1], ex = g1[1] - g0[1], ey = -(g1[0] - g0[0]);
+        if (ex * vx + ey * vy > 0) { if (!started) { x.moveTo(g0[0], g0[1]); started = true; } x.lineTo(g1[0], g1[1]); }
+      }
+      x.stroke(); x.globalAlpha = 1;
     });
     // top box casts a shadow on the screen below it
     var tb = rect(parts[3].el), sc = rect(parts[2].el);
