@@ -382,6 +382,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
   background:radial-gradient(120% 140% at 0 50%,color-mix(in srgb,var(--lc) 38%,transparent),color-mix(in srgb,var(--lc) 16%,transparent) 70%),rgba(6,5,18,.38);
   box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lc) 70%,#fff 10%),inset 0 0 0 3px rgba(255,255,255,.08),0 4px 14px rgba(0,0,0,.35);}
 .locgrp:not(.busy){padding:0;background:none;box-shadow:none;}
+/* crowded: the characters at a location fan out in an overlapping stack on its pad, each still showing its name */
+.locgrp.crowd > .slot.stk{margin-left:calc(var(--cu) * .716 * (var(--vis,1) - 1) - var(--gap,6px));box-shadow:-7px 0 12px -5px rgba(0,0,0,.75);}
 /* the characters stand on the location's ground: a soft lit edge where they meet it */
 .locgrp.busy > .slot.loc{box-shadow:6px 0 14px -6px color-mix(in srgb,var(--lc) 80%,transparent);}
 .under{position:absolute;inset:0;transform:translate(4px,-4px);border-radius:calc(var(--cu) * .05);pointer-events:none;}
@@ -7325,7 +7327,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (isLoc(u)) {
         var g = el('div', { class: 'locgrp', 'data-loc': u, style: { '--lc': inkColor(u) } });
         g.appendChild(slotFor(u, 'board'));
-        order.forEach(function (x) { if (isChar(x) && C(x).at === u) g.appendChild(slotFor(x, 'board')); });
+        var nAt = 0;
+        order.forEach(function (x) { if (isChar(x) && C(x).at === u) { var sx = slotFor(x, 'board'); sx.classList.toggle('stk', nAt++ > 0); g.appendChild(sx); } });
         g.classList.toggle('busy', g.children.length > 1);
         host.appendChild(g); return;
       }
@@ -7333,10 +7336,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       host.appendChild(slotFor(u, 'board'));
     });
   }
-  function fitCu(W, H, fs, gap, maxCu) {
+  // Card size for each side of the table: as big as fits. A location and the characters at it are one block on its
+  // pad (it can't wrap), so it's measured as one; when several characters crowd a location they fan out in an
+  // overlapping stack on the pad (like cards held in a hand) instead of shrinking everything on that side
+  function fitCuU(W, H, us, gap, maxCu) {
     function fits(cu) {
       var x = 0, rows = 1;
-      for (var i = 0; i < fs.length; i++) { var w = fs[i] * cu; if (x > 0 && x + gap + w > W) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; }
+      for (var i = 0; i < us.length; i++) { var w = us[i].w * cu + us[i].px; if (x > 0 && x + gap + w > W) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; if (w > W) return false; }
       return rows * cu + (rows - 1) * gap <= H;
     }
     var lo = 28, hi = Math.max(30, maxCu);
@@ -7344,12 +7350,26 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     for (var k = 0; k < 16; k++) { var mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
     return Math.floor(lo);
   }
+  var LOC_VIS = 0.42;   // how much of each stacked character shows (its name and strength)
   function fitBoards() {
     $$('.lp-board').forEach(function (b) {
-      var slots = $$('.slot', b), pads = $$('.locgrp.busy', b).length, W = b.clientWidth - 12 - pads * 14, H = b.clientHeight - 12 - (pads ? 12 : 0);
-      var fs = slots.map(function (s) { return s.classList.contains('wide') ? 1 : 0.716; });
-      var cu = fitCu(W, H, fs, 6, Math.min(H, window.innerWidth >= 700 ? 200 : 150));
+      var items = Array.prototype.map.call(b.children, function (ch) {
+        if (ch.classList.contains('locgrp')) { var sl = $$(':scope > .slot', ch); return { g: ch, locw: sl[0] && sl[0].classList.contains('wide') ? 1 : 0.716, n: Math.max(0, sl.length - 1) }; }
+        if (ch.classList.contains('slot')) return { w: ch.classList.contains('wide') ? 1 : 0.716 };
+        return null;
+      }).filter(Boolean);
+      var gap = 6, busy = items.some(function (it) { return it.n; }), W = b.clientWidth - 12, H = b.clientHeight - 12 - (busy ? 12 : 0);
+      var maxCu = Math.min(H, window.innerWidth >= 700 ? 200 : 150);
+      function units(vis) { return items.map(function (it) {
+        if (!it.g) return { w: it.w, px: 0 };
+        if (!it.n) return { w: it.locw, px: 0 };
+        var stacked = vis < 1 && it.n >= 2;
+        return { w: it.locw + 0.716 + (it.n - 1) * 0.716 * (stacked ? vis : 1), px: 10 + gap + (stacked ? 0 : (it.n - 1) * gap) };
+      }); }
+      var cu = fitCuU(W, H, units(1), gap, maxCu), vis = 1;
+      if (items.some(function (it) { return it.n >= 2; })) { var st = fitCuU(W, H, units(LOC_VIS), gap, maxCu); if (st > cu * 1.1) { cu = st; vis = LOC_VIS; } }
       b.style.setProperty('--cu', cu + 'px');
+      items.forEach(function (it) { if (!it.g) return; it.g.classList.toggle('crowd', vis < 1 && it.n >= 2); it.g.style.setProperty('--vis', vis); });
     });
   }
   function fitHand() {
