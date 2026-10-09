@@ -7429,7 +7429,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       return;
     }
     delete row.dataset.z;
-    p.hand.forEach(function (u) { row.appendChild(slotFor(u, 'hand')); });
+    // the hand on the table is held in the order you sorted it to (the filter only narrows the card view)
+    handView(pi, true).forEach(function (u) { row.appendChild(slotFor(u, 'hand')); });
   }
   var PK_STAR = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20.0 1.0L25.1 7.8L33.4 6.6L32.2 14.9L39.0 20.0L32.2 25.1L33.4 33.4L25.1 32.2L20.0 39.0L14.9 32.2L6.6 33.4L7.8 25.1L1.0 20.0L7.8 14.9L6.6 6.6L14.9 7.8z" fill="#3a404d" stroke="#d9dde4" stroke-width="1.1" stroke-linejoin="round"/><circle cx="20" cy="20" r="11.6" fill="#f1f2f4" stroke="#8d939d" stroke-width="1.2"/></svg>';
   var PK_SHIELD = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6.5 5h27v14.2c0 8.2-6.2 13.6-13.5 16.3C12.7 32.8 6.5 27.4 6.5 19.2z" fill="#3a404d" stroke="#eef0f3" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.3 7.6h21.4v11.5c0 6.6-4.9 11-10.7 13.3C14.2 30.1 9.3 25.7 9.3 19.1z" fill="none" stroke="#eef0f3" stroke-opacity=".35" stroke-width=".8"/></svg>';
@@ -9082,8 +9083,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (k === 's' || k === 'w' || k === 'l') return d[k] == null || d[k] === '' ? null : +d[k];
     return 0;
   }
-  function handView(pi) {
-    var hand = S.P[pi].hand, v = hvGet(), list = hand.filter(function (x) { return hvFits(x, v.f); });
+  function handView(pi, sortOnly) {
+    var hand = S.P[pi].hand, v = hvGet(), list = hand.filter(function (x) { return sortOnly || hvFits(x, v.f); });
     if (!list.length) list = hand.slice();
     var idx = function (x) { return hand.indexOf(x); };
     if (v.s === 'hand') return v.dir === 1 ? list : list.reverse();
@@ -9096,7 +9097,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     });
   }
   // Re-deal the card view in place (no fade in, so the table doesn't flash through)
-  function hvRefresh(u, pi) { var nv = handView(pi); ui.lzQuiet = true; openZoom(nv.indexOf(u) >= 0 ? u : nv[0], 0); }
+  function hvRefresh(u, pi) { var nv = handView(pi); ui.lzQuiet = true; openZoom(nv.indexOf(u) >= 0 ? u : nv[0], 0); if (S && ui.screen === 'game') { renderHand(pi); fitHand(); } }
   function hvSortSheet(u, pi) {
     var box = el('div', { class: 'sortbox' }), sh, cur = u;
     function paint() {
