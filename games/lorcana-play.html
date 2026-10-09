@@ -4939,6 +4939,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (S && S.mode === 'online' && !NET.owner) return;   // the device running the game resolves abilities (queued ones go back with the answer)
     if (!S || S.phase !== 'play' || finishing) { Q = []; flushWait(); return; }
     if ($('.lz.reveal') || handing) { later(pumpQ, 250); return; }
+    if (Q.length && fxLeft()) { afterFx(pumpQ, 0); return; }   // let the last action's animation land first
     var it = Q.shift();
     if (!it) { flushWait(); return; }
     qBusy = true; decPi = it.pi;
@@ -4980,14 +4981,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // An optional ability with no choices on the table: ask first
     var first = ab.fx[0];
     if (first.may && !(first.t && first.t.sel === 'chosen') && ctlHuman(pi) && ['look', 'playFree', 'fromDiscard', 'modal', 'discard', 'discMove', 'search', 'handInk', 'choose'].indexOf(first.op) < 0) {
-      return later(function () {
+      return afterFx(function () {
         askUse(src, ab, pi, function (yes) {
           if (!yes) { log(S.P[pi].name + ' chose not to use ' + abTitle(src, ab), pi); return done(); }
           first = null; st.asked = true; runFx(ab.fx, 0, st, finish);
         });
       }, 300);
     }
-    later(function () { runFx(ab.fx, 0, st, finish); }, 520);
+    afterFx(function () { runFx(ab.fx, 0, st, finish); }, 520);
     function finish() {
       if (st.said.length) log(DD(src).n + (ab.name ? ' · ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
       // what the computer's abilities did, so nothing slips by
@@ -5008,7 +5009,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     doEff(e, st, i === 0 && st.asked, function (did) {
       if (t !== tok) return;
       st.did = did !== false;
-      later(function () { runFx(list, i + 1, st, done); }, 420);
+      afterFx(function () { runFx(list, i + 1, st, done); }, 420);
     });
   }
 
@@ -6768,6 +6769,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function cpuStep() {
     if (!S || S.phase !== 'play' || S.step !== 'main' || !S.P[S.cur].cpu || finishing) return;
     if (modalOpen() || !quiet() || handing) { later(cpuStep, 500); return; }
+    if (fxLeft()) { afterFx(cpuStep, 0); return; }
     S.cpuN = (S.cpuN || 0) + 1;
     var pi = S.cur, a = S.cpuN > 60 ? null : cpuChoose(pi);
     if (!a) { S.cpuN = 0; endTurn(); return; }
@@ -7620,19 +7622,19 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     paintMid(); renderHand(b); renderBar(); renderMull(); lzFeed();
     lp.classList.toggle('picking', !!ui.pick);
     fitBoards(); fitHand(); placeLight();
-    var q = fxq; fxq = []; q.forEach(function (f) { try { f(); } catch (e) {} });
+    var q = fxq; fxq = []; q.forEach(function (f) { try { f(); if (f.ms) holdFx(f.ms); } catch (e) {} });
   }
 
   // ── Motion: every card glides from where it was to where it is now ─────
   var fxq = [];
   var fx = {
     // ink drops: the droplet by the inkwell bumps, and the change floats up from it
-    drops: function (pi, n) { fxq.push(function () { var r = $('.inkz[data-z="ink-' + pi + '"] .dr') || $('.inkz[data-z="ink-' + pi + '"]'); if (!r) return; r.classList.remove('bump', 'spend'); void r.offsetWidth; r.classList.add(n > 0 ? 'bump' : 'spend'); floatText(r, (n > 0 ? '+' : '−') + Math.abs(n)); }); Kit.sfx(n > 0 ? 'pop' : 'chip'); },
-    lore: function (pi, n) { if (questing) return; fxq.push(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); loreGlow(r); floatText(r, '+' + n); }); },
-    hit: function (u) { if (clashing) return; fxq.push(function () { $$('.slot[data-uid="' + u + '"]').forEach(function (s) { s.classList.remove('hitd'); void s.offsetWidth; s.classList.add('hitd'); }); }); },
+    drops: function (pi, n) { fxPush(function () { var r = $('.inkz[data-z="ink-' + pi + '"] .dr') || $('.inkz[data-z="ink-' + pi + '"]'); if (!r) return; r.classList.remove('bump', 'spend'); void r.offsetWidth; r.classList.add(n > 0 ? 'bump' : 'spend'); floatText(r, (n > 0 ? '+' : '−') + Math.abs(n)); }); Kit.sfx(n > 0 ? 'pop' : 'chip'); },
+    lore: function (pi, n) { if (questing) return; fxPush(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); loreGlow(r); floatText(r, '+' + n); }); },
+    hit: function (u) { if (clashing) return; fxPush(function () { $$('.slot[data-uid="' + u + '"]').forEach(function (s) { s.classList.remove('hitd'); void s.offsetWidth; s.classList.add('hitd'); }); }); },
     banish: function (u) { Kit.haptic('heavy'); dissolving[u] = clashing ? 290 : 1; },
     // A card's ability goes off: the card glows and its ability name rises from it
-    flare: function (u, name) { fxq.push(function () {
+    flare: function (u, name) { fxPush(function () {
       var s = $('.lp .slot[data-uid="' + u + '"]'), r = s ? s.getBoundingClientRect() : null;
       if (s) { s.classList.remove('abfire'); void s.offsetWidth; s.classList.add('abfire'); for (var q = 0; q < 8; q++) { var an = q / 8 * Math.PI * 2; twinkle(r.left + r.width / 2 + Math.cos(an) * r.width * 0.62, r.top + r.height / 2 + Math.sin(an) * r.height * 0.58, q * 45); } }
       var tag = el('div', { class: 'abtag', text: name });
@@ -7658,14 +7660,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         setTimeout(function () { spray(B, col, 6, 26, 0); }, 300 + i * 70);
       });
     },
-    num: function (u, text, kind) { fxq.push(function () {
+    num: function (u, text, kind) { fxPush(function () {
       var s = $('.lp .slot[data-uid="' + u + '"]'); if (!s) return;
       if (kind === 'heal' || kind === 'buff') { s.classList.remove('glowg'); void s.offsetWidth; s.classList.add(kind === 'heal' ? 'glowg' : 'glowb'); setTimeout(function () { s.classList.remove('glowg', 'glowb'); }, 900); }
       var r = s.getBoundingClientRect(), f = el('div', { class: 'fxnum ' + kind, text: text });
       f.style.left = (r.left + r.width / 2) + 'px'; f.style.top = (r.top + r.height * 0.4) + 'px';
       document.body.appendChild(f); setTimeout(function () { f.remove(); }, 1300);
     }); },
-    lose: function (pi, n) { if (n) fxq.push(function () {
+    lose: function (pi, n) { if (n) fxPush(function () {
       var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; floatText(r, '−' + n);
       var c = mid(r.getBoundingClientRect());
       for (var i = 0; i < Math.min(5, n); i++) { var o = el('div', { class: 'orb drain' }); place(o, c.x, c.y); document.body.appendChild(o); var dx = (Math.random() - 0.5) * 70;
@@ -7674,11 +7676,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }); },
     // Quest: the card rises in gold and sparks of lore arc over to the lore ring
     quest: function (u, pi, n) {
-      fxq.push(function () { var s = slotEl(u); if (s) { s.classList.remove('questing'); void s.offsetWidth; s.classList.add('questing'); setTimeout(function () { s.classList.remove('questing'); }, 900); } });
+      fxPush(function () { var s = slotEl(u); if (s) { s.classList.remove('questing'); void s.offsetWidth; s.classList.add('questing'); setTimeout(function () { s.classList.remove('questing'); }, 900); } });
       fx.loreFrom(u, pi, n);
     },
     // Challenge: the attacker lunges into the defender; impact, shards, damage on both
-    clash: function (a, t, ra, rt, res) { fxq.push(function () {
+    clash: function (a, t, ra, rt, res) { fxPush(function () {
       var sa = slotEl(a), sb = slotEl(t), A = sa ? mid(sa.getBoundingClientRect()) : mid(ra), T = sb ? mid(sb.getBoundingClientRect()) : mid(rt);
       var dx = T.x - A.x, dy = T.y - A.y;
       if (sa && sa.animate && !calm()) {
@@ -7702,7 +7704,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }, calm() ? 0 : 300);
     }); },
     // Ink: a splash in the card's ink colour where it lands in the inkwell
-    ink: function (pi, col) { fxq.push(function () {
+    ink: function (pi, col) { fxPush(function () {
       var w = $('.lp [data-z="ink-' + pi + '"]'); if (!w) return;
       setTimeout(function () {
         if (!w.isConnected) w = $('.lp [data-z="ink-' + pi + '"]'); if (!w) return;
@@ -7720,7 +7722,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }, calm() ? 0 : 380);
     }); },
     // A character's ink has dried at the start of its owner's turn: a varnish glint and twinkles
-    dried: function (u) { fxq.push(function () {
+    dried: function (u) { fxPush(function () {
       var s = slotEl(u); if (!s) return;
       s.classList.remove('dried'); void s.offsetWidth; s.classList.add('dried'); setTimeout(function () { s.classList.remove('dried'); }, 950);
       var r = s.getBoundingClientRect();
@@ -7728,7 +7730,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }); },
     // ── What abilities do to a card ──
     // Damage: three ink claw slashes and a spray
-    slash: function (u) { fxq.push(function () {
+    slash: function (u) { fxPush(function () {
       var r = rectOf(u); if (!r) return;
       var b = el('div', { class: 'slash', html: '<svg viewBox="0 0 100 140" preserveAspectRatio="none" width="100%" height="100%"><path pathLength="1" d="M22 18 L74 120"/><path pathLength="1" d="M44 10 L92 100"/><path pathLength="1" d="M8 44 L50 132"/></svg>' });
       place(b, r.left, r.top, r.width, r.height); document.body.appendChild(b);
@@ -7737,21 +7739,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       spray(mid(r), '#ff5252', 7, 50, 260);
     }); },
     // Damage removed: green-gold motes rise through the card
-    mend: function (u) { fxq.push(function () {
+    mend: function (u) { fxPush(function () {
       var r = rectOf(u); if (!r) return;
       for (var i = 0; i < 10; i++) rise(r.left + r.width * (0.15 + Math.random() * 0.7), r.bottom - r.height * 0.1, -r.height * (0.55 + Math.random() * 0.35), i % 3 ? '#7dffa6' : '#f6e1a8', i * 60);
     }); },
     // Weakened: the colour is drawn out of the card in cold wisps
-    drain: function (u) { fxq.push(function () {
+    drain: function (u) { fxPush(function () {
       var s = slotEl(u); if (!s) return;
       s.classList.remove('drained'); void s.offsetWidth; s.classList.add('drained'); setTimeout(function () { s.classList.remove('drained'); }, 1000);
       var r = s.getBoundingClientRect(), c = mid(r);
       for (var i = 0; i < 9; i++) { var a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, d = r.height * (0.4 + Math.random() * 0.4); mote(c.x + (Math.random() - 0.5) * r.width * 0.5, c.y + (Math.random() - 0.5) * r.height * 0.4, Math.cos(a) * d, Math.sin(a) * d, '#9ec8ff', i * 50, 800); }
     }); },
     // Strengthened (or shifted, or boosted): a rune circle turns under the card
-    rune: function (u, col) { fxq.push(function () { var r = rectOf(u); if (r) runeAt(mid(r), Math.max(r.width, r.height) * 1.35, col); }); },
+    rune: function (u, col) { fxPush(function () { var r = rectOf(u); if (r) runeAt(mid(r), Math.max(r.width, r.height) * 1.35, col); }); },
     // Forced to exert: binding bands snap round it and it lands hard
-    forceEx: function (u) { fxq.push(function () {
+    forceEx: function (u) { fxPush(function () {
       var s = slotEl(u); if (!s) return;
       s.classList.remove('thud'); void s.offsetWidth; s.classList.add('thud'); setTimeout(function () { s.classList.remove('thud'); }, 600);
       var r = s.getBoundingClientRect();
@@ -7763,14 +7765,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       Kit.sfx('chip'); Kit.haptic('light');
     }); },
     // Readied by an ability: a column of light lifts it
-    pillar: function (u) { fxq.push(function () {
+    pillar: function (u) { fxPush(function () {
       var r = rectOf(u); if (!r) return;
       var p = el('div', { class: 'pillar' }); place(p, r.left + r.width * 0.15, r.bottom - r.height * 1.7, r.width * 0.7, r.height * 1.7); document.body.appendChild(p); setTimeout(function () { p.remove(); }, 820);
       for (var i = 0; i < 4; i++) twinkle(r.left + r.width * (0.25 + Math.random() * 0.5), r.top + r.height * (0.2 + Math.random() * 0.5), 150 + i * 110);
       Kit.sfx('sparkle');
     }); },
     // Keyword gained: its emblem pops over the card, then settles into the keyword column
-    emblem: function (u, kw) { fxq.push(function () {
+    emblem: function (u, kw) { fxPush(function () {
       var s = slotEl(u); if (!s) return;
       var r = s.getBoundingClientRect(), c = mid(r), cu = parseFloat(getComputedStyle(s).getPropertyValue('--cu')) || r.height;
       var e = el('div', { class: 'emblem', html: kwIcon(kw) }); place(e, c.x, c.y); document.body.appendChild(e);
@@ -7785,13 +7787,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       Kit.sfx('sparkle');
     }); },
     // Can't quest / challenge / ready…: chains snap across it (they stay while the effect lasts)
-    chains: function (u) { fxq.push(function () {
+    chains: function (u) { fxPush(function () {
       var s = slotEl(u); if (!s) return;
       s.classList.remove('snap'); void s.offsetWidth; s.classList.add('snap'); setTimeout(function () { s.classList.remove('snap'); }, 700);
       Kit.sfx('chip'); Kit.haptic('light');
     }); },
     // Can challenge ready characters: crossed blades of light
-    xglint: function (u) { fxq.push(function () {
+    xglint: function (u) { fxPush(function () {
       var r = rectOf(u); if (!r) return; var c = mid(r), L = Math.hypot(r.width, r.height) * 0.9;
       [35, -35].forEach(function (deg, i) {
         var g = el('div', { class: 'streak' }); place(g, c.x - L / 2, c.y, L, null); g.style.transformOrigin = 'center'; document.body.appendChild(g);
@@ -7800,9 +7802,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
     }); },
     // Returned to hand: a swirl where it stood
-    vortex: function (r) { if (!r) return; fxq.push(function () { var z = Math.max(r.width, r.height) * 1.1, v = el('div', { class: 'vortex' }); place(v, r.left + r.width / 2 - z / 2, r.top + r.height / 2 - z / 2, z, z); document.body.appendChild(v); setTimeout(function () { v.remove(); }, 820); Kit.sfx('whoosh'); }); },
+    vortex: function (r) { if (!r) return; fxPush(function () { var z = Math.max(r.width, r.height) * 1.1, v = el('div', { class: 'vortex' }); place(v, r.left + r.width / 2 - z / 2, r.top + r.height / 2 - z / 2, z, z); document.body.appendChild(v); setTimeout(function () { v.remove(); }, 820); Kit.sfx('whoosh'); }); },
     // Played: the card is inked into being, the ink washing away from the bottom up over a rune
-    summon: function (u, shift) { fxq.push(function () {
+    summon: function (u, shift) { fxPush(function () {
       var s = slotEl(u); if (!s || calm()) return;
       var lc = $('.lc', s), col = inkColor(u), r = s.getBoundingClientRect(), c = mid(r);
       if (lc) { var v = el('i', { class: 'inkveil' }); lc.appendChild(v); setTimeout(function () { v.remove(); }, 950); }
@@ -7811,13 +7813,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       for (var i = 0; i < 10; i++) { var a = Math.random() * Math.PI * 2, d = r.height * (0.65 + Math.random() * 0.3); mote(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, -Math.cos(a) * d, -Math.sin(a) * d, col, i * 30, 520); }
     }); },
     // Shift: the new card slams down on the one beneath, and the table shakes
-    shiftDrop: function (u) { fxq.push(function () {
+    shiftDrop: function (u) { fxPush(function () {
       var s = slotEl(u); if (!s || calm()) return;
       if (s.animate) s.animate([{ transform: 'translateY(-46px) scale(1.25)', opacity: 0.4 }, { transform: 'translateY(4px) scale(.97)', opacity: 1, offset: 0.7 }, { transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.5,0,.3,1)' });
       setTimeout(function () { var bd = s.closest('.lp-board'); pulse(bd, 'shake', 400); var r = s.getBoundingClientRect(); spray({ x: r.left + r.width / 2, y: r.bottom - 6 }, '#f6e1a8', 12, 60, 0); Kit.haptic('medium'); Kit.sfx('clash'); }, 330);
     }); },
     // Milled: cards flick off the top of the deck one after another and land on the discard pile
-    mill: function (pi, n) { if (n > 0) fxq.push(function () {
+    mill: function (pi, n) { if (n > 0) fxPush(function () {
       var dk = $('.lp [data-z="deck-' + pi + '"]'), ds = $('.lp [data-z="disc-' + pi + '"]'); if (!dk || !ds || calm()) return;
       var a = dk.getBoundingClientRect(), b = ds.getBoundingClientRect();
       for (var i = 0; i < Math.min(n, 6); i++) (function (i) {
@@ -7829,7 +7831,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       })(i);
     }); },
     // Moving to a location: a trail of light from the character to the location, a hop, and the location answers
-    travel: function (u, loc) { fxq.push(function () {
+    travel: function (u, loc) { fxPush(function () {
       var a = rectOf(u), b = rectOf(loc); if (!a || !b || calm()) return;
       var A = mid(a), B = mid(b), col = inkColor(loc);
       for (var i = 1; i <= 7; i++) { var t = i / 8, dot = el('i', { class: 'trail' }); dot.style.setProperty('--ic', col); place(dot, A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t - Math.sin(t * Math.PI) * 30); dot.style.animationDelay = (i * 45) + 'ms'; document.body.appendChild(dot); setTimeout((function (x) { return function () { x.remove(); }; })(dot), 900 + i * 45); }
@@ -7837,7 +7839,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       setTimeout(function () { var ls = slotEl(loc); pulse(ls, 'arrive', 800); runeAt(B, Math.max(b.width, b.height) * 1.2, col); }, 380);
     }); },
     // A song: notes rise from whoever sang it
-    notes: function (us) { fxq.push(function () {
+    notes: function (us) { fxPush(function () {
       (us || []).forEach(function (x) { pulse(slotEl(x), 'sway', 1200); });
       var from = (us && us.length ? us.map(rectOf).filter(Boolean) : []); if (!from.length) { var m = $('.lp-mid'); if (m) from = [m.getBoundingClientRect()]; }
       from.forEach(function (r, j) { for (var i = 0; i < 4; i++) {
@@ -7848,15 +7850,29 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       } });
     }); },
     // Cards drawn: the deck riffles
-    drawn: function (pi) { fxq.push(function () { var d = $('.lp [data-z="deck-' + pi + '"]'); if (d) { d.classList.remove('riffle'); void d.offsetWidth; d.classList.add('riffle'); } }); },
+    drawn: function (pi) { fxPush(function () { var d = $('.lp [data-z="deck-' + pi + '"]'); if (d) { d.classList.remove('riffle'); void d.offsetWidth; d.classList.add('riffle'); } }); },
     // Lore from an ability: diamonds fly from the card to the lore ring
-    loreFrom: function (src, pi, n) { fxq.push(function () {
+    loreFrom: function (src, pi, n) { fxPush(function () {
       var ring = $('.lore[data-p="' + pi + '"]'); if (!ring) return;
       var s = src && slotEl(src), a = mid(s ? s.getBoundingClientRect() : ($('.lp-mid') || ring).getBoundingClientRect()), b = mid(ring.getBoundingClientRect()), k = Math.max(1, Math.min(5, n));
       Kit.sfx('sparkle');
       for (var i = 0; i < k; i++) flyOrb(a, b, 120 + i * 95, i === k - 1 ? function () { ring.classList.remove('bump'); void ring.offsetWidth; ring.classList.add('bump'); loreGlow(ring); floatText(ring, '+' + n); Kit.sfx('good'); } : null);
     }); }
   };
+  // Every action gets its moment: while an animation plays, the next ability, prompt or computer move waits for it
+  // to land (plus a short beat), so a quest's lore isn't lost under the "may draw" sheet that follows it.
+  var FX_MS = { quest: 1250, loreFrom: 1250, lose: 1000, flare: 800, clash: 950, ink: 900, summon: 900, shiftDrop: 750, mill: 900, travel: 1100, notes: 1100, emblem: 1100,
+    slash: 750, mend: 900, drain: 900, rune: 800, forceEx: 800, pillar: 800, chains: 650, xglint: 700, vortex: 750, num: 700, drops: 500, lore: 700 };
+  var fxMs = 0, fxUntil = 0;
+  function fxPush(f) { if (fxMs) f.ms = fxMs; fxq.push(f); }
+  Object.keys(FX_MS).forEach(function (k) {
+    var f = fx[k];
+    fx[k] = function () { var was = fxMs; fxMs = Math.max(was, FX_MS[k]); try { return f.apply(fx, arguments); } finally { fxMs = was; } };
+  });
+  function holdFx(ms) { if (!calm()) fxUntil = Math.max(fxUntil, Date.now() + ms * SPD); }
+  function fxLeft() { return Math.max(0, fxUntil - Date.now()); }
+  // run fn once what's on screen has played out: at least `min` ms (the old fixed pause), and a beat after the last animation
+  function afterFx(fn, min) { var t = tok, w = fxLeft(); setTimeout(function () { if (t !== tok || !S) return; var more = fxLeft(); if (more > 0) return afterFx(fn, 0); fn(); }, Math.max((min || 0) * SPD, w ? w + 180 * SPD : 0)); }
   var clashing = false, questing = false, leaving = {};
   // ── Little pieces the effects are built from ──
   var NOTE_SVG = '<svg viewBox="0 0 24 24"><ellipse cx="8" cy="17.5" rx="4.2" ry="3.1" transform="rotate(-22 8 17.5)" fill="currentColor"/><path d="M11.6 17V3.2c1.6 2.6 6.2 3.2 6.8 7.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
