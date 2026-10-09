@@ -233,6 +233,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* The table's light: one band of light across the whole table that moves as the phone tilts. Each card shows the
    part of it that falls on that card, so the shine sits on a few cards and slides on to others */
 .lp-board .lc > .bsh{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
+  opacity:var(--lsh,0);transition:opacity .9s ease;   /* shows only while the phone moves, then fades, so it never sits over a card */
   background:linear-gradient(115deg,transparent 40%,rgba(255,248,226,.2) 46.5%,rgba(255,255,255,.42) 50%,rgba(255,248,226,.2) 53.5%,transparent 60%) no-repeat;
   background-size:calc(var(--bw,400px) * 1.6) calc(var(--bh,300px) * 1.6);
   background-position:calc(var(--bw,400px) * (var(--lx,.5) - .8) - var(--ox,0px)) calc(var(--bh,300px) * (var(--ly,.5) - .8) - var(--oy,0px));}
@@ -7453,6 +7454,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     TL.raf = requestAnimationFrame(function frame() {
       var felt = S && ui.screen === 'game' && $('.lp-felt');
       if (!felt || document.hidden) { TL.raf = 0; return; }
+      // nothing to show (no real tilt for a while, so the light has faded out): sleep without touching the table
+      var since = Date.now() - (tiltT.got ? tiltT.act || 0 : TL.act || 0);
+      if (since > 1300 && TL.felt === felt) { TL.raf = 0; felt.style.setProperty('--lsh', '0'); return; }
       var tx = tiltT.got ? tiltT.x : TL.tx, ty = tiltT.got ? tiltT.y : TL.ty;
       TL.x += (tx - TL.x) * 0.08; TL.y += (ty - TL.y) * 0.08;
       var lx = 0.5 + TL.x * 0.55, ly = 0.5 + TL.y * 0.45;
@@ -7460,11 +7464,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         TL.lx = lx; TL.ly = ly; TL.felt = felt;
         felt.style.setProperty('--lx', lx.toFixed(3)); felt.style.setProperty('--ly', ly.toFixed(3));
       }
-      if (Math.abs(tx - TL.x) < 0.003 && Math.abs(ty - TL.y) < 0.003) { TL.raf = 0; return; }
+      if (Math.abs(tx - TL.x) < 0.003 && Math.abs(ty - TL.y) < 0.003) {
+        TL.raf = 0; if (!TL.fade) TL.fade = setTimeout(function () { TL.fade = 0; if (TL.felt) TL.felt.style.setProperty('--lsh', '0'); }, 900);
+        return;
+      }
+      // lit by a real tilt (not the small tremor of a hand holding the phone); it fades again once the phone settles
+      if (Date.now() - (tiltT.got ? tiltT.act || 0 : TL.act || 0) < 250) { felt.style.setProperty('--lsh', '1'); clearTimeout(TL.fade); TL.fade = 0; }
+      else if (!TL.fade) TL.fade = setTimeout(function () { TL.fade = 0; if (TL.felt) TL.felt.style.setProperty('--lsh', '0'); }, 900);
       TL.raf = requestAnimationFrame(frame);
     });
   }
-  window.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse' || tiltT.got) return; TL.tx = Math.max(-1, Math.min(1, e.clientX / innerWidth * 2 - 1)); TL.ty = Math.max(-1, Math.min(1, e.clientY / innerHeight * 2 - 1)); tableLight(); }, { passive: true });
+  window.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse' || tiltT.got) return; TL.tx = Math.max(-1, Math.min(1, e.clientX / innerWidth * 2 - 1)); TL.ty = Math.max(-1, Math.min(1, e.clientY / innerHeight * 2 - 1)); TL.act = Date.now(); tableLight(); }, { passive: true });
   function fitHand() {
     var hand = $('.lp-hand'); if (!hand) return;
     var row = $('.hrow', hand), cu = Math.max(60, hand.clientHeight - 14);
@@ -8400,12 +8410,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // Held near upright, the sensor sometimes flips an angle by ~180° for a moment (or wraps round): a jump no hand
     // makes between two readings. Move the resting angle with it, so the card doesn't twitch
     var pv = tiltT.prev; tiltT.prev = { b: b, g: g };
-    if (pv) { var jb = b - pv.b, jg = g - pv.g; if (Math.abs(jb) > 25) tiltT.base.b += jb; if (Math.abs(jg) > 25) tiltT.base.g += jg; }
+    if (pv) { var jb = b - pv.b, jg = g - pv.g; if (Math.abs(jb) > 25) tiltT.base.b += jb; if (Math.abs(jg) > 25) tiltT.base.g += jg;
+      // a real turn of the phone (not a hand's tremor, not a sensor jump): the table's light shows for a moment
+      var sp = (Math.abs(jb) > 25 ? 0 : Math.abs(jb)) + (Math.abs(jg) > 25 ? 0 : Math.abs(jg));
+      var now = Date.now(); if (now - (tiltT.ts || 0) > 150) tiltT.spd = 0; tiltT.ts = now;   // (a pause in the readings starts afresh)
+      tiltT.spd = (tiltT.spd || 0) * 0.7 + sp * 0.3; if (tiltT.spd > 0.35) tiltT.act = now; }
     // drift the resting angle slowly toward how the phone is being held
     tiltT.base.b += (b - tiltT.base.b) * 0.003; tiltT.base.g += (g - tiltT.base.g) * 0.003;
     tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 11));
     tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 11));
-    if (!TL.raf && S && ui.screen === 'game') tableLight();
+    if (!TL.raf && S && ui.screen === 'game' && Date.now() - (tiltT.act || 0) < 300) tableLight();
     wakeTilt();
   }
   function listenOrient() {
@@ -11296,7 +11310,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
     net: NET, lobby: function () { showLobby(); },
     allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
-    STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
+    tilt: function () { return { t: tiltT, L: TL }; }, STR: STR, WP: WP, LORE: LORE, act: act, render: render, toolbox: openToolbox, speed: function (x) { SPD = x; }, ui: ui, zoom: openZoom, dropDeck: dropDeck, canonStory: canonStory, storyOf: storyOf, deEnt: deEnt, showLog: showLog,
     // tests: apply one ability effect to a card, as if from src
     // tests: queue one ability as if it had triggered, and run the queue
     rulesHTML: rulesHTML,
