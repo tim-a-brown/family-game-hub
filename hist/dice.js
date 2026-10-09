@@ -360,7 +360,7 @@
       }
       out.push(ui.section(runs.length > 1 ? (nm[i] || 'Player ' + (i + 1)) + "'s run" : 'The run', parts, { icon: 'eye' }));
     });
-    if (seqLegendNeeded(runs)) out.push(ui.el('p', { class: 'dv-note', text: 'Green: found the ball. Red: missed. A yellow ring means 4 cups, pink means 5.' }));
+    if (seqLegendNeeded(runs)) out.push(ui.el('p', { class: 'dv-note', text: 'Green: found the ball. Red: missed.' + (runs.some(function (r) { return r.mc > 3; }) ? ' A yellow ring means 4 cups, pink means 5.' : '') }));
     return ui.wrap(out);
   });
   function seqLegendNeeded(runs) { return runs.some(function (r) { return r.q; }); }

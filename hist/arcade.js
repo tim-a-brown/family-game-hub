@@ -19,8 +19,7 @@
     '.ar-score small{font-size:.7rem;letter-spacing:.14em;color:rgba(233,236,255,.55);margin-left:6px;font-weight:800;}',
     '.ar-rank{font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;padding:5px 8px;border-radius:6px;',
     'border:1.5px solid rgba(233,236,255,.25);color:rgba(233,236,255,.8);white-space:nowrap;}',
-    '.ar-rank.new{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 12px rgba(255,216,74,.35);animation:ar-blink 1.2s steps(2,start) 3;}',
-    '@keyframes ar-blink{to{visibility:hidden}}',
+    '.ar-rank.new{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 12px rgba(255,216,74,.35);}',
     '.ar-body{display:flex;flex-direction:column;gap:12px;align-items:center;}',
     '.ar-body.side{flex-direction:row;align-items:flex-start;}',
     '.ar-pic{line-height:0;width:100%;}',
@@ -276,20 +275,20 @@
   // ═══ Asteroids ═══
   R('asteroids', function (e, ui) {
     var d = e.dt; if (!d || !d.w) return null;
-    var W = d.w, H = d.h, s = '<rect width="' + W + '" height="' + H + '" fill="#03040a"/>', rr = rnd(W * 31 + H);
-    for (var i = 0; i < 40; i++) s += '<rect x="' + (rr() * W).toFixed(0) + '" y="' + (rr() * H).toFixed(0) + '" width="1.6" height="1.6" fill="#fff" opacity="' + (0.2 + rr() * 0.5).toFixed(2) + '"/>';
+    var W = d.w, H = d.h, s = '<rect width="' + W + '" height="' + H + '" fill="#03040a" stroke="#2a2f4a" stroke-width="6"/>', rr = rnd(W * 31 + H);
+    for (var i = 0; i < 40; i++) s += '<rect x="' + (rr() * W).toFixed(0) + '" y="' + (rr() * H).toFixed(0) + '" width="3" height="3" fill="#fff" opacity="' + (0.2 + rr() * 0.5).toFixed(2) + '"/>';
     var RAD = [0, 10, 19, 36];
     (d.rk || []).forEach(function (k, j) {
       var r = RAD[k.s] || 19, nn = k.s === 1 ? 8 : 11, g = rnd(j * 977 + k.x * 7 + k.y), pts = [], a0 = g() * 6.28;
       for (var q = 0; q < nn; q++) { var a = a0 + q / nn * 6.283, rad = r * (g() < 0.25 ? 0.62 + g() * 0.16 : 0.86 + g() * 0.2); pts.push((k.x + Math.cos(a) * rad).toFixed(1) + ',' + (k.y + Math.sin(a) * rad).toFixed(1)); }
-      s += '<polygon points="' + pts.join(' ') + '" fill="rgba(255,255,255,.03)" stroke="#dfe6ff" stroke-width="2" stroke-linejoin="round"/>';
+      s += '<polygon points="' + pts.join(' ') + '" fill="rgba(255,255,255,.04)" stroke="#dfe6ff" stroke-width="4" stroke-linejoin="round"/>';
     });
-    if (d.uf) { var u = d.uf.split(','), ux = +u[0], uy = +u[1], us = u[2] === 's' ? 0.65 : 1; s += '<g transform="translate(' + ux + ' ' + uy + ') scale(' + us + ')" fill="none" stroke="#ff7ad9" stroke-width="2"><path d="M-14 0h28l-8 6h-12zM-14 0l8 -5h12l8 5M-5 -5l2 -5h6l2 5"/></g>'; }
+    if (d.uf) { var u = d.uf.split(','), ux = +u[0], uy = +u[1], us = u[2] === 's' ? 0.65 : 1; s += '<g transform="translate(' + ux + ' ' + uy + ') scale(' + us + ')" fill="none" stroke="#ff7ad9" stroke-width="4"><path d="M-14 0h28l-8 6h-12zM-14 0l8 -5h12l8 5M-5 -5l2 -5h6l2 5"/></g>'; }
     if (d.sh) {
       // the lost ship, broken into its three lines
       var sh = d.sh.split(','), sx = +sh[0], sy = +sh[1], sa = (+sh[2] || 0) * 180 / Math.PI;
-      s += '<g transform="translate(' + sx + ' ' + sy + ') rotate(' + sa.toFixed(1) + ')" stroke="#9ff3ff" stroke-width="2" stroke-linecap="round"><path d="M15 -2L-8 -12M15 3L-7 13M-11 -5L-10 6"/></g>';
-      s += '<circle cx="' + sx + '" cy="' + sy + '" r="26" fill="none" stroke="#9ff3ff" stroke-opacity=".35" stroke-dasharray="3 5"/>';
+      s += '<g transform="translate(' + sx + ' ' + sy + ') rotate(' + sa.toFixed(1) + ')" stroke="#9ff3ff" stroke-width="4" stroke-linecap="round"><path d="M15 -2L-8 -12M15 3L-7 13M-11 -5L-10 6"/></g>';
+      s += '<circle cx="' + sx + '" cy="' + sy + '" r="30" fill="none" stroke="#9ff3ff" stroke-opacity=".45" stroke-width="2.5" stroke-dasharray="6 8"/>';
     }
     var rb = d.rb || [0, 0, 0], tot = (rb[0] || 0) + (rb[1] || 0) + (rb[2] || 0), dd = d.dd || [], last = dd[dd.length - 1];
     var acc = d.sx ? Math.round((d.hx || 0) / d.sx * 100) + '%' : '';
@@ -317,16 +316,16 @@
         var v = m[1].split(',').map(Number), c = m[2], gone = c === c.toUpperCase(), col = PEG[c.toLowerCase()] || '#888';
         if (gone) hit[c.toLowerCase()] = (hit[c.toLowerCase()] || 0) + 1;
         if (v.length === 4) s += '<line x1="' + v[0] + '" y1="' + v[1] + '" x2="' + v[2] + '" y2="' + v[3] + '" stroke="' + (gone ? 'rgba(255,255,255,.12)' : col) + '" stroke-width="10" stroke-linecap="round"' + (gone ? ' stroke-dasharray="1 4"' : '') + '/>';
-        else if (gone) s += '<circle cx="' + v[0] + '" cy="' + v[1] + '" r="7.5" fill="none" stroke="' + col + '" stroke-opacity=".45" stroke-width="1.5" stroke-dasharray="2 2.5"/>';
+        else if (gone) s += '<circle cx="' + v[0] + '" cy="' + v[1] + '" r="7.5" fill="none" stroke="' + col + '" stroke-opacity=".7" stroke-width="2" stroke-dasharray="3 2.5"/>';
         else s += '<circle cx="' + v[0] + '" cy="' + v[1] + '" r="9" fill="' + col + '"/><circle cx="' + (v[0] - 2.5) + '" cy="' + (v[1] - 3) + '" r="3" fill="rgba(255,255,255,.45)"/>';
       });
       pic = svg(W, y1 - y0, '<g transform="translate(0 ' + -y0 + ')">' + s + '</g>', { aria: 'The pegs at the end: solid pegs were left, faint rings were cleared' });
     }
     var MA = { guide: 'Super Guide', random: 'Random', off: 'None' };
-    var keyNode = pic ? key(ui, [['Left', '#ff7417'], ['Cleared (ring)', 'rgba(255,255,255,.35)']]) : null;
+    var keyNode = pic ? key(ui, [['Solid: still up', '#ff7417'], ['Ring: cleared', 'rgba(255,255,255,.35)']]) : null;
     return screen(ui, {
       ac: d.won ? '#7dff9a' : '#ff9a4a', title: 'Level ' + d.n + ' · ' + d.nm, score: n(myScore(e)), rank: rankText(d),
-      pic: pic, side: true, picMax: 150,
+      pic: pic, picMax: 250,
       stats: [['Orange pegs', ((d.to || 25) - (d.ol || 0)) + '/' + (d.to || 25), d.ol ? d.ol + ' left' : 'all cleared'], ['Shots', d.sh], ['Balls left', d.bl],
         d.ms ? ['Best shot', n(d.ms)] : null, d.mh ? ['Most pegs', d.mh, 'in one shot'] : null, d.fb ? ['Fever bucket', n(d.fb)] : null,
         d.fr ? ['Free balls', d.fr] : null, d.lg ? ['Long shots', d.lg] : null, d.wl ? ['Off the wall', d.wl] : null, d.pw ? ['Green power', d.pw + '×', MA[d.ma] || ''] : null],
@@ -340,7 +339,7 @@
   R('cubehopper', function (e, ui) {
     var d = e.dt; if (!d || !d.cb) return null;
     var col = String(d.col || '').split(','), L = col[0] || '#cdb98a', Rt = col[1] || '#55636b', tops = col.slice(2), steps = d.st || 1;
-    var W = 44, HW = 22, TH = 12, SH = 26, DY = TH + SH, AX = 170, AY = 30, s = '<rect width="340" height="330" fill="#06060c"/>', left = 0, cb = String(d.cb);
+    var W = 44, HW = 22, TH = 12, SH = 26, DY = TH + SH, AX = 170, AY = 22, s = '<rect width="340" height="300" fill="#06060c"/>', left = 0, cb = String(d.cb);
     function xy(r, c) { return { x: AX + (c - r / 2) * W, y: AY + r * DY }; }
     var k = 0;
     for (var r = 0; r < 7; r++) for (var c = 0; c <= r; c++) {
@@ -367,7 +366,7 @@
     var lost = dk.length ? key(ui, dk.map(function (x) { return [(QDEATH[x] || x).replace(/^(a |the )/, '') + ' ×' + dths[x], x === 'coily' ? '#a24cf0' : x === 'red' ? '#ff3b4f' : x === 'purple' ? '#8a3fd0' : x === 'fall' ? '#5b6cc4' : '#3ddc5a']; })) : null;
     return screen(ui, {
       ac: '#ff8a1f', title: 'Game over · level ' + d.lv + '-' + d.rd, score: n(myScore(e)), rank: rankText(d),
-      pic: svg(340, 330, s, { aria: 'The pyramid when the game ended' }), picMax: 300,
+      pic: svg(340, 300, s, { aria: 'The pyramid when the game ended' }), picMax: 300,
       stats: [['Level', d.lv + '-' + d.rd, RULE[d.rl] || ''], ['Cubes left', left + '/28'], ['Cubes changed', n(d.cu)], ['Hops', n(d.hp)], ['Rounds cleared', d.rr || 0, d.pf ? d.pf + ' without a slip' : ''],
         d.lu ? ['Coily lured', d.lu] : null, d.ca ? ['Slick & Sam', d.ca + ' caught'] : null, d.gr ? ['Green ball', d.gr + '× freeze'] : null, d.dc ? ['Disc rides', d.dc] : null, d.ex ? ['Extra lives', d.ex] : null],
       extra: lost ? [ui.el('div', { class: 'ar-sub', text: 'Lives lost to', style: { 'text-align': 'center' } }), lost] : null,
@@ -395,7 +394,7 @@
         lead += p === 0 ? 1 : -1;
         pts.push((10 + (i + 1) * span).toFixed(1) + ',' + (mid - lead / maxLead * 60).toFixed(1));
       });
-      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>';
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="1.6" stroke-linejoin="round"/>';
       s += '<text x="12" y="12" font-size="9" font-weight="800" fill="' + PC[0] + '" font-family="ui-monospace,monospace">' + ui.esc(nm[0].toUpperCase()) + '</text><text x="12" y="' + (H - 5) + '" font-size="9" font-weight="800" fill="' + PC[1] + '" font-family="ui-monospace,monospace">' + ui.esc(nm[1].toUpperCase()) + '</text>';
       pic = svg(W, H, s, { aria: 'Every point: bars show how long each rally went, the line shows who was ahead' });
     }
