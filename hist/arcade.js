@@ -412,4 +412,43 @@
       foot: 'First to ' + (d.to || 11), footOk: true
     });
   });
+  // ═══ Pinball ═══
+  // A dot-matrix picture of the game ball by ball (bar = points, label = how it drained), then the run's numbers.
+  var PBT = { nebula: ['Nebula Run', '#22d3ee'], pirate: ["Pirate's Cove", '#fbbf24'], haunted: ['Haunted Manor', '#86efac'], jungle: ['Jungle Temple', '#f59e0b'], neon: ['Neon Nights', '#f472b6'] };
+  var PBD = { L: 'LEFT', R: 'RIGHT', C: 'MIDDLE', T: 'TILT' }, PBDW = { L: 'the left outlane', R: 'the right outlane', C: 'down the middle', T: 'a tilt' };
+  var PBF = [['pop', 'Pops'], ['sl', 'Slings'], ['su', 'Targets'], ['dt', 'Drops'], ['orb', 'Orbits'], ['spin', 'Spins'], ['lanes', 'Lanes'], ['lock', 'Locks'], ['wheel', 'Wheel'], ['ghost', 'Ghosts'], ['crypt', 'Crypt'], ['mag', 'Magnet'], ['mode', 'Modes'], ['save', 'Saves']];
+  R('pinball', function (e, ui) {
+    var d = e.dt; if (!d || !d.b) return null;
+    var tb = PBT[d.b] || [e.mode || 'Pinball', '#ff8a1c'], ac = tb[1];
+    var bs = String(d.bs || '').split(',').filter(function (x) { return x !== ''; }).map(Number), dr = String(d.dr || '');
+    var pic = null;
+    if (bs.length) {
+      var N = bs.length, W = 320, H = 150, P = 5, top = 22, base = 122, mx = Math.max.apply(null, bs.concat([1])), cw = (W - 20) / N, s = '<rect width="' + W + '" height="' + H + '" rx="6" fill="#0a0503"/>';
+      // unlit dots across the whole panel, then lit columns for each ball
+      for (var y = 4; y < H - 2; y += P) for (var x = 4; x < W - 2; x += P) s += '<circle cx="' + x + '" cy="' + y + '" r="1.2" fill="#2a0f04"/>';
+      bs.forEach(function (v, i) {
+        var x0 = 10 + i * cw, cols = Math.max(2, Math.floor((Math.min(cw - 10, 46)) / P)), rows = Math.max(1, Math.round(v / mx * (base - top) / P)), cx0 = x0 + (cw - cols * P) / 2, best = v === mx;
+        for (var c = 0; c < cols; c++) for (var r = 0; r < rows; r++) {
+          var px = Math.round((cx0 + c * P + 2) / P) * P - 1, py = base - r * P;
+          s += '<circle cx="' + px + '" cy="' + py + '" r="2" fill="' + (best ? '#ff9a2e' : '#d8661a') + '"' + (r === rows - 1 ? ' opacity="1"' : '') + '/>';
+        }
+        var mid = x0 + cw / 2;
+        s += '<text x="' + mid + '" y="' + (base - rows * P - 5) + '" text-anchor="middle" font-size="9" font-weight="800" fill="#ffb366" font-family="ui-monospace,monospace">' + (v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e4 ? Math.round(v / 1000) + 'K' : n(v)) + '</text>';
+        s += '<text x="' + mid + '" y="' + (base + 13) + '" text-anchor="middle" font-size="9" font-weight="800" fill="#ff8a2e" font-family="ui-monospace,monospace">BALL ' + (i + 1) + '</text>';
+        s += '<text x="' + mid + '" y="' + (base + 23) + '" text-anchor="middle" font-size="7.5" font-weight="800" fill="#a85a20" font-family="ui-monospace,monospace">' + (PBD[dr.charAt(i)] || '') + '</text>';
+      });
+      pic = svg(W, H, s, { aria: 'Points for each ball, and where each ball drained' });
+    }
+    var f = d.f || {}, feats = PBF.filter(function (x) { return f[x[0]]; }).map(function (x) { return [x[1] + ' ' + n(f[x[0]]), ac]; });
+    var last = dr.charAt(dr.length - 1);
+    return screen(ui, {
+      ac: ac, title: tb[0] + ' · ' + (d.bl || bs.length) + ' balls', score: n(myScore(e)), rank: rankText(d),
+      pic: pic, picMax: 340,
+      stats: [d.bb ? ['Best ball', n(d.bb)] : null, ['Jackpots', d.jp || 0], d.mb ? ['Multiballs', d.mb] : null, d.eb ? ['Extra balls', d.eb] : null,
+        d.bx > 1 ? ['Bonus', d.bx + 'X', 'top multiplier'] : null, d.rp ? ['Ramps', d.rp] : null, d.cb ? ['Combos', d.cb] : null, d.sk ? ['Skill shots', d.sk] : null,
+        f.tilt ? ['Tilts', f.tilt] : null],
+      extra: feats.length ? [key(ui, feats)] : null,
+      foot: last ? 'Last ball lost ' + (last === 'T' ? 'to ' : '') + PBDW[last] : '', footOk: false
+    });
+  });
 })();
