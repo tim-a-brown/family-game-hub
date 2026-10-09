@@ -344,6 +344,8 @@ const ArcadeHi = (function(){
     overlay.addEventListener('remove', () => document.removeEventListener('keydown', onEsc));
   }
 
+  const PAGE = /^(ast|breakout|flappy|flappywild|pac|peggle|paddleball|cubehopper|snake|tetris|pinball_[a-z]+)$/;
+  function onPage(key){ return PAGE.test(String(key||'')); }
   // ── Public API ─────────────────────────────────────────────────────────────
   return {
     // The cleaned-up board (real scores only, highest first) and the top score
@@ -361,7 +363,9 @@ const ArcadeHi = (function(){
         onDone && onDone();
       }
     },
+    // Games on the High Scores cabinet page open it with their board selected (the others keep the pop-up board)
     show(key, title){
+      if(onPage(key)){ try{ location.href = (/\/games\//.test(location.pathname) ? '' : 'games/') + 'hiscores.html#' + encodeURIComponent(key); return; }catch(e){} }
       showBoard(key, title);
     },
     btn(key, title){
@@ -369,7 +373,7 @@ const ArcadeHi = (function(){
       const b = document.createElement('button');
       b.className = 'btn btn-outline btn-sm';
       b.innerHTML = (window.Kit&&Kit.icon?Kit.icon('trophy')+' ':'')+'Scores';
-      b.addEventListener('click', ()=>showBoard(key, title));
+      b.addEventListener('click', ()=>ArcadeHi.show(key, title));
       return b;
     }
   };
