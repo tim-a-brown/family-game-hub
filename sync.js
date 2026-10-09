@@ -400,7 +400,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, isNew:false };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -445,7 +445,7 @@
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     var lbl = label();
-    if(lbl) doc.label = lbl;
+    if(lbl){ doc.label = lbl; var lat = Number(LS.getItem('fgh_label_at')) || 0; if(lat) doc.labelAt = lat; }
     if(snap.bank !== null && snap.bank !== undefined) doc.bank = snap.bank;
     // Include rklists when local has it (even empty {lists:[]} to propagate
     // "user deleted all lists"). Omit only when local never had it at all —
@@ -477,9 +477,9 @@
     return ref.set(doc, { merge: true }).catch(function(err){
       // Rules that don't allow `lorcana` yet would refuse the whole save:
       // save everything else instead of losing it
-      if((doc.avatars || doc.ghDel || doc.links) && err && err.code === 'permission-denied'){
-        console.warn('[sync] cloud refused avatars/ghDel/links fields; saving the rest');
-        delete doc.avatars; delete doc.ghDel; delete doc.links;
+      if((doc.avatars || doc.ghDel || doc.links || doc.labelAt) && err && err.code === 'permission-denied'){
+        console.warn('[sync] cloud refused avatars/ghDel/links/labelAt fields; saving the rest');
+        delete doc.avatars; delete doc.ghDel; delete doc.links; delete doc.labelAt;
         return ref.set(doc, { merge: true }).catch(function(err2){
           if(doc.lorcana && err2 && err2.code === 'permission-denied'){ delete doc.lorcana; return ref.set(doc, { merge: true }); }
           throw err2;
@@ -503,7 +503,24 @@
     var trimmed = (str||'').trim();
     if(trimmed) LS.setItem(LABEL_KEY, trimmed);
     else LS.removeItem(LABEL_KEY);
+    LS.setItem('fgh_label_at', String(Date.now()));   // the newest name wins on every device
     if(isPin()) schedulePush();
+  }
+
+  // A PIN is one person's account: its label is that person's name, the same as "my name" on each device they use.
+  // A name typed on this device wins (it's how older family-named PINs become personal); a device without one
+  // takes the account's.
+  function reconcileName(){
+    if(!isPin()) return;
+    var ln = (label() || '').trim(), mn = (LS.getItem('my_name') || '').trim(), at = Number(LS.getItem('fgh_label_at')) || 0;
+    if(!at){ if(mn && ln !== mn){ setLabel(mn); } else if(!mn && ln){ try{ LS.setItem('my_name', ln); }catch(e){} } return; }
+    if(ln && mn !== ln){ try{ LS.setItem('my_name', ln); }catch(e){} }
+  }
+  // The account's name from the cloud when it's newer than this device's (or this device has none)
+  function takeLabel(remote){
+    if(!remote.label) return;
+    var mine = Number(LS.getItem('fgh_label_at')) || 0, theirs = Number(remote.labelAt) || 0;
+    if(!label() || theirs > mine){ LS.setItem(LABEL_KEY, remote.label); if(theirs) LS.setItem('fgh_label_at', String(theirs)); }
   }
 
   // ── Entry points ──────────────────────────────────────────────────────
@@ -520,11 +537,11 @@
     return ensureFirebase()
       .then(pullCloud)
       .then(function(remote){
-        if(remote.label && !label()) LS.setItem(LABEL_KEY, remote.label);
+        takeLabel(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local   = scanLocal();
         var merged  = mergeSnapshots(local, remote);
-        writeSnapshotToLocal(merged);
+        writeSnapshotToLocal(merged); reconcileName();
         return pushNow().then(function(){ return {isNew: remote.isNew}; });
       })
       .then(function(result){ notifyReady(); return result; });
@@ -562,11 +579,11 @@
     return ensureFirebase()
       .then(pullCloud)
       .then(function(remote){
-        if(remote.label && !label()) LS.setItem(LABEL_KEY, remote.label);
+        takeLabel(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local  = scanLocal();
         var merged = mergeSnapshots(local, remote);
-        writeSnapshotToLocal(merged);
+        writeSnapshotToLocal(merged); reconcileName();
         return pushNow();
       })
       .then(function(){
@@ -675,11 +692,11 @@
       ensureFirebase()
         .then(pullCloud)
         .then(function(remote){
-          if(remote.label && !label()) LS.setItem(LABEL_KEY, remote.label);
+          takeLabel(remote);
           if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
           var local  = scanLocal();
           var merged = mergeSnapshots(local, remote);
-          writeSnapshotToLocal(merged);
+          writeSnapshotToLocal(merged); reconcileName();
           return pushNow();
         })
         .then(function(){

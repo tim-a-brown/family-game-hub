@@ -112,11 +112,12 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   $('guest').addEventListener('click', function () { FGHSync.continueAsGuest(); location.replace('./index.html'); });
 
   function askName() {
-    var inp = Kit.el('input', { class: 'input', maxlength: 24, placeholder: 'e.g. Brown Family', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done' });
-    function go() { var v = inp.value.trim(); if (v) FGHSync.setLabel(v); location.replace('./index.html'); }
+    var inp = Kit.el('input', { class: 'input', maxlength: 14, placeholder: 'e.g. Tim', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done' });
+    // a PIN is one person's account: its name is your name in every game
+    function go() { var v = inp.value.trim(); if (v) { FGHSync.setLabel(v); try { localStorage.setItem('my_name', v); } catch (e) {} } location.replace('./index.html'); }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     Kit.sheet({
-      title: 'New PIN! What should we call you?', node: Kit.el('div', null, [Kit.el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'Shown on the home screen. You can change it later.' }), inp]),
+      title: 'New PIN! What’s your name?', node: Kit.el('div', null, [Kit.el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'This PIN is your account: your name, avatar and games on every device you sign in on. Everyone in the family gets their own PIN.' }), inp]),
       dismissible: false,
       actions: [{ label: 'Save and continue', primary: true, onClick: go }, { label: 'Skip for now', cls: 'btn-ghost', onClick: function () { location.replace('./index.html'); } }]
     });

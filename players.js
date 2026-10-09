@@ -503,6 +503,8 @@ const FrequentPlayers = (function(){
       if(t) localStorage.setItem(MY_NAME_KEY, t);
       else localStorage.removeItem(MY_NAME_KEY);
     }catch(e){}
+    // signed in with a PIN: the account's name is your name
+    try{ if(t && typeof FGHSync !== 'undefined' && FGHSync.isPin && FGHSync.isPin() && FGHSync.setLabel) FGHSync.setLabel(t); }catch(e){}
     if(t) add(t);
   }
 
