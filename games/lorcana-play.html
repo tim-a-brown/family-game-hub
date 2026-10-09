@@ -4331,7 +4331,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     },
     support: function (pi, from, to) {
       var n = STR(from); if (!n) return;
-      C(to).mods.push({ s: n, until: S.turn, why: 'Support' }); emit('supported', { u: to, pi: pi });
+      C(to).mods.push({ s: n, until: S.turn, why: 'Support', src: from, srcId: C(from).id, support: 1 }); emit('supported', { u: to, pi: pi });
       log(nm(from) + ' gave ' + nm(to) + ' +' + n + ' strength (Support)', pi);
     }
   };
@@ -4682,6 +4682,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function can(u, w) { return (C(u).mods || []).some(function (m) { return m.can === w; }) || !!stx(u).can[w]; }
   // How long a timed effect lasts → fields for a mod
   function untilFor(dur, pi, target, src) {
+    var o = untilFor0(dur, pi, target, src);
+    if (src && S.cards[src]) { o.src = src; o.srcId = C(src).id; }   // which card gave it (for the chip's tip)
+    return o;
+  }
+  function untilFor0(dur, pi, target, src) {
     var nextOf = function (p) { return S.cur === p ? S.turn + 2 : S.turn + 1; };
     if (dur === 'whileSrc') return { whileSrc: src };
     if (dur === 'next') return { untilStart: nextOf(pi) };
@@ -5397,7 +5402,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     later(function () { act(function () { list.forEach(function (x) { hit(e, st, x); }); checkBanishAll(); }); cb(true); }, e.t && e.t.sel === 'all' ? 330 : 120);
   }
   // Apply one effect to one card (inside act)
+  // Every lasting effect an ability leaves on a card remembers the card and ability it came from (for the chip's tip)
   function hit(e, st, x) {
+    var c0 = S.cards[x], n0 = c0 && c0.mods ? c0.mods.length : 0;
+    hit0(e, st, x);
+    if (!c0 || !S.cards[x] || !c0.mods) return;
+    for (var i = n0; i < c0.mods.length; i++) { var m = c0.mods[i];
+      if (st.src && S.cards[st.src] && !m.src) { m.src = st.src; m.srcId = C(st.src).id; }
+      if (!m.why && st.ab) m.why = abTitle(st.src, st.ab); }
+  }
+  function hit0(e, st, x) {
     if (!S.cards[x]) return;
     var pi = st.pi, c = C(x), who = S.P[c.o].name + '’s ' + nm(x), z = zoneOf(x), inPlay = z && z.z === 'board';
     switch (e.op) {
@@ -8339,9 +8353,33 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!parts.length) parts.push(m.why ? esc(m.why) : 'Effect');
       var bad = m.cant || m.must || m.nokw || m.s < 0 || m.w < 0 || m.l < 0;
       var when = m.until === 'perm' ? '' : m.untilStart ? ' until ' + (S.cur === C(u).o ? 'your' : 'their') + ' next turn' : m.until > S.turn ? ' next turn' : ' this turn';
-      h += stt(bad ? 's-bad' : 's-good', m.cant ? 'chain' : m.shield ? 'shield' : bad ? 'down' : 'up', parts.join(', ') + esc(when + (m.why && parts[0] !== esc(m.why) ? ' · ' + m.why : '')));   // parts are our own words and marks; the ability name is escaped
+      h += stt(bad ? 's-bad' : 's-good', m.cant ? 'chain' : m.shield ? 'shield' : bad ? 'down' : 'up', parts.join(', ') + esc(when + (m.why && parts[0] !== esc(m.why) ? ' · ' + m.why : '')))   // parts are our own words and marks; the ability name is escaped
+        .replace('<span class="stt', '<span data-tip="' + esc(modTip(m, u)) + '" class="stt');
     });
     return (top ? '<div class="stts stts-top">' + top + '</div>' : '') + (h ? '<div class="stts">' + h + '</div>' : '');
+  }
+  // A lasting effect in full: what it does, how long it lasts, and the card and ability it came from
+  function modTip(m, u) {
+    var w = [], sg = function (n) { return (n > 0 ? '+' : '−') + Math.abs(n); };
+    if (m.s) w.push(sg(m.s) + ' strength'); if (m.w) w.push(sg(m.w) + ' willpower'); if (m.l) w.push(sg(m.l) + ' lore');
+    if (m.kw) w.push('has ' + KWNAME[m.kw] + (m.n ? ' +' + m.n : '') + (KWHELP[m.kw] ? ': ' + KWHELP[m.kw].replace(/\.$/, '').replace(/^./, function (c) { return c.toLowerCase(); }) : ''));
+    if (m.cant) w.push('can’t ' + { quest: 'quest', challenge: 'challenge', ready: 'ready at the start of its turn', qc: 'quest or challenge', bechal: 'be challenged', sing: 'sing songs', move: 'move to a location', dmg: 'be dealt damage', chalDmg: 'take damage from challenges' }[m.cant]);
+    if (m.can) w.push('can challenge characters that are ready, not just exerted ones');
+    if (m.shield) w.push('the next time it would be dealt damage, it takes none instead');
+    if (m.sing) w.push('counts as cost +' + m.sing + ' when singing songs');
+    if (m.must) w.push('must ' + m.must + ' if it can');
+    if (m.nokw) w.push('has lost ' + (KWNAME[m.nokw] || m.nokw));
+    if (m.cls) w.push('counts as a ' + m.cls);
+    var txt = w.length ? w.join('; ') : 'An effect is on it';
+    txt = txt.charAt(0).toUpperCase() + txt.slice(1);
+    var mine = S.cur === C(u).o;
+    var dur = m.until === 'perm' ? 'while it stays in play' : m.whileSrc ? 'while ' + (S.cards[m.whileSrc] ? DD(m.whileSrc).full : 'its source') + ' stays in play'
+      : m.untilStart ? 'until the start of ' + (mine ? 'your' : S.P[C(u).o].name + '’s') + ' next turn' : m.until > S.turn ? 'until the end of next turn' : 'until the end of this turn';
+    var srcName = m.srcId != null && D(m.srcId) ? D(m.srcId).full : m.src && S.cards[m.src] ? DD(m.src).full : '';
+    var from = m.support ? (srcName ? srcName + ' added its strength with Support when it quested' : 'Support: a character added its strength when it quested')
+      : srcName ? 'From ' + srcName + (m.why && m.why !== srcName && m.why.indexOf(srcName) < 0 ? '’s ' + m.why.replace(/^.*?·\s*/, '') : '')
+      : m.why ? 'From ' + m.why : '';
+    return txt + ', ' + dur + '.' + (from ? ' ' + from + '.' : '');
   }
   var STT_TIP = { 's-rdy': 'Ready: it can quest, challenge or use its abilities', 's-exd': 'Exerted: it has been used this turn. It readies at the start of its owner’s turn', 's-wet': 'Drying: played this turn, so it can’t quest, challenge or sing until next turn' };
   // Hold the eye (top left) to see the table under the card view; let go to come back to the same card
@@ -8361,7 +8399,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function statusToCorner(ov) {
     var st = ov && $('.stts-top', ov), ics = ov && $('.lz-head .lz-ics', ov); if (!st || !ics) return;
     ics.insertBefore(st, ics.firstChild);
-    $$('.stt', st).forEach(function (t) { var k = Object.keys(STT_TIP).filter(function (x) { return t.classList.contains(x); })[0]; if (k) holdTip(t, k === 's-wet' && /Rush/.test(t.textContent) ? 'Drying: played this turn. It can’t quest or sing yet, but Rush lets it challenge' : STT_TIP[k]); });
+    $$('.stt', st).forEach(function (t) { var k = Object.keys(STT_TIP).filter(function (x) { return t.classList.contains(x); })[0]; if (k) holdTip(t, k === 's-wet' && /Rush/.test(t.textContent) ? 'Drying: played this turn. It can’t quest or sing yet, but Rush lets it challenge' : STT_TIP[k], true); });
+    // the effect chips under the stats: tap (or hold) for the effect in full and where it came from
+    $$('.lz-info .stt[data-tip]', ov).forEach(function (t) { holdTip(t, t.getAttribute('data-tip'), true); t.style.cursor = 'pointer'; });
   }
   function kwHelpHTML(d, u) {
     var ks = Object.keys(KWHELP).filter(function (k) {
@@ -9349,24 +9389,26 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }, 500);
   }
   // Press and hold a button to see what it does; the tap that ends the hold doesn't press it
-  function holdTip(btn, text) {
+  function holdTip(btn, text, tap) {
     var t = null, shown = null;
     function hide() { clearTimeout(t); t = null; if (shown) { var s = shown; shown = null; s.classList.remove('on'); setTimeout(function () { s.remove(); }, 200); } }
+    function show() {
+      $$('.hold-tip').forEach(function (x) { x.remove(); });
+      var r = btn.getBoundingClientRect();
+      shown = document.body.appendChild(el('div', { class: 'hold-tip', role: 'tooltip', text: text }));
+      var w = shown.offsetWidth, x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+      shown.style.left = x + 'px'; shown.style.top = (r.top - shown.offsetHeight - 10) + 'px';
+      shown.style.setProperty('--ax', (r.left + r.width / 2 - x) + 'px');
+      requestAnimationFrame(function () { if (shown) shown.classList.add('on'); });
+    }
     btn.addEventListener('pointerdown', function () {
-      hide();
-      t = setTimeout(function () {
-        var r = btn.getBoundingClientRect();
-        shown = document.body.appendChild(el('div', { class: 'hold-tip', role: 'tooltip', text: text }));
-        var w = shown.offsetWidth, x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
-        shown.style.left = x + 'px'; shown.style.top = (r.top - shown.offsetHeight - 10) + 'px';
-        shown.style.setProperty('--ax', (r.left + r.width / 2 - x) + 'px');
-        requestAnimationFrame(function () { if (shown) shown.classList.add('on'); });
-        btn._held = true; Kit.haptic('light');
-      }, 450);
+      if (!tap || !shown) hide(); else clearTimeout(t);
+      t = setTimeout(function () { show(); btn._held = true; Kit.haptic('light'); }, 450);
     });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (k) { btn.addEventListener(k, function () { clearTimeout(t); if (shown) setTimeout(hide, 900); }); });
     btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-    btn.addEventListener('click', function (e) { if (btn._held) { btn._held = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    btn.addEventListener('click', function (e) { if (btn._held) { btn._held = false; e.stopImmediatePropagation(); e.preventDefault(); return; }
+      if (tap) { e.stopPropagation(); if (shown) { hide(); return; } show(); clearTimeout(t); t = setTimeout(hide, 3200); } }, true);
     return btn;
   }
 
