@@ -9084,6 +9084,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (t.id === 'toss') row('Who picks', seg([['they', 'They choose'], ['you', 'You choose'], ['random', 'Random']], 'they', function (x) { v.mode = x; }));
       if (t.id === 'inkr') row('Do', seg([['ready', 'Ready'], ['exert', 'Exert']], 'ready', function (x) { v.seg = x; }));
       if (t.id === 'inkr') v.seg = 'ready';
+      // Into the inkwell ready (fixing a normal ink) or exerted (most card effects say "facedown and exerted")
+      if (t.id === 'ink') { var abTx = o.ab ? o.ab.text || '' : src ? DD(src).tx || '' : ''; v.ex = /inkwell[^.]*exerted/i.test(abTx); row('Goes in', seg([['ready', 'Ready'], ['ex', 'Exerted']], v.ex ? 'ex' : 'ready', function (x) { v.ex = x === 'ex'; })); }
       var go = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: t.tgt || (t.id === 'ink' || t.id === 'deck') ? 'Choose a card' : 'Apply', onclick: function () { runTool(t, v); } });
       form.appendChild(go);
       node.appendChild(form);
@@ -9106,10 +9108,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         case 'exert': pickCard('Exert or ready which card?', t.tgt, true, function (x) { doIt(function () { C(x).ex = !C(x).ex; note((C(x).ex ? 'exerted ' : 'readied ') + nm(x)); }); again(); }); return;
         case 'hand': pickCard('Return which card to its owner’s hand?', t.tgt, true, function (x) { doIt(function () { var o2 = C(x).o; leavePlay(x); S.P[o2].hand.push(x); note('returned ' + nm(x) + ' to ' + name(o2) + '’s hand'); }); again(); }); return;
         case 'ink':
-          if (v.seg === 'play') { pickCard('Put which card into its owner’s inkwell?', ['character', 'item', 'location'], true, function (x) { doIt(function () { var o2 = C(x).o; leavePlay(x); C(x).ex = true; S.P[o2].ink.push(x); note('put ' + nm(x) + ' into ' + name(o2) + '’s inkwell'); }); again(); }); return; }
-          if (v.seg === 'deck') { close(); if (!P.deckL.length) { Kit.toast('That deck is empty'); return; } doIt(function () { var x = P.deckL.shift(); resetCard(x); C(x).ex = true; P.ink.push(x); note('put the top card of ' + name(who) + '’s deck into the inkwell'); }, true); again(); return; }
+          if (v.seg === 'play') { pickCard('Put which card into its owner’s inkwell?', ['character', 'item', 'location'], true, function (x) { doIt(function () { var o2 = C(x).o; leavePlay(x); C(x).ex = v.ex; S.P[o2].ink.push(x); note('put ' + nm(x) + ' into ' + name(o2) + '’s inkwell' + (v.ex ? ' exerted' : '')); }); again(); }); return; }
+          if (v.seg === 'deck') { close(); if (!P.deckL.length) { Kit.toast('That deck is empty'); return; } doIt(function () { var x = P.deckL.shift(); resetCard(x); C(x).ex = v.ex; P.ink.push(x); note('put the top card of ' + name(who) + '’s deck into the inkwell' + (v.ex ? ' exerted' : '')); }, true); again(); return; }
           if (!handVisibleTo(who)) { Kit.toast('Only ' + name(who) + ' can choose from their hand'); return; }
-          close(); chooseFromList('Put a card from ' + name(who) + '’s hand into the inkwell', P.hand, 1, function (sel) { doIt(function () { var x = sel[0]; P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); C(x).ex = true; P.ink.push(x); note('put ' + nm(x) + ' into the inkwell'); }); again(); }, { cancel: again });
+          close(); chooseFromList('Put a card from ' + name(who) + '’s hand into the inkwell', P.hand, 1, function (sel) { doIt(function () { var x = sel[0]; P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); C(x).ex = v.ex; P.ink.push(x); note('put ' + nm(x) + ' into the inkwell' + (v.ex ? ' exerted' : '')); }); again(); }, { cancel: again });
           return;
         case 'stat': pickCard((v.n > 0 ? '+' : '') + v.n + ' ' + { s: 'strength', w: 'willpower', l: 'lore' }[v.stat] + ': which card?', t.tgt, true, function (x) {
           doIt(function () { var m = { until: v.dur === 'perm' ? 'perm' : S.turn }; m[v.stat] = v.n; C(x).mods.push(m); note(nm(x) + ' gets ' + (v.n > 0 ? '+' : '') + v.n + ' ' + { s: 'strength', w: 'willpower', l: 'lore' }[v.stat] + (v.dur === 'perm' ? '' : ' this turn')); checkBanish(); }); again(); }); return;
