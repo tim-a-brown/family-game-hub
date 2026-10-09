@@ -106,11 +106,13 @@ body.hs .gbar{background:rgba(7,6,15,.9);}
   background:var(--bc);color:var(--bk);filter:saturate(.75) brightness(.72);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000);transition:transform .06s,box-shadow .06s,filter .2s;}
 .sel-b{gap:4px;}
-.sel-b canvas{flex:none;width:20px;height:15px;image-rendering:pixelated;image-rendering:crisp-edges;}
+.sel-b canvas{flex:none;height:17px;width:auto;image-rendering:pixelated;image-rendering:crisp-edges;}
+.sel-b.on canvas{animation:hop .9s steps(2) infinite;}
+@keyframes hop{50%{transform:translateY(-2px)}}
 .sel-b span{font-family:'Sofia Sans Condensed',var(--font);font-weight:900;font-size:.7rem;line-height:1;letter-spacing:.03em;white-space:nowrap;min-width:0;overflow:hidden;}
 .sel-b.on{filter:none;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.2),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000),0 0 0 2px #fff,0 0 16px -2px var(--bc);}
 .sel-b:active{transform:translateY(2px);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 1px 0 color-mix(in srgb,var(--bc) 40%,#000);}
-@media (min-width:600px){.sel{width:116px;gap:9px;}.sel-b span{font-size:.86rem;}.sel-b canvas{width:26px;height:20px;}}
+@media (min-width:600px){.sel{width:116px;gap:9px;}.sel-b span{font-size:.86rem;}.sel-b canvas{height:22px;}}
 @media (prefers-reduced-motion:reduce){.sb,.mq,.sb li.top .rk,.sb li.top .sc,.sb li.top .nm{animation:none;}}
 </style>
 </head>
@@ -138,7 +140,7 @@ Kit.init({ id: 'hiscores', mark: false });
     { key: 'peggle', game: 'peggle', title: 'PEGGLE', anim: 'peggle',
       c: { sel: '#fb923c', sd: '#2a0d03', sm: '#9a3412', bd: '#5a1e06', trim: '#fdba74', mq: 'radial-gradient(120% 140% at 50% 0%,#9a3412,#1c0a03)', tc: '#fb923c', glow: '#fb923c', hc: '#fdba74', lc: '#fed7aa', rows: ['#fb923c', '#60a5fa', '#4ade80', '#c084fc'], pn: '#1c0a03', pn2: '#5a1e06', btna: '#fb923c', btnb: '#60a5fa', ball: '#fb923c', bgo: '.6' } },
     { key: 'paddleball', game: 'paddleball', title: 'PONG', unit: 'RALLY', anim: 'pong',
-      c: { sel: '#eeeeee', sd: '#050505', sm: '#3f3f3f', bd: '#1d1d1d', trim: '#d4d4d4', mq: 'linear-gradient(180deg,#1a1a1a,#000)', tc: '#fff', glow: '#ffffff', hc: '#fff', lc: '#a3a3a3', rows: ['#ffffff'], pn: '#111', pn2: '#333', btna: '#f5f5f5', btnb: '#f5f5f5', ball: '#e5e5e5', bgo: '.55' } },
+      c: { sel: '#2b2b2b', sd: '#050505', sm: '#3f3f3f', bd: '#1d1d1d', trim: '#d4d4d4', mq: 'linear-gradient(180deg,#1a1a1a,#000)', tc: '#fff', glow: '#ffffff', hc: '#fff', lc: '#a3a3a3', rows: ['#ffffff'], pn: '#111', pn2: '#333', btna: '#f5f5f5', btnb: '#f5f5f5', ball: '#e5e5e5', bgo: '.55' } },
     { key: 'cubehopper', game: 'cubehopper', title: 'Q*BERT', anim: 'qbert',
       c: { sel: '#4f6bd8', sd: '#050b24', sm: '#1e3a8a', bd: '#0b1a45', trim: '#f97316', mq: 'linear-gradient(180deg,#14143a,#05050f)', tc: '#f97316', glow: '#fb923c', hc: '#f97316', lc: '#93c5fd', rows: ['#facc15', '#60a5fa', '#f97316', '#a78bfa'], pn: '#0a0a23', pn2: '#1e2a6b', btna: '#f97316', btnb: '#60a5fa', ball: '#f97316', bgo: '.65' } },
     { key: 'snake', game: 'snake', title: 'SNAKE', anim: 'snake',
@@ -161,6 +163,44 @@ Kit.init({ id: 'hiscores', mark: false });
   var tube = el('div', { class: 'tube' }, [bg, el('div', { class: 'shade' }), sb]);
   var crt = el('div', { class: 'crt' }, [tube, el('div', { class: 'lines' }), el('div', { class: 'glass' }), el('div', { class: 'fx' })]);
   var st = el('button', { type: 'button', class: 'go' }, [el('i', { html: Kit.icon('play') }), el('span')]);
+  // 8-bit sprites for the game buttons: the game's real character or piece, in its colours, with a dark outline
+  var SPR = {
+    pacman: { pal: { Y: '#ffd800' }, rows: [
+      '....YYYYY....', '..YYYYYYYYY..', '.YYYYYYYYYYY.', '.YYYYYYYYY...', 'YYYYYYYY.....', 'YYYYYY.......', 'YYYY.........',
+      'YYYYYY.......', 'YYYYYYYY.....', '.YYYYYYYYY...', '.YYYYYYYYYYY.', '..YYYYYYYYY..', '....YYYYY....'] },
+    cubehopper: { pal: { O: '#ff8a1c', N: '#e5600a', W: '#ffffff', K: '#111111' }, rows: [
+      '...OOOOOO....', '..OOOOOOOO...', '.OOWWOOWWOO..', '.OOWKOOWKOO..', 'NNOOOOOOOOO..', 'NNNNOOOOOOO..', 'NNNNNOOOOO...',
+      '.NNNNOOOOO...', '..NN.OOOO....', '....OO..OO...', '...OOO..OOO..', '..NNNN..NNNN.'] },
+    tetris: { pal: { P: '#b14dff', L: '#d9a3ff', D: '#6a1fb0' }, rows: [
+      'LLLLLLLLLLLLLLL', 'LPPPDLPPPDLPPPD', 'LPPPDLPPPDLPPPD', 'LPPPDLPPPDLPPPD', 'DDDDDDDDDDDDDDD',
+      '.....LLLLL.....', '.....LPPPD.....', '.....LPPPD.....', '.....LPPPD.....', '.....DDDDD.....'] },
+    flappybird: { pal: { Y: '#ffd23f', W: '#ffffff', K: '#111111', O: '#ff7a1a', P: '#fff2b0' }, rows: [
+      '....KKKKKK....', '..KKYYYKWWK....', '.KYYYYKWWWWK...', 'KPPPPYKWWWKWK..', 'KPPPPPYKWWKWK..', 'KYPPPYYYKWWWK..',
+      '.KYYYYYYKOOOOOO', '..KYYYYKOKKKKK.', '...KKYYYKOOOOK.', '.....KKKKKKKK..'] },
+    snake: { pal: { G: '#d4ff5c', D: '#86c61f', K: '#111111', R: '#ff3b3b', L: '#2e7d32' }, rows: [
+      '.GGGGGG.........', 'GGDDDDGG.....L..', 'GG....GG....RRR.', '......GG...RRRRR', '..GGGGGG...RRRRR', '.GGDDDG.....RRR.',
+      'GG..............', 'GGGGGGGGKG......', '.GDDDDDGGGG.....'] },
+    asteroids: { pal: { W: '#f2f4f8', G: '#a3abb9', L: '#6b7280' }, rows: [
+      '..W..........', '..W.....GGG..', '.WWW...GGGGG.', '.WWW..GGLGGGG', 'WWWWW.GGGGLGG', 'WW.WW.GLGGGGG', '.......GGGGG.', '........GGG..'] },
+    breakout: { pal: { R: '#f43f5e', O: '#fb923c', Y: '#facc15', W: '#ffffff', B: '#38bdf8' }, rows: [
+      'RRRR.RRRR.RRRR', 'OOOO.OOOO.OOOO', 'YYYY.YYYY.YYYY', '..............', '..........WW..', '..........WW..',
+      '..............', '....BBBBBB....'] },
+    peggle: { pal: { O: '#ff8a1c', B: '#3b82f6', W: '#e5e7eb', G: '#22c55e' }, rows: [
+      '.....WW......', '.....WW......', '.............', '..OO.....BB..', '.OOOO...BBBB.', '..OO.....BB..',
+      '.............', 'BB....GG....OO', 'BB....GG....OO'] },
+    paddleball: { pal: { W: '#ffffff' }, rows: [
+      'WW..........WW', 'WW..........WW', 'WW.....WW...WW', 'WW.....WW...WW', 'WW..........WW', 'WW..........WW'] }
+  };
+  function spriteCanvas(game) {
+    var sp = SPR[game]; if (!sp) return null;
+    var h = sp.rows.length, w = Math.max.apply(null, sp.rows.map(function (x) { return x.length; }));
+    var cv = el('canvas', { width: w + 2, height: h + 2, 'aria-hidden': 'true' }), g = cv.getContext('2d');
+    // outline: the shape in near-black, nudged one pixel each way, then the sprite on top
+    [[0, 1], [2, 1], [1, 0], [1, 2]].forEach(function (o) { sp.rows.forEach(function (row, y) { for (var x = 0; x < row.length; x++) if (sp.pal[row[x]]) { g.fillStyle = 'rgba(10,8,20,.85)'; g.fillRect(x + o[0], y + o[1], 1, 1); } }); });
+    sp.rows.forEach(function (row, y) { for (var x = 0; x < row.length; x++) { var c = sp.pal[row[x]]; if (c) { g.fillStyle = c; g.fillRect(x + 1, y + 1, 1, 1); } } });
+    cv.style.aspectRatio = (w + 2) + ' / ' + (h + 2);
+    return cv;
+  }
   // games with modes (Flappy Bird: classic / wild pipes) share one select button; the toggle picks the mode
   var GROUPS = [];
   BOARDS.forEach(function (b, i) { var g = GROUPS.filter(function (x) { return x.game === b.game; })[0]; if (!g) { g = { game: b.game, idx: [], last: i }; GROUPS.push(g); } g.idx.push(i); });
@@ -171,21 +211,13 @@ Kit.init({ id: 'hiscores', mark: false });
     var b0 = BOARDS[g.idx[0]], gm = findGame(b0.game);
     var bc = b0.c.sel || b0.c.glow;
     g.btn = el('button', { type: 'button', role: 'tab', class: 'sel-b', 'aria-label': gm ? gm.name : b0.title, style: { '--bc': bc, '--bk': inkOn(bc) },
-      onclick: function () { if (groupOf(cur) !== g) { var from = GROUPS.indexOf(groupOf(cur)); show(g.last, gi > from ? 1 : -1); } } }, [g.cv = el('canvas', { width: 24, height: 18, 'aria-hidden': 'true' }), el('span', { text: b0.short || b0.title })]);
-    g.ink = inkOn(bc); g.g = g.cv.getContext('2d');
+      onclick: function () { if (groupOf(cur) !== g) { var from = GROUPS.indexOf(groupOf(cur)); show(g.last, gi > from ? 1 : -1); } } }, [spriteCanvas(b0.game), el('span', { text: b0.short || b0.title })]);
     sel.appendChild(g.btn);
   });
   var modes = el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Mode' });
   function inkOn(hex) { var n = parseInt(String(hex).slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? '#14101f' : '#ffffff'; }
-  // the game's little sprite, printed on its button in the button's ink colour
-  function stamp(x, t) {
-    var b = BOARDS[x.idx[0]], g = x.g; if (!MQ) return;
-    g.clearRect(0, 0, 24, 18); MQ[b.anim](g, t, b.iconSide || 0, b);
-    g.globalCompositeOperation = 'source-in'; g.fillStyle = x.ink; g.fillRect(0, 0, 24, 18); g.globalCompositeOperation = 'source-over';
-  }
   function paintSel() {
     var g = groupOf(cur), b = BOARDS[cur], gm = findGame(b.game), bc = b.c.sel || b.c.glow;
-    GROUPS.forEach(function (x) { stamp(x, 0.6); });
     GROUPS.forEach(function (x) { x.btn.classList.toggle('on', x === g); x.btn.setAttribute('aria-selected', String(x === g)); });
     cab.style.setProperty('--bcol', bc); cab.style.setProperty('--bink', inkOn(bc));
     st.querySelector('span').textContent = 'PLAY ' + (b.short || b.title);
@@ -776,7 +808,6 @@ Kit.init({ id: 'hiscores', mark: false });
     anim.draw(gB);
     var b = BOARDS[cur];
     [gL, gR].forEach(function (g, side) { g.clearRect(0, 0, 24, 18); if (mqAnim) mqAnim(g, t, side, b); });
-    var sg = groupOf(cur); if (sg) stamp(sg, t);
   }
   function loop(now) {
     raf = requestAnimationFrame(loop);
