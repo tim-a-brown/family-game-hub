@@ -6850,8 +6850,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!locs.length) { Kit.toast('You have no location to move to'); return; }
     var ok = locs.filter(function (x) { return canMove(u, x); });
     if (!ok.length) { Kit.toast('Not enough ink to move there'); return; }
-    if (ok.length === 1) return runAction({ k: 'move', u: u, t: ok[0] });
-    startPick({ title: 'Move ' + nm(u) + ' to which location?', ok: function (x) { return ok.indexOf(x) >= 0; }, done: function (x) { runAction({ k: 'move', u: u, t: x }); } });
+    // the locations as a carousel, to read and compare; Move here (with its cost) confirms
+    cardPick({ title: 'Move ' + nm(u) + ' to which location?', src: u, uids: locs, n: 1, min: 1,
+      can: function (x) { return ok.indexOf(x) >= 0; }, why: function (x) { return 'Needs ' + moveCost(u, x) + ' ink to move here.'; },
+      label: function (x) { var mc = moveCost(u, x); return 'Move here · ' + (mc ? mc + ' ink' : 'Free'); },
+      done: function (sel) { if (sel[0]) runAction({ k: 'move', u: u, t: sel[0] }); }, cancel: function () {} });
   }
   // ── Undo and saving ──────────────────────────────────────────────────────
   function snapshot() { var h = S.hist, d = S.defs, ph = S.prevHist; S.hist = undefined; S.defs = undefined; S.prevHist = undefined; var s = JSON.stringify(S); S.hist = h; S.defs = d; S.prevHist = ph; return s; }
@@ -9494,7 +9497,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function stop() { if (fin) return; fin = true; closeZoom(); if (o.cancel) o.cancel(); }
     function show(i, dir) {
       var u = o.uids[i], d = DD(u), on = sel.indexOf(u) >= 0, ok = can(u), acts = [], whys = [];
-      if (ok && single) acts.push({ label: (o.verb || 'Choose') + ' ' + d.n, primary: true, full: true, go: function () { finish([u]); } });
+      if (ok && single) acts.push({ label: o.label ? o.label(u) : (o.verb || 'Choose') + ' ' + d.n, primary: true, full: true, go: function () { finish([u]); } });
       else if (ok) acts.push({ icon: on && o.place ? '<b class="ai-n">' + (sel.indexOf(u) + 1) + '</b>' : null, label: on ? (o.place ? deckPlace(o.place, sel.indexOf(u)) + ' · undo' : 'Chosen · tap to undo') : (o.verb || 'Choose') + ' this card' + (o.place && sel.length < n ? ' · becomes ' + (sel.length ? '' : 'the ') + deckPlace(o.place, sel.length, true) : ''), primary: !on, full: true, go: function () {
         var k = sel.indexOf(u); if (k >= 0) sel.splice(k, 1); else { if (sel.length >= n) sel.shift(); sel.push(u); } Kit.sfx('tap'); show(i); } });
       else if (o.why) whys.push(o.why(u));
