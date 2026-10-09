@@ -208,10 +208,10 @@
     var nm = [plainName(e, 0), plainName(e, 1)], out = [];
     out.push(ui.section('Final position', [ui.picture(bgSvg(d), { frame: 'wood', max: 380 }),
       ui.chips([{ t: 'White: ' + nm[0], c: '#e9e4d8' }, { t: 'Black: ' + nm[1], c: '#9a9aa6' }])]));
-    var HOW = { single: 'a single game', gammon: 'a gammon', backgammon: 'a backgammon', drop: 'a dropped double' };
+    var HOW = { single: 'a single game', gammon: 'a gammon', backgammon: 'a backgammon' };
     var g = d.g || [];
     if (g.length) out.push(ui.section(g.length > 1 ? 'Each game' : 'How it ended', ui.log(g.map(function (x, i) {
-      return { c: x.w, b: (g.length > 1 ? 'Game ' + (i + 1) + ': ' : ''), t: nm[x.w] + ' won ' + (HOW[x.h] || 'the game') + ', ' + x.pts + (x.pts === 1 ? ' point' : ' points') + (x.c > 1 ? ' (cube at ' + x.c + ')' : '') + (x.h !== 'drop' && x.pl ? ' · ' + nm[1 - x.w] + ' had ' + x.pl + ' pips left' : '') };
+      return { c: x.w, b: (g.length > 1 ? 'Game ' + (i + 1) + ': ' : ''), t: (x.h === 'drop' ? nm[x.w] + ' won when ' + nm[1 - x.w] + ' dropped the double' : nm[x.w] + ' won ' + (HOW[x.h] || 'the game')) + ', ' + x.pts + (x.pts === 1 ? ' point' : ' points') + (x.c > 1 ? ' (cube at ' + x.c + ')' : '') + (x.h !== 'drop' && x.pl ? ' · ' + nm[1 - x.w] + ' had ' + x.pl + ' pips left' : '') };
     }))));
     var off = d.off || [0, 0];
     out.push(ui.table(['', nm[0], nm[1]], [['Borne off', off[0] + ' / 15', off[1] + ' / 15'], ['Pips left', d.pips ? d.pips[0] : null, d.pips ? d.pips[1] : null],
