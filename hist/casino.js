@@ -246,7 +246,7 @@
     '.cz-rb.w{background:#16a34a;}.cz-rb.l{background:#b91c1c;}.cz-rb.p{background:#6b7280;}.cz-rb.big{background:#d4a017;color:#1b1404;}',
     '.cz-rb.on{outline:2.5px solid #fff;outline-offset:1px;}',
     '.cz-kv{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.78rem;font-weight:800;color:rgba(255,255,255,.8);}',
-    '.cz-kv b{color:#fff;}',
+    '.cz-kv b{color:#fff;}.cz-hand>.cz-kv{flex:1;min-width:0;}',
     '.cz-ball{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-size:.74rem;font-weight:900;color:#fff;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);}',
     '.cz-ball.red{background:#c8102e;}.cz-ball.black{background:#1b1b1f;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);}.cz-ball.green{background:#15803d;}',
     '.cz-ball.lg{width:54px;height:54px;font-size:1.4rem;}',
@@ -273,6 +273,7 @@
     '.cz-row .hv-cards{--cw:30px;flex:none;}',
     '.cz-row .tx{flex:1;min-width:0;display:flex;flex-direction:column;font-size:.8rem;font-weight:800;}',
     '.cz-row .tx small{color:var(--text-3);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.cz-row.col{flex-direction:column;align-items:stretch;gap:6px;}.cz-pg{display:flex;gap:12px;}.cz-pg .hv-cards{--cw:30px;gap:3px;}.cz-row-b{display:flex;align-items:center;gap:8px;}',
     '.cz-row .am{font-weight:900;font-variant-numeric:tabular-nums;font-size:.86rem;}',
     '.cz-row .am.good{color:#4ade80;}.cz-row .am.bad{color:#f87171;}',
     '.cz-held .pcard{opacity:.45;}.cz-held .pcard.hv-hl{opacity:1;outline:none;box-shadow:0 0 0 2.5px #ffd54a;}',
@@ -529,7 +530,8 @@
     if (d.big) out.push(ui.section('Biggest win', pgHand(ui, d.big, 'Best hand'), { icon: 'trophy' }));
     var last = (d.last || []).slice().reverse();
     if (last.length) out.push(ui.section('Last hands', handRows(ui, last, function (x) {
-      return ui.el('div', { class: 'cz-row' }, [cardRow(ui, codes(x.ph).concat(codes(x.pl))), ui.el('div', { class: 'tx' }, [ui.el('span', { text: x.phn + ' / ' + x.pln }), ui.el('small', { text: 'Hand ' + x.h + ' · dealer ' + x.dhn.toLowerCase() + ' / ' + x.dln.toLowerCase() })]), ui.el('span', { class: 'am ' + cls(x.n), text: signed(x.n) })]);
+      return ui.el('div', { class: 'cz-row col' }, [ui.el('div', { class: 'cz-pg' }, [cardRow(ui, x.ph), cardRow(ui, x.pl)]),
+        ui.el('div', { class: 'cz-row-b' }, [ui.el('div', { class: 'tx' }, [ui.el('span', { text: x.phn + ' / ' + x.pln }), ui.el('small', { text: 'Hand ' + x.h + ' · dealer ' + x.dhn.toLowerCase() + ' / ' + x.dln.toLowerCase() })]), ui.el('span', { class: 'am ' + cls(x.n), text: signed(x.n) })])]);
     })));
     return ui.wrap(out);
   });
