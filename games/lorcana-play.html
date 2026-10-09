@@ -9308,7 +9308,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       actAbs(u).forEach(function (ab) {
         var why = abUseWhy(u, ab);
-        add(esc(abTitle(u, ab)) + ' · ' + abCostText(ab), !why, '', function () { useAb(u, ab); }, { full: true, primary: true });
+        var abc = abCostText(ab);
+        add(esc(abTitle(u, ab)) + (abc ? ' · ' + abc : ''), !why, '', function () { useAb(u, ab); }, { full: true, primary: true });
       });
     }
     // Text the game can't run by itself: offer just the tools that card needs
@@ -9332,7 +9333,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // you're looking at always stays in the list, so acting on it doesn't throw you out of the view)
       var bmine = canAct() && z.pi === S.cur && c.o === S.cur && !S.P[S.cur].cpu, bf = bmine ? bfGet() : 'all';
       if (bf !== 'all' && !dir && !ui.lzQuiet && !bfFits(u, bf)) { ui.bf = null; bf = 'all'; }   // tapped a card the filter leaves out: show them all
-      var bd = boardOrder(z.pi).filter(function (x) { return x === u || bfFits(x, bf); }), bi = bd.indexOf(u);
+      var bd = boardOrder(z.pi).filter(function (x) { return x === u || bfFits(x, bf); }); if (bmine) bd = boardSorted(bd); var bi = bd.indexOf(u);
       if (bi >= 0) nav = { i: bi, n: bd.length, list: bd.slice(), ctx: 'board', dir: dir || 0, go: function (step) { var j = bi + step; if (j >= 0 && j < bd.length) openZoom(bd[j], step); }, peek: function (k) { var x = bd[bi + k]; return x ? DD(x) : null; } };
     }
     var zov = zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
@@ -9354,6 +9355,22 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // ── Your cards in play: quick filters for what can still act this turn (chips under the strip, like the hand's) ──
   var BF = [['all', 'All'], ['quest', 'Can quest'], ['chal', 'Can challenge'], ['abil', 'Abilities'], ['move', 'Can move']];
+  var BV = 'lorc_boardview';
+  function bvSorts() { return [['table', 'On the table', 'As they sit', 'Reversed']].concat(HV_SORTS.slice(1)); }   // (HV_SORTS is defined further down)
+  function bvGet() { var v = lsGet(BV, null) || {}; return { s: v.s || 'table', dir: v.dir === -1 ? -1 : 1 }; }
+  function bvSet(o) { var v = bvGet(); for (var k in o) v[k] = o[k]; lsSet(BV, v); }
+  // your cards in play in the carousel, in the order you chose (the table itself keeps its layout)
+  function boardSorted(list) {
+    var v = bvGet(), idx = function (x) { return list.indexOf(x); };
+    if (v.s === 'table') return v.dir === 1 ? list : list.slice().reverse();
+    if (v.s === 'name') return list.slice().sort(function (a, b) { return v.dir * DD(a).full.localeCompare(DD(b).full) || idx(a) - idx(b); });
+    return list.slice().sort(function (a, b) {
+      var da = DD(a), db = DD(b), x = hvVal(da, v.s), y = hvVal(db, v.s);
+      if (x == null || y == null) { if (x != null) return -1; if (y != null) return 1; }
+      else if (x !== y) return v.dir * (x - y);
+      return (da.c || 0) - (db.c || 0) || idx(a) - idx(b);
+    });
+  }
   function bfGet() { return ui.bf && ui.bf.turn === S.turn && ui.bf.pi === S.cur ? ui.bf.f : 'all'; }
   function bfFits(u, f) {
     if (f === 'all') return true;
@@ -9367,7 +9384,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function boardBar(ov, u, pi) {
     var f0 = bfGet(), board = S.P[pi].board;
     var host = $('.lz-in', ov), flow = host && $('.lz-flow', host); if (!flow) return;
-    var bar = el('div', { class: 'lz-hf bf', role: 'toolbar', 'aria-label': 'Show your cards that can…' }), chips = el('div', { class: 'fchips hf-chips' });
+    var bar = el('div', { class: 'lz-hf bf', role: 'toolbar', 'aria-label': 'Sort and filter your cards in play' }), chips = el('div', { class: 'fchips hf-chips' });
+    var v = bvGet(), so = bvSorts().filter(function (x) { return x[0] === v.s; })[0] || bvSorts()[0], sorted = !(v.s === 'table' && v.dir === 1);
+    bar.appendChild(el('button', { type: 'button', class: 'flt-btn hf-sort' + (sorted ? ' on' : ''), 'aria-label': 'Sort: ' + so[1] + ', ' + (v.dir === 1 ? so[2] : so[3]).toLowerCase(),
+      html: HV_SORT_ICO + '<span>' + (sorted ? esc(so[1]) : 'Sort') + '</span>', onclick: function (e) {
+        e.stopPropagation(); Kit.sfx('tap');
+        sortSheet({ title: 'Sort Your Cards in Play', sorts: bvSorts(), get: bvGet, set: bvSet, base: 'On the table', refresh: function () { ui.lzQuiet = true; openZoom(u, 0); } });
+      } }));
     BF.forEach(function (f) {
       var n = board.filter(function (x) { return bfFits(x, f[0]); }).length;
       if ((f[0] === 'abil' || f[0] === 'move') && !n) return;   // only when something can
@@ -9417,20 +9440,25 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Re-deal the card view in place (no fade in, so the table doesn't flash through)
   function hvRefresh(u, pi) { var nv = handView(pi); ui.lzQuiet = true; openZoom(nv.indexOf(u) >= 0 ? u : nv[0], 0); if (S && ui.screen === 'game') { renderHand(pi); fitHand(); } }
   function hvSortSheet(u, pi) {
-    var box = el('div', { class: 'sortbox' }), sh, cur = u;
+    var cur = u;
+    sortSheet({ title: 'Sort Your Hand', sorts: HV_SORTS, get: hvGet, set: hvSet, base: 'In hand', refresh: function () { hvRefresh(cur, pi); } });
+  }
+  // The sort sheet (hand or table): tap a row, tap it again to reverse
+  function sortSheet(cfg) {
+    var box = el('div', { class: 'sortbox' });
     function paint() {
-      var v = hvGet(); box.innerHTML = '';
-      HV_SORTS.forEach(function (o) {
+      var v = cfg.get(); box.innerHTML = '';
+      cfg.sorts.forEach(function (o) {
         var on = v.s === o[0];
         box.appendChild(el('button', { type: 'button', class: 'sort-row' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () {
-          hvSet({ s: o[0], dir: on ? -v.dir : 1 }); Kit.sfx('tap'); paint(); hvRefresh(cur, pi);
+          cfg.set({ s: o[0], dir: on ? -v.dir : 1 }); Kit.sfx('tap'); paint(); cfg.refresh();
         } }, [el('b', { text: o[1] }), el('span', { text: on ? (v.dir === 1 ? o[2] : o[3]) : '' }), el('i', { html: on ? (v.dir === 1 ? '&#8593;' : '&#8595;') : '' })]));
       });
     }
     paint();
     document.documentElement.classList.add('flowsheet');
-    sh = Kit.sheet({ title: 'Sort Your Hand', node: el('div', null, [el('p', { class: 'sort-tip', text: 'Tap again to reverse the order.' }), box]), actions: [
-      { label: 'Reset to In hand', cls: 'btn-ghost', keep: true, onClick: function () { hvSet({ s: 'hand', dir: 1 }); paint(); hvRefresh(cur, pi); } },
+    Kit.sheet({ title: cfg.title, node: el('div', null, [el('p', { class: 'sort-tip', text: 'Tap again to reverse the order.' }), box]), actions: [
+      { label: 'Reset to ' + cfg.base, cls: 'btn-ghost', keep: true, onClick: function () { cfg.set({ s: cfg.sorts[0][0], dir: 1 }); paint(); cfg.refresh(); } },
       { label: 'Done', cls: 'btn-primary' }], onClose: function () { document.documentElement.classList.remove('flowsheet'); } });
   }
   // Under the strip: the Sort button (round, like the library's) and the quick filter chips
