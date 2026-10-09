@@ -34,6 +34,7 @@
     return ui.wrap(out);
   });
   // ── shared bits ──
+  function possLow(n) { return n === 'You' ? 'your' : Kit.poss(n); }
   function plainName(e, i) { var p = (e.players || [])[i]; return p ? String(p.name).replace(/ \((Black|White)\)$/, '') : ''; }
   // A replay slider under a picture: show(n) redraws for step n (0..max)
   function slider(ui, max, show) {
@@ -245,13 +246,13 @@
     var nm = [plainName(e, 0), plainName(e, 1)], out = [];
     var grids = ui.el('div', { class: 'hv-two' }, [0, 1].map(function (p) {
       var sk = String(d['sk' + p] || ''), n = sk.split('').filter(function (c) { return c === '1'; }).length;
-      return ui.el('div', { class: 'hv-two-c' }, [ui.el('b', { text: nm[p] + "'s fleet" }), ui.picture(bsSvg(d['f' + p], String(d['at' + p]), sk), {}), ui.el('small', { text: n === 5 ? 'All 5 sunk' : (5 - n) + ' of 5 afloat' })]);
+      return ui.el('div', { class: 'hv-two-c' }, [ui.el('b', { text: Kit.poss(nm[p]) + ' fleet' }), ui.picture(bsSvg(d['f' + p], String(d['at' + p]), sk), {}), ui.el('small', { text: n === 5 ? 'All 5 sunk' : (5 - n) + ' of 5 afloat' })]);
     }));
     out.push(ui.section('Both oceans', [grids, ui.el('small', { class: 'hv-note', text: 'Red pegs are hits, white pegs are misses. Dark ships were sunk.' })]));
     var st = d.st || [];
     if (st.length === 2) out.push(ui.table(['', nm[0], nm[1]], [['Shots', st[0].s, st[1].s], ['Hits', st[0].h, st[1].h],
       ['Accuracy', st[0].s ? Math.round(st[0].h / st[0].s * 100) + '%' : '–', st[1].s ? Math.round(st[1].h / st[1].s * 100) + '%' : '–'], ['Best hit streak', st[0].b, st[1].b]]));
-    if (d.order && d.order.length) out.push(ui.section('Ships sunk, in order', ui.log(d.order.map(function (x) { return { c: x.p, t: nm[x.p] + ' sank ' + Kit.poss(nm[1 - x.p]) + ' ' + BS_NAME[x.k] }; }))));
+    if (d.order && d.order.length) out.push(ui.section('Ships sunk, in order', ui.log(d.order.map(function (x) { return { c: x.p, t: nm[x.p] + ' sank ' + possLow(nm[1 - x.p]) + ' ' + BS_NAME[x.k] }; }))));
     return ui.wrap(out);
   });
 
@@ -396,7 +397,7 @@
     var WIND = { E: 'East', S: 'South', W: 'West', N: 'North' };
     var list = d.hands.map(function (h) {
       var box = ui.el('div', { class: 'hv-mjh' });
-      var head = h.w < 0 ? 'Draw: the wall ran out' : nm[h.w] + (h.f < 0 || h.f == null ? ' won, self-drawn' : ' won on ' + Kit.poss(nm[h.f] || '?') + ' discard');
+      var head = h.w < 0 ? 'Draw: the wall ran out' : nm[h.w] + (h.f < 0 || h.f == null ? ' won, self-drawn' : ' won on ' + possLow(nm[h.f] || '?') + ' discard');
       box.appendChild(ui.el('div', { class: 'hv-mjh-t' }, [ui.el('b', { text: (WIND[String(h.l).charAt(0)] || '') + ' ' + String(h.l).slice(1) }), ui.el('span', { text: head, style: h.w >= 0 ? { color: Kit.color(h.w) } : null }),
         h.w >= 0 ? ui.el('i', { text: h.fa + ' faan · ' + h.pt + ' pts' }) : null]));
       if (h.t) box.appendChild(MJ.hand(h.t, ui.el));

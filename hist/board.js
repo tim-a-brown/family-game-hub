@@ -527,6 +527,11 @@
       s.push('<circle cx="' + F(bc[0]) + '" cy="' + F(bc[1]) + '" r="1.32" fill="' + col + '" fill-opacity="' + op + '"/>');
       s.push('<circle cx="' + F(sp[0]) + '" cy="' + F(sp[1]) + '" r=".5" fill="' + col + '" fill-opacity="' + op + '"/>');
     }
+    if (d.r === 'agg') for (var sk = 0; sk < B; sk++) {
+      var stp = g.track[sk * MSEG + MSEG - 1], sd = '';
+      for (var si = 0; si < 10; si++) { var sa = -Math.PI / 2 + si * Math.PI / 5, sr = si % 2 ? .32 : .72; sd += (si ? 'L' : 'M') + F(stp[0] + sr * Math.cos(sa)) + ' ' + F(stp[1] + sr * Math.sin(sa)); }
+      s.push('<path d="' + sd + 'Z" fill="#f6d77a" stroke="#8a5a14" stroke-opacity=".55" stroke-width=".05" stroke-linejoin="round"/>');
+    }
     if (d.r === 'agg' || d.r === 'wahoo') s.push('<circle r=".82" fill="#f6d77a" stroke="#8a5a14" stroke-opacity=".55" stroke-width=".05"/>');
     function hole(p, r) { r = r || .3; return '<circle cx="' + F(p[0]) + '" cy="' + F(p[1]) + '" r="' + F(r) + '" fill="url(#hvmh)"/>'; }
     g.track.forEach(function (p) { s.push(hole(p)); });
@@ -556,9 +561,9 @@
   // Axis & Allies: who held the map at the end, and each power's standing.
   // The map outlines live in the game page; they're read from it on demand.
   // ═════════════════════════════════════════════════════════════════════════
-  var AA = { s: { p: 'su', n: 'Soviet Union', c: '#9c3b32' }, d: { p: 'de', n: 'Germany', c: '#5a5f5c' }, k: { p: 'uk', n: 'United Kingdom', c: '#b98e52' }, j: { p: 'jp', n: 'Japan', c: '#e0a43a' }, u: { p: 'us', n: 'United States', c: '#5d7a3a' } };
+  var AA = { s: { p: 'su', n: 'Soviet Union', sh: 'USSR', c: '#9c3b32' }, d: { p: 'de', n: 'Germany', sh: 'Germany', c: '#5a5f5c' }, k: { p: 'uk', n: 'United Kingdom', sh: 'UK', c: '#b98e52' }, j: { p: 'jp', n: 'Japan', sh: 'Japan', c: '#e0a43a' }, u: { p: 'us', n: 'United States', sh: 'USA', c: '#5d7a3a' } };
   var AA_BY = {}; Object.keys(AA).forEach(function (k) { AA_BY[AA[k].p] = AA[k]; });
-  var AA_KINDS = ['Infantry', 'Artillery', 'Tanks', 'AA guns', 'Fighters', 'Bombers', 'Subs', 'Transports', 'Destroyers', 'Cruisers', 'Carriers', 'Battleships'];
+  var AA_KINDS = [['infantry', 'infantry'], ['artillery', 'artillery'], ['tank', 'tanks'], ['AA gun', 'AA guns'], ['fighter', 'fighters'], ['bomber', 'bombers'], ['sub', 'subs'], ['transport', 'transports'], ['destroyer', 'destroyers'], ['cruiser', 'cruisers'], ['carrier', 'carriers'], ['battleship', 'battleships']];
   var aaMap = null;
   function aaLoad() {
     if (aaMap) return aaMap;
@@ -581,7 +586,7 @@
       var T = m.TER[t], geo = m.GEO[t]; if (!geo) continue;
       var ch = own.charAt(t);
       if (T[1] === 1) { sea += '<path d="' + geo + '"/>'; continue; }
-      var p = AA[ch], imp = T[4] & 8, fill = p ? p.c : ch === '-' ? '#cdbb8f' : '#a89a7a', op = p ? 1 : skirm && ch === '.' ? .35 : .75;
+      var p = AA[ch], imp = T[4] & 8, fill = p ? p.c : ch === '-' ? '#cdbb8f' : skirm ? '#22323c' : '#a89a7a', op = p ? 1 : skirm && ch === '.' ? 1 : .75;
       land += '<path d="' + geo + '" fill="' + fill + '" fill-opacity="' + op + '"' + (imp ? ' stroke-dasharray="4 3"' : '') + '/>';
       if (T[4] & 2 && (!skirm || ch !== '.')) {
         var cx = T[5], cy = T[6], r = skirm ? 8 : 11, st = '';
@@ -610,15 +615,14 @@
     out.push(ui.chips(pw.map(function (x) { var P = AA_BY[x.p] || {}; return { t: P.n || x.p, c: P.c, on: true }; })));
     var rows = pw.map(function (x) {
       var P = AA_BY[x.p] || {}, letter = Object.keys(AA).filter(function (k) { return AA[k].p === x.p; })[0];
-      var units = String(x.u || '').split(',').map(Number), tot = units.reduce(function (a, b) { return a + (b || 0); }, 0);
-      return [P.n || x.p, counts[letter] || 0, x.i, x.v, tot, x.c, { t: x.cap ? 'Held' : 'Lost', c: x.cap ? 'good' : 'bad' }];
+      return [P.sh || x.p, counts[letter] || 0, x.i, x.v, { t: x.cap ? 'Held' : 'Lost', c: x.cap ? 'good' : 'bad' }];
     });
-    out.push(ui.section('Powers at the end', ui.table(['', 'Land', 'IPCs', 'Cities', 'Units', 'Took', 'Capital'], rows)));
+    out.push(ui.section('Powers at the end', ui.table(['', 'Land', 'IPCs', 'Cities', 'Capital'], rows)));
     // what armies were left, by power
     var armies = pw.map(function (x) {
       var units = String(x.u || '').split(',').map(Number), parts = [];
-      units.forEach(function (n, i) { if (n) parts.push(n + ' ' + AA_KINDS[i].toLowerCase()); });
-      return { t: parts.join(', ') || 'No units left', b: (AA_BY[x.p] || {}).n + ': ', c: (AA_BY[x.p] || {}).c };
+      units.forEach(function (n, i) { if (n && AA_KINDS[i]) parts.push(n + ' ' + AA_KINDS[i][n === 1 ? 0 : 1]); });
+      return { t: parts.join(', ') || 'No units left', b: (AA_BY[x.p] || {}).sh + ': ', c: (AA_BY[x.p] || {}).c };
     });
     out.push(ui.section('Armies left', ui.log(armies)));
     return ui.wrap(out);

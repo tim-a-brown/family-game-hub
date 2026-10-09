@@ -163,7 +163,7 @@
       }
     }
     var yz = ps.map(function (p, i) { var c = arr(p.c); return { i: i, n: (c[11] === 50 ? 1 : 0) + (p.yb || 0) }; }).filter(function (x) { return x.n; });
-    if (yz.length) out.push(ui.stats(yz.map(function (x) { return [solo ? 'Yahtzees' : (nm[x.i] || '') + "'s Yahtzees", x.n]; })));
+    if (yz.length) out.push(ui.stats(yz.map(function (x) { return [solo ? 'Yahtzees' : 'Yahtzees · ' + (nm[x.i] || ''), x.n]; })));
     return ui.wrap(out);
   });
 
@@ -187,7 +187,7 @@
       });
       out.push(ui.section('Biggest turn: ' + (nm[bi] || '') + ' banked ' + fmtN(ps[bi].b), [
         ui.el('div', { class: 'hv-snap f-felt', style: { 'max-width': '100%', 'line-height': 'normal', padding: '12px', background: 'radial-gradient(120% 120% at 50% 0%,#26508e,#0f274b)' } }, [row]),
-        ps[bi].bh ? ui.el('p', { class: 'dv-note', html: 'Hot dice ' + (ps[bi].bh === 1 ? 'once' : ps[bi].bh + ' times') + ' in that turn: all six scored and got rolled again.' }) : null
+        ps[bi].bh ? ui.el('p', { class: 'dv-note', html: 'Hot dice ' + (ps[bi].bh === 1 ? 'once' : ps[bi].bh === 2 ? 'twice' : ps[bi].bh + ' times') + ' in that turn: all six scored and got rolled again.' }) : null
       ], { icon: 'flame' }));
     }
     // best single roll per player

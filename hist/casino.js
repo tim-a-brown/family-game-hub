@@ -253,7 +253,7 @@
     '.cz-marq{display:flex;flex-wrap:wrap;gap:4px;padding:10px;border-radius:12px;background:linear-gradient(#141218,#0b0a0e);box-shadow:inset 0 2px 10px rgba(0,0,0,.9);}',
     '.cz-bets{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums;}',
     '.cz-bets td{padding:4px 2px;border-top:1px solid rgba(255,255,255,.12);font-weight:800;color:#fff;}',
-    '.cz-bets td:not(:first-child){text-align:right;white-space:nowrap;}',
+    '.cz-bets td:first-child{width:55%;}.cz-bets td:not(:first-child){text-align:right;white-space:nowrap;}',
     '.cz-bets td.good{color:#86efac;}.cz-bets td.dim{color:rgba(255,255,255,.55);}',
     '.cz-reels{align-self:center;width:100%;max-width:340px;border-radius:16px;padding:10px;background:linear-gradient(180deg,#8a1020,#4a0710);box-shadow:inset 0 0 0 3px #d4a017,0 6px 16px -6px rgba(0,0,0,.6);line-height:0;}',
     '.cz-reels svg{width:100%;height:auto;display:block;}',

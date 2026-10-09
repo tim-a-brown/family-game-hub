@@ -55,7 +55,7 @@
     '.sx-grid{border-collapse:separate;border-spacing:3px;font-size:.8rem;font-variant-numeric:tabular-nums;margin:0 auto;}',
     '.sx-grid th{font-weight:800;color:var(--text-3);padding:2px 4px;white-space:nowrap;font-size:.72rem;}',
     '.sx-grid th.nm{text-align:left;color:var(--text-2);max-width:84px;overflow:hidden;text-overflow:ellipsis;}',
-    '.sx-grid td{min-width:28px;height:26px;padding:0 4px;text-align:center;border-radius:6px;font-weight:800;color:var(--text);background:rgba(255,255,255,.05);white-space:nowrap;}',
+    '.sx-grid td{min-width:26px;height:26px;padding:0 4px;text-align:center;border-radius:6px;font-weight:800;color:var(--text);background:rgba(255,255,255,.05);white-space:nowrap;}',
     '.sx-grid td.hit{background:rgba(34,165,90,.85);color:#fff;}',
     '.sx-grid td.miss{background:rgba(194,48,75,.22);color:#ffb3bf;}',
     '.sx-grid td.su{background:#f6f1e3;font-size:1rem;line-height:1;}',
@@ -162,7 +162,7 @@
   function f7card(code) {
     var m;
     if (/^\d+!?$/.test(code)) { var v = parseInt(code, 10); return el('span', { class: 'sx-c' + (/!$/.test(code) ? ' dup' : ''), style: { color: F7C[v] || '#222' }, text: String(v), title: /!$/.test(code) ? 'Duplicate ' + v + ': bust' : String(v) }); }
-    if ((m = /^\+(\d+)$/.exec(code))) return el('span', { class: 'sx-c solid', style: { background: '#f08400' }, text: '+' + m[1] });
+    if ((m = /^\+(\d+)$/.exec(code))) return el('span', { class: 'sx-c solid', style: m[1].length > 1 ? { background: '#f08400', 'font-size': '.64rem' } : { background: '#f08400' }, text: '+' + m[1] });
     if (code === 'x2') return el('span', { class: 'sx-c solid', style: { background: '#f08400' }, text: '×2' });
     var A = { fz: ['Frz', '#3aa6d8', 'Freeze'], f3: ['Flip 3', '#e0a400', 'Flip Three'], sc: ['2nd', '#d6336c', 'Second Chance'] }[code];
     if (A) return el('span', { class: 'sx-c solid act', style: { background: A[1] }, text: A[0], title: A[2] });
@@ -394,7 +394,7 @@
       ACITIES.forEach(function (c, i) { var h = d.vc.charAt(i); box.appendChild(el('span', { class: h + (h !== c[1] ? ' flip' : ''), title: (h === 'a' ? 'Axis' : 'Allies') + (h !== c[1] ? ', changed hands' : '') }, [document.createTextNode(c[0])])); });
       out.push(ui.section('Victory cities at the end', [
         el('div', { class: 'sx-row2' }, [el('span', { class: 'sx-tag', style: { background: '#4b5054', color: '#fff' }, text: 'Axis ' + ax + (d.need ? ' / ' + d.need[0] : '') }), el('span', { class: 'sx-tag', style: { background: '#56702c', color: '#fff' }, text: 'Allies ' + al + (d.need ? ' / ' + d.need[1] : '') }), el('small', { text: d.need ? 'held / needed' : '' })]),
-        box, legend([['#ffd75e', 'Gold edge: changed hands']])], { icon: 'flag' }));
+        box, d.vc.split('').some(function (h, i) { return h !== ACITIES[i][1]; }) ? legend([['#ffd75e', 'Gold edge: changed hands']]) : null], { icon: 'flag' }));
     }
     var rows = AORDER.map(function (k) {
       var p = pw ? pw.filter(function (x) { return x.k === k; })[0] || {} : meta.filter(function (x) { return x.k === k; })[0] || {};

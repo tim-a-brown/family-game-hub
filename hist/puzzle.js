@@ -24,10 +24,10 @@
     '.hv-climb span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.7rem;font-weight:800;color:var(--text-3);}',
     '.hv-climb i{display:grid;place-items:center;width:42px;height:42px;border-radius:8px;font-style:normal;font-weight:900;font-size:.9rem;box-shadow:0 3px 0 var(--e),0 4px 8px rgba(0,0,0,.4);background:linear-gradient(180deg,var(--a),var(--b));color:var(--k);}',
     // memory match cards
-    '.hv-mm{display:grid;gap:5px;padding:10px;border-radius:14px;align-self:center;width:100%;max-width:360px;box-sizing:border-box;}',
+    '.hv-mm{position:relative;overflow:hidden;display:grid;gap:5px;padding:10px;border-radius:14px;align-self:center;width:100%;max-width:360px;box-sizing:border-box;}',
     '.hv-mm .c{position:relative;aspect-ratio:3/4;border-radius:7px;background:linear-gradient(170deg,#fffdf6,#efe6d2);box-shadow:0 2px 0 #b9a98a,0 3px 6px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;text-align:center;padding:3px;overflow:hidden;}',
     '.hv-mm .c span{font-size:.62rem;line-height:1.1;font-weight:900;color:#3a2a4a;overflow-wrap:anywhere;}',
-    '.hv-mm .c i{position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--pc);}',
+    '.hv-mm .c i{position:absolute;left:0;right:0;bottom:0;height:7px;background:var(--pc);}',
     '.hv-mm .c em{position:absolute;top:2px;right:3px;font-style:normal;font-size:.55rem;font-weight:900;color:#8a7a68;}',
     '.hv-mm .c.left{background:linear-gradient(160deg,#7b2cbf,#d946ef);box-shadow:0 2px 0 #3c1460,0 3px 6px rgba(0,0,0,.45);}',
     // math chalkboard
@@ -224,10 +224,13 @@
     snap.innerHTML = sdSvg(given, vals, { h: d.h, x: d.x });
     out.push(ui.section('The finished page', snap));
     out.push(ui.el('p', { class: 'hv-pz-note', text: 'Black: printed · Blue: your pen' + ((d.h || []).length ? ' · Yellow: hint' : '') + ((d.x || []).length ? ' · Red corner: had a wrong number' : '') }));
+    // squares filled before the order was kept (an old saved game) start out filled
+    var inOrd = {}; ord.forEach(function (i) { inOrd[i] = 1; });
+    var base = given.map(function (g, i) { return g || (inOrd[i] ? 0 : vals[i]); });
     if (ord.length > 4) {
       var fill = ui.el('div', { class: 'hv-snap f-paper', style: { 'max-width': '320px', padding: '6px' } });
       out.push(ui.section('How you filled it in', [fill, replay(ui, fill, ord.length, Math.min(ord.length, Math.round(ord.length / 2)), function (m) {
-        var v = given.slice(); for (var j = 0; j < m; j++) v[ord[j]] = vals[ord[j]];
+        var v = base.slice(); for (var j = 0; j < m; j++) v[ord[j]] = vals[ord[j]];
         fill.innerHTML = sdSvg(given, v, { last: m ? ord[m - 1] : -1, h: d.h });
         var c = m ? ord[m - 1] : -1;
         return m === 0 ? 'The printed puzzle' : 'Number ' + m + ' of ' + ord.length + ': ' + vals[c] + ' in row ' + (Math.floor(c / 9) + 1) + ', column ' + (c % 9 + 1);
@@ -303,7 +306,7 @@
     d.cards.split('').forEach(function (ch, i) {
       var o = String(d.own || '').charAt(i), nm = d.nm[ch.charCodeAt(0) - 97] || '';
       if (o === '.' || o === '') { box.appendChild(ui.el('div', { class: 'c left' })); return; }
-      box.appendChild(ui.el('div', { class: 'c', style: { '--pc': solo ? 'transparent' : ui.color(+o) } }, [ui.el('span', { text: nm }), rank[ch] ? ui.el('em', { text: String(rank[ch]) }) : null]));
+      box.appendChild(ui.el('div', { class: 'c', style: { '--pc': solo ? 'transparent' : ui.color(+o) } }, [ui.el('span', { text: nm }), rank[ch] ? ui.el('em', { text: String(rank[ch]) }) : null, solo ? null : ui.el('i')]));
     });
     out.push(ui.section('The table', box));
     out.push(ui.el('p', { class: 'hv-pz-note', text: 'Small number: the order the pairs were found' + (solo ? '' : ' · Colour: who took it') }));
@@ -422,7 +425,7 @@
     out.push(ui.stats([['Points', e.score], ['Right', right + ' / ' + n], ['Best streak', e.streak || 0], d.fast ? ['Fastest', d.fast + 's'] : null]));
     // which kinds of puzzle went well
     var kinds = {}; d.log.forEach(function (l) { var k = kinds[l.t] = kinds[l.t] || { n: 0, ok: 0 }; k.n++; if (l.r > 0) k.ok++; });
-    var ks = Object.keys(kinds); if (ks.length > 1) out.push(ui.section('By kind', ui.bars(ks.map(function (k) { return { label: k, value: Math.round(100 * kinds[k].ok / kinds[k].n), max: 100, color: '#7ee2a0', text: kinds[k].ok + ' / ' + kinds[k].n }; }))));
+    var ks = Object.keys(kinds); if (ks.length > 1 && ks.some(function (k) { return kinds[k].n > 1; })) out.push(ui.section('By kind', ui.bars(ks.map(function (k) { return { label: k, value: Math.round(100 * kinds[k].ok / kinds[k].n), max: 100, color: '#7ee2a0', text: kinds[k].ok + ' / ' + kinds[k].n }; }))));
     out.push(ui.facts([['Mode', (MP_MODES[e.modeId] || '') + (e.modeId === 'timed' && e.secs ? ' · ' + (e.secs / 60) + ' min' : '')]]));
     return ui.wrap(out);
   });
