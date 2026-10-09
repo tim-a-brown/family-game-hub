@@ -33,7 +33,9 @@ service cloud.firestore {
           'favs',       // favorited game hrefs
           'favsAt',     // last-modified timestamp for favs (conflict resolution)
           'lorcana',    // Lorcana saved decks + bookmarked cards
-          'avatars'     // player avatars (choice + uploaded photos), by name
+          'avatars',    // player avatars (choice + uploaded photos), by name
+          'ghDel',      // deleted game-history record ids (so other devices drop them)
+          'links'       // player links: this account's profile code + linked people
         ]);
     }
 
@@ -50,6 +52,22 @@ service cloud.firestore {
           'host', 'guest', 'status', 'at', 'seq', 'owner',
           'st', 'defs', 'pr', 'an', 'w', 'by'
         ]);
+    }
+
+    // Player profiles for linking: one doc per 6-character share code (name, avatar, ask, rejected game ids),
+    // with an inbox of games other people recorded with this player in them. Knowing the code is access, like a
+    // PIN, but it reaches only this profile and its inbox, never the PIN's data.
+    match /links/{code} {
+      allow get, delete: if code.matches('^[A-HJ-NP-Z2-9]{6}$');
+      allow create, update: if code.matches('^[A-HJ-NP-Z2-9]{6}$')
+        && request.resource.data.keys().hasOnly(['name', 'avatar', 'ask', 'rejected', 'at']);
+      match /inbox/{id} {
+        allow create, update: if id.matches('^[a-z0-9]{6,24}$')
+          && request.resource.data.keys().hasOnly(['key', 'entry', 'from', 'by', 'at'])
+          && request.resource.data.entry is string && request.resource.data.entry.size() < 200000;
+        allow get, delete: if true;
+        allow list: if request.query.limit <= 100;
+      }
     }
 
     // Default deny — nothing else is accessible.

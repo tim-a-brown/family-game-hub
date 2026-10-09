@@ -3,14 +3,48 @@
 // Saves completed game snapshots to localStorage and renders a read-only
 // history drawer accessible via a 📜 button in any game.
 
-const GameHistory = (function(){
+const GameHistory = window.GameHistory = (function(){
   const MAX = 40;
+
+  // Every record gets an id (_id); older ones are known by their key and time. Deleting a record leaves a
+  // tombstone (fgh_gh_del, synced) so a copy on another device doesn't bring it back.
+  const DEL_KEY = 'fgh_gh_del';
+  function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function idOf(key, e){ return (e && e._id) || (key + ':' + ((e && (e._date || e.finishedAt || e.date || e.ts)) || '')); }
+  function deleted(){ try{ const v = JSON.parse(localStorage.getItem(DEL_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; }catch(e){ return {}; } }
+  function note(k){ try{ if(typeof FGHSync !== 'undefined' && FGHSync.noteWrite) FGHSync.noteWrite(k); }catch(e){} }
 
   function save(key, entry){
     const list = load(key);
-    list.unshift({ ...entry, _date: Date.now() });
+    const e = { ...entry, _date: Date.now(), _id: newId() };
+    // players linked to someone's profile get marked, and the game goes to their history too (sync.js)
+    try{ if(typeof FGHSync !== 'undefined' && FGHSync.linkMark) FGHSync.linkMark(e); }catch(err){}
+    list.unshift(e);
     if(list.length > MAX) list.length = MAX;
-    try{ localStorage.setItem('gh_' + key, JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('gh_'+key); }catch(e){}
+    try{ localStorage.setItem('gh_' + key, JSON.stringify(list)); note('gh_' + key); }catch(err){}
+    try{ if(typeof FGHSync !== 'undefined' && FGHSync.linkSend) FGHSync.linkSend(key, e); }catch(err){}
+    return e;
+  }
+
+  // A record that arrived from someone else's device (a linked player): kept as sent, unless deleted before
+  function insert(key, e){
+    const id = idOf(key, e); if(deleted()[id]) return false;
+    const list = load(key); if(list.some(function(x){ return idOf(key, x) === id; })) return false;
+    list.push(e); list.sort(function(a, b){ return (b._date || 0) - (a._date || 0); });
+    try{ localStorage.setItem('gh_' + key, JSON.stringify(list.slice(0, 300))); note('gh_' + key); }catch(err){}
+    return true;
+  }
+
+  // Delete records: {key: [ids]}
+  function remove(byKey){
+    const del = deleted(), now = Date.now();
+    Object.keys(byKey || {}).forEach(function(key){
+      const ids = byKey[key] || []; if(!ids.length) return;
+      ids.forEach(function(id){ del[id] = now; });
+      const list = load(key).filter(function(x){ return ids.indexOf(idOf(key, x)) < 0; });
+      try{ localStorage.setItem('gh_' + key, JSON.stringify(list)); note('gh_' + key); }catch(err){}
+    });
+    try{ localStorage.setItem(DEL_KEY, JSON.stringify(del)); note(DEL_KEY); }catch(err){}
   }
 
   function load(key){
@@ -289,7 +323,7 @@ const GameHistory = (function(){
     save(key, entry);
   }
 
-  return { save, load, open, close, btn, fmt, savePlayerGame,
+  return { save, load, insert, remove, idOf, deleted, open, close, btn, fmt, savePlayerGame,
     renderRoundTable, renderStatGrid, renderWordleGrid, renderSudokuGrid, renderPlayerResults };
 })();
 

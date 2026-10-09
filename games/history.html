@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game History</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<style>
+.gh-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:6px 2px 12px;}
+.gh-head h1{font-size:1.6rem;font-weight:900;}
+.gh-head span{color:var(--text-2);font-weight:700;font-size:.9rem;}
+.fchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;}
+.fchips::-webkit-scrollbar{display:none;}
+.fchip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 13px;border:0;border-radius:999px;background:var(--surface-2);color:var(--text-2);font:inherit;font-weight:800;font-size:.84rem;cursor:pointer;}
+.fchip .hf-n{font-weight:900;opacity:.6;}
+.fchip.on{background:var(--yellow);color:#16102e;}
+.gh-tools{display:flex;align-items:center;gap:10px;margin:4px 0 10px;}
+.gh-tools .fchips{flex:1;min-width:0;}
+.gh-tools .btn{flex:none;}
+.gh-game{width:100%;margin:0 0 12px;}
+.gh-month{margin:18px 2px 8px;font-size:.76rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.gh-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;margin:0 0 8px;border:0;border-radius:16px;background:var(--surface-2);color:var(--text);text-align:left;font:inherit;cursor:pointer;}
+.gh-row:active{transform:scale(.99);}
+.gh-row .gi{flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;}
+.gh-row .gi svg{width:100%;height:100%;display:block;}
+.gh-row .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.gh-row .tx small + small{color:var(--text-3);font-size:.74rem;}
+.gh-row .tx b{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gh-row .tx small{color:var(--text-2);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gh-row .pp{display:flex;align-items:center;}
+.gh-row .pp .avatar{margin-left:-6px;box-shadow:0 0 0 2px var(--surface-2);}
+.gh-row .pp .avatar:first-child{margin-left:0;}
+.gh-row .tag{flex:none;font-size:.68rem;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(14,165,164,.18);color:#5eead4;}
+.gh-row .ck{flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--text-3);display:none;place-items:center;}
+.gh-row .ck .ico{width:15px;height:15px;opacity:0;}
+.sel .gh-row .ck{display:grid;}
+.gh-row.on{box-shadow:inset 0 0 0 2px var(--yellow);}
+.gh-row.on .ck{background:var(--yellow);box-shadow:none;color:#16102e;}
+.gh-row.on .ck .ico{opacity:1;}
+.gh-bar{position:sticky;bottom:0;display:none;gap:10px;padding:12px 0 calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(180deg,transparent,var(--bg) 30%);}
+.sel .gh-bar{display:flex;}
+.gh-bar .btn{flex:1;}
+.gh-empty{margin:30px 0;text-align:center;color:var(--text-2);}
+.gh-from{display:inline-flex;align-items:center;gap:4px;}
+.gh-from .ico{width:13px;height:13px;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+// Every finished game, newest first: filter to games against the computer, with other people, or from someone who
+// linked you; tap one for the details; select and delete (deletions carry to your other devices).
+Kit.init({ id: 'history' });
+var el = Kit.el, app = document.getElementById('app');
+var F = { kind: 'all', game: '' }, selecting = false, picked = {};
+var CPU = Kit.cpuNameList().map(function (x) { return x.toLowerCase(); });
+function isCpu(p) { if (!p) return false; if (p.cpu) return true; var n = String(p.name || p).toLowerCase(); return CPU.indexOf(n) >= 0 || /^(computer|cpu|ai|bot|dealer|house)\b/.test(n); }
+function rows() {
+  var out = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
+    var key = k.slice(3); if (Kit.histSkip[key]) continue;
+    var list; try { list = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { continue; }
+    if (!Array.isArray(list)) continue;
+    list.forEach(function (e) {
+      if (!e || typeof e !== 'object') return;
+      var ps = Array.isArray(e.players) ? e.players.map(function (p) { return typeof p === 'string' ? { name: p } : p; }) : [];
+      var humans = ps.filter(function (p) { return !isCpu(p); }).length;
+      var gid = Kit.histGame(key), g = typeof findGame === 'function' ? findGame(gid) : null;
+      out.push({ key: key, e: e, id: GameHistory.idOf(key, e), g: g, gid: gid, ps: ps, people: humans >= 2, from: e._from || null, date: e._date || e.finishedAt || e.date || 0 });
+    });
+  }
+  return out.sort(function (a, b) { return b.date - a.date; });
+}
+function fits(r) {
+  if (F.game && r.gid !== F.game) return false;
+  return F.kind === 'all' || (F.kind === 'people' ? r.people : F.kind === 'solo' ? !r.people : !!r.from);
+}
+function title(r) { return r.g ? r.g.name : r.key; }
+function line(r) {
+  var e = r.e, w = e.winner;
+  if (typeof w === 'number' && r.ps[w]) w = r.ps[w].name;
+  var bits = [];
+  if (w) bits.push(w + ' won'); else if (e._summary) bits.push(String(e._summary).split(' · ').slice(0, 2).join(' · '));
+  var sc = r.ps.filter(function (p) { return typeof p.score === 'number'; }); if (sc.length > 1 && bits.length < 2) bits.push(sc.map(function (p) { return p.score; }).join(' – '));
+  return bits.join(' · ') || 'Finished';
+}
+function when(t) { if (!t) return ''; var d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+function month(t) { return t ? new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Older'; }
+
+function paint() {
+  var all = rows(), shown = all.filter(fits);
+  app.innerHTML = '';
+  app.classList.toggle('sel', selecting);
+  app.appendChild(el('div', { class: 'gh-head' }, [el('span', { text: all.length ? all.length + (all.length === 1 ? ' game saved' : ' games saved') : '' })]));
+  if (window.FGHSync && FGHSync.linkPending && FGHSync.linkPending().length) {
+    var n = FGHSync.linkPending().length;
+    app.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', style: { 'margin-bottom': '12px' }, html: Kit.icon('inbox') + '<span>' + n + (n === 1 ? ' game' : ' games') + ' to review</span>', onclick: function () { Kit.links.review(paint); } }));
+  }
+  var counts = { all: all.length, people: 0, solo: 0, from: 0 };
+  all.forEach(function (r) { if (F.game && r.gid !== F.game) return; counts[r.people ? 'people' : 'solo']++; if (r.from) counts.from++; });
+  if (F.game) counts.all = counts.people + counts.solo;
+  var chips = el('div', { class: 'fchips' });
+  [['all', 'All'], ['people', 'With people'], ['solo', 'Solo & computer'], ['from', 'From others']].forEach(function (c) {
+    if (c[0] === 'from' && !counts.from) return;
+    chips.appendChild(el('button', { type: 'button', class: 'fchip' + (F.kind === c[0] ? ' on' : ''), 'aria-pressed': String(F.kind === c[0]), html: Kit.esc(c[1]) + ' <b class="hf-n">' + counts[c[0]] + '</b>',
+      onclick: function () { F.kind = c[0]; picked = {}; Kit.sfx('tap'); paint(); } }));
+  });
+  app.appendChild(el('div', { class: 'gh-tools' }, [chips,
+    el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: selecting ? 'Cancel' : 'Select', onclick: function () { selecting = !selecting; picked = {}; Kit.sfx('tap'); paint(); } })]));
+  // one game only
+  var games = {}; all.forEach(function (r) { games[r.gid] = r.g ? r.g.name : r.key; });
+  var sel = el('select', { class: 'input gh-game', 'aria-label': 'Game' }, [el('option', { value: '', text: 'Every game' })].concat(Object.keys(games).sort(function (a, b) { return games[a].localeCompare(games[b]); }).map(function (id) { return el('option', { value: id, text: games[id] }); })));
+  sel.value = F.game; sel.addEventListener('change', function () { F.game = sel.value; picked = {}; paint(); });
+  if (Object.keys(games).length > 1) app.appendChild(sel);
+  if (!shown.length) app.appendChild(el('p', { class: 'gh-empty', text: all.length ? 'No games match.' : 'Finished games show up here.' }));
+  var lastM = '';
+  shown.forEach(function (r) {
+    var m = month(r.date); if (m !== lastM) { lastM = m; app.appendChild(el('div', { class: 'gh-month', text: m })); }
+    var pp = el('div', { class: 'pp' });
+    r.ps.slice(0, 4).forEach(function (p, i) { pp.appendChild(isCpu(p) ? el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name || '?', 'sm', Kit.color(i))); });
+    var sub = when(r.date) + (r.from ? '' : '');
+    var row = el('button', { type: 'button', class: 'gh-row' + (picked[r.key + '|' + r.id] ? ' on' : '') }, [
+      el('span', { class: 'ck', html: Kit.icon('check') }),
+      el('span', { class: 'gi', html: GameIcon(r.gid) }),
+      el('span', { class: 'tx' }, [el('b', { text: title(r) }), el('small', { text: line(r) }),
+        el('small', r.from ? { html: '<span class="gh-from">' + Kit.icon('link') + 'From ' + Kit.esc(r.from.by || r.from.from || 'someone') + '</span> · ' + Kit.esc(when(r.date)) } : { text: sub })]),
+      pp]);
+    row.addEventListener('click', function () {
+      if (selecting) { var k = r.key + '|' + r.id; if (picked[k]) delete picked[k]; else picked[k] = r; Kit.sfx('tap'); row.classList.toggle('on', !!picked[k]); bar(); return; }
+      detail(r);
+    });
+    app.appendChild(row);
+  });
+  var b = el('div', { class: 'gh-bar' }, [
+    el('button', { type: 'button', class: 'btn btn-soft', text: 'Select all shown', onclick: function () { shown.forEach(function (r) { picked[r.key + '|' + r.id] = r; }); paint(); } }),
+    el('button', { type: 'button', class: 'btn btn-red gh-del', text: 'Delete', onclick: delPicked })]);
+  app.appendChild(b);
+  bar();
+  function bar() { var n = Object.keys(picked).length, d = app.querySelector('.gh-del'); if (d) { d.textContent = n ? 'Delete ' + n : 'Delete'; d.disabled = !n; } }
+}
+function delPicked() {
+  var list = Object.keys(picked).map(function (k) { return picked[k]; }); if (!list.length) return;
+  Kit.confirm('Delete ' + list.length + (list.length === 1 ? ' game' : ' games') + ' from your history? This removes ' + (list.length === 1 ? 'it' : 'them') + ' on all your devices.', { ok: 'Delete', danger: true }).then(function (ok) {
+    if (!ok) return;
+    var by = {}; list.forEach(function (r) { (by[r.key] = by[r.key] || []).push(r.id); });
+    GameHistory.remove(by); picked = {}; selecting = false; Kit.sfx('good'); Kit.toast('Deleted ' + list.length); paint();
+  });
+}
+function detail(r) {
+  var node = el('div', null, [Kit.historyDetail(r.e)]);
+  var acts = [{ label: 'Close', cls: 'btn-soft' }];
+  if (r.from && window.FGHSync && FGHSync.linkNotMe) acts.unshift({ label: 'Not me', cls: 'btn-ghost', onClick: function () {
+    Kit.confirm('Not you? This game leaves your history, and ' + (r.from.by || 'the sender') + '’s copy stops counting it as yours.', { ok: 'Not me', danger: true }).then(function (ok) { if (!ok) return; FGHSync.linkNotMe(r.key, r.e); Kit.toast('Removed'); paint(); });
+  } });
+  acts.unshift({ label: 'Delete', cls: 'btn-ghost', onClick: function () {
+    Kit.confirm('Delete this game from your history? This removes it on all your devices.', { ok: 'Delete', danger: true }).then(function (ok) { if (!ok) return; var o = {}; o[r.key] = [r.id]; GameHistory.remove(o); Kit.toast('Deleted'); paint(); });
+  } });
+  Kit.sheet({ title: title(r), node: node, actions: acts });
+}
+paint();
+window.addEventListener('fghlinks', function () { if (!selecting) paint(); });
+document.addEventListener('fghsync:updated', function () { if (!selecting) paint(); });
+if (window.FGHSync && FGHSync.linkPoll) FGHSync.linkPoll(true);
+</script>
+</body>
+</html>

@@ -223,6 +223,7 @@ var GameIcon = (function () {
     randomtools: function (c) { return path('M2 17h2.5c1.6 0 3-.8 4-2.1l5-7c1-1.3 2.4-2.1 4-2.1H21', 'none', ' stroke="' + c + '" stroke-width="2.4" stroke-linecap="round"') + path('M18 3l3 2.8-3 2.8', 'none', ' stroke="' + c + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"') + path('M2 7h2.5c1.6 0 3 .8 4 2.1M21 17h-3.5c-1.6 0-3-.8-4-2.1', 'none', ' stroke="' + K + '" stroke-width="2.4" stroke-linecap="round"') + path('M18 14.2l3 2.8-3 2.8', 'none', ' stroke="' + K + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"'); },
     bingo: function (c) { return circ(12, 12, 10, c) + circ(12, 12, 6, W) + txt('B', 9, K, 12.6); },
     ranker: function (c) { return rect(8.5, 6, 7, 16, 1.2, Y) + rect(1.5, 11, 7, 11, 1.2, S) + rect(15.5, 14, 7, 8, 1.2, O) + txt('1', 7, K, 10, 12); },
+    history: function (c) { return circ(12, 12, 9.5, c) + line('M12 6.8V12l3.8 2.4', K, 2.6) + line('M3.2 6.5 2.5 3.4M3.2 6.5l3.2-.6', K, 2); },
     players: function (c) { return circ(8, 7.5, 3.6, K) + path('M1.5 21c0-4 2.9-7 6.5-7s6.5 3 6.5 7z', K) + circ(16.5, 9, 3.2, c) + path('M10.5 21.5c.3-3.6 2.8-6 6-6s5.8 2.4 6 6z', c); }
   };
 

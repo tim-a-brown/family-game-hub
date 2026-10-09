@@ -22,6 +22,10 @@
 //   lorcana_art_v1 {card: [printingId, at]}  lorcana_fancy_v1 {on, at}   (card art choices)
 // Player avatars sync too (cloud field `avatars`, local key fgh_avatars): {nameLowercase: {name, cur, photos, at}};
 // each person goes by their own timestamp.
+// Deleted game records leave tombstones (cloud `ghDel`, local fgh_gh_del {id: at}) so other devices drop them too.
+// Player links (cloud `links`, local fgh_links): your profile's share code, and the people you've linked by theirs.
+// A profile lives at links/{code} (name, avatar, ask, rejected) with an inbox of games other people recorded with
+// you in them; your app files those under your history (or asks first) and clears the inbox.
 // Each deck and each bookmark goes by its own timestamp, so edits, deletes and
 // un-bookmarks on one device carry over to the others.
 (function(){
@@ -74,6 +78,8 @@
       .then(function(){
         var app = firebase.initializeApp(firebaseConfig);
         var db  = firebase.firestore();
+        // local testing only: talk to the Firestore emulator
+        try{ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu')) db.useEmulator('localhost', 8080); }catch(e){}
         _fb = { app: app, db: db };
         return _fb;
       });
@@ -81,7 +87,7 @@
 
   // ── Scan localStorage ─────────────────────────────────────────────────
   function scanLocal(){
-    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null };
+    var out = { hi: {}, gh: {}, bank: null, rklists: null, favs: null, favsAt: null, lorc: scanLorc(), avatars: null, ghDel: null, links: null };
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i);
       if(!k) continue;
@@ -97,6 +103,10 @@
         try{ out.rklists = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fav_games'){
         try{ out.favs = JSON.parse(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'fgh_gh_del'){
+        try{ out.ghDel = JSON.parse(LS.getItem(k)) || null; }catch(e){}
+      } else if(k === 'fgh_links'){
+        try{ out.links = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fgh_avatars'){
         try{ out.avatars = JSON.parse(LS.getItem(k)) || null; }catch(e){}
       } else if(k === 'fav_games_updated_at'){
@@ -209,6 +219,9 @@
     out.rklists = mergeRkLists(local.rklists, remote.rklists);
     out.lorc = mergeLorc(local.lorc, remote.lorc);
     out.avatars = mergeAvatars(local.avatars, remote.avatars);
+    out.ghDel = mergeDel(local.ghDel, remote.ghDel);
+    out.links = mergeLinks(local.links, remote.links);
+    if(out.ghDel) Object.keys(out.gh).forEach(function(k){ out.gh[k] = out.gh[k].filter(function(r){ return !out.ghDel[ghId(k, r)]; }); });
     // Favorites: newest favsAt timestamp wins the whole list. This lets
     // deletions propagate — unfavoriting bumps the local timestamp, and on
     // next sync that version supersedes any stale cloud copy. Prior behavior
@@ -251,6 +264,22 @@
     return { lists: lists };
   }
 
+  function ghId(key, r){ return (r && r._id) || (key + ':' + ((r && (r._date || r.finishedAt || r.date || r.ts)) || '')); }
+  function mergeDel(a, b){
+    if(!a && !b) return null;
+    var out = {};
+    [a || {}, b || {}].forEach(function(src){ Object.keys(src).forEach(function(k){ out[k] = Math.max(out[k] || 0, Number(src[k]) || 0); }); });
+    return out;
+  }
+  // Links: your own profile and each linked person go by their own timestamps (an unlink is a dated tombstone)
+  function mergeLinks(a, b){
+    if(!a && !b) return null;
+    a = a || {}; b = b || {};
+    var own = (a.own && b.own) ? ((a.own.at || 0) >= (b.own.at || 0) ? a.own : b.own) : (a.own || b.own || null);
+    var others = {};
+    [a.others || {}, b.others || {}].forEach(function(src){ Object.keys(src).forEach(function(k){ var r = src[k]; if(r && (!others[k] || (r.at || 0) > (others[k].at || 0))) others[k] = r; }); });
+    return { own: own, others: others };
+  }
   // Avatars: each person's newest version wins (their whole record: current choice and photos)
   function mergeAvatars(a, b){
     if(!a && !b) return null;
@@ -282,6 +311,20 @@
     // Merge again with what's on the device right now, so a deck or bookmark
     // changed while the cloud was being read isn't overwritten
     if(snap.lorc) writeLorc(mergeLorc(snap.lorc, scanLorc()));
+    if(snap.ghDel){
+      var gd = mergeDel(snap.ghDel, lsJSON('fgh_gh_del'));
+      try{ LS.setItem('fgh_gh_del', JSON.stringify(gd)); }catch(e){}
+      // drop deleted records from every game's history on this device
+      for(var gi = 0; gi < LS.length; gi++){
+        var gk = LS.key(gi); if(!gk || gk.indexOf('gh_') !== 0) continue;
+        var gl = lsJSON(gk); if(!Array.isArray(gl)) continue;
+        var gkey = gk.slice(3), kept = gl.filter(function(r){ return !gd[ghId(gkey, r)]; });
+        if(kept.length !== gl.length) try{ LS.setItem(gk, JSON.stringify(kept)); }catch(e){}
+      }
+    }
+    if(snap.links){
+      try{ LS.setItem('fgh_links', JSON.stringify(mergeLinks(snap.links, lsJSON('fgh_links')))); }catch(e){}
+    }
     if(snap.avatars){
       var av = mergeAvatars(snap.avatars, lsJSON('fgh_avatars'));
       try{ LS.setItem('fgh_avatars', JSON.stringify(av)); }catch(e){}
@@ -350,14 +393,14 @@
   }
 
   function pullCloud(){
-    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, isNew:false});
+    var ref = cloudRef(); if(!ref) return Promise.resolve({hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:false});
     return ref.get().then(function(doc){
       if(!doc.exists){
         console.log('[sync] pull: cloud doc empty (first sync)');
-        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, isNew:true};
+        return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, isNew:false };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -419,6 +462,8 @@
     // Lorcana decks + bookmarks: only when this device has any (merge:true keeps the cloud copy otherwise)
     if(snap.lorc) doc.lorcana = sanitizeForFirestore(snap.lorc);
     if(snap.avatars) doc.avatars = sanitizeForFirestore(snap.avatars);
+    if(snap.ghDel) doc.ghDel = sanitizeForFirestore(snap.ghDel);
+    if(snap.links) doc.links = sanitizeForFirestore(snap.links);
     console.log('[sync] push', {
       rklists_count: snap.rklists && snap.rklists.lists ? (Array.isArray(snap.rklists.lists) ? snap.rklists.lists.length : Object.keys(snap.rklists.lists).length) : 0,
       favs_count: Array.isArray(snap.favs) ? snap.favs.length : 'absent',
@@ -432,9 +477,9 @@
     return ref.set(doc, { merge: true }).catch(function(err){
       // Rules that don't allow `lorcana` yet would refuse the whole save:
       // save everything else instead of losing it
-      if(doc.avatars && err && err.code === 'permission-denied'){
-        console.warn('[sync] cloud refused avatars field; saving the rest');
-        delete doc.avatars;
+      if((doc.avatars || doc.ghDel || doc.links) && err && err.code === 'permission-denied'){
+        console.warn('[sync] cloud refused avatars/ghDel/links fields; saving the rest');
+        delete doc.avatars; delete doc.ghDel; delete doc.links;
         return ref.set(doc, { merge: true }).catch(function(err2){
           if(doc.lorcana && err2 && err2.code === 'permission-denied'){ delete doc.lorcana; return ref.set(doc, { merge: true }); }
           throw err2;
@@ -527,6 +572,7 @@
       .then(function(){
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+        linkPoll(true);
         return { ok: true };
       })
       .catch(function(err){
@@ -538,7 +584,7 @@
 
   function noteWrite(key){
     if(!key) return;
-    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
+    if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games') return;
     if(isPin()) schedulePush();
   }
 
@@ -584,7 +630,9 @@
           rklists: remote.rklists,
           favs: remote.favs,
           lorc: remote.lorc ? mergeLorc(remote.lorc, null) : null,
-          avatars: remote.avatars
+          avatars: remote.avatars,
+          ghDel: remote.ghDel,
+          links: remote.links
         });
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
@@ -638,6 +686,7 @@
           setStatus('synced');
           try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
           notifyReady();
+          linkPoll(true);
         })
         .catch(function(err){
           console.warn('[sync] boot failed; staying local', err);
@@ -662,6 +711,236 @@
     });
   }
 
+
+  // ── Player links ──────────────────────────────────────────────────────
+  // Your profile: a share code (links/{code}) with your name and avatar. Someone who links you by that code sees your
+  // avatar, and games they record with you in them land in its inbox; your app files them under your history
+  // (or holds them for you to review when "Ask before adding" is on). "Not me" adds a game's id to the profile's
+  // rejected list, which the sender's app reads to stop counting it as yours.
+  var CODE_AB = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
+  var OUTBOX = 'fgh_link_outbox';   // games waiting to be sent (this device only)
+  var _pending = [], _linkBusy = false, _lastPoll = 0;
+  function genCode(){ var c = ''; for(var i = 0; i < 6; i++) c += CODE_AB.charAt(Math.floor(Math.random() * CODE_AB.length)); return c; }
+  function linksGet(){ var l = lsJSON('fgh_links') || {}; return { own: l.own || null, others: l.others || {} }; }
+  function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); }
+  function linkEvent(){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length } })); }catch(e){} }
+  function myName(){ return (LS.getItem('my_name') || '').trim(); }
+  function lk(n){ return String(n || '').trim().toLowerCase(); }
+  function linkCol(){ return _fb.db.collection('links'); }
+  function myAvatar(){
+    var all = lsJSON('fgh_avatars') || {}, r = all[lk(myName())];
+    if(!r || !r.cur) return null;
+    var out = { cur: r.cur };
+    if(r.cur.k === 'photo'){ var ph = (r.photos || []).filter(function(x){ return x.id === r.cur.id; })[0]; if(ph) out.d = ph.d; else return null; }
+    return out;
+  }
+  function needPin(){ return isPin() ? ensureFirebase() : Promise.reject(new Error('Sign in with a PIN to link players')); }
+  // Your profile's code (made the first time)
+  function linkShare(){
+    return needPin().then(function(){
+      var l = linksGet();
+      if(l.own && l.own.code) return linkPublish().then(function(){ return l.own; });
+      if(!myName()) throw new Error('Set your name first');
+      var tries = 0;
+      function attempt(){
+        var code = genCode();
+        return linkCol().doc(code).get().then(function(d){
+          if(d.exists){ if(++tries > 5) throw new Error('Try again'); return attempt(); }
+          var own = { code: code, name: myName(), ask: false, at: Date.now() };
+          return linkCol().doc(code).set({ name: own.name, avatar: myAvatar(), ask: false, rejected: [], at: own.at })
+            .then(function(){ l.own = own; linksSet(l); return own; });
+        });
+      }
+      return attempt();
+    });
+  }
+  // Keep your profile's name and avatar current
+  var _pubT = null;
+  function linkPublish(){
+    var l = linksGet(); if(!l.own || !isPin()) return Promise.resolve();
+    return ensureFirebase().then(function(){
+      return linkCol().doc(l.own.code).set({ name: myName() || l.own.name, avatar: myAvatar(), ask: !!l.own.ask, at: Date.now() }, { merge: true });
+    }).catch(function(e){ console.warn('[links] publish failed', e); });
+  }
+  function linkPublishSoon(){ clearTimeout(_pubT); _pubT = setTimeout(linkPublish, 800); }
+  function linkSetAsk(on){
+    var l = linksGet(); if(!l.own) return Promise.resolve();
+    l.own.ask = !!on; l.own.at = Date.now(); linksSet(l);
+    return linkPublish();
+  }
+  // A new code: the old one stops working (games waiting in its inbox move across)
+  function linkNewCode(){
+    return needPin().then(function(){
+      var l = linksGet(), old = l.own && l.own.code;
+      l.own = null; linksSet(l);
+      return linkShare().then(function(own){
+        if(!old) return own;
+        var oldRef = linkCol().doc(old);
+        return oldRef.collection('inbox').limit(100).get().then(function(q){
+          return Promise.all(q.docs.map(function(d){ return linkCol().doc(own.code).collection('inbox').doc(d.id).set(d.data()).then(function(){ return d.ref.delete(); }); }));
+        }).then(function(){ return oldRef.delete(); }).catch(function(e){ console.warn('[links] old code cleanup', e); }).then(function(){ return own; });
+      });
+    });
+  }
+  // Link a frequent player to someone's profile by their code
+  function linkAdd(name, code){
+    code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if(!CODE_RE.test(code)) return Promise.reject(new Error('Codes are 6 letters and numbers'));
+    return needPin().then(function(){
+      var l = linksGet();
+      if(l.own && l.own.code === code) throw new Error('That’s your own code');
+      return linkCol().doc(code).get().then(function(d){
+        if(!d.exists) throw new Error('No profile has that code');
+        var data = d.data() || {};
+        l.others[lk(name)] = { name: String(name).trim(), code: code, them: data.name || '', at: Date.now() };
+        linksSet(l); applyAvatar(name, code, data);
+        return data;
+      });
+    });
+  }
+  function linkRemove(name){
+    var l = linksGet(), k = lk(name), had = l.others[k];
+    l.others[k] = { name: String(name).trim(), off: true, at: Date.now() }; linksSet(l);
+    var all = lsJSON('fgh_avatars') || {};
+    if(had && all[k] && all[k].linked){ all[k] = { name: all[k].name, cur: null, photos: [], at: Date.now() }; writeAvatars(all); }
+  }
+  function linkOf(name){ var r = linksGet().others[lk(name)]; return r && !r.off && r.code ? r : null; }
+  function writeAvatars(all){
+    try{ LS.setItem('fgh_avatars', JSON.stringify(all)); }catch(e){}
+    noteWrite('fgh_avatars');
+    try{ window.dispatchEvent(new StorageEvent('storage', { key: 'fgh_avatars' })); }catch(e){}
+  }
+  // A linked person's avatar comes from their profile (read-only here)
+  function applyAvatar(name, code, data){
+    var all = lsJSON('fgh_avatars') || {}, k = lk(name), cur = all[k], av = data.avatar;
+    var stamp = Number(data.at) || 0;
+    if(cur && cur.linked === code && cur.at === stamp) return;
+    if(!av || !av.cur){ if(cur && cur.linked){ all[k] = { name: name, cur: null, photos: [], linked: code, at: stamp }; writeAvatars(all); } return; }
+    var rec = { name: String(name).trim(), linked: code, at: stamp, photos: [] };
+    if(av.cur.k === 'photo' && av.d){ rec.photos = [{ id: 'link', d: av.d, at: stamp }]; rec.cur = { k: 'photo', id: 'link' }; }
+    else rec.cur = { k: av.cur.k, i: av.cur.i, c: av.cur.c };
+    all[k] = rec; writeAvatars(all);
+  }
+  // Mark the players in a new record who are linked to someone's profile
+  function linkMark(e){
+    (e && Array.isArray(e.players) ? e.players : []).forEach(function(p){
+      if(!p || typeof p !== 'object' || p.cpu) return;
+      var r = linkOf(p.name); if(r) p.link = r.code;
+    });
+  }
+  function outbox(){ var o = lsJSON(OUTBOX); return Array.isArray(o) ? o : []; }
+  // Send a finished game to everyone linked in it
+  function linkSend(key, e){
+    var codes = {};
+    (e.players || []).forEach(function(p){ if(p && p.link) codes[p.link] = 1; });
+    var list = Object.keys(codes); if(!list.length) return;
+    var ob = outbox();
+    list.forEach(function(code){ ob.push({ code: code, id: e._id, key: key, entry: JSON.stringify(e), from: label() || myName() || 'Someone', by: myName() || '', at: Date.now() }); });
+    try{ LS.setItem(OUTBOX, JSON.stringify(ob.slice(-200))); }catch(err){}
+    flushOutbox();
+  }
+  function flushOutbox(){
+    var ob = outbox(); if(!ob.length || !isPin() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return Promise.resolve();
+    return ensureFirebase().then(function(){
+      return Promise.all(ob.map(function(it){
+        return linkCol().doc(it.code).collection('inbox').doc(it.id).set({ key: it.key, entry: it.entry, from: it.from, by: it.by, at: it.at })
+          .then(function(){ return it; }).catch(function(e){ console.warn('[links] send failed', e); return null; });
+      })).then(function(done){
+        var sent = done.filter(Boolean).map(function(it){ return it.code + '|' + it.id; });
+        try{ LS.setItem(OUTBOX, JSON.stringify(outbox().filter(function(it){ return sent.indexOf(it.code + '|' + it.id) < 0; }))); }catch(e){}
+      });
+    });
+  }
+  // A game from someone else's device, filed under your history: the player they linked to you becomes you
+  function received(own, d){
+    var x = d.data() || {}, e;
+    try{ e = JSON.parse(x.entry); }catch(err){ return null; }
+    if(!e || typeof e !== 'object') return null;
+    var me = myName() || own.name;
+    (e.players || []).forEach(function(p){
+      if(!p || p.link !== own.code) return;
+      if(p.name !== me){
+        p.as = p.name;
+        if(e.winner === p.name) e.winner = me;
+        if(typeof e._summary === 'string') e._summary = e._summary.split(p.name).join(me);
+      }
+      p.name = me; p.me = true;
+    });
+    e._from = { by: x.by || '', from: x.from || '', code: own.code };
+    return { id: d.id, key: x.key || 'misc', entry: e, from: x.by || x.from || 'Someone', at: x.at };
+  }
+  function fileGame(it){ var GH = window.GameHistory; return GH && GH.insert ? GH.insert(it.key, it.entry) : false; }
+  // Check your inbox, your linked people's avatars and rejections, and send anything waiting
+  function linkPoll(force){
+    if(!isPin() || _linkBusy) return Promise.resolve();
+    if(!force && Date.now() - _lastPoll < 20000) return Promise.resolve();
+    _linkBusy = true; _lastPoll = Date.now();
+    return ensureFirebase().then(function(){
+      var l = linksGet(), jobs = [];
+      if(l.own && l.own.code){
+        var own = l.own;
+        jobs.push(linkCol().doc(own.code).collection('inbox').limit(100).get().then(function(q){
+          var pend = [];
+          return Promise.all(q.docs.map(function(d){
+            var it = received(own, d); if(!it) return d.ref.delete();
+            if(own.ask){ pend.push(it); return null; }
+            if(!window.GameHistory) return null;   // filed by a page that keeps history
+            fileGame(it); return d.ref.delete();
+          })).then(function(){ _pending = pend.sort(function(a, b){ return (b.at || 0) - (a.at || 0); }); });
+        }));
+      } else _pending = [];
+      Object.keys(l.others).forEach(function(k){
+        var r = l.others[k]; if(!r || r.off || !r.code) return;
+        jobs.push(linkCol().doc(r.code).get().then(function(d){
+          // their code no longer works (they made a new one): say so on the link
+          var L2 = linksGet(), cur = L2.others[k];
+          if(cur && !!cur.gone !== !d.exists){ if(d.exists) delete cur.gone; else cur.gone = true; try{ LS.setItem('fgh_links', JSON.stringify(L2)); }catch(e){} }
+          if(!d.exists) return;
+          var data = d.data() || {};
+          applyAvatar(r.name, r.code, data);
+          unmarkRejected(r.code, data.rejected || []);
+        }).catch(function(e){ console.warn('[links] read failed', r.code, e); }));
+      });
+      jobs.push(flushOutbox());
+      return Promise.all(jobs);
+    }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){ _linkBusy = false; linkEvent(); });
+  }
+  // Someone said "Not me" to a game you recorded: it stays in your history, just no longer linked to them
+  function unmarkRejected(code, rejected){
+    if(!rejected.length) return;
+    for(var i = 0; i < LS.length; i++){
+      var k = LS.key(i); if(!k || k.indexOf('gh_') !== 0) continue;
+      var list = lsJSON(k); if(!Array.isArray(list)) continue;
+      var changed = false;
+      list.forEach(function(e){
+        if(!e || rejected.indexOf(e._id) < 0) return;
+        (e.players || []).forEach(function(p){ if(p && p.link === code){ delete p.link; p.unlinked = true; changed = true; } });
+      });
+      if(changed){ try{ LS.setItem(k, JSON.stringify(list)); }catch(e){} noteWrite(k); }
+    }
+  }
+  function linkPending(){ return _pending.slice(); }
+  function inboxRef(id){ var l = linksGet(); return l.own ? linkCol().doc(l.own.code).collection('inbox').doc(id) : null; }
+  function linkAccept(id){
+    var it = _pending.filter(function(x){ return x.id === id; })[0]; if(!it) return Promise.resolve();
+    fileGame(it); _pending = _pending.filter(function(x){ return x.id !== id; }); linkEvent();
+    return ensureFirebase().then(function(){ var r = inboxRef(id); return r && r.delete(); }).catch(function(){});
+  }
+  function rejectId(id){
+    var l = linksGet(); if(!l.own) return Promise.resolve();
+    return ensureFirebase().then(function(){ return linkCol().doc(l.own.code).update({ rejected: firebase.firestore.FieldValue.arrayUnion(id) }); });
+  }
+  function linkDecline(id){
+    _pending = _pending.filter(function(x){ return x.id !== id; }); linkEvent();
+    return rejectId(id).then(function(){ var r = inboxRef(id); return r && r.delete(); }).catch(function(e){ console.warn('[links] decline', e); });
+  }
+  // "Not me" on a game already in your history
+  function linkNotMe(key, e){
+    var GH = window.GameHistory; if(GH && GH.remove) GH.remove((function(){ var o = {}; o[key] = [GH.idOf(key, e)]; return o; })());
+    return e && e._id ? rejectId(e._id).catch(function(err){ console.warn('[links] not me', err); }) : Promise.resolve();
+  }
+  if(typeof document !== 'undefined') document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') linkPoll(); });
+
   window.FGHSync = {
     mode: mode, pin: pin, label: label, isPin: isPin,
     // Firestore handle for features beyond the PIN doc (Lorcana online tables)
@@ -678,6 +957,11 @@
     pullCloudRaw: pullCloudRaw,
     forceOverwriteLocal: forceOverwriteLocal,
     forceOverwriteCloud: forceOverwriteCloud,
+    // player links
+    linkShare: linkShare, linkNewCode: linkNewCode, linkSetAsk: linkSetAsk, linkPublish: linkPublishSoon,
+    linkAdd: linkAdd, linkRemove: linkRemove, linkOf: linkOf, links: linksGet,
+    linkMark: linkMark, linkSend: linkSend, linkPoll: linkPoll,
+    linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
     _scanLocal: scanLocal
   };
 
