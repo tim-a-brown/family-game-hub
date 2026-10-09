@@ -1395,6 +1395,54 @@
   function avRefresh() { Array.prototype.forEach.call(doc.querySelectorAll('[data-av]'), function (n) { if (n._avFb) avFill(n, n.getAttribute('data-av')); }); try { window.dispatchEvent(new CustomEvent('kit-avatar')); } catch (e) {} }
   window.addEventListener('storage', function (e) { if (e.key === AV_KEY) avRefresh(); });
 
+  // Colour wheel: drag around the wheel for the colour (centre is pale, edge is full), the slider for how dark
+  function hexOf(r, g, b) { return '#' + [r, g, b].map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+  function hsvHex(h, s, v) { var f = function (n) { var k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return hexOf(f(5) * 255, f(3) * 255, f(1) * 255); }
+  function hexHsv(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return { h: 0, s: 0.8, v: 1 };
+    var n = parseInt(m[1], 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return { h: (h * 60 + 360) % 360, s: mx ? d / mx : 0, v: mx };
+  }
+  function colorWheel(start, done) {
+    var hsv = hexHsv(start), S = 240, R = S / 2, s;
+    var cv = el('canvas', { width: S * 2, height: S * 2, class: 'cw-wheel', 'aria-label': 'Colour wheel' });
+    var knob = el('span', { class: 'cw-knob' }), dark = el('input', { type: 'range', min: '15', max: '100', class: 'cw-dark', 'aria-label': 'Brightness' });
+    var prev = el('span', { class: 'avatar xl cw-prev' }), hexT = el('b', { class: 'cw-hex' });
+    function drawWheel() {
+      var g = cv.getContext('2d'), c = S, img = g.createImageData(S * 2, S * 2), d = img.data;
+      for (var y = 0; y < S * 2; y++) for (var x = 0; x < S * 2; x++) {
+        var dx = x - c, dy = y - c, r = Math.sqrt(dx * dx + dy * dy) / c, i = (y * S * 2 + x) * 4;
+        if (r > 1) { d[i + 3] = 0; continue; }
+        var h = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360, hx = hsvHex(h, r, hsv.v), n = parseInt(hx.slice(1), 16);
+        d[i] = n >> 16; d[i + 1] = (n >> 8) & 255; d[i + 2] = n & 255; d[i + 3] = r > 0.985 ? Math.round((1 - r) / 0.015 * 255) : 255;
+      }
+      g.putImageData(img, 0, 0);
+    }
+    function paintCw() {
+      var hx = hsvHex(hsv.h, hsv.s, hsv.v), a = (hsv.h - 90) * Math.PI / 180;
+      knob.style.left = (R + Math.cos(a) * hsv.s * R) + 'px'; knob.style.top = (R + Math.sin(a) * hsv.s * R) + 'px'; knob.style.background = hx;
+      prev.style.setProperty('--c', hx); prev.style.color = inkFor(hx); prev.textContent = '';
+      hexT.textContent = hx.toUpperCase();
+      dark.style.setProperty('--hue', hsvHex(hsv.h, hsv.s, 1));
+    }
+    var wrap = el('div', { class: 'cw-box', style: { width: S + 'px', height: S + 'px' } }, [cv, knob]);
+    function pick(e) {
+      var b = wrap.getBoundingClientRect(), dx = e.clientX - b.left - R, dy = e.clientY - b.top - R;
+      hsv.h = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360; hsv.s = Math.min(1, Math.sqrt(dx * dx + dy * dy) / R); paintCw();
+    }
+    var down = false;
+    wrap.addEventListener('pointerdown', function (e) { down = true; try { wrap.setPointerCapture(e.pointerId); } catch (x) {} pick(e); e.preventDefault(); });
+    wrap.addEventListener('pointermove', function (e) { if (down) pick(e); });
+    wrap.addEventListener('pointerup', function () { down = false; haptic('light'); });
+    wrap.addEventListener('pointercancel', function () { down = false; });
+    dark.value = String(Math.round(Math.max(0.15, hsv.v) * 100));
+    dark.addEventListener('input', function () { hsv.v = dark.value / 100; drawWheel(); paintCw(); });
+    var node = el('div', { class: 'cw' }, [el('div', { class: 'cw-top' }, [prev, hexT]), wrap, dark]);
+    drawWheel(); paintCw();
+    s = sheet({ title: 'Any colour', node: node, actions: [{ label: 'Use this colour', primary: true, onClick: function () { done(hsvHex(hsv.h, hsv.s, hsv.v)); } }, { label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+
   // The avatar editor: a big preview, the marks and colours, and your photos (upload, or tap an old one)
   function avatarEdit(name, onDone) {
     name = String(name || '').trim(); if (!name) return;
@@ -1444,6 +1492,11 @@
       AV_COLORS.forEach(function (c) {
         cr.appendChild(el('button', { type: 'button', class: 'av-col' + (cur.c === c ? ' on' : ''), 'aria-label': 'Colour', style: { background: c }, onclick: function () { cur.c = c; if (cur.k === 'photo') cur = { k: 'letter', c: c }; sfx('tap'); paint(); } }));
       });
+      // any colour: the rainbow dot opens a colour wheel
+      var custom = AV_COLORS.indexOf(cur.c) < 0;
+      cr.appendChild(el('button', { type: 'button', class: 'av-col av-rb' + (custom ? ' on' : ''), 'aria-label': 'Any colour', style: custom ? { '--cc': cur.c } : null, onclick: function () {
+        colorWheel(cur.c, function (c) { cur.c = c; if (cur.k === 'photo') cur = { k: 'letter', c: c }; sfx('tap'); paint(); });
+      } }));
       body.appendChild(cr);
       var mr = el('div', { class: 'av-grid marks' });
       [{ k: 'letter' }].concat(AV_ICONS.map(function (i) { return { k: 'icon', i: i }; })).forEach(function (m) {
