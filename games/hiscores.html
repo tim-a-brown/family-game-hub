@@ -74,7 +74,8 @@ body.hs .gbar{background:rgba(7,6,15,.9);}
 .sb li .nm{letter-spacing:.12em;white-space:nowrap;}
 .sb li .dt,.sb .cols .dt{font-size:.68em;text-align:right;white-space:nowrap;opacity:.7;}
 .sb li .wh{display:flex;justify-content:flex-end;}
-.sb li .wh .avatar{width:18px;height:18px;font-size:.55rem;text-shadow:none;box-shadow:0 0 0 1px rgba(255,255,255,.5);}
+.sb li .wh canvas{width:20px;height:20px;image-rendering:pixelated;image-rendering:crisp-edges;filter:drop-shadow(0 0 3px var(--rc));}
+.sb li.me{--rc:#ffe14d !important;}
 .sb li.top .rk,.sb li.top .sc,.sb li.top .nm{animation:rainbow 2.4s steps(6) infinite;}
 @keyframes rainbow{0%{color:#ff4040}17%{color:#ffb040}33%{color:#ffff40}50%{color:#40ff60}67%{color:#40d0ff}83%{color:#d070ff}}
 .sb li.me .nm::after{content:"";}
@@ -101,7 +102,7 @@ body.hs .gbar{background:rgba(7,6,15,.9);}
 
 /* game select: lit plastic buttons mounted down the left of the bezel, like a multi-game cabinet */
 .sel{position:relative;z-index:1;flex:none;width:64px;display:flex;flex-direction:column;gap:5px;}
-.sel-b{position:relative;flex:1 1 0;min-height:0;max-height:58px;display:flex;align-items:center;justify-content:center;padding:2px 3px;border:0;border-radius:7px;cursor:pointer;
+.sel-b{position:relative;flex:1 1 0;min-height:0;max-height:58px;display:flex;align-items:center;justify-content:center;padding:2px 3px;border:0;border-radius:2px;cursor:pointer;
   background:var(--bc);color:var(--bk);filter:saturate(.75) brightness(.72);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000);transition:transform .06s,box-shadow .06s,filter .2s;}
 .sel-b span{font-family:'Sofia Sans Condensed',var(--font);font-weight:900;font-size:.72rem;line-height:1;letter-spacing:.04em;white-space:nowrap;}
@@ -190,6 +191,39 @@ Kit.init({ id: 'hiscores', mark: false });
   app.appendChild(cab);
 
   function ord(n) { var s = ['TH', 'ST', 'ND', 'RD'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+  // A person's avatar as a little arcade sprite: drawn at 12×12, in a 4-level-per-colour palette, shown with hard pixels
+  var pxCache = {};
+  function pixelAvatar(name) {
+    var N = 12, cv = el('canvas', { width: N, height: N, role: 'img', 'aria-label': name, title: name }), g = cv.getContext('2d');
+    function finish(src) {
+      var key = name + '|' + src.length; if (pxCache[key]) { g.putImageData(pxCache[key], 0, 0); return; }
+      var im = new Image();
+      im.onload = function () {
+        g.clearRect(0, 0, N, N); g.imageSmoothingEnabled = true; g.drawImage(im, 0, 0, N, N);
+        var d = g.getImageData(0, 0, N, N), a = d.data;
+        for (var i = 0; i < a.length; i += 4) {
+          if (a[i + 3] < 110) { a[i + 3] = 0; continue; }
+          a[i + 3] = 255; for (var k = 0; k < 3; k++) a[i + k] = Math.round(a[i + k] / 85) * 85;
+        }
+        g.putImageData(d, 0, 0); pxCache[key] = d;
+      };
+      im.src = src;
+    }
+    var html = Kit.avatar && Kit.avatar.html ? Kit.avatar.html(name) : null, col = (Kit.avatar && Kit.avatar.color && Kit.avatar.color(name)) || '#5b8cff';
+    var photo = html && /<img[^>]+src="([^"]+)"/.exec(html);
+    if (photo) {
+      // a photo: cropped into a circle first, then pixelated
+      var im0 = new Image();
+      im0.onload = function () { var c2 = document.createElement('canvas'); c2.width = c2.height = 96; var x = c2.getContext('2d'); x.beginPath(); x.arc(48, 48, 48, 0, Math.PI * 2); x.clip(); x.drawImage(im0, 0, 0, 96, 96); finish(c2.toDataURL()); };
+      im0.src = photo[1];
+      return cv;
+    }
+    var ink = (function () { var n = parseInt(String(col).replace('#', ''), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? '#14101f' : '#ffffff'; })();
+    var inner = html && /<svg/.test(html) ? html.replace(/<svg[^>]*>/, '<g transform="translate(5 5) scale(.583)" fill="none" stroke="' + ink + '" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">').replace('</svg>', '</g>').replace(/currentColor/g, ink)
+      : '<text x="12" y="13" text-anchor="middle" dominant-baseline="central" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="15" fill="' + ink + '">' + String(name).charAt(0).toUpperCase().replace(/[<&]/g, '') + '</text>';
+    finish('data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="12" fill="' + col + '"/>' + inner + '</svg>'));
+    return cv;
+  }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
   // 'Oct 2 1:00 PM' -> 'OCT 2'
   function shortDate(d) { var m = String(d || '').match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})/); return m ? (m[1] + ' ' + m[2]).toUpperCase() : String(d || '').slice(0, 6).toUpperCase(); }
@@ -209,7 +243,7 @@ Kit.init({ id: 'hiscores', mark: false });
   function paintScores(b) {
     var rows = (typeof ArcadeHi !== 'undefined' && ArcadeHi.board ? ArcadeHi.board(b.key) : []).slice(0, 50);
     var unit = b.unit || 'SCORE', wide = rows.some(function (r) { return r.who || r.mine; });
-    sb.style.setProperty('--gc', '4.2em 1fr 3.4em 4.4em' + (wide ? ' 18px' : ''));
+    sb.style.setProperty('--gc', '4.2em 1fr 3.4em 4.4em' + (wide ? ' 20px' : ''));
     sb.innerHTML = ''; crt.classList.toggle('dim', rows.length > 0);
     var hd = el('div', { class: 'hd' }, [el('b', { text: 'HALL OF FAME' })]);
     sb.appendChild(hd);
@@ -219,7 +253,9 @@ Kit.init({ id: 'hiscores', mark: false });
     }
     hd.appendChild(el('div', { class: 'cols' }, [el('span', { text: 'RANK' }), el('span', { class: 'sc', text: unit }), el('span', { text: 'NAME' }), el('span', { class: 'dt', text: 'DATE' })].concat(wide ? [el('span')] : [])));
     list = el('ol', { 'aria-label': b.title + ' high scores' });
-    var pal = b.c.rows;
+    // yellow means you: other rows use the game's colours minus any yellows
+    var pal = b.c.rows.filter(function (c) { var n = parseInt(c.slice(1), 16), R = n >> 16, G = (n >> 8) & 255, B = n & 255; return !(R > 200 && G > 170 && B < 140); });
+    if (!pal.length) pal = ['#ffffff'];
     rows.forEach(function (r, i) {
       var who = r.who || (r.mine ? (localStorage.getItem('my_name') || '') : '');
       var li = el('li', { class: (i === 0 ? 'top' : '') + (r.mine ? ' me' : ''), style: { '--rc': pal[Math.floor(i / (i < 5 ? 1 : 5)) % pal.length] },
@@ -228,7 +264,7 @@ Kit.init({ id: 'hiscores', mark: false });
         el('span', { class: 'sc', text: fmt(r.score) }),
         el('span', { class: 'nm', text: String(r.name || '???').trim().slice(0, 3) || '???' }),
         el('span', { class: 'dt', text: shortDate(r.date) })
-      ].concat(wide ? [el('span', { class: 'wh' }, [who && Kit.avatar ? Kit.avatar.el(who, 'sm', 'var(--surface-3)') : null])] : []));
+      ].concat(wide ? [el('span', { class: 'wh' }, [who ? pixelAvatar(who) : null])] : []));
       if (r.who) li.title = r.who;
       list.appendChild(li);
     });
