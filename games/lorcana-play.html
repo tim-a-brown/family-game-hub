@@ -222,11 +222,14 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .slot.dry .lc{filter:saturate(.92) brightness(.97);}
 .slot.dry .lc::after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
   background:radial-gradient(ellipse 55% 30% at 28% 16%,rgba(255,255,255,.3),rgba(255,255,255,0) 70%),
-    linear-gradient(115deg,rgba(255,255,255,0) 40%,rgba(255,255,255,.26) 49%,rgba(255,255,255,0) 58%) 0 0/300% 100%,
     linear-gradient(to top,color-mix(in srgb,var(--inkc) 78%,transparent) 0,color-mix(in srgb,var(--inkc) 30%,transparent) 8%,transparent 18%);
-  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--inkc) 75%,#fff),inset 0 0 calc(var(--cu) * .15) color-mix(in srgb,var(--inkc) 50%,transparent);
-  animation:wet 3.4s linear infinite;}
-@keyframes wet{from{background-position:0 0,150% 0,0 0;}to{background-position:0 0,-150% 0,0 0;}}
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--inkc) 75%,#fff),inset 0 0 calc(var(--cu) * .15) color-mix(in srgb,var(--inkc) 50%,transparent);}
+/* The table's light: one band of light across the whole table that moves as the phone tilts. Each card shows the
+   part of it that falls on that card, so the shine sits on a few cards and slides on to others */
+.lp-board .lc > .bsh{position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;mix-blend-mode:screen;
+  background:linear-gradient(115deg,transparent 40%,rgba(255,248,226,.2) 46.5%,rgba(255,255,255,.42) 50%,rgba(255,248,226,.2) 53.5%,transparent 60%) no-repeat;
+  background-size:calc(var(--bw,400px) * 1.6) calc(var(--bh,300px) * 1.6);
+  background-position:calc(var(--bw,400px) * (var(--lx,.5) - .8) - var(--ox,0px)) calc(var(--bh,300px) * (var(--ly,.5) - .8) - var(--oy,0px));}
 .drips{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit;}
 .drips::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(var(--cu) * .04);opacity:.92;
   background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--inkc) 80%,#fff) 0,var(--inkc) 45%,color-mix(in srgb,var(--inkc) 75%,#000) 62%,transparent 66%) 0 0/calc(var(--cu) * .075) 100% repeat-x;
@@ -7220,6 +7223,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       node.style.setProperty('--inkc', inkColor(u));
       var lc = el('div', { class: 'lc' });
       lc.appendChild(artEl(DD(u), false));
+      if (ctx === 'board') lc.appendChild(el('i', { class: 'bsh', 'aria-hidden': 'true' }));
       var ovs = el('div', { class: 'ovs' });
       lc.appendChild(ovs);
       node.appendChild(lc);
@@ -7372,6 +7376,33 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       items.forEach(function (it) { if (!it.g) return; it.g.classList.toggle('crowd', vis < 1 && it.n >= 2); it.g.style.setProperty('--vis', vis); });
     });
   }
+  function placeLight() {
+    requestAnimationFrame(function () {
+      $$('.lp-board').forEach(function (b) {
+        var r = b.getBoundingClientRect(); if (!r.width) return;
+        b.style.setProperty('--bw', Math.round(r.width) + 'px'); b.style.setProperty('--bh', Math.round(r.height) + 'px');
+        $$('.slot', b).forEach(function (sl) { var q = sl.getBoundingClientRect(); sl.style.setProperty('--ox', Math.round(q.left - r.left) + 'px'); sl.style.setProperty('--oy', Math.round(q.top - r.top) + 'px'); });
+      });
+    });
+    tableLight();
+  }
+  // The light follows the phone's tilt (eased, so it glides); with no motion sensor it follows the mouse over the table
+  var TL = { x: 0, y: 0, tx: 0, ty: 0, raf: 0, lx: -1, ly: -1, mouse: false };
+  function tableLight() {
+    if (TL.raf) return;
+    (function frame() {
+      if (!S || ui.screen !== 'game' || !$('.lp-board')) { TL.raf = 0; return; }
+      var tx = tiltT.got ? tiltT.x : TL.tx, ty = tiltT.got ? tiltT.y : TL.ty;
+      TL.x += (tx - TL.x) * 0.08; TL.y += (ty - TL.y) * 0.08;
+      var lx = 0.5 + TL.x * 0.55, ly = 0.5 + TL.y * 0.45;
+      if (Math.abs(lx - TL.lx) > 0.002 || Math.abs(ly - TL.ly) > 0.002) {
+        TL.lx = lx; TL.ly = ly; var st = document.documentElement.style;
+        st.setProperty('--lx', lx.toFixed(3)); st.setProperty('--ly', ly.toFixed(3));
+      }
+      TL.raf = requestAnimationFrame(frame);
+    })();
+  }
+  window.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse' || tiltT.got) return; TL.tx = Math.max(-1, Math.min(1, e.clientX / innerWidth * 2 - 1)); TL.ty = Math.max(-1, Math.min(1, e.clientY / innerHeight * 2 - 1)); }, { passive: true });
   function fitHand() {
     var hand = $('.lp-hand'); if (!hand) return;
     var row = $('.hrow', hand), cu = Math.max(60, hand.clientHeight - 14);
@@ -7499,7 +7530,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     renderBoard($('.lp-board.bot', lp), b);
     paintMid(); renderHand(b); renderBar(); renderMull(); lzFeed();
     lp.classList.toggle('picking', !!ui.pick);
-    fitBoards(); fitHand();
+    fitBoards(); fitHand(); placeLight();
     var q = fxq; fxq = []; q.forEach(function (f) { try { f(); } catch (e) {} });
   }
 
