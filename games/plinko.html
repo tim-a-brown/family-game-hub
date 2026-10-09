@@ -26,7 +26,7 @@ body{background:
 .pk-who{flex:1;min-width:0;}
 .pk-who .nm{display:block;font-weight:900;font-size:1rem;color:var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pk-who .sub{display:block;font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,220,150,.6);margin-top:1px;}
-.pk-pips{display:flex;gap:5px;margin-top:5px;}
+.pk-pips{display:flex;gap:5px;margin-top:5px;min-height:17px;}
 .pk-pip{--c:var(--p1);position:relative;width:17px;height:17px;border-radius:50%;flex:none;
   background:repeating-conic-gradient(color-mix(in srgb,var(--c) 70%,#000) 0 10deg,color-mix(in srgb,var(--c) 75%,#fff) 10deg 20deg);
   box-shadow:0 1px 0 rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.3);}
@@ -306,16 +306,580 @@ body{background:
     } catch (e) {}
   }
 
-  // ── Small prizes for "Earn your chips" (everyday retail prices) ──────────
-  var PRIZES = [
-    ['Electric toothbrush', 49], ['Beach towel set', 29], ['Waffle maker', 34], ['Family board game', 24],
-    ['Bluetooth speaker', 59], ['50 ft garden hose', 38], ['Cast-iron skillet', 27], ['LED desk lamp', 42],
-    ['Yoga mat', 22], ["Kids' bike helmet", 31], ['Drip coffee maker', 69], ['Slow cooker', 54],
-    ['Hair dryer', 36], ['2-slice toaster', 28], ['Wall clock', 19], ['Picnic basket', 45],
-    ['Electric kettle', 33], ['School backpack', 39], ['Fleece throw blanket', 26], ['Home tool kit', 48],
-    ['Popcorn maker', 32], ['1,000-piece puzzle', 17], ['Insulated water bottle', 35], ['Golf umbrella', 21],
-    ['Bathroom scale', 29], ['Salad spinner', 23], ['Dog bed', 44], ['Bocce ball set', 52]
-  ];
+  // Peg striking the rubber flapper: louder and brighter the harder it hits
+  var lastFlap = 0, lastFlapBuzz = 0;
+  function flapTick(v) {
+    var now = performance.now();
+    if (v < 0.04 || now - lastFlap < 28) return; lastFlap = now;
+    if (v > 0.25 && now - lastFlapBuzz > 90) { lastFlapBuzz = now; Kit.haptic('tick'); }
+    var a = ac(); if (!a) return;
+    try {
+      var k = Math.max(0.06, Math.min(1, v / 2.5)), t = a.currentTime;
+      var n = Math.floor(a.sampleRate * (0.012 + 0.012 * k)), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.5);
+      var s = a.createBufferSource(), f = a.createBiquadFilter(), g2 = a.createGain();
+      f.type = 'bandpass'; f.frequency.value = 1300 + 1500 * k; f.Q.value = 1.2; g2.gain.value = 0.03 + 0.17 * k;
+      s.buffer = b; s.connect(f); f.connect(g2); g2.connect(a.destination); s.start(t);
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = 'square'; o.frequency.setValueAtTime(900 + 1100 * k, t);
+      g.gain.setValueAtTime(0.004 + 0.014 * k, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.04);
+    } catch (e) {}
+  }
+
+  // ── The Big Wheel: how many chips you get ─────────────────────────────────
+  // ==WHEELSIM==
+  // 20 panels around the drum, index 0 = the 7 (the only jackpot), with a 1 on each side of it.
+  // Three 2s, three 3s, five 4s and six 5s fill the rest: 74 chips on 20 panels, about 3.7 a spin.
+  var WHEEL = [7, 1, 5, 3, 4, 2, 5, 4, 3, 5, 2, 4, 5, 3, 4, 5, 2, 4, 5, 1];
+  var WN = WHEEL.length, WA = Math.PI * 2 / WN;
+  // Same physics as Wheel of Fortune (units: drum radius = 1, seconds, drum inertia = 1). The drum
+  // turns on a bearing (friction + a little air drag). A peg sits between every two panels on the rim.
+  // The flapper is a rubber pointer hinged in front of the drum: a damped rotational spring. Pegs and
+  // flapper touch through a stiff, slightly lossy contact, so every peg pushes the flapper aside, costs
+  // the drum energy, and can stop it right on a peg edge before it rocks back into a panel.
+  // Angles: pegs sit at th + k*WA; the panel facing the pointer is index(). th grows as the front of
+  // the drum moves down (you pull it down).
+  var WP = { Iw: 1, HP: 1.22, FL: 0.285, RP: 0.925, PR: 0.024, kf: 0.3, Kp: 0.1, bs: 0.08, If: 0.0003, cf: 0.007,
+    kc: 300, cc: 0.5, mu: 0.05, F0: 0.25, F1: 0.04, Cd: 0.01, Fs: 0.03, W1: 0.08 };
+  // W_MIN still makes more than a full turn (the wheel has to go all the way around); W_MAX is about 4 turns.
+  var W_MIN = 3.2, W_MAX = 7.4, WSIM_H = 1 / 600, WSIM_CAP = 40;
+  function makeWheelSim() {
+    var A = WA, P = WP, s = { th: 0, om: 0, b: 0, bv: 0, t: 0, touch: false, rest: 0 };
+    function hw(u) { return 0.05 * (1 - u) + 0.010 * u; }
+    // kin: the drum is moved by hand, so contact forces act on the flapper only
+    function step(h, onHit, kin) {
+      var th = s.th, om = s.om, b = s.b, bv = s.bv, L = P.FL;
+      var base = ((th % A) + A) % A, tw = 0, tb = 0, touching = false, sb = Math.sin(b), cb = Math.cos(b);
+      for (var k = -2; k <= 1; k++) {
+        var ph = base + k * A; if (ph < -0.6 || ph > 0.6) continue;
+        var sp = Math.sin(ph), cp = Math.cos(ph), rx = P.RP * sp, ry = P.HP - P.RP * cp; // peg, relative to the hinge
+        var u = (rx * sb + ry * cb) / L; u = u < 0 ? 0 : u > 1 ? 1 : u;
+        var dx = rx - u * L * sb, dy = ry - u * L * cb, d = Math.sqrt(dx * dx + dy * dy), rc = P.PR + hw(u);
+        if (d >= rc || d < 1e-9) continue;
+        touching = true;
+        var nx = dx / d, ny = dy / d;
+        var vx = om * P.RP * cp - bv * u * L * cb, vy = om * P.RP * sp + bv * u * L * sb; // peg velocity relative to flapper
+        var vn = vx * nx + vy * ny;
+        if (!s.touch && onHit) onHit(-vn);
+        var F = P.kc * (rc - d) + (vn < 0 ? -P.cc * vn : 0);
+        var Ft = -P.mu * F * Math.tanh((vx * -ny + vy * nx) / 0.05);
+        var fx = F * nx - Ft * ny, fy = F * ny + Ft * nx;
+        tw += P.RP * (fx * cp + fy * sp);
+        tb -= u * L * (fx * cb - fy * sb);
+      }
+      s.touch = touching;
+      if (!kin) {
+        var ao = Math.abs(om), fr = (P.Fs + (P.F0 - P.Fs) * Math.min(1, ao / P.W1)) * Math.tanh(om / 0.01) + P.F1 * om + P.Cd * om * ao;
+        s.om = om + (tw - fr) / P.Iw * h;
+      }
+      s.bv = bv + (tb - P.kf * b - P.Kp * Math.tanh(b / P.bs) - P.cf * bv) / P.If * h;
+      s.th = th + s.om * h; s.b = b + s.bv * h;
+      if (s.b > 1.2) { s.b = 1.2; if (s.bv > 0) s.bv *= -0.3; } else if (s.b < -1.2) { s.b = -1.2; if (s.bv < 0) s.bv *= -0.3; }
+      s.t += h;
+      if (!touching && Math.abs(s.om) < 0.004 && Math.abs(s.b) < 0.006 && Math.abs(s.bv) < 0.08) s.rest += h; else s.rest = 0;
+      return s.rest > 0.12;
+    }
+    function index() { var a = ((-s.th) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); return Math.floor(a / A) % WN; }
+    return { s: s, step: step, index: index };
+  }
+  // A spin from a pull: pull speed (drum radians per second) sets the strength, with a little
+  // randomness so nobody can aim. Returns 0 when the pull is too weak to make a full turn.
+  function pullToSpin(om, rnd) {
+    var w = om * 1.2;
+    if (w < W_MIN) return 0;
+    return Math.min(W_MAX * 1.05, w) * (0.94 + (rnd || Math.random)() * 0.12);
+  }
+  function buttonSpin(rnd) { rnd = rnd || Math.random; return W_MIN * 1.15 + rnd() * (W_MAX - W_MIN * 1.15); }
+  // Run a whole spin without drawing: where it stops (test hook and fairness check)
+  function simSpin(th0, w0) {
+    var m = makeWheelSim(); m.s.th = th0; m.s.om = w0;
+    while (!m.step(WSIM_H) && m.s.t < WSIM_CAP) {}
+    return { idx: m.index(), th: m.s.th, t: m.s.t, turns: (m.s.th - th0) / (2 * Math.PI) };
+  }
+  // ==/WHEELSIM==
+  window.PlinkoWheel = { WHEEL: WHEEL, simSpin: simSpin, buttonSpin: buttonSpin, pullToSpin: pullToSpin, W_MIN: W_MIN, W_MAX: W_MAX, rig: null };
+
+  // The Big Wheel, drawn in 3D on a canvas: a drum of panels turning about a horizontal axis, seen
+  // from the front, between two checkered pillars lined with marquee bulbs. Panels curve away top and
+  // bottom; the one facing you is full size. Pull it down to spin.
+  function BigWheel(host, hooks) {
+    var cv = el('canvas', { tabindex: '0', role: 'img', 'aria-label': 'The Big Wheel. Swipe down on it to spin, or press Space.' });
+    host.appendChild(cv);
+    var g = cv.getContext('2d');
+    var sim = makeWheelSim(), st = sim.s;
+    var L = {}, dpr = 1, tex = null, back = null, front = null, bulbOn = null, bulbOff = null, bulbs = [], TW = 0, PHt = 0;
+    var raf = 0, last = 0, acc = 0, spinning = null, drag = null, dead = false, lastDraw = 0;
+    var mode = 'idle', modeT0 = 0, glowIdx = -1, readout = null;
+
+    // ── Geometry (css px) ──
+    function sc(ph) { return (L.Dc - 1) / (L.Dc - Math.cos(ph)); }
+    function py(ph) { return L.cy - L.R * Math.sin(ph) * sc(ph); }
+    function hwAt(ph) { return L.dw / 2 * sc(ph); }
+    function wrap(a) { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI; }
+    function layout(W, H) {
+      dpr = Math.min(3, window.devicePixelRatio || 1);
+      L = { W: W, H: H, Dc: 3.2 };
+      L.baseH = H * 0.07; L.baseTop = H - L.baseH;
+      L.dw = W * 0.4; L.cx = W / 2;
+      L.yTop = H * 0.02; L.yBot = L.baseTop + H * 0.04;
+      L.cy = (L.yTop + L.yBot) / 2;
+      L.R = (L.yBot - L.yTop) / 2 / Math.sqrt((L.Dc - 1) / (L.Dc + 1));
+      L.phMax = Math.acos(1 / L.Dc) - 0.004;
+      L.pw = W * 0.255; L.pl = W * 0.012; L.pr = W - W * 0.012 - L.pw;
+      L.pTop = Math.max(H * 0.25, L.cy - L.R * 0.42);
+      L.arch = L.pw / 2;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      buildTexture(); buildBack(); buildFront(); buildBulbs();
+      draw(performance.now());
+    }
+
+    // ── Panel artwork (flat), stacked into one tall texture (panel 0 repeated at the end) ──
+    function rrp(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+    function star(c, x, y, r) {
+      c.beginPath();
+      for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); }
+      c.closePath();
+    }
+    function drawPanel(c, v, y, w, h) {
+      var kind = v === 7 ? 'star' : v === 1 ? 'green' : 'black';
+      var body = c.createLinearGradient(0, y, 0, y + h);
+      if (kind === 'green') { body.addColorStop(0, '#6fd86a'); body.addColorStop(0.5, '#43b84a'); body.addColorStop(1, '#2c9137'); }
+      else { body.addColorStop(0, '#222226'); body.addColorStop(0.5, '#111114'); body.addColorStop(1, '#060608'); }
+      c.fillStyle = body; c.fillRect(0, y, w, h);
+      // panel seams: a bright chrome strip on top, a dark gap below
+      var sm = Math.max(1, h * 0.035), sg = c.createLinearGradient(0, y, 0, y + sm);
+      sg.addColorStop(0, '#f2f4f8'); sg.addColorStop(1, '#7c818c');
+      c.fillStyle = sg; c.fillRect(0, y, w, sm);
+      c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y + h - sm * 0.8, w, sm * 0.8);
+      // the framed number box
+      var bx = w * 0.13, by = y + h * 0.13, bw = w - 2 * bx, bh = h * 0.74, r = h * 0.13, lw = Math.max(2, h * 0.045);
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = h * 0.05; c.shadowOffsetY = h * 0.025;
+      rrp(c, bx, by, bw, bh, r);
+      var fill = c.createLinearGradient(0, by, 0, by + bh);
+      if (kind === 'star') { fill.addColorStop(0, '#f0353d'); fill.addColorStop(0.55, '#c3121d'); fill.addColorStop(1, '#8a0912'); }
+      else if (kind === 'green') { fill.addColorStop(0, '#5fcf5c'); fill.addColorStop(1, '#3aa943'); }
+      else { fill.addColorStop(0, '#1d1d21'); fill.addColorStop(1, '#0b0b0d'); }
+      c.fillStyle = fill; c.fill();
+      c.restore();
+      var fr = c.createLinearGradient(0, by, 0, by + bh);
+      if (kind === 'green') { fr.addColorStop(0, '#2c7a33'); fr.addColorStop(1, '#13521c'); }
+      else { fr.addColorStop(0, '#fff0b0'); fr.addColorStop(0.35, '#e0b84e'); fr.addColorStop(0.7, '#a77a1f'); fr.addColorStop(1, '#f0d27a'); }
+      rrp(c, bx, by, bw, bh, r); c.lineWidth = lw * (kind === 'star' ? 1.5 : 1); c.strokeStyle = fr; c.stroke();
+      rrp(c, bx + lw * 1.2, by + lw * 1.2, bw - lw * 2.4, bh - lw * 2.4, r * 0.7);
+      c.lineWidth = Math.max(1, lw * 0.35); c.strokeStyle = kind === 'green' ? 'rgba(255,255,255,.35)' : kind === 'star' ? 'rgba(255,220,140,.55)' : 'rgba(224,184,78,.35)'; c.stroke();
+      // number + CHIPS
+      var fs = h * 0.5, tx = w / 2, ty = by + bh * 0.43;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = fs + 'px "Lilita One", system-ui, sans-serif';
+      var ink = kind === 'green' ? '#14501d' : kind === 'star' ? '#fff4cc' : '#f6f3ea';
+      c.fillStyle = kind === 'green' ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.7)';
+      c.fillText(String(v), tx, ty + (kind === 'green' ? -fs * 0.03 : fs * 0.05));
+      if (kind === 'star') { c.lineWidth = fs * 0.08; c.strokeStyle = '#7a4a05'; c.strokeText(String(v), tx, ty); }
+      var dg = c.createLinearGradient(0, ty - fs / 2, 0, ty + fs / 2);
+      if (kind === 'black') { dg.addColorStop(0, '#ffffff'); dg.addColorStop(0.55, '#e9e6dd'); dg.addColorStop(1, '#b9b5aa'); }
+      else if (kind === 'star') { dg.addColorStop(0, '#fffbe8'); dg.addColorStop(0.5, '#ffe07a'); dg.addColorStop(1, '#e8a51a'); }
+      else { dg.addColorStop(0, '#1d6a28'); dg.addColorStop(1, ink); }
+      c.fillStyle = dg; c.fillText(String(v), tx, ty);
+      c.font = '900 ' + (h * 0.12) + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
+      if (c.letterSpacing !== undefined) c.letterSpacing = (h * 0.025) + 'px';
+      c.fillStyle = kind === 'green' ? '#1a5d24' : kind === 'star' ? '#ffe7a0' : '#e0b84e';
+      c.fillText(v === 1 ? 'CHIP' : 'CHIPS', tx + (c.letterSpacing !== undefined ? h * 0.0125 : 0), by + bh * 0.83);
+      if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
+      if (kind === 'star') {
+        var gs = c.createLinearGradient(0, ty - h * 0.1, 0, ty + h * 0.1); gs.addColorStop(0, '#fff3b8'); gs.addColorStop(1, '#d99a1a');
+        c.fillStyle = gs; c.strokeStyle = '#7a4a05'; c.lineWidth = Math.max(1, h * 0.012);
+        [-1, 1].forEach(function (sd) { star(c, tx + sd * bw * 0.33, ty, h * 0.1); c.fill(); c.stroke(); });
+      }
+    }
+    function buildTexture() {
+      TW = Math.max(8, Math.round(L.dw * dpr));
+      PHt = Math.max(8, Math.round(L.R * WA * dpr));
+      if (PHt * (WN + 1) > 15000) PHt = Math.floor(15000 / (WN + 1));
+      tex = document.createElement('canvas'); tex.width = TW; tex.height = PHt * (WN + 1);
+      var c = tex.getContext('2d');
+      for (var j = 0; j <= WN; j++) drawPanel(c, WHEEL[j % WN], j * PHt, TW, PHt);
+    }
+
+    // ── The set: backdrop and stands (behind the drum), pillars and base (in front) ──
+    function ctx2(cn) { cn.width = cv.width; cn.height = cv.height; var c = cn.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); return c; }
+    function buildBack() {
+      back = document.createElement('canvas');
+      var c = ctx2(back), W = L.W, H = L.H;
+      var sp = c.createRadialGradient(L.cx, L.cy, 10, L.cx, L.cy, H * 0.62);
+      sp.addColorStop(0, 'rgba(255,190,90,.16)'); sp.addColorStop(1, 'rgba(255,190,90,0)');
+      c.fillStyle = sp; c.fillRect(0, 0, W, H);
+      // the drum's stands: black arches on both sides of the axle
+      [-1, 1].forEach(function (sd) {
+        var x = L.cx + sd * (L.dw / 2 + W * 0.035), w = W * 0.05, top = L.cy - L.R * 0.6;
+        var gr = c.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
+        gr.addColorStop(0, '#060608'); gr.addColorStop(0.45, '#2a2a30'); gr.addColorStop(1, '#050507');
+        c.fillStyle = gr;
+        c.beginPath(); c.moveTo(x - w / 2, L.baseTop + 2); c.lineTo(x - w / 2, top + w); c.quadraticCurveTo(x - w / 2, top, x - sd * w * 0.2, top - w * 0.15);
+        c.lineTo(x + w / 2 - sd * w * 0.3, top + w * 0.1); c.lineTo(x + w / 2, top + w); c.lineTo(x + w / 2, L.baseTop + 2); c.closePath(); c.fill();
+        // axle hub
+        var hg = c.createRadialGradient(x - w * 0.15, L.cy - w * 0.15, 1, x, L.cy, w * 0.5);
+        hg.addColorStop(0, '#d9dde6'); hg.addColorStop(0.5, '#6d7280'); hg.addColorStop(1, '#202227');
+        c.fillStyle = hg; c.beginPath(); c.arc(x, L.cy, w * 0.42, 0, 6.283); c.fill();
+      });
+      // dark well behind the drum
+      c.fillStyle = '#050407';
+      c.beginPath(); c.rect(L.cx - L.dw / 2 - 2, py(L.phMax) - 2, L.dw + 4, py(-L.phMax) - py(L.phMax) + 4); c.fill();
+    }
+    function pillarPath(c, x) {
+      var w = L.pw, a = L.arch, top = L.pTop;
+      c.beginPath(); c.moveTo(x, L.baseTop); c.lineTo(x, top + a); c.arc(x + a, top + a, a, Math.PI, 0); c.lineTo(x + w, L.baseTop); c.closePath();
+    }
+    function drawPillar(c, x, side) {
+      var w = L.pw, a = L.arch, top = L.pTop, H = L.H;
+      // thickness: a darker rim behind, offset toward the drum
+      c.save(); c.translate(-side * w * 0.04, 0); pillarPath(c, x); c.fillStyle = '#7a1d0c'; c.fill(); c.restore();
+      c.save(); pillarPath(c, x); c.clip();
+      var bg = c.createLinearGradient(x, 0, x + w, 0);
+      bg.addColorStop(0, '#f39a2c'); bg.addColorStop(0.5, '#f7a83a'); bg.addColorStop(1, '#e2801e');
+      c.fillStyle = bg; c.fillRect(x - 2, top - 2, w + 4, L.baseTop - top + 4);
+      // checkerboard of red tiles
+      var cs = w / 5, rowN = Math.ceil((L.baseTop - top) / cs) + 1;
+      for (var r = 0; r < rowN; r++) for (var k = -1; k < 6; k++) {
+        if ((r + k) % 2) continue;
+        var tx = x + k * cs + (r % 2 ? 0 : 0), ty = top + r * cs;
+        var tg = c.createLinearGradient(0, ty, 0, ty + cs);
+        tg.addColorStop(0, '#d8361c'); tg.addColorStop(1, '#a8220f');
+        c.fillStyle = tg; c.fillRect(tx + cs * 0.1, ty + cs * 0.1, cs * 0.8, cs * 0.8);
+        c.fillStyle = 'rgba(255,190,120,.35)'; c.fillRect(tx + cs * 0.1, ty + cs * 0.1, cs * 0.8, Math.max(1, cs * 0.06));
+      }
+      // soft shading: rounded front face
+      var sh = c.createLinearGradient(x, 0, x + w, 0);
+      sh.addColorStop(0, 'rgba(0,0,0,.28)'); sh.addColorStop(0.3, 'rgba(255,255,255,.06)'); sh.addColorStop(0.55, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.3)');
+      c.fillStyle = sh; c.fillRect(x, top, w, L.baseTop - top);
+      // bulb rail: a cream band around the arch and down the side next to the drum
+      c.restore();
+      c.save(); pillarPath(c, x); c.clip();
+      c.lineWidth = w * 0.13; c.strokeStyle = '#f3e9da';
+      c.beginPath(); var ix = side < 0 ? x + w : x;
+      c.moveTo(ix, L.baseTop); c.lineTo(ix, top + a); c.arc(x + a, top + a, a, side < 0 ? 0 : Math.PI, side < 0 ? Math.PI : 0, side < 0);
+      c.stroke();
+      c.lineWidth = w * 0.01; c.strokeStyle = 'rgba(120,60,20,.5)';
+      c.beginPath(); c.arc(x + a, top + a, a - w * 0.065, Math.PI, 0); c.stroke();
+      c.restore();
+      pillarPath(c, x); c.lineWidth = 1.2; c.strokeStyle = 'rgba(80,20,5,.7)'; c.stroke();
+      // the silver "$": diamond-plate silver with a dark outline
+      var fs = Math.min((L.baseTop - top) * 0.62, w * 1.25), cx = x + w / 2, cy = side > 0 ? L.baseTop - (L.baseTop - top) * 0.36 : top + a + (L.baseTop - top - a) * 0.5;
+      c.save();
+      c.font = fs + 'px "Lilita One", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.translate(cx, cy); c.scale(1.05, 1);
+      c.lineJoin = 'round'; c.lineWidth = fs * 0.06; c.strokeStyle = '#4a2008'; c.strokeText('$', 0, 0);
+      c.restore();
+      var gc = document.createElement('canvas'); gc.width = cv.width; gc.height = cv.height;
+      var outer = c; c = gc.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.save();
+      c.font = fs + 'px "Lilita One", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.translate(cx, cy); c.scale(1.05, 1);
+      var sg = c.createLinearGradient(-fs * 0.3, -fs * 0.5, fs * 0.3, fs * 0.5);
+      sg.addColorStop(0, '#f4f6fa'); sg.addColorStop(0.3, '#a9afbb'); sg.addColorStop(0.55, '#e8ebf1'); sg.addColorStop(0.8, '#8c93a1'); sg.addColorStop(1, '#d6dae2');
+      c.fillStyle = sg; c.fillText('$', 0, 0);
+      // knurled dots, clipped to the glyph
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(60,64,74,.45)';
+      var st2 = Math.max(2.2, fs * 0.035);
+      for (var yy = -fs * 0.6; yy < fs * 0.6; yy += st2) for (var xx = -fs * 0.4 + ((Math.round(yy / st2) % 2) * st2 / 2); xx < fs * 0.4; xx += st2) { c.beginPath(); c.arc(xx, yy, st2 * 0.22, 0, 6.283); c.fill(); }
+      c.globalCompositeOperation = 'source-over';
+      // a bright bevel along the top edge of the glyph
+      c.globalCompositeOperation = 'source-atop';
+      var bv = c.createLinearGradient(0, -fs * 0.5, 0, fs * 0.5); bv.addColorStop(0, 'rgba(255,255,255,.35)'); bv.addColorStop(0.5, 'rgba(255,255,255,0)'); bv.addColorStop(1, 'rgba(0,0,0,.18)');
+      c.fillStyle = bv; c.fillRect(-fs, -fs, fs * 2, fs * 2);
+      c.restore();
+      outer.save(); outer.setTransform(1, 0, 0, 1, 0, 0); outer.drawImage(gc, 0, 0); outer.restore();
+    }
+    function buildFront() {
+      front = document.createElement('canvas');
+      var c = ctx2(front), W = L.W, H = L.H;
+      drawPillar(c, L.pl, -1); drawPillar(c, L.pr, 1);
+      // the black base, with a lit top edge
+      var bt = L.baseTop, bg = c.createLinearGradient(0, bt, 0, H);
+      bg.addColorStop(0, '#2b2b31'); bg.addColorStop(0.08, '#141417'); bg.addColorStop(1, '#030304');
+      rrp(c, 0, bt, W, H - bt, 6); c.fillStyle = bg; c.fill();
+      c.fillStyle = 'rgba(255,255,255,.22)'; c.fillRect(6, bt, W - 12, 1.2);
+      var rf = c.createRadialGradient(L.cx, bt, 4, L.cx, bt, W * 0.4);
+      rf.addColorStop(0, 'rgba(255,200,120,.12)'); rf.addColorStop(1, 'rgba(255,200,120,0)');
+      c.fillStyle = rf; c.fillRect(0, bt, W, H - bt);
+    }
+    function buildBulbs() {
+      bulbs = [];
+      var gap = Math.max(8, L.pw * 0.105), w = L.pw, a = L.arch, top = L.pTop, rb = a - w * 0.0;
+      [[L.pl, -1], [L.pr, 1]].forEach(function (pp) {
+        var x = pp[0], side = pp[1], ix = side < 0 ? x + w : x, pts = [];
+        var rr2 = a - w * 0.0, inset = w * 0.065;
+        // up the side next to the drum, then over the arch
+        for (var y = L.baseTop - gap * 0.6; y > top + a; y -= gap) pts.push([ix - side * inset, y]);
+        var arcLen = Math.PI * (rr2 - inset), n = Math.max(6, Math.round(arcLen / gap));
+        for (var i = 0; i <= n; i++) {
+          var t = i / n, an = side < 0 ? t * Math.PI : Math.PI - t * Math.PI;
+          pts.push([x + a + Math.cos(an) * (a - inset), top + a - Math.sin(an) * (a - inset)]);
+        }
+        pts.forEach(function (p, i) { bulbs.push({ x: p[0], y: p[1], i: i }); });
+        void rb;
+      });
+      var br = Math.max(2.2, gap * 0.3) * dpr, sz = Math.ceil(br * 5);
+      bulbOn = document.createElement('canvas'); bulbOn.width = bulbOn.height = sz;
+      var c = bulbOn.getContext('2d'), m = sz / 2;
+      var gl = c.createRadialGradient(m, m, 0, m, m, m); gl.addColorStop(0, 'rgba(255,230,150,.75)'); gl.addColorStop(0.35, 'rgba(255,200,90,.3)'); gl.addColorStop(1, 'rgba(255,190,80,0)');
+      c.fillStyle = gl; c.fillRect(0, 0, sz, sz);
+      var bb = c.createRadialGradient(m - br * 0.25, m - br * 0.3, 0, m, m, br); bb.addColorStop(0, '#ffffff'); bb.addColorStop(0.45, '#fff2b8'); bb.addColorStop(1, '#f0b43a');
+      c.fillStyle = bb; c.beginPath(); c.arc(m, m, br, 0, 6.283); c.fill();
+      bulbOff = document.createElement('canvas'); bulbOff.width = bulbOff.height = sz;
+      c = bulbOff.getContext('2d');
+      var bo = c.createRadialGradient(m - br * 0.25, m - br * 0.3, 0, m, m, br); bo.addColorStop(0, '#fff6e2'); bo.addColorStop(0.6, '#cdb79a'); bo.addColorStop(1, '#8a7258');
+      c.fillStyle = bo; c.beginPath(); c.arc(m, m, br * 0.92, 0, 6.283); c.fill();
+      L.bulbSz = sz / dpr;
+    }
+
+    // ── Per frame ──
+    function drawDrum(off) {
+      var th = st.th + (off || 0), R = L.R, cx = L.cx, d = dpr, phi = L.phMax, total = WN * PHt;
+      while (phi > -L.phMax) {
+        var s0 = sc(phi), sn = Math.sin(phi), cs = Math.cos(phi);
+        var der = Math.abs(cs * s0 - sn * sn * (L.Dc - 1) / Math.pow(L.Dc - cs, 2));
+        var stp = Math.max(0.0015, Math.min(0.05, 2.5 / (d * R * Math.max(der, 1e-3))));
+        var phi1 = Math.max(phi - stp, -L.phMax);
+        var y0 = py(phi), y1 = py(phi1), hw = hwAt((phi + phi1) / 2);
+        var t0 = ((-phi - th) / WA * PHt) % total; if (t0 < 0) t0 += total;
+        var sh = (phi - phi1) / WA * PHt;
+        g.drawImage(tex, 0, t0, TW, sh, (cx - hw) * d, y0 * d, 2 * hw * d, (y1 - y0) * d + 0.75);
+        phi = phi1;
+      }
+    }
+    var shadeCache = null;
+    function drumShade() {
+      if (shadeCache && shadeCache.W === L.W && shadeCache.H === L.H) return shadeCache;
+      var yT = py(L.phMax), yB = py(-L.phMax), dk = g.createLinearGradient(0, yT, 0, yB), sp = g.createLinearGradient(0, yT, 0, yB);
+      var c0 = 1 / L.Dc;
+      for (var i = 0; i <= 40; i++) {
+        var ph = L.phMax - i / 40 * 2 * L.phMax, y = (py(ph) - yT) / (yB - yT);
+        var lit = Math.max(0, (Math.cos(ph) - c0) / (1 - c0));
+        dk.addColorStop(Math.max(0, Math.min(1, y)), 'rgba(0,0,0,' + (0.97 * (1 - Math.pow(lit, 1.1))).toFixed(3) + ')');
+        var spec = 0.2 * Math.exp(-Math.pow((ph - 0.3) / 0.13, 2)) + 0.06 * Math.exp(-Math.pow(ph / 0.35, 2));
+        sp.addColorStop(Math.max(0, Math.min(1, y)), 'rgba(255,248,230,' + spec.toFixed(3) + ')');
+      }
+      var path = new Path2D();
+      for (var k = 0; k <= 40; k++) { var p2 = L.phMax - k / 40 * 2 * L.phMax; path.lineTo(L.cx + hwAt(p2), py(p2)); }
+      for (var k2 = 40; k2 >= 0; k2--) { var p3 = L.phMax - k2 / 40 * 2 * L.phMax; path.lineTo(L.cx - hwAt(p3), py(p3)); }
+      path.closePath();
+      shadeCache = { W: L.W, H: L.H, dk: dk, sp: sp, path: path };
+      return shadeCache;
+    }
+    function drawPegsAndRails() {
+      var sh = drumShade(), c0 = 1 / L.Dc;
+      // dark side rails along both edges of the drum
+      g.save(); g.lineWidth = Math.max(2, L.dw * 0.03); g.strokeStyle = '#0b0b0e';
+      [-1, 1].forEach(function (sd) {
+        g.beginPath();
+        for (var k = 0; k <= 40; k++) { var p = L.phMax - k / 40 * 2 * L.phMax; g.lineTo(L.cx + sd * hwAt(p), py(p)); }
+        g.stroke();
+      });
+      g.restore(); void sh;
+      // pegs between panels, sticking out of both edges
+      for (var k = 0; k < WN; k++) {
+        var ph = wrap(-(st.th + k * WA)), cs = Math.cos(ph);
+        if (cs < c0 + 0.03) continue;
+        var s = sc(ph), y = py(ph), len = L.W * 0.024 * s, tk = Math.max(2, L.dw * 0.03 * s * Math.max(0.35, cs));
+        var lit = Math.max(0, (cs - c0) / (1 - c0));
+        [-1, 1].forEach(function (sd) {
+          var x0 = L.cx + sd * hwAt(ph), x1 = x0 + sd * len;
+          var pg = g.createLinearGradient(0, y - tk / 2, 0, y + tk / 2);
+          pg.addColorStop(0, 'rgba(255,255,255,' + (0.35 + 0.65 * lit) + ')'); pg.addColorStop(0.5, 'rgb(' + Math.round(90 + 110 * lit) + ',' + Math.round(95 + 110 * lit) + ',' + Math.round(105 + 110 * lit) + ')'); pg.addColorStop(1, '#2a2c33');
+          g.fillStyle = pg;
+          rrp(g, Math.min(x0, x1), y - tk / 2, len, tk, tk * 0.4); g.fill();
+        });
+      }
+    }
+    function drawPointer() {
+      // pivot sits on the right pillar; the arrow points left at the panel facing you
+      var tipX = L.cx + L.dw / 2 + L.W * 0.028, len = L.W * 0.1, pvX = tipX + len, pvY = L.cy, hh = L.H * 0.034;
+      var ang = -st.b * 0.6;
+      g.save();
+      g.translate(pvX + 1.5, pvY + 3); g.rotate(ang);
+      g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.moveTo(-len, 0); g.lineTo(-len * 0.1, -hh); g.lineTo(len * 0.12, -hh * 0.45); g.lineTo(len * 0.12, hh * 0.45); g.lineTo(-len * 0.1, hh); g.closePath(); g.fill();
+      g.restore();
+      g.save(); g.translate(pvX, pvY); g.rotate(ang);
+      g.beginPath(); g.moveTo(-len, 0); g.lineTo(-len * 0.1, -hh); g.lineTo(len * 0.12, -hh * 0.45); g.lineTo(len * 0.12, hh * 0.45); g.lineTo(-len * 0.1, hh); g.closePath();
+      var ag = g.createLinearGradient(0, -hh, 0, hh); ag.addColorStop(0, '#ff6a4d'); ag.addColorStop(0.48, '#e5281c'); ag.addColorStop(0.52, '#b8160e'); ag.addColorStop(1, '#7d0b06');
+      g.fillStyle = ag; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#3d0503'; g.stroke();
+      g.beginPath(); g.moveTo(-len * 0.92, -1); g.lineTo(-len * 0.12, -hh * 0.82); g.lineWidth = 1.2; g.strokeStyle = 'rgba(255,210,190,.55)'; g.stroke();
+      var cg = g.createRadialGradient(-2, -2, 1, 0, 0, hh * 0.38); cg.addColorStop(0, '#fff6cf'); cg.addColorStop(0.5, '#e2b440'); cg.addColorStop(1, '#7a5610');
+      g.beginPath(); g.arc(0, 0, hh * 0.36, 0, 6.283); g.fillStyle = cg; g.fill(); g.strokeStyle = '#4a3305'; g.lineWidth = 1; g.stroke();
+      g.restore();
+    }
+    var SEG = { '0': 'abcdef', '1': 'bc', '2': 'abged', '3': 'abgcd', '4': 'fgbc', '5': 'afgcd', '6': 'afgedc', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg', '-': 'g', ' ': '' };
+    function seg7(x, y, w, h, ch, on, glow) {
+      var t = w * 0.2, sk = w * 0.12, m = SEG[ch] || '';
+      function bar(id, x0, y0, x1, y1) {
+        var lit = m.indexOf(id) >= 0;
+        if (!lit && !glow) { /* unlit */ }
+        g.beginPath();
+        var dx = x1 - x0, dy = y1 - y0, ln = Math.sqrt(dx * dx + dy * dy), ux = dx / ln, uy = dy / ln, nx = -uy * t / 2, ny = ux * t / 2;
+        var e = t * 0.55;
+        g.moveTo(x0 + ux * e * 0.1, y0 + uy * e * 0.1);
+        g.lineTo(x0 + ux * e + nx, y0 + uy * e + ny); g.lineTo(x1 - ux * e + nx, y1 - uy * e + ny);
+        g.lineTo(x1 - ux * e * 0.1, y1 - uy * e * 0.1);
+        g.lineTo(x1 - ux * e - nx, y1 - uy * e - ny); g.lineTo(x0 + ux * e - nx, y0 + uy * e - ny); g.closePath();
+        if (lit && on) { g.shadowColor = 'rgba(255,170,40,.9)'; g.shadowBlur = 8 * dpr; g.fillStyle = '#ffc93c'; }
+        else { g.shadowBlur = 0; g.fillStyle = 'rgba(255,160,40,.09)'; }
+        g.fill();
+      }
+      function P(px, py2) { return [x + px * w + (1 - py2) * sk, y + py2 * h]; }
+      var A0 = P(0, 0), A1 = P(1, 0), M0 = P(0, 0.5), M1 = P(1, 0.5), B0 = P(0, 1), B1 = P(1, 1);
+      g.save();
+      bar('a', A0[0], A0[1], A1[0], A1[1]); bar('g', M0[0], M0[1], M1[0], M1[1]); bar('d', B0[0], B0[1], B1[0], B1[1]);
+      bar('f', A0[0], A0[1], M0[0], M0[1]); bar('b', A1[0], A1[1], M1[0], M1[1]);
+      bar('e', M0[0], M0[1], B0[0], B0[1]); bar('c', M1[0], M1[1], B1[0], B1[1]);
+      g.restore();
+    }
+    function drawReadout(now) {
+      var w = L.pw * 0.9, h = w * 0.52, x = L.pr + L.pw * 0.07, y = L.pTop + L.arch * 0.78;
+      g.save();
+      g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 10; g.shadowOffsetY = 4;
+      rrp(g, x, y, w, h, h * 0.12); g.fillStyle = '#1a1a1e'; g.fill();
+      g.restore();
+      rrp(g, x + 3, y + 3, w - 6, h - 6, h * 0.08);
+      var ig = g.createLinearGradient(0, y, 0, y + h); ig.addColorStop(0, '#0c0907'); ig.addColorStop(1, '#16100a');
+      g.fillStyle = ig; g.fill();
+      var txt = readout == null ? '--' : (String(readout).length < 2 ? ' ' + readout : String(readout));
+      var blink = mode === 'result' || mode === 'jack' ? (Math.floor((now - modeT0) / 260) % 2 === 0 || now - modeT0 > 2200) : true;
+      var dw2 = (w - 12) * 0.36, dh = h - 16;
+      seg7(x + w * 0.1, y + 8, dw2, dh, txt[0], blink, true);
+      seg7(x + w * 0.1 + dw2 * 1.38, y + 8, dw2, dh, txt[1], blink, true);
+      var gl = g.createLinearGradient(0, y, 0, y + h * 0.5); gl.addColorStop(0, 'rgba(255,255,255,.1)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gl; rrp(g, x + 3, y + 3, w - 6, h * 0.45, h * 0.08); g.fill();
+    }
+    function drawBulbs(now) {
+      var t = (now - modeT0) / 1000, sz = L.bulbSz, rate = mode === 'spin' ? 6 + Math.min(18, Math.abs(st.om) * 3) : mode === 'result' ? 16 : 4.5;
+      var ph = Math.floor(t * rate);
+      for (var i = 0; i < bulbs.length; i++) {
+        var b = bulbs[i], on;
+        if (mode === 'jack') on = ((b.i * 7 + Math.floor(t * 14) * 3) % 5) < 2 || (Math.floor(t * 5) % 2 === 0 && t < 2.5);
+        else on = ((b.i + 3000 - ph) % 3) === 0;
+        g.drawImage(on ? bulbOn : bulbOff, b.x - sz / 2, b.y - sz / 2, sz, sz);
+      }
+    }
+    function drawGlow(now) {
+      if (glowIdx < 0) return;
+      var j = glowIdx, top = wrap(-(st.th + j * WA)), bot = top - WA;
+      if (Math.cos(top) < 0.2 && Math.cos(bot) < 0.2) return;
+      var yT = py(top), yB = py(bot), hw = hwAt((top + bot) / 2), t = (now - modeT0) / 1000, pulse = 0.6 + 0.4 * Math.sin(t * 8);
+      var col = WHEEL[j] === 7 ? '255,214,90' : WHEEL[j] === 1 ? '150,255,140' : '255,230,160';
+      g.save();
+      g.fillStyle = 'rgba(' + col + ',' + (0.12 * pulse) + ')'; g.fillRect(L.cx - hw, yT, hw * 2, yB - yT);
+      g.shadowColor = 'rgba(' + col + ',1)'; g.shadowBlur = 18 * pulse;
+      g.lineWidth = 3; g.strokeStyle = 'rgba(' + col + ',' + (0.65 + 0.35 * pulse) + ')';
+      rrp(g, L.cx - hw - 3, yT - 2, hw * 2 + 6, yB - yT + 4, 6); g.stroke();
+      g.restore();
+    }
+    function draw(now) {
+      if (!tex || dead) return;
+      lastDraw = now;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, cv.width, cv.height);
+      g.drawImage(back, 0, 0);
+      drawDrum(0);
+      var sp = Math.abs(st.om);
+      if (sp > 1.5) { g.globalAlpha = Math.min(0.4, (sp - 1.5) * 0.1); drawDrum(-st.om * 0.005); drawDrum(-st.om * 0.01); g.globalAlpha = 1; }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var sh = drumShade();
+      g.fillStyle = sh.dk; g.fill(sh.path);
+      g.fillStyle = sh.sp; g.fill(sh.path);
+      drawGlow(now);
+      drawPegsAndRails();
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.drawImage(front, 0, 0);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawPointer();
+      drawBulbs(now);
+      drawReadout(now);
+    }
+
+    // ── Loop: physics while spinning, the flapper settling, and the bulbs ──
+    function loop(now) {
+      raf = 0; if (dead) return;
+      var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+      var hf = flapTick, k, j, active = false;
+      if (spinning) {
+        acc += dt; var stopped = false;
+        while (acc >= WSIM_H) { acc -= WSIM_H; if (sim.step(WSIM_H, hf) || st.t > WSIM_CAP) { stopped = true; break; } }
+        readout = WHEEL[sim.index()];
+        if (stopped) { st.om = 0; acc = 0; var res = spinning; spinning = null; res(sim.index()); }
+        active = true;
+      } else if (drag) {
+        k = Math.max(1, Math.min(60, Math.round(dt / WSIM_H)));
+        st.om = Math.max(-30, Math.min(30, (drag.th - st.th) / (k * WSIM_H)));
+        for (j = 0; j < k; j++) sim.step(WSIM_H, hf, true);
+        st.om = 0; active = true;
+      } else {
+        st.om = 0; k = Math.min(60, Math.round(dt / WSIM_H));
+        for (j = 0; j < k; j++) sim.step(WSIM_H, hf, true);
+        active = Math.abs(st.b) > 0.002 || Math.abs(st.bv) > 0.02 || mode !== 'idle';
+      }
+      // idle: the bulbs only need a few frames a second
+      if (active || now - lastDraw > 110) draw(now);
+      if (document.visibilityState === 'visible') raf = requestAnimationFrame(loop);
+    }
+    function kick() { if (!raf && !dead) { last = performance.now(); raf = requestAnimationFrame(loop); } }
+    document.addEventListener('visibilitychange', kick);
+
+    // ── Pull it down ──
+    function yOf(e) { var r = cv.getBoundingClientRect(); return (e.clientY - r.top) / (r.height || 1) * L.H; }
+    cv.addEventListener('pointerdown', function (e) {
+      if (spinning || !hooks.canSpin()) return;
+      e.preventDefault(); ac();
+      drag = { y: yOf(e), th: st.th, s: [[e.timeStamp || performance.now(), st.th]] };
+      try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      kick();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var y = yOf(e), dy = y - drag.y; drag.y = y;
+      // the front of the drum follows the finger
+      drag.th += dy / (L.R * Math.max(0.6, sc(0)));
+      var now = e.timeStamp || performance.now(); drag.s.push([now, drag.th]);
+      while (drag.s.length > 2 && now - drag.s[0][0] > 110) drag.s.shift();
+    });
+    function up(e) {
+      if (!drag) return;
+      var s = drag.s, now = (e && e.timeStamp) || performance.now(); drag = null;
+      var a = s[0], b = s[s.length - 1], dt = (b[0] - a[0]) / 1000;
+      var om = dt > 0.008 && now - b[0] < 150 ? (b[1] - a[1]) / dt : 0;
+      hooks.onPull(om);
+    }
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', function () { drag = null; });
+    cv.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); hooks.onKey(); }
+    });
+
+    return {
+      cv: cv, layout: layout,
+      spin: function (w0) { return new Promise(function (res) { st.om = w0; st.t = 0; st.rest = 0; acc = 0; glowIdx = -1; spinning = res; mode = 'spin'; modeT0 = performance.now(); kick(); }); },
+      busy: function () { return !!spinning || !!drag; },
+      angle: function () { return st.th; },
+      setAngle: function (a) {
+        // keep the flapper clear of the pegs (inside the same panel)
+        var x = ((a % WA) + WA) % WA, m = 0.06;
+        if (x < m) a += m - x; else if (x > WA - m) a -= x - (WA - m);
+        st.th = a; st.om = 0; st.b = 0; st.bv = 0; st.touch = false; kick();
+      },
+      index: function () { return sim.index(); },
+      setMode: function (m, idx) { mode = m; modeT0 = performance.now(); glowIdx = idx == null ? -1 : idx; if (m === 'idle') readout = null; else if (idx != null) readout = WHEEL[idx]; kick(); },
+      // the panel facing you, in page coordinates (chips fly from here)
+      panelRect: function () {
+        var r = cv.getBoundingClientRect(), k = r.width / L.W, hh = L.R * WA / 2;
+        return { x: r.left + L.cx * k, y: r.top + L.cy * k, w: L.dw * k, h: hh * 2 * k };
+      },
+      redraw: function () { if (tex) { buildTexture(); buildBack(); buildFront(); shadeCache = null; draw(performance.now()); } },
+      destroy: function () { dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; document.removeEventListener('visibilitychange', kick); }
+    };
+  }
 
   // ── Rules ─────────────────────────────────────────────────────────────────
   Kit.init({
@@ -325,19 +889,20 @@ body{background:
     rules:
       '<p class="goal">Drop chips down the pegboard and win the money in the slot each one lands in. Biggest total wins.</p>' +
       '<h3>The board</h3><p>Nine slots along the bottom: $100, $500, $1,000, $0, <b>$10,000</b>, $0, $1,000, $500, $100. The big money is in the middle, right between the two $0 slots.</p>' +
-      '<h3>Earn your chips</h3><ul><li>Everyone starts with <b>1 chip</b>.</li>' +
-      '<li>Win up to <b>4 more</b> by pricing 4 small prizes. Is the real price <b>higher or lower</b> than the price on the tag? Each right answer earns a chip.</li>' +
-      '<li>Want to get straight to the board? Tap <b>Skip</b> to take all 5 chips, or pick "Start with 5" in setup.</li></ul>' +
+      '<h3>Spin the Big Wheel</h3><ul><li>Before the drops, each player spins the Big Wheel once. The number it stops on is <b>how many chips</b> you get.</li>' +
+      '<li><b>Swipe down</b> on the wheel to pull it. A harder pull spins it longer. A weak pull doesn\'t count: the wheel has to go <b>all the way around</b>. You can also tap <b>Spin</b>.</li>' +
+      '<li>The wheel has 20 panels: 2, 3, 4 and 5 chips, plus one <b>7</b>, the jackpot. The two panels right beside the 7 are worth just <b>1 chip</b>. A spin is worth about <b>3.7 chips</b> on average.</li>' +
+      '<li>Want to get straight to the board? Pick "Start with 5" in setup.</li></ul>' +
       '<h3>Drop</h3><ul><li><b>Drag</b> the chip along the top of the board to aim, then <b>let go</b>.</li>' +
       '<li>The chip bounces off the pegs on the way down. You can aim, but you can\'t steer!</li>' +
       '<li>Most players aim right over the $10,000 slot. Some like to start off to one side.</li></ul>' +
-      '<h3>Taking turns</h3><p>With 2 to 4 players, everyone earns their chips first, then you take turns dropping one chip at a time. When every chip is down, the biggest total wins. The most anyone can win is <b>$50,000</b>.</p>' +
+      '<h3>Taking turns</h3><p>With 2 to 4 players, everyone spins the wheel first, then you take turns dropping one chip at a time. When every chip is down, the biggest total wins. The most anyone can win is <b>$70,000</b> (7 chips, all on $10,000).</p>' +
       '<p class="dim" style="margin-top:10px">Once a chip is dropped it can\'t be taken back, so there\'s no undo.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
-  // S = {started, earn:bool, phase:'earn'|'drop'|'over', cur, players:[{name,color,chips,res:[],priced:[],aim}],
-  //      quiz:{p, items:[idx], shown:[price], i, ans:[bool]}}
+  // S = {started, wheel:bool, phase:'wheel'|'drop'|'over', cur, wangle,
+  //      players:[{name,color,chips,res:[],aim, wheel:{i,n}}]}
   var S = null;
   function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
   function total(p) { return p.res.reduce(function (a, b) { return a + b; }, 0); }
@@ -347,125 +912,172 @@ body{background:
     if (!S || S.phase === 'over') return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var p = P();
-    Kit.resume.set(S.phase === 'earn' ? 'Earning chips' : (S.players.length > 1 ? p.name + ': ' : '') + 'chip ' + Math.min(p.chips, p.res.length + 1) + ' of ' + p.chips + ' · ' + money(total(p)));
+    Kit.resume.set(S.phase === 'wheel' ? (S.players.length > 1 ? p.name + ': ' : '') + 'Spin the Big Wheel' : (S.players.length > 1 ? p.name + ': ' : '') + 'chip ' + Math.min(p.chips, p.res.length + 1) + ' of ' + p.chips + ' · ' + money(total(p)));
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.players && s.players.length ? s : null; } catch (e) { return null; } }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    S = null; stopLoop(); window.scrollTo(0, 0);
+    S = null; stopLoop(); dropWheel(); window.scrollTo(0, 0);
     Kit.setup(app, {
       players: { min: 1, max: 4, count: 1 },
-      options: [{ id: 'chips', label: 'Chips', choices: [['earn', 'Earn them', 'Start with 1 chip and win up to 4 more by guessing if prizes cost more or less.'], ['five', 'Start with 5', 'Skip the pricing game and go straight to the board with 5 chips.']], value: 'earn' }],
-      intro: 'Price small prizes to earn up to 5 chips, then drop them for up to $10,000 each',
+      options: [{ id: 'chips', label: 'Chips', choices: [['wheel', 'Spin the Big Wheel', 'Each player spins once for 1 to 7 chips. Land on the 7 for the jackpot.'], ['five', 'Start with 5', 'Skip the wheel and go straight to the board with 5 chips each.']], value: 'wheel' }],
+      intro: 'Spin the Big Wheel for up to 7 chips, then drop them for up to $10,000 each',
       start: "Come on down!",
       onStart: function (cfg) { start(cfg.players, cfg.options.chips !== 'five'); }
     });
   }
-  function start(players, earn) {
+  function start(players, wheel) {
     S = {
-      started: Date.now(), earn: earn, phase: earn ? 'earn' : 'drop', cur: 0,
-      players: players.map(function (p) { return { name: p.name, color: p.color, chips: earn ? 1 : 5, res: [], priced: [], aim: 4.5 }; }),
-      quiz: null
+      started: Date.now(), wheel: wheel, phase: wheel ? 'wheel' : 'drop', cur: 0, wangle: Math.random() * Math.PI * 2,
+      players: players.map(function (p) { return { name: p.name, color: p.color, chips: wheel ? 0 : 5, res: [], aim: 4.5 }; })
     };
     Kit.gameStart();
-    if (earn) newQuiz(0); else { S.cur = 0; enterBoard(); }
+    if (wheel) renderWheel(); else enterBoard();
     save();
   }
 
-  // ── Earn your chips ───────────────────────────────────────────────────────
-  function newQuiz(pi) {
-    S.cur = pi;
-    var pool = PRIZES.map(function (_, i) { return i; }), items = [], shown = [];
-    // Avoid prizes this game has already shown when possible
-    var seen = {}; S.players.forEach(function (p) { (p.priced || []).forEach(function (x) { seen[x.i] = 1; }); });
-    var fresh = pool.filter(function (i) { return !seen[i]; }); if (fresh.length >= 4) pool = fresh;
-    while (items.length < 4) items.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-    items.forEach(function (i) {
-      var real = PRIZES[i][1], off = 3 + Math.floor(Math.random() * 11), up = Math.random() < 0.5;
-      var sh = up ? real + off : real - off;
-      if (sh < 10) sh = real + off; if (sh > 99) sh = real - off;
-      shown.push(sh);
+  // ── Spin the Big Wheel ────────────────────────────────────────────────────
+  var BW = null, wheelBusy = false;
+  function dropWheel() { if (BW) { BW.destroy(); BW = null; } wheelBusy = false; }
+  function nextSpinner() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].wheel) return i; return -1; }
+  function canSpin() { return !!(S && S.phase === 'wheel' && BW && !wheelBusy && !P().wheel && !BW.busy() && !document.querySelector('.k-scrim,.k-win,.k-sheet')); }
+  function renderWheel() {
+    stopLoop(); dropWheel(); mode = 'idle';
+    app.innerHTML = ''; dom = {};
+    dom.show = el('div', { class: 'pk-show' });
+    dom.who = el('div', { class: 'pk-who' });
+    dom.tot = el('b', { class: 'bw-n', text: '–' });
+    dom.totL = el('small', { text: 'CHIPS' });
+    dom.plus = el('div', { class: 'pk-plus' });
+    dom.show.appendChild(dom.who);
+    dom.show.appendChild(el('div', { class: 'pk-tot' }, [dom.totL, dom.tot]));
+    dom.show.appendChild(dom.plus);
+    app.appendChild(dom.show);
+    if (S.players.length > 1) { dom.strip = el('div', { class: 'pk-strip' + (S.players.length > 3 ? ' n4' : '') }); app.appendChild(dom.strip); }
+    dom.wf = el('div', { class: 'bw-frame' });
+    app.appendChild(dom.wf);
+    dom.hint = el('div', { class: 'pk-hint' });
+    app.appendChild(dom.hint);
+    dom.act = el('div', { class: 'bw-act' });
+    app.appendChild(dom.act);
+    BW = BigWheel(dom.wf, {
+      canSpin: canSpin,
+      onPull: function (om) {
+        window.PlinkoWheel.lastPull = om;
+        if (!canSpin()) return;
+        var w0 = pullToSpin(om);
+        if (!w0) {
+          if (om < -1.5) Kit.toast('Pull it down to spin');
+          else if (om > 0.6) { Kit.toast('Give it a bigger pull!'); Kit.haptic('error'); }
+          return;
+        }
+        doSpin(w0);
+      },
+      onKey: function () { if (canSpin()) doSpin(buttonSpin()); }
     });
-    S.quiz = { p: pi, items: items, shown: shown, i: 0, ans: [], answered: false };
-    renderEarn();
+    if (S.wangle == null) S.wangle = Math.random() * Math.PI * 2;
+    BW.setAngle(S.wangle);
+    wheelLayout();
+    paintWheelUI();
   }
-  var E = {};
-  function renderEarn() {
-    stopLoop(); dom = {};
-    var q = S.quiz, p = P();
-    app.innerHTML = '';
-    var box = el('div', { class: 'pk-earn rise' });
-    box.appendChild(el('div', { class: 'lbl', text: (S.players.length > 1 ? p.name + ' · ' : '') + 'Earn your chips' }));
-    box.appendChild(el('h2', { text: 'Higher or lower?' }));
-    box.appendChild(el('p', { class: 'lead', text: q.i === 0 && !q.answered ? 'You have 1 chip. Price 4 small prizes to win up to 4 more.' : 'Prize ' + Math.min(4, q.i + 1) + ' of 4' }));
-    E.pips = el('div', { class: 'pk-pips' });
-    box.appendChild(E.pips);
-    paintEarnPips();
-    E.tag = el('div', { class: 'pk-tag paper' });
-    box.appendChild(E.tag);
-    E.btns = el('div', { class: 'pk-hl' }, [
-      el('button', { type: 'button', class: 'btn btn-blue', html: Kit.icon('down') + '<span>Lower</span>', onclick: function () { answer(false); } }),
-      el('button', { type: 'button', class: 'btn btn-yellow up', html: Kit.icon('down') + '<span>Higher</span>', onclick: function () { answer(true); } })
-    ]);
-    box.appendChild(E.btns);
-    E.next = el('button', { type: 'button', class: 'btn btn-primary btn-block next', hidden: true, onclick: nextPrize });
-    box.appendChild(E.next);
-    E.skip = el('button', { type: 'button', class: 'btn btn-ghost btn-block skip', html: '<span>Skip: take all 5 chips</span>', onclick: skipQuiz });
-    box.appendChild(E.skip);
-    app.appendChild(box);
-    paintTag();
+  function wheelLayout() {
+    if (!BW || !dom.wf || !dom.wf.isConnected) return;
+    var cs = getComputedStyle(app), inner = (app.clientWidth || 390) - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+    var side = getComputedStyle(dom.wf).gridColumnStart === '2';
+    var W = Math.min(inner, side ? 620 : 560);
+    var top = dom.wf.getBoundingClientRect().top + (window.scrollY || 0);
+    var avail = (window.innerHeight || 800) - top - (side ? 24 : 112);
+    var H = Math.min(avail, W * 1.62);
+    if (H < W * 1.05) { W = Math.max(250, H / 1.05); H = Math.max(H, W * 1.05); }
+    if (side) { H = Math.max(420, Math.min((window.innerHeight || 800) - top - 24, 1.5 * W)); W = Math.min(W, H / 1.1); }
+    W = Math.floor(W); H = Math.floor(H);
+    dom.wf.style.width = W + 'px';
+    BW.layout(W, H);
   }
-  function paintEarnPips(popIdx) {
-    var p = P(), h = '';
-    for (var i = 0; i < 5; i++) h += '<i class="pk-pip' + (i < p.chips ? '' : ' used') + (i === popIdx ? ' pop' : '') + '" style="--c:' + p.color + '"></i>';
-    E.pips.innerHTML = h;
+  function paintWheelUI() {
+    if (!dom.show || S.phase !== 'wheel') return;
+    var p = P(), multi = S.players.length > 1;
+    dom.show.style.setProperty('--c', p.color);
+    paintWho();
+    dom.tot.textContent = p.wheel ? String(p.wheel.n) : '–';
+    dom.totL.textContent = p.wheel && p.wheel.n === 1 ? 'CHIP' : 'CHIPS';
+    paintStrip();
+    dom.hint.style.setProperty('--c', p.color);
+    dom.act.innerHTML = '';
+    if (!p.wheel) {
+      dom.hint.innerHTML = Kit.icon('hand') + '<span>' + (multi ? '<b>' + Kit.esc(p.name) + '</b>: ' : '') + 'swipe down on the wheel to spin</span>';
+      dom.act.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: '<span>Spin</span>', disabled: wheelBusy, onclick: function () { if (canSpin()) doSpin(buttonSpin()); } }));
+    } else {
+      var n = nextSpinner();
+      dom.hint.innerHTML = '<span>' + (p.wheel.n === 7 ? 'The jackpot! ' : '') + Kit.esc(p.name) + ' gets <b>' + p.wheel.n + ' chip' + (p.wheel.n === 1 ? '' : 's') + '</b></span>';
+      dom.act.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: '<span>' + (n >= 0 ? Kit.esc(S.players[n].name) + "'s spin" : 'To the board') + '</span>', disabled: wheelBusy, onclick: afterWheel }));
+    }
   }
-  function paintTag() {
-    var q = S.quiz, it = PRIZES[q.items[q.i]], sh = q.shown[q.i];
-    var h = '<div class="item">' + Kit.esc(it[0]) + '</div><div class="q">Is the real price higher or lower than</div>' +
-      '<div class="pr"><b>' + money(sh) + '</b>';
-    if (q.answered) {
-      var ok = q.ans[q.i];
-      h += '<span>Actual price ' + money(it[1]) + '</span></div><div class="stamp ' + (ok ? 'ok' : 'no') + '">' + (ok ? 'Chip won' : 'No chip') + '</div>';
-    } else h += '</div>';
-    E.tag.innerHTML = h;
-    E.btns.hidden = q.answered;
-    E.next.hidden = !q.answered;
-    E.next.textContent = q.i < 3 ? 'Next prize' : 'To the board';
-    if (q.i >= 3 && q.answered) E.next.textContent = nextQuizPlayer() >= 0 ? 'Pass to ' + S.players[nextQuizPlayer()].name : 'To the board';
-    E.skip.hidden = q.answered && q.i >= 3;
-  }
-  function answer(higher) {
-    var q = S.quiz; if (q.answered) return;
-    var real = PRIZES[q.items[q.i]][1], ok = higher === (real > q.shown[q.i]);
-    q.ans[q.i] = ok; q.answered = true;
+  function doSpin(w0) {
     var p = P();
-    p.priced.push({ i: q.items[q.i], ok: ok, sh: q.shown[q.i] });
-    if (ok) { p.chips++; Kit.sfx('good'); Kit.haptic('success'); paintEarnPips(p.chips - 1); setTimeout(function () { Kit.sfx('chip'); }, 160); }
-    else { Kit.sfx('bad'); Kit.haptic('error'); E.tag.classList.remove('shake'); void E.tag.offsetWidth; E.tag.classList.add('shake'); }
-    paintTag(); save();
+    if (window.PlinkoWheel.rig != null) { // test hook: find a pull that lands on the rigged panel
+      var want = window.PlinkoWheel.rig, th0 = BW.angle();
+      window.PlinkoWheel.rig = null;
+      for (var k = 0; k < 600; k++) { var w = W_MIN * 1.05 + (k / 600) * (W_MAX - W_MIN * 1.05); if (simSpin(th0, w).idx === want) { w0 = w; break; } }
+    }
+    wheelBusy = true; paintWheelUI();
+    dom.hint.innerHTML = '<span>Come on, big wheel!</span>';
+    Kit.sfx('whoosh'); Kit.haptic('medium');
+    BW.spin(w0).then(function (idx) { if (S && S.players.indexOf(p) >= 0) wheelLanded(p, idx); });
   }
-  function nextQuizPlayer() { return S.quiz.p + 1 < S.players.length ? S.quiz.p + 1 : -1; }
-  function nextPrize() {
-    var q = S.quiz;
-    if (q.i < 3) { q.i++; q.answered = false; Kit.sfx('flip'); renderEarn(); save(); return; }
-    finishQuiz();
+  function wheelLanded(p, idx) {
+    var n = WHEEL[idx], jack = n === 7;
+    p.wheel = { i: idx, n: n }; p.chips = n;
+    S.wangle = BW.angle();
+    save();
+    BW.setMode(jack ? 'jack' : 'result', idx);
+    if (jack) {
+      Kit.callout('JACKPOT: 7 CHIPS', '#ffd45a');
+      Kit.confetti({ count: 160, colors: ['#ffd45a', '#fff3c4', '#ff4d4d', '#ffffff', p.color] });
+      Kit.sfx('win'); Kit.haptic('success');
+      dom.wf.classList.remove('shake'); void dom.wf.offsetWidth;
+    } else {
+      Kit.callout(n + (n === 1 ? ' chip' : ' chips!'));
+      Kit.sfx(n >= 4 ? 'good' : n === 1 ? 'bad' : 'pop'); Kit.haptic(n >= 4 ? 'success' : 'medium');
+    }
+    wheelBusy = true;
+    paintWho(true);
+    dom.tot.textContent = String(n);
+    dom.totL.textContent = n === 1 ? 'CHIP' : 'CHIPS';
+    flyChips(p, n, function () { wheelBusy = false; paintWheelUI(); });
   }
-  function finishQuiz() {
-    var p = P(), n = nextQuizPlayer();
-    var got = p.chips - 1;
-    if (got === 4) Kit.callout('5 chips!');
-    if (n >= 0) { newQuiz(n); save(); return; }
-    S.quiz = null; S.phase = 'drop'; S.cur = 0;
+  // Chips fly from the panel facing you into the player's chip tray
+  function flyChips(p, n, done) {
+    var pips = dom.who.querySelectorAll('.pk-pip'), from = BW.panelRect(), finished = 0;
+    if (!pips.length || !Element.prototype.animate) { pips.forEach(function (x) { x.classList.remove('pend'); }); done(); return; }
+    Array.prototype.forEach.call(pips, function (pip, i) {
+      var to = pip.getBoundingClientRect(), tx = to.left + to.width / 2, ty = to.top + to.height / 2;
+      var fx = from.x + (i - (n - 1) / 2) * 10, fy = from.y;
+      var f = el('i', { class: 'pk-pip bw-fly', style: { '--c': p.color } });
+      document.body.appendChild(f);
+      var midX = (fx + tx) / 2 + 30, midY = Math.min(fy, ty) - 60;
+      var an = f.animate([
+        { transform: 'translate(' + fx + 'px,' + fy + 'px) scale(.4)', opacity: 0 },
+        { transform: 'translate(' + fx + 'px,' + fy + 'px) scale(1.25)', opacity: 1, offset: 0.12 },
+        { transform: 'translate(' + midX + 'px,' + midY + 'px) scale(1.1)', offset: 0.55 },
+        { transform: 'translate(' + tx + 'px,' + ty + 'px) scale(' + (to.width / 26) + ')', opacity: 1 }
+      ], { duration: 620, delay: 420 + i * 150, easing: 'cubic-bezier(.45,.05,.4,1)', fill: 'both' });
+      an.onfinish = function () {
+        f.remove(); pip.classList.remove('pend'); pip.classList.add('pop'); Kit.sfx('chip', 0.6);
+        if (++finished === pips.length) setTimeout(done, 250);
+      };
+    });
+  }
+  function afterWheel() {
+    if (!S || S.phase !== 'wheel' || wheelBusy) return;
+    var n = nextSpinner();
+    Kit.sfx('pop');
+    if (n >= 0) { S.cur = n; BW.setMode('idle'); save(); paintWheelUI(); return; }
+    dropWheel();
+    S.phase = 'drop'; S.cur = 0;
     enterBoard(); save();
-  }
-  function skipQuiz() {
-    var p = P(), q = S.quiz;
-    p.chips = 5; p.skipped = true; Kit.sfx('chip'); Kit.haptic('light');
-    q.i = 3; q.answered = true;
-    finishQuiz();
   }
 
   // ── Board view ────────────────────────────────────────────────────────────
@@ -532,7 +1144,7 @@ body{background:
     dom.frame.appendChild(frag);
   }
   var rz = 0;
-  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(layout, 120); });
+  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (BW) wheelLayout(); else layout(); }, 120); });
 
   // ── Drawing ───────────────────────────────────────────────────────────────
   function X(x) { return (x + WALL); }
@@ -857,6 +1469,10 @@ body{background:
     if (!cv || document.activeElement === cv || !canAim() || document.querySelector('.k-scrim,.k-win')) return;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') { cv.focus(); cv.dispatchEvent(new KeyboardEvent('keydown', { key: e.key })); e.preventDefault(); }
   });
+  document.addEventListener('keydown', function (e) {
+    if (!BW || !canSpin() || (BW.cv === document.activeElement) || (document.activeElement && document.activeElement.tagName === 'BUTTON' && e.key !== 'ArrowDown')) return;
+    if (e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); doSpin(buttonSpin()); }
+  });
   function release() {
     if (mode !== 'aim') return;
     // Settle onto a drop mark if you let go close to one
@@ -952,11 +1568,15 @@ body{background:
     dom.tot.textContent = money(total(P()));
     paintStrip();
   }
-  function paintWho() {
+  function paintWho(fresh) {
     var p = P();
     dom.show.style.setProperty('--c', p.color);
     var pips = '';
-    for (var i = 0; i < p.chips; i++) pips += '<i class="pk-pip' + (i < p.res.length ? ' used' : '') + '" style="--c:' + p.color + '"></i>';
+    for (var i = 0; i < p.chips; i++) pips += '<i class="pk-pip' + (i < p.res.length ? ' used' : '') + (fresh ? ' pend' : '') + '" style="--c:' + p.color + '"></i>';
+    if (S.phase === 'wheel') {
+      dom.who.innerHTML = '<span class="nm">' + Kit.esc(p.name) + '</span><span class="sub">' + (p.wheel ? 'From the Big Wheel' : 'Spin for your chips') + '</span><div class="pk-pips">' + pips + '</div>';
+      return;
+    }
     var sub = S.phase === 'over' ? 'Final' : mode === 'reveal' ? 'Chip ' + p.res.length + ' of ' + p.chips : left(p) > 0 ? 'Chip ' + (p.res.length + 1) + ' of ' + p.chips : 'All chips played';
     dom.who.innerHTML = '<span class="nm">' + Kit.esc(p.name) + '</span><span class="sub">' + sub + '</span><div class="pk-pips">' + pips + '</div>';
   }
@@ -964,9 +1584,11 @@ body{background:
     if (!dom.strip) return;
     dom.strip.innerHTML = '';
     S.players.forEach(function (p, i) {
-      dom.strip.appendChild(el('div', { class: 'pk-pl' + (i === S.cur && S.phase === 'drop' ? ' on' : ''), style: { '--c': p.color } }, [
+      var wh = S.phase === 'wheel';
+      dom.strip.appendChild(el('div', { class: 'pk-pl' + (i === S.cur && S.phase !== 'over' ? ' on' : ''), style: { '--c': p.color } }, [
         el('div', { class: 'n' }, [el('i'), el('span', { text: p.name })]),
-        el('div', { class: 't' }, [document.createTextNode(money(total(p))), el('span', { text: left(p) + ' left' })])
+        wh ? el('div', { class: 't' }, [document.createTextNode(p.wheel ? String(p.wheel.n) : '–'), el('span', { text: p.wheel ? (p.wheel.n === 1 ? 'chip' : 'chips') : 'to spin' })])
+          : el('div', { class: 't' }, [document.createTextNode(money(total(p))), el('span', { text: left(p) + ' left' })])
       ]));
     });
   }
@@ -996,20 +1618,17 @@ body{background:
       rounds.scores.push(ps.map(function (p) { return c < p.res.length ? p.res[c] : null; }));
     }
     // Highlights
-    var hl = [], words = ['', 'once', 'twice', 'three times', 'four times', 'five times'];
+    var hl = [], words = ['', 'once', 'twice', 'three times', 'four times', 'five times', 'six times', 'seven times'];
     ps.forEach(function (p) {
       var tens = p.res.filter(function (v) { return v === 10000; }).length;
-      if (total(p) === 50000) hl.push(p.name + ' won the top prize: $50,000!');
+      if (p.wheel && p.wheel.n === 7) hl.push(p.name + ' spun the 7 on the Big Wheel');
+      else if (p.wheel && p.wheel.n === 1 && multi) hl.push(p.name + ' spun a 1, right beside the 7');
+      if (tens === p.chips && p.chips > 1) hl.push(p.name + ' put every chip on $10,000: ' + money(total(p)) + '!');
       else if (tens) hl.push(p.name + ' hit the $10,000 slot' + (tens > 1 ? ' ' + words[tens] : ''));
       var run = 0, best = 0;
       p.res.forEach(function (v) { run = v === 0 ? run + 1 : 0; if (run > best) best = run; });
-      if (best >= 2) hl.push((best === 2 ? 'Two' : best === 3 ? 'Three' : best === 4 ? 'Four' : 'Five') + (multi ? ' of ' + p.name + '\'s' : '') + ' chips in a row landed on $0');
+      if (best >= 2) hl.push(['', '', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'][best] + (multi ? ' of ' + p.name + '\'s' : '') + ' chips in a row landed on $0');
       else if (p.res.length >= 4 && p.res.indexOf(0) < 0) hl.push(p.name + ' never hit a $0 slot');
-      if (S.earn && !p.skipped) {
-        var right = (p.priced || []).filter(function (x) { return x.ok; }).length;
-        if (right === 4) hl.push(p.name + ' priced all 4 prizes for 5 chips');
-        else if (right === 0 && (p.priced || []).length === 4) hl.push(p.name + ' missed all 4 prizes and played 1 chip');
-      }
     });
     var bestChip = { v: -1 };
     ps.forEach(function (p) { p.res.forEach(function (v, i) { if (v > bestChip.v) bestChip = { v: v, who: p.name, i: i }; }); });
@@ -1017,38 +1636,47 @@ body{background:
     if (!multi) hl.push('Total winnings: ' + money(top.total) + ' from ' + ps[0].chips + ' chip' + (ps[0].chips === 1 ? '' : 's'));
     else if (!tie) hl.push(top.name + ' won by ' + money(top.total - rank[1].total));
     Kit.record(HKEY, {
-      started: S.started, mode: (multi ? 'Pass & play' : 'Solo') + (S.earn ? '' : ' · 5 chips'),
+      started: S.started, mode: (multi ? 'Pass & play' : 'Solo') + (S.wheel || S.earn ? '' : ' · 5 chips'),
       players: ps.map(function (p) { return { name: p.name, score: total(p) }; }),
       winner: multi ? (tie ? null : top.name) : top.name,
       rounds: rounds, highlights: hl.slice(0, 6),
       detail: { p: ps.map(function (p) {
-        return { d: (p.dr || []).join(' '), q: S.earn && !p.skipped ? (p.priced || []).map(function (x) { return { n: PRIZES[x.i][0], r: PRIZES[x.i][1], s: x.sh, ok: x.ok ? 1 : 0 }; }) : [] };
+        var o = { d: (p.dr || []).join(' ') };
+        if (p.wheel) o.w = { i: p.wheel.i, n: p.wheel.n, j: p.wheel.n === 7 ? 1 : 0 };   // Big Wheel: panel, chips, jackpot
+        return o;
       }) },
       summary: multi ? (tie ? 'Tie game' : top.name + ' won') + ' · ' + rank.map(function (r) { return money(r.total); }).join(' – ') : top.name + ' won ' + money(top.total)
     });
     clearSave();
     paintShow();
-    var players = ps.map(function (p) { return { name: p.name, color: p.color }; }), earn = S.earn;
+    var players = ps.map(function (p) { return { name: p.name, color: p.color }; }), wheel = !!(S.wheel || S.earn);
     Kit.win({
       icon: 'trophy',
       title: multi ? (tie ? "It's a tie!" : top.name + ' wins!') : money(top.total) + '!',
       sub: multi ? 'Total winnings' : top.total === 0 ? 'Every chip found a $0 slot. Next time!' : 'Total winnings' + (bestChip.v > 0 ? ' · best chip ' + money(bestChip.v) : ''),
       rank: multi ? rank.map(function (r) { return { name: r.name, score: money(r.total), color: r.color }; }) : null,
       lose: !multi && top.total === 0,
-      again: function () { start(players, earn); },
+      again: function () { start(players, wheel); },
       extra: [{ label: 'Change players', onClick: showSetup }]
     });
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   document.addEventListener('visibilitychange', function () { if (!document.hidden) { lastT = performance.now(); kick(); } });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (cv && cv.isConnected) { drawStatic(); draw(); } });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (BW) BW.redraw(); else if (cv && cv.isConnected) { drawStatic(); draw(); } });
   (function boot() {
     var s = load();
     if (!s || s.phase === 'over') { showSetup(); return; }
     S = s;
-    if (S.phase === 'earn' && S.quiz) renderEarn();
-    else {
+    if (S.phase === 'earn') {   // saved before the Big Wheel replaced the pricing game: spin instead
+      S.phase = 'wheel'; S.wheel = true; S.quiz = null; S.cur = 0;
+      S.players.forEach(function (p) { p.chips = 0; p.res = []; p.wheel = null; p.priced = []; });
+    }
+    if (S.phase === 'wheel') {
+      var n = nextSpinner();
+      if (n < 0) { S.phase = 'drop'; S.cur = 0; enterBoard(); save(); }
+      else { S.cur = n; renderWheel(); save(); }
+    } else {
       S.phase = 'drop';
       if (S.players.every(function (p) { return left(p) <= 0; })) { renderBoard(); mode = 'idle'; paintHint(); setTimeout(finish, 400); }
       else { if (left(P()) <= 0) afterResumeFix(); enterBoard(); }
