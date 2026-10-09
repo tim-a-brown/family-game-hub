@@ -5249,7 +5249,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       case 'revealHand': {
         var rh = P.hand.filter(function (x) { return e.type === 'song' ? DD(x).song : DD(x).t === e.type; });
         if (!rh.length) return cb(false);
-        st.said.push(P.name + ' revealed ' + DD(rh[0]).full); return cb(true);
+        // the card is shown to the table (the reveal splash), then the ability goes on
+        var shown = function (x) { st.said.push(P.name + ' revealed ' + DD(x).full); if (!humans()) return cb(true); revealCards(st.src, [{ pi: pi, u: x }], '', function () { cb(true); }); };
+        if (!ctlHuman(pi)) return shown(rh[0]);
+        // you pick which one to show (or keep them hidden: "you may")
+        var mayRv = !!optional;   // ("you may" was already asked: Use it / Skip)
+        return privately(pi, function (back) { chooseFromList(abTitle(st.src, st.ab) + ': reveal ' + (/^[aeiou]/i.test(e.type) ? 'an ' : 'a ') + e.type + ' card from your hand', rh, 1, function (sel) { back(function () { if (!sel.length) return cb(false); shown(sel[0]); }); },
+          { must: !mayRv, skip: mayRv, cancel: mayRv ? function () { back(function () { cb(false); }); } : null, dec: pi }); });
       }
       case 'draw': {
         var dn = effN(e, st) + (e.plus || 0), who = e.who === 'chosenPlayers' ? (st.players || []) : e.who === 'both' ? [pi, opp(pi)] : e.who === 'opp' ? [opp(pi)] : e.who === 'prevOwner' ? (st.prev && st.prev[0] && S.cards[st.prev[0]] ? [C(st.prev[0]).o] : []) : [pi];
