@@ -474,7 +474,7 @@
     var cols = Math.max(Math.ceil(x0 / C), 18), W = Math.max(x0, cols * C), H = R6 * C, grid = '';
     for (var gx = 0; gx <= W; gx += C) grid += '<line x1="' + gx + '" y1="0" x2="' + gx + '" y2="' + H + '" stroke="#e6e1d4" stroke-width=".6"/>';
     for (var gy = 0; gy <= H; gy += C) grid += '<line x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '" stroke="#e6e1d4" stroke-width=".6"/>';
-    return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Bead plate">' + grid + body + '</svg>';
+    return '<svg width="' + Math.round(W * 1.3) + '" height="' + Math.round(H * 1.3) + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Bead plate">' + grid + body + '</svg>';
   }
   function bacHand(ui, x, title) {
     var W = { P: 'Player wins', B: 'Banker wins', T: 'Tie' }[x.w] || '';

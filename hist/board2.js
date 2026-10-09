@@ -410,8 +410,7 @@
     // who won, who paid
     var wins = [0, 0, 0, 0], self = [0, 0, 0, 0], dealt = [0, 0, 0, 0], best = [0, 0, 0, 0];
     d.hands.forEach(function (h) { if (h.w < 0) return; wins[h.w]++; if (h.f < 0 || h.f == null) self[h.w]++; else dealt[h.f]++; best[h.w] = Math.max(best[h.w], h.fa || 0); });
-    out.push(ui.table([''].concat(nm), [['Hands won'].concat(wins), ['Self-drawn'].concat(self), ['Dealt in'].concat(dealt), ['Best hand (faan)'].concat(best.map(function (x) { return x || '–'; })),
-      ['Kongs'].concat(d.kongs || [0, 0, 0, 0]), ['Claims'].concat(d.claims || [0, 0, 0, 0])]));
+    out.push(ui.section('Who won, who paid', ui.table(['', 'Won', 'Self-drawn', 'Dealt in', 'Best'], nm.map(function (n, i) { return [n, wins[i], self[i], dealt[i], best[i] ? best[i] + ' faan' : '–']; }))));
     return ui.wrap(out);
   });
 
