@@ -1541,7 +1541,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     },
     snds: { pop: hauntSfx('pop'), sling: hauntSfx('sling'), ghost: hauntSfx('ghost'), jackpot: hauntSfx('jackpot'), drain: hauntSfx('drain'), award: hauntSfx('award'), thunder: hauntSfx('thunder'), creak: hauntSfx('creak'), knock: hauntSfx('knock'), door: hauntSfx('door'), dark: hauntSfx('dark') },
     intro: 'ENTER IF YOU DARE',
-    modes: { lightsout: function (G) { BOARDS.haunted.saucer(G, 'secret'); }, door: function (G) { openDoor(G); }, midnight: function (G) { G.b.midT = 30; G.b.mjp = 100000; } },
+    modes: { lightsout: function (G) { G.b.doorOpen = true; G.b.closeT = 0; BOARDS.haunted.saucer(G, 'secret'); }, door: function (G) { openDoor(G); }, midnight: function (G) { G.b.midT = 30; G.b.mjp = 100000; } },
     init: function (G) { G.b = { gh: 0, caps: 0, crypt: 0, boo: [0, 0, 0], magLit: false, midT: 0, gone: 0, knocks: 0, doorOpen: false, darkT: 0, dark: 0, light: 0, nextL: 5, bats: [], creakT: 6, wail: 0, mjp: 100000, walks: 0 }; },
     hit: function (G, id, b, o) {
       var B = G.b, m = /^boo(\d)$/.exec(id);
@@ -1778,12 +1778,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // Lights Out: everything goes black except a lantern glow round each ball,
   // the flippers and faint hints of lit inserts. Lightning lifts the dark.
   function drawDark(g, G, t, amt, light) {
-    var W = Math.round(TW * S), H = Math.round(TH * S);
+    var DS = S / 2, W = Math.round(TW * DS), H = Math.round(TH * DS);
     if (!darkCv || darkCv.width !== W || darkCv.height !== H) { darkCv = document.createElement('canvas'); darkCv.width = W; darkCv.height = H; }
     var c = darkCv.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, W, H);
     c.fillStyle = 'rgba(1,1,4,' + (amt * 0.96 * (1 - light * 0.75)).toFixed(3) + ')'; c.fillRect(0, 0, W, H);
-    c.setTransform(S, 0, 0, S, 0, 0); c.globalCompositeOperation = 'destination-out';
+    c.setTransform(DS, 0, 0, DS, 0, 0); c.globalCompositeOperation = 'destination-out';
     function hole(x, y, r, a) { var gr = c.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(0,0,0,' + a + ')'); gr.addColorStop(0.45, 'rgba(0,0,0,' + a * 0.8 + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(x - r, y - r, r * 2, r * 2); }
     G.balls.forEach(function (b) { hole(b.x, b.y, 82, 1); });
     T.flips.forEach(function (f) { hole(f.x + Math.cos(f.a) * f.len * 0.5, f.y + Math.sin(f.a) * f.len * 0.5, 44, 0.75); });
