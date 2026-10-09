@@ -91,9 +91,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lore.bump b{animation:lbump .5s var(--spring);}
 /* the new total rolls in over the old one, inside the ring */
 .lore b.lroll{clip-path:circle(34% at 50% 50%);}
-.lore b.lroll s,.lore b.lroll span{grid-area:1/1;text-decoration:none;animation:.55s cubic-bezier(.3,.7,.2,1) var(--ld,0ms) both;}
-.lore b.lroll.up s{animation-name:lrOutU;}.lore b.lroll.up span{animation-name:lrInU;}
-.lore b.lroll.dn s{animation-name:lrOutD;}.lore b.lroll.dn span{animation-name:lrInD;}
+.inkz .dr b.lroll{display:inline-grid;place-items:center;clip-path:inset(-3px -2px);}
+b.lroll s,b.lroll span{grid-area:1/1;text-decoration:none;animation:.55s cubic-bezier(.3,.7,.2,1) var(--ld,0ms) both;}
+b.lroll.up s{animation-name:lrOutU;}b.lroll.up span{animation-name:lrInU;}
+b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 @keyframes lrOutU{to{transform:translateY(-80%);opacity:0;}}
 @keyframes lrInU{0%{transform:translateY(80%);opacity:0;color:var(--gilt-2);}55%{color:var(--gilt-2);}}
 @keyframes lrOutD{to{transform:translateY(80%);opacity:0;}}
@@ -7367,33 +7368,37 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     b.forEach(function (u) { if (!used[u]) out.push(u); });
     return out;
   }
-  // The number on the lore ring: it keeps the old total while lore sparkles are on their way (holdLore), then the
-  // new number rolls in over the old one. Any other change rolls too (up for a gain, down for a loss).
-  var loreView = { S: null, d: {}, hold: {}, roll: {} };
-  function loreShown(pi) {
-    var h = loreView.S === S && loreView.hold[pi];
+  // Counters on the table (lore, ink drops): a counter keeps its old number while its animation is on the way
+  // (holdNum), then the new number rolls in over the old one: up for a gain, down for a loss. Keys: 'lore0', 'drop1'…
+  var numView = { S: null, d: {}, hold: {}, roll: {} };
+  function numShown(key, v) {
+    var h = numView.S === S && numView.hold[key];
     if (h && Date.now() < h.until) return h.v;
-    if (h) delete loreView.hold[pi];
-    return S.P[pi].lore;
+    if (h) delete numView.hold[key];
+    return v;
   }
-  function holdLore(pi) {
-    if (calm() || loreView.S !== S || loreView.d[pi] == null) return;
-    var h = loreView.hold[pi];
-    if (!h || Date.now() >= h.until) h = loreView.hold[pi] = { v: loreView.d[pi], n: 0 };
+  function holdNum(key) {
+    if (calm() || numView.S !== S || numView.d[key] == null) return;
+    var h = numView.hold[key];
+    if (!h || Date.now() >= h.until) h = numView.hold[key] = { v: numView.d[key], n: 0 };
     h.n++; h.until = Date.now() + 2600 * SPD;
-    setTimeout(function () { if (loreView.hold[pi] === h && Date.now() >= h.until) { delete loreView.hold[pi]; render(); } }, 2650 * SPD);   // never stuck
+    setTimeout(function () { if (numView.hold[key] === h && Date.now() >= h.until) { delete numView.hold[key]; render(); } }, 2650 * SPD);   // never stuck
   }
-  function releaseLore(pi) { var h = loreView.hold[pi]; if (!h) return; if (--h.n <= 0) { delete loreView.hold[pi]; render(); } }
-  function loreNum(pi, L) {
-    if (loreView.S !== S) loreView = { S: S, d: {}, hold: {}, roll: {} };
-    var was = loreView.d[pi];
-    if (was != null && was !== L) loreView.roll[pi] = { from: was, up: L > was, t: Date.now() };
-    loreView.d[pi] = L;
-    var rl = loreView.roll[pi], age = rl ? Date.now() - rl.t : 1e9;
-    if (age >= 650 || calm()) { delete loreView.roll[pi]; return '<b>' + L + '</b>'; }
+  function releaseNum(key) { var h = numView.hold[key]; if (!h) return; if (--h.n <= 0) { delete numView.hold[key]; render(); } }
+  function rollNum(key, v, blank0) {
+    if (numView.S !== S) numView = { S: S, d: {}, hold: {}, roll: {} };
+    var was = numView.d[key];
+    if (was != null && was !== v) numView.roll[key] = { from: was, up: v > was, t: Date.now() };
+    numView.d[key] = v;
+    var rl = numView.roll[key], age = rl ? Date.now() - rl.t : 1e9;
+    if (age >= 650 || calm()) { delete numView.roll[key]; return '<b>' + v + '</b>'; }
     // redrawn mid-roll: carry on from where it was
-    return '<b class="lroll ' + (rl.up ? 'up' : 'dn') + '" style="--ld:-' + age + 'ms"><s>' + rl.from + '</s><span>' + L + '</span></b>';
+    return '<b class="lroll ' + (rl.up ? 'up' : 'dn') + '" style="--ld:-' + age + 'ms"><s>' + (blank0 && !rl.from ? '' : rl.from) + '</s><span>' + v + '</span></b>';
   }
+  function loreShown(pi) { return numShown('lore' + pi, S.P[pi].lore); }
+  function holdLore(pi) { holdNum('lore' + pi); }
+  function releaseLore(pi) { releaseNum('lore' + pi); }
+  function loreNum(pi, L) { return rollNum('lore' + pi, L); }
   function loreRing(pi, drop) {
     var L = loreShown(pi), r = 18, segs = '', G = needLore(pi), col = L >= G - 5 ? '#f6e1a8' : S.P[pi].color, lit = Math.round(Math.min(1, L / G) * 20);
     for (var i = 0; i < 20; i++) {
@@ -7409,12 +7414,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     host.className = 'lp-strip ' + (top ? 'top' : 'bot') + (turn ? ' turn-on' : '');
     var sub = S.phase === 'mull' ? (S.mull[pi] ? 'Hand kept' : 'Choosing a hand') : turn ? (p.cpu ? 'Playing…' : 'Turn ' + S.turn) : p.deck;
     var subH = turn && S.phase === 'play' ? '<span class="turnchip">' + (p.cpu ? 'Playing' : 'Turn ' + S.turn) + '</span>' : esc(sub);
-    var rd = wellReady(pi), tot = p.ink.length, hx = '', dn = dropsOf(pi);
+    var rd = wellReady(pi), tot = p.ink.length, hx = '', dn0 = dropsOf(pi), dn = numShown('drop' + pi, dn0), dnH = rollNum('drop' + pi, dn, true);
     if (tot <= 10) { for (var i = 0; i < tot; i++) hx += '<i class="hx' + (i < rd ? '' : ' used') + '"></i>'; }
     var inkCan = mine && canAct() && !p.inked && p.hand.some(function (u) { return DD(u).k; });
     var h = '<div class="lp-who"><span class="avatar" style="--c:' + p.color + '">' + (p.cpu ? Kit.icon('bot') : esc(p.name.charAt(0).toUpperCase())) + '</span><span class="nm"><b>' + esc(p.name) + '</b><small>' + subH + '</small></span></div>';
     if (top || !handShown(pi)) { var nb = Math.min(p.hand.length, window.innerWidth < 600 ? 3 : 6), bk = ''; for (var j = 0; j < nb; j++) bk += '<i class="lback"></i>'; if (top) h += '<div class="ohand" data-z="hand-' + pi + '">' + bk + '<span>' + p.hand.length + '</span></div>'; }
-    h += '<button type="button" class="inkz' + (inkCan ? ' can' : '') + '" data-z="ink-' + pi + '" data-tap="ink"' + (mine ? ' data-drop="ink"' : '') + ' aria-label="Inkwell: ' + rd + ' of ' + tot + ' ready' + (dn ? ', ' + plural(dn, 'ink drop') : '') + '"><span class="hexes">' + hx + '</span><i class="hx hx1' + (rd ? '' : ' used') + '"></i><span class="ct">' + rd + '/' + tot + '<small>ink</small></span>' + (dn ? '<span class="dr" title="' + plural(dn, 'ink drop') + ': each pays 1 ink">' + DROP + '<b>' + dn + '</b></span>' : '') + '</button>';
+    h += '<button type="button" class="inkz' + (inkCan ? ' can' : '') + '" data-z="ink-' + pi + '" data-tap="ink"' + (mine ? ' data-drop="ink"' : '') + ' aria-label="Inkwell: ' + rd + ' of ' + tot + ' ready' + (dn ? ', ' + plural(dn, 'ink drop') : '') + '"><span class="hexes">' + hx + '</span><i class="hx hx1' + (rd ? '' : ' used') + '"></i><span class="ct">' + rd + '/' + tot + '<small>ink</small></span>' + (dn || dn0 ? '<span class="dr" title="' + plural(dn0, 'ink drop') + ': each pays 1 ink">' + DROP + (dn ? dnH : '<b></b>') + '</span>' : '') + '</button>';
     var faceUp = p.deckL.length && topFaceUp(pi);
     h += '<button type="button" class="pile' + (p.deckL.length ? '' : ' empty') + '" data-z="deck-' + pi + '" data-tap="deck" aria-label="Deck: ' + p.deckL.length + ' cards">' + (faceUp ? miniArt(DD(p.deckL[0])) : p.deckL.length ? '<i class="lback"></i>' : '') + '<span class="n">' + p.deckL.length + '</span></button>';
     var top1 = p.discard[p.discard.length - 1], mini = '';
@@ -7676,7 +7681,18 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var fxq = [];
   var fx = {
     // ink drops: the droplet by the inkwell bumps, and the change floats up from it
-    drops: function (pi, n) { fxPush(function () { var r = $('.inkz[data-z="ink-' + pi + '"] .dr') || $('.inkz[data-z="ink-' + pi + '"]'); if (!r) return; r.classList.remove('bump', 'spend'); void r.offsetWidth; r.classList.add(n > 0 ? 'bump' : 'spend'); floatText(r, (n > 0 ? '+' : '−') + Math.abs(n)); }); Kit.sfx(n > 0 ? 'pop' : 'chip'); },
+    // gained: the drop falls in, then the number rolls up and the +N floats off; spent: the number rolls down at once
+    drops: function (pi, n) {
+      if (n > 0) holdNum('drop' + pi);
+      fxPush(function () {
+        var r = $('.inkz[data-z="ink-' + pi + '"] .dr') || $('.inkz[data-z="ink-' + pi + '"]'); if (!r) return n > 0 && releaseNum('drop' + pi);
+        r.classList.remove('bump', 'spend'); void r.offsetWidth; r.classList.add(n > 0 ? 'bump' : 'spend');
+        if (n < 0) return floatText(r, '−' + Math.abs(n));
+        setTimeout(function () { releaseNum('drop' + pi); }, 680);
+        setTimeout(function () { var R = $('.inkz[data-z="ink-' + pi + '"] .dr'); if (R) floatText(R, '+' + n); }, 1050);
+      });
+      Kit.sfx(n > 0 ? 'pop' : 'chip');
+    },
     lore: function (pi, n) { if (questing) return; holdLore(pi); fxPush(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return releaseLore(pi); loreGlow(r); setTimeout(function () { releaseLore(pi); }, 340); setTimeout(function () { var R = $('.lore[data-p="' + pi + '"]'); if (R) floatText(R, '+' + n); }, 720); }); },
     hit: function (u) { if (clashing) return; fxPush(function () { $$('.slot[data-uid="' + u + '"]').forEach(function (s) { s.classList.remove('hitd'); void s.offsetWidth; s.classList.add('hitd'); }); }); },
     banish: function (u) { Kit.haptic('heavy'); dissolving[u] = clashing ? 290 : 1; },
@@ -7909,7 +7925,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Every action gets its moment: while an animation plays, the next ability, prompt or computer move waits for it
   // to land (plus a short beat), so a quest's lore isn't lost under the "may draw" sheet that follows it.
   var FX_MS = { quest: 1250, loreFrom: 1250, lose: 1000, flare: 800, clash: 950, ink: 900, summon: 900, shiftDrop: 750, mill: 900, travel: 1100, notes: 1100, emblem: 1100,
-    slash: 750, mend: 900, drain: 900, rune: 800, forceEx: 800, pillar: 800, chains: 650, xglint: 700, vortex: 750, num: 700, drops: 500, lore: 700 };
+    slash: 750, mend: 900, drain: 900, rune: 800, forceEx: 800, pillar: 800, chains: 650, xglint: 700, vortex: 750, num: 700, drops: 1100, lore: 1000 };
   var fxMs = 0, fxUntil = 0;
   function fxPush(f) { if (fxMs) f.ms = fxMs; fxq.push(f); }
   Object.keys(FX_MS).forEach(function (k) {
@@ -9240,7 +9256,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       nav = { i: hi, n: hand.length, list: hand.slice(), ctx: 'hand', handPi: z.pi, dir: dir || 0, go: function (step) { var j = hi + step; if (j >= 0 && j < hand.length) openZoom(hand[j], step); }, peek: function (k) { var x = hand[hi + k]; return x ? DD(x) : null; } };
     } else if (z && z.z === 'board') {
       // Cards in play, either side, ready, exerted or drying: swipe through them in the order they sit on the table
-      var bd = boardOrder(z.pi), bi = bd.indexOf(u);
+      // your own cards on your turn can be narrowed to what can quest, challenge, use an ability or move (the card
+      // you're looking at always stays in the list, so acting on it doesn't throw you out of the view)
+      var bmine = canAct() && z.pi === S.cur && c.o === S.cur && !S.P[S.cur].cpu, bf = bmine ? bfGet() : 'all';
+      var bd = boardOrder(z.pi).filter(function (x) { return x === u || bfFits(x, bf); }), bi = bd.indexOf(u);
       if (bi >= 0) nav = { i: bi, n: bd.length, list: bd.slice(), ctx: 'board', dir: dir || 0, go: function (step) { var j = bi + step; if (j >= 0 && j < bd.length) openZoom(bd[j], step); }, peek: function (k) { var x = bd[bi + k]; return x ? DD(x) : null; } };
     }
     var zov = zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
@@ -9258,6 +9277,38 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var rt = $('.lz-info .rtext', zov); if (rt) rt.parentNode.insertBefore(urow, rt);
     }
     if (nav && nav.ctx === 'hand' && S.P[nav.handPi].hand.length > 1) handBar(zov, u, nav.handPi);
+    if (z && z.z === 'board' && bmine && S.P[z.pi].board.length > 1) boardBar(zov, u, z.pi);
+  }
+  // ── Your cards in play: quick filters for what can still act this turn (chips under the strip, like the hand's) ──
+  var BF = [['all', 'All'], ['quest', 'Can quest'], ['chal', 'Can challenge'], ['abil', 'Abilities'], ['move', 'Can move']];
+  function bfGet() { return ui.bf && ui.bf.turn === S.turn && ui.bf.pi === S.cur ? ui.bf.f : 'all'; }
+  function bfFits(u, f) {
+    if (f === 'all') return true;
+    var d = DD(u), ch = d.t === 'character';
+    if (f === 'quest') return ch && canQuest(u);
+    if (f === 'chal') return ch && canChallenger(u) && defenders(u).length > 0;
+    if (f === 'move') return ch && S.P[C(u).o].board.some(function (l) { return isLoc(l) && canMove(u, l); });
+    if (f === 'abil') return actAbs(u).some(function (ab) { return !abUseWhy(u, ab); }) || (ch && !!d.K.boost && canBoost(u));
+    return true;
+  }
+  function boardBar(ov, u, pi) {
+    var f0 = bfGet(), board = S.P[pi].board;
+    var host = $('.lz-in', ov), flow = host && $('.lz-flow', host); if (!flow) return;
+    var bar = el('div', { class: 'lz-hf bf', role: 'toolbar', 'aria-label': 'Show your cards that can…' }), chips = el('div', { class: 'fchips hf-chips' });
+    BF.forEach(function (f) {
+      var n = board.filter(function (x) { return bfFits(x, f[0]); }).length;
+      if ((f[0] === 'abil' || f[0] === 'move') && !n) return;   // only when something can
+      chips.appendChild(el('button', { type: 'button', class: 'fchip' + (f0 === f[0] ? ' on' : ''), 'aria-pressed': String(f0 === f[0]), disabled: !n && f0 !== f[0] ? true : null,
+        html: esc(f[1]) + ' <b class="hf-n">' + n + '</b>', onclick: function (e) {
+          e.stopPropagation(); if (f0 === f[0]) return;
+          ui.bf = { f: f[0], turn: S.turn, pi: S.cur }; Kit.sfx('tap');
+          var list = boardOrder(pi).filter(function (x) { return bfFits(x, f[0]); }), to = list.indexOf(u) >= 0 ? u : list[0] || u;
+          ui.lzQuiet = true; openZoom(to, 0);
+        } }));
+    });
+    bar.appendChild(chips);
+    flow.parentNode.insertBefore(bar, flow.nextSibling);
+    var on = $('.fchip.on', chips); if (on) chips.scrollLeft = Math.max(0, on.offsetLeft - chips.offsetLeft - 24);
   }
   // ── Your hand in the card view: quick filters (what you can play now, or one card type) as chips, and a Sort
   // button that opens the same kind of sheet as the library's (tap a row, tap it again to reverse) ──
@@ -11422,7 +11473,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     state: function () { return S; }, db: DB, D: D, DD: DD, C: C, parseKw: function (o) { return prep(o).K; }, fromLorcast: fromLorcast, prep: prep,
     quickDeck: quickDeck, deckProblems: deckProblems, winner: winner,
     load: function (st) { tok++; resetQ(); closeOverlays(); Kit.handoff.close(); S = st; DEF = {}; S.hist = S.hist || []; resumeFlow(); },
-    run: function (a) { runAction(a); }, end: humanEnd, cpuChoose: cpuChoose, defenders: defenders, AB: AB, stx: stx, cant: cant, useAb: useAb, abUseWhy: abUseWhy, quiet: quiet, Q: function () { return Q; }, playCost: playCost, canPlay: canPlay, canQuest: canQuest,
+    run: function (a) { runAction(a); }, getDrops: function (pi, n) { act(function () { getDrops(pi, n); }); }, end: humanEnd, cpuChoose: cpuChoose, defenders: defenders, AB: AB, stx: stx, cant: cant, useAb: useAb, abUseWhy: abUseWhy, quiet: quiet, Q: function () { return Q; }, playCost: playCost, canPlay: canPlay, canQuest: canQuest,
     canShift: canShift, canSing: canSing, shiftTargets: shiftTargets, singersFor: singersFor, recklessPending: recklessPending, canChallenger: canChallenger,
     net: NET, lobby: function () { showLobby(); },
     allCpu: function () { S.P.forEach(function (p) { p.cpu = true; }); S.viewer = -1; tok++; closeOverlays(); resumeFlow(); },
