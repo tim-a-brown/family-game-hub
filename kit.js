@@ -1438,8 +1438,13 @@
         pr.appendChild(t);
       });
       body.appendChild(pr);
-      // marks
+      // a mark: pick its colour first, then the mark
       body.appendChild(el('div', { class: 'label', text: 'Or a mark' }));
+      var cr = el('div', { class: 'av-cols' });
+      AV_COLORS.forEach(function (c) {
+        cr.appendChild(el('button', { type: 'button', class: 'av-col' + (cur.c === c ? ' on' : ''), 'aria-label': 'Colour', style: { background: c }, onclick: function () { cur.c = c; if (cur.k === 'photo') cur = { k: 'letter', c: c }; sfx('tap'); paint(); } }));
+      });
+      body.appendChild(cr);
       var mr = el('div', { class: 'av-grid marks' });
       [{ k: 'letter' }].concat(AV_ICONS.map(function (i) { return { k: 'icon', i: i }; })).forEach(function (m) {
         var on = cur.k === m.k && (m.k === 'letter' || cur.i === m.i);
@@ -1448,11 +1453,6 @@
           onclick: function () { cur = { k: m.k, i: m.i, c: cur.c }; sfx('tap'); paint(); } }));
       });
       body.appendChild(mr);
-      var cr = el('div', { class: 'av-cols' });
-      AV_COLORS.forEach(function (c) {
-        cr.appendChild(el('button', { type: 'button', class: 'av-col' + (cur.c === c ? ' on' : ''), 'aria-label': 'Colour', style: { background: c }, onclick: function () { cur.c = c; if (cur.k === 'photo') cur = { k: 'letter', c: c }; sfx('tap'); paint(); } }));
-      });
-      body.appendChild(cr);
     }
     file.addEventListener('change', function () {
       var f = file.files && file.files[0]; file.value = ''; if (!f) return;
