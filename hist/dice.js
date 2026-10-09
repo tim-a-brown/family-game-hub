@@ -310,7 +310,28 @@
       var aimMid = drops.filter(function (q) { return q.x >= 4 && q.x <= 5; }).length, hit = drops.filter(function (q) { return q.s === 4; }).length, zero = drops.filter(function (q) { return PV[q.s] === 0; }).length;
       out.push(ui.stats([['Chips dropped', drops.length], ['Aimed at $10K', aimMid], ['Landed on $10K', hit], ['Landed on $0', zero]]));
     }
-    // price game that earned the chips
+    // the Big Wheel spin that set each player's chips
+    var spins = []; ps.forEach(function (p, i) { if (p.w && p.w.n) spins.push({ i: i, n: +p.w.n, j: p.w.j || +p.w.n === 7 }); });
+    if (spins.length) {
+      var pw = 92, ph = 62, gx = 12, SW = spins.length * pw + (spins.length - 1) * gx, SH = ph + (spins.some(function (z) { return z.j; }) ? 40 : 26), gid = 'bw' + (++uid);
+      var sv = '<svg viewBox="0 0 ' + SW + ' ' + SH + '" width="' + SW + '" role="img" aria-label="Big Wheel spins">';
+      sv += '<defs><linearGradient id="' + gid + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b0"/><stop offset=".4" stop-color="#e0b84e"/><stop offset="1" stop-color="#a77a1f"/></linearGradient></defs>';
+      spins.forEach(function (sp, k) {
+        var x = k * (pw + gx), kind = sp.n === 7 ? 'star' : sp.n === 1 ? 'green' : 'black';
+        var body = kind === 'green' ? '#43b84a' : '#141417', box = kind === 'star' ? '#c3121d' : kind === 'green' ? '#55c955' : '#0d0d10';
+        var frame = kind === 'green' ? '#1f6b2b' : 'url(#' + gid + 'g)', ink = kind === 'green' ? '#14501d' : kind === 'star' ? '#ffe07a' : '#f6f3ea';
+        sv += '<rect x="' + x + '" y="0" width="' + pw + '" height="' + ph + '" rx="5" fill="' + body + '"/>';
+        sv += '<rect x="' + x + '" y="0" width="' + pw + '" height="3" rx="1.5" fill="#d9dce3"/>';
+        sv += '<rect x="' + (x + 12) + '" y="8" width="' + (pw - 24) + '" height="' + (ph - 16) + '" rx="7" fill="' + box + '" stroke="' + frame + '" stroke-width="' + (kind === 'star' ? 3.5 : 2.5) + '"/>';
+        sv += '<text x="' + (x + pw / 2) + '" y="' + (ph / 2 - 3) + '" text-anchor="middle" dominant-baseline="central" font-size="28" font-family="\'Lilita One\',system-ui" fill="' + ink + '">' + sp.n + '</text>';
+        sv += '<text x="' + (x + pw / 2) + '" y="' + (ph - 15) + '" text-anchor="middle" dominant-baseline="central" font-size="7.5" font-weight="900" letter-spacing="1.2" font-family="system-ui" fill="' + (kind === 'green' ? '#14501d' : '#e0b84e') + '">' + (sp.n === 1 ? 'CHIP' : 'CHIPS') + '</text>';
+        sv += '<text x="' + (x + pw / 2) + '" y="' + (ph + 15) + '" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="800" font-family="system-ui" fill="' + (ps.length > 1 ? ui.color(sp.i) : 'currentColor') + '">' + esc(ps.length > 1 ? nm[sp.i] || '' : sp.n + (sp.n === 1 ? ' chip' : ' chips')) + '</text>';
+        if (sp.j) sv += '<text x="' + (x + pw / 2) + '" y="' + (ph + 30) + '" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" letter-spacing="1.5" font-family="system-ui" fill="#e0b84e">JACKPOT</text>';
+      });
+      sv += '</svg>';
+      out.unshift(ui.section('The Big Wheel', [ui.picture(sv, { max: Math.min(420, SW) }), ui.el('p', { class: 'dv-note', text: 'The panel each spin stopped on: that many chips to drop.' })], { icon: 'star' }));
+    }
+    // price game that earned the chips (games before the Big Wheel)
     var q = []; ps.forEach(function (p, i) { arr(p.q).forEach(function (x) { q.push({ i: i, x: x }); }); });
     if (q.length) {
       var multi = ps.length > 1;
