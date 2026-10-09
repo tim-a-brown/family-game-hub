@@ -101,14 +101,16 @@ body.hs .gbar{background:rgba(7,6,15,.9);}
 .modes button.on{background:var(--bcol);color:var(--bink);}
 
 /* game select: lit plastic buttons mounted down the left of the bezel, like a multi-game cabinet */
-.sel{position:relative;z-index:1;flex:none;width:72px;display:flex;flex-direction:column;gap:7px;}
+.sel{position:relative;z-index:1;flex:none;width:86px;display:flex;flex-direction:column;gap:7px;}
 .sel-b{position:relative;flex:none;aspect-ratio:2.5/1;display:flex;align-items:center;justify-content:center;padding:2px 3px;border:0;border-radius:2px;cursor:pointer;
   background:var(--bc);color:var(--bk);filter:saturate(.75) brightness(.72);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000);transition:transform .06s,box-shadow .06s,filter .2s;}
-.sel-b span{font-family:'Sofia Sans Condensed',var(--font);font-weight:900;font-size:.72rem;line-height:1;letter-spacing:.04em;white-space:nowrap;}
+.sel-b{gap:4px;}
+.sel-b canvas{flex:none;width:20px;height:15px;image-rendering:pixelated;image-rendering:crisp-edges;}
+.sel-b span{font-family:'Sofia Sans Condensed',var(--font);font-weight:900;font-size:.7rem;line-height:1;letter-spacing:.03em;white-space:nowrap;min-width:0;overflow:hidden;}
 .sel-b.on{filter:none;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.2),0 3px 0 color-mix(in srgb,var(--bc) 40%,#000),0 0 0 2px #fff,0 0 16px -2px var(--bc);}
 .sel-b:active{transform:translateY(2px);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 1px 0 color-mix(in srgb,var(--bc) 40%,#000);}
-@media (min-width:600px){.sel{width:100px;gap:9px;}.sel-b span{font-size:.86rem;}}
+@media (min-width:600px){.sel{width:116px;gap:9px;}.sel-b span{font-size:.86rem;}.sel-b canvas{width:26px;height:20px;}}
 @media (prefers-reduced-motion:reduce){.sb,.mq,.sb li.top .rk,.sb li.top .sc,.sb li.top .nm{animation:none;}}
 </style>
 </head>
@@ -125,7 +127,7 @@ Kit.init({ id: 'hiscores', mark: false });
   var BOARDS = [
     { key: 'ast', game: 'asteroids', title: 'ASTEROIDS', anim: 'asteroids', outline: true,
       c: { sel: '#c7ced9', sd: '#05070c', sm: '#1f2937', bd: '#111827', trim: '#9ca3af', mq: 'radial-gradient(120% 140% at 50% 0%,#1e293b,#000)', tc: '#fff', glow: '#93c5fd', hc: '#fff', lc: '#93c5fd', rows: ['#ffffff', '#c7d2fe', '#93c5fd'], pn: '#0b0f17', pn2: '#1f2937', btna: '#e5e7eb', btnb: '#e5e7eb', ball: '#d1d5db', bgo: '.75' } },
-    { key: 'breakout', game: 'breakout', title: 'BREAKOUT', anim: 'breakout', letters: ['#f43f5e', '#f43f5e', '#fb923c', '#fb923c', '#facc15', '#4ade80', '#38bdf8', '#38bdf8'],
+    { key: 'breakout', game: 'breakout', title: 'BREAKOUT', anim: 'breakout', iconSide: 1, letters: ['#f43f5e', '#f43f5e', '#fb923c', '#fb923c', '#facc15', '#4ade80', '#38bdf8', '#38bdf8'],
       c: { sel: '#f43f5e', sd: '#2a0507', sm: '#7f1d1d', bd: '#450a0a', trim: '#fb7185', mq: 'linear-gradient(180deg,#2a0610,#0c0204)', tc: '#fff', glow: '#fb7185', hc: '#fb7185', lc: '#fda4af', rows: ['#f43f5e', '#fb923c', '#facc15', '#4ade80', '#38bdf8'], pn: '#1c0406', pn2: '#5c1010', btna: '#f43f5e', btnb: '#38bdf8', ball: '#f43f5e' } },
     { key: 'flappy', game: 'flappybird', title: 'FLAPPY BIRD', short: 'FLAPPY', mode: 'CLASSIC', anim: 'flappy',
       c: { sel: '#38bdf8', sd: '#073b5c', sm: '#0ea5e9', bd: '#075985', trim: '#facc15', mq: 'linear-gradient(180deg,#4ec0ca,#2a8f99)', tc: '#fff', glow: '#7dd3fc', hc: '#fde047', lc: '#bae6fd', rows: ['#fde047', '#ffffff', '#86efac'], pn: '#0b3a55', pn2: '#0e6b98', btna: '#facc15', btnb: '#4ade80', ball: '#facc15', bgo: '.6' } },
@@ -169,13 +171,21 @@ Kit.init({ id: 'hiscores', mark: false });
     var b0 = BOARDS[g.idx[0]], gm = findGame(b0.game);
     var bc = b0.c.sel || b0.c.glow;
     g.btn = el('button', { type: 'button', role: 'tab', class: 'sel-b', 'aria-label': gm ? gm.name : b0.title, style: { '--bc': bc, '--bk': inkOn(bc) },
-      onclick: function () { if (groupOf(cur) !== g) { var from = GROUPS.indexOf(groupOf(cur)); show(g.last, gi > from ? 1 : -1); } } }, [el('span', { text: b0.short || b0.title })]);
+      onclick: function () { if (groupOf(cur) !== g) { var from = GROUPS.indexOf(groupOf(cur)); show(g.last, gi > from ? 1 : -1); } } }, [g.cv = el('canvas', { width: 24, height: 18, 'aria-hidden': 'true' }), el('span', { text: b0.short || b0.title })]);
+    g.ink = inkOn(bc); g.g = g.cv.getContext('2d');
     sel.appendChild(g.btn);
   });
   var modes = el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Mode' });
   function inkOn(hex) { var n = parseInt(String(hex).slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? '#14101f' : '#ffffff'; }
+  // the game's little sprite, printed on its button in the button's ink colour
+  function stamp(x, t) {
+    var b = BOARDS[x.idx[0]], g = x.g; if (!MQ) return;
+    g.clearRect(0, 0, 24, 18); MQ[b.anim](g, t, b.iconSide || 0, b);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = x.ink; g.fillRect(0, 0, 24, 18); g.globalCompositeOperation = 'source-over';
+  }
   function paintSel() {
     var g = groupOf(cur), b = BOARDS[cur], gm = findGame(b.game), bc = b.c.sel || b.c.glow;
+    GROUPS.forEach(function (x) { stamp(x, 0.6); });
     GROUPS.forEach(function (x) { x.btn.classList.toggle('on', x === g); x.btn.setAttribute('aria-selected', String(x === g)); });
     cab.style.setProperty('--bcol', bc); cab.style.setProperty('--bink', inkOn(bc));
     st.querySelector('span').textContent = 'PLAY ' + (b.short || b.title);
@@ -754,7 +764,7 @@ Kit.init({ id: 'hiscores', mark: false });
       var a = -Math.PI / 2 + Math.sin(t) * 0.5; g.moveTo(12 + Math.cos(a) * 7, 9 + Math.sin(a) * 7); g.lineTo(12 + Math.cos(a + 2.5) * 6, 9 + Math.sin(a + 2.5) * 6); g.lineTo(12 + Math.cos(a - 2.5) * 6, 9 + Math.sin(a - 2.5) * 6); g.closePath(); g.stroke(); },
     peggle: function (g, t, side) { if (side) { var on = Math.floor(t * 2) % 2; R(g, 9, 5, 6, 8, on ? '#fdba74' : '#ea580c'); R(g, 8, 6, 8, 6, on ? '#fdba74' : '#ea580c'); return; } var y = (t * 14) % 22 - 3; R(g, 10, y, 4, 4, '#e5e7eb'); R(g, 4, 14, 4, 3, '#2563eb'); R(g, 16, 14, 4, 3, '#2563eb'); },
     qbert: function (g, t, side) { if (side) { cubeAt(g, 12, 2, Math.floor(t) % 2 ? '#facc15' : '#4f6bd8', 7); return; } hopper(g, 12, 15 - Math.round(Math.abs(Math.sin(t * 4)) * 4), 1); },
-    pong: function (g, t, side) { var y = 9 + Math.sin(t * 2.2) * 5; if (side) { R(g, 18, y - 4, 2, 8, '#fff'); R(g, 6 + Math.abs(Math.sin(t * 2.2)) * 8, 8, 2, 2, '#fff'); } else R(g, 4, 9 - Math.sin(t * 2.2) * 5 - 4, 2, 8, '#fff'); }
+    pong: function (g, t, side) { var y = 9 + Math.sin(t * 2.2) * 5; if (side) { R(g, 18, y - 4, 2, 8, '#fff'); R(g, 6 + Math.abs(Math.sin(t * 2.2)) * 8, 8, 2, 2, '#fff'); } else { var bx = 6 + Math.abs(((t * 9) % 22) - 11); R(g, 2, 9 - Math.sin(t * 2.2) * 3 - 4, 2, 8, '#fff'); R(g, 20, 9 + Math.sin(t * 2.2) * 3 - 4, 2, 8, '#fff'); R(g, bx, 8 + Math.round(Math.sin(t * 3) * 3), 2, 2, '#fff'); } }
   };
 
   // ── One loop for the screen and the marquee: 30 frames a second, paused when hidden ──
@@ -766,6 +776,7 @@ Kit.init({ id: 'hiscores', mark: false });
     anim.draw(gB);
     var b = BOARDS[cur];
     [gL, gR].forEach(function (g, side) { g.clearRect(0, 0, 24, 18); if (mqAnim) mqAnim(g, t, side, b); });
+    var sg = groupOf(cur); if (sg) stamp(sg, t);
   }
   function loop(now) {
     raf = requestAnimationFrame(loop);
