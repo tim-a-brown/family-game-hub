@@ -385,7 +385,15 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* the characters stand on the location's ground: a soft lit edge where they meet it */
 .locgrp.busy > .slot.loc{box-shadow:6px 0 14px -6px color-mix(in srgb,var(--lc) 80%,transparent);}
 .under{position:absolute;inset:0;transform:translate(4px,-4px);border-radius:calc(var(--cu) * .05);pointer-events:none;}
-.under .lback{position:absolute;inset:0;border-radius:inherit;}
+.under .lback,.under .mini{position:absolute;inset:0;border-radius:inherit;}
+.under:has(.mini){transform:translate(7px,-7px);}
+.under .mini{background-size:cover;background-position:center;filter:brightness(.8);box-shadow:0 0 0 1px rgba(0,0,0,.5);}
+/* the card view: what's under this card */
+.und-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;align-items:flex-end;}
+.und-row .und-l{width:100%;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.und-c{position:relative;width:52px;height:73px;padding:0;border:0;border-radius:5px;overflow:hidden;background:#222;box-shadow:0 0 0 1px rgba(246,225,168,.5),0 3px 8px rgba(0,0,0,.5);cursor:pointer;}
+.und-c .mini,.und-c .lback{position:absolute;inset:0;display:block;background-size:cover;background-position:center;}
+.und-c.down{cursor:default;box-shadow:0 0 0 1px rgba(255,255,255,.2),0 3px 8px rgba(0,0,0,.5);}
 .ucount{position:absolute;right:calc(var(--cu) * .03);top:calc(var(--cu) * .03);min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#141029;color:var(--gilt-2);font-size:.65rem;font-weight:900;display:grid;place-items:center;box-shadow:0 0 0 1px var(--gilt);}
 /* Fallback face when the art can't load */
 .face{position:absolute;inset:0;display:flex;flex-direction:column;padding:calc(var(--cu) * .05);color:#fff;
@@ -3973,7 +3981,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (said) said.push(p.name + (got ? ' got ' + plural(got, 'ink drop') : '') + (got && inked0 ? ' and' : '') + (inked0 ? ' put ' + plural(inked0, 'card') + ' into their inkwell instead' : ''));
     return got;
   }
-  function resetCard(u) { var c = C(u); c.ex = false; c.dmg = 0; c.dry = false; c.at = null; c.mods = []; c.under = []; c.bt = 0; }
+  function resetCard(u) { var c = C(u); c.ex = false; c.dmg = 0; c.dry = false; c.at = null; c.mods = []; c.under = []; c.bt = 0; c.upU = null; }
+  // Is this card under another one face up (the character shifted onto, or put under faceup) or facedown (Boost)?
+  // Games saved before this was tracked: a card with the same name as the one on top was shifted onto
+  function underUp(host, x) { var f = C(x).upU; return f != null ? !!f : DD(x).n === DD(host).n; }
   function zoneOf(u) {
     for (var pi = 0; pi < 2; pi++) {
       var p = S.P[pi];
@@ -4212,12 +4223,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (o.shift) {
           var t = C(o.shift), ti = p.board.indexOf(o.shift);
           c.ex = t.ex; c.dmg = t.dmg; c.dry = t.dry; c.at = t.at; c.mods = t.mods || [];
-          c.under = (t.under || []).concat([o.shift]);
+          c.under = (t.under || []).concat([o.shift]); t.upU = true;   // the card shifted onto stays face up underneath
           t.under = []; t.mods = []; t.ex = false; t.dmg = 0; t.at = null;
           p.board[ti] = u;
           // a second character for Combo / Duo Shift goes underneath too
           if (o.shift2 && p.board.indexOf(o.shift2) >= 0) {
-            var t2 = C(o.shift2); c.under = c.under.concat(t2.under || [], [o.shift2]);
+            var t2 = C(o.shift2); c.under = c.under.concat(t2.under || [], [o.shift2]); t2.upU = true;
             c.dmg += t2.dmg; c.ex = c.ex || t2.ex; c.dry = c.dry && t2.dry; c.mods = c.mods.concat(t2.mods || []); if (c.at !== t2.at) c.at = c.at || t2.at;
             t2.under = []; t2.mods = []; t2.ex = false; t2.dmg = 0; t2.at = null; p.board.splice(p.board.indexOf(o.shift2), 1);
           }
@@ -4274,7 +4285,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       log(S.P[pi].name + ' moved ' + nm(u) + ' to ' + DD(loc).n, pi);
     },
     boost: function (pi, u) {
-      var p = S.P[pi]; payInk(pi, DD(u).K.boost); var x = p.deckL.shift(); resetCard(x); C(u).under.push(x); C(u).bt = S.turn; TT().under[pi]++; (TT().underOn = TT().underOn || []).push(u); emit('under', { u: u, pi: pi }); emit('boosted', { u: u, pi: pi });
+      var p = S.P[pi]; payInk(pi, DD(u).K.boost); var x = p.deckL.shift(); resetCard(x); C(x).upU = false; C(u).under.push(x); C(u).bt = S.turn; TT().under[pi]++; (TT().underOn = TT().underOn || []).push(u); emit('under', { u: u, pi: pi }); emit('boosted', { u: u, pi: pi });
       log(p.name + ' boosted ' + nm(u), pi);
     },
     support: function (pi, from, to) {
@@ -5632,7 +5643,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           else if (e.to === 'top' || e.to === 'bottom') return;
           else if (e.to === 'shuffle') { W.deckL.push(x); shuffle(W.deckL); }
           else if (e.to === 'ink') { C(x).ex = true; W.ink.push(x); inked(o); }
-          else if (e.to === 'under' && S.cards[st.src]) C(st.src).under.push(x);
+          else if (e.to === 'under' && S.cards[st.src]) { C(st.src).under.push(x); C(x).upU = true; }
         });
         // top / bottom: the 1st chosen is the top card (or the very bottom card)
         if (e.to === 'top') sel.slice().reverse().forEach(function (x) { S.P[C(x).o].deckL.unshift(x); });
@@ -7227,7 +7238,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (board) node.setAttribute('aria-label', d.full + (c.at && S.cards[c.at] ? ', at ' + DD(c.at).full : ''));
     node.title = d.t === 'character' && board && !c.dry && S.phase === 'play' ? 'Ink still drying: can’t quest, challenge or sing until its owner’s next turn' + (hasKw(u, 'rush') ? ' (Rush: can challenge now)' : '') : '';
     var und = node.querySelector(':scope > .under');
-    if (board && c.under && c.under.length) { if (!und) node.insertBefore(el('div', { class: 'under', html: '<div class="lback"></div>' }), node.firstChild); }
+    if (board && c.under && c.under.length) {
+      // the card just under it peeks out from behind: its art when it's face up, a card back when it's facedown
+      var ut = c.under[c.under.length - 1], uh = underUp(u, ut) ? miniArt(DD(ut)) : '<div class="lback"></div>';
+      if (!und) node.insertBefore(und = el('div', { class: 'under' }), node.firstChild);
+      if (und._h !== uh) { und.innerHTML = uh; und._h = uh; }
+    }
     else if (und) und.remove();
   }
   function meIxSafe() { return S.mode === 'cpu' ? humanIx() : (S.viewer >= 0 ? S.viewer : S.cur); }
@@ -8879,6 +8895,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var zov = zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
     statusToCorner(zov);
     addPeek(zov);
+    // What's under it: face-up cards to tap and look at, facedown ones as card backs
+    if (z && z.z === 'board' && c.under && c.under.length && zov) {
+      var urow = el('div', { class: 'und-row' }, [el('div', { class: 'und-l', text: 'Under it' })]);
+      c.under.slice().reverse().forEach(function (x) {
+        var up = underUp(u, x);
+        urow.appendChild(el('button', { type: 'button', class: 'und-c' + (up ? '' : ' down'), 'aria-label': up ? DD(x).full : 'Facedown card', html: up ? miniArt(DD(x)) : '<div class="lback"></div>',
+          onclick: function (e) { e.stopPropagation(); if (up) zoomDef(DD(x)); } }));
+      });
+      var rt = $('.lz-info .rtext', zov); if (rt) rt.parentNode.insertBefore(urow, rt);
+    }
     if (nav && nav.ctx === 'hand' && S.P[nav.handPi].hand.length > 1) handBar(zov, u, nav.handPi);
   }
   // ── Your hand in the card view: filter (what you can play now, or one card type) and sort (as held, cost, type) ──
