@@ -254,6 +254,8 @@ document.addEventListener('visibilitychange', function () {
 .pick button{display:flex;align-items:center;gap:14px;padding:16px;border:0;border-radius:var(--r-lg);text-align:left;color:var(--text);
   background:var(--surface-2);box-shadow:0 5px 0 rgba(0,0,0,.3);transition:transform .1s, box-shadow .1s;}
 .pick button:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.3);}
+.pick button.resume{box-shadow:inset 0 0 0 2px var(--yellow);}
+.pick button.resume .e{background:var(--yellow);color:#16102e;}
 .pick .e{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.08);color:var(--text-2);flex:none;}
 .pick .e .ico{width:24px;height:24px;}
 .pick .t{font-weight:900;font-size:1.1rem;}
@@ -395,7 +397,7 @@ document.addEventListener('visibilitychange', function () {
   }
 
   // ── Launch (with "phone or real game?" for games that have a scorekeeper) ─
-  function go(file) { Kit.sfx('pop'); location.href = 'games/' + (/\.html/.test(file) ? file : file + '.html'); }
+  function go(file) { Kit.sfx('pop'); var h = String(file).split('#'); location.href = 'games/' + (/\.html/.test(h[0]) ? h[0] : h[0] + '.html') + (h[1] ? '#' + h[1] : ''); }
   // Lorcana's cards lean and catch the light with the phone's tilt: iPhone asks for motion access
   // from a tap, so ask when Lorcana is tapped here (once; a yes is remembered for the game).
   function askMotion() {
@@ -408,21 +410,24 @@ document.addEventListener('visibilitychange', function () {
   function launch(g) {
     Kit.haptic('light');
     if (g.id === 'lorcana') askMotion();
-    if (!g.score) return go(g.play);
+    // a game already going: offer to pick it up (or start fresh) instead of dropping straight in
+    var live = null; try { live = (JSON.parse(get('gn_resume', '{}')) || {})[g.id] || null; } catch (e) {}
+    if (!g.score && !live) return go(g.play);
     Kit.sfx('pop');
     var box = el('div', { class: 'pick' });
     var s;
-    function opt(e, t, d, file) {
-      box.appendChild(el('button', { type: 'button', onclick: function () { s.close(); go(file); } }, [
+    function opt(e, t, d, file, cls) {
+      box.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); go(file); } }, [
         el('span', { class: 'e', html: Kit.icon(e) }), el('span', null, [el('div', { class: 't', text: t }), el('div', { class: 'd', text: d })])
       ]));
     }
-    var board = g.cat === 'board';
-    if (g.launch) g.launch.forEach(function (o) { opt(o.icon, o.title, o.desc, o.file); });
-    else {
-      opt('phone', 'Play on this device', board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play);
-      opt('pencil', board ? 'Table companion' : 'Keep score', board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score);
-    }
+    var board = g.cat === 'board', nw = live ? '#new' : '';
+    if (live) opt('play', 'Resume game', (live.label || 'In progress') + ' · ' + ago(live.ts), live.file || g.play, 'resume');
+    if (g.launch) g.launch.forEach(function (o) { opt(o.icon, (live ? 'New: ' : '') + o.title, o.desc, o.file + nw); });
+    else if (g.score) {
+      opt('phone', (live ? 'New game: ' : '') + 'Play on this device', board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play + nw);
+      opt('pencil', (live ? 'New: ' : '') + (board ? 'Table companion' : 'Keep score'), board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score + nw);
+    } else opt('sparkle', 'New game', 'Start over. The game in progress ends.', g.play + nw);
     box.insertBefore(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span>' + Kit.esc(g.tag) + '</span></div>' }), box.firstChild);
     s = Kit.sheet({ node: box });
   }

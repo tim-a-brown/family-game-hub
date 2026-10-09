@@ -7675,7 +7675,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var endLabel = S.phase === 'mull' ? 'Opening hands' : S.phase === 'over' ? 'Game over' : cpuT ? S.P[S.cur].name + ' is playing' : my ? 'End turn' : S.mode === 'online' && NET.pend ? 'Waiting for ' + S.P[opp(NET.seat)].name : S.mode === 'online' && S.cur !== NET.seat ? S.P[S.cur].name + '’s turn' : S.step === 'begin' ? 'Next turn…' : 'Waiting';
     var idle = my && !S.P[S.cur].board.some(function (u) { return canQuest(u) || (canChallenger(u) && defenders(u).length); }) && !S.P[S.cur].hand.some(function (u) { return canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u); });
     var fxb = '';
-    var end = '<button type="button" class="btn btn-primary btn-end' + (idle ? ' attn' : '') + (vertical ? ' btn-block btn-lg' : ' grow') + '" data-act="end"' + (my ? '' : ' disabled') + '>' + esc(endLabel) + '</button>';
+    var over = S.phase === 'over' && !!ui.results;   // looking at the final table: this button brings the results back
+    var end = '<button type="button" class="btn btn-primary btn-end' + (idle ? ' attn' : '') + (vertical ? ' btn-block btn-lg' : ' grow') + '" data-act="end"' + (my || over ? '' : ' disabled') + '>' + (over ? Kit.icon('trophy') + '<span>Results</span>' : esc(endLabel)) + '</button>';
     if (vertical) return end;
     return fxb + '<button type="button" class="btn btn-soft icon-sq" data-act="log" aria-label="Game log">' + Kit.icon('book') + '</button>' + end;
   }
@@ -8213,7 +8214,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     mutate();
     var w = S && S.phase === 'play' ? winner() : null;
     render(); animateFrom(before);
-    if (w) { finishing = true; save(); later(function () { finish(w); }, 900); return true; }
+    // the winning moment gets its due: the last animation (lore landing…) plays out, then a beat, then results
+    if (w) { finishing = true; save(); afterFx(function () { finish(w); }, 1600); return true; }
     save();
     return false;
   }
@@ -8227,7 +8229,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var b = e.target.closest('[data-act]');
     if (b) {
       var a = b.dataset.act;
-      if (a === 'end') humanEnd();
+      if (a === 'end') { if (S && S.phase === 'over' && ui.results) { Kit.sfx('pop'); ui.results(); } else humanEnd(); }
       else if (a === 'pick-tgt') { if (ui.pick && ui.pick.pre && S.cards[ui.pick.pre]) zoomDef(DD(ui.pick.pre)); }
       else if (a === 'pick-src') { if (ui.pick && ui.pick.src && S.cards[ui.pick.src]) zoomDef(DD(ui.pick.src)); }
       else if (a === 'log') showLog();
@@ -8376,7 +8378,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function filtersOnExit() {
     setTimeout(function () { if ($('.lz')) return; ui.bf = null; if (S && hvGet().f !== 'all') hvSet({ f: 'all' }); }, 80);
   }
-  function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
+  function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); endPill(); ui.pick = null; ui.modal = 0; }
   // Card text. A named ability ("TIME TO MOVE IT!") gets its own small line with
   // the instructions under it; the set and card number sit right-aligned on the
   // first of those lines.
@@ -10007,6 +10009,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // ═════════════════════════════════════════════════════════════════════════
   // End of the game
   // ═════════════════════════════════════════════════════════════════════════
+  function endPill() { ui.results = null; }
   function finish(w) {
     if (!S || S.phase === 'over') return;
     S.phase = 'over'; tok++; finishing = false; handing = false;
@@ -10037,14 +10040,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var lose = S.mode === 'cpu' ? wp.cpu : online && w.pi !== NET.seat;
     if (online) { Kit.win({ icon: 'trophy', lose: lose, title: lose ? wp.name + ' wins' : 'You win!', sub: w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
       rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }), again: function () { showLobby(); } }); return; }
-    Kit.win({
+    // how it ended: the last few moves (public ones), oldest first
+    var notes = S.log.filter(function (l) { return l && l.t && !/^(Turn \d|— )/.test(l.t); }).slice(-3).map(function (l) { return l.t; });
+    var wo = {
       icon: lose ? 'bot' : 'trophy', lose: lose,
       title: wp.name === 'You' ? 'You win!' : wp.name + ' wins!',
       sub: w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
-      rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }),
-      again: function () { newGame(cfg, choices); },
-      extra: [{ label: 'Change decks', onClick: function () { lastCfg = cfg; showDeckPick(cfg, choices); } }]
-    });
+      notes: notes,
+      rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color, cpu: p.cpu }; }),
+      again: function () { endPill(); newGame(cfg, choices); },
+      extra: [{ label: 'View board', onClick: viewBoard }, { label: 'Change decks', onClick: function () { endPill(); lastCfg = cfg; showDeckPick(cfg, choices); } }],
+      onClose: function () { endPill(); Kit.home(); }
+    };
+    Kit.win(wo);
+    // look at the final table; a button brings the results back
+    function viewBoard() { ui.results = function () { ui.results = null; wo.quiet = true; Kit.win(wo); renderBar(); }; renderBar(); }
   }
 
   // ═════════════════════════════════════════════════════════════════════════

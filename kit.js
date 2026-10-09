@@ -637,6 +637,14 @@
   }
 
   function init(o) {
+    // opened as "#new" (home: New game while one is going): start over once the page has restored its saved game
+    if (location.hash === '#new' && o && o.onNew) {
+      try { window.history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      setTimeout(function () {
+        try { o.onNew(); } catch (e) {}
+        setTimeout(function () { if (location.hash === '#new') try { window.history.replaceState(window.history.state, '', location.pathname + location.search); } catch (e) {} }, 50);
+      }, 0);
+    }
     opts = o || {};
     startFitLock();
     game = findGameSafe(opts.id || pageKey());
@@ -1045,6 +1053,8 @@
     card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'meh' : 'trophy')) }));
     card.appendChild(el('h2', { text: o.title || (o.lose ? 'So close!' : 'You win!') }));
     if (o.sub) card.appendChild(el('div', { class: 'sub', text: o.sub }));
+    // notes: how it ended (the last moves), so a sudden win makes sense
+    if (o.notes && o.notes.length) card.appendChild(el('div', { class: 'k-win-notes' }, [el('b', { text: o.notesTitle || 'How it ended' })].concat(o.notes.map(function (t) { return el('div', { text: t }); }))));
     if (o.rank && o.rank.length) {
       var rk = el('div', { class: 'rank' });
       o.rank.forEach(function (p, i) {
@@ -1067,7 +1077,8 @@
     doc.body.appendChild(ov);
     requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
     resume.clear();
-    if (o.lose) { sfx('lose'); haptic('error'); }
+    if (o.quiet) {}   // shown again (after looking at the board): no fanfare
+    else if (o.lose) { sfx('lose'); haptic('error'); }
     else { sfx('win'); haptic('success'); confetti(); }
     return { close: close };
   }
