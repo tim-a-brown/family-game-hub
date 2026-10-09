@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v419-2026-10-09-sheen-fades';
+const CACHE_VERSION = 'v420-2026-10-09-sheen-always';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
