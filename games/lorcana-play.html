@@ -139,7 +139,9 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 /* Items: their own strip down the right of the mat */
 .lp-board > .irail{flex:none;display:flex;gap:var(--gap,6px);align-items:flex-start;align-self:center;padding-left:8px;}
 .lp-board > .irail > .icol{display:flex;flex-direction:column;align-items:center;}
-.lp-board > .irail .slot{box-shadow:0 -3px 8px rgba(0,0,0,.35);border-radius:calc(var(--cu) * .05);}
+.lp-board > .irail:has(.slot.wide) > .icol{min-width:var(--cu);}
+.lp-board > .irail .slot{border-radius:calc(var(--cu) * .05);}
+.lp-board > .irail .slot .lc{box-shadow:0 -3px 8px rgba(0,0,0,.35),0 2px 0 rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.45);}
 .lp-board .empty-msg{align-self:center;color:rgba(255,255,255,.32);font-weight:800;font-size:.85rem;text-align:center;pointer-events:none;}
 .lp-mid{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 8px;min-height:30px;min-width:0;padding:3px 8px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.28) 20%,rgba(0,0,0,.28) 80%,transparent);}
 .phases{display:flex;align-items:center;gap:3px;flex:none;}
@@ -162,18 +164,33 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .mat-sw i{display:block;height:58px;border-radius:10px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14),0 3px 8px rgba(0,0,0,.4);}
 .mat-sw.on i{box-shadow:inset 0 0 0 2.5px var(--gilt),0 0 14px rgba(227,189,98,.45);}
 .mat-sw.on{color:var(--gilt-2);}
-/* Turn indicator: a gilded band across the middle of the table, the steps of a turn joined like a track */
-.lp-mid{flex-direction:column;gap:3px;padding:5px 10px 6px;background:linear-gradient(90deg,transparent,rgba(10,8,24,.62) 14%,rgba(10,8,24,.62) 86%,transparent);
-  box-shadow:0 -1px 0 rgba(227,189,98,.0),inset 0 1px 0 rgba(227,189,98,.28),inset 0 -1px 0 rgba(227,189,98,.28);}
-.lp-mid .phases{position:relative;gap:0;}
-.lp-mid .phases i{position:relative;padding:2px 9px;border-radius:999px;font-size:.6rem;letter-spacing:.09em;color:rgba(255,255,255,.34);}
-.lp-mid .phases i + i::before{content:'';position:absolute;left:-4px;top:50%;width:8px;height:1.5px;background:rgba(255,255,255,.18);}
-.lp-mid .phases i.done{color:rgba(246,225,168,.62);}
-.lp-mid .phases i.done + i::before,.lp-mid .phases i.on::before{background:rgba(227,189,98,.6);}
-.lp-mid .phases i.on{color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e3bd62);box-shadow:0 0 10px rgba(246,200,90,.55),inset 0 0 0 1px #fff2c4;}
-.lp-mid .lp-msg{flex:none;max-width:100%;text-align:center;font-size:.76rem;font-weight:700;color:rgba(255,243,215,.88);display:flex;align-items:center;justify-content:center;gap:6px;}
-.lp-mid .lp-msg .dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);}
+/* Turn indicator: a lacquered band across the middle of the table. The steps of a turn are studs on a gilt thread
+   (the current one a lit gold cabochon); the latest move is written on a parchment ribbon with a wax seal. */
+.lp-mid{flex-direction:column;gap:4px;padding:6px 10px 7px;
+  background:linear-gradient(180deg,transparent,rgba(10,8,24,.66) 22%,rgba(10,8,24,.66) 78%,transparent);}
+.lp-mid::before,.lp-mid::after{content:'';position:absolute;left:3%;right:3%;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(227,189,98,.5) 18%,rgba(246,225,168,.75) 50%,rgba(227,189,98,.5) 82%,transparent);}
+.lp-mid::before{top:2px;}.lp-mid::after{bottom:2px;}
+.lp-mid .phases{position:relative;gap:14px;padding:0 6px;}
+.lp-mid .phases::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,transparent,rgba(227,189,98,.45) 12%,rgba(227,189,98,.45) 88%,transparent);}
+.lp-mid .phases i{position:relative;display:flex;align-items:center;gap:5px;font-style:normal;padding:0;background:none;box-shadow:none;}
+.lp-mid .phases i::before{content:'';flex:none;width:7px;height:7px;transform:rotate(45deg);background:#1b1530;box-shadow:inset 0 0 0 1px rgba(227,189,98,.45);}
+.lp-mid .phases i b{font-family:var(--display);font-weight:400;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.34);text-shadow:0 1px 2px rgba(0,0,0,.6);}
+.lp-mid .phases i.done::before{background:linear-gradient(135deg,#f6e1a8,#a8781f);box-shadow:none;opacity:.7;}
+.lp-mid .phases i.done b{color:rgba(246,225,168,.6);}
+.lp-mid .phases i.on{padding:2px 10px 2px 6px;border-radius:999px;background:linear-gradient(180deg,#fff2c9,#e9c46c 55%,#b98a2c);
+  box-shadow:0 0 0 1px #6b4a12,inset 0 1px 0 #fffbe8,inset 0 -1px 0 rgba(107,74,18,.6),0 0 14px rgba(246,200,90,.5);}
+.lp-mid .phases i.on::before{background:radial-gradient(circle at 35% 30%,#fff,#ffd36b 45%,#b0731a);box-shadow:0 0 6px #fff3c4;}
+.lp-mid .phases i.on b{color:#2b1a00;text-shadow:0 1px 0 rgba(255,250,230,.6);}
+.lp-mid .lp-msg{position:relative;flex:none;max-width:min(100%,560px);display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:3px 22px 3px 18px;border:0;cursor:pointer;font:inherit;font-size:.76rem;font-weight:800;color:#3b2609;
+  background:radial-gradient(ellipse at 50% 40%,#f8ecd0,#ead5a4 70%,#d9bd82);
+  clip-path:polygon(0 0,100% 0,calc(100% - 9px) 50%,100% 100%,0 100%,9px 50%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));}
+.lp-mid .lp-msg .dot{flex:none;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 70%,#000));box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18),0 1px 1px rgba(0,0,0,.35);}
 .lp-mid .lp-msg span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lp-mid .lp-msg.new{animation:ribbonIn .42s cubic-bezier(.2,.8,.25,1) var(--md,0ms) both;}
+@keyframes ribbonIn{from{clip-path:polygon(45% 0,55% 0,55% 50%,55% 100%,45% 100%,45% 50%);opacity:.3;}}
+@media (prefers-reduced-motion:reduce){.lp-mid .lp-msg.new{animation:none;}}
 /* Player bars: a tray at each edge of the table; whoever's turn it is lights up */
 .lp-strip{gap:8px;padding:6px 10px;background:linear-gradient(180deg,rgba(8,6,20,.55),rgba(8,6,20,.38));-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
 .lp-strip.top{box-shadow:inset 0 -1px 0 rgba(227,189,98,.22);}
@@ -7504,7 +7521,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var gap = 6, busy = items.some(function (it) { return it.n; }), W0 = b.clientWidth - 12, H0 = b.clientHeight - 12, H = H0 - (busy ? 12 : 0);
       // the item rail: one column while they fit top to bottom, then two; past that each column overlaps (tops showing)
       function railCols(cu) { return !nI ? 0 : nI * cu + (nI - 1) * gap <= H0 ? 1 : 2; }
-      function W(cu) { var c = railCols(cu); return c ? W0 - (c * 0.716 * cu + (c - 1) * gap + RAIL_PAD) : W0; }
+      var railW = rail && rail._items.some(function (sl) { return sl.classList.contains('wide'); }) ? 1 : 0.716;   // an exerted item lies sideways: a wider column
+      function W(cu) { var c = railCols(cu); return c ? W0 - (c * railW * cu + (c - 1) * gap + RAIL_PAD) : W0; }
       var maxCu = Math.min(H, window.innerWidth >= 700 ? 200 : 150);
       function units(vis) { return items.map(function (it) {
         if (it.brk) return it;
@@ -7625,10 +7643,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       return;
     }
     var steps = ['Ready', 'Set', 'Draw', 'Main', 'End'], ix = S.phase === 'play' ? (ui.phaseIx != null ? ui.phaseIx : 3) : -1;
-    var ph = '<div class="phases" aria-hidden="true">' + steps.map(function (s, i) { return '<i class="' + (i === ix ? 'on' : i < ix ? 'done' : '') + '">' + s + '</i>'; }).join('') + '</div>';
+    var ph = '<div class="phases" aria-hidden="true">' + steps.map(function (s, i) { return '<i class="' + (i === ix ? 'on' : i < ix ? 'done' : '') + '"><b>' + s + '</b></i>'; }).join('') + '</div>';
     var last = S.log[S.log.length - 1], msg = S.phase === 'mull' ? 'Opening hands: put back any cards you don’t want, once' : last ? last.t : '';
     var mp = last && last.p >= 0 && S.phase === 'play' ? S.P[last.p] : null;
-    mid.innerHTML = ph + '<button type="button" class="lp-msg" data-tap="log">' + (mp ? '<i class="dot" style="--c:' + mp.color + '"></i>' : '') + '<span>' + esc(msg) + '</span></button>';
+    // the latest move on a ribbon, sealed in that player's colour; a new move unfurls it (a redraw mid-way carries on)
+    if (msg !== ui.midMsg) { if (ui.midMsg != null) ui.midT = Date.now(); ui.midMsg = msg; }
+    var age = ui.midT ? Date.now() - ui.midT : 1e9;
+    mid.innerHTML = ph + (msg ? '<button type="button" class="lp-msg' + (age < 450 ? ' new" style="--md:-' + age + 'ms' : '') + '" data-tap="log" aria-label="' + esc(msg) + '. Open the game log">' + (mp ? '<i class="dot" style="--c:' + mp.color + '"></i>' : '') + '<span>' + esc(msg) + '</span></button>' : '');
   }
   function controlsHTML(vertical) {
     var my = canAct(), cpuT = S.phase === 'play' && S.P[S.cur].cpu;
