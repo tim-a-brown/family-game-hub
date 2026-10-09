@@ -830,6 +830,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .ls-c.picked{opacity:1;box-shadow:0 0 0 2px var(--gilt),0 0 10px rgba(246,200,90,.6);}
 .ls-ck{position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;background:var(--gilt);color:#2b1a00;}
 .ls-ck svg{width:10px;height:10px;}
+/* a card's place in the deck, numbered in the middle of its thumbnail */
+.ls-ck.ls-n{width:16px;height:16px;left:50%;top:50%;right:auto;transform:translate(-50%,-50%);font-family:var(--display);font-size:.72rem;line-height:1;box-shadow:0 0 0 1.5px #2b1a00,0 1px 4px rgba(0,0,0,.6);}
 .ls-c.out{opacity:.3;filter:grayscale(1);transform:translateY(5px) scale(.9);}
 .ls-c.on.out{opacity:.85;transform:translateY(2px) scale(1.05);}
 .ls-c.on.ex{transform:translateY(-3px) rotate(90deg) scale(.95);}
@@ -1022,6 +1024,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* An ink cost: small "Cost:" and the cost coin under the action's name */
 .act .alw{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;}
 .act .alw .al{white-space:nowrap;}
+.act .ai-n{font-family:var(--display);font-weight:400;font-size:1.05rem;line-height:1;color:#f6e1a8;}.act.pri .ai-n{color:#2b1a00;}
 .act small.cst{display:flex;align-items:center;gap:4px;overflow:visible;}
 .act small.cst svg{width:20px;height:20px;flex:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));}
 .lz-acts.out .act .alw .al{text-align:center;}
@@ -5557,9 +5560,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function handToDeckFx(e, st, cb) {
     var pi = st.pi, P = S.P[pi], n = Math.min(e.n, P.hand.length);
     if (!n) return cb(false);
-    function fin(sel) { act(function () { sel.forEach(function (x) { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); if (e.to === 'top') P.deckL.unshift(x); else P.deckL.push(x); }); }); noUndo(); st.said.push(P.name + ' put ' + plural(sel.length, 'card') + ' from their hand on the ' + e.to + ' of their deck'); cb(true); }
+    // the order they were chosen in is their place: the 1st chosen is the top card (or the very bottom card)
+    function fin(sel) { act(function () { sel.forEach(function (x) { P.hand.splice(P.hand.indexOf(x), 1); resetCard(x); }); if (e.to === 'top') P.deckL = sel.concat(P.deckL); else P.deckL = P.deckL.concat(sel.slice().reverse()); }); noUndo(); st.said.push(P.name + ' put ' + plural(sel.length, 'card') + ' from their hand on the ' + e.to + ' of their deck'); cb(true); }
     if (!ctlHuman(pi)) return fin(P.hand.slice().sort(function (a, b) { return handValue(a) - handValue(b); }).slice(0, n));
-    privately(pi, function (back) { chooseFromList(abTitle(st.src, st.ab) + ': put ' + plural(n, 'card') + ' on the ' + e.to + ' of your deck', P.hand.slice(), n, function (sel) { back(function () { fin(sel); }); }, { must: true }); });
+    privately(pi, function (back) { chooseFromList(abTitle(st.src, st.ab) + ': put ' + plural(n, 'card') + ' on the ' + e.to + ' of your deck', P.hand.slice(), n, function (sel) { back(function () { fin(sel); }); }, { must: true, place: e.to }); });
   }
   // A card from your hand into your inkwell
   function handInkFx(e, st, optional, cb) {
@@ -5593,12 +5597,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         sel.forEach(function (x) {
           var o = C(x).o, W = S.P[o]; W.discard.splice(W.discard.indexOf(x), 1); resetCard(x);
           if (e.to === 'hand') W.hand.push(x);
-          else if (e.to === 'top') W.deckL.unshift(x);
-          else if (e.to === 'bottom') W.deckL.push(x);
+          else if (e.to === 'top' || e.to === 'bottom') return;
           else if (e.to === 'shuffle') { W.deckL.push(x); shuffle(W.deckL); }
           else if (e.to === 'ink') { C(x).ex = true; W.ink.push(x); inked(o); }
           else if (e.to === 'under' && S.cards[st.src]) C(st.src).under.push(x);
         });
+        // top / bottom: the 1st chosen is the top card (or the very bottom card)
+        if (e.to === 'top') sel.slice().reverse().forEach(function (x) { S.P[C(x).o].deckL.unshift(x); });
+        else if (e.to === 'bottom') sel.slice().reverse().forEach(function (x) { S.P[C(x).o].deckL.push(x); });
       });
       sel.forEach(function (x) { leftDisc(C(x).o, x, e.to === 'hand'); });
       st.lastCard = sel[0]; st.moved = sel.slice();
@@ -5613,7 +5619,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!good.length) return cb(false);
       return fin(good.slice(0, n));
     }
-    chooseFromList(abTitle(st.src, st.ab) + ': choose ' + (e.upTo ? 'up to ' : '') + plural(n, 'card'), pool, n, fin, { cancel: function () { cb(false); }, skip: optional || e.upTo, min: e.upTo ? 1 : n });
+    chooseFromList(abTitle(st.src, st.ab) + ': choose ' + (e.upTo ? 'up to ' : '') + plural(n, 'card'), pool, n, fin, { cancel: function () { cb(false); }, skip: optional || e.upTo, min: e.upTo ? 1 : n, place: e.to === 'top' || e.to === 'bottom' ? e.to : null });
   }
   // Search your deck for a card, reveal it, put it into your hand, shuffle
   function searchFx(e, st, optional, cb) {
@@ -5727,13 +5733,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Look at the top cards: take what the card allows, the rest goes where it says
   function lookSheet(st, top, pk, ok, rest, done) {
     if (netWho() != null) return netAsk('look', { src: st.src, ab: abMin(st.ab), top: top, pk: pk || null, ok: top.filter(ok), rest: rest || null }, function (v) { done(v.take || [], v.order || null); });
-    var dest = {}; top.forEach(function (u) { dest[u] = 'top'; });
+    var dest = {}, takeSel = []; top.forEach(function (u) { dest[u] = 'top'; });
     var rt = { bottom: 'the rest go on the bottom', top: 'the rest go back on top', discard: 'the rest go to your discard', ink: 'the rest go into your inkwell', choose: 'top or bottom for each', topdisc: 'top or discard for each' }[rest] || '';
     var title = abTitle(st.src, st.ab) + ': ' + (pk ? (pk.play ? 'play ' : 'take ') + (pk.n > 1 ? 'up to ' + pk.n : 'one') + (pk.type ? ' ' + pk.type : '') + (pk.maxC != null ? ' (cost ' + pk.maxC + ' or less)' : '') : 'the top ' + plural(top.length, 'card')) + (rt ? '; ' + rt : '');
-    cardPick({ title: title, src: st.src, uids: top, n: pk ? pk.n || 1 : 0, min: 0, verb: pk && pk.play ? 'Play' : 'Take',
+    cardPick({ title: title, src: st.src, uids: top, sel: takeSel, n: pk ? pk.n || 1 : 0, min: 0, verb: pk && pk.play ? 'Play' : 'Take',
       can: function (u) { return !!pk && ok(u); }, why: function () { return pk ? 'This one can’t be taken.' : ''; },
       acts: rest === 'choose' || rest === 'topdisc' ? function (u) { var other = rest === 'topdisc' ? 'discard' : 'bottom', lab = { top: 'top of the deck', bottom: 'bottom of the deck', discard: 'discard' };
-        return [{ label: 'Goes on ' + lab[dest[u]] + ' · tap to change', go: function () { dest[u] = dest[u] === 'top' ? other : 'top'; Kit.sfx('tap'); } }]; } : null,
+        var grp = top.filter(function (x) { return dest[x] === dest[u] && takeSel.indexOf(x) < 0; }), j = grp.indexOf(u);
+        var at = dest[u] === 'discard' || j < 0 || grp.length < 2 ? '' : deckPlace(dest[u], dest[u] === 'top' ? j : grp.length - 1 - j) + ' · ';
+        return [{ label: 'Goes on ' + lab[dest[u]] + ' · ' + at + 'tap to change', go: function () { dest[u] = dest[u] === 'top' ? other : 'top'; Kit.sfx('tap'); } }]; } : null,
       done: function (take) { done(take, rest === 'choose' || rest === 'topdisc' ? { top: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] === 'top'; }), bottom: top.filter(function (u) { return take.indexOf(u) < 0 && dest[u] !== 'top'; }) } : null); } });
   }
   function discInkEachFx(e, st, cb) {
@@ -8180,6 +8188,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (main === 'Move to a location') main = 'Move';
     if (main === 'Sing it for free') { main = 'Sing'; sub = sub || 'Free'; }
     var ci = /^(\d+) ink$/.exec(sub);   // an ink cost shows as the cost coin with the number in it
+    if (a.icon) icon = a.icon;
     return { text: text, main: main, sub: sub, icon: icon, subHTML: ci ? costSVG(false, +ci[1], 19) : '' };
   }
   // ── A faint sheen on the card in focus that follows the phone's tilt (or the pointer) ──
@@ -8377,7 +8386,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           var pk = nav.ctx === 'pick' && nav.pick;
           strip.appendChild(el('button', { type: 'button', class: 'ls-c' + (j === nav.i ? ' on' : '') + (usableNow(x, nav.ctx) ? ' can' : '') + (nav.ctx === 'board' && C(x).ex ? ' ex' : '') + (nav.ctx === 'mull' && ui.mullSel[x] ? ' out' : '') +
               (pk && pk.sel.indexOf(x) >= 0 ? ' picked' : '') + (pk && !pk.can(x) ? ' out' : ''), role: 'tab', 'aria-selected': String(j === nav.i), 'aria-label': DD(x).full,
-            html: miniArt(DD(x)) + (pk && pk.sel.indexOf(x) >= 0 ? '<i class="ls-ck">' + Kit.icon('check') + '</i>' : ''), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
+            html: miniArt(DD(x)) + (pk && pk.sel.indexOf(x) >= 0 ? (pk.place ? '<i class="ls-ck ls-n">' + (pk.sel.indexOf(x) + 1) + '</i>' : '<i class="ls-ck">' + Kit.icon('check') + '</i>') : ''), onclick: function (e) { e.stopPropagation(); if (j === nav.i) return; if (F) F.settle(j); else nav.go(j - nav.i); } }));
         });
         posHost.appendChild(strip);
       } else if (nav.defs && nav.n <= 60) {
@@ -9129,6 +9138,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // ── Choosing cards, big: the options as a swipeable row of full cards with their details underneath, the ability
   // asking at the top and the whole set as a strip of thumbnails (chosen ones checked, ones that can't be chosen dimmed)
   // o: { title, src, ab, uids, n, min, can(u), why(u), verb, done(sel), cancel, skip, acts(u) }
+  // A card's place in the deck: k = 0 is the top card (or the very bottom card), 1 the next one in, and so on
+  function deckPlace(place, k, lower) {
+    var w = k === 0 ? (place === 'top' ? 'top card' : 'bottom card') : ['', '2nd', '3rd'][k] || (k + 1) + 'th'; if (k) w += ' from ' + place;
+    return lower ? w : w.charAt(0).toUpperCase() + w.slice(1);
+  }
   function cardPick(o) {
     var sel = o.sel || [], n = o.n || 1, min = o.min != null ? o.min : n, fin = false, single = n === 1 && min <= 1 && !o.acts;
     var can = o.can || function () { return true; };
@@ -9137,28 +9151,28 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function show(i, dir) {
       var u = o.uids[i], d = DD(u), on = sel.indexOf(u) >= 0, ok = can(u), acts = [], whys = [];
       if (ok && single) acts.push({ label: (o.verb || 'Choose') + ' ' + d.n, primary: true, full: true, go: function () { finish([u]); } });
-      else if (ok) acts.push({ label: on ? 'Chosen · tap to undo' : (o.verb || 'Choose') + ' this card', primary: !on, full: true, go: function () {
+      else if (ok) acts.push({ icon: on && o.place ? '<b class="ai-n">' + (sel.indexOf(u) + 1) + '</b>' : null, label: on ? (o.place ? deckPlace(o.place, sel.indexOf(u)) + ' · undo' : 'Chosen · tap to undo') : (o.verb || 'Choose') + ' this card' + (o.place && sel.length < n ? ' · becomes ' + (sel.length ? '' : 'the ') + deckPlace(o.place, sel.length, true) : ''), primary: !on, full: true, go: function () {
         var k = sel.indexOf(u); if (k >= 0) sel.splice(k, 1); else { if (sel.length >= n) sel.shift(); sel.push(u); } Kit.sfx('tap'); show(i); } });
       else if (o.why) whys.push(o.why(u));
       if (o.acts) o.acts(u).forEach(function (a) { var g0 = a.go; a.go = function () { g0(); show(i); }; acts.push(a); });
       if (single && min === 0 && !o.cancel && !o.skip) acts.push({ label: 'Skip · take none', go: function () { finish([]); } });
-      if (!single) acts.push({ label: 'Done · ' + sel.length + (n > 1 ? ' of ' + n : '') + ' chosen', primary: sel.length >= min, ok: sel.length >= min, go: function () { finish(sel.slice()); } });
+      if (!single) acts.push({ label: 'Done · ' + sel.length + (n > 1 ? ' of ' + n : ' chosen'), primary: sel.length >= min, ok: sel.length >= min, go: function () { finish(sel.slice()); } });
       if (o.cancel || o.skip) acts.push({ label: o.cancelLabel || (o.skip ? 'Skip' : 'Cancel'), go: stop });
-      var nav = { i: i, n: o.uids.length, list: o.uids, ctx: 'pick', pick: { sel: sel, can: can }, dir: dir || 0,
+      var nav = { i: i, n: o.uids.length, list: o.uids, ctx: 'pick', pick: { sel: sel, can: can, place: o.place }, dir: dir || 0,
         go: function (step) { var j = i + step; if (j >= 0 && j < o.uids.length) show(j, step); }, peek: function (k) { var x = o.uids[i + k]; return x ? DD(x) : null; } };
       var ov = zoomShell(d, headHTML(d) + defMeta(d, u) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts, whys, nav, { modal: true, onClose: function () { if (!fin) setTimeout(function () { if (!fin) show(i); }, 0); } });
       // what's asking, pinned above the cards
       var head = el('div', { class: 'cp-head' }, [el('span', { class: 'cp-src', html: o.src && S.cards[o.src] ? miniArt(DD(o.src)) : '' }),
-        el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') : 'Swipe to look through them' })])]);
+        el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') + (o.place === 'top' ? ' · 1st chosen is the top card' : o.place === 'bottom' ? ' · 1st chosen is the bottom card' : '') : 'Swipe to look through them' })])]);
       var lin = ov && $('.lz-in', ov); if (lin) lin.insertBefore(head, lin.firstChild);
     }
     var first = o.uids.map(can).indexOf(true); show(first >= 0 ? first : 0, 0);
   }
   function chooseFromList(title, uids, n, cb, o) {
     o = o || {};
-    if (netWho(o.dec) != null) return netAsk('list', { title: title, uids: uids, n: n, min: o.min || null, must: !!o.must, skip: !!o.skip }, function (v) { if (v.c) { if (o.cancel) o.cancel(); return; } cb(v.sel || []); });
+    if (netWho(o.dec) != null) return netAsk('list', { title: title, uids: uids, n: n, min: o.min || null, must: !!o.must, skip: !!o.skip, place: o.place || null }, function (v) { if (v.c) { if (o.cancel) o.cancel(); return; } cb(v.sel || []); });
     var src = o.src || (fxSrc && S.cards[fxSrc] ? fxSrc : null);
-    cardPick({ title: title, src: src, uids: uids, n: n, min: o.min || n, done: cb, cancel: o.must ? null : function () { if (o.cancel) o.cancel(); }, skip: !o.must && !!o.skip });
+    cardPick({ title: title, src: src, uids: uids, n: n, min: o.min || n, place: n > 1 ? o.place : null, done: cb, cancel: o.must ? null : function () { if (o.cancel) o.cancel(); }, skip: !o.must && !!o.skip });
   }
   function lookTop(who, n, note, after) {
     var P = S.P[who], top = P.deckL.slice(0, n);
@@ -10571,7 +10585,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           multi: d.multi ? { need: function (sel) { return !!d.multi.need[sel.length]; }, label: function (sel) { return d.multi.lab[sel.length] || 'Done (' + sel.length + ')'; }, go: function (sel) { ans({ sel: sel }); } } : null,
           done: function (x) { ans({ x: x }); } });
         break;
-      case 'list': chooseFromList(d.title, d.uids, d.n, function (sel) { ans({ sel: sel }); }, { min: d.min || undefined, must: d.must, skip: d.skip, cancel: function () { ans({ c: 1 }); } }); break;
+      case 'list': chooseFromList(d.title, d.uids, d.n, function (sel) { ans({ sel: sel }); }, { min: d.min || undefined, must: d.must, skip: d.skip, place: d.place, cancel: function () { ans({ c: 1 }); } }); break;
       case 'sheet': abilitySheet(d.src, d.ab, d.acts.map(function (a, i) { return { label: a.label, primary: a.primary, full: a.full, go: function () { ans({ i: i }); } }; }), { sub: d.sub }); break;
       case 'look': lookSheet({ src: d.src, ab: d.ab }, d.top, d.pk, function (u) { return d.ok.indexOf(u) >= 0; }, d.rest, function (take, order) { ans({ take: take, order: order }); }); break;
       case 'name': nameSheet(d.src, d.ab, d.opt, function (n) { ans({ name: n }); }); break;
