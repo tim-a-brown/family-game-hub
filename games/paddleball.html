@@ -296,7 +296,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Points ══════════════════════════════════════════════════════════════
   function pointTo(p, b, last) {
-    G.score[p]++; G.seq.push(p);
+    G.score[p]++; G.seq.push(p); G.ral.push(G.rally);
     var other = 1 - p;
     G.run = G.runP === p ? G.run + 1 : 1; G.runP = p;
     if (G.run > G.stats.bestRun[p]) G.stats.bestRun[p] = G.run;
@@ -354,7 +354,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function save() {
     if (!G || G.ended || G.phase === 'over') return;
     var s = { v: 1, mode: G.mode, diff: G.diff, to: G.to, powers: G.powers, players: G.players, score: G.score, firstServer: G.firstServer,
-      started: G.started, stats: G.stats, seq: G.seq, run: G.run, runP: G.runP, hits: G.hits };
+      started: G.started, stats: G.stats, seq: G.seq, ral: G.ral, run: G.run, runP: G.runP, hits: G.hits };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     Kit.resume.set(name(0) + ' ' + G.score[0] + ' – ' + G.score[1] + ' ' + name(1));
   }
@@ -561,7 +561,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       mode: cfg.mode, diff: cfg.diff || 'normal', to: cfg.to || 11, powers: !!cfg.powers,
       players: cfg.players && cfg.players.length === 2 ? cfg.players : [{ name: 'You' }, { name: 'Computer', cpu: true }],
       score: [0, 0], firstServer: Math.random() < 0.5 ? 0 : 1, phase: 'serve', started: Date.now(),
-      seq: [], run: 0, runP: -1, hits: [0, 0], rally: 0,
+      seq: [], ral: [], run: 0, runP: -1, hits: [0, 0], rally: 0,
       pw: { big: [0, 0], curve: [0, 0] }, ai: { next: 0, target: FC / 2, serveAt: 1, serveTo: FC / 2, err: 0 },
       stats: { longest: 0, top: 0, smash: [0, 0], smashWins: [0, 0], bestRun: [0, 0], maxDown: [0, 0], powers: [0, 0], powerKinds: {}, maxBalls: 1, deuce: false, longestBy: null }
     };
@@ -571,7 +571,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     Kit.gameStart();
     if (saved) {
       G.score = saved.score.slice(); G.firstServer = saved.firstServer || 0; G.started = saved.started || Date.now();
-      G.stats = Object.assign(G.stats, saved.stats || {}); G.seq = saved.seq || []; G.run = saved.run || 0; G.runP = saved.runP == null ? -1 : saved.runP; G.hits = saved.hits || [0, 0];
+      G.stats = Object.assign(G.stats, saved.stats || {}); G.seq = saved.seq || []; G.ral = saved.ral || []; G.run = saved.run || 0; G.runP = saved.runP == null ? -1 : saved.runP; G.hits = saved.hits || [0, 0];
     }
     buildView();
     readyServe();
@@ -595,7 +595,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var pk = Object.keys(st.powerKinds);
     if (pk.length) { pk.sort(function (a, b) { return st.powerKinds[b] - st.powerKinds[a]; }); h.push((st.powers[0] + st.powers[1]) + ' power-ups grabbed (most: ' + POWERS[pk[0]].name.toLowerCase() + ')'); }
     var mode = (G.mode === 'cpu' ? 'vs Computer (' + DIFF[G.diff].name + ')' : '2 players') + ' · to ' + G.to + (G.powers ? ' · power-ups' : '');
+    // history detail: who won each point and how long each rally went, plus the match's numbers
+    var hiL = ArcadeHi.list('paddleball');
+    var detail = {
+      sq: G.seq.join(''), rl: G.ral.slice(0, 120).join(','), to: G.to, lg: st.longest, tp: st.top ? +(st.top / SERVE_V).toFixed(1) : 0,
+      sm: st.smash, sw: st.smashWins, br: st.bestRun, md: st.maxDown, pw: st.powers, pk: st.powerKinds, mb: st.maxBalls, dc: st.deuce ? 1 : 0, ht: G.hits,
+      cpu: G.mode === 'cpu' ? 1 : 0, df: G.mode === 'cpu' ? G.diff : '',
+      hr: G.mode === 'cpu' && st.longest > 0 && (hiL.length < ArcadeHi.max || st.longest > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= st.longest; }).length + 1 : 0, hb: hiL.length ? hiL[0].score : 0
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: G.started, mode: mode,
       players: G.players.map(function (p, i) { return { name: p.name, score: G.score[i], cpu: !!p.cpu }; }),
       winner: wn, highlights: h.slice(0, 6),

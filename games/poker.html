@@ -243,6 +243,7 @@
   var RW = ['Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King', 'Ace'];
   var RP = ['Twos', 'Threes', 'Fours', 'Fives', 'Sixes', 'Sevens', 'Eights', 'Nines', 'Tens', 'Jacks', 'Queens', 'Kings', 'Aces'];
   var CAT = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
+  function code(c) { return RN[c >> 2] + SU[c & 3]; }
   function cardEl(c, o) { return Kit.card(RN[c >> 2], SU[c & 3], o); }
   function backEl() { return Kit.card('', '', { back: true }); }
   function freshDeck() { var d = []; for (var i = 0; i < 52; i++) d.push(i); return Cards.shuffle(d); }
@@ -499,7 +500,7 @@
   function vpDeal() {
     if (S.phase !== 'bet') return;
     if (!Casino.bet(vpTotal())) return lowBank(vpTotal());
-    S.deck = freshDeck(); S.hand = S.deck.splice(0, 5); S.held = [false, false, false, false, false];
+    S.deck = freshDeck(); S.hand = S.deck.splice(0, 5); S.held = [false, false, false, false, false]; S.dealt = S.hand.slice();
     S.phase = 'hold'; S.row = -1; S.win = 0; S.hands++; S.bet += vpTotal();
     save(); Kit.sfx('deal'); Kit.haptic('light'); renderVP({ deal: [0, 1, 2, 3, 4] });
   }
@@ -525,6 +526,10 @@
     if (r >= 0) { S.wins++; S.counts[r] = (S.counts[r] || 0) + 1; }
     if (r >= 0 && r < S.best) { S.best = r; S.bestNo = S.hands; }
     if (pay > S.big) { S.big = pay; S.bigRow = r; }
+    // the hand for the history view: dealt, held, final, pay
+    var vh = { no: S.hands, d: (S.dealt || S.hand).map(code), c: S.hand.map(code), k: S.held.map(function (x) { return x ? 1 : 0; }).join(''), r: r, p: pay, b: vpTotal() };
+    (S.vlog = S.vlog || []).push(vh); if (S.vlog.length > 10) S.vlog.shift();
+    if (r >= 0 && (!S.vbest || r < S.vbest.r)) S.vbest = vh;
     save();
   }
   function vpAutoDraw() { S.hand = S.hand.map(function (c, i) { return S.held[i] ? c : S.deck.shift(); }); vpSettle(); }
@@ -550,7 +555,9 @@
     Kit.record(HKEY, {
       started: S.started, mode: 'Video poker', players: [{ name: S.name, score: net, cpu: false }],
       winner: net > 0 ? S.name : null, summary: (net >= 0 ? 'Up ' : 'Down ') + usd(Math.abs(net)) + ' · ' + S.hands + ' hands',
-      highlights: vpHighlights()
+      highlights: vpHighlights(),
+      detail: { vp: 1, denom: S.denom, bank: { s: S.startBank, e: Casino.balance() }, bet: S.bet, paid: S.paid, hands: S.hands, wins: S.wins,
+        rows: PAY.map(function (row, r) { return S.counts[r] || 0; }), names: PAY.map(function (row) { return row[0]; }), best: S.vbest || null, last: S.vlog || [] }
     });
   }
   function endVP(silent) {
@@ -915,7 +922,10 @@
     st.rows.push(S.players.map(function (p, i) { return H.won[i] - H.total[i]; }));
     var main = H.results.filter(function (r) { return !r.back; })[0] || H.results[0];
     main.w.forEach(function (j) { st.won[j]++; });
-    if (!st.big || total > st.big.amt) st.big = { amt: total, who: main.w.map(function (j) { return S.players[j].name; }).join(' and '), desc: main.v != null ? aName(main.v) : '', no: H.no, fold: !!main.fold };
+    var snap = handSnap(H, total, main);
+    if (!st.big || total > st.big.amt) { st.big = { amt: total, who: main.w.map(function (j) { return S.players[j].name; }).join(' and '), desc: main.v != null ? aName(main.v) : '', no: H.no, fold: !!main.fold }; st.bigH = snap; }
+    if (main.v != null && (!st.bestH || main.v > st.bestH.v)) st.bestH = snap;
+    st.lastH = snap;
     Object.keys(H.scores || {}).forEach(function (k) {
       var j = +k, v = H.scores[j];
       if (!st.best || v > st.best.v) st.best = { v: v, who: S.players[j].name, desc: handName(v), no: H.no };
@@ -936,6 +946,17 @@
       });
     }
     if (st.beats.length > 6) st.beats = st.beats.slice(-6);
+  }
+  // A finished hand for the history view: board, who showed what, who won
+  function handSnap(H, total, main) {
+    var seats = Object.keys(H.scores || {}).map(Number);
+    if (seats.indexOf(0) < 0 && H.inHand[0] && H.hole && H.hole[0]) seats.unshift(0);
+    if (main.fold) main.w.forEach(function (j) { if (seats.indexOf(j) < 0) seats.push(j); });
+    return { no: H.no, pot: total, v: main.v != null ? main.v : -1, fold: main.fold ? 1 : 0, b: (H.board || []).map(code),
+      p: seats.map(function (j) {
+        var sc = H.scores && H.scores[j] != null ? H.scores[j] : null, shown = sc != null || j === 0;
+        return { i: j, c: shown && H.hole && H.hole[j] ? H.hole[j].map(code) : [], h: sc != null ? handName(sc) : '', w: H.won[j] - H.total[j], f: H.folded[j] ? 1 : 0, win: main.w.indexOf(j) >= 0 ? 1 : 0 };
+      }) };
   }
   function aiDesc(H, j) {
     if (H.ai.board >= 3) return aName(score(H.hole[j], H.board.slice(0, H.ai.board), S.om));
@@ -1009,7 +1030,10 @@
     }
     Kit.record(HKEY, {
       started: S.started, mode: modeName(), players: players, winner: winner, lowWins: !!S.tourn, summary: summary,
-      rounds: S.tourn ? null : chunkRows(), highlights: tableHighlights()
+      rounds: S.tourn ? null : chunkRows(), highlights: tableHighlights(),
+      detail: { game: S.om ? 'omaha' : 'holdem', tourn: S.tourn ? 1 : 0, big: S.st.bigH || null, best: S.st.bestH && S.st.bestH !== S.st.bigH && (!S.st.bigH || S.st.bestH.no !== S.st.bigH.no) ? S.st.bestH : null,
+        last: S.st.lastH && (!S.st.bigH || S.st.lastH.no !== S.st.bigH.no) && (!S.st.bestH || S.st.lastH.no !== S.st.bestH.no) ? S.st.lastH : null,
+        bank: S.tourn ? null : { s: S.players[0].buyin, e: S.players[0].stack }, hands: S.st.rows.length }
     });
   }
   function cashOut(silent) {

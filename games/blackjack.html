@@ -635,6 +635,10 @@
       nets[h.seat] = (nets[h.seat] || 0) + h.net;
     });
     S.rounds.push(nets);
+    // the hand, kept for the history view (last 30)
+    var cc = function (cs) { return cs.map(function (c) { return c.r + c.s; }).join(' '); };
+    (S.hl = S.hl || []).push({ i: S.round, d: cc(S.dealer), h: S.hands.map(function (h) { return { s: h.seat, c: cc(h.cards), b: h.bet, r: h.res, n: h.net, f: (h.dbl ? 'D' : '') + (h.split ? 'S' : '') + (h.ins ? 'I' : '') }; }) });
+    if (S.hl.length > 30) S.hl.shift();
     S.seats.forEach(function (s, i) {
       if (nets[i] == null) return;
       var st = s.st, mine = seatHands(i);
@@ -719,6 +723,12 @@
     rb.forEach(function (s) { hl.push(s.name + ' bought more chips ' + (s.rebuys === 1 ? 'once' : s.rebuys + ' times')); });
     return hl.slice(0, 8);
   }
+  // For the history view: the last hands (cards, bets, results) and the bankroll
+  function histDetail() {
+    var hl = (S.hl || []).slice(), d = { hands: hl, bank: { s: S.startBank, e: rawBank() }, n: S.rounds.length };
+    while (JSON.stringify(d).length > 4000 && hl.length > 1) hl.shift();
+    return d;
+  }
   function recordSession() {
     var nets = sessionNets(), best = -1;
     nets.forEach(function (n, i) { if (best < 0 || n > nets[best]) best = i; });
@@ -734,7 +744,8 @@
       highlights: hl,
       summary: (single ? S.seats[0].name + (nets[0] > 0 ? ' up ' + money(nets[0]) : nets[0] < 0 ? ' down ' + money(-nets[0]) : ' broke even') : (winner ? winner + ' won' : 'No winner')) + ' · ' + S.rounds.length + ' hands',
       badge: signed(nets[0]),
-      meta: { decks: S.opt.decks, h17: S.opt.h17, hands: S.rounds.length, endBank: rawBank() }
+      meta: { decks: S.opt.decks, h17: S.opt.h17, hands: S.rounds.length, endBank: rawBank() },
+      detail: histDetail()
     });
   }
   function endSession() {

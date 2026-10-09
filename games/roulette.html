@@ -770,6 +770,13 @@
     } else ss.streak = null;
     var top = winners.slice().sort(function (a, b) { return b.pay - a.pay; })[0];
     if (net > 0 && (!ss.best || net > ss.best.amt)) ss.best = { amt: net, n: n, bet: top ? BETS[top.id].name : '' };
+    // for the history view: every spin (last 60) and the bets on the best and the last spin
+    var betList = Object.keys(S.bets).sort(function (a, b) { return S.bets[b] - S.bets[a]; }).slice(0, 10).map(function (id) {
+      var w = winners.filter(function (x) { return x.id === id; })[0]; return { t: BETS[id] ? BETS[id].name : id, a: S.bets[id], p: w ? w.pay : 0 };
+    });
+    (ss.slog = ss.slog || []).push({ n: lbl(n), s: stake, r: ret }); if (ss.slog.length > 60) ss.slog.shift();
+    ss.lastSpin = { no: ss.spins, n: lbl(n), s: stake, r: ret, b: betList };
+    if (net > 0 && ss.best && ss.best.amt === net && ss.best.n === n) ss.bestSpin = ss.lastSpin;
     winners.forEach(function (w) { if (/^n/.test(w.id) && ss.straights.length < 6) ss.straights.push({ n: n, won: w.amt * 35 }); });
     S.spin = { n: n, idx: idx, stake: stake, ret: ret, winners: winners, bets: S.bets };
     S.last = JSON.parse(JSON.stringify(S.bets));
@@ -1011,7 +1018,9 @@
       players: [{ name: st.player, score: ss.net }], winner: null,
       summary: st.player + ' ' + (ss.net > 0 ? 'up ' + money(ss.net) : ss.net < 0 ? 'down ' + money(-ss.net) : 'broke even') + ' · ' + ss.spins + ' spins',
       rounds: { labels: labels, scores: scores }, highlights: highlights(ss),
-      meta: { net: ss.net, spins: ss.spins, wagered: ss.wagered, biggest: ss.best ? ss.best.amt : 0 }
+      meta: { net: ss.net, spins: ss.spins, wagered: ss.wagered, biggest: ss.best ? ss.best.amt : 0 },
+      detail: { wheel: st.wheel, bank: { s: ss.startBank, e: Casino.balance(), hi: ss.hi }, spins: ss.spins, bet: ss.wagered, log: ss.slog || [], from: Math.max(1, ss.spins - (ss.slog || []).length + 1),
+        best: ss.bestSpin || null, last: ss.lastSpin && ss.lastSpin !== ss.bestSpin && (!ss.bestSpin || ss.bestSpin.no !== ss.lastSpin.no) ? ss.lastSpin : null }
     });
   }
   // Cash out (toSetup=false) or start a new session (toSetup=true)

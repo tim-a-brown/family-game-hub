@@ -712,7 +712,13 @@ html,body{background:#0a0614;}
     S.money += res.money;
     if (B && B.tax) { res.tax = S.money > 0; S.money = Math.max(0, S.money - 1); }
     var st = S.stats;
-    if (res.total > st.best) { st.best = res.total; st.bestHand = res.hand; st.bestAnte = S.ante; }
+    if (res.total > st.best) {
+      st.best = res.total; st.bestHand = res.hand; st.bestAnte = S.ante;
+      // the hand itself, for game history
+      st.bh = { h: res.hand, l: res.level, c: res.played.map(function (c) { return c.r + c.s; }), e: res.played.map(function (c) { return ({ bonus: 'b', mult: 'm', glass: 'g', steel: 's', gold: 'o' })[c.e] || '.'; }).join(''),
+        s: res.played.map(function (c) { return res.scoring.indexOf(c.id) >= 0 ? '1' : '0'; }).join(''), ch: Math.round(res.chips), m: Math.round(res.mult * 100) / 100, t: res.total,
+        a: S.ante, b: blindInfo(S.bi).name, j: res.J.map(function (j) { return j.k; }) };
+    }
     st.ante[S.ante] = (st.ante[S.ante] || 0) + res.total;
     res.events.forEach(function (e) { if (e.j != null && res.J[e.j]) { var k = res.J[e.j].k; st.jt[k] = (st.jt[k] || 0) + 1; st.jname[k] = JK[k].n; } });
     S.hand = S.hand.filter(function (id) { return ids.indexOf(id) < 0; });
@@ -1572,6 +1578,16 @@ html,body{background:#0a0614;}
     if (st.earned >= 40) hl.push('Earned $' + st.earned + ' along the way');
     return hl;
   }
+  // History detail: the biggest hand (cards, chips x mult), the jokers held at the end, bosses, hand levels
+  function runDetail(won) {
+    var st = S.stats;
+    function jo(k) { var d = JK[k]; return d ? { n: d.n, r: d.r, a: d.art[1], b: d.art[2], k: d.art[3], d: d.d } : null; }
+    var bh = st.bh ? Object.assign({}, st.bh, { hn: HMAP[st.bh.h] ? HMAP[st.bh.h].n : st.bh.h, j: (st.bh.j || []).map(function (k) { return JK[k] ? JK[k].n : k; }) }) : null;
+    var lv = {}; Object.keys(S.levels).forEach(function (k) { if (S.levels[k] > 1 && HMAP[k]) lv[HMAP[k].n] = S.levels[k]; });
+    var pl = {}; Object.keys(S.plays).forEach(function (k) { if (HMAP[k]) pl[HMAP[k].n] = S.plays[k]; });
+    return { won: !!won, ante: S.ante, bh: bh, jk: S.jokers.map(function (j) { return jo(j.k); }).filter(Boolean), bosses: st.bosses.slice(-12), lost: st.lostTo || null,
+      lv: lv, plays: pl, money: S.money, earned: st.earned || 0, deck: S.deck.length, diff: S.diff };
+  }
   function endRun(won) {
     var st = S.stats, ante = S.ante;
     var labels = [], scores = [];
@@ -1580,7 +1596,8 @@ html,body{background:#0a0614;}
       started: S.started, mode: (S.diff === 'relaxed' ? 'Relaxed' : 'Standard') + (S.endless && !won ? ' · Endless' : ''),
       players: [{ name: S.name, score: st.best }], winner: won ? S.name : null,
       summary: (won ? 'Won the run' : 'Reached ante ' + ante) + ' · best hand ' + fmt(st.best), badge: 'Ante ' + ante,
-      rounds: { labels: labels, scores: scores }, highlights: highlights(won), meta: { ante: ante, best: st.best, won: !!won }
+      rounds: { labels: labels, scores: scores }, highlights: highlights(won), meta: { ante: ante, best: st.best, won: !!won },
+      detail: runDetail(won)
     });
     var best = st.best;
     if (won) {
