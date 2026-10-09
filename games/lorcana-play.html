@@ -89,6 +89,15 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lore .near-t{position:absolute;z-index:5;right:-6px;top:calc(100% + 8px);padding:1px 6px;border-radius:999px;white-space:nowrap;font-style:normal;font-size:.56rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e3bd62);box-shadow:0 2px 6px rgba(0,0,0,.45);}
 .lore b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:400;font-size:1.15rem;text-shadow:0 1px 2px rgba(0,0,0,.6);}
 .lore.bump b{animation:lbump .5s var(--spring);}
+/* the new total rolls in over the old one, inside the ring */
+.lore b.lroll{clip-path:circle(34% at 50% 50%);}
+.lore b.lroll s,.lore b.lroll span{grid-area:1/1;text-decoration:none;animation:.55s cubic-bezier(.3,.7,.2,1) var(--ld,0ms) both;}
+.lore b.lroll.up s{animation-name:lrOutU;}.lore b.lroll.up span{animation-name:lrInU;}
+.lore b.lroll.dn s{animation-name:lrOutD;}.lore b.lroll.dn span{animation-name:lrInD;}
+@keyframes lrOutU{to{transform:translateY(-80%);opacity:0;}}
+@keyframes lrInU{0%{transform:translateY(80%);opacity:0;color:var(--gilt-2);}55%{color:var(--gilt-2);}}
+@keyframes lrOutD{to{transform:translateY(80%);opacity:0;}}
+@keyframes lrInD{0%{transform:translateY(-80%);opacity:0;color:#ff8a8a;}55%{color:#ff8a8a;}}
 @keyframes lbump{40%{transform:scale(1.45);color:var(--gilt-2);}}
 .lore.drop-ok{filter:drop-shadow(0 0 8px var(--gilt));}
 .inkz{flex:none;display:flex;align-items:center;gap:5px;border:0;background:none;padding:3px 4px;border-radius:10px;color:#fff;}
@@ -7358,15 +7367,42 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     b.forEach(function (u) { if (!used[u]) out.push(u); });
     return out;
   }
+  // The number on the lore ring: it keeps the old total while lore sparkles are on their way (holdLore), then the
+  // new number rolls in over the old one. Any other change rolls too (up for a gain, down for a loss).
+  var loreView = { S: null, d: {}, hold: {}, roll: {} };
+  function loreShown(pi) {
+    var h = loreView.S === S && loreView.hold[pi];
+    if (h && Date.now() < h.until) return h.v;
+    if (h) delete loreView.hold[pi];
+    return S.P[pi].lore;
+  }
+  function holdLore(pi) {
+    if (calm() || loreView.S !== S || loreView.d[pi] == null) return;
+    var h = loreView.hold[pi];
+    if (!h || Date.now() >= h.until) h = loreView.hold[pi] = { v: loreView.d[pi], n: 0 };
+    h.n++; h.until = Date.now() + 2600 * SPD;
+    setTimeout(function () { if (loreView.hold[pi] === h && Date.now() >= h.until) { delete loreView.hold[pi]; render(); } }, 2650 * SPD);   // never stuck
+  }
+  function releaseLore(pi) { var h = loreView.hold[pi]; if (!h) return; if (--h.n <= 0) { delete loreView.hold[pi]; render(); } }
+  function loreNum(pi, L) {
+    if (loreView.S !== S) loreView = { S: S, d: {}, hold: {}, roll: {} };
+    var was = loreView.d[pi];
+    if (was != null && was !== L) loreView.roll[pi] = { from: was, up: L > was, t: Date.now() };
+    loreView.d[pi] = L;
+    var rl = loreView.roll[pi], age = rl ? Date.now() - rl.t : 1e9;
+    if (age >= 650 || calm()) { delete loreView.roll[pi]; return '<b>' + L + '</b>'; }
+    // redrawn mid-roll: carry on from where it was
+    return '<b class="lroll ' + (rl.up ? 'up' : 'dn') + '" style="--ld:-' + age + 'ms"><s>' + rl.from + '</s><span>' + L + '</span></b>';
+  }
   function loreRing(pi, drop) {
-    var L = S.P[pi].lore, r = 18, segs = '', G = needLore(pi), col = L >= G - 5 ? '#f6e1a8' : S.P[pi].color, lit = Math.round(Math.min(1, L / G) * 20);
+    var L = loreShown(pi), r = 18, segs = '', G = needLore(pi), col = L >= G - 5 ? '#f6e1a8' : S.P[pi].color, lit = Math.round(Math.min(1, L / G) * 20);
     for (var i = 0; i < 20; i++) {
       var a0 = i / 20 * 2 * Math.PI + 0.05, a1 = (i + 1) / 20 * 2 * Math.PI - 0.05;
       segs += '<path class="tk" d="M' + (22 + r * Math.cos(a0)).toFixed(2) + ' ' + (22 + r * Math.sin(a0)).toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + (22 + r * Math.cos(a1)).toFixed(2) + ' ' + (22 + r * Math.sin(a1)).toFixed(2) + '" stroke="' + (i < lit ? col : 'rgba(255,255,255,.16)') + '"/>';
     }
     // within 4 of winning: the ring pulses and says how many are left
     var need = S.phase === 'play' || S.phase === 'mull' ? needLore(pi) - L : 99, near = need > 0 && need <= 4, goal = needLore(pi);
-    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of ' + goal + ' lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg><b>' + L + '</b>' + (near ? '<i class="near-t">' + need + ' to win</i>' : goal !== goalLore() ? '<i class="near-t goal">needs ' + goal + '</i>' : '') + '</button>';
+    return '<button type="button" class="lore' + (near ? ' near' : '') + (drop ? ' mine' : '') + '" data-p="' + pi + '" data-tap="lore"' + (drop ? ' data-drop="quest"' : '') + ' aria-label="' + esc(S.P[pi].name) + ': ' + L + ' of ' + goal + ' lore' + (near ? ', ' + need + ' from winning' : '') + '"><svg viewBox="0 0 44 44">' + segs + '</svg>' + loreNum(pi, L) + (near ? '<i class="near-t">' + need + ' to win</i>' : goal !== goalLore() ? '<i class="near-t goal">needs ' + goal + '</i>' : '') + '</button>';
   }
   function renderStrip(host, pi, top) {
     var p = S.P[pi], turn = S.phase === 'play' && S.cur === pi, mine = pi === bottomPi();
@@ -7641,7 +7677,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var fx = {
     // ink drops: the droplet by the inkwell bumps, and the change floats up from it
     drops: function (pi, n) { fxPush(function () { var r = $('.inkz[data-z="ink-' + pi + '"] .dr') || $('.inkz[data-z="ink-' + pi + '"]'); if (!r) return; r.classList.remove('bump', 'spend'); void r.offsetWidth; r.classList.add(n > 0 ? 'bump' : 'spend'); floatText(r, (n > 0 ? '+' : '−') + Math.abs(n)); }); Kit.sfx(n > 0 ? 'pop' : 'chip'); },
-    lore: function (pi, n) { if (questing) return; fxPush(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return; r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); loreGlow(r); floatText(r, '+' + n); }); },
+    lore: function (pi, n) { if (questing) return; holdLore(pi); fxPush(function () { var r = $('.lore[data-p="' + pi + '"]'); if (!r) return releaseLore(pi); loreGlow(r); setTimeout(function () { releaseLore(pi); }, 340); setTimeout(function () { var R = $('.lore[data-p="' + pi + '"]'); if (R) floatText(R, '+' + n); }, 720); }); },
     hit: function (u) { if (clashing) return; fxPush(function () { $$('.slot[data-uid="' + u + '"]').forEach(function (s) { s.classList.remove('hitd'); void s.offsetWidth; s.classList.add('hitd'); }); }); },
     banish: function (u) { Kit.haptic('heavy'); dissolving[u] = clashing ? 290 : 1; },
     // A card's ability goes off: the card glows and its ability name rises from it
@@ -7863,11 +7899,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // Cards drawn: the deck riffles
     drawn: function (pi) { fxPush(function () { var d = $('.lp [data-z="deck-' + pi + '"]'); if (d) { d.classList.remove('riffle'); void d.offsetWidth; d.classList.add('riffle'); } }); },
     // Lore from an ability: diamonds fly from the card to the lore ring
-    loreFrom: function (src, pi, n) { fxPush(function () {
-      var ring = $('.lore[data-p="' + pi + '"]'); if (!ring) return;
+    loreFrom: function (src, pi, n) { holdLore(pi); fxPush(function () {
+      var ring = $('.lore[data-p="' + pi + '"]'); if (!ring) return releaseLore(pi);
       var s = src && slotEl(src), a = mid(s ? s.getBoundingClientRect() : ($('.lp-mid') || ring).getBoundingClientRect()), b = mid(ring.getBoundingClientRect()), k = Math.max(1, Math.min(5, n));
       Kit.sfx('sparkle');
-      for (var i = 0; i < k; i++) flyOrb(a, b, 120 + i * 95, i === k - 1 ? function () { ring.classList.remove('bump'); void ring.offsetWidth; ring.classList.add('bump'); loreGlow(ring); floatText(ring, '+' + n); Kit.sfx('good'); } : null);
+      for (var i = 0; i < k; i++) flyOrb(a, b, 120 + i * 95, i === k - 1 ? function () { releaseLore(pi); var R = $('.lore[data-p="' + pi + '"]') || ring; loreGlow(R); Kit.sfx('good'); setTimeout(function () { var R2 = $('.lore[data-p="' + pi + '"]'); if (R2) floatText(R2, '+' + n); }, 380); } : null);
     }); }
   };
   // Every action gets its moment: while an animation plays, the next ability, prompt or computer move waits for it
