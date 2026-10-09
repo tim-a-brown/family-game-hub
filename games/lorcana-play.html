@@ -4612,7 +4612,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // "If X, … instead": swap in the better version when X holds (x = the chosen card, if any)
   function altOf(e, st, x) {
-    if (!e.alt || !condOK(e.alt.cond, st.src, st.pi, { x: x, st: st, att: st.ctx.att, def: st.ctx.def })) return e;
+    if (!e.alt || !condOK(e.alt.cond, st.src, st.pi, { x: x, st: st, att: st.ctx.att, def: st.ctx.def, shifted: st.ctx.shifted })) return e;
     var a = {}, b = e.alt.fx[0];
     if (b.op === e.op) for (var k0 in e) if (k0 !== 'alt') a[k0] = e[k0];
     for (var k in b) if (b[k] != null || !(k in a)) a[k] = b[k];
@@ -5385,7 +5385,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (!inPlay) return;
         var m = untilFor(e.dur || 'turn', pi, x, st.src), sm = (e.amt || e.per) ? effN(e, st, x) : 1, vs = {};
         for (var k in e.st) vs[k] = e.st[k] * sm;
-        if (e.alt && e.alt.st && condOK(e.alt.cond, st.src, pi, { x: x })) for (var k2 in e.alt.st) vs[k2] = e.alt.st[k2];
+        if (e.alt && e.alt.st && condOK(e.alt.cond, st.src, pi, { x: x, shifted: st.ctx && st.ctx.shifted })) for (var k2 in e.alt.st) vs[k2] = e.alt.st[k2];
         if (!Object.keys(vs).some(function (k) { return vs[k]; })) return;
         for (var k3 in vs) m[k3] = vs[k3]; m.why = abTitle(st.src, st.ab); if (e.vsLoc) m.vsLoc = 1; c.mods.push(m);
         if (Object.keys(vs).some(function (k) { return vs[k] < 0; })) fx.drain(x); else fx.rune(x, '#f6e1a8');
