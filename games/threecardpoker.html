@@ -358,6 +358,11 @@
     // Session stats & highlights
     var st = S.st, h = S.hand, who = S.name === 'You' ? 'You' : S.name;
     S.log.push(net);
+    // the hand for the history view (last 20, plus the biggest win)
+    var cc = function (cs) { return cs.map(function (c) { return c.r + c.s; }).join(' '); };
+    var hs = { h: h, p: cc(S.p), d: cc(S.d), pe: pe.name, de: de.name, f: folded ? 1 : 0, q: qual ? 1 : 0, c: cmp, a: a, pp: pp, pl: pl, n: net };
+    (S.hl = S.hl || []).push(hs); if (S.hl.length > 20) S.hl.shift();
+    if (net > 0 && (!st.big || net > st.big.amt)) S.bigH = hs;
     if (folded) st.folds++;
     if (net > 0) { st.won++; st.streak = Math.max(0, st.streak) + 1; } else if (net < 0) { st.lost++; st.streak = Math.min(0, st.streak) - 1; } else st.push++;
     if (st.streak > st.best) st.best = st.streak;
@@ -416,7 +421,9 @@
     Kit.record(HKEY, {
       started: s.started, mode: s.opts.flush === 3 ? 'Flush pays 3 to 1' : '',
       players: [{ name: s.name, score: net }], winner: null, summary: summary,
-      rounds: roundsData(), highlights: highlights(), meta: { hands: s.hand, bankroll: bank() }
+      rounds: roundsData(), highlights: highlights(), meta: { hands: s.hand, bankroll: bank() },
+      detail: { bank: { s: bank() - net, e: bank() }, hands: s.hand, won: s.st.won, lost: s.st.lost, push: s.st.push, folds: s.st.folds, pp: s.st.ppPaid, bonus: s.st.bonusPaid,
+        big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-8) }
     });
     clearSave(); S = null;
     Kit.win({

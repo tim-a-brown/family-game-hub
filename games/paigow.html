@@ -487,6 +487,11 @@
     S.net += net; S.phase = 'result';
     var st = S.st, h = S.hand, who = S.name;
     S.log.push(net); st.comm += comm;
+    // the hand for the history view (last 15, plus the biggest win)
+    var cc = function (cs) { return cs.map(function (c) { return isJ(c) ? 'JK' : c.r + c.s; }).join(' '); };
+    var hs = { h: h, ph: cc(mine.hi), pl: cc(mine.lo), dh: cc(ds.hi), dl: cc(ds.lo), phn: name5(phk), pln: name2(plk), dhn: name5(dhk), dln: name2(dlk), hw: hiW ? 1 : hiCopy ? 0 : -1, lw: loW ? 1 : loCopy ? 0 : -1, o: out, b: bet, n: net, way: hwOwn ? 1 : 0 };
+    (S.hl = S.hl || []).push(hs); if (S.hl.length > 15) S.hl.shift();
+    if (net > 0 && (!st.big || net > st.big.amt)) S.bigH = hs;
     if (net > 0) { st.won++; st.streak = Math.max(0, st.streak) + 1; } else if (net < 0) { st.lost++; st.streak = Math.min(0, st.streak) - 1; } else st.push++;
     if (st.streak > st.best) st.best = st.streak;
     if (hwOwn) st.house++; else st.own++;
@@ -543,7 +548,9 @@
     var summary = s.name + (net > 0 ? ' won ' + money(net) : net < 0 ? ' lost ' + money(-net) : ' broke even') + ' · ' + s.hand + ' hand' + (s.hand === 1 ? '' : 's');
     Kit.record(HKEY, {
       started: s.started, players: [{ name: s.name, score: net }], winner: null, summary: summary,
-      rounds: roundsData(), highlights: highlights(), meta: { hands: s.hand, bankroll: bank(), commission: s.st.comm }
+      rounds: roundsData(), highlights: highlights(), meta: { hands: s.hand, bankroll: bank(), commission: s.st.comm },
+      detail: { bank: { s: bank() - net, e: bank() }, hands: s.hand, won: s.st.won, lost: s.st.lost, push: s.st.push, comm: s.st.comm, house: s.st.house,
+        big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-6) }
     });
     clearSave(); S = null;
     Kit.win({

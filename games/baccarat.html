@@ -588,6 +588,13 @@
       var wonOn = Object.keys(h.ret).filter(function (k) { return h.ret[k] > (h.bets[k] || 0); }).map(function (k) { return SPOTS[k].name; });
       st.big = { amt: net, on: wonOn.length > 1 ? wonOn.slice(0, -1).join(', ') + ' and ' + wonOn[wonOn.length - 1] : wonOn[0], n: h.n, pt: h.pt, bt: h.bt, w: h.w };
     }
+    // for the history view: the session's bead road (shoes split by '|') and the hands that mattered
+    if (h.n > 1 && S.roads.length === 0) { st.rd = (st.rd || '') + '|'; st.rf = (st.rf || '') + '|'; }
+    st.rd = (st.rd || '') + h.w; st.rf = (st.rf || '') + ((h.pp ? 1 : 0) + (h.bp ? 2 : 0) + (h.nat ? 4 : 0));
+    if (st.rd.length > 300) { st.rd = st.rd.slice(-300); st.rf = st.rf.slice(-300); }
+    var snap = { n: h.n, p: h.p, b: h.b, pt: h.pt, bt: h.bt, w: h.w, bets: Object.keys(h.bets).filter(function (k) { return h.bets[k] > 0; }).map(function (k) { return { t: SPOTS[k].name, a: h.bets[k], r: Math.round((h.ret[k] || 0) * 100) / 100 }; }), net: Math.round(net * 100) / 100 };
+    if (st.big && st.big.n === h.n) st.bigH = snap;
+    st.lastH = snap;
     if (h.ret.t > 0) st.notes.push({ n: h.n, t: 'Called the Tie on hand ' + h.n + ' (' + h.pt + ' all) for ' + signed(h.ret.t - h.bets.t) });
     if (h.ret.pp > 0) st.notes.push({ n: h.n, t: 'Player Pair of ' + plural(rankOf(h.p[0])) + ' paid 11 to 1 on hand ' + h.n });
     if (h.ret.bp > 0) st.notes.push({ n: h.n, t: 'Banker Pair of ' + plural(rankOf(h.b[0])) + ' paid 11 to 1 on hand ' + h.n });
@@ -767,7 +774,9 @@
       players: [{ name: s.name, score: Math.round(net), cpu: false }], winner: null,
       summary: s.name + (net > 0.004 ? ' up ' + money(net) : net < -0.004 ? ' down ' + money(-net) : ' even') + ' · ' + st.hands + ' hand' + (st.hands === 1 ? '' : 's'),
       highlights: highlights(s),
-      meta: { hands: st.hands, wagered: st.wagered, returned: st.returned, counts: st.counts }
+      meta: { hands: st.hands, wagered: st.wagered, returned: st.returned, counts: st.counts },
+      detail: { bank: { s: s.startBank, e: Math.round(Casino.balance()) }, hands: st.hands, bet: st.wagered, counts: st.counts, nat: st.nat, rd: st.rd || '', rf: st.rf || '',
+        streak: st.best || null, big: st.bigH || null, last: st.lastH && (!st.bigH || st.lastH.n !== st.bigH.n) ? st.lastH : null }
     });
   }
   function cashOut() {

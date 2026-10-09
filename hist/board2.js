@@ -85,7 +85,7 @@
     var b = []; for (var i = 0; i < 64; i++) b.push(0); b[27] = -1; b[28] = 1; b[35] = 1; b[36] = -1;
     var pos = [b.slice()], cntB = [2], cntW = [2], sq = [], ok = true;
     for (var m = 0; m < N; m++) {
-      var c = mv.charCodeAt(m * 2) - 97, r = +mv.charAt(m * 2 + 1) - 1, s = r * 8 + c, side = who.charAt(m) === 'w' ? -1 : 1;
+      var c = mv.charCodeAt(m * 2) - 97, r = 8 - +mv.charAt(m * 2 + 1), s = r * 8 + c, side = who.charAt(m) === 'w' ? -1 : 1;
       if (c < 0 || c > 7 || r < 0 || r > 7) { ok = false; break; }
       b[s] = side;
       OT_DIRS.forEach(function (dd) {
@@ -104,7 +104,7 @@
         return n === 0 ? 'Starting position' : (n === N ? 'Final board · ' : '') + 'Move ' + n + ' · ' + nameOf(who.charAt(n - 1)) + ' at ' + mv.substr((n - 1) * 2, 2).toUpperCase() + ' · ' + cntB[n] + '–' + cntW[n];
       })));
       var chart = ui.picture(spark([{ v: cntW, c: '#f4f1e8', w: 2.5 }, { v: cntB, c: '#111114', w: 3, halo: 'rgba(255,255,255,.6)' }], { lo: 0, hi: Math.max(40, Math.max.apply(null, cntB.concat(cntW))), mid: 32, aria: 'Discs over the game' }), { frame: 'felt' });
-      out.push(ui.section('Discs over the game', [chart, ui.chips([{ t: 'Black: ' + nameOf('b'), c: '#2a2a30', on: 1 }, { t: 'White: ' + nameOf('w'), c: '#e9e4d8', on: 1 }])]));
+      out.push(ui.section('Discs over the game', [chart, ui.chips([{ t: 'Black line: ' + nameOf('b'), c: '#9a9aa6' }, { t: 'White line: ' + nameOf('w'), c: '#e9e4d8' }])]));
     }
     var corners = { 1: 0, '-1': 0 }; [0, 7, 56, 63].forEach(function (x) { if (fin[x]) corners[fin[x]]++; });
     var best = d.best || [0, 0], ps = d.passes || [0, 0];
@@ -178,6 +178,8 @@
       var g = geo(i), x = px(g.col), fill = (i % 2) ? '#a3302a' : '#e9dcbc';
       s += g.up ? '<path d="M' + x + ' ' + top + 'L' + (x + pw) + ' ' + top + 'L' + (x + pw / 2) + ' ' + (top + th) + 'Z" fill="' + fill + '"/>'
         : '<path d="M' + x + ' ' + bot + 'L' + (x + pw) + ' ' + bot + 'L' + (x + pw / 2) + ' ' + (bot - th) + 'Z" fill="' + fill + '"/>';
+      // point numbers from White's side
+      s += '<text x="' + (x + pw / 2) + '" y="' + (g.up ? top + th + 9 : bot - th - 4) + '" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,.4)" font-family="system-ui">' + (i + 1) + '</text>';
       var v = (d.p || [])[i] || 0, n = Math.abs(v); if (!n) continue;
       var col = v > 0 ? 'w' : 'b', show = Math.min(n, 5);
       for (var k = 0; k < show; k++) {
@@ -185,8 +187,6 @@
         s += '<circle cx="' + (x + pw / 2) + '" cy="' + cy + '" r="' + cr + '" fill="url(#bg' + col + ')" stroke="rgba(0,0,0,.45)" stroke-width=".8"/>';
         if (k === show - 1 && n > 5) s += '<text x="' + (x + pw / 2) + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="' + (col === 'w' ? '#5b4a35' : '#f1e6d2') + '" font-family="system-ui">' + n + '</text>';
       }
-      // point numbers from White's side
-      s += '<text x="' + (x + pw / 2) + '" y="' + (g.up ? top + th + 9 : bot - th - 4) + '" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,.4)" font-family="system-ui">' + (i + 1) + '</text>';
     }
     // bar checkers
     var barC = d.bar || [0, 0];
@@ -206,7 +206,7 @@
     var d = e.dt; if (!d || !d.p) return null;
     var nm = [plainName(e, 0), plainName(e, 1)], out = [];
     out.push(ui.section('Final position', [ui.picture(bgSvg(d), { frame: 'wood', max: 380 }),
-      ui.chips([{ t: 'White: ' + nm[0], c: '#e9e4d8', on: 1 }, { t: 'Black: ' + nm[1], c: '#2a2a30', on: 1 }])]));
+      ui.chips([{ t: 'White: ' + nm[0], c: '#e9e4d8' }, { t: 'Black: ' + nm[1], c: '#9a9aa6' }])]));
     var HOW = { single: 'a single game', gammon: 'a gammon', backgammon: 'a backgammon', drop: 'a dropped double' };
     var g = d.g || [];
     if (g.length) out.push(ui.section(g.length > 1 ? 'Each game' : 'How it ended', ui.log(g.map(function (x, i) {
@@ -251,7 +251,7 @@
     var st = d.st || [];
     if (st.length === 2) out.push(ui.table(['', nm[0], nm[1]], [['Shots', st[0].s, st[1].s], ['Hits', st[0].h, st[1].h],
       ['Accuracy', st[0].s ? Math.round(st[0].h / st[0].s * 100) + '%' : '–', st[1].s ? Math.round(st[1].h / st[1].s * 100) + '%' : '–'], ['Best hit streak', st[0].b, st[1].b]]));
-    if (d.order && d.order.length) out.push(ui.section('Ships sunk, in order', ui.log(d.order.map(function (x) { return { c: x.p, t: nm[x.p] + ' sank ' + Kit.poss(nm[1 - x.p]) + ' ' + BS_NAME[x.k] }; }), { numbered: true })));
+    if (d.order && d.order.length) out.push(ui.section('Ships sunk, in order', ui.log(d.order.map(function (x) { return { c: x.p, t: nm[x.p] + ' sank ' + Kit.poss(nm[1 - x.p]) + ' ' + BS_NAME[x.k] }; }))));
     return ui.wrap(out);
   });
 
@@ -303,7 +303,7 @@
   // ── Mancala: the pits when the game ended, then the race between the stores ──
   var MC_GLASS = ['#3d8bff', '#2fc56b', '#ffad33', '#ff4d6d', '#a479ff', '#35d0d0', '#f2f2f2'];
   function mcSvg(b, cols) {
-    var W = 360, H = 150, sw = 40, pw = (W - 2 * sw - 24) / 6, s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Mancala board">';
+    var W = 360, H = 150, sw = 40, pw = (W - 20 - 2 * sw - 24) / 6, s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Mancala board">';
     s += '<defs><radialGradient id="mcp" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#3b220e"/><stop offset="1" stop-color="#5e3a1a"/></radialGradient></defs>';
     s += '<rect width="' + W + '" height="' + H + '" rx="22" fill="#9a6431"/><rect x="3" y="3" width="' + (W - 6) + '" height="' + (H - 6) + '" rx="20" fill="none" stroke="rgba(255,230,180,.18)" stroke-width="2"/>';
     var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
@@ -317,7 +317,7 @@
     [[13, 10], [6, W - 10 - sw]].forEach(function (q, j) {
       var x = q[1], n = b[q[0]];
       s += '<rect x="' + x + '" y="22" width="' + sw + '" height="' + (H - 44) + '" rx="' + sw / 2 + '" fill="url(#mcp)"/>' + stones(x + sw / 2, H / 2, sw * 0.28, H * 0.26, n) +
-        '<rect x="' + (x + 4) + '" y="' + (H / 2 - 11) + '" width="' + (sw - 8) + '" height="22" rx="7" fill="rgba(0,0,0,.55)"/>' + count(x + sw / 2, H / 2 + 5, n, cols[j ? 0 : 1]);
+        '<rect x="' + (x + 4) + '" y="' + (H / 2 - 11) + '" width="' + (sw - 8) + '" height="22" rx="7" fill="rgba(0,0,0,.55)"/>' + count(x + sw / 2, H / 2 + 5, n, '#fff');
     });
     for (var i = 0; i < 6; i++) {
       var xb = 10 + sw + 12 + i * pw + pw / 2, xt = 10 + sw + 12 + (5 - i) * pw + pw / 2, r = Math.min(pw * 0.42, 22);

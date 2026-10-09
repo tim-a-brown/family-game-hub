@@ -134,7 +134,7 @@
     ]);
     var revCells = m.join('').split('r').length - 1;
     var out = [ui.section(null, paper)];
-    out.push(ui.stats([['Time', d.gu ? 'Revealed' : ui.time(d.s)], ['Checks', d.ch || 0], ['Reveals', d.rv || 0], ['Squares revealed', revCells || 0]]));
+    out.push(ui.stats([['Time', d.gu ? 'Revealed' : ui.time(d.s)], ['Checks', d.ch || 0], ['Revealed', revCells ? revCells + (revCells === 1 ? ' square' : ' squares') : 0]]));
     // the clues, with the ones that needed revealing marked
     var A = d.a || [], D = d.d || [], ai = 0, di = 0;
     M.words.sort(function (x, y) { return (x.dir === y.dir ? 0 : x.dir === 'a' ? -1 : 1) || x.n - y.n; });
@@ -174,8 +174,9 @@
     }
     var won = gs[gs.length - 1] === ans;
     var out = [ui.section(null, grid)];
-    out.push(ui.section('The word', ui.el('div', { class: 'hvw-ans' }, [ui.tiles(ans, won ? 'ggggg' : 'rrrrr'),
-      ui.el('span', { class: 'muted', style: { 'font-weight': '800', 'font-size': '.88rem' }, text: won ? 'Solved in ' + gs.length + '/6' + (e.hard ? ' · hard mode' : '') : 'Not solved' + (e.hard ? ' · hard mode' : '') })])));
+    if (!won) out.push(ui.section('The word', ui.el('div', { class: 'hvw-ans' }, [ui.tiles(ans, 'rrrrr'),
+      ui.el('span', { class: 'muted', style: { 'font-weight': '800', 'font-size': '.88rem' }, text: 'Not solved' + (e.hard ? ' · hard mode' : '') })])));
+    else if (e.hard) out.push(ui.chips([{ t: 'Hard mode', c: '#f97316' }]));
     var kb = ui.el('div', { class: 'hvw-kb' });
     ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].forEach(function (row) {
       kb.appendChild(ui.el('div', null, row.split('').map(function (k) { return ui.el('span', { class: best[k] || '', text: k }); })));

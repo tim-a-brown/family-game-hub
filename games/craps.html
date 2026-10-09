@@ -623,6 +623,10 @@
     if (out.net > 0 && (!ss.best || out.net > ss.best.amt)) ss.best = { amt: out.net, t: t, hard: hard, bet: out.top ? nameOf(out.top.id) : '' };
     if (out.kind === 'sevenout') { ss.hands.push(ss.cur); ss.cur = { rolls: 0, points: 0, net: 0 }; }
     S.recent.unshift({ t: t, s: out.kind === 'sevenout' ? 1 : 0, p: out.kind === 'made' ? 1 : 0 });
+    // every roll for the history view: two dice and what it did (last 150)
+    ss.rl = (ss.rl || '') + d1 + d2 + ({ natural: 'N', craps: 'C', point: 'P', made: 'M', sevenout: 'S' }[out.kind] || '.');
+    (ss.rn = ss.rn || []).push(out.net);
+    if (ss.rn.length > 150) { ss.rl = ss.rl.slice(-450); ss.rn = ss.rn.slice(-150); }
     if (S.recent.length > 30) S.recent.length = 30;
     S.dice = [d1, d2];
     return out;
@@ -747,7 +751,9 @@
       players: [{ name: st.player, score: ss.net }], winner: null,
       summary: st.player + ' ' + (ss.net > 0 ? 'up ' + money(ss.net) : ss.net < 0 ? 'down ' + money(-ss.net) : 'broke even') + ' · ' + ss.rolls + ' rolls',
       rounds: { labels: labels, scores: scores }, highlights: highlights(ss),
-      meta: { net: ss.net, rolls: ss.rolls, wagered: ss.wagered, biggest: ss.best ? ss.best.amt : 0, longestHand: longest, pointsMade: ss.pointsMade }
+      meta: { net: ss.net, rolls: ss.rolls, wagered: ss.wagered, biggest: ss.best ? ss.best.amt : 0, longestHand: longest, pointsMade: ss.pointsMade },
+      detail: { bank: { s: ss.startBank, e: Casino.balance(), hi: ss.hi }, rolls: ss.rolls, bet: ss.wagered, made: ss.pointsMade, sevens: ss.sevenOuts, nat: ss.naturals,
+        r: ss.rl || '', n: ss.rn || [], best: ss.best ? { a: ss.best.amt, t: ss.best.t, h: ss.best.hard ? 1 : 0, b: ss.best.bet } : null }
     });
   }
   function endSession(toSetup) {

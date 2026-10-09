@@ -676,9 +676,15 @@
       S.hits++; S.dry = 0;
       res.wins.forEach(function (w) { S.combos[w.k] = (S.combos[w.k] || 0) + 1; if (w.jackpot) S.jackpots++; });
       var top = res.wins.slice().sort(function (a, b) { return b.amt - a.amt; })[0];
-      if (!S.big || res.total > S.big.amt) S.big = { amt: res.total, label: top.label, spin: S.spins, x: Math.round(res.total / tb) };
+      if (!S.big || res.total > S.big.amt) { S.big = { amt: res.total, label: top.label, spin: S.spins, x: Math.round(res.total / tb) }; S.bigShot = shot(res, tb); }
       if (res.total >= tb * 10) S.bigWins++;
     } else { S.dry++; S.maxDry = Math.max(S.maxDry, S.dry); }
+    S.lastShot = shot(res, tb);
+  }
+  // The reels as they landed, for the history view: 3 rows of symbol codes, the winning lines
+  function shot(res, tb) {
+    var rows = [0, 1, 2].map(function (row) { return M.strips.map(function (st, ri) { return st[(res.stops[ri] + row) % st.length]; }).join(','); });
+    return { no: S.spins, g: rows, tb: tb, a: res.total, ln: res.lines, w: res.wins.slice(0, 6).map(function (w) { return { l: M.lines[w.li].join(''), li: w.li, t: w.label, a: w.amt, c: w.cells.join('') }; }) };
   }
 
   function animate(stops, done) {
@@ -845,7 +851,9 @@
       players: [{ name: st.name, score: net, cpu: false }], winner: null,
       summary: st.name + (net > 0 ? ' up ' : net < 0 ? ' down ' : ' even ') + (net ? money(Math.abs(net)) : '') + ' · ' + st.spins + ' spins',
       highlights: highlights(st, end),
-      meta: { spins: st.spins, wagered: st.wagered, won: st.won, startBank: st.startBank, endBank: end, machine: st.mode }
+      meta: { spins: st.spins, wagered: st.wagered, won: st.won, startBank: st.startBank, endBank: end, machine: st.mode },
+      detail: { m: st.mode, bank: { s: st.startBank, e: end }, spins: st.spins, bet: st.wagered, won: st.won, hits: st.hits, jp: st.jackpots,
+        big: st.bigShot || null, last: st.lastShot && (!st.bigShot || st.lastShot.no !== st.bigShot.no) ? st.lastShot : null, combos: st.combos }
     });
   }
   function cashOut() {

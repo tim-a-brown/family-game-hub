@@ -325,14 +325,14 @@
       });
     }, 300);
   }
-  // For the history view: final board ('b'/'w'/'.' rows), the moves in order (two letters each, like 'f5'), who played each
+  // For the history view: final board ('b'/'w'/'.' rows), the moves in order (square names like 'f5', rank 8 at the top as on the board), who played each
   // (b/w, passes make the order uneven), and the best flip.
   function detail() {
     var rows = [], mv = '', who = '';
     for (var r = 0; r < 8; r++) { var row = ''; for (var c = 0; c < 8; c++) { var v = S.b[r * 8 + c]; row += v === BLACK ? 'b' : v === WHITE ? 'w' : '.'; } rows.push(row); }
     var boards = S.hist.map(function (h) { return { b: h.b, turn: h.turn }; }).concat([{ b: S.b }]);
     for (var i = 0; i < boards.length - 1; i++) {
-      for (var s = 0; s < 64; s++) if (!boards[i].b[s] && boards[i + 1].b[s]) { mv += 'abcdefgh'.charAt(s & 7) + ((s >> 3) + 1); who += boards[i].turn === BLACK ? 'b' : 'w'; break; }
+      for (var s = 0; s < 64; s++) if (!boards[i].b[s] && boards[i + 1].b[s]) { mv += 'abcdefgh'.charAt(s & 7) + (8 - (s >> 3)); who += boards[i].turn === BLACK ? 'b' : 'w'; break; }
     }
     return { grid: rows, mv: mv, who: who, last: S.last ? S.last.s : -1, best: [BLACK, WHITE].map(function (sd) { return S.best[sd] ? S.best[sd].n : 0; }), passes: [S.passes['1'] || 0, S.passes['-1'] || 0],
       sides: S.players.map(function (p) { return p.side === BLACK ? 'b' : 'w'; }).join('') };

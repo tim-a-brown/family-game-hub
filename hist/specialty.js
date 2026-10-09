@@ -80,7 +80,7 @@
     '.sx-c.dup::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:2px;background:#e5263f;transform:rotate(-30deg);}',
     '.sx-c.act{font-size:.5rem;letter-spacing:.02em;text-transform:uppercase;padding:0 1px;text-align:center;}',
     // wild-card strip (Five Crowns)
-    '.sx-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px;}',
+    '.sx-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;}',
     '.sx-strip>div{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;}',
     '.sx-strip .crown{width:34px;height:46px;border-radius:5px;display:grid;place-items:center;background:linear-gradient(180deg,#ffd75e,#e7a900);color:#3a2600;font-weight:900;font-size:1.05rem;box-shadow:0 2px 0 #a87400;font-family:ui-rounded,system-ui,sans-serif;}',
     '.sx-strip small{font-size:.68rem;font-weight:800;color:var(--text-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -103,6 +103,7 @@
     '.sx-vc em{font-style:normal;font-size:.62rem;opacity:.8;margin-left:auto;}',
     '.sx-row2{display:flex;gap:8px;align-items:center;font-size:.86rem;font-weight:800;color:var(--text-2);}',
     '.sx-tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:900;}',
+    '.hv-tbl.sx-box th,.hv-tbl.sx-box td{padding:4px 3px;font-size:.78rem;}',
     '.sx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0;}'
   ].join(''));
 
@@ -151,8 +152,8 @@
     out.push(ui.section('Bids made', ui.bars(bars)));
     var tc = { s: 0, h: 0, d: 0, c: 0, x: 0 }; d.r.forEach(function (r) { if (SUIT[r.t]) tc[r.t]++; else tc.x++; });
     var wz = d.wiz && d.wiz.length ? d.wiz : null;
-    out.push(ui.stats([['Spades trump', tc.s], ['Hearts trump', tc.h], ['Diamonds trump', tc.d], ['Clubs trump', tc.c], ['No trump', tc.x],
-      wz ? ['Most Wizards', Math.max.apply(null, wz), P[wz.indexOf(Math.max.apply(null, wz))]] : null]));
+    out.push(ui.section('Trump suits', ui.chips(['s', 'h', 'd', 'c'].map(function (k) { return { t: SUIT[k][2] + ' ' + tc[k] }; }).concat(tc.x ? [{ t: 'No trump ' + tc.x }] : [])
+      .concat(wz && Math.max.apply(null, wz) ? [{ t: 'Most Wizards played: ' + P[wz.indexOf(Math.max.apply(null, wz))] + ' (' + Math.max.apply(null, wz) + ')', on: 1 }] : []))));
     return ui.wrap(out);
   });
 
@@ -194,7 +195,7 @@
     var rows = P.map(function (x, i) {
       return [{ th: 1, c: 'nm', t: short(x, 9) }].concat(d.st.map(function (s, r) {
         var c = s.charAt(i), v = e.rounds && e.rounds.scores && e.rounds.scores[r] ? e.rounds.scores[r][i] : '';
-        return { t: c === 'b' ? '×' : c === '7' ? '7' : v, style: { background: COLR[c] || '', color: c === '7' ? '#3a2600' : '#fff' }, title: STN[c] };
+        return { t: c === 'b' ? '×' : v, style: { background: COLR[c] || '', color: c === '7' ? '#3a2600' : '#fff' }, title: STN[c] };
       }));
     });
     out.push(ui.section('Round by round', [grid([{ t: '' }].concat(d.st.map(function (s, r) { return { t: String(r + 1) }; })), rows),
@@ -209,7 +210,7 @@
   var FC = { t: ['★', '#e3a400'], h: ['♥', '#d81e3a'], c: ['♣', '#178a4a'], s: ['♠', '#1d1b2e'], d: ['♦', '#1f62d0'] };
   var FCR = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   function fcCard(code, wildRank) {
-    if (code === 'JK') return el('span', { class: 'sx-c solid wild', style: { background: '#6c3fd6', fontSize: '.6rem' }, text: 'JKR', title: 'Joker' });
+    if (code === 'JK') return el('span', { class: 'sx-c solid wild', style: { background: '#6c3fd6', 'font-size': '.62rem' }, text: 'JK', title: 'Joker' });
     var m = /^(10|[3-9JQK])([thcsd])$/.exec(code); if (!m) return null;
     var s = FC[m[2]];
     return el('span', { class: 'sx-c' + (m[1] === wildRank ? ' wild' : ''), style: { color: s[1] }, html: m[1] + '<small>' + s[0] + '</small>' });
@@ -221,7 +222,7 @@
     d.out.split('').forEach(function (o, i) {
       strip.appendChild(el('div', null, [el('span', { class: 'crown', text: FCR[i] }), el('small', { class: o === '-' ? 'none' : '', text: o === '-' ? '–' : short(P[+o], 8) })]));
     });
-    out.push(ui.section('Wild card each round · who went out', strip, { icon: 'crown' }));
+    out.push(ui.section('Wilds and who went out', strip, { icon: 'crown' }));
     if (d.fin && d.fin.length) {
       var wr = FCR[nR - 1], felt = el('div', { class: 'sx-felt' });
       P.forEach(function (x, i) {
@@ -264,8 +265,8 @@
   // ── Phase 10: the phase ladder, skips, the last phases laid down ───────────
   var P10 = { r: '#e0253a', b: '#1e6fdc', g: '#169a4c', y: '#f0b000' };
   function p10card(code) {
-    if (code === 'w') return el('span', { class: 'sx-c solid', style: { background: '#1d1b2e', fontSize: '.6rem' }, text: 'WILD' });
-    if (code === 's') return el('span', { class: 'sx-c solid', style: { background: '#26335c', fontSize: '.6rem' }, text: 'SKIP' });
+    if (code === 'w') return el('span', { class: 'sx-c solid', style: { background: '#1d1b2e', 'font-size': '.62rem' }, text: 'W', title: 'Wild' });
+    if (code === 's') return el('span', { class: 'sx-c solid', style: { background: '#26335c', 'font-size': '.62rem' }, text: 'S', title: 'Skip' });
     var m = /^([rbgy])(\d+)$/.exec(code); if (!m) return null;
     return el('span', { class: 'sx-c solid', style: { background: P10[m[1]] }, text: m[2] });
   }
@@ -275,7 +276,7 @@
     var rows = P.map(function (x, i) {
       return [{ th: 1, c: 'nm', t: short(x, 9) }].concat(d.made.map(function (m, r) {
         var h = d.h[r], ph = h ? nums(h.a)[i] : '', ok = m.charAt(i) === '1', went = h && h.o === i;
-        return { t: ph, c: ok ? 'hit' : 'miss', title: 'Phase ' + ph + (ok ? ' made' : ' missed') + (went ? ', went out' : ''), style: went ? { boxShadow: 'inset 0 0 0 2px #ffd75e' } : null };
+        return { t: ph, c: ok ? 'hit' : 'miss', title: 'Phase ' + ph + (ok ? ' made' : ' missed') + (went ? ', went out' : ''), style: went ? { 'box-shadow': 'inset 0 0 0 2px #ffd75e' } : null };
       }));
     });
     out.push(ui.section('Phase ladder', [grid([{ t: 'Hand' }].concat(d.made.map(function (m, r) { return { t: String(r + 1) }; })), rows),
@@ -336,10 +337,10 @@
       var tot = [0, 0, 0, 0, 0, 0, 0];
       var rows = T.b.map(function (s) {
         var a = s.split('|'), v = a.slice(2, 9).map(Number); v.forEach(function (x, k) { tot[k] += x; });
-        return [short(a[0], 16) + (a[1] ? ' ' + a[1] : '') + (a[9] === '1' ? ' (out)' : '')].concat(v.map(function (x, k) { return k === 2 && x >= 2 || k === 3 && x ? { t: x, c: 'hi' } : x; }));
+        return [short(a[0], 15) + (a[1] ? ' ' + a[1] : '') + (a[9] === '1' ? ' (out)' : '')].concat(v.map(function (x, k) { return k === 2 && x >= 2 || k === 3 && x ? { t: x, c: 'hi' } : x; }));
       });
-      var nodes = [ui.table(['', 'AB', 'R', 'H', 'HR', 'RBI', 'BB', 'K'], rows, { foot: ['Team'].concat(tot) })];
-      if (T.p && T.p.length) nodes.push(ui.table(['Pitching', 'IP', 'H', 'R', 'BB', 'K', 'HR', 'PC'], T.p.map(function (s) { var a = s.split('|'); return [short(a[0], 16), Math.floor(a[1] / 3) + '.' + a[1] % 3].concat(a.slice(2)); })));
+      var nodes = [ui.table(['', 'AB', 'R', 'H', 'HR', 'RBI', 'BB', 'K'], rows, { foot: ['Team'].concat(tot), cls: 'sx-box' })];
+      if (T.p && T.p.length) nodes.push(ui.table(['Pitching', 'IP', 'H', 'R', 'BB', 'K', 'HR', 'PC'], T.p.map(function (s) { var a = s.split('|'); return [short(a[0], 15), Math.floor(a[1] / 3) + '.' + a[1] % 3].concat(a.slice(2)); })));
       out.push(ui.section(T.n + ' box score', nodes));
     });
     if (d.plays && d.plays.length) {
@@ -361,10 +362,6 @@
     var low = !!e.lowWins, n = P.length, run = P.map(function () { return 0; }), cum = [];
     sc.forEach(function (r) { r.forEach(function (v, i) { run[i] += Number(v) || 0; }); cum.push(run.slice()); });
     var out = [];
-    if (sc.length >= 2) {
-      var series = P.map(function (x, i) { return { name: x, color: ui.color(i), pts: [0].concat(cum.map(function (c) { return c[i]; })) }; });
-      out.push(ui.section('The race', ui.picture(lineChart(series, { aria: 'Running totals by round', xl: function (i) { return i === 0 ? 'Start' : i; } }), { frame: 'dark', max: 420 }), { icon: 'chart' }));
-    }
     function leader(c) { var b = null, w = -1, tie = false; c.forEach(function (v, i) { if (b === null || (low ? v < b : v > b)) { b = v; w = i; tie = false; } else if (v === b) tie = true; }); return tie ? -1 : w; }
     var changes = 0, prev = -1, ledRounds = P.map(function () { return 0; });
     cum.forEach(function (c) { var l = leader(c); if (l >= 0) { ledRounds[l]++; if (prev >= 0 && l !== prev) changes++; prev = l; } });
