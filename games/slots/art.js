@@ -158,8 +158,8 @@ export function woodCanvas(size, pal, seed) {
   const A = pal[0], B = pal[1], C = pal[2];
   for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
     const u = i / size, v = j / size;
-    const warp = n1(u * 8, v * 8) * 1.6 + n2(u * 32, v * 32) * 0.25;
-    const ring = Math.sin((u * 3.2 + warp * 0.9 + v * 0.18) * Math.PI * 2 * 3.5);
+    const warp = n1(u * 8, v * 8) * 0.5 + n2(u * 32, v * 32) * 0.08;
+    const ring = Math.sin((u * 13 + warp * 1.2 + v * 0.25) * Math.PI * 2);
     let t = 0.5 + 0.5 * ring; t = Math.pow(t, 1.6);
     const fine = n2(u * 32 * 4, v * 32) * 0.18 - 0.09;
     const k = Math.min(1, Math.max(0, t + fine)), o = (j * size + i) * 4;
@@ -209,7 +209,7 @@ export function paintTopGlass(ctx, W, H, o) {
   const x = ctx;
   x.clearRect(0, 0, W, H);
   // marquee band: deep red enamel, title in gold script, "SEVENS" in gold block letters
-  const mh = H * 0.36;
+  const mh = H * 0.3;
   x.fillStyle = rg(x, W / 2, 0, 10, W * 0.8, [[0, '#e8283a'], [0.55, '#a50f1d'], [1, '#5c0610']]); x.fillRect(0, 0, W, mh);
   x.fillStyle = lg(x, 0, 0, 0, mh, [[0, 'rgba(255,255,255,.18)'], [0.3, 'rgba(255,255,255,0)'], [1, 'rgba(0,0,0,.25)']]); x.fillRect(0, 0, W, mh);
   x.font = '400 ' + (mh * 0.46) + 'px "Great Vibes",cursive'; x.textAlign = 'center'; x.textBaseline = 'middle';

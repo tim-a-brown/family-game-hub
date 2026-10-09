@@ -17,7 +17,7 @@ import * as Art from './art.js';
 
 const FOV = 30;
 const THEME = {
-  classic: { kind: 'mech', W: 0.66, D: 0.5, baseH: 0.5, mainH: 0.5, topH: 0.3, ratio: 0.78, sw: 0.84, led: ['#ff5a3c', '#ffd45a'], msg: '#ffd45a', tabs: true,
+  classic: { kind: 'mech', W: 0.66, D: 0.5, baseH: 0.5, mainH: 0.5, topH: 0.4, ratio: 0.72, sw: 0.84, led: ['#ff5a3c', '#ffd45a'], msg: '#ffd45a', tabs: true,
     spin: ['#ffb0b0', '#e01e2e', '#7a0410', '#fff'], btn: ['#fff3c0', '#f0b030', '#8a5a08', '#2b1a00'], reflect: 0 },
   buffalo: { kind: 'video', W: 0.7, D: 0.5, baseH: 0.52, mainH: 0.68, topH: 0.18, ratio: 0.8, sw: 0.9, body: 0x3a1a0a, trim: 'brass', edge: '#ff9a5a', led: ['#ff7a2e', '#ffd45a'], msg: '#ffd45a',
     spin: ['#fff3c0', '#ffc83d', '#b45f05', '#3a1600'], btn: ['#ffd9b0', '#c86a2a', '#5a2a08', '#fff'], hud: '#ffe7b0', reflect: 0.12 },
@@ -121,10 +121,10 @@ export class Cabinet {
       // a faint mirror image on the polished floor
       this.mirror = new THREE.Group(); this.mirror.scale.y = -1; this.root.add(this.mirror);
       this.body.children.forEach(mesh => {
-        const mm = mesh.material.clone(); mm.transparent = true; mm.opacity = this.T.reflect; mm.depthWrite = false; mm.envMapIntensity = (mm.envMapIntensity || 1) * 0.5;
+        const mm = mesh.material.clone(); mm.transparent = true; mm.opacity = this.T.reflect; mm.depthWrite = false; mm.side = THREE.BackSide; mm.envMapIntensity = (mm.envMapIntensity || 1) * 0.5;
         const c = new THREE.Mesh(mesh.geometry, mm); c.renderOrder = -2; this.mirror.add(c);
       });
-      (this.mirrorExtra || []).forEach(m => { const c = m.clone(); c.material = m.material.clone(); c.material.transparent = true; c.material.opacity = this.T.reflect * 1.5; c.material.depthWrite = false; c.renderOrder = -2; this.mirror.add(c); });
+      (this.mirrorExtra || []).forEach(m => { const c = m.clone(); c.material = m.material.clone(); c.material.transparent = true; c.material.opacity = this.T.reflect * 1.5; c.material.depthWrite = false; c.material.side = THREE.BackSide; c.renderOrder = -2; this.mirror.add(c); });
     }
   }
   plane(w, h, mat, x, y, z, rot) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(x, y, z); if (rot) m.rotation.set(rot[0] || 0, rot[1] || 0, rot[2] || 0); this.root.add(m); return m; }
@@ -171,68 +171,72 @@ export class Cabinet {
     const plate = this.display(0.34, 0.06, 512, 96, (x, w, h) => { x.fillStyle = Art.lg(x, 0, 0, 0, h, [[0, '#2a2a30'], [1, '#08080a']]); Art.rr(x, 0, 0, w, h, 14); x.fill(); x.strokeStyle = '#c9d0d7'; x.lineWidth = 4; Art.rr(x, 3, 3, w - 6, h - 6, 12); x.stroke(); x.font = '400 ' + h * 0.5 + 'px "Great Vibes",cursive'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = Art.lg(x, 0, h * 0.2, 0, h * 0.8, [[0, '#fff7d6'], [0.5, '#ffd45a'], [1, '#c4860f']]); x.fillText('Diamond Sevens', w / 2, h * 0.54); });
     plate.mesh.position.set(0, 0.38, F + 0.002); plate.paint();
     // button deck: a sloped slab with a chrome lip
-    L.deck = this.buildDeck(0.56, F, 0.3, 0.07, m.black, m.chrome);
+    L.deck = this.buildDeck(0.575, F, 0.26, 0.06, m.black, m.chrome);
     // main body, recessed 0.09 so the window has depth; wood plates frame the window
-    const win = { x0: -0.25, x1: 0.25, y0: 0.76, y1: 1.04 }, rec = 0.09;
+    const win = { x0: -0.25, x1: 0.25, y0: 0.73, y1: 1.05 }, rec = 0.09, wh = win.y1 - win.y0, wc = (win.y0 + win.y1) / 2;
     this.box(W, 0.5, D - rec, 0.01, m.walnut, 0, 0.83, -rec / 2);
-    this.box(W, 0.04, rec, 0.004, m.walnut, 0, win.y1 + 0.02, F - rec / 2);
-    this.box(W, 0.18, rec, 0.004, m.walnut, 0, 0.67, F - rec / 2);
-    this.box((W - 0.5) / 2, 0.28, rec, 0.004, m.walnut, -(0.25 + (W - 0.5) / 4), 0.9, F - rec / 2);
-    this.box((W - 0.5) / 2, 0.28, rec, 0.004, m.walnut, (0.25 + (W - 0.5) / 4), 0.9, F - rec / 2);
+    this.box(W, 0.03, rec, 0.004, m.walnut, 0, win.y1 + 0.015, F - rec / 2);
+    this.box(W, 0.15, rec, 0.004, m.walnut, 0, 0.655, F - rec / 2);
+    this.box((W - 0.5) / 2, wh, rec, 0.004, m.walnut, -(0.25 + (W - 0.5) / 4), wc, F - rec / 2);
+    this.box((W - 0.5) / 2, wh, rec, 0.004, m.walnut, (0.25 + (W - 0.5) / 4), wc, F - rec / 2);
     // dark liner inside the window
-    this.add(new THREE.PlaneGeometry(0.5, 0.28), m.inner, 0, 0.9, F - rec + 0.001);
-    this.add(new THREE.PlaneGeometry(rec, 0.28), m.inner, win.x0 + 0.001, 0.9, F - rec / 2, [0, Math.PI / 2, 0]);
-    this.add(new THREE.PlaneGeometry(rec, 0.28), m.inner, win.x1 - 0.001, 0.9, F - rec / 2, [0, -Math.PI / 2, 0]);
+    this.add(new THREE.PlaneGeometry(0.5, wh), m.inner, 0, wc, F - rec + 0.001);
+    this.add(new THREE.PlaneGeometry(rec, wh), m.inner, win.x0 + 0.001, wc, F - rec / 2, [0, Math.PI / 2, 0]);
+    this.add(new THREE.PlaneGeometry(rec, wh), m.inner, win.x1 - 0.001, wc, F - rec / 2, [0, -Math.PI / 2, 0]);
     this.add(new THREE.PlaneGeometry(0.5, rec), m.inner, 0, win.y1 - 0.001, F - rec / 2, [Math.PI / 2, 0, 0]);
     this.add(new THREE.PlaneGeometry(0.5, rec), m.inner, 0, win.y0 + 0.001, F - rec / 2, [-Math.PI / 2, 0, 0]);
     // chrome bezel and reel dividers
     const bz = 0.022;
     this.box(0.5 + bz * 2, bz, 0.016, 0.005, m.chrome, 0, win.y1 + bz / 2, F + 0.004);
     this.box(0.5 + bz * 2, bz, 0.016, 0.005, m.chrome, 0, win.y0 - bz / 2, F + 0.004);
-    this.box(bz, 0.28, 0.016, 0.005, m.chrome, win.x0 - bz / 2, 0.9, F + 0.004);
-    this.box(bz, 0.28, 0.016, 0.005, m.chrome, win.x1 + bz / 2, 0.9, F + 0.004);
+    this.box(bz, wh, 0.016, 0.005, m.chrome, win.x0 - bz / 2, wc, F + 0.004);
+    this.box(bz, wh, 0.016, 0.005, m.chrome, win.x1 + bz / 2, wc, F + 0.004);
     const n = this.M.reels.length, cw = 0.5 / n, gap = 0.018;
-    for (let i = 1; i < n; i++) this.box(gap, 0.28, 0.012, 0.004, m.chrome, win.x0 + i * cw, 0.9, F + 0.002);
+    for (let i = 1; i < n; i++) this.box(gap, wh, 0.012, 0.004, m.chrome, win.x0 + i * cw, wc, F + 0.002);
     // corner trims on the body
     [-1, 1].forEach(s => { this.box(0.016, 0.5, 0.016, 0.005, m.chrome, s * (W / 2 - 0.008), 0.83, F - 0.008); this.box(0.016, 0.44, 0.016, 0.005, m.chrome, s * (W / 2 - 0.008), 0.28, F - 0.008); });
     // reels: drums inside the recess
-    const ch = 0.28 / this.M.rows, R = ch * 16 / (2 * Math.PI);
-    L.reel = { kind: 'mech', top: win.y1, cy: 0.9, ch: ch, cw: cw - gap, R: R, zc: F - 0.028 - R, xs: [] };
+    const ch = wh / this.M.rows, R = ch * 16 / (2 * Math.PI);
+    L.reel = { kind: 'mech', top: win.y1, cy: wc, ch: ch, cw: cw - gap, R: R, zc: F - 0.028 - R, xs: [] };
     for (let i = 0; i < n; i++) L.reel.xs.push(win.x0 + cw * (i + 0.5));
     L.win = { x0: win.x0, x1: win.x1, y0: win.y0, y1: win.y1, z: F + 0.004 };
     this.buildReels(L.reel, [new THREE.Plane(new THREE.Vector3(0, -1, 0), win.y1), new THREE.Plane(new THREE.Vector3(0, 1, 0), -win.y0)]);
+    // the window's shade: the drums fall into darkness at the top and bottom of the opening
+    const [shc, shx] = Art.cv(16, 256); shx.fillStyle = Art.lg(shx, 0, 0, 0, 256, [[0, 'rgba(10,5,0,.78)'], [0.2, 'rgba(10,5,0,.1)'], [0.42, 'rgba(255,255,255,.06)'], [0.56, 'rgba(255,255,255,0)'], [0.8, 'rgba(10,5,0,.1)'], [1, 'rgba(10,5,0,.78)']]); shx.fillRect(0, 0, 16, 256);
+    const shade = this.plane(0.5, wh, unlit(shc, { transparent: true, depthWrite: false }), 0, wc, F + 0.0005); shade.renderOrder = 4;
     // glass over the window
-    this.glass = this.plane(0.5, 0.28, m.glass, 0, 0.9, F + 0.0015); this.glass.renderOrder = 5;
+    this.glass = this.plane(0.5, wh, m.glass, 0, wc, F + 0.0015); this.glass.renderOrder = 5;
     // message strip and meters set into the wood below the window
-    this.msgD = this.display(0.46, 0.042, 1024, 96, (x, w, h, st) => Art.paintMsg(x, w, h, st.text, st.good, T.msg)); this.msgD.mesh.position.set(0, 0.725, F + 0.002);
-    this.metD = this.display(0.5, 0.072, 1024, 148, (x, w, h, st) => Art.paintMeters(x, w, h, st, T.led)); this.metD.mesh.position.set(0, 0.64, F + 0.002);
-    this.box(0.47, 0.052, 0.01, 0.004, m.chrome, 0, 0.725, F - 0.003);
-    this.box(0.51, 0.082, 0.01, 0.004, m.chrome, 0, 0.64, F - 0.003);
+    this.msgD = this.display(0.46, 0.04, 1024, 90, (x, w, h, st) => Art.paintMsg(x, w, h, st.text, st.good, T.msg)); this.msgD.mesh.position.set(0, 0.692, F + 0.002);
+    this.metD = this.display(0.5, 0.066, 1024, 136, (x, w, h, st) => Art.paintMeters(x, w, h, st, T.led)); this.metD.mesh.position.set(0, 0.628, F + 0.002);
+    this.box(0.47, 0.05, 0.01, 0.004, m.chrome, 0, 0.692, F - 0.003);
+    this.box(0.51, 0.076, 0.01, 0.004, m.chrome, 0, 0.628, F - 0.003);
     // top box: chrome-crowned, holds the printed glass with the marquee and the pay card
-    this.box(W + 0.02, 0.3, D, 0.035, m.walnut, 0, 1.23, 0, null, 3);
-    this.box(W + 0.03, 0.03, D + 0.01, 0.01, m.chrome, 0, 1.375, 0);
-    const gl = { w: 0.6, h: 0.26 };
-    this.add(new THREE.PlaneGeometry(gl.w + 0.03, gl.h + 0.03), m.inner, 0, 1.23, F - 0.002);
-    this.box(gl.w + 0.05, 0.02, 0.014, 0.005, m.chrome, 0, 1.23 + gl.h / 2 + 0.01, F + 0.004);
-    this.box(gl.w + 0.05, 0.02, 0.014, 0.005, m.chrome, 0, 1.23 - gl.h / 2 - 0.01, F + 0.004);
-    this.box(0.02, gl.h + 0.05, 0.014, 0.005, m.chrome, -gl.w / 2 - 0.01, 1.23, F + 0.004);
-    this.box(0.02, gl.h + 0.05, 0.014, 0.005, m.chrome, gl.w / 2 + 0.01, 1.23, F + 0.004);
-    this.topD = this.display(gl.w, gl.h, 1024, Math.round(1024 * gl.h / gl.w), (x, w, h, st) => Art.paintTopGlass(x, w, h, st)); this.topD.mesh.position.set(0, 1.23, F + 0.0005);
-    this.topGlass = this.plane(gl.w, gl.h, m.glass, 0, 1.23, F + 0.0025); this.topGlass.renderOrder = 5;
-    L.glass = { x0: -gl.w / 2, x1: gl.w / 2, y0: 1.23 - gl.h / 2, y1: 1.23 + gl.h / 2, z: F };
+    const tc = 1.28, th = 0.4;
+    this.box(W + 0.02, th, D, 0.035, m.walnut, 0, tc, 0, null, 3);
+    this.box(W + 0.03, 0.03, D + 0.01, 0.01, m.chrome, 0, tc + th / 2 - 0.005, 0);
+    const gl = { w: 0.6, h: 0.35 };
+    this.add(new THREE.PlaneGeometry(gl.w + 0.03, gl.h + 0.03), m.inner, 0, tc, F - 0.002);
+    this.box(gl.w + 0.05, 0.02, 0.014, 0.005, m.chrome, 0, tc + gl.h / 2 + 0.01, F + 0.004);
+    this.box(gl.w + 0.05, 0.02, 0.014, 0.005, m.chrome, 0, tc - gl.h / 2 - 0.01, F + 0.004);
+    this.box(0.02, gl.h + 0.05, 0.014, 0.005, m.chrome, -gl.w / 2 - 0.01, tc, F + 0.004);
+    this.box(0.02, gl.h + 0.05, 0.014, 0.005, m.chrome, gl.w / 2 + 0.01, tc, F + 0.004);
+    this.topD = this.display(gl.w, gl.h, 1024, Math.round(1024 * gl.h / gl.w), (x, w, h, st) => Art.paintTopGlass(x, w, h, st)); this.topD.mesh.position.set(0, tc, F + 0.0005);
+    this.topGlass = this.plane(gl.w, gl.h, m.glass, 0, tc, F + 0.0025); this.topGlass.renderOrder = 5;
+    L.glass = { x0: -gl.w / 2, x1: gl.w / 2, y0: tc - gl.h / 2, y1: tc + gl.h / 2, z: F };
     // bulbs around the top glass
-    const pts = [], nb = 22, bx = gl.w / 2 + 0.035, by = gl.h / 2 + 0.035;
-    for (let i = 0; i < nb; i++) { const u = i / nb; let px, py; if (u < 0.36) { px = -bx + (u / 0.36) * 2 * bx; py = by; } else if (u < 0.5) { px = bx; py = by - ((u - 0.36) / 0.14) * 2 * by; } else if (u < 0.86) { px = bx - ((u - 0.5) / 0.36) * 2 * bx; py = -by; } else { px = -bx; py = -by + ((u - 0.86) / 0.14) * 2 * by; } pts.push([px, 1.23 + py, F + 0.018]); }
+    const pts = [], nb = 26, bx = gl.w / 2 + 0.034, by = gl.h / 2 + 0.034;
+    for (let i = 0; i < nb; i++) { const u = i / nb; let px, py; if (u < 0.34) { px = -bx + (u / 0.34) * 2 * bx; py = by; } else if (u < 0.5) { px = bx; py = by - ((u - 0.34) / 0.16) * 2 * by; } else if (u < 0.84) { px = bx - ((u - 0.5) / 0.34) * 2 * bx; py = -by; } else { px = -bx; py = -by + ((u - 0.84) / 0.16) * 2 * by; } pts.push([px, tc + py, F + 0.018]); }
     this.bulbRing(pts);
     // the pull handle on the right
-    this.box(0.05, 0.16, 0.1, 0.012, m.chrome, W / 2 + 0.024, 0.9, 0.06);
-    const hg = new THREE.Group(); hg.position.set(W / 2 + 0.065, 0.9, 0.06); this.root.add(hg);
+    this.box(0.05, 0.18, 0.11, 0.012, m.chrome, W / 2 + 0.024, wc, 0.06);
+    const hg = new THREE.Group(); hg.position.set(W / 2 + 0.065, wc, 0.06); this.root.add(hg);
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.032, 24), m.chrome); hub.rotation.z = Math.PI / 2; hub.castShadow = true; hg.add(hub);
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.012, 0.32, 16), m.chrome); rod.position.y = 0.16; rod.castShadow = true; hg.add(rod);
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.046, 32, 24), m.red); ball.position.y = 0.34; ball.castShadow = true; hg.add(ball);
     this.handle = { g: hg, p: 0, len: 0.39 };
     this.mirrorExtra = [this.glass, this.topGlass];
-    L.height = 1.4; L.width = W + 0.18;
+    L.height = 1.5; L.width = W + 0.18;
     return L;
   }
   // ── Video cabinets: lacquered upright with an LCD, lit topper and LED edges ──
@@ -246,7 +250,7 @@ export class Cabinet {
     this.bellyD = this.display(0.56, 0.24, 1024, 440, (x, w, h, st) => Art.paintBelly(this.mode, x, w, h, st.name, this.atlas, st.keys)); this.bellyD.mesh.position.set(0, 0.3, F + 0.001);
     this.box(0.58, 0.012, 0.012, 0.004, m.trim, 0, 0.3 + 0.126, F + 0.004); this.box(0.58, 0.012, 0.012, 0.004, m.trim, 0, 0.3 - 0.126, F + 0.004);
     this.box(0.012, 0.26, 0.012, 0.004, m.trim, -0.286, 0.3, F + 0.004); this.box(0.012, 0.26, 0.012, 0.004, m.trim, 0.286, 0.3, F + 0.004);
-    L.deck = this.buildDeck(0.58, F, 0.3, 0.07, m.black, m.trim);
+    L.deck = this.buildDeck(0.595, F, 0.24, 0.06, m.black, m.trim);
     // main box with the screen
     this.box(W, 0.68, D, 0.012, m.lacquer, 0, 0.6 + 0.34, 0);
     const sc = { w: 0.6, h: 0.58, y: 0.94 }, bz = 0.03;
@@ -288,23 +292,25 @@ export class Cabinet {
     return L;
   }
   // the sloped button deck: slab, lip, buttons with lit caps, two readouts printed on the surface
-  buildDeck(y, F, depth, thick, slabMat, lipMat) {
-    const T = this.T, g = new THREE.Group(), tilt = 0.56;
-    g.position.set(0, y - 0.02, F + depth / 2 * Math.cos(tilt) - 0.01); g.rotation.x = tilt; this.root.add(g);
+  buildDeck(backTop, F, depth, thick, slabMat, lipMat) {
+    const T = this.T, g = new THREE.Group(), tilt = 0.5, cs = Math.cos(tilt), sn = Math.sin(tilt);
+    // the slab's top-back edge sits exactly on the body's front face at backTop
+    const offY = (thick / 2) * cs + (depth / 2) * sn, offZ = (thick / 2) * sn - (depth / 2) * cs, y = backTop;
+    g.position.set(0, backTop - offY, F - offZ); g.rotation.x = tilt; this.root.add(g);
     const W = T.W + 0.02;
     const slab = new THREE.Mesh(new RoundedBoxGeometry(W, thick, depth, 2, 0.012), slabMat); slab.castShadow = true; slab.receiveShadow = true; g.add(slab);
     const lip = new THREE.Mesh(new RoundedBoxGeometry(W + 0.01, 0.018, 0.03, 2, 0.006), lipMat); lip.position.set(0, -0.01, depth / 2 - 0.005); g.add(lip);
     // a block under the slab back to the body
-    const blk = new THREE.Mesh(new RoundedBoxGeometry(T.W - 0.02, 0.1, 0.2, 2, 0.01), this.mats.black); blk.position.set(0, y - 0.11, F + 0.07); blk.castShadow = true; this.root.add(blk);
+    const blk = new THREE.Mesh(new RoundedBoxGeometry(T.W - 0.02, 0.1, 0.16, 2, 0.01), this.mats.black); blk.position.set(0, y - 0.12, F + 0.05); blk.castShadow = true; this.root.add(blk);
     // surface print
     const [sc, sx] = Art.cv(1024, Math.round(1024 * depth / W)); this.deckC = { c: sc, x: sx };
     const surf = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.02, depth - 0.02), unlit(sc, { transparent: true })); surf.rotation.x = -Math.PI / 2; surf.position.y = thick / 2 + 0.0008; surf.renderOrder = 1; g.add(surf); this.deckSurf = surf;
     // buttons
-    const hasLines = this.M.lineOpts.length > 1, zb = -0.085, zf = 0.075, spec = [];
-    if (hasLines) spec.push(['lm', -0.27, zb, 'round', 0.03], ['lp', -0.09, zb, 'round', 0.03], ['bm', 0.09, zb, 'round', 0.03], ['bp', 0.27, zb, 'round', 0.03]);
-    else spec.push(['bm', -0.11, zb, 'round', 0.03], ['bp', 0.11, zb, 'round', 0.03]);
-    spec.push(['max', -0.17, zf, 'rect', 0.17, 0.062], ['spin', 0.14, zf, 'round', 0.058]);
-    this.deckReadouts = hasLines ? [{ key: 'lines', x: 0.5 - 0.18 / W, y: 0.5 - zb / depth, w: 0.1, label: 'Lines' }, { key: 'bet', x: 0.5 + 0.18 / W, y: 0.5 - zb / depth, w: 0.1, label: 'Per line' }] : [{ key: 'bet', x: 0.5, y: 0.5 - zb / depth, w: 0.14, label: this.mode === 'buffalo' ? 'Credits a spin' : 'Bet a spin' }];
+    const hasLines = this.M.lineOpts.length > 1, zb = -0.066, zf = 0.062, spec = [];
+    if (hasLines) spec.push(['lm', -0.27, zb, 'round', 0.026], ['lp', -0.09, zb, 'round', 0.026], ['bm', 0.09, zb, 'round', 0.026], ['bp', 0.27, zb, 'round', 0.026]);
+    else spec.push(['bm', -0.12, zb, 'round', 0.026], ['bp', 0.12, zb, 'round', 0.026]);
+    spec.push(['max', -0.17, zf, 'rect', 0.16, 0.056], ['spin', 0.15, zf, 'round', 0.052]);
+    this.deckReadouts = hasLines ? [{ key: 'lines', x: 0.5 - 0.18 / W, y: 0.5 + zb / depth, w: 0.11, label: 'Lines' }, { key: 'bet', x: 0.5 + 0.18 / W, y: 0.5 + zb / depth, w: 0.11, label: 'Per line' }] : [{ key: 'bet', x: 0.5, y: 0.5 + zb / depth, w: 0.13, label: this.mode === 'buffalo' ? 'Credits a spin' : 'Bet a spin' }];
     spec.forEach(s => {
       const key = s[0], bg = new THREE.Group(); bg.position.set(s[1], thick / 2, s[2]); g.add(bg);
       let ring, cap, cw, chh;
@@ -411,10 +417,10 @@ export class Cabinet {
   buildLights() {
     const a = this.o.amb || { l: '#ffb35a', r: '#ff6a3a', t: '#ffd9a0', floor: '#2a0c0c' };
     this.scene.add(new THREE.HemisphereLight(new THREE.Color(a.t), new THREE.Color(a.floor), 0.55));
-    const key = new THREE.DirectionalLight(0xfff1dc, 2.6); key.position.set(-1.7, 3.2, 2.4); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
+    const key = new THREE.DirectionalLight(0xfff1dc, 2.4); key.position.set(-1.5, 3.4, 1.1); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
     key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 8;
     key.shadow.camera.left = -1.1; key.shadow.camera.right = 1.1; key.shadow.camera.top = 1.6; key.shadow.camera.bottom = -0.6; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.015; key.shadow.radius = 4;
-    const fill = new THREE.DirectionalLight(new THREE.Color(a.r), 0.6); fill.position.set(1.8, 1.4, 2.2); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight(0xfff4e8, 0.9); fill.position.set(1.4, 1.6, 2.6); this.scene.add(fill);
     const rimL = new THREE.PointLight(new THREE.Color(a.l), 7, 5, 2); rimL.position.set(-1.4, 1.5, -0.5); this.scene.add(rimL);
     const rimR = new THREE.PointLight(new THREE.Color(a.r), 7, 5, 2); rimR.position.set(1.4, 1.3, -0.5); this.scene.add(rimR);
     this.flashL = new THREE.PointLight(0xffe9b0, 0, 4, 2); this.flashL.position.set(0, 1.1, 1.3); this.scene.add(this.flashL);
