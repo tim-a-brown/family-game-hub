@@ -8518,6 +8518,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function fitLz(ov) {
     if (!ov || !ov.isConnected || !phoneZoom() || !S || ui.screen !== 'game' || ov.classList.contains('lz-min') || ov.classList.contains('reveal')) return;
+    // sized once, when the view opens (for the wordiest card in the row); swiping never resizes it after that
+    if (ui.fitDone) return; ui.fitDone = true;
     var over = ov.scrollHeight - ov.clientHeight;
     // swiping through several cards: size for the one with the most to read, so the size is set once when it opens
     var inf = $('.lz-in > .lz-info', ov);
@@ -8694,7 +8696,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     // Phones, in a game: the card shrinks so the details below fit on screen without scrolling. A fresh look starts
     // full size; as you swipe it only ever shrinks (never grows back), so the cards don't keep changing size
-    if (!(swapping || keep)) { ui.fitCu = 0; ui.fitKey = null; }
+    if (!(swapping || keep)) { ui.fitCu = 0; ui.fitKey = null; ui.fitDone = false; }
     if (ui.fitCu) { ov.classList.add('lz-fit'); ov.style.setProperty('--cufit', ui.fitCu + 'px'); }
     document.body.appendChild(ov);
     if (!opt.tapClose) { lzFeed(); requestAnimationFrame(function () { fitLz(ov); }); }
