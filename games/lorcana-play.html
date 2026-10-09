@@ -1057,6 +1057,17 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .act .pips em{font-style:normal;font-weight:800;font-size:.74rem;color:rgba(246,225,168,.75);}
 .act .pips em.pn{margin-left:5px;font-size:.72rem;color:rgba(246,225,168,.7);}
 /* Battery saver: the looping shimmer holds still (drips stay as still drips; game animations are untouched) */
+.lz.arrive{transition:opacity .32s ease-out;}
+.lz.arrive .lz-in > .lz-flow,.lz.arrive .lz-in > .lz-info{animation:lzArrive .52s cubic-bezier(.2,.8,.25,1) both;}
+.lz.arrive .lz-in > .lz-flow{--ay:7vh;}
+.lz.arrive .lz-in > .lz-info{--ay:-6vh;animation-delay:.07s;}
+.lz.arrive .lz-in > .lz-acts{animation:lzArriveBtn .42s cubic-bezier(.2,.8,.25,1) .2s both;}
+@keyframes lzArriveBtn{from{opacity:0;scale:.94;}}
+@media (min-width:900px) and (orientation:landscape){.lz.arrive .lz-in > .lz-flow{--ay:0px;--ax:5vw;}.lz.arrive .lz-in > .lz-info{--ay:0px;--ax:-5vw;}}
+@keyframes lzArrive{from{opacity:0;translate:var(--ax,0px) var(--ay,0px);}}
+@keyframes lzArriveFade{from{opacity:0;}}
+.lorc-saver .lz.arrive .lz-in > .lz-flow,.lorc-saver .lz.arrive .lz-in > .lz-info,.lorc-saver .lz.arrive .lz-in > .lz-acts{animation:lzArriveFade .25s ease-out both!important;}   /* battery saver: a plain fade */
+@media (prefers-reduced-motion:reduce){.lz.arrive .lz-in > .lz-flow,.lz.arrive .lz-in > .lz-info,.lz.arrive .lz-in > .lz-acts{animation:lzArriveFade .2s ease-out both;}}
 .lorc-saver .drips i{animation:none;opacity:.95;}
 .lorc-saver .drips i::before{animation:none;transform:scaleY(.7586);}
 .lorc-saver .drips i::after{animation:none;transform:translateY(calc(var(--cu) * .22));}
@@ -8806,6 +8817,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     ov.appendChild(inner);
     if (!opt.modal && !opt.tapClose) ov.appendChild(el('button', { type: 'button', class: 'icon-btn lz-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeZoom }));
     if (opt.modal) ov.classList.add('modal');
+    // a prompt the game opens (ability, choose a card) arrives: the card and its details glide in from the middle
+    if (opt.modal && !swapping && !keep) { ov.classList.add('arrive'); setTimeout(function () { ov.classList.remove('arrive'); }, 900); }
     if (opt.tapClose) ov.addEventListener('click', function () { ov.remove(); if (opt.onClose) opt.onClose(); });
     else if (!opt.modal) ov.addEventListener('click', function (e) { if (e.target === ov || e.target === inner) closeZoom(); });
     function step(k) { if (F) F.settle(nav.i + k); else { var j = nav.i + k; if (j >= 0 && j < nav.n) nav.go(k); } }
