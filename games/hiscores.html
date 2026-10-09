@@ -65,13 +65,16 @@ body.hs .gbar{background:rgba(7,6,15,.9);}
 @keyframes flick{0%{opacity:1}50%{opacity:.965}52%{opacity:1}}
 .sb .hd{flex:none;padding:16px 12px 8px;text-align:center;}
 .sb .hd b{display:block;font-weight:400;font-size:clamp(11px,5.6cqi,16px);color:var(--hc);letter-spacing:.08em;}
-.sb .hd .cols{display:grid;grid-template-columns:var(--gc);gap:0 6px;margin-top:14px;font-size:clamp(7px,3.3cqi,10px);color:var(--lc);text-shadow:none;opacity:.85;}
+/* headings share the rows' font size so the em-based columns line up exactly; the words are just drawn smaller */
+.sb .hd .cols{display:grid;grid-template-columns:var(--gc);gap:0 6px;margin-top:14px;font-size:var(--fs,11px);color:var(--lc);text-shadow:none;opacity:.85;text-align:left;}
+.sb .hd .cols span{font-size:.7em;}
 .sb ol{flex:1;min-height:0;margin:0;padding:2px 12px 8px;list-style:none;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:none;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 8px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(180deg,transparent 0,#000 8px,#000 calc(100% - 14px),transparent);}
 .sb ol::-webkit-scrollbar{display:none;}
-.sb li{display:grid;grid-template-columns:var(--gc);gap:0 6px;align-items:center;min-height:clamp(22px,9cqi,28px);font-size:clamp(8.5px,4cqi,12.5px);color:var(--rc);}
+.sb li{display:grid;grid-template-columns:var(--gc);gap:0 6px;align-items:center;min-height:clamp(22px,9cqi,28px);font-size:var(--fs,11px);color:var(--rc);}
 .sb li .sc,.sb .cols .sc{text-align:right;}
 .sb li .nm{letter-spacing:.12em;white-space:nowrap;}
+.sb li .nm,.sb .cols .nm{padding-left:.55em;}
 .sb li .dt,.sb .cols .dt{font-size:.6em;text-align:right;white-space:nowrap;opacity:.7;}
 .sb li .wh{display:flex;justify-content:flex-end;}
 .sb li .wh canvas{width:20px;height:20px;image-rendering:pixelated;image-rendering:crisp-edges;filter:drop-shadow(0 0 3px var(--rc));}
@@ -220,7 +223,7 @@ Kit.init({ id: 'hiscores', mark: false });
     var g = groupOf(cur), b = BOARDS[cur], gm = findGame(b.game), bc = b.c.sel || b.c.glow;
     GROUPS.forEach(function (x) { x.btn.classList.toggle('on', x === g); x.btn.setAttribute('aria-selected', String(x === g)); });
     cab.style.setProperty('--bcol', bc); cab.style.setProperty('--bink', inkOn(bc));
-    st.querySelector('span').textContent = 'PLAY ' + (b.short || b.title);
+    st.querySelector('span').textContent = 'PLAY ' + (gm ? gm.name : b.title).toUpperCase();
     st.setAttribute('aria-label', 'Play ' + (gm ? gm.name : b.title));
     modes.innerHTML = ''; modes.classList.toggle('on', g.idx.length > 1);
     if (g.idx.length > 1) g.idx.forEach(function (i) {
@@ -295,7 +298,13 @@ Kit.init({ id: 'hiscores', mark: false });
   function paintScores(b) {
     var rows = (typeof ArcadeHi !== 'undefined' && ArcadeHi.board ? ArcadeHi.board(b.key) : []).slice(0, 50);
     var unit = b.unit || 'SCORE', wide = rows.some(function (r) { return r.who || r.mine; });
-    sb.style.setProperty('--gc', '3.9em 1fr 3.3em 4.9em' + (wide ? ' 20px' : ''));
+    // one set of column widths for every row (and the headings): sized for the longest score on this board,
+    // with the text scaled so it all fits the screen
+    var maxLen = Math.max(5, rows.reduce(function (m, r) { return Math.max(m, fmt(r.score).length); }, 0));
+    var ems = 3.9 + maxLen + 0.2 + 4.1 + 4.9, avW = wide ? 20 : 0, gaps = 6 * (wide ? 4 : 3);
+    var avail = Math.max(120, (sb.clientWidth || crt.clientWidth || 260) - 24 - gaps - avW);
+    sb.style.setProperty('--fs', Math.max(7, Math.min(12.5, avail / ems)).toFixed(2) + 'px');
+    sb.style.setProperty('--gc', '3.9em minmax(' + (maxLen + 0.2) + 'em,1fr) 4.1em 4.9em' + (wide ? ' 20px' : ''));
     sb.innerHTML = ''; crt.classList.toggle('dim', rows.length > 0);
     var hd = el('div', { class: 'hd' }, [el('b', { text: 'HALL OF FAME' })]);
     sb.appendChild(hd);
@@ -303,7 +312,7 @@ Kit.init({ id: 'hiscores', mark: false });
       sb.appendChild(el('div', { class: 'em' }, [el('b', { text: 'NO SCORES YET' }), el('b', { text: 'BE THE FIRST' }), el('div', { class: 'blink', text: 'PRESS START' })]));
       return;
     }
-    hd.appendChild(el('div', { class: 'cols' }, [el('span', { text: 'RANK' }), el('span', { class: 'sc', text: unit }), el('span', { text: 'NAME' }), el('span', { class: 'dt', text: 'DATE' })].concat(wide ? [el('span')] : [])));
+    hd.appendChild(el('div', { class: 'cols' }, [el('span', { text: 'RANK' }), el('span', { class: 'sc', text: unit }), el('span', { class: 'nm', text: 'NAME' }), el('span', { class: 'dt', text: 'DATE' })].concat(wide ? [el('span')] : [])));
     list = el('ol', { 'aria-label': b.title + ' high scores' });
     // yellow means you: other rows use the game's colours minus any yellows
     var pal = b.c.rows.filter(function (c) { var n = parseInt(c.slice(1), 16), R = n >> 16, G = (n >> 8) & 255, B = n & 255; return !(R > 200 && G > 170 && B < 140); });
@@ -839,7 +848,7 @@ Kit.init({ id: 'hiscores', mark: false });
   window.addEventListener('storage', function (e) { if (e.key && (e.key.indexOf('hi_') === 0 || e.key === 'fgh_link_hi')) refresh(); });
   window.addEventListener('fghlinks', refresh);
   if (window.FGHSync && FGHSync.onReady) FGHSync.onReady(refresh);
-  var rzT = 0; window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { startArt(BOARDS[cur]); }, 200); });
+  var rzT = 0; window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { startArt(BOARDS[cur]); paintScores(BOARDS[cur]); }, 200); });
 
   var go = function () { show(cur, 0); run(); };
   window.addEventListener('hashchange', function () { var w = location.hash.slice(1); BOARDS.forEach(function (b, i) { if (w && (b.key === w || b.game === w) && i !== cur) show(i, i > cur ? 1 : -1); }); });
