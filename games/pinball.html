@@ -70,9 +70,16 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var TW = 400, TH = 800, DH = 92, CW = TW, CH = TH + DH;
   var BR = 10;                          // ball radius
   var DT = 1 / 480;                     // fixed physics step
-  var GRAV = 1300;                      // gravity down the slope
+  // Scale: the table is 400 units across a real ~0.51 m playfield, so 1 m is
+  // about 780 units and the 800-unit table is ~1.03 m long. The playfield is
+  // tilted 6.5 degrees, so gravity along it is 9.81 x sin(6.5) = 1.11 m/s2.
+  // A rolling solid ball only gets 5/7 of that (the rest spins it up):
+  // 0.79 m/s2 x 780 = ~620 units/s2. From rest, a ball drops half the table in
+  // about 1.1 s; a good flipper shot reaches the top in about 0.8-1 s and hangs.
+  var GRAV = 620;                       // gravity down the inclined playfield (units/s2)
+  var ROLL = 18;                        // rolling resistance: a slight constant deceleration (units/s2)
   var VMAX = 2500;                      // speed cap: at 1/480 s a ball moves at most ~5 units, half its radius
-  var FLIP_UP = 27, FLIP_DN = 15;       // flipper angular speeds (rad/s)
+  var FLIP_UP = 17, FLIP_DN = 12;       // flipper angular speeds (rad/s)
   var DOTW = 160, DOTH = 32;            // DMD resolution
 
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
@@ -95,7 +102,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
       try { AC = new C(); } catch (e) { return null; }
       master = AC.createGain(); master.gain.value = 0.85;
-      var comp = AC.createDynamicsCompressor(); master.connect(comp); comp.connect(AC.destination);
+      var comp = AC.createDynamicsCompressor(); comp.threshold.value = -8; comp.knee.value = 2; comp.ratio.value = 20; comp.attack.value = 0.002; comp.release.value = 0.12; master.connect(comp); comp.connect(AC.destination);
     }
     if (AC.state === 'suspended' && !paused) try { AC.resume(); } catch (e) {}
     return AC;
@@ -125,27 +132,38 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   // rate limit: one sound of a kind per gap seconds
   function rl(k, gap) { var a = ac(); if (!a) return false; var n = a.currentTime; if (sndT[k] && n - sndT[k] < gap) return false; sndT[k] = n; return true; }
+  // A steel ball: hits are short metallic clicks with a resonant ring
+  // (high-Q band of noise plus a few inharmonic partials), flavoured by what
+  // it hits. Volumes scale with impact speed; pitch wobbles a little each time.
+  function rp(a) { return 1 + (Math.random() - 0.5) * a; }
+  function ting(f, vol, dur, t0) {
+    t0 = t0 || 0; if (vol < 0.002) return;
+    noise(t0, Math.min(0.05, dur * 0.4), vol * 1.4, 'bandpass', f, 24);
+    osc('sine', f, t0, dur, vol * 0.45); osc('sine', f * 2.76, t0, dur * 0.55, vol * 0.2); osc('sine', f * 5.4, t0, dur * 0.25, vol * 0.08);
+  }
   var SND = {
-    flipUp: function () { if (!rl('fu', 0.03)) return; noise(0, 0.05, 0.2, 'bandpass', 1400, 1.1); osc('sine', 130, 0, 0.08, 0.26, { to: 55 }); osc('square', 320, 0, 0.025, 0.035, { lp: 1400 }); },
-    flipDn: function () { if (!rl('fd', 0.03)) return; noise(0, 0.03, 0.07, 'bandpass', 700, 1); osc('sine', 90, 0, 0.05, 0.09, { to: 55 }); },
-    pop: function () { if (!rl('pop', 0.035)) return; osc('sine', 200, 0, 0.15, 0.34, { to: 70 }); noise(0, 0.045, 0.22, 'highpass', 2600, 0.7); osc('triangle', 900, 0, 0.05, 0.05, { to: 450 }); },
-    sling: function () { if (!rl('sl', 0.05)) return; noise(0, 0.05, 0.26, 'bandpass', 1700, 1.4); osc('sine', 150, 0, 0.09, 0.22, { to: 80 }); },
-    rubber: function (v) { if (!rl('rb', 0.06)) return; osc('sine', 250 + Math.random() * 90, 0, 0.05, clamp(v / 3200, 0.02, 0.09)); },
-    wall: function (v) { if (!rl('wl', 0.05)) return; noise(0, 0.035, clamp(v / 6000, 0.02, 0.11), 'bandpass', 2400, 2); },
-    target: function () { if (!rl('tg', 0.04)) return; osc('square', 1250, 0, 0.05, 0.05, { lp: 3000 }); osc('triangle', 620, 0, 0.09, 0.08); noise(0, 0.03, 0.12, 'bandpass', 3000, 2); },
-    drop: function () { if (!rl('dr', 0.04)) return; noise(0, 0.09, 0.26, 'lowpass', 520, 0.8); osc('sine', 130, 0, 0.13, 0.22, { to: 60 }); },
-    lane: function () { if (!rl('ln', 0.05)) return; osc('triangle', mtof(84), 0, 0.12, 0.08); osc('triangle', mtof(88), 0.06, 0.16, 0.07); },
-    spin: function () { if (!rl('sp', 0.03)) return; osc('square', 2300, 0, 0.015, 0.03, { lp: 5000 }); },
-    ramp: function () { osc('sawtooth', 150, 0, 0.55, 0.05, { to: 620, lp: 1300 }); noise(0, 0.5, 0.05, 'bandpass', 900, 0.8); },
-    rampDone: function () { [72, 76, 79, 84].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.06, 0.18, 0.08); }); },
-    saucer: function () { osc('sine', 95, 0, 0.2, 0.3, { to: 45 }); noise(0, 0.06, 0.2, 'lowpass', 600, 0.7); },
-    eject: function () { noise(0, 0.07, 0.3, 'bandpass', 1200, 1); osc('sine', 120, 0, 0.12, 0.26, { to: 70 }); },
-    pull: function () { osc('sawtooth', 75, 0, 0.3, 0.025, { to: 48, lp: 600 }); },
-    launch: function (p) { noise(0, 0.12, 0.12 + 0.2 * p, 'bandpass', 900, 0.9); osc('sine', 170, 0, 0.16, 0.25, { to: 60 }); },
+    flipUp: function () { if (!rl('fu', 0.03)) return; osc('sine', 72 * rp(0.1), 0, 0.1, 0.3, { to: 38 }); noise(0, 0.022, 0.26, 'bandpass', 2400 * rp(0.2), 3); noise(0.003, 0.05, 0.12, 'lowpass', 520, 1); ting(4300 * rp(0.08), 0.02, 0.06); },
+    flipDn: function () { if (!rl('fd', 0.03)) return; noise(0, 0.02, 0.09, 'bandpass', 1700, 3); osc('sine', 60, 0, 0.05, 0.08, { to: 40 }); },
+    pop: function () { if (!rl('pop', 0.035)) return; osc('sine', 88 * rp(0.1), 0, 0.17, 0.38, { to: 40 }); noise(0, 0.07, 0.3, 'lowpass', 360, 1); noise(0, 0.015, 0.16, 'highpass', 5000, 1); ting(3300 * rp(0.15), 0.06, 0.35, 0.005); },
+    sling: function () { if (!rl('sl', 0.05)) return; noise(0, 0.03, 0.3, 'highpass', 2600, 1); osc('sine', 150, 0, 0.07, 0.24, { to: 70 }); ting(3900 * rp(0.15), 0.035, 0.14); },
+    rubber: function (v) { if (!rl('rb', 0.05)) return; var a = clamp(v / 2600, 0.02, 0.12); osc('sine', 120 * rp(0.25), 0, 0.06, a * 1.5, { to: 70 }); ting(3500 * rp(0.3), a * 0.3, 0.12); },
+    wall: function (v) { if (!rl('wl', 0.04)) return; var a = clamp(v / 3000, 0.012, 0.09); ting(4600 * rp(0.35), a, 0.24); noise(0, 0.008, a * 1.2, 'highpass', 6500, 1); },
+    knock: function (v) { if (!rl('kn', 0.06)) return; var a = clamp((v || 600) / 2400, 0.04, 0.16); osc('sine', 165 * rp(0.15), 0, 0.09, a * 1.6, { to: 90 }); noise(0, 0.05, a, 'lowpass', 480, 1); ting(2600 * rp(0.2), a * 0.12, 0.08); },
+    target: function () { if (!rl('tg', 0.04)) return; noise(0, 0.035, 0.28, 'bandpass', 1600 * rp(0.15), 2); osc('sine', 230, 0, 0.05, 0.12, { to: 120 }); ting(4000 * rp(0.15), 0.025, 0.1); },
+    drop: function () { if (!rl('dr', 0.04)) return; noise(0, 0.04, 0.3, 'bandpass', 1250 * rp(0.15), 2); osc('sine', 110, 0, 0.11, 0.26, { to: 58 }); },
+    dropReset: function () { for (var i = 0; i < 4; i++) { noise(i * 0.022, 0.03, 0.18, 'bandpass', 1200 + i * 220, 2); } osc('sine', 85, 0, 0.12, 0.22, { to: 45 }); },
+    lane: function () { if (!rl('ln', 0.05)) return; noise(0, 0.01, 0.12, 'highpass', 4000, 1); osc('triangle', mtof(84), 0.01, 0.12, 0.06); osc('triangle', mtof(88), 0.06, 0.16, 0.05); },
+    spin: function () { if (!rl('sp', 0.03)) return; ting(5200 * rp(0.05), 0.018, 0.035); noise(0, 0.008, 0.06, 'highpass', 6000, 1); },
+    ramp: function () { noise(0, 0.12, 0.08, 'bandpass', 900, 1.2); ting(3000 * rp(0.2), 0.02, 0.1); },
+    rampDone: function () { SND.knock(900); [72, 76, 79, 84].forEach(function (m, i) { osc('triangle', mtof(m), 0.04 + i * 0.06, 0.18, 0.06); }); },
+    saucer: function () { osc('sine', 100, 0, 0.18, 0.34, { to: 55 }); noise(0, 0.08, 0.24, 'lowpass', 520, 1); ting(3000 * rp(0.1), 0.05, 0.08, 0.03); ting(3400 * rp(0.1), 0.035, 0.06, 0.07); ting(2800 * rp(0.1), 0.025, 0.05, 0.11); },
+    eject: function () { osc('sine', 82, 0, 0.13, 0.34, { to: 40 }); noise(0, 0.06, 0.28, 'lowpass', 420, 1); ting(3200 * rp(0.1), 0.03, 0.1); },
+    pull: function () { osc('sawtooth', 75, 0, 0.3, 0.02, { to: 48, lp: 600 }); noise(0, 0.25, 0.03, 'bandpass', 2400, 6); },
+    launch: function (p) { osc('sine', 125, 0, 0.15, 0.28, { to: 50 }); noise(0, 0.06, 0.12 + 0.18 * p, 'bandpass', 900, 0.9); ting(2700 * rp(0.1), 0.04 * (p || 0.5), 0.15); },
+    drain: function () { noise(0, 0.5, 0.12, 'lowpass', 260, 1); osc('sine', 110, 0.34, 0.22, 0.32, { to: 50 }); noise(0.34, 0.08, 0.22, 'lowpass', 620, 1); ting(2400, 0.03, 0.12, 0.36); [55, 52, 48, 43].forEach(function (m, i) { osc('triangle', mtof(m), 0.55 + i * 0.14, 0.26, 0.05); }); },
     jackpot: function () { [60, 64, 67, 72, 76, 79, 84].forEach(function (m, i) { osc('square', mtof(m), i * 0.07, 0.2, 0.04, { lp: 3000 }); osc('triangle', mtof(m), i * 0.07, 0.26, 0.06); }); osc('triangle', mtof(84), 0.5, 0.9, 0.1); noise(0.5, 0.9, 0.1, 'highpass', 5000, 0.5); },
     multi: function () { for (var i = 0; i < 4; i++) { osc('sawtooth', 440, i * 0.32, 0.16, 0.045, { to: 880, lp: 2400 }); osc('sawtooth', 880, i * 0.32 + 0.16, 0.16, 0.045, { to: 440, lp: 2400 }); } },
     extra: function () { [67, 72, 76, 79, 84, 88].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.09, 0.3, 0.09); }); },
-    drain: function () { [55, 52, 48, 43].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.14, 0.26, 0.08); }); osc('sine', 80, 0, 0.6, 0.14, { to: 40 }); },
     tilt: function () { osc('sawtooth', 110, 0, 0.6, 0.1, { lp: 900 }); osc('sawtooth', 117, 0, 0.6, 0.1, { lp: 900 }); },
     warn: function () { osc('square', 660, 0, 0.1, 0.05, { lp: 2000 }); osc('square', 660, 0.16, 0.1, 0.05, { lp: 2000 }); },
     bonus: function (i) { osc('square', mtof(60 + (i % 13)), 0, 0.07, 0.04, { lp: 2500 }); },
@@ -156,7 +174,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     combo: function (n) { osc('triangle', mtof(72 + n * 2), 0, 0.15, 0.1); osc('triangle', mtof(79 + n * 2), 0.08, 0.22, 0.1); },
     save: function () { osc('triangle', mtof(76), 0, 0.15, 0.08); osc('triangle', mtof(81), 0.1, 0.26, 0.08); },
     lock: function () { osc('sine', 220, 0, 0.3, 0.2, { to: 110 }); [64, 67, 71].forEach(function (m, i) { osc('triangle', mtof(m), 0.1 + i * 0.08, 0.2, 0.07); }); },
-    thunder: function () { noise(0, 0.25, 0.3, 'lowpass', 900, 0.7); noise(0.1, 2, 0.3, 'lowpass', 160, 0.8); osc('sine', 48, 0.05, 1.6, 0.18, { to: 30 }); },
+    thunder: function () { noise(0, 0.25, 0.14, 'lowpass', 900, 0.7); noise(0.1, 2, 0.16, 'lowpass', 160, 0.8); osc('sine', 48, 0.05, 1.6, 0.09, { to: 30 }); },
     cannon: function () { noise(0, 0.5, 0.45, 'lowpass', 700, 0.7); osc('sine', 90, 0, 0.5, 0.4, { to: 35 }); noise(0, 0.08, 0.3, 'highpass', 3000, 0.7); },
     award: function () { [72, 79, 84].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.07, 0.22, 0.08); }); },
     start: function () { [60, 67, 72, 76, 79].forEach(function (m, i) { osc('square', mtof(m), i * 0.08, 0.14, 0.035, { lp: 2600 }); }); }
@@ -278,7 +296,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       lamps: [], art: [], bumpers: [], slings: [], targets: [], drops: [], banks: {}, posts: [] };
     T.seg = function (x1, y1, x2, y2, o) {
       o = o || {};
-      var s = { k: 'seg', x1: x1, y1: y1, x2: x2, y2: y2, t: o.t != null ? o.t : 2.5, e: o.e != null ? o.e : 0.38, mu: o.mu != null ? o.mu : 0.1,
+      var s = { k: 'seg', x1: x1, y1: y1, x2: x2, y2: y2, t: o.t != null ? o.t : 2.5, e: o.e != null ? o.e : 0.45, mu: o.mu != null ? o.mu : 0.1,
         kind: o.kind || 'metal', id: o.id || null, kick: o.kick || 0, kickMin: o.kickMin || 0, kickCool: o.kickCool || 0.1, cool: 0, on: true, one: o.one || null, last: -9 };
       var dx = x2 - x1, dy = y2 - y1; s.len2 = dx * dx + dy * dy || 1e-6; s.len = Math.sqrt(s.len2);
       var pad = s.t + BR + 2;
@@ -297,14 +315,14 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         kick: o.kick || 0, kickMin: o.kickMin || 0, kickCool: o.kickCool || 0.1, cool: 0, on: true, vx: 0, vy: 0, last: -9 };
       T.circs.push(c); return c;
     };
-    T.post = function (x, y, r, o) { var c = T.circ(x, y, r || 5, Object.assign({ e: 0.62, kind: 'post' }, o || {})); T.posts.push(c); return c; };
-    T.bumper = function (x, y, r, id) { var c = T.circ(x, y, r, { e: 0.4, kind: 'bumper', id: id || 'pop', kick: 840, kickMin: 0, kickCool: 0.05 }); c.flash = 0; T.bumpers.push(c); return c; };
+    T.post = function (x, y, r, o) { var c = T.circ(x, y, r || 5, Object.assign({ e: 0.66, kind: 'post' }, o || {})); T.posts.push(c); return c; };
+    T.bumper = function (x, y, r, id) { var c = T.circ(x, y, r, { e: 0.4, kind: 'bumper', id: id || 'pop', kick: 720, kickMin: 0, kickCool: 0.05 }); c.flash = 0; T.bumpers.push(c); return c; };
     // a: top, b: bottom outer corner, c: bottom inner corner. a→c is the kicking face.
     T.sling = function (a, b, c, id) {
-      T.seg(a[0], a[1], b[0], b[1], { kind: 'rubber', e: 0.55 });
-      T.seg(b[0], b[1], c[0], c[1], { kind: 'rubber', e: 0.55 });
-      var f = T.seg(a[0], a[1], c[0], c[1], { kind: 'sling', id: id, e: 0.5, kick: 620, kickMin: 50, kickCool: 0.15 });
-      [a, b, c].forEach(function (p) { T.circ(p[0], p[1], 5.5, { e: 0.6, kind: 'post' }); });
+      T.seg(a[0], a[1], b[0], b[1], { kind: 'rubber', e: 0.66 });
+      T.seg(b[0], b[1], c[0], c[1], { kind: 'rubber', e: 0.66 });
+      var f = T.seg(a[0], a[1], c[0], c[1], { kind: 'sling', id: id, e: 0.6, mu: 0.25, kick: 560, kickMin: 50, kickCool: 0.15 });
+      [a, b, c].forEach(function (p) { T.circ(p[0], p[1], 5.5, { e: 0.66, kind: 'post' }); });
       T.slings.push({ a: a, b: b, c: c, face: f, id: id, flash: 0 });
     };
     T.target = function (x1, y1, x2, y2, id, o) { var s = T.seg(x1, y1, x2, y2, Object.assign({ kind: 'target', id: id, e: 0.32, t: 3.5 }, o || {})); s.lit = 0; s.flash = 0; T.targets.push(s); return s; };
@@ -331,7 +349,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var L = cum[cum.length - 1], p0 = pts[0], p1 = pts[3], pn = pts[pts.length - 1], pm = pts[pts.length - 4];
       var d0 = [p1[0] - p0[0], p1[1] - p0[1]], l0 = Math.hypot(d0[0], d0[1]); d0 = [d0[0] / l0, d0[1] / l0];
       var dE = [pn[0] - pm[0], pn[1] - pm[1]], lE = Math.hypot(dE[0], dE[1]); dE = [dE[0] / lE, dE[1] / lE];
-      var r = { id: id, pts: pts, cum: cum, L: L, up: L * (o.up || 0.4), dec: o.dec || 1300, acc: o.acc || 500, d0: d0, dE: dE, w: o.w || 30, col: o.col || 'rgba(160,220,255,', rail: o.rail, lockAt: o.lockAt, label: o.label, z: o.z || 0, minExit: o.minExit || 300, style: o.style || 'plastic', h: o.h || 36, neon: o.neon };
+      var r = { id: id, pts: pts, cum: cum, L: L, up: L * (o.up || 0.4), dec: o.dec || 900, acc: o.acc || 330, d0: d0, dE: dE, w: o.w || 30, col: o.col || 'rgba(160,220,255,', rail: o.rail, lockAt: o.lockAt, label: o.label, z: o.z || 0, minExit: o.minExit || 300, style: o.style || 'plastic', h: o.h || 36, neon: o.neon };
       T.ramps.push(r);
       var nx = -d0[1], ny = d0[0], hw = r.w / 2 + 2;
       var l = T.line(p0[0] + nx * hw, p0[1] + ny * hw, p0[0] - nx * hw, p0[1] - ny * hw, id, d0[0], d0[1]); l.ramp = r;
@@ -340,7 +358,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     T.flipper = function (x, y, side, o) {
       o = o || {};
       var rest = o.rest != null ? o.rest : 0.52, up = o.up != null ? o.up : -0.47;
-      var f = { x: x, y: y, len: o.len || 56, r1: o.r1 || 10.5, r2: o.r2 || 5.5, side: side, key: o.key || side, e: 0.42, mu: 0.16, kind: 'flipper', w: 0, pressed: false, upper: !!o.upper };
+      var f = { x: x, y: y, len: o.len || 56, r1: o.r1 || 10.5, r2: o.r2 || 5.5, side: side, key: o.key || side, e: 0.3, mu: 0.2, kind: 'flipper', w: 0, ef: 0.3, pressed: false, upper: !!o.upper };
       if (side === 'L') { f.aRest = rest; f.aUp = up; } else { f.aRest = PI - rest; f.aUp = PI - up; }
       f.a = f.aRest; T.flips.push(f); return f;
     };
@@ -400,6 +418,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, f = o.mu * jn, dv = clamp(-vt, -f, f);
     rvx += dv * tx; rvy += dv * ty;
     b.vx = rvx + svx; b.vy = rvy + svy;
+    if (imp > 120) b.spin = clamp((b.spin || 0) + dv * 0.004, -1.5, 1.5);
     if (o.kick && o.cool <= 0 && imp > o.kickMin && !(G && G.tilted)) {
       var vn2 = b.vx * nx + b.vy * ny;
       if (vn2 < o.kick) { b.vx += nx * (o.kick - vn2); b.vy += ny * (o.kick - vn2); }
@@ -498,7 +517,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     for (i = 0; i < T.captives.length; i++) {
       var cp = T.captives[i];
-      cp.vy += GRAV * 0.6 * dt; cp.y += cp.vy * dt;
+      cp.vy += GRAV * 0.9 * dt; cp.y += cp.vy * dt;
       if (cp.y > cp.ymax) { cp.y = cp.ymax; if (cp.vy > 0) cp.vy = -cp.vy * 0.2; }
       if (cp.y < cp.ymin) { cp.y = cp.ymin; if (cp.vy < 0) { if (-cp.vy > 140) event('captive', cp.id, null, cp); cp.vy = -cp.vy * 0.45; } }
     }
@@ -512,6 +531,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (b.ramp) { stepRamp(b, dt); continue; }
       if (b.noRamp > 0) b.noRamp -= dt;
       b.vy += GRAV * dt;
+      var spd0 = Math.hypot(b.vx, b.vy);
+      if (spd0 > 1e-3) {
+        var dec = Math.min(spd0, ROLL * dt) / spd0; b.vx -= b.vx * dec; b.vy -= b.vy * dec;
+        // side spin picked up from a rubbing contact makes the ball curve, then fades
+        if (b.spin) { var sa = b.spin * 260 * dt; b.vx += -b.vy / spd0 * sa * Math.min(1, spd0 / 300); b.vy += b.vx / spd0 * sa * Math.min(1, spd0 / 300); b.spin *= Math.exp(-3 * dt); if (Math.abs(b.spin) < 0.01) b.spin = 0; }
+      }
       if (G.board.force) G.board.force(G, b, dt);
       // magnets pull a nearby ball in once it is close
       for (i = 0; i < T.magnets.length; i++) {
@@ -520,7 +545,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         if (!mg.on) continue;
         var mx = mg.x - b.x, my = mg.y - b.y, md = Math.hypot(mx, my);
         if (md < mg.r) {
-          b.vx += mx / md * 2600 * dt; b.vy += my / md * 2600 * dt;
+          b.vx += mx / md * 1600 * dt; b.vy += my / md * 1600 * dt;
           if (md < 12 && Math.hypot(b.vx, b.vy) < 900) grab(b, mg);
         }
       }
@@ -779,11 +804,11 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         R('hit', o.id, b, o);
         break;
       case 'post': case 'rubber':
-        if (imp > 160) { snd('rubber', imp); if (G.time - (o.last || 0) > 0.2) { o.last = G.time; add(10); } }
+        if (imp > 90) { snd('rubber', imp); if (G.time - (o.last || 0) > 0.2) { o.last = G.time; add(10); } }
         break;
       case 'flipper': break;
       default:
-        if (imp > 180) snd('wall', imp);
+        if (imp > 110) snd('wall', imp);
     }
   }
   function resetBank(id) {
@@ -793,14 +818,14 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var blocked = G.balls.some(function (b) { return ds.some(function (d) { var dx = d.x2 - d.x1, dy = d.y2 - d.y1, t = clamp(((b.x - d.x1) * dx + (b.y - d.y1) * dy) / d.len2, 0, 1); return Math.hypot(b.x - d.x1 - dx * t, b.y - d.y1 - dy * t) < BR + 6; }); });
     if (blocked) { later(0.5, function () { resetBank(id); }); return; }
     ds.forEach(function (d) { d.up = true; d.on = true; });
-    snd('drop');
+    snd('dropReset');
   }
 
   // ── Ball flow ──
   function launch(p) {
     var b = G.balls.filter(function (x) { return x.plunger; })[0]; if (!b) return;
     p = clamp(p, 0.05, 1);
-    b.plunger = false; b.vx = 0; b.vy = -(640 + p * 1520); b.stillT = 0; b.born = G.time;
+    b.plunger = false; b.vx = 0; b.vy = -(480 + p * 960); b.stillT = 0; b.born = G.time;
     snd('launch', p); Kit.haptic('medium');
     if (G.waitPlunge) {
       G.waitPlunge = false; G.pull = 0;
@@ -874,6 +899,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   function newGame(boardId, balls, who) {
+    rollStop();
     var bd = BOARDS[boardId] || BOARDS.nebula;
     ambStop();
     T = Table(); bd.build(T);
@@ -884,7 +910,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       tilted: false, tiltM: 0, nudgeT: -9, mb: false, combo: 0, lastShot: '', lastShotT: -9, skill: null,
       st: {}, pb: {}, b: {}, ballScores: [], drains: [], ballStart: 0, later: [], dq: [], dm: null,
       show: null, flash: 0, flashC: '#fff', shake: 0, bonus: null, overT: 0, started: Date.now(),
-      stats: { stuck: 0, esc: 0, maxStill: 0, at: [] }
+      stats: { stuck: 0, esc: 0, maxStill: 0, at: [] }, amb: ambPref
     };
     fx.parts = []; fx.pops = []; fx.rings = [];
     R('init');
@@ -905,6 +931,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     G.tiltM = Math.max(0, G.tiltM - dt * 0.4);
     G.shake = Math.max(0, G.shake - dt * 3); G.flash = Math.max(0, G.flash - dt * 2.2);
     if (G.wash) { G.wash.a -= dt * 0.9; if (G.wash.a <= 0) G.wash = null; }
+    G.balls.forEach(function (b) { rollBall(b, dt); });
     var trail = G.board.trail ? G.board.trail(G) : null; G.trailC = trail;
     G.balls.forEach(function (b) { if (!trail || b.plunger || b.held) { b.tr = null; return; } (b.tr = b.tr || []).push([b.x, b.y, ballHeight(b)]); if (b.tr.length > 18) b.tr.shift(); });
     if (G.show) { G.show.t += dt; if (G.show.t > G.show.dur) G.show = null; }
@@ -1451,36 +1478,50 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var darkCv = null;
   function hauntSfx(name) {
     return {
-      pop: function () { if (!rl('pop', 0.05)) return; osc('sine', 220, 0, 0.5, 0.16, { to: 210 }); osc('sine', 330, 0, 0.35, 0.06); osc('sine', 110, 0, 0.18, 0.2, { to: 60 }); },
-      sling: function () { if (!rl('sl', 0.06)) return; noise(0, 0.12, 0.16, 'bandpass', 700, 0.8); osc('sine', 120, 0, 0.1, 0.14, { to: 70 }); },
       ghost: function () { var a = ac(); if (!a) return; var o = a.createOscillator(), lfo = a.createOscillator(), lg = a.createGain(), g = a.createGain(), t = a.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(260, t + 1.1); lfo.frequency.value = 6; lg.gain.value = 22; lfo.connect(lg); lg.connect(o.frequency); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2); o.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t + 1.25); lfo.stop(t + 1.25); },
       jackpot: function () { [57, 60, 64, 69].forEach(function (m, i) { osc('sawtooth', mtof(m), i * 0.04, 1.4, 0.03, { lp: 1400 }); osc('triangle', mtof(m - 12), 0, 1.4, 0.05); }); osc('triangle', mtof(81), 0.5, 1, 0.05); noise(0, 1.2, 0.05, 'bandpass', 400, 0.6); },
-      drain: function () { osc('sine', 500, 0, 1.4, 0.09, { to: 120 }); osc('sine', 503, 0.05, 1.4, 0.05, { to: 118 }); osc('sine', 70, 0, 0.9, 0.12, { to: 40 }); },
+      drain: function () { SND.drain(); osc('sine', 500, 0.5, 1.4, 0.05, { to: 120 }); osc('sine', 503, 0.55, 1.4, 0.03, { to: 118 }); },
       award: function () { [69, 72, 76].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.1, 0.5, 0.06); }); },
-      thunder: function () { noise(0, 0.25, 0.3, 'lowpass', 900, 0.7); noise(0.1, 2.2, 0.32, 'lowpass', 160, 0.8); osc('sine', 48, 0.05, 1.8, 0.2, { to: 30 }); },
-      creak: function () { osc('sawtooth', 95, 0, 0.9, 0.025, { to: 62, lp: 520 }); osc('sawtooth', 101, 0.05, 0.8, 0.018, { to: 70, lp: 600 }); },
+      thunder: function () { noise(0, 0.25, 0.12, 'lowpass', 900, 0.7); noise(0.1, 2.2, 0.14, 'lowpass', 160, 0.8); osc('sine', 48, 0.05, 1.8, 0.08, { to: 30 }); },
+      creak: function () { osc('sawtooth', 95, 0, 0.9, 0.008, { to: 62, lp: 520 }); osc('sawtooth', 101, 0.05, 0.8, 0.006, { to: 70, lp: 600 }); },
+      owl: function () { osc('sine', 392, 0, 0.35, 0.007, { to: 370 }); osc('sine', 392, 0.5, 0.5, 0.007, { to: 360 }); },
+      chime: function () { [1568, 2093, 2637].forEach(function (f, i) { osc('sine', f, i * 0.4, 1.4, 0.004); }); },
       knock: function () { [0, 0.16, 0.32].slice(0, 1).forEach(function (d) { osc('sine', 140, d, 0.12, 0.3, { to: 80 }); noise(d, 0.06, 0.25, 'lowpass', 700, 1); }); },
       door: function () { osc('sawtooth', 70, 0, 1.2, 0.04, { to: 120, lp: 500 }); osc('sawtooth', 140, 0.1, 1, 0.025, { to: 90, lp: 700 }); noise(0, 1.1, 0.06, 'bandpass', 300, 1.5); },
       dark: function () { osc('sine', 300, 0, 1.4, 0.1, { to: 60 }); noise(0, 0.3, 0.2, 'lowpass', 300, 1); }
     }[name];
   }
-  // wind: looping filtered noise, shaped over time
+  // Night air: a low, narrow band of wind that swells now and then and drops
+  // to near silence in between, far under the game sounds (peaks ~-20 dB below
+  // a flipper). Ducks further during multiball and modes. Off with the
+  // 'Table sounds' option.
   var amb = null;
+  function ambOn() { return G && G.amb !== false; }
   function ambStart() {
-    var a = ac(); if (!a || amb) return;
+    var a = ac(); if (!a || amb || !ambOn()) return;
     if (!noiseBuf) noise(0, 0.01, 0.0001);
     if (!noiseBuf) return;
     var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 0.9; g.gain.value = 0.0001;
+    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 5; g.gain.value = 0.0001;
     s.connect(f); f.connect(g); g.connect(master); s.start();
-    g.gain.setTargetAtTime(0.05, a.currentTime, 1.5);
-    amb = { s: s, f: f, g: g, t: 0 };
+    amb = { s: s, f: f, g: g, t: 3, ev: 9 };
   }
   function ambStop() { if (!amb) return; try { amb.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.2); amb.s.stop(AC.currentTime + 1); } catch (e) {} amb = null; }
   function ambTick(dt) {
     if (!amb || !AC) return;
-    amb.t -= dt;
-    if (amb.t <= 0) { amb.t = 1.5 + Math.random() * 2.5; try { amb.f.frequency.setTargetAtTime(260 + Math.random() * 520, AC.currentTime, 1.2); amb.g.gain.setTargetAtTime(0.025 + Math.random() * 0.05, AC.currentTime, 1.2); } catch (e) {} }
+    if (!ambOn()) { ambStop(); return; }
+    var duck = G.mb || G.b.darkT > 0 || G.b.midT > 0 ? 0.35 : 1;
+    amb.t -= dt; amb.ev -= dt;
+    if (amb.t <= 0) {
+      // one slow swell, then a long quiet gap
+      amb.t = 7 + Math.random() * 9;
+      var now = AC.currentTime, peak = (0.006 + Math.random() * 0.006) * duck;
+      try {
+        amb.f.frequency.setTargetAtTime(320 + Math.random() * 360, now, 1.5);
+        amb.g.gain.cancelScheduledValues(now); amb.g.gain.setTargetAtTime(peak, now, 1.1); amb.g.gain.setTargetAtTime(0.0003, now + 2.6 + Math.random() * 1.5, 1.4);
+      } catch (e) {}
+    }
+    if (amb.ev <= 0) { amb.ev = 8 + Math.random() * 14; if (duck === 1) snd(['creak', 'owl', 'chime'][Math.floor(Math.random() * 3)]); }
   }
   function bats(G, n, x, y) {
     var B = G.b; B.bats = B.bats || [];
@@ -1539,7 +1580,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       T.ramp('spirit', [[290, 445], [288, 392], [262, 360], [222, 360], [186, 390], [156, 440], [126, 490], [96, 526], [70, 548], [54, 566]], { w: 26, up: 0.3, style: 'iron', h: 44, z: 2 });
       T.lamp('spiritA', 290, 520, { sh: 'a', w: 24, h: 32, col: '#7fd4a4', lbl: 'SPIRIT WALK' });
     },
-    snds: { pop: hauntSfx('pop'), sling: hauntSfx('sling'), ghost: hauntSfx('ghost'), jackpot: hauntSfx('jackpot'), drain: hauntSfx('drain'), award: hauntSfx('award'), thunder: hauntSfx('thunder'), creak: hauntSfx('creak'), knock: hauntSfx('knock'), door: hauntSfx('door'), dark: hauntSfx('dark') },
+    snds: { owl: hauntSfx('owl'), chime: hauntSfx('chime'), ghost: hauntSfx('ghost'), jackpot: hauntSfx('jackpot'), drain: hauntSfx('drain'), award: hauntSfx('award'), thunder: hauntSfx('thunder'), creak: hauntSfx('creak'), knock: hauntSfx('knock'), door: hauntSfx('door'), dark: hauntSfx('dark') },
     intro: 'ENTER IF YOU DARE',
     modes: { lightsout: function (G) { G.b.doorOpen = true; G.b.closeT = 0; BOARDS.haunted.saucer(G, 'secret'); }, door: function (G) { openDoor(G); }, midnight: function (G) { G.b.midT = 30; G.b.mjp = 100000; } },
     init: function (G) { G.b = { gh: 0, caps: 0, crypt: 0, boo: [0, 0, 0], magLit: false, midT: 0, gone: 0, knocks: 0, doorOpen: false, darkT: 0, dark: 0, light: 0, nextL: 5, bats: [], creakT: 6, wail: 0, mjp: 100000, walks: 0 }; },
@@ -1618,7 +1659,6 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       // weather and wildlife
       B.light = Math.max(0, B.light - dt * 2.4);
       B.nextL -= dt; if (B.nextL <= 0 && G.state === 'play') lightning(G);
-      B.creakT -= dt; if (B.creakT <= 0) { B.creakT = 6 + Math.random() * 9; snd('creak'); }
       B.bats.forEach(function (bt) { bt.ph += dt * 22; bt.x += bt.vx * dt; bt.y += bt.vy * dt; bt.vx += (Math.random() - 0.5) * 300 * dt; bt.vy += (Math.random() - 0.55) * 200 * dt; bt.life -= dt; });
       B.bats = B.bats.filter(function (bt) { return bt.life > 0 && bt.y > -30 && bt.x > -30 && bt.x < 430; });
     },
@@ -2102,12 +2142,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function beatHit(G) {
     var B = G.b, n = B.beatN; B.pulse = 1; G.show = { kind: 'beat', t: 0, dur: BEAT * 0.9 }; G.beatN = n;
     if (!ac()) return;
-    osc('sine', 150, 0, 0.16, 0.3, { to: 42 });
-    noise(BEAT / 2, 0.035, 0.08, 'highpass', 7000, 0.7);
+    osc('sine', 150, 0, 0.16, 0.12, { to: 42 });
+    noise(BEAT / 2, 0.035, 0.035, 'highpass', 7000, 0.7);
     var bass = [33, 33, 36, 31, 33, 33, 38, 36][n % 8];
-    osc('sawtooth', mtof(bass + 12), 0, BEAT * 0.8, 0.045, { lp: 700 }); osc('sawtooth', mtof(bass + 12), BEAT / 2, BEAT * 0.4, 0.03, { lp: 900 });
-    if (n % 4 === 0) [57, 60, 64].forEach(function (m) { osc('triangle', mtof(m + (n % 8 ? 2 : 0)), 0, BEAT * 1.6, 0.025); });
-    if (n % 2 === 1) noise(0, 0.08, 0.12, 'bandpass', 1800, 1.2);
+    osc('sawtooth', mtof(bass + 12), 0, BEAT * 0.8, 0.02, { lp: 700 }); osc('sawtooth', mtof(bass + 12), BEAT / 2, BEAT * 0.4, 0.014, { lp: 900 });
+    if (n % 4 === 0) [57, 60, 64].forEach(function (m) { osc('triangle', mtof(m + (n % 8 ? 2 : 0)), 0, BEAT * 1.6, 0.01); });
+    if (n % 2 === 1) noise(0, 0.08, 0.05, 'bandpass', 1800, 1.2);
   }
   function startBeat(G) {
     var B = G.b; B.beatLit = false; B.beatT = 30; B.beatPh = 0.95; cnt('mode'); G.mult = 2; G.multT = 0; ballSave(6);
@@ -2300,16 +2340,58 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.fillStyle = '#121016'; g.fillRect(362, 792, 28, 8);
   }
 
-  function drawBall(g, x, y, sc, high, tint, h) {
-    var r = BR * (sc || 1), c = tint || (G ? G.board.pal.ball : [235, 240, 250]);
-    var ox = high ? 2.5 + (h || 0) * SHX : 2.5, oy = high ? 3 + (h || 0) * SHY : 3.5;
-    g.fillStyle = 'rgba(0,0,0,' + (high ? 0.3 : 0.4) + ')'; g.beginPath(); g.ellipse(x + ox, y + oy, r * 1.02, r * 0.92, 0, 0, TAU); g.fill();
-    var gr = g.createRadialGradient(x - r * 0.35, y - r * 0.42, r * 0.08, x, y, r);
-    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'); gr.addColorStop(0.65, 'rgb(' + (c[0] * 0.55 | 0) + ',' + (c[1] * 0.56 | 0) + ',' + (c[2] * 0.6 | 0) + ')'); gr.addColorStop(1, 'rgb(' + (c[0] * 0.22 | 0) + ',' + (c[1] * 0.22 | 0) + ',' + (c[2] * 0.25 | 0) + ')');
-    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-    // environment reflection band and specular dot
-    g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = r * 0.16; g.beginPath(); g.arc(x, y, r * 0.66, PI * 0.15, PI * 0.75); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.arc(x - r * 0.38, y - r * 0.42, r * 0.17, 0, TAU); g.fill();
+  // A chrome steel ball: a blurred, mirrored reflection of the playfield round
+  // it, spherical shading, a sharp specular from the cabinet lights, a few
+  // faint surface marks that turn as it rolls, and a shadow thrown toward the
+  // bottom of the table (further and softer when it is up on a ramp).
+  function drawBall(g, x, y, sc, high, tint, h, b) {
+    var r = BR * (sc || 1), c = tint || (G ? G.board.pal.ball : [235, 240, 250]), hh = high ? (h || 0) : 0;
+    var ox = 1.5 + hh * SHX, oy = 4 + hh * SHY, soft = 1 + hh / 50;
+    g.fillStyle = 'rgba(0,0,0,' + (0.42 / soft).toFixed(2) + ')'; g.beginPath(); g.ellipse(x + ox, y + oy, r * 1.05 * soft, r * 0.9 * soft, 0, 0, TAU); g.fill();
+    if (hh > 6) { g.fillStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.ellipse(x + ox, y + oy, r * 1.5 * soft, r * 1.3 * soft, 0, 0, TAU); g.fill(); }
+    g.save(); g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
+    // base metal
+    var base = g.createLinearGradient(x, y - r, x, y + r);
+    base.addColorStop(0, 'rgb(' + (c[0] * 0.95 | 0) + ',' + (c[1] * 0.96 | 0) + ',' + (c[2] | 0) + ')'); base.addColorStop(0.5, 'rgb(' + (c[0] * 0.5 | 0) + ',' + (c[1] * 0.52 | 0) + ',' + (c[2] * 0.56 | 0) + ')'); base.addColorStop(1, 'rgb(' + (c[0] * 0.78 | 0) + ',' + (c[1] * 0.8 | 0) + ',' + (c[2] * 0.84 | 0) + ')');
+    g.fillStyle = base; g.fillRect(x - r, y - r, r * 2, r * 2);
+    // the playfield reflected in the ball (mirrored, blurred)
+    if (layers && layers.env) {
+      var e = layers.env, k = e.width / TW, span = 90;
+      g.globalAlpha = 0.55; g.save(); g.translate(x, y); g.scale(1, -1);
+      g.drawImage(e, (x - span / 2) * k, (y - span / 2) * k, span * k, span * k, -r, -r * 0.2, r * 2, r * 1.3);
+      g.restore(); g.globalAlpha = 1;
+      // the cabinet above, reflected in the top half
+      var sky = g.createLinearGradient(x, y - r, x, y); sky.addColorStop(0, 'rgba(255,255,255,.55)'); sky.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = sky; g.fillRect(x - r, y - r, r * 2, r);
+    }
+    // rolling marks: points fixed to the ball's surface, seen only on the near side
+    if (b && b.pts) b.pts.forEach(function (p, i) {
+      if (p[2] <= 0.1) return;
+      g.fillStyle = i % 2 ? 'rgba(255,255,255,' + (0.35 * p[2]).toFixed(2) + ')' : 'rgba(20,24,30,' + (0.3 * p[2]).toFixed(2) + ')';
+      g.beginPath(); g.ellipse(x + p[0] * r * 0.92, y + p[1] * r * 0.92, r * 0.16 * (0.4 + 0.6 * p[2]), r * 0.1 * (0.4 + 0.6 * p[2]), Math.atan2(p[1], p[0]), 0, TAU); g.fill();
+    });
+    // spherical shading: dark rim, bright rim light at the bottom edge
+    var sh = g.createRadialGradient(x - r * 0.25, y - r * 0.3, r * 0.2, x, y, r);
+    sh.addColorStop(0, 'rgba(255,255,255,.12)'); sh.addColorStop(0.7, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.55)');
+    g.fillStyle = sh; g.fillRect(x - r, y - r, r * 2, r * 2);
+    g.restore();
+    g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = r * 0.12; g.beginPath(); g.arc(x, y, r * 0.86, PI * 0.2, PI * 0.8); g.stroke();
+    // sharp specular and a softer second light
+    g.fillStyle = 'rgba(255,255,255,.98)'; g.beginPath(); g.ellipse(x - r * 0.36, y - r * 0.42, r * 0.2, r * 0.14, -0.6, 0, TAU); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.arc(x + r * 0.42, y - r * 0.2, r * 0.07, 0, TAU); g.fill();
+  }
+  // turn a ball's surface marks as it rolls (axis lies flat, across the direction of travel)
+  function rollBall(b, dt) {
+    if (!b.pts) b.pts = [[0.6, -0.3, 0.74], [-0.5, 0.5, 0.71], [0.1, 0.8, -0.59], [-0.7, -0.4, -0.59], [0.2, -0.9, 0.39]].map(function (p) { var l = Math.hypot(p[0], p[1], p[2]); return [p[0] / l, p[1] / l, p[2] / l]; });
+    var v = Math.hypot(b.vx, b.vy); if (v < 1 || b.held || b.plunger) return;
+    var ax = -b.vy / v, ay = b.vx / v, th = v * dt / BR, c = Math.cos(th), s = Math.sin(th);
+    b.pts.forEach(function (p) {
+      // Rodrigues rotation about (ax, ay, 0)
+      var kx = ax, ky = ay, dot = kx * p[0] + ky * p[1];
+      var cx = ky * p[2], cy = -kx * p[2], cz = kx * p[1] - ky * p[0];
+      var nx = p[0] * c + cx * s + kx * dot * (1 - c), ny = p[1] * c + cy * s + ky * dot * (1 - c), nz = p[2] * c + cz * s;
+      p[0] = nx; p[1] = ny; p[2] = nz;
+    });
   }
   function drawFlipper(g, f, P) {
     g.save(); g.translate(f.x, f.y); g.rotate(f.a);
@@ -2419,7 +2501,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
       if (b.held && b.held.mag) { glow(g, b.x, b.y, 30, '160,255,190', 0.35); }
       var h = on ? ballHeight(b) : 0;
-      drawBall(g, b.x, b.y, 1 + h / 260, on, null, h);
+      drawBall(g, b.x, b.y, 1 + h / 260, on, null, h, b);
     });
   }
   function drawFx(g) {
@@ -2616,7 +2698,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function ballHeight(b) { return b.ramp ? rampHeight(b.ramp.r, b.ramp.s) : 0; }
 
   // ═══ Kit shell ════════════════════════════════════════════════════════════
-  var view = 'none', paused = false, curBoard = BOARDS.nebula;
+  var view = 'none', paused = false, curBoard = BOARDS.nebula, ambPref = true;
   var SELK = 'pinball_sel';
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -2658,12 +2740,14 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.className = 'stage pb-setup';
     var s = Kit.setup(app, {
       intro: 'Five tables to play. Flip, ramp, lock and multiball.',
-      options: [{ id: 'balls', label: 'Balls per game', choices: [['3', '3 balls', 'A standard game.'], ['5', '5 balls', 'A longer game.']], value: '3' }],
+      options: [{ id: 'balls', label: 'Balls per game', choices: [['3', '3 balls', 'A standard game.'], ['5', '5 balls', 'A longer game.']], value: '3' },
+        { id: 'amb', label: 'Table ambience', choices: [['on', 'On', 'Quiet background sounds, like the wind round Haunted Manor. Kept well under the game sounds.'], ['off', 'Off', 'Just the ball, the flippers and the game.']], value: 'on' }],
       players: { min: 1, max: 1, count: 1, label: 'Player' },
       start: 'Play',
       onStart: function (cfg) {
         lsSet(SELK, sel);
         if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        ambPref = cfg.options.amb !== 'off';
         newGame(sel, +(cfg.options.balls || 3), cfg.players[0] ? cfg.players[0].name : 'Player');
       }
     });
@@ -2720,7 +2804,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('20px Bungee'), document.fonts.load('700 20px Cinzel')]).then(function () { layers = null; if (paused || !raf) render(G ? G.time : 0); }).catch(function () {});
   }
   function leaveGame() {
-    view = 'none'; paused = false; G = null; ambStop();
+    view = 'none'; paused = false; G = null; ambStop(); rollStop();
     root.classList.remove('pb-on');
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -2750,7 +2834,8 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g = shade.getContext('2d'); g.scale(W / TW, H / TH); paintRampShadows(g);
     var band = document.createElement('canvas'); band.width = W; band.height = Math.round(DH * S);
     g = band.getContext('2d'); g.scale(S, S); paintBand(g, bd);
-    layers = { bg: bg, top: top, band: band, shade: shade };
+    var env = document.createElement('canvas'); env.width = 48; env.height = 96; env.getContext('2d').drawImage(bg, 0, 0, 48, 96);
+    layers = { bg: bg, top: top, band: band, shade: shade, env: env };
   }
   function paintBand(g, bd) {
     var gr = g.createLinearGradient(0, 0, 0, DH); gr.addColorStop(0, '#24202c'); gr.addColorStop(1, '#0c0a10');
@@ -2889,6 +2974,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function pauseGame() {
     if (view !== 'game' || paused || !G || G.state === 'over') return;
+    rollStop();
     paused = true; resetInput(); syncFlips();
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     pauseEl.innerHTML = '';
@@ -2906,6 +2992,34 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     paused = false; pauseEl.classList.remove('show');
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap'); kick();
+  }
+
+  // ═══ Rolling sound ═══════════════════════════════════════════════════════
+  // A steel ball rolling on wood: a low filtered rumble whose level and pitch
+  // follow its speed. On a wire ramp it rattles and rings; on a plastic ramp
+  // it sounds hollow.
+  var roll = null;
+  function rollStop() { if (!roll) return; try { roll.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.05); roll.g2.gain.setTargetAtTime(0.0001, AC.currentTime, 0.05); roll.s.stop(AC.currentTime + 0.3); roll.s2.stop(AC.currentTime + 0.3); } catch (e) {} roll = null; }
+  function rollTick() {
+    if (!AC || !soundOn() || paused || !G || AC.state !== 'running') return;
+    if (!roll) {
+      if (!noiseBuf) noise(0, 0.01, 0.0001);
+      if (!noiseBuf) return;
+      var mk = function (type, f, q) { var s = AC.createBufferSource(), bf = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = noiseBuf; s.loop = true; bf.type = type; bf.frequency.value = f; bf.Q.value = q; g.gain.value = 0.0001; s.connect(bf); bf.connect(g); g.connect(master); s.start(0, Math.random()); return [s, bf, g]; };
+      var a = mk('bandpass', 150, 1.4), b = mk('bandpass', 2600, 10);
+      roll = { s: a[0], f: a[1], g: a[2], s2: b[0], f2: b[1], g2: b[2] };
+    }
+    var v = 0, rv = 0, rs = '';
+    G.balls.forEach(function (b) {
+      if (b.plunger || b.held) return;
+      var sp = Math.hypot(b.vx, b.vy);
+      if (b.ramp) { if (sp > rv) { rv = sp; rs = b.ramp.r.style; } } else if (sp > v) v = sp;
+    });
+    var now = AC.currentTime, k = Math.min(1, v / 1400);
+    roll.g.gain.setTargetAtTime(0.0002 + 0.05 * k * k, now, 0.04); roll.f.frequency.setTargetAtTime(90 + v * 0.16, now, 0.05);
+    var wire = rs === 'wire' || rs === 'iron', rk = Math.min(1, rv / 900);
+    roll.f2.frequency.setTargetAtTime(wire ? 2500 + rv * 0.6 : 620 + rv * 0.25, now, 0.05); roll.f2.Q.setTargetAtTime(wire ? 14 : 3, now, 0.05);
+    roll.g2.gain.setTargetAtTime(rv ? 0.0002 + (wire ? 0.035 : 0.045) * rk * (wire ? 0.7 + 0.3 * Math.random() : 1) : 0.0001, now, 0.03);
   }
 
   // ═══ Main loop ════════════════════════════════════════════════════════════
@@ -2945,6 +3059,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     update(dt); updateFx(dt);
     if (!G) return;
+    rollTick();
     render(G.time);
     var ms = performance.now() - t0; frameMs.push(ms); if (frameMs.length > 240) frameMs.shift();
     if (G.finished) return;
@@ -2997,7 +3112,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     });
   }
   function gameOver() {
-    ambStop();
+    ambStop(); rollStop();
     G.state = 'over'; G.overT = 0; G.balls = [];
     msg('GAME OVER', '', { now: true, dur: 9 });
     snd('drain');
