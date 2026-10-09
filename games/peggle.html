@@ -95,12 +95,6 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pg-pause h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 4px;}
 .pg-pause p{color:var(--text-2);margin:0 0 14px;font-weight:700;}
 .pg-pause .btn{margin-top:8px;}
-.hi-tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
-.hi-tbl td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:800;}
-.hi-tbl td:first-child{width:28px;color:var(--text-3);}
-.hi-tbl td.nm{font-family:var(--display);font-weight:400;letter-spacing:.12em;font-size:1.1rem;}
-.hi-tbl td.sc{text-align:right;color:var(--yellow);}
-.hi-tbl td.dt{text-align:right;color:var(--text-3);font-size:.75rem;font-weight:700;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -124,8 +118,11 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var POWERS = {
     guide: { name: 'Super Guide', icon: 'eye', desc: 'Long aiming line for 3 shots' },
     multi: { name: 'Multiball', icon: 'infinity', desc: 'A second ball pops out' },
-    spooky: { name: 'Spooky Ball', icon: 'sync', desc: 'Ball comes back once from the top' }
+    spooky: { name: 'Spooky Ball', icon: 'sync', desc: 'Ball comes back once from the top' },
+    random: { name: 'Random power', icon: 'shuffle', desc: 'A surprise power each time' },
+    off: { name: 'No power', icon: 'close', desc: 'Green pegs are plain pegs' }
   };
+  var REAL_POWERS = ['guide', 'multi', 'spooky'];
 
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -635,24 +632,13 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<h3>Free balls</h3><ul><li>Land the ball in the moving <b>bucket</b> at the bottom.</li><li>Score <b>25,000</b>, <b>75,000</b> and <b>125,000</b> points in a single shot (one free ball each).</li></ul>' +
       '<h3>Style shots</h3><ul><li><b>Long Shot</b> +25,000: fly a long way between pegs and hit an orange one.</li><li><b>Off the Wall</b> +2,000: bounce off a side wall into an orange peg.</li></ul>' +
       '<h3>Green peg powers</h3><p>Pick one power before you start:</p><ul><li><b>Super Guide</b>: a long aiming line that shows the bounces, for your next 3 shots.</li>' +
-      '<li><b>Multiball</b>: a second ball pops out of the green peg.</li><li><b>Spooky Ball</b>: when the ball falls out the bottom, it comes back once from the top.</li></ul>' +
+      '<li><b>Multiball</b>: a second ball pops out of the green peg.</li><li><b>Spooky Ball</b>: when the ball falls out the bottom, it comes back once from the top.</li>' +
+      '<li><b>Random</b>: each green peg picks one of these powers by surprise.</li><li><b>Off</b>: no powers. Green pegs are just 10 points.</li></ul>' +
       '<h3>Extreme Fever</h3><p>When the ball heads for the last orange peg, everything slows down. Hit it to start <b>Extreme Fever</b>: the bottom turns into bonus buckets worth <b>10,000</b>, <b>50,000</b> or <b>100,000</b>.</p>' +
       '<h3>Levels</h3><p>There are ' + NL + ' levels. Clear a level to unlock the next one. Later levels have pegs that move.</p>'
   });
 
-  function showHighScores() {
-    var list = ArcadeHi.list('peggle');
-    var box = el('div');
-    if (!list.length) box.appendChild(el('p', { class: 'muted', text: 'No high scores yet. Your best level scores show up here.' }));
-    else {
-      var t = el('table', { class: 'hi-tbl' });
-      list.forEach(function (e, i) {
-        t.appendChild(el('tr', null, [el('td', { text: String(i + 1) }), el('td', { class: 'nm', text: e.name || '???' }), el('td', { class: 'sc', text: fmt(e.score || 0) }), el('td', { class: 'dt', text: e.date || '' })]));
-      });
-      box.appendChild(t);
-    }
-    Kit.sheet({ title: 'Peggle high scores', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
-  }
+  function showHighScores() { ArcadeHi.show('peggle', 'Peggle'); }
 
   // ═══ Setup: level select + power choice ══════════════════════════════════
   var LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
@@ -663,7 +649,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var s = Kit.setup(app, {
       intro: 'Aim, bounce and clear the orange pegs',
       options: [
-        { id: 'master', label: 'Green peg power', help: 'Hitting a green peg turns on this special power.', choices: [['guide', 'Super Guide', 'A long aiming line shows where your ball will go for 3 shots.'], ['multi', 'Multiball', 'A second ball pops out, so two balls bounce at once.'], ['spooky', 'Spooky Ball', 'When the ball falls out the bottom, it comes back once from the top.']], value: 'guide' },
+        { id: 'master', label: 'Green peg power', help: 'Hitting a green peg turns on this special power.', choices: [['guide', 'Guide', 'Super Guide: a long aiming line shows where your ball will go for 3 shots.'], ['multi', 'Multiball', 'A second ball pops out, so two balls bounce at once.'], ['spooky', 'Spooky', 'Spooky Ball: when the ball falls out the bottom, it comes back once from the top.'], ['random', 'Random', 'Each green peg sets off a surprise power.'], ['off', 'Off', 'No powers. Green pegs are worth 10 points like blue ones.']], value: 'guide' },
         { id: 'fire', label: 'On a touch screen, shoot by', choices: [['lift', 'Lifting finger', 'Drag to aim, then lift your finger on the board to shoot.'], ['button', 'Fire button only', 'Lifting your finger only aims. Tap FIRE to shoot, so you never shoot by accident.']], value: 'lift' }
       ],
       players: { min: 1, max: 1, count: 1, label: 'Player' },
@@ -943,11 +929,14 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     meterPulse = 1;
   }
   function power(b, o) {
+    var kind = L.master;
+    if (kind === 'off') return null;
+    if (kind === 'random') { kind = REAL_POWERS[Math.floor(Math.random() * REAL_POWERS.length)]; L.lastPow = kind; }
     L.stats.powers++;
     sPower(); Kit.haptic('medium');
-    var P = POWERS[L.master];
-    if (L.master === 'guide') { L.guide += 3; banner('SUPER GUIDE', 'for your next 3 shots', '#9df5b5', 1.5, 0.36); }
-    else if (L.master === 'multi') {
+    var P = POWERS[kind];
+    if (kind === 'guide') { L.guide += 3; banner('SUPER GUIDE', 'for your next 3 shots', '#9df5b5', 1.5, 0.36); }
+    else if (kind === 'multi') {
       var nb = newBall(2 * o.mx - b.x, b.y, -b.vx, b.vy);
       nb.x = clamp(nb.x, BR + 1, FW - BR - 1); nb.hits = 1; balls.push(nb);
       banner('MULTIBALL', '', '#9df5b5', 1.3, 0.36);
@@ -1158,10 +1147,10 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function updateHud() {
     if (!L || !lvEl) return;
     lvEl.innerHTML = ''; lvEl.title = L.def.name; lvEl.appendChild(el('small', { text: 'Level' })); lvEl.appendChild(el('b', { text: String(L.n) }));
-    var P = POWERS[L.master], live = false, stat = 'Hit a green peg';
-    if (L.master === 'guide' && L.guide > 0) { live = true; stat = L.guide + (L.guide === 1 ? ' shot left' : ' shots left'); }
-    if (L.master === 'spooky' && balls.some(function (b) { return b.spooky; })) { live = true; stat = 'Ready'; }
-    if (L.master === 'multi' && balls.length > 1) { live = true; stat = balls.length + ' balls'; }
+    var P = POWERS[L.master] || POWERS.guide, live = false, stat = L.master === 'off' ? 'Green pegs' : 'Hit a green peg', any = L.master === 'random';
+    if ((any || L.master === 'guide') && L.guide > 0) { live = true; stat = L.guide + (L.guide === 1 ? ' shot left' : ' shots left'); if (any) P = POWERS.guide; }
+    if ((any || L.master === 'spooky') && balls.some(function (b) { return b.spooky; })) { live = true; stat = 'Ready'; if (any) P = POWERS.spooky; }
+    if ((any || L.master === 'multi') && balls.length > 1) { live = true; stat = balls.length + ' balls'; if (any) P = POWERS.multi; }
     pwEl.className = 'pg-plate pg-pw' + (live ? ' live' : '');
     pwEl.innerHTML = '';
     pwEl.appendChild(el('span', { class: 'pi', html: Kit.icon(P.icon) }));

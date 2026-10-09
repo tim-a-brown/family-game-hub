@@ -810,12 +810,23 @@ document.addEventListener('visibilitychange', function () {
       el('div', { class: 'grow', style: { 'min-width': '0' } }, [myIn, acct])
     ]));
     var list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
-    function item(ic, t, fn, cls) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t })])); }
+    function item(ic, t, fn, cls, extra) { list.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
     var nPend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending().length : 0;
     if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
     item('history', 'Game history', function () { location.href = 'games/history.html'; });
-    if (mode === 'pin') item('link', 'Share my profile', function () { Kit.links.profile(); });
+    if (mode === 'pin') {
+      item('link', 'Share my profile', function () { Kit.links.profile(); });
+      var ini = FGHSync.initials ? FGHSync.initials() : '';
+      item('gamepad', 'Arcade initials', function () { Kit.links.initials(); }, '', el('span', { class: 'k-ini', text: ini || 'Set' }));
+    }
     item('users', 'Frequent players', function () { Kit.managePlayers(); });
+    // Linked players: their own section, then the rest of the settings
+    if (mode === 'pin' && Kit.links.panel) {
+      node.appendChild(list);
+      node.appendChild(el('div', { class: 'label k-sec', text: 'Linked players' }));
+      node.appendChild(Kit.links.panel(refreshWho));
+      list = el('div', { class: 'k-list', style: { 'margin-top': '14px' } });
+    }
     item(get('gn_sound', '1') === '1' ? 'sound' : 'mute', 'Sound: ' + (get('gn_sound', '1') === '1' ? 'on' : 'off'), function () {
       set('gn_sound', get('gn_sound', '1') === '1' ? '0' : '1'); Kit.sfx('good');
     });

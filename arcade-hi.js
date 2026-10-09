@@ -22,6 +22,23 @@ const ArcadeHi = (function(){
   }
   function save(key,list){ try{localStorage.setItem('hi_'+key,JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('hi_'+key);}catch(e){} }
 
+  // Your initials (set on your profile, PIN accounts) and the scores of people you've linked
+  function myIni(){ try{ return (typeof FGHSync!=='undefined' && FGHSync.initials && FGHSync.isPin && FGHSync.isPin()) ? FGHSync.initials() : ''; }catch(e){ return ''; } }
+  function linked(key){ try{ return (typeof FGHSync!=='undefined' && FGHSync.linkHi) ? FGHSync.linkHi(key) : []; }catch(e){ return []; } }
+  function myName(){ try{ return (localStorage.getItem('my_name')||'').trim(); }catch(e){ return ''; } }
+  // This device's board plus linked people's best scores (theirs not already on it), top MAX
+  function merged(key){
+    const own = load(key).map(e=>Object.assign({}, e, { mine: !!myIni() && e.name.trim().toUpperCase()===myIni() }));
+    const seen = {}; own.forEach(e=>{ seen[e.name.trim().toUpperCase()+'|'+e.score] = 1; });
+    const theirs = linked(key).filter(e=>!seen[String(e.ini).toUpperCase()+'|'+e.score]).map(e=>({ name: e.ini || '???', score: e.score, date: e.date, who: e.who }));
+    return own.concat(theirs).sort((a,b)=>b.score-a.score).slice(0, MAX);
+  }
+  function avHTML(name, cls){
+    try{ if(window.Kit && Kit.avatar && Kit.avatar.el) return Kit.avatar.el(name, cls||'sm', 'var(--surface-3)').outerHTML; }catch(e){}
+    return '';
+  }
+  function esc(t){ return String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
   function qualifies(key, score){
     const list = load(key);
     if(list.length < MAX) return true;
@@ -37,6 +54,7 @@ const ArcadeHi = (function(){
     list.sort((a,b)=>b.score-a.score);
     if(list.length > MAX) list.length = MAX;
     save(key, list);
+    try{ if(typeof FGHSync!=='undefined' && FGHSync.linkPublishSoon) FGHSync.linkPublishSoon(); }catch(e){}
     return list.findIndex(e=>e.name===name&&e.score===score);
   }
 
@@ -70,12 +88,19 @@ const ArcadeHi = (function(){
 .ahi-table tr.ahi-top td{color:#f5c842;}
 .ahi-quick{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:-4px 0 16px;}
 .ahi-quick button{font-family:var(--display);font-size:1.15rem;letter-spacing:.08em;padding:8px 14px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.ahi-quick button.ahi-me{display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.18);box-shadow:0 3px 0 rgba(0,0,0,.35),inset 0 0 0 1.5px rgba(245,200,66,.55);}
+.ahi-quick button.ahi-me .avatar{width:24px;height:24px;font-size:.75rem;}
 .ahi-quick button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
 .ahi-quick-lbl{text-align:center;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;}
 .ahi-rank{color:rgba(255,255,255,.3);font-size:.72rem;width:24px;}
 .ahi-name{font-family:var(--display);font-size:1.1rem;font-weight:900;letter-spacing:.1em;}
 .ahi-pts{font-family:var(--display);font-size:1.05rem;font-weight:900;text-align:right;}
 .ahi-dt{color:rgba(255,255,255,.3);font-size:.65rem;text-align:right;}
+.ahi-who{display:flex;align-items:center;gap:8px;}
+.ahi-who .avatar{width:26px;height:26px;font-size:.8rem;flex:none;}
+.ahi-who small{display:block;font-family:var(--font,system-ui);font-size:.66rem;font-weight:700;letter-spacing:0;color:rgba(255,255,255,.45);}
+.ahi-table tr.ahi-them td{background:rgba(91,140,255,.07);}
+.ahi-mine-lbl{text-align:center;font-size:.72rem;color:rgba(255,255,255,.5);margin:-8px 0 14px;}
 .ahi-empty{text-align:center;color:rgba(255,255,255,.25);padding:24px;font-size:.85rem;}
 `;
     document.head.appendChild(s);
@@ -85,8 +110,9 @@ const ArcadeHi = (function(){
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   function showEntry(key, score, onDone){
     injectCSS();
-    const letters = ['A','A','A'];
-    let focusIdx = 0;
+    const mine = myIni();
+    const letters = mine ? (mine+'AAA').slice(0,3).split('') : ['A','A','A'];
+    let focusIdx = mine ? Math.min(mine.length, 2) : 0;
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
@@ -184,13 +210,16 @@ const ArcadeHi = (function(){
       try{
         if(window.Kit && Kit.knownNames) Kit.knownNames().forEach((n,i)=>{ const t=String(n).toUpperCase().replace(/[^A-Z]/g,'').slice(0,3); if(t.length>=2) count[t]=(count[t]||0)+20-Math.min(i,19); });
       }catch(e){}
-      const picks = Object.keys(count).sort((a,b)=>count[b]-count[a]).slice(0,8);
+      let picks = Object.keys(count).sort((a,b)=>count[b]-count[a]);
+      if(mine) picks = [mine].concat(picks.filter(t=>t!==mine));
+      picks = picks.slice(0,8);
       if(!picks.length) return;
       const wrap = document.getElementById('ahi-quick-wrap');
       wrap.innerHTML = '<div class="ahi-quick-lbl">Tap your initials</div><div class="ahi-quick"></div>';
       const box = wrap.querySelector('.ahi-quick');
       picks.forEach(t=>{
         const b=document.createElement('button'); b.type='button'; b.textContent=t;
+        if(t===mine){ b.innerHTML=avHTML(myName()||t,'sm')+'<span>'+esc(t)+'</span>'; b.className='ahi-me'; b.setAttribute('aria-label','Your initials, '+t); }
         b.addEventListener('click',()=>{ for(let i=0;i<3;i++) letters[i]=t[i]||' '; dismiss(true); });
         box.appendChild(b);
       });
@@ -242,8 +271,9 @@ const ArcadeHi = (function(){
   // ── Leaderboard display ───────────────────────────────────────────────────
   function showBoard(key, title, newScore=null){
     injectCSS();
-    const list = load(key);
-    const newIdx = newScore!==null ? list.findIndex(e=>e.score===newScore) : -1;
+    const list = merged(key);
+    const newIdx = newScore!==null ? list.findIndex(e=>!e.who && e.score===newScore) : -1;
+    const nLocal = load(key).length, nThem = list.filter(e=>e.who).length;
     const gameName = title || 'High Scores';
 
     const overlay = document.createElement('div');
@@ -257,20 +287,22 @@ const ArcadeHi = (function(){
         const isNew = i===newIdx;
         const isTop = i===0;
         const medal = i<3 ? `<span style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:900;font-size:.75rem;color:#2b1a00;background:${['#ffc83d','#cfd6e4','#d9925a'][i]}">${i+1}</span>` : '';
-        rows += `<tr class="${isNew?'ahi-new':''}">
+        const nm = e.who ? `<div class="ahi-who">${avHTML(e.who)}<div>${esc(e.name)}<small>${esc(e.who)}</small></div></div>`
+          : e.mine ? `<div class="ahi-who">${avHTML(myName()||e.name)}<div>${esc(e.name)}<small>You</small></div></div>` : esc(e.name);
+        rows += `<tr class="${isNew?'ahi-new':''}${e.who?' ahi-them':''}">
           <td class="ahi-rank">${medal||i+1}</td>
-          <td class="ahi-name">${e.name}</td>
+          <td class="ahi-name">${nm}</td>
           <td class="ahi-pts">${e.score.toLocaleString()}</td>
-          <td class="ahi-dt">${e.date}</td>
+          <td class="ahi-dt">${esc(e.date||'')}</td>
         </tr>`;
       });
     }
 
-    const hasScores = list.length > 0;
+    const hasScores = nLocal > 0;
     overlay.innerHTML = `
       <div class="ahi-box">
         <div class="ahi-title">${window.Kit&&Kit.icon?Kit.icon('trophy'):''} ${gameName}</div>
-        <div class="ahi-sub">Top ${MAX} · ${list.length} entr${list.length===1?'y':'ies'}</div>
+        <div class="ahi-sub">Top ${MAX} · ${list.length} entr${list.length===1?'y':'ies'}${nThem?' · '+nThem+' from linked players':''}</div>
         <table class="ahi-table">
           <thead><tr><th>#</th><th>Name</th><th style="text-align:right">Score</th><th style="text-align:right">Date</th></tr></thead>
           <tbody>${rows}</tbody>

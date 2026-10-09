@@ -55,13 +55,14 @@ service cloud.firestore {
         ]);
     }
 
-    // Player profiles for linking: one doc per 6-character share code (name, avatar, ask, rejected game ids),
+    // Player profiles for linking: one doc per 6-character share code (name, avatar, ask, rejected game ids,
+    // arcade initials and best arcade scores),
     // with an inbox of games other people recorded with this player in them. Knowing the code is access, like a
     // PIN, but it reaches only this profile and its inbox, never the PIN's data.
     match /links/{code} {
       allow get, delete: if code.matches('^[A-HJ-NP-Z2-9]{6}$');
       allow create, update: if code.matches('^[A-HJ-NP-Z2-9]{6}$')
-        && request.resource.data.keys().hasOnly(['name', 'avatar', 'ask', 'rejected', 'at']);
+        && request.resource.data.keys().hasOnly(['name', 'avatar', 'ask', 'rejected', 'at', 'ini', 'hi']);
       match /inbox/{id} {
         allow create, update: if id.matches('^[a-z0-9]{6,24}$')
           && request.resource.data.keys().hasOnly(['key', 'entry', 'from', 'by', 'at'])

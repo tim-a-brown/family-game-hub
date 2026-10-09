@@ -763,8 +763,9 @@
       if (rest.length && j === top.length) box.appendChild(el('div', { class: 'label', style: { margin: '10px 2px 0' }, text: 'Everyone else' }));
       var used = taken.indexOf(n.toLowerCase()) >= 0;
       box.appendChild(el('button', { type: 'button', class: 'k-name' + (used ? ' used' : ''), disabled: used, onclick: function () { s.close(); sfx('pop'); haptic('light'); onPick(n); } }, [
-        avEl(n, null, 'var(--surface-3)'),
+        avMarked(n, 'var(--surface-3)'),
         el('span', { class: 'grow', text: n }),
+        whoMark(n) === 'me' ? el('span', { class: 'dim', text: 'you' }) : null,
         used ? el('span', { class: 'dim', text: 'playing' }) : null
       ]));
     });
@@ -956,7 +957,7 @@
             value: isCpu ? bots[i - 1] : (names[i] || '')
           });
           inputs.push(inp);
-          var row = el('div', { class: 'seat' + (isCpu ? ' cpu' : '') }, [el('span', { class: 'avatar', style: { '--c': c }, html: isCpu ? icon('bot') : String(i + 1) })]);
+          var row = el('div', { class: 'seat' + (isCpu ? ' cpu' : '') }, [isCpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') }) : seatBadge(inp.value, i, c)]);
           var field = el('div', { class: 'seat-field' }, [inp]);
           if (isCpu) {
             inp.readOnly = true; inp.setAttribute('aria-label', 'Computer player');
@@ -964,7 +965,11 @@
               bots[i - 1] = cpuNames(1, bots, state.count >= 4 ? 8 : 0)[0] || bots[i - 1]; inp.value = bots[i - 1]; sfx('pop'); haptic('light');
             } }));
           } else {
-            inp.addEventListener('input', function () { names[i] = inp.value; clr.hidden = !inp.value; });
+            inp.addEventListener('input', function () {
+              names[i] = inp.value; clr.hidden = !inp.value;
+              var was = row.firstChild, nb = seatBadge(inp.value, i, c);
+              if (was.getAttribute('data-who') !== nb.getAttribute('data-who')) row.replaceChild(nb, was);
+            });
             var clr = el('button', { type: 'button', class: 'seat-clear', 'aria-label': 'Clear name', html: icon('close'), onclick: function () {
               names[i] = ''; sfx('tap'); haptic('light'); renderSeats();
               var again = seatsBox.querySelectorAll('input')[i]; if (again) again.focus();
@@ -981,6 +986,13 @@
           seatsBox.appendChild(row);
         })(i);
       }
+    }
+    // Seat marker: the seat number, or the person's avatar with a tag when it's you or someone linked to their own profile
+    function seatBadge(v, i, c) {
+      var m = whoMark(v);
+      if (!m) return el('span', { class: 'avatar', style: { '--c': c }, 'data-who': '', html: String(i + 1) });
+      var b = avMarked(v.trim(), c); b.setAttribute('data-who', m + ':' + avKey(v));
+      return b;
     }
     var GRIP = '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>';
     function moveSeat(from, to) {
@@ -1366,6 +1378,20 @@
   function avEl(name, cls, color, fallback) {
     return avFill(el('span', { class: 'avatar' + (cls ? ' ' + cls : ''), style: color ? { '--c': color } : null }), name, fallback != null ? fallback : esc(String(name || '?').charAt(0).toUpperCase()), color);
   }
+  // 'me' for the signed-in person, 'link' for someone linked to their own profile, else null
+  function whoMark(n) {
+    var k = avKey(n); if (!k) return null;
+    var me = avKey(lsGet('my_name', '')) || (window.FGHSync && FGHSync.label ? avKey(FGHSync.label()) : '');
+    if (me && k === me) return 'me';
+    try { if (window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(k)) return 'link'; } catch (e) {}
+    return null;
+  }
+  // their avatar with a small tag for you / linked (plain avatar otherwise)
+  function avMarked(n, color) {
+    var m = whoMark(n), a = avEl(n, null, color);
+    if (!m) return a;
+    return el('span', { class: 'seat-av', title: m === 'me' ? 'You' : 'Linked to ' + poss(n) + ' profile' }, [a, el('span', { class: 'seat-tag ' + m, html: icon(m === 'me' ? 'user' : 'link') })]);
+  }
   function avRefresh() { Array.prototype.forEach.call(doc.querySelectorAll('[data-av]'), function (n) { if (n._avFb) avFill(n, n.getAttribute('data-av')); }); try { window.dispatchEvent(new CustomEvent('kit-avatar')); } catch (e) {} }
   window.addEventListener('storage', function (e) { if (e.key === AV_KEY) avRefresh(); });
 
@@ -1471,7 +1497,7 @@
       node.appendChild(el('p', { class: 'muted', text: 'Their avatar comes from their own phone, and games you play with ' + name + ' are saved to their history too. They can remove any game that wasn’t them.' }));
       s = sheet({ title: name, node: node, actions: [
         { label: 'Done', primary: true },
-        { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { FGHSync.linkRemove(name); toast('Unlinked'); avRefresh(); if (onDone) onDone(); } }] });
+        { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { setTimeout(function () { unlinkAsk(name, onDone); }, 320); } }] });
       return;
     }
     node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile.' }));
@@ -1530,6 +1556,144 @@
         });
       } }));
     }
+  }
+  // Your arcade initials: offered first (and filled in) when you make a high score; people who link you see your best scores
+  function initialsSheet(onDone) {
+    if (!linksOn()) { sheet({ title: 'Arcade initials', html: '<p class="muted">Sign in with a PIN to set your arcade initials.</p>', actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
+    var cur = FGHSync.initials() || lsGet('my_name', '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    var inp = el('input', { class: 'input lk-code', maxlength: 3, value: cur, placeholder: 'ABC', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Your initials' });
+    inp.addEventListener('input', function () { var v = inp.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); if (v !== inp.value) inp.value = v; });
+    var node = el('div', { class: 'lk' }, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Three letters for arcade high scores. They’re filled in for you when you make the board, and people who link you see your best scores on theirs.' }), inp]), s;
+    function go() {
+      var v = inp.value.toUpperCase().replace(/[^A-Z]/g, '');
+      if (v.length < 2) { inp.focus(); toast('Two or three letters'); return; }
+      FGHSync.setInitials(v); s.close(); sfx('good'); toast('Initials saved'); if (onDone) onDone(v);
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    s = sheet({ title: 'Arcade initials', node: node, actions: [{ label: 'Save', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    setTimeout(function () { inp.focus(); inp.select(); }, 300);
+  }
+
+  // Linked players: everyone you've linked to their own profile
+  function linkedList() {
+    if (!window.FGHSync || !FGHSync.links) return [];
+    var o = FGHSync.links().others || {};
+    return Object.keys(o).map(function (k) { return o[k]; }).filter(function (r) { return r && !r.off && r.code; })
+      .sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+  }
+  // Every finished game in this device's history (key, list, record)
+  function histEach(fn) {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('gh_') === 0 && !GH_SKIP[k.slice(3)]) keys.push(k); }
+    keys.forEach(function (k) {
+      var list; try { list = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return; }
+      if (!Array.isArray(list)) return;
+      var changed = false;
+      list.forEach(function (e, i) { if (e && typeof e === 'object' && fn(k.slice(3), e, i)) changed = true; });
+      if (changed) { lsSet(k, JSON.stringify(list)); try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); } catch (e) {} }
+    });
+  }
+  // Is this person in a game (by link, or by name anywhere in the record)?
+  function hasPerson(e, name, code) {
+    var k = avKey(name), hit = false;
+    (function walk(v) {
+      if (hit || v == null) return;
+      if (typeof v === 'string') { if (v.trim().toLowerCase() === k) hit = true; return; }
+      if (typeof v !== 'object') return;
+      if (code && v.link === code) { hit = true; return; }
+      for (var x in v) { if (x === '_from') continue; if (x.trim().toLowerCase() === k) { hit = true; return; } walk(v[x]); }
+    })(e);
+    return hit;
+  }
+  function gamesWith(name, code) {
+    var n = 0; histEach(function (key, e) { if (hasPerson(e, name, code)) n++; return false; }); return n;
+  }
+  function reEsc(t) { return String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  // Swap a name everywhere in a record (values, keys, and inside text like the summary)
+  function renameIn(v, from, to) {
+    var re = new RegExp('(^|[^A-Za-z0-9])' + reEsc(from) + '(?![A-Za-z0-9])', 'gi');
+    function fix(t) { return t.trim().toLowerCase() === from.toLowerCase() ? to : t.replace(re, function (m, a) { return a + to; }); }
+    if (typeof v === 'string') return fix(v);
+    if (Array.isArray(v)) { for (var i = 0; i < v.length; i++) v[i] = renameIn(v[i], from, to); return v; }
+    if (v && typeof v === 'object') {
+      // rebuilt in place so the keys keep their order
+      var pairs = Object.keys(v).map(function (x) {
+        if (x === '_id' || x === '_from' || x === 'link') return [x, v[x]];
+        return [x.trim().toLowerCase() === from.toLowerCase() ? to : x, renameIn(v[x], from, to)];
+      });
+      Object.keys(v).forEach(function (x) { delete v[x]; });
+      pairs.forEach(function (pr) { v[pr[0]] = pr[1]; });
+    }
+    return v;
+  }
+  var ANON = ['Alex', 'Sam', 'Jordan', 'Riley', 'Casey', 'Morgan', 'Quinn', 'Avery', 'Rowan', 'Skyler', 'Jesse', 'Drew', 'Blake', 'Reese', 'Parker', 'Emerson', 'Harper', 'Sage', 'Logan', 'Charlie'];
+  function anonName(name) {
+    var used = {}; knownNames().forEach(function (n) { used[avKey(n)] = 1; }); used[avKey(name)] = 1; used[avKey(lsGet('my_name', ''))] = 1;
+    var free = ANON.filter(function (n) { return !used[avKey(n)]; });
+    return free.length ? free[Math.floor(Math.random() * free.length)] : 'Player ' + (10 + Math.floor(Math.random() * 90));
+  }
+  function forgetName(name) {
+    fpWrite(fpRead().filter(function (x) { return avKey(x) !== avKey(name); }));
+    var h = hiddenNames(); if (h.indexOf(name) < 0) h.push(name); lsSet('gn_hidden_names', JSON.stringify(h));
+  }
+  // Remove a linked player, and choose what happens to the games you played with them:
+  // keep them as they are, keep them under a made-up name, or delete them.
+  function unlinkAsk(name, onDone) {
+    var r = FGHSync.linkOf(name), code = r ? r.code : null, n = gamesWith(name, code), s;
+    var games = n + (n === 1 ? ' game' : ' games');
+    function done(msg) { s.close(); sfx('good'); toast(msg); avRefresh(); if (onDone) onDone(); }
+    function opt(ic, t, d, fn, cls) {
+      return el('button', { type: 'button', class: 'lk-opt' + (cls ? ' ' + cls : ''), onclick: fn }, [el('span', { class: 'ic', html: icon(ic) }), el('span', { class: 'grow' }, [el('b', { text: t }), el('small', { text: d })])]);
+    }
+    var node = el('div', { class: 'lk' }, [
+      el('div', { class: 'lk-top' }, [avEl(name, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: name }), el('small', { text: n ? games + ' with ' + name + ' in your history' : 'No games with ' + name + ' in your history' })])]),
+      el('div', { class: 'lk-opts' }, [
+        opt('link', 'Just unlink', 'Keep the ' + (n ? games : 'games') + ' as they are. New games stop going to ' + poss(name) + ' history.', function () {
+          histEach(function (key, e) { var ch = false; (Array.isArray(e.players) ? e.players : []).forEach(function (p) { if (p && p.link === code) { delete p.link; ch = true; } }); if (ch) e._ed = Date.now(); return ch; });
+          FGHSync.linkRemove(name); done('Unlinked ' + name);
+        }),
+        opt('user', 'Unlink and hide their name', 'Keep the games, but ' + name + ' shows as a made-up name in them.', function () {
+          var nn = anonName(name);
+          histEach(function (key, e) {
+            if (!hasPerson(e, name, code)) return false;
+            (Array.isArray(e.players) ? e.players : []).forEach(function (p) { if (p && p.link === code) delete p.link; });
+            renameIn(e, name, nn); e._ed = Date.now(); return true;
+          });
+          FGHSync.linkRemove(name); forgetName(name); forgetName(nn); done(n ? name + ' is now ' + nn + ' in past games' : 'Unlinked ' + name);
+        }),
+        opt('trash', 'Unlink and delete the games', n ? 'Delete all ' + games + ' with ' + name + ' from your history, on all your devices.' : 'There are no games to delete.', function () {
+          if (!n) { FGHSync.linkRemove(name); forgetName(name); return done('Unlinked ' + name); }
+          confirmSheet('Delete ' + games + ' with ' + name + '?', { ok: 'Delete', danger: true, body: 'This can’t be undone.' }).then(function (ok) {
+            if (!ok) return;
+            var by = {}, GH = window.GameHistory;
+            histEach(function (key, e) { if (hasPerson(e, name, code)) (by[key] = by[key] || []).push(GH && GH.idOf ? GH.idOf(key, e) : e._id); return false; });
+            if (GH && GH.remove) GH.remove(by);
+            FGHSync.linkRemove(name); forgetName(name); done('Deleted ' + games);
+          });
+        }, 'danger')
+      ])
+    ]);
+    s = sheet({ title: 'Remove ' + name, node: node, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+  // The Linked players list (account menu): tap someone to see their link, or remove them
+  function linkedPanel(onChange) {
+    var box = el('div', { class: 'lk-people' });
+    function paint() {
+      box.innerHTML = '';
+      var list = linkedList();
+      if (!list.length) { box.appendChild(el('p', { class: 'muted lk-none', text: 'No one yet. In Frequent players, tap the link button next to someone and enter their profile code.' })); return; }
+      list.forEach(function (r) {
+        box.appendChild(el('div', { class: 'lk-person' }, [
+          el('button', { type: 'button', class: 'lk-who', onclick: function () { linkSheet(r.name, function () { paint(); if (onChange) onChange(); }); } }, [
+            avEl(r.name, null, 'var(--surface-3)'),
+            el('span', { class: 'grow' }, [el('b', { text: r.name }), el('small', { text: r.gone ? 'Their code stopped working' : (r.them && avKey(r.them) !== avKey(r.name) ? 'Their profile: ' + r.them : 'Linked') })])
+          ]),
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Remove ' + r.name, title: 'Remove', html: icon('close'), onclick: function () { unlinkAsk(r.name, function () { paint(); if (onChange) onChange(); }); } })
+        ]));
+      });
+    }
+    paint();
+    return box;
   }
   // Games others recorded with you, waiting for your OK
   function reviewSheet(onDone) {
@@ -1652,7 +1816,7 @@
   window.Kit = {
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };

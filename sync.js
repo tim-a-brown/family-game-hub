@@ -191,13 +191,16 @@
 
   function mergeGh(a, b){
     var all = asArray(a).concat(asArray(b));
-    var seen = {};
-    all = all.filter(function(row){
-      if(!row || typeof row !== 'object') return false;
+    var seen = {}, out = [];
+    // the same game on both sides: the copy edited last (_ed) wins, otherwise this device's
+    all.forEach(function(row){
+      if(!row || typeof row !== 'object') return;
       // hist.js uses _date; legacy rows may use finishedAt/date/ts
       var t = row._date || row.finishedAt || row.date || row.ts || JSON.stringify(row).slice(0,80);
-      if(seen[t]) return false; seen[t] = 1; return true;
+      if(seen[t] != null){ if((row._ed || 0) > (out[seen[t]]._ed || 0)) out[seen[t]] = row; return; }
+      seen[t] = out.length; out.push(row);
     });
+    all = out;
     all.sort(function(x,y){
       var tx = x._date || x.finishedAt || x.date || x.ts || 0;
       var ty = y._date || y.finishedAt || y.date || y.ts || 0;
@@ -278,7 +281,9 @@
     var own = (a.own && b.own) ? ((a.own.at || 0) >= (b.own.at || 0) ? a.own : b.own) : (a.own || b.own || null);
     var others = {};
     [a.others || {}, b.others || {}].forEach(function(src){ Object.keys(src).forEach(function(k){ var r = src[k]; if(r && (!others[k] || (r.at || 0) > (others[k].at || 0))) others[k] = r; }); });
-    return { own: own, others: others };
+    var ini = (a.ini && b.ini) ? ((a.ini.at || 0) >= (b.ini.at || 0) ? a.ini : b.ini) : (a.ini || b.ini || null);
+    var out = { own: own, others: others }; if(ini) out.ini = ini;
+    return out;
   }
   // Avatars: each person's newest version wins (their whole record: current choice and photos)
   function mergeAvatars(a, b){
@@ -738,7 +743,7 @@
   var OUTBOX = 'fgh_link_outbox';   // games waiting to be sent (this device only)
   var _pending = [], _linkBusy = false, _lastPoll = 0;
   function genCode(){ var c = ''; for(var i = 0; i < 6; i++) c += CODE_AB.charAt(Math.floor(Math.random() * CODE_AB.length)); return c; }
-  function linksGet(){ var l = lsJSON('fgh_links') || {}; return { own: l.own || null, others: l.others || {} }; }
+  function linksGet(){ var l = lsJSON('fgh_links') || {}, o = { own: l.own || null, others: l.others || {} }; if(l.ini) o.ini = l.ini; return o; }
   function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); }
   function linkEvent(){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length } })); }catch(e){} }
   function myName(){ return (LS.getItem('my_name') || '').trim(); }
@@ -749,6 +754,37 @@
     if(!r || !r.cur) return null;
     var out = { cur: r.cur };
     if(r.cur.k === 'photo'){ var ph = (r.photos || []).filter(function(x){ return x.id === r.cur.id; })[0]; if(ph) out.d = ph.d; else return null; }
+    return out;
+  }
+  // Your arcade initials (3 letters), kept with your links so they follow your PIN
+  function myInitials(){ var l = linksGet(); return l.ini && /^[A-Z]{1,3}$/.test(l.ini.v || '') ? l.ini.v : ''; }
+  function setInitials(v){
+    v = String(v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    var l = linksGet(); l.ini = { v: v, at: Date.now() }; linksSet(l); linkPublishSoon();
+    return v;
+  }
+  // Your best arcade scores (entries under your initials), top 5 per game, for the people who link you
+  function myHi(){
+    var ini = myInitials(), out = {}; if(!ini) return out;
+    for(var i = 0; i < LS.length; i++){
+      var k = LS.key(i); if(!k || k.indexOf('hi_') !== 0) continue;
+      var list = lsJSON(k); if(!Array.isArray(list)) continue;
+      var mine = list.filter(function(e){ return e && String(e.name || '').trim().toUpperCase() === ini && isFinite(Number(e.score)) && e.score !== null && e.score !== ''; })
+        .map(function(e){ return { s: Number(e.score), d: String(e.date || '').slice(0, 24) }; })
+        .sort(function(a, b){ return b.s - a.s; }).slice(0, 5);
+      if(mine.length) out[k.slice(3)] = mine;
+    }
+    return out;
+  }
+  function hiSig(){ return myInitials() + '|' + JSON.stringify(myHi()); }
+  // Linked people's initials and scores, as last read from their profiles (this device only)
+  var LHI = 'fgh_link_hi';
+  function linkHi(key){
+    var c = lsJSON(LHI) || {}, l = linksGet(), out = [];
+    Object.keys(c).forEach(function(k){
+      var r = l.others[k], x = c[k]; if(!r || r.off || !r.code || r.code !== x.code) return;
+      ((x.hi || {})[key] || []).forEach(function(e){ out.push({ who: r.name, ini: x.ini || '', score: Number(e.s) || 0, date: e.d || '' }); });
+    });
     return out;
   }
   function needPin(){ return isPin() ? ensureFirebase() : Promise.reject(new Error('Sign in with a PIN to link players')); }
@@ -776,7 +812,12 @@
   function linkPublish(){
     var l = linksGet(); if(!l.own || !isPin()) return Promise.resolve();
     return ensureFirebase().then(function(){
-      return linkCol().doc(l.own.code).set({ name: myName() || l.own.name, avatar: myAvatar(), ask: !!l.own.ask, at: Date.now() }, { merge: true });
+      var doc = { name: myName() || l.own.name, avatar: myAvatar(), ask: !!l.own.ask, at: Date.now(), ini: myInitials(), hi: myHi() };
+      return linkCol().doc(l.own.code).set(doc, { merge: true }).then(function(){ try{ LS.setItem('fgh_link_pub', hiSig()); }catch(e){} }).catch(function(e){
+        if(!e || e.code !== 'permission-denied') throw e;
+        delete doc.ini; delete doc.hi;   // cloud rules not updated yet
+        return linkCol().doc(l.own.code).set(doc, { merge: true });
+      });
     }).catch(function(e){ console.warn('[links] publish failed', e); });
   }
   function linkPublishSoon(){ clearTimeout(_pubT); _pubT = setTimeout(linkPublish, 800); }
@@ -915,10 +956,16 @@
           if(!d.exists) return;
           var data = d.data() || {};
           applyAvatar(r.name, r.code, data);
+          var c = lsJSON(LHI) || {};
+          if(data.ini || data.hi){ c[k] = { code: r.code, ini: String(data.ini || '').slice(0, 3), hi: data.hi && typeof data.hi === 'object' ? data.hi : {} }; }
+          else delete c[k];
+          try{ LS.setItem(LHI, JSON.stringify(c)); }catch(e){}
           unmarkRejected(r.code, data.rejected || []);
         }).catch(function(e){ console.warn('[links] read failed', r.code, e); }));
       });
       jobs.push(flushOutbox());
+      // scores that reached this device from your other devices: publish them too
+      if(l.own && l.own.code && LS.getItem('fgh_link_pub') !== hiSig()) jobs.push(linkPublish());
       return Promise.all(jobs);
     }).catch(function(e){ console.warn('[links] poll failed', e); }).then(function(){ _linkBusy = false; linkEvent(); });
   }
@@ -977,6 +1024,7 @@
     // player links
     linkShare: linkShare, linkNewCode: linkNewCode, linkSetAsk: linkSetAsk, linkPublish: linkPublishSoon,
     linkAdd: linkAdd, linkRemove: linkRemove, linkOf: linkOf, links: linksGet,
+    initials: myInitials, setInitials: setInitials, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
     _scanLocal: scanLocal
