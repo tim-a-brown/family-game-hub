@@ -335,7 +335,7 @@
     var d = e.dt, P = e.players || [], duel = P.length > 1;
     var list = d && d.w ? d.w : (e.words || []).map(function (x) { return { w: x.w, ok: x.won ? 1 : 0, m: x.misses, mx: { easy: 10, medium: 8, hard: 6 }[e.diff] || 6, g: '' }; });
     if (!list.length) return null;
-    var box = ui.el('div', { class: 'hvw-hm' });
+    var box = ui.el('div', { class: 'hvw-hm' }), oneCat = list.every(function (w) { return w.c === list[0].c; });
     list.forEach(function (w) {
       var word = up(w.w), gs = up(w.g), have = !!gs;
       var tiles = '', st = '';
@@ -343,7 +343,7 @@
       if (!w.ok && !have) st = st.replace(/w/g, 'r');
       var missed = gs.split('').filter(function (c) { return word.indexOf(c) < 0; }).join(' ');
       var top = [ui.el('b', { text: w.ok ? 'Saved' : 'Lost', class: w.ok ? 'ok' : 'no' }), ui.el('span', { text: w.m + ' of ' + w.mx + ' misses' })];
-      if (w.c) top.push(ui.el('span', { text: '· ' + w.c }));
+      if (w.c && !oneCat) top.push(ui.el('span', { text: '· ' + w.c }));
       if (duel && w.gu != null) top.push(ui.el('span', { text: '· ' + ((P[w.gu] || {}).name || '') + ' guessing' }));
       if (w.ok && w.p) top.push(ui.el('span', { text: '· +' + w.p + (w.p === 1 ? ' pt' : ' pts') }));
       if (!w.ok && w.st) top.push(ui.el('span', { text: '· +' + w.st + ' to ' + ((P[w.se] || {}).name || 'setter') }));

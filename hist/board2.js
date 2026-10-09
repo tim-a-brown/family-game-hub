@@ -333,16 +333,14 @@
     var nm = [plainName(e, 0), plainName(e, 1)], cols = (d.col || []).map(function (c, i) { return c || Kit.color(i); }), out = [];
     var left = [0, 0]; for (var i = 0; i < 6; i++) { left[0] += d.b[i]; left[1] += d.b[i + 7]; }
     out.push(ui.section('When the game ended', [ui.picture(mcSvg(d.b, cols), { frame: 'wood', max: 380 }),
-      ui.el('small', { class: 'hv-note', text: nm[0] + ' plays the bottom row into the right store; ' + nm[1] + ' the top row into the left store.' + (d.sw && d.sw.n ? ' ' + nm[d.sw.w] + ' then swept the last ' + d.sw.n + ' stone' + (d.sw.n === 1 ? '' : 's') + ' into their store.' : '') })]));
+      ui.el('small', { class: 'hv-note', text: 'Bottom row and right store: ' + nm[0] + '. Top row and left store: ' + nm[1] + '.' + (d.sw && d.sw.n ? ' ' + nm[d.sw.w] + ' then swept the last ' + d.sw.n + ' stone' + (d.sw.n === 1 ? '' : 's') + ' into their store.' : '') })]));
     if (d.t0 && d.t0.length > 1) {
-      var tot = d.per * 12 || 48;
-      out.push(ui.section('Stores over the game', [ui.picture(spark([{ v: [0].concat(d.t0), c: cols[0] }, { v: [0].concat(d.t1), c: cols[1] }], { lo: 0, hi: Math.max(tot / 2 + 4, Math.max.apply(null, d.t0.concat(d.t1))), mid: tot / 2, aria: 'Stores over the game' }), { frame: 'dark' }),
+      var tot = d.per * 12 || 48, fin = (e.players || []).map(function (p) { return typeof p.score === 'number' ? p.score : null; });
+      out.push(ui.section('Stores over the game', [ui.picture(spark([{ v: [0].concat(d.t0, fin[0] != null ? [fin[0]] : []), c: cols[0] }, { v: [0].concat(d.t1, fin[1] != null ? [fin[1]] : []), c: cols[1] }], { lo: 0, hi: Math.max(tot / 2 + 4, Math.max.apply(null, d.t0.concat(d.t1, fin.filter(function (x) { return x != null; })))), mid: tot / 2, aria: 'Stores over the game' }), { frame: 'dark' }),
         ui.chips([{ t: nm[0], c: cols[0], on: 1 }, { t: nm[1], c: cols[1], on: 1 }, { t: 'Dashed line: half the stones (' + tot / 2 + ')' }])]));
     }
     var caps = d.caps || [], ct = [0, 0], cs = [0, 0]; caps.forEach(function (c) { ct[c.w]++; cs[c.w] += c.n; });
     out.push(ui.table(['', nm[0], nm[1]], [['Captures', ct[0], ct[1]], ['Stones captured', cs[0], cs[1]], ['Extra turns', d.ex ? d.ex[0] : null, d.ex ? d.ex[1] : null], ['Left on side at end', left[0], left[1]]]));
-    var big = caps.slice().sort(function (a, b) { return b.n - a.n; }).slice(0, 4);
-    if (big.length) out.push(ui.section('Biggest captures', ui.log(big.map(function (c) { return { c: cols[c.w], t: nm[c.w] + ' took ' + c.n + ' stones' }; }))));
     out.push(ui.stats([['Moves', d.mv || null], ['Stones per pit', d.per || null], ['Series', d.ser ? d.ser[0] + '–' + d.ser[1] + (d.ser[2] ? ' (' + d.ser[2] + ' tied)' : '') : null]]));
     return ui.wrap(out);
   });

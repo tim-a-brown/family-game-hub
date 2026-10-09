@@ -337,7 +337,7 @@
     var list = el('div', { class: 'cv-cards' });
     cards.forEach(function (c, i) {
       var cat = CONV_CAT[c.c] || [c.c || '', '#64748b'], pi = c.who ? P.indexOf(c.who) : -1;
-      list.appendChild(el('div', { class: 'cv-card', style: { '--cc': cat[1], '--r': (i % 2 ? .6 : -.6) + 'deg' } }, [
+      list.appendChild(el('div', { class: 'cv-card', style: { '--cc': cat[1], '--r': (i % 2 ? .4 : -.4) + 'deg' } }, [
         el('div', { class: 'cv-top' }, [el('span', { class: 'cv-k', text: cat[0] }), c.star ? el('span', { class: 'cv-star', html: ui.icon('star') }) : null]),
         el('p', { text: c.q }),
         c.who ? el('span', { class: 'cv-who', style: { '--c': ui.color(pi < 0 ? 0 : pi) } }, [el('i', { text: c.who.charAt(0).toUpperCase() }), el('span', { text: c.who })]) : null

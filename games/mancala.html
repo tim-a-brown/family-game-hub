@@ -142,7 +142,7 @@
       for (var j = 0; j < S.per; j++) S.stones.push({ c: (ci++ * 5 + i) % GLASS.length, p: i, k: ++K });
     }
     S.cur = S.first; S.over = false; S.started = Date.now(); S.moves = 0;
-    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null, t0: [], t1: [], tw: '' };
+    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null, t0: [], t1: [] };
     S.last = -1;
     save(); render(); maybeCpu();
   }
@@ -246,7 +246,7 @@
       if (S.st.chain > S.st.bestChain.n) S.st.bestChain = { n: S.st.chain, who: pl };
     } else S.st.chain = 0;
     S.last = lastPit;
-    if (S.st.t0) { S.st.t0.push(store(0)); S.st.t1.push(store(1)); S.st.tw += pl; }
+    if (S.st.t0) { S.st.t0.push(store(0)); S.st.t1.push(store(1)); }
     paint();
     setTimeout(function () {
       b = counts();
@@ -308,9 +308,9 @@
       players: P.map(function (p, i) { return { name: p.name, score: i ? s1 : s0, cpu: p.cpu }; }),
       winner: w >= 0 ? P[w].name : null, highlights: hl,
       // for the history view: the pits the moment the game ended (before the sweep), store totals after every move
-      // (t0/t1, tw = who moved), captures and extra turns
-      detail: { b: S.st.endB || counts(), per: S.per, t0: S.st.t0 || [], t1: S.st.t1 || [], tw: S.st.tw || '',
-        caps: S.st.caps.map(function (c) { return { w: c.who, n: c.n, p: c.pit }; }), ex: S.st.extra.slice(), ch: S.st.bestChain, sw: S.st.sweep, mv: S.moves, ser: S.wins.slice(),
+      // (t0/t1), captures and extra turns
+      detail: { b: S.st.endB || counts(), per: S.per, t0: S.st.t0 || [], t1: S.st.t1 || [],
+        caps: S.st.caps.map(function (c) { return { w: c.who, n: c.n, p: c.pit }; }), ex: S.st.extra.slice(), ch: S.st.bestChain, sw: S.st.sweep ? { w: S.st.sweep.who, n: S.st.sweep.n } : null, mv: S.moves, ser: S.wins.slice(),
         col: P.map(function (p) { return p.color || ''; }) }
     });
     clearSave();

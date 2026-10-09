@@ -26,7 +26,7 @@
     '.hvb-caps{display:flex;flex-direction:column;gap:4px;}',
     '.hvb-caps>div{display:flex;align-items:center;gap:8px;font-size:.84rem;font-weight:800;color:var(--text-2);}',
     '.hvb-caps>div>span:first-child{min-width:74px;}',
-    '.hvb-caps svg{width:22px;height:22px;margin-right:-5px;}',
+    '.hvb-caps svg{display:block;max-width:100%;}','.hvb-caps>div>span:nth-child(2){min-width:0;flex:1;}',
     '.hvb-caps em{font-style:normal;color:var(--text-3);font-weight:700;margin-left:8px;}',
     '.hvb-dom{display:flex;flex-wrap:wrap;gap:3px;align-items:center;justify-content:center;line-height:0;}',
     '.hvb-dom svg{height:22px;width:auto;flex:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45));}',
@@ -62,8 +62,9 @@
   function chPiece(a, white, x, y, s) {
     var sh = CSH[a], stroke = white ? '#3b2a1a' : '#050302', det = white ? '#3b2a1a' : '#d9cba9';
     var d = sh.d.replace(/class="fd"/g, 'fill="' + det + '" stroke="none"');
-    return '<svg x="' + x + '" y="' + y + '" width="' + s + '" height="' + s + '" viewBox="7 3 86 88"><g fill="url(#' + (white ? 'hvcgw' : 'hvcgb') + ')" stroke="' + stroke + '" stroke-width="3" stroke-linejoin="round">' + sh.m + '</g>' +
-      (d ? '<g fill="none" stroke="' + det + '" stroke-width="2.6" stroke-linecap="round">' + d + '</g>' : '') + '</svg>';
+    // a group, not a nested <svg> (frame CSS sizes every svg inside it)
+    return '<g transform="translate(' + f2(x + (s - s * 86 / 88) / 2) + ' ' + y + ') scale(' + f2(s / 88) + ') translate(-7 -3)"><g fill="url(#' + (white ? 'hvcgw' : 'hvcgb') + ')" stroke="' + stroke + '" stroke-width="3" stroke-linejoin="round">' + sh.m + '</g>' +
+      (d ? '<g fill="none" stroke="' + det + '" stroke-width="2.6" stroke-linecap="round">' + d + '</g>' : '') + '</g>';
   }
   var CVAL = { p: 1, n: 2, b: 3, r: 4, q: 5, k: 6 };
   function chStart() { return ['rnbqkbnr', 'pppppppp', '........', '........', '........', '........', 'PPPPPPPP', 'RNBQKBNR'].join('').split(''); }
@@ -139,12 +140,12 @@
     var VAL = [0, 1, 3, 3, 5, 9, 0];
     function capRow(str, takerWhite) {
       var list = String(str || '').split('').map(Number).filter(Boolean).sort(function (a, b) { return b - a; });
-      var svg = list.map(function (a) { return '<svg viewBox="0 0 40 40">' + CDEFS + chPiece(a, !takerWhite, 0, 0, 40) + '</svg>'; }).join('');
+      var svg = list.length ? '<svg viewBox="0 0 ' + (list.length * 26 + 14) + ' 40" style="width:' + (list.length * 13 + 7) + 'px;height:20px">' + CDEFS + list.map(function (a, i) { return chPiece(a, !takerWhite, i * 26, 0, 40); }).join('') + '</svg>' : '';
       var pts = list.reduce(function (s, a) { return s + VAL[a]; }, 0);
       return ui.el('div', null, [ui.el('span', { text: nameOf(takerWhite ? 1 : -1) }), ui.el('span', { html: svg || '<em>none</em>' }), pts ? ui.el('em', { text: pts + ' pts' }) : null]);
     }
     if (d.cw || d.cb) out.push(ui.section('Captured', ui.el('div', { class: 'hvb-caps' }, [capRow(d.cw, true), capRow(d.cb, false)])));
-    out.push(ui.stats([['Result', CH_RES[d.res] || 'Over'], ['Moves', Math.ceil(plies / 2) || ''], ['Skill', d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) : '']]));
+    out.push(ui.facts([['Result', (CH_RES[d.res] || 'Over') + (d.w ? ': ' + nameOf(d.w) + ' won' : '')], ['Moves', Math.ceil(plies / 2) || ''], ['Computer', d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) : '']]));
     return ui.wrap(out);
   });
 
@@ -200,7 +201,7 @@
         snap.innerHTML = ckBoard(n === mv.length ? fin : b, { flip: flip, hl: hl });
         if (!n) return 'Starting board';
         var side = (n - 1) % 2 === 0 ? first : -first, m = mv[n - 1], k = (m.match(/x/g) || []).length;
-        return (n === mv.length ? 'Final · ' : '') + 'Move ' + n + ' · ' + nameOf(side) + (k ? ' jumped ' + (k > 1 ? k + ' pieces' : 'a piece') : ' moved') + ' (' + m + ')';
+        return (n === mv.length ? 'Final · ' : '') + 'Move ' + Math.ceil(n / 2) + ' · ' + nameOf(side) + (k ? ' jumped ' + (k > 1 ? k + ' pieces' : 'a piece') : ' moved') + ' (' + m + ')';
       })));
     }
     function cnt(ch) { return fin.filter(function (x) { return x.toLowerCase() === ch; }).length; }
@@ -210,7 +211,7 @@
       [nameOf(1) + ' (Black)', cnt('b'), kings('b'), 12 - cnt('r')],
       [nameOf(-1) + ' (Red)', cnt('r'), kings('r'), 12 - cnt('b')]
     ]));
-    out.push(ui.stats([['Result', RES[d.res] || 'Over'], ['Moves', mv.length || ''], ['Jumps', d.f === 0 ? 'Optional' : 'Must jump']]));
+    out.push(ui.facts([['Result', (RES[d.res] || 'Over') + (d.w ? ': ' + nameOf(d.w) + ' won' : '')], ['Moves', Math.ceil(mv.length / 2) || ''], ['Jumps', d.f === 0 ? 'Optional (house rule)' : 'Must jump']]));
     return ui.wrap(out);
   });
 
@@ -241,7 +242,7 @@
       if (o.last === i) s += '<circle cx="' + f2(x + (i % 3 + .5) * c) + '" cy="' + f2(y + (Math.floor(i / 3) + .5) * c) + '" r="' + f2(c * 0.44) + '" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="' + f2(w * .8) + '" stroke-dasharray="3 3"/>';
     }
     if (o.line != null && o.line >= 0) {
-      var L = TT_LINES[o.line], a = L[0], b = L[2], ext = 0.38;
+      var L = TT_LINES[o.line], a = L[0], b = L[2], ext = 0.3;
       var ax = (a % 3 + .5), ay = (Math.floor(a / 3) + .5), bx = (b % 3 + .5), by = (Math.floor(b / 3) + .5), dx = bx - ax, dy = by - ay, dl = Math.sqrt(dx * dx + dy * dy);
       ax -= dx / dl * ext; ay -= dy / dl * ext; bx += dx / dl * ext; by += dy / dl * ext;
       s += '<line x1="' + f2(x + ax * c) + '" y1="' + f2(y + ay * c) + '" x2="' + f2(x + bx * c) + '" y2="' + f2(y + by * c) + '" stroke="' + (o.lineCol || '#fffbe8') + '" stroke-width="' + f2(w * 2.4) + '" stroke-linecap="round" opacity=".9"/>';
@@ -270,7 +271,7 @@
         if (won) s += ttMark(m, bx + big / 2, by + big / 2, big * 0.34, 6);
       }
       var ml = o.metaLine != null ? o.metaLine : -1;
-      if (ml >= 0) s += ttGrid('.........', ox - gap / 2, ox - gap / 2, 3 * (big + gap), { line: ml }).replace(/<line[^>]*stroke="rgba\(240[^>]*\/>/g, '');
+      if (ml >= 0) s += ttGrid('.........', 10, 10, 310, { line: ml }).replace(/<line[^>]*stroke="rgba\(240[^>]*\/>/g, '');
     } else if (n === 1) {
       W = H = 240; s = defs + bg(W, H) + ttGrid(boards[0], 20, 20, 200, { line: o.lines ? o.lines[0] : -1, last: o.lastB === 0 ? o.lastI : -1 });
     } else {
@@ -307,7 +308,7 @@
         return (n === N ? 'Final · ' : '') + 'Move ' + n + ' · ' + (nm[p] || 'Player') + ' (' + (sy.charAt(p) === 'T' ? 'triangle' : sy.charAt(p)) + ') ' + where + (boards.length > 1 ? ' of board ' + (bd + 1) : '');
       })));
     }
-    out.push(ui.stats([['Moves', N || ''], ['Board', d.v === 'ultimate' ? 'Ultimate' : boards.length > 1 ? boards.length + ' boards' : 'Classic'], ['Skill', d.lv ? { easy: 'Easy', med: 'Medium', hard: 'Hard' }[d.lv] : '']]));
+    out.push(ui.facts([['Moves', N || ''], ['Board', d.v === 'ultimate' ? 'Ultimate' : boards.length > 1 ? boards.length + ' boards' : 'Classic'], ['Computer', d.lv ? { easy: 'Easy', med: 'Medium', hard: 'Hard' }[d.lv] : '']]));
     return ui.wrap(out);
   });
 
@@ -372,7 +373,7 @@
     var order = fin.slice(); nm.forEach(function (x, i) { if (order.indexOf(i) < 0) order.push(i); });
     var rows = order.map(function (i) {
       var place = fin.indexOf(i);
-      var r = [nm[i] || 'Player', { t: place >= 0 ? ['1st', '2nd', '3rd', '4th', '5th', '6th'][place] : 'Still going', c: place === 0 ? 'hi' : '' }, (hm[i] != null ? hm[i] : '–') + '/10', mv[i] != null ? mv[i] : '–', ch[i] || 0];
+      var r = [nm[i] || 'Player', { t: place >= 0 ? ['1st', '2nd', '3rd', '4th', '5th', '6th'][place] : '–', c: place === 0 ? 'hi' : '' }, (hm[i] != null ? hm[i] : '–') + '/10', mv[i] != null ? mv[i] : '–', ch[i] || 0];
       return r;
     });
     out.push(ui.section('How far everyone got', ui.table(['', 'Place', 'Home', 'Moves', 'Best hops'], rows)));
@@ -475,7 +476,7 @@
       });
       out.push(ui.section('Left in hand', ui.el('div', { class: 'hvb-mm' }, rows)));
     }
-    out.push(ui.stats([['Game', DOM_V[d.v] || ''], ['Hands', d.h || ''], ['Last hand', d.k === 'domino' ? 'Domino' : d.k === 'block' ? 'Blocked' : d.k === 'match' ? 'Hit the target' : ''], ['Boneyard', d.v === 'block' ? '' : d.bn != null ? d.bn + ' left' : '']]));
+    out.push(ui.facts([['Game', DOM_V[d.v] || ''], ['Hands', d.h || ''], ['Last hand', d.k === 'domino' ? (nm[d.wi] ? nm[d.wi] + ' dominoed' : 'Domino') : d.k === 'block' ? 'Blocked' : d.k === 'match' ? 'Reached the target mid-hand' : ''], ['Boneyard', d.v === 'block' ? '' : d.bn != null ? d.bn + ' tiles left' : '']]));
     return ui.wrap(out);
   });
 

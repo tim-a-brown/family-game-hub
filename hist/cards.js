@@ -29,6 +29,7 @@
   function row(codes, o) {
     o = o || {}; var box = K().el('div', { class: 'hvc-row' + (o.fan ? ' fan' : '') + (o.cls2 ? ' ' + o.cls2 : '') });
     if (o.w) box.style.setProperty('--cw', o.w + 'px');
+    if (o.ov) box.style.setProperty('--ov', String(o.ov));
     [].concat(codes || []).forEach(function (c, i) {
       var extra = (o.hl && o.hl.indexOf(c) >= 0 ? ' hv-hl' : '') + (o.dim && o.dim.indexOf(c) >= 0 ? ' dim' : '') + (o.cls ? ' ' + (o.cls(c, i) || '') : '');
       box.appendChild(card(c, o.w, extra));
@@ -77,7 +78,7 @@
     'box-shadow:inset 0 4px 14px rgba(0,0,0,.5),inset 0 0 0 2px rgba(0,0,0,.25),0 0 0 5px #6e3d1c,0 0 0 6px rgba(0,0,0,.35);margin:5px;}',
     '.hvc-row{display:flex;flex-wrap:wrap;gap:5px;--cw:38px;align-items:flex-end;}',
     '.hvc-row .pcard{box-shadow:0 2px 5px rgba(0,0,0,.4);flex:none;}',
-    '.hvc-row.fan{flex-wrap:nowrap;gap:0;}.hvc-row.fan .pcard+.pcard{margin-left:calc(var(--cw) * -.42);}',
+    '.hvc-row.fan{flex-wrap:nowrap;gap:0;}.hvc-row.fan .pcard+.pcard{margin-left:calc(var(--cw) * var(--ov,-.42));}',
     '.hvc-row .pcard.dim{filter:brightness(.62) saturate(.6);}',
     '.hvc-grp{display:flex;flex-direction:column;gap:6px;min-width:0;}',
     '.hvc-cap{font-size:.72rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.7);}',
@@ -113,7 +114,7 @@
     var moons = (d.moons || []).reduce(function (a, b) { return a + b; }, 0);
     if (moons) out.push(ui.stats(nm.map(function (n, i) { return d.moons[i] ? [n, plural(d.moons[i], 'moon')] : null; })));
     var kids = [];
-    if (d.hand && d.hand.length) kids.push(grp('Your cards, last hand', row(d.hand, { fan: true, w: 40, hl: d.pass ? d.pass.got : [] }), d.pass ? 'Ringed: the 3 cards passed to you' : 'No passing that hand'));
+    if (d.hand && d.hand.length) kids.push(grp('Your cards, last hand', row(d.hand, { fan: true, w: 36, hl: d.pass ? d.pass.got : [] }), d.pass ? 'Ringed: the 3 cards passed to you' : 'No passing that hand'));
     if (d.pass) kids.push(K().el('div', { class: 'hvc-pair' }, [grp('You passed', row(d.pass.out, { w: 34 })), grp('You got', row(d.pass.got, { w: 34 }))]));
     if (d.q && d.q.c) {
       var t = K().el('div', { class: 'hvc-row' });
@@ -145,13 +146,14 @@
     }
     var teams = [first(nm[0]) + ' & ' + first(nm[2]), first(nm[1]) + ' & ' + first(nm[3])];
     var st = [];
-    if (d.bags) st.push(['Bags · ' + teams[0], d.bags[0]], ['Bags · ' + teams[1], d.bags[1]]);
-    if (d.sets) st.push(['Times set · ' + teams[0], d.sets[0]], ['Times set · ' + teams[1], d.sets[1]]);
-    out.push(ui.stats(st));
+    if (d.bags) st.push(['Bags at the end', d.bags[0], d.bags[1]]);
+    if (d.sets) st.push(['Times set', d.sets[0], d.sets[1]]);
+    if (d.nils) st.push(['Nils made', (d.nils[0] || 0) + (d.nils[2] || 0), (d.nils[1] || 0) + (d.nils[3] || 0)]);
+    if (st.length) out.push(ui.table([''].concat(teams), st, { headColors: [null, ui.color(0), ui.color(1)] }));
     if (d.tricks) out.push(ui.section('Tricks over the game', ui.bars(nm.map(function (n, i) { return { label: n, value: d.tricks[i] || 0, color: ui.color(i % 2) }; }))));
     var nils = (d.nils || []).map(function (n, i) { return n ? nm[i] + ' made Nil' + (n > 1 ? ' ×' + n : '') : null; }).filter(Boolean);
     if (nils.length) out.push(ui.chips(nils.map(function (t) { return { t: t, on: true }; })));
-    if (d.hand && d.hand.length) out.push(ui.section('Your cards, last hand', felt('spades', [row(d.hand, { fan: true, w: 40 })])));
+    if (d.hand && d.hand.length) out.push(ui.section('Your cards, last hand', felt('spades', [row(d.hand, { fan: true, w: 36 })])));
     return ui.wrap(out);
   });
   HistView.css('hv-cards-note', '.hv-note{margin:0;font-size:.76rem;color:var(--text-3);font-weight:700;}');
@@ -200,14 +202,14 @@
       }
       var svg = chart([{ pts: pts[0], color: ui.color(0), step: true }, { pts: pts[1], color: ui.color(1), step: true }],
         { max: 121, h: 170, xmarks: marks, aria: 'Peg race', lines: [{ y: 121, label: '121', c: 'rgba(255,209,102,.55)' }, { y: 91, label: '91' }, { y: 61, label: '61' }], xlabel: 'every score, hand by hand' });
-      out.push(ui.section('The peg race', [ui.picture(svg, { frame: 'wood', max: 380 }), ui.el('p', { class: 'hv-note', text: 'Each step is a score. Faint lines split the hands. 91 is the skunk line, 61 double skunk.' })]));
+      out.push(ui.section('The peg race', [ui.chips(nm.map(function (n, p) { return { t: n + ' · ' + sc[p], c: ui.color(p), on: true }; })), ui.picture(svg, { frame: 'wood', max: 380 }), ui.el('p', { class: 'hv-note', text: 'Each step is a score. Faint lines split the hands. 91 is the skunk line, 61 double skunk.' })]));
     }
     if (d.best) {
       var bk = [];
       var HOW = { '15': 'Fifteens', pair: 'Pair', royal: 'Three of a kind', double: 'Four of a kind', run: 'Runs', flush: 'Flush', nobs: 'His nobs' };
       [0, 1].forEach(function (p) {
         var b = d.best[p]; if (!b || !b.c) return;
-        var parts = b.how ? Object.keys(b.how).map(function (k) { return (HOW[k] || k) + ' ' + b.how[k]; }).join(' · ') : '';
+        var parts = b.how ? Object.keys(b.how).filter(function (k) { return b.how[k] > 0; }).map(function (k) { return (HOW[k] || k) + ' ' + b.how[k]; }).join(' · ') : '';
         bk.push(grp(nm[p] + ' · best ' + (b.crib ? 'crib' : 'hand') + ': ' + b.pts, K().el('div', { class: 'hvc-pair' }, [row(b.c, { w: 38 }), b.st ? row([b.st], { w: 38, hl: [b.st] }) : null]),
           (parts || 'No points') + ' · hand ' + b.hand + (b.st ? ' · ringed card is the starter' : '')));
       });
@@ -232,7 +234,8 @@
     var L = d.last;
     function melds(ms, dead, lays) {
       var box = K().el('div', { class: 'hvc-pair' });
-      (ms || []).forEach(function (m) { var cs = String(m).split(','); box.appendChild(row(cs, { w: 32, fan: true, hl: lays || [] })); });
+      (ms || []).forEach(function (m) { var cs = String(m).split(','); box.appendChild(row(cs, { w: 32, fan: true })); });
+      if (lays && lays.length) box.appendChild(grp('', row(lays, { w: 32, fan: true, hl: lays }), 'laid off'));
       if (dead && dead.length) box.appendChild(grp('', row(dead, { w: 32, fan: true, cls: function () { return 'dim'; } }), 'deadwood'));
       return box;
     }
@@ -241,7 +244,7 @@
       var head = L.gin ? K1 + ' went gin' : L.uc ? D + ' undercut ' + K1 : K1 + ' knocked';
       out.push(ui.section('Last hand: ' + head, felt('gin', [
         grp(K1 + (L.gin ? ' · gin' : ' · ' + L.kw + ' deadwood'), melds(L.km, L.kd)),
-        grp(D + ' · ' + L.dw + ' deadwood', melds(L.dm, L.dd, L.ly), L.ly && L.ly.length ? 'Ringed: laid off on ' + first(K1) + "'s melds" : ''),
+        grp(D + ' · ' + L.dw + ' deadwood', melds(L.dm, L.dd, L.ly), L.ly && L.ly.length ? 'Laid off cards went onto ' + first(K1) + "'s melds" : ''),
         K().el('div', { class: 'hvc-sub', text: nm[L.w] + ' scored ' + L.pts + (L.gin ? ' (deadwood + 25 gin bonus)' : L.uc ? ' (difference + 25 undercut bonus)' : ' (deadwood difference)') })
       ])));
     }
@@ -283,12 +286,12 @@
       var down = [0, 1, 2, 3, 4, 5, 6];
       var stock = codes2(d.stock).reverse();
       out.push(ui.section('The deal', felt('sol', [tableau(d.tab, down, 42),
-        stock.length ? grp('The stock, in the order it turned over', row(stock, { w: 26, fan: true })) : null,
+        stock.length ? grp('The stock, in the order it turned over', row(stock, { w: 26, fan: true, ov: -.6 })) : null,
         K().el('div', { class: 'hvc-sub', text: 'Dimmed cards started face down.' })])));
     }
     out.push(progress(ui, d.pg, e.moves));
     out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Score', e.score != null ? ui.num(e.score) : null],
-      ['Trips through deck', d.passes != null ? d.passes + 1 : null], ['Cards turned up', d.flips], ['Undos', d.undos], ['Finished itself', d.auto ? d.auto + ' cards' : null]]));
+      ['Trips through deck', d.passes != null ? d.passes + 1 : null], ['Cards turned up', d.flips], ['Undos', d.undos], ['Cards that finished themselves', d.auto || null]]));
     return ui.wrap(out);
   });
   R('freecell', function (e, ui) {
@@ -296,14 +299,14 @@
     var out = [];
     if (d.tab) out.push(ui.section('Deal #' + (e.deal || ''), felt('fc', [tableau(d.tab, null, 38)])));
     out.push(progress(ui, d.pg, e.moves));
-    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Most free cells used', d.cells != null ? d.cells + ' of 4' : null], ['Undos', d.undos], ['Went home itself', d.auto ? d.auto + ' cards' : null]]));
+    out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Most free cells used', d.cells != null ? d.cells + ' of 4' : null], ['Undos', d.undos], ['Cards that went home themselves', d.auto || null]]));
     return ui.wrap(out);
   });
 
   // ── Pyramid: the pyramid as dealt (what was left stays bright), and every pair ──
   HistView.css('hv-cards-pyr', '.hvc-pyr{display:flex;flex-direction:column;align-items:center;--cw:40px;}' +
     '.hvc-pyr .pr{display:flex;gap:4px;}.hvc-pyr .pr+.pr{margin-top:calc(var(--cw) * -.78);}.hvc-pyr .pcard{box-shadow:0 2px 5px rgba(0,0,0,.45);}' +
-    '.hvc-pyr .pcard.gone{opacity:.22;filter:saturate(.3);box-shadow:none;}');
+    '.hvc-pyr .pcard:not(.gone){position:relative;z-index:2;}.hvc-pyr .pcard.gone{filter:brightness(.42) saturate(.25);box-shadow:0 1px 2px rgba(0,0,0,.3);}');
   R('pyramid', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var out = [], p0 = codes2(d.p0), left = codes2(d.left);
@@ -390,7 +393,7 @@
     '.hvc-ps .pcard.new{outline:2.5px solid #ffd166;outline-offset:1px;}',
     '.hvc-ps .lb{font-size:.68rem;font-weight:800;line-height:1.1;color:rgba(255,255,255,.65);min-width:0;}',
     '.hvc-ps .lb b{display:block;font-size:.9rem;font-weight:900;color:#fff;}.hvc-ps .lb.z b{color:rgba(255,255,255,.45);}',
-    '.hvc-ps .lb.c{text-align:center;align-self:start;}.hvc-ps .lb.big b{color:#ffd166;}'
+    '.hvc-ps .lb.c{text-align:center;align-self:start;font-size:.6rem;overflow-wrap:anywhere;}.hvc-ps .lb.big b{color:#ffd166;}'
   ].join(''));
   R('pokersquares', function (e, ui) {
     var d = e.dt; if (!d || !d.g) return null;

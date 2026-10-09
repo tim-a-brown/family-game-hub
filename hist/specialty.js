@@ -96,7 +96,7 @@
     '.sx-sb td.rhe{color:#ffd75e;border-left:1px solid rgba(255,255,255,.15);}',
     '.sx-sb tr.w td.tm{color:#ffd75e;}',
     // victory cities (Axis & Allies)
-    '.sx-vc{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:5px;}',
+    '.sx-vc{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:5px;}',
     '.sx-vc span{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;font-size:.78rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;}',
     '.sx-vc span.a{background:#4b5054;} .sx-vc span.l{background:#56702c;}',
     '.sx-vc span.flip{box-shadow:inset 0 0 0 2px #ffd75e;}',
@@ -324,7 +324,7 @@
     if (d.derby) {
       d.tm.forEach(function (T, t) {
         var rows = (T.s || []).map(function (s) { var a = s.split('|'); return [a[0], a[1], { t: a[2], c: +a[2] ? 'hi' : '' }, a[3], +a[4] ? a[4] + ' ft' : '–']; });
-        out.push(ui.section(T.n + (d.tm.length > 1 && t === d.win ? ' · winner' : ''), ui.table(['Slugger', 'Card HR', 'HR', 'Outs', 'Longest'], rows), { icon: t === d.win ? 'trophy' : null }));
+        out.push(ui.section(T.n + (d.tm.length > 1 && t === d.win ? ' · winner' : ''), ui.table(['Slugger', 'Card HR', 'HR', 'Outs', 'Long'], rows, { cls: 'sx-box' }), { icon: t === d.win ? 'trophy' : null }));
       });
       var best = null; d.tm.forEach(function (T) { (T.s || []).forEach(function (s) { var a = s.split('|'); if (!best || +a[4] > +best[4]) best = a; }); });
       if (best && +best[4]) out.push(ui.stats([['Longest home run', best[4] + ' ft', best[0]], d.off ? ['Swing-off', 'Yes', 'to break a tie'] : null]));
@@ -381,7 +381,7 @@
   });
 
   // ── Axis & Allies score keeper: victory cities and the IPC tally ───────────
-  var AA = { ger: ['Germany', '#8e959a', 'axis'], sov: ['Soviet Union', '#c8434b', 'allies'], jpn: ['Japan', '#e0922b', 'axis'], uk: ['United Kingdom', '#c4a06a', 'allies'], usa: ['United States', '#7f9f45', 'allies'] };
+  var AA = { ger: ['Germany', '#8e959a', 'axis', 'GER'], sov: ['Soviet Union', '#c8434b', 'allies', 'USSR'], jpn: ['Japan', '#e0922b', 'axis', 'JPN'], uk: ['United Kingdom', '#c4a06a', 'allies', 'UK'], usa: ['United States', '#7f9f45', 'allies', 'USA'] };
   var AORDER = ['sov', 'ger', 'uk', 'jpn', 'usa'], ASTART = { sov: 24, ger: 41, uk: 31, jpn: 30, usa: 42 };
   var ACITIES = [['Berlin', 'a'], ['Paris', 'a'], ['Rome', 'a'], ['Tokyo', 'a'], ['Shanghai', 'a'], ['Manila', 'a'], ['Moscow', 'l'], ['Leningrad', 'l'], ['London', 'l'], ['Calcutta', 'l'], ['Washington', 'l'], ['San Francisco', 'l'], ['Honolulu', 'l']];
   R(['axisallies-score'], function (e, ui) {
@@ -391,19 +391,19 @@
     if (d.vc) {
       var ax = d.vc.split('').filter(function (c) { return c === 'a'; }).length, al = d.vc.length - ax;
       var box = el('div', { class: 'sx-vc' });
-      ACITIES.forEach(function (c, i) { var h = d.vc.charAt(i); box.appendChild(el('span', { class: h + (h !== c[1] ? ' flip' : ''), title: h !== c[1] ? 'Changed hands' : '' }, [document.createTextNode(c[0]), el('em', { text: h === 'a' ? 'Axis' : 'Allies' })])); });
+      ACITIES.forEach(function (c, i) { var h = d.vc.charAt(i); box.appendChild(el('span', { class: h + (h !== c[1] ? ' flip' : ''), title: (h === 'a' ? 'Axis' : 'Allies') + (h !== c[1] ? ', changed hands' : '') }, [document.createTextNode(c[0])])); });
       out.push(ui.section('Victory cities at the end', [
         el('div', { class: 'sx-row2' }, [el('span', { class: 'sx-tag', style: { background: '#4b5054', color: '#fff' }, text: 'Axis ' + ax + (d.need ? ' / ' + d.need[0] : '') }), el('span', { class: 'sx-tag', style: { background: '#56702c', color: '#fff' }, text: 'Allies ' + al + (d.need ? ' / ' + d.need[1] : '') }), el('small', { text: d.need ? 'held / needed' : '' })]),
         box, legend([['#ffd75e', 'Gold edge: changed hands']])], { icon: 'flag' }));
     }
     var rows = AORDER.map(function (k) {
       var p = pw ? pw.filter(function (x) { return x.k === k; })[0] || {} : meta.filter(function (x) { return x.k === k; })[0] || {};
-      return [{ t: AA[k][0] }, short(by[k] || '', 10), p.inc != null ? p.inc : '–', p.bank != null ? p.bank : '–', pw ? (p.sp || 0) : '–', pw ? { t: p.cap ? 'Held' : 'Lost', c: p.cap ? 'good' : 'bad' } : '–'];
+      return [{ t: AA[k][3] }, short(by[k] || '', 9), p.inc != null ? p.inc : '–', p.bank != null ? p.bank : '–', pw ? (p.sp || 0) : '–', pw ? { t: p.cap ? 'Held' : 'Lost', c: p.cap ? 'good' : 'bad' } : '–'];
     });
-    out.push(ui.section('IPC tally', ui.table(['Power', 'Player', 'Income', 'Bank', 'Spent', 'Capital'], rows), { icon: 'coins' }));
+    out.push(ui.section('IPC tally', ui.table(['Power', 'Player', 'Income', 'Bank', 'Spent', 'Capital'], rows, { cls: 'sx-box' }), { icon: 'coins' }));
     if (d.ih && d.ih.length) {
       var hist = [AORDER.map(function (k) { return ASTART[k]; })].concat(d.ih.map(nums));
-      var series = AORDER.map(function (k, j) { return { name: AA[k][0].split(' ')[0] === 'United' ? (k === 'uk' ? 'UK' : 'USA') : k === 'sov' ? 'USSR' : AA[k][0], color: AA[k][1], pts: hist.map(function (r) { return r[j]; }) }; });
+      var series = AORDER.map(function (k, j) { return { name: AA[k][3], color: AA[k][1], pts: hist.map(function (r) { return r[j]; }) }; });
       out.push(ui.section('Income by round', ui.picture(lineChart(series, { aria: 'Income by round', xl: function (i) { return i === 0 ? 'Start' : i; } }), { frame: 'dark', max: 420 }), { icon: 'chart' }));
     }
     if (d.bat) out.push(ui.stats([['Battles rolled', d.bat], ['Dice thrown', ui.num(d.dice)]]));
