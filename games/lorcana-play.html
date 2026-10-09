@@ -240,14 +240,20 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .drips::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(var(--cu) * .04);opacity:.92;
   background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--inkc) 80%,#fff) 0,var(--inkc) 45%,color-mix(in srgb,var(--inkc) 75%,#000) 62%,transparent 66%) 0 0/calc(var(--cu) * .075) 100% repeat-x;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
-.drips i{position:absolute;top:calc(var(--cu) * .02);left:16%;width:calc(var(--cu) * .052);height:0;border-radius:0 0 999px 999px;opacity:0;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--inkc) 70%,#000),var(--inkc) 40%,color-mix(in srgb,var(--inkc) 55%,#fff) 58%,var(--inkc) 75%);
-  animation:drip 4.4s cubic-bezier(.55,0,.65,1) infinite;}
-.drips i::after{content:'';position:absolute;left:50%;bottom:calc(var(--cu) * -.034);width:calc(var(--cu) * .062);height:calc(var(--cu) * .072);margin-left:calc(var(--cu) * -.031);
-  border-radius:50% 50% 50% 50%/60% 60% 42% 42%;background:inherit;box-shadow:inset -1px -2px 2px rgba(0,0,0,.28),inset 1px 1px 2px rgba(255,255,255,.55);}
-.drips i:nth-child(2){left:56%;width:calc(var(--cu) * .04);animation-delay:1.5s;animation-duration:5.1s;}
-.drips i:nth-child(3){left:81%;animation-delay:2.8s;animation-duration:4.8s;}
-@keyframes drip{0%{height:0;opacity:0;}8%{opacity:.95;}60%{height:calc(var(--cu) * .22);}86%{height:calc(var(--cu) * .27);opacity:.95;}100%{height:calc(var(--cu) * .29);opacity:0;}}
+.drips i{position:absolute;top:calc(var(--cu) * .02);left:16%;width:calc(var(--cu) * .052);height:calc(var(--cu) * .29);opacity:0;
+  --dd:4.4s;--dl:0s;--ink:linear-gradient(90deg,color-mix(in srgb,var(--inkc) 70%,#000),var(--inkc) 40%,color-mix(in srgb,var(--inkc) 55%,#fff) 58%,var(--inkc) 75%);
+  animation:dripO var(--dd) cubic-bezier(.55,0,.65,1) var(--dl) infinite;}
+/* the run of ink grows down (scaled, not resized, so the phone doesn't re-lay the page every frame) with its bead riding the end */
+.drips i::before{content:'';position:absolute;left:0;right:0;top:0;height:100%;border-radius:0 0 999px 999px;background:var(--ink);transform-origin:50% 0;transform:scaleY(0);
+  animation:dripS var(--dd) cubic-bezier(.55,0,.65,1) var(--dl) infinite;}
+.drips i::after{content:'';position:absolute;left:50%;top:calc(var(--cu) * -.038);width:calc(var(--cu) * .062);height:calc(var(--cu) * .072);margin-left:calc(var(--cu) * -.031);
+  border-radius:50% 50% 50% 50%/60% 60% 42% 42%;background:var(--ink);box-shadow:inset -1px -2px 2px rgba(0,0,0,.28),inset 1px 1px 2px rgba(255,255,255,.55);
+  animation:dripB var(--dd) cubic-bezier(.55,0,.65,1) var(--dl) infinite;}
+.drips i:nth-child(2){left:56%;width:calc(var(--cu) * .04);--dl:1.5s;--dd:5.1s;}
+.drips i:nth-child(3){left:81%;--dl:2.8s;--dd:4.8s;}
+@keyframes dripO{0%{opacity:0;}8%{opacity:.95;}86%{opacity:.95;}100%{opacity:0;}}
+@keyframes dripS{0%{transform:scaleY(0);}60%{transform:scaleY(.7586);}86%{transform:scaleY(.931);}100%{transform:scaleY(1);}}
+@keyframes dripB{0%{transform:translateY(0);}60%{transform:translateY(calc(var(--cu) * .22));}86%{transform:translateY(calc(var(--cu) * .27));}100%{transform:translateY(calc(var(--cu) * .29));}}
 /* Ink dried: a varnish glint sweeps across */
 .slot.dried .lc::before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
   background:linear-gradient(115deg,rgba(255,236,170,0) 38%,rgba(255,244,205,.9) 50%,rgba(255,236,170,0) 62%) 0 0/300% 100%;animation:glint .85s ease-out forwards;}
@@ -331,7 +337,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .orb::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#fff 0,#fff1c2 30%,#f6c450 60%,#b8862a);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);}
 .orb.drain::before{background:linear-gradient(135deg,#bbb,#6b6478 60%,#3a3446);}
 .orb.drain{filter:drop-shadow(0 0 4px rgba(120,100,160,.8));}
-@media (prefers-reduced-motion:reduce){.slot.dry .lc::after,.drips i{animation:none;}.lp-board.shake{animation:none;}}
+@media (prefers-reduced-motion:reduce){.slot.dry .lc::after,.drips i,.drips i::before,.drips i::after{animation:none;}.lp-board.shake{animation:none;}}
 .slot.sel .lc{box-shadow:0 0 0 3px var(--gilt-2),0 0 18px rgba(246,225,168,.8);}
 .slot.can .lc{box-shadow:0 0 0 2px rgba(246,225,168,.75),0 4px 10px rgba(0,0,0,.45);}
 .slot.tgt .lc{box-shadow:0 0 0 3px #ff6b6b,0 0 16px rgba(255,107,107,.85);animation:tgt 1s ease-in-out infinite;}
@@ -1762,14 +1768,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 .fchip.on{background:var(--gilt);color:#2b1a00;}
 /* Filters that are on carry a faint glimmer: a soft band of light drifts across now and then (staggered, so it doesn't march) */
 .fchip.on,.iwt.on,.adv-pick.on,.pk-row.on,.sort-row.on{position:relative;overflow:hidden;isolation:isolate;}
-.fchip.on::after,.iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
-  background:linear-gradient(105deg,transparent 40%,rgba(255,252,236,.22) 47%,rgba(255,255,255,.38) 50%,rgba(255,252,236,.22) 53%,transparent 60%) no-repeat;background-size:300% 100%;background-position:100% 0;
+.fchip.on::after,.iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after{content:'';position:absolute;top:0;bottom:0;left:0;width:300%;z-index:-1;pointer-events:none;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,252,236,.22) 47%,rgba(255,255,255,.38) 50%,rgba(255,252,236,.22) 53%,transparent 60%) no-repeat;background-size:100% 100%;transform:translateX(-66.6667%);
   animation:glim 7s linear infinite;}
 .iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after,.inkk .fchip.on::after{opacity:.45;}
 .fchip.on:nth-child(3n+2)::after,.pk-row.on:nth-child(3n+2)::after{animation-delay:1.3s;}
 .fchip.on:nth-child(3n)::after,.pk-row.on:nth-child(3n)::after{animation-delay:2.6s;}
 .adv-pick.on:nth-child(even)::after{animation-delay:1.9s;}
-@keyframes glim{0%,74%{background-position:100% 0;}100%{background-position:0 0;}}
+/* (the band slides by moving the layer, not its background, so the phone doesn't restyle the chip every frame) */
+@keyframes glim{0%,74%{transform:translateX(-66.6667%);}100%{transform:translateX(0);}}
 @media (prefers-reduced-motion:reduce){.fchip.on::after,.iwt.on::after,.adv-pick.on::after,.pk-row.on::after,.sort-row.on::after{animation:none;opacity:0;}}
 .fchip .dot{width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}
 .bld-grid{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;grid-auto-rows:max-content;grid-template-columns:repeat(auto-fill,minmax(min(var(--tile,92px),100%),1fr));gap:8px;align-content:start;padding:2px 2px 16px;}
@@ -7432,21 +7439,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   // The light follows the phone's tilt (eased, so it glides); with no motion sensor it follows the mouse over the table
   var TL = { x: 0, y: 0, tx: 0, ty: 0, raf: 0, lx: -1, ly: -1, mouse: false };
+  // (it only runs while the light is still moving: once it has caught up with the phone it sleeps until the next tilt)
   function tableLight() {
     if (TL.raf) return;
-    (function frame() {
-      if (!S || ui.screen !== 'game' || !$('.lp-board')) { TL.raf = 0; return; }
+    TL.raf = requestAnimationFrame(function frame() {
+      var felt = S && ui.screen === 'game' && $('.lp-felt');
+      if (!felt || document.hidden) { TL.raf = 0; return; }
       var tx = tiltT.got ? tiltT.x : TL.tx, ty = tiltT.got ? tiltT.y : TL.ty;
       TL.x += (tx - TL.x) * 0.08; TL.y += (ty - TL.y) * 0.08;
       var lx = 0.5 + TL.x * 0.55, ly = 0.5 + TL.y * 0.45;
-      if (Math.abs(lx - TL.lx) > 0.002 || Math.abs(ly - TL.ly) > 0.002) {
-        TL.lx = lx; TL.ly = ly; var st = document.documentElement.style;
-        st.setProperty('--lx', lx.toFixed(3)); st.setProperty('--ly', ly.toFixed(3));
+      if (Math.abs(lx - TL.lx) > 0.002 || Math.abs(ly - TL.ly) > 0.002 || felt !== TL.felt) {
+        TL.lx = lx; TL.ly = ly; TL.felt = felt;
+        felt.style.setProperty('--lx', lx.toFixed(3)); felt.style.setProperty('--ly', ly.toFixed(3));
       }
+      if (Math.abs(tx - TL.x) < 0.003 && Math.abs(ty - TL.y) < 0.003) { TL.raf = 0; return; }
       TL.raf = requestAnimationFrame(frame);
-    })();
+    });
   }
-  window.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse' || tiltT.got) return; TL.tx = Math.max(-1, Math.min(1, e.clientX / innerWidth * 2 - 1)); TL.ty = Math.max(-1, Math.min(1, e.clientY / innerHeight * 2 - 1)); }, { passive: true });
+  window.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse' || tiltT.got) return; TL.tx = Math.max(-1, Math.min(1, e.clientX / innerWidth * 2 - 1)); TL.ty = Math.max(-1, Math.min(1, e.clientY / innerHeight * 2 - 1)); tableLight(); }, { passive: true });
   function fitHand() {
     var hand = $('.lp-hand'); if (!hand) return;
     var row = $('.hrow', hand), cu = Math.max(60, hand.clientHeight - 14);
@@ -8158,6 +8168,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // Zoom: the card, big, with its full text and what you can do with it
   // ═════════════════════════════════════════════════════════════════════════
   var flowSlid = false, flowChain = null, flowKeep = null;
+  // Keys for the card view on screen (one listener for all of them, so closed views don't pile up)
+  document.addEventListener('keydown', function (e) { var ov = $$('.lz').filter(function (z) { return z._keys; }).pop(); if (ov) ov._keys(e); });
+  document.addEventListener('keyup', function (e) { if (lastFlow && lastFlow.onKeyUp) lastFlow.onKeyUp(e); });
+  window.addEventListener('blur', function () { if (lastFlow && lastFlow.holding) lastFlow.release(); });
   function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); }
   function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
   // Card text. A named ability ("TIME TO MOVE IT!") gets its own small line with
@@ -8383,6 +8397,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     tiltT.base.b += (b - tiltT.base.b) * 0.003; tiltT.base.g += (g - tiltT.base.g) * 0.003;
     tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 11));
     tiltT.y = Math.max(-1, Math.min(1, (b - tiltT.base.b) / 11));
+    if (!TL.raf && S && ui.screen === 'game') tableLight();
+    wakeTilt();
   }
   function listenOrient() {
     if (tiltT.listening || !('DeviceOrientationEvent' in window)) return;
@@ -8407,8 +8423,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var r = tiltT.el.getBoundingClientRect();
       tiltT.x = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width * 0.8)));
       tiltT.y = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height * 0.8)));
+      wakeTilt();
     });
-    ov.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { tiltT.x = 0; tiltT.y = 0; } });
+    ov.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { tiltT.x = 0; tiltT.y = 0; wakeTilt(); } });
     if (!tiltT.raf) tiltT.raf = requestAnimationFrame(tiltFrame);
   }
   var GLINT_R = /^(rare|super rare|legendary|epic|enchanted|iconic)$/;
@@ -8423,6 +8440,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     tiltT.el = (flow && flow.querySelector('.lz-fc.front')) || cards[0] || null;
     tiltT.cx += (tiltT.x - tiltT.cx) * 0.12; tiltT.cy += (tiltT.y - tiltT.cy) * 0.12;   // eased, so it feels weighty
     var x = tiltT.cx, y = tiltT.cy, mag = Math.min(1, Math.sqrt(x * x + y * y));
+    // still moving? (once everything has caught up the loop sleeps until the phone, the pointer or a swipe moves it)
+    var moving = Math.abs(tiltT.x - x) > 0.0005 || Math.abs(tiltT.y - y) > 0.0005;
     cards.forEach(function (t) {
       var w = flow ? (t._near || 0) : 1;
       if (!t.querySelector(':scope > .tsheen')) {
@@ -8436,14 +8455,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var m = mag * w;
       // the card keeps its 3D layer the whole time: switching the tilt off when the phone settles still (and back on at
       // the next wobble) made the phone redraw the card, a flicker every few seconds
-      t.style.rotate = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '0 1 0 0.01deg';
+      var rot = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '0 1 0 0.01deg';
+      if (t._rot !== rot) { t._rot = rot; t.style.rotate = rot; }
       // swiping swings or lifts the card too: the light slides with that as well
-      t._sx = (t._sx || 0) + ((t._swing || 0) * -1.3 - (t._sx || 0)) * 0.35; t._sy = (t._sy || 0) + ((t._lift || 0) * 0.9 - (t._sy || 0)) * 0.25;
+      var gx = (t._swing || 0) * -1.3, gy = (t._lift || 0) * 0.9;
+      t._sx = (t._sx || 0) + (gx - (t._sx || 0)) * 0.35; t._sy = (t._sy || 0) + (gy - (t._sy || 0)) * 0.25;
+      if (Math.abs(gx - t._sx) > 0.001 || Math.abs(gy - t._sy) > 0.001) moving = true;
       var sx = Math.max(-1.4, Math.min(1.4, x + t._sx)), sy = Math.max(-1.4, Math.min(1.4, y + t._sy));
-      t.style.setProperty('--tx', sx.toFixed(3)); t.style.setProperty('--ty', sy.toFixed(3)); t.style.setProperty('--sw', w.toFixed(3));
+      // only what changed is written (an unchanged value still makes the phone restyle the card)
+      var v = sx.toFixed(3) + ' ' + sy.toFixed(3) + ' ' + w.toFixed(3);
+      if (t._tv !== v) { t._tv = v; t.style.setProperty('--tx', sx.toFixed(3)); t.style.setProperty('--ty', sy.toFixed(3)); t.style.setProperty('--sw', w.toFixed(3)); }
     });
-    tiltT.raf = requestAnimationFrame(tiltFrame);
+    tiltT.raf = moving && !document.hidden ? requestAnimationFrame(tiltFrame) : 0;
   }
+  function wakeTilt() { if (!tiltT.raf && tiltT.ov && tiltT.ov.isConnected) tiltT.raf = requestAnimationFrame(tiltFrame); }
   // Phones: tap the big card to fold the details away so the card fills the screen; tap again to bring them back
   function phoneZoom() { return !(window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches); }
   // Press and hold a card (not a tap) to roll the details away for a bigger look, and again to bring them back
@@ -8697,16 +8722,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (opt.tapClose) ov.addEventListener('click', function () { ov.remove(); if (opt.onClose) opt.onClose(); });
     else if (!opt.modal) ov.addEventListener('click', function (e) { if (e.target === ov || e.target === inner) closeZoom(); });
     function step(k) { if (F) F.settle(nav.i + k); else { var j = nav.i + k; if (j >= 0 && j < nav.n) nav.go(k); } }
-    document.addEventListener('keydown', function esck(e) {
-      if (!ov.isConnected) { document.removeEventListener('keydown', esck); return; }
+    ov._keys = function esck(e) {
+      if (!ov.isConnected) return;
       if (opt.modal) return;
-      if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { ov.remove(); if (opt.onClose) opt.onClose(); document.removeEventListener('keydown', esck); }
+      if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { ov.remove(); if (opt.onClose) opt.onClose(); }
       else if (nav && nav.n > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
         e.preventDefault();
         if (F) { if (!e.repeat || !F.holding) F.hold(e.key === 'ArrowRight' ? 1 : -1); }
         else if (!e.repeat) step(e.key === 'ArrowRight' ? 1 : -1);
       }
-    });
+    };
     if (F) ov.addEventListener('wheel', function (e) { F.wheel(e); }, { passive: false });
     if (nav && nav.n > 1) {
       var bl = el('button', { type: 'button', class: 'lz-nav l', 'aria-label': 'Previous card', html: Kit.icon('back'), onclick: function (e) { e.stopPropagation(); step(-1); } });
@@ -8789,6 +8814,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         b._swing = Math.max(-1, Math.min(1, j - F.pos));   // how far it has swung sideways (the sheen follows)
         b._near = Math.max(0, 1 - Math.abs(j - F.pos));   // the sheen and tilt hand over smoothly as cards pass the middle
       }
+      wakeTilt();
       var idx = Math.round(F.pos);
       if (idx !== F.at) { F.at = idx; var pz = F.ov && F.ov.querySelector('.lz-pos'); if (pz && pz.classList.contains('lz-strip')) $$('.ls-c', pz).forEach(function (t, k) { t.classList.toggle('on', k === idx); }); else if (pz) (pz.querySelector('.ct') || pz).textContent = (idx + 1) + ' of ' + n.toLocaleString(); Kit.sfx('slide'); }
     };
@@ -8835,7 +8861,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var dn = dy > 0, can = !dn || !!ui.flowDeck, a = Math.abs(dy);
       var rb = (dn ? 1 : -1) * (a < VT ? a * 0.55 : VT * 0.55 + (a - VT) * 0.2);
       var pr = Math.min(1, a / VT), d = defAt(j);
-      b.style.transition = 'none'; b._lift = Math.max(-1, Math.min(1, rb / 90));
+      b.style.transition = 'none'; b._lift = Math.max(-1, Math.min(1, rb / 90)); wakeTilt();
       b.style.transform = pose(j - F.pos).t + ' translateY(' + rb.toFixed(1) + 'px) rotateX(' + Math.max(-20, Math.min(20, -rb * 0.18)).toFixed(2) + 'deg) scale(' + (1 - pr * 0.04).toFixed(3) + ')';
       if (!can || a < 12) { hint.className = 'fc-hint'; zoneOn('', 0); armed = 0; return; }
       var now = pr >= 1 ? (dn ? 2 : 1) : 0;
@@ -8900,7 +8926,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // Spring the card home with a little overshoot (and a nudge in the swipe direction when it fires)
     function springBack(j, fired, dir) {
       var b = F.items[j]; if (!b) return;
-      var base = pose(j - F.pos).t; b._lift = 0;
+      var base = pose(j - F.pos).t; b._lift = 0; wakeTilt();
       b.style.transition = 'transform .5s cubic-bezier(.3,1.6,.5,1)';
       b.style.transform = fired ? base + ' translateY(' + (dir * -14) + 'px) scale(1.04)' : base;
       if (fired) setTimeout(function () { if (b.isConnected) b.style.transform = base; }, 140);
@@ -8988,11 +9014,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var t = h.dir > 0 ? Math.max(h.p0 + 1, Math.ceil(F.pos + 0.05)) : Math.min(h.p0 - 1, Math.floor(F.pos - 0.05));
       F.settle(t, h.v ? h.dir * h.v / 1000 : 0);
     };
-    document.addEventListener('keyup', function ku(e) {
-      if (!F.ov || !F.ov.isConnected) { if (!F.holding) document.removeEventListener('keyup', ku); }
-      if (F.holding && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) F.release();
-    });
-    window.addEventListener('blur', function () { if (F.holding) F.release(); });
+    F.onKeyUp = function (e) { if (F.holding && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) F.release(); };
     // Warm up the art for the cards you're likely to reach
     for (var j = Math.max(0, base - 6); j <= Math.min(n - 1, base + 6); j++) { var dd = defAt(j); if (dd && dd.im && dd.im.l) { var im = new Image(); im.decoding = 'async'; im.src = dd.im.l; } }
     return F;
