@@ -636,7 +636,7 @@ body{overflow-x:hidden;}
     stopWatch();
     var b = shuffle(n);
     S = { n: n, style: style === 'pic' ? 'pic' : 'num', pic: PICS[pic] ? pic : 'meadow', nums: false, b: b, start: b.slice(), moves: 0, time: 0, U: [],
-      hints: 0, undos: 0, restarts: 0, watched: 0, opt: 0, started: Date.now(), done: false };
+      hints: 0, undos: 0, restarts: 0, watched: 0, opt: 0, started: Date.now(), done: false, path: '' };
     if (n === 3) { var r = E.ida(b, 3); if (r) S.opt = r.moves.length; }
     plan = null; hintCell = -1;
     Kit.gameStart(); build(); save();
@@ -652,7 +652,7 @@ body{overflow-x:hidden;}
     if (!S || S.done) return;
     Kit.confirm('Start this shuffle over?', { ok: 'Restart', body: 'The tiles go back to how they were dealt. The clock keeps running.' }).then(function (ok) {
       if (!ok) return;
-      stopWatch(); S.b = S.start.slice(); S.moves = 0; S.U = []; S.restarts++; plan = null; clearHint();
+      stopWatch(); S.b = S.start.slice(); S.moves = 0; S.U = []; S.restarts++; S.path = ''; plan = null; clearHint();
       placeAll(); updHud(); save(); Kit.sfx('whoosh');
     });
   }
@@ -752,6 +752,8 @@ body{overflow-x:hidden;}
     S.U.push(g0); if (S.U.length > 4000) S.U.shift();
     steps.forEach(function (to) { var g = gapOf(); moved.push(S.b[to]); S.b[g] = S.b[to]; S.b[to] = 0; });
     S.moves += steps.length;
+    // the cells slid from, one base-36 character each, for the replay in history
+    if (typeof S.path === 'string') S.path += steps.map(function (to) { return to.toString(36); }).join('');
     // Keep following the hint plan if the player did what it said
     if (plan) { var ok = true; for (var k = 0; k < steps.length; k++) { if (plan[0] === steps[k]) plan.shift(); else { ok = false; break; } } if (!ok) plan = null; }
     clearHint();
@@ -803,6 +805,7 @@ body{overflow-x:hidden;}
     if (!steps.length) return;
     steps.forEach(function (to) { var g = gapOf(); S.b[g] = S.b[to]; S.b[to] = 0; });
     S.moves = Math.max(0, S.moves - steps.length); S.undos++;
+    if (typeof S.path === 'string') S.path = S.path.slice(0, Math.max(0, S.path.length - steps.length));
     plan = null; clearHint();
     placeAll(); clack(steps.length); Kit.haptic('light'); updHud(); save();
   }
@@ -940,7 +943,8 @@ body{overflow-x:hidden;}
       players: [{ name: 'You', score: S.moves }], winner: null, lowWins: true,
       summary: (S.watched ? 'Computer solved it' : 'Solved') + ' · ' + name + ' · ' + S.moves + ' moves · ' + fmt(S.time), badge: name,
       highlights: hl.slice(0, 6),
-      meta: { size: n, moves: S.moves, seconds: S.time, hints: S.hints, undos: S.undos, watched: S.watched || 0, style: S.style, pic: pic ? S.pic : '', opt: S.opt || 0, start: mini(S.start) }
+      meta: { size: n, moves: S.moves, seconds: S.time, hints: S.hints, undos: S.undos, watched: S.watched || 0, style: S.style, pic: pic ? S.pic : '', opt: S.opt || 0, start: mini(S.start) },
+      detail: { mv: typeof S.path === 'string' && S.path.length === S.moves && S.path.length <= 2500 ? S.path : '', nums: S.nums ? 1 : 0 }
     });
     clearSave();
     // The missing tile slots in, the board shines

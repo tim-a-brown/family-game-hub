@@ -704,6 +704,15 @@
   function vowelCost(p) { return !consLeft() && p.bank < 250 ? 0 : 250; }
   function canBuy(p) { return vowelsLeft() && p.bank >= vowelCost(p); }
   function newPuzzle(p) { S.pz = { cat: p.cat, text: p.text }; S.rev = p.text.split('').map(function (c) { return !isL(c); }); S.used = ''; }
+  // History: one entry per puzzle (kind, category, answer, what showing when it ended, who solved, a compact event list)
+  function pzLog() { if (!S.log.pz) S.log.pz = []; return S.log.pz; }
+  function track(k, prize) { pzLog().push({ k: k, r: S.round, c: S.pz.cat, x: S.pz.text, e: '', p: prize || 0 }); }
+  function ev(tok) { var L = pzLog(), c = L[L.length - 1]; if (c && c.x === S.pz.text && c.e.length < 300) c.e += (c.e ? ' ' : '') + tok; }
+  function fin(who, amt) {
+    var L = pzLog(), c = L[L.length - 1]; if (!c || c.x !== S.pz.text) return;
+    c.m = S.pz.text.split('').map(function (ch, i) { return isL(ch) ? (S.rev[i] ? '1' : '0') : ' '; }).join('');
+    c.w = who; c.a = amt || 0;
+  }
   function hiddenAfter(text, letters) { return text.split('').filter(function (c) { return isL(c) && letters.indexOf(c) < 0; }).length; }
   function bonusOK(p) {
     var nL = p.text.replace(/[^A-Z]/g, '').length;
@@ -1196,7 +1205,7 @@
   }
   function beginMain(starter) {
     epoch++;
-    newPuzzle(pickPuzzle());
+    newPuzzle(pickPuzzle()); track('r');
     S.cur = starter; S.phase = 'turn'; S.wedge = null; S.tu = null; S.next = null; save();
     run(async function () {
       ui.busy = true; ui.blank = true; setCam('wide'); renderAll();
@@ -1248,7 +1257,7 @@
       await wait(w.t === 'free' ? 1800 : 1300);
     } else if (w.t === 'bk') {
       var lost = p.bank;
-      S.log.bk.push({ p: me, amt: lost, r: S.round });
+      S.log.bk.push({ p: me, amt: lost, r: S.round }); ev(me + '!' + lost);
       p.bank = 0; nextPlayer(); save();
       band('bk', 'BANKRUPT'); snd('bankrupt'); fx(shell.studio, 'shake', 500); fx(shell.studio, 'flash', 950); fx(shell.pods[me].root, 'bk', 1600);
       if (!p.cpu) Kit.haptic('error');
@@ -1256,7 +1265,7 @@
       await wait(450); tweenMoney(me, 'bank', 0, 1000);
       await wait(1900);
     } else {
-      nextPlayer(); save();
+      ev(me + '/'); nextPlayer(); save();
       band('lose', 'LOSE A TURN'); snd('lose'); host(vb(p.name, 'loses', 'lose') + ' a turn.');
       if (!p.cpu) Kit.haptic('error');
       await wait(2000);
@@ -1278,6 +1287,7 @@
     var before = ui.disp[me].bank;
     p.bank += n * per - cost;
     S.used += L; idxs.forEach(function (i) { S.rev[i] = true; });
+    ev(me + L + (isV ? '' : free ? 'f' : S.wedge.v));
     if (n * per >= 1000 && (!S.log.best || n * per > S.log.best.amt)) S.log.best = { p: me, L: L, n: n, v: per, amt: n * per, r: S.round };
     var done = n > 0 && blankIdx().length === 0, winInfo = null;
     if (done) winInfo = applyWin(me);
@@ -1315,6 +1325,7 @@
     var p = S.players[me], letters = letterIdx();
     var hidden = letters.filter(function (i) { return !S.rev[i]; });
     var amt = Math.max(1000, p.bank);
+    fin(me, amt);
     S.log.solves.push({ p: me, text: S.pz.text, shown: letters.length - hidden.length, total: letters.length, r: S.round, amt: amt });
     p.total += amt; S.row[me] += amt;
     S.rows.push({ label: 'Round ' + S.round, sc: S.row.slice() }); S.row = [0, 0, 0];
@@ -1413,6 +1424,7 @@
   async function humanSolved(me, ok, s) {
     ui.busy = true; paintDeck();
     if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
+    ev(me + '?');
     await showWrong(s); snd('buzz'); Kit.haptic('error');
     var free = S.wedge && S.wedge.t === 'free';
     if (free) { S.phase = 'turn'; S.wedge = null; } else nextPlayer();
@@ -1452,7 +1464,7 @@
     say(me, "I'd like to solve!"); host(esc(p.name) + ' wants to solve…');
     await wait(1400);
     if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
-    snd('buzz'); say(me, 'Hmm… no?'); fx(shell.board, 'shake', 500);
+    ev(me + '?'); snd('buzz'); say(me, 'Hmm… no?'); fx(shell.board, 'shake', 500);
     host("That's not it. " + esc(p.name) + "'s turn is over.");
     nextPlayer(); save();
     await wait(1500);
@@ -1462,7 +1474,7 @@
   // ── Toss-ups ──────────────────────────────────────────────────────────────
   function beginTossup(prize, elig, purpose) {
     epoch++; undoStack = [];
-    newPuzzle(pickPuzzle());
+    newPuzzle(pickPuzzle()); track(purpose === 'tie' ? 'tb' : 'tu', prize);
     S.tu = { prize: prize, elig: elig, purpose: purpose, order: shuffle(letterIdx()), step: 0, locked: [],
       thr: S.players.map(function (p) { return 0.45 + Math.random() * 0.35; }) };
     S.phase = 'tossup'; S.cur = -1; S.wedge = null; S.next = null; save();
@@ -1512,6 +1524,7 @@
   async function tossupAnswer(i, ok, s) {
     if (ok) return tossupWon(i);
     ui.busy = true; paintDeck();
+    ev(i + '?');
     if (s) await showWrong(s);
     snd('buzz'); host("No, that's not it. " + vb(S.players[i].name, 'is', 'are') + ' out of this toss-up.');
     S.tu.locked.push(i); S.cur = -1; save();
@@ -1525,6 +1538,7 @@
   async function tossupWon(i) {
     var tu = S.tu, p = S.players[i];
     var hidden = blankIdx();
+    fin(i, tu.prize);
     p.total += tu.prize; p.tu = (p.tu || 0) + 1;
     if (tu.purpose === 'tie') S.rows.push({ label: 'Tiebreak', sc: S.players.map(function (q, j) { return j === i ? tu.prize : 0; }) });
     else S.row[i] += tu.prize;
@@ -1543,6 +1557,7 @@
   async function tossupNobody() {
     ui.busy = true;
     var tu = S.tu, hidden = blankIdx();
+    fin(-1, 0);
     hidden.forEach(function (k) { S.rev[k] = true; });
     S.next = tu.purpose === 'tie' ? { fn: 'tie', elig: tu.elig } : { fn: 'main', who: (S.round - 1) % 3 };
     S.phase = 'tuwon'; S.cur = -1; save();
@@ -1562,7 +1577,7 @@
   // ── Bonus Round ───────────────────────────────────────────────────────────
   function beginBonus(who) {
     epoch++; undoStack = []; stopClock();
-    newPuzzle(pickPuzzle(bonusOK));
+    newPuzzle(pickPuzzle(bonusOK)); track('b');
     S.bonus = { who: who, env: null, picks: '', solved: null };
     S.cur = who; S.phase = 'bonusIntro'; S.wedge = null; S.tu = null; S.next = null; save();
     Wheel.setWedges(ENV_WEDGES);
@@ -1650,6 +1665,7 @@
   }
   async function bonusAnswer(ok, s) {
     if (ok) return bonusEnd(true);
+    ev(S.cur + '?');
     ui.busy = true; paintDeck();
     await showWrong(s); snd('buzz');
     ui.busy = false;
@@ -1662,6 +1678,7 @@
     if (ui.clock) ui.clock.done = true;
     ui.busy = true;
     var b = S.bonus, p = S.players[b.who], hidden = blankIdx();
+    fin(ok ? b.who : -1, ok ? b.env : 0);
     b.solved = ok; if (ok) p.total += b.env;
     S.rows.push({ label: 'Bonus', sc: S.players.map(function (q, j) { return j === b.who && ok ? b.env : 0; }) });
     hidden.forEach(function (i) { S.rev[i] = true; });
@@ -1719,6 +1736,7 @@
       winner: tie ? null : ranked[0].name,
       rounds: { labels: S.rows.map(function (r) { return r.label; }), scores: S.rows.map(function (r) { return r.sc; }) },
       highlights: highlights(),
+      detail: { pz: (S.log.pz || []).filter(function (z) { return z.m; }), b: S.bonus ? { w: S.bonus.who, env: S.bonus.env, pk: S.bonus.picks, ok: !!S.bonus.solved } : null },
       summary: (tie ? 'Tie' : ranked[0].name + ' won') + ' · ' + money(ranked[0].total),
       badge: money(ranked[0].total)
     });

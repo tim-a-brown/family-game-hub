@@ -448,10 +448,11 @@
 
   // ── Scoring & pegs ──────────────────────────────────────────────────────
   // Returns true if the game just ended.
-  function addPoints(p, n) {
+  function addPoints(p, n, show) {
     if (!n || S.phase === 'over') return S.phase === 'over';
     var from = S.score[p];
     S.score[p] = Math.min(WIN, S.score[p] + n);
+    S.tr = (S.tr || '') + (show ? 'ab' : '01').charAt(p) + Math.min(35, S.score[p] - from).toString(36);
     S.handPts[p] += S.score[p] - from;
     var pg = S.pegs[p], back = pg[0] < pg[1] ? 0 : 1;
     pg[back] = S.score[p];
@@ -558,16 +559,19 @@
     S.showStep++;
     var sp = showSpec(S.showStep), r = scoreHand(sp.cards, S.starter, sp.crib), st = S.stats;
     st.show[sp.p] += r.total;
-    if (!st.best[sp.p] || r.total > st.best[sp.p].pts) st.best[sp.p] = { pts: r.total, crib: sp.crib, hand: S.hand };
+    if (!st.best[sp.p] || r.total > st.best[sp.p].pts) {
+      var how = {}; r.items.forEach(function (it) { how[it.k] = (how[it.k] || 0) + it.pts; });
+      st.best[sp.p] = { pts: r.total, crib: sp.crib, hand: S.hand, c: sp.cards.map(function (c) { return c.r + c.s; }), st: S.starter.r + S.starter.s, how: how };
+    }
     if (!r.total) st.nineteens[sp.p]++;
     save(); render();
     animateShow(r);
-    if (addPoints(sp.p, r.total)) return;
+    if (addPoints(sp.p, r.total, true)) return;
     if (r.total >= 20) setTimeout(function () { Kit.callout(r.total + ' points!'); Kit.confetti({ count: 60 }); }, 900);
     save();
   }
   function endHand() {
-    S.rounds.push(S.handPts.slice());
+    S.rounds.push(S.handPts.slice()); S.tr = (S.tr || '') + '|';
     deal();
   }
   function animateShow(r) {
@@ -616,7 +620,10 @@
       winner: nm(w),
       rounds: { labels: rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: rounds },
       highlights: hl.slice(0, 5).concat([rounds.length + (rounds.length === 1 ? ' hand' : ' hands') + ' played']),
-      badge: skunk ? (skunk === 2 ? 'Double skunk' : 'Skunk') : ''
+      badge: skunk ? (skunk === 2 ? 'Double skunk' : 'Skunk') : '',
+      detail: { tr: (S.tr || '').slice(-1500), best: st.best, peg: st.peg, show: st.show, big: st.bigPeg, heels: st.heels, zero: st.nineteens, skunk: skunk,
+        last: S.keep && S.keep[0] ? { d: S.dealer, h0: S.keep[0].map(function (c) { return c.r + c.s; }), h1: (S.keep[1] || []).map(function (c) { return c.r + c.s; }),
+          cr: (S.crib || []).map(function (c) { return c.r + c.s; }), st: S.starter ? S.starter.r + S.starter.s : '', n: S.hand } : null }
     });
     clearSave();
     var rank = [w, l].map(function (i) { return { name: nm(i), score: S.score[i], color: Kit.color(i) }; });

@@ -280,7 +280,11 @@ body{overflow-x:hidden;}
     Kit.record(KEY, {
       started: st.started, mode: label(st), summary: RANKS[ri][0] + ' · ' + sc + ' of ' + p.max + ' pts', badge: RANKS[ri][0],
       highlights: hl.slice(0, 6),
-      meta: { letters: st.letters, center: st.center, found: st.found, score: sc, max: p.max, words: p.answers.length, rank: RANKS[ri][0], dayNum: st.day, randomMode: st.kind === 'random' }
+      meta: { letters: st.letters, center: st.center, found: st.found, score: sc, max: p.max, words: p.answers.length, rank: RANKS[ri][0], dayNum: st.day, randomMode: st.kind === 'random' },
+      // History: the words that got away and the puzzle's pangrams (space-separated, kept short)
+      detail: { miss: (function () { var len = 0; return p.answers.filter(function (w) { return st.found.indexOf(w) < 0; }).sort(function (a, b) { return b.length - a.length || (a < b ? -1 : 1); })
+          .filter(function (w) { len += w.length + 1; return len <= 1400; }).join(' '); })(),
+        pg: p.answers.filter(function (w) { return isPan(w, st.letters); }).join(' '), ri: ri }
     });
     st.recorded = true;
   }

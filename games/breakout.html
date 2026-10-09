@@ -596,7 +596,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.maxBalls >= 5) h.push(st.maxBalls + ' balls in play at once');
     if (!won) h.push('Lost the last ball on level ' + G.level);
     var lv = Object.keys(G.perLevel).map(Number).sort(function (a, b) { return a - b; });
+    // history detail: the wall as it was left ('-' = a brick that got smashed), plus the run's numbers
+    var alive = {}; bricks.forEach(function (b) { if (b.hits !== 0) alive[b.idx] = 1; });
+    var k0 = 0, wall = L.rows.map(function (row) { return row.split('').map(function (ch) { if (ch === '.' || !ch) return '.'; return alive[k0++] || ch === '#' ? ch : '-'; }).join(''); });
+    var hiL = ArcadeHi.list('breakout'), sc0 = G.score;
+    var detail = {
+      lv: G.level, nm: L.name, g: wall, won: won ? 1 : 0, sl: G.startLevel, br: st.bricks, cl: st.cleared, mc: st.maxChain, pw: st.powers,
+      pk: st.powerKinds, mb: st.maxBalls, ph: st.paddleHits, ls: st.lost, gh: st.goldHits, of: NL,
+      hr: sc0 > 0 && (hiL.length < ArcadeHi.max || sc0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc0; }).length + 1 : 0, hb: G.best0 || 0
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: G.started, mode: G.startLevel > 1 ? 'Started at level ' + G.startLevel : '',
       players: [{ name: G.who, score: G.score }], winner: null,
       rounds: lv.length > 1 ? { labels: lv.map(function (l) { return 'L' + l; }), scores: lv.map(function (l) { return [G.perLevel[l]]; }) } : null,

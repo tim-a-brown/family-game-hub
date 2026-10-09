@@ -547,7 +547,13 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     if (longest.ans.length >= 6) hl.push('Longest answer: ' + longest.ans);
     Kit.record(KEY, {
       started: S.started, mode: Z.p.title, summary: (gaveUp ? 'Revealed' : 'Solved in ' + fmt(S.secs)) + ' · ' + Z.p.title, badge: gaveUp ? '' : fmt(S.secs),
-      highlights: hl, meta: { pid: S.id, secs: gaveUp ? null : S.secs, checks: S.checks, reveals: S.reveals, clean: clean }
+      highlights: hl, meta: { pid: S.id, secs: gaveUp ? null : S.secs, checks: S.checks, reveals: S.reveals, clean: clean },
+      // History picture: the filled grid ('#' = black), marks per square ('r' revealed, 'k' checked right), and the clues
+      detail: { t: Z.p.title, sz: Z.p.size, no: PUZZLES.indexOf(Z.p) + 1, g: Z.p.grid.map(function (r) { return r.toUpperCase(); }),
+        m: Z.sol.map(function (row, r) { return row.map(function (ch, c) { var m = S.marks[r + '_' + c]; return ch === '#' ? '#' : m === 'rev' ? 'r' : m === 'ok' ? 'k' : '.'; }).join(''); }),
+        a: Z.words.filter(function (w) { return w.dir === 'a'; }).map(function (w) { return w.clue; }),
+        d: Z.words.filter(function (w) { return w.dir === 'd'; }).map(function (w) { return w.clue; }),
+        s: S.secs, ch: S.checks, rv: S.reveals, gu: gaveUp ? 1 : 0 }
     });
     save(); Kit.resume.clear();
     var g = $('grid'); g.classList.add('done'); paint();

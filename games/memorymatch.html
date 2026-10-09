@@ -353,6 +353,7 @@ body{overflow:hidden;}
     S.owner[a] = S.owner[b] = S.turn; S.up = [];
     p.pairs++; p.run++; p.best = Math.max(p.best, p.run);
     S.order.push(S.turn);
+    S.mo = (S.mo || []).concat([S.moves]); S.ma = (S.ma || []).concat([S.cards[a]]);
     cardEls[a].classList.add('hit'); cardEls[b].classList.add('hit');
     Kit.sfx('good'); Kit.haptic('success');
     if (p.run === 3) Kit.callout(solo() ? 'Three in a row!' : p.name + ': three in a row!');
@@ -384,6 +385,20 @@ body{overflow:hidden;}
 
   // ── Finish ────────────────────────────────────────────────────────────────
   function fmt(t) { t = t | 0; return Math.floor(t / 60) + ':' + ('0' + t % 60).slice(-2); }
+  // History detail: the table as it was dealt. nm = the card names in play, cards = one letter per spot (index into nm),
+  // own = who took each spot, pairs = names in the order found with who and on which move, per-player runs and slips.
+  function histDetail() {
+    var used = [], map = {}, d = SIZES[S.size] || [4, 4];
+    S.cards.forEach(function (a) { if (map[a] == null) { map[a] = used.length; used.push(a); } });
+    function ch(a) { return String.fromCharCode(97 + map[a]); }
+    return {
+      cols: Math.min(d[0], d[1]), nm: used.map(function (a) { return artName(S.deck, a); }),
+      cards: S.cards.map(ch).join(''),
+      own: S.owner.map(function (o) { return o < 0 ? '.' : String(o); }).join(''),
+      seq: (S.ma || []).map(ch).join(''), who: S.order.join(''), mv: S.mo || [],
+      pl: S.players.map(function (p) { return { b: p.best, l: p.lucky, s: p.slips }; })
+    };
+  }
   function finish() {
     stopTick(); S.done = true;
     var ps = S.players, n = S.cards.length / 2, hl = [], dname = deckName(S.deck);
@@ -403,7 +418,8 @@ body{overflow:hidden;}
         started: S.started, mode: dname + ' · ' + S.cards.length + ' cards',
         players: [{ name: me.name, score: S.moves }], winner: me.name, lowWins: true,
         summary: S.moves + ' moves · ' + fmt(S.time), badge: S.moves + ' moves', highlights: hl.slice(0, 6),
-        meta: { solo: true, size: S.size, deck: S.deck, moves: S.moves, time: S.time }
+        meta: { solo: true, size: S.size, deck: S.deck, moves: S.moves, time: S.time },
+        detail: histDetail()
       });
       clearSave();
       setTimeout(function () {
@@ -427,7 +443,8 @@ body{overflow:hidden;}
     Kit.record(KEY, {
       started: S.started, mode: dname + ' · ' + S.cards.length + ' cards',
       players: ps.map(function (p) { return { name: p.name, score: p.pairs }; }), winner: winner,
-      highlights: hl.slice(0, 6), meta: { solo: false, size: S.size, deck: S.deck, moves: S.moves, time: S.time }
+      highlights: hl.slice(0, 6), meta: { solo: false, size: S.size, deck: S.deck, moves: S.moves, time: S.time },
+      detail: histDetail()
     });
     clearSave();
     var rank = ps.map(function (p, i) { return { name: p.name, score: p.pairs, color: p.color }; }).sort(function (a, b) { return b.score - a.score; });

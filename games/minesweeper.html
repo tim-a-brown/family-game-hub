@@ -241,7 +241,7 @@ body{overflow-x:hidden;}
   function dig(i) {
     if (S.over || S.open[i] || S.flag[i]) return;
     var first = !S.mine;
-    if (first) layMines(i);
+    if (first) { layMines(i); S.fd = i; }
     snap(); S.digs++;
     if (S.mine[i]) return explode(i);
     var got = flood([i]);
@@ -350,8 +350,23 @@ body{overflow-x:hidden;}
     Kit.record(HKEY, {
       started: S.started, mode: L().name, players: [{ name: 'You' }], winner: null,
       summary: 'Boom · ' + pct + '% cleared', badge: pct + '%', highlights: hl,
-      meta: { diff: S.diff, won: false, ms: S.ms, pct: pct, undos: S.undos }
+      meta: { diff: S.diff, won: false, ms: S.ms, pct: pct, undos: S.undos },
+      detail: histDetail()
     });
+  }
+  // History detail: the field row by row. Opened squares '0'-'8'; still covered safe squares 'a'-'i' (a = 0 nearby);
+  // 'F' flag on a mine, 'X' flag on a safe square, 'M' mine not flagged, '*' the mine that went off.
+  function histDetail() {
+    var rows = [];
+    for (var r = 0; r < S.rows; r++) {
+      var s = '';
+      for (var c = 0; c < S.cols; c++) {
+        var k = r * S.cols + c, m = S.mine && S.mine[k];
+        s += k === S.hit && !S.won ? '*' : S.flag[k] ? (m ? 'F' : 'X') : m ? 'M' : S.open[k] ? String(S.adj[k]) : String.fromCharCode(97 + (S.adj ? S.adj[k] : 0));
+      }
+      rows.push(s);
+    }
+    return { grid: rows, fd: S.fd != null ? S.fd : -1, digs: S.digs, chords: S.chords, flags: S.flagsPlanted, first: S.firstOpen };
   }
   function abandon() { if (S && S.pendingLoss) recordLoss(); clearSave(); token++; stopBeat(); }
 
@@ -370,7 +385,8 @@ body{overflow-x:hidden;}
     Kit.record(HKEY, {
       started: S.started, mode: L().name, players: [{ name: 'You', score: undefined }], winner: 'You',
       summary: 'Cleared in ' + fmt(S.ms), badge: fmt(S.ms), highlights: hl.slice(0, 6),
-      meta: { diff: S.diff, won: true, ms: S.ms, undos: S.undos, flags: S.flagsPlanted, chords: S.chords }
+      meta: { diff: S.diff, won: true, ms: S.ms, undos: S.undos, flags: S.flagsPlanted, chords: S.chords },
+      detail: histDetail()
     });
     S.recorded = true; clearSave();
     // Flag every mine, quick stagger

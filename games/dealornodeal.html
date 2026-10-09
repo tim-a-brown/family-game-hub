@@ -783,6 +783,13 @@
       summary: solo ? (me.deal ? 'Took the deal' : me.swapped ? 'Swapped cases' : 'No Deal all the way') + ' · ' + fmt(me.result.won)
         : (tie ? 'Tie' : rank[0].name + ' won') + ' · ' + fmt(rank[0].won),
       badge: fmt(rank[0].won),
+      detail: { g: S.players.map(function (p) {
+        var g = p.g, A = 'abcdefghijklmnopqrstuvwxyz';
+        // cases as letters: v = which amount each case held, o = the order cases were opened
+        return { v: g.vals.map(function (x) { return A.charAt(VALUES.indexOf(x)); }).join(''), o: g.opened.map(function (i) { return A.charAt(i); }).join(''),
+          my: g.my, org: g.orig, sw: g.swapped ? 1 : 0, of: g.offers.map(function (x) { return x.amt; }), gh: g.ghost.map(function (x) { return x.amt; }),
+          d: g.deal ? g.deal.r : -1, da: g.deal ? g.deal.amt : 0 };
+      }) },
       meta: solo ? { games: games, how: me.deal ? 'deal' : me.swapped ? 'swap' : 'kept', won: me.result.won, myCase: me.my + 1, myValue: me.vals[me.my] } : { games: games }
     });
     var players = S.players.map(function (p) { return { name: p.name, color: p.color }; }), mode = S.mode, pace = S.pace;
@@ -805,6 +812,7 @@
   // ── History ───────────────────────────────────────────────────────────────
   function openHistory() { Kit.history(HKEY, { title: 'Deal or No Deal: past games', extra: histExtra }); }
   function histExtra(e) {
+    if (e.dt && window.HistView && HistView.has('dealornodeal')) return null;   // the history view tells the full story
     var box = el('div', { class: 'stack' });
     var games = Array.isArray(e.games) ? e.games : null;
     if (!games) {

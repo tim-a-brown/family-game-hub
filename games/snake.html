@@ -401,7 +401,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     else h.push(G.why === 'wall' ? 'Crashed into the wall' : 'Ran into its own tail');
     if (G.wrap && G.stats.wraps >= 5) h.push('Wrapped around the edge ' + G.stats.wraps + ' times');
     var mode = SPEEDS[G.speed].name + ' speed · ' + (G.wrap ? 'wrap around' : 'solid walls');
+    // history detail: the snake as it lay when it crashed (head, then one direction letter per segment toward the tail)
+    var hiL = ArcadeHi.list('snake'), path = '';
+    for (var bi = 1; bi < G.body.length; bi++) {
+      var ddx = G.body[bi].x - G.body[bi - 1].x, ddy = G.body[bi].y - G.body[bi - 1].y;
+      if (ddx > 1) ddx = -1; else if (ddx < -1) ddx = 1; if (ddy > 1) ddy = -1; else if (ddy < -1) ddy = 1;
+      path += ddx > 0 ? 'r' : ddx < 0 ? 'l' : ddy > 0 ? 'd' : 'u';
+    }
+    var detail = {
+      hd: G.body[0].x + ',' + G.body[0].y, p: path, cr: G.crash ? G.crash.x + ',' + G.crash.y : '', why: G.why || '',
+      f: G.food ? G.food.x + ',' + G.food.y : '', gd: G.gold ? G.gold.x + ',' + G.gold.y : '', w: G.wrap ? 1 : 0, sp: G.speed,
+      ap: G.apples, gl: G.golds, ml: len, wr: G.stats.wraps || 0, st: G.steps || 0, t: secs, sz: COLS + 'x' + ROWS,
+      hr: G.score > 0 && (hiL.length < ArcadeHi.max || G.score > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= G.score; }).length + 1 : 0, hb: G.best0 || 0
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: G.started, mode: mode, players: [{ name: G.who, score: G.score }], winner: null,
       highlights: h, summary: fmt(G.score) + ' points · length ' + len, badge: 'Len ' + len,
       meta: { score: G.score, length: len, apples: G.apples, golds: G.golds, speed: G.speed, wrap: G.wrap }

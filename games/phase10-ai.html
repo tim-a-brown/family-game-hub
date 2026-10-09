@@ -686,6 +686,7 @@
   // ── End of a hand ─────────────────────────────────────────────────────────
   function endHand(out) {
     var st = S.stats, row = [], phr = [];
+    (S.phAt = S.phAt || []).push({ a: S.players.map(function (pl) { return pl.ph; }).join(','), o: out, sk: S.handSkips ? S.handSkips.join(',') : '' });
     S.players.forEach(function (pl, p) {
       var got = handPts(S.hands[p]);
       row.push(got); pl.total += got;
@@ -743,7 +744,16 @@
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: w >= 0 ? S.players[w].name : null,
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
-      highlights: highlights(w)
+      highlights: highlights(w),
+      // history detail: the phase each player tried every hand (made or not), skips, and the final laid-down phases
+      detail: (function () {
+        function cc(c) { return isW(c) ? 'w' : isS(c) ? 's' : c.c + c.n; }
+        return {
+          last: S.last, made: S.phRounds.map(function (r) { return r.join(''); }), h: S.phAt || [],
+          skips: S.stats.skips.map(function (r) { return r.join(','); }),
+          laid: (S.laid || []).map(function (gs) { return gs ? gs.map(function (g) { return g.cards.map(cc).join(' '); }).join('|') : ''; })
+        };
+      })()
     });
     clearSave();
     Kit.win({

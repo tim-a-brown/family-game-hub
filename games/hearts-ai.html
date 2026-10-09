@@ -167,12 +167,15 @@
     moving.forEach(function (cards, p) { S.hands[passTarget(p)] = S.hands[passTarget(p)].concat(cards); });
     S.hands.forEach(sortHand);
     S.received = moving[S.passDir === 'left' ? 3 : S.passDir === 'right' ? 1 : 2].map(function (c) { return c.id; });
+    S.dtPass = { out: moving[0].map(cc), got: moving[S.passDir === 'left' ? 3 : S.passDir === 'right' ? 1 : 2].map(cc) };
     S.passSel = [];
     Kit.sfx('whoosh');
     startPlay();
   }
+  function cc(c) { return c.r + c.s; }
   function startPlay() {
     S.phase = 'play';
+    S.dtHand = S.hands[0].map(cc); if (S.passDir === 'hold') S.dtPass = null;
     for (var p = 0; p < 4; p++) if (S.hands[p].some(function (c) { return c.r === '2' && c.s === 'c'; })) S.turn = p;
     S.leader = S.turn;
     save(); render(); next();
@@ -235,7 +238,7 @@
     var led = S.trick[0].c.s, win = S.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
     var got = S.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
     S.taken[win.p] += got;
-    if (S.trick.some(function (x) { return isQS(x.c); })) S.tookQS = win.p;
+    if (S.trick.some(function (x) { return isQS(x.c); })) { S.tookQS = win.p; S.dtQ = { w: win.p, l: S.trick[0].p, c: S.trick.map(function (x) { return cc(x.c); }), n: S.trickNo + 1 }; }
     var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
     if (got) { seatSay(win.p, '+' + got); if (win.p === 0) Kit.haptic('error'); }
     setTimeout(function () {
@@ -267,6 +270,7 @@
     if (S.tookQS >= 0 && moon < 0) S.qs[S.tookQS]++;
     hand.forEach(function (v, i) { S.players[i].total += v; });
     S.rounds.push(hand);
+    (S.hx = S.hx || []).push({ d: S.passDir.charAt(0), q: S.tookQS, m: moon });
     S.phase = 'handover';
     clearUndo(); save();
     var over = S.players.some(function (p) { return p.total >= S.target; });
@@ -301,7 +305,8 @@
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
-      highlights: hl.concat([S.rounds.length + ' hands, played to ' + S.target])
+      highlights: hl.concat([S.rounds.length + ' hands, played to ' + S.target]),
+      detail: { hx: S.hx || [], qs: S.qs, moons: S.moons, hand: S.dtHand || null, pass: S.dtPass || null, q: S.dtQ || null, to: S.target }
     });
     clearSave();
     Kit.win({

@@ -351,7 +351,7 @@
     var pts = S.players.map(function (pl, i) { return score(S.bids[i], S.taken[i]); });
     pts.forEach(function (v, i) { S.players[i].total += v; });
     S.rounds.push(pts);
-    S.detail.push({ bids: S.bids.slice(), took: S.taken.slice() });
+    S.detail.push({ bids: S.bids.slice(), took: S.taken.slice(), t: S.trump || '', tc: !S.trumpCard ? '' : isW(S.trumpCard) ? 'W' : isJ(S.trumpCard) ? 'J' : S.trumpCard.r + S.trumpCard.s, d: S.dealer });
     S.phase = 'roundover';
     clearUndo(); save();
     paintSeats(); paintBar();
@@ -441,7 +441,9 @@
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'R' + (i + 1); }), scores: S.rounds },
-      highlights: buildHighlights().concat([S.rounds.length + ' rounds with ' + S.players.length + ' players' + (S.opts.hook === 'no' ? ", bids couldn't equal tricks" : '')])
+      highlights: buildHighlights().concat([S.rounds.length + ' rounds with ' + S.players.length + ' players' + (S.opts.hook === 'no' ? ", bids couldn't equal tricks" : '')]),
+      // history detail: each round's trump, bids and tricks taken (numbers joined as strings: no nested arrays)
+      detail: { hook: S.opts.hook, wiz: S.wizPlayed.slice(), r: S.detail.map(function (d) { return { t: d.t || '', tc: d.tc || '', d: d.d == null ? -1 : d.d, b: d.bids.join(','), k: d.took.join(',') }; }) }
     });
     clearSave();
     Kit.win({

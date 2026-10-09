@@ -425,13 +425,14 @@
     R.cups.forEach(function (x) { x.w.classList.remove('pick'); });
     w.classList.add('up'); Kit.sfx('flip'); Kit.haptic('light');
     var lvl = r.level;
+    r.seq = (r.seq || '') + (ok ? '1' : '0');   // history: every pick in order
     if (ok) {
       r.cleared++; r.streak++; r.bestStreak = Math.max(r.bestStreak, r.streak); r.maxCups = Math.max(r.maxCups, c.n);
       if (!r.hardest || c.moves > r.hardest.moves || (c.moves === r.hardest.moves && c.n > r.hardest.n)) r.hardest = { moves: c.moves, n: c.n, level: lvl };
       r.level++;
     } else {
       r.misses++; r.streak = 0;
-      r.missLog.push({ level: lvl, n: c.n, moves: c.moves, at: slotName(S.slot[S.ball], c.n), picked: slotName(S.slot[id], c.n) });
+      r.missLog.push({ level: lvl, n: c.n, moves: c.moves, at: slotName(S.slot[S.ball], c.n), picked: slotName(S.slot[id], c.n), as: S.slot[S.ball], ps: S.slot[id] });
     }
     var over = r.misses >= S.lives;
     if (over) S.phase = S.cur < S.players.length - 1 ? 'handoff' : 'done';
@@ -519,6 +520,10 @@
       highlights: hl,
       summary: solo ? players[0].name + ' cleared ' + players[0].score + ' level' + (players[0].score === 1 ? '' : 's') : (tie ? 'Tie game' : top[0].name + ' won') + ' · ' + players.map(function (p) { return p.score; }).join(' – '),
       badge: solo ? players[0].score + ' levels' : '',
+      detail: { lv: S.lives, r: S.runs.map(function (r) {
+        return { q: r.seq || '', c: r.cleared, b: r.bestStreak, mc: r.maxCups, h: r.hardest ? r.hardest.moves + ',' + r.hardest.n + ',' + r.hardest.level : '',
+          m: r.missLog.slice(-6).map(function (x) { return { l: x.level, n: x.n, mv: x.moves, a: x.as != null ? x.as : -1, p: x.ps != null ? x.ps : -1 }; }) };
+      }) },
       meta: { lives: S.lives, pace: S.pace, rounds: solo ? players[0].score : top[0].score, result: solo ? (newRec ? 'record' : 'done') : 'done' }
     });
     var again = function () { start({ mode: S.mode, players: S.players.map(function (p) { return { name: p.name, color: p.color }; }), options: { lives: S.lives, pace: S.pace } }); };

@@ -1368,21 +1368,22 @@ var QB = {
       if (b.cur.length > b.n) { b.n = b.cur.length; b.cats = b.cur.slice(); }
       if (S.timer && (!S.fastest || spent < S.fastest.t)) S.fastest = { p: who, t: Math.round(spent * 10) / 10, cat: q.cat };
       fresh = 'ok';
-      S.log.push({ p: who, id: q.id, cat: q.cat, ok: true, pts: pts, t: spent, round: round() });
+      S.log.push({ p: who, id: q.id, cat: q.cat, ok: true, pts: pts, t: spent, round: round(), miss: c.miss || undefined });
       finishQuestion();
     } else {
       S.streak[who] = 0; S.best[who].cur = [];
       if (S.mode === 'buzz') {
         c.locked.push(who); if (k >= 0) c.out.push(k); c.buzz = -1; c.pick = -1;
+        (c.miss = c.miss || []).push(who);
         fresh = 'bad'; snd('buzzer'); Kit.haptic('error');
         var left = S.players.map(function (p, i) { return i; }).filter(function (i) { return c.locked.indexOf(i) < 0; });
-        if (!left.length || c.out.length >= 3) { c.done = true; c.ok = false; c.pts = 0; S.log.push({ p: -1, id: q.id, cat: q.cat, ok: false, pts: 0 }); return finishQuestion(true); }
+        if (!left.length || c.out.length >= 3) { c.done = true; c.ok = false; c.pts = 0; S.log.push({ p: -1, id: q.id, cat: q.cat, ok: false, pts: 0, miss: c.miss || [] }); return finishQuestion(true); }
         Kit.callout(k < 0 ? 'Too slow!' : 'Locked out!', '#ff8f8f');
         save(); render(); return;
       }
       c.ok = false; c.done = true; c.pts = 0; c.timeout = !!timedOut;
       fresh = 'bad';
-      S.log.push({ p: who, id: q.id, cat: q.cat, ok: false, pts: 0, round: round() });
+      S.log.push({ p: who, id: q.id, cat: q.cat, ok: false, pts: 0, round: round(), w: k >= 0 ? c.opts[k] : '' });
       finishQuestion();
     }
   }
@@ -1640,7 +1641,8 @@ var QB = {
       badge: n === 1 ? Math.round(S.right[0] / Math.max(1, S.asked[0]) * 100) + '%' : '',
       rounds: rounds,
       highlights: hl.slice(0, 6).map(function (h) { return h.t; }),
-      meta: { right: S.right, asked: S.asked, cats: S.cats, levels: P.map(function (p) { return p.level; }) }
+      meta: { right: S.right, asked: S.asked, cats: S.cats, levels: P.map(function (p) { return p.level; }) },
+      detail: histDetail()
     });
     clearSave(); snap = null;
     render();
@@ -1658,6 +1660,22 @@ var QB = {
         closeLabel: 'See the podium', onClose: function () {}
       });
     }, n > 1 ? 2600 : 900);
+  }
+  // For game history: every question, its right answer and who got it (trimmed to stay small)
+  function histDetail() {
+    var cn = {}, room = S.log.length > 30 ? 60 : S.log.length > 15 ? 90 : 140;
+    function cut(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+    var qs = S.log.map(function (l) {
+      var q = BY_ID[l.id]; if (!q) return null;
+      cn[l.cat] = CAT_NAME[l.cat] || l.cat;
+      var o = { q: cut(q.q, room), a: cut(q.c, 40), k: l.cat, p: l.p, ok: l.ok ? 1 : 0 };
+      if (l.w) o.w = cut(l.w, 40);
+      if (l.miss && l.miss.length) o.m = l.miss.join('');
+      if (l.t != null && l.ok && S.timer) o.t = Math.round(l.t * 10) / 10;
+      return o;
+    }).filter(Boolean);
+    while (qs.length > 1 && JSON.stringify(qs).length > 5000) qs.pop();
+    return { qs: qs, n: S.log.length, cn: cn, cc: S.cats.reduce(function (o, c) { if (cn[c]) o[c] = CAT_COLOR[c] || ''; return o; }, {}), timer: S.timer || 0, buzz: S.mode === 'buzz' ? 1 : 0 };
   }
   function renderFinal(stage) {
     var P = S.players, ord = order();

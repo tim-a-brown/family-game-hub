@@ -1210,7 +1210,8 @@ body{overflow-x:hidden;}
       summary: (n === 1 ? '1 marble' + (center ? ' · center' : '') : n + ' marbles left') + ' · ' + B.name, badge: B.name,
       highlights: hl.slice(0, 6),
       meta: { board: S.board, left: n, center: center, perfect: perfect, moves: S.moves, hints: S.hints, undos: S.undos, restarts: S.restarts,
-        chain: S.bestChain, startHole: S.startHole, final: finalB.join('') }
+        chain: S.bestChain, startHole: S.startHole, final: finalB.join('') },
+      detail: histDetail()
     });
     clearSave();
     updHud();
@@ -1231,6 +1232,13 @@ body{overflow-x:hidden;}
     }, perfect ? 1900 : 1300);
   }
 
+  // History detail: the starting colours per hole ('.' = empty, '0'-'9' = palette), the jumps in order
+  // (two-digit from/to hole numbers), and the hole picked out first on the triangle.
+  function histDetail() {
+    var st = S.start.map(function (id) { return id < 0 ? '.' : String(S.col[id]); }).join(''), mv = '';
+    S.U.forEach(function (u) { if (u.pick == null) mv += ('0' + u.f).slice(-2) + ('0' + u.t).slice(-2); });
+    return { st: st, mv: mv, pk: S.startHole };
+  }
   function histExtra(e) {
     if (!e || !BOARDS[e.board] || typeof e.final !== 'string') return null;
     var b = e.final.split('').map(Number);

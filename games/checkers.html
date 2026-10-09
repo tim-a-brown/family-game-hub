@@ -391,7 +391,7 @@
       players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: winner ? (p === winner ? 1 : 0) : 0.5, cpu: p.cpu }; }),
       winner: winner ? winner.name + ' (' + colorName(winner.side) + ')' : null,
       summary: winner ? winner.name + ' won in ' + moves + ' moves' : 'Draw',
-      highlights: hl
+      highlights: hl, detail: checkersDetail(res, winner)
     });
     setTimeout(function () {
       var lose = winner && winner.cpu;
@@ -405,6 +405,21 @@
         closeLabel: 'Back to games'
       });
     }, 500);
+  }
+  // History detail: final board rows (b/B black man/king, r/R red), every move in square numbers (1-32) for the replay
+  function checkersDetail(res, winner) {
+    try {
+      var rows = [], mv = [];
+      function sq(s) { return (s >> 3) * 4 + ((s & 7) >> 1) + 1; }
+      for (var r = 0; r < 8; r++) { var row = ''; for (var c = 0; c < 8; c++) { var v = S.b[r * 8 + c]; row += v === 1 ? 'b' : v === 2 ? 'B' : v === -1 ? 'r' : v === -2 ? 'R' : '.'; } rows.push(row); }
+      for (var i = 0; i < S.hist.length; i++) {
+        var nx = S.hist[i + 1], m = nx ? nx.last : S.last;
+        if (!m) { mv = []; break; }
+        var sep = m.caps && m.caps.length ? 'x' : '-';
+        mv.push([m.f].concat(m.path).map(sq).join(sep));
+      }
+      return { b: rows, m: mv.join(' '), res: res.type, w: winner ? winner.side : 0, s0: S.players[0].side, f: S.forced ? 1 : 0, first: S.hist.length ? S.hist[0].turn : 1 };
+    } catch (e) { return null; }
   }
   function resign() {
     if (!S || !S.b || S.over) return Kit.toast('No game in progress');

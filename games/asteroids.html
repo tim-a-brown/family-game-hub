@@ -728,7 +728,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var last = st.deaths[st.deaths.length - 1];
     if (last) h.push('Last ship lost to ' + last.by + ' in wave ' + last.wave);
     var pw = st.perWave;
+    // history detail: the field at the end (rocks still flying, where the ship went down) and the run's numbers
+    var hiL = ArcadeHi.list(HI), sc0 = G.score;
+    var detail = {
+      w: Math.round(WW), h: Math.round(WH), rk: rocks.slice(0, 30).map(function (r) { return { x: Math.round(r.x), y: Math.round(r.y), s: r.size }; }),
+      sh: ship ? Math.round(ship.x) + ',' + Math.round(ship.y) + ',' + (+(ship.a || 0).toFixed(2)) : '', uf: ufo ? Math.round(ufo.x) + ',' + Math.round(ufo.y) + ',' + (ufo.big ? 'b' : 's') : '',
+      wv: G.wave, rb: st.rocks.slice(1), ub: st.ufoBig, us: st.ufoSmall, sx: st.shots, hx: st.hits, hy: st.hypers, hd: st.hyperDeaths, ex: st.extra,
+      dd: st.deaths.slice(-6).map(function (d) { return { b: d.by, w: d.wave }; }), bt: G.steer === 'buttons' ? 1 : 0,
+      hr: sc0 > 0 && (hiL.length < ArcadeHi.max || sc0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc0; }).length + 1 : 0, hb: G.best0 || 0
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: G.started, mode: G.steer === 'buttons' ? 'Button controls' : '',
       players: [{ name: G.who, score: G.score }], winner: null,
       rounds: pw.length > 1 ? { labels: pw.map(function (x, i) { return 'W' + (i + 1); }), scores: pw.map(function (x) { return [x]; }) } : null,

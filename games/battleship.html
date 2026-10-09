@@ -709,7 +709,13 @@
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass and play',
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: sunkCount(1 - i) }; }),
       winner: W.name, summary: W.name + ' won in ' + st.shots + ' shots', highlights: hl.slice(0, 6),
-      meta: { shots: [S.st[0].shots, S.st[1].shots] }
+      meta: { shots: [S.st[0].shots, S.st[1].shots] },
+      // for the history view: each player's fleet ({r,c,h} per ship), the shots fired at it (100 chars, '.' / 'm' miss / 'h' hit),
+      // which of its ships sank, and per-player shooting stats
+      detail: { f0: S.fleets[0], f1: S.fleets[1], at0: S.shots[1].map(function (x) { return x || '.'; }).join(''), at1: S.shots[0].map(function (x) { return x || '.'; }).join(''),
+        sk0: S.sunk[0].join(''), sk1: S.sunk[1].join(''), w: w,
+        st: S.st.map(function (s) { return { s: s.shots, h: s.hits, b: s.best }; }),
+        order: (S.sinkOrder || []).map(function (x) { return { p: x.p, k: x.k }; }), fb: S.firstBlood }
     });
     var lose = W.cpu;
     Kit.win({

@@ -551,6 +551,16 @@
     Kit.sheet({ title: 'Scores · hand ' + S.hand, node: el('div', null, [totalsTable(null), el('div', { class: 'goalline', text: 'First to ' + S.target + ' · 25 per hand won · 100 game bonus' })]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
 
+  // History detail: the last hand laid down (melds as 'Ah,2h,3h' strings) and how each hand ended
+  function ginDetail(bonus) {
+    function cs(a) { return (a || []).map(function (c) { return c.r + c.s; }); }
+    function ms(m) { return (m || []).map(function (x) { return cs(x).join(','); }); }
+    var r = S.res, last = null;
+    if (r && !r.dead) last = { kn: r.kn, gin: !!r.gin, uc: !!r.undercut, w: r.winner, pts: r.pts, kw: r.kDw, dw: r.dDw,
+      km: ms(r.kMelds), kd: cs(r.kDead), dm: ms(r.dMelds), dd: cs(r.dDead), ly: (r.dLays || []).map(function (l) { return l.c.r + l.c.s; }) };
+    return { last: last, hand: S.hand, wins: S.players.map(function (p) { return p.wins; }), bonus: bonus, to: S.target,
+      hx: S.log.map(function (x) { return x.dead ? { x: 1 } : { w: x.winner, k: x.kn, g: x.gin ? 1 : 0, u: x.undercut ? 1 : 0, kd: x.kDw, dd: x.dDw, p: x.pts }; }) };
+  }
   function finish() {
     S.phase = 'over';
     var P = S.players, w = P[0].total >= P[1].total ? 0 : 1, l = 1 - w;
@@ -572,7 +582,8 @@
       players: P.map(function (p, i) { return { name: p.name, score: fin[i], cpu: p.cpu }; }),
       winner: P[w].name,
       rounds: { labels: S.labels.concat(['Bonus']), scores: S.rounds.concat([bonus]) },
-      highlights: hl
+      highlights: hl,
+      detail: ginDetail(bonus)
     });
     clearSave();
     var rank = [w, l].map(function (i) { return { name: P[i].name, score: fin[i], color: Kit.color(i) }; });

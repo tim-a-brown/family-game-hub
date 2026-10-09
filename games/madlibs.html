@@ -386,7 +386,10 @@ body{overflow-x:hidden;}
       winner: null,
       summary: st.t + ' · ' + S.players.map(function (p) { return p.name; }).join(', '),
       highlights: hl,
-      meta: { story: st.id, title: st.t, words: st.b.map(function (b, i) { return S.words[i] || ''; }), by: st.b.map(function (b, i) { return owner(i); }), fav: false }
+      meta: { story: st.id, title: st.t, words: st.b.map(function (b, i) { return S.words[i] || ''; }), by: st.b.map(function (b, i) { return owner(i); }), fav: false },
+      // for game history: the story with {0}, {1}… where each blank goes, and what kind of word each blank asked for
+      detail: { s: (function () { var idx = {}; st.b.forEach(function (b, i) { idx[b[0]] = i; }); return st.s.replace(/\{([A-Z0-9_]+)\}/g, function (m, k) { return idx[k] != null ? '{' + idx[k] + '}' : ''; }).slice(0, 2400); })(),
+        ty: st.b.map(function (b) { return T[b[1]] ? T[b[1]][0] : b[1]; }) }
     });
     S.rid = entry && entry._date ? entry._date : null;
     if (!S.rid) { try { var l = GameHistory.load(KEY); S.rid = l.length ? l[0]._date : null; } catch (e) {} }

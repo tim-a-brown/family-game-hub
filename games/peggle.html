@@ -1090,7 +1090,19 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function recordLevel(won) {
     var shots = L.shots.slice(0, 40);
+    // history detail: every peg where it sat at the end (colour letter, capital = hit and cleared) and the level's numbers
+    var hiL = ArcadeHi.list('peggle'), sc0 = L.score;
+    var pegs = objs.map(function (o) {
+      var c = o.gone ? o.c.toUpperCase() : o.c;
+      return (o.k === 'brick' ? [o.x, o.y, o.x2, o.y2] : [o.x, o.y]).map(function (v) { return Math.round(v); }).join(',') + c;
+    }).join(';');
+    var detail = {
+      pg: pegs.length < 4000 ? pegs : '', n: L.n, nm: L.def.name, won: won ? 1 : 0, bl: L.ballsLeft, ol: orangeLeft(), to: L.totalOrange, sh: L.shots.length,
+      ms: L.stats.maxShot, mh: L.stats.maxHits, fb: L.stats.feverBucket || 0, fr: L.stats.free, lg: L.stats.long, wl: L.stats.wall, pw: L.stats.powers, ma: L.master,
+      hr: sc0 > 0 && (hiL.length < ArcadeHi.max || sc0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc0; }).length + 1 : 0, hb: hiL.length ? hiL[0].score : 0
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: L.started, mode: 'Level ' + L.n + ': ' + L.def.name,
       players: [{ name: L.who, score: L.score }], winner: null,
       rounds: shots.length > 1 ? { labels: shots.map(function (s, i) { return 'Shot ' + (i + 1); }), scores: shots.map(function (s) { return [s]; }) } : null,

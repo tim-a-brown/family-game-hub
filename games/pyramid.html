@@ -216,6 +216,7 @@
       S.disc.push(id);
     });
     S.sel = null; S.moves++;
+    (S.pl = S.pl || []).push(ids.join(''));
     if (ids.length === 1) S.kings++; else S.pairs++;
     lastMove = { ids: ids, t: Date.now() };
     Kit.sfx('pop'); Kit.haptic('light');
@@ -292,7 +293,7 @@
     Kit.record(HKEY, {
       started: S.started, mode: '3 passes', players: [{ name: 'You', score: 28 }], winner: 'You',
       summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: 'Win',
-      highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, result: 'win', cleared: 28 }
+      highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, result: 'win', cleared: 28 }, detail: pyrDetail()
     });
     clearSave(); updBar();
     setTimeout(function () {
@@ -317,6 +318,12 @@
       onClose: function () { overlay = null; abandon(); clearSave(); Kit.home(); }
     });
   }
+  // History detail: the pyramid as dealt, which cards were left, and every pair taken away in order
+  function pyrDetail() {
+    var d0 = null; try { d0 = JSON.parse(I); } catch (e) {}
+    return { p0: d0 && d0.pyr ? d0.pyr.join('') : '', left: S.pyr.map(function (c) { return c || '..'; }).join(''), pl: (S.pl || []).slice(0, 60),
+      pass: S.pass, deck: S.stock.length + S.waste.length, undos: S.undos, won: !!S.won };
+  }
   function recordLoss() {
     S.recorded = true;
     var n = left();
@@ -328,7 +335,7 @@
     Kit.record(HKEY, {
       started: S.started, mode: '3 passes', players: [{ name: 'You', score: 28 - n }], winner: null,
       summary: 'Out of moves · ' + (28 - n) + ' of 28 cleared', badge: (28 - n) + '/28',
-      highlights: hl, meta: { moves: S.moves, time: S.time, result: 'loss', cleared: 28 - n }
+      highlights: hl, meta: { moves: S.moves, time: S.time, result: 'loss', cleared: 28 - n }, detail: pyrDetail()
     });
   }
 

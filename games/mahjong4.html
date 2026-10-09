@@ -619,7 +619,7 @@
       if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
     } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
     var label = 'ESWN'[S.wind] + S.handNo;
-    S.log.push({ label: label, winner: res ? res.winner : -1, from: res ? (res.self ? -1 : res.from) : -1, self: res ? res.self : false, faan: sc ? sc.faan : 0, pts: sc ? sc.pts : 0, list: sc ? sc.list.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (x) { return x[0]; }) : [], deltas: deltas });
+    S.log.push({ tl: res ? handCode(res.winner, res.self ? S.drawn : S.last && S.last.id) : '', dl: S.dealer, label: label, winner: res ? res.winner : -1, from: res ? (res.self ? -1 : res.from) : -1, self: res ? res.self : false, faan: sc ? sc.faan : 0, pts: sc ? sc.pts : 0, list: sc ? sc.list.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (x) { return x[0]; }) : [], deltas: deltas });
     S.result = { res: res, sc: sc, deltas: deltas };
     // dealer and round wind
     var dealerWon = res && res.winner === S.dealer;
@@ -631,6 +631,15 @@
     S.phase = over ? 'over' : 'end';
     save(); render();
     setTimeout(function () { showResult(over); }, res ? 1300 : 900);
+  }
+  // For the history view: the winning hand as one short string. One letter per tile kind (A-Z then a-h),
+  // melds first ('*' = concealed kong), space-separated, then the concealed tiles; '!' marks the winning tile.
+  function kc(k) { return String.fromCharCode(k < 26 ? 65 + k : 71 + k); }
+  function handCode(p, winId) {
+    var g = S.melds[p].map(function (m) { return (m.conc ? '*' : '') + m.ids.map(function (id) { return kc(kindOf(id)); }).join(''); });
+    var won = winId != null ? kindOf(winId) : -1, marked = false;
+    g.push(S.hands[p].map(kindOf).sort(function (a, b) { return a - b; }).map(function (k) { if (k === won && !marked) { marked = true; return '!' + kc(k); } return kc(k); }).join(''));
+    return g.join(' ');
   }
   function handTiles(p) {
     var box = el('div', { class: 'hand' });
@@ -664,6 +673,18 @@
       actions: [{ label: over ? 'Final results' : 'Next hand', primary: true, onClick: function () { openSheet = null; if (over) finish(); else startHand(); } }]
     });
   }
+  // Every hand: winner, who dealt in (from, -1 = self-drawn), dealer, faan, points, the scoring and the winning tiles.
+  // Long games keep the tiles of the biggest hands only, so the record stays small.
+  function mjDetail() {
+    var hands = S.log.map(function (h) {
+      var o = { l: h.label, w: h.winner, d: h.dl == null ? -1 : h.dl };
+      if (h.winner >= 0) { o.f = h.from; o.fa = h.faan; o.pt = h.pts; o.y = h.list.slice(0, 4).join('|'); if (h.tl) o.t = h.tl; }
+      return o;
+    });
+    var byFaan = hands.filter(function (h) { return h.t; }).sort(function (a, b) { return a.fa - b.fa; });
+    while (JSON.stringify(hands).length > 3500 && byFaan.length) delete byFaan.shift().t;
+    return { hands: hands, kongs: S.stats.kongs.slice(), claims: S.stats.claims.slice() };
+  }
   function finish() {
     var P = S.players, rank = P.map(function (p, i) { return { name: p.name, score: S.scores[i], color: Kit.color(i), cpu: p.cpu, i: i }; }).sort(function (a, b) { return b.score - a.score; });
     var top = rank[0], tie = rank[1].score === top.score, hl = [];
@@ -686,7 +707,7 @@
       players: P.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: p.cpu }; }),
       winner: tie ? null : top.name,
       rounds: { labels: S.log.map(function (h) { return h.label; }), scores: S.log.map(function (h) { return h.deltas; }) },
-      highlights: hl.slice(0, 6)
+      highlights: hl.slice(0, 6), detail: mjDetail()
     });
     clearSave();
     var lose = top.cpu || tie && rank.filter(function (x) { return x.score === top.score; }).every(function (x) { return x.cpu; });

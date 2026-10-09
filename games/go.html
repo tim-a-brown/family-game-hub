@@ -958,6 +958,23 @@ function GoEngine() {
     save(); paint(); maybeCpu();
   }
   function currentScore() { return E.score(S.b, S.n, { dead: S.dead || [], rule: S.rule, komi: S.komi, caps: S.caps, hcap: S.hcap }); }
+  // For the history view: the final board, one string per row. b/w = stones, B/W = dead stones taken off at the end,
+  // x/o = empty point that is Black's / White's territory, '.' = neutral. Plus the score breakdown.
+  function detail(sc) {
+    var rows = [], deadSet = {}; ((sc && S.dead) || []).forEach(function (i) { deadSet[i] = 1; });
+    for (var r = 0; r < S.n; r++) {
+      var row = '';
+      for (var c = 0; c < S.n; c++) {
+        var i = r * S.n + c, v = S.b[i];
+        row += v ? (deadSet[i] ? (v === BLACK ? 'B' : 'W') : (v === BLACK ? 'b' : 'w')) : sc && sc.owner[i] === BLACK ? 'x' : sc && sc.owner[i] === WHITE ? 'o' : '.';
+      }
+      rows.push(row);
+    }
+    var d = { n: S.n, grid: rows, last: S.last, caps: [S.caps[1], S.caps[2]], kos: S.kos || 0, rule: S.rule, komi: S.komi, hcap: S.hcap };
+    if (sc) { d.st = [sc.stones[1], sc.stones[2]]; d.te = [sc.terr[1], sc.terr[2]]; d.pr = [sc.pris[1], sc.pris[2]]; d.dd = [sc.dead[1], sc.dead[2]]; d.hc = sc.hc; d.tot = [sc.total[1], sc.total[2]]; }
+    if (S.big) d.big = { c: S.big.c === BLACK ? 'b' : 'w', n: S.big.n, mv: S.big.mv };
+    return d;
+  }
   function finish(o) {
     o = o || {};
     epoch++; cancelThink(); S.busy = false; pv = -1;
@@ -985,7 +1002,7 @@ function GoEngine() {
       players: [BLACK, WHITE].map(function (c) { var p = pl(c); return { name: p.name + ' (' + cname(c) + ')', score: sc ? sc.total[c] : (c === winC ? 1 : 0), cpu: p.cpu }; }),
       winner: winner.name + ' (' + cname(winC) + ')',
       summary: o.resign ? winner.name + ' won by resignation' : winner.name + ' won by ' + fmt(margin),
-      highlights: hl, meta: { size: S.n, komi: S.komi, handicap: S.hcap, rule: S.rule, moves: S.mv }
+      highlights: hl, meta: { size: S.n, komi: S.komi, handicap: S.hcap, rule: S.rule, moves: S.mv }, detail: detail(sc)
     });
     clearSave();
     paint();

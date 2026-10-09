@@ -715,7 +715,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var lvls = Object.keys(G.perLevel).map(Number).sort(function (a, b) { return a - b; });
     var hiList = ArcadeHi.list('tetris');
     var prevBest = hiList.length ? hiList[0].score : 0;
+    // history detail: the final stack (from the top of the visible well, plus anything that spilled over) and the run's numbers
+    var top0 = HID; for (var r0 = 0; r0 < HID; r0++) if (G.board[r0].some(function (v) { return v; })) { top0 = r0; break; }
+    var hiRk = G.score > 0 && (hiList.length < ArcadeHi.max || G.score > hiList[hiList.length - 1].score) ? hiList.filter(function (x) { return x.score >= G.score; }).length + 1 : 0;
+    var detail = {
+      b: G.board.slice(top0).map(function (r) { return r.map(function (v) { return v || '.'; }).join(''); }), over: HID - top0,
+      lv: G.level, sl: G.startLevel, ln: G.lines, pcs: st.pieces, cl: st.clears.slice(1), ts: st.tspins, cb: st.maxCombo, b2b: st.b2b,
+      pc: st.pc, hd: st.holds, bm: st.bestMove, bmn: st.bestMoveName, cls: G.classic ? 1 : 0, t: Math.round(G.playMs / 1000), hr: hiRk, hb: prevBest
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: G.started, mode: 'Marathon' + (G.startLevel > 1 ? ' from level ' + G.startLevel : ''),
       players: [{ name: G.who, score: G.score }], winner: null,
       rounds: lvls.length > 1 ? { labels: lvls.map(function (l) { return 'Lvl ' + l; }), scores: lvls.map(function (l) { return [G.perLevel[l]]; }) } : null,

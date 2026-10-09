@@ -587,7 +587,14 @@
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: S.nboards > 1 ? boardsWon(G, p.sym) : (i === G.winner ? 1 : 0) }; }),
       winner: w ? w.name : null,
       summary: w ? w.name + ' won' + (S.nboards > 1 && S.variant !== 'ultimate' ? ' ' + boardsWon(G, w.sym) + ' of ' + S.nboards + ' boards' : S.variant === 'ultimate' ? ' Ultimate' : '') : 'Draw',
-      highlights: hl.slice(0, 6)
+      highlights: hl.slice(0, 6),
+      detail: {
+        v: S.variant, b: G.boards.map(function (bd) { return bd.map(function (x) { return x || '.'; }).join(''); }),
+        m: G.meta.map(function (x) { return x || '.'; }).join(''),
+        l: G.boards.map(function (bd, i) { return G.lines[i] != null ? String(G.lines[i]) : '-'; }).join(''),
+        ml: G.metaLine != null ? G.metaLine : -1, sy: S.players.map(function (p) { return p.sym; }).join(''),
+        mv: G.moves.map(function (m) { return '' + m.b + m.i + m.p; }).join(''), w: G.winner, lv: vsCpu ? S.level : ''
+      }
     });
     save();
     var lose = w && w.cpu;

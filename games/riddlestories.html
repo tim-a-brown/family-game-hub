@@ -687,7 +687,8 @@
       players: P.map(function (p) { return { name: p.name, score: p.score }; }),
       winner: S.mode === 'solo' ? null : (tie ? null : rank[0].name),
       summary: summary, rounds: S.mode === 'group' ? rounds : null, highlights: hl,
-      meta: { cases: S.log.map(function (l) { return l.id; }) }
+      meta: { cases: S.log.map(function (l) { return l.id; }) },
+      detail: histDetail()
     });
     var again = { mode: S.mode, players: P.map(function (p) { return { name: p.name, color: p.color }; }), options: { deck: S.deck, n: S.order.length } };
     clearSave(); undoStack = [];
@@ -701,6 +702,23 @@
       again: function () { start(again); },
       extra: [{ label: 'Change players', onClick: showSetup }]
     });
+  }
+
+  // For game history: each case's story and answer (trimmed so the record stays small), who read it,
+  // who solved it and how many clues it took
+  function histDetail() {
+    var room = 260, out;
+    function cut(t) { t = String(t || ''); return t.length > room ? t.slice(0, room - 1) + '…' : t; }
+    do {
+      out = { cs: S.log.map(function (l) {
+        var c = BY[l.id] || {};
+        var o = { t: c.title || l.id, d: c.deck || '', q: cut(c.q), a: cut(c.a), h: l.hints, s: l.solver == null ? -1 : l.solver, r: l.reader == null ? -1 : l.reader };
+        if (l.hints && c.h && room > 90) o.c = cut(c.h.slice(0, l.hints).join(' / '));
+        return o;
+      }) };
+      room = Math.floor(room * 0.8);
+    } while (JSON.stringify(out).length > 5000 && room > 30);
+    return out;
   }
 
   // ── Casebook: which cases have been solved ────────────────────────────────

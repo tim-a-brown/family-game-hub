@@ -1487,7 +1487,7 @@
     S.bought = {}; S.phase = 0;
     var endRound = S.cur === 4;
     S.cur = (S.cur + 1) % 5;
-    if (endRound) S.round++;
+    if (endRound) { S.round++; (S.incH = S.incH || []).push(ORDER.map(function (q) { return S.pw[q].inc; }).join(',')); }
     save(); render();
     if (pw.cap) { Kit.sfx('chip'); setTimeout(function () { Kit.sfx('chip'); }, 80); Kit.haptic('success'); Kit.callout('+' + pw.inc + ' IPCs', POW[k].c === '#5f6468' ? '#c9ced2' : POW[k].c); bump(k); }
     if (endRound) setTimeout(roundCheck, 700);
@@ -1516,7 +1516,14 @@
       winner: winners.length ? winners.join(' & ') : null,
       summary: side ? 'The ' + SIDE[side] + ' won · ' + ax + '–' + al + ' cities' : 'Stopped in round ' + S.round,
       highlights: hl.slice(0, 6),
-      meta: { powers: ORDER.map(function (k) { return { k: k, by: S.players[S.pw[k].pl] ? S.players[S.pw[k].pl].name : '', bank: S.pw[k].bank, inc: S.pw[k].inc }; }) }
+      meta: { powers: ORDER.map(function (k) { return { k: k, by: S.players[S.pw[k].pl] ? S.players[S.pw[k].pl].name : '', bank: S.pw[k].bank, inc: S.pw[k].inc }; }) },
+      // history detail: who held each victory city at the end, each power's income by round, and what they spent
+      detail: {
+        side: side || '', how: how || '', need: [need('axis'), need('allies')],
+        vc: CITIES.map(function (c) { return S.vc[c[0]] === 'axis' ? 'a' : 'l'; }).join(''),
+        pw: ORDER.map(function (k) { var w = S.pw[k]; return { k: k, inc: w.inc, bank: w.bank, cap: w.cap ? 1 : 0, sp: S.st.spent[k] || 0 }; }),
+        ih: (S.incH || []).slice(-30), bat: S.st.battles || 0, dice: S.st.dice || 0
+      }
     });
     S.over = true; clearSave();
     var rank = S.players.map(function (p, i) { return { name: p.name + ' (' + ORDER.filter(function (k) { return S.pw[k].pl === i; }).map(function (k) { return POW[k].ab; }).join(', ') + ')', score: sideOfPlayer[i] ? SIDE[sideOfPlayer[i]] : '', w: sideOfPlayer[i] === side ? 0 : 1 }; })

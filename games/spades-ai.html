@@ -213,6 +213,7 @@
     S.bids = [null, null, null, null]; S.blind = [false, false, false, false];
     S.taken = [0, 0, 0, 0]; S.trick = []; S.trickNo = 0; S.broken = false; S.gone = [];
     S.voids = [{}, {}, {}, {}];
+    S.dtHand = S.hands[0].map(key);
     S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
     S.phase = S.blindOpt && S.scores[1] - S.scores[0] >= 100 ? 'blind' : 'bid';
     S.last = null;
@@ -447,6 +448,8 @@
       if (r.took === 13) S.highlights.push(nm + ' took all 13 tricks in hand ' + n);
     });
     S.rounds.push([res[0].pts, res[1].pts]);
+    (S.hx = S.hx || []).push({ b: S.bids.map(function (b, p) { return b === 0 ? (S.blind[p] ? 'B' : 'N') : b; }).join('.'), t: S.taken.join('.'), d: S.dealer,
+      r: res.map(function (r) { return r.set ? 's' : r.made ? 'm' : '-'; }).join('') + (res[0].penalty ? 'p' : '') + (res[1].penalty ? 'q' : '') });
     S.last = { res: res.map(function (r) { return { bid: r.bid, took: r.took, pts: r.pts, bags: r.bags, penalty: r.penalty }; }), notes: notes };
     S.phase = 'handover';
     clearUndo(); save(); paintPlaques();
@@ -513,7 +516,8 @@
       players: [{ name: teamName(0), score: S.scores[0], cpu: false }, { name: teamName(1), score: S.scores[1], cpu: true }],
       winner: teamName(w),
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
-      highlights: hl
+      highlights: hl,
+      detail: { names: S.players.map(function (p) { return p.name; }), hx: S.hx || [], bags: S.bags, sets: S.sets, nils: S.nilsMade, tricks: S.tricksAll, hand: S.dtHand || null, to: S.target }
     });
     var players = S.players, target = S.target, blind = S.blindOpt;
     clearSave(); S.phase = 'over';

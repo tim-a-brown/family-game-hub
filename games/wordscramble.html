@@ -255,7 +255,7 @@
     if (S.di >= S.deck.length) { S.deck = shuffle(S.deck); S.di = 0; }
     var o = S.deck[S.di++], sc = scramble(o.w), n = o.w.length;
     S.R = { w: o.w, clue: o.clue, mix: sc, letters: sc.split(''), slots: new Array(n).fill(null), rack: sc.split('').map(function (_, i) { return i; }),
-      locked: new Array(n).fill(false), clueUsed: false, hinted: 0, fresh: true };
+      locked: new Array(n).fill(false), clueUsed: false, hinted: 0, fresh: true, t0: S.time ? S.T.left : Date.now() };
     undoStack = [];
   }
   function snapshot() { undoStack.push(JSON.stringify({ slots: S.R.slots, rack: S.R.rack })); if (undoStack.length > 40) undoStack.shift(); }
@@ -532,12 +532,14 @@
     if (R.clueUsed) base = Math.ceil(base / 2);
     return Math.max(1, base);
   }
+  // seconds spent on the current word (for the history)
+  function wordSecs(R) { var v = R.t0 == null ? 0 : S.time ? (R.t0 - S.T.left) / 1000 : (Date.now() - R.t0) / 1000; return Math.max(0, Math.round(v)); }
   function solved(guess) {
     var R = S.R, T = S.T, pts = wordScore(R);
     T.streak++; T.solved++; T.count++; T.best = Math.max(T.best, T.streak);
     var bonus = T.streak >= 3 ? 5 : 0;
     T.score += pts + bonus;
-    T.words.push({ w: R.w, as: guess !== R.w ? guess : undefined, mix: R.mix, pts: pts + bonus, clue: R.clueUsed, help: R.hinted });
+    T.words.push({ w: R.w, as: guess !== R.w ? guess : undefined, mix: R.mix, pts: pts + bonus, clue: R.clueUsed, help: R.hinted, s: wordSecs(R) });
     Kit.sfx('good'); Kit.haptic('success');
     slotsEl.querySelectorAll('.tile').forEach(function (t, i) { setTimeout(function () { t.classList.add('good', 'dance'); }, i * 60); });
     feltEl.appendChild(el('div', { class: 'float', text: '+' + (pts + bonus) }));
@@ -592,7 +594,7 @@
     if (busy || S.phase !== 'play') return;
     var R = S.R, T = S.T;
     busy = true; T.streak = 0; T.count++;
-    T.words.push({ w: R.w, mix: R.mix, pts: 0, skipped: true });
+    T.words.push({ w: R.w, mix: R.mix, pts: 0, skipped: true, s: wordSecs(R) });
     // Show the answer in the squares
     flip(function () {
       var used = {};
@@ -655,6 +657,14 @@
     try { GameHistory.load(KEY).forEach(function (e) { if (e.solo && e.time === S.time && e.diff === S.diff && (best == null || e.top > best)) best = e.top; }); } catch (x) {}
     return best;
   }
+  // History: every turn's words as one string, 'WORD.MIX.points.seconds.flags' (flags: k skipped, c clue, h letter hints, a=ALT another word that fit)
+  function scrambleDetail() {
+    function enc(w, mix) { return [w.w, mix ? w.mix : '', w.pts || 0, w.s == null ? '' : w.s, (w.skipped ? 'k' : '') + (w.clue ? 'c' : '') + (w.help ? 'h' : '') + (w.as ? 'a=' + w.as : '')].join('.'); }
+    function build(mix) { return { tm: S.time, t: S.log.map(function (L) { return { p: L.p, r: L.r, sc: L.score, bs: L.best, w: L.words.map(function (w) { return enc(w, mix); }).join(' ') }; }) }; }
+    var d = build(true);
+    if (JSON.stringify(d).length > 5000) d = build(false);
+    return d;
+  }
   function finish() {
     var hl = [], P = S.players, solo = S.mode === 'solo';
     var all = []; S.log.forEach(function (L) { L.words.forEach(function (w) { if (!w.skipped) all.push({ p: L.p, w: w }); }); });
@@ -687,7 +697,8 @@
       rounds: !solo && S.rounds > 1 ? { labels: S.roundScores.map(function (r, i) { return 'Round ' + (i + 1); }), scores: S.roundScores } : undefined,
       summary: solo ? P[0].name + ' scored ' + top : undefined,
       highlights: hl.slice(0, 6),
-      meta: { solo: solo, time: S.time, diff: S.diff, cat: S.cat, top: top }
+      meta: { solo: solo, time: S.time, diff: S.diff, cat: S.cat, top: top },
+      detail: scrambleDetail()
     });
     clearSave();
     Kit.win({

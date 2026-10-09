@@ -593,7 +593,11 @@
       players: P.map(function (p, i) { return { name: p.name, score: S.score[i], cpu: p.cpu }; }),
       winner: P[w].name,
       rounds: S.games.length > 1 ? { labels: S.games.map(function (g, i) { return 'Game ' + (i + 1); }), scores: S.games.map(function (g) { return g.row; }) } : null,
-      highlights: hl.slice(0, 6)
+      highlights: hl.slice(0, 6),
+      // for the history view: where the checkers ended (p: + White / − Black per point 1..24), the cube, and each game's result
+      detail: { p: S.pos.p.slice(), bar: S.pos.bar.slice(), off: S.pos.off.slice(), cube: S.cube, own: S.owner, to: S.target, cubeOn: !!S.cubeOn,
+        g: S.games.map(function (g) { return { w: g.w, h: g.how, pts: g.pts, c: g.cube, pl: g.pipsLeft }; }),
+        hits: S.ms.hits.slice(), dbl: S.ms.doubles.slice(), max: S.ms.maxCube, pips: [pips(S.pos, 0), pips(S.pos, 1)] }
     });
     clearSave();
     var lose = P[w].cpu, last2 = S.games[S.games.length - 1];

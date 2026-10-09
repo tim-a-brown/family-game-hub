@@ -508,7 +508,7 @@ button.hole{cursor:pointer;}
     var r = S.result, breaker = S.players[S.breaker], maker = S.maker >= 0 ? S.players[S.maker] : null;
     var pts = r.n + (r.cracked ? 0 : 1);
     if (maker) S.scores[S.maker] += pts;
-    S.log.push({ maker: S.maker, breaker: S.breaker, n: r.n, cracked: r.cracked, pts: pts, code: S.code.slice() });
+    S.log.push({ maker: S.maker, breaker: S.breaker, n: r.n, cracked: r.cracked, pts: pts, code: S.code.slice(), gs: S.guesses.map(function (x) { return x.g.join('') + ':' + x.b + x.w; }).join(' ') });
     shieldAnim = 'flip';
     var last = S.log.length >= S.total;
     save(); render();
@@ -529,6 +529,10 @@ button.hole{cursor:pointer;}
   }
   function modeLabel() { return MODES[S.mode] + ' · ' + DIFF[S.diff].label + (S.blanks ? ' + blanks' : ''); }
 
+  // History detail: every round's secret code and each guess with its black/white pegs (as short strings)
+  function detail() {
+    return { P: S.P, C: S.C, R: S.R, bl: S.blanks ? 1 : 0, r: S.log.map(function (l) { return { m: l.maker, k: l.breaker, c: l.code.join(''), g: l.gs || '', ok: l.cracked ? 1 : 0 }; }) };
+  }
   function finish() {
     var hl = [], ps = S.players;
     S.phase = 'over'; save(); render();
@@ -545,7 +549,7 @@ button.hole{cursor:pointer;}
         started: S.started, mode: modeLabel(),
         players: [{ name: me.name, score: L.n, cpu: false }], winner: L.cracked ? me.name : null, lowWins: true,
         summary: L.cracked ? me.name + ' cracked it in ' + L.n : 'Code unbroken', highlights: hl,
-        meta: { solved: L.cracked, guesses: L.n }
+        meta: { solved: L.cracked, guesses: L.n }, detail: detail()
       });
       Kit.win({
         icon: L.cracked ? 'trophy' : 'meh', lose: !L.cracked,
@@ -566,7 +570,7 @@ button.hole{cursor:pointer;}
         players: [{ name: hu.name, score: S.scores[0], cpu: false }, { name: bot.name, score: S.scores[1], cpu: true }],
         winner: W.cracked ? bot.name : hu.name,
         summary: W.cracked ? bot.name + ' cracked it in ' + W.n : 'Code unbroken', highlights: hl,
-        meta: { solved: W.cracked, guesses: W.n }
+        meta: { solved: W.cracked, guesses: W.n }, detail: detail()
       });
       Kit.win({
         icon: 'bot', lose: W.cracked,
@@ -599,7 +603,7 @@ button.hole{cursor:pointer;}
       players: ps.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: false }; }),
       winner: lead < 0 ? null : ps[lead].name,
       rounds: { labels: S.log.map(function (l, i) { return 'R' + (i + 1); }), scores: S.log.map(function (l) { var a = [0, 0]; a[l.maker] = l.pts; return a; }) },
-      highlights: hl
+      highlights: hl, detail: detail()
     });
     Kit.win({
       icon: lead < 0 ? 'users' : 'trophy',

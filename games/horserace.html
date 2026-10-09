@@ -1624,9 +1624,40 @@
     }
     if (rc.photo) S.notes.push({ w: 2.5, t: 'Photo finish in race ' + S.raceNo + ': ' + wH.name + ' by ' + lengthsText(rc.gaps[0]) + ' over ' + F.horses[order[1]].name });
     if (!solo()) S.players.forEach(function (p, i) { if (p.stack < 1 && before[i] + per[i].stake >= 1 && !p.broke) { p.broke = S.raceNo; S.notes.push({ w: 1.5, t: p.name + ' ran out of money in race ' + S.raceNo }); } });
-    S.log.push({ race: S.raceNo, nets: nets, order: order.slice(0, 3).map(function (i) { return F.horses[i].post; }), photo: !!rc.photo, fav: order[0] === fav, wOdds: mlText(wH.ml), wName: wH.name });
+    S.log.push({ race: S.raceNo, nets: nets, order: order.slice(0, 3).map(function (i) { return F.horses[i].post; }), photo: !!rc.photo, fav: order[0] === fav, wOdds: mlText(wH.ml), wName: wH.name, d: raceDetail(rc) });
     if (solo()) S.hi = Math.max(S.hi || 0, Casino.balance());
     rc.per = per; rc.settled = true;
+  }
+
+  // Compact copy of a finished race for the history view: field (name, odds, silks code, coat), order, margins, tickets
+  function raceDetail(rc) {
+    var F = S.field;
+    return {
+      f: F.horses.map(function (h) { var s = h.silk; return { n: h.name, o: mlText(h.ml), k: 'abcdefghijklm'.charAt(SILK.indexOf(s.a)) + 'abcdefghijklm'.charAt(SILK.indexOf(s.b)) + 'abcdefghijklm'.charAt(SILK.indexOf(s.cap)) + PATTERNS.indexOf(s.pat) + h.coat }; }),
+      o: rc.order.map(function (i) { return i + 1; }).join(''), g: rc.gaps.map(function (x) { return Math.round(x * 100) / 100; }),
+      c: F.surface + ' · ' + F.cond, ck: Math.round(rc.clock * 100) / 100, ph: rc.photo ? 1 : 0,
+      t: S.tickets.slice(0, 16).map(function (k, j) { return { p: k.p, b: k.type, s: k.sel.map(function (i) { return i + 1; }).join(''), a: k.amt, m: Math.round(k.m * 100) / 100, x: rc.res ? rc.res[j] || 0 : 0 }; })
+    };
+  }
+  // The session's races for Kit.record: every race kept, the field (the long part) only for the last few and the best one
+  function sessionDetail() {
+    var races = S.log.map(function (l) {
+      var x = { r: l.race, w: l.wName, wo: l.wOdds, n: l.nets };
+      if (l.d) { x.o = l.d.o; x.g = l.d.g; x.c = l.d.c; x.ck = l.d.ck; x.ph = l.d.ph; x.t = l.d.t; x.f = l.d.f; } else x.o = l.order.join('');
+      return x;
+    });
+    var best = -1, bv = -1e9;
+    races.forEach(function (x, i) { (x.t || []).forEach(function (k) { if (k.x - k.a > bv) { bv = k.x - k.a; best = i; } }); });
+    races.forEach(function (x, i) { if (x.f && i < races.length - 3 && i !== best) delete x.f; });
+    var d = { races: races };
+    if (solo()) d.bank = { s: S.startBank, e: Casino.balance(), hi: S.hi };
+    else d.stake = S.opt.stake;
+    // keep it well under the record's size cap: drop older fields, then older tickets, then older races
+    function big() { return JSON.stringify(d).length > 4800; }
+    for (var i = 0; big() && i < races.length - 1; i++) delete races[i].f;
+    for (i = 0; big() && i < races.length - 1; i++) delete races[i].t;
+    while (big() && races.length > 1) races.shift();
+    return d;
   }
 
   // ── Results board ───────────────────────────────────────────────────────
@@ -1760,7 +1791,8 @@
         rounds: { labels: ['Start'].concat(S.log.map(function (l) { return 'Race ' + l.race; })), scores: [stakes].concat(S.log.map(function (l) { return l.nets; })) },
         highlights: highlights(),
         summary: (winner ? winner + ' won' : 'Tie at the top') + ' · ' + top.map(function (p) { return money(p.stack); }).join(' – '),
-        meta: { races: S.log.length, stake: S.opt.stake }
+        meta: { races: S.log.length, stake: S.opt.stake },
+        detail: sessionDetail()
       });
     }
     var p = ps[0];
@@ -1771,7 +1803,8 @@
       highlights: highlights(),
       summary: p.name + ' ' + (p.net > 0 ? 'up ' + money(p.net) : p.net < 0 ? 'down ' + money(-p.net) : 'broke even') + ' · ' + S.log.length + ' races',
       badge: signed(p.net),
-      meta: { net: p.net, races: S.log.length, wagered: p.wagered, biggest: p.best ? p.best.amt : 0 }
+      meta: { net: p.net, races: S.log.length, wagered: p.wagered, biggest: p.best ? p.best.amt : 0 },
+      detail: sessionDetail()
     });
   }
   function refundOpen() {

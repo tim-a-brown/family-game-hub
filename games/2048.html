@@ -219,6 +219,7 @@ body{overflow-x:hidden;}
     U = before;
     S.cells = out.map(function (t) { return t ? { id: t.id, v: t.v } : null; });
     S.score += gained; S.moves++;
+    S.dirs = S.dirs || {}; S.dirs[dir.charAt(0)] = (S.dirs[dir.charAt(0)] || 0) + 1;
     merges.forEach(function (i) { if (S.cells[i].v > S.biggestMerge) S.biggestMerge = S.cells[i].v; });
     var born = spawn();
     animate(gone, merges, born);
@@ -228,6 +229,7 @@ body{overflow-x:hidden;}
   }
   function afterMove() {
     var m = maxTile();
+    if (m >= 32) { S.first = S.first || {}; if (S.first[m] == null) S.first[m] = S.moves; }
     [512, 1024].forEach(function (v) { if (m >= v && !S.marks[v]) { S.marks[v] = S.moves; Kit.callout(String(v) + '!'); Kit.sfx('good'); } });
     if (m >= 2048 && !S.won) { S.won = true; S.wonAt = S.moves; S.marks[2048] = S.moves; setTimeout(reached2048, 380); }
     [4096, 8192, 16384, 32768].forEach(function (v) { if (m >= v && !S.marks[v]) { S.marks[v] = S.moves; Kit.callout(String(v) + '!'); Kit.sfx('win'); Kit.confetti(); } });
@@ -284,7 +286,9 @@ body{overflow-x:hidden;}
       players: [{ name: 'You', score: S.score }], winner: m >= 2048 ? 'You' : null,
       summary: S.score.toLocaleString() + ' points · ' + m + ' tile', badge: String(m),
       highlights: highlights(ended),
-      meta: { score: S.score, maxTile: m, moves: S.moves, undos: S.undos, cells: S.cells.map(function (c) { return c ? c.v : 0; }) }
+      meta: { score: S.score, maxTile: m, moves: S.moves, undos: S.undos, cells: S.cells.map(function (c) { return c ? c.v : 0; }) },
+      // history detail: when each big tile first showed up, swipes per direction, biggest join, how it ended
+      detail: { first: S.first || {}, dirs: S.dirs || {}, merge: S.biggestMerge || 0, end: ended, won: S.wonAt || 0 }
     });
   }
   function abandon() {

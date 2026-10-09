@@ -142,7 +142,7 @@
       for (var j = 0; j < S.per; j++) S.stones.push({ c: (ci++ * 5 + i) % GLASS.length, p: i, k: ++K });
     }
     S.cur = S.first; S.over = false; S.started = Date.now(); S.moves = 0;
-    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null };
+    S.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null, t0: [], t1: [], tw: '' };
     S.last = -1;
     save(); render(); maybeCpu();
   }
@@ -246,6 +246,7 @@
       if (S.st.chain > S.st.bestChain.n) S.st.bestChain = { n: S.st.chain, who: pl };
     } else S.st.chain = 0;
     S.last = lastPit;
+    if (S.st.t0) { S.st.t0.push(store(0)); S.st.t1.push(store(1)); S.st.tw += pl; }
     paint();
     setTimeout(function () {
       b = counts();
@@ -255,6 +256,7 @@
         var left0 = 0, left1 = 0; for (i = 0; i < 6; i++) { left0 += b[i]; left1 += b[i + 7]; }
         var sweeper = left0 ? 0 : 1, amt = left0 + left1;
         if (amt) S.st.sweep = { who: sweeper, n: amt };
+        S.st.endB = b.slice();
         var pits0 = [], pits1 = []; for (i = 0; i < 6; i++) { pits0.push(i); pits1.push(i + 7); }
         moveAll(pits0, 6); moveAll(pits1, 13);
         if (amt) Kit.toast(S.players[sweeper].name + ' sweeps up ' + amt + ' stone' + (amt === 1 ? '' : 's'));
@@ -304,7 +306,12 @@
     Kit.record(KEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer' : 'Two players',
       players: P.map(function (p, i) { return { name: p.name, score: i ? s1 : s0, cpu: p.cpu }; }),
-      winner: w >= 0 ? P[w].name : null, highlights: hl
+      winner: w >= 0 ? P[w].name : null, highlights: hl,
+      // for the history view: the pits the moment the game ended (before the sweep), store totals after every move
+      // (t0/t1, tw = who moved), captures and extra turns
+      detail: { b: S.st.endB || counts(), per: S.per, t0: S.st.t0 || [], t1: S.st.t1 || [], tw: S.st.tw || '',
+        caps: S.st.caps.map(function (c) { return { w: c.who, n: c.n, p: c.pit }; }), ex: S.st.extra.slice(), ch: S.st.bestChain, sw: S.st.sweep, mv: S.moves, ser: S.wins.slice(),
+        col: P.map(function (p) { return p.color || ''; }) }
     });
     clearSave();
     var lose = w >= 0 && P[w].cpu;

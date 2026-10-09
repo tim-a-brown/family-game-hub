@@ -446,6 +446,14 @@ body{overflow:hidden;}
 
   // ── Finish & history ──────────────────────────────────────────────────────
   function fmt(t) { t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
+  // History detail: o[i] = which pair took tile i off (1, 2, ...; 0 = still on the table), k = faces of the tiles
+  // left (in position order), and the kind of each pair in order. Positions come from the layout name.
+  function histDetail() {
+    var o = POS.map(function () { return 0; }), k = [];
+    S.pairs.forEach(function (p, n) { o[p[0]] = o[p[1]] = n + 1; });
+    POS.forEach(function (_, i) { if (!S.gone[i]) k.push(S.k[i]); });
+    return { o: o, k: k, pk: S.pairs.map(function (p) { return p[2]; }), undos: S.undos };
+  }
   function finish(won) {
     stopTick(); S.done = true; busy = true;
     var name = S.name || 'You', lay = LAYOUTS[S.layout], cleared = POS.length - left();
@@ -467,7 +475,8 @@ body{overflow:hidden;}
       started: S.started, mode: lay + (won ? '' : ' · stuck'),
       players: [{ name: name, score: cleared }], winner: won ? name : null,
       summary: won ? 'Cleared in ' + fmt(S.time) : 'Stuck · ' + left() + ' tiles left', badge: won ? fmt(S.time) : left() + ' left',
-      highlights: hl.slice(0, 6), meta: { layout: S.layout, won: won, time: S.time, left: left(), hints: S.hints, shuffles: S.shuffles }
+      highlights: hl.slice(0, 6), meta: { layout: S.layout, won: won, time: S.time, left: left(), hints: S.hints, shuffles: S.shuffles },
+      detail: histDetail()
     });
     clearSave(); updBar();
     var layout = S.layout, nm = S.name;

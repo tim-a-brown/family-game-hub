@@ -2777,6 +2777,22 @@ function beginTurnUI(first) {
 }
 
 // ── Game over ──────────────────────────────────────────────────────────────
+// History detail: who held each territory at the end (one letter per map place), and each power's standing
+var AA_LETTER = { su: 's', de: 'd', uk: 'k', jp: 'j', us: 'u' };
+function aaDetail(side) {
+  try {
+    var own = '';
+    for (var t = 0; t < NT; t++) own += !M.on[t] || isSea(t) ? '.' : AA_LETTER[S.own[t]] || '-';
+    return {
+      mp: S.mode === 'skirm' ? 's' : 'f', sd: side, r: S.round, own: own,
+      ic: Object.keys(S.ic).filter(function (t) { return S.ic[t] && M.on[t]; }).join(','),
+      pw: S.powers.map(function (p) {
+        var st = S.stats[p] || {}, cnt = KINDS.map(function (k) { return S.units.filter(function (u) { return u.o === p && u.k === k; }).length; });
+        return { p: p, i: income(p), v: M.vcs.filter(function (t) { return S.own[t] === p; }).length, u: cnt.join(','), c: st.caps || 0, k: st.kills || 0, l: st.lost || 0, cap: holdsCapital(p) ? 1 : 0 };
+      })
+    };
+  } catch (e) { return null; }
+}
 function gameOver(side, why) {
   S.over = side; S.overMsg = SIDE[side] + ' win! ' + why + '.';
   S.B = null; S.phase = 'mob';
@@ -2795,7 +2811,8 @@ function gameOver(side, why) {
     Kit.record(KEY, {
       mode: (S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition'), players: players,
       winner: winners.map(function (s) { return s.name; }).join(' & ') || SIDE[side],
-      highlights: hls, summary: SIDE[side] + ' won · round ' + S.round, started: S.started
+      highlights: hls, summary: SIDE[side] + ' won · round ' + S.round, started: S.started,
+      detail: aaDetail(side)
     });
   } catch (e) {}
   clearSave();

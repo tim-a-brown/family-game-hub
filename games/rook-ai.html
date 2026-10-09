@@ -483,7 +483,7 @@
     S.tricks[w.p]++;
     var rook = cards.some(function (c) { return c.rook; });
     if (rook) {
-      S.rookCaps[w.p]++;
+      S.rookCaps[w.p]++; S.rkBy = w.p;
       if (lastTrick) S.events.push({ pr: 6, t: 'The Rook was captured in the last trick by ' + S.players[w.p].name + ' (hand ' + S.round + ')' });
     }
     var winNode = trickEl.querySelector('[data-id="' + w.c.id + '"]'); if (winNode) winNode.classList.add('win');
@@ -529,6 +529,9 @@
       S.events.push({ pr: 6 + S.bid / 100, t: who + ' went set on a bid of ' + S.bid + ' in hand ' + S.round + ' (took ' + cap[bt] + ')' });
     }
     S.last = { bt: bt, cap: cap, delta: delta, made: made, bid: S.bid, bidder: S.bidder, trump: S.trump, nest: sumPts(S.discards) };
+    // for the history detail: one short line per hand
+    (S.hlog = S.hlog || []).push({ b: S.bidder, bid: S.bid, t: S.trump, c0: cap[0], c1: cap[1], m: made ? 1 : 0, n: sumPts(S.discards), rk: S.rkBy == null ? -1 : S.rkBy });
+    S.rkBy = null;
     S.phase = 'handover';
     clearUndo(); save();
     if (made) { Kit.sfx(bt === 0 ? 'good' : 'tick'); } else { Kit.sfx(bt === 0 ? 'bad' : 'good'); }
@@ -577,7 +580,8 @@
       players: teams, winner: teams[w].name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
       highlights: hl,
-      meta: { teams: [[S.players[0].name, S.players[2].name], [S.players[1].name, S.players[3].name]] }
+      meta: { teams: [[S.players[0].name, S.players[2].name], [S.players[1].name, S.players[3].name]] },
+      detail: { pl: S.players.map(function (p) { return p.name; }), target: S.target, made: S.made.slice(), set: S.set.slice(), rook: S.rookCaps.slice(), h: S.hlog || [] }
     });
     clearSave();
     Kit.win({

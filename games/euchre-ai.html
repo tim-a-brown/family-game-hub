@@ -363,6 +363,7 @@
     startPlay();
   }
   function startPlay() {
+    S.dtMh = S.maker >= 0 ? S.hands[S.maker].map(function (c) { return c.r + c.s; }) : null;
     S.phase = 'play'; S.trick = []; S.trickNo = 0; S.tricks = [0, 0, 0, 0]; S.bids = [null, null, null, null];
     S.turn = S.leader = nextActive(S.dealer);
     save(); render(); next();
@@ -545,7 +546,7 @@
       if (d > 0 && (!S.worst[tm] || d > S.worst[tm].d)) S.worst[tm] = { d: d, a: S.scores[tm], b: S.scores[1 - tm] };
     });
     S.rounds.push(pts);
-    S.log.push({ hand: S.handNo, maker: S.maker, alone: S.alone, trump: S.trump, tricks: mk, res: res, pts: pts.slice() });
+    S.log.push({ hand: S.handNo, maker: S.maker, alone: S.alone, trump: S.trump, tricks: mk, res: res, pts: pts.slice(), up: S.up ? S.up.r + S.up.s : '', cr: S.callRound, dl: S.dealer, mh: S.dtMh || null });
     var name = nm(S.maker);
     if (res === 'alone-march') S.highlights.push(name + ' went alone and marched in hand ' + S.handNo);
     if (S.alone && res === 'euchred') S.highlights.push(name + ' went alone and got euchred in hand ' + S.handNo);
@@ -614,7 +615,9 @@
       players: [{ name: team(0), score: S.scores[0], cpu: false }, { name: team(1), score: S.scores[1], cpu: true }],
       winner: team(w),
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
-      highlights: hl.slice(0, 5).concat([S.rounds.length + ' hands, played to ' + S.target])
+      highlights: hl.slice(0, 5).concat([S.rounds.length + ' hands, played to ' + S.target]),
+      detail: { names: S.players.map(function (p) { return p.name; }), to: S.target, throwins: S.throwins || 0,
+        hx: S.log.map(function (L) { var o = { m: L.maker, t: L.trump, k: L.tricks, r: L.res, u: L.up || '', c: L.cr || 0, d: L.dl, h: L.mh || [] }; if (L.alone) o.a = 1; return o; }) }
     });
     clearSave();
     Kit.win({

@@ -479,7 +479,12 @@
     Kit.record(KEY, {
       started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Pass and play') + ' · ' + S.n + '×' + S.n,
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: sc[i] }; }),
-      winner: w ? w.name : null, highlights: hl.slice(0, 6)
+      winner: w ? w.name : null, highlights: hl.slice(0, 6),
+      // for the history view: who drew each line and who closed each box (digit = player + 1), and the lines in the order
+      // they were drawn (two base-36 characters each: horizontal lines first, then vertical)
+      detail: { n: S.n, h: S.h.join(''), v: S.v.join(''), box: S.box.join(''),
+        mv: S.moves.map(function (m) { var k = m.t === 'h' ? m.i : (S.n + 1) * S.n + m.i; return (k < 36 ? '0' : '') + k.toString(36); }).join(''),
+        best: S.best.slice(), dd: S.dd.slice() }
     });
     var rank = S.players.map(function (p, i) { return { name: p.name, score: sc[i], color: INK[i] }; }).sort(function (a, b) { return b.score - a.score; });
     var lose = !w ? false : w.cpu && S.players.some(function (p) { return !p.cpu; });

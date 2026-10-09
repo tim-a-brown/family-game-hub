@@ -366,7 +366,10 @@
         scores: S.rounds.concat([S.players.map(function (q, i) { return i === S.winner ? pot : 0; })]) },
       highlights: hl.slice(0, 6),
       summary: w.name + ' won the pot · ' + pot + ' chips' + (S.stake ? ' · ' + money(pot) : ''),
-      meta: { pot: pot, stake: S.stake }
+      meta: { pot: pot, stake: S.stake },
+      // per-player stats, the roll that ended it, and the biggest the pot got (chips over time come from rounds)
+      detail: { p: S.players.map(function (q) { var s = q.st || {}; return { z: s.zero || 0, pk: s.peak || 0, pr: s.peakR || 0, c3: s.tripleC || 0, d3: s.tripleDot || 0, n: s.rolls || 0 }; }),
+        lw: S.last ? S.last.who : -1, lf: S.last ? S.last.faces.join('') : '', mp: S.maxPot || pot }
     });
     clearSave();
     var last = S, t = token;

@@ -634,8 +634,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (last) hl.push('Final life lost to ' + last.by + ' on level ' + last.lvl);
     var lp = G.stats.levelPts;
     lastResult = { score: G.score, level: G.level, newTop: newTop, ghosts: G.stats.ghosts };
+    // history detail: the maze as it was (dots left as hex bits, in map order), where Pac-Man and the ghosts stood
+    var bits = '', hex = '', hiL = hiList();
+    for (var di = 0; di < COLS * ROWS; di++) { var dch = MAP[Math.floor(di / COLS)].charAt(di % COLS); if (dch === '.' || dch === 'o') bits += G.dots[di] ? '1' : '0'; }
+    for (var hx = 0; hx < bits.length; hx += 4) hex += parseInt((bits.substr(hx, 4) + '000').slice(0, 4), 2).toString(16);
+    var detail = {
+      dots: hex, pac: Math.round(G.pac.x) + ',' + Math.round(G.pac.y) + ',' + G.pac.dir,
+      gh: G.ghosts.map(function (g) { return Math.round(g.x) + ',' + Math.round(g.y) + ',' + (g.state === 'eyes' ? 'e' : g.fright ? 'f' : 'n'); }).join(';'),
+      lv: G.level, ea: G.eaten, dd: G.stats.deaths.slice(-6).map(function (d) { return { b: d.by, l: d.lvl }; }),
+      ge: G.stats.ghosts, mc: G.stats.maxCombo, q4: G.stats.quad, fr: G.stats.fruit, bf: G.stats.bestFruit ? G.stats.bestFruit.n : '',
+      pp: G.stats.pellets || 0, el: G.stats.extraLife || 0, lvs: G.startLives,
+      hr: G.score > 0 && (hiL.length < ArcadeHi.max || G.score > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= G.score; }).length + 1 : 0, hb: hiAtStart || 0
+    };
     try {
       Kit.record(KEY, {
+        detail: detail,
         started: G.started, mode: G.startLives !== 3 ? G.startLives + ' lives' : '',
         players: [{ name: who, score: G.score }], winner: null,
         rounds: lp.length > 1 ? { labels: lp.map(function (x, i) { return 'Level ' + (i + 1); }), scores: lp.map(function (x) { return [x]; }) } : null,

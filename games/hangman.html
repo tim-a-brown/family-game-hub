@@ -585,7 +585,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     S.scores[W.guesser] += pts;
     S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
     if (S.mode === 'solo') setLifeStreak(lifeStreak() + 1);
-    S.log.push({ w: W.word, cat: W.cat, won: true, misses: W.misses, max: maxMiss(), pts: pts, guesser: W.guesser, setter: W.setter, clue: W.clueShown, whole: W.wholeWord, guesses: W.guessed.length });
+    S.log.push({ w: W.word, cat: W.cat, won: true, misses: W.misses, max: maxMiss(), pts: pts, guesser: W.guesser, setter: W.setter, clue: W.clueShown, whole: W.wholeWord, guesses: W.guessed.length, gs: W.guessed.join('') });
     fresh = { win: true, hit: L || null };
     S.phase = 'result';
     // The darkness lifts slowly
@@ -611,7 +611,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     var stump = S.mode === 'duel' ? 5 : 0;
     if (stump) S.scores[W.setter] += stump;
     S.streak = 0; if (S.mode === 'solo') setLifeStreak(0);
-    S.log.push({ w: W.word, cat: W.cat, won: false, misses: W.misses, max: maxMiss(), pts: 0, stump: stump, guesser: W.guesser, setter: W.setter, clue: W.clueShown, guesses: W.guessed.length });
+    S.log.push({ w: W.word, cat: W.cat, won: false, misses: W.misses, max: maxMiss(), pts: 0, stump: stump, guesser: W.guesser, setter: W.setter, clue: W.clueShown, guesses: W.guessed.length, gs: W.guessed.join('') });
     save();
     busy = true; ambience(1);
     // The final stroke is drawn slowly while the heart races, then one heavy thud and the lights go out
@@ -996,7 +996,9 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       rounds: { labels: L.map(function (x) { return x.w.length > 10 ? x.w.slice(0, 9) + '…' : x.w; }),
         scores: L.map(function (x) { return solo ? [x.pts] : P.map(function (p, i) { return i === x.guesser ? x.pts : i === x.setter ? (x.stump || 0) : 0; }); }) },
       highlights: hl.slice(0, 6),
-      meta: { words: L.map(function (x) { return { w: x.w, won: x.won, misses: x.misses }; }), diff: S.diff, theme: S.theme }
+      meta: { words: L.map(function (x) { return { w: x.w, won: x.won, misses: x.misses }; }), diff: S.diff, theme: S.theme },
+      // History: every word with the letters guessed in order (misses are the ones not in the word), who guessed it, the picture state
+      detail: { th: S.theme, w: L.map(function (x) { return { w: x.w, c: x.cat || '', ok: x.won ? 1 : 0, m: x.misses, mx: x.max, g: x.gs || '', p: x.pts || 0, st: x.stump || 0, gu: x.guesser, se: x.setter, cl: x.clue ? 1 : 0, wh: x.whole ? 1 : 0 }; }) }
     });
     clearSave();
     var wonN = L.filter(function (x) { return x.won; }).length;

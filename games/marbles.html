@@ -991,7 +991,11 @@
       mode: RULES[S.rules] + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : ''),
       players: players, winner: wname,
       summary: wname + ' won · ' + RULES[S.rules],
-      highlights: hl.slice(0, 6)
+      highlights: hl.slice(0, 6),
+      detail: { B: S.B, r: S.rules, tm: S.teams ? 1 : 0, w: w.team.slice(), p: S.players.map(function (p) {
+        var sent = 0; Object.keys(p.st.agg).forEach(function (v) { sent += p.st.agg[v]; });
+        return { a: p.arm, c: p.color, m: p.m.join(','), t: p.st.turns, s: sent, g: p.st.got };
+      }) }
     });
     clearSave(); paint();
     var rank = S.players.map(function (p, i) { return { name: p.name, score: score(i) + ' home', color: p.color, pr: score(i) * 1000 + progress(i) + (w.team.indexOf(i) >= 0 ? 1e6 : 0) }; })

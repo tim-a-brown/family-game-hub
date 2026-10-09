@@ -238,7 +238,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     if (!p.cpu) snapshot();
     var wasJokerBonus = S.mode !== 'card' && isYahtzee(S.dice) && p.card.yz === 50;
     p.card[id] = val; lastScored = id;
-    (p.log = p.log || []).push({ r: S.round, id: id, v: val, y: S.mode !== 'card' && isYahtzee(S.dice) });
+    (p.log = p.log || []).push({ r: S.round, id: id, v: val, y: S.mode !== 'card' && isYahtzee(S.dice), d: S.mode !== 'card' ? S.dice.join('') : '' });
     if (wasJokerBonus) { p.yb = (p.yb || 0) + 1; Kit.callout('+100 Bonus!'); Kit.confetti({ count: 80 }); }
     var u = upperSum(p);
     if (CAT[id].up && u >= 63 && u - val < 63) setTimeout(function () { Kit.callout('+35 Bonus!'); Kit.sfx('win'); }, 200);
@@ -286,7 +286,12 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
       players: S.players.map(function (p) { return { name: p.name, score: total(p), cpu: p.cpu }; }),
       winner: tie ? null : top.name,
       rounds: S.mode === 'card' ? null : { labels: byRound.map(function (x, i) { return String(i + 1); }), scores: byRound },
-      highlights: hl
+      highlights: hl,
+      // the scorecard: each box in order (13 numbers), extra Yahtzee bonuses, and the dice each box was scored with
+      detail: { p: S.players.map(function (p) {
+        var dice = CATS.map(function (c) { var x = (p.log || []).filter(function (l) { return l.id === c.id; })[0]; return x && x.d ? x.d : '-'; }).join(' ');
+        return { c: CATS.map(function (c) { return p.card[c.id] == null ? null : p.card[c.id]; }), yb: p.yb || 0, d: /\d/.test(dice) ? dice : '' };
+      }) }
     });
     clearSave();
     var youLost = S.mode === 'cpu' && top.cpu;

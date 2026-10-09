@@ -622,7 +622,15 @@
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rounds.map(function (r, i) { return LABELS[i]; }), scores: S.rounds.map(function (r) { return r.pts; }) },
-      highlights: highlights()
+      highlights: highlights(),
+      // history detail: who went out each round, and the final round's hands laid out in groups
+      detail: (function () {
+        function cc(c) { return c.r === 'JK' ? 'JK' : c.r + c.s; }
+        return {
+          len: S.len, out: S.rounds.map(function (r) { return r.out >= 0 ? String(r.out) : '-'; }).join(''),
+          fin: (S.last || []).map(function (r) { return { p: r.pts, g: r.groups.map(function (g) { return g.map(cc).join(' '); }).join('|'), l: r.left.map(cc).join(' ') }; })
+        };
+      })()
     });
     clearSave();
     var players = S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), len = S.len;

@@ -297,7 +297,13 @@
     }
     return null;
   }
+  // History detail: cards home after each move, one character per move (0-9a-zA-Q = 0..52), at most 300 points
+  var PGA = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ';
+  function homeCount() { return S.found.reduce(function (a, f) { return a + f.length; }, 0); }
+  function pgMark() { S.pg = (S.pg || '') + PGA.charAt(homeCount()); }
+  function pgOut() { var p = S.pg || '', o = ''; if (p.length <= 300) return p; for (var i = 0; i < 300; i++) o += p.charAt(Math.floor(i * (p.length - 1) / 299)); return o; }
   function after() {
+    pgMark();
     place(); updBar(); save();
     if (isWon()) return win();
     busy = true; var tk = ++token;
@@ -395,7 +401,13 @@
       started: S.started, mode: 'Draw ' + S.draw + (std() ? '' : ' · no score'),
       players: [{ name: 'You', score: std() ? S.score : undefined }], winner: 'You',
       summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: S.moves + ' moves',
-      highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, score: std() ? S.score : null, draw: S.draw }
+      highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, score: std() ? S.score : null, draw: S.draw },
+      detail: (function () {
+        var d0 = null; try { d0 = JSON.parse(I); } catch (e) {}
+        pgMark();
+        return { tab: d0 ? d0.tab.map(function (p) { return p.join(''); }) : null, stock: d0 ? d0.stock.join('') : '', pg: pgOut(),
+          passes: S.passes, flips: S.flips, undos: S.undos, auto: S.finished || 0, draw: S.draw };
+      })()
     });
     clearSave(); updBar();
     var sub = fmt(S.time) + ' · ' + S.moves + ' moves' + (std() ? ' · ' + S.score.toLocaleString() + ' pts' : '');

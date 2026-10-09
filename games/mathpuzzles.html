@@ -415,7 +415,7 @@ var GENERATORS={
   function nextPuzzle(first) {
     clearTimeout(nextT);
     if (S.mode === 'ten' && S.log.length >= 10) return finish();
-    S.cur = gen(); S.tries = 0; S.hint = false; S.reveal = false; S.qStart = Date.now(); entry = '';
+    S.cur = gen(); S.tries = 0; S.wrong = []; S.hint = false; S.reveal = false; S.qStart = Date.now(); entry = '';
     busy = false;
     build(first);
     save();
@@ -446,7 +446,7 @@ var GENERATORS={
       S.score += pts; S.streak++; S.solved++; S.best = Math.max(S.best, S.streak);
       if (!S.hint && !S.tries && (!S.fast || secs < S.fast)) { S.fast = Math.round(secs * 10) / 10; S.fastQ = qText(c); }
       S.types[c.type] = (S.types[c.type] || 0) + 1;
-      S.log.push({ t: c.type, r: pts });
+      S.log.push(logged(c, pts, secs));
       busy = true;
       box.className = 'box ok'; mark(true);
       var plus = el('div', { class: 'plus', text: '+' + pts }); ansEl.appendChild(plus);
@@ -457,11 +457,11 @@ var GENERATORS={
       else { save(); nextT = setTimeout(function () { nextPuzzle(); }, 850); }
       return;
     }
-    S.tries++; S.streak = 0;
+    S.tries++; S.streak = 0; S.wrong = (S.wrong || []).concat([fmtNum(val)]);
     box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); mark(false);
     Kit.sfx('bad'); Kit.haptic('error');
     if (S.tries >= 2) {
-      S.log.push({ t: c.type, r: 0 });
+      S.log.push(logged(c, 0));
       S.reveal = true; entry = fmtNum(c.ans);
       setTimeout(function () { paintEntry(); $box().className = 'box show'; }, 450);
       showNote('The answer is <b>' + Kit.esc(fmtNum(c.ans)) + '</b>. ' + Kit.esc(c.hint) + (c.teach ? ' ' + Kit.esc(c.teach) : ''));
@@ -482,10 +482,18 @@ var GENERATORS={
   function skip() {
     if (!S || S.done || busy) return;
     if (S.reveal) return nextPuzzle();
-    S.skips++; S.streak = 0; S.log.push({ t: S.cur.type, r: -1 });
+    S.skips++; S.streak = 0; S.log.push(logged(S.cur, -1));
     Kit.sfx('whoosh');
     paintStrip();
     nextPuzzle();
+  }
+  // One line of the worksheet for history: the puzzle, its answer, wrong tries, seconds, hint
+  function logged(c, r, secs) {
+    var x = { t: c.type, r: r, q: qText(c).slice(0, 70), a: fmtNum(c.ans) };
+    if (S.wrong && S.wrong.length) x.w = S.wrong.slice(0, 2).join(' ');
+    if (secs) x.s = Math.round(secs);
+    if (S.hint) x.h = 1;
+    return x;
   }
   function fmtNum(n) { return String(Math.round(n * 1e6) / 1e6).replace('-', '−'); }
   function qText(c) { return c.seq ? c.seq.join(', ') : String(c.q || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' '); }
@@ -541,7 +549,8 @@ var GENERATORS={
       started: S.started, mode: lvName(S.level) + ' · ' + MODES[S.mode] + (S.mode === 'timed' ? ' ' + (S.secs / 60) + ' min' : ''),
       players: [{ name: nm, score: S.score }], winner: nm,
       summary: S.score + ' points · ' + right + '/' + n + ' right', badge: S.score + ' pts',
-      highlights: hl.slice(0, 6), meta: { level: S.level, modeId: S.mode, secs: S.secs, score: S.score, right: right, total: n, streak: S.best }
+      highlights: hl.slice(0, 6), meta: { level: S.level, modeId: S.mode, secs: S.secs, score: S.score, right: right, total: n, streak: S.best },
+      detail: { log: S.log.slice(-40).map(function (l) { return { t: l.t, r: l.r, q: l.q, a: l.a, w: l.w, s: l.s, h: l.h }; }), more: Math.max(0, S.log.length - 40), fast: S.fast || 0 }
     });
     clearSave(); paintStrip();
     var acc = n ? Math.round(100 * right / n) : 0;

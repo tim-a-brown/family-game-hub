@@ -603,7 +603,8 @@
       players: S.players.map(function (p) { return { name: p.name + ' (' + sideName(p.side) + ')', score: winner ? (p === winner ? 1 : 0) : 0.5, cpu: p.cpu }; }),
       winner: winner ? winner.name + ' (' + sideName(winner.side) + ')' : null,
       summary: winner ? winner.name + ' won in ' + moves + (moves === 1 ? ' move' : ' moves') : DRAW_TEXT[res.type] || 'Draw',
-      highlights: hl, meta: { moves: S.moves.slice(), result: res.type }
+      highlights: hl, meta: { moves: S.moves.slice(), result: res.type },
+      detail: chessDetail(res, winner)
     });
     if (res.type === 'mate') { Kit.callout('Checkmate!'); }
     setTimeout(function () {
@@ -618,6 +619,23 @@
         closeLabel: 'Back to games'
       });
     }, res.type === 'mate' ? 1300 : 700);
+  }
+  // History detail: final board (FEN-style rows), every move as from-to squares for the replay, captures
+  function chessDetail(res, winner) {
+    try {
+      var rows = [], i, uci = [];
+      for (var r = 0; r < 8; r++) { var row = ''; for (var c = 0; c < 8; c++) { var v = S.pos.b[r * 8 + c]; row += v ? (v > 0 ? ' PNBRQK'.charAt(v) : ' pnbrqk'.charAt(-v)) : '.'; } rows.push(row); }
+      for (i = 0; i < S.hist.length; i++) {
+        var nx = S.hist[i + 1], m = nx ? nx.last : S.last, np = nx ? nx.pos : S.pos;
+        if (!m) { uci = []; break; }
+        var pr = Math.abs(S.hist[i].pos.b[m.f]) === 1 && Math.abs(np.b[m.t]) > 1 ? 'qrbn'.charAt(5 - Math.abs(np.b[m.t])) : '';
+        uci.push(sqName(m.f) + sqName(m.t) + pr);
+      }
+      return {
+        b: rows, u: uci.join(' '), res: res.type, w: winner ? winner.side : 0, s0: S.players[0].side,
+        cw: S.caps['1'].join(''), cb: S.caps['-1'].join(''), chk: E.inCheck(S.pos, S.pos.turn) ? 1 : 0, lv: vsCpu() ? S.level : ''
+      };
+    } catch (e) { return null; }
   }
   function resign() {
     if (!S || !S.pos || S.over) return Kit.toast('No game in progress');

@@ -554,7 +554,8 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     var cross = S.rule === 'cross' && S.players.length > 1;
     var scores = S.words.map(function (ws) { return ws.reduce(function (s, w) { return s + (cross && count[w] > 1 ? 0 : pts(w)); }, 0); });
     S.all = solve();
-    S.log.push({ board: S.board.slice(), words: S.words.map(function (w) { return w.slice(); }), scores: scores, crossed: cross ? Object.keys(count).filter(function (w) { return count[w] > 1; }) : [], possible: S.all.length });
+    S.log.push({ board: S.board.slice(), words: S.words.map(function (w) { return w.slice(); }), scores: scores, crossed: cross ? Object.keys(count).filter(function (w) { return count[w] > 1; }) : [], possible: S.all.length,
+      miss: S.all.filter(function (w) { return !count[w] && COMMON_SET.has(w); }).slice(0, 16) });
   }
   function totals() { return S.players.map(function (p, i) { return S.log.reduce(function (s, r) { return s + r.scores[i]; }, 0); }); }
   function showRoundResults() {
@@ -599,6 +600,16 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   }
 
   // ── Game end ──────────────────────────────────────────────────────────────
+  // History: each round's board, every player's words, crossed-out words and the best words nobody found (strings, kept small)
+  function boggleDetail() {
+    function build(keepMiss, cap) {
+      return { sz: S.size, r: S.log.map(function (r) { return { b: r.board.join(','), w: r.words.map(function (ws) { return ws.slice(0, cap).join(' '); }), s: r.scores, x: (r.crossed || []).join(' '), n: r.possible || 0, m: keepMiss ? (r.miss || []).slice(0, keepMiss).join(' ') : '' }; }) };
+    }
+    var d = build(16, 200);
+    if (JSON.stringify(d).length > 5000) d = build(6, 60);
+    if (JSON.stringify(d).length > 5000) d = build(0, 25);
+    return d;
+  }
   function finishGame() {
     S.phase = 'over';
     var tot = totals(), multi = S.players.length > 1;
@@ -631,7 +642,8 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       players: S.players.map(function (p, i) { return { name: p.name, score: tot[i] }; }),
       rounds: multi && S.rounds > 1 ? { labels: S.log.map(function (r, i) { return 'R' + (i + 1); }), scores: S.log.map(function (r) { return r.scores; }) } : null,
       highlights: hl, summary: multi ? null : tot[0] + ' pts · ' + S.log[0].words[0].length + ' words',
-      meta: { size: S.size, rule: S.rule, boards: S.log.map(function (r) { return r.board.join(','); }) }
+      meta: { size: S.size, rule: S.rule, boards: S.log.map(function (r) { return r.board.join(','); }) },
+      detail: boggleDetail()
     });
     Kit.resume.clear();
     save(); render();

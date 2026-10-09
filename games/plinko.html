@@ -450,7 +450,7 @@ body{background:
     var real = PRIZES[q.items[q.i]][1], ok = higher === (real > q.shown[q.i]);
     q.ans[q.i] = ok; q.answered = true;
     var p = P();
-    p.priced.push({ i: q.items[q.i], ok: ok });
+    p.priced.push({ i: q.items[q.i], ok: ok, sh: q.shown[q.i] });
     if (ok) { p.chips++; Kit.sfx('good'); Kit.haptic('success'); paintEarnPips(p.chips - 1); setTimeout(function () { Kit.sfx('chip'); }, 160); }
     else { Kit.sfx('bad'); Kit.haptic('error'); E.tag.classList.remove('shake'); void E.tag.offsetWidth; E.tag.classList.add('shake'); }
     paintTag(); save();
@@ -878,7 +878,7 @@ body{background:
     kick();
   }
   function launch() {
-    chip = newChip(aim.x, Math.random); chip.a = aim.a;
+    chip = newChip(aim.x, Math.random); chip.a = aim.a; chip.x0 = aim.x;
     // Carry the swipe's momentum into the drop (a little friction from the board face)
     var fl = Math.abs(aim.fling || 0) > 0.6 ? aim.fling * 0.75 : 0;
     if (fl) { chip.vx += fl; chip.w = fl / R * 0.6; }
@@ -890,6 +890,7 @@ body{background:
   }
   function landed() {
     var p = P(), s = chip.slot, v = VALUES[s], before = total(p);
+    (p.dr = p.dr || []).push(Math.round((chip.x0 != null ? chip.x0 : chip.x) * 10) + ':' + s);   // history: where it was dropped, where it landed
     mode = 'reveal';
     fades.push({ x: chip.x, y: chip.y, a: chip.a, color: p.color });
     chip = null;
@@ -1028,6 +1029,9 @@ body{background:
       players: ps.map(function (p) { return { name: p.name, score: total(p) }; }),
       winner: multi ? (tie ? null : top.name) : top.name,
       rounds: rounds, highlights: hl.slice(0, 6),
+      detail: { p: ps.map(function (p) {
+        return { d: (p.dr || []).join(' '), q: S.earn && !p.skipped ? (p.priced || []).map(function (x) { return { n: PRIZES[x.i][0], r: PRIZES[x.i][1], s: x.sh, ok: x.ok ? 1 : 0 }; }) : [] };
+      }) },
       summary: multi ? (tie ? 'Tie game' : top.name + ' won') + ' · ' + rank.map(function (r) { return money(r.total); }).join(' – ') : top.name + ' won ' + money(top.total)
     });
     clearSave();

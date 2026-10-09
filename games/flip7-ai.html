@@ -513,6 +513,10 @@
       if (st !== 'bust') S.ev.push({ k: 'round', p: p, r: S.round, pts: v });
     });
     S.rounds.push(scores); S.details.push(det);
+    // for the history detail: the final table and each player's best hand (cards as short codes)
+    S.fin = S.rows.map(function (r) { return r.map(code7).join(' '); });
+    if (!S.best) S.best = S.players.map(function () { return null; });
+    scores.forEach(function (v, p) { if (v > 0 && (!S.best[p] || v > S.best[p].pts)) S.best[p] = { r: S.round, pts: v, c: S.fin[p] }; });
     S.rows.forEach(function (r) { r.forEach(function (c) { delete c.dup; S.discard.push(c); }); });
     S.deferred.forEach(function (r) { r.forEach(function (c) { S.discard.push(c); }); });
     S.lastRound = { scores: scores, det: det, rows: S.rows };
@@ -524,6 +528,7 @@
     if (top >= S.target && leaders === 1) setTimeout(finish, 900);
     else setTimeout(function () { showScores(true); }, 700);
   }
+  function code7(c) { return c.k === 'n' ? String(c.v) + (c.dup ? '!' : '') : c.k === 'm' ? '+' + c.v : c.k; }
   function showScores(between) {
     var t = el('table', { class: 'sum' });
     t.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: between ? 'Round ' + S.rounds.length : '' }), el('th', { text: 'Total' })]));
@@ -572,7 +577,16 @@
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: w.name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'R' + (i + 1); }), scores: S.rounds },
-      highlights: highlights().concat([S.rounds.length + ' rounds, played to ' + S.target])
+      highlights: highlights().concat([S.rounds.length + ' rounds, played to ' + S.target]),
+      detail: (function () {
+        var cnt = function (k, f) { return S.players.map(function (pl, p) { return S.ev.filter(function (e) { return e.k === k && (f ? e[f] : e.p) === p; }).length; }); };
+        var ST = { Bust: 'b', 'Flip 7': '7', Frozen: 'f' };
+        return {
+          target: S.target, fin: S.fin || [], best: (S.best || []).map(function (b) { return b || { r: 0, pts: 0, c: '' }; }),
+          st: S.details.map(function (d) { return d.map(function (x) { return ST[x] || 's'; }).join(''); }),
+          bust: cnt('bust'), f7: cnt('f7'), frz: cnt('freeze', 'by'), sv: cnt('save')
+        };
+      })()
     });
     var players = S.players, target = S.target;
     clearSave();

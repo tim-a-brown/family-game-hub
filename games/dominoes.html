@@ -690,6 +690,18 @@
   }
 
   // ── Match end ─────────────────────────────────────────────────────────────
+  // History detail: the last hand's line of play (each arm as pairs of digits, outward) and what was left in each hand
+  function domDetail() {
+    try {
+      var L = S.line, r = S.res, enc = function (arm) { return (arm || []).map(function (x) { return '' + x.t[0] + x.t[1]; }).join(''); };
+      var hands = r && r.hands ? r.hands : S.players.map(function (p) { return p.hand; });
+      return {
+        v: S.variant, h: S.hand, k: r ? r.kind : '', wi: r ? r.wi : -1, tm: S.teams ? 1 : 0,
+        ln: L ? { r: '' + L.root.t[0] + L.root.t[1], sp: L.spin ? 1 : 0, W: enc(L.arms.W), E: enc(L.arms.E), N: enc(L.arms.N), S: enc(L.arms.S) } : null,
+        hd: hands.map(function (h) { return h.map(function (t) { return '' + t[0] + t[1]; }).join(''); }), bn: S.bone ? S.bone.length : 0
+      };
+    } catch (e) { return null; }
+  }
   function finishMatch() {
     if (!S || S.phase === 'over') return;
     if (S.res && S.res.kind === 'match') S.rounds.push(S.handPts.slice());
@@ -715,7 +727,7 @@
       started: S.started, mode: modeName, players: players, winner: wname,
       summary: wname + ' won · ' + VNAME[S.variant],
       rounds: { labels: S.rounds.map(function (r, i) { return 'Hand ' + (i + 1); }), scores: S.rounds.map(function (r) { return S.players.map(function (p, i) { return r[sideOf(i)]; }); }) },
-      highlights: hl.slice(0, 6)
+      highlights: hl.slice(0, 6), detail: domDetail()
     });
     clearSave(); paint();
     var rank = [];

@@ -446,7 +446,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     // Off the edge
     q.fall = { vy: -60, behind: q.face[0] === 'u' };
     G.phase = 'qfall'; G.stats.falls++; G.roundDeaths++;
-    G.deaths.fall = (G.deaths.fall || 0) + 1;
+    G.deaths.fall = (G.deaths.fall || 0) + 1; G.lastDeath = { k: 'fall' };
     sFall(); Kit.haptic('error');
   }
   function updateQ(dt) {
@@ -511,7 +511,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function die(e) {
     G.phase = 'dead'; G.deadT = 0; G.roundDeaths++;
     var kind = e.type === 'egg' ? 'purple' : e.type;
-    G.deaths[kind] = (G.deaths[kind] || 0) + 1;
+    G.deaths[kind] = (G.deaths[kind] || 0) + 1; G.lastDeath = { k: kind, r: e.r, c: e.c };
     G.lives--; hudDirty = true;
     fx.shake = 0.5; fx.flash = 1;
     sHit(); setTimeout(sCurse, 180); Kit.haptic('error');
@@ -818,7 +818,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (dk.length) h.push('Lost the most lives to ' + (NAMES[dk[0]] || dk[0]) + ' (' + G.deaths[dk[0]] + ')');
     var rounds = G.perRound.length > 1 ? { labels: G.perRound.map(function (r) { return r.l; }), scores: G.perRound.map(function (r) { return [r.s]; }) } : null;
     var mode = [G.pace === 'easy' ? 'Relaxed speed' : '', G.startLevel > 1 ? 'Started at level ' + G.startLevel : ''].filter(Boolean).join(' · ');
+    // history detail: the pyramid as it was left (cube colour steps), the round's colours, and the run's numbers
+    var hiL = ArcadeHi.list('cubehopper'), sc0 = G.score, scm = scheme(), qo = q && q.lastOn && onBoard(q.lastOn.r, q.lastOn.c) ? q.lastOn : null;
+    var detail = {
+      cb: cubes.join(''), st: rule().steps, rl: rule().id, col: [scm.l, scm.r].concat(scm.t).join(','), q: qo ? qo.r + ',' + qo.c : '',
+      ds: discs.map(function (d) { return d.side + d.row; }).join(','), lv: G.level, rd: G.round, sl: G.startLevel, pace: G.pace,
+      d: G.deaths, ld: G.lastDeath || null, cu: st.cubes, hp: st.hops, lu: st.lured, ca: st.caught, gr: st.greens, dc: st.discs, rr: st.rounds, pf: st.perfect, ex: st.extra, rv: st.reverted,
+      hr: sc0 > 0 && (hiL.length < ArcadeHi.max || sc0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= sc0; }).length + 1 : 0, hb: G.best0 || 0
+    };
     Kit.record(KEY, {
+      detail: detail,
       started: G.started, mode: mode,
       players: [{ name: G.who, score: G.score }], winner: null, rounds: rounds,
       highlights: h.slice(0, 6), summary: fmt(G.score) + ' points · level ' + G.level + '-' + G.round, badge: 'L' + G.level + '-' + G.round,

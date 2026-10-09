@@ -331,6 +331,7 @@
     var vals = s.map(function (i) { return S.dice[i].v; }), pts = scoreOf(vals, S.rules.dbl);
     s.forEach(function (i) { S.dice[i].kept = true; S.dice[i].sel = false; });
     S.turn += pts; S.sets.push({ v: vals.sort(), p: pts, n: S.sets.length });
+    var st = P().st; if (!st.br || pts > st.br.p) st.br = { v: vals.join(''), p: pts };   // best single scoring roll
     return pts;
   }
 
@@ -442,7 +443,7 @@
     var amt = S.turn;
     var before = p.score;
     p.score += amt; p.on = true; p.fk = 0; p.st.banks++;
-    if (amt > p.st.best) p.st.best = amt;
+    if (amt > p.st.best) { p.st.best = amt; p.st.bestSets = S.sets.map(function (x) { return x.v.join('') + ':' + x.p; }).join(' '); p.st.bestHot = S.hot; }
     S.rounds[S.round - 1][S.cur] += amt;
     if (S.hot >= 2) note(3, p.name + ' had hot dice ' + (S.hot === 2 ? 'twice' : S.hot + ' times') + ' in one turn');
     var trig = S.final == null && p.score >= S.rules.target;
@@ -505,7 +506,11 @@
       winner: tie ? null : top.name,
       rounds: { labels: rounds.map(function (r, i) { return String(i + 1); }), scores: rounds },
       highlights: hl.slice(0, 6),
-      meta: { target: S.rules.target, doubling: S.rules.dbl }
+      meta: { target: S.rules.target, doubling: S.rules.dbl },
+      detail: { t: S.rules.target, p: S.players.map(function (p) {
+        var s = p.st || {};
+        return { f: s.farkles || 0, h: s.hot || 0, mh: s.maxHotTurn || 0, b: s.best || 0, bs: s.bestSets || '', bh: s.bestHot || 0, lm: s.lostMax || 0, k: s.banks || 0, br: s.br ? s.br.v + ':' + s.br.p : '' };
+      }) }
     });
     clearSave();
     render();

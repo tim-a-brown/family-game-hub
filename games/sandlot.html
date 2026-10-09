@@ -2165,7 +2165,8 @@
       started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Two managers') + ', ' + S.innings + ' innings',
       players: S.teams.map(function (T, i) { return { name: T.name, score: S.R[i], cpu: T.cpu }; }),
       winner: W.name, rounds: rounds, highlights: hl,
-      meta: { innings: S.innings, hits: S.H.slice(), errors: S.E.slice() }
+      meta: { innings: S.innings, hits: S.H.slice(), errors: S.E.slice() },
+      detail: gameDetail()
     });
     var ps = S;
     S.phase = 'done'; clearSave();
@@ -2179,6 +2180,23 @@
       againLabel: 'Rematch, same teams',
       extra: [{ label: 'Box score', onClick: function () { S = ps; openBox(true); } }, { label: 'New teams', onClick: showSetup }]
     });
+  }
+  // For the history detail: line score, box score lines (as 'a|b|c' strings) and the scoring plays
+  function gameDetail() {
+    function cut(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+    return {
+      home: S.home, inn: S.innings, wo: S.walkoff ? 1 : 0,
+      tm: S.teams.map(function (Tm, t) {
+        var ids = Tm.lineup.concat(Tm.gone).filter(function (id) { return id && S.st[id]; });
+        Tm.lineup.forEach(function (id) { if (id && ids.indexOf(id) < 0) ids.push(id); });
+        return {
+          n: Tm.name, c: Tm.color, l: S.line[t].map(function (v) { return v == null ? '' : v; }).join(','), r: S.R[t], h: S.H[t], e: S.E[t],
+          b: ids.slice(0, 12).map(function (id) { var x = S.st[id] || {}; return [cut(nm(id), 22), S.P[id].pos || '', x.ab || 0, x.r || 0, x.h || 0, x.hr || 0, x.rbi || 0, x.bb || 0, x.k || 0, Tm.gone.indexOf(id) >= 0 ? 1 : 0].join('|'); }),
+          p: Tm.used.slice(0, 6).map(function (id) { var x = S.st[id] || {}; return [cut(nm(id), 22), x.outs || 0, x.h || 0, x.r || 0, x.bb || 0, x.k || 0, x.hr || 0, x.pc || 0].join('|'); })
+        };
+      }),
+      plays: S.log.filter(function (x) { return x.r > 0; }).slice(-10).map(function (x) { return { i: x.i, h: x.h, r: x.r, t: cut(x.t, 90) }; })
+    };
   }
   function rematch(ps) {
     finished = false; undoStack = []; clearTimers();
@@ -2464,7 +2482,8 @@
       players: S.teams.map(function (T, i) { return { name: T.name, score: tots[i], cpu: false }; }),
       winner: S.teams.length > 1 ? S.teams[win].name : S.teams[0].name,
       rounds: { labels: S.teams[0].slug.map(function (x, i) { return 'Slugger ' + (i + 1); }), scores: S.teams[0].slug.map(function (x, i) { return S.teams.map(function (T) { var id = T.slug[i]; return S.d.st[id] ? S.d.st[id].hr : 0; }); }) },
-      highlights: hl.slice(0, 6), summary: S.teams.length === 1 ? S.teams[0].name + ': ' + tots[0] + ' home runs' : null
+      highlights: hl.slice(0, 6), summary: S.teams.length === 1 ? S.teams[0].name + ': ' + tots[0] + ' home runs' : null,
+      detail: { derby: 1, win: win, off: S.d.offWin != null ? 1 : 0, tm: S.teams.map(function (Tm) { return { n: Tm.name, c: Tm.color, s: Tm.slug.map(function (id) { var x = dst(id); return [nm(id).slice(0, 22), S.P[id].hr || 0, x.hr || 0, x.outs || 0, x.long || 0, x.moon || 0].join('|'); }) }; }) }
     });
     var ps = S; S.phase = 'done'; clearSave();
     Kit.win({
