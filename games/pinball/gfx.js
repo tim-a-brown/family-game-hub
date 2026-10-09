@@ -76,7 +76,7 @@ export class Materials {
     this.scuff = scuff;
   }
   get(key, make) { return this.cache[key] || (this.cache[key] = make()); }
-  chrome() { return this.get('chrome', () => new THREE.MeshStandardMaterial({ color: 0xe9ebf0, metalness: 1, roughness: 0.13, envMapIntensity: 1.0 })); }
+  chrome() { return this.get('chrome', () => new THREE.MeshStandardMaterial({ color: 0xe9ebf0, metalness: 1, roughness: 0.27, envMapIntensity: 0.9 })); }
   steel() { return this.get('steel', () => new THREE.MeshStandardMaterial({ color: 0xd5d8de, metalness: 1, roughness: 0.32, envMapIntensity: 0.9 })); }
   brass() { return this.get('brass', () => new THREE.MeshStandardMaterial({ color: 0xd8b26a, metalness: 1, roughness: 0.28, envMapIntensity: 1 })); }
   iron() { return this.get('iron', () => new THREE.MeshStandardMaterial({ color: 0x3a3438, metalness: 0.85, roughness: 0.45, envMapIntensity: 0.7 })); }

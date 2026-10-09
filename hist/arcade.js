@@ -414,9 +414,9 @@
   });
   // ═══ Pinball ═══
   // A dot-matrix picture of the game ball by ball (bar = points, label = how it drained), then the run's numbers.
-  var PBT = { nebula: ['Nebula Run', '#22d3ee'], pirate: ["Pirate's Cove", '#fbbf24'], haunted: ['Haunted Manor', '#86efac'], jungle: ['Jungle Temple', '#f59e0b'], neon: ['Neon Nights', '#f472b6'] };
+  var PBT = { nebula: ['Nebula Run', '#22d3ee'], pirate: ["Pirate's Cove", '#fbbf24'], haunted: ['Haunted Manor', '#86efac'], jungle: ['Jungle Temple', '#f59e0b'], neon: ['Neon Nights', '#f472b6'], midway: ['Midway Mayhem', '#ef4444'] };
   var PBD = { L: 'LEFT', R: 'RIGHT', C: 'MIDDLE', T: 'TILT' }, PBDW = { L: 'the left outlane', R: 'the right outlane', C: 'down the middle', T: 'a tilt' };
-  var PBF = [['pop', 'Pops'], ['sl', 'Slings'], ['su', 'Targets'], ['dt', 'Drops'], ['orb', 'Orbits'], ['spin', 'Spins'], ['lanes', 'Lanes'], ['lock', 'Locks'], ['wheel', 'Wheel'], ['ghost', 'Ghosts'], ['crypt', 'Crypt'], ['mag', 'Magnet'], ['dark', 'Lights out'], ['bh', 'Black holes'], ['storm', 'Storms'], ['cannon', 'Cannon shots'], ['direct', 'Direct hits'], ['idol', 'Idol strikes'], ['beat', 'On the beat'], ['kick', 'Kickbacks'], ['mode', 'Modes'], ['save', 'Saves']];
+  var PBF = [['pop', 'Pops'], ['sl', 'Slings'], ['su', 'Targets'], ['dt', 'Drops'], ['orb', 'Orbits'], ['spin', 'Spins'], ['lanes', 'Lanes'], ['lock', 'Locks'], ['wheel', 'Wheel'], ['ghost', 'Ghosts'], ['crypt', 'Crypt'], ['mag', 'Magnet'], ['dark', 'Lights out'], ['bh', 'Black holes'], ['storm', 'Storms'], ['cannon', 'Cannon shots'], ['direct', 'Direct hits'], ['idol', 'Idol strikes'], ['beat', 'On the beat'], ['kick', 'Kickbacks'], ['hand', 'Hand grabs'], ['attic', 'Attic'], ['cellar', 'Cellar'], ['mist', 'Mist freed'], ['magna', 'Magna saves'], ['grave', 'Grave Robber'], ['wiz', 'Wizard mode'], ['mode', 'Modes'], ['save', 'Saves']];
   R('pinball', function (e, ui) {
     var d = e.dt; if (!d || !d.b) return null;
     var tb = PBT[d.b] || [e.mode || 'Pinball', '#ff8a1c'], ac = tb[1];

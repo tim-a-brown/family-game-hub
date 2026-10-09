@@ -48,7 +48,7 @@ export default {
   theme: {
     playfield: '#120d1e', cabinet: '#1a1024', wood: '#3a2416', rails: 'chrome', rubber: '#121212', postColor: '#2a2236', postRubber: '#151515',
     flipper: '#ece6d6', flipperRubber: '#2d8a5c', flipperStripe: '#1c5c3c', popBody: '#2b2238', apron: '#1a1226', slingPlastic: '#20142c',
-    gi: ['#ffc98a', '#ffc98a', '#b8ffd8', '#ffc98a', '#ffb45a'], giPos: [[34, 250, 90], [440, 250, 90], [40, 640, 90], [440, 700, 90], [243, 900, 80, 0.8]], giLevel: 1.1,
+    gi: ['#ffc98a', '#ffc98a', '#ffd9a8', '#ffc98a', '#ffb45a'], giPos: [[34, 250, 150], [440, 250, 150], [40, 640, 160], [440, 700, 160], [243, 900, 150, 0.8]], giLevel: 1.1,
     env: ['#ffc98a', '#9fffd0', '#b48cff'], sky: '#9a90d0', keyColor: '#dfe6ff', key: 1.0, ambient: 0.32, exposure: 1.05, bloom: 0.6,
     spark: '#b8ffd8', room: '#06050a', darkLight: '#fff0d0', lampGain: 3.4, button: '#7fd4a4', knob: '#e8dcc0'
   },
@@ -116,7 +116,7 @@ function build(T) {
   ['B', 'O', 'O'].forEach((ch, i) => T.standupTarget({ id: 'boo' + i, x: 226, y: 688 + i * 26, angle: 180, w: 20, label: ch, color: '#9fffd0' }));
   ['boo0', 'boo1', 'boo2'].forEach((id, i) => T.insert('bool' + i, 206, 688 + i * 26, { shape: 'circle', r: 6.5, color: '#9fffd0', text: 'BOO'[i], size: 7 }));
   T.ballLock({ id: 'coffinLock', slots: [[262, 700, -30], [262, 724, -30], [262, 748, -30]], hidden: true, exit: { x: SAUCER[0], y: SAUCER[1] + 2, vx: 0, vy: -900 } });
-  T.grabber({ id: 'hand', home: [262, 670, -40], riseH: 40, route: [[SAUCER[0], SAUCER[1], 0], [262, 630, 18], [262, 652, 34], [262, 676, 26], [262, 700, -10]], speed: 90, drop: 'keep',
+  T.grabber({ id: 'hand', home: [262, 700, -34], riseH: 52, route: [[SAUCER[0], SAUCER[1], 0], [262, 636, 20], [262, 660, 40], [262, 684, 30], [262, 704, -6]], speed: 90, drop: 'keep',
     onDrop: b => T.G.call('event', 'handDone', 'hand', b), model: handModel, animate: handAnimate });
 
   // ── Chandelier ring-catch, mist path, trap door to the cellar ──
@@ -615,16 +615,24 @@ function pixGhost(g, x, y) { g.fillStyle = '#fff'; const S = [[1, 0, 4], [0, 1, 
 // the hologram ghost (drawn each frame on a 256x320 canvas)
 function drawGhost(g, w, h, t, holo) {
   const k = holo.flare, bob = Math.sin(t * 2) * 6;
-  g.save(); g.translate(w / 2, h * 0.45 + bob);
-  const gr = g.createRadialGradient(0, -30, 10, 0, 0, 140); gr.addColorStop(0, 'rgba(200,255,235,' + (0.85 + k * 0.15) + ')'); gr.addColorStop(0.5, 'rgba(120,230,200,.45)'); gr.addColorStop(1, 'rgba(80,200,180,0)');
-  g.fillStyle = gr; g.beginPath(); g.moveTo(-60, 10); g.bezierCurveTo(-64, -90, 64, -90, 60, 10);
-  for (let i = 0; i <= 6; i++) { const x = 60 - i * 20, y = 80 + Math.sin(t * 6 + i) * 12 + (i % 2 ? 14 : 0); g.lineTo(x, y); }
-  g.closePath(); g.fill();
-  // arms
-  g.strokeStyle = 'rgba(180,255,225,.5)'; g.lineWidth = 12; g.lineCap = 'round'; g.beginPath(); g.moveTo(-50, 0); g.quadraticCurveTo(-90, -10 + Math.sin(t * 3) * 10, -96, -40); g.moveTo(50, 0); g.quadraticCurveTo(90, -10 - Math.sin(t * 3) * 10, 96, -40); g.stroke();
-  // face
-  g.fillStyle = 'rgba(10,30,40,.85)'; g.beginPath(); g.ellipse(-20, -36, 10, 15, 0, 0, TAU); g.ellipse(20, -36, 10, 15, 0, 0, TAU); g.fill();
-  g.beginPath(); g.ellipse(0, -2, 14, 10 + Math.sin(t * 4) * 5, 0, 0, TAU); g.fill();
+  g.save(); g.translate(w / 2, h * 0.42 + bob);
+  g.filter = 'blur(6px)';
+  // layered translucent veils: a tall soft body that trails into wisps
+  for (let L = 0; L < 3; L++) {
+    const sw = 1 + L * 0.18, al = (0.55 - L * 0.15) + k * 0.2;
+    const gr = g.createRadialGradient(0, -40, 4, 0, 10, 130 * sw); gr.addColorStop(0, 'rgba(225,255,240,' + al + ')'); gr.addColorStop(0.45, 'rgba(140,235,200,' + al * 0.55 + ')'); gr.addColorStop(1, 'rgba(80,200,180,0)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(-62 * sw, 20);
+    g.bezierCurveTo(-70 * sw, -100, 70 * sw, -100, 62 * sw, 20);
+    for (let i = 0; i <= 5; i++) { const x = (62 - i * 25) * sw, y = 90 + Math.sin(t * 3.5 + i * 1.7 + L) * 22 + (i % 2 ? 26 : 0); g.quadraticCurveTo(x + 12, y - 30, x, y); }
+    g.closePath(); g.fill();
+  }
+  g.filter = 'blur(3px)';
+  // arms reaching forward
+  g.strokeStyle = 'rgba(190,255,230,.45)'; g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(-48, -6); g.quadraticCurveTo(-92, -20 + Math.sin(t * 3) * 12, -102, -52); g.moveTo(48, -6); g.quadraticCurveTo(92, -20 - Math.sin(t * 3) * 12, 102, -52); g.stroke();
+  // hollow eyes and a wailing mouth: dark softened holes
+  g.fillStyle = 'rgba(8,30,36,.8)'; g.beginPath(); g.ellipse(-20, -44, 9, 16, -0.15, 0, TAU); g.ellipse(20, -44, 9, 16, 0.15, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(0, -6, 11, 12 + Math.sin(t * 4) * 6, 0, 0, TAU); g.fill();
+  g.filter = 'none';
   g.restore();
 }
 
@@ -636,16 +644,16 @@ function coffinModel(RC) {
   const g = new THREE.Group(), wood = RC.mats.wood('#4a2a1a', 'coffin'), dark = RC.mats.paint('#1a0e0a', { roughness: 0.6 }), brass = RC.mats.brass();
   const shape = new THREE.Shape(); COFFIN.forEach((p, i) => i ? shape.lineTo(p[0], p[1]) : shape.moveTo(p[0], p[1])); shape.closePath();
   const body = new THREE.ExtrudeGeometry(shape, { depth: 26, bevelEnabled: true, bevelThickness: 2, bevelSize: 2, bevelSegments: 2 });
-  g.add(mesh(body, wood));
+  RC.batch.add(wood, body);
   // lid in two halves: the foot half opens (the hand comes out)
   const lidShape = new THREE.Shape(); const inset = offsetLine(COFFIN.concat([COFFIN[0]]), -3).slice(0, -1); inset.forEach((p, i) => i ? lidShape.lineTo(p[0], p[1]) : lidShape.moveTo(p[0], p[1])); lidShape.closePath();
   const lid = new THREE.ExtrudeGeometry(lidShape, { depth: 5, bevelEnabled: true, bevelThickness: 1.5, bevelSize: 1.5, bevelSegments: 2 });
   const lidM = mesh(lid, RC.mats.wood('#5a3420', 'lid')); lidM.position.z = 28;
   const hinge = new THREE.Group(); hinge.position.set(0, 0, 0); hinge.add(lidM); g.add(hinge);
   // brass cross and handles
-  const cross = mesh(new THREE.BoxGeometry(6, 44, 2), brass); cross.position.set(262, 718, 36); g.add(cross);
-  const cross2 = mesh(new THREE.BoxGeometry(26, 6, 2), brass); cross2.position.set(262, 728, 36); g.add(cross2);
-  [[234, 700], [290, 700], [234, 735], [290, 735]].forEach(p => { const h = mesh(new THREE.TorusGeometry(4, 1, 6, 12), brass); h.position.set(p[0], p[1], 14); h.rotation.y = PI / 2; g.add(h); });
+  const cross = mesh(new THREE.BoxGeometry(6, 44, 2), brass); cross.position.set(262, 718, 36); lidM.add(cross); cross.position.set(262, 718, 8);
+  const cross2 = mesh(new THREE.BoxGeometry(26, 6, 2), brass); lidM.add(cross2); cross2.position.set(262, 728, 8);
+  [[234, 700], [290, 700], [234, 735], [290, 735]].forEach(p => { const h = new THREE.TorusGeometry(4, 1, 6, 12); h.rotateY(PI / 2); h.translate(p[0], p[1], 14); RC.batch.add(brass, h); });
   RC.root.add(g);
   // the lid tilts open at the foot while the hand is out
   RC.anim.push((dt, t) => {
@@ -657,55 +665,73 @@ function coffinModel(RC) {
   return null;
 }
 function handModel(RC, grab) {
-  const g = new THREE.Group(), bone = RC.mats.plastic('#e8dfc8', { roughness: 0.55, clearcoat: 0.2 });
-  const arm = mesh(new THREE.CylinderGeometry(4, 5, 70, 10), bone); arm.rotation.x = PI / 2; arm.position.z = -36; g.add(arm);
-  const palm = mesh(new THREE.BoxGeometry(22, 8, 20), bone); palm.position.z = 6; g.add(palm);
+  // a skeletal hand: palm, four jointed fingers and a thumb (bone), plus a forearm that stretches back to the
+  // coffin. The palm faces DOWN over the ball (fingers curl round it); the forearm is re-aimed every frame.
+  const g = new THREE.Group(), bone = RC.mats.plastic('#d8cfb4', { roughness: 0.62, clearcoat: 0.1 });
+  const palm = mesh(new THREE.BoxGeometry(24, 22, 7), bone); palm.position.set(0, 0, 0); g.add(palm);
+  for (let k = 0; k < 4; k++) { const r = mesh(new THREE.CylinderGeometry(2.4, 2.6, 20, 7), bone); r.rotation.x = PI / 2; r.position.set(-8.5 + k * 5.7, -2, 0); g.add(r); }   // metacarpals
   const fingers = [];
   for (let i = 0; i < 4; i++) {
-    const f = new THREE.Group(); f.position.set(-8 + i * 5.4, 2, 16); g.add(f);
-    const s1 = mesh(new THREE.CylinderGeometry(1.8, 2, 11, 6), bone); s1.position.z = 5.5; s1.rotation.x = PI / 2; f.add(s1);
-    const j = new THREE.Group(); j.position.z = 11; f.add(j);
-    const s2 = mesh(new THREE.CylinderGeometry(1.4, 1.8, 9, 6), bone); s2.position.z = 4.5; s2.rotation.x = PI / 2; j.add(s2);
-    const k = mesh(new THREE.SphereGeometry(2.2, 8, 6), bone); f.add(k);
-    fingers.push([f, j]);
+    const f = new THREE.Group(); f.position.set(-8.5 + i * 5.7, 11, 0); g.add(f);
+    const L1 = 12 - Math.abs(i - 1.5) * 1.5, L2 = 9 - Math.abs(i - 1.5);
+    const s1 = mesh(new THREE.CylinderGeometry(1.8, 2.2, L1, 6), bone); s1.position.y = L1 / 2; f.add(s1);
+    const j = new THREE.Group(); j.position.y = L1; f.add(j);
+    const s2 = mesh(new THREE.CylinderGeometry(1.4, 1.8, L2, 6), bone); s2.position.y = L2 / 2; j.add(s2);
+    const j2 = new THREE.Group(); j2.position.y = L2; j.add(j2);
+    const s3 = mesh(new THREE.CylinderGeometry(1.1, 1.4, 6, 6), bone); s3.position.y = 3; j2.add(s3);
+    [f, j, j2].forEach(k => k.add(mesh(new THREE.SphereGeometry(2.1, 8, 6), bone)));
+    fingers.push([f, j, j2]);
   }
-  const th = new THREE.Group(); th.position.set(-12, 2, 8); g.add(th); const ts = mesh(new THREE.CylinderGeometry(1.8, 2, 12, 6), bone); ts.position.set(-3, 0, 5); ts.rotation.set(PI / 2, 0, 0.6); th.add(ts);
-  g.userData.fingers = fingers; g.userData.thumb = th;
-  // a faint green glow in the palm (the magnet)
-  const gl = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), RC.mats.glow('#7dffbf')); gl.position.set(0, -6, 10); gl.rotation.x = PI / 2; g.add(gl); g.userData.glow = gl;
+  const th = new THREE.Group(); th.position.set(-13, -4, 0); th.rotation.z = 0.9; g.add(th);
+  const t1 = mesh(new THREE.CylinderGeometry(2.2, 2.6, 12, 6), bone); t1.position.y = 6; th.add(t1);
+  const tj = new THREE.Group(); tj.position.y = 12; th.add(tj); const t2 = mesh(new THREE.CylinderGeometry(1.6, 2.1, 9, 6), bone); t2.position.y = 4.5; tj.add(t2);
+  const wrist = mesh(new THREE.SphereGeometry(5, 10, 8), bone); wrist.position.set(0, -13, 0); g.add(wrist);
+  // forearm: radius and ulna, aimed from the coffin to the wrist each frame
+  const arm = new THREE.Group(); const ra = mesh(new THREE.CylinderGeometry(2.6, 3.4, 1, 8), bone); ra.rotation.x = PI / 2; ra.position.x = 3; arm.add(ra);
+  const ul = mesh(new THREE.CylinderGeometry(2.2, 3, 1, 8), bone); ul.rotation.x = PI / 2; ul.position.x = -3; arm.add(ul); RC.root.add(arm);
+  const gl = new THREE.Mesh(new THREE.PlaneGeometry(44, 44), RC.mats.glow('#7dffbf')); gl.position.set(0, 0, -3); gl.rotation.x = PI; g.add(gl);
+  g.userData = { fingers, thumb: tj, thumbRoot: th, glow: gl, arm, armBones: [ra, ul] };
   return g;
 }
+const HAND_HOME = new THREE.Vector3(262, 712, -30);
 function handAnimate(m, grab, dt) {
-  // the palm faces the ball: hand points up out of the coffin, leaning toward the saucer while carrying
-  m.position.set(grab.pos.x, grab.pos.y + 14 * grab.rise, grab.pos.z + 6);
-  m.rotation.set(Math.min(1, grab.rise) * 2.3, 0, 0);
+  const u = m.userData, rise = Math.min(1, grab.rise), vis = grab.state !== 'idle' || grab.rise > 0.02;
+  m.visible = vis; u.arm.visible = vis;
+  if (!vis) return;
+  // the hand hangs palm-down over the ball; while rising it unfolds out of the coffin
+  m.position.set(grab.pos.x, grab.pos.y, grab.pos.z + 2);
+  m.rotation.set(PI - (1 - rise) * 1.2, 0, 0);
   const curl = grab.curl;
-  m.userData.fingers.forEach(([f, j], i) => { f.rotation.x = -curl * (0.9 + i * 0.05); j.rotation.x = -curl * 1.2; });
-  m.userData.thumb.rotation.y = curl * 0.8;
-  m.userData.glow.material.opacity = grab.state === 'grip' || grab.state === 'carry' ? 0.8 : 0.15;
-  m.visible = grab.state !== 'idle' || grab.rise > 0.02;
+  u.fingers.forEach(([f, j, j2], i) => { f.rotation.x = -(0.25 + curl * 0.9 + i * 0.03); j.rotation.x = -(0.2 + curl * 1.1); j2.rotation.x = -(0.1 + curl * 0.8); });
+  u.thumb.rotation.x = -(0.2 + curl * 0.9); u.thumbRoot.rotation.y = -curl * 0.6;
+  u.glow.material.opacity = grab.state === 'grip' || grab.state === 'carry' ? 0.75 : 0.12;
+  // forearm from the coffin to the wrist
+  const wrist = new THREE.Vector3(0, -13, 0).applyMatrix4(m.matrixWorld ? m.matrix : m.matrix); m.updateMatrix(); wrist.set(0, -13, 0).applyMatrix4(m.matrix);
+  const from = HAND_HOME.clone().lerp(new THREE.Vector3(262, 700, 0), rise * 0.5);
+  const len = Math.max(10, wrist.distanceTo(from));
+  u.arm.position.copy(from).lerp(wrist, 0.5); u.arm.lookAt(wrist); u.armBones.forEach(b => { b.scale.y = len; });
 }
 function chandelierModel(RC, comp) {
   const g = new THREE.Group(); g.position.set(CHAND[0], CHAND[1], 0);
   const iron = RC.mats.iron(), brass = RC.mats.brass();
-  // hanging from an iron bracket that arches over from the right
-  const bx = 90 - CHAND[0], by = 604 - CHAND[1];
-  const br = mesh(tubeGeo([[bx, by, 34], [bx + 4, by, 70], [bx * 0.55, by * 0.6, 92], [0, 0, 90]], 2.4, 24, 6), iron); g.add(br);
+  // hanging from an iron bracket that arches over from the post by the stairs (static)
+  const bx = 90, by = 604;
+  RC.batch.add(iron, tubeGeo([[bx, by, 34], [bx + 4, by, 70], [CHAND[0] + (bx - CHAND[0]) * 0.55, CHAND[1] + (by - CHAND[1]) * 0.6, 92], [CHAND[0], CHAND[1], 90]], 2.4, 24, 6));
   const pivot = new THREE.Group(); pivot.position.z = 88; g.add(pivot);
   const chain = mesh(new THREE.CylinderGeometry(0.8, 0.8, 20, 5), iron); chain.rotation.x = PI / 2; chain.position.z = -10; pivot.add(chain);
   const body = new THREE.Group(); body.position.z = -27; pivot.add(body);
-  const ring = mesh(new THREE.TorusGeometry(26, 1.8, 8, 40), brass); body.add(ring);
-  const hub = mesh(new THREE.SphereGeometry(5, 12, 8), brass); body.add(hub);
-  const flames = [];
+  const brassG = [new THREE.TorusGeometry(26, 1.8, 8, 40), new THREE.SphereGeometry(5, 12, 8)], candleG = [], flameG = [], dropG = [];
   for (let i = 0; i < 6; i++) {
     const a = i / 6 * TAU, x = Math.cos(a) * 26, y = Math.sin(a) * 26;
-    const arm = mesh(tubeGeo([[0, 0, 0], [x * 0.5, y * 0.5, -6], [x, y, 0]], 1, 8, 5), brass); body.add(arm);
-    const cup = mesh(new THREE.CylinderGeometry(3.2, 2, 3, 10), brass); cup.rotation.x = PI / 2; cup.position.set(x, y, 1.5); body.add(cup);
-    const candle = mesh(new THREE.CylinderGeometry(1.8, 1.8, 9, 8), RC.mats.plastic('#f2ead8', { roughness: 0.6 })); candle.rotation.x = PI / 2; candle.position.set(x, y, 7.5); body.add(candle);
-    const fl = new THREE.Mesh(new THREE.PlaneGeometry(9, 14), RC.mats.glow('#ffb45a')); fl.position.set(x, y, 15); fl.rotation.x = PI / 2 - 0.4; body.add(fl); flames.push(fl);
+    brassG.push(tubeGeo([[0, 0, 0], [x * 0.5, y * 0.5, -6], [x, y, 0]], 1, 8, 5));
+    const cup = new THREE.CylinderGeometry(3.2, 2, 3, 10); cup.rotateX(PI / 2); cup.translate(x, y, 1.5); brassG.push(cup);
+    const cd = new THREE.CylinderGeometry(1.8, 1.8, 9, 8); cd.rotateX(PI / 2); cd.translate(x, y, 7.5); candleG.push(cd);
+    const fl = new THREE.PlaneGeometry(9, 14); fl.rotateX(PI / 2 - 0.4); fl.translate(x, y, 15); flameG.push(fl);
   }
-  // crystal drops
-  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; const d = mesh(new THREE.OctahedronGeometry(1.8), RC.mats.clear('#ffffff', 0.6)); d.position.set(Math.cos(a) * 26, Math.sin(a) * 26, -6); d.scale.z = 1.8; body.add(d); }
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; const d = new THREE.OctahedronGeometry(1.8); d.scale(1, 1, 1.8); d.translate(Math.cos(a) * 26, Math.sin(a) * 26, -6); dropG.push(d); }
+  body.add(mesh(mergeGeos(brassG), brass)); body.add(mesh(mergeGeos(candleG), RC.mats.plastic('#f2ead8', { roughness: 0.6 })));
+  const drops = new THREE.Mesh(mergeGeos(dropG), RC.mats.clear('#ffffff', 0.6)); body.add(drops);
+  const flames = new THREE.Mesh(mergeGeos(flameG), RC.mats.glow('#ffb45a')); flames.renderOrder = 8; body.add(flames);
   g.userData = { body, flames, pivot };
   return g;
 }
@@ -713,75 +739,100 @@ function chandelierAnimate(g, dt, comp) {
   const u = g.userData, held = !!comp.held, t = comp.G.time;
   u.spin = (u.spin || 0) + dt * (held ? 3 : 0.15); u.body.rotation.z = u.spin;
   u.pivot.rotation.x = Math.sin(t * 0.8) * 0.03 + (held ? Math.sin(t * 12) * 0.03 : 0); u.pivot.rotation.y = Math.cos(t * 0.6) * 0.03;
-  u.flames.forEach((f, i) => { const k = 0.7 + 0.3 * Math.sin(t * 17 + i * 2) * Math.sin(t * 5.3 + i); f.scale.set(1, k * (held ? 1.6 : 1), 1); f.material.opacity = (comp.active ? 1 : 0.75) * (1 - comp.G.dark * 0.2); });
+  const k = 0.75 + 0.25 * Math.sin(t * 17) * Math.sin(t * 5.3); u.flames.scale.set(1, 1, k * (held ? 1.5 : 1)); u.flames.material.opacity = (comp.active ? 1 : 0.7) * (1 - comp.G.dark * 0.2);
 }
 function manorModel(RC) {
-  // the manor house front at the back right, behind the top lanes
-  const g = new THREE.Group(); g.position.set(400, 1052, 0);
+  // the manor house front at the back right, behind the top lanes (static: batched)
+  const ox = 400, oy = 1052, B = RC.batch;
   const stone = RC.mats.paint('#3a3242', { roughness: 0.85 }), roof = RC.mats.paint('#1a1420', { roughness: 0.7 }), trim = RC.mats.paint('#5a4a62');
   const winMat = new THREE.MeshStandardMaterial({ color: '#201008', emissive: '#ffb45a', emissiveIntensity: 1.6 });
-  const add = (geo, mat, x, y, z) => { const m = mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
-  add(new THREE.BoxGeometry(150, 24, 96), stone, 0, 0, 48);
-  // gable roof
+  const put = (geo, x, y, z) => { geo.translate(ox + x, oy + y, z); return geo; };
+  B.add(stone, put(new THREE.BoxGeometry(150, 24, 96), 0, 0, 48));
   const gs = new THREE.Shape(); gs.moveTo(-82, 0); gs.lineTo(0, 46); gs.lineTo(82, 0); gs.closePath();
-  const gab = new THREE.ExtrudeGeometry(gs, { depth: 30, bevelEnabled: false }); gab.rotateX(PI / 2); gab.translate(0, 15, 96); add(gab, roof, 0, 0, 0);
-  // tower with a conical roof
-  add(new THREE.CylinderGeometry(20, 22, 150, 16).rotateX(PI / 2), stone, -86, 4, 75);
-  add(new THREE.ConeGeometry(26, 56, 16).rotateX(PI / 2), roof, -86, 4, 178);
-  // windows (lit), a round stained-glass window, the door
+  const gab = new THREE.ExtrudeGeometry(gs, { depth: 30, bevelEnabled: false }); gab.rotateX(PI / 2); B.add(roof, put(gab, 0, 15, 96));
+  B.add(stone, put(new THREE.CylinderGeometry(20, 22, 150, 16).rotateX(PI / 2), -86, 4, 75));
+  B.add(roof, put(new THREE.ConeGeometry(26, 56, 16).rotateX(PI / 2), -86, 4, 178));
+  // stone courses (shallow boxes) give the walls relief
+  for (let i = 0; i < 5; i++) B.add(trim, put(new THREE.BoxGeometry(152, 25, 1.2), 0, 0, 12 + i * 18));
   const wins = [];
-  [[-50, 30], [-20, 30], [20, 30], [50, 30], [-50, 66], [50, 66]].forEach(([x, z]) => { const w = add(new THREE.BoxGeometry(14, 2, 20), winMat, x, -12.5, z); wins.push(w); add(new THREE.BoxGeometry(18, 3, 24), trim, x, -11.8, z).scale.set(1, 1, 1); });
-  [-86].forEach(x => { const w = add(new THREE.BoxGeometry(10, 2, 18), winMat, x, -18, 110); wins.push(w); });
+  [[-50, 30], [-20, 30], [20, 30], [50, 30], [-50, 66], [50, 66]].forEach(([x, z]) => { wins.push(put(new THREE.BoxGeometry(14, 2, 20), x, -12.5, z)); B.add(trim, put(new THREE.BoxGeometry(18, 3, 24), x, -11.8, z)); });
+  wins.push(put(new THREE.BoxGeometry(10, 2, 18), -86, -18, 110));
+  const winGeo = mergeGeos(wins); const winMesh = new THREE.Mesh(winGeo, winMat); RC.root.add(winMesh);
   const sgC = canvas(128, 128), sg = sgC.getContext('2d');
   const cols = ['#ff3050', '#30a0ff', '#ffd040', '#40ff90', '#b060ff', '#ff8030'];
   for (let i = 0; i < 12; i++) { sg.fillStyle = cols[i % 6]; sg.beginPath(); sg.moveTo(64, 64); sg.arc(64, 64, 60, i / 12 * TAU, (i + 1) / 12 * TAU); sg.fill(); }
   sg.strokeStyle = '#111'; sg.lineWidth = 4; for (let i = 0; i < 12; i++) { sg.beginPath(); sg.moveTo(64, 64); sg.lineTo(64 + Math.cos(i / 12 * TAU) * 62, 64 + Math.sin(i / 12 * TAU) * 62); sg.stroke(); } sg.beginPath(); sg.arc(64, 64, 22, 0, TAU); sg.stroke(); sg.beginPath(); sg.arc(64, 64, 60, 0, TAU); sg.stroke();
   const sgT = RC.tex(sgC);
   const rose = new THREE.Mesh(new THREE.CircleGeometry(15, 32), new THREE.MeshStandardMaterial({ map: sgT, emissiveMap: sgT, emissive: '#ffffff', emissiveIntensity: 1.4 }));
-  rose.position.set(0, -15.5, 112); rose.rotation.x = PI / 2; g.add(rose);
-  add(new THREE.TorusGeometry(16, 2, 8, 32), trim, 0, -15.5, 112).rotation.x = PI / 2;
-  add(new THREE.BoxGeometry(22, 4, 36), RC.mats.wood('#3a2010', 'door'), 0, -13, 18);
-  g.userData.wins = wins;
-  RC.root.add(g);
+  rose.position.set(ox, oy - 15.5, 112); rose.rotation.x = PI / 2; RC.root.add(rose);
+  B.add(trim, put(new THREE.TorusGeometry(16, 2, 8, 32).rotateX(PI / 2), 0, -15.5, 112));
+  B.add(RC.mats.wood('#3a2010', 'door'), put(new THREE.BoxGeometry(22, 4, 36), 0, -13, 18));
   RC.anim.push((dt, t) => { const d = RC.G.dark, flick = RC.G.b && RC.G.b.witch ? (Math.random() < 0.1 ? 0.2 : 1) : 1; winMat.emissiveIntensity = (1.6 - d * 0.9) * flick * (0.92 + 0.08 * Math.sin(t * 9)); rose.material.emissiveIntensity = 1.4 + RC.G.lightning * 2; });
   return null;
 }
+function mergeGeos(list) {
+  const out = []; let n = 0;
+  for (const g0 of list) { const g = g0.index ? g0.toNonIndexed() : g0; out.push(g); n += g.attributes.position.count; }
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
+  for (const g of out) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, o * 2); o += g.attributes.position.count; }
+  const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return m;
+}
 function portraitsModel(RC) {
-  // three portraits on the back wall; their eyes follow the ball
-  const g = new THREE.Group(), frameM = RC.mats.brass(), eyes = [];
-  [[70, 'lady'], [150, 'lord'], [230, 'child']].forEach(([x, who], i) => {
-    const c = canvas(128, 160), p = c.getContext('2d');
-    const bg = p.createLinearGradient(0, 0, 0, 160); bg.addColorStop(0, ['#2a3a2e', '#3a2232', '#26304a'][i]); bg.addColorStop(1, '#0a0808'); p.fillStyle = bg; p.fillRect(0, 0, 128, 160);
-    p.fillStyle = ['#1a1a1a', '#2a0e14', '#1a1a2e'][i]; p.beginPath(); p.moveTo(14, 160); p.quadraticCurveTo(64, 80, 114, 160); p.fill();
-    p.fillStyle = '#e6d2b4'; p.beginPath(); p.ellipse(64, 70, 26, 32, 0, 0, TAU); p.fill();
-    p.fillStyle = ['#3a2010', '#999', '#c89040'][i]; p.beginPath(); p.ellipse(64, 46, 30, 18, 0, PI, TAU); p.fill();
-    p.fillStyle = '#fff'; p.beginPath(); p.ellipse(53, 68, 7, 5, 0, 0, TAU); p.ellipse(75, 68, 7, 5, 0, 0, TAU); p.fill();
-    p.strokeStyle = '#6a3a2a'; p.lineWidth = 2; p.beginPath(); p.moveTo(56, 88); p.quadraticCurveTo(64, 92, 72, 88); p.stroke();
-    const t = RC.tex(c);
-    const pic = mesh(new THREE.PlaneGeometry(58, 72), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }), false); pic.rotation.x = PI / 2; pic.position.set(x, RC.L - 0.5, 70); g.add(pic);
-    const fr = mesh(new THREE.BoxGeometry(68, 6, 82), frameM); fr.position.set(x, RC.L + 2.5, 70); g.add(fr);
-    // eyes: pupils in front of the canvas
-    [-11, 11].map(dx => { const e = mesh(new THREE.CircleGeometry(1.9, 10), new THREE.MeshBasicMaterial({ color: '#0a0a0a' }), false); e.rotation.x = PI / 2; e.position.set(x + dx * 58 / 128 * 2.0, RC.L - 1.2, 70 + (80 - 68) * 72 / 160); g.add(e); eyes.push({ e, x0: e.position.x, z0: e.position.z }); });
+  // three oil portraits on the back wall (one atlas texture, one mesh); their eyes follow the ball
+  const c = canvas(768, 320), p = c.getContext('2d'), rr = rng(21);
+  const people = [['#243428', '#1a1a1a', '#3a2010', 'lady'], ['#3a2232', '#2a0e14', '#9a9a9a', 'lord'], ['#26304a', '#1a1a2e', '#c89040', 'child']];
+  people.forEach(([bg0, coat, hair], i) => {
+    const x0 = i * 256; p.save(); p.translate(x0, 0);
+    const bg = p.createRadialGradient(128, 120, 10, 128, 160, 220); bg.addColorStop(0, bg0); bg.addColorStop(1, '#050404'); p.fillStyle = bg; p.fillRect(0, 0, 256, 320);
+    // shoulders and coat
+    const cg = p.createLinearGradient(0, 180, 0, 320); cg.addColorStop(0, coat); cg.addColorStop(1, '#030303'); p.fillStyle = cg; p.beginPath(); p.moveTo(20, 320); p.bezierCurveTo(40, 200, 90, 180, 128, 180); p.bezierCurveTo(166, 180, 216, 200, 236, 320); p.fill();
+    // neck and face with soft shading
+    p.fillStyle = '#b89070'; p.fillRect(112, 150, 32, 40);
+    const fg = p.createRadialGradient(112, 110, 10, 128, 125, 60); fg.addColorStop(0, '#f0d8bc'); fg.addColorStop(0.7, '#c9a07c'); fg.addColorStop(1, '#6a4a38'); p.fillStyle = fg; p.beginPath(); p.ellipse(128, 125, 44, 56, 0, 0, TAU); p.fill();
+    // hair
+    const hg = p.createLinearGradient(0, 60, 0, 130); hg.addColorStop(0, hair); hg.addColorStop(1, '#0a0806'); p.fillStyle = hg; p.beginPath(); p.ellipse(128, 86, 50, 34, 0, PI, TAU); p.fill(); if (i === 0) { p.beginPath(); p.ellipse(84, 130, 14, 50, 0.2, 0, TAU); p.ellipse(172, 130, 14, 50, -0.2, 0, TAU); p.fill(); }
+    // eye sockets (shadowed), the whites; pupils are 3D so they can move
+    p.fillStyle = 'rgba(60,30,30,.55)'; p.beginPath(); p.ellipse(110, 118, 12, 7, 0, 0, TAU); p.ellipse(146, 118, 12, 7, 0, 0, TAU); p.fill();
+    p.fillStyle = '#efe6dc'; p.beginPath(); p.ellipse(110, 119, 9, 4.5, 0, 0, TAU); p.ellipse(146, 119, 9, 4.5, 0, 0, TAU); p.fill();
+    p.strokeStyle = 'rgba(80,40,30,.7)'; p.lineWidth = 2; p.beginPath(); p.moveTo(118, 152); p.quadraticCurveTo(128, 157 - (i === 1 ? 6 : 0), 138, 152); p.stroke();
+    p.fillStyle = 'rgba(120,60,50,.35)'; p.beginPath(); p.ellipse(128, 138, 5, 8, 0, 0, TAU); p.fill();
+    // craquelure and varnish
+    p.strokeStyle = 'rgba(0,0,0,.18)'; p.lineWidth = 0.7; for (let k = 0; k < 60; k++) { const x = rr() * 256, y = rr() * 320; p.beginPath(); p.moveTo(x, y); p.lineTo(x + (rr() - 0.5) * 30, y + (rr() - 0.5) * 30); p.stroke(); }
+    const vg = p.createLinearGradient(0, 0, 256, 320); vg.addColorStop(0, 'rgba(255,240,200,.12)'); vg.addColorStop(0.5, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); p.fillStyle = vg; p.fillRect(0, 0, 256, 320);
+    p.restore();
   });
-  RC.root.add(g);
+  const t = RC.tex(c), geos = [], eyes = [], B = RC.batch;
+  [70, 150, 230].forEach((x, i) => {
+    const pg = new THREE.PlaneGeometry(58, 72); const uv = pg.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, (uv.getX(k) + i) / 3);
+    pg.rotateX(PI / 2); pg.translate(x, RC.L - 0.5, 70); geos.push(pg);
+    B.add(RC.mats.brass(), boxGeo(x, RC.L + 2.5, 70, 68, 6, 82));
+    B.add(RC.mats.brass(), boxGeo(x, RC.L - 1, 70, 62, 2, 76));
+    [-4.1, 4.1].forEach(dx => eyes.push({ x0: x + dx, z0: 70 + 72 * (160 - 119) / 320 }));
+  });
+  const pics = new THREE.Mesh(mergeGeos(geos), new THREE.MeshStandardMaterial({ map: t, roughness: 0.55 })); RC.root.add(pics);
+  const pupils = new THREE.InstancedMesh(new THREE.CircleGeometry(1.7, 10), new THREE.MeshBasicMaterial({ color: '#0a0a0a' }), eyes.length); RC.root.add(pupils);
+  const mm = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(PI / 2, 0, 0)), sc = new THREE.Vector3(1, 1, 1), pv = new THREE.Vector3();
   RC.anim.push(() => {
-    const b = RC.G.world.balls.find(b => !b.hidden); if (!b) return;
-    for (const E of eyes) { const dx = b.x - E.x0, dy = RC.L - b.y, a = Math.atan2(dx, dy); E.e.position.x = E.x0 + Math.sin(a) * 1.8; E.e.position.z = E.z0 - Math.min(1, dy / 800) * 1.2; }
+    const b = RC.G.world.balls.find(b => !b.hidden);
+    eyes.forEach((E, i) => { let ex = E.x0, ez = E.z0; if (b) { const dx = b.x - E.x0, dy = RC.L - b.y, a = Math.atan2(dx, dy); ex += Math.sin(a) * 1.6; ez -= Math.min(1, dy / 800) * 1.0; } pv.set(ex, RC.L - 1.2, ez); mm.compose(pv, q, sc); pupils.setMatrixAt(i, mm); });
+    pupils.instanceMatrix.needsUpdate = true;
   });
   return null;
 }
 function sceneryModel(RC) {
-  const g = new THREE.Group();
-  // candles on the back ledge
-  [[40, 1046], [212, 1046], [470, 1046]].forEach(([x, y]) => { const c = mesh(new THREE.CylinderGeometry(3.5, 4, 26, 10), RC.mats.plastic('#efe6d0', { roughness: 0.7 })); c.rotation.x = PI / 2; c.position.set(x, y, 13); g.add(c); const st = mesh(new THREE.CylinderGeometry(7, 9, 4, 14), RC.mats.brass()); st.rotation.x = PI / 2; st.position.set(x, y, 1.5); g.add(st); const fl = new THREE.Mesh(new THREE.PlaneGeometry(10, 16), RC.mats.glow('#ffb45a')); fl.position.set(x, y - 1, 34); fl.rotation.x = PI / 2; g.add(fl); });
-  // tombstones (3D) near the top lanes and the left wall
+  const B = RC.batch;
+  // candles on the back ledge (static), with flame planes merged into one mesh
+  const flames = [];
+  [[40, 1046], [212, 1046], [470, 1046]].forEach(([x, y]) => { B.add(RC.mats.plastic('#efe6d0', { roughness: 0.7 }), cylGeo(x, y, 3.8, 1, 27, 10)); B.add(RC.mats.brass(), cylGeo(x, y, 8, 0, 3.5, 14, 7)); const f = new THREE.PlaneGeometry(10, 16); f.rotateX(PI / 2); f.translate(x, y - 1, 34); flames.push(f); });
+  const fm = new THREE.Mesh(mergeGeos(flames), RC.mats.glow('#ffb45a')); fm.renderOrder = 8; RC.root.add(fm);
+  RC.anim.push((dt, t) => { fm.material.opacity = (0.75 + 0.25 * Math.sin(t * 17) * Math.sin(t * 5.3)) * (1 - RC.G.dark * 0.3); });
+  // tombstones near the top lanes and the left wall
   const stone = RC.mats.paint('#5a5662', { roughness: 0.9 });
-  [[226, 1036, 0.1], [362, 1030, -0.15], [16, 960, 0.2]].forEach(([x, y, r]) => { const s = new THREE.Shape(); s.moveTo(-9, 0); s.lineTo(-9, 18); s.absarc(0, 18, 9, PI, 0, true); s.lineTo(9, 0); s.closePath(); const geo = new THREE.ExtrudeGeometry(s, { depth: 5, bevelEnabled: true, bevelSize: 1, bevelThickness: 1, bevelSegments: 2 }); geo.rotateX(PI / 2); const m = mesh(geo, stone); m.position.set(x, y, 0); m.rotation.z = r; g.add(m); });
+  [[226, 1036, 0.1], [362, 1030, -0.15], [16, 960, 0.2]].forEach(([x, y, r]) => { const s = new THREE.Shape(); s.moveTo(-9, 0); s.lineTo(-9, 18); s.absarc(0, 18, 9, PI, 0, true); s.lineTo(9, 0); s.closePath(); const geo = new THREE.ExtrudeGeometry(s, { depth: 5, bevelEnabled: true, bevelSize: 1, bevelThickness: 1, bevelSegments: 2 }); geo.rotateX(PI / 2); geo.rotateZ(r); geo.translate(x, y, 0); B.add(stone, geo); });
   // cobweb sheets in the top corners
   const wc = canvas(128, 128), wg = wc.getContext('2d'); web(wg, 0, 0, 125, 1);
-  const wm = new THREE.MeshBasicMaterial({ map: RC.tex(wc), transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
-  const w1 = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), wm); w1.position.set(36, 1030, 50); w1.rotation.set(PI / 2 - 0.2, 0, PI); g.add(w1);
-  RC.root.add(g);
+  const wm = new THREE.MeshBasicMaterial({ map: RC.tex(wc), transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide });
+  const w1 = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), wm); w1.position.set(36, 1030, 50); w1.rotation.set(PI / 2 - 0.2, 0, PI); RC.root.add(w1);
   return null;
 }
 function candleFlicker(RC, t) {

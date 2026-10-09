@@ -253,9 +253,8 @@ class StandupTarget extends Comp {
     const g = grp(this.o.x - this.f[0] * 3, this.o.y - this.f[1] * 3, z);
     const face = new THREE.Mesh(new THREE.BoxGeometry(this.w, 3, 24), [RC.mats.plastic(this.o.color || '#f0c040'), RC.mats.plastic(this.o.color || '#f0c040'), RC.mats.plastic(this.o.color || '#f0c040'), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }), RC.mats.plastic('#222'), RC.mats.plastic('#222')]);
     face.position.z = 16; face.castShadow = true; g.add(face);
-    const stem = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 6), RC.mats.plastic('#18181a')); stem.position.set(0, -4, 3); g.add(stem);
+    RC.batch.add(RC.mats.plastic('#18181a'), boxGeo(this.o.x - this.f[0] * 7, this.o.y - this.f[1] * 7, z + 3, 6, 6, 6, fa));
     g.rotation.z = fa + PI / 2; RC.root.add(g); this.g = g; this.face = face;
-    RC.T.aos && 0;
   }
   update(dt) { this.wob *= Math.exp(-dt * 6); }
   render() { if (this.face) this.face.rotation.x = Math.sin(this.G.time * 40) * this.wob * 0.25; }
@@ -585,23 +584,25 @@ function drawPath(RC, pts, style, o = {}) {
     const mat = RC.mats.clear(o.color || '#a8e0ff', o.opacity || 0.42, { depthWrite: false, roughness: 0.06 });
     const mesh = new THREE.Mesh(g, mat); mesh.castShadow = true; mesh.renderOrder = 2; grpM.add(mesh);
     // rolled top edges, slightly more opaque
-    const edge = RC.mats.clear(o.edge || o.color || '#d8f2ff', 0.75, { depthWrite: true });
-    for (const lat of [-hw + 1.2, hw - 1.2]) { const ep = []; for (let i = 0; i < n; i += 2) { const v = at(i, lat, wallH); ep.push([v.x, v.y, v.z]); } const e = new THREE.Mesh(tubeGeo(ep, 1.6, ep.length * 2, 6), edge); e.castShadow = true; grpM.add(e); }
+    const edge = RC.mats.clear(o.edge || o.color || '#d8f2ff', 0.75, { depthWrite: true }), edges = [];
+    for (const lat of [-hw + 1.2, hw - 1.2]) { const ep = []; for (let i = 0; i < n; i += 2) { const v = at(i, lat, wallH); ep.push([v.x, v.y, v.z]); } edges.push(tubeGeo(ep, 1.6, ep.length * 2, 6)); }
+    const em = new THREE.Mesh(mergeGeo(edges), edge); em.castShadow = true; grpM.add(em);
     // metal flap at the mouth
-    const f0 = frames[0]; const flap = new THREE.Mesh(new THREE.BoxGeometry(w - 4, 14, 0.8), RC.mats.steel());
-    flap.position.copy(at(0, 0, 0)).addScaledVector(f0.t, -6); flap.position.z = RC.T.levels[o.lvl || 'main'].z + 0.4; flap.rotation.z = Math.atan2(f0.t.y, f0.t.x) - PI / 2; grpM.add(flap);
+    const f0 = frames[0], fp = at(0, 0, 0).addScaledVector(f0.t, -6);
+    RC.batch.add(RC.mats.steel(), boxGeo(fp.x, fp.y, RC.T.levels[o.lvl || 'main'].z + 0.4, w - 4, 14, 0.8, Math.atan2(f0.t.y, f0.t.x) - PI / 2));
     supports(RC, grpM, pts, frames, hw + 4, o);
   } else if (style === 'wire') {
     const rails = o.rails || [[-7.5, 2.4], [7.5, 2.4], [-14.5, 15], [14.5, 15]];
-    const m = o.wireMat === 'iron' ? mats.iron() : o.wireMat === 'brass' ? mats.brass() : mats.chrome();
-    for (const r of rails) { const ep = []; for (let i = 0; i < n; i++) { const v = at(i, r[0], r[1]); ep.push([v.x, v.y, v.z]); } const t = new THREE.Mesh(tubeGeo(ep, o.wireR || 1.3, Math.max(8, ep.length * 2), 6), m); t.castShadow = true; grpM.add(t); }
+    const m = o.wireMat === 'iron' ? mats.iron() : o.wireMat === 'brass' ? mats.brass() : mats.chrome(), parts = [];
+    for (const r of rails) { const ep = []; for (let i = 0; i < n; i++) { const v = at(i, r[0], r[1]); ep.push([v.x, v.y, v.z]); } parts.push(tubeGeo(ep, o.wireR || 1.3, Math.max(8, ep.length * 2), 6)); }
     // clips (hoops) every ~45 mm
     let acc = 0;
     for (let i = 1; i < n; i++) {
       acc += frames[i].p.distanceTo(frames[i - 1].p); if (acc < 45) continue; acc = 0;
       const hp = []; for (let k = 0; k <= 10; k++) { const a = PI + k / 10 * PI; hp.push(at(i, Math.cos(a) * 15, 15 + Math.sin(a) * 13)); }
-      const hoop = new THREE.Mesh(tubeGeo(hp.map(v => [v.x, v.y, v.z]), 0.9, 12, 5), m); grpM.add(hoop);
+      parts.push(tubeGeo(hp.map(v => [v.x, v.y, v.z]), 0.9, 12, 5));
     }
+    const wm = new THREE.Mesh(mergeGeo(parts), m); wm.castShadow = true; grpM.add(wm);
     supports(RC, grpM, pts, frames, 17, o);
   } else if (style === 'tube') {
     const ep = pts.map(p => [p[0], p[1], p[2] + BR]);
@@ -617,8 +618,15 @@ function supports(RC, g, pts, frames, half, o) {
   for (let i = 1; i < pts.length; i++) {
     acc += frames[i].p.distanceTo(frames[i - 1].p);
     if (acc < (o.supportEvery || 160) || pts[i][2] - base < 40) continue; acc = 0;
-    for (const k of [-1, 1]) { const p = frames[i].p.clone().addScaledVector(frames[i].side, half * k); const c = new THREE.Mesh(cylGeo(p.x, p.y, 1.6, base, p.z - 1, 8), m); c.castShadow = true; g.add(c); }
+    for (const k of [-1, 1]) { const p = frames[i].p.clone().addScaledVector(frames[i].side, half * k); RC.batch.add(m, cylGeo(p.x, p.y, 1.6, base, p.z - 1, 8)); RC.batch.add(m, cylGeo(p.x, p.y, 4, base, base + 1.5, 8)); }
   }
+}
+function mergeGeo(list) {
+  const out = []; let n = 0;
+  for (const g0 of list) { const g = g0.index ? g0.toNonIndexed() : g0; out.push(g); n += g.attributes.position.count; }
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
+  for (const g of out) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, o * 2); o += g.attributes.position.count; }
+  const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return m;
 }
 
 // ── Orbit (a pair of switches: crossing A then B within a few seconds) ──────────
@@ -655,7 +663,7 @@ class Gate extends Comp {
     const g = grp(this.x, this.y, z + 30); g.rotation.z = a;
     const piv = new THREE.Group(); g.add(piv);
     const wire = new THREE.Mesh(tubeGeo([[-len / 2 + 2, 0, 0], [-len / 2 + 2, 0, -26], [len / 2 - 2, 0, -26], [len / 2 - 2, 0, 0]], 1, 10, 6), RC.mats.chrome()); piv.add(wire);
-    const axle = new THREE.Mesh(tubeGeo([[-len / 2 - 2, 0, 0], [len / 2 + 2, 0, 0]], 1.2, 2, 6), RC.mats.steel()); g.add(axle);
+    RC.batch.add(RC.mats.steel(), tubeGeo([[x1 - 2 * Math.cos(a), y1 - 2 * Math.sin(a), z + 30], [x2 + 2 * Math.cos(a), y2 + 2 * Math.sin(a), z + 30]], 1.2, 2, 6));
     RC.root.add(g); this.piv = piv;
   }
   render() { if (this.piv) this.piv.rotation.x = -this.swing * 1.1; }
@@ -792,7 +800,7 @@ class MiniField extends Comp {
     const t = RC.tex(c);
     const fg = new THREE.ShapeGeometry(shapeOf(this.poly)); const fp = fg.attributes.position, uv = new Float32Array(fp.count * 2);
     for (let i = 0; i < fp.count; i++) { uv[i * 2] = (fp.getX(i) - x0) / w; uv[i * 2 + 1] = (fp.getY(i) - y0) / h; } fg.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    const floor = new THREE.Mesh(fg, new THREE.MeshPhysicalMaterial({ map: t, roughness: 0.5, clearcoat: 0.8, clearcoatRoughness: 0.1 }));
+    const floor = new THREE.Mesh(fg, new THREE.MeshPhysicalMaterial({ map: t, roughness: 0.55, clearcoat: 0.4, clearcoatRoughness: 0.45 }));
     floor.position.z = z; floor.receiveShadow = true; RC.root.add(floor);
     if (z > 0) {   // a raised deck: plywood edge and posts
       RC.batch.add(RC.mats.wood(RC.theme.wood), slabGeo(this.poly, z - 9, 8.6, { bevel: 1 }));
@@ -800,7 +808,7 @@ class MiniField extends Comp {
     } else {
       if (this.o.light) { const l = new THREE.PointLight(this.o.light, this.o.lightK || 0.12, 0.35, 2); l.position.set((x0 + x1) / 2, (y0 + y1) / 2, z + 40); RC.root.add(l); this.light = l; }
       if (this.o.window) {   // the glass in the main playfield above
-        const gl = new THREE.Mesh(new THREE.ShapeGeometry(shapeOf(this.o.window)), new THREE.MeshPhysicalMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.12, roughness: 0.02, clearcoat: 1, depthWrite: false, envMapIntensity: 1.5 }));
+        const gl = new THREE.Mesh(new THREE.ShapeGeometry(shapeOf(this.o.window)), new THREE.MeshPhysicalMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.1, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.4, depthWrite: false, envMapIntensity: 0.35 }));
         gl.position.z = 0.15; gl.renderOrder = 4; RC.root.add(gl);
         if (this.o.glassArt) { const gc = canvas(512, 512), gg = gc.getContext('2d'); this.o.glassArt(gg, 512, 512); const xs = this.o.window.map(p => p[0]), ys = this.o.window.map(p => p[1]); const gt = RC.tex(gc); const pm = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)), new THREE.MeshBasicMaterial({ map: gt, transparent: true, depthWrite: false, opacity: 0.9 })); pm.position.set((Math.max(...xs) + Math.min(...xs)) / 2, (Math.max(...ys) + Math.min(...ys)) / 2, 0.3); pm.renderOrder = 5; RC.root.add(pm); }
         // dark walls of the pit
@@ -1302,7 +1310,7 @@ class Plunger extends Comp {
       this.sfx('trough', { vol: 0.5 });
       if (o.auto) this.autoT = 0.6; else { G.waitPlunge = true; G.pull = 0; G.call('serve'); }
     }
-    if (this.autoT > 0) { this.autoT -= dt; if (this.autoT <= 0) this.fire(0.86 + Math.random() * 0.08); }
+    if (this.autoT > 0) { this.autoT -= dt; if (this.autoT <= 0) { if (G.waitPlunge) G.launch(0.86 + Math.random() * 0.08); else this.fire(0.86 + Math.random() * 0.08); } }
     // a ball that rolled back down the lane waits for the player (or the auto plunger)
     const b = this.ballAt();
     if (b && !G.waitPlunge && this.autoT <= 0 && Math.abs(b.vy) < 40 && (G.state === 'play' || G.state === 'serve') && b.born < this.world.time - 0.3 && this.fireT <= 0) {
@@ -1379,4 +1387,4 @@ export const COMPONENTS = {
   popUpTargets: PopUpTargets, powerfield: Powerfield, supercharger: Supercharger, hologram: Hologram, scoreMotor: ScoreMotor,
   plunger: Plunger
 };
-export { drawPath, Comp };
+export { drawPath, Comp, mergeGeo };

@@ -245,6 +245,7 @@ export function createGame(def, opts = {}) {
     G.mb = true; G.cnt('mb');
     G.big(o.label || 'MULTIBALL', n + ' BALLS', o.color || '#8fe8ff'); G.sfx('multi'); G.callout(o.label || 'MULTIBALL', o.color || '#8fe8ff');
     G.ballSave(o.save != null ? o.save : 12);
+    if (G.waitPlunge && G.plunger) G.plunger.autoT = 0.5;   // a ball waiting in the lane is auto-plunged
     const need = n - G.activeBalls();
     for (let i = 0; i < need; i++) {
       G.pending++;
@@ -703,12 +704,12 @@ function buildScene(G, T, opts) {
   const envScene = new THREE.Scene();
   envScene.background = new THREE.Color('#050407');
   const panel = (col, k, w, h, x, y, z, ry = 0, rx = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.set(rx, ry, 0); envScene.add(m); };
-  panel('#fff4e0', 1.3, 5, 0.6, 0, 4, -1, 0, PI / 2);      // ceiling strip
-  panel('#ffe6c8', 0.5, 3, 1.4, 0, 1.6, 5);               // softbox behind the player
-  panel(theme.env[0], 0.45, 1.6, 1.6, -5, 1.5, 0, PI / 2);
-  panel(theme.env[1], 0.4, 1.6, 1.6, 5, 1.5, -1, -PI / 2);
-  panel(theme.env[2] || theme.env[0], 0.35, 3, 0.6, 0, 1.2, -6);
-  const envRT = pmrem.fromScene(envScene, 0.035);
+  panel('#fff4e0', 0.32, 8, 2.4, 0, 4, -1, 0, PI / 2);      // ceiling strip (soft, wide)
+  panel('#ffe6c8', 0.3, 5, 2.4, 0, 1.6, 5);               // softbox behind the player
+  panel(theme.env[0], 0.22, 3, 3, -5, 1.5, 0, PI / 2);
+  panel(theme.env[1], 0.2, 3, 3, 5, 1.5, -1, -PI / 2);
+  panel(theme.env[2] || theme.env[0], 0.18, 4, 1.2, 0, 1.2, -6);
+  const envRT = pmrem.fromScene(envScene, 0.04);
   scene.environment = envRT.texture; RC.disposables.push(envRT);
   envScene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
   pmrem.dispose();
@@ -754,7 +755,7 @@ function buildScene(G, T, opts) {
   const artT = tex(artC, { aniso: 8 }), glowT = tex(glowC), idT = tex(idC, { linear: true, nearest: true });
   const lampData = new Uint8Array(256 * 4), lampTex = new THREE.DataTexture(lampData, 256, 1, THREE.RGBAFormat);
   lampTex.needsUpdate = true; RC.disposables.push(lampTex);
-  const pfMat = new THREE.MeshPhysicalMaterial({ map: artT, roughness: theme.pfRough, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.07, alphaTest: 0.5, transparent: false, envMapIntensity: 0.6 });
+  const pfMat = new THREE.MeshPhysicalMaterial({ map: artT, roughness: theme.pfRough, metalness: 0, clearcoat: 0.55, clearcoatRoughness: 0.42, alphaTest: 0.5, transparent: false, envMapIntensity: 0.4 });
   const lampU = { lampIdMap: { value: idT }, lampLevels: { value: lampTex }, insertMap: { value: glowT }, lampGain: { value: theme.lampGain } };
   RC.lampU = lampU;
   pfMat.onBeforeCompile = sh => {
@@ -781,9 +782,12 @@ function buildScene(G, T, opts) {
   for (const c of G.compList) if (c.mesh) c.mesh(RC);
 
   // ── Insert bulbs, flashers ──
-  for (const lp of T.bulbs) {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(lp.r || 3.2, 12, 8), new THREE.MeshStandardMaterial({ color: '#222', emissive: lp.color, emissiveIntensity: 0, roughness: 0.3, transparent: true, opacity: 0.95 }));
-    m.position.set(lp.x, lp.y, lp.z || 8); root.add(m); lp.mesh = m; lp.k = lp.k || 4;
+  let bulbIM = null;
+  if (T.bulbs.length) {
+    bulbIM = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ toneMapped: false }), T.bulbs.length);
+    const mm = new THREE.Matrix4();
+    T.bulbs.forEach((lp, i) => { const r = lp.r || 3.2; mm.makeScale(r, r, r).setPosition(lp.x, lp.y, lp.z || 8); bulbIM.setMatrixAt(i, mm); bulbIM.setColorAt(i, new THREE.Color('#111')); lp.bulbIdx = i; lp.k = lp.k || 2.2; lp.col3 = new THREE.Color(lp.color); });
+    bulbIM.instanceMatrix.needsUpdate = true; root.add(bulbIM);
   }
   for (const lp of T.flashers) {
     const g = latheGeo(lp.x, lp.y, [[0, 0], [lp.r || 11, 0], [lp.r || 11, 4], [(lp.r || 11) * 0.95, 9], [(lp.r || 11) * 0.7, 15], [(lp.r || 11) * 0.35, 18.5], [0, 19.5]], 20);
@@ -797,17 +801,19 @@ function buildScene(G, T, opts) {
   const hemi = new THREE.HemisphereLight(theme.sky || '#c8c0ff', '#1a120c', theme.ambient); scene.add(hemi);
   const key = new THREE.DirectionalLight(theme.keyColor || '#fff1dc', theme.key);
   const toWorld = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld);
-  key.position.copy(toWorld(W * 0.42, L * 1.25, 900)); key.target.position.copy(toWorld(W / 2, L * 0.45, 0));
+  // from above and a little in front of the player (a ceiling lamp): flat chrome and the clearcoat then
+  // reflect the dark room towards the camera instead of the lamp itself
+  key.position.copy(toWorld(W * 0.3, L * 0.1, 1500)); key.target.position.copy(toWorld(W / 2, L * 0.55, 0));
   scene.add(key); scene.add(key.target);
   if (!thumb) {
     key.castShadow = true; key.shadow.mapSize.set(quality >= 2 ? 2048 : 1024, quality >= 2 ? 2048 : 1024);
-    const sc = key.shadow.camera; sc.left = -0.42; sc.right = 0.42; sc.top = 0.72; sc.bottom = -0.72; sc.near = 0.2; sc.far = 2.6;
+    const sc = key.shadow.camera; sc.left = -0.5; sc.right = 0.5; sc.top = 0.85; sc.bottom = -0.85; sc.near = 0.2; sc.far = 3.2;
     key.shadow.bias = -0.0004; key.shadow.normalBias = 0.0015; key.shadow.radius = 3;
   }
   RC.lights = { hemi, key };
   // general illumination: warm point lights along the sides
   const giPos = theme.giPos || [[30, 260], [W - 70, 260], [40, 700], [W - 60, 700]];
-  RC.lights.gi = giPos.map((p, i) => { const l = new THREE.PointLight(theme.gi[i % theme.gi.length], 0.03, 0.6, 2); l.position.set(p[0], p[1], p[2] || 90); root.add(l); l.userData.base = 0.03 * theme.giLevel * (p[3] || 1); return l; });
+  RC.lights.gi = giPos.map((p, i) => { const l = new THREE.PointLight(theme.gi[i % theme.gi.length], 0.02, 0.7, 2); l.position.set(p[0], p[1], p[2] || 150); root.add(l); l.userData.base = 0.02 * theme.giLevel * (p[3] || 1); return l; });
   // flasher pool
   RC.lights.flash = [0, 1].map(() => { const l = new THREE.PointLight('#fff', 0, 0.5, 2); root.add(l); return l; });
   // lights-out ball lamps
@@ -879,8 +885,10 @@ function buildScene(G, T, opts) {
   };
   const sparkGeo = new THREE.BufferGeometry(), SPN = 160, sp = new Float32Array(SPN * 3), sv = [];
   sparkGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  for (let i = 0; i < SPN; i++) { sv.push({ x: 0, y: 0, z: -999, vx: 0, vy: 0, vz: 0, life: 0 }); sp[i * 3 + 2] = -999; }
-  const sparkMat = new THREE.PointsMaterial({ color: theme.spark || '#ffe2a8', size: 4, map: tex(glowCanvas(32)), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+  const FAR = -1e6;
+  for (let i = 0; i < SPN; i++) { sv.push({ x: 0, y: 0, z: FAR, vx: 0, vy: 0, vz: 0, life: 0 }); sp[i * 3] = FAR; sp[i * 3 + 2] = FAR; }
+  // size is in world units (metres): the table group is scaled 0.001, so 0.004 is a 4 mm spark
+  const sparkMat = new THREE.PointsMaterial({ color: theme.spark || '#ffe2a8', size: 0.0045, map: tex(glowCanvas(32)), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
   const sparks = new THREE.Points(sparkGeo, sparkMat); sparks.frustumCulled = false; root.add(sparks);
   let spI = 0;
   RC.burst = function (x, y, z, n = 10, speed = 400, color) {
@@ -890,7 +898,7 @@ function buildScene(G, T, opts) {
   };
   function updateFx(dt) {
     for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.life -= dt; p.m.position.z += dt * 28; p.m.material.opacity = Math.min(1, p.life * 2); if (p.life <= 0) { root.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); p.t.dispose(); pops.splice(i, 1); } }
-    for (let i = 0; i < SPN; i++) { const s = sv[i]; if (s.life <= 0) { sp[i * 3 + 2] = -999; continue; } s.life -= dt; s.vz -= 1800 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z = Math.max(1, s.z + s.vz * dt); sp[i * 3] = s.x; sp[i * 3 + 1] = s.y; sp[i * 3 + 2] = s.life > 0 ? s.z : -999; }
+    for (let i = 0; i < SPN; i++) { const s = sv[i]; if (s.life <= 0) { sp[i * 3] = FAR; sp[i * 3 + 2] = FAR; continue; } s.life -= dt; s.vz -= 1800 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z = Math.max(1, s.z + s.vz * dt); sp[i * 3] = s.life > 0 ? s.x : FAR; sp[i * 3 + 1] = s.y; sp[i * 3 + 2] = s.life > 0 ? s.z : FAR; }
     sparkGeo.attributes.position.needsUpdate = true;
   }
 
@@ -906,10 +914,11 @@ function buildScene(G, T, opts) {
     add(-12, bot, 0); add(W + 12, bot, 0); add(-12, L + top * 0.2, 0); add(W + 12, L + top * 0.2, 0); add(W / 2, L + 4, top); add(-12, bot - 10, 105); add(W + 12, bot - 10, 105);
     const look = new THREE.Vector3(W / 2, L * (fit.lookY || 0.47), 0).applyMatrix4(root.matrixWorld);
     const portrait = aspect < 0.8;
-    camera.fov = portrait ? 34 : 30;
+    camera.fov = portrait ? 36 : 30;
     let best = null;
     const tmp = new THREE.Vector3();
-    for (let phi = 26; phi <= 72; phi += 2) {
+    const phiMax = fit.phiMax || (portrait ? 58 : 50);
+    for (let phi = 26; phi <= phiMax; phi += 2) {
       const pr = phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
       let lo = 0.3, hi = 6;
       for (let it = 0; it < 26; it++) {
@@ -921,7 +930,7 @@ function buildScene(G, T, opts) {
       let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
       for (const p of pts) { tmp.copy(p).project(camera); x0 = Math.min(x0, tmp.x); x1 = Math.max(x1, tmp.x); y0 = Math.min(y0, tmp.y); y1 = Math.max(y1, tmp.y); }
       const area = (x1 - x0) * (y1 - y0);
-      const score = area * (1 - (phi - 26) * (portrait ? 0.0028 : 0.006));
+      const score = area * (1 - (phi - 26) * (portrait ? 0.004 : 0.008));
       if (!best || score > best.score) best = { score, phi, d: hi, dir };
     }
     if (fit.phi) { best.phi = fit.phi; }
@@ -946,7 +955,7 @@ function buildScene(G, T, opts) {
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: quality >= 2 ? 4 : 0 });
     composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
-    bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.0);
+    bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.12);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
   }
@@ -976,7 +985,7 @@ function buildScene(G, T, opts) {
       else if (level === 3) { RC.maxDpr = 1.25; RC.resize(); }
     }
   };
-  RC.info = () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures, level, phi: RC.phi, bloom: !!(bloom && bloom.enabled) });
+  RC.info = () => ({ calls: RC.stats ? RC.stats.calls : 0, tris: RC.stats ? RC.stats.tris : 0, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures, level, phi: RC.phi, bloom: !!(bloom && bloom.enabled) });
 
   // ── Per-frame render ──
   const flashPool = RC.lights.flash; let flashI = 0;
@@ -989,9 +998,11 @@ function buildScene(G, T, opts) {
     const t = G.time;
     // lamp levels -> texture (lamps sharing an id share an index: brightest wins)
     for (const lp of G.lampList) lampData[lp.idx * 4] = 0;
+    const tmpC = RC._tmpC || (RC._tmpC = new THREE.Color());
     for (const lp of G.lampList) {
       const v = Math.round(clamp(lp.level, 0, 1) * 255);
       if (v > lampData[lp.idx * 4]) lampData[lp.idx * 4] = v;
+      if (lp.bulbIdx != null && bulbIM) { tmpC.copy(lp.col3).multiplyScalar(0.06 + lp.level * lp.k); bulbIM.setColorAt(lp.bulbIdx, tmpC); bulbIM.instanceColor.needsUpdate = true; }
       if (lp.mesh) {
         const mat = lp.mesh.material; mat.emissiveIntensity = (lp.kind === 'flasher' ? 0.05 : 0) + lp.level * lp.k;
         if (lp.kind === 'flasher' && lp.level > 0.3 && !lp._lit) { RC.flashLight(lp.x, lp.y, (lp.z0 || 0) + 25, lp.color, lp.level); lp._lit = true; }
@@ -1010,7 +1021,7 @@ function buildScene(G, T, opts) {
     RC.lampU.lampGain.value = theme.lampGain * (1 - dark * 0.6);
     const live = world.balls.filter(b => !b.hidden);
     RC.lights.ball.forEach((l, i) => { const b = live[i]; if (b && dark > 0.02) { l.position.set(b.x, b.y - 10, b.z + 70); l.intensity = dark * 0.09; } else l.intensity = 0; });
-    renderer.toneMappingExposure = theme.exposure * (1 - dark * 0.35) + light * 0.6;
+    renderer.toneMappingExposure = theme.exposure * (thumb ? 1.35 : 1) * (1 - dark * 0.35) + light * 0.6;
     updateBalls(dt); updateFx(dt);
     for (const c of G.compList) if (c.render) c.render(dt, RC);
     for (const a of RC.anim) a(dt, t);
@@ -1018,7 +1029,9 @@ function buildScene(G, T, opts) {
     camera.position.copy(camBase.pos);
     if (G.shakeA > 0.01) { shakeV.set((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(G.shakeA * 0.0035); camera.position.add(shakeV); }
     camera.lookAt(camBase.look);
+    renderer.info.autoReset = false; renderer.info.reset();
     if (composer && (!bloom || bloom.enabled)) composer.render(dt); else renderer.render(scene, camera);
+    RC.stats = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
   };
   RC.dispose = function () {
     scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { for (const k in m) if (m[k] && m[k].isTexture) m[k].dispose(); m.dispose(); }); } });
@@ -1149,7 +1162,7 @@ function buildStatic(RC, s) {
       if (s.style === 'metal') { batch.add(railMat, wallGeo(s.pts, Math.max(2, s.r * 2), zb, zb + h)); }
       else if (s.style === 'wood') {
         batch.add(mats.paint(s.color || theme.wallColor || shade(theme.cabinet, 0.08), { roughness: 0.45 }), wallGeo(s.pts, s.r * 2, zb, zb + h, { bevel: 1.5 }));
-        batch.add(railMat, wallGeo(s.pts, s.r * 2 + 0.6, zb + h, zb + h + 2.2, { bevel: 0.5 }));
+        batch.add(mats.steel(), wallGeo(s.pts, s.r * 2 + 0.6, zb + h, zb + h + 2.2, { bevel: 0.5 }));
       }
       else if (s.style === 'rubber') batch.add(mats.rubber(s.color || theme.rubber), wallGeo(s.pts, s.r * 2, zb + 4, zb + 4 + h, { bevel: 1 }));
       else if (s.style === 'plastic') batch.add(mats.clear(s.color || '#bfe6ff', 0.45), wallGeo(s.pts, s.r * 2, zb, zb + h, { bevel: 0.6 }));
