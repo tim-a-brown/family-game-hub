@@ -1005,7 +1005,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-acts{margin-top:14px;}
 /* phones, during a game: the action bar between the card and the details, a compact row (icon beside the label) */
 .lz-acts.out{width:100%;margin-top:0;position:relative;z-index:210;}
-.lz-acts.out .act{flex-direction:row;gap:8px;min-height:48px;padding:6px 10px;}
+.lz-acts.out .act{flex-direction:row;gap:8px;min-height:52px;padding:5px 10px;}
 .lz-acts.out .act .ai{width:26px;height:26px;flex:none;}
 .lz-acts.out .act .al{text-align:left;}
 .lz-acts.out .act small{flex:none;max-width:40%;}
@@ -1013,6 +1013,9 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-acts.out .why{margin-top:6px;}
 .lz.has-acts:not(.lz-min) .lz-flow,.lz.has-acts:not(.lz-min) .lz-card{--cu:min(44vh,94vw,460px);}
 .acts-row{display:flex;gap:8px;width:100%;}
+.act.act-ghost{visibility:hidden;pointer-events:none;}
+.lz-acts.hold .acts-row{position:relative;}
+.lz-acts.hold .why-in{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:0 12px;}
 .act{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:70px;padding:8px 6px 7px;border:0;border-radius:14px;cursor:pointer;
   color:#f6e1a8;background:linear-gradient(180deg,#3a2f63,#241c45 60%,#1b1536);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.55),inset 0 1px 0 rgba(255,255,255,.12),0 4px 0 #120d26,0 8px 16px rgba(0,0,0,.35);
   transition:transform .12s,box-shadow .12s,filter .12s;}
@@ -8408,6 +8411,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       } else posHost.appendChild(el('div', { class: 'lz-pos' }, [nav.src ? srcTag(nav.src) : null, el('span', { class: 'ct', text: (nav.i + 1) + ' of ' + nav.n.toLocaleString() })]));
     }
     var info = el('div', { class: 'lz-info', html: infoHTML });
+    // Phones, swiping through cards in a game: a card with nothing to do keeps an empty action row, so the cards stay
+    // the same size from one to the next instead of growing and shrinking
+    var holdRow = !(acts && acts.length) && phoneZoom() && nav && nav.n > 1 && S && ui.screen === 'game' && !opt.tapClose;
+    if (holdRow) {
+      // (why it can't be used right now sits in that space, e.g. "Needs 3 ink")
+      var g = el('div', { class: 'lz-acts out hold' }, [el('div', { class: 'acts-row' }, [el('div', { class: 'act act-ghost', 'aria-hidden': 'true', html: '<i class="ai"></i><span class="al">&nbsp;</span>' }),
+        whys && whys.length ? el('div', { class: 'why why-in', text: whys.join(' ') }) : null])]);
+      ov.classList.add('has-acts');
+    }
     if (acts && acts.length) {
       var g = el('div', { class: 'lz-acts' }), row = el('div', { class: 'acts-row' });
       acts.forEach(function (a) { if (a.qty) { row.appendChild(qtyCtl(a.qty)); return; } if (a.ok === false) return; var pt = actParts(a);
