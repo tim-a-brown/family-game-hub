@@ -1022,17 +1022,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz.has-acts:not(.lz-min) .lz-flow,.lz.has-acts:not(.lz-min) .lz-card{--cu:min(44vh,94vw,460px);}
 .acts-row{display:flex;gap:8px;width:100%;}
 .act.act-ghost{visibility:hidden;pointer-events:none;}
-/* Hand filter and sort, under the strip of little cards */
-.lz-hf{position:relative;z-index:211;display:flex;align-items:center;gap:6px;width:100%;max-width:560px;margin:-4px 0 2px;}
-.lz-hf button{flex:none;height:30px;border:0;border-radius:999px;padding:0 11px;font:inherit;font-size:.76rem;font-weight:800;cursor:pointer;color:var(--text-2);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(227,189,98,.28);white-space:nowrap;}
-.lz-hf button b{font-weight:900;color:var(--text-3);margin-left:2px;}
-.lz-hf .hf-sort{display:inline-flex;align-items:center;gap:5px;color:#f6e1a8;}
-.lz-hf .hf-sort .ico{width:15px;height:15px;}
-.lz-hf .hf-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1;padding:2px;}
-.lz-hf .hf-chips::-webkit-scrollbar{display:none;}
-.lz-hf .hf-chip.on{color:#2b1a00;background:linear-gradient(180deg,#fbe9b7,#e3bd62);box-shadow:none;}
-.lz-hf .hf-chip.on b{color:rgba(43,26,0,.7);}
-.lz-hf .hf-chip:disabled{opacity:.4;cursor:default;}
+/* Hand filter and sort, under the strip of little cards: the library's round Sort button and its chips */
+.lz-hf{position:relative;z-index:211;display:flex;align-items:center;gap:10px;width:100%;max-width:560px;margin:-2px 0 2px;}
+.lz-hf .flt-btn{width:50px;height:50px;font-size:.66rem;}
+.lz-hf .hf-chips{flex:1;min-width:0;padding:2px 0;}
+.lz-hf .fchip .hf-n{font-weight:900;opacity:.6;margin-left:3px;}
+.lz-hf .fchip:disabled{opacity:.4;cursor:default;}
 .lz-acts.hold .acts-row{position:relative;}
 .lz-acts.hold .why-in{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:0 12px;}
 .act{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:70px;padding:8px 6px 7px;border:0;border-radius:14px;cursor:pointer;
@@ -8314,7 +8309,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (t.classList.contains('whisper') || t.classList.contains('foil')) { t.appendChild(el('i', { class: 'wshim', 'aria-hidden': 'true' })); t.appendChild(el('i', { class: 'wspark', 'aria-hidden': 'true' })); }
       }
       var m = mag * w;
-      t.style.rotate = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '';
+      // the card keeps its 3D layer the whole time: switching the tilt off when the phone settles still (and back on at
+      // the next wobble) made the phone redraw the card, a flicker every few seconds
+      t.style.rotate = m > 0.002 ? (-y).toFixed(3) + ' ' + x.toFixed(3) + ' 0 ' + (m * 6).toFixed(2) + 'deg' : '0 1 0 0.01deg';
       // swiping swings or lifts the card too: the light slides with that as well
       t._sx = (t._sx || 0) + ((t._swing || 0) * -1.3 - (t._sx || 0)) * 0.35; t._sy = (t._sy || 0) + ((t._lift || 0) * 0.9 - (t._sy || 0)) * 0.25;
       var sx = Math.max(-1.4, Math.min(1.4, x + t._sx)), sy = Math.max(-1.4, Math.min(1.4, y + t._sy));
@@ -8415,7 +8412,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
-    var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid, keep = slid ? flowKeep : null;
+    var quiet = !!ui.lzQuiet && !!$$('.lz').length; ui.lzQuiet = false;   // re-dealt in place (sort / filter): no fade in
+    var swapping = (nav && nav.dir && $$('.lz').length) || quiet, slid = flowSlid, keep = slid ? flowKeep : null;
     flowSlid = false; flowKeep = null;
     // moving to the next card keeps the details rolled away if you'd rolled them (a fresh look opens with them showing)
     var wasMin = (swapping || keep) && !!$('.lz.lz-min');
@@ -8429,7 +8427,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       F.cur = nav; F.ov = ov;
       inner.appendChild(F.el);
     } else {
-      card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : '') + (swapping ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(artOf(d)) });
+      card = el('div', { class: 'lz-card' + (d.t === 'location' ? ' loc' : '') + (isWhisper(d) ? ' whisper' : '') + (prSpecial(artOf(d)) ? ' foil' : '') + (swapping && nav.dir ? (nav.dir > 0 ? ' in-r' : ' in-l') : ''), 'data-r': rarKey(artOf(d)) });
       card.appendChild(artEl(d, true));
       inner.appendChild(el('div', { class: 'lz-flow' + (d.t === 'location' ? ' loc' : '') }, [card]));
       if (!opt.tapClose) { holdRoll(card, function () { return ov; }); card.addEventListener('click', function (e) { if (phoneZoom()) e.stopPropagation(); }); }
@@ -8910,40 +8908,75 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     if (nav && nav.ctx === 'hand' && S.P[nav.handPi].hand.length > 1) handBar(zov, u, nav.handPi);
   }
-  // ── Your hand in the card view: filter (what you can play now, or one card type) and sort (as held, cost, type) ──
+  // ── Your hand in the card view: quick filters (what you can play now, or one card type) as chips, and a Sort
+  // button that opens the same kind of sheet as the library's (tap a row, tap it again to reverse) ──
   var HV = 'lorc_handview';
-  function hvGet() { var v = lsGet(HV, null) || {}; return { f: v.f || 'all', s: v.s || 'hand' }; }
+  function hvGet() { var v = lsGet(HV, null) || {}; return { f: v.f || 'all', s: v.s || 'hand', dir: v.dir === -1 ? -1 : 1 }; }
   function hvSet(o) { var v = hvGet(); for (var k in o) v[k] = o[k]; lsSet(HV, v); }
   var HV_TYPES = ['character', 'action', 'item', 'location'];
+  var HV_SORTS = [['hand', 'In hand', 'As you drew them', 'Newest first'], ['cost', 'Cost', 'Low to high', 'High to low'], ['name', 'Name', 'A to Z', 'Z to A'],
+    ['s', 'Strength', 'Low to high', 'High to low'], ['w', 'Willpower', 'Low to high', 'High to low'], ['l', 'Lore', 'Low to high', 'High to low'],
+    ['ink', 'Ink', 'Amber to Steel', 'Steel to Amber'], ['type', 'Type', 'Characters first', 'Locations first']];
+  var HV_SORT_ICO = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/></svg>';
   function hvFits(x, f) { var d = DD(x); return f === 'all' ? true : f === 'play' ? C(x).o === S.cur && canAct() && (canPlay(S.cur, x) || canSing(x) || canShift(x)) : d.t === f; }
+  function hvVal(d, k) {
+    if (k === 'cost') return d.c || 0;
+    if (k === 'ink') return INKS.indexOf(inkOf(d)[0]);
+    if (k === 'type') return HV_TYPES.indexOf(d.t);
+    if (k === 's' || k === 'w' || k === 'l') return d[k] == null || d[k] === '' ? null : +d[k];
+    return 0;
+  }
   function handView(pi) {
     var hand = S.P[pi].hand, v = hvGet(), list = hand.filter(function (x) { return hvFits(x, v.f); });
     if (!list.length) list = hand.slice();
-    if (v.s !== 'hand') list.sort(function (a, b) { var da = DD(a), db = DD(b);
-      var t = v.s === 'type' ? HV_TYPES.indexOf(da.t) - HV_TYPES.indexOf(db.t) : 0;
-      return t || (da.c || 0) - (db.c || 0) || hand.indexOf(a) - hand.indexOf(b); });
-    return list;
+    var idx = function (x) { return hand.indexOf(x); };
+    if (v.s === 'hand') return v.dir === 1 ? list : list.reverse();
+    if (v.s === 'name') return list.sort(function (a, b) { return v.dir * DD(a).full.localeCompare(DD(b).full) || idx(a) - idx(b); });
+    return list.sort(function (a, b) {
+      var da = DD(a), db = DD(b), x = hvVal(da, v.s), y = hvVal(db, v.s);
+      if (x == null || y == null) { if (x != null) return -1; if (y != null) return 1; }   // cards without that stat go last
+      else if (x !== y) return v.dir * (x - y);
+      return (da.c || 0) - (db.c || 0) || idx(a) - idx(b);
+    });
   }
-  // The chips under the strip: tap a filter, tap the sort button to go round In hand → Cost → Type
+  // Re-deal the card view in place (no fade in, so the table doesn't flash through)
+  function hvRefresh(u, pi) { var nv = handView(pi); ui.lzQuiet = true; openZoom(nv.indexOf(u) >= 0 ? u : nv[0], 0); }
+  function hvSortSheet(u, pi) {
+    var box = el('div', { class: 'sortbox' }), sh, cur = u;
+    function paint() {
+      var v = hvGet(); box.innerHTML = '';
+      HV_SORTS.forEach(function (o) {
+        var on = v.s === o[0];
+        box.appendChild(el('button', { type: 'button', class: 'sort-row' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () {
+          hvSet({ s: o[0], dir: on ? -v.dir : 1 }); Kit.sfx('tap'); paint(); hvRefresh(cur, pi);
+        } }, [el('b', { text: o[1] }), el('span', { text: on ? (v.dir === 1 ? o[2] : o[3]) : '' }), el('i', { html: on ? (v.dir === 1 ? '&#8593;' : '&#8595;') : '' })]));
+      });
+    }
+    paint();
+    document.documentElement.classList.add('flowsheet');
+    sh = Kit.sheet({ title: 'Sort Your Hand', node: el('div', null, [el('p', { class: 'sort-tip', text: 'Tap again to reverse the order.' }), box]), actions: [
+      { label: 'Reset to In hand', cls: 'btn-ghost', keep: true, onClick: function () { hvSet({ s: 'hand', dir: 1 }); paint(); hvRefresh(cur, pi); } },
+      { label: 'Done', cls: 'btn-primary' }], onClose: function () { document.documentElement.classList.remove('flowsheet'); } });
+  }
+  // Under the strip: the Sort button (round, like the library's) and the quick filter chips
   function handBar(ov, u, pi) {
     var v = hvGet(), hand = S.P[pi].hand;
     var host = $('.lz-in', ov), flow = host && $('.lz-flow', host); if (!flow) return;
     var bar = el('div', { class: 'lz-hf', role: 'toolbar', 'aria-label': 'Sort and filter your hand' });
-    var SN = { hand: 'In hand', cost: 'Cost', type: 'Type' }, NEXT = { hand: 'cost', cost: 'type', type: 'hand' };
-    bar.appendChild(el('button', { type: 'button', class: 'hf-sort', 'aria-label': 'Sort: ' + SN[v.s] + '. Tap to change', html: Kit.icon('rows') + '<span>' + SN[v.s] + '</span>', onclick: function (e) {
-      e.stopPropagation(); hvSet({ s: NEXT[v.s] }); Kit.sfx('tap'); openZoom(u, 0); } }));
-    var chips = el('div', { class: 'hf-chips' });
+    var o = HV_SORTS.filter(function (x) { return x[0] === v.s; })[0] || HV_SORTS[0], sorted = !(v.s === 'hand' && v.dir === 1);
+    bar.appendChild(el('button', { type: 'button', class: 'flt-btn hf-sort' + (sorted ? ' on' : ''), 'aria-label': 'Sort: ' + o[1] + ', ' + (v.dir === 1 ? o[2] : o[3]).toLowerCase(),
+      html: HV_SORT_ICO + '<span>' + (sorted ? esc(o[1]) : 'Sort') + '</span>', onclick: function (e) { e.stopPropagation(); Kit.sfx('tap'); hvSortSheet(u, pi); } }));
+    var chips = el('div', { class: 'fchips hf-chips' });
     [['all', 'All'], ['play', 'Can play'], ['character', 'Characters'], ['action', 'Actions'], ['item', 'Items'], ['location', 'Locations']].forEach(function (f) {
       var n = hand.filter(function (x) { return hvFits(x, f[0]); }).length;
       if (f[0] !== 'all' && f[0] !== 'play' && !n) return;   // only the card types you're holding
-      chips.appendChild(el('button', { type: 'button', class: 'hf-chip' + (v.f === f[0] ? ' on' : ''), 'aria-pressed': String(v.f === f[0]), disabled: !n && f[0] !== 'all' ? true : null,
-        html: esc(f[1]) + ' <b>' + n + '</b>', onclick: function (e) {
-          e.stopPropagation(); if (v.f === f[0]) return; hvSet({ f: f[0] }); Kit.sfx('tap');
-          var nv = handView(pi); openZoom(nv.indexOf(u) >= 0 ? u : nv[0], 0); } }));
+      chips.appendChild(el('button', { type: 'button', class: 'fchip' + (v.f === f[0] ? ' on' : ''), 'aria-pressed': String(v.f === f[0]), disabled: !n ? true : null,
+        html: esc(f[1]) + ' <b class="hf-n">' + n + '</b>', onclick: function (e) {
+          e.stopPropagation(); if (v.f === f[0]) return; hvSet({ f: f[0] }); Kit.sfx('tap'); hvRefresh(u, pi); } }));
     });
     bar.appendChild(chips);
     flow.parentNode.insertBefore(bar, flow.nextSibling);
-    var on = $('.hf-chip.on', chips); if (on) chips.scrollLeft = Math.max(0, on.offsetLeft - 40);
+    var on = $('.fchip.on', chips); if (on) chips.scrollLeft = Math.max(0, on.offsetLeft - chips.offsetLeft - 24);
   }
   // The computer's card, big, with what it just did across the top and a Continue button below
   // How the computer's moves are shown: a card to acknowledge, or a passing banner (fast mode / skip this turn)
