@@ -6001,9 +6001,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var byName = {}; S.P[pi].hand.forEach(function (x) { var n0 = DD(x).n; (byName[n0] = byName[n0] || []).push(x); });
         var dup = Object.keys(byName).filter(function (k) { return byName[k].length >= cost.revealSame; });
         if (!dup.length) { if (!byCpu) Kit.toast('Needs ' + cost.revealSame + ' cards with the same name in your hand'); return; }
-        if (byCpu || dup.length === 1) { revealName = dup[0]; return step(); }
-        var pool = []; dup.forEach(function (k) { pool.push(byName[k][0]); });
-        return chooseFromList('Reveal which pair?', pool, 1, function (sel) { if (sel[0]) { revealName = DD(sel[0]).n; step(); } }, { skip: true, cancel: function () {} });
+        // the pair is shown to the table (both cards, on the reveal screen) before the ability goes on
+        var showPair = function (n) { revealName = n; if (!humans()) return step(); revealCards(u, byName[n].slice(0, cost.revealSame).map(function (x) { return { pi: pi, u: x }; }), '', step); };
+        if (byCpu || dup.length === 1) return showPair(dup[0]);
+        // every card of every pair, side by side, so you can see both before choosing
+        var pool = []; dup.forEach(function (k) { pool = pool.concat(byName[k]); });
+        return chooseFromList('Reveal which pair? (' + cost.revealSame + ' cards with the same name)', pool, 1, function (sel) { if (sel[0]) showPair(DD(sel[0]).n); }, { skip: true, cancel: function () {} });
       }
       if (cost.sac && !sac.length) {
         var p2 = sacPool(u, cost), n2 = cost.sac.n;
