@@ -1010,7 +1010,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-acts.out .act .al{text-align:left;}
 .lz-acts.out .act small{flex:none;max-width:40%;}
 .lz-acts.out .acts-row.many .act{min-height:46px;padding:5px 6px;gap:5px;}
-.lz-acts.out .why{margin-top:6px;}
+.lz-acts.out .why{margin-top:6px;min-height:1.35em;}
 .lz.has-acts:not(.lz-min) .lz-flow,.lz.has-acts:not(.lz-min) .lz-card{--cu:min(44vh,94vw,460px);}
 .acts-row{display:flex;gap:8px;width:100%;}
 .act.act-ghost{visibility:hidden;pointer-events:none;}
@@ -8367,8 +8367,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     opt = opt || {};
     var swapping = nav && nav.dir && $$('.lz').length, slid = flowSlid, keep = slid ? flowKeep : null;
     flowSlid = false; flowKeep = null;
+    // moving to the next card keeps the details rolled away if you'd rolled them (a fresh look opens with them showing)
+    var wasMin = (swapping || keep) && !!$('.lz.lz-min');
     closeZoom();
-    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + '', role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
+    var ov = el('div', { class: 'lz' + (swapping || keep ? ' noanim show' : '') + (wasMin ? ' lz-min' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': d.full });
     var inner = el('div', { class: 'lz-in' });
     if (ui.rollW) ov.style.setProperty('--roll-w', ui.rollW + 'px');
     var F = null, card = null;
@@ -8417,7 +8419,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (holdRow) {
       // (why it can't be used right now sits in that space, e.g. "Needs 3 ink")
       var g = el('div', { class: 'lz-acts out hold' }, [el('div', { class: 'acts-row' }, [el('div', { class: 'act act-ghost', 'aria-hidden': 'true', html: '<i class="ai"></i><span class="al">&nbsp;</span>' }),
-        whys && whys.length ? el('div', { class: 'why why-in', text: whys.join(' ') }) : null])]);
+        whys && whys.length ? el('div', { class: 'why why-in', text: whys.join(' ') }) : null]), el('div', { class: 'why' })]);
       ov.classList.add('has-acts');
     }
     if (acts && acts.length) {
@@ -8426,7 +8428,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         row.appendChild(el('button', { type: 'button', class: 'act' + (a.primary ? ' pri' : ''), 'aria-label': pt.text, html: '<i class="ai">' + pt.icon + '</i>' + (pt.subHTML ? '<span class="alw"><span class="al">' + esc(pt.main) + '</span><small class="cst">Cost:' + pt.subHTML + '</small></span>' : '<span class="al">' + esc(pt.main) + '</span>' + (pt.sub ? '<small>' + esc(pt.sub) + '</small>' : '')), onclick: function () { closeZoom(); a.go(); } })); });
       if (row.children.length > 3) row.classList.add('many');
       g.appendChild(row);
-      if (whys && whys.length) g.appendChild(el('div', { class: 'why', text: whys.join(' ') }));
+      // (phones keep the line under the buttons even when it's empty, so every card sits at the same height)
+      if ((whys && whys.length) || phoneZoom()) g.appendChild(el('div', { class: 'why', text: (whys || []).join(' ') }));
       // Phones: the actions sit between the card and its details (in reach, and the card a little shorter to make room)
       if (phoneZoom()) { g.classList.add('out'); ov.classList.add('has-acts'); }
       else info.appendChild(g);
