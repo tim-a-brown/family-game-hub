@@ -134,6 +134,8 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lp-board.drop-ok{background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 2px rgba(227,189,98,.55);border-radius:12px;}
 .lp-board:has(> .bmain){flex-wrap:nowrap;align-items:stretch;align-content:stretch;justify-content:center;}
 .lp-board > .bmain{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--gap,6px);}
+.bmain > .brk{flex-basis:100%;height:0;}   /* exerted characters start a new row */
+.bmain > .brk.off{display:none;}
 /* Items: their own strip down the right of the mat */
 .lp-board > .irail{flex:none;display:flex;gap:var(--gap,6px);align-items:flex-start;align-self:center;padding-left:8px;}
 .lp-board > .irail > .icol{display:flex;flex-direction:column;align-items:center;}
@@ -7373,6 +7375,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function boardOrder(pi) {
     var b = S.P[pi].board, out = [], used = {};
     b.filter(isLoc).forEach(function (l) { out.push(l); used[l] = 1; b.forEach(function (u) { if (isChar(u) && C(u).at === l) { out.push(u); used[u] = 1; } }); });
+    // then the characters standing free: ready ones first, exerted ones after them (each kept in the order played)
+    b.forEach(function (u) { if (!used[u] && isChar(u) && !C(u).ex) { out.push(u); used[u] = 1; } });
     b.forEach(function (u) { if (!used[u] && isChar(u)) { out.push(u); used[u] = 1; } });
     b.forEach(function (u) { if (!used[u]) out.push(u); });
     return out;
@@ -7462,6 +7466,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         main.appendChild(g); return;
       }
       if (isChar(u) && C(u).at && S.cards[C(u).at] && order.indexOf(C(u).at) >= 0) return;   // already on its location's pad
+      // exerted characters start a row of their own (fitBoards drops the break when it would cost much card size)
+      if (isChar(u) && C(u).ex && !main._brk && main.children.length) { main._brk = el('i', { class: 'brk', 'aria-hidden': 'true' }); main.appendChild(main._brk); }
       main.appendChild(slotFor(u, 'board'));
     });
     if (items.length) {
@@ -7477,7 +7483,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function fits(cu) {
       var x = 0, rows = 1;
       var Wc = typeof W === 'function' ? W(cu) : W;
-      for (var i = 0; i < us.length; i++) { var w = us[i].w * cu + us[i].px; if (x > 0 && x + gap + w > Wc) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; if (w > Wc) return false; }
+      for (var i = 0; i < us.length; i++) { if (us[i].brk) { if (x > 0) { rows++; x = 0; } continue; } var w = us[i].w * cu + us[i].px; if (x > 0 && x + gap + w > Wc) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; if (w > Wc) return false; }
       return rows * cu + (rows - 1) * gap <= H;
     }
     var lo = 28, hi = Math.max(30, maxCu);
@@ -7492,6 +7498,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var items = Array.prototype.map.call(main.children, function (ch) {
         if (ch.classList.contains('locgrp')) { var sl = $$(':scope > .slot', ch); return { g: ch, locw: sl[0] && sl[0].classList.contains('wide') ? 1 : 0.716, n: Math.max(0, sl.length - 1) }; }
         if (ch.classList.contains('slot')) return { w: ch.classList.contains('wide') ? 1 : 0.716 };
+        if (ch.classList.contains('brk')) return { brk: ch };
         return null;
       }).filter(Boolean);
       var gap = 6, busy = items.some(function (it) { return it.n; }), W0 = b.clientWidth - 12, H0 = b.clientHeight - 12, H = H0 - (busy ? 12 : 0);
@@ -7500,13 +7507,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       function W(cu) { var c = railCols(cu); return c ? W0 - (c * 0.716 * cu + (c - 1) * gap + RAIL_PAD) : W0; }
       var maxCu = Math.min(H, window.innerWidth >= 700 ? 200 : 150);
       function units(vis) { return items.map(function (it) {
+        if (it.brk) return it;
         if (!it.g) return { w: it.w, px: 0 };
-        if (!it.n) return { w: it.locw, px: 0 };
+        if (!it.n) return { w: it.locw, px: 10 };   // its pad's padding
         var stacked = vis < 1 && it.n >= 2;
         return { w: it.locw + 0.716 + (it.n - 1) * 0.716 * (stacked ? vis : 1), px: 10 + gap + (stacked ? 0 : (it.n - 1) * gap) };
       }); }
-      var cu = fitCuU(W, H, units(1), gap, maxCu), vis = 1;
-      if (items.some(function (it) { return it.n >= 2; })) { var st = fitCuU(W, H, units(LOC_VIS), gap, maxCu); if (st > cu * 1.1) { cu = st; vis = LOC_VIS; } }
+      // the break before the exerted characters: kept while it costs little card size (the zero-height line it makes
+      // adds a gap); otherwise the exerted ones just follow on
+      var brk = items.filter(function (it) { return it.brk; })[0], noBrk = function (us) { return us.filter(function (u) { return !u.brk; }); };
+      function fitAll(vis) {
+        var a = fitCuU(W, H, noBrk(units(vis)), gap, maxCu);
+        if (!brk) return { cu: a, brk: false };
+        var c = fitCuU(W, H - gap, units(vis), gap, maxCu);
+        return c >= a * 0.9 ? { cu: c, brk: true } : { cu: a, brk: false };
+      }
+      var f = fitAll(1), cu = f.cu, vis = 1, useBrk = f.brk;
+      if (items.some(function (it) { return it.n >= 2; })) { var f2 = fitAll(LOC_VIS); if (f2.cu > cu * 1.1) { cu = f2.cu; vis = LOC_VIS; useBrk = f2.brk; } }
+      if (brk) brk.brk.classList.toggle('off', !useBrk);
       b.style.setProperty('--cu', cu + 'px');
       items.forEach(function (it) { if (!it.g) return; it.g.classList.toggle('crowd', vis < 1 && it.n >= 2); it.g.style.setProperty('--vis', vis); });
       if (rail) {
