@@ -73,12 +73,14 @@
   window.addEventListener('scroll', function () { if (!stickRaf) stickRaf = requestAnimationFrame(onStick); }, { passive: true });
   window.addEventListener('resize', onStick);
 
-  var wake = null;
+  var wake = null, wakeOff = false;
   function requestWake() {
-    if (!('wakeLock' in navigator) || doc.visibilityState !== 'visible') return;
+    if (wakeOff || !('wakeLock' in navigator) || doc.visibilityState !== 'visible') return;
     navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {});
   }
   doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') requestWake(); });
+  // Kit.keepAwake(false): let the screen dim and lock as usual (a game's battery saver); true: keep it on again
+  function keepAwake(on) { wakeOff = !on; if (on) requestWake(); else if (wake) { try { wake.release(); } catch (e) {} wake = null; } }
 
   // ── Small DOM helper ──────────────────────────────────────────────────────
   function el(tag, attrs, kids) {
@@ -145,6 +147,7 @@
     swap: '<path d="M7 4v16"/><path d="m3 8 4-4 4 4"/><path d="M17 20V4"/><path d="m21 16-4 4-4-4"/>',
     hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    battery: '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 10v4"/>',
     lightbulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
     meh: '<circle cx="12" cy="12" r="9.5"/><path d="M8 15h8"/><path d="M9 9.5h.01"/><path d="M15 9.5h.01"/>',
     coins: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/>',
@@ -1270,7 +1273,7 @@
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
   window.Kit = {
-    init: init, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
+    init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName,
     resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };

@@ -1054,6 +1054,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .act .pips .om[style]{color:var(--ic);}
 .act .pips em{font-style:normal;font-weight:800;font-size:.74rem;color:rgba(246,225,168,.75);}
 .act .pips em.pn{margin-left:5px;font-size:.72rem;color:rgba(246,225,168,.7);}
+/* Battery saver: the looping shimmer holds still (drips stay as still drips; game animations are untouched) */
+.lorc-saver .drips i{animation:none;opacity:.95;}
+.lorc-saver .drips i::before{animation:none;transform:scaleY(.7586);}
+.lorc-saver .drips i::after{animation:none;transform:translateY(calc(var(--cu) * .22));}
+.lorc-saver .lz-info,.lorc-saver .sp::before,.lorc-saver .wshim,.lorc-saver .wspark,.lorc-saver .rgem::after,.lorc-saver .lz-bm.tall.on .rib .glint{animation:none!important;}
+.lorc-saver .fchip.on::after,.lorc-saver .iwt.on::after,.lorc-saver .adv-pick.on::after,.lorc-saver .pk-row.on::after,.lorc-saver .sort-row.on::after{animation:none;}
 /* Hand filter and sort, under the strip of little cards: the library's round Sort button and its chips */
 .lz-hf{position:relative;z-index:211;display:flex;align-items:center;gap:10px;width:100%;max-width:560px;margin:-2px 0 2px;}
 .lz-hf .flt-btn{width:50px;height:50px;font-size:.66rem;}
@@ -6340,6 +6346,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       { icon: 'sparkle', label: 'Prioritize special art', toggle: function () { return FANCY; }, onClick: function () { setFancy(!FANCY); Kit.sfx('tap'); Kit.toast(FANCY ? 'Showing Enchanted and Epic art wherever a card has it' : 'Showing the standard art (cards you picked keep your choice)'); } },
       { icon: 'play', label: 'Fast mode', toggle: function () { return !!lsGet('lorc_fast', false); }, onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
       { icon: 'sparkle', label: 'Playmat', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { matPicker(); } },
+      { icon: 'battery', label: 'Battery saver', toggle: function () { return saverOn(); }, onClick: function () { var on = !saverOn(); lsSet(SAVER, on); applySaver(); Kit.sfx('tap'); Kit.toast(on ? 'Battery saver on: no motion effects or looping shimmer, and the screen can dim' : 'Battery saver off'); } },
       { icon: 'lightbulb', label: 'Gameplay hints', toggle: function () { return hintsOn(); }, onClick: function () { var on = !hintsOn(); lsSet('lorc_hints', on); if (S && ui.screen === 'game') render(); Kit.sfx('tap'); Kit.toast(on ? 'Hints on: challenge previews, end-of-turn check, and a glow on characters that can still act' : 'Hints off'); } },
       { icon: 'swap', label: 'Flip opponents’ cards', toggle: function () { return !!flipOpp; }, onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } }
     ],
@@ -8401,7 +8408,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     wakeTilt();
   }
   function listenOrient() {
-    if (tiltT.listening || !('DeviceOrientationEvent' in window)) return;
+    if (tiltT.listening || !('DeviceOrientationEvent' in window) || saverOn()) return;
     tiltT.listening = true; window.addEventListener('deviceorientation', onOrient);
   }
   function askOrient() {
@@ -9207,6 +9214,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return C(u).o === S.cur && hintsOn() && (canQuest(u) || (canChallenger(u) && defenders(u).length > 0));
   }
   function hintsOn() { return lsGet('lorc_hints', true) !== false; }
+  // Battery saver (menu): the motion sensor is off (card tilt and table light rest), the looping shimmer is still, and
+  // the screen may dim. Play, its animations, sounds and haptics are unchanged
+  var SAVER = 'lorc_saver';
+  function saverOn() { return !!lsGet(SAVER, false); }
+  function applySaver() {
+    var on = saverOn();
+    document.documentElement.classList.toggle('lorc-saver', on);
+    if (Kit.keepAwake) Kit.keepAwake(!on);
+    if (on) { if (tiltT.listening) { window.removeEventListener('deviceorientation', onOrient); tiltT.listening = false; } tiltT.got = false; tiltT.x = 0; tiltT.y = 0; TL.tx = 0; TL.ty = 0; wakeTilt(); tableLight(); }
+    else if (lsGet('lorc_tilt', 0) || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') listenOrient();
+  }
   function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
   function cpuShow(u, verb, how, effect) {
     if (!S || !S.cards[u]) return;
@@ -11216,6 +11234,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     rz = requestAnimationFrame(function () { rz = 0; if (S && ui.screen === 'game') render(); else layoutVars(); });
   });
   DB.load();
+  if (saverOn()) applySaver();
   // Motion for the card sheen: ask as soon as Lorcana opens. iPhone only allows the prompt from a tap,
   // so it appears on the first tap anywhere in the game (once; a yes is remembered).
   (function () {
