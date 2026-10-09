@@ -1058,7 +1058,8 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lorc-saver .drips i{animation:none;opacity:.95;}
 .lorc-saver .drips i::before{animation:none;transform:scaleY(.7586);}
 .lorc-saver .drips i::after{animation:none;transform:translateY(calc(var(--cu) * .22));}
-.lorc-saver .lz-info,.lorc-saver .sp::before,.lorc-saver .wshim,.lorc-saver .wspark,.lorc-saver .rgem::after,.lorc-saver .lz-bm.tall.on .rib .glint{animation:none!important;}
+.lorc-saver .bsh,.lorc-saver .tsheen,.lorc-saver .rglint,.lorc-saver .wshim,.lorc-saver .wspark,.lorc-saver .sp::before{display:none!important;}   /* no sheen at all */
+.lorc-saver .lz-info,.lorc-saver .wshim,.lorc-saver .wspark,.lorc-saver .rgem::after,.lorc-saver .lz-bm.tall.on .rib .glint{animation:none!important;}
 .lorc-saver .fchip.on::after,.lorc-saver .iwt.on::after,.lorc-saver .adv-pick.on::after,.lorc-saver .pk-row.on::after,.lorc-saver .sort-row.on::after{animation:none;}
 /* Hand filter and sort, under the strip of little cards: the library's round Sort button and its chips */
 .lz-hf{position:relative;z-index:211;display:flex;align-items:center;gap:10px;width:100%;max-width:560px;margin:-2px 0 2px;}
@@ -9223,7 +9224,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     document.documentElement.classList.toggle('lorc-saver', on);
     if (Kit.keepAwake) Kit.keepAwake(!on);
     if (on) { if (tiltT.listening) { window.removeEventListener('deviceorientation', onOrient); tiltT.listening = false; } tiltT.got = false; tiltT.x = 0; tiltT.y = 0; TL.tx = 0; TL.ty = 0; wakeTilt(); tableLight(); }
-    else if (lsGet('lorc_tilt', 0) || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') listenOrient();
+    else {
+      // back on: listen to motion again. iPhone may want its yes again, so the next tap asks (it answers at once,
+      // with nothing shown, when motion is already allowed)
+      listenOrient();
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        var again = function () { document.removeEventListener('touchend', again, true); document.removeEventListener('click', again, true); if (tiltT.got) return; tiltT.asked = false; askOrient(); };
+        document.addEventListener('touchend', again, true); document.addEventListener('click', again, true);
+      }
+      tiltT.base = null; tiltT.prev = null;
+    }
   }
   function quickMoves() { return !!lsGet(FAST, false) || (S && S.skipTurn === S.turn); }
   function cpuShow(u, verb, how, effect) {
