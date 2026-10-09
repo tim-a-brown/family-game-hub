@@ -1020,6 +1020,7 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .lz-acts.out .acts-row.many .act{min-height:46px;padding:5px 6px;gap:5px;}
 .lz-acts.out .why{margin-top:6px;min-height:1.35em;}
 .lz.has-acts:not(.lz-min) .lz-flow,.lz.has-acts:not(.lz-min) .lz-card{--cu:min(44vh,94vw,460px);}
+.lz.lz-fit:not(.lz-min) .lz-flow,.lz.lz-fit:not(.lz-min) .lz-card:not(.loc){--cu:min(44vh,94vw,460px,var(--cufit))!important;}
 .acts-row{display:flex;gap:8px;width:100%;}
 .act.act-ghost{visibility:hidden;pointer-events:none;}
 /* Hand filter and sort, under the strip of little cards: the library's round Sort button and its chips */
@@ -8410,6 +8411,29 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     sp.style.fontSize = '';
     for (var fs = parseFloat(getComputedStyle(sp).fontSize), n = 0; sp.scrollWidth > sp.clientWidth + 1 && n < 8; n++) { fs -= 1; sp.style.fontSize = fs + 'px'; }
   }
+  function fitLz(ov) {
+    if (!ov || !ov.isConnected || !phoneZoom() || !S || ui.screen !== 'game' || ov.classList.contains('lz-min') || ov.classList.contains('reveal')) return;
+    var over = ov.scrollHeight - ov.clientHeight;
+    // swiping through several cards: size for the one with the most to read, so the size is set once when it opens
+    var inf = $('.lz-in > .lz-info', ov);
+    if (ov._fitList && inf && inf.offsetWidth) {
+      var key = ov._fitList.join(',') + '|' + inf.offsetWidth;
+      if (ui.fitKey !== key) {
+        var probe = el('div', { class: 'lz-info', style: { position: 'absolute', visibility: 'hidden', left: '0', top: '0', width: inf.offsetWidth + 'px' } }), hmax = 0, hcur = 0;
+        inf.parentNode.appendChild(probe);
+        ov._fitList.forEach(function (x) { if (!S.cards[x]) return; probe.innerHTML = infoOf(x); var h = probe.offsetHeight; hmax = Math.max(hmax, h); if (x === ov._fitU) hcur = h; });
+        probe.remove(); ui.fitKey = key; ui.fitExtra = Math.max(0, hmax - hcur);
+      }
+      over += ui.fitExtra || 0;
+    }
+    if (over <= 2) return;
+    var c = $('.lz-fc.focus', ov) || $('.lz-card', ov); if (!c) return;
+    var cu = c.classList.contains('loc') ? c.offsetWidth : c.offsetHeight, nu = Math.max(LZ_FIT_MIN, Math.floor(cu - over - 6));
+    if (nu >= cu - 1) return;
+    ui.fitCu = nu; ov.classList.add('lz-fit'); ov.style.setProperty('--cufit', nu + 'px');
+    if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
+  }
+  var LZ_FIT_MIN = 190;   // the smallest the card gets (press and hold still shows it big)
   function zoomShell(d, infoHTML, acts, whys, nav, opt) {
     opt = opt || {};
     var quiet = !!ui.lzQuiet && !!$$('.lz').length; ui.lzQuiet = false;   // re-dealt in place (sort / filter): no fade in
@@ -8561,8 +8585,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         card.addEventListener('pointercancel', swEnd);
       }
     }
+    // Phones, in a game: the card shrinks so the details below fit on screen without scrolling. A fresh look starts
+    // full size; as you swipe it only ever shrinks (never grows back), so the cards don't keep changing size
+    if (!(swapping || keep)) { ui.fitCu = 0; ui.fitKey = null; }
+    if (ui.fitCu) { ov.classList.add('lz-fit'); ov.style.setProperty('--cufit', ui.fitCu + 'px'); }
     document.body.appendChild(ov);
-    if (!opt.tapClose) lzFeed();
+    if (!opt.tapClose) { lzFeed(); requestAnimationFrame(function () { fitLz(ov); }); }
     cardTilt(ov);
     if (F) F.render();
     if (!swapping && !keep) requestAnimationFrame(function () { ov.classList.add('show'); });
@@ -8819,6 +8847,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     for (var j = Math.max(0, base - 6); j <= Math.min(n - 1, base + 6); j++) { var dd = defAt(j); if (dd && dd.im && dd.im.l) { var im = new Image(); im.decoding = 'async'; im.src = dd.im.l; } }
     return F;
   }
+  // A card's details panel, as the card view shows it (used to measure how tall it will be)
+  function infoOf(x) { var dx = DD(x), zx = zoneOf(x); return headHTML(dx) + defMeta(dx, x) + statusHTML(x, zx) + '<div class="rtext">' + rulesHTML(dx) + kwHelpHTML(dx, zx && zx.z === 'board' ? x : null) + '</div>'; }
   function openZoom(u, dir) {
     var d = DD(u), z = zoneOf(u), acts = [], whys = [];
     var info = headHTML(d) + defMeta(d, u) + statusHTML(u, z) +
@@ -8896,6 +8926,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var zov = zoomShell(d, info, acts, (my ? whys.slice(0, 1) : []).concat(manualHere ? ['The game can’t do this card’s ability on its own yet. “Do it yourself” opens tools to apply it (deal damage, banish, draw, gain lore…), and it’s noted in the game log.'] : []), nav);
     statusToCorner(zov);
     addPeek(zov);
+    if (zov && nav && nav.list && nav.list.length > 1) { zov._fitList = nav.list; zov._fitU = u; }
     // What's under it: face-up cards to tap and look at, facedown ones as card backs
     if (z && z.z === 'board' && c.under && c.under.length && zov) {
       var urow = el('div', { class: 'und-row' }, [el('div', { class: 'und-l', text: 'Under it' })]);
