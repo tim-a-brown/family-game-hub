@@ -8236,6 +8236,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var land = Math.abs(window.orientation || (screen.orientation && screen.orientation.angle) || 0) === 90;
     var b = land ? e.gamma : e.beta, g = land ? -e.beta : e.gamma;
     if (!tiltT.base) tiltT.base = { b: b, g: g };
+    // Held near upright, the sensor sometimes flips an angle by ~180° for a moment (or wraps round): a jump no hand
+    // makes between two readings. Move the resting angle with it, so the card doesn't twitch
+    var pv = tiltT.prev; tiltT.prev = { b: b, g: g };
+    if (pv) { var jb = b - pv.b, jg = g - pv.g; if (Math.abs(jb) > 25) tiltT.base.b += jb; if (Math.abs(jg) > 25) tiltT.base.g += jg; }
     // drift the resting angle slowly toward how the phone is being held
     tiltT.base.b += (b - tiltT.base.b) * 0.003; tiltT.base.g += (g - tiltT.base.g) * 0.003;
     tiltT.x = Math.max(-1, Math.min(1, (g - tiltT.base.g) / 11));
@@ -8252,7 +8256,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') { lsSet('lorc_tilt', 1); listenOrient(); } }).catch(function () { tiltT.asked = false; });
   }
   function cardTilt(ov) {
-    tiltT.ov = ov; tiltT.base = null;
+    tiltT.ov = ov; tiltT.base = null; tiltT.prev = null;
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       // Safari only shows its motion prompt from a tap (touchend / click)
