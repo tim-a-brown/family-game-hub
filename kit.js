@@ -1410,7 +1410,7 @@
         { label: 'Unlink ' + name, cls: 'btn-ghost', onClick: function () { FGHSync.linkRemove(name); toast('Unlinked'); avRefresh(); if (onDone) onDone(); } }] });
       return;
     }
-    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code (on their phone: Account, then Share my profile).' }));
+    node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile.' }));
     var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
@@ -1429,7 +1429,21 @@
     var node = el('div', { class: 'lk' }), s;
     if (!linksOn()) { node.appendChild(el('p', { class: 'muted', text: 'Sign in with a PIN to share your profile.' })); sheet({ title: 'Share my profile', node: node, actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
     var me = lsGet('my_name', '').trim();
-    if (!me) { node.appendChild(el('p', { class: 'muted', text: 'Set your name first (Account, then You).' })); sheet({ title: 'Share my profile', node: node, actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
+    if (!me) {
+      // no name yet: ask for it here, then carry on to the code
+      var nin = el('input', { class: 'input', maxlength: 14, placeholder: 'Your name', autocomplete: 'off', enterkeyhint: 'done' }), s0;
+      function goName() {
+        var v = nin.value.trim(); if (!v) { nin.focus(); return; }
+        if (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.setMyName) FrequentPlayers.setMyName(v); else lsSet('my_name', v);
+        s0.close(); setTimeout(profileSheet, 320);
+      }
+      nin.addEventListener('keydown', function (e) { if (e.key === 'Enter') goName(); });
+      node.appendChild(el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'What’s your name? It’s what people see when they link you.' }));
+      node.appendChild(nin);
+      s0 = sheet({ title: 'Share my profile', node: node, actions: [{ label: 'Continue', primary: true, keep: true, onClick: goName }, { label: 'Cancel', cls: 'btn-ghost' }] });
+      setTimeout(function () { nin.focus(); }, 300);
+      return;
+    }
     node.appendChild(el('p', { class: 'muted', text: 'Making your code…' }));
     s = sheet({ title: 'Share my profile', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
     FGHSync.linkShare().then(paint).catch(function (e) { node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: (e && e.message) || 'Couldn’t reach the cloud. Try again when you’re online.' })); });
