@@ -1169,6 +1169,16 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .rv-skip:active,.rv-fast:active{transform:translateY(2px);box-shadow:inset 0 0 0 1.5px rgba(227,189,98,.5),0 2px 0 #120d26;}
 .hold-tip{position:fixed;z-index:2000;max-width:min(280px,calc(100vw - 16px));padding:8px 12px;border-radius:10px;background:#f6ecd0;color:#241a05;font-size:.82rem;font-weight:600;line-height:1.3;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;}
 .hold-tip.on{opacity:1;transform:none;}
+/* an effect's tip: the card it came from (thumbnail, name, the ability), then what it does and how long */
+.hold-tip.rich{max-width:min(300px,calc(100vw - 16px));padding:10px 12px;}
+.hold-tip .tt-src{display:flex;align-items:center;gap:9px;padding-bottom:8px;margin-bottom:7px;border-bottom:1px solid rgba(90,60,10,.18);}
+.hold-tip .tt-src .mini{flex:none;display:block;width:30px;height:42px;border-radius:4px;background-size:cover;background-position:center;box-shadow:0 1px 4px rgba(0,0,0,.35);}
+.hold-tip .tt-src span{display:flex;flex-direction:column;min-width:0;line-height:1.15;}
+.hold-tip .tt-src b{font-family:var(--serif);font-size:.98rem;font-weight:700;}
+.hold-tip .tt-src small{font-family:var(--serif);font-style:italic;font-size:.8rem;color:rgba(36,26,5,.7);}
+.hold-tip .tt-src em{margin-top:3px;font-style:normal;font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#8a5a12;}
+.hold-tip .tt-what{margin:0;font-weight:600;}
+.hold-tip .tt-dur{margin:4px 0 0;font-size:.76rem;color:rgba(36,26,5,.65);}
 .hold-tip::after{content:'';position:absolute;top:100%;left:calc(var(--ax) - 6px);border:6px solid transparent;border-top-color:#f6ecd0;}
 .rv-also{margin-bottom:6px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2);font-size:.82rem;text-align:center;max-width:100%;}
 .rv-also b{font-family:var(--display);font-weight:400;letter-spacing:.04em;text-transform:uppercase;color:#f1cf78;margin-right:4px;}
@@ -8353,7 +8363,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!parts.length) parts.push(m.why ? esc(m.why) : 'Effect');
       var bad = m.cant || m.must || m.nokw || m.s < 0 || m.w < 0 || m.l < 0;
       h += stt(bad ? 's-bad' : 's-good', m.cant ? 'chain' : m.shield ? 'shield' : bad ? 'down' : 'up', parts.join(', '))   // just what it does; how long and where it came from are in the tip
-        .replace('<span class="stt', '<span data-tip="' + esc(modTip(m, u)) + '" class="stt');
+        .replace('<span class="stt', '<span data-tipi="' + (CHIP_TIPS.push(modTip(m, u)) - 1) + '" class="stt');
     });
     return (top ? '<div class="stts stts-top">' + top + '</div>' : '') + (h ? '<div class="stts">' + h + '</div>' : '');
   }
@@ -8374,12 +8384,15 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var mine = S.cur === C(u).o;
     var dur = m.until === 'perm' ? 'while it stays in play' : m.whileSrc ? 'while ' + (S.cards[m.whileSrc] ? DD(m.whileSrc).full : 'its source') + ' stays in play'
       : m.untilStart ? 'until the start of ' + (mine ? 'your' : S.P[C(u).o].name + '’s') + ' next turn' : m.until > S.turn ? 'until the end of next turn' : 'until the end of this turn';
-    var srcName = m.srcId != null && D(m.srcId) ? D(m.srcId).full : m.src && S.cards[m.src] ? DD(m.src).full : '';
-    var from = m.support ? (srcName ? srcName + ' added its strength with Support when it quested' : 'Support: a character added its strength when it quested')
-      : srcName ? 'From ' + srcName + (m.why && m.why !== srcName && m.why.indexOf(srcName) < 0 ? '’s ' + m.why.replace(/^.*?·\s*/, '') : '')
-      : m.why ? 'From ' + m.why : '';
-    return txt + ', ' + dur + '.' + (from ? ' ' + from + '.' : '');
+    // where it came from: the card (a little thumbnail, its name) and the ability that gave it
+    var sd = m.srcId != null && D(m.srcId) ? D(m.srcId) : m.src && S.cards[m.src] ? DD(m.src) : null;
+    var abn = m.support ? 'Support' : m.why && (!sd || (m.why !== sd.full && m.why !== sd.n)) ? m.why.replace(/^.*?·\s*/, '') : '';
+    var head = sd ? '<div class="tt-src">' + miniArt(sd) + '<span><b>' + esc(sd.n) + '</b>' + (sd.v ? '<small>' + esc(sd.v) + '</small>' : '') + (abn ? '<em>' + esc(abn) + '</em>' : '') + '</span></div>'
+      : abn ? '<div class="tt-src"><span><em>' + esc(abn) + '</em></span></div>' : '';
+    var what = m.support ? txt + ' from Support: it added its strength when it quested' : txt;
+    return head + '<p class="tt-what">' + esc(what) + '.</p><p class="tt-dur">Lasts ' + esc(dur) + '.</p>';
   }
+  var CHIP_TIPS = [];
   var STT_TIP = { 's-rdy': 'Ready: it can quest, challenge or use its abilities', 's-exd': 'Exerted: it has been used this turn. It readies at the start of its owner’s turn', 's-wet': 'Drying: played this turn, so it can’t quest, challenge or sing until next turn' };
   // Hold the eye (top left) to see the table under the card view; let go to come back to the same card
   function addPeek(ov) {
@@ -8400,7 +8413,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     ics.insertBefore(st, ics.firstChild);
     $$('.stt', st).forEach(function (t) { var k = Object.keys(STT_TIP).filter(function (x) { return t.classList.contains(x); })[0]; if (k) holdTip(t, k === 's-wet' && /Rush/.test(t.textContent) ? 'Drying: played this turn. It can’t quest or sing yet, but Rush lets it challenge' : STT_TIP[k], true); });
     // the effect chips under the stats: tap (or hold) for the effect in full and where it came from
-    $$('.lz-info .stt[data-tip]', ov).forEach(function (t) { holdTip(t, t.getAttribute('data-tip'), true); t.style.cursor = 'pointer'; });
+    $$('.lz-info .stt[data-tipi]', ov).forEach(function (t) { var tip = CHIP_TIPS[+t.getAttribute('data-tipi')]; if (tip) { holdTip(t, tip, true, true); t.style.cursor = 'pointer'; } });
+    if (CHIP_TIPS.length > 200) CHIP_TIPS.length = 0;
   }
   function kwHelpHTML(d, u) {
     var ks = Object.keys(KWHELP).filter(function (k) {
@@ -9388,13 +9402,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }, 500);
   }
   // Press and hold a button to see what it does; the tap that ends the hold doesn't press it
-  function holdTip(btn, text, tap) {
+  function holdTip(btn, text, tap, isHtml) {
     var t = null, shown = null;
     function hide() { clearTimeout(t); t = null; if (shown) { var s = shown; shown = null; s.classList.remove('on'); setTimeout(function () { s.remove(); }, 200); } }
     function show() {
       $$('.hold-tip').forEach(function (x) { x.remove(); });
       var r = btn.getBoundingClientRect();
-      shown = document.body.appendChild(el('div', { class: 'hold-tip', role: 'tooltip', text: text }));
+      shown = document.body.appendChild(el('div', isHtml ? { class: 'hold-tip rich', role: 'tooltip', html: text } : { class: 'hold-tip', role: 'tooltip', text: text }));
       var w = shown.offsetWidth, x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
       shown.style.left = x + 'px'; shown.style.top = (r.top - shown.offsetHeight - 10) + 'px';
       shown.style.setProperty('--ax', (r.left + r.width / 2 - x) + 'px');
