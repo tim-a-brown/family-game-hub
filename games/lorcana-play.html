@@ -1062,6 +1062,10 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 .act .alw{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;}
 .act .alw .al{white-space:nowrap;}
 .act .ai-n{font-family:var(--display);font-weight:400;font-size:1.05rem;line-height:1;color:#f6e1a8;}.act.pri .ai-n{color:#2b1a00;}
+.act small.cst .dropm{display:inline-flex;align-items:center;gap:1px;margin-left:3px;color:#e3bd62;}
+.act.pri small.cst .dropm{color:#5a3a00;}
+.act small.cst .dropm svg{width:15px;height:15px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));}
+.act small.cst .dropm b{font-size:.72rem;font-weight:900;}
 .act small.cst{display:flex;align-items:center;gap:4px;overflow:visible;}
 .act small.cst svg{width:20px;height:20px;flex:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));}
 .lz-acts.out .act .alw .al{text-align:center;}
@@ -8319,7 +8323,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (main === 'Sing it for free') { main = 'Sing'; sub = sub || 'Free'; }
     var ci = /^(\d+) ink$/.exec(sub);   // an ink cost shows as the cost coin with the number in it
     if (a.icon) icon = a.icon;
-    return { text: text, main: main, sub: sub, icon: icon, subHTML: ci ? costSVG(false, +ci[1], 19) : '' };
+    return { text: text, main: main, sub: sub, icon: icon, subHTML: ci ? costSVG(false, +ci[1], 19) + (a.drop ? '<i class="dropm" title="Uses ' + plural(a.drop, 'ink drop') + '">' + STT_ICO.drop + (a.drop > 1 ? '<b>' + a.drop + '</b>' : '') + '</i>' : '') : '' };
   }
   // ── A faint sheen on the card in focus that follows the phone's tilt (or the pointer) ──
   // The card leans a few degrees with the device and a soft band of light slides across it.
@@ -8975,6 +8979,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (asf && d.K.shift) { var asp = S.P[pi].discard.filter(function (x) { return DD(x).t === asf.type; }); add('Shift free · ' + asf.discBottom + ' ' + asf.type + 's from discard to deck bottom', asp.length >= asf.discBottom && shiftTargets(u).length > 0, '', function () {
         chooseFromList('Put ' + asf.discBottom + ' ' + asf.type + ' cards from your discard on the bottom of your deck', asp, asf.discBottom, function (sel) { if (sel.length < asf.discBottom) return; var P3 = S.P[pi]; act(function () { sel.forEach(function (x) { P3.discard.splice(P3.discard.indexOf(x), 1); resetCard(x); P3.deckL.push(x); leftDisc(pi, x, false); }); }); humanShift(u, { shiftFree: true }); }, { min: asf.discBottom });
       }); }
+      // paying with ink drops (the inkwell alone is short): Play says how many drops it will use
+      var dUse = Math.max(0, cost - wellReady(pi));
+      if (dUse) acts.forEach(function (a) { if (!a.off && /^Play( ready| exerted)? · \d+ ink$/.test(a.label)) a.drop = dUse; });
       add('Put into inkwell', canInk(pi, u), '', function () { runAction({ k: 'ink', u: u }); });
       abs(u).forEach(function (a) { if (a.kind === 'static' && a.ok && a.fx && condOK(a.cond, u, pi)) a.fx.forEach(function (e) {
         if (e.op !== 'altPlay') return;
