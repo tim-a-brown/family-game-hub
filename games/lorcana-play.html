@@ -8330,7 +8330,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   document.addEventListener('keydown', function (e) { var ov = $$('.lz').filter(function (z) { return z._keys; }).pop(); if (ov) ov._keys(e); });
   document.addEventListener('keyup', function (e) { if (lastFlow && lastFlow.onKeyUp) lastFlow.onKeyUp(e); });
   window.addEventListener('blur', function () { if (lastFlow && lastFlow.holding) lastFlow.release(); });
-  function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); }
+  function closeZoom() { flowChain = null; $$('.lz').forEach(function (z) { z.remove(); }); filtersOnExit(); }
+  // Leaving the card view (not just moving to the next card) puts the hand and table filters back to All
+  function filtersOnExit() {
+    setTimeout(function () { if ($('.lz')) return; ui.bf = null; if (S && hvGet().f !== 'all') hvSet({ f: 'all' }); }, 80);
+  }
   function closeOverlays() { closeZoom(); $$('.k-scrim').forEach(function (s) { s.remove(); }); ui.pick = null; ui.modal = 0; }
   // Card text. A named ability ("TIME TO MOVE IT!") gets its own small line with
   // the instructions under it; the set and card number sit right-aligned on the
@@ -8918,13 +8922,13 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (opt.modal) ov.classList.add('modal');
     // a prompt the game opens (ability, choose a card) arrives: the card and its details glide in from the middle
     if (opt.modal && !swapping && !keep) { ov.classList.add('arrive'); setTimeout(function () { ov.classList.remove('arrive'); }, 900); }
-    if (opt.tapClose) ov.addEventListener('click', function () { ov.remove(); if (opt.onClose) opt.onClose(); });
+    if (opt.tapClose) ov.addEventListener('click', function () { ov.remove(); filtersOnExit(); if (opt.onClose) opt.onClose(); });
     else if (!opt.modal) ov.addEventListener('click', function (e) { if (e.target === ov || e.target === inner) closeZoom(); });
     function step(k) { if (F) F.settle(nav.i + k); else { var j = nav.i + k; if (j >= 0 && j < nav.n) nav.go(k); } }
     ov._keys = function esck(e) {
       if (!ov.isConnected) return;
       if (opt.modal) return;
-      if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { ov.remove(); if (opt.onClose) opt.onClose(); }
+      if (e.key === 'Escape' || (opt.tapClose && (e.key === 'Enter' || e.key === ' '))) { ov.remove(); filtersOnExit(); if (opt.onClose) opt.onClose(); }
       else if (nav && nav.n > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
         e.preventDefault();
         if (F) { if (!e.repeat || !F.holding) F.hold(e.key === 'ArrowRight' ? 1 : -1); }
@@ -9306,6 +9310,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       // your own cards on your turn can be narrowed to what can quest, challenge, use an ability or move (the card
       // you're looking at always stays in the list, so acting on it doesn't throw you out of the view)
       var bmine = canAct() && z.pi === S.cur && c.o === S.cur && !S.P[S.cur].cpu, bf = bmine ? bfGet() : 'all';
+      if (bf !== 'all' && !dir && !ui.lzQuiet && !bfFits(u, bf)) { ui.bf = null; bf = 'all'; }   // tapped a card the filter leaves out: show them all
       var bd = boardOrder(z.pi).filter(function (x) { return x === u || bfFits(x, bf); }), bi = bd.indexOf(u);
       if (bi >= 0) nav = { i: bi, n: bd.length, list: bd.slice(), ctx: 'board', dir: dir || 0, go: function (step) { var j = bi + step; if (j >= 0 && j < bd.length) openZoom(bd[j], step); }, peek: function (k) { var x = bd[bi + k]; return x ? DD(x) : null; } };
     }
