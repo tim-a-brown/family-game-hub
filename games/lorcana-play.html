@@ -3262,6 +3262,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (nm && /[A-Z]{2}/.test(nm[1])) { ab.name = nm[1].trim(); L = L.slice(nm[1].length).trim(); }
       var body = L, m;
       if (!body) { ab.ok = true; ab.kind = 'static'; ab.fx = []; return ab; }
+      // Boo's Kid-tastrophe: the challenge banishes instead of dealing damage (always on, not a trigger after the fight)
+      if (/no damage is dealt in that challenge/i.test(ab.text) && (m = body.match(/^whenever this character challenges another character with (\d+) \{S\} or less, banish that character\.?$/i))) { ab.ok = true; ab.kind = 'static'; ab.fx = [{ op: 'chalBanish', maxS: +m[1] }]; return ab; }
       // Paid abilities "cost — effect"
       m = body.match(/^(.+?)\s+[—–]\s+(.+)$/) || body.match(/^((?:\{E\}|\d+ \{I\})(?:\s*,\s*(?:\{E\}|\d+ \{I\}))*)\s*-\s*(.+)$/);
       var pc = m && costOf(m[1]);
@@ -4232,7 +4234,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!isLoc(t)) S.P[C(t).o].board.forEach(function (x) { var tx = staticOp(x, 'chalTax'); if (!tx || !C(x).ex) return; if (inkReady(pi) >= tx.n) { payInk(pi, tx.n); log(S.P[pi].name + ' paid ' + tx.n + ' ink for ' + nm(x) + '’s ability', pi); } else C(a).mods.push({ s: -tx.s, until: S.turn, why: abTitle(x, { name: '' }) }); });
       var loc = isLoc(t), sa = hitPow(a, true), sd = loc ? 0 : hitPow(t, false);
       log(S.P[pi].name + '’s ' + nm(a) + ' challenged ' + nm(t), pi);
-      var cbn = !isLoc(t) && staticOp(a, 'chalBanish'), cbHit = cbn && STR(t) <= cbn.maxS;
+      var cbHit = chalBanishes(a, t);
       var dt = cbHit ? 0 : dealDamage(t, sa), da = cbHit ? 0 : dealDamage(a, sd);
       if (cbHit) { fx.banish(t); banish(t); log(nm(t) + ' was banished', C(t).o); S.st[C(t).o].lost++; noteBanish(t); }
       var aw = DD(a).full, tn = DD(t).full;
@@ -6141,9 +6143,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function si(k, name) { return '<svg class="si si-' + k + '" viewBox="0 0 40 40" role="img" aria-label="' + name + '"><title>' + name + '</title>' + SI[k] + '</svg>'; }
   // A changed stat in a line of text: its mark, then the change, green when it goes up and red when it goes down
   function sv(k, name, html, dir) { return '<span class="sv' + (dir > 0 ? ' sv-up' : dir < 0 ? ' sv-dn' : '') + '">' + si(k, name) + html + '</span>'; }
+  // "Whenever this character challenges another character with N {S} or less, banish that character" (no damage either way)
+  function chalBanishes(a, t) { var cb = !isLoc(t) && staticOp(a, 'chalBanish'); return !!cb && STR(t) <= cb.maxS; }
   function chalPreview(a, t) {
     var loc = isLoc(t), dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
     var lT = WP(t) - C(t).dmg, lA = WP(a) - C(a).dmg, killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
+    if (chalBanishes(a, t)) { dA = dD = 0; killT = true; killA = false; }   // Boo: it's banished and no damage is dealt
     return { killT: killT, killA: killA,
       // willpower before → after, behind its mark ("Druun ⛉ 3→1"); HTML
       t: killT ? 'Banishes ' + esc(nm(t)) : dA ? esc(nm(t)) + ' ' + sv('w', 'Willpower', lT + '→' + (lT - dA), -1) : esc(nm(t)) + ' unhurt',
@@ -6152,6 +6157,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function challengeScore(a, t) {
     var loc = isLoc(t), dA = Math.max(0, hitPow(a, true) - kwN(t, 'resist')), dD = loc ? 0 : Math.max(0, hitPow(t, false) - kwN(a, 'resist'));
     var killT = dA > 0 && C(t).dmg + dA >= WP(t), killA = dD > 0 && C(a).dmg + dD >= WP(a);
+    if (chalBanishes(a, t)) { dA = dD = 0; killT = true; killA = false; }
     var vT = loc ? LORE(t) * 2.6 + 1 : cardValue(t), vA = cardValue(a);
     var sc = (killT ? vT + 0.6 : dA * (loc ? 0.5 : 0.25)) - (killA ? vA : dD * 0.15) - questValue(a) * 0.55;
     // Racing: if the opponent is close to winning, removing questers matters more
