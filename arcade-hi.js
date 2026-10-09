@@ -48,7 +48,7 @@ const ArcadeHi = (function(){
   function insert(key, name, score){
     const list = load(key);
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});   // e.g. 'Oct 9, 2026'
     const timeStr = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     list.push({name: name.toUpperCase().slice(0,3).padEnd(3,' '), score, date: dateStr+' '+timeStr});
     list.sort((a,b)=>b.score-a.score);

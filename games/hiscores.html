@@ -65,14 +65,14 @@ body.hs .gbar{background:rgba(7,6,15,.9);}
 @keyframes flick{0%{opacity:1}50%{opacity:.965}52%{opacity:1}}
 .sb .hd{flex:none;padding:16px 12px 8px;text-align:center;}
 .sb .hd b{display:block;font-weight:400;font-size:clamp(11px,5.6cqi,16px);color:var(--hc);letter-spacing:.08em;}
-.sb .hd .cols{display:grid;grid-template-columns:var(--gc);gap:0 8px;margin-top:14px;font-size:clamp(7px,3.3cqi,10px);color:var(--lc);text-shadow:none;opacity:.85;}
+.sb .hd .cols{display:grid;grid-template-columns:var(--gc);gap:0 6px;margin-top:14px;font-size:clamp(7px,3.3cqi,10px);color:var(--lc);text-shadow:none;opacity:.85;}
 .sb ol{flex:1;min-height:0;margin:0;padding:2px 12px 8px;list-style:none;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:none;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 8px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(180deg,transparent 0,#000 8px,#000 calc(100% - 14px),transparent);}
 .sb ol::-webkit-scrollbar{display:none;}
-.sb li{display:grid;grid-template-columns:var(--gc);gap:0 8px;align-items:center;min-height:clamp(22px,9cqi,28px);font-size:clamp(8.5px,4cqi,12.5px);color:var(--rc);}
+.sb li{display:grid;grid-template-columns:var(--gc);gap:0 6px;align-items:center;min-height:clamp(22px,9cqi,28px);font-size:clamp(8.5px,4cqi,12.5px);color:var(--rc);}
 .sb li .sc,.sb .cols .sc{text-align:right;}
 .sb li .nm{letter-spacing:.12em;white-space:nowrap;}
-.sb li .dt,.sb .cols .dt{font-size:.68em;text-align:right;white-space:nowrap;opacity:.7;}
+.sb li .dt,.sb .cols .dt{font-size:.6em;text-align:right;white-space:nowrap;opacity:.7;}
 .sb li .wh{display:flex;justify-content:flex-end;}
 .sb li .wh canvas{width:20px;height:20px;image-rendering:pixelated;image-rendering:crisp-edges;filter:drop-shadow(0 0 3px var(--rc));}
 .sb li.me{--rc:#ffe14d !important;}
@@ -268,7 +268,17 @@ Kit.init({ id: 'hiscores', mark: false });
   }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
   // 'Oct 2 1:00 PM' -> 'OCT 2'
-  function shortDate(d) { var m = String(d || '').match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})/); return m ? (m[1] + ' ' + m[2]).toUpperCase() : String(d || '').slice(0, 6).toUpperCase(); }
+  // 'Oct 9, 2026 1:00 PM' -> '10/09/26'. Older scores were saved without a year: they get the latest year that date
+  // could have been (a 'Dec 31' score seen in October is from last year).
+  var MON = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  function shortDate(d) {
+    var m = String(d || '').match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?/); if (!m) return String(d || '').slice(0, 8);
+    var mo = MON.indexOf(m[1].toLowerCase()), day = +m[2], now = new Date(), y = m[3] ? +m[3] : now.getFullYear();
+    if (mo < 0) return String(d).slice(0, 8);
+    if (!m[3] && new Date(y, mo, day) > now) y--;
+    function two(n) { return (n < 10 ? '0' : '') + n; }
+    return two(mo + 1) + '/' + two(day) + '/' + two(y % 100);
+  }
 
   function theme(b) {
     var c = b.c, s = cab.style;
@@ -285,7 +295,7 @@ Kit.init({ id: 'hiscores', mark: false });
   function paintScores(b) {
     var rows = (typeof ArcadeHi !== 'undefined' && ArcadeHi.board ? ArcadeHi.board(b.key) : []).slice(0, 50);
     var unit = b.unit || 'SCORE', wide = rows.some(function (r) { return r.who || r.mine; });
-    sb.style.setProperty('--gc', '4.2em 1fr 3.4em 4.4em' + (wide ? ' 20px' : ''));
+    sb.style.setProperty('--gc', '3.9em 1fr 3.3em 4.9em' + (wide ? ' 20px' : ''));
     sb.innerHTML = ''; crt.classList.toggle('dim', rows.length > 0);
     var hd = el('div', { class: 'hd' }, [el('b', { text: 'HALL OF FAME' })]);
     sb.appendChild(hd);
