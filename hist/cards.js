@@ -46,7 +46,7 @@
   }
   function suitTag(s) { return K().el('span', { class: 'hvc-suit' + (red(s) ? ' red' : ''), text: GL[s] || '' }); }
   function names(e) { return (e.players || []).map(function (p) { return p.name; }); }
-  function first(n) { return String(n || '').split(/[ &]/)[0]; }
+  function first(n) { return String(n || '').split(' & ')[0]; }
   function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
   // a step line chart: series = [{pts:[y...], color}], o: {w,h,max,lines:[{y,label}], xmarks:[x]}
   function chart(series, o) {
@@ -297,7 +297,7 @@
   R('freecell', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var out = [];
-    if (d.tab) out.push(ui.section('Deal #' + (e.deal || ''), felt('fc', [tableau(d.tab, null, 38)])));
+    if (d.tab) out.push(ui.section('Deal #' + (e.deal || ''), felt('fc', [tableau(d.tab, null, 34)])));
     out.push(progress(ui, d.pg, e.moves));
     out.push(ui.stats([['Moves', e.moves], ['Time', e.time != null ? ui.time(e.time) : null], ['Most free cells used', d.cells != null ? d.cells + ' of 4' : null], ['Undos', d.undos], ['Cards that went home themselves', d.auto || null]]));
     return ui.wrap(out);

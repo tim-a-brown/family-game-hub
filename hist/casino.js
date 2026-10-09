@@ -311,7 +311,8 @@
 
   // ═════════════ Poker ═════════════
   function tableHand(ui, e, x, title) {
-    var kids = [ui.el('div', { class: 'cz-kv', html: '<span><b>' + ui.esc(title) + '</b></span><span>hand ' + x.no + '</span><span>pot <b>' + ui.money(x.pot) + '</b></span>' })];
+    var ws = (x.p || []).filter(function (p) { return p.win; }).map(function (p) { return pname(e, p.i); });
+    var kids = [ui.el('div', { class: 'cz-kv', html: '<span><b>Hand ' + x.no + '</b></span><span>pot <b>' + ui.money(x.pot) + '</b></span>' + (ws.length ? '<span>' + ui.esc(ws.join(' and ')) + ' won</span>' : '') })];
     if (x.b && x.b.length) kids.push(line(ui, 'Board', x.b, null, null, { small: false }));
     (x.p || []).forEach(function (p) {
       var lab = pname(e, p.i) + (p.win ? ' · won' : p.f ? ' · folded' : '') + (p.h ? ' · ' + p.h : '');
