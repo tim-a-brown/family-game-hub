@@ -6075,7 +6075,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function abCostText(ab) {
     var c = ab.cost || {}, w = [];
     if (c.ex) w.push(sym('E')); if (c.ink) w.push(c.ink + ' ' + sym('I')); if (c.banishSelf) w.push('banish'); if (c.discard) w.push('discard ' + c.discard);
-    if (c.sac) w.push('banish ' + (c.sac.n > 1 ? c.sac.n + ' ' : 'a ') + c.sac.type + (c.sac.n > 1 ? 's' : '')); if (c.exOther) w.push(sym('E') + ' a ' + (c.exOther.cls ? c.exOther.cls + ' ' : '') + c.exOther.type); if (c.selfDmg) w.push(c.selfDmg + ' damage to it');
+    var an = function (x) { return (/^[aeiou]/i.test(x) ? 'an ' : 'a ') + x; };
+    if (c.sac) w.push('banish ' + (c.sac.n > 1 ? c.sac.n + ' ' + c.sac.type + 's' : an(c.sac.type))); if (c.exOther) w.push(sym('E') + ' ' + an((c.exOther.cls ? c.exOther.cls + ' ' : '') + c.exOther.type)); if (c.selfDmg) w.push(c.selfDmg + ' damage to it');
     return w.join(' ');
   }
   function useAb(u, ab, byCpu) {
@@ -8272,8 +8273,26 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     openZoom(u);
   }
+  // Choosing among items or locations: their text matters more than where they sit, so the choice opens as a
+  // carousel of the cards (full text, swipe through) instead of glowing cards on the table. Characters, picks of
+  // several cards and challenges stay on the table.
+  var PICK_VERBS = ['Exert', 'Banish', 'Return', 'Ready', 'Move', 'Shift', 'Play', 'Choose'];
+  function pickAsCarousel(o) {
+    if (o.multi || o.chal || o.preview) return false;
+    var mine = bottomPi(), all = boardOrder(mine).concat(boardOrder(opp(mine))), legal = all.filter(function (x) { return o.ok(x); });
+    if (!legal.length || legal.some(function (x) { return DD(x).t === 'character'; })) return false;
+    if (S.P.some(function (P) { return P.hand.some(function (x) { return o.ok(x); }); })) return false;
+    var vm = String(o.title).match(new RegExp('\\b(' + PICK_VERBS.join('|') + ')\\b', 'i')), verb = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase() : 'Choose';
+    if (verb === 'Move') verb = 'Move to'; else if (verb === 'Shift') verb = 'Shift onto';
+    var back = function () { if (o.cancel) o.cancel(); };
+    cardPick({ title: o.title, src: o.src, uids: legal, n: 1, min: 1, verb: verb,
+      cancel: o.must ? null : back, skip: !o.must && !!o.skip, cancelLabel: o.skip || 'Cancel',
+      done: function (x) { if (x && x[0]) o.done(x[0]); else back(); } });
+    return true;
+  }
   function startPick(o) {
     if (netWho(o.dec) != null) return netAskPick(o);
+    if (pickAsCarousel(o)) return;
     o.sel = []; ui.pick = o; Kit.sfx('tap'); render(); if (o.src) flash(o.src);
   }
 
