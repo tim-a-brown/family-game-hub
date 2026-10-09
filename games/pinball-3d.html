@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinball</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
+<style>
+@font-face{font-family:"Bungee";src:url("../fonts/bungee.woff2") format("woff2");font-display:swap;}
+@font-face{font-family:"Cinzel";src:url("../fonts/cinzel-700.woff2") format("woff2");font-weight:700;font-display:swap;}
+/* ── Table select (inside the kit setup screen) ─────────────────────────── */
+.pb-setup .setup-hero{padding-top:4px;}
+.pb-setup .setup-hero .k-hero-ic .gicon{width:76px;height:76px;}
+.pb-setup .setup > .btn-primary.btn-lg{position:sticky;bottom:calc(var(--safe-b) + 10px);z-index:5;box-shadow:0 6px 0 var(--b-lip),0 14px 30px rgba(0,0,0,.55);}
+.pb-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.pb-head .label{margin:0;}
+.pb-head small{font-weight:800;color:var(--text-3);font-size:.8rem;}
+.pb-tables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+@media (min-width:600px){.pb-tables{grid-template-columns:repeat(3,minmax(0,1fr));}}
+.pb-card{position:relative;display:flex;flex-direction:column;border:0;padding:0;border-radius:16px;overflow:hidden;background:#0b0a16;color:#fff;text-align:left;
+  box-shadow:0 0 0 2px rgba(255,255,255,.08),0 8px 18px rgba(0,0,0,.38);transition:transform .15s var(--spring),box-shadow .15s;}
+.pb-card:active{transform:scale(.97);}
+.pb-card .th{display:block;width:100%;height:auto;aspect-ratio:280/300;background:radial-gradient(70% 60% at 50% 40%,var(--c,#333) 0%,#05040a 80%);}
+.pb-card .inf{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px;flex:1;}
+.pb-card .nm{font-family:var(--display);font-weight:400;font-size:1.18rem;line-height:1.05;}
+.pb-card .ds{font-size:.74rem;line-height:1.25;color:rgba(255,255,255,.72);font-weight:700;flex:1;}
+.pb-card .mt{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;font-size:.7rem;font-weight:900;letter-spacing:.04em;}
+.pb-card .df{display:inline-flex;gap:3px;align-items:center;color:rgba(255,255,255,.6);}
+.pb-card .df i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);}
+.pb-card .df i.on{background:var(--c,#ffc83d);}
+.pb-card .bs{color:#ffd27a;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pb-card .bs.none{color:rgba(255,255,255,.45);}
+.pb-card.on{box-shadow:0 0 0 3px var(--c,var(--accent)),0 10px 22px rgba(0,0,0,.45);}
+.pb-card .ck{position:absolute;right:7px;top:7px;width:24px;height:24px;border-radius:50%;display:none;place-items:center;background:var(--c,var(--accent));color:#08060f;}
+.pb-card.on .ck{display:grid;}
+.pb-card .ck .ico{width:15px;height:15px;stroke-width:3.2;}
+
+/* ── Play view: display band on top, the 3D machine fills the rest ──────── */
+html.pb-on,html.pb-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.pb-on body{display:flex;flex-direction:column;background:#05040a;}
+html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0;display:flex;flex-direction:column;
+  position:relative;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.pb-band{flex:none;display:flex;justify-content:center;padding:4px 8px 6px;background:linear-gradient(#17141d,#0a090d);box-shadow:0 2px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.6);z-index:2;}
+.pb-dmd{display:block;width:min(100%,560px);aspect-ratio:5/1;border-radius:6px;background:#050302;box-shadow:inset 0 0 0 2px #2a2630,0 0 0 3px #0b0a0e;}
+.pb-dmd.lcd{aspect-ratio:4/1;}
+.pb-view{flex:1;min-height:0;position:relative;}
+.pb-gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+.pb-btn{position:absolute;z-index:3;width:54px;height:54px;border-radius:50%;border:0;display:grid;place-items:center;color:#fff;
+  background:rgba(20,18,28,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22);font:900 .62rem/1 var(--font, system-ui);letter-spacing:.06em;}
+.pb-btn .ico{width:20px;height:20px;}
+.pb-btn span{display:block;margin-top:2px;}
+.pb-btn:active,.pb-btn.on{background:rgba(255,255,255,.28);}
+.pb-nudge{left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 8px);}
+.pb-magna{left:10px;bottom:calc(var(--safe-b) + 74px);}
+.pb-fire{right:10px;bottom:calc(var(--safe-b) + 74px);background:rgba(200,40,40,.7);display:none;}
+.pb-fire.show{display:grid;}
+.pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
+.pb-pause.show{display:flex;}
+.pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
+.pb-pause h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 4px;}
+.pb-pause p{color:var(--text-2);margin:0 0 14px;font-weight:700;}
+.pb-pause .btn{margin-top:8px;}
+.pb-load{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.7);font-weight:800;z-index:4;pointer-events:none;}
+.pb-nogl{padding:40px 20px;text-align:center;color:var(--text-2);font-weight:700;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script type="module">
+import * as THREE from 'three';
+import { createGame, renderThumb, fmt, audio } from './pinball/engine.js';
+import haunted from './pinball/tables/haunted.js';
+import nebula from './pinball/tables/nebula.js';
+import pirate from './pinball/tables/pirate.js';
+import jungle from './pinball/tables/jungle.js';
+import neon from './pinball/tables/neon.js';
+import midway from './pinball/tables/midway.js';
+
+const el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
+const KEY = 'pinball', SELK = 'pinball_sel';
+const TABLES = { haunted, nebula, pirate, jungle, neon, midway };
+const IDS = ['haunted', 'nebula', 'pirate', 'jungle', 'neon', 'midway'];
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function selTable() { const h = (location.hash || '').slice(1); if (TABLES[h]) return h; const s = lsGet(SELK, 'haunted'); return TABLES[s] ? s : 'haunted'; }
+
+// ═══ Renderer (one WebGL context for thumbnails and play) ═══════════════════
+let renderer = null, glCanvas = null;
+function getRenderer() {
+  if (renderer) return renderer;
+  glCanvas = document.createElement('canvas'); glCanvas.className = 'pb-gl';
+  try { renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance', alpha: false, stencil: false }); }
+  catch (e) { renderer = null; }
+  return renderer;
+}
+
+// ═══ Kit shell ══════════════════════════════════════════════════════════════
+let G = null, view = 'none', ambPref = true, ballsPref = 3;
+function showHigh() { const id = G ? G.id : selTable(); ArcadeHi.show('pinball_' + id, 'Pinball: ' + TABLES[id].name); }
+Kit.init({
+  id: 'pinball',
+  onNew: () => showSetup(),
+  menu: [
+    { icon: 'board', label: 'Choose table', onClick: () => showSetup() },
+    { icon: 'trophy', label: 'High scores', onClick: showHigh },
+    { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) }
+  ],
+  rules:
+    '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
+    '<h3>Controls</h3><ul>' +
+    '<li><b>Flippers:</b> touch the left half of the screen for the left flipper and the right half for the right flipper. Use both thumbs. Hold a flipper up to catch the ball and aim.</li>' +
+    '<li><b>Launch:</b> while the ball waits in the lane on the right, touch the right half and pull down. The further (or longer) you pull, the harder it goes. Let go to launch.</li>' +
+    '<li><b>Nudge:</b> tap NUDGE at the bottom to bump the table. Bump too often and you get a warning, then TILT: the flippers go dead and you lose that ball and its bonus.</li>' +
+    '<li><b>Magnet:</b> tables with a Magna-Save have a MAGNET button. Hold it as the ball heads for that outlane: the magnet catches it, and letting go throws it back.</li>' +
+    '<li><b>Keyboard:</b> Left/Right arrows or Z and / for the flippers, Space or Down to pull and launch (and to fire a cannon), Up or N to nudge, A for the magnet, P to pause.</li></ul>' +
+    '<h3>On every table</h3><ul>' +
+    '<li><b>Ball save:</b> for a few seconds after you launch, a ball that drains comes right back (SHOOT AGAIN flashes).</li>' +
+    '<li><b>Bonus:</b> when a ball ends, the display counts up a bonus for what you hit, times the <b>bonus multiplier</b> (2X to 5X).</li>' +
+    '<li><b>Extra ball:</b> each table lights it somewhere. Collect it to play the same ball again.</li>' +
+    '<li><b>Combos:</b> make big shots (ramps, orbits) one after another, quickly, for combo points.</li>' +
+    '<li><b>Skill shot:</b> a soft, well-judged launch scores a skill shot on most tables.</li></ul>' +
+    IDS.map(id => TABLES[id].rulesHtml ? '<h3>' + TABLES[id].name + '</h3>' + TABLES[id].rulesHtml : '').join('')
+});
+
+// ═══ Setup: table select ═══════════════════════════════════════════════════════
+const thumbs = {};
+let thumbQ = [], thumbBusy = false;
+function queueThumbs(list) {
+  thumbQ = list; if (thumbBusy) return; thumbBusy = true;
+  const next = () => {
+    const job = thumbQ.shift();
+    if (!job) { thumbBusy = false; return; }
+    const [id, cv] = job;
+    if (!cv.isConnected) { next(); return; }
+    if (!thumbs[id]) {
+      const r = getRenderer(); if (!r) { thumbBusy = false; return; }
+      const c = document.createElement('canvas'); c.width = 280; c.height = 300;
+      try { renderThumb(TABLES[id], r, c); thumbs[id] = c; } catch (e) { console.error(e); thumbs[id] = null; }
+    }
+    if (thumbs[id]) cv.getContext('2d').drawImage(thumbs[id], 0, 0);
+    setTimeout(next, 30);
+  };
+  setTimeout(next, 120);
+}
+function showSetup() {
+  leaveGame();
+  let sel = selTable();
+  app.className = 'stage pb-setup';
+  const s = Kit.setup(app, {
+    intro: 'Six real 3D tables, each with its own toys and tricks.',
+    options: [{ id: 'balls', label: 'Balls per game', choices: [['3', '3 balls', 'A standard game.'], ['5', '5 balls', 'A longer game.']], value: '3' },
+      { id: 'amb', label: 'Music & ambience', choices: [['on', 'On', 'A quiet music bed for each table and its voice. Kept well under the game sounds.'], ['off', 'Off', 'Just the ball, the flippers and the machine.']], value: 'on' }],
+    players: { min: 1, max: 1, count: 1, label: 'Player' },
+    start: 'Play',
+    onStart(cfg) {
+      lsSet(SELK, sel);
+      if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      ambPref = cfg.options.amb !== 'off'; ballsPref = +(cfg.options.balls || 3);
+      startGame(sel, ballsPref, cfg.players[0] ? cfg.players[0].name : 'Player');
+    }
+  });
+  const startBtn = s.el.querySelector('.btn-primary.btn-lg');
+  const grid = el('div', { class: 'pb-tables' }), cards = [], jobs = [];
+  const label = () => { if (startBtn) startBtn.textContent = 'Play ' + TABLES[sel].name; };
+  IDS.forEach(id => {
+    const bd = TABLES[id], cv = el('canvas', { class: 'th', width: 280, height: 300 }), best = ArcadeHi.best('pinball_' + id);
+    const dots = el('span', { class: 'df', 'aria-label': 'Difficulty ' + (bd.diff || 2) + ' of 4' }, [el('span', { text: 'Level' })]);
+    for (let i = 1; i <= 4; i++) dots.appendChild(el('i', { class: i <= (bd.diff || 2) ? 'on' : '' }));
+    const card = el('button', { type: 'button', class: 'pb-card' + (id === sel ? ' on' : ''), style: { '--c': bd.color || '#ffc83d' }, 'aria-label': bd.name + '. ' + (bd.desc || '') }, [
+      cv, el('span', { class: 'ck', html: Kit.icon('check') }),
+      el('span', { class: 'inf' }, [el('span', { class: 'nm', text: bd.name }), el('span', { class: 'ds', text: bd.desc || '' }),
+        el('span', { class: 'mt' }, [dots, el('span', { class: 'bs' + (best ? '' : ' none'), text: best ? 'Best ' + fmt(best) : 'Not played' })])])
+    ]);
+    card.addEventListener('click', () => { sel = id; cards.forEach((c, j) => c.classList.toggle('on', IDS[j] === id)); Kit.sfx('tap'); Kit.haptic('light'); label(); });
+    cards.push(card); grid.appendChild(card);
+    if (thumbs[id]) cv.getContext('2d').drawImage(thumbs[id], 0, 0); else jobs.push([id, cv]);
+  });
+  const hero = s.el.querySelector('.setup-hero');
+  const box = el('div', null, [el('div', { class: 'pb-head' }, [el('div', { class: 'label', text: 'Choose a table' }), el('small', { text: IDS.length + ' tables' })]), grid]);
+  hero.parentNode.insertBefore(box, hero.nextSibling);
+  label();
+  const go = () => queueThumbs(jobs);
+  if (document.fonts && document.fonts.load) Promise.all([document.fonts.load('20px Bungee'), document.fonts.load('700 20px Cinzel')]).then(go, go); else go();
+  window.scrollTo(0, 0);
+}
+
+// ═══ Play view ═══════════════════════════════════════════════════════════════
+let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, ro = null;
+function startGame(id, balls, who) {
+  leaveGame();
+  const r = getRenderer();
+  if (!r) { app.className = 'stage'; app.innerHTML = ''; app.appendChild(el('div', { class: 'pb-nogl', text: 'This device can\'t show the 3D tables (WebGL is off or unavailable).' })); return; }
+  const def = TABLES[id];
+  app.className = 'stage'; app.innerHTML = '';
+  root.classList.add('pb-on');
+  dmdEl = el('canvas', { class: 'pb-dmd' + (def.display && def.display.type === 'lcd' ? ' lcd' : ''), 'aria-label': 'Score display' });
+  viewEl = el('div', { class: 'pb-view' });
+  viewEl.appendChild(glCanvas);
+  pauseEl = el('div', { class: 'pb-pause' });
+  const nudgeBtn = el('button', { type: 'button', class: 'pb-btn pb-nudge', 'aria-label': 'Nudge', html: Kit.icon('hand') + '<span>NUDGE</span>' });
+  magBtn = el('button', { type: 'button', class: 'pb-btn pb-magna', 'aria-label': 'Magnet', html: Kit.icon('target') + '<span>MAGNET</span>' });
+  fireBtn = el('button', { type: 'button', class: 'pb-btn pb-fire', 'aria-label': 'Fire', html: Kit.icon('bolt') + '<span>FIRE</span>' });
+  viewEl.append(nudgeBtn, magBtn, fireBtn);
+  app.append(el('div', { class: 'pb-band' }, [dmdEl]), viewEl, pauseEl);
+  const loading = el('div', { class: 'pb-load', text: 'Building the table…' }); viewEl.appendChild(loading);
+  const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
+  nudgeBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.nudge()));
+  magBtn.addEventListener('pointerdown', e => btnDown(e, () => { if (G) { G.setMagna(true); magBtn.classList.add('on'); } }));
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => magBtn.addEventListener(t, () => { if (G && G.input.magna) { G.setMagna(false); magBtn.classList.remove('on'); } }));
+  fireBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.fire()));
+  view = 'game';
+  // build after the loading text paints
+  requestAnimationFrame(() => setTimeout(() => {
+    if (view !== 'game') return;
+    sizeDmd();
+    G = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish });
+    loading.remove();
+    magBtn.style.display = G.hasMagna ? '' : 'none';
+    if (ro) ro.disconnect();
+    ro = new ResizeObserver(() => { sizeDmd(); if (G) G.resize(); }); ro.observe(viewEl); ro.observe(dmdEl);
+    Kit.gameStart();
+    G.start();
+    tickUI();
+  }, 30));
+}
+function sizeDmd() {
+  if (!dmdEl) return;
+  const r = dmdEl.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (w && h && (dmdEl.width !== w || dmdEl.height !== h)) { dmdEl.width = w; dmdEl.height = h; if (G && G.dmdReset) G.dmdReset(); }
+}
+let uiRaf = 0;
+function tickUI() {
+  uiRaf = 0; if (!G || view !== 'game') return;
+  if (fireBtn) fireBtn.classList.toggle('show', !!G.cannon);
+  uiRaf = setTimeout(tickUI, 200);
+}
+function leaveGame() {
+  view = 'none';
+  if (G) { G.destroy(); G = null; }
+  root.classList.remove('pb-on');
+  if (ro) { ro.disconnect(); ro = null; }
+  resetInput();
+}
+
+// ═══ Input ═══════════════════════════════════════════════════════════════════
+const ptr = {};
+const keys = { L: false, R: false };
+function resetInput() { for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; }
+function syncFlips() {
+  if (!G) return;
+  let L = keys.L, R = keys.R;
+  for (const id in ptr) { if (ptr[id].role === 'L') L = true; if (ptr[id].role === 'R') R = true; }
+  G.setFlip('L', L); G.setFlip('R', R);
+}
+app.addEventListener('pointerdown', e => {
+  if (view !== 'game' || !G || G.paused) return;
+  if (e.target.closest && e.target.closest('.pb-pause, .pb-btn')) return;
+  e.preventDefault();
+  audio().ctx();
+  let role = e.clientX < window.innerWidth / 2 ? 'L' : 'R';
+  if (role === 'R' && G.waitPlunge) { role = 'P'; G.pullStart(); }
+  const r = viewEl.getBoundingClientRect();
+  ptr[e.pointerId] = { role, y0: e.clientY, h: r.height };
+  try { app.setPointerCapture(e.pointerId); } catch (er) {}
+  syncFlips();
+});
+app.addEventListener('pointermove', e => {
+  const p = ptr[e.pointerId]; if (!p || p.role !== 'P' || !G) return;
+  G.pullDrag = Math.max(0, Math.min(1, (e.clientY - p.y0) / (p.h * 0.16)));
+});
+function up(e) {
+  const p = ptr[e.pointerId]; if (!p) return;
+  delete ptr[e.pointerId];
+  if (p.role === 'P' && G) G.pullEnd();
+  syncFlips();
+}
+app.addEventListener('pointerup', up);
+app.addEventListener('pointercancel', up);
+app.addEventListener('touchstart', e => { if (view === 'game' && !(e.target.closest && e.target.closest('.pb-pause'))) e.preventDefault(); }, { passive: false });
+app.addEventListener('contextmenu', e => { if (view === 'game') e.preventDefault(); });
+function overlayOpen() { return !!document.querySelector('.k-scrim, .k-win, .ahi-overlay'); }
+document.addEventListener('keydown', e => {
+  if (view !== 'game' || !G || overlayOpen()) return;
+  const k = e.key;
+  if (k === 'p' || k === 'P' || k === 'Escape') { e.preventDefault(); if (G.paused) resumeGame(); else pauseGame(); return; }
+  if (G.paused) return;
+  audio().ctx();
+  if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') { e.preventDefault(); keys.L = true; }
+  else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') { e.preventDefault(); keys.R = true; }
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (!G.pullStart()) G.fire(); } }
+  else if (k === 'ArrowUp' || k === 'n' || k === 'N') { e.preventDefault(); if (!e.repeat) G.nudge(); }
+  else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') { e.preventDefault(); if (!e.repeat) G.setMagna(true); }
+  else return;
+  syncFlips();
+});
+document.addEventListener('keyup', e => {
+  if (view !== 'game' || !G) return;
+  const k = e.key;
+  if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') keys.L = false;
+  else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') keys.R = false;
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') G.pullEnd();
+  else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') G.setMagna(false);
+  syncFlips();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+window.addEventListener('blur', () => pauseGame());
+
+function pauseGame() {
+  if (view !== 'game' || !G || G.paused || G.state === 'over') return;
+  resetInput(); syncFlips();
+  G.pause();
+  pauseEl.innerHTML = '';
+  pauseEl.appendChild(el('div', { class: 'card' }, [
+    el('h2', { text: 'Paused' }), el('p', { text: G.def.name + ' · ball ' + Math.min(G.ballNo, G.balls0) + ' · ' + fmt(G.score) }),
+    el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Resume', onclick: resumeGame }),
+    el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Choose table', onclick: () => showSetup() })
+  ]));
+  pauseEl.classList.add('show');
+}
+function resumeGame() {
+  if (!G || !G.paused) return;
+  pauseEl.classList.remove('show');
+  Kit.sfx('tap'); G.resume();
+}
+// the kit's menu sheet pauses the game while open
+setInterval(() => { if (view === 'game' && G && !G.paused && G.state !== 'over' && document.querySelector('.k-scrim')) pauseGame(); }, 300);
+
+// ═══ Game over: history record, high scores, results ═══════════════════════════
+function finish(g0) {
+  const bd = g0.def, key = 'pinball_' + bd.id, sc = g0.score, st = g0.st;
+  const hiL = ArcadeHi.list(key);
+  const bb = g0.ballScores.length ? Math.max.apply(null, g0.ballScores) : sc;
+  const f = {};
+  ['pop', 'sl', 'su', 'dt', 'bank', 'orb', 'spin', 'lanes', 'in', 'out', 'lock', 'wheel', 'ghost', 'crypt', 'mag', 'boo', 'star', 'neon', 'mode', 'save', 'warn', 'tilt', 'award', 'dark', 'bh', 'storm', 'cannon', 'direct', 'idol', 'beat', 'kick', 'loop', 'mist', 'hand', 'attic', 'cellar', 'holo', 'magna', 'wiz'].forEach(k => { if (st[k]) f[k] = st[k]; });
+  const detail = {
+    b: bd.id, bl: g0.balls0, bs: g0.ballScores.join(','), dr: g0.drains.join(''), bb,
+    jp: st.jp || 0, mb: st.mb || 0, eb: st.eb || 0, bx: g0.bxMax, rp: st.rp || 0, cb: st.cb || 0, sk: st.sk || 0, f,
+    hr: sc > 0 && (hiL.length < ArcadeHi.max || sc > hiL[hiL.length - 1].score) ? hiL.filter(x => x.score >= sc).length + 1 : 0,
+    hb: hiL.length ? hiL[0].score : 0
+  };
+  const hl = [];
+  hl.push(bd.name + ': ' + fmt(sc) + ' over ' + g0.balls0 + ' balls' + (st.eb ? ' plus ' + st.eb + (st.eb === 1 ? ' extra ball' : ' extra balls') : ''));
+  if (bb) hl.push('Best ball: ' + fmt(bb));
+  if (st.mb) hl.push(st.mb === 1 ? 'Started multiball' : 'Started multiball ' + st.mb + ' times');
+  if (st.jp) hl.push(st.jp + (st.jp === 1 ? ' jackpot' : ' jackpots'));
+  if (g0.bxMax > 1) hl.push('Bonus multiplier up to ' + g0.bxMax + 'X');
+  if (st.cb) hl.push(st.cb + (st.cb === 1 ? ' combo' : ' combos'));
+  if (st.sk) hl.push(st.sk === 1 ? 'Made the skill shot' : st.sk + ' skill shots');
+  if (st.wiz) hl.push('Reached ' + (bd.wizard || 'the wizard mode'));
+  if (st.tilt) hl.push('Tilted ' + (st.tilt === 1 ? 'once' : st.tilt + ' times'));
+  Kit.record(KEY, {
+    detail, started: g0.started, mode: bd.name,
+    players: [{ name: g0.who, score: sc }], winner: null,
+    rounds: g0.ballScores.length > 1 ? { labels: g0.ballScores.map((s, i) => 'Ball ' + (i + 1)), scores: g0.ballScores.map(s => [s]) } : null,
+    highlights: hl.slice(0, 7), summary: bd.name + ' · ' + fmt(sc), badge: bd.short,
+    meta: { board: bd.id, boardName: bd.name, score: sc, balls: g0.balls0 }
+  });
+  const wasBest = sc > 0 && (!hiL.length || sc > hiL[0].score);
+  const who = g0.who, balls = g0.balls0, id = bd.id;
+  ArcadeHi.check(key, sc, () => {
+    Kit.win({
+      icon: wasBest ? 'trophy' : 'flag', quiet: !wasBest,
+      title: wasBest ? 'New best!' : 'Game over',
+      sub: fmt(sc) + ' points on ' + bd.name,
+      notes: [g0.ballScores.length ? 'Balls: ' + g0.ballScores.map(fmt).join(' · ') : null, st.jp ? st.jp + (st.jp === 1 ? ' jackpot' : ' jackpots') : null].filter(Boolean), notesTitle: 'Your game',
+      again: () => startGame(id, balls, who), againLabel: 'Play again',
+      extra: [{ label: 'Choose table', onClick: showSetup }, { label: 'High scores', onClick: () => ArcadeHi.show(key, 'Pinball: ' + bd.name) }]
+    });
+  });
+}
+
+// ═══ Test hooks (used by automated checks) ═══════════════════════════════════
+window.__pin = {
+  tables: TABLES, ids: IDS,
+  start(id, balls) { ambPref = false; startGame(id || 'haunted', balls || 3, 'Tester'); },
+  ready() { return !!G && view === 'game'; },
+  get() { return G ? G.snapshot() : null; },
+  game() { return G; },
+  flip(side, on) { keys[side] = !!on; syncFlips(); },
+  launch(p) { if (G) G.launch(p == null ? 0.8 : p); },
+  nudge() { if (G) G.nudge(); },
+  speed(k) { if (G) G.speed(k); },
+  auto(on, skill) { if (G) G.autopilot(on, skill); },
+  pause() { pauseGame(); }, resume() { resumeGame(); },
+  sim(sec, skill) { return G ? G.sim(sec, skill) : null; },
+  run(sec) { return G ? G.run(sec) : null; },
+  place(x, y, vx, vy, lvl) { if (G) G.place(x, y, vx, vy, lvl); },
+  set(k, v) { if (G) G.b[k] = v; },
+  comp(id) { return G && G.comps[id]; },
+  trigger(id, ...a) { const c = G && G.comps[id]; if (c && c.trigger) { c.trigger(...a); return true; } return false; },
+  mode(name) { const m = G && G.def.rules && G.def.rules.modes && G.def.rules.modes[name]; if (m) { m(G); return true; } return false; },
+  render() { if (G) G.renderOnce(); },
+  headless(id, balls) { const g = createGame(TABLES[id || 'haunted'], { headless: true, balls: balls || 3 }); g.start(); return g; },
+  audio() { const a = audio(); return { ac: a.ac && a.ac.state, ready: a.ready, bufs: Object.keys(a.bufs).length, music: a.music.src ? { id: a.music.id, gain: +a.music.g.gain.value.toFixed(4) } : null, roll: !!a.roll }; }
+};
+
+showSetup();
+</script>
+</body>
+</html>

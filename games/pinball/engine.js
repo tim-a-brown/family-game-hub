@@ -16,7 +16,7 @@ import { World, BR, DT, TILT, clamp, spline, arcPts, deg, MAT } from './physics.
 import { Materials, Batch, canvas, canvasTex, painter, wallGeo, slabGeo, cylGeo, boxGeo, sphereGeo, torusGeo, latheGeo, rgba, shade, woodCanvas, glowCanvas, rng, planarUV } from './gfx.js';
 import { Display, smallText, bigText, smallW } from './display.js';
 import { Audio } from './audio.js';
-import { COMPONENTS } from './components.js';
+import { COMPONENTS, lower, shooter } from './components.js';
 
 const PI = Math.PI, TAU = PI * 2;
 export const fmt = n => Math.round(n).toLocaleString('en-US');
@@ -48,7 +48,7 @@ export function createGame(def, opts = {}) {
   const AU = headless || thumb ? null : (opts.audio || audio());
   const theme = Object.assign({
     rails: 'chrome', cabinet: '#1b1320', wood: '#5a3a22', rubber: '#141414', flipper: '#f4f1ea', flipperRubber: '#c8202a',
-    post: 'chrome', gi: ['#ffd9a8', '#ffd9a8', '#ffcf96', '#ffcf96'], giLevel: 1, ambient: 0.25, key: 2.2, bloom: 0.75, exposure: 1.0,
+    post: 'chrome', gi: ['#ffd9a8', '#ffd9a8', '#ffcf96', '#ffcf96'], giLevel: 1, ambient: 0.35, key: 1.1, bloom: 0.55, exposure: 1.0,
     env: ['#ffd9a8', '#9ab0ff', '#ff9ad6'], glass: true, lampGain: 3.2, pfRough: 0.55, apron: '#1c1a22', apronText: '#e8dcc0', felt: '#000'
   }, def.theme || {});
 
@@ -57,7 +57,7 @@ export function createGame(def, opts = {}) {
     def, id: def.id, world, W, L, theme, headless, time: 0, score: 0, shownScore: 0, ballNo: 1, balls0: opts.balls || 3, extra: 0,
     who: opts.who || 'Player', amb: opts.amb !== false, state: 'serve', waitPlunge: false, pull: 0, pulling: false, pullT0: 0, pullDrag: 0, autoT: 0,
     bx: 1, bxMax: 1, ebLit: false, ebGot: 0, mult: 1, multBase: 1, multT: 0, saveT: 0, saveStarted: false,
-    tilted: false, tiltM: 0, nudgeT: -9, mb: false, combo: 0, lastShot: '', lastShotT: -9, skill: null,
+    tilted: false, tiltM: 0, nudgeT: -9, mb: false, comboN: 0, lastShot: '', lastShotT: -9, skill: null,
     st: {}, pb: {}, b: {}, ballScores: [], drains: [], ballStart: 0, laters: [], dq: [], dm: null,
     flashA: 0, flashC: '#fff', shakeA: 0, bonus: null, overT: 0, started: Date.now(), finished: false, pending: 0,
     stats: { stuck: 0, esc: 0, maxStill: 0, at: [], drains: 0, saves: 0 }, comps: {}, compList: [], lamps: {}, lampList: [], show: null,
@@ -137,6 +137,7 @@ export function createGame(def, opts = {}) {
     spline, arcPts, deg, BR, MAT
   };
   for (const name in COMPONENTS) T[name] = (o = {}) => T.comp(new COMPONENTS[name](T, o));
+  T.lower = o => lower(T, o); T.shooter = o => shooter(T, o);
   G.T = T;
 
   function addLamp(id, o) {
@@ -181,7 +182,7 @@ export function createGame(def, opts = {}) {
   };
   world.onBallHit = function (a, b, imp) { if (imp > 120) G.sfx('clack', { x: (a.x + b.x) / 2, vol: clamp(imp / 1800, 0.08, 0.9), vary: 0.3, gap: 0.04 }); };
   world.onLand = function (b, vz) { if (vz > 150) G.sfx('land', { x: b.x, vol: clamp(vz / 1500, 0.15, 0.9) }); };
-  world.onDrain = function (b, lv) { drainBall(b, lv); };
+  world.onDrain = function (b, lv) { if (lv && lv.id !== 'main' && R('levelDrain', lv.id, b) === true) return; drainBall(b, lv); };
 
   // ── Rules API ─────────────────────────────────────────────────────────────
   G.comp = id => G.comps[id];
@@ -225,21 +226,19 @@ export function createGame(def, opts = {}) {
     return p;
   };
   G.combo = function (id) {
-    const n = (G.time - G.lastShotT < 4.5 && G.lastShot !== id) ? G.combo + 1 : 1;
-    G.combo = n; G.lastShot = id; G.lastShotT = G.time;
+    const n = (G.time - G.lastShotT < 4.5 && G.lastShot !== id) ? G.comboN + 1 : 1;
+    G.comboN = n; G.lastShot = id; G.lastShotT = G.time;
     if (n >= 2) { G.cnt('cb'); const p = G.add(20000 * (n - 1)); G.msg(n + '-WAY COMBO', fmt(p), { style: 'slide', now: true }); G.sfx('combo', { rate: 1 + n * 0.06, vary: 0 }); G.lightShow('chase', 0.8); }
     return n;
   };
   G.ballSave = function (sec) { if (!G.tilted) G.saveT = Math.max(G.saveT, sec); };
-  G.activeBalls = () => world.balls.filter(b => !b.locked && !b.mist).length + G.pending;
+  G.activeBalls = () => world.balls.filter(b => !b.locked && !b.mist).length + G.pending + (G.plunger ? G.plunger.queue.length : 0);
   G.liveBalls = () => world.balls.filter(b => !b.locked && !b.mist);
   // put a ball in the shooter lane (auto: fire it automatically)
   G.serve = function (auto, o = {}) {
     if (!G.plunger) return null;
-    const b = G.plunger.load(o);
-    if (auto) G.autoT = Math.max(G.autoT, 0.7);
-    else { G.waitPlunge = true; G.pull = 0; R('serve'); }
-    return b;
+    G.plunger.load(Object.assign({ auto: !!auto }, o));
+    return null;
   };
   // more balls into play. o: {label, from: fn(i) -> ball placed (return true) or null for the shooter lane, save}
   G.multiball = function (n, o = {}) {
@@ -321,7 +320,6 @@ export function createGame(def, opts = {}) {
     world.removeBall(b);
     if (RC) RC.dropBall(b);
     if (b.mist) { R('event', 'mistLost', 'mist', b); return; }
-    if (lv && lv.id !== 'main' && R('levelDrain', lv.id, b)) return;
     G.sfx('drain', { x: b.x, vol: 0.6 }); G.sfx('trough', { x: b.x, vol: 0.5, when: 0.35 });
     const side = b.x < W * 0.22 ? 'L' : b.x > W * 0.7 ? 'R' : 'C';
     if (G.state !== 'play' && G.state !== 'serve') return;
@@ -356,8 +354,8 @@ export function createGame(def, opts = {}) {
     startBall();
   }
   function startBall() {
-    G.state = 'serve'; G.bx = 1; G.saveStarted = false; G.saveT = 0; G.mult = G.multBase || 1; G.multT = 0; G.ballStart = G.score; G.combo = 0; G.lastShot = '';
-    G.pending = 0; G.pb = {};
+    G.state = 'serve'; G.bx = 1; G.saveStarted = false; G.saveT = 0; G.mult = G.multBase || 1; G.multT = 0; G.ballStart = G.score; G.comboN = 0; G.lastShot = '';
+    G.pending = 0; G.pb = {}; G.waitPlunge = false; if (G.plunger) G.plunger.queue.length = 0;
     world.balls.filter(b => !b.locked).forEach(b => { world.removeBall(b); if (RC) RC.dropBall(b); });
     R('ballStart');
     G.serve(false);
@@ -404,14 +402,13 @@ export function createGame(def, opts = {}) {
     if (G.show) { G.show.t += dt; if (G.show.t > G.show.dur) G.show = null; }
     if (G.dm) { G.dm.t += dt; if (G.dm.t >= G.dm.dur) G.dm = null; }
     if (!G.dm && G.dq.length) G.dm = G.dq.shift();
-    if (G.autoT > 0) { G.autoT -= dt; if (G.autoT <= 0) launch(0.85 + Math.random() * 0.1); }
     if (G.waitPlunge && G.pulling) G.pull = Math.min(1, Math.max(G.pull, G.pullDrag || 0, (G.time - G.pullT0) / 1.1));
     if (G.plunger) G.plunger.pullTo(G.waitPlunge && G.pulling ? G.pull : 0);
     for (const c of G.compList) if (c.update) c.update(dt);
     // ball safety: stuck balls get a search kick; balls off the table go back to the shooter lane
     for (const b of world.balls.slice()) {
       if (!isFinite(b.x) || !isFinite(b.y) || b.x < -40 || b.x > W + 40 || b.y > L + 60) {
-        G.stats.esc++; world.removeBall(b); if (RC) RC.dropBall(b); if (!b.locked) { if (G.activeBalls() === 0 && G.state === 'play') G.serve(true); else if (G.state === 'play') G.serve(true); } continue;
+        G.stats.esc++; if (G.stats.at.length < 40) G.stats.at.push('esc:' + b.lvl + ':' + b.mode + ':' + Math.round(b.x) + ',' + Math.round(b.y)); world.removeBall(b); if (RC) RC.dropBall(b); if (!b.locked) { if (G.activeBalls() === 0 && G.state === 'play') G.serve(true); else if (G.state === 'play') G.serve(true); } continue;
       }
       if (b.mode !== 'free' || b.locked || b.mist) { b.stillT = 0; b.ax = b.x; b.ay = b.y; continue; }
       if (Math.hypot(b.x - b.ax, b.y - b.ay) > 12) { b.ax = b.x; b.ay = b.y; b.stillT = 0; }
@@ -580,11 +577,11 @@ export function createGame(def, opts = {}) {
   // ── Headless simulation and test hooks ───────────────────────────────────
   G.autopilot = function (on, skill) { auto.on = !!on; auto.skill = skill == null ? 1 : skill; };
   G.speed = function (k) { speedMul = k; };
-  G.sim = function (sec, skill) {
+  G.sim = function (sec, skill, onStep) {
     const was = auto.on; auto.on = true; if (skill != null) auto.skill = skill;
     const n = Math.round(sec / DT); let fr = 0;
     for (let i = 0; i < n && G.state !== 'over'; i++) {
-      autopilot(DT); world.step(DT);
+      autopilot(DT); world.step(DT); if (onStep) onStep(i);
       if (++fr >= 8) { update(DT * 8); fr = 0; }
     }
     if (G.state === 'over') { update(2); }
@@ -706,12 +703,11 @@ function buildScene(G, T, opts) {
   const envScene = new THREE.Scene();
   envScene.background = new THREE.Color('#050407');
   const panel = (col, k, w, h, x, y, z, ry = 0, rx = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.set(rx, ry, 0); envScene.add(m); };
-  panel('#fff4e0', 3.2, 6, 1.2, 0, 4, -1, 0, PI / 2);      // ceiling strip
-  panel('#ffe6c8', 1.6, 4, 2.2, 0, 1.6, 5);               // softbox behind the player
-  panel(theme.env[0], 1.4, 2.4, 2, -5, 1.5, 0, PI / 2);
-  panel(theme.env[1], 1.2, 2.4, 2, 5, 1.5, -1, -PI / 2);
-  panel(theme.env[2] || theme.env[0], 1.0, 3, 1, 0, 1.2, -6);
-  panel('#ffffff', 0.25, 30, 30, 0, -3, 0, 0, PI / 2);
+  panel('#fff4e0', 1.3, 5, 0.6, 0, 4, -1, 0, PI / 2);      // ceiling strip
+  panel('#ffe6c8', 0.5, 3, 1.4, 0, 1.6, 5);               // softbox behind the player
+  panel(theme.env[0], 0.45, 1.6, 1.6, -5, 1.5, 0, PI / 2);
+  panel(theme.env[1], 0.4, 1.6, 1.6, 5, 1.5, -1, -PI / 2);
+  panel(theme.env[2] || theme.env[0], 0.35, 3, 0.6, 0, 1.2, -6);
   const envRT = pmrem.fromScene(envScene, 0.035);
   scene.environment = envRT.texture; RC.disposables.push(envRT);
   envScene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
@@ -746,11 +742,11 @@ function buildScene(G, T, opts) {
   if (def.art && def.art.overlay) def.art.overlay(P);
   // holes and windows: transparent
   ag.save(); ag.globalCompositeOperation = 'destination-out';
-  for (const h of T.holes) { P.circle(h.x, h.y, h.r).fill(); }
+  for (const h of T.holes) if (!h.lvl || h.lvl === 'main') { P.circle(h.x, h.y, h.r).fill(); }
   for (const w of T.windows) { P.poly(w.poly).fill(); }
   ag.restore();
   // dark rims round holes
-  for (const h of T.holes) { ag.strokeStyle = h.rim || 'rgba(20,20,24,.9)'; ag.lineWidth = 2.2; P.circle(h.x, h.y, h.r + 1).stroke(); ag.strokeStyle = 'rgba(200,200,210,.35)'; ag.lineWidth = 0.8; P.circle(h.x, h.y, h.r + 2.4).stroke(); }
+  for (const h of T.holes) if (!h.lvl || h.lvl === 'main') { ag.strokeStyle = h.rim || 'rgba(20,20,24,.9)'; ag.lineWidth = 2.2; P.circle(h.x, h.y, h.r + 1).stroke(); ag.strokeStyle = 'rgba(200,200,210,.35)'; ag.lineWidth = 0.8; P.circle(h.x, h.y, h.r + 2.4).stroke(); }
   // lamp id texture: snap partially covered pixels
   { const g = idC.getContext('2d'), im = g.getImageData(0, 0, idC.width, idC.height), d = im.data;
     for (let i = 0; i < d.length; i += 4) { if (d[i + 3] >= 200) { d[i] = Math.round(d[i]); d[i + 3] = 255; } else { d[i] = d[i + 1] = d[i + 2] = d[i + 3] = 0; } }
@@ -811,7 +807,7 @@ function buildScene(G, T, opts) {
   RC.lights = { hemi, key };
   // general illumination: warm point lights along the sides
   const giPos = theme.giPos || [[30, 260], [W - 70, 260], [40, 700], [W - 60, 700]];
-  RC.lights.gi = giPos.map((p, i) => { const l = new THREE.PointLight(theme.gi[i % theme.gi.length], 0.25, 0.65, 2); l.position.set(p[0], p[1], p[2] || 70); root.add(l); l.userData.base = 0.25 * theme.giLevel * (p[3] || 1); return l; });
+  RC.lights.gi = giPos.map((p, i) => { const l = new THREE.PointLight(theme.gi[i % theme.gi.length], 0.03, 0.6, 2); l.position.set(p[0], p[1], p[2] || 90); root.add(l); l.userData.base = 0.03 * theme.giLevel * (p[3] || 1); return l; });
   // flasher pool
   RC.lights.flash = [0, 1].map(() => { const l = new THREE.PointLight('#fff', 0, 0.5, 2); root.add(l); return l; });
   // lights-out ball lamps
@@ -950,7 +946,7 @@ function buildScene(G, T, opts) {
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: quality >= 2 ? 4 : 0 });
     composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
-    bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.45, 0.92);
+    bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.0);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
   }
@@ -971,7 +967,7 @@ function buildScene(G, T, opts) {
   // ── Adaptive quality: drop bloom, then shadows, then resolution when frames run long ──
   let slowT = 0, level = 0;
   RC.adapt = function (ms) {
-    if (thumb || opts.fixedQuality) return;
+    if (thumb || opts.fixedQuality || window.__pinFixedQ) return;
     slowT = ms > 20 ? slowT + ms / 1000 : Math.max(0, slowT - ms / 3000);
     if (slowT > 1 && level < 3) {
       slowT = 0; level++;
@@ -991,19 +987,19 @@ function buildScene(G, T, opts) {
   const shakeV = new THREE.Vector3();
   RC.render = function (dt) {
     const t = G.time;
-    // lamp levels -> texture
+    // lamp levels -> texture (lamps sharing an id share an index: brightest wins)
+    for (const lp of G.lampList) lampData[lp.idx * 4] = 0;
     for (const lp of G.lampList) {
       const v = Math.round(clamp(lp.level, 0, 1) * 255);
-      lampData[lp.idx * 4] = Math.max(lampData[lp.idx * 4] * (lp.twin ? 1 : 0), v);
+      if (v > lampData[lp.idx * 4]) lampData[lp.idx * 4] = v;
       if (lp.mesh) {
         const mat = lp.mesh.material; mat.emissiveIntensity = (lp.kind === 'flasher' ? 0.05 : 0) + lp.level * lp.k;
         if (lp.kind === 'flasher' && lp.level > 0.3 && !lp._lit) { RC.flashLight(lp.x, lp.y, (lp.z0 || 0) + 25, lp.color, lp.level); lp._lit = true; }
         if (lp.level < 0.3) lp._lit = false;
       }
     }
-    for (const lp of G.lampList) if (lp.twin) lampData[lp.idx * 4] = Math.round(clamp(Math.max(lp.level, lp.twin.level), 0, 1) * 255);
     lampTex.needsUpdate = true;
-    for (const l of flashPool) { const k = l.userData.k || 0; l.intensity = k * 0.9; l.userData.k = k * Math.exp(-dt * 7); }
+    for (const l of flashPool) { const k = l.userData.k || 0; l.intensity = k * 0.12; l.userData.k = k * Math.exp(-dt * 7); }
     // darkness (Lights Out), lightning, GI
     const dark = G.dark, light = G.lightning;
     const gi = (G.tilted ? 0.15 : G.giLevel) * (1 - dark * 0.97);
@@ -1127,8 +1123,8 @@ function buildCabinet(RC) {
   const apGr = apg.createLinearGradient(0, 0, 0, 256); apGr.addColorStop(0, shade(theme.apron, 0.12)); apGr.addColorStop(1, shade(theme.apron, -0.3)); apg.fillStyle = apGr; apg.fillRect(0, 0, 1024, 256);
   if (art.apron) art.apron(apg, 1024, 256);
   const apT = RC.tex(apC);
-  const apronPoly = ap.poly || [[-2, -60], [T.lane.x0 - 2, -60], [T.lane.x0 - 2, ap.y - 30], [W * 0.5 + 72, ap.y - 4], [W * 0.5 + 40, ap.y - 40], [W * 0.5 - 40, ap.y - 40], [W * 0.5 - 72, ap.y - 4], [-2, ap.y + 10]];
-  const apG = slabGeo(apronPoly, 0, 22, { bevel: 2, bevelSegments: 2 });
+  const acx = def.cx || 243, apronPoly = ap.poly || [[-2, -60], [T.lane.x0 - 2, -60], [T.lane.x0 - 2, ap.y + 4], [acx + 78, ap.y - 6], [acx + 44, ap.y - 42], [acx - 44, ap.y - 42], [acx - 78, ap.y - 6], [-2, ap.y + 4]];
+  const apG = slabGeo(apronPoly, 28, 7, { bevel: 2, bevelSegments: 2 });
   planarUV(apG, [0, -60, T.lane.x0, ap.y + 10]);
   const apM = new THREE.Mesh(apG, new THREE.MeshStandardMaterial({ map: apT, roughness: 0.4, metalness: 0.2 }));
   apM.castShadow = true; apM.receiveShadow = true; root.add(apM);
@@ -1176,7 +1172,6 @@ function buildStatic(RC, s) {
     case 'rubber': {
       const pm = mats.plastic(theme.postColor || '#f2efe6');
       s.posts.forEach(p => { batch.add(pm, cylGeo(p[0], p[1], s.pr - 1, z0, z0 + 30, 14)); batch.add(railMat, cylGeo(p[0], p[1], 2.2, z0 + 30, z0 + 35, 8)); });
-      const g = new THREE.ExtrudeGeometry(new THREE.Shape(), { depth: 1 }); g.dispose();
       const circles = s.posts.map(p => [p[0], p[1], s.pr]);
       import_band(batch, mats.rubber(s.color || theme.rubber), circles, s.th, z0 + 7, 9);
       break;

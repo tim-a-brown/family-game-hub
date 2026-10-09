@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinball layout viewer</title>
+<script type="importmap">{"imports":{"three":"../../vendor/three/three.module.min.js","three/addons/":"../../vendor/three/addons/"}}</script>
+<style>
+body{margin:0;background:#111;color:#ddd;font:13px system-ui;}
+#bar{position:fixed;top:0;left:0;right:0;padding:6px 10px;background:#000c;z-index:2;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+canvas{display:block;margin:40px auto 0;}
+select,button{font:inherit;}
+#info{white-space:pre;}
+</style>
+</head>
+<body>
+<div id="bar">
+  <select id="t"></select>
+  <label><input type="checkbox" id="heat"> heat map (sim)</label>
+  <button id="sim">Sim 300 s</button>
+  <span id="info"></span>
+</div>
+<canvas id="c"></canvas>
+<script type="module">
+// Top-down debug view of a table's physics: walls, posts, flippers (rest/up), sensors (green lines, cyan
+// circles), 3D paths (coloured by height), fields (dashed), inserts (lamp outlines), holes and windows.
+// Other levels are drawn in their own colours. Click to print table coordinates. ?t=<table id>
+import { createGame } from './engine.js';
+const ids = ['haunted', 'nebula', 'pirate', 'jungle', 'neon', 'midway'];
+const mods = {}; for (const id of ids) mods[id] = (await import('./tables/' + id + '.js')).default;
+const qs = new URLSearchParams(location.search), sel = document.getElementById('t');
+ids.forEach(id => { const o = document.createElement('option'); o.value = o.textContent = id; sel.appendChild(o); });
+sel.value = qs.get('t') || 'haunted';
+const c = document.getElementById('c'), g = c.getContext('2d'), K = +(qs.get('k') || 1.6);
+let G = null, heat = null;
+const LV = { main: '#e8e8e8', attic: '#ffb060', basement: '#60b0ff', pf: '#ff60ff' };
+function build() { G = createGame(mods[sel.value], { headless: true }); G.start(); heat = null; draw(); }
+function X(x) { return 20 + x * K; } function Y(y) { return 20 + (G.L - y) * K; }
+function draw() {
+  const W = G.W, L = G.L; c.width = (W + 25) * K + 20; c.height = (L + 90) * K + 20;
+  g.fillStyle = '#1b1b20'; g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = '#444'; g.strokeRect(X(0), Y(L), W * K, L * K);
+  g.font = '9px monospace'; g.fillStyle = '#555';
+  for (let y = 0; y <= L; y += 100) { g.fillText(y, 2, Y(y) + 3); g.fillStyle = '#2a2a30'; g.fillRect(X(0), Y(y), W * K, 1); g.fillStyle = '#555'; }
+  for (let x = 0; x <= W; x += 100) { g.fillText(x, X(x) - 6, Y(0) + 12); g.fillStyle = '#2a2a30'; g.fillRect(X(x), Y(L), 1, L * K); g.fillStyle = '#555'; }
+  if (heat) { const srt = Array.from(heat.d).filter(v => v > 0).sort((a, b) => a - b), mx = srt[Math.floor(srt.length * 0.97)] || 1; for (let i = 0; i < heat.d.length; i++) { const v = heat.d[i]; if (!v) continue; const hx = i % heat.w, hy = (i / heat.w) | 0; g.fillStyle = 'rgba(255,80,0,' + Math.min(0.8, Math.sqrt(v / mx)) + ')'; g.fillRect(X(hx * 5), Y(hy * 5 + 5), 5 * K, 5 * K); } }
+  const T = G.T;
+  T.windows.forEach(w => { g.fillStyle = 'rgba(80,140,255,.15)'; g.beginPath(); w.poly.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.fill(); });
+  T.holes.forEach(h => { g.fillStyle = '#000'; g.beginPath(); g.arc(X(h.x), Y(h.y), h.r * K, 0, 7); g.fill(); });
+  G.lampList.forEach(l => { if (l.kind !== 'insert') return; g.strokeStyle = l.color; g.lineWidth = 1; g.beginPath(); g.arc(X(l.x), Y(l.y), (l.r || (l.w || 14) / 2) * K, 0, 7); g.stroke(); if (l.text) { g.fillStyle = l.color; g.fillText(l.text, X(l.x) - 6, Y(l.y) + 3); } });
+  for (const id in G.world.levels) {
+    const lv = G.world.levels[id], col = LV[id] || '#9f9';
+    g.strokeStyle = col; g.lineCap = 'round';
+    for (const s of lv.cols.concat(lv.dyn)) {
+      g.globalAlpha = s.on ? 1 : 0.3;
+      if (s.k === 'seg') { g.lineWidth = Math.max(1, s.r * 2 * K); g.strokeStyle = s.one ? '#ff0' : col; g.beginPath(); g.moveTo(X(s.x1), Y(s.y1)); g.lineTo(X(s.x2), Y(s.y2)); g.stroke(); }
+      else { g.lineWidth = 1; g.strokeStyle = s.kick ? '#f6f' : col; g.beginPath(); g.arc(X(s.x), Y(s.y), s.r * K, 0, 7); g.stroke(); }
+    }
+    g.globalAlpha = 1;
+    for (const f of lv.flips) for (const a of [f.aRest, f.aUp]) { g.strokeStyle = a === f.aRest ? col : '#f84'; g.lineWidth = f.r2 * 2 * K; g.beginPath(); g.moveTo(X(f.x), Y(f.y)); g.lineTo(X(f.x + Math.cos(a) * f.len), Y(f.y + Math.sin(a) * f.len)); g.stroke(); }
+    for (const s of lv.sensors) { g.lineWidth = 1.5; g.strokeStyle = s.on ? '#3f6' : '#363'; if (s.kind === 'line') { g.beginPath(); g.moveTo(X(s.x1), Y(s.y1)); g.lineTo(X(s.x2), Y(s.y2)); g.stroke(); } else { g.strokeStyle = s.on ? '#3cf' : '#246'; g.beginPath(); g.arc(X(s.x), Y(s.y), s.r * K, 0, 7); g.stroke(); } }
+    for (const f of lv.fields) { g.setLineDash([3, 3]); g.strokeStyle = '#c6f'; g.beginPath(); g.arc(X(f.x), Y(f.y), (f.r || 20) * K, 0, 7); g.stroke(); g.setLineDash([]); }
+  }
+  for (const p of G.world.paths) { for (let i = 1; i < p.pts.length; i++) { const a = p.pts[i - 1], b = p.pts[i]; g.strokeStyle = 'hsl(' + (200 - Math.min(200, b[2] * 2)) + ',90%,60%)'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(a[0]), Y(a[1])); g.lineTo(X(b[0]), Y(b[1])); g.stroke(); } }
+  G.world.balls.forEach(b => { g.fillStyle = '#fff'; g.beginPath(); g.arc(X(b.x), Y(b.y), 13.5 * K, 0, 7); g.fill(); });
+}
+c.addEventListener('click', e => { const r = c.getBoundingClientRect(); const x = (e.clientX - r.left - 20) / K, y = G.L - (e.clientY - r.top - 20) / K; document.getElementById('info').textContent = 'x ' + x.toFixed(0) + '  y ' + y.toFixed(0); });
+document.getElementById('sim').onclick = () => {
+  const hw = Math.ceil(G.W / 5), hh = Math.ceil(G.L / 5), d = new Float32Array(hw * hh);
+  const g2 = createGame(mods[sel.value], { headless: true, balls: 99 }); g2.start();
+  const w = g2.world;
+  g2.sim(+(qs.get('sec') || 300), +(qs.get('skill') || 0.85), i => { if (i % 10 === 0) for (const b of w.balls) if (b.mode === 'free' && b.lvl === 'main') { const ix = Math.floor(b.x / 5), iy = Math.floor(b.y / 5); if (ix >= 0 && iy >= 0 && ix < hw && iy < hh) d[iy * hw + ix]++; } });
+  heat = { d, w: hw }; window.__simResult = g2.snapshot(); document.getElementById('info').textContent = JSON.stringify({ score: g2.score, st: g2.st, stats: g2.stats }).slice(0, 400); draw();
+};
+sel.onchange = () => { history.replaceState(null, '', '?t=' + sel.value); build(); };
+build();
+window.__layout = { G: () => G, draw, build };
+</script>
+</body>
+</html>

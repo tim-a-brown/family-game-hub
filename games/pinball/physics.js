@@ -325,7 +325,7 @@ export class World {
     const imp = -vn, m = c.mat, e = imp < 60 ? 0 : m.e;
     const jn = (1 + e) * imp;
     rvx += jn * nx; rvy += jn * ny;
-    const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, f = m.mu * jn, dv = clamp(-vt, -f, f);
+    const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, f = imp < 80 ? 0 : m.mu * jn, dv = clamp(-vt, -f, f);   // resting contacts roll freely
     rvx += dv * tx; rvy += dv * ty;
     b.vx = rvx + svx; b.vy = rvy + svy;
     if (imp > 150) b.spin = clamp(b.spin + dv * 0.003, -1.5, 1.5);
@@ -419,8 +419,8 @@ export class World {
         const ia = aFree ? 1 / a.mass : 0, ib = bFree ? 1 / b.mass : 0, sum = ia + ib;
         a.x -= nx * pen * ia / sum; a.y -= ny * pen * ia / sum; b.x += nx * pen * ib / sum; b.y += ny * pen * ib / sum;
         const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny; if (vn >= 0) continue;
-        const e = -vn < 60 ? 0.2 : MAT.ball.e, j = -(1 + e) * vn / sum;
-        a.vx -= j * ia * nx; a.vy -= j * ia * ny; b.vx += j * ib * nx; b.vy += j * ib * ny;
+        const e = -vn < 60 ? 0.2 : MAT.ball.e, jn = -(1 + e) * vn / sum;
+        a.vx -= jn * ia * nx; a.vy -= jn * ia * ny; b.vx += jn * ib * nx; b.vy += jn * ib * ny;
         if (this.onBallHit) this.onBallHit(a, b, -vn);
         if (!aFree && a.held && a.held.owner && a.held.owner.onHeldHit) a.held.owner.onHeldHit(a, b, -vn);
         if (!bFree && b.held && b.held.owner && b.held.owner.onHeldHit) b.held.owner.onHeldHit(b, a, -vn);
