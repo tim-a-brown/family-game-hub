@@ -1387,6 +1387,13 @@
   }
 
   // ── Player links (the engine is in sync.js) ──
+  // Plain words for what went wrong talking to the cloud
+  function linkErr(e) {
+    var c = e && (e.code || ''), m = (e && e.message) || '';
+    if (c === 'permission-denied' || /insufficient permissions/i.test(m)) return 'Profile sharing isn’t switched on yet. It starts working once this update is live.';
+    if (c === 'unavailable' || /offline|network/i.test(m)) return 'Couldn’t reach the cloud. Try again when you’re online.';
+    return m || 'Something went wrong. Try again.';
+  }
   function linksOn() { return !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.linkAdd); }
   // Link a frequent player to their own profile (their share code), or see / undo the link
   function linkSheet(name, onDone) {
@@ -1418,7 +1425,7 @@
       msg.textContent = 'Checking…';
       FGHSync.linkAdd(name, inp.value).then(function (d) {
         s.close(); sfx('good'); toast('Linked to ' + (d.name || name)); avRefresh(); if (onDone) onDone();
-      }).catch(function (e) { msg.textContent = (e && e.message) || 'That didn’t work'; sfx('bad'); });
+      }).catch(function (e) { msg.textContent = linkErr(e); sfx('bad'); });
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     s = sheet({ title: 'Link ' + name, node: node, actions: [{ label: 'Link', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
@@ -1446,7 +1453,7 @@
     }
     node.appendChild(el('p', { class: 'muted', text: 'Making your code…' }));
     s = sheet({ title: 'Share my profile', node: node, actions: [{ label: 'Done', cls: 'btn-soft' }] });
-    FGHSync.linkShare().then(paint).catch(function (e) { node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: (e && e.message) || 'Couldn’t reach the cloud. Try again when you’re online.' })); });
+    FGHSync.linkShare().then(paint).catch(function (e) { node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: linkErr(e) })); });
     function paint(own) {
       node.innerHTML = '';
       node.appendChild(el('div', { class: 'lk-top' }, [avEl(me, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: me }), el('small', { text: 'People who link you see your avatar, and games they play with you are saved to your history.' })])]));
@@ -1462,7 +1469,7 @@
       node.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Make a new code', onclick: function () {
         confirmSheet('Make a new code? Your old code stops working, so anyone who linked you will need the new one.', { ok: 'New code' }).then(function (ok) {
           if (!ok) return; node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: 'Making a new code…' }));
-          FGHSync.linkNewCode().then(paint).catch(function (e) { toast((e && e.message) || 'Couldn’t make a new code'); });
+          FGHSync.linkNewCode().then(paint).catch(function (e) { toast(linkErr(e)); });
         });
       } }));
     }
