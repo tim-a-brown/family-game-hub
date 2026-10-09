@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v439-2026-10-09-mat-name-gap';
+const CACHE_VERSION = 'v440-2026-10-09-mat-name-cinzel';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -31,6 +31,7 @@ const PRECACHE_URLS = [
   '/fonts/lilita-one.woff2',
   '/fonts/patrick-hand.woff2',
   '/fonts/great-vibes.woff2',
+  '/fonts/cinzel-700.woff2',
   '/fonts/bungee.woff2',
   '/fonts/sofia-sans-condensed.woff2',
   '/fonts/sofia-sans.woff2',
