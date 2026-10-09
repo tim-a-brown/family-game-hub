@@ -5440,6 +5440,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var pi = st.pi, pool = function (t) { return t.sel === 'self' ? (onBoard(st.src) ? [st.src] : []) : legalTargets(t, st.src, pi); };
     var from = pool(e.t).filter(function (u) { return C(u).dmg > 0; });
     if (!from.length) return cb(false);
+    // nowhere to move it (no opposing character to take it): nothing happens, so nothing to choose
+    var dest = pool(e.t2); if (!dest.length || (dest.length === 1 && from.length === 1 && dest[0] === from[0])) { st.said.push('no character to move damage to'); return cb(false); }
     if (e.t.sel === 'self' && !ctlHuman(pi) && optional && !(e.t2.side === 'opp')) return cb(false);
     function go(a) {
       var to = pool(e.t2).filter(function (u) { return u !== a; });
