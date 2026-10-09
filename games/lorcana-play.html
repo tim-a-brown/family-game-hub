@@ -122,6 +122,12 @@ html.lp-on .k-toast{width:max-content;max-width:min(520px,calc(100vw - 32px));bo
 /* Boards */
 .lp-board{position:relative;min-height:0;overflow-x:hidden;overflow-y:auto;padding:6px 6px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--gap,6px);}
 .lp-board.drop-ok{background:rgba(227,189,98,.12);box-shadow:inset 0 0 0 2px rgba(227,189,98,.55);border-radius:12px;}
+.lp-board:has(> .bmain){flex-wrap:nowrap;align-items:stretch;align-content:stretch;justify-content:center;}
+.lp-board > .bmain{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--gap,6px);}
+/* Items: their own strip down the right of the mat, set off by a faint gilt rule */
+.lp-board > .irail{flex:none;display:flex;gap:var(--gap,6px);align-items:flex-start;align-self:center;padding-left:7px;margin-left:1px;border-left:1px solid rgba(227,189,98,.22);}
+.lp-board > .irail > .icol{display:flex;flex-direction:column;align-items:center;}
+.lp-board > .irail .slot{box-shadow:0 -3px 8px rgba(0,0,0,.35);border-radius:calc(var(--cu) * .05);}
 .lp-board .empty-msg{align-self:center;color:rgba(255,255,255,.32);font-weight:800;font-size:.85rem;text-align:center;pointer-events:none;}
 .lp-mid{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 8px;min-height:30px;min-width:0;padding:3px 8px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.28) 20%,rgba(0,0,0,.28) 80%,transparent);}
 .phases{display:flex;align-items:center;gap:3px;flex:none;}
@@ -7335,18 +7341,27 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (!order.length) { host.appendChild(el('div', { class: 'empty-msg', text: mine ? (S.P[pi].cpu ? '' : 'Your characters, items and locations go here') : S.P[pi].name + '’s side of the table' })); return; }
     // A location is a place on the table: a pad in its ink colour, the location card on it and the characters
     // there standing beside it on the same pad (where a character is shows by where it stands, not by a label)
+    // characters and locations fill the main area; items stand apart in a rail down the right edge of the mat
+    var main = el('div', { class: 'bmain' }), items = [];
+    host.appendChild(main);
     order.forEach(function (u) {
+      if (DD(u).t === 'item') { items.push(u); return; }
       if (isLoc(u)) {
         var g = el('div', { class: 'locgrp', 'data-loc': u, style: { '--lc': inkColor(u) } });
         g.appendChild(slotFor(u, 'board'));
         var nAt = 0;
         order.forEach(function (x) { if (isChar(x) && C(x).at === u) { var sx = slotFor(x, 'board'); sx.classList.toggle('stk', nAt++ > 0); g.appendChild(sx); } });
         g.classList.toggle('busy', g.children.length > 1);
-        host.appendChild(g); return;
+        main.appendChild(g); return;
       }
       if (isChar(u) && C(u).at && S.cards[C(u).at] && order.indexOf(C(u).at) >= 0) return;   // already on its location's pad
-      host.appendChild(slotFor(u, 'board'));
+      main.appendChild(slotFor(u, 'board'));
     });
+    if (items.length) {
+      var rail = el('div', { class: 'irail' });
+      rail._items = items.map(function (u) { return slotFor(u, 'board'); });
+      host.appendChild(rail);
+    }
   }
   // Card size for each side of the table: as big as fits. A location and the characters at it are one block on its
   // pad (it can't wrap), so it's measured as one; when several characters crowd a location they fan out in an
@@ -7354,7 +7369,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function fitCuU(W, H, us, gap, maxCu) {
     function fits(cu) {
       var x = 0, rows = 1;
-      for (var i = 0; i < us.length; i++) { var w = us[i].w * cu + us[i].px; if (x > 0 && x + gap + w > W) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; if (w > W) return false; }
+      var Wc = typeof W === 'function' ? W(cu) : W;
+      for (var i = 0; i < us.length; i++) { var w = us[i].w * cu + us[i].px; if (x > 0 && x + gap + w > Wc) { rows++; x = w; } else x += (x > 0 ? gap : 0) + w; if (w > Wc) return false; }
       return rows * cu + (rows - 1) * gap <= H;
     }
     var lo = 28, hi = Math.max(30, maxCu);
@@ -7365,12 +7381,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   var LOC_VIS = 0.42;   // how much of each stacked character shows (its name and strength)
   function fitBoards() {
     $$('.lp-board').forEach(function (b) {
-      var items = Array.prototype.map.call(b.children, function (ch) {
+      var main = $(':scope > .bmain', b) || b, rail = $(':scope > .irail', b), nI = rail ? rail._items.length : 0;
+      var items = Array.prototype.map.call(main.children, function (ch) {
         if (ch.classList.contains('locgrp')) { var sl = $$(':scope > .slot', ch); return { g: ch, locw: sl[0] && sl[0].classList.contains('wide') ? 1 : 0.716, n: Math.max(0, sl.length - 1) }; }
         if (ch.classList.contains('slot')) return { w: ch.classList.contains('wide') ? 1 : 0.716 };
         return null;
       }).filter(Boolean);
-      var gap = 6, busy = items.some(function (it) { return it.n; }), W = b.clientWidth - 12, H = b.clientHeight - 12 - (busy ? 12 : 0);
+      var gap = 6, busy = items.some(function (it) { return it.n; }), W0 = b.clientWidth - 12, H0 = b.clientHeight - 12, H = H0 - (busy ? 12 : 0);
+      // the item rail: one column while they fit top to bottom, then two; past that each column overlaps (tops showing)
+      function railCols(cu) { return !nI ? 0 : nI * cu + (nI - 1) * gap <= H0 ? 1 : 2; }
+      function W(cu) { var c = railCols(cu); return c ? W0 - (c * 0.716 * cu + (c - 1) * gap + RAIL_PAD) : W0; }
       var maxCu = Math.min(H, window.innerWidth >= 700 ? 200 : 150);
       function units(vis) { return items.map(function (it) {
         if (!it.g) return { w: it.w, px: 0 };
@@ -7382,8 +7402,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (items.some(function (it) { return it.n >= 2; })) { var st = fitCuU(W, H, units(LOC_VIS), gap, maxCu); if (st > cu * 1.1) { cu = st; vis = LOC_VIS; } }
       b.style.setProperty('--cu', cu + 'px');
       items.forEach(function (it) { if (!it.g) return; it.g.classList.toggle('crowd', vis < 1 && it.n >= 2); it.g.style.setProperty('--vis', vis); });
+      if (rail) {
+        var cols = railCols(cu), per = Math.ceil(nI / cols);
+        // the overlap: as far apart as the height allows, but at least the top of each card shows
+        var step = per > 1 ? Math.max(cu * 0.2, Math.min(cu + gap, (H0 - cu) / (per - 1))) : cu + gap;
+        rail.innerHTML = '';
+        for (var ci = 0; ci < cols; ci++) {
+          var col = el('div', { class: 'icol' });
+          rail._items.slice(ci * per, (ci + 1) * per).forEach(function (sl, j) { sl.style.marginTop = j ? (step - cu).toFixed(1) + 'px' : ''; col.appendChild(sl); });
+          rail.appendChild(col);
+        }
+      }
     });
   }
+  var RAIL_PAD = 14;   // the rail's divider and the space either side of it
+
   function placeLight() {
     requestAnimationFrame(function () {
       $$('.lp-board').forEach(function (b) {
