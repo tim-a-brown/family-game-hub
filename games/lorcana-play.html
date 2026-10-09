@@ -142,6 +142,15 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lp-board > .irail:has(.slot.wide) > .icol{min-width:var(--cu);}
 .lp-board > .irail .slot{border-radius:calc(var(--cu) * .05);}
 .lp-board > .irail .slot .lc{box-shadow:0 -3px 8px rgba(0,0,0,.35),0 2px 0 rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.45);}
+.lp-board .mat-sil{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4cqh;pointer-events:none;container-type:size;}
+.lp-board .mat-sil.flip{transform:rotate(180deg);}
+/* pressed into the felt: dark shapes with a faint light edge below, like an embossed mark */
+.mat-sil .ms-av{--sz:min(44cqh,150px);width:var(--sz);height:var(--sz);flex:none;border-radius:50%;display:grid;place-items:center;
+  background:rgba(0,0,0,.16);box-shadow:inset 0 3px 10px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.08);
+  font-family:var(--display);font-size:calc(var(--sz) * .56);line-height:1;color:rgba(0,0,0,.24);text-shadow:0 1px 0 rgba(255,255,255,.08);}
+.mat-sil .ms-av svg{width:58%;height:58%;color:rgba(0,0,0,.26);filter:drop-shadow(0 1px 0 rgba(255,255,255,.08));}
+.mat-sil .ms-nm{font-family:var(--display);font-size:min(10cqh,2.1rem);line-height:1.1;letter-spacing:.06em;color:rgba(0,0,0,.26);text-shadow:0 1px 0 rgba(255,255,255,.08);
+  max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lp-board .empty-msg{align-self:center;color:rgba(255,255,255,.32);font-weight:800;font-size:.85rem;text-align:center;pointer-events:none;}
 .lp-mid{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 8px;min-height:30px;min-width:0;padding:3px 8px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.28) 20%,rgba(0,0,0,.28) 80%,transparent);}
 .phases{display:flex;align-items:center;gap:3px;flex:none;}
@@ -7466,7 +7475,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     host.classList.toggle('flip', !!flipOpp && !mine);
     if (mine) host.dataset.drop = 'board'; else delete host.dataset.drop;
     host.innerHTML = '';
-    if (!order.length) { host.appendChild(el('div', { class: 'empty-msg', text: mine ? (S.P[pi].cpu ? '' : 'Your characters, items and locations go here') : S.P[pi].name + '’s side of the table' })); return; }
+    // An empty mat: its player's avatar and name pressed into the felt, facing the way their cards face
+    if (!order.length) {
+      var P0 = S.P[pi];
+      host.appendChild(el('div', { class: 'mat-sil' + (!!flipOpp && !mine ? ' flip' : ''), 'aria-label': P0.name + '’s side of the table' }, [
+        el('div', { class: 'ms-av', html: P0.cpu ? Kit.icon('bot') : esc(P0.name.charAt(0).toUpperCase()) }),
+        el('div', { class: 'ms-nm', text: P0.name })]));
+      return;
+    }
     // A location is a place on the table: a pad in its ink colour, the location card on it and the characters
     // there standing beside it on the same pad (where a character is shows by where it stands, not by a label)
     // characters and locations fill the main area; items stand apart in a rail down the right edge of the mat
