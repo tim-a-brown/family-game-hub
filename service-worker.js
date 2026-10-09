@@ -157,6 +157,7 @@ const PRECACHE_URLS = [
   '/games/pacman.html',
   '/games/paigow.html',
   '/games/peggle.html',
+  '/games/pinball.html',
   '/games/phase10-ai.html',
   '/games/phase10.html',
   '/games/players.html',

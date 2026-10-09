@@ -216,6 +216,7 @@ var GameIcon = (function () {
     flappybird: function () { return rect(17, 0, 5, 7, 1, '#3ddc84') + rect(17, 15, 5, 9, 1, '#3ddc84') + circ(9, 12, 5.5, Y) + circ(11, 10.4, 1.6, W) + circ(11.5, 10.4, .8, K) + path('M13.5 12.5h4l-2 2z', O) + '<ellipse cx="7" cy="13.5" rx="3" ry="1.8" fill="#ffe08a"/>'; },
     asteroids: function () { return path('M7 20 12 4l5 16-5-3.5z', 'none', ' stroke="' + W + '" stroke-width="1.8" stroke-linejoin="round"') + path('M18 2.5l3.5 1.5.5 3.5-3 2-3-1.5-.5-3z', S) + path('M2 9l2.5-.5 1.5 2-1 2.5-2.5-.5z', S); },
     peggle: function () { return circ(5, 15, 2.2, O) + circ(11, 18.5, 2.2, '#7aa8ff') + circ(17, 15, 2.2, O) + circ(20.5, 20, 2.2, O) + circ(3.5, 20.5, 2.2, '#7aa8ff') + line('M12 1.5c0 4 .5 6.5 2.5 9', W, 1.4) + circ(14.8, 11, 1.8, W); },
+    pinball: function () { return line('M2 3.5v15.5l7 3.5M22 3.5v15.5l-7 3.5', S, 1.4) + line('M5.2 17.6l4.6 2.4M18.8 17.6l-4.6 2.4', '#ff5cc8', 2.4) + circ(8, 8, 2.6, '#38e1ff') + circ(16, 7, 2.6, '#38e1ff') + circ(12, 12.5, 2.6, '#ffc22e') + circ(15.5, 15.5, 1.9, W) + circ(15, 15, .7, '#ffffff', ' opacity=".9"'); },
 
     // Tools (clipboard base)
     scorecard: function (c) { return line('M3 4h8M3 10h8M3 16h8', K, 1.8) + line('M14 2.5v5M16.5 2.5v5M19 2.5v5M21.5 2.5v5M13 7l9.5-4', c, 1.6) + txt('12', 8, c, 13, 17.5) + txt('7', 8, c, 19, 17.5); },

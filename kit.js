@@ -360,7 +360,7 @@
         acts.appendChild(el('button', {
           class: 'btn btn-block ' + (a.cls || (a.primary ? 'btn-primary' : a.danger ? 'btn-red' : 'btn-soft')),
           type: 'button', text: a.label,
-          onclick: function () { sfx('tap'); haptic('light'); if (!a.keep) close(); if (a.onClick) a.onClick(); }
+          onclick: function () { if (closed) return; sfx('tap'); haptic('light'); if (!a.keep) close(); if (a.onClick) a.onClick(); }   // a second tap while it closes does nothing
         }));
       });
       body.appendChild(acts);
@@ -1234,7 +1234,7 @@
     var list = []; try { list = GameHistory.load(key); } catch (e) {}
     if (o.keys) o.keys.forEach(function (k) { try { list = list.concat(GameHistory.load(k)); } catch (e) {} });
     list.sort(function (a, b) { return (b._date || 0) - (a._date || 0); });
-    var box = el('div', { class: 'k-hist' }), inList = { inList: true, extra: o.extra };
+    var box = el('div', { class: 'k-hist' }), inList = { inList: true, extra: o.extra, game: histGameId(key) };
     if (!list.length) box.appendChild(el('p', { class: 'muted', text: 'No finished games yet. Each game you finish is saved here.' }));
     list.forEach(function (e, i) {
       var n = normalize(e);
