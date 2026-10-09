@@ -5879,7 +5879,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var eff = { exerts: { op: 'exert' }, banishes: { op: 'banish' }, readies: { op: 'ready' }, damage: { op: 'damage', n: e.n }, bounce: { op: 'bounce' }, ink: { op: 'toInk' }, bottom: { op: 'bottom' } }[e.what];
     function fin(x) { act(function () { hit(eff, st, x); checkBanishAll(); }); cb(true); }
     if (O.cpu) return fin(pool.slice().sort(function (a, b) { return cardValue(a) - cardValue(b); })[0]);
-    startPick({ title: O.name + ': choose one of your characters (' + effText(eff).replace(/ that card$/, '').replace(/^Deal (\d+) damage to/, '$1 damage') + ')', src: st.src, ok: function (x) { return pool.indexOf(x) >= 0; }, must: true, done: fin, dec: o });
+    // said to the player choosing: what happens to the character they pick
+    var YOU = { exerts: 'It gets exerted', banishes: 'It’s banished', readies: 'It gets readied', damage: 'It takes ' + e.n + ' damage', bounce: 'It goes back to your hand',
+      ink: 'It goes into your inkwell, facedown and exerted', bottom: 'It goes on the bottom of your deck' }[e.what];
+    startPick({ title: O.name + ': choose one of your characters. ' + (YOU ? YOU + '.' : effText(eff)), src: st.src, ok: function (x) { return pool.indexOf(x) >= 0; }, must: true, done: fin, dec: o });
   }
   function modalFx(e, st, cb) {
     var pi = st.pi;
