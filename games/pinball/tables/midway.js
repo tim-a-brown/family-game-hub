@@ -104,8 +104,7 @@ function build(T) {
   T.lower({ flipColor: '#f6efe0', flipRubber: '#c8302c', bxColor: '#ffcc3a', saveColor: '#e8463c', extraColor: '#ff9a40', bxY: 302, slingArt: paintSling });
 
   // ── Left side: the MIDWAY orbit lane, the human cannonball, the shooting gallery ──
-  T.wall([[2, 612], [6, 588], [16, 570], [32, 558], [50, 553], [58, 562]], { style: 'wood', r: 4, h: 34 });
-  T.post(60, 566, { style: 'rubber', r: 5 });
+  T.wall([[2, 612], [6, 588], [16, 570], [32, 558], [52, 552]], { style: 'wood', r: 4, h: 34 });   // no post on the end: a round cap holds nothing
   T.post(62, 618, { style: 'rubber', r: 5 });   // bottom of the lane guide (the block's wall); the lane mouth is 54 mm wide
   T.spinner({ id: 'spinner', x: 31, y: 690, w: 46, angle: 90, label: 'MIDWAY', color: '#f4ecd8', art: spinArt });
   T.orbit({ id: 'orbitL', a: [8, 660, 60, 660], dirA: [0, 1], b: [434, 660, 478, 660], dirB: [0, -1] });
@@ -169,7 +168,8 @@ function build(T) {
   // ── Upper right: pop bumpers (bumper cars) and the W-I-N top lanes ──
   POPS.forEach(([x, y], i) => T.popBumper({ id: 'pop' + (i + 1), x, y, r: 23, color: ['#e8463c', '#ffcc3a', '#2a8c8c'][i], skirt: ['#c8302c', '#e0a63a', '#1f6f6f'][i], body: '#f4ecd8', capArt: (g, w, h) => bumperCarCap(g, w, h, i) }));
   LANES.forEach((x, i) => T.rolloverLane({ id: 'lane' + 'WIN'[i], x, y: 992, r: 11, color: '#ffcc3a', lampDy: -30, shape: 'circle', lampR: 8, text: 'WIN'[i], textSize: 9 }));
-  [232, 272, 312, 352].forEach(x => { T.wall([[x, 972], [x, 1018]], { style: 'metal', h: 22 }); T.post(x, 972, { style: 'metal', r: 3 }); });
+  // the two middle guides nearly touch the arch: a ball hugging the wall at speed completes the orbit, anything slower drops into a lane
+  [[232, 1018], [272, 1024], [312, 1024], [352, 1018]].forEach(([x, top]) => { T.wall([[x, 972], [x, top]], { style: 'metal', h: 22 }); T.post(x, 972, { style: 'metal', r: 3 }); });
 
   // ── Inserts ──
   const ins = (id, x, y, o) => T.insert(id, x, y, o);

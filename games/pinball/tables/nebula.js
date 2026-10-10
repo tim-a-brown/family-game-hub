@@ -257,8 +257,121 @@ function buildInserts(T) {
   // the containment tube's lamps (one per locked ball)
   [106, 136, 166].forEach((x, i) => T.bulb('ct' + i, x, 1032, 92, { color: PAL.magenta, r: 2.4, k: 5 }));
 }
-function buildModels(T) {}
-function saucerModel(RC, toy) { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.SphereGeometry(28, 20, 12), RC.mats.chrome())); return g; }
+function buildModels(T) {
+  T.model(RC => mothershipModel(RC));
+  T.model(RC => wellModel(RC));
+  T.model(RC => sceneryModel(RC));
+  T.model(RC => { RC.anim.push((dt, t) => twinkle(RC, t)); return null; });
+}
+function mesh(geo, mat, cast = true) { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = true; return m; }
+function mergeGeos(list) {
+  const out = []; let n = 0;
+  for (const g0 of list) { const g = g0.index ? g0.toNonIndexed() : g0; out.push(g); n += g.attributes.position.count; }
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
+  for (const g of out) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, o * 2); o += g.attributes.position.count; }
+  const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return m;
+}
+// ── The flying saucer: a chrome hull with a glass dome, a ring of running lights and a thruster glow ──
+function saucerModel(RC, toy) {
+  const g = new THREE.Group(), chrome = RC.mats.chrome(), dark = RC.mats.plastic('#1a2236', { roughness: 0.4, clearcoat: 0.8 });
+  const hull = mesh(latheGeo(0, 0, [[0, 6], [16, 6], [28, 10], [34, 16], [30, 21], [20, 24], [12, 26], [0, 26]], 36), chrome); g.add(hull);
+  const under = mesh(latheGeo(0, 0, [[0, 4], [14, 2], [26, 6], [33, 15]], 36), dark); g.add(under);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(12, 24, 14, 0, TAU, 0, PI / 2), RC.mats.clear('#bff6ff', 0.35, { depthWrite: false })); dome.position.z = 25; dome.renderOrder = 4; g.add(dome);
+  const pilot = mesh(new THREE.SphereGeometry(4.5, 12, 8), RC.mats.plastic('#5dffb0', { roughness: 0.5 })); pilot.position.z = 28; g.add(pilot);
+  const eyes = mesh(new THREE.SphereGeometry(1.4, 8, 6), RC.mats.plastic('#111')); eyes.position.set(-1.6, -3.6, 29.5); g.add(eyes); const eye2 = eyes.clone(); eye2.position.x = 1.6; g.add(eye2);
+  const lightMat = new THREE.MeshStandardMaterial({ color: '#223', emissive: PAL.cyan, emissiveIntensity: 1 }), lights = [];
+  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, l = new THREE.Mesh(new THREE.SphereGeometry(2, 10, 8), lightMat.clone()); l.position.set(Math.cos(a) * 31, Math.sin(a) * 31, 17); g.add(l); lights.push(l); }
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), RC.mats.glow('#8ad8ff')); glow.position.z = 2; glow.renderOrder = 3; g.add(glow);
+  const legs = []; for (let i = 0; i < 3; i++) { const a = i / 3 * TAU + 0.5; legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 1.2, 0, 8, 8)); legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 4, 0, 1.2, 10)); }
+  g.add(mesh(mergeGeos(legs), RC.mats.steel()));
+  g.userData = { lights, glow, dome, t: 0 };
+  // hover: it bobs gently, lifts when hit, lights chase faster when angry
+  RC.anim.push((dt, t) => {
+    const u = g.userData, B = RC.G.b || {}, wob = toy.wob, angry = B.saucerMode ? 1 : 0;
+    g.position.z = toy.z0 + Math.sin(t * 1.3) * 1.5 + wob * 14 + angry * 4;
+    g.rotation.z = t * 0.6 + wob * Math.sin(t * 30) * 0.3;
+    u.lights.forEach((l, i) => { const ph = ((t * (2 + angry * 6 + wob * 10) + i / 10) % 1); l.material.emissiveIntensity = 0.3 + (ph < 0.25 ? 3.5 : 0) + wob * 2; l.material.emissive.set(angry ? PAL.magenta : PAL.cyan); });
+    u.glow.material.opacity = 0.35 + wob * 0.6 + angry * 0.25 + 0.1 * Math.sin(t * 7);
+  });
+  return g;
+}
+// ── The mothership: a hull hovering over the drop targets, engines lit, a bridge that scans with the ball ──
+function mothershipModel(RC) {
+  const g = new THREE.Group(); g.position.set(SHIP[0], SHIP[1] + 24, 0);
+  const hullM = new THREE.MeshStandardMaterial({ color: '#b8c4d8', metalness: 0.85, roughness: 0.38 }), darkM = RC.mats.plastic('#121a2e', { roughness: 0.45 });
+  const parts = [];
+  const body = new THREE.CapsuleGeometry(14, 100, 6, 16); body.rotateZ(PI / 2); body.translate(0, 6, 58); parts.push(body);
+  const wing = new THREE.BoxGeometry(180, 36, 4); wing.translate(0, 10, 50); parts.push(wing);
+  for (const x of [-70, 70]) { const pod = new THREE.CapsuleGeometry(9, 40, 6, 12); pod.rotateX(PI / 2); pod.translate(x, 6, 54); parts.push(pod); }
+  const fin = new THREE.BoxGeometry(4, 30, 26); fin.translate(0, 20, 72); parts.push(fin);
+  g.add(mesh(mergeGeos(parts), hullM));
+  const plates = []; for (let i = -3; i <= 3; i++) { const p = new THREE.BoxGeometry(18, 24, 1.2); p.translate(i * 24, 12, 52.5); plates.push(p); }
+  g.add(mesh(mergeGeos(plates), darkM));
+  const engM = new THREE.MeshStandardMaterial({ color: '#102030', emissive: PAL.cyan, emissiveIntensity: 1.5 });
+  const engines = [-70, 70].map(x => { const e = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 3, 16), engM); e.rotation.x = PI / 2; e.position.set(x, 30, 54); g.add(e); return e; });
+  const bridge = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), RC.mats.clear('#9ad8ff', 0.5, { depthWrite: false })); bridge.position.set(0, -14, 66); bridge.renderOrder = 4; g.add(bridge);
+  const beam = new THREE.Mesh(new THREE.PlaneGeometry(26, 60), RC.mats.glow(PAL.red)); beam.position.set(0, -34, 20); beam.rotation.x = PI / 2 - 0.3; beam.renderOrder = 6; g.add(beam);
+  const lampsM = new THREE.MeshStandardMaterial({ color: '#222', emissive: PAL.red, emissiveIntensity: 1 });
+  const lamps = [-84, -40, 40, 84].map(x => { const l = new THREE.Mesh(new THREE.SphereGeometry(1.8, 8, 6), lampsM); l.position.set(x, 28, 50); g.add(l); return l; });
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  RC.anim.push((dt, t) => {
+    const G = RC.G, B = G.b || {}, bank = G.comps.ship, down = bank ? bank.targets.filter(x => !x.up).length : 0;
+    g.position.z = Math.sin(t * 0.9) * 2; g.rotation.x = Math.sin(t * 0.7) * 0.03; g.rotation.y = Math.sin(t * 0.5) * 0.04;
+    engM.emissiveIntensity = 1.2 + 0.6 * Math.sin(t * 9) + (B.warpOn ? 1.5 : 0);
+    lampsM.emissiveIntensity = (Math.floor(t * 4) % 2 ? 1.6 : 0.2) + down * 0.4;
+    const b = G.world.balls.find(b => !b.hidden && b.lvl === 'main'); beam.material.opacity = (B.planetOn || B.cannonLit) ? 0.5 + 0.2 * Math.sin(t * 11) : 0.12;
+    if (b) beam.rotation.z = Math.atan2(b.y - (SHIP[1] + 24), b.x - SHIP[0]) + PI / 2;
+  });
+  RC.root.add(g); return null;
+}
+// ── The Gravity Well: a black-glass housing, chrome rails, a glass front, magnet coils, a top gate ──
+function wellModel(RC) {
+  const [x0, y0, x1, y1] = WELL_BOX, B = RC.batch, cx = (x0 + x1) / 2;
+  const glassM = new THREE.MeshPhysicalMaterial({ color: '#0a1020', metalness: 0.2, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.08 });
+  // the housing under the deck (dark glass), chrome rails at its corners, a lit edge strip
+  B.add(glassM, boxGeo(cx, (y0 + y1) / 2, (WELL_Z - 9) / 2, x1 - x0 - 4, y1 - y0 - 4, WELL_Z - 9));
+  for (const [x, y] of [[x0 + 3, y0 + 3], [x1 - 3, y0 + 3], [x0 + 3, y1 - 3], [x1 - 3, y1 - 3]]) B.add(RC.mats.chrome(), cylGeo(x, y, 2.6, 0, WELL_Z + 34, 10));
+  B.add(RC.mats.chrome(), boxGeo(cx, y0 + 1, WELL_Z + 34, x1 - x0, 3, 3)); B.add(RC.mats.chrome(), boxGeo(cx, y1 - 1, WELL_Z + 34, x1 - x0, 3, 3));
+  const strip = new THREE.Mesh(boxGeo(cx, y0 - 0.5, WELL_Z - 12, x1 - x0 - 8, 1.5, 3), RC.mats.emissive(PAL.cyan, 1.2)); RC.root.add(strip);
+  // glass front over the field (a clear pane standing on the deck's front edge, tilted back a little)
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - 6, 34), RC.mats.clear('#cfe8ff', 0.12, { depthWrite: false }));
+  pane.position.set(cx, y0 + 2, WELL_Z + 17); pane.rotation.x = PI / 2; pane.renderOrder = 5; RC.root.add(pane);
+  // the top gate: a chrome arch with a lit lintel
+  B.add(RC.mats.chrome(), tubeGeo([[x0 + 20, y1 - 6, WELL_Z], [x0 + 20, y1 - 6, WELL_Z + 30], [x1 - 20, y1 - 6, WELL_Z + 30], [x1 - 20, y1 - 6, WELL_Z]], 2, 24, 8));
+  const lintel = new THREE.Mesh(boxGeo(cx, y1 - 6, WELL_Z + 26, x1 - x0 - 50, 2, 6), RC.mats.emissive(PAL.magenta, 0.8)); RC.root.add(lintel);
+  // the containment tube on the backboard: three locked balls sit in a clear tube, lit from behind
+  const tube = new THREE.Mesh(tubeGeo([[86, 1032, 72], [186, 1032, 72]], 17, 4, 20), RC.mats.clear('#dff6ff', 0.2, { depthWrite: false })); tube.renderOrder = 4; RC.root.add(tube);
+  B.add(RC.mats.chrome(), torusGeo(86, 1032, 72, 17, 2, 24).rotateY(0)); B.add(RC.mats.chrome(), torusGeo(186, 1032, 72, 17, 2, 24));
+  for (const x of [86, 186]) { const t = new THREE.TorusGeometry(17.5, 2.2, 8, 24); t.rotateY(PI / 2); t.translate(x, 1032, 72); B.add(RC.mats.chrome(), t); B.add(RC.mats.steel(), cylGeo(x, 1032, 3, 0, 60, 8)); }
+  const label = canvas(256, 64), lg = label.getContext('2d'); lg.fillStyle = '#0a1226'; lg.fillRect(0, 0, 256, 64); lg.fillStyle = PAL.magenta; lg.font = '400 30px "Bungee", Impact'; lg.textAlign = 'center'; lg.textBaseline = 'middle'; lg.fillText('CONTAINMENT', 128, 32);
+  const lab = new THREE.Mesh(new THREE.PlaneGeometry(90, 22), new THREE.MeshStandardMaterial({ map: RC.tex(label), emissiveMap: RC.tex(label), emissive: '#fff', emissiveIntensity: 0.6 })); lab.position.set(136, 1056, 108); lab.rotation.x = PI / 2; RC.root.add(lab);
+  RC.anim.push((dt, t) => { const G = RC.G, inWell = G.world.balls.some(b => b.lvl === 'well' && b.mode === 'free'); strip.material.emissiveIntensity = inWell ? 2.5 + Math.sin(t * 12) : 1.0; lintel.material.emissiveIntensity = (G.b && G.b.lockLit) ? 1.5 + Math.sin(t * 8) : 0.5; });
+  return null;
+}
+// ── Pedestals, teleport pads, tube supports, the backboard station ──
+function sceneryModel(RC) {
+  const B = RC.batch, chrome = RC.mats.chrome(), steel = RC.mats.steel();
+  // the left turret's pedestal over the port lane (two legs hug the wall, a plate carries the base)
+  B.add(chrome, cylGeo(11, 592, 2, 0, 44, 8)); B.add(chrome, cylGeo(11, 616, 2, 0, 44, 8)); B.add(RC.mats.plastic('#1a2236', { roughness: 0.4 }), cylGeo(26, 604, 24, 42, 44.5, 24));
+  // the right turret's pedestal on the top-right corner
+  B.add(RC.mats.plastic('#1a2236', { roughness: 0.4 }), cylGeo(CANR[0], CANR[1], 26, 0, 42, 24)); B.add(chrome, torusGeo(CANR[0], CANR[1], 42, 25, 1.4, 24));
+  // teleport arrival pad: a chrome ring with an emissive core (the physics subway only draws the in-pad)
+  B.add(chrome, torusGeo(TPOUT[0], TPOUT[1], 0.8, 24, 2, 32));
+  const core = new THREE.Mesh(new THREE.CircleGeometry(18, 24), RC.mats.emissive(PAL.cyan, 0.4)); core.position.set(TPOUT[0], TPOUT[1], 0.4); RC.root.add(core);
+  // tube ramp legs where they do no harm
+  for (const [x, y, z] of [[244, 690, 30], [308, 690, 30], [356, 775, 66], [392, 764, 66], [478, 640, 56], [478, 560, 46]]) { B.add(steel, cylGeo(x, y, 1.6, 0, z + 10, 8)); B.add(steel, cylGeo(x, y, 4, 0, 1.5, 8)); }
+  // a small relay station on the backboard shelf (static, batched): dish, mast, lit windows
+  B.add(RC.mats.paint('#2a3350', { roughness: 0.7 }), boxGeo(430, 1050, 20, 70, 18, 40));
+  B.add(chrome, cylGeo(430, 1046, 1.5, 40, 90, 8)); const dish = latheGeo(430, 1046, [[0, 0], [14, 4], [16, 5]], 20); dish.translate(0, 0, 86); B.add(RC.mats.steel(), dish);
+  const win = new THREE.Mesh(mergeGeos([-20, 0, 20].map(x => boxGeo(430 + x, 1040.5, 22, 10, 1, 8))), new THREE.MeshStandardMaterial({ color: '#102030', emissive: PAL.amber, emissiveIntensity: 1.4 })); RC.root.add(win);
+  RC.anim.push((dt, t) => { core.material.emissiveIntensity = 0.4 + 0.3 * Math.sin(t * 3) + (RC.G.comps.tpIn.flashA || 0) * 4; win.material.emissiveIntensity = 1.2 + 0.3 * Math.sin(t * 2.3); });
+  return null;
+}
+function twinkle(RC, t) {
+  // starfield GI: the back lamp shimmers, the side lamps breathe slowly out of phase
+  const gi = RC.lights.gi, d = RC.G.dark;
+  gi.forEach((l, i) => { l.intensity = l.userData.base * (0.86 + 0.14 * Math.sin(t * (1.7 + i * 0.6) + i * 2.1) * Math.sin(t * 3.1 + i)) * (1 - d); });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RULES

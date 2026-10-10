@@ -202,6 +202,8 @@ const PRECACHE_URLS = [
   '/hist/lorcana.js',
   '/fonts/press-start-2p.woff2',
   '/games/plinko.html',
+  '/vendor/three/addons/postprocessing/AfterimagePass.js',
+  '/vendor/three/addons/shaders/AfterimageShader.js',
   '/games/plinko/bigwheel3d.js',
   '/games/poker.html',
   '/games/pokersquares.html',
