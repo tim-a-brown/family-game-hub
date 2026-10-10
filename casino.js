@@ -211,7 +211,7 @@ const Casino = (function(){
     '.cz-stk .cz-chip:not(:last-child){font-size:0;}' +
     // The rack: a dark wooden tray with felt-lined wells, a short stack of chips in each
     '.cz-rack{--cs:clamp(42px,12.6vw,54px);display:flex;justify-content:center;align-items:flex-end;gap:clamp(4px,1.8vw,10px);padding:7px 8px 8px;border-radius:16px;box-sizing:border-box;' +
-      'max-width:calc(5 * var(--cs) + 160px);margin-left:auto;margin-right:auto;' +
+      'width:100%;max-width:calc(5 * var(--cs) + 160px);margin-left:auto;margin-right:auto;' +
       'touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;' +
       'background:repeating-linear-gradient(92deg,rgba(255,255,255,.035) 0 2px,transparent 2px 9px),linear-gradient(180deg,#3a2112,#24130a);' +
       'box-shadow:inset 0 3px 8px rgba(0,0,0,.65),inset 0 -1px 0 rgba(255,255,255,.07),0 1px 0 rgba(255,255,255,.14);}' +

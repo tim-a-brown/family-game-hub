@@ -252,7 +252,7 @@ export function createGame(seed, saved) {
       if (row.coin != null && !row.coinTaken && row.coin === P.x) { row.coinTaken = true; G.coins++; ev('coin', { row: P.row, col: P.x }); }
     }
     if (P.row > G.maxRow) { G.maxRow = P.row; G.score = P.row; ev('score', { score: G.score }); }
-    ev('land', { type: row.type });
+    ev('land', { ground: row.type });
     if (G.queue.length && G.state === 'play') startHop(G.queue.shift());
   }
 

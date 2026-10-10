@@ -239,6 +239,11 @@ var GameIcon = (function () {
     pacman: function () { return path('M12 12 20 7.5A9 9 0 1 0 20 16.5z', Y, ' transform="translate(-4 0)"') + circ(18, 12, 1.4, W) + circ(22.5, 12, 1.4, W); },
     breakout: function () { return rect(1, 2, 7, 3, .8, R) + rect(8.5, 2, 7, 3, .8, O) + rect(16, 2, 7, 3, .8, Y) + rect(1, 6, 7, 3, .8, O) + rect(16, 6, 7, 3, .8, '#3ddc84') + circ(13, 14, 1.8, W) + rect(7, 20, 10, 2.4, 1.2, '#7aa8ff'); },
     flappybird: function () { return rect(17, 0, 5, 7, 1, '#3ddc84') + rect(17, 15, 5, 9, 1, '#3ddc84') + circ(9, 12, 5.5, Y) + circ(11, 10.4, 1.6, W) + circ(11.5, 10.4, .8, K) + path('M13.5 12.5h4l-2 2z', O) + '<ellipse cx="7" cy="13.5" rx="3" ry="1.8" fill="#ffe08a"/>'; },
+    crossyroad: function () {   // a voxel chicken on the verge, a car coming down the road
+      return rect(0, 1.5, 24, 8, 1, '#62c45e') + rect(0, 9.5, 24, 10, 1, '#5a606c') + rect(1, 14, 4, 1, .5, W) + rect(9.5, 14, 4, 1, .5, W) +
+        rect(13.5, 15.2, 9, 3.6, .9, R) + rect(15.5, 13.4, 4.6, 2, .5, '#2f4157') + rect(15, 18.4, 2, 1.4, .4, K) + rect(19.5, 18.4, 2, 1.4, .4, K) +
+        rect(4.5, 3.6, 7, 8, 1.2, W) + rect(6.8, 2, 2.4, 2, .4, R) + rect(11.3, 6.4, 2.4, 1.7, .3, O) + rect(9.3, 5.2, 1.2, 1.2, .2, K) + rect(6, 11.4, 1.1, 2, .3, O) + rect(8.8, 11.4, 1.1, 2, .3, O);
+    },
     asteroids: function () { return path('M7 20 12 4l5 16-5-3.5z', 'none', ' stroke="' + W + '" stroke-width="1.8" stroke-linejoin="round"') + path('M18 2.5l3.5 1.5.5 3.5-3 2-3-1.5-.5-3z', S) + path('M2 9l2.5-.5 1.5 2-1 2.5-2.5-.5z', S); },
     peggle: function () { return circ(5, 15, 2.2, O) + circ(11, 18.5, 2.2, '#7aa8ff') + circ(17, 15, 2.2, O) + circ(20.5, 20, 2.2, O) + circ(3.5, 20.5, 2.2, '#7aa8ff') + line('M12 1.5c0 4 .5 6.5 2.5 9', W, 1.4) + circ(14.8, 11, 1.8, W); },
     pinball: function () { return line('M2 3.5v15.5l7 3.5M22 3.5v15.5l-7 3.5', S, 1.4) + line('M5.2 17.6l4.6 2.4M18.8 17.6l-4.6 2.4', '#ff5cc8', 2.4) + circ(8, 8, 2.6, '#38e1ff') + circ(16, 7, 2.6, '#38e1ff') + circ(12, 12.5, 2.6, '#ffc22e') + circ(15.5, 15.5, 2, '#c9d1e0') + circ(14.9, 14.8, .8, W); },

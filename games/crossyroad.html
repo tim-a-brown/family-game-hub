@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crossy Road</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
+<style>
+/* Pixel font for the score (SIL Open Font License, see fonts/jersey-10-LICENSE.txt) */
+@font-face{font-family:"Jersey 10";src:url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}
+/* ── Play view: the 3D world fills everything under the game bar ─────────── */
+html.cr-on,html.cr-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.cr-on body{display:flex;flex-direction:column;background:#78cff0;}
+html.cr-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0;position:relative;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.cr-view{position:absolute;inset:0;overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent;}
+.cr-gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+/* HUD: the score big at the top left, like the original; coins top right */
+.cr-hud{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;
+  padding:8px 12px 0 14px;pointer-events:none;}
+.cr-px{font-family:"Jersey 10",var(--display),system-ui,sans-serif;font-weight:400;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  text-shadow:2px 0 0 #2b2333,-2px 0 0 #2b2333,0 2px 0 #2b2333,0 -2px 0 #2b2333,2px 2px 0 #2b2333,-2px 2px 0 #2b2333,2px -2px 0 #2b2333,-2px -2px 0 #2b2333,0 5px 0 rgba(30,20,40,.55);}
+.cr-score{display:flex;flex-direction:column;align-items:flex-start;}
+.cr-score b{font-size:4.4rem;line-height:.82;}
+.cr-score small{font-size:1.45rem;line-height:1;margin-top:4px;opacity:.95;}
+.cr-score.bump b{animation:cr-bump .22s ease-out;}
+@keyframes cr-bump{0%{transform:scale(1.18);}100%{transform:none;}}
+.cr-right{display:flex;align-items:center;gap:10px;}
+.cr-coins{display:flex;align-items:center;gap:6px;font-size:2.1rem;line-height:1;}
+.cr-coins.bump{animation:cr-bump .25s ease-out;}
+.cr-coin{display:block;width:22px;height:22px;border-radius:5px;transform:rotate(45deg) scale(.86);
+  background:linear-gradient(135deg,#fff3a6 0%,#ffd23a 40%,#f0a91c 100%);box-shadow:0 0 0 2.5px #2b2333,inset 0 0 0 3px rgba(255,255,255,.35),0 4px 0 2px rgba(30,20,40,.45);}
+.cr-pbtn{pointer-events:auto;flex:none;width:44px;height:44px;border:0;border-radius:12px;display:grid;place-items:center;color:#fff;
+  background:rgba(30,24,44,.45);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.cr-pbtn:active{transform:scale(.92);}
+.cr-pbtn svg{width:20px;height:20px;}
+/* first-hop hint */
+.cr-tip{position:absolute;left:50%;bottom:calc(var(--safe-b) + 22px);transform:translateX(-50%);z-index:2;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:8px;transition:opacity .3s;}
+.cr-tip.gone{opacity:0;}
+.cr-tip .hand{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;color:#fff;background:rgba(30,24,44,.4);}
+.cr-tip .hand .ico{width:32px;height:32px;animation:cr-tap 1s ease-in-out infinite;}
+@keyframes cr-tap{0%,100%{transform:translateY(0)}45%{transform:translateY(5px) scale(.92)}}
+.cr-tip span{font-size:1.5rem;line-height:1;white-space:nowrap;}
+.cr-who{font-weight:900;font-size:.85rem;color:#fff;padding:4px 12px;border-radius:999px;background:rgba(30,24,44,.4);}
+/* pause card, countdown */
+.cr-ov{position:absolute;inset:0;z-index:4;display:none;align-items:center;justify-content:center;}
+.cr-ov.show{display:flex;}
+.cr-ov.dim{background:rgba(20,16,36,.5);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);animation:pop .25s var(--spring);}
+.cr-ov .card{width:min(270px,84%);text-align:center;padding:20px 16px 14px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
+.cr-ov h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 2px;}
+.cr-ov p{color:var(--text-2);margin:0 0 12px;font-weight:700;font-size:.92rem;}
+.cr-ov .btn{margin-top:8px;}
+.cr-count{font-size:7rem;line-height:1;animation:pop .4s var(--spring);}
+.cr-nogl{padding:40px 20px;text-align:center;color:var(--text-2);font-weight:700;}
+.cr-flash{position:absolute;inset:0;z-index:3;pointer-events:none;background:#fff;opacity:0;}
+.cr-flash.go{animation:cr-flash .35s ease-out;}
+@keyframes cr-flash{0%{opacity:.75}100%{opacity:0}}
+@media (hover:hover) and (pointer:fine){ .cr-touch{display:none!important;} }
+@media (hover:none),(pointer:coarse){ .cr-desk{display:none!important;} }
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script type="module">
+import * as THREE from 'three';
+import { createGame, HALF } from './crossyroad/world.js';
+import { createScene } from './crossyroad/scene.js';
+import { createSfx } from './crossyroad/sfx.js';
+
+const el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
+const KEY = 'crossyroad', HI = 'crossyroad', SAVE = 'crossyroad_state', COINS = 'crossy_coins';
+const DT = 1 / 120;
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+const CAUSE = { car: 'Hit by a car', truck: 'Hit by a truck', train: 'Hit by a train', water: 'Fell in the river', edge: 'Swept away on a log', eagle: 'Carried off by the eagle' };
+
+// ═══ Sound + music ═════════════════════════════════════════════════════════════
+const Snd = createSfx();
+const Mus = ArcadeMusic.create({ key: 'crossy_music', song: ArcadeMusic.songs.crossy, ctx: Snd.ctx, out: Snd.out });
+
+// ═══ Renderer (one WebGL context for the page) ═══════════════════════════════════
+let renderer = null, scene = null, glCanvas = null;
+function getRenderer() {
+  if (renderer) return renderer;
+  glCanvas = document.createElement('canvas'); glCanvas.className = 'cr-gl';
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance', alpha: false, stencil: false });
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    scene = createScene(renderer);
+  } catch (e) { console.error(e); renderer = null; }
+  return renderer;
+}
+
+// ═══ Kit shell ═══════════════════════════════════════════════════════════════════
+let G = null, view = 'none', paused = false, who = 'Player', countdown = 0, manual = false;
+let best0 = 0, bank = 0, startedAt = 0, ended = false, session = { runs: 0, best: 0 };
+function showHigh() { ArcadeHi.show(HI, 'Crossy Road'); }
+Kit.init({ orient: 'portrait', orientTablets: true,
+  id: 'crossyroad',
+  theme: { wood: ['#5f8f33', '#3b5c1f'] },
+  onNew: () => { clearSave(); showSetup(); }, confirmNew: false,
+  menu: [
+    { icon: 'trophy', label: 'High scores', onClick: () => { pauseGame(); showHigh(); } },
+    { icon: 'history', label: 'Past games', onClick: () => { pauseGame(); Kit.history(KEY, { title: 'Crossy Road: past games' }); } },
+    Mus.menuItem
+  ],
+  rules:
+    '<p class="goal">Help the chicken get as far as it can. Every row forward is a point. Hop across busy roads, rivers and railway tracks without getting squashed, splashed or carried off.</p>' +
+    '<h3>Hopping</h3><ul><li><b>Tap</b> anywhere to hop forward one square.</li>' +
+    '<li><b>Swipe</b> left or right to hop sideways, and swipe down to hop back.</li>' +
+    '<li>You can tap ahead: the next one or two hops are remembered while the chicken is in the air.</li>' +
+    '<li>On a computer: <b>arrow keys</b> or <b>W A S D</b>. <b>P</b> or <b>Space</b> pauses.</li></ul>' +
+    '<h3>Roads</h3><p>Cars and trucks drive both ways at their own speeds. Wait for a gap, then go.</p>' +
+    '<h3>Rivers</h3><p>The water is deadly. Hop onto the floating logs and lily pads. A log carries you along with it: hop off before it takes you off the side of the screen.</p>' +
+    '<h3>Railway tracks</h3><p>When the signal flashes red and the bell rings, a fast train is coming. Stay off the track until it has gone by.</p>' +
+    '<h3>Trees and rocks</h3><p>They block the way. Go around them.</p>' +
+    '<h3>The eagle</h3><p>The screen keeps moving forward slowly. If you wait too long, or hop too far back, the eagle swoops down and carries the chicken away.</p>' +
+    '<h3>Coins</h3><p>Hop onto the gold coins to collect them. Your coins add up from game to game.</p>' +
+    '<h3>Getting harder</h3><p>The further you go, the faster the traffic, logs and trains, and the less grass there is between them.</p>' +
+    '<p>If your score makes the top scores, enter your initials for the high-score board. Music can be switched off in the menu.</p>'
+});
+
+// ═══ Setup ═══════════════════════════════════════════════════════════════════════
+function showSetup() {
+  leaveGame();
+  app.className = 'stage';
+  Kit.setup(app, {
+    intro: 'Hop across roads, rivers and train tracks',
+    players: { min: 1, max: 1, count: 1, label: 'Player' },
+    start: 'Play',
+    onStart(cfg) { who = (cfg.players[0] && cfg.players[0].name) || 'Player'; session = { runs: 0, best: 0 }; startGame(); }
+  });
+  window.scrollTo(0, 0);
+}
+
+// ═══ Play view ═══════════════════════════════════════════════════════════════════
+let viewEl, scoreEl, topEl, coinEl, coinBox, pauseBtn, tipEl, ovEl, flashEl, ro = null;
+const PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>';
+function buildView() {
+  app.className = 'stage'; app.innerHTML = '';
+  root.classList.add('cr-on');
+  viewEl = el('div', { class: 'cr-view' });
+  viewEl.appendChild(glCanvas);
+  scoreEl = el('b', { text: '0' }); topEl = el('small', { text: 'TOP 0' });
+  const scoreBox = el('div', { class: 'cr-score cr-px' }, [scoreEl, topEl]);
+  coinEl = el('b', { text: '0' });
+  coinBox = el('div', { class: 'cr-coins cr-px', 'aria-label': 'Coins' }, [el('i', { class: 'cr-coin' }), coinEl]);
+  pauseBtn = el('button', { type: 'button', class: 'cr-pbtn', 'aria-label': 'Pause', html: PAUSE_SVG });
+  pauseBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  pauseBtn.addEventListener('click', e => { e.stopPropagation(); Kit.sfx('tap'); if (paused) resumeGame(); else pauseGame(); });
+  const hud = el('div', { class: 'cr-hud' }, [scoreBox, el('div', { class: 'cr-right' }, [coinBox, pauseBtn])]);
+  hud._score = scoreBox;
+  tipEl = el('div', { class: 'cr-tip' });
+  ovEl = el('div', { class: 'cr-ov' });
+  flashEl = el('div', { class: 'cr-flash' });
+  viewEl.append(hud, tipEl, flashEl, ovEl);
+  app.appendChild(viewEl);
+  bindInput();
+  if (ro) ro.disconnect();
+  ro = new ResizeObserver(fit); ro.observe(viewEl);
+  fit();
+  view = 'game';
+}
+function fit() {
+  if (!viewEl || !scene) return;
+  const r = viewEl.getBoundingClientRect();
+  scene.resize(r.width, r.height);
+  if (G) scene.render(G, 0);
+}
+function leaveGame() {
+  view = 'none'; paused = false; countdown = 0; Mus.stop(true);
+  root.classList.remove('cr-on');
+  if (ro) { ro.disconnect(); ro = null; }
+  stopLoop();
+}
+
+// ═══ Game flow ═══════════════════════════════════════════════════════════════════
+function bestScore() { return Math.max(ArcadeHi.best(HI), parseInt(lsGet('crossy_best', '0'), 10) || 0); }
+function startGame(saved, seed) {
+  const r = getRenderer();
+  if (!r) { leaveGame(); app.className = 'stage'; app.innerHTML = ''; app.appendChild(el('div', { class: 'cr-nogl', text: 'This device can\'t show the 3D world (WebGL is off or unavailable).' })); return; }
+  if (seed == null) seed = saved ? saved.seed : (Math.random() * 2147483647) | 0;
+  G = createGame(seed, saved);
+  scene.reset();
+  ended = false; paused = false; countdown = 0;
+  best0 = bestScore(); bank = parseInt(lsGet(COINS, '0'), 10) || 0;
+  if (saved) { who = saved.who || who; startedAt = saved.started || Date.now(); bank = Math.max(0, bank - (saved.coins | 0)); }
+  else { startedAt = Date.now(); Kit.gameStart(); }
+  if (view !== 'game' || !viewEl || !viewEl.isConnected) buildView();
+  ovEl.className = 'cr-ov'; ovEl.innerHTML = '';
+  showTip(true);
+  hud(true);
+  scene.render(G, 0);
+  kick();
+}
+function showTip(on) {
+  if (!tipEl) return;
+  if (on) {
+    const touch = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+    tipEl.innerHTML = '';
+    tipEl.append(el('div', { class: 'hand', html: Kit.icon('hand') }),
+      el('span', { class: 'cr-px', text: touch ? 'Tap to hop · swipe to turn' : 'Arrow keys or W A S D to hop' }),
+      el('div', { class: 'cr-who', text: who + (session.runs ? ' · game ' + (session.runs + 1) : '') }));
+    tipEl.classList.remove('gone');
+  } else tipEl.classList.add('gone');
+}
+let shown = { s: -1, t: -1, c: -1 };
+function hud(force) {
+  if (!G || !scoreEl) return;
+  const s = G.score, top = Math.max(best0, s), c = bank + G.coins;
+  if (force || shown.s !== s) { scoreEl.textContent = s; shown.s = s; }
+  if (force || shown.t !== top) { topEl.textContent = 'TOP ' + top; shown.t = top; }
+  if (force || shown.c !== c) { coinEl.textContent = fmt(c); shown.c = c; }
+  pauseBtn.style.visibility = G.state === 'play' || G.state === 'ready' ? 'visible' : 'hidden';
+}
+function bump(node) { node.classList.remove('bump'); void node.offsetWidth; node.classList.add('bump'); }
+
+// Sounds, haptics and effects for what happened in the world this frame
+function handleEvents() {
+  const evs = G.events; if (!evs.length) return;
+  for (const e of evs) {
+    scene.fx(e, G);
+    switch (e.type) {
+      case 'start': showTip(false); Mus.restart(); break;
+      case 'hop': Snd.hop(); Kit.haptic('tick'); break;
+      case 'bump': Snd.bump(); Kit.haptic('light'); break;
+      case 'log': case 'pad': Snd.land('river'); break;
+      case 'coin': Snd.coin(); Kit.haptic('light'); lsSet(COINS, String(bank + G.coins)); bump(coinBox); break;
+      case 'score': if (e.score % 50 === 0) { Kit.callout(e.score + '!'); Kit.sfx('good'); } if (e.score === best0 + 1 && best0 > 0) Kit.callout('New best!'); bump(scoreEl.parentNode); break;
+      case 'whoosh': Snd.whoosh(e.truck, e.near); break;
+      case 'horn': Snd.horn(e.truck); break;
+      case 'bell': if (G.state === 'play' || G.state === 'ready') Snd.bell(e.near); break;
+      case 'train': Snd.train(e.near); break;
+      case 'die':
+        Mus.stop(true); clearSave(); Kit.haptic('error');
+        if (e.cause === 'eagle') Snd.screech();
+        else if (e.cause === 'water' || e.cause === 'edge') Snd.splash();
+        else if (e.cause === 'train') { Snd.smash(); flash(); }
+        else { Snd.squash(); flash(); }
+        Snd.die();
+        break;
+    }
+  }
+  evs.length = 0;
+  hud();
+}
+function flash() { if (!flashEl) return; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+
+function advance(dt) {
+  // fixed steps keep the world the same at any frame rate
+  acc += dt; let n = 0;
+  while (acc >= DT && n++ < 24) { acc -= DT; G.step(DT); }
+  if (n >= 24) acc = 0;
+  handleEvents();
+}
+let acc = 0;
+
+function finish() {
+  if (ended) return; ended = true;
+  stopLoop(); Mus.stop(true); clearSave();
+  const sc = G.score, isBest = sc > 0 && sc > best0, D = G.death || {};
+  session.runs++; session.best = Math.max(session.best, sc);
+  if (sc > (parseInt(lsGet('crossy_best', '0'), 10) || 0)) lsSet('crossy_best', String(sc));
+  const cause = D.cause === 'car' && D.kind === 'truck' ? 'truck' : D.cause;
+  const secs = Math.round(G.played);
+  const hl = [];
+  hl.push('Hopped ' + sc + (sc === 1 ? ' row' : ' rows') + ' forward');
+  hl.push(CAUSE[cause] || 'Game over');
+  if (G.coins) hl.push('Picked up ' + G.coins + (G.coins === 1 ? ' coin' : ' coins'));
+  if (isBest) hl.push('New high score' + (best0 ? ' (old best ' + best0 + ')' : ''));
+  if (session.runs > 1) hl.push('Game ' + session.runs + ' this sitting, best of the sitting: ' + session.best);
+  const hiL = ArcadeHi.list(HI);
+  if (sc > 0) {
+    try {
+      Kit.record(KEY, {
+        detail: { sc, co: G.coins, cs: cause || '', hp: G.hops, t: secs, sd: G.seed, rn: session.runs, sb: session.best,
+          hr: sc > 0 && (hiL.length < ArcadeHi.max || sc > hiL[hiL.length - 1].score) ? hiL.filter(x => x.score >= sc).length + 1 : 0, hb: best0 || 0 },
+        started: startedAt, mode: '', players: [{ name: who || 'Player', score: sc }], winner: null, highlights: hl,
+        summary: sc + (sc === 1 ? ' row' : ' rows') + (G.coins ? ' · ' + G.coins + (G.coins === 1 ? ' coin' : ' coins') : ''), badge: String(sc),
+        meta: { score: sc, coins: G.coins, cause: cause || '' }
+      });
+    } catch (e) { console.error(e); }
+  }
+  hud(true);
+  ArcadeHi.check(HI, sc, () => {
+    Kit.win({
+      lose: !isBest, icon: isBest ? 'trophy' : 'meh',
+      title: isBest ? 'New high score!' : 'Game over',
+      sub: sc + (sc === 1 ? ' row' : ' rows') + ' · ' + (CAUSE[cause] || '').toLowerCase() + (G.coins ? ' · ' + G.coins + (G.coins === 1 ? ' coin' : ' coins') : ''),
+      again: () => startGame(), againLabel: 'Play again',
+      extra: [{ label: 'High scores', onClick: () => { showSetup(); showHigh(); } }, { label: 'Change player', onClick: showSetup }]
+    });
+  });
+}
+
+// ═══ Save / resume ═══════════════════════════════════════════════════════════════
+function save() {
+  if (!G || ended || G.isDying() || !G.hops) return;
+  const s = Object.assign(G.saveState(), { who, started: startedAt });
+  lsSet(SAVE, JSON.stringify(s));
+  Kit.resume.set('Score ' + G.score, { keys: [SAVE] });
+}
+function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.seed != null ? s : null; } catch (e) { return null; } }
+
+// ═══ Pause ═══════════════════════════════════════════════════════════════════════
+function pauseGame() {
+  if (view !== 'game' || !G || paused || ended || G.isDying()) return;
+  if (G.state === 'ready') { save(); return; }
+  paused = true; countdown = 0; Mus.stop(true); Snd.suspend(); gest.clear(); scene.setCrouch(false);
+  save();
+  ovEl.innerHTML = '';
+  ovEl.appendChild(el('div', { class: 'card' }, [
+    el('h2', { text: 'Paused' }), el('p', { text: 'Score ' + G.score + ' · ' + fmt(bank + G.coins) + ' coins' }),
+    el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Keep hopping', onclick: () => resumeGame() }),
+    el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'New game', onclick: () => { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(ok => { if (ok) { clearSave(); startGame(); } }); } })
+  ]));
+  ovEl.className = 'cr-ov show dim';
+  stopLoop();
+}
+function resumeGame() {
+  if (!paused) return;
+  paused = false; Snd.resume(); Kit.sfx('tap');
+  countdown = 1.2; showCount(); kick();
+}
+let shownCount = 0;
+function showCount() {
+  const n = Math.ceil(countdown / 0.4);
+  if (countdown <= 0) { ovEl.className = 'cr-ov'; ovEl.innerHTML = ''; shownCount = 0; return; }
+  if (n === shownCount) return; shownCount = n;
+  ovEl.innerHTML = ''; ovEl.appendChild(el('div', { class: 'cr-count cr-px', text: String(n) }));
+  ovEl.className = 'cr-ov show';
+}
+
+// ═══ Input: tap = forward, swipe = that way; keys on a computer ═══════════════════
+const gest = new Map();
+function hop(dir) {
+  if (view !== 'game' || !G || paused || countdown > 0 || ended) return;
+  Snd.ctx();
+  G.input(dir);
+}
+function blockedUI() { return !!document.querySelector('.k-scrim, .k-win, .ahi-overlay'); }
+function bindInput() {
+  viewEl.addEventListener('pointerdown', e => {
+    if (e.target.closest('button, .card')) return;
+    if (e.button && e.button !== 0) return;
+    e.preventDefault(); Snd.ctx();
+    if (paused || blockedUI()) return;
+    try { viewEl.setPointerCapture(e.pointerId); } catch (er) {}
+    gest.set(e.pointerId, { x: e.clientX, y: e.clientY, done: false });
+    scene.setCrouch(true);
+  });
+  viewEl.addEventListener('pointermove', e => {
+    const g = gest.get(e.pointerId); if (!g || g.done) return;
+    const dx = e.clientX - g.x, dy = e.clientY - g.y, th = 26;
+    if (dx * dx + dy * dy < th * th) return;
+    g.done = true;
+    hop(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u'));
+    if (![...gest.values()].some(x => !x.done)) scene.setCrouch(false);
+  });
+  const up = e => {
+    const g = gest.get(e.pointerId); if (!g) return;
+    gest.delete(e.pointerId);
+    if (!g.done && e.type === 'pointerup') hop('u');
+    if (![...gest.values()].some(x => !x.done)) scene.setCrouch(false);
+  };
+  viewEl.addEventListener('pointerup', up);
+  viewEl.addEventListener('pointercancel', up);
+  viewEl.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  viewEl.addEventListener('dblclick', e => e.preventDefault());
+  viewEl.addEventListener('contextmenu', e => e.preventDefault());
+}
+const KEYS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', KeyW: 'u', KeyS: 'd', KeyA: 'l', KeyD: 'r' };
+document.addEventListener('keydown', e => {
+  if (view !== 'game' || !G || blockedUI()) return;
+  if (e.code === 'Space' || e.code === 'KeyP' || e.code === 'Escape') {
+    e.preventDefault(); if (e.repeat) return;
+    if (paused) resumeGame(); else pauseGame();
+    return;
+  }
+  if (paused) { if (e.code === 'Enter') { e.preventDefault(); resumeGame(); } return; }
+  const d = KEYS[e.code];
+  if (d) { e.preventDefault(); if (!e.repeat) hop(d); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseGame(); save(); } else kick(); });
+document.addEventListener('kit:orient', e => { if (!e.detail.ok) pauseGame(); });   // turned the wrong way: pause behind the cover
+window.addEventListener('blur', () => pauseGame());
+window.addEventListener('pagehide', () => save());
+
+// ═══ Loop: frames only while the world is on screen and moving ═══════════════════
+let raf = 0, last = 0, frame = 0;
+function loop(ts) {
+  raf = 0;
+  if (view !== 'game' || !G || paused || ended || manual) return;
+  const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0; last = ts;
+  if (countdown > 0) { countdown -= dt; showCount(); scene.render(G, 0); raf = requestAnimationFrame(loop); return; }
+  advance(dt);
+  if (G.state === 'play' && !document.hidden) Mus.tick(); else if (G.state !== 'ready') Mus.stop(G.isDying());
+  scene.render(G, dt);
+  // the kit's menu or rules sheet opened over the game: pause
+  if (++frame % 12 === 0 && G.state === 'play' && document.querySelector('.k-scrim')) { pauseGame(); return; }
+  if (G.state === 'dead') { finish(); return; }
+  if (!document.hidden) raf = requestAnimationFrame(loop);
+}
+function kick() { if (!raf && !manual && view === 'game' && G && !paused && !ended && !document.hidden) { last = 0; raf = requestAnimationFrame(loop); } }
+function stopLoop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+
+// ═══ Test hooks (deterministic stepping for automated checks) ════════════════════
+window.__crossy = {
+  G: () => G,
+  state: () => G && { state: G.state, score: G.score, coins: G.coins, row: G.p.row, x: G.p.x, vrow: G.p.vrow, hop: !!G.p.hop, log: G.p.log, focus: G.cam.focus, t: G.t, death: G.death && { cause: G.death.cause, t: G.death.t }, paused, ended, queue: G.queue.slice(), raf: !!raf },
+  manual(on) { manual = !!on; if (manual) stopLoop(); else kick(); },
+  hop, newGame(seed) { clearSave(); startGame(null, seed); },
+  step(sec, n) { n = n || 1; for (let i = 0; i < n; i++) { advance(sec); scene.render(G, sec); if (G.state === 'dead') { finish(); break; } } return this.state(); },
+  render() { scene.render(G, 0); }, pause: pauseGame, resume: resumeGame, save, finish, info: () => scene.info(),
+  countdown: () => countdown, skipCount() { countdown = 0; showCount(); }
+};
+
+// ═══ Boot ════════════════════════════════════════════════════════════════════════
+const saved = loadSave();
+if (saved && getRenderer()) { who = saved.who || 'Player'; startGame(saved); }
+else showSetup();
+</script>
+</body>
+</html>

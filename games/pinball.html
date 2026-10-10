@@ -99,11 +99,6 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-plunger canvas{position:absolute;left:0;top:0;display:block;border-radius:18px;}
 .pb-plunger .grab{position:absolute;inset:0;width:100%;height:100%;touch-action:none;border:0;padding:0;margin:0;background:transparent;border-radius:18px;-webkit-tap-highlight-color:transparent;cursor:grab;}
 .pb-plunger.held .grab{cursor:grabbing;}
-/* a ball waits: a slow warm breath of light round the knob (no label) */
-.pb-plunger .cue{position:absolute;pointer-events:none;border-radius:50%;opacity:0;background:radial-gradient(closest-side,rgba(255,214,140,.34),rgba(255,190,90,.1) 60%,rgba(255,190,90,0));}
-.pb-plunger.show.wait .cue{animation:pbCue 2.2s ease-in-out infinite;}
-.pb-plunger.held .cue{animation:none;opacity:0;}
-@keyframes pbCue{0%,100%{opacity:.15;}50%{opacity:.85;}}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
 .pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
@@ -279,7 +274,7 @@ function startGame(id, balls, who) {
   viewEl.style.setProperty('--c', def.color || '#d93a2b');
   viewEl.classList.toggle('no-flipbtns', !btnsOn());
   // the plunger close-up (slides in on the right while a ball waits in the shooter lane)
-  plunger.el = el('div', { class: 'pb-plunger' }, [plunger.cv = el('canvas', { 'aria-hidden': 'true' }), plunger.cue = el('div', { class: 'cue' }),
+  plunger.el = el('div', { class: 'pb-plunger' }, [plunger.cv = el('canvas', { 'aria-hidden': 'true' }),
     plunger.grab = el('button', { type: 'button', class: 'grab', 'aria-label': 'Plunger: pull down and let go to launch the ball' })]);
   plunger.th = Object.assign({}, def.theme || {}); plunger.knobCol = plunger.th.knob || '#e8dcc0'; plunger.layers = null; plunger.shown = false; plunger.ball = false;
   viewEl.append(nudgeCtl, magCtl, fireCtl, flipBtn.L, flipBtn.R, plunger.el);
@@ -330,7 +325,7 @@ function sizeDmd() {
   if (w && h && (dmdEl.width !== w || dmdEl.height !== h)) { dmdEl.width = w; dmdEl.height = h; if (G && G.dmdReset) G.dmdReset(); }
 }
 // The page's own slow tick (5/s) while a game is live: the FIRE button for a loaded cannon, the kit's menu sheet
-// pausing the game, the plunger's waiting cue, and the BEST readout following this game once it passes the
+// pausing the game, showing the plunger close-up while a ball waits, and the BEST readout following this game once it passes the
 // table's record. It stops while paused, hidden or finished (resumeGame and the visibility handler start it again).
 let uiRaf = 0;
 function tickUI() {
@@ -374,13 +369,13 @@ function drawBest(v) {
 // strength of the pull; then the inset slides away until the next ball waits. A quick tap on the knob is a medium
 // launch. The inset never flips a flipper. Static parts are painted once per layout; frames are drawn only while it
 // moves (a drag, a held key, the snap).
-const plunger = { el: null, cv: null, cue: null, grab: null, knobCol: '#e8dcc0', th: {}, G0: null, W: 0, H: 0, top: 0, travel: 120, d: 0,
+const plunger = { el: null, cv: null, grab: null, knobCol: '#e8dcc0', th: {}, G0: null, W: 0, H: 0, top: 0, travel: 120, d: 0,
   drag: null, snap: null, raf: 0, shown: false, ball: false, fly: 0, layers: null };
 function layoutPlunger() {
   const P = plunger; if (!P.el) return;
   if (!G || !G.plunger || view !== 'game') { hidePlunger(true); return; }
   const vr = viewEl.getBoundingClientRect(); if (!vr.width || !vr.height) return;
-  const W = Math.round(Math.max(84, Math.min(140, vr.width * 0.21))), right = vr.width > 600 ? 12 : 8, x0 = vr.width - right - W;
+  const W = Math.round(Math.max(84, Math.min(180, vr.width * 0.2))), right = vr.width > 600 ? 12 : 8, x0 = vr.width - right - W;
   // never over a control below it (on a phone that is the right flipper button; with the buttons off, nothing)
   let limit = vr.height - 12;
   for (const c of [flipBtn.R, flipBtn.L, fireCtl, magCtl, nudgeCtl]) {
@@ -404,8 +399,6 @@ function layoutPlunger() {
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   for (const c of [P.cv]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); c.style.width = W + 'px'; c.style.height = H + 'px'; }
   Object.assign(P.el.style, { width: W + 'px', height: H + 'px', top: top + 'px', right: right + 'px' });
-  const cueR = g.kW * 1.1, cy = g.k0 + g.fH + g.kH * 0.55;
-  Object.assign(P.cue.style, { left: (cx - cueR) + 'px', top: (cy - cueR) + 'px', width: cueR * 2 + 'px', height: cueR * 2 + 'px' });
   P.layers = paintPlungerLayers(W, H, dpr);
   drawPlunger(); plungerState();
 }
@@ -579,7 +572,6 @@ function plungerState() {
   const want = !!G.waitPlunge && !G.paused && (G.state === 'serve' || G.state === 'play');
   if (want) showPlunger();
   else if (P.shown && !P.drag && !P.snap && !G.pulling) hidePlunger();
-  P.el.classList.toggle('wait', want && !G.pulling && !P.drag);
 }
 function plungerStep(now) {
   const P = plunger; if (!P.el || !G || view !== 'game') return false;
@@ -812,7 +804,7 @@ window.__pin = {
   render() { if (G) G.renderOnce(); },
   renderer() { return getRenderer(); },
   ui(ms) { const P = plunger; plungerStep(ms != null && P.snap ? P.snap.t0 + ms : performance.now()); },   // draw the plunger now (ms: that far into a snap)
-  plunger() { const P = plunger; if (!P.el) return null; const r = P.el.getBoundingClientRect(), gm = P.geo || {}; return { rect: [r.left, r.top, r.width, r.height].map(Math.round), travel: P.travel, d: P.d, show: P.shown, cls: P.el.className, ball: P.ball, fly: P.fly, knobY: r.top + (gm.k0 || 0) + (gm.fH || 0) + (gm.kH || 0) / 2, laneY: r.top + (gm.tip0 || 0) * 0.6, flY: r.top + (gm.yFl || 0) }; },
+  plunger() { const P = plunger; if (!P.el) return null; const r = P.el.getBoundingClientRect(), gm = P.geo || {}; return { rect: [r.left, r.top, r.width, r.height].map(Math.round), raf: P.raf, travel: P.travel, d: P.d, show: P.shown, cls: P.el.className, ball: P.ball, fly: P.fly, knobY: r.top + (gm.k0 || 0) + (gm.fH || 0) + (gm.kH || 0) / 2, laneY: r.top + (gm.tip0 || 0) * 0.6, flY: r.top + (gm.yFl || 0) }; },
   view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },

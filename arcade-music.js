@@ -51,6 +51,14 @@
       bass: [38, 38, 50, 38, 38, 38, 50, 38,  34, 34, 46, 34, 34, 34, 46, 34,  36, 36, 48, 36, 36, 36, 48, 36,  33, 33, 45, 33, 33, 33, 45, 33],
       drums: 'k.h.s.h.'
     },
+    // Upbeat, hoppy G major for Crossy Road (G Em C D), bright square lead over a bouncing bass
+    crossy: {
+      eighth: 0.16, leadVol: 0.04, leadLp: 3200, bassVol: 0.1, drumVol: 0.85,
+      lead: [67, 0, 71, 74, 79, 0, 74, 71,  76, 0, 74, 71, 67, 0, 71, 0,  72, 0, 76, 79, 84, 0, 79, 76,  74, 0, 78, 81, 78, 0, 74, 0,
+             79, 79, 0, 81, 83, 0, 81, 79,  76, 0, 79, 0, 83, 81, 79, 76,  72, 76, 79, 0, 81, 0, 79, 76,  74, 0, 72, 0, 71, 0, 69, 0],
+      bass: [43, 0, 50, 0, 43, 43, 50, 0,  40, 0, 47, 0, 40, 40, 47, 0,  36, 0, 43, 0, 36, 36, 43, 0,  38, 0, 45, 0, 38, 38, 45, 0],
+      drums: 'khshkhsh'
+    },
     // Calm and glassy F major for Peggle (F Dm Bb C), no drums
     peggle: {
       eighth: 0.27, leadWave: 'triangle', leadVol: 0.085, leadLen: 1.6, echo: 0.3, bassWave: 'sine', bassVol: 0.12, bassLen: 3.6, drumVol: 0,
