@@ -50,6 +50,7 @@ const PRECACHE_URLS = [
   '/icon-512.png',
   '/apple-touch-icon.png',
   '/favicon.png',
+  '/icon.svg',
   // Game sounds (recorded, CC0)
   '/sounds/bad-1.mp3',
   '/sounds/bad-2.mp3',
