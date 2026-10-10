@@ -697,7 +697,8 @@
     craps:         { felt: ['#156b45', '#0c4a2f', '#083721'] },
     poker:         { felt: ['#24407a', '#152a55', '#0e1d3f'] },
     threecardpoker:{ felt: ['#0f6a6a', '#094848', '#063434'] },
-    paigow:        { felt: ['#7a1f2a', '#521219', '#3c0c12'], back: ['#7a1f2a', '#e2a400'] }
+    paigow:        { felt: ['#7a1f2a', '#521219', '#3c0c12'], back: ['#7a1f2a', '#e2a400'] },
+    candymatch:    { felt: ['#5a2f6e', '#3d1d4f', '#2a1238'], wood: ['#a8623c', '#6a321c'] }
   };
   function applyTheme(id) {
     var t = THEMES[id]; if (!t) return;

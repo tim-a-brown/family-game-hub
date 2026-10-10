@@ -159,6 +159,12 @@ var GameIcon = (function () {
     minesweeper: function () { return line('M12 2.5v19M2.5 12h19M5.3 5.3l13.4 13.4M18.7 5.3 5.3 18.7', K, 2.2) + circ(12, 12, 6.5, K) + circ(9.8, 9.8, 1.8, W); },
     memorymatch: function (c) { return rect(1.5, 4, 10, 15, 2, c) + rect(12.5, 4, 10, 15, 2, W, ' stroke="' + K + '" stroke-width="1.6"') + txt('?', 11, W, 11.5, 6.5) + path('M17.5 7.5l1.2 2.4 2.6.4-1.9 1.8.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.8 2.6-.4z', Y); },
     mahjong: function () { return rect(6, 1.5, 15, 19, 2.5, '#d9cba6') + rect(3, 3.5, 15, 19, 2.5, CREAM, ' stroke="' + K + '" stroke-width="1.3"') + line('M8 8v10M10.5 8v10M13 8v10', G, 1.8) + line('M7 12.5h7.5', G, 1.2); },
+    candymatch: function () {   // a wrapped candy with twisted ends, and a striped candy peeking out behind it
+      return '<g transform="rotate(-18 12 12)">' + path('M3.2 9.6 7.4 12l-4.2 2.4z', R) + path('M20.8 9.6 16.6 12l4.2 2.4z', R) +
+        rect(7, 7.5, 10, 9, 3.2, R) + rect(7, 7.5, 10, 9, 3.2, 'none', ' stroke="#9e0f2a" stroke-width="1"') +
+        line('M9.2 8.6l5.6 6.8M14.8 8.6l-5.6 6.8', W, 1.1) + '</g>' +
+        circ(18.3, 18.4, 3.6, B) + line('M15.6 17.2l5.4 2.4M15.4 19.6l2.6 1.2M17.5 15.2l3.4 1.5', W, 1.2) + circ(17.1, 17.1, .9, W);
+    },
     mathpuzzles: function (c) { return line('M6.5 3v7M3 6.5h7', c, 2.4) + line('M15 4l5 5M20 4l-5 5', R, 2.4) + line('M3 17.5h7', K, 2.4) + line('M14 17.5h7', B, 2.4) + circ(17.5, 14.5, 1.2, B) + circ(17.5, 20.5, 1.2, B); },
 
     // Words (letter tile base)

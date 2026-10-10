@@ -62,7 +62,8 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 .cm-sc.bump b{animation:bounce .45s var(--spring);}
 .cm-meter{position:relative;height:7px;margin:3px 2px 2px;border-radius:4px;background:rgba(0,0,0,.45);box-shadow:inset 0 1px 2px rgba(0,0,0,.6);}
 .cm-meter > span{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,#ff7ab8,#ffd45a);transition:width .4s var(--ease);}
-.cm-meter svg{position:absolute;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;}
+.cm-meter > i{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;display:block;}
+.cm-meter > i svg{width:16px;height:16px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
 .cm-best{flex:1;}
 .cm-best b{font-size:1.15rem;color:#fff;}
 .cm-goal{display:flex;align-items:center;gap:10px;padding:6px 12px 6px 7px;border-radius:14px;color:#fff;
@@ -399,7 +400,13 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
           g.stats.made[cr.s === 'b' ? 'b' : cr.s === 'w' ? 'w' : 'h']++;
           P.ev.creates.push({ id: n.id, i: at, c: n.c, s: n.s, d: 140 });
         });
-        P.ev.pts = P.tallies.filter(function (t) { return t.v > 0; }).map(function (t) { return { i: t.i, v: t.v, c: t.c, d: t.d }; });
+        var byI = {}, pts = [];
+        P.tallies.forEach(function (t) {
+          if (t.v <= 0) return;
+          var m = byI[t.i];
+          if (m) { m.v += t.v; m.d = Math.min(m.d, t.d); } else { m = byI[t.i] = { i: t.i, v: t.v, c: t.c, d: t.d }; pts.push(m); }
+        });
+        P.ev.pts = pts;
         P.ev.dur = maxD;
         return P.ev;
       };
@@ -935,7 +942,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     g.save(); candyPath(g, c, R); g.clip();
     if (stripe) {
       for (var k = -1; k <= 1; k++) {
-        var o = k * R * 0.44, bw = R * 0.19;
+        var o = k * R * 0.42, bw = R * 0.12;
         var sg = stripe === 'h' ? g.createLinearGradient(0, o - bw, 0, o + bw) : g.createLinearGradient(o - bw, 0, o + bw, 0);
         sg.addColorStop(0, 'rgba(255,255,255,.55)'); sg.addColorStop(0.25, 'rgba(255,255,255,.97)'); sg.addColorStop(0.75, 'rgba(255,250,245,.97)'); sg.addColorStop(1, 'rgba(255,255,255,.5)');
         g.fillStyle = sg;
@@ -1179,7 +1186,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function sparkle(x, y, n, col) {
     for (var k = 0; k < n; k++) { var a = Math.random() * TAU, v = CELL * (0.6 + Math.random() * 2.2); part(x, y, Math.cos(a) * v, Math.sin(a) * v, col || '#fff6c8', 0.5 + Math.random() * 0.4, CELL * (0.06 + Math.random() * 0.07), 1); }
   }
-  function popup(i, text, c, big) { popups.push({ x: cx(i), y: cy(i), text: text, c: c >= 0 ? COL[c].b : '#ffd45a', t0: clock, life: 950, big: !!big }); }
+  function popup(i, text, c, big) { popups.push({ x: clamp(cx(i), CELL * 1.1, W - CELL * 1.1), y: Math.max(cy(i), CELL * 1.1), text: text, c: c >= 0 ? COL[c].b : '#ffd45a', t0: clock, life: 950, big: !!big }); }
   function startFx(f) {
     var o = { k: f.k, t0: clock, f: f, i: f.r * G.C + f.c };
     fxs.push(o);
@@ -1528,8 +1535,8 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var starN = 0;
   function starSvg(on) {
     var id = 'cmst' + (++starN);
-    return '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (on ? '#fff3b0' : '#6c5574') + '"/><stop offset="1" stop-color="' + (on ? '#f0a000' : '#3a2842') + '"/></linearGradient></defs>' +
-      '<path d="M12 1.8l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.6l-6.2 3.3L7 14l-5-4.9 6.9-1z" fill="url(#' + id + ')" stroke="' + (on ? '#8f5200' : '#251829') + '" stroke-width="1.3" stroke-linejoin="round"/>' +
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (on ? '#fff3b0' : '#9a88a2') + '"/><stop offset="1" stop-color="' + (on ? '#f0a000' : '#5a4664') + '"/></linearGradient></defs>' +
+      '<path d="M12 1.8l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.6l-6.2 3.3L7 14l-5-4.9 6.9-1z" fill="url(#' + id + ')" stroke="' + (on ? '#8f5200' : '#1c1020') + '" stroke-width="1.3" stroke-linejoin="round"/>' +
       (on ? '<path d="M8.6 8.9l2.1-.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity=".85"/>' : '') + '</svg>';
   }
   var GI = {
@@ -1559,7 +1566,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     bestEl.appendChild(el('i', { text: '' }));
     meterFill = el('span');
     var meter = el('div', { class: 'cm-meter' }, [meterFill]);
-    meterStars = [0, 1, 2].map(function () { var s = el('span', { style: { position: 'absolute', top: '50%' } }); meter.appendChild(s); return s; });
+    meterStars = [0, 1, 2].map(function () { var s = el('i'); meter.appendChild(s); return s; });
     scEl.appendChild(meter);
     hudEl = el('div', { class: 'cm-hud' }, [lvEl, mvEl, scEl, bestEl]);
     goalEl = el('div', { class: 'cm-goal' });
@@ -1620,7 +1627,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     meterFill.style.width = (p * 100).toFixed(1) + '%';
     var key = on.join() + pos.join();
     if (key === meterKey) return; meterKey = key;
-    meterStars.forEach(function (s, k) { s.style.left = 'calc(' + (pos[k] * 100).toFixed(1) + '% - ' + (k === 2 ? 4 : 0) + 'px)'; s.innerHTML = starSvg(on[k]); });
+    meterStars.forEach(function (s, k) { s.style.left = 'calc(' + (pos[k] * 100).toFixed(1) + '% - ' + (k === 2 ? 5 : 0) + 'px)'; s.innerHTML = starSvg(on[k]); });
   }
   function bestNow() {
     var b = 0;
@@ -1772,7 +1779,339 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (state === 'intro') { state = 'play'; armHint(); }
   }
 
-/*@@NEXT@@*/
+  // ═══ Levels: start, save, finish ══════════════════════════════════════════
+  function blankStats() { return { moves: 0, made: { h: 0, w: 0, b: 0 }, combos: 0, maxStep: 0, bestMove: 0, shuffles: 0, jellyCleared: 0, frostBroken: 0 }; }
+  function addStats(a, b) {
+    if (!b) return a;
+    a.moves += b.moves || 0; a.combos += b.combos || 0; a.shuffles += b.shuffles || 0; a.jellyCleared += b.jellyCleared || 0; a.frostBroken += b.frostBroken || 0;
+    a.maxStep = Math.max(a.maxStep, b.maxStep || 0); a.bestMove = Math.max(a.bestMove, b.bestMove || 0);
+    ['h', 'w', 'b'].forEach(function (k) { a.made[k] += (b.made && b.made[k]) || 0; });
+    return a;
+  }
+  function newRun() { return { total: 0, levels: [], stats: blankStats(), started: Date.now() }; }
+  function resetFx() { tweens = []; timers = []; parts = []; fxs = []; popups = []; banner = null; shake = 0; playing = false; hint = null; sel = -1; down = null; }
+  function startLevel(n, cfg, saved) {
+    var def = levelDef(n);
+    L = { n: n, def: def, mode: cfg.mode || 'level', who: cfg.who || 'Player', run: cfg.mode === 'run' ? (cfg.run || newRun()) : null, started: (saved && saved.started) || Date.now() };
+    G = saved && saved.g ? CM.load(saved.g) : CM.create(def, (Date.now() ^ (n * 7919)) & 0x7fffffff);
+    if (!CM.hasMove(G) && G.moves > 0) CM.shuffle(G);
+    resetFx(); undoSnap = null; bestBase = -1;
+    syncView(); scoreVis = shownScore = G.score;
+    if (!saved || !saved.g) Kit.gameStart();
+    buildView(); hudAll();
+    save();
+    if (saved && saved.g) {
+      state = 'play';
+      if ((G.goal !== 'score' && CM.goalMet(G)) || G.moves <= 0) after(300, checkEnd); else armHint();
+    } else showIntro();
+    kick();
+  }
+  function leaveGame() {
+    view = 'none'; state = 'none'; clearHint(); resetFx();
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    clearTimeout(showIntro.t); introEl = null;
+    root.classList.remove('cm-on');
+    if (ro) { ro.disconnect(); ro = null; }
+    lvEl = mvEl = scEl = bestEl = goalEl = sideEl = null;
+  }
+  function save() {
+    if (!L) return;
+    var s = { v: 1, n: L.n, mode: L.mode, who: L.who, run: L.run, started: L.started, g: G ? CM.save(G) : null };
+    try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
+    Kit.resume.set((L.mode === 'run' ? 'Run · ' : '') + 'Level ' + L.n + ' · ' + G.moves + (G.moves === 1 ? ' move' : ' moves') + ' left', { keys: [SAVE] });
+  }
+  // Between levels of a run: no board yet, the next level starts when the player comes back
+  function saveBetween(next) {
+    var s = { v: 1, n: next, mode: 'run', who: L.who, run: L.run, started: Date.now(), g: null };
+    try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
+    Kit.resume.set('Run · level ' + next + ' next · ' + fmt(L.run.total) + ' points', { keys: [SAVE] });
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function loadSave() {
+    try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.n >= 1 && (s.mode === 'run' ? s.run : true) ? s : null; } catch (e) { return null; }
+  }
+  function runTotalOf(s) { return (s.run ? s.run.total : 0) + (s.g ? s.g.score : 0); }
+
+  function loadProg() {
+    var p = { unlocked: 1, stars: {}, best: {}, sel: 0 };
+    try { var s = JSON.parse(localStorage.getItem(PROG)); if (s) { p.unlocked = s.unlocked || 1; p.stars = s.stars || {}; p.best = s.best || {}; p.sel = s.sel || 0; } } catch (e) {}
+    // Cleared levels and stars also come from game history, which syncs between devices
+    try {
+      GameHistory.load(KEY).forEach(function (e) {
+        if (!e || e.game !== KEY || !e.levels) return;
+        Object.keys(e.levels).forEach(function (k) { var n = +k, st = +e.levels[k]; if (n > 0 && st > 0) { p.unlocked = Math.max(p.unlocked, n + 1); p.stars[n] = Math.max(p.stars[n] || 0, st); } });
+      });
+    } catch (e) {}
+    return p;
+  }
+  function saveProg(p) { try { localStorage.setItem(PROG, JSON.stringify({ unlocked: p.unlocked, stars: p.stars, best: p.best, sel: p.sel })); } catch (e) {} }
+
+  function leftText() {
+    var left = CM.goalLeft(G);
+    if (G.goal === 'jelly') return left + ' jelly ' + (left === 1 ? 'square' : 'squares') + ' left';
+    if (G.goal === 'ingred') return left + ' still to bring down';
+    return fmt(left) + ' points short';
+  }
+  function levelOver(won) {
+    state = 'done'; clearHint();
+    var n = L.n, stars = won ? starsFor(G.score) : 0, score = G.score, def = L.def;
+    var prog = loadProg();
+    if (won) { prog.unlocked = Math.max(prog.unlocked, n + 1); prog.stars[n] = Math.max(prog.stars[n] || 0, stars); prog.sel = n + 1; }
+    if (score > (prog.best[n] || 0)) prog.best[n] = score;
+    saveProg(prog);
+    var cfg = { mode: L.mode, who: L.who };
+    if (L.mode === 'run') {
+      var run = L.run;
+      run.levels.push({ n: n, s: score, st: stars, nm: def.name, won: won ? 1 : 0, left: won ? '' : leftText() });
+      addStats(run.stats, G.stats);
+      if (won) {
+        run.total += score;
+        winCard({
+          title: 'Level ' + n + ' cleared!', sub: fmt(score) + ' points · run total ' + fmt(run.total),
+          again: function () { startLevel(n + 1, { mode: 'run', who: cfg.who, run: run }); }, againLabel: 'Next level',
+          extra: [{ label: 'High scores', onClick: function () { showHi(); } }]
+        }, stars);
+        saveBetween(n + 1);
+      } else {
+        var total = run.total + score;
+        recordRun({ n: n, who: L.who, run: run }, 'over', total);
+        clearSave();
+        ArcadeHi.check(KEY, total, function () {
+          Kit.win({
+            lose: true, title: 'Out of moves', sub: 'Your run ended on level ' + n + ' with ' + fmt(total) + ' points in all. ' + leftText() + '.',
+            again: function () { startLevel(1, { mode: 'run', who: cfg.who, run: newRun() }); }, againLabel: 'New run',
+            extra: [{ label: 'Practice level ' + n, onClick: function () { startLevel(n, { mode: 'level', who: cfg.who }); } }, { label: 'High scores', onClick: function () { showHi(); } }]
+          });
+        });
+      }
+    } else {
+      recordPractice(won, stars);
+      clearSave();
+      if (won) winCard({
+        title: 'Level ' + n + ' cleared!', sub: fmt(score) + ' points' + (prog.best[n] === score ? ' · your best on this level' : ''),
+        again: function () { startLevel(n + 1, cfg); }, againLabel: 'Next level',
+        extra: [{ label: 'Replay level ' + n, onClick: function () { startLevel(n, cfg); } }, { label: 'Choose level', onClick: showSetup }]
+      }, stars);
+      else Kit.win({
+        lose: true, title: 'Out of moves', sub: 'Level ' + n + ': ' + leftText() + '.',
+        again: function () { startLevel(n, cfg); }, againLabel: 'Try again',
+        extra: [{ label: 'Choose level', onClick: showSetup }]
+      });
+    }
+  }
+  // Kit's result card, with the level's stars popping in one by one
+  function winCard(o, stars) {
+    Kit.win(o);
+    var cards = document.querySelectorAll('.k-win .card'), card = cards[cards.length - 1];
+    if (!card) return;
+    var row = el('div', { class: 'cm-stars', 'aria-label': stars + (stars === 1 ? ' star' : ' stars') });
+    for (var k = 0; k < 3; k++) row.insertAdjacentHTML('beforeend', starSvg(k < stars));
+    var h2 = card.querySelector('h2'); h2.parentNode.insertBefore(row, h2.nextSibling);
+    Array.prototype.forEach.call(row.children, function (s, k) {
+      setTimeout(function () { s.classList.add('in'); if (k < stars) sStar(k); }, 420 + k * 260);
+    });
+  }
+  function showHi() { ArcadeHi.show(KEY, 'Candy Match'); }
+
+  // ═══ History ══════════════════════════════════════════════════════════════
+  function recordRun(s, reason, total) {
+    var lv = s.run.levels, st = addStats(blankStats(), s.run.stats);
+    if (s.g) addStats(st, s.g.stats);
+    if (!lv.length && !st.moves) return;
+    var cleared = lv.filter(function (x) { return x.won; }), stars = cleared.reduce(function (a, x) { return a + x.st; }, 0);
+    var reached = s.n, hl = [], last = lv[lv.length - 1];
+    if (reason === 'over' && last) hl.push('Ran out of moves on level ' + last.n + ' (' + last.nm + '), ' + last.left);
+    else hl.push('Ended the run on level ' + reached);
+    hl.push('Cleared ' + cleared.length + (cleared.length === 1 ? ' level' : ' levels') + ' for ' + stars + (stars === 1 ? ' star' : ' stars'));
+    var best = lv.slice().sort(function (a, b) { return b.s - a.s; })[0];
+    if (best) hl.push('Best level: ' + best.nm + ', ' + fmt(best.s) + ' points');
+    if (st.made.b) hl.push('Made ' + st.made.b + (st.made.b === 1 ? ' color bomb' : ' color bombs'));
+    if (st.combos) hl.push(st.combos + (st.combos === 1 ? ' special combo' : ' special combos'));
+    if (st.maxStep >= 4) hl.push('Biggest cascade: ' + st.maxStep + ' clears in one move');
+    var levels = {}; cleared.forEach(function (x) { levels[x.n] = Math.max(levels[x.n] || 0, x.st); });
+    var hiL = ArcadeHi.list(KEY);
+    Kit.record(KEY, {
+      started: s.run.started, mode: 'Run',
+      players: [{ name: s.who || 'Player', score: total }], winner: null,
+      rounds: lv.length > 1 ? { labels: lv.map(function (x) { return 'Level ' + x.n; }), scores: lv.map(function (x) { return [x.s]; }) } : null,
+      highlights: hl.slice(0, 6),
+      summary: 'Reached level ' + reached + ' · ' + fmt(total),
+      badge: 'Lvl ' + reached,
+      meta: { score: total, level: reached, cleared: cleared.length, stars: stars, levels: levels, result: reason, run: 1 },
+      detail: {
+        lv: lv.map(function (x) { return x.n + ':' + x.s + ':' + x.st; }).join(','), end: reason, n: reached, st: stars,
+        mb: st.made.b, mw: st.made.w, mh: st.made.h, cb: st.combos, cs: st.maxStep, jl: st.jellyCleared,
+        hr: total > 0 && (hiL.length < ArcadeHi.max || total > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= total; }).length + 1 : 0
+      }
+    });
+  }
+  function recordPractice(won, stars) {
+    var st = G.stats, hl = [];
+    var spare = Math.max(0, G.moves0 - st.moves);
+    hl.push(won ? 'Cleared level ' + L.n + ' (' + L.def.name + ')' + (spare ? ' with ' + spare + (spare === 1 ? ' move' : ' moves') + ' to spare' : '') : 'Ran out of moves on level ' + L.n + ' (' + L.def.name + '), ' + leftText());
+    if (won) hl.push(stars + (stars === 1 ? ' star' : ' stars'));
+    if (st.made.b) hl.push('Made ' + st.made.b + (st.made.b === 1 ? ' color bomb' : ' color bombs'));
+    if (st.combos) hl.push(st.combos + (st.combos === 1 ? ' special combo' : ' special combos'));
+    if (st.maxStep >= 4) hl.push('Biggest cascade: ' + st.maxStep + ' clears in one move');
+    var levels = {}; if (won) levels[L.n] = stars;
+    Kit.record(KEY, {
+      started: L.started, mode: 'Level ' + L.n + ' (practice)',
+      players: [{ name: L.who, score: G.score }], winner: null,
+      highlights: hl,
+      summary: 'Level ' + L.n + (won ? ' cleared' : ' · out of moves') + ' · ' + fmt(G.score),
+      badge: 'Lvl ' + L.n,
+      meta: { score: G.score, level: L.n, levels: levels, stars: stars, result: won ? 'win' : 'loss', practice: 1 },
+      detail: { n: L.n, nm: L.def.name, won: won ? 1 : 0, st: stars, mv: st.moves, mb: st.made.b, cb: st.combos, cs: st.maxStep }
+    });
+  }
+  // A run that's being given up still counts: it goes in history and on the high score board
+  function endSavedRun(then) {
+    var s = loadSave();
+    if (!s || s.mode !== 'run') { then(); return; }
+    var total = runTotalOf(s);
+    recordRun(s, 'quit', total);
+    clearSave();
+    ArcadeHi.check(KEY, total, then);
+  }
+
+  // ═══ Undo (practice only: a run keeps every move, so the board means something) ═
+  function undo() {
+    if (!L || !G || view !== 'game') { Kit.toast('Nothing to undo'); return; }
+    if (L.mode === 'run') { Kit.toast('No undo during a run, so high scores stay fair'); return; }
+    if (!undoSnap || state !== 'play' || playing) { Kit.toast('Nothing to undo'); return; }
+    G = CM.load(JSON.parse(undoSnap)); undoSnap = null;
+    resetFx(); syncView(); scoreVis = shownScore = G.score;
+    hudAll(); save(); render(); Kit.sfx('whoosh'); armHint();
+  }
+
+  // ═══ Setup: continue, start a run, or pick a level ═══════════════════════
+  function showSetup() {
+    leaveGame();
+    var prog = loadProg(), saved = loadSave(), sel2 = clamp(prog.sel || prog.unlocked, 1, prog.unlocked);
+    app.className = 'stage cm-setup';
+    var modes = [];
+    if (saved) modes.push({ id: 'cont', icon: 'play', title: saved.mode === 'run' ? 'Continue your run' : 'Continue level ' + saved.n,
+      desc: saved.mode === 'run' ? 'Level ' + saved.n + (saved.g ? ' in progress' : ' next') + ' · ' + fmt(runTotalOf(saved)) + ' points so far' : 'Practice · ' + (saved.g ? saved.g.moves + ' moves left' : 'start') });
+    modes.push({ id: 'run', icon: 'flame', title: saved && saved.mode === 'run' ? 'Start a new run' : 'Start a run', desc: 'Begin at level 1 and keep going until a level beats you. Your total goes on the high score board.' });
+    modes.push({ id: 'level', icon: 'star', title: 'Pick a level', desc: 'Replay any level you have reached to earn more stars. Practice does not count for high scores.' });
+    var s = Kit.setup(app, {
+      intro: 'Swap candies, match three or more, beat the goal',
+      modes: modes, mode: saved ? 'cont' : 'run', modeLocked: true,
+      players: { min: 1, max: 1, count: 1, label: 'Player' },
+      start: 'Play',
+      onStart: function (cfg) {
+        var who = cfg.players[0] ? cfg.players[0].name : 'Player', m = cfg.mode;
+        if (m === 'cont' && saved) { startLevel(saved.n, { mode: saved.mode, who: who, run: saved.run }, saved.g ? saved : null); return; }
+        function go() { if (m === 'level') { prog.sel = sel2; saveProg(prog); startLevel(sel2, { mode: 'level', who: who }); } else startLevel(1, { mode: 'run', who: who, run: newRun() }); }
+        if (saved && saved.mode === 'run') {
+          Kit.confirm('End your current run?', { ok: 'End run', body: 'Your ' + fmt(runTotalOf(saved)) + ' points go on the high score board if they make the top ' + ArcadeHi.max + '.' })
+            .then(function (ok) { if (ok) endSavedRun(go); });
+        } else { clearSave(); go(); }
+      }
+    });
+    var startBtn = s.el.querySelector('.k-start'), modesBox = s.el.querySelector('.modes');
+    var maxN = Math.max(LEVELS.length, Math.ceil((prog.unlocked + 6) / 6) * 6), tiles = [];
+    var cleared = Object.keys(prog.stars).length, starSum = 0; Object.keys(prog.stars).forEach(function (k) { starSum += prog.stars[k]; });
+    var grid = el('div', { class: 'cm-levels' });
+    for (var n = 1; n <= maxN; n++) (function (n) {
+      var locked = n > prog.unlocked, def = levelDef(n), st = prog.stars[n] || 0, sr = '';
+      for (var k = 0; k < 3; k++) sr += starSvg(k < st);
+      var t = el('button', { type: 'button', class: 'cm-lt' + (locked ? ' lock' : '') + (n === sel2 ? ' on' : ''), 'aria-label': 'Level ' + n + ': ' + def.name + (locked ? ' (locked)' : st ? ', ' + st + ' stars' : '') }, [
+        el('span', { class: 'gi', html: GI[def.goal] }), el('b', { text: String(n) }), el('span', { class: 'st', html: sr }),
+        locked ? el('span', { class: 'lk', html: LOCK }) : null
+      ]);
+      t.addEventListener('click', function () {
+        if (locked) { Kit.toast('Clear level ' + (n - 1) + ' to unlock'); Kit.sfx('bad'); return; }
+        sel2 = n; tiles.forEach(function (x, j) { x.classList.toggle('on', j === n - 1); }); Kit.sfx('tap'); Kit.haptic('light'); upd();
+      });
+      tiles.push(t); grid.appendChild(t);
+    })(n);
+    var pick = el('div', { class: 'cm-pick' }, [el('div', { class: 'cm-lvh' }, [el('div', { class: 'label', text: 'Choose a level' }), el('small', { text: cleared + ' cleared · ' + starSum + ' stars' })]), grid]);
+    if (modesBox) modesBox.parentNode.insertBefore(pick, modesBox.nextSibling);
+    function upd() {
+      var m = s.state.mode;
+      pick.hidden = m !== 'level';
+      if (startBtn) startBtn.textContent = m === 'cont' ? 'Continue' : m === 'run' ? 'Start run' : 'Play level ' + sel2;
+    }
+    if (modesBox) modesBox.addEventListener('click', function () { setTimeout(upd, 0); });
+    upd();
+    window.scrollTo(0, 0);
+  }
+
+  // ═══ Kit shell ═══════════════════════════════════════════════════════════
+  Kit.init({
+    id: 'candymatch',
+    onNew: function () { endSavedRun(function () { clearSave(); showSetup(); }); },
+    undo: undo,
+    menu: [
+      { icon: 'board', label: 'Choose level', onClick: function () { if (L && view === 'game' && state !== 'done') save(); showSetup(); } },
+      { icon: 'trophy', label: 'High scores', onClick: showHi },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Candy Match: past games' }); } }
+    ],
+    rules:
+      '<p class="goal">Swap two candies that sit side by side to make a line of <b>3 or more</b> of the same kind. Beat each level\'s goal before you run out of moves.</p>' +
+      '<h3>Moving</h3><ul><li><b>Swipe</b> a candy toward the one next to it, or <b>tap</b> one candy and then its neighbor.</li>' +
+      '<li>A swap only counts if it makes a line. Otherwise the candies slide back and you keep the move.</li>' +
+      '<li>Matched candies pop, the ones above fall, and new candies drop in from the top. Lines made by falling candies pop too: that\'s a <b>cascade</b>.</li>' +
+      '<li>Each kind of candy has its own shape and color: red bean, orange gumdrop, yellow lemon drop, green square, blue ball, purple star.</li>' +
+      '<li>If no swap can make a line, the board shuffles itself. Wait a few seconds and two candies wiggle to show you a move.</li></ul>' +
+      '<h3>Special candies</h3><ul><li><b>Striped</b>: match 4 in a row. The stripes run the way you swiped. When it pops it clears its whole row (side-to-side stripes) or column (up-and-down stripes).</li>' +
+      '<li><b>Wrapped</b>: match in an L or T shape. It explodes twice, clearing the 3 by 3 square around it each time.</li>' +
+      '<li><b>Color bomb</b> (chocolate with sprinkles): match 5 in a row. Swap it with any candy to clear every candy of that color.</li></ul>' +
+      '<h3>Special combos</h3><p>Swap two specials into each other:</p><ul><li><b>Striped + striped</b>: clears a whole row and a whole column.</li>' +
+      '<li><b>Striped + wrapped</b>: clears three rows and three columns.</li><li><b>Wrapped + wrapped</b>: a big 5 by 5 blast, twice.</li>' +
+      '<li><b>Color bomb + striped</b>: every candy of that color turns striped, then they all go off.</li>' +
+      '<li><b>Color bomb + wrapped</b>: every candy of that color turns wrapped, then they all explode.</li><li><b>Color bomb + color bomb</b>: clears the whole board.</li></ul>' +
+      '<h3>Goals</h3><ul><li><b>Score</b>: reach the target. You play all your moves, then any specials left on the board go off.</li>' +
+      '<li><b>Jelly</b>: clear every pink jelly square by popping a candy on top of it. Dark jelly takes two pops.</li>' +
+      '<li><b>Cherries and nuts</b>: bring them down to the bottom row, where the green arrows are. They can\'t be matched, so clear the candies under them.</li>' +
+      '<li><b>Frosting</b> blocks a square. Make a match next to it, or hit it with a special, to chip it away. Pink frosting takes two hits.</li></ul>' +
+      '<h3>Points</h3><ul><li>Match 3: <b>60</b>. Match 4: <b>120</b>. Match 5, or an L or T: <b>200</b>.</li><li>Each candy cleared by a special: <b>60</b>.</li>' +
+      '<li>Cascades multiply: the second clear in a move scores double, the third triple, and so on.</li>' +
+      '<li>Jelly square: <b>1,000</b>. Frosting layer: <b>100</b>. Cherry or nut brought down: <b>10,000</b>.</li>' +
+      '<li>Beat a jelly or cherry goal with moves to spare and each move left turns a candy striped. They all go off for bonus points.</li></ul>' +
+      '<h3>Stars</h3><p>Beating the goal earns 1 star. Score more for 2 or 3 stars. The stars on the score meter show where they are.</p>' +
+      '<h3>Runs and high scores</h3><p>A <b>run</b> starts at level 1. Every level you clear adds its score to your run total. When a level beats you, the run ends and your total can go on the high score board. <b>Pick a level</b> lets you replay levels for more stars, and has an undo; it doesn\'t count for high scores. After level ' + LEVELS.length + ', new levels are made for you, so the game never ends.</p>'
+  });
+
+  // ═══ Test hooks (used by automated checks) ═══════════════════════════════
+  function setBoard(rows) {
+    rows.forEach(function (row, r) {
+      row.trim().split(/\s+/).forEach(function (t, c) {
+        var i = CM.idx(G, r, c); if (i < 0 || t === '.') return;
+        G.frost[i] = 0;
+        if (t === 'x' || t === 'X') { G.frost[i] = t === 'x' ? 1 : 2; G.cell[i] = null; return; }
+        if (t === '@') { G.cell[i] = CM.mk(G, -1, 'b'); return; }
+        if (t === 'C' || t === 'N') { G.cell[i] = CM.mk(G, -2, 'i', t === 'C' ? 0 : 1); return; }
+        var col = 'roygbp'.indexOf(t.charAt(0)), s = { '-': 'h', '|': 'v', '*': 'w' }[t.charAt(1)] || '';
+        if (col >= 0) G.cell[i] = CM.mk(G, col, s);
+      });
+    });
+    resetFx(); syncView(); scoreVis = shownScore = G.score; hudAll(); render(); save();
+  }
+  window.__candy = {
+    get: function () { return G && { state: state, mode: L.mode, n: L.n, name: L.def.name, moves: G.moves, score: G.score, goal: G.goal, left: CM.goalLeft(G), playing: playing, frames: frames, raf: !!raf, busy: busy(), run: L.run ? L.run.total : null, jelly: CM.jellyLeft(G), ingDone: G.ingDone, hint: !!hint, cell: CELL, stats: G.stats }; },
+    start: function (n, mode) { startLevel(n, { mode: mode || 'level', who: 'Tester', run: mode === 'run' ? newRun() : null }); hideIntro(); },
+    board: setBoard,
+    jelly: function (rows) { rows.forEach(function (row, r) { row.split('').forEach(function (ch, c) { var i = CM.idx(G, r, c); if (i >= 0) G.jelly[i] = +ch || 0; }); }); vJelly = G.jelly.slice(); hudAll(); render(); },
+    move: function (r1, c1, r2, c2) { attempt(r1 * G.C + c1, r2 * G.C + c2); },
+    tap: function (r, c) { tapCell(r * G.C + c); },
+    speed: function (k) { speed = k; },
+    queue: function (a) { G.forceQ = a.slice(); },
+    set: function (o) { for (var k in o) G[k] = o[k]; shownMoves = G.moves; scoreVis = shownScore = G.score; hudAll(); save(); },
+    idle: function () { return state === 'play' && !playing; },
+    showHint: showHint, render: render, setup: showSetup, finish: checkEnd,
+    reshuffle: function () { state = 'busy'; play([CM.shuffle(G)], function () { save(); checkEnd(); }); },
+    G: function () { return G; }, CM: CM, levelDef: levelDef, fillOK: fillOK
+  };
+
+  // ═══ Boot ════════════════════════════════════════════════════════════════
+  (function boot() {
+    var s = loadSave();
+    if (s && s.g) startLevel(s.n, { mode: s.mode, who: s.who, run: s.run }, s);
+    else if (s && s.mode === 'run') startLevel(s.n, { mode: 'run', who: s.who, run: s.run });
+    else showSetup();
+  })();
 })();
 </script>
 </body>

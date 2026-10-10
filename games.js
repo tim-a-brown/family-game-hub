@@ -89,6 +89,7 @@ var GAMES = [
   { id: 'memorymatch', name: 'Memory Match', color: '#d946ef', cat: 'puzzle', min: 1, max: 4, tag: 'Flip two, find the pairs', play: 'memorymatch' },
   { id: 'mahjong',     name: 'Mahjong Tiles', color: '#059669', cat: 'puzzle', min: 1, max: 1, tag: 'Match free tiles, clear the stack', play: 'mahjong' },
   { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles' },
+  { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'puzzle', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
   // ── Words ────────────────────────────────────────────────────────────────
   { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'words', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },

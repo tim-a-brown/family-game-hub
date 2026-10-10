@@ -102,6 +102,7 @@ const PRECACHE_URLS = [
   '/games/blackjack.html',
   '/games/boggle.html',
   '/games/breakout.html',
+  '/games/candymatch.html',
   '/games/checkers.html',
   '/games/chess.html',
   '/games/connectfour.html',
