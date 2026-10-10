@@ -73,7 +73,7 @@ var GameIcon = (function () {
     },
     'gin-rummy': function (c) {   // two melds: a pair of three-card fans
       function fan(cx, cols) { var s = ''; [-15, 0, 15].forEach(function (a, i) { s += rect(cx - 3.1, 4.5, 6.2, 11.4, 1.3, cols[i], ' stroke="' + W + '" stroke-width=".8" transform="rotate(' + a + ' ' + cx + ' 20.5)"'); }); return s; }
-      return fan(5.6, [c, K, R]) + fan(18.4, [R, K, c]);
+      return fan(5.6, [K, K, K]) + fan(18.4, [R, R, R]);
     },
     wizard: function () { return path('M12 2 6.5 17h11z', P) + rect(3, 16.5, 18, 3.6, 1.8, P) + path('M12.5 8.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z', Y); },
     flip7: function (c) { return txt('7', 24, c, 12.5); },
@@ -239,19 +239,15 @@ var GameIcon = (function () {
     pacman: function () { return path('M12 12 20 7.5A9 9 0 1 0 20 16.5z', Y, ' transform="translate(-4 0)"') + circ(18, 12, 1.4, W) + circ(22.5, 12, 1.4, W); },
     breakout: function () { return rect(1, 2, 7, 3, .8, R) + rect(8.5, 2, 7, 3, .8, O) + rect(16, 2, 7, 3, .8, Y) + rect(1, 6, 7, 3, .8, O) + rect(16, 6, 7, 3, .8, '#3ddc84') + circ(13, 14, 1.8, W) + rect(7, 20, 10, 2.4, 1.2, '#7aa8ff'); },
     flappybird: function () { return rect(17, 0, 5, 7, 1, '#3ddc84') + rect(17, 15, 5, 9, 1, '#3ddc84') + circ(9, 12, 5.5, Y) + circ(11, 10.4, 1.6, W) + circ(11.5, 10.4, .8, K) + path('M13.5 12.5h4l-2 2z', O) + '<ellipse cx="7" cy="13.5" rx="3" ry="1.8" fill="#ffe08a"/>'; },
-    willycrash: function () {   // the stunt cannon firing Willy in an arc onto a rooftop bullseye
-      return rect(16.5, 12.5, 6.5, 10.5, .8, '#7aa8ff') + rect(18, 15, 1.6, 1.8, .3, Y) + rect(20.2, 15, 1.6, 1.8, .3, K) + rect(18, 18.4, 1.6, 1.8, .3, K) + rect(20.2, 18.4, 1.6, 1.8, .3, Y) +
-        '<ellipse cx="19.75" cy="12.3" rx="3.6" ry="1.1" fill="' + R + '"/><ellipse cx="19.75" cy="12.3" rx="1.3" ry=".45" fill="' + W + '"/>' +
-        path('M8.6 12.6C10.2 5.2 15.6 3.4 19 9.4', 'none', ' stroke="' + W + '" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="1.4 1.9" opacity=".8"') +
-        '<g transform="rotate(-40 6.5 18.5)">' + rect(1.5, 15.6, 11.5, 5.8, 2.2, R) + rect(5.6, 15.6, 1.8, 5.8, 0, Y) + rect(11.4, 15, 2.2, 7, .8, Y) + '</g>' +
-        circ(6.5, 19.6, 2.7, Y) + circ(6.5, 19.6, 1, K) +
-        circ(13.2, 4.4, 2.3, '#ffcf9f') + path('M10.9 4.4a2.3 2.3 0 0 1 4.6 0z', W) + rect(10.9, 3.8, 4.6, .9, .3, R);
+    willycrash: function () {   // the stunt cannon: a red barrel with gold bands on a big wheel
+      return '<g transform="rotate(-35 10 15)">' + rect(3, 11, 17, 7.5, 2.4, R) + rect(7.5, 11, 1.8, 7.5, 0, Y) + rect(13, 11, 1.8, 7.5, 0, Y) + rect(18.5, 10.2, 2.6, 9.1, .9, Y) + rect(4.5, 12.2, 13, 1.4, .7, W, ' opacity=".35"') + '</g>' +
+        rect(2.5, 20.5, 19, 2, 1, S) + circ(9, 17.5, 4.6, Y) + circ(9, 17.5, 3.1, K) + circ(9, 17.5, 1.3, Y) + circ(20, 4.5, 1.5, W, ' opacity=".7"') + circ(22, 2.6, 1, W, ' opacity=".5"');
     },
     crazytower: function () { return line('M2.5 3h19', Y, 1.3) + rect(13, 5.4, 8.5, 3.4, .8, '#ff5cc8') + line('M9.6 7.1h2', '#ff9be0', 1.1) + rect(7.5, 9.8, 7.5, 3.4, .8, '#b26bff') + rect(6.8, 13.8, 8.6, 3.4, .8, '#7a7dff') + rect(6, 17.8, 10, 3.4, .8, '#38e1ff') + rect(17.6, 15.2, 3, 3, .6, '#b26bff', ' transform="rotate(28 19.1 16.7)"'); },
-    crossyroad: function () {   // a voxel chicken on the verge, a car coming down the road
-      return rect(0, 1.5, 24, 8, 1, '#62c45e') + rect(0, 9.5, 24, 10, 1, '#5a606c') + rect(1, 14, 4, 1, .5, W) + rect(9.5, 14, 4, 1, .5, W) +
-        rect(13.5, 15.2, 9, 3.6, .9, R) + rect(15.5, 13.4, 4.6, 2, .5, '#2f4157') + rect(15, 18.4, 2, 1.4, .4, K) + rect(19.5, 18.4, 2, 1.4, .4, K) +
-        rect(4.5, 3.6, 7, 8, 1.2, W) + rect(6.8, 2, 2.4, 2, .4, R) + rect(11.3, 6.4, 2.4, 1.7, .3, O) + rect(9.3, 5.2, 1.2, 1.2, .2, K) + rect(6, 11.4, 1.1, 2, .3, O) + rect(8.8, 11.4, 1.1, 2, .3, O);
+    crossyroad: function () {   // the boxy voxel chicken
+      return rect(5, 7, 13, 12, 1.2, W) + rect(5, 15.5, 13, 3.5, 1, '#d9dde6') + rect(3, 11, 3, 5, .8, '#e9ecf2') + rect(17, 11, 3, 5, .8, '#e9ecf2') +
+        rect(9, 3.5, 4, 3.5, .6, R) + rect(18, 10, 4, 2.6, .5, O) + rect(18, 12.6, 2.6, 1.8, .4, R) + rect(14.2, 9.2, 1.9, 1.9, .3, K) +
+        rect(8, 19, 2.2, 3, .4, O) + rect(13, 19, 2.2, 3, .4, O);
     },
     asteroids: function () { return path('M7 20 12 4l5 16-5-3.5z', 'none', ' stroke="' + W + '" stroke-width="1.8" stroke-linejoin="round"') + path('M18 2.5l3.5 1.5.5 3.5-3 2-3-1.5-.5-3z', S) + path('M2 9l2.5-.5 1.5 2-1 2.5-2.5-.5z', S); },
     peggle: function () { return circ(5, 15, 2.2, O) + circ(11, 18.5, 2.2, '#7aa8ff') + circ(17, 15, 2.2, O) + circ(20.5, 20, 2.2, O) + circ(3.5, 20.5, 2.2, '#7aa8ff') + line('M12 1.5c0 4 .5 6.5 2.5 9', W, 1.4) + circ(14.8, 11, 1.8, W); },
