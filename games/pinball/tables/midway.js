@@ -33,7 +33,7 @@ const BOOTH = [378, 800];
 const DUNK_T = [81, 604], DUNK = [84, 652];
 const DUCKS = [68, 455];
 const GUMBALL = [104, 905];
-const CAROUSEL = [243, 470], CAR_R = 44;
+const CAROUSEL = [243, 470], CAR_R = 44, CAR_LEGS = [[243, 527], [194, 441], [292, 441]];
 const RING = [243, 604];
 const MONKEY = [186, 972];
 const CANNON = [26, 205];
@@ -42,6 +42,7 @@ const LANES = [262, 302, 342];
 const PRIZES = ['DUCK', 'BEAR', 'FISH', 'ELEPHANT', 'LION'];
 const PRIZE_MODES = ['ducks', 'bumpers', 'ring', 'dunk', 'coaster'];
 const PRIZE_X = [171, 207, 243, 279, 315], PRIZE_Y = 395;
+const PRIZE_CASE = [[452, 440], [478, 448], [478, 560], [446, 552]];
 // the left block (dead zone behind the wheel: gumball machine, monkey) and its arc round the top-left
 const BLOCK_ARC = (() => { const out = []; for (let a = 106; a <= 156; a += 5) out.push([260 + Math.cos(deg(a)) * 210, 802 + Math.sin(deg(a)) * 210]); return out; })();
 const BLOCK = [[68, 622], [106, 622], [106, 764], [154, 764], [154, 718], [208, 718], [208, 1004]].concat(BLOCK_ARC).concat([[68, 886]]);
@@ -56,7 +57,7 @@ export default {
   intro: 'STEP RIGHT UP',
   display: { type: 'dmd', color: '#ffa030' },
   msgStyle: 'zoom',
-  music: { url: '../sounds/pinball/midway.mp3', samples: 1152000, rate: 32000 },
+  music: { url: '../sounds/pinball/midway.mp3', samples: 1280000, rate: 32000 },
   speech: { pitch: 1.15, rate: 1.08, voice: 'Fred|Daniel|Male|Google UK English Male' },
   rulesHtml:
     '<p>A boardwalk carnival. The barker wants your money; the prizes are plush.</p><ul>' +
@@ -109,7 +110,7 @@ function build(T) {
   T.spinner({ id: 'spinner', x: 31, y: 690, w: 46, angle: 90, label: 'MIDWAY', color: '#f4ecd8', art: spinArt });
   T.orbit({ id: 'orbitL', a: [8, 660, 60, 660], dirA: [0, 1], b: [434, 660, 478, 660], dirB: [0, -1] });
   T.orbit({ id: 'orbitR', a: [434, 660, 478, 660], dirA: [0, 1], b: [8, 660, 60, 660], dirB: [0, -1] });
-  T.wall([[54, 404], [54, 548]], { style: 'wood', r: 4, h: 34 });
+  T.wall([[54, 420], [54, 548]], { style: 'wood', r: 4, h: 34 });
   T.dropTargetBank({ id: 'ducks', x: DUCKS[0], y: DUCKS[1], angle: 8, n: 3, w: 24, gap: 3, labels: ['', '', ''], art: duckArt, color: '#ffd23a' });
   ['d0', 'd1', 'd2'].forEach((id, i) => T.insert(id, 100, 427 + i * 28, { shape: 'circle', r: 6.5, color: '#ffd23a' }));
   T.kickback({ id: 'cannon', x: CANNON[0], y: CANNON[1], power: 2300, label: 'CANNONBALL', color: '#e8463c' });
@@ -138,10 +139,10 @@ function build(T) {
   G.comps.gumball.mesh = function (RC) { gumballModel(RC, this); };
 
   // ── Centre: carousel disc, ring toss, the barker ──
-  T.spinningDisc({ id: 'carousel', x: CAROUSEL[0], y: CAROUSEL[1], r: CAR_R, speed: 2.2, grip: 4, color: '#f4ecd8', art: carouselArt });
-  [[243, 516], [205, 448], [281, 448]].forEach(p => T.post(p[0], p[1], { style: 'metal', r: 3, h: 40 }));
+  T.spinningDisc({ id: 'carousel', x: CAROUSEL[0], y: CAROUSEL[1], r: CAR_R, speed: 1.8, grip: 3, color: '#f4ecd8', art: carouselArt });
+  CAR_LEGS.forEach(p => T.post(p[0], p[1], { style: 'metal', r: 3, h: 40 }));   // outside the disc's reach: a ball can't be pinned against them
   T.ringCatch({ id: 'ring', x: RING[0], y: RING[1], r: 30, strength: 7000, hold: 1.6, active: false, toy: ringModel, animate: ringAnimate, releaseAngle: 268, releaseSpeed: 650 });
-  T.mouthToy({ id: 'barker', x: BARKER[0], y: BARKER[1], facing: 268, w: 44, hold: 1.5, model: barkerModel });
+  T.mouthToy({ id: 'barker', x: BARKER[0], y: BARKER[1], facing: 262, w: 40, hold: 1.5, model: barkerModel });
   T.wall([[266, 704], [266, 744], [290, 760], [314, 744], [314, 704]], { style: 'invisible', mat: 'toy', r: 2 });   // the back of his head is a ridge: nothing rests on it
   T.ao({ kind: 'poly', pts: [[262, 696], [318, 696], [318, 752], [262, 752]], a: 0.6, blur: 12 });
 
@@ -149,8 +150,12 @@ function build(T) {
   T.wall([[478, 612], [474, 588], [464, 572], [448, 562], [432, 558]], { style: 'wood', r: 4, h: 34 });
   T.wall([[432, 620], [432, 800]], { style: 'metal', h: 26 });
   T.post(432, 617, { style: 'rubber', r: 5 }); T.post(432, 556, { style: 'rubber', r: 5 });
-  // outlane deflector: a ball dropping down the far right is pushed back towards the inlane and the flipper
-  T.wall([[446, 486], [478, 514]], { style: 'wood', r: 4, h: 30 }); T.post(444, 484, { style: 'rubber', r: 5 });
+  // the prize counter fills the far-right channel above the outlane (a glass case with the five plush prizes, see prizeCounterModel)
+  T.wall(PRIZE_CASE, { style: 'wood', r: 4, h: 30, closed: true, color: '#f0e0bc' });
+  T.ao({ kind: 'poly', pts: PRIZE_CASE, a: 0.55, blur: 10 });
+  // taller in/outlane dividers: a ball crossing from the other side lands in the inlane, not the outlane
+  T.wall([[442, 334], [440, 396]], { style: 'metal', h: 24 }); T.post(440, 399, { style: 'rubber', r: 4.5 });
+  T.wall([[44, 334], [45, 370]], { style: 'metal', h: 24 }); T.post(45, 373, { style: 'rubber', r: 4.5 });
   const striker = T.standupTarget({ id: 'striker', x: STRIKER[0], y: STRIKER[1], angle: 250, w: 24, label: '', color: '#e8463c', art: strikerPadArt });
   { const orig = striker.onContact.bind(striker); striker.onContact = (b, c, imp, nx, ny, w) => { striker.lastImp = imp; orig(b, c, imp, nx, ny, w); }; }
   T.wall([[395, 638], [419, 638], [419, 684], [395, 670]], { style: 'invisible', mat: 'toy', r: 3, closed: true });   // the back slopes so balls roll off into the alley
@@ -210,6 +215,7 @@ function build(T) {
   T.model(RC => tiltBobModel(RC));
   T.model(RC => cannonModel(RC));
   T.model(RC => tentModel(RC));
+  T.model(RC => prizeCounterModel(RC));
 }
 function marqueeBulb(i) {   // positions [x, z] round the marquee sign on the backboard
   const x0 = 110, x1 = 410, z0 = 52, z1 = 136;
@@ -253,7 +259,7 @@ function makeRules() {
     },
     init(G) {
       G.b = { prizes: [0, 0, 0, 0, 0], mode: null, need: 0, have: 0, boothLit: true, win: [0, 0, 0], winLit: 0, tickets: 0,
-        spins: 0, spinsNeed: 25, lockLit: false, locks: 0, wheelMB: false, rides: 0, rideN: 0, jp: {}, jpV: 100000, superLit: false,
+        spins: 0, spinsNeed: 20, lockLit: false, locks: 0, wheelMB: false, rides: 0, rideN: 0, jp: {}, jpV: 100000, superLit: false,
         puck: 0, puckT: 0, bell: 0, strong: false, hurry: 0, strongDone: 0,
         barkerHits: 0, mouthOpen: false, barker: false, bShot: 0, bShotT: 0, bVal: 50000, fed: 0,
         ducksBanks: 0, dunks: 0, dunkAt: -9, monkeyT: -9, grandLit: false, grand: false, saidT: -9, tauntT: 0, chimeT: 0, bellAt: -9, hornT: 8 };
@@ -278,7 +284,7 @@ function makeRules() {
       const B = G.b; B.winLit = (B.winLit + (side === 'R' ? 1 : 2)) % 3;
       const r = B.win; B.win = side === 'R' ? [r[2], r[0], r[1]] : [r[1], r[2], r[0]];
     },
-    spinValue(G) { return G.b.wheelMB ? 1000 : 400; },
+    spinValue(G) { return G.b.wheelMB ? 1500 : 600; },
     event(G, type, id, b, d) {
       const B = G.b;
       switch (type) {
@@ -286,14 +292,14 @@ function makeRules() {
           if (!B.lockLit && !B.wheelMB) { B.spins++; if (B.spins >= B.spinsNeed) { B.spins = 0; B.lockLit = true; G.msg('MIDWAY SPINNER', 'LOCK IS LIT', { anim: 'gumball' }); G.sfx('award'); } }
           break;
         case 'pop':
-          if (B.mode === 'bumpers') { G.add(6000); B.have++; R.progress(G, 'BUMPER CARS'); }
-          if (B.grand) G.add(5000);
+          if (B.mode === 'bumpers') { G.add(8000); B.have++; R.progress(G, 'BUMPER CARS'); }
+          if (B.grand) G.add(8000);
           break;
-        case 'drop': G.pulse('d' + d.i, 0.3); if (B.mode === 'ducks') G.add(25000); else G.add(4000); break;
+        case 'drop': G.pulse('d' + d.i, 0.3); if (B.mode === 'ducks') G.add(30000); else G.add(6000); break;
         case 'bank':
           B.ducksBanks++; G.cnt('duckBank'); B.monkeyT = G.time;
-          if (B.mode === 'ducks') { G.add(100000); B.have++; R.progress(G, 'DUCK SHOOT'); }
-          else { G.add(15000); G.msg('DUCKS DOWN', fmt(30000 * G.mult), { anim: 'ducks' }); }
+          if (B.mode === 'ducks') { G.add(150000); B.have++; R.progress(G, 'DUCK SHOOT'); }
+          else { G.add(25000); G.msg('DUCKS DOWN', fmt(40000 * G.mult), { anim: 'ducks' }); }
           R.barkerShot(G, 'ducks');
           break;
         case 'target':
@@ -307,16 +313,16 @@ function makeRules() {
           }
           break;
         case 'orbit':
-          G.combo(id); G.add(5000);
-          if (B.grand) R.grandShot(G, id); else if (!R.barkerShot(G, id)) G.msg('MIDWAY', fmt(8000 * G.mult), {});
+          G.combo(id); G.add(9000);
+          if (B.grand) R.grandShot(G, id); else if (!R.barkerShot(G, id)) G.msg('MIDWAY', fmt(12000 * G.mult), {});
           break;
         case 'wheelIn':
-          G.cnt('ride'); B.rides++; B.rideN++; G.add(10000); G.combo('wheel');
+          G.cnt('ride'); B.rides++; B.rideN++; G.add(15000); G.combo('wheel');
           if (B.grand) { G.add(300000, { x: WHEEL.x, y: WHEEL.y, color: '#ffcc3a' }); G.msg('GRAND PRIZE RIDE', '300,000', { anim: 'wheel' }); }
           else if (B.wheelMB) G.msg('WHEEL RIDE', 'COASTER IS A JACKPOT', { anim: 'wheel', dur: 1.2 });
           else if (B.lockLit && B.locks < 2) G.msg('LOCK IS LIT', 'HOLD ON TIGHT', { anim: 'wheel', dur: 1.4 });
-          else { G.msg('WHEEL RIDE', fmt(10000 * G.mult), { anim: 'wheel' }); R.say(G, 'wheel'); }
-          if (B.mode === 'coaster') { B.have++; G.add(50000); R.progress(G, 'COASTER'); }
+          else { G.msg('WHEEL RIDE', fmt(15000 * G.mult), { anim: 'wheel' }); R.say(G, 'wheel'); }
+          if (B.mode === 'coaster') { B.have++; G.add(75000); R.progress(G, 'COASTER'); }
           R.barkerShot(G, 'wheel');
           break;
         case 'wheelOut':
@@ -331,35 +337,35 @@ function makeRules() {
           G.cnt('coaster'); G.combo('coaster'); G.sfx('ratchet', { vol: 0.3, x: 440 });
           if (B.grand) G.add(100000);
           else if (B.wheelMB && B.jp.coaster) { R.jackpot(G, 'coaster'); }
-          else { G.add(25000); G.msg('ROLLER COASTER', fmt(25000 * G.mult), { anim: 'wheel' }); R.say(G, 'coaster'); }
+          else { G.add(40000); G.msg('ROLLER COASTER', fmt(40000 * G.mult), { anim: 'wheel' }); R.say(G, 'coaster'); }
           break;
         case 'scoop': if (id === 'booth') R.booth(G); break;
         case 'mouthHit':
-          B.barkerHits++; G.add(2500);
+          B.barkerHits++; G.add(4000);
           if (!B.mouthOpen && !B.barker && B.barkerHits >= 3) R.openMouth(G);
           else if (!B.mouthOpen) { G.msg('THE BARKER', (3 - B.barkerHits) + ' MORE TO OPEN HIS MOUTH', { anim: 'barker', dur: 1.2 }); if (G.time - B.tauntT > 6) { B.tauntT = G.time; R.say(G, 'face'); } }
           break;
         case 'mouth':
           G.cnt('barker'); B.mouthOpen = false; G.sfx('gulp', { vol: 0.8 }); R.say(G, 'eat', true); B.monkeyT = G.time;
-          if (B.superLit) { B.superLit = false; G.jackpot(250000, 'SUPER JACKPOT', { color: '#ff7aa8' }); B.jp = { coaster: 1, booth: 1 }; }
+          if (B.superLit) { B.superLit = false; G.jackpot(400000, 'SUPER JACKPOT', { color: '#ff7aa8' }); B.jp = { coaster: 1, booth: 1 }; }
           else if (B.grand) G.add(100000);
-          else if (!B.barker) { G.add(25000); G.later(1.4, () => R.startBarker(G)); }
-          else G.add(25000);
+          else if (!B.barker) { G.add(40000); G.later(1.4, () => R.startBarker(G)); }
+          else G.add(40000);
           break;
         case 'mouthOut': G.comp('barker').close(); if (B.wheelMB && !B.superLit) G.comp('barker').close(); break;
         case 'kickback': G.msg('HUMAN CANNONBALL', '', { style: 'flash', dur: 1.2 }); G.sfx('cannon', { vol: 0.9, x: 26 }); G.cnt('cannon'); break;
         case 'ringCatch':
           G.cnt('ring'); B.monkeyT = G.time; G.sfx('chimeHi', { vol: 0.6 });
-          if (B.mode === 'ring') { G.add(60000); B.have++; R.progress(G, 'RING TOSS'); }
+          if (B.mode === 'ring') { G.add(90000); B.have++; R.progress(G, 'RING TOSS'); }
           else if (B.grand) G.add(100000);
-          else { G.add(30000); G.msg('RINGED!', fmt(30000 * G.mult), {}); }
+          else { G.add(40000); G.msg('RINGED!', fmt(40000 * G.mult), {}); }
           break;
         case 'ringCatchRelease': if (B.mode !== 'ring' && !B.grand) G.comp('ring').active = false; break;
       }
     },
     // ── the ticket booth ──
     booth(G) {
-      const B = G.b, sc = G.comp('booth'); sc.holdT = 1.3; G.add(10000); G.combo('booth');
+      const B = G.b, sc = G.comp('booth'); sc.holdT = 1.3; G.add(15000); G.combo('booth');
       if (B.grandLit && !B.grand && !G.mb) { B.grandLit = false; sc.holdT = 3.5; R.startGrand(G); return; }
       if (G.ebLit) { G.collectExtra(); R.say(G, 'extra', true); sc.holdT = 2; return; }
       if (B.grand) { G.add(100000); G.msg('GRAND PRIZE', '100,000', { anim: 'marquee' }); return; }
@@ -369,8 +375,8 @@ function makeRules() {
         const next = PRIZE_MODES.findIndex((m, i) => !B.prizes[i]);
         if (next >= 0) { B.boothLit = false; sc.holdT = 2.6; R.startPrize(G, PRIZE_MODES[next]); return; }
       }
-      const aw = ['BONUS UP', '25,000', 'BALL SAVE', 'ARM CANNONBALL'][Math.floor(Math.random() * 4)];
-      if (aw === 'BONUS UP') G.bxUp(); else if (aw === 'BALL SAVE') G.ballSave(10); else if (aw === 'ARM CANNONBALL') G.comp('cannon').arm(); else G.add(25000);
+      const aw = ['BONUS UP', '40,000', 'BALL SAVE', 'ARM CANNONBALL'][Math.floor(Math.random() * 4)];
+      if (aw === 'BONUS UP') G.bxUp(); else if (aw === 'BALL SAVE') G.ballSave(10); else if (aw === 'ARM CANNONBALL') G.comp('cannon').arm(); else G.add(40000);
       G.msg('TICKET BOOTH', aw, { anim: 'marquee' }); G.sfx('chimeHi', { vol: 0.5 }); R.say(G, 'booth');
     },
     // ── prize games ──
@@ -392,7 +398,7 @@ function makeRules() {
       B.prizes[i] = 1; G.cnt('prize'); const n = B.prizes.filter(Boolean).length;
       G.endMode(B.mode); B.mode = null; B.monkeyT = G.time;
       G.comp('motor').score(50000);
-      G.jackpot(100000, 'YOU WIN A ' + PRIZES[i], { color: '#ffcc3a', sound: 'fanfare' }); R.say(G, 'prize', true);
+      G.jackpot(150000, 'YOU WIN A ' + PRIZES[i], { color: '#ffcc3a', sound: 'fanfare' }); R.say(G, 'prize', true);
       if (n === 2) G.lightExtra();
       if (n >= 5) { B.grandLit = true; G.later(2.6, () => G.msg('ALL FIVE PRIZES', 'GRAND PRIZE AT THE BOOTH', { anim: 'marquee', dur: 2.5 })); }
       else B.boothLit = true;
@@ -400,13 +406,13 @@ function makeRules() {
     // ── the barker ──
     openMouth(G) { const B = G.b; B.mouthOpen = true; B.barkerHits = 0; G.comp('barker').open(); G.msg('FEED THE BARKER', 'SHOOT HIS MOUTH', { anim: 'barker' }); G.sfx('horn', { vol: 0.5, x: 290 }); R.say(G, 'open', true); },
     startBarker(G) {
-      const B = G.b; B.barker = true; B.fed++; B.bVal = 50000; B.bShot = Math.floor(Math.random() * BARKER_SHOTS.length); B.bShotT = G.time;
+      const B = G.b; B.barker = true; B.fed++; B.bVal = 60000; B.bShot = Math.floor(Math.random() * BARKER_SHOTS.length); B.bShotT = G.time;
       G.startMode('barker', 40); G.cnt('barkerMode');
       G.big('BARKER', 'SHOOT WHAT HE CALLS', '#ff7aa8', { anim: 'barker' }); G.sfx('horn', { vol: 0.6, x: 290 }); G.callout('THE BARKER', '#ff7aa8');
     },
     barkerShot(G, id) {
       const B = G.b; if (!B.barker || BARKER_SHOTS[B.bShot] !== id) return false;
-      const p = G.add(B.bVal); B.bVal += 10000; B.bShot = (B.bShot + 1 + Math.floor(Math.random() * (BARKER_SHOTS.length - 1))) % BARKER_SHOTS.length; B.bShotT = G.time;
+      const p = G.add(B.bVal); B.bVal += 15000; B.bShot = (B.bShot + 1 + Math.floor(Math.random() * (BARKER_SHOTS.length - 1))) % BARKER_SHOTS.length; B.bShotT = G.time;
       G.jackpot(0, 'THE BARKER PAYS', { color: '#ff7aa8', sound: 'chimeHi' }); G.msg('BARKER', fmt(p), { anim: 'barker' }); B.monkeyT = G.time;
       G.later(0.4, () => R.callShot(G)); return true;
     },
@@ -416,11 +422,11 @@ function makeRules() {
       const B = G.b, st = G.comp('striker'), imp = st.lastImp || 600;
       const k = clamp(imp / 1500, 0.15, 1.0);
       if (B.strong && B.hurry > 0) { const p = G.add(B.hurry); B.hurry = 0; B.strong = false; G.endMode('strongman'); B.strongDone++; G.cnt('strong'); G.jackpot(0, 'STRONGMAN', { color: '#ff9a40', sound: 'fanfare' }); G.msg('STRONGMAN', fmt(p), { anim: 'bell' }); B.monkeyT = G.time; G.comp('motor').score(20000); return; }
-      B.puck = Math.min(1, B.puck + k * 0.62); B.puckT = G.time; G.add(5000);
+      B.puck = Math.min(1, B.puck + k * 0.75); B.puckT = G.time; G.add(8000);
       if (B.grand) G.add(100000);
       if (B.puck >= 0.99) {
         B.puck = 1; B.bell++; B.bellAt = G.time; G.cnt('bell'); G.sfx('bigBell', { vol: 0.9, x: 407 }); G.shake(0.5); B.monkeyT = G.time;
-        if (!B.strong && !G.mb) R.startStrong(G); else { G.add(50000); G.msg('DING!', fmt(50000 * G.mult), { anim: 'bell' }); }
+        if (!B.strong && !G.mb) R.startStrong(G); else { G.add(75000); G.msg('DING!', fmt(75000 * G.mult), { anim: 'bell' }); }
         R.barkerShot(G, 'striker');
       } else {
         const names = ['PUNY', 'WEAKLING', 'FAIR', 'STRONG', 'MIGHTY'], n = names[Math.min(4, Math.floor(B.puck * 5))];
@@ -428,29 +434,29 @@ function makeRules() {
       }
     },
     startStrong(G) {
-      const B = G.b; B.strong = true; B.hurry = 200000; G.startMode('strongman', 25); G.cnt('mode');
-      G.big('STRONGMAN', 'HIT THE PAD AGAIN: 200,000', '#ff9a40', { anim: 'bell' }); G.callout('STRONGMAN', '#ff9a40'); R.say(G, 'bell', true);
+      const B = G.b; B.strong = true; B.hurry = 300000; G.startMode('strongman', 25); G.cnt('mode');
+      G.big('STRONGMAN', 'HIT THE PAD AGAIN: 300,000', '#ff9a40', { anim: 'bell' }); G.callout('STRONGMAN', '#ff9a40'); R.say(G, 'bell', true);
     },
     // ── the dunk tank ──
     dunk(G) {
       const B = G.b; B.dunks++; B.dunkAt = G.time; G.cnt('dunk'); G.sfx('splash', { vol: 0.8, x: 84 }); G.shake(0.3);
-      if (B.mode === 'dunk') { G.add(30000); B.have++; R.progress(G, 'DUNK TANK'); }
+      if (B.mode === 'dunk') { G.add(45000); B.have++; R.progress(G, 'DUNK TANK'); }
       else if (B.grand) G.add(100000);
-      else { G.add(7500); G.msg('DUNKED!', fmt(7500 * G.mult), { anim: 'clown' }); }
-      if (B.dunks % 3 === 0) { G.comp('cannon').arm(); G.add(20000); if (B.dunks === 9) G.lightExtra(); else G.msg('THREE DUNKS', 'CANNONBALL ARMED', { anim: 'clown' }); }
+      else { G.add(12500); G.msg('DUNKED!', fmt(12500 * G.mult), { anim: 'clown' }); }
+      if (B.dunks % 3 === 0) { G.comp('cannon').arm(); G.add(30000); if (B.dunks === 9) G.lightExtra(); else G.msg('THREE DUNKS', 'CANNONBALL ARMED', { anim: 'clown' }); }
       if (G.time - B.tauntT > 6) { B.tauntT = G.time; R.say(G, 'dunk'); }
       R.barkerShot(G, 'dunk');
     },
     // ── multiball and the wizard ──
     startWheelMB(G) {
-      const B = G.b; B.wheelMB = true; B.lockLit = false; B.locks = 0; B.spinsNeed += 10; G.cnt('wheelmb');
+      const B = G.b; B.wheelMB = true; B.lockLit = false; B.locks = 0; B.spinsNeed += 5; G.cnt('wheelmb');
       const gb = G.comp('gumball');
       G.multiball(3, { label: 'WHEEL MULTIBALL', color: '#e8463c', save: 15, from: i => gb.dispense() });
-      B.jp = { coaster: 1, booth: 1 }; B.jpV = 100000; B.superLit = false; R.say(G, 'mb', true); G.sfx('calliope', { vol: 0.6 });
+      B.jp = { coaster: 1, booth: 1 }; B.jpV = 150000; B.superLit = false; R.say(G, 'mb', true); G.sfx('calliope', { vol: 0.6 });
     },
     jackpot(G, id) {
       const B = G.b; delete B.jp[id];
-      const v = id === 'booth' ? B.jpV * 2 : B.jpV; B.jpV += 25000;
+      const v = id === 'booth' ? B.jpV * 2 : B.jpV; B.jpV += 30000;
       G.jackpot(v, id === 'booth' ? 'DOUBLE JACKPOT' : 'JACKPOT', { color: '#e8463c' }); R.say(G, 'jackpot'); B.monkeyT = G.time;
       if (!Object.keys(B.jp).length) { B.superLit = true; G.comp('barker').open(); G.msg('SUPER JACKPOT', 'FEED THE BARKER', { anim: 'barker' }); }
     },
@@ -478,7 +484,7 @@ function makeRules() {
       if (B.puck > 0 && G.time - B.puckT > 2.2 && B.puck < 1) B.puck = Math.max(0, B.puck - dt * 0.35);
       if (B.puck >= 1 && G.time - B.puckT > 3) B.puck = Math.max(0, B.puck - dt * 0.5);
       // strongman hurry-up counts down
-      if (B.strong && B.hurry > 50000) B.hurry = Math.max(50000, B.hurry - dt * 6000);
+      if (B.strong && B.hurry > 75000) B.hurry = Math.max(75000, B.hurry - dt * 9000);
       // the barker changes his mind every few seconds
       if (B.barker && G.time - B.bShotT > 7) { B.bShot = (B.bShot + 1) % BARKER_SHOTS.length; B.bShotT = G.time; R.callShot(G); }
       // the barker's mouth closes after a while if not fed (not during multiball super)
@@ -1048,7 +1054,7 @@ function dunkModel(RC) {
 function carouselModel(RC) {
   const M = RC.mats, B = RC.batch, [x, y] = CAROUSEL, G = RC.G;
   const ring = new THREE.TorusGeometry(48, 1.4, 8, 48); ring.translate(x, y, 72); B.add(M.chrome(), ring);
-  for (const [px, py] of [[243, 516], [205, 448], [281, 448]]) { const a = Math.atan2(py - y, px - x); B.add(M.chrome(), tubeGeo([[px, py, 40], [x + Math.cos(a) * 48, y + Math.sin(a) * 48, 71]], 1.8, 2, 8)); }
+  for (const [px, py] of CAR_LEGS) { const a = Math.atan2(py - y, px - x); B.add(M.chrome(), tubeGeo([[px, py, 40], [x + Math.cos(a) * 48, y + Math.sin(a) * 48, 71]], 1.8, 2, 8)); }
   const g = new THREE.Group(); g.position.set(x, y, 74); RC.root.add(g);
   const tex = stripeTex(RC, 16, '#c8302c', '#f4ecd8'); tex.wrapS = THREE.RepeatWrapping;
   const canopy = mesh(latheGeo(0, 0, [[46, 0], [44, 1], [34, 5], [20, 10], [8, 15], [0, 18]], 32), new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.5, clearcoat: 0.3, side: THREE.DoubleSide })); g.add(canopy);
@@ -1204,4 +1210,33 @@ function defineSounds() {
   A.define('horn', 0.7, S => { S.osc('sawtooth', 330, 0, 0.5, 0.08, { bp: 900, q: 1.4, att: 0.03, to: 300 }); S.osc('sawtooth', 334, 0, 0.5, 0.08, { bp: 950, q: 1.4, att: 0.03, to: 303 }); S.osc('sine', 165, 0, 0.45, 0.08, { att: 0.03, to: 150 }); S.noise(0, 0.5, 0.03, { bp: 1200, q: 2, att: 0.05 }); });
   A.define('gulp', 0.6, S => { S.osc('sine', 320, 0, 0.32, 0.3, { to: 70 }); S.noise(0, 0.15, 0.25, { lp: 700 }); S.noise(0.22, 0.1, 0.2, { bp: 500, q: 2 }); S.osc('sine', 140, 0.3, 0.12, 0.3, { to: 60 }); });
   A.define('cannon', 1.3, S => { S.osc('sine', 95, 0, 0.5, 0.9, { to: 28 }); S.noise(0, 0.25, 0.7, { lp: 600 }); S.noise(0.02, 0.7, 0.3, { lp: 200 }); S.ring(2400, 0.01, 0.2, 0.06); });
+}
+
+// the prize counter: a cream cabinet with a glass front on the right; the five plush prizes sit on its shelf and light up when won
+function prizeCounterModel(RC) {
+  const M = RC.mats, B = RC.batch, G = RC.G, P = PRIZE_CASE;
+  const cream = M.plastic('#f4ecd8', { roughness: 0.3 }), red = M.plastic('#c8302c', { roughness: 0.35 });
+  B.add(cream, slabGeo(P, 0, 6, { bevel: 1 }));
+  B.add(red, slabGeo(P, 30, 2.5, { bevel: 0.6 }));
+  // shelf and back wall, a glass front
+  const cx = 464, back = [[476, 452], [476, 556]];
+  B.add(cream, boxGeo(464, 500, 36, 30, 110, 12));
+  B.add(cream, boxGeo(464, 500, 58, 30, 112, 4));
+  const glass = new THREE.Mesh(boxGeo(451, 498, 46, 1.2, 100, 20), M.clear('#dff2ff', 0.2, { depthWrite: false, roughness: 0.03 })); glass.renderOrder = 3; RC.root.add(glass);
+  const sc = canvas(256, 48), g = sc.getContext('2d'); g.fillStyle = '#c8302c'; g.fillRect(0, 0, 256, 48); g.fillStyle = '#ffcc3a'; g.font = '400 30px ' + BUNGEE; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PRIZES', 128, 26);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 7), new THREE.MeshStandardMaterial({ map: RC.tex(sc), roughness: 0.4 })); sign.rotation.x = PI / 2; sign.rotation.y = -0.1; sign.position.set(450.2, 498, 62); RC.root.add(sign);
+  // the five plush prizes: duck, bear, fish, elephant, lion (small, chunky, in their insert colours)
+  const cols = ['#ffd23a', '#c8824a', '#ff9a40', '#8ab0e0', '#e8a030'], mats = cols.map(c => M.plastic(c, { roughness: 0.75 }));
+  const figs = [];
+  for (let i = 0; i < 5; i++) {
+    const y = 460 + i * 20, z = 42, x = 466, geos = [];
+    if (i === 0) { const b = new THREE.SphereGeometry(5, 10, 8); b.scale(1, 1.3, 0.9); b.translate(x, y, z + 4); geos.push(b); const h = new THREE.SphereGeometry(3, 8, 6); h.translate(x - 2, y - 4, z + 9); geos.push(h); }
+    else if (i === 1) { const b = new THREE.SphereGeometry(5, 10, 8); b.translate(x, y, z + 5); geos.push(b); const h = new THREE.SphereGeometry(3.6, 8, 6); h.translate(x, y, z + 12); geos.push(h); for (const s of [-1, 1]) { const e = new THREE.SphereGeometry(1.4, 6, 5); e.translate(x, y + s * 3.2, z + 15); geos.push(e); } }
+    else if (i === 2) { const b = new THREE.SphereGeometry(5, 10, 8); b.scale(1.5, 0.8, 1); b.translate(x, y, z + 5); geos.push(b); const t = new THREE.ConeGeometry(3, 5, 4); t.rotateZ(PI / 2); t.translate(x + 7, y, z + 5); geos.push(t); }
+    else if (i === 3) { const b = new THREE.SphereGeometry(5.5, 10, 8); b.scale(1, 1.2, 0.9); b.translate(x, y, z + 5); geos.push(b); const h = new THREE.SphereGeometry(3.5, 8, 6); h.translate(x - 4, y, z + 10); geos.push(h); const tr = new THREE.CylinderGeometry(0.9, 1.2, 8, 6); tr.rotateX(PI / 2); tr.translate(x - 7, y, z + 6); geos.push(tr); for (const s of [-1, 1]) { const e = new THREE.SphereGeometry(2.2, 6, 5); e.scale(0.4, 1, 1); e.translate(x - 3, y + s * 4, z + 10); geos.push(e); } }
+    else { const b = new THREE.SphereGeometry(5, 10, 8); b.translate(x, y, z + 5); geos.push(b); const h = new THREE.SphereGeometry(4.5, 8, 6); h.translate(x - 1, y, z + 12); geos.push(h); const mane = new THREE.TorusGeometry(4.5, 1.6, 6, 12); mane.rotateY(PI / 2); mane.translate(x - 1, y, z + 12); geos.push(mane); }
+    const m = mesh(mergeGeo(geos), mats[i]); RC.root.add(m); figs.push(m);
+  }
+  RC.anim.push((dt, t) => { const Bb = G.b; figs.forEach((m, i) => { const won = Bb && Bb.prizes && Bb.prizes[i]; m.rotation.z = won ? Math.sin(t * 3 + i) * 0.25 : 0; m.position.z = won ? Math.abs(Math.sin(t * 4 + i)) * 2 : 0; }); });
+  return null;
 }

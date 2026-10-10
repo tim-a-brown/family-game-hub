@@ -23,7 +23,7 @@ const C = { pink: '#ff3fa4', hot: '#ff6ad5', cyan: '#2ee6ff', violet: '#9b5cff',
 const fmt = n => Math.round(n).toLocaleString('en-US');
 
 // ── Layout constants ───────────────────────────────────────────────────────
-const WHEEL = { x: 134, y: 912, r: 44 };
+const WHEEL = { x: 134, y: 912, r: 50 };
 const ORB = [243, 600];
 const SCOOP = [314, 714];
 const ROOF = { z: 56, box: [220, 920, 400, 1010] };
@@ -135,7 +135,7 @@ function build(T) {
   T.wall([[100, 930], [168, 930]], { style: 'invisible', mat: 'rubber', r: 3 });
   T.wall([[108, 896], [100, 930]], { style: 'invisible', mat: 'metal', r: 2 }); T.wall([[160, 896], [168, 930]], { style: 'invisible', mat: 'metal', r: 2 });
   T.comp(new SkylineWheel(T, { id: 'wheel', x: WHEEL.x, y: WHEEL.y, r: WHEEL.r, buckets: 6, speed: 1.15, idle: 0.35,
-    exitPath: [[WHEEL.x, WHEEL.y, 88], [100, 912, 88], [66, 910, 84], [38, 890, 78], [26, 840, 70], [24, 760, 62], [28, 640, 52], [36, 520, 40], [48, 420, 26], [58, 366, 12], [62, 348, 7]] }));
+    exitPath: [[WHEEL.x, WHEEL.y, 100], [100, 912, 100], [66, 910, 94], [38, 890, 84], [26, 840, 74], [24, 760, 64], [28, 640, 52], [36, 520, 40], [48, 420, 26], [58, 366, 12], [62, 348, 7]] }));
   for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; T.bulb('wb' + i, WHEEL.x + Math.cos(a) * (WHEEL.r + 5), WHEEL.y - 10, WHEEL.r + 18 + Math.sin(a) * (WHEEL.r + 5), { color: i % 2 ? C.gold : C.hot, r: 2.2, k: 5 }); }
 
   // ── Right: orbit lane, SUPER-LOOP ramp up into the corkscrew and onto the Rooftop ──
@@ -157,9 +157,9 @@ function build(T) {
   const launcher = T.movingLauncher({ id: 'launcher', x0: 250, x1: 370, y: 928, power: 1700, lvl: 'roof' });
   launcher.mesh = function (RC) { launcherMesh(RC, this); };
   T.dropTargetBank({ id: 'vip', x: 310, y: 998, angle: 270, n: 3, w: 28, gap: 6, lvl: 'roof', labels: ['V', 'I', 'P'], color: '#f6f0ff', ink: '#2a0a3a', resetDelay: 2.2 });
-  T.vuk({ id: 'roofExit', x: 226, y: 926, lvl: 'roof', hole: false, power: 420, hold: 0.25, style: 'wire', wireMat: 'chrome', exitLvl: 'main', supports: false,
-    path: [[226, 926, 56], [200, 902, 58], [180, 850, 54], [182, 760, 48], [190, 660, 42], [184, 560, 38], [150, 478, 32], [104, 414, 24], [74, 370, 14], [62, 348, 7]] });
-  T.post(190, 745, { style: 'metal', r: 4, h: 30 }); T.post(186, 596, { style: 'metal', r: 4, h: 30 });
+  // the way down: a long chrome wireform over the loop ramp and down the right side to the right inlane
+  T.vuk({ id: 'roofExit', x: 394, y: 926, lvl: 'roof', hole: false, power: 1000, hold: 0.25, style: 'wire', wireMat: 'chrome', exitLvl: 'main', supports: false,
+    path: [[394, 926, 56], [412, 914, 70], [436, 898, 82], [458, 874, 80], [470, 830, 70], [472, 740, 56], [470, 640, 46], [466, 540, 38], [458, 440, 26], [444, 378, 14], [430, 352, 8], [424, 346, 7]] });
 
   // ── Centre: THE ORB (ring-catch under a hanging chrome orb) and its lock ──
   T.post(243, 700, { style: 'metal', r: 6, h: 48 });
@@ -282,14 +282,14 @@ class SkylineWheel extends Comp {
     const nm = new THREE.Mesh(mergeGeos(neon), this.neonMat); wheel.add(nm);
     // gondolas: upright cabins hanging from the rim (instanced)
     const cab = new THREE.Group();
-    const body = new THREE.BoxGeometry(30, 22, 16); body.translate(0, 0, -20);
-    const roof = new THREE.BoxGeometry(32, 24, 2); roof.translate(0, 0, -4);
+    const body = new THREE.BoxGeometry(28, 22, 16); body.translate(0, 0, -20);
+    const roof = new THREE.BoxGeometry(30, 24, 2); roof.translate(0, 0, -4);
     const bar = new THREE.CylinderGeometry(1.2, 1.2, 14, 6); bar.rotateX(PI / 2); bar.rotateX(0); bar.translate(0, 0, -5);
     const post1 = new THREE.CylinderGeometry(0.9, 0.9, 16, 6); post1.rotateX(PI / 2);
     const posts = [[-14, -10], [14, -10], [-14, 10], [14, 10]].map(p => { const q = post1.clone(); q.translate(p[0], p[1], -12); return q; });
     const cabGeo = mergeGeos([body, roof, bar].concat(posts));
     this.cabs = new THREE.InstancedMesh(cabGeo, RC.mats.plastic('#1a1326', { roughness: 0.3, clearcoat: 1 }), this.n); this.cabs.castShadow = true; g.add(this.cabs);
-    const strip = new THREE.BoxGeometry(26, 23.5, 3); strip.translate(0, 0, -14);
+    const strip = new THREE.BoxGeometry(24, 23.5, 3); strip.translate(0, 0, -14);
     this.stripMat = new THREE.MeshStandardMaterial({ color: '#083038', emissive: C.cyan, emissiveIntensity: 1.6, roughness: 0.4 });
     this.strips = new THREE.InstancedMesh(strip, this.stripMat, this.n); g.add(this.strips);
     // A-frame legs and a chrome base plate (static)
@@ -371,7 +371,7 @@ function makeRules() {
       if (type === want && (type !== 'ramp' || id === 'loop')) return true;
       if (type === 'wheelIn' || type === 'ramp' || type === 'ringCatch' || type === 'orbit' || type === 'scoop') return false;
     },
-    spinValue(G) { return G.b.wind ? 400 : 150; },
+    spinValue(G) { return G.b.wind ? 500 : 200; },
     event(G, type, id, b, d) {
       const B = G.b;
       switch (type) {
@@ -388,7 +388,7 @@ function makeRules() {
             if (B.track === 2 && B.laser[i]) { B.laser[i] = 0; R.trackHit(G, 15000); if (!B.laser.some(Boolean)) B.laser = [1, 1, 1]; }
             if (!B.neo[i]) { B.neo[i] = 1; G.pulse('neol' + i, 0.3); }
             if (B.neo.every(Boolean)) {
-              B.neo = [0, 0, 0]; G.cnt('neo'); G.add(15000);
+              B.neo = [0, 0, 0]; G.cnt('neo'); G.add(20000);
               if (!B.lockLit && !B.mb && B.locks < 3) { B.lockLit = true; G.comp('orb').active = true; G.msg('N-E-O', 'THE ORB IS LIT: LOCK', { anim: 'orb' }); G.sfx('neonBuzz', { vol: 0.8 }); }
               else { B.orbLit = true; G.comp('orb').active = true; G.msg('N-E-O', 'ORB MYSTERY IS LIT', { anim: 'orb' }); }
             }
@@ -409,18 +409,18 @@ function makeRules() {
           if (!R.jp(G, 'wheel')) {
             if (B.skyLit && !B.sky && !G.mb) { B.skyLit = false; R.startSky(G); }
             else if (B.sky) { G.jackpot(60000, 'SKYLINE RIDE', { color: C.gold, sound: 'stinger' }); }
-            else { const p = G.add(10000 * Math.min(3, B.rides)); G.msg('SKYLINE WHEEL', fmt(p), { anim: 'wheel' }); if (!B.skyLit && B.rides % 3 === 0 && B.rides > 0) { B.skyLit = true; G.msg('SKYLINE IS LIT', 'RIDE AGAIN TO START', { anim: 'wheel' }); R.say(G, 'sky'); } }
+            else { const p = G.add(15000 * Math.min(3, B.rides)); G.msg('SKYLINE WHEEL', fmt(p), { anim: 'wheel' }); if (!B.skyLit && B.rides % 3 === 0 && B.rides > 0) { B.skyLit = true; G.msg('SKYLINE IS LIT', 'RIDE AGAIN TO START', { anim: 'wheel' }); R.say(G, 'sky'); } }
           }
           R.say(G, 'wheel');
           break;
         case 'wheelOut': G.sfx('neonBuzz', { vol: 0.3 }); break;
-        case 'rampEnter': if (id === 'loop') G.sfx('whoosh', { vol: 0.35, rate: 1.4 }); break;
-        case 'rampFail': if (id === 'loop') G.msg('NOT ENOUGH SPEED', 'HIT THE LOOP HARDER', { dur: 1.1 }); break;
+        case 'rampEnter': if (id === 'loop') { G.cnt('loopIn'); G.sfx('whoosh', { vol: 0.35, rate: 1.4 }); } break;
+        case 'rampFail': if (id === 'loop') { G.cnt('loopFail'); G.msg('NOT ENOUGH SPEED', 'HIT THE LOOP HARDER', { dur: 1.1 }); } break;
         case 'ramp':
           if (id === 'loop') {
             B.loops++; G.cnt('loop'); G.combo('loop'); G.haptic('success');
             if (B.track === 3) R.trackHit(G, 20000);
-            if (!R.jp(G, 'loop')) { const p = G.add(B.sky ? 40000 : 15000); G.msg('SUPER LOOP', fmt(p), { anim: 'loop' }); }
+            if (!R.jp(G, 'loop')) { const p = G.add(B.sky ? 50000 : 20000); G.msg('SUPER LOOP', fmt(p), { anim: 'loop' }); }
             R.say(G, 'loop');
           }
           break;
@@ -430,7 +430,7 @@ function makeRules() {
         case 'orbit':
           G.combo(id); G.cnt('orb');
           if (B.track === 1) R.trackHit(G, 12000);
-          if (!R.jp(G, id)) G.msg('THE STRIP', fmt(G.add(B.wind ? 10000 : 5000)), { anim: 'drive' });
+          if (!R.jp(G, id)) G.msg('THE STRIP', fmt(G.add(B.wind ? 12000 : 6000)), { anim: 'drive' });
           break;
         case 'scoop': if (id === 'backstage') R.backstage(G, b); break;
         case 'ringCatch': R.orbCatch(G, b); break;
@@ -581,7 +581,7 @@ function makeRules() {
       if (B.windLit) opts.unshift('WIND IS LIT AT BACKSTAGE'); if (B.skyLit) opts.unshift('SKYLINE IS LIT: RIDE THE WHEEL'); if (B.track < 0 && B.tracks.some(x => !x)) opts.unshift('BACKSTAGE STARTS THE NEXT TRACK');
       return opts[Math.floor(G.time / 4) % opts.length];
     },
-    bonus(G) { return [['BEATS', G.pbn('pop'), 300], ['SPINS', G.pbn('spin'), 100], ['LOOPS', G.pbn('loop'), 8000], ['RIDES', G.pbn('ride'), 10000], ['ROOFTOP', G.pbn('roof'), 15000], ['TRACKS', G.pbn('track'), 25000]]; }
+    bonus(G) { return [['BEATS', G.pbn('pop'), 500], ['SPINS', G.pbn('spin'), 100], ['LOOPS', G.pbn('loop'), 8000], ['RIDES', G.pbn('ride'), 10000], ['ROOFTOP', G.pbn('roof'), 15000], ['TRACKS', G.pbn('track'), 25000]]; }
   };
   return R;
 }
@@ -776,17 +776,17 @@ function orbModel(RC, comp) {
   const g = new THREE.Group(); g.position.set(ORB[0], ORB[1], 0);
   const chrome = RC.mats.chrome(), B = RC.batch;
   // pylon (the post at 243,700 has physics) and the arm reaching forward over the Orb
-  B.add(chrome, cylGeo(243, 700, 6, 0, 94, 16)); B.add(chrome, cylGeo(243, 700, 9, 94, 97, 16));
-  B.add(chrome, tubeGeo([[243, 700, 95], [243, 672, 100], [243, 636, 98], [243, 612, 88], [243, 602, 76]], 2.6, 24, 8));
-  const pivot = new THREE.Group(); pivot.position.z = 74; g.add(pivot);
-  const stem = mesh(new THREE.CylinderGeometry(1.2, 1.2, 6, 8), chrome); stem.rotation.x = PI / 2; stem.position.z = -3; pivot.add(stem);
-  const body = new THREE.Group(); body.position.z = -26; pivot.add(body);
-  const orb = mesh(new THREE.SphereGeometry(19, 32, 24), chrome); body.add(orb);
+  B.add(chrome, cylGeo(243, 700, 6, 0, 96, 16)); B.add(chrome, cylGeo(243, 700, 9, 96, 99, 16));
+  B.add(chrome, tubeGeo([[243, 700, 97], [243, 672, 104], [243, 636, 102], [243, 612, 94], [243, 602, 84]], 2.6, 24, 8));
+  B.add(chrome, cylGeo(243, 600, 1.4, 78, 84, 8));
+  const pivot = new THREE.Group(); pivot.position.z = 80; g.add(pivot);
+  const body = new THREE.Group(); body.position.z = -24; pivot.add(body);
+  const orb = mesh(new THREE.SphereGeometry(23, 36, 26), chrome); body.add(orb);
   // facets: a disco-mirror look from a scuffed roughness map
   orb.material = new THREE.MeshStandardMaterial({ color: '#f0f2f8', metalness: 1, roughness: 0.12, roughnessMap: RC.mats.scuff, envMapIntensity: 1.3 });
-  const r1 = new THREE.Mesh(new THREE.TorusGeometry(24, 1.1, 8, 48), neonMat(C.pink, 2.4)); r1.rotation.x = 0.5; body.add(r1);
-  const r2 = new THREE.Mesh(new THREE.TorusGeometry(27, 1.0, 8, 48), neonMat(C.cyan, 2.2)); r2.rotation.x = PI / 2 + 0.3; r2.rotation.y = 0.4; body.add(r2);
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), RC.mats.glow(C.violet)); glow.position.z = 1.5; glow.renderOrder = 3; g.add(glow);
+  const r1 = new THREE.Mesh(new THREE.TorusGeometry(28, 1.2, 8, 56), neonMat(C.pink, 2.4)); r1.rotation.x = 0.5; body.add(r1);
+  const r2 = new THREE.Mesh(new THREE.TorusGeometry(32, 1.1, 8, 56), neonMat(C.cyan, 2.2)); r2.rotation.x = PI / 2 + 0.3; r2.rotation.y = 0.4; body.add(r2);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(110, 110), RC.mats.glow(C.violet)); glow.position.z = 1.5; glow.renderOrder = 3; g.add(glow);
   g.userData = { body, r1, r2, glow, pivot, orb };
   return g;
 }
@@ -799,7 +799,7 @@ function orbAnimate(g, dt, comp) {
   u.r1.material.emissiveIntensity = (act ? 3.2 : 1.1) * (0.9 + 0.1 * Math.sin(t * 11)) * (sup && (t % 0.4) < 0.2 ? 1.6 : 1);
   u.r2.material.emissiveIntensity = (act ? 2.8 : 0.9) * (0.9 + 0.1 * Math.sin(t * 9 + 2));
   u.glow.material.opacity = (act ? 0.45 : 0.12) + (held ? 0.3 * (0.5 + 0.5 * Math.sin(t * 16)) : 0);
-  u.body.position.z = -26 + (held ? Math.sin(t * 10) * 1.2 : 0);
+  u.body.position.z = -24 + (held ? Math.sin(t * 10) * 1.2 : 0);
 }
 
 // THE MOVING LAUNCHER on the rooftop: a chrome carriage on two rails with a neon nose
@@ -819,17 +819,20 @@ function launcherMesh(RC, comp) {
 
 // THE WIND MACHINE: a caged fan on a chrome post, facing across the dance floor
 function fanMesh(RC, comp) {
-  const g = new THREE.Group(); g.position.set(comp.o.x, comp.o.y, comp.z0); const chrome = RC.mats.chrome();
-  g.add(mesh(cylGeo(0, 0, 4, 0, 50, 10), RC.mats.steel())); g.add(mesh(cylGeo(0, 0, 9, 0, 3, 16), RC.mats.steel()));
-  const holder = new THREE.Group(); holder.position.z = 54; holder.rotation.z = PI / 2; g.add(holder);   // local +Y = table -X (the fan axis)
+  const fx = comp.o.x, fy = comp.o.y, z0 = comp.z0, chrome = RC.mats.chrome(), B = RC.batch;
+  B.add(RC.mats.steel(), cylGeo(fx, fy, 4, z0, z0 + 50, 10)); B.add(RC.mats.steel(), cylGeo(fx, fy, 9, z0, z0 + 3, 16));
+  // the cage is static: rings and bars built round the fan axis (table -x), batched
   const cage = [];
-  for (const dy of [-7, 7]) { const t = new THREE.TorusGeometry(31, 1.2, 6, 40); t.rotateX(PI / 2); t.translate(0, dy, 0); cage.push(t); }
-  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; cage.push(tubeGeo([[Math.cos(a) * 31, 7, Math.sin(a) * 31], [Math.cos(a) * 6, 7, Math.sin(a) * 6]], 0.7, 2, 5)); }
-  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; cage.push(tubeGeo([[Math.cos(a) * 31, -7, Math.sin(a) * 31], [Math.cos(a) * 31, 7, Math.sin(a) * 31]], 0.7, 2, 5)); }
-  const cageM = mesh(mergeGeos(cage), chrome, false); holder.add(cageM);
-  const hub = mesh(new THREE.CylinderGeometry(6, 6, 10, 16), RC.mats.plastic('#1a1326', { roughness: 0.3 })); holder.add(hub);
+  for (const dx of [-7, 7]) { const t = new THREE.TorusGeometry(31, 1.2, 6, 40); t.rotateY(PI / 2); t.translate(fx + dx, fy, z0 + 54); cage.push(t); }
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; cage.push(tubeGeo([[fx - 7, fy + Math.cos(a) * 31, z0 + 54 + Math.sin(a) * 31], [fx - 7, fy + Math.cos(a) * 6, z0 + 54 + Math.sin(a) * 6]], 0.7, 2, 5)); cage.push(tubeGeo([[fx - 7, fy + Math.cos(a) * 31, z0 + 54 + Math.sin(a) * 31], [fx + 7, fy + Math.cos(a) * 31, z0 + 54 + Math.sin(a) * 31]], 0.7, 2, 5)); }
+  B.add(chrome, mergeGeos(cage));
+  B.add(RC.mats.plastic('#1a1326', { roughness: 0.3 }), new THREE.CylinderGeometry(6, 6, 10, 16).rotateZ(PI / 2).translate(fx, fy, z0 + 54));
+  const g = new THREE.Group(); g.position.set(fx, fy, z0);
+  const holder = new THREE.Group(); holder.position.z = 54; holder.rotation.z = PI / 2; g.add(holder);   // local +Y = table -X (the fan axis)
   const blades = new THREE.Group(); holder.add(blades);
-  for (let i = 0; i < 5; i++) { const b = mesh(new THREE.BoxGeometry(9, 1.2, 24), RC.mats.plastic('#e8ecf4', { roughness: 0.2, clearcoat: 1 })); b.position.z = 16; b.rotation.y = 0.5; const p = new THREE.Group(); p.rotation.y = i / 5 * TAU; p.add(b); blades.add(p); }
+  const bg = [];
+  for (let i = 0; i < 5; i++) { const b = new THREE.BoxGeometry(9, 1.2, 24); b.translate(0, 0, 16); b.rotateY(0.5); b.rotateY(i / 5 * TAU); bg.push(b); }
+  blades.add(mesh(mergeGeos(bg), RC.mats.plastic('#e8ecf4', { roughness: 0.2, clearcoat: 1 })));
   const ring = new THREE.Mesh(new THREE.TorusGeometry(33, 1, 6, 40), neonMat(C.cyan, 2)); ring.rotation.x = PI / 2; holder.add(ring);
   RC.root.add(g); comp.blades = blades;
   RC.anim.push((dt, t) => { ring.material.emissiveIntensity = 1.2 + comp.spd * 2.5 * (0.8 + 0.2 * Math.sin(t * 20)); });
@@ -885,8 +888,9 @@ function wireLegs(RC) {
   const at = (comp, f) => { const p = w.pathAt(comp.path, comp.path.L * f); return p; };
   // skyline wire: posts on the wheel-house wall, brackets off the left wall, a post at the lane end
   const sk = RC.G.comps.wheel; [0.14, 0.34, 0.56, 0.78].forEach(f => { const p = at(sk, f); if (f < 0.2) leg(p[0], p[1], p[2]); else { B.add(s, tubeGeo([[4, p[1], 36], [p[0] - 15, p[1], p[2] + 2]], 1.6, 2, 6)); B.add(s, boxGeo(4, p[1], 36, 3, 10, 6)); } });
-  // roof exit wire: on the two metal posts in the field and the deck leg
-  const re = RC.G.comps.roofExit; [[190, 745], [186, 596]].forEach(([x, y]) => { let best = null; for (let f = 0; f <= 1; f += 0.02) { const p = at(re, f); const d = Math.hypot(p[0] - x, p[1] - y); if (!best || d < best.d) best = { d, p }; } B.add(s, tubeGeo([[x, y, 30], [best.p[0], best.p[1], best.p[2] + 1]], 1.6, 2, 6)); });
+  // roof exit wire: a post by the deck leg, then brackets off the shooter-lane wall down the right side
+  const re = RC.G.comps.roofExit; leg(452, 896, at(re, 0.14)[2]);
+  [0.36, 0.52, 0.68, 0.84].forEach(f => { const p = at(re, f); B.add(s, tubeGeo([[484, p[1], 36], [p[0] + 15, p[1], p[2] + 2]], 1.6, 2, 6)); B.add(s, boxGeo(484, p[1], 36, 4, 10, 6)); });
   // the loop ramp: a cradle under the corkscrew and legs under the climb to the deck (outside the lanes)
   const lp = RC.G.comps.loop.pts;
   [[0.52, 404, 758], [0.66, 428, 846], [0.8, 440, 900]].forEach(([f, x, y]) => { const p = w.pathAt(RC.G.comps.loop.path, RC.G.comps.loop.path.L * f); B.add(s, cylGeo(x, y, 2, 0, p[2] - 3, 8)); B.add(s, cylGeo(x, y, 5, 0, 1.5, 8)); B.add(s, tubeGeo([[x, y, p[2] - 3], [p[0], p[1], p[2] - 3]], 1.6, 2, 6)); });

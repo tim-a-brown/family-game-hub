@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Renders the five Pinball table music beds as seamless loops.
+"""Renders the six Pinball table music beds as seamless loops.
 
     python3 sounds/pinball/make-music.py      (needs numpy, scipy and ffmpeg)
 
@@ -383,9 +383,72 @@ def neon():
                 'arp': (0.4, [lambda x: reverb(x, 3.0, 0.08, 7000, 0.5)])}
 
 
+def midway():
+    # a quiet steam-calliope waltz in F (3/4 at 72 bpm): layered detuned pipes with a breathy chiff, an oom-pah-pah
+    # of bass pipe and chord pipes, a sparse glockenspiel answer, all in a big tent with a long reverb
+    beat = 60 / 72
+    bar = 3 * beat
+    tr = Track(bar * 16)
+
+    def pipe(f, dur, vol=1.0, bright=1.0):
+        """Calliope whistle: a steam-blown pipe. Two mistuned voices of odd-and-even partials, slow vibrato, breath noise."""
+        n = int(dur * SR)
+        t = np.arange(n) / SR
+        out = np.zeros(n)
+        for cents in (-7, 7):
+            ff = f * 2 ** (cents / 1200)
+            vib = 1 + 0.004 * np.sin(2 * np.pi * 5.4 * t + rng.random() * 6) * np.clip(t / 0.25, 0, 1)
+            ph = 2 * np.pi * np.cumsum(ff * vib) / SR
+            for k, a in ((1, 1.0), (2, 0.5), (3, 0.42 * bright), (4, 0.2 * bright), (5, 0.12 * bright), (6, 0.06 * bright)):
+                if ff * k < SR * 0.45:
+                    out += a * np.sin(k * ph + rng.random() * 6)
+        out /= 2.3
+        breath = bandpass(rng.standard_normal(n), min(f * 3, 6000), 2.5) * 0.08 + bandpass(rng.standard_normal(n), min(f * 1.0, 3000), 8) * 0.05
+        chiff = bandpass(rng.standard_normal(n), min(f * 4, 8000), 1.5) * np.exp(-t / 0.025) * 0.5
+        e = env(n, 0.035, 0.18)
+        return (out * e + breath * e + chiff) * vol * 0.5
+
+    chords = {'F': ([65, 69, 72], 41), 'C': ([64, 67, 70, 72], 48), 'Bb': ([62, 65, 70], 46), 'Gm': ([62, 67, 70], 43)}
+    prog = ['F', 'C', 'Bb', 'F', 'F', 'C', 'Bb', 'F', 'F', 'Gm', 'C', 'F', 'F', 'Bb', 'C', 'F']
+    for b, name in enumerate(prog):
+        notes, bass = chords[name]
+        t0 = b * bar
+        tr.add('bass', pipe(mtof(bass), beat * 0.9, 0.9, 0.5), t0)
+        tr.add('bass', pipe(mtof(bass + 12), beat * 0.9, 0.35, 0.5), t0 + 0.01)
+        for k in (1, 2):
+            for i, m in enumerate(notes):
+                tr.add('chords', pipe(mtof(m), beat * 0.55, 0.42 / len(notes) ** 0.5, 0.8), t0 + k * beat + 0.012 * i)
+    # the tune, in quarter and half notes (bar, beat, midi, beats)
+    melody = [(0, 0, 72, 1), (0, 1, 69, 1), (0, 2, 65, 1), (1, 0, 67, 2), (1, 2, 69, 1), (2, 0, 70, 1), (2, 1, 69, 1), (2, 2, 67, 1), (3, 0, 65, 3),
+              (4, 0, 72, 1), (4, 1, 74, 1), (4, 2, 76, 1), (5, 0, 77, 2), (5, 2, 76, 1), (6, 0, 74, 1), (6, 1, 72, 1), (6, 2, 70, 1), (7, 0, 69, 3),
+              (8, 0, 69, 1), (8, 1, 70, 1), (8, 2, 72, 1), (9, 0, 74, 2), (9, 2, 72, 1), (10, 0, 70, 1), (10, 1, 69, 1), (10, 2, 67, 1), (11, 0, 72, 3),
+              (12, 0, 72, 1), (12, 1, 69, 1), (12, 2, 65, 1), (13, 0, 67, 2), (13, 2, 70, 1), (14, 0, 69, 1), (14, 1, 67, 1), (14, 2, 64, 1), (15, 0, 65, 3)]
+    for b, k, m, d in melody:
+        when = b * bar + k * beat
+        tr.add('lead', pipe(mtof(m + 12), d * beat * 0.92, 0.75, 1.0), when)
+        tr.add('lead', pipe(mtof(m), d * beat * 0.92, 0.3, 0.7), when + 0.008)
+    # a glockenspiel answers the ends of phrases
+    for b, k, m in [(3, 1, 84), (3, 2, 81), (7, 1, 88), (7, 2, 84), (11, 1, 86), (11, 2, 84), (15, 1, 84), (15, 1.5, 81), (15, 2, 77)]:
+        tr.add('glock', music_box(mtof(m), 2.2) * 0.5, b * bar + k * beat)
+    return tr, {'lead': (0.8, [lambda x: chorus(x, 0.003, 0.35, 0.011, 0.4), lambda x: reverb(x, 2.4, 0.03, 5500, 0.42)]),
+                'chords': (0.55, [lambda x: chorus(x, 0.003, 0.3), lambda x: reverb(x, 2.4, 0.03, 4500, 0.45)]),
+                'bass': (0.6, [lambda x: reverb(x, 1.8, 0.02, 2500, 0.3)]),
+                'glock': (0.35, [lambda x: reverb(x, 3.5, 0.05, 7000, 0.6)])}
+
+
 def main():
+    # python3 make-music.py [table ...]: render only those tables (default: all), merging their lengths into loops.json
+    import sys
+    tables = [('nebula', nebula), ('pirate', pirate), ('haunted', haunted), ('jungle', jungle), ('neon', neon), ('midway', midway)]
+    want = sys.argv[1:]
     loops = {}
-    for name, fn in [('nebula', nebula), ('pirate', pirate), ('haunted', haunted), ('jungle', jungle), ('neon', neon)]:
+    lp = os.path.join(HERE, 'loops.json')
+    if want and os.path.exists(lp):
+        with open(lp) as f:
+            loops = json.load(f).get('samples', {})
+    for name, fn in tables:
+        if want and name not in want:
+            continue
         tr, mix = fn()
         out = master(tr, mix)
         wav = os.path.join(HERE, name + '.wav')

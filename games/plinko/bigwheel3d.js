@@ -155,8 +155,9 @@ function glowCanvas(n) {
 }
 function softRect(w, h) {
   const [cn, c] = cv2d(w, h); c.clearRect(0, 0, w, h);
-  c.shadowColor = 'rgba(255,255,255,1)'; c.shadowBlur = w * 0.08; c.fillStyle = 'rgba(255,255,255,.9)';
-  rr(c, w * 0.1, h * 0.14, w * 0.8, h * 0.72, h * 0.14); c.fill(); c.fill();
+  c.shadowColor = 'rgba(255,255,255,1)'; c.shadowBlur = w * 0.05; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = w * 0.03;
+  rr(c, w * 0.12, h * 0.13, w * 0.76, h * 0.74, h * 0.16); c.stroke(); c.stroke();
+  c.shadowBlur = 0; c.fillStyle = 'rgba(255,255,255,.12)'; rr(c, w * 0.14, h * 0.16, w * 0.72, h * 0.68, h * 0.14); c.fill();
   return tex(cn, false);
 }
 function velvet() {
@@ -363,7 +364,7 @@ export function BigWheel3D(host, hooks, api) {
     chrome.push(place(new THREE.CylinderGeometry(0.045, 0.045, 1.3, 20), 0, 0, 0, [0, 0, Math.PI / 2]));
     addMesh(merge(chrome), M.chrome, drum, true, true);
     // the glow on the winning panel (a soft quad just above the plate, turned to the panel)
-    glowQ = new THREE.Mesh(new THREE.PlaneGeometry(DW + 0.08, PH + 0.04), M.glowQ); glowQ.visible = false; glowQ.renderOrder = 5; drum.add(glowQ); dyn.push(glowQ);
+    glowQ = new THREE.Mesh(new THREE.PlaneGeometry(DW * BOX.w + 0.12, PH * BOX.h + 0.1), M.glowQ); glowQ.visible = false; glowQ.renderOrder = 5; drum.add(glowQ); dyn.push(glowQ);
   }
   function buildStands() {
     // black steel: the back arch, bearing blocks on both sides of the drum, the base plinth on top of the floor
@@ -623,7 +624,7 @@ export function BigWheel3D(host, hooks, api) {
     glowQ.position.set(0, rr2 * Math.sin(phi), rr2 * Math.cos(phi)); glowQ.rotation.set(-phi, 0, 0);
     glowQ.visible = true;
     const c = v === 7 ? [1, 0.84, 0.35] : v === 1 ? [0.6, 1, 0.55] : [1, 0.9, 0.62];
-    M.glowQ.color.setRGB(c[0] * 1.6, c[1] * 1.6, c[2] * 1.6); M.glowQ.opacity = 0.22 + 0.3 * pulse;
+    M.glowQ.color.setRGB(c[0] * 1.8, c[1] * 1.8, c[2] * 1.8); M.glowQ.opacity = 0.25 + 0.45 * pulse;
   }
   function draw(now) {
     if (dead) return;
@@ -734,7 +735,7 @@ export function BigWheel3D(host, hooks, api) {
   }
 
   const self = {
-    is3D: true, cv: cv, layout: layout, _dbg: { scene: scene, world: world, cores: () => cores, pools: () => pools, M: M, renderer: renderer, camera: camera, composer: composer, THREE: THREE, draw: () => { needDraw = true; kick(); } },
+    is3D: true, cv: cv, layout: layout,
     spin: function (w0) { return new Promise(function (res) { st.om = w0; st.t = 0; st.rest = 0; acc = 0; glowIdx = -1; spinning = res; mode = 'spin'; modeT0 = performance.now(); slowT = 0; kick(); }); },
     busy: function () { return !!spinning || !!drag; },
     angle: function () { return st.th; },
