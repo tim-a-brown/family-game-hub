@@ -214,7 +214,7 @@ function mount(stage, api) {
 
   function step(dt, now) {
     // the ball on its spring: follows the finger tightly while held, bounces home when let go
-    const held = !!ptr, k = held ? 150 : 70, c = held ? 17 : 7.2;
+    const held = !!ptr, k = held ? 150 : 70, c = held ? 17 : 8.6;
     if (now - fT > 120) { fx = 0; fy = 0; }
     if (!held) { tx = 0; ty = 0; }
     const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
@@ -227,7 +227,8 @@ function mount(stage, api) {
     ox = clamp(ox, -1.25, 1.25); oy = clamp(oy, -0.7, 1.0);
     S.px = ox; S.lift = Math.max(0, oy); S.pz = Math.max(0, -oy) * 1.3;
     S.tiltZ = clamp(-vx * 0.035, -0.35, 0.35); S.tiltX = clamp(-vy * 0.03, -0.3, 0.3);
-    let busy = held || Math.abs(ox) + Math.abs(oy) > 0.0015 || Math.abs(vx) + Math.abs(vy) > 0.01 || Math.abs(flipTarget - S.flip) > 0.0015 || Math.abs(vflip) > 0.01;
+    if (!held && !fx && !fy && Math.abs(ox) + Math.abs(oy) < 0.003 && Math.abs(vx) + Math.abs(vy) < 0.03) { ox = oy = vx = vy = 0; }   // at rest: snap still
+    let busy = held || ox !== 0 || oy !== 0 || vx !== 0 || vy !== 0 || Math.abs(flipTarget - S.flip) > 0.0015 || Math.abs(vflip) > 0.01;
 
     // phases
     if (phase === 'shake') {
