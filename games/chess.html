@@ -84,6 +84,30 @@
 .promo button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
 .promo button svg{width:80%;height:80%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.45));}
 .promo .lb{font-size:.75rem;font-weight:800;color:var(--text-2);text-align:center;margin-top:4px;}
+.acts .btn-sm{padding-left:10px;padding-right:10px;}
+.pbar .nm .ico.net{color:var(--text-3);}
+.pbar.away .sub{color:var(--orange,#f59e0b);}
+
+/* Online: lobby and waiting screens */
+.cn{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:4px 0 calc(var(--safe-b,0px) + 24px);}
+.cn h1{font-family:var(--display);font-weight:400;font-size:2.4rem;text-align:center;margin:8px 0 0;}
+.cn-note{color:var(--text-2);font-size:.92rem;margin:0;}
+.cn-room{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);}
+.cn-room .grow{flex:1;min-width:0;}
+.cn-room b{display:block;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cn-room small{display:block;color:var(--text-3);font-weight:700;font-size:.8rem;}
+.cn-pal{flex-wrap:wrap;border:1.5px solid color-mix(in srgb,var(--accent) 70%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));}
+.cn-pal>.avatar{width:52px;height:52px;font-size:1.3rem;}
+.cn-pal b{font-size:1.05rem;}
+.cn-pal .cn-go{flex-basis:100%;}
+.cn-pal .cn-go .ico{width:18px;height:18px;}
+.cn-h{font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:10px 0 0;}
+.cn-code{font-family:var(--display);font-size:3rem;letter-spacing:.2em;text-align:center;margin:0;color:var(--text);}
+.cn-join{display:flex;gap:8px;}
+.cn-join .input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-weight:800;}
+.cn-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid var(--w15,rgba(255,255,255,.15));border-top-color:var(--text-2);animation:cn-spin 1s linear infinite;}
+@keyframes cn-spin{to{transform:rotate(360deg);}}
+.cn-opt{display:flex;flex-direction:column;gap:6px;}
 
 /* iPad / large screens: bigger board; landscape puts bars, moves and buttons beside the board */
 @media (min-width:700px) and (orientation:portrait){
@@ -459,6 +483,7 @@
   var LEVELS = { easy: { depth: 1, time: 500, noise: 150 }, normal: { depth: 4, time: 1500, noise: 12 }, hard: { depth: 6, time: 3000, noise: 0 } };
   var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   function save() {
+    if (S && S.mode === 'online') return;   // online games live in their table, not in the local save
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && !S.over) Kit.resume.set(S.moves.length ? 'Move ' + S.pos.full : 'Ready');
   }
@@ -466,7 +491,8 @@
   function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
   function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
   function human() { return S.players.filter(function (p) { return !p.cpu; })[0]; }
-  function bottomSide() { var b = vsCpu() ? human().side : 1; return S.flip ? -b : b; }
+  function online() { return !!S && S.mode === 'online'; }
+  function bottomSide() { var b = online() ? mySide() : vsCpu() ? human().side : 1; return S.flip ? -b : b; }
   function sideName(side) { return side === 1 ? 'White' : 'Black'; }
 
   Kit.init({
