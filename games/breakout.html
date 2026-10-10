@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
 <style>
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -136,6 +137,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sLaunch() { osc('sine', 300, 0, 0.14, 0.08, { to: 700 }); }
   function sLose() { osc('sawtooth', 440, 0, 0.6, 0.07, { to: 70, lp: 1600 }); noise(0, 0.4, 0.15, 'lowpass', 800); }
   function sClear() { [72, 76, 79, 84, 88].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.08, 0.3, 0.08); osc('square', mtof(m), i * 0.08, 0.1, 0.02, { lp: 2500 }); }); }
+  var Mus = ArcadeMusic.create({ key: 'breakout_music', song: ArcadeMusic.songs.breakout, ctx: ac, out: function () { return master; }, tempo: function () { return G ? 1 + Math.min(0.2, (G.level - 1) * 0.02) : 1; } });
   function sUp() { [79, 84, 91].forEach(function (m, i) { osc('sine', mtof(m), i * 0.07, 0.25, 0.08); }); }
 
   // ═══ State ═══════════════════════════════════════════════════════════════
@@ -394,7 +396,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     onNew: function () { clearSave(); showSetup(); },
     menu: [
       { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show('breakout', 'Breakout'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Breakout: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Breakout: past games' }); } },
+      Mus.menuItem
     ],
     rules:
       '<p class="goal">Bounce the ball off your paddle and smash every brick to clear the level. There are ' + NL + ' levels.</p>' +
@@ -458,7 +461,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
   }
   function leaveGame() {
-    view = 'none'; paused = false;
+    view = 'none'; paused = false; Mus.stop(true);
     root.classList.remove('ar-on');
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -536,7 +539,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function pauseGame() {
     if (view !== 'game' || paused || !G || G.ended || G.phase === 'over') return;
-    paused = true; drag = null; keys = {};
+    paused = true; drag = null; keys = {}; Mus.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     showOverlay('Paused', 'Level ' + G.level + ' · ' + fmt(G.score) + ' points', 'Resume');
     save();
@@ -634,13 +637,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loop(t) {
     raf = 0;
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
-    if (view !== 'game' || !G) return;
+    if (view !== 'game' || !G) { Mus.stop(true); return; }
     if (!paused) {
       rt += dt;
       acc += dt;
       var n = 0;
       while (acc >= TICK && n++ < 12) { acc -= TICK; update(TICK); }
     }
+    if (!paused && !document.hidden && (G.phase === 'serve' || G.phase === 'play')) Mus.tick(); else Mus.stop(G.phase !== 'clear');
     if (hudDirty) updateHud();
     draw();
     // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)

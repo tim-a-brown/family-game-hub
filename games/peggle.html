@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
 <style>
 /* ── Level select (inside the kit setup screen) ─────────────────────────── */
 .pg-setup .setup-hero{padding-top:4px;}
@@ -194,6 +195,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sMult() { osc('square', mtof(79), 0, 0.12, 0.04, { lp: 2000 }); osc('square', mtof(86), 0.09, 0.2, 0.04, { lp: 2000 }); }
   function sPower() { [79, 83, 86, 91, 95].forEach(function (m, i) { osc('sine', mtof(m), i * 0.045, 0.22, 0.06); }); }
   function sSpooky() { osc('sine', 300, 0, 0.6, 0.08, { to: 900 }); osc('sine', 450, 0.05, 0.6, 0.05, { to: 1300 }); }
+  var Mus = ArcadeMusic.create({ key: 'peggle_music', song: ArcadeMusic.songs.peggle, ctx: ac, out: function () { return master; } });
   function sLose() { [64, 60, 57, 52].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.18, 0.3, 0.08); }); }
   function sLastBall() { osc('square', 440, 0, 0.1, 0.035, { lp: 1800 }); osc('square', 440, 0.16, 0.1, 0.035, { lp: 1800 }); }
   function sBucket(big) {
@@ -620,7 +622,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     menu: [
       { icon: 'board', label: 'Choose level', onClick: function () { if (L && !L.done) save(); showSetup(); } },
       { icon: 'trophy', label: 'High scores', onClick: showHighScores },
-      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Peggle: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Peggle: past games' }); } },
+      Mus.menuItem
     ],
     rules:
       '<p class="goal">Clear all 25 <b>orange pegs</b> using your 10 balls.</p>' +
@@ -741,7 +744,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     kick();
   }
   function leaveGame() {
-    view = 'none'; state = 'none'; paused = false; stopDrum();
+    view = 'none'; state = 'none'; paused = false; stopDrum(); Mus.stop(true);
     root.classList.remove('pg-on');
     if (ro) { ro.disconnect(); ro = null; }
   }
@@ -817,7 +820,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function pauseGame() {
     if (view !== 'game' || paused || !L || L.done || state === 'none') return;
-    paused = true; pdown = null; hold = null; keys = {};
+    paused = true; pdown = null; hold = null; keys = {}; Mus.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     pauseEl.innerHTML = '';
     pauseEl.appendChild(el('div', { class: 'card' }, [
@@ -1216,7 +1219,7 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var lastFrame = 0, raf = 0;
   function frame(now) {
     raf = 0;
-    if (view !== 'game' || !L) { lastFrame = 0; return; }
+    if (view !== 'game' || !L) { lastFrame = 0; Mus.stop(true); return; }
     var rdt = lastFrame ? Math.min(0.05, (now - lastFrame) / 1000) : 0; lastFrame = now;
     var blocked = paused || !!document.querySelector('.k-scrim');
     if (!blocked) {
@@ -1238,6 +1241,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (n >= maxN) acc = 0;
       updateFx(rdt);
     }
+    // calm music under the aiming and bouncing; it drops out for the slow-motion drum roll, Extreme Fever and the result
+    if (!blocked && !document.hidden && !L.done && !L.fever && !zoom.on && (state === 'aim' || state === 'fly' || state === 'clear')) Mus.tick(); else Mus.stop(paused || L.fever);
     render();
     syncHud();
     // Battery: no frames while paused, once the level's result card is up (nothing left to run) or with the page hidden (kick() restarts)

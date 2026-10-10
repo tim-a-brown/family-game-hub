@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
 <style>
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -124,6 +125,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sWall() { osc('square', 220, 0, 0.04, 0.025, { lp: 1800 }); }
   function sServe() { osc('triangle', 520, 0, 0.08, 0.06, { to: 780 }); }
   function sPoint(good) { if (good) { osc('triangle', mtof(76), 0, 0.12, 0.07); osc('triangle', mtof(83), 0.1, 0.2, 0.07); } else { osc('square', 240, 0, 0.35, 0.04, { to: 110, lp: 1400 }); } }
+  var Mus = ArcadeMusic.create({ key: 'pong_music', song: ArcadeMusic.songs.pong, ctx: ac, out: function () { return master; } });
   function sPower() { [72, 76, 79, 84].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.05, 0.16, 0.07); }); }
 
   // ═══ State ═══════════════════════════════════════════════════════════════
@@ -370,7 +372,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     onNew: function () { clearSave(); showSetup(); },
     menu: [
       { icon: 'trophy', label: 'Longest rallies', onClick: function () { pauseGame(); ArcadeHi.show('paddleball', 'Pong: longest rallies'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Pong: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Pong: past games' }); } },
+      Mus.menuItem
     ],
     rules:
       '<p class="goal">Bounce the ball past the other player\'s paddle to score. First to 11 points wins, but you have to win by 2.</p>' +
@@ -449,7 +452,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
   }
   function leaveGame() {
-    view = 'none'; paused = false;
+    view = 'none'; paused = false; Mus.stop(true);
     root.classList.remove('ar-on');
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -539,7 +542,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function pauseGame() {
     if (view !== 'game' || paused || !G || G.ended || G.phase === 'over') return;
-    paused = true; ptrs = {}; down = {}; keys = [0, 0];
+    paused = true; ptrs = {}; down = {}; keys = [0, 0]; Mus.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     showOverlay('Paused', name(0) + ' ' + G.score[0] + ' – ' + G.score[1] + ' ' + name(1), 'Resume');
     save();
@@ -642,6 +645,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var n = 0;
       while (acc >= TICK && n++ < 24) { acc -= TICK; update(TICK); }
     }
+    if (!paused && !document.hidden && (G.phase === 'serve' || G.phase === 'play' || G.phase === 'point')) Mus.tick(); else Mus.stop();
     if (hudDirty) updateHud();
     draw();
     // Battery: no frames while paused, once the match is over or with the page hidden (wake() restarts)

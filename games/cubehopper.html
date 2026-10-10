@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
 <style>
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -166,6 +167,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function sRevert() { osc('triangle', 500, 0, 0.12, 0.04, { to: 260 }); }
   function sHit() { noise(0, 0.25, 0.18, 'lowpass', 900); osc('square', 140, 0, 0.2, 0.06, { to: 60, lp: 900 }); }
   function sClear() { [72, 76, 79, 84, 88, 91].forEach(function (m, i) { osc('triangle', mtof(m), i * 0.08, 0.28, 0.07); osc('square', mtof(m), i * 0.08, 0.08, 0.02, { lp: 2500 }); }); }
+  var Mus = ArcadeMusic.create({ key: 'qbert_music', song: ArcadeMusic.songs.qbert, ctx: ac, out: function () { return master; } });
   function sUp() { [79, 84, 91].forEach(function (m, i) { osc('sine', mtof(m), i * 0.07, 0.25, 0.08); }); }
 
   // ═══ State ═══════════════════════════════════════════════════════════════
@@ -570,7 +572,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     onNew: function () { clearSave(); showSetup(); },
     menu: [
       { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show('cubehopper', 'Q*bert'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Q*bert: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Q*bert: past games' }); } },
+      Mus.menuItem
     ],
     rules:
       '<p class="goal">Hop around the pyramid and change the top of every cube to the target color shown in the corner. Do it before the bad guys get you.</p>' +
@@ -647,7 +650,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
   }
   function leaveGame() {
-    view = 'none'; paused = false;
+    view = 'none'; paused = false; Mus.stop(true);
     root.classList.remove('ar-on');
     if (ro) { ro.disconnect(); ro = null; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -753,7 +756,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function pauseGame() {
     if (view !== 'game' || paused || !G || G.ended || G.phase === 'over') return;
-    paused = true; keys = {}; held = null; showPad();
+    paused = true; keys = {}; held = null; showPad(); Mus.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     showOverlay('Paused', 'Level ' + G.level + ', round ' + G.round + ' · ' + fmt(G.score) + ' points', 'Resume');
     save();
@@ -859,6 +862,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var n = 0;
       while (acc >= TICK && n++ < 12) { acc -= TICK; update(TICK); }
     }
+    if (!paused && !document.hidden && G.phase === 'play') Mus.tick(); else Mus.stop(G.phase !== 'clear');
     if (hudDirty) updateHud();
     draw();
     // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)

@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="../arcade-music.js"></script>
 <style>
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
 html.ar-on body{display:flex;flex-direction:column;
@@ -157,7 +158,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
       s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .02);
     }
     return {
-      unlock: ctx,
+      unlock: ctx, out: function () { return master; },
       flap: function () { noise(0, .12, .16, 900); tone(380, 0, .08, 'triangle', .04, 620); },
       point: function () { tone(1047, 0, .09, 'square', .035); tone(1568, .08, .22, 'square', .035); },
       hit: function () { noise(0, .18, .35, 300, 'lowpass'); tone(140, 0, .18, 'square', .06, 60); },
@@ -522,7 +523,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     $('h-best').textContent = best();
     $('h-last').textContent = lastFlight ? lastFlight.score : '–';
   }
-  function pause() { if (state !== 'play' || paused) return; paused = true; countdown = 0; overlay(); }
+  function pause() { if (state !== 'play' || paused) return; paused = true; Mus.stop(true); countdown = 0; overlay(); }
   function resume() { if (!paused) return; paused = false; countdown = 1.8; shownCount = 3; overlay(); kick(); }
 
   // ═══ Input ══════════════════════════════════════════════════════════════
@@ -554,13 +555,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   window.addEventListener('blur', pause);
 
   // ═══ Loop ═══════════════════════════════════════════════════════════════
+  var Mus = ArcadeMusic.create({ key: 'flappy_music', song: ArcadeMusic.songs.flappy, ctx: Snd.unlock, out: Snd.out });
   var last = 0, acc = 0, raf = 0;
   function loop(ts) {
     raf = 0;
     if (!last) last = ts;
     acc += Math.min(.1, (ts - last) / 1000); last = ts;
-    if (!live || !bird) { acc = 0; return; }
+    if (!live || !bird) { acc = 0; Mus.stop(true); return; }
     while (acc >= DT) { acc -= DT; if (!paused) update(); }
+    if (state === 'play' && !paused && !countdown && !document.hidden) Mus.tick(); else Mus.stop(state === 'dead' || paused);
     render();
     // Battery: no frames on the setup screen, while paused, on the game-over card or with the page hidden (kick() restarts)
     if (state !== 'over' && !paused && !document.hidden) raf = requestAnimationFrame(loop);
@@ -574,7 +577,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     onNew: showSetup, confirmNew: false,
     menu: [
       { icon: 'trophy', label: 'High scores', onClick: function () { pause(); ArcadeHi.show(HI, wild ? 'Flappy Bird (Wild)' : 'Flappy Bird'); } },
-      { icon: 'history', label: 'Past flights', onClick: function () { pause(); showPast(); } }
+      { icon: 'history', label: 'Past flights', onClick: function () { pause(); showPast(); } },
+      Mus.menuItem
     ],
     rules:
       '<p class="goal">Fly through the gaps between the pipes. Every pipe you pass is one point.</p>' +
@@ -588,7 +592,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ═══ Setup ══════════════════════════════════════════════════════════════
   function showSetup() {
-    live = false; paused = false; state = 'ready'; countdown = 0;
+    live = false; paused = false; state = 'ready'; countdown = 0; Mus.stop(true);
     document.documentElement.classList.remove('ar-on');
     var v = $('view'); if (v.parentNode === $('app')) document.body.appendChild(v);
     v.hidden = true;

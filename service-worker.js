@@ -46,6 +46,7 @@ const PRECACHE_URLS = [
   '/players.js',
   '/casino.js',
   '/arcade-hi.js',
+  '/arcade-music.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
