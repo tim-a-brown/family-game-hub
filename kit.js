@@ -24,6 +24,7 @@
 //   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 //   Kit.theme.pick() / .get() / .set(id)       app colour theme (localStorage fgh_theme)
+//   Kit.init({orient:'landscape'|'portrait'})  phones only: lock or show a turn-your-phone cover; 'kit:orient' event
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
@@ -744,6 +745,38 @@
     }, { passive: false });
   }
 
+  // ── Orientation: games built for one orientation on phones (Kit.init({orient:'landscape'|'portrait'})) ──
+  // Where the browser allows it (Android, installed or full screen) the screen is locked. Everywhere else
+  // (iPhone Safari can't lock) a "turn your phone" cover sits over the game until the phone is turned.
+  // Tablets and computers are never gated. Games hear 'kit:orient' ({detail:{ok}}) to pause and resume.
+  var orientOk = true;
+  function isPhone() {
+    try { return matchMedia('(hover:none) and (pointer:coarse)').matches && Math.min(screen.width, screen.height) < 600; } catch (e) { return false; }
+  }
+  function orientGate(want) {
+    if (!isPhone()) return;
+    var cover = null;
+    function lock() { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock(want).catch(function () {}); } catch (e) {} }
+    function check() {
+      var land = window.innerWidth > window.innerHeight, ok = want === 'landscape' ? land : !land;
+      if (!ok && !cover) {
+        cover = el('div', { class: 'k-rotate k-rotate-' + want, role: 'alertdialog', 'aria-live': 'polite' }, [
+          el('div', { class: 'k-rot-ph', 'aria-hidden': 'true' }, [el('i')]),
+          el('b', { text: want === 'landscape' ? 'Turn your phone sideways' : 'Turn your phone upright' }),
+          el('span', { text: (game ? game.name : 'This game') + (want === 'landscape' ? ' plays in landscape.' : ' plays in portrait.') })
+        ]);
+        doc.body.appendChild(cover);
+      } else if (ok && cover) { cover.remove(); cover = null; }
+      if (ok !== orientOk) { orientOk = ok; try { doc.dispatchEvent(new CustomEvent('kit:orient', { detail: { ok: ok } })); } catch (e) {} }
+    }
+    lock();
+    doc.addEventListener('pointerdown', lock, { once: true, passive: true });   // some browsers only lock after a tap
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', function () { setTimeout(check, 150); });
+    window.addEventListener('pagehide', function () { try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} });
+    if (doc.body) check(); else doc.addEventListener('DOMContentLoaded', check);
+  }
+
   function init(o) {
     // opened as "#new" (home: New game while one is going): start over once the page has restored its saved game
     if (location.hash === '#new' && o && o.onNew) {
@@ -756,6 +789,7 @@
     opts = o || {};
     startFitLock();
     game = findGameSafe(opts.id || pageKey());
+    if (opts.orient) orientGate(opts.orient);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
@@ -1999,6 +2033,7 @@
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     links: { link: linkSheet, profile: profileSheet, review: reviewSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    orientOk: function () { return orientOk; },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };

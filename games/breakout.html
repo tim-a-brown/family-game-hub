@@ -388,7 +388,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.level >= 1 && s.level <= NL ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({
+  Kit.init({ orient: 'portrait',
     id: 'breakout',
     theme: { wood: ['#5a2a3a', '#33141f'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -530,6 +530,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = false;
   });
   document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
+  document.addEventListener('kit:orient', function (e) { if (!e.detail.ok) { pauseGame(); save(); } });   // phone turned the wrong way: pause behind the cover
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
