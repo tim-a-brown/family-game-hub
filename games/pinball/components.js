@@ -1293,6 +1293,8 @@ class Plunger extends Comp {
   holds(b) { return b && Math.abs(b.x - this.x) < 14 && b.y < this.y + 16 && b.y > this.y - 44; }
   ballAt() { return this.world.balls.find(b => b.mode === 'free' && b.lvl === 'main' && this.holds(b)); }
   pullTo(p) { this.p = p; }
+  // the tip still easing to the pull, or snapping forward: keep the loop at full rate
+  busy() { return Math.abs(this.p - this.shown) > 0.003 || this.fireT > 0; }
   fire(p) {
     const b = this.ballAt(); this.fireT = 0.12; this.shown = 0;
     // the rod snaps to rest faster than the ball leaves: at a deep pull the ball sits below the rest position,
@@ -1341,16 +1343,20 @@ class Plunger extends Comp {
 // ── Helpers that build the standard lower playfield and the top arch ────────────────────
 // Standard lower third: flippers, slingshots, inlanes, outlanes, their switches.
 export function lower(T, o = {}) {
-  // flipper tips at rest sit a little over one ball width apart (31 mm): wider and a ball that rolls off a
-  // slingshot goes straight down the middle; this was 44 mm and every third plunge drained unaided
-  const cx = o.cx || 243, fy = o.flipY || 165, dx = o.flipDx || 86.5, side = o.side || 'both';
+  // The centre drain is real: at rest the flipper tips leave a 36 mm gap edge to edge (1.33 ball widths,
+  // tip centres 50 mm apart; the bats are 7 mm round at the tip), so a ball straight down the middle drains
+  // unless it is nudged, as on a real machine. Pivots sit 96 mm either side of the centre; the inlane guides
+  // end the same distance outboard of the pivots as before. (This was 86.5 mm: a 17 mm gap the ball couldn't
+  // pass, so a centre ball came to rest on the tips.)
+  const cx = o.cx || 243, fy = o.flipY || 165, dx = o.flipDx || 93.5, side = o.side || 'both';
+  const dxShift = dx - 86.5;   // guide ends follow the pivots
   const out = { flippers: {}, slings: {}, lanes: {} };
   const mir = (p, s) => s === 'L' ? p : [2 * cx - p[0], p[1]];
   for (const s of ['L', 'R']) {
     out.flippers[s] = T.flipper({ x: cx + (s === 'L' ? -dx : dx), y: fy, side: s, len: o.flipLen || 82, color: o.flipColor, rubber: o.flipRubber, id: 'flip' + s });
     const top = o.slingTop || 316, bot = o.slingBot || 250, inner = o.slingInner || [140, 232], lx = o.slingX || 88;
     out.slings[s] = T.slingshot({ side: s, id: 'sling' + s, posts: [mir([lx, top], s), mir([lx, bot], s), mir(inner, s)], color: o.slingColor, art: o.slingArt, plastic: o.slingPlastic });
-    const sep = o.sepX || 44, gTop = o.sepTop || 330, gEnd = o.guideEnd || [144, 183];
+    const sep = o.sepX || 44, gTop = o.sepTop || 330, gEnd = o.guideEnd || [144 - dxShift, 183];
     T.wall([mir([sep, gTop], s), mir([sep, 216], s), mir(gEnd, s)], { style: o.guideStyle || 'metal', h: 22 });
     T.post(...mir([sep, gTop + 2], s), { style: 'rubber', r: 5 });
     // outer wall down to the drain

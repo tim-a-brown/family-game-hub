@@ -577,7 +577,7 @@ function dmdReels(g, W, H, t, G) {
   smallText(g, 'BALL ' + Math.min(G.ballNo, G.balls0), 1, 0);
   smallText(g, G.mult > 1 ? 'SCORE x' + G.mult : G.bx > 1 ? 'BONUS ' + G.bx + 'x' : 'MIDWAY', W - 1, 0, 'right');
   const touch = typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
-  let st = G.waitPlunge ? (Math.floor(t / 2.2) % 2 ? (G.call('status') || '') : (touch ? 'PULL DOWN ON THE RIGHT TO LAUNCH' : 'HOLD SPACE TO LAUNCH')) : (G.call('status') || '');
+  let st = G.waitPlunge ? (Math.floor(t / 2.2) % 2 ? (G.call('status') || '') : (touch ? 'PULL THE PLUNGER TO LAUNCH' : 'HOLD SPACE TO LAUNCH')) : (G.call('status') || '');
   if (G.tiltM >= 1.9 && !G.tilted) st = 'CAREFUL: TILT WARNING';
   st = String(st).toUpperCase(); const w = smallW(st);
   if (w <= W - 2) smallText(g, st, W / 2, 25, 'center'); else { const off = (t * 32) % (w + 60); smallText(g, st, W - off, 25); smallText(g, st, W - off + w + 60, 25); }

@@ -425,9 +425,9 @@ export function createGame(def, opts = {}) {
     if (G.show) { G.show.t += dt; if (G.show.t > G.show.dur) G.show = null; }
     if (G.dm) { G.dm.t += dt; if (G.dm.t >= G.dm.dur) G.dm = null; }
     if (!G.dm && G.dq.length) G.dm = G.dq.shift();
-    // plunger strength: a finger drag follows the hand 1:1 (it can ease off again); a key builds with hold time
-    if (G.waitPlunge && G.pulling) G.pull = G.pullMode === 'drag' ? Math.min(1, Math.max(0, G.pullDrag || 0)) : Math.min(1, Math.max(G.pull, (G.time - G.pullT0) / 1.1));
-    if (G.plunger) G.plunger.pullTo(G.waitPlunge && G.pulling ? G.pull : 0);
+    // plunger strength: the knob follows the finger 1:1 (it can ease off again); a key builds with hold time
+    if (G.pulling) G.pull = G.pullMode === 'drag' ? Math.min(1, Math.max(0, G.pullDrag || 0)) : Math.min(1, Math.max(G.pull, (G.time - G.pullT0) / 1.1));
+    if (G.plunger) G.plunger.pullTo(G.pulling ? G.pull : 0);
     for (const c of G.compList) if (c.update) c.update(dt);
     // ball safety: stuck balls get a search kick; balls off the table go back to the shooter lane
     for (const b of world.balls.slice()) {
@@ -511,19 +511,26 @@ export function createGame(def, opts = {}) {
     }
     for (const f of world.flips) if (f.key === side) f.pressed = live && on;
   };
-  // mode 'drag' (touch: strength is how far the finger pulled down) or 'time' (a held key)
+  // mode 'drag' (the plunger knob: strength is how far it is pulled) or 'time' (a held key builds strength).
+  // A key pulls only while a ball waits in the lane (otherwise it fires a cannon); the knob can be pulled any
+  // time in play like a real one (with no ball on the tip it just snaps back).
   G.pullStart = function (mode) {
-    if (!G.waitPlunge || G.pulling) return false;
-    G.pulling = true; G.pullMode = mode || 'time'; G.pullT0 = G.time; G.pullDrag = 0; G.pull = 0; G.sfx('pull', { vol: 0.5, x: G.plunger ? G.plunger.x : W }); return true;
+    mode = mode || 'time';
+    if (G.pulling || !G.plunger || G.paused || G.tilted || (G.state !== 'play' && G.state !== 'serve')) return false;
+    if (mode !== 'drag' && !G.waitPlunge) return false;
+    G.pulling = true; G.pullMode = mode; G.pullT0 = G.time; G.pullDrag = 0; G.pull = 0; G.sfx('pull', { vol: 0.5, x: G.plunger.x }); return true;
   };
-  // release: launch at the pulled strength; o.cancel lets the plunger back without a launch (a stray touch);
-  // o.tap is a quick tap: a soft launch that still reaches the playfield
+  // release: launch at the pulled strength; o.cancel lets the plunger back without a launch (a stray touch, a
+  // pull eased all the way back); o.tap is a quick tap on the knob: a medium launch
   G.pullEnd = function (o = {}) {
     if (!G.pulling) return;
     G.pulling = false;
-    if (o.cancel) { G.pull = 0; if (G.plunger) G.plunger.pullTo(0); return; }
-    launch(o.tap ? (def.tapLaunch || 0.22) : Math.max(G.pull, G.pullMode === 'drag' ? 0.12 : (def.tapLaunch || 0.22)));
+    if (o.cancel || (G.pullMode === 'drag' && !o.tap && G.pull < 0.04)) { G.pull = 0; if (G.plunger) G.plunger.pullTo(0); return; }
+    launch(o.tap ? (def.tapLaunch || 0.6) : Math.max(G.pull, G.pullMode === 'drag' ? 0.06 : 0.22));
   };
+  // where a table point lands on screen in a view ('first' / 'top'; the settled camera, no shake or tween):
+  // CSS pixels from the canvas's top-left. The page lines its plunger knob up with the shooter lane this way.
+  G.project = function (x, y, z, mode) { return RC && RC.project ? RC.project(x, y, z, mode) : null; };
   G.setMagna = function (on) { G.input.magna = on; for (const c of G.compList) if (c.onMagna) c.onMagna(on); };
   G.fire = function () { for (const c of G.compList) if (c.onFire && c.onFire()) return true; return false; };
 
@@ -570,7 +577,21 @@ export function createGame(def, opts = {}) {
     for (const c of G.compList) if (c.busy && c.busy()) return 'comp:' + c.id;
     return '';
   }
-  function busy() { return !!busyWhy(); }
+  // the per-frame test: the same checks as busyWhy without building the reason strings
+  function busy() {
+    if (G.dm || G.show || G.bonus || G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01) return true;
+    if (G.pulling || G.input.L || G.input.R || G.input.magna) return true;
+    if (G.plunger && G.plunger.busy && G.plunger.busy()) return true;
+    if (G.state !== 'play' && G.state !== 'serve') return false;
+    for (const f of world.flips) if (f.w !== 0) return true;
+    for (const b of world.balls) {
+      if (b.mode === 'air' || b.mode === 'path') return true;
+      if (b.mode === 'free' && (Math.abs(b.vx) > 12 || Math.abs(b.vy) > 12)) return true;
+      if (b.mode === 'held' && !b.locked && !(G.plunger && G.plunger.holds(b))) return true;
+    }
+    for (const c of G.compList) if (c.busy && c.busy()) return true;
+    return false;
+  }
   G.busyWhy = busyWhy;
   function physics(dt) {
     acc += dt; let n = 0; const maxN = Math.ceil(0.06 / DT) * Math.max(1, speedMul);
@@ -585,6 +606,9 @@ export function createGame(def, opts = {}) {
     if (G.paused || G.destroyed) return;
     if (last && now - last < MIN_FRAME_MS && !window.__pinNoCap) { G.stats.skipped = (G.stats.skipped || 0) + 1; raf = requestAnimationFrame(frame); return; }
     const t0 = performance.now();
+    // the time since the last drawn frame is a real frame interval only when this frame was chained straight
+    // from the previous one at full rate (not after an idle tick, a resume or a kick)
+    const interval = chained && last ? now - last : 0;
     const rdt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60; last = now;
     const dt = rdt * speedMul;
     if (G.state !== 'over') physics(dt);
@@ -593,20 +617,26 @@ export function createGame(def, opts = {}) {
     if (AU) {
       let v = 0, rv = 0, rs = '';
       for (const b of world.balls) { if (b.mode === 'free') v = Math.max(v, Math.hypot(b.vx, b.vy)); else if (b.mode === 'path') { const u = Math.abs(b.path.u); if (u > rv) { rv = u; rs = b.path.p.style === 'wire' ? 'wire' : 'plastic'; } } }
-      AU.rollUpdate({ v, rv, rs }, G.paused || G.state === 'over');
-      const mus = def.music || {}, modeOn = Object.keys(G.modes).length > 0;
+      rollArg.v = v; rollArg.rv = rv; rollArg.rs = rs;
+      AU.rollUpdate(rollArg, G.paused || G.state === 'over');
+      let modeOn = false; for (const k in G.modes) { modeOn = true; break; }
+      const mus = def.music || {};
       AU.musicTick(G.amb && AU.soundOn() && G.state !== 'over', def.id, mus.url, mus.samples, mus.rate, (G.mb || modeOn || G.bonus || (G.dm && G.dm.style === 'jackpot')) ? 0.5 : 1);
     }
     if (RC) RC.render(rdt);
-    if (disp) disp.render((g, w, h) => dmdScene(g, w, h));
+    // the dot-matrix display redraws at most ~30 times a second (a real DMD's content changes no faster, and
+    // its readback and two full-size blits per draw scale with the display's size)
+    if (disp && (now - dmdT >= 30 || !chained)) { dmdT = now; disp.render(dmdFn); }
     const ms = performance.now() - t0; G.frameMs.push(ms); if (G.frameMs.length > 240) G.frameMs.shift();
-    if (RC) RC.adapt(ms);
+    if (RC) RC.adapt(ms, interval);
     G.stats.frames++;
     if (G.finished) return;
-    if (busy()) { G.stats.rafReq++; raf = requestAnimationFrame(frame); }
-    else { G.stats.idleFrames++; idleTimer = setTimeout(() => { idleTimer = 0; if (!raf && !G.paused && !G.destroyed) { G.stats.rafReq++; raf = requestAnimationFrame(frame); } }, 83); }
+    if (busy()) { G.stats.rafReq++; chained = true; raf = requestAnimationFrame(frame); }
+    else { G.stats.idleFrames++; chained = false; idleTimer = setTimeout(() => { idleTimer = 0; if (!raf && !G.paused && !G.destroyed) { G.stats.rafReq++; raf = requestAnimationFrame(frame); } }, 83); }
   }
-  G.kick = function () { if (!raf && !idleTimer && !G.paused && !G.destroyed && !headless) { last = 0; G.stats.rafReq++; raf = requestAnimationFrame(frame); } };
+  let chained = false, dmdT = 0;
+  const rollArg = { v: 0, rv: 0, rs: '' }, dmdFn = (g, w, h) => dmdScene(g, w, h);
+  G.kick = function () { if (!raf && !idleTimer && !G.paused && !G.destroyed && !headless) { last = 0; chained = false; G.stats.rafReq++; raf = requestAnimationFrame(frame); } };
   G.busy = busy;
   G.pause = function () {
     if (G.paused) return; G.paused = true;
@@ -723,7 +753,7 @@ export function createGame(def, opts = {}) {
     big(fmt(G.shownScore || 0), 15.5, 17);
     // the status line: short texts hold, long ones scroll right-to-left all the way through, and the text only
     // changes at the end of a pass (so a rotating status or the launch hint never jumps mid-scroll)
-    const S = G.scroller, hint = touchUI ? 'PULL DOWN ON THE RIGHT TO LAUNCH' : 'HOLD SPACE TO LAUNCH';
+    const S = G.scroller, hint = touchUI ? 'PULL THE PLUNGER TO LAUNCH' : 'HOLD SPACE TO LAUNCH';
     let want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
     const dt = S.last ? Math.min(0.05, t - S.last) : 0; S.last = t;   // wall clock; a hitch moves the text at most 2 dots
     if (S.text == null) { S.text = want; S.w = smallW(want); S.off = 0; S.hold = 0; }
@@ -946,11 +976,11 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   };
   RC.dropBall = function (b) { const m = ballMeshes.get(b); if (!m) return; root.remove(m.mesh); root.remove(m.sh); if (m.glow) m.glow.material.dispose(); ballMeshes.delete(b); };
   const axis = new THREE.Vector3(), dq = new THREE.Quaternion();
+  let ballStamp = 0;
   function updateBalls(dt) {
-    const live = new Set();
+    const stamp = ++ballStamp;
     for (const b of world.balls) {
-      live.add(b);
-      const m = RC.ballMesh(b);
+      const m = RC.ballMesh(b); m.stamp = stamp;
       const vis = !b.hidden;
       m.mesh.visible = vis; m.sh.visible = vis && b.mode !== 'air';
       if (!vis) continue;
@@ -965,7 +995,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
       m.sh.material.opacity = 1; m.sh.scale.setScalar(1 + hgt / 60);
       if (b.mist && m.glow) { m.glow.quaternion.copy(m.q).invert(); m.mesh.material.opacity = 0.6 + 0.3 * Math.sin(G.time * 6); }
     }
-    for (const b of Array.from(ballMeshes.keys())) if (!live.has(b)) RC.dropBall(b);
+    if (ballMeshes.size > world.balls.length) for (const [b, m] of ballMeshes) if (m.stamp !== stamp) RC.dropBall(b);   // deleting while iterating a Map is safe
   }
 
   // ── Glass ──
@@ -1082,6 +1112,14 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: c.pos, l1: c.look, f1: c.fov, ms: 600, k0: key ? key.position.clone() : null, k1: key ? RC.keyPos[mode] : null };
   };
   RC.fitCamera = fitCamera;
+  const projCam = new THREE.PerspectiveCamera(40, 1, 0.05, 20), projV = new THREE.Vector3();
+  RC.project = function (x, y, z, mode) {
+    const c = RC.cams[mode || RC.view]; if (!c) return null;
+    const el = renderer.domElement, w = el.clientWidth || el.width, h = el.clientHeight || el.height;
+    projCam.fov = c.fov; projCam.aspect = camera.aspect; projCam.position.copy(c.pos); projCam.lookAt(c.look); projCam.updateMatrixWorld(); projCam.updateProjectionMatrix();
+    projV.copy(toWorld(x, y, z)).project(projCam);
+    return { x: (projV.x + 1) / 2 * w, y: (1 - projV.y) / 2 * h };
+  };
 
   // ── Post-processing ──
   let composer = null, bloom = null, outPass = null, size = new THREE.Vector2();
@@ -1102,35 +1140,59 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     composer.addPass(new RenderPass(scene, camera));
     bloom = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), theme.bloom, 0.35, theme.bloomThreshold || 1.12);
     composer.addPass(bloom);
+    // EffectComposer built on our own target takes its size in device pixels and multiplies by the pixel ratio
+    // again, so addPass sized the bloom chain at full device resolution (4x the pixels at 2x). Size it here:
+    // the bright pass at one pixel per CSS pixel (the glow then looks the same on every screen and ratio)
+    { const k = Math.min(1, 1 / (RC.dpr || 1)); bloom.setSize(2 * Math.round(w * k), 2 * Math.round(h * k)); }
+    if (RC.qLevel >= 2) bloom.enabled = false;   // adaptive quality already dropped it
     outPass = new OutputPass(); composer.addPass(outPass);
   }
+  // The render target is capped by its total pixel count, not only by the device pixel ratio: a phone at 2x
+  // and an iPad at 2x differ ~2.4x in pixels (and the bloom chain, MSAA resolve and soft-shadow lookups all scale
+  // with them). PX_BUDGET matches a recent iPhone's play view; bigger screens render at a lower ratio and the
+  // canvas is CSS-scaled up. RC.scale (adaptive quality) shrinks the budget further when frames run long.
+  const PX_BUDGET = opts.pxBudget || 1.5e6;
+  RC.scale = 1; RC.qLevel = 0;
   RC.resize = function () {
     const c = renderer.domElement, w = c.clientWidth || c.width, h = c.clientHeight || c.height;
     if (!w || !h) return;
     renderer.getSize(size);
-    const dpr = Math.min(window.devicePixelRatio || 1, RC.maxDpr || 2);
+    const budget = thumb ? Infinity : PX_BUDGET * RC.scale * RC.scale;
+    const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, RC.maxDpr || 2, Math.sqrt(budget / (w * h))));
+    RC.dpr = dpr;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
     fitCamera(w / h, opts.padBottom ? opts.padBottom() : 0);
     makeComposer(Math.round(w * dpr), Math.round(h * dpr));
   };
+  RC.rtInfo = () => ({ dpr: +(RC.dpr || 0).toFixed(3), buffer: [renderer.domElement.width, renderer.domElement.height], composer: composer ? [composer.renderTarget1.width, composer.renderTarget1.height, composer.renderTarget1.samples] : null, bloomBright: bloom && bloom.renderTargetBright ? [bloom.renderTargetBright.width, bloom.renderTargetBright.height] : null, shadow: RC.lights.key.shadow.mapSize.x, scale: RC.scale });
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = theme.exposure;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = !thumb || hq; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   RC.resize();
 
-  // ── Adaptive quality: drop bloom, then shadows, then resolution when frames run long ──
-  let slowT = 0, level = 0;
-  RC.adapt = function (ms) {
-    if (thumb || opts.fixedQuality || window.__pinFixedQ) return;
-    slowT = ms > 20 ? slowT + ms / 1000 : Math.max(0, slowT - ms / 3000);
-    if (slowT > 1 && level < 3) {
-      slowT = 0; level++;
-      if (level === 1 && bloom) { bloom.enabled = false; }
-      else if (level === 2) { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
-      else if (level === 3) { RC.maxDpr = 1.25; RC.resize(); }
-    }
+  // ── Adaptive quality ──
+  // The signal is the real time between drawn frames while the loop runs at full rate (a GPU-bound frame
+  // costs little main-thread time but shows up as a missed vsync), or the frame's own time otherwise. It is
+  // smoothed, and ~0.35 s of sustained slow frames (vs a full second before) steps down one small level;
+  // each step then gets a short settling time so its own hitch doesn't count. Small steps first:
+  // 1 render scale 0.85 · 2 bloom off · 3 shadow map 1024 · 4 shadows off · 5 render scale 0.7.
+  let slowT = 0, ema = 16.7, settle = 1.2;   // the first second is shader warm-up: ignored
+  const SLOW_MS = 21.5;                                  // a 60 Hz frame that missed its vsync
+  RC.adapt = function (ms, interval) {
+    if (thumb || opts.fixedQuality || window.__pinFixedQ || RC.qLevel >= 5) return;
+    const sig = interval > 0 ? Math.max(ms, Math.min(interval, 100)) : ms, dt = Math.min(sig, 100) / 1000;
+    if (settle > 0) { settle -= dt; ema = 16.7; return; }
+    ema += (sig - ema) * 0.2;
+    slowT = ema > SLOW_MS ? slowT + dt : Math.max(0, slowT - dt * 0.5);
+    if (slowT < 0.35) return;
+    slowT = 0; const level = ++RC.qLevel; settle = 0.6;
+    if (level === 1) { RC.scale = 0.85; RC.resize(); }
+    else if (level === 2) { if (bloom) bloom.enabled = false; }
+    else if (level === 3) { const sh = RC.lights.key.shadow; sh.mapSize.set(1024, 1024); if (sh.map) { sh.map.dispose(); sh.map = null; } }
+    else if (level === 4) { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+    else if (level === 5) { RC.scale = 0.7; RC.resize(); }
   };
-  RC.info = () => ({ calls: RC.stats ? RC.stats.calls : 0, tris: RC.stats ? RC.stats.tris : 0, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures, level, phi: RC.phi, bloom: !!(bloom && bloom.enabled) });
+  RC.info = () => ({ calls: RC.stats ? RC.stats.calls : 0, tris: RC.stats ? RC.stats.tris : 0, geos: renderer.info.memory.geometries, texs: renderer.info.memory.textures, level: RC.qLevel, phi: RC.phi, bloom: !!(bloom && bloom.enabled) });
 
   // ── Per-frame render ──
   const flashPool = RC.lights.flash; let flashI = 0;
@@ -1164,8 +1226,9 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     RC.lights.hemi.intensity = theme.ambient * (1 - dark * 0.92);
     RC.lights.bolt.intensity = light * 4.5;
     RC.lampU.lampGain.value = theme.lampGain * (1 - dark * 0.6);
-    const live = world.balls.filter(b => !b.hidden);
-    RC.lights.ball.forEach((l, i) => { const b = live[i]; if (b && dark > 0.02) { l.position.set(b.x, b.y - 10, b.z + 70); l.intensity = dark * 0.09; } else l.intensity = 0; });
+    { let i = 0; const bl = RC.lights.ball;   // lights-out ball lamps follow the first visible balls (no per-frame arrays)
+      for (const b of world.balls) { if (i >= bl.length) break; if (b.hidden) continue; if (dark > 0.02) { bl[i].position.set(b.x, b.y - 10, b.z + 70); bl[i].intensity = dark * 0.09; } else bl[i].intensity = 0; i++; }
+      for (; i < bl.length; i++) bl[i].intensity = 0; }
     renderer.toneMappingExposure = theme.exposure * (thumb ? 1.35 : 1) * (1 - dark * 0.35) + light * 0.6;
     updateBalls(dt); updateFx(dt);
     for (const c of G.compList) if (c.render) c.render(dt, RC);

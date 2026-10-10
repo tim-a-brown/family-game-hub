@@ -66,10 +66,17 @@ export class Display {
     if (!W || !H) return;
     if (this.type === 'dmd') {
       const src = g.getImageData(0, 0, this.W, this.H).data, d = this.img.data, L = this.levels;
+      const prev = this.prev || (this.prev = new Uint8Array(this.W * this.H).fill(255)); let changed = false;
       for (let i = 0, n = this.W * this.H; i < n; i++) {
-        const v = Math.max(src[i * 4], src[i * 4 + 1], src[i * 4 + 2]), lv = v > 185 ? 3 : v > 105 ? 2 : v > 38 ? 1 : 0, col = L[lv], j = i * 4;
-        d[j] = col[0]; d[j + 1] = col[1]; d[j + 2] = col[2]; d[j + 3] = 255;
+        const v = Math.max(src[i * 4], src[i * 4 + 1], src[i * 4 + 2]), lv = v > 185 ? 3 : v > 105 ? 2 : v > 38 ? 1 : 0;
+        if (prev[i] === lv) continue;
+        prev[i] = lv; changed = true;
+        const col = L[lv], j = i * 4; d[j] = col[0]; d[j + 1] = col[1]; d[j + 2] = col[2]; d[j + 3] = 255;
       }
+      // same dots as last time on a canvas of the same size: nothing to present
+      const key = W + 'x' + H;
+      if (!changed && this.shownKey === key) return;
+      this.shownKey = key;
       this.og.putImageData(this.img, 0, 0);
       x.imageSmoothingEnabled = false; x.drawImage(this.o, 0, 0, W, H); x.imageSmoothingEnabled = true;
       x.drawImage(this.dotMask(W, H), 0, 0);
