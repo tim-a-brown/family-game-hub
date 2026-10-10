@@ -318,7 +318,7 @@ function initGL() {
   scene.background = bgTex; paintBg(192);
 
   // Floor: dark glass with a neon grid and a pool of light under the tower
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshStandardMaterial({ color: 0x0a0716, roughness: .3, metalness: .6 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshBasicMaterial({ color: 0x07050f }));
   floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR - .01; scene.add(floor);
   const grid = new THREE.GridHelper(120, 60, 0xff3cc8, 0x3b2a9a); grid.position.y = FLOOR; grid.material.transparent = true; grid.material.opacity = .55; grid.material.toneMapped = false; scene.add(grid);
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
@@ -419,7 +419,7 @@ function fit() {
   const r = $('scr').getBoundingClientRect(), w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
   if (w === scrW && h === scrH && composer) return;
   scrW = w; scrH = h;
-  dprNow = Math.max(.75, Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(1.7e6 / (w * h))));
+  dprNow = Math.max(.75, Math.min(window.devicePixelRatio || 1, quality >= 3 ? 1.25 : 2, Math.sqrt(1.7e6 / (w * h))));
   renderer.setPixelRatio(dprNow); renderer.setSize(w, h, false);
   const asp = w / h;
   halfW = 6.1; halfH = halfW / asp;
@@ -429,10 +429,21 @@ function fit() {
   sparks.material.size = 7 * dprNow; dust.material.size = 3.5 * dprNow;
   render();
 }
+// Adaptive quality: if frames keep running long on an older device, step down (MSAA in the glow pass,
+// then the glow itself, then the render resolution) so the block still slides smoothly.
+const HQ = /[?&]hq=1/.test(location.search);
+let quality = 0, slowAvg = 0, slowT = 0;
+function watchFrame(dt) {
+  if (HQ || quality >= 3 || !dt) return;
+  slowAvg += (dt - slowAvg) * .1;
+  slowT = slowAvg > 1 / 34 ? slowT + dt : Math.max(0, slowT - dt);
+  if (slowT > 1.5) { quality++; slowT = 0; slowAvg = 0; scrW = scrH = 0; fit(); }
+}
 function makeComposer(W, H) {
   if (composer) { composer.passes.forEach(p => p.dispose && p.dispose()); composer.dispose(); composer = null; bloom = null; }
+  if (quality >= 2) return;
   try {
-    const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
+    const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: quality ? 0 : 4 });
     composer = new EffectComposer(renderer, rt);
     composer.setPixelRatio(1); composer.setSize(W, H);
     composer.addPass(new RenderPass(scene, camera));
@@ -970,6 +981,7 @@ function loop(ts) {
   const dt = last ? Math.min(.05, (ts - last) / 1000) : 0; last = ts;
   if (!live) { Mus.stop(true); return; }
   if (!paused) update(dt);
+  if (state === 'play' || state === 'ready') watchFrame(dt);
   if (state === 'play' && !paused && !countdown && !document.hidden) Mus.tick(); else Mus.stop(state !== 'play');
   render();
   // Battery: no frames on the setup screen, while paused, on the results card or with the page hidden (kick() restarts)
@@ -1039,7 +1051,7 @@ new ResizeObserver(() => { if (live) fit(); }).observe($('scr'));
 // Test hooks (deterministic play for checks and screenshots)
 window.__tower = {
   state: () => state, height, score: () => run ? run.score : 0, streak: () => run ? run.streak : 0, run: () => run, players: () => players, pi: () => pi,
-  gl: () => glOk, bloom: () => !!composer, noBloom() { composer = null; }, three: () => ({ scene, renderer, camera }),
+  gl: () => glOk, bloom: () => !!composer, noBloom() { composer = null; }, quality: () => quality, three: () => ({ scene, renderer, camera }),
   samples(n) { if (composer) { composer.renderTarget1.samples = n; composer.renderTarget2.samples = n; } },
   cur: () => cur && { axis: cur.axis, x: cur.x, z: cur.z, w: cur.w, d: cur.d, phase: cur.phase, n: cur.n },
   top: () => { const t = topBlock(); return { x: t.x, z: t.z, w: t.w, d: t.d, n: t.n }; },
