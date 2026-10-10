@@ -88,6 +88,16 @@
       key: 'f7', title: 'Flip 7', mode: 'Scorekeeper', target: cfg.target,
       sides: cfg.names.map(function (n) { return { name: n }; }),
       goal: 'First to ' + cfg.target + ' at the end of a round wins',
+      // Add round puts a blank row in the sheet; type each player's round total (0 = bust). Tap a round to fix it with the card helpers.
+      inline: true,
+      inlineExtra: function (scores, r) {
+        var extra = { detail: scores.map(function (v) { return v === 0 ? 'bust' : ''; }), highlights: [] };
+        scores.forEach(function (v, i) { if (v >= 50) extra.highlights.push(cfg.names[i] + ' scored ' + v + ' in round ' + r); });
+        var alive = scores.map(function (v, i) { return v > 0 ? i : -1; }).filter(function (i) { return i >= 0; });
+        if (scores.length >= 3 && alive.length === 1) extra.highlights.push('Everyone but ' + cfg.names[alive[0]] + ' busted in round ' + r);
+        if (!alive.length) extra.highlights.push('Everybody busted in round ' + r);
+        return extra;
+      },
       isOver: function (t) { var tp = top(t); return tp.max >= cfg.target && tp.who.length === 1; },
       winner: function (t) { var tp = top(t); return tp.who.length === 1 ? tp.who[0] : -1; },
       form: function (ctx) {
