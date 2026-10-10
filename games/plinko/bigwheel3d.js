@@ -301,7 +301,7 @@ export function BigWheel3D(host, hooks, api) {
   host.appendChild(cv);
   const sim = api.makeWheelSim(), st = sim.s;
   const ac = new AbortController(), sig = { signal: ac.signal };
-  let W = 300, H = 480, dpr = 1, maxDpr = 2, raf = 0, last = 0, acc = 0, spinning = null, drag = null, dead = false, lastDraw = 0, needDraw = true;
+  let W = 300, H = 480, dpr = 1, maxDpr = 2, raf = 0, idleT = 0, last = 0, acc = 0, spinning = null, drag = null, dead = false, lastDraw = 0, needDraw = true;
   let mode = 'idle', modeT0 = 0, glowIdx = -1, readout = null, readKey = '', level = 0, slowT = 0, frames = 0, lastMs = 0;
   const par = { x: 0, y: 0, tx: 0, ty: 0 };
 
@@ -685,9 +685,15 @@ export function BigWheel3D(host, hooks, api) {
     const pulse = mode === 'result' || mode === 'jack', idleTick = now - lastDraw > (pulse ? 48 : 110);
     if (active) { stepBulbs(now, dt, false); draw(now); }
     else if (idleTick || needDraw) { stepBulbs(now, dt, !pulse); draw(now); }
-    if (document.visibilityState === 'visible') raf = requestAnimationFrame(loop);
+    if (document.visibilityState !== 'visible') return;
+    // plain idle: wake up for the next bulb step instead of every frame (the pulse keeps its frame loop)
+    if (active || pulse) raf = requestAnimationFrame(loop);
+    else idleT = setTimeout(kick, 110);
   }
-  function kick() { if (!raf && !dead) { last = performance.now(); raf = requestAnimationFrame(loop); } }
+  function kick() {
+    if (idleT) { clearTimeout(idleT); idleT = 0; }
+    if (!raf && !dead) { last = performance.now(); raf = requestAnimationFrame(loop); }
+  }
   document.addEventListener('visibilitychange', kick, sig);
 
   // ── Pull it down: the front panel follows the finger, the release speed sets the spin ──
@@ -755,7 +761,7 @@ export function BigWheel3D(host, hooks, api) {
     redraw: function () { if (!dead) rebuildTextures(); },
     info: function () { return { refl: refl.on, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, level: level, frames: frames, bloom: bloom.enabled, shadows: renderer.shadowMap.enabled, dpr: dpr, bulbs: bulbs.length, trail: trail.enabled, lit: bulbs.filter(b => b.k > 0.5).length, c0: Array.from(cores.instanceColor.array.slice(0, 6)).map(x => +x.toFixed(2)), vis: document.visibilityState, raf: !!raf, ms: lastMs }; },
     destroy: function () {
-      dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; ac.abort();
+      dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; clearTimeout(idleT); idleT = 0; ac.abort();
       dyn.forEach(m => { if (m.geometry) m.geometry.dispose(); if (m.isInstancedMesh) m.dispose(); }); dmesh.forEach(m => m.geometry.dispose());
       if (atlas) atlas.tex.dispose(); if (dollar) { dollar.alpha.dispose(); dollar.normal.dispose(); } if (readTex) readTex.dispose();
       Object.keys(M).forEach(k => { if (M[k]) M[k].dispose(); });

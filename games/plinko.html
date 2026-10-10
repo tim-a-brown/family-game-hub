@@ -481,7 +481,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     var g = cv.getContext('2d');
     var sim = makeWheelSim(), st = sim.s;
     var L = {}, dpr = 1, tex = null, back = null, front = null, bulbOn = null, bulbOff = null, bulbs = [], TW = 0, PHt = 0;
-    var raf = 0, last = 0, acc = 0, spinning = null, drag = null, dead = false, lastDraw = 0;
+    var raf = 0, idleT = 0, last = 0, acc = 0, spinning = null, drag = null, dead = false, lastDraw = 0;
     var mode = 'idle', modeT0 = 0, glowIdx = -1, readout = null;
 
     // ── Geometry (css px) ──
@@ -908,11 +908,16 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
         for (j = 0; j < k; j++) sim.step(WSIM_H, hf, true);
         active = Math.abs(st.b) > 0.002 || Math.abs(st.bv) > 0.02 || mode !== 'idle';
       }
-      // idle: the bulbs only need a few frames a second
+      // idle: the bulbs only need a few frames a second, so wake up for the next one instead of every frame
       if (active || now - lastDraw > 110) draw(now);
-      if (document.visibilityState === 'visible') raf = requestAnimationFrame(loop);
+      if (document.visibilityState !== 'visible') return;
+      if (active) raf = requestAnimationFrame(loop);
+      else idleT = setTimeout(kick, 110);
     }
-    function kick() { if (!raf && !dead) { last = performance.now(); raf = requestAnimationFrame(loop); } }
+    function kick() {
+      if (idleT) { clearTimeout(idleT); idleT = 0; }
+      if (!raf && !dead) { last = performance.now(); raf = requestAnimationFrame(loop); }
+    }
     document.addEventListener('visibilitychange', kick);
 
     // ── Pull it down ──
@@ -964,7 +969,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
         return { x: r.left + L.cx * k, y: r.top + L.cy * k, w: L.dw * k, h: hh * 2 * k };
       },
       redraw: function () { if (tex) { buildTexture(); buildBack(); buildFront(); shadeCache = null; draw(performance.now()); } },
-      destroy: function () { dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; document.removeEventListener('visibilitychange', kick); }
+      destroy: function () { dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; clearTimeout(idleT); idleT = 0; document.removeEventListener('visibilitychange', kick); }
     };
   }
 
