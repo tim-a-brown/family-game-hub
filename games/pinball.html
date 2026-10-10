@@ -76,19 +76,21 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-fire{right:10px;bottom:calc(var(--safe-b) + 92px);}
 .pb-view.no-flipbtns .pb-magna,.pb-view.no-flipbtns .pb-fire{bottom:calc(var(--safe-b) + 74px);}
 /* launch overlay: plunger rod + spring and a strength gauge, lower right, while a ball waits in the lane */
-.pb-launch{position:absolute;right:12px;bottom:calc(var(--safe-b) + 170px);z-index:3;width:112px;height:196px;pointer-events:none;opacity:0;transition:opacity .25s;display:none;--pull:0;}
+.pb-launch{position:absolute;right:12px;bottom:calc(var(--safe-b) + 170px);z-index:3;width:172px;height:214px;pointer-events:none;opacity:0;transition:opacity .25s;display:none;--pull:0;}
 .pb-launch.show{display:block;opacity:.72;}
 .pb-launch.pulling{opacity:1;transition:opacity .1s;}
 .pb-launch .gauge{position:absolute;left:0;top:14px;width:22px;height:150px;border-radius:11px;background:rgba(12,10,18,.78);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22),0 4px 12px rgba(0,0,0,.5);overflow:hidden;}
 .pb-launch .gauge b{position:absolute;left:3px;right:3px;bottom:3px;height:calc((100% - 6px) * var(--pull));border-radius:8px;background:linear-gradient(to top,#7fd4a4,#ffd45a 55%,#ff5a3a);box-shadow:0 0 10px rgba(255,212,90,.6);}
 .pb-launch .gauge i{position:absolute;left:4px;right:4px;height:1px;background:rgba(255,255,255,.35);}
-.pb-launch .lbl{position:absolute;left:26px;font:900 .56rem/1 var(--font,system-ui);letter-spacing:.1em;color:rgba(255,255,255,.85);text-shadow:0 1px 2px #000;white-space:nowrap;}
-.pb-launch .lbl.top{top:10px;}.pb-launch .lbl.skill{top:118px;color:#ffd45a;}
+.pb-launch .lbl{position:absolute;left:28px;width:62px;font:900 .56rem/1 var(--font,system-ui);letter-spacing:.08em;color:rgba(255,255,255,.85);text-shadow:0 1px 2px #000;white-space:nowrap;}
+.pb-launch .lbl:before{content:"";position:absolute;left:-6px;top:50%;width:5px;height:1px;background:currentColor;opacity:.6;}
+.pb-launch .lbl.top{top:11px;}.pb-launch .lbl.med{top:84px;}.pb-launch .lbl.skill{top:99px;color:#ffd45a;}.pb-launch .lbl.soft{top:126px;color:#9fd4a4;}
+.pb-launch.snap .rod,.pb-launch.snap .spring,.pb-launch.snap .gauge b{transition:transform .12s cubic-bezier(.2,1.6,.4,1),height .12s;}
 .pb-launch .pct{position:absolute;left:0;top:168px;width:22px;text-align:center;font:900 .62rem/1 var(--font,system-ui);color:#fff;text-shadow:0 1px 2px #000;}
-.pb-launch svg{position:absolute;left:34px;top:0;width:78px;height:196px;overflow:visible;}
+.pb-launch svg{position:absolute;left:94px;top:0;width:78px;height:196px;overflow:visible;}
 .pb-launch .rod{transform:translateY(calc(var(--pull) * 62px));}
 .pb-launch .spring{transform-origin:50% 60px;transform:scaleY(calc(1 + var(--pull) * 1.6));}
-.pb-launch .hint{position:absolute;left:30px;top:176px;font:800 .6rem/1.2 var(--font,system-ui);color:rgba(255,255,255,.9);text-shadow:0 1px 2px #000;white-space:nowrap;}
+.pb-launch .hint{position:absolute;left:0;top:184px;width:96px;font:800 .58rem/1.15 var(--font,system-ui);letter-spacing:.04em;color:rgba(255,255,255,.9);text-shadow:0 1px 2px #000;}
 .pb-launch.pulling .hint{display:none;}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
@@ -155,7 +157,7 @@ Kit.init({
     '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
     '<h3>Controls</h3><ul>' +
     '<li><b>Flippers:</b> hold the big buttons in the bottom corners (left and right), or touch the left or right half of the table. Use both thumbs. Hold a flipper up to catch the ball and aim. The game menu can hide the buttons.</li>' +
-    '<li><b>Launch:</b> while the ball waits in the lane, press and hold anywhere on the table: the plunger pulls back and the gauge fills, from a soft skill shot to full strength. Let go to launch. A quick tap is a soft launch; pulling your finger down also works.</li>' +
+    '<li><b>Launch:</b> while the ball waits in the lane, put a finger anywhere on the table and drag down: the plunger follows your finger and the gauge shows the strength (soft, skill shot, medium, full). Let go and it snaps forward like a rubber band. A quick tap is a soft launch; dragging back up before you let go cancels.</li>' +
     '<li><b>Nudge:</b> tap NUDGE at the bottom to bump the table. Bump too often and you get a warning, then TILT: the flippers go dead and you lose that ball and its bonus.</li>' +
     '<li><b>Magnet:</b> tables with a Magna-Save have a MAGNET button. Hold it as the ball heads for that outlane: the magnet catches it, and letting go throws it back.</li>' +
     '<li><b>Keyboard:</b> Left/Right arrows or Z and / for the flippers, Space or Down to pull and launch (and to fire a cannon), Up or N to nudge, A for the magnet, P to pause.</li></ul>' +
@@ -256,14 +258,14 @@ function startGame(id, balls, who) {
   viewEl.classList.toggle('no-flipbtns', !btnsOn());
   // launch overlay: the plunger pulled back on a spring and the strength gauge
   launchEl = el('div', { class: 'pb-launch', 'aria-hidden': 'true', html:
-    '<div class="gauge"><i style="top:25%"></i><i style="top:50%"></i><i style="top:75%"></i><b></b></div>' +
-    '<span class="lbl top">FULL</span><span class="lbl skill">SKILL SHOT</span><span class="pct">0%</span>' +
+    '<div class="gauge"><i style="top:50%"></i><i style="top:60%"></i><i style="top:78%"></i><b></b></div>' +
+    '<span class="lbl top">FULL</span><span class="lbl med">MEDIUM</span><span class="lbl skill">SKILL SHOT</span><span class="lbl soft">SOFT</span><span class="pct">0%</span>' +
     '<svg viewBox="0 0 78 196"><defs><linearGradient id="pbChrome" x1="0" x2="1"><stop offset="0" stop-color="#5a5f6c"/><stop offset=".35" stop-color="#f4f6fa"/><stop offset=".6" stop-color="#9aa1ae"/><stop offset="1" stop-color="#454a55"/></linearGradient>' +
     '<linearGradient id="pbKnob" x1="0" x2="1"><stop offset="0" stop-color="#6b1d1d"/><stop offset=".4" stop-color="#e84a4a"/><stop offset="1" stop-color="#5a1414"/></linearGradient></defs>' +
     '<rect x="26" y="0" width="26" height="40" rx="3" fill="#1b1a22" stroke="rgba(255,255,255,.2)"/>' +
     '<g class="spring"><path d="M39 40 l10 6 l-20 6 l20 6 l-20 6 l20 6 l-20 6 l20 6 l-20 6 l20 6 l-10 4" fill="none" stroke="url(#pbChrome)" stroke-width="3.2" stroke-linejoin="round"/></g>' +
     '<g class="rod"><rect x="34" y="34" width="10" height="92" rx="2" fill="url(#pbChrome)"/><rect x="31" y="30" width="16" height="8" rx="2" fill="#222"/><ellipse cx="39" cy="140" rx="16" ry="14" fill="url(#pbKnob)" stroke="rgba(0,0,0,.6)"/><ellipse cx="34" cy="134" rx="5" ry="3" fill="rgba(255,255,255,.35)"/></g></svg>' +
-    '<span class="hint">HOLD TO PULL</span>' });
+    '<span class="hint">DRAG DOWN TO PULL</span>' });
   viewEl.append(nudgeBtn, magBtn, fireBtn, flipBtn.L, flipBtn.R, launchEl);
   for (const side of ['L', 'R']) {
     const b = flipBtn[side];
@@ -323,17 +325,27 @@ function tickUI() {
 }
 // The launch overlay shows while a ball waits in the shooter lane and follows the pull (hold time or drag) at
 // animation rate only while pulling; it fades when the ball leaves the lane.
-let launchRaf = 0;
+let launchRaf = 0, snapUntil = 0;
+// the plunger snaps forward like a rubber band when let go: the overlay stays for the snap, then fades
+function releasePull(o) { if (!G) return; const was = G.pulling; G.pullEnd(o); if (was && !o.cancel) snapUntil = performance.now() + 380; launchUI(); }
+// finger pull: 1:1 with the drag, a little spring resistance that eases near full pull
+const PULL_FULL = 0.24;   // a full pull is this fraction of the view height (~190 px on a phone)
+function dragToPull(dy, h) {
+  const d = Math.max(0, dy) / (h * PULL_FULL);
+  return d <= 0.85 ? d : Math.min(1, 0.85 + (1 - Math.exp(-(d - 0.85) * 2.2)) * 0.15);
+}
 function launchUI() {
   if (launchRaf) { cancelAnimationFrame(launchRaf); launchRaf = 0; }
   if (!launchEl || !G || view !== 'game') return;
-  const wait = G.waitPlunge && !G.paused && G.state !== 'over';
+  const now = performance.now(), snapping = now < snapUntil;
+  const wait = (G.waitPlunge || snapping) && !G.paused && G.state !== 'over';
   launchEl.classList.toggle('show', wait);
-  launchEl.classList.toggle('pulling', wait && G.pulling);
+  launchEl.classList.toggle('pulling', wait && (G.pulling || snapping));
+  launchEl.classList.toggle('snap', snapping);
   const pull = wait && G.pulling ? G.pull : 0;
   launchEl.style.setProperty('--pull', pull.toFixed(3));
   launchEl.querySelector('.pct').textContent = Math.round(pull * 100) + '%';
-  if (wait && G.pulling) launchRaf = requestAnimationFrame(launchUI);
+  if (wait && (G.pulling || snapping)) launchRaf = requestAnimationFrame(launchUI);
 }
 function leaveGame() {
   view = 'none';
@@ -366,20 +378,26 @@ app.addEventListener('pointerdown', e => {
   e.preventDefault();
   audio().ctx();
   let role = e.clientX < window.innerWidth / 2 ? 'L' : 'R';
-  if (G.waitPlunge && !G.pulling) { role = 'P'; G.pullStart(); launchUI(); }
+  if (G.waitPlunge && !G.pulling) { role = 'P'; G.pullStart('drag'); launchUI(); }
   const r = viewEl.getBoundingClientRect();
-  ptr[e.pointerId] = { role, y0: e.clientY, h: r.height };
+  ptr[e.pointerId] = { role, y0: e.clientY, h: r.height, t0: G.time, maxDy: 0 };
   try { app.setPointerCapture(e.pointerId); } catch (er) {}
   syncFlips();
 });
 app.addEventListener('pointermove', e => {
   const p = ptr[e.pointerId]; if (!p || p.role !== 'P' || !G) return;
-  G.pullDrag = Math.max(0, Math.min(1, (e.clientY - p.y0) / (p.h * 0.16)));
+  const dy = e.clientY - p.y0; p.maxDy = Math.max(p.maxDy, Math.abs(dy)); p.dy = dy;
+  G.pullDrag = dragToPull(dy, p.h);
 });
 function up(e) {
   const p = ptr[e.pointerId]; if (!p) return;
   delete ptr[e.pointerId];
-  if (p.role === 'P' && G) { G.pullEnd(); launchUI(); }
+  if (p.role === 'P' && G) {
+    const dy = p.dy || 0, quick = G.time - p.t0 < 0.28;   // game time: pause-safe
+    if (p.maxDy < 8 && quick) releasePull({ tap: true });               // a plain quick tap: soft launch
+    else if (dy < 8) releasePull({ cancel: true });                      // let go near the start, or dragged up: no launch
+    else releasePull({});                                                 // rubber band: launch at the pulled strength
+  }
   syncFlips();
 }
 app.addEventListener('pointerup', up);
@@ -395,7 +413,7 @@ document.addEventListener('keydown', e => {
   audio().ctx();
   if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') { e.preventDefault(); keys.L = true; }
   else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') { e.preventDefault(); keys.R = true; }
-  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (G.pullStart()) launchUI(); else G.fire(); } }
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (G.pullStart('time')) launchUI(); else G.fire(); } }
   else if (k === 'ArrowUp' || k === 'n' || k === 'N') { e.preventDefault(); if (!e.repeat) G.nudge(); }
   else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') { e.preventDefault(); if (!e.repeat) G.setMagna(true); }
   else return;
@@ -406,7 +424,7 @@ document.addEventListener('keyup', e => {
   const k = e.key;
   if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') keys.L = false;
   else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') keys.R = false;
-  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { G.pullEnd(); launchUI(); }
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') releasePull({});
   else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') G.setMagna(false);
   syncFlips();
 });
@@ -499,6 +517,7 @@ window.__pin = {
   mode(name) { const m = G && G.def.rules && G.def.rules.modes && G.def.rules.modes[name]; if (m) { m(G); return true; } return false; },
   render() { if (G) G.renderOnce(); },
   renderer() { return getRenderer(); },
+  ui() { launchUI(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },
   step(sec) { if (!G) return null; G.run(sec); G.renderOnce(); return G.snapshot(); },

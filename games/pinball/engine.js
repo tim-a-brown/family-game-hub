@@ -425,7 +425,8 @@ export function createGame(def, opts = {}) {
     if (G.show) { G.show.t += dt; if (G.show.t > G.show.dur) G.show = null; }
     if (G.dm) { G.dm.t += dt; if (G.dm.t >= G.dm.dur) G.dm = null; }
     if (!G.dm && G.dq.length) G.dm = G.dq.shift();
-    if (G.waitPlunge && G.pulling) G.pull = Math.min(1, Math.max(G.pull, G.pullDrag || 0, (G.time - G.pullT0) / 1.1));
+    // plunger strength: a finger drag follows the hand 1:1 (it can ease off again); a key builds with hold time
+    if (G.waitPlunge && G.pulling) G.pull = G.pullMode === 'drag' ? Math.min(1, Math.max(0, G.pullDrag || 0)) : Math.min(1, Math.max(G.pull, (G.time - G.pullT0) / 1.1));
     if (G.plunger) G.plunger.pullTo(G.waitPlunge && G.pulling ? G.pull : 0);
     for (const c of G.compList) if (c.update) c.update(dt);
     // ball safety: stuck balls get a search kick; balls off the table go back to the shooter lane
@@ -510,12 +511,19 @@ export function createGame(def, opts = {}) {
     }
     for (const f of world.flips) if (f.key === side) f.pressed = live && on;
   };
-  G.pullStart = function () {
+  // mode 'drag' (touch: strength is how far the finger pulled down) or 'time' (a held key)
+  G.pullStart = function (mode) {
     if (!G.waitPlunge || G.pulling) return false;
-    G.pulling = true; G.pullT0 = G.time; G.pullDrag = 0; G.pull = 0; G.sfx('pull', { vol: 0.5, x: G.plunger ? G.plunger.x : W }); return true;
+    G.pulling = true; G.pullMode = mode || 'time'; G.pullT0 = G.time; G.pullDrag = 0; G.pull = 0; G.sfx('pull', { vol: 0.5, x: G.plunger ? G.plunger.x : W }); return true;
   };
-  // a tap without a hold is a soft launch that still reaches the playfield (the skill shot)
-  G.pullEnd = function () { if (G.pulling) { G.pulling = false; launch(Math.max(G.pull, def.tapLaunch || 0.22)); } };
+  // release: launch at the pulled strength; o.cancel lets the plunger back without a launch (a stray touch);
+  // o.tap is a quick tap: a soft launch that still reaches the playfield
+  G.pullEnd = function (o = {}) {
+    if (!G.pulling) return;
+    G.pulling = false;
+    if (o.cancel) { G.pull = 0; if (G.plunger) G.plunger.pullTo(0); return; }
+    launch(o.tap ? (def.tapLaunch || 0.22) : Math.max(G.pull, G.pullMode === 'drag' ? 0.12 : (def.tapLaunch || 0.22)));
+  };
   G.setMagna = function (on) { G.input.magna = on; for (const c of G.compList) if (c.onMagna) c.onMagna(on); };
   G.fire = function () { for (const c of G.compList) if (c.onFire && c.onFire()) return true; return false; };
 

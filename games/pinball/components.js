@@ -1295,6 +1295,9 @@ class Plunger extends Comp {
   pullTo(p) { this.p = p; }
   fire(p) {
     const b = this.ballAt(); this.fireT = 0.12; this.shown = 0;
+    // the rod snaps to rest faster than the ball leaves: at a deep pull the ball sits below the rest position,
+    // so the tip is out of play for the fire window (otherwise it lands on the ball and shoves it back down)
+    this.tip.on = false;
     this.sfx('launch', { vol: 0.5 + 0.5 * p });
     if (!b) return false;
     b.vy = (this.o.min || 900) + p * ((this.o.max || 4300) - (this.o.min || 900)); b.vx = 0; b.stillT = 0;
@@ -1302,7 +1305,7 @@ class Plunger extends Comp {
   }
   update(dt) {
     const G = this.G;
-    if (this.fireT > 0) this.fireT -= dt;
+    if (this.fireT > 0) { this.fireT -= dt; if (this.fireT <= 0) this.tip.on = true; }
     this.shown += (this.p - this.shown) * Math.min(1, dt * 20);
     if (this.queue.length && !this.ballAt() && G.state !== 'over' && G.state !== 'bonus') {
       const o = this.queue.shift();
