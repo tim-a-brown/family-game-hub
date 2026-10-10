@@ -132,6 +132,7 @@ var GAMES = [
   { id: 'flappybird',  name: 'Flappy Bird',       color: '#38bdf8', cat: 'arcade', min: 1, max: 1, tag: 'Tap to fly through the pipes', play: 'flappybird' },
   { id: 'crossyroad',  name: 'Crossy Road',  color: '#84cc16', cat: 'arcade', min: 1, max: 1, tag: 'Hop across roads and rivers', play: 'crossyroad' },
   { id: 'willycrash',  name: 'Willy Crash',  color: '#ff6a3d', cat: 'arcade', min: 1, max: 1, tag: 'Blast the daredevil onto the rooftop', play: 'willycrash' },
+  { id: 'crazytower',  name: 'Crazy Tower',  color: '#000', cat: 'arcade', min: 1, max: 4, tag: 'Drop the blocks, stack to the jackpot', play: 'crazytower' },
   { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
   { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle' },
   { id: 'cubehopper',  name: 'Q*bert',       color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },

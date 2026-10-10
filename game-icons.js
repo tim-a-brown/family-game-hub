@@ -247,6 +247,7 @@ var GameIcon = (function () {
         circ(6.5, 19.6, 2.7, Y) + circ(6.5, 19.6, 1, K) +
         circ(13.2, 4.4, 2.3, '#ffcf9f') + path('M10.9 4.4a2.3 2.3 0 0 1 4.6 0z', W) + rect(10.9, 3.8, 4.6, .9, .3, R);
     },
+    crazytower: function () { return line('M2.5 3h19', Y, 1.3) + rect(13, 5.4, 8.5, 3.4, .8, '#ff5cc8') + line('M9.6 7.1h2', '#ff9be0', 1.1) + rect(7.5, 9.8, 7.5, 3.4, .8, '#b26bff') + rect(6.8, 13.8, 8.6, 3.4, .8, '#7a7dff') + rect(6, 17.8, 10, 3.4, .8, '#38e1ff') + rect(17.6, 15.2, 3, 3, .6, '#b26bff', ' transform="rotate(28 19.1 16.7)"'); },
     crossyroad: function () {   // a voxel chicken on the verge, a car coming down the road
       return rect(0, 1.5, 24, 8, 1, '#62c45e') + rect(0, 9.5, 24, 10, 1, '#5a606c') + rect(1, 14, 4, 1, .5, W) + rect(9.5, 14, 4, 1, .5, W) +
         rect(13.5, 15.2, 9, 3.6, .9, R) + rect(15.5, 13.4, 4.6, 2, .5, '#2f4157') + rect(15, 18.4, 2, 1.4, .4, K) + rect(19.5, 18.4, 2, 1.4, .4, K) +
