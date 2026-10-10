@@ -22,11 +22,13 @@
     linear-gradient(180deg,#0d1636 0%,#070b1f 70%,#0b1230 100%);
   box-shadow:inset 0 0 0 2px rgba(255,205,90,.35), inset 0 0 40px rgba(0,0,0,.6), 0 16px 34px rgba(0,0,0,.5);
 }
-/* Marquee bulbs along the top edge */
-.studio::before{content:"";position:absolute;left:14px;right:14px;top:4px;height:6px;z-index:-1;
+/* Marquee bulbs along the top edge: a clipped strip whose bulb row slides
+   sideways (transform only, so no repaint every frame) */
+.studio>.bulbs{position:absolute;left:14px;right:14px;top:4px;height:6px;z-index:-1;overflow:hidden;pointer-events:none;}
+.studio>.bulbs::before{content:"";position:absolute;top:0;bottom:0;left:-12px;right:-12px;
   background:radial-gradient(circle,#ffe39a 0 1.6px,rgba(255,200,80,.35) 2.4px,transparent 3.2px) 0 50%/12px 6px repeat-x;
   animation:bulbs 1.2s steps(2) infinite;}
-@keyframes bulbs{50%{background-position:6px 50%;}}
+@keyframes bulbs{50%{transform:translateX(6px);}}
 /* Spotlight beams */
 .studio::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
   background:
@@ -858,7 +860,7 @@
     var studio = el('section', { class: 'studio', 'aria-label': 'Stage' });
     var roundTxt = !g || g.phase === 'pick' ? 'Pick a case' : g.phase === 'swap' || g.phase === 'final' || g.phase === 'done' ? 'Final' : 'Round ' + Math.min(9, g.round + 1) + ' of 9';
     var left = g ? unopened(g).length : 26;
-    studio.innerHTML = '<div class="marq"><span>' + roundTxt + '</span>' +
+    studio.innerHTML = '<i class="bulbs" aria-hidden="true"></i><div class="marq"><span>' + roundTxt + '</span>' +
       (S.players.length > 1 ? '<span class="who" style="--c:' + p.color + '"><i></i><span>' + esc(p.name) + '</span></span>' : '') +
       '<span class="r">' + (left ? left + ' case' + (left === 1 ? '' : 's') + ' left' : 'All open') + '</span></div>';
     var floor = el('div', { class: 'floor' });

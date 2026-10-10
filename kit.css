@@ -428,7 +428,15 @@ p{margin:0;}
   display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;margin:6px 0 10px;
   font-weight:900;font-size:1.05rem;color:var(--c);
 }
-.turn .dot{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 30%,transparent);animation:pulse 1.4s infinite;}
+.turn .dot{position:relative;width:10px;height:10px;border-radius:50%;}
+/* The pulsing ring is a layer under the dot (::after) that scales and fades (GPU
+   only, no repaint per frame). Drawn at its largest (8px ring), scaled to 4px. */
+.turn .dot::before,.turn .dot::after{content:"";position:absolute;border-radius:50%;pointer-events:none;}
+.turn .dot::before{inset:-8px;background:color-mix(in srgb,var(--c) 30%,transparent);transform:scale(.6923);animation:k-ring 1.4s infinite;}
+.turn .dot::after{inset:0;background:var(--c);}
+@keyframes k-ring{50%{transform:none;opacity:0;}}
+@media (prefers-reduced-motion:reduce){.turn .dot::before{animation-duration:.01ms!important;}}
+/* Older pages still use "pulse" by name; kept as it was. */
 @keyframes pulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--c) 0%,transparent);}}
 
 /* ── Sheets (bottom drawer dialogs) ───────────────────────────────────── */
