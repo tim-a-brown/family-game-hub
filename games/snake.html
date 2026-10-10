@@ -339,7 +339,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (paused) { if (k === 'Enter') { e.preventDefault(); resumeGame(); } return; }
     if (map[k]) { e.preventDefault(); steer(map[k]); }
   });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
@@ -367,6 +367,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     Kit.sfx('tap');
     // Give a beat to get ready: the snake waits for a swipe again
     if (G && G.phase === 'play') { G.phase = 'wait'; }
+    wake();
   }
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
@@ -435,13 +436,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Loop ════════════════════════════════════════════════════════════════
   var raf = 0, lastT = 0;
   function loop(t) {
-    raf = requestAnimationFrame(loop);
+    raf = 0;
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) return;
     if (!paused) update(dt);
     if (hudDirty) updateHud();
     draw();
+    // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function update(dt) {
     G.t += dt;
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.vx *= 0.96; p.vy *= 0.96; p.vy += 6 * dt; p.x += p.vx * dt; p.y += p.vy * dt; return p.life > 0; });

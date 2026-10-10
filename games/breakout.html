@@ -529,7 +529,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (k === 'ArrowLeft' || k === 'a' || k === 'A') keys.l = false;
     if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.r = false;
   });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
@@ -554,6 +554,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     paused = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
+    wake();
   }
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
@@ -630,7 +631,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Loop ════════════════════════════════════════════════════════════════
   var raf = 0, lastT = 0, acc = 0, rt = 0;
   function loop(t) {
-    raf = requestAnimationFrame(loop);
+    raf = 0;
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) return;
     if (!paused) {
@@ -641,7 +642,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     if (hudDirty) updateHud();
     draw();
+    // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function update(dt) {
     // effects
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.shard) p.r += p.vr * dt; return p.life > 0; });
@@ -864,16 +868,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     power: function (t) { catchPower({ t: t, x: pad.x, y: PAD_Y }); },
     capsule: function (t) { caps.push({ t: t, x: pad.x, y: PAD_Y - 80, rot: 0 }); },
     killBalls: function () { balls.forEach(function (b) { b.y = FH + 40; b.stuck = false; b.vy = 300; }); },
-    autopilot: function (on) { window.__brkAuto = on; },
+    autopilot: function (on) { window.__brkAuto = on; if (on && !autoT) autoT = setInterval(autoTick, 16); else if (!on && autoT) { clearInterval(autoT); autoT = 0; } },
     level: function (n) { startLevel(n); }
   };
-  // Test autopilot: keep the paddle under the lowest falling ball
-  setInterval(function () {
+  // Test autopilot: keep the paddle under the lowest falling ball (the timer only runs while it is on)
+  var autoT = 0;
+  function autoTick() {
     if (!window.__brkAuto || !G || paused) return;
     var low = null; balls.forEach(function (b) { if (!b.stuck && b.vy > 0 && (!low || b.y > low.y)) low = b; });
     if (low) pad.tx = low.x + (Math.random() - 0.5) * padW() * 0.6;
     if (G.phase === 'serve') launch();
-  }, 16);
+  }
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
   var saved = loadSave();

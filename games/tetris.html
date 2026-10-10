@@ -184,7 +184,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function musicOn() { try { return localStorage.getItem('tetris_music') !== '0'; } catch (e) { return true; } }
   function musicPlaying() { return musicOn() && view === 'game' && G && !G.over && !paused && G.phase !== 'ready' && document.visibilityState === 'visible'; }
   function musicTick() {
-    if (!musicPlaying()) { music.next = null; return; }
+    if (!musicPlaying()) { music.next = null; clearInterval(music.timer); music.timer = 0; return; }
     var a = ac(); if (!a || a.state !== 'running') { music.next = null; return; }
     if (!music.gain) { music.gain = a.createGain(); music.gain.gain.value = 0.55; music.gain.connect(master); }
     var bpm = Math.min(200, 132 + (G.level - 1) * 5), stepDur = 30 / bpm;
@@ -205,7 +205,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     out.connect(g); g.connect(music.gain); n.start(t); n.stop(t + dur + 0.05);
   }
   function musicReset() { music.step = 0; music.next = null; }
-  music.timer = setInterval(musicTick, 40);
+  // Battery: the music clock only ticks while the music can play; the game loop starts it, musicTick stops it
+  function musicKick() { if (!music.timer && musicPlaying()) music.timer = setInterval(musicTick, 40); }
   function sHold() { osc('sine', 520, 0, 0.12, 0.06, { to: 300 }); noise(0, 0.06, 0.03, 'bandpass', 1600); }
   function sClear(n, tsp) {
     var base = [0, 72, 74, 76, 79][n];
@@ -637,7 +638,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     else if (e.key === 'ArrowRight') dasStop(1);
     else if (e.key === 'ArrowDown') softHeld.key = false;
   });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
@@ -663,6 +664,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
     if (G && G.phase === 'ready') { G.readyT = 0; }
+    wake();
   }
 
   // ═══ Game flow ═══════════════════════════════════════════════════════════
@@ -748,13 +750,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Main loop ═══════════════════════════════════════════════════════════
   var raf = 0, lastT = 0, rt = 0;
   function loop(t) {
-    raf = requestAnimationFrame(loop);
+    raf = 0;
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) return;
     if (!paused) { update(dt); rt += dt; }
     if (hudDirty) updateHud();
     draw();
+    musicKick();
+    // Battery: no frames while paused, once the game is over or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
   function update(dt) {
     // effects
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; return p.life > 0; });

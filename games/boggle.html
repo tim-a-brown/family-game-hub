@@ -259,7 +259,13 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     }, 200);
   }
   function stopTimer() { clearInterval(timerT); timerT = null; }
-  document.addEventListener('visibilitychange', function () { if (document.hidden && S) save(); });
+  var timerWasOn = false;
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && S) save();
+    // the timer skips hidden time anyway; stop ticking while hidden and pick up again when we are back
+    if (document.hidden) { timerWasOn = !!timerT; stopTimer(); }
+    else if (timerWasOn) { timerWasOn = false; if (S) startTimer(); }
+  });
   window.addEventListener('pagehide', function () { if (S) save(); });
   function fmt(t) { t = Math.ceil(t); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
   function glassSvg(f) {

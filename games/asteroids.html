@@ -361,7 +361,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (c === 'ShiftLeft' || c === 'ShiftRight' || c === 'ArrowDown' || c === 'KeyS') hyperspace();
   });
   document.addEventListener('keyup', function (e) { keys[e.code] = false; });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
   window.addEventListener('pagehide', function () { save(); });
 
@@ -388,6 +388,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     paused = false; welcome = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     ac(); Kit.sfx('tap');
+    wake();
     if (ufo) setUfoSound(ufo.big ? 'big' : 'small');
   }
 
@@ -940,7 +941,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   // ═══ Loop ═══════════════════════════════════════════════════════════════
   var raf = 0, lastT = 0, acc = 0;
   function loop(t) {
-    raf = requestAnimationFrame(loop);
+    raf = 0;
     pollSound();
     var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
     if (view !== 'game' || !G) return;
@@ -950,7 +951,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     if (hudDirty) updateHud();
     draw();
+    // Battery: no frames while paused, once the results card is up or with the page hidden (wake() restarts)
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
   }
+  function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Test hooks ═════════════════════════════════════════════════════════
   window.__ast = {
