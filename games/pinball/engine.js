@@ -514,7 +514,8 @@ export function createGame(def, opts = {}) {
     if (!G.waitPlunge || G.pulling) return false;
     G.pulling = true; G.pullT0 = G.time; G.pullDrag = 0; G.pull = 0; G.sfx('pull', { vol: 0.5, x: G.plunger ? G.plunger.x : W }); return true;
   };
-  G.pullEnd = function () { if (G.pulling) { G.pulling = false; launch(G.pull); } };
+  // a tap without a hold is a soft launch that still reaches the playfield (the skill shot)
+  G.pullEnd = function () { if (G.pulling) { G.pulling = false; launch(Math.max(G.pull, def.tapLaunch || 0.22)); } };
   G.setMagna = function (on) { G.input.magna = on; for (const c of G.compList) if (c.onMagna) c.onMagna(on); };
   G.fire = function () { for (const c of G.compList) if (c.onFire && c.onFire()) return true; return false; };
 

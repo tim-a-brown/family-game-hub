@@ -64,6 +64,32 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-magna{left:10px;bottom:calc(var(--safe-b) + 74px);}
 .pb-fire{right:10px;bottom:calc(var(--safe-b) + 74px);background:rgba(200,40,40,.7);display:none;}
 .pb-fire.show{display:grid;}
+/* arcade flipper buttons: concave cap in a coloured ring, sink and brighten when held */
+.pb-flip{position:absolute;z-index:3;bottom:calc(var(--safe-b) + 10px);width:68px;height:68px;border-radius:50%;border:0;padding:0;touch-action:none;-webkit-user-select:none;user-select:none;
+  background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.22),rgba(255,255,255,0) 60%),radial-gradient(circle at 50% 50%,#2a2636 0 58%,var(--c,#7fd4a4) 60% 70%,#141220 72%);
+  box-shadow:0 6px 0 #0a090e,0 10px 18px rgba(0,0,0,.6),inset 0 2px 6px rgba(255,255,255,.12),inset 0 -8px 10px rgba(0,0,0,.45);color:#fff;display:grid;place-items:center;transition:transform .06s,box-shadow .06s,filter .06s;}
+.pb-flip .ico{width:30px;height:30px;stroke-width:2.6;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
+.pb-flip.on{transform:translateY(5px);box-shadow:0 1px 0 #0a090e,0 4px 10px rgba(0,0,0,.6),inset 0 2px 6px rgba(255,255,255,.2),inset 0 -6px 10px rgba(0,0,0,.35);filter:brightness(1.35) saturate(1.2);}
+.pb-flipL{left:10px;}.pb-flipR{right:10px;}
+.pb-view.no-flipbtns .pb-flip{display:none;}
+.pb-magna{left:10px;bottom:calc(var(--safe-b) + 92px);}
+.pb-fire{right:10px;bottom:calc(var(--safe-b) + 92px);}
+.pb-view.no-flipbtns .pb-magna,.pb-view.no-flipbtns .pb-fire{bottom:calc(var(--safe-b) + 74px);}
+/* launch overlay: plunger rod + spring and a strength gauge, lower right, while a ball waits in the lane */
+.pb-launch{position:absolute;right:12px;bottom:calc(var(--safe-b) + 170px);z-index:3;width:112px;height:196px;pointer-events:none;opacity:0;transition:opacity .25s;display:none;--pull:0;}
+.pb-launch.show{display:block;opacity:.72;}
+.pb-launch.pulling{opacity:1;transition:opacity .1s;}
+.pb-launch .gauge{position:absolute;left:0;top:14px;width:22px;height:150px;border-radius:11px;background:rgba(12,10,18,.78);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22),0 4px 12px rgba(0,0,0,.5);overflow:hidden;}
+.pb-launch .gauge b{position:absolute;left:3px;right:3px;bottom:3px;height:calc((100% - 6px) * var(--pull));border-radius:8px;background:linear-gradient(to top,#7fd4a4,#ffd45a 55%,#ff5a3a);box-shadow:0 0 10px rgba(255,212,90,.6);}
+.pb-launch .gauge i{position:absolute;left:4px;right:4px;height:1px;background:rgba(255,255,255,.35);}
+.pb-launch .lbl{position:absolute;left:26px;font:900 .56rem/1 var(--font,system-ui);letter-spacing:.1em;color:rgba(255,255,255,.85);text-shadow:0 1px 2px #000;white-space:nowrap;}
+.pb-launch .lbl.top{top:10px;}.pb-launch .lbl.skill{top:118px;color:#ffd45a;}
+.pb-launch .pct{position:absolute;left:0;top:168px;width:22px;text-align:center;font:900 .62rem/1 var(--font,system-ui);color:#fff;text-shadow:0 1px 2px #000;}
+.pb-launch svg{position:absolute;left:34px;top:0;width:78px;height:196px;overflow:visible;}
+.pb-launch .rod{transform:translateY(calc(var(--pull) * 62px));}
+.pb-launch .spring{transform-origin:50% 60px;transform:scaleY(calc(1 + var(--pull) * 1.6));}
+.pb-launch .hint{position:absolute;left:30px;top:176px;font:800 .6rem/1.2 var(--font,system-ui);color:rgba(255,255,255,.9);text-shadow:0 1px 2px #000;white-space:nowrap;}
+.pb-launch.pulling .hint{display:none;}
 .pb-pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;background:rgba(6,4,14,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
 .pb-pause.show{display:flex;}
 .pb-pause .card{width:min(270px,82%);text-align:center;padding:22px 18px 16px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
@@ -122,13 +148,14 @@ Kit.init({
   menu: [
     { icon: 'board', label: 'Choose table', onClick: () => showSetup() },
     { icon: 'trophy', label: 'High scores', onClick: showHigh },
-    { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) }
+    { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) },
+    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); } }
   ],
   rules:
     '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
     '<h3>Controls</h3><ul>' +
-    '<li><b>Flippers:</b> touch the left half of the screen for the left flipper and the right half for the right flipper. Use both thumbs. Hold a flipper up to catch the ball and aim.</li>' +
-    '<li><b>Launch:</b> while the ball waits in the lane on the right, touch the right half and pull down. The further (or longer) you pull, the harder it goes. Let go to launch.</li>' +
+    '<li><b>Flippers:</b> hold the big buttons in the bottom corners (left and right), or touch the left or right half of the table. Use both thumbs. Hold a flipper up to catch the ball and aim. The game menu can hide the buttons.</li>' +
+    '<li><b>Launch:</b> while the ball waits in the lane, press and hold anywhere on the table: the plunger pulls back and the gauge fills, from a soft skill shot to full strength. Let go to launch. A quick tap is a soft launch; pulling your finger down also works.</li>' +
     '<li><b>Nudge:</b> tap NUDGE at the bottom to bump the table. Bump too often and you get a warning, then TILT: the flippers go dead and you lose that ball and its bonus.</li>' +
     '<li><b>Magnet:</b> tables with a Magna-Save have a MAGNET button. Hold it as the ball heads for that outlane: the magnet catches it, and letting go throws it back.</li>' +
     '<li><b>Keyboard:</b> Left/Right arrows or Z and / for the flippers, Space or Down to pull and launch (and to fire a cannon), Up or N to nudge, A for the magnet, P to pause.</li></ul>' +
@@ -205,7 +232,9 @@ function showSetup() {
 }
 
 // ═══ Play view ═══════════════════════════════════════════════════════════════
-let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, ro = null;
+let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, ro = null, launchEl = null;
+const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false };
+function btnsOn() { return lsGet('pinball_btns', '1') !== '0'; }
 function startGame(id, balls, who) {
   leaveGame();
   const r = getRenderer();
@@ -220,7 +249,28 @@ function startGame(id, balls, who) {
   const nudgeBtn = el('button', { type: 'button', class: 'pb-btn pb-nudge', 'aria-label': 'Nudge', html: Kit.icon('hand') + '<span>NUDGE</span>' });
   magBtn = el('button', { type: 'button', class: 'pb-btn pb-magna', 'aria-label': 'Magnet', html: Kit.icon('target') + '<span>MAGNET</span>' });
   fireBtn = el('button', { type: 'button', class: 'pb-btn pb-fire', 'aria-label': 'Fire', html: Kit.icon('bolt') + '<span>FIRE</span>' });
-  viewEl.append(nudgeBtn, magBtn, fireBtn);
+  // arcade flipper buttons (hold = up); the table colour rings them
+  flipBtn.L = el('button', { type: 'button', class: 'pb-flip pb-flipL', 'aria-label': 'Left flipper', html: Kit.icon('back') });
+  flipBtn.R = el('button', { type: 'button', class: 'pb-flip pb-flipR', 'aria-label': 'Right flipper', html: Kit.icon('right') });
+  viewEl.style.setProperty('--c', def.color || '#7fd4a4');
+  viewEl.classList.toggle('no-flipbtns', !btnsOn());
+  // launch overlay: the plunger pulled back on a spring and the strength gauge
+  launchEl = el('div', { class: 'pb-launch', 'aria-hidden': 'true', html:
+    '<div class="gauge"><i style="top:25%"></i><i style="top:50%"></i><i style="top:75%"></i><b></b></div>' +
+    '<span class="lbl top">FULL</span><span class="lbl skill">SKILL SHOT</span><span class="pct">0%</span>' +
+    '<svg viewBox="0 0 78 196"><defs><linearGradient id="pbChrome" x1="0" x2="1"><stop offset="0" stop-color="#5a5f6c"/><stop offset=".35" stop-color="#f4f6fa"/><stop offset=".6" stop-color="#9aa1ae"/><stop offset="1" stop-color="#454a55"/></linearGradient>' +
+    '<linearGradient id="pbKnob" x1="0" x2="1"><stop offset="0" stop-color="#6b1d1d"/><stop offset=".4" stop-color="#e84a4a"/><stop offset="1" stop-color="#5a1414"/></linearGradient></defs>' +
+    '<rect x="26" y="0" width="26" height="40" rx="3" fill="#1b1a22" stroke="rgba(255,255,255,.2)"/>' +
+    '<g class="spring"><path d="M39 40 l10 6 l-20 6 l20 6 l-20 6 l20 6 l-20 6 l20 6 l-20 6 l20 6 l-10 4" fill="none" stroke="url(#pbChrome)" stroke-width="3.2" stroke-linejoin="round"/></g>' +
+    '<g class="rod"><rect x="34" y="34" width="10" height="92" rx="2" fill="url(#pbChrome)"/><rect x="31" y="30" width="16" height="8" rx="2" fill="#222"/><ellipse cx="39" cy="140" rx="16" ry="14" fill="url(#pbKnob)" stroke="rgba(0,0,0,.6)"/><ellipse cx="34" cy="134" rx="5" ry="3" fill="rgba(255,255,255,.35)"/></g></svg>' +
+    '<span class="hint">HOLD TO PULL</span>' });
+  viewEl.append(nudgeBtn, magBtn, fireBtn, flipBtn.L, flipBtn.R, launchEl);
+  for (const side of ['L', 'R']) {
+    const b = flipBtn[side];
+    b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (!G || G.paused) return; audio().ctx(); try { b.setPointerCapture(e.pointerId); } catch (er) {} btnHeld[side] = true; b.classList.add('on'); syncFlips(); });
+    const rel = e => { if (!btnHeld[side]) return; btnHeld[side] = false; b.classList.remove('on'); syncFlips(); };
+    b.addEventListener('pointerup', rel); b.addEventListener('pointercancel', rel); b.addEventListener('lostpointercapture', rel);
+  }
   // the table's best score under the display, overtaken live by this game
   bestEl = el('div', { class: 'pb-best' }, [el('small', { text: 'BEST' }), el('b', { text: fmt(ArcadeHi.best('pinball_' + id)) })]);
   bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1;
@@ -265,14 +315,31 @@ function tickUI() {
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
   if (!G || view !== 'game' || G.paused || G.finished || document.hidden) return;
   if (fireBtn) fireBtn.classList.toggle('show', !!G.cannon);
+  launchUI();
   if (G.state !== 'over' && document.querySelector('.k-scrim')) { pauseGame(); return; }
   const bv = Math.max(bestBase, G.score || 0);
   if (bestEl && bv !== shownBest) { shownBest = bv; bestEl.lastChild.textContent = fmt(bv); }
   uiRaf = setTimeout(tickUI, 200);
 }
+// The launch overlay shows while a ball waits in the shooter lane and follows the pull (hold time or drag) at
+// animation rate only while pulling; it fades when the ball leaves the lane.
+let launchRaf = 0;
+function launchUI() {
+  if (launchRaf) { cancelAnimationFrame(launchRaf); launchRaf = 0; }
+  if (!launchEl || !G || view !== 'game') return;
+  const wait = G.waitPlunge && !G.paused && G.state !== 'over';
+  launchEl.classList.toggle('show', wait);
+  launchEl.classList.toggle('pulling', wait && G.pulling);
+  const pull = wait && G.pulling ? G.pull : 0;
+  launchEl.style.setProperty('--pull', pull.toFixed(3));
+  launchEl.querySelector('.pct').textContent = Math.round(pull * 100) + '%';
+  if (wait && G.pulling) launchRaf = requestAnimationFrame(launchUI);
+}
 function leaveGame() {
   view = 'none';
   if (uiRaf) { clearTimeout(uiRaf); uiRaf = 0; }
+  if (launchRaf) { cancelAnimationFrame(launchRaf); launchRaf = 0; }
+  btnHeld.L = btnHeld.R = false;
   if (G) { G.destroy(); G = null; }
   if (viewEl) viewEl.querySelectorAll('.pb-load').forEach(e => e.remove());
   root.classList.remove('pb-on');
@@ -283,20 +350,23 @@ function leaveGame() {
 // ═══ Input ═══════════════════════════════════════════════════════════════════
 const ptr = {};
 const keys = { L: false, R: false };
-function resetInput() { for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; }
+function resetInput() { for (const k in ptr) delete ptr[k]; keys.L = keys.R = false; btnHeld.L = btnHeld.R = false; if (flipBtn.L) { flipBtn.L.classList.remove('on'); flipBtn.R.classList.remove('on'); } }
 function syncFlips() {
   if (!G) return;
-  let L = keys.L, R = keys.R;
+  let L = keys.L || btnHeld.L, R = keys.R || btnHeld.R;
   for (const id in ptr) { if (ptr[id].role === 'L') L = true; if (ptr[id].role === 'R') R = true; }
   G.setFlip('L', L); G.setFlip('R', R);
 }
+// Touching the table: while a ball waits in the lane the WHOLE cabinet is the plunger (hold to pull, strength
+// builds with time or a pull-down drag, release to launch; a tap is a soft skill-shot launch). Otherwise the
+// left/right halves are the flippers. The buttons handle their own pointers and never reach here.
 app.addEventListener('pointerdown', e => {
   if (view !== 'game' || !G || G.paused) return;
-  if (e.target.closest && e.target.closest('.pb-pause, .pb-btn')) return;
+  if (e.target.closest && e.target.closest('.pb-pause, .pb-btn, .pb-flip')) return;
   e.preventDefault();
   audio().ctx();
   let role = e.clientX < window.innerWidth / 2 ? 'L' : 'R';
-  if (role === 'R' && G.waitPlunge) { role = 'P'; G.pullStart(); }
+  if (G.waitPlunge && !G.pulling) { role = 'P'; G.pullStart(); launchUI(); }
   const r = viewEl.getBoundingClientRect();
   ptr[e.pointerId] = { role, y0: e.clientY, h: r.height };
   try { app.setPointerCapture(e.pointerId); } catch (er) {}
@@ -309,7 +379,7 @@ app.addEventListener('pointermove', e => {
 function up(e) {
   const p = ptr[e.pointerId]; if (!p) return;
   delete ptr[e.pointerId];
-  if (p.role === 'P' && G) G.pullEnd();
+  if (p.role === 'P' && G) { G.pullEnd(); launchUI(); }
   syncFlips();
 }
 app.addEventListener('pointerup', up);
@@ -325,7 +395,7 @@ document.addEventListener('keydown', e => {
   audio().ctx();
   if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') { e.preventDefault(); keys.L = true; }
   else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') { e.preventDefault(); keys.R = true; }
-  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (!G.pullStart()) G.fire(); } }
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); if (!e.repeat) { if (G.pullStart()) launchUI(); else G.fire(); } }
   else if (k === 'ArrowUp' || k === 'n' || k === 'N') { e.preventDefault(); if (!e.repeat) G.nudge(); }
   else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') { e.preventDefault(); if (!e.repeat) G.setMagna(true); }
   else return;
@@ -336,7 +406,7 @@ document.addEventListener('keyup', e => {
   const k = e.key;
   if (k === 'ArrowLeft' || k === 'z' || k === 'Z' || e.code === 'ShiftLeft') keys.L = false;
   else if (k === 'ArrowRight' || k === '/' || e.code === 'ShiftRight') keys.R = false;
-  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') G.pullEnd();
+  else if (k === ' ' || k === 'ArrowDown' || k === 'Enter') { G.pullEnd(); launchUI(); }
   else if (k === 'a' || k === 'A' || e.code === 'ControlLeft') G.setMagna(false);
   syncFlips();
 });
