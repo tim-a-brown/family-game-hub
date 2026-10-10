@@ -108,12 +108,12 @@ function buildLeft(T) {
   const [bx0, by0, bx1, by1] = WELL_BOX;
   // ── Far-left lane (the port side): comes round the top, funnels into the left cannon's hole ──
   T.wall([[2, 640], [4, 612], [14, 594], [30, 582], [50, 576]], { style: 'wood', r: 4, h: 34 });   // the lane's foot curves inward
-  T.post(52, 576, { style: 'rubber', r: 5 });
   T.wall([[62, 700], [62, by0], [bx0, by0]], { style: 'metal', h: 26 });            // lane's inner guide
   T.post(62, 697, { style: 'rubber', r: 5 });
   const canL = T.cannon({ id: 'cannonL', x: 26, y: 604, load: [CANL[0], CANL[1], 14], rest: 30, min: 14, max: 58, power: 2900, barrel: 44, autoFire: 7, barrelMat: 'brass' });
   canL.z0 = 44; canL.sens.on = false;                                              // the hole is live only when lit; the turret sits on a pedestal over it
   T.kickback({ id: 'kickback', x: 28, y: 205, power: 2300, label: 'THRUSTER', color: PAL.cyan });
+  T.kickback({ id: 'kickbackR', x: 458, y: 205, power: 2300, label: 'THRUSTER', color: PAL.cyan });
   // ── The Gravity Well block: a housing on the main floor; the vertical field sits on top ──
   // the housing's top follows the arch so no pocket is left above it
   const foot = [[bx0, by0], [bx1, by0], [bx1, 992], [bx0, 890]];
@@ -158,7 +158,7 @@ function buildRight(T) {
   T.hole(455, 930, 18);
   canR.sens = T.world.sensor({ kind: 'circle', x: 455, y: 930, r: 13, on: false, id: 'cannonR', owner: canR });
   // ── Mission Control scoop (right of centre), hooded, kicks out towards the left flipper ──
-  T.scoop({ id: 'mission', x: SCOOP[0], y: SCOOP[1], r: 12, eject: { angle: 238, speed: 1500 }, hold: 1.0 });
+  T.scoop({ id: 'mission', x: SCOOP[0], y: SCOOP[1], r: 12, eject: { angle: 232, speed: 1450 }, hold: 1.0 });
   // ── The Warp Loop ──
   makeWarpLoop(T);
   T.post(378, 636, { style: 'rubber', r: 5 }); T.post(424, 630, { style: 'rubber', r: 5 });
@@ -226,7 +226,7 @@ function buildCentre(T) {
   T.hole(TPOUT[0], TPOUT[1], 0.1);
   // ── Clear tube ramp: up the centre, over the mothership, across to the right and down to the right inlane ──
   T.ramp({ id: 'tube', style: 'tube', w: 40, tubeR: 17.5, color: '#dff6ff', opacity: 0.2, exitLvl: 'main', entryMin: 170, minExit: 320, supports: false,
-    pts: [[262, 612, 0], [266, 648, 6], [276, 696, 30], [296, 742, 54], [328, 764, 66], [372, 752, 70], [410, 722, 70], [446, 692, 66], [462, 640, 58], [464, 570, 48], [454, 460, 32], [446, 400, 16], [441, 360, 5], [440, 344, 2]], exitDamp: 0.75 });
+    pts: [[262, 612, 0], [266, 648, 6], [276, 696, 30], [296, 742, 54], [328, 764, 66], [372, 752, 70], [410, 722, 70], [446, 692, 66], [462, 640, 58], [464, 570, 48], [454, 460, 32], [446, 400, 16], [437, 362, 6], [430, 344, 2]], exitDamp: 0.8 });
   T.post(238, 616, { style: 'rubber', r: 5 }); T.post(288, 614, { style: 'rubber', r: 5 });
   // ── The flying saucer: a shaking toy at the top of the arch; balls coming round the top hit it ──
   T.shakingToy({ id: 'saucer', x: SAUCER[0], y: SAUCER[1], r: 30, model: saucerModel });
@@ -312,13 +312,13 @@ function mergeGeos(list) {
 // ── The flying saucer: a chrome hull with a glass dome, a ring of running lights and a thruster glow ──
 function saucerModel(RC, toy) {
   const g = new THREE.Group(), chrome = RC.mats.chrome(), dark = RC.mats.plastic('#1a2236', { roughness: 0.4, clearcoat: 0.8 });
-  const hull = mesh(latheGeo(0, 0, [[0, 6], [16, 6], [28, 10], [34, 16], [30, 21], [20, 24], [12, 26], [0, 26]], 36), chrome); g.add(hull);
-  const under = mesh(latheGeo(0, 0, [[0, 4], [14, 2], [26, 6], [33, 15]], 36), dark); g.add(under);
+  const hull = mesh(latheGeo(0, 0, [[0, 6], [18, 6], [31, 10], [38, 16], [34, 21], [22, 24], [13, 26], [0, 26]], 40), chrome); g.add(hull);
+  const under = mesh(latheGeo(0, 0, [[0, 4], [15, 2], [29, 6], [37, 15]], 40), dark); g.add(under);
   const dome = new THREE.Mesh(new THREE.SphereGeometry(12, 24, 14, 0, TAU, 0, PI / 2), RC.mats.clear('#bff6ff', 0.35, { depthWrite: false })); dome.position.z = 25; dome.renderOrder = 4; g.add(dome);
   const pilot = mesh(new THREE.SphereGeometry(4.5, 12, 8), RC.mats.plastic('#5dffb0', { roughness: 0.5 })); pilot.position.z = 28; g.add(pilot);
   const eyes = mesh(new THREE.SphereGeometry(1.4, 8, 6), RC.mats.plastic('#111')); eyes.position.set(-1.6, -3.6, 29.5); g.add(eyes); const eye2 = eyes.clone(); eye2.position.x = 1.6; g.add(eye2);
   const lightMat = new THREE.MeshStandardMaterial({ color: '#223', emissive: PAL.cyan, emissiveIntensity: 1 }), lg = [];
-  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; lg.push(sphereGeo(Math.cos(a) * 31, Math.sin(a) * 31, 17, 2, 10)); }
+  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; lg.push(sphereGeo(Math.cos(a) * 35, Math.sin(a) * 35, 17, 2.2, 10)); }
   const lights = new THREE.Mesh(mergeGeos(lg), lightMat); g.add(lights);
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), RC.mats.glow('#8ad8ff')); glow.position.z = 2; glow.renderOrder = 3; g.add(glow);
   const legs = []; for (let i = 0; i < 3; i++) { const a = i / 3 * TAU + 0.5; legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 1.2, 0, 8, 8)); legs.push(cylGeo(Math.cos(a) * 24, Math.sin(a) * 24, 4, 0, 1.2, 10)); }
@@ -337,21 +337,25 @@ function saucerModel(RC, toy) {
 // ── The mothership: a hull hovering over the drop targets, engines lit, a bridge that scans with the ball ──
 function mothershipModel(RC) {
   const g = new THREE.Group(); g.position.set(SHIP[0], SHIP[1] + 24, 0);
-  const hullM = new THREE.MeshStandardMaterial({ color: '#b8c4d8', metalness: 0.85, roughness: 0.38 }), darkM = RC.mats.plastic('#121a2e', { roughness: 0.45 });
-  const parts = [];
-  const body = new THREE.CapsuleGeometry(14, 100, 6, 16); body.rotateZ(PI / 2); body.translate(0, 6, 58); parts.push(body);
-  const wing = new THREE.BoxGeometry(180, 36, 4); wing.translate(0, 10, 50); parts.push(wing);
-  for (const x of [-70, 70]) { const pod = new THREE.CapsuleGeometry(9, 40, 6, 12); pod.rotateX(PI / 2); pod.translate(x, 6, 54); parts.push(pod); }
-  const fin = new THREE.BoxGeometry(4, 30, 26); fin.translate(0, 20, 72); parts.push(fin);
+  const hullM = new THREE.MeshStandardMaterial({ color: '#8f9db4', metalness: 0.9, roughness: 0.3 }), darkM = RC.mats.plastic('#0e1526', { roughness: 0.35, clearcoat: 0.9 });
+  // a swept delta wing (bevelled extrusion), a long spine with a raised bridge, two engine nacelles
+  const wingS = new THREE.Shape(); wingS.moveTo(0, -42); wingS.lineTo(94, 16); wingS.lineTo(84, 30); wingS.lineTo(30, 22); wingS.lineTo(0, 26); wingS.lineTo(-30, 22); wingS.lineTo(-84, 30); wingS.lineTo(-94, 16); wingS.closePath();
+  const wing = new THREE.ExtrudeGeometry(wingS, { depth: 6, bevelEnabled: true, bevelThickness: 2.5, bevelSize: 3, bevelSegments: 3 }); wing.translate(0, 0, 48);
+  const spine = new THREE.CapsuleGeometry(10, 84, 6, 16); spine.rotateX(PI / 2); spine.translate(0, -2, 58);
+  const parts = [wing, spine];
+  for (const x of [-56, 56]) { const nac = new THREE.CapsuleGeometry(7, 34, 6, 12); nac.rotateX(PI / 2); nac.translate(x, 12, 56); parts.push(nac); }
   g.add(mesh(mergeGeos(parts), hullM));
-  const plates = []; for (let i = -3; i <= 3; i++) { const p = new THREE.BoxGeometry(18, 24, 1.2); p.translate(i * 24, 12, 52.5); plates.push(p); }
+  // dark panels inset into the wing, and a glossy black canopy strip down the spine
+  const plates = []; for (let i = -3; i <= 3; i++) { if (!i) continue; const p = new THREE.BoxGeometry(14, 10, 1.2); p.translate(i * 22, 6 + Math.abs(i) * 2, 55.5); plates.push(p); }
+  const strip = new THREE.BoxGeometry(5, 60, 1.2); strip.translate(0, -6, 68.4); plates.push(strip);
   g.add(mesh(mergeGeos(plates), darkM));
+  const under = new THREE.Mesh(new THREE.PlaneGeometry(190, 80), RC.mats.glow(PAL.cyan)); under.position.set(0, 4, 30); under.renderOrder = 3; g.add(under); under.material.opacity = 0.35;
   const engM = new THREE.MeshStandardMaterial({ color: '#102030', emissive: PAL.cyan, emissiveIntensity: 1.5 });
-  const engines = [-70, 70].map(x => { const e = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 3, 16), engM); e.rotation.x = PI / 2; e.position.set(x, 30, 54); g.add(e); return e; });
-  const bridge = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), RC.mats.clear('#9ad8ff', 0.5, { depthWrite: false })); bridge.position.set(0, -14, 66); bridge.renderOrder = 4; g.add(bridge);
+  g.add(new THREE.Mesh(mergeGeos([-56, 56].map(x => cylGeo(x, 32, 5.5, 54, 57, 16))), engM));
+  const bridge = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), RC.mats.clear('#9ad8ff', 0.5, { depthWrite: false })); bridge.position.set(0, -28, 64); bridge.scale.set(1, 1.6, 0.7); bridge.renderOrder = 4; g.add(bridge);
   const beam = new THREE.Mesh(new THREE.PlaneGeometry(26, 60), RC.mats.glow(PAL.red)); beam.position.set(0, -34, 20); beam.rotation.x = PI / 2 - 0.3; beam.renderOrder = 6; g.add(beam);
   const lampsM = new THREE.MeshStandardMaterial({ color: '#222', emissive: PAL.red, emissiveIntensity: 1 });
-  g.add(new THREE.Mesh(mergeGeos([-84, -40, 40, 84].map(x => sphereGeo(x, 28, 50, 1.8, 8))), lampsM));
+  g.add(new THREE.Mesh(mergeGeos([-90, -36, 36, 90].map(x => sphereGeo(x, 18 + Math.abs(x) * 0.06, 52, 1.8, 8))), lampsM));
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   RC.anim.push((dt, t) => {
     const G = RC.G, B = G.b || {}, bank = G.comps.ship, down = bank ? bank.targets.filter(x => !x.up).length : 0;
@@ -444,12 +448,12 @@ function makeRules() {
     init(G) {
       G.b = { lk: [0, 0, 0], lockLit: false, locks: 0, warpMB: false, jpLit: {}, jp: 0, superLit: false,
         warps: 0, warpOn: 0, warpSpeed: 0, bestSpeed: 0, laps: 0, visited: [0, 0, 0, 0], planetLit: -1, planetOn: null, planetIdx: -1, planetShots: 0,
-        saucerHits: 0, saucerMode: false, saucerJp: 40000, saucerDone: false, cannonLit: { L: false, R: false }, cannonBall: null, fireT: -9, loadT: -9, flipT: { L: -9, R: -9 },
+        saucerHits: 0, saucerMode: false, saucerJp: 40000, saucerDone: false, cannonLit: { L: false, R: false }, cannonBall: 0, fireT: -9, loadT: -9, flipT: { L: -9, R: -9 },
         am: [0, 0], amLit: false, amOn: false, tps: 0, orbits: 0, ehLit: false, eh: false, ehDone: 0, saidT: -9, chatT: 12, wellBalls: 0 };
       G.say(pick(LINES.start));
     },
     say(G, k, force) { if (G.time - G.b.saidT < 3.5 && !force) return; if (G.say(pick(LINES[k]), { force })) G.b.saidT = G.time; },
-    ballStart(G) { const B = G.b; B.warpOn = 0; B.warpSpeed = 0; B.laps = 0; B.cannonBall = null; G.comp('kickback').arm(); R.syncCannons(G); },
+    ballStart(G) { const B = G.b; B.warpOn = 0; B.warpSpeed = 0; B.laps = 0; B.cannonBall = 0; G.comp('kickback').arm(); G.comp('kickbackR').arm(); R.syncCannons(G); },
     ballEnd(G) {
       const B = G.b; B.warpMB = false; B.jpLit = {}; B.superLit = false; B.saucerMode = false; B.planetOn = null; B.amOn = false; B.eh = false; B.warpOn = 0;
       G.comp('ship').hold = false; if (!G.tilted) R.say(G, 'drain');
@@ -466,17 +470,18 @@ function makeRules() {
     event(G, type, id, b, d) {
       const B = G.b;
       switch (type) {
-        case 'pop': G.cnt('ast'); if (B.planetOn === 'CINDER') R.planetShot(G, 5000, 'ASTEROID'); if (B.eh) G.add(2500); break;
-        case 'sling': break;
+        case 'pop': G.cnt('ast'); G.add(1500); if (B.planetOn === 'CINDER') R.planetShot(G, 5000, 'ASTEROID'); if (B.eh) G.add(2500); break;
+        case 'sling': G.add(200); break;
         case 'lane':
           if (id === 'laneWarp') { G.add(3000); if (B.eh) G.add(10000); }
           if (id === 'laneSkill') { G.add(2000); }
           break;
         case 'target':
+          G.add(2000);
           if (/^lk\d$/.test(id)) { const i = +id[2]; if (!B.lk[i]) { B.lk[i] = 1; G.pulse('lkl' + i, 0.4); G.sfx('beep', { vol: 0.35, rate: 1 + i * 0.12 }); } if (B.lk.every(Boolean) && !B.lockLit) { B.lk = [0, 0, 0]; B.lockLit = true; G.msg('W-E-LL', 'LOCK IS LIT AT THE WELL', { anim: 'well' }); G.sfx('award'); } else if (!B.lockLit) G.msg('W-E-LL', B.lk.filter(Boolean).length + ' OF 3', { dur: 1 }); }
           else if (/^am\d$/.test(id)) { const i = +id[2]; B.am[i] = 1; G.pulse('aml' + i, 0.4); if (B.am.every(Boolean) && !B.amLit && !B.amOn) { B.am = [0, 0]; B.amLit = true; G.msg('ANTIMATTER', 'LIT AT MISSION CONTROL', {}); G.sfx('award'); } }
           break;
-        case 'drop': G.pulse('arrShip', 0.3); R.cannonCheck(G, b, 'MOTHERSHIP'); if (B.warpMB) R.jp(G, 'ship'); break;
+        case 'drop': G.pulse('arrShip', 0.3); G.add(2000); R.cannonCheck(G, b, 'MOTHERSHIP'); if (B.warpMB) R.jp(G, 'ship'); break;
         case 'bank':
           G.cnt('ship');
           if (B.planetOn === 'CINDER') R.planetShot(G, 50000, 'MOTHERSHIP DOWN');
@@ -485,16 +490,16 @@ function makeRules() {
           else { G.add(25000); G.msg('MOTHERSHIP', '25,000 + 15,000', {}); }
           break;
         case 'ramp':
-          if (id === 'gravity') { G.combo('gravity'); G.cnt('well'); if (B.planetOn === 'VEIL') R.planetShot(G, 25000, 'INTO THE WELL'); else if (!R.jp(G, 'gravity')) G.msg('GRAVITY WELL', 'TAP THE FLIPPERS TO CLIMB', { anim: 'well', dur: 1.4 }); R.say(G, 'well'); }
+          if (id === 'gravity') { G.combo('gravity'); G.cnt('well'); G.add(10000); if (B.planetOn === 'VEIL') R.planetShot(G, 25000, 'INTO THE WELL'); else if (!R.jp(G, 'gravity')) G.msg('GRAVITY WELL', 'TAP THE FLIPPERS TO CLIMB', { anim: 'well', dur: 1.4 }); R.say(G, 'well'); }
           if (id === 'tube') { G.combo('tube'); G.cnt('tube'); G.add(5000); if (B.planetOn === 'FROST') R.planetShot(G, 30000, 'ICE TUBE'); else if (!R.jp(G, 'tube')) G.msg('THE TUBE', fmt(10000 * G.mult), {}); }
           break;
         case 'rampEnter': if (id === 'warp') { B.warpOn = 1; B.laps = 0; G.sfx('coil', { vol: 0.4, rate: 0.8 }); } break;
         case 'rampFail': if (id === 'warp') { B.warpOn = 0; G.msg('NOT ENOUGH SPEED', '', { dur: 0.9 }); } break;
         case 'superLap': B.laps = d.lap; B.warpSpeed = d.speed; G.add(5000 * d.lap); G.msg('WARP ' + R.wf(d.speed), 'LAP ' + d.lap, { anim: 'warp', dur: 0.9, now: true }); G.sfx('coil', { vol: 0.5, rate: 1 + d.lap * 0.2 }); if (d.lap === 1) R.say(G, 'warp'); break;
         case 'supercharger': R.warpDone(G, b, d); break;
-        case 'orbit': G.combo('orbit'); B.orbits++; G.cnt('orb2'); if (B.planetOn === 'HALO') R.planetShot(G, 20000, 'ORBIT'); else if (!R.jp(G, 'orbit')) G.msg('ORBIT', fmt(G.add(5000)), {}); if (B.orbits % 2 === 0 && !B.cannonLit.R) R.lightCannon(G, 'R'); break;
+        case 'orbit': G.combo('orbit'); B.orbits++; G.cnt('orb2'); if (B.planetOn === 'HALO') R.planetShot(G, 20000, 'ORBIT'); else if (!R.jp(G, 'orbit')) G.msg('ORBIT', fmt(G.add(7000)), {}); if (B.orbits % 2 === 0 && !B.cannonLit.R) R.lightCannon(G, 'R'); break;
         case 'subway':
-          if (id === 'tpIn') { G.cnt('tp'); B.tps++; G.combo('teleport'); G.add(7500); G.msg('TELEPORT', 'ENERGISING', { anim: 'teleport', dur: 1.1, now: true }); G.sfx('teleport', { vol: 0.8 }); R.say(G, 'tp');
+          if (id === 'tpIn') { G.cnt('tp'); B.tps++; G.combo('teleport'); G.add(10000); G.msg('TELEPORT', 'ENERGISING', { anim: 'teleport', dur: 1.1, now: true }); G.sfx('teleport', { vol: 0.8 }); R.say(G, 'tp');
             if (G.ebLit) G.collectExtra(); if (B.planetOn === 'FROST') R.planetShot(G, 30000, 'TELEPORT'); else R.jp(G, 'teleport'); if (B.tps % 3 === 0 && !B.cannonLit.L) R.lightCannon(G, 'L'); }
           if (id === 'wellTop') { G.cnt('escape'); if (B.lockLit && G.comp('warpLock').count() < 3) { /* lock follows */ } else { G.add(25000); G.msg('WELL ESCAPE', fmt(25000 * G.mult), {}); if (B.planetOn === 'VEIL') R.planetShot(G, 75000, 'WELL ESCAPE'); else R.jp(G, 'well'); } }
           break;
@@ -509,7 +514,7 @@ function makeRules() {
         }
         case 'scoop': if (id === 'mission') R.mission(G, b); break;
         case 'cannonLoad': B.loadT = G.time; G.cnt('cannon'); G.msg('CANNON LOADED', 'STEER WITH THE FLIPPERS, LET GO TO FIRE', { anim: 'cannon', dur: 2.5 }); R.say(G, 'cannon'); B.cannonLit[id === 'cannonL' ? 'L' : 'R'] = false; R.syncCannons(G); break;
-        case 'cannonFire': B.cannonBall = b; B.fireT = G.time; G.add(5000); G.flash(PAL.amber, 0.3); break;
+        case 'cannonFire': B.cannonBall = b ? b.id : 0; B.fireT = G.time; G.add(5000); G.flash(PAL.amber, 0.3); break;
         case 'toy': if (id === 'saucer') R.saucerHit(G, b); break;
         case 'kickback': G.msg('THRUSTER', 'BALL RECOVERED', { style: 'flash', dur: 1 }); G.sfx('vuk', { vol: 0.5 }); break;
       }
@@ -545,7 +550,7 @@ function rulesPart2(R, LINES, pick) {
     lightCannon(G, side) { const B = G.b; B.cannonLit[side] = true; R.syncCannons(G); G.msg((side === 'L' ? 'PORT' : 'STARBOARD') + ' CANNON', side === 'L' ? 'SHOOT THE PORT LANE' : 'SHOOT THE ORBIT', { anim: 'cannon' }); G.sfx('beep', { vol: 0.4, rate: 0.8 }); },
     syncCannons(G) { const B = G.b, cl = G.comp('cannonL'), cr = G.comp('cannonR'); cl.sens.on = B.cannonLit.L && !cl.ball; cr.sens.on = B.cannonLit.R && !cr.ball; },
     cannonCheck(G, b, what) {
-      const B = G.b; if (!b || b !== B.cannonBall || G.time - B.fireT > 3) return; B.cannonBall = null; G.cnt('direct');
+      const B = G.b; if (!b || b.id !== B.cannonBall || G.time - B.fireT > 3) return; B.cannonBall = 0; G.cnt('direct');
       G.jackpot(50000, 'DIRECT HIT', { color: PAL.amber, sound: 'award' }); R.say(G, 'hit'); if (G.T.R) G.T.R.burst(b.x, b.y, 20, 30, 600, PAL.amber);
     },
     mission(G, b) {
@@ -554,8 +559,8 @@ function rulesPart2(R, LINES, pick) {
       if (G.ebLit) { G.collectExtra(); R.say(G, 'extra', true); return; }
       if (B.amLit && !B.amOn && !G.mb) { B.amLit = false; R.startAM(G, b, sc); return; }
       if (B.planetLit >= 0 && !B.planetOn && !G.mb) { const i = B.planetLit; B.planetLit = -1; sc.holdT = 2.4; R.startPlanet(G, i); return; }
-      const aw = ['BONUS UP', '25,000', 'BALL SAVE', 'LIGHT PORT CANNON', 'LIGHT STARBOARD CANNON'][Math.floor(Math.random() * 5)];
-      if (aw === 'BONUS UP') G.bxUp(); else if (aw === 'BALL SAVE') G.ballSave(10); else if (aw === 'LIGHT PORT CANNON') R.lightCannon(G, 'L'); else if (aw === 'LIGHT STARBOARD CANNON') R.lightCannon(G, 'R'); else G.add(25000);
+      const aw = ['BONUS UP', '25,000', 'BALL SAVE', 'LIGHT PORT CANNON', 'LIGHT STARBOARD CANNON', 'THRUSTERS ARMED'][Math.floor(Math.random() * 6)];
+      if (aw === 'BONUS UP') G.bxUp(); else if (aw === 'BALL SAVE') G.ballSave(10); else if (aw === 'THRUSTERS ARMED') { G.comp('kickback').arm(); G.comp('kickbackR').arm(); } else if (aw === 'LIGHT PORT CANNON') R.lightCannon(G, 'L'); else if (aw === 'LIGHT STARBOARD CANNON') R.lightCannon(G, 'R'); else G.add(25000);
       G.msg('MISSION CONTROL', aw, { anim: 'planet' }); G.sfx('beep', { vol: 0.5 });
     },
     startPlanet(G, i) {
@@ -572,7 +577,7 @@ function rulesPart2(R, LINES, pick) {
       const B = G.b; G.cnt('saucer'); R.cannonCheck(G, b, 'SAUCER');
       if (B.saucerMode) { B.saucerJp += 10000; G.jackpot(B.saucerJp, 'SAUCER HIT', { color: PAL.green, sound: 'award' }); G.comp('saucer').shake(1.2); return; }
       if (B.eh) { G.jackpot(75000, 'HORIZON JACKPOT', { color: PAL.violet }); return; }
-      B.saucerHits++; G.add(5000); G.sfx('saucerHit', { vol: 0.8, x: 300 });
+      B.saucerHits++; G.add(7500); G.sfx('saucerHit', { vol: 0.8, x: 300 });
       if (B.saucerHits >= 6 && !G.mb && !B.planetOn) { B.saucerHits = 0; R.startSaucer(G); }
       else { G.msg('SAUCER', Math.max(0, 6 - B.saucerHits) + ' MORE FOR SAUCER ATTACK', { anim: 'saucer', dur: 1.2 }); if (B.saucerHits === 1) R.say(G, 'saucer'); }
     },
@@ -639,7 +644,7 @@ function rulesPart2(R, LINES, pick) {
       const inWell = G.world.balls.some(b => b.lvl === 'well'); for (let i = 0; i < 5; i++) { const v = inWell ? (((t * 3 - i / 5) % 1 + 1) % 1 < 0.3 ? 1 : 0.1) : 0.12; L['wbL' + i] = v; L['wbR' + i] = v; }
       for (let i = 0; i < 8; i++) L['gi' + i] = 1;
       L.flShip = (B.planetLit >= 0 || B.eh) && (t % 1.6) < 0.1 ? 1 : 0; L.flL = B.lockLit && (t % 2) < 0.1 ? 1 : 0; L.flR = B.saucerMode && (t % 0.7) < 0.08 ? 1 : 0; L.flWell = inWell && (t % 0.5) < 0.1 ? 1 : 0;
-      L.pop1 = L.pop2 = L.pop3 = B.planetOn === 'CINDER' || B.eh ? 'blink' : 0.15; L.kickback = G.comp('kickback').armed ? 1 : 0;
+      L.pop1 = L.pop2 = L.pop3 = B.planetOn === 'CINDER' || B.eh ? 'blink' : 0.15; L.kickback = G.comp('kickback').armed ? 1 : 0; L.kickbackR = G.comp('kickbackR').armed ? 1 : 0;
       return L;
     },
     status(G) {
