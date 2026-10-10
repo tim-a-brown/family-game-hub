@@ -266,6 +266,16 @@ var Cards = (function () {
     '.spad .goal{padding:8px 14px;font-family:var(--hand);font-size:1.05rem;color:#6a6a80;text-align:center;}',
     '.spad-empty{padding:26px 16px;text-align:center;font-family:var(--hand);font-size:1.25rem;color:#8a8796;}',
     '.spad-acts{display:flex;gap:10px;margin-top:14px;}',
+    '.spad-acts .btn-lg{flex:1;white-space:nowrap;}',
+    '.spad tbody tr.open,.spad tbody tr.mods{cursor:default;background:rgba(255,220,60,.1);}',
+    '.spad tbody tr.open:active,.spad tbody tr.mods:active{background:rgba(255,220,60,.1);}',
+    '.spad tbody tr.open th.rn{color:#b8860b;}',
+    '.spad tr.open td{height:auto;padding:4px 2px 2px;vertical-align:top;}',
+    '.spad td input.cell{display:block;width:100%;height:40px;margin:0;padding:0 2px;border:0;border-bottom:2px dashed rgba(60,80,160,.4);border-radius:0;background:transparent;font:inherit;font-size:1.35rem;color:var(--ink);text-align:center;outline:0;-webkit-appearance:none;}',
+    '.spad td input.cell:focus{border-bottom-color:#c8102e;background:rgba(255,255,255,.55);}',
+    '.spad td input.cell:disabled{opacity:.3;}',
+    '.spad td input.cell::placeholder{color:rgba(106,106,128,.45);}',
+    '.spad tfoot td.pend{color:#8a8796;}',
     '.spad-acts .btn:first-child{flex:1;}',
     // Short landscape screens: keep Add round reachable without scrolling for every entry
     '@media (orientation:landscape) and (max-height:820px){.spad-acts{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}}',
@@ -356,21 +366,38 @@ function Scorepad(host, o) {
       tr.addEventListener('click', function () { editRound(ri); });
       tb.appendChild(tr);
     });
+    // o.entryRows(ctx): the game scores the next round right on the sheet (open rows under the last round);
+    // it calls pad.add(scores, extra) from o.onLock. ctx.pending([pts]) previews the totals while typing.
+    var footCells = [], ectx = null;
+    if (o.entryRows && !S.over) {
+      ectx = {
+        round: S.rounds.length + 1, sides: S.sides, totals: t.slice(),
+        pending: function (arr) {
+          var tt = t.map(function (v, i) { return v + (Number(arr && arr[i]) || 0); }), ld = o.winner ? o.winner(tt, S.rounds) : leader(tt);
+          footCells.forEach(function (td, i) { td.textContent = String(tt[i]); td.className = (i === ld && tt[i] !== t[i] ? 'lead' : i === ld && !arr ? 'lead' : '') + (tt[i] < 0 ? ' neg' : '') + (tt[i] !== t[i] ? ' pend' : ''); });
+        }
+      };
+      (o.entryRows(ectx) || []).forEach(function (r) { tb.appendChild(r); });
+    }
     tbl.appendChild(tb);
-    if (S.rounds.length) {
+    if (S.rounds.length || ectx) {
       var fr = el('tr', null, [el('th', { class: 'rn', text: 'TOTAL' })]);
-      t.forEach(function (v, i) { fr.appendChild(el('td', { class: (i === lead ? 'lead' : '') + (v < 0 ? ' neg' : ''), text: String(v) })); });
+      t.forEach(function (v, i) { var td = el('td', { class: (i === lead ? 'lead' : '') + (v < 0 ? ' neg' : ''), text: String(v) }); footCells.push(td); fr.appendChild(td); });
       tbl.appendChild(el('tfoot', null, [fr]));
     }
     pad.appendChild(tbl);
-    if (!S.rounds.length) pad.appendChild(el('div', { class: 'spad-empty', text: o.noAdd ? 'The scores land here after the first round.' : 'Play a hand at the table, then tap Add round.' }));
+    if (!S.rounds.length && !ectx) pad.appendChild(el('div', { class: 'spad-empty', text: o.noAdd ? 'The scores land here after the first round.' : 'Play a hand at the table, then tap Add round.' }));
     if (o.goal) pad.appendChild(el('div', { class: 'goal', text: o.goal }));
     host.appendChild(pad);
     var acts = el('div', { class: 'spad-acts' });
     // o.noAdd: the game has its own entry panel and calls pad.add(scores, extra) itself
-    if (!S.over) { if (!o.noAdd) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>Add round ' + (S.rounds.length + 1) + '</span>', onclick: function () { addRound(); } })); }
+    if (!S.over) {
+      if (ectx) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('check') + '<span>' + (o.lockLabel || 'Lock round') + ' ' + ectx.round + '</span>', onclick: function () { if (o.onLock) o.onLock(); } }));
+      else if (!o.noAdd) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>Add round ' + (S.rounds.length + 1) + '</span>', onclick: function () { addRound(); } }));
+    }
     else acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('sparkle') + '<span>New game</span>', onclick: function () { reset(); } }));
     if (acts.childNodes.length) host.appendChild(acts);
+    if (ectx && o.afterRender) o.afterRender(ectx);
   }
   function pushRound(scores, extra) {
     extra = extra || {};

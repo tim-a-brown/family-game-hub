@@ -13,42 +13,21 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* ── The round entry panel: every player on one page ── */
-.f7e{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 10px 12px;margin-bottom:14px;}
-.f7e-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:2px 4px 8px;}
-.f7e-h b{font-family:var(--display);font-weight:400;font-size:1.25rem;letter-spacing:.02em;}
-.f7e-h small{font-size:.74rem;font-weight:700;color:var(--text-3);}
-.f7r{display:grid;grid-template-columns:28px minmax(0,1fr) 58px 38px 38px 46px 42px;align-items:center;gap:5px;min-height:52px;padding:4px 2px;border-top:1px solid var(--line);}
-.f7r:first-of-type{border-top:0;}
-.f7r .who{min-width:0;display:flex;flex-direction:column;line-height:1.15;}
-.f7r .who .nm{font-weight:800;font-size:.86rem;line-height:1.05;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;}
-.f7r .who .tot{font-size:.72rem;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;}
-.f7r .who .tot b{color:var(--text-2);}
-.f7r input.num{width:100%;height:44px;margin:0;padding:0 4px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);color:var(--text);font:inherit;font-weight:800;font-size:1.1rem;text-align:center;font-variant-numeric:tabular-nums;outline:0;-webkit-appearance:none;}
-.f7r input.num:focus{border-color:#ff8a00;box-shadow:0 0 0 3px rgba(255,138,0,.2);}
-.f7r input.num::placeholder{color:var(--text-3);font-weight:600;}
-.f7r input.num:disabled{opacity:.3;}
-.f7r .tb{height:44px;min-width:38px;padding:0;border:0;border-radius:12px;background:var(--surface-3);color:var(--text-2);font-weight:900;font-size:.8rem;line-height:1;transition:transform .15s var(--spring),background .15s;}
-.f7r .tb:active{transform:scale(.92);}
-.f7r .tb:disabled{opacity:.3;}
-.f7r .tb.cards{font-size:1.05rem;}
-.f7r .tb.cards.on{background:#ff8a00;color:#2b1a00;}
-.f7r .tb.f7.on{background:var(--yellow);color:#2b1a00;}
-.f7r .tb.bust.on{background:var(--red);color:#fff;}
-.f7r .pts{text-align:right;font-weight:900;font-size:1.1rem;font-variant-numeric:tabular-nums;color:var(--text);}
-.f7r .pts.zero{color:var(--text-3);}
-.f7r.busted .who .nm{text-decoration:line-through;opacity:.6;}
-.f7r.busted .pts{color:var(--red);}
-.f7x{display:flex;flex-wrap:wrap;gap:5px;padding:0 2px 8px 36px;margin-top:-2px;}
-.f7x button{min-width:42px;height:36px;padding:0 10px;border:0;border-radius:10px;background:var(--surface-3);color:var(--text-2);font-weight:900;font-size:.84rem;font-variant-numeric:tabular-nums;transition:transform .15s var(--spring),background .15s;}
-.f7x button:active{transform:scale(.92);}
-.f7x button.on{background:#ff8a00;color:#2b1a00;}
-.f7x button.x2.on{background:#9b7bff;color:#fff;}
-.f7x button:disabled{opacity:.3;}
-.f7-note{margin:8px 4px 10px;font-size:.82rem;font-weight:700;color:var(--text-3);text-align:center;min-height:1.2em;}
-.f7-note.bad{color:var(--red);}
-@media (max-width:360px){ .f7r{grid-template-columns:26px minmax(0,1fr) 56px 38px 38px 38px 40px;gap:4px;} }
-/* The sheet's "fix a round" form keeps the old card helpers */
+/* The open round on the sheet: number boxes, then each player's action cards stacked in their column */
+.spad td .eq{display:block;font-family:var(--hand);font-size:.8rem;line-height:1;color:#7a7a90;margin:2px 0 1px;min-height:.85rem;}
+.spad td .eq.bust{color:#c8102e;}
+.spad tr.mods td{height:auto;padding:2px 2px 6px;vertical-align:top;border-top:0;}
+.spad tr.mods th.rn{vertical-align:top;padding-top:6px;font-size:.58rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;}
+.f7m{display:flex;flex-direction:column;gap:3px;}
+.f7m button{height:30px;width:100%;padding:0;border:1px solid rgba(60,80,160,.3);border-radius:7px;background:rgba(255,255,255,.55);color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:.72rem;line-height:1;font-variant-numeric:tabular-nums;transition:transform .12s var(--spring),background .12s;}
+.f7m button:active{transform:scale(.94);}
+.f7m button.on{background:#ff8a00;border-color:#ff8a00;color:#2b1a00;}
+.f7m button.x2.on{background:#9b7bff;border-color:#9b7bff;color:#fff;}
+.f7m button.f7.on{background:#ffd23f;border-color:#ffd23f;color:#2b1a00;}
+.f7m button.bust.on{background:#c8102e;border-color:#c8102e;color:#fff;}
+.f7m button:disabled{opacity:.3;}
+@media (min-width:520px){ .f7m button{height:34px;font-size:.82rem;} }
+/* The sheet's "fix a round" form keeps the card helpers */
 .f7p{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;border-radius:var(--r);background:rgba(255,255,255,.05);}
 .f7p .rrow{padding:0;background:none;}
 .f7p .rrow .num{width:72px;}
@@ -72,23 +51,23 @@
 <script>
 (function () {
   'use strict';
-  var el = Kit.el, app = document.getElementById('app'), pad = null, entry = null, padHost = null;
+  var el = Kit.el, app = document.getElementById('app'), pad = null;
   var SETUP = 'flip7_pad_setup', ENTRY = 'flip7_entry', MODS = [2, 4, 6, 8, 10], BONUS = 15;
   var cfg = null, st = null;
 
   Kit.init({
     id: 'flip7', title: 'Flip 7 score',
     onNew: function () { if (pad) pad.clear(); localStorage.removeItem(SETUP); localStorage.removeItem(ENTRY); showSetup(); },
-    undo: function () { if (pad) { pad.undo(); paintEntry(); } },
+    undo: function () { if (pad) pad.undo(); },
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('f7', { keys: ['flip7'], title: 'Flip 7: past games' }); } }],
     rules:
       '<p class="goal">Play Flip 7 with the real cards and keep score here. First to <b>200</b> at the end of a round wins.</p>' +
-      '<h3>After each round</h3><ul><li>Everyone is on one page. Type each player\'s <b>number cards</b> total in their box.</li>' +
-      '<li>Tap the <b>+</b> button to add their action cards: <b>&times;2</b> (doubles the number cards only) and any <b>+2 to +10</b>.</li>' +
+      '<h3>After each round</h3><ul><li>The open row on the sheet is this round. Type each player\'s <b>number cards</b> total in their box.</li>' +
+      '<li>Under the boxes, tap their action cards: <b>&times;2</b> (doubles the number cards only) and any <b>+2 to +10</b>.</li>' +
       '<li>Tap <b>F7</b> for the player who got 7 different numbers. They get <b>15 bonus points</b>.</li>' +
       '<li>Tap <b>Bust</b> for anyone who flipped a duplicate number. They score 0 this round.</li>' +
-      '<li>The points for the round show on the right as you go, and the running total under each name. Tap <b>Score round</b> when everyone is in.</li>' +
-      '<li>Made a mistake? Tap a round on the sheet below to fix it.</li></ul>' +
+      '<li>Tap <b>Lock round</b>. The round is written in, and a fresh row opens below it.</li>' +
+      '<li>Made a mistake? Tap a locked round to fix it.</li></ul>' +
       '<h3>Quick rules</h3><ul><li>On your turn, flip a card or stay.</li><li>A duplicate number busts you, unless you have a Second Chance.</li>' +
       '<li><b>Freeze</b> makes a player stop and keep their points. <b>Flip Three</b> makes a player flip 3 cards.</li>' +
       '<li>Don\'t shuffle between rounds. Shuffle the discards only when the deck runs out.</li></ul>' +
@@ -113,7 +92,7 @@
     t.forEach(function (v, i) { if (v === m) who.push(i); });
     return { max: m, who: who };
   }
-  function blank() { return { bust: false, x2: false, f7: false, mods: [], nums: '', open: false }; }
+  function blank() { return { bust: false, x2: false, f7: false, mods: [], nums: '' }; }
   // Rebuild the helpers from a saved round: detail looks like "×2 +4+10 F7" or "bust"
   function parse(score, detail) {
     var d = String(detail || ''), o = { bust: /bust/i.test(d), x2: /×2/.test(d), f7: /F7/.test(d), mods: [] };
@@ -122,13 +101,12 @@
     o.nums = o.bust ? 0 : Math.max(0, Math.round(o.x2 ? rest / 2 : rest));
     return o;
   }
-  // Round points for one player's entry
+  function numsOf(s) { return parseInt(String(s.nums).replace(/[^0-9]/g, ''), 10) || 0; }
   function ptsOf(s) {
     if (s.bust) return 0;
-    var nums = Math.max(0, parseInt(String(s.nums).replace(/[^0-9]/g, ''), 10) || 0);
+    var nums = Math.max(0, numsOf(s));
     return (s.x2 ? nums * 2 : nums) + s.mods.reduce(function (a, b) { return a + b; }, 0) + (s.f7 ? BONUS : 0);
   }
-  function numsOf(s) { return parseInt(String(s.nums).replace(/[^0-9]/g, ''), 10) || 0; }
   // What's wrong with a set of entries (the deck has only one of each action card)
   function problems(list, names, strict) {
     var out = [], f7s = list.filter(function (s) { return s.f7; }).length;
@@ -162,97 +140,76 @@
     if (names.length >= 2 && !alive.length) extra.highlights.push('Everybody busted in round ' + r);
     return extra;
   }
-
-  // ── The entry panel ──
   function loadEntry() {
     try { var a = JSON.parse(localStorage.getItem(ENTRY)); if (Array.isArray(a) && a.length === cfg.names.length) return a.map(function (s) { var b = blank(); Object.keys(b).forEach(function (k) { if (s && s[k] != null) b[k] = s[k]; }); return b; }); } catch (e) {}
     return cfg.names.map(blank);
   }
   function saveEntry() { try { localStorage.setItem(ENTRY, JSON.stringify(st)); } catch (e) {} }
-  function paintEntry() {
-    if (!entry || !pad) return;
-    var S = pad.state(), totals = pad.totals(), names = cfg.names, r = S.rounds.length + 1;
-    entry.innerHTML = '';
-    if (S.over) { entry.style.display = 'none'; return; }
-    entry.style.display = '';
-    entry.appendChild(el('div', { class: 'f7e-h' }, [el('b', { text: 'Round ' + r }), el('small', { text: 'number cards, then tap the extras' })]));
-    var rows = [];
+
+  // ── The open round, drawn on the sheet: a row of number boxes, then a row of action-card buttons ──
+  function entryRows(ctx) {
+    var names = cfg.names, cells = [];
+    var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn', text: String(ctx.round) })]);
+    var rowB = el('tr', { class: 'mods' }, [el('th', { class: 'rn', text: 'CARDS' })]);
     function refresh() {
       st.forEach(function (s, i) {
-        var R = rows[i], p = ptsOf(s);
-        R.row.classList.toggle('busted', s.bust);
-        R.inp.disabled = s.bust;
-        R.cards.classList.toggle('on', s.x2 || s.mods.length > 0); R.cards.disabled = s.bust;
-        R.f7.classList.toggle('on', s.f7); R.f7.disabled = s.bust;
-        R.bust.classList.toggle('on', s.bust);
-        R.pts.textContent = s.bust ? '0' : '+' + p; R.pts.classList.toggle('zero', !s.bust && p === 0);
-        R.tot.innerHTML = '<b>' + totals[i] + '</b>' + (s.bust || p ? ' → ' + (totals[i] + p) : '');
-        R.x.style.display = s.open && !s.bust ? '' : 'none';
-        R.x.querySelectorAll('button').forEach(function (b) {
-          var v = b.dataset.v; b.classList.toggle('on', v === 'x2' ? s.x2 : s.mods.indexOf(+v) >= 0);
+        var c = cells[i], p = ptsOf(s), n = numsOf(s);
+        c.inp.disabled = s.bust;
+        c.eq.className = 'eq' + (s.bust ? ' bust' : '');
+        c.eq.textContent = s.bust ? 'bust' : (p !== n || s.x2 || s.mods.length || s.f7) ? '= ' + p : '';
+        Object.keys(c.btn).forEach(function (k) {
+          var b = c.btn[k], on = k === 'x2' ? s.x2 : k === 'f7' ? s.f7 : k === 'bust' ? s.bust : s.mods.indexOf(+k) >= 0;
+          b.classList.toggle('on', on); b.disabled = s.bust && k !== 'bust';
         });
       });
-      var p = problems(st, names, false);
-      note.className = 'f7-note' + (p.length ? ' bad' : '');
-      note.textContent = p.length ? p[0] : (st.some(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7; }) ? '' : 'Play the round, then score everyone here');
-      go.disabled = !!p.length;
+      ctx.pending(st.map(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7 || s.x2 || s.mods.length ? ptsOf(s) : 0; }));
       saveEntry();
     }
     names.forEach(function (nm, i) {
       var s = st[i];
-      var inp = el('input', { class: 'num', type: 'text', inputmode: 'numeric', placeholder: '0', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' number cards total', enterkeyhint: i < names.length - 1 ? 'next' : 'done' });
+      var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', placeholder: '–', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' number cards, round ' + ctx.round, enterkeyhint: i < names.length - 1 ? 'next' : 'done' });
       inp.addEventListener('input', function () { s.nums = inp.value.replace(/[^0-9]/g, ''); refresh(); });
       inp.addEventListener('focus', function () { inp.select(); });
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var nx = rows[i + 1]; if (nx) nx.inp.focus(); else inp.blur(); } });
-      function tb(cls, label, aria, fn) { return el('button', { type: 'button', class: 'tb ' + cls, text: label, 'aria-label': aria, onclick: function () { fn(); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } }); }
-      var cards = tb('cards', '+', 'Action cards for ' + nm, function () { s.open = !s.open; });
-      var f7 = tb('f7', 'F7', 'Flip 7 bonus for ' + nm, function () { s.f7 = !s.f7; if (s.f7) s.bust = false; });
-      var bust = tb('bust', 'Bust', nm + ' busted', function () { s.bust = !s.bust; if (s.bust) { s.f7 = false; s.open = false; } });
-      var tot = el('span', { class: 'tot' });
-      var row = el('div', { class: 'f7r' }, [
-        Kit.avatar.el(nm, 'sm', Kit.color(i)),
-        el('div', { class: 'who' }, [el('span', { class: 'nm', text: nm, style: { color: Kit.color(i) } }), tot]),
-        inp, cards, f7, bust,
-        el('span', { class: 'pts' })
-      ]);
-      var x = el('div', { class: 'f7x' });
-      x.appendChild(el('button', { type: 'button', class: 'x2', text: '×2', 'data-v': 'x2', 'aria-label': '×2 card for ' + nm, onclick: function () { s.x2 = !s.x2; Kit.sfx('tap'); Kit.haptic('light'); refresh(); } }));
-      MODS.forEach(function (v) {
-        x.appendChild(el('button', { type: 'button', text: '+' + v, 'data-v': String(v), 'aria-label': '+' + v + ' card for ' + nm, onclick: function () { var k = s.mods.indexOf(v); if (k >= 0) s.mods.splice(k, 1); else s.mods.push(v); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } }));
-      });
-      entry.appendChild(row); entry.appendChild(x);
-      rows.push({ row: row, inp: inp, cards: cards, f7: f7, bust: bust, pts: row.lastChild, tot: tot, x: x });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var nx = cells[i + 1]; if (nx) nx.inp.focus(); else inp.blur(); } });
+      var eq = el('small', { class: 'eq' });
+      rowA.appendChild(el('td', null, [inp, eq]));
+      var stack = el('div', { class: 'f7m' }), btn = {};
+      function chip(key, label, cls, aria, fn) {
+        var b = el('button', { type: 'button', class: cls || '', text: label, 'aria-label': aria, onclick: function () { fn(); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } });
+        btn[key] = b; stack.appendChild(b);
+      }
+      chip('x2', '×2', 'x2', '×2 card for ' + nm, function () { s.x2 = !s.x2; });
+      MODS.forEach(function (v) { chip(String(v), '+' + v, '', '+' + v + ' card for ' + nm, function () { var k = s.mods.indexOf(v); if (k >= 0) s.mods.splice(k, 1); else s.mods.push(v); }); });
+      chip('f7', 'F7', 'f7', 'Flip 7 bonus for ' + nm, function () { s.f7 = !s.f7; if (s.f7) s.bust = false; });
+      chip('bust', 'Bust', 'bust', nm + ' busted', function () { s.bust = !s.bust; if (s.bust) s.f7 = false; });
+      rowB.appendChild(el('td', null, [stack]));
+      cells.push({ inp: inp, eq: eq, btn: btn });
     });
-    var note = el('div', { class: 'f7-note' });
-    var go = el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('check') + '<span>Score round ' + r + '</span>', onclick: function () {
-      var p = problems(st, names, true);
-      if (p.length) { note.className = 'f7-note bad'; note.textContent = p[0]; Kit.haptic('error'); return; }
-      var scores = st.map(ptsOf), extra = extraOf(st, scores, names, r);
-      if (extra.callout) Kit.confetti({ count: 70 });
-      st = names.map(blank); saveEntry();
-      pad.add(scores, extra);
-      paintEntry();
-      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
-    } });
-    entry.appendChild(note); entry.appendChild(go);
     refresh();
+    return [rowA, rowB];
+  }
+  function lockRound() {
+    var names = cfg.names, r = pad.state().rounds.length + 1;
+    var p = problems(st, names, true);
+    if (p.length) { Kit.toast(p[0]); Kit.haptic('error'); return; }
+    var scores = st.map(ptsOf), extra = extraOf(st, scores, names, r);
+    if (extra.callout) Kit.confetti({ count: 70 });
+    st = names.map(blank); saveEntry();
+    pad.add(scores, extra);
   }
 
   function startPad() {
     cfg = JSON.parse(localStorage.getItem(SETUP));
     st = loadEntry();
-    app.innerHTML = '';
-    entry = el('div', { class: 'f7e' }); padHost = el('div');
-    app.appendChild(entry); app.appendChild(padHost);
-    pad = Scorepad(padHost, {
-      key: 'f7', title: 'Flip 7', mode: 'Scorekeeper', target: cfg.target, noAdd: true,
+    pad = Scorepad(app, {
+      key: 'f7', title: 'Flip 7', mode: 'Scorekeeper', target: cfg.target,
       sides: cfg.names.map(function (n) { return { name: n }; }),
       goal: 'First to ' + cfg.target + ' at the end of a round wins',
       isOver: function (t) { var tp = top(t); return tp.max >= cfg.target && tp.who.length === 1; },
       winner: function (t) { var tp = top(t); return tp.who.length === 1 ? tp.who[0] : -1; },
-      onChange: function () { setTimeout(paintEntry, 0); },
-      onEnd: function () { localStorage.removeItem(ENTRY); st = cfg.names.map(blank); paintEntry(); },
-      // Fixing a round from the sheet: the same helpers, in a sheet
+      entryRows: entryRows, onLock: lockRound, lockLabel: 'Lock round',
+      onEnd: function () { localStorage.removeItem(ENTRY); st = cfg.names.map(blank); },
+      // Fixing a locked round: the same helpers, in a sheet
       form: function (ctx) {
         var list = ctx.sides.map(function (s, i) {
           return ctx.prev ? parse(ctx.prev.scores[i], ctx.prev.detail && ctx.prev.detail[i]) : blank();
@@ -313,7 +270,6 @@
         refresh();
       }
     });
-    paintEntry();
   }
 
   if (localStorage.getItem(SETUP)) startPad(); else showSetup();
