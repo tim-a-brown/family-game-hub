@@ -1322,6 +1322,12 @@ var QB = {
     }, 100);
   }
   function stopTimer() { clearInterval(timer); timer = null; }
+  // Page hidden: the timer already skips its work, so stop it altogether and start it again when we are back
+  var timerWasOn = false;
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { timerWasOn = !!timer; stopTimer(); }
+    else if (timerWasOn) { timerWasOn = false; if (S && S.cur) startTimer(); }
+  });
   function paintRing() {
     var r = app.querySelector('.ring'); if (!r || !S.timer) return;
     var c = S.cur, frac = Math.max(0, c.left / S.timer), L = 2 * Math.PI * 19;

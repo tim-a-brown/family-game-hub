@@ -453,6 +453,10 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     if (!moodT) moodT = setInterval(moodTick, 2200);
   }
   document.addEventListener('visibilitychange', function () {
+    // Hidden: stop the mood timer and the heartbeat chain (otherwise they keep scheduling sounds into a
+    // suspended context, which all play at once on return); both come back from the game state when visible
+    if (document.hidden) { clearInterval(moodT); moodT = null; clearTimeout(beatT); beatT = null; }
+    else { syncMood(); syncBeat(); }
     if (!AC) return;
     try { if (document.hidden) AC.suspend(); else if (soundOn()) AC.resume(); } catch (e) {}
   });

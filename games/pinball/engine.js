@@ -43,6 +43,8 @@ function lampValue(s, t, ph) {
 // ═══════════════════════════════════════════════════════════════════════════
 export function createGame(def, opts = {}) {
   const headless = !!opts.headless, thumb = !!opts.thumb;
+  const marks = {}; let markT = performance.now();
+  const mark = name => { const n = performance.now(); marks[name] = +(marks[name] || 0) + +(n - markT).toFixed(1); markT = n; };
   const W = def.W || 520, L = def.L || 1060;
   const world = new World({ W, L });
   const AU = headless || thumb ? null : (opts.audio || audio());
@@ -147,13 +149,17 @@ export function createGame(def, opts = {}) {
   }
 
   // ── Build the table ─────────────────────────────────────────────────────
+  mark('setup');
   def.build(T);
   world.levels.main.bounds = [0, -60, W, L];
+  mark('build');
 
   // ── Rendering ───────────────────────────────────────────────────────────
   let RC = null;
-  if (!headless) RC = buildScene(G, T, opts);
+  if (!headless) RC = buildScene(G, T, opts, mark);
   T.R = RC;
+  mark('scene');
+  G.marks = marks; G.mark = mark;
 
   // ── Display ─────────────────────────────────────────────────────────────
   const disp = (opts.dmdCanvas && !headless) ? new Display(opts.dmdCanvas, def.display || {}) : null;
@@ -567,7 +573,8 @@ export function createGame(def, opts = {}) {
   G.start = function () {
     G.time = 0; R('init');
     for (const c of G.compList) if (c.reset) c.reset();
-    if (AU) AU.ctx();
+    if (RC) { markT = performance.now(); RC.renderer.compile(RC.scene, RC.camera); mark('compile'); RC.render(1 / 60); mark('firstFrame'); }
+    if (AU) { markT = performance.now(); AU.ctx(); mark('audioCtx'); }
     G.sfx('start', { vol: 0.7 });
     G.msg(def.name.toUpperCase(), def.intro || 'BALL 1 OF ' + G.balls0, { style: 'zoom', dur: 2.4 });
     startBall();
@@ -680,7 +687,7 @@ function convex(pts) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Scene: renderer, camera, lights, playfield, cabinet, balls, effects
 // ═══════════════════════════════════════════════════════════════════════════
-function buildScene(G, T, opts) {
+function buildScene(G, T, opts, mark = () => {}) {
   const { W, L, theme, def, world } = G;
   const renderer = opts.renderer;
   const scene = new THREE.Scene();
@@ -713,6 +720,7 @@ function buildScene(G, T, opts) {
   scene.environment = envRT.texture; RC.disposables.push(envRT);
   envScene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
   pmrem.dispose();
+  mark('pmrem');
 
   // ── Playfield textures: art, insert glow colours, lamp ids ──
   const big = quality >= 2 && !thumb;
@@ -752,6 +760,7 @@ function buildScene(G, T, opts) {
   { const g = idC.getContext('2d'), im = g.getImageData(0, 0, idC.width, idC.height), d = im.data;
     for (let i = 0; i < d.length; i += 4) { if (d[i + 3] >= 200) { d[i] = Math.round(d[i]); d[i + 3] = 255; } else { d[i] = d[i + 1] = d[i + 2] = d[i + 3] = 0; } }
     g.putImageData(im, 0, 0); }
+  mark('paint');
   const artT = tex(artC, { aniso: 8 }), glowT = tex(glowC), idT = tex(idC, { linear: true, nearest: true });
   const lampData = new Uint8Array(256 * 4), lampTex = new THREE.DataTexture(lampData, 256, 1, THREE.RGBAFormat);
   lampTex.needsUpdate = true; RC.disposables.push(lampTex);
@@ -774,12 +783,15 @@ function buildScene(G, T, opts) {
 
   // ── Cabinet: side boards, rails, apron, lockdown bar, backboard, backbox ──
   buildCabinet(RC);
+  mark('cabinet');
 
   // ── Static scenery (walls, posts, rubbers, plastics, models) ──
   for (const s of T.statics) buildStatic(RC, s);
+  mark('statics');
 
   // ── Components' meshes ──
   for (const c of G.compList) if (c.mesh) c.mesh(RC);
+  mark('components');
 
   // ── Insert bulbs, flashers ──
   let bulbIM = null;
@@ -1042,6 +1054,7 @@ function buildScene(G, T, opts) {
   RC.toWorld = toWorld;
   // finally merge the static batch
   RC.batch.build(root);
+  mark('batch');
   return RC;
 }
 

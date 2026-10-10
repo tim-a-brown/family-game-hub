@@ -165,7 +165,7 @@ export class Audio {
   // pre-render the bank (async; plays as soon as each one is ready)
   async render(names) {
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return;
-    const list = names || Object.keys(RECIPES);
+    const list = names || Object.keys(RECIPES), t0 = performance.now();
     for (const n of list) {
       if (this.bufs[n]) continue;
       const [dur, fn] = RECIPES[n];
@@ -175,7 +175,7 @@ export class Audio {
         this.bufs[n] = await new Promise((res, rej) => { const p = oc.startRendering(); if (p && p.then) p.then(res, rej); else oc.oncomplete = e => res(e.renderedBuffer); });
       } catch (e) { /* skip that sound */ }
     }
-    this.ready = true;
+    this.ready = true; this.renderMs = Math.round(performance.now() - t0);
   }
   // custom recipe from a table: name, duration, fn(S)
   define(name, dur, fn) { RECIPES[name] = [dur, fn]; if (this.ac) this.render([name]); }
@@ -215,10 +215,10 @@ export class Audio {
   musicLoad(id, url) {
     const M = this.music; if (M.bufs[id] || M.loading[id] || !url) return;
     const a = this.ctx(); if (!a || !window.fetch) return;
-    M.loading[id] = 1;
+    M.loading[id] = 1; const t0 = performance.now();
     fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
       .then(ab => new Promise((res, rej) => { const p = a.decodeAudioData(ab, res, rej); if (p && p.catch) p.catch(rej); }))
-      .then(buf => { M.bufs[id] = buf; M.loading[id] = 0; })
+      .then(buf => { M.bufs[id] = buf; M.loading[id] = 0; M.decodeMs = Math.round(performance.now() - t0); })
       .catch(() => { M.loading[id] = 2; });
   }
   musicTick(want, id, url, loopSamples, loopRate, level) {

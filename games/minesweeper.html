@@ -435,7 +435,13 @@ body{overflow-x:hidden;}
     }, 200);
   }
   function stopClock() { if (clock) clearInterval(clock); clock = null; }
-  document.addEventListener('visibilitychange', function () { lastT = performance.now(); if (document.hidden && S) save(); });
+  var clockWasOn = false;
+  document.addEventListener('visibilitychange', function () {
+    lastT = performance.now(); if (document.hidden && S) save();
+    // the clock skips hidden time anyway; stop ticking while hidden and pick up again when we are back
+    if (document.hidden) { clockWasOn = !!clock; stopClock(); }
+    else if (clockWasOn) { clockWasOn = false; startClock(); }
+  });
 
   // ── Drawing ───────────────────────────────────────────────────────────────
   var cellEls = [], field = null, frame = null, scroller = null, transposed = false, hud = {};
