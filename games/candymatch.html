@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Candy Match</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<style>
+/* ── Setup: run or pick a level ─────────────────────────────────────────── */
+.cm-setup .setup-hero{padding-top:4px;}
+.cm-setup .setup-hero .k-hero-ic .gicon{width:80px;height:80px;}
+.cm-setup .setup > .k-start{position:sticky;bottom:calc(var(--safe-b) + 10px);z-index:5;box-shadow:0 6px 0 var(--b-lip),0 14px 30px rgba(0,0,0,.45);}
+.cm-pick[hidden]{display:none;}
+.cm-lvh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.cm-lvh .label{margin:0;}
+.cm-lvh small{font-weight:800;color:var(--text-3);font-size:.8rem;}
+.cm-levels{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+@media (min-width:540px){.cm-levels{grid-template-columns:repeat(6,1fr);}}
+.cm-lt{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1.08;border:0;padding:6px 2px 5px;border-radius:14px;color:#fff;
+  background:radial-gradient(120% 90% at 50% 20%,#6a3a82 0%,#43205a 60%,#2c1240 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1.5px rgba(255,190,230,.18),0 4px 0 #1d0a2a,0 8px 14px rgba(0,0,0,.3);transition:transform .15s var(--spring);}
+.cm-lt:active{transform:scale(.94);}
+.cm-lt b{font-family:var(--display);font-weight:400;font-size:1.45rem;line-height:1;text-shadow:0 2px 0 rgba(0,0,0,.35);}
+.cm-lt .gi{width:16px;height:16px;opacity:.9;}
+.cm-lt .st{display:flex;gap:1px;}
+.cm-lt .st svg{width:13px;height:13px;}
+.cm-lt.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 0 3px var(--accent),0 4px 0 #1d0a2a,0 10px 18px rgba(0,0,0,.4);}
+.cm-lt.lock{filter:grayscale(.8) brightness(.55);}
+.cm-lt.lock .lk{position:absolute;inset:0;display:grid;place-items:center;}
+.cm-lt.lock .lk svg{width:22px;height:22px;opacity:.85;}
+.cm-lt.lock b,.cm-lt.lock .st,.cm-lt.lock .gi{opacity:.25;}
+
+/* ── Play view: fills the screen, no page scroll ────────────────────────── */
+html.cm-on,html.cm-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.cm-on body{display:flex;flex-direction:column;
+  background:radial-gradient(90% 55% at 50% 0%,rgba(255,105,180,.16) 0%,rgba(255,105,180,0) 70%),var(--bg);}
+html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
+  padding:0 max(8px,env(safe-area-inset-right)) calc(var(--safe-b) + 10px) max(8px,env(safe-area-inset-left));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.cm-side{flex:none;display:flex;flex-direction:column;gap:6px;}
+.cm-hud{display:flex;align-items:stretch;gap:6px;}
+.cm-plate{position:relative;display:flex;flex-direction:column;justify-content:center;min-width:0;padding:5px 10px;border-radius:14px;color:#fff;
+  background:linear-gradient(180deg,#3a1d3c 0%,#1f0d22 100%);
+  box-shadow:inset 0 0 0 1.5px rgba(255,190,120,.5),inset 0 0 0 3.5px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.35);}
+.cm-plate small{display:block;font-size:.6rem;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,214,170,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cm-plate b{display:block;font-family:var(--display);font-weight:400;font-size:1.45rem;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.cm-plate i{display:block;font-style:normal;font-size:.62rem;font-weight:800;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cm-lv{flex:none;min-width:58px;text-align:center;align-items:center;}
+.cm-mv{flex:none;min-width:66px;text-align:center;align-items:center;}
+.cm-mv b{font-size:1.85rem;color:#ffe9a6;text-shadow:0 0 12px rgba(255,200,80,.35),0 2px 0 rgba(0,0,0,.5);}
+.cm-mv.low b{color:#ff9a9a;}
+.cm-mv.bump b{animation:bounce .4s var(--spring);}
+.cm-sc{flex:1.4;align-items:stretch;}
+.cm-sc b{color:#ffd45a;text-shadow:0 0 14px rgba(255,190,40,.4),0 2px 0 rgba(0,0,0,.55);}
+.cm-sc.bump b{animation:bounce .45s var(--spring);}
+.cm-meter{position:relative;height:7px;margin:3px 2px 2px;border-radius:4px;background:rgba(0,0,0,.45);box-shadow:inset 0 1px 2px rgba(0,0,0,.6);}
+.cm-meter > span{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,#ff7ab8,#ffd45a);transition:width .4s var(--ease);}
+.cm-meter svg{position:absolute;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;}
+.cm-best{flex:1;}
+.cm-best b{font-size:1.15rem;color:#fff;}
+.cm-goal{display:flex;align-items:center;gap:10px;padding:6px 12px 6px 7px;border-radius:14px;color:#fff;
+  background:linear-gradient(180deg,#fff7ea 0%,#f4e3c6 100%);color:#4a2510;
+  box-shadow:inset 0 1px 0 #fff,0 3px 0 #b88d5c,0 8px 16px rgba(0,0,0,.3);}
+.cm-goal .gi{flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(120,60,20,.1);}
+.cm-goal .gi svg{width:28px;height:28px;}
+.cm-goal .tx{flex:1;min-width:0;line-height:1.15;}
+.cm-goal .tx small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(110,55,20,.65);}
+.cm-goal .tx span{display:block;font-weight:900;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cm-goal b{flex:none;font-family:var(--display);font-weight:400;font-size:1.5rem;line-height:1;color:#c2185b;font-variant-numeric:tabular-nums;}
+.cm-goal.done b{color:#1f8a43;}
+.cm-goal.bump b{animation:bounce .4s var(--spring);}
+.cm-wrap{flex:none;position:relative;}
+.cm-frame{position:relative;padding:8px;border-radius:22px;}
+.cm-frame canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none;cursor:pointer;}
+/* Phone sideways and tablets sideways: plates in a column beside the board */
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  html.cm-on #app{flex-direction:row;gap:16px;padding-left:max(10px,calc(env(safe-area-inset-left) + var(--corner-x)));padding-right:max(10px,calc(env(safe-area-inset-right) + var(--corner-x)));}
+  .cm-side{width:clamp(168px,24vw,250px);}
+  .cm-hud{flex-direction:column;}
+  .cm-hud .cm-plate{flex:none;align-items:flex-start;text-align:left;}
+  .cm-hud .cm-sc{align-items:stretch;}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:500px){
+  .cm-plate{padding:3px 10px;}
+  .cm-plate b{font-size:1.2rem;}
+  .cm-mv b{font-size:1.45rem;}
+  .cm-plate i{display:none;}
+  .cm-goal{padding:4px 10px 4px 5px;}
+  .cm-goal .gi{width:28px;height:28px;}
+  .cm-goal .gi svg{width:22px;height:22px;}
+}
+@media (min-width:700px) and (min-height:700px){
+  .cm-plate b{font-size:1.7rem;}
+  .cm-mv b{font-size:2.2rem;}
+  .cm-best b{font-size:1.35rem;}
+  .cm-plate small{font-size:.68rem;}
+  .cm-goal .tx span{font-size:1.05rem;}
+  .cm-goal b{font-size:1.8rem;}
+}
+/* Level intro card on the board */
+.cm-intro{position:absolute;inset:8px;display:flex;align-items:center;justify-content:center;z-index:4;pointer-events:auto;
+  background:rgba(25,6,30,.38);border-radius:14px;opacity:0;transition:opacity .3s;}
+.cm-intro.show{opacity:1;}
+.cm-intro .card{width:min(290px,84%);text-align:center;padding:16px 16px 14px;border-radius:18px;color:#4a2510;
+  background:linear-gradient(180deg,#fff9ef,#f6e6c8);box-shadow:inset 0 1px 0 #fff,0 5px 0 #b88d5c,0 18px 40px rgba(0,0,0,.5);
+  transform:scale(.7) rotate(-2deg);transition:transform .45s var(--spring);}
+.cm-intro.show .card{transform:none;}
+.cm-intro small{display:block;font-size:.7rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(110,55,20,.65);}
+.cm-intro h2{font-family:var(--display);font-weight:400;font-size:2.1rem;line-height:1.05;color:#c2185b;margin:2px 0 6px;}
+.cm-intro .gl{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:900;font-size:1.02rem;}
+.cm-intro .gl svg{width:30px;height:30px;flex:none;}
+.cm-intro p{margin-top:6px;font-weight:800;color:rgba(80,40,15,.75);font-size:.9rem;}
+/* Win card stars */
+.cm-stars{display:flex;justify-content:center;gap:6px;margin:6px 0 4px;}
+.cm-stars svg{width:46px;height:46px;opacity:0;transform:scale(.3) rotate(-30deg);}
+.cm-stars svg.in{animation:cmstar .55s var(--spring) forwards;}
+.cm-stars svg:nth-child(2){width:56px;height:56px;margin-top:-8px;}
+@keyframes cmstar{to{opacity:1;transform:none;}}
+.cm-pause{position:absolute;inset:8px;border-radius:14px;display:none;align-items:center;justify-content:center;z-index:5;
+  background:rgba(25,6,30,.55);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+
+  // ==ENGINE==
+  // Pure game rules: no DOM, no drawing. A move returns a list of events that
+  // the animation player turns into motion. Also used by the level tuning script.
+  var CM = (function () {
+    var TAU = Math.PI * 2;
+    function Rng(s) { this.s = s | 0; }
+    Rng.prototype.next = function () {
+      var a = this.s = (this.s + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    Rng.prototype.int = function (n) { return Math.floor(this.next() * n); };
+
+    // Scoring (multiplied by the cascade step: 1st clear x1, 2nd x2, ...)
+    var PTS = { m3: 60, m4: 120, m5: 200, lt: 200, blast: 60, jelly: 1000, frost: 100, ing: 10000 };
+    function striped(s) { return s === 'h' || s === 'v'; }
+    function special(x) { return x && (x.s === 'h' || x.s === 'v' || x.s === 'w' || x.s === 'b'); }
+    function mcol(x) { return x && x.c >= 0 && !x.armed ? x.c : -1; }
+
+    // ── Board setup ───────────────────────────────────────────────────────
+    // def.rows: strings, one char per cell:
+    //   .  plain cell    j/J  jelly (1 or 2 layers)    f/F  frosting (1 or 2 layers)    _  no cell
+    function create(def, seed) {
+      var rows = def.rows, R = rows.length, C = rows[0].length, g = {
+        R: R, C: C, N: R * C, mask: [], jelly: [], frost: [], cell: [],
+        colors: def.colors || 6, moves: def.moves, moves0: def.moves, score: 0,
+        goal: def.goal || 'score', target: def.target || 0,
+        ingTotal: def.ings || 0, ingDone: 0, ingSpawned: 0, ingMax: def.ingMax || 1,
+        rng: new Rng(seed == null ? 12345 : seed), nextId: 1, forceQ: null,
+        stats: { moves: 0, made: { h: 0, w: 0, b: 0 }, combos: 0, maxStep: 0, bestMove: 0, shuffles: 0, jellyCleared: 0, frostBroken: 0 }
+      };
+      for (var r = 0; r < R; r++) for (var c = 0; c < C; c++) {
+        var ch = rows[r].charAt(c) || '_';
+        g.mask.push(ch !== '_' ? 1 : 0);
+        g.jelly.push(ch === 'j' ? 1 : ch === 'J' ? 2 : 0);
+        g.frost.push(ch === 'f' ? 1 : ch === 'F' ? 2 : 0);
+        g.cell.push(null);
+      }
+      prep(g);
+      g.jelly0 = jellyLeft(g);
+      fill(g);
+      return g;
+    }
+    function prep(g) {
+      g.spawn = []; g.exit = [];
+      for (var c = 0; c < g.C; c++) {
+        var top = -1, bot = -1;
+        for (var r = 0; r < g.R; r++) if (g.mask[r * g.C + c]) { if (top < 0) top = r * g.C + c; bot = r * g.C + c; }
+        g.spawn.push(top); g.exit.push(bot);
+      }
+      // Ingredients leave through the bottom row only
+      var last = 0; g.exit.forEach(function (e) { if (e >= 0) last = Math.max(last, (e / g.C) | 0); });
+      g.exit = g.exit.map(function (e) { return e >= 0 && ((e / g.C) | 0) === last ? e : -1; });
+    }
+    function idx(g, r, c) { return r < 0 || c < 0 || r >= g.R || c >= g.C || !g.mask[r * g.C + c] ? -1 : r * g.C + c; }
+    function mk(g, c, s, k) { return { id: g.nextId++, c: c, s: s || '', k: k || 0, armed: 0 }; }
+    function newCandy(g) {
+      if (g.forceQ && g.forceQ.length) { var f = g.forceQ.shift(); return mk(g, f, ''); }
+      return mk(g, g.rng.int(g.colors), '');
+    }
+    function fill(g) {
+      for (var tries = 0; tries < 80; tries++) {
+        for (var i = 0; i < g.N; i++) {
+          if (!g.mask[i] || g.frost[i]) { g.cell[i] = null; continue; }
+          if (g.cell[i] && g.cell[i].fixed) continue;
+          var r = (i / g.C) | 0, c = i % g.C, col, n = 0;
+          do {
+            col = g.rng.int(g.colors); n++;
+            var a1 = idx(g, r, c - 1), a2 = idx(g, r, c - 2), b1 = idx(g, r - 1, c), b2 = idx(g, r - 2, c);
+            var bad = (a1 >= 0 && a2 >= 0 && mcol(g.cell[a1]) === col && mcol(g.cell[a2]) === col) ||
+                      (b1 >= 0 && b2 >= 0 && mcol(g.cell[b1]) === col && mcol(g.cell[b2]) === col);
+          } while (bad && n < 30);
+          g.cell[i] = mk(g, col, '');
+        }
+        if (hasMove(g)) break;
+      }
+      // Ingredient levels start with one ingredient in the top row
+      if (g.ingTotal && !g.ingSpawned) {
+        var tops = [];
+        for (var c2 = 0; c2 < g.C; c2++) { var s = g.spawn[c2]; if (s >= 0 && !g.frost[s] && g.exit[c2] >= 0 && g.exit[c2] !== s) tops.push(s); }
+        if (tops.length) { var at = tops[g.rng.int(tops.length)]; g.cell[at] = mk(g, -2, 'i', 0); g.ingSpawned = 1; }
+      }
+    }
+    function jellyLeft(g) { var n = 0; for (var i = 0; i < g.N; i++) if (g.jelly[i] > 0) n++; return n; }
+    function ingsOnBoard(g) { var n = 0; for (var i = 0; i < g.N; i++) if (g.cell[i] && g.cell[i].s === 'i') n++; return n; }
+    function goalLeft(g) {
+      if (g.goal === 'jelly') return jellyLeft(g);
+      if (g.goal === 'ingred') return g.ingTotal - g.ingDone;
+      return Math.max(0, g.target - g.score);
+    }
+    function goalMet(g) { return goalLeft(g) <= 0; }
+
+    // ── Matching ──────────────────────────────────────────────────────────
+    function runs(g) {
+      var out = [], r, c, i, col, e, j, cells;
+      for (r = 0; r < g.R; r++) for (c = 0; c < g.C;) {
+        i = idx(g, r, c); col = i >= 0 ? mcol(g.cell[i]) : -1;
+        if (col < 0) { c++; continue; }
+        e = c + 1; while (e < g.C && (j = idx(g, r, e)) >= 0 && mcol(g.cell[j]) === col) e++;
+        if (e - c >= 3) { cells = []; for (var k = c; k < e; k++) cells.push(r * g.C + k); out.push({ d: 'h', cells: cells, c: col }); }
+        c = e;
+      }
+      for (c = 0; c < g.C; c++) for (r = 0; r < g.R;) {
+        i = idx(g, r, c); col = i >= 0 ? mcol(g.cell[i]) : -1;
+        if (col < 0) { r++; continue; }
+        e = r + 1; while (e < g.R && (j = idx(g, e, c)) >= 0 && mcol(g.cell[j]) === col) e++;
+        if (e - r >= 3) { cells = []; for (var k2 = r; k2 < e; k2++) cells.push(k2 * g.C + c); out.push({ d: 'v', cells: cells, c: col }); }
+        r = e;
+      }
+      return out;
+    }
+    // Runs that share a cell (an L, T or + shape) form one group
+    function groupsOf(rs) {
+      var gs = [];
+      rs.forEach(function (run) {
+        var hit = gs.filter(function (gr) { return run.cells.some(function (x) { return gr.set[x]; }); });
+        var gr = hit[0];
+        if (!gr) { gr = { set: {}, cells: [], runs: [], c: run.c }; gs.push(gr); }
+        for (var h = 1; h < hit.length; h++) {
+          hit[h].runs.forEach(function (rr) { gr.runs.push(rr); });
+          hit[h].cells.forEach(function (x) { if (!gr.set[x]) { gr.set[x] = 1; gr.cells.push(x); } });
+          gs.splice(gs.indexOf(hit[h]), 1);
+        }
+        gr.runs.push(run);
+        run.cells.forEach(function (x) { if (!gr.set[x]) { gr.set[x] = 1; gr.cells.push(x); } });
+      });
+      return gs;
+    }
+    // What special (if any) a group makes, and where
+    function plan(g, gr, pref, dir, moved) {
+      var longest = gr.runs[0], hs = [], vs = [];
+      gr.runs.forEach(function (r) { if (r.cells.length > longest.cells.length) longest = r; (r.d === 'h' ? hs : vs).push(r); });
+      function pick(cells) {
+        for (var p = 0; p < (pref || []).length; p++) if (cells.indexOf(pref[p]) >= 0) return pref[p];
+        if (moved) { var ms = cells.filter(function (x) { return moved[x]; }); if (ms.length) return ms[ms.length >> 1]; }
+        return cells[cells.length >> 1];
+      }
+      var L = longest.cells.length;
+      if (L >= 5) return { s: 'b', at: pick(longest.cells), pts: PTS.m5 };
+      if (hs.length && vs.length) {
+        var inter = gr.cells.filter(function (x) { return hs.some(function (r) { return r.cells.indexOf(x) >= 0; }) && vs.some(function (r) { return r.cells.indexOf(x) >= 0; }); });
+        return { s: 'w', at: pick(inter.length ? inter : gr.cells), pts: PTS.lt };
+      }
+      if (L === 4) return { s: dir || (longest.d === 'h' ? 'v' : 'h'), at: pick(longest.cells), pts: PTS.m4 };
+      return { s: '', at: -1, pts: gr.cells.length > 3 ? PTS.m4 : PTS.m3 };
+    }
+
+    // ── A clear phase: matches, specials firing, blasts, jelly and frosting ─
+    function Phase(g, step) {
+      var P = {
+        g: g, step: step, clr: {}, order: [], fired: {}, keep: {}, matched: {}, hitJ: {}, hitF: {}, merge: {},
+        creates: [], tallies: [],
+        ev: { t: 'clear', step: step, pops: [], fx: [], creates: [], trans: [], arm: [], jelly: [], frost: [], pts: [], score: 0 }
+      };
+      function tally(i, c, d) { var t = { i: i, v: 0, c: c, d: d || 0 }; P.tallies.push(t); return t; }
+      P.tally = tally;
+      function jelly(i, d, src) {
+        if (P.hitJ[i] || !(g.jelly[i] > 0)) return;
+        P.hitJ[i] = 1; g.jelly[i]--; g.stats.jellyCleared++;
+        P.ev.jelly.push({ i: i, v: g.jelly[i], d: d });
+        add(PTS.jelly, src, true);
+      }
+      function frost(i, d, src) {
+        if (P.hitF[i] || !(g.frost[i] > 0)) return;
+        P.hitF[i] = 1; g.frost[i]--; if (!g.frost[i]) g.stats.frostBroken++;
+        P.ev.frost.push({ i: i, v: g.frost[i], d: d });
+        add(PTS.frost, src, true);
+      }
+      function add(v, src, flat) { var pts = flat ? v : v * step; P.ev.score += pts; g.score += pts; if (src) src.v += pts; }
+      P.add = add;
+      // Hit a cell: frosting takes a layer, jelly takes a layer, a candy is cleared (specials fire)
+      P.hit = function (i, d, src, nofire) {
+        if (i < 0) return;
+        if (g.frost[i]) { frost(i, d, src); return; }
+        jelly(i, d, src);
+        var x = g.cell[i]; if (!x || x.s === 'i') return;
+        if (P.clr[i] != null) { if (d < P.clr[i] && !P.fired[x.id]) P.clr[i] = d; return; }
+        P.clr[i] = d; P.order.push(i);
+        if (nofire) P.fired[x.id] = 1;
+        if (!P.matched[i]) add(PTS.blast, src);
+        if (special(x) && !P.fired[x.id]) { P.fired[x.id] = 1; fire(i, d); }
+      };
+      // Remove a special without firing it (used up by a combo)
+      P.consume = function (i, d) {
+        var x = g.cell[i]; if (!x) return;
+        P.fired[x.id] = 1; P.matched[i] = 1;
+        if (P.clr[i] == null) { P.clr[i] = d; P.order.push(i); }
+        jelly(i, d, null);
+      };
+      P.line = function (i0, dir, d, color, src) {
+        var r0 = (i0 / g.C) | 0, c0 = i0 % g.C;
+        var fx = { k: 'line', dir: dir, r: r0, c: c0, t: d, col: color };
+        P.ev.fx.push(fx);
+        src = src || tally(i0, color, d);
+        var n = dir === 'h' ? g.C : g.R;
+        for (var k = 1; k < n; k++) {
+          var a = dir === 'h' ? idx(g, r0, c0 - k) : idx(g, r0 - k, c0);
+          var b = dir === 'h' ? idx(g, r0, c0 + k) : idx(g, r0 + k, c0);
+          P.hit(a, d + k * 32, src); P.hit(b, d + k * 32, src);
+        }
+        if (g.mask[i0]) jelly(i0, d, src);
+      };
+      P.blast = function (i0, rad, d, color, src) {
+        var r0 = (i0 / g.C) | 0, c0 = i0 % g.C;
+        P.ev.fx.push({ k: 'blast', r: r0, c: c0, rad: rad, t: d, col: color });
+        src = src || tally(i0, color, d);
+        jelly(i0, d, src);
+        for (var dr = -rad; dr <= rad; dr++) for (var dc = -rad; dc <= rad; dc++) {
+          if (!dr && !dc) continue;
+          P.hit(idx(g, r0 + dr, c0 + dc), d + 50 * Math.max(Math.abs(dr), Math.abs(dc)), src);
+        }
+      };
+      P.colorHit = function (i0, col, d, src) {
+        var to = [], k = 0;
+        for (var j = 0; j < g.N; j++) { var y = g.cell[j]; if (j !== i0 && y && mcol(y) === col) to.push(j); }
+        P.ev.fx.push({ k: 'beam', r: (i0 / g.C) | 0, c: i0 % g.C, to: to.slice(), t: d, col: col });
+        src = src || tally(i0, col, d);
+        to.forEach(function (j) { P.hit(j, d + 120 + (k++) * 22, src); });
+        return to;
+      };
+      function fire(i, d) {
+        var x = g.cell[i];
+        if (striped(x.s)) P.line(i, x.s, d, x.c);
+        else if (x.s === 'w') {
+          if (!x.armed) { x.armed = 1; P.keep[x.id] = 1; P.ev.arm.push({ id: x.id, i: i, d: d }); P.blast(i, 1, d, x.c); }
+          else P.blast(i, x.armed, d, x.c);
+        } else if (x.s === 'b') {
+          // a colour bomb set off by a blast clears the most common colour
+          var cnt = [], best = -1;
+          for (var j = 0; j < g.N; j++) { var m = mcol(g.cell[j]); if (m >= 0) cnt[m] = (cnt[m] || 0) + 1; }
+          for (var c = 0; c < cnt.length; c++) if (cnt[c] && (best < 0 || cnt[c] > cnt[best])) best = c;
+          if (best >= 0) P.colorHit(i, best, d);
+        }
+      }
+      P.match = function (gr, pl) {
+        var src = tally(pl.at >= 0 ? pl.at : gr.cells[gr.cells.length >> 1], gr.c, 0);
+        add(pl.pts, src);
+        gr.cells.forEach(function (i) { P.matched[i] = 1; });
+        gr.cells.forEach(function (i) {
+          if (pl.s && !special(g.cell[i])) P.merge[i] = pl.at;
+          P.hit(i, 0, src);
+          // frosting next to a match takes a layer
+          var r = (i / g.C) | 0, c = i % g.C;
+          [idx(g, r - 1, c), idx(g, r + 1, c), idx(g, r, c - 1), idx(g, r, c + 1)].forEach(function (n) { if (n >= 0 && g.frost[n]) frost(n, 0, src); });
+        });
+        if (pl.s) P.creates.push({ at: pl.at, s: pl.s, c: gr.c, cells: gr.cells });
+      };
+      P.end = function () {
+        var maxD = 0;
+        P.order.forEach(function (i) {
+          var x = g.cell[i], d = P.clr[i]; if (!x) return;
+          if (d > maxD) maxD = d;
+          if (P.keep[x.id]) return;
+          P.ev.pops.push({ id: x.id, i: i, d: d, c: x.c, s: x.s, m: P.merge[i] != null && P.merge[i] !== i ? P.merge[i] : -1 });
+          g.cell[i] = null;
+        });
+        P.creates.forEach(function (cr) {
+          var at = cr.at;
+          if (g.cell[at] || g.frost[at]) { at = -1; for (var q = 0; q < cr.cells.length; q++) if (!g.cell[cr.cells[q]] && !g.frost[cr.cells[q]]) { at = cr.cells[q]; break; } }
+          if (at < 0) return;
+          var n = mk(g, cr.s === 'b' ? -1 : cr.c, cr.s);
+          g.cell[at] = n;
+          g.stats.made[cr.s === 'b' ? 'b' : cr.s === 'w' ? 'w' : 'h']++;
+          P.ev.creates.push({ id: n.id, i: at, c: n.c, s: n.s, d: 140 });
+        });
+        P.ev.pts = P.tallies.filter(function (t) { return t.v > 0; }).map(function (t) { return { i: t.i, v: t.v, c: t.c, d: t.d }; });
+        P.ev.dur = maxD;
+        return P.ev;
+      };
+      return P;
+    }
+
+    function matchPhase(g, rs, pref, dir, moved, step) {
+      var P = Phase(g, step);
+      groupsOf(rs).forEach(function (gr) { P.match(gr, plan(g, gr, pref, dir, moved)); });
+      return P.end();
+    }
+
+    // Two specials swapped together. x was dragged from a to b; the effect centres on b.
+    function comboKind(x, y) {
+      if (!x || !y || x.s === 'i' || y.s === 'i') return '';
+      if (x.s === 'b' && y.s === 'b') return 'bb';
+      if (x.s === 'b' || y.s === 'b') return 'b';
+      if (striped(x.s) && striped(y.s)) return 'ss';
+      if ((striped(x.s) && y.s === 'w') || (x.s === 'w' && striped(y.s))) return 'sw';
+      if (x.s === 'w' && y.s === 'w') return 'ww';
+      return '';
+    }
+    function comboPhase(g, a, b, kind) {
+      var P = Phase(g, 1), x = g.cell[b], y = g.cell[a], r = (b / g.C) | 0, c = b % g.C, i, k;
+      g.stats.combos++;
+      P.ev.combo = kind;
+      if (kind === 'bb') {
+        P.consume(a, 0); P.consume(b, 0);
+        P.ev.fx.push({ k: 'nuke', r: r, c: c, t: 0 });
+        var src = P.tally(b, -1, 0);
+        for (i = 0; i < g.N; i++) if (g.mask[i] && i !== a && i !== b) {
+          var rr = (i / g.C) | 0, cc = i % g.C;
+          P.hit(i, 260 + 34 * Math.max(Math.abs(rr - r), Math.abs(cc - c)), src, true);
+        }
+      } else if (kind === 'b') {
+        var bombAt = x.s === 'b' ? b : a, other = bombAt === b ? a : b, o = g.cell[other];
+        P.consume(bombAt, 0);
+        if (striped(o.s) || o.s === 'w') {
+          // every candy of that colour turns into the same kind of special, then they all go off
+          var col = o.c, list = [], d0 = 0;
+          for (i = 0; i < g.N; i++) { var z = g.cell[i]; if (z && mcol(z) === col) list.push(i); }
+          P.ev.fx.push({ k: 'beam', r: (bombAt / g.C) | 0, c: bombAt % g.C, to: list.slice(), t: 0, col: col });
+          k = 0;
+          list.forEach(function (j) {
+            var z = g.cell[j];
+            if (!special(z)) { z.s = o.s === 'w' ? 'w' : (g.rng.next() < 0.5 ? 'h' : 'v'); P.ev.trans.push({ id: z.id, i: j, s: z.s, d: 120 + (k++) * 26 }); }
+          });
+          d0 = 120 + k * 26 + 380;
+          var src2 = P.tally(bombAt, col, d0);
+          list.forEach(function (j, n) { P.hit(j, d0 + n * 70, src2); });
+        } else {
+          P.colorHit(bombAt, o.c, 0);
+        }
+      } else if (kind === 'ss') {
+        P.consume(a, 0); P.consume(b, 0);
+        var s1 = P.tally(b, x.c, 0);
+        P.line(b, 'h', 0, x.c, s1); P.line(b, 'v', 0, y.c, s1);
+      } else if (kind === 'sw') {
+        P.consume(a, 0); P.consume(b, 0);
+        var s2 = P.tally(b, x.c, 0), w = x.s === 'w' ? x : y;
+        for (k = -1; k <= 1; k++) {
+          if (r + k >= 0 && r + k < g.R) P.line((r + k) * g.C + c, 'h', 40, w.c, s2);
+          if (c + k >= 0 && c + k < g.C) P.line(r * g.C + c + k, 'v', 40, w.c, s2);
+        }
+      } else if (kind === 'ww') {
+        P.consume(a, 0);
+        P.fired[x.id] = 1; P.keep[x.id] = 1; x.armed = 2;
+        P.clr[b] = 0; P.order.push(b);
+        P.ev.arm.push({ id: x.id, i: b, d: 0 });
+        P.blast(b, 2, 0, x.c);
+      }
+      return P.end();
+    }
+
+    // ── Gravity: candies fall one cell per tick, new ones drop in at the top,
+    // and cells that can't be filled from above take a candy sliding in diagonally.
+    function fillable(g, e) {
+      var r = (e / g.C) | 0, c = e % g.C, k = e;
+      for (;;) {
+        var up = idx(g, r - 1, c);
+        if (up < 0) return k === g.spawn[c];
+        if (g.frost[up]) return false;
+        if (g.cell[up]) return true;
+        k = up; r--;
+      }
+    }
+    function spawnFor(g, c) {
+      if (g.ingTotal && g.ingSpawned < g.ingTotal && g.exit[c] >= 0) {
+        var on = ingsOnBoard(g);
+        if (on < g.ingMax && (on === 0 || g.rng.next() < 0.06)) { g.ingSpawned++; return mk(g, -2, 'i', (g.ingSpawned - 1) % 2); }
+      }
+      return newCandy(g);
+    }
+    function settle(g) {
+      var paths = {}, items = [], landed = {}, tick = 0, i, r, c, x, j;
+      function at(x, t, i) {
+        var p = paths[x.id];
+        if (!p) { p = paths[x.id] = { id: x.id, path: [] }; items.push(p); }
+        return p;
+      }
+      function mv(x, from, to, t) {
+        var p = at(x);
+        var last = p.path[p.path.length - 1];
+        if (!last) p.path.push([t, (from / g.C) | 0, from % g.C]);
+        else if (last[0] < t) p.path.push([t, last[1], last[2]]);
+        p.path.push([t + 1, (to / g.C) | 0, to % g.C]);
+      }
+      for (var guard = 0; guard < 400; guard++) {
+        var moved = false;
+        for (r = g.R - 2; r >= 0; r--) for (c = 0; c < g.C; c++) {
+          i = r * g.C + c; x = g.cell[i];
+          if (!x || !g.mask[i] || g.frost[i]) continue;
+          j = idx(g, r + 1, c);
+          if (j >= 0 && !g.frost[j] && !g.cell[j]) { g.cell[j] = x; g.cell[i] = null; mv(x, i, j, tick); moved = true; }
+        }
+        for (c = 0; c < g.C; c++) {
+          var s = g.spawn[c];
+          if (s >= 0 && !g.frost[s] && !g.cell[s]) {
+            var n = spawnFor(g, c); g.cell[s] = n;
+            var p = at(n); p.isNew = 1; p.c = n.c; p.s = n.s; p.k = n.k;
+            p.path.push([tick, ((s / g.C) | 0) - 1, c]); p.path.push([tick + 1, (s / g.C) | 0, c]);
+            moved = true;
+          }
+        }
+        if (!moved) {
+          var used = {};
+          for (r = g.R - 1; r >= 1; r--) for (c = 0; c < g.C; c++) {
+            var e = idx(g, r, c);
+            if (e < 0 || g.frost[e] || g.cell[e] || fillable(g, e)) continue;
+            var cand = (tick + c) % 2 ? [idx(g, r - 1, c - 1), idx(g, r - 1, c + 1)] : [idx(g, r - 1, c + 1), idx(g, r - 1, c - 1)];
+            for (var q = 0; q < 2; q++) {
+              j = cand[q];
+              if (j < 0 || used[j] || g.frost[j] || !g.cell[j]) continue;
+              used[j] = used[e] = 1; x = g.cell[j]; g.cell[e] = x; g.cell[j] = null; mv(x, j, e, tick); moved = true; break;
+            }
+          }
+        }
+        if (!moved) break;
+        tick++;
+      }
+      items.forEach(function (p) { var l = p.path[p.path.length - 1]; landed[l[1] * g.C + l[2]] = 1; });
+      return { t: 'fall', moves: items, ticks: tick, landed: landed };
+    }
+    function collect(g) {
+      var got = [];
+      for (var c = 0; c < g.C; c++) {
+        var e = g.exit[c], x = e >= 0 ? g.cell[e] : null;
+        if (x && x.s === 'i') { got.push({ id: x.id, i: e, k: x.k }); g.cell[e] = null; g.ingDone++; g.score += PTS.ing; }
+      }
+      return got.length ? { t: 'collect', got: got, score: got.length * PTS.ing } : null;
+    }
+    function armedCells(g) { var a = []; for (var i = 0; i < g.N; i++) if (g.cell[i] && g.cell[i].armed) a.push(i); return a; }
+
+    function cascade(g, ev, step) {
+      for (var guard = 0; guard < 200; guard++) {
+        var f = settle(g); if (f.moves.length) ev.push(f);
+        var col = collect(g); if (col) { ev.push(col); continue; }
+        var arm = armedCells(g);
+        if (arm.length) {
+          step++;
+          var P = Phase(g, step);
+          arm.forEach(function (i, n) { var x = g.cell[i]; P.fired[x.id] = 1; P.clr[i] = n * 60; P.order.push(i); P.blast(i, x.armed, n * 60, x.c); });
+          ev.push(P.end()); continue;
+        }
+        var rs = runs(g);
+        if (rs.length) { step++; ev.push(matchPhase(g, rs, null, null, f.landed, step)); continue; }
+        break;
+      }
+      return step;
+    }
+
+    // ── Possible moves ────────────────────────────────────────────────────
+    function lineAt(g, i) {
+      var col = mcol(g.cell[i]); if (col < 0) return 0;
+      var r = (i / g.C) | 0, c = i % g.C, h = 1, v = 1, k, j;
+      for (k = c - 1; (j = idx(g, r, k)) >= 0 && mcol(g.cell[j]) === col; k--) h++;
+      for (k = c + 1; (j = idx(g, r, k)) >= 0 && mcol(g.cell[j]) === col; k++) h++;
+      for (k = r - 1; (j = idx(g, k, c)) >= 0 && mcol(g.cell[j]) === col; k--) v++;
+      for (k = r + 1; (j = idx(g, k, c)) >= 0 && mcol(g.cell[j]) === col; k++) v++;
+      return (h >= 3 ? h : 0) + (v >= 3 ? v : 0);
+    }
+    function swappable(g, i) { return i >= 0 && !g.frost[i] && !!g.cell[i]; }
+    function tryMove(g, a, b) {
+      if (!swappable(g, a) || !swappable(g, b)) return 0;
+      var x = g.cell[a], y = g.cell[b], k = comboKind(x, y);
+      if (k) return k === 'bb' ? 100 : k === 'b' ? (special(x) && special(y) ? 60 : 30) : 40;
+      g.cell[a] = y; g.cell[b] = x;
+      var v = lineAt(g, a) + lineAt(g, b);
+      g.cell[a] = x; g.cell[b] = y;
+      return v;
+    }
+    function allMoves(g) {
+      var out = [];
+      for (var i = 0; i < g.N; i++) {
+        if (!swappable(g, i)) continue;
+        var r = (i / g.C) | 0, c = i % g.C;
+        [idx(g, r, c + 1), idx(g, r + 1, c)].forEach(function (j) { var v = j >= 0 ? tryMove(g, i, j) : 0; if (v) out.push([i, j, v]); });
+      }
+      return out;
+    }
+    function hasMove(g) {
+      for (var i = 0; i < g.N; i++) {
+        if (!swappable(g, i)) continue;
+        var r = (i / g.C) | 0, c = i % g.C, a = idx(g, r, c + 1), b = idx(g, r + 1, c);
+        if ((a >= 0 && tryMove(g, i, a)) || (b >= 0 && tryMove(g, i, b))) return true;
+      }
+      return false;
+    }
+    function shuffle(g) {
+      var pos = [], items = [], i;
+      for (i = 0; i < g.N; i++) if (g.cell[i] && g.cell[i].s !== 'i' && !g.frost[i]) { pos.push(i); items.push(g.cell[i]); }
+      for (var tries = 0; tries < 300; tries++) {
+        if (tries > 0 && tries % 60 === 0) items.forEach(function (x) { if (!special(x)) x.c = g.rng.int(g.colors); });
+        for (i = items.length - 1; i > 0; i--) { var j = g.rng.int(i + 1), t = items[i]; items[i] = items[j]; items[j] = t; }
+        pos.forEach(function (p, n) { g.cell[p] = items[n]; });
+        if (!runs(g).length && hasMove(g)) break;
+      }
+      g.stats.shuffles++;
+      return { t: 'shuffle', to: pos.map(function (p) { var x = g.cell[p]; return { id: x.id, i: p, c: x.c }; }) };
+    }
+
+    // ── A player's move ───────────────────────────────────────────────────
+    function move(g, a, b) {
+      if (a === b || !swappable(g, a) || !swappable(g, b) || g.moves <= 0) return { ok: false };
+      var ra = (a / g.C) | 0, rb = (b / g.C) | 0;
+      if (Math.abs(ra - rb) + Math.abs(a % g.C - b % g.C) !== 1) return { ok: false };
+      var x = g.cell[a], y = g.cell[b], kind = comboKind(x, y), dir = ra === rb ? 'h' : 'v';
+      g.cell[a] = y; g.cell[b] = x;
+      var rs = kind ? null : runs(g);
+      if (!kind && !rs.length) { g.cell[a] = x; g.cell[b] = y; return { ok: false, a: a, b: b, ida: x.id, idb: y.id }; }
+      var score0 = g.score;
+      g.moves--; g.stats.moves++;
+      var ev = [{ t: 'swap', a: a, b: b, ida: x.id, idb: y.id }];
+      ev.push(kind ? comboPhase(g, a, b, kind) : matchPhase(g, rs, [b, a], dir, null, 1));
+      var step = cascade(g, ev, 1);
+      if (step > g.stats.maxStep) g.stats.maxStep = step;
+      if (g.score - score0 > g.stats.bestMove) g.stats.bestMove = g.score - score0;
+      if (!goalMet(g) && g.moves > 0 && !hasMove(g)) ev.push(shuffle(g));
+      return { ok: true, ev: ev, step: step, kind: kind, gained: g.score - score0 };
+    }
+
+    // ── End of level: leftover specials go off, then (optionally) every move
+    // left turns a candy into a striped candy that fires.
+    function bonus(g, useMoves) {
+      var ev = [];
+      for (var guard = 0; guard < 60; guard++) {
+        var sp = [];
+        for (var i = 0; i < g.N; i++) if (special(g.cell[i]) && !g.cell[i].armed) sp.push(i);
+        if (sp.length) {
+          var P = Phase(g, 1);
+          sp.forEach(function (i, n) { P.hit(i, n * 110, P.tally(i, g.cell[i] ? g.cell[i].c : -1, n * 110)); });
+          ev.push(P.end());
+          cascade(g, ev, 1);
+          continue;
+        }
+        if (useMoves && g.moves > 0) {
+          var cand = [];
+          for (var j = 0; j < g.N; j++) if (g.cell[j] && g.cell[j].s === '' && g.cell[j].c >= 0) cand.push(j);
+          var n2 = Math.min(g.moves, cand.length, 30), list = [];
+          for (var q = 0; q < n2; q++) {
+            var pick = cand.splice(g.rng.int(cand.length), 1)[0], z = g.cell[pick];
+            z.s = g.rng.next() < 0.5 ? 'h' : 'v'; list.push({ id: z.id, i: pick, s: z.s });
+          }
+          g.moves -= Math.max(n2, 1);
+          if (g.moves < 0) g.moves = 0;
+          ev.push({ t: 'bonus', list: list, moves: g.moves });
+          continue;
+        }
+        break;
+      }
+      return ev;
+    }
+
+    // ── Save / load ───────────────────────────────────────────────────────
+    function save(g) {
+      return {
+        R: g.R, C: g.C, mask: g.mask.join(''), jelly: g.jelly.join(''), frost: g.frost.join(''),
+        cell: g.cell.map(function (x) { return x ? [x.c, x.s, x.k, x.armed] : 0; }),
+        colors: g.colors, moves: g.moves, moves0: g.moves0, score: g.score, goal: g.goal, target: g.target,
+        ingTotal: g.ingTotal, ingDone: g.ingDone, ingSpawned: g.ingSpawned, ingMax: g.ingMax, jelly0: g.jelly0,
+        rng: g.rng.s, stats: g.stats
+      };
+    }
+    function load(o) {
+      var g = {
+        R: o.R, C: o.C, N: o.R * o.C, colors: o.colors, moves: o.moves, moves0: o.moves0, score: o.score, goal: o.goal, target: o.target,
+        ingTotal: o.ingTotal, ingDone: o.ingDone, ingSpawned: o.ingSpawned, ingMax: o.ingMax || 1, jelly0: o.jelly0 || 0,
+        rng: new Rng(o.rng), nextId: 1, forceQ: null, stats: o.stats
+      };
+      g.mask = o.mask.split('').map(Number); g.jelly = o.jelly.split('').map(Number); g.frost = o.frost.split('').map(Number);
+      g.cell = o.cell.map(function (a) { return a ? { id: g.nextId++, c: a[0], s: a[1], k: a[2] || 0, armed: a[3] || 0 } : null; });
+      prep(g);
+      return g;
+    }
+    function clone(g) { var c = load(JSON.parse(JSON.stringify(save(g)))); return c; }
+
+    return {
+      Rng: Rng, PTS: PTS, create: create, move: move, bonus: bonus, cascade: cascade, settle: settle, runs: runs,
+      allMoves: allMoves, hasMove: hasMove, shuffle: shuffle, goalMet: goalMet, goalLeft: goalLeft, jellyLeft: jellyLeft,
+      save: save, load: load, clone: clone, idx: idx, mk: mk, special: special, comboKind: comboKind
+    };
+  })();
+  // ==/ENGINE==
+
+  // ==LEVELS==
+  // Hand-made levels. rows: . cell, j/J jelly (1/2 layers), f/F frosting (1/2 layers), _ no cell.
+  // goal: score (reach target), jelly (clear every jelly), ingred (bring the cherries and nuts down).
+  // stars: score for 1, 2 and 3 stars (1 star = goal done; on score levels it's the target).
+  var FULL = '.........';
+  function rep(s, n) { var a = []; for (var i = 0; i < n; i++) a.push(s); return a; }
+  var LEVELS = [
+    { name: 'First Bite', goal: 'score', moves: 18, colors: 5, target: 3000, stars: [3000, 6000, 9500], rows: rep(FULL, 9) },
+    { name: 'Lemon Lane', goal: 'score', moves: 18, colors: 5, target: 4500, stars: [4500, 8000, 12000],
+      rows: ['__.....__', '_......._', FULL, FULL, FULL, FULL, FULL, '_......._', '__.....__'] },
+    { name: 'Jelly Jar', goal: 'jelly', moves: 22, colors: 5, stars: [0, 32000, 42000],
+      rows: [FULL, FULL, '..jjjjj..', '..jjjjj..', '..jjjjj..', '..jjjjj..', '..jjjjj..', FULL, FULL] },
+    { name: 'Sticky Floor', goal: 'jelly', moves: 22, colors: 5, stars: [0, 34000, 45000],
+      rows: [FULL, FULL, FULL, FULL, FULL, FULL, FULL, 'jjjjjjjjj', 'jjjjjjjjj'] },
+    { name: 'Cherry Drop', goal: 'ingred', moves: 26, colors: 5, ings: 2, stars: [0, 30000, 40000], rows: rep(FULL, 9) },
+    { name: 'Gumdrop Cross', goal: 'score', moves: 18, colors: 5, target: 6000, stars: [6000, 10000, 14000],
+      rows: ['___...___', '___...___', '___...___', FULL, FULL, FULL, '___...___', '___...___', '___...___'] },
+    { name: 'Double Dip', goal: 'jelly', moves: 26, colors: 5, stars: [0, 60000, 75000],
+      rows: [FULL, '..jjjjj..', '.jjJJJjj.', '.jJJ.JJj.', '.jJ...Jj.', '.jJJ.JJj.', '.jjJJJjj.', '..jjjjj..', FULL] },
+    { name: 'Six Flavours', goal: 'score', moves: 20, colors: 6, target: 5000, stars: [5000, 8500, 12000], rows: rep(FULL, 9) },
+    { name: 'Hourglass', goal: 'jelly', moves: 24, colors: 5, stars: [0, 42000, 54000],
+      rows: [FULL, '.jjjjjjj.', '_.jjjjj._', '__.jjj.__', '___.j.___', '__.jjj.__', '_.jjjjj._', '.jjjjjjj.', FULL] },
+    { name: 'Nutty Delight', goal: 'ingred', moves: 30, colors: 6, ings: 3, ingMax: 2, stars: [0, 40000, 52000], rows: rep(FULL, 9) },
+    { name: 'Frosted Window', goal: 'score', moves: 20, colors: 6, target: 6000, stars: [6000, 10000, 14000],
+      rows: [FULL, FULL, '..f...f..', FULL, '...f.f...', FULL, '..f...f..', FULL, FULL] },
+    { name: 'Icing Wall', goal: 'jelly', moves: 26, colors: 6, stars: [0, 38000, 50000],
+      rows: [FULL, FULL, FULL, 'f.ff.ff.f', FULL, FULL, FULL, 'jjjjjjjjj', 'jjjjjjjjj'] },
+    { name: 'Sugar Heart', goal: 'jelly', moves: 30, colors: 5, stars: [0, 60000, 76000],
+      rows: ['_jj___jj_', '.jjj_jjj.', 'jjjjjjjjj', 'jjjjjjjjj', '.jjjjjjj.', '__jjjjj__', '___jjj___', '____j____'] },
+    { name: 'Caramel Corners', goal: 'ingred', moves: 32, colors: 6, ings: 3, ingMax: 2, stars: [0, 42000, 55000],
+      rows: [FULL, FULL, FULL, '.f.....f.', FULL, '...f.f...', FULL, FULL, FULL] },
+    { name: 'Twin Towers', goal: 'score', moves: 20, colors: 6, target: 7000, stars: [7000, 11000, 15000],
+      rows: ['...._....', '...._....', '...._....', '...._....', '...._....', '...._....', FULL, FULL, FULL] },
+    { name: 'Toffee Blocks', goal: 'jelly', moves: 30, colors: 6, stars: [0, 46000, 60000],
+      rows: ['jjjjjjjjj', 'jj.....jj', 'j..F.F..j', 'j.......j', 'j..F.F..j', 'j.......j', 'j..F.F..j', 'jj.....jj', 'jjjjjjjjj'] },
+    { name: 'Cherry Chute', goal: 'ingred', moves: 30, colors: 6, ings: 3, ingMax: 2, stars: [0, 38000, 50000],
+      rows: [FULL, FULL, '_......._', '__.....__', '___...___', '___...___', '___...___', '___...___', '___...___'] },
+    { name: 'Sprinkle Storm', goal: 'score', moves: 16, colors: 6, target: 7000, stars: [7000, 10500, 14000], rows: rep(FULL, 9) },
+    { name: 'Jelly Ring', goal: 'jelly', moves: 28, colors: 6, stars: [0, 52000, 66000],
+      rows: [FULL, '.JJJJJJJ.', '.J.....J.', '.J.f.f.J.', '.J..f..J.', '.J.f.f.J.', '.J.....J.', '.JJJJJJJ.', FULL] },
+    { name: 'Nut Cracker', goal: 'ingred', moves: 34, colors: 6, ings: 4, ingMax: 2, stars: [0, 55000, 70000],
+      rows: [FULL, FULL, '.F.....F.', FULL, '..F.F.F..', FULL, '.F.....F.', FULL, FULL] },
+    { name: 'Peppermint Maze', goal: 'jelly', moves: 28, colors: 6, stars: [0, 55000, 70000],
+      rows: ['jjjjjjjjj', 'j.f.j.f.j', 'jjjjjjjjj', 'f.j.f.j.f', 'jjjjjjjjj', 'j.f.j.f.j', 'jjjjjjjjj', '.........', '.........'] },
+    { name: 'Candy Castle', goal: 'jelly', moves: 28, colors: 6, stars: [0, 60000, 76000],
+      rows: ['._._._._.', FULL, '.jjjjjjj.', '.jJJJJJj.', '.jJJ_JJj.', '.jJJ_JJj.', '.jjjjjjj.', FULL, FULL] },
+    { name: 'Frosting Fortress', goal: 'ingred', moves: 34, colors: 6, ings: 3, ingMax: 2, stars: [0, 56000, 72000],
+      rows: [FULL, FULL, '.FF.F.FF.', FULL, '.ff.f.ff.', FULL, 'F.F.F.F.F', FULL, FULL] },
+    { name: 'Grand Finale', goal: 'jelly', moves: 32, colors: 6, stars: [0, 80000, 100000],
+      rows: ['JjjjjjjjJ', 'jj.....jj', 'j..F.F..j', 'j.......j', 'jJ.F.F.Jj', 'j.......j', 'j..F.F..j', 'jj.....jj', 'JjjjjjjjJ'] }
+  ];
+
+  // After the hand-made levels: new levels made from the level number, so it never ends.
+  var SHAPES = [
+    rep(FULL, 9),
+    ['__.....__', '_......._', FULL, FULL, FULL, FULL, FULL, '_......._', '__.....__'],
+    ['___...___', '___...___', '___...___', FULL, FULL, FULL, '___...___', '___...___', '___...___'],
+    [FULL, FULL, '_......._', '__.....__', '___...___', '__.....__', '_......._', FULL, FULL],
+    ['...._....', '...._....', '...._....', '...._....', '...._....', FULL, FULL, FULL, FULL],
+    ['._._._._.', FULL, FULL, FULL, '...._....', FULL, FULL, FULL, FULL],
+    [FULL, FULL, FULL, '.._._._..', FULL, FULL, FULL, FULL, FULL]
+  ];
+  var NAME_A = ['Toffee', 'Fudge', 'Caramel', 'Lollipop', 'Gumdrop', 'Licorice', 'Marzipan', 'Nougat', 'Praline', 'Butterscotch', 'Truffle', 'Bonbon', 'Sherbet', 'Mint', 'Taffy', 'Jellybean'];
+  var NAME_B = ['Lane', 'Hill', 'Falls', 'Grove', 'Bay', 'Ridge', 'Meadow', 'Harbor', 'Valley', 'Square', 'Garden', 'Island', 'Canyon', 'Corner', 'Market', 'Bridge'];
+  function genLevel(n) {
+    var rng = new CM.Rng(n * 7919 + 17), hard = Math.min(1, (n - 24) / 60);
+    var types = ['jelly', 'score', 'ingred', 'jelly', 'score', 'jelly'], goal = types[n % types.length];
+    for (var attempt = 0; attempt < 30; attempt++) {
+      var shape = SHAPES[rng.int(SHAPES.length)].map(function (r) { return r.split(''); });
+      var R = shape.length, C = 9, r, c;
+      function cellOk(r, c) { return r >= 0 && r < R && c >= 0 && c < C && shape[r][c] !== '_'; }
+      function put(r, c, ch) { if (cellOk(r, c)) { shape[r][c] = ch; if (cellOk(r, C - 1 - c)) shape[r][C - 1 - c] = ch; } }
+      // frosting in pairs (never more than two wide, never in the top or bottom row)
+      var nF = Math.round((goal === 'score' ? 2 : 3) + hard * 6 + rng.next() * 3);
+      for (var f = 0; f < nF; f++) {
+        r = 2 + rng.int(R - 4); c = rng.int(5);
+        if (c === 4 && cellOk(r, 3) && shape[r][3] === 'f') continue;
+        put(r, c, rng.next() < 0.25 + hard * 0.4 ? 'F' : 'f');
+      }
+      if (goal === 'jelly') {
+        var style = rng.int(4), dbl = 0.15 + hard * 0.45;
+        for (r = 0; r < R; r++) for (c = 0; c < 5; c++) {
+          if (!cellOk(r, c) || shape[r][c] !== '.') continue;
+          var on = style === 0 ? (r >= 2 && r <= R - 3 && c >= 1) : style === 1 ? r >= R - 4 : style === 2 ? (r + c) % 2 === 0 : (c <= 1 || r <= 1 || r >= R - 2);
+          if (on && rng.next() < 0.85) put(r, c, rng.next() < dbl ? 'J' : 'j');
+        }
+      }
+      var rows = shape.map(function (a) { return a.join(''); });
+      var def = { name: NAME_A[(n * 7) % NAME_A.length] + ' ' + NAME_B[(n * 11 + 3) % NAME_B.length], goal: goal, colors: 6, rows: rows, gen: true };
+      if (!fillOK(def)) continue;
+      var cells = 0, layers = 0;
+      rows.forEach(function (row) { for (var k = 0; k < row.length; k++) { var ch = row.charAt(k); if (ch !== '_') cells++; if (ch === 'j') layers++; if (ch === 'J') layers += 2; } });
+      var tight = 1 - hard * 0.18;
+      if (goal === 'score') { def.moves = 20; def.target = Math.round((5500 + hard * 3000) * cells / 81 / 500) * 500; def.stars = [def.target, Math.round(def.target * 1.6 / 500) * 500, Math.round(def.target * 2.2 / 500) * 500]; }
+      else if (goal === 'jelly') { def.moves = Math.max(18, Math.round((10 + layers * 0.42) * tight)); def.stars = [0, layers * 1000 + def.moves * 900, layers * 1000 + def.moves * 1400]; }
+      else { def.ings = 3 + Math.round(hard * 2); def.moves = Math.round((8 + def.ings * 6) * tight); def.stars = [0, def.ings * 10000 + def.moves * 900, def.ings * 10000 + def.moves * 1400]; }
+      return def;
+    }
+    return { name: 'Sweet Spot ' + n, goal: 'score', moves: 20, colors: 6, target: 6000, stars: [6000, 9500, 13000], rows: rep(FULL, 9), gen: true };
+  }
+  // Every empty cell must be able to fill again (straight down or sliding in diagonally)
+  function fillOK(def) {
+    var g = CM.create(def, 1);
+    for (var i = 0; i < g.N; i++) if (g.cell[i] && g.cell[i].s !== 'i') g.cell[i] = null;
+    CM.settle(g);
+    for (i = 0; i < g.N; i++) if (g.mask[i] && !g.frost[i] && !g.cell[i]) return false;
+    return true;
+  }
+  function levelDef(n) { return n <= LEVELS.length ? LEVELS[n - 1] : genLevel(n); }
+  // ==/LEVELS==
+
+/*@@NEXT@@*/
+})();
+</script>
+</body>
+</html>
