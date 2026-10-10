@@ -30,7 +30,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .slot.filled{box-shadow:inset 0 0 0 2px var(--yellow);animation:pop .3s var(--spring);}
 .slot.cursor{box-shadow:inset 0 0 0 2px rgba(255,255,255,.4);}
 .slots.busy .slot{opacity:.6;}
-.status{min-height:1.4em;font-weight:800;color:var(--text-2);margin:6px 0 10px;}
+.status{min-height:1.4em;max-width:330px;text-align:center;font-weight:800;color:var(--text-2);margin:6px 0 10px;line-height:1.35;}
 .status.err{color:var(--red);}
 .pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;margin:6px 0 18px;}
 .key{height:64px;border:0;border-radius:20px;background:var(--surface-2);color:var(--text);font-size:1.6rem;font-weight:900;box-shadow:0 4px 0 rgba(0,0,0,.35);}
@@ -49,7 +49,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   <div class="status" id="status" role="status"></div>
   <div class="pad" id="keypad"></div>
   <button class="btn btn-ghost" id="guest" type="button">Play as a guest on this device</button>
-  <p class="hint">New PIN? Just pick any 4 digits. The same PIN on another phone shares your scores and history.</p>
+  <p class="hint">New PIN? Pick any 4 digits that aren't easy to guess (no 1234, 0000 or 2580). The same PIN on another phone shares your scores and history.</p>
 </div>
 <script>
 (function () {
@@ -105,7 +105,9 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     }).catch(function (e) {
       setBusy(false); Kit.haptic('error'); Kit.sfx('bad');
       $('slots').classList.remove('shake'); void $('slots').offsetWidth; $('slots').classList.add('shake');
-      status(e && e.message ? 'Sign-in failed: ' + e.message : "Couldn't sign in. Check your connection and try again.", true);
+      if (e && e.code === 'weak') status('That PIN is too easy to guess. Pick a less common one. If it was your PIN, change it on a device that is still signed in: tap your avatar, then Change PIN.', true);
+      else if (e && e.code === 'moved') status('That PIN was changed. Sign in with the new one.', true);
+      else status(e && e.message ? 'Sign-in failed: ' + e.message : "Couldn't sign in. Check your connection and try again.", true);
       setTimeout(function () { $('slots').classList.remove('shake'); pin = ''; render(); }, 650);
     });
   }
@@ -124,6 +126,8 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     setTimeout(function () { inp.focus(); }, 350);
   }
   render();
+  // Signed out because this account's PIN was changed on another device
+  try { if (localStorage.getItem('fgh_pin_moved')) { localStorage.removeItem('fgh_pin_moved'); status('Your PIN was changed on another device. Sign in with the new PIN.', true); } } catch (e) {}
 })();
 </script>
 </body>

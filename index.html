@@ -67,6 +67,13 @@ document.addEventListener('visibilitychange', function () {
 .syncdot.s-offline::after{background:var(--text-3);}
 .syncdot.s-error::after{background:var(--red);}
 
+.pin-ch{display:flex;flex-direction:column;gap:10px;}
+.pin-ch .pin-in{letter-spacing:.5em;font-size:1.4rem;text-align:center;font-weight:900;}
+.pin-ch .pin-in:placeholder-shown{letter-spacing:normal;font-size:1rem;font-weight:700;}
+.pin-msg{min-height:1.3em;font-size:.88rem;font-weight:700;color:var(--text-2);margin:0;}
+.pin-msg.err{color:var(--red);}
+.pin-big{font-family:var(--display);font-size:1.3em;letter-spacing:.12em;color:var(--text);}
+
 /* Search row with the Surprise button */
 .srow{display:flex;gap:10px;align-items:center;}
 .srow .search{flex:1;min-width:0;}
@@ -808,6 +815,46 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     if (FGHSync.onStatusChange) FGHSync.onStatusChange(function (s) { var hv = $('me').classList.contains('has-av'); $('me').className = 'me syncdot s-' + s.state + (hv ? ' has-av' : ''); });
     if (FGHSync.onReady) FGHSync.onReady(function () { refreshWho(); render(); });
   }
+  // Change PIN: everything moves to the new PIN; other devices on the old one get signed out.
+  // forced = this device is on a PIN that is now too easy to guess (no "later", but signing out is allowed).
+  function changePinSheet(forced) {
+    var s, busy = false;
+    function pinIn(ph) { return el('input', { class: 'input pin-in', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 4, autocomplete: 'new-password', placeholder: ph, 'aria-label': ph }); }
+    var a = pinIn('New PIN'), b = pinIn('Type it again'), msg = el('p', { class: 'pin-msg', role: 'status' });
+    [a, b].forEach(function (x) { x.addEventListener('input', function () { x.value = x.value.replace(/[^0-9]/g, '').slice(0, 4); msg.textContent = ''; msg.className = 'pin-msg'; }); });
+    b.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    function say(t, err) { msg.textContent = t; msg.className = 'pin-msg' + (err ? ' err' : ''); }
+    function go() {
+      if (busy) return;
+      var np = a.value, again = b.value;
+      if (!/^[0-9]{4}$/.test(np)) return say('A PIN is 4 digits.', true);
+      if (FGHSync.weakPin(np)) return say('That PIN is too easy to guess. Avoid repeats, runs like 1234 or 9876, and patterns like 1212.', true);
+      if (np !== again) return say('The two PINs don’t match.', true);
+      busy = true; say('Moving your account to the new PIN…');
+      FGHSync.changePin(np).then(function (r) {
+        busy = false; s.close(); Kit.haptic('success'); Kit.sfx('good');
+        refreshWho();
+        Kit.sheet({ title: 'PIN changed', html: '<p class="muted">Your new PIN is <b class="pin-big">' + np + '</b>. Use it to sign in on your other devices. Any phone still signed in with the old PIN will be signed out the next time it opens the app.' +
+          (r && r.retired === false ? '<br><br>The old PIN still holds a copy of your scores for now. It will be cleared once the app updates.' : '') + '</p>',
+          actions: [{ label: 'Done', primary: true }] });
+      }).catch(function (e) { busy = false; Kit.haptic('error'); say((e && e.message) || 'Couldn’t change your PIN. Check your connection and try again.', true); });
+    }
+    var body = el('div', { class: 'pin-ch' }, [
+      el('p', { class: 'muted', text: forced
+        ? 'Your PIN ' + FGHSync.pin() + ' is one of the most common PINs, so it’s easy for someone else to guess. Pick a new one. Your scores, history and settings move with you.'
+        : 'Your scores, history and settings move to the new PIN. Other phones signed in with your current PIN will be signed out and can sign in again with the new one.' }),
+      a, b, msg
+    ]);
+    var acts = [{ label: 'Change PIN', primary: true, keep: true, onClick: go }];
+    acts.push(forced ? { label: 'Sign out instead', cls: 'btn-ghost', onClick: function () { FGHSync.signOut(); location.replace('./gate.html'); } } : { label: 'Cancel', cls: 'btn-ghost' });
+    s = Kit.sheet({ title: forced ? 'Choose a safer PIN' : 'Change PIN', node: body, actions: acts, dismissible: !forced });
+    setTimeout(function () { a.focus(); }, 350);
+  }
+  // On a PIN that's now too easy to guess: ask for a new one once the account has synced
+  if (mode === 'pin' && FGHSync.weakPin && FGHSync.weakPin(FGHSync.pin() || '')) {
+    (FGHSync.onReady || function (f) { f(); })(function () { if (FGHSync.isPin() && FGHSync.weakPin(FGHSync.pin() || '')) setTimeout(function () { changePinSheet(true); }, 600); });
+  }
+
   $('me').addEventListener('click', function () {
     Kit.sfx('pop');
     var lbl = mode === 'pin' ? (FGHSync.label() || '') : '';
@@ -848,6 +895,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
     });
     if (mode === 'pin') {
       item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); });
+      if (FGHSync.changePin) item('key', 'Change PIN', function () { changePinSheet(false); });
       item('pulse', 'Sync diagnostics', function () { window.openSyncDiagnostics && openSyncDiagnostics(); });
     }
     item('logout', mode === 'pin' ? 'Sign out' : 'Sign in with a PIN', function () {

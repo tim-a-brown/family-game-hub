@@ -35,6 +35,20 @@
   var PIN_KEY   = 'fgh_pin';
   var LABEL_KEY = 'fgh_label';
   var PIN_RE    = /^[0-9]{4}$/;
+  // PINs too easy to guess: one digit four times, straight runs up or down (wrapping 9 to 0), ABAB, AABB,
+  // the keypad's middle column, and a few other favourites. About 230 of the 10,000.
+  var WEAK_PINS = ['2580','0852','1004','2000','2001','2468','8642','1357','7531','1379','9731','0007','1984','1999','2020','2021','2022','2023','2024','2025','2026'];
+  function weakPin(p){
+    if(!PIN_RE.test(p || '')) return true;
+    var d = p.split('').map(Number), up = true, dn = true;
+    if(d[0] === d[1] && d[1] === d[2] && d[2] === d[3]) return true;
+    for(var i = 1; i < 4; i++){ if((d[i-1] + 1) % 10 !== d[i]) up = false; if((d[i-1] + 9) % 10 !== d[i]) dn = false; }
+    if(up || dn) return true;
+    if(d[0] === d[2] && d[1] === d[3]) return true;
+    if(d[0] === d[1] && d[2] === d[3]) return true;
+    return WEAK_PINS.indexOf(p) >= 0;
+  }
+  var MOVED_FLAG = 'fgh_pin_moved';
 
   var firebaseConfig = {
     apiKey: "AIzaSyDmZ4AXZz1MJLiQi1sygbvigrpR5JcWkrQ",
@@ -176,17 +190,19 @@
   function hiName(r){ return Array.isArray(r) ? r[0] : r.name; }
   function hiScore(r){ return Number(Array.isArray(r) ? r[1] : r.score) || 0; }
   function hiDate(r){ return Array.isArray(r) ? r[2] : r.date; }
-  function mergeHi(a, b){
+  // Boards where lower is better (times, moves): listed in HI_BOARDS in games.js
+  function hiIsLow(key){ try{ return typeof hiLow === 'function' && hiLow(key); }catch(e){ return false; } }
+  function mergeHi(a, b, key){
     var all = asArray(a).concat(asArray(b));
-    var seen = {};
+    var seen = {}, low = hiIsLow(key);
     all = all.filter(function(row){
-      if(Array.isArray(row)){ if(row.length < 2) return false; }
+      if(Array.isArray(row)){ if(row.length < 2 || row[1] == null) return false; }
       else if(!row || typeof row !== 'object' || row.score == null) return false;
       var k = (hiName(row)||'')+'|'+hiScore(row)+'|'+(hiDate(row)||'');
       if(seen[k]) return false; seen[k] = 1; return true;
     });
-    all.sort(function(x,y){ return hiScore(y) - hiScore(x); });
-    return all.slice(0, 50);   // top 50 per arcade game
+    all.sort(function(x,y){ return low ? hiScore(x) - hiScore(y) : hiScore(y) - hiScore(x); });
+    return all.slice(0, 50);   // top 50 per board
   }
 
   function mergeGh(a, b){
@@ -214,7 +230,7 @@
     var keys = {};
     Object.keys(local.hi||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.hi||{}).forEach(function(k){ keys[k]=1; });
-    Object.keys(keys).forEach(function(k){ out.hi[k] = mergeHi(local.hi&&local.hi[k], remote.hi&&remote.hi[k]); });
+    Object.keys(keys).forEach(function(k){ out.hi[k] = mergeHi(local.hi&&local.hi[k], remote.hi&&remote.hi[k], k); });
     keys = {};
     Object.keys(local.gh||{}).forEach(function(k){ keys[k]=1; });
     Object.keys(remote.gh||{}).forEach(function(k){ keys[k]=1; });
@@ -384,8 +400,10 @@
   function hiFromFirestore(hiMap){
     var out = {};
     Object.keys(hiMap||{}).forEach(function(game){
-      out[game] = (hiMap[game]||[]).map(function(row){
-        return Array.isArray(row) ? row : [row.n, row.s, row.d];
+      out[game] = asArray(hiMap[game]).map(function(row){
+        // {name, score, date} rows (arcade-hi.js) are saved as they are; only [name, score, date] rows were packed
+        if(Array.isArray(row) || !row || typeof row !== 'object') return row;
+        return ('s' in row || 'n' in row) ? [row.n, row.s, row.d] : row;
       });
     });
     return out;
@@ -405,7 +423,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, isNew:false };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: d.bank||null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, isNew:false, moved: !!d.moved };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -543,6 +561,9 @@
       }
       throw err;
     }).then(saved).catch(function(err){
+      if(err && err.code === 'permission-denied'){
+        ref.get().then(function(d){ if(d.exists && d.data() && d.data().moved && ref.id === pin()) movedOut(); }).catch(function(){});
+      }
       // Log detailed error for diagnostics
       console.error('[sync] ref.set failed', err && err.code, err && err.message, err);
       throw err;
@@ -583,11 +604,17 @@
 
   function signInWithPin(p){
     if(!PIN_RE.test(p||'')) return Promise.reject(new Error('PIN must be 4 digits'));
+    if(weakPin(p)){ var we = new Error('That PIN is too easy to guess. Pick a less common one.'); we.code = 'weak'; return Promise.reject(we); }
     LS.setItem(MODE_KEY, 'pin');
     LS.setItem(PIN_KEY, p);
     return ensureFirebase()
       .then(pullCloud)
       .then(function(remote){
+        if(remote.moved){
+          signOut();
+          var me = new Error('That PIN was changed. Sign in with the new one.'); me.code = 'moved'; throw me;
+        }
+        try{ LS.removeItem(MOVED_FLAG); }catch(e){}
         takeLabel(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local   = scanLocal();
@@ -596,6 +623,55 @@
         return pushNow({ force: true }).then(function(){ ssSet(PULL_KEY, String(Date.now())); return {isNew: remote.isNew}; });
       })
       .then(function(result){ notifyReady(); return result; });
+  }
+
+  // Another device changed this account's PIN: the old PIN is wiped and marked moved. Sign this device out
+  // (its games stay on the device) and send it to the sign-in page, which explains what happened.
+  function movedOut(){
+    console.warn('[sync] this PIN was changed on another device; signing out');
+    signOut();
+    try{ LS.setItem(MOVED_FLAG, '1'); }catch(e){}
+    setStatus('idle');
+    try{ if(!/\/gate\.html$/.test(location.pathname)) location.replace('/gate.html'); }catch(e){}
+  }
+
+  // Change this account's PIN: sync, copy everything to the new PIN, then wipe the old PIN and mark it moved
+  // (the cloud refuses any more writes to a moved PIN, so stale devices can't refill it).
+  function changePin(np){
+    var op = pin();
+    function fail(msg, code){ var e = new Error(msg); e.code = code; return Promise.reject(e); }
+    if(!isPin()) return fail('Sign in with a PIN first.', 'signin');
+    if(!PIN_RE.test(np || '')) return fail('A PIN is 4 digits.', 'format');
+    if(np === op) return fail('That is already your PIN.', 'same');
+    if(weakPin(np)) return fail('That PIN is too easy to guess. Pick a less common one.', 'weak');
+    if(typeof navigator !== 'undefined' && navigator.onLine === false) return fail('You are offline. Connect to change your PIN.', 'offline');
+    setStatus('syncing');
+    var oldRef;
+    return ensureFirebase()
+      .then(function(){ return _fb.db.collection('pins').doc(np).get(); })
+      .then(function(doc){ if(doc.exists) throw Object.assign(new Error('That PIN is taken. Pick another.'), { code: 'taken' }); })
+      .then(pullCloud)
+      .then(function(remote){
+        if(remote.moved){ movedOut(); throw Object.assign(new Error('This PIN was already changed on another device.'), { code: 'moved' }); }
+        takeLabel(remote);
+        writeSnapshotToLocal(mergeSnapshots(scanLocal(), remote)); reconcileName();
+        oldRef = cloudRef();
+        LS.setItem(PIN_KEY, np);
+        try{ LS.removeItem(SIG_KEY); }catch(e){}
+        return pushNow({ force: true }).catch(function(err){ LS.setItem(PIN_KEY, op); throw err; });
+      })
+      .then(function(){
+        // Retire the old PIN. If the cloud rules don't allow it yet, the move still stands; the old copy stays.
+        return oldRef.set({ moved: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }).then(function(){ return true; })
+          .catch(function(err){ console.warn('[sync] could not retire the old PIN', err && err.code); return false; });
+      })
+      .then(function(retired){
+        ssSet(PULL_KEY, String(Date.now()));
+        setStatus('synced');
+        try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+        return { ok: true, pin: np, retired: retired };
+      })
+      .catch(function(err){ setStatus(_syncStatus.state === 'syncing' ? 'synced' : _syncStatus.state); throw err; });
   }
 
   function signOut(){
@@ -630,6 +706,7 @@
     return ensureFirebase()
       .then(pullCloud)
       .then(function(remote){
+        if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
         takeLabel(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local  = scanLocal();
@@ -750,6 +827,7 @@
       ensureFirebase()
         .then(pullCloud)
         .then(function(remote){
+          if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
           takeLabel(remote);
           if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
           var local  = scanLocal();
@@ -817,15 +895,17 @@
     var l = linksGet(); l.ini = { v: v, at: Date.now() }; linksSet(l); linkPublishSoon();
     return v;
   }
-  // Your best arcade scores (entries under your initials), top 5 per game, for the people who link you
+  // Your best arcade scores (entries under your initials), top 5 per game, for the people who link you.
+  // Boards where lower is better (puzzle times and moves, HI_BOARDS in games.js) publish your lowest 5.
   function myHi(){
     var ini = myInitials(), out = {}; if(!ini) return out;
     for(var i = 0; i < LS.length; i++){
       var k = LS.key(i); if(!k || k.indexOf('hi_') !== 0) continue;
       var list = lsJSON(k); if(!Array.isArray(list)) continue;
+      var low = hiIsLow(k.slice(3));
       var mine = list.filter(function(e){ return e && String(e.name || '').trim().toUpperCase() === ini && isFinite(Number(e.score)) && e.score !== null && e.score !== ''; })
         .map(function(e){ return { s: Number(e.score), d: String(e.date || '').slice(0, 24) }; })
-        .sort(function(a, b){ return b.s - a.s; }).slice(0, 5);
+        .sort(function(a, b){ return low ? a.s - b.s : b.s - a.s; }).slice(0, 5);
       if(mine.length) out[k.slice(3)] = mine;
     }
     return out;
@@ -1088,7 +1168,7 @@
     mode: mode, pin: pin, label: label, isPin: isPin,
     // Firestore handle for features beyond the PIN doc (Lorcana online tables)
     db: function(){ return ensureFirebase().then(function(f){ return f.db; }); },
-    signInWithPin: signInWithPin,
+    signInWithPin: signInWithPin, changePin: changePin, weakPin: weakPin,
     setLabel: setLabel,
     signOut: signOut,
     continueAsGuest: continueAsGuest,

@@ -22,7 +22,10 @@ service cloud.firestore {
     match /pins/{pinId} {
       allow read: if pinId.matches('^[0-9]{4}$');
 
+      // A PIN whose account moved to a new PIN (Change PIN) holds only {moved, updatedAt} and takes no more
+      // writes, so a device still signed in with the old PIN can't fill it up again.
       allow write: if pinId.matches('^[0-9]{4}$')
+        && !(resource != null && resource.data.get('moved', false) == true)
         && request.resource.data.keys().hasOnly([
           'hi',         // per-game high scores
           'gh',         // per-game history records
@@ -36,7 +39,8 @@ service cloud.firestore {
           'lorcana',    // Lorcana saved decks + bookmarked cards
           'avatars',    // player avatars (choice + uploaded photos), by name
           'ghDel',      // deleted game-history record ids (so other devices drop them)
-          'links'       // player links: this account's profile code + linked people
+          'links',      // player links: this account's profile code + linked people
+          'moved'       // set (with updatedAt only) on the old PIN when an account changes its PIN
         ]);
     }
 
