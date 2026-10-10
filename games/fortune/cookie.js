@@ -575,11 +575,11 @@ function filmMaterial(normalTex, frostTex) {
     ior: 1.45, specularIntensity: 1, envMapIntensity: 0.4,
     iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });
-  const U = m.userData.u = { uFres: { value: 0.5 }, uGeoFres: { value: 1 } };
+  const U = m.userData.u = { uFres: { value: 0.5 }, uGeoFres: { value: 1 }, uDbg: { value: 0 } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = 'attribute vec2 film;\nvarying vec2 vFilm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFilm = film;');
-    sh.fragmentShader = 'varying vec2 vFilm;\nuniform float uFres, uGeoFres;\n' + sh.fragmentShader
+    sh.fragmentShader = 'varying vec2 vFilm;\nuniform float uFres, uGeoFres, uDbg;\n' + sh.fragmentShader
       .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.4, vFilm.x);')
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = mix(roughnessFactor, 0.3, vFilm.x);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -595,7 +595,9 @@ function filmMaterial(normalTex, frostTex) {
 	float fA = diffuseColor.a;
 	float fNV = saturate(dot(mix(normal, nonPerturbedNormal, uGeoFres), geometryViewDir));
 	float fFr = 0.04 + 0.96 * pow(1.0 - fNV, 5.0);
-	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * uFres, 0.0, 1.0));`)
+	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * uFres, 0.0, 1.0));
+	if (uDbg > 0.5) gl_FragColor = vec4(vec3(gl_FragColor.a), 1.0);
+	if (uDbg > 1.5) gl_FragColor = vec4(vFilm.x, fA, fFr, 1.0);`)
       .replace('#include <premultiplied_alpha_fragment>', '');
   };
   m.customProgramCacheKey = () => 'ck-film-1';
