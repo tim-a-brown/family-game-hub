@@ -73,7 +73,7 @@
     var ic = doc.createElement('link'); ic.rel = 'icon'; ic.type = 'image/png'; ic.href = '/favicon.png?v=489'; doc.head.appendChild(ic);
   }
   if (!doc.querySelector('link[rel="apple-touch-icon"]')) {
-    var at = doc.createElement('link'); at.rel = 'apple-touch-icon'; at.setAttribute('sizes', '180x180'); at.href = '/apple-touch-icon.png?v=489'; doc.head.appendChild(at);
+    var at = doc.createElement('link'); at.rel = 'apple-touch-icon'; at.setAttribute('sizes', '180x180'); at.href = '/img/home-icon-180.png'; doc.head.appendChild(at);
   }
   ['gesturestart', 'gesturechange'].forEach(function (t) {
     doc.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });

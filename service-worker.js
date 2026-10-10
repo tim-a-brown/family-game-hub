@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v490-2026-10-10-icon-manifest';
+const CACHE_VERSION = 'v491-2026-10-10-icon-path';
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
 
 // Shell assets + every game HTML. Maintained manually; bump CACHE_VERSION
@@ -343,7 +343,7 @@ self.addEventListener('fetch', (event) => {
 
   // App icons and the manifest always come straight from the network (iOS reads them when adding to the
   // home screen; a cached or failed copy would leave a plain letter icon)
-  if (url.origin === self.location.origin && /^\/(apple-touch-icon[^/]*|icon-\d+\.png|favicon\.png|manifest\.json)$/.test(url.pathname)) return;
+  if (url.origin === self.location.origin && /^\/(apple-touch-icon[^/]*|icon-\d+\.png|img\/home-icon-\d+\.png|favicon\.png|manifest\.json)$/.test(url.pathname)) return;
 
   // Lorcana card art: from the device when we have it
   if (isArt(url)) { event.respondWith(artFetch(req)); return; }
