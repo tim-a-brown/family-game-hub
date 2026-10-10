@@ -554,9 +554,9 @@
     if (R.hcount && S().phase === 'pack') { R.hcount.innerHTML = sel.length ? '<b>' + sel.length + '</b> selected: now tap a card above to use it' : 'Select cards here, then tap a card above to use it on them'; return; }
     if (R.hcount) R.hcount.innerHTML = sel.length ? '<b>' + sel.length + '</b>/5 selected' : E.curHand().length + '/' + (S().hs || E.handSizeNow()) + ' in hand'; }
   // fan the hand: a gentle arc, overlapping when space is short
-  function placeHand(fresh) {
+  function placeHand(fresh, only) {
     if (!R.hand || !R.hand.isConnected) return;
-    var ids = E.curHand().filter(function (id) { return R.hEls[id]; }), n = ids.length; if (!n) return;
+    var ids = (only || E.curHand()).filter(function (id) { return R.hEls[id]; }), n = ids.length; if (!n) return;
     var W = R.hand.getBoundingClientRect().width, cw = R.cw || 60;
     var gap = n > 1 ? Math.min(cw * 1.04, (W - cw - 4) / (n - 1)) : 0;
     var dr = R.deck ? R.deck.getBoundingClientRect() : null, hr = R.hand.getBoundingClientRect();
@@ -690,14 +690,14 @@
     void R.played.offsetWidth;
     res.played.forEach(function (id, k) { var cd = pEls[id]; cd.style.transition = 'transform ' + (0.3 / speed) + 's cubic-bezier(.22,1,.36,1) ' + (k * 0.04 / speed) + 's'; cd.style.transform = ''; });
     Kit.sfx('deal'); hap('light');
-    placeHand();
-    await D(340); if (tok !== token) return;
+    placeHand(null, held); countSel();
+    await D(300); if (tok !== token) return;
     res.played.forEach(function (id) { pEls[id].style.transition = ''; pEls[id].classList.add(res.scoring.indexOf(id) >= 0 ? 'up' : 'no'); });
     // 2. the hand and its base chips x mult
     R.hn.innerHTML = esc(E.HMAP[res.hand].n) + ' <small>lvl.' + res.level + '</small>';
     setCM(res.bc, res.bm, 'b');
     Kit.sfx('pop', 0.8);
-    await D(300); if (tok !== token) return;
+    await D(240); if (tok !== token) return;
     if (res.notAllowed) {
       R.played.parentNode.appendChild(el('div', { class: 'msg na', text: 'Not allowed! ' + res.notAllowed }));
       Kit.sfx('bad'); hap('error'); await D(900);
@@ -728,7 +728,7 @@
       hap(e.x ? 'medium' : 'tick');
       if (!e.money) setCM(e.c, e.m, kind === 'c' ? 'c' : 'm');
       step++;
-      await D(Math.max(110, (e.k === 'joker' ? 300 : 250) - step * 6));
+      await D(Math.max(90, (e.k === 'joker' ? 240 : 190) - step * 5));
     }
     if (tok !== token) return;
     // 4. chips x mult = the score, with flames when one hand clears the blind
@@ -738,11 +738,11 @@
     R.hn.classList.add('tot'); R.hn.innerHTML = '<i class="chipi"></i>' + fmt(res.total);
     retrig(R.hn, 'bump');
     var bt = el('div', { class: 'bigtot', text: fmt(res.total) }), pr = R.played.getBoundingClientRect();
-    bt.style.left = (pr.left + pr.width / 2) + 'px'; bt.style.top = (pr.top - 6) + 'px';
+    bt.style.left = (pr.left + pr.width / 2) + 'px'; bt.style.top = (pr.top + pr.height / 2) + 'px';
     if (res.total > 0) { fxl.appendChild(bt); setTimeout(function () { bt.remove(); }, 1000); }
     Kit.sfx(hot ? 'boom' : 'chip', hot ? 0.8 : 1); hap(hot ? 'heavy' : 'medium');
     if (hot) JRBg.kick(6);
-    await D(420); if (tok !== token) return;
+    await D(320); if (tok !== token) return;
     await tick(R.score, pre.score, pre.score + res.total, tok);
     if (tok !== token) return;
     // 5. after the hand: glass breaks, jokers used up, taxes
