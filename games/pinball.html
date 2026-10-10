@@ -69,12 +69,12 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-arc::after{content:"";position:absolute;left:26%;top:17%;width:34%;height:20%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(3px);transition:opacity .06s,transform .06s;}
 .pb-arc.on::before{transform:translateY(3.5px);filter:brightness(.82) saturate(1.1);box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 0 rgba(0,0,0,0),inset 0 1px 2px rgba(255,255,255,.25),inset 0 5px 8px rgba(0,0,0,.45);}
 .pb-arc.on::after{opacity:.3;transform:translateY(3.5px);}
-.pb-flip{position:absolute;z-index:3;bottom:calc(var(--safe-b) + 10px);width:72px;height:72px;}
+.pb-flip{position:absolute;z-index:3;bottom:calc(var(--safe-b) + 14px);width:72px;height:72px;}
 .pb-flipL{left:10px;}.pb-flipR{right:10px;}
 .pb-view.no-flipbtns .pb-flip{display:none;}
 /* smaller buttons with an engraved legend plate under them, like the printed labels on a lockdown bar */
 /* the small buttons sit in the same apron row as the flippers: L · MAGNET · NUDGE · FIRE · R, legends aligned */
-.pb-ctl{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;bottom:calc(var(--safe-b) + 3px);}
+.pb-ctl{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;bottom:calc(var(--safe-b) + 6px);}
 .pb-ctl .pb-arc{width:50px;height:50px;}
 .pb-leg{display:block;padding:2px 6px 1px;border-radius:3px;background:#15131a;border:1px solid #3d3946;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.6);
   font:800 9.5px/1.3 var(--font,system-ui);letter-spacing:.14em;color:#d8cfbb;text-shadow:0 1px 0 #000;white-space:nowrap;}
@@ -165,7 +165,7 @@ Kit.init({
     { icon: 'board', label: 'Choose table', onClick: () => showSetup() },
     { icon: 'trophy', label: 'High scores', onClick: showHigh },
     { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) },
-    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); } }
+    { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) G.resize(); } }
   ],
   rules:
     '<p class="goal">Keep the ball in play as long as you can and score as many points as you can. A game is 3 or 5 balls.</p>' +
@@ -301,7 +301,9 @@ function startGame(id, balls, who) {
     if (view !== 'game') return;
     sizeDmd();
     // the table is built one phase per frame; the text and bar show the real phase
-    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish,
+    // the camera keeps the button row clear: the apron ends above it and the buttons sit on the cabinet front
+    const padBottom = () => { const v = viewEl.getBoundingClientRect(), b = flipBtn.L.getBoundingClientRect(); return Math.max(0, v.bottom - (btnsOn() ? b.top : magCtl.getBoundingClientRect().top) + 6); };
+    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish, padBottom,
       progress: (label, frac) => { loadTxt.textContent = label + '…'; loadBar.style.width = Math.round(frac * 100) + '%'; } });
     await g.ready;
     if (view !== 'game' || g.destroyed) { g.destroy(); return; }

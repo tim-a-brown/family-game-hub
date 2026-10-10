@@ -1003,8 +1003,11 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
   RC.camera = camera;
   const camBase = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
-  function fitCamera(aspect) {
+  // padBottom: pixels at the bottom of the canvas to keep clear (the page's button row sits on the cabinet front)
+  function fitCamera(aspect, padBottom) {
     camera.aspect = aspect;
+    RC.padBottom = padBottom != null ? padBottom : (RC.padBottom || 0);
+    const h = renderer.domElement.clientHeight || renderer.domElement.height || 1, yMin = -0.985 + 2 * RC.padBottom / h;
     const pts = [];
     const add = (x, y, z) => pts.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
     const fit = def.fit || {}, top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40;
@@ -1020,7 +1023,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
       let lo = 0.3, hi = 6;
       for (let it = 0; it < 26; it++) {
         const d = (lo + hi) / 2; camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
-        let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || Math.abs(tmp.y) > 0.985 || tmp.z > 1) { ok = false; break; } }
+        let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || tmp.y > 0.985 || tmp.y < yMin || tmp.z > 1) { ok = false; break; } }
         if (ok) hi = d; else lo = d;
       }
       camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
@@ -1035,9 +1038,11 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     let lo = 0.3, hi = 6;
     for (let it = 0; it < 26; it++) {
       const d = (lo + hi) / 2; camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
-      let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || Math.abs(tmp.y) > 0.985 || tmp.z > 1) { ok = false; break; } }
+      let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || tmp.y > 0.985 || tmp.y < yMin || tmp.z > 1) { ok = false; break; } }
       if (ok) hi = d; else lo = d;
     }
+    // the view's centre is above the padded strip: nudge the look point down so the table stays centred in the
+    // free area (keep lookY as the author set it otherwise)
     camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look);
     camBase.pos.copy(camera.position); camBase.look.copy(look); RC.phi = best.phi;
     camera.updateProjectionMatrix();
@@ -1071,7 +1076,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     renderer.getSize(size);
     const dpr = Math.min(window.devicePixelRatio || 1, RC.maxDpr || 2);
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
-    fitCamera(w / h);
+    fitCamera(w / h, opts.padBottom ? opts.padBottom() : 0);
     makeComposer(Math.round(w * dpr), Math.round(h * dpr));
   };
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = theme.exposure;
