@@ -13,15 +13,9 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-.rform .rrow .avatar{display:none;}
-.rform .rrow .nm{white-space:normal;line-height:1.2;}
-.rform .seg > button{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rk-prev{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.rk-prev > div{padding:8px 10px;border-radius:var(--r-sm);background:var(--w06);text-align:center;}
-.rk-prev .n{display:block;font-size:.75rem;font-weight:800;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rk-prev .v{font-weight:900;font-size:1.3rem;font-variant-numeric:tabular-nums;}
-.rk-prev .v.neg{color:var(--red);}
-.rk-prev .v.pos{color:var(--green);}
+/* The open hand: tap the team that won the bid, then its bid and the points it took */
+.spad td .wait{display:block;padding:8px 2px;font-family:var(--hand);font-size:.95rem;line-height:1.1;color:#8a8796;}
+.rk-col{display:flex;flex-direction:column;gap:3px;}
 </style>
 </head>
 <body>
@@ -44,7 +38,7 @@
       '<h3>Bidding and play</h3><ul><li>Bid in 5s starting at 100. Once you pass, you are out.</li>' +
       '<li>The high bidder takes the nest, puts 5 cards back, and names trump. The <b>Rook is the highest trump</b>.</li>' +
       '<li>Follow the color led if you can (the Rook counts as trump). Whoever takes the <b>last trick</b> also gets the nest.</li></ul>' +
-      '<h3>After each hand</h3><p>Enter which team won the bid, the bid, and how many points the bidding team took. The other team took the rest of the 180.</p>' +
+      '<h3>After each hand</h3><p>The open rows on the sheet are this hand. Tap <b>Won bid</b> in the bidding team\'s column, set the <b>bid</b> and the <b>points they took</b>. The other team took the rest of the 180; made or set is worked out for you. Tap <b>Lock hand</b> to write it in, or tap a hand on the sheet to change or delete it right there.</p>' +
       '<ul><li><b>Made it:</b> the bidding team scores what it took.</li><li><b>Set:</b> the bidding team loses its bid.</li><li>The other team always scores what it took.</li></ul>'
   });
 
@@ -73,69 +67,73 @@
       goal: 'First team to ' + cfg.target + ' wins',
       isOver: function (t) { return t.some(function (v) { return v >= cfg.target; }) && t[0] !== t[1]; },
       winner: function (t) { return t[0] === t[1] ? -1 : t[0] > t[1] ? 0 : 1; },
-      form: function (ctx) {
-        // Rebuild the inputs when fixing an old hand
-        var bt = 0, bid = 100, took = 100;
-        if (ctx.prev) {
-          var d = ctx.prev.detail || [], sc = ctx.prev.scores;
-          bt = d[1] && /^bid/.test(d[1]) ? 1 : 0;
-          bid = parseInt(String(d[bt] || '').replace(/\D/g, ''), 10) || 100;
-          took = sc[bt] < 0 ? TOTAL - sc[1 - bt] : sc[bt];
-        }
-        ctx.node.appendChild(el('div', { class: 'label', text: 'Who won the bid?' }));
-        var seg = el('div', { class: 'seg' });
-        teams.forEach(function (n, i) {
-          seg.appendChild(el('button', { type: 'button', text: n, class: i === bt ? 'on' : '', onclick: function () {
-            bt = i; Array.prototype.forEach.call(seg.children, function (b, j) { b.classList.toggle('on', j === i); }); Kit.sfx('tap'); check();
-          } }));
+      // ── The open hand on the sheet ── st = {bt: bidding team or -1, bid, took (points the bidders took)}
+      entryRows: function (ctx) {
+        var st;
+        if (ctx.editing) {
+          var d = ctx.prev.detail || [], sc = ctx.prev.scores, bt = d[1] && /^bid/.test(d[1]) ? 1 : 0;
+          st = { bt: bt, bid: parseInt(String(d[bt] || '').replace(/\D/g, ''), 10) || 100, took: sc[bt] < 0 ? TOTAL - sc[1 - bt] : sc[bt] };
+        } else st = ctx.draft() || { bt: -1, bid: 100, took: null };
+        var rowBid = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [String(ctx.round), el('small', { text: 'BID' })])]);
+        var rowTook = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [el('small', { text: 'TOOK' })])]);
+        var won = [], bidCell = [], tookCell = [], eqs = [];
+        var bidStep = Scorepad.step({ value: st.bid, min: 70, max: TOTAL, step: 5, label: 'Bid', onChange: function (v) { st.bid = v; refresh(); } });
+        var tookStep = Scorepad.step({ value: st.took, min: 0, max: TOTAL, step: 5, label: 'Points the bidding team took', onChange: function (v) { st.took = v; refresh(); } });
+        var other = el('span', { class: 'sum' });
+        teams.forEach(function (nm, i) {
+          won[i] = Scorepad.tog('Won bid', { cls: 'gold', aria: nm + ' won the bid', onClick: function () { st.bt = st.bt === i ? -1 : i; refresh(); } });
+          bidCell[i] = el('div');
+          rowBid.appendChild(el('td', null, [el('div', { class: 'rk-col' }, [won[i], bidCell[i]])]));
+          tookCell[i] = el('div'); eqs[i] = el('small', { class: 'eq' });
+          rowTook.appendChild(el('td', null, [tookCell[i], eqs[i]]));
         });
-        ctx.node.appendChild(seg);
-        var bidRow = ctx.number(0, { label: 'Bid', value: bid, min: 70, max: TOTAL, step: 5, neg: false, placeholder: '100' });
-        var tookRow = ctx.number(0, { label: 'Points they took', value: took, min: 0, max: TOTAL, step: 5, neg: false, placeholder: '0' });
-        bidRow.input.addEventListener('input', check); tookRow.input.addEventListener('input', check);
-        ctx.node.appendChild(bidRow); ctx.node.appendChild(tookRow);
-        var prev = el('div', { class: 'rk-prev' }); ctx.node.appendChild(prev);
-        var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
-        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
-        ctx.node.appendChild(btn);
-        function raw(row) { var v = String(row.input.value).trim(); return /^\d+$/.test(v) ? parseInt(v, 10) : NaN; }
-        function scores() {
-          var b = raw(bidRow), t = raw(tookRow), s = [0, 0];
-          s[bt] = t >= b ? t : -b; s[1 - bt] = TOTAL - t;
-          return s;
-        }
-        function check() {
-          var b = raw(bidRow), t = raw(tookRow), msg = '', ok = true;
-          tookRow.querySelector('.nm').textContent = 'Points ' + teams[bt] + ' took';
-          if (!mult5(b, 70, TOTAL)) { ok = false; msg = 'The bid should be 70 to 180, in 5s.'; }
-          else if (!mult5(t, 0, TOTAL)) { ok = false; msg = 'Points taken should be 0 to 180, in 5s.'; }
-          prev.innerHTML = '';
-          if (ok) {
-            var s = scores();
-            [0, 1].forEach(function (k) {
-              prev.appendChild(el('div', null, [el('span', { class: 'n', text: teams[k] }), el('span', { class: 'v ' + (s[k] < 0 ? 'neg' : 'pos'), text: (s[k] > 0 ? '+' : '') + s[k] })]));
-            });
-            msg = t >= b ? teams[bt] + ' made the bid. ' + teams[1 - bt] + ' took ' + (TOTAL - t) + '.' : teams[bt] + ' went set by ' + (b - t) + '.';
+        function place(box, node) { if (box.firstChild !== node) { box.innerHTML = ''; if (node) box.appendChild(node); } }
+        function raw(v) { return v == null ? NaN : v; }
+        function scores() { var b = raw(st.bid), t = raw(st.took), s = [0, 0]; s[st.bt] = t >= b ? t : -b; s[1 - st.bt] = TOTAL - t; return s; }
+        function refresh() {
+          var bt = st.bt;
+          won.forEach(function (b, i) { b.set(i === bt); });
+          teams.forEach(function (nm, i) {
+            place(bidCell[i], i === bt ? bidStep : null);
+            place(tookCell[i], bt < 0 ? null : i === bt ? tookStep : other);
+            eqs[i].textContent = ''; eqs[i].className = 'eq';
+          });
+          if (bt < 0) { ctx.pending(null); ctx.status('Tap Won bid for the team that won the bidding.', 'wait'); }
+          else {
+            var b = raw(st.bid), t = raw(st.took), msg = '', ok = true;
+            other.textContent = isNaN(t) ? '–' : String(TOTAL - t);
+            if (!mult5(b, 70, TOTAL)) { ok = false; msg = 'The bid should be 70 to 180, in 5s.'; }
+            else if (st.took == null) { ok = 'wait'; msg = 'Set the points ' + teams[bt] + ' took.'; }
+            else if (!mult5(t, 0, TOTAL)) { ok = false; msg = 'Points taken should be 0 to 180, in 5s.'; }
+            if (ok === true) {
+              var s = scores();
+              [0, 1].forEach(function (k) { eqs[k].textContent = (s[k] > 0 ? '+' : '') + s[k] + (k === bt ? (t >= b ? ' made' : ' set') : ''); eqs[k].classList.add(s[k] < 0 ? 'bad' : 'good'); });
+              msg = t >= b ? teams[bt] + ' made the bid. ' + teams[1 - bt] + ' took ' + (TOTAL - t) + '.' : teams[bt] + ' went set by ' + (b - t) + '.';
+              ctx.pending(s);
+            } else ctx.pending(null);
+            ctx.status(msg, ok);
           }
-          note.className = 'rnote' + (ok ? '' : ' bad'); note.textContent = msg;
-          btn.disabled = !ok;
-          return ok;
+          if (!ctx.editing) ctx.draft(st);
         }
-        btn.addEventListener('click', function () {
-          if (!check()) return;
-          var b = raw(bidRow), t = raw(tookRow), s = scores(), extra = { highlights: [], detail: ['', ''] };
-          extra.detail[bt] = 'bid ' + b;
-          if (t >= b) {
-            if (t === TOTAL) { extra.highlights.push(and(bt) + ' took all 180 points in hand ' + ctx.round); extra.callout = 'All 180!'; Kit.confetti({ count: 90 }); }
-            else if (b >= 140) { extra.highlights.push(and(bt) + ' bid ' + b + ' and made it'); extra.callout = 'Made it!'; }
-            else extra.callout = 'Made it!';
-          } else {
-            extra.highlights.push(and(bt) + ' went set on a bid of ' + b + ' in hand ' + ctx.round);
-            extra.callout = 'Set!';
-          }
-          ctx.done(s, extra);
-        });
-        check();
+        refresh();
+        ctx.entry = { st: st, scores: scores };
+        return [rowBid, rowTook];
+      },
+      lockLabel: 'Lock hand',
+      onLock: function (ctx) {
+        var st = ctx.entry.st, bt = st.bt, b = st.bid, t = st.took;
+        if (bt < 0 || !mult5(b, 70, TOTAL) || t == null || !mult5(t, 0, TOTAL)) return;
+        var s = ctx.entry.scores(), extra = { highlights: [], detail: ['', ''] };
+        extra.detail[bt] = 'bid ' + b;
+        if (t >= b) {
+          if (t === TOTAL) { extra.highlights.push(and(bt) + ' took all 180 points in hand ' + ctx.round); extra.callout = 'All 180!'; if (!ctx.editing) Kit.confetti({ count: 90 }); }
+          else if (b >= 140) { extra.highlights.push(and(bt) + ' bid ' + b + ' and made it'); extra.callout = 'Made it!'; }
+          else extra.callout = 'Made it!';
+        } else {
+          extra.highlights.push(and(bt) + ' went set on a bid of ' + b + ' in hand ' + ctx.round);
+          extra.callout = 'Set!';
+        }
+        ctx.done(s, extra);
       }
     });
   }
