@@ -577,16 +577,16 @@ function filmMaterial(normalTex, frostTex) {
     ior: 1.45, specularIntensity: 0.6, envMapIntensity: 0.2,
     iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });
-  const U = m.userData.u = { uFres: { value: 0.35 }, uGeoFres: { value: 1 }, uDbg: { value: 0 } };
+  const U = m.userData.u = { uFres: { value: 0.35 }, uGeoFres: { value: 1 } };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = 'attribute vec2 film;\nvarying vec2 vFilm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFilm = film;');
-    sh.fragmentShader = 'varying vec2 vFilm;\nuniform float uFres, uGeoFres, uDbg;\n' + sh.fragmentShader
-      .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.2, vFilm.x);')
+    sh.fragmentShader = 'varying vec2 vFilm;\nuniform float uFres, uGeoFres;\n' + sh.fragmentShader
+      .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.13, vFilm.x);')
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = mix(roughnessFactor, 0.3, vFilm.x);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 	{ // crimp ribs on the seals, as a bump
-		float rh = vFilm.x * 0.0035 * sin(vFilm.y) * clamp(1.6 - fwidth(vFilm.y) * 0.5, 0.0, 1.0);
+		float rh = vFilm.x * 0.005 * sin(vFilm.y) * clamp(1.6 - fwidth(vFilm.y) * 0.5, 0.0, 1.0);
 		vec3 sp = - vViewPosition, sx = dFdx(sp), sy = dFdy(sp);
 		vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
 		float det = dot(sx, r1) * faceDirection;
@@ -598,8 +598,7 @@ function filmMaterial(normalTex, frostTex) {
 	float fNV = saturate(dot(mix(normal, nonPerturbedNormal, uGeoFres), geometryViewDir));
 	float fFr = 0.04 + 0.96 * pow(1.0 - fNV, 5.0);
 	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * uFres, 0.0, 1.0));
-	if (uDbg > 0.5) gl_FragColor = vec4(vec3(gl_FragColor.a), 1.0);
-	if (uDbg > 1.5) gl_FragColor = vec4(vFilm.x, fA, fFr, 1.0);`)
+`)
       .replace('#include <premultiplied_alpha_fragment>', '');
   };
   m.customProgramCacheKey = () => 'ck-film-1';
@@ -916,7 +915,8 @@ function mount(stage, api) {
     pose.updateMatrixWorld(true);
     const wrap = wrapCookie(R, pose, halves, slip);
     // turn the cookie (in its pack) so the pack overlaps its neighbours' packs as little as possible
-    const turn = bestTurn(wrap.pk, x, z, scale);
+    const fit = bestTurn(wrap.pk, x, z, scale), turn = fit.t;
+    x += fit.dx; z += fit.dz;
     pose.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), turn));
     pose.updateMatrixWorld(true);
     const pack = packAt(wrap.pk, x, z, scale, turn);
@@ -999,16 +999,21 @@ function mount(stage, api) {
       ptSeg(b[0], b[1], a[0], a[1], a[2], a[3]), ptSeg(b[2], b[3], a[0], a[1], a[2], a[3]));
   }
   function overlap(p, q) { const a = capsule(p), b = capsule(q); return Math.max(0, a[4] + b[4] - segSeg(a, b)); }
+  // the turn (within about a radian, so the crease still mostly faces the room) and a small shift
   function bestTurn(pk, x, z, scale) {
-    const near = cookies.filter((k) => k.alive && k.pack && Math.hypot(k.pack.x - x, k.pack.z - z) < (pk.hl * scale + k.pack.hl) * 1.1);
-    if (!near.length) return 0;
-    let best = 0, bp = 1e9;
-    for (let i = 0; i <= 20; i++) {
+    const best = { t: 0, dx: 0, dz: 0 };
+    const near = cookies.filter((k) => k.alive && k.pack && Math.hypot(k.pack.x - x, k.pack.z - z) < (pk.hl * scale + k.pack.hl) * 1.3);
+    if (!near.length) return best;
+    let bp = 1e9;
+    const shifts = [[0, 0]];
+    for (let a = 0; a < 8; a++) for (const r of [0.25, 0.5]) shifts.push([Math.cos(a * 0.785) * r * scale, Math.sin(a * 0.785) * r * scale]);
+    for (const [dx, dz] of shifts) for (let i = 0; i <= 20; i++) {
       const t = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.1;   // 0, -0.1, 0.1, -0.2 ... within +-1 rad
-      const p = packAt(pk, x, z, scale, t);
-      let pen = Math.abs(t) * 0.02;
+      const p = packAt(pk, x + dx, z + dz, scale, t);
+      let pen = Math.abs(t) * 0.02 + Math.hypot(dx, dz) * 0.04;
       for (const k of near) pen += overlap(p, k.pack);
-      if (pen < bp - 1e-6) { bp = pen; best = t; }
+      if (pen < bp - 1e-6) { bp = pen; best.t = t; best.dx = dx; best.dz = dz; }
+      if (bp < 0.02) break;
     }
     return best;
   }
