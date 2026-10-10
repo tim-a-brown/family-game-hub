@@ -165,6 +165,7 @@ Kit.init({
     { icon: 'board', label: 'Choose table', onClick: () => showSetup() },
     { icon: 'trophy', label: 'High scores', onClick: showHigh },
     { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Pinball: past games' }) },
+    { icon: 'eye', label: 'Top-down view', sub: 'Straight down on the playfield. Off: first person, angled like standing at the machine.', toggle: () => viewMode() === 'top', onClick: () => setViewMode(viewMode() === 'top' ? 'first' : 'top') },
     { icon: 'gamepad', label: 'On-screen buttons', sub: 'Big flipper buttons in the corners. Off: tap the left or right half of the table instead.', toggle: () => btnsOn(), onClick: () => { lsSet('pinball_btns', btnsOn() ? '0' : '1'); if (viewEl) viewEl.classList.toggle('no-flipbtns', !btnsOn()); if (G) G.resize(); } }
   ],
   rules:
@@ -208,16 +209,19 @@ function showSetup() {
   leaveGame();
   let sel = selTable();
   app.className = 'stage pb-setup';
+  try { const k = 'gn_setup_pinball', sv = JSON.parse(lsGet(k, '{}')) || {}; sv.options = Object.assign({}, sv.options, { view: viewMode() }); lsSet(k, JSON.stringify(sv)); } catch (e) {}
   const s = Kit.setup(app, {
     intro: 'Six real 3D tables, each with its own toys and tricks.',
     options: [{ id: 'balls', label: 'Balls per game', choices: [['3', '3 balls', 'A standard game.'], ['5', '5 balls', 'A longer game.']], value: '3' },
-      { id: 'amb', label: 'Music & ambience', choices: [['on', 'On', 'A quiet music bed for each table and its voice. Kept well under the game sounds.'], ['off', 'Off', 'Just the ball, the flippers and the machine.']], value: 'on' }],
+      { id: 'amb', label: 'Music & ambience', choices: [['on', 'On', 'A quiet music bed for each table and its voice. Kept well under the game sounds.'], ['off', 'Off', 'Just the ball, the flippers and the machine.']], value: 'on' },
+      { id: 'view', label: 'View', choices: [['first', 'First person', 'Angled, like standing at the machine.'], ['top', 'Top-down', 'Straight down on the whole playfield.']], value: 'first' }],
     players: { min: 1, max: 1, count: 1, label: 'Player' },
     start: 'Play',
     onStart(cfg) {
       lsSet(SELK, sel);
       if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
       ambPref = cfg.options.amb !== 'off'; ballsPref = +(cfg.options.balls || 3);
+      lsSet('pinball_view', cfg.options.view === 'top' ? 'top' : 'first');
       startGame(sel, ballsPref, cfg.players[0] ? cfg.players[0].name : 'Player');
     }
   });
@@ -252,6 +256,8 @@ let dmdEl = null, pauseEl = null, viewEl = null, fireBtn = null, magBtn = null, 
 const flipBtn = { L: null, R: null }, btnHeld = { L: false, R: false }, finger = { x: 0, y: 0 };
 function btnsOn() { return lsGet('pinball_btns', '1') !== '0'; }
 function launchesSoFar() { return +lsGet('pinball_launches', '0') || 0; }
+function viewMode() { return lsGet('pinball_view', 'first') === 'top' ? 'top' : 'first'; }
+function setViewMode(m) { lsSet('pinball_view', m); if (G) G.setView(m, true); }
 function startGame(id, balls, who) {
   leaveGame();
   const r = getRenderer();
@@ -303,7 +309,7 @@ function startGame(id, balls, who) {
     // the table is built one phase per frame; the text and bar show the real phase
     // the camera keeps the button row clear: the apron ends above it and the buttons sit on the cabinet front
     const padBottom = () => { const v = viewEl.getBoundingClientRect(), b = flipBtn.L.getBoundingClientRect(); return Math.max(0, v.bottom - (btnsOn() ? b.top : magCtl.getBoundingClientRect().top) + 6); };
-    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish, padBottom,
+    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish, padBottom, view: viewMode(),
       progress: (label, frac) => { loadTxt.textContent = label + '…'; loadBar.style.width = Math.round(frac * 100) + '%'; } });
     await g.ready;
     if (view !== 'game' || g.destroyed) { g.destroy(); return; }
@@ -546,6 +552,7 @@ window.__pin = {
   render() { if (G) G.renderOnce(); },
   renderer() { return getRenderer(); },
   ui() { launchUI(); },
+  view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
   freeze() { if (G) G.pause(); },
   step(sec) { if (!G) return null; G.run(sec); G.renderOnce(); return G.snapshot(); },

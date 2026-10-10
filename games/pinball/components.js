@@ -1257,8 +1257,8 @@ class Hologram extends Comp {
     this.m.visible = this.vis > 0.02;
     if (!this.m.visible) return;
     this.m.position.set(this.p[0], this.p[1], this.p[2] + this.size[1] * 0.45);
-    // stand up facing the player (tilt back towards the camera a little)
-    this.m.rotation.set(PI / 2 - 0.35, 0, 0);
+    // a Pepper's ghost faces the viewer whichever way the camera looks (in table space: undo the table's rotation)
+    this.m.quaternion.copy(RC.root.quaternion).invert().multiply(RC.camera.quaternion);
     this.fr += dt; if (this.fr > 1 / 30) { this.fr = 0; const g = this.g, w = 256, h = 320; g.clearRect(0, 0, w, h); this.o.draw(g, w, h, this.G.time, this);
       // scanlines and flicker
       g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,.35)'; for (let y = (this.G.time * 60 | 0) % 4; y < h; y += 4) g.fillRect(0, y, w, 1.5); g.globalCompositeOperation = 'source-over';

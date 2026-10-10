@@ -617,6 +617,8 @@ export function createGame(def, opts = {}) {
     if (AU) { AU.rollStop(); AU.musicStop(true); AU.hush(); }
     if (RC) RC.dispose();
   };
+  G.setView = function (mode, animate) { if (RC) RC.setView(mode, animate); };
+  G.view = () => RC ? RC.view : 'first';
   G.renderOnce = function () { if (RC) RC.render(1 / 60); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
   G.resize = function () { if (RC) RC.resize(); if (disp) disp.render((g, w, h) => dmdScene(g, w, h)); };
 
@@ -977,7 +979,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     g.font = '900 40px "Arial Narrow", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.7)'; g.strokeText(text, 128, 32); g.fillStyle = color || '#fff6d8'; g.fillText(text, 128, 32);
     const t = canvasTex(c); const m = new THREE.Mesh(new THREE.PlaneGeometry(64, 16), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, depthTest: false, toneMapped: false }));
-    m.position.set(x, y, z || 30); m.rotation.x = PI / 2 - TILT - 0.5; m.renderOrder = 20; root.add(m);
+    m.position.set(x, y, z || 30); m.renderOrder = 20; root.add(m);
     pops.push({ m, t, life: 1.1 });
   };
   const sparkGeo = new THREE.BufferGeometry(), SPN = 160, sp = new Float32Array(SPN * 3), sv = [];
@@ -994,7 +996,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     for (let i = 0; i < n; i++) { const s = sv[spI = (spI + 1) % SPN], a = Math.random() * TAU, v = speed * (0.4 + Math.random() * 0.8); s.x = x; s.y = y; s.z = z; s.vx = Math.cos(a) * v; s.vy = Math.sin(a) * v; s.vz = 150 + Math.random() * 300; s.life = 0.3 + Math.random() * 0.35; }
   };
   function updateFx(dt) {
-    for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.life -= dt; p.m.position.z += dt * 28; p.m.material.opacity = Math.min(1, p.life * 2); if (p.life <= 0) { root.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); p.t.dispose(); pops.splice(i, 1); } }
+    for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.life -= dt; p.m.position.z += dt * 28; p.m.material.opacity = Math.min(1, p.life * 2); p.m.quaternion.copy(root.quaternion).invert().multiply(camera.quaternion); if (p.life <= 0) { root.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); p.t.dispose(); pops.splice(i, 1); } }
     for (let i = 0; i < SPN; i++) { const s = sv[i]; if (s.life <= 0) { sp[i * 3] = FAR; sp[i * 3 + 2] = FAR; continue; } s.life -= dt; s.vz -= 1800 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.z = Math.max(1, s.z + s.vz * dt); sp[i * 3] = s.life > 0 ? s.x : FAR; sp[i * 3 + 1] = s.y; sp[i * 3 + 2] = s.life > 0 ? s.z : FAR; }
     sparkGeo.attributes.position.needsUpdate = true;
   }
@@ -1003,50 +1005,60 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 20);
   RC.camera = camera;
   const camBase = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
-  // padBottom: pixels at the bottom of the canvas to keep clear (the page's button row sits on the cabinet front)
-  function fitCamera(aspect, padBottom) {
-    camera.aspect = aspect;
-    RC.padBottom = padBottom != null ? padBottom : (RC.padBottom || 0);
-    const h = renderer.domElement.clientHeight || renderer.domElement.height || 1, yMin = -0.985 + 2 * RC.padBottom / h;
-    const pts = [];
-    const add = (x, y, z) => pts.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
-    const fit = def.fit || {}, top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40;
-    add(-12, bot, 0); add(W + 12, bot, 0); add(-12, L + top * 0.2, 0); add(W + 12, L + top * 0.2, 0); add(W / 2, L + 4, top); add(-12, bot - 10, 105); add(W + 12, bot - 10, 105);
-    const look = new THREE.Vector3(W / 2, L * (fit.lookY || 0.47), 0).applyMatrix4(root.matrixWorld);
-    const portrait = aspect < 0.8;
-    camera.fov = portrait ? 36 : 30;
-    let best = null;
-    const tmp = new THREE.Vector3();
-    const phiMax = fit.phiMax || (portrait ? 58 : 50);
-    for (let phi = 26; phi <= phiMax; phi += 2) {
-      const pr = phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
-      let lo = 0.3, hi = 6;
-      for (let it = 0; it < 26; it++) {
-        const d = (lo + hi) / 2; camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
-        let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || tmp.y > 0.985 || tmp.y < yMin || tmp.z > 1) { ok = false; break; } }
-        if (ok) hi = d; else lo = d;
-      }
-      camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
-      let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
-      for (const p of pts) { tmp.copy(p).project(camera); x0 = Math.min(x0, tmp.x); x1 = Math.max(x1, tmp.x); y0 = Math.min(y0, tmp.y); y1 = Math.max(y1, tmp.y); }
-      const area = (x1 - x0) * (y1 - y0);
-      const score = area * (1 - (phi - 26) * (portrait ? 0.004 : 0.008));
-      if (!best || score > best.score) best = { score, phi, d: hi, dir };
-    }
-    if (fit.phi) { best.phi = fit.phi; }
-    const pr = best.phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
-    let lo = 0.3, hi = 6;
-    for (let it = 0; it < 26; it++) {
+  // Two camera views: 'first' (the angled player's eye) and 'top' (straight down, slight tilt). fitCamera
+  // computes both for the current aspect; setView tweens between them. padBottom: pixels at the bottom of the
+  // canvas to keep clear (the page's button row sits on the cabinet front).
+  RC.view = opts.view === 'top' ? 'top' : 'first'; RC.cams = {}; RC.tween = null;
+  const tmp = new THREE.Vector3();
+  function fitAt(phi, pts, look, yMin, fov) {
+    camera.fov = fov; camera.updateProjectionMatrix();
+    const pr = phi * PI / 180, dir = new THREE.Vector3(0, Math.sin(pr), Math.cos(pr));
+    let lo = 0.3, hi = 8;
+    for (let it = 0; it < 28; it++) {
       const d = (lo + hi) / 2; camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
       let ok = true; for (const p of pts) { tmp.copy(p).project(camera); if (Math.abs(tmp.x) > 0.985 || tmp.y > 0.985 || tmp.y < yMin || tmp.z > 1) { ok = false; break; } }
       if (ok) hi = d; else lo = d;
     }
-    // the view's centre is above the padded strip: nudge the look point down so the table stays centred in the
-    // free area (keep lookY as the author set it otherwise)
-    camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look);
-    camBase.pos.copy(camera.position); camBase.look.copy(look); RC.phi = best.phi;
-    camera.updateProjectionMatrix();
+    camera.position.copy(look).addScaledVector(dir, hi); camera.lookAt(look); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+    let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+    for (const p of pts) { tmp.copy(p).project(camera); x0 = Math.min(x0, tmp.x); x1 = Math.max(x1, tmp.x); y0 = Math.min(y0, tmp.y); y1 = Math.max(y1, tmp.y); }
+    return { pos: camera.position.clone(), look: look.clone(), fov, phi, area: (x1 - x0) * (y1 - y0) };
   }
+  function fitCamera(aspect, padBottom) {
+    camera.aspect = aspect;
+    RC.padBottom = padBottom != null ? padBottom : (RC.padBottom || 0);
+    const h = renderer.domElement.clientHeight || renderer.domElement.height || 1, yMin = -0.985 + 2 * RC.padBottom / h;
+    const portrait = aspect < 0.8, fit = def.fit || {};
+    const add = (arr, x, y, z) => arr.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
+    // first person: the playfield, the apron front and the glass height, from a low angle
+    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40;
+    add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
+    const look = new THREE.Vector3(W / 2, L * (fit.lookY || 0.47), 0).applyMatrix4(root.matrixWorld);
+    const fovF = portrait ? 36 : 30, phiMax = fit.phiMax || (portrait ? 58 : 50);
+    let best = null;
+    for (let phi = 26; phi <= phiMax; phi += 2) {
+      const r = fitAt(phi, pts, look, yMin, fovF), score = r.area * (1 - (phi - 26) * (portrait ? 0.004 : 0.008));
+      if (!best || score > best.score) best = { score, phi };
+    }
+    RC.cams.first = fitAt(fit.phi || best.phi, pts, look, yMin, fovF);
+    // top-down: the whole table with a thin cabinet frame, nearly straight down (a little tilt keeps the ball round)
+    const tp = []; add(tp, -26, -70, 0); add(tp, W + 26, -70, 0); add(tp, -26, L + 14, 0); add(tp, W + 26, L + 14, 0); add(tp, W / 2, L + 14, 60);
+    const lookT = new THREE.Vector3(W / 2, (L - 56) / 2, 0).applyMatrix4(root.matrixWorld);
+    RC.cams.top = fitAt(fit.topPhi || 82, tp, lookT, yMin, portrait ? 30 : 26);
+    const c = RC.cams[RC.view];
+    camera.fov = c.fov; camera.updateProjectionMatrix();
+    camera.position.copy(c.pos); camera.lookAt(c.look);
+    camBase.pos.copy(c.pos); camBase.look.copy(c.look); RC.phi = c.phi; RC.tween = null;
+  }
+  // switch views; animate over 0.6 s unless told not to (physics and input are untouched: only the camera moves)
+  RC.setView = function (mode, animate = true) {
+    mode = mode === 'top' ? 'top' : 'first';
+    if (mode === RC.view && !RC.tween) return;
+    RC.view = mode;
+    const c = RC.cams[mode]; if (!c) return;
+    if (!animate) { camBase.pos.copy(c.pos); camBase.look.copy(c.look); camera.fov = c.fov; camera.updateProjectionMatrix(); RC.tween = null; return; }
+    RC.tween = { t0: performance.now(), p0: camBase.pos.clone(), l0: camBase.look.clone(), f0: camera.fov, p1: c.pos, l1: c.look, f1: c.fov, ms: 600 };
+  };
   RC.fitCamera = fitCamera;
 
   // ── Post-processing ──
@@ -1136,6 +1148,13 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     updateBalls(dt); updateFx(dt);
     for (const c of G.compList) if (c.render) c.render(dt, RC);
     for (const a of RC.anim) a(dt, t);
+    // view change in progress: ease the camera between the two fits
+    if (RC.tween) {
+      const tw = RC.tween, u = Math.min(1, (performance.now() - tw.t0) / tw.ms), k = u * u * (3 - 2 * u);
+      camBase.pos.lerpVectors(tw.p0, tw.p1, k); camBase.look.lerpVectors(tw.l0, tw.l1, k);
+      camera.fov = tw.f0 + (tw.f1 - tw.f0) * k; camera.updateProjectionMatrix();
+      if (u >= 1) RC.tween = null;
+    }
     // camera shake
     camera.position.copy(camBase.pos);
     if (G.shakeA > 0.01) { shakeV.set((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(G.shakeA * 0.0035); camera.position.add(shakeV); }
