@@ -222,7 +222,9 @@ function mount(stage, api) {
     if (!held) { tx = 0; ty = 0; }
     const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
     for (let i = 0; i < n; i++) {
-      vx += (k * (tx - ox) - c * vx + fx) * h; vy += (k * (ty - oy) - c * vy + fy) * h;
+      // a hard shake of the phone meets a stiffening wall, so the ball swings a long way but stays on the screen
+      const wx = pushed ? 7 * k * ox * ox * ox : 0, wy = pushed ? 7 * k * oy * oy * oy : 0;
+      vx += (k * (tx - ox) - wx - c * vx + fx) * h; vy += (k * (ty - oy) - wy - c * vy + fy) * h;
       ox += vx * h; oy += vy * h;
       if (oy < -0.7) { oy = -0.7; if (vy < 0) vy *= -0.3; }
       vflip += (30 * (flipTarget - S.flip) - 8.5 * vflip) * h; S.flip += vflip * h;
