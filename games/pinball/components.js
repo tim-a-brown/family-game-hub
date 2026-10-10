@@ -761,7 +761,7 @@ class TrapDoor extends Comp {
     if (!this.isOpen) return;
     const to = this.o.to || {}; const L = this.world.L_(to.lvl || 'main');
     const k = to.x != null ? 0.05 : 0.25;
-    this.world.airborne(b, to.x != null ? to.x : b.x, to.y != null ? to.y : b.y, this.z0, b.vx * k, b.vy * k, -200, L.id);
+    this.world.airborne(b, to.x != null ? to.x : b.x, to.y != null ? to.y : b.y, this.z0, b.vx * k + (Math.random() - 0.5) * 120, b.vy * k, -200, L.id);
     this.sfx('scoop', { vol: 0.8 }); this.emit('trapdoor', b);
     if (this.o.autoClose !== false) this.close();
   }

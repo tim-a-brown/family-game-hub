@@ -255,12 +255,29 @@ G), font}` is a 192x48 colour display. `G.msg(text, sub, {anim:'name'})` plays `
 behind the text: draw in white/greys for the DMD (quantised to 4 levels), in colour for the LCD.
 `dmdIdle(g, W, H, t, G)` can replace the idle score screen (return true).
 
+## Picker thumbnails
+
+The table picker shows a pre-rendered picture of each table, `thumbs/<id>.webp` (560x600, rendered once with the real
+engine, shadows and bloom on). After changing a table's look, regenerate its picture:
+`node games/pinball/tools/thumbs.js <id>` (needs the local server on :8765 and Playwright; see the file). The page
+only falls back to a live offscreen render when the image is missing, so a table without a picture still works but
+loads slower.
+
 ## Performance budget
 
 60 fps on a recent iPhone: < 200 draw calls, < 400k triangles, textures under ~40 MB total. Use `RC.batch` for
 static geometry; one material per look; `cylGeo` segment counts 10-20; avoid per-frame geometry rebuilding;
 canvas textures at most 1024 px for decals. The engine drops bloom, then shadows, then resolution if frames run
 long. Check `__pin.get().render` (calls, tris) and `.frame` (ms, slow in headless swiftshader).
+
+## Load time and battery
+
+`createGame` records the time of each build phase in `G.marks` (paint, pmrem, statics, components, batch, compile,
+firstFrame, audioCtx). Painted playfields and the reflection environment are cached for the session, the sound bank
+renders in the background after the first frames, and the loop idles at ~12 fps when nothing moves (`G.busy()`;
+a component can report `busy()` if it animates something that must run at full rate). Keep `art.playfield` cheap:
+it is the biggest honest cost (canvas painting is CPU work); avoid large `shadowBlur` fills and huge gradients in
+loops.
 
 ## Testing
 

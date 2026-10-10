@@ -332,6 +332,9 @@ export class World {
     if (c.kick && c.cool <= 0 && imp > c.kickMin && !this.tilted) {
       const vn2 = b.vx * nx + b.vy * ny;
       if (vn2 < c.kick) { b.vx += nx * (c.kick - vn2); b.vy += ny * (c.kick - vn2); }
+      // a real kicker is never perfectly radial: a degree or two of scatter stops a ball bouncing on the
+      // same line forever (a ball dropped dead centre onto a bumper could ping-pong between it and a wall)
+      { const j = (Math.random() - 0.5) * 0.07, cs = Math.cos(j), sn = Math.sin(j), vx = b.vx, vy = b.vy; b.vx = vx * cs - vy * sn; b.vy = vx * sn + vy * cs; }
       c.cool = c.kickCool; c.kicked = true;
     }
     b.contactT = this.time;

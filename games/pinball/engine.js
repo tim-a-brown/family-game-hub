@@ -424,6 +424,10 @@ export function createGame(def, opts = {}) {
         G.stats.esc++; if (G.stats.at.length < 40) G.stats.at.push('esc:' + b.lvl + ':' + b.mode + ':' + Math.round(b.x) + ',' + Math.round(b.y)); world.removeBall(b); if (RC) RC.dropBall(b); if (!b.locked) { if (G.activeBalls() === 0 && G.state === 'play') G.serve(true); else if (G.state === 'play') G.serve(true); } continue;
       }
       if (b.mode !== 'free' || b.locked || b.mist) { b.stillT = 0; b.ax = b.x; b.ay = b.y; continue; }
+      // a ball bouncing round the same spot (within 70 mm) for 8 s without reaching a flipper is as stuck as a
+      // resting one: a bumper/wall ping-pong, a toy pocket
+      if (b.bx == null || Math.hypot(b.x - b.bx, b.y - b.by) > 70 || b.onFlip) { b.bx = b.x; b.by = b.y; b.boxT = 0; }
+      else if ((b.boxT = (b.boxT || 0) + dt) > 8) { b.boxT = 0; G.stats.stuck++; if (G.stats.at.length < 40) G.stats.at.push('loop:' + b.lvl + ':' + Math.round(b.x) + ',' + Math.round(b.y)); b.vx += (Math.random() - 0.5) * 900; b.vy += 300; }
       if (Math.hypot(b.x - b.ax, b.y - b.ay) > 12) { b.ax = b.x; b.ay = b.y; b.stillT = 0; }
       else {
         b.stillT += dt;
@@ -530,7 +534,17 @@ export function createGame(def, opts = {}) {
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────────
-  let acc = 0, raf = 0, last = 0, speedMul = 1;
+  let acc = 0, raf = 0, last = 0, speedMul = 1, idleTimer = 0;
+  G.stats.frames = 0; G.stats.rafReq = 0; G.stats.idleFrames = 0;
+  // Something to animate at full rate? Otherwise the loop idles at ~12 fps (lamps, the display scroller).
+  function busy() {
+    if (G.dm || G.show || G.bonus || G.laters.length || G.shakeA > 0.01 || G.flashA > 0.01 || G.lightning > 0.01 || G.pulling || G.input.L || G.input.R || G.input.magna) return true;
+    if (G.state !== 'play' && G.state !== 'serve') return false;
+    for (const f of world.flips) if (f.w !== 0) return true;
+    for (const b of world.balls) { if (b.mode === 'air' || b.mode === 'path') return true; if (b.mode === 'free' && (Math.abs(b.vx) > 6 || Math.abs(b.vy) > 6)) return true; if (b.mode === 'held' && !b.locked) return true; }
+    for (const c of G.compList) if (c.busy && c.busy()) return true;
+    return false;
+  }
   function physics(dt) {
     acc += dt; let n = 0; const maxN = Math.ceil(0.06 / DT) * Math.max(1, speedMul);
     while (acc >= DT && n < maxN) { autopilot(DT); world.step(DT); acc -= DT; n++; }
@@ -556,19 +570,23 @@ export function createGame(def, opts = {}) {
     if (disp) disp.render((g, w, h) => dmdScene(g, w, h));
     const ms = performance.now() - t0; G.frameMs.push(ms); if (G.frameMs.length > 240) G.frameMs.shift();
     if (RC) RC.adapt(ms);
+    G.stats.frames++;
     if (G.finished) return;
-    raf = requestAnimationFrame(frame);
+    if (busy()) { G.stats.rafReq++; raf = requestAnimationFrame(frame); }
+    else { G.stats.idleFrames++; idleTimer = setTimeout(() => { idleTimer = 0; if (!raf && !G.paused && !G.destroyed) { G.stats.rafReq++; raf = requestAnimationFrame(frame); } }, 83); }
   }
-  G.kick = function () { if (!raf && !G.paused && !G.destroyed && !headless) { last = 0; raf = requestAnimationFrame(frame); } };
+  G.kick = function () { if (!raf && !idleTimer && !G.paused && !G.destroyed && !headless) { last = 0; G.stats.rafReq++; raf = requestAnimationFrame(frame); } };
+  G.busy = busy;
   G.pause = function () {
     if (G.paused) return; G.paused = true;
     for (const s of ['L', 'R']) G.setFlip(s, false); G.pulling = false;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = 0; }
     if (AU) AU.suspend();
   };
   G.resume = function () { if (!G.paused) return; G.paused = false; if (AU) AU.resume(); G.kick(); };
   G.destroy = function () {
-    G.destroyed = true; if (raf) cancelAnimationFrame(raf); raf = 0;
+    G.destroyed = true; if (raf) cancelAnimationFrame(raf); raf = 0; if (idleTimer) clearTimeout(idleTimer); idleTimer = 0;
     if (AU) { AU.rollStop(); AU.musicStop(true); AU.hush(); }
     if (RC) RC.dispose();
   };
@@ -608,6 +626,7 @@ export function createGame(def, opts = {}) {
       board: def.id, state: G.state, score: G.score, ballNo: G.ballNo, balls0: G.balls0, waitPlunge: G.waitPlunge, time: G.time, mb: G.mb, bx: G.bx, extra: G.extra, tilted: G.tilted,
       balls: world.balls.map(b => ({ x: +b.x.toFixed(1), y: +b.y.toFixed(1), z: +b.z.toFixed(1), vx: +b.vx.toFixed(0), vy: +b.vy.toFixed(0), lvl: b.lvl, mode: b.mode, locked: !!b.locked, mist: !!b.mist, still: +b.stillT.toFixed(2) })),
       st: G.st, stats: G.stats, b: JSON.parse(JSON.stringify(G.b, (k, v) => (v && typeof v === 'object' && v.isObject3D) ? undefined : v)), modes: Object.assign({}, G.modes), ballScores: G.ballScores.slice(), drains: G.drains.slice(), finished: G.finished, paused: G.paused,
+      loop: { frames: G.stats.frames, rafReq: G.stats.rafReq, idleFrames: G.stats.idleFrames, busy: busy() },
       frame: fm.length ? { avg: +(fm.reduce((a, b) => a + b, 0) / fm.length).toFixed(2), p95: +fm[Math.floor(fm.length * 0.95)].toFixed(2), max: +fm[fm.length - 1].toFixed(2), n: fm.length } : null,
       render: RC ? RC.info() : null
     };
@@ -679,11 +698,12 @@ export function createGame(def, opts = {}) {
     if (scrolling) S.off += dt * 46; else S.hold += dt;
     const done = scrolling ? S.off >= S.w + Wd + 24 : S.hold >= 2.6;
     const urgent = /TILT/.test(want) && !/TILT/.test(S.text);
-    if ((done || urgent) && (want !== S.text || scrolling)) {
-      if (done && G.waitPlunge) S.turn++;
-      want = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
-      S.text = want; S.w = smallW(want); S.off = 0; S.hold = 0;
-    } else if (done && !scrolling) S.hold = 0;
+    if (done || urgent) {
+      if (done && G.waitPlunge && !urgent) S.turn++;   // alternate hint / status at the end of each pass
+      const next = String((G.tiltM >= 1.9 && !G.tilted) ? 'CAREFUL: TILT WARNING' : (G.waitPlunge && S.turn % 2 === 0) ? hint : (R('status') || '')).toUpperCase();
+      if (next !== S.text || scrolling) { S.text = next; S.w = smallW(next); S.off = 0; }
+      S.hold = 0;
+    }
     if (S.w <= Wd - 2) small(S.text, cx, 25, 'center');
     else small(S.text, Math.round(Wd - S.off), 25);
   }
