@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { BR, spline, deg } from '../physics.js';
 import { canvas, rng, shade, rgba, latheGeo, cylGeo, tubeGeo, boxGeo, torusGeo, sphereGeo, offsetLine } from '../gfx.js';
 import { drawPath } from '../components.js';
+import { audio } from '../engine.js';
 
 const PI = Math.PI, TAU = PI * 2;
 const PAL = { space: '#050816', deep: '#0a1030', ink: '#101a3c', cyan: '#22d3ee', ice: '#bff6ff', violet: '#8b7cff', magenta: '#ff5fd2', amber: '#ffb347', white: '#eef4ff', red: '#ff4d6d', green: '#5dffb0' };
@@ -27,6 +28,24 @@ const TPIN = [222, 596], TPOUT = [455, 556];                 // teleporter pads
 const SCOOP = [344, 516];                                    // Mission Control scoop
 const CANL = [30, 618], CANR = [470, 1000];                   // the two cannons
 const PLANETS = [['CINDER', PAL.red], ['VEIL', PAL.violet], ['HALO', PAL.amber], ['FROST', PAL.ice]];
+
+const LCD_STARS = []; { const r = rng(77); for (let i = 0; i < 70; i++) LCD_STARS.push([r() * 192, r() * 48, 0.3 + r() * 0.7]); }
+function lcdBg(g, W, H, t, G) {
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#02030c'); gr.addColorStop(0.6, '#07102a'); gr.addColorStop(1, '#030514'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  const B = G && G.b || {}, warp = B.warpOn ? 1 : 0, sp = 6 + warp * 60;
+  const n1 = g.createRadialGradient(W * 0.75, H * 0.7, 0, W * 0.75, H * 0.7, 70); n1.addColorStop(0, 'rgba(139,124,255,.28)'); n1.addColorStop(1, 'rgba(139,124,255,0)'); g.fillStyle = n1; g.fillRect(0, 0, W, H);
+  const n2 = g.createRadialGradient(W * 0.2, H * 0.3, 0, W * 0.2, H * 0.3, 60); n2.addColorStop(0, 'rgba(34,211,238,.22)'); n2.addColorStop(1, 'rgba(34,211,238,0)'); g.fillStyle = n2; g.fillRect(0, 0, W, H);
+  for (const s of LCD_STARS) { const x = ((s[0] - t * sp * s[2]) % W + W) % W; g.fillStyle = 'rgba(210,235,255,' + (0.25 + 0.5 * s[2]) + ')'; if (warp) g.fillRect(x, s[1], 2 + 10 * s[2], 1); else g.fillRect(x, s[1], 1, 1); }
+}
+const ANIMS = {
+  warp(g, t, W, H) { for (let i = 0; i < 40; i++) { const r = ((i * 7919) % 100) / 100, y = (i * 13) % H, x = ((r * W + t * 260 * (0.4 + r)) % (W + 40)) - 20; g.fillStyle = 'rgba(160,240,255,' + (0.3 + r * 0.6) + ')'; g.fillRect(x, y, 6 + r * 22, 1); } },
+  saucer(g, t, W, H) { const x = W - ((t * 90) % (W + 60)) + 30, y = 8 + Math.sin(t * 5) * 3; g.fillStyle = '#9ad8ff'; g.beginPath(); g.ellipse(x, y + 6, 16, 4, 0, 0, TAU); g.fill(); g.fillStyle = '#e6fbff'; g.beginPath(); g.ellipse(x, y + 2, 8, 5, 0, PI, TAU); g.fill(); g.fillStyle = Math.floor(t * 10) % 2 ? '#ff5fd2' : '#22d3ee'; for (let i = -1; i <= 1; i++) g.fillRect(x + i * 9 - 1, y + 7, 2, 2); },
+  planet(g, t, W, H, m) { const col = (m && m.color) || '#ffb347', y = H + 30 - Math.min(1, t / 0.8) * 42; const gr = g.createRadialGradient(W - 34, y - 8, 4, W - 30, y, 28); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.4, col); gr.addColorStop(1, '#101010'); g.fillStyle = gr; g.beginPath(); g.arc(W - 30, y, 26, 0, TAU); g.fill(); },
+  well(g, t, W, H) { g.strokeStyle = 'rgba(139,124,255,.8)'; g.lineWidth = 1; for (let i = 0; i < 5; i++) { const k = ((t * 0.8 + i / 5) % 1); g.beginPath(); g.ellipse(W - 28, H / 2, 4 + k * 26, 2 + k * 12, 0, 0, TAU); g.stroke(); } g.fillStyle = '#fff'; g.beginPath(); g.arc(W - 28, H / 2 - Math.min(1, t / 0.9) * 16 + 10, 3, 0, TAU); g.fill(); },
+  cannon(g, t, W, H) { g.fillStyle = '#9ad8ff'; g.save(); g.translate(20, H - 8); g.rotate(-0.5 - Math.sin(t * 2) * 0.3); g.fillRect(0, -3, 24, 6); g.restore(); g.beginPath(); g.arc(20, H - 8, 7, 0, TAU); g.fill(); if (Math.floor(t * 6) % 3 === 0) { g.fillStyle = '#fff'; g.beginPath(); g.arc(44 + ((t * 300) % 60), H - 22, 2, 0, TAU); g.fill(); } },
+  horizon(g, t, W, H) { g.strokeStyle = 'rgba(139,124,255,.9)'; g.lineWidth = 1.2; for (let i = 0; i < 4; i++) { const k = (t * 0.5 + i / 4) % 1; g.beginPath(); g.ellipse(W / 2, H / 2, 10 + k * 110, 3 + k * 30, 0, 0, TAU); g.stroke(); } g.fillStyle = '#000'; g.beginPath(); g.arc(W / 2, H / 2, 9, 0, TAU); g.fill(); g.strokeStyle = '#fff'; g.beginPath(); g.arc(W / 2, H / 2, 10, 0, TAU); g.stroke(); },
+  teleport(g, t, W, H) { const k = Math.min(1, t / 0.5); g.fillStyle = 'rgba(34,211,238,' + (0.9 - k * 0.9) + ')'; g.fillRect(0, 0, W, H); for (let i = 0; i < 12; i++) { const a = i / 12 * TAU + t * 3; g.strokeStyle = 'rgba(200,255,255,.7)'; g.beginPath(); g.moveTo(W - 30 + Math.cos(a) * 6, H / 2 + Math.sin(a) * 6); g.lineTo(W - 30 + Math.cos(a) * 18, H / 2 + Math.sin(a) * 18); g.stroke(); } }
+};
 
 export default {
   id: 'nebula', name: 'Nebula Run', short: 'NEBULA', diff: 2, color: '#22d3ee', wizard: 'the Event Horizon',
@@ -72,6 +91,18 @@ function build(T) {
   buildCentre(T);
   buildInserts(T);
   buildModels(T);
+  defineSounds(T);
+}
+// Table sounds: coils, the warp exit, the teleporter shimmer, the saucer's hull, the computer's soft beeps
+function defineSounds(T) {
+  if (T.headless) return;
+  const A = audio();
+  A.define('coil', 0.5, S => { S.osc('sine', 55, 0, 0.4, 0.35, { att: 0.01, to: 110 }); S.osc('sawtooth', 110, 0, 0.35, 0.05, { lp: 500, att: 0.02 }); S.noise(0, 0.03, 0.3, { bp: 1800, q: 3 }); S.ring(2600, 0.002, 0.2, 0.05); });
+  A.define('warpOut', 1.2, S => { S.noise(0, 1.0, 0.3, { bp: 500, bpTo: 3200, q: 1.4, att: 0.05 }); S.osc('sine', 80, 0, 0.9, 0.3, { to: 240, att: 0.05 }); S.ring(3200, 0.05, 0.4, 0.08); S.bell(1046, 0.4, 0.7, 0.05); });
+  A.define('teleport', 1.1, S => { for (let i = 0; i < 10; i++) S.bell(1400 + i * 180, i * 0.05, 0.5, 0.035); S.noise(0, 0.6, 0.12, { bp: 4000, bpTo: 9000, q: 4, att: 0.1 }); S.osc('sine', 200, 0, 0.8, 0.12, { to: 900, att: 0.1 }); });
+  A.define('saucerHit', 0.7, S => { S.noise(0, 0.01, 0.5, { hp: 4000 }); S.ring(1900, 0, 0.6, 0.2, [1, 1.9, 3.1, 4.7]); S.osc('sine', 300, 0.02, 0.5, 0.08, { to: 180 }); S.osc('sine', 420, 0.1, 0.4, 0.05, { to: 390 }); });
+  A.define('beep', 0.35, S => { S.bell(1568, 0, 0.12, 0.09); S.bell(2093, 0.12, 0.18, 0.08); });
+  A.define('alarm', 1.4, S => { for (let i = 0; i < 3; i++) { S.bell(660, i * 0.45, 0.3, 0.12); S.bell(880, i * 0.45 + 0.15, 0.3, 0.1); } S.pad(110, 0, 1.3, 0.06, { lp: 700 }); });
 }
 function buildLeft(T) {
   const [bx0, by0, bx1, by1] = WELL_BOX;
@@ -481,6 +512,146 @@ function makeRules() {
   return R;
 }
 
+function rulesPart2(R, LINES, pick) {
+  Object.assign(R, {
+    jp(G, id) {
+      const B = G.b; if (!(B.jpLit[id] || B.eh)) return false;
+      const v = B.eh ? 75000 : 60000;
+      if (!B.eh) delete B.jpLit[id];
+      B.jp++; G.jackpot(v, B.eh ? 'HORIZON JACKPOT' : 'WARP JACKPOT', { color: B.eh ? PAL.violet : PAL.cyan }); R.say(G, 'jackpot');
+      if (B.warpMB && !Object.keys(B.jpLit).length && !B.superLit) { B.superLit = true; G.msg('SUPER JACKPOT', 'AT THE WARP LOOP', {}); }
+      return true;
+    },
+    warpDone(G, b, d) {
+      const B = G.b, sp = d.speed, w = R.wf(sp); B.warpOn = 0; B.warps++; B.bestSpeed = Math.max(B.bestSpeed, sp); G.cnt('warp'); G.combo('warp');
+      G.sfx('warpOut', { vol: 0.9, x: 212 }); G.flash(PAL.cyan, 0.35); G.shake(0.5);
+      if (B.superLit) { B.superLit = false; G.jackpot(150000 + Math.round(sp * 20), 'SUPER JACKPOT', { color: PAL.magenta }); B.jpLit = { gravity: 1, tube: 1, teleport: 1, orbit: 1, well: 1 }; return; }
+      if (B.eh) { G.jackpot(200000, 'HORIZON SUPER', { color: PAL.violet }); return; }
+      if (B.planetOn === 'HALO') { R.planetShot(G, 60000, 'WARP ' + w); return; }
+      if (R.jp(G, 'warp')) return;
+      const pts = G.add(20000 + Math.round(Math.min(1, sp / 4600) * 4000) * 10);
+      G.msg('WARP ' + w, fmt(pts), { anim: 'warp', style: 'jackpot', dur: 1.8 }); if (sp > 4200) R.say(G, 'warp9');
+      if (B.warps % 6 === 0 && !B.amOn) { B.amLit = true; G.msg('ANTIMATTER', 'LIT AT MISSION CONTROL', {}); }
+      if (B.warps === 3 || B.warps === 9) G.lightExtra();
+    },
+    lightCannon(G, side) { const B = G.b; B.cannonLit[side] = true; R.syncCannons(G); G.msg((side === 'L' ? 'PORT' : 'STARBOARD') + ' CANNON', side === 'L' ? 'SHOOT THE PORT LANE' : 'SHOOT THE ORBIT', { anim: 'cannon' }); G.sfx('beep', { vol: 0.4, rate: 0.8 }); },
+    syncCannons(G) { const B = G.b, cl = G.comp('cannonL'), cr = G.comp('cannonR'); cl.sens.on = B.cannonLit.L && !cl.ball; cr.sens.on = B.cannonLit.R && !cr.ball; },
+    cannonCheck(G, b, what) {
+      const B = G.b; if (!b || b !== B.cannonBall || G.time - B.fireT > 3) return; B.cannonBall = null; G.cnt('direct');
+      G.jackpot(50000, 'DIRECT HIT', { color: PAL.amber, sound: 'award' }); R.say(G, 'hit'); if (G.T.R) G.T.R.burst(b.x, b.y, 20, 30, 600, PAL.amber);
+    },
+    mission(G, b) {
+      const B = G.b, sc = G.comp('mission'); sc.holdT = 1.2; G.add(5000);
+      if (B.ehLit && !B.eh && !G.mb) { B.ehLit = false; sc.holdT = 3.5; R.startEH(G); return; }
+      if (G.ebLit) { G.collectExtra(); R.say(G, 'extra', true); return; }
+      if (B.amLit && !B.amOn && !G.mb) { B.amLit = false; R.startAM(G, b, sc); return; }
+      if (B.planetLit >= 0 && !B.planetOn && !G.mb) { const i = B.planetLit; B.planetLit = -1; sc.holdT = 2.4; R.startPlanet(G, i); return; }
+      const aw = ['BONUS UP', '25,000', 'BALL SAVE', 'LIGHT PORT CANNON', 'LIGHT STARBOARD CANNON'][Math.floor(Math.random() * 5)];
+      if (aw === 'BONUS UP') G.bxUp(); else if (aw === 'BALL SAVE') G.ballSave(10); else if (aw === 'LIGHT PORT CANNON') R.lightCannon(G, 'L'); else if (aw === 'LIGHT STARBOARD CANNON') R.lightCannon(G, 'R'); else G.add(25000);
+      G.msg('MISSION CONTROL', aw, { anim: 'planet' }); G.sfx('beep', { vol: 0.5 });
+    },
+    startPlanet(G, i) {
+      const B = G.b, [name, col] = PLANETS[i]; B.planetOn = name; B.planetIdx = i; B.planetShots = 0; G.cnt('planet');
+      G.startMode('planet', 40); G.ballSave(5);
+      const what = ['POPS AND THE MOTHERSHIP', 'THE GRAVITY WELL', 'THE WARP LOOP AND ORBIT', 'THE TUBE AND TELEPORTER'][i];
+      G.big(name, 'SHOOT ' + what, col, { anim: 'planet', color: col }); G.sfx('beep', { vol: 0.6, rate: 0.7 }); R.say(G, 'planet', true); G.callout(name, col);
+    },
+    planetShot(G, pts, label) {
+      const B = G.b; B.planetShots++; const p = G.add(pts); G.msg(label, fmt(p), { style: 'slide', now: true }); G.sfx('award', { vol: 0.6 }); G.lightShow('sweep', 0.7);
+      if (B.planetShots >= 3) { B.visited[B.planetIdx] = 1; G.cnt('visit'); G.jackpot(100000, B.planetOn + ' VISITED', { color: PLANETS[B.planetIdx][1] }); G.endMode('planet'); if (B.visited.filter(Boolean).length === 3) G.lightExtra(); R.checkEH(G); }
+    },
+    saucerHit(G, b) {
+      const B = G.b; G.cnt('saucer'); R.cannonCheck(G, b, 'SAUCER');
+      if (B.saucerMode) { B.saucerJp += 10000; G.jackpot(B.saucerJp, 'SAUCER HIT', { color: PAL.green, sound: 'award' }); G.comp('saucer').shake(1.2); return; }
+      if (B.eh) { G.jackpot(75000, 'HORIZON JACKPOT', { color: PAL.violet }); return; }
+      B.saucerHits++; G.add(5000); G.sfx('saucerHit', { vol: 0.8, x: 300 });
+      if (B.saucerHits >= 6 && !G.mb && !B.planetOn) { B.saucerHits = 0; R.startSaucer(G); }
+      else { G.msg('SAUCER', Math.max(0, 6 - B.saucerHits) + ' MORE FOR SAUCER ATTACK', { anim: 'saucer', dur: 1.2 }); if (B.saucerHits === 1) R.say(G, 'saucer'); }
+    },
+    startSaucer(G) {
+      const B = G.b; B.saucerMode = true; B.saucerJp = 40000; B.saucerDone = true; G.cnt('attack');
+      G.startMode('saucer', 40); G.ballSave(5); G.big('SAUCER ATTACK', 'HIT IT FROM THE ORBIT OR A CANNON', PAL.green, { anim: 'saucer' }); G.sfx('alarm', { vol: 0.6 }); R.say(G, 'saucer', true); G.callout('SAUCER ATTACK', PAL.green);
+      R.lightCannon(G, 'R'); G.comp('saucer').shake(1);
+    },
+    startWarpMB(G) {
+      const B = G.b; B.warpMB = true; B.locks = 0; B.lockLit = false; G.cnt('warpmb'); B.warpMBDone = true;
+      G.comp('warpLock').release();
+      G.multiball(3, { label: 'WARP MULTIBALL', color: PAL.cyan, save: 15 });
+      B.jpLit = { gravity: 1, tube: 1, teleport: 1, orbit: 1, well: 1 }; G.sfx('warpOut', { vol: 0.8 }); R.say(G, 'mb', true); R.checkEH(G);
+    },
+    startAM(G, b, sc) {
+      const B = G.b; B.amOn = true; G.cnt('am'); sc.drop(b); G.world.removeBall(b); if (G.T.R) G.T.R.dropBall(b);
+      G.serve(true, { power: true }); G.startMode('antimatter', 45, { mult: 2 });
+      G.big('ANTIMATTER BALL', 'EVERYTHING SCORES 2X', PAL.white, {}); G.sfx('teleport', { vol: 0.9, rate: 0.7 }); R.say(G, 'am', true); G.callout('ANTIMATTER', '#ffffff');
+    },
+    checkEH(G) { const B = G.b; if (!B.ehLit && !B.eh && B.visited.every(Boolean) && B.warpMBDone && B.saucerDone) { B.ehLit = true; G.msg('EVENT HORIZON', 'IS LIT AT MISSION CONTROL', { anim: 'horizon', dur: 2.5 }); G.sfx('alarm', { vol: 0.5, rate: 0.7 }); } },
+    startEH(G) {
+      const B = G.b; B.eh = true; G.cnt('wiz'); B.visited = [0, 0, 0, 0]; B.warpMBDone = false; B.saucerDone = false;
+      G.comp('warpLock').release();
+      G.multiball(4, { label: 'EVENT HORIZON', color: PAL.violet, save: 25 });
+      G.startMode('eh', 60); G.sfx('alarm', { vol: 0.8, rate: 0.6 }); G.later(1.2, () => G.sfx('warpOut', { vol: 0.8 }));
+      R.say(G, 'eh', true); G.callout('EVENT HORIZON', '#c4b5fd');
+    },
+    modeEnd(G, name) {
+      const B = G.b;
+      if (name === 'planet') { if (B.planetOn && !B.visited[B.planetIdx]) G.msg(B.planetOn, 'OUT OF RANGE', {}); B.planetOn = null; }
+      if (name === 'saucer') { B.saucerMode = false; G.msg('SAUCER ESCAPED', '', {}); }
+      if (name === 'antimatter') { B.amOn = false; G.msg('ANTIMATTER', 'STABILISED', {}); }
+      if (name === 'eh') { B.eh = false; B.ehDone++; G.msg('EVENT HORIZON', 'PASSED', {}); }
+    },
+    mbEnd(G) { const B = G.b; B.warpMB = false; B.superLit = false; B.jpLit = {}; if (B.eh) { B.eh = false; G.endMode('eh'); } },
+    levelDrain(G, lvl, b) { return false; },
+    drain(G, b) { return false; },
+    update(G, dt) {
+      const B = G.b;
+      // the ship's computer chatters now and then, quietly
+      B.chatT -= dt; if (B.chatT <= 0) { B.chatT = 18 + Math.random() * 20; if (G.amb && G.state === 'play') G.sfx('beep', { vol: 0.08, rate: 0.6 + Math.random() * 0.5 }); }
+      if (B.warpOn) { const b = G.world.balls.find(b => b.mode === 'path' && b.path.ball === b); if (b) B.warpSpeed = Math.abs(b.path.u); }
+      const sc = G.comp('mission'); sc.sens.on = true;
+    },
+    lamps(G) {
+      const B = G.b, L = {}, t = G.time, lit = id => B.jpLit[id] || B.eh;
+      L.arrGrav = lit('gravity') ? 'fast' : B.planetOn === 'VEIL' ? 'blink' : B.lockLit ? 'pulse' : 'slow';
+      L.arrTube = lit('tube') ? 'fast' : B.planetOn === 'FROST' ? 'blink' : 0.25;
+      L.arrWarp = lit('warp') || B.superLit ? 'fast' : B.planetOn === 'HALO' ? 'blink' : B.warpOn ? 1 : 'slow';
+      L.arrOrbit = lit('orbit') ? 'fast' : B.planetOn === 'HALO' ? 'blink' : B.saucerMode ? 'pulse' : 0.3;
+      L.arrShip = B.planetOn === 'CINDER' || B.eh ? 'fast' : B.planetLit < 0 ? 'blink' : 0.3;
+      L.arrPort = B.cannonLit.L ? 'blink' : 0; L.arrStar = B.cannonLit.R ? 'blink' : 0;
+      L.tpL = lit('teleport') ? 'fast' : G.ebLit ? 'blink' : B.planetOn === 'FROST' ? 'blink' : 'pulse'; L.tpOutL = G.comp('tpIn').q.length ? 'fast' : 0.35;
+      const n = G.comp('warpLock').count(); for (let i = 0; i < 3; i++) { L['lock' + i] = i < n ? 1 : B.lockLit && i === n ? 'blink' : 0; L['ct' + i] = i < n ? 'pulse' : 0; }
+      B.lk.forEach((v, i) => L['lkl' + i] = v ? 1 : B.lockLit ? 0 : 'slow');
+      B.am.forEach((v, i) => L['aml' + i] = v ? 1 : 0.2); L.amL = B.amOn ? 'fast' : B.amLit ? 'blink' : 0;
+      const sp = B.warpOn ? B.warpSpeed : B.bestSpeed * 0.5; for (let i = 0; i < 5; i++) L['ws' + i] = sp > (i + 1) * 900 ? (B.warpOn ? 1 : 0.5) : 0;
+      PLANETS.forEach((p, i) => L['pl' + i] = B.visited[i] ? 1 : B.planetLit === i ? 'blink' : B.planetIdx === i && B.planetOn ? 'fast' : 0);
+      L.missionL = B.ehLit || B.planetLit >= 0 || B.amLit || G.ebLit ? 'blink' : 0; L.saucerL = B.saucerMode ? 'fast' : B.saucerHits / 6;
+      L.ebL = G.ebLit ? 'blink' : 0; L.ehL = B.eh ? 'fast' : B.ehLit ? 'blink' : (B.visited.filter(Boolean).length + (B.warpMBDone ? 1 : 0) + (B.saucerDone ? 1 : 0)) / 6;
+      L.wellL = G.world.balls.some(b => b.lvl === 'well') ? 'fast' : B.lockLit ? 'blink' : 0; L.laneSkill = G.skill ? 'fast' : 0; L.laneWarp = lit('orbit') ? 'fast' : 0.4;
+      // light chases: round the loop (faster with speed), up the well's sides while a ball is in it
+      const rate = B.warpOn ? 1.5 + B.warpSpeed / 500 : 0.35; for (let i = 0; i < 12; i++) L['wl' + i] = ((i / 12 - t * rate) % 1 + 1) % 1 < 0.18 ? 1 : B.warpOn ? 0.15 : 0.05;
+      const inWell = G.world.balls.some(b => b.lvl === 'well'); for (let i = 0; i < 5; i++) { const v = inWell ? (((t * 3 - i / 5) % 1 + 1) % 1 < 0.3 ? 1 : 0.1) : 0.12; L['wbL' + i] = v; L['wbR' + i] = v; }
+      for (let i = 0; i < 8; i++) L['gi' + i] = 1;
+      L.flShip = (B.planetLit >= 0 || B.eh) && (t % 1.6) < 0.1 ? 1 : 0; L.flL = B.lockLit && (t % 2) < 0.1 ? 1 : 0; L.flR = B.saucerMode && (t % 0.7) < 0.08 ? 1 : 0; L.flWell = inWell && (t % 0.5) < 0.1 ? 1 : 0;
+      L.pop1 = L.pop2 = L.pop3 = B.planetOn === 'CINDER' || B.eh ? 'blink' : 0.15; L.kickback = G.comp('kickback').armed ? 1 : 0;
+      return L;
+    },
+    status(G) {
+      const B = G.b;
+      if (B.eh) return 'EVENT HORIZON: EVERY SHOT IS A JACKPOT';
+      if (B.warpMB) return B.superLit ? 'SUPER JACKPOT: RUN THE WARP LOOP' : 'WARP MULTIBALL: SHOOT THE LIT JACKPOTS';
+      if (B.planetOn) return B.planetOn + ': ' + ['SHOOT THE POPS AND THE MOTHERSHIP', 'SHOOT THE GRAVITY WELL', 'SHOOT THE WARP LOOP AND ORBIT', 'SHOOT THE TUBE AND TELEPORTER'][B.planetIdx] + ' (' + Math.max(0, 3 - B.planetShots) + ' MORE)';
+      if (B.saucerMode) return 'SAUCER ATTACK: HIT THE SAUCER';
+      if (G.cannon && G.cannon.ball) return 'STEER THE CANNON, LET GO TO FIRE';
+      if (B.ehLit) return 'EVENT HORIZON IS LIT AT MISSION CONTROL';
+      const opts = [];
+      if (B.lockLit) opts.push('LOCK IS LIT: SHOOT THE GRAVITY WELL'); if (B.planetLit >= 0) opts.push(PLANETS[B.planetLit][0] + ' IS LIT AT MISSION CONTROL'); if (B.amLit) opts.push('ANTIMATTER IS LIT AT MISSION CONTROL');
+      if (B.cannonLit.L) opts.push('PORT CANNON: SHOOT THE LEFT LANE'); if (B.cannonLit.R) opts.push('STARBOARD CANNON: SHOOT THE ORBIT');
+      opts.push('W-E-LL LIGHTS THE LOCK', 'DROP THE MOTHERSHIP FOR A PLANET', (6 - B.saucerHits) + ' SAUCER HITS FOR SAUCER ATTACK', 'RUN THE WARP LOOP FOR WARP SPEED');
+      return opts[Math.floor(G.time / 4) % opts.length];
+    },
+    bonus(G) { return [['ASTEROIDS', G.pbn('pop'), 200], ['TELEPORTS', G.pbn('tp'), 5000], ['WARP RUNS', G.pbn('warp'), 15000], ['WELL', G.pbn('well'), 10000], ['CANNONS', G.pbn('cannon'), 10000], ['PLANETS', G.pbn('visit'), 50000]]; }
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ART (canvas painters; table space, y up)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -605,20 +776,3 @@ function slingArt(g, w, h, side) {
   g.fillStyle = '#eafcff'; g.font = '400 34px "Bungee", Impact'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(side === 'L' ? 'PORT' : 'STBD', w / 2, h * 0.55);
 }
 // ── LCD: a scrolling starfield with a nebula glow; scenes draw over it ──
-const LCD_STARS = []; { const r = rng(77); for (let i = 0; i < 70; i++) LCD_STARS.push([r() * 192, r() * 48, 0.3 + r() * 0.7]); }
-function lcdBg(g, W, H, t, G) {
-  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#02030c'); gr.addColorStop(0.6, '#07102a'); gr.addColorStop(1, '#030514'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  const B = G && G.b || {}, warp = B.warpOn ? 1 : 0, sp = 6 + warp * 60;
-  const n1 = g.createRadialGradient(W * 0.75, H * 0.7, 0, W * 0.75, H * 0.7, 70); n1.addColorStop(0, 'rgba(139,124,255,.28)'); n1.addColorStop(1, 'rgba(139,124,255,0)'); g.fillStyle = n1; g.fillRect(0, 0, W, H);
-  const n2 = g.createRadialGradient(W * 0.2, H * 0.3, 0, W * 0.2, H * 0.3, 60); n2.addColorStop(0, 'rgba(34,211,238,.22)'); n2.addColorStop(1, 'rgba(34,211,238,0)'); g.fillStyle = n2; g.fillRect(0, 0, W, H);
-  for (const s of LCD_STARS) { const x = ((s[0] - t * sp * s[2]) % W + W) % W; g.fillStyle = 'rgba(210,235,255,' + (0.25 + 0.5 * s[2]) + ')'; if (warp) g.fillRect(x, s[1], 2 + 10 * s[2], 1); else g.fillRect(x, s[1], 1, 1); }
-}
-const ANIMS = {
-  warp(g, t, W, H) { for (let i = 0; i < 40; i++) { const r = ((i * 7919) % 100) / 100, y = (i * 13) % H, x = ((r * W + t * 260 * (0.4 + r)) % (W + 40)) - 20; g.fillStyle = 'rgba(160,240,255,' + (0.3 + r * 0.6) + ')'; g.fillRect(x, y, 6 + r * 22, 1); } },
-  saucer(g, t, W, H) { const x = W - ((t * 90) % (W + 60)) + 30, y = 8 + Math.sin(t * 5) * 3; g.fillStyle = '#9ad8ff'; g.beginPath(); g.ellipse(x, y + 6, 16, 4, 0, 0, TAU); g.fill(); g.fillStyle = '#e6fbff'; g.beginPath(); g.ellipse(x, y + 2, 8, 5, 0, PI, TAU); g.fill(); g.fillStyle = Math.floor(t * 10) % 2 ? '#ff5fd2' : '#22d3ee'; for (let i = -1; i <= 1; i++) g.fillRect(x + i * 9 - 1, y + 7, 2, 2); },
-  planet(g, t, W, H, m) { const col = (m && m.color) || '#ffb347', y = H + 30 - Math.min(1, t / 0.8) * 42; const gr = g.createRadialGradient(W - 34, y - 8, 4, W - 30, y, 28); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.4, col); gr.addColorStop(1, '#101010'); g.fillStyle = gr; g.beginPath(); g.arc(W - 30, y, 26, 0, TAU); g.fill(); },
-  well(g, t, W, H) { g.strokeStyle = 'rgba(139,124,255,.8)'; g.lineWidth = 1; for (let i = 0; i < 5; i++) { const k = ((t * 0.8 + i / 5) % 1); g.beginPath(); g.ellipse(W - 28, H / 2, 4 + k * 26, 2 + k * 12, 0, 0, TAU); g.stroke(); } g.fillStyle = '#fff'; g.beginPath(); g.arc(W - 28, H / 2 - Math.min(1, t / 0.9) * 16 + 10, 3, 0, TAU); g.fill(); },
-  cannon(g, t, W, H) { g.fillStyle = '#9ad8ff'; g.save(); g.translate(20, H - 8); g.rotate(-0.5 - Math.sin(t * 2) * 0.3); g.fillRect(0, -3, 24, 6); g.restore(); g.beginPath(); g.arc(20, H - 8, 7, 0, TAU); g.fill(); if (Math.floor(t * 6) % 3 === 0) { g.fillStyle = '#fff'; g.beginPath(); g.arc(44 + ((t * 300) % 60), H - 22, 2, 0, TAU); g.fill(); } },
-  horizon(g, t, W, H) { g.strokeStyle = 'rgba(139,124,255,.9)'; g.lineWidth = 1.2; for (let i = 0; i < 4; i++) { const k = (t * 0.5 + i / 4) % 1; g.beginPath(); g.ellipse(W / 2, H / 2, 10 + k * 110, 3 + k * 30, 0, 0, TAU); g.stroke(); } g.fillStyle = '#000'; g.beginPath(); g.arc(W / 2, H / 2, 9, 0, TAU); g.fill(); g.strokeStyle = '#fff'; g.beginPath(); g.arc(W / 2, H / 2, 10, 0, TAU); g.stroke(); },
-  teleport(g, t, W, H) { const k = Math.min(1, t / 0.5); g.fillStyle = 'rgba(34,211,238,' + (0.9 - k * 0.9) + ')'; g.fillRect(0, 0, W, H); for (let i = 0; i < 12; i++) { const a = i / 12 * TAU + t * 3; g.strokeStyle = 'rgba(200,255,255,.7)'; g.beginPath(); g.moveTo(W - 30 + Math.cos(a) * 6, H / 2 + Math.sin(a) * 6); g.lineTo(W - 30 + Math.cos(a) * 18, H / 2 + Math.sin(a) * 18); g.stroke(); } }
-};

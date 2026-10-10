@@ -50,7 +50,7 @@ export default {
     '<li><b>The serpent:</b> hit the cobra three times and it opens its mouth. Feed it: two balls are locked inside, the third starts <b>Serpent Multiball</b>. The serpent shakes and spits every ball out of the cave on the left. Bridge, orbits and temple are jackpots; the open mouth is the super jackpot.</li>' +
     '<li><b>Boulder Run:</b> knock down the three wall targets on the right and the boulder rolls across the gorge for 25 seconds. Everything scores double; bridges and orbits are Boulder Dodges. Mind the boulder.</li>' +
     '<li><b>The temple:</b> nine hits on its walls and it collapses, revealing the idol: 100,000 and a key.</li>' +
-    '<li><b>The rope bridge</b> crosses the table and returns the ball to the right flipper. The <b>vine</b> kickback on the left outlane is armed by K-E-Y.</li>' +
+    '<li><b>The rope bridge</b> crosses the table and returns the ball to the right flipper. The <b>vine</b> kickback on the left outlane is armed once each ball, and again by every K-E-Y.</li>' +
     '<li><b>The Lost City:</b> collect all five relics, play Serpent Multiball and Boulder Run, then shoot the raised altar: four balls, the boulder rolls, every shot is a jackpot and the idol on the altar is worth 500,000.</li></ul>',
   theme: {
     playfield: '#101a12', cabinet: '#1b2418', wood: '#4a3220', rails: 'gold', rubber: '#1a1612', postColor: '#d9cfae', postRubber: '#2a2420',
@@ -296,7 +296,7 @@ function makeRules() {
     event(G, type, id, b, d) {
       const B = G.b;
       switch (type) {
-        case 'pop': G.add(1500); R.hunt(G, id); if (B.city) G.add(5000); break;
+        case 'pop': G.add(2000); R.hunt(G, id); if (B.city) G.add(5000); break;
         case 'lane':
           if (/^lane[KEY]$/.test(id)) {
             B.key[['laneK', 'laneE', 'laneY'].indexOf(id)] = 1;
@@ -316,7 +316,7 @@ function makeRules() {
             G.combo(id); G.cnt('bridge'); R.say(G, 'climb');
             if (R.jp(G, id)) break;
             if (R.hunt(G, id)) break;
-            if (B.boulderRun) { G.add(30000); G.msg('BOULDER DODGE', fmt(30000 * G.mult), { anim: 'boulder' }); }
+            if (B.boulderRun) { G.add(40000); G.msg('BOULDER DODGE', fmt(40000 * G.mult), { anim: 'boulder' }); }
             else G.msg('ROPE BRIDGE', fmt(G.add(20000)), { anim: 'vines' });
           }
           break;
@@ -329,14 +329,14 @@ function makeRules() {
           else G.msg('THE GORGE', fmt(G.add(10000)), {});
           break;
         case 'vuk':
-          if (id === 'climb') { B.climbs++; G.cnt('climb'); G.add(10000); G.msg('THE CLIMB', 'TILT THE CHAMBER WITH THE FLIPPERS', { anim: 'vines' }); R.say(G, 'climb'); }
+          if (id === 'climb') { B.climbs++; G.cnt('climb'); G.add(15000); G.msg('THE CLIMB', 'TILT THE CHAMBER WITH THE FLIPPERS', { anim: 'vines' }); R.say(G, 'climb'); }
           break;
         case 'subway':
           if (id === 'idol') {
             B.idols++; G.cnt('idol'); G.comp('altarSaucer').holdT = 1.4;
             G.sfx('gong', { vol: 0.8 }); G.lightShow('chase', 1.5); G.pulse('eyeL', 1.5);
             if (B.hunt === 4) { R.huntProgress(G, 'climb'); }
-            else { G.jackpot(50000, 'THE IDOL', { color: PAL.gold, sound: 'gong' }); }
+            else { G.jackpot(75000, 'THE IDOL', { color: PAL.gold, sound: 'gong' }); }
             if (B.idols === 2 && !G.ebLit && G.ebGot < 1) { G.lightExtra(); }
             R.say(G, 'idol', true);
           }

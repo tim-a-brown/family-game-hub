@@ -37,7 +37,7 @@ const CAROUSEL = [243, 470], CAR_R = 44, CAR_LEGS = [[243, 527], [194, 441], [29
 const RING = [243, 604];
 const MONKEY = [186, 972];
 const CANNON = [26, 205];
-const POPS = [[266, 898], [344, 896], [305, 848]];   // offset from the lane mouths so no lane feeds a bumper dead-centre
+const POPS = [[268, 920], [348, 918], [302, 866]];   // close under the lanes to feed them, offset so no lane hits a bumper dead-centre
 const LANES = [252, 292, 332];
 const PRIZES = ['DUCK', 'BEAR', 'FISH', 'ELEPHANT', 'LION'];
 const PRIZE_MODES = ['ducks', 'bumpers', 'ring', 'dunk', 'coaster'];
@@ -112,7 +112,7 @@ function build(T) {
   T.wall([[54, 420], [54, 548]], { style: 'wood', r: 4, h: 34 });
   T.dropTargetBank({ id: 'ducks', x: DUCKS[0], y: DUCKS[1], angle: 8, n: 3, w: 24, gap: 3, labels: ['', '', ''], art: duckArt, color: '#ffd23a' });
   ['d0', 'd1', 'd2'].forEach((id, i) => T.insert(id, 100, 427 + i * 28, { shape: 'circle', r: 6.5, color: '#ffd23a' }));
-  T.kickback({ id: 'cannon', x: CANNON[0], y: CANNON[1], power: 2300, label: 'CANNONBALL', color: '#e8463c' });
+  T.kickback({ id: 'cannon', x: CANNON[0], y: CANNON[1], power: 2300, label: 'CANNON', color: '#e8463c' });
 
   // ── The left block: dock walls, dunk pocket, the dead zone behind the wheel ──
   T.wall([[106, 592], [106, 624]], { style: 'metal', h: 26 }); T.post(106, 590, { style: 'rubber', r: 5 });
@@ -632,7 +632,7 @@ function paintPlayfield(P) {
   P.text('TEST YOUR', 404, 602, { size: 5, color: '#2a1a14', font: BUNGEE, weight: '400', rot: -20 }); P.text('STRENGTH', 398, 594, { size: 5, color: '#2a1a14', font: BUNGEE, weight: '400', rot: -20 });
   P.text('RING TOSS', RING[0], RING[1] - 32, { size: 6, color: '#2a1a14', font: BUNGEE, weight: '400' });
   P.text('GRAND PRIZE', 243, 530, { size: 5.5, color: '#8a1a14', font: BUNGEE, weight: '400' });
-  P.text('BUMPER CARS', 305, 822, { size: 7, color: 'rgba(255,230,170,.85)', font: BUNGEE, weight: '400' });
+  P.text('BUMPER CARS', 308, 836, { size: 7, color: 'rgba(255,230,170,.85)', font: BUNGEE, weight: '400' });
   // title on the boardwalk
   P.text('MIDWAY MAYHEM', 243, 352, { size: 17, color: '#c8302c', font: BUNGEE, weight: '400', stroke: '#f8f1dc', strokeW: 3.5, spacing: 1 });
   P.text('BOARDWALK CARNIVAL  ·  EST. 1958', 243, 334, { size: 5, color: '#4a2a14', font: SERIF });
