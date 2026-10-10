@@ -23,10 +23,10 @@ html:has(body.in-scene){overflow:hidden;}
 
 /* ── Session row: kit chrome under the game bar ─────────────────────────── */
 .bankrow{display:flex;align-items:center;gap:8px;margin:2px 0 0;min-height:44px;}
-.bankrow .who{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:0 12px 0 10px;min-height:40px;border-radius:999px;background:rgba(255,255,255,.07);font-weight:800;font-size:.95rem;color:var(--text);}
+.bankrow .who{display:inline-flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0;max-width:40%;padding:0 12px 0 10px;min-height:40px;border-radius:999px;background:rgba(255,255,255,.07);font-weight:800;font-size:.95rem;color:var(--text);}
 .bankrow .who .ico{width:18px;height:18px;color:var(--text-2);}
 .bankrow .who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.bankrow .net{flex:1;min-width:0;padding:0 4px;font-weight:800;font-size:.95rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bankrow .net{flex:1;min-width:0;padding:0 4px;font-weight:800;font-size:.95rem;color:var(--text-2);white-space:nowrap;}
 .bankrow .net b{color:var(--text);font-variant-numeric:tabular-nums;} .bankrow .net b.up{color:var(--green);} .bankrow .net b.down{color:var(--red);}
 .bankrow .btn{flex:none;}
 body.in-scene .bankrow .who,body.in-scene .bankrow .btn-soft{background:rgba(16,12,30,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 0 0 1px rgba(255,255,255,.12),0 4px 12px rgba(0,0,0,.35);}
@@ -1454,7 +1454,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
   }
   // The picker cards show a portrait of each cabinet, rendered once
   var modeObs = null, thumbs = {}, thumbsP = null;
-  try { thumbs = JSON.parse(sessionStorage.getItem('slots_thumbs_v3')) || {}; } catch (e) { thumbs = {}; }
+  try { thumbs = JSON.parse(sessionStorage.getItem('slots_thumbs_v4')) || {}; } catch (e) { thumbs = {}; }
   function decorateModes() {
     var box = app.querySelector('.setup .modes'); if (!box) return;
     function paint() {
@@ -1483,10 +1483,10 @@ window.dispatchEvent(new Event('cab3d-ready'));
         if (thumbs[m]) return;
         p = p.then(function () {
           if (cab) return;   // a machine is on screen: it owns the canvas now
-          return C.atlasFor(m, E.M[m], sprite).then(function (atlas) { return C.thumbnail(m, E.M[m], atlas, thumbOpts(m), 240, 300); }).then(function (url) { thumbs[m] = url; });
+          return C.atlasFor(m, E.M[m], sprite).then(function (atlas) { if (cab) return null; return C.thumbnail(m, E.M[m], atlas, thumbOpts(m), 240, 300); }).then(function (url) { if (url) thumbs[m] = url; });
         });
       });
-      return p.then(function () { try { sessionStorage.setItem('slots_thumbs_v3', JSON.stringify(thumbs)); } catch (e) {} });
+      return p.then(function () { try { sessionStorage.setItem('slots_thumbs_v4', JSON.stringify(thumbs)); } catch (e) {} });
     }).catch(function (e) { console.warn(e); });
     return thumbsP;
   }
@@ -1539,7 +1539,9 @@ window.dispatchEvent(new Event('cab3d-ready'));
   function hideCab() { if (cab) { cab.dispose(); cab = null; } if (canvas) { canvas.style.visibility = 'hidden'; ov.innerHTML = ''; ov.style.display = 'none'; } }
 
   function render() {
-    gen++; stopCycle(); drawn = null; showing = false; payHit = null;
+    gen++; stopCycle(); drawn = null; showing = false; payHit = null; jpFlash = null;
+    spinning = false; featRunning = false; presenting = false; counting = false; slam = null; pendingWin = 0; fxClose = null; cancelAnimationFrame(raf);
+    meters = { credit: '$0', bet: '$0', win: '$0' };
     M = E.M[S.mode];
     app.innerHTML = '';
     shownBank = Casino.balance();
@@ -1674,7 +1676,8 @@ window.dispatchEvent(new Event('cab3d-ready'));
       return { feat: { kind: 'hs', a: feat.left, b: feat.cells.filter(function (v) { return v != null; }).length + ' / 15' } };
     }
     if (MM.id === 'dragon') { var T = E.total(MM, b), jp = {}; Object.keys(MM.jackpots).forEach(function (k) { jp[k] = money(MM.jackpots[k] * T); }); return { jp: jp, flash: jpFlash }; }
-    return { text: MM.id === 'buffalo' ? '1024 ways · Free games' : '20 lines · 15 free spins x3', col: MM.id === 'buffalo' ? '#ffe7b0' : '#ffd76a' };
+    var u = E.unit(MM, b), topK = MM.id === 'buffalo' ? 'BU' : 'QN', topPay = MM.pays[topK][5] * u;
+    return { text: 'Five ' + NM[topK][1] + ' pay ' + money(topPay), col: MM.id === 'buffalo' ? '#ffe7b0' : '#ffd76a' };
   }
   function hudState() { return hudStateFor(M, S && S.feat, S && S.feat ? S.feat.b : betOf(S, M)); }
   function flashJp(k) { jpFlash = k; if (cab) cab.setHud(hudState()); setTimeout(function () { if (jpFlash === k) { jpFlash = null; if (cab && S) cab.setHud(hudState()); } }, 1400); }
@@ -1908,7 +1911,9 @@ window.dispatchEvent(new Event('cab3d-ready'));
     msg('Good luck!');
     Kit.sfx('whoosh'); Kit.haptic('medium');
     var g = gen;
-    spinReels(res.stops, { antic: anticFor(res, false), onStop: onReelStopFor(res) }).then(function () {
+    var sp = spinReels(res.stops, { antic: anticFor(res, false), onStop: onReelStopFor(res) });
+    paint();
+    sp.then(function () {
       if (g !== gen) return;
       spinning = false; pendingWin = 0; presenting = true; paint();
       return presentWins(res, { tb: T }).then(function () {
@@ -2208,7 +2213,9 @@ window.dispatchEvent(new Event('cab3d-ready'));
         paintFeatBar(); paint();
         spinning = true; paint();
         meterWin(S.feat.total - res.total);
-        return spinReels(res.stops, { antic: anticFor(res, true), onStop: onReelStopFor(res) }).then(function () {
+        var sp = spinReels(res.stops, { antic: anticFor(res, true), onStop: onReelStopFor(res) });
+        paint();
+        return sp.then(function () {
           if (g !== gen) return;
           spinning = false; paint(); paintFeatBar();
           return presentWins(res, { tb: E.total(M, S.feat.b), fs: true });

@@ -22,9 +22,9 @@ const THEME = {
   buffalo: { kind: 'video', W: 0.7, D: 0.5, baseH: 0.52, mainH: 0.68, topH: 0.18, ratio: 0.8, sw: 0.9, body: 0x3a1a0a, trim: 'brass', edge: '#ff9a5a', led: ['#ff7a2e', '#ffd45a'], msg: '#ffd45a',
     spin: ['#fff3c0', '#ffc83d', '#b45f05', '#3a1600'], btn: ['#ffd9b0', '#c86a2a', '#5a2a08', '#fff'], hud: '#ffe7b0', reflect: 0.12 },
   cleo: { kind: 'video', W: 0.7, D: 0.5, baseH: 0.52, mainH: 0.68, topH: 0.18, ratio: 0.88, sw: 0.88, body: 0x10307a, trim: 'gold', edge: '#ffd890', led: ['#47d6ff', '#ffd76a'], msg: '#ffd76a',
-    spin: ['#fffbe0', '#ffd76a', '#c08a1a', '#2b1a00'], btn: ['#b8c8ff', '#2c4aa0', '#0f1f52', '#fff'], hud: '#ffd76a', reflect: 0.3 },
+    spin: ['#fffbe0', '#ffd76a', '#c08a1a', '#2b1a00'], btn: ['#b8c8ff', '#2c4aa0', '#0f1f52', '#fff'], hud: '#ffd76a', reflect: 0.2 },
   dragon: { kind: 'video', W: 0.7, D: 0.5, baseH: 0.52, mainH: 0.68, topH: 0.18, ratio: 0.88, sw: 0.88, body: 0x5a0808, trim: 'gold', edge: '#ff4a2a', led: ['#ff4a3a', '#ffd45a'], msg: '#ffd45a',
-    spin: ['#fff3c0', '#ffc83d', '#b45f05', '#3a1600'], btn: ['#ff9a9a', '#9a1a1a', '#3a0606', '#fff'], hud: '#ffd45a', reflect: 0.3 }
+    spin: ['#fff3c0', '#ffc83d', '#b45f05', '#3a1600'], btn: ['#ff9a9a', '#9a1a1a', '#3a0606', '#fff'], hud: '#ffd45a', reflect: 0.22 }
 };
 
 let renderer = null, envTex = null, glowTex = null, fadeTex = null, canvasEl = null;
@@ -60,7 +60,7 @@ export async function atlasFor(mode, M, spriteEl) {
 function makeMats(T) {
   const env = envTex;
   if (!woodCache.walnut) {
-    const w = tex(Art.woodCanvas(512, [[124, 72, 34], [66, 36, 15], [26, 12, 4]], 7)); w.wrapS = w.wrapT = THREE.RepeatWrapping; woodCache.walnut = w;
+    const w = tex(Art.woodCanvas(512, [[112, 66, 32], [74, 42, 18], [26, 12, 4]], 7)); w.wrapS = w.wrapT = THREE.RepeatWrapping; w.repeat.set(2.5, 2.5); woodCache.walnut = w;
     const b = tex(Art.brushedCanvas(256, '#9a9a9a', 11), false); b.wrapS = b.wrapT = THREE.RepeatWrapping; b.repeat.set(3, 3); woodCache.brushed = b;
   }
   const m = {
@@ -209,8 +209,8 @@ export class Cabinet {
     // message strip and meters set into the wood below the window
     this.msgD = this.display(0.46, 0.04, 1024, 90, (x, w, h, st) => Art.paintMsg(x, w, h, st.text, st.good, T.msg)); this.msgD.mesh.position.set(0, 0.692, F + 0.002);
     this.metD = this.display(0.5, 0.066, 1024, 136, (x, w, h, st) => Art.paintMeters(x, w, h, st, T.led)); this.metD.mesh.position.set(0, 0.628, F + 0.002);
-    this.box(0.47, 0.05, 0.01, 0.004, m.chrome, 0, 0.692, F - 0.003);
-    this.box(0.51, 0.076, 0.01, 0.004, m.chrome, 0, 0.628, F - 0.003);
+    this.box(0.47, 0.05, 0.01, 0.004, m.chrome, 0, 0.692, F - 0.007);
+    this.box(0.51, 0.076, 0.01, 0.004, m.chrome, 0, 0.628, F - 0.007);
     // top box: chrome-crowned, holds the printed glass with the marquee and the pay card
     const tc = 1.28, th = 0.4;
     this.box(W + 0.02, th, D, 0.035, m.walnut, 0, tc, 0, null, 3);
@@ -373,6 +373,7 @@ export class Cabinet {
       if (stopped && row >= 0 && row < rows) {
         if (r.dim && !r.dim[row]) dim = 0.42;
         const pt = r.pop[row]; if (pt) { const u = (now - pt) / 550; if (u >= 1) delete r.pop[row]; else s = u < 0.6 ? 0.6 + (1.22 - 0.6) * (u / 0.6) : 1.22 - 0.22 * ((u - 0.6) / 0.4); }
+        if (!stopped) Object.keys(r.pop).forEach(k => { if (now - r.pop[k] > 600) delete r.pop[k]; });
       }
       for (let j = 0; j < sub; j++) {
         const t0 = k - p + j / sub, t1 = k - p + (j + 1) / sub, vt = U.v1 - (U.v1 - U.v0) * j / sub, vb = U.v1 - (U.v1 - U.v0) * (j + 1) / sub;
@@ -417,17 +418,17 @@ export class Cabinet {
   buildLights() {
     const a = this.o.amb || { l: '#ffb35a', r: '#ff6a3a', t: '#ffd9a0', floor: '#2a0c0c' };
     this.scene.add(new THREE.HemisphereLight(new THREE.Color(a.t), new THREE.Color(a.floor), 0.55));
-    const key = new THREE.DirectionalLight(0xfff1dc, 2.4); key.position.set(-1.5, 3.4, 1.1); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
+    const key = new THREE.DirectionalLight(0xfff1dc, 2.2); key.position.set(-1.3, 3.2, -0.5); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
     key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 8;
     key.shadow.camera.left = -1.1; key.shadow.camera.right = 1.1; key.shadow.camera.top = 1.6; key.shadow.camera.bottom = -0.6; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.015; key.shadow.radius = 4;
-    const fill = new THREE.DirectionalLight(0xfff4e8, 0.9); fill.position.set(1.4, 1.6, 2.6); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight(0xfff4e8, 1.5); fill.position.set(1.2, 1.9, 2.8); this.scene.add(fill);
     const rimL = new THREE.PointLight(new THREE.Color(a.l), 7, 5, 2); rimL.position.set(-1.4, 1.5, -0.5); this.scene.add(rimL);
     const rimR = new THREE.PointLight(new THREE.Color(a.r), 7, 5, 2); rimR.position.set(1.4, 1.3, -0.5); this.scene.add(rimR);
     this.flashL = new THREE.PointLight(0xffe9b0, 0, 4, 2); this.flashL.position.set(0, 1.1, 1.3); this.scene.add(this.flashL);
     this.key = key;
   }
   buildFloor() {
-    const sh = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.ShadowMaterial({ opacity: 0.55 })); sh.rotation.x = -Math.PI / 2; sh.receiveShadow = true; sh.renderOrder = -3; this.scene.add(sh);
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.ShadowMaterial({ opacity: 0.55, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.receiveShadow = true; sh.renderOrder = -3; this.scene.add(sh);
     const ao = new THREE.Mesh(new THREE.PlaneGeometry(this.T.W * 1.9, this.T.D * 1.9), new THREE.MeshBasicMaterial({ map: fadeTex, transparent: true, depthWrite: false, opacity: 0.85, toneMapped: false }));
     ao.rotation.x = -Math.PI / 2; ao.position.set(0, 0.0015, 0.02); ao.renderOrder = -3; this.scene.add(ao);
   }
@@ -436,7 +437,7 @@ export class Cabinet {
     this.W = W; this.H = H; this.frameTop = top; this.frameBottom = bottom;
     const r = getRenderer(canvasEl); r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setSize(W, H, false);
     this.camera.aspect = W / H;
-    const L = this.L, span = bottom - top, cabTop = L.height + 0.05, floorY = -0.09;
+    const L = this.L, span = bottom - top, cabTop = L.height + 0.05, floorY = -0.2;
     let k = (span - 14) / (cabTop - floorY);                        // px per metre, height-bound
     const kw = (W - 24) / (L.width + 0.1); if (kw < k) k = kw;        // or width-bound
     this.kpm = k;
@@ -463,7 +464,9 @@ export class Cabinet {
     if (t < this.wonUntil) this.anim('won', () => performance.now() < this.wonUntil);
     if (this.camDirty) { this.placeCamera(); this.camDirty = false; this.rectsDirty = true; }
     if (this.handle && this.handle.g.rotation.x !== this.handle.p * 1.45) this.handle.g.rotation.x = this.handle.p * 1.45;
-    getRenderer(canvasEl).render(this.scene, this.camera);
+    const r = getRenderer(canvasEl), dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (canvasEl.width !== Math.floor(this.W * dpr) || canvasEl.height !== Math.floor(this.H * dpr)) { r.setPixelRatio(dpr); r.setSize(this.W, this.H, false); }
+    r.render(this.scene, this.camera);
     if (this.onFrame) this.onFrame(this.rectsDirty); this.rectsDirty = false;
     if (this.anims.length) this.invalidate();
   }

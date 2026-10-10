@@ -160,8 +160,8 @@ export function woodCanvas(size, pal, seed) {
     const u = i / size, v = j / size;
     const warp = n1(u * 8, v * 8) * 0.5 + n2(u * 32, v * 32) * 0.08;
     const ring = Math.sin((u * 13 + warp * 1.2 + v * 0.25) * Math.PI * 2);
-    let t = 0.5 + 0.5 * ring; t = Math.pow(t, 1.6);
-    const fine = n2(u * 32 * 4, v * 32) * 0.18 - 0.09;
+    let t = 0.5 + 0.5 * ring; t = Math.pow(t, 1.3) * (0.55 + 0.45 * n2(u * 32, v * 32 * 3));
+    const fine = n2(u * 32 * 4, v * 32) * 0.22 - 0.11;
     const k = Math.min(1, Math.max(0, t + fine)), o = (j * size + i) * 4;
     const dark = Math.pow(n2(u * 32, v * 32 * 6), 6) * 0.5;   // pores
     d[o] = (A[0] * (1 - k) + B[0] * k) * (1 - dark) + C[0] * dark * 0.2;
@@ -303,6 +303,7 @@ export function paintMsg(ctx, W, H, text, good, col) {
 }
 export function paintMeters(ctx, W, H, v, cols, labels) {
   const x = ctx; x.clearRect(0, 0, W, H);
+  x.fillStyle = '#0b0a0e'; x.fillRect(0, 0, W, H);
   const n = 3, gap = W * 0.02, mw = (W - gap * 2) / n;
   ['CREDIT', 'BET', 'WIN'].forEach(function (lab, i) {
     const mx = i * (mw + gap);
@@ -360,11 +361,11 @@ export function paintDeck(mode, ctx, W, H, o) {
   x.fillStyle = lg(x, 0, 0, 0, H * 0.3, [[0, 'rgba(255,255,255,.14)'], [1, 'rgba(255,255,255,0)']]); x.fillRect(0, 0, W, H * 0.3);
   x.textAlign = 'center'; x.textBaseline = 'middle';
   o.readouts.forEach(function (r) {
-    // a small LCD readout with its printed label above
-    x.font = '900 ' + H * 0.11 + 'px ' + SANS; x.fillStyle = 'rgba(255,255,255,.62)'; spaced(x, r.label.toUpperCase(), r.x * W, (r.y - 0.17) * H, H * 0.02, 'fill');
-    x.fillStyle = '#0a0c10'; rr(x, (r.x - r.w / 2) * W, (r.y - 0.1) * H, r.w * W, 0.22 * H, H * 0.04); x.fill();
+    // a small LCD readout with its printed label just under it
+    x.fillStyle = '#0a0c10'; rr(x, (r.x - r.w / 2) * W, (r.y - 0.12) * H, r.w * W, 0.22 * H, H * 0.04); x.fill();
     x.strokeStyle = 'rgba(255,255,255,.14)'; x.lineWidth = 2; x.stroke();
-    x.font = '800 ' + H * 0.15 + 'px ui-monospace,"SF Mono",Menlo,monospace'; x.fillStyle = '#9ff2c3'; x.shadowColor = '#9ff2c3'; x.shadowBlur = 8; x.fillText(r.value, r.x * W, (r.y + 0.01) * H); x.shadowBlur = 0;
+    x.font = '800 ' + H * 0.15 + 'px ui-monospace,"SF Mono",Menlo,monospace'; x.fillStyle = '#9ff2c3'; x.shadowColor = '#9ff2c3'; x.shadowBlur = 8; x.fillText(r.value, r.x * W, (r.y - 0.01) * H); x.shadowBlur = 0;
+    x.font = '900 ' + H * 0.05 + 'px ' + SANS; x.fillStyle = 'rgba(255,255,255,.6)'; spaced(x, r.label.toUpperCase(), r.x * W, (r.y + 0.165) * H, H * 0.006, 'fill');
   });
   (o.marks || []).forEach(function (m) { x.font = '900 ' + H * 0.1 + 'px ' + SANS; x.fillStyle = 'rgba(255,255,255,.5)'; spaced(x, m.t.toUpperCase(), m.x * W, m.y * H, H * 0.02, 'fill'); });
 }
@@ -374,13 +375,13 @@ export function paintCap(ctx, W, H, o) {
   x.fillStyle = rg(x, W * 0.5, H * 0.35, 2, W * 0.75, [[0, o.hi], [0.5, o.col], [1, o.lo]]); x.fillRect(0, 0, W, H);
   if (o.off) { x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(0, 0, W, H); }
   x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
-  const main = o.sub ? H * 0.34 : H * (o.text.length > 3 ? 0.32 : 0.5);
+  const main = o.sub ? H * 0.36 : H * (o.text.length > 3 ? 0.32 : 0.5);
   x.font = (o.font || '400 {s}px "Lilita One",' + SANS).replace('{s}', main);
   let tw = x.measureText(o.text).width; x.save(); if (tw > W * 0.86) { x.translate(W / 2, 0); x.scale(W * 0.86 / tw, 1); x.translate(-W / 2, 0); }
-  const ty = o.sub ? H * 0.42 : H * 0.5;
+  const ty = o.sub ? H * 0.4 : H * 0.5;
   x.strokeStyle = 'rgba(0,0,0,.35)'; x.lineWidth = main * 0.14; x.strokeText(o.text, W / 2, ty + main * 0.04);
   x.fillStyle = o.ink; x.fillText(o.text, W / 2, ty); x.restore();
-  if (o.sub) { x.font = '800 ' + H * 0.17 + 'px ' + SANS; x.fillStyle = o.ink; x.globalAlpha = 0.85; x.fillText(o.sub, W / 2, H * 0.74); x.globalAlpha = 1; }
+  if (o.sub) { x.font = '900 ' + H * 0.2 + 'px ' + SANS; x.fillStyle = o.ink; x.globalAlpha = 0.9; const sw = x.measureText(o.sub).width; x.save(); if (sw > W * 0.8) { x.translate(W / 2, 0); x.scale(W * 0.8 / sw, 1); x.translate(-W / 2, 0); } x.fillText(o.sub, W / 2, H * 0.72); x.restore(); x.globalAlpha = 1; }
   x.fillStyle = lg(x, 0, 0, 0, H, [[0, 'rgba(255,255,255,.45)'], [0.35, 'rgba(255,255,255,.05)'], [0.5, 'rgba(255,255,255,0)'], [1, 'rgba(0,0,0,.15)']]); x.fillRect(0, 0, W, H);
 }
 export function paintTab(ctx, S, n, col, on) {

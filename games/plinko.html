@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
+<script type="module" src="plinko/bigwheel3d.js"></script>
 <style>
 body{background:
   radial-gradient(60% 34% at 50% 0%, rgba(255,206,90,.13) 0%, rgba(255,206,90,0) 70%),
@@ -461,7 +463,19 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   // The Big Wheel, drawn in 3D on a canvas: a drum of panels turning about a horizontal axis, seen
   // from the front, between two checkered pillars lined with marquee bulbs. Panels curve away top and
   // bottom; the one facing you is full size. Pull it down to spin.
+  // The real prop, rendered in 3D (games/plinko/bigwheel3d.js) when the module and WebGL are there;
+  // the canvas renderer below is the fallback and shares the physics loop, hooks and contract.
+  function want3D() {
+    if (/[?&]bw=2d\b/.test(location.search) || window.PlinkoWheel.force2D) return false;
+    try { var c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; }
+  }
   function BigWheel(host, hooks) {
+    if (window.BigWheel3D && want3D()) {
+      try {
+        var r3 = window.BigWheel3D(host, hooks, { WHEEL: WHEEL, WA: WA, WN: WN, makeWheelSim: makeWheelSim, WSIM_H: WSIM_H, WSIM_CAP: WSIM_CAP, flapTick: flapTick });
+        if (r3) return r3;
+      } catch (e) { console.warn('Big Wheel 3D failed, using the canvas wheel', e); window.PlinkoWheel.force2D = true; }
+    }
     var cv = el('canvas', { tabindex: '0', role: 'img', 'aria-label': 'The Big Wheel. Swipe down on it to spin, or press Space.' });
     host.appendChild(cv);
     var g = cv.getContext('2d');
@@ -1051,11 +1065,14 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
       },
       onKey: function () { if (canSpin()) doSpin(buttonSpin()); }
     });
+    window.PlinkoWheel.view = BW;   // test hook: the renderer in use (is3D, info())
     if (S.wangle == null) S.wangle = Math.random() * Math.PI * 2;
     BW.setAngle(S.wangle);
     paintWheelUI();
     wheelLayout();
   }
+  // The 3D module loads after this script: if the wheel went up before it arrived, rebuild it in 3D
+  window.addEventListener('bw3d-ready', function () { if (BW && !BW.is3D && S && S.phase === 'wheel' && !BW.busy() && !wheelBusy) renderWheel(); });
   function wheelLayout() {
     if (!BW || !dom.wf || !dom.wf.isConnected) return;
     var cs = getComputedStyle(app), inner = (app.clientWidth || 390) - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
