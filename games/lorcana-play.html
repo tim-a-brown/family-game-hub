@@ -6154,6 +6154,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return w.join(' ');
   }
   function useAb(u, ab, byCpu) {
+    if (!byCpu) netCheck({ k: 'ab', u: u, i: actAbs(u).indexOf(ab) });
     var c = C(u), pi = c.o, cost = ab.cost || {}, pre = byCpu ? null : snapshot(), sac = [], exo = [];
     function pay(disc) {
       act(function () {
@@ -6460,6 +6461,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     onNew: function () { tok++; resetQ(); Kit.handoff.close(); closeOverlays(); if (S && S.mode === 'online') { netLeave(); S = null; showLobby(); return; } clearSave(); S = null; showSetup(); },
     undo: function () { undo(); },
     menu: [
+      { icon: 'globe', label: 'Your online games', when: function () { return !!S && S.mode === 'online' && ui.screen === 'game'; }, onClick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } },
       { icon: 'book', label: 'Game log', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { showLog(); } },
       { icon: 'pencil', label: 'Fix something by hand', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { if (S && S.mode === 'online' && !canAct()) Kit.toast('You can fix things on your own turn'); else if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: Past Games' }); } },
@@ -6478,6 +6480,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       '<p class="goal">Be the first to collect <b>20 lore</b> (or 50, if you chose a long game in setup). You get lore by sending your characters on quests.</p>' +
       '<p>This is the Disney Lorcana trading card game with the real cards. Play the computer, or pass the phone between two players (your hand is hidden while the other person has it).</p>' +
       '<p><b>Play online</b> (from the Lorcana menu on the home screen): two devices, each signed in with its own PIN and using its own deck. One player opens a table, the other joins. Each of you sees the table from your own side. When a card makes the other player choose something during your turn, the question pops up on their device.</p>' +
+      '<p>You don’t both need to be there at once. An online game stays open for as long as it takes, days or weeks: take your turn, close the app, and the other player takes theirs whenever they next open Lorcana. If a card asks them something while they’re away, the question waits for them, and your turn carries on once they answer (even if you’ve closed the app by then). <b>Your games</b>, at the top of the Lorcana screen and of Play online, lists every game you have going on any device signed in with your PIN, with whose turn it is. Tap one to pick it up. A table nobody has joined stays listed for 30 days.</p>' +
       '<h3>Your turn</h3><ol>' +
       '<li><b>Ready, Set, Draw.</b> Your exerted (turned sideways) cards stand back up, your new characters are ready to act, your locations give you their lore, and you draw a card. The very first player skips that first draw.</li>' +
       '<li><b>Ink.</b> Once per turn you may put a card with the swirly ink symbol (a gold ring around its cost) facedown into your <b>inkwell</b>. Each card there is 1 ink.</li>' +
@@ -6842,6 +6845,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     ui.hint = null; ui.pick = null;
     Kit.sfx('whoosh');
+    netCheck({ k: 'end' });
     endTurn();
   }
   function endTurn() {
@@ -6878,6 +6882,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
 
   // ── Doing things (human or computer) ────────────────────────────────────
   function runAction(a, byCpu, nested) {
+    if (!byCpu && !nested) netCheck({ k: 'run', a: a });   // online: where a question this move raises can go back to
     // a character played from the discard (Remember Me, The Horned King): into the hand first, its name used up for the turn
     if (a.k === 'play' && a.o && a.o.fromDisc) { var fz = zoneOf(a.u); if (!fz || fz.z !== 'discard') return; var FP = S.P[fz.pi], Tf = TT(); FP.discard.splice(FP.discard.indexOf(a.u), 1); FP.hand.push(a.u); leftDisc(fz.pi, a.u, false); Tf.discNames = (Tf.discNames || []).concat([DD(a.u).n]); delete a.o.fromDisc; }
     var pi = a.k === 'play' || a.k === 'ink' ? C(a.u).o : S.cur, pre = byCpu || nested ? null : snapshot(), d = DD(a.u), res = null, tWasDamaged = false;
@@ -11560,7 +11565,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     lobbyOff();
     if (NET.unsub) NET.unsub();
     NET.ref = ref; NET.seat = seat; NET.owner = false; NET.seq = 0; NET.synced = false; NET.pend = null; NET.showing = null; NET.dealt = false; NET.defs = null; NET.answered = {};
-    NET.cp = null; NET.ans = []; NET.rp = []; NET.px = null; NET.taking = false; NET.retake = false; NET.doc = null;
+    NET.cp = null; NET.ans = []; NET.rp = []; NET.px = null; NET.taking = false; NET.retake = false; NET.doc = null; NET.dealWait = false;
     lsSet(NETK, { code: ref.id, seat: seat, at: Date.now() }); netRemember(ref.id, seat);
     NET.unsub = ref.onSnapshot(netOnDoc, netErr);
   }
@@ -11645,6 +11650,39 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       return t;
     }).catch(function () { return null; }));
   }
+  // This account's tag (host.acct / guest.acct): a slow one-way hash of the PIN, never the PIN itself. Every device
+  // signed in with the PIN makes the same tag, so a game started on the phone shows up on the iPad. Shared with Chess
+  // and the home screen (same salt, same cache).
+  var ACT = {};
+  function acctTag() {
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? FGHSync.pin() : null, c = window.crypto && window.crypto.subtle;
+    if (!pin || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    if (ACT[pin]) return ACT[pin];
+    var k = pinKey(pin), saved = lsGet('fgh_acct_tag', null);
+    if (saved && saved.k === k && saved.t) return (ACT[pin] = Promise.resolve(saved.t));
+    var enc = new TextEncoder();
+    return (ACT[pin] = c.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']).then(function (key) {
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-online-account'), iterations: 150000, hash: 'SHA-256' }, key, 64);
+    }).then(function (b) {
+      var t = Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      lsSet('fgh_acct_tag', { k: k, t: t });
+      return t;
+    }).catch(function () { return null; }));
+  }
+  // a quick check that the cached tag is for the PIN signed in now (not a secret)
+  function pinKey(p) { var h = 5381; for (var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
+  // How a seat belongs here: 2 = this device sat there, 1 = this account (another device), 0 = not ours
+  function seatIs(s, tag) { return !s ? 0 : s.dev === NET.dev ? 2 : tag && s.acct === tag ? 1 : 0; }
+  function agoText(ts) {
+    var s = Math.max(0, (Date.now() - ts) / 1000), n;
+    if (s < 60) return 'just now';
+    if (s < 3600) { n = Math.floor(s / 60); return n + (n === 1 ? ' minute ago' : ' minutes ago'); }
+    if (s < 86400) { n = Math.floor(s / 3600); return n + (n === 1 ? ' hour ago' : ' hours ago'); }
+    n = Math.floor(s / 86400);
+    if (n === 1) return 'yesterday';
+    if (n < 14) return n + ' days ago';
+    n = Math.floor(n / 7); return n + ' weeks ago';
+  }
   // The people you've linked: [{name (as you know them), code, them (their own profile name)}]
   function netPeople() {
     var L = window.FGHSync && FGHSync.links ? FGHSync.links() : null, out = [];
@@ -11659,7 +11697,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return list.sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
   }
   // Mark each table opened by someone you've linked (r.who): by its tag, or by name for a table without one
-  function netWhose(list) {
+  // (who: which seat to look at, for "Your games"; the host by default)
+  function netWhose(list, who) {
     var ppl = netPeople();
     list.forEach(function (r) { r.who = null; });
     if (!ppl.length || !list.length) return Promise.resolve(list);
@@ -11667,7 +11706,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     return Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
       var canTag = tags.some(function (t) { return !!t; });
       list.forEach(function (r) {
-        var h = r.d.host || {}, i = -1;
+        var h = (who ? who(r) : r.d.host) || {}, i = -1;
         if (h.lk && canTag) i = tags.indexOf(h.lk);
         else if (h.name) { var n = nk(h.name); for (var j = 0; j < ppl.length && i < 0; j++) if (nk(ppl[j].name) === n || (ppl[j].them && nk(ppl[j].them) === n)) i = j; }
         r.who = i >= 0 ? ppl[i] : null;

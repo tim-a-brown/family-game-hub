@@ -40,10 +40,28 @@
 .hud{position:absolute;left:8px;bottom:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;}
 .hud span{background:rgba(12,10,20,.72);color:#fff;border-radius:999px;padding:3px 10px;font-weight:800;font-size:.78rem;white-space:nowrap;}
 .hud span b{color:#ffd54a;font-weight:900;}
-.pstrip{position:relative;height:34px;margin-top:6px;border-radius:10px;background:linear-gradient(#17141f,#0d0b12);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);overflow:hidden;}
+.srow{display:flex;gap:8px;margin-top:6px;}
+.srow .skip-ov{display:none;}
+.pstrip{flex:1;min-width:0;position:relative;height:34px;border-radius:10px;background:linear-gradient(#17141f,#0d0b12);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);overflow:hidden;}
 .pstrip .lb{position:absolute;left:8px;top:0;bottom:0;display:flex;align-items:center;font-size:.6rem;font-weight:900;letter-spacing:.12em;color:#8d8678;text-transform:uppercase;}
 .pstrip .sc{position:absolute;top:5px;width:30px;height:24px;border-radius:5px;display:grid;place-items:center;font:400 1rem/1 var(--display);transition:left .45s var(--ease);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.3);}
 .pstrip .sc.mine::after{content:"";position:absolute;left:3px;right:3px;bottom:-4px;height:3px;border-radius:2px;background:#ffd54a;}
+.pstrip .sc i{font-style:normal;}
+.pstrip .sc span{display:none;}
+.pstrip:not(.nm) .sc i{background:none!important;color:inherit!important;}
+/* Wide strip: a tote board with each runner's number and name, leader on the left */
+.pstrip.nm .sc{background:#2a2533!important;color:#f3ead6!important;display:flex;align-items:center;justify-content:flex-start;gap:7px;overflow:hidden;padding-right:8px;font:800 .8rem/1 var(--font);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.pstrip.nm .sc i{flex:none;align-self:stretch;width:26px;display:grid;place-items:center;font:400 1rem/1 var(--display);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);}
+.pstrip.nm .sc span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pstrip.nm .sc.mine{box-shadow:inset 0 0 0 2px #ffd54a;}
+.pstrip.nm .sc.mine::after{display:none;}
+/* Upright phone, during the race: a hint that sideways shows the whole field (fades away) */
+.rot-tip{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:none;align-items:center;gap:6px;padding:5px 11px 5px 8px;border-radius:999px;background:rgba(12,10,20,.8);color:#fff;font-weight:800;font-size:.74rem;white-space:nowrap;pointer-events:none;opacity:0;animation:rtip 7s ease .8s forwards;}
+.rot-tip .ico{width:16px;height:16px;transform:rotate(90deg);color:#ffd54a;}
+@keyframes rtip{0%{opacity:0;}8%,82%{opacity:1;}100%{opacity:0;}}
+@media (orientation:portrait) and (hover:none) and (pointer:coarse) and (max-width:600px){ .ph-race .rot-tip{display:flex;} }
+.pk-side{display:none;}
+.prog .ph .cond{display:none;}
 .call{width:100%;border:0;color:inherit;text-align:left;font:inherit;cursor:pointer;min-height:58px;display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:16px;background:linear-gradient(#221b3e,#18132d);box-shadow:inset 0 0 0 1px var(--line-2);}
 .call .ico{width:22px;height:22px;flex:none;color:#ffd54a;}
 .call .ico-wrap{display:flex;flex:none;}
@@ -166,6 +184,84 @@
   .stage.hr.ph-bet .hz{min-height:52px;padding-top:5px;padding-bottom:5px;}
   .stage.hr.ph-bet .prog{margin-bottom:10px;}
   .rail-in{max-width:760px;}
+  /* The race runs the full width of the screen with the whole-field camera */
+  .stage.hr.ph-race{max-width:1240px;}
+}
+
+/* ── A phone on its side ───────────────────────────────────────────────────
+   Exactly one screen tall (no page scroll). Betting: the program on the left, bet types, pick and
+   tickets on the right, the chips in one row along the bottom. The race fills the screen with Skip
+   beside the running order and the call over the sky. Results: the final picture and the call on the
+   left, the tote board and tickets on the right. */
+@media (orientation:landscape) and (max-height:540px){
+  .stage.hr[class*="ph-"]{max-width:none;position:relative;height:var(--hr-h,100vh);overflow:hidden;--side:clamp(296px,46vw,430px);
+    padding:4px calc(12px + var(--corner-x)) calc(var(--rail,0px) + 6px);}
+  .tw{margin-bottom:6px;padding:5px;border-radius:16px;}
+  .tw-in{border-radius:12px;}
+  .srow{margin-top:5px;}
+  .pstrip{height:30px;}
+  .pstrip .sc{top:3px;}
+  .bank{gap:5px;}
+  .bank div{padding:4px 6px;display:flex;align-items:baseline;justify-content:center;gap:5px;border-radius:10px;}
+  .bank small{font-size:.55rem;letter-spacing:.06em;}
+  .bank b{font-size:.92rem;}
+
+  .stage.hr.ph-bet{display:grid;grid-template-columns:minmax(0,1fr) var(--side);column-gap:12px;
+    grid-template-rows:auto auto auto auto minmax(0,1fr);
+    grid-template-areas:"prog bank" "prog types" "prog info" "prog pk" "prog slip";}
+  .ph-bet .tw,.ph-bet .stand{display:none;}
+  .ph-bet .prog{grid-area:prog;margin:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 8px 20px rgba(0,0,0,.4);}
+  .ph-bet .prog .ph{position:sticky;top:0;z-index:2;padding:7px 10px 5px;background:#fffaf0;}
+  .ph-bet .prog .ph h3{font-size:1.1rem;}
+  .ph-bet .prog .ph .tap{display:none;}
+  .ph-bet .prog .ph .cond{display:inline;}
+  .ph-bet .hz{grid-template-columns:26px 26px minmax(0,1fr) auto;gap:8px;min-height:46px;padding:4px 10px;}
+  .ph-bet .cloth{width:26px;height:32px;font-size:1.1rem;}
+  .ph-bet .silk{width:26px;height:26px;}
+  .ph-bet .hn b{font-size:1rem;}
+  .ph-bet .hn small{font-size:.7rem;}
+  .ph-bet .ml b{font-size:1.2rem;}
+  .ph-bet .ml small{margin-top:2px;}
+  .ph-bet .bank{grid-area:bank;margin-bottom:6px;}
+  .ph-bet .btypes{grid-area:types;margin-bottom:6px;gap:5px;}
+  .btypes button{min-height:32px;font-size:.84rem;border-radius:10px;}
+  .btypes button small{display:none;}
+  .ph-bet .pinfo{grid-area:info;margin:0 2px 6px;min-height:0;font-size:.78rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .pinfo:has(.htip) .bth,.pinfo:has(.htip) br{display:none;}
+  .ph-bet .pk-side{grid-area:pk;display:flex;margin:0 0 6px;min-height:32px;font-size:.84rem;background:var(--w06);}
+  .ph-bet .slip{grid-area:slip;margin:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px 10px;}
+  .tk{padding:4px 2px;gap:8px;}
+  .tk .x{width:34px;height:34px;}
+  .rail{padding:6px calc(12px + var(--corner-x)) calc(var(--safe-b) + 6px);border-radius:16px 16px 0 0;}
+  .rail-in{max-width:none;display:flex;align-items:center;gap:10px;}
+  .rail .pk{display:none;}
+  .tray{flex:none;padding:0;gap:8px;}
+  .tray .c3{--cs:40px;font-size:.8rem;}
+  .acts{flex:1;min-width:0;}
+  .acts .icon-btn{width:42px;height:42px;}
+  .acts .btn{min-height:42px;}
+
+  .stage.hr.ph-race{display:flex;flex-direction:column;padding-bottom:calc(var(--safe-b) + 6px);}
+  .ph-race .tw{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0;}
+  .ph-race .tw-in,.ph-result .tw-in{flex:1 1 0;min-height:0;}
+  .ph-race .bank,.ph-race .stand,.rail.rk-race{display:none;}
+  .ph-race .srow .skip-ov{display:inline-flex;flex:none;align-items:center;gap:4px;min-height:30px;height:30px;padding:0 14px 0 8px;border-radius:10px;font-size:.88rem;}
+  .ph-race .skip-ov .ico{width:18px;height:18px;}
+  .ph-race .call{position:absolute;z-index:3;top:16px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 2 * min(170px, 19vw) - 90px);
+    min-height:0;margin:0;padding:6px 14px 6px 10px;gap:8px;border-radius:12px;background:rgba(12,10,20,.74);box-shadow:none;}
+  .ph-race .call p,.ph-result .call p{font-size:1rem;}
+  .ph-race .call .ico{width:18px;height:18px;}
+
+  .stage.hr.ph-result{display:flex;gap:12px;align-items:stretch;}
+  .ph-result .hcol{display:flex;flex-direction:column;min-width:0;min-height:0;}
+  .ph-result .hcol.a{flex:1.1 1 0;}
+  .ph-result .hcol.b{flex:1 1 0;overflow-y:auto;overscroll-behavior:contain;}
+  .ph-result .tw{flex:1 1 0;min-height:110px;display:flex;flex-direction:column;}
+  .ph-result .call{flex:none;min-height:0;padding:8px 12px;margin-bottom:6px;}
+  .ph-result .bank{flex:none;margin-bottom:0;}
+  .ph-result .stand{flex:none;margin:6px 0 0;}
+  .ph-result .tote{padding:5px;margin-bottom:8px;}
+  .ph-result .mytk{margin-bottom:0;}
 }
 .vo-tip{margin:0 0 12px;font-size:.88rem;line-height:1.45;color:var(--text-2);}
 .vo-tip b{color:var(--text);}
