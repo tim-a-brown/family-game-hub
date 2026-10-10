@@ -433,7 +433,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Play view ═══════════════════════════════════════════════════════════
-  var cv, g, wrapEl, cabEl, hudEl, ovEl, hintEl, scoreEl, levelEl, livesEl, ro = null;
+  var cv, g, wrapEl, cabEl, hudEl, ovEl, hintEl, scoreEl, levelEl, livesEl, bestEl, ro = null;
   var S = 1, DPR = 1, cssW = 0, hudDirty = true, bumpScore = false, bgCanvas = null, brickSprites = {};
 
   function plate(label, cls) { var b = el('b', { text: '0' }); var p = el('div', { class: 'ar-plate ' + (cls || '') }, [el('small', { text: label }), b]); p._b = b; return p; }
@@ -442,7 +442,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     root.classList.add('ar-on');
     levelEl = plate('Level'); scoreEl = plate('Score', 'sc');
     livesEl = el('div', { class: 'ar-plate' }, [el('small', { text: 'Lives' }), el('div', { class: 'ar-lives' })]);
-    hudEl = el('div', { class: 'ar-hud' }, [levelEl, scoreEl, livesEl]);
+    bestEl = plate('Best');
+    hudEl = el('div', { class: 'ar-hud' }, [levelEl, scoreEl, bestEl, livesEl]);
     cv = el('canvas', { 'aria-label': 'Breakout playfield' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
@@ -670,6 +671,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!G || !scoreEl) return;
     if (shown.s !== G.score) { scoreEl._b.textContent = fmt(G.score); if (shown.s >= 0 && G.score - shown.s >= 500) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); } shown.s = G.score; }
     if (shown.l !== G.level) { levelEl._b.textContent = G.level + ' / ' + NL; shown.l = G.level; }
+    // the board's top score, overtaken live by this game
+    var best = Math.max(bestScore(), G.score);
+    if (shown.b !== best) { bestEl._b.textContent = fmt(best); shown.b = best; }
     if (shown.v !== G.lives) {
       var box = livesEl.querySelector('.ar-lives'); box.innerHTML = '';
       var n = Math.max(0, G.lives);

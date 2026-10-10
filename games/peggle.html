@@ -46,6 +46,7 @@ html.pg-on body{display:flex;flex-direction:column;
   background:radial-gradient(90% 50% at 50% 0%, rgba(255,150,60,.13) 0%, rgba(255,150,60,0) 70%),var(--bg);}
 html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 6px calc(var(--safe-b) + 8px);display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .pg-hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;max-width:100%;margin-bottom:6px;}
+.pg-plate.pg-best{flex:.7;}
 .pg-plate{position:relative;display:flex;flex-direction:column;justify-content:center;min-width:0;padding:5px 11px;border-radius:14px;
   background:linear-gradient(180deg,#2a1d12 0%,#170f08 100%);
   box-shadow:inset 0 0 0 1.5px rgba(232,180,90,.55),inset 0 0 0 3.5px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.4);}
@@ -705,7 +706,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Play view ═══════════════════════════════════════════════════════════
-  var canvas, gctx, wrapEl, frameEl, hudEl, ctlEl, pauseEl, scoreEl, lvEl, pwEl, fireBtn, ro = null;
+  var canvas, gctx, wrapEl, frameEl, hudEl, ctlEl, pauseEl, scoreEl, lvEl, pwEl, bestEl, fireBtn, ro = null;
+  // this level's best so far (read once per level, then overtaken live)
+  var bestLv = -1, bestBase = 0, shownBest = -1;
   var S = 1, DPR = 1, cssW = 0;
 
   function buildView() {
@@ -715,7 +718,8 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     lvEl = el('div', { class: 'pg-plate pg-lv' });
     scoreEl = el('div', { class: 'pg-plate pg-sc' }, [el('small', { text: 'Score' }), el('b', { text: '0' })]);
     pwEl = el('div', { class: 'pg-plate pg-pw' });
-    hudEl = el('div', { class: 'pg-hud' }, [lvEl, scoreEl, pwEl]);
+    bestEl = el('div', { class: 'pg-plate pg-best' }, [el('small', { text: 'Best' }), el('b', { text: '0' })]);
+    hudEl = el('div', { class: 'pg-hud' }, [lvEl, scoreEl, bestEl, pwEl]);
     cssW = 0;
     canvas = el('canvas', { 'aria-label': 'Peggle board' });
     gctx = canvas.getContext('2d');
@@ -1178,6 +1182,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       scoreEl.querySelector('b').textContent = fmt(shownScore);
       if (was >= 0 && shownScore === L.score) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
     }
+    if (bestLv !== L.n) { bestLv = L.n; bestBase = loadProg().best[L.n] || 0; }
+    var bv = Math.max(bestBase, L.score);
+    if (bestEl && shownBest !== bv) { shownBest = bv; bestEl.querySelector('b').textContent = fmt(bv); }
     var hs = state + '|' + balls.length + '|' + L.guide + '|' + balls.some(function (b) { return b.spooky; });
     if (hs !== hudState) { hudState = hs; updateHud(); }
   }

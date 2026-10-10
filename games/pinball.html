@@ -48,7 +48,9 @@ html.pb-on,html.pb-on body{height:100%;overflow:hidden;overscroll-behavior:none;
 html.pb-on body{display:flex;flex-direction:column;background:#05040a;}
 html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0;display:flex;flex-direction:column;
   position:relative;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
-.pb-band{flex:none;display:flex;justify-content:center;padding:4px 8px 6px;background:linear-gradient(#17141d,#0a090d);box-shadow:0 2px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.6);z-index:2;}
+.pb-best{position:absolute;right:12px;bottom:-2px;display:flex;align-items:baseline;gap:5px;padding:2px 8px;border-radius:6px 6px 0 0;background:#0a090d;color:#ffb347;font:800 .6rem/1.2 var(--font);letter-spacing:.12em;}
+.pb-best b{font-size:.74rem;font-variant-numeric:tabular-nums;letter-spacing:.04em;}
+.pb-band{position:relative;flex:none;display:flex;justify-content:center;padding:4px 8px 6px;background:linear-gradient(#17141d,#0a090d);box-shadow:0 2px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.6);z-index:2;}
 .pb-dmd{display:block;width:min(100%,560px);aspect-ratio:5/1;border-radius:6px;background:#050302;box-shadow:inset 0 0 0 2px #2a2630,0 0 0 3px #0b0a0e;}
 .pb-dmd.lcd{aspect-ratio:4/1;}
 .pb-view{flex:1;min-height:0;position:relative;}
@@ -109,6 +111,7 @@ function getRenderer() {
 
 // ═══ Kit shell ══════════════════════════════════════════════════════════════
 let G = null, view = 'none', ambPref = true, ballsPref = 3;
+let bestEl = null, bestBase = 0, shownBest = -1;
 function showHigh() { const id = G ? G.id : selTable(); ArcadeHi.show('pinball_' + id, 'Pinball: ' + TABLES[id].name); }
 Kit.init({
   id: 'pinball',
@@ -214,7 +217,10 @@ function startGame(id, balls, who) {
   magBtn = el('button', { type: 'button', class: 'pb-btn pb-magna', 'aria-label': 'Magnet', html: Kit.icon('target') + '<span>MAGNET</span>' });
   fireBtn = el('button', { type: 'button', class: 'pb-btn pb-fire', 'aria-label': 'Fire', html: Kit.icon('bolt') + '<span>FIRE</span>' });
   viewEl.append(nudgeBtn, magBtn, fireBtn);
-  app.append(el('div', { class: 'pb-band' }, [dmdEl]), viewEl, pauseEl);
+  // the table's best score under the display, overtaken live by this game
+  bestEl = el('div', { class: 'pb-best' }, [el('small', { text: 'BEST' }), el('b', { text: fmt(ArcadeHi.best('pinball_' + id)) })]);
+  bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1;
+  app.append(el('div', { class: 'pb-band' }, [dmdEl, bestEl]), viewEl, pauseEl);
   const loading = el('div', { class: 'pb-load', text: 'Building the table…' }); viewEl.appendChild(loading);
   const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
   nudgeBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.nudge()));
@@ -337,7 +343,13 @@ function resumeGame() {
   Kit.sfx('tap'); G.resume();
 }
 // the kit's menu sheet pauses the game while open
-setInterval(() => { if (view === 'game' && G && !G.paused && G.state !== 'over' && document.querySelector('.k-scrim')) pauseGame(); }, 300);
+setInterval(() => {
+  if (view !== 'game' || !G) return;
+  if (!G.paused && G.state !== 'over' && document.querySelector('.k-scrim')) pauseGame();
+  // the BEST tag under the display follows this game once it passes the table's record
+  const bv = Math.max(bestBase, G.score || 0);
+  if (bestEl && bv !== shownBest) { shownBest = bv; bestEl.lastChild.textContent = fmt(bv); }
+}, 300);
 
 // ═══ Game over: history record, high scores, results ═══════════════════════════
 function finish(g0) {

@@ -482,15 +482,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Play view ═══════════════════════════════════════════════════════════
-  var cv, g, wrapEl, cabEl, hudEl, ctlEl, ovEl, hintEl, scoreEl, levelEl, linesEl, ro = null;
+  var cv, g, wrapEl, cabEl, hudEl, ctlEl, ovEl, hintEl, scoreEl, levelEl, linesEl, bestEl, ro = null;
   var C = 20, DPR = 1, cssW = 0, sprites = {}, hudDirty = true, bumpScore = false;
 
   function plate(label, cls) { var b = el('b', { text: '0' }); var p = el('div', { class: 'ar-plate ' + (cls || '') }, [el('small', { text: label }), b]); p._b = b; return p; }
   function buildView() {
     app.className = 'stage'; app.innerHTML = '';
     root.classList.add('ar-on');
-    scoreEl = plate('Score', 'sc'); levelEl = plate('Level'); linesEl = plate('Lines');
-    hudEl = el('div', { class: 'ar-hud' }, [levelEl, scoreEl, linesEl]);
+    scoreEl = plate('Score', 'sc'); levelEl = plate('Level'); linesEl = plate('Lines'); bestEl = plate('Best');
+    hudEl = el('div', { class: 'ar-hud' }, [levelEl, scoreEl, bestEl, linesEl]);
     cv = el('canvas', { 'aria-label': 'Tetris playfield' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
@@ -816,6 +816,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     hudDirty = false;
     if (!G || !scoreEl) return;
     if (shown.s !== G.score) { scoreEl._b.textContent = fmt(G.score); shown.s = G.score; }
+    // the board's top score, overtaken live by this game
+    var best = Math.max(ArcadeHi.best('tetris'), G.score);
+    if (shown.b !== best) { bestEl._b.textContent = fmt(best); shown.b = best; }
     if (shown.l !== G.level) { levelEl._b.textContent = G.level; if (shown.l > 0) { levelEl.classList.remove('bump'); void levelEl.offsetWidth; levelEl.classList.add('bump'); } shown.l = G.level; }
     if (shown.n !== G.lines) { linesEl._b.textContent = G.lines; shown.n = G.lines; }
     if (bumpScore) { bumpScore = false; scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }

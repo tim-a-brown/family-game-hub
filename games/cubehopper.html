@@ -614,7 +614,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Play view ═══════════════════════════════════════════════════════════
-  var cv, g, wrapEl, cabEl, hudEl, ovEl, scoreEl, roundEl, livesEl, padEl, padWrap, ro = null;
+  var cv, g, wrapEl, cabEl, hudEl, ovEl, scoreEl, roundEl, livesEl, bestEl, padEl, padWrap, ro = null;
   var S = 1, DPR = 1, cssW = 0, hudDirty = true, bgCanvas = null;
   var ARROW = { ul: 'M7 17V7h10M7 7l10 10', ur: 'M7 7h10v10M17 7 7 17', dl: 'M7 7v10h10M7 17 17 7', dr: 'M17 7v10H7M17 17 7 7' };
   var QHEAD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 13.5l6.5 3" stroke="#ff8a1f" stroke-width="5" stroke-linecap="round"/><circle cx="10.5" cy="11" r="7.5" fill="#ff8a1f"/><circle cx="20" cy="17" r="2" fill="#5a2200"/><circle cx="11.5" cy="9" r="2.6" fill="#fff"/><circle cx="16" cy="9.5" r="2.3" fill="#fff"/><circle cx="12.3" cy="9.6" r="1.1" fill="#111"/><circle cx="16.6" cy="10" r="1" fill="#111"/></svg>';
@@ -623,10 +623,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function buildView() {
     app.className = 'stage'; app.innerHTML = '';
     root.classList.add('ar-on');
-    roundEl = plate('Round'); scoreEl = plate('Score', 'sc');
+    roundEl = plate('Round'); scoreEl = plate('Score', 'sc'); bestEl = plate('Best');
     livesEl = el('div', { class: 'ar-plate' }, [el('small', { text: 'Lives' }), el('div', { class: 'ar-lives' })]);
     var pb = el('button', { type: 'button', class: 'ar-pbtn', 'aria-label': 'Pause', html: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>', onclick: function () { Kit.sfx('tap'); if (paused) resumeGame(); else pauseGame(); } });
-    hudEl = el('div', { class: 'ar-hud' }, [scoreEl, roundEl, livesEl, pb]);
+    hudEl = el('div', { class: 'ar-hud' }, [scoreEl, bestEl, roundEl, livesEl, pb]);
     cv = el('canvas', { 'aria-label': 'Q*bert pyramid' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
@@ -899,6 +899,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     hudDirty = false;
     if (!G || !scoreEl) return;
     if (shown.s !== G.score) { scoreEl._b.textContent = fmt(G.score); if (shown.s >= 0 && G.score - shown.s >= 500) { scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); } shown.s = G.score; }
+    // the board's top score, overtaken live by this game
+    var best = Math.max(bestScore(), G.score);
+    if (shown.b !== best) { bestEl._b.textContent = fmt(best); shown.b = best; }
     var rs = G.level + '-' + G.round;
     if (shown.r !== rs) { roundEl._b.textContent = rs; shown.r = rs; }
     if (shown.v !== G.lives) {
