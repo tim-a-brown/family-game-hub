@@ -497,12 +497,15 @@
 
   Kit.init({
     id: 'chess', mark: false,
-    onNew: function () { cancelThink(); clearSave(); showSetup(); },
+    onNew: function () { cancelThink(); if (online() || NET.code) { netLeave(true); showSetup(); return; } clearSave(); showSetup(); },
     undo: function () { undo(); },
     menu: [
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Chess: past games' }); } },
+      { icon: 'globe', label: 'Play online', when: function () { return !online() && NET.screen !== 'lobby'; }, onClick: function () { openOnline(); } },
       { icon: 'swap', label: 'Flip the board', onClick: function () { if (S && S.pos) { S.flip = !S.flip; save(); render(); } } },
-      { icon: 'close', label: 'Resign', onClick: function () { resign(); } }
+      { icon: 'hand', label: 'Offer a draw', when: function () { return online() && !S.over; }, onClick: function () { netOfferDraw(); } },
+      { icon: 'close', label: 'Resign', when: function () { return !online() || !S.over; }, onClick: function () { resign(); } },
+      { icon: 'logout', label: 'Leave the table', when: function () { return online(); }, onClick: function () { netLeaveAsk(); } }
     ],
     rules:
       '<p class="goal">Trap the other king so it can\'t escape. That\'s <b>checkmate</b>, and it wins the game.</p>' +
@@ -519,7 +522,14 @@
       '<li><b>Check:</b> your king is attacked. You must get out of check right away.</li>' +
       '<li><b>Stalemate:</b> the player to move has no legal move but is not in check. It\'s a draw.</li>' +
       '<li>It\'s also a draw if the same position happens three times, after 50 moves each with no capture or pawn move, or if neither side has enough pieces left to checkmate.</li></ul>' +
-      '<h3>Playing here</h3><ul><li>Tap a piece to see where it can go, then tap a square. You can also drag pieces.</li><li>White always moves first.</li></ul>'
+      '<h3>Playing here</h3><ul><li>Tap a piece to see where it can go, then tap a square. You can also drag pieces.</li><li>White always moves first.</li></ul>' +
+      '<h3>Playing online</h3><ul>' +
+      '<li>Each player uses their own phone or tablet, signed in with their own PIN on the home screen.</li>' +
+      '<li>One player picks <b>Play online</b> and opens a table, choosing White, Black or a coin toss. The other player picks Play online too and joins it from the list, or types its 4-letter code. Tables opened by people you\'ve linked show first.</li>' +
+      '<li>Your pieces are always at the bottom, and you can only move on your turn. Moves can\'t be taken back.</li>' +
+      '<li>Use the buttons under the board to offer a draw or resign. Leaving the table in the middle of a game counts as resigning.</li>' +
+      '<li>Closed the app by mistake? Open Chess again and you\'re back in the game. If the other player is away for a few minutes on their turn, you can claim the win.</li>' +
+      '<li>After a game, <b>Rematch</b> starts a new one with the colours swapped.</li></ul>'
   });
 
   function showSetup() {
