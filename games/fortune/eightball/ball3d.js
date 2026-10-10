@@ -36,7 +36,7 @@ vec3 ebMurk(vec2 g){
   vec2 q = g * 3.2 + vec2(uT * 0.11, -uT * 0.07);
   float n = 0.55 * ebN(q) + 0.3 * ebN(q * 2.1 + vec2(4.7, 1.3) - uT * 0.05) + 0.15 * ebN(q * 4.3 + 9.1);
   float lit = mix(0.42, 1.0, smoothstep(1.02, 0.15, r));
-  return uLiq * lit * (0.62 + 0.76 * n);
+  return uLiq * lit * (0.48 + 1.04 * n);
 }
 // how much of a point at p (ball space) still shows through the liquid, and where its ray meets the glass
 float ebPath(vec3 p, out vec2 g){
@@ -194,11 +194,16 @@ export function create(host, ANSWERS, post) {
     transparent: true, depthWrite: false, uniforms: { uPx: { value: 400 } },
     vertexShader: 'uniform float uPx; attribute float aSize; attribute float aAlpha; varying float vA; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = max(1.0, 2.0 * aSize * projectionMatrix[1][1] * uPx / -mv.z); vA = aAlpha; }',
     fragmentShader: 'varying float vA; void main(){ vec2 q = gl_PointCoord * 2.0 - 1.0; q.y = -q.y; float r = length(q); if (r > 1.0 || vA <= 0.0) discard;' +
-      'float rim = smoothstep(0.55, 0.9, r) * (1.0 - smoothstep(0.9, 1.0, r));' +
-      'vec2 h = q - vec2(-0.34, 0.36); float hl = exp(-dot(h, h) * 34.0);' +
-      'vec2 k = q - vec2(0.3, -0.42); float lens = exp(-dot(k, k) * 9.0) * 0.28 * (1.0 - smoothstep(0.75, 0.95, r));' +
-      'float a = clamp(rim * 0.62 + hl * 0.95 + lens + 0.05, 0.0, 1.0) * vA;' +
-      'vec3 c = mix(vec3(0.55, 0.7, 1.0), vec3(1.0), clamp(hl * 1.2, 0.0, 1.0));' +
+      // a thin dark edge (light bent away at the bubble's skin), a bright rim that is stronger on the side away from
+      // the light, a hot highlight toward the light, and a faint lens of focused light inside
+      'vec2 dir = q / max(r, 1e-3); float side = 0.45 + 0.55 * clamp(dot(dir, vec2(0.62, -0.78)), 0.0, 1.0);' +
+      'float edge = smoothstep(0.84, 0.97, r) * (1.0 - smoothstep(0.97, 1.0, r));' +
+      'float rim = smoothstep(0.58, 0.86, r) * (1.0 - smoothstep(0.86, 0.95, r)) * side;' +
+      'vec2 h = q - vec2(-0.34, 0.36); float hl = exp(-dot(h, h) * 38.0);' +
+      'vec2 k = q - vec2(0.28, -0.4); float lens = exp(-dot(k, k) * 10.0) * 0.22 * (1.0 - smoothstep(0.7, 0.9, r));' +
+      'float lt = clamp(rim * 0.75 + hl + lens + 0.04, 0.0, 1.0);' +
+      'float a = clamp(lt + edge * 0.5, 0.0, 1.0) * vA;' +
+      'vec3 c = mix(vec3(0.004, 0.01, 0.03), mix(vec3(0.55, 0.72, 1.0), vec3(1.0), clamp(hl * 1.3, 0.0, 1.0)), clamp(lt / max(lt + edge * 0.5, 1e-3), 0.0, 1.0));' +
       'gl_FragColor = vec4(c, a);\n#include <colorspace_fragment>\n}'
   }));
   Object.keys(M).forEach(k => { if (M[k] && k !== 'floor') M[k].fog = false; });
@@ -207,7 +212,7 @@ export function create(host, ANSWERS, post) {
   // sinks into the murk within a few millimetres, and the faces turned away from the window (lit only by light that
   // has come the long way through the dye) are lost almost at once. Anything outside the ball's shell is dropped
   // (the die is bigger than a real one could be, for a readable face).
-  const dieU = Object.assign({ uLocal: { value: new THREE.Matrix4() }, uSide: { value: 5.0 }, uVeil: { value: 0.05 } }, liqU);
+  const dieU = Object.assign({ uLocal: { value: new THREE.Matrix4() }, uSide: { value: 6.5 }, uVeil: { value: 0.05 } }, liqU);
   M.die = keep(new THREE.MeshPhysicalMaterial({ roughness: 0.34, metalness: 0, clearcoat: 0.45, clearcoatRoughness: 0.25, envMapIntensity: 0.55, emissive: 0xffffff, emissiveIntensity: 0.1 }));
   M.die.map = dieTex(); M.die.emissiveMap = M.die.map; M.die.fog = false;
   M.die.customProgramCacheKey = () => 'eb-die2';
@@ -218,7 +223,7 @@ export function create(host, ANSWERS, post) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + MURK + 'uniform float uSide; uniform float uVeil; varying vec3 vBall; varying float vFace;')
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (length(vBall) > 0.965) discard;')
       .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n{ vec2 g; float s = ebPath(vBall, g); float side = 1.0 - smoothstep(0.86, 0.985, vFace);' +
-        ' float T = exp(-s * uK - side * uSide - uVeil); gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(3.0)) * T + ebMurk(g) * (1.0 - T); }');
+        ' float T = exp(-s * uK - side * uSide - uVeil); gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(mix(3.0, 0.8, side))) * T + ebMurk(g) * (1.0 - T); }');
   };
 
   // ── Geometry ──

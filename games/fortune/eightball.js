@@ -336,7 +336,7 @@ function mount(stage, api) {
     for (let i = 0; i < 8; i++) bubble(0.5 + Math.random() * 0.4);
     // a few stay: they rise with the die and sit against the glass, like the air in a real one
     const keepN = 3 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < keepN; i++) bubble(0.25 + Math.random() * 0.45, true);
+    for (let i = 0; i < keepN; i++) { bubble(0.25 + Math.random() * 0.45, true); const b = S.bubbles[S.bubbles.length - 1]; if (i === 0 && b && b.stay) b.r = 0.75 + Math.random() * 0.25; }   // one a little bigger
     stir = 1;
     sfx('splash', 0.22);
   }
@@ -406,11 +406,24 @@ function mount(stage, api) {
     kick();
   }
 
-  // ── Phone motion: a shake is a few sharp acceleration spikes close together; the ball lags the motion ──
+  // ── Phone motion: a shake is a few sharp acceleration spikes close together. Between and during them the ball
+  // behaves like a heavy thing sitting in the moving phone: it is pushed the opposite way to the phone's
+  // acceleration (jerk the phone right and the ball swings left, then springs back to the middle), in proportion
+  // to how hard the phone moves. Axes: the sensor reports in the device's frame (x toward its right edge, y toward
+  // its top, z out of the screen); screen.orientation.angle turns that into the page's frame, so it stays right
+  // in landscape. The phone's z (toward or away from you) is left out: it has no sideways direction on screen. ──
   const touchDev = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const hasDM = typeof window.DeviceMotionEvent !== 'undefined' && touchDev;
   const needsPerm = hasDM && typeof DeviceMotionEvent.requestPermission === 'function';
+  const calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const PUSH = calm ? 1.6 : 3.6;   // ball radii / s^2 per m/s^2 of the phone's acceleration
   let motionOn = false, motionSeen = false, spikes = [], grav = null;
+  function screenAngle() {
+    const a = screen.orientation && typeof screen.orientation.angle === 'number' ? screen.orientation.angle : (typeof window.orientation === 'number' ? window.orientation : 0);
+    return a * Math.PI / 180;
+  }
+  // device frame -> screen frame (x right, y up) for a screen turned by ang (counterclockwise, as the spec has it)
+  function toScreen(x, y, ang) { const ca = Math.cos(ang), sa = Math.sin(ang); return [x * ca - y * sa, x * sa + y * ca]; }
   function onMotion(e) {
     let a = e.acceleration, x, y, z;
     if (a && a.x != null) { x = a.x; y = a.y; z = a.z || 0; }
@@ -422,12 +435,12 @@ function mount(stage, api) {
     }
     if (!motionSeen) { motionSeen = true; updateHint(); }
     const m = Math.hypot(x, y, z), now = performance.now();
-    if (m > 2.5) {
-      // into screen axes (x right, y up) for the current orientation
-      const ang = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
-      const sx = x * ca - y * sa, sy = x * sa + y * ca;
-      fx = -sx * 1.1; fy = -sy * 1.1; fT = now; kick();
-    }
+    // the push: opposite to the phone's acceleration across the screen, with a small dead zone for sensor noise
+    const sc = toScreen(x, y, e._angle != null ? e._angle * Math.PI / 180 : screenAngle()), sm = Math.hypot(sc[0], sc[1]);
+    if (sm > 0.6) {
+      const k = (sm - 0.6) / sm * PUSH;
+      fx = -sc[0] * k; fy = -sc[1] * k; fT = now; kick();
+    } else if (fx || fy) { fx = 0; fy = 0; }
     if (m > 13 && now - (spikes[spikes.length - 1] || 0) > 90) {
       spikes.push(now); spikes = spikes.filter(t => now - t < 1000);
       if (phase === 'shake') shakeLast = now;
@@ -541,9 +554,23 @@ function mount(stage, api) {
     shake(ms) { startShake('test'); shakeLast = performance.now() + 1e6; setTimeout(() => endShake(), ms || 600); },
     info: () => (R ? R.info() : null),
     R: () => R,
-    redraw: () => { if (R) R.draw(S); }
+    redraw: () => { if (R) R.draw(S); },
+    // set what the renderer draws (face, depth, spin, ...) and draw once; bub: n bubbles resting on the glass
+    pose(p) {
+      p = p || {};
+      Object.keys(p).forEach(k => { if (k in S && k !== 'bubbles') S[k] = p[k]; });
+      if (p.bub != null) { S.bubbles = []; for (let i = 0; i < p.bub; i++) { bubble(0.3, i < (p.stay == null ? p.bub : p.stay)); const b = S.bubbles[S.bubbles.length - 1]; if (b) b.y = p.bubY != null ? p.bubY * (i % 3) : 0; } }
+      if (R) R.draw(S);
+    },
+    // feed one devicemotion reading (m/s^2, device frame) as if from the sensor; angle overrides the screen's
+    motion(x, y, z, angle) {
+      onMotion({ acceleration: { x, y, z: z || 0 }, accelerationIncludingGravity: null, _angle: angle });
+      return { fx, fy, ox, oy };
+    },
+    toScreen,
+    get offset() { return { ox, oy, vx, vy, fx, fy }; }
   };
-  return { unmount, get dead() { return dead; } };
+  return { unmount, get dead() { return dead; }, test: hook };
 }
 // Leaving the page releases the GPU (pagehide); coming back from the back/forward cache builds it again.
 // The hub keeps one handle either way.
@@ -551,7 +578,7 @@ function mountTeller(stage, api) {
   let cur = mount(stage, api), gone = false;
   function onShow(e) { if (e.persisted && !gone && cur.dead) cur = mount(stage, api); }
   window.addEventListener('pageshow', onShow);
-  return { unmount() { if (gone) return; gone = true; window.removeEventListener('pageshow', onShow); cur.unmount(); } };
+  return { unmount() { if (gone) return; gone = true; window.removeEventListener('pageshow', onShow); cur.unmount(); }, get test() { return cur.test; } };
 }
 
 export default {
