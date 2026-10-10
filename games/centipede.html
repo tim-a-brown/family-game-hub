@@ -1498,7 +1498,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         }
       });
       showWait();
-    }).catch(function (e) { Kit.toast('Couldn’t open a table: ' + (e && e.message || e)); goLobby(); });
+    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
   function peerName(peer) { var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; return r ? r.name : peer.name; }
   function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
@@ -1574,7 +1574,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       });
       showWait();
     }).catch(function (e) {
-      var msg = e && e.message || String(e);
+      var msg = e && e.nat ? e.message : Online.errText(e);
       if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(msg) + '</p>' }); else Kit.toast(msg);
       goLobby();
     });

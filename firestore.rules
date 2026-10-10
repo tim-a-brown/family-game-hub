@@ -76,6 +76,25 @@ service cloud.firestore {
         && request.resource.data.get('moves', []).size() <= 1000;
     }
 
+    // Online arcade tables (online.js; Centipede Chaos first): one doc per table, a 4-letter code. The doc
+    // only lists the table (game, host name, a one-way tag of the host's link code, seats); the devices play
+    // over WebRTC. The connection handshake (one offer, one answer) goes through the sig subcollection and is
+    // deleted once read. Same model as lorcanaRooms: knowing the code is access.
+    match /arcadeRooms/{code} {
+      allow get, delete: if code.matches('^[A-Z]{4}$');
+      allow list: if request.query.limit <= 50;
+      allow create, update: if code.matches('^[A-Z]{4}$')
+        && request.resource.data.keys().hasOnly(['game', 'host', 'status', 'n', 'max', 'info', 'at', 'v', 'by'])
+        && request.resource.data.host.keys().hasOnly(['name', 'dev', 'lk']);
+      match /sig/{id} {
+        allow get, delete: if true;
+        allow list: if request.query.limit <= 50;
+        allow create: if id.matches('^[A-Za-z0-9_-]{6,48}$')
+          && request.resource.data.keys().hasOnly(['to', 'from', 'k', 'd', 'at'])
+          && request.resource.data.d is string && request.resource.data.d.size() < 30000;
+      }
+    }
+
     // Player profiles for linking: one doc per 6-character share code (name, avatar, ask, rejected game ids,
     // arcade initials and best arcade scores),
     // with an inbox of games other people recorded with this player in them. Knowing the code is access, like a

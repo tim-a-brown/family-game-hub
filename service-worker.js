@@ -119,6 +119,8 @@ const PRECACHE_URLS = [
   '/games/crossyroad/sfx.js',
   '/games/willycrash.html',
   '/games/crazytower.html',
+  '/games/centipede.html',
+  '/online.js',
   '/games/dealornodeal.html',
   '/games/dice-roller.html',
   '/games/dotsboxes.html',

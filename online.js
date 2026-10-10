@@ -215,6 +215,13 @@
   }
   function newPc() { return new RTCPeerConnection({ iceServers: config.iceServers }); }
   function noRtc() { return typeof RTCPeerConnection === 'undefined'; }
+  // Plain words for what went wrong
+  function errText(e) {
+    var m = String(e && e.message || e || '');
+    if (e && e.code === 'permission-denied' || /permission/i.test(m)) return 'Online tables aren’t switched on yet.';
+    if (/^load https?:/.test(m) || /offline|unavailable|network/i.test(m)) return 'Couldn’t reach the internet. Check the connection and try again.';
+    return m || 'Something went wrong';
+  }
   var NAT_MSG = 'Couldn’t connect to the other device. Some networks (often phone data, or school and office Wi-Fi) block direct connections between devices. Try again with both devices on the same Wi-Fi.';
 
   // ── Host a table ────────────────────────────────────────────────────────
@@ -427,7 +434,7 @@
       last = list;
       whose(list).then(function () { if (last === list) paint(list); });
     }
-    off = T().rooms(o.game, got, function (e) { if (!alive) return; rooms.innerHTML = ''; rooms.appendChild(E('p', { class: 'ol-note', text: 'Couldn’t reach the tables: ' + (e && e.message || e) })); });
+    off = T().rooms(o.game, got, function (e) { if (!alive) return; rooms.innerHTML = ''; rooms.appendChild(E('p', { class: 'ol-note', text: 'Couldn’t reach the tables. ' + errText(e) })); });
     // tables go stale without a heartbeat: look again now and then
     var tick = setInterval(function () { if (last.length) got(last); }, 30000);
     return { close: function () { alive = false; clearInterval(tick); if (off) off(); }, refresh: function () { got(last); } };
@@ -461,7 +468,7 @@
   }
 
   window.Online = {
-    config: config, dev: dev, linkTag: linkTag, people: people, whose: whose, myTag: myTag,
+    config: config, dev: dev, errText: errText, linkTag: linkTag, people: people, whose: whose, myTag: myTag,
     lobby: lobby, waitRoom: waitRoom, host: host, join: join, NAT_MSG: NAT_MSG,
     useTransport: function (t) { transport = t; }, transport: T, localTransport: localTransport, fsTransport: fsTransport,
     _setDev: function (d) { devId = d; }
