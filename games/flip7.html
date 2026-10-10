@@ -13,20 +13,27 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-/* The open round on the sheet: number boxes, then each player's action cards stacked in their column */
-.spad td .eq{display:block;font-family:var(--hand);font-size:.8rem;line-height:1;color:#7a7a90;margin:2px 0 1px;min-height:.85rem;}
+/* Names across the top can wrap (handwriting is narrow) so six or seven players still read */
+.spad thead th{white-space:normal;line-height:1;height:auto;padding:7px 1px 6px;font-size:1.05rem;}
+.spad.many thead th{font-size:.92rem;}
+/* The open round: a row of boxes (the column you're scoring is underlined), then one strip of the deck's action cards.
+   Only one of each card exists, so a card is tapped onto the current player and shows their initial. */
+.spad tr.open td{cursor:pointer;}
+.spad tr.open td.cur{background:rgba(200,16,46,.07);box-shadow:inset 0 -3px 0 #c8102e;}
+.spad tr.open td.busted input.cell{opacity:.25;}
+.spad td .eq{display:block;font-family:var(--hand);font-size:.82rem;line-height:1;color:#7a7a90;margin:2px 0 1px;min-height:.85rem;white-space:nowrap;overflow:hidden;}
 .spad td .eq.bust{color:#c8102e;}
-.spad tr.mods td{height:auto;padding:2px 2px 6px;vertical-align:top;border-top:0;}
-.spad tr.mods th.rn{vertical-align:top;padding-top:6px;font-size:.58rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;}
-.f7m{display:flex;flex-direction:column;gap:3px;}
-.f7m button{height:30px;width:100%;padding:0;border:1px solid rgba(60,80,160,.3);border-radius:7px;background:rgba(255,255,255,.55);color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:.72rem;line-height:1;font-variant-numeric:tabular-nums;transition:transform .12s var(--spring),background .12s;}
-.f7m button:active{transform:scale(.94);}
-.f7m button.on{background:#ff8a00;border-color:#ff8a00;color:#2b1a00;}
-.f7m button.x2.on{background:#9b7bff;border-color:#9b7bff;color:#fff;}
-.f7m button.f7.on{background:#ffd23f;border-color:#ffd23f;color:#2b1a00;}
-.f7m button.bust.on{background:#c8102e;border-color:#c8102e;color:#fff;}
-.f7m button:disabled{opacity:.3;}
-@media (min-width:520px){ .f7m button{height:34px;font-size:.82rem;} }
+.spad tr.cards td{height:auto;padding:5px 6px 9px;border-left:0;border-top:0;text-align:left;}
+.spad tr.cards th.rn{font-size:.56rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;}
+.f7s{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.f7s button{position:relative;height:38px;padding:0 4px;border:1.5px solid rgba(40,40,60,.4);border-radius:8px;background:#fffdf7;color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:.82rem;line-height:1;font-variant-numeric:tabular-nums;box-shadow:0 1px 0 rgba(0,0,0,.18);transition:transform .12s var(--spring),background .12s;}
+.f7s button:active{transform:scale(.94);}
+.f7s button.on{background:var(--pc,#ff8a00);border-color:var(--pc,#ff8a00);color:#1b1b28;}
+.f7s button.bust.on{background:#c8102e;border-color:#c8102e;color:#fff;}
+.f7s button .who{position:absolute;top:-7px;right:-5px;display:none;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#2a2a3a;color:#fff;font-size:.62rem;font-weight:900;line-height:17px;text-align:center;box-shadow:0 0 0 2px #fffaf0;}
+.f7s button.on .who{display:block;}
+.f7s .f7-hint{grid-column:1 / -1;font-family:var(--hand);font-size:.95rem;color:#8a8796;line-height:1.1;margin:-1px 0 1px;}
+@media (min-width:480px){ .f7s{grid-template-columns:repeat(8,1fr);} .f7s .f7-hint{order:-1;} }
 /* The sheet's "fix a round" form keeps the card helpers */
 .f7p{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;border-radius:var(--r);background:rgba(255,255,255,.05);}
 .f7p .rrow{padding:0;background:none;}
@@ -62,10 +69,10 @@
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history('f7', { keys: ['flip7'], title: 'Flip 7: past games' }); } }],
     rules:
       '<p class="goal">Play Flip 7 with the real cards and keep score here. First to <b>200</b> at the end of a round wins.</p>' +
-      '<h3>After each round</h3><ul><li>The open row on the sheet is this round. Type each player\'s <b>number cards</b> total in their box.</li>' +
-      '<li>Under the boxes, tap their action cards: <b>&times;2</b> (doubles the number cards only) and any <b>+2 to +10</b>.</li>' +
-      '<li>Tap <b>F7</b> for the player who got 7 different numbers. They get <b>15 bonus points</b>.</li>' +
-      '<li>Tap <b>Bust</b> for anyone who flipped a duplicate number. They score 0 this round.</li>' +
+      '<h3>After each round</h3><ul><li>The open row on the sheet is this round. Tap a player\'s box and type their <b>number cards</b> total.</li>' +
+      '<li>With their box selected, tap the cards they had: <b>&times;2</b> (doubles the number cards only, before any +cards) and <b>+2 to +10</b>. The deck has one of each, so a card moves to whoever you tap it onto.</li>' +
+      '<li>Tap <b>F7</b> for the player who got 7 different numbers. They get <b>15 bonus points</b> and the round ends.</li>' +
+      '<li>Tap <b>Bust</b> for anyone who flipped a duplicate number. They score 0 this round, cards included.</li>' +
       '<li>Tap <b>Lock round</b>. The round is written in, and a fresh row opens below it.</li>' +
       '<li>Made a mistake? Tap a locked round to fix it.</li></ul>' +
       '<h3>Quick rules</h3><ul><li>On your turn, flip a card or stay.</li><li>A duplicate number busts you, unless you have a Second Chance.</li>' +
@@ -146,45 +153,66 @@
   }
   function saveEntry() { try { localStorage.setItem(ENTRY, JSON.stringify(st)); } catch (e) {} }
 
-  // ── The open round, drawn on the sheet: a row of number boxes, then a row of action-card buttons ──
+  // ── The open round, drawn on the sheet ──
+  // A row of number boxes, then one strip of the deck's action cards. The deck has exactly one ×2, one of each
+  // +2…+10 and only one player can Flip 7 in a round, so each card is tapped onto the current player (the column
+  // whose box was touched last) and shows their initial. Bust is per player.
+  var cur = 0;
+  function initial(nm) { return String(nm || '?').trim().charAt(0).toUpperCase(); }
   function entryRows(ctx) {
-    var names = cfg.names, cells = [];
+    var names = cfg.names, N = names.length, cells = [], chips = {};
+    if (cur >= N) cur = 0;
     var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn', text: String(ctx.round) })]);
-    var rowB = el('tr', { class: 'mods' }, [el('th', { class: 'rn', text: 'CARDS' })]);
+    var rowB = el('tr', { class: 'cards' }, [el('th', { class: 'rn', text: 'CARDS' })]);
+    var strip = el('div', { class: 'f7s' }), hint = el('div', { class: 'f7-hint' });
+    rowB.appendChild(el('td', { colspan: String(N) }, [strip]));
+    function has(s, k) { return k === 'x2' ? s.x2 : k === 'f7' ? s.f7 : s.mods.indexOf(+k) >= 0; }
+    function set(s, k, on) { if (k === 'x2') s.x2 = on; else if (k === 'f7') s.f7 = on; else { var j = s.mods.indexOf(+k); if (on && j < 0) s.mods.push(+k); if (!on && j >= 0) s.mods.splice(j, 1); } }
+    function ownerOf(k) { for (var i = 0; i < N; i++) if (has(st[i], k)) return i; return -1; }
     function refresh() {
       st.forEach(function (s, i) {
         var c = cells[i], p = ptsOf(s), n = numsOf(s);
-        c.inp.disabled = s.bust;
+        c.td.classList.toggle('cur', i === cur); c.td.classList.toggle('busted', s.bust);
         c.eq.className = 'eq' + (s.bust ? ' bust' : '');
         c.eq.textContent = s.bust ? 'bust' : (p !== n || s.x2 || s.mods.length || s.f7) ? '= ' + p : '';
-        Object.keys(c.btn).forEach(function (k) {
-          var b = c.btn[k], on = k === 'x2' ? s.x2 : k === 'f7' ? s.f7 : k === 'bust' ? s.bust : s.mods.indexOf(+k) >= 0;
-          b.classList.toggle('on', on); b.disabled = s.bust && k !== 'bust';
-        });
       });
+      Object.keys(chips).forEach(function (k) {
+        var b = chips[k];
+        if (k === 'bust') { b.classList.toggle('on', st[cur].bust); return; }
+        var o = ownerOf(k);
+        b.classList.toggle('on', o >= 0);
+        b.style.setProperty('--pc', o >= 0 ? Kit.color(o) : '');
+        b.lastChild.textContent = o >= 0 ? initial(names[o]) : '';
+        b.setAttribute('aria-label', (k === 'x2' ? '×2 card' : k === 'f7' ? 'Flip 7 bonus' : '+' + k + ' card') + (o >= 0 ? ', ' + names[o] : ''));
+      });
+      hint.textContent = 'Tap the cards ' + names[cur] + ' had' + (st[cur].bust ? ' (busted: 0 this round)' : '');
       ctx.pending(st.map(function (s) { return s.bust || String(s.nums).trim() !== '' || s.f7 || s.x2 || s.mods.length ? ptsOf(s) : 0; }));
       saveEntry();
     }
+    function setCur(i) { if (cur !== i) { cur = i; refresh(); } }
     names.forEach(function (nm, i) {
       var s = st[i];
-      var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', placeholder: '–', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' number cards, round ' + ctx.round, enterkeyhint: i < names.length - 1 ? 'next' : 'done' });
+      var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', placeholder: '–', value: s.nums === '' ? '' : String(s.nums), 'aria-label': nm + ' number cards, round ' + ctx.round, enterkeyhint: i < N - 1 ? 'next' : 'done' });
       inp.addEventListener('input', function () { s.nums = inp.value.replace(/[^0-9]/g, ''); refresh(); });
-      inp.addEventListener('focus', function () { inp.select(); });
+      inp.addEventListener('focus', function () { inp.select(); setCur(i); });
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var nx = cells[i + 1]; if (nx) nx.inp.focus(); else inp.blur(); } });
       var eq = el('small', { class: 'eq' });
-      rowA.appendChild(el('td', null, [inp, eq]));
-      var stack = el('div', { class: 'f7m' }), btn = {};
-      function chip(key, label, cls, aria, fn) {
-        var b = el('button', { type: 'button', class: cls || '', text: label, 'aria-label': aria, onclick: function () { fn(); Kit.sfx('tap'); Kit.haptic('light'); refresh(); } });
-        btn[key] = b; stack.appendChild(b);
-      }
-      chip('x2', '×2', 'x2', '×2 card for ' + nm, function () { s.x2 = !s.x2; });
-      MODS.forEach(function (v) { chip(String(v), '+' + v, '', '+' + v + ' card for ' + nm, function () { var k = s.mods.indexOf(v); if (k >= 0) s.mods.splice(k, 1); else s.mods.push(v); }); });
-      chip('f7', 'F7', 'f7', 'Flip 7 bonus for ' + nm, function () { s.f7 = !s.f7; if (s.f7) s.bust = false; });
-      chip('bust', 'Bust', 'bust', nm + ' busted', function () { s.bust = !s.bust; if (s.bust) s.f7 = false; });
-      rowB.appendChild(el('td', null, [stack]));
-      cells.push({ inp: inp, eq: eq, btn: btn });
+      var td = el('td', { onclick: function (e) { setCur(i); if (e.target !== inp && !s.bust) inp.focus(); } }, [inp, eq]);
+      rowA.appendChild(td);
+      cells.push({ inp: inp, eq: eq, td: td });
     });
+    function chip(k, label, cls) {
+      var b = el('button', { type: 'button', class: cls || '', onclick: function () {
+        var s = st[cur];
+        if (k === 'bust') { s.bust = !s.bust; if (s.bust) { s.f7 = false; cells[cur].inp.blur(); } }
+        else if (has(s, k)) set(s, k, false);
+        else { var o = ownerOf(k); if (o >= 0) set(st[o], k, false); set(s, k, true); if (k === 'f7') s.bust = false; }
+        Kit.sfx('tap'); Kit.haptic('light'); refresh();
+      } }, [el('span', { text: label }), el('span', { class: 'who' })]);
+      chips[k] = b; strip.appendChild(b);
+    }
+    chip('x2', '×2', 'x2'); MODS.forEach(function (v) { chip(String(v), '+' + v); }); chip('f7', 'F7', 'f7'); chip('bust', 'Bust', 'bust');
+    strip.appendChild(hint);
     refresh();
     return [rowA, rowB];
   }
@@ -194,7 +222,7 @@
     if (p.length) { Kit.toast(p[0]); Kit.haptic('error'); return; }
     var scores = st.map(ptsOf), extra = extraOf(st, scores, names, r);
     if (extra.callout) Kit.confetti({ count: 70 });
-    st = names.map(blank); saveEntry();
+    st = names.map(blank); cur = 0; saveEntry();
     pad.add(scores, extra);
   }
 
@@ -208,6 +236,7 @@
       isOver: function (t) { var tp = top(t); return tp.max >= cfg.target && tp.who.length === 1; },
       winner: function (t) { var tp = top(t); return tp.who.length === 1 ? tp.who[0] : -1; },
       entryRows: entryRows, onLock: lockRound, lockLabel: 'Lock round',
+      afterRender: function () { var p = app.querySelector('.spad'); if (p) p.classList.toggle('many', cfg.names.length >= 5); },
       onEnd: function () { localStorage.removeItem(ENTRY); st = cfg.names.map(blank); },
       // Fixing a locked round: the same helpers, in a sheet
       form: function (ctx) {
