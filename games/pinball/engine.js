@@ -158,11 +158,21 @@ export function createGame(def, opts = {}) {
   mark('build');
 
   // ── Rendering ───────────────────────────────────────────────────────────
+  // With opts.progress the scene is built one phase per animation frame and G.ready resolves when it is done
+  // (the page shows the phase meanwhile); otherwise it is built here and now.
   let RC = null;
-  if (!headless) RC = buildScene(G, T, Object.assign({ hq }, opts), mark);
-  T.R = RC;
-  mark('scene');
   G.marks = marks; G.mark = mark;
+  if (!headless && opts.progress) {
+    G.ready = (async () => {
+      const it = buildSceneGen(G, T, Object.assign({ hq }, opts), mark); let r = it.next(), i = 0;
+      while (!r.done) { opts.progress(r.value, i++ / BUILD_PHASES.length); await new Promise(res => requestAnimationFrame(res)); if (G.destroyed) return; r = it.next(); }
+      RC = r.value; T.R = RC; mark('scene');
+      opts.progress(BUILD_PHASES[5], (BUILD_PHASES.length - 1) / BUILD_PHASES.length); await new Promise(res => requestAnimationFrame(res));
+    })();
+  } else {
+    if (!headless) RC = buildScene(G, T, Object.assign({ hq }, opts), mark);
+    T.R = RC; mark('scene'); G.ready = Promise.resolve();
+  }
 
   // ── Display ─────────────────────────────────────────────────────────────
   const disp = (opts.dmdCanvas && !headless) ? new Display(opts.dmdCanvas, def.display || {}) : null;
@@ -733,7 +743,11 @@ function convex(pts) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Scene: renderer, camera, lights, playfield, cabinet, balls, effects
 // ═══════════════════════════════════════════════════════════════════════════
-function buildScene(G, T, opts, mark = () => {}) {
+// The scene builder is a generator: it yields the name of each phase before doing it, so the page can show
+// real progress (createGame drives it synchronously; createGame with opts.progress drives it a frame at a time).
+function buildScene(G, T, opts, mark) { const it = buildSceneGen(G, T, opts, mark); let r; do { r = it.next(); } while (!r.done); return r.value; }
+export const BUILD_PHASES = ['Lighting the room', 'Painting the playfield', 'Building the cabinet', 'Placing the parts', 'Wiring the lamps', 'Warming up the shaders'];
+function* buildSceneGen(G, T, opts, mark = () => {}) {
   const { W, L, theme, def, world } = G;
   const renderer = opts.renderer;
   const scene = new THREE.Scene();
@@ -753,6 +767,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   RC.quality = quality;
 
   // ── Environment for reflections: a dark arcade with a few warm and coloured light panels ──
+  yield BUILD_PHASES[0];
   const envKey = [theme.env.join(), theme.room || ''].join('|');
   let envRT = ENV_CACHE.get(envKey);
   if (!envRT) {
@@ -774,6 +789,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   mark('pmrem');
 
   // ── Playfield textures: art, insert glow colours, lamp ids ──
+  yield BUILD_PHASES[1];
   const big = quality >= 2 && !thumb;
   const k = (thumb && !hq) ? 1 : big || hq ? 2.2 : 1.8;   // px per mm (2.2 is already above any phone's screen resolution)
   const cw = Math.round(W * k), ch = Math.round(L * k);
@@ -839,10 +855,12 @@ function buildScene(G, T, opts, mark = () => {}) {
   const under = new THREE.Mesh(new THREE.PlaneGeometry(W, L), mats.paint('#0b0a0c', { roughness: 1 })); under.position.set(W / 2, L / 2, -70); root.add(under);
 
   // ── Cabinet: side boards, rails, apron, lockdown bar, backboard, backbox ──
+  yield BUILD_PHASES[2];
   buildCabinet(RC);
   mark('cabinet');
 
   // ── Static scenery (walls, posts, rubbers, plastics, models) ──
+  yield BUILD_PHASES[3];
   for (const s of T.statics) buildStatic(RC, s);
   mark('statics');
 
@@ -851,6 +869,7 @@ function buildScene(G, T, opts, mark = () => {}) {
   mark('components');
 
   // ── Insert bulbs, flashers ──
+  yield BUILD_PHASES[4];
   let bulbIM = null;
   if (T.bulbs.length) {
     bulbIM = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ toneMapped: false }), T.bulbs.length);

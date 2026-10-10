@@ -70,7 +70,9 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-pause h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 4px;}
 .pb-pause p{color:var(--text-2);margin:0 0 14px;font-weight:700;}
 .pb-pause .btn{margin-top:8px;}
-.pb-load{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.7);font-weight:800;z-index:4;pointer-events:none;}
+.pb-load{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:10px;color:rgba(255,255,255,.75);font-weight:800;z-index:4;pointer-events:none;text-align:center;}
+.pb-load i{display:block;width:min(60%,240px);height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden;}
+.pb-load i b{display:block;height:100%;width:0;background:var(--accent,#7fd4a4);transition:width .25s;}
 .pb-nogl{padding:40px 20px;text-align:center;color:var(--text-2);font-weight:700;}
 </style>
 </head>
@@ -223,7 +225,7 @@ function startGame(id, balls, who) {
   bestEl = el('div', { class: 'pb-best' }, [el('small', { text: 'BEST' }), el('b', { text: fmt(ArcadeHi.best('pinball_' + id)) })]);
   bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1;
   app.append(el('div', { class: 'pb-band' }, [dmdEl, bestEl]), viewEl, pauseEl);
-  const loading = el('div', { class: 'pb-load', text: 'Building the table…' }); viewEl.appendChild(loading);
+  const loadTxt = el('span', { text: 'Building the table…' }), loadBar = el('b'), loading = el('div', { class: 'pb-load' }, [loadTxt, el('i', null, [loadBar])]); viewEl.appendChild(loading);
   const btnDown = (e, fn) => { e.preventDefault(); e.stopPropagation(); fn(); };
   nudgeBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.nudge()));
   magBtn.addEventListener('pointerdown', e => btnDown(e, () => { if (G) { G.setMagna(true); magBtn.classList.add('on'); } }));
@@ -231,10 +233,15 @@ function startGame(id, balls, who) {
   fireBtn.addEventListener('pointerdown', e => btnDown(e, () => G && G.fire()));
   view = 'game';
   // build after the loading text paints
-  requestAnimationFrame(() => setTimeout(() => {
+  requestAnimationFrame(() => setTimeout(async () => {
     if (view !== 'game') return;
     sizeDmd();
-    G = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish });
+    // the table is built one phase per frame; the text and bar show the real phase
+    const g = createGame(def, { renderer: r, dmdCanvas: dmdEl, balls, who, amb: ambPref, audio: audio(), onOver: finish,
+      progress: (label, frac) => { loadTxt.textContent = label + '…'; loadBar.style.width = Math.round(frac * 100) + '%'; } });
+    await g.ready;
+    if (view !== 'game' || g.destroyed) { g.destroy(); return; }
+    G = g;
     loading.remove();
     magBtn.style.display = G.hasMagna ? '' : 'none';
     if (ro) ro.disconnect();
@@ -259,6 +266,7 @@ function tickUI() {
 function leaveGame() {
   view = 'none';
   if (G) { G.destroy(); G = null; }
+  if (viewEl) viewEl.querySelectorAll('.pb-load').forEach(e => e.remove());
   root.classList.remove('pb-on');
   if (ro) { ro.disconnect(); ro = null; }
   resetInput();
