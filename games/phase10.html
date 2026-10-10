@@ -20,26 +20,9 @@
 .spad thead tr.phrow .pn.done{background:#137a3e;font-size:.8rem;border-radius:999px;}
 .spad thead tr.phrow small{display:block;font-family:var(--hand);font-size:.85rem;color:#6a6a80;line-height:1.1;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .spad thead tr:first-child th{border-bottom:0;}
-.spad td small{font-family:var(--font);font-weight:800;font-size:.62rem !important;letter-spacing:.02em;margin-top:0 !important;}
-/* Entry form */
-.pblk{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:var(--r);background:var(--w06);}
-.pblk .top{display:flex;align-items:center;gap:10px;min-width:0;}
-.pblk .top .nm{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pblk .top .pgoal{flex:1;min-width:0;font-size:.78rem;font-weight:700;color:var(--text-3);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pblk .bot{display:flex;align-items:center;gap:8px;}
-.pblk .seg{flex:1;min-width:0;}
-.pblk .seg > button{flex:1;min-height:44px;font-size:.85rem;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;gap:4px;flex-direction:row;}
-.pblk .seg > button .ico{width:16px;height:16px;flex:none;}
-.pblk .seg > button span{white-space:nowrap;}
-.pblk .seg > button.on.yes{background:var(--green);color:#063;}
-.pblk .seg > button.on.no{background:var(--surface-3);}
-.pblk .rrow{padding:0;background:none;gap:4px;flex:none;}
-.pblk .rrow .num{width:58px;font-size:1.15rem;padding:0 2px;}
-.pblk .rrow .pm button{width:38px;height:44px;}
-.pblk .lbl{font-size:.62rem;font-weight:900;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;text-align:center;}
-.ptsw{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.phhelp{margin-top:12px;}
-.phhelp ol{margin:6px 0 0;padding-left:22px;color:var(--text-2);font-weight:700;font-size:.88rem;line-height:1.6;}
+.spad tbody tr:not(.open) td > small:not(.eq){font-family:var(--font);font-weight:800;font-size:.62rem !important;letter-spacing:.02em;margin-top:0 !important;}
+/* The open hand: points left per column, then Made / Missed (or Out, which is 0 and made) */
+.spad td .eq.ph{color:#c8102e;}
 </style>
 </head>
 <body>
@@ -61,8 +44,8 @@
       '<p class="goal">Play Phase 10 with a real deck and keep score here. The first player to finish <b>Phase 10</b> wins. If two players finish it in the same hand, the one with the <b>fewest points</b> wins.</p>' +
       '<h3>The phases</h3><ol>' + PH.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ol>' +
       '<p>A <b>set</b> is cards of the same number. A <b>run</b> is numbers in a row. Wilds can be anything; Skips make someone lose a turn.</p>' +
-      '<h3>After each hand</h3><ul><li>For each player, tap <b>Made it</b> if they laid down their phase, or <b>Missed</b> if not.</li>' +
-      '<li>Enter the points left in their hand: <b>1–9 are 5 points</b>, <b>10–12 are 10</b>, <b>Skip 15</b>, <b>Wild 25</b>. Whoever went out has 0.</li>' +
+      '<h3>After each hand</h3><ul><li>The open rows on the sheet are this hand. In each player\'s column tap <b>Made</b> if they laid down their phase, or <b>Missed</b> if not. Tap <b>Out</b> for whoever went out: that is 0 points and a made phase.</li>' +
+      '<li>Set the points left in their hand: <b>1–9 are 5 points</b>, <b>10–12 are 10</b>, <b>Skip 15</b>, <b>Wild 25</b>. Then tap <b>Lock hand</b>; tap a hand on the sheet to change or delete it right there.</li>' +
       '<li>The pad shows everyone\'s phase number. Players who made it move on; everyone else tries again.</li></ul>' +
       '<h3>Dealing</h3><p>10 cards each. The deal passes to the left every hand.</p>'
   });
@@ -120,61 +103,57 @@
         var ties = 0; for (var j = 0; j < n; j++) if (ph[j] === ph[best] && t[j] === t[best]) ties++;
         return ties > 1 ? -1 : best;
       },
-      form: form
+      entryRows: entryRows, onLock: lockHand, lockLabel: 'Lock hand'
     });
-    function form(ctx) {
-      var before = pad.state().rounds.slice(0, ctx.round - 1), ph = phasesAfter(before, n);
-      var res = ctx.sides.map(function (s, i) { return ctx.prev ? made(ctx.prev, i) : null; });
-      var rows = [];
+    // ── The open hand on the sheet: points left, then Made / Missed / Out per player ──
+    function entryRows(ctx) {
+      var ph = phasesAfter(ctx.rounds.slice(0, ctx.index), n), st;
+      if (ctx.editing) st = { res: ctx.sides.map(function (s, i) { return made(ctx.prev, i); }), v: ctx.prev.scores.slice() };
+      else st = ctx.draft() || { res: ctx.sides.map(function () { return null; }), v: ctx.sides.map(function () { return null; }) };
+      var rowA = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [String(ctx.round), el('small', { text: 'LEFT' })])]);
+      var rowB = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: 'PHASE' })]);
+      var steps = [], eqs = [], yes = [], no = [], outB = [];
       ctx.sides.forEach(function (s, i) {
-        var blk = el('div', { class: 'pblk' });
-        blk.appendChild(el('div', { class: 'top' }, [
-          el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, text: (s.name || '?').charAt(0).toUpperCase() }),
-          el('span', { class: 'nm', text: s.name }),
-          el('span', { class: 'pgoal', text: 'Phase ' + ph[i] + ': ' + PH[ph[i] - 1] })
-        ]));
-        var seg = el('div', { class: 'seg' });
-        var yes = el('button', { type: 'button', class: 'yes', html: Kit.icon('check') + '<span>Made it</span>' });
-        var no = el('button', { type: 'button', class: 'no', text: 'Missed' });
-        function paintSeg() { yes.classList.toggle('on', res[i] === true); no.classList.toggle('on', res[i] === false); }
-        yes.addEventListener('click', function () { res[i] = true; Kit.sfx('tap'); Kit.haptic('light'); paintSeg(); check(); });
-        no.addEventListener('click', function () { res[i] = false; Kit.sfx('tap'); Kit.haptic('light'); paintSeg(); check(); });
-        seg.appendChild(yes); seg.appendChild(no); paintSeg();
-        var r = ctx.number(i, { min: 0, step: 5, neg: false, label: 'Points left' });
-        var av = r.querySelector('.avatar'), nm = r.querySelector('.nm'); if (av) av.remove(); if (nm) nm.remove();
-        r.input.addEventListener('input', check);
-        blk.appendChild(el('div', { class: 'bot' }, [seg, el('div', { class: 'ptsw' }, [r, el('span', { class: 'lbl', text: 'points left' })])]));
-        ctx.node.appendChild(blk); rows.push(r);
+        steps[i] = Scorepad.step({ value: st.v[i], min: 0, step: 5, label: s.name + ' points left', onChange: function (v) { st.v[i] = v; refresh(); } });
+        eqs[i] = el('small', { class: 'eq ph', text: ph[i] > LAST ? 'done' : 'phase ' + ph[i] });
+        rowA.appendChild(el('td', null, [steps[i], eqs[i]]));
+        yes[i] = Scorepad.tog('Made', { cls: 'good', aria: s.name + ' made phase ' + ph[i], html: Kit.icon('check') + '<span>Made</span>', onClick: function () { st.res[i] = st.res[i] === true ? null : true; refresh(); } });
+        no[i] = Scorepad.tog('Missed', { aria: s.name + ' missed phase ' + ph[i], onClick: function () { st.res[i] = st.res[i] === false ? null : false; refresh(); } });
+        outB[i] = Scorepad.tog('Out', { cls: 'gold', aria: s.name + ' went out', onClick: function () {
+          var on = st.v[i] === 0 && st.res[i] === true;
+          if (on) { st.v[i] = null; steps[i].set(null); }
+          else { st.v[i] = 0; st.res[i] = true; steps[i].set(0); }
+          refresh();
+        } });
+        rowB.appendChild(el('td', null, [el('div', { class: 'sp-col' }, [yes[i], no[i], outB[i]])]));
       });
-      var note = el('div', { class: 'rnote' }); ctx.node.appendChild(note);
-      var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
-      ctx.node.appendChild(btn);
-      function vals() { return rows.map(function (r) { return Math.max(0, r.value()); }); }
-      function check() {
-        var v = vals(), msg = '', zero = v.filter(function (x) { return x === 0; }).length;
-        if (res.some(function (x) { return x === null; })) msg = 'Tap Made it or Missed for everyone';
-        else if (v.some(function (x) { return x % 5; })) msg = 'Points go up in 5s (cards are 5, 10, 15 or 25)';
-        else if (zero === 0) msg = 'Whoever went out has 0 points';
-        else if (zero > 1) msg = 'Only one player can go out (0 points)';
-        else if (!res[v.indexOf(0)]) msg = ctx.sides[v.indexOf(0)].name + ' went out, so they must have made their phase';
-        note.className = 'rnote' + (msg ? ' bad' : '');
-        note.textContent = msg || ctx.sides[v.indexOf(0)].name + ' went out. Looks right.';
-        btn.disabled = !!msg;
-        return !msg;
+      function vals() { return st.v.map(function (x) { return Math.max(0, Number(x) || 0); }); }
+      function refresh() {
+        var v = vals(), zero = v.filter(function (x, i) { return x === 0 && st.v[i] != null; }).length, msg = '', bad = false;
+        ctx.sides.forEach(function (s, i) { yes[i].set(st.res[i] === true); no[i].set(st.res[i] === false); outB[i].set(st.v[i] === 0 && st.res[i] === true); });
+        if (v.some(function (x) { return x % 5; })) { msg = 'Points go up in 5s (cards are 5, 10, 15 or 25).'; bad = true; }
+        else if (zero > 1) { msg = 'Only one player can go out (0 points).'; bad = true; }
+        else if (zero === 1 && st.res[v.indexOf(0)] === false) { msg = ctx.sides[v.indexOf(0)].name + ' went out, so they must have made their phase.'; bad = true; }
+        else if (st.res.some(function (x) { return x === null; })) msg = 'Tap Made or Missed for everyone.';
+        else if (st.v.some(function (x) { return x == null; })) msg = 'Set the points left for everyone (0 for whoever went out).';
+        else if (zero === 0) msg = 'Whoever went out has 0 points.';
+        ctx.pending(v);
+        ctx.status(msg || ctx.sides[v.indexOf(0)].name + ' went out. Looks right.', msg ? (bad ? false : 'wait') : true);
+        if (!ctx.editing) ctx.draft(st);
       }
-      btn.addEventListener('click', function () {
-        if (!check()) return;
-        var v = vals(), extra = { detail: res.map(function (m, i) { return (m ? 'made ' : 'missed ') + ph[i]; }), highlights: [] };
-        var fin = res.map(function (m, i) { return m && ph[i] >= LAST ? i : -1; }).filter(function (i) { return i >= 0; });
-        if (!ctx.prev) {
-          if (fin.length) extra.callout = 'Phase ' + LAST + ' done!';
-          else if (res.every(function (m) { return m; })) extra.callout = 'Everyone made it!';
-        }
-        ctx.done(v, extra);
-      });
-      check();
-      var help = el('details', { class: 'phhelp' }, [el('summary', { class: 'label', text: 'All 10 phases' }), el('ol', { html: PH.map(function (p) { return '<li>' + p + '</li>'; }).join('') })]);
-      ctx.node.appendChild(help);
+      refresh();
+      ctx.entry = { st: st, ph: ph, vals: vals };
+      return [rowA, rowB];
+    }
+    function lockHand(ctx) {
+      var res = ctx.entry.st.res, ph = ctx.entry.ph, v = ctx.entry.vals();
+      var extra = { detail: res.map(function (m, i) { return (m ? 'made ' : 'missed ') + ph[i]; }), highlights: [] };
+      var fin = res.map(function (m, i) { return m && ph[i] >= LAST ? i : -1; }).filter(function (i) { return i >= 0; });
+      if (!ctx.editing) {
+        if (fin.length) extra.callout = 'Phase ' + LAST + ' done!';
+        else if (res.every(function (m) { return m; })) extra.callout = 'Everyone made it!';
+      }
+      ctx.done(v, extra);
     }
     function highlights(rounds, t) {
       var names = cfg.names, out = [], ph = [], streak = [], stuck = null, outs = [], missed = [], big = null, firstDone = null;

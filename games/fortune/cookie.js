@@ -575,9 +575,11 @@ function filmMaterial(normalTex, frostTex) {
     ior: 1.45, specularIntensity: 1, envMapIntensity: 0.4,
     iridescence: 0.55, iridescenceIOR: 1.33, iridescenceThicknessRange: [260, 700], iridescenceThicknessMap: frostTex
   });
+  const U = m.userData.u = { uFres: { value: 0.5 }, uGeoFres: { value: 1 } };
   m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
     sh.vertexShader = 'attribute vec2 film;\nvarying vec2 vFilm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFilm = film;');
-    sh.fragmentShader = 'varying vec2 vFilm;\n' + sh.fragmentShader
+    sh.fragmentShader = 'varying vec2 vFilm;\nuniform float uFres, uGeoFres;\n' + sh.fragmentShader
       .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.4, vFilm.x);')
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = mix(roughnessFactor, 0.3, vFilm.x);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -591,9 +593,9 @@ function filmMaterial(normalTex, frostTex) {
 	}`)
       .replace('#include <opaque_fragment>', `
 	float fA = diffuseColor.a;
-	float fNV = saturate(dot(normal, geometryViewDir));
+	float fNV = saturate(dot(mix(normal, nonPerturbedNormal, uGeoFres), geometryViewDir));
 	float fFr = 0.04 + 0.96 * pow(1.0 - fNV, 5.0);
-	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * 0.5, 0.0, 1.0));`)
+	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * uFres, 0.0, 1.0));`)
       .replace('#include <premultiplied_alpha_fragment>', '');
   };
   m.customProgramCacheKey = () => 'ck-film-1';
@@ -1518,6 +1520,7 @@ function mount(stage, api) {
       // average ms to draw one frame (GPU included), over n draws
       perf: (n) => { const gl = renderer.getContext(), px = new Uint8Array(4), sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); n = n || 10; renderer.render(scene, camera); sync(); const a = performance.now(); for (let i = 0; i < n; i++) { renderer.render(scene, camera); sync(); } return +((performance.now() - a) / n).toFixed(2); },
       crinkle: () => crk,
+      film: (o) => { for (const k in o) { if (k in filmMat.userData.u) filmMat.userData.u[k].value = o[k]; else if (k === 'normalScale') filmMat.normalScale.setScalar(o[k]); else if (k === 'thick') filmMat.iridescenceThicknessRange = o[k]; else filmMat[k] = o[k]; } filmMat.needsUpdate = true; },
       calls: () => { renderer.render(scene, camera); return renderer.info.render.calls; },
       screen: (i) => { const c = cookies[i || 0]; const p = c.root.position.clone().project(camera); return { x: (p.x + 1) / 2 * W, y: (1 - p.y) / 2 * H }; }
     }
