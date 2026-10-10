@@ -1413,6 +1413,7 @@ function bindMap() {
     if (e.button && e.button !== 0) return;
     try { map.setPointerCapture(e.pointerId); } catch (er) {}
     var r = map.getBoundingClientRect();
+    if (Math.abs(r.width - V.W) > 0.5 || Math.abs(r.height - V.H) > 0.5) refit();
     ptrs[e.pointerId] = { x: e.clientX - r.left, y: e.clientY - r.top };
     var P = pts();
     if (P.length === 1) g = { mode: 'pan', x0: P[0].x, y0: P[0].y, tx: V.tx, ty: V.ty, moved: false, t0: Date.now() };
@@ -1451,12 +1452,19 @@ function bindMap() {
     var r = map.getBoundingClientRect();
     zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)));
   }, { passive: false });
-  window.addEventListener('resize', function () {
+  // The map box changes size without a window resize (side panel, rotation, the iPad turn cover):
+  // re-measure whenever it does, keeping the same spot in the middle, so panning limits stay right
+  function refit() {
     if (!R.map || !document.body.contains(R.map)) return;
+    var r = R.map.getBoundingClientRect(); if (!r.width || !r.height) return;
+    if (Math.abs(r.width - V.W) < 0.5 && Math.abs(r.height - V.H) < 0.5) return;
     var cx = (V.W / 2 - V.tx) / V.s, cy = (V.H / 2 - V.ty) / V.s, rel = V.s / fitScale();
     measure();
     var s = rel * fitScale(); setView(s, V.W / 2 - cx * s, V.H / 2 - cy * s);
-  });
+  }
+  if (R.mapRO) R.mapRO.disconnect();
+  if (window.ResizeObserver) { R.mapRO = new ResizeObserver(refit); R.mapRO.observe(map); }
+  else window.addEventListener('resize', refit);
 }
 function tapAt(x, y) {
   var n = document.elementFromPoint(x, y);
@@ -2962,7 +2970,7 @@ function showSetup() {
   });
 })();
 // test hook
-window.__aa = { get S() { return S; }, set S(v) { S = v; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir };
+window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir };
 })();
 </script>
 </body>
