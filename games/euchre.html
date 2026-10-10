@@ -13,24 +13,20 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <style>
-.callers{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.callers button{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border:2px solid transparent;border-radius:var(--r-sm,12px);background:var(--w06);color:var(--text-2);font-weight:800;font-size:.95rem;text-align:left;overflow:hidden;}
-.callers button .dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c);}
-.callers button span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.callers button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 20%,transparent);color:var(--text);}
-.callers .tm{grid-column:1/-1;font-size:.72rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:2px 0 -4px;}
-.seg.suits > button{font-size:1.5rem;}
-.seg.suits > button.r{color:#ff6b7f;}
-.seg.tricks > button{font-size:1.15rem;}
-.rform .label{margin:4px 0 0;}
-.preview{padding:12px;border-radius:var(--r);background:var(--w06);text-align:center;font-weight:800;}
-.preview b{display:block;font-family:var(--display);font-weight:400;font-size:1.35rem;color:var(--yellow);}
-.preview.bad b{color:var(--red);}
-/* Wide, short screens (iPad landscape): team label beside its two players so the form fits without scrolling */
-@media (orientation:landscape) and (min-width:700px){
-  .callers{grid-template-columns:minmax(110px,auto) 1fr 1fr;align-items:center;}
-  .callers .tm{grid-column:auto;margin:0;}
-}
+/* The open hand: who called (per team), trump suit, then the makers' tricks */
+.eu-col{display:flex;flex-direction:column;gap:3px;}
+.eu-tr{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;}
+.eu-tr .sp-tg{font-family:var(--hand);font-weight:400;font-size:1.15rem;min-height:34px;}
+.eu-tr .sp-tg.lo{background:rgba(200,16,46,.07);}
+.eu-tr .sp-tg.lo.on{background:#c8102e;border-color:#a50d26;color:#fff;}
+.eu-tr .sp-tg.hi{background:rgba(255,196,46,.16);}
+.eu-tr .sp-tg.hi.on{background:#ffc42e;border-color:#e0a800;color:#2b1a00;}
+.eu-suits{display:flex;justify-content:center;gap:6px;}
+.eu-suits .sp-tg{width:auto;flex:0 1 54px;font-size:1.25rem;min-height:34px;}
+.eu-suits .sp-tg.r{color:#d81e3a;}
+.eu-suits .sp-tg.r.on{color:#fff;background:#d81e3a;border-color:#b0162e;}
+.spad td .wait{display:block;padding:8px 2px;font-family:var(--hand);font-size:.95rem;line-height:1.1;color:#8a8796;}
+.spad td.eu-span{text-align:center;}
 </style>
 </head>
 <body>
@@ -56,7 +52,7 @@
       '<h3>Playing</h3><p>Left of the dealer leads. Follow the suit led if you can (the left bower follows trump). Highest trump wins, otherwise the highest card of the suit led.</p>' +
       '<h3>Scoring a hand</h3><ul><li>Makers take 3 or 4 tricks: <b>1 point</b>.</li><li>Makers take all 5 (a <b>march</b>): <b>2 points</b>.</li>' +
       '<li>Caller <b>went alone</b> and took all 5: <b>4 points</b> (3 or 4 alone is still 1).</li><li>Makers take fewer than 3: <b>euchred</b>, the other team gets <b>2 points</b>.</li></ul>' +
-      '<p>After each hand, tap <b>Add round</b>, pick who called trump, whether they went alone, and how many tricks the makers won. The points are worked out for you.</p>'
+      '<h3>Keeping score</h3><p>The open rows on the sheet are this hand. Tap the player who <b>called trump</b> in their team\'s column (and <b>Alone</b> if they went alone), the trump suit if you like, then the <b>tricks the makers won</b>. The points are worked out for you; tap <b>Lock hand</b> to write it in. Tap a hand on the sheet to change or delete it right there.</p>'
   });
 
   function showSetup() {
@@ -109,101 +105,108 @@
     var cfg = JSON.parse(localStorage.getItem(SETUP));
     var N = cfg.names, teams = [N[0] + ' & ' + N[2], N[1] + ' & ' + N[3]];
     hideTeamNames(teams);
+
+    // ── The open hand on the sheet ──
+    // st = {caller: seat or -1, suit, alone, tricks}
+    function entryRows(ctx) {
+      var p = ctx.editing ? parse(ctx.prev, N) : null;
+      var st = p ? { caller: p.caller, suit: p.suit, alone: p.alone, tricks: p.tricks } : (ctx.draft() || { caller: -1, suit: null, alone: false, tricks: 3 });
+      var rowCall = el('tr', { class: 'open' }, [el('th', { class: 'rn' }, [String(ctx.round), el('small', { text: 'CALLED' })])]);
+      var rowSuit = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: 'TRUMP' })]);
+      var rowTr = el('tr', { class: 'sub' }, [el('th', { class: 'rn', text: 'TRICKS' })]);
+      var callB = [], aloneB = [], trCells = [], eqs = [];
+      [0, 1].forEach(function (tm) {
+        var col = el('div', { class: 'eu-col' });
+        [tm, tm + 2].forEach(function (pl) {
+          callB[pl] = Scorepad.tog(N[pl], { cls: 'gold', aria: N[pl] + ' called trump', onClick: function () { st.caller = st.caller === pl ? -1 : pl; if (st.caller < 0 || st.caller % 2 !== tm) st.alone = st.caller >= 0 && st.caller % 2 === tm ? st.alone : false; refresh(); } });
+          col.appendChild(callB[pl]);
+        });
+        aloneB[tm] = Scorepad.tog('Alone', { cls: 'blue', aria: teams[tm] + ': caller went alone', onClick: function () { if (st.caller >= 0 && st.caller % 2 === tm) { st.alone = !st.alone; refresh(); } } });
+        col.appendChild(aloneB[tm]);
+        var eq = el('small', { class: 'eq' }); eqs[tm] = eq;
+        rowCall.appendChild(el('td', null, [col, eq]));
+        trCells[tm] = el('td');
+        rowTr.appendChild(trCells[tm]);
+      });
+      var suits = el('div', { class: 'eu-suits' }), suitB = {};
+      ['s', 'h', 'd', 'c'].forEach(function (k) {
+        suitB[k] = Scorepad.tog(GL[k], { cls: k === 'h' || k === 'd' ? 'r' : '', aria: { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' }[k] + ' were trump', onClick: function () { st.suit = st.suit === k ? null : k; refresh(); } });
+        suits.appendChild(suitB[k]);
+      });
+      rowSuit.appendChild(el('td', { class: 'eu-span', colspan: '2' }, [suits]));
+      var trGrid = el('div', { class: 'eu-tr' }), trB = [];
+      for (var t = 0; t <= 5; t++) (function (t) {
+        trB[t] = Scorepad.tog(String(t), { cls: t < 3 ? 'lo' : t === 5 ? 'hi' : '', aria: 'Makers won ' + t + (t === 1 ? ' trick' : ' tricks'), onClick: function () { st.tricks = t; refresh(); } });
+        trGrid.appendChild(trB[t]);
+      })(t);
+      var trWait = el('span', { class: 'wait', text: 'tap who called' });
+      function refresh() {
+        var side = st.caller >= 0 ? st.caller % 2 : -1;
+        callB.forEach(function (b, pl) { b.set(pl === st.caller); });
+        [0, 1].forEach(function (tm) { aloneB[tm].set(side === tm && st.alone); aloneB[tm].disabled = side !== tm; });
+        Object.keys(suitB).forEach(function (k) { suitB[k].set(st.suit === k); });
+        trB.forEach(function (b, t) { b.set(t === st.tricks); });
+        [0, 1].forEach(function (tm) {
+          var want = side < 0 ? (tm === 0 ? trWait : null) : side === tm ? trGrid : null;
+          if (trCells[tm].firstChild !== want) { trCells[tm].innerHTML = ''; if (want) trCells[tm].appendChild(want); }
+        });
+        if (side < 0) {
+          eqs.forEach(function (e) { e.textContent = ''; e.className = 'eq'; });
+          ctx.pending(null);
+          ctx.status('Tap who called trump.', 'wait');
+        } else {
+          var s = points(side, st.tricks, st.alone), tricks = st.tricks, msg;
+          eqs.forEach(function (e, tm) {
+            e.className = 'eq' + (s[tm] ? (tricks < 3 ? ' bad' : ' good') : '');
+            e.textContent = s[tm] ? '+' + s[tm] + (tricks < 3 ? ' euchre!' : tricks === 5 ? (st.alone ? ' alone march' : ' march') : ' made it') : '';
+          });
+          if (tricks < 3) msg = 'Euchred! ' + teams[1 - side] + ' get 2 points.';
+          else if (tricks === 5) msg = (st.alone ? 'Alone march! ' : 'March! ') + teams[side] + ' get ' + s[side] + ' points.';
+          else msg = 'Made it. ' + teams[side] + ' get 1 point.';
+          ctx.pending(s);
+          ctx.status(msg, true);
+        }
+        if (!ctx.editing) ctx.draft(st);
+      }
+      refresh();
+      ctx.entry = st;
+      return [rowCall, rowSuit, rowTr];
+    }
+    function lockHand(ctx) {
+      var st = ctx.entry, caller = st.caller, suit = st.suit, alone = st.alone, tricks = st.tricks;
+      if (caller < 0) return;
+      var side = caller % 2, scores = points(side, tricks, alone);
+      var detail = ['', ''];
+      detail[side] = N[caller] + (suit ? ' ' + GL[suit] : '') + (alone ? ' alone' : '') + ' · ' + tricks;
+      if (tricks < 3) detail[1 - side] = 'euchre!';
+      var extra = { detail: detail, highlights: [] };
+      if (alone && tricks === 5) { extra.highlights.push(N[caller] + ' went alone and marched in hand ' + ctx.round); extra.callout = 'Alone march!'; if (!ctx.editing) Kit.confetti({ count: 90 }); }
+      else if (alone && tricks < 3) { extra.highlights.push(N[caller] + ' went alone and got euchred in hand ' + ctx.round); extra.callout = 'Euchred!'; }
+      else if (tricks < 3) extra.callout = 'Euchred!';
+      else if (tricks === 5) extra.callout = 'March!';
+      // Game over after this hand? Add the whole-game highlights now.
+      var ends = !ctx.editing && (ctx.totals[0] + scores[0] >= cfg.target || ctx.totals[1] + scores[1] >= cfg.target);
+      if (ends) {
+        var all = pad.state().rounds.map(function (r) { return parse(r, N); }).filter(Boolean);
+        all.push({ side: side, caller: caller, alone: alone, tricks: tricks });
+        [0, 1].forEach(function (tm) {
+          var eu = all.filter(function (x) { return x.side === tm && x.tricks < 3; }).length;
+          if (eu) extra.highlights.push(teams[tm] + ' got euchred ' + times(eu));
+          var mar = all.filter(function (x) { return x.side === tm && x.tricks === 5 && !x.alone; }).length;
+          if (mar) extra.highlights.push(teams[tm] + ' marched ' + times(mar));
+        });
+        var calls = [0, 0, 0, 0]; all.forEach(function (x) { calls[x.caller]++; });
+        var top = calls.indexOf(Math.max.apply(null, calls));
+        if (calls[top] >= 3) extra.highlights.push(N[top] + ' called trump the most (' + calls[top] + ' times)');
+      }
+      ctx.done(scores, extra);
+    }
+
     pad = Scorepad(app, {
       key: 'eu', title: 'Euchre', mode: 'Scorekeeper', target: cfg.target,
       sides: teams.map(function (n) { return { name: n }; }),
       goal: 'First team to ' + cfg.target + ' wins',
-      form: function (ctx) {
-        var prev = parse(ctx.prev, N);
-        var caller = prev ? prev.caller : -1, suit = prev ? prev.suit : null, alone = prev ? prev.alone : false, tricks = prev ? prev.tricks : 3;
-
-        // Who called trump: players grouped by team
-        ctx.node.appendChild(el('div', { class: 'label', text: 'Who called trump?' }));
-        var grid = el('div', { class: 'callers' }), callBtns = [];
-        [0, 1].forEach(function (tm) {
-          grid.appendChild(el('div', { class: 'tm', text: teams[tm] }));
-          [tm, tm + 2].forEach(function (p) {
-            var b = el('button', { type: 'button', style: { '--c': Kit.color(tm) }, onclick: function () { caller = p; Kit.sfx('tap'); paint(); } },
-              [el('span', { class: 'dot' }), el('span', { text: N[p] })]);
-            callBtns[p] = b; grid.appendChild(b);
-          });
-        });
-        ctx.node.appendChild(grid);
-
-        ctx.node.appendChild(el('div', { class: 'label', text: 'Trump suit (optional)' }));
-        var suitSeg = el('div', { class: 'seg suits' });
-        ['s', 'h', 'd', 'c'].forEach(function (s) {
-          suitSeg.appendChild(el('button', { type: 'button', class: s === 'h' || s === 'd' ? 'r' : '', 'aria-label': { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' }[s], 'data-s': s, text: GL[s],
-            onclick: function () { suit = suit === s ? null : s; Kit.sfx('tap'); paint(); } }));
-        });
-        ctx.node.appendChild(suitSeg);
-
-        ctx.node.appendChild(el('div', { class: 'label', text: 'Did they go alone?' }));
-        var aloneSeg = el('div', { class: 'seg' }, [
-          el('button', { type: 'button', text: 'No, with partner', onclick: function () { alone = false; Kit.sfx('tap'); paint(); } }),
-          el('button', { type: 'button', text: 'Went alone', onclick: function () { alone = true; Kit.sfx('tap'); paint(); } })
-        ]);
-        ctx.node.appendChild(aloneSeg);
-
-        var trLabel = el('div', { class: 'label', text: 'Tricks the makers won' });
-        ctx.node.appendChild(trLabel);
-        var trSeg = el('div', { class: 'seg tricks' });
-        for (var t = 0; t <= 5; t++) (function (t) {
-          trSeg.appendChild(el('button', { type: 'button', text: String(t), onclick: function () { tricks = t; Kit.sfx('tap'); paint(); } }));
-        })(t);
-        ctx.node.appendChild(trSeg);
-
-        var preview = el('div', { class: 'preview' });
-        ctx.node.appendChild(preview);
-        var btn = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: ctx.prev ? 'Save changes' : 'Score this hand' });
-        ctx.node.appendChild(btn);
-
-        function paint() {
-          callBtns.forEach(function (b, p) { b.classList.toggle('on', p === caller); });
-          Array.prototype.forEach.call(suitSeg.children, function (b) { b.classList.toggle('on', b.getAttribute('data-s') === suit); });
-          aloneSeg.children[0].classList.toggle('on', !alone); aloneSeg.children[1].classList.toggle('on', alone);
-          Array.prototype.forEach.call(trSeg.children, function (b, i) { b.classList.toggle('on', i === tricks); });
-          btn.disabled = caller < 0;
-          if (caller < 0) { preview.className = 'preview'; preview.innerHTML = 'Pick who called trump'; return; }
-          var side = caller % 2;
-          trLabel.textContent = 'Tricks ' + (alone ? N[caller] : teams[side]) + ' won';
-          var s = points(side, tricks, alone), html;
-          if (tricks < 3) html = '<b>Euchred!</b>' + Kit.esc(teams[1 - side]) + ' get 2 points';
-          else if (tricks === 5) html = '<b>' + (alone ? 'Alone march!' : 'March!') + '</b>' + Kit.esc(teams[side]) + ' get ' + s[side] + ' points';
-          else html = '<b>Made it</b>' + Kit.esc(teams[side]) + ' get 1 point';
-          preview.className = 'preview' + (tricks < 3 ? ' bad' : '');
-          preview.innerHTML = html;
-        }
-        btn.addEventListener('click', function () {
-          if (caller < 0) return;
-          var side = caller % 2, scores = points(side, tricks, alone);
-          var detail = ['', ''];
-          detail[side] = N[caller] + (suit ? ' ' + GL[suit] : '') + (alone ? ' alone' : '') + ' · ' + tricks;
-          if (tricks < 3) detail[1 - side] = 'euchre!';
-          var extra = { detail: detail, highlights: [] };
-          if (alone && tricks === 5) { extra.highlights.push(N[caller] + ' went alone and marched in hand ' + ctx.round); extra.callout = 'Alone march!'; Kit.confetti({ count: 90 }); }
-          else if (alone && tricks < 3) { extra.highlights.push(N[caller] + ' went alone and got euchred in hand ' + ctx.round); extra.callout = 'Euchred!'; }
-          else if (tricks < 3) extra.callout = 'Euchred!';
-          else if (tricks === 5) extra.callout = 'March!';
-          // Game over after this hand? Add the whole-game highlights now.
-          var ends = !ctx.prev && (ctx.totals[0] + scores[0] >= cfg.target || ctx.totals[1] + scores[1] >= cfg.target);
-          if (ends) {
-            var all = pad.state().rounds.map(function (r) { return parse(r, N); }).filter(Boolean);
-            all.push({ side: side, caller: caller, alone: alone, tricks: tricks });
-            [0, 1].forEach(function (tm) {
-              var eu = all.filter(function (x) { return x.side === tm && x.tricks < 3; }).length;
-              if (eu) extra.highlights.push(teams[tm] + ' got euchred ' + times(eu));
-              var mar = all.filter(function (x) { return x.side === tm && x.tricks === 5 && !x.alone; }).length;
-              if (mar) extra.highlights.push(teams[tm] + ' marched ' + times(mar));
-            });
-            var calls = [0, 0, 0, 0]; all.forEach(function (x) { calls[x.caller]++; });
-            var top = calls.indexOf(Math.max.apply(null, calls));
-            if (calls[top] >= 3) extra.highlights.push(N[top] + ' called trump the most (' + calls[top] + ' times)');
-          }
-          ctx.done(scores, extra);
-        });
-        paint();
-      }
+      entryRows: entryRows, onLock: lockHand, lockLabel: 'Lock hand'
     });
   }
 

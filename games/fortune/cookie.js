@@ -373,6 +373,210 @@ function halfGeometry(F, side, P, jag) {
   return g;
 }
 
+// ── Cellophane wrapper ──────────────────────────────────────────────────
+// Every cookie on the table comes in a clear flow-wrap pack: a puffy pillow of film with a
+// heat-crimped seal at each end (ribbed, frosted, cut in a zigzag). The film is crumpled:
+// one shared tile of creases (normal map) plus a frost map that makes the creases a little
+// milkier, rougher and more rainbow-tinted (it drives roughness, opacity and film thickness).
+
+// A tile of crumpled film. Each crease is a short ridge or valley with a sharp spine that
+// fades out along its length; long soft folds plus many small sharp ones. Returns the
+// normal map and the frost map (G channel: 0.25 = clear film, 1 = a hard crease).
+function crinkleCanvases(seed) {
+  const S = 512, R = rng(seed), Hf = new Float32Array(S * S), Fr = new Float32Array(S * S);
+  function crease(cx, cy, ang, half, w, k) {
+    const tx = Math.cos(ang), ty = Math.sin(ang), nx = -ty, ny = tx;
+    const ex = (Math.abs(tx) * half + Math.abs(nx) * w) * S, ey = (Math.abs(ty) * half + Math.abs(ny) * w) * S;
+    const x0 = Math.floor(cx * S - ex), x1 = Math.ceil(cx * S + ex), y0 = Math.floor(cy * S - ey), y1 = Math.ceil(cy * S + ey);
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const dx = px / S - cx, dy = py / S - cy;
+      const dt = dx * tx + dy * ty, dn = dx * nx + dy * ny;
+      const an = Math.abs(dn) / w, at = Math.abs(dt) / half;
+      if (an >= 1 || at >= 1) continue;
+      const win = at < 0.55 ? 1 : 1 - (at - 0.55) / 0.45 * ((at - 0.55) / 0.45) * (3 - 2 * (at - 0.55) / 0.45);
+      const i = (((py % S) + S) % S) * S + (((px % S) + S) % S);
+      Hf[i] += k * w * (1 - an) * (1 - an) * win;
+      Fr[i] += Math.abs(k) * Math.exp(-an * an * 60) * win;
+    }
+  }
+  for (let i = 0; i < 26; i++) crease(R(), R(), R() * Math.PI, 0.18 + R() * 0.3, 0.05 + R() * 0.07, (R() < 0.5 ? -1 : 1) * (0.25 + R() * 0.35));
+  for (let i = 0; i < 150; i++) crease(R(), R(), R() * Math.PI, 0.03 + R() * 0.11, 0.008 + R() * 0.03, (R() < 0.5 ? -1 : 1) * (0.35 + R() * 0.75));
+  const n = noise2(seed + 5);
+  const nc = document.createElement('canvas'); nc.width = nc.height = S;
+  const fc = document.createElement('canvas'); fc.width = fc.height = S;
+  const ni = nc.getContext('2d').createImageData(S, S), fi = fc.getContext('2d').createImageData(S, S);
+  const at = (x, y) => Hf[(((y % S) + S) % S) * S + (((x % S) + S) % S)];
+  const K = S * 1.6;   // slope strength
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const i = y * S + x, o = i * 4;
+    let gx = (at(x + 1, y) - at(x - 1, y)) * K / 2, gy = (at(x, y + 1) - at(x, y - 1)) * K / 2;
+    const l = Math.hypot(gx, gy, 1);
+    ni.data[o] = 128 + (-gx / l) * 127; ni.data[o + 1] = 128 + (gy / l) * 127; ni.data[o + 2] = 128 + (1 / l) * 127; ni.data[o + 3] = 255;
+    const haze = (fbm(n, x / 40, y / 40, 3) - 0.5) * 0.12;
+    const f = Math.max(0, Math.min(1, 0.24 + haze + Math.min(0.76, Fr[i] * 0.55)));
+    fi.data[o] = fi.data[o + 1] = fi.data[o + 2] = f * 255; fi.data[o + 3] = 255;
+  }
+  nc.getContext('2d').putImageData(ni, 0, 0); fc.getContext('2d').putImageData(fi, 0, 0);
+  return { normal: nc, frost: fc };
+}
+
+// The pack's shape, in its own units: body 2 long (x -1..1), 2 wide (z -1..1), 1 tall (y 0..1),
+// a crimped fin past each end. Around the tube, sg runs 0..1: 0..0.5 the top sheet (z +1 -> -1),
+// 0.5..1 the bottom sheet back again, so in the flat seal both sheets land on the same z
+// and the zigzag teeth line up. Each pack is split along a jagged tear line near x = 0 into
+// a left and a right half (shared geometries, a few variants).
+const WR = { M: 64, ROWS: 46, TOOTH: 0.05, NT: 2.5, NB: 5 };
+function wrapperShape(R) {
+  const V = {
+    Lb: 0.42 + R() * 0.1,        // where the pillow starts to taper toward the seal
+    Wf: 1.1 + R() * 0.08,        // half-width of the flattened seal (wider than the pack)
+    hs: 0.36 + R() * 0.08,       // seal height
+    Lf: 0.22 + R() * 0.06,       // crimped fin length
+    droop: 0.04 + R() * 0.1, flop: (R() - 0.5) * 0.12,
+    pl: [], cr: [], tear: []
+  };
+  // pleats where the film gathers into the seal, and soft crinkles everywhere (periodic around the tube)
+  for (let i = 0; i < 4; i++) V.pl.push({ k: [7, 11, 16, 23][i] + Math.floor(R() * 3), a: [0.5, 0.32, 0.22, 0.12][i], ph: R() * 6.283, w: 2 + R() * 3, wp: R() * 6.283 });
+  for (let i = 0; i < 7; i++) V.cr.push({ fx: 2 + R() * 7, k: 1 + Math.floor(R() * 6), a: 0.004 + R() * 0.008, ph: R() * 6.283 });
+  for (let j = 0; j < WR.M * 2; j++) V.tear.push((R() - 0.5) * 0.07 + 0.025 * Math.sin(j * 0.7 + V.Lb * 40));
+  return V;
+}
+// Base surface point (before pleats/crinkles) at x and around-the-tube parameter sg.
+function wrapBase(V, x, sg, o) {
+  const top = sg < 0.5, zf = top ? 1 - 4 * sg : -1 + 4 * (sg - 0.5);
+  const c = Math.max(-1, Math.min(1, zf)), s = (top ? 1 : -1) * Math.sqrt(Math.max(0, 1 - c * c));
+  const n = s >= 0 ? WR.NT : WR.NB;
+  const ax = Math.abs(x);
+  if (ax <= 1) {
+    const zb = Math.sign(c) * Math.pow(Math.abs(c), 2 / n), yb = 0.5 + 0.5 * Math.sign(s) * Math.pow(Math.abs(s), 2 / n);
+    let t = Math.max(0, Math.min(1, (ax - V.Lb) / (1 - V.Lb))); t = t * t * (3 - 2 * t);
+    const zF = V.Wf * c, yF = V.hs + 0.012 * s;
+    o.x = x; o.y = yb + (yF - yb) * t; o.z = zb + (zF - zb) * t;
+  } else {
+    const u = (ax - 1) / V.Lf;
+    o.x = x; o.z = V.Wf * c * (1 + 0.03 * u);
+    o.y = V.hs + 0.012 * s * (1 - 0.5 * u) - V.droop * u * u + V.flop * u * c;
+  }
+  return o;
+}
+function wrapperGeometries(V) {
+  const M = WR.M, NC = M * 2, ROWS = WR.ROWS;
+  const P0 = { x: 0, y: 0, z: 0 }, Pa = { x: 0, y: 0, z: 0 }, Pb = { x: 0, y: 0, z: 0 }, Pc = { x: 0, y: 0, z: 0 }, Pd = { x: 0, y: 0, z: 0 };
+  // normal of the base surface by finite differences (outward)
+  function baseN(x, sg, out) {
+    const e = 1e-3;
+    wrapBase(V, x + e, sg, Pa); wrapBase(V, x - e, sg, Pb); wrapBase(V, x, (sg + e) % 1, Pc); wrapBase(V, x, (sg - e + 1) % 1, Pd);
+    const ux = Pa.x - Pb.x, uy = Pa.y - Pb.y, uz = Pa.z - Pb.z, vx = Pc.x - Pd.x, vy = Pc.y - Pd.y, vz = Pc.z - Pd.z;
+    // sg runs over the top from +z to -z, so (d/dsg) x (d/dx) points out of the pack
+    let nx = vy * uz - vz * uy, ny = vz * ux - vx * uz, nz = vx * uy - vy * ux;
+    const l = Math.hypot(nx, ny, nz) || 1; out.x = nx / l; out.y = ny / l; out.z = nz / l;
+    return out;
+  }
+  const N0 = { x: 0, y: 0, z: 0 };
+  function surf(x, sg, o) {
+    wrapBase(V, x, sg, o);
+    const ax = Math.abs(x);
+    if (ax >= 1) return o;
+    baseN(x, sg, N0);
+    let tt = Math.max(0, Math.min(1, (ax - V.Lb * 0.75) / (1 - V.Lb * 0.75)));
+    const amp = 0.055 * Math.pow(Math.sin(Math.PI * Math.pow(tt, 0.85)), 1.1);
+    let d = 0;
+    if (amp > 0) {
+      let p = 0;
+      for (const q of V.pl) p += q.a * Math.sin(6.2832 * q.k * sg + q.ph + 0.7 * Math.sin(q.w * ax + q.wp));
+      d += amp * Math.sign(p) * Math.pow(Math.abs(p), 0.7);
+    }
+    for (const q of V.cr) d += q.a * Math.sin(q.fx * x + 6.2832 * q.k * sg + q.ph) * (1 - 0.6 * tt);
+    o.x += N0.x * d; o.y += N0.y * d; o.z += N0.z * d;
+    if (o.y < 0.002) o.y = 0.002;
+    return o;
+  }
+  function half(side) {
+    const pos = [], nrm = [], uv = [], film = [], idx = [];
+    for (let r = 0; r <= ROWS; r++) {
+      for (let j = 0; j < NC; j++) {
+        const sg = j / NC, tear = V.tear[j], tip = 1 + V.Lf - (j % 2 ? WR.TOOTH : 0);
+        // rows: 8 across the body, 26 through the taper, the rest across the crimp
+        let ax;
+        if (r <= 8) ax = tear * side + (V.Lb - tear * side) * (r / 8);
+        else if (r <= 34) { const u = (r - 8) / 26; ax = V.Lb + (1 - V.Lb) * u; }
+        else ax = 1 + (tip - 1) * ((r - 34) / (ROWS - 34));
+        const x = side * ax;
+        surf(x, sg, P0);
+        // normal from the displaced surface
+        const e = 1.5e-3;
+        surf(x + e, sg, Pa); surf(x - e, sg, Pb); surf(x, (sg + e) % 1, Pc); surf(x, (sg - e + 1) % 1, Pd);
+        const ux = Pa.x - Pb.x, uy = Pa.y - Pb.y, uz = Pa.z - Pb.z, vx = Pc.x - Pd.x, vy = Pc.y - Pd.y, vz = Pc.z - Pd.z;
+        let nx = vy * uz - vz * uy, ny = vz * ux - vx * uz, nz = vx * uy - vy * ux;
+        const l = Math.hypot(nx, ny, nz) || 1;
+        pos.push(P0.x, P0.y, P0.z); nrm.push(nx / l, ny / l, nz / l);
+        uv.push(P0.x * 0.55, sg * 2.4);
+        const fin = Math.max(0, Math.min(1, (ax - 0.985) / 0.03));
+        // ribs: one per zigzag tooth, ridge running out to each tooth's point
+        film.push(fin, P0.z / (4 * V.Wf / M) * 6.2832 + 1.5708);
+      }
+    }
+    for (let r = 0; r < ROWS; r++) for (let j = 0; j < NC; j++) {
+      const a = r * NC + j, b = r * NC + (j + 1) % NC, c = a + NC, d = b + NC;
+      if (side > 0) idx.push(a, c, b, b, c, d); else idx.push(a, b, c, b, d, c);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('film', new THREE.Float32BufferAttribute(film, 2));
+    g.setIndex(idx);
+    g.computeBoundingSphere(); g.computeBoundingBox();
+    return g;
+  }
+  return [half(-1), half(1)];
+}
+// The top of the pack at (x, z) in pack units, for fitting a pack around a cookie.
+function wrapTop(V, x, z) {
+  const ax = Math.min(1, Math.abs(x));
+  let t = Math.max(0, Math.min(1, (ax - V.Lb) / (1 - V.Lb))); t = t * t * (3 - 2 * t);
+  const zb = Math.min(1, Math.abs(z));
+  const yb = 0.5 + 0.5 * Math.pow(Math.max(0, 1 - Math.pow(zb, WR.NT)), 1 / WR.NT);
+  return yb + (V.hs - yb) * t;
+}
+
+// Clear film: physically it's a thin clear sheet, so its reflections must not fade with its
+// (very low) opacity the way three.js's standard alpha blending would. The shader is patched
+// to write premultiplied colour: the faint milky body * alpha, plus the reflections at full
+// strength; and grazing angles block more of what's behind (Fresnel), like real film.
+function filmMaterial(normalTex, frostTex) {
+  const m = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff, metalness: 0, roughness: 0.42, roughnessMap: frostTex,
+    normalMap: normalTex, normalScale: new THREE.Vector2(0.55, 0.55),
+    alphaMap: frostTex, opacity: 0.34, transparent: true, depthWrite: false, side: THREE.DoubleSide, premultipliedAlpha: true,
+    ior: 1.45, specularIntensity: 1, envMapIntensity: 1.5,
+    iridescence: 0.8, iridescenceIOR: 1.33, iridescenceThicknessRange: [220, 560], iridescenceThicknessMap: frostTex
+  });
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'attribute vec2 film;\nvarying vec2 vFilm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFilm = film;');
+    sh.fragmentShader = 'varying vec2 vFilm;\n' + sh.fragmentShader
+      .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n\tdiffuseColor.a = mix(diffuseColor.a, 0.4, vFilm.x);')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = mix(roughnessFactor, 0.3, vFilm.x);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+	{ // crimp ribs on the seals, as a bump
+		float rh = vFilm.x * 0.0035 * sin(vFilm.y);
+		vec3 sp = - vViewPosition, sx = dFdx(sp), sy = dFdy(sp);
+		vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+		float det = dot(sx, r1) * faceDirection;
+		vec3 gr = sign(det) * (dFdx(rh) * r1 + dFdy(rh) * r2);
+		normal = normalize(abs(det) * normal - gr);
+	}`)
+      .replace('#include <opaque_fragment>', `
+	float fA = diffuseColor.a;
+	float fNV = saturate(dot(normal, geometryViewDir));
+	float fFr = 0.04 + 0.96 * pow(1.0 - fNV, 5.0);
+	gl_FragColor = vec4(totalDiffuse * fA + totalSpecular, clamp(fA + (1.0 - fA) * fFr * 0.85, 0.0, 1.0));`)
+      .replace('#include <premultiplied_alpha_fragment>', '');
+  };
+  m.customProgramCacheKey = () => 'ck-film-1';
+  return m;
+}
+
 // ── Styles for the overlay (slip, hint, button). The table keeps its own colours in every theme.
 const CSS = `
 .ck{position:absolute;inset:0;overflow:hidden;background:#24100a;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
@@ -587,6 +791,13 @@ function mount(stage, api) {
     return { map, bump };
   });
 
+  // Cellophane: one crumpled-film tile and one material shared by every pack; four pack shapes
+  const crk = crinkleCanvases(4242);
+  const filmN = keep(new THREE.CanvasTexture(crk.normal)), filmF = keep(new THREE.CanvasTexture(crk.frost));
+  for (const t of [filmN, filmF]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
+  const filmMat = keep(filmMaterial(filmN, filmF));
+  const WRAPS = [101, 202, 303, 404].map((sd) => { const V = wrapperShape(rng(sd)); const g = wrapperGeometries(V); g.forEach(keep); return { V, g }; });
+
   // ── Cookies ──────────────────────────────────────────────────────────
   let seedN = (Date.now() & 0xffff) + 1;
   const cookies = [];
@@ -640,6 +851,7 @@ function mount(stage, api) {
     const yaw = Math.PI + (R() - 0.5) * 2.6 + (R() < 0.2 ? Math.PI : 0);
     pose.rotation.set(tilt, yaw, (R() - 0.5) * 0.35, 'YXZ');
     pose.updateMatrixWorld(true);
+    const wrap = wrapCookie(R, pose, halves, slip);
     rootG.scale.setScalar(scale);
     rootG.updateMatrixWorld(true);
     const bb2 = new THREE.Box3().setFromObject(pose, true);
@@ -652,13 +864,52 @@ function mount(stage, api) {
     blob.renderOrder = 1;
     scene.add(blob); scene.add(rootG);
     const c = { root: rootG, pose, body, halves, slip, mat, blob, base, x, z, scale, restY: rootG.position.y,
-      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P };
+      restQ: pose.quaternion.clone(), w: (bb.max.x - bb.min.x) * scale, blobS: blob.scale.clone(), wob: null, hop: null, drop: null, dim: 1, alive: true, P, wrap };
     halves.forEach((h) => { h.mesh.userData.cookie = c; pickables.push(h.mesh); });
+    wrap.meshes.forEach((m) => { m.userData.cookie = c; pickables.push(m); });
     return c;
+  }
+  // Fit a cellophane pack around a cookie lying in its resting pose. The pack lies flat on the
+  // table, its long axis along the cookie's horns; it is sized so the cookie sits inside with
+  // a little slack (checked against the pack's top at every vertex). The pack hangs off the
+  // cookie's pose group, so it moves with every wobble, hop and drop.
+  const _v = new THREE.Vector3();
+  function wrapCookie(R, pose, halves, slip) {
+    const hx = _v.set(1, 0, 0).applyQuaternion(pose.quaternion);
+    const phi = Math.atan2(-hx.z, hx.x) + (R() < 0.5 ? Math.PI : 0);
+    const cs = Math.cos(phi), sn = Math.sin(phi);
+    const pts = [];
+    const add = (p) => pts.push(p.x * cs - p.z * sn, p.y, p.x * sn + p.z * cs);
+    for (const h of halves) {
+      const pa = h.mesh.geometry.attributes.position, mw = h.mesh.matrixWorld;
+      for (let k = 0; k < pa.count; k += 2) add(_v.fromBufferAttribute(pa, k).applyMatrix4(mw));
+    }
+    if (slip.visible) for (const [a, b] of [[-0.5, -0.1], [0.5, -0.1], [-0.5, 0.1], [0.5, 0.1]]) add(_v.set(a, b, 0).applyMatrix4(slip.matrixWorld));
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (let k = 0; k < pts.length; k += 3) {
+      x0 = Math.min(x0, pts[k]); x1 = Math.max(x1, pts[k]); y0 = Math.min(y0, pts[k + 1]); y1 = Math.max(y1, pts[k + 1]); z0 = Math.min(z0, pts[k + 2]); z1 = Math.max(z1, pts[k + 2]);
+    }
+    const W = WRAPS[Math.floor(R() * WRAPS.length)], V = W.V;
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const Sx = (x1 - x0) / 2 / 0.8 * (1 + R() * 0.06), Sz = (z1 - z0) / 2 / 0.84 * (1.03 + R() * 0.08);
+    let Sy = (y1 - y0) * 1.05;
+    for (let k = 0; k < pts.length; k += 3) {
+      const top = Math.max(0.2, wrapTop(V, (pts[k] - cx) / Sx, (pts[k + 2] - cz) / Sz));
+      Sy = Math.max(Sy, (pts[k + 1] - y0) / (0.9 * top));
+    }
+    Sy = Math.min(Sy, (y1 - y0) * 1.9) * (1.03 + R() * 0.06);
+    const g = new THREE.Group();
+    const inv = pose.quaternion.clone().invert();
+    g.position.set(cx * cs + cz * sn, y0, -cx * sn + cz * cs).applyQuaternion(inv);
+    g.quaternion.copy(inv).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), phi));
+    const meshes = W.g.map((geo) => { const m = new THREE.Mesh(geo, filmMat); m.scale.set(Sx, Sy, Sz); m.renderOrder = 2; g.add(m); return m; });
+    pose.add(g);
+    return { g, meshes, S: new THREE.Vector3(Sx, Sy, Sz), on: true };
   }
   function freeCookie(c) {
     c.alive = false;
     scene.remove(c.root); scene.remove(c.blob);
+    c.wrap.meshes.forEach((m) => { if (m.parent) m.parent.remove(m); const i = pickables.indexOf(m); if (i >= 0) pickables.splice(i, 1); });
     c.halves.forEach((h) => { h.mesh.geometry.dispose(); const i = pickables.indexOf(h.mesh); if (i >= 0) pickables.splice(i, 1); });
     c.mat.dispose(); c.slip.material.dispose(); c.blob.material.dispose();
     const i = cookies.indexOf(c); if (i >= 0) cookies.splice(i, 1);

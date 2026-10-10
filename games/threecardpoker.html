@@ -54,6 +54,9 @@
 .spot.pp::before{content:"";position:absolute;inset:13%;border-radius:16%;transform:rotate(45deg);border:2px solid rgba(255,222,150,.6);background:rgba(0,0,0,.12);box-shadow:inset 0 0 0 5px rgba(0,0,0,.07),inset 0 0 0 6px rgba(255,222,150,.18);transition:box-shadow .2s,border-color .2s;}
 .spot.pp.sel::before{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,200,61,.35),0 0 20px rgba(255,200,61,.45);}
 .spot.pp > *{position:relative;}
+.spot.pp.cz-tgt,.spot.pp.cz-no{box-shadow:none!important;background:none!important;}
+.spot.pp.cz-tgt::before{border-color:#ffd54a;background:rgba(255,213,74,.14);box-shadow:0 0 0 3px #ffd54a,0 0 22px rgba(255,213,74,.7),inset 0 0 22px rgba(255,213,74,.35);}
+.spot.pp.cz-no::before{border-color:#ff5c62;box-shadow:0 0 0 3px rgba(255,92,98,.85),inset 0 0 16px rgba(255,92,98,.3);}
 .spot .lab{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font-family:var(--display);font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;line-height:1;text-align:center;pointer-events:none;}
 .spot.has .lab{top:auto;bottom:8px;transform:none;font-size:.6rem;opacity:.9;}
 .spot.pp .lab{position:absolute;}
@@ -92,11 +95,6 @@
 .status .ico{width:18px;height:18px;vertical-align:-3px;}
 .status .big{display:block;font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.1;color:var(--text);}
 .status .tip{display:block;font-size:.8rem;color:var(--text-3);font-weight:700;margin-top:2px;}
-.rack{display:flex;justify-content:center;gap:clamp(6px,2.4vw,12px);padding:10px 8px 12px;border-radius:18px;
-  background:linear-gradient(180deg,#24160e,#160d07);box-shadow:inset 0 3px 8px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.06);}
-.rack .chp{--s:clamp(50px,14vw,58px);cursor:pointer;}
-.rack .chp:active:not(:disabled){transform:translateY(-3px) scale(.94);}
-.rack .chp:disabled{opacity:.28;cursor:default;filter:saturate(.5);}
 .acts{display:flex;gap:10px;}
 .acts .btn{flex:1;padding:0 12px;white-space:nowrap;}
 .acts .btn.main{flex:1.5;}
@@ -118,7 +116,7 @@
   .paytbl{max-width:400px;font-size:.72rem;} .paytbl h4{font-size:.82rem;}
   .print.rule{font-size:.84rem;}
   .ctable .felt-in.tbl{gap:12px;padding:18px 14px;}
-  .rack .chp{--s:64px;}
+  .cz-rack{--cs:60px;}
   .acts .btn{min-height:58px;font-size:1.08rem;}
   .status{font-size:1.05rem;}
 }
@@ -238,7 +236,8 @@
     rules:
       '<p class="goal">You and the dealer each get <b>3 cards</b>. Beat the dealer\'s hand to win. Your chips are shared with all the casino games.</p>' +
       '<h3>1. Bet</h3><ul><li><b>Ante</b> (required): your bet against the dealer.</li>' +
-      '<li><b>Pair Plus</b> (optional): pays if your 3 cards are a pair or better, no matter what the dealer has.</li></ul>' +
+      '<li><b>Pair Plus</b> (optional): pays if your 3 cards are a pair or better, no matter what the dealer has.</li>' +
+      '<li>Drag chips from the rack onto the Ante or Pair Plus circle. The circle lights up under the chip; let go to put it down, or let go anywhere else and it goes back to the rack. Shortcut: tap a chip to add it to the circle that is picked (tap a circle to pick it).</li></ul>' +
       '<h3>2. Look at your cards</h3><ul><li><b>Play</b>: put out a Play bet the same size as your Ante.</li>' +
       '<li><b>Fold</b>: give up. You lose your Ante (and your Pair Plus bet).</li>' +
       '<li>A good simple rule: play anything <b>Queen-6-4 or better</b>.</li></ul>' +
@@ -292,12 +291,16 @@
     if (!S || S.phase !== 'bet' || busy || !undoStack.length) return Kit.toast(S && S.phase !== 'bet' ? 'Dealt cards can’t be taken back' : 'Nothing to undo');
     S.bets = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); save(); render();
   }
-  function addChip(v, fromEl) {
-    if (!S || S.phase !== 'bet' || busy) return;
-    if (v > room(S.target)) { Kit.toast(S.target === 'ante' ? 'Keep enough back for your Play bet' : 'Not enough chips'); Kit.haptic('error'); return; }
+  // Add a chip to the picked circle (or the one it was dropped on). Returns true if it went down.
+  function addChip(v, fromEl, target) {
+    if (!S || S.phase !== 'bet' || busy) return false;
+    if (target) S.target = target;
+    if (v > room(S.target)) { Kit.toast(S.target === 'ante' ? 'Keep enough back for your Play bet' : 'Not enough chips'); Kit.haptic('error'); if (target) render(); return false; }
+    var fr = fromEl && fromEl.isConnected ? fromEl.getBoundingClientRect() : null;   // the rack is redrawn below
     snapshot(); S.bets[S.target] += v; Kit.sfx('chip'); Kit.haptic('light'); save(); render();
     var spot = app.querySelector('.spot[data-k="' + S.target + '"] .cstack');
-    if (spot && fromEl) { var top = spot.lastElementChild; if (top) Cards.fly(top, fromEl, { ms: 300 }); }
+    if (spot && fr) { var top = spot.lastElementChild; if (top) Cards.fly(top, { getBoundingClientRect: function () { return fr; } }, { ms: 300 }); }
+    return true;
   }
   function clearBets() { if (!S.bets.ante && !S.bets.pp) return; snapshot(); S.bets.ante = 0; S.bets.pp = 0; Kit.sfx('whoosh'); save(); render(); }
   function canRebet() { return S.last && 2 * S.last.ante + S.last.pp <= bank(); }
@@ -460,7 +463,7 @@
   }
   function spotEl(k, label) {
     var amt = S.phase === 'result' && S.res ? (S.res.spots[k] ? S.res.spots[k].amt : 0) : S.bets[k];
-    var b = el('button', { type: 'button', class: 'spot' + (k === 'pp' ? ' pp' : '') + (amt ? ' has' : '') + (S.phase === 'bet' && S.target === k ? ' sel' : ''), 'data-k': k, 'aria-label': label + ' bet ' + money(amt),
+    var b = el('button', { type: 'button', class: 'spot' + (k === 'pp' ? ' pp' : '') + (amt ? ' has' : '') + (S.phase === 'bet' && S.target === k ? ' sel' : ''), 'data-k': k, 'data-spot': S.phase === 'bet' && k !== 'play' ? k : null, 'aria-label': label + ' bet ' + money(amt),
       disabled: S.phase !== 'bet' || k === 'play', onclick: function () { if (S.phase !== 'bet' || busy) return; S.target = k; Kit.sfx('tap'); Kit.haptic('light'); save(); render(); } });
     b.appendChild(el('span', { class: 'lab', text: label }));
     if (amt) b.appendChild(stackEl(amt));
@@ -531,14 +534,24 @@
         status.innerHTML = 'Out of chips! <span class="tip">The house will stake you a fresh $1,000.</span>';
         acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Get $1,000 in chips', onclick: function () { bankSet(1000); Kit.sfx('chip'); render(); } }));
       } else {
-        status.innerHTML = S.bets.ante ? 'Betting on <b>' + (S.target === 'pp' ? 'Pair Plus' : 'Ante') + '</b>. Tap a circle to switch.' : 'Tap chips to bet on the <b>' + (S.target === 'pp' ? 'Pair Plus' : 'Ante') + '</b>. Tap a circle to switch.';
-        var rack = el('div', { class: 'rack' });
-        var rm = room(S.target);
-        CHIPS.forEach(function (v) {
-          var c = chip(v, { type: 'button', 'aria-label': '$' + v + ' chip', disabled: v > rm, onclick: function () { addChip(v, c); } });
-          rack.appendChild(c);
+        status.innerHTML = S.bets.ante ? 'Drag more chips onto <b>Ante</b> or <b>Pair Plus</b>, or deal.' : 'Drag chips from the rack onto the <b>Ante</b>.';
+        var hint0 = status.innerHTML;
+        var rk = Casino.rack({
+          denoms: CHIPS, value: null, select: false,
+          table: function () { return app.querySelector('.ctable .felt-in'); },
+          enabled: function () { return !!S && S.phase === 'bet' && !busy; },
+          can: function (v) { return v <= Math.max(room('ante'), room('pp')); },
+          ok: function (k, v) { return v <= room(k); },
+          ghost: 44,
+          tap: function (v) { addChip(v, rk.el.querySelector('.cz-slot[data-v="' + v + '"]')); },
+          over: function (k, v) {
+            if (k == null) { status.innerHTML = 'Drop the ' + money(v) + ' chip on <b>Ante</b> or <b>Pair Plus</b>'; return; }
+            status.innerHTML = v <= room(k) ? '<b>' + (k === 'pp' ? 'Pair Plus' : 'Ante') + '</b> · let go to bet ' + money(v) : (k === 'ante' ? 'Keep enough back for your Play bet' : 'Not enough chips');
+          },
+          done: function (placed) { if (!placed) status.innerHTML = hint0; },
+          drop: function (k, v) { return addChip(v, null, k); }
         });
-        ctl.appendChild(rack);
+        ctl.appendChild(rk.el);
         if (!S.bets.ante && !S.bets.pp && S.last && canRebet()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Rebet ' + money(S.last.ante + S.last.pp), onclick: rebet }));
         else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Clear', disabled: !S.bets.ante && !S.bets.pp, onclick: clearBets }));
         acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Deal', disabled: !S.bets.ante, onclick: deal }));

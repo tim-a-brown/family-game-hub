@@ -275,6 +275,7 @@ var Cards = (function () {
     '.spad tr.sub td{height:auto;padding:3px 2px 7px;vertical-align:top;border-top:0;}',
     '.spad tr.sub th.rn{vertical-align:top;padding-top:8px;font-size:.56rem;color:#8a8796;letter-spacing:.08em;line-height:1.1;white-space:normal;}',
     '.spad tr.open th.rn small{display:block;font-size:.56rem;color:#8a8796;letter-spacing:.06em;margin-top:2px;}',
+    '.spad [hidden]{display:none !important;}',
     '.sp-step{display:flex;flex-direction:column;align-items:stretch;}',
     '.sp-step > button{height:28px;padding:0;border:1px solid rgba(60,80,160,.28);background:rgba(255,255,255,.55);color:#2a2a3a;font-family:var(--font);font-weight:900;font-size:1rem;line-height:1;transition:transform .12s var(--spring),background .12s;}',
     '.sp-step > button:first-child{border-radius:8px 8px 0 0;border-bottom:0;}',

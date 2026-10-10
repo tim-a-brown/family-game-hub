@@ -195,10 +195,11 @@ const Casino = (function(){
   // Casino.chip(v, px) and Casino.stack(amount, px) draw the same chips.
   var CHIP_CSS = '' +
     '.cz-chip{--cs:44px;--c:#c8202f;--s:#fff;--k:#fff;position:relative;width:var(--cs);height:var(--cs);border-radius:50%;flex:none;box-sizing:border-box;' +
-      'display:grid;place-items:center;color:var(--k);font:900 calc(var(--cs) * .34)/1 var(--font,system-ui);letter-spacing:-.03em;text-shadow:0 1px 1px rgba(0,0,0,.35);' +
+      '--fs:.34;display:grid;place-items:center;color:var(--k);font:900 calc(var(--cs) * var(--fs))/1 var(--font,system-ui);letter-spacing:-.03em;text-shadow:0 1px 1px rgba(0,0,0,.35);' +
       'background:radial-gradient(circle,rgba(255,255,255,.16) 0 28%,transparent 29%),radial-gradient(circle,var(--c) 0 46%,var(--s) 47% 50%,var(--c) 51% 63%,transparent 64%),' +
       'repeating-conic-gradient(from 8deg,var(--s) 0 16deg,var(--c) 16deg 45deg);' +
       'box-shadow:0 calc(var(--cs) * .07) 0 color-mix(in srgb,var(--c) 55%,#000),0 calc(var(--cs) * .1) calc(var(--cs) * .14) rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.2);}' +
+    '.cz-chip.l3{--fs:.29;}.cz-chip.l4{--fs:.25;}' +
     '.cz-chip[data-v="1"]{--c:#f1ece0;--s:#2f6bd8;--k:#1d2440;text-shadow:none;}' +
     '.cz-chip[data-v="5"]{--c:#c8202f;--s:#fff;}' +
     '.cz-chip[data-v="25"]{--c:#1d8a4b;--s:#fff;}' +
@@ -219,11 +220,11 @@ const Casino = (function(){
       'box-shadow:inset 0 5px 9px rgba(0,0,0,.72),inset 0 -1px 0 rgba(255,255,255,.08);transition:filter .2s,opacity .2s;}' +
     '.cz-slot .cz-stk{position:absolute;left:50%;bottom:5px;margin-left:calc(var(--cs) / -2);transition:transform .22s var(--spring,ease);}' +
     '.cz-slot .cz-chip:nth-child(1){top:0;}.cz-slot .cz-chip:nth-child(2){top:-4px;}.cz-slot .cz-chip:nth-child(3){top:-8px;}' +
-    '.cz-slot .cz-chip:last-child{font-size:calc(var(--cs) * .34);}' +
+    '.cz-slot .cz-chip:last-child{font-size:calc(var(--cs) * var(--fs));}' +
     '.cz-slot.on .cz-stk{transform:translateY(-3px);}' +
     '.cz-slot.on .cz-chip:last-child{box-shadow:0 0 0 3px #ffd54a,0 0 14px rgba(255,213,74,.65),0 calc(var(--cs) * .1) calc(var(--cs) * .14) rgba(0,0,0,.45);}' +
     '.cz-slot.out .cz-chip:last-child{visibility:hidden;}' +
-    '.cz-slot.out .cz-chip:nth-last-child(2){font-size:calc(var(--cs) * .34);}' +
+    '.cz-slot.out .cz-chip:nth-last-child(2){font-size:calc(var(--cs) * var(--fs));}' +
     '.cz-slot:disabled{cursor:default;filter:grayscale(.85) brightness(.55);}' +
     '.cz-slot:focus-visible{outline:3px solid #ffd54a;outline-offset:2px;}' +
     // The chip in hand
@@ -249,6 +250,7 @@ const Casino = (function(){
     css();
     var c = document.createElement('span'); c.className = 'cz-chip'; c.setAttribute('data-v', v);
     c.textContent = label != null ? label : shortAmt(v);
+    if(c.textContent.length > 2) c.classList.add(c.textContent.length > 3 ? 'l4' : 'l3');
     if(px) c.style.setProperty('--cs', px + 'px');
     return c;
   }

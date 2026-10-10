@@ -102,11 +102,6 @@
 .status .tip{display:block;font-size:.8rem;color:var(--text-3);font-weight:700;margin-top:2px;}
 .status .bad{color:#ff8a8a;}
 .status .ok{color:var(--green);}
-.rack{display:flex;justify-content:center;gap:clamp(6px,2.4vw,12px);padding:10px 8px 12px;border-radius:18px;
-  background:linear-gradient(180deg,#24160e,#160d07);box-shadow:inset 0 3px 8px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.06);}
-.rack .chp{--s:clamp(50px,14vw,58px);cursor:pointer;}
-.rack .chp:active:not(:disabled){transform:translateY(-3px) scale(.94);}
-.rack .chp:disabled{opacity:.28;cursor:default;filter:saturate(.5);}
 .acts{display:flex;gap:10px;}
 .acts .btn{flex:1;padding:0 12px;white-space:nowrap;}
 .acts .btn.main{flex:1.2;}
@@ -119,7 +114,7 @@
   .stage:has(> .ctable){max-width:660px;}
   .prow{--cw:78px;} .row7,.dset{--cw:56px;}
   .spot{width:108px;}
-  .rack .chp{--s:64px;}
+  .cz-rack{--cs:60px;}
   .acts .btn{min-height:58px;font-size:1.08rem;}
   .status{font-size:1.05rem;}
 }
@@ -366,6 +361,8 @@
     ],
     rules:
       '<p class="goal">Split your 7 cards into a <b>5-card high hand</b> and a <b>2-card low hand</b>. Beat both of the dealer\'s hands to win.</p>' +
+      '<h3>Betting</h3><ul><li>Drag chips from the rack into the <b>Bet</b> circle. The circle lights up under the chip; let go to put it down, or let go anywhere else and it goes back to the rack.</li>' +
+      '<li>Shortcut: tap a chip to add it to your bet. Then tap <b>Deal</b>.</li></ul>' +
       '<h3>Setting your hands</h3><ul><li>Tap two cards to move them to your <b>low hand</b>. Tap a low card to put it back.</li>' +
       '<li>Your high hand must be <b>better</b> than your low hand (no pair high with a pair low, for example).</li>' +
       '<li>Not sure? Tap <b>House way</b> to see how the dealer would set your cards.</li></ul>' +
@@ -416,12 +413,15 @@
     else { var from = cardRects(); S.low = v; save(); render(); flyFrom(from); }
     Kit.sfx('whoosh');
   }
+  // Add a chip to the bet. Returns true if it went down.
   function addChip(v, fromEl) {
-    if (!S || S.phase !== 'bet' || busy) return;
-    if (S.bet + v > bank()) { Kit.toast('Not enough chips'); Kit.haptic('error'); return; }
+    if (!S || S.phase !== 'bet' || busy) return false;
+    if (S.bet + v > bank()) { Kit.toast('Not enough chips'); Kit.haptic('error'); return false; }
+    var fr = fromEl && fromEl.isConnected ? fromEl.getBoundingClientRect() : null;   // the rack is redrawn below
     snapshot(); S.bet += v; Kit.sfx('chip'); Kit.haptic('light'); save(); render();
     var st = app.querySelector('.spot .cstack');
-    if (st && fromEl) Cards.fly(st.lastElementChild, fromEl, { ms: 300 });
+    if (st && fr) Cards.fly(st.lastElementChild, { getBoundingClientRect: function () { return fr; } }, { ms: 300 });
+    return true;
   }
   function clearBet() { if (!S.bet) return; snapshot(); S.bet = 0; Kit.sfx('whoosh'); save(); render(); }
 
@@ -612,7 +612,7 @@
 
     // Bet circle + low hand
     var amt = res ? res.amt : S.phase === 'bet' ? S.bet : S.bet;
-    var spot = el('div', { class: 'spot' + (amt ? ' has' : ''), 'aria-label': 'Bet ' + money(amt) }, [el('span', { class: 'lab', text: 'Bet' })]);
+    var spot = el('div', { class: 'spot' + (amt ? ' has' : ''), 'aria-label': 'Bet ' + money(amt), 'data-spot': S.phase === 'bet' ? 'bet' : null }, [el('span', { class: 'lab', text: 'Bet' })]);
     if (amt) spot.appendChild(stackEl(amt));
     if (res) spot.appendChild(el('span', { class: 'res ' + res.out + (revealing ? '' : ' show'), text: res.out === 'win' ? 'WIN' : res.out === 'push' ? 'PUSH' : 'LOSE' }));
     var spotw = el('div', { class: 'spotw' }, [spot, el('span', { class: 'amt', id: 'betamt', text: amt ? money(amt) : '' })]);
@@ -649,10 +649,21 @@
         status.innerHTML = 'Out of chips! <span class="tip">The house will stake you a fresh $1,000.</span>';
         acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Get $1,000 in chips', onclick: function () { bankSet(1000); Kit.sfx('chip'); render(); } }));
       } else {
-        status.innerHTML = S.bet ? 'Bet <b>' + money(S.bet) + '</b>. Add more or deal.' : 'Tap chips to make your bet.';
-        var rack = el('div', { class: 'rack' }), room = bank() - S.bet;
-        CHIPS.forEach(function (v) { var c = chip(v, { type: 'button', 'aria-label': '$' + v + ' chip', disabled: v > room, onclick: function () { addChip(v, c); } }); rack.appendChild(c); });
-        ctl.appendChild(rack);
+        status.innerHTML = S.bet ? 'Bet <b>' + money(S.bet) + '</b>. Drag on more or deal.' : 'Drag chips from the rack into the <b>Bet</b> circle.';
+        var hint0 = status.innerHTML;
+        var rk = Casino.rack({
+          denoms: CHIPS, value: null, select: false,
+          table: function () { return app.querySelector('.ctable .felt-in'); },
+          enabled: function () { return !!S && S.phase === 'bet' && !busy; },
+          can: function (v) { return S.bet + v <= bank(); },
+          ok: function (k, v) { return S.bet + v <= bank(); },
+          ghost: 44,
+          tap: function (v) { addChip(v, rk.el.querySelector('.cz-slot[data-v="' + v + '"]')); },
+          over: function (k, v) { status.innerHTML = k == null ? 'Drop the ' + money(v) + ' chip in the <b>Bet</b> circle' : 'Let go to bet ' + money(v); },
+          done: function (placed) { if (!placed) status.innerHTML = hint0; },
+          drop: function (k, v) { return addChip(v, null); }
+        });
+        ctl.appendChild(rk.el);
         if (!S.bet && S.last && S.last <= bank()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Rebet ' + money(S.last), onclick: function () { snapshot(); S.bet = S.last; Kit.sfx('chip'); save(); render(); } }));
         else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Clear', disabled: !S.bet, onclick: clearBet }));
         acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Deal', disabled: !S.bet, onclick: deal }));
