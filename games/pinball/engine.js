@@ -525,6 +525,7 @@ export function createGame(def, opts = {}) {
   G.pullEnd = function (o = {}) {
     if (!G.pulling) return;
     G.pulling = false;
+    if (G.pullMode === 'drag') G.pull = Math.min(1, Math.max(0, G.pullDrag || 0));   // where the knob is now (a release can beat the next frame)
     if (o.cancel || (G.pullMode === 'drag' && !o.tap && G.pull < 0.04)) { G.pull = 0; if (G.plunger) G.plunger.pullTo(0); return; }
     launch(o.tap ? (def.tapLaunch || 0.6) : Math.max(G.pull, G.pullMode === 'drag' ? 0.06 : 0.22));
   };

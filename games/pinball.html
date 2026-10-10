@@ -372,11 +372,12 @@ function drawBest(v) {
 // down over the button row so the knob has room to travel; only the parts at rest take touches.
 const plunger = { el: null, cv: null, cue: null, grab: null, knobCol: '#e8dcc0', s: 1, W: 0, H: 0, hTop: 0, rod0: 6, travel: 80, limit: 0, x: 0,
   drag: null, d: 0, snap: null, raf: 0 };
-const PL = { housW: 46, housH: 14, rodW: 7, knobW: 40, knobH: 30, ferH: 6, pad: 8, shadow: 14 };   // CSS px at scale 1
+const PL = { housW: 46, housH: 14, rodW: 7, knobW: 40, knobH: 34, ferH: 6, pad: 8, shadow: 14 };   // CSS px at scale 1
 function layoutPlunger(glide) {
   const P = plunger; if (!P.el) return;
   if (!G || !G.plunger || view !== 'game' || !G.project) { P.el.classList.remove('show'); return; }
-  const vr = viewEl.getBoundingClientRect(), lane = G.project(G.plunger.x, 30, 0, G.view());
+  // anchored on the chrome bracket at the foot of the 3D lane (table y 32..38), so housing and bracket read as one part
+  const vr = viewEl.getBoundingClientRect(), lane = G.project(G.plunger.x, 35, 12, G.view());
   if (!lane || !vr.width) return;
   const s = P.s = Math.max(1, Math.min(1.25, vr.width / 440));
   const housH = PL.housH * s, knobH = (PL.knobH + PL.ferH) * s, half = (PL.knobW / 2 + 8) * s;
@@ -387,8 +388,8 @@ function layoutPlunger(glide) {
     const r = c.getBoundingClientRect();
     if (r.right - vr.left > lane.x - half && r.left - vr.left < lane.x + half && r.top - vr.top > lane.y) limit = Math.min(limit, r.top - vr.top);
   }
-  let hTop = lane.y - housH * 0.4;   // the housing overlaps the lane's end: it is mounted on the cabinet front
-  let rod0 = Math.min(10 * s, limit - 6 - (hTop + housH + knobH));
+  let hTop = lane.y - housH * 0.5;
+  let rod0 = Math.min(16 * s, limit - 6 - (hTop + housH + knobH));
   if (rod0 < 3 * s) { hTop -= 3 * s - rod0; rod0 = 3 * s; }
   const restBottom = hTop + housH + rod0 + knobH;
   P.rod0 = rod0; P.hTop = hTop; P.limit = limit; P.x = lane.x;
@@ -453,13 +454,16 @@ function drawPlunger() {
   // the knob: a chrome ferrule, then a turned plastic knob in the table's colour, flared at the end
   g.fillStyle = chromeX(g, cx - 8 * s, cx + 8 * s); rrect(g, cx - 8 * s, kTop - 1, 16 * s, fH + 2, 2 * s); g.fill();
   g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(cx - 8 * s, kTop + fH - 1, 16 * s, 1);
-  const kt = kTop + fH, wTop = kW * 0.66;
+  // turned knob: a short neck, a straight barrel that widens a touch, a domed end
+  const kt = kTop + fH, wTop = kW * 0.8, r = kW * 0.42;
   g.beginPath();
-  g.moveTo(cx - wTop / 2, kt);
-  g.bezierCurveTo(cx - wTop / 2 - 2 * s, kt + kH * 0.35, cx - kW / 2, kt + kH * 0.45, cx - kW / 2, kt + kH * 0.68);
-  g.bezierCurveTo(cx - kW / 2, kt + kH * 0.95, cx - kW * 0.32, kt + kH, cx, kt + kH);
-  g.bezierCurveTo(cx + kW * 0.32, kt + kH, cx + kW / 2, kt + kH * 0.95, cx + kW / 2, kt + kH * 0.68);
-  g.bezierCurveTo(cx + kW / 2, kt + kH * 0.45, cx + wTop / 2 + 2 * s, kt + kH * 0.35, cx + wTop / 2, kt);
+  g.moveTo(cx - wTop / 2 + 3 * s, kt);
+  g.quadraticCurveTo(cx - wTop / 2, kt, cx - wTop / 2, kt + 3 * s);
+  g.lineTo(cx - kW / 2, kt + kH - r);
+  g.bezierCurveTo(cx - kW / 2, kt + kH - r * 0.2, cx - kW * 0.3, kt + kH, cx, kt + kH);
+  g.bezierCurveTo(cx + kW * 0.3, kt + kH, cx + kW / 2, kt + kH - r * 0.2, cx + kW / 2, kt + kH - r);
+  g.lineTo(cx + wTop / 2, kt + 3 * s);
+  g.quadraticCurveTo(cx + wTop / 2, kt, cx + wTop / 2 - 3 * s, kt);
   g.closePath();
   const kg = g.createLinearGradient(cx - kW / 2, 0, cx + kW / 2, 0);
   kg.addColorStop(0, mixHex(col, '#000000', 0.62)); kg.addColorStop(0.2, mixHex(col, '#000000', 0.18)); kg.addColorStop(0.36, mixHex(col, '#ffffff', 0.45));
@@ -468,31 +472,36 @@ function drawPlunger() {
   g.save(); g.clip();
   const vg = g.createLinearGradient(0, kt, 0, kt + kH); vg.addColorStop(0, 'rgba(0,0,0,.35)'); vg.addColorStop(0.3, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(255,255,255,.06)'); vg.addColorStop(1, 'rgba(0,0,0,.3)');
   g.fillStyle = vg; g.fillRect(cx - kW / 2, kt, kW, kH);
-  // specular: the room light on the knob's shoulder, and a soft rim on the flare
-  g.fillStyle = 'rgba(255,255,255,.55)'; g.filter = 'blur(' + (1.2 * s) + 'px)'; g.beginPath(); g.ellipse(cx - kW * 0.17, kt + kH * 0.6, kW * 0.07, kH * 0.2, 0, 0, Math.PI * 2); g.fill(); g.filter = 'none';
-  g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1.2 * s; g.beginPath(); g.ellipse(cx, kt + kH * 0.86, kW * 0.4, kH * 0.1, 0, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+  // a grip groove round the barrel, the room light on its shoulder, and the dome's rim
+  const gy = kt + kH * 0.3;
+  g.fillStyle = 'rgba(0,0,0,.38)'; g.fillRect(cx - kW / 2, gy, kW, 1.6 * s);
+  g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(cx - kW / 2, gy + 1.6 * s, kW, 0.9 * s);
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.filter = 'blur(' + (1.1 * s) + 'px)'; g.beginPath(); g.roundRect ? g.roundRect(cx - kW * 0.22, kt + kH * 0.12, kW * 0.1, kH * 0.62, kW * 0.05) : g.rect(cx - kW * 0.22, kt + kH * 0.12, kW * 0.1, kH * 0.62); g.fill(); g.filter = 'none';
+  // the dome turning away at the end
+  const dg = g.createLinearGradient(0, kt + kH - r, 0, kt + kH); dg.addColorStop(0, 'rgba(0,0,0,0)'); dg.addColorStop(1, 'rgba(0,0,0,.4)');
+  g.fillStyle = dg; g.fillRect(cx - kW / 2, kt + kH - r, kW, r);
   g.restore();
   g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1; g.stroke();
 }
+function plungerStep(now) {
+  const P = plunger; if (!P.el || !G || view !== 'game') return false;
+  if (P.drag) { /* P.d follows the finger (pointermove) */ }
+  else if (G.pulling) { P.snap = null; P.d = Math.min(1, G.pull) * P.travel; }   // a held key
+  else if (P.snap) {
+    // released: the spring drives it home in ~60 ms, a small overshoot into the housing, then rest
+    const t = now - P.snap.t0, f = P.snap.from, os = Math.min(5 * P.s, 2 + f * 0.06);
+    if (P.snap.dip && t < 55) P.d = f * Math.sin(t / 55 * Math.PI / 2);
+    else { const u = t - (P.snap.dip ? 55 : 0); P.d = u < 60 ? f * (1 - (u / 60) * (u / 60)) : u < 170 ? -os * Math.sin((u - 60) / 110 * Math.PI) * (1 - (u - 60) / 220) : 0; if (u >= 170) P.snap = null; }
+  }
+  else P.d = 0;
+  drawPlunger();
+  if (flipBtn.R) flipBtn.R.classList.toggle('under', P.d > 0 && P.hTop + P.d + (P.H - PL.shadow * P.s - P.travel - PL.pad * P.s) > P.limit - 2);
+  plungerState();
+  return !!(P.drag || P.snap || G.pulling);
+}
 function plungerAnim() {
   const P = plunger; if (P.raf || !P.el) return;
-  const step = () => {
-    P.raf = 0; if (!P.el || !G || view !== 'game') return;
-    const now = performance.now();
-    if (P.drag) { /* P.d follows the finger (pointermove) */ }
-    else if (P.snap) {
-      // released: the spring drives it home in ~60 ms, a small overshoot into the housing, then rest
-      const t = now - P.snap.t0, f = P.snap.from, os = Math.min(5 * P.s, 2 + f * 0.06);
-      if (P.snap.dip && t < 55) P.d = f * Math.sin(t / 55 * Math.PI / 2);
-      else { const u = t - (P.snap.dip ? 55 : 0); P.d = u < 60 ? f * (1 - (u / 60) * (u / 60)) : u < 170 ? -os * Math.sin((u - 60) / 110 * Math.PI) * (1 - (u - 60) / 220) : 0; if (u >= 170) P.snap = null; }
-    }
-    else if (G.pulling) P.d = Math.min(1, G.pull) * P.travel;   // a held key
-    else P.d = 0;
-    drawPlunger();
-    if (flipBtn.R) flipBtn.R.classList.toggle('under', P.d > 0 && P.hTop + P.d + (P.H - PL.shadow * P.s - P.travel - PL.pad * P.s) > P.limit - 2);
-    plungerState();
-    if (P.drag || P.snap || G.pulling) P.raf = requestAnimationFrame(step);
-  };
+  const step = () => { P.raf = 0; if (plungerStep(performance.now())) P.raf = requestAnimationFrame(step); };
   P.raf = requestAnimationFrame(step);
 }
 // let go (knob or key): launch at the pulled strength (the engine lets an eased-back pull go without one)
@@ -693,7 +702,7 @@ window.__pin = {
   mode(name) { const m = G && G.def.rules && G.def.rules.modes && G.def.rules.modes[name]; if (m) { m(G); return true; } return false; },
   render() { if (G) G.renderOnce(); },
   renderer() { return getRenderer(); },
-  ui() { plungerAnim(); plungerState(); },
+  ui(ms) { const P = plunger; plungerStep(ms != null && P.snap ? P.snap.t0 + ms : performance.now()); },   // draw the plunger now (ms: that far into a snap)
   plunger() { const P = plunger; return P.el ? { x: P.x, hTop: P.hTop, rod0: P.rod0, travel: P.travel, limit: P.limit, d: P.d, W: P.W, H: P.H, s: P.s, grab: P.grab.getBoundingClientRect().toJSON(), show: P.el.classList.contains('show') } : null; },
   view(m, animate) { if (m) setViewMode(m); return G ? G.view() : viewMode(); },
   // deterministic frames for screenshots: stop the live loop, step the game, draw once
