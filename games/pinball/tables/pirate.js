@@ -36,7 +36,7 @@ const rot = (cx, cy, a, x, y) => [cx + Math.cos(a) * x - Math.sin(a) * y, cy + M
 // the fort in world space: local (x right, y forward = towards the player) rotated so local -y faces FORT.face
 const FORT_ROT = deg(FORT.face) + PI / 2;
 const fortPt = (x, y) => rot(FORT.x, FORT.y, FORT_ROT, x, y);
-const FORT_BLOCK = [fortPt(-52, 46), fortPt(52, 46), fortPt(52, -26), fortPt(-52, -26)];
+const FORT_BLOCK = [fortPt(-52, 46), fortPt(38, 40), fortPt(52, -26), fortPt(-52, -26)];
 const CHEST_BOX = [[CHEST.x - CHEST.w / 2, CHEST.y - CHEST.d / 2], [CHEST.x - CHEST.w / 2, CHEST.y + CHEST.d / 2], [CHEST.x, CHEST.y + CHEST.d / 2 + 12], [CHEST.x + CHEST.w / 2, CHEST.y + CHEST.d / 2], [CHEST.x + CHEST.w / 2, CHEST.y - CHEST.d / 2]];   // peaked back: nothing rests on the lid
 const NO_LAND = [HULL, FORT_BLOCK, CHEST_BOX];
 
@@ -51,7 +51,7 @@ export default {
   rulesHtml:
     '<p>A sunset cove with a galleon at anchor, a fort on the island and something large in the lagoon.</p><ul>' +
     '<li><b>The cannon:</b> shoot the plank ramp on the right to roll aboard the galleon. The ball loads the ship\'s cannon: <b>hold a flipper button</b> to swing the gun, <b>let go to fire</b> (or tap FIRE). Aim at the fort.</li>' +
-    '<li><b>The fort:</b> three hits lower the drawbridge and raise the palisade targets. Knock the palisade down and the keep opens: shoot inside to start <b>Broadside</b>. Every fort hit in Broadside is worth a cannon jackpot, and three cannon hits bring the fort down for 250,000 and an extra ball.</li>' +
+    '<li><b>The fort:</b> three hits lower the drawbridge and raise the palisade targets. Knock the palisade down and the keep opens: shoot inside to start <b>Broadside</b>. Every fort hit in Broadside is worth a cannon jackpot, and three cannon hits bring the fort down for 300,000 and an extra ball.</li>' +
     '<li><b>The Kraken:</b> spell S-E-A on the lagoon targets and the Kraken wakes. Roll past the rock and a tentacle grabs the ball and drags it under to the treasure chest. Three balls in the chest start <b>Kraken Multiball</b>: ramps and orbits are jackpots, then the Kraken itself is the super jackpot.</li>' +
     '<li><b>Plunder ports:</b> knock down the M-A-P drop targets to light Plunder at the harbour scoop (bottom left). Each port lights three shots for 35 seconds; make all three to plunder it. Four ports on the map.</li>' +
     '<li><b>The storm:</b> roll through the whirlpool under the top lanes five times and the sky breaks: rain, lightning, the whirlpool spins and everything scores double for 30 seconds.</li>' +
@@ -139,6 +139,7 @@ function build(T) {
   T.wall([FORT_BLOCK[2], fortPt(36, -26)], { style: 'invisible', mat: 'wood', r: 3 });               // front corners
   T.wall([fortPt(-36, -26), FORT_BLOCK[3]], { style: 'invisible', mat: 'wood', r: 3 });
   T.ao({ kind: 'poly', pts: FORT_BLOCK, a: 0.6, blur: 12 });
+  T.post(FORT_BLOCK[1][0], FORT_BLOCK[1][1], { style: 'rubber', r: 5, draw: false });
   T.comp(new Fort(T, { id: 'fort' }));
   T.scoop({ id: 'keep', x: FORT.x, y: FORT.y + 2, r: 11, hood: false, hold: 1.2, eject: { angle: 290, speed: 1250 }, spread: 4 });
   T.popUpTargets({ id: 'palisade', color: '#7a5a34', targets: [0, 1, 2].map(i => { const p = fortPt(-30 + i * 30, -58); return { x: p[0], y: p[1], angle: FORT.face, w: 22 }; }) });
@@ -398,7 +399,7 @@ function makeRules() {
           break;
         case 'ramp':
           G.combo(id);
-          if (id === 'plank') { G.cnt('plank'); G.add(10000); if (!R.jp(G, 'plank')) { R.shot(G, 'plank'); } }
+          if (id === 'plank') { G.cnt('plank'); G.add(15000); if (!R.jp(G, 'plank')) { R.shot(G, 'plank'); } }
           if (id === 'rigging') { G.cnt('rig'); G.add(15000); if (!R.jp(G, 'rigging')) { if (!R.shot(G, 'rigging')) G.msg('THE RIGGING', fmt(20000 * G.mult), {}); } }
           break;
         case 'orbit': G.combo(id); if (!R.jp(G, id)) { if (!R.shot(G, id)) G.msg(id === 'orbitL' ? 'THE COVE' : "THE SHIP'S WHEEL", fmt(G.add(B.storm ? 50000 : 8000)), {}); else G.add(8000); } break;
@@ -439,7 +440,7 @@ function makeRules() {
       const B = G.b; if (B.port < 0 || !B.portShots[key]) return false;
       delete B.portShots[key]; G.cnt('portShot'); const left = Object.keys(B.portShots).length;
       if (left === 0) {
-        B.ports[B.port] = 1; G.cnt('port'); G.jackpot(120000, 'PORT PLUNDERED', { color: '#ffd166', sound: 'jackpot' }); R.say(G, 'plundered');
+        B.ports[B.port] = 1; G.cnt('port'); G.jackpot(150000, 'PORT PLUNDERED', { color: '#ffd166', sound: 'jackpot' }); R.say(G, 'plundered');
         G.endMode('port'); R.checkCompass(G);
       } else { G.add(40000); G.msg(PORTS[B.port], fmt(40000 * G.mult) + '  ' + left + ' TO GO', { anim: 'ship' }); G.sfx('coins', { vol: 0.5 }); }
       return true;
@@ -462,7 +463,7 @@ function makeRules() {
           if (B.cannonHits >= 3) R.takeFort(G); else G.msg('BROADSIDE', (3 - B.cannonHits) + ' MORE HITS TO TAKE THE FORT', { anim: 'cannon' });
           return;
         }
-        G.add(25000); G.msg('DIRECT HIT', fmt(25000 * G.mult), { anim: 'cannon' });
+        G.add(40000); G.msg('DIRECT HIT', fmt(40000 * G.mult), { anim: 'cannon' });
         if (fort.stage === 0) B.fortHits += 2;
       }
       if (fort.stage === 0) {
@@ -473,7 +474,7 @@ function makeRules() {
     },
     takeFort(G) {
       const B = G.b; B.fortTaken = true; B.cannonHits = 0; G.cnt('fort'); G.comp('fort').setStage(3); G.comp('palisade').down();
-      G.jackpot(250000, 'THE FORT IS TAKEN', { color: '#ff8a40', sound: 'jackpot' }); G.lightExtra(); R.say(G, 'taken', true); G.callout('FORT TAKEN', '#ffb060');
+      G.jackpot(300000, 'THE FORT IS TAKEN', { color: '#ff8a40', sound: 'jackpot' }); G.lightExtra(); R.say(G, 'taken', true); G.callout('FORT TAKEN', '#ffb060');
       if (B.broadside) { B.broadside = false; G.endMode('broadside'); }
       R.checkCompass(G);
     },
