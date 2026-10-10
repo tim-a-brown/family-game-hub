@@ -23,7 +23,7 @@ export default {
   rulesHtml: '<p>How to play this table (goes in the shared rules sheet).</p>',
   theme: { ... },        // colours and lighting, see Theme
   art: { playfield(P) {...}, backglass(g,w,h) {...}, apron(g,w,h) {...}, sides(g,w,h) {...}, backboard(g,w,h) {...}, sling(g,w,h,side) {...} },
-  fit: { top: 120, lookY: 0.47 },   // camera framing (optional)
+  fit: { top: 120, lookY: 0.47 },   // camera framing (optional; `topPhi` for the top-down view, default 82)
   anims: { name(g, t, W, H, msg) {...} },   // DMD pixel animations, see Display
   build(T) { ... },      // geometry: components, walls, inserts, models
   rules: { ... }         // the game: events, lamps, modes, bonus
@@ -206,6 +206,13 @@ theme: {
 ```
 Keep the key light and exposure near these values (the materials are tuned for them); change colour, not
 brightness. `env` and `gi` colours give each table its own light.
+
+**Views.** The player picks first person (angled, default) or top-down in the game menu or the picker; the
+page stores it in `pinball_view` and passes `view` to `createGame`. Both fits are computed from `W`/`L` and
+`fit` (`topPhi`, default 82, is the top-down tilt), so a table needs nothing extra. In the top-down view
+the key light moves over the player's left shoulder (`RC.keyPos`) so flat chrome doesn't mirror it into
+the camera; billboards (hologram, pop text) face whichever camera is active. Check new tables in both
+views (`__pin.view('top')`).
 
 ## Painting the playfield (`art.playfield(P)`)
 
