@@ -76,6 +76,16 @@
 .st.w.lastm::after{border-color:rgba(20,20,20,.8);}
 .st.atari{box-shadow:0 0 0 max(1.5px,.08em) rgba(255,70,60,.95),0 0 .45em .12em rgba(255,50,40,.75),.06em .1em .14em rgba(0,0,0,.5);animation:atari 1.2s ease-in-out infinite;}
 @keyframes atari{50%{box-shadow:0 0 0 max(1.5px,.08em) rgba(255,70,60,.6),0 0 .2em 0 rgba(255,50,40,.3),.06em .1em .14em rgba(0,0,0,.5);}}
+/* Same pulse as opacity-only layers (no repaint per frame): the ring stays at its
+   dim strength on the stone; the extra ring strength + wide glow fade out while the
+   tight glow fades in. (The last-move stone keeps the old pulse: its ::after is the marker.) */
+.st.atari:not(.lastm){box-shadow:0 0 0 max(1.5px,.08em) rgba(255,70,60,.6),.06em .1em .14em rgba(0,0,0,.5);animation:none;}
+.st.atari:not(.lastm)::before,.st.atari:not(.lastm)::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;}
+.st.atari:not(.lastm)::before{box-shadow:0 0 0 max(1.5px,.08em) rgba(255,70,60,.875),0 0 .45em .12em rgba(255,50,40,.75);animation:atari-out 1.2s ease-in-out infinite;}
+.st.atari:not(.lastm)::after{box-shadow:0 0 .2em 0 rgba(255,50,40,.3);opacity:0;animation:atari-in 1.2s ease-in-out infinite;}
+@keyframes atari-out{50%{opacity:0;}}
+@keyframes atari-in{50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){.st.atari:not(.lastm)::before,.st.atari:not(.lastm)::after{animation-duration:.01ms!important;}}
 .st.dead{opacity:.42;filter:saturate(.6);}
 .st.ghost{opacity:.5;box-shadow:none;transition:left .06s, top .06s;}
 .st.ghost.pv{opacity:.72;animation:pv 1s ease-in-out infinite;}

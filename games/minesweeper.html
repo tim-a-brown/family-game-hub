@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 body{overflow-x:hidden;}
 .ms{max-width:620px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 12px);}
@@ -162,6 +163,7 @@ body{overflow-x:hidden;}
     undo: function () { undo(); },
     menu: [
       { icon: 'chart', label: 'Best times', onClick: function () { showBests(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.diff : 'beginner')); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Minesweeper: past games' }); } }
     ],
     rules:
@@ -191,6 +193,14 @@ body{overflow-x:hidden;}
   function fmtLong(ms) { var s = ms / 1000; return s < 60 ? s.toFixed(1) + ' seconds' : fmt(ms); }
   function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
   function bestOf(d) { var b = 0; hist().forEach(function (e) { if (e && e.won && e.diff === d && e.ms > 0 && !e.undos && (!b || e.ms < b)) b = e.ms; }); return b; }
+  // High score board per level: clear time in seconds (tenths), wins without an undo, lower is better
+  function hiKey(d) { return 'minesweeper_' + d; }
+  var hiTop = {};
+  function boardBest(d) {   // in ms, linked players included
+    if (!(d in hiTop)) { var t = ArcadeHi.top(hiKey(d)); hiTop[d] = t != null ? Math.round(t * 1000) : 0; }
+    var b = bestOf(d), t2 = hiTop[d];
+    return t2 && (!b || t2 < b) ? t2 : b;
+  }
   function nbrs(i) {
     var r = Math.floor(i / S.cols), c = i % S.cols, out = [];
     for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
@@ -403,11 +413,14 @@ body{overflow-x:hidden;}
     }, t);
     setTimeout(function () {
       var diff = S.diff;
-      Kit.win({
-        title: best && prev ? 'New best time!' : 'Field cleared!',
-        sub: L().name + ' in ' + fmtLong(S.ms) + (best && prev ? ' (old best ' + fmt(prev) + ')' : !best && prev ? ' · best ' + fmt(prev) : ''),
-        againLabel: 'Play again', again: function () { start(diff); },
-        extra: [{ label: 'Change level', onClick: showSetup }]
+      ArcadeHi.check(clean ? hiKey(diff) : '', clean ? Math.round(S.ms / 100) / 10 : 0, function () {
+        delete hiTop[diff]; if (S && S.diff === diff && hud.best) updHud();
+        Kit.win({
+          title: best && prev ? 'New best time!' : 'Field cleared!',
+          sub: L().name + ' in ' + fmtLong(S.ms) + (best && prev ? ' (old best ' + fmt(prev) + ')' : !best && prev ? ' · best ' + fmt(prev) : ''),
+          againLabel: 'Play again', again: function () { start(diff); },
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(diff)); showSetup(); } }, { label: 'Change level', onClick: showSetup }]
+        });
       });
     }, t + (best && prev ? 2400 : 1600));
   }
@@ -532,7 +545,7 @@ body{overflow-x:hidden;}
   }
   function updHud() {
     hud.mines.textContent = String(L().mines - count(S.flag));
-    var b = bestOf(S.diff); hud.best.textContent = b ? fmt(b) : '–';
+    var b = boardBest(S.diff); hud.best.textContent = b ? fmt(b) : '–';
     updTime();
   }
   function updTime() { hud.time.textContent = S.ms < 60000 ? String(Math.floor(S.ms / 1000)) : fmt(S.ms); }
@@ -606,7 +619,8 @@ body{overflow-x:hidden;}
     get: function () { return S; },
     lay: function (mines) { S.mine = S.open.map(function () { return 0; }); mines.forEach(function (k) { S.mine[k] = 1; });
       S.adj = S.mine.map(function (m, k) { return nbrs(k).filter(function (x) { return S.mine[x]; }).length; }); startClock(); save(); },
-    cell: function (i) { return cellEls[i]; }
+    cell: function (i) { return cellEls[i]; },
+    dig: function (i) { dig(i); }
   };
 
   // ── Boot ──────────────────────────────────────────────────────────────────

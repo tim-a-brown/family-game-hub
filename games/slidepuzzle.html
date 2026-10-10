@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 @property --g{syntax:'<length>';inherits:true;initial-value:4px;}
 body{overflow-x:hidden;}
@@ -525,6 +526,7 @@ body{overflow-x:hidden;}
       { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
       { icon: 'sync', label: 'Restart this puzzle', onClick: function () { restart(); } },
       { icon: 'chart', label: 'Best scores', onClick: function () { showBests(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.n : 4)); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Slide Puzzle: past games', extra: histExtra }); } }
     ],
     rules:
@@ -556,6 +558,14 @@ body{overflow-x:hidden;}
   function clean(e) { return e && !e.hints && !e.watched && e.solved !== false; }
   function bestMoves(n) { var b = 0; hist().forEach(function (e) { if (clean(e) && e.size === n && e.moves > 0 && (!b || e.moves < b)) b = e.moves; }); return b; }
   function bestTime(n) { var b = 0; hist().forEach(function (e) { if (clean(e) && e.size === n && e.seconds > 0 && (!b || e.seconds < b)) b = e.seconds; }); return b; }
+  // High score board per size: moves, solved without hints or Watch, lower is better (linked players included)
+  function hiKey(n) { return 'slidepuzzle_' + n; }
+  var hiTop = {};
+  function boardMoves(n) {
+    if (!(n in hiTop)) hiTop[n] = ArcadeHi.top(hiKey(n)) || 0;
+    var b = bestMoves(n);
+    return hiTop[n] && (!b || hiTop[n] < b) ? hiTop[n] : b;
+  }
   function save() {
     if (!S || S.done) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
@@ -721,8 +731,8 @@ body{overflow-x:hidden;}
     if (!S) return;
     var m = $('mv'); if (m) m.textContent = String(S.moves);
     var t = $('tm'); if (t) t.textContent = fmt(S.time);
-    var bm = bestMoves(S.n), bt = bestTime(S.n), bs = $('bst');
-    if (bs) bs.innerHTML = bm ? bm + '<i>' + fmt(bt) + '</i>' : '–';
+    var bm = boardMoves(S.n), bt = bestTime(S.n), bs = $('bst');
+    if (bs) bs.innerHTML = bm ? bm + (bt ? '<i>' + fmt(bt) + '</i>' : '') : '–';
     var u = $('tUndo'); if (u) u.disabled = !S.U.length || S.done || !!watching;
     var h = $('tHint'); if (h) h.disabled = S.done || !!watching;
   }
@@ -956,12 +966,15 @@ body{overflow-x:hidden;}
     setTimeout(function () { Kit.callout(newM && prevM ? 'New best!' : S.watched ? 'Solved!' : 'Solved!'); }, 900);
     setTimeout(function () {
       var size = S.n, style = S.style, pid = S.pic;
-      Kit.win({
-        icon: S.watched ? 'bot' : 'trophy',
-        title: S.watched ? 'Solved by the computer' : newM && prevM ? 'New best!' : 'Solved!',
-        sub: name + ' in ' + S.moves + ' moves · ' + fmt(S.time) + (S.opt && !S.watched ? (S.moves <= S.opt ? ' · perfect!' : ' · shortest is ' + S.opt) : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
-        againLabel: 'Another ' + name, again: function () { newGame(size, style, pid); },
-        extra: [{ label: 'Choose a size', onClick: showSetup }]
+      ArcadeHi.check(isClean ? hiKey(size) : '', isClean ? S.moves : 0, function () {
+        delete hiTop[size]; updHud();
+        Kit.win({
+          icon: S.watched ? 'bot' : 'trophy',
+          title: S.watched ? 'Solved by the computer' : newM && prevM ? 'New best!' : 'Solved!',
+          sub: name + ' in ' + S.moves + ' moves · ' + fmt(S.time) + (S.opt && !S.watched ? (S.moves <= S.opt ? ' · perfect!' : ' · shortest is ' + S.opt) : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
+          againLabel: 'Another ' + name, again: function () { newGame(size, style, pid); },
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(size)); showSetup(); } }, { label: 'Choose a size', onClick: showSetup }]
+        });
       });
     }, 2700);
   }
@@ -987,7 +1000,8 @@ body{overflow-x:hidden;}
   window.__slide = {
     get: function () { return S; }, E: E, pic: picSvg,
     set: function (b) { S.b = b.slice(); S.U = []; plan = null; clearHint(); placeAll(true); updHud(); save(); },
-    solve: function () { return E.solve(S.b, S.n); }
+    solve: function () { return E.solve(S.b, S.n); },
+    tap: function (cell) { tapCell(cell); }
   };
 
   // ── Boot ──────────────────────────────────────────────────────────────────

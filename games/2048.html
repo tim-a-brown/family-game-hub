@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 body{overflow-x:hidden;}
 .g48{max-width:480px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - var(--safe-t) - 70px);}
@@ -121,7 +122,10 @@ body{overflow-x:hidden;}
     theme: { wood: ['#7d4a24', '#4f2c12'] },
     onNew: function () { abandon(); start(); },
     undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: '2048: past games', extra: miniBoard }); } }],
+    menu: [
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(HKEY); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: '2048: past games', extra: miniBoard }); } }
+    ],
     rules:
       '<p class="goal">Slide the tiles to join matching numbers. Make a <b>2048</b> tile to win, then keep going as far as you can.</p>' +
       '<h3>How it works</h3><ul>' +
@@ -142,6 +146,9 @@ body{overflow-x:hidden;}
     try { GameHistory.load(HKEY).forEach(function (e) { if (e && typeof e.score === 'number' && e.score > b) b = e.score; }); } catch (e) {}
     return b;
   }
+  // The high score board's best (linked players included), for the Best plaque
+  var hiTop = null;
+  function boardBest() { if (hiTop == null) hiTop = ArcadeHi.top(HKEY) || 0; return hiTop; }
   function save() {
     if (!S) return;
     try { localStorage.setItem(SAVE, JSON.stringify({ S: S, U: U })); } catch (e) {}
@@ -301,12 +308,15 @@ body{overflow-x:hidden;}
     var ov = el('div', { class: 'over' }, [el('b', { text: 'No more moves' })]);
     $('tiles').appendChild(ov);
     setTimeout(function () {
-      Kit.win({
-        icon: m >= 2048 || newBest ? 'trophy' : 'star', lose: !(m >= 2048 || newBest),
-        title: newBest ? 'New best score!' : m >= 2048 ? 'What a run!' : 'Game over',
-        sub: S.score.toLocaleString() + ' points · biggest tile ' + m + (newBest ? ' (old best ' + S.best0.toLocaleString() + ')' : ''),
-        againLabel: 'New game', again: start,
-        extra: [{ label: 'Past games', onClick: function () { Kit.history(HKEY, { title: '2048: past games', extra: miniBoard }); } }]
+      ArcadeHi.check(HKEY, S.score, function () {
+        hiTop = null; updHud();
+        Kit.win({
+          icon: m >= 2048 || newBest ? 'trophy' : 'star', lose: !(m >= 2048 || newBest),
+          title: newBest ? 'New best score!' : m >= 2048 ? 'What a run!' : 'Game over',
+          sub: S.score.toLocaleString() + ' points · biggest tile ' + m + (newBest ? ' (old best ' + S.best0.toLocaleString() + ')' : ''),
+          againLabel: 'New game', again: start,
+          extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(HKEY); } }, { label: 'Past games', onClick: function () { Kit.history(HKEY, { title: '2048: past games', extra: miniBoard }); } }]
+        });
       });
     }, 900);
   }
@@ -358,7 +368,7 @@ body{overflow-x:hidden;}
   function flush() { if (busy) { clearTimeout(busy.t); busy(); } }
   function updHud() {
     $('score').textContent = S.score.toLocaleString();
-    $('best').textContent = Math.max(S.score, S.best0).toLocaleString();
+    $('best').textContent = Math.max(S.score, S.best0, boardBest()).toLocaleString();
     $('undoBtn').disabled = !U;
   }
   function floatAdd(n) {
@@ -400,7 +410,8 @@ body{overflow-x:hidden;}
   // Test hook: set the board from 16 numbers (0 = empty)
   window.__g2048 = {
     get: function () { return S; },
-    set: function (vals, score) { flush(); vals.forEach(function (v, i) { S.cells[i] = v ? { id: nextId++, v: v } : null; }); if (score != null) S.score = score; U = null; paint(true); save(); }
+    set: function (vals, score) { flush(); vals.forEach(function (v, i) { S.cells[i] = v ? { id: nextId++, v: v } : null; }); if (score != null) S.score = score; U = null; paint(true); save(); },
+    over: function () { if (S && !S.over && !canMove()) { S.over = true; save(); gameOver(); } }
   };
 
   // ── Boot ──────────────────────────────────────────────────────────────────

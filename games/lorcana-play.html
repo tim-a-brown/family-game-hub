@@ -767,9 +767,15 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 /* Library tile: a gilded "New" sash across the top-right corner, light running along it */
 .pc .newc{position:absolute;top:0;right:0;width:42px;height:42px;overflow:hidden;pointer-events:none;z-index:3;border-top-right-radius:8px;}
 .pc .newc i{position:absolute;top:7px;right:-22px;width:72px;padding:1px 0;transform:rotate(45deg);text-align:center;font-family:var(--serif);font-style:italic;font-weight:700;font-size:.58rem;letter-spacing:.04em;color:#2b1a00;
-  background:linear-gradient(100deg,#b9852c 0%,#f6dc95 34%,#fffbea 48%,#f6dc95 62%,#b9852c 100%);background-size:260% 100%;background-position:100% 0;
-  box-shadow:0 1px 4px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(90,50,0,.4);animation:newsash 4s ease-in-out infinite;}
-@keyframes newsash{0%,58%{background-position:100% 0;}100%{background-position:-60% 0;}}
+  overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.55);}
+/* The sash's gold is a 260%-wide layer behind the text that slides across (moving the
+   layer, not its background, so there's no repaint every frame). -61.54% / 36.92% of
+   the layer = the old background-position 100% / -60%. Its edge highlights ride on top. */
+.pc .newc i::before{content:"";position:absolute;top:0;bottom:0;left:0;width:260%;z-index:-1;pointer-events:none;
+  background:linear-gradient(100deg,#b9852c 0%,#f6dc95 34%,#fffbea 48%,#f6dc95 62%,#b9852c 100%);
+  transform:translateX(-61.5385%);animation:newsash 4s ease-in-out infinite;}
+.pc .newc i::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(90,50,0,.4);}
+@keyframes newsash{0%,58%{transform:translateX(-61.5385%);}100%{transform:translateX(36.9231%);}}
 .bld-grid.tiny .pc .newc{width:28px;height:28px;}
 .bld-grid.tiny .pc .newc i{top:4px;right:-24px;width:64px;font-size:.42rem;padding:0;}
 .pc.isnew .bmk{right:34px;}
@@ -841,7 +847,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .np-go{min-width:min(80vw,320px);height:54px;border:1.5px solid #fff3c4;border-radius:999px;cursor:pointer;font-family:var(--display);font-size:1.25rem;letter-spacing:.02em;color:#2b1a00;
   background:linear-gradient(180deg,#fff3c4,#f6dc95 35%,#d9a94a 70%,#b9852c);box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 24px rgba(246,220,149,.35),inset 0 1px 0 rgba(255,255,255,.7);}
 .np-go:active{transform:scale(.97);}
-@media (prefers-reduced-motion:reduce){.np-pack,.np-pack::after,.np-hint,.pc .newc i{animation:none;}}
+@media (prefers-reduced-motion:reduce){.np-pack,.np-pack::after,.np-hint,.pc .newc i,.pc .newc i::before{animation:none;}}
 
 .fchip.bm-chip.on .ico{fill:currentColor;}
 .lz-card.in-l{animation:lzInL .24s ease-out;}

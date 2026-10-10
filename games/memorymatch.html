@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 body{overflow:hidden;}
 .mm{display:flex;flex-direction:column;height:calc(100dvh - var(--safe-t) - 58px);max-width:820px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 6px);}
@@ -237,6 +238,7 @@ body{overflow:hidden;}
     onNew: function () { showSetup(); },
     menu: [
       { icon: 'sync', label: 'Restart with the same cards', onClick: function () { restartSame(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.size : '4x4')); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Memory Match: past games' }); } }
     ],
     rules:
@@ -260,6 +262,13 @@ body{overflow:hidden;}
     Kit.resume.set(deckName(S.deck) + ' · ' + left + ' pairs left');
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  // High score board per size: solo games only, moves, lower is better (linked players included)
+  function hiKey(size) { return 'memorymatch_' + size; }
+  function boardBest(size) {
+    var t = ArcadeHi.top(hiKey(size)) || 0, b = 0;
+    try { GameHistory.load(KEY).forEach(function (e) { if (e && e.solo && e.size === size && e.moves > 0 && (!b || e.moves < b)) b = e.moves; }); } catch (e) {}
+    return t && (!b || t < b) ? t : b;
+  }
   function getDeckPref() { try { var d = localStorage.getItem(DECKPREF); if (ART[d]) return d; } catch (e) {} return 'animals'; }
 
   function showSetup() {
@@ -422,9 +431,13 @@ body{overflow:hidden;}
         detail: histDetail()
       });
       clearSave();
+      var size = S.size;
       setTimeout(function () {
-        Kit.win({ title: S.moves === n ? 'Perfect memory!' : 'All matched!', sub: S.moves + ' moves · ' + fmt(S.time) + (same.length && S.moves < bestMoves ? ' · new best!' : ''),
-          again: restartSame, againLabel: 'Play again', extra: [{ label: 'Change cards or players', onClick: showSetup }] });
+        ArcadeHi.check(hiKey(size), S.moves, function () {
+          if (statBest) statBest.textContent = boardBest(size) || '–';
+          Kit.win({ title: S.moves === n ? 'Perfect memory!' : 'All matched!', sub: S.moves + ' moves · ' + fmt(S.time) + (same.length && S.moves < bestMoves ? ' · new best!' : ''),
+            again: restartSame, againLabel: 'Play again', extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(size)); showSetup(); } }, { label: 'Change cards or players', onClick: showSetup }] });
+        });
       }, 300);
       return;
     }

@@ -161,6 +161,50 @@ var GAMES = [
   });
 })();
 
+// High-score boards (localStorage hi_<key>) that are not plain "highest score
+// first". arcade-hi.js reads this for the order, the value format and the tabs
+// on a board; sync.js reads it to publish your best end of each board to the
+// people who link you. Every page loads games.js, so the direction is known
+// everywhere. A board not listed here is a highest-first score.
+//   game   catalog id            label  shown after the game name ('Expert')
+//   tab    short name for the board's tab            low  1 = lower is better
+//   unit   'time' (seconds, m:ss) | 'moves' | 'marbles' (see ArcadeHi.marbles)
+//          | 'points' | 'score'                      dec  decimals on times
+var HI_BOARDS = (function () {
+  var b = {};
+  function add(game, key, o) { o.game = game; b[key] = o; }
+  add('2048', '2048', { label: '', unit: 'score' });
+  [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard'], ['expert', 'Expert']].forEach(function (d) {
+    add('sudoku', 'sudoku_' + d[0], { label: d[1], tab: d[1], low: 1, unit: 'time' });
+  });
+  [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['expert', 'Expert']].forEach(function (d) {
+    add('minesweeper', 'minesweeper_' + d[0], { label: d[1], tab: d[1], low: 1, unit: 'time', dec: 1 });
+  });
+  [3, 4, 5, 6].forEach(function (n) {
+    add('slidepuzzle', 'slidepuzzle_' + n, { label: n + '×' + n, tab: n + '×' + n, low: 1, unit: 'moves' });
+  });
+  [['english', 'English'], ['european', 'European'], ['triangle', 'Triangle'], ['cross', 'Cross', 1],
+   ['plus', 'Plus', 1], ['pyramid', 'Pyramid', 1], ['arrow', 'Arrow', 1]].forEach(function (d) {
+    add('marblesolitaire', 'marblesolitaire_' + d[0], { label: d[1] + (d[2] ? ' warm-up' : ''), tab: d[1], low: 1, unit: 'marbles' });
+  });
+  [['4x3', 12], ['4x4', 16], ['5x4', 20], ['6x4', 24], ['6x5', 30], ['6x6', 36]].forEach(function (d) {
+    add('memorymatch', 'memorymatch_' + d[0], { label: d[1] + ' cards', tab: String(d[1]), low: 1, unit: 'moves' });
+  });
+  [['turtle', 'Turtle'], ['pyramid', 'Pyramid'], ['castle', 'Castle'], ['mini', 'Mini']].forEach(function (d) {
+    add('mahjong', 'mahjong_' + d[0], { label: d[1], tab: d[1], low: 1, unit: 'time' });
+  });
+  // Math Puzzles: Beat the clock, one board per level and clock length
+  [['k2', 'K–2'], ['g34', '3–4'], ['g56', '5–6'], ['g78', '7–8'], ['g912', '9–12'], ['seq', 'Sequences']].forEach(function (l) {
+    [60, 120, 180].forEach(function (s) {
+      add('mathpuzzles', 'mathpuzzles_' + l[0] + '_' + s, { label: (l[0] === 'seq' ? '' : 'Grades ') + l[1] + ' · ' + (s / 60) + ' min', tab: l[1] + ' · ' + (s / 60) + 'm', unit: 'points' });
+    });
+  });
+  add('candymatch', 'candymatch', { label: '', unit: 'score' });
+  return b;
+})();
+function hiBoard(key) { return HI_BOARDS.hasOwnProperty(String(key)) ? HI_BOARDS[String(key)] : null; }
+function hiLow(key) { var c = hiBoard(key); return !!(c && c.low); }
+
 // Lookup by game id or by any of its files (hearts-ai → hearts).
 function findGame(key) {
   key = String(key || '').replace(/^.*\//, '').replace(/\.html.*$/, '');

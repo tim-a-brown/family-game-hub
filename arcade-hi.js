@@ -6,19 +6,86 @@
  *     - opens the leaderboard drawer
  *   ArcadeHi.btn(gameKey, label)
  *     - returns a button element that opens the leaderboard
+ *
+ * Boards that aren't "highest score first" (puzzle times, moves, marbles left)
+ * are listed in HI_BOARDS in games.js, so sync.js knows their direction too:
+ *   { low: 1 (lower is better), unit: 'time'|'moves'|'marbles'|'points'|'score',
+ *     dec: decimals on times, label: 'Expert', tab: 'Expert', game: catalog id }
+ *   ArcadeHi.config(key)          - the board's settings ({} for a plain score board)
+ *   ArcadeHi.config(key, {...})   - add or override settings on this page (labels,
+ *                                   format). A new low board must also go in HI_BOARDS.
+ *   ArcadeHi.fmt(key, value)      - a value as the board shows it ('4:05', '42 moves')
+ *   ArcadeHi.top(key)             - the board's best value, linked players included (null if none)
+ *   ArcadeHi.better(key, a, b)    - is value a better than b on this board
+ *   ArcadeHi.marbles(left, offCenter, seconds) - the value a marble solitaire finish is stored as
+ * Boards with siblings (same game in HI_BOARDS) show tabs to switch between them.
  */
 const ArcadeHi = (function(){
   const MAX = 50;
 
+  // ── Board settings: direction and how values read ─────────────────────────
+  const CFG = {};
+  function conf(key){
+    let c = null;
+    try{ if(typeof hiBoard === 'function') c = hiBoard(key); }catch(e){}
+    return Object.assign({}, c || {}, CFG[key] || {});
+  }
+  function isLow(key){ return !!conf(key).low; }
+  function order(key){ return isLow(key) ? (a,b)=>a.score-b.score : (a,b)=>b.score-a.score; }
+  function better(key, a, b){ return isLow(key) ? a < b : a > b; }
+  function clock(sec, dec){
+    let s = Math.max(0, Number(sec) || 0);
+    s = dec ? Math.round(s * 10) / 10 : Math.round(s);
+    const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, r = s - Math.floor(s / 60) * 60;
+    const ss = (r < 10 ? '0' : '') + (dec ? r.toFixed(1) : String(Math.round(r)));
+    return h ? h + ':' + (m < 10 ? '0' : '') + m + ':' + ss : m + ':' + ss;
+  }
+  // Marble solitaire: marbles left, then a last marble in the center hole beats one elsewhere, then time.
+  // Stored as left + 0.5 (one marble, not in the center) + seconds / 1,000,000, so one number sorts right.
+  function marblesCode(left, off, sec){ return Math.round(((Number(left) || 0) + (off ? 0.5 : 0) + Math.min(99999, Math.max(0, Math.round(Number(sec) || 0))) / 1e6) * 1e6) / 1e6; }
+  function marblesRead(v){
+    v = Number(v) || 0;
+    const n = Math.floor(v + 1e-9), f = Math.round((v - n) * 1e6), off = f >= 500000;
+    return { left: n, off: off, sec: off ? f - 500000 : f };
+  }
+  function fmt(key, v){
+    const c = conf(key);
+    v = Number(v) || 0;
+    if(c.unit === 'time') return clock(v, c.dec);
+    if(c.unit === 'moves') return v.toLocaleString() + (v === 1 ? ' move' : ' moves');
+    if(c.unit === 'marbles'){
+      const m = marblesRead(v);
+      return (m.left === 1 && !m.off ? '1 center' : m.left + ' left') + (m.sec ? ' · ' + clock(m.sec) : '');
+    }
+    return v.toLocaleString();
+  }
+  function unitName(key){ return ({ time: 'Time', moves: 'Moves', marbles: 'Finish', points: 'Points' })[conf(key).unit] || 'Score'; }
+  function boardTitle(key){
+    const c = conf(key);
+    if(c.title) return c.title;
+    let g = null; try{ if(c.game && typeof findGame === 'function') g = findGame(c.game); }catch(e){}
+    if(!g) return '';
+    return g.name + (c.label ? ' · ' + c.label : '');
+  }
+  // Other boards of the same game (Easy, Medium, Hard...) for the tabs
+  function siblings(key){
+    const c = conf(key);
+    if(!c.game || typeof HI_BOARDS === 'undefined') return [];
+    const all = Object.keys(HI_BOARDS).filter(k=>HI_BOARDS[k] && HI_BOARDS[k].game === c.game);
+    if(all.length < 2) return [];
+    // lots of boards (Math Puzzles): only the ones with scores, plus this one
+    return all.length > 8 ? all.filter(k=>k === key || merged(k).length) : all;
+  }
+
   // Read the board, skipping any entry without a real score (a bad entry
-  // used to show up as "NaN"), highest first
+  // used to show up as "NaN"), best first (highest, or lowest on a low board)
   function load(key){
     let list = [];
     try{ list = JSON.parse(localStorage.getItem('hi_'+key)||'[]'); }catch(e){ return []; }
     if(!Array.isArray(list)) return [];
     return list.filter(e=>e && isFinite(Number(e.score)) && e.score !== null && e.score !== '')
       .map(e=>Object.assign({}, e, { score: Number(e.score), name: String(e.name || '???') }))
-      .sort((a,b)=>b.score-a.score);
+      .sort(order(key));
   }
   function save(key,list){ try{localStorage.setItem('hi_'+key,JSON.stringify(list));if(typeof FGHSync!=='undefined')FGHSync.noteWrite('hi_'+key);}catch(e){} }
 
@@ -31,7 +98,7 @@ const ArcadeHi = (function(){
     const own = load(key).map(e=>Object.assign({}, e, { mine: !!myIni() && e.name.trim().toUpperCase()===myIni() }));
     const seen = {}; own.forEach(e=>{ seen[e.name.trim().toUpperCase()+'|'+e.score] = 1; });
     const theirs = linked(key).filter(e=>!seen[String(e.ini).toUpperCase()+'|'+e.score]).map(e=>({ name: e.ini || '???', score: e.score, date: e.date, who: e.who }));
-    return own.concat(theirs).sort((a,b)=>b.score-a.score).slice(0, MAX);
+    return own.concat(theirs).sort(order(key)).slice(0, MAX);
   }
   function avHTML(name, cls){
     try{ if(window.Kit && Kit.avatar && Kit.avatar.el) return Kit.avatar.el(name, cls||'sm', 'var(--surface-3)').outerHTML; }catch(e){}
@@ -42,7 +109,7 @@ const ArcadeHi = (function(){
   function qualifies(key, score){
     const list = load(key);
     if(list.length < MAX) return true;
-    return score > list[list.length-1].score;
+    return better(key, score, list[list.length-1].score);
   }
 
   function insert(key, name, score){
@@ -51,7 +118,7 @@ const ArcadeHi = (function(){
     const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});   // e.g. 'Oct 9, 2026'
     const timeStr = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     list.push({name: name.toUpperCase().slice(0,3).padEnd(3,' '), score, date: dateStr+' '+timeStr});
-    list.sort((a,b)=>b.score-a.score);
+    list.sort(order(key));
     if(list.length > MAX) list.length = MAX;
     save(key, list);
     try{ if(typeof FGHSync!=='undefined' && FGHSync.linkPublishSoon) FGHSync.linkPublishSoon(); }catch(e){}
@@ -102,6 +169,10 @@ const ArcadeHi = (function(){
 .ahi-table tr.ahi-them td{background:rgba(91,140,255,.07);}
 .ahi-mine-lbl{text-align:center;font-size:.72rem;color:rgba(255,255,255,.5);margin:-8px 0 14px;}
 .ahi-empty{text-align:center;color:rgba(255,255,255,.25);padding:24px;font-size:.85rem;}
+.ahi-tabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-6px 0 14px;}
+.ahi-tabs button{border:0;border-radius:999px;padding:6px 12px;font-family:var(--font,system-ui);font-size:.76rem;font-weight:800;background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);touch-action:manipulation;}
+.ahi-tabs button.on{background:rgba(245,200,66,.2);color:#f5c842;box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.55);}
+.ahi-pts.ahi-low{font-size:.95rem;white-space:nowrap;}
 `;
     document.head.appendChild(s);
   }
@@ -116,13 +187,15 @@ const ArcadeHi = (function(){
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
+    const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
+    const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
     overlay.innerHTML = `
       <div class="ahi-box">
-        <div class="ahi-title">HIGH SCORE!</div>
+        <div class="ahi-title">${ttl}</div>
         <div class="ahi-sub">You made the top ${MAX}. Enter your initials.</div>
         <div class="ahi-score-disp">
-          <div class="ahi-score-val">${score.toLocaleString()}</div>
-          <div class="ahi-score-lbl">SCORE</div>
+          <div class="ahi-score-val">${esc(fmt(key, score))}</div>
+          <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}</div>
         </div>
         <div id="ahi-quick-wrap"></div>
         <div class="ahi-slots" id="ahi-slots"></div>
@@ -274,7 +347,8 @@ const ArcadeHi = (function(){
     const list = merged(key);
     const newIdx = newScore!==null ? list.findIndex(e=>!e.who && e.score===newScore) : -1;
     const nLocal = load(key).length, nThem = list.filter(e=>e.who).length;
-    const gameName = title || 'High Scores';
+    const gameName = title || boardTitle(key) || 'High Scores';
+    const low = isLow(key), sibs = siblings(key);
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
@@ -292,7 +366,7 @@ const ArcadeHi = (function(){
         rows += `<tr class="${isNew?'ahi-new':''}${e.who?' ahi-them':''}">
           <td class="ahi-rank">${medal||i+1}</td>
           <td class="ahi-name">${nm}</td>
-          <td class="ahi-pts">${e.score.toLocaleString()}</td>
+          <td class="ahi-pts${conf(key).unit && conf(key).unit !== 'score' && conf(key).unit !== 'points' ? ' ahi-low' : ''}">${esc(fmt(key, e.score))}</td>
           <td class="ahi-dt">${esc(e.date||'')}</td>
         </tr>`;
       });
@@ -302,9 +376,10 @@ const ArcadeHi = (function(){
     overlay.innerHTML = `
       <div class="ahi-box">
         <div class="ahi-title">${window.Kit&&Kit.icon?Kit.icon('trophy'):''} ${gameName}</div>
-        <div class="ahi-sub">Top ${MAX} · ${list.length} entr${list.length===1?'y':'ies'}${nThem?' · '+nThem+' from linked players':''}</div>
+        <div class="ahi-sub">${low ? (conf(key).unit === 'time' ? 'Fastest ' : 'Fewest ') + MAX : 'Top ' + MAX} · ${list.length} entr${list.length===1?'y':'ies'}${nThem?' · '+nThem+' from linked players':''}</div>
+        ${sibs.length ? '<div class="ahi-tabs" role="tablist">' + sibs.map(k=>`<button type="button" role="tab" data-k="${esc(k)}" class="${k===key?'on':''}" aria-selected="${k===key}">${esc(conf(k).tab || conf(k).label || k)}</button>`).join('') + '</div>' : ''}
         <table class="ahi-table">
-          <thead><tr><th>#</th><th>Name</th><th style="text-align:right">Score</th><th style="text-align:right">Date</th></tr></thead>
+          <thead><tr><th>#</th><th>Name</th><th style="text-align:right">${unitName(key)}</th><th style="text-align:right">Date</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
@@ -320,6 +395,13 @@ const ArcadeHi = (function(){
     // Close on backdrop click
     overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
     document.getElementById('ahi-close').addEventListener('click', () => overlay.remove());
+    // Tabs: the game's other boards (levels, sizes)
+    overlay.querySelectorAll('.ahi-tabs button').forEach(b => b.addEventListener('click', () => {
+      if(b.dataset.k === key) return;
+      try{ if(window.Kit && Kit.sfx) Kit.sfx('tap'); }catch(e){}
+      document.removeEventListener('keydown', onEsc);
+      overlay.remove(); showBoard(b.dataset.k);
+    }));
 
     if(hasScores){
       document.getElementById('ahi-clear').addEventListener('click', () => {
@@ -354,6 +436,18 @@ const ArcadeHi = (function(){
     board(key){ return merged(key); },
     max: MAX,
     best(key){ const l = load(key); return l.length ? l[0].score : 0; },
+    // Board settings (see the top of this file): config(key) reads, config(key, {...}) sets for this page
+    config(key, c){ if(c && typeof c === 'object') CFG[key] = Object.assign(CFG[key] || {}, c); return conf(key); },
+    low(key){ return isLow(key); },
+    better(key, a, b){ return better(key, a, b); },
+    fmt(key, v){ return fmt(key, v); },
+    unit(key){ return unitName(key); },
+    title(key){ return boardTitle(key); },
+    // The board's best value, linked players included; null when the board is empty
+    top(key){ const l = merged(key); return l.length ? l[0].score : null; },
+    qualifies(key, score){ return score > 0 && qualifies(key, score); },
+    marbles(left, offCenter, sec){ return marblesCode(left, offCenter, sec); },
+    readMarbles(v){ return marblesRead(v); },
     check(key, score, onDone){
       if(score>0 && qualifies(key, score)){
         showEntry(key, score, ()=>{

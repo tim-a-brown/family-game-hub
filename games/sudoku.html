@@ -11,6 +11,7 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
 <style>
 body{overflow-x:hidden;}
 .sdk{max-width:500px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 16px);}
@@ -342,6 +343,7 @@ body{overflow-x:hidden;}
       { icon: 'eye', label: function () { return 'Show mistakes: ' + (opts.mistakes ? 'on' : 'off'); }, onClick: function () { opts.mistakes = !opts.mistakes; saveOpts(); render(); Kit.toast(opts.mistakes ? 'Wrong numbers show in red' : 'Mistakes hidden'); } },
       { icon: 'sync', label: 'Restart this puzzle', onClick: function () { restart(); } },
       { icon: 'chart', label: 'Best times', onClick: function () { showBests(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.diff : 'easy')); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Sudoku: past games', extra: miniGrid }); } }
     ],
     rules:
@@ -381,6 +383,13 @@ body{overflow-x:hidden;}
     return b;
   }
   function dailyDone() { var d = today(); return hist().filter(function (e) { return e && e.daily === d; })[0] || null; }
+  // High score board per level: solve time without hints, lower is better (linked players included)
+  function hiKey(d) { return 'sudoku_' + d; }
+  function boardBest(d) {
+    var t = ArcadeHi.top(hiKey(d)), b = bestTime(d);
+    return t != null && (!b || t < b) ? t : b;
+  }
+  function paintBest() { var b = document.getElementById('pfM'); if (b && S) b.innerHTML = 'Best <b>' + (boardBest(S.diff) ? fmt(boardBest(S.diff)) : '–') + '</b>'; }
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
@@ -546,10 +555,14 @@ body{overflow-x:hidden;}
       Kit.callout(best ? 'New best!' : 'Solved!');
       setTimeout(function () {
         var diff = S.diff;
-        Kit.win({
-          title: 'Solved!', sub: name + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (best && prev ? ' · new best time' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
-          againLabel: 'Another ' + name, again: function () { newPuzzle(diff); },
-          extra: [{ label: 'Choose a level', onClick: showSetup }]
+        // Clean solves (no hints) go on the level's high score board
+        ArcadeHi.check(clean ? hiKey(diff) : '', clean ? S.time : 0, function () {
+          paintBest();
+          Kit.win({
+            title: 'Solved!', sub: name + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (best && prev ? ' · new best time' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
+            againLabel: 'Another ' + name, again: function () { newPuzzle(diff); },
+            extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(diff)); showSetup(); } }, { label: 'Choose a level', onClick: showSetup }]
+          });
         });
       }, 900);
     }, 900);
@@ -593,7 +606,7 @@ body{overflow-x:hidden;}
       cellEls.push(n); grid.appendChild(n);
     })(i);
     page.appendChild(grid);
-    page.appendChild(el('div', { class: 'pf' }, [el('span', { id: 'pfL' }), el('span', { id: 'pfR' })]));
+    page.appendChild(el('div', { class: 'pf' }, [el('span', { id: 'pfL' }), el('span', { id: 'pfM' }), el('span', { id: 'pfR' })]));
     play.appendChild(page);
     var tools = el('div', { class: 'tools' });
     [['undo', 'undo', 'Undo', undo], ['redo', 'undo', 'Redo', redo], ['erase', 'close', 'Erase', function () { input(0); }],
@@ -610,7 +623,7 @@ body{overflow-x:hidden;}
     })(d);
     play.appendChild(pad);
     app.appendChild(play);
-    render(); startClock();
+    render(); paintBest(); startClock();
   }
   function render() {
     if (!S || !cellEls.length) return;
@@ -676,7 +689,9 @@ body{overflow-x:hidden;}
     var n = 0; for (var i = 0; i < 81 && S; i++) if (!S.vals[i]) { if (n++ >= (leave || 0)) S.vals[i] = S.sol[i]; }
     // put the left-over blanks last: refill so exactly `leave` blanks remain
     render(); save();
-  }, Sdk: Sdk };
+  }, Sdk: Sdk,
+    // write the last missing number (after fill), as if typed
+    finish: function () { for (var i = 0; i < 81 && S; i++) if (S.vals[i] !== S.sol[i]) { write(i, S.sol[i], false); return true; } return false; } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
