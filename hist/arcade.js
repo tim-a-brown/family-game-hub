@@ -416,7 +416,16 @@
   // A dot-matrix picture of the game ball by ball (bar = points, label = how it drained), then the run's numbers.
   var PBT = { nebula: ['Nebula Run', '#22d3ee'], pirate: ["Pirate's Cove", '#fbbf24'], haunted: ['Haunted Manor', '#86efac'], jungle: ['Jungle Temple', '#f59e0b'], neon: ['Neon Nights', '#f472b6'], midway: ['Midway Mayhem', '#ef4444'] };
   var PBD = { L: 'LEFT', R: 'RIGHT', C: 'MIDDLE', T: 'TILT' }, PBDW = { L: 'the left outlane', R: 'the right outlane', C: 'down the middle', T: 'a tilt' };
-  var PBF = [['pop', 'Pops'], ['sl', 'Slings'], ['su', 'Targets'], ['dt', 'Drops'], ['orb', 'Orbits'], ['spin', 'Spins'], ['lanes', 'Lanes'], ['lock', 'Locks'], ['wheel', 'Wheel'], ['ghost', 'Ghosts'], ['crypt', 'Crypt'], ['mag', 'Magnet'], ['dark', 'Lights out'], ['bh', 'Black holes'], ['storm', 'Storms'], ['cannon', 'Cannon shots'], ['direct', 'Direct hits'], ['idol', 'Idol strikes'], ['beat', 'On the beat'], ['kick', 'Kickbacks'], ['hand', 'Hand grabs'], ['attic', 'Attic'], ['cellar', 'Cellar'], ['mist', 'Mist freed'], ['magna', 'Magna saves'], ['grave', 'Grave Robber'], ['wiz', 'Wizard mode'], ['mode', 'Modes'], ['save', 'Saves']];
+  var PBF = [['pop', 'Pops'], ['sl', 'Slings'], ['su', 'Targets'], ['dt', 'Drops'], ['orb', 'Orbits'], ['spin', 'Spins'], ['lanes', 'Lanes'], ['lock', 'Locks'], ['wheel', 'Wheel'], ['ghost', 'Ghosts'], ['crypt', 'Crypt'], ['mag', 'Magnet'], ['dark', 'Lights out'], ['bh', 'Black holes'], ['storm', 'Storms'], ['cannon', 'Cannon shots'], ['direct', 'Direct hits'], ['idol', 'Idol strikes'], ['beat', 'On the beat'], ['kick', 'Kickbacks'], ['hand', 'Hand grabs'], ['attic', 'Attic'], ['cellar', 'Cellar'], ['mist', 'Mist freed'], ['magna', 'Magna saves'], ['grave', 'Grave Robber'], ['wiz', 'Wizard mode'], ['mode', 'Modes'], ['save', 'Saves'],
+    // the 3D tables' own counters
+    ['portraits', 'Portraits'], ['holo', 'Ghost sightings'], ['boo', 'Boos'],
+    ['port', 'Ports plundered'], ['fort', 'Fort hits'], ['broadside', 'Broadsides'], ['kraken', 'Kraken grabs'], ['krakenmb', 'Kraken Multiball'], ['grab', 'Grabs'], ['whirl', 'Whirlpool'], ['rig', 'Rigging'], ['plank', 'Plank'], ['map', 'Map'], ['keg', 'Powder kegs'], ['dbl', 'Doubled'],
+    ['ride', 'Wheel rides'], ['loop', 'Super-loops'], ['roof', 'Rooftop'], ['vip', 'VIP bank'], ['track', 'Tracks'], ['orbc', 'Orb catches'], ['orbmb', 'Orb Multiball'], ['wind', 'Wind'], ['sky', 'Skyline'], ['neo', 'N-E-O'], ['scoop', 'Backstage'], ['dj', 'DJ'],
+    ['climb', 'Climbs'], ['feed', 'Serpent fed'], ['serpent', 'Serpent Multiball'], ['run', 'Boulder runs'], ['boulder', 'Boulder hits'], ['relic', 'Relics'], ['key', 'Keys'], ['temple', 'Temple collapses'], ['walls', 'Walls'], ['bridge', 'Rope bridge'],
+    ['barker', 'Barker'], ['bell', 'Bells rung'], ['coaster', 'Coaster'], ['dunk', 'Dunks'], ['prize', 'Prizes'], ['ring', 'Ring toss'], ['strong', 'Strongman'], ['tickets', 'Tickets'], ['wheelmb', 'Wheel Multiball'], ['wl', 'W-I-N'],
+    ['well', 'Gravity Well'], ['warp', 'Warp laps'], ['warpmb', 'Warp Multiball'], ['planet', 'Planets'], ['visit', 'Visits'], ['saucer', 'Saucer hits'], ['attack', 'Saucer attacks'], ['ship', 'Mothership'], ['tube', 'Tube ramp'], ['tp', 'Teleports'], ['am', 'Antimatter'], ['ast', 'Asteroids'], ['escape', 'Escapes']];
+  // the same key means something else on some tables
+  var PBX = { neon: { orb: 'Orb catches' }, midway: { ride: 'Wheel rides' }, nebula: { cannon: 'Cannon shots' } };
   R('pinball', function (e, ui) {
     var d = e.dt; if (!d || !d.b) return null;
     var tb = PBT[d.b] || [e.mode || 'Pinball', '#ff8a1c'], ac = tb[1];
@@ -439,7 +448,7 @@
       });
       pic = svg(W, H, s, { aria: 'Points for each ball, and where each ball drained' });
     }
-    var f = d.f || {}, feats = PBF.filter(function (x) { return f[x[0]]; }).map(function (x) { return [x[1] + ' ' + n(f[x[0]]), ac]; });
+    var f = d.f || {}, px = PBX[d.b] || {}, feats = PBF.filter(function (x) { return f[x[0]]; }).map(function (x) { return [(px[x[0]] || x[1]) + ' ' + n(f[x[0]]), ac]; });
     var last = dr.charAt(dr.length - 1);
     return screen(ui, {
       ac: ac, title: tb[0] + ' · ' + (d.bl || bs.length) + ' balls', score: n(myScore(e)), rank: rankText(d),
