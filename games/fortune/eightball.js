@@ -287,7 +287,10 @@ function mount(stage, api) {
         b.y = Math.max(0, b.y - b.v * dt); b.x += Math.sin(now / 300 + b.ph) * dt * 0.03; moving = true;
         if (b.y === 0 && b.stay) { b.vx = (Math.random() - 0.5) * 0.12; b.vz = (Math.random() - 0.5) * 0.12; b.w = 1; }
       }
-      if (!shown || (b.y === 0 && !b.stay)) { b.a -= dt * (shown ? 3 : 1.6); moving = true; continue; }
+      if (!shown || (b.y === 0 && !b.stay)) {   // popping at the glass, or knocked loose by a shake and lost from view
+        b.a -= dt * (shown ? 3 : 1.6); b.vx *= Math.exp(-dt * 2); b.vz *= Math.exp(-dt * 2); b.x = clamp(b.x + b.vx * dt, -0.9, 0.9); b.z = clamp(b.z + b.vz * dt, -0.9, 0.9);
+        moving = true; continue;
+      }
       if (b.y === 0) {
         // slide along the glass: x is screen right, z is screen down (the window faces the camera)
         b.w = (b.w || 0) * Math.exp(-dt / 0.9);
