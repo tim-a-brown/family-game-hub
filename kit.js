@@ -73,14 +73,24 @@
   window.addEventListener('scroll', function () { if (!stickRaf) stickRaf = requestAnimationFrame(onStick); }, { passive: true });
   window.addEventListener('resize', onStick);
 
-  var wake = null, wakeOff = false;
+  // Keep the screen on while someone is playing: the lock is taken on the first touch or key and let go after
+  // five minutes without one, so a setup or results screen left on the table dims and locks like any other page.
+  var wake = null, wakeOff = false, wakeTimer = 0, WAKE_IDLE = 5 * 60000;
   function requestWake() {
-    if (wakeOff || !('wakeLock' in navigator) || doc.visibilityState !== 'visible') return;
+    if (wakeOff || !wakeTimer || !('wakeLock' in navigator) || doc.visibilityState !== 'visible') return;
     navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {});
   }
-  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') requestWake(); });
+  function releaseWake() { clearTimeout(wakeTimer); wakeTimer = 0; if (wake) { try { wake.release(); } catch (e) {} wake = null; } }
+  function touchWake() {
+    if (wakeOff) return;
+    clearTimeout(wakeTimer); wakeTimer = setTimeout(releaseWake, WAKE_IDLE);
+    if (!wake) requestWake();
+  }
+  doc.addEventListener('pointerdown', touchWake, { passive: true, capture: true });
+  doc.addEventListener('keydown', touchWake, { capture: true });
+  doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') { wake = null; requestWake(); } });
   // Kit.keepAwake(false): let the screen dim and lock as usual (a game's battery saver); true: keep it on again
-  function keepAwake(on) { wakeOff = !on; if (on) requestWake(); else if (wake) { try { wake.release(); } catch (e) {} wake = null; } }
+  function keepAwake(on) { wakeOff = !on; if (on) touchWake(); else releaseWake(); }
 
   // ── Small DOM helper ──────────────────────────────────────────────────────
   function el(tag, attrs, kids) {
@@ -669,7 +679,6 @@
       el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Menu', html: ICON.more, onclick: menu })
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
-    requestWake();
     return bar;
   }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
