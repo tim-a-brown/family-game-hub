@@ -345,7 +345,9 @@ function finish(g0) {
   const hiL = ArcadeHi.list(key);
   const bb = g0.ballScores.length ? Math.max.apply(null, g0.ballScores) : sc;
   const f = {};
-  ['pop', 'sl', 'su', 'dt', 'bank', 'orb', 'spin', 'lanes', 'in', 'out', 'lock', 'wheel', 'ghost', 'crypt', 'mag', 'boo', 'star', 'neon', 'mode', 'save', 'warn', 'tilt', 'award', 'dark', 'bh', 'storm', 'cannon', 'direct', 'idol', 'beat', 'kick', 'loop', 'mist', 'hand', 'attic', 'cellar', 'holo', 'magna', 'wiz'].forEach(k => { if (st[k]) f[k] = st[k]; });
+  // every table counts its own toys (G.cnt); keep them all, apart from the ones recorded above as their own fields
+  const own = { jp: 1, mb: 1, eb: 1, rp: 1, cb: 1, sk: 1 };
+  Object.keys(st).forEach(k => { if (!own[k] && typeof st[k] === 'number' && st[k] > 0 && /^[a-z_]{1,12}$/.test(k)) f[k] = Math.round(st[k]); });
   const detail = {
     b: bd.id, bl: g0.balls0, bs: g0.ballScores.join(','), dr: g0.drains.join(''), bb,
     jp: st.jp || 0, mb: st.mb || 0, eb: st.eb || 0, bx: g0.bxMax, rp: st.rp || 0, cb: st.cb || 0, sk: st.sk || 0, f,
