@@ -60,18 +60,18 @@ export async function atlasFor(mode, M, spriteEl) {
 function makeMats(T) {
   const env = envTex;
   if (!woodCache.walnut) {
-    const w = tex(Art.woodCanvas(512, [[112, 66, 32], [74, 42, 18], [26, 12, 4]], 7)); w.wrapS = w.wrapT = THREE.RepeatWrapping; w.repeat.set(2.5, 2.5); woodCache.walnut = w;
+    const w = tex(Art.woodCanvas(512, [[104, 62, 30], [84, 48, 22], [30, 14, 5]], 7)); w.wrapS = w.wrapT = THREE.RepeatWrapping; w.repeat.set(1.6, 1.6); woodCache.walnut = w;
     const b = tex(Art.brushedCanvas(256, '#9a9a9a', 11), false); b.wrapS = b.wrapT = THREE.RepeatWrapping; b.repeat.set(3, 3); woodCache.brushed = b;
   }
   const m = {
-    chrome: new THREE.MeshPhysicalMaterial({ color: 0xf4f6f8, metalness: 1, roughness: 0.22, roughnessMap: woodCache.brushed, envMap: env, envMapIntensity: 1.3 }),
+    chrome: new THREE.MeshPhysicalMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.3, roughnessMap: woodCache.brushed, envMap: env, envMapIntensity: 1.0 }),
     gold: new THREE.MeshPhysicalMaterial({ color: T.trim === 'brass' ? 0xc89a4a : 0xe0b24e, metalness: 1, roughness: 0.3, roughnessMap: woodCache.brushed, envMap: env, envMapIntensity: 1.1 }),
-    walnut: new THREE.MeshPhysicalMaterial({ map: woodCache.walnut, roughness: 0.38, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.22, envMap: env, envMapIntensity: 0.7 }),
+    walnut: new THREE.MeshPhysicalMaterial({ map: woodCache.walnut, roughness: 0.42, metalness: 0, clearcoat: 0.55, clearcoatRoughness: 0.32, envMap: env, envMapIntensity: 0.5 }),
     lacquer: new THREE.MeshPhysicalMaterial({ color: T.body || 0x222222, roughness: 0.26, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1, envMap: env, envMapIntensity: 0.9 }),
     black: new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.62, metalness: 0.1, envMap: env, envMapIntensity: 0.4 }),
     gloss: new THREE.MeshPhysicalMaterial({ color: 0x08080b, roughness: 0.14, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.06, envMap: env, envMapIntensity: 1 }),
     inner: new THREE.MeshStandardMaterial({ color: 0x07060a, roughness: 0.95, metalness: 0 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.03, transparent: true, opacity: 0.16, envMap: env, envMapIntensity: 1.6, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.FrontSide }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.03, transparent: true, opacity: 0.2, envMap: env, envMapIntensity: 2.0, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.FrontSide }),
     red: new THREE.MeshPhysicalMaterial({ color: 0xa50f1d, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.12, envMap: env, envMapIntensity: 0.8 }),
     rubber: new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.92 })
   };
@@ -127,6 +127,12 @@ export class Cabinet {
       (this.mirrorExtra || []).forEach(m => { const c = m.clone(); c.material = m.material.clone(); c.material.transparent = true; c.material.opacity = this.T.reflect * 1.5; c.material.depthWrite = false; c.material.side = THREE.BackSide; c.renderOrder = -2; this.mirror.add(c); });
     }
   }
+  // a faint glare sheet over glass that slides with the parallax
+  glare(w, h, x, y, z) {
+    const t = tex(Art.glareCanvas(256, 256)); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    const g = this.plane(w, h, new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), x, y, z);
+    g.renderOrder = 7; (this.glares = this.glares || []).push(g); return g;
+  }
   plane(w, h, mat, x, y, z, rot) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(x, y, z); if (rot) m.rotation.set(rot[0] || 0, rot[1] || 0, rot[2] || 0); this.root.add(m); return m; }
   display(w, h, pw, ph, paint) {
     const [c, x] = Art.cv(pw, ph); const mat = unlit(c); mat.transparent = true;
@@ -135,11 +141,21 @@ export class Cabinet {
     this.root.add(m); return d;
   }
   bulbRing(pts) {
-    const n = pts.length, geo = new THREE.SphereGeometry(0.0095, 12, 8), mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
-    const im = new THREE.InstancedMesh(geo, mat, n), gm = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.075, 0.075), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), n);
-    const o = new THREE.Object3D();
-    pts.forEach((p, i) => { o.position.set(p[0], p[1], p[2]); o.updateMatrix(); im.setMatrixAt(i, o.matrix); o.position.z += 0.004; o.updateMatrix(); gm.setMatrixAt(i, o.matrix); im.setColorAt(i, new THREE.Color(1, 0.8, 0.4)); gm.setColorAt(i, new THREE.Color(0.4, 0.3, 0.1)); });
-    im.renderOrder = 3; gm.renderOrder = 4; this.root.add(im); this.root.add(gm);
+    const n = pts.length, o = new THREE.Object3D();
+    // filament core (lit), glass envelope, brass socket, and a tight glow
+    const im = new THREE.InstancedMesh(new THREE.SphereGeometry(0.0045, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), n);
+    const glassM = new THREE.MeshPhysicalMaterial({ color: 0xfff3d6, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.35, envMap: envTex, envMapIntensity: 1.4, clearcoat: 1, depthWrite: false });
+    const env = new THREE.InstancedMesh(new THREE.SphereGeometry(0.011, 16, 12), glassM, n);
+    const sock = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.0055, 0.0065, 0.01, 12), this.mats.gold, n);
+    const gm = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.05, 0.05), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), n);
+    pts.forEach((p, i) => {
+      o.position.set(p[0], p[1], p[2]); o.rotation.set(0, 0, 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix); env.setMatrixAt(i, o.matrix);
+      o.position.z += 0.006; o.updateMatrix(); gm.setMatrixAt(i, o.matrix);
+      o.position.set(p[0], p[1], p[2] - 0.012); o.rotation.set(Math.PI / 2, 0, 0); o.updateMatrix(); sock.setMatrixAt(i, o.matrix);
+      im.setColorAt(i, new THREE.Color(1, 0.8, 0.4)); gm.setColorAt(i, new THREE.Color(0.4, 0.3, 0.1));
+    });
+    im.renderOrder = 3; env.renderOrder = 5; gm.renderOrder = 6; sock.castShadow = true;
+    this.root.add(im); this.root.add(env); this.root.add(sock); this.root.add(gm);
     this.bulbs = { im: im, gm: gm, n: n, pts: pts }; this.paintBulbs(0);
   }
   paintBulbs(t) {
@@ -149,7 +165,7 @@ export class Cabinet {
       let on;
       if (won) on = ((Math.floor(t / 110) + i) % 3 === 0) ? 1 : 0.18;
       else on = this.T.kind === 'mech' ? 0.55 + 0.45 * ((Math.floor(t / 650) + i) % 2) : (((Math.floor(t / 400) + i) % 6) < 4 ? 0.9 : 0.25);
-      c1.setRGB(1, 0.72 + 0.26 * on, 0.3 + 0.55 * on).multiplyScalar(0.55 + 0.45 * on); c2.copy(c1).multiplyScalar(0.25 + 0.55 * on);
+      c1.setRGB(1, 0.72 + 0.26 * on, 0.3 + 0.55 * on).multiplyScalar(0.5 + 0.5 * on); c2.copy(c1).multiplyScalar(0.18 + 0.5 * on);
       b.im.setColorAt(i, c1); b.gm.setColorAt(i, c2);
     }
     b.im.instanceColor.needsUpdate = true; b.gm.instanceColor.needsUpdate = true;
@@ -161,15 +177,25 @@ export class Cabinet {
     // kick plate and base
     this.box(W - 0.05, 0.06, D - 0.05, 0.004, m.rubber, 0, 0.03, 0);
     this.box(W, 0.44, D, 0.01, m.walnut, 0, 0.28, 0);
-    this.box(W + 0.012, 0.014, D + 0.012, 0.004, m.chrome, 0, 0.5, 0);
-    this.box(W + 0.012, 0.014, D + 0.012, 0.004, m.chrome, 0, 0.065, 0);
-    // coin tray: chrome scoop with a dark well
-    this.box(0.42, 0.11, 0.08, 0.012, m.chrome, 0, 0.2, F + 0.03);
-    this.box(0.36, 0.07, 0.07, 0.01, m.inner, 0, 0.215, F + 0.045);
-    L.tray = { x: 0, y: 0.2, z: F + 0.03, w: 0.42, h: 0.11 };
+    this.box(W + 0.012, 0.016, D + 0.012, 0.007, m.chrome, 0, 0.5, 0, null, 4);
+    this.box(W + 0.012, 0.016, D + 0.012, 0.007, m.chrome, 0, 0.065, 0, null, 4);
+    // coin tray: a well cut into the body, sloped floor, rounded chrome lip along the edge
+    const trw = 0.4, trh = 0.1, trd = 0.09, tray_y = 0.2;
+    this.add(new THREE.PlaneGeometry(trw, trh), m.inner, 0, tray_y, F - trd);
+    this.add(new THREE.PlaneGeometry(trd, trh), m.inner, -trw / 2, tray_y, F - trd / 2, [0, Math.PI / 2, 0]);
+    this.add(new THREE.PlaneGeometry(trd, trh), m.inner, trw / 2, tray_y, F - trd / 2, [0, -Math.PI / 2, 0]);
+    this.add(new THREE.PlaneGeometry(trw, trd), m.inner, 0, tray_y + trh / 2, F - trd / 2, [Math.PI / 2, 0, 0]);
+    this.add(new THREE.PlaneGeometry(trw, trd * 1.05), m.black, 0, tray_y - trh / 2 + 0.012, F - trd / 2, [-Math.PI / 2 + 0.25, 0, 0]);
+    this.box(trw + 0.05, 0.024, 0.024, 0.011, m.chrome, 0, tray_y + trh / 2 + 0.012, F + 0.006, null, 4);
+    this.box(trw + 0.05, 0.024, 0.05, 0.011, m.chrome, 0, tray_y - trh / 2 - 0.012, F + 0.02, null, 4);
+    this.box(0.024, trh + 0.048, 0.024, 0.011, m.chrome, -trw / 2 - 0.012, tray_y, F + 0.006, null, 4);
+    this.box(0.024, trh + 0.048, 0.024, 0.011, m.chrome, trw / 2 + 0.012, tray_y, F + 0.006, null, 4);
+    const [tsc, tsx] = Art.cv(16, 128); tsx.fillStray_yle = Art.lg(tsx, 0, 0, 0, 128, [[0, 'rgba(0,0,0,.85)'], [0.5, 'rgba(0,0,0,.35)'], [1, 'rgba(0,0,0,0)']]); tsx.fillRect(0, 0, 16, 128);
+    const tsh = this.plane(trw, trh, unlit(tsc, { transparent: true, depthWrite: false }), 0, tray_y, F - trd + 0.001); tsh.renderOrder = 1;
+    L.tray = { x: 0, y: tray_y, z: F - trd / 2, w: trw, h: trh };
     // name plate on the belly
     const plate = this.display(0.34, 0.06, 512, 96, (x, w, h) => { x.fillStyle = Art.lg(x, 0, 0, 0, h, [[0, '#2a2a30'], [1, '#08080a']]); Art.rr(x, 0, 0, w, h, 14); x.fill(); x.strokeStyle = '#c9d0d7'; x.lineWidth = 4; Art.rr(x, 3, 3, w - 6, h - 6, 12); x.stroke(); x.font = '400 ' + h * 0.5 + 'px "Great Vibes",cursive'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = Art.lg(x, 0, h * 0.2, 0, h * 0.8, [[0, '#fff7d6'], [0.5, '#ffd45a'], [1, '#c4860f']]); x.fillText('Diamond Sevens', w / 2, h * 0.54); });
-    plate.mesh.position.set(0, 0.38, F + 0.002); plate.paint();
+    plate.mesh.position.set(0, 0.35, F + 0.002); plate.paint();
     // button deck: a sloped slab with a chrome lip
     L.deck = this.buildDeck(0.575, F, 0.26, 0.06, m.black, m.chrome);
     // main body, recessed 0.09 so the window has depth; wood plates frame the window
@@ -187,14 +213,14 @@ export class Cabinet {
     this.add(new THREE.PlaneGeometry(0.5, rec), m.inner, 0, win.y0 + 0.001, F - rec / 2, [-Math.PI / 2, 0, 0]);
     // chrome bezel and reel dividers
     const bz = 0.022;
-    this.box(0.5 + bz * 2, bz, 0.016, 0.005, m.chrome, 0, win.y1 + bz / 2, F + 0.004);
-    this.box(0.5 + bz * 2, bz, 0.016, 0.005, m.chrome, 0, win.y0 - bz / 2, F + 0.004);
-    this.box(bz, wh, 0.016, 0.005, m.chrome, win.x0 - bz / 2, wc, F + 0.004);
-    this.box(bz, wh, 0.016, 0.005, m.chrome, win.x1 + bz / 2, wc, F + 0.004);
+    this.box(0.5 + bz * 2, bz, bz, 0.01, m.chrome, 0, win.y1 + bz / 2, F + 0.005, null, 4);
+    this.box(0.5 + bz * 2, bz, bz, 0.01, m.chrome, 0, win.y0 - bz / 2, F + 0.005, null, 4);
+    this.box(bz, wh, bz, 0.01, m.chrome, win.x0 - bz / 2, wc, F + 0.005, null, 4);
+    this.box(bz, wh, bz, 0.01, m.chrome, win.x1 + bz / 2, wc, F + 0.005, null, 4);
     const n = this.M.reels.length, cw = 0.5 / n, gap = 0.018;
-    for (let i = 1; i < n; i++) this.box(gap, wh, 0.012, 0.004, m.chrome, win.x0 + i * cw, wc, F + 0.002);
+    for (let i = 1; i < n; i++) this.box(gap, wh, 0.016, 0.008, m.chrome, win.x0 + i * cw, wc, F + 0.003, null, 4);
     // corner trims on the body
-    [-1, 1].forEach(s => { this.box(0.016, 0.5, 0.016, 0.005, m.chrome, s * (W / 2 - 0.008), 0.83, F - 0.008); this.box(0.016, 0.44, 0.016, 0.005, m.chrome, s * (W / 2 - 0.008), 0.28, F - 0.008); });
+    [-1, 1].forEach(s => { this.box(0.018, 0.5, 0.018, 0.008, m.chrome, s * (W / 2 - 0.008), 0.83, F - 0.008, null, 4); this.box(0.018, 0.44, 0.018, 0.008, m.chrome, s * (W / 2 - 0.008), 0.28, F - 0.008, null, 4); });
     // reels: drums inside the recess
     const ch = wh / this.M.rows, R = ch * 16 / (2 * Math.PI);
     L.reel = { kind: 'mech', top: win.y1, cy: wc, ch: ch, cw: cw - gap, R: R, zc: F - 0.028 - R, xs: [] };
@@ -202,10 +228,11 @@ export class Cabinet {
     L.win = { x0: win.x0, x1: win.x1, y0: win.y0, y1: win.y1, z: F + 0.004 };
     this.buildReels(L.reel, [new THREE.Plane(new THREE.Vector3(0, -1, 0), win.y1), new THREE.Plane(new THREE.Vector3(0, 1, 0), -win.y0)]);
     // the window's shade: the drums fall into darkness at the top and bottom of the opening
-    const [shc, shx] = Art.cv(16, 256); shx.fillStyle = Art.lg(shx, 0, 0, 0, 256, [[0, 'rgba(10,5,0,.78)'], [0.2, 'rgba(10,5,0,.1)'], [0.42, 'rgba(255,255,255,.06)'], [0.56, 'rgba(255,255,255,0)'], [0.8, 'rgba(10,5,0,.1)'], [1, 'rgba(10,5,0,.78)']]); shx.fillRect(0, 0, 16, 256);
+    const [shc, shx] = Art.cv(16, 256); shx.fillStyle = Art.lg(shx, 0, 0, 0, 256, [[0, 'rgba(10,5,0,.92)'], [0.12, 'rgba(10,5,0,.5)'], [0.3, 'rgba(10,5,0,.08)'], [0.4, 'rgba(255,255,255,.13)'], [0.47, 'rgba(255,255,255,.2)'], [0.56, 'rgba(255,255,255,.04)'], [0.72, 'rgba(10,5,0,.1)'], [0.9, 'rgba(10,5,0,.55)'], [1, 'rgba(10,5,0,.92)']]); shx.fillRect(0, 0, 16, 256);
     const shade = this.plane(0.5, wh, unlit(shc, { transparent: true, depthWrite: false }), 0, wc, F + 0.0005); shade.renderOrder = 4;
     // glass over the window
     this.glass = this.plane(0.5, wh, m.glass, 0, wc, F + 0.0015); this.glass.renderOrder = 5;
+    this.glare(0.5, wh, 0, wc, F + 0.002);
     // message strip and meters set into the wood below the window
     this.msgD = this.display(0.46, 0.04, 1024, 90, (x, w, h, st) => Art.paintMsg(x, w, h, st.text, st.good, T.msg)); this.msgD.mesh.position.set(0, 0.692, F + 0.002);
     this.metD = this.display(0.5, 0.066, 1024, 136, (x, w, h, st) => Art.paintMeters(x, w, h, st, T.led)); this.metD.mesh.position.set(0, 0.628, F + 0.002);
@@ -214,13 +241,13 @@ export class Cabinet {
     // top box: chrome-crowned, holds the printed glass with the marquee and the pay card
     const tc = 1.28, th = 0.4;
     this.box(W + 0.02, th, D, 0.035, m.walnut, 0, tc, 0, null, 3);
-    this.box(W + 0.03, 0.03, D + 0.01, 0.01, m.chrome, 0, tc + th / 2 - 0.005, 0);
+    this.box(W + 0.03, 0.03, D + 0.01, 0.014, m.chrome, 0, tc + th / 2 - 0.005, 0, null, 4);
     const gl = { w: 0.6, h: 0.35 };
     this.add(new THREE.PlaneGeometry(gl.w + 0.03, gl.h + 0.03), m.inner, 0, tc, F - 0.002);
-    this.box(gl.w + 0.05, 0.02, 0.014, 0.005, m.chrome, 0, tc + gl.h / 2 + 0.01, F + 0.004);
-    this.box(gl.w + 0.05, 0.02, 0.014, 0.005, m.chrome, 0, tc - gl.h / 2 - 0.01, F + 0.004);
-    this.box(0.02, gl.h + 0.05, 0.014, 0.005, m.chrome, -gl.w / 2 - 0.01, tc, F + 0.004);
-    this.box(0.02, gl.h + 0.05, 0.014, 0.005, m.chrome, gl.w / 2 + 0.01, tc, F + 0.004);
+    this.box(gl.w + 0.05, 0.022, 0.022, 0.01, m.chrome, 0, tc + gl.h / 2 + 0.011, F + 0.006, null, 4);
+    this.box(gl.w + 0.05, 0.022, 0.022, 0.01, m.chrome, 0, tc - gl.h / 2 - 0.011, F + 0.006, null, 4);
+    this.box(0.022, gl.h + 0.05, 0.022, 0.01, m.chrome, -gl.w / 2 - 0.011, tc, F + 0.006, null, 4);
+    this.box(0.022, gl.h + 0.05, 0.022, 0.01, m.chrome, gl.w / 2 + 0.011, tc, F + 0.006, null, 4);
     this.topD = this.display(gl.w, gl.h, 1024, Math.round(1024 * gl.h / gl.w), (x, w, h, st) => Art.paintTopGlass(x, w, h, st)); this.topD.mesh.position.set(0, tc, F + 0.0005);
     this.topGlass = this.plane(gl.w, gl.h, m.glass, 0, tc, F + 0.0025); this.topGlass.renderOrder = 5;
     L.glass = { x0: -gl.w / 2, x1: gl.w / 2, y0: tc - gl.h / 2, y1: tc + gl.h / 2, z: F };
@@ -254,10 +281,16 @@ export class Cabinet {
     // main box with the screen
     this.box(W, 0.68, D, 0.012, m.lacquer, 0, 0.6 + 0.34, 0);
     const sc = { w: 0.6, h: 0.58, y: 0.94 }, bz = 0.03;
-    this.box(sc.w + bz * 2, bz, 0.014, 0.005, m.gloss, 0, sc.y + sc.h / 2 + bz / 2, F + 0.004);
-    this.box(sc.w + bz * 2, bz, 0.014, 0.005, m.gloss, 0, sc.y - sc.h / 2 - bz / 2, F + 0.004);
-    this.box(bz, sc.h, 0.014, 0.005, m.gloss, -sc.w / 2 - bz / 2, sc.y, F + 0.004);
-    this.box(bz, sc.h, 0.014, 0.005, m.gloss, sc.w / 2 + bz / 2, sc.y, F + 0.004);
+    // bezel: a rounded gloss-black frame standing proud of the body, with a thin inner step
+    this.box(sc.w + bz * 2, bz, 0.03, 0.013, m.gloss, 0, sc.y + sc.h / 2 + bz / 2, F + 0.008, null, 4);
+    this.box(sc.w + bz * 2, bz, 0.03, 0.013, m.gloss, 0, sc.y - sc.h / 2 - bz / 2, F + 0.008, null, 4);
+    this.box(bz, sc.h, 0.03, 0.013, m.gloss, -sc.w / 2 - bz / 2, sc.y, F + 0.008, null, 4);
+    this.box(bz, sc.h, 0.03, 0.013, m.gloss, sc.w / 2 + bz / 2, sc.y, F + 0.008, null, 4);
+    const st = 0.008;
+    this.box(sc.w + st * 2, st, 0.012, 0.003, m.black, 0, sc.y + sc.h / 2 + st / 2, F + 0.002);
+    this.box(sc.w + st * 2, st, 0.012, 0.003, m.black, 0, sc.y - sc.h / 2 - st / 2, F + 0.002);
+    this.box(st, sc.h, 0.012, 0.003, m.black, -sc.w / 2 - st / 2, sc.y, F + 0.002);
+    this.box(st, sc.h, 0.012, 0.003, m.black, sc.w / 2 + st / 2, sc.y, F + 0.002);
     // LED edge strips
     const ledMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(T.edge), toneMapped: false });
     [-1, 1].forEach(s => { const e = new THREE.Mesh(new RoundedBoxGeometry(0.01, 0.6, 0.01, 2, 0.004), ledMat); e.position.set(s * (W / 2 - 0.016), sc.y, F + 0.004); this.root.add(e);
@@ -280,15 +313,17 @@ export class Cabinet {
     this.metD = this.display(0.56, metH, 1024, Math.round(1024 * metH / 0.56), (x, w, h, st) => Art.paintMeters(x, w, h, st, T.led)); this.metD.mesh.position.set(0, y - metH / 2, F + 0.0012);
     this.glass = this.plane(sc.w, sc.h, m.glass, 0, sc.y, F + 0.0035); this.glass.renderOrder = 5;
     // topper sign
-    this.box(0.62, 0.18, 0.3, 0.02, m.lacquer, 0, 1.37, -0.06, null, 3);
-    this.box(0.64, 0.016, 0.32, 0.005, m.trim, 0, 1.46, -0.06);
-    this.topD = this.display(0.58, 0.15, 1024, Math.round(1024 * 0.15 / 0.58), (x, w, h, st) => Art.paintTopper(this.mode, x, w, h, st.name, st.sub)); this.topD.mesh.position.set(0, 1.37, 0.091);
-    this.box(0.6, 0.012, 0.012, 0.004, m.trim, 0, 1.37 + 0.081, 0.093); this.box(0.6, 0.012, 0.012, 0.004, m.trim, 0, 1.37 - 0.081, 0.093);
-    this.box(0.012, 0.17, 0.012, 0.004, m.trim, -0.296, 1.37, 0.093); this.box(0.012, 0.17, 0.012, 0.004, m.trim, 0.296, 1.37, 0.093);
-    const pts = [], nb = 18; for (let i = 0; i < nb; i++) { const u = (i + 0.5) / nb; pts.push([-0.29 + u * 0.58, 1.37 + 0.081, 0.102]); }
+    const tcy = 1.39;
+    this.box(0.62, 0.18, D - 0.02, 0.02, m.lacquer, 0, tcy, -0.01, null, 3);
+    this.box(0.64, 0.016, D, 0.007, m.trim, 0, tcy + 0.09, -0.01, null, 4);
+    this.topD = this.display(0.58, 0.15, 1024, Math.round(1024 * 0.15 / 0.58), (x, w, h, st) => Art.paintTopper(this.mode, x, w, h, st.name, st.sub)); this.topD.mesh.position.set(0, tcy, F + 0.001);
+    this.box(0.6, 0.014, 0.014, 0.006, m.trim, 0, tcy + 0.081, F + 0.004, null, 4); this.box(0.6, 0.014, 0.014, 0.006, m.trim, 0, tcy - 0.081, F + 0.004, null, 4);
+    this.box(0.014, 0.17, 0.014, 0.006, m.trim, -0.296, tcy, F + 0.004, null, 4); this.box(0.014, 0.17, 0.014, 0.006, m.trim, 0.296, tcy, F + 0.004, null, 4);
+    const pts = [], nb = 18; for (let i = 0; i < nb; i++) { const u = (i + 0.5) / nb; pts.push([-0.29 + u * 0.58, tcy + 0.081, F + 0.016]); }
     this.bulbRing(pts);
+    this.glare(sc.w, sc.h, 0, sc.y, F + 0.004);
     this.mirrorExtra = [scr, this.glass];
-    L.height = 1.47; L.width = W + 0.04;
+    L.height = 1.49; L.width = W + 0.04;
     return L;
   }
   // the sloped button deck: slab, lip, buttons with lit caps, two readouts printed on the surface
@@ -301,7 +336,7 @@ export class Cabinet {
     const slab = new THREE.Mesh(new RoundedBoxGeometry(W, thick, depth, 2, 0.012), slabMat); slab.castShadow = true; slab.receiveShadow = true; g.add(slab);
     const lip = new THREE.Mesh(new RoundedBoxGeometry(W + 0.01, 0.018, 0.03, 2, 0.006), lipMat); lip.position.set(0, -0.01, depth / 2 - 0.005); g.add(lip);
     // a block under the slab back to the body
-    const blk = new THREE.Mesh(new RoundedBoxGeometry(T.W - 0.02, 0.1, 0.16, 2, 0.01), this.mats.black); blk.position.set(0, y - 0.12, F + 0.05); blk.castShadow = true; this.root.add(blk);
+    const blk = new THREE.Mesh(new RoundedBoxGeometry(T.W - 0.02, 0.08, 0.14, 2, 0.01), this.mats.black); blk.position.set(0, y - 0.1, F + 0.04); blk.castShadow = true; this.root.add(blk);
     // surface print
     const [sc, sx] = Art.cv(1024, Math.round(1024 * depth / W)); this.deckC = { c: sc, x: sx };
     const surf = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.02, depth - 0.02), unlit(sc, { transparent: true })); surf.rotation.x = -Math.PI / 2; surf.position.y = thick / 2 + 0.0008; surf.renderOrder = 1; g.add(surf); this.deckSurf = surf;
@@ -351,7 +386,7 @@ export class Cabinet {
       geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
       geo.setIndex(idx);
       const mat = RL.kind === 'mech'
-        ? new THREE.MeshStandardMaterial({ map: this.baseTex, vertexColors: true, roughness: 0.5, metalness: 0, emissive: 0xffffff, emissiveMap: this.baseTex, emissiveIntensity: 0.32, clippingPlanes: clips, envMap: envTex, envMapIntensity: 0.25 })
+        ? new THREE.MeshStandardMaterial({ map: this.baseTex, vertexColors: true, roughness: 0.42, metalness: 0, emissive: 0xffffff, emissiveMap: this.baseTex, emissiveIntensity: 0.16, clippingPlanes: clips, envMap: envTex, envMapIntensity: 0.35 })
         : new THREE.MeshBasicMaterial({ map: this.baseTex, vertexColors: true, clippingPlanes: clips, toneMapped: false });
       const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; mesh.renderOrder = 2; this.root.add(mesh);
       // anticipation glow around the reel
@@ -417,13 +452,13 @@ export class Cabinet {
   // ── Lights, floor, camera ──
   buildLights() {
     const a = this.o.amb || { l: '#ffb35a', r: '#ff6a3a', t: '#ffd9a0', floor: '#2a0c0c' };
-    this.scene.add(new THREE.HemisphereLight(new THREE.Color(a.t), new THREE.Color(a.floor), 0.55));
-    const key = new THREE.DirectionalLight(0xfff1dc, 2.2); key.position.set(-1.3, 3.2, -0.5); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
+    this.scene.add(new THREE.HemisphereLight(new THREE.Color(a.t), new THREE.Color(a.floor), 0.28));
+    const key = new THREE.DirectionalLight(0xfff1dc, 3.4); key.position.set(-2.4, 3.4, 1.3); key.target.position.set(0, 0.8, 0); this.scene.add(key); this.scene.add(key.target);
     key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 8;
-    key.shadow.camera.left = -1.1; key.shadow.camera.right = 1.1; key.shadow.camera.top = 1.6; key.shadow.camera.bottom = -0.6; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.015; key.shadow.radius = 4;
-    const fill = new THREE.DirectionalLight(0xfff4e8, 1.5); fill.position.set(1.2, 1.9, 2.8); this.scene.add(fill);
-    const rimL = new THREE.PointLight(new THREE.Color(a.l), 7, 5, 2); rimL.position.set(-1.4, 1.5, -0.5); this.scene.add(rimL);
-    const rimR = new THREE.PointLight(new THREE.Color(a.r), 7, 5, 2); rimR.position.set(1.4, 1.3, -0.5); this.scene.add(rimR);
+    key.shadow.camera.left = -1.1; key.shadow.camera.right = 1.1; key.shadow.camera.top = 1.6; key.shadow.camera.bottom = -0.6; key.shadow.bias = -0.0003; key.shadow.normalBias = 0.012; key.shadow.radius = 5;
+    const fill = new THREE.DirectionalLight(0xe8ecff, 0.45); fill.position.set(1.6, 1.2, 2.6); this.scene.add(fill);
+    const rimL = new THREE.PointLight(new THREE.Color(a.l), 4, 5, 2); rimL.position.set(-1.4, 1.5, -0.6); this.scene.add(rimL);
+    const rimR = new THREE.PointLight(new THREE.Color(a.r), 16, 5, 2); rimR.position.set(1.1, 1.4, -0.7); this.scene.add(rimR);
     this.flashL = new THREE.PointLight(0xffe9b0, 0, 4, 2); this.flashL.position.set(0, 1.1, 1.3); this.scene.add(this.flashL);
     this.key = key;
   }
@@ -452,6 +487,7 @@ export class Cabinet {
     const ox = c.ox + this.tilt.x * 0.22, oy = this.tilt.y * 0.07;
     this.camera.position.set(ox, c.E + oy, c.d); this.camera.lookAt(0.02, c.E + oy * 0.6, 0);
     this.camera.updateMatrixWorld();
+    (this.glares || []).forEach(g => { g.material.map.offset.set(-this.tilt.x * 0.18, this.tilt.y * 0.08); });
   }
   // ── Rendering on demand ──
   invalidate() { if (this.raf || this.disposed) return; this.raf = requestAnimationFrame(t => this.frame(t)); }

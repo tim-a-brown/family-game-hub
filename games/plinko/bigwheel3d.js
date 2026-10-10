@@ -20,13 +20,13 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const R = 1, DW = 0.8;                 // drum radius and width (along x)
 const PLATE = 0.014, BEV = 0.014;      // raised number plate: height and bevel width
 const BOX = { x: 0.15, y: 0.11, w: 0.70, h: 0.78, r: 0.14 };   // the plate on its panel (fractions of w / h)
-const PW = 0.46, PX = 0.62, PZ0 = 0.14, PZ1 = 0.56;             // pillars: width, inner x, back and front z
+const PW = 0.44, PX = 0.6, PZ0 = 0.14, PZ1 = 0.56;             // pillars: width, inner x, back and front z
 const PY0 = -1.12, PYA = 0.18;         // pillar bottom (base top) and where the arch starts
 const ARCH = PW / 2;                   // arch radius
-const BASE = { w: 2.3, h: 0.12, d: 1.5, z: 0.32 };
+const BASE = { w: 2.24, h: 0.12, d: 1.5, z: 0.32 };
 const FLOOR_Y = PY0 - BASE.h;
 const POINTER = { x: 0.73, z: 1.03, len: 0.32, hh: 0.08 };
-const READ = { x: PX + PW / 2, y: PYA - 0.03, w: 0.38, h: 0.19, d: 0.075 };
+const READ = { x: PX + PW / 2, y: PYA - 0.03, w: 0.35, h: 0.18, d: 0.075 };
 const FOV = 26;
 
 let shared = null;        // renderer, canvas, environment, textures (built once per page)
@@ -172,10 +172,15 @@ function velvet() {
 }
 function floorTex() {
   const n = 1024, [cn, c] = cv2d(n, n);
-  c.fillStyle = '#1b1526'; c.fillRect(0, 0, n, n);
+  c.fillStyle = '#16111f'; c.fillRect(0, 0, n, n);
   c.fillStyle = 'rgba(255,255,255,.035)'; for (let x = 0; x < n; x += 46) c.fillRect(x, 0, 2, n);
   c.fillStyle = 'rgba(0,0,0,.25)'; for (let i = 0; i < 2600; i++) c.fillRect(Math.random() * n, Math.random() * n, 1 + Math.random() * 3, 1);
   const t = tex(cn); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); return t;
+}
+function poolTex() {
+  const n = 512, [cn, c] = cv2d(n, n), g = c.createRadialGradient(n / 2, n * 0.45, 0, n / 2, n * 0.45, n * 0.5);
+  g.addColorStop(0, 'rgba(255,205,140,.55)'); g.addColorStop(0.45, 'rgba(255,190,120,.22)'); g.addColorStop(1, 'rgba(255,180,100,0)');
+  c.fillStyle = g; c.fillRect(0, 0, n, n); return tex(cn);
 }
 // the silver "$": a plate cut from the Lilita One glyph, its bevel and knurl as a heightfield
 function dollarMaps() {
@@ -275,12 +280,12 @@ function ensureShared(canvas) {
   renderer.setClearColor(0x0c0618, 1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
   renderer.info.autoReset = false;
   shared = { renderer, canvas };
   const pm = new THREE.PMREMGenerator(renderer); shared.env = pm.fromScene(new RoomEnvironment(renderer), 0.04).texture; pm.dispose();
   shared.grain = grainNormal(); shared.brushed = brushed(256, '#8a8a8a', '255,255,255', 14); shared.brushed.repeat.set(4, 4);
-  shared.ply = plywood(); shared.glow = glowCanvas(128); shared.soft = softRect(256, 160); shared.velvet = velvet(); shared.floor = floorTex();
+  shared.ply = plywood(); shared.glow = glowCanvas(128); shared.soft = softRect(256, 160); shared.velvet = velvet(); shared.floor = floorTex(); shared.pool = poolTex();
   return shared;
 }
 
@@ -314,21 +319,21 @@ export function BigWheel3D(host, hooks, api) {
     red: new THREE.MeshPhysicalMaterial({ color: 0xc62f18, roughness: 0.4, clearcoat: 0.55, clearcoatRoughness: 0.3, envMapIntensity: E }),
     cream: new THREE.MeshPhysicalMaterial({ color: 0xf2e7d3, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.4, envMapIntensity: E }),
     brass: new THREE.MeshPhysicalMaterial({ color: 0xcfa34e, metalness: 1, roughness: 0.32, roughnessMap: sh.brushed, envMapIntensity: 0.5 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0xfff2d8, metalness: 0, roughness: 0.06, transparent: true, opacity: 0.3, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 0.3, depthWrite: false }),
-    silver: null, pointer: new THREE.MeshPhysicalMaterial({ color: 0xd6221a, roughness: 0.33, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.35 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0xb8a890, metalness: 0, roughness: 0.08, transparent: true, opacity: 0.22, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 0.25, depthWrite: false }),
+    silver: null, pointer: new THREE.MeshPhysicalMaterial({ color: 0xc81e16, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.15, envMapIntensity: 0.3 }),
     velvet: new THREE.MeshStandardMaterial({ map: sh.velvet, roughness: 0.96, metalness: 0, envMapIntensity: 0.08 }),
-    floor: new THREE.MeshPhysicalMaterial({ map: sh.floor, roughness: 0.32, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.18 }),
+    floor: new THREE.MeshPhysicalMaterial({ map: sh.floor, emissiveMap: sh.pool, emissive: 0xffffff, emissiveIntensity: 0.22, roughness: 0.3, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.18, envMapIntensity: 0.18 }),
     display: new THREE.MeshBasicMaterial({ map: null, toneMapped: false, color: new THREE.Color(2.4, 2.4, 2.4) }),
     glassFlat: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.03, transparent: true, opacity: 0.12, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.1, depthWrite: false }),
-    core: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, vertexColors: true }),
-    pool: new THREE.MeshBasicMaterial({ map: sh.glow, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, vertexColors: true }),
+    core: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
+    pool: new THREE.MeshBasicMaterial({ map: sh.glow, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
     glowQ: new THREE.MeshBasicMaterial({ map: sh.soft, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 0 })
   };
   const world = new THREE.Group(); scene.add(world);
   const drum = new THREE.Group(); world.add(drum);
   let atlas = null, dollar = null, dmesh = [], readCanvas = null, readCtx = null, readTex = null;
   const bulbs = [];   // {x,y,z, i (chain index), on, k}
-  let cores = null, pools = null, pointer = null, glowQ = null, key = null, keyFill = null, rimL = null, bulbLights = [];
+  let cores = null, pools = null, pointer = null, ptrShadow = null, glowQ = null, key = null, keyFill = null, rimL = null, bulbLights = [], floor = null;
   const dyn = [];     // meshes to dispose on destroy
 
   function buildTextures() {
@@ -377,7 +382,8 @@ export function BigWheel3D(host, hooks, api) {
     addMesh(merge(bolts), M.chrome, world, false, true);
     addMesh(new RoundedBoxGeometry(BASE.w, BASE.h, BASE.d, 3, 0.022), M.lacquer, world, true, true).position.set(0, PY0 - BASE.h / 2, BASE.z);
     // stage: a glossy floor and the velvet curtain
-    const fl = addMesh(new THREE.PlaneGeometry(9, 7), M.floor, world, false, true); fl.rotation.x = -Math.PI / 2; fl.position.set(0, FLOOR_Y, 0.4);
+    floor = addMesh(new THREE.PlaneGeometry(9, 7), M.floor, world, false, true); floor.rotation.x = -Math.PI / 2; floor.position.set(0, FLOOR_Y, 0.4);
+    setupReflection();
     const cu = addMesh(new THREE.PlaneGeometry(9, 7), M.velvet, world, false, true); cu.position.set(0, 1.5, -1.5);
   }
   function pillarShape() {
@@ -402,7 +408,7 @@ export function BigWheel3D(host, hooks, api) {
         // inside the arch shape with margin?
         const top = y + tw / 2, inArch = top <= PYA || Math.hypot(Math.abs(x) + tw / 2, Math.max(0, top - PYA)) <= PW / 2 - 0.01;
         if (!inArch || nearRail(x, y)) continue;
-        tiles.push(place(new RoundedBoxGeometry(tw, tw, 0.012, 2, 0.004), xc + x, y, PZ1 + 0.012));
+        tiles.push(place(new RoundedBoxGeometry(tw, tw, 0.022, 2, 0.006), xc + x, y, PZ1 + 0.011));
       }
       // the cream bulb rail: up the side next to the drum, then over the arch
       const pts = [], zr = PZ1 + 0.014;
@@ -416,8 +422,8 @@ export function BigWheel3D(host, hooks, api) {
       for (let i = 0; i <= nb; i++) {
         const p = curve.getPointAt(i / nb); chain.push(p);
         sockets.push(place(new THREE.CylinderGeometry(0.014, 0.017, 0.016, 10), p.x, p.y, zr + 0.016, [Math.PI / 2, 0, 0]));
-        glassG.push(place(new THREE.SphereGeometry(0.02, 12, 8), p.x, p.y, zr + 0.036));
-        bulbs.push({ x: p.x, y: p.y, z: zr + 0.036, i: i, on: 0, k: 0 });
+        glassG.push(place(new THREE.SphereGeometry(0.022, 12, 8), p.x, p.y, zr + 0.038));
+        bulbs.push({ x: p.x, y: p.y, z: zr + 0.038, i: i, on: 0, k: 0 });
       }
       // one warm point light per pillar, in front of the arch, for the glow the bulbs throw on the paint
       const pl = new THREE.PointLight(0xffb45a, 0, 1.6, 2); pl.position.set(xc, PYA + 0.05, PZ1 + 0.3); world.add(pl); bulbLights.push(pl);
@@ -429,8 +435,8 @@ export function BigWheel3D(host, hooks, api) {
     const gl = addMesh(merge(glassG), M.glass, world, false, false); gl.renderOrder = 4;
     // filament cores and the light pools on the paint, instanced so a chase costs one draw call each
     const n = bulbs.length;
-    cores = new THREE.InstancedMesh(new THREE.SphereGeometry(0.0115, 8, 6), M.core, n);
-    pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.2, 0.2), M.pool, n); pools.renderOrder = 3;
+    cores = new THREE.InstancedMesh(new THREE.SphereGeometry(0.0145, 10, 7), M.core, n);
+    pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.26, 0.26), M.pool, n); pools.renderOrder = 3;
     const m4 = scratch.m, col = scratch.c;
     bulbs.forEach((b, i) => {
       m4.identity(); m4.setPosition(b.x, b.y, b.z); cores.setMatrixAt(i, m4);
@@ -443,7 +449,7 @@ export function BigWheel3D(host, hooks, api) {
     dmesh.forEach(m => { world.remove(m); m.geometry.dispose(); }); dmesh = [];
     const size = 0.66, g = dollarGeometry(dollar, size);
     [[-1, PY0 + (PYA - PY0) * 0.52 + 0.05], [1, PY0 + (PYA - PY0) * 0.42 - 0.02]].forEach(([sd, y]) => {
-      const m = new THREE.Mesh(g, M.silver); m.position.set(sd * (PX + PW / 2), y, PZ1 + 0.02); m.castShadow = true; m.receiveShadow = true; world.add(m); dmesh.push(m);
+      const m = new THREE.Mesh(g, M.silver); m.position.set(sd * (PX + PW / 2), y, PZ1 + 0.026); m.castShadow = true; m.receiveShadow = true; world.add(m); dmesh.push(m);
     });
   }
   function buildPointer() {
@@ -463,6 +469,8 @@ export function BigWheel3D(host, hooks, api) {
       place(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 20), POINTER.x, 0, PZ1 + 0.01, [Math.PI / 2, 0, 0])
     ]);
     addMesh(rod, M.brass, world, true, true);
+    ptrShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.09), new THREE.MeshBasicMaterial({ map: sh.glow, color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false }));
+    ptrShadow.renderOrder = 2; world.add(ptrShadow); dyn.push(ptrShadow);
   }
   function buildReadout() {
     const box = new THREE.Group(); box.position.set(READ.x, READ.y, PZ1 + 0.012); world.add(box);
@@ -476,14 +484,57 @@ export function BigWheel3D(host, hooks, api) {
     const disp = addMesh(new THREE.PlaneGeometry(iw, ih), M.display, box, false, false); disp.position.set(0, 0, READ.d + 0.001);
     const gls = addMesh(new THREE.PlaneGeometry(iw, ih), M.glassFlat, box, false, false); gls.position.set(0, 0, READ.d + 0.024); gls.renderOrder = 6;
   }
+
+  // ── A soft reflection of the prop in the glossy floor: the scene from a camera mirrored in the floor
+  // plane, drawn into a small texture the floor's shader samples projectively ──
+  const refl = { cam: new THREE.PerspectiveCamera(), rt: new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType }), tm: new THREE.Matrix4(), on: true,
+    plane: new THREE.Plane(), n: new THREE.Vector3(), v: new THREE.Vector3(), t: new THREE.Vector3(), la: new THREE.Vector3(), rm: new THREE.Matrix4(), q: new THREE.Vector4(), cp: new THREE.Vector4(), cw: new THREE.Vector3(), fw: new THREE.Vector3() };
+  function setupReflection() {
+    refl.rt.texture.minFilter = THREE.LinearFilter; refl.rt.texture.magFilter = THREE.LinearFilter;
+    M.floor.customProgramCacheKey = () => 'bwFloorRefl';
+    M.floor.onBeforeCompile = (sh2) => {
+      sh2.uniforms.tRefl = { value: refl.rt.texture }; sh2.uniforms.reflMatrix = { value: refl.tm }; sh2.uniforms.reflK = { value: 0.0 };
+      M.floor.userData.u = sh2.uniforms;
+      sh2.vertexShader = sh2.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 reflMatrix; varying vec4 vReflUv; varying vec3 vReflW;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvReflUv = reflMatrix * vec4(position, 1.0); vReflW = (modelMatrix * vec4(position, 1.0)).xyz;');
+      sh2.fragmentShader = sh2.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tRefl; uniform float reflK; varying vec4 vReflUv; varying vec3 vReflW;')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n{ vec2 ruv = vReflUv.xy / vReflUv.w; vec3 rc = texture2D(tRefl, ruv).rgb + texture2D(tRefl, ruv + vec2(0.005, 0.0)).rgb + texture2D(tRefl, ruv - vec2(0.005, 0.0)).rgb + texture2D(tRefl, ruv + vec2(0.0, 0.008)).rgb;\n  float fr = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 2.0); float fade = 1.0 - smoothstep(1.0, 2.3, vReflW.z); totalEmissiveRadiance += rc * 0.25 * reflK * (0.06 + 0.2 * fr) * fade; }');
+    };
+  }
+  function renderReflection() {
+    if (!refl.on || !floor) { if (M.floor.userData.u) M.floor.userData.u.reflK.value = 0; return; }
+    const R2 = refl, vc = R2.cam;
+    R2.fw.setFromMatrixPosition(floor.matrixWorld); R2.cw.setFromMatrixPosition(camera.matrixWorld);
+    R2.rm.extractRotation(floor.matrixWorld); R2.n.set(0, 0, 1).applyMatrix4(R2.rm);
+    R2.v.subVectors(R2.fw, R2.cw); if (R2.v.dot(R2.n) > 0) return;
+    R2.v.reflect(R2.n).negate().add(R2.fw);
+    R2.rm.extractRotation(camera.matrixWorld);
+    R2.la.set(0, 0, -1).applyMatrix4(R2.rm).add(R2.cw);
+    R2.t.subVectors(R2.fw, R2.la).reflect(R2.n).negate().add(R2.fw);
+    vc.position.copy(R2.v); vc.up.set(0, 1, 0).applyMatrix4(R2.rm).reflect(R2.n); vc.lookAt(R2.t);
+    vc.far = camera.far; vc.updateMatrixWorld(); vc.projectionMatrix.copy(camera.projectionMatrix);
+    R2.tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+    R2.tm.multiply(vc.projectionMatrix).multiply(vc.matrixWorldInverse).multiply(floor.matrixWorld);
+    R2.plane.setFromNormalAndCoplanarPoint(R2.n, R2.fw).applyMatrix4(vc.matrixWorldInverse);
+    R2.cp.set(R2.plane.normal.x, R2.plane.normal.y, R2.plane.normal.z, R2.plane.constant);
+    const pm = vc.projectionMatrix, q = R2.q;
+    q.x = (Math.sign(R2.cp.x) + pm.elements[8]) / pm.elements[0]; q.y = (Math.sign(R2.cp.y) + pm.elements[9]) / pm.elements[5]; q.z = -1; q.w = (1 + pm.elements[10]) / pm.elements[14];
+    R2.cp.multiplyScalar(2 / R2.cp.dot(q));
+    pm.elements[2] = R2.cp.x; pm.elements[6] = R2.cp.y; pm.elements[10] = R2.cp.z + 1 - 0.003; pm.elements[14] = R2.cp.w;
+    floor.visible = false; pools.visible = false;
+    renderer.setRenderTarget(R2.rt); renderer.clear(); renderer.render(scene, vc); renderer.setRenderTarget(null);
+    floor.visible = true; pools.visible = true;
+    if (M.floor.userData.u) M.floor.userData.u.reflK.value = 1;
+  }
   function buildLights() {
     key = new THREE.SpotLight(0xffdcb4, 60, 0, 0.62, 0.55, 2); key.position.set(-2.6, 3.0, 5.6); key.target.position.set(0.1, -0.3, 0.3); world.add(key); world.add(key.target);
-    key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.camera.near = 2; key.shadow.camera.far = 12; key.shadow.bias = -0.0003; key.shadow.normalBias = 0.012;
+    key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.camera.near = 2; key.shadow.camera.far = 12; key.shadow.bias = -0.00015; key.shadow.normalBias = 0.005;
     keyFill = new THREE.DirectionalLight(0x9fb8ff, 0.4); keyFill.position.set(3.5, 1.2, 3); world.add(keyFill);
     rimL = new THREE.DirectionalLight(0xffe6c8, 0.9); rimL.position.set(1.5, 3.5, -3); world.add(rimL);
     const amb = new THREE.HemisphereLight(0x6a5a8a, 0x1a0a14, 0.2); world.add(amb);
     // the pool of the key light on the floor and a little bounce from below
     const under = new THREE.PointLight(0xffc890, 0.5, 3, 2); under.position.set(0, FLOOR_Y + 0.5, 1.6); world.add(under);
+    const back = new THREE.PointLight(0xffb090, 2.2, 5, 2); back.position.set(0.4, 2.3, -0.5); world.add(back);
   }
 
   function build() {
@@ -505,9 +556,10 @@ export function BigWheel3D(host, hooks, api) {
     W = w; H = h; dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
     renderer.setPixelRatio(dpr); renderer.setSize(W, H, false); cv.style.width = W + 'px'; cv.style.height = H + 'px';
     composer.setPixelRatio(dpr); composer.setSize(W, H);
+    refl.rt.setSize(Math.max(2, Math.round(W * dpr / 3)), Math.max(2, Math.round(H * dpr / 3)));
     camera.aspect = W / H;
     // fit the prop: wide enough for both pillars, tall enough for the drum, the floor and some curtain
-    const t = Math.tan(FOV / 2 * Math.PI / 180), dW = 0.97 / (t * camera.aspect), dH = 1.36 / t;
+    const t = Math.tan(FOV / 2 * Math.PI / 180), dW = 1.04 / (t * camera.aspect), dH = 1.36 / t;
     const d = Math.max(dW, dH);
     camera.position.set(0, 0.3, d + 0.9); camera.lookAt(0, -0.06, 0.3);
     camera.near = Math.max(0.5, d * 0.3); camera.far = d + 12; camera.updateProjectionMatrix();
@@ -556,8 +608,8 @@ export function BigWheel3D(host, hooks, api) {
       if (Math.abs(b.k - k0) > 0.002) changed = true;
       lit += b.k;
       const k = b.k;
-      cores.setColorAt(i, col.setRGB(0.26 + 2.6 * k, 0.18 + 1.9 * k, 0.1 + 0.9 * k));
-      pools.setColorAt(i, col.setRGB(0.26 * k, 0.17 * k, 0.07 * k));
+      cores.setColorAt(i, col.setRGB(0.2 + 3.4 * k, 0.14 + 2.4 * k, 0.08 + 1.0 * k));
+      pools.setColorAt(i, col.setRGB(0.55 * k, 0.34 * k, 0.12 * k));
     }
     if (changed) { cores.instanceColor.needsUpdate = true; pools.instanceColor.needsUpdate = true; }
     const share = lit / bulbs.length;
@@ -578,6 +630,8 @@ export function BigWheel3D(host, hooks, api) {
     lastDraw = now; needDraw = false;
     drum.rotation.x = st.th;
     pointer.rotation.z = st.b * 0.6;
+    { const a = st.b * 0.6, tx = POINTER.x - POINTER.len * Math.cos(a) + 0.045, ty = -POINTER.len * Math.sin(a) - 0.03;
+      ptrShadow.position.set(tx, ty, R + PLATE + 0.004); ptrShadow.rotation.set(0, 0, a); ptrShadow.visible = tx < DW / 2 + 0.06; }
     paintReadout(now);
     stepGlow(now);
     // subtle parallax
@@ -587,17 +641,19 @@ export function BigWheel3D(host, hooks, api) {
     trail.uniforms.damp.value = Math.min(0.8, 0.35 + Math.abs(st.om) * 0.06);
     renderer.info.reset();
     const t0 = performance.now();
+    renderer.shadowMap.needsUpdate = true;
+    renderReflection();
     composer.render();
     frames++; lastMs = performance.now() - t0;
-    adapt(lastMs);
   }
+  // slow device: drop the trail and bloom, then shadows and the reflection, then resolution
   function adapt(ms) {
-    if (!spinning) return;
+    if (!spinning || window.PlinkoWheel.fixedQ) return;
     slowT = ms > 22 ? slowT + ms / 1000 : Math.max(0, slowT - ms / 3000);
     if (slowT > 0.8 && level < 3) {
       slowT = 0; level++;
       if (level === 1) { bloom.enabled = false; trail.enabled = false; }
-      else if (level === 2) { renderer.shadowMap.enabled = false; key.castShadow = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+      else if (level === 2) { refl.on = false; renderer.shadowMap.enabled = false; key.castShadow = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
       else if (level === 3) { maxDpr = 1.25; layout(W, H); }
     }
   }
@@ -605,7 +661,7 @@ export function BigWheel3D(host, hooks, api) {
   // ── Loop: physics while spinning, the flapper settling, and the bulbs (same loop as the 2D renderer) ──
   function loop(now) {
     raf = 0; if (dead) return;
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); if (spinning && last) adapt(now - last); last = now;
     let k, j, active = false;
     if (spinning) {
       acc += dt; let stopped = false;
@@ -659,6 +715,7 @@ export function BigWheel3D(host, hooks, api) {
     const s = drag.s, now = (e && e.timeStamp) || performance.now(); drag = null;
     const a = s[0], b = s[s.length - 1], dt = (b[0] - a[0]) / 1000;
     const om = dt > 0.008 && now - b[0] < 150 ? (b[1] - a[1]) / dt : 0;
+    window.PlinkoWheel.lastDrag = { now: now, s: s.map(x => [Math.round(x[0]), +x[1].toFixed(3)]), th: st.th };
     hooks.onPull(om);
   }
   cv.addEventListener('pointerup', up, sig);
@@ -676,7 +733,7 @@ export function BigWheel3D(host, hooks, api) {
   }
 
   const self = {
-    is3D: true, cv: cv, layout: layout, _dbg: { scene: scene, cores: () => cores, pools: () => pools, M: M, draw: () => { needDraw = true; kick(); } },
+    is3D: true, cv: cv, layout: layout, _dbg: { scene: scene, world: world, cores: () => cores, pools: () => pools, M: M, renderer: renderer, camera: camera, composer: composer, THREE: THREE, draw: () => { needDraw = true; kick(); } },
     spin: function (w0) { return new Promise(function (res) { st.om = w0; st.t = 0; st.rest = 0; acc = 0; glowIdx = -1; spinning = res; mode = 'spin'; modeT0 = performance.now(); slowT = 0; kick(); }); },
     busy: function () { return !!spinning || !!drag; },
     angle: function () { return st.th; },
@@ -695,13 +752,13 @@ export function BigWheel3D(host, hooks, api) {
       return { x: c[0], y: c[1], w: rgt[0] - l[0], h: b[1] - t[1] };
     },
     redraw: function () { if (!dead) rebuildTextures(); },
-    info: function () { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, level: level, frames: frames, bloom: bloom.enabled, shadows: renderer.shadowMap.enabled, dpr: dpr, bulbs: bulbs.length, trail: trail.enabled, lit: bulbs.filter(b => b.k > 0.5).length, c0: Array.from(cores.instanceColor.array.slice(0, 6)).map(x => +x.toFixed(2)), vis: document.visibilityState, raf: !!raf, ms: lastMs }; },
+    info: function () { return { refl: refl.on, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, level: level, frames: frames, bloom: bloom.enabled, shadows: renderer.shadowMap.enabled, dpr: dpr, bulbs: bulbs.length, trail: trail.enabled, lit: bulbs.filter(b => b.k > 0.5).length, c0: Array.from(cores.instanceColor.array.slice(0, 6)).map(x => +x.toFixed(2)), vis: document.visibilityState, raf: !!raf, ms: lastMs }; },
     destroy: function () {
       dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; ac.abort();
-      dyn.forEach(m => { if (m.geometry) m.geometry.dispose(); }); dmesh.forEach(m => m.geometry.dispose());
+      dyn.forEach(m => { if (m.geometry) m.geometry.dispose(); if (m.isInstancedMesh) m.dispose(); }); dmesh.forEach(m => m.geometry.dispose());
       if (atlas) atlas.tex.dispose(); if (dollar) { dollar.alpha.dispose(); dollar.normal.dispose(); } if (readTex) readTex.dispose();
       Object.keys(M).forEach(k => { if (M[k]) M[k].dispose(); });
-      composer.dispose(); rt.dispose(); key.shadow.dispose();
+      composer.dispose(); rt.dispose(); refl.rt.dispose(); key.shadow.dispose();
       if (cv.parentNode) cv.parentNode.removeChild(cv);
       // the shared renderer stays for the next wheel; leave the canvas tidy
       renderer.shadowMap.enabled = true;

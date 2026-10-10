@@ -110,7 +110,7 @@ async function symbolCanvas(defs, mode, k, S) {
 
 // The cell backgrounds each machine prints its symbols on
 const CELL_BG = {
-  classic: function (x, w, h) { x.fillStyle = lg(x, 0, 0, w, 0, [[0, '#ece6d6'], [0.08, '#fffdf4'], [0.92, '#fffdf4'], [1, '#ece6d6']]); x.fillRect(0, 0, w, h); x.fillStyle = 'rgba(0,0,0,.08)'; x.fillRect(0, h - 1, w, 1); },
+  classic: function (x, w, h) { x.fillStyle = lg(x, 0, 0, w, 0, [[0, '#e9e2cf'], [0.06, '#fffdf4'], [0.94, '#fffdf4'], [1, '#e9e2cf']]); x.fillRect(0, 0, w, h); x.fillStyle = lg(x, 0, h - 6, 0, h, [[0, 'rgba(60,40,10,0)'], [1, 'rgba(60,40,10,.22)']]); x.fillRect(0, h - 6, w, 6); x.fillStyle = 'rgba(60,40,10,.18)'; x.fillRect(0, 0, w, 2); },
   buffalo: function (x, w, h) { x.fillStyle = lg(x, 0, 0, 0, h, [[0, '#2b1408'], [0.5, '#3d1d0c'], [1, '#2b1408']]); x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(255,190,110,.22)'; x.lineWidth = 2; rr(x, 2, 2, w - 4, h - 4, 10); x.stroke(); },
   cleo: function (x, w, h) { x.fillStyle = lg(x, 0, 0, 0, h, [[0, '#f3e2b6'], [0.5, '#fbf0d2'], [1, '#e9d29a']]); x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(120,80,10,.28)'; x.lineWidth = 2; rr(x, 2, 2, w - 4, h - 4, 10); x.stroke(); },
   dragon: function (x, w, h) { x.fillStyle = rg(x, w / 2, h / 2, 4, w * 0.7, [[0, '#3a0808'], [1, '#1c0303']]); x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(255,200,90,.22)'; x.lineWidth = 2; rr(x, 2, 2, w - 4, h - 4, 10); x.stroke(); }
@@ -142,8 +142,10 @@ export async function buildAtlas(spriteEl, mode, keys, ratio, sw) {
       const v = variants[vn], vx = v[1];
       vx.save(); vx.translate(ox, oy); vx.beginPath(); vx.rect(0, 0, cw, ch); vx.clip(); v[2](vx, cw, ch);
       if (img) {
-        if (vn === 'blur') { vx.globalAlpha = 0.16; for (let d = -3; d <= 3; d++) vx.drawImage(img, (cw - sz) / 2, (ch - sz) / 2 + d * ch * 0.06, sz, sz); vx.globalAlpha = 1; }
-        else vx.drawImage(img, (cw - sz) / 2, (ch - sz) / 2, sz, sz);
+        // a mechanical strip prints each symbol across most of its stop
+        const sw2 = mode === 'classic' ? cw * 0.72 : sz, sh2 = mode === 'classic' ? ch * 0.9 : sz;
+        if (vn === 'blur') { vx.globalAlpha = 0.16; for (let d = -3; d <= 3; d++) vx.drawImage(img, (cw - sw2) / 2, (ch - sh2) / 2 + d * ch * 0.06, sw2, sh2); vx.globalAlpha = 1; }
+        else vx.drawImage(img, (cw - sw2) / 2, (ch - sh2) / 2, sw2, sh2);
       }
       vx.restore();
     });
@@ -158,10 +160,10 @@ export function woodCanvas(size, pal, seed) {
   const A = pal[0], B = pal[1], C = pal[2];
   for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
     const u = i / size, v = j / size;
-    const warp = n1(u * 8, v * 8) * 0.5 + n2(u * 32, v * 32) * 0.08;
-    const ring = Math.sin((u * 13 + warp * 1.2 + v * 0.25) * Math.PI * 2);
-    let t = 0.5 + 0.5 * ring; t = Math.pow(t, 1.3) * (0.55 + 0.45 * n2(u * 32, v * 32 * 3));
-    const fine = n2(u * 32 * 4, v * 32) * 0.22 - 0.11;
+    const warp = n1(u * 8, v * 8) * 0.22 + n2(u * 32, v * 32) * 0.05;
+    const ring = Math.sin((u * 46 + warp * 1.6 + v * 0.35) * Math.PI * 2);
+    let t = 0.5 + 0.5 * ring; t = Math.pow(t, 1.2) * (0.6 + 0.4 * n2(u * 32, v * 32 * 3)) * 0.55 + 0.25 * n1(u * 3, v * 5);
+    const fine = n2(u * 32 * 6, v * 32 * 1.5) * 0.12 - 0.06;
     const k = Math.min(1, Math.max(0, t + fine)), o = (j * size + i) * 4;
     const dark = Math.pow(n2(u * 32, v * 32 * 6), 6) * 0.5;   // pores
     d[o] = (A[0] * (1 - k) + B[0] * k) * (1 - dark) + C[0] * dark * 0.2;
@@ -182,6 +184,12 @@ export function paperCanvas(size, seed) {
   const [c, x] = cv(size, size), r = seeded(seed || 5);
   x.fillStyle = lg(x, 0, 0, 0, size, [[0, '#fbf3dc'], [1, '#eadcb4']]); x.fillRect(0, 0, size, size);
   for (let i = 0; i < size * 40; i++) { x.fillStyle = r() < 0.5 ? 'rgba(120,80,20,.06)' : 'rgba(255,255,255,.12)'; x.fillRect(r() * size, r() * size, 1.5, 1.5); }
+  return c;
+}
+export function glareCanvas(w, h) {
+  const [c, x] = cv(w, h);
+  x.fillStyle = lg(x, 0, 0, w, h, [[0, 'rgba(255,255,255,0)'], [0.3, 'rgba(255,255,255,0)'], [0.42, 'rgba(255,255,255,.55)'], [0.5, 'rgba(255,255,255,.12)'], [0.62, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']]); x.fillRect(0, 0, w, h);
+  x.fillStyle = lg(x, 0, 0, 0, h, [[0, 'rgba(255,255,255,.35)'], [0.18, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']]); x.fillRect(0, 0, w, h);
   return c;
 }
 export function glowCanvas(size) {
