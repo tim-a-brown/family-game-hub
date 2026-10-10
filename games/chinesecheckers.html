@@ -55,8 +55,15 @@
 .mb.sel{transform:translate(-50%,-50%) scale(1.14);transition:transform .15s var(--spring);}
 .mb.fly{z-index:5;}
 .mb.fly i{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), 0 6px 7px rgba(0,0,0,.45);}
-.mb.can i{animation:can 1.6s ease-in-out infinite;}
-@keyframes can{50%{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), 0 0 0 1.5px rgba(255,255,255,.55), 0 1.6px 1.8px rgba(0,0,0,.55);}}
+/* Movable marbles: the two shadow lists can't blend (inset vs outer), so the browser
+   flips between them a quarter of the way in and out. Same flip with two layers. */
+.mb.can i{box-shadow:0 1.6px 1.8px rgba(0,0,0,.55);}
+.mb.can i::before,.mb.can i::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;}
+.mb.can i::before{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), inset 0 0 0 .5px rgba(0,0,0,.25);animation:can 1.6s infinite;}
+.mb.can i::after{box-shadow:inset 0 -1px 2px rgba(0,0,0,.35), 0 0 0 1.5px rgba(255,255,255,.55);opacity:0;animation:can-on 1.6s infinite;}
+@keyframes can{0%{animation-timing-function:step-end;}25%{opacity:0;animation-timing-function:step-end;}75%{opacity:1;}}
+@keyframes can-on{0%{animation-timing-function:step-end;}25%{opacity:1;animation-timing-function:step-end;}75%{opacity:0;}}
+@media (prefers-reduced-motion:reduce){.mb.can i::before,.mb.can i::after{animation-duration:.01ms!important;}}
 .mm .mb{width:100%;left:50%;top:50%;}
 .mm .mb i{transform:none;}
 .c-red{--m1:#ff8a7a;--m2:#e0242c;--m3:#5e0207;}

@@ -53,8 +53,15 @@
 .cup .body::after{content:"";position:absolute;left:6%;right:6%;top:9px;border-top:2px dashed rgba(255,226,180,.45);}
 .cup .rim{position:absolute;left:0;right:0;top:2px;height:18px;border-radius:50%;background:radial-gradient(60% 60% at 50% 55%,#120804 0%,#2b150a 70%,#4e2b16 100%);box-shadow:0 0 0 3px #8a5130,0 2px 0 4px rgba(0,0,0,.25);}
 .cup.ready{cursor:pointer;}
-.cup.ready .rim{box-shadow:0 0 0 3px #8a5130,0 0 0 6px rgba(255,229,138,.0),0 0 18px rgba(255,229,138,.55);animation:cupglow 1.2s ease-in-out infinite alternate;}
-@keyframes cupglow{to{box-shadow:0 0 0 3px #b47040,0 0 0 6px rgba(255,229,138,.55),0 0 22px rgba(255,229,138,.7);}}
+/* Ready to roll: the rim warms up and a gold halo grows. The resting look stays on
+   the rim; the warmer rim (::after) and the halo band + extra glow (::before, a box
+   3px bigger so it sits outside the rim's own 3px edge) fade in. Opacity only. */
+.cup.ready .rim{box-shadow:0 0 0 3px #8a5130,0 0 18px rgba(255,229,138,.55);}
+.cup.ready .rim::before,.cup.ready .rim::after{content:"";position:absolute;border-radius:50%;pointer-events:none;opacity:0;animation:cupglow 1.2s ease-in-out infinite alternate;}
+.cup.ready .rim::before{inset:-3px;box-shadow:0 0 0 3px rgba(255,229,138,.55),0 0 22px -3px rgba(255,229,138,.333);}
+.cup.ready .rim::after{inset:0;box-shadow:0 0 0 3px #b47040;}
+@keyframes cupglow{to{opacity:1;}}
+@media (prefers-reduced-motion:reduce){.cup.ready .rim::before,.cup.ready .rim::after{animation-duration:.01ms!important;}}
 .cup.shaking{animation:rattle .11s linear infinite;}
 @keyframes rattle{0%{transform:rotate(-9deg) translate(-2px,0);}50%{transform:rotate(9deg) translate(2px,-3px);}100%{transform:rotate(-9deg) translate(-2px,0);}}
 .cup.tip{animation:tip .45s var(--ease);}

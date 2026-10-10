@@ -87,7 +87,15 @@
   font-size:clamp(9.5px,2.8vw,14px);font-weight:900;font-variant-numeric:tabular-nums;transition:background .3s, color .3s, box-shadow .3s;}
 .fc.on{background:var(--c);color:var(--ci);box-shadow:0 0 8px color-mix(in srgb,var(--c) 70%,transparent), inset 0 -2px 0 rgba(0,0,0,.18);}
 .fc.last{animation:lastp 1.2s ease-in-out infinite;position:relative;z-index:1;}
-@keyframes lastp{50%{box-shadow:0 0 0 2px #fff, 0 0 16px var(--c);}}
+/* The two shadow lists can't blend (one is inset), so the browser flips between
+   them a quarter of the way in and out. Same flip, as two layers switched by opacity. */
+.fc.on.last:not(.hit){box-shadow:none;transition:background .3s, color .3s;animation:none;}
+.fc.on.last:not(.hit)::before,.fc.on.last:not(.hit)::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;}
+.fc.on.last:not(.hit)::before{box-shadow:0 0 8px color-mix(in srgb,var(--c) 70%,transparent), inset 0 -2px 0 rgba(0,0,0,.18);animation:lastp 1.2s infinite;}
+.fc.on.last:not(.hit)::after{box-shadow:0 0 0 2px #fff, 0 0 16px var(--c);opacity:0;animation:lastp-on 1.2s infinite;}
+@keyframes lastp{0%{animation-timing-function:step-end;}25%{opacity:0;animation-timing-function:step-end;}75%{opacity:1;}}
+@keyframes lastp-on{0%{animation-timing-function:step-end;}25%{opacity:1;animation-timing-function:step-end;}75%{opacity:0;}}
+@media (prefers-reduced-motion:reduce){.fc.on.last:not(.hit)::before,.fc.on.last:not(.hit)::after{animation-duration:.01ms!important;}}
 .fc.hit{animation:pop .45s var(--spring);}
 .bfoot{display:flex;justify-content:space-between;margin:8px 4px 0;font-size:.8rem;font-weight:800;color:var(--text-3);}
 @media (min-width:640px){ .fc,.fl{height:34px;} .machine{--cw2:190px;} }
